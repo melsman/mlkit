@@ -35,6 +35,7 @@ typedef struct heap {
   RegionCopy *r3copy;       // rtype string
   int *sp;                  // stack pointer
   int *exnPtr;
+  unsigned long exnCnt;
   int ds[STACK_SIZE_INIT];  // start of data-space
                             //   followed by stack
 } Heap;
@@ -57,11 +58,11 @@ void touchHeap(Heap *h);
 // status to be HSTAT_DIRTY.
 void releaseHeap(Heap *h);
 
-// [initializeHeap(h,sp,exnPtr)] This function should be called after
-// library code is executed, but before leaf bytecode is executed. The
-// function changes the status of the heap to HSTAT_CLEAN. It requires
-// the heap status to be HSTAT_UNINITIALIZED. 
-void initializeHeap(Heap *h, int *sp, int *exnPtr);
+// [initializeHeap(h,sp,exnPtr,exnCnt)] This function should be
+// called after library code is executed, but before leaf bytecode is
+// executed. The function changes the status of the heap to
+// HSTAT_CLEAN. It requires the heap status to be HSTAT_UNINITIALIZED.
+void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt);
 
 // [deleteHeap(h)] deletes the heap by freeing it. Also frees region
 // pages in the regions in the heap.

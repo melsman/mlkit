@@ -276,7 +276,7 @@ typedef unsigned int uint32;
  * in two modes, `RESOLVEINSTS' and `INTERPRET'. When interp is called in `RESOLVEINSTS' 
  * mode, instructions are resolved in the code and the interp function returns 
  * without the code being executed. In this mode, the value of sp, ds, and 
- * exname_counter are not used. Contrary, when interp is called in mode 
+ * exnCnt are not used. Contrary, when interp is called in mode 
  * `INTERPRET', the interp function executes the code, assuming that instructions
  * have been resolved already.
  */
@@ -339,16 +339,16 @@ enum interp_mode {
 };
 
 int 
-interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
-       unsigned long * sp0,             // Stack pointer
-       unsigned long * ds,              // Data segment pointer
-       unsigned long * exnPtr,          // Pointer to next exn-handler on stack
-       Ro ** topRegionCell,             // Cell for holding a pointer to the top-most region
-       char ** errorStr,                // Cell to store error-string in case of an uncaught exception
-       unsigned long exname_counter,    // Exception name counter
-       bytecode_t b_prog,               // The actual code
-       int sizeW,                       // Size of code in words
-       int interp_mode)                 // Mode: RESOLVEINSTS or INTERPRET
+interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
+       unsigned long * sp0,    // Stack pointer
+       unsigned long * ds,     // Data segment pointer
+       unsigned long * exnPtr, // Pointer to next exn-handler on stack
+       Ro ** topRegionCell,    // Cell for holding a pointer to the top-most region
+       char ** errorStr,       // Cell to store error-string in case of an uncaught exception
+       unsigned long *exnCnt,  // Exception name counter
+       bytecode_t b_prog,      // The actual code
+       int sizeW,              // Size of code in words
+       int interp_mode)        // Mode: RESOLVEINSTS or INTERPRET
 {
 
 /* Declarations for the registers of the abstract machine.
@@ -1020,7 +1020,7 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
       } 
 
       Instruct(PRIM_FRESH_EXNAME): {
-	acc = exname_counter++;
+	acc = (*exnCnt)++;
 	debug(printf("PRIM_FRESH_EXNAME; acc = %x\n", acc));
 	Next;
       }
@@ -1316,16 +1316,16 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
 /* Interpret code; assumes that code is already resolved; i.e., that
  * instruction numbers are turned into instruction addresses. */
 int 
-interpCode(Interp* interpreter,             // The interpreter
-	   register unsigned long * sp,     // Stack pointer
-	   unsigned long * ds,              // Data segment pointer
-	   unsigned long * exnPtr,          // Pointer to next exn-handler on stack
-	   Ro** topRegionCell,              // Cell for holding a pointer to the top-most region
-	   char ** errorStr,                // Cell to store error-string in case of an uncaught exception
-	   unsigned long exname_counter,    // Exception name counter
-	   bytecode_t b_prog) {             // The actual code
+interpCode(Interp* interpreter,         // The interpreter
+	   register unsigned long * sp, // Stack pointer
+	   unsigned long * ds,          // Data segment pointer
+	   unsigned long * exnPtr,      // Pointer to next exn-handler on stack
+	   Ro** topRegionCell,          // Cell for holding a pointer to the top-most region
+	   char ** errorStr,            // Cell to store error-string in case of an uncaught exception
+	   unsigned long *exnCnt,       // Exception name counter
+	   bytecode_t b_prog) {         // The actual code
   int res = interp(interpreter, sp, ds, exnPtr, topRegionCell, errorStr,
-		   exname_counter, b_prog, 0, INTERPRET);    
+		   exnCnt, b_prog, 0, INTERPRET);    
                                             // sizeW not used when mode is INTERPRET
   return res;
 }

@@ -130,6 +130,12 @@ logLoading(char *file)
   Ns_Log(Notice, "nssml: loaded %s", file);
 }
 
+void
+logMsg(char *msg)
+{
+  Ns_Log(Notice, "nssml: %s", msg);
+}
+
 int
 Ns_ModuleInit(char *hServer, char *hModule)
 {
