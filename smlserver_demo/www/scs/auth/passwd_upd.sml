@@ -1,15 +1,18 @@
-val (cur_passwd,errs) = ScsFormVar.getStringErr ("cur_passwd","Current password",ScsFormVar.emptyErr)
-val (new_passwd,errs) = ScsFormVar.getStringErr ("new_passwd","New password",errs)
-val (confirm_new_passwd,errs) = ScsFormVar.getStringErr ("confirm_new_passwd","Confirmed new password",errs)
+val % = ScsDict.d ScsLang.en "scs_lib" "passwd_upd.sml"
+val %% = ScsDict.d' ScsLang.en "scs_lib" "passwd_upd.sml"
+
+val (cur_passwd,errs) = ScsFormVar.getStringErr ("cur_passwd",%"Current password",ScsFormVar.emptyErr)
+val (new_passwd,errs) = ScsFormVar.getStringErr ("new_passwd",%"New password",errs)
+val (confirm_new_passwd,errs) = ScsFormVar.getStringErr ("confirm_new_passwd",%"Confirmed new password",errs)
 val (new_passwd,confirm_new_passwd) = (ScsFormVar.trim new_passwd,ScsFormVar.trim confirm_new_passwd)
 val errs = 
   if new_passwd <> confirm_new_passwd then
-    ScsFormVar.addErr (`Your new password and confirmed password are different`,errs)
+    ScsFormVar.addErr (%%`Your new password and confirmed password are different`,errs)
   else
     errs
 val errs = 
   if new_passwd = "" then
-    ScsFormVar.addErr (`Your did not type a new password.`,errs)
+    ScsFormVar.addErr (%%`Your did not type a new password.`,errs)
   else
     errs
 val errs =
@@ -20,7 +23,7 @@ val errs =
         and scs_users_active.password = ^(Db.qqq cur_passwd)` then
     errs
   else
-    ScsFormVar.addErr (`The old password you typed does not match the one found in the database`,errs)
+    ScsFormVar.addErr (%%`The old password you typed does not match the one found in the database`,errs)
 val _ = ScsFormVar.anyErrors errs
 
 (* We are ready to update the password *)

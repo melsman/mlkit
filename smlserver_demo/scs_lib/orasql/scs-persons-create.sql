@@ -173,6 +173,10 @@ as
     person_id in scs_persons.person_id%TYPE
   ) return scs_persons.last_name%TYPE;
 
+  function name (
+    person_id in scs_persons.person_id%TYPE
+  ) return varchar2;
+  
   function security_id (
     person_id in scs_persons.person_id%TYPE
   ) return scs_persons.security_id%TYPE;
