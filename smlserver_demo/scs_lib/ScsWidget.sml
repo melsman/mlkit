@@ -144,6 +144,10 @@ signature SCS_WIDGET =
        date. *)
     val intextDate      : Date.date option -> string -> quot
 
+    (* [intextTimestamp d fv] returns an HTML input tag prefilled with a
+       date and time. *)
+    val intextTimestamp : Date.date option -> string -> quot
+
     (* [maybe fv text] returns text if formvariable fv is non
        empty. If empty, then the empty quotation is returned. *)
     val maybe           : string -> quot -> quot
@@ -157,6 +161,12 @@ signature SCS_WIDGET =
        (start_date option,end_date option) and the two boxes will be
        pre-filled if possible. *)
     val period : Date.date option * Date.date option -> string -> quot
+
+    (* [startdateEndtime period p fv]: returns HTML for two entry boxes: one for
+       start date and one for the end timestamp. A period p is a pair
+       (start_date option,end_date option) and the two boxes will be
+       pre-filled if possible. *)
+    val startdateEndtime : Date.date option * Date.date option -> string -> quot
   end
 
 structure ScsWidget :> SCS_WIDGET =
@@ -294,6 +304,31 @@ structure ScsWidget :> SCS_WIDGET =
       case d of
 	NONE => intextMaxLenVal 10 10 "" fv
       | SOME d' => intextMaxLenVal 10 10 (ScsDate.pp d') fv
+ 
+    local
+      fun dup xs = List.map (fn x => (x,x)) xs
+      fun pp_2dec i = (if i < 10 then "0" else "") ^ (Int.toString i)
+      val min_list = dup(List.tabulate (60,pp_2dec))
+      val hour_list = dup(List.tabulate (24,pp_2dec))
+      (* Also defined in ScsFormVar.getTimestampErr *)
+      fun mk_date_fv fv = fv^"_FV_date__"
+      fun mk_hour_fv fv = fv^"_FV_hour__"
+      fun mk_min_fv fv = fv^"_FV_min__"
+    in
+      fun intextTimestamp d fv = 
+	case d of
+	  NONE => (intextMaxLenVal 10 10 "" (mk_date_fv fv)) ^^ 
+	          (select hour_list (mk_hour_fv fv)) ^^ ` : ` ^^
+	          (select min_list (mk_min_fv fv))
+	| SOME d => 
+	    let
+	      val (hour,min) = (pp_2dec (Date.hour d),pp_2dec (Date.minute d))
+	    in
+	      (intextMaxLenVal 10 10 (ScsDate.pp d) (mk_date_fv fv)) ^^ 
+	      (selectWithDefault hour_list hour (mk_hour_fv fv)) ^^ ` : ` ^^
+	      (selectWithDefault min_list min (mk_min_fv fv))
+	    end
+    end
 
     fun maybe fv text = if fv = "" then `` else text
 
@@ -306,4 +341,11 @@ structure ScsWidget :> SCS_WIDGET =
          have two separate input boxes. *)
       intextDate start_date_opt (fv^"_FV_start__") ^^ ` <b>--</b> ` ^^
       intextDate end_date_opt (fv^"_FV_end__")
+
+    fun startdateEndtime (start_date_opt,end_date_opt) fv = 
+      (* we append fv with _FV_start__ and _FV_end__ because we actually
+         have two separate input boxes. *)
+      intextDate start_date_opt (fv^"_FV_start__") ^^ ` <b>--</b> ` ^^
+      intextTimestamp end_date_opt (fv^"_FV_end__")
+
   end

@@ -138,7 +138,10 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getEnumErr     : string list -> string formvar_fn
     val getYesNoErr    : string formvar_fn
     val getDateErr     : Date.date formvar_fn
+    val getDbTimestampErr : Date.date formvar_fn
+    val getTimestampErr: Date.date formvar_fn
     val getPeriodErr   : (Date.date * Date.date) formvar_fn
+    val getStartdateEndtimeErr : (Date.date * Date.date) formvar_fn
     val getDateIso     : string formvar_fn
     val getTableName   : string formvar_fn
     val getLangErr     : ScsLang.lang formvar_fn
@@ -549,6 +552,17 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     Du skal indtaste en <b>dato</b> enten i formatet <code>DD/MM-YYYY</code> (f.eks. 25/01-2001) eller
 	     i formatet <code>YYYY-MM-DD</code> (f.eks. 2001-01-25).
 	     </blockquote>`)
+
+      fun msgDbTimestamp s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.en => `^s
+	     <blockquote>
+	     You must type a <b>time</b> and <b>date</b> in this format <code>YYYY-MM-DD HH:MM:SS</code>.
+	     </blockquote>`
+	| ScsLang.da => `^s
+	     Du skal indtaste en <b>tid</b> og <b>dato</b> i formatet <code>YYYY-MM-DD HH:MM:SS</code>.
+	     </blockquote>`)
+
       fun msgTableName s = 
 	(case ScsLogin.user_lang of
 	   ScsLang.en => `^s
@@ -687,8 +701,18 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	| SOME _ => true
       fun dateOk (d,m,y) = ScsDate.dateOk(Option.valOf (Int.fromString d),
 					  Option.valOf (Int.fromString m),Option.valOf (Int.fromString y))
+      fun timeOk (h,m,s) = ScsDate.timeOk(Option.valOf (Int.fromString h),
+					  Option.valOf (Int.fromString m),Option.valOf (Int.fromString s))
+
       fun genDate (d,m,y) = ScsDate.genDate(Option.valOf (Int.fromString d),
 					    Option.valOf (Int.fromString m),Option.valOf (Int.fromString y))
+      fun genTimestamp(dd,mm,yyyy,h,m,s) = ScsDate.genTimestamp(Option.valOf (Int.fromString dd),
+								Option.valOf (Int.fromString mm),
+								Option.valOf (Int.fromString yyyy),
+								Option.valOf (Int.fromString h),
+								Option.valOf (Int.fromString m),
+								Option.valOf (Int.fromString s))
+
       fun chkDateIso v =
 	(case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 	   SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)
@@ -710,6 +734,21 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		   SOME [yyyy,mm,dd] => genDate(dd,mm,yyyy)
 		 | _ => ScsError.panic `ScsFormVar.convDate failed on ^v`))
 	   handle _ => ScsError.panic `ScsFormVar.convDate failed on ^v`
+
+      fun chkDbTimestamp v =
+	(case regExpExtract 
+	   "([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9]) ([0-9][0-9]):([0-9][0-9]):([0-9][0-9]).*" v of
+	   SOME [yyyy,mm,dd,h,m,s] => dateOk(dd,mm,yyyy) andalso timeOk(h,m,s)
+	 | _ => false)
+	   handle _ => false   
+
+      fun convDbTimestamp v =
+	(case 
+	   regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9]) ([0-9][0-9]):([0-9][0-9]):([0-9][0-9]).*" v of
+	   SOME [yyyy,mm,dd,h,m,s] => genTimestamp(dd,mm,yyyy,h,m,s)
+	   | _ => ScsError.panic `ScsFormVar.convTimestamp failed on ^v`)
+	   handle _ =>  ScsError.panic `ScsFormVar.convTimestamp failed on ^v`
+
       fun chkRegExp v = (RegExp.fromString v; true) handle _ => false
       fun chkLang v = (ScsLang.fromString v; true) handle _ => false
     in
@@ -741,15 +780,20 @@ structure ScsFormVar :> SCS_FORM_VAR =
       val getDateIso = getErr' (ScsDict.s [(ScsLang.en,`date`),(ScsLang.da,`dato`)]) msgDateIso chkDateIso
       val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate (ScsDict.s [(ScsLang.en,`date`),(ScsLang.da,`dato`)]) 
                          msgDate chkDate
-
+      val getDbTimestampErr = getErr (ScsDate.genTimestamp(1,1,1,0,0,0)) 
+	convDbTimestamp (ScsDict.s [(ScsLang.da,`dato og tidspunt`),(ScsLang.en,`time and date`)])
+	msgDbTimestamp chkDbTimestamp
+				      
       fun getPeriodErr (fv:string,emsg:string,errs:errs) = 
         (* we append fv with _FV_start__ and _FV_end__ because we actually
            have two separate input boxes, see function period in ScsWidget. *)
         let
           val (start_date,errs) = 
-            getDateErr(fv^"_FV_start__",ScsDict.s [(ScsLang.en,`start date of period`),(ScsLang.da,`start dato for periode`)],errs) 
+            getDateErr(fv^"_FV_start__",ScsDict.s [(ScsLang.en,`start date of period`),
+						   (ScsLang.da,`start dato for periode`)],errs) 
           val (end_date,errs) =
-            getDateErr(fv^"_FV_end__",ScsDict.s [(ScsLang.en,`start date of period`),(ScsLang.da,`start dato for periode`)],errs)
+            getDateErr(fv^"_FV_end__",ScsDict.s [(ScsLang.en,`end date of period`),
+						 (ScsLang.da,`slutdato for periode`)],errs)
           val errs = 
             if Date.compare(start_date,end_date) = General.GREATER then
               addErr(ScsDict.sl' [(ScsLang.en,`The start date <i>%0</i> must be before the end date <i>%1</i>.`),
@@ -758,6 +802,57 @@ structure ScsFormVar :> SCS_FORM_VAR =
             else errs
         in
           ((start_date,end_date),errs)
+        end
+
+      fun getTimestampErr (fv:string,emsg:string,errs:errs) = 
+        (* we append fv with _FV_date__, _FV_min__ and _FV_hour__
+           because we actually have three separate input boxes, see
+           function intextTimestamp in ScsWidget. *)
+        let
+	  fun mk_date_fv fv = fv^"_FV_date__"
+	  fun mk_hour_fv fv = fv^"_FV_hour__"
+	  fun mk_min_fv fv = fv^"_FV_min__"
+          val (date,errs) = 
+            getDateErr(mk_date_fv fv,
+		       ScsDict.s [(ScsLang.en,`date part of timestamp`),
+				  (ScsLang.da,`dato for tidspunkt`)],errs) 
+          val (hour,errs) =
+            getIntRangeErr 0 23 (mk_hour_fv fv,
+				 ScsDict.s [(ScsLang.en,`time part of timestamp`),
+					    (ScsLang.da,`time del af tidspunkt`)],errs)
+          val (min,errs) =
+            getIntRangeErr 0 59 (mk_min_fv fv,
+				 ScsDict.s [(ScsLang.en,`minute part of timestamp`),
+					    (ScsLang.da,`minut del af tidspunkt`)],errs)
+        in
+          (ScsDate.genTimestamp (Date.day date,
+				 ScsDate.mthFromName(Date.month date),
+				 Date.year date,
+				 hour,
+				 min,
+				 0),errs)
+        end
+
+      fun getStartdateEndtimeErr (fv:string,emsg:string,errs:errs) = 
+        (* we append fv with _FV_start__ and _FV_end__ because we
+           actually have two separate input boxes, see function
+           startdateEndtime in ScsWidget. *)
+        let
+          val (start_date,errs) = 
+            getDateErr(fv^"_FV_start__",ScsDict.s [(ScsLang.en,`start date of period`),
+						   (ScsLang.da,`start dato for periode`)],errs) 
+          val (end_time,errs) =
+            getTimestampErr(fv^"_FV_end__",ScsDict.s [(ScsLang.en,`end date and time of period`),
+						 (ScsLang.da,`slut dato og tidspunkt for periode`)],errs)
+          val errs = 
+            if Date.compare(start_date,end_time) = General.GREATER then
+              addErr(ScsDict.sl' [(ScsLang.en,`The start date <i>%0</i> must be before 
+				   the end date and time <i>%1</i>.`),
+                                  (ScsLang.da,`Startdatoen <i>%0</i> skal ligge før slutdatoen <i>%1</i>.`)] 
+                                 [ScsDate.pp start_date,ScsDate.ppTimestamp end_time],errs)
+            else errs
+        in
+          ((start_date,end_time),errs)
         end
 
       val getTableName = getErr' (ScsDict.s [(ScsLang.da,`table name`),(ScsLang.en,`tabelnavn`)]) 

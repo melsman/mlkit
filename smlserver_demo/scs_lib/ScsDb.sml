@@ -19,6 +19,10 @@ signature SCS_DB =
     val errorDml      : quot -> quot -> unit
     val toggleP       : string -> string -> string -> string -> unit
 
+    (* [newObjId] returns a new object id from the sequence
+        scs_object_id_seq. *)
+    val newObjId     : unit -> int
+
     val oneFieldErrPg : quot * quot -> string
     val oneRowErrPg'  : (((string -> string)->'a) * quot * quot) -> 'a
     val panicOneRow   : ((string->string)->'a) -> quot -> 'a
@@ -89,6 +93,11 @@ structure ScsDb :> SCS_DB =
     fun toggleP table column_id column id =
       panicDml `update ^table set ^column=(case when ^column = 't' then 'f' else 't' end)
                  where ^table.^column_id=^(Db.qqq id)`
+
+    fun newObjId () =
+      (ScsError.valOf o Int.fromString)
+      (ScsError.wrapPanic
+       Db.oneField `select scs.new_obj_id from dual`)
 
     fun oneRowErrPg' (f,sql,emsg) =
       Db.oneRow' f sql handle _ => (ScsPage.returnPg "" emsg;Ns.exit())
