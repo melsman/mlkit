@@ -12,6 +12,8 @@ signature SCS_ERROR =
     val valOf      : 'a option -> 'a
     val valOf'     : string -> 'a option -> 'a
 
+    val errorMsg   : quot -> 'a
+
     (* [valOfMsg msg v_opt] returns the msg to the user and no error
         is logged if v_opt is NONE; otherwise returns the value v
         where SOME v = v_opt *)
@@ -85,12 +87,13 @@ email: ^(ScsPersonData.email(ScsLogin.user_id()))
 	 | ScsLang.da => `
 	     Vi kan desværre ikke fuldføre din forespørgsel.<p>
 	     Dette er sandsynligvis vores fejl. Vores systemadministrator 
-	     er blevet informeret om problemt.<p>
+	     er blevet informeret om problemet.<p>
 	     Du må meget gerne prøve igen senere.`
       in
         panic' msg emsg
       end
 
+    fun errorMsg msg = ( ScsPage.returnPg "" msg ; Ns.exit() )
 
     fun valOf NONE     = panic `valOf(NONE)`
       | valOf (SOME v) = v
@@ -98,7 +101,7 @@ email: ^(ScsPersonData.email(ScsLogin.user_id()))
     fun valOf' str NONE     = panic `^str`
       | valOf' str (SOME v) = v
 
-    fun valOfMsg msg NONE     = ( ScsPage.returnPg "" msg ; Ns.exit() )
+    fun valOfMsg msg NONE     = errorMsg msg
       | valOfMsg msg (SOME v) = v
 
     fun wrapPanic' msg f a = f a 
@@ -115,7 +118,7 @@ email: ^(ScsPersonData.email(ScsLogin.user_id()))
       handle _ => NONE
 
     fun wrapMsg msg f a = f a
-      handle _ => ( ScsPage.returnPg "" msg ; Ns.exit() )
+      handle _ => errorMsg msg
 
     fun log msg = Ns.log (Ns.Notice, msg)
 

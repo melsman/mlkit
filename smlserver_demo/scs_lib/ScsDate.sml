@@ -18,15 +18,30 @@ signature SCS_DATE =
     val now_local : unit -> Date.date
     val now_univ  : unit -> Date.date
 
+    (* Calculating with minutes and hours *)
+    type hour_min = 
+      {negative_p : bool,
+       minutes    : int, (* Always positive *)
+       hours      : int  (* Always positive *)}
+
+    val genHourMin   : min * hour -> hour_min
+    val hourMinToMin : hour_min -> min
+    val minToHourMin : min -> hour_min
+    val normHourMin  : hour_min -> hour_min
+    val ppHourMin'   : hour_min -> string
+    val hourMinSub   : hour_min * hour_min -> hour_min
+    val hourMinAdd   : hour_min * hour_min -> hour_min
+    val hourMinCmp   : hour_min * hour_min -> General.order
+
     (* Misc Operations *)
-    val normHourMin : hour * min -> hour * min
     val leap : year -> bool
     val preceedingLeaps : year -> int
     val daysInMonth : year -> mth -> int
     val dateOk : day * mth * year -> bool
     val timeOk : hour * min * sec -> bool
     val preceedingDays : day * mth * year -> int
-    val dateInPeriod     : Date.date * Date.date * Date.date -> bool
+    val dateInPeriod      : Date.date * Date.date * Date.date -> bool
+    val nearstDayInPeriod : Date.date * Date.date * Date.date -> Date.date
     val currDateInPeriod : Date.date * Date.date -> bool
     val yearsInPeriod          : Date.date * Date.date -> int list
     val firstMthInYearInPeriod : int * Date.date * Date.date -> int
@@ -35,6 +50,21 @@ signature SCS_DATE =
     val half_year        : Date.date -> Date.date * Date.date
     val semester         : Date.date -> Date.date * Date.date
     val add_days         : Date.date -> int -> Date.date
+    val getWeekNo        : Date.date -> int     (* Monday as first day of week *)
+    val getDayOfWeek     : Date.date -> int (* Monday = 0, ..., Sunday = 6 *)
+    val firstDateInWeek  : Date.date -> Date.date
+    val lastDateInWeek   : Date.date -> Date.date
+    val getDayOfMonth    : Date.date -> int (* 0 -- 31 *)
+    val firstDateInMonth : Date.date -> Date.date
+    val lastDateInMonth  : Date.date -> Date.date
+    val min : Date.date * Date.date -> Date.date
+    val max : Date.date * Date.date -> Date.date
+    val sameDayPrevMth : Date.date -> Date.date
+    val sameDayNextMth : Date.date -> Date.date
+
+    (* [dateCmp (d1,d2)] similar to Date.compare except that this one
+        only takes day,month and year into account. *)
+    val dateCmp : Date.date * Date.date -> General.order
 
     (* PrettyPrinting *)
     val wrapOpt : ('a -> string) -> 'a option -> string
@@ -44,14 +74,24 @@ signature SCS_DATE =
     val ppLongEng : Date.date -> string
     val ppWeekdayDk : Date.weekday -> string
     val ppWeekdayEng : Date.weekday -> string
+    val ppWeekday          : Date.weekday -> string
+    val ppWeekdayOneLetter : Date.weekday -> string
     val ppDay : Date.date -> string
     val ppMth : Date.month -> string
+    val ppMthDk : Date.month -> string
+    val ppMthEng : Date.month -> string
     val ppMthFromDate : Date.date -> string
     val ppHourMin : Date.date -> string
+    val ppLong               : Date.date -> string 
+    val ppLongWithWeekdayDk  : Date.date -> string 
+    val ppLongWithWeekdayEng : Date.date -> string 
+    val ppLongWithWeekday    : Date.date -> string 
     val pp    : Date.date -> string
     val ppDb  : Date.date option -> string
     val ppTimestamp : Date.date -> string
     val ppTimestampDb : Date.date option -> string
+
+    (* Widgets *)
   end
 
 structure ScsDate :> SCS_DATE =
@@ -108,8 +148,52 @@ structure ScsDate :> SCS_DATE =
       handle Date.Date => 
 	raise ScsDate ("Wrong timestamp: " ^ (Int.toString year) ^ "-" ^ (Int.toString mth) ^ "-" ^ (Int.toString day)
 		       ^ (Int.toString hour) ^ ":" ^ (Int.toString minute) ^ "." ^ (Int.toString sec))
-	  
-    fun normHourMin (hours,min) = (hours + Int.div(min,60), Int.mod(min,60))
+
+    (* Calculating with minutes and hours *)
+    type hour_min = 
+      {negative_p : bool,
+       minutes    : int, (* Always positive *)
+       hours      : int  (* Always positive *)}
+
+    fun normHourMin ({minutes, hours,...} : hour_min) = 
+      let
+	val sum = hours*60+minutes
+	val neg_p = if sum < 0 then true else false
+	val sum = Int.abs(sum)
+      in
+	{negative_p = neg_p, minutes = Int.mod(sum,60), hours = Int.div(sum,60)}
+      end
+
+    fun genHourMin (min: int, hours: int) = 
+      normHourMin {minutes=min,hours=hours,negative_p = false (*arbitrary!*)}
+
+    fun ppHourMin' ({negative_p, minutes, hours} : hour_min) = 
+      let
+	val neg = if negative_p then "-" else ""
+	val h = StringCvt.padLeft #"0" 2 (Int.toString hours)
+	val m = StringCvt.padLeft #"0" 2 (Int.toString minutes)
+      in
+	Quot.toString `^(neg)^(h):^(m)`
+      end
+
+    fun hourMinToMin ({negative_p,minutes,hours}:hour_min) =
+      (if negative_p then ~1 else 1) * (60*hours + minutes)
+
+    fun minToHourMin (min:int) = genHourMin(min,0)
+
+    fun hourMinSub (hm1:hour_min,hm2:hour_min) = 
+      minToHourMin(hourMinToMin hm1 - (hourMinToMin hm2))
+
+    fun hourMinAdd (hm1:hour_min,hm2:hour_min) = 
+      minToHourMin(hourMinToMin hm1 + (hourMinToMin hm2))
+
+    fun hourMinCmp (hm1:hour_min,hm2:hour_min) =
+      if hourMinToMin hm1 < hourMinToMin hm2 then
+	General.LESS
+      else if hourMinToMin hm2 > hourMinToMin hm2 then
+	General.GREATER
+	   else
+	     General.EQUAL
 
     fun leap y = (Int.mod(y,4) = 0 andalso Int.mod(y,100) <> 0) orelse Int.mod(y,400) = 0
 
@@ -210,6 +294,13 @@ structure ScsDate :> SCS_DATE =
       | Date.Sat => "Saturday"
       | Date.Sun => "Sunday"
 
+    fun ppWeekday w =
+      case ScsLogin.user_lang() of
+	ScsLang.da => ppWeekdayDk w
+      | ScsLang.en => ppWeekdayEng w
+
+    fun ppWeekdayOneLetter w = Char.toString(String.sub (ppWeekday w,0))
+
     fun ppDayEng d = ppWeekdayEng (Date.weekDay d)
 
     fun ppDay d = 
@@ -229,7 +320,21 @@ structure ScsDate :> SCS_DATE =
     fun ppLongDk d = (Int.toString (Date.day d)) ^ ". " ^(ppMthDk (Date.month d)) ^ " " ^ (Date.fmt "%Y" d)
 
     fun ppLongEng d = (Int.toString (Date.day d)) ^ " " ^(ppMthEng (Date.month d)) ^ " " ^ (Date.fmt "%Y" d)
-      
+
+    fun ppLong s = 
+      case ScsLogin.user_lang() of
+	ScsLang.da => ppLongDk s
+      | ScsLang.en => ppLongEng s
+
+    fun ppLongWithWeekdayDk d = ppDayDk d ^ " den " ^ ppLongDk d
+
+    fun ppLongWithWeekdayEng d = ppDayEng d ^ ", " ^ ppLongEng d
+
+    fun ppLongWithWeekday s = 
+      case ScsLogin.user_lang() of
+	ScsLang.da => ppLongWithWeekdayDk s
+      | ScsLang.en => ppLongWithWeekdayEng s
+
     fun pp s = 
       case ScsLogin.user_lang() of
 	ScsLang.da => ppDk s
@@ -270,6 +375,10 @@ structure ScsDate :> SCS_DATE =
 	days
       end
 
+    fun dateCmp (d1,d2) =
+      Date.compare (genDate(Date.day d1, mthFromName(Date.month d1),Date.year d1),
+		    genDate(Date.day d2, mthFromName(Date.month d2),Date.year d2))
+
     fun dateInPeriod (d,start_date,end_date) =
       if Date.compare(d,start_date) = General.LESS orelse 
 	  Date.compare(end_date,d) = General.LESS then
@@ -291,6 +400,15 @@ structure ScsDate :> SCS_DATE =
       in
 	loop (Date.year end_date,[])
       end
+
+    fun nearstDayInPeriod(d,start_date,end_date) =
+      if dateCmp(d,start_date) = General.LESS then
+	start_date
+      else
+	if dateCmp(d,end_date) = General.GREATER then
+	  end_date
+	else
+	  d
 
     (* Return first month the the year in the period *)
     fun firstMthInYearInPeriod (year,start_date,end_date) =
@@ -353,6 +471,56 @@ structure ScsDate :> SCS_DATE =
 	| EQUAL => (p_first,p_mid)
 	| GREATER => (add_days p_mid 1,p_end)
       end
+
+    (* Monday as first day of week *)
+    fun getWeekNo d = 
+      Option.valOf (Int.fromString (Date.fmt "%W" d))
+      handle _ => raise ScsDate ("ScsDate.getWeekNo. can't calculate week number of " ^ ppIso d)
+
+    fun getDayOfWeek d =
+      case Date.weekDay d of
+	Date.Mon => 0
+      | Date.Tue => 1
+      | Date.Wed => 2
+      | Date.Thu => 3
+      | Date.Fri => 4
+      | Date.Sat => 5
+      | Date.Sun => 6
+
+    (* Monday as first day of week *)
+    fun firstDateInWeek d = add_days d (0-(getDayOfWeek d))
+
+    (* Sunday as last day of week *)
+    fun lastDateInWeek d = add_days d (6 - (getDayOfWeek d))
+
+    fun getDayOfMonth d = Date.day d
+    fun firstDateInMonth d = genDate(1,mthFromName (Date.month d), Date.year d)
+    fun lastDateInMonth d = genDate(daysInMonth (Date.year d) (mthFromName (Date.month d)),
+				    mthFromName (Date.month d), Date.year d)
+    fun min(d1,d2) =
+      if Date.compare (d1,d2) = General.LESS then 
+	d1 
+      else
+	d2
+    fun max(d1,d2) =
+      if Date.compare (d1,d2) = General.GREATER then
+	d1
+      else
+	d2
+
+    fun sameDayPrevMth d =
+      if Date.month d = Date.Jan then
+	genDate(Date.day d,12, Date.year d - 1)
+      else
+	genDate(Int.min(Date.day d,daysInMonth (Date.year d) (mthFromName(Date.month d) - 1)),
+		mthFromName(Date.month d) - 1,Date.year d)
+
+    fun sameDayNextMth d =
+      if Date.month d = Date.Dec then
+	genDate(Date.day d,1, Date.year d + 1)
+      else
+	genDate(Int.min(Date.day d,daysInMonth (Date.year d) (mthFromName(Date.month d) + 1)),
+		mthFromName(Date.month d) + 1,Date.year d)
   end
 
 

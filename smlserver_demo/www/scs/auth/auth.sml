@@ -17,7 +17,7 @@ val email =
 	 NONE => reject (`Du skal indtaste en email.<p> (eng. You must type in an email)`)
        | SOME l => l)
   | SOME e => e
-val email = ScsPerson.fix_email email
+val email = ScsPersonData.fix_email email
 
 val passwd =
   case FV.wrapOpt FV.getStringErr "auth_password" 

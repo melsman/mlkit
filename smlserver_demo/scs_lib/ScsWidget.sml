@@ -202,6 +202,10 @@ signature SCS_WIDGET =
 
         *)
     val dtWidget : dt_type -> string -> dt_1224 -> Date.date option -> dt_granularity -> string -> quot
+
+    (* [pickDateMthView (min_date_opt, max_date_opt, show_date, fn_action)] *)
+    val pickDateMthView : Date.date option * Date.date option * Date.date * (Date.date * string -> string) -> string
+
   end
 
 structure ScsWidget :> SCS_WIDGET =
@@ -470,5 +474,101 @@ structure ScsWidget :> SCS_WIDGET =
     end
 
 
+    fun pickDateMthView (min_date_opt, max_date_opt, show_date, fn_action) =
+      let
+	fun minD d =
+	  case min_date_opt of
+	    NONE => d
+	  | SOME d2 => ScsDate.max(d,d2)
+	fun maxD d =
+	  case max_date_opt of
+	    NONE => d
+	  | SOME d2 => ScsDate.min(d,d2)
+	fun dayWithinMinAndMax_p d =
+	  (case min_date_opt of
+	    NONE => true
+	  | SOME min => Date.compare(min,d) <> General.GREATER) andalso
+	  (case max_date_opt of
+	     NONE => true
+	  | SOME max => Date.compare(d,max) <> General.GREATER)
+	fun dayWithinMth_p d = Date.month d = Date.month show_date
+	fun showDay_p d = dayWithinMinAndMax_p d andalso dayWithinMth_p d
+
+	val first_day_in_month = ScsDate.firstDateInMonth show_date
+	val first_day = ScsDate.firstDateInWeek first_day_in_month
+	fun bg_color d =
+	  if Date.compare (d,show_date) = General.EQUAL then
+	    "bgcolor=\"grey\""
+	  else
+	    if ScsDate.dateCmp(d,ScsDate.now_local()) = General.EQUAL then
+	      "bgcolor=\"lightred\""	      
+	    else
+	      ""
+	fun ppDay d = 
+	  if showDay_p d then
+	    `<td ^(bg_color d)>^(fn_action (d,Int.toString (ScsDate.getDayOfMonth d)))</td>` 
+	  else
+	    `<td>&nbsp;</td>`
+	fun ppDays (d,0,acc) = acc
+	  | ppDays (d,n,acc) = ppDays (ScsDate.add_days d 1,n-1,acc ^^ ppDay d)
+	fun ppWeek next_day =
+	  `<tr><td>^(Int.toString (ScsDate.getWeekNo next_day))</td>
+	  ` ^^ (ppDays (next_day,7,``)) ^^ `</tr>`
+	fun ppWeeks (next_day,acc) =
+	  if Date.month next_day = Date.month show_date orelse
+	    Date.month next_day = Date.month (ScsDate.sameDayPrevMth show_date) then
+	    ppWeeks (ScsDate.add_days next_day 7,acc ^^ ppWeek next_day)
+	  else
+	    (* Stop when we have PASSED the month to show *)
+	    acc
+	val week_days = 
+	  Quot.concat
+	  (List.map (fn w => `<th>^(ScsDate.ppWeekdayOneLetter w)</th>`) 
+	   [Date.Mon,Date.Tue,Date.Wed,Date.Thu,Date.Fri,Date.Sat,Date.Sun])
+	val week_title = case ScsLogin.user_lang() of ScsLang.da => "U" | ScsLang.en => "W"
+
+	val prev_mth = minD (ScsDate.sameDayPrevMth show_date)
+	val next_mth = maxD (ScsDate.sameDayNextMth show_date)
+	val mth_title = Quot.toString
+	  `^(if Date.month prev_mth <> Date.month show_date then 
+	       fn_action (prev_mth,UcsPage.icon_back())
+	     else
+	       "")^(ScsString.upperFirst (ScsDate.ppMthFromDate show_date))
+	  ^(if Date.month next_mth <> Date.month show_date then
+	      fn_action(next_mth,UcsPage.icon_forward())
+	      else
+		"")`
+	val prev_year = minD (ScsDate.genDate(Date.day show_date,ScsDate.mthFromName (Date.month show_date),
+					      Date.year show_date - 1))
+	val next_year = maxD (ScsDate.genDate(Date.day show_date,ScsDate.mthFromName (Date.month show_date),
+					      Date.year show_date + 1))
+	val year_title = Quot.toString
+	  `^(if Date.year prev_year <> Date.year show_date then
+	       fn_action (prev_year,UcsPage.icon_back())
+	     else
+	       "")^(Int.toString (Date.year show_date))
+	   ^(if Date.year next_year <> Date.year show_date then
+	       fn_action (next_year,UcsPage.icon_forward())
+	     else
+	       "")`
+	val today_title = 
+	  if ScsDate.dateInPeriod(ScsDate.now_local(),        (* Clever way to test that now is within period *)
+				  minD (ScsDate.now_local()),
+				  maxD (ScsDate.now_local())) then
+	    fn_action (ScsDate.now_local(),ScsDict.s UcsDict.today_dict)
+	  else
+	    ""
+      in
+	Quot.toString
+	(`<table>
+	 <tr><td align="left" colspan="3">^mth_title</td>
+	     <td align="center" colspan="2">^(today_title)</td>
+   	     <td align="right" colspan="3">^year_title</td>
+         </tr>
+	 <tr><th>^(week_title)</th>
+	 ` ^^ week_days ^^ `</tr>
+	 ` ^^ (ppWeeks(first_day,``)) ^^ `
+	 </table>`)
+      end
 
   end

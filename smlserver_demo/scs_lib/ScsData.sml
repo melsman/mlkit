@@ -5,10 +5,11 @@ signature SCS_DATA =
 
     val gToInt       : (string -> string) -> string -> int
     val gToIntOpt    : (string -> string) -> string -> int option
-    val gToReal	     : (string -> string) -> string -> real
+    val gToReal      : (string -> string) -> string -> real
     val gToRealOpt   : (string -> string) -> string -> real option
-    val gToBool	     : (string -> string) -> string -> bool
-    val gToDate	     : (string -> string) -> string -> Date.date
+    val gToBool      : (string -> string) -> string -> bool
+    val gToDate      : (string -> string) -> string -> Date.date
+    val gToTimestamp : (string -> string) -> string -> Date.date
     val gToStringOpt : (string -> string) -> string -> string option
 
     (* [mk_selectBoxFromDb sql g_fn fv v_opt] returns a select box, where 
@@ -47,6 +48,7 @@ structure ScsData :> SCS_DATA =
       fun gToReal g field_name = gToTemplate g field_name Real.fromString
       fun gToBool g field_name = gToTemplate g field_name Db.toBool
       fun gToDate g field_name = gToTemplate g field_name Db.toDate
+      fun gToTimestamp g field_name = gToTemplate g field_name Db.toTimestamp
     end
 
     fun gToIntOpt    g field_name = Int.fromString (g field_name)

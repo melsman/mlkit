@@ -4,7 +4,7 @@ signature SCS_STRING =
     val lower      : string -> string
     val upper      : string -> string
     val lowerFirst : string -> string
-
+    val upperFirst : string -> string
 
     (* [canonical s] returns a canonical representation of s, that is,
        all words are separated by only one space; new lines etc. has
@@ -35,6 +35,8 @@ signature SCS_STRING =
     val mk_search_pattern : string -> string
 
     val quoteString : string -> string
+    val padLedt  : string -> int -> string -> string
+    val padRight : string -> int -> string -> string
   end
 
 structure ScsString =
@@ -52,6 +54,14 @@ structure ScsString =
       end
       handle _ => str
 
+    fun upperFirst str = 
+      let
+        val (first,rest) = Substring.splitAt (Substring.all str,1)
+      in
+        (Char.toString o Char.toUpper o valOf o Substring.first) first
+	^ lower (Substring.string rest)
+      end
+      handle _ => str
 
     fun canonical s = String.concatWith " " (String.tokens Char.isSpace s)
 
@@ -78,4 +88,20 @@ structure ScsString =
     fun quoteString str = Quot.toString `"^str"`
 
     fun toOpt str = if str = "" then NONE else SOME str
+
+    fun padLeft pad n s =
+      let
+	fun padL (0,acc) = acc
+	  | padL (n,acc) = padL (n-1,pad^acc)
+      in
+	if n < 0 then s else padL (n,s)
+      end
+
+    fun padRight pad n s =
+      let
+	fun padR (0,acc) = acc
+	  | padR (n,acc) = padR (n-1,acc^pad)
+      in
+	if n < 0 then s else padR (n,s)
+      end
   end

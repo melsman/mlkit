@@ -204,6 +204,9 @@ signature SCS_PERSON =
     (* [getPerson user_id] fetches a person from the database *)
     val getPerson : int -> person_record option
 
+    (* [getPersonByEmail email] fetches a person from the database *)
+    val getPersonByEmail : string -> person_record option
+
     (* [getPersonByExtSource on_what_table on_which_id] fetches a
        person from the database that relates to the external source
        represented by on_what_table and on_which_id. *)
@@ -289,13 +292,6 @@ signature SCS_PERSON =
     (* [isFemale_p cpr] returns true if the cpr is female. Throws an 
 	exception if cpr is invalid *)
     val isFemale_p : string -> bool
-
-    (* [fix_email email] do the following conversions:
-         - if email is of form login@it-c.dk => login@itu.dk
-         - if email is of form login@it.edu => login@itu.dk
-         - if email is of form login => login@itu.dk
-     *)
-    val fix_email : string -> string
 
     val portrait_adm_nb : string option -> UcsPage.navbar_item
     val portrait_adm_help : quot
@@ -934,6 +930,10 @@ structure ScsPerson :> SCS_PERSON =
                                        where person_id = '^(Int.toString user_id)'
                                          and person_id = party_id`))
 	handle _ => NONE
+      fun getPersonByEmail email =
+	Db.zeroOrOneRow' f (personSQL ` from scs_persons p, scs_parties party
+                                       where email = ^(Db.qqq (ScsString.lower email))
+                                         and person_id = party_id`)
       fun getPersonErr (user_id,errs) =
 	case getPerson user_id of
 	  NONE => 
@@ -1157,23 +1157,6 @@ structure ScsPerson :> SCS_PERSON =
       | "9" => Male
       | _ => Female
 
-    (* do the following conversions:
-         - if email is of form login@itu.dk => login@it-c.dk
-         - if email is of form login@it.edu => login@it-c.dk
-         - if email is of form login => login@it-c.dk
-     *)
-    fun fix_email email =
-      let
-	val email = ScsString.lower email
-	val regExpExtract = RegExp.extract o RegExp.fromString
-      in
-	case regExpExtract "([a-z][a-z0-9\\-]*)@(it-c.dk|it.edu)" email of
-	  SOME [l,e] => l ^ "@itu.dk"
-	| _ => 
-	    (case regExpExtract "([a-z][a-z0-9\\-]*)" email of
-	       SOME [l] => l ^ "@itu.dk"
-	     | _ => email)
-      end
     (* Test code for fix_email
        fun try s =
          print (s ^ " = " ^ (fix_email s) ^ "\n")
