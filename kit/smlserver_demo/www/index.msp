@@ -38,10 +38,17 @@ in
 		 ("Logging information to a file", "logtofile.msp"),
                  ("A demo of various MSP styles", "test.msp"),
 		 ("Send an Email", "mail_form.sml"),
+                 ("Character Support", "cs.html"),
                  ("This index page", "index.msp")]
 end
 ?>
 </TABLE>
+
+<p>
+Most of the <b>*.msp</b> examples are taken from the <a
+href="http://ellemose.dina.kvl.dk/~sestoft/msp/index.msp">ML Server
+Pages (MSP) homepage</a>. The first MSP implementation used <a
+href="http://www.dina.kvl.dk/~sestoft/mosml.html">Moscow ML</a>.
 
 <P> <hr> <a
 href="http://www.smlserver.org/">SMLserver Home Page</a> (<a

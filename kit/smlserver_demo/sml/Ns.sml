@@ -154,6 +154,16 @@ structure Ns :> NS =
 	  in (foldDb (db,f,acc,sql) before poolPutHandle db)
 	    handle X => (poolPutHandle db; raise X)
 	  end
+
+	fun qq s =
+	  let 
+	    fun qq_s' [] = []
+	      | qq_s' (x::xs) = if x = #"'" then x :: x :: (qq_s' xs) else x :: (qq_s' xs)
+	  in
+	    implode(qq_s'(explode s))
+	  end
+
+	fun seq_nextval_exp seq_name = seq_name ^ ".nextval"
       end
 
     structure Cache =

@@ -82,6 +82,45 @@ which builds
   * a compiler for compiling sml-files and msp-scripts into
     bytecode; its available as bin/mlkit_web
 
+INSTALLING SMLserver: To install SMLserver in /usr/share/smlserver
+type make install_smlserver:
+
+  [nh@nh kit]# whoami
+  root
+  [nh@nh kit]# make install_smlserver
+  rm -rf /usr/share/smlserver
+  mkdir -p /usr/share/smlserver
+  mkdir -p /usr/share/smlserver/bin
+  mkdir -p /usr/share/smlserver/doc
+  cp -p bin/mlkit_web.x86-linux /usr/share/smlserver/bin
+  cp -p src/SMLserver/nssml.so /usr/share/smlserver/bin
+  cp -p copyright /usr/share/smlserver
+  cp -p README /usr/share/smlserver
+  cp -p README_SMLSERVER /usr/share/smlserver
+  cp -p NEWS_SMLSERVER /usr/share/smlserver
+  cp -p -R smlserver_demo /usr/share/smlserver/smlserver_demo 
+  cp -p -R basislib /usr/share/smlserver/basislib
+  cp -p doc/manual/mlkit.pdf /usr/share/smlserver/doc
+  chown -R `whoami`.`whoami` /usr/share/smlserver
+  chmod -R ug+rw /usr/share/smlserver
+  chmod -R o+r /usr/share/smlserver
+  echo '#!/bin/sh' > /usr/share/smlserver/bin/mlkit_web
+  echo -e '/usr/share/smlserver/bin/mlkit_web.x86-linux /usr/share/smlserver $*' >> /usr/share/smlserver/bin/mlkit_web
+  chmod a+x /usr/share/smlserver/bin/mlkit_web
+  [nh@nh kit]#
+
+as user root. This requires, that you have not the smlserver
+rpm-package installed. If you do have it installed type rpm -e
+smlserver as user root, which will remove the package:
+
+  [nh@nh nh]# whoami
+  root
+  [nh@nh nh]# rpm -qa | grep smlserver
+  smlserver-3.9.2-1
+  [nh@nh nh]# rpm -e smlserver
+  [nh@nh nh]# 
+
+Now, you may write make install_smlserver as shown above.
 
 CONFIGURING AOLSERVER
 ---------------------
