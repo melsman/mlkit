@@ -4,6 +4,11 @@ signature SCS_STRING =
     val lower     : string -> string
     val upper     : string -> string
 
+    (* [canonical s] returns a canonical representation of s, that is,
+       all words are separated by only one space; new lines etc. has
+       been removed *)
+    val canonical : string -> string
+
     (* [shorten text len] returns the string text shortended to
        maximum lenght len. *)
     val shorten : string -> int -> string
@@ -22,6 +27,8 @@ structure ScsString =
     fun translate f s  = concat (map f (explode s))
     fun lower s = CharVector.fromList (List.map Char.toLower (explode s))
     fun upper s = CharVector.fromList (List.map Char.toUpper (explode s))
+
+    fun canonical s = String.concatWith " " (String.tokens Char.isSpace s)
 
     fun shorten text length = 
       String.substring( text, 0, Int.min(length, String.size text) ) ^ "..."
