@@ -17,6 +17,12 @@ signature SCS_DB =
        Oracle. *)
     val userLang : int -> string
 
+    (* [wrapUpd msg f a] applies f a and if an error is raised then
+        expects that it's because it was an unsyncronised update. We
+        return a page explaining the problem and showing how updated
+        the record. The script is thereafter terminated. *)
+    val wrapUpd : quot -> ('a -> 'b) -> 'a -> 'b
+
     val ppDate        : string -> string
   end
 
@@ -69,6 +75,19 @@ structure ScsDb :> SCS_DB =
       Db.oneField sql handle _ => (ScsPage.returnPg "" emsg;Ns.exit())
 
     fun userLang user_id = ScsLang.toString ScsLogin.user_lang
+
+    fun wrapUpd msg f a = f a
+      handle X => (ScsPage.returnPg 
+		   (ScsDict.s [(ScsLang.da,`Problem med versionering`),
+			       (ScsLang.en,`Problem with edition number`)])
+		   (msg ^^ 
+		    (ScsDict.s' [(ScsLang.da,`<p>Du må åbne et andet browser vindue og se hvilke rettelser der
+                                              ikke er lavet af dig. Du bliver nødt til at tilføje dine rettelser 
+                                              i det nye vindue`),
+				 (ScsLang.en,`<p>You have to open a new browser window and then see what editions
+                                              the other user has made after you loaded the page. You have to
+                                              type in your corrections in the new window.`)]));
+		   Ns.exit())
 
     val ppDate = ScsDate.ppDb o Db.toDate
 
