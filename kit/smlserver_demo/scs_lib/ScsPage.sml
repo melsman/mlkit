@@ -63,7 +63,7 @@ bodyFooter ^^
     fun returnPgMenu (mail_to:string) (contact:string) (title:string) 
                      (leftList:(string*string)list)
 		     (rightList:(string*string)list) (nb:navbar) (body:quot) =
-      Ns.return ( genPg true title "ucs" "ucs" mail_to ""
+      Ns.return ( genPg true title "" "" mail_to ""
                         2 2 leftList rightList nb body )
 
 

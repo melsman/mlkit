@@ -1193,7 +1193,7 @@ structure ScsPerson :> SCS_PERSON =
       Der findes både et <i>officielt</i> og et <i>ikke officielt</i>
       billede. Det officielle billede tages ved studiestart eller ved
       ansættelse og administreres af ansatte på ITU, der har fået
-      tildelt rollen <b>PortraitAdm</b> i UCS. <p>
+      tildelt rollen <b>PortraitAdm</b> i ^(ScsDict.getString MitItu.Ressources.mitITU_dict ScsLang.da). <p>
 
       Det ikke officielle billede uploades af brugerne selv.<p>
 
@@ -1232,7 +1232,7 @@ structure ScsPerson :> SCS_PERSON =
       ansatte.
 
       <li><b>todo:</b> Det udestår stadig hvorvidt de studerenes
-      billeder skal skabes i UCS - måske de selv skal uploade dem.
+      billeder skal skabes i ^(ScsDict.getString MitItu.Ressources.mitITU_dict ScsLang.da) - måske de selv skal uploade dem.
 
       <li>Brugerne uploader selv de ikke officielle billeder.
 
@@ -1269,7 +1269,8 @@ structure ScsPerson :> SCS_PERSON =
 
       <ol>
 
-      <li>I UCS er synlighed defineret ved, at hvis der er angivet et
+      <li>I ^(ScsDict.getString MitItu.Ressources.mitITU_dict ScsLang.da) 
+	er synlighed defineret ved, at hvis der er angivet et
       "nej", så vises billedet hverken på Internettet eller
       Intranettet.
 
