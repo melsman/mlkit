@@ -28,15 +28,15 @@ functor TestEnv(structure TestInfo: TEST_INFO
 
     val test_env_directory = Flags.lookup_string_entry "test_env_directory"               (* Should _not_ be changed. *)
     val kit_version = Flags.lookup_string_entry "kit_version"                             (* Should _not_ be changed. *)
-    fun source_directory () = !test_env_directory ^ "Sources/"                            (* Should _not_ be changed. *)
-    fun bin_directory () = !test_env_directory ^ "bin/"                                   (* Should _not_ be changed. *)
-    fun kit_script_directory () = !test_env_directory ^ "KitScripts/"                     (* Should _not_ be changed. *)
-    fun new_version_dir () = !test_env_directory ^ !kit_version ^ "/"                     (* Should _not_ be changed. *)
+    fun source_directory () = OS.Path.concat(!test_env_directory, "Sources")              (* Should _not_ be changed. *)
+    fun bin_directory () = OS.Path.concat(!test_env_directory,"bin")                      (* Should _not_ be changed. *)
+    fun kit_script_directory () = OS.Path.concat(!test_env_directory,"KitScripts")        (* Should _not_ be changed. *)
+    fun new_version_dir () = OS.Path.concat(!test_env_directory, !kit_version)            (* Should _not_ be changed. *)
     val target_directory = new_version_dir                                                (* Should _not_ be changed. *)
     val kit_architecture = Flags.lookup_string_entry "kit_architecture"                   (* Should _not_ be changed. *)
 
-    fun test_report_filename () = new_version_dir () ^ "test_report" ^ !kit_version       (* Should _not_ be changed. *)
-    fun test_report_dvi () = new_version_dir () ^ "test_report" ^ !kit_version ^ ".dvi"   (* Should _not_ be changed. *)
+    fun test_report_filename () = OS.Path.concat(new_version_dir(), "test_report" ^ !kit_version)  (* Should _not_ be changed. *)
+    fun test_report_dvi () = OS.Path.concat(new_version_dir(), "test_report" ^ !kit_version ^ ".dvi") (* Should _not_ be changed. *)
     val test_report_stream   = ref TextIO.stdOut                                                (* Should _not_ be changed. *)
     val test_report : string list ref = ref []                                            (* Should _not_ be changed. *)
     val test_log_report : string list ref = ref []                                        (* Should _not_ be changed. *)
@@ -48,7 +48,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (* ---------------------------------------------------------------------- *)
 
     val _ = Flags.add_string_to_menu (["Test environment"], "test_log",
-				      "Test-log file name", ref "You_did_not_set_test_log")
+				      "Test-log file name", ref "std_out")
     val _ = map (fn (x,y,r) => Flags.add_flag_to_menu (["Test environment"],x,y,r)) 
       [("acceptance_test", "acceptance test", ref true),
        ("performance_test", "performance test", ref false)]
@@ -194,12 +194,12 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (* ML code.                                               *)
     fun memtime program outputfile : timings= 
       let
-	val tempfile = target_directory () ^ "timex.temp"
+	val tempfile = OS.Path.joinDirFile{dir=target_directory(), file="timex.temp"}
 	val shell_command =
 	  case !kit_architecture 
 	    of "HPUX" =>
 	      let (* We use shell script for HPUX. *)
-		val memtime_exe = bin_directory () ^ "memtime_hpux"
+		val memtime_exe = OS.Path.joinDirFile{dir=bin_directory(), file="memtime_hpux"}
 		val _ = ok_log_report ("Executing target program: " ^ new_line ^ "memtime_hpux -f " ^ 
 				       (shorten_filename outputfile) ^ new_line ^
 				       "         -o " ^ (shorten_filename tempfile) ^ " " ^ program)
@@ -208,8 +208,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	      end
 	     | "SUN_OS4" =>
 	      let (* We use shell script for SUN_OS4. *)
-		val memtime_exe = bin_directory () ^ "memtime_sun_os4"
-		val temp = target_directory() ^ "time.temp"
+		val memtime_exe = OS.Path.joinDirFile{dir=bin_directory(), file="memtime_sun_os4"}
+		val temp = OS.Path.joinDirFile{dir=target_directory(), file="time.temp"}
 		val _ = ok_log_report ("Executing target program: " ^ new_line ^ "memtime_sun_os4 -f " ^ 
 				       shorten_filename outputfile ^ new_line
 				       ^ "         -o " ^ (shorten_filename tempfile) ^ new_line
@@ -280,14 +280,15 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	        ^ d' ^ "\n\n");
 	     mv d d')
 	  end
-
+(*
       fun remove_trailing_slashes s =
 	    (case rev (explode s) of
 	       #"/" :: ss => implode (rev ss)
 	     | _ => s)
+*)
     in
       fun create_dir_and_maybe_rename_old d =
-	    let val d = remove_trailing_slashes d 
+	    let (* val d = remove_trailing_slashes d *)
 	    in
 	      (if exists_file d then rename d else ();
 	       ok_log_report ("Directory " ^ shorten_filename d
@@ -344,7 +345,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
       handle _ => raise Crash_test ("Error in change to directory: " ^ d)
 
     fun read_script script_name = 
-      (Flags.read_script_name script_name;
+      (Flags.read_script script_name;
        ok_log_report ("Reading script: " ^ (shorten_filename script_name)))
       handle Flags.ParseScript _ => raise Crash_test ("Error in reading script file: " ^ ((*shorten_filename*) script_name))
 
@@ -722,7 +723,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	| add_acceptance_strategy_test_report _ =
 	  raise Crash_test "Function add_acceptance_strategy_test_report called with wrong strategy."
 
-      fun new_acceptance_dir () = new_version_dir () ^ "Acceptance/"
+      fun new_acceptance_dir () = OS.Path.concat(new_version_dir (),"Acceptance")
 
       fun acceptance_test_strategy (strategy as (ACCEPTANCE_STRATEGY {kit_script, runtime_system, strategy_name, 
 								      old_dir, exec_opt, ...})) =
@@ -735,14 +736,14 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	   val acceptance_table_projects = mk_table 2 [(["Source"],LEFT), (["Result from diff"],LEFT)]
 	   val _ = ok_log_report ("Starting new strategy: " ^ strategy_name)
 	    
-	   val new_compile_strategy_dir = new_acceptance_dir () ^ strategy_name ^ "/"
+	   val new_compile_strategy_dir = OS.Path.concat(new_acceptance_dir(), strategy_name)
 	   val _ = create_dir new_compile_strategy_dir
 
 	   val _ = add_acceptance_strategy_test_report strategy
 
 	   fun acceptance_test_file (filename,input_to_file) =
 	     let
-	       val filepath = source_directory() ^ filename
+	       val filepath = OS.Path.joinDirFile{dir=source_directory(), file=filename}
 	       val unitname = OS.Path.base filename
 	       val _ = reset()
 	       val _ = ok_log_report ("Compiling ML source file: " ^ filename ^ ".")
@@ -751,7 +752,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       val _ = ok_log_report ("Compiled " ^ filename ^ new_line)
 
 	       val exe_file = unitname ^ ".exe"		
-	       val new_out_datafile = new_compile_strategy_dir ^ unitname ^ ".out"
+	       val new_out_datafile = OS.Path.joinDirFile{dir=new_compile_strategy_dir, file= unitname ^ ".out"}
 	       val shell_command = (exe_file ^ " " ^ exec_opt ^ 
 				    (gen_input_str input_to_file) ^
 				    " > " ^ new_out_datafile)
@@ -759,7 +760,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 				      (shorten_filename new_out_datafile) ^ ".")
 	       val _ = execute_shell_command shell_command (* If error it will raise Crash_test. *)
 		
-	       val old_out_datafile = old_version_dir ^ unitname ^ ".out"
+	       val old_out_datafile = OS.Path.joinDirFile{dir=old_version_dir, file=unitname ^ ".out"}
 	       val table_entry_name = filename
 	       val _ = 
 		 case old_dir of
@@ -786,7 +787,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       val _ = evalProjects project_name handle X => 
 		 (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
 		
-	       val new_out_datafile = new_compile_strategy_dir ^ OS.Path.base project_name ^ ".out"
+	       val new_out_datafile = OS.Path.joinDirFile{dir=new_compile_strategy_dir, file= OS.Path.base project_name ^ ".out"}
 	       val shell_command = ("run_project " ^ exec_opt ^ 
 				    (gen_input_str input_to_project) ^
 				    " > " ^ new_out_datafile)
@@ -794,7 +795,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 				      " > " ^ shorten_filename new_out_datafile ^ ".")
 	       val _ = execute_shell_command shell_command (* If error it will raise Crash_test. *)
 		
-	       val old_out_datafile = old_version_dir ^ OS.Path.base project_name ^ ".out"
+	       val old_out_datafile = OS.Path.joinDirFile{dir=old_version_dir, file=OS.Path.base project_name ^ ".out"}
 	       val table_entry_name = project_name
 	       val _ = 
 		 case old_dir of
@@ -813,7 +814,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 				   insert_row acceptance_table_projects [project_name, s ^ " Projectname: " ^ project_name])
 
 
-	   val script_name = kit_script_directory () ^ kit_script
+	   val script_name = OS.Path.joinDirFile{dir=kit_script_directory(), file=kit_script}
 	   val _ = read_script script_name
 
 	   val _ = change_directory (target_directory ())
@@ -880,7 +881,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	| add_performance_strategy_test_report _ = 
 	  raise Crash_test "Function add_performance_strategy_test_report called with wrong strategy."
 
-      fun new_target_program_dir () = new_version_dir () ^ "PerformanceTest/"
+      fun new_target_program_dir () = OS.Path.concat(new_version_dir(),"PerformanceTest")
 
       fun performance_test_strategy (strategy as (PERFORMANCE_STRATEGY {kit_script, runtime_system, strategy_name,
 									show_compiler_timings, ...})) =
@@ -907,14 +908,14 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	     
 	   val _ = ok_log_report ("Starting new strategy: " ^ strategy_name)
 	    
-	   val new_compile_strategy_dir = new_target_program_dir () ^ strategy_name ^ "/"
+	   val new_compile_strategy_dir = OS.Path.concat(new_target_program_dir(), strategy_name)
 	   val _ = create_dir new_compile_strategy_dir
 
 	   val _ = add_performance_strategy_test_report strategy
 
 	   fun performance_test_file (filename,input_to_file) =
 	     let
-	       val filepath = source_directory () ^ filename
+	       val filepath = OS.Path.joinDirFile{dir=source_directory(), file= filename}
 	       val unitname = OS.Path.base filename
 	       val _ = reset()
 (*	       val log_filename = new_compile_strategy_dir ^ filename ^ ".log" *)
@@ -930,7 +931,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 		     
 	       val _ = ok_log_report ("Compiled " ^ filename ^ new_line)
 	       val exe_file = unitname ^ ".exe"		
-	       val new_out_datafile = new_compile_strategy_dir ^ unitname ^ ".out"
+	       val new_out_datafile = OS.Path.joinDirFile{dir=new_compile_strategy_dir, file= unitname ^ ".out"}
 	       val (max_mem_size: string, max_res_size: string,
 		    real : string, user : string, sys  : string) =
 		 let
@@ -971,7 +972,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       handle X => (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
 		
 	       val exe_file =  "run_project"
-	       val new_out_datafile = new_compile_strategy_dir ^ OS.Path.base project_name ^ ".out"
+	       val new_out_datafile = OS.Path.joinDirFile{dir=new_compile_strategy_dir, file=OS.Path.base project_name ^ ".out"}
 	       val (max_mem_size: string, max_res_size: string,
 		    real : string, user : string, sys  : string) =
 		 let
@@ -1033,7 +1034,7 @@ old*)
 	     else
 	       ()
 
-	   val script_name = kit_script_directory () ^ kit_script
+	   val script_name = OS.Path.joinDirFile{dir=kit_script_directory(), file=kit_script}
 	   val _ = read_script script_name
 
 	   val _ = change_directory (target_directory ())

@@ -19,10 +19,6 @@ signature MANAGER =
 					       * May raise PARSE_ELAB_ERROR. *)
 
     val interact : unit -> unit               (* Menu-system to control flags *)
-    val read_script : unit -> unit            (* Read script file *)
-
-    val kit : unit -> unit              (* Read the script file `kit.script' in the
-					 * current directory. Then run interact(). *)
 
     val reset : unit -> unit                  (* Resets the system *)
     val commit : unit -> unit
