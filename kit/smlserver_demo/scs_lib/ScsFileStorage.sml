@@ -328,7 +328,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	String.concatWith "/" (List.rev arcs)
       end
 
-    fun getAbsPath db folder_id =
+    fun getAbsPath folder_id db =
       let
 	val root = ScsConfig.scs_file_storage_root()
 val _ = Ns.NsDebug.addMsg `******getting root label by folder id: ^(Int.toString folder_id)`
@@ -349,7 +349,7 @@ val _ = Ns.NsDebug.addMsg `******getPath by folder id: ^(Int.toString folder_id)
 	   filename = g "filename",
 	   description = g "description",
 	   filename_on_disk = g "filename_on_disk",
-	   path_on_disk = Db.Handle.wrapDb getAbsPath folder_id, (* this is not efficient!!! *)
+	   path_on_disk = Db.Handle.wrapDb (getAbsPath folder_id), (* this is not efficient!!! *)
 	   filesize = (ScsError.valOf o Int.fromString) (g "filesize"),
 	   last_modified = (ScsError.valOf o Db.toDate) (g "last_modified"),
 	   last_modifying_user = (ScsError.valOf o Int.fromString) (g "last_modifying_user"),
@@ -642,7 +642,7 @@ val _ = Ns.NsDebug.addMsg `******getPath by folder id: ^(Int.toString folder_id)
   			 values ('^(Int.toString new_rev_id)', '^(Int.toString file_id)', 
 				 '^(Int.toString mime_type_id)', ^(Db.qqq phys_file_name), 
 				 '^(Int.toString filesize)', '^(Int.toString (ScsLogin.user_id()))')`
-		      val path = getAbsPath db folder_id
+		      val path = getAbsPath folder_id db 
 		      val _ = ScsError.wrapPanic ScsFile.mkDir path
 		      val phys_path_and_file_name = path ^ "/" ^ phys_file_name
 		      val _ = saveFile phys_path_and_file_name
@@ -790,7 +790,7 @@ val _ = Ns.NsDebug.addMsg `******getPath by folder id: ^(Int.toString folder_id)
 		 ())
       | SOME file =>
 	  let
-	    val path = (* todo: NH #path_on_disk file *) Db.Handle.wrapDb getAbsPath (#folder_id file)
+	    val path = (* todo: NH #path_on_disk file *) Db.Handle.wrapDb (getAbsPath (#folder_id file))
 	    val filename_on_disk = path ^ "/" ^ #filename_on_disk file
 	    fun return_error () = 
 	      (ScsPage.returnPg 
@@ -823,7 +823,7 @@ val _ = Ns.NsDebug.addMsg `******getPath by folder id: ^(Int.toString folder_id)
 		   ())
 	| SOME file =>
 	    let
-	      val path = Db.Handle.wrapDb getAbsPath (#folder_id file)
+	      val path = Db.Handle.wrapDb (getAbsPath (#folder_id file))
 	      val files_to_delete =
 		Db.Handle.listDb db (fn g => g "filename") `select filename 
                                                               from scs_fs_revisions
@@ -862,7 +862,7 @@ val _ = Ns.NsDebug.addMsg `******getPath by folder id: ^(Int.toString folder_id)
 				       administrator</a>.`)],errs)
 	| SOME file =>
 	    let
-	      val path = Db.Handle.wrapDb getAbsPath (#folder_id file)
+	      val path = Db.Handle.wrapDb (getAbsPath (#folder_id file))
 	      val files_to_delete =
 		Db.Handle.listDb db (fn g => g "filename") `select filename 
                                                               from scs_fs_revisions
