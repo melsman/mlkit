@@ -27,6 +27,12 @@ signature SCS_ENUM =
        enum_name) instead of the enum_id *)
     val selectName : enum_name -> ScsLang.lang -> string -> val_id option -> quot
 
+    (* [selectName' enum_name lang add_opts fv v_opt] is similar to selectName
+       except that the it is possible to include additional
+	(value, name) pairs in the list add_opts *)
+    val selectName' : enum_name -> ScsLang.lang -> (string*string) list -> 
+      string -> val_id option -> quot
+
     (* [radioList enum_id lang fv v_opt] returns a list of (radio button 
        input tag,text) for
        enumeration identified by enum_id. The choises are shown in language
@@ -170,14 +176,22 @@ structure ScsEnum :> SCS_ENUM =
           | SOME v => ScsWidget.selectWithDefault opts (Int.toString v) fv
 	end
 
-      fun selectName enum_name lang fv v_opt =
-	let
-	  val opts = mk_opts `e.name = ^(Db.qqq enum_name)` lang
-	in
-          case v_opt of
-            NONE => ScsWidget.select opts fv
-          | SOME v => ScsWidget.selectWithDefault opts (Int.toString v) fv
-	end
+      local
+	fun selectName_template enum_name lang add_opts fv v_opt =
+	  let
+	    val opts = add_opts @ (mk_opts `e.name = ^(Db.qqq enum_name)` lang)
+	  in
+	    case v_opt of
+	      NONE => ScsWidget.select opts fv
+	    | SOME v => ScsWidget.selectWithDefault opts (Int.toString v) fv
+	  end
+      in
+        fun selectName enum_name lang fv v_opt = 
+	  selectName_template enum_name lang [] fv v_opt
+        fun selectName' enum_name lang add_opts fv v_opt = 
+	  selectName_template enum_name lang add_opts fv v_opt
+      end
+
 
       fun mk_radio_input_tag fv v_opt (text, value)  = 
 	let
