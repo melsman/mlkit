@@ -60,6 +60,11 @@ signature SCS_LIST =
       For instance, if x is the set [1,2], then power x should be 
       the set of sets [[], [1], [2], [1,2]] *)
     val power : ('a * 'a -> bool) -> 'a list -> 'a list list
+
+    (* [norm fn_eq x] returns the normalized set x, that is, the set
+        x' with all elements from the set x represented exactly
+        once. For instance, norm [1,2,1,3] = [1,2,3] *)
+    val norm : ('a * 'a -> bool) -> 'a list -> 'a list
  end
 
 structure ScsList :> SCS_LIST =
@@ -150,4 +155,14 @@ structure ScsList :> SCS_LIST =
      fun power fn_eq ([]) = [[]]
        | power fn_eq (a::y) = union (equal fn_eq) (power fn_eq y,insert fn_eq (a,power fn_eq y))
    end
+
+   (* [norm fn_eq x] returns the normalized set x, that is, the set
+       x' with all elements from the set x represented exactly
+       once. For instance, norm [1,2,1,3] = [1,2,3] *)
+   fun norm fn_eq [] = []
+     | norm fn_eq (x::xs) = 
+     if member fn_eq (x,xs) then
+       norm fn_eq xs
+     else
+       x :: norm fn_eq xs
   end
