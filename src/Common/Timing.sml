@@ -6,12 +6,14 @@ signature TIMING =
     val timing_end_res : string * 'a -> 'a
     val timing         : string -> ('a -> 'b) -> 'a -> 'b
     val new_file       : string -> unit
+(*
     val get_timings    : unit -> (string *
                                   ({name: string,
 				    non_gc: Time.time,
 				    system: Time.time,
 				    gc: Time.time,
 				    wallclock: Time.time}) list) list
+*)
     val reset_timings  : unit -> unit
       
     (* Local timers used manually (and temporarily) in modules. *)
@@ -36,7 +38,11 @@ functor Timing(structure Flags: FLAGS
 
     fun msg(s: string) = (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
     fun msg'(s: string) = (TextIO.output(TextIO.stdOut, s); TextIO.flushOut (TextIO.stdOut))
-	  
+
+    fun raise_again s e = 
+	(print ("Function " ^ s ^ " raises exception " ^ General.exnName e ^ "\n");
+	 raise e)
+
     val compiler_timings = ref false;
     val _ = Flags.add_bool_entry {long="compiler_timings", short=SOME "timings", item=compiler_timings,
 				  neg=false, menu=["Debug", "compiler timings"],
@@ -64,6 +70,9 @@ functor Timing(structure Flags: FLAGS
 	    rt := Timer.startRealTimer()))
       else ()
 
+    fun Time_plus (t1,t2) = Time.+(t1,t2)
+	handle E => raise_again "Time_plus" E
+
     fun add_time_elems {name=name1: string, non_gc=non_gc1: Time.time,
 			system=system1: Time.time,
 			gc=gc1: Time.time, 
@@ -76,10 +85,10 @@ functor Timing(structure Flags: FLAGS
 	die "Can only add timeelements with same name."
       else
 	{name = name1,
-	 non_gc=Time.+(non_gc1,non_gc2),
-	 system=Time.+(system1,system2),
-	 gc=Time.+(gc1,gc2),
-	 wallclock=Time.+(wallclock1,wallclock2)}
+	 non_gc=Time_plus(non_gc1,non_gc2),
+	 system=Time_plus(system1,system2),
+	 gc=Time_plus(gc1,gc2),
+	 wallclock=Time_plus(wallclock1,wallclock2)}
 
     fun insert_time_elem [] time_elem = [time_elem]
       | insert_time_elem ((timings as {name=name1,...})::rest) 
@@ -90,19 +99,24 @@ functor Timing(structure Flags: FLAGS
 	  timings::(insert_time_elem rest time_elem)
 
     fun maybe_export_timings {name, non_gc=usr, system=sys, gc, wallclock=real} =
-      case !Flags.timings_stream
+     (case !Flags.timings_stream
 	of SOME os =>
 	  (let fun out t = TextIO.output(os, name ^ " " ^ Time.toString t ^ "\n")
 	   in out usr ; TextIO.flushOut os
 	   end handle _ => die "maybe_export_timings.I could not write timings to timings stream")
-	 | NONE => ()
+	 | NONE => ())
+	  handle E => raise_again "maybe_export_timings" E
       
     fun timing_end (name) = 
       if !compiler_timings orelse !timingNow then 
 	(let 
+           val _ = if !timingNow then ()
+		   else die "timing_end called with no timer started"
 	   val _ = timingNow := false
 	   val {gc, sys=system, usr=non_gc} = Timer.checkCPUTimer (!t)
 	   val wallclock = Timer.checkRealTimer (!rt)
+	       handle E => Time.zeroTime
+		   (* raise_again "timing_end.checkRealTimer" E *)
 
 	   val padL = StringCvt.padLeft #" " 15 
 	   
@@ -126,7 +140,7 @@ functor Timing(structure Flags: FLAGS
 		   padL (Time.toString non_gc),padL (Time.toString system),
 		   padL (Time.toString gc),padL (Time.toString wallclock)]) *) ()
 	 end  (*;
-	   chat("\n") *))
+	   chat("\n") *)) handle E => raise_again "timing_end" E
       else ()
       
     fun timing_end_res (name, x) = (timing_end name; x)
@@ -165,5 +179,5 @@ functor Timing(structure Flags: FLAGS
        local_timer_on := false)
     fun reset_local_time timer = timer := Time.zeroTime
     fun pp_local_timing timer = StringCvt.padLeft #" " 15 (Time.toString (!timer))
-
+	handle E => raise_again "pp_local_timing" E
 end
