@@ -10,9 +10,8 @@ signature SCS_ROLE =
     | StudAdm
     | OaAdm
     | SupervisorAdm
-    | EventEditor
-    | EventAnnouncer
-    | ScsPersonAdm (* Created in scs-users-initialdata-create.sql *)
+    | UcsEbEventEditor    (* Created in ucs-events-initialdata-create.sql *)
+    | ScsPersonAdm        (* Created in scs-users-initialdata-create.sql *)
     | Other of string
 
     (* [fromString str] returns the corresponding role which is either
@@ -46,8 +45,7 @@ structure ScsRole :> SCS_ROLE =
     | StudAdm
     | OaAdm
     | SupervisorAdm
-    | EventEditor
-    | EventAnnouncer
+    | UcsEbEventEditor
     | ScsPersonAdm
     | Other of string
 
@@ -57,8 +55,7 @@ structure ScsRole :> SCS_ROLE =
       | "StudAdm" => StudAdm
       | "VejlederAdm" => SupervisorAdm
       | "OaAdm" => OaAdm
-      | "EventEditor" => EventEditor
-      | "EventAnnouncer" => EventAnnouncer
+      | "UcsEbEventEditor" => UcsEbEventEditor
       | "ScsPersonAdm" => ScsPersonAdm
       | s => Other s
  
@@ -70,26 +67,17 @@ structure ScsRole :> SCS_ROLE =
       | StudAdm => "StudAdm"
       | OaAdm   => "OaAdm"
       | SupervisorAdm => "VejlederAdm"
-      | EventEditor => "EventEditor"
-      | EventAnnouncer => "EventAnnouncer"
+      | UcsEbEventEditor => "UcsEbEventEditor"
       | ScsPersonAdm => "ScsPersonAdm"
       | Other s => s
 
     fun has_p uid (role:role) =
       let
-	val uid_text = Int.toString uid
-        val EventAnn_sql = `
-          select person_id 
-	  from scs_person_rels 
-	  where person_id = ^uid_text
-	  and on_what_table = ^(Db.qqq "person") `
-        val Others_sql = `
-          select scs_role.has_p(^uid_text,^(Db.qqq (toString role)))
-          from dual`
+        val role_sql = `
+          select scs_role.has_p(^(Int.toString uid),^(Db.qqq (toString role)))
+            from dual`
       in
-	case role of
-	    EventAnnouncer => Db.existsOneRow EventAnn_sql = true 
-	  | _              => Db.oneField Others_sql = "t"
+	Db.oneField role_sql = "t"
       end 
 
     fun has_one_p uid [] = false

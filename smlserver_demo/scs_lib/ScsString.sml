@@ -4,9 +4,17 @@ signature SCS_STRING =
     val lower     : string -> string
     val upper     : string -> string
 
+    (* [shorten text len] returns the string text shortended to
+       maximum lenght len. *)
+    val shorten : string -> int -> string
+
     (* [maybe str1 str2] returns str2 if str1 is non
        empty. If empty, then the empty string is returned. *)
     val maybe     : string -> string -> string
+
+    (* [valOf strOpt] if strOpt is SOME str then returns str otherwise
+       the empty string *)
+    val valOf     : string option -> string
   end
 
 structure ScsString =
@@ -15,5 +23,11 @@ structure ScsString =
     fun lower s = CharVector.fromList (List.map Char.toLower (explode s))
     fun upper s = CharVector.fromList (List.map Char.toUpper (explode s))
 
+    fun shorten text length = 
+      String.substring( text, 0, Int.min(length, String.size text) ) ^ "..."
+
     fun maybe str1 str2 = if str1 = "" then "" else str2
+
+    fun valOf (SOME s) = s
+      | valOf NONE = ""
   end
