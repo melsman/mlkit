@@ -132,7 +132,9 @@ functor Flags (structure Crash : CRASH
            
     val garbage_collection = ref true
 
+    (* deletion of linkable files *)
 
+     val delete_target_files = ref true
 
 
           (*************************************************)
@@ -446,7 +448,7 @@ struct
 	 ("c_compiler", c_compiler),  (*e.g. "cc -Aa" or "gcc -ansi"*)
 	 ("c_libs", c_libs),  (*e.g. "-lm"*)
 	 ("target_file_extension", target_file_extension),  (*e.g. ".c" or ".s"*)
-(*	 ("path_to_kit_script", path_to_kit_script), *)
+	 ("path_to_kit_script", ref "you-did-not-set-path-to-kit-script"), 
 	   (*e.g. "MLKitv2.0/bin/" ^ kit_version ^ "/kit.script"*)
 
 	 (*the following are only used by TestEnv:*)
@@ -459,6 +461,7 @@ struct
 
   val _ = List.apply add_bool_entry (* MEMO: Not all flags added...  (martin) *)
     [("type_check_lambda",type_check_lambda),
+     ("delete_target_files",delete_target_files),
      ("unbox_datatypes", unbox_datatypes),
      ("tag_integers", tag_integers),
      ("tag_values", tag_values), 
@@ -990,6 +993,7 @@ struct
   val file_item : item = mk_header "File"
     let val script = ref "kit.script"
     in DISPLAY [mk_toggle ("Log to file", log_to_file),
+                mk_toggle ("Delete target files", delete_target_files),
 		mk_string_action (path_to_runtime, "Runtime system (no profiling)"),
 		mk_string_action (path_to_runtime_prof, "Runtime system (profiling)"),
 		{text = "Read a script file", attr = noop_attr, 
