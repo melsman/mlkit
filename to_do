@@ -30,9 +30,13 @@ TO BE FIXED BY: FAXE?
 WAIT:
 ~~~~~
 
-What should the effect of the flag `print_regions' be? I guess that if
-print_regions is disabled then pretty printing of MulExp should look
-like LambdaExp?
+In Fig 8.1 the regions r17 and r19 appear never to be used (because we
+do not print the at r17 and at r19 that hold the empty region
+parameter records. This might confuse users (and it makes the program
+less pretty). I think we should clean up the implementation to get rid
+of this problem. (One could of course hack the pretty-printer, but it
+would be more satisfactory to get the letregions deleted properly - or
+at least marked by "omit"). -Mads.
  
 Implement some kind of project reuse; it currently takes too long for
 the manager to find out that the code for the basis library can be
@@ -87,7 +91,7 @@ cannot copy the code.
 Why are regions that are passed to primitive functions in the runtime
 system not tested for resetting automatically (in CompLamb);
 currently, the user must do the resetting in the C function. Is there
-a reason?
+a reason? What about Mogensens idea about resetting?
 
 
 DONE:
