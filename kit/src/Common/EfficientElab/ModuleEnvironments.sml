@@ -146,6 +146,20 @@ functor ModuleEnvironments(
     datatype FunEnv = FUNENV of (funid, absprjid*FunSig) FinMap.map
     fun absprjid_to_string(absprjid) = absprjid
     fun mk_absprjid x = x 
+      
+    fun is_absprjid_basislib absprjid = 
+      OS.Path.file absprjid = "basislib.pm"
+      
+    fun strip_install_dir absprjid =
+      if is_absprjid_basislib absprjid then OS.Path.mkRelative(absprjid, !Flags.install_dir)
+      else absprjid
+
+    fun strip_install_dir' (p as (absprjid, funid)) =
+      if is_absprjid_basislib absprjid then 
+	(OS.Path.mkRelative(absprjid, !Flags.install_dir),
+	 FunId.mk_FunId (OS.Path.mkRelative(FunId.pr_FunId funid, !Flags.install_dir)))
+      else p
+
 
     structure F = struct
       val empty = FUNENV FinMap.empty

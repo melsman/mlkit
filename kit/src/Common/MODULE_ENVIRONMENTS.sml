@@ -51,6 +51,9 @@ signature MODULE_ENVIRONMENTS =
     eqtype absprjid  (* absolute project identifier *)
     val absprjid_to_string: absprjid -> string
     val mk_absprjid: string -> absprjid
+    val strip_install_dir : absprjid -> absprjid
+    val strip_install_dir' : absprjid * funid -> absprjid * funid
+    val is_absprjid_basislib : absprjid -> bool
 
     structure F :
       sig

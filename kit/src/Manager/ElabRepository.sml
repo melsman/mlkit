@@ -9,6 +9,7 @@ functor ElabRepository(structure Name : NAME
 		       type ElabBasis
 		       type longstrid
                        eqtype absprjid
+		       val strip_install_dir' : absprjid * funid -> absprjid * funid
 		       structure Crash : CRASH) : ELAB_REPOSITORY =
   struct
 
@@ -40,7 +41,8 @@ functor ElabRepository(structure Name : NAME
     fun delete_rep rep absprjid_and_funid = case FinMap.remove ((absprjid_and_funid, !region_profiling), !rep)
 					      of SOME res => rep := res
 					       | _ => ()
-    fun delete_entries absprjid_and_funid = delete_rep elabRep absprjid_and_funid
+
+    fun delete_entries absprjid_and_funid = delete_rep elabRep (strip_install_dir' absprjid_and_funid)
 
     fun lookup_rep rep exportnames_from_entry absprjid_and_funid =
       let val all_gen = foldr (fn (n, b) => b andalso
@@ -49,14 +51,14 @@ functor ElabRepository(structure Name : NAME
 	    | find (entry::entries, n) = 
 	    if (all_gen o exportnames_from_entry) entry then SOME(n,entry)
 	    else find(entries,n+1)
-      in case FinMap.lookup (!rep) (absprjid_and_funid, !region_profiling)
+      in case FinMap.lookup (!rep) (strip_install_dir' absprjid_and_funid, !region_profiling)
 	   of SOME entries => find(entries, 0)
 	    | NONE => NONE
       end
 
     fun add_rep rep (absprjid_and_funid,entry) : unit =
       rep := let val r = !rep 
-                 val i = (absprjid_and_funid, !region_profiling)
+                 val i = (strip_install_dir' absprjid_and_funid, !region_profiling)
 	     in case FinMap.lookup r i
 		  of SOME res => FinMap.add(i,res @ [entry],r)
 		   | NONE => FinMap.add(i,[entry],r)
@@ -64,7 +66,7 @@ functor ElabRepository(structure Name : NAME
 
     fun owr_rep rep (absprjid_and_funid,n,entry) : unit =
       rep := let val r = !rep
-                 val i = (absprjid_and_funid, !region_profiling)
+                 val i = (strip_install_dir' absprjid_and_funid, !region_profiling)
 		 fun owr(0,entry::res,entry') = entry'::res
 		   | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
 		   | owr _ = die "owr_rep.owr"

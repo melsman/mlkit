@@ -544,8 +544,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
 	if OS.FileSys.isDir d then ()
 	else error ("The file " ^ quot d ^ " is not a directory")
-      else (OS.FileSys.mkDir d handle _ => error ("I cannot create directory " ^ quot d))
-
+      else (OS.FileSys.mkDir d handle _ => ())
+(* error ("I cannot create directory " ^ quot d ^ " --- the current directory is " ^ OS.FileSys.getDir())
+*)
     fun maybe_create_PM_dir() : unit =
       (maybe_create_dir "PM"; 
        maybe_create_dir "PM/Prof"; 
@@ -678,18 +679,20 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       if !region_profiling then if !gc_flag then "PM/GCProf/" else "PM/Prof/"
       else if !gc_flag then "PM/GC/" else "PM/NoProf/"
 
+    val strip_install_dir = ModuleEnvironments.strip_install_dir
+
     type projectmap = (absprjid * extobj list * Basis) list
 
     fun projectmap_lookup map absprjid =
       let fun look [] = NONE
 	    | look ((absprjid',extobjs,basis)::rest) = 
-	        if absprjid=absprjid' then SOME(extobjs,basis)
+	        if strip_install_dir absprjid = absprjid' then SOME(extobjs,basis)
 		else look rest
       in look map
       end
       
     fun projectmap_add (absprjid, extobjs, basis, map) : projectmap =
-      (absprjid, extobjs, basis) :: map
+      (strip_install_dir absprjid, extobjs, basis) :: map
 
     fun projectmap_plus (projectmap1:projectmap, projectmap2) : projectmap =
       projectmap1 @ projectmap2
@@ -722,6 +725,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	     val prj = {imports=imports,extobjs=extobjs,body=body}
 	     val prjid_date_file = pmdir() ^ prjid ^ ".date"
 	     val clean = older (OS.FileSys.modTime prjid, OS.FileSys.modTime prjid_date_file) handle _ => false
+(*	     val _ = print (absprjid_s ^ ": clean0 " ^ Bool.toString clean ^ "\n") *)
 	     val _ = if clean then () else local_check_project (absprjid, prj)
 	     val (B, modc, pmap, extobjs, clean) = 
 	       foldl(fn (absprjid1:absprjid,(B, modc, pmap, extobjs, clean0)) => 
@@ -738,6 +742,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
 	       (* Now, check that date files associated with imported projects are older than
 		* the date file for the current project. *)
+(*	     val _ = print (absprjid_s ^ ": clean1 " ^ Bool.toString clean ^ "\n")*)
 
 	     val clean = foldl (fn (absprjid':absprjid, clean) => clean andalso
 				let val {dir,file} = OS.Path.splitDirFile(ModuleEnvironments.absprjid_to_string absprjid')
@@ -745,10 +750,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 				in older (OS.FileSys.modTime absprjid'_date, OS.FileSys.modTime prjid_date_file) handle _ => false
 				end) clean imports
 
+(*	     val _ = print (absprjid_s ^ ": clean2 " ^ Bool.toString clean ^ "\n") *)
 	     val (B', modc', clean, modtimes) = build_body (absprjid, B, body, clean, [])
 (*	       handle x => (testout "Basis at failing call to build_body:\n";
 			    testouttree(ManagerObjects.Basis.layout B); testout"\n"; raise x) 
 *)
+
+(*	     val _ = print (absprjid_s ^ ": clean3 " ^ Bool.toString clean ^ "\n") *)
 	 in 
 	    if clean then () else (maybe_create_PM_dir();
 				   output_date_file prjid_date_file);

@@ -1,0 +1,30 @@
+		 The ML Kit with Regions, Version 3.1
+			   August 14, 1999
+
+	     Welcome to the world of ML Kit programming!
+
+Since you are reading this, you have already succeeded in installing
+the ML Kit RPM-file. This directory contains binaries and documentation
+for compiling and running Standard ML programs with the ML Kit. Copy
+the `kitdemo' directory to your home directory and try compile the
+`helloworld.sml' program:
+
+  %> cp -R /usr/local/mlkit/kitdemo ~/kitdemo
+  %> cd ~/kitdemo
+  %> mlkit helloworld.sml
+
+The ML Kit should produce an executable file `run':  
+
+  %> run
+  hello world
+
+Documentation for the ML Kit is located in the `doc' directory. The ML
+Kit is distributed under the GNU Public Licence (see file
+copyright). The full source code for the ML Kit is available from the
+home page:
+
+    http://www.diku.dk/research-groups/topps/activities/mlkit.html
+
+Have fun!
+
+The ML Kit Development Team
