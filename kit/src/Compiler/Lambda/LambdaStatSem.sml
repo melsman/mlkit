@@ -764,8 +764,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		     Frame {declared_lvars = map on_lvar declared_lvars,
 			    declared_excons = map on_excon declared_excons}
 		   end
-		 ) handle this => (log_st (layout_env env);
-				   raise this)
+		 ) 
 
 
   (* Analyse the datatype bindings and yield an environment which
