@@ -1,4 +1,4 @@
-val user_id = ScsLogin.auth_roles ["SiteAdm"]
+val user_id = ScsLogin.auth_roles [ScsRole.SiteAdm]
 
 val _ = Db.execSp [`scs_user.imp_all_rows(always_p => 'f')`]
 

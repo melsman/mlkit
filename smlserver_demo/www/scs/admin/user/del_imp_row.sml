@@ -1,4 +1,4 @@
-val user_id = ScsLogin.auth_roles ["SiteAdm"]
+val user_id = ScsLogin.auth_roles [ScsRole.SiteAdm]
 
 val d = ScsDict.d ScsLang.en "scs/admin/user" "del_imp_row.sml"
 val dl = ScsDict.dl ScsLang.en "scs/admin/user" "del_imp_row.sml"

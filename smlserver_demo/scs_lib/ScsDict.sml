@@ -201,7 +201,8 @@ structure ScsDict :> SCS_DICT =
 		  end
 	| SOME c => (case Ns.Cache.get (c,module_file_phrase) of 
 		       NONE => let 
-				 val v = lookup source_lang module file_name can_phrase module_file_phrase ScsLogin.user_lang
+				 val v = lookup source_lang module file_name can_phrase 
+                                           module_file_phrase ScsLogin.user_lang
 			       in 
 				 (Ns.Cache.set (c,module_file_phrase,v);
 				  v) 
