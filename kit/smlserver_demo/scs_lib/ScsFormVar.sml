@@ -157,12 +157,13 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getStrings : string -> string list
 
     (* For extensions *)
-    val trim : string -> string
     val getErr : 'a -> (string->'a) -> string -> (string->quot) -> (string->bool) -> 'a formvar_fn
   end
 
 structure ScsFormVar :> SCS_FORM_VAR =
   struct
+    val trim = ScsString.trim
+
     type quot = string frag list
     type errs = quot list
     type 'a formvar_fn = string * string * errs -> 'a * errs
@@ -243,7 +244,6 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	|(_,[e]) => ("",addErr(e,errs))
 	| _ => ScsError.panic `ScsFormVar.wrapIntAsString failed on ^fv`)
 
-    fun trim s = Substring.string (Substring.dropr Char.isSpace (Substring.dropl Char.isSpace (Substring.all s)))
     fun wrapMaybe (f : 'a formvar_fn) =
       (fn (fv,emsg,errs) => 
        (case Ns.Conn.formvarAll fv of

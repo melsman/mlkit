@@ -13,6 +13,10 @@ signature SCS_STRING =
        maximum lenght len. *)
     val shorten : string -> int -> string
 
+    (* [trim str] returns the trimmed str, that is, str will all
+        prefix and postfix spaces removed. *)
+    val trim : string -> string
+
     (* [maybe str1 str2] returns str2 if str1 is non
        empty. If empty, then the empty string is returned. *)
     val maybe     : string -> string -> string
@@ -29,6 +33,9 @@ structure ScsString =
     fun upper s = CharVector.fromList (List.map Char.toUpper (explode s))
 
     fun canonical s = String.concatWith " " (String.tokens Char.isSpace s)
+
+    fun trim s = 
+      Substring.string (Substring.dropr Char.isSpace (Substring.dropl Char.isSpace (Substring.all s)))
 
     fun shorten text length = 
       String.substring( text, 0, Int.min(length, String.size text) ) ^ "..."
