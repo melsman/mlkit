@@ -7,7 +7,7 @@ val cache =
       case kind of
 	"WhileUsed" => NsCacheV2.WhileUsed 20
        | "ForAWhile" => NsCacheV2.ForAWhile 20
-       | "Size" => NsCacheV2.Size 5
+       | "Size" => NsCacheV2.Size 100
   in
     NsCacheV2.get ("users",
 		   k,
@@ -17,7 +17,7 @@ val cache =
 
 fun pp_kind kind =
   case kind of
-    "Size" => `<b>^kind</b> of size 5`
+    "Size" => `<b>^kind</b> of size 100`
   | _ => `<b>^kind</b>. Entries live in the cache in
     approximately 20 seconds.<p>`
 

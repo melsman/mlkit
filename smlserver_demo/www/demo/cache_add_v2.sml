@@ -7,7 +7,7 @@ val cache =
       case kind of
 	"WhileUsed" => NsCacheV2.WhileUsed 20
        | "ForAWhile" => NsCacheV2.ForAWhile 20
-       | "Size" => NsCacheV2.Size 5
+       | "Size" => NsCacheV2.Size 100
   in
     NsCacheV2.get ("users",
 		   k,

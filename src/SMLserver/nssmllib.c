@@ -184,7 +184,7 @@ nssml_GetMimeType(Region rAddr, String s)
   char* res_c = Ns_GetMimeType(&(s->data));
   if ( res_c == NULL ) 
     {
-      Ns_Log(Warning, "nssml_GetMimeType problem - returning empty string");
+      Ns_Log(Notice, "nssml_GetMimeType problem - returning empty string");
       res_c = "";
     }
   return convertStringToML(rAddr, res_c);
@@ -302,6 +302,7 @@ nssml_CacheSet(Ns_Cache* cache, String key, String value)
   int sz;
   int new;
   Ns_Entry *ePtr;
+
   sz = sizeStringDefine(key) + 1;         // copying strings is essential!!
   key_c = (char*)Ns_Malloc(sz);
   strcpy(key_c,&(key->data));
@@ -323,6 +324,7 @@ nssml_CacheGet(Region rAddr, Ns_Cache* cache, String key)
   char *value_c;
   Ns_Entry *ePtr;
   StringDesc* res;
+
   Ns_CacheLock(cache);
   ePtr = Ns_CacheFindEntry(cache, &(key->data));
   if ( ePtr == NULL ) {
@@ -332,6 +334,7 @@ nssml_CacheGet(Region rAddr, Ns_Cache* cache, String key)
   if ( value_c == NULL ) {
     goto none;
   }
+
   res = convertStringToML(rAddr, value_c);
   Ns_CacheUnlock(cache);
   return res;

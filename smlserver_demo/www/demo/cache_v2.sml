@@ -3,7 +3,7 @@ val kind = FormVar.wrapExn (FormVar.getEnumErr ["WhileUsed","ForAWhile","Size"])
 
 fun pp_kind kind =
   case kind of
-    "Size" => `<b>^kind</b> of size 5`
+    "Size" => `<b>^kind</b> of size 100`
   | _ => `<b>^kind</b>. Entries live in the cache in
     approximately 20 seconds.<p>`
 
@@ -40,4 +40,11 @@ val _ = Page.return "Caching Demonstration V2"
     You can choose among the following cache kinds: 
     <a href="cache_v2.sml?kind=Size">Size</a>,
     <a href="cache_v2.sml?kind=WhileUsed">WhileUsed</a>,
-    <a href="cache_v2.sml?kind=ForAWhile">ForAWhile</a>`)
+    <a href="cache_v2.sml?kind=ForAWhile">ForAWhile</a><p>
+
+   <h2>Memorisation</h2>
+
+   <form action="cache_fib_v2.sml">
+   Calculate fib of <input type=text name=n value=10>.<p>
+   <input type=submit name=submit value="Calculate">
+   </form>`)
