@@ -170,6 +170,19 @@ signature SCS_DICT =
     (* [subst phase args] returns a quotations where all %0,%1,... are
        replaced by the respective arguments in args. *)
     val subst : string -> string list -> quot
+
+    (* [getQuot dict lang] returns the quotation in language lang.
+       Raises ScsDict if the dictionary is empty or if no quotation exists
+       in language lang
+    *)
+    val getQuot : dict -> ScsLang.lang -> quot
+
+    (* [getString dict lang] returns the string in language lang.
+       Raises ScsDict if the dictionary is empty or if no quotation exists
+       in language lang
+    *)
+    val getString : dict -> ScsLang.lang -> string
+
   end
 
 structure ScsDict :> SCS_DICT =
@@ -333,13 +346,17 @@ structure ScsDict :> SCS_DICT =
 
     exception ScsDict of string
 
-    fun s' [] = raise ScsDict "ScsDict.s: dictionary missing"
-      | s' ((lang,phrase)::xs) =
-	if ScsLogin.user_lang = lang then phrase 
+    fun getQuot [] language = raise ScsDict "ScsDict.s: dictionary missing"
+      | getQuot ((lang,phrase)::xs) language =
+	if language = lang then phrase 
 	else
-	  case List.find (fn (lang,phrase) => lang = ScsLogin.user_lang) xs of
+	  case List.find (fn (lang,phrase) => lang = language) xs of
             NONE => phrase (* We return the first phrase in the list if user-preferred language does not exists *)
           | SOME xs => #2(xs)
+
+    fun s' dict = getQuot dict ScsLogin.user_lang
+
+    fun getString dict lang = Quot.toString ( getQuot dict lang )
 
     val s = Quot.toString o s'
 
@@ -358,6 +375,8 @@ structure ScsDict :> SCS_DICT =
       
     fun dictWithArgsToDict dict args =
       List.map (fn (lang,phrase) => (lang, subst (Quot.toString phrase) args)) dict
+
+
   end
 
 
