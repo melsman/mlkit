@@ -14,13 +14,11 @@
 typedef struct objectList {
   int atId;                /* Allocation point identifier. */
   int size;                /* Size of object in bytes. */
-  int numberOfInstances;   /* Number of instances of an object at an allocation point. */
   struct objectList *nObj; /* Pointer to next object. */
 } ObjectList;
 
 typedef struct regionList {
   int regionId;                /* id of region. */
-  int numberOfInstances;       /* number of instances of the region(variable) */
   int used;                    /* number of used words in the region.         */
   int waste;                   /* number of not used words in the region.     */
   int noObj;                   /* number of objects with different program points. */
@@ -51,7 +49,6 @@ typedef struct profTabList {
 extern ProfTabList * profHashTab[];
 
 extern int maxRegions;    /* max. number of allocated words in regions. */
-extern int maxInstances;  /* max. number of instances.       */
 
 /*--------------------------------------------*
  * External function declarations.            *

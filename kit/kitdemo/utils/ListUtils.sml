@@ -1,9 +1,9 @@
 structure ListUtils =
   struct
-    fun pr_list (l,d,r) pr list =
-      let fun loop [] = r
-	    | loop [x] = pr x ^ r
-	    | loop (x::xs) = pr x ^ d ^ loop xs
-      in l ^ loop list
+    fun pr_list pr list =
+      let fun loop [] = "}"
+	    | loop [x] = pr x ^ "}"
+	    | loop (x::xs) = pr x ^ "," ^ loop xs
+      in "{" ^ loop list
       end
   end

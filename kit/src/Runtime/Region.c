@@ -4,6 +4,7 @@
 #include "Flags.h"
 #include "Region.h"
 #include "Math.h"
+#include "Profiling.h"
 
 /*----------------------------------------------------------------*
  * Global declarations                                            *
@@ -12,6 +13,7 @@ Klump * freelist;
 Ro * topRegion;
 
 #ifdef PROFILING
+extern int showStat;
 FiniteRegionDesc * topFiniteRegion = NULL;
 
 unsigned int callsOfDeallocateRegionInf=0,
@@ -24,8 +26,6 @@ unsigned int callsOfDeallocateRegionInf=0,
              callsOfSbrk=0,
              maxNoOfPages=0,
              noOfPages=0,
-             maxNoOfInstances=0,
-             noOfInstances=0,
              allocNowInf=0,             /* Allocated in inf. regions now. */
              maxAllocInf=0,             /* Max. allocatated data in inf. regions. */
              allocNowFin=0,             /* Allocated in fin. regions now. */
@@ -68,51 +68,6 @@ void printERROR(char *errorStr) {
 }
 
 
-/* Print the structure of each region in the region stack. */
-void printRegionStack(char *str) {
-  Ro *rp;
-
-  printf("Called from: %s\n",str);
-
-#if PRINT_REGION_STACK_WHEN_DEBUG
-  for (rp=topRegion;rp!=NULL;rp=rp->p)
-    printf("Region at address: %0x, fp: %0x, b: %0x, a: %0x, p: %0x.\n",rp,(rp->fp),(rp->b),(rp->a),(rp->p));
-#endif
-
-  return;
-}
-
-
-#if DEBUG_ALLOC
-/* functions trace and traceFreelist can be used for
-   checking whether the freelist has been corrupted.
-
-int trace(){
-  /*  if ((callsOfAlloc >= 100000) && (callsOfAlloc % 1000 == 0)) */
-  /*  if (callsOfAlloc > 150000)
-   {if (callsOfAlloc % 1000 == 0)
-      return 1;
-   }
-  return 0; */
- if (callsOfAlloc % 5000 == 0)
-    return 1;
- else return 0;
-}
-  
-void traceFreelist(int pPoint){
-  Klump *np = freelist;
-  int i = 0;
-  if (trace() == 1) {
-     printf("Tracing freelist at program point pp%d at  call number  %d of alloc...\n",pPoint, callsOfAlloc);
-     while (np != NULL) {
-       np = np->k.n;
-       i++;
-     }
-     printf("... found %d region pages.\n", i);
-  }
-}
-#endif
-
 /* Print info about a region. */
 void printRegionInfo(int rAddr,  char *str) {
   Ro *rp;
@@ -128,13 +83,10 @@ void printRegionInfo(int rAddr,  char *str) {
 }
 
 /* Calculate number of pages in an infinite region. */
-int NoOfPagesInRegion(Ro *rp) {
+static int NoOfPagesInRegion(Ro *rp) {
   int i;
   Klump *ptr;
-
-  for (i=0,ptr=rp->fp;ptr!=NULL;ptr=ptr->k.n)
-    i++;
-
+  for (i=0,ptr=rp->fp;ptr!=NULL;ptr=ptr->k.n) i++;
   return i;
 }
 
@@ -142,43 +94,12 @@ int NoOfPagesInRegion(Ro *rp) {
  *                         Region operations.                              *
  *                                                                         *
  * allocateRegion: Allocates a region and return a pointer to it.          *
- * allocateRegionFast: Allocates a region and return a pointer to it.      *
  * deallocateRegion: Pops the top region of the region stack.              *
  * callSbrk: Updates the freelist with new region pages.                   *
- * new_page: Returns a new page, and call sbrk if nessesary.               *
  * alloc: Allocates n words in a region.                                   *
  * resetRegion: Resets a region by freeing all pages except one            *
  * deallocateRegionsUntil: Alle regions over a thresehold are deallocated. *
  *-------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------*
- *allocateRegionFast:                                                   *
- *  The function do not allocate a first regionpage for the region.     *
- *  Put a region administration structure on the stack. The address are *
- *  in roAddr.                                                          *
- *----------------------------------------------------------------------*/
-int *allocateRegionFast(Ro *roAddr)
-{ 
-
-#if DEBUG_ALLOCATE_REGION
-  printRegionStack("allocateRegion-ENTER");
-#endif
-
-  roAddr->a = NULL;
-  roAddr->b = NULL;
-  roAddr->p = topRegion;
-  roAddr->fp = NULL;
-  topRegion = roAddr;
-
-  /* We have to set the infinitebit. */
-  roAddr = (Ro *) setInfiniteBit((int) roAddr);
-
-#if DEBUG_ALLOCATE_REGION
-  printRegionStack("allocateRegion-LEAVE");
-#endif
-
-  return (int *) roAddr;
-}  
 
 /*----------------------------------------------------------------------*
  *allocateRegion:                                                       *
@@ -186,16 +107,11 @@ int *allocateRegionFast(Ro *roAddr)
  *  Put a region administrationsstructure on the stack. The address are *
  *  in roAddr.                                                          *
  *----------------------------------------------------------------------*/
-int *allocateRegion(Ro *roAddr)
-{ Klump *kp;
+int *allocateRegion(Ro *roAddr) { 
+  Klump *kp;
   extern Klump * freelist;
-
-#if DEBUG_ALLOCATE_REGION
-  printRegionStack("allocateRegion-ENTER");
-#endif
   
-  if (freelist==NULL)
-    callSbrk();
+  if (freelist==NULL) callSbrk();
 
   kp = freelist;
   freelist= freelist->k.n;
@@ -210,10 +126,6 @@ int *allocateRegion(Ro *roAddr)
   /* We have to set the infinitebit. */
   roAddr = (Ro *) setInfiniteBit((int) roAddr);
 
-#if DEBUG_ALLOCATE_REGION
-  printRegionStack("allocateRegion-LEAVE");
-#endif
-
   return (int *) roAddr;
 }  
 
@@ -223,8 +135,8 @@ int *allocateRegion(Ro *roAddr)
  *  free list. There have to be atleast one region on the stack.        *
  *  When profiling we also use this function.                           *
  *----------------------------------------------------------------------*/
-int *deallocateRegion()
-{ int *sp;
+int *deallocateRegion() { 
+  int *sp;
   extern Klump * freelist;
   extern Ro * topRegion;
 
@@ -233,35 +145,22 @@ int *deallocateRegion()
   callsOfDeallocateRegionInf++;
   regionDescUseInf -= (sizeRo-sizeRoProf);
   regionDescUseProfInf -= sizeRoProf;
-#if DEBUG_DEALLOCATE_REGION
-  printRegionStack("deallocateRegion-ENTER");
-  printf("\nNu deallokeres region paa adresse %0x.\n",topRegion);
-#endif
   i = NoOfPagesInRegion(topRegion);
   noOfPages -= i;
-  noOfInstances --;
   allocNowInf -= topRegion->allocNow;
   allocProfNowInf -= topRegion->allocProfNow;
-  if (topRegion->regionId > MAX_REGIONS_TO_PROFILE) {
-    printf("RegionId %d too large in DeallocateRegion. Change constant MAX_REGIONS_TO_PROFILE in file Runtime.h\n", topRegion->regionId);
-    exit(-1);
-  }
-  profTabSetNoOfPages(topRegion->regionId, profTabGetNoOfPages(topRegion->regionId) - i);
-  profTabSetNoOfInstances(topRegion->regionId, profTabGetNoOfInstances(topRegion->regionId) - 1);
-  profTabSetAllocNow(topRegion->regionId, profTabGetAllocNow(topRegion->regionId) - (topRegion->allocNow));
+  profTabDecrNoOfPages(topRegion->regionId, i);
+  profTabDecrAllocNow(topRegion->regionId, topRegion->allocNow);
 #endif
 
-  sp = (int *) topRegion; /* topRegion points at the bottom of the region description on the stack. */
+  sp = (int *) topRegion;   /* topRegion points at the bottom of the region 
+			     * description on the stack. */
 
-  if (topRegion->fp) { /* Insert the region pages in the freelist. */
-    (((Klump *)topRegion->b)-1)->k.n = freelist;
-    freelist = topRegion->fp;
-  }
+  /* Insert the region pages in the freelist; there is always 
+   * at-least one page in a region. */
+  (((Klump *)topRegion->b)-1)->k.n = freelist;
+  freelist = topRegion->fp;
   topRegion=topRegion->p;
-
-#if DEBUG_DEALLOCATE_REGION
-  printRegionStack("deallocateRegion-LEAVE");
-#endif
 
   return sp;
 }
@@ -271,42 +170,30 @@ int *deallocateRegion()
  *  Sbrk is called and the free list is updated.                        *
  *  The free list has to be empty.                                      *
  *----------------------------------------------------------------------*/
-void callSbrk()
-{ Klump *np;
+void callSbrk() { 
+  Klump *np;
   extern Klump * freelist;
   char *sb;
   int temp;
 
 #ifdef PROFILING
-    callsOfSbrk++;
+  callsOfSbrk++;
 #endif
 
   /* We must manually insure double alignment. Some operating systems (like *
    * HP UX) does not return a double aligned address...                     */
 
-    /*printf("callSbrk: calling malloc\n");*/
   sb = (char *)malloc(BYTES_ALLOC_BY_SBRK + 8);
-  /*printf("callSbrk: return from malloc\n");*/
+
   if (sb == (char *)-1) {
     perror("SBRK error\n");
     exit(-1);
   }
 
-  #if DEBUG_SBRK
-  printf("callSbrk : sb mod 8 = %d\n", ((int)sb) % 8);
-  #endif
-
   /* alignment (martin) */
   if (temp=((int)sb % 8)) {
     sb = (char *) (((int)sb) + 8 - temp);
   }
-
-  #if DEBUG_SBRK
-  if ((int)sb % 8) {
-    printf("callSbrk returns unaligned sb. sb mod 8 = %d\n", ((int)sb) % 8);
-    exit(-1);
-  }
-  #endif
 
   np = (Klump *) sb;
   freelist = np;
@@ -319,61 +206,21 @@ void callSbrk()
 }
 
 /*----------------------------------------------------------------------*
- *new_page:                                                             *
- *  Return a region page from the free list. If the free list is empty  *
- *  sbrk is called and a new free list is created.                      *
- *----------------------------------------------------------------------*/
-Klump *new_page()
-{ Klump *kp;
-  extern Klump * freelist;
-  char *sb;
-
-  if (freelist==NULL) {
-    callSbrk();
-  }
-  kp = freelist;
-  freelist= freelist->k.n;
-  kp->k.n = NULL;
-  return kp;
-}
-
-/*----------------------------------------------------------------------*
  *alloc_new_block:                                                      *
  *  Allocates a new block in region.                                    *
  *----------------------------------------------------------------------*/
 
-void alloc_new_block(Ro *rp)
-{ Klump* np;
+void alloc_new_block(Ro *rp) { 
+  Klump* np;
   extern Klump * freelist;
 
 #ifdef PROFILING
-  /*  if (rp->regionId == 80022) {
-     printf("alloc_new_block: enter with rp :%d\n", rp); 
-     
-  } */
-#endif
-#ifdef PROFILING
-  if (profTabGetNoOfPages(rp->regionId) >= profTabGetMaxNoOfPages(rp->regionId))
-    profTabSetMaxNoOfPages(rp->regionId, profTabGetNoOfPages(rp->regionId)+1); 
+  profTabMaybeIncrMaxNoOfPages(rp->regionId);
   maxNoOfPages = max(++noOfPages, maxNoOfPages);
 #endif
 
-#ifdef PROFILING
-  if (rp->regionId  ==  80022) {
-     printf("alloc_new_block(1): freelist :%0x\n", freelist);
-     
-  } 
-#endif
-  if (freelist==NULL)
-    callSbrk();
+  if (freelist==NULL) callSbrk();
  
-#ifdef PROFILING
-    /*  if (rp->regionId == 80022) {
-     printf("alloc_new_block(2a): freelist :%0x\n", freelist);
-     printf("alloc_new_block(2b): freelist->k.n :%0x\n", freelist->k.n); 
-     
-  } */
-#endif
   np = freelist;
   freelist= freelist->k.n;
   np->k.n = NULL;
@@ -385,104 +232,55 @@ void alloc_new_block(Ro *rp)
 
   rp->a = (int *)(&(np->k.i));    /* Updates the allocation pointer. */
   rp->b = (int *)(np+1);          /* Updates the border pointer. */
-
 }
 
 /*----------------------------------------------------------------------*
  *alloc:                                                                *
- *  Allocates n words in region rAddr. If the CHECKREGION flag is set,  *
- *  it will make sure, that there are space for the n words before      *
- *  doing the allocation.                                               *
+ *  Allocates n words in region rAddr. It will make sure, that there    *
+ *  is space for the n words before doing the allocation.               *
  *  Pre-condition: n <= ALLOCATABLE_WORDS_IN_REGION_PAGE                *
  *----------------------------------------------------------------------*/
-int *alloc (int rAddr, int n)
-{ int *t1;
+int *alloc (int rAddr, int n) { 
+  int *t1;
   int *t2;
   int *t3;
   Ro *rp;
 
-  #ifdef PROFILING
-    int *i;
-    int j;
-  #endif
-
-#if DEBUG_ALLOC
-  printf("alloc-ENTER rAddr = %d, n = %d\n", rAddr, n);
-  /* printRegionStack("alloc-ENTER");*/
+#ifdef PROFILING
+  int *i;
+  int j;
 #endif
 
   rp = (Ro *) clearStatusBits(rAddr);
 
-
 #ifdef PROFILING
-#if DEBUG_ALLOC
-    printf("Region descriptor at address (enter): %0x, fp: %0x, b: %0x, a: %0x, p: %0x, allocNow: %d, allocProfNow: %d, regionId: %d.\n",
-    rp,(rp->fp),(rp->b),(rp->a),(rp->p), (rp->allocNow),(rp->allocProfNow),(rp->regionId));
-#endif
-  callsOfAlloc++;
-  if (n-sizeObjectDesc < 0) {
-    printf("ERROR -- alloc with profiling\n");
-    exit(-1);
-  }
   allocNowInf += n-sizeObjectDesc; /* When profiling we also allocate an object descriptor. */
-  maxAllocInf = max(allocNowInf, maxAllocInf);
   maxAlloc = max(maxAlloc, allocNowInf+allocNowFin);
   rp->allocNow += n-sizeObjectDesc;
-  allocProfNowInf += sizeObjectDesc;
-  if (maxAllocInf == allocNowInf)
-    maxAllocProfInf = allocProfNowInf;
-  rp->allocProfNow += sizeObjectDesc;
-  if (rp->regionId >= MAX_REGIONS_TO_PROFILE) {
-    printf("RegionId %d too large in alloc(%d). Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Runtime.h\n", rp->regionId, n,MAX_REGIONS_TO_PROFILE);
-    exit(-1);
-  }
-  profTabSetAllocNow(rp->regionId, profTabGetAllocNow(rp->regionId) + (n-sizeObjectDesc));
-  if (profTabGetAllocNow(rp->regionId) > profTabGetMaxAlloc(rp->regionId))
-    profTabSetMaxAlloc(rp->regionId, profTabGetAllocNow(rp->regionId));
+  profTabIncrAllocNow(rp->regionId, n-sizeObjectDesc);
 
-#if DEBUG_ALLOC
-    printf("Region descriptor at address (leave): %0x, fp: %0x, b: %0x, a: %0x, p: %0x, allocNow: %d, allocProfNow: %d, regionId: %d.\n",
-    rp,(rp->fp),(rp->b),(rp->a),(rp->p), (rp->allocNow),(rp->allocProfNow),(rp->regionId));
-#endif
+  callsOfAlloc++;
+  maxAllocInf = max(allocNowInf, maxAllocInf);
+  allocProfNowInf += sizeObjectDesc;
+  if (maxAllocInf == allocNowInf) maxAllocProfInf = allocProfNowInf;
+  rp->allocProfNow += sizeObjectDesc;
 #endif
 
   t1 = rp->a;
   t2 = t1 + n;
 
-#if CHECKREGION
   t3 = rp->b;
   if (t2 > t3) {
-#if DEBUG_ALLOC
-    printf("calling       alloc_new_block \n");
-#endif
+#ifdef PROFILING
+    /* insert zeros in the rest of the current region page */
+    for ( i = t1 ; i < t3 ; i++ )  *i = notPP;
+#endif PROFILING
     alloc_new_block(rp);
-#if DEBUG_ALLOC
-    printf("returned from alloc_new_block \n");
-#endif
-
-    #ifdef PROFILING
-      j=0;
-      for (i=rp->a; i<rp->b;) { /* Put zeroes in region page. */
-        *i = notPP;
-	i++;
-	j++;
-      }
-      if (j != ALLOCATABLE_WORDS_IN_REGION_PAGE)
-	printf("ERROR - allocProfiling, when putting zeroes in region page, j %d and rpSize %d\n",
-	       j, ALLOCATABLE_WORDS_IN_REGION_PAGE);
-    #endif
 
     t1 = rp->a;
     t2 = t1+n;
   }
-#endif
-
   rp->a = t2;
-
-#if DEBUG_ALLOC
-  printRegionStack("alloc-LEAVE");
-#endif
-
   return t1;
 }
 
@@ -492,77 +290,44 @@ int *alloc (int rAddr, int n)
  *  the region administration structure is updated. The statusbits are  *
  *  not changed.                                                        *
  *----------------------------------------------------------------------*/
-void resetRegion(int rAdr)
-{ Ro *rp;
-
+void resetRegion(int rAdr) { 
+  Ro *rp;
   extern Klump * freelist;
-
-  #ifdef PROFILING
-    int *i;
-    Klump *temp;
-    int j;
-    int *zerolimit;
-  #endif
+  
+#ifdef PROFILING
+  int *i;
+  Klump *temp;
+  int j;
+#endif
 
   rp = (Ro *) clearStatusBits(rAdr);
-
-#if DEBUG_RESET_REGION
-  printRegionStack("resetRegion-ENTER");
-#ifdef PROFILING
-  printf("\nNu resettes region paa adresse %0x med id %d.\n",rp, rp->regionId);
-#else
-  printf("\nNu resettes region paa adresse %0x.\n",rp);
-#endif
-#endif
 
 #ifdef PROFILING
   callsOfResetRegion++;
   j = NoOfPagesInRegion(rp);
-  if (rp->regionId > MAX_REGIONS_TO_PROFILE) {
-    printf("RegionId %d too large in resetRegion. Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Runtime.h\n", rp->regionId, MAX_REGIONS_TO_PROFILE);
-    exit(-1);
-  }
-  if (j) { /* We have to check that there are at least one page. */
-    noOfPages -= j-1;
-    profTabSetNoOfPages(rp->regionId, profTabGetNoOfPages(rp->regionId) - (j-1));
-  }
+
+  /* There is always at-least one page in a region. */
+  noOfPages -= j-1;
+  profTabDecrNoOfPages(rp->regionId, j-1);
+
   allocNowInf -= rp->allocNow;
-  profTabSetAllocNow(rp->regionId, profTabGetAllocNow(rp->regionId) - (rp->allocNow));
+  profTabDecrAllocNow(rp->regionId, rp->allocNow);
   allocProfNowInf -= rp->allocProfNow;
 #endif
 
-  if (rp->fp) { /* There are at least one page in the region. */
-    if ( (rp->fp)->k.n != NULL ) { /* There are more than one page in the region. */
-      (((Klump *)rp->b)-1)->k.n = freelist;
-      freelist = (rp->fp)->k.n;
-      (rp->fp)->k.n = NULL;
-    }
-  #ifdef PROFILING
-    if (j==1){
-       /* only put zeroes in that part of the page that contains values */
-       zerolimit = rp->a;
-     }
-    else
-       /* put zeroes in the entire first page */
-       zerolimit = (int *)((rp->fp)+1);
-  #endif
-       
-    rp->a = (int *)(&(rp->fp)->k.i); /* beginning of klump in first page */
-    rp->b = (int *)((rp->fp)+1);     /* end of klump in first page */
-
-    #ifdef PROFILING
-      rp->allocNow = 0;
-      rp->allocProfNow = 0;
-      for (i=rp->a; i<zerolimit;) { /* Put zeroes in region page. */
-	*i = notPP;
-	i++;
-      }
-    #endif
-
+  /* There is always at least one page in a region. */
+  if ( (rp->fp)->k.n != NULL ) { /* There are more than one page in the region. */
+    (((Klump *)rp->b)-1)->k.n = freelist;
+    freelist = (rp->fp)->k.n;
+    (rp->fp)->k.n = NULL;
   }
 
-#if DEBUG_RESET_REGION
-  printRegionStack("resetRegion-LEAVE");
+  rp->a = (int *)(&(rp->fp)->k.i); /* beginning of klump in first page */
+  rp->b = (int *)((rp->fp)+1);     /* end of klump in first page */
+
+#ifdef PROFILING
+  rp->allocNow = 0;
+  rp->allocProfNow = 0;
 #endif
 
   return;
@@ -574,33 +339,19 @@ void resetRegion(int rAdr)
  *  description. It deallocates all regions that are placed over sp.       *
  *  The function do not return or alter anything.                          *
  *-------------------------------------------------------------------------*/
-void deallocateRegionsUntil(int rAddr)
-{ Ro *rp;
+void deallocateRegionsUntil(int rAddr) { 
+  Ro *rp;
   extern Ro * topRegion;
-
-#if DEBUG_DEALLOCATE_REGIONS_UNTIL
-  printRegionStack("deallocateRegionsUntil-ENTER");
-#endif
 
   rp = (Ro *) clearStatusBits(rAddr);
   
 #ifdef PROFILING
   callsOfDeallocateRegionsUntil++;
+  while ((FiniteRegionDesc *)rp <= topFiniteRegion)
+    deallocRegionFiniteProfiling();
 #endif
 
-  #ifdef PROFILING
-    while ((FiniteRegionDesc *)rp <= topFiniteRegion) {
-      deallocRegionFiniteProfiling();
-    }
-  #endif
-
-  while (rp <= topRegion)
-    deallocateRegion();
-
-#if DEBUG_DEALLOCATE_REGIONS_UNTIL
-  printRegionStack("deallocateRegionsUntil-LEAVE");
-#endif
-
+  while (rp <= topRegion) deallocateRegion();
   return;
 } 
 
@@ -614,7 +365,7 @@ void deallocateRegionsUntil(int rAddr)
  *     Changed runtime operations for making profiling possible.           *
  *                                                                         *
  *                                                                         *
- * allocateRegionProfiling(roAddr, regionId)                               *
+ * allocRegionInfiniteProfiling(roAddr, regionId)                          *
  * allocRegionFiniteProfiling(rdAddr, regionId, size)                      *
  * deallocRegionFiniteProfiling(void)                                      *
  * allocProfiling(rAddr, n, pPoint)                                        *
@@ -630,32 +381,19 @@ void deallocateRegionsUntil(int rAddr)
  *  There has to be room for the region descriptor on the stack, which  *
  *  roAddr points at.                                                   *
  *----------------------------------------------------------------------*/
-int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId)
-{ Klump *kp;
+int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId) { 
+  Klump *kp;
   extern Klump * freelist;
-  int *i;
-  int j;
 
-#if DEBUG_ALLOCATE_REGION
-  printRegionStack("allocateRegion-ENTER");
-  printf("Allocating region: %d\n", regionId);
-#endif
-  
   callsOfAllocateRegionInf++;
   maxNoOfPages = max(++noOfPages, maxNoOfPages);
-  if (profTabGetNoOfPages(regionId) >= profTabGetMaxNoOfPages(regionId))
-    profTabSetMaxNoOfPages(regionId, profTabGetNoOfPages(regionId) + 1); 
-  maxNoOfInstances = max(++noOfInstances, maxNoOfInstances);
-  if (profTabGetNoOfInstances(regionId) >= profTabGetMaxNoOfInstances(regionId))
-    profTabSetMaxNoOfInstances(regionId, profTabGetNoOfInstances(regionId) + 1); 
-
+  profTabMaybeIncrMaxNoOfPages(regionId);
   regionDescUseInf += (sizeRo-sizeRoProf);
   maxRegionDescUseInf = max(maxRegionDescUseInf,regionDescUseInf);
   regionDescUseProfInf += sizeRoProf;
   maxRegionDescUseProfInf = max(maxRegionDescUseProfInf,regionDescUseProfInf);
 
-  if (freelist==NULL)
-    callSbrk();
+  if (freelist==NULL) callSbrk();
 
   kp = freelist;
   freelist= freelist->k.n;
@@ -670,24 +408,8 @@ int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId)
   roAddr->regionId = regionId;     /* Put name of region in region descriptor. */
   topRegion = roAddr;
 
-  j=0;
-  for (i=roAddr->a; i<roAddr->b;) { /* Put zeroes in region page. */
-    *i = notPP;
-    i++;
-    j++;
-  }
-  if (j != ALLOCATABLE_WORDS_IN_REGION_PAGE) {
-    sprintf(errorStr, "ERROR - allocProfiling, when putting zeroes in region page, j %d and rpSize %d\n",
-	    j, ALLOCATABLE_WORDS_IN_REGION_PAGE);
-    printERROR(errorStr);
-  }
-
   /* We have to set the infinitebit. */
   roAddr = (Ro *) setInfiniteBit((int) roAddr);
-
-#if DEBUG_ALLOCATE_REGION
-  printRegionStack("allocateRegion-LEAVE");
-#endif
 
   return (int *) roAddr;
 }
@@ -702,35 +424,36 @@ int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId)
  * object descriptor. rdAddr points at the region descriptor when called.        *
  *-------------------------------------------------------------------------------*/
 #define notPrgPoint 1 
-void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size)
-{ ObjectDesc *objPtr;  
+void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size) { 
+  ObjectDesc *objPtr;  
+  ProfTabList* p;
+  int index;
 
-#if DEBUG_ALLOC_REGION_FINITE_PROFILING
-  printf("allocRegionFiniteProfiling --- ENTER   top: %d rdAddr: %d regionId: %d size: %d\n", topFiniteRegion, rdAddr, regionId, size);
-#endif
+  allocNowFin += size;                                  /* necessary for graph drawing */
+  maxAlloc = max(maxAlloc, allocNowFin+allocNowInf);    /* necessary for graph drawing */
 
-
-  callsOfAllocateRegionFin++;
-  maxNoOfInstances = max(++noOfInstances, maxNoOfInstances);
-  if (regionId > MAX_REGIONS_TO_PROFILE) {
-    printf("RegionId %d too large in allocRegionFiniteProfiling. Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Runtime.h\n", regionId, MAX_REGIONS_TO_PROFILE);
-    exit(-1);
+  if (showStat) {
+    callsOfAllocateRegionFin++;
+    maxAllocFin = max(allocNowFin, maxAllocFin);
+    allocProfNowFin += sizeObjectDesc;
+    regionDescUseProfFin += sizeFiniteRegionDesc;
+    if (allocNowFin == maxAllocFin) {
+      maxAllocProfFin = allocProfNowFin;
+      maxRegionDescUseProfFin = regionDescUseProfFin;
+    }
   }
-  if (profTabGetNoOfInstances(regionId) >= profTabGetMaxNoOfInstances(regionId))
-    profTabSetMaxNoOfInstances(regionId, profTabGetNoOfInstances(regionId) + 1);
 
-  allocNowFin += size; 
-  maxAllocFin = max(allocNowFin, maxAllocFin);
-  maxAlloc = max(maxAlloc, allocNowFin+allocNowInf);
-  allocProfNowFin += sizeObjectDesc;
-  regionDescUseProfFin += sizeFiniteRegionDesc;
-  if (allocNowFin == maxAllocFin) {
-    maxAllocProfFin = allocProfNowFin;
-    maxRegionDescUseProfFin = regionDescUseProfFin;
-  }
-  profTabSetAllocNow(regionId, profTabGetAllocNow(regionId) + size);
-  if (profTabGetAllocNow(regionId) > profTabGetMaxAlloc(regionId))
-    profTabSetMaxAlloc(regionId, profTabGetAllocNow(regionId));
+  /* Inlining of function profTabIncrAllocNow(regionId, size);
+   * this update is necessary for graph drawing */
+  index = profHashTabIndex(regionId);                             
+  for (p=profHashTab[index]; p != NULL; p=p->next)
+    if (p->regionId == regionId) goto escape;
+  p = profTabListInsertAndInitialize(profHashTab[index], regionId);
+  profHashTab[index] = p;
+escape:
+  p->allocNow += size;
+  if (p->allocNow > p->maxAlloc) p->maxAlloc = p->allocNow;
+  /* inlining end */
 
   rdAddr->p = topFiniteRegion; /* link to previous region description on stack */
   rdAddr->regionId = regionId; /* Put name on region in descriptor. */
@@ -740,9 +463,6 @@ void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId,
   objPtr->atId = notPrgPoint;
   objPtr->size = size;
 
-#if DEBUG_ALLOC_REGION_FINITE_PROFILING
-  printf("allocRegionFiniteProfiling --- LEAVE   top: %d\n", topFiniteRegion);
-#endif
   return;
 }
 
@@ -751,35 +471,22 @@ void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId,
  * topFiniteRegion has to point at the bottom address of the       *
  * finite region descriptor, which will be the new stack address.  *
  *-----------------------------------------------------------------*/
-int *deallocRegionFiniteProfiling(void)
-{ int *sp;
+int *deallocRegionFiniteProfiling(void) { 
+  int *sp;
+  int size;
+  
+  size = ((ObjectDesc *) (topFiniteRegion + 1))->size;
+  allocNowFin -= size;                                    /* necessary for graph drawing */
 
-#if DEBUG_DEALLOC_REGION_FINITE_PROFILING
-  printf("deallocRegionFiniteProfiling --- ENTER top: %d\n", topFiniteRegion);
-#endif
-
-  callsOfDeallocateRegionFin++;
-  noOfInstances--;
-  if (topFiniteRegion->regionId > MAX_REGIONS_TO_PROFILE) {
-    printf("RegionId %d too large in deallocRegionFiniteProfiling. Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Runtime.h\n", topFiniteRegion->regionId, MAX_REGIONS_TO_PROFILE);
-    exit(-1);
+  if (showStat) {
+    callsOfDeallocateRegionFin++;
+    profTabDecrAllocNow(topFiniteRegion->regionId, size);
+    allocProfNowFin -= sizeObjectDesc;
+    regionDescUseProfFin -= sizeFiniteRegionDesc;
   }
-  profTabSetNoOfInstances(topFiniteRegion->regionId, profTabGetNoOfInstances(topFiniteRegion->regionId) - 1);
-    
-  allocNowFin -= ((ObjectDesc *) (topFiniteRegion + 1))->size; 
-  profTabSetAllocNow(topFiniteRegion->regionId, profTabGetAllocNow(topFiniteRegion->regionId) 
-		     - (((ObjectDesc *) (topFiniteRegion + 1))->size));
-
-  allocProfNowFin -= sizeObjectDesc;
-  regionDescUseProfFin -= sizeFiniteRegionDesc;
 
   sp = (int *) topFiniteRegion;
-  topFiniteRegion = topFiniteRegion->p; /* pop ptr. to prev. region desc. */
-
-#if DEBUG_DEALLOC_REGION_FINITE_PROFILING
-  printf("deallocRegionFiniteProfiling --- LEAVE top: %d\n", topFiniteRegion);
-#endif
-
+  topFiniteRegion = topFiniteRegion->p;                   /* pop ptr. to prev. region desc. */
   return sp;
 }
 
@@ -799,28 +506,13 @@ int *deallocRegionFiniteProfiling(void)
  *-----------------------------------------------------------------*/
 int *allocProfiling(int rAddr,int n, int pPoint) {
   int *res;
-  int *i;
 
-#if DEBUG_ALLOC
-  printf("allocProfiling ENTER at program point %d\n", pPoint);
-#ifdef PROFILING
-  traceFreelist(pPoint);
-#endif
-#endif
-
-
-  if (pPoint >= MAX_ALLOCATION_POINTS || pPoint < 1) {
-    sprintf(errorStr, "ERROR -- allocProfiling is called with program point: %d\nwhich exceeds %d, the upper limit of program points currentely\nreserved by the profiler. To solve the problem,\nincrease the value of MAX_ALLOCATION_POINTS (in Region.h) to\nthe number of program points you need and then recompile\nthe runtime system.\n",
-	    pPoint,MAX_ALLOCATION_POINTS);
-    printERROR(errorStr);
-  }
-
+  /*
   if (n + sizeObjectDesc> ALLOCATABLE_WORDS_IN_REGION_PAGE) {
     sprintf(errorStr, "ERROR -- allocProfiling is called with request for object of size %d words(not including the size of the object descriptor) and ALLOCATABLE_WORDS_IN_REGION_PAGE is only %d\nTo solve the problem,\nincrease the value of ALLOCATABLE_WORDS_IN_REGION_PAGE (in Region.h) to\nthe number of words you need and then recompile\nthe runtime system.\n",
 	    n, ALLOCATABLE_WORDS_IN_REGION_PAGE);
     printERROR(errorStr);
-  }
-
+  } */
 
   /* allocate object descriptor and object */
   res = alloc(rAddr, n+sizeObjectDesc);
@@ -830,17 +522,6 @@ int *allocProfiling(int rAddr,int n, int pPoint) {
   /* return pointer to user data */
   res = (int *)(((ObjectDesc *)res) + 1);
 
-#if DEBUG_PROFILE_TICK 
-  {Ro *rpTmp;
-   rpTmp = (Ro *) clearStatusBits(rAddr);
-   printf("Allocates object of size %d with prgPoint %d in region %d\n",n,pPoint,rpTmp->regionId);
-   check_infinite_regions();
-  } 
-#endif
-
-#if DEBUG_ALLOC
-  printf("allocProifiling LEAVE program point %d\n", pPoint);
-#endif
   return res;
 }
 
@@ -852,38 +533,16 @@ int *allocProfiling(int rAddr,int n, int pPoint) {
  *------------------------------------------------------------------*/
 void storePrgPointProfiling(int pPoint, int *objPtr) {
 
-#if DEBUG_STORE_PRG_POINT
-  /*printf("Enter to storePrgPointProfiling\n");*/
-  if (pPoint < 2 || pPoint > MAX_ALLOCATION_POINTS) {
-    printf("We have a program point too small or too big: %d\n", pPoint);
-  }
-#endif
-
   if ( (((ObjectDesc *)objPtr)-1)->size == dummyDouble ) {
     /* We have an unaligned double in a finite region.      */
     /* The object descriptor is therefore one address lower */
     /* than usual.                                          */
    
-#if DEBUG_STORE_PRG_POINT
-    printf("We have an not aligned double with atId %d, size %d, dummyReal %d and tagDouble %d.\n",
-	   *(objPtr-3), *(objPtr-2), *(objPtr-1), *(objPtr));
-    if ((((ObjectDesc *) (((int *)objPtr)-1))-1)->atId != 1)
-      printf("Update program point %d\n", (((ObjectDesc *) (((int *)objPtr)-1))-1)->atId);
-#endif
-
     (((ObjectDesc *) (((int *)objPtr)-1))-1)->atId = pPoint;
   }
   else {
-#if DEBUG_STORE_PRG_POINT
-    if ((((ObjectDesc *)objPtr)-1)->atId != 1) 
-      printf("Update program point %d\n", (((ObjectDesc *)objPtr)-1)->atId);
-#endif
     (((ObjectDesc *)objPtr)-1)->atId = pPoint;
   }
-
-#if DEBUG_STORE_PRG_POINT
-  /*printf("Exit from storePrgPointProfiling\n");*/
-#endif
 
   return;
 }
@@ -907,11 +566,6 @@ int *updateSizeForDoublesProfiling(int size, int *doublePtr) {
     /* The object descriptor is therefore one address lower */
     /* than usual.                                          */
    
-#if DEBUG_UPDATE_SIZE_FOR_DOUBLES
-    printf("We have an not aligned double with atId %d, size %d, dummyReal %d and tagDouble %d.\n",
-	   *(doublePtr-3), *(doublePtr-2), *(doublePtr-1), *(doublePtr));
-#endif
-
     frAddr = ((FiniteRegionDesc *) (((ObjectDesc *) (((int *)doublePtr)-1))-1))-1;
   }
   else
@@ -922,13 +576,7 @@ int *updateSizeForDoublesProfiling(int size, int *doublePtr) {
   allocNowFin += size; 
   maxAllocFin = max(allocNowFin, maxAllocFin);
   maxAlloc = max(maxAlloc, allocNowFin+allocNowInf);
-  if (regionId > MAX_REGIONS_TO_PROFILE) {
-    printf("RegionId %d too large in updateSizeForDoublesProfiling. Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Runtime.h\n", regionId, MAX_REGIONS_TO_PROFILE);
-    exit(-1);
-  }
-  profTabSetAllocNow(regionId,profTabGetAllocNow(regionId) + size);
-  if (profTabGetAllocNow(regionId) > profTabGetMaxAlloc(regionId))
-    profTabSetMaxAlloc(regionId, profTabGetAllocNow(regionId));
+  profTabIncrAllocNow(regionId, size);
 
   return doublePtr;
 

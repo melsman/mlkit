@@ -28,6 +28,8 @@ TO BE FIXED BY: FAXE?
 
 WAIT
 
+Order the items in the Printing of intermediate forms menu.
+
 What should the effect of the flag `print_regions' be? I guess that if
 print_regions is disabled then pretty printing of MulExp should look
 like LambdaExp?

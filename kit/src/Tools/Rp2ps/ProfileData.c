@@ -26,7 +26,6 @@ TickList * firstTick; /* Pointer to data for the first tick. */
 TickList * lastTick;  /* Pointer to data for the last tick. */
 
 int maxRegions = 0;         /* max. number of allocated words in regions. */
-int maxInstances = 0;       /* max. number of instances.       */
 
 ProfTabList * profHashTab[profHashTabSize];  /* Hash table for profiling */
 
@@ -84,34 +83,35 @@ static unsigned int min(unsigned int a, unsigned int b) {
 /*----------------------------------------------------------------*
  * Input word data file with all collected data.                  *
  * Layout of file is as follows:                                  *
- *  maxRegion, maxInstances,                                      *
+ *  maxRegion                                                     *
  *  noOfTicks,                                                    *
  *      noOfRegions, stackUse, regionDescUse, time                *
- *        regionId, noOfInstances, used, waste, noOfObj, infinite *
- *          allocationPoint, size, numberOfInstances              *
+ *        regionId, used, waste, noOfObj, infinite                *
+ *          allocationPoint, size                                 *
  *          |                                                     *
- *	    allocationPoint, size, numberOfInstances              *
+ *	    allocationPoint, size                                 *
  *        |                                                       *
- *        regionId, noOfInstances, used, waste, noOfObj, infinite *
- *          allocationPoint, size, numberOfInstances              *
+ *        regionId, used, waste, noOfObj, infinite                *
+ *          allocationPoint, size                                 *
  *          |                                                     *
- *	    allocationPoint, size, numberOfInstances              *
+ *	    allocationPoint, size                                 *
  *      |                                                         *
- *      noOfRegions,                                              *
- *        regionId, noOfInstances, used, waste, noOfObj, infinite *
- *          allocationPoint, size, numberOfInstances              *
+ *      noOfRegions, stackUse, regionDescUse, time                *
+ *        regionId, used, waste, noOfObj, infinite                *
+ *          allocationPoint, size                                 *
  *          |                                                     *
- *	    allocationPoint, size, numberOfInstances              *
+ *	    allocationPoint, size                                 *
  *        |                                                       *
- *        regionId, noOfInstances, used, waste, noOfObj, infinite *
- *          allocationPoint, size, numberOfInstances              *
+ *        regionId, used, waste, noOfObj, infinite                *
+ *          allocationPoint, size                                 *
  *          |                                                     *
- *	    allocationPoint, size, numberOfInstances              *
+ *	    allocationPoint, size                                 *
  *  |                                                             *
  * Here we put the profiling table profTab:                       *
  *  sizeProfTab,                                                  *
  *    regionId, MaxAlloc                                          *
- *  |                                                             *
+ *    |                                                           *
+ *    regionId, MaxAlloc                                          *
  *----------------------------------------------------------------*/
 void inputProfile(void) {
   int noOfTicks, noOfRegions, noOfObjects;
@@ -125,10 +125,14 @@ void inputProfile(void) {
     exit(-1);
   }
 
-  readWord(maxRegions, logFile);
-  readWord(maxInstances, logFile); 
-
+  readWord(maxRegions, logFile);   /* not the same as the sum of max's of each region, because
+				    * regions may be large at different times. */
   readWord(noOfTicks, logFile);
+
+  if (noOfTicks == 0) {
+    printf("The profile file %s contains no profile ticks,\nso I cannot generate any PostScript file for you.\n", logFile);
+    exit(-1);
+  }
   noOfSamples = noOfTicks;
   while (noOfTicks--) {
 
@@ -152,7 +156,6 @@ void inputProfile(void) {
       /* Allocate new region. */
       newRegion = (RegionList *)malloc(sizeof(RegionList));
       readWord(newRegion->regionId, logFile);
-      readWord(newRegion->numberOfInstances, logFile);
       readWord(newRegion->used,  logFile);
       readWord(newRegion->waste, logFile);
       readWord(newRegion->noObj, logFile);
@@ -169,7 +172,6 @@ void inputProfile(void) {
 	newObj = (ObjectList *)malloc(sizeof(ObjectList));
 	readWord(newObj->atId, logFile);
 	readWord(newObj->size, logFile);
-	readWord(newObj->numberOfInstances, logFile);
 	newObj->nObj = newRegion->fObj;
 	newRegion->fObj = newObj;
       }
@@ -319,16 +321,16 @@ void PrintProfile(void) {
     printf("Starting new tick with stackUse: %5d and regionDescUse: %5d.\n", newTick->stackUse, newTick->regionDescUse);
     for (newRegion=newTick->fRegion;newRegion!=NULL;newRegion=newRegion->nRegion) {
       if (newRegion->infinite) 
-	printf("  Infinite region: %3d, numberOfInstances: %3d, used: %3d, waste: %3d, noObj: %3d, Infinite: %3d.\n",
-	       newRegion->regionId, newRegion->numberOfInstances, newRegion->used, newRegion->waste,
+	printf("  Infinite region: %3d, used: %3d, waste: %3d, noObj: %3d, Infinite: %3d.\n",
+	       newRegion->regionId, newRegion->used, newRegion->waste,
 	       newRegion->noObj,newRegion->infinite);
       else
-	printf("  Finite region: %3d, numberOfInstances: %3d, used: %3d, waste: %3d, noObj: %3d, Infinite: %3d.\n",
-	       newRegion->regionId, newRegion->numberOfInstances, newRegion->used, newRegion->waste,
+	printf("  Finite region: %3d, used: %3d, waste: %3d, noObj: %3d, Infinite: %3d.\n",
+	       newRegion->regionId, newRegion->used, newRegion->waste,
 	       newRegion->noObj,newRegion->infinite);
       for (newObj=newRegion->fObj;newObj!=NULL;newObj=newObj->nObj) {
-	printf("    Starting new object with allocation point: %3d, size: %3d and numberOfInstances: %3d.\n",
-	       newObj->atId, newObj->size, newObj->numberOfInstances);
+	printf("    Starting new object with allocation point: %3d and size: %3d.\n",
+	       newObj->atId, newObj->size);
       }
     }
   }
@@ -359,11 +361,8 @@ void PrintRegion(int region) {
 	  printf("  Finite region id:   %5d\n", newRegion->regionId);
 	printf("  Used:                 %5d\n", newRegion->used);
 	printf("  Waste:                %5d\n", newRegion->waste);
-	printf("  Instances:            %5d\n", newRegion->numberOfInstances);
 	for (newObj=newRegion->fObj;newObj!=NULL;newObj=newObj->nObj) 
-	  printf("  Object %4d with size %5d words and %5d instances. Each object %5.2f.\n", 
-                 newObj->atId, newObj->size, newObj->numberOfInstances,
-		 newObj->size/(newObj->numberOfInstances+0.0));
+	  printf("  Object %4d with size %5d words.\n", newObj->atId, newObj->size);
       }
     i++;
   }
@@ -554,70 +553,6 @@ void MakeStackProfile(void) {
 }
 
 /* Makes a region profile. */
-void MakeRegionInstanceProfile(void) {
-  int i, sampleNo, no;
-  TickList *newTick;
-  RegionList *newRegion;
-  int *sampleNoTab;
-  float sampleTime;
-  
-  char idStr[100];
-
-  GraphReset();
-
-  if ((outfp = fopen((char *) &rpiName, "w")) == NULL) {
-    printf("Can not open output file %s.\n", rpiName);
-    exit(-1);
-  }
-
-  sprintf(idStr, "%s - Region Instance profiling", name);
-  jobstring = MallocString(idStr);
-  sprintf(idStr, "%s", timeStr);
-  datestring = MallocString(idStr);
-
-  sampleNoTab = xmalloc(noOfSamples * sizeof(int));
-
-  no = sortSamples(sortOpt, sampleNoTab);
-  i = 0;
-  sampleNo = 0;
-  for (newTick=firstTick;newTick!=NULL;newTick=newTick->nTick,i++) {
-    if ((sampleNo < no) && (sampleNoTab[sampleNo] == i)) {
-      if (useTickNo) {
-	sampleTime = (float)i;
-      }
-      else {
-	sampleTime = (float)newTick->time/(float)CLOCKS_PER_SEC;
-      }
-      /*printf("sampleNo %3d SampleTime %5.2f\n", sampleNo, sampleTime);*/
-      allocNewSample(sampleNo, sampleTime);
-	  
-      for (newRegion=newTick->fRegion;newRegion!=NULL;newRegion=newRegion->nRegion) {
-	if (newRegion->infinite) 
-	  sprintf(idStr, "r%dinf", newRegion->regionId);
-	else 
-	  sprintf(idStr, "r%dfin", newRegion->regionId);
-
-	storeSampleEntry(sampleNo, sampleTime, idStr, ((float)(newRegion->numberOfInstances)));
-      }
-      sampleNo++;
-    }
-  }
-
-  if (sampleNo != nsamples)           /* These two variables have to follow each other. */
-    Disaster("sampleNo <> nsamples");
-    
-  if ((noOfSamples >= SampleMax) && (SampleMax != nsamples))         /* If we have more than SampleMax samples, */
-    Disaster("noOfSamples >= SampleMax and SampleMax <> nsamples."); /* then we keep exactly SampleMax samples. */
-
-  showMax = 1;
-  maxValue = maxInstances;
-  sprintf(maxValueStr, "Maximum number of instances: %2.0f.", maxValue);
-  yLab = MallocString("instances");
-  PutFile();
-  return;
-}
-
-/* Makes a region profile. */
 void MakeObjectProfile(int region) {
   int i, sampleNo, no;
   TickList *newTick;
@@ -627,11 +562,12 @@ void MakeObjectProfile(int region) {
   float sampleTime;
   
   char idStr[100];
+  int success = 0;
 
   GraphReset();
 
   if ((outfp = fopen((char *) &objName, "w")) == NULL) {
-    printf("Can not open output file %s.\n", objName);
+    printf("Cannot open output file %s.\n", objName);
     exit(-1);
   }
 
@@ -659,12 +595,19 @@ void MakeObjectProfile(int region) {
       for (newRegion=newTick->fRegion;newRegion!=NULL;newRegion=newRegion->nRegion) {
 	if (newRegion->regionId == region) 
 	  for (newObj=newRegion->fObj;newObj!=NULL;newObj=newObj->nObj) {
+	    success = 1;
 	    sprintf(idStr, "pp%d", newObj->atId);
 	    storeSampleEntry(sampleNo, sampleTime, idStr, ((float)(newObj->size))*4.0);
 	  }
       }
       sampleNo++;
     }
+  }
+
+  if (success == 0) {
+    printf("There is no profiling information for region r%d, so I could not \ncreate a PostScript file for you.\n",
+	   region);
+    exit(-1);
   }
 
   if (sampleNo != nsamples)           /* These two variables have to follow each other. */

@@ -76,16 +76,26 @@ struct
     | runtype _ = E.TOP_RT
   end
 
+  fun isWordRegion(rho) = 
+        case E.get_place_ty rho of
+          SOME E.WORD_RT => true
+        | _ => false
+
+  fun isTopWordRegion rho = E.eq_effect(rho,E.toplevel_region_withtype_word)
+
+  fun discard_top_wordrho places = List.all (not o isTopWordRegion) places 
+  fun discard_word_rhos places = List.all (not o isWordRegion) places 
+
   fun ann_ty ty (acc : effect list) = 
        case ty of 
          TYVAR _ => acc
        | CONSTYPE(_,mus,rhos,epss) => 
-          List.foldR ann_mu (rhos @ (epss @ acc)) mus
+          List.foldR ann_mu (discard_top_wordrho rhos @ (epss @ acc)) mus
        | RECORD mus =>
           List.foldR ann_mu acc mus
        | FUN(mus1,eps,mus2) =>
           ann_mus mus1 (eps:: ann_mus mus2 acc)
-  and ann_mu (tau,rho) acc = ann_ty tau (rho::acc)
+  and ann_mu (tau,rho) acc = ann_ty tau (if isTopWordRegion rho then acc else rho::acc)
   and ann_mus [] acc  = acc
     | ann_mus (mu::rest) acc = ann_mu mu (ann_mus rest acc)
 
@@ -95,17 +105,17 @@ struct
       let val annotations = ann_mu mu []
           val all_nodes = E.subgraph annotations
       in
-          List.all E.is_rho all_nodes
+          List.all (fn e => E.is_rho e andalso not(isTopWordRegion e)) all_nodes
       end
 
   local  (* free primary region and effect variables ("pfrv tau" etc.) *)
     fun pfrv0 ty acc =
          case ty of 
            TYVAR _ => acc
-         | CONSTYPE(_,mus,places,_) => List.foldR pfrvMu0 (places@acc)  mus
+         | CONSTYPE(_,mus,places,_) => List.foldR pfrvMu0 (discard_top_wordrho places @ acc)  mus
          | RECORD mus => List.foldR pfrvMu0 acc mus
          | FUN(mus1,_,mus2) => pfrvMus0 mus1 (pfrvMus0 mus2 acc)
-    and pfrvMu0 (tau,rho) acc = pfrv0 tau (rho::acc)
+    and pfrvMu0 (tau,rho) acc = pfrv0 tau (if isTopWordRegion rho then acc else rho::acc)
     and pfrvMus0 [] acc = acc
       | pfrvMus0 (mu::rest) acc = pfrvMu0 mu (pfrvMus0 rest acc)
 
@@ -186,11 +196,6 @@ struct
   
   (* pretty-printing of types *)
 
-  fun isWordRegion(rho) = 
-        case E.get_place_ty rho of
-          SOME E.WORD_RT => true
-        | _ => false
-
   fun leaf s = PP.LEAF s
   fun Node x = PP.NODE x
 
@@ -264,6 +269,8 @@ struct
 		      | NONE => leaf (TyName.pr_TyName tyname)
               else
                 let val mu_tree =  layout_tuple' (lay_mu_rec true) mu_list
+ 	  	    val place_list = if !Flags.print_word_regions then place_list
+				     else discard_word_rhos place_list
                     val rho_tree = layout_list' lay_node place_list
                     val effect_tree = layout_list' lay_node arreff_list
                 in case layout_tuple'' [mu_tree,rho_tree,effect_tree]
@@ -375,7 +382,7 @@ struct
       in
           (* subtract the bound rhos *)
           List.apply (fn bound_rho => E.get_visited bound_rho := true) rhos;
-          List.all   (fn free_rho => not(!(E.get_visited free_rho)) andalso not(isWordRegion free_rho)) rhos_in_put_nodes
+          List.all   (fn free_rho => not(!(E.get_visited free_rho)) andalso not(isTopWordRegion free_rho)) rhos_in_put_nodes
             footnote List.apply (fn bound_rho => E.get_visited bound_rho := false) rhos
       end
 
@@ -460,8 +467,8 @@ struct
   (* inst: sigma*il -> cone -> (Type * cone)
 
      let (tau,c') = inst(sigma,c)
-     Then tau is the result of insantiating sigma via il.
-     Only the part of the body which has to be copied is copied (when
+     Then tau is the result of instantiating sigma via il.
+     Only the part of the body that has to be copied is copied (when
      a sub-term of the body of sigma does not contain bound variables it
      is traversed, but not copied).
   *)
@@ -596,7 +603,13 @@ struct
 	end
     | update_runtypes _ = die "update_runtypes"
 
-
+  fun unify_with_toplevel_wordregion (cone, rhos) =
+    let val rhos = List.all isWordRegion rhos
+    in foldl (fn (rho, cone) => 
+	      E.unifyRho(E.toplevel_region_withtype_word, rho) cone) 
+      cone rhos
+    end
+    
   fun instClever(FORALL([],[],[],tau),il) cone = (tau, cone,[])
     | instClever(FORALL(alphas,rhos,epsilons,tau),
            il as (types,places,arreffs)) cone =
@@ -614,12 +627,16 @@ struct
                    ListPair.zip(epsilons,arreffs))
                   handle _ => die "inst: type scheme and \
                                  \instantiation list have different arity"
-        in instAux(S, tau) cone
+	  val (Ty,cone,updates) = instAux(S, tau) cone
+(*	  val cone = unify_with_toplevel_wordregion (cone, places) *)
+        in (Ty,cone,updates)
         end
 
-  fun inst sigma cone = 
-      let val (a,b,c) = instClever sigma cone
-      in (a,b)
+  fun inst sigma_il cone = 
+      let val (a,cone,c) = instClever sigma_il cone
+	  val places = map E.find (#2(#2(sigma_il)))
+	  val cone = unify_with_toplevel_wordregion (cone, places)
+      in (a,cone)
       end
 
   (* generalisation: RegEffClos *)

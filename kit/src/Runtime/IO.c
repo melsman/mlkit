@@ -100,10 +100,6 @@ StringDesc *inputStream(int rd, FILE *inStream, int n) {
   int i;
   char *ch;
 
-#if DEBUG_ALL_CALL
-  printf("inputStream - ENTER\n");
-#endif
-
   /* Inserted 24/03/1997, Niels */
   if (is_inf_and_atbot(rd))
     resetRegion(rd);
@@ -148,10 +144,6 @@ StringDesc *inputStream(int rd, FILE *inStream, int n) {
 StringDesc *lookaheadStream(int rd, FILE *inStream) {
   int ch;
 
-#if DEBUG_ALL_CALL
-  printf("lookaheadStream - ENTER\n");
-#endif
-
   /* Inserted 24/03/1997, Niels */
   if (is_inf_and_atbot(rd))
     resetRegion(rd);
@@ -168,11 +160,6 @@ StringDesc *lookaheadStream(int rd, FILE *inStream) {
  * closeStream:                                                   *
  *----------------------------------------------------------------*/
 void closeStream(FILE *stream) {
-
-#if DEBUG_ALL_CALL
-  printf("closeStream - ENTER\n");
-#endif
-
   fclose(stream);
 }
 
@@ -181,11 +168,6 @@ void closeStream(FILE *stream) {
  *----------------------------------------------------------------*/
 int endOfStream(FILE *stream) {
   int ch;
-
-#if DEBUG_ALL_CALL
-  printf("endOfStream - ENTER\n");
-#endif
-
   if ( (ch=getc(stream)) == EOF)
     return mlTRUE;
   else {
@@ -204,10 +186,6 @@ int outputStream(FILE *outStream, StringDesc *stringPtr, int exn) {
   char *ch;
   int i;
 
-#if DEBUG_ALL_CALL
-  printf("outputStream - ENTER\n");
-#endif
-
   for (fragPtr=&(stringPtr->sf);fragPtr;fragPtr=fragPtr->n)
     for (i=0,ch=(char *) (fragPtr+1);i<fragPtr->fragmentSize;i++,ch++)
       if (putc((int) *ch, outStream) == EOF) {
@@ -215,7 +193,6 @@ int outputStream(FILE *outStream, StringDesc *stringPtr, int exn) {
 	raise_exn(exn);
 	return;
       }
-  /*  fflush(outStream); */
   return 0;
 }
 
@@ -225,11 +202,6 @@ int outputStream(FILE *outStream, StringDesc *stringPtr, int exn) {
  * flushStream:                                                   *
  *----------------------------------------------------------------*/
 void flushStream(FILE *stream) {
-
-#if DEBUG_ALL_CALL
-  printf("flushStream - ENTER\n");
-#endif
-
   fflush(stream); /* What about error. */
 }
 
@@ -687,10 +659,6 @@ StringDesc *inputStreamProfiling(int rd, FILE *inStream, int n, int pPoint) {
   int i;
   char *ch;
 
-#if DEBUG_ALL_CALL
-  printf("inputStream - ENTER\n");
-#endif
-
   /* Inserted 24/03/1997, Niels */
   if (is_inf_and_atbot(rd))
     resetRegion(rd);
@@ -733,10 +701,6 @@ StringDesc *inputStreamProfiling(int rd, FILE *inStream, int n, int pPoint) {
  *----------------------------------------------------------------*/
 StringDesc *lookaheadStreamProfiling(int rd, FILE *inStream, int pPoint) {
   int ch;
-
-#if DEBUG_ALL_CALL
-  printf("lookaheadStream - ENTER\n");
-#endif
 
   /* Inserted 24/03/1997, Niels */
   if (is_inf_and_atbot(rd))

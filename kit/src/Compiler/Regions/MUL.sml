@@ -1,4 +1,3 @@
-(*$MUL: EFFECT *)
 
 (* contains multiplicities, multiplicity effects, 
    effect environments, multiplicity substitutions, etc*)

@@ -24,11 +24,6 @@ unsigned int max(unsigned int a, unsigned int b) {
 
 int divInt(int x, int y, int exn)
 {
-
-#if DEBUG_ALL_CALL
-  printf("divInt - ENTER\n");
-#endif
-
   if (y == 1) { 
     raise_exn(exn);
     return;
@@ -45,11 +40,6 @@ int divInt(int x, int y, int exn)
 
 int modInt(int xML, int yML, int exn)
 {
-
-#if DEBUG_ALL_CALL
-  printf("modIntNew - ENTER, (xML=%d, yML=%d)\n", xML, yML);
-#endif
-
   if (yML == 1) {
     raise_exn(exn);
     return;
@@ -59,18 +49,12 @@ int modInt(int xML, int yML, int exn)
       return ((xML-1)%(yML-1))+1;
     else
       return ((xML-1)%(yML-1))+yML;
-
 }
 
 #else /* Don't tag integers */
 
 int divInt(int x, int y, int exn)
 {
-
-#if DEBUG_ALL_CALL
-  printf("divInt - untagged - ENTER\n");
-#endif
-
   if (y == 0) {
     raise_exn(exn);
     return;
@@ -86,11 +70,6 @@ int divInt(int x, int y, int exn)
 
 int modInt(int x, int y, int exn)
 {
-
-#if DEBUG_ALL_CALL
-  printf("modInt - untagged - ENTER\n");
-#endif
-
   if (y == 0) {
     raise_exn(exn);
     return;
@@ -103,21 +82,11 @@ int modInt(int x, int y, int exn)
 
 int quotInt(int x, int y)
 {
-
-#if DEBUG_ALL_CALL
-  printf("quotInt - untagged - ENTER\n");
-#endif
-
   return x / y;
 }
 
 int remInt(int x, int y)
 {
-
-#if DEBUG_ALL_CALL
-  printf("remInt - untagged - ENTER\n");
-#endif
-
   return x % y;
 }
 
@@ -126,19 +95,8 @@ int remInt(int x, int y)
 
 int realInt(int d, int x)
 {
-/*  printf("Address of boxed real: %d, address mod 8 = %d\n", d, d % 8); */
-
-#if DEBUG_ALL_CALL
-  printf("realInt - ENTER\n");
-#endif
-
   get_d(d) = (double) (convertIntToC(x));
   set_dtag(d);
-
-#if DEBUG_ALL_CALL
-  printf("realInt - LEAVE\n");
-#endif
-
   return d;
 }
 
@@ -391,8 +349,7 @@ static void mkSMLMinus(char * s)
 }
 
 
-StringDesc* stringOfFloat(int rAddr, int arg)    /* ML */
-{
+StringDesc* stringOfFloat(int rAddr, int arg) {   /* ML */
   StringDesc* res;
   char result_buffer[64];
   unsigned int sz;
@@ -413,12 +370,28 @@ StringDesc* stringOfFloat(int rAddr, int arg)    /* ML */
   return res;
 }
 
-StringDesc* stringOfFloatProf(int rAddr, int arg, int pPoint)    /* ML */
-{ 
-  printf("stringOfFlatProf not implemented\n");
-  exit(-1);
-}
+#ifdef PROFILING
+StringDesc* stringOfFloatProf(int rAddr, int arg, int pPoint) {   /* ML */
+  StringDesc* res;
+  char result_buffer[64];
+  unsigned int sz;
+  unsigned int i;
 
+  sprintf(result_buffer, "%.12g", get_d(arg));
+  mkSMLMinus(result_buffer);
+  if( countChar('.', result_buffer) == 0 &&
+      countChar('E', result_buffer) == 0 )
+    strcat(result_buffer, ".0");
+
+  sz = strlen(result_buffer);
+  res = allocStringProfiling(rAddr, sz, pPoint);
+
+  for (i=0; i < sz; i++)
+    updateString(res, i, (int)(result_buffer[i]));
+    
+  return res;
+}
+#endif /* PROFILING */
 
 StringDesc* generalStringOfFloat(int rAddr, StringDesc *str, int f)
 {
@@ -448,8 +421,34 @@ StringDesc* generalStringOfFloat(int rAddr, StringDesc *str, int f)
   return res;
 }
 
+#ifdef PROFILING
 StringDesc* generalStringOfFloatProf(int rAddr, StringDesc *str, int f, int pPoint)
 {
-  printf("generalStringOfFloatProf not implemented.\n");
-  exit(-1);
+  StringDesc* res;
+  char result_buffer[512];
+  unsigned int sz;
+  unsigned int i;
+
+  /* Unfortunately there seems to be no way to ensure that this does not
+   * crash by overflowing the result_buffer (e.g. when specifying a huge 
+   * number of decimal digits in the fixed-point format): 
+   */
+
+  convertString(str);   /* convert str to a C string and put in cString. */
+
+  sprintf(result_buffer, cString, get_d(f));
+
+  mkSMLMinus(result_buffer);
+
+  sz = strlen(result_buffer);
+
+  res = allocStringProfiling(rAddr, sz, pPoint);
+
+  for (i=0; i < sz; i++)
+    updateString(res, i, (int)(result_buffer[i]));
+    
+  return res;
 }
+
+#endif /*PROFILING*/
+

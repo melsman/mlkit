@@ -1,4 +1,4 @@
-(*$RTYPE: *)
+
 signature RTYPE =
 sig
   type cone and LambdaType  and effect  and arroweffect and tyname and place and runType and tyvar 
@@ -18,7 +18,8 @@ sig
   val stringType: Type
   val unitType: Type
 
-  (* ann_mu(mus)acc is a list of all the places and arrow effects that occur in mus consed onto acc*)
+  (* ann_mu(mus)acc is a list of all the places and arrow effects that occur 
+   * in mus consed onto acc; word regions are not included in the result. *)
   val ann_mus: (Type * place)list -> effect list -> effect list
   val runtype: Type -> runType
 
@@ -39,12 +40,13 @@ sig
   val un_il: il -> Type list * place list * effect list 
   val ann_sigma: sigma -> effect list -> effect list         (* ann_sigma(sigma)acc is a list of all the 
 							      * places and arrow effects that occur in 
-							      * type of sigma, consed onto acc. *)
+							      * type of sigma, consed onto acc; word regions
+							      * are not included in the result. *)
 
   val free_puts: sigma -> effect list
   val frv_mu : Type * place -> place list
-  val frv_sigma: sigma -> place list   (* free region variables of sigma *)
-  val ferv_sigma: sigma -> effect list  (* free effect and region variables of sigma *)
+  val frv_sigma: sigma -> place list   (* free region variables of sigma; word regions not included. *)
+  val ferv_sigma: sigma -> effect list  (* free effect and region variables of sigma; word regions not included. *)
   val inst: sigma * il -> cone -> Type * cone
   type delta_phi
   val instClever : sigma * il -> cone -> Type * cone * (effect * delta_phi)list

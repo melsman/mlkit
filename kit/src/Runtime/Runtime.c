@@ -56,10 +56,6 @@ int equalPoly(int x, int y)
 {
   int i;
 
-#if DEBUG_EQUAL_POLY
-  printf("Entering function equal_poly.\n");
-#endif
-
 L0:
   /* if x and y are equal then return true (unboxed or boxed) */
   if (x == y) return mlTRUE;
@@ -67,9 +63,6 @@ L0:
   /* x and y are unboxed if the first bit is set... */
   if (x & 1) {
     if (y & 1) {
-      #if DEBUG_EQUAL_POLY
-      printf("Different unboxed values.\n");
-      #endif
       return mlFALSE;
     } else die("equal_polyF - unboxed vs. boxed...");
   } else {
@@ -78,55 +71,34 @@ L0:
     /* comparing two boxed values */
     /* if tags are distinct then return mlFALSE */
     if (valTag(x) != valTag(y)) {
-      #if DEBUG_EQUAL_POLY
-      printf("Different tags.\n");
-      #endif
       return mlFALSE;
     }
 
     /* now one knows that the tags are equal */
     if (valTagKind(x) == valueTagCon0) {
-      #if DEBUG_EQUAL_POLY
-      printf("Same nullary constructor.\n");
-      #endif
       return mlTRUE;
     }
     if (valTagKind(x) == valueTagCon1) {
-      #if DEBUG_EQUAL_POLY
-      printf("Compare constructor argument of unary constructor.\n");
-      #endif
       x = *(((int *)x)+1);
       y = *(((int *)y)+1);
       goto L0;
     }
     if (valTagKind(x) == valueTagReal) {
-      #if DEBUG_EQUAL_POLY
-      printf("Compare real values.\n");
-      #endif
       if (get_d(x) == get_d(y))
 	return mlTRUE;
       else return mlFALSE;
     }
     if (valTagKind(x) == valueTagString) {
-      #if DEBUG_EQUAL_POLY
-      printf("Compare strings.\n");
-      #endif
       return equalString((StringDesc *) x, (StringDesc *) y);
     }
     if (valTagKind(x) == valueTagRecord) {
       for (i = 1; i <= size_record(x); i++) {
-        #if DEBUG_EQUAL_POLY
-	printf("Compare %d'th. component of record.\n", i);
-        #endif	
 	if (equalPoly(*(((int *)x)+i), *(((int *)y)+i)) == mlFALSE)
 	  return mlFALSE;
       }
       return mlTRUE;
     }
     if (valTagKind(x) == valueTagRef) {
-      #if DEBUG_EQUAL_POLY
-      printf("Compare refs.\n");
-      #endif
       if ((((int *)x)+1) == (((int *)y)+1)) return mlTRUE;
       else return mlFALSE;
     }

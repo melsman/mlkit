@@ -1,6 +1,3 @@
-(*$Mul: MUL EFFECT RTYPE LAMBDA_EXP MONO_FINMAP CRASH FLAGS
-        PRETTYPRINT LVARS TYNAME LIST_SORT Heap HEAP REGION_STAT_ENV
-        QUASI_ENV *)
 
 functor Mul(
   structure Lam: LAMBDA_EXP
@@ -40,8 +37,11 @@ struct
   structure GlobalEffVarEnv = QM_EffVarEnv.Env
 
   (* auxiliaries *)
-  fun say s = (TextIO.output(TextIO.stdOut, s^"\n"); TextIO.output(!Flags.log, s^ "\n"))
-  fun say' s = (TextIO.output(TextIO.stdOut, s); TextIO.output(!Flags.log, s))
+(*  fun say s = (TextIO.output(TextIO.stdOut, s^"\n"); TextIO.output(!Flags.log, s^ "\n"))
+  fun say' s = (TextIO.output(TextIO.stdOut, s); TextIO.output(!Flags.log, s)) 
+*)
+  fun say s = print (s^"\n")
+  fun say' s = print s
   fun mes s = TextIO.output(!Flags.log, s)
   fun outtree t = PP.outputTree(say', t, !Flags.colwidth)
 
@@ -679,11 +679,29 @@ struct
   val empty_psi = []
   val empty_efenv = LvarMap.empty
 
-  fun put place = [(Eff.mkPut place, NUM 1)]
-  fun putInf place = [(Eff.mkPut place, INF)]
-  fun putzero place = [(Eff.mkPut place, NUM 0)]
-  fun get place = [(Eff.mkGet place, NUM 1)]
-  fun getInf place = [(Eff.mkGet place, INF)]
+  local
+
+      (* To avoid multiplicity effects on regions with runtime type
+       * WORD_RT, the empty multiplicity effect is returned for calls
+       * to put, putInf, putzero, get, and getInf in the case that the
+       * argument is a word region (i.e., the word region
+       * r2). Instead, one could modify MulExp and the initial
+       * environment such that these functions are called only with
+       * arguments that represents non-word regions. ME 1998-09-03
+       *)
+
+    fun word_rho place =
+      case Eff.get_place_ty place
+	of SOME Eff.WORD_RT => true
+	 | _ => false
+  in
+    fun put place = if word_rho place then [] else [(Eff.mkPut place, NUM 1)]
+    fun putInf place = if word_rho place then [] else [(Eff.mkPut place, INF)]
+    fun putzero place = if word_rho place then [] else [(Eff.mkPut place, NUM 0)]
+    fun get place = if word_rho place then [] else [(Eff.mkGet place, NUM 1)]
+    fun getInf place = if word_rho place then [] else [(Eff.mkGet place, INF)]
+  end
+
   fun efvar eps = [(eps, NUM 1)]
   fun makearef(eps,psi)= (eps,psi)
   fun makesubst(eps, mularef):efsubst = [(eps, mularef)] 
@@ -1147,8 +1165,10 @@ old*)
              val (_, B) = Eff.pop B
              val rhos = List.all (fn node => case Eff.level_of(Eff.find node) of
                                       SOME l => l> lev0 | NONE => false) (ann2@ann1)
+	     fun sum_psis' [] = []
+	       | sum_psis' l = sum_psis l
          in 
-             (([eps], rhos, [(eps, sum_psis((*map get ann1 @*) map put ann2))]:mularefset), Eff.toplevel_region_withtype_top)
+             (([eps], rhos, [(eps, sum_psis'((*map get ann1 @*) map put ann2))]:mularefset), Eff.toplevel_region_withtype_top)
          end
 
      fun cl(taus,tau) = exoClos(B0, taus, [tau])
