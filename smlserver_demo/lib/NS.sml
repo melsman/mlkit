@@ -39,6 +39,8 @@ signature NS = sig
   val scheduleScript : string -> int -> unit
   val scheduleDaily  : string -> {hour:int, minute:int} 
                        -> unit
+ val scheduleWeekly  : string -> {day:int, hour:int, minute:int}
+                       -> unit
 
   (* sub-structures *)
   structure Set      : NS_SET

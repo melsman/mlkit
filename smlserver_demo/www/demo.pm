@@ -1,26 +1,32 @@
 import ../lib/lib.pm
 in
   local
-       ../lib/NsCacheV2.sml
        ../demo_lib/Page.sml
        ../demo_lib/FormVar.sml
        ../demo_lib/Auth.sml
        ../demo_lib/RatingUtil.sml
   in 
     [
+     (* SMLserver System Files *)
+     ../sys/init.sml
+     ../sys/trap.sml
+
+     demo/log_time.sml
+
      demo/guest.sml
      demo/guest_add.sml
-     demo/exchange.sml
+     demo/exchange.sml 
      demo/regexp.sml
+
      demo/cache.sml
      demo/cache_add.sml
      demo/cache_lookup.sml
-     demo/cache_v2.sml
-     demo/cache_add_v2.sml
-     demo/cache_lookup_v2.sml
-     demo/cache_fib_v2.sml
-     demo/cache_add_list_v2.sml
-     demo/cache_lookup_list_v2.sml
+     demo/cache_fib.sml
+     demo/cache_add_list.sml
+     demo/cache_lookup_list.sml
+     demo/cache_add_triple.sml
+     demo/cache_lookup_triple.sml
+
      demo/cookie.sml
      demo/cookie_set.sml
      demo/cookie_delete.sml

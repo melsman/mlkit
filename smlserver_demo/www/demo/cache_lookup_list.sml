@@ -5,14 +5,14 @@ val cache =
   let
     val k =
       case kind of
-	"WhileUsed" => NsCacheV2.WhileUsed 20
-       | "TimeOut" => NsCacheV2.TimeOut 20
-       | "Size" => NsCacheV2.Size 100
+	"WhileUsed" => Ns.Cache.WhileUsed 20
+       | "TimeOut" => Ns.Cache.TimeOut 20
+       | "Size" => Ns.Cache.Size 100
   in
-    NsCacheV2.get ("userlist",
-		   k,
-		   NsCacheV2.String, 
-		   NsCacheV2.List NsCacheV2.String)
+    Ns.Cache.get (Ns.Cache.String, 
+		  Ns.Cache.List Ns.Cache.String,
+		  "userlist",
+		  k)
   end
 
 fun pp_kind kind =
@@ -21,19 +21,19 @@ fun pp_kind kind =
   | _ => `<b>^kind</b>. Entries live in the cache in
     approximately 20 seconds.<p>`
 
-fun returnPage s = Page.return "Caching Demonstration V2"  
+fun returnPage s = Page.return "Caching Demonstration"  
   (`^s <p>
 
   Using cache kind: ` ^^ (pp_kind kind) ^^ `<p>
  
-  Go back to <a href=cache_v2.sml?kind=^kind>Cache Demo Home Page</a>.`)
+  Go back to <a href=cache.sml?kind=^kind>Cache Demo Home Page</a>.`)
 
 val _ = (* new_p is true if new value added *)
   case Ns.Conn.formvar "email"
-      of NONE => Ns.returnRedirect "cache_v2.sml"
+      of NONE => Ns.returnRedirect "cache.sml"
        | SOME email => 
 	returnPage
-	(case NsCacheV2.lookup cache email
+	(case Ns.Cache.lookup cache email
 	   of SOME [lastname,firstnames] => "Name for " ^ email ^ 
 	     " is: (" ^ firstnames ^ "," ^ lastname ^ ")"
 	 | SOME _ => "Mega error in the internal cache representation!!!"

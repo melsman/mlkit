@@ -181,7 +181,7 @@ structure Ns :> NS =
 	end
       end
 
-    structure Cache =
+    structure StringCache :> NS_STRING_CACHE =
       struct
 	type cache = int
 	fun createTm(n : string, t: int) : cache =
@@ -204,7 +204,11 @@ structure Ns :> NS =
 	fun flush(c:cache) : unit =
 	  prim("@Ns_CacheFlush", c)
 	fun set(c:cache, k:string, v:string) : bool =
-	  let val res : int = prim("nssml_CacheSet", (c,k,v))
+	  let val _ = log(Notice,"cache: " ^ Int.toString c)
+val _ = log(Notice,"k: " ^ k)
+val _ = log(Notice,"v: " ^ v)
+ val res : int = prim("nssml_CacheSet", (c,k,v))
+val _ = log(Notice,"after res: " ^ Int.toString res)
 	  in res = 1
 	  end
 	fun get(c:cache, k:string) : string option =
@@ -245,6 +249,261 @@ structure Ns :> NS =
 	      cache_fn arg set' get'
 	    end
 	end
+      end
+
+    structure Cache :> NS_CACHE =
+      struct
+	(* This module uses the basic cache functionalities
+   	   implemented in NS_STRING_CACHE *)
+	datatype kind =
+	  WhileUsed of int
+	| TimeOut of int
+	| Size of int
+
+	type name = string
+
+	type 'a Type = {name: string,
+			to_string: 'a -> string,
+			from_string: string -> 'a}
+
+	type ('a,'b) cache = {name: string,
+			      kind: kind,
+			      domType: 'a Type,
+			      rangeType: 'b Type,
+			      cache: StringCache.cache}
+
+	(* Cache info *)
+	fun pp_kind kind =
+	  case kind of
+	    WhileUsed t => "WhileUsed(" ^ (Int.toString t) ^ ")"
+	  | TimeOut t => "TimeOut(" ^ (Int.toString t) ^ ")"
+	  | Size n => "Size(" ^ (Int.toString n) ^ ")"
+
+	fun pp_type (t: 'a Type) = #name t
+	fun pp_cache (c: ('a,'b)cache) = 
+	  "[name:" ^ (#name c) ^ ",kind:" ^ (pp_kind(#kind c)) ^ 
+	  ",domType: " ^ (pp_type (#domType c)) ^ 
+	  ",rangeType: " ^ (pp_type (#rangeType c)) ^ "]"
+	  
+	fun get (domType:'a Type,rangeType: 'b Type,name,kind) =
+	  let
+	    fun pp_kind kind =
+	      case kind of
+		WhileUsed t => "WhileUsed"
+	      | TimeOut t => "TimeOut"
+	      | Size n => "Size"
+	    val c_name = name ^ (pp_kind kind) ^ #name(domType) ^ #name(rangeType)
+	    val cache = 
+	      case kind of
+		Size n => StringCache.findSz(c_name,n)
+	      | WhileUsed t => StringCache.findTm(c_name,t)
+	      | TimeOut t => StringCache.findTm(c_name,t)
+val _ = log(Notice,"get.cache addr: " ^ (Int.toString cache))
+
+	  in
+	    {name=c_name,
+	     kind=kind,
+	     domType=domType,
+	     rangeType=rangeType,
+	     cache=cache}
+	  end
+
+	local
+	  open Time
+	  fun getWhileUsed (c: ('a,'b) cache) k =
+	    StringCache.get(#cache c,#to_string(#domType c) k)
+	  fun getTimeOut (c: ('a,'b) cache) k t =
+	    case StringCache.get(#cache c,#to_string(#domType c) k) of
+	      NONE => NONE
+	    | SOME t0_v => 
+		(case scan Substring.getc (Substring.all t0_v)
+		   of SOME (t0,s) => 
+		     (case Substring.getc s
+			of SOME (#":",v) => 
+			  if now() > t0 + (fromSeconds t)
+			    then NONE 
+			  else SOME (Substring.string v)
+		      | _ => NONE)
+		 | NONE => NONE)
+	in
+	  fun lookup (c:('a,'b) cache) (k: 'a) =
+	    let
+	      val v = 
+		case #kind c of
+		  Size n => StringCache.get(#cache c,#to_string(#domType c) k)
+		| WhileUsed t => getWhileUsed c k 
+		| TimeOut t => getTimeOut c k t
+	    in
+	      case v of
+		NONE => NONE
+	      | SOME s => SOME ((#from_string (#rangeType c)) s)
+	    end
+	end
+
+	fun insert (c: ('a,'b) cache, k: 'a, v: 'b) =
+	  case #kind c of
+	    Size n => StringCache.set(#cache c,
+				      #to_string (#domType c) k,
+				      #to_string (#rangeType c) v)
+	  | WhileUsed t => StringCache.set(#cache c,
+					   #to_string (#domType c) k,
+					   #to_string (#rangeType c) v)
+	  | TimeOut t => StringCache.set(#cache c,
+					 #to_string(#domType c) k,
+					 Time.toString (Time.now()) ^ ":" ^ ((#to_string (#rangeType c)) v))
+
+	fun flush (c: ('a,'b) cache) = StringCache.flush (#cache c)
+	  
+	fun memoize (c: ('a,'b) cache) (f:('a -> 'b)) =
+	  (fn k =>
+	   (case lookup c k of 
+	      NONE => let val v = f k in (insert (c,k,v);v) end 
+	    | SOME v => v))
+
+	fun Pair (t1 : 'a Type) (t2: 'b Type) =
+	  let
+	    val name = "(" ^ (#name t1) ^ "," ^ (#name t2) ^ ")"
+	    fun to_string (a,b) = 
+	      let
+		val a_s = (#to_string t1) a
+		val a_sz = Int.toString (String.size a_s)
+		val b_s = (#to_string t2) b
+	      in
+		a_sz ^ ":" ^ a_s ^ b_s
+	      end
+	    fun from_string s =
+	      let
+		val s' = Substring.all s
+		val (a_sz,rest) = 
+		  Option.valOf (Int.scan StringCvt.DEC Substring.getc s')
+		val rest = #2(Option.valOf (Substring.getc rest)) (* skip ":" *)
+		val (a_s,b_s) = (Substring.slice(rest,0,SOME a_sz),Substring.slice(rest,a_sz,NONE))
+		val a = (#from_string t1) (Substring.string a_s)
+		val b = (#from_string t2) (Substring.string b_s)
+	      in
+		(a,b)
+	      end
+	  in
+	    {name=name,
+	     to_string=to_string,
+	     from_string=from_string}
+	  end
+
+	fun Option (t : 'a Type) =
+	  let
+	    val name = "Opt(" ^ (#name t) ^ ")"
+	    fun to_string a = 
+	      case a of
+		NONE => "0:N()"
+	      | SOME v => 
+		  let
+		    val v_s = (#to_string t) v
+		    val v_sz = Int.toString (String.size v_s)
+		  in
+		    v_sz ^ ":S(" ^ v_s ^ ")"
+		  end
+	    fun from_string s =
+	      let
+		val s' = Substring.all s
+		val (v_sz,rest) = 
+		  Option.valOf (Int.scan StringCvt.DEC Substring.getc s')
+		val rest = #2(Option.valOf (Substring.getc rest)) (* skip ":" *)
+		val (N_S,rest) = Option.valOf (Substring.getc rest) (* read N og S *)
+		val rest = #2(Option.valOf (Substring.getc rest)) (* skip "(" *)
+	      in
+		if N_S = #"S" then
+		  SOME ((#from_string t) (Substring.string (Substring.slice(rest,0,SOME v_sz))))
+		else
+		  NONE
+	      end
+	  in
+	    {name=name,
+	     to_string=to_string,
+	     from_string=from_string}
+	  end
+
+	fun List (t : 'a Type ) =
+	  let
+	    val name = "List(" ^ (#name t) ^ ")"
+	    (* Format: [x1_sz:x1...xN_sz:xN] *)
+	    fun to_string xs = 
+	      let
+		fun to_string_x x =
+		  let
+		    val v_x = (#to_string t) x
+		  in
+		    Int.toString (String.size v_x) ^ ":" ^ v_x
+		  end
+		val xs' = List.map to_string_x xs
+	      in
+		"[" ^ (String.concat xs') ^ "]"
+	      end
+	    fun from_string s =
+	      let
+		fun read_x (rest,acc) = 
+		  if Substring.size rest = 1 (* "]" *) then
+		    List.rev acc
+		  else
+		    let
+		      val (x_sz,rest) = Option.valOf (Int.scan StringCvt.DEC Substring.getc rest)
+		      val rest = #2(Option.valOf (Substring.getc rest)) (* skip ":" *)
+		      val (x_s,rest) = (Substring.slice(rest,0,SOME x_sz),Substring.slice(rest,x_sz,NONE))
+		    in
+		      read_x (rest,((#from_string t) (Substring.string x_s)) :: acc)
+		    end
+		val s' = Substring.all s
+		val rest = #2(Option.valOf (Substring.getc s')) (* skip "[" *)
+	      in
+		read_x (rest,[])
+	      end
+	  in
+	    {name=name,
+	     to_string=to_string,
+	     from_string=from_string}
+	  end
+
+	fun Triple (t1 : 'a Type) (t2: 'b Type) (t3: 'c Type) =
+	  let
+	    val name = "(" ^ (#name t1) ^ "," ^ (#name t2) ^ "," ^ (#name t3) ^ ")"
+	    fun to_string (a,b,c) = 
+	      let
+		val a_s = (#to_string t1) a
+		val a_sz = Int.toString (String.size a_s)
+		val b_s = (#to_string t2) b
+		val b_sz = Int.toString (String.size b_s)
+		val c_s = (#to_string t3) c
+	      in
+		a_sz ^ ":" ^ a_s ^ b_sz ^ ":" ^ b_s ^ c_s
+	      end
+	    fun from_string s =
+	      let
+		val s' = Substring.all s
+		val (a_sz,rest) = 
+		  Option.valOf (Int.scan StringCvt.DEC Substring.getc s')
+		val rest = #2(Option.valOf (Substring.getc rest)) (* skip ":" *)
+		val (a_s,rest) = (Substring.slice(rest,0,SOME a_sz),Substring.slice(rest,a_sz,NONE))
+		val (b_sz,rest) = 
+		  Option.valOf (Int.scan StringCvt.DEC Substring.getc rest)
+		val rest = #2(Option.valOf (Substring.getc rest)) (* skip ":" *)		  
+		val (b_s,c_s) = (Substring.slice(rest,0,SOME b_sz),Substring.slice(rest,b_sz,NONE))
+		val a = (#from_string t1) (Substring.string a_s)
+		val b = (#from_string t2) (Substring.string b_s)
+		val c = (#from_string t3) (Substring.string c_s)
+	      in
+		(a,b,c)
+	      end
+	  in
+	    {name=name,
+	     to_string=to_string,
+	     from_string=from_string}
+	  end
+
+	(* Pre defined cache types *)
+	val Int    = {name="Int",to_string=Int.toString,from_string=Option.valOf o Int.fromString}
+	val Real   = {name="Real",to_string=Real.toString,from_string=Option.valOf o Real.fromString}
+	val Bool   = {name="Bool",to_string=Bool.toString,from_string=Option.valOf o Bool.fromString}
+	val Char   = {name="Char",to_string=Char.toString,from_string=Option.valOf o Char.fromString}
+	val String = {name="String",to_string=(fn s => s),from_string=(fn s => s)}
       end
 
     structure Info : NS_INFO = NsInfo(struct
@@ -386,6 +645,6 @@ structure Ns :> NS =
 	    end
 	  handle _ => raise Fail "Db.seqCurrval.nextval database error (MySQL)"	
 	end
-      end
+      end 
   end
 

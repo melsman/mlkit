@@ -1,4 +1,4 @@
-structure C = Cache
+structure C = Ns.Cache
 
 val form = 
   `<form method=post action=exchange.sml>
@@ -6,7 +6,7 @@ val form =
      <input type=submit value="Value in Danish Kroner">
    </form>`
    
-val c = C.get ("currency",C.TimeOut 300,C.String,C.Option C.Real)
+val cache = C.get (C.String,C.Option C.Real,"currency",C.TimeOut 300)
 
 fun fetchRate url =
   case Ns.fetchUrl url of 
@@ -19,7 +19,7 @@ fun fetchRate url =
 	  | _ => NONE
   end
 
-val fetch = C.memoize c fetchRate
+val fetch = C.memoize cache fetchRate
 
 val url = "http://se.finance.yahoo.com/m5?s=USD&t=DKK"
 
