@@ -74,6 +74,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	fun pop () = level_ref := !level_ref - 1
 	fun current () = !level_ref
       end (*local*)
+      fun pr i = if i = GENERIC then "generic" 
+		 else if i = NONGENERIC then "nongeneric"
+		 else Int.string i
     end (*Level*)
 
 
@@ -885,7 +888,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      
 
 	local
+
 	fun generalise0 {ov, imp, tau} = 
+
 	  (*generalise overloaded type variables  iff  ov and level > current_level.
 	   generalise imperative type variables  iff imp and level > current_level.
 	   Do not call generalise0 directly; use generalise1 instead, as it

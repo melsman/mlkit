@@ -41,6 +41,7 @@ signature STATOBJECT =
 	val pop                     : unit -> unit
 	val GENERIC                 : level
 	val current                 : unit -> level
+        val pr                      : level -> string
       end
 
 
