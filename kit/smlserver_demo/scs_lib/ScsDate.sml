@@ -6,12 +6,14 @@ signature SCS_DATE =
     type mth = int
     type year = int
     type hour = int
+    type min = int
     type sec = int
 
     val mthToName : mth -> Date.month
     val mthFromName : Date.month -> mth
 
-    val genDate : day * mth * year -> Date.date
+    val genDate      : day * mth * year -> Date.date
+    val genTimestamp : day * mth * year * hour * min * sec -> Date.date
 
     val now_local : unit -> Date.date
     val now_univ  : unit -> Date.date
@@ -21,6 +23,7 @@ signature SCS_DATE =
     val preceedingLeaps : year -> int
     val daysInMonth : year -> mth -> int
     val dateOk : day * mth * year -> bool
+    val timeOk : hour * min * sec -> bool
     val preceedingDays : day * mth * year -> int
     val currDateInPeriod : Date.date * Date.date -> bool
     val half_year        : Date.date -> Date.date * Date.date
@@ -32,9 +35,13 @@ signature SCS_DATE =
     val ppDk  : Date.date -> string
     val ppLongDk  : Date.date -> string
     val ppLongEng : Date.date -> string
+    val ppDay : Date.date -> string
+    val ppMth : Date.date -> string
+    val ppHourMin : Date.date -> string
     val pp    : Date.date -> string
     val ppDb  : Date.date option -> string
     val ppTimestamp : Date.date -> string
+    val ppTimestampDb : Date.date option -> string
   end
 
 structure ScsDate :> SCS_DATE =
@@ -44,6 +51,7 @@ structure ScsDate :> SCS_DATE =
     type mth = int
     type year = int
     type hour = int
+    type min = int
     type sec = int
 
     fun mthToName mth =
@@ -82,8 +90,15 @@ structure ScsDate :> SCS_DATE =
 
     fun genDate (d,m,y) =
       Date.date{year=y,month=mthToName m,day=d,hour=0,minute=0,second=0,offset=NONE}
-      handle Date.Date => raise ScsDate ("Wrong date: " ^ (Int.toString y) ^ "-" ^ (Int.toString m) ^ "-" ^ (Int.toString d))
+      handle Date.Date => raise ScsDate ("Wrong date: " ^ (Int.toString y) ^ "-" ^ 
+					 (Int.toString m) ^ "-" ^ (Int.toString d))
 
+    fun genTimestamp (day,mth,year,hour,minute,sec) =
+      Date.date{year=year,month=mthToName mth,day=day,hour=hour,minute=minute,second=sec,offset=NONE}
+      handle Date.Date => 
+	raise ScsDate ("Wrong timestamp: " ^ (Int.toString year) ^ "-" ^ (Int.toString mth) ^ "-" ^ (Int.toString day)
+		       ^ (Int.toString hour) ^ ":" ^ (Int.toString minute) ^ "." ^ (Int.toString sec))
+	  
     fun leap y = (Int.mod(y,4) = 0 andalso Int.mod(y,100) <> 0) orelse Int.mod(y,400) = 0
 
     (* Return the number of leap years since year 0 and before year y *)
@@ -154,6 +169,45 @@ structure ScsDate :> SCS_DATE =
       | Date.Nov => "November"
       | Date.Dec => "December"
 
+    fun ppMth d =
+      case ScsLogin.user_lang of
+	ScsLang.da => ppMthDk d
+      | ScsLang.en => ppMthEng d
+
+    fun ppDayDk d =
+      case Date.weekDay d of
+	Date.Mon => "Mandag"
+      | Date.Tue => "Tirsdag"
+      | Date.Wed => "Onsdag"
+      | Date.Thu => "Torsdag"
+      | Date.Fri => "Fredag"
+      | Date.Sat => "Lørdag"
+      | Date.Sun => "Søndag"
+
+    fun ppDayEng d =
+      case Date.weekDay d of
+	Date.Mon => "Monday"
+      | Date.Tue => "Tuesday"
+      | Date.Wed => "Wednesday"
+      | Date.Thu => "Thursday"
+      | Date.Fri => "Friday"
+      | Date.Sat => "Saturday"
+      | Date.Sun => "Sunday"
+
+    fun ppDay d = 
+      case ScsLogin.user_lang of
+	ScsLang.da => ppDayDk d
+      | ScsLang.en => ppDayEng d
+
+    fun ppHourMin d =
+      let
+	fun pad2 i = (if i < 10 then "0" else "") ^ (Int.toString i)
+      in
+	case ScsLogin.user_lang of
+	  ScsLang.da => (pad2 (Date.hour d)) ^ "." ^ (pad2 (Date.minute d))
+	| ScsLang.en => (pad2 (Date.hour d)) ^ ":" ^ (pad2 (Date.minute d))
+      end
+
     fun ppLongDk d = (Int.toString (Date.day d)) ^ ". " ^(ppMthDk d) ^ " " ^ (Date.fmt "%Y" d)
 
     fun ppLongEng d = (Int.toString (Date.day d)) ^ " " ^(ppMthEng d) ^ " " ^ (Date.fmt "%Y" d)
@@ -170,8 +224,16 @@ structure ScsDate :> SCS_DATE =
 	of SOME d => pp d
       | _ => ""
 
+    fun ppTimestampDb s =
+      case s
+	of SOME d => ppTimestamp d
+      | _ => ""
+
     fun dateOk (d,m,y) =
       m >= 1 andalso m <= 12 andalso d >= 1 andalso d <= daysInMonth y m
+
+    fun timeOk (h,m,s) =
+      h >= 0 andalso h < 24 andalso m>= 0 andalso m < 60 andalso s >= 0 andalso s < 60
 
     (* Given a date (d,m,y), return the number of days since 01.01.0000 *)
     fun preceedingDays (d,m,y) =

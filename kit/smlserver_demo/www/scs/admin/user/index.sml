@@ -6,8 +6,8 @@ val title =
   case person_id of 
     NONE => ScsDict.s [(ScsLang.en,`User administration`),(ScsLang.da,`Brugeradministration`)]
   | SOME pid => 
-      ScsDict.sl [(ScsLang.en,`User administration for %0`),(ScsLang.da,`Brugeradministration for %0`)] 
-        [ScsPerson.name pid]
+      ScsDict.sl [(ScsLang.en,`User administration for %0 (%1)`),(ScsLang.da,`Brugeradministration for %0 (%1)`)] 
+        [ScsPerson.name pid, ScsPerson.email pid]
 
 val body = 
   case person_id of
