@@ -358,43 +358,18 @@ functor IntSet(structure PP : PRETTYPRINT): KIT_MONO_SET =
 	in enumGen [L,B,R]
 	end
 
-    fun pu pu_elt = 
+    fun die s = let val s = "Impossible: OrderSet." ^ s
+		in print s ; raise Fail s
+		end
+
+    fun pu _ = 
 	let open Pickle
 	    fun toInt E = 0
 	      | toInt (N _) = 1
-	    fun eq (E,E) = true
-	      | eq (N (e1,s1,s1',b1), N(e2,s2,s2',b2)) =
-		#4 pu_elt (e1,e2) andalso b1 = b2 andalso
-		eq (s1,s2) andalso eq (s1',s2')
-	      | eq _ = false		
-	    fun funE (_ : Set pu) : Set pu = 
-		(fn _ => fn spe => spe,
-		 fn supe => (E,supe),
-		 fn ds => fn _ => 0w0,
-		 eq)
-	    fun funN (pu : Set pu) : Set pu =
-		(fn n => fn spe =>
-		 case n of 
-		     N(e,s1,s2,b) => let val spe = pickler pu_elt e spe
-					 val spe = pickler pu s1 spe
-					 val spe = pickler pu s2 spe
-				     in pickler pu_bal b spe
-				     end
-		   | _ => raise Fail "OrderSet.pu.funN.pickle",
-		 fn supe =>
-		 let val (e,supe) = unpickler pu_elt supe
-		     val (s1,supe) = unpickler pu supe
-		     val (s2,supe) = unpickler pu supe
-		     val (b,supe) = unpickler pu_bal supe
-		 in (N(e,s1,s2,b),supe)
-		 end,
-		 fn N(e,s1,s2,b) => 
-		 hashCombine(hasher pu_elt e,
-			     hashCombine(hasher pu_bal b,
-					 hashCombine(hasher pu s1,
-						     hasher pu s2)))
-		  | _ => raise Fail "OrderSet.pu.funN.hasher",
-		 eq)					      
+	    val funE = con0 E
+	    fun funN pu =
+		con1 N (fn N a => a | _ => die "pu.funN")
+		(tup4Gen(int,pu,pu,pu_bal))
 	in dataGen (toInt,[funE,funN])
 	end
 

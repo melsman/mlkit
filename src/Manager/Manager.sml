@@ -1040,7 +1040,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  val emitted_files' = EqSet.fromList (Repository.emitted_files())
     	  val files_to_delete = EqSet.list (EqSet.difference emitted_files emitted_files')
       in List.app MO.SystemTools.delete_file files_to_delete
-(*	  ; exportRep() *)
+(*       ; exportRep() *)
       end
 
     (* -----------------------------

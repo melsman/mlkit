@@ -719,22 +719,15 @@ functor CompilerEnv(structure Ident: IDENT
 	    fun CEnvToInt _ = 0
 	    fun StrEnvToInt _ = 0
 	    fun TyEnvToInt _ = 0
-	    fun CEnvEq(CENV{StrEnv=se1,VarEnv=ve1,TyEnv=te1,PathEnv=pe1},
-		       CENV{StrEnv=se2,VarEnv=ve2,TyEnv=te2,PathEnv=pe2}) =
-		#4 pu_PathEnv (pe1,pe2) andalso #4 pu_VarEnv (ve1,ve2)
-		andalso StrEnvEq(se1,se2) andalso TyEnvEq(te1,te2)
-	    and StrEnvEq(STRENV m1, STRENV m2) = FinMap.eq CEnvEq (m1,m2)
-	    and TyEnvEq(TYENV m1, TYENV m2) = FinMap.eq (fn ((tns1,e1),(tns2,e2)) => #4 pu_TyNames (tns1,tns2)
-							 andalso CEnvEq(e1,e2)) (m1,m2)
 	    fun fun_CENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
-		convert (fn ((se,ve),(te,pe)) => CENV{StrEnv=se,VarEnv=ve,TyEnv=te,PathEnv=pe},
-			 fn CENV{StrEnv=se,VarEnv=ve,TyEnv=te,PathEnv=pe} => ((se,ve),(te,pe)))
+		con1 (fn ((se,ve),(te,pe)) => CENV{StrEnv=se,VarEnv=ve,TyEnv=te,PathEnv=pe})
+		(fn CENV{StrEnv=se,VarEnv=ve,TyEnv=te,PathEnv=pe} => ((se,ve),(te,pe)))
 		(pairGen(pairGen(pu_StrEnv,pu_VarEnv),pairGen(pu_TyEnv,pu_PathEnv)))
 	    fun fun_STRENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
-		convert (STRENV,fn STRENV v => v)
+		con1 STRENV (fn STRENV v => v)
 		(FinMap.pu(StrId.pu,pu_CEnv))
 	    fun fun_TYENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
-		convert (TYENV,fn TYENV v => v)
+		con1 TYENV (fn TYENV v => v)
 		(FinMap.pu(TyCon.pu,pairGen(pu_TyNames,pu_CEnv)))
 	in data3Gen(CEnvToInt,[fun_CENV],
 		    StrEnvToInt,[fun_STRENV],

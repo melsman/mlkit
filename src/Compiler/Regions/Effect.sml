@@ -147,6 +147,9 @@ struct
   type place = effect
   val empty = G.mk_node (UNION{represents = NONE})
 
+  fun eq_effect(node1, node2) = G.eq_nodes(G.find node1,G.find node2)
+  fun eq_canonical_effect(node1, node2) = G.eq_nodes(node1,node2)
+
   fun layout_effect e = G.layout_node layout_einfo (G.find e)
   fun layout_effect_deep e = G.layout_nodes_deep layout_einfo [G.find(e)]
   
@@ -774,6 +777,11 @@ struct
     val (toplevel_region_withtype_triple, initCone) = freshRhoWithTy(TRIPLE_RT,initCone)   (*8*)
     val (toplevel_arreff, initCone) = freshEps(initCone)                                   (*9*)
 
+    val toplevel_effects = [toplevel_region_withtype_top, toplevel_region_withtype_word,
+			    toplevel_region_withtype_bot, toplevel_region_withtype_string,
+			    toplevel_region_withtype_pair, toplevel_region_withtype_array,
+			    toplevel_region_withtype_ref, toplevel_region_withtype_triple,
+			    toplevel_arreff]
   end
 
   val _ =
@@ -809,49 +817,33 @@ struct
                         | p => freshRhoWithTy p (*maybeFreshRhoWithTy p *) 
 
 
-
-
   (* Picklers *)
   val pu_intref = Pickle.ref0Gen Pickle.int
+
   val pu_runType =
       Pickle.enumGen [WORD_RT, STRING_RT, PAIR_RT, TOP_RT, BOT_RT,
 		      ARRAY_RT, REF_RT, TRIPLE_RT]
 
-  local val pu_node_cache : einfo G.node Pickle.pu option ref = ref NONE
-  in fun pu_node pu_einfo =
-      case !pu_node_cache of SOME pu => pu
-    | NONE => let val pu = G.pu_node PUT pu_einfo
-	      in pu_node_cache := SOME pu
-	       ; pu
-	      end
-  end
+  val pu_runTypes = Pickle.listGen pu_runType
 
-  local val pu_nodeopt_cache : einfo G.node option Pickle.pu option ref = ref NONE
-  in fun pu_nodeopt pu_einfo =
-      case !pu_nodeopt_cache of SOME pu => pu
-    | NONE => let val pu = Pickle.optionGen (pu_node pu_einfo)
-	      in pu_nodeopt_cache := SOME pu
-	       ; pu
-	      end
-  end
+  val pu_node : einfo Pickle.pu -> einfo G.node Pickle.pu
+      = Pickle.cache (Pickle.registerEq eq_effect 
+		      (fn e => 
+		       case get_level_and_key e of 
+			   SOME (_,ref i) => if i <> 0 then i else die "pu_node"
+			 | NONE => 0) toplevel_effects o G.pu_node PUT)
 
-  local val pu_represents_cache : einfo G.node list option Pickle.pu option ref = ref NONE
-  in fun pu_represents pu_einfo =
-      case !pu_represents_cache of SOME pu => pu
-    | NONE => let val pu = Pickle.optionGen (Pickle.listGen (pu_node pu_einfo))
-	      in pu_represents_cache := SOME pu
-	       ; pu
-	      end
-  end
+  val pu_nodes : einfo Pickle.pu -> einfo G.node list Pickle.pu
+      = Pickle.cache (Pickle.listGen o pu_node)
 
-  local val pu_instance_cache : einfo G.node option ref Pickle.pu option ref = ref NONE
-  in fun pu_instance pu_einfo =
-      case !pu_instance_cache of SOME pu => pu
-    | NONE => let val pu = Pickle.refGen (pu_nodeopt pu_einfo) NONE 
-	      in pu_instance_cache := SOME pu
-	       ; pu
-	      end
-  end
+  val pu_represents : einfo Pickle.pu -> einfo G.node list option Pickle.pu
+      = Pickle.cache (Pickle.optionGen o pu_nodes)
+
+  val pu_nodeopt : einfo Pickle.pu -> einfo G.node option Pickle.pu
+      = Pickle.cache (Pickle.optionGen o pu_node)
+
+  val pu_instance : einfo Pickle.pu -> einfo G.node option ref Pickle.pu 
+      = Pickle.cache (fn a => Pickle.refGen (pu_nodeopt a) NONE)
 
   val pu_einfo =
       let open Pickle
@@ -861,18 +853,37 @@ struct
 	    | toInt GET = 3
 	    | toInt WORDEFFECT = 4
 	    | toInt (RHO _) = 5
-	  val pu_einfo_cache : einfo Pickle.pu option ref = ref NONE
-	  fun pu_einfo_get() =
-	      case !pu_einfo_cache of
-		  SOME pu => pu
-		| _ => die "pu_einfo_get"
-	  val pu_einfo = dataGen(toInt,[(*fun_EPS, fun_UNION, fun_PUT, fun_GET,
-					 fun_WORDEFFECT, fun_RHO*)])	  
-      in pu_einfo_cache := SOME pu_einfo 
-       ; pu_einfo
+	  fun fun_EPS pu_einfo =
+	      con1 (fn ((k,l,r,i),p) => EPS{key=k,level=l,represents=r,instance=i,pix=p})
+	      (fn EPS{key=k,level=l,represents=r,instance=i,pix=p} => ((k,l,r,i),p)
+	        | _ => die "pu_einfo.fun_EPS")
+	      (pairGen(tup4Gen(pu_intref,pu_intref,pu_represents pu_einfo,
+			       pu_instance pu_einfo),
+		       pu_intref))
+	  fun fun_UNION pu_einfo =
+	      con1 (fn r => UNION{represents=r})
+	      (fn UNION {represents=r} => r
+	        | _ => die "pu_einfo.fun_UNION")
+	      (pu_represents pu_einfo)
+	  val fun_PUT = con0 PUT
+	  val fun_GET = con0 GET
+	  val fun_WORDEFFECT = con0 WORDEFFECT
+	  fun fun_RHO pu_einfo =
+	      con1 (fn ((p,g,k,l),i,px,t) => RHO {put=p,get=g,key=k,level=l,
+						  instance=i,pix=px,ty=t})
+	      (fn RHO {put=p,get=g,key=k,level=l,instance=i,pix=px,ty=t} =>
+	       ((p,g,k,l),i,px,t)
+	        | _ => die "pu_einfo.fun_RHO")
+	      (tup4Gen(tup4Gen(pu_nodeopt pu_einfo,pu_nodeopt pu_einfo,
+			       pu_intref, pu_intref),
+		       pu_instance pu_einfo,pu_intref,pu_runType))
+      in dataGen(toInt,[fun_EPS, fun_UNION, fun_PUT, fun_GET,
+			fun_WORDEFFECT, fun_RHO])
       end
 
-  val pu_effect : effect Pickle.pu = pu_node pu_einfo
+  val pu_effect  : effect Pickle.pu = pu_node pu_einfo
+  val pu_effects : effect list Pickle.pu = pu_nodes pu_einfo
+
 
 (* Tracing Cone Layers (for profiling)
 
@@ -1422,9 +1433,6 @@ tracing *)
 
   fun observe x = (observeDelta x; ())
 
-
-    fun eq_effect(node1, node2) = G.eq_nodes(G.find node1,G.find node2)
-    fun eq_canonical_effect(node1, node2) = G.eq_nodes(node1,node2)
   (* collapse of cycles in effects: *)
   (* all members of the scc must have the same level; otherwise the graph
      was ill-formed in the first place. Therefore we do not lower levels. *)

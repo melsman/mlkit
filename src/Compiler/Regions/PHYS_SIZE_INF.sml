@@ -32,11 +32,13 @@ signature PHYS_SIZE_INF =
            * non-tail call to function which is not fix-bound   (fncall)
         *)
 
-        val appConvert   : ((place*pp) at, place*phsize, unit)LambdaPgm ->
+        val appConvert  : ((place*pp) at, place*phsize, unit)LambdaPgm ->
                            ((place*pp) at, place*phsize, unit)LambdaPgm
 
         type StringTree                                                          
-        val layout_env: env -> StringTree
-        val layout_pgm: ((place*pp)at, place*phsize, unit)LambdaPgm -> StringTree
+        val layout_env  : env -> StringTree
+        val layout_pgm  : ((place*pp)at, place*phsize, unit)LambdaPgm -> StringTree
+
+	val pu_env      : env Pickle.pu
   end      
 

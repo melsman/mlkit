@@ -72,29 +72,13 @@ functor InfixBasis(structure Ident: IDENT
 	    fun toInt NONFIX = 0
 	      | toInt (INFIX _) = 1
 	      | toInt (INFIXR _) = 2
-	    fun fun_NONFIX _ =
-		(fn _ => fn spe => spe,
-		 fn supe => (NONFIX,supe),
-		 fn _ => fn d => 0w0,
-		 op =)
+	    val fun_NONFIX = con0 NONFIX
 	    fun fun_INFIX _ =
-		(fn INFIX i => pickler int i
-	          | _ => die "pu_InfixEntry.INFIX.pickler",
-		 fn supe => let val (i, supe) = unpickler int supe
-			    in (INFIX i,supe)
-			    end,
-		 fn INFIX i => hasher int i
-		  | _ => die "pu_InfixEntry.INFIX.hasher",
-		 op =)
+		con1 INFIX (fn INFIX a => a | _ => die "pu_InfixEntry.INFIX")
+		int
 	    fun fun_INFIXR _ =
-		(fn INFIXR i => pickler int i
-	          | _ => die "pu_InfixEntry.INFIXR.pickler",
-		 fn supe => let val (i, supe) = unpickler int supe
-			    in (INFIXR i,supe)
-			    end,
-		 fn INFIXR i => hasher int i
-		  | _ => die "pu_InfixEntry.INFIXR.hasher",
-		 op =)
+		con1 INFIXR (fn INFIXR a => a | _ => die "pu_InfixEntry.INFIXR")
+		int
 	in dataGen(toInt,[fun_NONFIX,fun_INFIX,fun_INFIXR])
 	end
 

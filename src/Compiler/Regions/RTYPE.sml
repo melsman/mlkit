@@ -97,6 +97,11 @@ sig
   val mk_lay_sigma': bool -> (tyvar list * place list * effect list * Type) -> StringTree
   val mk_lay_sigma'': ('b -> StringTree option) -> bool -> 
                       (tyvar list * 'b list * effect list * Type) -> StringTree
-end;
+
+  (* Picklers *)
+  val pu_Type  : Type Pickle.pu
+  val pu_mu    : (Type * place) Pickle.pu
+  val pu_sigma : sigma Pickle.pu
+end
 
 

@@ -215,39 +215,14 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
 	    val pu_m = IFM.pu Pickle.int pu_e
 	    fun toInt (Rigid _) = 0
 	      | toInt (Flexible _) = 1
-	    fun eq (Rigid m1, Rigid m2) = #4 pu_m (m1,m2)
-	      | eq (Flexible{matchcount,imap},  Flexible{matchcount=mc2,imap=imap2}) =
-		#4 Name.pu_matchcount (matchcount,mc2) andalso #4 pu_m (imap,imap2)
-	      | eq _ = false
-	    fun funRigid (_ : map0 Pickle.pu) : map0 Pickle.pu =
-		(fn m0 => fn spe =>
-		 case m0 of 
-		     Rigid m => pickler pu_m m spe
-		   | _ => die "pu.funRigid.pickle",
-		 fn supe => let val (m,supe) = unpickler pu_m supe
-			    in (Rigid m,supe)
-			    end,
-		 fn Rigid m => hasher pu_m m
-		  | _ => die "pu.funRigid.hasher",
-		 eq)
-	    fun funFlexible (_ : map0 Pickle.pu) : map0 Pickle.pu =
-		(fn m0 => fn spe =>
-		 case m0 of 
-		     Flexible {matchcount,imap} => 
-			 let val spe = pickler Name.pu_matchcount matchcount spe
-			 in pickler pu_m imap spe
-			 end
-		   | _ => die "pu.funFlexible.pickle",
-		 fn supe => let val (mc,supe) = unpickler Name.pu_matchcount supe
-				val (imap,supe) = unpickler pu_m supe
-			    in (Flexible {matchcount=mc,imap=imap},supe)
-			    end,
-		 fn Flexible {matchcount,imap} => 
-		 hashCombine(hasher Name.pu_matchcount matchcount, 
-			     hasher pu_m imap)
-		  | _ => die "pu.funFlexible.hasher",
-		 eq)
-	in dataGen (toInt,[funRigid,funFlexible])
+	    fun fun_Rigid _ =
+		con1 Rigid (fn Rigid a => a | _ => die "pu_map0.Rigid")
+		pu_m
+	    fun fun_Flexible _ =
+		con1 (fn (c,m) => Flexible{matchcount=c,imap=m}) 
+		(fn Flexible{matchcount=c,imap=m} => (c,m) | _ => die "pu_map0.Flexible")
+		(pairGen(Name.pu_matchcount,pu_m))
+	in dataGen (toInt,[fun_Rigid,fun_Flexible])
 	end
 
     fun pu pu_e =

@@ -271,61 +271,22 @@ functor DiGraph(structure UF : UNION_FIND_POLY
 	let open Pickle
 	    val dummy : 'info graphnode = GRAPHNODE{info=dummy, visited=ref false, 
 						    df_num=ref 0, out=nil}
-	    fun toInt _ = 0
-	    fun eq (GRAPHNODE{info,visited,df_num,out},
-		    GRAPHNODE{info=info2,visited=visited2,df_num=df_num2,out=out2}) =
-		df_num = df_num2 andalso visited = visited2 andalso #4 pu_info(info,info2)
-		andalso eq_nodes(out,out2)
-	    and eq_nodes(nil,nil) = true
-	      | eq_nodes(n::ns,n2::ns2) = eq_node(n,n2) andalso eq_nodes(ns,ns2)
-	      | eq_nodes _ = false
-	    and eq_node(n,n2) = eq(UF.find_info n, UF.find_info n2)
+	    fun toInt (GRAPHNODE _) = 0
+	    val pu_node : 'info graphnode Pickle.pu -> 'info node Pickle.pu 
+		= cache (UF.pu dummy)
 
-	    val pu_cache_node : 'info node Pickle.pu option ref = ref NONE
-	    fun pu_node (pu : 'info graphnode Pickle.pu) 
-		: 'info node Pickle.pu =
-		case !pu_cache_node of
-		    SOME pu_n => pu_n
-		  | NONE => 
-			let val pu_n = UF.pu dummy pu
-			in pu_cache_node := SOME pu_n
-			 ; pu_n
-			end
-
-	    val pu_cache_nodes : 'info graph Pickle.pu option ref = ref NONE
-	    fun pu_graph (pu : 'info graphnode Pickle.pu) 
-		: 'info graph Pickle.pu =
-		case !pu_cache_nodes of
-		    SOME pu_ns => pu_ns
-		  | NONE => let val pu_ns = listGen (pu_node pu)
-			    in pu_cache_nodes := SOME pu_ns
-			     ; pu_ns
-			    end
-
-	    fun fun_GRAPHNODE (pu : 'info graphnode Pickle.pu) : 'info graphnode Pickle.pu =
-		(fn GRAPHNODE {info,visited,df_num,out} => fn spe => 
-		 let val spe = pickler pu_info info spe
-		     val spe = pickler pu_boolref visited spe
-		     val spe = pickler pu_intref df_num spe
-		     val spe = pickler (pu_graph pu) out spe
-		 in spe
-		 end,
-		 fn supe =>
-		 let val (info,supe) = unpickler pu_info supe
-		     val (visited,supe) = unpickler pu_boolref supe
-		     val (df_num,supe) = unpickler pu_intref supe
-		     val (out,supe) = unpickler (pu_graph pu) supe
-		 in (GRAPHNODE {info=info,visited=visited,df_num=df_num,out=out}, supe)
-		 end,
-		 fn GRAPHNODE {info,visited,df_num,out} =>
-		 hashCombine(hasher pu_info info,
-			     hashCombine(hasher pu_boolref visited,
-					 hashCombine(hasher pu_intref df_num,
-						     hasher (pu_graph pu) out))),
-		 eq)
+	    val pu_graph : 'info graphnode Pickle.pu -> 'info graph Pickle.pu 
+		= cache (listGen o pu_node)
 
 	    val pu_graphnode =
-		dataGen(toInt,[fun_GRAPHNODE])
+		let
+		    fun fun_GRAPHNODE (pu : 'info graphnode Pickle.pu) : 'info graphnode Pickle.pu =
+			con1 (fn (i,v,d,t) => GRAPHNODE{info=i,visited=v,df_num=d,out=t})
+			(fn GRAPHNODE{info=i,visited=v,df_num=d,out=t} => (i,v,d,t))
+			(tup4Gen(pu_info,pu_boolref,pu_intref,pu_graph pu))
+		in
+		    dataGen(toInt,[fun_GRAPHNODE])
+		end
 	in pu_node pu_graphnode
 	end
 

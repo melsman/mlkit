@@ -196,36 +196,17 @@ functor NatSet(structure PP : PRETTYPRINT) : KIT_MONO_SET =
 
     fun map f = fromList o (mapset f)
 
-    fun pu pu_elt =
+    fun die s = let val s = "Impossible.NatSet: " ^ s
+		in print s ; raise Fail s
+		end
+
+    fun pu _ =
 	let fun toInt empty = 0
 	      | toInt (some _) = 1
-	    fun eq (empty,empty) = true
-	      | eq (some (w1,n1,n1'),some(w2,n2,n2')) =
-		w1 = w2 andalso eq(n1,n2) andalso eq(n1',n2')
-	      | eq _ = false
-	    fun fun_empty _ =
-		(fn _ => fn spe => spe,
-		 fn supe => (empty,supe),
-		 fn d => fn _ => 0w0,
-		 eq)
-	    fun fun_some (p, up, h, eq) =
-		(fn n => fn spe =>
-		 case n of some(w,n1,n2) =>
-		 let val spe = Pickle.pickler Pickle.word w spe
-		     val spe = p n1 spe
-		 in p n2 spe
-		 end
-	         | _ => raise Fail "NatSet.pu.fun_some.pickle",
-		 fn supe =>
-		 let val (w,supe) = Pickle.unpickler Pickle.word supe
-		     val (n1,supe) = up supe
-		     val (n2,supe) = up supe
-		 in (some(w,n1,n2), supe)
-		 end,
-		 fn some(w,n1,n2) => 
-		 Pickle.hashCombine (Pickle.hasher Pickle.word w, Pickle.hashCombine(h n1, h n2))
-		  | _ => raise Fail "NatSet.pu.fun_some.hasher",
-		 eq)	    
+	    val fun_empty = Pickle.con0 empty
+	    fun fun_some pu =
+		Pickle.con1 some (fn some a => a | _ => die "pu.some")
+		(Pickle.tup3Gen(Pickle.word,pu,pu))
 	in Pickle.dataGen (toInt,[fun_empty,fun_some])
 	end
 end

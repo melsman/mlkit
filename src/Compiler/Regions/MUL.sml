@@ -135,6 +135,10 @@ sig
       val layout_Phi: arroweffect list -> StringTree
       val layout_effect : effect -> StringTree
       val layout_efenv : efenv -> StringTree
+
+      (* Picklers *)
+      val pu_efenv      : efenv Pickle.pu
+      val pu_mularefmap : mularefmap Pickle.pu
   end
 
 

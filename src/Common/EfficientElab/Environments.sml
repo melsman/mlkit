@@ -282,43 +282,17 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    fun toInt (LONGVARpriv _) = 0
 	      | toInt (LONGCONpriv _) = 1
 	      | toInt (LONGEXCONpriv _) = 2
-	    fun eq (LONGVARpriv s1, LONGVARpriv s2) = #4 TypeScheme.pu (s1,s2)
-	      | eq (LONGCONpriv c1, LONGCONpriv c2) = #4 pu_ConArg (c1,c2)
-	      | eq (LONGEXCONpriv t1, LONGEXCONpriv t2) = #4 Type.pu (t1,t2)
-	      | eq _ = false
-
 	    fun fun_LONGVARpriv _ = 
-		(fn LONGVARpriv s => pickler TypeScheme.pu s
-	          | _ => die "pu_range_private.LONGVARpriv.pickler",
-		 fn supe =>
-		 let val (s,supe) = unpickler TypeScheme.pu supe
-		 in (LONGVARpriv s, supe)
-		 end,
-		 fn LONGVARpriv s => hasher TypeScheme.pu s
-		  | _ => die "pu_range_private.LONGVARpriv.hasher",
-		 eq)
+		con1 LONGVARpriv (fn LONGVARpriv a => a | _ => die "pu_range_private.LONGVARpriv")
+		TypeScheme.pu
 
 	    fun fun_LONGCONpriv _ = 
-		(fn LONGCONpriv c => pickler pu_ConArg c
-	          | _ => die "pu_range_private.LONGCONpriv.pickler",
-		 fn supe =>
-		 let val (c,supe) = unpickler pu_ConArg supe
-		 in (LONGCONpriv c, supe)
-		 end,
-		 fn LONGCONpriv c => hasher pu_ConArg c
-		  | _ => die "pu_range_private.LONGCONpriv.hasher",
-		 eq)
+		con1 LONGCONpriv (fn LONGCONpriv a => a | _ => die "pu_range_private.LONGCONpriv")
+		pu_ConArg
 
 	    fun fun_LONGEXCONpriv _ = 
-		(fn LONGEXCONpriv t => pickler Type.pu t
-	          | _ => die "pu_range_private.LONGEXCONpriv.pickler",
-		 fn supe =>
-		 let val (t,supe) = unpickler Type.pu supe
-		 in (LONGEXCONpriv t, supe)
-		 end,
-		 fn LONGEXCONpriv t => hasher Type.pu t
-		  | _ => die "pu_range_private.LONGEXCONpriv.hasher",
-		 eq)
+		con1 LONGEXCONpriv (fn LONGEXCONpriv a => a | _ => die "pu_range_private.LONGEXCONpriv")
+		Type.pu
 
 	in dataGen (toInt,[fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
 	end
@@ -353,43 +327,12 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	let open Pickle
 	    fun EnvToInt (ENV _) = 0
 	    fun StrEnvToInt (STRENV _) = 0
-	    fun EnvEq (ENV {SE,TE,VE}, ENV {SE=SE2,TE=TE2,VE=VE2}) = 
-		StrEnvEq (SE,SE2) andalso #4 pu_TyEnv(TE,TE2)
-		andalso #4 pu_VarEnv (VE,VE2)
-	    and StrEnvEq (STRENV m1, STRENV m2) = 
-		FinMap.Fold (fn ((d,r1),b) => b andalso
-			     case FinMap.lookup m2 d of
-				 SOME r2 => EnvEq(r1,r2)
-			       | NONE => false) true m1
 	    fun fun_ENV (pu_Env, pu_StrEnv) =
-		(fn ENV {SE,TE,VE} => fn spe =>
-		 let val spe = pickler pu_StrEnv SE spe
-		     val spe = pickler pu_TyEnv TE spe
-		 in pickler pu_VarEnv VE spe
-		 end,
-		 fn supe =>
-		 let val (SE,supe) = unpickler pu_StrEnv supe
-		     val (TE,supe) = unpickler pu_TyEnv supe
-		     val (VE,supe) = unpickler pu_VarEnv supe
-		 in (ENV{SE=SE,TE=TE,VE=VE}, supe)
-		 end,
-		 fn ENV {SE,TE,VE} =>
-		 hashCombine(hasher pu_StrEnv SE,
-			     hashCombine(hasher pu_TyEnv TE,
-					 hasher pu_VarEnv VE)),
-		 EnvEq)
-
+		con1 (fn (se,te,ve) => ENV{SE=se,TE=te,VE=ve}) (fn ENV{SE=se,TE=te,VE=ve} => (se,te,ve))
+		(tup3Gen(pu_StrEnv,pu_TyEnv,pu_VarEnv))
 	    fun fun_STRENV (pu_Env, pu_StrEnv) =
-		let val pu_strenv = FinMap.pu(StrId.pu,pu_Env)
-		in
-		    (fn STRENV m => pickler pu_strenv m,
-		     fn supe => let val (m, supe) = unpickler pu_strenv supe
-				in (STRENV m, supe)
-				end,
-		     fn STRENV m => hasher pu_strenv m,
-		     StrEnvEq)
-		end
-		 
+		con1 STRENV (fn STRENV a => a)
+		(FinMap.pu(StrId.pu,pu_Env))		 
 	in data2Gen (EnvToInt,[fun_ENV],
 		     StrEnvToInt,[fun_STRENV])
 	end

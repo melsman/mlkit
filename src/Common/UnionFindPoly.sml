@@ -100,43 +100,16 @@ struct
   fun pu (dummy : 'a) (pu_a : 'a Pickle.pu) : 'a Element Pickle.pu =
       let open Pickle
 	  val dummy : 'a ElementNode = EQR(dummy,ref 0) 
-	  val cache : 'a Element Pickle.pu option ref = ref NONE
-	  fun pu_Element (pu_ElementNode : 'a ElementNode Pickle.pu) : 'a Element Pickle.pu =
-	      case !cache of
-		  SOME pu_e => pu_e
-		| NONE => let val pu_e = refGen pu_ElementNode dummy 
-			  in cache := SOME pu_e
-			   ; pu_e
-			  end
-	      
+	  val pu_Element : 'a ElementNode Pickle.pu -> 'a Element Pickle.pu 
+	      = cache (fn pu => refGen pu dummy)
 	  fun toInt (EQR _) = 0
 	    | toInt (LINK _) = 1
-	  fun eq (LINK r1, LINK r2) = r1 = r2
-	    | eq (EQR(i1,r1),EQR(i2,r2)) = r1 = r2
-	      andalso #4 pu_a(i1,i2)
-	    | eq _ = false
 	  fun fun_EQR pu =
-	      (fn EQR(i,r) => (fn spe => let val spe = pickler pu_a i spe
-					     val spe = pickler pu_intref r spe
-					 in spe
-					 end)
-	        | _ => die "fun_EQR.pickler",
-	       fn supe => let val (i,supe) = unpickler pu_a supe
-			      val (r,supe) = unpickler pu_intref supe
-			  in (EQR(i,r),supe)
-			  end,
-	       fn EQR(i,r) => hashCombine(hasher pu_a i, hasher pu_intref r)
-		| _ => die "fun_EQR.hasher",
-	       eq)
+	      con1 EQR (fn EQR a => a | _ => die "pu.fun_EQR")
+	      (pairGen(pu_a,pu_intref))
 	  fun fun_LINK pu = 
-	      (fn LINK e => pickler (pu_Element pu) e
-	        | _ => die "fun_LINK.pickler",
-	       fn supe => let val (e,supe) = unpickler (pu_Element pu) supe
-			  in (LINK e,supe)
-			  end,
-	       fn LINK e => hasher (pu_Element pu) e
-		| _ => die "fun_LINK.hasher",
-	       eq)
+	      con1 LINK (fn LINK a => a | _ => die "pu.fun_LINK")
+	      (pu_Element pu)
 	  val pu = dataGen(toInt,[fun_EQR,fun_LINK])
       in pu_Element pu
       end

@@ -369,8 +369,26 @@ functor RegionStatEnv(structure Name : NAME
 			    layout_con_env con_env,
 			    layout_excon_env excon_env,
 			    layout_lvar_env lvar_env]}
-  end;
 
+    val pu_arity = Pickle.tup3Gen(Pickle.int,E.pu_runTypes,Pickle.int)
 
+    val pu_lvar_env_range : lvar_env_range Pickle.pu =
+	let open Pickle
+	in convert (fn (b1,b2,s,p) => (b1,b2,s,p,NONE,NONE),
+		    fn (b1,b2,s,p,NONE,NONE) => (b1,b2,s,p)
+		     | _ => die "pu_lvar_env_range")
+	    (tup4Gen(bool,bool,R.pu_sigma,E.pu_effect))
+	end
 
+    val pu : regionStatEnv Pickle.pu =
+	let open Pickle
+	in convert (fn (te:arity TyNameMap.map,ce: R.sigma ConMap.map,
+			ee:(R.Type*R.place) ExconMap.map,le) => {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le},
+		    fn {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le} => (te,ce,ee,le))
+	    (tup4Gen(TyNameMap.pu TyName.pu pu_arity,
+		     ConMap.pu Con.pu R.pu_sigma,
+		     ExconMap.pu Excon.pu R.pu_mu,
+		     LvarMap.pu Lvar.pu pu_lvar_env_range))
+	end
 
+  end

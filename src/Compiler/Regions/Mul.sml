@@ -1129,4 +1129,21 @@ struct
 
   val initial: efenv = empty_efenv
 
+  (* Picklers *)
+  val pu_mul =
+      let open Pickle
+	  fun toInt INF = 0
+	    | toInt (NUM _) = 1
+	  val fun_INF = con0 INF
+	  fun fun_NUM _ = con1 NUM (fn NUM a => a | _ => die "pu_mul.NUM") int
+      in dataGen(toInt,[fun_INF,fun_NUM])
+      end
+  val pu_mulef = Pickle.listGen(Pickle.pairGen(Eff.pu_effect,pu_mul))
+  val pu_mularef = Pickle.pairGen(Eff.pu_effect,pu_mulef)
+  val pu_mularefset = Pickle.listGen pu_mularef
+  val pu_qmularefset = Pickle.pairGen(Pickle.tup3Gen(Eff.pu_effects,Eff.pu_effects,pu_mularefset),
+				      Eff.pu_effect)
+  val pu_efenv = LvarMap.pu Lvar.pu (Pickle.ref0Gen pu_qmularefset)
+
+  val pu_mularefmap = GlobalEffVarEnv.pu Eff.pu_effect (Pickle.ref0Gen pu_mularef)
 end

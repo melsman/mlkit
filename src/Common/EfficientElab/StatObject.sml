@@ -220,18 +220,13 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		     optionGen ExplicitTyVar.pu))
 	end
 
-    val pu_TyVar : TyVar Pickle.pu =
+    val pu_TyLink = 
 	let open Pickle
-	in 
-	    (fn ref (NO_TY_LINK tvd) => pickler pu_TyVarDesc tvd
-	      | _ => die "pu_TyVar.pickler",
-	     fn supe => let val (tvd,supe) = unpickler pu_TyVarDesc supe
-			in (ref(NO_TY_LINK tvd), supe)
-			end,
-	     fn ref (NO_TY_LINK tvd) => hasher pu_TyVarDesc tvd
-	      | _ => die "pu_TyVar.hasher",
-	     op =)
+	in convert (NO_TY_LINK, fn NO_TY_LINK a => a | _ => die "pu_TyLink.NO_TY_LINK")
+	    pu_TyVarDesc
 	end
+
+    val pu_TyVar : TyVar Pickle.pu = Pickle.ref0Gen pu_TyLink
 
     val pu_Type : TypeDesc Pickle.pu -> Type Pickle.pu =
 	let open Pickle
@@ -252,128 +247,24 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    fun RecTypeToInt (NILrec) = 0
 	      | RecTypeToInt (ROWrec _) = 1
 	      | RecTypeToInt (VARrec _) = die "RecTypeToInt"
-	    fun TypeDescEq (TYVAR (ref tv1), TYVAR (ref tv2)) = TyVarEq(tv1,tv2)
-	      | TypeDescEq (ARROW(t1,t2), ARROW(t1',t2')) =
-		TypeEq(t1,t1') andalso TypeEq(t2,t2')
-	      | TypeDescEq (RECTYPE rt1, RECTYPE rt2) = RecTypeEq(rt1,rt2)
-	      | TypeDescEq (CONSTYPE(ts1,tn1),CONSTYPE(ts2,tn2)) = 
-		TyName.eq(tn1,tn2) andalso TypesEq(ts1,ts2)
-	      | TypeDescEq _ = false
-	    and RecTypeEq (NILrec,NILrec) = true
-	      | RecTypeEq (ROWrec(l1,t1,rt1), ROWrec(l2,t2,rt2)) =
-		l1=l2 andalso TypeEq(t1,t2) andalso RecTypeEq(rt1,rt2)
-	      | RecTypeEq (VARrec _, _) = die "RecTypeEq1"
-	      | RecTypeEq (_, VARrec _) = die "RecTypeEq2"
-	      | RecTypeEq _ = false
-	    and TyVarEq (NO_TY_LINK d1, NO_TY_LINK d2) = 
-		#id d1 = #id d2 andalso #equality d1 = #equality d2
-		andalso #rank d1 = #rank d2
-		andalso (case (#overloaded d1, #overloaded d2) of
-			     (SOME s1, SOME s2) => TyName.Set.eq s1 s2
-			   | (NONE, NONE) => true
-			   | _ => false)
-		andalso #explicit d1 = #explicit d2
-		andalso (case (!(#inst d1), !(#inst d2)) of
-			     (NONE,NONE) => true
-			   | _ => die "TyVarEq1")
-	      | TyVarEq _ = die "TyVarEq2"
-	    and TypeEq (t1,t2) = #level t1 = #level t2 
-		andalso TypeDescEq(#TypeDesc t1, #TypeDesc t2)
-	    and TypesEq (t1::ts1,t2::ts2) = TypesEq(ts1,ts2) andalso TypeEq(t1,t2)
-	      | TypesEq (nil, nil) = true
-	      | TypesEq _ = false
-
 	    fun TypeDescTYVAR (pu_TypeDesc,pu_RecType) =
-		(fn TYVAR tv => pickler pu_TyVar tv 
-	          | _ => die "TypeDescTYVAR.pickler",
-		 fn supe => let val (tv,supe) = unpickler pu_TyVar supe
-			    in (TYVAR tv, supe)
-			    end,
-		 fn TYVAR tv => hasher pu_TyVar tv
-		  | _ => die "TypeDescTYVAR.hasher",
-		 TypeDescEq)
-
+		con1 TYVAR (fn TYVAR a => a | _ => die "pu_TypeDesc.TYVAR")
+		pu_TyVar
 	    fun TypeDescARROW (pu_TypeDesc,pu_RecType) =
-		(fn td => fn spe =>
-		 case td of
-		     ARROW (t1,t2) => 
-			 let val pu_Type = pu_Type pu_TypeDesc
-			     val spe = pickler pu_Type t1 spe
-			 in pickler pu_Type t2 spe
-			 end
-		   | _ => die "TypeDescARROW.pickler",
-		 fn supe => let val pu_Type = pu_Type pu_TypeDesc
-				val (t1,supe) = unpickler pu_Type supe
-				val (t2,supe) = unpickler pu_Type supe				    
-			    in (ARROW(t1,t2), supe)
-			    end,
-		 fn ARROW(t1,t2) => 
-		 let val h_Type = hasher (pu_Type pu_TypeDesc)
-		 in hashCombine (h_Type t1, h_Type t2)
-		 end
-		  | _ => die "TypeDescARROW.hasher",
-		 TypeDescEq)
-
+		con1 ARROW (fn ARROW a => a | _ => die "pu_TypeDesc.ARROW")
+		(pairGen(pu_Type pu_TypeDesc, pu_Type pu_TypeDesc))
 	    fun TypeDescRECTYPE  (pu_TypeDesc,pu_RecType) =
-		(fn RECTYPE rt => pickler pu_RecType rt
-	          | _ => die "TypeDescRECTYPE.pickler",
-		 fn supe => let val (rt,supe) = unpickler pu_RecType supe
-			    in (RECTYPE rt, supe)
-			    end,
-		 fn RECTYPE rt => hasher pu_RecType rt
-		  | _ => die "TypeDescRECTYPE.hasher",
-		 TypeDescEq)
-
+		con1 RECTYPE (fn RECTYPE a => a | _ => die "pu_TypeDesc.RECTYPE")
+		pu_RecType
 	    fun TypeDescCONSTYPE (pu_TypeDesc,pu_RecType) =
-		(fn td => fn spe =>
-		 case td of
-		     CONSTYPE (ts,tn) => 
-			 let val pu_Types = pu_Types pu_TypeDesc
-			     val spe = pickler pu_Types ts spe
-			 in pickler TyName.pu tn spe
-			 end
-		   | _ => die "TypeDescCONSTYPE.pickler",
-		 fn supe => let val pu_Types = pu_Types pu_TypeDesc
-				val (ts,supe) = unpickler pu_Types supe
-				val (tn,supe) = unpickler TyName.pu supe				    
-			    in (CONSTYPE(ts,tn), supe)
-			    end,
-		 fn CONSTYPE(ts,tn) => 
-		 let val h_Types = hasher (pu_Types pu_TypeDesc)
-		 in hashCombine (h_Types ts, hasher TyName.pu tn)
-		 end
-		  | _ => die "TypeDescCONSTYPE.hasher",
-		 TypeDescEq)
+		con1 CONSTYPE (fn CONSTYPE a => a | _ => die "pu_TypeDesc.CONSTYPE")
+		(pairGen(pu_Types pu_TypeDesc, TyName.pu))
 
-	    fun RecTypeNILrec (pu_TypeDesc,pu_RecType) =
-		(fn rt => fn spe => spe,
-		 fn supe => (NILrec, supe),
-		 fn rt => fn d => 0w0,
-		 RecTypeEq)
+	    fun RecTypeNILrec (a,b) = con0 NILrec b
 
 	    fun RecTypeROWrec (pu_TypeDesc,pu_RecType) =
-		(fn rt => fn spe =>
-		 case rt of
-		     ROWrec (l,t,rt) => 
-			 let val pu_Type = pu_Type pu_TypeDesc
-			     val spe = pickler Lab.pu l spe
-			     val spe = pickler pu_Type t spe			     
-			 in pickler pu_RecType rt spe
-			 end
-		   | _ => die "RecTypeROWrec.pickler",
-		 fn supe => let val pu_Type = pu_Type pu_TypeDesc
-				val (l,supe) = unpickler Lab.pu supe
-				val (t,supe) = unpickler pu_Type supe				    
-				val (rt,supe) = unpickler pu_RecType supe				    
-			    in (ROWrec(l,t,rt), supe)
-			    end,
-		 fn ROWrec(l,t,rt) => 
-		 let val h_Type = hasher (pu_Type pu_TypeDesc)
-		 in hashCombine (hasher Lab.pu l,
-				 hashCombine (h_Type t, hasher pu_RecType rt))
-		 end
-		  | _ => die "RecTypeROWrec.hasher",
-		 RecTypeEq)
+		con1 ROWrec (fn ROWrec a => a | _ => die "pu_RecType.ROWrec")
+		(tup3Gen(Lab.pu,pu_Type pu_TypeDesc,pu_RecType))
 
 	    val TypeDescFuns = 
 		[TypeDescTYVAR, TypeDescARROW, TypeDescRECTYPE, TypeDescCONSTYPE]
@@ -1491,11 +1382,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       val pu : Type Pickle.pu =
 	  let open Pickle
-	  in
-	      (pickler pu_Type o norm_Type,
-	       unpickler pu_Type,
-	       hasher pu_Type o norm_Type,
-	       fn (t1,t2) => #4 pu_Type (norm_Type t1, norm_Type t2))
+	  in convert (fn a => a, norm_Type)
+	      pu_Type
 	  end
 
     end (*Type*)
@@ -1993,29 +1881,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	  let open Pickle
 	      fun toInt (TYNAME _) = 0
 		| toInt (EXPANDED _) = 1
-	      fun eq (TYNAME tn, TYNAME tn2) = #4 TyName.pu (tn,tn2)
-		| eq (EXPANDED tf, EXPANDED tf2) = #4 TypeFcn.pu (tf,tf2)
-		| eq _ = false
 	      fun fun_TYNAME _ =
-		  (fn TYNAME tn => pickler TyName.pu tn
-		    | _ => die "fun_TYNAME.pickler",
-		   fn supe =>
-		   let val (tn,supe) = unpickler TyName.pu supe
-		   in (TYNAME tn,supe)
-		   end,
-		   fn TYNAME tn => hasher TyName.pu tn
-		    | _ => die "fun_TYNAME.hasher",
-		   eq)
+		  con1 TYNAME (fn TYNAME a => a | _ => die "pu_TypeFcn'.TYNAME")
+		  TyName.pu
 	      fun fun_EXPANDED _ =
-		  (fn EXPANDED tf => pickler TypeFcn.pu tf
-		    | _ => die "fun_EXPANDED.pickler",
-		   fn supe =>
-		   let val (tf,supe) = unpickler TypeFcn.pu supe
-		   in (EXPANDED tf,supe)
-		   end,
-		   fn EXPANDED tf => hasher TypeFcn.pu tf
-		    | _ => die "fun_EXPANDED.hasher",
-		   eq)
+		  con1 EXPANDED (fn EXPANDED a => a | _ => die "pu_TypeFcn'.EXPANDED")
+		  TypeFcn.pu
 	  in dataGen(toInt,[fun_TYNAME,fun_EXPANDED])
 	  end
       val pu = 

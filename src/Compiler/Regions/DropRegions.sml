@@ -607,4 +607,17 @@ functor DropRegions(structure Name : NAME
     fun drop_places places = EdList.dropAll word_region places
 
 
+    val pu_env_res = 
+	let open Pickle
+	    fun toInt (FIXBOUND _) = 0
+	      | toInt NOTFIXBOUND = 1
+	    fun fun_FIXBOUND _ =
+		con1 FIXBOUND (fn FIXBOUND a => a | _ => die "pu_env_res.FIXBOUND")
+		(listGen bool)
+	    val fun_NOTFIXBOUND = con0 NOTFIXBOUND
+	in dataGen(toInt,[fun_FIXBOUND,fun_NOTFIXBOUND])
+	end
+
+    val pu_env : env Pickle.pu = 
+	LvarMap.pu Lvars.pu pu_env_res
   end
