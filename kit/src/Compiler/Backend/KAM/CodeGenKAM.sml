@@ -636,8 +636,12 @@ and code is actually generated when passing arguments in region polymorphic func
 	  val (offset,env) = List.foldl add_lvar (List.foldl add_lvar 
 						  (0,initialEnv) (#reg_args(decomp_cc))) (#args(decomp_cc))
 	  val (env,return_inst) = add_clos_opt(#clos(decomp_cc),env)
+
+	  val returns = Int.max(1, List.length (#res(decomp_cc)))  (* the return_inst instruction assumes 
+								    * that there is at least one result 
+								    * to return *)
 	in
-	  f_fun(lab,CG_ce(ce,env,offset,cc,[return_inst(offset,List.length (#res(decomp_cc)))]))
+	  f_fun(lab,CG_ce(ce,env,offset,cc,[return_inst(offset,returns)]))
 	end
     in
       fun CG_top_decl(ClosExp.FUN(lab,cc,ce)) = mk_fun FUN (lab,cc,ce)

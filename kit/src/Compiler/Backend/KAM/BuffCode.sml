@@ -76,7 +76,8 @@ functor BuffCode () : BUFF_CODE =
 	 BinIO.output1 (os, w32tow8 (Word32.>> (l,Word.fromInt 24))))
 	 
       fun out_pairs (os, ps) =
-	app (fn (a,b) => (out_long_w32'(os, Word32.fromInt a);
+	app (fn (a,b) => (print ("  (" ^ Int.toString a ^ ", " ^ Int.toString b ^ ")\n");
+			  out_long_w32'(os, Word32.fromInt a);
 			  out_long_w32'(os, Word32.fromInt b))) ps
 
       fun dump_buffer {filename : string, 
@@ -103,9 +104,13 @@ functor BuffCode () : BUFF_CODE =
 	   out_long_w32'(os, Word32.fromInt (List.length map_export_data));
 	   out_long_w32'(os, magic);
 	   BinIO.output(os, Word8Array.extract(!out_buffer, 0, SOME (!out_position)));
+	   print ("Writing code import (address,label)-pairs\n");
 	   out_pairs(os, map_import_code);
+	   print ("Writing data import (address,label)-pairs\n");
 	   out_pairs(os, map_import_data);
+	   print ("Writing code export (label,address)-pairs\n");
 	   out_pairs(os, map_export_code);
+	   print ("Writing data export (label,address)-pairs\n");
 	   out_pairs(os, map_export_data);
 	   BinIO.closeOut os) handle E => (BinIO.closeOut os; raise E)
 	end 
