@@ -494,6 +494,199 @@ end;
 /
 show errors
 
+----------------------------------------------
+-- PACKAGE SCS GROUPS COMPOSITION RELATIONS --
+----------------------------------------------
+
+create or replace package scs_grp_composition_rel
+as
+  function new (
+    rel_id         in scs_grp_composition_rels.rel_id%TYPE default null,
+    grp_id_one     in scs_grp_composition_rels.grp_id_one%TYPE,
+    grp_id_two     in scs_grp_composition_rels.grp_id_two%TYPE,
+    modifying_user in scs_grp_composition_rels.modifying_user%TYPE
+  ) return scs_grp_composition_rels.rel_id%TYPE;
+
+  procedure delete (
+    rel_id in scs_grp_composition_rels.rel_id%TYPE,
+    modifying_user in scs_grp_composition_rels.modifying_user%TYPE
+  );
+
+  function check_path_exists_p (
+    component_id in scs_groups.grp_id%TYPE,
+    container_id in scs_groups.grp_id%TYPE
+  ) return char;
+
+  function check_representation (
+    rel_id in scs_grp_composition_rels.rel_id%TYPE
+  ) return char;
+
+end scs_grp_composition_rel;
+/
+show errors
+
+create or replace package body scs_grp_composition_rel
+as
+  function new (
+    rel_id         in scs_grp_composition_rels.rel_id%TYPE default null,
+    grp_id_one     in scs_grp_composition_rels.grp_id_one%TYPE,
+    grp_id_two     in scs_grp_composition_rels.grp_id_two%TYPE,
+    modifying_user in scs_grp_composition_rels.modifying_user%TYPE
+  ) return scs_grp_composition_rels.rel_id%TYPE
+  is
+    v_rel_id scs_grp_composition_rels.rel_id%TYPE;
+  begin
+    v_rel_id := scs.new_obj_id(new.rel_id);
+
+    insert into scs_grp_composition_rels
+      (rel_id, grp_id_one, grp_id_two, modifying_user)
+    values
+      (v_rel_id, grp_id_one, grp_id_two, modifying_user);    
+
+    return v_rel_id;
+  end;
+
+  -- TO-DO: auditing
+  procedure delete (
+    rel_id         in scs_grp_composition_rels.rel_id%TYPE,
+    modifying_user in scs_grp_composition_rels.modifying_user%TYPE
+  )
+  is
+  begin
+    delete from scs_grp_composition_rels
+     where rel_id = scs_grp_composition_rel.delete.rel_id;
+  end delete;
+
+  function check_path_exists_p (
+    component_id in scs_groups.grp_id%TYPE,
+    container_id in scs_groups.grp_id%TYPE
+  ) return char
+  is
+  begin
+    if component_id = container_id then
+      return 't';
+    end if;
+
+    for row in (select grp_id_one as parent_id
+                  from scs_grp_composition_rels
+                where grp_id_two = check_path_exists_p.component_id) loop
+      if check_path_exists_p(row.parent_id, check_path_exists_p.container_id) = 't' then
+        return 't';
+      end if;
+    end loop;
+    
+    return 'f';
+  end;
+
+  function check_index (
+    component_id in scs_groups.grp_id%TYPE,
+    container_id in scs_groups.grp_id%TYPE
+  ) return char
+  is
+    result char(1);
+    n_rows integer;
+  begin
+    result := 't';
+
+    -- Loop through all the direct containers (DC) of COMPONENT_ID
+    -- that are also contained by CONTAINER_ID and verify that the
+    -- SCS_GRP_COMPONENT_MAP contains the (CONTAINER_ID, DC.REL_ID,
+    -- COMPONENT_ID) triple.
+    for dc in (select rel_id, grp_id_one as container_id
+                 from scs_grp_composition_rels
+                where grp_id_two = check_index.component_id) loop
+
+      if check_path_exists_p(dc.container_id,
+                             check_index.container_id) = 't' then
+        -- The triple (check_index.container_id,dc.rel_id,check_index.component_id) must exists.
+        select decode(count(*),0,0,1) 
+          into n_rows
+          from scs_grp_component_map
+         where grp_id = check_index.container_id
+           and component_id = check_index.component_id
+           and rel_id = dc.rel_id;
+
+        if n_rows = 0 then
+          result := 'f';
+          scs_log.error('scs_grp_composition_rel.check_index',
+                        'Row missing from scs_grp_component_map for (' ||
+                        'group_id = ' || container_id || '(' || container_id || '), ' ||
+                        'component_id = ' || component_id || '(' || component_id || '), ' ||
+                        'rel_id = ' || dc.rel_id || ')');
+        end if;
+      end if;
+
+    end loop;
+
+    -- Loop through all the containers of CONTAINER_ID.
+    for r1 in (select grp_id_one as container_id
+                 from scs_grp_composition_rels
+                where grp_id_two = check_index.container_id
+                union
+               select check_index.container_id
+                 from dual) loop
+      -- Loop through all the components of COMPONENT_ID and make a
+      -- recursive call.
+      for r2 in (select grp_id_two as component_id
+                   from scs_grp_composition_rels
+                  where grp_id_one = check_index.component_id
+                  union
+                 select check_index.component_id
+                   from dual) loop
+        if (r1.container_id != check_index.container_id or
+            r2.component_id != check_index.component_id) and
+            check_index(r2.component_id, r1.container_id) = 'f' then
+          result := 'f';
+        end if;
+      end loop;
+    end loop;
+
+    return result;
+  end;
+
+  function check_representation (
+    rel_id in scs_grp_composition_rels.rel_id%TYPE
+  ) return char
+  is
+    v_container_id scs_groups.grp_id%TYPE;
+    v_component_id scs_groups.grp_id%TYPE;
+    result char(1);
+  begin
+    result := 't';
+
+    select grp_id_one, grp_id_two
+      into v_container_id, v_component_id
+      from scs_grp_composition_rels
+     where rel_id = check_representation.rel_id;
+
+    -- First let's check that the index has all the rows it should.
+    if check_index(v_component_id, v_container_id) = 'f' then
+      result := 'f';
+    end if;
+
+    -- Now let's check that the index doesn't have any extraneous rows
+    -- relating to this relation.
+    for row in (select *
+                  from scs_grp_component_map
+                 where rel_id = check_representation.rel_id) loop
+      if check_path_exists_p(row.component_id, row.grp_id) = 'f' then
+        result := 'f';
+        scs_log.error('scs_grp_composition_rel.check_representation',
+                      'Extraneous row in group_component_index: ' ||
+                      'group_id = ' || row.grp_id || ', ' ||
+                      'component_id = ' || row.component_id || ', ' ||
+                      'rel_id = ' || row.rel_id || ', ' ||
+                      'container_id = ' || row.container_id || '.');
+      end if;
+    end loop;
+
+    return result;
+  end;
+
+end scs_grp_composition_rel;
+/
+show errors
+
 -----------------------------------------
 -- PACKAGE SCS GROUPS MEMBER RELATIONS --
 -----------------------------------------
@@ -666,9 +859,9 @@ as
       result := 'f';
       scs_log.error('scs_grp_member_rel.check_index',
                     'Row missing from scs_grp_member_map: ' ||
-                    'grp_id = ' || check_index.grp_id || '(' || scs_group.name(check_index.grp_id) || '), ' ||
+                    'grp_id = ' || check_index.grp_id || '(' || check_index.grp_id || '), ' ||
                     'member_id = ' || check_index.member_id || '(' || scs_party.email(check_index.member_id) || '), ' ||
-                    'container_id = ' || check_index.container_id || '(' || scs_group.name(container_id) || ').');
+                    'container_id = ' || check_index.container_id || '(' || container_id || ').');
     end if;
 
     for row in (select grp_id_one as container_id
@@ -720,199 +913,6 @@ as
   end;
 
 end scs_grp_member_rel;
-/
-show errors
-
-----------------------------------------------
--- PACKAGE SCS GROUPS COMPOSITION RELATIONS --
-----------------------------------------------
-
-create or replace package scs_grp_composition_rel
-as
-  function new (
-    rel_id         in scs_grp_composition_rels.rel_id%TYPE default null,
-    grp_id_one     in scs_grp_composition_rels.grp_id_one%TYPE,
-    grp_id_two     in scs_grp_composition_rels.grp_id_two%TYPE,
-    modifying_user in scs_grp_composition_rels.modifying_user%TYPE
-  ) return scs_grp_composition_rels.rel_id%TYPE;
-
-  procedure delete (
-    rel_id in scs_grp_composition_rels.rel_id%TYPE,
-    modifying_user in scs_grp_composition_rels.modifying_user%TYPE
-  );
-
-  function check_path_exists_p (
-    component_id in scs_groups.grp_id%TYPE,
-    container_id in scs_groups.grp_id%TYPE
-  ) return char;
-
-  function check_representation (
-    rel_id in scs_grp_composition_rels.rel_id%TYPE
-  ) return char;
-
-end scs_grp_composition_rel;
-/
-show errors
-
-create or replace package body scs_grp_composition_rel
-as
-  function new (
-    rel_id         in scs_grp_composition_rels.rel_id%TYPE default null,
-    grp_id_one     in scs_grp_composition_rels.grp_id_one%TYPE,
-    grp_id_two     in scs_grp_composition_rels.grp_id_two%TYPE,
-    modifying_user in scs_grp_composition_rels.modifying_user%TYPE
-  ) return scs_grp_composition_rels.rel_id%TYPE
-  is
-    v_rel_id scs_grp_composition_rels.rel_id%TYPE;
-  begin
-    v_rel_id := scs.new_obj_id(new.rel_id);
-
-    insert into scs_grp_composition_rels
-      (rel_id, grp_id_one, grp_id_two, modifying_user)
-    values
-      (v_rel_id, grp_id_one, grp_id_two, modifying_user);    
-
-    return v_rel_id;
-  end;
-
-  -- TO-DO: auditing
-  procedure delete (
-    rel_id         in scs_grp_composition_rels.rel_id%TYPE,
-    modifying_user in scs_grp_composition_rels.modifying_user%TYPE
-  )
-  is
-  begin
-    delete from scs_grp_composition_rels
-     where rel_id = scs_grp_composition_rel.delete.rel_id;
-  end delete;
-
-  function check_path_exists_p (
-    component_id in scs_groups.grp_id%TYPE,
-    container_id in scs_groups.grp_id%TYPE
-  ) return char
-  is
-  begin
-    if component_id = container_id then
-      return 't';
-    end if;
-
-    for row in (select grp_id_one as parent_id
-                  from scs_grp_composition_rels
-                where grp_id_two = check_path_exists_p.component_id) loop
-      if check_path_exists_p(row.parent_id, check_path_exists_p.container_id) = 't' then
-        return 't';
-      end if;
-    end loop;
-    
-    return 'f';
-  end;
-
-  function check_index (
-    component_id in scs_groups.grp_id%TYPE,
-    container_id in scs_groups.grp_id%TYPE
-  ) return char
-  is
-    result char(1);
-    n_rows integer;
-  begin
-    result := 't';
-
-    -- Loop through all the direct containers (DC) of COMPONENT_ID
-    -- that are also contained by CONTAINER_ID and verify that the
-    -- SCS_GRP_COMPONENT_MAP contains the (CONTAINER_ID, DC.REL_ID,
-    -- COMPONENT_ID) triple.
-    for dc in (select rel_id, grp_id_one as container_id
-                 from scs_grp_composition_rels
-                where grp_id_two = check_index.component_id) loop
-
-      if check_path_exists_p(dc.container_id,
-                             check_index.container_id) = 't' then
-        -- The triple (check_index.container_id,dc.rel_id,check_index.component_id) must exists.
-        select decode(count(*),0,0,1) 
-          into n_rows
-          from scs_grp_component_map
-         where grp_id = check_index.container_id
-           and component_id = check_index.component_id
-           and rel_id = dc.rel_id;
-
-        if n_rows = 0 then
-          result := 'f';
-          scs_log.error('scs_grp_composition_rel.check_index',
-                        'Row missing from scs_grp_component_map for (' ||
-                        'group_id = ' || container_id || '(' || scs_group.name(container_id) || '), ' ||
-                        'component_id = ' || component_id || '(' || scs_group.name(component_id) || '), ' ||
-                        'rel_id = ' || dc.rel_id || ')');
-        end if;
-      end if;
-
-    end loop;
-
-    -- Loop through all the containers of CONTAINER_ID.
-    for r1 in (select grp_id_one as container_id
-                 from scs_grp_composition_rels
-                where grp_id_two = check_index.container_id
-                union
-               select check_index.container_id
-                 from dual) loop
-      -- Loop through all the components of COMPONENT_ID and make a
-      -- recursive call.
-      for r2 in (select grp_id_two as component_id
-                   from scs_grp_composition_rels
-                  where grp_id_one = check_index.component_id
-                  union
-                 select check_index.component_id
-                   from dual) loop
-        if (r1.container_id != check_index.container_id or
-            r2.component_id != check_index.component_id) and
-            check_index(r2.component_id, r1.container_id) = 'f' then
-          result := 'f';
-        end if;
-      end loop;
-    end loop;
-
-    return result;
-  end;
-
-  function check_representation (
-    rel_id in scs_grp_composition_rels.rel_id%TYPE
-  ) return char
-  is
-    v_container_id scs_groups.grp_id%TYPE;
-    v_component_id scs_groups.grp_id%TYPE;
-    result char(1);
-  begin
-    result := 't';
-
-    select grp_id_one, grp_id_two
-      into v_container_id, v_component_id
-      from scs_grp_composition_rels
-     where rel_id = check_representation.rel_id;
-
-    -- First let's check that the index has all the rows it should.
-    if check_index(v_component_id, v_container_id) = 'f' then
-      result := 'f';
-    end if;
-
-    -- Now let's check that the index doesn't have any extraneous rows
-    -- relating to this relation.
-    for row in (select *
-                  from scs_grp_component_map
-                 where rel_id = check_representation.rel_id) loop
-      if check_path_exists_p(row.component_id, row.grp_id) = 'f' then
-        result := 'f';
-        scs_log.error('scs_grp_composition_rel.check_representation',
-                      'Extraneous row in group_component_index: ' ||
-                      'group_id = ' || row.grp_id || ', ' ||
-                      'component_id = ' || row.component_id || ', ' ||
-                      'rel_id = ' || row.rel_id || ', ' ||
-                      'container_id = ' || row.container_id || '.');
-      end if;
-    end loop;
-
-    return result;
-  end;
-
-end scs_grp_composition_rel;
 /
 show errors
 
