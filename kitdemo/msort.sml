@@ -1,3 +1,4 @@
+
        fun cp [] =[]
          | cp (x::xs)= x :: cp xs
 
