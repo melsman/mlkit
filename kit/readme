@@ -1,15 +1,16 @@
-The ML Kit with Regions, Version 3                 August 26, 1998
+The ML Kit with Regions, Version 3.1                 August 14, 1999
 
 
                            INSTALLING
 
-                         Version 3 of
+                         Version 3.1 of
                     The ML Kit with Regions 
 
    http://www.diku.dk/research-groups/topps/activities/mlkit.html
 
 
-This file describes how to install The ML Kit with Regions version 3.
+This file describes how to install The ML Kit with Regions version
+3.1.
 
 Since you are reading this, you have already succeeded in unpacking
 the kit directory, "kit". This directory contains the sources of the
@@ -24,11 +25,11 @@ so.
 ---------------
 
 To install the ML Kit, you need Standard ML of New Jersey version
-110.0.3 (or later). The ML Kit Web site at the top of this file has
-links to SML/NJ.  The executable Kit will take up around 8Mb of disc
-space. Building it typically takes half an hour or so and is best done
-on a machine with at least 64Mb of RAM. You also need to have the UNIX
-utilities gmake and gcc installed on your system.
+110.0.3 (later versions won't work). The ML Kit Web site at the top of
+this file has links to SML/NJ.  The executable Kit will take up around
+8Mb of disc space. Building it typically takes half an hour or so and
+is best done on a machine with at least 64Mb of RAM. You also need to
+have the UNIX utilities gmake and gcc installed on your system.
     
 Assuming that you have "sml-cm" (SML/NJ with the compilation manager
 loaded) available on your system and that you are in the "kit"
@@ -43,9 +44,9 @@ Now, write
 
 from within the SML/NJ system. You will now be asked whether you want
 the ML Kit to generate native machine code (currently available on
-only the HPUX-HPPA system) or if you want the Kit to generate C code
-to be compiled by gcc. The C backend has been tested on the HPUX-HPPA
-system and on the LINUX-X86 system.
+only the HPUX-HPPA and Linux-X86 systems) or if you want the Kit to
+generate C code to be compiled by gcc. The C backend has been tested
+on the HPUX-HPPA system and on the Linux-X86 system.
 
 If you want to build both the C version and the native code version,
 you need to do so in distinct copies of the distribution.
@@ -96,9 +97,9 @@ setitimer in the files "Profiling.c", "Runtime.c", and "Exception.h".
 The include files to use may depend on the architecture.
 
 The Kit calls the gcc compiler to assemble (or compile) and link the
-HP PA-RISC (or C) code files it generates. After a few modifications
-to the source code, you may well be able to run the Kit on other
-systems that has gcc and gmake installed.
+HP PA-RISC/X86 (or C) code files it generates. After a few
+modifications to the source code, you may well be able to run the Kit
+on other systems that has gcc and gmake installed.
 
 
 4. VCG
@@ -130,7 +131,7 @@ C-backend:
   Arithmetic operations do not raise Overflow. 
 
 Polymorphic equality:
-  Polymorphic equality is only implemented for ``regular'' data types.
+  Polymorphic equality is implemented only for ``regular'' data types.
   (A datatype binding   tyvarseq tycon = conbind     is said to be regular if
    all occurrences of tycon in conbind are in the context 
    tyvarseq tycon.)
