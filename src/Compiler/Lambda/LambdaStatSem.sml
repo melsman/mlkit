@@ -536,43 +536,10 @@ end
 				 | _ => die "SELECTprim.Arg not of record type")
 			    | _ => die "SELECTprim.Wrong number of args.")  
 	   | UB_RECORDprim => map ((unTypeListOne "UB_RECORDprim") o type_e) lexps
-(*KILL 12/11/1997 15:28. tho.:
-	   | NOTprim => type_prim' [tyName_BOOL] tyName_BOOL "NOTprim"
-*)
 	   | NEG_INTprim => type_prim' [tyName_INT] tyName_INT "NEG_INTprim"
 	   | NEG_REALprim => type_prim' [tyName_REAL] tyName_REAL "NEG_REALprim"
 	   | ABS_INTprim => type_prim' [tyName_INT] tyName_INT "ABS_INTprim"
 	   | ABS_REALprim => type_prim' [tyName_REAL] tyName_REAL "ABS_REALprim"
-(*KILL 12/11/1997 15:27. tho.:
-	   | FLOORprim => type_prim' [tyName_REAL,tyName_EXN] tyName_INT "FLOORprim"
-	   | REALprim => type_prim' [tyName_INT] tyName_REAL "REALprim"
-	   | SQRTprim => type_prim' [tyName_REAL,tyName_EXN] tyName_REAL "SQRTprim"
-	   | SINprim => type_prim' [tyName_REAL] tyName_REAL "SINprim"
-	   | COSprim => type_prim' [tyName_REAL] tyName_REAL "COSprim"
-	   | ARCTANprim => type_prim' [tyName_REAL] tyName_REAL "ARCTANprim"
-	   | EXPprim => type_prim' [tyName_REAL,tyName_EXN] tyName_REAL "EXPprim"
-	   | LNprim => type_prim' [tyName_REAL,tyName_EXN] tyName_REAL "LNprim"
-	   | SIZEprim => type_prim' [tyName_STRING] tyName_INT "SIZEprim"
-	   | CHRprim => type_prim' [tyName_INT,tyName_EXN] tyName_STRING "CHRprim"
-	   | EXPLODEprim =>
-	       (case lexps
-		  of [lexp] =>
-		    let val s = "EXPLODEprim"
-		        val ts = unTypeList s (type_e lexp)
-		    in if eq_Types(ts,[CONStype([], tyName_STRING)]) then [CONStype([CONStype([],tyName_STRING)], tyName_LIST)]
-		       else die s
-		    end
-		   | _ => die "EXPLODEprim.Wrong number of args")
-	   | IMPLODEprim =>
-	       (case lexps
-		  of [lexp] => 
-		    let val s = "IMPLODEprim"
-		      val ts = unTypeList s (type_e lexp)
-		    in if eq_Types(ts,[CONStype([CONStype([], tyName_STRING)], tyName_LIST)]) then [CONStype([],tyName_STRING)]
-		       else die s
-		    end
-		   | _ => die "IMPLODEprim.Wrong number of args")
-*)
 	   | DEREFprim {instance} => (* instance: argument type of primitive *)
 	       (case lexps
 		  of [lexp] => (case instance 
@@ -613,20 +580,12 @@ end
 					    end 
 					   | _ => die "ASSIGNprim.Wrong instance kind") 
 	           | _ => die "ASSIGNprim.Wrong number of args")
-(*KILL 12/11/1997 15:37. tho.:
-	   | DIV_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "DIV_REALprim"
-	   | DIV_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "DIV_INTprim"
-	   | MODprim => type_prim' [tyName_INT,tyName_INT,tyName_EXN] tyName_INT "MODprim"
-*)
 	   | MUL_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "MUL_REALprim"
 	   | MUL_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "MUL_INTprim"
 	   | PLUS_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "PLUS_REALprim"
 	   | PLUS_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "PLUS_INTprim"
 	   | MINUS_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "MINUS_REALprim"
 	   | MINUS_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "MINUS_INTprim"
-(*KILL 12/11/1997 15:28. tho.:
-	   | STRING_CONCATprim => die "STRING_CONCATprim.not implemented"
-*)
 	   | EQUALprim {instance} => (* instance: argument type of primitive *)
 	       (case lexps
 		  of [lexp1,lexp2] => (case instance
@@ -639,9 +598,6 @@ end
 					   end 
 					  | _ => die "EQUALprim.Wrong instance kind")
 		   | _ => die "EQUALprim.Wrong number of args") 
-(*KILL 12/11/1997 15:28. tho.:
-	   | NOTEQUALprim {instance} => die "NOTEQUALprim.not implemented"
-*)
 	   | LESS_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "LESS_REALprim"
 	   | LESS_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "LESS_INTprim"
 	   | GREATER_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "GREATER_REALprim"
@@ -650,23 +606,19 @@ end
 	   | LESSEQ_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "LESSEQ_INTprim"
 	   | GREATEREQ_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "GREATEREQ_REALprim"
 	   | GREATEREQ_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "GREATEREQ_INTprim"
-(*KILL 12/11/1997 15:28. tho.:
-	   | OPEN_INprim => die "prim not supported"
-	   | OPEN_OUTprim => die "prim not supported"
-	   | INPUTprim => die "prim not supported"
-	   | LOOKAHEADprim => die "prim not supported"
-	   | CLOSE_INprim => die "prim not supported"
-	   | END_OF_STREAMprim => die "prim not supported"
-	   | OUTPUTprim => die "prim not supported"
-	   | CLOSE_OUTprim => die "prim not supported"
-	   | USEprim => die "prim not supported"
-	   | FLUSH_OUTprim => die "prim not supported"
-	   | STD_INprim => die "prim not supported"
-	   | STD_OUTprim => die "prim not supported"
-*)
-	   | CCALLprim (s,{instance}) => (* instance: result type of primitive *)
-	     (* we cannot currently check arg. types... *)
-	     (List.apply (fn lexp => (type_e lexp; ())) lexps; [instance])
+	   | CCALLprim {name, instances, tyvars, Type} => 
+	       (case mk_instance ((tyvars, Type), instances) of
+		  ARROWtype (ts_arg, ts_res) =>
+		    let val ts = map (unTypeListOne "CCALL" o type_e) lexps
+		    in
+		      if eq_Types (ts, ts_arg) then ts_res
+		      else (log ("c function " ^ name ^ " expected types:\n");
+			    log_st (layoutTypes ts_arg);
+			    log "but found types:\n"; log_st (layoutTypes ts);
+			    die "c function call")
+		    end
+		| _ => die ("c function " ^ name ^ " does not have arrow type"))
+
 	   | RESET_REGIONSprim {instance} =>
 	     (case lexps
 		of [lexp] => 
@@ -683,7 +635,7 @@ end
 		     else die "FORCE_RESET_REGIONSprim"
 		  end
 		 | _ => die "FORCE_RESET_REGIONSprim.Wrong number of args")
-      end
+      end (*fun type_prim*)
 
 
     (* Type checking of lambda expressions *)
@@ -832,6 +784,7 @@ end
       val _ = letrec_polymorphism_only := flag
       val env' = analyse_datbinds datbinds
       val fr = type_lexp (env plus env') lexp
+	handle ? => (log_st (layoutLambdaExp lexp) ; raise ?)
       val env'' = env_from_frame fr
     in env' plus env''
     end      

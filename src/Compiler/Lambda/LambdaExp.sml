@@ -57,6 +57,10 @@ functor LambdaExp(structure Lvars: LVARS
     val stringType = CONStype([], TyName.tyName_STRING)
     val unitType = RECORDtype([])
 
+    val tyvars = foldType (fn tyvarset =>
+			   (fn TYVARtype tyvar => EqSet.insert tyvar tyvarset
+			     | _ => tyvarset)) EqSet.empty
+
     datatype TypeList =                               (* To allow the result of a declaration *)  
         Types of Type list                            (* to be a raised Bind exception. *)
       | Frame of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
@@ -71,48 +75,20 @@ functor LambdaExp(structure Lvars: LVARS
       | RECORDprim 
       | SELECTprim of int        
       | UB_RECORDprim                                 (* Unboxed record. *)
-(*KILL 12/11/1997 15:25. tho.:
-      | NOTprim                                       (* Pervasives, Definition p. 75. *)
-*)
       | NEG_INTprim 
       | NEG_REALprim
       | ABS_INTprim
       | ABS_REALprim
-(*KILL 12/11/1997 15:18. tho.:
-      | FLOORprim
-      | REALprim
-      | SQRTprim
-      | SINprim
-      | COSprim
-      | ARCTANprim
-      | EXPprim
-      | LNprim
-      | SIZEprim
-      | CHRprim
-      | EXPLODEprim
-      | IMPLODEprim
-*)
       | DEREFprim of {instance: 'Type}
       | REFprim of {instance: 'Type}
       | ASSIGNprim of {instance: 'Type}
-(*KILL 12/11/1997 15:18. tho.:
-      | DIV_REALprim                
-      | DIV_INTprim
-      | MODprim
-*)
       | MUL_REALprim
       | MUL_INTprim
       | PLUS_REALprim
       | PLUS_INTprim
       | MINUS_REALprim
       | MINUS_INTprim
-(*KILL 12/11/1997 15:25. tho.:
-      | STRING_CONCATprim
-*)
       | EQUALprim of {instance: 'Type}
-(*KILL 12/11/1997 15:25. tho.:
-      | NOTEQUALprim of {instance: 'Type}
-*)
       | LESS_REALprim
       | LESS_INTprim
       | GREATER_REALprim
@@ -121,21 +97,10 @@ functor LambdaExp(structure Lvars: LVARS
       | LESSEQ_INTprim
       | GREATEREQ_REALprim
       | GREATEREQ_INTprim
-(*KILL 12/11/1997 15:19. tho.:
-      | OPEN_INprim                                   (* I/O *)
-      | OPEN_OUTprim
-      | INPUTprim
-      | LOOKAHEADprim
-      | CLOSE_INprim
-      | END_OF_STREAMprim
-      | OUTPUTprim
-      | CLOSE_OUTprim
-      | USEprim                                       (* NOT Standard ML *)
-      | FLUSH_OUTprim                                 (* NOT Standard ML *)
-      | STD_INprim
-      | STD_OUTprim
-*)
-      | CCALLprim of string * {instance : 'Type}      (* NOT Standard ML *)
+      | CCALLprim of {name : string,                  (* NOT Standard ML *)
+		      instances : 'Type list,
+		      tyvars : tyvar list,
+		      Type : 'Type} 
       | RESET_REGIONSprim of {instance: 'Type}        (* NOT Standard ML, for programmer-directed, but safe, resetting of
 						       * regions *)
       | FORCE_RESET_REGIONSprim of {instance: 'Type}  (* NOT Standard ML, for programmer-controlled, unsafe resetting of
@@ -224,10 +189,7 @@ functor LambdaExp(structure Lvars: LVARS
       | REFprim{instance} => (foldType g) acc instance 
       | ASSIGNprim{instance} => (foldType g) acc instance 
       | EQUALprim{instance} => (foldType g) acc instance 
-(*KILL 12/11/1997 15:25. tho.:
-      | NOTEQUALprim{instance} => (foldType g) acc instance 
-*)
-      | CCALLprim(_,{instance}) => (foldType g) acc instance 
+      | CCALLprim {instances, ...} => foldl (foldType g) acc instances
       | RESET_REGIONSprim{instance} => (foldType g) acc instance 
       | FORCE_RESET_REGIONSprim{instance} => (foldType g) acc instance 
       | _ => acc
@@ -265,27 +227,10 @@ functor LambdaExp(structure Lvars: LVARS
       | RECORDprim => PP.LEAF("record")
       | SELECTprim i => PP.LEAF("select(" ^ Int.string i ^ ")")
       | UB_RECORDprim => PP.LEAF("ubrecord") 
-(*KILL 12/11/1997 15:25. tho.:
-      | NOTprim => PP.LEAF("not")
-*)
       | NEG_INTprim => PP.LEAF("~" )
       | NEG_REALprim => PP.LEAF("~")
       | ABS_INTprim => PP.LEAF("abs")
       | ABS_REALprim => PP.LEAF("abs")
-(*KILL 12/11/1997 15:20. tho.:
-      | FLOORprim => PP.LEAF("floor")
-      | REALprim => PP.LEAF("real")
-      | SQRTprim => PP.LEAF("sqrt")
-      | SINprim => PP.LEAF("sin")
-      | COSprim => PP.LEAF("cos")
-      | ARCTANprim => PP.LEAF("arctan")
-      | EXPprim => PP.LEAF("exp")
-      | LNprim => PP.LEAF("ln")
-      | SIZEprim => PP.LEAF("size")
-      | CHRprim => PP.LEAF("chr")
-      | EXPLODEprim => PP.LEAF("explode")
-      | IMPLODEprim => PP.LEAF("implode")
-*)
       | DEREFprim {instance} => 
           if !Flags.print_types then
 	     PP.NODE{start="!(",finish=")",indent=2,
@@ -301,33 +246,18 @@ functor LambdaExp(structure Lvars: LVARS
 	       PP.NODE{start=":=(",finish=")",indent=2,
 		  children=[layoutType instance],childsep=PP.NONE}
           else PP.LEAF " := "
-(*KILL 12/11/1997 15:20. tho.:
-      | DIV_REALprim => PP.LEAF("/")
-      | DIV_INTprim => PP.LEAF("div")
-      | MODprim => PP.LEAF("mod")
-*)
       | MUL_REALprim => PP.LEAF("*")
       | MUL_INTprim => PP.LEAF("*")
       | PLUS_REALprim => PP.LEAF("+")
       | PLUS_INTprim => PP.LEAF("+")
       | MINUS_REALprim => PP.LEAF("-")
       | MINUS_INTprim => PP.LEAF("-")
-(*KILL 12/11/1997 15:25. tho.:
-      | STRING_CONCATprim => PP.LEAF("^" )
-*)
       | EQUALprim {instance} => 
           if !Flags.print_types then
 	      PP.NODE{start="=(",finish=")",indent=2,
 		  children=[layoutType instance],childsep=PP.NONE}
           else
 	    PP.LEAF " = "
-(*KILL 12/11/1997 15:24. tho.:
-      | NOTEQUALprim {instance} => 
-          if !Flags.print_types then
-	      PP.NODE{start="<>(",finish=")",indent=2,
-		  children=[layoutType instance],childsep=PP.NONE}
-          else PP.LEAF " <> "
-*)
       | LESS_REALprim =>PP.LEAF("<")
       | LESS_INTprim =>PP.LEAF("<")
       | GREATER_REALprim => PP.LEAF(">")
@@ -336,25 +266,11 @@ functor LambdaExp(structure Lvars: LVARS
       | LESSEQ_INTprim => PP.LEAF("<=")
       | GREATEREQ_REALprim => PP.LEAF(">=")
       | GREATEREQ_INTprim => PP.LEAF(">=")
-(*KILL 12/11/1997 15:20. tho.:
-      | OPEN_INprim => PP.LEAF("open_in" )
-      | OPEN_OUTprim => PP.LEAF("open_out")
-      | INPUTprim => PP.LEAF("intput")
-      | LOOKAHEADprim => PP.LEAF("lookahead")
-      | CLOSE_INprim => PP.LEAF("close_in")
-      | END_OF_STREAMprim => PP.LEAF("end_of_stream")
-      | OUTPUTprim => PP.LEAF("output")
-      | CLOSE_OUTprim => PP.LEAF("close_out")
-      | USEprim => PP.LEAF("use" )
-      | FLUSH_OUTprim => PP.LEAF("flush_out" )
-      | STD_INprim => PP.LEAF("std_in" )
-      | STD_OUTprim => PP.LEAF("std_out" )
-*)
-      | CCALLprim (s,{instance}) => 
+      | CCALLprim {name, instances, tyvars, Type} => 
           if !Flags.print_types then
-	      PP.NODE{start="ccall("^s,finish=")",indent=2,
-		  children=[layoutType instance],childsep=PP.NONE}
-          else PP.LEAF("ccall("^s^")" )
+	      PP.NODE {start="ccall (" ^ name ^ " ", finish=")", indent=2,
+		       children=map layoutType instances, childsep=PP.LEFT ", "}
+          else PP.LEAF ("ccall " ^ name)
       | RESET_REGIONSprim {instance} => 
           if !Flags.print_types then
 	      PP.NODE{start="resetRegions(", finish=")",indent=2,
