@@ -25,10 +25,6 @@ local
   ../demo_lib/RatingUtil.sml
 in
  [
-  auth_form.sml
-  auth_logout.sml
-  auth.sml
-
   demo/regexp.sml
   demo/cache.sml
   demo/cache_add.sml
@@ -57,6 +53,11 @@ in
   demo/currency_cache.sml
   demo/formvar.sml
   demo/formvar_chk.sml
+  demo/auth_form.sml
+  demo/auth_logout.sml
+  demo/auth.sml
+  demo/auth_new_form.sml
+  demo/auth_new.sml
   demo/link/index.sml
   demo/link/add_form.sml
   demo/link/add.sml

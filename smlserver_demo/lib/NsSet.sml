@@ -12,15 +12,15 @@ structure NsSet : NS_SET =
     fun getOpt (s:set, key:string, dflt:string): string =
       Option.getOpt(get (s, key), dflt)
     fun put (s: set, key: string, value: string) : unit = 
-      prim("nssml_SetPut", (s,key,value))
+      prim("@Ns_SetPut", (s,key,value))
     fun free (s: set) : unit =
-      prim("Ns_SetFree", s)
+      prim("@Ns_SetFree", s)
     fun create (name: string) : set =
-      prim("nssml_SetCreate", name)
+      prim("@Ns_SetCreate", name)
     fun size (s: set) : int =
       prim("nssml_SetSize", s)
     fun unique (s: set, key: string) : bool =
-      prim("nssml_SetUnique", (s,key))
+      prim("@Ns_SetUnique", (s,key))
 
     fun key (s: set, index: int) : string option =
       let val res : string = prim("nssml_SetKey", (s, index))

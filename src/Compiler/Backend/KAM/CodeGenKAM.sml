@@ -883,7 +883,9 @@ struct
 		if i >= 0 then
 		  comp_ces(all_args,env,sp,cc,
 			   Ccall(i, List.length all_args) :: acc)
-		else die ("Couldn't generate code for a C-call to " ^ name)
+		else die ("Couldn't generate code for a C-call to " ^ name ^
+			  "; you probably need to insert the function name in the " ^
+			  "file BuiltInCFunctions.spec or BuiltInCFunctionsNsSml.spec")
 	      end
 	  end
       | CG_ce(ClosExp.CCALL_AUTO{name,args,res}, env,sp,cc,acc) =
@@ -892,7 +894,9 @@ struct
 	    if i >= 0 then
 	      comp_ces_ccall_auto(args,env,sp,cc,Ccall(i, List.length args) :: 
 				  cconvert_res res acc)
-	    else die ("Couldn't generate code for a C-autocall to " ^ name)
+	    else die ("Couldn't generate code for a C-autocall to " ^ name ^
+		      "; you probably need to insert the function name in the " ^
+		      "file BuiltInCFunctions.spec or BuiltInCFunctionsNsSml.spec")
 	  end
       | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = 
 	  comment ("FRAME - this is a nop", acc)

@@ -1,23 +1,23 @@
-nssml_ConnReturnHtml
-nssml_log
-nssml_GetConn
+Ns_ConnReturnHtml
+Ns_Log
+Ns_TclGetConn
 Ns_ConnGetQuery
 nssml_SetGet
-nssml_SetPut
+Ns_SetPut
 nssml_isNullString
 Ns_SetFree
-nssml_SetCreate
+Ns_SetCreate
 nssml_SetSize
-nssml_SetUnique
-nssml_ConnPuts
-nssml_ConnSetRequiredHeaders
+Ns_SetUnique
+Ns_ConnPuts
+Ns_ConnSetRequiredHeaders
 nssml_PageRoot
-nssml_ConnReturnRedirect
-nssml_DbPoolGetHandle
-nssml_DbPoolPutHandle
-nssml_DbDML
-nssml_DbSelect
-nssml_DbGetRow
+Ns_ConnReturnRedirect
+Ns_DbPoolGetHandle
+Ns_DbPoolPutHandle
+Ns_DbDML
+Ns_DbSelect
+Ns_DbGetRow
 
 nssml_ConnHost
 Ns_ConnHeaders
@@ -25,7 +25,7 @@ nssml_ConnLocation
 nssml_ConnPeer
 Ns_ConnPeerPort
 Ns_ConnPort
-nssml_ConnRedirect
+Ns_ConnRedirect
 nssml_ConnServer
 nssml_SetKey
 nssml_SetValue
@@ -46,7 +46,7 @@ nssml_configGetValueExact
 nssml_ConnUrl
 nssml_FetchUrl
 
-nssml_CacheFind
+Ns_CacheFind
 nssml_CacheCreate
 nssml_CacheCreateSz
 Ns_CacheFlush
