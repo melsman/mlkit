@@ -16,6 +16,9 @@
 ====================================================================== */
 create or replace package scs_party
 as
+
+  scs_portrait_types constant varchar(30) := 'scs_portrait_types';
+
   /* ------------
      function new
      ------------
