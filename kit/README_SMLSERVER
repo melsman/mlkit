@@ -51,6 +51,12 @@ To use SMLserver you need the following:
     contains the SMLserver implementation.
 
 
+INSTALLING USING RPM'S
+----------------------
+
+See the file doc/smlserver.html for details.
+
+
 BUILDING THE SMLSERVER MODULE AND THE BYTECODE COMPILER
 -------------------------------------------------------
 

@@ -88,6 +88,7 @@ rm -rf $RPM_BUILD_ROOT
 
 # Documentation, Etc.
 %doc /usr/share/smlserver/doc/mlkit.pdf
+%doc /usr/share/smlserver/doc/smlserver.html
 %doc /usr/share/smlserver/README
 %doc /usr/share/smlserver/README_SMLSERVER
 /usr/share/smlserver/copyright
