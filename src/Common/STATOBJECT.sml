@@ -81,6 +81,9 @@ signature STATOBJECT =
 	val from_TyVar'             : level -> TyVar -> Type
 	      (*used to elaborate explicit tyvar's*)
 	val to_TyVar                : Type -> TyVar Option
+
+	(*getOverloadedTyVar tau = the overloaded tyvar in tau if there is one
+	 (there should be at most one):*)
 	val getOverloadedTyVar      : Type -> TyVar Option  
 
 	(*record types*)
@@ -126,6 +129,9 @@ signature STATOBJECT =
 	val Int                     : Type
 	val Real                    : Type
 	val Bool                    : Type   (*needed for initial TE and VE*)
+	val String                  : Type
+	val Char                    : Type
+	val Word                    : Type
 	val of_scon                 : scon -> Type
 
 	(*Return a list of those type variables of tau which are allowed to
