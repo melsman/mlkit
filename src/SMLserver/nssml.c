@@ -29,7 +29,7 @@
 #define NSSML_NOTIMESTAMP (-2)
 #define NSSML_ULFILENOTFOUND (-3)
 
-static char *formtyping = NULL;
+static char *extendedtyping = NULL;
 
 time_t
 nssml_fileModTime(char* file) 
@@ -172,9 +172,9 @@ rpMap = regionPageMapNew();
     return NS_ERROR;
   }
 
-  formtyping = Ns_ConfigGetValue(configPath, "formtyping");
-  if (formtyping != NULL) {
-    Ns_Log(Notice, "nssml: form typing enabled");
+  extendedtyping = Ns_ConfigGetValue(configPath, "extendedtyping");
+  if (extendedtyping != NULL) {
+    Ns_Log(Notice, "nssml: extended typing (xt) enabled");
   }
 
 
@@ -246,7 +246,7 @@ nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid)
   while ( *p != '\0' ) {
     char c = *p;
     if ( c == '.' ) {
-      if ( formtyping != NULL && nssml_next_sml0(p) ) {
+      if ( extendedtyping != NULL && nssml_next_sml0(p) ) {
 	uo[i++] = '%';
 	uo[i++] = 'g';
 	uo[i++] = 'e';

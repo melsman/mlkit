@@ -335,15 +335,16 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		    | "bool" => "Obj.fromBool'"
 		    | _ => error ("unsupported field type: " ^ typ)
 		  end
-		fun mk_field {name,typ} = ("    val " ^ name ^ " = case Ns.Conn.formvar \"" ^ name ^ "\" of\n\
-					   \        SOME s => " ^ objFrom typ ^ " s\n\
-					   \      | NONE => (Ns.Conn.write \"Impossible\";\n\
-					   \                 Ns.exit())\n")
+		fun mk_field {name,typ} = 
+		    ("    val " ^ name ^ " = case SMLserver.Unsafe.formvar \"" ^ name ^ "\" of\n\
+		      \        SOME s => " ^ objFrom typ ^ " s\n\
+		      \      | NONE => (SMLserver.Unsafe.write \"Missing form variable\";\n\
+		      \                 SMLserver.exit())\n")
 	    in
 		concat (["structure X = ", name, " (\n",
 			 "  struct\n"] @ map mk_field fields @
 			["  end)\n",
-			 "val _ = Ns.Conn.write (Scripts.Http.Unsafe.toString X.response)\n"])
+			 "val _ = SMLserver.Unsafe.write (Scripts.Http.Unsafe.toString X.response)\n"])
 	    end
 
 	fun genScriptletInstantiations (ss: script list) : string list =
