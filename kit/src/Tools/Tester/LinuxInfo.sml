@@ -25,28 +25,33 @@ struct
       in loop (explode e, explode line)
       end
 
-    fun loopFile e is =
+    fun loopFile nil acc is = SOME (rev acc)
+      | loopFile (all as e::es) acc is =
       case TextIO.inputLine is
 	of "" => NONE
 	 | line => case readEntry e line
-		     of SOME res => SOME res
-		      | NONE => loopFile e is
+		     of SOME res => loopFile es (res::acc) is
+		      | NONE => loopFile all acc is
   in
-    fun getProcStatusEntry pid e =    
+    fun getProcStatusEntries pid es =    
       withFile ("/proc/" ^ pid ^ "/status") 
-      (loopFile e)
-    fun getProcStatusEntryInt pid e =
-      case getProcStatusEntry pid e
-	of NONE => NONE
-	 | SOME s => Int.fromString s
+      (loopFile es nil)
   end
 
   fun getInfo pid =
+    case getProcStatusEntries pid ["VmSize", "VmRSS", "VmData", "VmStk", "VmExe"]
+      of NONE => NONE
+       | SOME l =>
+	case map Int.fromString l
+	  of [SOME size,SOME rss,SOME data,SOME stk,SOME exe] => 
+	    SOME {size=size,rss=rss,data=data,stk=stk,exe=exe}
+	   | _ => NONE
+(*
     case (getProcStatusEntryInt pid "VmRSS",
 	  getProcStatusEntryInt pid "VmSize")
       of (SOME rss, SOME size) => SOME {rss=rss,size=size}
        | _ => NONE
-
+*)
 (*
     fun getInfo' stat =
 	let val line = TextIO.inputLine stat

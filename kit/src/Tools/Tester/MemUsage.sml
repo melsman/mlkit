@@ -1,63 +1,67 @@
 signature MEM_USAGE =
   sig
-    type time = Time.time
-    val second: time
-    val tenthSecond: time
-    val quarterSecond: time
-      
-    (* memUsage {cmd, out_file, delay} - Spawn a child process
+    (* memUsage {cmd, out_file} - Spawn a child process
      * executing cmd and monitor its memory usage.  Output from
-     * executing the command is redirected to out_file. The monitor
-     * waits, roughly, delay between each report. *)
+     * executing the command is redirected to out_file. *)
 
     type report = {count:int, rss:int, size: int, 
-		   stime: Time.time, utime: Time.time}
+		   data: int, stk: int, exe: int,
+		   sys: Time.time, user: Time.time, real: Time.time}
               
-    val memUsage: {cmd: string, args: string list, out_file: string, delay: time} -> report
+    val memUsage: {cmd: string, args: string list, out_file: string} -> report
   end
 
 structure MemUsage : MEM_USAGE =
   struct
 
-    type report0 = {count:int, rss:int, size: int}
+    type report0 = {count:int, rss:int, size: int,
+		    data: int, stk: int, exe: int}
     type report = {count:int, rss:int, size: int, 
-		   stime: Time.time, utime: Time.time}
-
-    type time = Time.time
-    val second = Time.fromMilliseconds 1000
-    val longTime = Time.fromMilliseconds 10000
-    val tenthSecond = Time.fromMilliseconds 100 
-    val quarterSecond = Time.fromMilliseconds 250
+		   data: int, stk: int, exe: int,
+		   sys: Time.time, user: Time.time, real: Time.time}
 
     fun max i i' = if i > i' then i else i'
 
-    fun new {count, size, rss} {size=size',rss=rss'} =
-      {count=count+1, size=max size size', rss=max rss rss'}
+    fun new {count, size, rss, data, stk, exe} 
+      {size=size',rss=rss',data=data', stk=stk', exe=exe'} =
+      {count=count+1, 
+       size=max size size', 
+       rss=max rss rss',
+       data=max data data',
+       stk=max stk stk',
+       exe=max exe exe'}
 
-    fun loop_and_monitor_child (delay: time) (pid:Posix.Process.pid) {cutime0,cstime0} =
+    fun loop_and_monitor_child (pid:Posix.Process.pid) {cutime0,cstime0,realtimer} =
       let 
 	val pid_s = (Int.toString o Word32.toInt o Posix.Process.pidToWord) pid
-	fun loop acc = case (Posix.Process.sleep delay; Info.getInfo pid_s)
+	  
+	val delay = Time.fromMilliseconds 10
+	fun sleep() = OS.IO.poll(nil,SOME delay)
+
+	fun loop acc = case (sleep(); Info.getInfo pid_s)
 			 of SOME minfo => loop (new acc minfo)
 			  | NONE => acc
-	val {count,size,rss} = loop {count=0,size=0,rss=0}
+	val {count,size,rss,data,stk,exe} = loop {count=0,size=0,rss=0,data=0,stk=0,exe=0}
       in 
 	(* Wait for the dead child *)
-	if #1 (Posix.Process.waitpid (Posix.Process.W_CHILD pid, nil)) = pid then 
+	if #1 (Posix.Process.wait()) = pid then 
 	  let val {cstime, cutime,...} = Posix.ProcEnv.times()
 	  in {count=count,size=size,rss=rss,
-	      stime=Time.-(cstime,cstime0),
-	      utime=Time.-(cutime,cutime0)}
+	      data=data,stk=stk,exe=exe,
+	      sys=Time.-(cstime,cstime0),
+	      user=Time.-(cutime,cutime0),
+	      real=Timer.checkRealTimer realtimer}
 	  end
 	else raise Fail "loop_and_monitor_child: wrong pid"
       end
 
-    fun memUsage {cmd, args, out_file, delay} : report =
+    fun memUsage {cmd, args, out_file} : report =
       let val {cstime=cstime0, cutime=cutime0,...} = Posix.ProcEnv.times()
       in
 	case Posix.Process.fork () 
 	  of SOME pid =>                          (* We're in the parent process *)
-	    loop_and_monitor_child delay pid {cstime0=cstime0,cutime0=cutime0}
+	    loop_and_monitor_child pid {cstime0=cstime0,cutime0=cutime0,
+					realtimer=Timer.startRealTimer()}
 	   | NONE =>                              (* We're in the child process *)
 	    let val fd = Posix.FileSys.creat(out_file, Posix.FileSys.S.irwxu)
 	      handle _ => raise Fail "memUsage.child.openf failed"

@@ -98,8 +98,9 @@ structure Tester : TESTER =
 		else (msgErr "out not equal to out.ok"; false)
 	    in 
 	      if opt TestFile.TimeExecutable then
-		let val {max_mem_size,max_res_size,real,user,sys} =
-		       MemTime.memtime {msg=msg',program=exe_file,args=nil,outputfile=file ^ ".out"}
+		let val _ = msg' ("    executing target program: " ^ exe_file)
+	 	    val {count,size,rss,data,stk,exe,real,user,sys} =
+		      MemUsage.memUsage {cmd=exe_file,args=nil,out_file=file ^ ".out"}
 		    val ok = test_output()
 		    val exesize = size_of_file exe_file
 		    val exesize_stripped = 
@@ -109,12 +110,12 @@ structure Tester : TESTER =
 		in
 		  TestReport.add_runtime_line{name=filepath,ok=ok,exesize=exesize, 
 					      exesize_stripped=exesize_stripped, 
-					      max_mem_size=max_mem_size, 
-					      max_res_size=max_res_size,real=real,
-					      user=user,sys=sys}
+					      size=size,data=data,
+					      rss=rss,stk=stk,exe=exe,
+					      real=real,user=user,sys=sys}
 
-		end handle MemTime.Crash s => (msgErr (exe_file ^ " failure: " ^ s); 
-					       TestReport.add_runtime_bare_line(filepath,false))
+		end handle Fail s => (msgErr (exe_file ^ " failure: " ^ s); 
+				      TestReport.add_runtime_bare_line(filepath,false))
 	      else
 		let val res = OS.Process.system (exe_file ^ " > " ^ file ^ ".out")
 		in 
@@ -242,7 +243,6 @@ structure Tester : TESTER =
 	  let val log = "TESTmessages"
 	    val _ = reset_error_counter()
 	    val _ = TestReport.reset()
-	    val _ = MemTime.bin_directory := OS.Path.joinDirFile{dir=OS.FileSys.getDir(),file="bin"}
 	  in (msglog:=TextIO.openOut(log);
 	      case TestFile.parse testfile
 		of NONE => OS.Process.failure

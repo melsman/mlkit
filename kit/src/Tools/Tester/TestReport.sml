@@ -11,9 +11,9 @@ signature TEST_REPORT =
 			     Time.time) list} -> unit
 
     val add_runtime_line : {name: string, ok: bool, exesize: string,
-			    exesize_stripped: string, max_mem_size:
-			    string, max_res_size: string, real:
-			    string, user: string, sys: string} -> unit
+			    exesize_stripped: string, size: int, 
+			    rss: int, stk: int, data: int, exe: int, 
+			    real: Time.time, user: Time.time, sys: Time.time} -> unit
 
     val add_runtime_bare_line : string * bool -> unit   (* `name' and `ok' *)
 
@@ -34,8 +34,9 @@ structure TestReport : TEST_REPORT =
   struct
     
     type runtime_line = {name: string, ok: bool, exesize: string,
-      exesize_stripped: string, max_mem_size: string, max_res_size:
-      string, real: string, user: string, sys: string}
+			 exesize_stripped: string, size: int, rss: int, 
+			 data: int, stk: int, exe: int,
+			 real: Time.time, user: Time.time, sys: Time.time}
 
     val compout_lines : {name: string, match: bool option, success_as_expected: bool} list ref = ref nil
     val comptime_lines : {name: string, entries: (string * Time.time) list} list ref = ref nil
@@ -241,35 +242,47 @@ structure TestReport : TEST_REPORT =
 		  | stack [e] = e
 		  | stack (e::l) = "$\\!\\!$\\begin{tabular}{c}" ^ foldl (fn (s,a) => a ^ " \\\\" ^ s) e l ^ "\\end{tabular}$\\!\\!$"
 	        val header = "\\hline Source & Ok & " 
-		  ^ stack ["Size of", "exec."] ^ " & "
-		  ^ stack ["Size of", "stripped", "exec."] ^ " & "
-		  ^ stack ["Max", "mem.", "size"] ^ " & "
-		  ^ stack ["Max", "res.", "size"] ^ " & "
+		  ^ stack ["Exec", "size"] ^ " & "
+(*		  ^ stack ["Size of", "stripped", "exec."] ^ " & " *)
+		  ^ stack ["Vm-", "Size"] ^ " & "
+		  ^ stack ["Vm-", "RSS"] ^ " & "
+		  ^ stack ["Vm-", "Data"] ^ " & "
+		  ^ stack ["Vm-", "Stk"] ^ " & "
+		  ^ stack ["Vm-", "Exe"] ^ " & "		  
 		  ^ stack ["real", "time"] ^ " & "
 		  ^ stack ["user", "time"] ^ " & "
-		  ^ stack ["system", "time"] ^ " \\\\ \\hline"
+		  ^ stack ["sys", "time"] ^ " \\\\ \\hline"
+
+		fun report i = (* i is in kilobytes *)
+		  if i > 10000 then Int.toString (i div 1000) ^ "M"
+		  else Int.toString i ^ "K"
+
 		fun line {name: string, ok: bool, exesize: string,
-			  exesize_stripped: string, max_mem_size: string, max_res_size:
-			  string, real: string, user: string, sys: string} =
-		  (verb name ^ " & " ^ pr_ok ok ^ " & " ^ exesize ^ " & " ^
-		   exesize_stripped ^ " & " ^ max_mem_size ^ " & " ^ max_res_size ^ " & " ^
-		   real ^ " & " ^ user ^ " & " ^ sys ^ "\\\\ \\hline")
+			  exesize_stripped: string, size: int, rss: int, 
+			  data:int, stk:int, exe: int,
+			  real: Time.time, user: Time.time, sys: Time.time} =
+		  (verb name ^ " & " ^ pr_ok ok ^ (* " & " ^ exesize ^ *) " & " ^
+		   exesize_stripped ^ " & " ^ report size ^ " & " ^ report rss ^ " & " ^ 
+		   report data ^ " & " ^ report stk ^ " & " ^ report exe ^ " & " ^
+		   Time.toString real ^ " & " ^ Time.toString user ^ " & " ^ Time.toString sys ^ "\\\\ \\hline")
 	    in 
 	      section "Measurements of Executables";
 	      outln "This section shows static and dynamic properties of the generated executable files.";
-	      outln "Sizes of executables are in bytes. Column ``Max mem. size'' shows the total size";
-	      outln "of the process in kilobytes---including text, data, and stack. Column ``Max res. size''";
-	      outln "shows the resident size of the process in kilobytes; the resident size information is, at best, an";
-	      outln "approximate value. A table entry ``Unknown'' in the ``Max mem. size'' and ``Max res. size'' columns";
-	      outln "means that the target program had finished execution before the UNIX program {\\tt top} notices the";
-	      outln "program. Memory sizes and execution timings are found using the UNIX {\\tt top} and {\\tt timex} commands.";
+	      outln "Sizes of executables are in bytes (measured after symbols from object files are stripped). ";
+	      outln "Column {\\bf VmSize} shows the total size";
+	      outln "of the process---including text, data, and stack. Column {\\bf VmRSS}";
+	      outln "shows the resident set-size of the process; the resident set-size information is, at best, an";
+	      outln "approximate value. ";
+	      outln "Memory sizes and execution timings are found using the UNIX {\\tt top} and {\\tt timex} commands.";
 	      outln "The ``Ok'' column  shows if the output from running the executable equals the expected output.";
 	      outln "";
 	      outln "\\vspace{4mm}";
-	      beginenv' ("tabular","{|l|r|r|r|r|r|r|r|r|}");
+	      outln "{\\small";
+	      beginenv' ("tabular","{||l|r|r||r|r|r|r|r||r|r|r||}");
 	      outln header;
 	      app (outln o line) l;
-	      endenv "tabular"
+	      endenv "tabular";
+	      outln "}"
 	    end
 	  
 	  local

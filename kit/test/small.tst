@@ -18,20 +18,20 @@ Test files may contain Standard ML like comments.
 
 *)
 
-kittmergesort.sml       tx tc gc
-kitqsort.sml            tx tc gc
-kitmandelbrot.sml       tx tc gc
-kitsimple.sml           tx tc gc
-kitlife35u.sml          tx tc gc
-kkb36c.sml              tx tc gc
-fft.sml                 tx tc gc
+kittmergesort.sml       tx 
+kkb36c.sml              tx 
+kitlife35u.sml          tx 
 (*
-vliw.sml                tx tc gc
-lexgen.sml              tx tc gc
-mlyacc.pm               tx tc gc
-logic.pm                tx tc gc
-barnes-hut.pm           tx tc gc
-nucleic.pm              tx tc gc
-ray.pm                  tx tc gc
-ratio-regions.sml       tx tc gc
+kitqsort.sml            tx 
+kitmandelbrot.sml       tx 
+kitsimple.sml           tx 
+fft.sml                 tx 
+vliw.sml                tx 
+lexgen.sml              tx 
+mlyacc.pm               tx 
+logic.pm                tx 
+barnes-hut.pm           tx 
+nucleic.pm              tx 
+ray.pm                  tx 
+ratio-regions.sml       tx 
 *)
