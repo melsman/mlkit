@@ -1,7 +1,19 @@
 signature SCS_DB =
   sig
+
+    (* [dbClickDmlDb table_name id_column_name generated_id insert_sql db]
+       executes insert_sql, and if it fails then 
+
+         - it checks whether a record already exists. If the case,
+           then we believe its a double click and returns silently.
+
+         - if a record does not exists, then the exception Fail is
+           propagated *)
+    val dbClickDmlDb  : string -> string -> string -> string -> quot -> Db.Handle.db -> unit
     val dbClickDml    : string -> string -> string -> string -> quot -> unit
-    val dbClickDmlDb  : Db.Handle.db -> string -> string -> string -> string -> quot -> unit
+
+    val dbClickDml_old    : string -> string -> string -> string -> quot -> unit
+    val dbClickDmlDb_old  : Db.Handle.db -> string -> string -> string -> string -> quot -> unit
     val panicDml      : quot -> unit
     val panicDmlTrans : (Db.Handle.db -> 'a) -> 'a
     val errorDml      : quot -> quot -> unit
@@ -28,7 +40,17 @@ signature SCS_DB =
 
 structure ScsDb :> SCS_DB =
   struct
+    fun dbClickDmlDb table_name id_column_name generated_id return_url insert_sql db =
+      Db.Handle.dmlDb db insert_sql
+      handle Fail s =>
+	(if Db.existsOneRow `select 1 as num from ^table_name where ^id_column_name = '^(Db.qq generated_id)'` 
+	   then () (* it's a double click *)
+	 else raise (Fail s))
+
     fun dbClickDml table_name id_column_name generated_id return_url insert_sql =
+      Db.Handle.wrapDb (dbClickDmlDb table_name id_column_name generated_id return_url insert_sql)
+
+    fun dbClickDml_old table_name id_column_name generated_id return_url insert_sql =
       (Db.dml insert_sql;
        Ns.returnRedirect return_url; Ns.exit())
       handle Fail s =>
@@ -38,7 +60,7 @@ structure ScsDb :> SCS_DB =
 	   handle X => ScsError.panic (`DbFunctor.dbClickDml choked. DB returned error on SQL ` 
 				       ^^ insert_sql ^^ `^(General.exnMessage X)`))
 
-    fun dbClickDmlDb db table_name id_column_name generated_id return_url insert_sql =
+    fun dbClickDmlDb_old db table_name id_column_name generated_id return_url insert_sql =
       (Db.Handle.dmlDb db insert_sql;
        Ns.returnRedirect return_url;())
       handle Fail s =>

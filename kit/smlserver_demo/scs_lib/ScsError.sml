@@ -32,7 +32,9 @@ structure ScsError :> SCS_ERROR =
 
     fun raiseError emsg = (logError emsg; raise (Fail (Quot.toString emsg)))
 
-    fun emailError emsg = Ns.Mail.send {to="nh@it-c.dk",from="ucs@it-c.dk",subject="ScsPanic",body=Quot.toString emsg}
+    fun emailError emsg = Ns.Mail.send {to=ScsConfig.scs_site_adm_email(),
+					from=ScsConfig.scs_site_adm_email(),
+					subject="ScsPanic",body=Quot.toString emsg}
 
     fun panic emsg = 
       let
