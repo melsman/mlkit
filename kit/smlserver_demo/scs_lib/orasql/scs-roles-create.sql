@@ -210,11 +210,16 @@ is
   begin
     answer := 'f';
 
-    select count(*) into counter
-    from scs_role_rels 
-    where party_id = has_p.party_id
-      and role_id = has_p.role_id;
-    if counter=1 then
+    select count(*) 
+      into counter
+      from scs_role_rels 
+    where role_id = has_p.role_id
+      and (party_id = has_p.party_id or
+           party_id in (select grp_id
+                          from scs_grp_approved_member_map
+                         where scs_grp_approved_member_map.member_id = has_p.party_id));
+
+    if counter > 0 then
       answer := 't';
     end if;
 

@@ -204,16 +204,13 @@ structure Ns :> NS =
 	fun flush(c:cache) : unit =
 	  prim("@Ns_CacheFlush", c)
 	fun set(c:cache, k:string, v:string) : bool =
-	  let val _ = log(Notice, "set with (k,v) = (" ^ k ^ "," ^ v ^ ")")
-val res : int = prim("nssml_CacheSet", (c,k,v))
+	  let val res : int = prim("nssml_CacheSet", (c,k,v))
 	  in res = 1
 	  end
 	fun get(c:cache, k:string) : string option =
-	  let val _ = log(Notice, "get with k = " ^ k)
-val res : string = prim("nssml_CacheGet", (c,k))
-
+	  let val res : string = prim("nssml_CacheGet", (c,k))
 	  in if isNull res then NONE
-	     else (log(Notice, "get with res = " ^ res);SOME res)
+	     else SOME res
 	  end
 
 	local

@@ -12,6 +12,7 @@ signature SCS_ROLE =
     (* [has_one_p uid roles] returns true if user uid has atleast one
        of the roles in the role list roles *)
     val has_one_p : int -> role list -> bool
+
   end
 
 structure ScsRole :> SCS_ROLE =

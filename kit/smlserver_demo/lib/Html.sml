@@ -42,7 +42,7 @@ structure Html :> HTML =
     fun ahref link name = `<A HREF="` ^^ link ^^ `">` ^^ name ^^ `</A>`
     fun ahrefa link attr name = `<A HREF="` ^^ link ^^ `" ` ^^ attr ^^ `>` ^^ name ^^ `</A>`
     fun aname name quot = `<A NAME="^name">` ^^ quot ^^ `</A>`
-    fun aemail email name = `<a href="^email">^name</a>`
+    fun aemail email name = `<a href="mailto:^email">^name</a>`
 
     (* HTML text formats and style *)
     fun em quot = `<EM>` ^^ quot ^^ `</EM>`
