@@ -10,10 +10,11 @@ Server Pages [1] (i.e., msp-files) and plain sml-files, using an SML
 interface to the AOLserver API, are supported.
 
 SMLserver uses a load-once-execute-many scheme for executing sml-files
-and msp-files. Together with database pooling, the SMLserver
-load-once-execute-many scheme makes it possible to create database
-backed web sites in SML that are capable of answering a high number of
-requests compared to systems using a traditional CGI based approach.
+and msp-files. Together with database pooling, the scheme makes it
+possible to create database backed web sites in SML that are capable
+of answering a high number of requests compared to systems using a
+traditional CGI based approach. The database API supports many
+different RDBMS's, including Oracle and Postgresql.
 
 A project file (pm-file) maintained by the web-programmer is used to
 keep track of library modules, msp-files, and sml-files that are part
@@ -32,35 +33,57 @@ To use SMLserver you need the following:
 
   * Linux Box
 
-  * An RDBMS. To get access to a database from within your sml/msp
-    scripts, you need to have an RDBMS system installed that is
-    supported by AOLserver - see below. One such RDBMS is Postgresql,
-    which you can fetch from www.postgresql.org (if you're running
-    Redhat Linux, you can even find some rpm's there). Detailed
-    information about howto setup a database with Postgresql for the
-    purpose of using it with SMLserver is given below.
-
   * AOLserver/3.2 or later. AOLserver is Open Source. You can obtain a
     version of AOLserver from http://www.aolserver.com or from
     ArsDigita (http://www.arsdigita.com/acs-repository/), where you
     can find versions of AOLserver patched with internationalization
     features, etc.
 
+  * An RDBMS. To get access to a database from within your sml/msp
+    scripts, you need to have an RDBMS system installed that is
+    supported by AOLserver - see below. One such RDBMS is Postgresql,
+    which you can fetch from www.postgresql.org (if you're running
+    Redhat Linux, you can even find some rpm's there). Detailed
+    information about setting up a database with Postgresql for the
+    purpose of using it with SMLserver is given below.
+
   * ML Kit source distribution. The ML Kit source distribution
-    contains the SMLserver implementation, thus, because you are
-    reading this file, you probably already have the ML Kit source
-    distribution installed.
+    contains the SMLserver implementation.
 
 
-INSTALLATION
-------------
+BUILDING THE SMLSERVER MODULE AND THE BYTECODE COMPILER
+-------------------------------------------------------
 
 We shall assume that AOLserver is already installed; see above. To
-configure AOLserver to load the SMLserver module
-kit/src/SMLserver/nssml.so at statup time, you must first copy the
-nssml.so file to the place where AOLserver looks for modules. You must
-now edit your nsd.tcl-file -- the file given to the AOLserver
-executable `nsd' at startup. First, add the entry
+build the SMLserver module nssml.so, which contains the bytecode
+interpreter for interpreting compiled sml-files and msp-scripts,
+download the ML Kit source distribution from the ML Kit web-site.
+
+After untaring the source distribution, make sure that the file
+mlkit/kit/src/SMLserver/Makefile contains the correct information
+about where AOLserver is installed. 
+
+Now, go to the mlkit/kit directory and type
+
+  mael@daffy> make smlserver
+
+which builds 
+
+  * the nssml.so module to load into AOLserver; its in the
+    src/SMLserver/ directory
+
+  * a compiler for compiling sml-files and msp-scripts into
+    bytecode; its available as bin/mlkit_web
+
+
+CONFIGURING AOLSERVER
+---------------------
+
+To configure AOLserver to load the SMLserver module
+kit/src/SMLserver/nssml.so at statup time, first copy the nssml.so
+file to the place where AOLserver looks for modules. You must now edit
+your nsd.tcl-file -- the file given to the AOLserver executable `nsd'
+at startup. First, add the entry
 
    ns_param nssml nssml.so
 
@@ -127,7 +150,7 @@ fetch the pages
 POSTGRESQL DETAILS
 ------------------
 
-Postinstallation details for setting up Postgresql on a RedHat 7.0
+Postinstallation details for setting up Postgresql on a RedHat 7.x
 system with rpm's installed:
 
   1. Start up the postmaster deamon process. Execute (as root) the
@@ -212,8 +235,7 @@ system with rpm's installed:
 TO DO
 -----
 
-  * Currently SMLserver supports only one thread, but this limitation
-    is soon to change...
+  * Currently SMLserver supports only one thread.
 
   * Functor applications and functor declarations are not allowed in
     leaf-files in projects. That is, for a project file (.pm-file):
