@@ -662,7 +662,9 @@ good *)
     | E.PRIM(E.PLUS_INTprim,e1::e2::_)    => S_built_in(B, Lvars.plus_int_lvar, [e1,e2])
     | E.PRIM(E.MINUS_INTprim,e1::e2::_)   => S_built_in(B, Lvars.minus_int_lvar, [e1,e2])
     | E.PRIM(E.MUL_INTprim,e1::e2::_)     => S_built_in(B, Lvars.mul_int_lvar, [e1,e2])
+(*KILL 12/11/1997 15:22. tho.:
     | E.PRIM(E.DIV_INTprim,e1::e2::_)     => S_built_in(B, Lvars.div_int_lvar, [e1,e2])
+*)
     | E.PRIM(E.NEG_INTprim,e1::_)         => S_built_in(B, Lvars.negint_lvar, [e1])
     | E.PRIM(E.ABS_INTprim,e1::_)         => S_built_in(B, Lvars.absint_lvar, [e1])
     | E.PRIM(E.LESS_INTprim,[e1,e2])      => S_built_in(B, Lvars.less_int_lvar, [e1,e2])
@@ -674,7 +676,9 @@ good *)
     | E.PRIM(E.PLUS_REALprim,e1::e2::_)   => S_built_in(B, Lvars.plus_float_lvar, [e1,e2])
     | E.PRIM(E.MINUS_REALprim,e1::e2::_)  => S_built_in(B, Lvars.minus_float_lvar, [e1,e2])
     | E.PRIM(E.MUL_REALprim,e1::e2::_)    => S_built_in(B, Lvars.mul_float_lvar, [e1,e2])
+(*KILL 12/11/1997 15:22. tho.:
     | E.PRIM(E.DIV_REALprim,e1::e2::_)    => S_built_in(B, Lvars.div_float_lvar, [e1,e2])
+*)
     | E.PRIM(E.NEG_REALprim,e1::_)        => S_built_in(B, Lvars.negfloat_lvar, [e1])
     | E.PRIM(E.ABS_REALprim,e1::_)        => S_built_in(B, Lvars.absfloat_lvar, [e1])
     | E.PRIM(E.LESS_REALprim,[e1,e2])     => S_built_in(B, Lvars.less_float_lvar, [e1,e2])
@@ -683,6 +687,7 @@ good *)
     | E.PRIM(E.GREATEREQ_REALprim,[e1,e2]) => S_built_in(B, Lvars.greatereq_float_lvar, [e1,e2])
     
 
+(*KILL 12/11/1997 15:21. tho.:
     (* --------------------------------------------------------------------
      * Non-compiler-supported primitives; Later, the compiler should not
      * support these primitives directly. Instead, one should introduce
@@ -726,6 +731,7 @@ good *)
     | E.PRIM(E.STRING_CONCATprim, es) => die "cannot spread STRING_CONCAT (should be in prelude)"
     | E.PRIM(E.NOTEQUALprim _, es)    => die "cannot spread NOTEQUALprim (should be in prelude)"
     | E.PRIM(E.NOTprim, _ )           => die "S: cannot spread NOTprim (should be in prelude)"
+*)
 
 
 
