@@ -20,16 +20,15 @@ val expiry = let open Time Date
 	     in fromTimeUniv(now() + fromSeconds clt)
 	     end
 
-val url = Ns.Conn.location() ^ "/demo/cookie.sml"
-
 val cookie = Ns.Cookie.setCookie 
               {name=cn, value=cv, expiry=SOME expiry,
 	       domain=NONE, path=SOME "/", secure=cs}
 
 val _ = Ns.write
 `HTTP/1.0 302 Found
-Location: ^url
+Location: /demo/cookie.sml
 MIME-Version: 1.0
 ^cookie
+
 
 You should not be seeing this!`
