@@ -21,7 +21,8 @@ structure ScsSecurity (*:> SCS_SECURITY*) =
           ( 	|->	&#40;
           ) 	|->	&#41;
 	  #	|->	&#35;
-	  &	|->	&#38;
+	  &	|->	&#38; 
+          "     |->     &#34;
 
        Info on XSS (http://www.cgisecurity.com/articles/xss-faq.shtml):
          Converting < and > to &lt; and &gt; is also suggested when it comes 
@@ -164,6 +165,8 @@ structure ScsSecurity (*:> SCS_SECURITY*) =
 			   rest ( (#";")::(#"5")::(#"3")::(#"#")::(#"&")::acc )
 	      | #"&"  => parseHTML 
 			   rest ( (#";")::(#"8")::(#"3")::(#"#")::(#"&")::acc )
+	      | #"\""  => parseHTML 
+			   rest ( (#";")::(#"4")::(#"3")::(#"#")::(#"&")::acc )
               | #"\n" => parseHTML rest ( (#">")::(#"r")::(#"b")::(#"<")::acc )
 	      | other => parseHTML rest ( other::acc )
 
@@ -185,6 +188,7 @@ structure ScsSecurity (*:> SCS_SECURITY*) =
           ) 	|->	&#41;
 	  #	|->	&#35;
 	  &	|->	&#38;
+          "     |->     &#34;
      *)
     fun xssFilterLeaveNoTags (text:string) =
       let
@@ -195,6 +199,7 @@ structure ScsSecurity (*:> SCS_SECURITY*) =
 	  | #")"  => (#";")::(#"1")::(#"4")::(#"#")::(#"&")::acc
 	  | #"#"  => (#";")::(#"5")::(#"3")::(#"#")::(#"&")::acc 
 	  | #"&"  => (#";")::(#"8")::(#"3")::(#"#")::(#"&")::acc
+	  | #"\""  => (#";")::(#"4")::(#"3")::(#"#")::(#"&")::acc
 	  | other => other::acc
       in
         (implode o rev) ( Substring.foldl f [] (Substring.all text) )
