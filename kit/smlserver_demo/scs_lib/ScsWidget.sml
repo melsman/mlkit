@@ -162,6 +162,10 @@ signature SCS_WIDGET =
        all languages and the users default language preselected. *)
     val selectLang      : ScsLang.lang -> string -> quot
 
+    (* [selectLang' in_language default fv] same as selectLang, except that 
+       in_language controls the language the selectbox is presented in *)
+    val selectLang'      : ScsLang.lang -> ScsLang.lang -> string -> quot
+
     (* [period p fv]: returns HTML for two entry boxes: one for
        start date and one for end date. A period p is a pair
        (start_date option,end_date option) and the two boxes will be
@@ -385,6 +389,10 @@ structure ScsWidget :> SCS_WIDGET =
 
     fun selectLang default fv = 
       selectWithDefault (ScsLang.all_for_sel_box (ScsLogin.user_lang()))
+      (ScsLang.toString default) fv
+
+    fun selectLang' in_language default fv = 
+      selectWithDefault (ScsLang.all_for_sel_box in_language)
       (ScsLang.toString default) fv
 
     fun period (start_date_opt,end_date_opt) fv = 
