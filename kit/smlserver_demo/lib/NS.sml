@@ -1,5 +1,8 @@
 signature NS = sig
 
+  (* exceptions *)
+  exception MissingConnection
+
   (* logging *)
   eqtype LogSeverity    
   val Notice  : LogSeverity     
