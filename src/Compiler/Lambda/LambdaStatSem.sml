@@ -29,8 +29,6 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		      structure Flags : FLAGS) : LAMBDA_STAT_SEM =
   struct
 
-    structure ListPair = Edlib.ListPair
-
     (* ---------------------------------------------------------
      * We assume lambda variables and constructors and exception 
      * constructors are distinct and tyvars implemented as 
@@ -684,7 +682,7 @@ end
 	      val ts_bind = unTypeList "LET.bind" (type_lexp env bind)
 	  in 
 	    (((app (fn ((_,tyvars,tau), tau') => check_type_scheme(tyvars, tau, tau'))
-	       (ListPair.zip (pat,ts_bind))) handle ListPair.Zip => 
+	       (BasisCompat.ListPair.zipEq (pat,ts_bind))) handle BasisCompat.ListPair.UnequalLengths => 
 	                 die "LET.pattern and bind type differ in numbers of components"));
 	    type_lexp env' scope
 	  end

@@ -11,8 +11,6 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
 			 ) : ERROR_TRAVERSE =
   struct
 
-    structure List = Edlib.List
-
     open TopdecGrammar TopdecGrammar.DecGrammar
     structure TypeInfo = ElabInfo.TypeInfo
 
@@ -385,7 +383,7 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
 	     check i // walk_opt walk_Tyrow tyrow_opt
 
 	 | CONty(i, tys, _) =>
-	     check i // List.foldR (fn a => fn b => walk_Ty a // b) ok tys
+	     check i // List.foldr (fn (a,b) => walk_Ty a // b) ok tys
 
          | FNty(i, ty1, ty2) =>
 	     check i // walk_Ty ty1 // walk_Ty ty2

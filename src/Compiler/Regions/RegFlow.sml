@@ -19,8 +19,6 @@ functor RegFlow(
 
 struct
 
-  structure ListPair = Edlib.ListPair
-
   structure PP = PrettyPrint
   type lvar = Lvars.lvar
   type place = Eff.place
@@ -302,16 +300,16 @@ struct
                              in
                                 (* connect every formal region variable to corresponding actual region variable *)
                                 List.app add_edge_iter
-                                (ListPair.zip(formal_regvars, actual_rhos)
-                                 handle ListPair.Zip => die ("deal_with_one_instance (1)"
+                                (BasisCompat.ListPair.zipEq(formal_regvars, actual_rhos)
+                                 handle BasisCompat.ListPair.UnequalLengths => die ("deal_with_one_instance (1)"
                                                    ^ Int.toString(length formal_regvars)
                                                    ^ " " ^ 
                                                      Int.toString(length actual_rhos)));
      
                                 (* connect every formal effect variable to corresponding actual effect variable *)
                                 List.app add_edge_iter
-                                (ListPair.zip(formal_arreffs,actual_epss)
-                                 handle ListPair.Zip => die "deal_with_one_instance (2)");
+                                (BasisCompat.ListPair.zipEq(formal_arreffs,actual_epss)
+                                 handle BasisCompat.ListPair.UnequalLengths => die "deal_with_one_instance (2)");
      
                                 List.app insert actual_epss
      

@@ -7,7 +7,7 @@ functor PrettyPrint(structure Report: REPORT
                    ): PRETTYPRINT =
   struct
 
-    structure List = Edlib.List
+    structure EdList = Edlib.List
 
     val WIDTH = 75
     val DEBUG = false
@@ -147,7 +147,7 @@ functor PrettyPrint(structure Report: REPORT
         case m of
              LINES [] => NONE
           |  LINES (list) => 
-               let val (last,others) = List.removeLast list
+               let val (last,others) = EdList.removeLast list
                in SOME(indent_line ind last, indent ind (LINES others))
                end
           |  INDENT(i, m') => loop(ind+i, m')
@@ -322,14 +322,14 @@ functor PrettyPrint(structure Report: REPORT
               indent ind (LINES["..."])
             else
               let
-                val (last, firstN) = List.removeLast children
+                val (last, firstN) = EdList.removeLast children
                 val firstNPages = map (print myWidth) firstN
                 val firstNPages' = map (botRightConcat s) firstNPages
               in
                 indent ind (PILE(pilePages firstNPages',
                                  print myWidth last)
                            )
-              end handle List.Empty _ => Crash.impossible "PrettyPrint.pileChildren"
+              end handle EdList.Empty _ => Crash.impossible "PrettyPrint.pileChildren"
           end
 
 
@@ -355,7 +355,7 @@ functor PrettyPrint(structure Report: REPORT
              
     (* result with newlines  *)
     and flatten (LINES( string_list)) : string =
-      List.stringSep "" "" "\n" (fn x => x) string_list
+      EdList.stringSep "" "" "\n" (fn x => x) string_list
       | flatten _ = Crash.impossible "PrettyPrint.flatten"
 
    (* The string constants below are used for outputting long strings of blanks
@@ -431,7 +431,7 @@ old*)
        fun output_minipage (indent:int, m: minipage) = 
            case m of
                LINES [] => ()
-             | LINES l  => List.apply (output_line indent) l
+             | LINES l  => List.app (output_line indent) l
              | INDENT(i,m') => output_minipage(i+indent, m')
              | PILE(m1,m2) => (output_minipage(indent,m1);
                                output_minipage(indent,m2)

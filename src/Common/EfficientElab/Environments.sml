@@ -43,8 +43,6 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		    ) : ENVIRONMENTS =
   struct
 
-    structure ListPair = Edlib.ListPair
-
     val quotation = Flags.is_on0 "quotation"
 
     fun uncurry f (a,b) = f a b 
@@ -482,8 +480,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		      id1 = id2 andalso
 		      TypeScheme.eq (sigma1,sigma2)
 		   | _ => impossible "VE.eq: VE contains non-constructors")
-		  true (ListPair.zip (alist1, alist2))
-		  handle ListPair.Zip => false
+		  true (BasisCompat.ListPair.zipEq (alist1, alist2))
+		  handle BasisCompat.ListPair.UnequalLengths => false
 	    end
       fun fold (f : range -> 'a -> 'a)
       	       (start : 'a)

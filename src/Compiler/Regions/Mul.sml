@@ -29,8 +29,7 @@ functor Mul(
   ) : MUL =
 struct
 
-  structure List = Edlib.List
-  structure ListPair = Edlib.ListPair
+  structure EdList = Edlib.List
 
   structure LvarMap = Lvar.Map
 
@@ -166,7 +165,7 @@ struct
 			    | NONE => false) true mularefmap2 
 
   fun restrict_mularefmap(mularefmap,effectvars) =
-    List.foldL(fn effectvar => fn acc =>
+    EdList.foldL(fn effectvar => fn acc =>
 	       case GlobalEffVarEnv.lookup mularefmap effectvar
 		 of SOME res => GlobalEffVarEnv.add(effectvar,res,acc)
 		  | NONE => die "restrict_mularefmap") GlobalEffVarEnv.empty effectvars 
@@ -193,10 +192,10 @@ struct
     let fun visit n = Eff.get_visited n := true
 	fun unvisit n = Eff.get_visited n := false 
         val ((epss,rhos,mularefs),rho) = qmularefset
-        val epss' = Eff.remove_duplicates (List.all Eff.is_arrow_effect (RType.ann_sigma(sigma)[]))
-	val _ = List.apply visit epss
-	val epss' = List.all (! o Eff.get_visited) epss'
-	val _ = List.apply unvisit epss
+        val epss' = Eff.remove_duplicates (List.filter Eff.is_arrow_effect (RType.ann_sigma(sigma)[]))
+	val _ = List.app visit epss
+	val epss' = List.filter (! o Eff.get_visited) epss'
+	val _ = List.app unvisit epss
 	fun shuffle [] = []
 	  | shuffle (eps::epss) =
 	    let fun grep [] = die "normalize_qmularefset.shuffle"
@@ -207,7 +206,7 @@ struct
     in ((epss',rhos,shuffle epss'),rho)
     end
 
-  fun arity_qmularefset((epss,rhos,_),_) : int * int = (List.size epss, List.size rhos)
+  fun arity_qmularefset((epss,rhos,_),_) : int * int = (List.length epss, List.length rhos)
 
   fun equal_mularefset ([],[]) = true
     | equal_mularefset (mularef1::mularefset1,mularef2::mularefset2) =
@@ -215,8 +214,8 @@ struct
     | equal_mularefset _ = false
 
   fun instantiate_qmularefset(epss',rhos',((epss,rhos,mularefset),_) : qmularefset) : mularefset =
-    let val eps_pairs = ListPair.zip (epss,epss') handle ListPair.Zip => die "instantiate_qmularefset.Zip"
-        val rho_pairs = ListPair.zip (rhos,rhos') handle ListPair.Zip => die "instantiate_qmularefset.Zip"
+    let val eps_pairs = BasisCompat.ListPair.zipEq (epss,epss') handle BasisCompat.ListPair.UnequalLengths => die "instantiate_qmularefset.Zip"
+        val rho_pairs = BasisCompat.ListPair.zipEq (rhos,rhos') handle BasisCompat.ListPair.UnequalLengths => die "instantiate_qmularefset.Zip"
         fun setInstance(node,node') = (Eff.get_instance node) := SOME node'
         fun clearInstance(node,node') = (Eff.get_instance node) := NONE
 	fun on_ae ae = if Eff.is_arrow_effect ae then
@@ -240,11 +239,11 @@ struct
 	     | NONE => die "on_mularef.no forward info" 
 	fun on_mularefset [] = []
 	  | on_mularefset (mularef::mularefset) = on_mularef mularef :: on_mularefset mularefset
-	val _ = List.apply setInstance eps_pairs
-	val _ = List.apply setInstance rho_pairs
+	val _ = List.app setInstance eps_pairs
+	val _ = List.app setInstance rho_pairs
 	val mularefset' = on_mularefset mularefset
-	val _ = List.apply setInstance eps_pairs
-	val _ = List.apply setInstance rho_pairs
+	val _ = List.app setInstance eps_pairs
+	val _ = List.app setInstance rho_pairs
     in mularefset'
     end
 
@@ -303,7 +302,7 @@ struct
         let val key = Effect.key_of_eps_or_rho eps
             val hash = key mod size
         in 
-            SOME(#2(List.first(fn (i':int,r) => i' = key) (Array.sub(empty, hash))))
+            SOME(#2(EdList.first(fn (i':int,r) => i' = key) (Array.sub(empty, hash))))
             handle _ => NONE
         end
       fun layoutMap _ _ _ _ = PP.LEAF "(not implemented)" 
@@ -635,7 +634,7 @@ struct
          now remove from psi all ae:m for which ae takes the form eps in discharged_basis
          or PUT rho or GET rho for rho in discharged_basis:
       *)
-      let val _ = List.apply (fn eps_or_rho => Eff.get_visited eps_or_rho := true) discharged_basis
+      let val _ = List.app (fn eps_or_rho => Eff.get_visited eps_or_rho := true) discharged_basis
           fun keep (ae,mul): bool =
 	    let val ae = Eff.find ae
 	    in if Eff.is_arrow_effect ae then not(!(Eff.get_visited ae))
@@ -645,8 +644,8 @@ struct
                 else*) die "removeatomiceffects.keep"
 	    end
       in 
-         List.all keep psi footnote
-            List.apply (fn eps_or_rho => Eff.get_visited eps_or_rho := false) discharged_basis
+         List.filter keep psi footnote
+            List.app (fn eps_or_rho => Eff.get_visited eps_or_rho := false) discharged_basis
       end
 *)
   fun removeatomiceffects(psi, discharged_basis: Effect.effect list) =
@@ -675,8 +674,8 @@ struct
 
   fun getmultiplicities_unsorted(psi,rhos) = 
       map (fn rho => let val ae_rho = Eff.mkPut rho
-                     in #2(List.first (fn (ae,mul) => Eff.eq_effect(ae, ae_rho)) psi)
-                        handle List.First _ => NUM 0
+                     in #2(EdList.first (fn (ae,mul) => Eff.eq_effect(ae, ae_rho)) psi)
+                        handle EdList.First _ => NUM 0
                      end)
           rhos
 
@@ -723,7 +722,7 @@ struct
 
 
   fun reify(mularefs) = 
-      List.foldL (fn (r as ref(eps,mulef)) => fn acc =>
+      EdList.foldL (fn (r as ref(eps,mulef)) => fn acc =>
           GlobalEffVarEnv.add((*Eff.key_of_eps_or_rho*) eps, r, acc)) 
             GlobalEffVarEnv.empty
             mularefs
@@ -768,7 +767,7 @@ struct
   fun apply_regionsubst_mulef(S, psi) =
       let val unsorted: mulef ref = ref []
           val psi'_list = 
-	    (List.foldR (fn (ae,mul) => fn l => 
+	    (EdList.foldR (fn (ae,mul) => fn l => 
 			 if Eff.is_put ae then 
 			   let val rho = rho_of ae
 			   in if !(Eff.get_visited(rho)) then (* generic *)
@@ -793,10 +792,10 @@ struct
       let val visited_refs = map (fn (rho,_) => Eff.get_visited rho) S
           
       in
-          List.apply (fn r => r:=true) visited_refs;  
+          List.app (fn r => r:=true) visited_refs;  
                      (* mark dom(Sr) as visited; for faster instantiation *)
           pairmap apply_regionsubst_mularef S Psi 
-                  footnote List.apply (fn r => r:=false) visited_refs
+                  footnote List.app (fn r => r:=false) visited_refs
       end
 
   fun apply_qmularefset(S, ((epses,rhos, Psi), p)) = 
@@ -807,12 +806,13 @@ struct
   fun instantiateRegions([], qmularefset as((epses, [], Psi), place))= qmularefset
     | instantiateRegions(places, ((epses, rhos, Psi), place))=
 	 let
-	     val Sr = ListPair.zip(rhos, places)
+	     val Sr = BasisCompat.ListPair.zipEq(rhos, places)
 	 in
 	     ((epses, [], apply_regionsubst_mularefset(Sr, Psi)), place)
 	 end
-          handle ListPair.Zip => die ("instantiateRegions: " ^ Int.toString(List.size rhos) ^ " formals, " ^
-                                      Int.toString (List.size places) ^ "actuals")
+          handle BasisCompat.ListPair.UnequalLengths => 
+		 die ("instantiateRegions: " ^ Int.toString(List.length rhos) ^ " formals, " ^
+                      Int.toString (List.length places) ^ "actuals")
 
   fun cyclic(eps, []) = false
     | cyclic(eps, (eps',_):: rest) =
@@ -837,7 +837,7 @@ struct
      (NONE, _) => l
     |(SOME(eps,psi), rest) =>
        let val new_psi =  map (fn (eps, _) => (eps, INF))
-                          (List.all (fn (eps',_) => not(Eff.eq_effect(eps,eps'))) psi)
+                          (List.filter (fn (eps',_) => not(Eff.eq_effect(eps,eps'))) psi)
            val Se = makesubst(eps,(eps,new_psi))
        in remove_cycles(apply_mularefset(Se,rest)@[(eps,new_psi)])
        end 
@@ -849,7 +849,7 @@ struct
     | checkPsi ((ae1,m1)::(ae2,m2)::rest) =
          not(Eff.eq_effect(ae1,ae2)) andalso checkPsi((ae2,m2)::rest)
 
-  fun checkPsi Psi = List.forAll (not o cyclic) Psi
+  fun checkPsi Psi = EdList.forAll (not o cyclic) Psi
 *)
 
   fun makeqmularefset (rhos,epses, Psi:imp_mularefmap, place, cone):qmularefset = 
@@ -860,9 +860,9 @@ struct
                                       (getarefs(Psi, epses)))
 	     val (freshrhos,c) = Eff.freshRhos(rhos,c)
 	     val (freshepses,c) = Eff.freshEpss(epses, c)
-	     val S = ListPair.zip(epses, ListPair.zip(freshepses, 
+	     val S = BasisCompat.ListPair.zipEq(epses, BasisCompat.ListPair.zipEq(freshepses, 
                                               map (fn x => []) freshepses))
-	     val Sr= ListPair.zip(rhos, freshrhos)
+	     val Sr= BasisCompat.ListPair.zipEq(rhos, freshrhos)
 	     val Psi'' : mularefset = apply_mularefset(S, Psi') 
 	     val Psi'' : mularefset = apply_regionsubst_mularefset(Sr, Psi'')
 	 in
@@ -870,7 +870,7 @@ struct
              Eff.pop c;
 	     ((freshepses, freshrhos, Psi''), place)
 	 end
-          handle ListPair.Zip => die "makeqmularefset.Zip"
+          handle BasisCompat.ListPair.UnequalLengths => die "makeqmularefset.Zip"
 	       | _ => die "makeqmularefset" 
 
   val empty_dep = DepEnv.empty
@@ -905,7 +905,7 @@ struct
       if cyclic(eps, psi) 
          then (* cyclic effect: make all multiplicities infinite *)
             (eps, map(fn (eps,_) => (eps, INF))
-                     (List.all (fn (eps',_) => not(Eff.eq_effect(eps,eps'))) psi))
+                     (List.filter (fn (eps',_) => not(Eff.eq_effect(eps,eps'))) psi))
       else
          (eps, psi)
 
@@ -937,7 +937,7 @@ struct
 
   fun qmularefset_has_grown(old as ((_,_,Psi_old),_): qmularefset, 
                             new as ((_,_,Psi_new),_): qmularefset) =
-         List.exists nf_mularef_has_grown (ListPair.zip(Psi_old,Psi_new))
+         List.exists nf_mularef_has_grown (BasisCompat.ListPair.zipEq(Psi_old,Psi_new))
             handle _ => (say ("qmularefset_has_grown, old scheme:");
                            outtree(layout_qmularefset old);
                          say ("qmularefset_has_grown, new scheme:");
@@ -989,13 +989,13 @@ struct
                              end
                  in 
                      no_increase_sofar:= true;
-                     List.apply update_shared dependants
+                     List.app update_shared dependants
                         handle x => (mes("substitution: " ^ PP.flatten1(layout_subst Se) ^ "\n");
                                      raise x)
                  end
 (*
   fun eq_epss(epses1,epses2): bool = 
-      List.forAll Eff.eq_effect (ListPair.zip(epses1,epses2))
+      EdList.forAll Eff.eq_effect (ListPair.zip(epses1,epses2))
 
   fun makeinf_arroweffect(eps, phi) = (eps, map (fn x => (x, INF)) phi) (* phi must be sorted! *)
 *)
@@ -1017,7 +1017,7 @@ struct
   fun makezero_arroweffect(eps, phi) = (eps, makezero_muleffect phi)
 
   fun makezero_Phi(Phi: arroweffect list) : imp_mularefmap =
-    List.foldL (fn (eps,phi) => fn Psi => 
+    EdList.foldL (fn (eps,phi) => fn Psi => 
                EffVarEnv.add(eps, ref(makezero_arroweffect(eps,phi)), Psi))
             (QM_EffVarEnv.mk 1000 GlobalEffVarEnv.empty)
             Phi
@@ -1058,7 +1058,7 @@ struct
               instantiate(plainarroweffects,
                           (epses', [], 
                            apply_mularefset(Se, 
-                                            List.all (fn (eps, psi) => 
+                                            List.filter (fn (eps, psi) => 
                                                       not(Eff.eq_effect(eps,eps0'))) 
                                             Psi')), 
                           Psi, 
@@ -1087,7 +1087,7 @@ struct
       in loop(phi,dep)
       end
 (*
-       List.foldL (fn eps => fn dep => 
+       EdList.foldL (fn eps => fn dep => 
                     if Eff.is_arrow_effect (Eff.find eps)
                        then add_dependency(dep, eps, shared)
                     else dep

@@ -37,8 +37,7 @@ functor AtInf(structure Lvars: LVARS
 ) : AT_INF =
   struct
 
-    structure NewList = List
-    structure List = Edlib.List
+    structure EdList = Edlib.List
     
     (* In the old storage mode analysis an environment was propagated to later
      * program units. Since we must assign storage mode attop to regions passed
@@ -162,9 +161,9 @@ functor AtInf(structure Lvars: LVARS
 
   fun lay_set (rhos: place list) = 
     let val rhos = if !Flags.print_word_regions then rhos
-		   else NewList.filter (fn rho => case Eff.get_place_ty rho
-						    of SOME Eff.WORD_RT => false
-						     | _ => true) rhos
+		   else List.filter (fn rho => case Eff.get_place_ty rho
+						of SOME Eff.WORD_RT => false
+						 | _ => true) rhos
     in PP.HNODE{start ="{", finish = "}", childsep = PP.RIGHT",",
 		children = map Eff.layout_effect rhos}
     end
@@ -214,8 +213,8 @@ functor AtInf(structure Lvars: LVARS
       val empty_excon_env = EXCON_ENV []
       fun declare_excon_env(x,y,EXCON_ENV m) = EXCON_ENV((x,y)::m)
       fun retrieve_excon_env(x,EXCON_ENV m) = 
-        #2 (List.first (fn x' => Excon.eq(x, #1 x')) m)
-        handle List.First _ => raise ExconEnv
+        #2 (EdList.first (fn x' => Excon.eq(x, #1 x')) m)
+        handle EdList.First _ => raise ExconEnv
     end
   
   
@@ -389,8 +388,7 @@ functor AtInf(structure Lvars: LVARS
 
   fun letregion_bound (rho,sme,liveset): conflict option * place at=
       let 
-	  fun rho_points_into rhos= SOME(List.first (equal_places rho) rhos) 
-                                    handle List.First _ => NONE
+	  fun rho_points_into rhos= List.find (equal_places rho) rhos
       in
 	  debug1([],liveset);
 	  any_live(rho,sme,liveset, rho_points_into, ATBOT rho)
@@ -405,13 +403,12 @@ functor AtInf(structure Lvars: LVARS
          (*val _ = Profile.profileOn();*)
       	  val rho_related = RegFlow.reachable_in_graph_with_insertion (rho)
          (*val _ = Profile.profileOff();*)
-	  fun rho_points_into lrv = 
-                 SOME(List.first is_visited lrv) handle List.First _  => NONE
+	  fun rho_points_into lrv = List.find is_visited lrv
       in
 	  debug1(rho_related,liveset);
-	  NewList.app visit rho_related;
+	  List.app visit rho_related;
 	  any_live(rho,sme,liveset,rho_points_into, SAT rho)
-	    footnote NewList.app unvisit rho_related
+	    footnote List.app unvisit rho_related
       end
 
   fun show_place_at (ATTOP p) = "attop " ^ show_place p

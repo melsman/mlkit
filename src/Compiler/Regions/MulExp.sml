@@ -35,8 +35,6 @@ functor MulExp(
 ) : MUL_EXP = 
 struct
   
-    structure ListPair = Edlib.ListPair
-
     structure RegionExp = RegionExp
 
     fun uncurry f (a, b) = f a b

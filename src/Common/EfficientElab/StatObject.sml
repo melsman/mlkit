@@ -23,8 +23,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		      ) : STATOBJECT =
   struct
 
-    structure List = Edlib.List
-    structure ListPair = Edlib.ListPair
+    structure EdList = Edlib.List
 
     val print_type_levels = ref false     (* for debugging *)
 
@@ -271,12 +270,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      ^ (case names of
 		   NAMES (L as ref L') =>
 		       (let val {letter, ...} =
-			           List.first (fn {tv, ...} => tv = id) L'
+			           EdList.first (fn {tv, ...} => tv = id) L'
 			in
 			  str(chr(ordA + letter))
 			end
-		        handle List.First _ =>
-			  let val len = List.size L'
+		        handle EdList.First _ =>
+			  let val len = List.length L'
 			  in
 			    L := L' @ [{tv=id, letter=len}] ;
 			    str(chr(ordA + len))
@@ -304,13 +303,13 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       fun insertTyVarSet x set = if memberTyVarSet x set then set else x::set
 
       fun unionTyVarSet(set1, set2) = 
-	set1 @ List.all (fn x => not(memberTyVarSet x set1)) set2
+	set1 @ List.filter (fn x => not(memberTyVarSet x set1)) set2
 
       fun minusTyVarSet (set1, set2) =
-	List.all (fn x => not(memberTyVarSet x set2)) set1
+	List.filter (fn x => not(memberTyVarSet x set2)) set1
 
       fun intersectTyVarSet (set1, set2) =
-	List.all (fn x => memberTyVarSet x set1) set2
+	List.filter (fn x => memberTyVarSet x set1) set2
 
       fun pr_tyvars (l : TyVar list) : string =
 	let fun pr_l [] = ""
@@ -407,10 +406,10 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    end
 
 	  and TypeList_eq0 eq_significant (tys1,tys2) =
-	    List.foldL (fn (ty1,ty2) => fn b => b andalso 
+	    EdList.foldL (fn (ty1,ty2) => fn b => b andalso 
 			Type_eq0 eq_significant (ty1,ty2))
-	    true (ListPair.zip (tys1,tys2))
-	    handle ListPair.Zip => false
+	    true (BasisCompat.ListPair.zipEq (tys1,tys2))
+	    handle BasisCompat.ListPair.UnequalLengths => false
 	in
 	  val RecType_eq = RecType_eq0 EQ_SIGNIFICANT
 	  val eq = Type_eq0 EQ_SIGNIFICANT 
@@ -496,7 +495,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			     val labels = map Lab.pr_Lab (SortedFinMap.domSORTED m)
 			     fun colon_between (lab, ty) = lab ^ ": " ^ ty
 			   in
-			     List.stringSep "{" "}" ", " colon_between
+			     EdList.stringSep "{" "}" ", " colon_between
 			     (ListPair.zip (labels,field_types))
 			   end
 		    end
@@ -525,7 +524,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			  concat [pretty_string_as_opt names 4 (ty,ty'), " ",
 				  TyName_string_as_opt (tyname, tyname'_opt)]
 			 | _ =>
-			  concat [List.stringSep "(" ") " ", "
+			  concat [EdList.stringSep "(" ") " ", "
 				  (pretty_string_as_opt names 1)
 				  (ListPair.zip (tys,tys'_opt)), 
 				  " ",
@@ -563,7 +562,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		   (nil, _) => "unit"	(* Hard-wired *)
 		 | ([x], [x']) => "{1: " ^ pretty_string_as_opt  names 1 (x,x') ^ "}"
 		 | _ => parenthesize (3, precedence,
-				      List.stringSep "" "" " * "
+				      EdList.stringSep "" "" " * "
 				      (pretty_string_as_opt names 4) 
 				      (ListPair.zip(fields, fields'))))
 	      end
@@ -659,8 +658,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	fun to_list r = 
 	      let val m = #1 (sanitiseRecType r)
 	      in
-		ListPair.zip (SortedFinMap.domSORTED m, SortedFinMap.rangeSORTED m)
-	      end handle ListPair.Zip => die "to_list"
+		BasisCompat.ListPair.zipEq (SortedFinMap.domSORTED m, SortedFinMap.rangeSORTED m)
+	      end handle BasisCompat.ListPair.UnequalLengths => die "to_list"
 	fun to_pair r =
 	      (case sanitiseRecType r of
 		 (m, NONE) =>
@@ -683,8 +682,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		      (case varrec_opt of
 			 SOME varrec => VARrec varrec
 		       | NONE => NILrec)
-			   (ListPair.zip (dom,range))
-	  end handle ListPair.Zip => die "RecType.sort"
+			   (BasisCompat.ListPair.zipEq (dom,range))
+	  end handle BasisCompat.ListPair.UnequalLengths => die "RecType.sort"
 
       end (*RecType*)
 
@@ -907,7 +906,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		if TyName.eq (tyname, TyName.tyName_REF) then ()
 		(* "ref" is a special case; take it out straight away,
 		 * otherwise we'll damage any tyvars within the arg to "ref".*)
-		else if TyName.equality tyname then List.apply make_equality0 ty_list
+		else if TyName.equality tyname then List.app make_equality0 ty_list
 		     else raise NotEquality
 	     | ARROW _ => raise NotEquality
       in
@@ -1067,7 +1066,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			 unify_with_overloaded_tyvar tynames (Substitution.on (S, tau))
 			| Nonoverloaded => Substitution.Id
 	  in
-	    if List.member tv restricted_tyvars then raise Unify "unify_with_tyvar.2"
+	    if EdList.member tv restricted_tyvars then raise Unify "unify_with_tyvar.2"
 	    else tv := TY_LINK tau
 	  end
 	  | unify_with_tyvar _ = die "unify_with_tyvar"
@@ -1102,7 +1101,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		  | (true , true) => ()
 		  | ( _   ,  _  ) => raise Unify "unifyExplicit.2";
 
-		   if List.member tv' restricted_tyvars then raise Unify "unifyExplicit.3"
+		   if EdList.member tv' restricted_tyvars then raise Unify "unifyExplicit.3"
 		   else if TyVar.is_overloaded tv' then raise Unify "unifyExplicit.4"
 		   else if !level' < !level then 
 
@@ -1141,8 +1140,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		let val rank = Rank.min(r,r')
 		in rank_ref := rank ;
 		   rank_ref' := rank ;
-		   if List.member tv restricted_tyvars then
-		     if List.member tv' restricted_tyvars then raise Unify "unifyTyVar"
+		   if EdList.member tv restricted_tyvars then
+		     if EdList.member tv' restricted_tyvars then raise Unify "unifyTyVar"
 		     else (level := Int.min (!level, !level') ;
 			   unify_with_tyvar(tv',ty))
 		   else
@@ -1156,7 +1155,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    else
 	      (decr_level_Type (!level) ty' ;
 	       decr_rank_Type (tv,!rank) ty' ;        (* the tv is for the error reporting *)
-	       if occurs_tv_in_Type (tv, ty') orelse List.member tv restricted_tyvars 
+	       if occurs_tv_in_Type (tv, ty') orelse EdList.member tv restricted_tyvars 
 		 then raise Unify "unifyTyVar.2"
 	       else unify_with_tyvar(tv, ty'))
 
@@ -1232,7 +1231,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
 	and unifyConsType((ty_list, tyname), (ty_list', tyname')) =
 	  if TyName.eq(tyname, tyname') then                            (* Note that tyname=tyname' implies *)
-	    List.apply unifyType (ListPair.zip(ty_list, ty_list'))      (* length(ty_list)=length(ty_list') *)           
+	    List.app unifyType (ListPair.zip(ty_list, ty_list'))      (* length(ty_list)=length(ty_list') *)           
 	  else raise Unify "unifyConsType"
       in
 	(unifyType (tau,tau'); UnifyOk)
@@ -1322,8 +1321,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		    | ROWrec (l,ty,r') => ROWrec (l,instanceType ty,instanceRecType r')
 	      end
 
-	    val tvs_with_types = ListPair.zip(tvs, taus)
-	      handle ListPair.Zip => die "instance_with_types.wrong number of types"
+	    val tvs_with_types = BasisCompat.ListPair.zipEq(tvs, taus)
+	      handle BasisCompat.ListPair.UnequalLengths => die "instance_with_types.wrong number of types"
 
 	    val _ = app TyVar.set_instance tvs_with_types
 	    val tau' = instanceType tau
@@ -1531,7 +1530,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    of [] => {vars="", body=Type.pretty_string names tau}
 	     | [tyvar] => {vars=TyVar.pretty_string names tyvar,
 			   body=Type.pretty_string names tau}
-	     | tyvars => {vars=List.stringSep "(" ")" ", " (TyVar.pretty_string names) tyvars,
+	     | tyvars => {vars=EdList.stringSep "(" ")" ", " (TyVar.pretty_string names) tyvars,
 			  body=Type.pretty_string names tau}
 	      
 	fun pretty_string' names theta = #body (pretty_string names theta)
