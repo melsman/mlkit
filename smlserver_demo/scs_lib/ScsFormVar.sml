@@ -182,45 +182,36 @@ structure ScsFormVar :> SCS_FORM_VAR =
 
     fun addErr (emsg:quot,errs:errs) = emsg :: errs
     fun genErrMsg (f_msg:string,msg:quot) : quot = 
-       `^(ScsDict.s [(ScsLang.en, `Error in field`),(ScsLang.da, `Fejl i felt`)]) ^f_msg. ` ^^ msg
+       `^(ScsDict.s [(ScsLang.en, `Field:`),(ScsLang.da, `Felt:`)]) <b>^(f_msg)</b>. ` ^^ msg
     fun errNoFormVar(f_msg:string,ty:string) : quot = 
-      ScsDict.sl' [(ScsLang.en,`Error in field %0. You must provide a <b>%1</b>.`),
-                     (ScsLang.da,`Fejl i felt %0. Du skal angive <b>%1</b>.`)] [f_msg, ty]
+      ScsDict.sl' [(ScsLang.en,`Field: <b>%0</b>. You must provide a <b>%1</b>.`),
+                     (ScsLang.da,`Felt <b>%0</b>. Du skal angive <b>%1</b>.`)] [f_msg, ty]
     fun errTypeMismatch(f_msg:string,ty:string,v:string) : quot = 
-      ScsDict.sl' [(ScsLang.en,`Error in field %0. You must provide a <b>%1</b> - <i>%2</i> is not a %1.`),
-                     (ScsLang.da,`Fejl i felt %0. Du skal angive <b>%1</b> - <i>%2</i> er ikke %1.`)] [f_msg,ty,v]
+      ScsDict.sl' [(ScsLang.en,`Field: <b>%0</b>. You must provide a <b>%1</b> - <i>%2</i> is not a %1.`),
+                     (ScsLang.da,`Felt: <b>%0</b>. Du skal angive <b>%1</b> - <i>%2</i> er ikke %1.`)] [f_msg,ty,v]
     fun errTooLarge(f_msg:string,ty:string,v:string) : quot =
-      ScsDict.sl' [(ScsLang.en,`Error in field %0. The provided %1 (<i>%2</i>) is too large.`),
-	           (ScsLang.da,`Fejl i felt %0. Det indtastede %1 (<i>%2</i>) er for stor.`)] [f_msg,ty,v]
+      ScsDict.sl' [(ScsLang.en,`Field: <b>%0</b>. The provided %1 (<i>%2</i>) is too large.`),
+	           (ScsLang.da,`Felt: <b>%0</b>. Det indtastede %1 (<i>%2</i>) er for stor.`)] [f_msg,ty,v]
     fun errTooMany(f_msg:string) : quot =
-      ScsDict.sl' [(ScsLang.en,`Error in field %0. More than one dataitem is provided.`),
-                   (ScsLang.da,`Fejl i felt %0. Der findes mere end en indtastning.`)] [f_msg]
+      ScsDict.sl' [(ScsLang.en,`Field: <b>%0</b>. More than one dataitem is provided.`),
+                   (ScsLang.da,`Felt: <b>%0</b>. Der findes mere end en indtastning.`)] [f_msg]
     fun buildErrMsg (errs: errs) : quot =
-      (case ScsLogin.user_lang of
-	 ScsLang.en => `
-	   We had a problem processing your entry:
+      case ScsLogin.user_lang of
+	 ScsLang.en => 
+	   (`There were the following errors:
 
-	   <ul>` ^^ 
-	   Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^ `
-	   </ul>
+	    <ul>` ^^ 
+	    Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^ `
+	    </ul>
 
-	   Please back up using your browser, correct it, and resubmit your entry<p>
-	   
-	   Thank you.`
+	    ^(UcsPage.history_link "Go back") and correct the errors.`)
 	 | ScsLang.da => 
-	   let
-	     val (problem_string, please_correct) = if List.length errs = 1 then
-	       ("en fejl","fejlen") else ("nogle fejl","fejlene")
-	   in
-	     `Vi har fundet ^problem_string i dine indtastede data:
-	     <ul>` ^^ 
-	     Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^ `
-	     </ul>
+	     (`Der var følgende fejl i de indtastede data:
+	      <ul>` ^^ 
+	      Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^ `
+	      </ul>
 
-	     Vær venlig at klikke på "tilbage"-knappen i din browser, og ret
-	     ^please_correct. Derefter kan du indsende dine oplysninger igen<p>
-	     På forhånd tak.`
-	   end)
+	      ^(UcsPage.history_link "Gå tilbage") og ret fejlene.`)
 
     fun returnErrorPg (errs: errs) : Ns.status = 
       ScsPage.returnPg (ScsDict.s [(ScsLang.en,`Form Error`),(ScsLang.da,`Formularfejl`)]) (buildErrMsg errs)
@@ -559,11 +550,11 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	(case ScsLogin.user_lang of
 	   ScsLang.en => `^s
 	     <blockquote>
-	     You must type a <b>date</b> in either the Danish format <code>DD/MM-YYYY</code> (e.g., 25/01-2001) or 
-	     the ISO format <code>YYYY-MM-DD</code> (e.g., 2001-01-25).
+	     The date must be in the Danish format <code>DD/MM-YYYY</code> (e.g., 25/01-2001) or 
+	     in the ISO format <code>YYYY-MM-DD</code> (e.g., 2001-01-25).
 	     </blockquote>`
 	| ScsLang.da => `^s
-	     Du skal indtaste en <b>dato</b> enten i formatet <code>DD/MM-YYYY</code> (f.eks. 25/01-2001) eller
+	     Datoen skal være i formatet <code>DD/MM-YYYY</code> (f.eks. 25/01-2001) eller
 	     i formatet <code>YYYY-MM-DD</code> (f.eks. 2001-01-25).
 	     </blockquote>`)
 
