@@ -1,9 +1,0 @@
-exception Fail of string; (** not present in old versions **)
-
-app use [
-    "objects.sml",
-    "ray.sml",
-    "interp.sml",
-    "interface.sml",
-    "main.sml"
-  ];
