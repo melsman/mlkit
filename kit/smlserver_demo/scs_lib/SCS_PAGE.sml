@@ -1,7 +1,7 @@
 signature SCS_PAGE =
   sig
     type navbar = (quot * quot) list
-    val navbar    : navbar -> quot
+    val mk_navbar    : navbar -> quot
 
     val returnTop : string -> Ns.status
     val write     : quot -> Ns.status
