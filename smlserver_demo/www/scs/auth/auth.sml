@@ -15,6 +15,8 @@ val login =
     of NONE => reject (`Du skal indtaste en email.<p> (eng. You must type in an email)`)
      | SOME e => e
 
+val login = login ^"@it-c.dk"
+
 val passwd =
   case FV.wrapOpt FV.getStringErr "auth_password" 
     of NONE => reject (`Du skal indtaste et kodeord.<p> (eng. You must type in a password)`)

@@ -223,6 +223,18 @@ as
     val_id in scs_enum_values.val_id%TYPE,
     language    in scs_lang.language%TYPE
   ) return varchar2;
+
+  /* ------------------
+     function vidToText
+     ------------------
+
+     similar to vidToString except that this function returns null
+     instead of raising an exception. */
+  function vidToText (
+    val_id      in scs_enum_values.val_id%TYPE,
+    language    in scs_lang.language%TYPE
+  ) return varchar2;
+
 end scs_enumeration;
 /
 show errors
@@ -610,6 +622,23 @@ as
       raise_application_error( scs.ScsDbExn, 
         'scs_enumeration.vidToString(' || to_char(val_id) || ')'); 
   end vidToString;
+
+  function vidToText (
+    val_id      in scs_enum_values.val_id%TYPE,
+    language    in scs_lang.language%TYPE
+  ) return varchar2
+  is
+    v_text varchar2(200);
+  begin
+    select scs_text.getText(getTID(vidToText.val_id),vidToText.language)
+      into v_text
+      from dual;
+     
+    return v_text;
+  exception
+    when others then
+      return null;
+  end vidToText;
 
 end scs_enumeration;
 /
