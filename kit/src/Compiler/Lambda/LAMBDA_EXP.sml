@@ -37,6 +37,7 @@ signature LAMBDA_EXP =
       | CONStype    of Type list * TyName
       | RECORDtype  of Type list
 
+    val tyvars : Type -> tyvar EqSet.Set
     val boolType: Type
     val unitType: Type
     val exnType : Type
@@ -123,11 +124,14 @@ signature LAMBDA_EXP =
       | STD_INprim
       | STD_OUTprim
 *)
-      | CCALLprim of string * {instance : 'Type}      (* NOT Standard ML *)
-      | RESET_REGIONSprim of {instance: 'Type}        (* NOT Standard ML, for programmer-directed, but safe, resetting of
-						       * regions *)
-      | FORCE_RESET_REGIONSprim of {instance: 'Type}  (* NOT Standard ML, for programmer-controlled, unsafe resetting of
-						       * regions *)
+      | CCALLprim of {name : string,                  (* NOT Standard ML *)
+		      instances : 'Type list,
+		      tyvars : tyvar list,
+		      Type : 'Type} 
+      | RESET_REGIONSprim of {instance: 'Type}        (* NOT Standard ML, for programmer-directed,
+						          but safe, resetting of regions *)
+      | FORCE_RESET_REGIONSprim of {instance: 'Type}  (* NOT Standard ML, for programmer-controlled,
+						          unsafe resetting of regions *)
 
     datatype LambdaPgm = PGM of datbinds * LambdaExp
 

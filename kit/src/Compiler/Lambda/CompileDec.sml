@@ -1,7 +1,6 @@
-(*$CompileDec : CON EXCON TYNAME TOPDEC_GRAMMAR STATOBJECT
-        ENVIRONMENTS LVARS LAMBDA_EXP COMPILER_ENV MATCH_COMPILER
-        ELAB_INFO FINMAP FINMAPEQ CRASH FLAGS PRETTYPRINT REPORT
-        COMPILE_DEC*)
+(*$CompileDec : CON EXCON TYNAME TOPDEC_GRAMMAR STATOBJECT ENVIRONMENTS LVARS
+        LAMBDA_EXP LAMBDA_BASICS COMPILER_ENV MATCH_COMPILER ELAB_INFO FINMAP
+        FINMAPEQ CRASH FLAGS PRETTYPRINT REPORT COMPILE_DEC*)
 
 (* At some point we should clean up this code.. Constructors are not
  * looked up in the environment anymore.. Also, - it would be nice if
@@ -34,6 +33,14 @@ functor CompileDec(structure Con: CON
                          and type LambdaExp.con = Con.con
                          and type LambdaExp.excon = Excon.excon
                          and type LambdaExp.TyName = TyName.TyName
+
+		   structure LambdaBasics : LAMBDA_BASICS
+		     sharing type LambdaBasics.LambdaExp = LambdaExp.LambdaExp
+		         and type LambdaBasics.excon = LambdaExp.excon
+			 and type LambdaBasics.lvar = LambdaExp.lvar
+			 and type LambdaBasics.subst = LambdaBasics.subst
+			 and type LambdaBasics.tyvar = LambdaExp.tyvar
+			 and type LambdaBasics.Type = LambdaExp.Type
 
                    structure CompilerEnv: COMPILER_ENV
                      sharing type CompilerEnv.con = Con.con
@@ -418,6 +425,7 @@ functor CompileDec(structure Con: CON
      *
      *      ([a,b], t, [(A, Some a), (B, Some b)])
      *)
+(*KILL 20/11/1997 15:01. tho.:
 
    type subst = (TLE.tyvar, TLE.tyvar) FinMap.map
 
@@ -433,9 +441,10 @@ functor CompileDec(structure Con: CON
 	   | on (RECORDtype taus) = RECORDtype(map on taus)
      in on Type
      end
+*)
 
    fun on_TypeOpt _ None = None
-     | on_TypeOpt S (Some tau) = Some (on_Type S tau)
+     | on_TypeOpt S (Some tau) = Some (LambdaBasics.on_Type S tau)
 
    fun unTyVarType (TYVARtype tv) = tv
      | unTyVarType _ = die "unTyVarType"
@@ -456,8 +465,8 @@ functor CompileDec(structure Con: CON
 	   of ARROWtype([tau],[CONStype(taus,tyname)]) => (map unTyVarType taus, Some tau, tyname)
 	    | CONStype(taus,tyname) => (map unTyVarType taus, None, tyname)
 	    | _ => die "compile_and_normalize_cb.wrong type"
-       val S = mk_S (ListPair.zip (tyvars, tyvars0)) handle ListPair.Zip => 
-	              die "normalize_sigma.wrong number of tyvars"
+       val S = LambdaBasics.mk_subst (fn () => "CompileDec.normalize_sigma': wrong number of tyvars")
+	         (tyvars, map TLE.TYVARtype tyvars0) 
        val tauOpt' = on_TypeOpt S tauOpt
        val tau = case tauOpt'
 		   of Some tau => ARROWtype([tau],[CONStype(map TYVARtype tyvars0, tyname)])
@@ -570,55 +579,6 @@ functor CompileDec(structure Con: CON
         handle Gotcha e => e
       end
 
-(*KILL 12/11/1997 18:30. tho.:
-
-    (* ---------------------------------------------------------------------- *)
-    (*                        Primitives                                      *)
-    (* ---------------------------------------------------------------------- *)
-
-    val dummyType = {instance=RECORDtype[]}
-      (* Used to make the lookupPrim function well-typed, bit of a hack *)
-
-    fun lookupPrim i =
-          (case i of
-	     0 => EQUALprim dummyType
-(*TODO 12/11/1997 15:10. tho.:
-	   | 1 => FLOORprim
-	   | 2 => REALprim
-	   | 3 => SQRTprim
-	   | 4 => SINprim
-	   | 5 => COSprim
-	   | 6 => ARCTANprim
-	   | 7 => EXPprim
-	   | 8 => LNprim
-	   | 9 => SIZEprim
-	   | 10 => CHRprim
-	   | 12 => EXPLODEprim
-	   | 13 => IMPLODEprim
-	   | 14 => DIV_REALprim
-	   | 15 => DIV_INTprim
-	   | 16 => MODprim
-*)
-	   | 17 => ASSIGNprim dummyType
-	   | 18 => DEREFprim dummyType
-(*TODO 12/11/1997 15:10. tho.:
-	   | 19 => OPEN_INprim
-	   | 20 => OPEN_OUTprim
-	   | 21 => INPUTprim
-	   | 22 => LOOKAHEADprim
-	   | 23 => CLOSE_INprim
-	   | 24 => END_OF_STREAMprim
-	   | 25 => OUTPUTprim
-	   | 26 => CLOSE_OUTprim
-	   | 27 => USEprim
-	   | 28 => FLUSH_OUTprim
-	   | 29 => STD_INprim
-	   | 30 => STD_OUTprim
-*)
-	   | 31 => CCALLprim ("dummyString", dummyType)
-	   | _ => die ("lookupPrim " ^ Int.string i))
-*)
-
 
     (* ---------------------------------------------------------------------- *)
     (*         Primitives for overloaded arithmetic operators                 *)
@@ -641,29 +601,32 @@ functor CompileDec(structure Con: CON
 	     | OverloadingInfo.RESOLVED_CHAR => int
 	     | OverloadingInfo.RESOLVED_STRING => string
 	     | _ => die "string_or_int_or_real: unresolved")
+
+      fun div_etc_ccall name =
+	    CCALLprim {name = name, instances = [], tyvars = [],
+		       Type = ARROWtype ([intType, intType, exnType], [intType])}
+      fun string_ccall name =
+	    CCALLprim {name = name, instances = [], tyvars = [],
+		       Type = ARROWtype ([stringType, stringType], [boolType])}
       fun unoverload i CE.ABS = int_or_real i (ABS_INTprim, ABS_REALprim)
 	| unoverload i CE.NEG = int_or_real i (NEG_INTprim, NEG_REALprim)
 	| unoverload i CE.PLUS = int_or_real i (PLUS_INTprim, PLUS_REALprim)
 	| unoverload i CE.MINUS = int_or_real i (MINUS_INTprim, MINUS_REALprim)
 	| unoverload i CE.MUL = int_or_real i (MUL_INTprim, MUL_REALprim)
-	| unoverload i CE.DIV = CCALLprim ("divInt", {instance=compileType Type.Int})
-	| unoverload i CE.MOD = CCALLprim ("modInt", {instance=compileType Type.Int})
+	| unoverload i CE.DIV = div_etc_ccall "divInt"
+	| unoverload i CE.MOD = div_etc_ccall "modInt"
 	| unoverload i CE.LESS =
 	    string_or_int_or_real i
-	      (LESS_INTprim, LESS_REALprim,
-	       CCALLprim ("lessString", {instance=compileType Type.Bool}))
+	      (LESS_INTprim, LESS_REALprim, string_ccall "lessString")
 	| unoverload i CE.GREATER=
 	    string_or_int_or_real i
-	      (GREATER_INTprim, GREATER_REALprim,
-	       CCALLprim ("greaterString", {instance=compileType Type.Bool}))
+	      (GREATER_INTprim, GREATER_REALprim, string_ccall "greaterString")
 	| unoverload i CE.LESSEQ =
 	    string_or_int_or_real i
-	      (LESSEQ_INTprim, LESSEQ_REALprim,
-	       CCALLprim ("lesseqString", {instance=compileType Type.Bool}))
+	      (LESSEQ_INTprim, LESSEQ_REALprim, string_ccall "lesseqString")
 	| unoverload i CE.GREATEREQ =
 	    string_or_int_or_real i
-	      (GREATEREQ_INTprim, GREATEREQ_REALprim,
-	       CCALLprim ("greatereqString", {instance=compileType Type.Bool}))
+	      (GREATEREQ_INTprim, GREATEREQ_REALprim, string_ccall "greatereqString")
 	| unoverload i _ = die "unoverload"
     in
       fun overloaded_prim info result (*e.g., CE.ABS*)
@@ -718,43 +681,68 @@ functor CompileDec(structure Con: CON
 	    end
     end (*local*)
 
-(*KILL 12/11/1997 19:27. tho.:
-   (* ---------------------------------------------------------------------- *)
-   (*           Decomposition of applications of prim                        *)
-   (* ---------------------------------------------------------------------- *)
-
-   (* Decompose the absyn argument in a `prim(n, xxx)' expression. Notice
-      that we're extremely intolerant of any deviation from this precise
-      syntax. *)
-
-    fun decomposePrimArg atexp: int * exp list =
-      let val (primno,arg) =
-	    (case atexp of 
-	       RECORDatexp(_,
-			   Some(EXPROW(_, _, ATEXPexp(_, SCONatexp(_, SCon.INTEGER i)),
-				       Some(EXPROW(_, _, exp2, None))))) => (i, exp2)
-	     | _ => die "prim syntax error")
-
-	fun decomposeArgs None = []
-	  | decomposeArgs (Some (EXPROW(_,_,exp1, arg'))) =
-	      exp1 :: decomposeArgs arg'
-
-	fun decomposeExp (ATEXPexp (_, RECORDatexp (_,expRow))) =
-	      decomposeArgs expRow
-	  | decomposeExp exp = [exp]
-      in
-        (primno,
-         if primno < 0 then die ("prim number must be non-negative.  It is "
-				 ^ Int.string primno)
-         else decomposeExp arg)
-      end
-*)
 
     (* ----------------------------------------------------------------------- *)
     (*               Syntax directed compilation                               *)
     (* ----------------------------------------------------------------------- *)
 
-    fun compile_ident info longid result =
+    fun compileAtexp env atexp : TLE.LambdaExp =
+          (case atexp of
+	     SCONatexp(_, SCon.INTEGER x) => INTEGER x
+	   | SCONatexp(_, SCon.STRING x) => STRING x
+	   | SCONatexp(_, SCon.REAL x) => REAL x
+	   | SCONatexp(_, SCon.CHAR x) => INTEGER x
+	   | SCONatexp(_, SCon.WORD x) => INTEGER x
+	   | IDENTatexp(info, OP_OPT(longid, _)) =>
+	       compile_ident info longid (lookupLongid env longid (NORMAL info))
+
+	   (* records: the fields must be evaluated in their textual order,
+	    but the resulting record object must have the fields in a
+	    canonical order (we adopt alphabetic ordering). Hmm. Tricky.
+	    Easiest way is to bind the record field expressions to lvars and
+	    then build a record of the (appropriately ordered) lvars. *)
+
+	   (* Well, - if the labs are already sorted then we can in-line
+	    the expressions in the record... 04/10/1996-Martin. *)
+
+	   | RECORDatexp(_, Some exprow) =>
+	     let
+               val rows = makeList (fn EXPROW(_, _, _, e) => e) exprow
+               val labs = map (fn EXPROW(_, l, _, _) => l) rows
+	       val exps = map (fn EXPROW(_, _, e, _) => compileExp env e) rows
+	       fun is_sorted (l1::(labs as l2::_)) = Lab.<(l1,l2) andalso is_sorted labs
+		 | is_sorted _ = true
+	     in if is_sorted labs then PRIM(RECORDprim, exps) 
+		else
+		  let val taus = map (compileType o type_of_exp 
+				      o (fn EXPROW(_,_,e,_) => e)) rows
+		      val lvars = map (fn _ => Lvars.newLvar()) rows
+		      val scope =              (* The final record expression *)
+			let val sortedLvarsXlabs =
+			          ListSort.sort
+				  (fn (_, l1) => fn (_, l2) => Lab.<(l1, l2))
+				  (ListPair.zip(lvars, labs))
+			in
+			  PRIM(RECORDprim,map (fn (lv, _) => VAR{lvar=lv,instances=[]})
+			       sortedLvarsXlabs)
+			end
+		  in
+		    List.foldR (fn (lv,exp,tau) => fn exp' => monoLet((lv,tau,exp),exp'))
+		    scope (zip3(lvars,exps,taus))
+		  end
+	     end
+
+	   | RECORDatexp(_, None) => PRIM(RECORDprim,[])
+
+	   | LETatexp(_, dec, exp) =>
+	       let val (env1, f) = compileDec env (false,dec)
+	           val exp' = compileExp (env plus env1) exp
+	       in f exp'
+	       end
+
+	   | PARatexp(_, exp) => compileExp env exp)
+
+    and compile_ident info longid result =
           (case result of
 	     CE.LVAR (lv,tyvars,_,il) =>   (*see COMPILER_ENV*) 
 	       (let val instances =
@@ -844,62 +832,6 @@ functor CompileDec(structure Con: CON
 	   | CE.FORCE_RESET_REGIONS => die "compile_ident: CE.FORCE_RESET_REGIONS"
 	   | CE.PRIM => die "compile_ident: CE.PRIM")
 
-    fun compileAtexp env atexp : TLE.LambdaExp =
-          (case atexp of
-	     SCONatexp(_, SCon.INTEGER x) => INTEGER x
-	   | SCONatexp(_, SCon.STRING x) => STRING x
-	   | SCONatexp(_, SCon.REAL x) => REAL x
-	   | SCONatexp(_, SCon.CHAR x) => INTEGER x
-	   | SCONatexp(_, SCon.WORD x) => INTEGER x
-	   | IDENTatexp(info, OP_OPT(longid, _)) =>
-	       compile_ident info longid (lookupLongid env longid (NORMAL info))
-
-	   (* records: the fields must be evaluated in their textual order,
-	    but the resulting record object must have the fields in a
-	    canonical order (we adopt alphabetic ordering). Hmm. Tricky.
-	    Easiest way is to bind the record field expressions to lvars and
-	    then build a record of the (appropriately ordered) lvars. *)
-
-	   (* Well, - if the labs are already sorted then we can in-line
-	    the expressions in the record... 04/10/1996-Martin. *)
-
-	   | RECORDatexp(_, Some exprow) =>
-	     let
-               val rows = makeList (fn EXPROW(_, _, _, e) => e) exprow
-               val labs = map (fn EXPROW(_, l, _, _) => l) rows
-	       val exps = map (fn EXPROW(_, _, e, _) => compileExp env e) rows
-	       fun is_sorted (l1::(labs as l2::_)) = Lab.<(l1,l2) andalso is_sorted labs
-		 | is_sorted _ = true
-	     in if is_sorted labs then PRIM(RECORDprim, exps) 
-		else
-		  let val taus = map (compileType o type_of_exp 
-				      o (fn EXPROW(_,_,e,_) => e)) rows
-		      val lvars = map (fn _ => Lvars.newLvar()) rows
-		      val scope =              (* The final record expression *)
-			let val sortedLvarsXlabs =
-			          ListSort.sort
-				  (fn (_, l1) => fn (_, l2) => Lab.<(l1, l2))
-				  (ListPair.zip(lvars, labs))
-			in
-			  PRIM(RECORDprim,map (fn (lv, _) => VAR{lvar=lv,instances=[]})
-			       sortedLvarsXlabs)
-			end
-		  in
-		    List.foldR (fn (lv,exp,tau) => fn exp' => monoLet((lv,tau,exp),exp'))
-		    scope (zip3(lvars,exps,taus))
-		  end
-	     end
-
-	   | RECORDatexp(_, None) => PRIM(RECORDprim,[])
-
-	   | LETatexp(_, dec, exp) =>
-	       let val (env1, f) = compileDec env (false,dec)
-	           val exp' = compileExp (env plus env1) exp
-	       in f exp'
-	       end
-
-	   | PARatexp(_, exp) => compileExp env exp)
-
     and compileExp env exp =
           (case exp of
 	     ATEXPexp(_, atexp) => compileAtexp env atexp
@@ -952,7 +884,8 @@ functor CompileDec(structure Con: CON
 				       of Some(TypeInfo.VAR_INFO{instances}) =>
 					 map compileType instances
 					| _ => die "compileExp(APPexp..): wrong type info"
-		    val S = CE.mk_subst (fn () => ("CompileDec.APPexp.LVAR(" ^ Lvars.pr_lvar lv ^ ")"))
+		    val S = CE.mk_subst (fn () => ("CompileDec.APPexp.LVAR("
+						   ^ Lvars.pr_lvar lv ^ ")"))
 		              (tyvars,instances')
 		    val il' = CE.on_il(S, il)
 		in APP(VAR{lvar=lv,instances=il'},arg')
@@ -1024,6 +957,9 @@ the 12 lines above are very similar to the code below
 		"!" => f DEREFprim (*ref (REFprim) is a constructor, so it does not show up here*)
 	      | ":=" => f ASSIGNprim
 	      | "=" => f EQUALprim
+(*KILL 20/11/1997 15:38. tho.:
+ it is wrong to remove "id" here; now it is done in CompLamb.
+
 	      | "id" => 
 		  (*type conversions that result in no code to run at
 		   run-time are declared as prim "id"'s; for instance, ord is
@@ -1031,20 +967,74 @@ the 12 lines above are very similar to the code below
 		  (case args of
 		     [exp] => compileExp env exp
 		   | _ => die "compile_application_of_prim: prim id")
-	      | _ =>
+*)
+	      | _ => 
 		  (*unrecognised prim name: this must be a c call; let us
 		   hope the run-time system defines a function called s:*)
-		  let val args' = map (compileExp env) args
-		      val instance' =
-			    (case to_TypeInfo info of
-			       Some (TypeInfo.VAR_INFO {instances = [instanceRes, instanceArg]}) =>
-				 compileType instanceRes
-			     | _ => die "compile_application_of_prim: wrong type info in ccall")
-		  in					     
-		    TLE.PRIM (CCALLprim (s, {instance=instance'}), args')
-		  end)
-
+		  compile_application_of_c_function env info s args)
 	   end) (*fun compile_application_of_prim*)
+
+    and compile_application_of_c_function env info s args =
+          (case to_TypeInfo info of
+	     Some (TypeInfo.VAR_INFO {instances = [tau_result, tau_argument]}) =>
+	       
+	       (*Concerning instance lists on c calls:  The built-in id
+		`prim' has type scheme `All'a'b.(string * string * 'a)->'b'.
+		In ElabDec it was instantiated, and the list instances above
+		is the types to which 'a and 'b were instantiated: 'b was
+		instantiated to tau_result, 'a to tau_argument (yes, it is a
+		bit messy).  Thus the type of the c function is
+		tau_argument->tau_result.  From CompileDec and on, we want
+		the instance list to be the instance list of the c function
+		type rather than the instance list of the type of `prim':*)
+	       let val taus1 =
+		     (case compileType tau_argument of tau1 =>
+			(case List.size args of
+			   1 => [tau1]
+			 | n => (case tau1 of
+				   TLE.RECORDtype taus1 =>
+				     if List.size taus1 = n then taus1
+				     else die ("prim " ^ s ^ " has wrong number of arguments")
+				 | _ => die ("give prim " ^ s ^ " a record argument type"))))
+		   val tau2 = compileType tau_result
+		   val tau = TLE.ARROWtype (taus1, [tau2])
+		   val tyvars = EqSet.list (LambdaExp.tyvars tau)
+		   val tyvars_fresh = map (fn tyvar => LambdaExp.fresh_tyvar ()) tyvars
+		   val subst = LambdaBasics.mk_subst
+		                 (fn () => "CompileDec.compile_application_of_c_function")
+		                    (tyvars, map TLE.TYVARtype tyvars_fresh)
+	       in
+		 TLE.PRIM (CCALLprim {name = s,
+				      tyvars = tyvars_fresh,
+				      Type = LambdaBasics.on_Type subst tau,
+				      instances = map TLE.TYVARtype tyvars},
+		           map (compileExp env) args)
+	       end
+
+(*KILL 20/11/1997 14:32. tho.:
+
+	       let val tau = Type.mk_Arrow (tau_argument, tau_result) 
+		   val sigma = TypeScheme.close true (TypeScheme.from_Type tau)
+		   val (tyvars, Type) = TypeScheme.to_TyVars_and_Type sigma
+		   val (_, instances) = TypeScheme.instance'' sigma
+	       in
+		 TLE.PRIM (CCALLprim {name = s,
+				      instances = map compileType instances,
+				      tyvars = map compileTyVar tyvars,
+				      Type = flatten_c_function_type (compileType Type)},
+		           map (compileExp env) args)
+	       end
+*)
+	   | _ => die "compile_application_of_prim: wrong type info in ccall")
+
+
+    (*flatten_c_function_type ([t1 * t2] -> [t3]) = [t1, t2] -> [t3]*)
+    and flatten_c_function_type (TLE.ARROWtype ([TLE.RECORDtype taus1], taus2)) =
+          TLE.ARROWtype (taus1, taus2)
+      | flatten_c_function_type (TLE.ARROWtype (taus1, taus2)) =
+	  TLE.ARROWtype (taus1, taus2)
+      | flatten_c_function_type _ = die "flatten_c_function_type: not arrow"
+
 
     (*decompose_prim_call atexp = the name (string) of the called prim & the
      argument exps.  atexp is the atexp after `prim'.  A prim call has the
