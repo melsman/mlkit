@@ -340,7 +340,7 @@ handle x =>
 	    val p1' = Lvars.newLvar()
 	    fun mk_decon p' p e = 
 	      monolet {lvar=p', Type=tau, 
-		       bind=PRIM(DECONprim {con=c, instances=map TYVARtype tyvars,lvar=p'}, [lamb_var p]),
+		       bind=PRIM(DECONprim {con=c, instances=map TYVARtype tyvars,lv_opt=SOME p'}, [lamb_var p]),
 		       scope=e}
 	    val lamb_eq_fn_tau = gen_type_eq env' tau
 	    val lamb_true_case =

@@ -44,16 +44,18 @@ signature COMPILER_ENV =
      * lookup, and thereby forming the instance list for the lambda
      * variable.   -- Martin *)
 
-    val declareVar: (id * (lvar * tyvar list * Type) * CEnv) -> CEnv
-    val declareCon: (id * (con * tyvar list * Type) * CEnv) -> CEnv
-    val declareExcon: (id * (excon * Type) * CEnv) -> CEnv
-    val declare_strid: strid * CEnv * CEnv -> CEnv
-    val declare_tycon: tycon * (TyName list * CEnv) * CEnv -> CEnv  (* a tycon is mapped to an environment 
+    val declareVar    : (id * (lvar * tyvar list * Type) * CEnv) -> CEnv
+    val declareCon    : (id * (con * tyvar list * Type) * CEnv) -> CEnv
+    val declareExcon  : (id * (excon * Type) * CEnv) -> CEnv
+    val declare_strid : strid * CEnv * CEnv -> CEnv
+    val declare_tycon : tycon * (TyName list * CEnv) * CEnv -> CEnv  (* a tycon is mapped to an environment 
 								     * holding bindings for value 
 								     * constructors. *)
+    (* For pattern-match compilation - see CompileDec.sml *)
     type spath = int list
-    val declareLvarDecon : spath * lvar * CEnv -> CEnv
-    val lookupLvarDecon : CEnv -> spath -> lvar option
+    val declarePath  : spath * lvar * Type * CEnv -> CEnv
+    val lookupPath   : CEnv -> spath -> (lvar * Type) option
+    val clearPathEnv : CEnv -> CEnv
 
     val plus: CEnv * CEnv -> CEnv         
 

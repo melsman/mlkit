@@ -61,7 +61,7 @@ signature LAMBDA_EXP =
 
     datatype 'Type prim =                             (* The primitives are always fully applied ! *)
         CONprim of {con : con, instances : 'Type list}
-      | DECONprim of {con : con, instances : 'Type list, lvar: lvar}
+      | DECONprim of {con : con, instances : 'Type list, lv_opt: lvar option}
       | EXCONprim of excon
       | DEEXCONprim of excon
       | RECORDprim 

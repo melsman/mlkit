@@ -86,7 +86,7 @@ functor LambdaExp(structure Lvars: LVARS
 
     datatype 'Type prim =                             (* The primitives are always fully applied ! *)
         CONprim of {con : con, instances : 'Type list}
-      | DECONprim of {con : con, instances : 'Type list, lvar:lvar}
+      | DECONprim of {con : con, instances : 'Type list, lv_opt:lvar option}
       | EXCONprim of excon
       | DEEXCONprim of excon
       | RECORDprim 
@@ -437,8 +437,12 @@ functor LambdaExp(structure Lvars: LVARS
 			    indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
 		else PP.LEAF con_s
 	    end
-      | DECONprim{con,instances,lvar} =>
-	      if !barify_p then PP.LEAF (pr_lvar lvar) else
+      | DECONprim{con,instances,lv_opt} =>
+	      if !barify_p then 
+		  (case lv_opt of
+		       SOME lvar => PP.LEAF (pr_lvar lvar) 
+		     | NONE => PP.LEAF "TODO")
+	      else
 	      if !Flags.print_types then
 		  PP.NODE{start= "decon(" ^ pr_con con,finish=")", 
 			  indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
@@ -847,8 +851,12 @@ functor LambdaExp(structure Lvars: LVARS
              PP.NODE{start="!(",finish=")",indent=2,
                      children=[layoutLambdaExp(lamb,0)],
                      childsep=PP.NOSEP}
-	 | (DECONprim{con,instances,lvar},[lamb]) =>
-	      if !barify_p then PP.LEAF (pr_lvar lvar) else
+	 | (DECONprim{con,instances,lv_opt},[lamb]) =>
+	      if !barify_p then 
+		  case lv_opt of
+		      SOME lvar => PP.LEAF (pr_lvar lvar) 
+		    | NONE => PP.LEAF "TODO"
+	      else
 	      if !Flags.print_types then
 		  PP.NODE{start= "decon(" ^ pr_con con,finish=")", 
 			  indent=2,children=map layoutType instances @ [layoutLambdaExp(lamb,0)],

@@ -86,7 +86,7 @@ functor CompilerEnv(structure Ident: IDENT
       | spath_lt (nil,_) = true
       | spath_lt (x::xs,y::ys) = x < y orelse (x=y andalso spath_lt(xs,ys))
 
-    structure LvarEnv = 
+    structure PathEnv = 
 	OrderFinMap(structure Order = struct
 					  type T = spath
 					  fun lt (a:T) b = spath_lt(a,b)
@@ -94,18 +94,18 @@ functor CompilerEnv(structure Ident: IDENT
 		    structure PP = PP
 		    structure Report = Report)
 
-    type LvarEnv = lvar LvarEnv.map
+    type PathEnv = (lvar*Type) PathEnv.map
     type VarEnv = (id,result) FinMap.map
-    datatype CEnv = CENV of {StrEnv:StrEnv, VarEnv:VarEnv, TyEnv:TyEnv, LvarEnv:LvarEnv}
+    datatype CEnv = CENV of {StrEnv:StrEnv, VarEnv:VarEnv, TyEnv:TyEnv, PathEnv:PathEnv}
     and StrEnv  = STRENV of (strid,CEnv) FinMap.map
     and TyEnv   = TYENV of (tycon,TyName list * CEnv) FinMap.map
 	
     val emptyStrEnv   : StrEnv = STRENV FinMap.empty
     and emptyVarEnv   : VarEnv = FinMap.empty
     and emptyTyEnv    : TyEnv  = TYENV FinMap.empty
-    and emptyLvarEnv  : LvarEnv = LvarEnv.empty
+    and emptyPathEnv  : PathEnv = PathEnv.empty
     val emptyCEnv = CENV {StrEnv=emptyStrEnv, VarEnv=emptyVarEnv, 
-			  TyEnv=emptyTyEnv, LvarEnv=emptyLvarEnv}
+			  TyEnv=emptyTyEnv, PathEnv=emptyPathEnv}
 
     fun initMap a = foldl (fn ((v,r), m) => FinMap.add(v,r,m)) FinMap.empty a
     val initialStrEnv = emptyStrEnv
@@ -196,48 +196,51 @@ functor CompilerEnv(structure Ident: IDENT
       fun initialCEnv() = CENV{StrEnv=initialStrEnv,
 			       VarEnv=initialVarEnv,
 			       TyEnv=initialTyEnv(),
-			       LvarEnv=emptyLvarEnv}
+			       PathEnv=emptyPathEnv}
 
     end (*local*)
 
-    fun declareLvarDecon (spath:spath,lv: lvar, CENV{StrEnv,VarEnv,TyEnv,LvarEnv}) : CEnv =
+    fun declarePath (spath:spath,lv: lvar, tau, CENV{StrEnv,VarEnv,TyEnv,PathEnv}) : CEnv =
 	CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TyEnv,
-	     LvarEnv=LvarEnv.add(spath,lv,LvarEnv)}
+	     PathEnv=PathEnv.add(spath,(lv,tau),PathEnv)}
 	
-    fun lookupLvarDecon (CENV{LvarEnv,...}) (spath:spath) : lvar option =
-	LvarEnv.lookup LvarEnv spath
+    fun lookupPath (CENV{PathEnv,...}) (spath:spath) : (lvar * Type) option =
+	PathEnv.lookup PathEnv spath
 
-    fun declareVar(id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=m,TyEnv,LvarEnv}) =
+    fun clearPathEnv (CENV{StrEnv,VarEnv,TyEnv,PathEnv}) =
+	CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TyEnv,PathEnv=emptyPathEnv}
+
+    fun declareVar(id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=m,TyEnv,PathEnv}) =
       let val il0 = map LambdaExp.TYVARtype tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
 	      VarEnv=FinMap.add(id, LVAR (lv,tyvars,tau,il0), m),
-	      LvarEnv=LvarEnv}
+	      PathEnv=PathEnv}
       end
 
-    fun declareCon(id, (con,tyvars,tau), CENV{StrEnv,VarEnv=m,TyEnv,LvarEnv}) =
+    fun declareCon(id, (con,tyvars,tau), CENV{StrEnv,VarEnv=m,TyEnv,PathEnv}) =
       let val il0 = map LambdaExp.TYVARtype tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
 	      VarEnv=FinMap.add(id,CON (con,tyvars,tau,il0), m),
-	      LvarEnv=LvarEnv}
+	      PathEnv=PathEnv}
       end
 
-    fun declareExcon(id, excon, CENV{StrEnv,VarEnv=map,TyEnv,LvarEnv}) =
+    fun declareExcon(id, excon, CENV{StrEnv,VarEnv=map,TyEnv,PathEnv}) =
       CENV{StrEnv=StrEnv,VarEnv=FinMap.add(id,EXCON excon,map),TyEnv=TyEnv,
-	   LvarEnv=LvarEnv}
+	   PathEnv=PathEnv}
 
-    fun declare_strid(strid, env, CENV{StrEnv=STRENV m,VarEnv,TyEnv,LvarEnv}) =
+    fun declare_strid(strid, env, CENV{StrEnv=STRENV m,VarEnv,TyEnv,PathEnv}) =
       CENV{StrEnv=STRENV (FinMap.add(strid,env,m)),VarEnv=VarEnv,TyEnv=TyEnv,
-	   LvarEnv=LvarEnv}
+	   PathEnv=PathEnv}
 
-    fun declare_tycon(tycon, a, CENV{StrEnv,VarEnv,TyEnv=TYENV m,LvarEnv}) =
-      CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TYENV(FinMap.add(tycon,a,m)),LvarEnv=LvarEnv}
+    fun declare_tycon(tycon, a, CENV{StrEnv,VarEnv,TyEnv=TYENV m,PathEnv}) =
+      CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TYENV(FinMap.add(tycon,a,m)),PathEnv=PathEnv}
 
-    fun plus (CENV{StrEnv,VarEnv,TyEnv,LvarEnv}, 
-	      CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv',LvarEnv=LvarEnv'}) =
+    fun plus (CENV{StrEnv,VarEnv,TyEnv,PathEnv}, 
+	      CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv',PathEnv=PathEnv'}) =
       CENV{StrEnv=plusStrEnv(StrEnv,StrEnv'),
 	   VarEnv=plusVarEnv(VarEnv,VarEnv'),
 	   TyEnv=plusTyEnv(TyEnv,TyEnv'),
-	   LvarEnv=LvarEnv.plus(LvarEnv,LvarEnv')}
+	   PathEnv=PathEnv.plus(PathEnv,PathEnv')}
 
     and plusStrEnv (STRENV m1, STRENV m2) : StrEnv = STRENV(FinMap.plus(m1,m2))
     and plusVarEnv (m1: VarEnv, m2: VarEnv) : VarEnv = FinMap.plus(m1,m2)
@@ -352,11 +355,11 @@ functor CompilerEnv(structure Ident: IDENT
 		      end) FinMap.empty strid_restrs)
 
    and restrictCEnv(ce,Environments.Whole) = ce
-     | restrictCEnv(CENV{StrEnv,VarEnv,TyEnv,LvarEnv}, Environments.Restr{strids,vids,tycons}) =
+     | restrictCEnv(CENV{StrEnv,VarEnv,TyEnv,PathEnv}, Environments.Restr{strids,vids,tycons}) =
      CENV{StrEnv=restrictStrEnv(StrEnv,strids),
 	  VarEnv=restrictVarEnv(VarEnv,vids),
 	  TyEnv=restrictTyEnv(TyEnv,tycons),
-	  LvarEnv=emptyLvarEnv}
+	  PathEnv=emptyPathEnv}
 
    val restrictCEnv = fn (ce, longids) => restrictCEnv(ce, Environments.create_restricter longids)
      
@@ -415,13 +418,13 @@ functor CompilerEnv(structure Ident: IDENT
 		      of SOME (res1,ce1) => eq_tynames(res1,res2) andalso eqCEnv(ce1,ce2)
 		       | NONE => false) true m2
        
-     and enrichCEnv(CENV{StrEnv,VarEnv,TyEnv,LvarEnv},
+     and enrichCEnv(CENV{StrEnv,VarEnv,TyEnv,PathEnv},
 		    CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv',
-			 LvarEnv=LvarEnv'}) =
+			 PathEnv=PathEnv'}) =
        debug("StrEnv", enrichStrEnv(StrEnv,StrEnv')) andalso 
        debug("VarEnv", enrichVarEnv(VarEnv,VarEnv')) andalso
        debug("TyEnv", enrichTyEnv(TyEnv,TyEnv')) andalso
-       LvarEnv.isEmpty LvarEnv andalso LvarEnv.isEmpty LvarEnv'
+       PathEnv.isEmpty PathEnv andalso PathEnv.isEmpty PathEnv'
        
      and eqCEnv(ce1,ce2) = enrichCEnv(ce1,ce2) andalso enrichCEnv(ce2,ce1)
 
@@ -542,11 +545,11 @@ functor CompilerEnv(structure Ident: IDENT
 		   | _ => die "constr_ran.EXCON.longvar or longexcon expected")
 	      | _ => die "constr_ran.expecting LVAR, CON or EXCON"
 
-         fun constr_ce(CENV{StrEnv, VarEnv, TyEnv, LvarEnv}, elabE) =
+         fun constr_ce(CENV{StrEnv, VarEnv, TyEnv, PathEnv}, elabE) =
 	   let val (elabSE, elabTE, elabVE) = E.un elabE
 	   in CENV{StrEnv=constr_se(StrEnv,elabSE), VarEnv=constr_ve(VarEnv,elabVE),
 		   TyEnv=constr_te(TyEnv,elabTE),
-		   LvarEnv=emptyLvarEnv}
+		   PathEnv=emptyPathEnv}
 	   end
 
 	 and constr_se(STRENV se, elabSE) =
@@ -590,17 +593,19 @@ functor CompilerEnv(structure Ident: IDENT
    fun layout_spath (l:spath) = PP.HNODE{start="{",finish="}",childsep=PP.RIGHT",",
 					 children=map (fn i => PP.LEAF(Int.toString i)) l}
 
-    fun layoutCEnv (CENV{StrEnv,VarEnv,TyEnv, LvarEnv}) =
+    fun layoutCEnv (CENV{StrEnv,VarEnv,TyEnv, PathEnv}) =
       PP.NODE{start="CENV(",finish=")",indent=2,
 	      children=[layoutStrEnv StrEnv,
 			layoutVarEnv VarEnv,
 			layoutTyEnv TyEnv,
-			layoutLvarEnv LvarEnv],
+			layoutPathEnv PathEnv],
 	      childsep=PP.RIGHT ","}
 
     and layoutLvar lv = PP.LEAF (Lvars.pr_lvar lv)
-    and layoutLvarEnv e = LvarEnv.layoutMap {start="LvarEnv = ",finish="",eq=" -> ", sep = ", "}
-	layout_spath layoutLvar e
+    and layoutLvarTypePair (lv,t) = PP.NODE{start="(",finish=")",indent=1,childsep=PP.RIGHT ",",
+					    children=[layoutLvar lv,LambdaExp.layoutType t]}
+    and layoutPathEnv e = PathEnv.layoutMap {start="PathEnv = ",finish="",eq=" -> ", sep = ", "}
+	layout_spath layoutLvarTypePair e
 
     and layoutStrEnv (STRENV m) =
       PP.NODE{start="StrEnv = ",finish="",indent=2,

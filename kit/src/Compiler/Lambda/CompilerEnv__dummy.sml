@@ -61,8 +61,9 @@ functor CompilerEnvDummy(structure Ident: IDENT
     fun initialCEnv _ = ()
 
     type spath = int list
-    fun declareLvarDecon _ = ()
-    fun lookupLvarDecon _ _ = NONE
+    fun declarePath _ = ()
+    fun lookupPath _ _ = NONE
+    fun clearPathEnv _ = ()
     fun declareVar(id, (lv, tyvars, tau), ()) = ()
 
     fun declareCon(id, (con,tyvars,tau), ()) = ()
