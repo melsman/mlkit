@@ -12,8 +12,35 @@ signature SCS_PERSON =
       cpr               : string
     }
 
+    type profile_record = 
+      { party_id       : int,
+        profile        : string,
+	keywords       : string,
+	edit_no        : int,
+	last_modified  : Date.date,
+	modifying_user : int,
+	deleted_p      : bool}
+
     (* [getPerson user_id] fetches a person from the database *)
     val getPerson : int -> person_record option
+
+    (* [getPersonByExtSource on_what_table on_which_id] fetches a
+       person from the database that relates to the external source
+       represented by on_what_table and on_which_id. *)
+    val getPersonByExtSource : string -> int -> person_record option
+
+    (* [getPersonErr (id,errs)] returns a person record if exists;
+       otherwise an error is appended to the error list errs. *)
+    val getPersonErr : int * ScsFormVar.errs -> person_record option * ScsFormVar.errs 
+
+    (* [getProfile user_id] fetches a profile from the database. It
+       only returns NONE if user_id does not exists in scs_parties. An
+       empty profile is created for user_id if no one exists *)
+    val getProfile : int -> profile_record option
+
+    (* [getProfileErr (id,errs)] returns a profile record if exists;
+       otherwise an error is appended to the error list errs. *)
+    val getProfileErr : int * ScsFormVar.errs -> profile_record option * ScsFormVar.errs 
 
    (* [searchPerson pat keep_del_p] returns a list of persons matching
       the pattern pat. If deleted_p is true then we also search in
@@ -101,6 +128,15 @@ structure ScsPerson :> SCS_PERSON =
       cpr		: string
     }
 
+    type profile_record = 
+      { party_id       : int,
+        profile        : string,
+	keywords       : string,
+	edit_no        : int,
+	last_modified  : Date.date,
+	modifying_user : int,
+	deleted_p      : bool}
+
     local
       fun f g = {person_id = (ScsError.valOf o Int.fromString) (g "person_id"),
 		 first_names = g "first_names",
@@ -109,27 +145,109 @@ structure ScsPerson :> SCS_PERSON =
 		 email = g "email",
 		 url = g "url",
 		 cpr = g "cpr"}
-      fun personSQL wh =
-	` select person_id, first_names, last_name, 
-		 scs_person.name(person_id) name, 
-		 scs_party.email(person_id) email,
-		 scs_party.url(person_id) url,
-		 security_id cpr
-	    from scs_persons 
-            ` ^^ wh
+      fun personSQL from_wh =
+	` select p.person_id, p.first_names, p.last_name, 
+		 scs_person.name(p.person_id) as name, 
+		 scs_party.email(p.person_id) as email,
+		 scs_party.url(p.person_id) as url,
+		 p.security_id as cpr
+            ` ^^ from_wh
     in
       fun getPerson user_id = 
-	SOME( Db.oneRow' f (personSQL `where person_id = ^(Int.toString user_id)`))
+	SOME( Db.oneRow' f (personSQL ` from scs_persons p
+                                       where person_id = '^(Int.toString user_id)'`))
+	handle _ => NONE
+      fun getPersonErr (user_id,errs) =
+	case getPerson user_id of
+	  NONE => 
+	    let
+	      val err_msg = [(ScsLang.da,`Personen du søger findes ikke.`),
+			     (ScsLang.en,`The person you are seeking does not exits.`)]
+	    in
+	      (NONE,ScsFormVar.addErr(ScsDict.s' err_msg,errs))
+	    end
+	| p => (p,errs)
+      fun getPersonByExtSource on_what_table on_which_id =
+	SOME( Db.oneRow' f (personSQL ` from scs_persons p, scs_person_rels r
+                                       where r.on_what_table = ^(Db.qqq on_what_table)
+                                         and r.on_which_id = '^(Int.toString on_which_id)'
+                                         and r.person_id = p.person_id`))
 	handle _ => NONE
       fun searchPerson pat keep_del_p =
 	Db.list f (personSQL 
-		   `where (lower(scs_person.name(person_id)) like ^(Db.qqq pat)
-                       or lower(scs_party.email(person_id)) like ^(Db.qqq pat)
-		       or security_id like ^(Db.qqq pat))
-                      and deleted_p in (^(if keep_del_p then "'t','f'" else "'f'"))`)
+		   ` from scs_persons p
+                    where (lower(scs_person.name(p.person_id)) like ^(Db.qqq pat)
+                       or lower(scs_party.email(p.person_id)) like ^(Db.qqq pat)
+		       or p.security_id like ^(Db.qqq pat))
+                      and p.deleted_p in (^(if keep_del_p then "'t','f'" else "'f'"))`)
 	handle _ => []
     end
 
+    local
+      fun f g = {party_id = (ScsError.valOf o Int.fromString) (g "party_id"),
+		 profile = g "profile",
+		 keywords = g "keywords",
+		 edit_no = (ScsError.valOf o Int.fromString) (g "edit_no"),
+		 last_modified = (ScsError.valOf o Db.toDate) (g "last_modified"),
+		 modifying_user = (ScsError.valOf o Int.fromString) (g "modifying_user"),
+		 deleted_p = (ScsError.valOf o Db.toBool) (g "deleted_p")}
+      fun profileSQL from_wh =
+	` select p.party_id, 
+                 p.profile, 
+                 p.keywords, 
+                 p.edit_no, 
+                 p.last_modified, 
+                 p.modifying_user, 
+                 p.deleted_p
+            ` ^^ from_wh
+    in
+      fun getProfile user_id =
+	SOME(Db.oneRow' f (profileSQL ` from scs_profiles p
+			               where p.party_id = '^(Int.toString user_id)'`))
+	handle _ => 
+	  (* Profile does not exits - so try to insert empty profile *)
+	  let
+	    val per_opt = getPerson user_id 
+	  in
+	    case per_opt of
+	      NONE => NONE (* User does not exists *)
+	    | SOME per => (* User exists so insert empty profile *)
+		let
+		  (* We set the creating user to be the not logged in user - pretty much arbitrarily *)
+                  (* The current user may not be logged in. (e.g., if he comes from Find Person)     *)
+		  val empty_profile =
+		    {party_id = user_id,
+		     profile = "",
+		     keywords = "",
+		     edit_no = 0,
+		     last_modified = ScsDate.now_local(),
+		     modifying_user = 0,
+		     deleted_p = false}
+		  val ins_sql = `insert into scs_profiles 
+                                   (party_id,profile,keywords,edit_no,last_modified,modifying_user)
+                                 values
+                                   ('^(Int.toString user_id)',null,null,0,sysdate,
+				    '^(Int.toString ScsLogin.default_id)')` 
+		in
+		  (Db.dml ins_sql;
+		   SOME empty_profile)
+		  handle _ => (Ns.log(Ns.Warning, "Could not create profile for user_id " ^ 
+				      Int.toString user_id);
+			       NONE)
+		end
+	  end
+      fun getProfileErr (user_id,errs) =
+	case getProfile user_id of
+	  NONE => 
+	    let
+	      val err_msg = [(ScsLang.da,`Personen du søger findes ikke.`),
+			     (ScsLang.en,`The person you are seeking does not exits.`)]
+	    in
+	      (NONE,ScsFormVar.addErr(ScsDict.s' err_msg,errs))
+	    end
+	| p => (p,errs)
+
+    end
     fun name user_id =
       Db.oneField `select scs_person.name(person_id)
                      from scs_persons

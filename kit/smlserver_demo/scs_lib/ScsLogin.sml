@@ -6,6 +6,11 @@ signature SCS_LOGIN =
     val user_id   : unit -> int
     val user_lang : unit -> ScsLang.lang
 
+    (* [set_user_lang lang] sets the user language to lang for this
+       script only. Used to control language preference for users not
+       logged in*)
+    val set_user_lang : ScsLang.lang -> unit
+
     val verifyUser : unit -> int * ScsLang.lang
     val loggedIn   : unit -> bool
 
@@ -115,9 +120,20 @@ structure ScsLogin :> SCS_LOGIN =
 	  NONE => (user_info := SOME (verifyUser''());
 		   Option.valOf (!user_info))
 	| SOME i => i
+      fun upd_user_lang lang = 
+	case !user_info of
+	  NONE => user_info := SOME((NO_COOKIE,(default_id,lang)))
+	| SOME(c,(id,_)) => user_info := SOME(c,(id,lang))
     end
 
     fun verifyUser () = #2(verifyUser'())
+    fun set_user_lang lang =
+      let
+	(* Make sure that cookie information, if exists, has been read *)
+	val _ = verifyUser()
+      in
+	upd_user_lang lang
+      end
 
     (* We look for login-cookies on every request *)
     (* If you don't want that, then apply a filter similar to the one below. *)

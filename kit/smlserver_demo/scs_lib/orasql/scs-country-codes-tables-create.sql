@@ -17,3 +17,5 @@ create table scs_country_codes(
   nationalitet_dk varchar2(50)
 );
 
+alter table scs_country_codes 
+  add constraint scs_country_c_abbr_un unique(abbreviation);
