@@ -15,12 +15,6 @@
  *----------------------------------------------------------------*/
 char cString[C_STRING_LENGTH];  /* We allocate a global string for converting filenames in IO operations. */
 
-/* std_in and std_out has to be extern. */
-FILE *std_inIO = stdin;
-FILE *std_outIO = stdout; 
-FILE *std_errIO = stderr;
-
-
 
 /*------------------------------------------------------------------*
  *                 Runtime system for strings.                      *
