@@ -62,9 +62,6 @@ StringDesc *implodeStringML(int rAddr, int xs);
 StringDesc *convertStringToML(int rAddr, unsigned char *cStr);
 StringDesc* exnNameML(int rAddr, int e);
 int *explodeStringML(int rAddr2, StringDesc *str);  // no region for the cons cells
-#ifdef ENABLE_GC
-StringDesc *copy_string(int rAddr, StringDesc* s);
-#endif
 #endif /*PROFILING*/
 
 #endif /* __STRING_H */

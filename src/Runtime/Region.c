@@ -445,11 +445,13 @@ void alloc_new_block(Ro *rp) {
   rp_used++;
   if ( (!disable_gc) && (!time_to_gc) ) 
     {
+      // the treshold suggests when we can garbage collect without allocating 
+      // more memory.
       double treshold = (double)rp_total - (((double)rp_total) / heap_to_live_ratio);
       if ( (double)rp_used > treshold )
 	{
 	  // calculate correct value for rp_used; the current value may exceed the correct
-	  // value due to conservative computation in resetRegion...
+	  // value due to conservative computation in resetRegion, deallocRegion...
 	  rp_used = rp_total - size_free_list();
 	  if ( (double)rp_used > treshold )
 	    {
@@ -539,7 +541,7 @@ int *alloc (int rAddr, int n) {
       #endif
 #ifdef ENABLE_GC
       lobj_current += 4*n;
-      if ( (!disable_gc) && (!time_to_gc) && (lobj_current>lobj_gc_treshold) ) 
+      if ( (!disable_gc) && (lobj_current>lobj_gc_treshold) ) 
 	{
 	  time_to_gc = 1;
 	}
