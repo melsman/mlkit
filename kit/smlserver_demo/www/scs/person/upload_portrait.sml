@@ -2,11 +2,16 @@ val user_id = ScsLogin.auth()
 
 val (mode,errs) = (* Default mode is upload *)
   ScsFormVar.wrapMaybe_nh "upload" 
-  (ScsFormVar.getEnumErr ["upload","rotate","delete"]) ("mode","mode",ScsFormVar.emptyErr)
+  (ScsFormVar.getEnumErr ["upload","rotate","delete","may_show_portrait",
+			  "make_non_official_official"]) ("mode","mode",ScsFormVar.emptyErr)
 val (target,errs) = (* Default target is user *)
   ScsFormVar.wrapMaybe_nh "user" 
   (ScsFormVar.getEnumErr ["user","adm"]) ("target","target",ScsFormVar.emptyErr)
-val (official_p,errs) = ScsPerson.getOfficialpErr("official_p",errs)
+val (official_p,errs) = (* Only used for the modes upload, rotate and delete *)
+  if ScsList.contains mode ["upload","rotate","delete"] then
+    ScsPerson.getOfficialpErr("official_p",errs)
+  else
+    (false,errs)
 val (person_id,errs) = ScsPerson.getPersonIdErr("person_id",errs)
 val _ = ScsFormVar.anyErrors errs
 
@@ -35,6 +40,14 @@ fun getFormat filename =
     ScsError.valOf format_opt
   end
 
+fun updPortrait db file_id (pic_format:ScsPicture.picture_format) =
+  ScsError.wrapPanic (Db.Handle.dmlDb db)
+  `update scs_portraits
+      set ^(Db.setList [("width",Int.toString (#width pic_format)),
+			("height",Int.toString (#height pic_format)),
+			("bytes",Int.toString (#size pic_format))])
+    where file_id = '^(Int.toString file_id)'`
+
 fun delTmpFiles files = List.app (fn f => FileSys.remove f handle _ => ()) files
 val files_to_delete_on_error = ref []
 fun addFileToDeleteOnError f = files_to_delete_on_error := f :: (!files_to_delete_on_error)
@@ -42,7 +55,9 @@ fun addFileToDeleteOnError f = files_to_delete_on_error := f :: (!files_to_delet
 val _ =
   (* Access control *)
   if ScsList.contains priv [ScsFileStorage.no_priv,ScsFileStorage.read] orelse
-    (mode = "delete" andalso priv = ScsFileStorage.read_add) then
+    (mode = "delete" andalso priv = ScsFileStorage.read_add) orelse
+    (mode = "may_show_portrait" andalso not (ScsPerson.mayToggleShowPortrait user_id)) orelse
+    (mode = "make_non_official_official" andalso not (ScsPerson.mayMakeNonOfficialOfficial user_id)) then
     ScsFormVar.anyErrors
     (ScsFormVar.addErr(ScsDict.s' [(ScsLang.da,`Du har ikke rettigheder til at rette billede for
 				    ^(#name per).`),
@@ -50,7 +65,122 @@ val _ =
 		       ScsFormVar.emptyErr)) (* Return if no priviledges to upload pictures. *)
   else
     case mode of
-      "delete" => 
+      "make_non_official_official" =>
+	let
+	  (* Look for non official picture *)
+	  val portraits = ScsPerson.getPortraits person_id
+	  val pic_thumb_opt = ScsPerson.getPicture ScsPerson.thumb_fixed_height false portraits
+	  val pic_orig_opt = ScsPerson.getPicture ScsPerson.original false portraits
+
+	  fun make_non_official_official db =
+	    case (pic_thumb_opt,pic_orig_opt) of
+	      (SOME pic_thumb,SOME pic_orig) => 
+		let
+		  val orig_file_opt = 
+		    ScsFileStorage.getFileByFileId ScsPerson.upload_root_label (#file_id pic_orig)
+		  val thumb_file_opt = 
+		    ScsFileStorage.getFileByFileId ScsPerson.upload_root_label (#file_id pic_thumb)
+		in
+		  case (orig_file_opt,thumb_file_opt) of
+		    (SOME orig_file,SOME thumb_file) =>
+		      let
+			(* Make these the official pictures *)
+			val orig_phys_file = #path_on_disk orig_file ^ "/" ^ (#filename_on_disk orig_file)
+			val orig_format = getFormat orig_phys_file
+			val thumb_phys_file = #path_on_disk orig_file ^ "/" ^ (#filename_on_disk thumb_file)
+			val thumb_format = getFormat thumb_phys_file
+
+			(* Now we have the two pictures, so we move on inserting them into FS *)
+			(* Delete old official pictures from scs_portraits *)
+			val old_portraits = ScsPerson.getPortraits person_id
+			val thumb_old_opt = 
+			  ScsPerson.getPicture ScsPerson.thumb_fixed_height true old_portraits
+			val orig_old_opt = ScsPerson.getPicture ScsPerson.original true old_portraits
+			val _ = delPortrait db thumb_old_opt
+			val _ = delPortrait db orig_old_opt
+
+			val unique_id = ScsDb.newObjIdDb db
+
+			(* Upload original picture *)
+			val (file_id,phys_file_fs_orig,errs) = 
+			  ScsFileStorage.storeFile (db,user_id,#folder_id orig_file,priv,orig_phys_file,
+						    "official-orig-" ^ (Int.toString unique_id) ^ "-" ^ 
+						    (#filename orig_file),
+						    "Official portrait - original size")
+			val _ = addFileToDeleteOnError phys_file_fs_orig
+			val _ = ScsFormVar.anyErrors errs
+			val orig_pic : ScsPerson.portrait_record =
+			  { file_id = file_id,
+			   party_id = person_id,
+			   portrait_type_vid = 0, (* Arbitrary value *)
+			   portrait_type_val = ScsPerson.original,
+			   filename          = "", (* Arbitrary value *)
+			   url               = "", (* Arbitrary value *)
+			   width             = #width orig_format,
+			   height            = #height orig_format,
+			   bytes             = #size orig_format,
+			   official_p        = true,
+			   person_name       = "",
+			   may_show_portrait_p = false (* Arbitraty value *)}
+			val _ = ScsPerson.insPortrait db orig_pic
+
+			(* Upload thumbnail *)
+			val (file_id,phys_file_fs_thumb,errs) = 
+			  ScsFileStorage.storeFile (db,user_id,#folder_id thumb_file,priv,thumb_phys_file,
+						    "official-fixed_height_thumb_" ^ 
+						    (Int.toString unique_id) ^ "-" ^ (#filename thumb_file),
+						    "Official portrait - thumbnail")
+			val _ = addFileToDeleteOnError phys_file_fs_thumb
+			val _ = ScsFormVar.anyErrors errs
+			val thumb_pic : ScsPerson.portrait_record =
+			  { file_id = file_id,
+			   party_id = person_id,
+			   portrait_type_vid = 0, (* Arbitrary value *)
+			   portrait_type_val = ScsPerson.thumb_fixed_height,
+			   filename          = "", (* Arbitrary value *)
+			   url               = "", (* Arbitrary value *)
+			   width             = #width thumb_format,
+			   height            = #height thumb_format,
+			   bytes             = #size thumb_format,
+			   official_p        = true,
+			   person_name       = "",
+			   may_show_portrait_p = false (* Arbitraty value *)}
+			val _ = ScsPerson.insPortrait db thumb_pic
+
+			(* No error has happened, so we continue cleaning up *)
+			(* Delete old pictures from FS if they exists - both DB and file system - 
+			   suppress errors *)
+			val _ = delPortraitFS db priv thumb_old_opt
+			val _ = delPortraitFS db priv orig_old_opt
+		      in
+			[] (* No temporary files to delete *)
+		      end
+		  | _ => [] (* If one picture does not exists, then do nothing. *)
+		end
+	    | _ => [] (* If one picture does not exists, then do nothing. *)
+	in
+	  delTmpFiles (Db.Handle.dmlTrans make_non_official_official)
+	  handle X => (delTmpFiles (!files_to_delete_on_error); raise X)
+	end
+    | "may_show_portrait" =>
+	let
+	  val (show_p,errs) = ScsPerson.getMayShowPortraitpErr("show_p",ScsFormVar.emptyErr)
+	  val _ = ScsFormVar.anyErrors errs
+	  val upd_sql = 
+	    `update scs_parties
+                set ^(Db.setList [("may_show_portrait_p",Db.fromBool show_p),
+				  ("modifying_user",Int.toString user_id)]),
+                    last_modified = sysdate
+              where party_id = '^(Int.toString person_id)'`
+	  val _ =  ScsError.wrapPanic Db.dml upd_sql
+	  (* Reset cache ScsPersonRetPortrait *)
+	  val portraits = ScsPerson.getPortraits person_id
+	  val _ = List.app (fn pic => ScsPerson.cacheMayReturnPortrait_p 
+			    (#file_id pic) (#party_id pic) (#may_show_portrait_p pic)) portraits
+	in
+	  ()
+	end
+    | "delete" => 
 	let
 	  (* Look for pictures to delete. *)
 	  val portraits = ScsPerson.getPortraits person_id
@@ -82,13 +212,6 @@ val _ =
 	  val pic_thumb_opt = ScsPerson.getPicture ScsPerson.thumb_fixed_height official_p portraits
 	  val pic_orig_opt = ScsPerson.getPicture ScsPerson.original official_p portraits
 
-	  fun updPortrait db file_id pic_format =
-	    ScsError.wrapPanic (Db.Handle.dmlDb db)
-	      `update scs_portraits
-                  set ^(Db.setList [("width",Int.toString (#width pic_format)),
-                                    ("height",Int.toString (#height pic_format)),
-                                    ("bytes",Int.toString (#size pic_format))])
-                where file_id = '^(Int.toString file_id)'`
 	  fun rotate db =
 	    case (pic_thumb_opt,pic_orig_opt) of
 	      (SOME pic_thumb,SOME pic_orig) => 

@@ -79,6 +79,18 @@ signature SCS_PERSON =
          * logged in user_id = person_id
          * adm_p is true. *)
     val mayReturnPortrait_p : int -> int -> bool -> bool
+    
+    (* [cacheMayReturnPortrait_p file_id person_id show_p] updates
+        cached values of showing pictures to the public. *)
+    val cacheMayReturnPortrait_p : int -> int -> bool -> unit
+
+    (* [mayToggleShowPortrait user_id] returns true if user_id may
+        toggle the field may_show_portrait_p. *)
+    val mayToggleShowPortrait : int -> bool
+
+    (* [mayMakeNonOfficialOfficial user_id] returns true if user_id may
+        make the non official portrait the official one. *)
+    val mayMakeNonOfficialOfficial : int -> bool
 
       (* [genPortraitHtml thumb_opt large_opt default] returns HTML
           for showing a portrait as a thumbnail and when clicked opens
@@ -198,6 +210,9 @@ signature SCS_PERSON =
    (* [getOfficialpErr fv errs] checks that fv is a bool. The database
        is not checked. See also ScsFormVar.sml *)
     val getOfficialpErr : string * ScsFormVar.errs -> bool * ScsFormVar.errs
+
+   (* [getMayShowPortraitpErr (fv,errs)] checks that fv is a bool. *)
+    val getMayShowPortraitpErr : string * ScsFormVar.errs -> bool * ScsFormVar.errs
 
     (* [splitCpr cpr] if cpr is on the form xxxxxxyyyy then the pair
        (xxxxxx,yyyy) is returned. *)
@@ -397,13 +412,36 @@ structure ScsPerson :> SCS_PERSON =
 
 
     (* TODO: add cache that must be reset when may_show_portrait_p is updated!!! *)
-    fun mayReturnPortrait_p user_id file_id adm_p = 
-      case getPortrait file_id of
-	SOME pic => 
-	  #may_show_portrait_p pic orelse
-	  user_id = #party_id pic orelse
+    local
+      val may_return_portrait_cache =
+	Ns.Cache.get(Ns.Cache.Int,
+		     Ns.Cache.Pair Ns.Cache.Bool Ns.Cache.Int,
+		     "ScsPersonRetPortrait",
+		     Ns.Cache.TimeOut 80000)
+      fun may_show_portrait_p' file_id =
+	case getPortrait file_id of
+	  SOME pic => (#may_show_portrait_p pic,#party_id pic)
+	| NONE => (false,~1) (* No picture so do not return it. *)
+      val may_show_portrait_p =	
+	Ns.Cache.memoize may_return_portrait_cache may_show_portrait_p' 
+    in
+      fun mayReturnPortrait_p user_id file_id adm_p = 
+	let
+	  val (may_show_p,party_id) = may_show_portrait_p file_id 
+	in 
+	  may_show_p orelse
+	  user_id = party_id orelse
 	  adm_p
-      | NONE => false (* No picture so do not return it. *)
+	end
+      fun cacheMayReturnPortrait_p file_id person_id show_p =
+	(Ns.Cache.insert (may_return_portrait_cache,file_id,(show_p,person_id));())
+    end
+
+    fun mayToggleShowPortrait user_id =
+      ScsRole.has_one_p user_id [ScsRole.SiteAdm,ScsRole.PortraitAdm]
+
+    fun mayMakeNonOfficialOfficial user_id =
+      ScsRole.has_one_p user_id [ScsRole.SiteAdm,ScsRole.PortraitAdm]
 
     fun genPortraitHtml (thumb_opt:portrait_record option) (large_opt:portrait_record option) default = 
       case (thumb_opt,large_opt) of
@@ -538,7 +576,7 @@ structure ScsPerson :> SCS_PERSON =
           party_id = thxx (t is for thousand and h for hundred)
     *)
     val upload_root_label = "ScsPersonPortrait"
-    val max_height = 600
+    val max_height = 400
     val thumb_height = 110
 
     fun getOrCreateUploadFolderId (db:Db.Handle.db,per:person_record) =
@@ -755,6 +793,8 @@ structure ScsPerson :> SCS_PERSON =
     fun getPersonIdErr (fv,errs) = ScsFormVar.getIntErr(fv,"Person id",errs)
 
     fun getOfficialpErr (fv,errs) = ScsFormVar.getBoolErr(fv,"Official_p",errs)
+
+    fun getMayShowPortraitpErr (fv,errs) = ScsFormVar.getBoolErr(fv,"May show portrait",errs)
 
     fun splitCpr cpr = (String.substring (cpr,0,6),String.substring (cpr,6,4))
 
