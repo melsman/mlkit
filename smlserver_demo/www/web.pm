@@ -1,5 +1,6 @@
 local
 
+(*
   (* RegExp SML/NJ Utilities *)
   local
     ../sml/RegExp/Utils/ord-key-sig.sml
@@ -26,6 +27,8 @@ local
   end
 
   ../sml/RegExp2.sml
+*)
+
   ../sml/Quot.sml
 
   local

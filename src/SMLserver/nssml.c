@@ -139,22 +139,38 @@ Ns_ModuleInit(char *hServer, char *hModule)
 /* -------------------------------------------------
  * nssml_smlFileToUoFile - convert sml-absolute filename
  * into the uo-file for the sml-file. Also works for 
- * msp-files.
+ * msp-files. Returns -1 on error.
  * ------------------------------------------------- */
 
-void 
-nssml_smlFileToUoFile(char* url, char* uo, char* prjid) 
+int 
+nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid) 
 {
-  char* p = strrchr(url, '/');   
+  char* pageRoot;
+  char* p; /*  = strrchr(url, '/'); */
+  int i;
   char name[NSSML_PATH_MAX];
-  strcpy(name, p+1);
-  strncpy(uo, url, p-url);
-  uo[p-url] = 0;
-  strcat(uo, "/PM/NoProf/"); 
+  pageRoot = Ns_PageRoot(hServer);
+  if ( strstr(url,pageRoot) != url ) {
+    Ns_Log(Error, "nssml: pageRoot %s is not a substring of the requested url %s", pageRoot, url);
+    return -1;
+  }
+  strcpy(uo, pageRoot);
+  strcat(uo, "/PM/NoProf/");
   strcat(uo, prjid);
   strcat(uo, "-");
-  strcat(uo, name);
+  i = strlen(uo);
+  p = url + strlen(pageRoot);
+  if ( *p == '/' ) p++;
+  while ( *p != '\0' ) {
+    char c = *p;
+    if ( c == '.' ) c = '%';
+    if ( c == '/' ) c = '+';    
+    uo[i++] = c;
+    p++;
+  }
+  uo[i] = '\0';
   strcat(uo, ".uo");
+  return 0;
 }
 
 /* ---------------------------------------------------------
@@ -249,7 +265,11 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
   Ns_UrlToFile(&ds, server, conn->request->url);
   url = ds.string;
 
-  nssml_smlFileToUoFile(url,uo,ctx->prjid);
+  if ( nssml_smlFileToUoFile(ctx->hServer,url,uo,ctx->prjid) == -1 ) {
+    Ns_ConnReturnNotFound(conn);
+    return NS_OK;
+  }
+
   // Ns_Log(Notice, "Starting interpreter on file %s", uo);
   res = interpLoadRun(ctx->interp, uo);
   if ( res == -1 ) {    /* exception other than Interrupt raised */

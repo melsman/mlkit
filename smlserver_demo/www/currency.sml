@@ -24,15 +24,15 @@ val url = "http://se.finance.yahoo.com/m5?a="^(Ns.encodeUrl a_str)^"&s="^(Ns.enc
 fun return_err_page () =
   return_page `The service is currently not available, because we have trouble 
                getting information from the data source: <a href="^url">^url</a>. <p>
-               Please send me an <a href=\"mailto:nh@itu.dk\">email</a>.`
+               Please send us an <a href=\"mailto:smlserver@it.edu\">email</a>.`
 
-val pattern = s^t^".+<td>([0-9]+).([0-9]+)</td>"
+val pattern = RegExp.fromString (".+" ^ s ^ t ^ ".+<td>([0-9]+).([0-9]+)</td>.+")
 val _ =
   case Ns.fetchUrl url
     of NONE => return_err_page()
   | SOME pg =>
-     (case RegExp.regExp pattern pg
-	of SOME [_, rate1, rate2] =>
+     (case RegExp.extract pattern pg
+	of SOME [rate1, rate2] =>
 	  let 
 	    val rate = Option.valOf (Real.fromString (rate1^"."^rate2))
 	  in

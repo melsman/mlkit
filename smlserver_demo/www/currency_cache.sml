@@ -26,15 +26,15 @@ fun return_err_page () =
                getting information from the data source: <a href="^url">^url</a>. <p>
                Please send me an <a href=\"mailto:nh@itu.dk\">email</a>.`
 
-val pattern = s^t^".+<td>([0-9]+).([0-9]+)</td>"
+val pattern = RegExp.fromString (".+" ^ s ^ t ^ ".+<td>([0-9]+).([0-9]+)</td>.+")
 val fetch = Ns.Cache.cacheForAwhile
   (fn url => 
    case Ns.fetchUrl url of 
      NONE => "" 
    | SOME pg => 
-       (case RegExp.regExp pattern pg of
-	  SOME [_, rate1, rate2] => rate1^"."^rate2
-	| NONE => ""), "currency", 300)
+       (case RegExp.extract pattern pg of
+	  SOME [rate1, rate2] => rate1^"."^rate2
+	| _ => ""), "currency", 300)
 
 val _ =
   case fetch url of

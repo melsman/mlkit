@@ -1,5 +1,20 @@
 ML Kit NEWS file                                       September, 2001
 
+ * mael 2001-09-30: Added regular expression support (structure RegExp) 
+   to the basis library. The implementation is based on an 
+   implementation by Ken Friis Larsen. See the file 
+   kit/basislib/REG_EXP.sml for details.
+
+ * mael 2001-09-30: Program manager changes: (1) It is now 
+   possible for two files in different subdirectories to have the same
+   name and be listed in the same pm-file. (2) Target-files generated
+   when compiling a pm-file (i.e., uo-files for the bytecode backend
+   and o-files for the native x86 backend) are now stored in a PM
+   directory located in the same directory as the compiled pm-file is
+   located; this change allows for a pm-file to refer to source files
+   located in directories for which the user does not have 
+   write-permission.
+   
            **** ML Kit version 4.0.0 is released ****
 
  * mael 2001-08-16: Fixed bug in separate compilation framework; match

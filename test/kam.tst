@@ -115,4 +115,6 @@ word.sml
 word8.sml
 word31.sml
 word32.sml
+regexp1.sml
+regexp2.sml
 
