@@ -1440,10 +1440,11 @@ structure MlyValue =
 struct
 datatype svalue = VOID | ntVOID of unit ->  unit
  | TYVAR of unit ->  (string) | ID of unit ->  (string)
- | STRING of unit ->  (string) | REAL of unit ->  (real)
- | WORD of unit ->  (int) | DIGIT of unit ->  (int)
- | HEXINTEGER of unit ->  (int) | DECNEGINTEGER of unit ->  (int)
- | DECPOSINTEGER of unit ->  (int)
+ | STRING of unit ->  (string) | REAL of unit ->  (real Option)
+ | WORD of unit ->  (int Option) | DIGIT of unit ->  (int)
+ | HEXINTEGER of unit ->  (int Option)
+ | DECNEGINTEGER of unit ->  (int Option)
+ | DECPOSINTEGER of unit ->  (int Option)
  | QUAL_STAR of unit ->  (string list)
  | QUAL_ID of unit ->  (string list) | Char of unit ->  (int)
  | Integer of unit ->  (int) | DecPosInteger of unit ->  (int)
@@ -1646,11 +1647,11 @@ val errtermvalue=
 let open Header in
 fn (T 8) => MlyValue.QUAL_ID(fn () => (["bogus"])) | 
 (T 9) => MlyValue.QUAL_STAR(fn () => (["bogus"])) | 
-(T 61) => MlyValue.DECPOSINTEGER(fn () => (0)) | 
-(T 62) => MlyValue.DECNEGINTEGER(fn () => (0)) | 
-(T 63) => MlyValue.HEXINTEGER(fn () => (0)) | 
-(T 65) => MlyValue.WORD(fn () => (0)) | 
-(T 66) => MlyValue.REAL(fn () => (0.0)) | 
+(T 61) => MlyValue.DECPOSINTEGER(fn () => (Some 0)) | 
+(T 62) => MlyValue.DECNEGINTEGER(fn () => (Some 0)) | 
+(T 63) => MlyValue.HEXINTEGER(fn () => (Some 0)) | 
+(T 65) => MlyValue.WORD(fn () => (Some 0)) | 
+(T 66) => MlyValue.REAL(fn () => (Some 0.0)) | 
 (T 67) => MlyValue.STRING(fn () => ("")) | 
 (T 68) => MlyValue.ID(fn () => ("bogus")) | 
 (T 69) => MlyValue.TYVAR(fn () => ("'bogus")) | 
@@ -1776,11 +1777,14 @@ DIGIT1 ()
  in (LrTable.NT 108,(result,DIGIT1left,DIGIT1right),rest671) end
 | (18,rest671) => let val result=MlyValue.DIGIT_opt(fn _ => ( None ))
  in (LrTable.NT 108,(result,defaultPos,defaultPos),rest671) end
-| (19,(_,(MlyValue.DECPOSINTEGER DECPOSINTEGER1,DECPOSINTEGER1left,
-DECPOSINTEGER1right))::rest671) => let val result=
+| (19,(_,(MlyValue.DECPOSINTEGER DECPOSINTEGER1,DECPOSINTEGERleft as 
+DECPOSINTEGER1left,DECPOSINTEGER1right))::rest671) => let val result=
 MlyValue.DecPosInteger(fn _ => let val DECPOSINTEGER as DECPOSINTEGER1
 =DECPOSINTEGER1 ()
- in ( DECPOSINTEGER ) end
+ in (
+ raise_lexical_error_if_none
+			    DECPOSINTEGERleft DECPOSINTEGER )
+ end
 )
  in (LrTable.NT 120,(result,DECPOSINTEGER1left,DECPOSINTEGER1right),
 rest671) end
@@ -4031,24 +4035,35 @@ TyRow as TyRow1=TyRow1 ()
 | (261,rest671) => let val result=MlyValue.CommaTyRow_opt(fn _ => (
  None ))
  in (LrTable.NT 86,(result,defaultPos,defaultPos),rest671) end
-| (262,(_,(MlyValue.DECPOSINTEGER DECPOSINTEGER1,DECPOSINTEGER1left,
-DECPOSINTEGER1right))::rest671) => let val result=MlyValue.Integer(fn 
-_ => let val DECPOSINTEGER as DECPOSINTEGER1=DECPOSINTEGER1 ()
- in ( DECPOSINTEGER ) end
+| (262,(_,(MlyValue.DECPOSINTEGER DECPOSINTEGER1,DECPOSINTEGERleft as 
+DECPOSINTEGER1left,DECPOSINTEGER1right))::rest671) => let val result=
+MlyValue.Integer(fn _ => let val DECPOSINTEGER as DECPOSINTEGER1=
+DECPOSINTEGER1 ()
+ in (
+ raise_lexical_error_if_none
+			    DECPOSINTEGERleft DECPOSINTEGER )
+ end
 )
  in (LrTable.NT 121,(result,DECPOSINTEGER1left,DECPOSINTEGER1right),
 rest671) end
-| (263,(_,(MlyValue.DECNEGINTEGER DECNEGINTEGER1,DECNEGINTEGER1left,
-DECNEGINTEGER1right))::rest671) => let val result=MlyValue.Integer(fn 
-_ => let val DECNEGINTEGER as DECNEGINTEGER1=DECNEGINTEGER1 ()
- in ( DECNEGINTEGER ) end
+| (263,(_,(MlyValue.DECNEGINTEGER DECNEGINTEGER1,DECNEGINTEGERleft as 
+DECNEGINTEGER1left,DECNEGINTEGER1right))::rest671) => let val result=
+MlyValue.Integer(fn _ => let val DECNEGINTEGER as DECNEGINTEGER1=
+DECNEGINTEGER1 ()
+ in (
+ raise_lexical_error_if_none
+			    DECNEGINTEGERleft DECNEGINTEGER )
+ end
 )
  in (LrTable.NT 121,(result,DECNEGINTEGER1left,DECNEGINTEGER1right),
 rest671) end
-| (264,(_,(MlyValue.HEXINTEGER HEXINTEGER1,HEXINTEGER1left,
-HEXINTEGER1right))::rest671) => let val result=MlyValue.Integer(fn _
- => let val HEXINTEGER as HEXINTEGER1=HEXINTEGER1 ()
- in ( HEXINTEGER ) end
+| (264,(_,(MlyValue.HEXINTEGER HEXINTEGER1,HEXINTEGERleft as 
+HEXINTEGER1left,HEXINTEGER1right))::rest671) => let val result=
+MlyValue.Integer(fn _ => let val HEXINTEGER as HEXINTEGER1=HEXINTEGER1
+ ()
+ in ( raise_lexical_error_if_none
+			    HEXINTEGERleft HEXINTEGER )
+ end
 )
  in (LrTable.NT 121,(result,HEXINTEGER1left,HEXINTEGER1right),rest671)
  end
@@ -4074,9 +4089,10 @@ Integer1=Integer1 ()
  in ( mk_IntSCon Integer ) end
 )
  in (LrTable.NT 49,(result,Integer1left,Integer1right),rest671) end
-| (268,(_,(MlyValue.WORD WORD1,WORD1left,WORD1right))::rest671) => 
-let val result=MlyValue.SCon(fn _ => let val WORD as WORD1=WORD1 ()
- in ( mk_WordSCon WORD ) end
+| (268,(_,(MlyValue.WORD WORD1,WORDleft as WORD1left,WORD1right))::
+rest671) => let val result=MlyValue.SCon(fn _ => let val WORD as WORD1
+=WORD1 ()
+ in ( mk_WordSCon (raise_lexical_error_if_none WORDleft WORD) ) end
 )
  in (LrTable.NT 49,(result,WORD1left,WORD1right),rest671) end
 | (269,(_,(MlyValue.STRING STRING1,STRING1left,STRING1right))::rest671
@@ -4090,9 +4106,10 @@ let val result=MlyValue.SCon(fn _ => let val Char as Char1=Char1 ()
  in ( mk_CharSCon Char ) end
 )
  in (LrTable.NT 49,(result,Char1left,Char1right),rest671) end
-| (271,(_,(MlyValue.REAL REAL1,REAL1left,REAL1right))::rest671) => 
-let val result=MlyValue.SCon(fn _ => let val REAL as REAL1=REAL1 ()
- in ( mk_RealSCon REAL ) end
+| (271,(_,(MlyValue.REAL REAL1,REALleft as REAL1left,REAL1right))::
+rest671) => let val result=MlyValue.SCon(fn _ => let val REAL as REAL1
+=REAL1 ()
+ in ( mk_RealSCon (raise_lexical_error_if_none REALleft REAL) ) end
 )
  in (LrTable.NT 49,(result,REAL1left,REAL1right),rest671) end
 | (272,(_,(MlyValue.TyVarSeq1 TyVarSeq11,TyVarSeq11left,

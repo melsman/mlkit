@@ -459,5 +459,9 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 	          i_spec_s)
              handle List.Empty s => impossible s
 
+    fun raise_lexical_error_if_none pos None =
+          raise LexBasics.LEXICAL_ERROR (pos, "constant too big")
+      | raise_lexical_error_if_none pos (Some a) = a
+
     val reportPosition_from_info = SourceInfo.report o ParseInfo.to_SourceInfo
   end;
