@@ -37,11 +37,6 @@ struct
     fun say' s = (output(std_out, s ); output(!Flags.log, s))
     fun outtree t = PP.outputTree(say', t, !Flags.colwidth)
 
-(*TODO 28/03/1997 15:33. tho.:
-    val show_K = ref false;
-    val _ = Flags.add_flag_to_menu(["Region Inference", "Layout"], "show_K_normal_form",
-                                   "show program in K-normal form", show_K)
-*)
     val print_K_normal_forms = Flags.lookup_flag_entry "print_K_normal_forms"
     val show_K = print_K_normal_forms
     fun die s  = Crash.impossible ("MulExp." ^ s)
@@ -161,7 +156,10 @@ struct
       | REF      of 'a * ('a,'b,'c)trip
       | ASSIGN   of 'a * ('a,'b,'c)trip * ('a,'b,'c)trip
       | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b,'c)trip * ('a,'b,'c)trip
-      | CCALL    of {name: string, resultMu: Type * place, resultAllocs: 'a list} * ('a,'b,'c)trip list  (* Calling C functions *)
+      | CCALL    of {name : string,
+		     mu_result : Type * place, (*mu of result from c function*)
+		     rhos_for_result : ('a * int Option) list}
+	            * ('a,'b,'c)trip list  (* Calling C functions *)
       | RESET_REGIONS of {force: bool, alloc : 'a,regions_for_resetting: 'a list} * ('a,'b,'c)trip     (* for programmer-directed resetting of regions;
 									 * resetting is forced iff "force" is true.
 									 * Forced resetting is not guaranteed to be sound *)
@@ -900,12 +898,16 @@ struct
                        indent = 0, childsep = PP.RIGHT (eq^ty),
                        children = [layTrip(arg1,2), layTrip(arg2, 2)]}
             end
-        | CCALL({name, resultMu = mu, resultAllocs}, args) =>
-	    let val result_alloc_sts = if !Flags.print_regions then map (PP.LEAF o alloc_string) resultAllocs
-				       else []
-	    in PP.NODE{start = "ccall(", finish = ")" ^ (if !(Flags.print_types) then ":" ^ PP.flatten1(layMu mu) else ""),
-		       indent = 6, childsep = PP.RIGHT ", ", 
-		       children = PP.LEAF name :: result_alloc_sts @ (map (fn t => layTrip(t,0)) args)}
+        | CCALL ({name, rhos_for_result, mu_result}, args) =>
+	    let val rhos_for_result_sts =
+	      if !Flags.print_regions
+	      then map (PP.LEAF o alloc_string o #1) rhos_for_result
+	      else []
+	    in PP.NODE {start = "ccall(", finish = ")"
+			^ (if !Flags.print_types then ":" ^ PP.flatten1(layMu mu_result) else ""),
+			indent = 6, childsep = PP.RIGHT ", ", 
+			children = PP.LEAF name :: rhos_for_result_sts
+		                    @ (map (fn t => layTrip(t,0)) args)}
 	    end
         | RESET_REGIONS({force, alloc,regions_for_resetting}, t) =>
            let val fcn = if force then "forceResetting " else "resetRegions "

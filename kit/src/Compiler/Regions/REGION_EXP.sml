@@ -90,7 +90,13 @@ signature REGION_EXP =
       | REF      of 'a * ('a,'b)trip
       | ASSIGN   of 'a * ('a,'b)trip * ('a,'b)trip
       | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b)trip * ('a,'b)trip
-      | CCALL    of {name: string, resultMu: Type * place, resultAllocs: 'a list} * ('a,'b)trip list  (* Calling C functions *)
+      | CCALL    of {name : string,
+		     mu_result : Type * place, (*mu of result from c function*)
+		     rhos_for_result : ('a * int Option) list}
+	            * ('a,'b)trip list  (* Calling C functions *)
+
+      (*`rhos_for_result' is technical; see comment in signature MUL_EXP*)
+
       | RESET_REGIONS of {force: bool, alloc : 'a, regions_for_resetting: 'a list} 
                          * ('a,'b)trip     (* for programmer-directed resetting of regions;
 				            * resetting is forced iff "force" is true.

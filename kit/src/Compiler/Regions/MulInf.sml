@@ -335,60 +335,29 @@ struct
                      val frv = Eff.remove_duplicates(List.all Eff.is_rho annotations)
                  in psi_r:= sum_psis(get_psi tr1::get_psi tr2 :: Mul.put alloc :: [] (*map Mul.getInf frv*))
                  end)                
-          | CCALL({name, resultMu, resultAllocs}, trips) => (* Calling C functions *)
-                (List.apply (fn tr => infer_trip(tr)) trips;
-                 (* (a) we produce a  get(rho): INF, for each rho which occurs in
-                        the argument type.
-                    (b) we produce a put(rho): m for every rho which occurs
-                        in the result type. If rho occurs in a LIST type then m is
-                        INFINITE - otherwise it is NUM 1.
-                 *)
-                 let fun get_arg_rhos ([],acc) = Eff.remove_duplicates(List.all Eff.is_rho acc)
-                       | get_arg_rhos (tr::rest,acc) = 
-                            case get_mu tr of
-                              RegionExp.Mus mus => get_arg_rhos(rest, RType.ann_mus mus acc)
-                            | _ => die "get_arg_rhos: Metatype not Mus"
-(*old                     val arg_psi = sum_psis(map Mul.getInf (get_arg_rhos(trips,[]))) *)
-(*                     val arg_psis = map Mul.getInf (get_arg_rhos(trips,[])) *)
+          | CCALL ({name, rhos_for_result, ...}, trips) => (*Calling C functions*)
+                (List.apply infer_trip trips;
 
-        	    (* We only want to ensure multiplicity infinity of rho
-                     * variables located under a list type in mu_res. Hence,
-                     * extra put effects are inserted in the resulting effect
-                     * for these region variables. *)
+                 (*We produce a `put(rho) : m' for every rho which occurs in
+		  the result type.  If rho occurs in a LIST type then m is
+		  INFINITE---otherwise it is NUM 1.  To do this, we use the
+		  ``physical size'' of rho according to `rhos_for_result',
+		  which was annotated in SpreadExpression.  (See also the
+		  comment in MUL_EXP.)*)
 
-                     fun get_rhos_res_under_list mu : RType.place list=
-                       case #1 mu of
-                         RType.RECORD mus => 
-                           List.foldL (fn mu => fn L => get_rhos_res_under_list mu @ L) [] mus
-                       | RType.CONSTYPE (tyname, mus, places, arreffs) =>
-                           if TyName.eq(tyname,TyName.tyName_LIST) then frv mu
-		           else []
-		       | RType.TYVAR tyvar => []
-		       | _ => die "CCALL.unexpected result type"   
-
-                     val rhos_res_under_list = Eff.remove_duplicates (get_rhos_res_under_list resultMu)
-(*old	             val psi_res_under_list = sum_psis (map Mul.putInf rhos_res_under_list)  *)
-	             val psis_res_under_list = map Mul.putInf rhos_res_under_list
-	             val rhos_res = frv resultMu
-		     val rhos_res_without_rhos_for_tyvars =
-		           List.dropAll (fn effect => (case Eff.get_place_ty effect of
-							 Some Eff.BOT_RT => true
-						       | _ => false)) rhos_res
-(*	             val _ = print ("\nrhos_res CCALL : " ^ 
-                             List.string (pp o R.layout_place) rhos_res ^ "\n") 
-*)
-(*old                     val psi_res = sum_psis (map Mul.put rhos_res) *)
-                     val psis_res = map Mul.put rhos_res_without_rhos_for_tyvars
-(*old     	             val psi_res = Mul.sumef(psi_res, psi_res_under_list)  *)
-                     (* total effects *)
-		     val psis = psis_res @ psis_res_under_list @ (*arg_psis @ *) map get_psi trips
-
-(*old	             val psi = sum_psis(psi_res(*:: arg_psi*):: map get_psi trips) *)
-	             val psi = sum_psis psis 
-                 in 
-                   psi_r:= psi
-                 end)
-
+		 let val (rhos_inf, rhos_fin) =
+		       List.foldL (fn (rho, i_opt) =>
+				   fn (rhos_inf, rhos_fin) =>
+				   (case i_opt of
+				      Some i => (rhos_inf, rho :: rhos_fin)
+				    | None =>   (rho :: rhos_inf, rhos_fin)))
+		           ([], []) rhos_for_result
+		     val psi = sum_psis ( map Mul.putInf (Eff.remove_duplicates rhos_inf)
+					 @ map Mul.put (Eff.remove_duplicates rhos_fin)
+		                         @ map get_psi trips)
+		in
+		  psi_r := psi
+		end)
           | RESET_REGIONS({force: bool, alloc,regions_for_resetting}, tr) =>
                     (* for programmer-directed resetting of regions;
                        resetting is forced iff "force" is true.*)

@@ -489,15 +489,17 @@ struct
                     tr1',tr2'),
               union_llv(free_tr1,free_tr2))
          end
-      | CCALL({name,resultMu,resultAllocs}, trs) =>  (* trs consists of trivial expressions only*)
+      | CCALL ({name, mu_result, rhos_for_result}, trs) =>  (* trs consists of trivial expressions only*)
          let 
             val children = map (fn tr => llv(tr, liveset)) trs
             val freeInChildren = union_many(map #2 children)
             val liveset_here = norm_liveset(union_llv(freeInChildren, liveset))
          in
-           (CCALL({name=name, resultMu=resultMu,resultAllocs = 
-                     map (fn rho => (rho, liveset_here)) resultAllocs},
-                  map #1 children),
+           (CCALL ({name = name, mu_result = mu_result,
+		    rhos_for_result = 
+		      map (fn (rho, i_opt) => ((rho, liveset_here), i_opt))
+		        rhos_for_result},
+	           map #1 children),
             freeInChildren)
          end
       | RESET_REGIONS({force, alloc = rho,regions_for_resetting}, tr1) => (* tr1 is trivial *)

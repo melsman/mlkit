@@ -114,7 +114,27 @@ signature MUL_EXP =
       | REF      of 'a * ('a,'b,'c)trip
       | ASSIGN   of 'a * ('a,'b,'c)trip * ('a,'b,'c)trip
       | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b,'c)trip * ('a,'b,'c)trip
-      | CCALL    of {name: string, resultMu: Type * place, resultAllocs: 'a list} * ('a,'b,'c)trip list  (* Calling C functions *)
+      | CCALL    of {name : string,
+		     mu_result : Type * place, (*mu of result from c function*)
+		     rhos_for_result : ('a * int Option) list}
+	            * ('a,'b,'c)trip list  (* Calling C functions *)
+
+	(*`rhos_for_result' is technical but needed in PhysSizeInf, MulInf &
+	 CompLamb.  Roughly it is the rho arguments to the c function as
+	 described in the documentation in the chapter `Calling C Functions'.
+	 So do not change the order if you tamper with this list!
+	 `rhos_for_result' is needed in PhysSizeInf, MulInf & CompLamb.  It
+	 is a list of pairs (rho, i_opt), where rho is a region variable in
+	 the return type for the c function `name'.  `i_opt' describes how
+	 `name' will allocate in rho.  `Some 0' means that `name' will put an
+	 unboxed type in rho (e.g., bool or unit).  `Some i' means that
+	 `name' will allocate i words in rho.  `None' means that `name' may
+	 allocate unboundedly in rho.  rhos with a tyvar as tau are not in
+	 the list.  I think it would be wrong if c_function_effects removed
+	 duplicates (using Eff.remove_duplicates), because we may want the
+	 same region passed to the c function more than once if it simply
+	 happens to be used for more than one thing.*)
+
       | RESET_REGIONS of {force: bool, alloc : 'a, regions_for_resetting: 'a list} 
 			  * ('a,'b,'c)trip		(* for programmer-directed resetting of regions;  *)
                                    			(* resetting is forced iff "force" is true.       *)
