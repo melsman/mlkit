@@ -62,6 +62,14 @@ nssml_SetGet(int rAddr, Ns_Set* set, StringDesc* key)
   return(convertStringToML(rAddr, res_c));
 }
 
+// ML: string ptr_option -> bool
+int
+nssml_isNullString(StringDesc* s) 
+{
+  if ( s == NULL ) return mlTRUE;
+  else return mlFALSE;
+}
+
 // ML: set * string * string -> int
 int
 nssml_SetPut(Ns_Set* set, StringDesc* key, StringDesc* value)

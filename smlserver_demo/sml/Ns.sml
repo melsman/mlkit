@@ -121,8 +121,10 @@ structure Ns :> NS =
     structure Set =
       struct
 	fun get (s :set, key: string): string option =
-	  let val res : string = prim("nssml_SetGet", "nssml_SetGet", (s,key))
-	  in if (prim("id", "id", res) : int) = 0 then NONE
+	  let
+	    fun isNull(s : string) : bool = prim("nssml_isNullString", "nssml_isNullString", s)
+	    val res : string = prim("nssml_SetGet", "nssml_SetGet", (s,key))
+	  in if isNull res then NONE
 	     else SOME res
 	  end
 	fun getOpt (s:set, key:string, dflt:string): string =

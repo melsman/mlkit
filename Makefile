@@ -1,10 +1,10 @@
 SHELL=/bin/sh
 
-KITVERSION=3.4.0
+KITVERSION=3.9.0
 ARCH-OS=x86-linux
-INSTDIR=/usr/local/mlkit
-INSTDIR_KAM=/usr/local/mlkit_kam
-INSTDIR_WEB=/usr/local/smlserver
+INSTDIR=/usr/share/mlkit
+INSTDIR_KAM=/usr/share/mlkit_kam
+INSTDIR_WEB=/usr/share/smlserver
 
 # Some commands
 MKDIR=mkdir -p
@@ -119,7 +119,7 @@ install_smlserver:
 	$(INSTALL) -R smlserver_demo $(INSTDIR_WEB)/smlserver_demo 
 	$(INSTALL) -R basislib $(INSTDIR_WEB)/basislib
 	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_WEB)/doc
-	chown -R `whoami`.`whoami` $(INSTDIR)
+	chown -R `whoami`.`whoami` $(INSTDIR_WEB)
 	chmod -R ug+rw $(INSTDIR_WEB)
 	chmod -R o+r $(INSTDIR_WEB)
 #
