@@ -417,7 +417,7 @@ struct
         in
 	    (B,E'.TR(E'.STRING(s, rho),E'.Mus [(tau,rho)], (*Eff.*)mkPut rho))
         end
-    | E.REAL(r: real)=> 
+    | E.REAL(r: string)=> 
         let 
             val (rho, B) = (*Eff.*)freshRhoWithTy(Eff.REAL_RT, B)
             val tau = R.realType

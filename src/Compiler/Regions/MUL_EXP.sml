@@ -61,7 +61,8 @@ signature MUL_EXP =
 
       | INTEGER  of int	* 'a		
       | STRING   of string * 'a
-      | REAL     of real * 'a
+      | REAL     of string * 'a (* reals are represented as strings 
+				 * for the precision to be preserved. *)
       | UB_RECORD of ('a,'b,'c) trip list (* unboxed records *)
 
       | FN       of {pat : (lvar * (Type*place)) list, 

@@ -187,15 +187,11 @@ old*)
 	val initial_lvar_env = empty_lvar_env
 	  
 	val initial_excon_env =
-	  initMapeq Excon.eq [(Excon.ex_ABS, (NONE : Type option)),
-			      (Excon.ex_NEG, NONE),
-			      (Excon.ex_SUM, NONE),
-			      (Excon.ex_DIFF, NONE),
-			      (Excon.ex_PROD, NONE),
-			      (Excon.ex_DIV, NONE),
+	  initMapeq Excon.eq [(Excon.ex_DIV, NONE : Type option),
 			      (Excon.ex_MOD, NONE),
 			      (Excon.ex_MATCH, NONE),
-			      (Excon.ex_BIND, NONE)]
+			      (Excon.ex_BIND, NONE),
+			      (Excon.ex_OVERFLOW, NONE)]
 
 	val ftv_initial =
 	  FinMapEq.fold (fn (sigma,set) => NatSet.union (ftv_TypeScheme sigma) set)

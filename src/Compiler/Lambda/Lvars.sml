@@ -14,7 +14,7 @@ functor Lvars(structure Name : NAME) : LVARS =
      * compiler-supported primitives and a function 
      * primitive: lvar -> primitive option *)
 
-    datatype primitive = PLUS_INT | MINUS_INT | MUL_INT | DIV_INT | NEG_INT | ABS_INT
+    datatype primitive = PLUS_INT | MINUS_INT | MUL_INT | NEG_INT | ABS_INT
                        | LESS_INT | LESSEQ_INT | GREATER_INT | GREATEREQ_INT
                        | PLUS_FLOAT | MINUS_FLOAT | MUL_FLOAT | DIV_FLOAT | NEG_FLOAT | ABS_FLOAT
                        | LESS_FLOAT | LESSEQ_FLOAT | GREATER_FLOAT | GREATEREQ_FLOAT
@@ -75,7 +75,6 @@ functor Lvars(structure Name : NAME) : LVARS =
     val plus_int_lvar: lvar = new_prim("plus_int", PLUS_INT)         (* integer operations *)
     val minus_int_lvar: lvar = new_prim("minus_int", MINUS_INT)
     val mul_int_lvar: lvar = new_prim("mul_int", MUL_INT)
-    val div_int_lvar: lvar = new_prim("div_int", DIV_INT)
     val negint_lvar: lvar = new_prim("neg_int", NEG_INT)
     val absint_lvar: lvar = new_prim("abs_int", ABS_INT)
     val less_int_lvar: lvar = new_prim("less_int", LESS_INT)
@@ -100,8 +99,6 @@ functor Lvars(structure Name : NAME) : LVARS =
     fun is_inserted ({inserted,...} : lvar) = inserted
   end;
 
-
-(*$Lvarset : LVARS LVARSET *)
 
 (***********************************************************************
   Applicative representation of finite sets of naturals, 1993-01-03

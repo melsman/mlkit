@@ -1,9 +1,5 @@
 (* OptLambda - lambda code optimiser. *)
 
-(*$OptLambda: LVARS LAMBDA_EXP DIGRAPH_SCC LAMBDA_BASICS FINMAP
-              MONO_FINMAP BASIC_IO CON EXCON TYNAME FLAGS CRASH
-              PRETTYPRINT OPT_LAMBDA*)
-
 functor OptLambda(structure Lvars: LVARS
 		  structure LambdaExp: LAMBDA_EXP
 		    sharing type LambdaExp.lvar = Lvars.lvar
@@ -222,7 +218,7 @@ functor OptLambda(structure Lvars: LVARS
     * ----------------------------------------------------------------- *)
 
     fun eq_lamb (INTEGER n, INTEGER n') = (n = n')
-      | eq_lamb (REAL r, REAL r') = Real.==(r,r')
+      | eq_lamb (REAL r, REAL r') = (r = r')
       | eq_lamb (STRING s, STRING s') = (s = s')
       | eq_lamb (VAR{lvar,instances=il},VAR{lvar=lvar',instances=il'}) = Lvars.eq(lvar,lvar') andalso eq_taus(il,il')
       | eq_lamb (PRIM(RECORDprim, lambs),PRIM(RECORDprim, lambs')) = eq_lambs(lambs,lambs')

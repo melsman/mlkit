@@ -6,16 +6,15 @@
 signature COMPILER_ENV =
   sig
     type CEnv
-    type id				(* Identifiers. *)
-    type longid                         (* Long identifiers *)
-    type tycon                          (* Type constructors *)
-    type con                            (* Unqualified value constructors. *)
-    type excon				(* Unqualified exception constructors.*)
-    type Type				(* Lambda Type *)
-    type tyvar                          (* Lambda tyvar *)
-    type lvar				(* Unique lambda identifiers. *)
+    type id and longid                  (* identifiers *)
+    type tycon and longtycon            (* type constructors *)
+    type strid and longstrid            (* structure identifiers *)
+    type con                            (* unqualified value constructors *)
+    type excon				(* unqualified exception constructors *)
+    type Type				(* lambda Type *)
+    type tyvar                          (* lambda tyvar *)
+    type lvar				(* unique lambda identifiers *)
     type TyName
-    type strid
 
     (* Instance transformers are necessary, since bound type variables
      * of datatype bindings are shared in the lambda language
@@ -39,7 +38,7 @@ signature COMPILER_ENV =
      *
      * At declaration time a value identifier is declared with a
      * lambda variable and a lambda type scheme. Implicitly, an
-     * instance list consisting of the bound type vaiables is
+     * instance list consisting of the bound type variables is
      * installed in the environments, also.
      *
      * Then, when constraining a translation environment to an
@@ -89,6 +88,7 @@ signature COMPILER_ENV =
 
     val lookup_longid : CEnv -> longid -> result option
     val lookup_strid : CEnv -> strid -> CEnv
+    val lookup_longstrid : CEnv -> longstrid -> CEnv
 
     type subst
     val mk_subst : (unit -> string) -> tyvar list * Type list -> subst
@@ -104,12 +104,6 @@ signature COMPILER_ENV =
     val set_normalize_sigma : ((tyvar list * Type) -> (tyvar list * Type))->unit   (* MEGA HACK *)
                                                                             (* We should clean this *) 
                                                                             (* up at some point!! - Mads *)
-
-(*KILL 21/12/1997 20:10. tho.:
-    val declareLvar : (lvar * Type list * CEnv) -> CEnv      (* these are local for each program unit *)
-    val lookupLvar : CEnv -> lvar -> Type list               (* and should *not* be here...           *)
-*)
-
     val tynamesOfCEnv: CEnv -> TyName list
       (* Return the list of tynames occurring in CEnv *)
     val lvarsOfCEnv: CEnv -> lvar list
@@ -121,7 +115,7 @@ signature COMPILER_ENV =
     val consOfCEnv: CEnv -> con list
       (* Return the list of cons which the declared ids in CEnv are mapped to *)
 
-    val restrictCEnv : CEnv * strid list * id list * tycon list -> CEnv
+    val restrictCEnv : CEnv * {longstrids: longstrid list, longvids: longid list, longtycons: longtycon list} -> CEnv
     val enrichCEnv : CEnv * CEnv -> bool
 
     val match : CEnv * CEnv -> unit

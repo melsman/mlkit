@@ -1,7 +1,5 @@
 (* Exception constructors for the lambda language *)
 
-(*$EXCON *)
-
 signature EXCON =
   sig 
 
@@ -24,14 +22,9 @@ signature EXCON =
     val name : excon -> name
 
     (* Predefined exception constructors *)
-    val ex_ABS   : excon
-    val ex_NEG   : excon
-    val ex_SUM   : excon
-    val ex_DIFF  : excon
-    val ex_PROD  : excon
-    val ex_DIV   : excon
-    val ex_MOD   : excon
-    val ex_MATCH : excon
-    val ex_BIND  : excon
-
+    val ex_DIV      : excon
+    val ex_MOD      : excon
+    val ex_MATCH    : excon
+    val ex_BIND     : excon
+    val ex_OVERFLOW : excon
   end

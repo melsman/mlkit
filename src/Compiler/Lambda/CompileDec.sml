@@ -49,6 +49,7 @@ functor CompileDec(structure Con: CON
 			 and type CompilerEnv.longid = TopdecGrammar.DecGrammar.longid
 			 and type CompilerEnv.TypeScheme = StatObject.TypeScheme
 			 and type CompilerEnv.strid = TopdecGrammar.strid
+			 and type CompilerEnv.longstrid = TopdecGrammar.longstrid
 			 and type CompilerEnv.ElabEnv = Environments.Env
 			 and type CompilerEnv.TyName = TyName.TyName
 			 and type CompilerEnv.tycon = Environments.tycon
@@ -172,12 +173,7 @@ functor CompileDec(structure Con: CON
            SOME res => res
          | NONE  => lookup_error("long value variable",CE,longid,info)
 
-    fun lookup_longstrid ce longstrid =
-      let val (strids,strid) = StrId.explode_longstrid longstrid
-	  fun lookup (ce, []) = CE.lookup_strid ce strid
-	    | lookup (ce, strid::strids) = lookup(CE.lookup_strid ce strid, strids)
-      in lookup(ce, strids)
-      end
+    fun lookup_longstrid ce longstrid = CE.lookup_longstrid ce longstrid
 
     local 
       open TLE 

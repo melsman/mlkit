@@ -1,4 +1,3 @@
-(*$LambdaExp: LVARS CON EXCON TYNAME PRETTYPRINT CRASH LAMBDA_EXP FLAGS*)
 
 functor LambdaExp(structure Lvars: LVARS
 		  structure Con: CON
@@ -124,7 +123,7 @@ functor LambdaExp(structure Lvars: LVARS
         VAR      of {lvar: lvar, instances : Type list}
       | INTEGER  of int			
       | STRING   of string
-      | REAL     of real
+      | REAL     of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
       | LET      of {pat : (lvar * tyvar list * Type) list,
 		     bind : LambdaExp,
@@ -487,7 +486,7 @@ functor LambdaExp(structure Lvars: LVARS
           else PP.LEAF(Lvars.pr_lvar lv)
       | INTEGER i => PP.LEAF(Int.string i)
       | STRING s => PP.LEAF(String.string s)
-      | REAL r => PP.LEAF(Real.toString r)
+      | REAL r => PP.LEAF(r)
       | FN {pat,body} => 
 	  PP.NODE{start="(fn ",finish=")", indent=1,
 		  children=[layoutFnPat pat,
