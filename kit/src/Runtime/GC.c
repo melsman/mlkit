@@ -757,7 +757,6 @@ points_into_tospace (unsigned int x)
   if ( points_into_dataspace(p) )
     return 0;
   // now either large object or in region
-  // get the tospace bit
   rp = get_rp_header(p);
   if (is_lobj_bit(rp->n))
     return 0;    /* large object as first component of pair, triple, or ref
@@ -773,13 +772,13 @@ points_into_tospace (unsigned int x)
   // the region page. If the pointer is larger than or equal to the 
   // colorPtr then the pointer points to a value in to-space.
   //
-  // For this to work colorPtr in old-generation last-pages should be
-  // set before gc proper, which they were not before - they were set
-  // AFTER gc!  Thus values could have been allocated by the mutator
-  // before the next gc. Now, colorPtr's in old generations are
-  // updated before gc proper. mael 2005-03-19
+  // For this to work, colorPtr in old-generation last-pages should be
+  // identical to the allocation pointer. This is so, even though
+  // colorPtr's in old generations are updated after each gc - the
+  // reason is that the mutator never allocates values in old
+  // generations.
 
-  if (!ret)
+  if ( ! ret )
     { 
       Gen *gen;
       gen = rp->gen;
@@ -815,14 +814,16 @@ target_gen(Gen *gen, Rp *rp, unsigned int *obj_ptr)
   // We could also choose first to ask if gen is g1 (old generation)
   //  - in this case we could return gen immediately
     if ( obj_ptr < rp->colorPtr ) 
-      return &(get_ro_from_gen(*gen)->g1);
+      return &(get_ro_from_gen(*gen)->g1);  // old gen
     else
-      { if is_gen_1(*gen) {
-	fprintf(stderr,"what_gen_to_copy to: obj_ptr: %x\n",obj_ptr);
-	pp_gen(gen); // ToDo: GenGC remove test
-	die("not g0"); // ToDo: GenGC remove test
+      { 
+	if is_gen_1(*gen) {
+	  fprintf(stderr,"target_gen: obj_ptr: %x\n",obj_ptr);
+	  pp_gen(gen); // ToDo: GenGC remove test
+	  die("not g0"); // ToDo: GenGC remove test
 	}
-      return gen;} // Will always be g0 (young generation)
+	return gen;   // Will always be g0 (young generation)
+      } 
 #endif // ENABLE_GEN_GC
     return gen;
 }
@@ -1102,35 +1103,13 @@ clear_tospace_bit_and_set_colorPtr_in_gen(Gen *gen)
 
 #ifdef ENABLE_GEN_GC
       // Update colorPtr
-      if (p->n) /* tospace-bit has been cleared */
+      if ( p->n ) // tospace-bit has been cleared
 	p->colorPtr = (unsigned int*) (p+1); // Not last page so entire page is black
       else
 	p->colorPtr = gen->a; // Last page so only allocated part of page is black
 #endif // ENABLE_GEN_GC
     }
 }
-
-#ifdef ENABLE_GEN_GC
-inline static void 
-set_colorPtr_in_gen(Gen *gen) 
-{ Rp *p;
-  for ( p = clear_fp(gen->fp) ; p ; p = p->n ) 
-    {
-      if ( clear_tospace_bit(p->n) )
-	p->colorPtr = (unsigned int*) (p+1); // Not last page so entire page is black
-      else
-	p->colorPtr = gen->a; // Last page so only allocated part of page is black
-    }
-}
-
-static void
-set_colorPtr_in_old_gens(void)
-{
-  Region r;
-  for ( r = TOP_REGION ; r ; r = r->p )
-    set_colorPtr_in_gen(&(r->g1)); // old gen
-}
-#endif // ENABLE_GEN_GC
 
 #define predSPDef(sp,n) ((sp)+=(n))
 #define succSPDef(sp) (sp--)
@@ -1207,13 +1186,8 @@ gc(unsigned int **sp, unsigned int reg_map)
 
 #ifdef ENABLE_GEN_GC
 
-  if (is_minor_p) {
-    // If minor gc, then colorPtr in old generations should be updated
-    // to make it possible to determine if an object in the
-    // old-generation is part of to-space (see functin points_into_tospace).
-    set_colorPtr_in_old_gens();
-
-    // If minor gc, then refs and tables in g1 and lobjs are also 
+  if ( is_minor_p ) {
+    // If minor gc then refs and tables in g1 and lobjs are also 
     // part of the root-set
     for ( r = TOP_REGION ; r ; r = r->p ) {
       switch ( rtype(r->g1) ) {
@@ -1226,7 +1200,7 @@ gc(unsigned int **sp, unsigned int reg_map)
            #if PROFILING
 	    value_ptr += sizeObjectDesc;
            #endif // PROFILING
-	    *value_ptr = evacuate(*value_ptr); 
+	    *(value_ptr+1) = evacuate(*(value_ptr+1)); 
 	    value_ptr = next_untagged_value(value_ptr+1,r->g1.a);
 	  }
 	break;
@@ -1256,11 +1230,10 @@ gc(unsigned int **sp, unsigned int reg_map)
 	// evacuate contents of arrays in lobjs
 	for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) ) 
 	  {
+	    value_ptr = &(lobjs->value);
            #ifdef PROFILING
-	    value_ptr = &(lobjs->value) + sizeObjectDesc;
-           #else
-	    value_ptr = &lobjs->value;
-           #endif // PROFILING
+	    value_ptr += sizeObjectDesc;
+           #endif
 	    tag = *value_ptr;
 	    sz = get_table_size(tag);
 	    value_ptr++; // Point at first element in array
