@@ -86,9 +86,6 @@ functor CompileDec(structure Con: CON
 			 and type ElabInfo.TypeInfo.id = TopdecGrammar.id
 
                    structure FinMap: FINMAP
-(*KILL 29/11/1997 12:09. tho.:
-                     sharing type MatchCompiler.map = FinMap.map
-*)
 
 	           structure FinMapEq: FINMAPEQ
 
@@ -104,10 +101,9 @@ functor CompileDec(structure Con: CON
 
                   ): COMPILE_DEC =
   struct
-(*KILL 29/11/1997 12:10. tho.:
-    open MatchCompiler
-*)
     open LambdaExp
+    type function = {lvar : lvar, tyvars : tyvar list, Type : Type,
+		     bind : LambdaExp}
     structure DecGrammar = TopdecGrammar.DecGrammar
     open DecGrammar
 
@@ -722,6 +718,8 @@ local
 		  | cmp => cmp)
 	 | cmp => cmp)
 
+  val path_eq = eq_from_cmp path_cmp
+
   type declaration_to_be_made = id * (lvar * LambdaExp.tyvar list * Type) * path
   type declarations_to_be_made = declaration_to_be_made list
   type rhs = int
@@ -784,7 +782,9 @@ local
    node that we must bump this counter.
 
    Invariant: "visited" fields of all nodes are always false except within
-   calls to reachable*)
+   calls to reachable and compile_decdag.*)
+
+  fun shared ({refs, ...} : node) = !refs > 1
 
   fun node_cmp ({lvar=lvar1, ...} : node, {lvar=lvar2, ...} : node) =
 	lvar_cmp (lvar1, lvar2)
@@ -1070,7 +1070,7 @@ indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
    e1 in it.  Then we add the surrounding LET's, again using the
    aforementioned information.*)
 
-  fun compile_rhs' compile_no obj env rhs' =
+  fun compile_rhs' compile_no obj env rhs'  : LambdaExp =
 	let
 	  val (declarations_to_be_made : declarations_to_be_made, rhs) = rhs'
 	  val env_rhs = CE.plus (env, env_from declarations_to_be_made)
@@ -1078,7 +1078,8 @@ indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
 	in mk_declarations_to_be_made declarations_to_be_made lexp obj env 
 	end
 
-  and mk_declarations_to_be_made declarations_to_be_made lexp obj env  =
+  and mk_declarations_to_be_made declarations_to_be_made lexp obj env
+	: LambdaExp =
 	List.foldL  (*again, foldR could also have been used*)
 	  (fn (id, (lvar, tyvars, tau), path) => fn lexp_sofar =>
 	   (LET {pat = [(lvar, tyvars, tau)],
@@ -1093,30 +1094,102 @@ in
 	  (*instances=[] because the var can never be polymorphic
 	   because it is the name of a non-polymorphic function.*)
 
-  fun compile_node compile_no obj raise_something env 
-	(compile_edge : edge -> LambdaExp) (node : node) =
-	(case #kind node of
+  fun switchify (path0, con0, edge1, edge2) =
+	let fun switchify0 (s as (cases, Some {kind=IfEq (path, con, edge1, edge2), refs, ...})) =
+	          if path_eq (path0, path) andalso !refs <= 1
+		  then switchify0 ((con, edge1) :: cases, edge2)
+		  else s
+	      | switchify0 s = s 
+	in
+	  switchify0 ([(con0, edge1)], edge2)
+	end
+
+  fun compile_node compile_no obj raise_something tau_return_opt env
+	({visited, kind, ...} : node)    : function list * LambdaExp =
+	(if !visited then die "compile_node: already visited" else () ;
+	 visited := true ; 
+	 (case kind of
 	   IfEq (path, con, edge1, edge2) =>
-	     let fun switch (switch_x : 'x Switch -> LambdaExp, x : 'x) : LambdaExp =
-		       switch_x (SWITCH (compile_path env obj path,
-					 [(x, compile_edge edge1)],
-					 Some (compile_edge edge2)))
-	     in (case con of
-		   Con {longid, ...} =>
-		     switch (SWITCH_C, lookupLongcon env longid
-					 (OTHER "compile_node"))
-		 | Scon (SCon.INTEGER i) => switch (SWITCH_I, i)
-		 | Scon (SCon.STRING s) => switch (SWITCH_S, s)
-		 | Scon (SCon.REAL r) => die "compile_node: real"
-		 | Scon (SCon.CHAR i) => switch (SWITCH_I, i)
-		 | Scon (SCon.WORD i) => switch (SWITCH_I, i)
-		 | Excon {longid, ...} =>
-		     switch (SWITCH_E, 
-			     #1 (lookupLongexcon env longid (OTHER "compile_node")))
+	     let
+	       val (cases, otherwise) = switchify (path, con, edge1, edge2)
+	       fun switch (switch_x : 'x Switch -> LambdaExp,
+			   compile_x : con -> 'x) : function list * LambdaExp =
+		     (case
+			List.foldL (fn (x, edge) => fn (functions, cases_compiled) =>
+				    (case compile_edge compile_no obj raise_something
+				            tau_return_opt env edge
+				     of (functions', lexp') =>
+				       (functions' @ functions,
+					(compile_x x, lexp') :: cases_compiled)))
+			  ([], []) cases
+		      of (functions, cases_compiled) =>
+		     (case compile_edge compile_no obj raise_something
+			     tau_return_opt env otherwise
+		      of (functions'', lexp_otherwise) =>
+			(functions'' @ functions,
+			 switch_x (SWITCH
+				   (compile_path env obj path,
+				    cases_compiled,
+				    Some (lexp_otherwise))))))
+	     in
+	       (case con of
+		  Con _ => switch
+		    (SWITCH_C,
+		     fn Con {longid, ...} => lookupLongcon env longid
+		                               (OTHER "compile_node, Con")
+		      | _ => die "compile_node: fn Con =>")
+		| Scon (SCon.INTEGER _) => switch
+		    (SWITCH_I, fn Scon (SCon.INTEGER i) => i
+		                | _ => die "compile_node: fn Scon (SCon.INTEGER i) =>")
+		 | Scon (SCon.STRING _) => switch
+		    (SWITCH_S, fn Scon (SCon.STRING s) => s
+		                | _ => die "compile_node: fn Scon (SCon.STRING s) =>")
+		 | Scon (SCon.REAL _) => die "compile_node: real"
+		 | Scon (SCon.CHAR _) => switch
+		    (SWITCH_I, fn Scon (SCon.CHAR i) => i
+		                | _ => die "compile_node: fn Scon (SCon.CHAR i) =>")
+		 | Scon (SCon.WORD _) => switch
+		    (SWITCH_I, fn Scon (SCon.WORD i) => i
+		                | _ => die "compile_node: fn Scon (SCon.WORD i) =>")
+		 | Excon _ => switch
+		    (SWITCH_E,
+		     fn Excon {longid, ...} =>
+			  #1 (lookupLongexcon env longid (OTHER "compile_node, Excon"))
+		      | _ => die "compile_node: fn Excon {longid, ...} =>")
 		 | Tuple _ => die "compile_node: Tuple")
 	     end
-	 | Success rhs' => compile_rhs' compile_no obj env rhs')
+	 | Success rhs' => ([], compile_rhs' compile_no obj env rhs')))
 
+  and compile_edge  compile_no obj raise_something tau_return_opt env edge
+	: function list * LambdaExp =
+	(case edge of
+	   None => ([], raise_something obj)
+	 | Some node =>
+	     if shared node then
+	       (if ! (#visited node) then [] else
+		let val (functions, lexp) =
+		  compile_node compile_no obj raise_something tau_return_opt env node
+		    val Type = ARROWtype ([unitType],
+					  [NoSome "compile_edge" tau_return_opt])
+		    val function = {lvar= #lvar node, tyvars=[], Type=Type,
+				    bind=FN {pat = [(Lvars.new_named_lvar "obj",
+						     unitType)],
+					     body = lexp}}
+	             (*tyvars=[] because an rhs can never be polymorphic: FN
+		      & HANDLE exps have no polymorphism, and
+		      valbinds---which do have polymorphism---will always be
+		      compiled to one big exp and no functions (see
+		      compile_binding).*)
+		in function :: functions
+		end,
+	        compile_jump_to node)
+	     else compile_node compile_no obj raise_something tau_return_opt env node)
+
+  val compile_decdag = compile_edge
+	
+      
+
+(*KILL 13/01/1998 11:27. tho.:
   fun compile_node_to_function compile_no obj raise_something tau_return env
 	(node : node) =
 	let fun compile_edge None = raise_something obj
@@ -1124,13 +1197,22 @@ in
 	    val body = compile_node compile_no obj raise_something env compile_edge node
 	    val Type = ARROWtype ([unitType], [tau_return]) 
 	in {lvar= #lvar node, tyvars=[], Type=Type,
-	    bind=FN {pat = [(Lvars.new_named_lvar "x", unitType)],
+	    bind=FN {pat = [(Lvars.new_named_lvar "obj", unitType)],
 		     body = body}}
 	(*tyvars=[] because an rhs can never be polymorphic, because we
 	 always use compile_node_to_function to make rhs's; in the case of
 	 valbinds, the ``rhs'' (not really an rhs) is not compiled to a
 	 function (see compile_binding)*)
 	end 
+*)
+(*KILL 13/01/1998 12:17. tho.:
+fun compile_decdag_to_functions  compile_no obj raise_something tau_return env
+	(decdag : edge) =
+	compile_decdag_to_functions0  compile_no obj raise_something tau_return env
+	(decdag : edge) []
+  and compile_decdag_to_functions0  compile_no obj raise_something tau_return env
+	(decdag : edge) functions =
+*)
 
 
   (*reachable edge = the nodes that are reachable from the edge `edge'; so
@@ -1597,7 +1679,7 @@ end; (*match compiler local*)
 		                (info,
 				 match,
 				 (*no inexhaustiveness warnings:*)false,
-				 tau_return,
+				 Some tau_return,
 				(*when no mrule matches, the raised exception
 				 (obj, which is not known here)
 				 must be reraised:*)
@@ -1619,7 +1701,7 @@ end; (*match compiler local*)
 	       in compile_match env (info,
 				     match,
 				     (*inexhaustiveness warnings, please:*)true,
-				     tau_return,
+				     Some tau_return,
 				    (*when no mrule matches, exception Match must
 				     be raised: (abstracted over obj because
 				     of HANDLEexp above)*)
@@ -1828,7 +1910,7 @@ the 12 lines above are very similar to the code below
      really make them prettier.*)
 
     and compile_match env (info, match, warn_on_inexhaustiveness,
-			   tau_return, raise_something) =
+			   tau_return_opt, raise_something) =
       let
 	val matches = makeList (fn MATCH(_, _, m) => m) match
 	val pats = map (fn MATCH(_, MRULE(_, pat, _), _) => pat) matches
@@ -1846,13 +1928,14 @@ the 12 lines above are very similar to the code below
 	val compile_no = fn (i, env_rhs) =>
 	                 (compileExp env_rhs (List.nth i exps
 					      handle _ => die "compile_match: nth"))
-	val nodes = reachable decdag
+	val (functions, lexp) =
+	      compile_decdag  compile_no obj raise_something tau_return_opt env decdag
       in
 	(*KILL 21/12/1997 18:44. tho.:
 	 pr "\n\ncompileMatch: decdag is:\n";
 	 pr_decdag decdag;
 	 *)
-	if not warn_on_inexhaustiveness orelse exhaustive nodes then () else
+	if not warn_on_inexhaustiveness orelse exhaustive (reachable decdag) then () else
 	  Flags.warn
 	  (report_SourceInfo info // line "Match not exhaustive.") ;
         List.apply (fn i (*number of rhs which is redundant*) =>
@@ -1862,13 +1945,7 @@ the 12 lines above are very similar to the code below
 				     // line "That rule is redundant.")))
 	  (redundant_rules (map #2 rules)) ;
 	FN {pat = [(lvar_switch, tau_argument)],
-	    body =
-	       FIX {functions =
-		      map (compile_node_to_function compile_no
-			   obj raise_something tau_return env) (reachable decdag),
-		    scope = (case decdag (*a decdag is an edge*) of
-			       Some node => compile_jump_to node
-			     | None => raise_something obj)}}
+	    body = FIX {functions = functions, scope = lexp}}
       end
 (*KILL 25/11/1997 15:07. tho.:
          val decTree = matchCompiler compileTypeScheme 
@@ -2124,17 +2201,18 @@ the 12 lines above are very similar to the code below
 	      fun compile_no (i, env_rhs) = scope
 	      val raise_something = fn obj =>
 		    RAISE (PRIM (EXCONprim Excon.ex_BIND, []), LambdaExp.RaisedExnBind)
-	      fun compile_edge None = raise_something obj
-		| compile_edge (Some node) =
-		    compile_node compile_no obj raise_something env compile_edge node
 	  in
-	    (*KILL 21/12/1997 18:44. tho.:
-	    pr "\n\ncompile_binding: decdag is:\n";
-	    pr_decdag decdag;
-	     *)
-	    LET {pat = [(lvar_switch, tyvars', tau')],
-		 bind = compileExp env exp,
-		 scope = compile_edge decdag}
+	    (case compile_decdag  compile_no obj raise_something None env decdag of
+	       ([], lexp) => LET {pat = [(lvar_switch, tyvars', tau')],
+				  bind = compileExp env exp,
+				  scope = lexp}
+	     | _ =>
+		 die "compile_binding: there should only be functions when there are\n\
+		  \shared nodes in the decdag, i.e., nodes that are jumped to by\n\
+		  \more than one node, and there can be no shared nodes in a decdag\n\
+		  \from a valbind, because a valbind only has one rule (one pattern):\n\
+		  \all jumps will either be to a fail node, the single success node,\n\
+		  \or to the ``next'' ifeq node.")
 	  end
 	val env_rhs = env_from_decdag decdag
     in
@@ -2144,6 +2222,15 @@ the 12 lines above are very similar to the code below
 	   // line "Pattern not exhaustive.") ;
       (env_rhs, f)
     end
+(*KILL 13/01/1998 13:17. tho.:
+	      fun compile_edge None = raise_something obj
+		| compile_edge (Some node) =
+		    compile_node compile_no obj raise_something env compile_edge node
+*)
+(*KILL 21/12/1997 18:44. tho.:
+	    pr "\n\ncompile_binding: decdag is:\n";
+	    pr_decdag decdag;
+*)
 (*KILL 16/12/1997 17:26. tho.:
 	      val compile_no = (fn (0, env_rhs) => scope
 		                 | _ => die "compileBinding.compile_no")
