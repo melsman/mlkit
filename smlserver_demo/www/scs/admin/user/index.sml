@@ -41,6 +41,7 @@ val body =
 val new_user_form = 
   let
     val new_person = {
+      person_id         = 0,
       first_names 	= "",
       last_name		= "",
       name 		= "",

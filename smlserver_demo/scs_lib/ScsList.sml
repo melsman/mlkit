@@ -11,6 +11,12 @@ signature SCS_LIST =
        are different using the compare function. *)
     val allDifferent : ('a * 'a -> bool) -> 'a list -> bool
 
+    (* [mkDifferent compare xs] returns a list xs' with all elements
+       in xs sorted and all redundant elements removed. The function
+       all Different will return true on xs' and a similar compare
+       function. *)
+    val mkDifferent : ('a * 'a -> General.order) -> 'a list -> 'a list
+
     (* [allOrNone fn_empty xs] returns true if all elements in xs are
        non empty. The functions fn_empty decides whether an element is
        empty. *)
@@ -31,6 +37,21 @@ structure ScsList :> SCS_LIST =
       in
         check_all (ls,[])
       end
+
+    fun mkDifferent compare xs =
+      let
+	val xs' = Listsort.sort compare xs
+	fun loop [] = []
+	  | loop ([x]) = [x]
+	  | loop (x1::x2::xs) = 
+	  if compare(x1,x2) = General.EQUAL then
+	    loop (x1::xs)
+	  else
+	    x1 :: (loop (x2::xs))
+      in
+	loop xs'
+      end
+
     fun allOrNone fn_empty ls = List.all fn_empty ls orelse List.all (not o fn_empty) ls
 
     fun zip xe ye xs ys =

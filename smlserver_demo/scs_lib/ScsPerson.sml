@@ -3,6 +3,7 @@ signature SCS_PERSON =
     datatype sex = Female | Male
 
     type person_record = {
+      person_id         : int,
       first_names 	: string,
       last_name		: string,
       name 		: string,
@@ -13,6 +14,11 @@ signature SCS_PERSON =
 
     (* [getPerson user_id] fetches a person from the database *)
     val getPerson : int -> person_record option
+
+   (* [searchPerson pat keep_del_p] returns a list of persons matching
+      the pattern pat. If deleted_p is true then we also search in
+      deleted persons *)
+    val searchPerson : string -> bool -> person_record list
 
     (* [name user_id] returns the name found in the database for user
        identified by user_id. Returns "" if no email exists. *)
@@ -86,6 +92,7 @@ structure ScsPerson :> SCS_PERSON =
     datatype sex = Female | Male
 
     type person_record = {
+      person_id         : int,
       first_names 	: string,
       last_name		: string,
       name 		: string,
@@ -94,28 +101,34 @@ structure ScsPerson :> SCS_PERSON =
       cpr		: string
     }
 
-    fun getPerson user_id = 
-      let
-	fun f g = {
-	  first_names = g "first_names",
-	  last_name = g "last_name",
-	  name = g "name",
-	  email = g "email",
-	  url = g "url",
-          cpr = g "cpr"
-	}
-	val personSQL = `
-	  select first_names, last_name, 
-		 scs_person.name(^(Int.toString user_id)) name, 
-		 scs_party.email(^(Int.toString user_id)) email,
-		 scs_party.url(^(Int.toString user_id)) url,
+    local
+      fun f g = {person_id = (ScsError.valOf o Int.fromString) (g "person_id"),
+		 first_names = g "first_names",
+		 last_name = g "last_name",
+		 name = g "name",
+		 email = g "email",
+		 url = g "url",
+		 cpr = g "cpr"}
+      fun personSQL wh =
+	` select person_id, first_names, last_name, 
+		 scs_person.name(person_id) name, 
+		 scs_party.email(person_id) email,
+		 scs_party.url(person_id) url,
 		 security_id cpr
-	    from scs_persons
-	   where person_id = ^(Int.toString user_id)` 
-      in
-	SOME( Db.oneRow' f personSQL )
-      end
-      handle _ => NONE
+	    from scs_persons 
+            ` ^^ wh
+    in
+      fun getPerson user_id = 
+	SOME( Db.oneRow' f (personSQL `where person_id = ^(Int.toString user_id)`))
+	handle _ => NONE
+      fun searchPerson pat keep_del_p =
+	Db.list f (personSQL 
+		   `where (lower(scs_person.name(person_id)) like ^(Db.qqq pat)
+                       or lower(scs_party.email(person_id)) like ^(Db.qqq pat)
+		       or security_id like ^(Db.qqq pat))
+                      and deleted_p in (^(if keep_del_p then "'t','f'" else "'f'"))`)
+	handle _ => []
+    end
 
     fun name user_id =
       Db.oneField `select scs_person.name(person_id)
