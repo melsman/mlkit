@@ -182,23 +182,45 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				  strategy_name = "NoProf",
 				  show_compiler_timings = show_compiler_timings,
 				  comment = ("Region profiling not enabled.")}
+      fun tic98_Unbox_Untag () =
+	    PERFORMANCE_STRATEGY {kit_script = "tic98_Unbox_Untag.script", (*--USER--*)
+				  runtime_system = path_to_runtime_suspension, 
+				  strategy_name = "tic98_Unbox_Untag",
+				  show_compiler_timings = false,
+				  comment = "Lists are unboxed. Values are not tagged."}
+      fun tic98_Box_Untag () =
+	    PERFORMANCE_STRATEGY {kit_script = "tic98_Box_Untag.script", (*--USER--*)
+				  runtime_system = path_to_runtime_suspension, 
+				  strategy_name = "tic98_Box_Untag",
+				  show_compiler_timings = false,
+				  comment = "Lists are boxed. Values are not tagged."}
+      fun tic98_Box_Tag () =
+	    PERFORMANCE_STRATEGY {kit_script = "tic98_Box_Tag.script", (*--USER--*)
+				  runtime_system = path_to_runtime_suspension, 
+				  strategy_name = "tic98_Box_Tag",
+				  show_compiler_timings = false,
+				  comment = "Lists are boxed. Values are Tagged. Equality elimination is disabled."}
     in
       fun performance_strategies () = (*--USER--*)
 	    (case !kit_version of
 	       "ML_to_C_on_HPUX" => [performance_strategy_HPUX ()]
 	     | "ML_to_C_on_SUN_OS4" => [performance_strategy_SUN_OS4 ()]
-	     | "ML_to_HPPA_on_HPUX" => [performance_strategy_HPUX ()]
+	     | "ML_to_HPPA_on_HPUX" => [(*performance_strategy_HPUX ()*) 
+					tic98_Box_Tag(), tic98_Box_Untag(), tic98_Unbox_Untag()]
 	     | _ => [])
     end (*local*)
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
     val performance_suite_files =
-          [("kitfib35.sml",NONE),
+       (*   [("kitfib35.sml",NONE),
 	   ("kitdangle.sml",NONE),
-	   ("kitdangle3.sml",NONE)] (*--USER--*)
+	   ("kitdangle3.sml",NONE)] *) (*--USER--*)
 
-    val performance_suite_projects =
-          [("kitreynolds2.pm",NONE),
+      [("tic98fib.sml", NONE),("tic98sieve.sml", NONE),("tic98life.sml", NONE),("tic98lifem.sml", NONE),
+       ("tic98msort.sml", NONE),("tic98mbrot.sml", NONE),("tic98kkb.sml", NONE),("tic98simpl.sml", NONE)]
+
+    val performance_suite_projects = []
+(*          [("kitreynolds2.pm",NONE),
 	   ("kitreynolds3.pm",NONE),
 	   ("kitloop2.pm",NONE),
 	   ("kittmergesort.pm",NONE),
@@ -213,7 +235,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 	   ("fft.pm",NONE),
 	   
 	   ("msort.pm", NONE)]
-
+*)
   end (*functor TestInfo*)
 
 

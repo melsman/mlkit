@@ -92,9 +92,9 @@ functor Flags (structure Crash : CRASH
     val program_points = (ref []): int list ref
     val region_paths = (ref[]): (int*int) list ref
 
-    val chat                    = ref true
+    val chat                    = ref false
 
-    val log_to_file = ref true
+    val log_to_file = ref false
     val target_file_extension = ref ".s" (*or ".c", with the C back end*)
 
     (*The following four have to do with the compilation of the C or the

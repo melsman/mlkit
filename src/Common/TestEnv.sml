@@ -739,8 +739,6 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	   val new_compile_strategy_dir = OS.Path.concat(new_acceptance_dir(), strategy_name)
 	   val _ = create_dir new_compile_strategy_dir
 
-	   val _ = add_acceptance_strategy_test_report strategy
-
 	   fun acceptance_test_file (filename,input_to_file) =
 	     let
 	       val filepath = OS.Path.joinDirFile{dir=source_directory(), file=filename}
@@ -817,20 +815,26 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	   val script_name = OS.Path.joinDirFile{dir=kit_script_directory(), file=kit_script}
 	   val _ = read_script script_name
 
+	   val _ = add_acceptance_strategy_test_report strategy
+
 	   val _ = change_directory (target_directory ())
 
            (* Acceptance test on files. *)
-	   val _ = add_lines_test_report ["\\subsubsection{Acceptance test on single source files}"]
-	   val _ = map acceptance_test_file (acceptance_suite_files ())
-	   val _ = log_table acceptance_table_files
-	   val _ = latex_table acceptance_table_files
+	   val _ = case acceptance_suite_files ()
+		     of [] => ()
+		      | files =>  
+		       (add_lines_test_report ["\\subsubsection{Acceptance test on single source files}"];
+			map acceptance_test_file files;
+			log_table acceptance_table_files;
+			latex_table acceptance_table_files)
 
            (* Acceptance test on projects. *)
-	   val _ = add_lines_test_report ["\\subsubsection{Acceptance test on projects}"]
-	   val _ = map acceptance_test_project (acceptance_suite_projects ())
-	   val _ = log_table acceptance_table_projects
-	   val _ = latex_table acceptance_table_projects
-	    
+	   val _ = case (acceptance_suite_projects ())
+		     of [] => ()
+		      | files => (add_lines_test_report ["\\subsubsection{Acceptance test on projects}"];
+				  map acceptance_test_project files;
+				  log_table acceptance_table_projects;
+				  latex_table acceptance_table_projects)
 	 in
 	   ()
 	 end
@@ -910,8 +914,6 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	    
 	   val new_compile_strategy_dir = OS.Path.concat(new_target_program_dir(), strategy_name)
 	   val _ = create_dir new_compile_strategy_dir
-
-	   val _ = add_performance_strategy_test_report strategy
 
 	   fun performance_test_file (filename,input_to_file) =
 	     let
@@ -1036,25 +1038,29 @@ old*)
 
 	   val script_name = OS.Path.joinDirFile{dir=kit_script_directory(), file=kit_script}
 	   val _ = read_script script_name
+	   val _ = add_performance_strategy_test_report strategy
 
 	   val _ = change_directory (target_directory ())
 
 	   (* Performance test on files. *)
-	   val _ = add_lines_test_report ["\\subsubsection{Performance test on single source files}"]
-	   val _ = timings := []
-	   val _ = map performance_test_file performance_suite_files
-	   val _ = log_table performance_table_files
-	   val _ = latex_table performance_table_files
-	   val _ = show_timings()
+	   val _ = case performance_suite_files
+		     of [] => ()
+		      | _ => (add_lines_test_report ["\\subsubsection{Performance test on single source files}"];
+			      timings := [];
+			      map performance_test_file performance_suite_files;
+			      log_table performance_table_files;
+			      latex_table performance_table_files;
+			      show_timings())
 
  	   (* Performance test on projects. *)
-	   val _ = add_lines_test_report ["\\subsubsection{Performance test on projects}"]
-	   val _ = timings := []
-	   val _ = map performance_test_project performance_suite_projects
-	   val _ = log_table performance_table_projects
-	   val _ = latex_table performance_table_projects
-	   val _ = show_timings()
-
+	   val _ = case performance_suite_projects
+		     of [] => ()
+		      | _ => (add_lines_test_report ["\\subsubsection{Performance test on projects}"];
+			      timings := [];
+			      map performance_test_project performance_suite_projects;
+			      log_table performance_table_projects;
+			      latex_table performance_table_projects;
+			      show_timings())
 	 in
 	   ()
 	 end
