@@ -81,29 +81,32 @@ signature MODULE_ENVIRONMENTS =
 
                      	(*E component*)
 	val plus_E           : Basis * Env     -> Basis
-	val cplus_E          : Basis * Env     -> Basis
-	val from_T_and_E     : TyName.Set.Set * Env -> Basis
+(*	val cplus_E          : Basis * Env     -> Basis *)
+(*	val from_T_and_E     : TyName.Set.Set * Env -> Basis *)
+	val from_E           : Env -> Basis
 	val to_E             : Basis -> Env
 	val lookup_strid     : Basis -> strid -> Env Option
 	val lookup_longstrid : Basis -> longstrid -> Env Option
 	val lookup_longtycon : Basis -> longtycon -> TyStr Option
-
+(*
 	                (*T component*)
 	val plus_T           : Basis * TyName.Set.Set -> Basis
 	val to_T(*T_of_B*)   : Basis -> TyName.Set.Set
-
+*)
 	                (*G component*)
-	val from_T_and_G     : TyName.Set.Set * SigEnv -> Basis
+(*	val from_T_and_G     : TyName.Set.Set * SigEnv -> Basis *)
+	val from_G           : SigEnv -> Basis
 	val to_G             : Basis -> SigEnv
 	val plus_G           : Basis  * SigEnv -> Basis
-	val cplus_G          : Basis  * SigEnv -> Basis
+(*	val cplus_G          : Basis  * SigEnv -> Basis *)
 	val lookup_sigid  : Basis -> sigid -> Sig Option
 
 	                (*F component*)
-	val from_T_and_F     : TyName.Set.Set * FunEnv -> Basis
+(*	val from_T_and_F     : TyName.Set.Set * FunEnv -> Basis *)
+	val from_F           : FunEnv -> Basis
 	val to_F             : Basis -> FunEnv
 	val plus_F           : Basis  * FunEnv -> Basis
-	val cplus_F          : Basis  * FunEnv -> Basis
+(*	val cplus_F          : Basis  * FunEnv -> Basis *)
 	val lookup_funid     : Basis -> funid -> FunSig Option
 
 	           (*for compilation manager*)

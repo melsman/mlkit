@@ -120,7 +120,8 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     type id = Ident.id
     type ParseInfo  = ParseInfo.ParseInfo
     type ElabInfo = ElabInfo.ElabInfo
-
+    type TyName = TyName.TyName
+	   
     (*info*)
 
     (*okConv ParseInfo = the ParseInfo converted to ElabInfo with
@@ -157,9 +158,9 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     val onVE = VE.on     infixr onVE
     infixr oo    val op oo = Substitution.oo
 
-    fun C_cplus_E a = C.cplus_E a   infixr C_cplus_E
-    fun C_cplus_TE a = C.cplus_TE a  infixr C_cplus_TE 
-    fun C_cplus_VE_and_TE a = C.cplus_VE_and_TE a   infixr C_cplus_VE_and_TE
+    fun C_plus_E a = C.plus_E a   infixr C_plus_E
+    fun C_plus_TE a = C.plus_TE a  infixr C_plus_TE 
+    fun C_plus_VE_and_TE a = C.plus_VE_and_TE a   infixr C_plus_VE_and_TE
 
     (*types needed for the signature ELABDEC*)
     type PreElabDec  = IG.dec  
@@ -637,18 +638,16 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
                OG.RECORDatexp (okConv i, Some out_exprow)) 
             end 
 
-          (* let expression *)                                  (*rule 4%%*)
+          (* let expression *)                                  (*rule 4*)
         | IG.LETatexp(i, dec, exp) => 
             let
-              val (S1, E, out_dec)   = elab_dec(C,dec)
-              val (S2, tau, out_exp) = elab_exp((S1 onC C) C_cplus_E E, exp)
-	      val out_i = (case TyName.Set.list 
-			          (TyName.Set.difference 
-				     (Type.tynames tau) (C.to_T C)) of
-			     [] => okConv i
-			   | tynames => 
-			       errorConv
-			         (i, ErrorInfo.DATATYPES_ESCAPE_SCOPE tynames))
+              val (S1, T, E, out_dec)   = elab_dec(C,dec)
+              val (S2, tau, out_exp) = elab_exp((S1 onC C) C_plus_E E, exp)
+	      val out_i = case TyName.Set.list 
+			     (TyName.Set.intersect 
+			      (Type.tynames tau) (TyName.Set.fromList T))
+			     of [] => okConv i
+			      | tynames => errorConv (i, ErrorInfo.DATATYPES_ESCAPE_SCOPE tynames)
             in
 	      (S2 oo S1, tau, OG.LETatexp (out_i, out_dec, out_exp))
             end
@@ -835,6 +834,8 @@ old*)
               val (S',tau',  out_exp) = 
                      elab_exp(C.plus_VE (S onC C, VE),exp)
               val S'' = S' oo S
+	      val out_i = okConv i
+(*old
 	      val out_i = (case TyName.Set.list
 			          (TyName.Set.difference (VE.tynames VE)
 				     (C.to_T C)) of
@@ -842,6 +843,7 @@ old*)
 			   | tynames =>
 			       errorConv
 			         (i, ErrorInfo.DATATYPES_ESCAPE_SCOPE tynames))
+old*)
             in
 	      (S'', Type.mk_Arrow (S'' on tau,tau'),
 	       OG.MRULE (out_i ,out_pat,out_exp))
@@ -850,7 +852,7 @@ old*)
     (******** declarations ********)
 
     and elab_dec(C : Context, dec : IG.dec) :
-        (Substitution * Env * OG.dec) =
+        (Substitution * TyName list * Env * OG.dec) =
 
         (case dec of
 
@@ -896,7 +898,7 @@ old*)
 	      24/01/1997 15:38. tho.*)
             
              in
-               (S, E.from_VE VE',
+               (S, [], E.from_VE VE',
 		OG.VALdec (out_i, ExplicitTyVars, out_valbind)) 
 	     end
 
@@ -909,7 +911,7 @@ old*)
                (* Note that no substitutions are produced *)
                val (TE, out_typbind) = elab_typbind(C, typbind)
              in
-               (Substitution.Id, E.from_TE TE,
+               (Substitution.Id, [], E.from_TE TE,
                 OG.TYPEdec(addTypeInfo_TYENV (okConv i, TE), out_typbind))
              end
 
@@ -917,12 +919,15 @@ old*)
          | IG.DATATYPEdec(i, datbind) =>
              let
                val TE = initial_TE datbind
-               val ((VE1, TE1), out_datbind) = elab_datbind(C C_cplus_TE TE, datbind)
-               val (VE2, TE2) = Environments.maximise_equality_in_VE_and_TE
-		                  (VE1, TE1) 
+               val ((VE1, TE1), out_datbind) = elab_datbind(C C_plus_TE TE, datbind)
+               val (VE2, TE2) = Environments.maximise_equality_in_VE_and_TE (VE1, TE1) 
+	       val T = (TE.fold (fn tystr => fn T => case TypeFcn.to_TyName(TyStr.to_theta tystr)
+						       of Some t => t::T
+							| None => impossible "elab_dec(DATATYPEdec)")
+			[] TE2)
                val _ = debug_pr_msg "elab_dec(DATATYPEdec)"
              in
-               (Substitution.Id, E.from_VE_and_TE (VE2, TE2),
+               (Substitution.Id, T, E.from_VE_and_TE (VE2, TE2),
                 OG.DATATYPEdec(addTypeInfo_TYENV (okConv i, TE2),
                                out_datbind)) (*martin*)
              end
@@ -935,13 +940,13 @@ old*)
 		    val TE = TE.singleton (tycon, tystr)
 		    val (theta, VE) = TyStr.to_theta_and_VE tystr 
 		  in
-		    (Substitution.Id,
+		    (Substitution.Id,[],
 		     E.from_VE_and_TE (VE,TE),
 		     OG.DATATYPE_REPLICATIONdec
 		       (addTypeInfo_TYENV (okConv i, TE), tycon, longtycon))
 		  end
 	      | None =>
-		  (Substitution.bogus,
+		  (Substitution.bogus,[],
 		   E.bogus,
 		   OG.DATATYPE_REPLICATIONdec
 		     (lookupTyConError (i,longtycon), tycon, longtycon)))
@@ -950,17 +955,17 @@ old*)
          | IG.ABSTYPEdec(i, datbind, dec) =>
              let
                val TE = initial_TE datbind
-               val ((VE1, TE1), out_datbind) = elab_datbind(C C_cplus_TE TE, datbind)
+               val ((VE1, TE1), out_datbind) = elab_datbind(C C_plus_TE TE, datbind)
                val (VE2, TE2) = Environments.maximise_equality_in_VE_and_TE
 		                  (VE1, TE1)
-               val (S, E, out_dec) = elab_dec(C C_cplus_VE_and_TE (VE2,TE2), dec)
-               val (E',phi) = Environments.ABS (TE2, E)
+               val (S, T, E, out_dec) = elab_dec(C C_plus_VE_and_TE (VE2,TE2), dec)
+               val (T',E',phi) = Environments.ABS (TE2, E)
 		 (* the realisation returned maps abstract type 
 		  * names to type names for the datbind. *)
+	       val out_i = addTypeInfo_ABSTYPE (okConv i, (TE2, phi))
              in
-               (S,E',
-		OG.ABSTYPEdec(addTypeInfo_ABSTYPE (okConv i, (TE2, phi)),
-			      out_datbind, out_dec))
+               (S,T @ T',E',
+		OG.ABSTYPEdec(out_i, out_datbind, out_dec))
              end
 
            (* Exception declaration *)                          (*rule 20*)
@@ -968,7 +973,7 @@ old*)
              let
                val (VE, out_exbind) = elab_exbind (C, exbind)
              in
-               (Substitution.Id,
+               (Substitution.Id, [],
                 E.from_VE VE,
                 OG.EXCEPTIONdec(okConv i, out_exbind))
              end
@@ -976,10 +981,10 @@ old*)
            (* Local declaration *)                              (*rule 21*)
          | IG.LOCALdec(i, dec1, dec2) =>
              let
-               val (S1, E1, out_dec1) = elab_dec(C,dec1)
-               val (S2, E2, out_dec2) = elab_dec((S1 onC C) C_cplus_E E1,dec2)
+               val (S1, T1, E1, out_dec1) = elab_dec(C,dec1)
+               val (S2, T2, E2, out_dec2) = elab_dec((S1 onC C) C_plus_E E1,dec2)
              in
-               (S2 oo S1, E2, OG.LOCALdec(okConv i,out_dec1,out_dec2))
+               (S2 oo S1, T1 @ T2, E2, OG.LOCALdec(okConv i,out_dec1,out_dec2))
              end
 
            (* Open declaration *)                               (*rule 22*)
@@ -1018,36 +1023,36 @@ old*)
 		  in (EqSet.list (SE.dom SE), EqSet.list (TE.dom TE), EqSet.list (VE.dom VE))
 		  end)
              in
-               (Substitution.Id, E', OG.OPENdec(i', list'))
+               (Substitution.Id, [], E', OG.OPENdec(i', list'))
              end
 
          | IG.INFIXdec(i, prec, ids) =>    (* infix -- no rule in Definition *)
-             (Substitution.Id,
+             (Substitution.Id, [],
               E.from_VE VE.empty,
               OG.INFIXdec(okConv i, prec , ids))
 
          | IG.INFIXRdec(i, prec, ids) =>   (* infixr -- no rule in Definition *)
-             (Substitution.Id,
+             (Substitution.Id, [],
               E.from_VE VE.empty,
               OG.INFIXRdec(okConv i, prec, ids))
 
          | IG.NONFIXdec(i, ids) =>         (* nonfix -- no rule in Definition *)
-             (Substitution.Id,
+             (Substitution.Id, [],
               E.from_VE VE.empty,
               OG.NONFIXdec(okConv i, ids))
 
            (* Empty declaration *)                              (*rule 23*)
          | IG.EMPTYdec(i) =>
-             (Substitution.Id, E.from_VE VE.empty, OG.EMPTYdec(okConv i))
+             (Substitution.Id, [], E.from_VE VE.empty, OG.EMPTYdec(okConv i))
 
            (* Sequential declaration *)                         (*rule 24*)
          | IG.SEQdec(i, dec1, dec2) =>
              let
-               val (S1, E1, out_dec1) = elab_dec(C,dec1)
-               val (S2, E2, out_dec2) = elab_dec((S1 onC C) C_cplus_E E1,dec2)
+               val (S1, T1, E1, out_dec1) = elab_dec(C,dec1)
+               val (S2, T2, E2, out_dec2) = elab_dec((S1 onC C) C_plus_E E1,dec2)
                val E1' = E.on (S2, E1)
              in
-               (S2 oo S1,
+               (S2 oo S1, T1 @ T2,
                 E.plus (E1',E2),
                 OG.SEQdec(okConv i,out_dec1,out_dec2)) 
              end)
@@ -1277,6 +1282,8 @@ old*)
 
             val VE'' = S' onVE VE'
 
+	    val out_i = okConv i
+(*old
 	    val out_i = (case TyName.Set.list
 			        (TyName.Set.difference
 				   (VE.tynames VE'') (C.to_T C)) of
@@ -1284,6 +1291,7 @@ old*)
 			 | tynames =>
 			     errorConv
 			       (i,ErrorInfo.DATATYPES_ESCAPE_SCOPE tynames))
+old*)
           in
 	    if !Flags.DEBUG_ELABDEC then
 	      pr ("RECvalbind: ", PP.NODE {start="{", finish="}", indent=0,
@@ -2320,14 +2328,14 @@ end (*fun resolve_overloading (ugly)*)
 
     (****** Elaborate a declaration and resolve overloading ******)
 
-    val elab_dec : (Context * IG.dec) -> (Env * OG.dec) =
+    val elab_dec : (Context * IG.dec) -> (TyName list * Env * OG.dec) =
 
       fn (C, dec) =>
         let
-          val (S, E, out_dec) = elab_dec(C, dec)
+          val (S, T, E, out_dec) = elab_dec(C, dec)
           val dec' = resolve_overloading (S, out_dec)
         in
-          (E, dec')
+          (T, E, dec')
         end
 
 end; 
