@@ -13,7 +13,13 @@ structure ScsSecurity (*:> SCS_SECURITY*) =
 
         leaves the tags
 	  <b>, </b>, <br>, </br>, <em>, </em>, <i>, </i>, <li>, </li>, 
-	  <ol>, </ol>, <p>, </p>, <tt>, </tt>, <ul>, </ul>
+	  <ol>, </ol>, <p>, </p>, <tt>, </tt>, <ul>, </ul>, </a>
+
+	hack to deal with links: 
+	  converts 
+            <a href="   |->  <a target="_blank" href="
+ 	  leaves 
+ 	    "> 
 
         else converts 
           <	|->	&lt;
@@ -66,6 +72,20 @@ structure ScsSecurity (*:> SCS_SECURITY*) =
                         )
 		      | other => ( rest1, other::c::replaceLT )
                       )
+ 		    | NONE => ( rest, c::replaceLT )
+                  )
+		| #"a"  => ( case (Substring.getc rest) of
+  	              SOME(c1,rest1) => ( case c1 of
+		        #" "  => 
+			    if Substring.isPrefix (Quot.toString `href="`) rest1 then
+			      ( Substring.triml 6 rest1, 
+			        ((rev o String.explode o Quot.toString) `target="_blank" href="`) @
+			        (c1::c::stack) )
+			    else 
+			      ( rest1, c1::c::replaceLT )
+		      | #">"  => (rest1, c1::c::stack)
+		      | other => ( rest1, other::c::replaceLT )
+		      )
  		    | NONE => ( rest, c::replaceLT )
                   )
 		| #"i"  => ( case (Substring.getc rest) of
@@ -156,6 +176,7 @@ structure ScsSecurity (*:> SCS_SECURITY*) =
 
                   | NONE => parseHTML rest ( (rev ltList) @ acc )
                 )
+
  	      | #">"  => parseHTML rest ( (#";")::(#"t")::(#"g")::(#"&")::acc )
 	      | #"("  => parseHTML 
 		           rest ( (#";")::(#"0")::(#"4")::(#"#")::(#"&")::acc )
@@ -165,8 +186,22 @@ structure ScsSecurity (*:> SCS_SECURITY*) =
 			   rest ( (#";")::(#"5")::(#"3")::(#"#")::(#"&")::acc )
 	      | #"&"  => parseHTML 
 			   rest ( (#";")::(#"8")::(#"3")::(#"#")::(#"&")::acc )
-	      | #"\""  => parseHTML 
-			   rest ( (#";")::(#"4")::(#"3")::(#"#")::(#"&")::acc )
+	      | #"\""  => ( case (Substring.first rest) of
+                    SOME c1 => 
+		      if c1 = #">" then 
+                        let 
+			  val (c1,rest1)= (valOf o Substring.getc) rest
+			in
+			  parseHTML 
+		            rest1 ( c1::c::acc )
+			end
+		      else 
+		        parseHTML 
+		          rest ( (#";")::(#"4")::(#"3")::(#"#")::(#"&")::acc )
+                  | NONE => 
+		      parseHTML 
+		        rest ( (#";")::(#"4")::(#"3")::(#"#")::(#"&")::acc )
+                )
               | #"\n" => parseHTML rest ( (#">")::(#"r")::(#"b")::(#"<")::acc )
 	      | other => parseHTML rest ( other::acc )
 
