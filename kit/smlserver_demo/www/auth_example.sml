@@ -46,7 +46,7 @@ password protected pages (e.g., <a href="server.sml">server.sml</a> or
        (Int.toString ScsLogin.user_id) ^ " (<a href=\"auth_logout.sml\">logout</a>) "
      else "You are not logged in").<p>
 
-Back to the <a href="index.msp">example</a> page<p>
+Back to the <a href="index.sml">example</a> page<p>
 
 <hr>
 <a href="http://www.smlserver.org/">SMLserver Home Page</a> (<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-07-29

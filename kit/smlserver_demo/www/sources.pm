@@ -1,5 +1,7 @@
 local
   ../lib/Quot.sml
+  ../lib/HTML.sml
+  ../lib/Html.sml
   local
     ../lib/NsBasics.sml
     ../lib/NS_SET.sml
@@ -13,8 +15,10 @@ local
     ../lib/Db.sml
   end
   ../scs_lib/ScsLang.sml
-  ../scs_lib/ScsLogin.sml
   ../scs_lib/ScsDate.sml
+  ../scs_lib/SCS_PAGE.sml
+  ../scs_lib/ScsPage.sml
+  ../scs_lib/ScsLogin.sml
   ../scs_lib/ScsList.sml
   ../scs_lib/ScsDict.sml
   ../lib/MSP.sml

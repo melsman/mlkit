@@ -1,19 +1,11 @@
-val _ = Ns.return (`
-<html> 
-  <head> 
-     <title>SMLserver Examples</title> 
-  </head>
-  <BODY BGCOLOR=white>
-
-  <H1>SMLserver Examples</h1>
-
+val _ = Ns.return (ScsPage.returnPg "SMLserver Examples" (`
   See the <a href=http://www.smlserver.org>SMLserver Home Page</a> for
   SMLserver news and updates.<p>
 
   <h2>Examples</h2>
 
   <TABLE BORDER>
-<TR><TH>Description<TH>Run script
+<TR><TH>Description</TH><TH>Run script</TH></TR>
 ` ^^ 
 let
   fun mkrow (desc, file) = `
@@ -44,21 +36,17 @@ in
 		("Authentication", "auth_example.sml"),
 		("Email Example (password protected, see the <a href=\"auth_example.sml\">authentication</a> example)",
 		 "email_form.sml"),
-		("This index page", "index.msp")])
+		("SMLserver Images", "images/index.html"),
+		("This index page", "index.sml")])
 end ^^ `
 
 </TABLE>
 
 <p>
 Most of the <b>*.msp</b> examples are taken from the <a
-href="http://ellemose.dina.kvl.dk/~sestoft/msp/index.msp">ML Server
+href="http://ellemose.dina.kvl.dk/~sestoft/msp/index.sml">ML Server
 Pages (MSP) homepage</a>. The first MSP implementation used <a
 href="http://www.dina.kvl.dk/~sestoft/mosml.html">Moscow ML</a>.
-
-<P> <hr> <a
-href="http://www.smlserver.org/">SMLserver Home Page</a> (<a
-href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-07-26
-</body>
-</html>`)
+`))
 
 
