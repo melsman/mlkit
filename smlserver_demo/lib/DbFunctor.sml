@@ -1,27 +1,41 @@
-functor DbFunctor (structure DbBasic : NS_DB_BASIC
-		   structure Set : NS_SET
-		   structure Info : NS_INFO) : NS_DB =
+signature NS_DB_BASIC =
+  sig
+    val seqNextvalExp : string -> string  (*construct new-sequence expression*)
+    val seqCurrvalExp : string -> string  (*construct last-used sequence expression*)
+    val fromDual      : string
+    val sysdateExp    : string
+    val beginTrans    : quot
+    val endTrans      : quot
+    val rollback      : quot
+    val fromDate      : Date.date -> string
+    val toTimestampExp: string -> string
+    val timestampType : string
+  end
+
+functor DbFunctor (structure DbBasic : NS_DB_BASIC) : NS_DB =
   struct
     type ns_db = int
-    type set = Set.set
+    type set = NsSet.set
     type status = NsBasics.status
     type quot = string frag list
     fun quotToString (q : quot) : string =
       concat(map (fn QUOTE s => s | ANTIQUOTE s => s) q)
 
-    structure Pool : NS_POOL =
+    structure Pool =
       struct
 	type pool = string
-
+	type db = pool * ns_db
 	local
 	  val pools : pool list ref = ref [] 
 	in
-	  fun initPools (sectionName,key) =
-	    case Info.configGetValue{sectionName=sectionName, key=key} of
+(*
+	  fun initPools {section,key} =
+	    case NsInfo.configGetValue{sectionName=section, key=key} of
 	      SOME ps => pools := (String.tokens (fn ch => ch = #",") ps)
-	    | NONE => raise (Fail ("initPools.no pools specified in file " ^ Info.configFile() ^ 
+	    | NONE => raise (Fail ("initPools.no pools specified in file " ^ NsInfo.configFile() ^ 
 			     "; section " ^ sectionName ^ " and key " ^ key ^ "."))
-	  fun initPoolsL pns = pools := pns
+*)
+	  fun initPools pns = pools := pns
 	  fun putPool pn = pools := pn :: !pools
 	  fun getPool () = 
 	    case !pools of
@@ -36,278 +50,290 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	      sl2s "," (!pools)
 	    end
 	end
+
+	fun poolGetHandle (pool : pool) : db =
+	  let
+	    val h : ns_db = prim("@Ns_DbPoolGetHandle", pool)
+	  in
+	    if h = 0 then raise Fail "poolGetHandle:Can't allocate handle" else (pool,h)
+	  end
+
+	fun poolPutHandle (db : db) : unit =
+	  prim("@Ns_DbPoolPutHandle", #2 db)
       end
 
     type pool = Pool.pool
-    type db = pool * ns_db
+    type db = Pool.db
 
     open DbBasic
 
-    fun init(sectionName, key) = Pool.initPools(sectionName, key)
+    structure Handle : NS_DB_HANDLE =
+      struct
+	structure Pool = Pool
+	type db = Pool.db
 
-    fun poolGetHandle (pool : pool) : db =
-      let
-	val h : ns_db = prim("@Ns_DbPoolGetHandle", pool)
-      in
-	if h = 0 then raise Fail "poolGetHandle:Can't allocate handle" else (pool,h)
-      end
+	fun getHandle () : db = Pool.poolGetHandle(Pool.getPool())
 
-    fun poolPutHandle (db : db) : unit =
-      prim("@Ns_DbPoolPutHandle", #2 db)
+	fun putHandle db : unit = (Pool.poolPutHandle db; Pool.putPool (#1 db))
 
-    fun getHandle () : db = poolGetHandle(Pool.getPool())
+	val initPools = Pool.initPools
 
-    fun putHandle db : unit = (poolPutHandle db; Pool.putPool (#1 db))
-
-    fun wrapDb f =
-      let val db = getHandle()
-      in (f db before putHandle db)
-	handle X => (putHandle db; raise X)
-      end
+	fun wrapDb f =
+	  let val db = getHandle()
+	  in (f db before putHandle db)
+	    handle X => (putHandle db; raise X)
+	  end
       
-    fun dmlDb (db : db) (q: quot) : unit =
-      let
-	val status = prim("@Ns_DbDML", (#2 db, quotToString q))
-      in
-	if status = NsBasics.ERROR then 
-	  raise Fail ("dml: " ^ Quot.toString q ^ " failed") 
-	else ()
-      end
+	fun dmlDb (db : db) (q: quot) : unit =
+	  let
+	    val status = prim("@Ns_DbDML", (#2 db, quotToString q))
+	  in
+	    if status = NsBasics.ERROR then 
+	      raise Fail ("dml: " ^ Quot.toString q ^ " failed") 
+	    else ()
+	  end
 
-    fun dml (q: quot) : unit =
-      let 
-	val db = getHandle()
-      in 
-	(dmlDb db q before putHandle db)
-	handle X => (putHandle db; raise X)
-      end
+	fun panicDmlDb (db:db) (f_panic: quot -> 'a) (q: quot) : unit =
+	  (dmlDb db q handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
 
-    fun maybeDml (q: quot) : unit = ((dml q; ()) handle X => ())
+	fun dmlTransDb (db : db) (f : db -> 'a) : 'a =
+	  let
+	    val _ = dmlDb db DbBasic.beginTrans
+	    val res = f db;
+	  in
+	    dmlDb db DbBasic.endTrans;
+	    res
+	  end handle X => (dmlDb db DbBasic.rollback; raise X)
 
-    fun panicDmlDb (db:db) (f_panic: quot -> 'a) (q: quot) : unit =
-      (dmlDb db q; () handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
+	fun dmlTrans (f: db -> 'a) : 'a =
+	  let 
+	    val db = getHandle()
+	  in
+	    let
+	      val res = dmlTransDb db f
+	    in 
+	      putHandle db;
+	      res
+	    end handle X => (putHandle db; raise X)
+	  end
+    
+	fun panicDmlTransDb (db:db) (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
+	  dmlTransDb db f handle X => (f_panic(`^(General.exnMessage X)`))
+
+	fun panicDmlTrans (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
+	  dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
+
+	fun selectDb (db: db, q: quot) : set =
+	  let 
+	    fun isNull(s : set) : bool = prim("__is_null",s)
+	    val res = prim("@Ns_DbSelect", (#2 db, quotToString q))
+	  in 
+	    if isNull res 
+	      then  
+		let 
+		  val msg = "selectDb: SQL Error"
+		in 
+		  raise Fail msg
+		end
+	    else res
+	  end
+
+	fun getRowDb (db : db, s : set) : status =
+	  prim("@Ns_DbGetRow", (#2 db, s))
+
+	fun foldDb (db:db) (f:(string->string)*'a->'a) (acc:'a) (sql:quot) : 'a =
+	  let 
+	    val s : set = selectDb(db, sql)
+	    fun g n = NsSet.getOpt(s, n, "##")
+	    fun loop (acc:'a) : 'a =
+	      if (getRowDb(db,s) <> NsBasics.END_DATA) then loop (f(g,acc))
+	      else acc
+	  in loop acc
+	  end
+
+	fun foldSetDb (db:db) (f:set*'a->'a) (acc:'a) (sql:quot) : 'a =
+	  let 
+	    val s : set = selectDb(db, sql)
+	    fun loop (acc:'a) : 'a =
+	      if (getRowDb(db,s) <> NsBasics.END_DATA) then loop (f(s,acc))
+	      else acc
+	  in loop acc
+	  end
+
+	fun appDb (db:db) (f:(string->string)->'a) (sql:quot) : unit =
+	  let 
+	    val s : set = selectDb(db, sql)
+	    fun g n = NsSet.getOpt(s, n, "##")
+	    fun loop () : unit =
+	      if (getRowDb(db,s) <> NsBasics.END_DATA) then (f g; loop ())
+	      else ()
+	  in loop ()
+	  end
+
+	fun listDb (db:db) (f:(string->string)->'a) (sql: quot) : 'a list = 
+	  let 
+	    val s : set = selectDb(db, sql)
+	    fun g n = NsSet.getOpt(s, n, "##")
+	    fun loop () : 'a list =
+	      if (getRowDb(db,s) <> NsBasics.END_DATA) then f g :: loop()
+	      else []
+	  in 
+	    loop ()
+	  end
+
+	fun oneFieldDb db sql : string =
+	  let 
+	    val s : set = selectDb(db, sql)
+	    val res =
+	      if getRowDb(db,s) <> NsBasics.END_DATA then
+		if NsSet.size s = 1 then 
+		  case NsSet.value(s,0) of
+		    SOME s => s
+		  | NONE => raise Fail "Db.oneFieldDb.no value in set"
+		else raise Fail "Db.oneFieldDb.size of set not one"
+	      else raise Fail "Db.oneFieldDb.no rows"
+	  in
+	    if getRowDb(db,s) = NsBasics.END_DATA then res 
+	    else raise Fail "oneFieldDb.more than one row"
+	  end
+
+	fun zeroOrOneFieldDb db sql : string option =
+	  let 
+	    val s : set = selectDb(db, sql)
+	  in
+	    if getRowDb(db,s) <> NsBasics.END_DATA then
+	      let 
+		val res = 
+		  if NsSet.size s = 1 then 
+		    NsSet.value(s,0)
+		  else raise Fail "zeroOrOneFieldDb.size of set is not one"
+	      in
+		if getRowDb(db,s) = NsBasics.END_DATA then
+		  res 
+		else raise Fail "zeroOrOneFieldDb.more than one row"
+	      end
+	    else NONE (* OK, no rows *)
+	  end
+	
+	fun oneRowDb db sql  : string list =
+	  let 
+	    val s : set = selectDb(db, sql)
+	    val res =
+	      if getRowDb(db,s) <> NsBasics.END_DATA then
+		NsSet.foldr (fn ((k,v), a) => v :: a) nil s
+	      else raise Fail "Db.oneRowDb.no rows"
+	  in
+	    if getRowDb(db,s) = NsBasics.END_DATA then
+	      res
+	    else raise Fail "oneRowDb.more that one row"
+	  end
+	
+	fun oneRowDb' db (f:(string->string)->'a) (sql:quot) : 'a =
+	  let 
+	    val s : set = selectDb(db, sql)
+	    fun g n = NsSet.getOpt(s, n, "##")
+	    val res =
+	      if getRowDb(db,s) <> NsBasics.END_DATA then
+		f g
+	      else raise Fail "Db.oneRowDb'.no rows"
+	  in
+	    if getRowDb(db,s) = NsBasics.END_DATA then
+	      res
+	    else raise Fail "oneRowDb'.more that one row"
+	  end
+	
+	fun zeroOrOneRowDb db sql : string list option =
+	  let 
+	    val s : set = selectDb(db, sql)
+	  in
+	    if getRowDb(db,s) <> NsBasics.END_DATA then
+	      let 
+		val res = SOME (NsSet.foldr (fn ((k,v), a) => v :: a) nil s)
+	      in
+		if getRowDb(db,s) = NsBasics.END_DATA then
+		  res
+		else raise Fail "zeroOrOneRowDb.more than one row"
+	      end
+	    else NONE (* Ok, no rows *)
+	  end
+
+	fun zeroOrOneRowDb' db f sql : 'a option =
+	  let 
+	    val s : set = selectDb(db, sql)
+	    fun g n = NsSet.getOpt(s, n, "##")
+	  in
+	    if getRowDb(db,s) <> NsBasics.END_DATA then
+	      let 
+		val res = SOME (f g)
+	      in
+		if getRowDb(db,s) = NsBasics.END_DATA then
+		  res
+		else raise Fail "zeroOrOneRowDb'.more than one row"
+	      end
+	    else NONE (* Ok, no rows *)
+	  end
+
+	fun existsOneRowDb db sql : bool =
+	  let val s : set = selectDb(db, sql)
+	  in if getRowDb(db,s) <> NsBasics.END_DATA then true 
+	     else false
+	  end
+
+	fun seqNextvalDb db (seqName:string) : int = 
+	  let val s = oneFieldDb db `select ^(seqNextvalExp seqName) ^fromDual`
+	  in case Int.fromString s of
+	    SOME i => i
+	  | NONE => raise Fail "Db.seqNextval.nextval not an integer"	
+	  end
+
+	fun seqCurrvalDb db (seqName:string) : int = 
+	  let val s = oneFieldDb db `select ^(seqCurrvalExp seqName) ^fromDual`
+	  in case Int.fromString s of
+	    SOME i => i
+	  | NONE => raise Fail "Db.seqCurrval.nextval not an integer"	
+	  end
+
+      end (* structure Handle *)
+
+    fun dml (q: quot) : unit = Handle.wrapDb (fn db => Handle.dmlDb db q)
+
+    fun maybeDml (q: quot) : unit = dml q handle X => ()
 
     fun panicDml (f_panic: quot -> 'a) (q: quot) : unit =
-      ((dml q; ()) handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
-
-    fun dmlTransDb (db : db) (f : db -> 'a) : 'a =
-      let
-	val _ = dmlDb db DbBasic.beginTrans
-	val res = f db;
-      in
-	dmlDb db DbBasic.endTrans;
-	res
-      end handle X => (dmlDb db DbBasic.rollback; raise X)
-
-    fun dmlTrans (f: db -> 'a) : 'a =
-      let 
-	val db = getHandle()
-      in
-	let
-	  val res = dmlTransDb db f
-	in 
-	  putHandle db;
-	  res
-	end handle X => (putHandle db; raise X)
-      end
-
-    fun panicDmlTransDb (db:db) (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
-      dmlTransDb db f handle X => (f_panic(`^(General.exnMessage X)`))
-
-    fun panicDmlTrans (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
-      dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
-
-    fun getCol s n = Set.getOpt(s,n,"##")
-
-    fun getColOpt s n = Set.get(s,n)
-
-    fun selectDb (db: db, q: quot) : Set.set =
-      let 
-	fun isNull(s : Set.set) : bool = prim("__is_null",s)
-	val res = prim("@Ns_DbSelect", (#2 db, quotToString q))
-      in 
-	if isNull res 
-	  then  
-	    let 
-	      val msg = "selectDb: SQL Error"
-	    in 
-	      raise Fail msg
-	    end
-	else res
-      end
-
-    fun getRowDb (db : db, s : Set.set) : status =
-      prim("@Ns_DbGetRow", (#2 db, s))
-
-    fun foldDb (db:db) (f:(string->string)*'a->'a) (acc:'a) (sql:quot) : 'a =
-      let val s : Set.set = selectDb(db, sql)
-	fun g n = Set.getOpt(s, n, "##")
-	fun loop (acc:'a) : 'a =
-	  if (getRowDb(db,s) <> NsBasics.END_DATA) then loop (f(g,acc))
-	  else acc
-      in loop acc
-      end
+      dml q handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ())
 
     fun fold (f:(string->string)*'a->'a) (acc:'a) (sql:quot) : 'a =
-      wrapDb (fn db => foldDb db f acc sql)
+      Handle.wrapDb (fn db => Handle.foldDb db f acc sql)
 
-    fun foldSetDb (db:db) (f:Set.set*'a->'a) (acc:'a) (sql:quot) : 'a =
-      let val s : Set.set = selectDb(db, sql)
-	fun loop (acc:'a) : 'a =
-	  if (getRowDb(db,s) <> NsBasics.END_DATA) then loop (f(s,acc))
-	  else acc
-      in loop acc
-      end
-
-    fun foldSet (f:Set.set*'a -> 'a) (acc:'a) (sql:quot) : 'a =
-
-      wrapDb (fn db => foldSetDb db f acc sql)
-
-    fun appDb (db:db) (f:(string->string)->'a) (sql:quot) : unit =
-      let val s : Set.set = selectDb(db, sql)
-	fun g n = Set.getOpt(s, n, "##")
-	fun loop () : unit =
-	  if (getRowDb(db,s) <> NsBasics.END_DATA) then (f g; loop ())
-	  else ()
-      in loop ()
-      end
+    fun foldSet (f:set*'a -> 'a) (acc:'a) (sql:quot) : 'a =
+      Handle.wrapDb (fn db => Handle.foldSetDb db f acc sql)
 
     fun app (f:(string->string)->'a) (sql:quot) : unit =
-      wrapDb (fn db => appDb db f sql)
-
-    fun listDb (db:db) (f:(string->string)->'a) (sql: quot) : 'a list = 
-      let 
-	val s : Set.set = selectDb(db, sql)
-	fun g n = Set.getOpt(s, n, "##")
-	fun loop () : 'a list =
-	  if (getRowDb(db,s) <> NsBasics.END_DATA) then f g :: loop()
-	  else []
-      in 
-	loop ()
-      end
+      Handle.wrapDb (fn db => Handle.appDb db f sql)
 
     fun list (f:(string->string)->'a) (sql:quot) : 'a list = 
-      wrapDb (fn db => listDb db f sql)
-
-    fun oneFieldDb db sql : string =
-      let 
-	val s : Set.set = selectDb(db, sql)
-	val res =
-	  if getRowDb(db,s) <> NsBasics.END_DATA then
-	    if Set.size s = 1 then 
-	      case Set.value(s,0) of
-		SOME s => s
-	      | NONE => raise Fail "Db.oneFieldDb.no value in set"
-	    else raise Fail "Db.oneFieldDb.size of set not one"
-	  else raise Fail "Db.oneFieldDb.no rows"
-      in
-	if getRowDb(db,s) = NsBasics.END_DATA then 
-	  res 
-	else raise Fail "oneFieldDb.more than one row"
-      end
+      Handle.wrapDb (fn db => Handle.listDb db f sql)
 
     fun oneField (sql : quot) : string = 
-      wrapDb (fn db => oneFieldDb db sql)
-
-    fun zeroOrOneFieldDb db sql : string option =
-      let 
-	val s : Set.set = selectDb(db, sql)
-      in
-	if getRowDb(db,s) <> NsBasics.END_DATA then
-	  let 
-	    val res = 
-	      if Set.size s = 1 then 
-		Set.value(s,0)
-	      else raise Fail "zeroOrOneFieldDb.size of set is not one"
-	  in
-	    if getRowDb(db,s) = NsBasics.END_DATA then
-	      res 
-	    else raise Fail "zeroOrOneFieldDb.more than one row"
-	  end
-	else NONE (* OK, no rows *)
-      end
+      Handle.wrapDb (fn db => Handle.oneFieldDb db sql)
 
     fun zeroOrOneField (sql : quot) : string option =
-      wrapDb (fn db => zeroOrOneFieldDb db sql)
-
-    fun oneRowDb db sql  : string list =
-      let 
-	val s : Set.set = selectDb(db, sql)
-	val res =
-	  if getRowDb(db,s) <> NsBasics.END_DATA then
-	    Set.foldr (fn ((k,v), a) => v :: a) nil s
-	  else raise Fail "Db.oneRowDb.no rows"
-      in
-	if getRowDb(db,s) = NsBasics.END_DATA then
-	  res
-	else raise Fail "oneRowDb.more that one row"
-      end
+      Handle.wrapDb (fn db => Handle.zeroOrOneFieldDb db sql)
 
     fun oneRow sql : string list =
-      wrapDb (fn db => oneRowDb db sql)
-
-    fun oneRowDb' db (f:(string->string)->'a) (sql:quot) : 'a =
-      let 
-	val s : Set.set = selectDb(db, sql)
-	fun g n = Set.getOpt(s, n, "##")
-	val res =
-	  if getRowDb(db,s) <> NsBasics.END_DATA then
-	    f g
-	  else raise Fail "Db.oneRowDb'.no rows"
-      in
-	if getRowDb(db,s) = NsBasics.END_DATA then
-	  res
-	else raise Fail "oneRowDb'.more that one row"
-      end
+      Handle.wrapDb (fn db => Handle.oneRowDb db sql)
 
     fun oneRow' (f:(string->string)->'a) (sql:quot) : 'a = 
-      wrapDb (fn db => oneRowDb' db f sql)
-
-    fun zeroOrOneRowDb db sql : string list option =
-      let 
-	val s : Set.set = selectDb(db, sql)
-      in
-	if getRowDb(db,s) <> NsBasics.END_DATA then
-	  let 
-	    val res = SOME (Set.foldr (fn ((k,v), a) => v :: a) nil s)
-	  in
-	    if getRowDb(db,s) = NsBasics.END_DATA then
-	      res
-	    else raise Fail "zeroOrOneRowDb.more than one row"
-	  end
-	else NONE (* Ok, no rows *)
-      end
+      Handle.wrapDb (fn db => Handle.oneRowDb' db f sql)
 
     fun zeroOrOneRow sql : string list option =
-      wrapDb (fn db => zeroOrOneRowDb db sql)
-
-    fun zeroOrOneRowDb' db f sql : 'a option =
-      let 
-	val s : Set.set = selectDb(db, sql)
-	fun g n = Set.getOpt(s, n, "##")
-      in
-	if getRowDb(db,s) <> NsBasics.END_DATA then
-	  let 
-	    val res = SOME (f g)
-	  in
-	    if getRowDb(db,s) = NsBasics.END_DATA then
-	      res
-	    else raise Fail "zeroOrOneRowDb'.more than one row"
-	  end
-	else NONE (* Ok, no rows *)
-      end
+      Handle.wrapDb (fn db => Handle.zeroOrOneRowDb db sql)
 
     fun zeroOrOneRow' (f:(string->string)->'a) (sql:quot) : 'a option = 
-      wrapDb (fn db => zeroOrOneRowDb' db f sql)
-
-    fun existsOneRowDb db sql : bool =
-      let val s : Set.set = selectDb(db, sql)
-      in 
-	if getRowDb(db,s) <> NsBasics.END_DATA then true else false
-      end
+      Handle.wrapDb (fn db => Handle.zeroOrOneRowDb' db f sql)
 
     fun existsOneRow sql : bool =
-      wrapDb (fn db => existsOneRowDb db sql)
+      Handle.wrapDb (fn db => Handle.existsOneRowDb db sql)
 
     fun qq s =
       let 
@@ -362,25 +388,11 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun valueList vs = String.concatWith "," (List.map qqq vs)
     fun setList vs = String.concatWith "," (List.map (fn (n,v) => n ^ "=" ^ qqq v) vs)
 
-    fun seqNextvalDb db (seqName:string) : int = 
-      let val s = oneFieldDb db `select ^(seqNextvalExp seqName) ^fromDual`
-      in case Int.fromString s of
-	SOME i => i
-      | NONE => raise Fail "Db.seqNextval.nextval not an integer"	
-      end
-
     fun seqNextval (seqName:string) : int = 
-      wrapDb (fn db => seqNextvalDb db seqName)
-
-    fun seqCurrvalDb db (seqName:string) : int = 
-      let val s = oneFieldDb db `select ^(seqCurrvalExp seqName) ^fromDual`
-      in case Int.fromString s of
-	SOME i => i
-      | NONE => raise Fail "Db.seqCurrval.nextval not an integer"	
-      end
+      Handle.wrapDb (fn db => Handle.seqNextvalDb db seqName)
 
     fun seqCurrval (seqName:string) : int = 
-      wrapDb (fn db => seqCurrvalDb db seqName)
+      Handle.wrapDb (fn db => Handle.seqCurrvalDb db seqName)
   end
 
 structure NsDbBasicOra : NS_DB_BASIC =

@@ -310,20 +310,14 @@ structure Ns :> NS =
     val _ = OS.FileSys.chDir (Info.pageRoot())
 
     (* Creating the two supported database interfaces *)
-    structure DbOra = DbFunctor(structure DbBasic = NsDbBasicOra
-				structure Set = Set
-				structure Info = Info)
-    structure DbPg = DbFunctor(structure DbBasic = NsDbBasicPG
-			       structure Set = Set
-			       structure Info = Info)
+    structure DbOra = DbFunctor(structure DbBasic = NsDbBasicOra)
+    structure DbPg = DbFunctor(structure DbBasic = NsDbBasicPG)
     structure DbMySQL : NS_DB = 
       (* We redefine the stucture here because we need a db-handle to
          simulate sequences in MySQL *)
       struct
 	local
-	  structure Db = DbFunctor(structure DbBasic = NsDbBasicMySQL
-				   structure Set = Set
-				   structure Info = Info)
+	  structure Db = DbFunctor(structure DbBasic = NsDbBasicMySQL)
 	in
 	  open Db
 	  (* seqNextval assumes a table simulating the sequence with one auto-increment field:

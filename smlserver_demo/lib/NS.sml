@@ -39,12 +39,9 @@ signature NS = sig
   structure Cache    : NS_CACHE
   structure Info     : NS_INFO
   structure Mail     : NS_MAIL
-  structure DbOra    : NS_DB where type status = status 
-                               and type set    = Set.set
-  structure DbPg     : NS_DB where type status = status 
-                               and type set    = Set.set
-  structure DbMySQL  : NS_DB where type status = status 
-                               and type set    = Set.set
+  structure DbOra    : NS_DB
+  structure DbPg     : NS_DB
+  structure DbMySQL  : NS_DB
 end
 
 (*

@@ -20,26 +20,32 @@ end
 fun ppTestRes [] = ""
   | ppTestRes (x::xs) = x ^ "<br>\n" ^ (ppTestRes xs)
 
+(*
+<h1>Testing the <code>NS_POOL</code> interface</h1>
+
+The following pools are available: <b>^(Db.Handle.Pool.pp())</b>. <p>
+^(ppTestRes poolTest)
+
 (*** Testing Pools ***)
 local
-  val pp = Db.Pool.pp()
-  val pools = Db.Pool.toList()
+  val pp = Db.Handle.Pool.pp()
+  val pools = Db.Handle.Pool.toList()
 in
   val poolTest = 
     [(* fetch all pools *)
-     tstBool "poolA1" (fn () => List.map (fn _ => Db.Pool.getPool ()) pools = pools),
+     tstBool "poolA1" (fn () => List.map (fn _ => Db.Handle.Pool.getPool ()) pools = pools),
      (* there are no more pools *)
-     tstBool "poolA2" (fn () => Db.Pool.toList () = []),
+     tstBool "poolA2" (fn () => Db.Handle.Pool.toList () = []),
      (* fail on fetching yet another pool *)
-     tstFail "poolA3" (fn () => Db.Pool.getPool()),
+     tstFail "poolA3" (fn () => Db.Handle.Pool.getPool()),
      (* put pools back into the set of pools *)
-     tstOk "poolA4" (fn () => List.app Db.Pool.putPool (List.rev pools)),
+     tstOk "poolA4" (fn () => List.app Db.Handle.Pool.putPool (List.rev pools)),
      (* all pools are available again. *)
-     tstBool "poolA5" (fn () => Db.Pool.toList() = pools),
+     tstBool "poolA5" (fn () => Db.Handle.Pool.toList() = pools),
      (* pretty print pools *)
-     tstBool "poolA6" (fn () => Db.Pool.pp() = pp)]
+     tstBool "poolA6" (fn () => Db.Handle.Pool.pp() = pp)]
 end
-
+*)
 (*** Testing dml ***)
 val dmlTest =
   [tstOk "dmlA1" (fn () =>Db.dml `create table db_test ( id int primary key )`),
@@ -112,22 +118,22 @@ val dmlTransTest =
   in
     [tstOk "dmlTransA1" (fn () => Db.dml `create table db_test ( id int primary key )`),
      (* Unique Constraint Violated on key id *)
-     tstFail "dmlTransA2" (fn () => Db.dmlTrans (fn db => 
-						 (Db.dmlDb db `insert into db_test (id) values ('3')`;
-						  Db.dmlDb db `insert into db_test (id) values ('4')`;
-						  Db.dmlDb db `insert into db_test (id) values ('4')`))),
+     tstFail "dmlTransA2" (fn () => Db.Handle.dmlTrans (fn db => 
+						 (Db.Handle.dmlDb db `insert into db_test (id) values ('3')`;
+						  Db.Handle.dmlDb db `insert into db_test (id) values ('4')`;
+						  Db.Handle.dmlDb db `insert into db_test (id) values ('4')`))),
      tstBool "dmlTransA3" (fn () => db_testL() = []),
      (* Ok transaction *)
-     tstOk "dmlTransA4" (fn () => Db.dmlTrans (fn db => 
-					       (Db.dmlDb db `insert into db_test (id) values ('3')`;
-						Db.dmlDb db `insert into db_test (id) values ('4')`;
-						Db.dmlDb db `insert into db_test (id) values ('5')`))),
+     tstOk "dmlTransA4" (fn () => Db.Handle.dmlTrans (fn db => 
+					       (Db.Handle.dmlDb db `insert into db_test (id) values ('3')`;
+						Db.Handle.dmlDb db `insert into db_test (id) values ('4')`;
+						Db.Handle.dmlDb db `insert into db_test (id) values ('5')`))),
      tstBool "dmlTransA5" (fn () => db_testL() = ["3","4","5"]),
      (* Syntax Error - and the previous content is maintained *)
-     tstFail "dmlTransA6" (fn () => Db.dmlTrans (fn db => 
-						 (Db.dmlDb db `delete from db_test`;
-						  Db.dmlDb db `inserte into db_test (id) values ('4')`;
-						  Db.dmlDb db `insert into db_test (id) values ('4')`))),
+     tstFail "dmlTransA6" (fn () => Db.Handle.dmlTrans (fn db => 
+						 (Db.Handle.dmlDb db `delete from db_test`;
+						  Db.Handle.dmlDb db `inserte into db_test (id) values ('4')`;
+						  Db.Handle.dmlDb db `insert into db_test (id) values ('4')`))),
      tstBool "dmlTransA7" (fn () => db_testL() = ["3","4","5"])]
   end
 
@@ -137,28 +143,28 @@ val panicDmlTransTest =
     fun db_testL () = Db.list (fn g => g "id") `select id from db_test order by id`
     val f_count = ref 0
     fun f_panic _ = (f_count := !f_count + 1; true)
-    val panicDml = Db.panicDmlTrans f_panic
+    val panicDml = Db.Handle.panicDmlTrans f_panic
   in
     [tstOk "panicDmlTransA1" (fn () => Db.dml `delete from db_test`),
      (* Unique Constraint Violated on key id *)
      tstBool "panicDmlTransA2" (fn () => panicDml (fn db => 
-						   (Db.dmlDb db `insert into db_test (id) values ('3')`;
-						    Db.dmlDb db `insert into db_test (id) values ('4')`;
-						    Db.dmlDb db `insert into db_test (id) values ('4')`;
+						   (Db.Handle.dmlDb db `insert into db_test (id) values ('3')`;
+						    Db.Handle.dmlDb db `insert into db_test (id) values ('4')`;
+						    Db.Handle.dmlDb db `insert into db_test (id) values ('4')`;
 						    false)) andalso !f_count = 1),
      tstBool "panicDmlTransA3" (fn () => db_testL() = []),
      (* Ok transaction *)
      tstBool "panicDmlTransA4" (fn () => panicDml (fn db => 
-						   (Db.dmlDb db `insert into db_test (id) values ('3')`;
-						    Db.dmlDb db `insert into db_test (id) values ('4')`;
-						    Db.dmlDb db `insert into db_test (id) values ('5')`;
+						   (Db.Handle.dmlDb db `insert into db_test (id) values ('3')`;
+						    Db.Handle.dmlDb db `insert into db_test (id) values ('4')`;
+						    Db.Handle.dmlDb db `insert into db_test (id) values ('5')`;
 						    true)) andalso !f_count = 1),
      tstBool "panicDmlTransA5" (fn () => db_testL() = ["3","4","5"]),
      (* Syntax Error - and the previous content is maintained *)
      tstBool "panicDmlTransA6" (fn () => panicDml (fn db => 
-						   (Db.dmlDb db `delete from db_test`;
-						    Db.dmlDb db `inserte into db_test (id) values ('4')`;
-						    Db.dmlDb db `insert into db_test (id) values ('4')`;
+						   (Db.Handle.dmlDb db `delete from db_test`;
+						    Db.Handle.dmlDb db `inserte into db_test (id) values ('4')`;
+						    Db.Handle.dmlDb db `insert into db_test (id) values ('4')`;
 						    false)) andalso !f_count = 2),
      tstBool "panicDmlTransA7" (fn () => db_testL() = ["3","4","5"])]
   end
@@ -363,11 +369,6 @@ the result is shown below.<p>
 the sections testing <i>sequences</i>, <i>panicDmlTrans</i>, and
 <i>dmlTrans</i> are expected due to the lack of sequences 
 and transactions in MySQL.<p>
-
-<h1>Testing the <code>NS_POOL</code> interface</h1>
-
-The following pools are available: <b>^(Db.Pool.pp())</b>. <p>
-^(ppTestRes poolTest)
 
 <h1>Testing the <code>NS_DB</code> interface</h1>
 
