@@ -3,7 +3,7 @@
 
   val sql = `select name, note 
 	     from employee 
-	     where email = ^(Db.qq' email)`
+	     where email = ^(Db.qqq email)`
 
   val _ =
     case Db.zeroOrOneRow sql of

@@ -24,13 +24,13 @@
     (".+" ^ s ^ t ^ ".+<td>([0-9]+).([0-9]+)</td>.+")
 
   val fetch = Ns.Cache.cacheForAwhile
-    (fn url => 
-     case Ns.fetchUrl url of 
-       NONE => "" 
-     | SOME pg => 
-	 (case RegExp.extract pattern pg of
-	    SOME [rate1, rate2] => rate1^"."^rate2
-	  | _ => ""), "currency", 5*60)
+    (fn url => case Ns.fetchUrl url 
+                 of NONE => "" 
+                  | SOME pg => 
+                   (case RegExp.extract pattern pg 
+                      of SOME [r1,r2] => r1 ^ "." ^ r2
+                       | _ => ""), 
+     "currency", 5*60)
 
   val _ =
     case fetch url of

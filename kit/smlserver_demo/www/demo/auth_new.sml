@@ -9,10 +9,10 @@ val ins =
   `insert into person (person_id, email, 
 		       name, url, password)
    values (^(Db.seqNextvalExp "person_seq"),
-	   ^(Db.qq' email),
-	   ^(Db.qq' name),
-	   ^(Db.qq' url),
-	   ^(Db.qq' passwd))`
+	   ^(Db.qqq email),
+	   ^(Db.qqq name),
+	   ^(Db.qqq url),
+	   ^(Db.qqq passwd))`
 
 val _ = Db.dml ins
   handle _ =>

@@ -2,7 +2,7 @@ structure FV = FormVar
 val email = FV.wrapFail FV.getEmailErr ("email", "Email")
 
 val query = `select person_id from person
-             where email = ^(Db.qq' email)`
+             where email = ^(Db.qqq email)`
 
 val _ = 
   case Db.zeroOrOneField query

@@ -321,8 +321,8 @@ val miscTest =
      tstOk "sysdateExp" (fn () => Db.dml `insert into db_test values (^(Db.sysdateExp))`),
      tstBool "qq" (fn () => Db.qq "hi" = "hi"),
      tstBool "qq" (fn () => Db.qq "'h'i'" = "''h''i''"),
-     tstBool "qq'" (fn () => Db.qq' "hi" = "'hi'"),
-     tstBool "qq'" (fn () => Db.qq' "'h'i'" = "'''h''i'''"),
+     tstBool "qqq" (fn () => Db.qqq "hi" = "'hi'"),
+     tstBool "qqq" (fn () => Db.qqq "'h'i'" = "'''h''i'''"),
      tstOk "fromDate" (fn () => Db.dml `delete from db_test`),
      tstOk "fromDate" (fn () => Db.dml `insert into db_test values (^(Db.fromDate d))`),
      tstBool "toDate" (fn () => 

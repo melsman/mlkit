@@ -20,7 +20,7 @@ val passwd = case FV.wrapOpt FV.getStringErr "passwd"
 val pid =
   case Db.zeroOrOneField `select person_id 
                           from person 
-                          where email = ^(Db.qq' email)` 
+                          where email = ^(Db.qqq email)` 
     of NONE => "0"
      | SOME pid => pid
 
