@@ -388,10 +388,11 @@ functor LexBasics(structure BasicIO: BASIC_IO
       let val {file, line=line1:int,column=column1:int, getLine} = posLfn()
 	  val {line=line2:int, column=column2:int, ...} = posRfn()
 	    
-	    (* If the first character is not a colon then we emit `='. *)
+	    (* If the first character is not `:' or `=' (it shows!!) then we emit `='. *)
 	  fun patch s = case explode s
 			     of [] => Crash.impossible "LexBasics.output_source"
 			      | ":" :: _ => s
+	                      | "=" :: _ => s
 			      | _ => " = " ^ s
 
       in if line1 = line2 then 
