@@ -12,6 +12,9 @@ as
     obj_id in integer default null
   ) return integer;
 
+  function swap_p (
+    p in char
+  ) return char;
 end scs;
 /
 show errors
@@ -33,6 +36,20 @@ as
     end if;
     return v_obj_id;
   end new_obj_id;
+
+  function swap_p (
+    p in char
+  ) return char
+  is
+  begin
+    if swap_p.p = 't' then
+      return 'f';
+    elsif swap_p.p = 'f' then
+      return 't';
+    else
+      raise_application_error(ScsDbExn, 'scs.swap_p. Can''t swap ' || swap_p.p || '.');
+    end if;
+  end swap_p;
 
 end scs;
 /

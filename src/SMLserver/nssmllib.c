@@ -339,3 +339,4 @@ nssml_CacheGet(Region rAddr, Ns_Cache* cache, String key)
   Ns_CacheUnlock(cache);
   return NULL;
 }
+

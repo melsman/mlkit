@@ -5,8 +5,12 @@ signature NS_DB =
 
     (* Data manipulation language *)
     val dml           : quot -> unit
+    val exec          : quot -> unit
     val maybeDml      : quot -> unit
     val panicDml      : (quot -> 'a) -> quot -> unit
+
+    (* Stored Procedure *)
+    val execSp        : quot list -> unit
 
     (* Queries *)
     val fold          : ((string->string)*'a->'a) -> 'a 
