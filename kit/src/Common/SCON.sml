@@ -7,7 +7,9 @@
 signature SCON =    
 sig 
   datatype scon = INTEGER of int
+  		| WORD of int
   		| STRING of string
+  		| CHAR of int
 		| REAL of real
 
   val pr_scon: scon -> string
