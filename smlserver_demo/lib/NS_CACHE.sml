@@ -19,7 +19,7 @@ end
  [cache] abstract type of cache.
 
  [createTm (n, t)] creates a cache, given a cache name n and
- a timeout value t in seconds.
+ a cache timeout value t in seconds.
 
  [createSz (n, sz)] creates a cache, given a cache name n 
  and a maximum cache size sz in bytes.
@@ -29,36 +29,33 @@ end
 
  [findTm (cn,t)] as find, except that the cache with name cn 
  is created if it does not already exist. If the cache is 
- created then t is used as timeout value in seconds.
+ created then t is used as cache timeout value in seconds.
 
  [findSz (cn,s)] as find, except that the cache with name cn 
  is created if it does not already exist. If the cache is 
- created then s is used as size in bytes.
+ created then s is used as cache size in bytes.
 
  [flush c] deletes all entries in cache c.
 
  [set (c,k,v)] associates a key k with a value v in the 
- cache c; overwrites existing entry in cache if entry is 
- present, in which case the function returns `false'. If no 
+ cache c; overwrites existing entry in cache if k is 
+ present, in which case the function returns false. If no 
  previous entry for the key is present in the cache, the 
- function returns `true'.
+ function returns true.
 
  [get (c,k)] returns value associated with key k in cache c; 
  returns NONE if key is not in cache.
 
- [cacheForAwhile (f,cn,t)] given a function f that maps a 
- string to a string, a cache name cn and a timeout value in 
- seconds t, a new function f' is returned. f' is equal to f 
- except that the results are cached and only recalculated 
- when the cached results are older than the timeout value.  
- This function can be used, for instance, to cache fetched 
- HTML pages from the Internet. The timestamp is not renewed 
- when items are accessed. This is not what you get with 
- createTm, and is therefore simulated explicitly (i.e., this 
- is a little slower than cacheWhileUsed).
+ [cacheForAwhile (f,cn,t)] where f is a function, cn is a 
+ cache name, and t a cache timeout value in seconds. Returns
+ a new function f' equal to f except that its results are 
+ cached and only recalculated when the cached results are 
+ older than the timeout value. This function can be used, for 
+ instance, to cache fetched HTML pages from the Internet. The 
+ timestamp is not renewed when items are accessed.
 
  [cacheWhileUsed (f,cn,t)] as casheForAwhile, except that 
  the timestamp is renewed at each access. An item is removed 
  from the cache if t seconds have passed after the last 
- access. This is what you get with createTm. 
+ access.
 *)

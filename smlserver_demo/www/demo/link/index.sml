@@ -36,6 +36,6 @@
   val list = Db.fold layoutRow `` query
 
   val _ =
-    Page.return "Web-sites that use SMLserver"
+    Page.return "Web sites that use SMLserver"
     (loginout ^^ `<ul>` ^^ list ^^ 
-     `<p><li><a href=add_form.sml>Add Web-site</a></ul>`)
+     `<p><li><a href=add_form.sml>Add Web site</a></ul>`)

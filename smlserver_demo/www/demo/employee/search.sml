@@ -28,5 +28,5 @@
          Try a <a href=index.sml>new search?</a>`
     | _ => 
 	 Page.return "Employee Search Failure"
-	 `Use the back-button in your web-browser 
+	 `Use the back-button in your Web browser 
 	 to go back and enter another email address`

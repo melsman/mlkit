@@ -41,9 +41,9 @@ end
  Returns Ns.OK on success and Ns.ERROR on failure.
 
  [returnRedirect loc] sends redirection HTTP response to 
- client, with information that the client should request 
- location loc. Returns Ns.OK on success and Ns.ERROR on 
- failure.
+ client (status code 302), with information that the client 
+ should request location loc. Returns Ns.OK on success and 
+ Ns.ERROR on failure.
 
  [getQuery()] constructs and returns a set representing the 
  query data associated with the connection. It reads the POST 
@@ -89,9 +89,9 @@ end
  connection.
 
  [redirect f] performs an internal redirect, to the file f; 
- i.e., make it appear that the user requested a different URL 
- and then run that request. This form of redirect does not 
- require the running of an additional thread.
+ i.e., makes it appear that the user requested a different 
+ URL and then run that request. This form of redirect does 
+ not require the running of an additional thread.
 
  [server()] returns the name of the server associated with 
  the connection.

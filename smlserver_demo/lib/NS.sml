@@ -56,20 +56,19 @@ end
 
  [Error] something bad occurred.
 
- [Fatal] something extremely bad occurred. The server shuts down after
- logging this message.
+ [Fatal] something extremely bad occurred. The server shuts 
+ down after logging this message.
 
- [Bug] something occurred that implies there 
- is a bug in your code.
+ [Bug] something occurred that implies there is a bug in 
+ your code.
 
- [Debug] if the server is in Debug mode, the 
- message is printed. Debug mode is specified in 
- the [ns/parameters] section of the configuration 
- file. If the server is not in debug mode, the 
- message is not printed.
+ [Debug] if the server is in Debug mode, the message is 
+ printed. Debug mode is specified in the [ns/parameters] 
+ section of the configuration file. If the server is not in 
+ debug mode, the message is not printed.
 
- [log (ls,s)] write the string s to the log file 
- with log severity ls.
+ [log (ls,s)] write the string s to the log file with log 
+ severity ls.
 
  [status] abstract type of status code returned by
  functions.
@@ -82,53 +81,49 @@ end
 
  [quot] type of quotations.
 
- [return q] sends HTML string q to browser with 
- status code 200, including HTTP headers. Returns 
- OK on success and ERROR on failure.
+ [return q] sends string q to browser with status code 
+ 200, adding HTTP headers. Returns OK on success and ERROR 
+ on failure.
  
- [write q] sends string q to browser. Returns 
- OK on success and ERROR on failure.
+ [write q] sends string q to browser. Returns OK on success 
+ and ERROR on failure.
 
  [returnHeaders()] sends HTTP headers to browser.
 
- [returnRedirect loc] sends a redirection HTTP 
- response to location loc. Returns OK on success 
- and ERROR on failure.
+ [returnRedirect loc] sends a redirection HTTP response to 
+ location loc. Returns OK on success and ERROR on failure.
 
- [getMimeType f] guesses the Mime type based on 
- the extension of the filename f. Case is ignored. 
- The return value is of the form "text/html".
+ [getMimeType f] guesses the Mime type based on the 
+ extension of the filename f. Case is ignored. The return 
+ value is of the form "text/html".
 
- [getHostByAddr ip] converts a numeric IP address ip
- into a host name. If no name can be found, NONE is 
- returned. Because the response time of the Domain 
- Name Service can be slow, this function may 
- significantly delay the response to a client.
+ [getHostByAddr ip] converts a numeric IP address ip into a 
+ host name. If no name can be found, NONE is returned. 
+ Because the response time of the Domain Name Service can be 
+ slow, this function may significantly delay the response to 
+ a client.
 
- [encodeUrl s] returns an encoded version of the 
- argument s as URL query data. All characters 
- except the alphanumerics are encoded as specified 
- in RFC1738, Uniform Resource Locators. This 
- function can be used to append arguments to 
+ [encodeUrl s] returns an encoded version of the argument s 
+ as URL query data. All characters except the alphanumerics 
+ are encoded as specified in RFC1738, Uniform Resource 
+ Locators. This function can be used to append arguments to 
  a URL as query data following a `?'.
 
- [decodeUrl s] decodes data s that was encoded as 
- URL query data. The decoded data is returned.
+ [decodeUrl s] decodes data s that was encoded as URL query 
+ data. The decoded data is returned.
 
- [buildUrl u l] constructs a link to the URL u
- with the form variable pairs l appended to u?, 
- delimited by &, and with the form values URL 
- encoded.
+ [buildUrl u l] constructs a link to the URL u with the form 
+ variable pairs l appended to u?, delimited by &, and with 
+ the form values URL encoded.
 
- [fetchUrl u] fetches a remote URL u; connects 
- AOLserver to another HTTP Web server and requests 
- the specified URL. The URL must be fully qualified. 
- Currently, the function cannot handle redirects or 
- requests for any protocol except HTTP. Returns NONE 
- if no page is found.
+ [fetchUrl u] fetches a remote URL u; connects the Web 
+ server to another HTTP Web server and requests the 
+ specified URL. The URL must be fully qualified. Currently, 
+ the function cannot handle redirects or requests for any 
+ protocol except HTTP. Returns NONE if no page is found.
 
  [exit()] terminates the script by raising the exception
- Interrupt, which is silently caught by the SMLserver
- module (other uncaught exceptions are logged in the
- server.log file).
+ Interrupt, which is silently caught by the SMLserver module 
+ (other uncaught exceptions are logged in the server.log 
+ file).
 *)
