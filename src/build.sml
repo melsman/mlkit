@@ -17,11 +17,11 @@ in
 
 	   enable "garbage_collection";
 
-	   (* for testing gc only *)
+(* for testing gc only
 	   disable "region_inference";
 	   K.build_basislib();
 	   enable "region_inference";
-
+*)
 
 	   K.build_basislib();
 
