@@ -32,51 +32,7 @@ signature LVARS =
     type name
     val match : lvar * lvar -> unit
     val name : lvar -> name
-
-(*
-    (* ------------------------------------------------------------------
-     * Compiler-supported primitives; these are only here to allow for
-     * overloading resolution. In fact, I think that we can get rid of
-     * them altogether by resolving overloaded identifiers to
-     * ``ccalls''. Then, the backend can grab those ``ccalls'' and
-     * generate appropriate assembly code instead of calls.
-     * ------------------------------------------------------------------ *)
-
-    val plus_int_lvar : lvar           (* integer operations *)
-    val minus_int_lvar : lvar
-    val mul_int_lvar : lvar
-    val negint_lvar : lvar
-    val absint_lvar : lvar
-    val less_int_lvar : lvar
-    val lesseq_int_lvar : lvar
-    val greater_int_lvar : lvar
-    val greatereq_int_lvar : lvar
-
-    val plus_float_lvar : lvar         (* real operations *)
-    val minus_float_lvar : lvar
-    val mul_float_lvar : lvar
-    val negfloat_lvar : lvar
-    val absfloat_lvar : lvar
-    val less_float_lvar : lvar
-    val greater_float_lvar : lvar
-    val lesseq_float_lvar : lvar
-    val greatereq_float_lvar : lvar
-
-    val wild_card : lvar (* used in LineStmt/SubstAndSimplify *)
-
-    (* For pattern-mathing, we declare a datatype for
-     * compiler-supported primitives and a function 
-     * primitive: lvar -> primitive option *)
-
-    datatype primitive = PLUS_INT | MINUS_INT | MUL_INT | NEG_INT | ABS_INT
-                       | LESS_INT | LESSEQ_INT | GREATER_INT | GREATEREQ_INT
-                       | PLUS_FLOAT | MINUS_FLOAT | MUL_FLOAT | DIV_FLOAT | NEG_FLOAT | ABS_FLOAT
-                       | LESS_FLOAT | LESSEQ_FLOAT | GREATER_FLOAT | GREATEREQ_FLOAT
-
-    val primitive : lvar -> primitive option
-*)
     structure Map : MONO_FINMAP where type dom = lvar
-
 
     (* Special for the KAM machine (Bytecode-machine) *)
     val env_lvar : lvar

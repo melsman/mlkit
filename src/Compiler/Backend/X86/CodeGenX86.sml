@@ -1025,28 +1025,6 @@ struct
 					     * with 2) so adding one cannot give Overflow because the
 					     * largest integer is odd! mael 2001-04-29 *)
        end
-(*
-     fun word32ub_to_word31(x,d,size_ff,C) =
-       let
-	   val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-       in x_C(copy(x_reg, d_reg,
-		   I.imull(I "2", R d_reg) ::
-		   I.addl(I "1", R d_reg) :: C'))
-       end
-
-
-     (* word31_to_word32ub_X: the 31 low-order bits of x and d are the
-      * same, and if bit 31 of x is 1 then bit 32 of d is one, otherwise 
-      * zero. *)
-     fun word31_to_word32ub_X(x,d,size_ff,C) =
-       let
-	   val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-       in x_C(copy(x_reg, d_reg,
-		   I.sarl(I "1", R d_reg) :: C'))
-       end
-*)       
 
      fun bin_float_op_kill_tmp01 finst (x,y,b,d,size_ff,C) =
        let val x_C = push_float_aty(x, tmp_reg0, size_ff)
@@ -1156,22 +1134,22 @@ struct
 	   store_indexed(d_reg,WORDS 0, tmp_reg1,C')))))))))
 	 end
 
-     fun addw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
+     fun addw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
        bin_op_w32boxed__ {ovf=false} I.addl (r,x,y,d,size_ff,C)
 
-     fun subw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
+     fun subw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
        bin_op_w32boxed__ {ovf=false} I.subl (r,y,x,d,size_ff,C) (* x and y swapped, see spec for subl *)
 
-     fun mulw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
+     fun mulw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
        bin_op_w32boxed__ {ovf=false} I.imull (r,x,y,d,size_ff,C)
 
-     fun orw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
+     fun orw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
        bin_op_w32boxed__ {ovf=false} I.orl (r,x,y,d,size_ff,C)
 
-     fun andw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
+     fun andw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
        bin_op_w32boxed__ {ovf=false} I.andl (r,x,y,d,size_ff,C)
 
-     fun xorw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32Boxed.sml *)
+     fun xorw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
        bin_op_w32boxed__ {ovf=false} I.xorl (r,x,y,d,size_ff,C)
 
      fun mul_int32b (b,x,y,d,size_ff,C) =
@@ -1215,38 +1193,6 @@ struct
 	   load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg0,
 	   store_indexed(d_reg, WORDS 0, tmp_reg0, C')))))))
 	 end
-       
-(*
-     fun toIntw32boxed__ (x,d,size_ff,C) =
-       let 
-	 val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
-	 val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-       in 
-	 if BI.tag_integers() then
-	   (load_indexed(d_reg,x_reg,WORDS 1,
-	    I.sall (I "1", R d_reg) :: (* d_reg = 2*d_reg+1 *)
-   	    I.incl (R d_reg) :: C'))
-	 else
-	   load_indexed(d_reg,x_reg,WORDS 0,C')
-       end
-
-     fun fromIntw32boxed__ (r,x,d,size_ff,C) =   (* we tag a boxed word as a scalar record *)
-       let 
-	 val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-       in
-	 move_aty_into_reg(r,d_reg,size_ff,
-	 if BI.tag_integers() then
-	   load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg0,
-	   store_indexed(d_reg,WORDS 0,tmp_reg0,
-	   move_aty_into_reg(x,tmp_reg1,size_ff,
-	   I.shrl(I "1", R tmp_reg1) :: 
-	   store_indexed(d_reg,WORDS 1,tmp_reg1,C'))))
-	 else
-	   move_aty_into_reg(x,tmp_reg1,size_ff,
-	   store_indexed(d_reg,WORDS 0,tmp_reg1,C')))
-       end	 
-*)
-
 
      fun shift_w32boxed__ inst (r,x,y,d,size_ff,C) = 
        if not(BI.tag_integers()) then die "shift_w32boxed__.tagging is not enabled as required"
@@ -1268,13 +1214,13 @@ struct
 	 store_indexed(d_reg,WORDS 0, tmp_reg1, C'))))))))
        end
 
-     fun shift_leftw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+     fun shift_leftw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32.sml *)
        shift_w32boxed__ I.sall (r,x,y,d,size_ff,C)
 
-     fun shift_right_signedw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+     fun shift_right_signedw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32.sml *)
        shift_w32boxed__ I.sarl (r,x,y,d,size_ff,C)
 
-     fun shift_right_unsignedw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+     fun shift_right_unsignedw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32.sml *)
        shift_w32boxed__ I.shrl (r,x,y,d,size_ff,C)
 
      fun shift_left_word_kill_tmp01 {tag} (x,y,d,size_ff,C) =  (*tmp_reg0 = %ecx*)
@@ -1726,18 +1672,6 @@ struct
 		    val (spilled_args,spilled_res,return_lab_offset) = 
 		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=reg_args,reg_vec=reg_vec,res=res}
 		    val size_rcf = List.length spilled_res
-(*
-val size_ccf = length spilled_args (* 2001-01-08, Niels debug *)
-val size_cc = size_rcf+size_ccf+1  (* 2001-01-08, Niels debug *)
-val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^ 
-				 (Int.toString size_rcf) ^ ".") else () (* 2001-01-08, Niels debug *)*)
-
-(*
-		    val _ = if size_ccf > 0 then
-			      print ("** FUNCALL to " ^ Labels.pr_label opr ^ " with " ^ 
-				     Int.toString size_ccf ^ " args on the stack\n")
-			    else ()
-*)
 		    val return_lab = new_local_lab "return_from_app"
 		    fun flush_args C =
 		      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C (spilled_args)
@@ -2128,10 +2062,7 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 		      | ("__word32b_to_int31",[x],[d]) => num32_to_num31 {boxedarg=true,ovf=true} (x,d,size_ff,C)
 		      | ("__int32b_to_word31",[x],[d]) => num32_to_num31 {boxedarg=true,ovf=false} (x,d,size_ff,C)
 		      | ("__word32b_to_int31_X", [x],[d]) => num32_to_num31 {boxedarg=true,ovf=true} (x,d,size_ff,C)
-(*
-		      | ("toIntw32boxed__",[x],[d]) => toIntw32boxed__ (x,d,size_ff,C)
-		      | ("fromIntw32boxed__",[r,x],[d]) => fromIntw32boxed__ (r,x,d,size_ff,C)
-*)
+
 		      | ("__fresh_exname",[],[aty]) =>
 		       I.movl(L exn_counter_lab, R tmp_reg0) ::
 		       move_reg_into_aty(tmp_reg0,aty,size_ff,

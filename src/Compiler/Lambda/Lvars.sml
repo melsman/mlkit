@@ -13,40 +13,23 @@ functor Lvars(structure Name : NAME
      * successfully matched, eq(lv1,lv2) = true. This may affect the
      * canonical ordering of lambda variables. *)
 
-    (* For pattern-mathing, we declare a datatype for
-     * compiler-supported primitives and a function 
-     * primitive: lvar -> primitive option *)
-
-    datatype primitive = PLUS_INT | MINUS_INT | MUL_INT | NEG_INT | ABS_INT
-                       | LESS_INT | LESSEQ_INT | GREATER_INT | GREATEREQ_INT
-                       | PLUS_FLOAT | MINUS_FLOAT | MUL_FLOAT | DIV_FLOAT | NEG_FLOAT | ABS_FLOAT
-                       | LESS_FLOAT | LESSEQ_FLOAT | GREATER_FLOAT | GREATEREQ_FLOAT
-
     type name = Name.name
 
     type lvar = {name : name,
 		 str : string,
 		 free : bool ref,
 		 inserted : bool ref,
-		 use : int ref,
-		 prim : primitive option}
+		 use : int ref  (* ,
+		 prim : primitive option *) }
 
     fun new_named_lvar(str : string) : lvar = {name=Name.new(),
 					       str=str,
 					       free=ref false,
 					       inserted=ref false,
-					       use=ref 0,
-					       prim=NONE}
+					       use=ref 0 (* ,
+					       prim=NONE *) }
 
     fun newLvar() : lvar = new_named_lvar ""
-
-    fun new_prim(str,prim) : lvar = {name=Name.new(),
-				     str=str,
-				     free=ref false,
-				     inserted=ref false,
-				     use=ref 0,
-				     prim=SOME prim}
-
 
     fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.toString (Name.key name)
       | pr_lvar {str,...} = str
@@ -70,37 +53,6 @@ functor Lvars(structure Name : NAME
     fun one_use lv = !(usage lv) = 1
 
     fun match(lv1,lv2) = Name.match(name lv1,name lv2)
-
-    (* ------------------------------------ 
-     * Compiler-supported primitives
-     * ------------------------------------ *)
-
-    val plus_int_lvar: lvar = new_prim("plus_int", PLUS_INT)         (* integer operations *)
-    val minus_int_lvar: lvar = new_prim("minus_int", MINUS_INT)
-    val mul_int_lvar: lvar = new_prim("mul_int", MUL_INT)
-    val negint_lvar: lvar = new_prim("neg_int", NEG_INT)
-    val absint_lvar: lvar = new_prim("abs_int", ABS_INT)
-    val less_int_lvar: lvar = new_prim("less_int", LESS_INT)
-    val lesseq_int_lvar: lvar = new_prim("lesseq_int", LESSEQ_INT)
-    val greater_int_lvar: lvar = new_prim("greater_int", GREATER_INT)
-    val greatereq_int_lvar: lvar = new_prim("greatereq_int", GREATEREQ_INT)
-
-    val plus_float_lvar: lvar = new_prim("plus_float", PLUS_FLOAT)         (* real operations *)
-    val minus_float_lvar: lvar = new_prim("minus_float", MINUS_FLOAT)
-    val mul_float_lvar: lvar = new_prim("mul_float", MUL_FLOAT)
-    val div_float_lvar: lvar = new_prim("div_float", DIV_FLOAT)
-    val negfloat_lvar: lvar = new_prim("neg_float", NEG_FLOAT)
-    val absfloat_lvar: lvar = new_prim("abs_float", ABS_FLOAT)
-    val less_float_lvar: lvar = new_prim("less_float", LESS_FLOAT)
-    val lesseq_float_lvar: lvar = new_prim("lesseq_float", LESSEQ_FLOAT)
-    val greater_float_lvar: lvar = new_prim("greater_float", GREATER_FLOAT)
-    val greatereq_float_lvar: lvar = new_prim("greatereq_float", GREATEREQ_FLOAT)
-
-    val wild_card : lvar (* used in LineStmt/SubstAndSimplify *)
-      = newLvar()
-
-    fun primitive ({prim,...}: lvar) : primitive option = prim
-
     fun is_free ({free,...} : lvar) = free
     fun is_inserted ({inserted,...} : lvar) = inserted
 
