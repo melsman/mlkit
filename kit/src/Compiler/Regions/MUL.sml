@@ -110,6 +110,7 @@ sig
 
       type dependency_map                                                   
       val empty_dep : dependency_map                                        
+      val reset_dep : unit -> unit
       val lookup_dep: dependency_map * effectvar -> shared list                 
       val add_dependency: dependency_map * effectvar * shared -> dependency_map 
       val add_dependencies: dependency_map * shared * Effect.effect list -> dependency_map

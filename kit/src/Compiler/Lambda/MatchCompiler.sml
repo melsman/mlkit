@@ -59,6 +59,7 @@ functor MatchCompiler(structure SCon: SCON
 		   structure Ident = Ident
                    structure SCon = SCon
                    structure AndOrTree = AndOrTree
+                   structure TypeInfo = ElabInfo.TypeInfo
                    structure FinMap = FinMap
                    structure PP = PrettyPrint
                    structure Crash = Crash

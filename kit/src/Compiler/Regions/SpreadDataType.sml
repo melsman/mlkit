@@ -335,7 +335,7 @@ struct
 
       val (common_place,cone) = Effect.freshRhoWithTy(Effect.TOP_RT, cone)
 
-   (*mads*)   val _ = output(std_out,PP.flatten(PP.format(80,layout_arity(mk_concrete( common_arity)))))
+   (*mads   val _ = output(std_out,PP.flatten(PP.format(80,layout_arity(mk_concrete( common_arity)))))*)
 
       val (fresh_aux_rhos,cone) = fresh_list(Effect.freshRho,length(#2 common_arity),cone) 
       val l = map (fn (rt,rho) => (Effect.setRunType rho rt; (rt,rho)))

@@ -49,7 +49,7 @@ functor DropRegions(structure ExCon: EXCON
     * Various functions
     * ----------------------------------------------------------------- *)
 
-    fun rt_place place = case Eff.get_place_ty place
+    fun rt_place place = case Eff.get_place_ty (Eff.find place)
 			   of Some rt => rt
 			    | None => die "rt_place"
 
@@ -63,7 +63,7 @@ functor DropRegions(structure ExCon: EXCON
       | pr_rt Eff.TOP_RT = "top"
 
     fun bot_region place = case rt_place place of Eff.BOT_RT => true | _ => false
-    fun word_region place = case Eff.get_place_ty place
+    fun word_region place = case Eff.get_place_ty (Eff.find place)
 			      of Some rt => Eff.is_wordsize rt
 			       | None => die "word_region"
     fun word_or_bot_region place = case rt_place place
@@ -83,10 +83,10 @@ functor DropRegions(structure ExCon: EXCON
 
 									         (******************)
     local val bucket : place list ref = ref []                                   (* Visited fields *)
-    in fun unvisit place = Eff.get_visited place := false		         (******************)
+    in fun unvisit place = Eff.get_visited(Eff.find place) := false              (******************)
        fun reset_bucket () = (List.apply unvisit (!bucket); bucket := [])
-       fun visit place = (Eff.get_visited place := true; bucket := (place :: !bucket))
-       fun is_visited place = !(Eff.get_visited place)
+       fun visit place = (Eff.get_visited(Eff.find  place) := true; bucket := (place :: !bucket))
+       fun is_visited place = !(Eff.get_visited(Eff.find  place))
     end
 
 
@@ -95,9 +95,13 @@ functor DropRegions(structure ExCon: EXCON
     fun drop_places(places, arreffs) =         (*************************)
       let                                      (* a rho is marked if it *)
 	                              	       (* should NOT be dropped *)
-	fun visit_put_rhos [] = ()             (*************************)
+                                               (*************************)
+        val places = map Eff.find places
+        val arreffs= map Eff.find arreffs
+	fun visit_put_rhos [] = () 
+
 	  | visit_put_rhos (arreff::arreffs) =
-	  let fun visit_eval_effect effect = if Eff.is_put effect then visit(Eff.rho_of effect) else ()
+	  let fun visit_eval_effect effect = if Eff.is_put(Eff.find effect) then visit(Eff.rho_of(Eff.find effect)) else ()
 	      val _ = List.apply visit_eval_effect (Eff.represents arreff)
 	  in visit_put_rhos arreffs
 	  end
@@ -178,7 +182,8 @@ functor DropRegions(structure ExCon: EXCON
     fun layout_regenv_res DROP = PP.LEAF "drop"
       | layout_regenv_res KEEP = PP.LEAF "keep"
     val layout_regenv = FinMapEq.layoutMap 
-           {start="Environment for region variables in DropRegions:(",finish=")",eq=" -> ",sep=", "} Eff.layout_effect layout_regenv_res
+           {start="Environment for region variables in DropRegions:(",finish=")",
+            eq=" -> ",sep=", "} Eff.layout_effect layout_regenv_res
 
 
    (* -----------------------------------------------------------------
@@ -515,7 +520,8 @@ functor DropRegions(structure ExCon: EXCON
 		   val _ = export_env := lvar_env'
 		 in (e, acc)
 		 end
-           ) handle  Crash.CRASH => 
+           ) handle  AbortExpression => raise AbortExpression
+                  | _  => 
                            (log "\nDropRegions failed at expression:";
                             dump(AtInf.layout_exp_brief e);
                             raise AbortExpression)

@@ -1134,14 +1134,20 @@ functor OptLambda(structure Lvars: LVARS
 	  | LET{pat,bind,scope} => 
 	      (case pat
 		 of [(lvar,tyvars,Type)] =>
-	          if tyvars = [] orelse is_fn_or_var bind then 
+	          if null(tyvars)  then 
 		    LET{pat=pat,bind=f env bind, scope=f (add_lv(lvar,IGNORE,env)) scope}
-		  else let val Type' = ARROWtype([unit_Type], [Type])
-			   val pat' = [(lvar,tyvars,Type')]
-			   val bind' = FN{pat=[(Lvars.newLvar(),unit_Type)],body=f env bind}
-			   val scope' = f (LvarMap.add(lvar,DELAY_SIMPLE,env)) scope
-		       in LET{pat=pat',bind=bind',scope=scope'}
-		       end
+		  else (case bind of
+                          FN _ => (* already a lambda abstraction; make no new abstraction *)
+                            LET{pat=pat,bind=f env bind, scope=f (add_lv(lvar,IGNORE,env)) scope} 
+                        | non_expansive_bind => 
+                            (* make lambda abstraction *)
+                            let val Type' = ARROWtype([unit_Type], [Type])
+                                     val pat' = [(lvar,tyvars,Type')]
+                                     val bind' = FN{pat=[(Lvars.newLvar(),unit_Type)],body=f env bind}
+                                     val scope' = f (LvarMap.add(lvar,DELAY_SIMPLE,env)) scope
+                            in LET{pat=pat',bind=bind',scope=scope'}
+                            end
+                          )
 		  | _ => die "functionalise_let. non-trivial patterns unimplemented.") 
 	  | FIX{functions,scope} =>
 		 let val functions' = map (fn {lvar,tyvars,Type,bind} => 
