@@ -8008,11 +8008,10 @@ This appendix shows the output of executing \boxml{kit -help}, where
 native backend. The options are slightly different for the version of
 the ML Kit compiler that uses the bytecode backend.
 
-{\small 
 \begin{verbatim}
-ML Kit version 4.0a, Feb 13, 2001 [X86 Backend]
+ML Kit version 4.0a, Feb 15, 2001 [X86 Backend]
 
-Usage: kit [OPTION]... [file.sml | file.sig | file.pm]
+Usage: mlkit [OPTION]... [file.sml | file.sig | file.pm]
 
 Options:
 
@@ -8028,56 +8027,57 @@ Options:
 -help
      Print help information and exit.
 
---all_multiplicities_infinite                                       (off)
+--all_multiplicities_infinite                             (off)
      Use only infinite regions. That is, store all values in
-     infinite regions, which do not reside on the stack, but in
-     the heap. With this flag disabled, all regions that can be
-     inferred that values are allocated in them at most once are
-     allocated on the stack.
+     infinite regions, which do not reside on the stack, but
+     in the heap. With this flag disabled, all regions that
+     can be inferred that values are allocated in them at
+     most once are allocated on the stack.
 
---chat                                                              (off)
+--chat                                                    (off)
      Print a message for each compilation step in the compiler.
 
---clibs S                                                         ("-lm")
+--clibs S                                               ("-lm")
      If you have added your own object files to a project, you
      might also need to link with libraries other than
      libm.so ("-lm").
 
---colwidth N                                                        (200)
+--colwidth N                                              (200)
      Column width used when pretty printing intermediate code.
 
---comments_in_x86_asmcode                                           (off)
+--comments_in_x86_asmcode                                 (off)
      Insert comments in x86 assembler code.
 
---compiler_timings, -timings                                        (off)
+--compiler_timings, -timings                              (off)
      Show compiler timings for each compilation phase.
 
---contract                                                           (on)
+--contract                                                 (on)
      Contract is responsible for in-lining, specialization,
-     elimination of dead code, and much else (Lambda Expression
-     Optimiser).
+     elimination of dead code, and much else (Lambda
+     Expression Optimiser).
 
 --no_contract
      Opposite of --contract.
 
---debug_compiler                                                    (off)
+--debug_compiler                                          (off)
      Print intermediate forms of a program during compilation.
 
---debug_linking                                                     (off)
-     Debug linking of target code by showing which object files
-     are linked together.
+--debug_linking                                           (off)
+     Debug linking of target code by showing which object
+     files are linked together.
 
---debug_man_enrich                                                  (off)
-     During interactive use, show information about why a program
-     unit need be recompiled. In the ML Kit, a program unit (or a
-     functor body) is recompiled if either (a) the program unit is
-     modified, or (b) information about an identifier for which the
-     program unit depends upon has changed.
+--debug_man_enrich                                        (off)
+     During interactive use, show information about why a
+     program unit need be recompiled. In the ML Kit, a
+     program unit (or a functor body) is recompiled if
+     either (a) the program unit is modified, or (b)
+     information about an identifier for which the program
+     unit depends upon has changed.
 
---debug_which_at                                                    (off)
+--debug_which_at                                          (off)
      Debug storage mode analysis.
 
---delete_target_files                                                (on)
+--delete_target_files                                      (on)
      Delete assembler files produced by the compiler. If you
      disable this flag, you can inspect the assembler code
      produced by the compiler.
@@ -8085,11 +8085,11 @@ Options:
 --no_delete_target_files
      Opposite of --delete_target_files.
 
---disable_atbot_analysis                                            (off)
-     Disable storage mode analysis. That is, turn all allocation
-     directives into attop.
+--disable_atbot_analysis                                  (off)
+     Disable storage mode analysis. That is, turn all
+     allocation directives into attop.
 
---eliminate_explicit_records                                         (on)
+--eliminate_explicit_records                               (on)
      Eliminate bindings of explicit records only used for
      selections. Transform
            let r = (e1,...,en) in ... #i r .. #j r ...
@@ -8100,94 +8100,99 @@ Options:
 --no_eliminate_explicit_records
      Opposite of --eliminate_explicit_records.
 
---fix_conversion                                                     (on)
+--fix_conversion                                           (on)
      Convert   let x = e' in e   to   fix x = e' in e
-     when e' is a lambda abstraction, in order to avoid building
-     of closures in order to increase region polymorphism
-     (Lambda Expression Optimiser).
+     when e' is a lambda abstraction, in order to avoid
+     building of closures in order to increase region
+     polymorphism (Lambda Expression Optimiser).
 
 --no_fix_conversion
      Opposite of --fix_conversion.
 
---garbage_collection, -gc                                           (off)
+--garbage_collection, -gc                                 (off)
      Enable garbage collection. When enabled, regions are
      garbage collected during execution of the program. When
      garbage collection is enabled, all values are tagged. Due
-     to region inference, for most programs, the garbage collector
-     is invoked less often than for systems based only on garbage
-     collection.
+     to region inference, for most programs, the garbage
+     collector is invoked less often than for systems based
+     only on garbage collection.
 
 --no_garbage_collection, -no_gc
      Opposite of --garbage_collection, -gc.
 
---import_basislib, -basislib                                         (on)
-     Import Basis Library automatically in your projects. If you wish
-     to make use of the Standard ML Basis Library in your projects, this
-     option should be turned on, unless you wish to import the Basis
-     Library manually in your projects.
+--import_basislib, -basislib                               (on)
+     Import Basis Library automatically in your projects. If 
+     you wish to make use of the Standard ML Basis Library
+     in your projects, this option should be turned on, unless
+     you wish to import the Basis Library manually in your
+     projects.
 
 --no_import_basislib, -no_basislib
      Opposite of --import_basislib, -basislib.
 
---install_dir S                                  ("/home/mael/mlkit/kit")
+--install_dir S                        ("/home/mael/mlkit/kit")
      Installation directory for the ML Kit. For normal
-     execution you should not modify this value. However, if you
-     wish to use the ML Kit with an altered runtime system and you
-     do not wish to exchange the .o-files in the bin-subdirectory (for
-     example because you are running the ML Kit on a shared system),
-     you can update this setting and the system will try to link to
-     a runtime system in the bin-subdirectory found in the new install
+     execution you should not modify this value. However,
+     if you wish to use the ML Kit with an altered runtime
+     system and you do not wish to exchange the .o-files in
+     the bin-subdirectory (for example because you are running
+     the ML Kit on a shared system), you can update this
+     setting and the system will try to link to a runtime
+     system in the bin-subdirectory found in the new install
      directory.
 
---keep_functor_bodies_in_memory                                     (off)
-     With this flag enabled, functor bodies are kept in memory,
-     for the compilation of future applications of the functors. Keeping
-     functor bodies in memory causes the memory consumptions of the
-     compiler to grow dramatically. With the flag disabled (which is the
-     default), the compiler writes the functor body to disk and reloads
-     (and reelaborates) the functor body for each application.
-     Reelaboration is necessary because the compiler uses type
-     information in many of its backend phases.
+--keep_functor_bodies_in_memory                           (off)
+     With this flag enabled, functor bodies are kept in
+     memory, for the compilation of future applications of
+     the functors. Keeping functor bodies in memory causes
+     the memory consumptions of the compiler to grow
+     dramatically. With the flag disabled (which is the
+     default), the compiler writes the functor body to disk
+     and reparses and reelaborates the functor body for each
+     application. Reelaboration is necessary because the
+     compiler uses type information in many of its backend
+     phases.
 
---log_to_file                                                       (off)
+--log_to_file                                             (off)
      Log to files instead of stdout.
 
---maximum_inline_size N                                              (20)
+--maximum_inline_size N                                    (20)
      Functions smaller than this size (counted in abstract
-     syntax tree nodes) are in-lines, even if they are used more
-     than once. Functions that are used only once are always
-     in-lined.
+     syntax tree nodes) are in-lines, even if they are used
+     more than once. Functions that are used only once are
+     always in-lined.
 
---maximum_specialise_size N                                         (200)
+--maximum_specialise_size N                               (200)
      Curried functions smaller than this size (counted in
      abstract syntax tree nodes) are specialised if all
      applications of the function within its own body are
-     applied to its formal argument, even if they are used more
-     than once. Functions that are used only once are specialised
-     no matter their size. See also the option
+     applied to its formal argument, even if they are used
+     more than once. Functions that are used only once are
+     specialised no matter their size. See also the option
      --specialize_recursive_functions.
 
---minimize_fixs                                                      (on)
+--minimize_fixs                                            (on)
      Minimize fix constructs (Lambda Expression Optimiser).
 
 --no_minimize_fixs
      Opposite of --minimize_fixs.
 
---optimiser, -opt                                                    (on)
-     Enable optimisation of intermediate language code (Lambda
-     Expressions). Which optimisations are performed is controlled
-     by individual flags. The optimisations include function in-
-     lining, function specialisation, fix-minimization, unboxing
-     of function arguments, and elimination of explicit records.
+--optimiser, -opt                                          (on)
+     Enable optimisation of intermediate language code
+     (Lambda Expressions). Which optimisations are performed
+     is controlled by individual flags. The optimisations
+     include function in-lining, function specialisation,
+     fix-minimization, unboxing of function arguments, and
+     elimination of unnecessary record constructions.
 
 --no_optimiser, -no_opt
      Opposite of --optimiser, -opt.
 
---print_K_normal_forms                                              (off)
+--print_K_normal_forms                                    (off)
      Print Region Expressions in K-Normal Form. Applicable,
      only after storage mode analysis has been applied.
 
---print_all_program_points                                           (on)
+--print_all_program_points                                 (on)
      Print all program points when printing physical size
      inference expressions. Use the menu item
      ``print program points'' to print only some program
@@ -8196,64 +8201,63 @@ Options:
 --no_print_all_program_points
      Opposite of --print_all_program_points.
 
---print_attop_atbot_expression                                      (off)
+--print_attop_atbot_expression                            (off)
      Print Region Expression after storage mode analysis
 
---print_calc_offset_program                                         (off)
+--print_calc_offset_program                               (off)
 
---print_call_explicit_expression                                    (off)
+--print_call_explicit_expression                          (off)
      Print Region Expression with call annotations.
 
---print_clos_conv_program                                           (off)
+--print_clos_conv_program                                 (off)
      Print Region Expression after closure conversion.
 
---print_drop_regions_expression                                     (off)
+--print_drop_regions_expression                           (off)
      Print Region Expression after dropping word regions and
      regions arguments with only get-effects.
 
---print_drop_regions_expression_with_storage_modes                  (off)
+--print_drop_regions_expression_with_storage_modes        (off)
      Print Region Expression after dropping word regions and
      regions arguments with only get-effects. Also print
      atbot and attop annotations resulting from storage mode
      analysis.
 
---print_effects                                                     (off)
+--print_effects                                           (off)
      Print effects in region types.
 
---print_fetch_and_flush_program                                     (off)
+--print_fetch_and_flush_program                           (off)
      Print program with instructions for activation
      record fetching and flushing.
 
---print_lift_conv_program                                           (off)
+--print_lift_conv_program                                 (off)
      Print Region Expression after lifting. Used for the
      compilation into byte code (KAM).
 
---print_linearised_program                                          (off)
+--print_linearised_program                                (off)
 
---print_normalized_program                                          (off)
+--print_normalized_program                                (off)
      Print Region Expression after K-normalisation.
 
---print_opt_lambda_expression                                       (off)
+--print_opt_lambda_expression                             (off)
      Print Lambda Expression after optimisation.
 
---print_physical_size_inference_expression                          (off)
+--print_physical_size_inference_expression                (off)
      Print Region Expression after physical size inference.
 
---print_regions                                                      (on)
-     Print regions in types and expressions? Is this what this
-     flag does?
+--print_regions                                            (on)
+     Print region variables in types and expressions.
 
 --no_print_regions
      Opposite of --print_regions.
 
---print_register_allocated_program                                  (off)
+--print_register_allocated_program                        (off)
 
---print_rho_levels                                                  (off)
+--print_rho_levels                                        (off)
      Print levels of region and effect variables in types and
-     intermediate forms. Levels control quantification of region
-     and effect variables.
+     intermediate forms. Levels control quantification of
+     region and effect variables.
 
---print_rho_types                                                   (off)
+--print_rho_types                                         (off)
      Print region types of region variables in types and
      intermediate forms. Possible region types are:
          w   type of regions containing only word values; these
@@ -8261,33 +8265,33 @@ Options:
              values are represented unboxed.
          r   type of regions containing only reals.
          s   type of regions containing only strings.
-         t   type of regions not containing word values, reals, or
-             strings.
+         t   type of regions not containing word values, reals,
+             or strings.
 
---print_simplified_program                                          (off)
+--print_simplified_program                                (off)
      Print simplified program after register
      allocation.
 
---print_type_name_stamps                                            (off)
+--print_type_name_stamps                                  (off)
      Print type name stamps and their attributes in types
      and expressions.
 
---print_types                                                       (off)
+--print_types                                             (off)
      Print types when printing intermediate forms. For Lambda
      Expressions, ordinary ML types are printed, whereas for
      Region Expressions, region types are printed.
 
---print_word_regions                                                (off)
+--print_word_regions                                      (off)
      Also print word regions that have been dropped.
 
---raggedRight                                                        (on)
+--raggedRight                                              (on)
      Use ragged right margin in pretty-printing of
      expressions and types.
 
 --no_raggedRight
      Opposite of --raggedRight.
 
---region_profiling, -prof                                           (off)
+--region_profiling, -prof                                 (off)
      Enable region profiling. Object code stemming
      from compiling a program with region profiling enabled
      is instrumented with profiling information. When a program
@@ -8296,36 +8300,36 @@ Options:
      by the profiling tool rp2ps that comes with the ML Kit to
      produce profiling graphs of various forms.
 
---register_allocation                                                (on)
+--register_allocation                                      (on)
      Perform register allocation. Without register allocation
-     enabled, programs run somewhat slower--but they run and you
-     save about 15 percent on compile time.
+     enabled, programs run somewhat slower--but they run andn
+     you save about 15 percent on compile time.
 
 --no_register_allocation
      Opposite of --register_allocation.
 
---report_file_sig, -sig                                             (off)
+--report_file_sig, -sig                                   (off)
      Report signatures for each file read.
 
---show_region_flow_graph                                            (off)
-     Show a region flow graph for the program and generate a .vcg-
-     file, which can be viewed using the xvcg.
+--show_region_flow_graph                                  (off)
+     Show a region flow graph for the program and generate a
+     .vcg-file, which can be viewed using the xvcg.
 
---specialize_recursive_functions                                     (on)
+--specialize_recursive_functions                           (on)
      Specialise recursive functions. Use the option
      maximum_specialise_size to control which functions
      are specialised. If this flag is on, functions that are
-     applied only once are specialised, no matter the setting of
-     maximum_specialise_size (Lambda Expression Optimiser).
+     applied only once are specialised, no matter the setting
+     of maximum_specialise_size (Lambda Expression Optimiser).
 
 --no_specialize_recursive_functions
      Opposite of --specialize_recursive_functions.
 
---statistics_after_optimisation                                     (off)
+--statistics_after_optimisation                           (off)
      Report optimisation statistics after optimisation of
      Lambda Expression.
 
---type_check_lambda                                                  (on)
+--type_check_lambda                                        (on)
      Type check lambda expression prior to performing region
      inference. Type checking is very fast and for normal use
      you should not disable this option. Type checking
@@ -8335,7 +8339,7 @@ Options:
 --no_type_check_lambda
      Opposite of --type_check_lambda.
 
---unbox_function_arguments                                           (on)
+--unbox_function_arguments                                 (on)
      Unbox arguments to fix-bound functions, for which the
      argument `a' is used only in contexts `#i a'. All call 
      sites are transformed to match the new function (Lambda
@@ -8344,12 +8348,12 @@ Options:
 --no_unbox_function_arguments
      Opposite of --unbox_function_arguments.
 
---warn_on_escaping_puts                                             (off)
+--warn_on_escaping_puts                                   (off)
      Enable the compiler to issue a warning whenever a 
      region type scheme contains a put effect on a region
      that is not quantified.
 \end{verbatim}
-}
+
 \newpage
 \index{live variable analysis|see{variable}}
 \index{KAM|see{Kit Abstract Machine}}
