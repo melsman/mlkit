@@ -8,6 +8,8 @@ signature SCS_DB =
 
     val oneFieldErrPg : quot * quot -> string
     val oneRowErrPg'  : (((string -> string)->'a) * quot * quot) -> 'a
+    val panicOneRow   : ((string->string)->'a) -> quot -> 'a
+    val panicZeroOrOneRow : ((string->string)->'a) -> quot -> 'a option
 
     val ppDate        : string -> string
   end
@@ -28,6 +30,19 @@ structure ScsDb :> SCS_DB =
     fun panicDmlTrans f = Db.panicDmlTrans ScsError.panic f
     fun errorDml emsg sql = (Db.errorDml (fn () => (Ns.log (Ns.Notice, "hej");
 						    ScsPage.returnPg "Databasefejl" emsg)) sql;())
+
+    fun panicOneRow (f:(string->string)->'a) (sql:quot) : 'a  = 
+      case Db.list (f,sql) of
+	[] => ScsError.panic `ScsDb.panicOneRow: No rows`
+      | [r] => r
+      | _ => ScsError.panic `ScsDb.panicOneRow: More than one row`
+
+    fun panicZeroOrOneRow (f:(string->string)->'a) (sql:quot) : 'a option = 
+      case Db.list (f,sql) of
+	[] => NONE
+      | [r] => SOME r
+      | _ => ScsError.panic `ScsDb.panicOneRow: More than one row`
+
     fun toggleP table column_id column id =
       panicDml `update ^table set ^column=(case when ^column = 't' then 'f' else 't' end)
                  where ^table.^column_id=^(Db.qq' id)`

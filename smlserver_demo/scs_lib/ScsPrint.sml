@@ -13,6 +13,7 @@ signature SCS_PRINT =
     val printForm     : string -> string -> string -> string -> doc_type -> quot -> quot
 
     (* Actual Printing *)
+    (* bug: must also have an target_url so that you can get from the print-response page back to the origin *)
     val printDoc      : string -> string -> string -> string -> doc_type -> quot -> string -> Ns.status
 
     val printDocs     : (string * string * string * string * doc_type * quot) list -> string -> Ns.status
