@@ -12,7 +12,7 @@
 \input{mac}
 \newcommand{\rhoword}{\rho_{\rm w}}
 \title{Programming with Regions in the ML Kit\\
-(for Version 4)}
+(for Version 4.1.1)}
 \author{Mads Tofte \and Lars Birkedal \and Martin Elsman \and
 \and Niels Hallenberg \and Tommy H\o jfeld Olesen \and
 Peter Sestoft}
@@ -37,7 +37,7 @@ Peter Sestoft}
 
 % {\LARGE Programming with Regions in the ML Kit}\vspace{2mm}
 
-% {\LARGE (for Version~4)}\vspace{1cm}
+% {\LARGE (for Version~4.1.1)}\vspace{1cm}
 
 % {\large Mads Tofte ~~~ Lars Birkedal ~~~ Martin Elsman}\vspace{2mm}
 
@@ -8659,7 +8659,7 @@ x86 native backend. The options are slightly different for the version
 of the ML Kit compiler that uses the bytecode backend.
 
 \begin{verbatim}
-ML Kit version 4.1.0, Apr 05, 2002 [X86 Backend]
+ML Kit version 4.1.1, Aug 25, 2002 [X86 Backend]
 
 Usage: mlkit_kam [OPTION]... [file.sml | file.sig | file.pm]
 
@@ -8946,13 +8946,13 @@ Options:
 --print_rho_types                                         (off)
      Print region types of region variables in types and
      intermediate forms. Possible region types are:
-         w   type of regions containing only word values; these
-             regions are dropped from the program because word
-             values are represented unboxed.
-         r   type of regions containing only reals.
-         s   type of regions containing only strings.
-         t   type of regions not containing word values, reals,
-             or strings.
+         w  Type of regions containing only word values; these
+            regions are dropped from the program because word
+            values are represented unboxed.
+         p  Type of regions containing pairs.
+         s  Type of regions containing only strings.
+         t  Type of regions containing other than the above
+            kinds of values.
 
 --print_simplified_program                                (off)
      Print simplified program after register

@@ -15,3 +15,6 @@ mlkit.pdf: root.dvi Makefile
 	dvips -Ppdf -o root.ps root.dvi 
 	ps2pdf -sPAPERSIZE=a4 root.ps mlkit.pdf
 	rm -f root.ps
+
+clean:
+	rm -rf *~ auto *.ind *.log *.idx *.aux *.dvi *.toc *.info *.ilg *.blg .xvpics *.bbl *.out
