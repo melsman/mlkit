@@ -60,6 +60,8 @@ structure Tester : TESTER =
 	val compile_command_prof = compile_command_base ^ "-prof " ^ file
 	val compile_command_gc = compile_command_base ^ "-gc " ^ file
 	val compile_command_gc_prof = compile_command_base ^ "-gc -prof " ^ file
+	val compile_command_gengc = compile_command_base ^ "-gengc " ^ file
+	val compile_command_gengc_prof = compile_command_base ^ "-gengc -prof " ^ file
 
 	fun maybe_compare_complogs success =
 	  let fun success_as_expected() =
@@ -186,6 +188,20 @@ structure Tester : TESTER =
 	    else ()
 	  end 20/04/1999, Niels*)
 
+	fun maybe_trywithgengc() = maybe_trywith(file,
+						 ".outgengc",
+						 ".out.ok",
+						 fn () => opt "gengc",
+						 compile_command_gengc,
+						 TestReport.add_gengc_line,
+						 " ")
+	fun maybe_trywithgengcprof() = maybe_trywith(file,
+						     ".outgengcp",
+						     ".out.ok",
+						     fn () => opt "gengc" andalso opt "prof",
+						     compile_command_gengc_prof,
+						     TestReport.add_gengc_profile_line,
+						     " -realtime -microsec 1000 ")
 	fun maybe_trywithgc() = maybe_trywith(file,
 					      ".outgc",
 					      ".out.ok",
@@ -221,6 +237,8 @@ structure Tester : TESTER =
 	   maybe_report_comptimes();
 	   rename_and_run();
 	   maybe_trywithprof();
+	   maybe_trywithgengc();
+	   maybe_trywithgengcprof();
 	   maybe_trywithgc();
 	   maybe_trywithgcprof();
 	   maybe_trywithtags();

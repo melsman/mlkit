@@ -1,5 +1,12 @@
 all: test_kam test_mlkit
 
+test_small_nh:
+	../bin/kittester ../bin/mlkit small_nh.tst
+	/bin/mv test_report.dvi test_report-native-small-nh-`/bin/date -I`.dvi
+
+bench_gengc:
+	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-gengc -prof: -mlkit:-gc -prof: -mlkit:-gc: -mlkit:-gengc: -o gengc.html gcregions.tst)' | tcsh -s
+
 bench_cr:
 	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkit:-scratch -cr: -o cr2.html tp.tst)' | tcsh -s
 

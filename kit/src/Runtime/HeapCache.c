@@ -72,9 +72,9 @@ static int heapPoolIndex = 0;
 // [pagesInRegion(r)] returns the number of pages associated with r.
 static int pagesInRegion(Ro *r)
 {
-  Klump *p;
+  Rp *p;
   int n = 0;
-  for ( p = r->fp ; p ; p = p->n )
+  for ( p = r->g0.fp ; p ; p = p->n )
     n++;
   return n;
 }
@@ -82,7 +82,7 @@ static int pagesInRegion(Ro *r)
 static RegionCopy* copyRegion(Ro *r)
 {
   int np, bytes, *q;
-  Klump *p;
+  Rp *p;
   RegionCopy *rc;
 
   if ( r->lobjs ) 
@@ -104,28 +104,28 @@ static RegionCopy* copyRegion(Ro *r)
   rc = (RegionCopy*)malloc(bytes);
   
   rc->r = r;     // not really necessary
-  rc->a = r->a;
-  rc->b = r->b;
+  rc->a = r->g0.a;
+  rc->b = r->g0.b;
 
   q = rc->pages;
-  for ( p = r->fp ; p ; p = p->n )
+  for ( p = r->g0.fp ; p ; p = p->n )
     {
       int i = 0;
-      (Klump*)(*q++) = p;                             // set pointer to original page
+      (Rp*)(*q++) = p;                             // set pointer to original page
       while ( i < ALLOCATABLE_WORDS_IN_REGION_PAGE )
 	*q++ = p->i[i++];
     }
-  (Klump*)(*q) = 0;    // final null-pointer
+  (Rp*)(*q) = 0;    // final null-pointer
   return rc;
 }
 
 static int restoreRegion(RegionCopy *rc)
 {
-  Klump *p = 0;
-  Klump *p_next = 0;
+  Rp *p = 0;
+  Rp *p_next = 0;
   int i = 0;
 
-  while ( p_next = (Klump*)(rc->pages[i++]) )   // pointer to original region page is stored in copy!
+  while ( p_next = (Rp*)(rc->pages[i++]) )   // pointer to original region page is stored in copy!
     {
       int j = 0;
       p = p_next;
@@ -133,11 +133,11 @@ static int restoreRegion(RegionCopy *rc)
 	p->i[j++] = rc->pages[i++];
     }
 
-  free_region_pages(p->n,((Klump*)rc->r->b)-1);
+  free_region_pages(p->n,((Rp*)rc->r->g0.b)-1);
 
   p->n = NULL;                // there is at least one page
-  rc->r->a = rc->a;
-  rc->r->b = rc->b;
+  rc->r->g0.a = rc->a;
+  rc->r->g0.b = rc->b;
   free_lobjs(rc->r->lobjs);
   rc->r->lobjs = NULL;
   return 0;
@@ -192,7 +192,7 @@ static void freePages(RegionCopy *rc)
 {
   if ( rc ) 
     {
-      free_region_pages(rc->r->fp, (Klump*)(rc->r->b) - 1);
+      free_region_pages(rc->r->g0.fp, (Rp*)(rc->r->g0.b) - 1);
       free(rc);
     }  
 }

@@ -88,7 +88,7 @@ int time_gc_all_ms = 0;               // total time of GC (in milliseconds)
          FrameMark (for debug)
   ReturnLabel: */
 
-Klump *from_space_begin, *from_space_end;
+Rp *from_space_begin, *from_space_end;
 
 /*******************/
 /* PRETTY PRINTING */
@@ -277,46 +277,78 @@ clear_scan_container()
 
 /* We mark all region pages such that we can distinguish them from to-space */
 /* region pages by setting a bit in the next n pointer.                   */
-static void mk_from_space() {
+static inline void
+mk_from_space_gen(Gen *gen) 
+{
+  /* Move region pages to from-space */
+  (((Rp *)gen->b)-1)->n = from_space_begin;
+  from_space_begin = clear_fp(gen->fp);
+
+  /* Allocate new region page */
+  {
+    int rt;
+    if ( rt = all_marks_fp(*gen) /* was rtype(*gen) 2003-08-06, nh */ )
+      {
+	gen->fp = NULL;
+	set_fp(*gen,rt);
+      }
+    else
+      gen->fp = NULL;
+  }
+  alloc_new_block(gen);
+}
+
+static void mk_from_space() 
+{
   Ro *r;
-  Klump *rp;
+  Rp *rp;
 
   #ifdef PROFILING
     int j;
   #endif
 
+  int major_p = 1; /* ToDo: GenGC should be read from somewhere else */
+
   from_space_begin = NULL;
-  from_space_end = (((Klump *)TOP_REGION->b)-1); /* Points at last region page */
+  from_space_end = (((Rp *)TOP_REGION->g0.b)-1); /* Points at last region page */
 
   for( r = TOP_REGION ; r ; r = r->p ) {
     #ifdef PROFILING
       // Similar to resetRegion in Region.c
-      j = NoOfPagesInRegion(r);
-      noOfPages -= j;
-      profTabDecrNoOfPages(r->regionId, j);
-      allocNowInf -= r->allocNow;
-      profTabDecrAllocNow(r->regionId, r->allocNow);
-      allocProfNowInf -= r->allocProfNow;
-      r->allocNow = 0;
-      r->allocProfNow = 0;
-    #endif
+      #ifdef ENABLE_GEN_GC
+      if ( major_p ) {
+      #endif /* ENABLE_GEN_GC */
+	j = NoOfPagesInRegion(r);
+	noOfPages -= j;
+	profTabDecrNoOfPages(r->regionId, j);
+	allocNowInf -= r->allocNow;
+	profTabDecrAllocNow(r->regionId, r->allocNow);
+	allocProfNowInf -= r->allocProfNow;
+	r->allocNow = 0;
+	r->allocProfNow = 0;
+      #ifdef ENABLE_GEN_GC
+      } else {
+	/* We only reset generation g0 */
+	int allocNowG0 = 0;
+	int allocProfNowG0 = 0;
+	j = NoOfPagesInGen(&(r->g0));
+	noOfPages -= j;
+	profTabDecrNoOfPages(r->regionId, j);
+	calcAllocInGen(&(r->g0),&allocNowG0, &allocProfNowG0);
+        allocNowInf -= allocNowG0;
+	profTabDecrAllocNow(r->regionId, allocNowG0);
+	allocProfNowInf -= allocProfNowG0;
+	r->allocNow -= allocNowG0;
+	r->allocProfNow -= allocProfNowG0;
+      }
+      #endif /* ENABLE_GEN_GC */
+    #endif /* PROFILING */
 
-    /* Move region pages to from-space */
-    (((Klump *)r->b)-1)->n = from_space_begin;
-    from_space_begin = clear_rtype(r->fp);
-
-    /* Allocate new region page */
-    {
-      int rt;
-      if ( rt = rtype(r) )
-	{
-	  r->fp = NULL;
-	  set_rtype(r,rt);
-	}
-      else
-	r->fp = NULL;
-    }
-    alloc_new_block(r);
+    mk_from_space_gen(&(r->g0));
+    #ifdef ENABLE_GEN_GC
+    if ( major_p ) 
+      mk_from_space_gen(&(r->g1));
+    #endif /* ENABLE_GEN_GC */    
   }
 
   /* Calculate size of from space */
@@ -339,12 +371,7 @@ points_into_dataspace (unsigned int *p) {
 #define tag_forward_ptr(x)          ((unsigned int)(x))
 
 // Region pages are of size 1Kb and aligned
-#define get_rp_header(x)            ((Klump *)(((unsigned int)(x)) & 0xFFFFFC00))  
-
-// Previous-pointer holds status bit
-#define set_status_SOME(r)          (r->p = (Ro *)(((unsigned int)((r)->p)) | 0x01))   
-#define set_status_NONE(r)          (r->p = (Ro *)(((unsigned int)((r)->p)) & 0xFFFFFFFE))
-#define is_status_NONE(r)           ((((unsigned int)((r)->p)) & 0x01) == 0)
+#define get_rp_header(x)            ((Rp *)(((unsigned int)(x)) & 0xFFFFFC00))  
 
 unsigned int 
 size_lobj (unsigned int tag)
@@ -368,19 +395,16 @@ size_lobj (unsigned int tag)
  * Find allocated bytes in from space; for measurements
  * ----------------------------------------------------- */
 
-// Assumes that region does not contain untagged pairs or 
-// untagged refs
 static int 
-allocated_bytes_in_region(Region r) 
+allocated_bytes_in_gen(Gen *gen) 
 {
   unsigned int *s;  // scan pointer
-  Klump *rp;
+  Rp *rp;
   int allocated_bytes = 0;
 
-  rp = r->fp;
-  s = rp->i;
-  
-  while (((int *)s) != r->a) {
+  rp = clear_fp(gen->fp); // Maybe the generation-bit is set
+  s = (unsigned int*) &(rp->i);
+  while (((int *)s) != gen->a) {
     rp = get_rp_header(s);
 #if PROFILING
     s += sizeObjectDesc;
@@ -423,19 +447,19 @@ allocated_bytes_in_region(Region r)
     }
     default: {
       pw("*s: ",*s);
-      printf("s: %x, r->a: %x, diff(s,r->a): %d, rp: %x, diff(s,rp): %x\n",
+      printf("s: %x, gen->a: %x, diff(s,gen->a): %d, rp: %x, diff(s,rp): %x\n",
 	     s,
-	     r->a,
-	     ((int *)r->a-(int *)s),
+	     gen->a,
+	     ((int *)gen->a-(int *)s),
 	     rp,
 	     (int *)s-(int *)rp);
-      die("allocated_bytes_in_region: unrecognised tag at *s");
+      die("allocated_bytes_in_gen: unrecognised tag at *s");
       break;
     }
     }
     /* Are we at end of region page or is the region page full, then go to next region page. */
     /* notPP is distinct from all other value tags */
-    if ((((int *)s) != r->a) &&
+    if ((((int *)s) != gen->a) &&
 	((((int *)s) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) ||
 	 (*((int *)s) == notPP))) {
       s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
@@ -444,34 +468,69 @@ allocated_bytes_in_region(Region r)
   return allocated_bytes;
 }
 
-static int
-allocated_bytes_in_pairrefregion(Ro* r)
+
+// Assumes that region does not contain untagged pairs or 
+// untagged refs
+static int 
+allocated_bytes_in_region(Region r) 
 {
-  Klump* rp;
+  #ifdef ENABLE_GEN_GC
+    return allocated_bytes_in_gen(&(r->g0)) + allocated_bytes_in_gen(&(r->g1));
+  #else  
+    return allocated_bytes_in_gen(&(r->g0));
+  #endif /* ENABLE_GEN_GC */
+}
+
+static inline int
+allocated_bytes_in_pairrefgen(Gen *gen)
+{
+  Rp* rp;
   int n = 0;
-  for ( rp = clear_rtype(r->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
+  for ( rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
     {
       if ( clear_tospace_bit(rp->n) )
-	n += 4 * ALLOCATABLE_WORDS_IN_REGION_PAGE;  // not last page
+	// Take care of alignment
+	n += 4 * 2 * (ALLOCATABLE_WORDS_IN_REGION_PAGE / 2);  // not last page
       else
-	n += 4 * ((r->a) - (rp->i));  // last page
+	n += 4 * ((gen->a) - (rp->i));  // last page
     }
   return n;
 }
 
-allocated_bytes_in_tripleregion(Ro* r)
+static int
+allocated_bytes_in_pairrefregion(Ro* r)
 {
-  Klump* rp;
+  #ifdef ENABLE_GEN_GC
+    return allocated_bytes_in_pairrefgen(&(r->g0)) + allocated_bytes_in_pairrefgen(&(r->g1));
+  #else  
+    return allocated_bytes_in_pairrefgen(&(r->g0));
+  #endif /* ENABLE_GEN_GC */
+}
+
+static inline int
+allocated_bytes_in_triplegen(Gen *gen)
+{
+  Rp* rp;
   int n = 0;
-  for ( rp = clear_rtype(r->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
+  for ( rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
     {
       if ( clear_tospace_bit(rp->n) )
 	// Take care of alignment
 	n += 4 * 3 * (ALLOCATABLE_WORDS_IN_REGION_PAGE / 3);  // not last page
       else
-	n += 4 * ((r->a) - (rp->i));  // last page
+	n += 4 * ((gen->a) - (rp->i));  // last page
     }
   return n;
+}
+
+static int
+allocated_bytes_in_tripleregion(Ro* r)
+{
+  #ifdef ENABLE_GEN_GC
+    return allocated_bytes_in_triplegen(&(r->g0)) + allocated_bytes_in_triplegen(&(r->g1));
+  #else  
+    return allocated_bytes_in_triplegen(&(r->g0));
+  #endif /* ENABLE_GEN_GC */
 }
 
 static int 
@@ -481,7 +540,7 @@ allocated_bytes_in_regions(void)
   Ro* r;
   for ( r = TOP_REGION ; r ; r = r->p )
     {
-      switch (rtype(r)) {
+      switch (rtype(r->g0)) { // g0 and g1 has the same rtype
       case RTYPE_PAIR:
       case RTYPE_REF:
 	n += allocated_bytes_in_pairrefregion(r);
@@ -514,6 +573,7 @@ allocated_bytes_in_lobjs(void)
 #endif
 	n += size_lobj(tag);
       }
+
   return n;
 }
 
@@ -547,8 +607,12 @@ get_size_obj(unsigned int *obj_ptr)
   }
 }
 
+/* ToDo: GenGC (1) allok skal tage højde for colorPtr
+               (2) allok skal tage højde for om g1 indeholder en klump. 
+   gælder for alle acopy-funktioner
+*/
 inline unsigned int *
-acopy(Ro *r, unsigned int *obj_ptr) 
+acopy(Gen *gen, unsigned int *obj_ptr) 
 {
   int size;
   unsigned int *new_obj_ptr;
@@ -559,17 +623,18 @@ acopy(Ro *r, unsigned int *obj_ptr)
 #endif /*PROFILING*/
 
   size = get_size_obj(obj_ptr);     // size includes tag
+
 #ifdef PROFILING
-  new_obj_ptr = allocProfiling(r,size,pPoint);
+  new_obj_ptr = allocGenProfiling(gen,size,pPoint);
 #else
-  new_obj_ptr = alloc(r,size);
+  new_obj_ptr = allocGen(gen,size);
 #endif
   copy_words(obj_ptr,new_obj_ptr,size);
   return new_obj_ptr;
 }
 
 inline unsigned int *
-acopy_pair(Ro *r, unsigned int *obj_ptr) 
+acopy_pair(Gen *gen, unsigned int *obj_ptr) 
 {
   unsigned int *new_obj_ptr;
 
@@ -579,9 +644,9 @@ acopy_pair(Ro *r, unsigned int *obj_ptr)
 #endif /*PROFILING*/
 
 #ifdef PROFILING
-  new_obj_ptr = allocProfiling(r,2,pPoint) - 1;
+  new_obj_ptr = allocGenProfiling(gen,2,pPoint) - 1;
 #else
-  new_obj_ptr = alloc(r,2) - 1;
+  new_obj_ptr = allocGen(gen,2) - 1;
 #endif
   *(new_obj_ptr+1) = *(obj_ptr+1);
   *(new_obj_ptr+2) = *(obj_ptr+2);
@@ -589,7 +654,7 @@ acopy_pair(Ro *r, unsigned int *obj_ptr)
 }
 
 inline unsigned int *
-acopy_ref(Ro *r, unsigned int *obj_ptr) 
+acopy_ref(Gen *gen, unsigned int *obj_ptr) 
 {
   unsigned int *new_obj_ptr;
 
@@ -599,16 +664,16 @@ acopy_ref(Ro *r, unsigned int *obj_ptr)
 #endif /*PROFILING*/
 
 #ifdef PROFILING
-  new_obj_ptr = allocProfiling(r,1,pPoint) - 1;
+  new_obj_ptr = allocGenProfiling(gen,1,pPoint) - 1;
 #else
-  new_obj_ptr = alloc(r,1) - 1;
+  new_obj_ptr = allocGen(gen,1) - 1;
 #endif
   *(new_obj_ptr+1) = *(obj_ptr+1);
   return new_obj_ptr;
 }
 
 inline unsigned int *
-acopy_triple(Ro *r, unsigned int *obj_ptr) 
+acopy_triple(Gen *gen, unsigned int *obj_ptr) 
 {
   unsigned int *new_obj_ptr;
 
@@ -618,9 +683,9 @@ acopy_triple(Ro *r, unsigned int *obj_ptr)
 #endif /*PROFILING*/
 
 #ifdef PROFILING
-  new_obj_ptr = allocProfiling(r,3,pPoint) - 1;
+  new_obj_ptr = allocGenProfiling(gen,3,pPoint) - 1;
 #else
-  new_obj_ptr = alloc(r,3) - 1;
+  new_obj_ptr = allocGen(gen,3) - 1;
 #endif
   *(new_obj_ptr+1) = *(obj_ptr+1);
   *(new_obj_ptr+2) = *(obj_ptr+2);
@@ -649,8 +714,9 @@ points_into_tospace (unsigned int x)
 static unsigned int 
 evacuate(unsigned int obj) 
 {
-  Klump* rp;
-  Ro* r;
+  Rp* rp;
+  Gen* gen;
+
   unsigned int *obj_ptr, *new_obj_ptr;
 
   if (is_integer(obj)) 
@@ -695,16 +761,16 @@ evacuate(unsigned int obj)
     }
 
   // Object is in an infinite region
-  r = rp->r;
+  gen = rp->gen; 
 
-  switch ( rtype(r) ) {
+  switch ( rtype(*gen) ) {
   case RTYPE_PAIR:
     {
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
 	{
 	  return *(obj_ptr+1);
 	}
-      new_obj_ptr = acopy_pair(r, obj_ptr);
+      new_obj_ptr = acopy_pair(gen, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
     }
@@ -714,7 +780,7 @@ evacuate(unsigned int obj)
 	{
 	  return *(obj_ptr+1);
 	}
-      new_obj_ptr = acopy_ref(r, obj_ptr);
+      new_obj_ptr = acopy_ref(gen, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
     }
@@ -724,13 +790,13 @@ evacuate(unsigned int obj)
 	{
 	  return *(obj_ptr+1);
 	}
-      new_obj_ptr = acopy_triple(r, obj_ptr);
+      new_obj_ptr = acopy_triple(gen, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
     }
   default:   // Object is tagged 
     {
-      if ( is_forward_ptr(*obj_ptr) ) 
+      if ( is_forward_ptr(*obj_ptr) )           /* ToDo: GenGC can't we just skip this comparison? 2003-07-21, nh */
 	{                                       // object already copied
 	  if ( points_into_tospace(*obj_ptr) )
 	    {
@@ -738,18 +804,18 @@ evacuate(unsigned int obj)
 	    }
 	  die ("forward ptr check failed\n");
 	}
-      new_obj_ptr = acopy(r, obj_ptr);
+      new_obj_ptr = acopy(gen, obj_ptr);
       *obj_ptr = tag_forward_ptr(new_obj_ptr);  // install forward pointer
     }
   }
-  if ( is_status_NONE(r) ) 
+  if ( is_gen_status_NONE(*gen) ) 
     {
 #ifdef PROFILING 
       push_scan_stack(new_obj_ptr - sizeObjectDesc);
 #else
       push_scan_stack(new_obj_ptr);
 #endif
-      set_status_SOME(r);
+      set_gen_status_SOME(*gen);
     }
   return (unsigned int)new_obj_ptr;
 }
@@ -815,8 +881,8 @@ static void
 do_scan_stack() 
 {
   unsigned int *s;   // scan pointer
-  Klump *rp;
-  Ro *r;
+  Rp *rp;
+  Gen *gen;
 
   // Run through scan stack and container
   while (!((is_scan_stack_empty()) && (is_scan_container_empty()))) {
@@ -829,14 +895,14 @@ do_scan_stack()
 
     while (!(is_scan_stack_empty())) {
       s = pop_scan_stack();
-      /* Get Region Page and Region Descriptor */
+      /* Get Region Page and Generation */
       rp = get_rp_header(s);
-      r = rp->r;
-      
-      switch ( rtype(r) ) {
+      gen = rp->gen; 
+
+      switch ( rtype(*gen) ) {
       case RTYPE_PAIR:
 	{
-	  while ( ((int *)s+1) != r->a ) 
+	  while ( ((int *)s+1) != gen->a ) 
 	    {
 	      rp = get_rp_header(s);
 #if PROFILING
@@ -848,11 +914,12 @@ do_scan_stack()
 	      
 	      /* If at end of region page or the region page is full, go 
 	       * to next region page. */
-	      if ((((int *)s+1) != r->a) && 
+	      if ((((int *)s+1) != gen->a) && 
 		  ((((int *)s+1) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
 		   || (*((int *)s+1) == notPP)))
 		// MEMO: For RTYPE_PAIR and RTYPE_REF, checking the content of *(s+1) against notPP (0) should not
 		// be necessary because of alignment properties! mael 2003-05-15
+/* ToDo: GenGC: spørg martin om at slette denne memo idet det jo ikke gaelder laengere med colorPtr */
 		{
 		  s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE - 1;
 		}
@@ -861,7 +928,7 @@ do_scan_stack()
 	}
       case RTYPE_REF:
 	{
-	  while ( ((int *)s+1) != r->a ) 
+	  while ( ((int *)s+1) != gen->a ) 
 	    {
 	      rp = get_rp_header(s);
 #if PROFILING
@@ -872,7 +939,7 @@ do_scan_stack()
 	      
 	      /* If at end of region page or the region page is full, go 
 	       * to next region page. */
-	      if ((((int *)s+1) != r->a) && 
+	      if ((((int *)s+1) != gen->a) && 
 		  ((((int *)s+1) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
 		   || (*((int *)s+1) == notPP)))
 		{
@@ -883,7 +950,7 @@ do_scan_stack()
 	}
       case RTYPE_TRIPLE:
 	{
-	  while ( ((int *)s+1) != r->a ) 
+	  while ( ((int *)s+1) != gen->a ) 
 	    {
 	      rp = get_rp_header(s);
 #if PROFILING
@@ -896,11 +963,12 @@ do_scan_stack()
 	      
 	      /* If at end of region page or the region page is full, go 
 	       * to next region page. */
-	      if ((((int *)s+1) != r->a) && 
+	      if ((((int *)s+1) != gen->a) && 
 		  ((((int *)s+1) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
 		   || (*((int *)s+1) == notPP)))
 		// MEMO: For RTYPE_PAIR and RTYPE_REF, checking the content of *(s+1) against notPP (0) should not
 		// be necessary because of alignment properties! It is necessary for triples! mael 2003-05-15
+/* ToDo: GenGC: spørg martin om at slette denne memo idet det jo ikke gaelder laengere med colorPtr */
 		{
 		  s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE - 1;
 		}
@@ -909,7 +977,7 @@ do_scan_stack()
 	}
       default:
 	{
-	  while ( ((int *)s) != r->a ) 
+	  while ( ((int *)s) != gen->a ) 
 	    {
 	      rp = get_rp_header(s);
 #if PROFILING
@@ -919,7 +987,7 @@ do_scan_stack()
 	      
 	      /* If at end of region page or the region page is full, go 
 	       * to next region page. */
-	      if ((((int *)s) != r->a) && 
+	      if ((((int *)s) != gen->a) && 
 		  ((((int *)s) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
 		   || (*((int *)s) == notPP)))
 		{
@@ -928,10 +996,25 @@ do_scan_stack()
 	    }
 	}
       }
-      set_status_NONE(r);
+      set_gen_status_NONE(*gen);
     }
   }
   return;
+}
+
+inline static 
+void clear_tospace_bit_in_gen(Gen *gen) 
+{ Rp *p;
+
+  for ( p = clear_fp(gen->fp) ; p ; p = p->n ) 
+    {
+      if ( is_tospace_bit(p->n) ) { 
+	// check that all region pages have their tospace bit set
+	p->n = clear_tospace_bit(p->n);
+      } else {
+	die ("gc: page in tospace not marked");
+      }
+    }
 }
 
 #define predSPDef(sp,n) ((sp)+=(n))
@@ -941,7 +1024,7 @@ void
 gc(unsigned int **sp, unsigned int reg_map) 
 {
   int time_gc_one_ms;
-  extern Klump* freelist;
+  extern Rp* freelist;
   extern int rp_to_space;
   unsigned int **sp_ptr;
   unsigned int *fd_ptr;
@@ -954,7 +1037,7 @@ gc(unsigned int **sp, unsigned int reg_map)
   unsigned int **d_lab_ptr;
   int num_d_labs;
   int size_rcf, size_ccf, size_spilled_region_args;
-  Klump *rp_tmp, *p;
+  Rp *rp_tmp, *p;
   extern int rp_used;
   extern int rp_total;
   double ratio;
@@ -1161,15 +1244,12 @@ gc(unsigned int **sp, unsigned int reg_map)
 
   // Unmark all tospace bits in region pages in regions on the stack
   for( r = TOP_REGION ; r ; r = r->p ) 
-    for ( p = clear_rtype(r->fp) ; p ; p = p->n ) 
-      {
-	if ( is_tospace_bit(p->n) ) { 
-	  // check that all region pages have their tospace bit set
-	  p->n = clear_tospace_bit(p->n);
-	} else {
-	  die ("gc: page in tospace not marked");
-	}
-      }
+    {
+      clear_tospace_bit_in_gen(&(r->g0));
+      #ifdef ENABLE_GEN_GC
+        clear_tospace_bit_in_gen(&(r->g1));
+      #endif /* ENABLE_GEN_GC */
+    }
 
   lobjs_gc_treshold = (int)(heap_to_live_ratio * (double)lobjs_current);
 

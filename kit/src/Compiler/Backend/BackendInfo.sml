@@ -16,13 +16,6 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val init_sclos_offset = 0	 (* First offset in shared closure is 0 *)                             
     val init_regvec_offset = 0	 (* First offset in region vector is 0 *)                              
 
-    (******************************)
-    (* Runtime System Information *)
-    (******************************)
-
-    val regionPageTotalSize = RegConst.ALLOCATABLE_WORDS_IN_REGION_PAGE + RegConst.HEADER_WORDS_IN_REGION_PAGE
-    val regionPageHeaderSize = RegConst.HEADER_WORDS_IN_REGION_PAGE
-
     (***********)
     (* Tagging *)
     (***********)
@@ -91,6 +84,7 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 
     val tag_values       = Flags.is_on0 "tag_values"
     val region_profiling = Flags.is_on0 "region_profiling"
+    val gengc_p          = Flags.is_on0 "generational_garbage_collection"
 
     val size_of_real = RegConst.size_of_real
     val size_of_ref = RegConst.size_of_ref
@@ -98,12 +92,16 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     fun size_of_handle()   = 4
 
     local
-      val region_large_objects = true (* upon change, also change src/RuntimeWithGC/Makefile *)
-      fun maybe_add (x:int) = if region_large_objects then x + 1
-			      else x
+      val region_large_objects = true (* upon change, also change src/Runtime/Makefile *)
+      val size_gen = 3
+      fun size_lobjs() = if region_large_objects then 1 else 0
+      fun size_g0() = size_gen
+      fun size_prev_ptr() = 1
+      fun size_g1() = if gengc_p() then size_gen else 0
+      fun size_prof() = if region_profiling() then 3 else 0
     in
-      fun size_of_reg_desc() = maybe_add(if region_profiling() then 7 
-					 else 4)
+      fun size_of_reg_desc() = 
+	size_g0() + size_g1() + size_prev_ptr() + size_prof() + size_lobjs()
     end
 
     val finiteRegionDescSizeP = 2 (* Number of words in a finite region descriptor when profiling is used. *)

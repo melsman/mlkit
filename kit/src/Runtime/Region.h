@@ -52,7 +52,6 @@ Thus, a region page takes up
 HEADER_WORDS_IN_REGION_PAGE + ALLOCATABLE_WORDS_IN_REGION_PAGE
 words in all.
 
-The Danish word 'klump' means 'chunk', in this case:  'region page'.
 */
 
 // Uncomment the following line to enable region page statistics (for SMLserver)
@@ -73,19 +72,28 @@ RegionPageMap* regionPageMapNew(void);
 extern RegionPageMap* rpMap;
 #endif /* REGION_PAGE_STAT */
 
+#ifdef ENABLE_GEN_GC
+#define ALLOCATABLE_WORDS_IN_REGION_PAGE 253
+#define HEADER_WORDS_IN_REGION_PAGE 3
+#else
 #define ALLOCATABLE_WORDS_IN_REGION_PAGE 254
+#define HEADER_WORDS_IN_REGION_PAGE 2 
+#endif /* ENABLE_GEN_GC */
 
 /* Number of words that can be allocated in each regionpage.  If you
  * change this, remember also to change
  * src/Compiler/Backend/X86/BackendInfo.sml. */
 
-typedef struct klump {
-  struct klump *n;                   /* NULL or pointer to next page. */
-  struct ro *r;                      /* Pointer back to region descriptor. Used by GC. */
+typedef struct rp {
+  struct rp *n;                   /* NULL or pointer to next page. */
+  struct gen *gen;                /* Pointer back to generation. Used by GC. */
+  #ifdef ENABLE_GEN_GC
+  int *colorPtr;                  /* Color pointer used by generational GC */
+  #endif /* ENABLE_GEN_GC */
   int i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data*/
-} Klump;
+} Rp;
 
-#define HEADER_WORDS_IN_REGION_PAGE 2 
+
 
 /* Number of words in the header part of a region page. If you 
  * change this, remember also to change
@@ -102,7 +110,7 @@ typedef struct klump {
  * (here 30) of fresh region pages: */
 
 /* Size of allocated space in each SBRK-call. */
-#define BYTES_ALLOC_BY_SBRK REGION_PAGE_BAG_SIZE*sizeof(Klump)  
+#define BYTES_ALLOC_BY_SBRK REGION_PAGE_BAG_SIZE*sizeof(Rp)  
 
 /* When garbage collection is enabled, a single bit in a region page
  * descriptor specifies if the page is part of to-space during garbage
@@ -112,8 +120,8 @@ typedef struct klump {
  * the region page descriptor. */
 
 #ifdef ENABLE_GC
-#define clear_tospace_bit(p)  (Klump*)((unsigned int)(p) & 0xFFFFFFFE)
-#define set_tospace_bit(p)    (Klump*)((unsigned int)(p) | 0x1)
+#define clear_tospace_bit(p)  (Rp*)((unsigned int)(p) & 0xFFFFFFFE)
+#define set_tospace_bit(p)    (Rp*)((unsigned int)(p) | 0x1)
 #define is_tospace_bit(p)     ((unsigned int)(p) & 0x1)
 #else
 #define clear_tospace_bit(p)  (p)
@@ -163,29 +171,48 @@ typedef struct lobjs {
 #define set_lobj_bit(p)       (p)
 #endif /* ENABLE_GC */
 
+/* By introducing generational garbage collection we need two region
+   page lists in each region descriptor. We therefore define a
+   sub-structure called Gen (for generation) containing the three
+   pointers controlling the allocation into a generation: fp, a and b */
+
+typedef struct gen {
+  int * a;             /* Pointer to first unused word in the newest region page
+                          of the region. */
+  int * b;             /* Pointer to the border of the newest region page, defined as the address
+                          of the first word to follow the region page. One maintains
+                          the invariant a<=b;  a=b means the region page is full.*/
+  Rp *fp;              /* Pointer to the oldest (first allocated) page of the region. 
+                          The beginning of the newest page of the region can be calculated
+                          as a fixed offset from b. Thus the region descriptor gives
+                          direct access to both the first and the last region page
+                          of the region. This makes it possible to de-allocate the
+                          entire region in constant time, by appending it to the free list.*/
+} Gen;
+
 /* 
 Region descriptors
 ------------------
 ro is the type of region descriptors. Region descriptors are kept on
 the stack and are linked together so that one can traverse the stack
 of regions (for profiling and for popping of regions when exceptions
-are raised) 
-*/
+are raised) */
 
+/* Important: don't mess with Ro unless you also redefine the constants below. */
+#define offsetG0InRo 0
+#ifdef ENABLE_GEN_GC
+#define offsetG1InRo 3  /* words */
+#endif
 typedef struct ro {
+  Gen g0;              /* g0 is the only generation when ordinary GC is used. g0 is the
+                          yougest generation when using genrational GC. */
+
+  #ifdef ENABLE_GEN_GC
+  Gen g1;              /* g1 is the old generation. */
+  #endif
+
   struct ro * p;       /* Pointer to previous region descriptor. It has to be at 
                           the bottom of the structure */
-  int * a;             /* Pointer to first unused word in the newest region page
-                          of the region. */
-  int * b;             /* Pointer to the border of the newest region page, defined as the address
-                          of the first word to follow the region page. One maintains
-                          the invariant a<=b;  a=b means the region page is full.*/
-  Klump *fp;           /* Pointer to the oldest (first allocated) page of the region. 
-                          The beginning of the newest page of the region can be calculated
-                          as a fixed offset from b. Thus the region descriptor gives
-                          direct access to both the first and the last region page
-                          of the region. This makes it possible to de-allocate the
-                          entire region in constant time, by appending it to the free list.*/
 
   /* here are the extra fields that are used when profiling is turned on: */
   #ifdef PROFILING
@@ -195,6 +222,7 @@ typedef struct ro {
   #endif
 
   Lobjs *lobjs;     // large objects: a list of malloced memory in each region
+
 } Ro;
 
 typedef Ro* Region;
@@ -202,15 +230,21 @@ typedef Ro* Region;
 #define sizeRo (sizeof(Ro)/4) /* size of region descriptor in words */
 #define sizeRoProf (3)        /* We use three words extra when profiling. */
 
-#define freeInRegion(rAddr)   (rAddr->b - rAddr->a) /* Returns freespace in words. */
+#ifdef ENABLE_GEN_GC
+#define MIN_NO_OF_PAGES_IN_REGION 2
+#else
+#define MIN_NO_OF_PAGES_IN_REGION 1
+#endif /* ENABLE_GEN_GC */
 
-#define descRo_a(rAddr,w) (rAddr->a = rAddr->a - w) /* Used in IO.inputStream */
+#define freeInRegion(rAddr)   (rAddr->g0.b - rAddr->g0.a) /* Returns freespace in words. */
+
+#define descRo_a(rAddr,w) (rAddr->g0.a = rAddr->g0.a - w) /* Used in IO.inputStream */
 
 
-// When GC is enabled, bits in the region descriptor (in the r->fp pointer) 
+// When GC is enabled, bits in the region descriptor (in the r->g0.fp pointer) 
 // are used to tell the type of values in the region, in the
 // case that the values are untagged. Because region pages are aligned
-// on 1k boundaries, plenty of bits are available in the r->fp pointer.
+// on 1k boundaries, plenty of bits are available in the r->g0.fp pointer.
 // We use the three least significant bits:
 //
 //     000    (hex 0x0)   ordinary tagged values
@@ -220,37 +254,61 @@ typedef Ro* Region;
 //     011    (hex 0x3)   refs
 //     111    (hex 0x7)   triples
 
-#ifdef ENABLE_GC
+// To make Generational GC possible we use two more bits to encode 
+//   (1) the status SOME or NONE saying whether the generation is
+//       on the scan stack or not
+//   (2) the generation (being either 0 or 1). This info is used 
+//       to calculate the address of the region descriptor given
+//       a pointer to the generation (either g0 or g1) in the
+//       region descriptor.
+//    X1XXX status SOME saying that the generation is on the scan stack
+//    X0XXX status NONE saying that the generation is not on the scan stack
+//    0XXXX this is generation 0
+//    1XXXX this is generation 1
+// Notice, that the generation g0 is always used no matter what mode
+// the compiler is in (no gc, gc or gen gc). The generation g1 is only
+// used when generational gc is enabled. It is always possible to
+// write r->g0.
+// We do not explicitly set the generation 0 bit when allocating a
+// region because the bit is 0 by default, that is, set_gen_0 is not
+// used in Region.c
+
+#if defined(ENABLE_GC) || defined(PROFILING)
 #define RTYPE_PAIR          0x1
 #define RTYPE_ARRAY         0x2
 #define RTYPE_REF           0x3
 #define RTYPE_TRIPLE        0x7
-#define rtype(rd)           ((unsigned int)((rd)->fp) & 0x07)
-#define clear_rtype(fp)     ((Klump*)((unsigned int)(fp) & 0xFFFFFFF8))
-#define is_pairregion(rd)   (rtype(rd) == RTYPE_PAIR)
-#define is_arrayregion(rd)  (rtype(rd) == RTYPE_ARRAY)
-#define is_refregion(rd)    (rtype(rd) == RTYPE_REF)
-#define is_tripleregion(rd) (rtype(rd) == RTYPE_TRIPLE)
-#define set_rtype(rd,rt)    ((rd)->fp = (Klump*)(((unsigned int)((rd)->fp)) | (rt)))
-#define set_pairregion(rd)  (set_rtype((rd),RTYPE_PAIR))
-#define set_arrayregion(rd) (set_rtype((rd),RTYPE_ARRAY))
-#define set_refregion(rd)   (set_rtype((rd),RTYPE_REF))
-#define set_tripleregion(rd) (set_rtype((rd),RTYPE_TRIPLE))
+#define GENERATION_STATUS   0x8
+#define GENERATION          0x10
+#define rtype(gen)           ((unsigned int)((gen).fp) & 0x07)
+#define all_marks_fp(gen)     ((unsigned int)((gen).fp) & 0x1F)
+#define gen_status(gen)      ((unsigned int)((gen).fp) & GENERATION_STATUS)
+#define generation(gen)      ((unsigned int)((gen).fp) & GENERATION)
+#define clear_fp(fp)        ((Rp*)((unsigned int)(fp) & 0xFFFFFFE0))
+#define is_pairregion(gen)   (rtype(gen) == RTYPE_PAIR)
+#define is_arrayregion(gen)  (rtype(gen) == RTYPE_ARRAY)
+#define is_refregion(gen)    (rtype(gen) == RTYPE_REF)
+#define is_tripleregion(gen) (rtype(gen) == RTYPE_TRIPLE)
+#define set_fp(gen,rt)       ((gen).fp = (Rp*)(((unsigned int)((gen).fp)) | (rt)))
+#define set_pairregion(gen)  (set_fp((gen),RTYPE_PAIR))
+#define set_arrayregion(gen) (set_fp((gen),RTYPE_ARRAY))
+#define set_refregion(gen)   (set_fp((gen),RTYPE_REF))
+#define set_tripleregion(gen) (set_fp((gen),RTYPE_TRIPLE))
+#define set_gen_status_SOME(gen) (set_fp((gen),GENERATION_STATUS))
+#define set_gen_status_NONE(gen) ((gen).fp = (Rp*)(((unsigned int)((gen).fp)) & 0xFFFFFFF7))
+#define is_gen_status_NONE(gen)  (gen_status(gen) == 0)
+#define set_gen_0(gen)           ((gen).fp = (Rp*)(((unsigned int)((gen).fp)) & 0xFFFFFFEF))
+#define set_gen_1(gen)           (set_fp((gen),GENERATION))
+#define is_gen_1(gen)            (generation(gen) == GENERATION)
 #else
-#define clear_rtype(fp)     (fp)
+#define clear_fp(fp)     (fp)
 #endif /*ENABLE_GC*/
 
-// /* When garbage collection is enabled, a bit in the region descriptor
-//  * is used to determine if a region holds pairs only, which makes it
-//  * possible to use a tag-free scheme for pairs.  */
-
-// #ifdef ENABLE_GC
-// #define is_pairregion(rd)           ((unsigned int)((rd)->fp) & 0x01)
-// #define set_pairregion(rd)          ((rd)->fp = (Klump*)(((unsigned int)((rd)->fp)) | 0x01))
-// #define clear_pairregion(fp)        ((Klump*)((unsigned int)(fp) & 0xFFFFFFFE))
-// #else
-// #define clear_pairregion(fp)        (fp)
-// #endif /*ENABLE_GC*/
+#ifdef ENABLE_GEN_GC
+#define get_ro_from_gen(gen)    ( (is_gen_1(gen)) ? ( (Ro*)(((void*)(&(gen)))-offsetG1InRo) ) : ( (Ro*)(((void*)(&(gen)))-offsetG0InRo) ) )
+#else
+#define get_ro_from_gen(gen)    ((Ro*)(((void*)(&(gen)))-offsetG0InRo))
+#endif /* ENABLE_GEN_GC */
 
 /*
 Region polymorphism
@@ -284,11 +342,11 @@ of the region and is useful for, among other things, tail recursion).
  * the top-level region, so as to support multiple threads.       *
  *----------------------------------------------------------------*/
 
-extern Klump * freelist;
+extern Rp * freelist;
 
 #ifdef KAM
 #define TOP_REGION   (*topRegionCell)
-void free_region_pages(Klump* first, Klump* last);
+void free_region_pages(Rp* first, Rp* last);
 #else
 extern Ro * topRegion;
 #define TOP_REGION   topRegion
@@ -309,7 +367,8 @@ void deallocateRegionsUntil(Region rAddr);
 void deallocateRegionsUntil_X86(Region rAddr);
 #endif
 
-int *alloc (Region rAddr, int n);
+int *alloc (Region r, int n);
+int *allocGen (Gen *gen, int n);
 void callSbrk();
 
 #ifdef ENABLE_GC_OLD
@@ -428,7 +487,8 @@ Region allocRegionInfiniteProfilingMaybeUnTag(Region roAddr, unsigned int region
 void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
 void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
 int *deallocRegionFiniteProfiling(void);
-int *allocProfiling(Region rAddr,int n, int pPoint);  // used by Table.c
+int *allocProfiling(Region r,int n, int pPoint);  // used by Table.c
+int *allocGenProfiling(Gen *gen, int n, int pPoint);  // used by Table.c
 #endif /*Profiling*/
 
 void printTopRegInfo();

@@ -593,11 +593,12 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 				    structure Crash = Tools.Crash)
 
 	  val prof_p : unit->bool = Basics.Tools.Flags.is_on0 "region_profiling"
+	  val gengc_p : unit->bool = Basics.Tools.Flags.is_on0 "generational_garbage_collection"
 	  val gc_p : unit->bool = Basics.Tools.Flags.is_on0 "garbage_collection"
 	  val scratch : unit->bool = Basics.Tools.Flags.is_on0 "recompile_basislib"
 	  val tag_pairs_p : unit->bool = Basics.Tools.Flags.is_on0 "tag_pairs"
 	    
-	  fun Tr p = (p,[scratch(),prof_p(),gc_p(),tag_pairs_p()])
+	  fun Tr p = (p,[scratch(),prof_p(),gc_p(),gengc_p(),tag_pairs_p()])
 	  fun die s = Basics.Tools.Crash.impossible ("Elaboration.RepositoryFinMap." ^ s)
 
 	  open M
