@@ -1,3 +1,5 @@
+-- currently not used 2003-01-27, nh
+
 create table scs_period_types(
   period_type_id integer
     constraint scs_period_t_period_type_id_nn not null

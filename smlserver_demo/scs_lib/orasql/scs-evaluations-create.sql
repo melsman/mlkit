@@ -1,3 +1,5 @@
+-- currently not used 2003-01-27, nh
+
 create table scs_evaluation_questions(
   question_id integer
     constraint scs_eval_q_question_id_nn not null
