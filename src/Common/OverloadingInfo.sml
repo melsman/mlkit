@@ -8,18 +8,21 @@ functor OverloadingInfo (structure StatObject : STATOBJECT
 			 structure PrettyPrint : PRETTYPRINT
 			   ) : OVERLOADING_INFO =
   struct
-    type Type = StatObject.Type
+    type RecType = StatObject.RecType
+    type TyVar = StatObject.TyVar
     type StringTree = PrettyPrint.StringTree
 
     datatype OverloadingInfo =
-      UNRESOLVED of Type
+      UNRESOLVED_IDENT of TyVar
+    | UNRESOLVED_DOTDOTDOT of RecType
     | RESOLVED_INT
     | RESOLVED_REAL		
     | RESOLVED_STRING
     | RESOLVED_CHAR
     | RESOLVED_WORD
 
-    fun string (UNRESOLVED tv) = "UNRESOLVED"
+    fun string (UNRESOLVED_IDENT tyvars) = "UNRESOLVED_IDENT"
+      | string (UNRESOLVED_DOTDOTDOT tau) = "UNRESOLVED_DOTDOTDOT"
       | string RESOLVED_INT =    "RESOLVED_INT"
       | string RESOLVED_REAL =   "RESOLVED_REAL"
       | string RESOLVED_STRING = "RESOLVED_STRING"

@@ -5,11 +5,13 @@
 
 signature OVERLOADING_INFO =
   sig
-    type Type
+    type TyVar
+    type RecType
     type StringTree
 
     datatype OverloadingInfo =
-      UNRESOLVED of Type
+      UNRESOLVED_IDENT of TyVar
+    | UNRESOLVED_DOTDOTDOT of RecType
     | RESOLVED_INT
     | RESOLVED_REAL
     | RESOLVED_STRING

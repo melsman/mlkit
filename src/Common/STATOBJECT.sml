@@ -52,9 +52,12 @@ signature STATOBJECT =
       sig
 	val eq                      : TyVar * TyVar -> bool 
 	val equality                : TyVar -> bool
-	val fresh                   : {equality : bool, overloaded : bool} -> TyVar
+	val fresh0                  : {equality : bool, overloaded : TyName.Set.Set} -> TyVar
+	val fresh_normal            : unit -> TyVar
+	val fresh_overloaded        : TyName list -> TyVar
 	val from_ExplicitTyVar      : ExplicitTyVar -> TyVar
 	val to_ExplicitTyVar        : TyVar -> ExplicitTyVar Option
+	val is_overloaded           : TyVar -> bool
 	val string                  : TyVar -> string
 	val pretty_string           : TVNames -> TyVar -> string
 	val layout                  : TyVar -> StringTree
@@ -69,6 +72,7 @@ signature STATOBJECT =
     structure Type :
       sig
 	val eq                      : Type * Type -> bool
+	val fresh_normal            : unit -> Type (*fresh_normal () = a fresh tyvar*)
 	val tyvars                  : Type -> TyVar list
 	val tynames                 : Type -> TyName.Set.Set
 	val string                  : Type -> string
@@ -82,16 +86,12 @@ signature STATOBJECT =
 	      (*used to elaborate explicit tyvar's*)
 	val to_TyVar                : Type -> TyVar Option
 
-	(*getOverloadedTyVar tau = the overloaded tyvar in tau if there is one
-	 (there should be at most one):*)
-	val getOverloadedTyVar      : Type -> TyVar Option  
-
 	(*record types*)
-	val existsRecVarsType       : Type -> bool
-	      (*existsRecVarsType tau = true iff there exists a 
-	       row variable in the type tau*)
 	val from_RecType            : RecType -> Type
 	val to_RecType              : Type -> RecType Option
+	val contains_row_variable   : Type -> bool
+	    (*contains_row_variable rho = true iff there exists a 
+	     row variable in the type rho*)
 	structure RecType :
 	  sig
 	    val empty               : RecType			(* "{}" *)

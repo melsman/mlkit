@@ -193,7 +193,8 @@ signature BASICS =
 	  and type AllInfo.SourceInfo.pos = LexBasics.pos
 	  and type AllInfo.SourceInfo.Report = Tools.Report.Report
 	  and type AllInfo.ElabInfo.StringTree = Tools.PrettyPrint.StringTree
-          and type AllInfo.OverloadingInfo.Type = StatObject.Type
+          and type AllInfo.OverloadingInfo.RecType = StatObject.RecType
+          and type AllInfo.OverloadingInfo.TyVar = StatObject.TyVar
 	  and type AllInfo.OverloadingInfo.StringTree = Tools.PrettyPrint.StringTree
 	  and type AllInfo.ElabInfo.ParseInfo = PreElabDecGrammar.info
   end;
