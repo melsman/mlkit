@@ -33,6 +33,7 @@ signature LVARS =
     val match : lvar * lvar -> unit
     val name : lvar -> name
 
+(*
     (* ------------------------------------------------------------------
      * Compiler-supported primitives; these are only here to allow for
      * overloading resolution. In fact, I think that we can get rid of
@@ -73,7 +74,7 @@ signature LVARS =
                        | LESS_FLOAT | LESSEQ_FLOAT | GREATER_FLOAT | GREATEREQ_FLOAT
 
     val primitive : lvar -> primitive option
-
+*)
     structure Map : MONO_FINMAP where type dom = lvar
 
 

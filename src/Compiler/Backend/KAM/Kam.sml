@@ -122,11 +122,11 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | IfLessThanJmpRel of label
       | IfGreaterThanJmpRel of label
 *)
-      | IfNotEqJmpRelImmed of label * int
-      | IfLessThanJmpRelImmed of label * int
-      | IfGreaterThanJmpRelImmed of label * int
+      | IfNotEqJmpRelImmed of label * Int32.int
+      | IfLessThanJmpRelImmed of label * Int32.int
+      | IfGreaterThanJmpRelImmed of label * Int32.int
       | DotLabel of label
-      | JmpVector of label * int
+      | JmpVector of label * Int32.int
 
       | Raise
       | PushExnPtr
@@ -321,11 +321,11 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | IfLessThanJmpRel(lab) => "IfLessThanJmpRel(" :: (pp_lab lab) :: ")" :: acc
       | IfGreaterThanJmpRel(lab) => "IfGreaterThanJmpRel(" :: (pp_lab lab) :: ")" :: acc
 *)
-      | IfNotEqJmpRelImmed(lab,i) => "IfNotEqJmpRelImmed(" :: (pp_lab lab) :: "," :: Int.toString i :: ")" :: acc
-      | IfLessThanJmpRelImmed(lab,i) => "IfLessThanJmpRelImmed(" :: (pp_lab lab) :: "," :: Int.toString i ::")" :: acc
-      | IfGreaterThanJmpRelImmed(lab,i) => "IfGreaterThanJmpRelImmed(" :: (pp_lab lab) :: "," :: Int.toString i :: ")" :: acc
+      | IfNotEqJmpRelImmed(lab,i) => "IfNotEqJmpRelImmed(" :: (pp_lab lab) :: "," :: Int32.toString i :: ")" :: acc
+      | IfLessThanJmpRelImmed(lab,i) => "IfLessThanJmpRelImmed(" :: (pp_lab lab) :: "," :: Int32.toString i ::")" :: acc
+      | IfGreaterThanJmpRelImmed(lab,i) => "IfGreaterThanJmpRelImmed(" :: (pp_lab lab) :: "," :: Int32.toString i :: ")" :: acc
       | DotLabel(lab) => "DotLabel(" :: (pp_lab lab) :: ")" :: acc
-      | JmpVector(lab,first_sel) => "JmpVector(" :: (pp_lab lab) :: "," :: (pp_i first_sel) :: ")" :: acc
+      | JmpVector(lab,first_sel) => "JmpVector(" :: (pp_lab lab) :: "," :: (Int32.toString first_sel) :: ")" :: acc
 
       | Raise => "Raise" :: acc
       | PushExnPtr => "PushExnPtr" :: acc

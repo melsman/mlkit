@@ -111,7 +111,8 @@ struct
     and ('a,'b,'c)LambdaExp =
         VAR      of {lvar: lvar, il: il, plain_arreffs: (effectvar * ateffect list) list,
                      fix_bound: bool, rhos_actuals: 'a list ref, other: 'c}
-      | INTEGER  of int	* 'a		
+      | INTEGER  of Int32.int * Type * 'a		
+      | WORD     of Word32.word * Type * 'a		
       | STRING   of string * 'a
       | REAL     of string * 'a
       | UB_RECORD of ('a,'b,'c) trip list (* unboxed records *)
@@ -152,7 +153,8 @@ struct
                                 bool: true if exception is nullary *)
       | RAISE    of ('a,'b,'c)trip
       | HANDLE   of ('a,'b,'c)trip * ('a,'b,'c)trip
-      | SWITCH_I of ('a,'b,'c,int)    Switch 
+      | SWITCH_I of {switch:('a,'b,'c,Int32.int) Switch, precision: int}
+      | SWITCH_W of {switch:('a,'b,'c,Word32.word) Switch, precision: int}
       | SWITCH_S of ('a,'b,'c,string) Switch 
       | SWITCH_C of ('a,'b,'c,con)    Switch 
       | SWITCH_E of ('a,'b,'c,excon)  Switch 
@@ -296,7 +298,8 @@ struct
 		     warn_puts_trip (RSE.declareExcon(excon,(tau,p),TE)) body
 	     | RAISE(e) => warn_puts_trip TE e
 	     | HANDLE(e1,e2) => (warn_puts_trip TE e1; warn_puts_trip TE e2)
-	     | SWITCH_I(switch) => warn_puts_i TE switch
+	     | SWITCH_I {switch, precision} => warn_puts_i TE switch
+	     | SWITCH_W {switch, precision} => warn_puts_w TE switch
 	     | SWITCH_S(switch) => warn_puts_s TE switch
 	     | SWITCH_C(switch) => warn_puts_c TE switch
 	     | SWITCH_E(switch) => warn_puts_e TE switch
@@ -322,6 +325,11 @@ struct
            and warn_puts_trip TE (TR(e,_,_,_)) = warn_puts TE e
 
 	   and warn_puts_i TE (SWITCH(e, list, e')) = 
+	       (warn_puts_trip TE e;
+	        app ((warn_puts_trip TE) o #2) list;
+		warn_puts_opt TE  e'
+	       )
+	   and warn_puts_w TE (SWITCH(e, list, e')) = 
 	       (warn_puts_trip TE e;
 	        app ((warn_puts_trip TE) o #2) list;
 		warn_puts_opt TE  e'
@@ -493,7 +501,8 @@ struct
 		     warn_dangle_trip (RSE.declareExcon(excon,(tau,p),TE)) body
 	     | RAISE(e) => warn_dangle_trip TE e
 	     | HANDLE(e1,e2) => (warn_dangle_trip TE e1; warn_dangle_trip TE e2)
-	     | SWITCH_I(switch) => warn_dangle_i TE switch
+	     | SWITCH_I {switch,precision} => warn_dangle_i TE switch
+	     | SWITCH_W {switch,precision} => warn_dangle_w TE switch
 	     | SWITCH_S(switch) => warn_dangle_s TE switch
 	     | SWITCH_C(switch) => warn_dangle_c TE switch
 	     | SWITCH_E(switch) => warn_dangle_e TE switch
@@ -520,6 +529,11 @@ struct
              | warn_dangle_trip TE (TR(e,mu,_,_)) = warn_dangle TE (e, NONE)
 
 	   and warn_dangle_i TE (SWITCH(e, list, e')) = 
+	       (warn_dangle_trip TE e;
+	        app ((warn_dangle_trip TE) o #2) list;
+		warn_dangle_opt TE  e'
+	       )
+	   and warn_dangle_w TE (SWITCH(e, list, e')) = 
 	       (warn_dangle_trip TE e;
 	        app ((warn_dangle_trip TE) o #2) list;
 		warn_dangle_opt TE  e'
@@ -740,7 +754,7 @@ struct
 		NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT bop, 
 		     children = [layTrip(t1,2), layTrip(t2,2)]}
 
-
+(*
       and try_bin(lvar, t as TR(UB_RECORD[t1,t2], _, _, _), rhos_actuals as [],n) =
 	(* actual dropped... *)
 	let open Lvar
@@ -774,7 +788,7 @@ struct
 	      | NONE => raise Match 
 	end
 	| try_bin _ = raise Match
-
+*)
       and layExp(lamb: ('a, 'b, 'c) LambdaExp,n): StringTree =  
         case lamb of 
           VAR{lvar,il,fix_bound=false,rhos_actuals=ref[],plain_arreffs,other} =>  (* fix-bound variables and prims *)
@@ -791,7 +805,8 @@ struct
         | VAR{lvar, il, fix_bound=true, rhos_actuals = ref rhos_actuals, plain_arreffs,other} => 
             lay_il(Lvar.pr_lvar lvar, "", il, rhos_actuals) ^^^ layout_other other
 
-        | INTEGER(i, a) => LEAF(Int.toString i ^^ layout_alloc a)
+        | INTEGER(i, t, a) => LEAF(Int32.toString i ^^ layout_alloc a)
+        | WORD(w, t, a) => LEAF("0x" ^ Word32.toString w ^^ layout_alloc a)
         | STRING(s, a) => LEAF(quote s ^^ layout_alloc a)
         | REAL(r, a) => LEAF(r ^^ layout_alloc a)
         | UB_RECORD(args) =>
@@ -844,8 +859,8 @@ struct
                      children = [layTrip(trip,3)]}
         | FN{pat,body,free,alloc}=> layLam((pat,body,alloc), n, "")
         | APP(NONE,_,TR(VAR{lvar, il, fix_bound, rhos_actuals=ref rhos_actuals, plain_arreffs,other},_,_,_), t2) =>
-           (try_bin(lvar,t2,rhos_actuals,n)
-            handle Match => 
+           ((* try_bin(lvar,t2,rhos_actuals,n)
+            handle Match => *)
            let
                   (*        f il (exp) 
                                       OR
@@ -977,7 +992,8 @@ struct
                  end
                )
             else layTrip(body,n)
-        | SWITCH_I(sw) => layoutSwitch layTrip Int.toString  sw
+        | SWITCH_I {switch,precision} => layoutSwitch layTrip Int32.toString switch
+        | SWITCH_W {switch,precision} => layoutSwitch layTrip (fn w => "0x" ^ Word32.toString w) switch
         | SWITCH_S(sw) => layoutSwitch layTrip (fn s => s) sw
         | SWITCH_C(sw) => layoutSwitch layTrip Con.pr_con sw
         | SWITCH_E(sw) => layoutSwitch layTrip Excon.pr_excon sw
@@ -1189,6 +1205,7 @@ struct
     case e of
       VAR{lvar, ...} => (lookup env lvar handle Lookup => tr)
     | INTEGER _ => tr
+    | WORD _ => tr
     | STRING _ => tr
     | REAL _ => tr
     | UB_RECORD trs => e_to_t(UB_RECORD(map (eval env) trs))
@@ -1218,7 +1235,10 @@ struct
        e_to_t(EXCEPTION(excon,b,mu,a,eval env tr))
     | RAISE(tr) => e_to_t(RAISE(eval env tr))
     | HANDLE(tr1,tr2) => e_to_t(HANDLE(eval env tr1, eval env tr2))
-    | SWITCH_I(sw)    => e_to_t(SWITCH_I(eval_sw env sw))
+    | SWITCH_I {switch,precision} => e_to_t (SWITCH_I {switch=eval_sw env switch, 
+						       precision=precision})
+    | SWITCH_W {switch,precision} => e_to_t (SWITCH_W {switch=eval_sw env switch, 
+						       precision=precision})
     | SWITCH_S(sw)    => e_to_t(SWITCH_S(eval_sw env sw))
     | SWITCH_C(sw)    => e_to_t(SWITCH_C(eval_sw env sw))
     | SWITCH_E(sw)    => e_to_t(SWITCH_E(eval_sw env sw))
@@ -1395,7 +1415,8 @@ struct
 	       (VAR{lvar=lvar, il = #1(!il_r) , plain_arreffs = arreffs, 
                     fix_bound=fix_bound,rhos_actuals=ref rhos, other = r}, dep)
 	     end 
-        | RegionExp.INTEGER(i,a) => (INTEGER(i,a), dep)
+        | RegionExp.INTEGER(i,t,a) => (INTEGER(i,t,a), dep)
+        | RegionExp.WORD(i,t,a) => (WORD(i,t,a), dep)
         | RegionExp.STRING(s,a) => (STRING(s,a), dep)
         | RegionExp.REAL(r,a) => (REAL(r,a), dep)
         | RegionExp.UB_RECORD(ts) => 
@@ -1452,9 +1473,13 @@ val (body',dep) = mk_deptr(EE',body, dep)
                 val (tr2', dep) = mk_deptr(EE,tr2, dep)
             in (HANDLE(tr1',tr2'), dep)
             end
-        | RegionExp.SWITCH_I sw =>
-            let val (sw', dep) = mk_dep_sw(EE,sw, dep)
-            in (SWITCH_I sw', dep)
+        | RegionExp.SWITCH_I {switch,precision} =>
+            let val (switch', dep) = mk_dep_sw(EE,switch, dep)
+            in (SWITCH_I {switch=switch', precision=precision}, dep)
+            end
+        | RegionExp.SWITCH_W {switch,precision} =>
+            let val (switch', dep) = mk_dep_sw(EE,switch, dep)
+            in (SWITCH_W {switch=switch', precision=precision}, dep)
             end
         | RegionExp.SWITCH_S sw =>
             let val (sw', dep) = mk_dep_sw(EE,sw, dep)
@@ -1616,6 +1641,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
 
       fun atomic(TR(VAR _, _, _, _)) = true
         | atomic(TR(INTEGER _,_,_,_)) = true
+        | atomic(TR(WORD _,_,_,_)) = true
         | atomic(TR(RECORD(_,[]), _, _, _)) = true
         | atomic _ = false
 
@@ -1662,6 +1688,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
       case e of
         VAR _ => k tr
       | INTEGER _ => k tr
+      | WORD _ => k tr
       | STRING _ => k tr
       | REAL _ =>  k tr
       | UB_RECORD(trs) => many_sub trs (e_to_t o UB_RECORD)
@@ -1712,13 +1739,23 @@ val (body',dep) = mk_deptr(EE',body, dep)
        | SWITCH_C(sw) => kns sw (e_to_t o SWITCH_C )
        | SWITCH_E(sw) => kns sw (e_to_t o SWITCH_E )
 *)
-       | SWITCH_I(SWITCH(tr0, match, tr_opt)) =>
+       | SWITCH_I {switch=SWITCH(tr0, match, tr_opt), precision} =>
 	     one_sub tr0 (fn x_tr_0 => 
 			  let val match' = map (fn (con,tr) => (con,kne tr (fn  x => x))) match
 			    val tr_opt' = case tr_opt of
 			      SOME tr_alt => SOME(kne tr_alt (fn x => x))
 			    | NONE => NONE
-			  in e_to_t(SWITCH_I(SWITCH(x_tr_0,match',tr_opt')))
+			  in e_to_t(SWITCH_I {switch=SWITCH(x_tr_0,match',tr_opt'),
+					      precision=precision})
+			  end)
+       | SWITCH_W {switch=SWITCH(tr0, match, tr_opt), precision} =>
+	     one_sub tr0 (fn x_tr_0 => 
+			  let val match' = map (fn (con,tr) => (con,kne tr (fn  x => x))) match
+			    val tr_opt' = case tr_opt of
+			      SOME tr_alt => SOME(kne tr_alt (fn x => x))
+			    | NONE => NONE
+			  in e_to_t(SWITCH_W {switch=SWITCH(x_tr_0,match',tr_opt'),
+					      precision=precision})
 			  end)
        | SWITCH_S(SWITCH(tr0, match, tr_opt)) =>
 	     one_sub tr0 (fn x_tr_0 => 
@@ -1814,7 +1851,8 @@ val (body',dep) = mk_deptr(EE',body, dep)
      (case (e1,e2) of
         (VAR{lvar=lvar1, ...}, VAR{lvar=lvar2,...}) =>
             Lvar.eq(lvar1,lvar2)
-      | (INTEGER(i,_), INTEGER(i',_)) => i=i'
+      | (INTEGER(i,t,_), INTEGER(i',t',_)) => i=i'
+      | (WORD(w,t,_), WORD(w',t',_)) => w=w'
       | (STRING(s,_), STRING(s',_)) => s=s'
       | (REAL(r,_), REAL(r',_)) => (r = r') (* reals are represented as strings for the precision to be preserved *)
       | (UB_RECORD ts1, UB_RECORD ts2) =>
@@ -1839,7 +1877,10 @@ val (body',dep) = mk_deptr(EE',body, dep)
       | (RAISE(tr1), RAISE(tr2)) => eq(tr1,tr2)
       | (HANDLE(tr1,tr1'), HANDLE(tr2,tr2')) =>
             eq(tr1,tr2) andalso eq(tr1',tr2')
-      | (SWITCH_I(sw1),SWITCH_I(sw2)) => eq_sw (sw1,sw2) eq
+      | (SWITCH_I {switch=sw1,precision=p1}, SWITCH_I {switch=sw2, precision=p2}) => 
+	    eq_sw (sw1,sw2) eq andalso p1=p2
+      | (SWITCH_W {switch=sw1,precision=p1}, SWITCH_W {switch=sw2, precision=p2}) => 
+	    eq_sw (sw1,sw2) eq andalso p1=p2
       | (SWITCH_S(sw1),SWITCH_S(sw2)) => eq_sw (sw1,sw2) eq
       | (SWITCH_C(sw1),SWITCH_C(sw2)) => eq_sw (sw1,sw2) eq 
       | (SWITCH_E(sw1),SWITCH_E(sw2)) => eq_sw (sw1,sw2) eq
@@ -1946,6 +1987,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
              (case e of
                 VAR{lvar,other,...} => (e, NEXT)
               | INTEGER i => (INTEGER i, NEXT)
+              | WORD i => (WORD i, NEXT)
               | STRING s => (STRING s, NEXT)
               | REAL r => (REAL r, NEXT)
               | UB_RECORD l => let val (trs', cont) = tailList(l, cont)
@@ -1954,7 +1996,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
 
               | APP(_,_,t1 as TR(VAR{lvar, il, fix_bound, rhos_actuals=ref rhos_actuals, 
                             plain_arreffs,other},_,_,_), t2) =>
-                   (try_prim(t1,lvar,t2,rhos_actuals,cont) handle NOT_PRIM => 
+                   (
                     application(t1, t2,fix_bound)
                    )
 
@@ -2016,7 +2058,10 @@ val (body',dep) = mk_deptr(EE',body, dep)
                                    the closure must be de-allocated *)
                    in  (HANDLE(tr1',tr2'), NEXT)
                    end
-              | SWITCH_I sw => (SWITCH_I(tailsw(sw, cont)), NEXT)
+              | SWITCH_I {switch,precision} => 
+		   (SWITCH_I{switch=tailsw(switch, cont), precision=precision}, NEXT)
+              | SWITCH_W {switch,precision} => 
+		   (SWITCH_W{switch=tailsw(switch, cont), precision=precision}, NEXT)
               | SWITCH_S sw => (SWITCH_S(tailsw(sw, cont)), NEXT)
               | SWITCH_C sw => (SWITCH_C(tailsw(sw, cont)), NEXT)
               | SWITCH_E sw => (SWITCH_E(tailsw(sw, cont)), NEXT)
@@ -2082,13 +2127,6 @@ val (body',dep) = mk_deptr(EE',body, dep)
              )
           end
 
-        and try_prim(t1,lvar, t2, rhos_actuals,cont) = 
-             (case Lvar.primitive lvar of
-                SOME _ => 
-                     let val (t2', _) = tail(t2, NEXT)
-                     in (APP(NONE, NOT_YET_DETERMINED, t1, t2'),NEXT)
-                     end
-              | NONE => raise NOT_PRIM)
         and do_functions [] = []
           | do_functions ({lvar,occ,tyvars,rhos,epss,Type,
                            rhos_formals,bound_but_never_written_into,other,bind}::rest_functions) =

@@ -12,11 +12,17 @@ sig
     | FUN of (Type*place)list * arroweffect * (Type*place)list 
 
   val exnType: Type 
-  val intType: Type
+  val int31Type: Type
+  val int32Type: Type
+  val word8Type: Type
+  val word31Type: Type
+  val word32Type: Type
   val boolType: Type
   val realType: Type
   val stringType: Type
   val unitType: Type
+
+  val unboxed : Type -> bool
 
   (* ann_mu(mus)acc is a list of all the places and arrow effects that occur 
    * in mus consed onto acc; word regions are not included in the result. *)

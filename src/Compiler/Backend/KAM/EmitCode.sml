@@ -108,11 +108,11 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | IfLessThanJmpRel(lab) => (out_opcode IF_LESS_THAN_JMP_REL; RLL.out_label lab)
       | IfGreaterThanJmpRel(lab) => (out_opcode IF_GREATER_THAN_JMP_REL; RLL.out_label lab)
 *)
-      | IfNotEqJmpRelImmed(lab,i) => (out_opcode IF_NOT_EQ_JMP_REL_IMMED; RLL.out_label lab; out_int i)
-      | IfLessThanJmpRelImmed(lab,i) => (out_opcode IF_LESS_THAN_JMP_REL_IMMED; RLL.out_label lab; out_int i)
-      | IfGreaterThanJmpRelImmed(lab,i) => (out_opcode IF_GREATER_THAN_JMP_REL_IMMED; RLL.out_label lab; out_int i)
+      | IfNotEqJmpRelImmed(lab,i) => (out_opcode IF_NOT_EQ_JMP_REL_IMMED; RLL.out_label lab; out_long_i32 i)
+      | IfLessThanJmpRelImmed(lab,i) => (out_opcode IF_LESS_THAN_JMP_REL_IMMED; RLL.out_label lab; out_long_i32 i)
+      | IfGreaterThanJmpRelImmed(lab,i) => (out_opcode IF_GREATER_THAN_JMP_REL_IMMED; RLL.out_label lab; out_long_i32 i)
       | DotLabel(lab) => RLL.out_label lab
-      | JmpVector(lab,first_sel) => (out_opcode JMP_VECTOR; RLL.out_label lab; out_int first_sel)
+      | JmpVector(lab,first_sel) => (out_opcode JMP_VECTOR; RLL.out_label lab; out_long_i32 first_sel)
 
       | Raise => out_opcode RAISE
       | PushExnPtr => out_opcode PUSH_EXN_PTR

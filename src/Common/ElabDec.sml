@@ -466,6 +466,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 		  case overloading
 		    of NONE => okConv i
 		     | SOME tv => preOverloadingConv (i, OverloadingInfo.UNRESOLVED_IDENT tv)
+		val i_out = addTypeInfo_EXP(i_out, type_scon) 
 	    in (Substitution.Id, type_scon, OG.SCONatexp (i_out, scon))
 	    end
             
@@ -1480,8 +1481,11 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 	    let val {type_scon, overloading} = Type.of_scon scon
 	        val i_out =
 		  case overloading
-		    of NONE => okConv i
+		    of NONE => (case scon
+				  of OG.SCon.REAL _ => errorConv(i, ErrorInfo.REALSCON_ATPAT)
+				   | _ => okConv i)
 		     | SOME tv => preOverloadingConv (i, OverloadingInfo.UNRESOLVED_IDENT tv)
+		val i_out = addTypeInfo_MATCH(i_out, type_scon)
 	    in (Substitution.Id, (VE.empty, type_scon), OG.SCONatpat (i_out, scon))
 	    end
 
@@ -1882,12 +1886,14 @@ let
 
   local
   val tau_to_overloadinginfo_alist =
-        [(Type.Int,    OverloadingInfo.RESOLVED_INT),
+        [(Type.Int31,  OverloadingInfo.RESOLVED_INT31),
+	 (Type.Int32,  OverloadingInfo.RESOLVED_INT32),
 	 (Type.Real,   OverloadingInfo.RESOLVED_REAL),
 	 (Type.String, OverloadingInfo.RESOLVED_STRING),
 	 (Type.Char,   OverloadingInfo.RESOLVED_CHAR),
 	 (Type.Word8,  OverloadingInfo.RESOLVED_WORD8),
-	 (Type.Word,   OverloadingInfo.RESOLVED_WORD)]
+	 (Type.Word31, OverloadingInfo.RESOLVED_WORD31),
+	 (Type.Word32, OverloadingInfo.RESOLVED_WORD32)]
 	
   fun tau_to_overloadinginfo tau  =
     case List.find (fn (tau', oi) => Type.eq (tau, tau')) tau_to_overloadinginfo_alist
@@ -1904,8 +1910,9 @@ let
 			 | NONE => default) 
 		 (*TODO 25/06/1997 10:11. tho.
 		  I'd rather do an impossible here: If tau' is not a
-		  tyvar, it must be one of int, real, string, char, &
-		  word; everything else would be a type error.  Well,
+		  tyvar, it must be one of {int31, int32, real, string, 
+		  char, word8, word31, word32}; everything else would 
+		  be a type error.  Well,
 		  perhaps it can occur then, namely when there is a
 		  type error (they do occur), and since type errors
 		  should not make the compiler crash, it is probably
@@ -1956,40 +1963,33 @@ let
     open TypeInfo 
     infixr on_TypeInfo
 
-    fun S on_TypeInfo (LAB_INFO {index}) = LAB_INFO {index=index}
-      | S on_TypeInfo (RECORD_ATPAT_INFO {Type}) = 
-	    RECORD_ATPAT_INFO {Type=S on Type}
-      | S on_TypeInfo (VAR_INFO {instances}) = 
-	    VAR_INFO {instances=map (fn tau => S on tau) instances}
-      | S on_TypeInfo (VAR_PAT_INFO {tyvars,Type}) =
-	    VAR_PAT_INFO {tyvars=tyvars,Type=S on Type}
-      | S on_TypeInfo (CON_INFO {numCons,index,longid,instances}) = 
-	    CON_INFO {numCons=numCons,index=index,longid=longid,
-		      instances= map (fn tau => S on tau) instances}
-      | S on_TypeInfo (EXCON_INFO {Type,longid}) = 
-	    EXCON_INFO {Type=S on Type,longid=longid}
-      | S on_TypeInfo (EXBIND_INFO {TypeOpt=NONE}) = EXBIND_INFO {TypeOpt=NONE}
-      | S on_TypeInfo (EXBIND_INFO {TypeOpt=SOME Type}) = 
-	    EXBIND_INFO {TypeOpt=SOME (S on Type)}   
-      | S on_TypeInfo (TYENV_INFO TE) = TYENV_INFO TE                  (*no free tyvars here*)
-      | S on_TypeInfo (ABSTYPE_INFO (TE,rea)) = ABSTYPE_INFO (TE,rea)  (*no free tyvars here*)
-      | S on_TypeInfo (EXP_INFO {Type}) = 
-	    EXP_INFO {Type=S on Type}
-      | S on_TypeInfo (MATCH_INFO {Type}) = 
-	    MATCH_INFO {Type=S on Type}
-      | S on_TypeInfo (PLAINvalbind_INFO {tyvars,Type}) =
-	    PLAINvalbind_INFO {tyvars=tyvars, Type=S on Type}
-      | S on_TypeInfo (OPEN_INFO i) = OPEN_INFO i  (*only identifiers*)
-      | S on_TypeInfo (INCLUDE_INFO i) = INCLUDE_INFO i  (*only identifiers*)
-      | S on_TypeInfo (FUNCTOR_APP_INFO rea) = 
-	    FUNCTOR_APP_INFO rea   (* type functions are closed *)
-      | S on_TypeInfo (FUNBIND_INFO E) = FUNBIND_INFO E (* signatures are closed *)
-      | S on_TypeInfo (TRANS_CONSTRAINT_INFO E) =
-	    TRANS_CONSTRAINT_INFO E (* signatures are closed *)
-      | S on_TypeInfo (OPAQUE_CONSTRAINT_INFO E_and_phi) =
-	    OPAQUE_CONSTRAINT_INFO E_and_phi (* signatures and realisations are closed *)
-      | S on_TypeInfo (SIGBIND_INFO _) = impossible "on_TypeInfo.SIGBIND_INFO"
-      | S on_TypeInfo (DELAYED_REALISATION _) = impossible "on_TypeInfo.DELAYED_REALISATION"
+    fun S on_TypeInfo i =
+      case i
+	of LAB_INFO {index} => LAB_INFO {index=index}
+	 | RECORD_ATPAT_INFO {Type} => RECORD_ATPAT_INFO {Type=S on Type}
+	 | VAR_INFO {instances} => VAR_INFO {instances=map (fn tau => S on tau) instances}
+	 | VAR_PAT_INFO {tyvars,Type} => VAR_PAT_INFO {tyvars=tyvars,Type=S on Type}
+	 | CON_INFO {numCons,index,longid,instances} =>
+	  CON_INFO {numCons=numCons,index=index,longid=longid,
+		    instances= map (fn tau => S on tau) instances}
+	 | EXCON_INFO {Type,longid} => EXCON_INFO {Type=S on Type,longid=longid}
+	 | EXBIND_INFO {TypeOpt=NONE} => EXBIND_INFO {TypeOpt=NONE}
+	 | EXBIND_INFO {TypeOpt=SOME Type} => EXBIND_INFO {TypeOpt=SOME (S on Type)}   
+	 | TYENV_INFO TE => TYENV_INFO TE                  (*no free tyvars here*)
+	 | ABSTYPE_INFO (TE,rea) => ABSTYPE_INFO (TE,rea)  (*no free tyvars here*)
+	 | EXP_INFO {Type} => EXP_INFO {Type=S on Type}
+	 | MATCH_INFO {Type} => MATCH_INFO {Type=S on Type}
+	 | PLAINvalbind_INFO {tyvars,Type} =>
+	  PLAINvalbind_INFO {tyvars=tyvars, Type=S on Type}
+	 | OPEN_INFO i => OPEN_INFO i  (*only identifiers*)
+	 | INCLUDE_INFO i => INCLUDE_INFO i  (*only identifiers*)
+	 | FUNCTOR_APP_INFO rea => FUNCTOR_APP_INFO rea   (* type functions are closed *)
+	 | FUNBIND_INFO E => FUNBIND_INFO E (* signatures are closed *)
+	 | TRANS_CONSTRAINT_INFO E => TRANS_CONSTRAINT_INFO E (* signatures are closed *)
+	 | OPAQUE_CONSTRAINT_INFO E_and_phi =>
+	  OPAQUE_CONSTRAINT_INFO E_and_phi (* signatures and realisations are closed *)
+	 | SIGBIND_INFO _ => impossible "on_TypeInfo.SIGBIND_INFO"
+	 | DELAYED_REALISATION _ => impossible "on_TypeInfo.DELAYED_REALISATION"
   in
     fun resolve_i ElabInfo =
           (case ElabInfo.to_TypeInfo ElabInfo of
@@ -2011,16 +2011,28 @@ let
 	    (case ElabInfo.to_OverloadingInfo i 
 	       of NONE => SCONatexp(resolve_i i, scon)
 		| SOME (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
-		 SCONatexp (ElabInfo.plus_OverloadingInfo i (resolve_tyvar (Type.Word, OverloadingInfo.RESOLVED_WORD) tyvar), 
-			    scon)
-                 | SOME _ => impossible "resolve_atexp.SCON")
+		 let val (defaultType, defaultOverloadingInfo) =
+		   case scon
+		     of SCon.INTEGER _ => (Type.IntDefault(), OverloadingInfo.resolvedIntDefault())
+		      | SCon.WORD _ => (Type.WordDefault(), OverloadingInfo.resolvedWordDefault())
+		      | _ => Crash.impossible "ElabDec.resolve_atexp.scon"
+		 in
+		   SCONatexp (ElabInfo.plus_OverloadingInfo i 
+			      (resolve_tyvar (defaultType,
+					      defaultOverloadingInfo) 
+			       tyvar), 
+			       scon)
+		 end
+		| SOME _ => impossible "resolve_atexp.SCON")
         | IDENTatexp(i, op_opt) =>
               (case ElabInfo.to_OverloadingInfo i of 
                    NONE => IDENTatexp (resolve_i i, op_opt)
                  | SOME (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
-		     IDENTatexp
-		       (ElabInfo.plus_OverloadingInfo i (resolve_tyvar (Type.Int, OverloadingInfo.RESOLVED_INT) tyvar), 
-			op_opt)
+		     IDENTatexp (ElabInfo.plus_OverloadingInfo i 
+				 (resolve_tyvar (Type.IntDefault(), 
+						 OverloadingInfo.resolvedIntDefault()) 
+				  tyvar), 
+				 op_opt)
                  | SOME _ => impossible "resolve_atexp")
         | RECORDatexp(i, NONE) => RECORDatexp(resolve_i i,NONE)
         | RECORDatexp(i, SOME exprow) =>
@@ -2031,70 +2043,63 @@ let
               PARatexp(resolve_i i, resolve_exp exp)
               
   and resolve_exprow (exprow: exprow) : exprow =
-      case exprow of 
-          EXPROW(i, l, exp, NONE) =>
-              EXPROW(resolve_i i, l, resolve_exp exp, NONE)
-        | EXPROW(i, l, exp, SOME exprow) =>
-              EXPROW(resolve_i i, l, resolve_exp exp, SOME (resolve_exprow exprow))
-              
+    case exprow of 
+      EXPROW(i, l, exp, NONE) =>
+	EXPROW(resolve_i i, l, resolve_exp exp, NONE)
+    | EXPROW(i, l, exp, SOME exprow) =>
+	EXPROW(resolve_i i, l, resolve_exp exp, SOME (resolve_exprow exprow))
+	
   and resolve_exp (exp: exp) : exp =
-      case exp of
-          ATEXPexp(i, atexp) => 
-              ATEXPexp(resolve_i i, resolve_atexp atexp)
-        | APPexp(i, exp, atexp) => 
-              APPexp(resolve_i i, resolve_exp exp, resolve_atexp atexp)
-        | TYPEDexp(i, exp, ty) =>
-              TYPEDexp(resolve_i i, resolve_exp exp, ty)
-        | HANDLEexp(i, exp, match) =>
-              HANDLEexp(resolve_i i, resolve_exp exp, resolve_match match)
-        | RAISEexp(i, exp) => 
-              RAISEexp(resolve_i i, resolve_exp exp)
-        | FNexp(i, match) =>
-              FNexp(resolve_i i, resolve_match match)
-        | UNRES_INFIXexp _ =>
-              impossible "resolve_exp(UNRES_INFIX)"
-
+    case exp of
+      ATEXPexp(i, atexp) => ATEXPexp(resolve_i i, resolve_atexp atexp)
+    | APPexp(i, exp, atexp) => APPexp(resolve_i i, resolve_exp exp, resolve_atexp atexp)
+    | TYPEDexp(i, exp, ty) => TYPEDexp(resolve_i i, resolve_exp exp, ty)
+    | HANDLEexp(i, exp, match) => HANDLEexp(resolve_i i, resolve_exp exp, resolve_match match)
+    | RAISEexp(i, exp) => RAISEexp(resolve_i i, resolve_exp exp)
+    | FNexp(i, match) => FNexp(resolve_i i, resolve_match match)
+    | UNRES_INFIXexp _ => impossible "resolve_exp(UNRES_INFIX)"
+	
   and resolve_match (match: match) : match =
-      case match of 
-          MATCH(i, mrule, NONE) => 
-              MATCH(resolve_i i, resolve_mrule mrule, NONE)
-        | MATCH(i, mrule, SOME match) =>
-              MATCH(resolve_i i, resolve_mrule mrule, SOME (resolve_match match))
+    case match of 
+      MATCH(i, mrule, NONE) => 
+	MATCH(resolve_i i, resolve_mrule mrule, NONE)
+    | MATCH(i, mrule, SOME match) =>
+	MATCH(resolve_i i, resolve_mrule mrule, SOME (resolve_match match))
 
   and resolve_mrule (MRULE(i, pat, exp) : mrule) : mrule =
-      MRULE(resolve_i i, resolve_pat pat, resolve_exp exp)
+    MRULE(resolve_i i, resolve_pat pat, resolve_exp exp)
       
   and resolve_dec (dec : dec) : dec =
-        (case dec of 
-	   VALdec(i, tyvars, valbind) =>
-	     VALdec(resolve_i i, tyvars, resolve_valbind valbind)
-	 | UNRES_FUNdec _ => impossible "resolve_dec(UNRES_FUNdec)"
-	 | TYPEdec _ => dec
-	 | DATATYPEdec(i,datbind) => DATATYPEdec(resolve_i i,datbind)
-	 | DATATYPE_REPLICATIONdec(i, tycon, longtycon) => 
-	     DATATYPE_REPLICATIONdec(resolve_i i, tycon, longtycon)
-	 | ABSTYPEdec(i, datbind, dec) =>
-	     ABSTYPEdec(resolve_i i, datbind, resolve_dec dec)
-	 | EXCEPTIONdec(i,exbind) => EXCEPTIONdec(resolve_i i, exbind)
-	 | LOCALdec(i, dec1, dec2) =>
-	     LOCALdec(resolve_i i, resolve_dec dec1, resolve_dec dec2)
-	 | OPENdec _ => dec
-	 | SEQdec(i, dec1, dec2) =>
-	     SEQdec(resolve_i i, resolve_dec dec1, resolve_dec dec2)
-	 | INFIXdec _ => dec
-	 | INFIXRdec _ => dec
-	 | NONFIXdec _ => dec
-	 | EMPTYdec _ => dec)
+    (case dec of 
+       VALdec(i, tyvars, valbind) =>
+	 VALdec(resolve_i i, tyvars, resolve_valbind valbind)
+     | UNRES_FUNdec _ => impossible "resolve_dec(UNRES_FUNdec)"
+     | TYPEdec _ => dec
+     | DATATYPEdec(i,datbind) => DATATYPEdec(resolve_i i,datbind)
+     | DATATYPE_REPLICATIONdec(i, tycon, longtycon) => 
+	 DATATYPE_REPLICATIONdec(resolve_i i, tycon, longtycon)
+     | ABSTYPEdec(i, datbind, dec) =>
+	 ABSTYPEdec(resolve_i i, datbind, resolve_dec dec)
+     | EXCEPTIONdec(i,exbind) => EXCEPTIONdec(resolve_i i, exbind)
+     | LOCALdec(i, dec1, dec2) =>
+	 LOCALdec(resolve_i i, resolve_dec dec1, resolve_dec dec2)
+     | OPENdec _ => dec
+     | SEQdec(i, dec1, dec2) =>
+	 SEQdec(resolve_i i, resolve_dec dec1, resolve_dec dec2)
+     | INFIXdec _ => dec
+     | INFIXRdec _ => dec
+     | NONFIXdec _ => dec
+     | EMPTYdec _ => dec)
 
   and resolve_valbind (valbind : valbind) : valbind =
-      case valbind of
-          PLAINvalbind(i, pat, exp, NONE) =>
-              PLAINvalbind(i, resolve_pat pat, resolve_exp exp, NONE)
-        | PLAINvalbind(i, pat, exp, SOME valbind) =>
-              PLAINvalbind(i, resolve_pat pat, 
-                           resolve_exp exp, SOME (resolve_valbind valbind))
-        | RECvalbind(i, valbind) =>
-              RECvalbind(i, resolve_valbind valbind)
+    case valbind of
+      PLAINvalbind(i, pat, exp, NONE) =>
+	PLAINvalbind(i, resolve_pat pat, resolve_exp exp, NONE)
+    | PLAINvalbind(i, pat, exp, SOME valbind) =>
+	PLAINvalbind(i, resolve_pat pat, 
+		     resolve_exp exp, SOME (resolve_valbind valbind))
+    | RECvalbind(i, valbind) =>
+	RECvalbind(i, resolve_valbind valbind)
       
   and resolve_atpat (atpat : atpat) : atpat =
     case atpat of
@@ -2103,10 +2108,19 @@ let
 	(case ElabInfo.to_OverloadingInfo i 
 	   of NONE => SCONatpat(resolve_i i, scon)
 	    | SOME (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
-	     SCONatpat (ElabInfo.plus_OverloadingInfo i (resolve_tyvar (Type.Word, OverloadingInfo.RESOLVED_WORD) tyvar), 
-			scon)
+	     let val (defaultType, defaultOverloadingInfo) =
+	       case scon
+		 of SCon.INTEGER _ => (Type.IntDefault(), OverloadingInfo.resolvedIntDefault())
+		  | SCon.WORD _ => (Type.WordDefault(), OverloadingInfo.resolvedWordDefault())
+		  | _ => Crash.impossible "ElabDec.resolve_atpat.scon"
+	     in
+	       SCONatpat (ElabInfo.plus_OverloadingInfo i 
+			  (resolve_tyvar (defaultType, 
+					  defaultOverloadingInfo) 
+			   tyvar), 
+			  scon)
+	     end
 	    | SOME _ => impossible "resolve_atpat.SCON")
-
     | LONGIDatpat(i,x) => LONGIDatpat(resolve_i i,x)
     | RECORDatpat(i, NONE) => RECORDatpat(resolve_i i,NONE)
     | RECORDatpat(i, SOME patrow) =>
@@ -2157,17 +2171,11 @@ let
 
   and resolve_pat (pat : pat) : pat =
     case pat of
-      ATPATpat(i, atpat) =>
-        ATPATpat(resolve_i i, resolve_atpat atpat)
-    | CONSpat(i, longidopt, atpat) =>
-        CONSpat(resolve_i i, longidopt, resolve_atpat atpat)
-    | TYPEDpat(i, pat, ty) =>
-        TYPEDpat(resolve_i i, resolve_pat pat, ty)
-    | LAYEREDpat(i, idopt, tyopt, pat) =>
-        LAYEREDpat(resolve_i i, idopt, tyopt, resolve_pat pat)
-    | UNRES_INFIXpat _ =>
-        impossible "resolve_pat(UNRES_INFIX)"
-
+      ATPATpat(i, atpat) => ATPATpat(resolve_i i, resolve_atpat atpat)
+    | CONSpat(i, longidopt, atpat) => CONSpat(resolve_i i, longidopt, resolve_atpat atpat)
+    | TYPEDpat(i, pat, ty) => TYPEDpat(resolve_i i, resolve_pat pat, ty)
+    | LAYEREDpat(i, idopt, tyopt, pat) => LAYEREDpat(resolve_i i, idopt, tyopt, resolve_pat pat)
+    | UNRES_INFIXpat _ => impossible "resolve_pat(UNRES_INFIX)"
 
 in
   resolve_dec dec

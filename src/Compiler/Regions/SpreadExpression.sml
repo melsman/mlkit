@@ -400,13 +400,46 @@ struct
          | NONE => die "spreadExp: free lvar"
        )
 
-    | E.INTEGER(i: int)=> 
+    | E.INTEGER (i,tau_ml) => 
+        let val (mu as (tau,rho), B) = freshMu(tau_ml,B)
+	in (B,E'.TR(E'.INTEGER(i, tau, rho),E'.Mus[mu], (*Eff.*)mkPut rho))
+        end
+(*
         let 
-            val (rho, B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
-            val tau = R.intType
+	  val rt = if ( (precision = 32 andalso tag_integers()) 
+		       orelse (*for the future*)
+		       precision > 32 ) then Eff.TOP_RT
+		   else Eff.WORD_RT
+	  val (rho, B) = (*Eff.*)freshRhoWithTy(rt, B)
+	  val tau = 
+	    case precision
+	      of 31 => R.int31Type
+               | 32 => R.int32Type
+	       | _ => die "spreadExp: INTEGER"
         in
 	    (B,E'.TR(E'.INTEGER(i, rho),E'.Mus[(tau,rho)], (*Eff.*)mkPut rho))
         end
+*)
+    | E.WORD (i, tau_ml) => 
+        let val (mu as (tau,rho), B) = freshMu(tau_ml,B)
+	in (B,E'.TR(E'.WORD(i, tau, rho),E'.Mus[mu], (*Eff.*)mkPut rho))
+        end
+(*
+	  val rt = if ( (precision = 32 andalso tag_integers()) 
+		       orelse (*for the future*)
+		       precision > 32 ) then Eff.TOP_RT
+		   else Eff.WORD_RT
+	  val (rho, B) = (*Eff.*)freshRhoWithTy(rt, B)
+	  val tau = 
+	    case precision
+	      of 8 => R.word8Type
+	       | 31 => R.word31Type
+               | 32 => R.word32Type
+	       | _ => die "spreadExp: INTEGER"
+        in
+	    (B,E'.TR(E'.WORD(i, rho),E'.Mus[(tau,rho)], (*Eff.*)mkPut rho))
+        end
+*)
     | E.STRING(s: string)=> 
         let 
             val (rho, B) = (*Eff.*)freshRhoWithTy(Eff.STRING_RT, B)
@@ -705,7 +738,7 @@ good *)
 	  retract(B, E'.TR(E'.DROP t1, E'.Mus [], phi1))
 	end
 	  
-
+(*
 
     (* -----------------------------------------------------------------------
      * Compiler supported primitives; For all these primitives the backend
@@ -717,6 +750,7 @@ good *)
      * ----------------------------------------------------------------------- *)
 
     (* INTEGER OPERATIONS *)
+
     | E.PRIM(E.PLUS_INTprim,e1::e2::_)    => S_built_in(B, Lvars.plus_int_lvar, [e1,e2])
     | E.PRIM(E.MINUS_INTprim,e1::e2::_)   => S_built_in(B, Lvars.minus_int_lvar, [e1,e2])
     | E.PRIM(E.MUL_INTprim,e1::e2::_)     => S_built_in(B, Lvars.mul_int_lvar, [e1,e2])
@@ -742,6 +776,7 @@ good *)
         end
 
     (* REAL OPERATIONS *)
+
     | E.PRIM(E.PLUS_REALprim,e1::e2::_)   => S_built_in(B, Lvars.plus_float_lvar, [e1,e2])
     | E.PRIM(E.MINUS_REALprim,e1::e2::_)  => S_built_in(B, Lvars.minus_float_lvar, [e1,e2])
     | E.PRIM(E.MUL_REALprim,e1::e2::_)    => S_built_in(B, Lvars.mul_float_lvar, [e1,e2])
@@ -751,10 +786,14 @@ good *)
     | E.PRIM(E.LESSEQ_REALprim,[e1,e2])   => S_built_in(B, Lvars.lesseq_float_lvar, [e1,e2])
     | E.PRIM(E.GREATER_REALprim,[e1,e2])  => S_built_in(B, Lvars.greater_float_lvar, [e1,e2])
     | E.PRIM(E.GREATEREQ_REALprim,[e1,e2]) => S_built_in(B, Lvars.greatereq_float_lvar, [e1,e2])
+*)
 
+    | E.SWITCH_I {switch: Int32.int E.Switch, precision} => 
+	(spreadSwitch B S (fn sw => E'.SWITCH_I{switch=sw,precision=precision}) [] (switch,toplevel))
+    | E.SWITCH_W {switch: Word32.word E.Switch, precision} => 
+	(spreadSwitch B S (fn sw => E'.SWITCH_W{switch=sw,precision=precision}) [] (switch,toplevel))
 
-    | E.SWITCH_I(intsw: int E.Switch)       => (spreadSwitch B S E'.SWITCH_I [] (intsw,toplevel))
-    | E.SWITCH_S(stringsw:  string E.Switch)=> (spreadSwitch B S E'.SWITCH_S [] (stringsw,toplevel))
+    | E.SWITCH_S(stringsw: string E.Switch) => (spreadSwitch B S E'.SWITCH_S [] (stringsw,toplevel))
     | E.SWITCH_C(consw: E.con E.Switch) => (spreadSwitch B S E'.SWITCH_C [] (consw,toplevel))
     | E.SWITCH_E(exconsw: E.excon E.Switch as
                  E.SWITCH(_,choices,_))=>(spreadSwitch B S E'.SWITCH_E

@@ -1448,14 +1448,14 @@ struct
 datatype svalue = VOID | ntVOID of unit ->  unit
  | TYVAR of unit ->  (string) | ID of unit ->  (string)
  | STRING of unit ->  (string) | REAL of unit ->  (string option)
- | WORD of unit ->  (int option) | DIGIT of unit ->  (int)
- | HEXINTEGER of unit ->  (int option)
- | DECNEGINTEGER of unit ->  (int option)
- | DECPOSINTEGER of unit ->  (int option)
+ | WORD of unit ->  (Word32.word option) | DIGIT of unit ->  (int)
+ | HEXINTEGER of unit ->  (Int32.int option)
+ | DECNEGINTEGER of unit ->  (Int32.int option)
+ | DECPOSINTEGER of unit ->  (Int32.int option)
  | QUAL_STAR of unit ->  (string list)
  | QUAL_ID of unit ->  (string list) | Char of unit ->  (int)
- | Integer of unit ->  (int) | DecPosInteger of unit ->  (int)
- | Label of unit ->  (lab)
+ | Integer of unit ->  (Int32.int)
+ | DecPosInteger of unit ->  (Int32.int) | Label of unit ->  (lab)
  | LongOpEqIdent of unit ->  (string list op_opt)
  | LongOpIdent of unit ->  (string list op_opt)
  | LongIdent of unit ->  (string list)
@@ -1658,7 +1658,7 @@ fn (T 8) => MlyValue.QUAL_ID(fn () => (["bogus"])) |
 (T 61) => MlyValue.DECPOSINTEGER(fn () => (SOME 0)) | 
 (T 62) => MlyValue.DECNEGINTEGER(fn () => (SOME 0)) | 
 (T 63) => MlyValue.HEXINTEGER(fn () => (SOME 0)) | 
-(T 65) => MlyValue.WORD(fn () => (SOME 0)) | 
+(T 65) => MlyValue.WORD(fn () => (SOME 0w0)) | 
 (T 66) => MlyValue.REAL(fn () => (SOME "0.0")) | 
 (T 67) => MlyValue.STRING(fn () => ("")) | 
 (T 68) => MlyValue.ID(fn () => ("bogus")) | 
@@ -1798,7 +1798,7 @@ rest671) end
 | (20,(_,(MlyValue.DIGIT DIGIT1,DIGIT1left,DIGIT1right))::rest671) => 
 let val result=MlyValue.DecPosInteger(fn _ => let val DIGIT as DIGIT1=
 DIGIT1 ()
- in ( DIGIT ) end
+ in ( Int32.fromInt DIGIT ) end
 )
  in (LrTable.NT 122,(result,DIGIT1left,DIGIT1right),rest671) end
 | (21,(_,(MlyValue.Ident Ident1,Ident1left,Ident1right))::rest671) => 
@@ -1810,7 +1810,7 @@ let val result=MlyValue.Label(fn _ => let val Ident as Ident1=Ident1
 | (22,(_,(MlyValue.DecPosInteger DecPosInteger1,DecPosInteger1left,
 DecPosInteger1right))::rest671) => let val result=MlyValue.Label(fn _
  => let val DecPosInteger as DecPosInteger1=DecPosInteger1 ()
- in ( mk_IntegerLab DecPosInteger ) end
+ in ( mk_IntegerLab (Int32.toInt DecPosInteger) ) end
 )
  in (LrTable.NT 121,(result,DecPosInteger1left,DecPosInteger1right),
 rest671) end
@@ -4108,7 +4108,7 @@ MlyValue.Integer(fn _ => let val HEXINTEGER as HEXINTEGER1=HEXINTEGER1
 | (268,(_,(MlyValue.DIGIT DIGIT1,DIGIT1left,DIGIT1right))::rest671)
  => let val result=MlyValue.Integer(fn _ => let val DIGIT as DIGIT1=
 DIGIT1 ()
- in ( DIGIT ) end
+ in ( Int32.fromInt DIGIT ) end
 )
  in (LrTable.NT 123,(result,DIGIT1left,DIGIT1right),rest671) end
 | (269,(_,(MlyValue.STRING STRING1,STRINGleft,STRING1right))::(_,(_,

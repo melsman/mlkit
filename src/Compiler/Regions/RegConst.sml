@@ -31,6 +31,7 @@ struct
    val initial_closure_offset = 1	(*initial offset for free variables in a closure*)
 
    val tag_values = Flags.is_on0 "tag_values"
+   val tag_integers = Flags.is_on0 "tag_integers"
 
    fun size_of_real () = 
      if tag_values() then 4 else 2
@@ -64,12 +65,5 @@ struct
 
    fun size_con0() = 1 (* boxed CON0 is always 1 word *)
    fun size_con1() = 2 (* boxed CON1 is always 2 words. *)
-     
-   fun unboxed_tyname tyname = (* Used in RType.sml *)
-         List.exists (fn tyname' => TyName.eq (tyname', tyname))
-	     [TyName.tyName_BOOL,
-	      TyName.tyName_INT,
-	      TyName.tyName_WORD,
-	      TyName.tyName_WORD8,
-	      TyName.tyName_CHAR]
+	     
 end;

@@ -13,9 +13,12 @@ signature TYCON =
     and explode_LongTyCon : longtycon -> strid list * tycon
 
     val tycon_INT    : tycon
+    val tycon_INT31  : tycon
+    val tycon_INT32  : tycon
     val tycon_WORD   : tycon
     val tycon_WORD8  : tycon
-    val tycon_WORD_BOXED : tycon (* 2001-02-17, Niels *)
+    val tycon_WORD31  : tycon
+    val tycon_WORD32 : tycon
     and tycon_REAL   : tycon
     and tycon_STRING : tycon
     and tycon_CHAR   : tycon

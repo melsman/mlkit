@@ -82,11 +82,13 @@ functor CompileDec(structure Con: CON
   struct
 
     structure ListPair = Edlib.ListPair
+    structure DecGrammar = TopdecGrammar.DecGrammar
+      
+    val tag_integers = Flags.is_on0 "tag_integers"
 
     open LambdaExp
     type function = {lvar : lvar, tyvars : tyvar list, Type : Type,
 		     bind : LambdaExp}
-    structure DecGrammar = TopdecGrammar.DecGrammar
     open DecGrammar
 
     (*import from StatObject:*)
@@ -334,18 +336,12 @@ functor CompileDec(structure Con: CON
     (*         Compilation of the semantic objects Type and TypeScheme        *)
     (* ---------------------------------------------------------------------- *)
 
-    (* compileTyName is necessary because char, word8, and word from
-     * CompileDec onwards are treated as int. I think we should
-     * eventually support all base types in the backend (the fact that
-     * there is not a one-to-one correspondence between type names
-     * here and for elaboration makes me uneasy - Martin *)
+    (* compileTyName compiles char and word8 to the default word-type *)
 
     fun compileTyName tyname =
-          if TyName.eq (tyname, TyName.tyName_CHAR)
-	  orelse TyName.eq (tyname, TyName.tyName_WORD) 
-	  orelse TyName.eq (tyname, TyName.tyName_WORD8) 
-	  then TyName.tyName_INT
-	  else tyname
+      if TyName.eq (tyname, TyName.tyName_CHAR) orelse TyName.eq (tyname, TyName.tyName_WORD8) then
+	TyName.tyName_WordDefault()
+      else tyname
 
     fun compileType (typ: StatObject.Type) : LambdaExp.Type =
         case Type.to_RecType typ of
@@ -458,6 +454,15 @@ functor CompileDec(structure Con: CON
       end
 
 
+   (* Compile type information annotated at special constants; necessary for
+    * dealing with overloading of integers and words. *)
+   fun typeScon i : Type = 
+     case to_TypeInfo i
+       of SOME(TypeInfo.MATCH_INFO {Type}) => compileType Type
+	| SOME(TypeInfo.EXP_INFO {Type}) => compileType Type
+	| _ => die "typeScon.wrong type info"
+
+
 
 (* ---------------------------------------------------------------------- *)
 (*         Pattern match compilation                                      *)
@@ -468,7 +473,8 @@ local
 (*The algorithm used in this pattern match compiler is described in
  PETER SESTOFT: ML pattern match compilation and partial evaluation.  In DANVY,
  GLÜCK & THIEMANN (eds): Dagstuhl Seminar on Partial Evaluation (= Lecture
- Notes in Computer Science (no.?)) 1996.
+ Notes in Computer Science (no.?)) 1996. 
+ ftp://ftp.dina.kvl.dk/pub/Staff/Peter.Sestoft/papers/match.ps.gz
 
  Consider this example input sml program to the kit
 
@@ -610,14 +616,14 @@ Report: Opt:
 			 span : span, 
 			 nullary : bool,
 			 info : ElabInfo.ElabInfo}
-               | Scon of SCon.scon
+               | Scon of SCon.scon * Type
 	       | Excon of {longid : longid, nullary : bool}
                | Tuple of {arity : int}
   (*nullary=true when the (exception) constructor takes zero arguments;
    otherwise it takes one argument.*)
   
   fun string_from_con0 (Con {longid, ...}) = "Con {" ^ Ident.pr_longid longid ^ ", ...}"
-    | string_from_con0 (Scon scon) = "Scon " ^ SCon.pr_scon scon
+    | string_from_con0 (Scon (scon,_)) = "Scon " ^ SCon.pr_scon scon
     | string_from_con0 (Excon {longid, ...}) = "Excon {" ^ Ident.pr_longid longid ^ ", ...}"
     | string_from_con0 (Tuple {arity}) = "Tuple {" ^ Int.toString arity ^ "}"
 
@@ -652,7 +658,8 @@ Report: Opt:
   fun con_cmp (Con {longid=longid1, span=span1, nullary=nullary1, ...},
 	       Con {longid=longid2, span=span2, nullary=nullary2, ...}) =
 	longid_cmp (longid1, longid2) (*I think it must suffice to compare the longids?*)
-    | con_cmp (Scon scon1, Scon scon2) = scon_cmp (scon1, scon2)
+    | con_cmp (Scon (scon1,_), Scon (scon2,_)) = scon_cmp (scon1, scon2)  (* same type when compared, thus
+									   * we don't need to compare infos *)
     | con_cmp (Tuple {arity=arity1}, Tuple {arity=arity2}) = int_cmp (arity1, arity2)
     | con_cmp (Excon {longid=longid1, ...}, Excon {longid=longid2, ...}) =
 	longid_cmp (longid1, longid2)
@@ -666,11 +673,11 @@ Report: Opt:
     | arity (Tuple {arity}) = arity
 
   fun span (Con {span, ...}) = span
-    | span (Scon (SCon.INTEGER x)) = span_infinite
-    | span (Scon (SCon.STRING x)) = span_infinite
-    | span (Scon (SCon.REAL x)) = die "span: real scon in pattern"
-    | span (Scon (SCon.CHAR x)) = span_256
-    | span (Scon (SCon.WORD x)) = span_infinite
+    | span (Scon (SCon.INTEGER x, _)) = span_infinite
+    | span (Scon (SCon.STRING x, _)) = span_infinite
+    | span (Scon (SCon.REAL x, _)) = die "span: real scon in pattern"
+    | span (Scon (SCon.CHAR x, _)) = span_256
+    | span (Scon (SCon.WORD x, _)) = span_infinite
     | span (Excon _) = span_infinite
     | span (Tuple {arity}) = span_1
 
@@ -734,7 +741,7 @@ Report: Opt:
   type context = (con * termd list) list
 
   fun addneg (Neg negset, con) = Neg (negset.insert con negset)
-    | addneg _ = die "addneg"
+    | addneg (dsc,_) = dsc
 
   fun augment ([], termd) = []
     | augment ((con, args) :: rest, termd)  = (con, termd :: args) :: rest
@@ -751,7 +758,11 @@ Report: Opt:
 
   fun staticmatch (con : con, termd : termd) : matchresult =
 	(case termd of
-	   Pos (pcon, _) => (case con_cmp (con, pcon) of Eq => Yes | _ => No)
+	   Pos (pcon, _) => (case con_cmp (con, pcon) 
+			       of Eq => Yes 
+				| _ => (case pcon
+					  of Excon _ => Maybe (* Different excons may have same name *)
+					   | _ => No))
 	 | Neg negset  => if negset.member con negset then No
 			  else if span_eq_int (span con) (negset.size negset + 1)
 			       then Yes
@@ -826,11 +837,11 @@ Report: Opt:
     val counter = ref 0
     fun next () = (counter := 1 + !counter ; !counter)
     fun string_from_con (Con {longid, ...}) = Ident.pr_longid longid
-      | string_from_con (Scon (SCon.INTEGER i)) = Int.toString i
-      | string_from_con (Scon (SCon.STRING s)) = "a_string"
-      | string_from_con (Scon (SCon.REAL r)) = "a_real"
-      | string_from_con (Scon (SCon.CHAR c)) = "a_char"
-      | string_from_con (Scon (SCon.WORD w)) = Int.toString w
+      | string_from_con (Scon (SCon.INTEGER i, _)) = Int32.toString i
+      | string_from_con (Scon (SCon.STRING s, _)) = "a_string"
+      | string_from_con (Scon (SCon.REAL r, _)) = "a_real"
+      | string_from_con (Scon (SCon.CHAR c, _)) = "a_char"
+      | string_from_con (Scon (SCon.WORD w, _)) = Word32.toString w
       | string_from_con (Excon {longid, ...}) = Ident.pr_longid longid
       | string_from_con (Tuple {arity}) = "a_tuple"
 
@@ -910,7 +921,7 @@ Det finder du nok aldrig ud af.*)
 	   WILDCARDatpat info => succeed (augment (ctx, termd), work, rhs, rules)
 	     (*WILDCARDatpat is treated almost like variable patterns*)
 	 | SCONatpat (info, scon) =>
-	     match_con (Scon scon) [] (path, termd, ctx, work, rhs, rules)
+	     match_con (Scon (scon, typeScon info)) [] (path, termd, ctx, work, rhs, rules)
 	 | LONGIDatpat (info, OP_OPT (longid, _)) =>
 	     (case to_TypeInfo info of
 		SOME (TypeInfo.VAR_PAT_INFO {tyvars, Type}) =>
@@ -1104,32 +1115,44 @@ in
 				   (compile_path env obj path,
 				    cases_compiled,
 				    SOME (lexp_otherwise))))))
+
+	       fun precision (t: Type) : int =
+		 let val tn = case t
+				of CONStype(nil, tn) => tn
+				 | _ => die "precision.not CONStype"
+		     open TyName
+		 in if eq (tn, tyName_INT31) orelse eq (tn, tyName_WORD31) then 31
+		    else if eq (tn, tyName_INT32) orelse eq (tn, tyName_WORD32) then 32
+			 else die ("precision. tn = " ^ pr_TyName tn ^ " not expected")
+		 end
 	     in
 	       (case con of
 		  Con _ => switch
 		    (SWITCH_C,
-		     fn Con {longid, ...} => lookupLongcon env longid
-		                               (OTHER "compile_node, Con")
+		     fn Con {longid, ...} => lookupLongcon env longid (OTHER "compile_node, Con")
 		      | _ => die "compile_node: fn Con =>")
-		| Scon (SCon.INTEGER _) => switch
-		    (SWITCH_I, fn Scon (SCon.INTEGER i) => i
-		                | _ => die "compile_node: fn Scon (SCon.INTEGER i) =>")
-		 | Scon (SCon.STRING _) => switch
-		    (SWITCH_S, fn Scon (SCon.STRING s) => s
-		                | _ => die "compile_node: fn Scon (SCon.STRING s) =>")
-		 | Scon (SCon.REAL _) => die "compile_node: real"
-		 | Scon (SCon.CHAR _) => switch
-		    (SWITCH_I, fn Scon (SCon.CHAR i) => i
-		                | _ => die "compile_node: fn Scon (SCon.CHAR i) =>")
-		 | Scon (SCon.WORD _) => switch
-		    (SWITCH_I, fn Scon (SCon.WORD i) => i
-		                | _ => die "compile_node: fn Scon (SCon.WORD i) =>")
-		 | Excon _ => switch
+		| Scon (SCon.INTEGER _, tau) => switch
+		    (fn sw => SWITCH_I{switch=sw,precision=precision tau}, 
+		     fn Scon (SCon.INTEGER i,_) => i
+		      | _ => die "compile_node: fn Scon (SCon.INTEGER i) =>")
+		| Scon (SCon.CHAR _, tau) => switch
+		    (fn sw => SWITCH_W {switch=sw, precision=precision tau}, 
+		     fn Scon (SCon.CHAR i,_) => Word32.fromInt i
+		      | _ => die "compile_node: fn Scon (SCon.CHAR i) =>")
+		| Scon (SCon.WORD _, tau) => switch
+		    (fn sw => SWITCH_W{switch=sw, precision=precision tau}, 
+		     fn Scon (SCon.WORD w,_) => w
+		      | _ => die "compile_node: fn Scon (SCon.WORD w) =>")
+		| Scon (SCon.STRING _,_) => switch
+		    (SWITCH_S, 
+		     fn Scon (SCon.STRING s,_) => s
+		      | _ => die "compile_node: fn Scon (SCon.STRING s) =>")
+		| Scon (SCon.REAL _,_) => die "compile_node: real"
+		| Excon _ => switch
 		    (SWITCH_E,
-		     fn Excon {longid, ...} =>
-			  #1 (lookupLongexcon env longid (OTHER "compile_node, Excon"))
+		     fn Excon {longid, ...} => #1 (lookupLongexcon env longid (OTHER "compile_node, Excon"))
 		      | _ => die "compile_node: fn Excon {longid, ...} =>")
-		 | Tuple _ => die "compile_node: Tuple")
+		| Tuple _ => die "compile_node: Tuple")
 	     end
 	 | Success rhs' => ([], compile_rhs' compile_no obj env rhs')))
 
@@ -1371,109 +1394,296 @@ in
 end; (*match compiler local*)
 
 
+    (* ---------------------------------------------------------------------- *)
+    (*         Compilation of CCall names                                     *)
+    (* ---------------------------------------------------------------------- *)
 
+    (* The flag "tag_integers" determines whether 32-bit integer
+       values and 32-bit word values are implemented boxed or
+       unboxed. When "tag_integers" is enabled, 32-bit integers and
+       32-bit words are represented boxed and the default integer type
+       (int) is defined, internally, to be int31 and the default word
+       type is defined to be word31. Contrary, when "tag_integers" is
+       disabled, 32-bit integers and 32-bit words are represented
+       unboxed-untagged and the default integer type (int) is defined,
+       internally, to be int32 and the default word type is defined to
+       be word32.
 
+       The function compileCName transforms 32-bit primitives into
+       primitives on either boxed or unboxed representations dependent
+       on the value of the "tag_integers" flag. The function also
+       transforms operations on integers and words into operations on
+       either 32-bit representations or 31-bit representations. 
+
+       Overloading is dealt with independently, but whether 32-bit
+       primitives work on boxed or unboxed representations is resolved
+       here. *)
+
+    local
+      structure CNameMap = OrderFinMap(structure Order = 
+					 struct 
+					   type T = string
+					   val lt : T -> T -> bool = fn a => fn b => a < b
+					 end
+				       structure PP = PrettyPrint
+				       structure Report = Report)
+
+      (* 32-bit primitives are resolved to primitives working on either 
+       * boxed or unboxed representations *)
+      fun resolve_32bit_prim p = (p, (p ^ "b", p ^ "ub"))
+
+      (* primitives on integers and words are resolved to primitives working
+       * on either 31-bit or 32-bit unboxed representations. *)
+      fun resolve_default p = (p, (p ^ "31", p ^ "32ub"))
+
+      val M = CNameMap.fromList
+       (map resolve_32bit_prim 
+	["__shift_left_word32", "__shift_right_signed_word32",
+	 "__shift_right_unsigned_word32", "__andb_word32", "__orb_word32",
+	 "__xorb_word32", "__quot_int32", "__rem_int32", "__max_int32",	"__min_int32",
+	 "__int31_to_int32", "__word31_to_word32",
+
+	 "__plus_int32", "__plus_word32", "__minus_int32", "__minus_word32",  (* overloaded primitives *)
+	 "__mul_int32", "__mul_word32", "__div_int32", "__div_word32", "__mod_int32", "__mod_word32",
+	 "__less_int32", "__less_word32", "__greater_int32", "__greater_word32", 
+	 "__lesseq_int32", "__lesseq_word32", "__greatereq_int32", "__greatereq_word32",
+	 "__neg_int32", "__abs_int32",
+
+	 "__equal_int32", "__equal_word32"
+	 ]
+	@ map resolve_default
+	["__quot_int", "__rem_int", "__max_int", "__min_int", "__equal_word",
+	 "__shift_left_word", "__shift_right_signed_word", "__shift_right_unsigned_word",
+	 "__orb_word", "__andb_word", "__xorb_word"]
+	@
+	[("__int_to_int32", ("__int31_to_int32b", "id")), 
+	 ("__int31_to_int", ("id", "__int31_to_int32ub")), 
+	 ("__int32_to_int", ("__int32b_to_int31", "id")), 
+	 ("__int32_to_word", ("__int32b_to_word31", "id")), 
+	 ("__int32_to_int31", ("__int32b_to_int31", "__int32ub_to_int31")), 
+	 ("__int_to_int31", ("id", "__int32ub_to_int31")), 
+	 ("__word_to_word32", ("__word31_to_word32b", "id")), 
+	 ("__word_to_word32_X", ("__word31_to_word32b_X", "id")), 
+	 ("__word31_to_word", ("id", "__word31_to_word32ub")), 
+	 ("__word32_to_word", ("__word32b_to_word31", "id")), 
+	 ("__word32_to_word31", ("__word32b_to_word31", "__word32ub_to_word31")), 
+	 ("__word_to_word31", ("id", "__word32ub_to_word31")), 
+	 ("__word31_to_word_X", ("id", "__word31_to_word32ub_X")), 
+	 ("__word31_to_word32_X", ("__word31_to_word32b_X", "__word31_to_word32ub_X")), 
+	 ("__word32_to_int32", ("__word32b_to_int32b", "__word32ub_to_int32ub")), 
+	 ("__word32_to_int", ("__word32b_to_int31", "__word32ub_to_int32ub")),
+	 ("__word32_to_int_X", ("__word32b_to_int31_X", "id"))
+	 ])
+    in
+      fun compileCName name =
+	case CNameMap.lookup M name
+	  of SOME (tagged, untagged) =>
+	    if tag_integers() then tagged
+	    else untagged
+	   | NONE => name
+    end
+      
 
     (* ---------------------------------------------------------------------- *)
     (*         Primitives for overloaded arithmetic operators                 *)
     (* ---------------------------------------------------------------------- *)
 
+    fun ccall name argtypes restype =
+      CCALLprim {name = compileCName name, instances = [], tyvars = [],
+		 Type = ARROWtype (argtypes, [restype])}
+	
 
     local 
-
-      fun int_or_real info (int, real) =
-	case NoSome "int_or_real" (ElabInfo.to_OverloadingInfo info) 
-	  of OverloadingInfo.RESOLVED_INT => int
-	   | OverloadingInfo.RESOLVED_REAL => real
-	   | OverloadingInfo.RESOLVED_WORD8 => die "int_or_real: word8"
-	   | OverloadingInfo.RESOLVED_WORD => die "int_or_real: word"
-	   | OverloadingInfo.RESOLVED_CHAR => die "int_or_real: char"
-	   | OverloadingInfo.RESOLVED_STRING => die "int_or_real: string"
-	   | _ => die "int_or_word_or_real: unresolved"
-
-      fun int_or_word_div_mod info (int, word) =
-	case NoSome "int_or_word_div_mod" (ElabInfo.to_OverloadingInfo info) 
-	  of OverloadingInfo.RESOLVED_INT => int
-	   | OverloadingInfo.RESOLVED_REAL => die "int_or_word_div_mod: real"
-	   | OverloadingInfo.RESOLVED_WORD8 => word (* div and mod on word can be used for word8 *)
-	   | OverloadingInfo.RESOLVED_WORD => word
-	   | OverloadingInfo.RESOLVED_CHAR => die "int_or_word_div_mod: char"
-	   | OverloadingInfo.RESOLVED_STRING => die "int_or_word_div_mod: string"
-	   | _ => die "int_or_word_div_mod: unresolved"
 	
-      fun int_or_word_or_word8_or_real info (int, word, word8, real) =
-	case NoSome "int_or_word_or_real" (ElabInfo.to_OverloadingInfo info) 
-	  of OverloadingInfo.RESOLVED_INT => int
-	   | OverloadingInfo.RESOLVED_REAL => real
-	   | OverloadingInfo.RESOLVED_WORD8 => word8
-	   | OverloadingInfo.RESOLVED_WORD => word
-	   | OverloadingInfo.RESOLVED_CHAR => word8
-	   | OverloadingInfo.RESOLVED_STRING => die "int_or_word_or_real: string"
-	   | _ => die "int_or_word_or_real: unresolved"
+      fun resolve err_str i args {int31, int32, word8, word31, word32, real, string} =
+	let fun no s (SOME e) = e args
+	      | no s NONE = die (err_str ^ ": " ^ s)
+	   (* int resolved to int31 or int32 and word resolved to 
+	    * word31 or word32 in ElabDec. *)
+	in case NoSome err_str (ElabInfo.to_OverloadingInfo i) 
+	     of OverloadingInfo.RESOLVED_INT31 => no "int31" int31
+	      | OverloadingInfo.RESOLVED_INT32 => no "int32" int32
+	      | OverloadingInfo.RESOLVED_REAL => no "real" real
+	      | OverloadingInfo.RESOLVED_WORD8 => no "word8" word8
+	      | OverloadingInfo.RESOLVED_WORD31 => no "word31" word31
+	      | OverloadingInfo.RESOLVED_WORD32 => no "word32" word32
+	      | OverloadingInfo.RESOLVED_CHAR => no "char" word8
+	      | OverloadingInfo.RESOLVED_STRING => no "string" string
+	      | _ => die (err_str ^ ": unresolved")
+	end
 
-      fun string_or_int_or_word_or_real info (string, int, word, real) =
-	case NoSome "string_or_int_or_word_or_real" (ElabInfo.to_OverloadingInfo info) 
-	  of OverloadingInfo.RESOLVED_INT => int
-	   | OverloadingInfo.RESOLVED_REAL => real
-	   | OverloadingInfo.RESOLVED_WORD8 => word
-	   | OverloadingInfo.RESOLVED_WORD => word
-	   | OverloadingInfo.RESOLVED_CHAR => word
-	   | OverloadingInfo.RESOLVED_STRING => string
-	   | _ => die "string_or_int_or_word_or_real: unresolved"
+      fun int_or_real i args {int31, int32, real} =
+	resolve "int_or_word" i args 
+	{int31=SOME int31, int32=SOME int32, word8=NONE, word31=NONE, 
+	 word32=NONE, real=SOME real, string=NONE}	      
 
-      fun ccall name argtypes restype =
-	CCALLprim {name = name, instances = [], tyvars = [],
-		   Type = ARROWtype (argtypes, [restype])}
+      fun int_or_word i args {int31, int32, word8, word31, word32} =
+	resolve "int_or_word" i args
+	{int31=SOME int31, int32=SOME int32, word8=SOME word8, word31=SOME word31, 
+	 word32=SOME word32, real=NONE, string=NONE}	
+
+      fun int_or_word_or_real i args {int31, int32, word8, word31, word32, real} =
+	resolve "int_or_word_or_real" i args
+	{int31=SOME int31, int32=SOME int32, word8=SOME word8, word31=SOME word31, 
+	 word32=SOME word32, real=SOME real, string=NONE}
 	
-      fun binary_int_ccall name = ccall name [intType, intType] intType
-      fun binary_int_ccall' name = ccall name [intType, intType, exnType] intType
-      fun unary_int_ccall name = ccall name [intType] intType
+      fun string_or_int_or_word_or_real i args {string, int31, int32, word8, word31, word32, real} =
+	resolve "string_or_int_or_word_or_real" i args 
+	{int31=SOME int31, int32=SOME int32, word8=SOME word8, word31=SOME word31, 
+	 word32=SOME word32, real=SOME real, string=SOME string}
+	
+      fun binary_ccall t n = 
+	let val c = ccall n [t,t] t
+	in fn args => PRIM(c, args)
+	end
 
-      val plus_word = binary_int_ccall "plus_word__"
-      val minus_word = binary_int_ccall "minus_word__"
-      val mul_word = binary_int_ccall "mul_word__"
-      val div_word = binary_int_ccall' "div_word_"
-      val mod_word = binary_int_ccall' "mod_word_"
-      val plus_word8 = binary_int_ccall "plus_word8__"
-      val minus_word8 = binary_int_ccall "minus_word8__"
-      val mul_word8 = binary_int_ccall "mul_word8__"
-      val div_int = binary_int_ccall' "div_int_"
-      val mod_int = binary_int_ccall' "mod_int_"
+      fun binary_ccall_exn t n = 
+	let val c = ccall n [t,t,exnType] t
+	in fn args => PRIM(c, args)
+	end
 
-      fun string_cmp_ccall name = ccall name [stringType, stringType] boolType
-      fun int_cmp_ccall name = ccall name [intType, intType] boolType
+      fun unary_ccall t n = 
+	let val c = ccall n [t] t
+	in fn args => PRIM(c, args)
+	end
 
-      val less_string = string_cmp_ccall "lessStringML"
-      val greater_string = string_cmp_ccall "greaterStringML"
-      val lesseq_string = string_cmp_ccall "lesseqStringML"
-      val greatereq_string = string_cmp_ccall "greatereqStringML"
-      val less_word = int_cmp_ccall "less_word__"                 (* these primitives also works for word8 *)
-      val greater_word = int_cmp_ccall "greater_word__"
-      val lesseq_word = int_cmp_ccall "lesseq_word__"
-      val greatereq_word = int_cmp_ccall "greatereq_word__"
+      fun cmp_ccall t n = 
+	let val c = ccall n [t,t] boolType
+	in fn args => PRIM(c, args)
+	end
 
-      fun unoverload i p = 
+      (* Operations on Words (word8, word31, word32) *)
+
+      fun norm31 e = 
+	binary_ccall word31Type "__andb_word31"
+	[WORD(0wxFF: Word32.word, word31Type), e]
+
+      fun norm32 e = 
+	binary_ccall word32Type "__andb_word32"
+	[WORD(0wxFF: Word32.word, word32Type), e]
+	
+      val plus_word31 = binary_ccall word31Type "__plus_word31"
+      val plus_word32 = binary_ccall word32Type "__plus_word32"
+      fun plus_word8 args = if tag_integers() then norm31 (plus_word31 args)
+			    else norm32 (plus_word32 args)
+
+      val minus_word31 = binary_ccall word31Type "__minus_word31"
+      val minus_word32 = binary_ccall word32Type "__minus_word32"
+      fun minus_word8 args = if tag_integers() then norm31 (minus_word31 args)
+			     else norm32 (minus_word32 args)
+
+      val mul_word31 = binary_ccall word31Type "__mul_word31"
+      val mul_word32 = binary_ccall word32Type "__mul_word32"
+      fun mul_word8 args = if tag_integers() then norm31 (mul_word31 args)
+			   else norm32 (mul_word32 args)
+
+      val div_word31 = binary_ccall_exn word31Type "__div_word31"
+      val div_word32 = binary_ccall_exn word32Type "__div_word32"
+      fun div_word8 args = if tag_integers() then div_word31 args
+			   else div_word32 args
+
+      val mod_word31 = binary_ccall_exn word31Type "__mod_word31"
+      val mod_word32 = binary_ccall_exn word32Type "__mod_word32"
+      fun mod_word8 args = if tag_integers() then mod_word31 args
+			   else mod_word32 args
+
+      val less_word31 = cmp_ccall word31Type "__less_word31"
+      val less_word32 = cmp_ccall word32Type "__less_word32"
+      fun less_word8 args = if tag_integers() then less_word31 args
+			    else less_word32 args
+      val greater_word31 = cmp_ccall word31Type "__greater_word31"
+      val greater_word32 = cmp_ccall word32Type "__greater_word32"
+      fun greater_word8 args = if tag_integers() then greater_word31 args
+			       else greater_word32 args
+      val lesseq_word31 = cmp_ccall word31Type "__lesseq_word31"
+      val lesseq_word32 = cmp_ccall word32Type "__lesseq_word32"
+      fun lesseq_word8 args = if tag_integers() then lesseq_word31 args
+			      else lesseq_word32 args
+      val greatereq_word31 = cmp_ccall word31Type "__greatereq_word31"
+      val greatereq_word32 = cmp_ccall word32Type "__greatereq_word32"
+      fun greatereq_word8 args = if tag_integers() then greatereq_word31 args
+				 else greatereq_word32 args
+
+      (* Operations on Integers (int31, int32) *)
+      val plus_int31 = binary_ccall int31Type "__plus_int31"
+      val plus_int32 = binary_ccall int32Type "__plus_int32"
+      val minus_int31 = binary_ccall int31Type "__minus_int31"
+      val minus_int32 = binary_ccall int32Type "__minus_int32"
+      val mul_int31 = binary_ccall int31Type "__mul_int31"
+      val mul_int32 = binary_ccall int32Type "__mul_int32"
+      val div_int31 = binary_ccall_exn int31Type "__div_int31"
+      val div_int32 = binary_ccall_exn int32Type "__div_int32"
+      val mod_int31 = binary_ccall_exn int31Type "__mod_int31"
+      val mod_int32 = binary_ccall_exn int32Type "__mod_int32"
+      val less_int31 = cmp_ccall int31Type "__less_int31"
+      val less_int32 = cmp_ccall int32Type "__less_int32"
+      val greater_int31 = cmp_ccall int31Type "__greater_int31"
+      val greater_int32 = cmp_ccall int32Type "__greater_int32"
+      val lesseq_int31 = cmp_ccall int31Type "__lesseq_int31"
+      val lesseq_int32 = cmp_ccall int32Type "__lesseq_int32"
+      val greatereq_int31 = cmp_ccall int31Type "__greatereq_int31"
+      val greatereq_int32 = cmp_ccall int32Type "__greatereq_int32"
+
+      (* Operations on Strings *)
+      val less_string = cmp_ccall stringType "lessStringML"
+      val greater_string = cmp_ccall stringType "greaterStringML"
+      val lesseq_string = cmp_ccall stringType "lesseqStringML"
+      val greatereq_string = cmp_ccall stringType "greatereqStringML"
+
+      (* Unary Operations *)
+      val abs_int31 = unary_ccall int31Type "__abs_int31"
+      val abs_int32 = unary_ccall int32Type "__abs_int32"
+      val abs_real = unary_ccall realType "__abs_real"
+      val neg_int31 = unary_ccall int31Type "__neg_int31"
+      val neg_int32 = unary_ccall int32Type "__neg_int32"
+      val neg_real = unary_ccall realType "__neg_real"
+
+      (* Real operations *)
+      val plus_real = binary_ccall realType "__plus_real"
+      val minus_real = binary_ccall realType "__minus_real"
+      val mul_real = binary_ccall realType "__mul_real"
+      val less_real = cmp_ccall realType "__less_real"
+      val greater_real = cmp_ccall realType "__greater_real"
+      val lesseq_real = cmp_ccall realType "__lesseq_real"
+      val greatereq_real = cmp_ccall realType "__greatereq_real"
+
+      fun unoverload i p args = 
 	case p
-	  of CE.ABS => int_or_real i (ABS_INTprim, ABS_REALprim)
-	   | CE.NEG => int_or_real i (NEG_INTprim, NEG_REALprim)
-	   | CE.PLUS => int_or_word_or_word8_or_real i (PLUS_INTprim, plus_word, plus_word8, PLUS_REALprim)
-	   | CE.MINUS => int_or_word_or_word8_or_real i (MINUS_INTprim, minus_word, minus_word8, MINUS_REALprim)
-	   | CE.MUL => int_or_word_or_word8_or_real i (MUL_INTprim, mul_word, mul_word8, MUL_REALprim)
-	   | CE.DIV => int_or_word_div_mod i (div_int, div_word)
-	   | CE.MOD => int_or_word_div_mod i (mod_int, mod_word)
-	   | CE.LESS => string_or_int_or_word_or_real i (less_string, LESS_INTprim, less_word, LESS_REALprim)
-	   | CE.GREATER => string_or_int_or_word_or_real i (greater_string, GREATER_INTprim, greater_word, GREATER_REALprim)
-	   | CE.LESSEQ => string_or_int_or_word_or_real i (lesseq_string, LESSEQ_INTprim, lesseq_word, LESSEQ_REALprim)
-	   | CE.GREATEREQ => string_or_int_or_word_or_real i (greatereq_string, GREATEREQ_INTprim, 
-							      greatereq_word, GREATEREQ_REALprim)
+	  of CE.ABS => int_or_real i args {int31=abs_int31, int32=abs_int32, real=abs_real} 
+	   | CE.NEG => int_or_real i args {int31=neg_int31, int32=neg_int32, real=neg_real}
+	   | CE.PLUS => int_or_word_or_real i args {int31=plus_int31, int32=plus_int32,
+						    word8=plus_word8, word31=plus_word31, 
+						    word32=plus_word32, real=plus_real}
+	   | CE.MINUS => int_or_word_or_real i args {int31=minus_int31, int32=minus_int32,
+						     word8=minus_word8, word31=minus_word31,
+						     word32=minus_word32, real=minus_real}
+	   | CE.MUL => int_or_word_or_real i args {int31=mul_int31, int32=mul_int32,
+						   word8=mul_word8, word31=mul_word31,
+						   word32=mul_word32, real=mul_real}
+	   | CE.DIV => int_or_word i args {int31=div_int31, int32=div_int32, 
+					   word8=div_word8, word31=div_word31, word32=div_word32}
+	   | CE.MOD => int_or_word i args {int31=mod_int31, int32=mod_int32, 
+					   word8=mod_word8, word31=mod_word31, word32=mod_word32}
+	   | CE.LESS => string_or_int_or_word_or_real i args 
+	    {string=less_string, int31=less_int31, int32=less_int32,
+	     word8=less_word8, word31=less_word31, word32=less_word32, real=less_real}
+	   | CE.GREATER => string_or_int_or_word_or_real i args
+	    {string=greater_string, int31=greater_int31, int32=greater_int32,
+	     word8=greater_word8, word31=greater_word31, word32=greater_word32, real=greater_real}
+	   | CE.LESSEQ => string_or_int_or_word_or_real i args
+	    {string=lesseq_string, int31=lesseq_int31, int32=lesseq_int32,
+	     word8=lesseq_word8, word31=lesseq_word31, word32=lesseq_word32, real=lesseq_real}
+	   | CE.GREATEREQ => string_or_int_or_word_or_real i args
+	    {string=greatereq_string, int31=greatereq_int31, int32=greatereq_int32,
+	     word8=greatereq_word8, word31=greatereq_word31, word32=greatereq_word32, real=greatereq_real}
 	   | _ => die "unoverload"
     in
       fun overloaded_prim info result (*e.g., CE.ABS*)
-	    compilerAtexp compilerExp (arg: DecGrammar.atexp)
-	    takes_one_argument exn_args =
+	compilerAtexp compilerExp (arg: DecGrammar.atexp)
+	takes_one_argument exn_args =
 	    if takes_one_argument then
 	      let val arg' = compilerAtexp arg
-	      in PRIM (unoverload info result, [arg'])
+	      in unoverload info result [arg']
 	      end
 	    else
 	      (case arg of 
@@ -1482,47 +1692,62 @@ end; (*match compiler local*)
 					 SOME(EXPROW(_,_,exp2,NONE))))) =>
 		 let val exp1' = compilerExp exp1
 		     val exp2' = compilerExp exp2
-		 in PRIM (unoverload info result, [exp1',exp2'] @ exn_args)
+		 in unoverload info result (exp1' :: exp2' :: exn_args)
 		 end
 	       | _ => die "overloaded_prim")
 
       fun overloaded_prim_fn info result (*e.g., CE.ABS*)
-	    takes_one_argument exn_args =
-	    let val ty = int_or_word_or_word8_or_real info (CONStype ([], TyName.tyName_INT),
-							    CONStype ([], TyName.tyName_INT),
-							    CONStype ([], TyName.tyName_INT),
-							    CONStype ([], TyName.tyName_REAL))
-	        val lvar1 = Lvars.newLvar ()
+	takes_one_argument exn_args =
+	    let 
+	      val ty = int_or_word_or_real info () 
+		{int31=fn() => int31Type, int32=fn() => int32Type,
+		 word8=wordDefaultType, word31=fn() => word31Type,
+		 word32=fn() => word32Type, real=fn() => realType}
+	      val lvar1 = Lvars.newLvar ()
 	    in
 	      if takes_one_argument then
 		FN {pat=[(lvar1, ty)],
-		    body=PRIM (unoverload info result,
-			       [VAR {lvar=lvar1, instances=[]}])}
+		    body=unoverload info result [VAR{lvar=lvar1, instances=[]}]}
 	      else (*takes two arguments*)
 		FN {pat=[(lvar1, RECORDtype [ty, ty])],
-		    body=PRIM (unoverload info result,
-			       [PRIM (SELECTprim 0,
-				      [VAR {lvar=lvar1, instances=[]}]),
-				PRIM (SELECTprim 1,
-				      [VAR {lvar=lvar1, instances=[]}])]
-			       @ exn_args)}
+		    body=unoverload info result
+		    ([PRIM (SELECTprim 0,
+			    [VAR {lvar=lvar1, instances=[]}]),
+		      PRIM (SELECTprim 1,
+			    [VAR {lvar=lvar1, instances=[]}])]
+		     @ exn_args)}
 	    end
       fun overloaded_prim_fn' info result = (*e.g., CE.LESS, ... *)
-	    let val ty = CONStype ([], string_or_int_or_word_or_real info (TyName.tyName_STRING, 
-									   TyName.tyName_INT,
-									   TyName.tyName_INT,
-									   TyName.tyName_REAL))
+	    let val ty = CONStype ([], string_or_int_or_word_or_real info () 
+				   {string=fn()=>TyName.tyName_STRING, 
+				    int31=fn()=>TyName.tyName_INT31,
+				    int32=fn()=>TyName.tyName_INT32,
+				    word8=TyName.tyName_WordDefault,
+				    word31=fn()=>TyName.tyName_WORD31,
+				    word32=fn()=>TyName.tyName_WORD32,
+				    real=fn()=>TyName.tyName_REAL})
 	        val lvar1 = Lvars.newLvar ()
 	    in (*takes two arguments*)
 	      FN {pat=[(lvar1, RECORDtype [ty, ty])],
-		  body=PRIM (unoverload info result,
-			     [PRIM (SELECTprim 0,
-				    [VAR {lvar=lvar1, instances=[]}]),
-			      PRIM (SELECTprim 1,
-				    [VAR {lvar=lvar1, instances=[]}])])}
+		  body=unoverload info result
+		  [PRIM (SELECTprim 0,
+			 [VAR {lvar=lvar1, instances=[]}]),
+		   PRIM (SELECTprim 1,
+			 [VAR {lvar=lvar1, instances=[]}])]}
 	    end
     end (*local*)
 
+
+    (* Compilation of equality operations *)
+    local
+      fun equal t n = ccall n [t,t] boolType
+    in
+      val equal_int31 = equal int31Type "__equal_int31"
+      val equal_int32 = equal int32Type "__equal_int32"
+      fun equal_word8() = equal (wordDefaultType()) "__equal_word"
+      val equal_word31 = equal word31Type "__equal_word31"
+      val equal_word32 = equal word32Type "__equal_word32"
+    end
 
     (* ----------------------------------------------------------------------- *)
     (*               Syntax directed compilation                               *)
@@ -1530,11 +1755,33 @@ end; (*match compiler local*)
 
     fun compileAtexp env atexp : TLE.LambdaExp =
           (case atexp of
-	     SCONatexp(_, SCon.INTEGER x) => INTEGER x
+	     SCONatexp(info, SCon.INTEGER x) => 
+	       let 
+(*		 val t = case NoSome "compileAtexp.SCON.INT.NONE" (ElabInfo.to_OverloadingInfo info) 
+			   of OverloadingInfo.RESOLVED_INT31 => int31Type
+			    | OverloadingInfo.RESOLVED_INT32 => int32Type
+			    | _ => die "compileAtexp.SCON.INT.unresolved"
+*)
+		 val t = typeScon info
+	       in INTEGER (x, t)
+	       end
 	   | SCONatexp(_, SCon.STRING x) => STRING x
 	   | SCONatexp(_, SCon.REAL x) => REAL x
-	   | SCONatexp(_, SCon.CHAR x) => INTEGER x
-	   | SCONatexp(_, SCon.WORD x) => INTEGER x
+	   | SCONatexp(info, SCon.CHAR x) => 
+	       if x < 0 orelse x > 255 then die "compileAtexp.CHAR"
+	       else WORD(Word32.fromInt x, typeScon info)
+	   | SCONatexp(info, SCon.WORD x) => 
+		 let
+(*
+		   val t = case NoSome "compileAtexp.SCON.WORD.NONE" (ElabInfo.to_OverloadingInfo info) 
+			     of OverloadingInfo.RESOLVED_WORD8 => wordDefaultType()
+			      | OverloadingInfo.RESOLVED_WORD31 => word31Type
+			      | OverloadingInfo.RESOLVED_WORD32 => word32Type
+			      | _ => die "compileAtexp.SCON.WORD.unresolved"
+*)
+		   val t = typeScon info
+		 in WORD (x, t)
+		 end
 	   | IDENTatexp(info, OP_OPT(longid, _)) =>
 	       compile_ident info longid (lookupLongid env longid (NORMAL info))
 
@@ -1741,15 +1988,24 @@ end; (*match compiler local*)
 		       raise ex)
 			      
 		    val il' = on_il(S, il)
-		in if Lvars.pr_lvar lv = "="  (* specialise equality on integers *)
-                      andalso case instances' of 
-                                [CONStype([], tyname)] => TyName.eq(tyname, TyName.tyName_INT)
-                              | _ => false
-                   then PRIM(EQUAL_INTprim, case arg' of
-                                          PRIM(RECORDprim,l ) => l
-                                         | _ => die "compileExp(APPexp..): expected pair")
-                   else
-                     APP(VAR{lvar=lv,instances=il'},arg')
+		    fun default () = APP(VAR{lvar=lv,instances=il'},arg')
+		in 
+		  if Lvars.pr_lvar lv = "=" then (* specialise equality on integers *)
+		    case (instances', arg')
+		      of ([CONStype([], tyname)], PRIM(RECORDprim, l)) => 
+			(if TyName.eq(tyname, TyName.tyName_INT31) then
+			   PRIM(equal_int31, l)
+			 else if TyName.eq(tyname, TyName.tyName_INT32) then
+			   PRIM(equal_int32, l)
+			 else if TyName.eq(tyname, TyName.tyName_WORD8) then
+			   PRIM(equal_word8(), l)
+			 else if TyName.eq(tyname, TyName.tyName_WORD31) then
+			   PRIM(equal_word31, l)
+			 else if TyName.eq(tyname, TyName.tyName_WORD32) then
+			   PRIM(equal_word32, l)
+			 else default())
+		       | _ => default()
+		  else default()
 		end
 
 	    | CE.RESET_REGIONS =>
@@ -1813,7 +2069,11 @@ end; (*match compiler local*)
                         (* Specialice EQUALprim to EQUAL_INTprim, when possible *)
                         val prim' = case (isequal,instance') of
                                       (true,CONStype([], tyname)) =>
-                                        if TyName.eq(tyname,TyName.tyName_INT) then EQUAL_INTprim 
+                                        if TyName.eq(tyname,TyName.tyName_INT31) then equal_int31
+					else if TyName.eq(tyname,TyName.tyName_INT32) then equal_int32
+					else if TyName.eq(tyname,TyName.tyName_WORD8) then equal_word8()
+					else if TyName.eq(tyname,TyName.tyName_WORD31) then equal_word31
+					else if TyName.eq(tyname,TyName.tyName_WORD32) then equal_word32
                                         else prim {instance=instance'}
                                     | _ => prim {instance=instance'}
 		     in TLE.PRIM (prim', args')
@@ -1843,13 +2103,12 @@ the 12 lines above are very similar to the code below
 		  compile_application_of_c_function env info s args)
 	   end) (*fun compile_application_of_prim*)
 
-    and compile_application_of_c_function env info s args =
+    and compile_application_of_c_function env info name args =
           (case to_TypeInfo info of
 	     SOME (TypeInfo.VAR_INFO {instances = [tau_argument, tau_result]}) =>
-(*	     SOME (TypeInfo.VAR_INFO {instances = [tau_result, tau_argument]}) => *)
 	       
 	       (*Concerning instance lists on c calls:  The built-in id
-		`prim' has type scheme `All'a'b.(string * string * 'a)->'b'.
+		`prim' has type scheme \/ 'a, 'b . string * string * 'a -> 'b .
 		In ElabDec it was instantiated, and the list instances above
 		is the types to which 'a and 'b were instantiated: 'b was
 		instantiated to tau_result, 'a to tau_argument (yes, it is a
@@ -1864,8 +2123,8 @@ the 12 lines above are very similar to the code below
 			 | n => (case tau1 of
 				   TLE.RECORDtype taus1 =>
 				     if List.length taus1 = n then taus1
-				     else die ("prim " ^ s ^ " has wrong number of arguments")
-				 | _ => die ("give prim " ^ s ^ " a record argument type"))))
+				     else die ("prim " ^ name ^ " has wrong number of arguments")
+				 | _ => die ("give prim " ^ name ^ " a record argument type"))))
 		   val tau2 = compileType tau_result
 		   val tau = TLE.ARROWtype (taus1, [tau2])
 		   val tyvars = EqSet.list (LambdaExp.tyvars tau)
@@ -1873,9 +2132,14 @@ the 12 lines above are very similar to the code below
 		   val subst = mk_subst
 		                 (fn () => "CompileDec.compile_application_of_c_function")
 		                    (tyvars, map TLE.TYVARtype tyvars_fresh)
+				    
+		   (* Names for certain primitives are altered on the basis of
+		    * whether tagging of integers is enabled; see the comment 
+		    * near the compileCName function above. *)
+		   val name = compileCName name  
 	       in
-		 TLE.PRIM (CCALLprim {name = s,
-				      tyvars = tyvars_fresh,
+		 TLE.PRIM (CCALLprim {name = name,
+				      tyvars = tyvars_fresh,     
 				      Type = on_Type subst tau,
 				      instances = map TLE.TYVARtype tyvars},
 		           map (compileExp env) args)

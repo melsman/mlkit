@@ -39,5 +39,5 @@ signature REG_CONST = sig
   val size_con1          : unit -> int
 
   structure TyName : TYNAME
-  val unboxed_tyname : TyName.TyName -> bool
+
 end;

@@ -76,7 +76,7 @@ signature MODULE_ENVIRONMENTS =
     structure B :
       sig
 	val empty            : Basis
-	val initial          : Basis
+	val initial          : unit -> Basis
 	val bogus            : Basis
 	val plus             : Basis * Basis   -> Basis
 	val on               : realisation -> Basis -> Basis

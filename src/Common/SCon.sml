@@ -3,8 +3,8 @@
 functor SCon(): SCON =
 struct
 
-  datatype scon = INTEGER of int | STRING of string | REAL of string
-    | WORD of int | CHAR of int
+  datatype scon = INTEGER of Int32.int | STRING of string | REAL of string
+    | WORD of Word32.word | CHAR of int
 
   (*INTEGER < STRING < REAL < WORD < CHAR:*)
   fun ord (INTEGER _) = 0
@@ -19,8 +19,8 @@ struct
     | lt (CHAR i1,    CHAR i2)    = i1 < i2
     | lt (scon1,      scon2)      = ord scon1 < ord scon2
 
-  fun pr_scon(INTEGER i) = Int.toString i
-   |  pr_scon(WORD i) = Int.toString i
+  fun pr_scon(INTEGER i) = Int32.toString i
+   |  pr_scon(WORD i) = Word32.toString i
    |  pr_scon(STRING s) = "\"" ^ String.toString s ^ "\""
    |  pr_scon(CHAR i) = "#\"" ^ str(chr i) ^ "\""
    |  pr_scon(REAL r) = r

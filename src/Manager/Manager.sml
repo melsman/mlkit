@@ -826,7 +826,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			 in (Basis_plus (B, res_basis), modc, 
 			     pmap, extobjs' @ extobjs, clean0 andalso clean)
 			 end
-		       ) (Basis.initial, modc, pmap, extobjs, clean) imports
+		       ) (Basis.initial(), modc, pmap, extobjs, clean) imports
 	       
 	       (* Now, check that date files associated with imported projects are older than
 		* the date file for the current project. *)
@@ -887,9 +887,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	    if !import_basislib then 
 	      let val {modc, res_basis_opt, extobjs, ...} = 
 		build_project{cycleset=[], pmap=[], absprjid= ModuleEnvironments.mk_absprjid(!Flags.basislib_project), modc=ModCode.empty}
-	      in (modc, Basis_plus_opt(Basis.initial,res_basis_opt), extobjs)
+	      in (modc, Basis_plus_opt(Basis.initial(),res_basis_opt), extobjs)
 	      end
-	    else (ModCode.empty, Basis.initial, [])
+	    else (ModCode.empty, Basis.initial(), [])
 	  val (_, modc, _, _) = build_body(absprjid, basis_basislib, UNITbody(filepath,EMPTYbody), false, [], modc_basislib)
       in  
 	ModCode.mk_exe(absprjid, modc, extobjs_basislib, !run_file)
@@ -902,7 +902,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun elab (filepath : string) : unit =
       let val absprjid = mk_absprjid_from_path (filepath ^ ".pm")   (* a pseudo project *)
-	  val (infB,elabB,_,_) = Basis.un Basis.initial
+	  val (infB,elabB,_,_) = Basis.un (Basis.initial())
 	  val _ = Flags.reset_warnings ()
 	  val log_cleanup = log_init filepath
       in (case ParseElab.parse_elab {absprjid=absprjid,infB=infB,elabB=elabB, file=filepath} 

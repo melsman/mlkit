@@ -88,7 +88,8 @@ struct
     | RVAR          of place
     | DROPPED_RVAR  of place
     | PHREG         of lvar
-    | INTEGER       of string
+    | INTEGER       of {value: Int32.int, precision: int}
+    | WORD          of {value: Word32.word, precision: int}
     | UNIT
 
   datatype StoreType =
@@ -134,7 +135,8 @@ struct
 			handl_return: ('sty,'offset,'aty) LineStmt list * 'aty * (Word32.word list), 
 			offset: 'offset}
     | RAISE         of {arg: 'aty,defined_atys: 'aty list}
-    | SWITCH_I      of (int,'sty,'offset,'aty) Switch
+    | SWITCH_I      of {switch: (Int32.int,'sty,'offset,'aty) Switch, precision: int}
+    | SWITCH_W      of {switch: (Word32.word,'sty,'offset,'aty) Switch, precision: int}
     | SWITCH_S      of (string,'sty,'offset,'aty) Switch
     | SWITCH_C      of ((con*con_kind),'sty,'offset,'aty) Switch
     | SWITCH_E      of (excon,'sty,'offset,'aty) Switch
@@ -185,7 +187,8 @@ struct
     | pr_atom(RVAR place) = PP.flatten1(Effect.layout_effect place)
     | pr_atom(DROPPED_RVAR place) = "D" ^ PP.flatten1(Effect.layout_effect place)
     | pr_atom(PHREG phreg) = pr_phreg phreg
-    | pr_atom(INTEGER i) = i
+    | pr_atom(INTEGER {value,precision}) = Int32.toString value
+    | pr_atom(WORD {value,precision}) = "0x" ^ Word32.toString value
     | pr_atom(UNIT) = "()"
 
   fun pr_sty(V lv) = Lvars.pr_lvar lv
@@ -422,7 +425,8 @@ struct
 		 in
 		   PP.LEAF("raise " ^ pr_aty arg ^ "(defined: " ^ lay_stys ^ ")") (* Defined atys not written 08/12/1998, Niels*)
 		 end
-	   | SWITCH_I sw => layout_switch pr_aty layout_lss_local (Int.toString) sw
+	   | SWITCH_I {switch,precision} => layout_switch pr_aty layout_lss_local (Int32.toString) switch
+	   | SWITCH_W {switch,precision} => layout_switch pr_aty layout_lss_local (fn w => "0x" ^ Word32.toString w) switch
 	   | SWITCH_S sw => layout_switch pr_aty layout_lss_local (fn s => s) sw
 	   | SWITCH_C sw =>
 		 layout_switch pr_aty layout_lss_local (fn (con,con_kind) => Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")") sw
@@ -527,14 +531,11 @@ struct
   local
     fun binder_to_binder(place,phsize) = ((place,phsize),())  (* for now, offset is unit *)
 
-    fun one_lvar([]) = (* wild card *)Lvars.wild_card
-      | one_lvar([lv]) = lv
-      | one_lvar(lvars) = die "one_lvar: more than one lvar."
-
     fun ce_to_atom(ClosExp.VAR lv) = VAR lv
       | ce_to_atom(ClosExp.RVAR place) = RVAR place
       | ce_to_atom(ClosExp.DROPPED_RVAR place) = DROPPED_RVAR place
       | ce_to_atom(ClosExp.INTEGER i) = INTEGER i
+      | ce_to_atom(ClosExp.WORD i) = WORD i
       | ce_to_atom(ClosExp.RECORD{elems=[],alloc=ClosExp.IGNORE,tag}) = UNIT
       | ce_to_atom ce = die ("ce_to_atom: expression not an atom:" ^ PP.flatten1(ClosExp.layout_clos_exp ce))
 
@@ -580,6 +581,7 @@ struct
 	 | ClosExp.FETCH lab => maybe_assign (lvars_res, LOAD lab, acc)
 	 | ClosExp.STORE(ce,lab) => ASSIGN{pat=UNIT,bind=STORE(ce_to_atom ce,lab)}::acc
 	 | ClosExp.INTEGER i => maybe_assign (lvars_res, ATOM(INTEGER i), acc)
+	 | ClosExp.WORD i => maybe_assign (lvars_res, ATOM(WORD i), acc)
 	 | ClosExp.STRING s => maybe_assign (lvars_res, STRING s, acc)
 	 | ClosExp.REAL s => maybe_assign (lvars_res, REAL s, acc)
 	 | ClosExp.PASS_PTR_TO_MEM(sma,i) => maybe_assign (lvars_res, PASS_PTR_TO_MEM(sma_to_sma sma,i), acc)
@@ -619,17 +621,22 @@ struct
 	 | ClosExp.RAISE ce => RAISE{arg=ce_to_atom ce,defined_atys=map VAR lvars_res}::acc
 	 | ClosExp.HANDLE(ce1,ce2) =>
 	  let
-	    val lv_res = case lvars_res
-			   of [lv_res] => lv_res 
-			    | nil => Lvars.wild_card 
-			    | _ => die "L_ce: HANDLE with more than one lvars_res"
+	    val aty = case lvars_res
+			of [lv_res] => VAR lv_res
+			 | nil => UNIT
+			 | _ => die "L_ce: HANDLE with more than one lvars_res"
 	    val clos_lv = Lvars.new_named_lvar "handleCloslv"
 	  in
-	    HANDLE{default=L_ce(ce1,[lv_res],[]),
+	    HANDLE{default=L_ce(ce1,lvars_res,[]),
 		   handl=([SCOPE{pat=[mk_sty clos_lv],scope=L_ce(ce2,[clos_lv],[])}],VAR clos_lv),
-		   handl_return=([],VAR lv_res,[]),offset=()} :: acc (* for now, offset is unit *)
+		   handl_return=([],aty,[]),offset=()} :: acc (* for now, offset is unit *)
 	  end
-	 | ClosExp.SWITCH_I sw => SWITCH_I(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn i => i))::acc
+	 | ClosExp.SWITCH_I {switch, precision} => 
+	  SWITCH_I {switch=L_ce_sw(switch,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn i => i),
+		    precision=precision} ::acc
+	 | ClosExp.SWITCH_W {switch, precision} => 
+	  SWITCH_W {switch=L_ce_sw(switch,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn i => i),
+		    precision=precision} ::acc
 	 | ClosExp.SWITCH_S sw => SWITCH_S(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn s => s))::acc
 	 | ClosExp.SWITCH_C sw => SWITCH_C(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn (con,con_kind) => (con,con_kind_to_con_kind con_kind)))::acc
 	 | ClosExp.SWITCH_E sw => SWITCH_E(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn e => e))::acc
@@ -700,7 +707,8 @@ struct
 	     | SCOPE{pat,scope} => NA_lss scope
 	     | HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset} => NA_lss default + NA_lss handl
 	     | HANDLE{default,handl,handl_return,offset} => die "NA_lss: handl_return in HANDLE not empty"
-	     | SWITCH_I sw => NA_sw sw NA_lss
+	     | SWITCH_I {switch,precision} => NA_sw switch NA_lss
+	     | SWITCH_W {switch,precision} => NA_sw switch NA_lss
 	     | SWITCH_S sw => NA_sw sw NA_lss
 	     | SWITCH_C sw => NA_sw sw NA_lss
 	     | SWITCH_E sw => NA_sw sw NA_lss
@@ -1079,7 +1087,10 @@ struct
 		 handl_return=(map_lss' handl_return,map_aty handl_return_lv,bv),
 		 offset=f_offset offset} :: map_lss' lss
 	  | map_lss'(RAISE{arg,defined_atys}::lss) = RAISE{arg=map_aty arg,defined_atys=map_atys defined_atys} :: map_lss' lss
-	  | map_lss'(SWITCH_I sw::lss) = map_sw(map_lss',SWITCH_I,sw) :: map_lss' lss
+	  | map_lss'(SWITCH_I {switch, precision} :: lss) = 
+	  map_sw(map_lss',fn sw => SWITCH_I {switch=sw, precision=precision},switch) :: map_lss' lss
+	  | map_lss'(SWITCH_W {switch, precision} :: lss) = 
+	  map_sw(map_lss',fn sw => SWITCH_W {switch=sw, precision=precision},switch) :: map_lss' lss
 	  | map_lss'(SWITCH_S sw::lss) = map_sw(map_lss',SWITCH_S,sw) :: map_lss' lss
 	  | map_lss'(SWITCH_C sw::lss) = map_sw(map_lss',SWITCH_C,sw) :: map_lss' lss
 	  | map_lss'(SWITCH_E sw::lss) = map_sw(map_lss',SWITCH_E,sw) :: map_lss' lss
@@ -1175,11 +1186,7 @@ struct
 	     add_not_ok_use(use_var_ls ls,add_not_ok_def(def_var_ls ls,(OKset,notOKset,NONE)))
          (* Pattern: lv := prim(cond) *)
        | PRIM{name,args=[aty1,aty2],res=[VAR lv_res]} =>
-	   if name = BI.EQUAL_INT orelse
-	     name = BI.LESS_INT orelse
-	     name = BI.LESSEQ_INT orelse
-	     name = BI.GREATER_INT orelse
-	     name = BI.GREATEREQ_INT then
+	   if BI.is_flow_prim name then
 	     add_ok_def(lv_res,prev_use_lv,add_not_ok_use(use_var_ls ls,(OKset,notOKset,NONE)))
 	   else
 	     add_not_ok_def([lv_res],add_not_ok_use(use_var_ls ls,(OKset,notOKset,NONE)))
@@ -1197,9 +1204,9 @@ struct
 	     FV_CalcSets_sw(FV_CalcSets_lss,sw,OKset,notOKset,prev_use_lv)
          (* Pattern: case lv of 3 => lss | _ => lss *)
          (* Pattern: case lv of 1 => lss | _ => lss *)
-       | SWITCH_I(sw as SWITCH(VAR lv,[(sel_val,lss)],default)) => 
-	   if sel_val = BI.ml_true orelse
-	     sel_val = BI.ml_false then
+       | SWITCH_I {switch=sw as SWITCH(VAR lv,[(sel_val,lss)],default), precision} => 
+	   if (sel_val = Int32.fromInt BI.ml_true 
+	       orelse sel_val = Int32.fromInt BI.ml_false) then
 	     let
 	       val (OKset',notOKset',_) = FV_CalcSets_lss(default,(OKset,notOKset,prev_use_lv))
 	     in
@@ -1229,7 +1236,8 @@ struct
 	     end
        | HANDLE{default,handl,handl_return,offset} => die "FV_CalcSets_ls: Handle"
 
-       | SWITCH_I sw => FV_CalcSets_sw(FV_CalcSets_lss,sw,OKset,notOKset,prev_use_lv)
+       | SWITCH_I {switch,precision} => FV_CalcSets_sw(FV_CalcSets_lss,switch,OKset,notOKset,prev_use_lv)
+       | SWITCH_W {switch,precision} => FV_CalcSets_sw(FV_CalcSets_lss,switch,OKset,notOKset,prev_use_lv)
        | SWITCH_S sw => die "FV_CalcSets_ls: SWITCH_S"
        | SWITCH_C sw => FV_CalcSets_sw(FV_CalcSets_lss,sw,OKset,notOKset,prev_use_lv)
        | SWITCH_E sw => die "FV_CalcSets_ls: SWITCH_E"

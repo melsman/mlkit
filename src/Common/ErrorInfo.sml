@@ -82,6 +82,7 @@ functor ErrorInfo(structure StatObject : STATOBJECT
       | QUALIFIED_ID of longid
       | UNGUARDED_TYVARS of TyVar list
       | UNGENERALISABLE_TYVARS of id list
+      | REALSCON_ATPAT
       | WRONG_ARITY of {expected: int, actual: int}
       | FLEX_REC_NOT_RESOLVED 
       | REPEATED_IDS of RepeatedId list
@@ -217,6 +218,10 @@ functor ErrorInfo(structure StatObject : STATOBJECT
       | report (WRONG_ARITY{expected, actual}) =
 	  line ("Wrong arity (expected " ^ Int.toString expected
 		^ ", actual " ^ Int.toString actual ^ ").")
+
+      | report (REALSCON_ATPAT) =
+	  line "Real constants are not allowed in patterns."
+
 
       | report (FLEX_REC_NOT_RESOLVED) =
 	  line "Overloading not resolved in record containing the\
@@ -399,6 +404,7 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 	     | QUALIFIED_ID _ =>                        "QUALIFIED_ID"
 	     | UNGUARDED_TYVARS _ =>                    "UNGUARDED_TYVARS"
 	     | UNGENERALISABLE_TYVARS _ =>              "UNGENERALISABLE_TYVARS"
+	     | REALSCON_ATPAT =>                        "REALSCON_ATPAT"
 	     | WRONG_ARITY _ =>                         "WRONG_ARITY"
 	     | FLEX_REC_NOT_RESOLVED =>                 "FLEX_REC_NOT_RESOLVED"
 	     | REPEATED_IDS _ =>                        "REPEATED_IDS"

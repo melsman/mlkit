@@ -149,7 +149,7 @@ functor CompBasis(structure Con : CON
       end
 
     fun restrict ({EqEnv,OEnv,TCEnv,rse,mulenv,mularefmap,drop_env,psi_env},
-		  (lvars,lvars_with_prims,tynames,cons,excons)) = 
+		  (lvars,tynames,cons,excons)) = 
       let
 	
 	(* Martin Elsman wants to write a comment here 09/09/1997
@@ -177,18 +177,16 @@ functor CompBasis(structure Con : CON
                 say "(end of equality environment)\n";
                 raise x) 
 	  val lvars = lvars_eq @ lvars
-	  val lvars_with_prims = Lvars.less_int_lvar :: Lvars.minus_int_lvar ::
-	                         lvars_eq @ lvars_with_prims
 	  val OEnv1 = OptLambda.restrict(OEnv,lvars)
 	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
-	  val rse1 = RegionStatEnv.restrict(rse,{lvars=lvars_with_prims,tynames=tynames,cons=cons,excons=excons})
-	  val mulenv1 = Mul.restrict_efenv(mulenv,lvars_with_prims)
+	  val rse1 = RegionStatEnv.restrict(rse,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
+	  val mulenv1 = Mul.restrict_efenv(mulenv,lvars)
 	  val (places,effectvars) = (*RegionStatEnv.places_effectvarsRSE rse1*)
 	    ([Effect.toplevel_region_withtype_top, Effect.toplevel_region_withtype_string,
 	      Effect.toplevel_region_withtype_real,Effect.toplevel_region_withtype_bot], [Effect.toplevel_arreff])
 	  val mularefmap1 = Mul.restrict_mularefmap(mularefmap,effectvars)
-	  val drop_env1 = DropRegions.restrict(drop_env,lvars_with_prims)
-	  val psi_env1 = PhysSizeInf.restrict(psi_env,lvars_with_prims)
+	  val drop_env1 = DropRegions.restrict(drop_env,lvars)
+	  val psi_env1 = PhysSizeInf.restrict(psi_env,lvars)
 	  val places = DropRegions.drop_places places
       in ({TCEnv=TCEnv1,
 	   EqEnv=EqEnv1,

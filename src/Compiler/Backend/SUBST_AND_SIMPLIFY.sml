@@ -27,7 +27,8 @@ signature SUBST_AND_SIMPLIFY =
       | FLOW_VAR_ATY     of lvar * label * label
       | DROPPED_RVAR_ATY
       | PHREG_ATY        of reg
-      | INTEGER_ATY      of string
+      | INTEGER_ATY      of {value: Int32.int, precision: int}
+      | WORD_ATY         of {value: Word32.word, precision: int}
       | UNIT_ATY
 
     val eq_aty : Aty * Aty -> bool

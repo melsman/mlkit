@@ -75,9 +75,9 @@ signature TYPE_INFO =
 			 * type names of the datbind associated with the abstype 
 			 * construct *)
       | EXP_INFO of {Type: Type} 
-	                (* Attached to all exp's *)
+	                (* Attached to all exp's and SCONatexp *)
       | MATCH_INFO of {Type: Type}
-	                (* Attached to MATCH *)
+	                (* Attached to MATCH and SCONatpat *)
       | PLAINvalbind_INFO of {tyvars: TyVar list, Type: Type}
 	                (* Attached to PLAINvalbind 
 			   for 'pat = exp' this is the type of the exp, and 

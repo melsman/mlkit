@@ -227,7 +227,8 @@ struct
 	     (L_set2,F_set3,C_set2) 
 	   end
        | LS.HANDLE{default,handl,handl_return,offset} => die "F_ls: handl_return in HANDLE not empty"
-       | LS.SWITCH_I sw => F_sw(F_lss,sw,L_set,F_set,C_set)
+       | LS.SWITCH_I {switch,precision} => F_sw(F_lss,switch,L_set,F_set,C_set)
+       | LS.SWITCH_W {switch,precision} => F_sw(F_lss,switch,L_set,F_set,C_set)
        | LS.SWITCH_S sw => F_sw(F_lss,sw,L_set,F_set,C_set)
        | LS.SWITCH_C sw => F_sw(F_lss,sw,L_set,F_set,C_set)
        | LS.SWITCH_E sw => F_sw(F_lss,sw,L_set,F_set,C_set)
@@ -302,7 +303,12 @@ struct
 			handl_return=([],handl_return_lv,bv),offset=offset} :: IFF_lss' lss
 	  | IFF_lss'(LS.HANDLE{default,handl,handl_return,offset}::lss) = die "IFF_lss': handle_return in HANDLE not empty"
 	  | IFF_lss'(LS.RAISE{arg,defined_atys}::lss) = LS.RAISE{arg=arg,defined_atys=defined_atys} :: IFF_lss' lss
-	  | IFF_lss'(LS.SWITCH_I sw::lss) = LS.SWITCH_I(IFF_sw (fn lss => IFF_lss(lss,F,[])) sw) :: IFF_lss' lss
+	  | IFF_lss'(LS.SWITCH_I {switch,precision}::lss) = 
+	      LS.SWITCH_I{switch=IFF_sw (fn lss => IFF_lss(lss,F,[])) switch,
+			  precision=precision} :: IFF_lss' lss
+	  | IFF_lss'(LS.SWITCH_W {switch,precision}::lss) = 
+	      LS.SWITCH_W{switch=IFF_sw (fn lss => IFF_lss(lss,F,[])) switch,
+			  precision=precision} :: IFF_lss' lss
 	  | IFF_lss'(LS.SWITCH_S sw::lss) = LS.SWITCH_S(IFF_sw (fn lss => IFF_lss(lss,F,[])) sw) :: IFF_lss' lss
 	  | IFF_lss'(LS.SWITCH_C sw::lss) = LS.SWITCH_C(IFF_sw (fn lss => IFF_lss(lss,F,[])) sw) :: IFF_lss' lss
 	  | IFF_lss'(LS.SWITCH_E sw::lss) = LS.SWITCH_E(IFF_sw (fn lss => IFF_lss(lss,F,[])) sw) :: IFF_lss' lss
@@ -402,7 +408,12 @@ struct
 				       offset=offset}::acc,U_set2)
 	    | _ => die "IF_lss': handl_return contains more than one statement."
 	  end
-	  | IF_lss'(LS.SWITCH_I sw::lss,U_set) = IF_sw(IF_lss',LS.SWITCH_I,sw,U_set,lss)
+	  | IF_lss'(LS.SWITCH_I {switch,precision}::lss,U_set) = 
+	  IF_sw(IF_lss',fn sw => LS.SWITCH_I {switch=sw, precision=precision},
+		switch,U_set,lss)
+	  | IF_lss'(LS.SWITCH_W {switch,precision}::lss,U_set) = 
+	  IF_sw(IF_lss',fn sw => LS.SWITCH_W {switch=sw, precision=precision},
+		switch,U_set,lss)
 	  | IF_lss'(LS.SWITCH_S sw::lss,U_set) = IF_sw(IF_lss',LS.SWITCH_S,sw,U_set,lss)
 	  | IF_lss'(LS.SWITCH_C sw::lss,U_set) = IF_sw(IF_lss',LS.SWITCH_C,sw,U_set,lss)
 	  | IF_lss'(LS.SWITCH_E sw::lss,U_set) = IF_sw(IF_lss',LS.SWITCH_E,sw,U_set,lss)

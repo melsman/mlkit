@@ -84,7 +84,8 @@ struct
     | DROPPED_RVAR    of place
     | FETCH           of label
     | STORE           of ClosExp * label
-    | INTEGER         of string
+    | INTEGER         of {value: Int32.int, precision: int}
+    | WORD            of {value: Word32.word, precision: int}
     | STRING          of string
     | REAL            of string
     | PASS_PTR_TO_MEM of sma * int
@@ -105,7 +106,8 @@ struct
     | LET             of {pat: lvar list, bind: ClosExp, scope: ClosExp}
     | RAISE           of ClosExp
     | HANDLE          of ClosExp * ClosExp
-    | SWITCH_I        of int Switch
+    | SWITCH_I        of {switch: Int32.int Switch, precision: int}
+    | SWITCH_W        of {switch: Word32.word Switch, precision: int}
     | SWITCH_S        of string Switch
     | SWITCH_C        of (con*con_kind) Switch
     | SWITCH_E        of excon Switch
@@ -186,7 +188,8 @@ struct
       | layout_ce(DROPPED_RVAR place) = LEAF("D" ^ flatten1(Effect.layout_effect place))
       | layout_ce(FETCH lab)          = LEAF("fetch(" ^ Labels.pr_label lab ^ ")")
       | layout_ce(STORE(ce,lab))      = LEAF("store(" ^ flatten1(layout_ce ce) ^ "," ^ Labels.pr_label lab ^ ")")
-      | layout_ce(INTEGER i)          = LEAF(i)
+      | layout_ce(INTEGER {value,precision}) = LEAF(Int32.toString value)
+      | layout_ce(WORD {value,precision})    = LEAF("0x" ^ Word32.toString value)
       | layout_ce(STRING s)           = LEAF("\"" ^ String.toString s ^ "\"")
       | layout_ce(REAL s)             = LEAF(s)
       | layout_ce(PASS_PTR_TO_MEM(sma,i)) = LEAF("MEM(" ^ (flatten1(pr_sma sma)) ^ "," ^ Int.toString i ^ ")")
@@ -312,7 +315,8 @@ struct
       | layout_ce(RAISE ce) = PP.LEAF("raise " ^ (flatten1(layout_ce ce)))
       | layout_ce(HANDLE(ce1,ce2)) = NODE{start="",finish="",childsep=RIGHT " handle ",indent=1,
 					  children=[layout_ce ce1,layout_ce ce2]}
-      | layout_ce(SWITCH_I sw) = layout_switch layout_ce (Int.toString) sw
+      | layout_ce(SWITCH_I {switch,precision}) = layout_switch layout_ce (Int32.toString) switch
+      | layout_ce(SWITCH_W {switch,precision}) = layout_switch layout_ce (fn w => "0x" ^ Word32.toString w) switch
       | layout_ce(SWITCH_S sw) = layout_switch layout_ce (fn s => s) sw
       | layout_ce(SWITCH_C sw) = layout_switch layout_ce (fn (con,con_kind) => Con.pr_con con ^ "(" ^ 
 							  pr_con_kind con_kind ^ ")") sw
@@ -526,7 +530,8 @@ struct
 	    fun NExp e =
 	      (case e of
 		 MulExp.VAR _ => e
-	       | MulExp.INTEGER(i,alloc) => e
+	       | MulExp.INTEGER(i,t,alloc) => e
+	       | MulExp.WORD(i,t,alloc) => e
 	       | MulExp.STRING(s,alloc) => e
 	       | MulExp.REAL(r,alloc) => e
 	       | MulExp.UB_RECORD trs => MulExp.UB_RECORD (map (fn tr => NTrip tr true) trs)
@@ -567,7 +572,10 @@ struct
 		   MulExp.EXCEPTION(excon,bool,typePlace,alloc,NTrip scope true)
 	       | MulExp.RAISE tr => MulExp.RAISE (NTrip tr true)
 	       | MulExp.HANDLE(tr1,tr2) => MulExp.HANDLE(NTrip tr1 true,NTrip tr2 true)
-	       | MulExp.SWITCH_I(MulExp.SWITCH(tr,choices,opt)) => MulExp.SWITCH_I(Nsw(tr, choices, opt))
+	       | MulExp.SWITCH_I {switch=MulExp.SWITCH(tr,choices,opt), precision} => 
+		   MulExp.SWITCH_I {switch=Nsw(tr, choices, opt), precision=precision}
+	       | MulExp.SWITCH_W {switch=MulExp.SWITCH(tr,choices,opt), precision} => 
+		   MulExp.SWITCH_W {switch=Nsw(tr, choices, opt), precision=precision}
 	       | MulExp.SWITCH_S(MulExp.SWITCH(tr,choices,opt)) => MulExp.SWITCH_S(Nsw(tr, choices, opt))
 	       | MulExp.SWITCH_C(MulExp.SWITCH(tr,choices,opt)) => MulExp.SWITCH_C(Nsw(tr, choices, opt))
 	       | MulExp.SWITCH_E(MulExp.SWITCH(tr,choices,opt)) => MulExp.SWITCH_E(Nsw(tr, choices, opt))
@@ -750,7 +758,8 @@ struct
 		       (rem_Fenv Fenv lvar, [OTHER])
 		     else
 		       (Fenv, [OTHER])
-		 | MulExp.INTEGER(i,alloc) => (Fenv, [OTHER])
+		 | MulExp.INTEGER(i,t,alloc) => (Fenv, [OTHER])
+		 | MulExp.WORD(i,t,alloc) => (Fenv, [OTHER])
 		 | MulExp.STRING(s,alloc) => (Fenv, [OTHER])
 		 | MulExp.REAL(r,alloc) => (Fenv, [OTHER]) 
 		 | MulExp.UB_RECORD trs => 
@@ -823,10 +832,8 @@ struct
 		 | MulExp.APP(callKind,saveRestore,operator,operand) =>
 		       (case operator 
 			  of MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,fix_bound=false,rhos_actuals,other},_,_,_) =>
-			    (* Ordinary function call or a primitive *)
-			    (case Lvars.primitive lvar
-			       of NONE => (* Ordinary function call *)
-				 let
+			    (* Ordinary function call *)
+			    let
 				   val Fenv' = (case lookup_Fenv Fenv lvar
 						  of NONE => Fenv
 						| SOME (FN(arg_fn,free_fn)) =>
@@ -836,16 +843,10 @@ struct
 						      rem_Fenv Fenv lvar
 						| SOME (FIX(lvars,free)) => die "Function should be FN but is recorded as FIX")
 				   val (Fenv_res, _) = FTrip operand Fenv' Env
-				 in
-				   (Fenv_res, [OTHER])
-				 end
-			     | SOME prim => (* Primitive call *)
-				 let
-				   val (Fenv_res, _) = FTrip operand Fenv Env (* We traverse all arguments *)
-				 in
-				   (Fenv_res, [OTHER])
-				 end)
-			| MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,fix_bound=true,rhos_actuals,other},_,_,_) =>
+			    in
+			      (Fenv_res, [OTHER])
+			    end
+			   | MulExp.TR(MulExp.VAR{lvar,il, plain_arreffs,fix_bound=true,rhos_actuals,other},_,_,_) =>
 			       (* Region Polymorphic call *)
 			       let
 				 val Fenv' = (case lookup_Fenv Fenv lvar
@@ -871,7 +872,15 @@ struct
 			  in
 			    (Fenv2, [OTHER])
 			  end
-		 | MulExp.SWITCH_I(MulExp.SWITCH(tr,choices,opt)) =>
+		 | MulExp.SWITCH_I {switch=MulExp.SWITCH(tr,choices,opt), precision} =>
+			  let
+			    val (Fenv_tr,_) = FTrip tr Fenv Env
+			    val Fenv_ch = List.foldl (fn ((_,tr),base) => #1(FTrip tr base Env)) Fenv_tr choices
+			    val (Fenv_res) = (case opt of SOME tr => #1(FTrip tr Fenv_ch Env) | NONE => Fenv_ch)
+			  in
+			    (Fenv_res,[OTHER])
+			  end
+		 | MulExp.SWITCH_W {switch=MulExp.SWITCH(tr,choices,opt), precision} =>
 			  let
 			    val (Fenv_tr,_) = FTrip tr Fenv Env
 			    val Fenv_ch = List.foldl (fn ((_,tr),base) => #1(FTrip tr base Env)) Fenv_tr choices
@@ -1285,6 +1294,16 @@ struct
       fun get_top_decls() = !top_decl
     end
 
+    fun precisionNumType t =
+      case t
+	of RType.CONSTYPE(tn,_,_,_) => 
+	  if TyName.eq(tn, TyName.tyName_INT31) then 31
+	  else if TyName.eq(tn, TyName.tyName_INT32) then 32
+	  else if TyName.eq(tn, TyName.tyName_WORD31) then 31
+	  else if TyName.eq(tn, TyName.tyName_WORD32) then 32
+	  else die "precisionNumType.wrong tyname"
+	 | _ => die "precisionNumType.wrong type"
+
     (* ------------------------------ *)  
     (*   General Utility Functions    *)
     (* ------------------------------ *)  
@@ -1451,11 +1470,16 @@ struct
 	fun ccExp e =
 	  (case e of
 	     MulExp.VAR{lvar,...} => lookup_ve env lvar 
-	   | MulExp.INTEGER(i,alloc) => 
+	   | MulExp.INTEGER(i,t,alloc) =>
+	       (INTEGER {value=i, precision=precisionNumType t}, NONE_SE)
+(*
 	       ((if BI.tag_integers() then 
 		   (INTEGER(int32_to_string(2*(Int32.fromInt i)+1)),NONE_SE) 
 		 else (INTEGER (int_to_string i), NONE_SE))
 		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
+*)
+	   | MulExp.WORD(w,t,alloc) => (WORD {value=w, precision=precisionNumType t}, NONE_SE)
+
 	   | MulExp.STRING(s,alloc) => (STRING s,NONE_SE)
 	   | MulExp.REAL(r,alloc) => 
 	       let
@@ -1682,6 +1706,7 @@ struct
 		 (insert_ses(FNJMP{opr=ce_opr',args=ces',clos=SOME ce_opr'},
 			     ses'),NONE_SE)
 	       end
+(*
 	   | MulExp.APP(NONE,_, (*  primitive *)
 			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=false, rhos_actuals=ref rhos_actuals,...},_,_,_), 
 			tr2) =>
@@ -1737,6 +1762,7 @@ struct
 	   | MulExp.APP(NONE,_, (*  primitive *)
 			tr1, (* not lvar: error *)
 			tr2) =>  die "expected primitive operation"
+*)
 	   | MulExp.APP(SOME MulExp.FNCALL,_, tr1, tr2) =>
 	       let
 		 val ces_and_ses = 
@@ -1785,7 +1811,7 @@ struct
 		 val (sma,se_a) = convert_alloc(alloc,env)
 	       in
 		 (LET{pat=[lv1], 
-		      bind=CCALL{name=BI.FRESH_EXN_NAME,
+		      bind=CCALL{name="__fresh_exname",
 				 args=[],
 				 rhos_for_result=[]},
 		      scope=insert_se(LET{pat=[lv2], 
@@ -1810,7 +1836,7 @@ struct
 		 val (sma,se_a) = convert_alloc(alloc,env)
 	       in
 		 (LET{pat=[lv1], 
-		      bind=CCALL{name=BI.FRESH_EXN_NAME,
+		      bind=CCALL{name="__fresh_exname",
 				 args=[],
 				 rhos_for_result=[]},
 		      scope=LET{pat=[lv2], 
@@ -1829,15 +1855,21 @@ struct
 	       end
 	   | MulExp.HANDLE(tr1,tr2) => (HANDLE (insert_se(ccTrip tr1 env lab cur_rv),
 						insert_se(ccTrip tr2 env lab cur_rv)),NONE_SE)
-	   | MulExp.SWITCH_I(MulExp.SWITCH(tr,selections,opt)) =>
+	   | MulExp.SWITCH_I {switch=MulExp.SWITCH(tr,selections,opt), precision} =>
 	       let
-		 fun compile_match i = ((if BI.tag_integers() then 2*i+1 else i)
-					   handle Overflow => die "ClosExp.SWITCH_I Overflow raised")
 		 val (selections,opt) = 
-		   compile_sels_and_default selections opt compile_match (fn tr => ccTrip tr env lab cur_rv)
+		   compile_sels_and_default selections opt (fn i => i) (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
 	       in
-		 (insert_se(SWITCH_I(SWITCH(ce,selections,opt)),se),NONE_SE)
+		 (insert_se(SWITCH_I {switch=SWITCH(ce,selections,opt), precision=precision},se),NONE_SE)
+	       end
+	   | MulExp.SWITCH_W {switch=MulExp.SWITCH(tr,selections,opt), precision} =>
+	       let
+		 val (selections,opt) = 
+		   compile_sels_and_default selections opt (fn i => i) (fn tr => ccTrip tr env lab cur_rv)
+		 val (ce,se) = ccTrip tr env lab cur_rv
+	       in
+		 (insert_se(SWITCH_W {switch=SWITCH(ce,selections,opt), precision=precision},se),NONE_SE)
 	       end
 	   | MulExp.SWITCH_S(MulExp.SWITCH(tr,selections,opt)) =>
 	       let 
@@ -1854,8 +1886,9 @@ struct
 			 bind=STRING s,
 			 scope=LET{pat=[lv_sw],
 				   bind=CCALL{name="equalStringML",args=[ce,VAR lv_s],rhos_for_result=[]},
-				   scope=SWITCH_I(SWITCH(VAR lv_sw,[(BI.ml_true,ce')],
-							 compile_seq_switch(ce,rest,default)))}}
+				   scope=SWITCH_I{switch=SWITCH(VAR lv_sw,[(Int32.fromInt BI.ml_true,ce')],
+								compile_seq_switch(ce,rest,default)),
+						  precision=BI.defaultIntPrecision()}}}
 		   end
 	       in
 		 (insert_se(compile_seq_switch(ce,selections,opt),se),NONE_SE)
@@ -1904,16 +1937,20 @@ struct
 			      scope=LET{pat=[lv_exn2],
 					bind=SELECT(0,VAR lv_exn1),
 					scope=LET{pat=[lv_sw],
-						  bind=CCALL{name=BI.EQUAL_INT,args=[ce,VAR lv_exn2],rhos_for_result=[]},
-						  scope=SWITCH_I(SWITCH(VAR lv_sw,[(BI.ml_true,ce')],
-									compile_seq_switch(ce,rest,default)))}}}
+						  bind=CCALL{name="__equal_int32ub",
+							     args=[ce,VAR lv_exn2],rhos_for_result=[]},
+						  scope=SWITCH_I {switch=SWITCH(VAR lv_sw,[(Int32.fromInt BI.ml_true,ce')],
+										compile_seq_switch(ce,rest,default)),
+								  precision=BI.defaultIntPrecision()}}}}
 		      | UNARY_EXCON => 
 			  LET{pat=[lv_exn1],
 			      bind=insert_se(SELECT(0,ce_e),se_e),
 			      scope=LET{pat=[lv_sw],
-					bind=CCALL{name=BI.EQUAL_INT,args=[ce,VAR lv_exn1],rhos_for_result=[]},
-					scope=SWITCH_I(SWITCH(VAR lv_sw,[(BI.ml_true,ce')],
-							      compile_seq_switch(ce,rest,default)))}})
+					bind=CCALL{name="__equal_int32ub",
+						   args=[ce,VAR lv_exn1],rhos_for_result=[]},
+					scope=SWITCH_I {switch=SWITCH(VAR lv_sw,[(Int32.fromInt BI.ml_true,ce')],
+								      compile_seq_switch(ce,rest,default)),
+							precision=BI.defaultIntPrecision()}}})
 		   end
 		 val lv_exn_arg1 = fresh_lvar("exn_arg1")
 		 val lv_exn_arg2 = fresh_lvar("exn_arg2")
@@ -2036,20 +2073,32 @@ struct
 		      ([ce1,ce2],ses,_) => (ce1,ce2,ses)
 		    | _ => die "EQUAL: error in unify.")
 		      
+		 fun eq_prim n = CCALL{name=n,args=[ce1,ce2],rhos_for_result=[]}
+
 		 val ce =
 		   (case tau of
 		      RType.CONSTYPE(tn,_,_,_) =>
-			if TyName.eq(tn,TyName.tyName_INT) orelse TyName.eq(tn,TyName.tyName_BOOL) orelse TyName.eq(tn,TyName.tyName_REF) then
-			  CCALL{name=BI.EQUAL_INT,args=[ce1,ce2],rhos_for_result=[]}
-			else if TyName.eq(tn,TyName.tyName_STRING) then
-			  CCALL{name="equalStringML",args=[ce1,ce2],rhos_for_result=[]}
-			     else if TyName.eq(tn,TyName.tyName_WORD_TABLE) then
+                        if TyName.eq(tn,TyName.tyName_BOOL) orelse TyName.eq(tn,TyName.tyName_REF) then
+                          eq_prim "__equal_int32ub"
+			else if TyName.eq(tn,TyName.tyName_INT31) then 
+			  eq_prim "__equal_int31"
+			else if TyName.eq(tn,TyName.tyName_INT32) then 
+			  (if BI.tag_integers() then eq_prim "__equal_int32b"
+			   else eq_prim "__equal_int32ub")
+                        else if TyName.eq(tn,TyName.tyName_WORD31) then
+			  eq_prim "__equal_word31"
+			else if TyName.eq(tn,TyName.tyName_WORD32) then
+			  (if BI.tag_integers() then eq_prim "__equal_word32b"
+			   else eq_prim "__equal_word32ub")
+		        else if TyName.eq(tn,TyName.tyName_STRING) then
+			  eq_prim "equalStringML"
+		        else if TyName.eq(tn,TyName.tyName_WORD_TABLE) then
 			       die "`=' on word_tables! EliminateEq should have dealt with this"
 				  (*TODO 11/02/1998 13:47. tho.  You can delete these two
 				   die's when EliminateEq has been changed.*)
-				  else CCALL{name="equalPolyML",args=[ce1,ce2],rhos_for_result=[]}
-		    | RType.RECORD [] => CCALL{name=BI.EQUAL_INT,args=[ce1,ce2],rhos_for_result=[]} 
-		    | _ => CCALL{name="equalPolyML",args=[ce1,ce2],rhos_for_result=[]})
+			else eq_prim "equalPolyML"
+		    | RType.RECORD [] => eq_prim "__equal_int32ub"
+		    | _ => eq_prim "equalPolyML")
 	       in
 		 (insert_ses(ce,ses),NONE_SE)
 	       end
@@ -2077,9 +2126,10 @@ struct
 		       (case i_opt of
 			  SOME 0 => die "get_pp_for_profiling (CCALL ...): argument region with size 0"
 			| SOME i => add_pp_for_profiling(rest,args)
-			| NONE   => args @ [INTEGER(Int.toString(get_pp sma))]) (*get any arbitrary pp (they are the same):*)
-		   else
-		     args
+			| NONE   => args @ [INTEGER {value=Int32.fromInt(get_pp sma),
+						     precision=BI.defaultIntPrecision()}]) 
+		                            (*get any arbitrary pp (they are the same):*)
+		   else args
 
 		 fun comp_region_args_sma [] = []
 		   | comp_region_args_sma ((sma, i_opt)::rest) = 
@@ -2249,11 +2299,14 @@ struct
 	fun liftExp e =
 	  (case e of
 	     MulExp.VAR{lvar,...} => lookup_ve env lvar
-	   | MulExp.INTEGER(i,alloc) => 
+	   | MulExp.INTEGER(i,t,alloc) => INTEGER{value=i, precision=precisionNumType t}
+(*
 	       ((if BI.tag_integers() then 
 		   INTEGER(int32_to_string(2*(Int32.fromInt i)+1)) 
 		 else INTEGER (int_to_string i))
 		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
+*)
+	   | MulExp.WORD(w,t,alloc) => WORD{value=w, precision=precisionNumType t}
 	   | MulExp.STRING(s,alloc) => STRING s
 	   | MulExp.REAL(r,alloc) => 
 	       let
@@ -2425,6 +2478,7 @@ struct
 	       in
 		 FNJMP{opr=ce_opr,args=ces,clos=NONE (*SOME ce_opr*)} (* opr and clos is similar, we only want to the opr expression once! I therefore set clos equal to NONE17/09-2000, Niels *)
 	       end
+(*
 	   | MulExp.APP(NONE,_, (*  primitive *)
 			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=false, rhos_actuals=ref rhos_actuals,...},_,_,_), 
 			tr2) =>
@@ -2471,6 +2525,7 @@ struct
 	   | MulExp.APP(NONE,_, (*  primitive *)
 			tr1, (* not lvar: error *)
 			tr2) =>  die "expected primitive operation"
+*)
 	   | MulExp.APP(SOME MulExp.FNCALL,_, tr1, tr2) =>
 	       let
 		 val ces =
@@ -2513,7 +2568,7 @@ struct
 		 val sma = convert_alloc(alloc,env)
 	       in
 		 LET{pat=[lv_exn],
-		     bind=RECORD{elems=[RECORD{elems=[CCALL{name=BI.FRESH_EXN_NAME,
+		     bind=RECORD{elems=[RECORD{elems=[CCALL{name="__fresh_exname",
 							    args=[],rhos_for_result=[]},
 						      STRING (Excon.pr_excon excon)],
 					       alloc=sma,
@@ -2529,7 +2584,7 @@ struct
 		 val sma = convert_alloc(alloc,env)
 	       in
 		 LET{pat=[lv_exn],
-		     bind=RECORD{elems=[CCALL{name=BI.FRESH_EXN_NAME,
+		     bind=RECORD{elems=[CCALL{name="__fresh_exname",
 					      args=[],
 					      rhos_for_result=[]},
 					STRING (Excon.pr_excon excon)],
@@ -2540,16 +2595,17 @@ struct
 	   | MulExp.RAISE tr => RAISE(liftTrip tr env lab)
 	   | MulExp.HANDLE(tr1,tr2) => HANDLE(liftTrip tr1 env lab,
 					      liftTrip tr2 env lab)
-	   | MulExp.SWITCH_I(MulExp.SWITCH(tr,selections,opt)) =>
-	       let
-		 fun compile_match i = 
-		   ((if BI.tag_integers() then 2*i+1 else i)
-		       handle Overflow => die "ClosExp.INTEGER Overflow raised")
-		 val (selections,opt) = 
-		   compile_sels_and_default selections opt compile_match (fn tr => liftTrip tr env lab)
+	   | MulExp.SWITCH_I {switch=MulExp.SWITCH(tr,selections,opt), precision} =>
+	       let val (selections,opt) = (compile_sels_and_default selections 
+					   opt (fn i => i) (fn tr => liftTrip tr env lab))
 		 val ce = liftTrip tr env lab
-	       in
-		 SWITCH_I(SWITCH(ce,selections,opt))
+	       in SWITCH_I{switch=SWITCH(ce,selections,opt), precision=precision}
+	       end
+	   | MulExp.SWITCH_W {switch=MulExp.SWITCH(tr,selections,opt), precision} =>
+	       let val (selections,opt) = (compile_sels_and_default selections 
+					   opt (fn i => i) (fn tr => liftTrip tr env lab))
+		 val ce = liftTrip tr env lab
+	       in SWITCH_W{switch=SWITCH(ce,selections,opt), precision=precision}
 	       end
 	   | MulExp.SWITCH_S(MulExp.SWITCH(tr,selections,opt)) =>
 	       (* We bind tr (i.e., ce) to an lvar so that tr is only evaluated once. *)
@@ -2559,9 +2615,10 @@ struct
 		 val ce = liftTrip tr env lab
 		 fun compile_seq_switch(ce,[],default) = default
 		   | compile_seq_switch(ce,(s,ce')::rest,default) =
-		   SWITCH_I(SWITCH(CCALL{name="equalStringML",args=[ce,STRING s],rhos_for_result=[]},
-				   [(BI.ml_true,ce')],
-				   compile_seq_switch(ce,rest,default)))
+		   SWITCH_I {switch=SWITCH(CCALL{name="equalStringML",args=[ce,STRING s],rhos_for_result=[]},
+					   [(Int32.fromInt BI.ml_true,ce')],
+					   compile_seq_switch(ce,rest,default)),
+			     precision=BI.defaultIntPrecision()}
 		 val lv_str = fresh_lvar("sw_str")
 	       in
 		 LET{pat=[lv_str],
@@ -2601,13 +2658,18 @@ struct
 		   | compile_seq_switch(ce,((ce_e,arity),ce')::rest,default) =
 		   (case arity of
 		      CE.NULLARY_EXCON =>
-			SWITCH_I(SWITCH(CCALL{name=BI.EQUAL_INT,args=[ce,SELECT(0,SELECT(0,ce_e))],rhos_for_result=[]},
-					[(BI.ml_true,ce')],
-					compile_seq_switch(ce,rest,default)))
+			SWITCH_I{switch=SWITCH(CCALL{name="__equal_int32ub",
+						     args=[ce,SELECT(0,SELECT(0,ce_e))],
+						     rhos_for_result=[]},
+					       [(Int32.fromInt BI.ml_true,ce')],
+					       compile_seq_switch(ce,rest,default)),
+				 precision=BI.defaultIntPrecision()}
 		    | UNARY_EXCON => 
-			SWITCH_I(SWITCH(CCALL{name=BI.EQUAL_INT,args=[ce,SELECT(0,ce_e)],rhos_for_result=[]},
-					[(BI.ml_true,ce')],
-					compile_seq_switch(ce,rest,default))))
+			SWITCH_I{switch=SWITCH(CCALL{name="__equal_int32ub",
+						     args=[ce,SELECT(0,ce_e)],rhos_for_result=[]},
+					       [(Int32.fromInt BI.ml_true,ce')],
+					       compile_seq_switch(ce,rest,default)),
+				 precision=BI.defaultIntPrecision()})
 		 val lv_exn_arg = fresh_lvar("exn_arg")
 	       in
 		 LET{pat=[lv_exn_arg],
@@ -2664,22 +2726,31 @@ struct
 		    | _ => die "EQUAL.metaType not Mus.")
 		 val ce1 = liftTrip tr1 env lab
 		 val ce2 = liftTrip tr2 env lab
+		 fun eq_prim n = CCALL{name=n,args=[ce1,ce2],rhos_for_result=[]}
 	       in
-		 (case tau of
-		    RType.CONSTYPE(tn,_,_,_) =>
-		      if TyName.eq(tn,TyName.tyName_INT) orelse 
-			TyName.eq(tn,TyName.tyName_BOOL) orelse 
-			TyName.eq(tn,TyName.tyName_REF) then
-			CCALL{name=BI.EQUAL_INT,args=[ce1,ce2],rhos_for_result=[]}
-		      else if TyName.eq(tn,TyName.tyName_STRING) then
-			CCALL{name="equalStringML",args=[ce1,ce2],rhos_for_result=[]}
-			   else if TyName.eq(tn,TyName.tyName_WORD_TABLE) then
-			     die "`=' on word_tables! EliminateEq should have dealt with this"
-				(*TODO 11/02/1998 13:47. tho.  You can delete these two
-				 die's when EliminateEq has been changed.*)
-				else CCALL{name="equalPolyML",args=[ce1,ce2],rhos_for_result=[]}
-		  | RType.RECORD [] => CCALL{name=BI.EQUAL_INT,args=[ce1,ce2],rhos_for_result=[]} 
-		  | _ => CCALL{name="equalPolyML",args=[ce1,ce2],rhos_for_result=[]})
+		   (case tau of
+		      RType.CONSTYPE(tn,_,_,_) =>
+                        if TyName.eq(tn,TyName.tyName_BOOL) orelse TyName.eq(tn,TyName.tyName_REF) then
+                          eq_prim "__equal_int32ub"
+			else if TyName.eq(tn,TyName.tyName_INT31) then 
+			  eq_prim "__equal_int31"
+			else if TyName.eq(tn,TyName.tyName_INT32) then 
+			  (if BI.tag_integers() then eq_prim "__equal_int32b"
+			   else eq_prim "__equal_int32ub")
+                        else if TyName.eq(tn,TyName.tyName_WORD31) then
+			  eq_prim "__equal_word31"
+			else if TyName.eq(tn,TyName.tyName_WORD32) then
+			  (if BI.tag_integers() then eq_prim "__equal_word32b"
+			   else eq_prim "__equal_word32ub")
+		        else if TyName.eq(tn,TyName.tyName_STRING) then
+			  eq_prim "equalStringML"
+		        else if TyName.eq(tn,TyName.tyName_WORD_TABLE) then
+			       die "`=' on word_tables! EliminateEq should have dealt with this"
+				  (*TODO 11/02/1998 13:47. tho.  You can delete these two
+				   die's when EliminateEq has been changed.*)
+			else eq_prim "equalPolyML"
+		    | RType.RECORD [] => eq_prim "__equal_int32ub"
+		    | _ => eq_prim "equalPolyML")
 	       end
 	   | MulExp.CCALL({name = "id", mu_result, rhos_for_result}, trs) =>
 	       (case trs of

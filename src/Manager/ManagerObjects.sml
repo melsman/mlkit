@@ -447,7 +447,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		(*val _ = if !Flags.chat then (print("\n RESTRICTED CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
 			else ()*)
 		val lvars = CompilerEnv.lvarsOfCEnv ce'
-		val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce')
+(*		val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce') *)
 		fun tynames_ife(IFE ife, tns) = 
 		  let fun tynames_obj ((_,_,_,_,_,obj),tns) = 
 		        let val IB(_,ise,ce,_) = obj
@@ -456,7 +456,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		  in FinMap.fold tynames_obj tns ife
 		  end
 		val tynames = [TyName.tyName_EXN,     (* exn is used explicitly in CompileDec *)
-			       TyName.tyName_INT,     (* int needed because of overloading *)
+			       TyName.tyName_INT31,   (* int31, int32, word8, word31, word32 needed *)
+			       TyName.tyName_INT32,   (*     because of overloading *)
+			       TyName.tyName_WORD8,
+			       TyName.tyName_WORD31,
+			       TyName.tyName_WORD32,
 			       TyName.tyName_STRING,  (* string is needed for string constants *)
 			       TyName.tyName_REF,
 			       TyName.tyName_REAL]    (* real needed because of overloading *)
@@ -466,7 +470,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 					       (IntSigEnv.tynames ise'))
 		val cons = CompilerEnv.consOfCEnv ce'
 		val excons = CompilerEnv.exconsOfCEnv ce'
-		val cb' = CompileBasis.restrict(cb,(lvars,lvars_with_prims,tynames,cons,excons))
+		val cb' = CompileBasis.restrict(cb,(lvars,tynames,cons,excons))
 	    in IB (ife',ise',ce',cb')
 	    end
 
@@ -497,11 +501,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	      let 
 		fun restr ce cb =
 		  let val lvars = CompilerEnv.lvarsOfCEnv ce
-		      val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce)
+(*		      val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce) *)
 		      val tynames = CompilerEnv.tynamesOfCEnv ce
 		      val cons = CompilerEnv.consOfCEnv ce
 		      val excons = CompilerEnv.exconsOfCEnv ce
-		  in CompileBasis.restrict(cb,(lvars,lvars_with_prims,tynames,cons,excons))
+		  in CompileBasis.restrict(cb,(lvars,tynames,cons,excons))
 		  end
 		val cb1 = restr ce1 cb1
 		val cb2 = restr ce2 cb2
@@ -523,7 +527,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			    CompileBasis.layout_CompileBasis cb]}
 	  
 	  (* operations used in Manager, only. *)
-	val initial = IB (IntFunEnv.initial, IntSigEnv.initial, CompilerEnv.initialCEnv, CompileBasis.initial)
+	fun initial() = IB (IntFunEnv.initial, IntSigEnv.initial, 
+			    CompilerEnv.initialCEnv(), CompileBasis.initial)
       end
 
     type ElabBasis = ModuleEnvironments.Basis 
@@ -569,7 +574,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		  children=[InfixBasis.layoutBasis infB, ModuleEnvironments.B.layout elabB,
 			    OpacityElim.OpacityEnv.layout rea, IntBasis.layout intB]}
 
-	val initial = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.initial, OpacityElim.OpacityEnv.initial, IntBasis.initial)
+	fun initial() = BASIS (InfixBasis.emptyB, 
+			       ModuleEnvironments.B.initial(), 
+			       OpacityElim.OpacityEnv.initial, 
+			       IntBasis.initial())
 	val _ = app Name.mk_rigid (!Name.bucket)
       end
 

@@ -503,8 +503,13 @@ functor AtInf(structure Lvars: LVARS
 		      in VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
 			     fix_bound=fix_bound,rhos_actuals=ref actuals',other=()}
 		      end
-		     | INTEGER(n,(place,liveset)) => INTEGER(n, ATTOP place) (* no need for analysis *)
-		     | STRING(s,(place,liveset)) => STRING(s, ATTOP place)       (* no need for analysis *)
+		     | INTEGER(n, t, alloc as (place,liveset)) => 
+		      if RType.unboxed t then INTEGER(n, t, ATTOP place) (* no need for analysis *)
+		      else INTEGER(n, t, which_at sme alloc)
+		     | WORD(w, t, alloc as (place,liveset)) => 
+		      if RType.unboxed t then WORD(w, t, ATTOP place) (* no need for analysis *)
+		      else WORD(w, t, which_at sme alloc)
+		     | STRING(s,alloc) => STRING(s, which_at sme alloc)
 		     | REAL(s,alloc) => REAL(s, which_at sme alloc)
 		     | UB_RECORD trips => UB_RECORD(map (sma_trip sme) trips)
 		     | FN{pat,body,free,alloc} => sma_fn(sme,SME.empty_regvar_env,pat,body,free,alloc)
@@ -569,7 +574,8 @@ functor AtInf(structure Lvars: LVARS
                          end
 		     | RAISE tr => RAISE (sma_trip sme tr)
 		     | HANDLE(tr1,tr2) => HANDLE(sma_trip sme tr1, sma_trip sme tr2)
-		     | SWITCH_I sw => SWITCH_I (sma_sw sme sw) 
+		     | SWITCH_I {switch,precision} => SWITCH_I {switch=sma_sw sme switch, precision=precision} 
+		     | SWITCH_W {switch,precision} => SWITCH_W {switch=sma_sw sme switch, precision=precision} 
 		     | SWITCH_S sw => SWITCH_S (sma_sw sme sw) 
 		     | SWITCH_C sw => SWITCH_C (sma_sw sme sw) 
 		     | SWITCH_E sw => SWITCH_E (sma_sw sme sw) 

@@ -1,0 +1,184 @@
+
+
+********** testcon.sml *************
+
+
+testcon.sml, line 6, column 13:
+  datatype t = true;
+               ^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 7, column 13:
+  datatype t = false;
+               ^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 8, column 13:
+  datatype t = it;
+               ^^
+You may not rebind `it' as a constructor.
+
+testcon.sml, line 9, column 13:
+  datatype t = nil;
+               ^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 10, column 13:
+  datatype t = op ::;
+               ^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 11, column 13:
+  datatype t = ref;
+               ^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 13, column 13:
+  datatype t = true of int;
+               ^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 14, column 13:
+  datatype t = false of int;
+               ^^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 15, column 13:
+  datatype t = it of int;
+               ^^^^^^^^^
+You may not rebind `it' as a constructor.
+
+testcon.sml, line 16, column 13:
+  datatype t = nil of int;
+               ^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 17, column 13:
+  datatype t = op :: of int;
+               ^^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 18, column 13:
+  datatype t = ref of int; 
+               ^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 20, column 10:
+  exception true;
+            ^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 21, column 10:
+  exception false;
+            ^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 22, column 10:
+  exception it;
+            ^^
+You may not rebind `it' as a constructor.
+
+testcon.sml, line 23, column 10:
+  exception nil;
+            ^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 24, column 10:
+  exception op ::;
+            ^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 25, column 10:
+  exception ref;
+            ^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 27, column 10:
+  exception true = Div;
+            ^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 28, column 10:
+  exception false = Div;
+            ^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 29, column 10:
+  exception it = Div;
+            ^^^^^^^^
+You may not rebind `it' as a constructor.
+
+testcon.sml, line 30, column 10:
+  exception nil = Div;
+            ^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 31, column 10:
+  exception op :: = Div;
+            ^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 32, column 10:
+  exception ref = Div;
+            ^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 34, column 10:
+  exception true of int;
+            ^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 35, column 10:
+  exception false of int;
+            ^^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 36, column 10:
+  exception it of int;
+            ^^^^^^^^^
+You may not rebind `it' as a constructor.
+
+testcon.sml, line 37, column 10:
+  exception nil of int;
+            ^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 38, column 10:
+  exception op :: of int;
+            ^^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 39, column 10:
+  exception ref of int; 
+            ^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 41, column 12:
+  abstype t = true of int with end;
+              ^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 42, column 12:
+  abstype t = false of int with end;
+              ^^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 43, column 12:
+  abstype t = it of int with end;
+              ^^^^^^^^^
+You may not rebind `it' as a constructor.
+
+testcon.sml, line 44, column 12:
+  abstype t = nil of int with end;
+              ^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 45, column 12:
+  abstype t = op :: of int with end;
+              ^^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+testcon.sml, line 46, column 12:
+  abstype t = ref of int with end;  
+              ^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.

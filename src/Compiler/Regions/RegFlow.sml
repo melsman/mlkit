@@ -264,7 +264,8 @@ struct
             FIX{scope, ...} => find scope
           | LET{scope, ...} => find scope
           | EXCEPTION(_,_,_,_,scope) => find scope
-          | SWITCH_I(sw) => find_sw sw
+          | SWITCH_I {switch, precision} => find_sw switch
+          | SWITCH_W {switch, precision} => find_sw switch
           | SWITCH_S(sw) => find_sw sw
           | SWITCH_C(sw) => find_sw sw
           | SWITCH_E(sw) => find_sw sw
@@ -336,7 +337,8 @@ struct
           | EXCEPTION(_,_,_,_, tr) => mk_graph tr
           | RAISE(tr) => mk_graph tr
           | HANDLE(tr1,tr2) => (mk_graph tr1; mk_graph tr2)
-          | SWITCH_I(switch) => mk_graph_i switch
+          | SWITCH_I {switch, precision} => mk_graph_i switch
+          | SWITCH_W {switch, precision} => mk_graph_w switch
           | SWITCH_S(switch) => mk_graph_s switch
           | SWITCH_C(switch) => mk_graph_c switch
           | SWITCH_E(switch) => mk_graph_e switch
@@ -357,6 +359,11 @@ struct
           | _ => ()
       
         and mk_graph_i(SWITCH(tr, list,e')) = 
+            (mk_graph tr;
+             List.app (mk_graph o #2) list;
+             mk_graph_opt e'
+            )
+        and mk_graph_w(SWITCH(tr, list,e')) = 
             (mk_graph tr;
              List.app (mk_graph o #2) list;
              mk_graph_opt e'

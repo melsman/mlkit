@@ -131,26 +131,32 @@ functor CompilerEnv(structure Ident: IDENT
 		      (Ident.id_Overflow, EXCON(Excon.ex_OVERFLOW, exnType))
 		      ])
 
-    local open TyCon TyName
-    in val initialTyEnv = TYENV(initMap [(tycon_INT, ([tyName_INT], emptyCEnv)),
-					 (tycon_WORD, ([tyName_INT], emptyCEnv)),
-					 (tycon_WORD8, ([tyName_INT], emptyCEnv)),
-					 (tycon_WORD_BOXED, ([tyName_WORD_BOXED], emptyCEnv)), (* 2001-02-17, Niels *)
-					 (tycon_REAL, ([tyName_REAL], emptyCEnv)),
-					 (tycon_STRING, ([tyName_STRING], emptyCEnv)),
-					 (tycon_CHAR, ([tyName_INT], emptyCEnv)),
-					 (tycon_EXN, ([tyName_EXN], emptyCEnv)),
-					 (tycon_REF, ([tyName_REF], emptyCEnv)),
-					 (tycon_BOOL, ([tyName_BOOL], emptyCEnv)),
-					 (tycon_LIST, ([tyName_LIST], emptyCEnv)),
-					 (tycon_WORD_TABLE, ([tyName_WORD_TABLE], emptyCEnv)),
-					 (tycon_UNIT, ([], emptyCEnv))
-					 ])
-    end
+    local 
+      open TyCon TyName
+      fun initialTyEnv() = 	
+	TYENV(initMap [(tycon_INT31, ([tyName_INT31], emptyCEnv)),
+		       (tycon_INT32, ([tyName_INT32], emptyCEnv)),
+		       (tycon_INT, ([tyName_IntDefault()], emptyCEnv)),
+		       (tycon_WORD8, ([tyName_WORD8], emptyCEnv)),
+		       (tycon_WORD31, ([tyName_WORD31], emptyCEnv)),
+		       (tycon_WORD32, ([tyName_WORD32], emptyCEnv)),
+		       (tycon_WORD, ([tyName_WordDefault()], emptyCEnv)),
+		       (tycon_REAL, ([tyName_REAL], emptyCEnv)),
+		       (tycon_STRING, ([tyName_STRING], emptyCEnv)),
+		       (tycon_CHAR, ([tyName_WORD8], emptyCEnv)),
+		       (tycon_EXN, ([tyName_EXN], emptyCEnv)),
+		       (tycon_REF, ([tyName_REF], emptyCEnv)),
+		       (tycon_BOOL, ([tyName_BOOL], emptyCEnv)),
+		       (tycon_LIST, ([tyName_LIST], emptyCEnv)),
+		       (tycon_WORD_TABLE, ([tyName_WORD_TABLE], emptyCEnv)),
+		       (tycon_UNIT, ([], emptyCEnv))
+		       ])
+    in
+      fun initialCEnv() = CENV{StrEnv=initialStrEnv,
+			       VarEnv=initialVarEnv,
+			       TyEnv=initialTyEnv()}
 
-    val initialCEnv = CENV{StrEnv=initialStrEnv,
-			   VarEnv=initialVarEnv,
-			   TyEnv=initialTyEnv}
+    end (*local*)
 
     fun declareVar(id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=VARENV m,TyEnv}) =
       let val il0 = map LambdaExp.TYVARtype tyvars
@@ -223,6 +229,7 @@ functor CompilerEnv(structure Ident: IDENT
  
     fun lvars_result (LVAR (lv,_,_,_), lvs) = lv :: lvs
       | lvars_result (_, lvs) = lvs
+(*
     fun primlvars_result (result, lvs) =
       case result
 	of ABS => Lvars.absint_lvar :: Lvars.absfloat_lvar :: lvs
@@ -235,6 +242,7 @@ functor CompilerEnv(structure Ident: IDENT
 	 | LESSEQ => Lvars.lesseq_int_lvar :: Lvars.lesseq_float_lvar :: lvs
 	 | GREATEREQ => Lvars.greatereq_int_lvar :: Lvars.greatereq_float_lvar :: lvs
 	 | _ => lvs
+*)
     fun cons_result (CON (c,_,_,_), cs) = c :: cs
       | cons_result (_, cs) = cs
     fun excons_result (EXCON (c,_), cs) = c :: cs
@@ -263,8 +271,9 @@ functor CompilerEnv(structure Ident: IDENT
     val lvarsOfCEnv = varsOfCEnv lvars_result
     val consOfCEnv = varsOfCEnv cons_result
     val exconsOfCEnv = varsOfCEnv excons_result
+(*
     val primlvarsOfCEnv = varsOfCEnv primlvars_result 
-
+*)
     fun tynamesOfCEnv ce : TyName list =
       let fun tynames_TEentry((tns,ce),acc) = tynames_E(ce,tns@acc) 
           and tynames_TE(TYENV m, acc) = FinMap.fold tynames_TEentry acc m 

@@ -123,13 +123,23 @@ signature STATOBJECT =
 	val is_Arrow                : Type -> bool
 	val mk_Ref                  : Type -> Type
 
-	val Int                     : Type   (* special constants *)
+	(* Special constants *)
+	val Int31                   : Type           
+	val Int32                   : Type
+	val IntDefault              : unit -> Type   (* Either Int31 or Int32, 
+						      * dependent on tagging; used 
+						      * for resolving overloading. *) 
 	val Real                    : Type
-	val Bool                    : Type   (* needed for initial TE and VE *)
+	val Bool                    : Type           (* needed for initial TE and VE *)
+	val Word8                   : Type
+	val Word31                  : Type
+	val Word32                  : Type
+	val WordDefault             : unit -> Type   (* Either Word31 or Word32, 
+						      * dependent on tagging; used 
+						      * for resolving overloading. *)
 	val String                  : Type
 	val Char                    : Type
-	val Word8                   : Type
-	val Word                    : Type
+ 
 	val of_scon                 : scon -> {type_scon: Type, overloading : TyVar option}
 
 	datatype unify_result = UnifyOk (* of Substitution *)

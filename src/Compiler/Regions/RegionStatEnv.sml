@@ -81,14 +81,16 @@ functor RegionStatEnv(structure Name : NAME
 		     TyNameMap.add(TyName.tyName_EXN, (0,[],0),
 		     TyNameMap.add(TyName.tyName_REF, (1,[],0),
 		     TyNameMap.add(TyName.tyName_BOOL, (0,[],0),
-		     TyNameMap.add(TyName.tyName_INT, (0,[],0), 
+		     TyNameMap.add(TyName.tyName_INT31, (0,[],0), 
+		     TyNameMap.add(TyName.tyName_INT32, (0,[],0), 
 		     TyNameMap.add(TyName.tyName_CHAR, (0,[],0), 
-		     TyNameMap.add(TyName.tyName_WORD, (0,[],0), 
-		     TyNameMap.add(TyName.tyName_WORD_BOXED, (0,[],0), (*2001-02-17, Niels*)
+		     TyNameMap.add(TyName.tyName_WORD8, (0,[],0),
+		     TyNameMap.add(TyName.tyName_WORD31, (0,[],0),
+		     TyNameMap.add(TyName.tyName_WORD32, (0,[],0),
 		     TyNameMap.add(TyName.tyName_LIST, (1,[E.TOP_RT],0),
 				   (* the auxiliary region is for a pair; hence TOP_RT *)
 		     TyNameMap.add(TyName.tyName_WORD_TABLE, (1,[],0),
-		     TyNameMap.empty)))))))))))
+		     TyNameMap.empty)))))))))))))
 
     local
 
@@ -143,6 +145,8 @@ functor RegionStatEnv(structure Name : NAME
 				     (Con.con_CONS, cons_sigma)]
     end
 
+(*
+
     local  (* types of built-in lvars *)
 
       fun lookup_tyname tyname = TyNameMap.lookup tyname_env0 tyname (* 17/10/96-Martin *)
@@ -184,7 +188,8 @@ functor RegionStatEnv(structure Name : NAME
 
       fun cl(taus,tau) = exoClos(B0, taus, [tau])
 
-      val Int = L.intType
+      val Int31 = L.int31Type
+      val Int32 = L.int32Type
       val Real = L.realType
       val Bool = L.boolType
       val Unit = L.unitType
@@ -237,6 +242,7 @@ functor RegionStatEnv(structure Name : NAME
 
     end
 
+*)
     val excon_env0 = ExconMap.fromList 
       (map (fn excon => (excon, (R.exnType,E.toplevel_region_withtype_top)))
        [Excon.ex_DIV, Excon.ex_MATCH,
@@ -245,7 +251,7 @@ functor RegionStatEnv(structure Name : NAME
     val initial: regionStatEnv ={tyname_env = tyname_env0,
 				 con_env = conenv0,
 				 excon_env = excon_env0,
-				 lvar_env = lvar_env0}
+				 lvar_env = LvarMap.empty (*lvar_env0*) }
 
     fun declareTyName(tyname,arity,rse as {tyname_env, con_env, excon_env,lvar_env})=
 	{tyname_env = TyNameMap.add(tyname,arity,tyname_env), 

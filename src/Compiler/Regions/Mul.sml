@@ -1145,6 +1145,9 @@ old*)
     (*                                   *)
     (*************************************)
 
+  val initial: efenv = empty_efenv
+
+(*
   local
 
     fun lookup_tyname tyname =
@@ -1239,4 +1242,6 @@ old*)
            empty_efenv
            lvars_and_sigmas
   end
-end;
+*)
+
+end

@@ -38,10 +38,17 @@ signature LAMBDA_EXP =
       | RECORDtype  of Type list
 
     val tyvars : Type -> tyvar EqSet.Set
+
+    (* word8 is compiled into default word-type in CompileDec *)
     val boolType: Type
     val unitType: Type
     val exnType : Type
-    val intType : Type
+    val int31Type : Type
+    val int32Type : Type
+    val intDefaultType : unit -> Type   (* int31 if tag_integers, otherwise int32 *)
+    val word31Type : Type
+    val word32Type : Type
+    val wordDefaultType : unit -> Type  (* word31 if tag_integers, otherwise word32 *)
     val realType: Type
     val stringType: Type
 
@@ -50,7 +57,6 @@ signature LAMBDA_EXP =
       | Frame of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
 		  declared_excons: (excon * Type option) list}
       | RaisedExnBind
-
 
     datatype 'Type prim =                             (* The primitives are always fully applied ! *)
         CONprim of {con : con, instances : 'Type list}
@@ -61,30 +67,11 @@ signature LAMBDA_EXP =
       | SELECTprim of int        
       | UB_RECORDprim                                 (* Unboxed record. *)
       | DROPprim
-      | NEG_INTprim 
-      | NEG_REALprim
-      | ABS_INTprim
-      | ABS_REALprim
       | DEREFprim of {instance: 'Type}
       | REFprim of {instance: 'Type}
       | ASSIGNprim of {instance: 'Type}
-      | MUL_REALprim
-      | MUL_INTprim
-      | PLUS_REALprim
-      | PLUS_INTprim
-      | MINUS_REALprim
-      | MINUS_INTprim
       | EQUALprim of {instance: 'Type}
-      | EQUAL_INTprim
-      | LESS_REALprim
-      | LESS_INTprim
-      | GREATER_REALprim
-      | GREATER_INTprim
-      | LESSEQ_REALprim
-      | LESSEQ_INTprim
-      | GREATEREQ_REALprim
-      | GREATEREQ_INTprim
-      | CCALLprim of {name : string,                  (* NOT Standard ML *)
+      | CCALLprim of {name : string,                  (* Primitives, etc. *)
 		      instances : 'Type list,
 		      tyvars : tyvar list,
 		      Type : 'Type} 
@@ -100,7 +87,8 @@ signature LAMBDA_EXP =
 
     and LambdaExp =
         VAR      of {lvar: lvar, instances : Type list}
-      | INTEGER  of int			
+      | INTEGER  of Int32.int * Type
+      | WORD     of Word32.word * Type
       | STRING   of string
       | REAL     of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
@@ -116,7 +104,8 @@ signature LAMBDA_EXP =
       | EXCEPTION of excon * Type option * LambdaExp
       | RAISE    of LambdaExp * TypeList
       | HANDLE   of LambdaExp * LambdaExp
-      | SWITCH_I of int Switch
+      | SWITCH_I of {switch: Int32.int Switch, precision: int}
+      | SWITCH_W of {switch: Word32.word Switch, precision: int}
       | SWITCH_S of string Switch
       | SWITCH_C of con Switch
       | SWITCH_E of excon Switch
@@ -132,10 +121,15 @@ signature LAMBDA_EXP =
     val size: LambdaExp -> int
     val size_incl_types: LambdaExp -> int
 
-    val safeLambdaPgm: LambdaPgm -> bool (* This predicate approximates whether a 
-					  * lambda program performs side effects; it is used
-					  * to determine if a program unit can be discharged
-					  * at link time in case it is not used. *)
+    (* These predicates approximate whether a lambda program performs 
+     * side effects; they are used to determine if a program unit can 
+     * be discharged at link time in case it is not used. They are also
+     * used by the optimiser to remove bindings of variables that are 
+     * not used. *)
+    val safeLambdaExp: LambdaExp -> bool
+    val safeLambdaExps: LambdaExp list -> bool
+    val safeLambdaPgm: LambdaPgm -> bool 
+
     type StringTree
     val layoutLambdaPgm: LambdaPgm -> StringTree
     val layoutLambdaExp: LambdaExp -> StringTree

@@ -148,7 +148,10 @@ struct
 	| CC_ls(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset},rest) = 
 	LS.HANDLE{default=CC_lss default,handl=(CC_lss handl,handl_lv),handl_return=([],handl_return_lv,bv),offset=offset}::rest
 	| CC_ls(LS.HANDLE{default,handl,handl_return,offset},rest) = die "CC_ls: handl_return in HANDLE not empty"
-	| CC_ls(LS.SWITCH_I sw,rest) = LS.SWITCH_I(CC_sw CC_lss sw)::rest
+	| CC_ls(LS.SWITCH_I {switch,precision},rest) = LS.SWITCH_I {switch=CC_sw CC_lss switch,
+								    precision=precision}::rest
+	| CC_ls(LS.SWITCH_W {switch,precision},rest) = LS.SWITCH_W {switch=CC_sw CC_lss switch,
+								    precision=precision}::rest
 	| CC_ls(LS.SWITCH_S sw,rest) = LS.SWITCH_S(CC_sw CC_lss sw)::rest
 	| CC_ls(LS.SWITCH_C sw,rest) = LS.SWITCH_C(CC_sw CC_lss sw)::rest
 	| CC_ls(LS.SWITCH_E sw,rest) = LS.SWITCH_E(CC_sw CC_lss sw)::rest
@@ -223,7 +226,10 @@ struct
 		      handl_return=([],handl_return_lv,bv),offset=offset}
 	   | LS.HANDLE{default,handl,handl_return,offset} => die "ra_dummy_ls: handl_return in HANDLE not empty"
 	   | LS.RAISE{arg,defined_atys} => LS.RAISE{arg=arg,defined_atys=defined_atys}
-	   | LS.SWITCH_I sw => LS.SWITCH_I(ra_assign_sw ra_assign_lss sw)
+	   | LS.SWITCH_I {switch,precision} => LS.SWITCH_I{switch=ra_assign_sw ra_assign_lss switch, 
+							   precision=precision}
+	   | LS.SWITCH_W {switch,precision} => LS.SWITCH_W{switch=ra_assign_sw ra_assign_lss switch, 
+							   precision=precision}
 	   | LS.SWITCH_S sw => LS.SWITCH_S(ra_assign_sw ra_assign_lss sw)
 	   | LS.SWITCH_C sw => LS.SWITCH_C(ra_assign_sw ra_assign_lss sw)
 	   | LS.SWITCH_E sw => LS.SWITCH_E(ra_assign_sw ra_assign_lss sw)
@@ -827,7 +833,8 @@ struct
 	     app mk handl_lss;
 	     app mk default;  
 	     app mk handl_return_lss)
-	   | LS.SWITCH_I sw => mk_sw mk sw
+	   | LS.SWITCH_I {switch,precision} => mk_sw mk switch
+	   | LS.SWITCH_W {switch,precision} => mk_sw mk switch
 	   | LS.SWITCH_S sw => mk_sw mk sw
 	   | LS.SWITCH_C sw => mk_sw mk sw
 	   | LS.SWITCH_E sw => mk_sw mk sw
@@ -956,7 +963,8 @@ struct
 	     L'
 	   end
 	   | LS.HANDLE{default,handl,handl_return,offset} => die "ra_ls: handl_return in HANDLE not empty"
-	   | LS.SWITCH_I sw => ig_sw (ig_lss, sw, L)
+	   | LS.SWITCH_I {switch,precision} => ig_sw (ig_lss, switch, L)
+	   | LS.SWITCH_W {switch,precision} => ig_sw (ig_lss, switch, L)
 	   | LS.SWITCH_S sw => ig_sw (ig_lss, sw, L)
 	   | LS.SWITCH_C sw => ig_sw (ig_lss, sw, L)
 	   | LS.SWITCH_E sw => ig_sw (ig_lss, sw, L)

@@ -72,7 +72,7 @@ functor OpacityElim(structure Crash : CRASH
     val Id : realisation = Realisation.Id
     fun on_Env a = Realisation.on_Env a
 
-    val tynames_initial_basis = ModuleEnvironments.B.tynames ModuleEnvironments.B.initial
+    val tynames_initial_basis = ModuleEnvironments.B.tynames (ModuleEnvironments.B.initial())
 
     (* ---------------------------------------------------------------------
      * Eliminate opaque signature constraints by translating them into
@@ -525,10 +525,14 @@ functor OpacityElim(structure Crash : CRASH
 
     (* Signatures *)
 
-    val rea_base = Realisation.from_T_and_tyname 
+    val rea_base = Realisation.from_T_and_tyname (TyName.Set.fromList [TyName.tyName_CHAR],
+						  TyName.tyName_WORD8)
+      
+(*
+      Realisation.from_T_and_tyname 
       (TyName.Set.fromList [TyName.tyName_CHAR,TyName.tyName_WORD,TyName.tyName_WORD8],
        TyName.tyName_INT)
-
+*)
     fun elim_sigbind (rea, SIGBIND (i, sigid, sigexp, sigbind_opt)) =
       SIGBIND(on_info(rea,i),sigid,sigexp, elim_sigbind_opt(rea,sigbind_opt))
 

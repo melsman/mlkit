@@ -42,7 +42,8 @@ signature LINE_STMT =
     | RVAR          of place
     | DROPPED_RVAR  of place
     | PHREG         of lvar
-    | INTEGER       of string
+    | INTEGER       of {value:Int32.int, precision:int}
+    | WORD          of {value:Word32.word, precision:int}
     | UNIT
 
     datatype StoreType =
@@ -88,7 +89,8 @@ signature LINE_STMT =
 			handl_return: ('sty,'offset,'aty) LineStmt list * 'aty * (Word32.word list), 
 			offset: 'offset}
     | RAISE         of {arg: 'aty,defined_atys: 'aty list}
-    | SWITCH_I      of (int,'sty,'offset,'aty) Switch
+    | SWITCH_I      of {switch: (Int32.int,'sty,'offset,'aty) Switch, precision: int}
+    | SWITCH_W      of {switch: (Word32.word,'sty,'offset,'aty) Switch, precision: int}
     | SWITCH_S      of (string,'sty,'offset,'aty) Switch
     | SWITCH_C      of ((con*con_kind),'sty,'offset,'aty) Switch
     | SWITCH_E      of (excon,'sty,'offset,'aty) Switch

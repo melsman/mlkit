@@ -63,7 +63,8 @@ struct
     and ('a,'b)trip = TR of ('a,'b)LambdaExp * metaType * effect
     and ('a,'b)LambdaExp =
         VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, fix_bound: bool}
-      | INTEGER  of int * 'a            
+      | INTEGER  of Int32.int * Type * 'a		
+      | WORD     of Word32.word * Type * 'a
       | STRING   of string * 'a
       | REAL     of string * 'a
       | UB_RECORD of ('a,'b) trip list 
@@ -90,7 +91,8 @@ struct
                                 bool: true if exception is nullary *)
       | RAISE    of ('a,'b)trip
       | HANDLE   of ('a,'b)trip * ('a,'b)trip
-      | SWITCH_I of ('a,'b,int) Switch 
+      | SWITCH_I of {switch: ('a,'b,Int32.int) Switch, precision: int}
+      | SWITCH_W of {switch: ('a,'b,Word32.word) Switch, precision: int}
       | SWITCH_S of ('a,'b,string) Switch 
       | SWITCH_C of ('a,'b,con) Switch 
       | SWITCH_E of ('a,'b,excon) Switch 
@@ -157,7 +159,8 @@ struct
       | EXCEPTION(_,_,_,_, tr) => mkPhiTr tr acc
       | RAISE tr =>  mkPhiTr tr acc 
       | HANDLE(tr1, tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
-      | SWITCH_I sw => mkPhiSw sw acc
+      | SWITCH_I {switch,...} => mkPhiSw switch acc
+      | SWITCH_W {switch,...} => mkPhiSw switch acc
       | SWITCH_S sw => mkPhiSw sw acc
       | SWITCH_C sw => mkPhiSw sw acc
       | SWITCH_E sw => mkPhiSw sw acc
@@ -382,7 +385,8 @@ old*)
         | VAR{lvar, il_r, fix_bound=true} => 
             lay_il(Lvar.pr_lvar lvar, "", #1(! il_r))
           
-        | INTEGER(i, a) => LEAF(Int.toString i ^^ layout_alloc a)
+        | INTEGER(i,t,a) => LEAF(Int32.toString i ^^ layout_alloc a)
+        | WORD(w,t,a) => LEAF("0x" ^ Word32.toString w ^^ layout_alloc a)
         | STRING(s, a) => LEAF(quote s ^^ layout_alloc a)
         | REAL(r, a) => LEAF(r ^^ layout_alloc a)
         | UB_RECORD(args) =>
@@ -537,7 +541,8 @@ old*)
                  in NODE{start = "", finish = "", indent = 0, childsep = NOSEP, children = [t1,t2,t3]}
                  end
                )
-        | SWITCH_I(sw) => layoutSwitch layTrip Int.toString  sw
+        | SWITCH_I {switch,precision} => layoutSwitch layTrip Int32.toString switch
+        | SWITCH_W {switch,precision} => layoutSwitch layTrip (fn w => "0x" ^ Word32.toString w) switch
         | SWITCH_S(sw) => layoutSwitch layTrip (fn s => s) sw
         | SWITCH_C(sw) => layoutSwitch layTrip Con.pr_con sw
         | SWITCH_E(sw) => layoutSwitch layTrip Excon.pr_excon sw
@@ -839,7 +844,8 @@ for more info*)
            | EXCEPTION(_,_,_,_,body) => normTrip body
            | RAISE(tr) => normTrip tr
            | HANDLE(tr1,tr2) => (normTrip tr1; normTrip tr2)
-           | SWITCH_I(sw) => normsw sw
+           | SWITCH_I {switch, precision} => normsw switch
+           | SWITCH_W {switch, precision} => normsw switch
            | SWITCH_S(sw) => normsw sw
            | SWITCH_C(sw) => normsw sw
            | SWITCH_E(sw) => normsw sw

@@ -213,7 +213,7 @@ functor ModuleEnvironments(
 	
     structure B = struct
       val empty = BASIS {F = F.empty, G = G.empty, E = E.empty}
-      val initial = BASIS {F = F.empty, G = G.empty, E = E.initial}
+      fun initial() = BASIS {F = F.empty, G = G.empty, E = E.initial()}
       val bogus = empty
       fun plus (BASIS {F, G, E}, BASIS {F=F', G=G', E=E'}) =
 	BASIS {F=F.plus (F, F'), G=G.plus (G, G'), E=E.plus (E, E')}
