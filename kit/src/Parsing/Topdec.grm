@@ -131,19 +131,30 @@ type arg = unit
 (* Half-hearted reserved words, dealt with correctly in context: *)
         | EQUALS | STAR
 
-(* Other core terminals. POSINT2 is the set of unsigned integer constants
-   which *aren't* single digits - they come in as DIGIT. So, we have a rule
-   for detecting numbers as either POSINT2, NEGINT or DIGIT. *)
-        | POSINT2 of int | NEGINT of int | REAL of real | STRING of string
-        | ID of string | TYVAR of string | DIGIT of int
+(*Other core terminals. DECPOSINTEGER is the set of decimal
+ unsigned integer constants which *aren't* single digits - they
+ come in as DIGIT. So, we have a rule for detecting numbers as
+ either DECPOSINTEGER, DECNEGINTEGER or DIGIT or HEXINTEGER. 
+ The reason integers are split into so many categories is that
+ we want to distinguish digits (from integers in general) in
+ infix declarations, and positive, decimal integers (from
+ integers in general) for labels.*)
+
+        | DECPOSINTEGER of int | DECNEGINTEGER of int 
+	| HEXINTEGER of int | DIGIT of int 
+	| WORD of int
+	| REAL of real | STRING of string
+        | ID of string | TYVAR of string 
 
 (* Junk: *)
         | EOF
 
 %value  QUAL_ID         (["bogus"])
 %value  QUAL_STAR       (["bogus"])
-%value  POSINT2         (0)
-%value  NEGINT          (0)
+%value  DECPOSINTEGER   (0)
+%value  DECNEGINTEGER   (0)
+%value  HEXINTEGER      (0)
+%value  WORD		(0)
 %value  REAL            (0.0)
 %value  STRING          ("")
 %value  ID              ("bogus")
@@ -336,9 +347,10 @@ type arg = unit
                    nonterminals are used in generic contexts (unlike funid,
                    strid and all the rest). *)
 
-(* Integers. *)
-        | PosInt                        of int
+(*Integers & chars*)
+        | DecPosInteger                 of int
         | Integer                       of int
+        | Char                          of int
 
 %left   SHARING         (* L/R is arbitrary. *)
 %left   SEMICOLON       (* L/R is arbitrary. *)
@@ -420,15 +432,12 @@ DIGIT_opt:
           DIGIT         ( Some DIGIT )
         | (* -none- *)  ( None )
 
-Integer:  POSINT2       ( POSINT2 )
-        | NEGINT        ( NEGINT )
-        | DIGIT         ( DIGIT )
-
-PosInt:   POSINT2       ( POSINT2 )
+DecPosInteger: 
+	  DECPOSINTEGER ( DECPOSINTEGER )
         | DIGIT         ( DIGIT )
 
 Label:    Ident         ( mk_IdentLab Ident )
-        | PosInt        ( mk_IntegerLab PosInt )
+        | DecPosInteger ( mk_IntegerLab DecPosInteger )
 
 (*KILL 07/08/1996 09:51. tho.:
 Ident_seq1:
@@ -1394,9 +1403,19 @@ CommaTyRow_opt:
           COMMA TyRow   ( Some TyRow )
         | (* -none- *)  ( None )
 
-SCon:
-          Integer       ( mk_IntSCon Integer )
+Integer:  DECPOSINTEGER ( DECPOSINTEGER )
+        | DECNEGINTEGER ( DECNEGINTEGER )
+	| HEXINTEGER    ( HEXINTEGER )
+        | DIGIT         ( DIGIT )
+
+Char:     HASH STRING   ( if String.size STRING = 1 then ord STRING
+			  else raise LEXICAL_ERROR (STRINGleft,
+			  			    "string must have length 1") )
+
+SCon:     Integer       ( mk_IntSCon Integer )
+        | WORD          ( mk_WordSCon WORD )
         | STRING        ( mk_StringSCon STRING )
+        | Char          ( mk_CharSCon Char )
         | REAL          ( mk_RealSCon REAL )
 
 TyVarSeq:

@@ -65,7 +65,9 @@ signature GRAMMAR_UTILS =
     val mk_TyCon: string -> C.tycon
     val mk_LongTyCon: string list -> M.longtycon
     val mk_IntSCon: int -> C.scon
+    val mk_WordSCon: int -> C.scon
     val mk_StringSCon: string -> C.scon
+    val mk_CharSCon: int -> C.scon
     val mk_RealSCon: real -> C.scon
     val impossible : string -> 'a
     val span_info : info * info -> info

@@ -3,13 +3,15 @@ sig
 type ('a,'b) token
 type svalue
 val EOF:  'a * 'a -> (svalue,'a) token
-val DIGIT: (int) *  'a * 'a -> (svalue,'a) token
 val TYVAR: (string) *  'a * 'a -> (svalue,'a) token
 val ID: (string) *  'a * 'a -> (svalue,'a) token
 val STRING: (string) *  'a * 'a -> (svalue,'a) token
 val REAL: (real) *  'a * 'a -> (svalue,'a) token
-val NEGINT: (int) *  'a * 'a -> (svalue,'a) token
-val POSINT2: (int) *  'a * 'a -> (svalue,'a) token
+val WORD: (int) *  'a * 'a -> (svalue,'a) token
+val DIGIT: (int) *  'a * 'a -> (svalue,'a) token
+val HEXINTEGER: (int) *  'a * 'a -> (svalue,'a) token
+val DECNEGINTEGER: (int) *  'a * 'a -> (svalue,'a) token
+val DECPOSINTEGER: (int) *  'a * 'a -> (svalue,'a) token
 val STAR:  'a * 'a -> (svalue,'a) token
 val EQUALS:  'a * 'a -> (svalue,'a) token
 val HASH:  'a * 'a -> (svalue,'a) token

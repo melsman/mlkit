@@ -54,7 +54,9 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
     val mk_TyCon = TyCon.mk_TyCon
     val mk_LongTyCon = TyCon.mk_LongTyCon
     val mk_IntSCon = SCon.INTEGER
+    val mk_WordSCon = SCon.WORD
     val mk_StringSCon = SCon.STRING
+    val mk_CharSCon = SCon.CHAR
     val mk_RealSCon = SCon.REAL
 
     fun PP pos_l pos_r = ParseInfo.from_SourceInfo

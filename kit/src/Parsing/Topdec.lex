@@ -49,6 +49,10 @@
  (* addAsciiChar can fail, so we need to generate position info for it. *)
   fun addAsciiChar(arg, yypos, yytext) =
     LexUtils.addAsciiChar (positionOfStream(arg, yypos), yytext) arg
+
+ (*addUnicodeChar can fail, so we need to generate position info for it.*)
+  fun addUnicodeChar (arg, yypos, yytext) =
+        LexUtils.addUnicodeChar (positionOfStream (arg, yypos), yytext) arg
 %%
 
 %header	(functor TopdecLex(structure Tokens: Topdec_TOKENS
@@ -69,11 +73,14 @@ UC		   = [A-Z];
 LC		   = [a-z];
 Letter		   = {UC} | {LC};
 Digit		   = [0-9];
-PosInt		   = {Digit}+;
-NegInt		   = \126 {PosInt};
-Integer		   = {PosInt} | {NegInt};
-Real		   = ({Integer} "." {PosInt} ("E" {Integer})?)
-		     | ({Integer} "E" {Integer});
+DecPosInteger	   = {Digit}+;
+DecNegInteger	   = \126 {DecPosInteger};
+HexDigit           = [0-9a-fA-F];
+HexInteger         = (\126)? "0x" {HexDigit}+;
+Word               = "0w" ("x" {HexDigit}+ | {Digit}+);
+DecInteger	   = {DecPosInteger} | {DecNegInteger};
+Real		   = ({DecInteger} "." {DecPosInteger} ("E" {DecInteger})?)
+		     | ({DecInteger} "E" {DecInteger});
 NormalId	   = {Letter} ({Letter} | {Digit} | [_'])*;
 TyVar		   = "'" ({Letter} | {Digit} | [_'])*;
 Symbol		   = [-!%&$#+<=>?@\\~`^|*:/];
@@ -114,27 +121,24 @@ QualifiedId	   = ({AnyId} ".")+ {AnyId};
 <INITIAL>"_"		=> (token0(UNDERBAR, arg, yypos, yytext));
 <INITIAL>{Real}		=> (LexBasics.shifting "REAL(...)";
 			    token1(REAL, LexUtils.asReal yytext,
-				   arg, yypos, yytext
-				  )
-			   );
+				   arg, yypos, yytext));
 <INITIAL>{Digit}	=> (LexBasics.shifting "DIGIT(...)";
 			    token1(DIGIT, LexUtils.asDigit yytext,
-				   arg, yypos, yytext
-				  )
-			   );
-<INITIAL>{PosInt}	=> (LexBasics.shifting "POSINT2(...)";
-			    token1(POSINT2, LexUtils.asInteger yytext,
-				   arg, yypos, yytext
-				  )
-			   );
-<INITIAL>{NegInt}	=> (LexBasics.shifting "NEGINT(...)";
-			    token1(NEGINT, LexUtils.asInteger yytext,
-				   arg, yypos, yytext
-				  )
-			   );
+				   arg, yypos, yytext));
+<INITIAL>{DecPosInteger}=> (LexBasics.shifting "DECPOSINTEGER(...)";
+			    token1(DECPOSINTEGER, LexUtils.asInteger yytext,
+				   arg, yypos, yytext));
+<INITIAL>{DecNegInteger}=> (LexBasics.shifting "DECNEGINTEGER(...)";
+			    token1(DECNEGINTEGER, LexUtils.asInteger yytext,
+				   arg, yypos, yytext));
+<INITIAL>{HexInteger}   => (LexBasics.shifting "HEXINTEGER(...)";
+			    token1(HEXINTEGER, LexUtils.asInteger yytext,
+				   arg, yypos, yytext));
+<INITIAL>{Word}         => (LexBasics.shifting "WORD(...)";
+			    token1(WORD, LexUtils.asWord yytext,
+				   arg, yypos, yytext));
 <INITIAL>{TyVar}	=> (LexBasics.shifting "TYVAR(...)";
-			    token1(TYVAR, yytext, arg, yypos, yytext)
-			   );
+			    token1(TYVAR, yytext, arg, yypos, yytext));
 <INITIAL>\"		=> (YYBEGIN S; lex (LexUtils.clearString arg) ());
 <INITIAL>"(*"		=> (YYBEGIN C; lex (LexUtils.newComment arg) ());
 
@@ -151,12 +155,18 @@ QualifiedId	   = ({AnyId} ".")+ {AnyId};
 			    token1(STRING, "", arg, yypos, yytext)
 			   );
 <S>\\{VWhiteSpace}\\	=> (continue());
+<S>\\a			=> (lex (LexUtils.addChars (chr 7) arg) ());
+<S>\\b			=> (lex (LexUtils.addChars (chr 8) arg) ());
 <S>\\t			=> (lex (LexUtils.addChars "\t" arg) ());
 <S>\\n			=> (lex (LexUtils.addChars "\n" arg) ());
+<S>\\v			=> (lex (LexUtils.addChars (chr 11) arg) ());
+<S>\\f			=> (lex (LexUtils.addChars (chr 12) arg) ());
+<S>\\r			=> (lex (LexUtils.addChars (chr 13) arg) ());
+<S>\\\^[@-_]		=> (lex (LexUtils.addControlChar yytext arg) ());
+<S>\\[0-9]{3}		=> (lex (addAsciiChar (arg, yypos, yytext)) ());
+<S>\\\u{HexDigit}{4}	=> (lex (addUnicodeChar (arg, yypos, yytext)) ());
 <S>\\\"			=> (lex (LexUtils.addChars "\"" arg) ());
 <S>\\\\			=> (lex (LexUtils.addChars "\\" arg) ());
-<S>\\\^[@-_]		=> (lex (LexUtils.addControlChar yytext arg) ());
-<S>\\[0-9]{3}		=> (lex (addAsciiChar(arg, yypos, yytext)) ());
 <S>\\			=> (error(arg, yypos, "illegal string escape");
 			    continue()
 			   );
