@@ -11,7 +11,7 @@ val msg =
 val login_info = Quot.toString
 
 `Indtast den email du anvender på IT-C, eksempelvis <b>login@it-c.dk</b> eller <b>dfs@ruc.dk</b>.<p> 
-(eng.: Please write the email that you use at IT-C (e.g., <b>login@it-c.dk</b> or <b>dfs@ruc.dk</b>))`
+(Eng.: Please write the email that you use at IT-C (e.g., <b>login@it-c.dk</b> or <b>dfs@ruc.dk</b>))`
 
 val passwd_info = Quot.toString
 `<b>Indtast dit password til UCS:</b> Er du ny bruger eller har du glemt password 
@@ -44,11 +44,11 @@ val _ = ScsPage.returnPg ("IT-C.net Authentication")
   (`
    <blockquote>
   ` ^^   
-  (ScsWidget.namedBox "#ff6600" "#FFFFFF" "Velkommen til UCS! (eng. Welcome to UCS!)" (`
+  (ScsWidget.namedBox "#ff6600" "#FFFFFF" "Velkommen til UCS! (Eng. Welcome to UCS!)" (`
 
    <b>UCS</b> (<b>U</b>niversity <b>C</b>ommunity <b>S</b>ystem) er en
    portal til IT-højskolens studieadministrative systemer.<br><br>
-   (eng. <b>UCS</b> (<b>U</b>niversity <b>C</b>ommunity <b>S</b>ystem)
+   (Eng. <b>UCS</b> (<b>U</b>niversity <b>C</b>ommunity <b>S</b>ystem)
    is a portal to the student administrative systems used at The IT
    University of Copenhagen.)<p>
 
@@ -69,6 +69,6 @@ val _ = ScsPage.returnPg ("IT-C.net Authentication")
    </table>
    </form>
    ^(UcsPage.icon_forward) <a href="mail_passwd_form.sml">Få password?</a><br>
-   ^(UcsPage.icon_forward) (eng. <a href="mail_passwd_form.sml">Get password?</a>)<p>`) ^^ 
+   ^(UcsPage.icon_forward) (Eng. <a href="mail_passwd_form.sml">Get password?</a>)<p>`) ^^ 
    `</center><p></blockquote>`)))
 
