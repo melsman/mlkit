@@ -90,10 +90,7 @@ make install_smlserver
 # ML Kit Executables
 /usr/local/smlserver/bin/mlkit_web.x86-linux
 
-# Runtime Systems
-/usr/local/smlserver/bin/runtimeSystemKamNsSml.o 
-
-# Module for AOLserver
+# Module for AOLserver (includes runtime system)
 /usr/local/smlserver/bin/nssml.so
 
 # The Demonstration Directory
