@@ -1,11 +1,10 @@
-val d = ScsDict.d ScsLang.en "scs/person" "person_search.sml"
-val dl' = ScsDict.dl' ScsLang.en "scs/person" "person_search.sml"
-
-val (pat,errs) = ScsFormVar.getStringErr ("pat", d"Search pattern", ScsFormVar.emptyErr)
-val (target_url,errs) = ScsFormVar.getStringErr ("target_url", d"Target url", errs)
+val (pat,errs) = ScsFormVar.getStringErr ("pat", ScsDict.s UcsDict.search_pattern_dict, 
+					  ScsFormVar.emptyErr)
+val (target_url,errs) = ScsFormVar.getStringErr ("target_url", ScsDict.s UcsDict.url_dict, 
+						 errs)
 val _ = ScsFormVar.anyErrors errs
 
-val pat = if pat = "" then "%" else "%"^pat^"%"
+val pat = ScsString.mk_search_pattern pat
 val query = `select first_names || ' ' || last_name || ' (' || email || ')' as name, person_id 
                from scs_persons_active per, scs_parties party
               where per.person_id = party.party_id
@@ -25,8 +24,10 @@ val query_data =
 val hvs = List.filter (fn (n,_) => n <> "pat" andalso n <> "target_url") query_data
 
 val _ = 
-  ScsWidget.pickFromList target_url ("submit",d"Choose Person")
+  ScsWidget.pickFromList target_url ("submit",ScsDict.s [(ScsLang.en,`Choose person`),
+							 (ScsLang.da,`Vælg person`)])
   hvs
   items
-  (d"List of persons")
-  (dl' [pat] `Below you find the persons that matches your search pattern (%0)`)
+  (ScsDict.s [(ScsLang.en,`List of persons`),(ScsLang.da,`Personliste`)])
+  (ScsDict.sl' [(ScsLang.en,`Below you find the persons that matches your search pattern (%0)`),
+		(ScsLang.da,`Nedenfor finder du de personer som matcher dit søgemønster (%0)`)] [pat])
