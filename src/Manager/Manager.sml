@@ -9,7 +9,6 @@ functor Manager(structure Basis : BASIS
 		structure Compile : COMPILE 
 		  sharing type Compile.CompileBasis = Basis.CompileBasis
 		      and type Compile.topdec = ParseElab.topdec
-		      and type Compile.name = Basis.name
 		structure FreeIds : FREE_IDS
 		  sharing type FreeIds.ids = Basis.ids
 		      and type FreeIds.topdec = ParseElab.topdec
