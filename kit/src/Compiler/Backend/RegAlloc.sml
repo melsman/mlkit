@@ -39,13 +39,16 @@ struct
   type label = Labels.label
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LS.LinePrg
   type Atom = LS.Atom
+  type StoreTypeLI = LS.StoreType
 
   datatype StoreType =
     STACK_STY of lvar
   | PHREG_STY of lvar * lvar
+  | FV_STY    of lvar * label * label
     
   fun pr_sty(STACK_STY lv) = Lvars.pr_lvar lv ^ ":stack"
     | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ LS.pr_phreg phreg
+    | pr_sty(FV_STY(lv,l1,l2)) = Lvars.pr_lvar lv ^ ":FV(" ^ Labels.pr_label l1 ^ "," ^ Labels.pr_label l2 ^ ")"
 
   fun pr_atom atom = LS.pr_atom atom
 
@@ -87,21 +90,22 @@ struct
   (* Make Call Conventions Explicit at Call Points *)
   (*************************************************)
   local
-      fun resolve_args([],lss) = lss
-	| resolve_args((atom,phreg)::args,lss) = 
-	resolve_args(args,LS.ASSIGN{pat=atom,bind=LS.ATOM(LS.PHREG phreg)}::lss)
+    fun mk_sty lv = LS.V lv (* Flow variables are annotated later *)
+    fun resolve_args([],lss) = lss
+      | resolve_args((atom,phreg)::args,lss) = 
+      resolve_args(args,LS.ASSIGN{pat=atom,bind=LS.ATOM(LS.PHREG phreg)}::lss)
 
-      fun resolve_res([],lss) = lss
-	| resolve_res((atom,phreg)::res,lss) = 
-	resolve_res(res,LS.ASSIGN{pat=LS.PHREG phreg,bind=LS.ATOM atom}::lss)
+    fun resolve_res([],lss) = lss
+      | resolve_res((atom,phreg)::res,lss) = 
+      resolve_res(res,LS.ASSIGN{pat=LS.PHREG phreg,bind=LS.ATOM atom}::lss)
 
-      fun CC_sw CC_lss (LS.SWITCH(atom_arg,sels,default)) =
-	LS.SWITCH(atom_arg,map (fn (s,lss) => (s,CC_lss lss)) sels, CC_lss default)
+    fun CC_sw CC_lss (LS.SWITCH(atom_arg,sels,default)) =
+      LS.SWITCH(atom_arg,map (fn (s,lss) => (s,CC_lss lss)) sels, CC_lss default)
 
-      fun CC_ls(LS.FNJMP{opr,args,clos,free,res,bv},rest) =
-	let
-	  val ({clos,args,free,res,...},assign_list_args,assign_list_res) = 
-	    CallConv.resolve_app LS.PHREG {clos=clos,free=free,args=args,reg_vec=NONE,reg_args=[],res=res}
+    fun CC_ls(LS.FNJMP{opr,args,clos,free,res,bv},rest) =
+      let
+	val ({clos,args,free,res,...},assign_list_args,assign_list_res) = 
+	  CallConv.resolve_app LS.PHREG {clos=clos,free=free,args=args,reg_vec=NONE,reg_args=[],res=res}
 	in
 	  resolve_res(assign_list_args,
 		      LS.FNJMP{opr=opr,args=args,clos=clos,free=free,res=res,bv=bv}::
@@ -163,9 +167,9 @@ struct
 	  val res' = map (fn (lv,i) => (LS.VAR lv,i)) res
 	  val body_lss = CC_lss(lss)
 	  val body_args = 
-	     LS.SCOPE{pat=map #1 args,scope=resolve_args(args',body_lss)}
+	     LS.SCOPE{pat=map (mk_sty o #1) args,scope=resolve_args(args',body_lss)}
 	  val body_res =
-	    LS.SCOPE{pat=map #1 res,scope=body_args::resolve_res(res',[])}
+	    LS.SCOPE{pat=map (mk_sty o #1) res,scope=body_args::resolve_res(res',[])}
 	in
 	  LS.FUN(lab,cc',[body_res])
 	end
@@ -176,9 +180,9 @@ struct
 	  val res' = map (fn (lv,i) => (LS.VAR lv,i)) res
 	  val body_lss = CC_lss(lss)
 	  val body_args = 
-	    LS.SCOPE{pat=map #1 args,scope=resolve_args(args',body_lss)}
+	    LS.SCOPE{pat=map (mk_sty o #1) args,scope=resolve_args(args',body_lss)}
 	  val body_res =
-	     LS.SCOPE{pat=map #1 res,scope=body_args::resolve_res(res',[])}
+	    LS.SCOPE{pat=map (mk_sty o #1) res,scope=body_args::resolve_res(res',[])}
 	in
 	  LS.FN(lab,cc',[body_res])
 	end
@@ -193,7 +197,7 @@ struct
    *  to lambda variables.
    * ----------------------------- *)
 
-  fun ra_assign (assign : lvar -> StoreType) lss =
+  fun ra_assign (assign : StoreTypeLI -> StoreType) lss =
     let 
       fun ra_assign_sw ra_assign_lss (LS.SWITCH(atom_arg,sels,default)) =
 	LS.SWITCH(atom_arg,map (fn (s,lss) => (s,ra_assign_lss lss)) sels, ra_assign_lss default)
@@ -233,11 +237,15 @@ struct
    * ----------------------------------- *)
 
   fun ra_dummy_prg funcs =
-    let fun ra_assign_func assign func =
-          case func 
-	    of LS.FUN(lab,cc,lss) => LS.FUN(lab,cc,ra_assign assign lss)
-	     | LS.FN(lab,cc,lss) => LS.FN(lab,cc,ra_assign assign lss)
-    in foldr (fn (func,acc) => ra_assign_func STACK_STY (CC_top_decl func) :: acc) [] funcs
+    let 
+      fun assign(LS.V lv) = STACK_STY lv	
+	| assign(LS.FV lv) = FV_STY lv
+      fun ra_assign_func assign func =
+	case func 
+	  of LS.FUN(lab,cc,lss) => LS.FUN(lab,cc,ra_assign assign lss)
+	   | LS.FN(lab,cc,lss) => LS.FN(lab,cc,ra_assign assign lss)
+    in 
+      foldr (fn (func,acc) => ra_assign_func assign (CC_top_decl func) :: acc) [] funcs
     end
 
   (* ----------------------------------------
@@ -688,7 +696,7 @@ struct
       fun lrs_factor(no_call) = 1.0
 	| lrs_factor(c_call) = 1.2
 	| lrs_factor(ml_call) = 1.5
-      fun pri (n:node) = Real.fromInt(!(#uses n)) / Real.fromInt(!(#degree n))*lrs_factor(!(#lrs n))
+      fun pri (n:node) = Real.fromInt(!(#uses n)) / Real.fromInt(!(#degree n))  (**lrs_factor(!(#lrs n))06/04/1999, Niels*)
       fun select_spill() = (* use lowest priority: uses/degree*lrs_factor *)
 	case !spillWorklist of
 	  m :: rest => #1(foldl (fn (n,(m,mpri)) => 
@@ -873,13 +881,13 @@ struct
 	  val _ = inc_moves()
 	  val move : move = {lv1=lv1, lv2=lv2, movelist=ref worklistMoves_enum}
 	  val _ = (moveListAdd(key lv1, move); moveListAdd(key lv2, move))
-	  val _ = worklistMovesAdd move (* 26/02/1999, Niels *)
-	  val _ = lvarset_app (fn l => AddEdge(l,lv1)) (Lvarset.delete(L,lv2)) (*L*) (* shouldn't it be L\{lv2} 17/02/1999, Niels *)
+	  val _ = worklistMovesAdd move 
+	  val _ = lvarset_app (fn l => AddEdge(l,lv1)) (Lvarset.delete(L,lv2)) 
 	  val L = Lvarset.add(Lvarset.delete(L,lv1),lv2) 
 	in L
 	end
       fun remove_finite_rhos([]) = []
-	| remove_finite_rhos(((place,LineStmt.WORDS i),offset)::rest) = remove_finite_rhos rest
+	| remove_finite_rhos(((place,LS.WORDS i),offset)::rest) = remove_finite_rhos rest
 	| remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
       fun ig_ls (ls, L) =
 	case ls
@@ -1019,14 +1027,14 @@ struct
 				 andalso isEmpty_freezeWorklist() andalso isEmpty_spillWorklist() then ()
 			       else repeat())
 	 
-	fun assign lv = 
-	  let val n = case nTableLookup (Lvars.key lv)
-			of SOME n => n
-			 | NONE => die ("ra_body.assign(" ^ Lvars.pr_lvar lv ^ ")")
-	  in case !(#color n)
-	       of SOME c => PHREG_STY (lv,c)
-		| NONE => STACK_STY lv
-	  end
+	fun assign(LS.V lv) = 
+	  (case nTableLookup (Lvars.key lv)
+	    of SOME n => 
+	      (case !(#color n)
+		 of SOME c => PHREG_STY (lv,c)
+		  | NONE => STACK_STY lv)
+	     | NONE => die "ra_body.assign: lvar not assigned a color")
+	  | assign(LS.FV lv) = FV_STY lv 
 	
 	val _ = (raReset(); 
 		 MakeInitial lss;
@@ -1052,7 +1060,7 @@ struct
   (* Funtion to invoke the register allocator of choice *)
   (******************************************************)
   fun ra_main {main_lab:label,
-	       code=line_prg: (lvar,unit,Atom) LinePrg,
+	       code=line_prg: (StoreTypeLI,unit,Atom) LinePrg,
 	       imports:label list * label list,
 	       exports:label list * label list} ra_prg =
     let

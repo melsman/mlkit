@@ -58,7 +58,18 @@ functor CallConv(structure Lvars : LVARS
       | get_lvar_sty(CC_STACK(lv,_)) = lv
       | get_lvar_sty(CC_PHREG(lv,phreg)) = lv
 
+    fun get_lvar_stys'(stys,C) = foldl (fn (sty,C) => get_lvar_sty sty :: C) C stys
+    fun get_lvar_sty_opt'(NONE,C) = C
+      | get_lvar_sty_opt'(SOME sty,C) = get_lvar_sty sty :: C
+
     fun get_res_lvars({res,...}:cc) = map get_lvar_sty res
+
+    fun get_arg_lvars({clos, free, args, reg_vec, reg_args, ...}:cc) = 
+      get_lvar_sty_opt'(clos,
+      get_lvar_stys'(free,
+      get_lvar_stys'(args,
+      get_lvar_sty_opt'(reg_vec,
+      get_lvar_stys'(reg_args,[])))))
 
     fun get_frame_size({frame_size = NONE,...}:cc) = die "get_frame_size: frame_size does not exists"
       | get_frame_size({frame_size = SOME f_size,...}:cc) = f_size

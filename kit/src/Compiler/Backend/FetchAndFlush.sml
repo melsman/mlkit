@@ -16,6 +16,7 @@ functor FetchAndFlush(structure PhysSizeInf : PHYS_SIZE_INF
 		      structure RegAlloc: REG_ALLOC
                         sharing type RegAlloc.lvar = LineStmt.lvar
 			sharing type RegAlloc.Atom = LineStmt.Atom
+                        sharing type RegAlloc.label = LineStmt.label
 		      structure BI : BACKEND_INFO
                         sharing type BI.lvar = Lvars.lvar
 		      structure Lvarset: LVARSET
@@ -48,11 +49,13 @@ struct
   | PHREG_STY of lvar * lvar
   | FLUSHED_CALLEE_STY of lvar
   | FLUSHED_CALLER_STY of lvar * lvar
+  | FV_STY             of lvar * label * label
 
   fun pr_sty(STACK_STY lv) = Lvars.pr_lvar lv ^ ":stack"
     | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ LineStmt.pr_phreg phreg
     | pr_sty(FLUSHED_CALLEE_STY phreg) = LineStmt.pr_phreg phreg ^ ":flushed_callee"
     | pr_sty(FLUSHED_CALLER_STY(lv,phreg)) = Lvars.pr_lvar lv ^ ":flushed " ^ LineStmt.pr_phreg phreg
+    | pr_sty(FV_STY(lv,l1,l2)) = Lvars.pr_lvar lv ^ ":FV(" ^ Labels.pr_label l1 ^ "," ^ Labels.pr_label l2 ^ ")"
 
   fun pr_atom atom = RegAlloc.pr_atom atom
 
@@ -124,7 +127,7 @@ struct
       | insert_fetch_callee(phreg::phregs,lss) = (inc_fetch(); insert_fetch_callee(phregs,LS.FETCH(LS.PHREG phreg,())::lss))
 
     fun remove_finite_rhos([]) = []
-      | remove_finite_rhos(((place,LineStmt.WORDS i),offset)::rest) = remove_finite_rhos rest
+      | remove_finite_rhos(((place,LS.WORDS i),offset)::rest) = remove_finite_rhos rest
       | remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
 
     (***************************************)
@@ -150,7 +153,7 @@ struct
 
     fun do_non_tail_call (ls,L_set,F_set,C_set,R_set) =
       let
-	val (def,use) = LineStmt.def_use_lvar_ls ls
+	val (def,use) = LS.def_use_lvar_ls ls
 	val lvars_to_flush = lvset_difference(L_set,def)
       in
 	(lvset_add(lvars_to_flush,use),
@@ -161,7 +164,7 @@ struct
 
     fun do_non_tail_ccall (ls,L_set,F_set,C_set,R_set) =
       let
-	val (def,use) = LineStmt.def_use_lvar_ls ls
+	val (def,use) = LS.def_use_lvar_ls ls
 	val lvars_to_flush = lvset_difference(L_set,def)
       in
 	(lvset_add(lvars_to_flush,use),
@@ -172,7 +175,7 @@ struct
 
     fun do_tail_call (ls,L_set,F_set,C_set,R_set) =
       let
-	val (def,use) = LineStmt.def_use_lvar_ls ls
+	val (def,use) = LS.def_use_lvar_ls ls
 	val lvars_to_flush = lvset_difference(L_set,def)
       in
 	(Lvarset.lvarsetof use,
@@ -205,10 +208,12 @@ struct
 		 lv::acc
 	       else
 		 acc
+	       | lv_to_remove(RA.FV_STY lv,acc) f = acc
 	     val lvs_to_remove = foldr (fn (sty,acc) => lv_to_remove (sty,acc) BI.is_callee_save) [] pat
 	     val lvs_to_remove_ccall = foldr (fn (sty,acc) => lv_to_remove (sty,acc) BI.is_callee_save_ccall) [] pat
 	     fun add_phreg(RA.STACK_STY lv,acc) = acc
 	       | add_phreg(RA.PHREG_STY (lv,phreg),acc) = phreg::acc
+	       | add_phreg(RA.FV_STY lv,acc) = acc
 	     val phregs_to_add = foldr (fn (sty,acc) => add_phreg(sty,acc)) [] pat
 	   in
 	     (L_set',
@@ -236,7 +241,7 @@ struct
        | LS.CCALL{name,args,rhos_for_result,res} => do_non_tail_ccall(ls,L_set,F_set,C_set,R_set) 
        | _ =>
 	   let
-	     val (def,use) = LineStmt.def_use_lvar_ls ls
+	     val (def,use) = LS.def_use_lvar_ls ls
 	   in
 	     (lvset_add(lvset_difference(L_set,def),use),
 	      F_set,
@@ -257,6 +262,7 @@ struct
 	FLUSHED_CALLER_STY(lv,i)
       else
 	PHREG_STY(lv,i)
+      | assign_sty F (RA.FV_STY lv) = FV_STY lv
 
     fun atom_in_F(LS.VAR lv,F) = Lvarset.member(lv,F)
       | atom_in_F(_,F) = false
@@ -345,7 +351,7 @@ struct
 
     fun do_non_tail_call_if(ls,F_set,(acc,U_set)) =
       let
-	val (def,use) = LineStmt.def_use_lvar_ls ls
+	val (def,use) = LS.def_use_lvar_ls ls
 	val lvars_used = lvset_difference(U_set,def)
 	val lvars_to_fetch = Lvarset.intersection(F_set,lvars_used)
       in
@@ -410,7 +416,7 @@ struct
 	  do_non_tail_call_if(ls,C_set,IF_lss'(lss,U_set)) (* Note, we use C_set and not F_set *)
 	  | IF_lss'(ls::lss,U_set) =
 	  let
-	    val (def,use) = LineStmt.def_use_lvar_ls ls
+	    val (def,use) = LS.def_use_lvar_ls ls
 	    val (acc,U_set_acc) = IF_lss'(lss,U_set)
 	  in
 	    (ls::acc,
@@ -437,8 +443,8 @@ struct
       in
 	gen_fn(lab,cc,lss_if)
       end
-    fun IFF_top_decl(LineStmt.FUN(lab,cc,lss)) = do_top_decl LineStmt.FUN (lab,cc,lss)
-      | IFF_top_decl(LineStmt.FN(lab,cc,lss)) = do_top_decl LineStmt.FN (lab,cc,lss)
+    fun IFF_top_decl(LS.FUN(lab,cc,lss)) = do_top_decl LS.FUN (lab,cc,lss)
+      | IFF_top_decl(LS.FN(lab,cc,lss)) = do_top_decl LS.FN (lab,cc,lss)
   in
     fun IFF {main_lab:label,
 	     code=ra_prg: (StoreTypeRA,unit,Atom) LinePrg,
@@ -450,7 +456,7 @@ struct
 	val line_prg_iff = foldr (fn (func,acc) => IFF_top_decl func :: acc) [] ra_prg
 	val _ = 
 	  if Flags.is_on "print_fetch_and_flush_program" then
-	    display("\nReport: AFTER INSERT FETCH AND FLUSH:", LineStmt.layout_line_prg pr_sty (fn _ => "()") pr_atom false line_prg_iff)
+	    display("\nReport: AFTER INSERT FETCH AND FLUSH:", LS.layout_line_prg pr_sty (fn _ => "()") pr_atom false line_prg_iff)
 	  else
 	    ()
 	val _ = pp_stat()

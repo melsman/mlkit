@@ -29,15 +29,17 @@ signature REG_ALLOC =
     type label
     type ('sty,'offset,'aty) LinePrg
     type Atom
+    type StoreTypeLI
 
     datatype StoreType =
       STACK_STY of lvar
     | PHREG_STY of lvar * lvar
+    | FV_STY    of lvar * label * label
 
-    val ra_dummy : {main_lab:label,code:(lvar,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
+    val ra_dummy : {main_lab:label,code:(StoreTypeLI,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
                    {main_lab:label,code:(StoreType,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
 
-    val ra       : {main_lab:label,code:(lvar,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
+    val ra       : {main_lab:label,code:(StoreTypeLI,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
                    {main_lab:label,code:(StoreType,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
 
     val pr_sty    : StoreType -> string

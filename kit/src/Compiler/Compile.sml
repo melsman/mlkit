@@ -89,6 +89,7 @@ functor Compile(structure Excon : EXCON
                   sharing type RegAlloc.label = LineStmt.label
                   sharing type RegAlloc.lvar = LineStmt.lvar
                   sharing type RegAlloc.Atom = LineStmt.Atom
+                  sharing type RegAlloc.StoreTypeLI = LineStmt.StoreType
 
 	        structure FetchAndFlush : FETCH_AND_FLUSH
 		  sharing type FetchAndFlush.place = LineStmt.place

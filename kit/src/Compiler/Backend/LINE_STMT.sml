@@ -38,13 +38,18 @@ signature LINE_STMT =
 
     datatype Atom =
       VAR           of lvar
+    | FLOW_VAR      of lvar * label * label
     | RVAR          of place
     | DROPPED_RVAR  of place
     | PHREG         of lvar
     | INTEGER       of int 
     | UNIT
 
-  datatype 'aty SimpleExp =
+    datatype StoreType =
+      V of lvar
+    | FV of lvar * label * label
+
+    datatype 'aty SimpleExp =
       ATOM            of 'aty
     | LOAD            of label
     | STORE           of 'aty * label
@@ -114,7 +119,14 @@ signature LINE_STMT =
     val smash_free : 'aty list*'aty list*'aty list -> 'aty list
 
     val L : {main_lab:label,code:ClosPrg,imports:label list * label list,exports:label list * label list} -> 
-            {main_lab:label,code:(lvar,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
+            {main_lab:label,code:(StoreType,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
+
+    val map_lss : ('aty1 -> 'aty2) -> ('offset1 -> 'offset2) -> ('sty1 -> 'sty2) ->
+                  ('sty1,'offset1,'aty1) LineStmt list ->
+                  ('sty2,'offset2,'aty2) LineStmt list
+    val map_prg : ('aty1 -> 'aty2) -> ('offset1 -> 'offset2) -> ('sty1 -> 'sty2) ->
+                  {main_lab:label,code:('sty1,'offset1,'aty1) LinePrg,imports:label list * label list,exports:label list * label list} ->
+                  {main_lab:label,code:('sty2,'offset2,'aty2) LinePrg,imports:label list * label list,exports:label list * label list}
 
     (*****************************************************************)
     (* In CalcOffsets we must know if a region has runtime type REAL *)
@@ -180,12 +192,5 @@ signature LINE_STMT =
     val pr_line_stmt    : ('sty -> string) -> ('offset -> string) -> ('aty -> string) -> bool -> ('sty,'offset,'aty) LineStmt -> string
     val pr_phreg        : lvar -> string
     val pr_atom         : Atom -> string
+    val pr_sty          : StoreType -> string
   end
-
-
-
-
-
-
-
-
