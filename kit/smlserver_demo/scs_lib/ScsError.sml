@@ -38,6 +38,8 @@ signature SCS_ERROR =
 
     (* [log msg] writes msg to the serverlog *)
     val log : string -> unit
+
+    val err_msg_db : ScsDict.dict -> string -> ScsDict.dict
   end
 
 structure ScsError :> SCS_ERROR =
@@ -112,5 +114,15 @@ email: ^(ScsPersonData.email(ScsLogin.user_id()))
       handle _ => ( ScsPage.returnPg "" msg ; Ns.exit() )
 
     fun log msg = Ns.log (Ns.Notice, msg)
+
+    fun err_msg_db X_dict help_link = [
+      (ScsLang.da, `^(ScsDict.getString X_dict ScsLang.da) du s&oslash;ger 
+                    findes desv&aelig;rre ikke i databasen. Hvis du mener 
+		    dette er en fejl, s&aring; henvend dig venligst hos 
+		    ^help_link.`),
+      (ScsLang.en, `^(ScsDict.getString X_dict ScsLang.en) you seek does 
+		    not exist in the database. If you believe this is an 
+		    error then please contact ^help_link.`)
+    ]
 
   end
