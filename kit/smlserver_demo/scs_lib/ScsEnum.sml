@@ -259,5 +259,5 @@ structure ScsEnum :> SCS_ENUM =
     val active_p_dict = [(ScsLang.da,`Aktiv`),(ScsLang.en,`Active`)]
     val ordering_dict = [(ScsLang.da,`Rækkefølge`),(ScsLang.en,`Ordering`)]
     val edit_dict     = [(ScsLang.da,`Ret`),(ScsLang.en,`Edit`)]
-    val save_dict     = [(ScsLang.da,`Gem`),(ScsLang.en,`Save`)]
+    val save_dict     = [(ScsLang.da,`Gem`),(ScsLang.en,`Store`)]
   end
