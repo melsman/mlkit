@@ -18,7 +18,12 @@ signature SCS_DATA =
        select element (value, name) *)
     val mk_selectBoxFromDb : quot -> ((string->string) -> (string*string)) 
       -> string -> int option -> quot
-      
+
+    (* [mk_selectBoxFromDbAttr sql g_fn fv v_opt attr] same as 
+       mk_selectBoxFromDb except that it is possible to include attributes 
+       in the <select> tag *)
+    val mk_selectBoxFromDbAttr : quot -> ((string->string) -> (string*string)) 
+      -> string -> int option -> string -> quot
 
     (* [mk_selectBoxFromDb' sql g_fn add_opts fv v_opt] is similar to 
 	mk_selectBoxFromDb except that it is possible to prepend additional
@@ -65,22 +70,30 @@ structure ScsData :> SCS_DATA =
     fun gToStringOpt g field_name =  ScsString.toOpt (g field_name)
 
     local
-      fun mk_selectBoxFromDb_template sql g_fn pre_opts post_opts fv v_opt =
+      fun mk_selectBoxFromDb_template sql g_fn pre_opts post_opts fv v_opt attr_opt =
 	let
 	  val opts = 
 	    pre_opts @ ( ScsError.wrapPanic (Db.list g_fn) sql ) @ post_opts
 	in
 	  case v_opt of
-	      NONE   => ScsWidget.select opts fv
-	    | SOME v => ScsWidget.selectWithDefault opts (Int.toString v) fv
+	      NONE   => (case attr_opt of 
+			     SOME attr => ScsWidget.selectAttr opts fv attr 
+			   | NONE      => ScsWidget.select opts fv
+			)
+	    | SOME v => (case attr_opt of 
+			     SOME attr => ScsWidget.selectAttrWithDefault opts (Int.toString v) fv attr 
+			   | NONE      => ScsWidget.selectWithDefault opts (Int.toString v) fv
+			)
 	end
     in
       fun mk_selectBoxFromDb sql g_fn fv v_opt = 
-        mk_selectBoxFromDb_template sql g_fn [] [] fv v_opt 
+        mk_selectBoxFromDb_template sql g_fn [] [] fv v_opt NONE
+      fun mk_selectBoxFromDbAttr sql g_fn fv v_opt attr = 
+        mk_selectBoxFromDb_template sql g_fn [] [] fv v_opt (SOME attr)
       fun mk_selectBoxFromDb' sql g_fn add_opts fv v_opt = 
-        mk_selectBoxFromDb_template sql g_fn add_opts [] fv v_opt
+        mk_selectBoxFromDb_template sql g_fn add_opts [] fv v_opt NONE
       fun mk_selectBoxFromDb'' sql g_fn pre_opts post_opts fv v_opt = 
-        mk_selectBoxFromDb_template sql g_fn pre_opts post_opts fv v_opt
+        mk_selectBoxFromDb_template sql g_fn pre_opts post_opts fv v_opt NONE
     end
 
 
