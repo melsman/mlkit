@@ -468,6 +468,8 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
 
       | SEQ _ => die "pp_inst - SEQ"
 
+    fun pr_inst i = concat(pp_inst(i,[]))
+
     fun output_AsmPrg (os,{top_decls,init_code,exit_code,static_data}) =
       let
 	fun fold ([], acc) = acc

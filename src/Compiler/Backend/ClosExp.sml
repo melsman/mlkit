@@ -1362,18 +1362,22 @@ struct
 
     (* Result is a pair of label lists:              *)
     (*   -- labels to functions, (i.e., code labels) *)
-    (* -- labels to data, (i.e., code to data)       *)
+    (*   -- labels to data, (i.e., data labels)      *)
     fun find_globals_in_env (lvars, excons, regvars) env =
       let
 	fun lookup lv f_lookup (fun_lab,dat_lab) =
 	  (case f_lookup env lv of
-	     SOME(CE.FIX(lab,_,_))    => (lab::fun_lab,dat_lab) (* Is a MLFunLab *)
-	   | SOME(CE.LVAR _)          => die "find_globals_in_env: global bound to lvar."
-	   | SOME(CE.RVAR _)          => die "find_globals_in_env: global bound to rvar."
-	   | SOME(CE.DROPPED_RVAR _)  => die "find_globals_in_env: global bound to dropped rvar."
-	   | SOME(CE.SELECT _)        => die "find_globals_in_env: global bound to select expression."
-	   | SOME(CE.LABEL lab)       => (fun_lab,lab::dat_lab) (* Is a DatLab *)
-	   | NONE                     => die ("find_globals_in_env: lvar not bound in env."))
+	     SOME(CE.FIX(lab,SOME(CE.LVAR lvar),_))       => die "find_globals_in_env: FIX with SCLOS bound to lvar."
+	   | SOME(CE.FIX(lab,SOME(CE.SELECT(lvar,i)),_))  => die "find_globals_in_env: FIX with SCLOS bound to SELECT."
+	   | SOME(CE.FIX(lab,SOME(CE.LABEL sclos_lab),_)) => (lab::fun_lab,sclos_lab::dat_lab) (* lab is a function and sclos is a data object. *)
+	   | SOME(CE.FIX(lab,NONE,_))                     => (lab::fun_lab,dat_lab) (* lab is a function with empty shared closure. *)
+	   | SOME(CE.FIX(lab,_,_))                        => die "find_globals_in_env: global bound to wierd FIX."
+	   | SOME(CE.LVAR _)                              => die "find_globals_in_env: global bound to lvar."
+	   | SOME(CE.RVAR _)                              => die "find_globals_in_env: global bound to rvar."
+	   | SOME(CE.DROPPED_RVAR _)                      => die "find_globals_in_env: global bound to dropped rvar."
+	   | SOME(CE.SELECT _)                            => die "find_globals_in_env: global bound to select expression."
+	   | SOME(CE.LABEL lab)                           => (fun_lab,lab::dat_lab) (* Is a DatLab *)
+	   | NONE                                         => die ("find_globals_in_env: lvar not bound in env."))
 	val lvar_pair_labs = foldr (fn (lv,acc) => lookup lv CE.lookupVarOpt acc) ([],[]) lvars
       in
 	foldr (fn (excon,acc) => lookup excon CE.lookupExconOpt acc) lvar_pair_labs excons

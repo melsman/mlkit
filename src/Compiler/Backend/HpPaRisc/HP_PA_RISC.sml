@@ -216,6 +216,7 @@ signature HP_PA_RISC =
     val layout_AsmPrg : AsmPrg -> StringTree
 
     (* To Emit Code *)
+    val pr_inst        : RiscInst -> string
     val pp_lab         : lab -> string
     val pr_reg         : reg -> string
     val output_AsmPrg : TextIO.outstream * AsmPrg -> unit
