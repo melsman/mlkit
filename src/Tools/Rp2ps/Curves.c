@@ -25,12 +25,12 @@ void CurvesInit(void)
   y  =  (double*) xmalloc(nsamples * sizeof(double));
   py =  (double*) xmalloc(nsamples * sizeof(double));
 
-  sf = graphwidth / xrange; /*16/11/1995, Niels*/
+  sf = graphwidth / xrange;
 
   /*printf("CurvesInit, sf: %8.6f, graphwidth: %8.2f, xrange: %8.2f\n", sf, graphwidth, xrange);*/
   
   for (i = 0; i < nsamples; i++) {
-    x [ i ] = (sampletable[ i ] - sampletable[ 0 ]) * sf; /*- sampletable[ 0 ] indsat den 16/11/1995, Niels */
+    x [ i ] = (sampletable[ i ] - sampletable[ 0 ]) * sf;
     y [ i ] = 0;
     py[ i ] = 0;
   }
@@ -149,7 +149,7 @@ void Comments(void)
   int i;
   double m;
   for (i = 0; i < ncomments; i++) {
-    m = ((double)(commenttable[i]-sampletable[0]) / xrange) * graphwidth; /*16/11/1995, Niels*/
+    m = ((double)(commenttable[i]-sampletable[0]) / xrange) * graphwidth;
     SampleLine(m,0.0,graphheight-10);
     output->Text(JustifyVertical,xpage(m),ypage(0.0)+graphheight-10,SCALE_FONT,commentstring[i]);
   }
@@ -161,7 +161,7 @@ void Marks(void)
   double m;
 
   for (i = 0; i < nmarks; i++) {
-    m = ((double)(marktable[i]-sampletable[0]) / xrange) * graphwidth; /*16/11/1995, Niels*/
+    m = ((double)(marktable[i]-sampletable[0]) / xrange) * graphwidth;
     outputCaret(xpage(m), ypage(0.0), 4.0);
   }
 }
@@ -266,24 +266,24 @@ static void XAxis(void)
 
     /* draw x axis legend */
   if (useTickNo) {
-    output->Text(JustifyLeft,xpage(0.0) + graphwidth+aBitMore, borderspace,SCALE_FONT,"ticks"); /* 21/12/1995, Niels aBitMore inserted. */
+    output->Text(JustifyLeft,xpage(0.0) + graphwidth+aBitMore, borderspace,SCALE_FONT,"ticks");
   }
   else {
     output->Text(JustifyLeft,xpage(0.0) + graphwidth+aBitMore, borderspace,SCALE_FONT,"seconds");
   }
     /* draw x axis scaling */
 
-  increment = Round(xrange / (double) N_X_MARKS); /*16/11/1995, Niels*/
+  increment = Round(xrange / (double) N_X_MARKS);
 
   if (increment < 0.01) increment = 0.01;
 
-  t = graphwidth / xrange; /*16/11/1995, Niels*/
+  t = graphwidth / xrange;
   legendlen = StringSize("seconds") + (double) XFUDGE;
  
   for (i = sampletable[ 0 ]; i < sampletable[ nsamples - 1]; i += increment) {
-    x = (i - sampletable[ 0 ]) * t;  /* niels-- -sampletable[0] goer at startx er den foerste sampletime. */
+    x = (i - sampletable[ 0 ]) * t;  
  
-    if (x < (graphwidth/* - legendlen*/)) {  /*commented-17/11/1995, Niels*/
+    if (x < (graphwidth/* - legendlen*/)) {  
       XAxisMark(x,i);
     } 
   } 
@@ -328,7 +328,7 @@ static void YAxis(void)
 
   /* draw y axis legend */
 
-  output->Text(JustifyVertical,xpage(0.0) - borderspace,ypage(0.0)+graphheight,SCALE_FONT,yLab); /*ylab was bytes 17/11/1995, Niels*/
+  output->Text(JustifyVertical,xpage(0.0) - borderspace,ypage(0.0)+graphheight,SCALE_FONT,yLab); 
 
     /* draw y axis scaling */
   increment = Round(yrange / (double) N_Y_MARKS);
@@ -344,7 +344,7 @@ static void YAxis(void)
   }   
 
   t = graphheight / yrange; 
-  legendlen = StringSize(yLab) + (double) YFUDGE; /*ylab was bytes 17/11/1995, Niels*/
+  legendlen = StringSize(yLab) + (double) YFUDGE; 
 
   for (i = 0; i <= yrange; i += increment) {
     y = i * t;

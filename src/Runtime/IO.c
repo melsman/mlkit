@@ -7,6 +7,11 @@
 #include <errno.h>
 #include <unistd.h>
 
+#if defined(linux)
+#include <sys/types.h>
+#include <utime.h>
+#endif
+
 #include "IO.h"
 #include "String.h"
 #include "Flags.h"
@@ -440,7 +445,7 @@ StringDesc *sml_errormsg(int rAddr, int err)   /* SML Basis */
   int errnum;
   if (errnum < 0 || errnum >= sys_nerr) 
     return convertStringToML(rAddr, "(Unknown error)");
-  return convertStringToML(rAddr, sys_errlist[errnum]);
+  return convertStringToML(rAddr, (char *)sys_errlist[errnum]);
 }
 
 #ifdef PROFILING
@@ -449,7 +454,7 @@ StringDesc *sml_errormsgProfiling(int rAddr, int err, int pPoint)   /* SML Basis
   int errnum;
   if (errnum < 0 || errnum >= sys_nerr) 
     return convertStringToMLProfiling(rAddr, "(Unknown error)", pPoint);
-  return convertStringToMLProfiling(rAddr, sys_errlist[errnum], pPoint);
+  return convertStringToMLProfiling(rAddr, (char *)sys_errlist[errnum], pPoint);
 
 }
 #endif /*PROFILING*/
@@ -499,8 +504,11 @@ StringDesc *sml_realpath(int rAddr, StringDesc *path, int exn)          /* SML B
   char path_c[MAXPATHLEN];
   convertStringToC(path, path_c, MAXPATHLEN, exn);
   result = realpath(path_c, buffer);
-  if (result == NULL) raise_exn(exn);
-  return convertStringToML(rAddr, result);
+  if (result == NULL) {
+    raise_exn(exn);
+    return NULL;
+  } else
+    return convertStringToML(rAddr, result);
 }
 
 #ifdef PROFILING
@@ -511,8 +519,11 @@ StringDesc *sml_realpathProfiling(int rAddr, StringDesc *path, int exn, int pPoi
   char path_c[MAXPATHLEN];
   convertStringToC(path, path_c, MAXPATHLEN, exn);
   result = realpath(path_c, buffer);
-  if (result == NULL) raise_exn(exn);
-  return convertStringToMLProfiling(rAddr, result, pPoint);
+  if (result == NULL) {
+    raise_exn(exn);
+    return NULL;
+  } else
+    return convertStringToMLProfiling(rAddr, result, pPoint);
 }
 #endif
 
@@ -550,8 +561,8 @@ int sml_commandline_args(int pairRho, int strRho) {
   StringDesc *mlStr;
   int counter = commandline_argc;
   makeNIL(resList);  
-  while (counter > 0) {
-    mlStr = convertStringToML(strRho, commandline_argv[counter--]);
+  while (counter > 1) {
+    mlStr = convertStringToML(strRho, commandline_argv[--counter]);
     allocRecordML(pairRho, 2, pairPtr);
     first(pairPtr) = (int) mlStr;
     second(pairPtr) = (int) resList;

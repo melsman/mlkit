@@ -2,6 +2,7 @@
 /* profiling data.                                 */
 #include <stdio.h>
 #include <time.h>
+
 #include "Flags.h"
 #include "Error.h"
 #include "Alloc.h"
@@ -12,9 +13,10 @@
 
 /* SUN_OS4 reports the time passed from clock in microsecs. */
 /* This is used in file Profiling.c in the runtimesystem.   */
-#ifdef SUN_OS4
+/* The variable is already defined for HPUX and LINUX2.x.   */
+#ifndef CLOCKS_PER_SEC
 #define CLOCKS_PER_SEC 1000000
-#endif /*SUN_OS4*/
+#endif
 
 /***************************************************************
  * Declarations used to construct the graph data structure.    *

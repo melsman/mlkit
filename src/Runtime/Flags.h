@@ -36,7 +36,9 @@
 #ifndef FLAGS
 #define FLAGS
 
+#ifndef NULL
 #define NULL 0
+#endif
 
 #define CHECKREGION 1
 /*#define PROFILING 1*/

@@ -153,7 +153,7 @@ static double KeyWidth(void)
 
 static void Dimensions(void)
 {
-    xrange = sampletable[ nsamples - 1 ]-sampletable[0]; /*16/11/1995, Niels maaske her der skal korrigeres for sampletable[0]*/
+    xrange = sampletable[ nsamples - 1 ]-sampletable[0]; 
  
     if (fixedYRange >= 0) {
       yrange = fixedYRange;

@@ -8,9 +8,11 @@
 #include<signal.h>
 
 #if defined(hpux)
-typedef void (*SignalHandler)(__harg);  /* I don't know if __harg is architecture dependent...  18/05/1996-Martin */ 
+typedef void (*SignalHandler)(__harg);  
 #elif defined(sun)
 typedef void (*SignalHandler)(void);
+#elif defined(linux)
+typedef void (*SignalHandler)(int);
 #endif
 
 extern int *Overflow_val;                 /* Exception raised for all primitive operations which

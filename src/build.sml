@@ -10,6 +10,14 @@ end;
 val _ =
 let
 
+  fun error s = (print "\n ** Error : "; print s; print " **\n")
+
+  exception Die
+  fun die s = (error s;
+	       cdsrc();
+	       print " ** Installation procedure terminated ** \n";
+	       raise Die)
+
   (* Read characters until a newline is found. *)
   fun read_string s =
     let
@@ -21,22 +29,41 @@ let
         read_string (s^ch)
     end;
 
+  (* If we can't open the .config file then assume it is non existing. *)
+  (* Assume we are in the source directory.                            *)
+  fun load_config_file(file_name) =
+    let
+      val file_strm = TextIO.openIn(file_name)
+      val arch_info = TextIO.inputLine(file_strm)
+      val os_info = TextIO.inputLine(file_strm)
+      val _ = TextIO.closeIn(file_strm)
+    in
+      (* Remove the newlines *)
+      (String.extract(arch_info, 0, SOME (String.size arch_info-1)), 
+       String.extract(os_info, 0, SOME (String.size os_info-1)))
+    end
+  handle _ => ("unknown", "unknown")
+
+  (* Save the .config file *)
+  (* Assume we are in the source directory. *)
+  fun save_config_file() =
+    let
+      val file_strm = TextIO.openOut(".config")
+      val _ = TextIO.output(file_strm, SMLofNJ.SysInfo.getHostArch()^"\n")
+      val _ = TextIO.output(file_strm, SMLofNJ.SysInfo.getOSName())
+      val _ = TextIO.closeOut(file_strm)
+    in
+      ()
+    end
+  handle _ => die "save_config_file: can't open or write to file."
+
   val upper = implode o map Char.toUpper o explode
-
-
-  fun error s = (print "\n ** Error : "; print s; print " **\n")
-
-  exception Die
-  fun die s = (error s;
-	       cdsrc();
-	       print " ** Installation procedure terminated ** \n";
-	       raise Die)
     
   fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
   
   fun available_with_C_backend() =
     case arch_os()
-      of ("X86", "Linux") => false
+      of ("X86", "Linux") => true
        | ("HPPA", "HPUX") => true
        | ("SUN", "OS4") => false
        | _ => false
@@ -60,17 +87,30 @@ let
     end
 
   fun build_runtime() =
-    let val _ = print "\n ** Building runtime system **\n\n"
-    in cd "Runtime";
-      if OS.Process.system "gmake" = OS.Process.success then cdsrc()
-      else die "build_runtime: gmake failed"
-    end
+      (print "\n ** Building runtime system **\n\n";
+       cd "Runtime";
+       if (load_config_file("../.config") <> arch_os()) then
+	 (if OS.Process.system ("gmake clean") = OS.Process.success then ()
+	  else die "build_runtime: gmake clean failed";
+	  if OS.Process.system ("gmake depend") = OS.Process.success then ()
+	  else die "build_runtime: gmake depend failed")
+       else ();
+       if OS.Process.system "gmake" = OS.Process.success then ()
+       else die "build_runtime: gmake failed";
+       cdsrc())
 
   fun build_rp2ps() =
     (print "\n ** Building profiling tool rp2ps **\n\n";
      cd "Tools/Rp2ps";
-     if OS.Process.system ("gmake") = OS.Process.success then cdsrc() 
+     if (load_config_file("../../.config") <> arch_os()) then
+       (if OS.Process.system ("gmake clean") = OS.Process.success then ()
+	else die "build_rp2ps: gmake clean failed";
+	if OS.Process.system ("gmake depend") = OS.Process.success then ()
+	else die "build_rp2ps: gmake depend failed")
+     else ();
+     if OS.Process.system ("gmake") = OS.Process.success then () 
      else die "build_rp2ps: gmake failed";
+     cdsrc();
      if OS.Process.system "cp Tools/Rp2ps/rp2ps ../bin/rp2ps" = OS.Process.success then ()
      else die "build_rp2ps: failed to install rp2ps")
       
@@ -83,9 +123,9 @@ in
   resolve_backend();
   build_runtime();
   build_rp2ps();
+  save_config_file();
   build_kit()
 end ;
-
 
 (*
 val _ = K.Flags.lookup_flag_entry "delete_target_files" := false;
