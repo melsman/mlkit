@@ -244,7 +244,7 @@ signature SCS_PERSON =
 
          * the search expression identify exactly one person, and a
            redirect to the page represented by target_url is issued
-           with hidden variables hvs and user_id = x where x is
+           with hidden variables hvs and person_id = x where x is
            user_id for the person found.
 
          * the search expression identity more than one person in

@@ -24,12 +24,16 @@ val not_chosen_roles = Db.list (fn g => (g "abbreviation", g"role_id"))
                                                 from scs_role_rels
                                                where scs_role_rels.party_id = '^(Int.toString person_id)')`
 
+val this_url = Html.genUrl "edit_person_role_rel.sml" [
+		     ("person_id", Int.toString person_id)]
+
 val footer = 
   case not_chosen_roles of
 	  [] => ``
         | xs => `<tr>
                  <form method=post action="add_del_person_role_rel.sml">
                  <input type=hidden name="mode" value="add">
+                 <input type=hidden name="target" value=^( this_url )>
                  <input type=hidden name="person_id" value="^(Int.toString person_id)">
            	 <td>` ^^ (ScsWidget.select not_chosen_roles "role_id") ^^ `</td>
 	         <td><input type=submit name=submit value=^(ScsDict.s [(ScsLang.en,`Add`),
@@ -48,7 +52,8 @@ val role_table =
 	    <td><a href="^(Html.genUrl "add_del_person_role_rel.sml" 
                             [("person_id",Int.toString person_id),
                              ("role_id",role_id),
-                             ("mode","del")])">^(ScsDict.s [(ScsLang.en,`del`),(ScsLang.da,`slet`)])</a></td>`)
+                             ("mode","del"),
+			     ("target", this_url)])">^(ScsDict.s [(ScsLang.en,`del`),(ScsLang.da,`slet`)])</a></td>`)
         chosen_roles)
 
 val _ = UcsPage.returnPg title
