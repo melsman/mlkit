@@ -51,11 +51,4 @@ create table scs_person_rels (
 alter table scs_person_rels add 
   constraint scs_person_rels_un unique(person_id,on_what_table);
 
------------
--- Views --
------------
-create or replace view scs_persons_active as
-select * 
-  from scs_persons
- where deleted_p = 'f';
 

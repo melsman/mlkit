@@ -521,3 +521,9 @@ as
 select * 
   from scs_profiles
  where deleted_p = 'f';
+
+create or replace view scs_persons_active as
+select * 
+  from scs_persons
+ where deleted_p = 'f';
+
