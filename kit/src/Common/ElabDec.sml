@@ -1947,39 +1947,28 @@ old*)
               val tau_list    = map #1 res_list
               val out_ty_list = map #2 res_list
             in
-              case C.lookup_longtycon C longtycon of
-		Some tystr =>
-                     let
-                       val (typeFcn, _) = TyStr.to_theta_and_VE tystr
-                       val expectedArity = TypeFcn.arity typeFcn
-                       val actualArity = List.size tau_list
-                       val _ = debug_pr_msg "elab_ty(CONty)"
-(*debug
-		       val _ = pr ("elab_ty(CONty) - TypeFcn = ", TypeFcn.layout typeFcn)
-debug*)
-                     in
-                       if expectedArity = actualArity then
-                         (TypeFcn.apply (typeFcn, tau_list),
-                          OG.CONty (okConv i, out_ty_list, longtycon))
-                       else
-                         (Type_bogus (),
-                          OG.CONty(errorConv(i, ErrorInfo.WRONG_ARITY{
-                                                  expected=expectedArity,
-                                                  actual=actualArity
-                                                }
-                                            ),
-                                   out_ty_list, longtycon
-                                  )
-                         )
-                     end
-
-                 | None =>
-                       (Type_bogus (),
-                        OG.CONty(
-                          lookupTyConError(i, longtycon),
-                          out_ty_list, longtycon
-                        )
-                       )
+              (case C.lookup_longtycon C longtycon of
+		 Some tystr =>
+		   let
+		     val (typeFcn, _) = TyStr.to_theta_and_VE tystr
+		     val expectedArity = TypeFcn.arity typeFcn
+		     val actualArity = List.size tau_list
+		     val _ = debug_pr_msg "elab_ty(CONty)"
+		   in
+		     if expectedArity = actualArity then
+		       (TypeFcn.apply (typeFcn, tau_list),
+			OG.CONty (okConv i, out_ty_list, longtycon))
+		     else
+		       (Type_bogus (),
+			OG.CONty (errorConv (i, ErrorInfo.WRONG_ARITY
+					         {expected=expectedArity,
+						  actual=actualArity}),
+			          out_ty_list, longtycon))
+		   end
+	       | None =>
+		   (Type_bogus (),
+		    OG.CONty(lookupTyConError(i, longtycon),
+			     out_ty_list, longtycon)))
             end
 
           (* Function type *)                                   (*rule 47*)
