@@ -103,6 +103,21 @@ as
     parent_folder_id in scs_fs_folders.folder_id%TYPE,
     folder_name in scs_fs_folders.foldername%TYPE
   ) return scs_fs_folders.folder_id%TYPE;
+
+  /* [getPath folder_id] returns the path up to the folder represented
+      by folder_id. If folder_id represents a folder with label
+      folder_label
+
+        foo/bar/folder_label
+
+     then getPath returns then path foo/bar/.
+
+     Return null on error.
+  */
+  function getPath (
+    folder_id in scs_fs_folders.folder_id%TYPE
+  ) return varchar;
+
 end scs_file_storage;
 /
 show errors
@@ -396,7 +411,50 @@ as
       return null;
   end getSubFolderId;
 
+  function getPath (
+    folder_id in scs_fs_folders.folder_id%TYPE
+  ) return varchar
+  is
+    r scs_fs_folders%ROWTYPE;
+    res varchar(1000);
+  begin
+    res := '';
+    for r in (select *
+                from scs_fs_folders
+             connect by folder_id = prior parent_id
+               start with folder_id = getPath.folder_id
+               where folder_id <> getPath.folder_id) /* Do not include the folder it self */
+    loop
+      res := r.label || '/' || res;
+    end loop;
+    return res;
+
+  exception
+    when others then
+      return null;
+  end getPath;
 
 end scs_file_storage;
+/
+show errors
+
+create or replace trigger scs_fs_folders_up_in_tr
+before insert or update on scs_fs_folders
+for each row
+declare
+  prev_path varchar(1000);
+  prev_label varchar(1000);
+begin
+  /* Get path and label on parent folder */
+  select path_on_disk, label
+    into prev_path, prev_label
+    from scs_fs_folders
+   where folder_id = :new.parent_id;
+  :new.path_on_disk := prev_path || prev_label || '/';
+
+  exception
+    when NO_DATA_FOUND then
+      :new.path_on_disk := '';
+end;
 /
 show errors
