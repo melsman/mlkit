@@ -1,35 +1,35 @@
-#include <Common.h>
-#include <System/SysAll.h>
-#include <UI/UIAll.h>
+#include <PalmTypes.h>
+#include <System/SystemPublic.h>
+#include <UI/UIPublic.h>
 
 #include "ri_sim.h"
 #include "Region.h"
 
-static Word cardNo = 1;
+static UInt16 cardNo = 1;
 #define NUM_REGIONS 80
-#define MAX_ALLOC (256*80)         // Words
+#define MAX_ALLOC (256*80)         // UInt16s
 static Regiondesc region_stack[NUM_REGIONS];
-static ULong region_stat[NUM_REGIONS];
-static ULong region_stack_idx = 0;
+static UInt32 region_stat[NUM_REGIONS];
+static UInt32 region_stack_idx = 0;
 
 // Region statistics
-static ULong num_alloc_reg = 0;     // Number of calls to alloc_region
-static ULong num_dealloc_reg = 0;   // Number of calls to dealloc_region
-static ULong num_alloc_in_reg = 0;  // Number of calls to alloc
-static ULong num_reset_reg = 0;     // Number of calls to region_region
-static ULong num_dealloc_until = 0; // Number of calls to dealloc_regions_until
-static ULong total_alloc = 0;       // Total number of allocated words in regions
+static UInt32 num_alloc_reg = 0;     // Number of calls to alloc_region
+static UInt32 num_dealloc_reg = 0;   // Number of calls to dealloc_region
+static UInt32 num_alloc_in_reg = 0;  // Number of calls to alloc
+static UInt32 num_reset_reg = 0;     // Number of calls to region_region
+static UInt32 num_dealloc_until = 0; // Number of calls to dealloc_regions_until
+static UInt32 total_alloc = 0;       // Total number of allocated words in regions
 
 // Drawing histograms
-static ULong from_idx=0;                   // Low watermark om change (region index).
-static ULong to_idx=0;                     // High watermark on change (region index).
+static UInt32 from_idx=0;                   // Low watermark om change (region index).
+static UInt32 to_idx=0;                     // High watermark on change (region index).
 #define DEFAULT_SCALING (90.0)             // One pixel pr. byte.
 static double scaling=DEFAULT_SCALING;     // Max. bytes shown.
 static double old_scaling=DEFAULT_SCALING; // Old scaling.
-static ULong max_reg_idx=0;                // Index of largest region.
-static ULong old_max_reg_idx=0;            // Old index of largest region.
+static UInt32 max_reg_idx=0;                // Index of largest region.
+static UInt32 old_max_reg_idx=0;            // Old index of largest region.
 
-ULong tilf(ULong a, ULong b) {
+UInt32 tilf(UInt32 a, UInt32 b) {
   if (b < a)
     panic("b < a in tilf");
   return a + (SysRandom(0) % (b-a+1));
@@ -60,8 +60,8 @@ void recalc_stat() {
   }
 }
 
-ULong choose_region() {
-  ULong seed = 0;
+UInt32 choose_region() {
+  UInt32 seed = 0;
   if (region_stack_idx > 0) {
     seed = tilf(0,region_stack_idx-1);
     return seed + (region_stack_idx-1-seed) / 2;
@@ -94,10 +94,10 @@ void dealloc_reg() {
 
 void alloc_in_reg() {
   int n = tilf(1,60);
-  ULong idx;
+  UInt32 idx;
   if (region_stack_idx > 0) {
     idx = choose_region();
-    alloc((ULong)&region_stack[idx],n);
+    alloc((UInt32)&region_stack[idx],n);
     region_stat[idx] += n;
     num_alloc_in_reg++;
     from_idx = idx;
@@ -110,10 +110,10 @@ void alloc_in_reg() {
 }
 
 void reset_reg() {
-  ULong idx;
+  UInt32 idx;
   if (region_stack_idx > 0) {
     idx = choose_region();
-    reset_region((ULong)&region_stack[idx]);
+    reset_region((UInt32)&region_stack[idx]);
     total_alloc -= region_stat[idx];
     region_stat[idx] = 0;
     num_reset_reg++;
@@ -126,14 +126,14 @@ void reset_reg() {
 
 void dealloc_reg_until() {
   int i;
-  ULong idx;
+  UInt32 idx;
   if (region_stack_idx > 0) {
     idx = choose_region();
     from_idx = idx;
     to_idx = region_stack_idx-1;
     for (i=from_idx;i<=to_idx;i++)
       region_stat[i] = 0;
-    dealloc_regions_until((ULong)&region_stack[idx]);
+    dealloc_regions_until((UInt32)&region_stack[idx]);
     region_stack_idx = idx; // Region idx is also deallocated!
     recalc_stat();
     num_dealloc_until++;
@@ -142,7 +142,7 @@ void dealloc_reg_until() {
 
 // We do 80% alloc and 20% alloc_region.
 void sim_alloc() {
-  ULong rnd = tilf(0,99);
+  UInt32 rnd = tilf(0,99);
   if (rnd < 80)
     alloc_in_reg();
   else
@@ -151,7 +151,7 @@ void sim_alloc() {
 
 // We do 2% dealloc regions until, 38% reset regions and 60% dealloc region
 void sim_dealloc(int do_dealloc_reg_until) {
-  ULong rnd = tilf(0,99);
+  UInt32 rnd = tilf(0,99);
 
   if (rnd < 2 && do_dealloc_reg_until)
     dealloc_reg_until();
@@ -172,7 +172,7 @@ void sim_dealloc(int do_dealloc_reg_until) {
 // and the top most region. This strategy is taken from Mads Toftes
 // region simulator, see the homepage for the ML Kit version 2.
 void sim_regs() {
-  ULong rnd = tilf(0,99);
+  UInt32 rnd = tilf(0,99);
   if ((double)total_alloc < MAX_ALLOC*0.9) {
     // Do 95% allocations and 5% de-allocations.
     if (rnd < 5)
@@ -193,8 +193,8 @@ void sim_regs() {
 // err = FtrGet(sysFtrCreator, sysFtrNumROMVersion, &romversion);
 
 // Show a dynamic label on the form.
-void show_lab(FormPtr form, Word labelID, CharPtr tmp_text) {
-  Word label_index;
+void show_lab(FormPtr form, UInt16 labelID, Char* tmp_text) {
+  UInt16 label_index;
 
   label_index = FrmGetObjectIndex(form, labelID);
   FrmHideObject(form, label_index);
@@ -205,9 +205,9 @@ void show_lab(FormPtr form, Word labelID, CharPtr tmp_text) {
 }
 
 // Return the id of the button pressed.
-static Word display_modal_form(FormPtr form) {
+static UInt16 display_modal_form(FormPtr form) {
   FormPtr prev_form = FrmGetActiveForm();
-  Word button_id;
+  UInt16 button_id;
 
   FrmSetActiveForm(form);
   
@@ -225,9 +225,9 @@ static Word display_modal_form(FormPtr form) {
 Err show_heap_info() {
 
   Err err;
-  UInt numHeaps, numRAMHeaps, version;
-  UInt heapNo, heapId;
-  ULong free, max, heapSize;
+  UInt16 numHeaps, numRAMHeaps, version;
+  UInt16 heapNo, heapId;
+  UInt32 free, max, heapSize;
   Char tmp_text[100], tmp_textd1[100], tmp_textd2[100];
   FormPtr form;
 
@@ -287,10 +287,10 @@ Err show_heap_info() {
 Err show_card_info() {
   Char cardName[32];
   Char manufName[32];
-  ULong crDate, romSize, ramSize, freeBytes;
+  UInt32 crDate, romSize, ramSize, freeBytes;
   Err err;
-  UInt version;
-  ULong free, max;
+  UInt16 version;
+  UInt32 free, max;
   Char tmp_text[100];
 
   // Initialize the form.
@@ -332,9 +332,9 @@ Err show_card_info() {
 
 // Get Memory card info.
 Err mem_card_info(FormPtr form) {
-  UInt numCards;
+  UInt16 numCards;
   Err err;
-  Ptr startStack, endStack;
+  MemPtr startStack, endStack;
   Boolean stackOk;
   Char tmp_text[100];
 
@@ -344,9 +344,9 @@ Err mem_card_info(FormPtr form) {
   show_lab(form, labelID_stack_addr, tmp_text);
 
   if (stackOk)
-    StrPrintF(tmp_text, "Size: %lu Kb.", (((ULong)endStack)-((ULong)startStack))/1024);
+    StrPrintF(tmp_text, "Size: %lu Kb.", (((UInt32)endStack)-((UInt32)startStack))/1024);
   else
-    StrPrintF(tmp_text, "Size: %lu Kb. OVERFLOW", (((ULong)endStack)-((ULong)startStack)+1)/1024);
+    StrPrintF(tmp_text, "Size: %lu Kb. OVERFLOW", (((UInt32)endStack)-((UInt32)startStack)+1)/1024);
   show_lab(form, labelID_stack_size, tmp_text);
 
   // Show number of cards
@@ -371,7 +371,7 @@ void draw_histogram(int from_idx, int to_idx) {
   for (i=from_idx;i<=to_idx;i=i+1) {
     y = 160-(int)(90.0*region_stat[i]/scaling);
     if (y<70) {
-	StrPrintF(tmp_text, "scaling with y=%i, region_sta[i]=%lu and scaling %lu",y, region_stat[i],(ULong)scaling);
+	StrPrintF(tmp_text, "scaling with y=%i, region_sta[i]=%lu and scaling %lu",y, region_stat[i],(UInt32)scaling);
 	panic(tmp_text);
     }
     if (i == max_reg_idx)
@@ -537,7 +537,7 @@ void pp_event(EventType* event) {
 }
 
 int event_loop(void) {
-  Word error;
+  UInt16 error;
   EventType event;
   FormPtr form;
   int form_id;
@@ -585,7 +585,7 @@ int stop_application(void) {
 
 }
 
-DWord PilotMain(Word cmd, Ptr cmdPBP, Word launchFlags) {
+UInt32	PilotMain(UInt16 cmd, void *cmdPBP, UInt16 launchFlags){
 
   EventType event;
   int error;

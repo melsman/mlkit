@@ -45,7 +45,7 @@ words in all.
 // Region pages are word aligned. Make sure that it's ok for regionpages containing double's.
 typedef union regionpage {
     union regionpage* n;                         /* NULL or pointer to next page. */
-    ULong i[ALLOCATABLE_WORDS_IN_REGION_PAGE];   /* Space for data*/
+    UInt32 i[ALLOCATABLE_WORDS_IN_REGION_PAGE];   /* Space for data*/
 } Regionpage;
 
 #define HEADER_WORDS_IN_REGION_PAGE 1 
@@ -68,9 +68,9 @@ of regions (for popping of regions when exceptions are raised)
 typedef struct regiondesc {
   struct regiondesc* p;    /* Pointer to previous region descriptor. It has to be at 
                               the bottom of the structure */
-  ULong* a;                /* Pointer to first unused word in the newest region page
+  UInt32* a;                /* Pointer to first unused word in the newest region page
                               of the region. */
-  ULong* b;                /* Pointer to the border of the newest region page, defined as the address
+  UInt32* b;                /* Pointer to the border of the newest region page, defined as the address
                               of the first word to follow the region page. One maintains
                               the invariant a<=b;  a=b means the region page is full.*/
   Regionpage* fp;          /* Pointer to the oldest (first allocated) page of the region. 
@@ -109,15 +109,15 @@ of the region and is useful for, among other things, tail recursion).
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
-extern ULong bytes_alloc;
+extern UInt32 bytes_alloc;
 extern Regionpage* freelist;
 extern Regiondesc* topRegion;
 
-ULong *alloc_region(Regiondesc *rdAddr);
-ULong *dealloc_region();
-ULong *alloc (ULong rdAddr, int n);
-ULong reset_region(ULong rdAddr);
-void dealloc_regions_until(ULong rdAddr);
+UInt32 *alloc_region(Regiondesc *rdAddr);
+UInt32 *dealloc_region();
+UInt32 *alloc (UInt32 rdAddr, int n);
+UInt32 reset_region(UInt32 rdAddr);
+void dealloc_regions_until(UInt32 rdAddr);
 void init_runtime_system();
 
 #endif /*__REGION__*/
