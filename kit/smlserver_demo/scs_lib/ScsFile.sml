@@ -9,9 +9,11 @@ signature SCS_FILE =
        already exist. Does nothing if dir already exists. Raises ScsError.Fail on error. *)
     val mkDir : string -> unit
 
-    (* [uniqueFile dir] returns a filename (excluding dir) that is unique in directory dir. There is no guarantee that
-       the file will remain unique (i.e., somebody else can create the file after the call to this function)
-       Raises ScsError.Fail on error *)
+    (* [uniqueFile dir] returns a filename (excluding dir) that is
+       unique in directory dir. There is no guarantee that the file
+       will remain unique (i.e., somebody else can create the file
+       after the call to this function) Raises ScsError.Fail on error
+       *)
     val uniqueFile : string -> string
   end
 
@@ -28,7 +30,7 @@ structure ScsFile :> SCS_FILE =
 			 if FileSys.isDir d
 			   then d
 			 else
-			   ScsError.raiseError `ScsFile.mkDir ^dir : file exits but it not a directory`
+			   ScsError.raiseError `ScsFile.mkDir ^dir : file exits but is not a directory`
 		       else (FileSys.mkDir d; d)
 		   end
 		   handle OS.SysErr s => ScsError.raiseError `ScsFile.mkDir ^dir : ^(pp_syserr s)`)
