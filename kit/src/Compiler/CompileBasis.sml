@@ -189,7 +189,6 @@ functor CompileBasis(structure Con : CON
 	      Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)
 	  val tynames = TyName.tyName_LIST :: 
               TyName.tyName_BOOL ::
-	      TyName.tyName_BYTE_TABLE ::
 	      TyName.tyName_WORD_TABLE :: tynames     (* for elim eq *) 
 	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
 	  val lvars = lvars_eq @ lvars
