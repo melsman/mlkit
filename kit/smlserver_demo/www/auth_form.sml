@@ -3,12 +3,7 @@ val target =
     SOME t => t
   | NONE => Ns.Conn.location() ^ "/auth_example.sml" (* Default target url *)
 
-val _ = Ns.return (`
-<html>
-<head>
-<title>SMLserver Authentication</title>
-</head>
-<body bgcolor=white>
+val _ = ScsPage.returnPg "SMLserver Authentication" (`
 <form action="/auth.sml" method=post>
   <table>
    <input type=hidden name=target value="^target">
@@ -23,7 +18,4 @@ val _ = Ns.return (`
   </table>
 </form>
 
-Back to the <a href="/auth_example.sml">authentication example page</a>.<p>
-
-</body>
-</html>`)
+Back to the <a href="/auth_example.sml">authentication example page</a>.`)

@@ -106,14 +106,7 @@ val sex   = ScsFormVar.wrapPanic genPanicPg (ScsFormVar.getEnumErr ["Female","Ma
 val date  = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getDateIso "date"
 *)
 
-val _ =
-Ns.return (`
-<html>
-<head>
-<title>Result of Checking Form Variables</title>
-</head>
-<body bgcolor=white>
-<h2>Result of Checking Form Variables</h2><p>
+val _ = ScsPage.returnPg "Result of Checking Form Variables" `
 You provided the following information:<p>
 
 The integer: ^(Int.toString i)<p>
@@ -128,10 +121,4 @@ The phone number is: ^phone<p>
 The URL is: ^url<p>
 The Cpr is: ^cpr<p>
 The Sex is: ^sex<p>
-The Date is: ^date<p>
-
-<hr>
-<a href="http://www.smlserver.org/">SMLserver Home Page</a> 
-(<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-09-20
-</body>
-</html>`)
+The Date is: ^date<p>`

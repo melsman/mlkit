@@ -1,17 +1,12 @@
 fun datefmt date = Date.fmt "%a, %d-%b-%Y %H:%M:%S GMT" date
 val % = ScsDict.d ScsLang.English
 
-val _ = Ns.return 
-  (`
-   <html>
-   <body bgcolor=white>` ^^
-   (case ScsLogin.user_lang of
+val _ = ScsPage.returnPg (%"Show Cookies")
+   ((case ScsLogin.user_lang of
       ScsLang.Danish => `
 	Dette er en kodeordsbeskyttet side.<p>
 
 	Du er logget på med bruger id: ^(Int.toString ScsLogin.user_id)<p>
-
-	<h1>Vis Cookies</h1>
 
 	Det nuværende tidsstempel er (GMT): <b>^(datefmt(Date.fromTimeUniv(Time.fromSeconds(Time.toSeconds(Time.now())+60))))</b><p>
 
@@ -20,8 +15,6 @@ val _ = Ns.return
 	This is a password protected page.<p>
 
 	You are logged in with user_id: ^(Int.toString ScsLogin.user_id)<p>
-
-	<h1>Show Cookies</h1>
 
 	Current GMT date is: <b>^(datefmt(Date.fromTimeUniv(Time.fromSeconds(Time.toSeconds(Time.now())+60))))</b><p>
 	
@@ -39,10 +32,4 @@ val _ = Ns.return
       </form><p>
 
       <p>
-      Tilbage til <a href="auth_example.sml">^(% "authentication example")</a> siden.<p>
-      <hr>
-      <a href="http://www.smlserver.org/">^(% "SMLserver Home Page")</a> 
-      (<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-09-23
-      
-      </body>
-      </html>`)
+      ^(% "Back to") <a href="auth_example.sml">^(% "authentication example")</a> ^(%"page").`)
