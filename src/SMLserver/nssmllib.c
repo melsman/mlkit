@@ -13,7 +13,7 @@
 #include "../Runtime/Tagging.h"
 
 #ifdef REGION_PAGE_STAT
-int
+void
 nssml_LogRegionPageStat(void)
 {
   int i;
@@ -37,7 +37,7 @@ nssml_LogRegionPageStat(void)
   Ns_Log(Notice, "nssml_LogRegionPageStat - end");
 }
 #else
-int
+void
 nssml_LogRegionPageStat(void)
 {
   Ns_Log(Notice, "nssml_LogRegionPageStat - disabled");
