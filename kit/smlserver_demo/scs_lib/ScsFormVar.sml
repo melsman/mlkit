@@ -76,10 +76,15 @@ signature SCS_FORM_VAR =
     val getEnumErr : string list -> string formvar_fn
     val getDateIso : string formvar_fn
 
+    val wrapQQ  : string formvar_fn -> string * string * errs -> string * string * errs
     val wrapOpt : 'a formvar_fn -> (string -> 'a option)
     val wrapExn : 'a formvar_fn -> (string -> 'a)
     val wrapFail : 'a formvar_fn -> (string * string -> 'a)
     val wrapPanic : (string * string -> 'a) -> 'a formvar_fn -> (string -> 'a)
+
+    (* For extensions *)
+    val trim : string -> string
+    val getErr : 'a -> (string->'a) -> string -> (string->quot) -> (string->bool) -> 'a formvar_fn
   end
 
 structure ScsFormVar :> SCS_FORM_VAR =
@@ -135,6 +140,11 @@ structure ScsFormVar :> SCS_FORM_VAR =
 
     fun anyErrors ([]:errs) = ()
       | anyErrors (errs) = (returnErrorPg errs; Ns.exit())
+
+    fun wrapQQ (f : string formvar_fn) : string * string * errs -> string * string * errs =
+      fn arg =>
+      case f arg of
+	(v,e) => (v,Db.qq v,e)
 
     fun wrapOpt (f : 'a formvar_fn) : string -> 'a option =
       fn fv => 
@@ -227,21 +237,22 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	  (0,errs')
       end
     
+    fun trim s = Substring.string (Substring.dropr Char.isSpace (Substring.dropl Char.isSpace (Substring.all s)))
+    fun getErr (empty_val:'a) (conv_val:string->'a) (ty:string) (add_fn:string->quot) (chk_fn:string->bool) =
+      fn (fv:string,emsg:string,errs:errs) =>
+      case Ns.Conn.formvarAll fv of
+	[]  => (empty_val,addErr(genErrMsg(emsg,add_fn ((%"You must provide a")^" <b>"^ty^"</b>.")),errs))
+      | [""]  => (empty_val,addErr(genErrMsg(emsg,add_fn ((%"You must provide a")^" <b>"^ty^"</b>.")),errs))
+      | [v] => 
+	  if chk_fn v then
+	    (conv_val v,errs)
+	  else
+	    (empty_val, addErr(genErrMsg(emsg,add_fn ((%"You must provide an valid")^" <b>"^ty^"</b> - <i>" ^ 
+						      v ^ "</i> "^(%"is not one"))),
+			       errs))
+      | _ => (empty_val, addErr(errTooMany emsg,errs))
+
     local
-      fun trim s = Substring.string (Substring.dropr Char.isSpace (Substring.dropl Char.isSpace (Substring.all s)))
-      fun getErr (empty_val:'a) (conv_val:string->'a) (ty:string) (add_fn:string->quot) (chk_fn:string->bool) =
-	fn (fv:string,emsg:string,errs:errs) =>
-	case Ns.Conn.formvarAll fv of
-	  []  => (empty_val,addErr(genErrMsg(emsg,add_fn ((%"You must provide a")^" <b>"^ty^"</b>.")),errs))
-	| [""]  => (empty_val,addErr(genErrMsg(emsg,add_fn ((%"You must provide a")^" <b>"^ty^"</b>.")),errs))
-	| [v] => 
-	    if chk_fn v then
-	      (conv_val v,errs)
-	    else
-	      (empty_val, addErr(genErrMsg(emsg,add_fn ((%"You must provide an valid")^" <b>"^ty^"</b> - <i>" ^ 
-							v ^ "</i> "^(%"is not one"))),
-				 errs))
-	| _ => (empty_val, addErr(errTooMany emsg,errs))
       val getErr' = getErr "" trim
       fun msgEmail s = 
 	(case ScsLogin.user_lang of

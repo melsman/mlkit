@@ -335,6 +335,8 @@ signature NS =
      * data. The decoded data is returned. *)
     val decodeUrl : string -> string
 
+    val buildUrl : string -> (string * string) list -> string
+
     structure Mail : 
       sig
 	val sendmail : 
@@ -357,6 +359,9 @@ signature NS =
     val fetchUrl : string -> string option
 
     val exit : unit -> 'a
+
+    (* We need a random generator *)
+    val randomGenerator : Random.generator
 
     (* Creating the two supported database interfaces *)
     structure DbOra : NS_DB where type status = status

@@ -60,6 +60,7 @@ signature NS_DB =
     val zeroOrOneField: quot -> string option
     val oneRow        : quot -> string list
     val zeroOrOneRow  : quot -> string list option
+    val existsOneRow  : quot -> bool
 
     val seqNextvalExp : string -> string  (*construct new-sequence expression*)
     val seqNextval    : string -> int     (*obtain new sequence number from database*)

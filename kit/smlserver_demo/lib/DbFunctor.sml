@@ -151,6 +151,15 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun zeroOrOneRow sql : string list option =
       wrapDb (fn db => zeroOrOneRowDb(db,sql))
 
+    fun existsOneRowDb(db,sql) : bool =
+      let val s : Set.set = select(db, sql)
+      in 
+	if getRow(db,s) <> NsBasics.END_DATA then true else false
+      end
+
+    fun existsOneRow sql : bool =
+      wrapDb (fn db => existsOneRowDb(db,sql))
+
     fun qq s =
       let 
 	fun qq_s' [] = []

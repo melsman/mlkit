@@ -96,7 +96,7 @@ structure Html :> HTML =
     fun inradio {name, value} attr = `<INPUT TYPE=RADIO VALUE="^value" NAME="^name" ^attr>`
     fun inreset value attr = `<INPUT TYPE=RESET VALUE="^value" ^attr>`
     fun insubmit value attr = `<INPUT TYPE=SUBMIT VALUE="^value" ^attr>`
-    fun inhidden {name, value} = `<INPUT TYPE=HIDDEN NAME="^name" VALUE="^value">`
+    fun inhidden name value = `<INPUT TYPE=HIDDEN NAME="^name" VALUE="^value">`
     fun textarea name quot = `<TEXTAREA NAME="^name">` ^^ quot ^^ `</TEXTAREA>`
     fun textareaa name attr quot = `<TEXTAREA NAME="^name" ^attr>` ^^ quot ^^ `</TEXTAREA>`
     fun select name attr quot = `<SELECT NAME="^name" ^attr>` ^^ quot ^^ `</SELECT>`
