@@ -47,7 +47,7 @@ Robin Milner, Mads Tofte, Robert Harper, and David MacQueen.
 
 \bibitem[Ses96]{sestoft96}
 Peter Sestoft.
-\newblock {\em Partial Evaluation}, volume 1110, chapter on {ML} pattern match
+\newblock {\em Partial Evaluation}, volume 1110, chapter {ML} pattern match
   compilation and partial evaluation, pages 446--464.
 \newblock Springer-Verlag, February 1996.
 
