@@ -29,6 +29,8 @@
 #define NSSML_NOTIMESTAMP (-2)
 #define NSSML_ULFILENOTFOUND (-3)
 
+static char *formtyping = NULL;
+
 time_t
 nssml_fileModTime(char* file) 
 {
@@ -170,6 +172,12 @@ rpMap = regionPageMapNew();
     return NS_ERROR;
   }
 
+  formtyping = Ns_ConfigGetValue(configPath, "formtyping");
+  if (formtyping != NULL) {
+    Ns_Log(Notice, "nssml: form typing enabled");
+  }
+
+
   sprintf(ctx->ulFileName, "%s/PM/%s.ul", Ns_PageRoot(hServer), ctx->prjid);
   sprintf(ctx->timeStampFileName, "%s/PM/%s.timestamp", Ns_PageRoot(hServer), ctx->prjid);
   
@@ -206,6 +214,15 @@ rpMap = regionPageMapNew();
  * msp-files. Returns -1 on error.
  * ------------------------------------------------- */
 
+int
+nssml_next_sml0(char* p)
+{
+  if ( *(p+1) == 's' && *(p+2) == 'm' 
+       && *(p+3) == 'l' && *(p+4) == '\0' )
+    return 1;
+  else return 0;
+}
+
 int 
 nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid) 
 {
@@ -228,7 +245,15 @@ nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid)
   if ( *p == '/' ) p++;
   while ( *p != '\0' ) {
     char c = *p;
-    if ( c == '.' ) c = '%';
+    if ( c == '.' ) {
+      if ( formtyping != NULL && nssml_next_sml0(p) ) {
+	uo[i++] = '%';
+	uo[i++] = 'g';
+	uo[i++] = 'e';
+	uo[i++] = 'n';
+      }
+      c = '%';
+    } 
     if ( c == '/' ) c = '+';    
     uo[i++] = c;
     p++;
@@ -263,7 +288,7 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
   }
 
   /*
-   * Test to see if the time stamp file is existing
+   * Test to see if the time stamp file exists
    */
 
   t = nssml_fileModTime(ctx->timeStampFileName);

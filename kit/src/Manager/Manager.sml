@@ -183,10 +183,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	              | PARbody of unitid list  (* parallel interpretation *)
 	type prj = {imports : absprjid list, extobjs: extobj list, body : body}
 
-	val getParbody          : prj -> unitid list option (* for SMLserver *)
-	val prependUnit         : unitid * prj -> prj       (* for SMLserver *)
-	val parse_project       : absprjid -> prj      
-	val local_check_project : absprjid * prj -> unit
+	val getParbody             : prj -> unitid list option (* for SMLserver *)
+	val prependUnit            : unitid * prj -> prj       (* for SMLserver *)
+	val appendFunctorInstances : prj -> prj
+	val parse_project          : absprjid -> prj      
+	val local_check_project    : absprjid * prj -> unit
       end =
     struct
       type extobj = string   (* externally compiled objects; .o-files *)
@@ -461,6 +462,28 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  let val {imports, extobjs, body} = prj
 	  in {imports=imports, extobjs=extobjs,
 	      body=LOCALbody(UNITbody(unitid,EMPTYbody),body,EMPTYbody)}
+	  end
+
+      fun appendFunctorInstances (prj) = 
+	  let val {imports, extobjs, body} = prj
+	      fun expand unitids = 
+		  let val unitbodies = foldr UNITbody EMPTYbody unitids 
+		      fun gen s = 
+			  case OS.Path.splitBaseExt s of
+			      {base,ext=SOME ext} => (base ^ ".gen" ^ "." ^ ext)
+			    | _ => error "The file name '" ^ s ^ "' must have extension .sml, .sig, or .fun"
+		  in LOCALbody(unitbodies, PARbody (map gen unitids), EMPTYbody)
+		  end
+	      fun substPAR f b =
+		  case b of
+		      LOCALbody(b1,b2,EMPTYbody) => LOCALbody(b1,substPAR f b2,EMPTYbody)
+		    | LOCALbody(b1,b2,b3) => LOCALbody(b1,b2,substPAR f b3)
+		    | PARbody unitids => f unitids
+		    | INLINEbody _ => b
+		    | UNITbody _ => b
+		    | EMPTYbody => b
+	      val body = substPAR expand body
+	  in {imports=imports,extobjs=extobjs,body=body}
 	  end
 
     end (*structure Project*)
@@ -776,9 +799,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	                                  \part of a local-construct"
               val (B2_opt, modc, clean, modtimes) = 
 		build_body(fi, absprjid, Basis_plus(B,B1), body2, clean, modtimes, modc1)
+	      fun isPAR (PARbody _) = true
+		| isPAR _ = false
 	      val _ = case B2_opt
 			of SOME _ => ()
-			 | NONE => MO.ModCode.mk_uoFileList (absprjid,modc1)
+			 | NONE => 
+			    if body3 = EMPTYbody andalso isPAR body2 then 
+				MO.ModCode.mk_uoFileList (absprjid,modc1)
+			    else ()
 	      val B1' = drop_toplevel B1
 	  in case body3
 	       of EMPTYbody => (Basis_plus_opt'(B1', B2_opt), modc, clean, modtimes)
@@ -881,12 +909,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			val _ = print "[parsing arguments of scriptlet functors]\n"
 			val formIfaces = map Scriptlet.parseArgsFile unitids
 			val formIfaces = 
-			    map (fn {funid,strid,valspecs} => 
+			    map (fn {funid,valspecs} => 
 				 {name=funid,fields=map valspecToField valspecs})
 			    formIfaces
+			val prj = Project.prependUnit (formIfaceFile,prj)
+			val prj = Project.appendFunctorInstances prj
 		    in	  Scriptlet.genScriptletInstantiations formIfaces
 			; Scriptlet.genFormInterface formIfaceFile formIfaces
-			; Project.prependUnit (formIfaceFile,prj)
+			; prj 
 		    end
 
     (* Build a project *)
