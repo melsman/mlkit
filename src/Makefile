@@ -2,13 +2,18 @@
 # Build the ML Kit including tools, runtime systems, etc.
 #
 
+KITVERSION=4.0.0
+INSTDIR_KAM=/usr/local/mlkit-kam-$(KITVERSION)
+INSTDIR_NATIVE=/usr/local/mlkit-$(KITVERSION)
+
 # Some commands
 MKDIR=mkdir -p
+INSTALL=cp -p
 
-# Some directories
 BINDIR=../bin
 RUNDIR=RuntimeWithGC
-INSTDIR=/usr/local/mlkit-$(KITVERSION)
+
+SHELL=/bin/sh
 
 ARCH-OS=x86-linux
 HEAP2EXEC=heap2exec/heap2exec heap2exec/run.$(ARCH-OS)
@@ -56,7 +61,7 @@ genopcodes: $(GENOPCODES_TARGETS)
 $(GENOPCODES_TARGETS): $(GENOPCODES_SOURCES)
 	mkdir -p $(BINDIR)
 	cd Tools/GenOpcodes; $(MAKE)
-	../bin/kitgen_opcodes `pwd`
+	$(BINDIR)/kitgen_opcodes `pwd`
 
 smlserver:
 	cd SMLserver; $(MAKE)
@@ -75,38 +80,41 @@ KITDEMO_FILES = `(cd ../kitdemo; ls -w 10000 *.sml *.pm *.c *.script scanfiles)`
 MLYACCLIB_FILES = join.sml ml-yacc-lib.pm parser2.sml base.sig          \
 lrtable.sml parser1.sml stream.sml
 
-BASISLIB_FILES = `(cd ../basislib; ls -w 10000 *.sml *.pm *.c *.script)`
+BASISLIB_FILES = `(cd ../basislib; ls -w 10000 *.sml *.pm *.log *.script)`
 
 NOPROF_OFILES = `(cd ../basislib/PM/NoProf; ls -w 10000 *.o *.bdy *.date)`
 
 install:
-	rm -rf $(INSTDIR)
-	$(MKDIR) $(INSTDIR)
-	$(MKDIR) $(INSTDIR)/bin
-	$(MKDIR) $(INSTDIR)/kitdemo
-	$(MKDIR) $(INSTDIR)/kitdemo/utils
-	$(MKDIR) $(INSTDIR)/ml-yacc-lib
-	$(MKDIR) $(INSTDIR)/basislib
-	$(MKDIR) $(INSTDIR)/basislib/PM
-	$(MKDIR) $(INSTDIR)/basislib/PM/NoProf
-	$(MKDIR) $(INSTDIR)/basislib/PM/GC
-
-	(cp -p bin/runtimeSystem.o bin/runtimeSystemGC.o $(INSTDIR)/bin)
-	(cd ..; cp -p copyright readme.x86-linux $(INSTDIR))
-	(cd ../kitdemo; cp -p $(KITDEMO_FILES) $(INSTDIR)/kitdemo) 
-	(cd ../kitdemo/utils; cp -p ListUtils.sml utils.pm $(INSTDIR)/kitdemo/utils) 
-	(cd ../ml-yacc-lib; cp -p $(MLYACCLIB_FILES) $(INSTDIR)/ml-yacc-lib)        
-	(cd ../bin; cp -p mlkit.heap2exec $(INSTDIR)/bin)
-	(cd ../basislib; cp -p $(BASISLIB_FILES) $(INSTDIR)/basislib)
-	(cd ../basislib/PM/NoProf; cp -p $(NOPROF_OFILES) $(INSTDIR)/basislib/PM/NoProf)
-	cp -p ../doc/manual/manual.ps $(INSTDIR)
-
-# the following is done in the %post section in the rpm file! 
-# But why not here? Because the installdir is not known yet!
+	rm -rf $(INSTDIR_NATIVE)
+	$(MKDIR) $(INSTDIR_NATIVE)
+	$(MKDIR) $(INSTDIR_NATIVE)/bin
+	$(MKDIR) $(INSTDIR_NATIVE)/doc
+	$(MKDIR) $(INSTDIR_NATIVE)/kitdemo
+	$(MKDIR) $(INSTDIR_NATIVE)/kitdemo/utils
+	$(MKDIR) $(INSTDIR_NATIVE)/ml-yacc-lib
+	$(MKDIR) $(INSTDIR_NATIVE)/basislib
+	$(MKDIR) $(INSTDIR_NATIVE)/basislib/PM
+	$(MKDIR) $(INSTDIR_NATIVE)/basislib/PM/NoProf
+	$(MKDIR) $(INSTDIR_NATIVE)/basislib/PM/GC
+	$(INSTALL) $(BINDIR)/runtimeSystem.o $(INSTDIR_NATIVE)/bin
+	$(INSTALL) $(BINDIR)/runtimeSystemGC.o $(INSTDIR_NATIVE)/bin
+	$(INSTALL) $(BINDIR)/rp2ps $(INSTDIR_NATIVE)/bin
+	$(INSTALL) ../copyright ../README ../roadmap $(INSTDIR_NATIVE)
+	cd ../kitdemo; $(INSTALL) $(KITDEMO_FILES) $(INSTDIR_NATIVE)/kitdemo 
+	cd ../kitdemo/utils; $(INSTALL) ListUtils.sml utils.pm $(INSTDIR_NATIVE)/kitdemo/utils 
+	cd ../ml-yacc-lib; $(INSTALL) $(MLYACCLIB_FILES) $(INSTDIR_NATIVE)/ml-yacc-lib
+	$(INSTALL) $(BINDIR)/mlkit.$(ARCH-OS) $(INSTDIR_NATIVE)/bin
+	cd ../basislib; $(INSTALL) $(BASISLIB_FILES) $(INSTDIR_NATIVE)/basislib
+	cd ../basislib/PM/NoProf; $(INSTALL) $(NOPROF_OFILES) $(INSTDIR_NATIVE)/basislib/PM/NoProf
+	$(INSTALL) ../doc/manual/mlkit.pdf $(INSTDIR_NATIVE)/doc
 #
-#	echo '#!/bin/sh' > /usr/local/mlkit/bin/mlkit
-#	echo -e '/usr/local/mlkit/bin/mlkit.heap2exec /usr/local/mlkit \44*' >> /usr/local/mlkit/bin/mlkit
-#	chmod a+x /usr/local/mlkit/bin/mlkit
+# The following is also done in the %post section in the rpm file, 
+# because the --prefix option to rpm can change the installation 
+# directory! 
+#
+	echo '#!/bin/sh' > $(INSTDIR_NATIVE)/bin/mlkit
+	echo -e '$(INSTDIR_NATIVE)/bin/mlkit.$(ARCH-OS) $(INSTDIR_NATIVE) $$*' >> $(INSTDIR_NATIVE)/bin/mlkit
+	chmod a+x $(INSTDIR_NATIVE)/bin/mlkit
 
 #
 # Cleaning up the source directories
