@@ -37,10 +37,11 @@ constraint.sml
 lex.sml                               nobasislib
 layout.sml
 anoq_Exception.sml
+danwang.pm                    tc
 
 (* Tests of some benchmark programs *)
 
-kitfib35.sml            tx            nobasislib
+kitfib35.sml            tx               nobasislib
 kitdangle.sml           tx               nobasislib     (* does not work with GC currently! *)
 kitdangle3.sml          tx               nobasislib     (* does not work with GC currently! *)
 kitreynolds2.sml        tx   

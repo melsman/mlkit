@@ -22,7 +22,7 @@ functor Compile(structure Excon : EXCON
                 structure SpreadExp: SPREAD_EXPRESSION
 		  sharing SpreadExp.E = LambdaExp
 		  sharing SpreadExp.E' = RegionExp
-                  sharing type SpreadExp.place = Effect.effect
+                  sharing type SpreadExp.place = Effect.effect = SpreadExp.RegionStatEnv.effectvar
                   sharing type SpreadExp.cone = Effect.cone = SpreadExp.RegionStatEnv.cone
 		  sharing type SpreadExp.RegionStatEnv.TypeAndPlaceScheme = RegionExp.sigma
 		  sharing type SpreadExp.RegionStatEnv.excon = RegionExp.excon
@@ -67,62 +67,7 @@ functor Compile(structure Excon : EXCON
 		  sharing type PhysSizeInf.place = Effect.place
 		  sharing type PhysSizeInf.LambdaPgm = MulExp.LambdaPgm
 		  sharing type PhysSizeInf.mul = MulExp.mul
-(*
-		structure ClosExp : CLOS_EXP
-		  sharing type ClosExp.place = PhysSizeInf.place
- (*                 sharing type ClosExp.pp = PhysSizeInf.pp *)
-                  sharing type ClosExp.phsize = PhysSizeInf.phsize
-                  sharing type ClosExp.at = AtInf.at
-                  sharing type ClosExp.LambdaPgm = PhysSizeInf.LambdaPgm
 
-	        structure LineStmt : LINE_STMT
-                    where type ClosPrg = ClosExp.ClosPrg
-		  sharing type LineStmt.place = PhysSizeInf.place
-(*                  sharing type LineStmt.pp = PhysSizeInf.pp *)
-                  sharing type LineStmt.phsize = PhysSizeInf.phsize
-                  sharing type LineStmt.label = ClosExp.label
-
-	        structure RegAlloc : REG_ALLOC
-                  where type ('a, 'b, 'c)LinePrg = ('a, 'b, 'c)LineStmt.LinePrg
-		  sharing type RegAlloc.place = LineStmt.place
-                  sharing type RegAlloc.phsize = LineStmt.phsize
-                  sharing type RegAlloc.label = LineStmt.label
-                  sharing type RegAlloc.lvar = LineStmt.lvar
-                  sharing type RegAlloc.Atom = LineStmt.Atom
-                  sharing type RegAlloc.StoreTypeLI = LineStmt.StoreType
-
-	        structure FetchAndFlush : FETCH_AND_FLUSH
-                  where type ('a, 'b, 'c)LinePrg = ('a, 'b, 'c)LineStmt.LinePrg
-		  sharing type FetchAndFlush.place = LineStmt.place
-                  sharing type FetchAndFlush.phsize = LineStmt.phsize
-                  sharing type FetchAndFlush.label = LineStmt.label
-                  sharing type FetchAndFlush.lvar = LineStmt.lvar
-                  sharing type FetchAndFlush.StoreTypeRA = RegAlloc.StoreType
-                  sharing type FetchAndFlush.Atom = LineStmt.Atom
-
-	        structure CalcOffset : CALC_OFFSET
-                  where type ('a, 'b, 'c)LinePrg = ('a, 'b, 'c)LineStmt.LinePrg
-		  sharing type CalcOffset.place = LineStmt.place
-                  sharing type CalcOffset.phsize = LineStmt.phsize
-                  sharing type CalcOffset.label = LineStmt.label
-                  sharing type CalcOffset.lvar = LineStmt.lvar
-                  sharing type CalcOffset.StoreTypeIFF = FetchAndFlush.StoreType
-                  sharing type CalcOffset.Atom = LineStmt.Atom
-
-	        structure SubstAndSimplify : SUBST_AND_SIMPLIFY
-                  where type ('a, 'b, 'c)LinePrg = ('a, 'b, 'c)LineStmt.LinePrg
-		  sharing type SubstAndSimplify.place = LineStmt.place
-                  sharing type SubstAndSimplify.phsize = LineStmt.phsize
-                  sharing type SubstAndSimplify.label = LineStmt.label
-                  sharing type SubstAndSimplify.lvar = LineStmt.lvar
-                  sharing type SubstAndSimplify.StoreTypeCO = CalcOffset.StoreType
-                  sharing type SubstAndSimplify.AtomCO = CalcOffset.Atom
-
-		structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING
-		  sharing type RegionFlowGraphProfiling.place = PhysSizeInf.place
-		  sharing type RegionFlowGraphProfiling.at = AtInf.at
-		  sharing type RegionFlowGraphProfiling.phsize = PhysSizeInf.phsize
-*)
 		structure CompilerEnv: COMPILER_ENV
 		  sharing type CompilerEnv.lvar = LambdaExp.lvar
                   sharing type CompilerEnv.excon = LambdaExp.excon = Excon.excon
@@ -161,7 +106,7 @@ functor Compile(structure Excon : EXCON
                                      = MulInf.StringTree
 			             = AtInf.StringTree
 			             = PhysSizeInf.StringTree
-(*		                     = RegionFlowGraphProfiling.StringTree *)
+
                   sharing type PP.Report = Report.Report
 			
 	        structure Name : NAME
@@ -194,19 +139,6 @@ functor Compile(structure Excon : EXCON
       Flags.lookup_flag_entry "print_call_explicit_expression"
 (*
     val print_program_points = Flags.lookup_flag_entry "print_program_points"
-*)
-
-(*
-    val gc_flag              = Flags.lookup_flag_entry "garbage_collection"
-    val tag_values_flag      = Flags.lookup_flag_entry "tag_values"
-    val tag_integers_flag    = Flags.lookup_flag_entry "tag_integers"
-    fun set_tag_flags() =
-      if !gc_flag  then
-	(tag_values_flag := true;
-	 tag_integers_flag := true)
-      else
-	(tag_values_flag := false;
-	 tag_integers_flag := false)
 *)
 
     (* ---------------------------------------------------------------------- *)
@@ -299,24 +231,6 @@ functor Compile(structure Excon : EXCON
       fun reset_pp_count() = pp_count := !pp_init
       fun commit_pp_count() = pp_init := !pp_count
     end
-
-
-    (* ---------------------------------------------------------------------- *)
-    (*  Compile RESET                                                         *)
-    (* ---------------------------------------------------------------------- *)
-
-(*
-    (* The following reset functions are never called *)
-    fun reset () = (LambdaExp.reset();  (* counters only *)
-		    reset_pp_count();
-		    reset_effect_count();
-                    Effect.reset())       (* resets global cone *)
-
-    fun commit () = (commit_pp_count();
-		     LambdaExp.commit();
-		     commit_effect_count();
-		     Effect.commit())
-*)		     
 
     (* ---------------------------------------------------------------------- *)
     (*  Compile the declaration using old compiler environment, ce            *)
@@ -462,8 +376,9 @@ functor Compile(structure Excon : EXCON
 (*
         val _ = print "new_layer before lowering:\n"
         val _ = out_layer(Effect.layoutEtas new_layer)
+
+	val _ = print "RegInf.Creating Cone ...\n"
 *)
-(*	val _ = print "RegInf.Creating Cone ...\n" *)
 	val toplevel = Effect.level Effect.initCone
 	val cone = foldl (fn (effect, cone) =>
 			       Effect.lower toplevel effect cone) cone new_layer
@@ -471,7 +386,10 @@ functor Compile(structure Excon : EXCON
         val _ = print "new_layer after lowering:\n"
         val _ = out_layer(Effect.layoutEtas new_layer)
 *)
-(*	val _ = print "RegInf.Unifying toplevel regions and effects ...\n" *)
+	(* all variables in cone with toplevel: *)
+(*	  
+	val _ = print "RegInf.Unifying toplevel regions and effects ...\n"
+*)
         val cone = Effect.unify_with_toplevel_rhos_eps(cone,new_layer)
 
 	val new_layer = []
@@ -507,6 +425,11 @@ functor Compile(structure Excon : EXCON
 
 	       end handle _ => die "cannot form rse'")
 	     | _ => die "program does not have type frame"
+(*
+        val _ = print "rhos_epss_rse' :\n"
+	val (rhos_rse',epss_rse') = SpreadExp.RegionStatEnv.places_effectvarsRSE rse'
+        val _ = out_layer(Effect.layoutEtas (rhos_rse' @ epss_rse'))
+*)
 (*
 	val _ =
 	  if !profRegInf.b then
