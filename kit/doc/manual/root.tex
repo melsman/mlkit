@@ -16,49 +16,43 @@ Peter Sestoft \and Peter Bertelsen}
 {\theorembodyfont{\rmfamily} \newtheorem{example}{Example}}
 
 \begin{document}
-\setcounter{page}{0}
+%\setcounter{page}{0}
 \thispagestyle{empty}
-\begin{center}{\bf
-Technical Report DIKU-TR-98/25\\
+\begin{center}
+
+\vfill
+{\bf Technical Report DIKU-TR-98/25\\
 Department of Computer Science\\ 
 University of Copenhagen\\
 Universitetsparken 1\\
 DK-2100 KBH \O\\
-DENMARK\\
-\ \\
-November 1998}\vspace{4.5cm}
+DENMARK}
 
-{\Large Programming with Regions in the ML Kit\\ (for Version~3)}\vspace{2cm}
+\vspace{3.5cm}
 
-{\large Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy H{\o}jfeld Olesen, Peter Sestoft and Peter
-     Bertelsen }\vfill
+{\LARGE Programming with Regions in the ML Kit}\vspace{2mm}
+
+{\LARGE (for Version~3)}\vspace{1cm}
+
+{\large Mads Tofte ~~~ Lars Birkedal ~~~ Martin Elsman}\vspace{2mm}
+
+{\large Niels Hallenberg ~~~ Tommy H{\o}jfeld Olesen ~~~ Peter Sestoft} \vspace{2mm}
+
+{\large Peter Bertelsen}
+
+\vspace{1cm}
+{\large \today}
+
+\vfill
+\newpage
 
 \end{center}
-\newpage
-% Do not include the page in comments below; it will cause the document to be aligned on odd pages, which is not
-% good for printing.
-%\setcounter{page}{0}
-%\thispagestyle{empty}
-%\begin{center}{\bf
-%Technical Report DIKU-TR-97/12\\
-%Department of Computer Science\\ 
-%University of Copenhagen\\
-%Universitetsparken 1\\
-%DK-2100 KBH \O\\
-%DENMARK\\
-%\ \\
-%April 1997}\vspace{4.5cm}
-%{\Large Programming with Regions in the ML Kit}\vspace{2cm}
-%\begin{center}
-%\large Mads Tofte\quad Lars Birkedal \quad Martin Elsman \\
-%Niels Hallenberg \\ Tommy H\o jfeld Olesen \\
-%Peter Sestoft \quad Peter Bertelsen
-%\end{center}
-%\vfill
-%\end{center}
-%\newpage
+\pagestyle{empty}
 
-\maketitle
+%\cleardoublepage
+%\maketitle
+
+\pagestyle{headings}
 \begin{center}
 \bf Values and their Representation
 \end{center}
@@ -3182,21 +3176,23 @@ The distinction between nullary and unary exception constructors
 is important in the Kit because our region inference analysis
 takes a simple-minded approach to exceptions: 
 \begin{quote}
-  All exception values are put into a certain
+  All exception names and nullary exception values are put into a
+  certain
   \index{region!global}%
-  global region and thus never reclaimed automatically.
+  global region and thus never reclaimed automatically. A constructed
+  exception value is put in a region that is live at least as long as
+  the exception constructor is in scope.
 \end{quote}
 We therefore make the following recommendations:
 \begin{enumerate}
-\item Put exception declarations at top level, if possible.
-      That way, the memory required by exception names will
-       be bounded by the program size.
+\item Put exception declarations at top level, if possible.  That way,
+  the memory required by exception names will be bounded by the
+  program size.
 \item Avoid applying unary exception constructors frequently; there is
-      no harm in raising and handling constructed exception values frequently;
-      it is the creation of many different constructed exception values
-      that can lead to space leaks. Nullary
-      constructors may be raised 
-          without incurring memory costs.
+  no harm in raising and handling constructed exception values
+  frequently; it is the creation of many different constructed
+  exception values that can lead to space leaks. Nullary constructors
+  may be raised without incurring memory costs.
 \end{enumerate}
 
 \section{Raising Exceptions}
@@ -3220,7 +3216,7 @@ We have not attempted to design an analysis that would estimate how
 far down the stack a given exception value might propagate. Of course,
 it would not be a very good idea to allocate a constructed exception
 value in a region that is popped before the exception is handled!
-This is why we put all exception values in
+This is why we put all exception names in
 \index{region!global}%
 global regions.
 
