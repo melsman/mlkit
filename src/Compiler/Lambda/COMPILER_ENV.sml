@@ -15,23 +15,11 @@ signature COMPILER_ENV =
     type lvar				(* unique lambda identifiers *)
     type TyName
 
-    (* Instance transformers are necessary, because bound type
-     * variables of datatype bindings are shared in the lambda
-     * language representation and *not* shared in type environments
-     * of elaboration. Instance transformers then make sure that
-     * instances annotated at uses of value constructors correspond to
-     * how value constructors are declared in DATATYPES in
-     * LambdaExp. -- Martin *)
-
-    type instance_transformer
-    val mk_it : ''a list -> ''a list -> instance_transformer
-    val apply_it : instance_transformer * 'a list -> 'a list
-
     val emptyCEnv: CEnv
     val initialCEnv: CEnv
 
     (* We support lazy instantiation of values and value
-     * constructors. This is all delt with in the translation
+     * constructors. This is all dealt with in the translation
      * environment and when a value identifier is looked up in the
      * environment. No code is generated for signature constraints.
      *
@@ -54,12 +42,10 @@ signature COMPILER_ENV =
      * list together with the bound type variables form a substitution
      * which can be applied to the instance list returned by the
      * lookup, and thereby forming the instance list for the lambda
-     * variable. For constructors, the instance transformer must then
-     * be applied to form the final instance list.  -- Martin
-    *)
+     * variable.   -- Martin *)
 
     val declareVar: (id * (lvar * tyvar list * Type) * CEnv) -> CEnv
-    val declareCon: (id * (con * tyvar list * Type * instance_transformer) * CEnv) -> CEnv
+    val declareCon: (id * (con * tyvar list * Type) * CEnv) -> CEnv
     val declareExcon: (id * (excon * Type) * CEnv) -> CEnv
     val declare_strid: strid * CEnv * CEnv -> CEnv
     val declare_tycon: tycon * (TyName list * CEnv) * CEnv -> CEnv  (* a tycon is mapped to an environment 
@@ -69,7 +55,7 @@ signature COMPILER_ENV =
 
     datatype result = 
         LVAR of lvar * tyvar list * Type * Type list
-      | CON of con * tyvar list * Type * Type list * instance_transformer 
+      | CON of con * tyvar list * Type * Type list
       | EXCON of excon * Type
       | REF
       | ABS | NEG | PLUS | MINUS | MUL | DIV | MOD | LESS 
@@ -90,11 +76,8 @@ signature COMPILER_ENV =
     val lookup_longstrid : CEnv -> longstrid -> CEnv
     val lookup_longtycon : CEnv -> longtycon -> TyName list * CEnv   (* The resulting cenv holds bindings 
 								      * for value constructors; the tyname
-								      * list contains the tynames of the								      			           * associated tystr. *)
-    type subst
-    val mk_subst : (unit -> string) -> tyvar list * Type list -> subst
-    val on_il : subst * Type list -> Type list
-
+								      * list contains the tynames of the
+								      * associated tystr. *)
     type ElabEnv and TypeScheme
     val constrain : CEnv * ElabEnv -> CEnv
  
@@ -102,9 +85,6 @@ signature COMPILER_ENV =
     val set_compileTypeScheme : (TypeScheme -> tyvar list * Type) -> unit   (* MEGA HACK *)
                                                                             (* We should clean this *) 
                                                                             (* up at some point!! - Martin *)
-    val set_normalize_sigma : ((tyvar list * Type) -> (tyvar list * Type))->unit   (* MEGA HACK *)
-                                                                            (* We should clean this *) 
-                                                                            (* up at some point!! - Mads *)
     val tynamesOfCEnv: CEnv -> TyName list
       (* Return the list of tynames occurring in CEnv *)
     val lvarsOfCEnv: CEnv -> lvar list
@@ -116,7 +96,8 @@ signature COMPILER_ENV =
     val consOfCEnv: CEnv -> con list
       (* Return the list of cons which the declared ids in CEnv are mapped to *)
 
-    val restrictCEnv : CEnv * {longstrids: longstrid list, longvids: longid list, longtycons: longtycon list} -> CEnv
+    val restrictCEnv : CEnv * {longstrids: longstrid list, longvids: longid list, 
+			       longtycons: longtycon list} -> CEnv
     val enrichCEnv : CEnv * CEnv -> bool
 
     val match : CEnv * CEnv -> unit

@@ -191,7 +191,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     fun pr (msg : string, t : PP.StringTree) : unit =
           Report.print (Report.decorate (msg, PP.reportStringTree t))
 
-    fun pr_st st = PP.outputTree(print,st,100)
+    fun pr_st st = (PP.outputTree(print,st,100); print "\n")
 
     fun debug_pr_msg (msg: string): unit =
           if !Flags.DEBUG_ELABDEC then TextIO.output(TextIO.stdOut,msg) else ()
@@ -394,11 +394,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                       TypeInfo.LAB_INFO{index,tyvars,Type} => 
                         let
                           val index = where' sortedLabs lab
-(*
-val _ = output(std_out,"ElabDec.addLabelIndexInfo: index = " ^ Int.toString index ^ "\n")
-val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
-           StatObject.layoutType (StatObject.mkTypeRecType recType))
-*)
                         in
                           OG.PATROW (ElabInfo.plus_TypeInfo i 
 				     (TypeInfo.LAB_INFO {index=index,
@@ -804,18 +799,6 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
              end
 
            (* Raise exception *)                                (*rule 11*)
-(*old
-         | IG.RAISEexp(i, exp) =>
-             let
-               val (S1, tau1, out_exp) = elab_exp(C, exp)
-               val exnType = Type.Exn
-               val (S2, i')    = Unify(exnType, S1 on tau1, i)
-               val tau = Type.fresh_normal ()
-             in
-               (S2 oo S1, tau, OG.RAISEexp(addTypeInfo_EXP(i',tau), out_exp))
-             end
-old*)
-(*mads begin*)
          | IG.RAISEexp(i, exp) =>
              let
                val (S1, tau1, out_exp) = elab_exp(C, exp)
@@ -826,7 +809,7 @@ old*)
              in
                (S2 oo S1, tau, OG.RAISEexp(addTypeInfo_EXP(i',tau), out_exp))
              end
-(*mads end*)
+
            (* Function expression *)                            (*rule 12*)
          | IG.FNexp(i, match) => 
              let
@@ -879,15 +862,6 @@ old*)
                      elab_exp(C.plus_VE (S onC C, VE),exp)
               val S'' = S' oo S
 	      val out_i = okConv i
-(*old
-	      val out_i = (case TyName.Set.list
-			          (TyName.Set.difference (VE.tynames VE)
-				     (C.to_T C)) of
-			     [] => okConv i
-			   | tynames =>
-			       errorConv
-			         (i, ErrorInfo.DATATYPES_ESCAPE_SCOPE tynames))
-old*)
             in
 	      (S'', Type.mk_Arrow (S'' on tau,tau'),
 	       OG.MRULE (out_i ,out_pat,out_exp))
@@ -897,18 +871,6 @@ old*)
 
     and elab_dec(C : Context, dec : IG.dec) :
         (Substitution * TyName list * Env * OG.dec) =
-      let 
-         fun show_scheme(alphas, tau) = " all[" ^ concat (map StatObject.TyVar.string alphas) ^ "]." ^ StatObject.Type.string tau
-         fun dump(dec, sigma)= (PP.outputTree(print,IG.layoutDec dec, 100);
-                               (TextIO.output(TextIO.stdOut, show_scheme(StatObject.TypeScheme.to_TyVars_and_Type sigma) ^ "\nn")))
-                                 
-         (*val _ = if !Flags.chat then
-	             case Environments.C.lookup_longid C (Ident.idToLongId Ident.id_PLUS) of
-		       SOME (Environments.VE.LONGVAR sigma) => dump(dec,sigma)
-		     | _ => print "plus has no type scheme\n\n"
-		 else ()*)
-      in 
-        
         (case dec of
 
            (* Value declaration *)                              (*rule 15*)
@@ -944,7 +906,7 @@ old*)
 
 	      And partly the side condition is enforced by the restriction
 	      that the same explicit tyvar may not be scoped at two
-	      valbinds within each other (Definition 1997, §2.9, last
+	      valbinds within each other (Definition 1997, sec. 2.9, last
 	      bullet).  The latter is checked above by checking whether
 	      any of `ExplicitTyVars' are in U of C (I hope that does it?)
 	      24/01/1997 15:38. tho.*)
@@ -1108,8 +1070,6 @@ old*)
                 E.plus (E1',E2),
                 OG.SEQdec(okConv i,out_dec1,out_dec2)) 
              end)
-
-      end
 
     (****** value bindings - Definition, p. ? ******)
 
@@ -1340,15 +1300,6 @@ old*)
             val VE'' = S' onVE VE'
 
 	    val out_i = okConv i
-(*old
-	    val out_i = (case TyName.Set.list
-			        (TyName.Set.difference
-				   (VE.tynames VE'') (C.to_T C)) of
-			   [] => okConv i
-			 | tynames =>
-			     errorConv
-			       (i,ErrorInfo.DATATYPES_ESCAPE_SCOPE tynames))
-old*)
           in
 	    if !Flags.DEBUG_ELABDEC then
 	      pr ("RECvalbind: ", PP.NODE {start="{", finish="}", indent=0,
@@ -2242,6 +2193,7 @@ let
 	    TRANS_CONSTRAINT_INFO E (* signatures are closed *)
       | S on_TypeInfo (OPAQUE_CONSTRAINT_INFO E_and_phi) =
 	    OPAQUE_CONSTRAINT_INFO E_and_phi (* signatures and realisations are closed *)
+      | S on_TypeInfo (SIGBIND_INFO _) = impossible "on_TypeInfo.SIGBIND_INFO"
       | S on_TypeInfo (DELAYED_REALISATION _) = impossible "on_TypeInfo.DELAYED_REALISATION"
   in
     fun resolve_i ElabInfo =
