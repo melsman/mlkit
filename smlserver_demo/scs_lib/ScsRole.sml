@@ -37,6 +37,11 @@ signature SCS_ROLE =
        returns true if the role list roles is empty. *)
     val has_one_or_empty_p : int -> role list -> bool
 
+    (* [flushRoleCache ()] flushes the cache used to store role
+       relations. The cache limits the burden on the database by not
+       doing the same role queries many times within a litle time
+       period like 5 minutes. *)
+    val flushRoleCache : unit -> unit
   end
 
 structure ScsRole :> SCS_ROLE =
@@ -74,15 +79,31 @@ structure ScsRole :> SCS_ROLE =
       | UcsEbEventEditor => "UcsEbEventEditor"
       | ScsPersonAdm => "ScsPersonAdm"
       | Other s => s
+	  
+    (* We cache the result for 5 minutes.
+       Cache def: (uid,role) -> bool
+       We flush the cache when we edit roles, (i.e., se script files
+       in directory /web/ucs/www/scs/admin/role/ *)
 
-    fun has_p uid (role:role) =
-      let
-        val role_sql = `
-          select scs_role.has_p(^(Int.toString uid),^(Db.qqq (toString role)))
-            from dual`
-      in
-	Db.oneField role_sql = "t"
-      end 
+    local
+      val role_cache_def = 
+	Ns.Cache.get(Ns.Cache.Pair Ns.Cache.Int Ns.Cache.String,
+		     Ns.Cache.Bool,
+		     "ScsRoleCache",
+		     Ns.Cache.WhileUsed 300)
+      fun has_p' (uid:int,role:string) =
+	let
+	  val role_sql = `
+	    select scs_role.has_p(^(Int.toString uid),^(Db.qqq role))
+              from dual`
+	in
+	  Db.oneField role_sql = "t"
+	end 
+      val has_p_cache =	Ns.Cache.memoize role_cache_def has_p'
+    in
+      fun flushRoleCache() = Ns.Cache.flush role_cache_def
+      fun has_p uid (role:role) = has_p_cache (uid,toString role)
+    end
 
     fun has_one_p uid [] = false
       | has_one_p uid (x::xs) = has_p uid x orelse (has_one_p uid xs)

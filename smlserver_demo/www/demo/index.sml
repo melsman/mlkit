@@ -51,5 +51,3 @@ val _ = Page.return "SMLserver Examples"
     Some of the <b>*.msp</b> examples are from the <a 
     href="http://ellemose.dina.kvl.dk/~sestoft/msp/index.msp">ML 
     Server Pages (MSP) homepage</a>.`)
-
-
