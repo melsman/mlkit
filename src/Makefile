@@ -97,6 +97,7 @@ heap2exec: heap2exec/heap2exec
 
 clean:
 	$(CLEAN) run $(GENOPCODES_TARGETS)
+	cd Pickle; $(CLEAN)
 	cd Common; $(CLEAN)
 	cd Common/EfficientElab; $(CLEAN)
 	cd Compiler; $(CLEAN)

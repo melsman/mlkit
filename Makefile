@@ -42,6 +42,7 @@ clean:
 	cd kitdemo; $(CLEAN) run */PM */*~
 	cd test; $(MAKE) clean
 	cd test_dev; $(CLEAN) run *.out *.log
+	cd src; $(MAKE) clean
 	cd smlserver_demo; $(CLEAN) sources.pm nsd.mael.tcl
 	cd smlserver_demo/lib; $(CLEAN)
 	cd smlserver_demo/demo; $(CLEAN) 
@@ -59,7 +60,11 @@ clean:
 	cd smlserver_demo/www/demo/rating; $(CLEAN)
 	cd smlserver_demo/www/demo/link; $(CLEAN)
 	cd smlserver_demo/www/demo/employee; $(CLEAN)
-	cd src; $(MAKE) clean
+	cd smlserver; $(CLEAN)
+	cd smlserver/xt; $(CLEAN)
+	cd smlserver/xt/demolib; $(CLEAN)
+	cd smlserver/xt/libxt; $(CLEAN)
+	cd smlserver/xt/www; $(CLEAN)
 
 tgz_export:
 	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
