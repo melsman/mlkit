@@ -1,7 +1,0 @@
-This directory contains the garbage collector and a library for
-reading and writing heap images.
-
-The two basic operations are importing/exporting an entire heap
-image, and blasting in/out an ML data structure.  In both cases,
-references to addresses outside the heap must be marked on output
-and patched on input.
