@@ -81,6 +81,10 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC) : NS_DB =
 
 	fun wrapDb f =
 	  let val db = getHandle()
+    fun log (s: string):unit =
+      prim("@Ns_Log", (0, s))
+
+val _ = log ("*******db=("^(#1 db)^","^(Int.toString (#2 db))^")*************")
 	  in (f db before putHandle db)
 	    handle X => (putHandle db; raise X)
 	  end
