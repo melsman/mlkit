@@ -1,4 +1,4 @@
-(*$DECISION_LIST*)
+(*$DECISION_LIST: EqSetList*)
 
 (* In a lot of cases, we are actually dealing with sets of decisions rather
    lists of them, but that gets unweildy. Equality over decisions gets awkward
@@ -19,17 +19,17 @@ signature DECISION_LIST =
     datatype Decision =
       DECISION of {path: (lab * TypeInfo) list,
 		   select: Select,
-		   defaults: RuleNum EqSet.Set
+		   defaults: RuleNum EqSetList.Set
 		  }
 
-    and Select = CON_SELECT of (id, TypeInfo * SubDecision) map
+    and Select = CON_SELECT of (longid, TypeInfo * SubDecision) map
                | SCON_SELECT of (scon, SubDecision) map
                | EXCON_SELECT of (longid * (TypeInfo * SubDecision)) list
 			(* a list (right way round this time) because the EXCONs
 			   have to be tested in order. *)
 
     and SubDecision =
-      SUB_DECISION of {rules: RuleNum EqSet.Set, decisions: Decision list}
+      SUB_DECISION of {rules: RuleNum EqSetList.Set, decisions: Decision list}
 
     type AndOrTree
     val decisions: AndOrTree -> Decision list

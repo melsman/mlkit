@@ -257,34 +257,6 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 
 	fun ftv_env ({ftv,...} : env) = ftv
 
-	fun restrict_finmapeq eq (m,l) = 
-	  List.foldL (fn a => fn acc => FinMapEq.add eq
-		      (a,case FinMapEq.lookup eq m a
-			   of Some r => r
-			    | None => die "restrict_finmapeq",acc)) FinMapEq.empty l
-
-	val restrict_con_env = restrict_finmapeq Con.eq
-	val restrict_tyname_env = restrict_finmapeq TyName.eq
-	val restrict_lvar_env = restrict_finmapeq Lvars.eq
-	val restrict_excon_env = restrict_finmapeq Excon.eq
-
-	fun restrict({ftv,con_env,tyname_env,lvar_env,excon_env},{cons,tynames,lvars,excons}) =
-	  let val _ = if NatSet.isEmpty ftv then () else die "restrict.ftvset not empty"
-              fun say s = output(std_out, s^"\n")              
-	      val con_env1 = restrict_con_env(con_env,cons)
-                             handle X => (say "problems with constructor environment"; raise X)
-	      val tyname_env1 = restrict_tyname_env(tyname_env,tynames)
-                             handle X => (say "problems with tyname environment"; raise X)
-	      val lvar_env1 = restrict_lvar_env(lvar_env,lvars)
-                             handle X => (say "problems with lvar environment"; raise X)
-	      val excon_env1 = restrict_excon_env(excon_env,excons)
-                             handle X => (say "problems with excon environment"; raise X)
-	  in {ftv=ftv,con_env=con_env1, tyname_env=tyname_env1,
-	      lvar_env=lvar_env1, excon_env=excon_env1}
-	  end
-
-	fun enrich _ = true  (* Well, - this module is only here for
-			      * the purpose of debugging!! *)
 
 	type StringTree = PP.StringTree
 
@@ -325,6 +297,60 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 				       layout_tyname_env tyname_env,
 				       layout_lvar_env lvar_env,
 				       layout_excon_env excon_env]}
+
+        exception FAIL_restrict of string
+	fun restrict_finmapeq eq mkstring (m,l) = 
+	  List.foldL (fn a => fn acc => FinMapEq.add eq
+		      (a,case FinMapEq.lookup eq m a
+			   of Some r => r
+			    | None => raise FAIL_restrict(mkstring a),acc)) FinMapEq.empty l
+
+	val restrict_con_env = restrict_finmapeq Con.eq Con.pr_con
+	val restrict_tyname_env = restrict_finmapeq TyName.eq TyName.pr_TyName
+	val restrict_lvar_env = restrict_finmapeq Lvars.eq Lvars.pr_lvar
+	val restrict_excon_env = restrict_finmapeq Excon.eq Excon.pr_excon
+
+	fun restrict(env as {ftv,con_env,tyname_env,lvar_env,excon_env},{cons,tynames,lvars,excons}) =
+	  let val _ = if NatSet.isEmpty ftv then () else die "restrict.ftvset not empty"
+              fun say s = (output(std_out, s^"\n"); output(!Flags.log, s^"\n"))             
+              fun sayenv() = PP.outputTree(say,layout_env env, !Flags.colwidth)
+	      val con_env1 = restrict_con_env(con_env,cons)
+                             handle FAIL_restrict dom => 
+                               (say "problems with constructor environment"; 
+                                say ("constructor: " ^ dom);
+                                say ("is not in the domain of the environment:");
+                                sayenv();
+                                con_env(*die "LambdaStatSem.restrict"*))
+	      val tyname_env1 = restrict_tyname_env(tyname_env,tynames)
+                             handle FAIL_restrict dom => 
+                               (say "problems with tyname environment"; 
+                                say ("tyname: " ^ dom);
+                                say ("is not in the domain of the environment:");
+                                sayenv();
+                                tyname_env(*die "LambdaStatSem.restrict"*))
+	      val lvar_env1 = restrict_lvar_env(lvar_env,lvars)
+                             handle FAIL_restrict dom => 
+                               (say "problems with lvar environment"; 
+                                say ("lvar: " ^ dom);
+                                say ("is not in the domain of the environment:");
+                                sayenv();
+                                lvar_env(*die "LambdaStatSem.restrict"*))
+	      val excon_env1 = restrict_excon_env(excon_env,excons)
+                             handle FAIL_restrict dom => 
+                               (say "problems with excon environment"; 
+                                say ("excon: " ^ dom);
+                                say ("is not in the domain of the environment:");
+                                sayenv();
+                                excon_env(*die "LambdaStatSem.restrict"*))
+	  in {ftv=ftv,con_env=con_env1, tyname_env=tyname_env1,
+	      lvar_env=lvar_env1, excon_env=excon_env1}
+	  end
+
+	fun enrich _ = true  (* Well, - this module is only here for
+			      * the purpose of debugging!! *)
+
+
+
       end
 
     open E

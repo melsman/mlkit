@@ -117,7 +117,15 @@ functor MatchCompiler(structure SCon: SCON
     type TyVar = ElabInfo.TypeInfo.TyVar
     type LType = CompilerEnv.Type
     type tyvar = CompilerEnv.tyvar
-    val pr = Report.print o PrettyPrint.reportStringTree
+(*    val pr = Report.print o PrettyPrint.reportStringTree*)
+
+    fun say s = (output(std_out, s);
+                 output(!Flags.log, s);
+                 NonStandard.flush_out(!Flags.log))
+
+    fun pr(st: PrettyPrint.StringTree): unit = 
+        (PrettyPrint.outputTree(say, st, !Flags.colwidth))
+ 
 
     infix //
     val op // = Report.//

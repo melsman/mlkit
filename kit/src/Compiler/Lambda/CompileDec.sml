@@ -129,16 +129,39 @@ functor CompileDec(structure Con: CON
 
     fun declareExcon(id,(excon,tau),CE) = CE.declareExcon(id,(excon,tau),CE)
     fun declareCon(id,(con,tyvars,tau,it),CE) = CE.declareCon(id,(con,tyvars,tau,it),CE)
-    fun lookupLongexcon CE longid = 
-      case CE.lookup_longid CE longid
-	of CE.EXCON (excon,tau) => (excon,tau)
-	 | _ => die "lookupLongexcon.not in env as EXCON"
-    fun lookupLongcon CE longid =
-      case CE.lookup_longid CE longid
-	of CE.CON (con,_,_,_,_) => con
-	 | _ => die ("lookupLongcon: " ^ Ident.pr_longid longid ^ " not in env as CON")
 
-    fun lookupLongid CE longid = CE.lookup_longid CE longid
+    datatype lookup_info = NORMAL of ElabInfo.ElabInfo | OTHER of string
+    fun lookup_error(kind: string, CE, longid, info:lookup_info) =
+            let fun say s = (output(std_out, s );
+                             output(!Flags.log, s);
+                             NonStandard.flush_out(!Flags.log))
+                fun sayst(st) = PrettyPrint.outputTree(say, st, !Flags.colwidth)
+                fun say_compilerenv() = sayst(CE.layoutCEnv CE)
+                fun say_info(NORMAL i) = sayst(ElabInfo.layout i)
+                  | say_info(OTHER  s) = say s
+            in
+                say "\n.............";
+                say_info(info);
+                say ("Cannot find " ^ kind ^ " " ^  Ident.pr_longid longid
+                     ^" in compiler environment:\n");
+                say_compilerenv();
+                die "lookup_error"
+            end
+
+    fun lookupLongexcon CE longid (info:lookup_info)= 
+      case CE.lookup_longid CE longid
+	of Some(CE.EXCON (excon,tau)) => (excon,tau)
+         | _ => lookup_error("long exception constructor",CE,longid,info)
+
+    fun lookupLongcon CE longid (info:lookup_info)=
+      case CE.lookup_longid CE longid
+	of Some(CE.CON (con,_,_,_,_)) => con
+	 | _ => lookup_error("long value constructor",CE,longid,info)
+
+    fun lookupLongid CE longid (info:lookup_info) = 
+         case CE.lookup_longid CE longid of
+           Some res => res
+         | None  => lookup_error("long value variable",CE,longid,info)
 
     fun lookup_longstrid ce longstrid =
       let val (strids,strid) = StrId.explode_longstrid longstrid
@@ -409,21 +432,42 @@ functor CompileDec(structure Con: CON
    fun unTyVarType (TYVARtype tv) = tv
      | unTyVarType _ = die "unTyVarType"
 
-   fun compile_and_normalize_cb tyname tyvars0 (con, Type) (env, cons_TypeOpts) 
-     : CE.CEnv * (con * Type Option) list =
-     let val con' = compileCon con
-       val (tyvars, tauOpt) =
+   (* normalize_sigma tyvars0 Type:
+      Type is the body of a type scheme of a constructor; 
+      tyvars0 are the bound variables
+      of the type scheme. 
+      normalize_sigma tyvars0 Type normalizes Type into
+      a type where the type arguments come in the same order
+      as tyvars0
+    *)
+
+   fun normalize_sigma' (tyvars0: TLE.tyvar list, Type: Type): TLE.tyvar list * TLE.tyvar list * Type * Type Option=
+     let
+       val (tyvars, tauOpt, tyname) =
 	 case Type 
-	   of ARROWtype([tau],[CONStype(taus,_)]) => (map unTyVarType taus, Some tau)
-	    | CONStype(taus,_) => (map unTyVarType taus, None)
+	   of ARROWtype([tau],[CONStype(taus,tyname)]) => (map unTyVarType taus, Some tau, tyname)
+	    | CONStype(taus,tyname) => (map unTyVarType taus, None, tyname)
 	    | _ => die "compile_and_normalize_cb.wrong type"
        val S = mk_S (ListPair.zip (tyvars, tyvars0)) handle ListPair.Zip => 
-	              die "compile_and_normalize_cb.wrong number of tyvars"
+	              die "normalize_sigma.wrong number of tyvars"
        val tauOpt' = on_TypeOpt S tauOpt
-       val it : CE.instance_transformer = CE.mk_it tyvars tyvars0
        val tau = case tauOpt'
 		   of Some tau => ARROWtype([tau],[CONStype(map TYVARtype tyvars0, tyname)])
 		    | None => CONStype(map TYVARtype tyvars0, tyname)
+     in
+       (tyvars,tyvars0, tau, tauOpt')
+     end 
+
+   fun normalize_sigma (tyvars0: TLE.tyvar list, Type: Type): TLE.tyvar list * Type=
+     let val (_, tyvars0,tau', _) =  normalize_sigma' (tyvars0: TLE.tyvar list, Type: Type)
+     in (tyvars0,tau') (* the normalized type scheme *)
+     end
+
+   fun compile_and_normalize_cb tyname tyvars0 (con, Type) (env, cons_TypeOpts) 
+     : CE.CEnv * (con * Type Option) list =
+     let val con' = compileCon con
+       val (tyvars,_, tau, tauOpt') = normalize_sigma'(tyvars0, Type)
+       val it : CE.instance_transformer = CE.mk_it tyvars tyvars0
      in
        (declareCon(con,(con',tyvars0,tau, it),env), (con', tauOpt') :: cons_TypeOpts)
      end
@@ -488,7 +532,7 @@ functor CompileDec(structure Con: CON
                   FinMap.fold
                     (fn ((_, t), _) => envOfDecTree' t) ()
                     (selections:
-                       ((*eqtype*) id, (TypeInfo * DecisionTree))
+                       ((*eqtype*) longid, (TypeInfo * DecisionTree))
                          FinMap.map
                     )
                  )
@@ -704,7 +748,7 @@ functor CompileDec(structure Con: CON
          | SCONatexp(_, SCon.WORD x) => INTEGER x
 
          | IDENTatexp(info, OP_OPT(longid, _)) =>
-	  (case lookupLongid env longid
+	  (case lookupLongid env longid (NORMAL info)
 	     of CE.LVAR (lv,tyvars,_,il) =>   (*see COMPILER_ENV*) 
 	       let val instances =
 		     case ElabInfo.to_TypeInfo info 
@@ -849,7 +893,7 @@ functor CompileDec(structure Con: CON
                            and the like. They'll compile to functions, but the
                            optimiser will spot them later. *)
 	  
-	   (case lookupLongid env longid of
+	   (case lookupLongid env longid (NORMAL info) of
 	      CE.LVAR (lv,tyvars,_,il) =>        (* Not a primitive... *)
 		let val arg' = compileAtexp env arg
 		    val instances' = case ElabInfo.to_TypeInfo info 
@@ -1217,8 +1261,8 @@ functor CompileDec(structure Con: CON
 	     in (env1 plus envRest, f1 o f2)
              end
 
-         | EXEQUAL(_, OP_OPT(excon1, _), OP_OPT(longexcon2, _), rest) =>
-             let val (excon2', tau) = lookupLongexcon env longexcon2
+         | EXEQUAL(info, OP_OPT(excon1, _), OP_OPT(longexcon2, _), rest) =>
+             let val (excon2', tau) = lookupLongexcon env longexcon2 (NORMAL info)
                  val env1 = declareExcon(excon1, (excon2', tau), CE.emptyCEnv)
 		 val (envRest, f2) = case rest
 				       of Some exbind' => compileExbind env exbind'
@@ -1481,7 +1525,7 @@ functor CompileDec(structure Con: CON
 		  case (NoSome o Type.un_FunType o NoSome o Type.to_FunType) tau 
 		    of (tau1,_) => (List.all (mem (Type.tyvars tau1)) tyvars, tau1)
 		end
-	  in case lookupLongid env longcon
+	  in case lookupLongid env longcon (OTHER "CON_DECOMPOSE")
 	       of CE.CON(con,tvs,_,il,it) =>
 		 let val (tyvars,tau) = convert_sigma sigma
 		     val instances' = map compileType instances
@@ -1532,7 +1576,7 @@ functor CompileDec(structure Con: CON
                         * are compiled to LET-bindings in the lambda language
                         * (to keep it simple to remember)
                         *)
-	       ((bind,tau,PRIM(DEEXCONprim (#1(lookupLongexcon env longexcon)),
+	       ((bind,tau,PRIM(DEEXCONprim (#1(lookupLongexcon env longexcon (OTHER "compileDecTree.EXCON_DECOMPOSE"))),
 			       [VAR{lvar=parent,instances=[]}])),
  	        	                 (* instances = [] since the type of the 
                                           * parent must be 'exn' *)
@@ -1541,12 +1585,12 @@ functor CompileDec(structure Con: CON
 
          | CON_SWITCH{arg, selections, wildcard} =>
              (case (FinMap.list selections, wildcard)
-		of ([(con,(ti,tree))], None) => compileDecTree env (tree,compiler,failure,poly)
+		of ([(longcon,(ti,tree))], None) => compileDecTree env (tree,compiler,failure,poly)
 
 	         | (selections, _) =>
-		  let val selections' = map (fn (con,(ti,tree)) => 
+		  let val selections' = map (fn (longcon,(ti,tree)) => 
 					     let val e' = compileDecTree env (tree,compiler,failure,poly)
-					     in (lookupLongcon env (Ident.idToLongId con), e')
+					     in (lookupLongcon env longcon (OTHER "compileDecTree"), e')
 					     end) selections
 		      val wildcardOpt' = compileDecTreeOpt env (wildcard,compiler,failure,poly)
 		  in SWITCH_C(SWITCH(VAR{lvar=arg,instances=CE.lookupLvar env arg},
@@ -1560,7 +1604,7 @@ functor CompileDec(structure Con: CON
              let val selections' = 
 	           map (fn (longexcon,tree) =>
 			let val e' = compileDecTree env (tree,compiler,failure,poly)
-			in (#1(lookupLongexcon env longexcon),e')
+			in (#1(lookupLongexcon env longexcon (OTHER "CompileDecTree.EXCON_SWITCH")),e')
 			end) selections
 		 val wildcard' = compileDecTree env (wildcard,compiler,failure,poly)
 	     in SWITCH_E(SWITCH(VAR{lvar=arg,instances=[]},
@@ -1700,6 +1744,7 @@ functor CompileDec(structure Con: CON
     compileTypeScheme (TypeScheme.to_TyVars_and_Type sigma)
 
   val _ = CE.set_compileTypeScheme compileTypeScheme   (* MEGA HACK - Martin *)
+  val _ = CE.set_normalize_sigma normalize_sigma   (* Another one; Mads *)
 
   fun reset () = () 
 

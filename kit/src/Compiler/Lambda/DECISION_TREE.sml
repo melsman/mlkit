@@ -26,7 +26,7 @@ signature DECTREE_DT =
       | EXCON_DECOMPOSE of {bind: lvar, parent: lvar, child: DecisionTree,info:TypeInfo}
 
       | CON_SWITCH of {arg: lvar,
-		       selections: (id, (TypeInfo * DecisionTree)) map,
+		       selections: (longid, (TypeInfo * DecisionTree)) map,
 		       wildcard: DecisionTree Option
 				(* An `option' because we may notice that all
 				   the constructors are present. *)

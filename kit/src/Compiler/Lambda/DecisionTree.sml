@@ -47,8 +47,11 @@ functor DecisionTree(structure Lab: LAB
 		     structure Crash: CRASH
 		    ) : DECISION_TREE =
   struct
-    val pr = Report.print o PP.reportStringTree
+    structure OldEqSet = EqSet
+    structure EqSet = EqSetList
 
+    val pr = Report.print o PP.reportStringTree
+    
     open DecisionList Lvars
 
     type id = Ident.id
@@ -75,7 +78,7 @@ functor DecisionTree(structure Lab: LAB
 			  info: TypeInfo}
 
       | CON_SWITCH of {arg: lvar,
-		       selections: (id, (TypeInfo * DecisionTree))
+		       selections: (longid, (TypeInfo * DecisionTree))
 		       		      FinMap.map,
 		       wildcard: DecisionTree Option
 				(* An `option' because we may notice that all
@@ -136,7 +139,7 @@ functor DecisionTree(structure Lab: LAB
 
 		 val selections' =
 		   FinMap.layoutMap {start="", eq=" -> ", sep="; ", finish=""}
-				    (PP.layoutAtom Ident.pr_id)
+				    (PP.layoutAtom Ident.pr_longid)
 				    (fn (_, t) => layoutDecisionTree t)
 				    selections
 
@@ -235,7 +238,7 @@ functor DecisionTree(structure Lab: LAB
     fun exhaustive(info, map) =
       case (*nj_sml_bug*) info
 	of TypeInfo.CON_INFO{numCons, ...} =>
-	     (EqSet.size(FinMap.dom map) = numCons)
+	     (OldEqSet.size(FinMap.dom map) = numCons)
 	 | _ =>
 	     Crash.impossible "DecisionTree.exhaustive(TypeInfo)"
 
@@ -279,7 +282,7 @@ functor DecisionTree(structure Lab: LAB
 
     fun firstConstructorRule(DECISION{select, ...}) =
       case select
-	of CON_SELECT(map: ((*eqtype*) Ident.id, TypeInfo * SubDecision)
+	of CON_SELECT(map: ((*eqtype*) Ident.longid, TypeInfo * SubDecision)
 		      	     FinMap.map
 		     )
 	     => firstFromMap(FinMap.composemap #2 map)
@@ -590,6 +593,7 @@ functor DecisionTree(structure Lab: LAB
 		    (if !Flags.DEBUG_DECISIONTREE then 
 		       BasicIO.println("foldFN --- includeIt subdec is true")  
 		     else ();
+
 		     FinMap.add(x, subtree subdec (fn t => Crash.impossible "foldFn"),
                                                   (* was: conDecompose -- Lars *)
 				        
@@ -637,7 +641,7 @@ functor DecisionTree(structure Lab: LAB
 	     in
 	       case select
 		 of CON_SELECT(
-		      map: ((*eqtype*) Ident.id, TypeInfo * SubDecision)
+		      map: ((*eqtype*) Ident.longid, TypeInfo * SubDecision)
 			     FinMap.map
 		    ) =>
 			(* For a constructor-selection, we ask the TypeInfo

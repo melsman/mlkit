@@ -24,7 +24,7 @@ functor CompilerEnv(structure Ident: IDENT
 		    structure PP: PRETTYPRINT
 		      sharing type FinMap.StringTree = PP.StringTree
 		          and type LambdaExp.StringTree = PP.StringTree 
-			           = FinMapEq.StringTree = TyName.StringTree
+			           = FinMapEq.StringTree = TyName.StringTree = Environments.StringTree
 	            structure Flags : FLAGS
 		    structure Crash: CRASH
 		   ): COMPILER_ENV =
@@ -185,10 +185,11 @@ functor CompilerEnv(structure Ident: IDENT
 	Some taus => taus
       | None => die("CompilerEnv.lookupLvar(" ^ Lvars.pr_lvar lvar ^ ")")
 
+    exception LOOKUP_ID
     fun lookupId (CENV{VarEnv=VARENV m,...}) id =
       case FinMap.lookup m id
 	of Some res => res
-	 | None => die ("lookupId(" ^ Ident.pr_id id ^ ")")
+	 | None => raise LOOKUP_ID
 
     fun lookup_strid (CENV{StrEnv=STRENV m,...}) strid =
       case FinMap.lookup m strid
@@ -199,7 +200,8 @@ functor CompilerEnv(structure Ident: IDENT
       let fun lookup CEnv ([],id) = lookupId CEnv id
 	    | lookup CEnv (strid::strids,id) =
 	          lookup (lookup_strid CEnv strid) (strids,id) 
-      in lookup CEnv (Ident.decompose longid)
+      in Some(lookup CEnv (Ident.decompose longid))
+         handle _ => None
       end
  
     fun lvars_result (LVAR (lv,_,_,_), lvs) = lv :: lvs
@@ -425,11 +427,17 @@ functor CompilerEnv(structure Ident: IDENT
    val compileTypeScheme_knot: (TypeScheme -> tyvar list * Type) Option ref = ref None   (* MEGA HACK *)
    fun set_compileTypeScheme c = compileTypeScheme_knot := (Some c)
 
+   val normalize_sigma_knot: (tyvar list * Type -> tyvar list * Type) Option ref = ref None   (* MEGA HACK *)
+   fun set_normalize_sigma c = normalize_sigma_knot := (Some c)
+
    fun constrain (ce: CEnv, elabE : ElabEnv) =
      let open Environments
          val compileTypeScheme = case compileTypeScheme_knot 
 				   of ref (Some compileTypeScheme) => compileTypeScheme
 				    | ref None => die "compileTypeScheme_knot not set" 
+         val normalize_sigma = case normalize_sigma_knot
+				   of ref (Some f) =>f
+				    | ref None => die "normalize_sigma_knot not set" 
          fun constr_ran (tr, er) =
 	   case tr
 	     of LVAR(lv,tvs,tau,il) =>
@@ -459,12 +467,24 @@ functor CompilerEnv(structure Ident: IDENT
 		    end
 		   | VE.LONGCON sigma =>
 		    let val (tvs',tau') = compileTypeScheme sigma
+                        (* the bound variables tvs' come in random order: 
+                           normalize it along tvs: *)
+                        val (tvs',tau') = normalize_sigma(tvs,tau')
 		        val S = LambdaBasics.match_sigma((tvs,tau),tau')
 			  handle X => (print ("\nMatch failed for con matching con " ^ Con.pr_con con ^ "\n");
 				       raise X)			
 			val il' = map (LambdaBasics.on_Type S) il
 		    in if LambdaBasics.eq_sigma((tvs,tau),(tvs',tau')) then CON(con,tvs',tau',il',it)
-		       else die "constr_ran.CON.type schemes should be equal"
+		       else (print "\nconstr_ran.CON.type schemes should be equal.\n";
+                             print "Elaboration environment:\n\n";
+                             pr_st (Environments.E.layout elabE);
+                             print ("constructor: " ^ Con.pr_con con ^ "\n");
+                             print ("sigma1  = ");
+                             pr_st (layout_scheme(tvs,tau)); print "\n";
+                             print ("sigma2  = ");
+                             pr_st (layout_scheme(tvs',tau')); print "\n";
+                             die  ("constr_ran.CON.type schemes should be equal")
+                            )
 		    end
 		   | _ => die "constr_ran.CON.longvar or longcon expected")
 	      | EXCON(excon,tau) =>

@@ -23,6 +23,8 @@ functor AndOrTree(structure Ident: IDENT
   struct
     open Grammar
 
+    structure EqSet = EqSetList
+
     type RuleNum = int
     type (''a, 'b) map = (''a, 'b) FinMap.map
     structure TypeInfo = ElabInfo.TypeInfo
@@ -67,7 +69,7 @@ functor AndOrTree(structure Ident: IDENT
 				  }
                        | CON of {nodeInfo: NodeInfo,
 				 children:
-				   (id, TypeInfo * AndOrTree) FinMap.map
+				   (longid, TypeInfo * AndOrTree) FinMap.map
 				}
 		       | SCON of {nodeInfo: NodeInfo,
 				  children: (scon, AndOrTree) FinMap.map
@@ -127,7 +129,7 @@ functor AndOrTree(structure Ident: IDENT
 		 children=
 		   FinMap.composemap
 		     (fn (ti, x) => (ti, f x))
-		     (children: ((*eqtype*) id,
+		     (children: ((*eqtype*) longid,
 				 TypeInfo * AndOrTree
 				) FinMap.map
 		     )
@@ -172,7 +174,7 @@ functor AndOrTree(structure Ident: IDENT
 	 | CONSpat(i, OP_OPT(longid, _), atpat) =>
 	     (case ElabInfo.to_TypeInfo i
 		of Some (TypeInfo.CON_INFO _) => 
-		     initialConNode(rulenum, #2(Ident.decompose longid),
+		     initialConNode(rulenum,  longid,
 				    case ElabInfo.to_TypeInfo i
 				      of Some ti => ti
 				       | None => Crash.impossible "initialAndOrTree",
@@ -207,7 +209,7 @@ functor AndOrTree(structure Ident: IDENT
 	 | LONGIDatpat(i, OP_OPT(longid, _)) =>
 	     (case ElabInfo.to_TypeInfo i
 		of Some (TypeInfo.CON_INFO _) =>
-		     initialConNode(rulenum, #2(Ident.decompose longid),
+		     initialConNode(rulenum,  longid,
 				    case ElabInfo.to_TypeInfo i
 				      of Some ti => ti
 				       | None => Crash.impossible "treeFromAtomicPat",
@@ -282,7 +284,7 @@ functor AndOrTree(structure Ident: IDENT
 	 | CONSpat(i, OP_OPT(longid, _), atpat) =>
 	     (case ElabInfo.to_TypeInfo i
 		of Some (TypeInfo.CON_INFO _) =>
-		     addInConNode(rulenum, #2(Ident.decompose longid),
+		     addInConNode(rulenum,  longid,
 				  case ElabInfo.to_TypeInfo i
 				    of Some ti => ti
 				     | None => Crash.impossible "mergePattern",
@@ -318,7 +320,7 @@ functor AndOrTree(structure Ident: IDENT
 	 | LONGIDatpat(i, OP_OPT(longid, _)) =>
 	     (case ElabInfo.to_TypeInfo i
 		of Some (TypeInfo.CON_INFO _) => 	(* A nullary constructor here *)
-		     addInConNode(rulenum, #2(Ident.decompose longid),
+		     addInConNode(rulenum,  longid,
 				  case ElabInfo.to_TypeInfo i
 				    of Some ti => ti
 				     | None =>
@@ -551,14 +553,8 @@ functor AndOrTree(structure Ident: IDENT
     and addDefault rulenum (NODEINFO{rules, defaults}): NodeInfo =
       NODEINFO{rules=rules, defaults=EqSet.insert rulenum defaults}
 
-    fun addDefaultRules(rules, nodeInfo) =
-      if EqSet.isEmpty rules then nodeInfo
-      else
-	let
-	  val (r, rs) = EqSet.select rules
-	in
-	  addDefault r (addDefaultRules(rs, nodeInfo))
-	end
+    fun addDefaults new_rules  (NODEINFO{rules, defaults}): NodeInfo =
+      NODEINFO{rules=rules, defaults=EqSet.union new_rules defaults}
 
     fun mergePatterns((rulenum, p :: rest), tree) =
 	  mergePatterns((rulenum+1, rest),
@@ -572,16 +568,18 @@ functor AndOrTree(structure Ident: IDENT
 
     fun defaultRules(NODEINFO{defaults, ...}) = defaults
 
+    fun allDefaultRules(allRules, NODEINFO{defaults,rules}) = 
+        NODEINFO{defaults=allRules,rules=rules}
+
     fun propagateDefaults(rules, tree): AndOrTree =
       let
 	val nodeInfo = getNodeInfo tree
 	val defRules = defaultRules nodeInfo
 	val allRules = EqSet.union rules defRules
-	val newHere = EqSet.difference allRules defRules
       in
 	childMap
 	  (fn child => propagateDefaults(allRules, child))
-	  (alterNodeInfo (fn info => addDefaultRules(newHere, info)) tree)
+	  (alterNodeInfo (fn info => allDefaultRules(allRules, info)) tree)
       end
 
 
@@ -656,7 +654,7 @@ functor AndOrTree(structure Ident: IDENT
 
     and layoutConChildren children =
           FinMap.layoutMap {start="", eq="=", sep=", ", finish=""}
-	    (PrettyPrint.layoutAtom Ident.pr_id)
+	    (PrettyPrint.layoutAtom Ident.pr_longid)
 	       layoutTIxAndOrTree children
 
     and layoutSConChildren children =

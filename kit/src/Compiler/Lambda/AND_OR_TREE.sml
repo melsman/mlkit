@@ -1,4 +1,5 @@
-(*$AND_OR_TREE*)
+(*$AND_OR_TREE: EqSetList*)
+
 signature AND_OR_TREE =
   sig
     eqtype (*pah!*) RuleNum sharing type RuleNum = int
@@ -13,7 +14,7 @@ signature AND_OR_TREE =
 
 
     datatype NodeInfo =
-      NODEINFO of {rules: RuleNum EqSet.Set, defaults: RuleNum EqSet.Set}
+      NODEINFO of {rules: RuleNum EqSetList.Set, defaults: RuleNum EqSetList.Set}
 
    (* Note that EXCON subdivides using a list, not a map. This is because
       we have to test the exceptions in strict top-to-bottom order. The list
@@ -24,7 +25,7 @@ signature AND_OR_TREE =
 				   children: (lab, TypeInfo * AndOrTree) map
 				  }
                        | CON of {nodeInfo: NodeInfo,
-				 children: (id, TypeInfo * AndOrTree) map
+				 children: (longid, TypeInfo * AndOrTree) map
 				}
 		       | SCON of {nodeInfo: NodeInfo,
 				  children: (scon, AndOrTree) map

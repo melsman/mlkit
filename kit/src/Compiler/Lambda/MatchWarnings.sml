@@ -37,7 +37,7 @@ functor MatchWarnings(structure Ident: IDENT
 	   | EXCON_DECOMPOSE{child, ...} => traverse child
 
 	   | CON_SWITCH{
-	       selections: ((*eqtype*) Ident.id, (TypeInfo * DecisionTree)) FinMap.map,
+	       selections: ((*eqtype*) Ident.longid, (TypeInfo * DecisionTree)) FinMap.map,
 	       wildcard,
 	       ...
 	     } =>
@@ -78,7 +78,7 @@ functor MatchWarnings(structure Ident: IDENT
 	   | EXCON_DECOMPOSE{child, ...} => traverse child
 
 	   | CON_SWITCH{
-	       selections: ((*eqtype*) Ident.id, (TypeInfo * DecisionTree))
+	       selections: ((*eqtype*) Ident.longid, (TypeInfo * DecisionTree))
 			     FinMap.map,
 	       wildcard,
 	       ...
@@ -124,7 +124,7 @@ functor MatchWarnings(structure Ident: IDENT
 	 | EXCON_DECOMPOSE{child, ...} => reachable child
 
 	 | CON_SWITCH{
-	     selections: ((*eqtype*) Ident.id, (TypeInfo * DecisionTree))
+	     selections: ((*eqtype*) Ident.longid, (TypeInfo * DecisionTree))
 			   FinMap.map,
 	     wildcard,
 	     ...
