@@ -9,6 +9,10 @@ val minint = ~maxint -1
 infix seq
 fun e1 seq e2 = e2;
 fun test t s = print (t ^ ": " ^ s ^ "\n")
+fun check true = "OK"
+  | check false = "ERR"
+fun test' t b = test t (check b)
+fun test'' t f = test t ((check (f())) handle _ => "EXN")
 
 val test1 = test "test1" ((~minint seq "WRONG") handle Overflow => "OK")
 
@@ -73,4 +77,32 @@ val test31 = test "test31" (if floor(Real.+(maxri, 0.9)) = maxint then "OK" else
 val test32 = test "test32" (if floor minri = minint then "OK" else "WRONG")
 val test33 = test "test33" ((floor (Real.-(minri, 0.1)) seq  "WRONG") handle Overflow => "OK")
 val test34 = test "test34" ((floor (Real.+(maxri, 1.0)) seq  "WRONG") handle Overflow => "OK")
+
+val test35 = test' "test35" (toLarge ~1 = ~1)
+val test36 = test' "test36" (toLarge 1 = 1)
+val test37 = test' "test37" (toLarge 0 = 0)
+val test38 = test' "test38" (toLarge maxint = 1073741823)
+val test39 = test' "test39" (toLarge minint = ~1073741824)
+
+val test40 = test'' "test40" (fn _ => fromLarge(toLarge ~1) = ~1)
+val test41 = test'' "test41" (fn _ => fromLarge(toLarge maxint) = maxint)
+val test42 = test'' "test42" (fn _ => fromLarge(toLarge 0) = 0)
+val test42 = test'' "test42" (fn _ => fromLarge(toLarge minint) = minint)
+
+val test43 = test "test43" ((fromLarge(Int32.+(toLarge maxint, 1)) seq "WRONG") handle Overflow => "OK")
+val test44 = test "test44" ((fromLarge(Int32.-(toLarge minint, 1)) seq "WRONG") handle Overflow => "OK")
+val test45 = test "test45" ((fromLarge(valOf Int32.maxInt) seq "WRONG") handle Overflow => "OK")
+val test46 = test "test46" ((fromLarge(valOf Int32.minInt) seq "WRONG") handle Overflow => "OK")
+
+val test47a = test'' "test47a" (fn _ => valOf (fromString "1") * valOf minInt = valOf minInt)
+val test47b = test'' "test47b" (fn _ => valOf minInt * valOf (fromString "1") = valOf minInt)
+val test48 = test'' "test48" (fn _ => 1073741820 + 3 = valOf maxInt)
+val test49 = test'' "test49" (fn _ => valOf maxInt - 3 = 1073741820)
+
+val test50 = test'' "test50" (fn _ => 1073741820 - ~3 = valOf maxInt)
+val test51 = test'' "test51" (fn _ => valOf maxInt + ~3 = 1073741820)
+
+val test52 = test'' "test52" (fn _ => ~1073741821 - 3  = valOf minInt)
+val test53 = test'' "test53" (fn _ => valOf minInt + 3 = ~1073741821)
+
 end

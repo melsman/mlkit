@@ -212,6 +212,42 @@ val test21 =
 
 val test22 = 
     tst' "test22" (fn _ => range (~1200, 1200) (scanFmt StringCvt.HEX));
+
+val test23a = tst' "test23a" (fn _ => scanFmt StringCvt.HEX (valOf Int31.maxInt));
+val test23b = tst' "test23b" (fn _ => scanFmt StringCvt.DEC (valOf Int31.maxInt));
+val test23c = tst' "test23c" (fn _ => scanFmt StringCvt.OCT (valOf Int31.maxInt));
+val test23d = tst' "test23d" (fn _ => scanFmt StringCvt.BIN (valOf Int31.maxInt));
+
+val test24a = tst' "test24a" (fn _ => scanFmt StringCvt.HEX (valOf Int31.minInt));
+val test24b = tst' "test24b" (fn _ => scanFmt StringCvt.DEC (valOf Int31.minInt));
+val test24c = tst' "test24c" (fn _ => scanFmt StringCvt.OCT (valOf Int31.minInt));
+val test24d = tst' "test24d" (fn _ => scanFmt StringCvt.BIN (valOf Int31.minInt));
+
+val test25a = tst' "test25a" (fn _ => scanFmt StringCvt.HEX (valOf Int31.minInt + 10));
+val test25b = tst' "test25b" (fn _ => scanFmt StringCvt.DEC (valOf Int31.minInt + 10));
+val test25c = tst' "test25c" (fn _ => scanFmt StringCvt.OCT (valOf Int31.minInt + 10));
+val test25d = tst' "test25d" (fn _ => scanFmt StringCvt.BIN (valOf Int31.minInt + 10));
+
+fun chk' t f s = 
+    tst' t (fn _ => ((f s; false) handle Overflow => true))
+fun chkScanOvf t fmt = chk' t (StringCvt.scanString (scan fmt))
+
+val test26a = chkScanOvf "test26a" StringCvt.HEX "~40000001"
+val test26b = chkScanOvf "test26b" StringCvt.DEC "~1073741825"
+val test26c = chkScanOvf "test26c" StringCvt.OCT "~10000000001"
+val test26d = chkScanOvf "test26d" StringCvt.BIN "~1000000000000000000000000000001"
+
+val test27a = chkScanOvf "test27a" StringCvt.HEX "40000000"
+val test27b = chkScanOvf "test27b" StringCvt.DEC "1073741824"
+val test27c = chkScanOvf "test27c" StringCvt.OCT "10000000000"
+val test27d = chkScanOvf "test27d" StringCvt.BIN "1000000000000000000000000000000"
+
+val test28a = tst' "test28a" (fn () => toString (valOf maxInt) = "1073741823")
+val test28b = tst' "test28b" (fn () => toString (valOf minInt) = "~1073741824")
+
+val test29a = tst' "test29a" (fn () => fromString "1073741823" = maxInt)
+val test29b = tst' "test29b" (fn () => fromString "~1073741824" = minInt)
+
 end
 
 end

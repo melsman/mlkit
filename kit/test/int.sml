@@ -216,6 +216,42 @@ val test21 =
 
 val test22 = 
     tst' "test22" (fn _ => range (~1200, 1200) (scanFmt StringCvt.HEX));
+
+val test23a = tst' "test23a" (fn _ => scanFmt StringCvt.HEX (valOf Int.maxInt));
+val test23b = tst' "test23b" (fn _ => scanFmt StringCvt.DEC (valOf Int.maxInt));
+val test23c = tst' "test23c" (fn _ => scanFmt StringCvt.OCT (valOf Int.maxInt));
+val test23d = tst' "test23d" (fn _ => scanFmt StringCvt.BIN (valOf Int.maxInt));
+
+val test24a = tst' "test24a" (fn _ => scanFmt StringCvt.HEX (valOf Int.minInt));
+val test24b = tst' "test24b" (fn _ => scanFmt StringCvt.DEC (valOf Int.minInt));
+val test24c = tst' "test24c" (fn _ => scanFmt StringCvt.OCT (valOf Int.minInt));
+val test24d = tst' "test24d" (fn _ => scanFmt StringCvt.BIN (valOf Int.minInt));
+
+val test25a = tst' "test25a" (fn _ => scanFmt StringCvt.HEX (valOf Int.minInt + 10));
+val test25b = tst' "test25b" (fn _ => scanFmt StringCvt.DEC (valOf Int.minInt + 10));
+val test25c = tst' "test25c" (fn _ => scanFmt StringCvt.OCT (valOf Int.minInt + 10));
+val test25d = tst' "test25d" (fn _ => scanFmt StringCvt.BIN (valOf Int.minInt + 10));
+
+fun chk' t f s = 
+    tst' t (fn _ => ((f s; false) handle Overflow => true))
+fun chkScanOvf t fmt = chk' t (StringCvt.scanString (scan fmt))
+fun tag s1 s2 = if Int.precision = SOME 31 then s1 else s2
+val test26a = chkScanOvf "test26a" StringCvt.HEX (tag "~40000001" "~80000001")
+val test26b = chkScanOvf "test26b" StringCvt.DEC (tag "~1073741825" "~2147483649")
+val test26c = chkScanOvf "test26c" StringCvt.OCT (tag "~10000000001" "~20000000001")
+val test26d = chkScanOvf "test26d" StringCvt.BIN (tag "~1000000000000000000000000000001" "~10000000000000000000000000000001")
+
+val test27a = chkScanOvf "test27a" StringCvt.HEX (tag "40000000" "80000000")
+val test27b = chkScanOvf "test27b" StringCvt.DEC (tag "1073741824" "2147483648")
+val test27c = chkScanOvf "test27c" StringCvt.OCT (tag "10000000000" "20000000000")
+val test27d = chkScanOvf "test27d" StringCvt.BIN (tag "1000000000000000000000000000000" "10000000000000000000000000000000")
+
+val test28a = tst' "test28a" (fn () => toString (valOf maxInt) = tag "1073741823" "2147483647")
+val test28b = tst' "test28b" (fn () => toString (valOf minInt) = tag "~1073741824" "~2147483648")
+
+val test29a = tst' "test29a" (fn () => fromString (tag "1073741823" "2147483647") = maxInt)
+val test29b = tst' "test29b" (fn () => fromString (tag "~1073741824" "~2147483648") = minInt)
+
 end
 
 end
