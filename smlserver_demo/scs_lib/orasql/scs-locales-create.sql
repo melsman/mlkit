@@ -4,6 +4,8 @@
 --
 -- The package scs_texts was written by Kennie Nybo Pontoppidan
 
+-- NB (knp) text field in scs_text_lang only has room for 1k data!
+
 create table scs_texts(
   text_id integer
     constraint scs_texts_text_id_nn not null
@@ -28,7 +30,7 @@ create table scs_text_lang(
   lang_id integer
     constraint scs_text_lang_lang_id_nn not null
     constraint scs_text_lang_lang_id_fk references scs_lang( lang_id ), 
-  text varchar2(100),
+  text varchar2(1000),
   constraint scs_text_un unique( text_id, lang_id )
 );
 
