@@ -285,6 +285,9 @@ functor CompileDec(structure Con: CON
     fun map_opt f (Some x) = Some (f x)
       | map_opt f None = None
 
+    fun app_opt f (Some x) = (f x)
+      | app_opt f None = ()
+
     fun NoSome errmsg x =
       case x of 
         None => die errmsg
@@ -623,37 +626,44 @@ local
     | string_from_con0 (Excon {longid, ...}) = "Excon {" ^ Ident.pr_longid longid ^ ", ...}"
     | string_from_con0 (Tuple {arity}) = "Tuple {" ^ Int.string arity ^ "}"
 
-  (*`con_eq' is used for comparing paths which is only used by the
-   optimisation that prevents the pattern matcher from duplicating code.
-   `con_staticmatch' is used to decide at compile-time whether a con will
-   match or not.  There is no significant reason to have both `con_eq' &
-   `con_staticmatch'.*)
+  (*the type cmp, and the _cmp functions scattered around are used to define
+   function ifeq_cmp which is used to define an orderfinmap that keeps track
+   of what IfEq nodes have been created.  This is necessary because we want
+   to build a dag, not a tree.*)
 
-  fun con_eq (Con {longid=longid1, span=span1, nullary=nullary1, ...},
-	      Con {longid=longid2, span=span2, nullary=nullary2, ...}) =
-	longid1 = longid2 (*I think it must suffice to check longid1 = longid2*)
-    | con_eq (Scon scon1, Scon scon2) = scon1 = scon2
-    | con_eq (Tuple {arity=arity1}, Tuple {arity=arity2}) = arity1 = arity2
-    | con_eq (Excon {longid=longid1, ...}, Excon {longid=longid2, ...}) =
-	longid1 = longid2
-    | con_eq _ = false
+  datatype cmp = Lt | Gt | Eq
 
-  fun con_staticmatch (Con {longid=longid1, span=span1, nullary=nullary1, ...},
-		       Con {longid=longid2, span=span2, nullary=nullary2, ...}) =
-	longid1 = longid2 (*I think it must suffice to check longid1 = longid2*)
-    | con_staticmatch (Scon scon1, Scon scon2) = scon1 = scon2
-    | con_staticmatch (Tuple {arity=arity1}, Tuple {arity=arity2}) = arity1 = arity2
-    | con_staticmatch (Excon {longid=longid1, ...}, Excon {longid=longid2, ...}) =
-	longid1 = longid2
-        (*At first, I thought that this should be `false' because one cannot
-	 in general decide that two occurences of the same excon are bound to
-	 the same exception name although the excon is the same.  But the
-	 excon occurences that will be compared with con_staticmatch occur so
-	 close to each other that they will always be bound to the same
-	 exception name if they are the same excon.  (So there is no
-	 significant reason to have both `con_eq' & `con_staticmatch'.)*)
-    | con_staticmatch _ = die "con_staticmatch: impossible because the input to \
-	                      \the pattern matcher has been type checked."
+  fun cmp_from_lt lt (x1, x2) = if lt (x1, x2) then Lt
+				else if lt (x2, x1) then Gt else Eq
+  fun eq_from_cmp x_cmp (x1, x2) = (case x_cmp (x1, x2) of Eq => true | _ => false) 
+  fun lt_from_cmp x_cmp (x1, x2) = (case x_cmp (x1, x2) of
+				      Lt => true
+				    | Gt => false
+				    | Eq => false)
+
+  val int_cmp = cmp_from_lt (op < : int * int -> bool)
+  val lvar_cmp = cmp_from_lt Lvars.lt
+  val scon_cmp = cmp_from_lt SCon.lt
+  (*of course, longid_cmp ought to be in IDENT.sml & this is hacky, but then
+  I would have to define datatype cmp somewhere else:*)
+  fun longid_lt (longid1, longid2) =
+	Ident.pr_longid longid1 < Ident.pr_longid longid2
+  val longid_cmp = cmp_from_lt longid_lt
+
+  fun con_ord (Con _) = 0
+    | con_ord (Scon _) = 1
+    | con_ord (Excon _) = 2
+    | con_ord (Tuple _) = 3
+  fun con_cmp (Con {longid=longid1, span=span1, nullary=nullary1, ...},
+	       Con {longid=longid2, span=span2, nullary=nullary2, ...}) =
+	longid_cmp (longid1, longid2) (*I think it must suffice to compare the longids?*)
+    | con_cmp (Scon scon1, Scon scon2) = scon_cmp (scon1, scon2)
+    | con_cmp (Tuple {arity=arity1}, Tuple {arity=arity2}) = int_cmp (arity1, arity2)
+    | con_cmp (Excon {longid=longid1, ...}, Excon {longid=longid2, ...}) =
+	longid_cmp (longid1, longid2)
+    | con_cmp (con1, con2) = int_cmp (con_ord con1, con_ord con2)
+
+  val con_eq = eq_from_cmp con_cmp
 
   fun arity (Con {nullary, ...}) = if nullary then 0 else 1
     | arity (Scon scon) = 0
@@ -671,7 +681,7 @@ local
 
   (*list of cons:*)
   fun isin (x,[]) = false
-    | isin (x,x'::xs) = con_staticmatch (x, x') orelse isin (x, xs)
+    | isin (x,x'::xs) = con_eq (x, x') orelse isin (x, xs)
 
   datatype path = Access of int * con * path | Obj
     (*a path is a description of how to access a component value of the value
@@ -693,10 +703,15 @@ local
 	^ string_from_path path ^ ")"
     | string_from_path Obj = "Obj"
 
-  fun path_eq (Access (i1, pcon1, path1), Access (i2, pcon2, path2)) =
-	i1 = i2 andalso con_eq (pcon1, pcon2) andalso path_eq (path1, path2)
-    | path_eq (Obj, Obj) = true
-    | path_eq _ = false
+  fun path_cmp (Obj, Obj) = Eq
+    | path_cmp (Obj, Access _) = Lt
+    | path_cmp (Access _, Obj) = Gt
+    | path_cmp (Access (i1, pcon1, path1), Access (i2, pcon2, path2)) =
+	(case int_cmp (i1, i2) of
+	   Eq => (case con_cmp (pcon1, pcon2) of
+		    Eq => path_cmp (path1, path2)
+		  | cmp => cmp)
+	 | cmp => cmp)
 
   type declaration_to_be_made = id * (lvar * LambdaExp.tyvar list * Type) * path
   type declarations_to_be_made = declaration_to_be_made list
@@ -704,7 +719,6 @@ local
   (*TODO 03/12/1997 19:36. tho.   kommenter rhs-typen.
    kommenter forskelle & ligheder med sestofts artikel.*)
 
-  fun rhs_eq ((_, i1) : rhs, (_, i2) : rhs) = i1 = i2
   fun string_from_rhs (_, i) = Int.string i
 
   datatype termd = Pos of con * termd list | Neg of con list
@@ -728,45 +742,77 @@ local
 
   fun staticmatch (con : con, termd : termd) : matchresult =
 	(case termd of
-	   Pos (pcon, _) => if con_staticmatch (con, pcon) then Yes else No
+	   Pos (pcon, _) => (case con_cmp (con, pcon) of Eq => Yes | _ => No)
 	 | Neg (nonset)  => if isin (con, nonset) then No
 			    else if span_eq_int (span con) (length nonset + 1) then Yes
 				 else Maybe)
 
-  datatype 'rhs decision1 = Success of 'rhs 
-                          | IfEq of path * con * 'rhs decision * 'rhs decision
-  withtype 'rhs decision0 = lvar * 'rhs decision1
-       and 'rhs decision  = 'rhs decision0 Option
+  datatype kind = Success of rhs | IfEq of ifeq
+  withtype node = {lvar : lvar, kind : kind, refs : int ref, visited : bool ref}
+       and edge  = node Option
+       and ifeq = path * con * edge * edge
 
-    (*each Success & IfEq node (i.e., the nodes of type decision0) will be
-     compiled into a LambdaExp function.  The lvar is the name of that
-     function.  The lvar also serves as unique identification of its node.
-     The opposite of Success (i.e., failure) is indicated by None : 'rhs
-     decision and will be compiled into `raise something'.*)
+  type decdag = edge
 
-  type t0 = rhs decision0
-  type t = rhs decision
-  type decdag = t * t0 list
 
-  fun t_eq (None, None) = true
-    | t_eq (Some (lvar1, _), Some (lvar2, _)) = Lvars.eq (lvar1, lvar2)
-    | t_eq _ = false
-        (*In t_eq, I could equally well have used `rhs_eq (rhs1, rhs2)' for
-	 Success nodes, and
+  (*A  d e c i s i o n  d a g  is a dag (mas o menos) with edges of type t &
+   nodes of type t'.  An edge either points to nothing (i. e., it is None :
+   t) and means "fail", or it points to (is) a node & means "jump to that
+   node".  A node is either a right hand side (of type rhs, i. e., a Success
+   node) or a test with two branches, i.e., two edges (an IfEq node).  Each
+   node will be compiled into a LambdaExp function.  (well, compile_match
+   does that; compile_binding is a bit different).  The lvar of the node will
+   be the name of that function and also serves as unique identification of
+   the node.  Correspondingly, edges to nodes will be compiled to function
+   calls.  Failure edges (i.e., None : t) will be compiled into "raise
+   something".
 
-          `path_eq (path1, path2) andalso con_eq (con1, con2)
-                                  andalso t_eq (t11, t12) andalso t_eq (t21, t22)'
+   The "refs" field in a node is the number of edges to the node. When a node
+   is created, it is set to 0, because we do not know at that point, whether
+   anyone will ever jump to the node.  It is only when we make an edge to the
+   node that we must bump this counter.
 
-	 for IfEq nodes, but I prefer not to, because it would mean the whole
-	 `skeleton of IfEq nodes' has to be traversed every time IfEq nodes
-	 are compared.*)
+   Invariant: "visited" fields of all nodes are always false except within
+   calls to reachable*)
 
-	
+  fun node_cmp ({lvar=lvar1, ...} : node, {lvar=lvar2, ...} : node) =
+	lvar_cmp (lvar1, lvar2)
+  fun opt_cmp x_cmp (None, None) = Eq
+    | opt_cmp x_cmp (None, Some _) = Lt
+    | opt_cmp x_cmp (Some _, None) = Gt
+    | opt_cmp x_cmp (Some x1, Some x2) = x_cmp (x1, x2)
+  val edge_cmp = opt_cmp node_cmp
+  val edge_eq = eq_from_cmp edge_cmp
+
+  fun ifeq_cmp ((path1 : path, con1 : con, then1 : edge, else1 : edge),
+		(path2 : path, con2 : con, then2 : edge, else2 : edge)) =
+	(case edge_cmp (else1, else2) of
+	   Eq => (case edge_cmp (then1, then2) of
+		    Eq => (case con_cmp (con1, con2) of
+			     Eq => path_cmp (path1, path2)
+			   | cmp => cmp)
+		  | cmp => cmp)
+	 | cmp => cmp)
+					     
   local
-    val r : rhs decision0 list ref = ref []
+    structure map = OrderFinMap
+      (structure Order : ORDERING = struct
+	 type T = ifeq
+	 (*lt ifeq1 ifeq2 = lexicographic ordering of the components of the
+	  tuples.  As long as it is a linear order, I can choose any
+	  ordering, so I compare the components in an order such that in the
+	  frequent cases it is determined as quickly as possible whether
+	  ifeq1 < ifeq2.*)
+	 fun lt ifeq1 ifeq2 = lt_from_cmp ifeq_cmp (ifeq1, ifeq2)
+       end (*structure Order*)
+       structure PP = PrettyPrint
+       structure Report = Report)
+
+    type mapr = node map.map ref
+    val mapr : mapr = ref map.empty
+    fun find_ifeq_node_like_this ifeq : node Option = map.lookup (!mapr) ifeq
     val counter = ref 0
     fun next () = (counter := 1 + !counter ; !counter)
-
     fun string_from_con (Con {longid, ...}) = Ident.pr_longid longid
       | string_from_con (Scon (SCon.INTEGER i)) = Int.string i
       | string_from_con (Scon (SCon.STRING s)) = "a_string"
@@ -775,40 +821,40 @@ local
       | string_from_con (Scon (SCon.WORD w)) = Int.string w
       | string_from_con (Excon {longid, ...}) = Ident.pr_longid longid
       | string_from_con (Tuple {arity}) = "a_tuple"
+    val edge_bump = app_opt (fn {refs, ...} : node => refs := !refs + 1)
+    fun mk_ifeq_node (ifeq as (path, con, edge1, edge2)) : node =
+	  let val node = {lvar = Lvars.new_named_lvar ("n" ^ Int.string (next ())
+						       ^ "_" ^ string_from_con con ^ "?"),
+	                  kind = IfEq ifeq,
+			  refs = ref 0,
+			  visited = ref false}
+	  in 
+	    mapr := map.add (ifeq, node, !mapr) ;
+	    edge_bump edge1 ;
+	    edge_bump edge2 ;
+	    node
+	  end
 
-    infix into
-    fun t into (t',l) = (t', t::l);
+(*TODO 06/01/1998 10:55. tho.  kan man bruge indkanttallet ("refs") til
+noget?  F. eks. til at se, om koden er død (fordi der er redundante regler)?
+Problemet er, hvis der kan forekomme en ifeq-knude med indgrad 0.  Så er den
+"død", & det er dens børn måske også, men det kan man ikke se af deres
+indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
+	
   in
-    fun reset () = (r := [] ; counter := 0)
-    fun get_r () = !r
-    fun update f = let val (t, l) = f(!r) in r:= l; t end
+    fun reset () = (mapr := map.empty ; counter := 0)
+    fun ifeq_node ifeq : node =
+	  (case find_ifeq_node_like_this ifeq of
+	     Some node => node
+	   | None => mk_ifeq_node ifeq)
 
-    fun insertIfEq (path : path, con : con, t1, t2) (l : rhs decision0 list)
-	  : rhs decision * rhs decision0 list  =
-	  (case l of
-	     [] => let val lvar = Lvars.new_named_lvar
-	                             ("n" ^ Int.string (next ())
-				      ^ "__is_it_" ^ string_from_con con)
-		       val newt = (lvar, IfEq (path, con, t1, t2))
-		   in (Some newt, [newt])
-		   end
-	  | (l as ((t0 as (lvar', IfEq (path', con', t1', t2'))) :: rest)) =>
-	      if t_eq (t1, t1') andalso t_eq (t2, t2')
-		andalso path_eq (path, path') andalso con_eq (con, con')
-	      then (Some t0, l)
-	      else t0 into insertIfEq (path, con, t1, t2) rest
-	  | (t0 :: rest) => t0 into insertIfEq (path, con, t1, t2) rest)
+    fun mk_success_node (rhs : rhs) : node =
+	  {lvar = Lvars.new_named_lvar ("rhs" ^ string_from_rhs rhs),
+	   kind = Success rhs,
+	   refs = ref 0,
+	   visited = ref false}
 
-    fun insertFailure l = (None, l)
-
-    fun insertSuccess (rhs : rhs) [] : rhs decision * rhs decision0 list =
-	  let val lvar = Lvars.new_named_lvar ("rhs" ^ string_from_rhs rhs)
-	      val newt = (lvar, Success rhs)
-	  in (Some newt, [newt]) end
-      | insertSuccess rhs (l as ((t0 as (lvar', Success rhs')) :: rest)) =
-	  if rhs_eq (rhs, rhs') then (Some t0, l)
-	  else t0 into insertSuccess rhs rest
-      | insertSuccess rhs (t0 :: rest) = t0 into insertSuccess rhs rest
+    val fail_edge = None
   end (*local*)
 
   fun add_id_to_rhs (id : id) (info : ElabInfo.ElabInfo) (path : path)
@@ -826,11 +872,11 @@ local
   type work = pat list * path list * termd list
   type rule = pat * rhs
 
-  fun fail (termd : termd, []) = update insertFailure
+  fun fail (termd : termd, []) = fail_edge
     | fail (termd, (pat1, rhs1) :: rulerest) =
 	match_pat (pat1, Obj, termd, [], [], rhs1, rulerest)
   and succeed (ctx : context, [] : work list, rhs : rhs, rules : rule list) =
-	update (insertSuccess rhs)
+	Some (mk_success_node rhs)
     | succeed (ctx, work1::workr, rhs, rules) =
 	(case work1 of
 	   ([],[],[]) => succeed (norm ctx, workr, rhs, rules)
@@ -940,7 +986,14 @@ local
 	   | No => fail' termd
 	   | Maybe => let val left = succeed' ()
 			  val right = fail' (addneg (termd, pcon))
-		      in update (insertIfEq (path, pcon, left, right))
+		      in if edge_eq (left, right) then left
+			 else Some (ifeq_node (path, pcon, left, right))
+
+		      (*TODO 05/01/1998 18:40. tho. maybe everything
+		      (match_con etc.) should return a node instead of an
+		      edge?  NO*)
+
+
 		      end)
 	end
 
@@ -1007,100 +1060,116 @@ local
    e1 in it.  Then we add the surrounding LET's, again using the
    aforementioned information.*)
 
-  fun compile_rhs compile_no obj env poly rhs =
+  fun compile_rhs compile_no obj env rhs =
 	let
 	  val (declarations_to_be_made : declarations_to_be_made, i) = rhs
 	  val env_rhs = CE.plus (env, env_from declarations_to_be_made)
 	  val lexp = compile_no (i, env_rhs)
-	in mk_declarations_to_be_made declarations_to_be_made lexp obj env poly
+	in mk_declarations_to_be_made declarations_to_be_made lexp obj env 
 	end
 
-  and mk_declarations_to_be_made declarations_to_be_made lexp obj env poly =
+  and mk_declarations_to_be_made declarations_to_be_made lexp obj env  =
 	List.foldL  (*again, foldR could also have been used*)
 	  (fn (id, (lvar, tyvars, tau), path) => fn lexp_sofar =>
-	   (LET {pat = [(lvar, if poly then tyvars else [], tau)],
+	   (LET {pat = [(lvar, tyvars, tau)],
 		       bind = compile_path env obj path,
 		       scope = lexp_sofar}))
 		lexp declarations_to_be_made
 
 in
 
-  fun compile_jump_to lvar =
+  fun compile_jump_to ({lvar, ...} : node) =
 	APP (VAR {lvar = lvar, instances = []}, PRIM (RECORDprim, []))
 	  (*instances=[] because the var can never be polymorphic
 	   because it is the name of a non-polymorphic function.*)
 
-  fun compile_t_to_lexp compile_no obj raise_something env poly
-	(compile_transition_to_t : rhs decision -> LambdaExp) t =
-	(case t of
-	   None => raise_something obj
-	 | Some (_, IfEq (path, con, t1, t2)) =>
+  fun compile_node compile_no obj raise_something env 
+	(compile_edge : edge -> LambdaExp) (node : node) =
+	(case #kind node of
+	   IfEq (path, con, edge1, edge2) =>
 	     let fun switch (switch_x : 'x Switch -> LambdaExp, x : 'x) : LambdaExp =
 		       switch_x (SWITCH (compile_path env obj path,
-					 [(x, compile_transition_to_t t1)],
-					 Some (compile_transition_to_t t2)))
+					 [(x, compile_edge edge1)],
+					 Some (compile_edge edge2)))
 	     in (case con of
 		   Con {longid, ...} =>
 		     switch (SWITCH_C, lookupLongcon env longid
-					 (OTHER "compile_t_to_lexp"))
+					 (OTHER "compile_node"))
 		 | Scon (SCon.INTEGER i) => switch (SWITCH_I, i)
 		 | Scon (SCon.STRING s) => switch (SWITCH_S, s)
-		 | Scon (SCon.REAL r) => die "compile_t_to_lexp: real"
+		 | Scon (SCon.REAL r) => die "compile_node: real"
 		 | Scon (SCon.CHAR i) => switch (SWITCH_I, i)
 		 | Scon (SCon.WORD i) => switch (SWITCH_I, i)
 		 | Excon {longid, ...} =>
 		     switch (SWITCH_E, 
-			     #1 (lookupLongexcon env longid (OTHER "compile_t_to_lexp")))
-		 | Tuple _ => die "compile_t_to_lexp: Tuple")
+			     #1 (lookupLongexcon env longid (OTHER "compile_node")))
+		 | Tuple _ => die "compile_node: Tuple")
 	     end
-	 | Some (_, Success rhs) => compile_rhs compile_no obj env poly rhs)
+	 | Success rhs => compile_rhs compile_no obj env rhs)
 
-  fun compile_t0_to_function compile_no obj raise_something tau_return env t =
-	let fun compile_transition_to_t None = raise_something obj
-	      | compile_transition_to_t (Some (lvar, _)) = compile_jump_to lvar
-	    val body = compile_t_to_lexp compile_no obj raise_something env
-	                 (*does the pattern make polymorphic bindings?*)
-(*TODO 21/12/1997 20:11. tho.:  prøv med true
-
-	      false
-*)true
-			 compile_transition_to_t (Some t)
+  fun compile_node_to_function compile_no obj raise_something tau_return env
+	(node : node) =
+	let fun compile_edge None = raise_something obj
+	      | compile_edge (Some node') = compile_jump_to node'
+	    val body = compile_node compile_no obj raise_something env compile_edge node
 	    val Type = ARROWtype ([unitType], [tau_return]) 
-	in {lvar= #1 t, tyvars=[], Type=Type,
+	in {lvar= #lvar node, tyvars=[], Type=Type,
 	    bind=FN {pat = [(Lvars.new_named_lvar "x", unitType)],
 		     body = body}}
 	(*tyvars=[] because an rhs can never be polymorphic, because we
-	 always use compile_t0_to_function to make rhs's; in the case of
+	 always use compile_node_to_function to make rhs's; in the case of
 	 valbinds, the ``rhs'' (not really an rhs) is not compiled to a
 	 function (see compile_binding)*)
 	end 
 
-  fun string_from_decdag (decdag as (t, t0s) : rhs decision * rhs decision0 list) =
-	"(" ^ string_from_t t ^ ",\n[" ^ string_from_t0s t0s ^ "])\n"
-  and string_from_t None = "None"
-    | string_from_t (Some (lvar, decision1)) =
+  fun reachable edge = let val nodes = reachable0 edge
+		       in List.apply (fn node => #visited node := false) nodes ;
+			 nodes
+		       end
+
+  (*invariant: visited fields of all nodes are always false except within
+   calls to reachable*)
+
+  and reachable0 None = []
+    | reachable0 (Some (node : node as {visited, ...})) =
+	if !visited then [] else node :: visit_node node
+  and visit_node node =
+	(#visited node := true ; 
+	 (case #kind node of
+	    IfEq (path, con, edge1, edge2) => reachable0 edge1 @ reachable0 edge2
+	  | Success rhs => []))
+		
+
+
+(*TODO 06/01/1998 11:25. tho.:
+
+  fun string_from_decdag (edge : edge) =
+	"(" ^ string_from_edge edge ^ ",\n[" ^ string_from_nodes reachable edge ^ "])\n"
+  and string_from_edge None = "None"
+    | string_from_edge (Some (lvar, decision1)) =
 	"Some (" ^ Lvars.pr_lvar lvar ^ ", " ^ string_from_decison1 decision1 ^ ")"
-  and string_from_t0s t0s = List.foldR (fn t0 => fn s =>
-					string_from_t0 t0 ^ ",\n" ^ s) "" t0s
-  and string_from_t0 (lvar, decision1) =
+  and string_from_nodes nodes = List.foldR (fn node => fn s =>
+					string_from_node node ^ ",\n" ^ s) "" nodes
+  and string_from_node (lvar, decision1) =
 	"  (" ^ Lvars.pr_lvar lvar ^ "-- " ^ string_from_decison1 decision1 ^ ")"
   and string_from_decison1 (IfEq (path, con, t1, t2)) =
 	"IfEq (" ^ string_from_path path ^ ", "
 	^ string_from_con0 con ^ ", "
-	^ short_string_from_t t1 ^ ", "
-	^ short_string_from_t t2 ^ ")"
+	^ short_string_from_edge t1 ^ ", "
+	^ short_string_from_edge t2 ^ ")"
     | string_from_decison1 (Success rhs) = "Success " ^ string_from_rhs rhs
-  and short_string_from_t None = "None"
-    | short_string_from_t (Some (lvar, _)) = "Some (" ^ Lvars.pr_lvar lvar ^ ", ...)"
+  and short_string_from_edge None = "None"
+    | short_string_from_edge (Some (lvar, _)) = "Some (" ^ Lvars.pr_lvar lvar ^ ", ...)"
 
   val pr_decdag = pr o string_from_decdag
+*)
 
 
-  fun mk_decdag (pats : pat list) : rhs decision * rhs decision0 list =
+  fun mk_decdag (pats : pat list)   : edge =
 	let val tab = List.tabulate (List.size pats,
 				     fn i => ([] : declarations_to_be_made, i))
 	  val rules = ListPair.zip (pats, tab) handle ListPair.Zip => die "mk_decdag"
-	in (reset () ; (fail (Neg [], rules), get_r ())) 
+	in (reset () ; fail (Neg [], rules))
 	end
 
   (*env_from_decdag is only used by compile_binding.  The decdag will always
@@ -1108,13 +1177,13 @@ in
    the decdag the environment in which this rhs expression must be
    compiled.*)
 
-  fun env_from_decdag (_, t0s) = (*because the pattern is from a let-binding
-				 there will always be exactly one Success node.
-				 we grab the environment from that node:*)
-	(case List.all (fn (_, Success _) => true | _ => false) t0s of
-	   [(_, Success rhs)] =>
-	     (case rhs of (declarations_to_be_made, _) =>
-		env_from declarations_to_be_made)
+  fun env_from_decdag decdag = (*because the pattern is from a let-binding
+				there will always be exactly one Success node.
+				we grab the environment from that node:*)
+	(case List.all (fn {kind=Success _, ...} => true | _ => false)
+	        (reachable decdag) of
+	   [{kind=Success (declarations_to_be_made, _), ...}] =>
+	     env_from declarations_to_be_made
 	 | _ => die "env_from_decdag: not exactly a Success")
 
 end; (*match compiler local*)
@@ -1616,7 +1685,7 @@ the 12 lines above are very similar to the code below
 
     (*compile_match = compile a match into a FN expression; this is used for
      FNexp & HANDLEexp expressions.  `raise_something' indicates what to
-     plant for non-matches; it can either be a lexp that raises exception
+     plant for non-matches; it can be either a lexp that raises exception
      Match or reraises the raised exception.  `warn' is true if
      inexhaustiveness warnings are required (true for case statement on
      excons, for example, but false for the equivalent in a handler).*)
@@ -1626,7 +1695,7 @@ the 12 lines above are very similar to the code below
 	val matches = makeList (fn MATCH(_, _, m) => m) match
 	val pats = map (fn MATCH(_, MRULE(_, pat, _), _) => pat) matches
 	val exps = map (fn MATCH(_, MRULE(_, _, exp), _) => exp) matches
-	val decdag as (t, t0s) = mk_decdag pats
+	val decdag = mk_decdag pats
 	val lvar_switch = new_lvar_from_pats pats
 	val obj = VAR {lvar=lvar_switch, instances=[]}
 	      (*instances=[] because the argument to a fn cannot be polymorphic*)
@@ -1635,17 +1704,17 @@ the 12 lines above are very similar to the code below
 	                 (compileExp env_rhs (List.nth i exps
 					      handle _ => die "compile_match: nth"))
       in
-(*KILL 21/12/1997 18:44. tho.:
+	(*KILL 21/12/1997 18:44. tho.:
 	 pr "\n\ncompileMatch: decdag is:\n";
 	 pr_decdag decdag;
-*)
+	 *)
 	 FN {pat = [(lvar_switch, tau_argument)],
 	     body =
 	       FIX {functions =
-		      map (compile_t0_to_function compile_no
-			   obj raise_something tau_return env) t0s,
-		    scope = (case t of
-			       Some (lvar, _) => compile_jump_to lvar
+		      map (compile_node_to_function compile_no
+			   obj raise_something tau_return env) (reachable decdag),
+		    scope = (case decdag (*a decdag is an edge*) of
+			       Some node => compile_jump_to node
 			     | None => raise_something obj)}}
       end
 (*KILL 25/11/1997 15:07. tho.:
@@ -1890,7 +1959,8 @@ the 12 lines above are very similar to the code below
 
     and compile_binding env (topLevel, pat, exp, (tyvars, Type))
         : CE.CEnv * (LambdaExp -> LambdaExp) =
-    let val decdag as (t, t0s) = mk_decdag [pat]
+    let val decdag = mk_decdag [pat]
+
         val f = fn scope =>
 	  let val (tyvars', tau') = compileTypeScheme (tyvars, Type)
 	      val lvar_switch = new_lvar_from_pat pat
@@ -1898,18 +1968,17 @@ the 12 lines above are very similar to the code below
 	      fun compile_no (i, env_rhs) = scope
 	      val raise_something = fn obj =>
 		    RAISE (PRIM (EXCONprim Excon.ex_BIND, []), LambdaExp.RaisedExnBind)
-	      fun compile_transition_to_t t =
-		    compile_t_to_lexp compile_no obj raise_something env
-		    (*does the pattern make polymorphic bindings?*)true
-		      compile_transition_to_t t
+	      fun compile_edge None = raise_something obj
+		| compile_edge (Some node) =
+		    compile_node compile_no obj raise_something env compile_edge node
 	  in
-(*KILL 21/12/1997 18:44. tho.:
+	    (*KILL 21/12/1997 18:44. tho.:
 	    pr "\n\ncompile_binding: decdag is:\n";
 	    pr_decdag decdag;
-*)
+	     *)
 	    LET {pat = [(lvar_switch, tyvars', tau')],
 		 bind = compileExp env exp,
-		 scope = compile_transition_to_t t}
+		 scope = compile_edge decdag}
 	  end
 	val env_rhs = env_from_decdag decdag
     in (env_rhs, f)
