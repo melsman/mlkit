@@ -3,11 +3,11 @@ signature SCS_LOGIN =
     val default_lang : ScsLang.lang
     val default_id : int
 
-    val user_id   : int
-    val user_lang : ScsLang.lang
+    val user_id   : unit -> int
+    val user_lang : unit -> ScsLang.lang
 
     val verifyUser : unit -> int * ScsLang.lang
-    val loggedIn   : bool
+    val loggedIn   : unit -> bool
 
     val d : 'a * 'a -> 'a
     (* [d (str_dk,str_eng)] returns either str_dk or str_eng depending
@@ -106,12 +106,14 @@ structure ScsLogin :> SCS_LOGIN =
 
     (* We look for login-cookies on every request *)
     (* If you don't want that, then apply a filter similar to the one below. *)
-    val (user_id,user_lang) = verifyUser()
-    val loggedIn = user_id <> 0
+    fun user_id_user_lang () = verifyUser()
+    fun user_id () = #1 (verifyUser())
+    fun user_lang () = #2 (verifyUser())
+    fun loggedIn () = user_id () <> 0
 
     (* Language selection *)
     fun d (str_dk,str_eng) =
-      case user_lang of
+      case user_lang() of
 	ScsLang.en => str_eng
       | ScsLang.da => str_dk
 
@@ -198,7 +200,7 @@ You should not be seeing this!`;
 	(* we tell SMLserver to verify that the user is logged in and
            holds one of the roles in the roles list before serving any
            of the protected_pages *)
-	if force_login andalso not loggedIn then
+	if force_login andalso not (loggedIn()) then
 	  reject (`<b>Fejl ved login:</b> Er du ny bruger eller har du glemt password 
 		   så klik <a href="mail_passwd_form.sml">Glemt password?</a>.<br><br>
                    <b>Error on login:</b> If you are a new user or you forgot password then 

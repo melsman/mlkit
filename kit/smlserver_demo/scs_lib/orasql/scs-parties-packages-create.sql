@@ -54,6 +54,16 @@ as
   ) return scs_parties.email%TYPE;
 
   /* --------------
+     function partyIdByEmail
+     --------------
+     returns the party id for the party with the argument
+     email. Returns null if such an email does not exists. Eamil is
+     unique.  */
+  function partyIdByEmail (
+    email in scs_parties.email%TYPE
+  ) return scs_parties.party_id%TYPE;
+
+  /* --------------
      function url
      --------------
      returns the url for a party_id
@@ -116,6 +126,24 @@ as
       return ;
   end destroy;
 
+  function partyIdByEmail (
+    email in scs_parties.email%TYPE
+  ) return scs_parties.party_id%TYPE
+  is
+    v_party_id scs_parties.party_id%TYPE;
+  begin
+    select party_id
+      into v_party_id
+      from scs_parties
+     where scs_parties.email = partyIdByEmail.email
+       and scs_parties.deleted_p = 'f';
+
+    return v_party_id;
+
+  exception 
+    when others then
+      return null;
+  end partyIdByEmail;
 
   function email (
     party_id in scs_parties.party_id%TYPE

@@ -21,6 +21,7 @@ signature SCS_DB =
 
     (* [newObjId] returns a new object id from the sequence
         scs_object_id_seq. *)
+    val newObjIdDb   : Db.Handle.db -> int
     val newObjId     : unit -> int
 
     val oneFieldErrPg : quot * quot -> string
@@ -94,6 +95,11 @@ structure ScsDb :> SCS_DB =
       panicDml `update ^table set ^column=(case when ^column = 't' then 'f' else 't' end)
                  where ^table.^column_id=^(Db.qqq id)`
 
+    fun newObjIdDb db =
+      (ScsError.valOf o Int.fromString)
+      (ScsError.wrapPanic
+       (Db.Handle.oneFieldDb db) `select scs.new_obj_id from dual`)
+
     fun newObjId () =
       (ScsError.valOf o Int.fromString)
       (ScsError.wrapPanic
@@ -105,7 +111,7 @@ structure ScsDb :> SCS_DB =
     fun oneFieldErrPg (sql,emsg) =
       Db.oneField sql handle _ => (ScsPage.returnPg "" emsg;Ns.exit())
 
-    fun userLang user_id = ScsLang.toString ScsLogin.user_lang
+    fun userLang user_id = ScsLang.toString (ScsLogin.user_lang())
 
     fun wrapUpd msg f a = f a
       handle X => (ScsPage.returnPg 

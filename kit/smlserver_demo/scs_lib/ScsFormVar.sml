@@ -196,7 +196,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
       ScsDict.sl' [(ScsLang.en,`Field: <b>%0</b>. More than one dataitem is provided.`),
                    (ScsLang.da,`Felt: <b>%0</b>. Der findes mere end en indtastning.`)] [f_msg]
     fun buildErrMsg (errs: errs) : quot =
-      case ScsLogin.user_lang of
+      case ScsLogin.user_lang() of
 	 ScsLang.en => 
 	   (`There were the following errors:
 
@@ -377,19 +377,19 @@ structure ScsFormVar :> SCS_FORM_VAR =
     local
       val getErr' = getErr "" trim
       fun msgString s = `^s` (*
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     You must type a string`
 	| ScsLang.da => `^s
 	     Du skal indtaste en tegnstreng.`) 2003-04-04, nh *)
       fun msgLenString l s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     The string must be on no more that ^(Int.toString l) characters.`
 	| ScsLang.da => `^s
 	     Strengen må ikke være på mere end ^(Int.toString l) tegn`)
       fun msgEmail s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>A few examples of valid emails:
 	     <ul>
@@ -405,7 +405,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     <li>FirstLastname@very.big.company.com
 	     </ul></blockquote>`)
       fun msgName s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     A name may contain the letters from the alphabet including: <b>'</b>, <b>\</b>,<b>-</b>,<b>æ</b>,
@@ -417,7 +417,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>,<b>ä</b>,<b>é</b>,<b>á</b> og mellemrum.
 	     </blockquote>`)
       fun msgAddr s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     An address may contain digits, letters from the alphabet including:
@@ -431,7 +431,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     <b>æ</b>,<b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>,<b>á</b>
 	     </blockquote>`)
       fun msgLogin s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     A login may contain lowercase letters from the alphabet and digits - the first
@@ -447,7 +447,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     Derudover skal et login være på mindst tre tegn og højst 10 tegn.
 	     </blockquote>`)
       fun msgPhone s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     A telephone numer may contain numbers and letters from the alphabet 
@@ -459,7 +459,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     samt <b>-</b>, <b>,</b> and <b>.</b>.
 	     </blockquote>`)
       fun msgHTML s = 	
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     You may use the following HTML tags in your text: Not implemented yet.
@@ -469,7 +469,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     Det er tilladt at anvende følgende HTML tags i din tekst: Desværre ikke implementeret.
 	     </blokcquote>`)
       fun msgURL s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     <a href="/url_desc.sml">URL (Uniform Resource Locator)</a> - 
@@ -481,7 +481,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     vi supporterer kun <code>http://</code> type (f.eks. <code>http://www.it-c.dk</code>).
 	     </blockquote>`)
       fun msgCpr s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     If you hold a Danish CPR-number, then the format is:
@@ -526,7 +526,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     31. august 1975, skal skrive: <b>310875-CLM1</b>.
 	     </blockquote>`)
       fun msgEnum enums s =
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     You must choose among the following enumerations:
 	     <blockquote>
@@ -538,7 +538,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     ^(String.concatWith "," enums)
 	     </blockquote>`)
       fun msgDateIso s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     You must type a <b>date</b> in the ISO format <code>YYYY-MM-DD</code> (e.g., 2001-10-25).
@@ -547,7 +547,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     Du skal indtaste en <b>dato</b> i ISO formatet, dvs. <code>YYYY-MM-DD</code> (f.eks. 2001-10-25).
 	     </blockquote>`)
       fun msgDate s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     The date must be in the Danish format <code>DD/MM-YYYY</code> (e.g., 25/01-2001) or 
@@ -559,7 +559,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     </blockquote>`)
 
       fun msgDbTimestamp s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     You must type a <b>time</b> and <b>date</b> in this format <code>YYYY-MM-DD HH:MM:SS</code>.
@@ -571,7 +571,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     </blockquote>`)
 
       fun msgTableName s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     You have not specified a valid <b>table name</b>
@@ -580,7 +580,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     Du har ikke specificeret et korrekt <b>tabelnavn</b>.
 	     </blockquote>`)
       fun msgRegExp s = 
-	(case ScsLogin.user_lang of
+	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
 	     You must type a <b>regular expression</b> defined as follows.<p>
@@ -637,7 +637,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
  Mellemrum har betydning. Tegn escapes ved \  
 </pre>
 	     </blockquote>`)
-      fun msgLang s = msgEnum (ScsLang.all_as_text ScsLogin.user_lang) s
+      fun msgLang s = msgEnum (ScsLang.all_as_text (ScsLogin.user_lang())) s
 
       fun convCpr cpr =
 	case String.explode (trim cpr) of

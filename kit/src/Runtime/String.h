@@ -52,6 +52,7 @@ String REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2);
 String REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, int xs);
 String REG_POLY_FUN_HDR(implodeStringML, Region rAddr, int xs);
 String REG_POLY_FUN_HDR(convertStringToML, Region rAddr, unsigned char *cStr);
+String REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, int l, unsigned char *cStr);
 String REG_POLY_FUN_HDR(exnNameML, Region rAddr, int e);
 int * REG_POLY_FUN_HDR(explodeStringML, Region rAddr2, String str);  // no region for the cons cells
 

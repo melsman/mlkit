@@ -24,7 +24,8 @@ val _ =
 	ScsDb.errorDml (%% `Phrase already exists`) 
 	`insert into scs_dict_targets(target_id,phrase_id,lang,phrase,modifying_user)
 	 values (scs.new_obj_id,
-		 ^(Db.valueList [phrase_id,ScsLang.toString target_lang,target_phrase,Int.toString ScsLogin.user_id]))`
+		 ^(Db.valueList [phrase_id,ScsLang.toString target_lang,
+				 target_phrase,Int.toString (ScsLogin.user_id())]))`
       else (* Update *)
 	let
 	  val target_id = 
@@ -33,7 +34,7 @@ val _ =
 	  ScsDb.errorDml (%% `Phrase can't be updated`) 
 	  `update scs_dict_targets 
               set ^(Db.setList [("phrase",target_phrase),
-				("modifying_user",Int.toString ScsLogin.user_id)]),last_modified = sysdate
+				("modifying_user",Int.toString (ScsLogin.user_id()))]),last_modified = sysdate
 	   where target_id = ^(Db.qqq target_id)`
 	end
     end

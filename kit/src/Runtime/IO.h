@@ -18,6 +18,7 @@ int openAppendStream(String filenamePtr, int exn);
 void closeStream(FILE *stream);
 // int endOfStream(FILE *stream);
 int outputStream(FILE *outStream, String stringPtr, int exn);
+int outputBinStream(FILE *outStream, String stringPtr, int exn);
 void flushStream(FILE *stream);
 int stdInStream(int dummy);
 int stdOutStream(int dummy);

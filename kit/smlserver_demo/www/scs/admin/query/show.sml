@@ -19,7 +19,7 @@ val _ =
       (Db.dml `insert into scs_query 
                  (id,query,arity,category,name,description,create_date,create_user)
                 values (^(Db.qqq q_id),^(Db.qqq query),'^(Int.toString arity)',^(Db.qqq category),
-                        ^(Db.qqq name),^(Db.qqq desc),sysdate,'^(Int.toString ScsLogin.user_id)')`;
+                        ^(Db.qqq name),^(Db.qqq desc),sysdate,'^(Int.toString (ScsLogin.user_id()))')`;
        Ns.returnRedirect ("show.sml?id="^q_id);
        Ns.exit())
     end

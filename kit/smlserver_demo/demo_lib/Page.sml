@@ -24,7 +24,8 @@ structure Page : PAGE =
              <h2>^head</h2> ` ^^ 
              body ^^
              `<hr><i>Served by 
-              <a href=http://www.smlserver.org>SMLserver</a></i>
+              <a href=http://www.smlserver.org>SMLserver</a></i>,
+	     <i><a href="/demo/index.sml">Back to index page</a>.</i>
           </body>
         </html>`)
 

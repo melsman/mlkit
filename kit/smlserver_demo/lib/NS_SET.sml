@@ -1,6 +1,7 @@
 signature NS_SET = sig
   type set    
   val get    : set * string -> string option
+  val iget   : set * string -> string option
   val getOpt : set * string * string -> string
   val getAll : set * string -> string list
   val size   : set -> int
@@ -21,6 +22,8 @@ end
  [get (s,k)] returns SOME(v) if v is the first value 
  associated with key k in set s; returns NONE if no value is
  associated with k in s.
+
+ [iget (s,k)] is the insensitive counterpart to get.
 
  [getOpt (s,k,v)] returns the first value associated with key 
  k in set s; returns v if no value is associated with k in s.

@@ -1,5 +1,11 @@
 signature SCS_FILE =
   sig
+
+    (* [encodeFileNameUnix filename] returns filename with all "/"
+        turned into "+" and "." turned into "%" which will prevent
+        some unwanted behaviour on Unix file systems. *)
+    val encodeFileNameUnix : string -> string
+
     (* [save source path] saves source into the file represented as path.
        If the directory path does not exist, then it is created. Raises ScsError.Fail
        on error. An already existing file i erased *)
@@ -19,6 +25,10 @@ signature SCS_FILE =
 
 structure ScsFile :> SCS_FILE =
   struct
+
+    fun encodeFileNameUnix file = 
+      String.translate (fn #"/" => "+" | #"." => "%" | c => str c) file
+
     fun pp_syserr (s,NONE) = s
       | pp_syserr (s,SOME syserr) = s ^ " (Os.SysErr: " ^ (OS.errorMsg syserr) ^ ")"
 

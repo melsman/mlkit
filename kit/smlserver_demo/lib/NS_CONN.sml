@@ -1,24 +1,27 @@
 signature NS_CONN = sig
   eqtype status
   type set
-  val returnHtml     : int * string -> status
-  val return         : string -> status
-  val returnFile     : int * string * string -> status
-  val write          : string -> status
-  val returnRedirect : string -> status
-  val getQuery       : unit -> set option
-  val formvar        : string -> string option
-  val formvarAll     : string -> string list
-  val headers        : unit -> set 
-  val host           : unit -> string 
-  val location       : unit -> string 
-  val peer           : unit -> string 
-  val peerPort       : unit -> int
-  val port           : unit -> int
-  val redirect       : string -> status
-  val server         : unit -> string
-  val url            : unit -> string
-  val hasConnection  : unit -> bool
+  val returnHtml         : int * string -> status
+  val return             : string -> status
+  val returnFile         : int * string * string -> status
+  val write              : string -> status
+  val returnRedirect     : string -> status
+  val getQuery           : unit -> set option
+  val formvar            : string -> string option
+  val formvarAll         : string -> string list
+  val storeMultiformData : string * string -> unit
+  val headers            : unit -> set 
+  val host               : unit -> string 
+  val location           : unit -> string 
+  val peer               : unit -> string 
+  val peerPort           : unit -> int
+  val port               : unit -> int
+  val redirect           : string -> status
+  val server             : unit -> string
+  val url                : unit -> string
+  val method             : unit -> string
+  val contentLength      : unit -> int
+  val hasConnection      : unit -> bool
 end
 
 (*
@@ -58,6 +61,11 @@ end
  [formvarAll k] returns all values associated with key k in 
  the query data; the function returns the empty list if no 
  query data is present for the argument key k.
+
+ [storeMultiformData (fv,filename)] stores the uploaded file
+ represented by formvariable fv in file filename. Raises Fail 
+ if some error happens (e.g., filename can't be opened, fv 
+ does not exists or fv is not an uploaded file.
 
  [headers()] returns, as a set, the HTTP headers associated 
  with the connection.

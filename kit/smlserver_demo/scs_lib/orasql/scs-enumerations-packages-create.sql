@@ -248,6 +248,16 @@ as
     language    in scs_lang.language%TYPE
   ) return varchar2;
 
+  /* -----------------
+     function vidOrder
+     -----------------
+
+     returns the order for the vid. Returns null if vid does not exists.
+  */
+  function vidOrder (
+    val_id in scs_enum_values.val_id%TYPE
+  ) return scs_enum_values.ordering%TYPE;
+
 end scs_enumeration;
 /
 show errors
@@ -672,6 +682,24 @@ as
     when others then
       return null;
   end vidToText;
+
+  function vidOrder (
+    val_id in scs_enum_values.val_id%TYPE
+  ) return scs_enum_values.ordering%TYPE
+  is
+    res scs_enum_values.ordering%TYPE;
+  begin
+    select ordering
+      into res
+      from scs_enum_values 
+     where scs_enum_values.val_id = vidOrder.val_id;
+
+    return res;
+
+  exception
+    when others then
+      return null;
+  end vidOrder;
 
 end scs_enumeration;
 /

@@ -58,11 +58,31 @@ REG_POLY_FUN_HDR(convertStringToML, Region rAddr, unsigned char *cStr)
 {
   String res;
   unsigned char *p;
-  int i;
 
   res = REG_POLY_CALL(allocString, rAddr, strlen(cStr));   // sets size also
 
   for ( p = &(res->data); *cStr != '\0'; )
+    {
+      *p++ = *cStr++;
+    }
+  *p = '\0';
+  return res;
+}
+
+// convertStringToML: The ML string is allocated in the region pointen
+// at by rAddr. This should also work on binary string because we do
+// not test on \0 in during the copy. However, you must be sure that
+// the legth is correct.
+String
+REG_POLY_FUN_HDR(convertBinStringToML, Region rAddr, int l, unsigned char *cStr) 
+{
+  String res;
+  unsigned char *p;
+  int i;
+
+  res = REG_POLY_CALL(allocString, rAddr, l);   // sets size also
+  p = &(res->data);
+  for (i=0; i<l; i++)
     {
       *p++ = *cStr++;
     }

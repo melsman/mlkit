@@ -1,5 +1,8 @@
 File NEWS_SMLSERVER
 
+ * nh 2003-06-18: Support for multipart/form-data implemented in
+   Ns.sml, see function getQuery().
+
  * mael 2003-02-24: Initialized work on extended typing in SMLserver,
    featuring static guarantees that (1) generated XHTML 1.0 validates
    and (2) forms and links are used consistently with corresponding

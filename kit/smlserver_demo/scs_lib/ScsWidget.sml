@@ -254,7 +254,7 @@ structure ScsWidget :> SCS_WIDGET =
     fun errorOnEmptyList (text : string) (ls : 'a list) : 'a list =
       (case ls of
 	[] => (ScsPage.returnPg (ScsDict.s [(ScsLang.en,`Can't find `),(ScsLang.da,`Kan ikke finde `)] ^ text)
-	       (case ScsLogin.user_lang of
+	       (case ScsLogin.user_lang() of
 		  ScsLang.en => `
 		    We had a problem finding ^text.<p>
 		    Please back up using your browser, and resubmit your entry<p>
@@ -342,7 +342,7 @@ structure ScsWidget :> SCS_WIDGET =
     fun maybe fv text = if fv = "" then `` else text
 
     fun selectLang default fv = 
-      selectWithDefault (ScsLang.all_for_sel_box ScsLogin.user_lang)
+      selectWithDefault (ScsLang.all_for_sel_box (ScsLogin.user_lang()))
       (ScsLang.toString default) fv
 
     fun period (start_date_opt,end_date_opt) fv = 
