@@ -31,12 +31,21 @@ signature SCS_LANG =
 
     (* [ppLang out_lang l] pretty prints language l in language out_lang. *)
     val ppLang : lang -> lang -> string
+
+    val isDanish: lang -> bool
+    val isEnglish: lang -> bool
   end
 
 structure ScsLang :> SCS_LANG =
   struct
     exception ScsLang of string
     datatype lang = da | en
+
+    fun isDanish da = true
+      | isDanish _  = false
+
+    fun isEnglish en = true
+      | isEnglish _  = false
 
     val all = [da,en]
 
@@ -75,3 +84,4 @@ structure ScsLang :> SCS_LANG =
 	    da => "engelsk"
 	  | en => "English")
   end
+
