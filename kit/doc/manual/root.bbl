@@ -1,5 +1,4 @@
-\begin{thebibliography}{Most of the following documents 
-may be found from the ML Kit home page.}{MTHM97}
+\begin{thebibliography}{}{}
 
 \bibitem[BTV96]{btv96}
 Lars Birkedal, Mads Tofte, and Magnus Vejlstrup.
@@ -15,11 +14,31 @@ Martin Elsman and Niels Hallenberg.
 \newblock Student Project 95-7-8, Department of Computer Science, University of
   Copenhagen (DIKU), July 5 1995.
 
-\bibitem[KO96]{koch&olesen}
+\bibitem[Els98]{ElsmanTIC98}
+Martin Elsman.
+\newblock Polymorphic equality -- no tags required.
+\newblock In {\em Second International Workshop on Types in Compilation}, March
+  1998.
+
+\bibitem[Els99a]{ElsmanThesis}
+Martin Elsman.
+\newblock {\em Program Modules, Separate Compilation, and Intermodule
+  Optimisation}.
+\newblock PhD thesis, Department of Computer Science, University of Copenhagen,
+  January 1999.
+
+\bibitem[Els99b]{ElsmanICFP99}
+Martin Elsman.
+\newblock Static interpretation of modules.
+\newblock In {\em Proceedings of the Fourth ACM SIGPLAN International
+  Conference on Functional Programming}, September 1999.
+
+\bibitem[KO96]{KochHojfeld96}
 Martin Koch and Tommy~H{\o}jfeld Olesen.
 \newblock Compiling a higher-order call-by-value functional programming
-  language to a {RISC} using a stack of regions. dissertation 96-10-5.
-\newblock Master's thesis, 1996.
+  language to a {RISC} using a stack of regions.
+\newblock Master's thesis, Department of Computer Science, University of
+  Copenhagen, October 1996.
 
 \bibitem[MTHM97]{mthm97}
 Robin Milner, Mads Tofte, Robert Harper, and David MacQueen.
@@ -28,7 +47,7 @@ Robin Milner, Mads Tofte, Robert Harper, and David MacQueen.
 
 \bibitem[Ses96]{sestoft96}
 Peter Sestoft.
-\newblock {\em Partial Evaluation}, volume 1110, chapter {ML} pattern match
+\newblock {\em Partial Evaluation}, volume 1110, chapter on {ML} pattern match
   compilation and partial evaluation, pages 446--464.
 \newblock Springer-Verlag, February 1996.
 

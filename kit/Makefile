@@ -10,7 +10,7 @@ clean:
 	(cd src; $(MAKE) clean)
 
 tgz: clean
-	(cd ..; tar cf mlkit-3.1.tar mlkit-3.1; gzip mlkit-3.1.tar; mv mlkit-3.1.tar.gz mlkit-3.1.tgz)
+	(cd ..; mv kit mlkit-3.2; tar cf mlkit-3.2.tar mlkit-3.2; mv mlkit-3.2 kit; gzip mlkit-3.2.tar; mv mlkit-3.2.tar.gz mlkit-3.2.tgz)
 
 install:
 	(cd src; $(MAKE) install)
