@@ -13,6 +13,9 @@ signature SCS_ROLE =
     | UcsPbProjectAdm     (* Created in ucs-pb-initialdata-create.sql *)
     | UcsEbEventEditor    (* Created in ucs-eb-initialdata-create.sql *)
     | ScsPersonAdm        (* Created in scs-users-initialdata-create.sql *)
+    | UcsEduInfo          (* Created in ucs-edus-patch006.sql *)
+    | PhdAdm              (* Created in ucs-edus-patch006.sql *)
+    | PortraitAdm         (* Created in ucs-edus-patch006.sql *)
     | Other of string
 
     (* [fromString str] returns the corresponding role which is either
@@ -54,6 +57,9 @@ structure ScsRole :> SCS_ROLE =
     | UcsPbProjectAdm
     | UcsEbEventEditor
     | ScsPersonAdm
+    | UcsEduInfo
+    | PhdAdm
+    | PortraitAdm
     | Other of string
 
     fun fromString str = 
@@ -65,6 +71,9 @@ structure ScsRole :> SCS_ROLE =
       | "OaAdm" => OaAdm
       | "UcsEbEventEditor" => UcsEbEventEditor
       | "ScsPersonAdm" => ScsPersonAdm
+      | "UcsEduInfo" => UcsEduInfo
+      | "PhdAdm" => PhdAdm
+      | "PortraitAdm" => PortraitAdm
       | s => Other s
  
     (* [toString role] returns the string representation of the role
@@ -78,6 +87,9 @@ structure ScsRole :> SCS_ROLE =
       | UcsPbProjectAdm => "UcsPbProjectAdm"
       | UcsEbEventEditor => "UcsEbEventEditor"
       | ScsPersonAdm => "ScsPersonAdm"
+      | UcsEduInfo => "UcsEduInfo"
+      | PhdAdm => "PhdAdm"
+      | PortraitAdm => "PortraitAdm"
       | Other s => s
 	  
     (* We cache the result for 5 minutes.

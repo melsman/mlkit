@@ -126,6 +126,10 @@ signature SCS_DICT =
     (* [ScsDict] exception raised on error *)
     exception ScsDict of string
 
+    (* [toDict txt_da txt_en] returns a specialised dict containg a
+        Danish and English translation. *)
+    val toDict : string -> string -> dict
+
     (* [s dict] returns the first phrase in the dictionary dict
        corresponding to the preferred language by the logged in user. 
        The first phrase in dict is returned if the preferred language
@@ -345,6 +349,9 @@ structure ScsDict :> SCS_DICT =
     type dict = (ScsLang.lang * quot) list
 
     exception ScsDict of string
+
+    fun toDict str_da str_en = [(ScsLang.da, Quot.fromString str_da ),
+				(ScsLang.en, Quot.fromString str_en )]
 
     fun getQuot [] language = raise ScsDict "ScsDict.s: dictionary missing"
       | getQuot ((lang,phrase)::xs) language =
