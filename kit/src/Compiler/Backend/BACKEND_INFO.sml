@@ -138,6 +138,7 @@ signature BACKEND_INFO =
 
     (* Special for the KAM machine *)
     val env_lvar : lvar
+    val notused_lvar : lvar
   end
 
 

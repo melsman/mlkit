@@ -62,6 +62,9 @@ functor CallConv(structure Lvars : LVARS
     fun get_lvar_sty_opt'(NONE,C) = C
       | get_lvar_sty_opt'(SOME sty,C) = get_lvar_sty sty :: C
 
+    fun get_lvar_sty_opt(NONE) = NONE
+      | get_lvar_sty_opt(SOME sty) = SOME (get_lvar_sty sty)
+
     fun get_res_lvars({res,...}:cc) = map get_lvar_sty res
 
     fun get_arg_lvars({clos, free, args, reg_vec, reg_args, ...}:cc) = 
@@ -70,6 +73,16 @@ functor CallConv(structure Lvars : LVARS
       get_lvar_stys'(args,
       get_lvar_sty_opt'(reg_vec,
       get_lvar_stys'(reg_args,[])))))
+
+    fun decompose_cc({clos, free, args, reg_vec,reg_args, res, ...}:cc) : 
+      {clos : lvar option, free : lvar list, args : lvar list, 
+       reg_vec : lvar option,reg_args : lvar list, res : lvar list} =
+      {clos = get_lvar_sty_opt clos,
+       free = map get_lvar_sty free,
+       args = map get_lvar_sty args,
+       reg_vec = get_lvar_sty_opt reg_vec,
+       reg_args = map get_lvar_sty reg_args,
+       res = map get_lvar_sty res}
 
     fun get_frame_size({frame_size = NONE,...}:cc) = die "get_frame_size: frame_size does not exists"
       | get_frame_size({frame_size = SOME f_size,...}:cc) = f_size

@@ -2121,6 +2121,13 @@ struct
     (* ------------------------ *)
     fun liftTrip (MulExp.TR(e,metaType,ateffects,mulef)) env lab =
       let
+	fun gen_pseudo_res_lvars(RegionExp.Mus type_and_places) =
+	  (case type_and_places of
+	     [(RType.FUN(mus1,arroweffect,mus2),_)] => List.map (fn _ => BI.notused_lvar) mus2
+	   | _ => die "gen_fresh_res: not a function type.")
+	  | gen_pseudo_res_lvars(RegionExp.Frame _) = []
+	  | gen_pseudo_res_lvars(RegionExp.RaisedExnBind) = []
+
 	fun lookup_ve env lv =
 	  case CE.lookupVarOpt env lv of
 	    SOME(CE.LVAR lv') => VAR lv'
@@ -2214,7 +2221,8 @@ struct
 		 val new_lab = fresh_lab (Labels.pr_label lab ^ ".anon")
 		 val args = List.map #1 pat
 		 val lv_clos = BI.env_lvar 
-		 val cc = CallConv.mk_cc_fn(args,SOME lv_clos,[],[])
+		 val pseudo_res_lvars = gen_pseudo_res_lvars metaType (* Only used to remember the number of return values in cc *)
+		 val cc = CallConv.mk_cc_fn(args,SOME lv_clos,[],pseudo_res_lvars)
 
 		 val env_body = build_clos_env env (get_global_env()) lv_clos BI.init_clos_offset free_vars_all
 		 val env_with_args = (env_body plus_decl_with CE.declareLvar) (map (fn lv => (lv, CE.LVAR lv)) args)
@@ -2268,6 +2276,7 @@ struct
 		     val (args,body,metaType) = case bind of
 		       MulExp.TR(MulExp.FN{pat,body,...},metaType,_,_) => (List.map #1 pat, body, metaType)
 		     | _ => die "compile_fn: bind is not a FN"
+		     val pseudo_res_lvars = gen_pseudo_res_lvars metaType (* Only used to remember the number of return values in cc *)
 
 		     val lv_sclos_fn = BI.env_lvar
 		     val env_bodies = build_clos_env env (get_global_env()) lv_sclos_fn BI.init_sclos_offset free_vars_all
@@ -2303,7 +2312,7 @@ struct
 (*		     val _ = print ("Closure size, " ^ (Lvars.pr_lvar lv_sclos_fn) ^ ": " ^ (Int.toString shared_clos_size) ^ 
 				    " " ^ (pr_free free_vars_in_shared_clos) ^ "\n") *)
 		     val sclos = if shared_clos_size = 0 then NONE else SOME lv_sclos_fn (* 14/06-2000, Niels *)
-		     val cc = CallConv.mk_cc_fun(args,sclos,[],NONE,rho_lvs,[])
+		     val cc = CallConv.mk_cc_fun(args,sclos,[],NONE,rho_lvs,pseudo_res_lvars)
 		   in
 		     add_new_fun(lab,cc,liftTrip body env_with_args lab)
 		   end
@@ -2806,7 +2815,7 @@ struct
       val Fenv = F n_prog
       val all = clos_conv (clos_env, Fenv, n_prog)
 val all_lift = lift(clos_env, Fenv, MulExp.k_evalPgm n_prog) (* For bytecode 13/09-2000, Niels *)
-val _ = display("\nReport: AFTER LIFT: ", layout_clos_prg(#code(all_lift)))
+(*val _ = display("\nReport: AFTER LIFT: ", layout_clos_prg(#code(all_lift))) 21/09-2000, Niels*)
       val _ = 
 	if Flags.is_on "print_clos_conv_program" then
 	  display("\nReport: AFTER CLOSURE CONVERSION:", layout_clos_prg (#code(all)))

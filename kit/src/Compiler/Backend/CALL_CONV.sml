@@ -27,6 +27,9 @@ signature CALL_CONV =
 
     val get_register_args             : cc -> lvar list (* Machine registers as lvars. *)
 
+    val decompose_cc                  : cc -> {clos : lvar option, free : lvar list, args : lvar list, reg_vec : lvar option, reg_args : lvar list, res : lvar list}
+
+
     val get_frame_size                : cc -> int
     val add_frame_size                : cc * int -> cc
     val get_cc_size                   : cc -> int
