@@ -558,25 +558,84 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	    in ()
 	    end
 
-	fun doPickleB s (B:Basis) : unit =
+	fun writeBasis punit basis_os =
+	    let val basis_s = Pickle.toString basis_os
+		val _ = print ("\n [End pickling (sz = " ^ sizeToStr (size basis_s) ^ ")]\n")
+		val os = BinIO.openOut ("PM/" ^ punit ^ ".bas")
+	    in (  BinIO.output(os,Byte.stringToBytes basis_s)
+		; BinIO.closeOut os
+		) handle _ => BinIO.closeOut os
+	    end
+
+	fun doPickleB punit (B:Basis) : unit =
 	    if false then () else
 		let open Pickle
 		    val os : outstream = empty()
-		    val _ = print ("\n [Begin pickling result basis for " ^ s ^ "...]\n")
+		    val _ = print ("\n [Begin pickling result basis for " ^ punit ^ "...]\n")
 		    val timer = timerStart "Pickler"
 		    val os : outstream = pickler Basis.pu B os
 		    val _ = timerReport timer
-		    val _ = print "\n [Converting to string...]\n"
-		    val s = toString os
-		    val _ = print ("\n [End pickling (sz = " ^ sizeToStr (size s) ^ ")]\n")
+		    val _ = print "\n [Writing to file...]\n"
+		    val _ = writeBasis punit os
+(*
+		    val _ = print ("\n [Basis for " ^ punit ^ " after closure...]\n")
+                    val _ = pr_st (MO.Basis.layout B)
+*)
+(*			
 		    val _ = print "\n [Begin unpickling...]\n"
 		    val timer = timerStart "Unpickler"
 		    val (B': Basis,_) = unpickler Basis.pu (fromString s)
 		    val _ = timerReport timer
 		    val _ = print "\n [Begin printing...]\n"
                     val _ = pr_st (MO.Basis.layout B')
+*)
 		in ()
 		end
+
+	fun readFile f : string = 
+	    let val f = "PM/" ^ f ^ ".bas"
+		val is = BinIO.openIn f
+	    in let val v = BinIO.inputAll is
+		   val s = Byte.bytesToString v
+	       in BinIO.closeIn is; s
+	       end handle ? => (BinIO.closeIn is; raise ?)
+	    end
+
+	fun readDependencies uid = 
+	    let val is = TextIO.openIn ("PM/" ^ uid ^ ".d") 
+	    in let 
+		   val all = TextIO.inputAll is handle _ => ""
+		   val uids = String.tokens Char.isSpace all
+		   val _ = print ("Depencies for " ^ uid ^ ": " ^ all ^ "\n")
+	       in TextIO.closeIn is; uids
+	       end handle _ => (TextIO.closeIn is; nil)
+	    end handle _ => nil
+
+	fun doUnpickleBases uid : Basis = 
+	    let val _ = print "\n [Begin unpickling...]\n"
+		val timer = timerStart "Unpickler"
+		fun process (nil,is,B) = B
+		  | process (uid::uids,is,B) =
+		    let val s = readFile uid
+			val (B',is) = Pickle.unpickler Basis.pu 
+			    (Pickle.fromStringHashCons is s)
+		    in process(uids,is,Basis.plus(B,B'))
+		    end
+		val B0 = Basis.initial()
+		val B = 
+		    case readDependencies uid of 
+			nil => B0
+		      | uid::uids => 
+			    let val s = readFile uid
+				val (B,is) = Pickle.unpickler Basis.pu (Pickle.fromString s)
+			    in process(uids,is,Basis.plus(B0,B))
+			    end handle _ => (print ("doUnpickleBases. error \n"); Basis.empty)
+		    val _ = timerReport timer
+(*		    val _ = print "\n [Begin printing...]\n"
+                    val _ = pr_st (MO.Basis.layout B)
+*)
+	    in B
+	    end 
     end (* Pickling *)
 
     (* --------------------------------
@@ -588,10 +647,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun opacity_elimination a = OpacityElim.opacity_elimination a
 
     fun parse_elab_interp (fi:bool,absprjid:absprjid,B, funid, punit, funstamp_now) : Basis * modcode =
-      let val _ = Timing.reset_timings()
-	 val _ = Timing.new_file punit
+      let 
 	 val unitname = (filename_to_unitname o MO.funid_to_filename) funid
-	 val log_cleanup = log_init unitname
+(*good:	 val B = doUnpickleBases unitname *)
+	 val _ = Timing.reset_timings()
+	 val _ = Timing.new_file punit	 val log_cleanup = log_init unitname
 	 val _ = Name.bucket := []
 	 val _ = Flags.reset_warnings ()
 	 val _ = print("[reading source file:\t" ^ punit ^ "]\n")
@@ -645,15 +705,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		val modc = ModCode.emit (absprjid,modc)  (* When module code is inserted in repository,
 							  * names become rigid, so we emit the module code. *)
 		val elabE' = ElabBasis.to_E elabB'
-		val tintB_im = intB_im
-		val tintB' = intB'
-		val _ = Repository.add_int' ((absprjid,funid),(funstamp_now,elabE',tintB_im,
-							       longstrids,names_int,modc,tintB'))
-		val B' = Basis.mk(infB',elabB',opaq_env',tintB')
+		val _ = Repository.add_int' ((absprjid,funid),(funstamp_now,elabE',intB_im,
+							       longstrids,names_int,modc,intB'))
+		val B' = Basis.mk(infB',elabB',opaq_env',intB')
 
 		(* Testing ; mael 2004-03-02 *)
 (*
-		val B'' = Basis.closure (B,B')
+		val _ = print ("\n [Basis for " ^ punit ^ " before closure...]\n")
+                val _ = pr_st (MO.Basis.layout B')
+*)
+
+(*good:
+		val B'' = Basis.closure (B_im,B')
 		val _ = doPickleB unitname B''
 *)
 	      in print_result_report report;

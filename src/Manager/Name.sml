@@ -87,12 +87,13 @@ functor Name(structure Crash : CRASH) : NAME =
 	fun fromRec {key, rigid, gen_mark} = (key,rigid,gen_mark)
 	val pu0 = convert (toRec,fromRec) (tup3Gen0(int, bool, refOneGen bool))
     in
-	val pu = register
-	    [reg_top, reg_bot, reg_string, reg_pair,
-	     reg_array, reg_ref, reg_triple,	     
-	     exn_DIV, exn_MATCH, exn_BIND,
-	     exn_OVERFLOW, exn_INTERRUPT]
-	    (ref0EqGen eq pu0)
+	val pu = 
+	    hashConsEq eq
+	    (register [reg_top, reg_bot, reg_string, reg_pair,
+		       reg_array, reg_ref, reg_triple,	     
+		       exn_DIV, exn_MATCH, exn_BIND,
+		       exn_OVERFLOW, exn_INTERRUPT]
+	     (ref0EqGen eq pu0))
 	val pu_matchcount = int
     end
   end

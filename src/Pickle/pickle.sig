@@ -56,8 +56,10 @@ signature PICKLE =
     val con1      : ('a->'b) -> ('b->'a) -> 'a pu -> 'b pu
 
     val empty     : unit -> outstream
-    val fromString: string -> instream
     val toString  : outstream -> string
+
+    val fromString: string -> instream
+    val fromStringHashCons : instream -> string -> instream
 
     val convert   : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
     val convert0  : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
@@ -68,6 +70,9 @@ signature PICKLE =
 
     val registerEq: ('a*'a->bool) -> ('a->int) 
                      -> 'a list -> 'a pu -> 'a pu
+
+    val hashCons  : 'a pu -> 'a pu
+    val hashConsEq: ('a*'a->bool) -> 'a pu -> 'a pu
 
     val newHash      : ('a -> int) -> 'a pu -> 'a pu
     val combHash     : ('a -> int) -> 'a pu -> 'a pu
@@ -139,10 +144,13 @@ signature PICKLE =
 
  [empty()] returns an empty outstream.
 
- [fromString s] returns an instream corresponding to the string s.
-
  [toString os] returns a string corresponding to output sent to the
  outstream os.
+
+ [fromString s] returns an instream corresponding to the string s.
+
+ [fromStringHashCons is s] returns an instream corresponding to the
+ string s but with hashcons information from the instream is.
 
  [get is] reads a word from the instream is.
 

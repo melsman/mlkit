@@ -44,14 +44,15 @@ functor Con(structure Name : NAME
     val con_ANTIQUOTE : con  = mk_con "ANTIQUOTE"
 
     val pu = 
-	Pickle.register [con_REF,con_TRUE,con_FALSE,con_NIL,con_CONS,
-			 con_QUOTE,con_ANTIQUOTE]
-	let open Pickle
-	    fun to (s,n) : con = {str=s,name=n}
-	    fun from ({str=s,name=n} : con) = (s,n)
-	in newHash (Name.key o #name)
-	    (convert (to,from) (pairGen0(string,Name.pu)))
-	end
+	Pickle.hashConsEq eq
+	(Pickle.register [con_REF,con_TRUE,con_FALSE,con_NIL,con_CONS,
+			  con_QUOTE,con_ANTIQUOTE]
+	 let open Pickle
+	     fun to (s,n) : con = {str=s,name=n}
+	     fun from ({str=s,name=n} : con) = (s,n)
+	 in newHash (Name.key o #name)
+	     (convert (to,from) (pairGen0(string,Name.pu)))
+	 end)
 
     structure QD : QUASI_DOM =
       struct

@@ -79,6 +79,69 @@ functor ClosConvEnv(structure Lvars : LVARS
 		RhoEnv    : RhoEnv,
 		RhoKindEnv: RhoKindEnv}
 
+    val pu_con_kind =
+	let open Pickle
+	    fun toInt a =
+		case a of
+		    ENUM _ => 0
+		  | UB_NULLARY _ => 1
+		  | UB_UNARY _ => 2
+		  | B_NULLARY _ => 3
+		  | B_UNARY _ => 4
+	    fun fun_ENUM _ = con1 ENUM (fn ENUM a => a | _ => die "pu_con_kind.ENUM") int
+	    fun fun_UB_NULLARY _ = con1 UB_NULLARY (fn UB_NULLARY a => a | _ => die "pu_con_kind.UB_NULLARY") int
+	    fun fun_UB_UNARY _ = con1 UB_UNARY (fn UB_UNARY a => a | _ => die "pu_con_kind.UB_UNARY") int
+	    fun fun_B_NULLARY _ = con1 B_NULLARY (fn B_NULLARY a => a | _ => die "pu_con_kind.B_NULLARY") int
+	    fun fun_B_UNARY _ = con1 B_UNARY(fn B_UNARY a => a | _ => die "pu_con_kind.B_UNARY") int
+	in dataGen("pu_con_kind",toInt,
+		   [fun_ENUM,fun_UB_NULLARY,fun_UB_UNARY,
+		    fun_B_NULLARY,fun_B_UNARY])
+	end
+
+    val pu_access_type =
+	let open Pickle
+	    fun toInt a =
+		case a of
+		    LVAR _ => 0
+		  | RVAR _ => 1
+		  | DROPPED_RVAR _ => 2
+		  | SELECT _ => 3
+		  | LABEL _ => 4
+		  | FIX _ => 5
+	    fun fun_LVAR _ = 
+		con1 LVAR (fn LVAR a => a | _ => die "pu_access_type.LVAR") Lvars.pu
+	    fun fun_RVAR _ =
+		con1 RVAR (fn RVAR a => a | _ => die "pu_access_type.RVAR") Effect.pu_effect
+	    fun fun_DROPPED_RVAR _ =
+		con1 DROPPED_RVAR (fn DROPPED_RVAR a => a | _ => die "pu_access_type.DROPPED_RVAR") Effect.pu_effect
+	    fun fun_SELECT _ =
+		con1 SELECT (fn SELECT a => a | _ => die "pu_access_type.SELECT") (pairGen(Lvars.pu,int))
+	    fun fun_LABEL _ =
+		con1 LABEL (fn LABEL a => a | _ => die "pu_access_type.LABEL") Labels.pu
+	    fun fun_FIX pu =
+		con1 FIX (fn FIX a => a | _ => die "pu_access_type.FIX") 
+		(tup4Gen(Labels.pu,optionGen pu,int,listGen(pairGen(Effect.pu_effect,PhysSizeInf.pu_phsize))))
+	in dataGen ("pu_access_type", toInt,
+		    [fun_LVAR,fun_RVAR,fun_DROPPED_RVAR,
+		     fun_SELECT,fun_LABEL,fun_FIX])
+	end
+
+    val pu_ce = ConFinMap.pu Con.pu pu_con_kind
+    val pu_ve = LvarFinMap.pu Lvars.pu pu_access_type
+    val pu_ee = ExconFinMap.pu Excon.pu (Pickle.pairGen(pu_access_type,
+							Pickle.enumGen("arity_excon",[NULLARY_EXCON,UNARY_EXCON])))
+    val pu_re = RegvarFinMap.pu Effect.pu_effect pu_access_type
+    val pu_ke = RegvarFinMap.pu Effect.pu_effect (Pickle.enumGen("rho_kind",[FF,FI,LF,LI]))
+
+    val pu : env Pickle.pu =
+	let fun to ((ce,ve),(ee,re,ke)) = {ConEnv=ce,VarEnv=ve,ExconEnv=ee,RhoEnv=re,RhoKindEnv=ke}
+	    fun from {ConEnv=ce,VarEnv=ve,ExconEnv=ee,RhoEnv=re,RhoKindEnv=ke} = ((ce,ve),(ee,re,ke))
+	    open Pickle
+	in Pickle.convert (to,from)
+	    (pairGen0(pairGen0(pu_ce,pu_ve),
+		      tup3Gen0(pu_ee,pu_re,pu_ke)))
+	end
+
     fun labelsEnv (labs : (label list * label list) -> access_type -> (label list * label list))
       {ConEnv: ConEnv, VarEnv: VarEnv,
        ExconEnv: ExconEnv, RhoEnv: RhoEnv,

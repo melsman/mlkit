@@ -3158,11 +3158,5 @@ struct
       all
     end
 
-  val pu =
-      let fun to () = empty
-	  fun from _ = ()			 
-	  open Pickle
-      in convert (to,from)
-	  unit
-      end
+  val pu = ClosConvEnv.pu
 end
