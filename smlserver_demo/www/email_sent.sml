@@ -1,10 +1,10 @@
-val % = SmlsDict.d SmlsLang.English
+val % = ScsDict.d ScsLang.English
 
 val to = "nh@it-c.dk"
-val (from,errs) = FormVar.getEmailErr ("from","your email",FormVar.emptyErr)
-val (subject,errs) = FormVar.getStringErr ("subject","subject",errs)
-val (body,errs) = FormVar.getStringErr ("body","body",errs)
-val _ = FormVar.anyErrors errs
+val (from,errs) = ScsFormVar.getEmailErr ("from","your email",ScsFormVar.emptyErr)
+val (subject,errs) = ScsFormVar.getStringErr ("subject","subject",errs)
+val (body,errs) = ScsFormVar.getStringErr ("body","body",errs)
+val _ = ScsFormVar.anyErrors errs
 
 val _ = Ns.Mail.send{to=to,from=from,subject=subject,body=body}
 

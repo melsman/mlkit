@@ -13,7 +13,7 @@ fun error s = returnPage ("Error: " ^ s)
    you; use your browser's back-button to back-up 
    and enter a number in the form.`
 
-val persons = case FormVar.wrapOpt FormVar.getNatErr "persons"
+val persons = case ScsFormVar.wrapOpt ScsFormVar.getNatErr "persons"
 		of SOME n => real n
 		 | NONE => error "You must type a number"
 

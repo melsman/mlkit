@@ -1,18 +1,18 @@
-signature SMLS_LOGIN =
+signature SCS_LOGIN =
   sig
-    val default_lang : SmlsLang.lang
+    val default_lang : ScsLang.lang
     val default_id : int
 
-    val user_lang : SmlsLang.lang
+    val user_lang : ScsLang.lang
     val user_id   : int
 
-    val verifyUser : unit -> int * SmlsLang.lang
+    val verifyUser : unit -> int * ScsLang.lang
     val loggedIn   : bool
   end
 
-structure SmlsLogin :> SMLS_LOGIN =
+structure ScsLogin :> SCS_LOGIN =
   struct
-    val default_lang : SmlsLang.lang = SmlsLang.English
+    val default_lang : ScsLang.lang = ScsLang.English
     val default_id : int = 0
     val default = (default_id,default_lang)
 
@@ -31,9 +31,9 @@ structure SmlsLogin :> SMLS_LOGIN =
 		 if db_psw = psw then 
 		   (case Int.fromString user_id of
 		      NONE => default
-		    | SOME u_id => (u_id,SmlsLang.fromString db_lang))
+		    | SOME u_id => (u_id,ScsLang.fromString db_lang))
 		 else default
-	     | SOME _ => raise Fail "SmlsLogin.auth_verify_user")
+	     | SOME _ => raise Fail "ScsLogin.auth_verify_user")
 	| _ => (Ns.log (Ns.Notice,"auth_verify_user (NONE): No cookies");default)
       end
     handle Ns.Cookie.CookieError _ => (Ns.log (Ns.Notice,"auth_verify_user: No cookies");default)

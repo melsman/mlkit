@@ -1,4 +1,4 @@
-signature FORMVAR =
+signature SCS_FORM_VAR =
   sig
     (* Checking form variables are very important but also 
        tedious, because the same kind of code is written 
@@ -82,7 +82,7 @@ signature FORMVAR =
     val wrapPanic : (string * string -> 'a) -> 'a formvar_fn -> (string -> 'a)
   end
 
-structure FormVar :> FORMVAR =
+structure ScsFormVar :> SCS_FORM_VAR =
   struct
     type quot = string frag list
     type errs = quot list
@@ -350,7 +350,7 @@ structure FormVar :> FORMVAR =
 		    (c2d d1,c2d d2,c2d m1,c2d m2,c2d y1,c2d y2,c2d t1,c2d t2,c2d t3,c2d t4)
 		  val tttt = Option.valOf(Int.fromString(String.implode [t1,t2,t3,t4]))
 		in
-		  if SmlsDate.dateOk (dd,mm,yyyy) andalso chk_modulus11(c1,c2,c3,c4,c5,c6,c7,c8,c9,c10) then 
+		  if ScsDate.dateOk (dd,mm,yyyy) andalso chk_modulus11(c1,c2,c3,c4,c5,c6,c7,c8,c9,c10) then 
 		    true
 		  else
 		    false
@@ -359,7 +359,7 @@ structure FormVar :> FORMVAR =
 		(* NON DK CPR no *)
 		if Char.isAlpha t1 andalso Char.isAlpha t2 andalso Char.isAlpha t3 andalso
 		  (t4 = (#"1") orelse t4 = (#"2")) andalso
-		  SmlsDate.dateOk (dd,mm,yyyy) then
+		  ScsDate.dateOk (dd,mm,yyyy) then
 		  true
 		else
 		  false
@@ -379,8 +379,8 @@ structure FormVar :> FORMVAR =
 	| SOME _ => true
       fun chkDateIso v =
 	let
-	  fun dateOk (d,m,y) = SmlsDate.dateOk(Option.valOf (Int.fromString d),
-					       Option.valOf (Int.fromString m),Option.valOf (Int.fromString y))
+	  fun dateOk (d,m,y) = ScsDate.dateOk(Option.valOf (Int.fromString d),
+					      Option.valOf (Int.fromString m),Option.valOf (Int.fromString y))
 	in
 	  (case RegExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 	     SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)

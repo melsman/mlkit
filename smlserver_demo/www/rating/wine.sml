@@ -1,5 +1,5 @@
   (* Present comments and ratings for a specific wine *)
-  val wid = Int.toString(FormVar.wrapFail FormVar.getNatErr ("wid","internal number"))
+  val wid = Int.toString(ScsFormVar.wrapFail ScsFormVar.getNatErr ("wid","internal number"))
 
   val query = 
     `select comment, fullname, email, rating

@@ -1,10 +1,10 @@
 fun getdate () = Date.fmt "%Y-%m-%d" (Date.fromTimeLocal (Time.now()))
 fun round r = Real.fmt (StringCvt.FIX(SOME 2)) r
 
-val a = FormVar.wrapFail FormVar.getRealErr ("a", "amount")
+val a = ScsFormVar.wrapFail ScsFormVar.getRealErr ("a", "amount")
 val a_str = (Real.toString a)
-val s = FormVar.wrapFail FormVar.getStringErr ("s", "source currency")
-val t = FormVar.wrapFail FormVar.getStringErr ("t", "target currency")
+val s = ScsFormVar.wrapFail ScsFormVar.getStringErr ("s", "source currency")
+val t = ScsFormVar.wrapFail ScsFormVar.getStringErr ("t", "target currency")
 
 fun return_page body =
   Ns.return (`<html>

@@ -17,14 +17,14 @@
      </form>`
 
   val _ =
-    case FormVar.wrapOpt FormVar.getNatErr "n"
+    case ScsFormVar.wrapOpt ScsFormVar.getNatErr "n"
       of NONE => 
          returnPage "Guess a number between 0 and 100"
            "bill_guess.jpg"
            (mk_form (Random.range(0,100) (Random.newgen())))
            
        | SOME n =>
-         case FormVar.wrapOpt FormVar.getNatErr "guess"
+         case ScsFormVar.wrapOpt ScsFormVar.getNatErr "guess"
            of NONE => 
              returnPage "You must type a number - try again"
                "bill_guess.jpg" (mk_form n) 

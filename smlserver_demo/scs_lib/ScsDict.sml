@@ -1,16 +1,16 @@
-signature SMLS_DICT =
+signature SCS_DICT =
   sig
     (* The SMLserver Dictionary is a mechanism to produce 
        multilingual web-sites. First of all it defines the
        set of languages supported (e.g., Danish and English
-       in SmlsLang.sml).
+       in ScsLang.sml).
        
        You can tell the dictionary how to obtain personal
        language preferences for the user logged into the
        web-site. 
 
        The dictionary is stored in the database (file 
-       smlsDict.sql). If the database is not accessible,
+       ScsDict.sql). If the database is not accessible,
        or the user has no preferences (e.g., may not be
        logged in), then a default language is choosen. 
 
@@ -49,11 +49,11 @@ signature SMLS_DICT =
        stored with words separated by one space; new 
        lines etc. has been removed.
      *)
-    val d  : SmlsLang.lang -> string -> string
-    val d' : SmlsLang.lang -> quot -> quot
+    val d  : ScsLang.lang -> string -> string
+    val d' : ScsLang.lang -> quot -> quot
   end
 
-structure SmlsDict :> SMLS_DICT =
+structure ScsDict :> SCS_DICT =
   struct 
     fun canonical s = String.concatWith " " (String.tokens Char.isSpace s)
       
@@ -66,21 +66,21 @@ structure SmlsDict :> SMLS_DICT =
       if target_lang = source_lang then source_text 
       else
 	case Db.zeroOrOneField `
-          select d2.text from smls_dict d1, smls_dict d2 
-           where d1.lang='^(SmlsLang.toString source_lang)' 
+          select d2.text from scs_dict d1, scs_dict d2 
+           where d1.lang='^(ScsLang.toString source_lang)' 
              and d1.text = '^(canonical source_text)'
              and d1.phrase_id = d2.phrase_id 
-             and d2.lang = '^(SmlsLang.toString SmlsLogin.user_lang)'` of
+             and d2.lang = '^(ScsLang.toString ScsLogin.user_lang)'` of
 	       SOME target_t => target_t
-	     | NONE => (Db.maybeDml `insert into smls_dict (dict_id,phrase_id,lang,text)
+	     | NONE => (Db.maybeDml `insert into scs_dict (dict_id,phrase_id,lang,text)
 			values (^(Db.seqNextvalExp "dict_seq"),^(Db.seqNextvalExp "phrase_seq"),
-				'^(SmlsLang.toString source_lang)', '^(canonical source_text)')`;
+				'^(ScsLang.toString source_lang)', '^(canonical source_text)')`;
 			source_text)
 
     val d = fn source_lang => 
       Ns.Cache.cacheWhileUsed 
-        (lookup SmlsLogin.user_lang source_lang,
-	 "smls_dict"^SmlsLang.toString source_lang ^ SmlsLang.toString SmlsLogin.user_lang,7200)
+        (lookup ScsLogin.user_lang source_lang,
+	 "scs_dict"^ScsLang.toString source_lang ^ ScsLang.toString ScsLogin.user_lang,7200)
 
     val d' = fn source_lang => Quot.fromString o (d source_lang) o Quot.toString
   end

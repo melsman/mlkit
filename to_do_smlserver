@@ -1,9 +1,15 @@
 Possible things to do
 ---------------------
 
+  2001-10-03, Niels:
+    Luk huller hvad angår genstart af server, eksempelvis at når en
+    select sætning fejler så skal exception Fail rejses og ikke blot
+    en tom mængde returneres.
+
   2001-09-23, Niels:
     NS_DB: make wrapOneOnly such that
              wrapOneOnly zeroOrOneRow works as oneRow.
 
-    SmlsLogin:     val login_pages = ["/auth/admin/.*", "/dict/.*"]
+    ScsLogin:     val login_pages = ["/auth/admin/.*", "/dict/.*"]
        should come from the nsd-file.
+

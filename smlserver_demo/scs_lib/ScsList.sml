@@ -1,9 +1,9 @@
-signature SMLS_LIST =
+signature SCS_LIST =
   sig
     val allDifferent : ('a * 'a -> bool) -> 'a list -> bool
   end
 
-structure SmlsList =
+structure ScsList =
   struct
     (* Given a list of strings, checks that they are mutually different. *)
     fun allDifferent fn_eq ls =

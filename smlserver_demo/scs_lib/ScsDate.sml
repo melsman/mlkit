@@ -1,6 +1,6 @@
-signature SMLS_DATE =
+signature SCS_DATE =
   sig
-    exception SmlsDate of string
+    exception ScsDate of string
 
     type day = int
     type mth = int
@@ -27,9 +27,9 @@ signature SMLS_DATE =
     val ppIso : Date.date -> string
   end
 
-structure SmlsDate :> SMLS_DATE =
+structure ScsDate :> SCS_DATE =
   struct
-    exception SmlsDate of string
+    exception ScsDate of string
     type day = int
     type mth = int
     type year = int
@@ -50,7 +50,7 @@ structure SmlsDate :> SMLS_DATE =
       | 10 => Date.Oct
       | 11 => Date.Nov
       | 12 => Date.Dec
-      | _ => raise SmlsDate ("Wrong month: " ^ (Int.toString mth))
+      | _ => raise ScsDate ("Wrong month: " ^ (Int.toString mth))
 
     fun mthFromName mth =
       case mth of
@@ -72,7 +72,7 @@ structure SmlsDate :> SMLS_DATE =
 
     fun genDate (d,m,y) =
       Date.date{year=y,month=mthToName m,day=d,hour=0,minute=0,second=0,offset=NONE}
-      handle Date.Date => raise SmlsDate ("Wrong date: " ^ (Int.toString y) ^ "-" ^ (Int.toString m) ^ "-" ^ (Int.toString d))
+      handle Date.Date => raise ScsDate ("Wrong date: " ^ (Int.toString y) ^ "-" ^ (Int.toString m) ^ "-" ^ (Int.toString d))
 
     fun leap y = (Int.mod(y,4) = 0 andalso Int.mod(y,100) <> 0) orelse Int.mod(y,400) = 0
 
@@ -102,7 +102,7 @@ structure SmlsDate :> SMLS_DATE =
       | 10 => 31
       | 11 => 30
       | 12 => 31
-      | _ => raise SmlsDate ("Month " ^ (Int.toString m) ^ " does not exists.")
+      | _ => raise ScsDate ("Month " ^ (Int.toString m) ^ " does not exists.")
 
 
     (* Pretty Printing *)
