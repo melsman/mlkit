@@ -74,9 +74,9 @@ signature SCS_PERSON =
     val isFemale_p : string -> bool
 
     (* [fix_email email] do the following conversions:
-         - if email is of form login@itu.dk => login@it-c.dk
-         - if email is of form login@it.edu => login@it-c.dk
-         - if email is of form login => login@it-c.dk
+         - if email is of form login@it-c.dk => login@itu.dk
+         - if email is of form login@it.edu => login@itu.dk
+         - if email is of form login => login@itu.dk
      *)
     val fix_email : string -> string
   end
@@ -190,13 +190,14 @@ structure ScsPerson :> SCS_PERSON =
      *)
     fun fix_email email =
       let
+	val email = ScsString.lower email
 	val regExpExtract = RegExp.extract o RegExp.fromString
       in
-	case regExpExtract "([a-z][a-z0-9\\-]+)@(itu.dk|it.edu)" email of
-	  SOME [l,e] => l ^ "@it-c.dk"
+	case regExpExtract "([a-z][a-z0-9\\-]*)@(it-c.dk|it.edu)" email of
+	  SOME [l,e] => l ^ "@itu.dk"
 	| _ => 
-	    (case regExpExtract "([a-z][a-z0-9\\-]+)" email of
-	       SOME [l] => l ^ "@it-c.dk"
+	    (case regExpExtract "([a-z][a-z0-9\\-]*)" email of
+	       SOME [l] => l ^ "@itu.dk"
 	     | _ => email)
       end
     (* Test code for fix_email
