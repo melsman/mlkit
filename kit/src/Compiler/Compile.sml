@@ -455,12 +455,12 @@ functor Compile(structure Excon : EXCON
 	       end handle _ => die "cannot form rse'")
 	     | _ => die "program does not have type frame"
     in 
-        say "Resulting region-static environment:\n";
-        sayenv(rse');
-        if !Flags.DEBUG_COMPILER 
-            then display("\nReport: After Region Inference (NEW)", layoutRegionPgm pgm') 
-        else ();
-       (cone,rse',pgm')       (* rse' contains rse_con *)
+      if !Flags.DEBUG_COMPILER then
+        (say "Resulting region-static environment:\n";
+	 sayenv(rse');
+	 display("\nReport: After Region Inference (NEW)", layoutRegionPgm pgm'))
+      else ();
+      (cone,rse',pgm')       (* rse' contains rse_con *)
     end
 
     (* ---------------------------------------------------------------------- *)
