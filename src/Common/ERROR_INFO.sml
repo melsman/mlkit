@@ -18,6 +18,7 @@ signature ERROR_INFO =
     type strid
     type longstrid 
     eqtype funid
+    type SigMatchError
 
     datatype RepeatedId = ID_RID of id      (* Repeated identifier, syntax *)
 			| LAB_RID of lab    (* errors *)
@@ -57,28 +58,18 @@ signature ERROR_INFO =
       | SHARING_TYPE_NOT_TYNAME of longtycon * TypeFcn
       | SHARING_TYPE_RIGID of longtycon * TyName
       | SHARING_TYPE_ARITY of TyName list 
-      (*the following four errors come from rule 64, Definition 1997:*)
+
+      (*the following five errors come from rule 64, Definition 1997:*)
       | WHERE_TYPE_NOT_WELLFORMED of longtycon * TyName * Type
       | WHERE_TYPE_EQTYPE of longtycon * TyName * Type
       | WHERE_TYPE_RIGID of longtycon * TyName
       | WHERE_TYPE_NOT_TYNAME of longtycon * TypeFcn * Type
       | WHERE_TYPE_ARITY of TyVar list * (longtycon * TyName)
 
-     (* Signature matching errors: *)
-      | MISSINGSTR  of longstrid
-      | MISSINGTYPE of longtycon
-      | S_CONFLICTINGARITY of longtycon * (TyName * TypeFcn)
-      | CONFLICTINGEQUALITY of longtycon * (TyName * TypeFcn)
-      | MISSINGVAR of strid list * id
-      | MISSINGEXC of strid list * id
-      | S_RIGIDTYCLASH of longtycon
-      | S_CONFLICTING_DOMCE of longtycon
-      | NOTYENRICHMENT of {qualid: strid list * id, 
-                           str_sigma : TypeScheme, str_vce: string,
-                           sig_sigma : TypeScheme, sig_vce: string}
-      | EXCNOTEQUAL of strid list * id * (Type * Type)
+      (* Signature matching errors: *)
+      | SIGMATCH_ERROR of SigMatchError
 
-     (* Module unification errors: *)
+      (* Module unification errors: *)
       | CYCLE of longstrid
       | U_RIGIDTYCLASH of longtycon * longtycon
       | TYPESTRILLFORMEDNESS of longtycon * longtycon

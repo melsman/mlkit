@@ -1,6 +1,5 @@
-(*$ModuleStatObject:
-	STRID SIGID FUNID TYCON TYNAME STATOBJECT ENVIRONMENTS
-	ERROR_INFO FINMAP PRETTYPRINT REPORT FLAGS CRASH
+(*$ModuleStatObject: STRID SIGID FUNID TYCON TYNAME STATOBJECT
+	ENVIRONMENTS FINMAP PRETTYPRINT REPORT FLAGS CRASH
 	MODULE_STATOBJECT*)
 
 functor ModuleStatObject(structure StrId  : STRID
@@ -27,18 +26,6 @@ functor ModuleStatObject(structure StrId  : STRID
 				 = StatObject.ExplicitTyVar
 			        sharing Environments.TyName     = TyName
 
-			 structure ErrorInfo: ERROR_INFO
-			   sharing type ErrorInfo.id = Environments.id
-			       and type ErrorInfo.strid = StrId.strid
-			       and type ErrorInfo.longstrid = StrId.longstrid
-			       and type ErrorInfo.tycon = TyCon.tycon
-			       and type ErrorInfo.longtycon = TyCon.longtycon
-			       and type ErrorInfo.TypeFcn = StatObject.TypeFcn
-			       and type ErrorInfo.TyName = StatObject.TyName
-			       and type ErrorInfo.TyVar = StatObject.TyVar
-			       and type ErrorInfo.Type = StatObject.Type
-                               and type ErrorInfo.TypeScheme = StatObject.TypeScheme
-
 			 structure FinMap : FINMAP
 
 			 structure PP : PRETTYPRINT
@@ -57,6 +44,9 @@ functor ModuleStatObject(structure StrId  : STRID
     type realisation       = StatObject.realisation
     type TyName            = StatObject.TyName.TyName
     type TyVar             = StatObject.TyVar
+    type Type              = StatObject.Type
+    type TypeScheme        = StatObject.TypeScheme
+    type TypeFcn           = StatObject.TypeFcn
     structure TyVar        = StatObject.TyVar
     structure TyName       = StatObject.TyName
     structure Type         = StatObject.Type
@@ -75,9 +65,11 @@ functor ModuleStatObject(structure StrId  : STRID
     structure Realisation  = Environments.Realisation
 
     (*import from other modules:*)
-    type tycon = TyCon.tycon
-    type ErrorInfo = ErrorInfo.ErrorInfo
-    type StringTree = PP.StringTree
+    type tycon             = TyCon.tycon
+    type StringTree        = PP.StringTree
+    type strid             = StrId.strid
+    type longstrid         = StrId.longstrid
+    type longtycon         = TyCon.longtycon
 
       
     (*Plan of this code: first two functions that are used for matching
@@ -91,11 +83,25 @@ functor ModuleStatObject(structure StrId  : STRID
 
     datatype Sig = SIGMA of {T : TyName.Set.Set, E : Env}
 
-    exception No_match of ErrorInfo
+    datatype SigMatchError = 
+      MISSINGSTR  of longstrid
+    | MISSINGTYPE of longtycon
+    | S_CONFLICTINGARITY of longtycon * (TyName * TypeFcn)
+    | CONFLICTINGEQUALITY of longtycon * (TyName * TypeFcn)
+    | MISSINGVAR of strid list * id
+    | MISSINGEXC of strid list * id
+    | S_RIGIDTYCLASH of longtycon
+    | S_CONFLICTING_DOMCE of longtycon
+    | NOTYENRICHMENT of {qualid: strid list * id, 
+			 str_sigma : TypeScheme, str_vce: string,
+			 sig_sigma : TypeScheme, sig_vce: string}
+    | EXCNOTEQUAL of strid list * id * (Type * Type)
+
+    exception No_match of SigMatchError
     fun fail reason = raise No_match reason
 
     fun sigMatchRea (SIGMA{T, E}, E') : realisation =
-      (*... but, sigMatchRea will raise exception No_match of ErrorInfo,
+      (*... but, sigMatchRea will raise exception No_match of SigMatchError,
        if no realisation can be found.*)
       (*The path passed around is for error messages.*)
 	let
@@ -115,8 +121,7 @@ functor ModuleStatObject(structure StrId  : STRID
 		     let val Enew = Realisation.on_Env phi E
 		     in Realisation.oo (matchEnv (Enew, E', strid::path), phi) end
 		 | None =>
-		       fail (ErrorInfo.MISSINGSTR
-			     (StrId.implode_longstrid(rev path, strid))))
+		       fail (MISSINGSTR (StrId.implode_longstrid(rev path, strid))))
 	    in
 	      SE.Fold f Realisation.Id SE 
 	    end
@@ -150,8 +155,8 @@ functor ModuleStatObject(structure StrId  : STRID
 			    then
 			      if implies (TyName.equality t, TypeFcn.admits_equality theta')
 				then Realisation.oo (phi, Realisation.singleton (t,theta'))
-			      else err ErrorInfo.CONFLICTINGEQUALITY
-			  else   err ErrorInfo.S_CONFLICTINGARITY
+			      else err CONFLICTINGEQUALITY
+			  else   err S_CONFLICTINGARITY
 			else (* t is rigid *)
 			  phi 
 		      end
@@ -159,7 +164,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	       end
 
 		 | None => 
-		     fail (ErrorInfo.MISSINGTYPE
+		     fail (MISSINGTYPE
 			   (TyCon.implode_LongTyCon(rev path, tycon))))
 	     in
 	       TE.Fold f Realisation.Id TE
@@ -196,7 +201,7 @@ functor ModuleStatObject(structure StrId  : STRID
 		  (fn (strid, S') =>
 		         (case SE.lookup SE strid of
 			    Some S => enrichesE (S, S', strid::path)
-			  | None => fail (ErrorInfo.MISSINGSTR
+			  | None => fail (MISSINGSTR
 					  (StrId.implode_longstrid(rev path, strid)))))
 		    SE'
 
@@ -205,7 +210,7 @@ functor ModuleStatObject(structure StrId  : STRID
 		  (fn (tycon, tystr') =>
 		         (case TE.lookup TE tycon of
 			    Some tystr => enrichesTyStr (tystr, tystr', path, tycon)
-			  | None => fail (ErrorInfo.MISSINGTYPE
+			  | None => fail (MISSINGTYPE
 					  (TyCon.implode_LongTyCon (rev path, tycon)))))
 		     TE'
 
@@ -215,10 +220,10 @@ functor ModuleStatObject(structure StrId  : STRID
 		    val (theta',VE') = TyStr.to_theta_and_VE tystr'
 		in
 		  if not (TypeFcn.eq (theta, theta')) then
-		    fail (ErrorInfo.S_RIGIDTYCLASH
+		    fail (S_RIGIDTYCLASH
 			  (TyCon.implode_LongTyCon (rev path, tycon)))
 		  else if not (VE.is_empty VE' orelse VE.eq (VE, VE'))
-			 then fail (ErrorInfo.S_CONFLICTING_DOMCE
+			 then fail (S_CONFLICTING_DOMCE
 				    (TyCon.implode_LongTyCon (rev path, tycon)))
 		       else ()
 		end
@@ -229,13 +234,13 @@ functor ModuleStatObject(structure StrId  : STRID
 		        (case VE.lookup VE id of
 			   Some varenvrng  =>
 			     if enriches_sigma_is (varenvrng, varenvrng') then ()
-			     else fail (ErrorInfo.NOTYENRICHMENT
+			     else fail (NOTYENRICHMENT
                                         {qualid = (rev path, id),
                                          str_sigma = sigma varenvrng,
                                          str_vce  = kind  varenvrng,
                                          sig_sigma = sigma varenvrng',
                                          sig_vce  = kind  varenvrng'})
-			 | None => fail (ErrorInfo.MISSINGVAR (rev path, id))))
+			 | None => fail (MISSINGVAR (rev path, id))))
 		      VE'
 
           (*enriches_sigma_is: (sigma1,is1) enriches (sigma2,is2),

@@ -32,6 +32,10 @@ functor StrId(structure Timestamp: TIMESTAMP
     fun inventStrId() =
       STRID("<unique_StrId." ^ Timestamp.print(Timestamp.new()) ^ ">")
 
+    fun invented_StrId (STRID s) : bool =  (* only invented strids may start with `<' *)
+      (String.nth 0 s = "<")
+      handle _ => Crash.impossible "StrId.invented_StrId"
+
     fun longStrIdOfStrId strid = LONGSTRID(nil, strid)
 
     fun (STRID str1) < (STRID str2) = AsciiOrdString.lt str1 str2

@@ -1,7 +1,7 @@
 (* Type information for compiler *)
 
 (*$TypeInfo : IDENT STRID TYCON CRASH STATOBJECT ENVIRONMENTS
-              TYPE_INFO*)
+              MODULE_ENVIRONMENTS TYPE_INFO*)
 
 functor TypeInfo (structure Ident: IDENT
 		  structure StrId: STRID
@@ -12,6 +12,8 @@ functor TypeInfo (structure Ident: IDENT
 		  structure Environments : ENVIRONMENTS
 		    sharing type Environments.StringTree = PP.StringTree
 		        and type Environments.realisation = StatObject.realisation
+		  structure ModuleEnvironments : MODULE_ENVIRONMENTS
+		    sharing type ModuleEnvironments.StringTree = PP.StringTree
 		    ) : TYPE_INFO =
   struct
     type longid = Ident.longid
@@ -23,6 +25,8 @@ functor TypeInfo (structure Ident: IDENT
     type strid = StrId.strid
     type tycon = TyCon.tycon
     type id = Ident.id
+    type Basis = ModuleEnvironments.Basis
+    type TyName = Environments.TyName
 
     fun map_opt f (Some a) = Some (f a)
       | map_opt f None = None
@@ -49,11 +53,12 @@ functor TypeInfo (structure Ident: IDENT
     | OPEN_INFO of strid list * tycon list * id list
     | INCLUDE_INFO of strid list * tycon list
     | FUNCTOR_APP_INFO of realisation * Env
-    | FUNBIND_INFO of Env
+    | FUNBIND_INFO of {argE: Env,elabB: Basis, T: TyName list, resE: Env, rea_opt: realisation Option}
     | TRANS_CONSTRAINT_INFO of Env
     | OPAQUE_CONSTRAINT_INFO of Env * realisation
-      
-    fun on_TypeInfo (phi,ti) =
+    | DELAYED_REALISATION of realisation * TypeInfo
+
+    fun on_TypeInfo' (phi,ti) =
       let val phi_on_Type   = StatObject.Realisation.on_Type phi
 	  val phi_on_TE     = Environments.Realisation.on_TyEnv phi (* fn TE => TE *)  (* I wonder if abstype works now - Martin *)
 	  val phi_on_E      = Environments.Realisation.on_Env phi         (* it used to be the identity *)
@@ -80,10 +85,16 @@ functor TypeInfo (structure Ident: IDENT
 	    | OPEN_INFO i => OPEN_INFO i
 	    | INCLUDE_INFO i => INCLUDE_INFO i
 	    | FUNCTOR_APP_INFO (phi',E) => FUNCTOR_APP_INFO (phi_on_phi' phi', phi_on_E E)
-            | FUNBIND_INFO E => FUNBIND_INFO (phi_on_E E)
+            | FUNBIND_INFO {argE,elabB,T,resE,rea_opt} => 
+	     FUNBIND_INFO {argE=phi_on_E argE,elabB=elabB,T=T,resE=resE,rea_opt=Some phi}
             | TRANS_CONSTRAINT_INFO E => TRANS_CONSTRAINT_INFO (phi_on_E E)
             | OPAQUE_CONSTRAINT_INFO (E,phi') => OPAQUE_CONSTRAINT_INFO (phi_on_E E, phi_on_phi' phi')
+	    | DELAYED_REALISATION (phi',ti) => on_TypeInfo'(phi_on_phi' phi', ti)
       end
+
+    fun on_TypeInfo a = DELAYED_REALISATION a
+    fun normalise (DELAYED_REALISATION(phi,ti)) = on_TypeInfo'(phi, ti)
+      | normalise ti = ti 
 
     type StringTree = PP.StringTree
     fun layout_tyvars tyvars = 
@@ -193,13 +204,14 @@ functor TypeInfo (structure Ident: IDENT
 						   children=[layout_strids strids,
 							     layout_tycons tycons]}
 	 | FUNCTOR_APP_INFO (realisation,E) => PP.LEAF "FUNCTOR_APP_INFO(rea,E)"
-	 | FUNBIND_INFO Env => PP.NODE{start="FUNBIND_INFO(", finish=")",
-				       indent=2,childsep=PP.NONE,
-				       children=[layoutEnv Env]}
+	 | FUNBIND_INFO {argE,elabB,T,resE,rea_opt} => PP.NODE{start="FUNBIND_INFO(", finish=")",
+							   indent=2,childsep=PP.NONE,
+							   children=[layoutEnv argE]}
 	 | TRANS_CONSTRAINT_INFO Env => PP.NODE{start="TRANS_CONSTRAINT_INFO(", finish=")",
 						indent=2,childsep=PP.NONE,
 						children=[layoutEnv Env]}
 	 | OPAQUE_CONSTRAINT_INFO (Env,phi) => PP.NODE{start="OPAQUE_CONSTRAINT_INFO(", finish=")",
 						indent=2,childsep=PP.RIGHT ", ",
 						children=[layoutEnv Env, PP.LEAF "phi"]}
+         | DELAYED_REALISATION(phi,ti) => layout (on_TypeInfo'(phi,ti))
   end;

@@ -88,9 +88,9 @@ signature ALL_INFO =
       sharing ElabInfo.OverloadingInfo = OverloadingInfo
   end;
 
-(*$BASICS: TOOLS SCON LAB NAME TYNAME TYCON STATOBJECT
-        IDENT STRID SIGID FUNID DEC_GRAMMAR TYVAR LEX_BASICS
-        ENVIRONMENTS ALL_INFO *)
+(*$BASICS: TOOLS SCON LAB NAME TYNAME TYCON STATOBJECT IDENT
+        INFIX_BASIS STRID SIGID FUNID DEC_GRAMMAR TYVAR LEX_BASICS
+        MODULE_STATOBJECT MODULE_ENVIRONMENTS ENVIRONMENTS ALL_INFO *)
 
 signature BASICS =
   sig
@@ -99,6 +99,11 @@ signature BASICS =
 
     structure Ident : IDENT
       sharing type Ident.strid = StrId.strid
+
+    structure InfixBasis : INFIX_BASIS
+      sharing type InfixBasis.id = Ident.id
+	  and type InfixBasis.Report = Tools.Report.Report
+	  and type InfixBasis.StringTree = Tools.PrettyPrint.StringTree
 
     structure SCon : SCON
 
@@ -140,7 +145,7 @@ signature BASICS =
 	  and type PreElabDecGrammar.lab            = Lab.lab
 	  and type PreElabDecGrammar.scon           = SCon.scon 
 	  and type PreElabDecGrammar.StringTree     = Tools.PrettyPrint.StringTree
-(**)
+
       sharing PreElabDecGrammar.Ident = Ident
       and PreElabDecGrammar.StrId = StrId
 	  and PreElabDecGrammar.TyCon = TyCon
@@ -165,7 +170,41 @@ signature BASICS =
 	  and type Environments.ExplicitTyVar  = TyVar.SyntaxTyVar
 	  and type Environments.StringTree   = Tools.PrettyPrint.StringTree
 	  and type Environments.strid       = StrId.strid
+	  and type Environments.valbind = PreElabDecGrammar.valbind
+	  and type Environments.pat = PreElabDecGrammar.pat
           sharing Environments.TyName       = StatObject.TyName
+
+    structure ModuleStatObject : MODULE_STATOBJECT
+      sharing type ModuleStatObject.Env = Environments.Env
+	  and type ModuleStatObject.realisation = StatObject.realisation
+	  and type ModuleStatObject.StringTree = Tools.PrettyPrint.StringTree
+	  and type ModuleStatObject.strid = StrId.strid
+	  and type ModuleStatObject.longstrid = StrId.longstrid
+	  and type ModuleStatObject.longtycon = TyCon.longtycon
+	  and type ModuleStatObject.Type = StatObject.Type
+	  and type ModuleStatObject.TypeScheme = StatObject.TypeScheme
+	  and type ModuleStatObject.TypeFcn = StatObject.TypeFcn
+	  and type ModuleStatObject.TyVar = StatObject.TyVar
+	  and type ModuleStatObject.id = Ident.id
+	  sharing ModuleStatObject.TyName = TyName
+
+    structure ModuleEnvironments : MODULE_ENVIRONMENTS
+      sharing type ModuleEnvironments.realisation = StatObject.realisation
+          and type ModuleEnvironments.longstrid = StrId.longstrid
+          and type ModuleEnvironments.longtycon = TyCon.longtycon
+	  and type ModuleEnvironments.Context = Environments.Context
+	  and type ModuleEnvironments.FunSig = ModuleStatObject.FunSig
+	  and type ModuleEnvironments.TyStr = Environments.TyStr
+	  and type ModuleEnvironments.TyVar = StatObject.TyVar
+	  and type ModuleEnvironments.id = Ident.id
+	  and type ModuleEnvironments.strid = StrId.strid
+	  and type ModuleEnvironments.sigid = SigId.sigid
+	  and type ModuleEnvironments.funid = FunId.funid
+	  and type ModuleEnvironments.tycon = TyCon.tycon
+	  and type ModuleEnvironments.Env = Environments.Env
+	  and type ModuleEnvironments.Sig = ModuleStatObject.Sig
+	  and type ModuleEnvironments.StringTree = Tools.PrettyPrint.StringTree
+	  sharing ModuleEnvironments.TyName = TyName
 
     structure AllInfo : ALL_INFO
       sharing type AllInfo.TypeInfo.Type = StatObject.Type
@@ -177,6 +216,8 @@ signature BASICS =
 	  and type AllInfo.TypeInfo.strid = StrId.strid
 	  and type AllInfo.TypeInfo.tycon = TyCon.tycon
 	  and type AllInfo.TypeInfo.id = Ident.id
+	  and type AllInfo.TypeInfo.TyName = StatObject.TyName
+	  and type AllInfo.TypeInfo.Basis = ModuleEnvironments.Basis
 	  and type AllInfo.ErrorInfo.Type = StatObject.Type
 	  and type AllInfo.ErrorInfo.TypeScheme = StatObject.TypeScheme
 	  and type AllInfo.ErrorInfo.TyVar = StatObject.TyVar
@@ -191,6 +232,7 @@ signature BASICS =
 	  and type AllInfo.ErrorInfo.sigid = SigId.sigid
 	  and type AllInfo.ErrorInfo.funid = FunId.funid
 	  and type AllInfo.ErrorInfo.id = Ident.id
+	  and type AllInfo.ErrorInfo.SigMatchError = ModuleStatObject.SigMatchError
 	  and type AllInfo.SourceInfo.pos = LexBasics.pos
 	  and type AllInfo.SourceInfo.Report = Tools.Report.Report
 	  and type AllInfo.ElabInfo.StringTree = Tools.PrettyPrint.StringTree
@@ -198,12 +240,14 @@ signature BASICS =
           and type AllInfo.OverloadingInfo.TyVar = StatObject.TyVar
 	  and type AllInfo.OverloadingInfo.StringTree = Tools.PrettyPrint.StringTree
 	  and type AllInfo.ElabInfo.ParseInfo = PreElabDecGrammar.info
+	  and type AllInfo.ElabInfo.ParseInfo.DFInfo.InfixBasis = InfixBasis.Basis
   end;
 
-(*$Basics: TOOLS Ident StrId SigId FunId TyVar SCon Lab Name
-	TyName TyCon StatObject STATOBJECT LexBasics DFInfo
-	Environments DecGrammar ParseInfo SourceInfo
-	ErrorInfo TypeInfo ElabInfo OverloadingInfo BASICS *)
+(*$Basics: TOOLS Ident InfixBasis StrId SigId FunId TyVar SCon Lab
+	Name TyName TyCon StatObject STATOBJECT LexBasics DFInfo
+	Environments ModuleStatObject ModuleEnvironments DecGrammar
+	ParseInfo SourceInfo ErrorInfo TypeInfo ElabInfo
+	OverloadingInfo BASICS *)
 
 functor Basics(structure Tools: TOOLS): BASICS =
   struct
@@ -216,6 +260,12 @@ functor Basics(structure Tools: TOOLS): BASICS =
     structure Ident = Ident(structure StrId = StrId
 			    structure Crash = Tools.Crash
 			   )
+
+    structure InfixBasis = InfixBasis
+      (structure Ident = Ident
+       structure FinMap = Tools.FinMap
+       structure Report = Tools.Report
+       structure PP = Tools.PrettyPrint)
 
     structure SigId = SigId()
           and FunId = FunId()
@@ -263,7 +313,8 @@ functor Basics(structure Tools: TOOLS): BASICS =
 				   )
 
     structure DFInfo = DFInfo
-      (structure PrettyPrint = Tools.PrettyPrint)
+      (structure PrettyPrint = Tools.PrettyPrint
+       structure InfixBasis = InfixBasis)
       
     structure SourceInfo = SourceInfo
       (structure LexBasics = LexBasics
@@ -308,6 +359,42 @@ functor Basics(structure Tools: TOOLS): BASICS =
        structure ListSort = Tools.ListSort
        structure Crash = Tools.Crash) 
 
+
+
+    structure ModuleStatObject =
+      ModuleStatObject(structure StrId        = StrId
+		       structure SigId        = SigId
+		       structure FunId        = FunId
+		       structure TyCon        = TyCon
+		       structure TyName       = TyName
+		       structure StatObject   = StatObject
+		       structure Environments = Environments
+		       structure FinMap       = Tools.FinMap
+		       structure PP           = Tools.PrettyPrint
+		       structure Report       = Tools.Report
+		       structure Flags        = Tools.Flags
+		       structure Crash        = Tools.Crash
+		      )
+
+
+    structure ModuleEnvironments =
+      ModuleEnvironments(structure StrId             = StrId
+			 structure SigId             = SigId
+			 structure FunId             = FunId
+			 structure TyCon             = TyCon
+			 structure Ident             = Ident
+			 structure FinMap            = Tools.FinMap
+			 structure FinMapEq          = Tools.FinMapEq
+			 structure StatObject        = StatObject
+			 structure Environments      = Environments
+			 structure ModuleStatObject  = ModuleStatObject
+			 structure PP                = Tools.PrettyPrint
+			 structure Report	     = Tools.Report
+			 structure Flags             = Tools.Flags
+			 structure ListHacks	     = Tools.ListHacks
+			 structure Crash             = Tools.Crash
+			)
+
     structure AllInfo =
       struct
 	structure SourceInfo = SourceInfo
@@ -315,6 +402,7 @@ functor Basics(structure Tools: TOOLS): BASICS =
 	structure ParseInfo = ParseInfo
 	structure ErrorInfo = ErrorInfo
 	  (structure StatObject = StatObject
+	   structure ModuleStatObject = ModuleStatObject
 	   structure Ident = Ident
 	   structure Lab   = Lab
 	   structure TyCon = TyCon
@@ -326,6 +414,7 @@ functor Basics(structure Tools: TOOLS): BASICS =
 	   structure PrettyPrint = Tools.PrettyPrint)
 	structure TypeInfo = TypeInfo
 	  (structure Ident = Ident
+	   structure ModuleEnvironments = ModuleEnvironments
 	   structure StrId = StrId
 	   structure TyCon = TyCon
 	   structure StatObject=StatObject
@@ -352,6 +441,7 @@ signature TOPDEC_PARSING =
     structure Basics: BASICS
 
     structure PreElabDecGrammar: DEC_GRAMMAR
+      sharing PreElabDecGrammar = Basics.PreElabDecGrammar
       sharing type PreElabDecGrammar.longid = Basics.Ident.longid
 
     structure PreElabTopdecGrammar: TOPDEC_GRAMMAR
@@ -380,7 +470,7 @@ signature TOPDEC_PARSING =
 	         = Basics.Tools.PrettyPrint.StringTree
           and type PreElabTopdecGrammar.StringTree
 	           = Basics.Tools.PrettyPrint.StringTree
-(**)
+
       sharing PreElabTopdecGrammar.DecGrammar = PreElabDecGrammar
 	  and PreElabTopdecGrammar.DecGrammar.TyCon = Basics.TyCon
 	  and PreElabTopdecGrammar.DecGrammar.TyVar = Basics.TyVar
@@ -390,16 +480,18 @@ signature TOPDEC_PARSING =
 	  and PreElabTopdecGrammar.SigId = Basics.SigId
 	  and PreElabTopdecGrammar.StrId = Basics.StrId
 	  and PreElabTopdecGrammar.FunId = Basics.FunId
+       sharing type PreElabTopdecGrammar.ty = Basics.Environments.ty
     
     structure InfixBasis: INFIX_BASIS
+      sharing InfixBasis = Basics.InfixBasis
 
     structure Parse: PARSE
       sharing type Parse.topdec = PreElabTopdecGrammar.topdec
 	  and type Parse.InfixBasis = InfixBasis.Basis
   end;
 
-(*$TopdecParsing: BASICS DecGrammar TopdecGrammar
- InfixBasis Parse TOPDEC_PARSING TOPDEC_GRAMMAR *)
+(*$TopdecParsing: BASICS DecGrammar TopdecGrammar Parse TOPDEC_PARSING
+                  TOPDEC_GRAMMAR *)
 
 functor TopdecParsing(structure Basics: BASICS): TOPDEC_PARSING =
   struct
@@ -415,11 +507,7 @@ functor TopdecParsing(structure Basics: BASICS): TOPDEC_PARSING =
        structure FunId = Basics.FunId
        structure PrettyPrint = Tools.PrettyPrint)
 
-    structure InfixBasis = InfixBasis
-      (structure Ident = Basics.Ident
-       structure FinMap = Tools.FinMap
-       structure Report = Tools.Report
-       structure PP = Tools.PrettyPrint)
+    structure InfixBasis = Basics.InfixBasis
 
     structure Parse = Parse
       (structure TopdecGrammar = PreElabTopdecGrammar
@@ -434,129 +522,18 @@ functor TopdecParsing(structure Basics: BASICS): TOPDEC_PARSING =
        structure Crash = Tools.Crash)
   end;
 
-(*$STATIC_OBJECTS: ENVIRONMENTS BASICS
-      MODULE_STATOBJECT MODULE_ENVIRONMENTS *)
 
-signature STATIC_OBJECTS =
-  sig
-    structure Basics : BASICS
-
-    structure Environments : ENVIRONMENTS
-      sharing Environments = Basics.Environments
-
-(*
-      sharing type Environments.Type         = Basics.StatObject.Type
-          and type Environments.TyVar        = Basics.StatObject.TyVar
-	  and type Environments.TypeScheme   = Basics.StatObject.TypeScheme
-	  and type Environments.TypeFcn      = Basics.StatObject.TypeFcn
-	  and type Environments.realisation        = Basics.StatObject.realisation
-	  and type Environments.level        = Basics.StatObject.level
-	  and type Environments.id           = Basics.Ident.id
-	  and type Environments.longid       = Basics.Ident.longid
-	  and type Environments.Substitution = Basics.StatObject.Substitution
-	  and type Environments.tycon        = Basics.TyCon.tycon
-	  and type Environments.longtycon    = Basics.TyCon.longtycon
-	  and type Environments.longstrid    = Basics.StrId.longstrid
-	  and type Environments.ExplicitTyVar  = Basics.TyVar.SyntaxTyVar
-	  and type Environments.StringTree   = Basics.Tools.PrettyPrint.StringTree
-	  and type Environments.TyEnv        = Basics.AllInfo.TypeInfo.TyEnv
-	  and type Environments.strid       = Basics.StrId.strid
-	  sharing Environments.TyName      = Basics.TyName
-*)
-    structure ModuleStatObject : MODULE_STATOBJECT
-      sharing type ModuleStatObject.Env = Environments.Env
-	  and type ModuleStatObject.realisation = Basics.StatObject.realisation
-	  and type ModuleStatObject.StringTree
-	           = Basics.Tools.PrettyPrint.StringTree
-	  and type ModuleStatObject.ErrorInfo = Basics.AllInfo.ErrorInfo.ErrorInfo
-	  sharing ModuleStatObject.TyName      = Basics.TyName
-
-    structure ModuleEnvironments : MODULE_ENVIRONMENTS
-      sharing type ModuleEnvironments.realisation = Basics.StatObject.realisation
-          and type ModuleEnvironments.longstrid = Basics.StrId.longstrid
-          and type ModuleEnvironments.longtycon = Basics.TyCon.longtycon
-	  and type ModuleEnvironments.Context = Environments.Context
-	  and type ModuleEnvironments.FunSig = ModuleStatObject.FunSig
-	  and type ModuleEnvironments.TyStr = Environments.TyStr
-	  and type ModuleEnvironments.TyVar = Basics.StatObject.TyVar
-	  and type ModuleEnvironments.id = Basics.Ident.id
-	  and type ModuleEnvironments.strid = Basics.StrId.strid
-	  and type ModuleEnvironments.sigid = Basics.SigId.sigid
-	  and type ModuleEnvironments.funid = Basics.FunId.funid
-	  and type ModuleEnvironments.tycon = Basics.TyCon.tycon
-	  and type ModuleEnvironments.Env = Environments.Env
-	  and type ModuleEnvironments.Sig = ModuleStatObject.Sig
-	  and type ModuleEnvironments.id = Basics.Ident.id
-	  and type ModuleEnvironments.StringTree
-	    = Basics.Tools.PrettyPrint.StringTree
-	  sharing ModuleEnvironments.TyName      = Basics.TyName
-  end;
-
-(*$StaticObjects: TOPDEC_PARSING ModuleStatObject ModuleEnvironments
-	STATIC_OBJECTS *)
-
-functor StaticObjects(structure TopdecParsing: TOPDEC_PARSING
-			sharing type TopdecParsing.PreElabDecGrammar.longid 
-			              = TopdecParsing.Basics.Ident.longid)
-	  : STATIC_OBJECTS =
-  struct
-    structure Basics = TopdecParsing.Basics
-    structure Tools  = Basics.Tools
-
-    structure Environments = Basics.Environments
-
-    structure ModuleStatObject =
-      ModuleStatObject(structure StrId      = Basics.StrId
-		       structure SigId      = Basics.SigId
-		       structure FunId      = Basics.FunId
-		       structure TyCon      = Basics.TyCon
-		       structure TyName     = Basics.TyName
-		       structure StatObject = Basics.StatObject
-		       structure Environments = Environments
-		       structure ErrorInfo  = Basics.AllInfo.ErrorInfo
-		       structure FinMap     = Tools.FinMap
-		       structure PP         = Tools.PrettyPrint
-		       structure Report     = Tools.Report
-		       structure Flags      = Tools.Flags
-		       structure Crash      = Tools.Crash
-		      )
-
-    structure ModuleEnvironments =
-      ModuleEnvironments(structure StrId             = Basics.StrId
-			 structure SigId             = Basics.SigId
-			 structure FunId             = Basics.FunId
-			 structure TyCon             = Basics.TyCon
-			 structure Ident               = Basics.Ident
-			 structure FinMap            = Tools.FinMap
-			 structure FinMapEq          = Tools.FinMapEq
-			 structure StatObject        = Basics.StatObject
-			 structure Environments = Environments
-			 structure ModuleStatObject  = ModuleStatObject
-			 structure PP                = Tools.PrettyPrint
-			 structure Report	     = Tools.Report
-			 structure Flags             = Tools.Flags
-			 structure ListHacks	     = Tools.ListHacks
-			 structure Crash             = Tools.Crash
-
-			 structure Tail_T = Basics.AllInfo.ErrorInfo
-					(* Just so we can share type Tail. *)
-			)
-  end;
-
-(*$ELABORATION: BASICS STATIC_OBJECTS ELABTOPDEC DEC_GRAMMAR
-	 TOPDEC_GRAMMAR ELAB_REPOSITORY*)
+(*$ELABORATION: BASICS ELABTOPDEC DEC_GRAMMAR TOPDEC_GRAMMAR
+	 ELAB_REPOSITORY*)
 
 signature ELABORATION =
   sig
     structure Basics : BASICS
 
-    structure StaticObjects : STATIC_OBJECTS
-      sharing StaticObjects.Basics = Basics
-
     structure ElabRepository : ELAB_REPOSITORY
       sharing type ElabRepository.funid = Basics.FunId.funid
 	  and type ElabRepository.name = Basics.Name.name
-	  and type ElabRepository.ElabBasis = StaticObjects.ModuleEnvironments.Basis 
+	  and type ElabRepository.ElabBasis = Basics.ModuleEnvironments.Basis 
 	    
     structure ElabTopdec : ELABTOPDEC
       sharing type ElabTopdec.StaticBasis = ElabRepository.ElabBasis
@@ -593,44 +570,24 @@ signature ELABORATION =
 	           = Basics.Tools.PrettyPrint.StringTree
   end;
 
-(*$Elaboration: TOPDEC_PARSING STATIC_OBJECTS DecGrammar TopdecGrammar
+(*$Elaboration: TOPDEC_PARSING DecGrammar TopdecGrammar
 	 ElabRepository ElabTopdec ElabDec ELABORATION *)
 
-functor Elaboration(structure TopdecParsing : TOPDEC_PARSING
-		      sharing TopdecParsing.PreElabDecGrammar
-			    = TopdecParsing.PreElabTopdecGrammar.DecGrammar
-		     sharing type TopdecParsing.PreElabDecGrammar.lab 
-		                  = TopdecParsing.Basics.Lab.lab
-		    structure StaticObjects : STATIC_OBJECTS
-		     sharing StaticObjects.Basics = TopdecParsing.Basics
-		         and type StaticObjects.Environments.valbind
-				  = TopdecParsing.PreElabDecGrammar.valbind
-                         and type StaticObjects.Environments.pat
-			          = TopdecParsing.PreElabDecGrammar.pat
-                         and type StaticObjects.Environments.ty
-			          = TopdecParsing.PreElabDecGrammar.ty
-			 and type StaticObjects.Environments.id
-				  = TopdecParsing.PreElabDecGrammar.id
-			 and type StaticObjects.Environments.longid
-				  = TopdecParsing.PreElabDecGrammar.longid
-				  = StaticObjects.Basics.Ident.longid 
-			 sharing StaticObjects.Environments.TyName
-			          = StaticObjects.Basics.TyName
-		   ): ELABORATION =
+functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
   struct
+    structure Basics     = TopdecParsing.Basics
+
     local
-      structure Basics     = TopdecParsing.Basics
       structure Tools      = Basics.Tools
       structure AllInfo    = Basics.AllInfo
+      structure ElabInfo   = AllInfo.ElabInfo
     in
-      structure StaticObjects = StaticObjects
-      open StaticObjects
 
       structure PostElabDecGrammar =
 	DecGrammar(structure GrammarInfo =
 		     struct
-		       type GrammarInfo = AllInfo.ElabInfo.ElabInfo
-		       val bogus_info = AllInfo.ElabInfo.from_ParseInfo TopdecParsing.PreElabDecGrammar.bogus_info
+		       type GrammarInfo = ElabInfo.ElabInfo
+		       val bogus_info = ElabInfo.from_ParseInfo TopdecParsing.PreElabDecGrammar.bogus_info
 		     end
 		   structure Lab         = Basics.Lab
 		   structure SCon        = Basics.SCon
@@ -651,8 +608,8 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING
 						structure InfixBasis = TopdecParsing.InfixBasis
 						structure TyName = Basics.TyName
 						type funid = Basics.FunId.funid
-						type ElabBasis = ModuleEnvironments.Basis
-						type realisation = Environments.realisation
+						type ElabBasis = Basics.ModuleEnvironments.Basis
+						type realisation = Basics.Environments.realisation
 						structure Crash =  Tools.Crash
 						structure FinMap = Tools.FinMap)
 
@@ -660,10 +617,10 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING
 	ElabTopdec(structure PrettyPrint = Tools.PrettyPrint
 		   structure IG = TopdecParsing.PreElabTopdecGrammar
 		   structure OG = PostElabTopdecGrammar
-		   structure Environments = Environments
-		   structure ModuleEnvironments = ModuleEnvironments
+		   structure Environments = Basics.Environments
+		   structure ModuleEnvironments = Basics.ModuleEnvironments
 		   structure StatObject = Basics.StatObject
-		   structure ModuleStatObject   = ModuleStatObject
+		   structure ModuleStatObject = Basics.ModuleStatObject
 		   structure Name = Basics.Name
 		   structure ElabRep = ElabRepository
 		   structure ElabDec =
@@ -671,7 +628,7 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING
 			      structure ElabInfo = AllInfo.ElabInfo
 			      structure IG = TopdecParsing.PreElabDecGrammar
 			      structure OG = PostElabDecGrammar
-			      structure Environments = Environments
+			      structure Environments = Basics.Environments
 			      structure Ident = Basics.Ident
 			      structure Lab = Basics.Lab
 			      structure StatObject = Basics.StatObject
@@ -716,7 +673,7 @@ signature EXECUTION =
 functor Execution(structure Elaboration : ELABORATION) : EXECUTION =
   struct
     structure Elaboration = Elaboration
-    structure Basics      = Elaboration.StaticObjects.Basics
+    structure Basics      = Elaboration.Basics
     structure Tools       = Basics.Tools
     structure AllInfo     = Basics.AllInfo
 
@@ -733,7 +690,7 @@ functor Execution(structure Elaboration : ELABORATION) : EXECUTION =
        structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
        structure ElabInfo = AllInfo.ElabInfo
        structure StatObject = Basics.StatObject
-       structure Environments = Elaboration.StaticObjects.Environments
+       structure Environments = Elaboration.Basics.Environments
        structure FinMap = Tools.FinMap
        structure FinMapEq = Tools.FinMapEq
        structure BasicIO = Tools.BasicIO
@@ -752,8 +709,8 @@ functor Execution(structure Elaboration : ELABORATION) : EXECUTION =
    relevant to the build heirarchy. It provides a convenient
    top-level interface. *)
 
-(*$KitCompiler: Tools Basics TopdecParsing StaticObjects Elaboration
-        Execution ManagerObjects OpacityElim ParseElab ErrorTraverse
+(*$KitCompiler: Tools Basics TopdecParsing Elaboration Execution
+        ManagerObjects OpacityElim ParseElab ErrorTraverse
         TopLevelReport TestInfo Manager IntModules MANAGER FLAGS
         TestEnv*)
 
@@ -765,27 +722,23 @@ functor KitCompiler() : sig include MANAGER
     structure Tools   = Tools()
     structure Basics  = Basics(structure Tools = Tools)
     structure AllInfo = Basics.AllInfo
-    structure TopdecParsing  = TopdecParsing(structure Basics = Basics)
-      
-    structure StaticObjects =
-      StaticObjects(structure TopdecParsing = TopdecParsing)
-      
-    structure Elaboration =
-      Elaboration(structure TopdecParsing = TopdecParsing
-		  structure StaticObjects = StaticObjects)
+
+    structure TopdecParsing  = TopdecParsing(structure Basics = Basics)      
+
+    structure Elaboration = Elaboration(structure TopdecParsing = TopdecParsing)
 
     structure Execution = Execution(structure Elaboration = Elaboration)
 
     structure OpacityElim = OpacityElim(structure Crash = Tools.Crash
 					structure ElabInfo = AllInfo.ElabInfo
-					structure Environments = StaticObjects.Environments
+					structure Environments = Basics.Environments
 					structure StatObject = Basics.StatObject
 					structure TopdecGrammar = Elaboration.PostElabTopdecGrammar)
 
     structure Flags = Tools.Flags
 
     structure ManagerObjects =
-      ManagerObjects(structure ModuleEnvironments = StaticObjects.ModuleEnvironments
+      ManagerObjects(structure ModuleEnvironments = Basics.ModuleEnvironments
 		     structure OpacityElim = OpacityElim
 		     structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
 		     structure CompilerEnv = Execution.CompilerEnv
@@ -802,7 +755,7 @@ functor KitCompiler() : sig include MANAGER
     structure ParseElab = ParseElab
       (structure Parse = TopdecParsing.Parse
        structure ElabTopdec = Elaboration.ElabTopdec
-       structure ModuleEnvironments = StaticObjects.ModuleEnvironments
+       structure ModuleEnvironments = Basics.ModuleEnvironments
        structure PreElabTopdecGrammar = TopdecParsing.PreElabTopdecGrammar
        structure PostElabTopdecGrammar = Elaboration.PostElabTopdecGrammar
        structure ErrorTraverse = ErrorTraverse
@@ -819,9 +772,9 @@ functor KitCompiler() : sig include MANAGER
 				     structure Ident = Basics.Ident
 				     structure InfixBasis = TopdecParsing.InfixBasis
 				     structure StatObject = Basics.StatObject
-				     structure Environments = StaticObjects.Environments
-				     structure ModuleStatObject = StaticObjects.ModuleStatObject
-				     structure ModuleEnvironments = StaticObjects.ModuleEnvironments
+				     structure Environments = Basics.Environments
+				     structure ModuleStatObject = Basics.ModuleStatObject
+				     structure ModuleEnvironments = Basics.ModuleEnvironments
 				     structure Report = Tools.Report
 				     structure Crash = Tools.Crash)
        structure BasicIO = Tools.BasicIO
@@ -832,23 +785,28 @@ functor KitCompiler() : sig include MANAGER
 
     structure IntModules = 
       IntModules(structure Name = Basics.Name
+		 structure LexBasics = Basics.LexBasics
+		 structure ModuleEnvironments = Basics.ModuleEnvironments
+		 structure ParseElab = ParseElab
+		 structure OpacityElim = OpacityElim
 		 structure ManagerObjects = ManagerObjects
 		 structure CompilerEnv = Execution.CompilerEnv
 		 structure ElabInfo = AllInfo.ElabInfo
-		 structure Environments = StaticObjects.Environments
+		 structure Environments = Basics.Environments
 		 structure CompileBasis = Execution.CompileBasis
 		 structure FreeIds = Execution.FreeIds
 		 structure Compile = Execution.Compile
 		 structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
 		 structure Crash = Tools.Crash
+		 structure Report = Tools.Report
 		 structure Flags = Tools.Flags)
 
     structure Manager =
       Manager(structure ManagerObjects = ManagerObjects
 	      structure OpacityElim = OpacityElim
 	      structure Name = Basics.Name
-	      structure Environments = StaticObjects.Environments
-	      structure ModuleEnvironments = StaticObjects.ModuleEnvironments
+	      structure Environments = Basics.Environments
+	      structure ModuleEnvironments = Basics.ModuleEnvironments
 	      structure ParseElab = ParseElab
 	      structure IntModules = IntModules
 	      structure FreeIds = Execution.FreeIds
