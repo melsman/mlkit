@@ -282,6 +282,12 @@ struct
       comp_ces_to_block(rhos @ excons @ lvs,0,env,sp,cc,alloc,acc)
       | CG_ce(ClosExp.REGVEC_RECORD{elems,alloc},env,sp,cc,acc) = die "REGVEC_RECORD not used in this back end"
       | CG_ce(ClosExp.RECORD{elems,alloc,tag},env,sp,cc,acc) = comp_ces_to_block(elems,0,env,sp,cc,alloc,acc)
+      | CG_ce(ClosExp.SELECT(i,ce as ClosExp.VAR lv),env,sp,cc,acc) = 
+      (* This may be a SelectEnv? *)
+      if Lvars.eq(lv,Lvars.env_lvar) then
+	SelectEnv(i)::acc
+      else
+	CG_ce(ce,env,sp,cc,Select(i)::acc)
       | CG_ce(ClosExp.SELECT(i,ce),env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Select(i)::acc)
       | CG_ce(ClosExp.FNJMP{opr,args,clos=NONE,free=[]},env,sp,cc,acc) = 
       CG_ce(opr,env,sp,cc,
@@ -464,7 +470,7 @@ struct
 	  foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,env,sp,cc,C)) acc regions_for_resetting
       | CG_ce(ClosExp.RESET_REGIONS{force=true,regions_for_resetting},env,sp,cc,acc) =
 	  foldr (fn (alloc,C) => force_reset_aux_region(alloc,env,sp,cc,C)) acc regions_for_resetting
-      | CG_ce(ClosExp.CCALL{name,rhos_for_result,args},env,sp,cc,acc) = die "CCALL not implemented"
+      | CG_ce(ClosExp.CCALL{name,rhos_for_result,args},env,sp,cc,acc) =
 	  let
 	    (* Note that the prim names are defined in BackendInfo! *)
 	    fun prim_name_to_KAM name =
@@ -515,6 +521,103 @@ struct
 	      | "mul_word__" => 1
 	      | "mul_word8__" => 2
 	      | "__div_float" => 3
+	      | "stdErrStream" => 4
+	      | "stdOutStream" => 5
+	      | "stdInStream" => 6
+	      | "sqrtFloat" => 7
+	      | "lnFloat" => 8
+	      | "negInfFloat" => 9
+	      | "posInfFloat" => 10
+	      | "sml_getrutime" => 11
+	      | "sml_getrealtime" => 12
+	      | "sml_localoffset" => 13
+	      | "exnName" => 14
+	      | "printString" => 15
+	      | "implodeChars" => 16
+	      | "implodeString" => 17
+	      | "concatString" => 18
+	      | "sizeString" => 19
+	      | "subString" => 20
+	      | "div_int_" => 21
+	      | "mod_int_" => 22
+	      | "word_sub0" => 23
+	      | "word_update0" => 24
+	      | "word_table0" => 25
+	      | "table_size" => 26
+	      | "allocString" => 27
+	      | "updateString" => 28
+	      | "chrChar" => 29
+	      | "greaterString" => 30
+	      | "lessString" => 31
+	      | "lesseqString" => 32
+	      | "greatereqString" => 33
+	      | "equalString" => 34
+	      | "div_word_" => 35
+	      | "mod_word_" => 36
+	      | "quotInt" => 37
+	      | "remInt" => 38
+	      | "divFloat" => 39
+	      | "sinFloat" => 40
+	      | "cosFloat" => 41
+	      | "atanFloat" => 42
+	      | "asinFloat" => 43
+	      | "acosFloat" => 44
+	      | "atan2Float" => 45
+	      | "expFloat" => 46
+	      | "powFloat" => 47
+	      | "sinhFloat" => 48
+	      | "coshFloat" => 49
+	      | "tanhFloat" => 50
+	      | "floorFloat" => 51
+	      | "ceilFloat" => 52
+	      | "truncFloat" => 53
+	      | "stringOfFloat" => 54
+	      | "isnanFloat" => 55
+	      | "realInt" => 56
+	      | "generalStringOfFloat" => 57
+	      | "closeStream" => 58
+	      | "openInStream" => 59
+	      | "openOutStream" => 60
+	      | "openAppendStream" => 61
+	      | "flushStream" => 62
+	      | "outputStream" => 63
+	      | "inputStream" => 64
+	      | "lookaheadStream" => 65
+	      | "openInBinStream" => 66
+	      | "openOutBinStream" => 67
+	      | "openAppendBinStream" => 68
+	      | "sml_errormsg" => 69
+	      | "sml_errno" => 70
+	      | "sml_access" => 71
+	      | "sml_getdir" => 72
+	      | "sml_isdir" => 73
+	      | "sml_mkdir" => 74
+	      | "sml_chdir" => 75
+	      | "sml_readlink" => 76
+	      | "sml_islink" => 77
+	      | "sml_realpath" => 78
+	      | "sml_devinode" => 79
+	      | "sml_rmdir" => 80
+	      | "sml_tmpnam" => 81
+	      | "sml_modtime" => 82
+	      | "sml_filesize" => 83
+	      | "sml_remove" => 84
+	      | "sml_rename" => 85
+	      | "sml_settime" => 86
+	      | "sml_opendir" => 87
+	      | "sml_readdir" => 88
+	      | "sml_rewinddir" => 89
+	      | "sml_closedir" => 90
+	      | "sml_system" => 91
+	      | "sml_getenv" => 92
+	      | "terminate" => 93
+	      | "sml_commandline_name" => 94
+	      | "sml_commandline_args" => 95
+	      | "sml_localtime" => 96
+	      | "sml_gmtime" => 97
+	      | "sml_mktime" => 98
+	      | "sml_asctime" => 99
+	      | "sml_strftime" => 100
 	      | _ => die ("CG_ce.name_to_built_in_C_function_index: " ^ name ^ " not implemented.")
 	  in
 	    if BI.is_prim name then 
@@ -533,7 +636,7 @@ struct
 			       List.length all_args) :: acc)
 	      end
 	  end
-      | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = die "FRAME not implemented"
+      | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = Comment "FRAME not implemented" :: acc
 
     and force_reset_aux_region(sma,env,sp,cc,acc) = 
       let
@@ -586,7 +689,7 @@ struct
 	| ClosExp.SAT_FF(ce,pp)   => comp_ce(ce,BlockAllocSatIfInf(n) :: acc)
 	| ClosExp.ATBOT_LI(ce,pp) => comp_ce(ce,BlockAllocAtbot(n) :: acc)
 	| ClosExp.ATBOT_LF(ce,pp) => comp_ce(ce,acc)
-	| ClosExp.IGNORE => die "CodeGenKAM.alloc_block: sma = Ignore"
+	| ClosExp.IGNORE => acc (*die "CodeGenKAM.alloc_block: sma = Ignore" 05/10-2000, Niels *)
       end
 
     and alloc(sma,n,env,sp,cc,acc) =
@@ -608,7 +711,7 @@ struct
     and comp_ces_to_block ([],n,env,sp,cc,alloc,acc) = alloc_block(alloc,n,env,sp,cc,acc)
       | comp_ces_to_block (ce::ces,n,env,sp,cc,alloc,acc) = CG_ce(ce,env,sp,cc,Push::comp_ces_to_block(ces,n+1,env,sp+1,cc,alloc,acc))
 
-    and comp_ces ([],env,sp,cc,acc) = die "CG_ce.comp_ces: empty ces list"
+    and comp_ces ([],env,sp,cc,acc) = acc
       | comp_ces ([ce],env,sp,cc,acc) = CG_ce(ce,env,sp,cc,acc)
       | comp_ces (ce::ces,env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Push::comp_ces(ces,env,sp+1,cc,acc))
 
@@ -619,8 +722,11 @@ struct
 	let
 	  val decomp_cc = CallConv.decompose_cc cc
 	  fun add_lvar (lv,(offset,env)) = (offset+1,declareLvar(lv,STACK(offset),env))
+	  fun add_clos_opt (NONE,env) = env
+	    | add_clos_opt (SOME clos_lv, env) = declareLvar(clos_lv,ENV_REG,env)
 	  val (offset,env) = List.foldl add_lvar (List.foldl add_lvar 
 						  (0,initialEnv) (#reg_args(decomp_cc))) (#args(decomp_cc))
+	  val env = add_clos_opt(#clos(decomp_cc),env)
 	in
 	  f_fun(lab,CG_ce(ce,env,offset,cc,[Return(offset,List.length (#res(decomp_cc)))]))
 	end
@@ -656,4 +762,13 @@ struct
     in
       asm_prg
     end
+
+    (* ------------------------------------------------------------------------------ *)
+    (*              Generate Link Code for Incremental Compilation                    *)
+    (* ------------------------------------------------------------------------------ *)
+    fun generate_link_code (linkinfos:label list) = {top_decls=[], (* not done 05/10-2000, Niels *)
+						     init_code=[],
+						     exit_code=[],
+						     static_data=[]}
+
 end;

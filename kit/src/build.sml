@@ -52,7 +52,7 @@ in
 	 build_kit())
 end ;
 
-
+(*
 (* This is only temporary; 09/02/1999, Niels *)
 val _ = 
   let
@@ -63,4 +63,19 @@ val _ =
       disable "delete_target_files";
       KitX86.build_basislib()
 (*      ; KitX86.install() *)
+  end;
+*)
+
+(* This is only temporary; 09/02/1999, Niels *)
+val _ = 
+  let
+    fun enable s = KitKAM.Flags.lookup_flag_entry s := true
+    fun disable s =  KitKAM.Flags.lookup_flag_entry s := false
+  in 
+      disable "garbage_collection";
+      disable "delete_target_files";
+      enable "print_KAM_program";
+      enable "print_lift_conv_program";
+      KitKAM.build_basislib()
+(*      ; KitKAM.install() *)
   end;

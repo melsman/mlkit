@@ -11,11 +11,11 @@ signature CALL_CONV =
     val mk_cc_fun     : lvar list * lvar option * lvar list * lvar option * lvar list * lvar list -> cc
     val get_res_lvars : cc -> lvar list
     val get_arg_lvars : cc -> lvar list
-    val resolve_cc    : cc -> cc * (lvar*lvar) list * (lvar*lvar) list
-    val resolve_app   : (lvar -> 'a) -> 
+    val resolve_cc    : lvar list -> lvar list -> cc -> cc * (lvar*lvar) list * (lvar*lvar) list
+    val resolve_app   : lvar list -> lvar list -> (lvar -> 'a) -> 
                         {clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} ->
                         {clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} * ('a*lvar) list * ('a*lvar) list
-    val resolve_ccall : (lvar -> 'a) ->
+    val resolve_ccall : lvar list -> lvar list -> (lvar -> 'a) ->
                         {args: 'a list, rhos_for_result: 'a list, res: 'a list} ->
                         {args: 'a list, rhos_for_result: 'a list, res: 'a list} * ('a*lvar) list * ('a*lvar) list
 
@@ -36,11 +36,11 @@ signature CALL_CONV =
     val get_rcf_size                  : cc -> int
     val get_ccf_size                  : cc -> int
 
-    val resolve_act_cc                : {clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} ->
+    val resolve_act_cc                : lvar list -> lvar list -> {clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} ->
                                         ('a * int) list * ('a * int) list * int
 
-    val handl_return_phreg            : unit -> lvar
-    val handl_arg_phreg               : unit -> lvar * lvar
+    val handl_return_phreg            : lvar list -> lvar
+    val handl_arg_phreg               : lvar list -> lvar * lvar
 
     (******************)
     (* PrettyPrinting *)

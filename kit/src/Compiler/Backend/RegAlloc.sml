@@ -105,7 +105,7 @@ struct
     fun CC_ls(LS.FNJMP{opr,args,clos,free,res,bv},rest) =
       let
 	val ({clos,args,free,res,...},assign_list_args,assign_list_res) = 
-	  CallConv.resolve_app LS.PHREG {clos=clos,free=free,args=args,reg_vec=NONE,reg_args=[],res=res}
+	  CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,free=free,args=args,reg_vec=NONE,reg_args=[],res=res}
 	in
 	  resolve_res(assign_list_args,
 		      LS.FNJMP{opr=opr,args=args,clos=clos,free=free,res=res,bv=bv}::
@@ -114,7 +114,7 @@ struct
 	| CC_ls(LS.FNCALL{opr,args,clos,free,res,bv},rest) =
 	let
 	  val ({clos,args,free,res,...},assign_list_args,assign_list_res) = 
-	    CallConv.resolve_app LS.PHREG {clos=clos,free=free,args=args,reg_vec=NONE,reg_args=[],res=res}
+	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,free=free,args=args,reg_vec=NONE,reg_args=[],res=res}
 	in
 	  resolve_res(assign_list_args,
 		      LS.FNCALL{opr=opr,args=args,clos=clos,free=free,res=res,bv=bv}::
@@ -123,7 +123,7 @@ struct
 	| CC_ls(LS.JMP{opr,args,reg_vec,reg_args,clos,free,res,bv},rest) =
 	let
 	  val ({clos,args,free,res,reg_vec,reg_args},assign_list_args,assign_list_res) = 
-	    CallConv.resolve_app LS.PHREG {clos=clos,free=free,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
+	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,free=free,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
 	in
 	  resolve_res(assign_list_args,
 		      LS.JMP{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bv}::
@@ -132,7 +132,7 @@ struct
 	| CC_ls(LS.FUNCALL{opr,args,reg_vec,reg_args,clos,free,res,bv},rest) =
 	let
 	  val ({clos,args,free,res,reg_vec,reg_args},assign_list_args,assign_list_res) = 
-	    CallConv.resolve_app LS.PHREG {clos=clos,free=free,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
+	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,free=free,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
 	in
 	  resolve_res(assign_list_args,
 		      LS.FUNCALL{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bv}::
@@ -150,7 +150,7 @@ struct
 	| CC_ls(LS.CCALL{name,args,rhos_for_result,res},rest) = 
 	let
 	  val ({args,rhos_for_result,res},assign_list_args,assign_list_res) = 
-	    CallConv.resolve_ccall LS.PHREG {args=args,rhos_for_result=rhos_for_result,res=res}
+	    CallConv.resolve_ccall RI.args_phreg_ccall RI.res_phreg_ccall LS.PHREG {args=args,rhos_for_result=rhos_for_result,res=res}
 	in
 	  resolve_res(assign_list_args,
 		      LS.CCALL{name=name,args=args,rhos_for_result=rhos_for_result,res=res}::
@@ -162,7 +162,7 @@ struct
   in
       fun CC_top_decl(LS.FUN(lab,cc,lss)) = 
 	let
-	  val (cc',args,res) = CallConv.resolve_cc(cc)
+	  val (cc',args,res) = CallConv.resolve_cc RI.args_phreg RI.res_phreg cc
 	  val args' = map (fn (lv,i) => (LS.VAR lv,i)) args
 	  val res' = map (fn (lv,i) => (LS.VAR lv,i)) res
 	  val body_lss = CC_lss(lss)
@@ -175,7 +175,7 @@ struct
 	end
 	| CC_top_decl(LS.FN(lab,cc,lss)) = 
 	let
-	  val (cc',args,res) = CallConv.resolve_cc(cc)
+	  val (cc',args,res) = CallConv.resolve_cc RI.args_phreg RI.res_phreg cc
 	  val args' = map (fn (lv,i) => (LS.VAR lv,i)) args
 	  val res' = map (fn (lv,i) => (LS.VAR lv,i)) res
 	  val body_lss = CC_lss(lss)

@@ -1276,7 +1276,7 @@ struct
 	       | LS.FNJMP(cc as {opr,args,clos,free,res,bv}) =>
 		comment_fn (fn () => "FNJMP: " ^ pr_ls ls,
 		let
-		  val (spilled_args,_,_) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,
+		  val (spilled_args,_,_) = CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,free=free,
 								    reg_args=[],reg_vec=NONE,res=res}
 		  val offset_codeptr = if !BI.tag_values then "4" else "0"
 		in
@@ -1299,7 +1299,7 @@ struct
 		  let 
 		    val offset_codeptr = if !BI.tag_values then "4" else "0"
 		    val (spilled_args,spilled_res,return_lab_offset) = 
-		      CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=[],reg_vec=NONE,res=res}
+		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,free=free,reg_args=[],reg_vec=NONE,res=res}
 		    val size_rcf = length spilled_res
 		    val size_ccf = length spilled_args
 		    val size_cc = size_rcf+size_ccf+1
@@ -1329,7 +1329,7 @@ struct
 		  comment_fn (fn () => "JMP: " ^ pr_ls ls,
 		  let 
 		    val (spilled_args,_,_) = 
-		      CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
+		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
 		    fun jmp C = I.jmp(L(MLFunLab opr)) :: rem_dead_code C
 		  in 
 		    if List.length spilled_args > 0 then
@@ -1342,7 +1342,7 @@ struct
 		  comment_fn (fn () => "FUNCALL: " ^ pr_ls ls,
 		  let 
 		    val (spilled_args,spilled_res,return_lab_offset) = 
-		      CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
+		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
 		    val size_rcf = List.length spilled_res
 		    val return_lab = new_local_lab "return_from_app"
 		    fun flush_args C =
@@ -1412,7 +1412,7 @@ struct
 	              I.movl(R tmp_reg1, L exn_ptr_lab) ::
 	              I.jmp(L handl_join_lab) ::C))
 		    fun handl_return_code C =
-		      let val res_reg = RI.lv_to_reg(CallConv.handl_return_phreg())
+		      let val res_reg = RI.lv_to_reg(CallConv.handl_return_phreg RI.res_phreg)
 		      in comment ("HANDL RETURN CODE: handl_return_aty = res_phreg",
 			 gen_bv(bv,
 		         I.lab handl_return_lab ::
@@ -1678,7 +1678,7 @@ struct
 
 	fun toplevel_handler C =
  	  let
-	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg()
+	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg RI.args_phreg
 	    val (clos_reg,arg_reg) = (RI.lv_to_reg clos_lv, RI.lv_to_reg arg_lv)
 	    val offset = if !BI.tag_values then 1 else 0
 	  in
@@ -1690,7 +1690,7 @@ struct
 
 	fun raise_insts C = (* expects exception value on stack!! *)
 	  let
-	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg()
+	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg RI.args_phreg
 	    val (clos_reg,arg_reg) = (RI.lv_to_reg clos_lv, RI.lv_to_reg arg_lv)
 	    val offset_codeptr = if !BI.tag_values then "4" else "0"
 	  in
