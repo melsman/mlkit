@@ -87,10 +87,6 @@ struct
   val jump_tables = true
   val comments_in_asmcode = Flags.lookup_flag_entry "comments_in_x86_asmcode"
   val gc_p = Flags.is_on0 "garbage_collection"
-  val _ = Flags.add_bool_entry {long="tag_free_pairs_gc", short=NONE, item=ref false,
-				menu=["Control", "tag free garbage collection of pairs"], neg=true,
-				desc="Tag free collection of pairs when garbage collection\n\
-				\is enabled."}
   val tag_free_pairs_gc_p = Flags.is_on0 "tag_free_pairs_gc"
 
   (**********************************
@@ -171,7 +167,7 @@ struct
       in tr (Int32.toString i)
       end
 
-    fun wordToStr (w : Word32.word) : string = (*intToStr(Word32.toLargeIntX w)*)
+    fun wordToStr (w : Word32.word) : string =
       "0X" ^ Word32.toString w
 
     (* Convert ~n to -n *)
@@ -182,7 +178,13 @@ struct
     datatype Offset = 
         WORDS of int 
       | BYTES of int
-      | IMMED of Int32.int
+
+    fun isZeroOffset (WORDS 0) = true
+      | isZeroOffset (BYTES 0) = true
+      | isZeroOffset _ = false
+
+    fun offset_bytes (WORDS w) = int_to_string (4*w)
+      | offset_bytes (BYTES b) = int_to_string b
 
     fun copy(r1, r2, C) = if r1 = r2 then C
 			  else I.movl(R r1, R r2) :: C
@@ -190,33 +192,18 @@ struct
     (* Can be used to load from the stack or from a record *)     
     (* dst = base[x]                                       *)
     fun load_indexed(dst_reg:reg,base_reg:reg,offset:Offset,C) =
-      let val x = case offset 
-		    of BYTES x => x
-		     | WORDS x => x*4
-		     | _ => die "load_indexed: offset not in BYTES or WORDS"
-      in I.movl(D(int_to_string x,base_reg), R dst_reg) :: C
-      end
+	I.movl(D(offset_bytes offset,base_reg), R dst_reg) :: C
 
     (* Can be used to update the stack or store in a record *)
     (* base[x] = src                                        *)
     fun store_indexed(base_reg:reg,offset:Offset,src_reg:reg,C) =
-      let val x = case offset 
-		    of BYTES x => x
-		     | WORDS x => x*4
-		     | _ => die "store_indexed: offset not in BYTES or WORDS"
-      in I.movl(R src_reg,D(int_to_string x,base_reg)) :: C
-      end
+	I.movl(R src_reg,D(offset_bytes offset,base_reg)) :: C
 
     (* Calculate an address given a base and an offset *)
     (* dst = base + x                                  *)
     fun base_plus_offset(base_reg:reg,offset:Offset,dst_reg:reg,C) =
-      let val x = case offset 
-		    of BYTES x => x
-		     | WORDS x => x*4
-		     | _ => die "base_plus_offset: offset not in BYTES or WORDS"
-      in if dst_reg = base_reg andalso x = 0 then C
-	 else I.leal(D(int_to_string x, base_reg), R dst_reg) :: C
-      end
+	if dst_reg = base_reg andalso isZeroOffset offset then C
+	else I.leal(D(offset_bytes offset, base_reg), R dst_reg) :: C
 
     fun mkIntAty i = SS.INTEGER_ATY {value=Int32.fromInt i, 
 				     precision=if BI.tag_values() then 31 else 32}
@@ -242,12 +229,15 @@ struct
     fun fmtInt a : string = intToStr(maybeTagInt a)
     fun fmtWord a : string = wordToStr(maybeTagWord a)
 
+    (* Store a constant *)
+    fun store_immed(w:Word32.word,r:reg,offset:Offset,C) = 
+      I.movl(I (wordToStr w), D(offset_bytes offset,r)) :: C      
+
     (* Load a constant *)
     (* dst = x         *)
-    fun load_immed(IMMED x,dst_reg:reg,C) = 
+    fun load_immed(x,dst_reg:reg,C) = 
       if x = 0 then I.xorl(R dst_reg, R dst_reg) :: C
       else I.movl(I (intToStr x), R dst_reg) :: C
-      | load_immed _ = die "load_immed: immed not an IMMED"
 
     fun loadNum(x,dst_reg:reg,C) = 
       if x = "0" orelse x = "0X0" then I.xorl(R dst_reg, R dst_reg) :: C
@@ -297,7 +287,7 @@ struct
 	  else loadNum(fmtWord w, dst_reg, C)
 	 | SS.UNIT_ATY => 
 	    if BI.tag_values() then 
-	      load_immed(IMMED(Int32.fromInt BI.ml_unit),dst_reg,C) (* gc needs value! *)
+	      load_immed(Int32.fromInt BI.ml_unit,dst_reg,C) (* gc needs value! *)
 	    else C
 	 | SS.FLOW_VAR_ATY _ => die "move_aty_into_reg: FLOW_VAR_ATY cannot be moved"
 
@@ -450,8 +440,10 @@ struct
     (* Pop float from float stack *)
     fun pop_store_float_reg(base_reg,t:reg,C) =
       if BI.tag_values() then 
-	load_immed(IMMED (Word32.toLargeIntX(BI.tag_real false)),t,
+(*	load_immed(Word32.toLargeIntX(BI.tag_real false),t,
 	I.movl(R t,D("0",base_reg)) ::
+*)
+        store_immed(BI.tag_real false, base_reg, WORDS 0,
 	I.fstpl (D("8",base_reg)) :: C)
       else 
 	I.fstpl (D("0",base_reg)) :: C
@@ -475,32 +467,8 @@ struct
 
     fun compile_c_call_prim(name: string,args: SS.Aty list,opt_ret: SS.Aty option,size_ff:int,tmp:reg,C) =
       let
-(*
-	val (convert: bool,name: string) =
-	  case explode name 
-	    of #"@" :: rest => (BI.tag_values(), implode rest)
-	     | _ => (false, name)
-
-	fun convert_int_to_c(reg,C) =
-	  if convert then I.shrl(I "1", R reg) :: C
-	  else C
-
-	fun convert_int_to_ml(reg,C) =
-	  if convert then 
-	    (
-(*
-	     I.sall(I "1", R reg) ::
-	     I.addl(I "1", R reg) :: 
-*)           I.leal(DD("1", reg, reg, ""), R reg) ::
-             C)
-	  else C
-*)
-	fun push_arg(aty,size_ff,C) =
-(*	  if convert then
-	    move_aty_into_reg(aty,tmp,size_ff,
-	    convert_int_to_c(tmp,
-	    I.pushl(R tmp) :: C))
-	  else*) push_aty(aty,tmp,size_ff,C)
+(*	  val _ = print ("CodeGen: Compiling C Call - " ^ name ^ "\n") *)
+	fun push_arg(aty,size_ff,C) = push_aty(aty,tmp,size_ff,C)
 
 	(* size_ff increases when new arguments are pushed on the
          * stack!! The arguments are placed on the stack in reverse 
@@ -518,8 +486,7 @@ struct
 	    of 0 => C
 	     | n => I.addl(I (int_to_string (4*n)), R esp) :: C
 
-	fun store_ret(SOME d,C) = (* convert_int_to_ml(eax, *)
-				  move_reg_into_aty(eax,d,size_ff,C)  (* ) *)
+	fun store_ret(SOME d,C) = move_reg_into_aty(eax,d,size_ff,C)
 	  | store_ret(NONE,C) = C
       in
 	push_args(args,
@@ -669,9 +636,6 @@ struct
          copy(tmp_reg1, t, C))
       end
 
-    (* mael: here we should subtract one word from n0 if tagging is enabled,
-     * untagging of pairs is enabled, and the region is a pair-region... *)
-
     fun alloc_kill_tmp01(t:reg,n0:int,size_ff,pp:LS.pp,C) =
       let val n = if region_profiling() then n0 + BI.objectDescSizeP 
 		  else n0
@@ -685,11 +649,38 @@ struct
       in 
 	copy(t,tmp_reg1,
 	I.pushl(LA l) ::
-	load_immed(IMMED (Int32.fromInt n), tmp_reg0, 
+	load_immed(Int32.fromInt n, tmp_reg0, 
 	I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
         I.lab l ::
         post_prof
 	(copy(tmp_reg1,t,C))))
+      end
+
+    (* When tagging is enabled (for gc) and tag-free pairs are enabled 
+     * then the following function is used for allocating pairs in 
+     * infinite regions. *)
+
+    fun alloc_pair_kill_tmp01(t:reg,size_ff,pp:LS.pp,C) =
+      let val n0 = 2 (* size of untagged pair *)
+	  val n = if region_profiling() then n0 + BI.objectDescSizeP 
+		  else n0
+	  val l = new_local_lab "return_from_alloc"
+	  fun post (t, C) =
+	    if region_profiling() then   (* tmp_reg1 now points at the object descriptor; initialize it *)
+	      I.movl(I (int_to_string pp), D("0",tmp_reg1)) ::               (* first word is pp *)
+	      I.movl(I (int_to_string n0), D("4",tmp_reg1)) ::               (* second word is object size *)
+	      I.leal(D (int_to_string (4*(BI.objectDescSizeP-1)), tmp_reg1), R t) :: C  (* make tmp_reg1 point at 
+											 * word before object *)
+	    else 
+	      I.leal(D("-4",tmp_reg1), R t) :: C  (* make tmp_reg1 point at
+						   * word before object *)
+      in 
+	copy(t,tmp_reg1,
+	I.pushl(LA l) ::
+	load_immed(Int32.fromInt n, tmp_reg0, 
+	I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
+        I.lab l ::
+        post (t,C)))
       end
 
     fun set_atbot_bit(dst_reg:reg,C) =
@@ -741,12 +732,12 @@ struct
 	 | LS.ATTOP_FI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
                                    alloc_kill_tmp01(dst_reg,n,size_ff,pp,C))
 	 | LS.ATTOP_FF(aty,pp) => 
-	  let val default_lab = new_local_lab "no_alloc"
+	  let val cont_lab = new_local_lab "no_alloc"
 	  in move_aty_into_reg_ap(aty,dst_reg,size_ff,
 	     I.btl(I "0", R dst_reg) :: (* inf bit set? *)
-	     I.jnc default_lab ::
+	     I.jnc cont_lab ::
 	     alloc_kill_tmp01(dst_reg,n,size_ff,pp,
-	     I.lab default_lab :: C))
+	     I.lab cont_lab :: C))
 	  end
 	 | LS.ATBOT_LI(aty,pp) => 
 	  move_aty_into_reg_ap(aty,dst_reg,size_ff,
@@ -773,6 +764,61 @@ struct
              I.lab attop_lab ::  
 	     alloc_kill_tmp01(dst_reg,n,size_ff,pp,
 	     I.lab finite_lab :: C)))
+	  end
+
+    fun alloc_pair_ap_kill_tmp01 (sma, dst_reg:reg, size_ff, C) =
+      case sma 
+	of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.1"
+	 | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.2"
+	 | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.3"
+	 | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.4"
+	 | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.5"
+	 | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.6"
+	 | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.7"
+	 | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.8"
+	 | LS.IGNORE => die "alloc_pair_ap_kill_tmp01.9"
+	 | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
+                                   alloc_pair_kill_tmp01(dst_reg,size_ff,pp,C))
+	 | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
+                                   store_pp_prof(dst_reg,pp, C))
+	 | LS.ATBOT_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,    (* atbot bit not set; its a finite region *)
+				   store_pp_prof(dst_reg,pp, C))
+	 | LS.ATTOP_FI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
+                                   alloc_pair_kill_tmp01(dst_reg,size_ff,pp,C))
+	 | LS.ATTOP_FF(aty,pp) => 
+	  let val cont_lab = new_local_lab "cont"
+	  in move_aty_into_reg_ap(aty,dst_reg,size_ff,
+	     I.btl(I "0", R dst_reg) :: (* inf bit set? *)
+	     I.jnc cont_lab ::
+	     alloc_pair_kill_tmp01(dst_reg,size_ff,pp,
+	     I.lab cont_lab :: C))
+	  end
+	 | LS.ATBOT_LI(aty,pp) => 
+	  move_aty_into_reg_ap(aty,dst_reg,size_ff,
+	  reset_region(dst_reg,tmp_reg0,size_ff,     (* dst_reg is preserved for alloc *)
+	  alloc_pair_kill_tmp01(dst_reg,size_ff,pp,C)))
+	 | LS.SAT_FI(aty,pp) => 
+	  let val default_lab = new_local_lab "no_reset"
+	  in move_aty_into_reg_ap(aty,dst_reg,size_ff,
+	     I.btl(I "1", R dst_reg) ::     (* atbot bit set? *)
+             I.jnc default_lab ::
+	     reset_region(dst_reg,tmp_reg0,size_ff,
+             I.lab default_lab ::         (* dst_reg is preverved over the call *)
+	     alloc_pair_kill_tmp01(dst_reg,size_ff,pp,C)))
+	  end
+	 | LS.SAT_FF(aty,pp) => 
+	  let val finite_lab = new_local_lab "no_alloc"
+	      val attop_lab = new_local_lab "no_reset"
+	      val cont_lab = new_local_lab "cont"
+	  in move_aty_into_reg_ap(aty,dst_reg,size_ff,
+             I.btl (I "0", R dst_reg) ::  (* inf bit set? *)
+             I.jnc cont_lab ::
+             I.btl (I "1", R dst_reg) ::  (* atbot bit set? *)
+             I.jnc attop_lab ::
+	     reset_region(dst_reg,tmp_reg0,size_ff,  (* dst_reg is preserved over the call *)
+             I.lab attop_lab ::  
+	     alloc_pair_kill_tmp01(dst_reg,size_ff,pp,
+	     I.lab cont_lab :: C)))
 	  end
 
     (* Set Atbot bits on region variables *)
@@ -1118,8 +1164,11 @@ struct
              jump_overflow (
              move_aty_into_reg(b,d_reg,size_ff,
              store_indexed(d_reg,WORDS 1, tmp_reg0,                                       (* store negated value *)
-             load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg0,     (* mk tag *)
+	     store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))
+(*
+             load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg0,     (* mk tag *)
 	     store_indexed(d_reg, WORDS 0, tmp_reg0, C')))))))                            (* store tag *)
+*)
 	  end
 
      fun abs_int_kill_tmp0 {tag} (x,d,size_ff,C) =
@@ -1152,8 +1201,11 @@ struct
          I.lab cont_lab :: 
          move_aty_into_reg(b,d_reg,size_ff,
          store_indexed(d_reg, WORDS 1, tmp_reg0,                                      (* store negated value *)
-         load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg0,     (* mk tag *)
+         store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))
+(*
+         load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg0,     (* mk tag *)
          store_indexed(d_reg, WORDS 0, tmp_reg0, C')))))))                            (* store tag *)
+*)
        end
 
      fun word32ub_to_int32ub(x,d,size_ff,C) =
@@ -1329,8 +1381,11 @@ struct
            check_ovf (
 	   move_aty_into_reg(r,d_reg,size_ff,
 	   store_indexed(d_reg,WORDS 1,tmp_reg1,
-	   load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg1,
+           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))))
+(*
+	   load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg1,
 	   store_indexed(d_reg,WORDS 0, tmp_reg1,C')))))))))
+*)
 	 end
 
      fun addw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
@@ -1368,8 +1423,11 @@ struct
 	   I.sarl(I "1", R tmp_reg0) :: 
 	   move_aty_into_reg(b,d_reg,size_ff,
 	   store_indexed(d_reg,WORDS 1,tmp_reg0,
-	   load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg0,
+           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))
+(*
+	   load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg0,
 	   store_indexed(d_reg,WORDS 0,tmp_reg0, C')))))
+*)
 	 end	 
        else die "num31_to_num32b.tagging_disabled"
 
@@ -1389,8 +1447,11 @@ struct
 	   check_ovf (
 	   move_aty_into_reg(b,d_reg,size_ff,
 	   store_indexed(d_reg, WORDS 1, tmp_reg0, 
-	   load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg0,
+	   store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))
+(*
+	   load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg0,
 	   store_indexed(d_reg, WORDS 0, tmp_reg0, C')))))))
+*)
 	 end
 
      fun shift_w32boxed__ inst (r,x,y,d,size_ff,C) = 
@@ -1409,8 +1470,11 @@ struct
          inst(R cl, R tmp_reg1) ::
 	 move_aty_into_reg(r,d_reg,size_ff,
          store_indexed(d_reg,WORDS 1,tmp_reg1,
-         load_immed(IMMED(Word32.toLargeIntX (BI.tag_word_boxed false)),tmp_reg1,
+	 store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))))
+(*
+         load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg1,
 	 store_indexed(d_reg,WORDS 0, tmp_reg1, C'))))))))
+*)
        end
 
      fun shift_leftw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32.sml *)
@@ -1538,7 +1602,7 @@ struct
 	    move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%ecx) = x *)
 	    I.sarl (I "1", R tmp_reg0) ::                       (* untag x: tmp_reg0 >> 1 *)
 	    I.movb(R cl, D("4", tmp_reg1)) ::                   (* *(tmp_reg1+4) = %cl *)
-	    load_immed(IMMED (Int32.fromInt BI.ml_unit),d_reg,  (* d = () *)
+	    load_immed(Int32.fromInt BI.ml_unit,d_reg,  (* d = () *)
             C'))))
 	 end
        else
@@ -1606,7 +1670,7 @@ struct
 		F(move_aty_into_reg(i,tmp_reg0,size_ff,
                   I.sarl (I "1", R tmp_reg0) ::
                   I.movl(R x_reg, DD("4", t_reg, tmp_reg0, "4")) :: 
-                  load_immed(IMMED (Int32.fromInt BI.ml_unit),d_reg,
+                  load_immed(Int32.fromInt BI.ml_unit,d_reg,
                   C')))
 	       | SOME _ => die "word_update0_1"
 	       | NONE => 
@@ -1617,7 +1681,7 @@ struct
 		 I.addl(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
 		 move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 = x *)
 		 I.movl(R tmp_reg0, D("4", tmp_reg1)) ::          (* *(tmp_reg1+4) = tmp_reg0 *)
-		 load_immed(IMMED (Int32.fromInt BI.ml_unit),d_reg,  (* d = () *)
+		 load_immed(Int32.fromInt BI.ml_unit,d_reg,       (* d = () *)
 	 	 C')))))
 	 end
        else
@@ -1702,14 +1766,17 @@ struct
 		     in
 		       if BI.tag_values() then
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+2,size_ff,
-       		         load_immed(IMMED(Word32.toLargeIntX(BI.tag_clos(false,num_elems+1,n_skip))),tmp_reg0,
+                 	 store_immed(BI.tag_clos(false,num_elems+1,n_skip), reg_for_result, WORDS 0,
+(*
+       		         load_immed(Word32.toLargeIntX(BI.tag_clos(false,num_elems+1,n_skip)),tmp_reg0,
 			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
+*)
 			 load_label_addr(MLFunLab label,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,
 			 store_indexed(reg_for_result,WORDS 1,tmp_reg0,
 			 #2(foldr (fn (aty,(offset,C)) => 
 				   (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
 								     WORDS offset,size_ff, C))) 
-			    (num_elems+1,C') (LS.smash_free elems)))))))
+			    (num_elems+1,C') (LS.smash_free elems))))))
 		       else
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
 			 load_label_addr(MLFunLab label,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,
@@ -1725,12 +1792,15 @@ struct
 		     in 
 		       if BI.tag_values() then
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
-       		         load_immed(IMMED(Word32.toLargeIntX(BI.tag_regvec(false,num_elems))),tmp_reg0,
+	                 store_immed(BI.tag_regvec(false,num_elems), reg_for_result, WORDS 0,
+(*
+       		         load_immed(Word32.toLargeIntX(BI.tag_regvec(false,num_elems)),tmp_reg0,
 			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
+*)
 			 #2(foldr (fn (sma,(offset,C)) => 
 				   (offset-1,store_sm_in_record(sma,tmp_reg0,reg_for_result,
 								WORDS offset,size_ff, C))) 
-			    (num_elems,C') elems))))
+			    (num_elems,C') elems)))
 		       else
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
 			 #2(foldr (fn (sma,(offset,C)) => 
@@ -1745,12 +1815,15 @@ struct
 		     in
 		       if BI.tag_values() then
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
-       		         load_immed(IMMED(Word32.toLargeIntX(BI.tag_sclos(false,num_elems,n_skip))),tmp_reg0,
+	                 store_immed(BI.tag_sclos(false,num_elems,n_skip), reg_for_result, WORDS 0,
+(*
+       		         load_immed(Word32.toLargeIntX(BI.tag_sclos(false,num_elems,n_skip)),tmp_reg0,
 			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
+*)
 			 #2(foldr (fn (aty,(offset,C)) => 
 				  (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
 								    WORDS offset,size_ff, C))) 
-			    (num_elems,C') (LS.smash_free elems)))))
+			    (num_elems,C') (LS.smash_free elems))))
 		       else
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
 			 #2(foldr (fn (aty,(offset,C)) => 
@@ -1758,45 +1831,28 @@ struct
 								     WORDS offset,size_ff, C))) 
 			    (num_elems-1,C') (LS.smash_free elems)))
 		     end
-		    | LS.RECORD{elems=[],alloc,tag} => 
+		    | LS.RECORD{elems=[],alloc,tag,maybeuntag} => 
 		     move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
-		    | LS.RECORD{elems,alloc,tag} =>
-		  (*  if BI.tag_values() andalso List.length elems = 2 andalso tag_free_pairs_gc_p() then
-			 let 
+		    | LS.RECORD{elems,alloc,tag,maybeuntag} =>
+		  
 			     (* Explanation of how we deal with untagged pairs in the presence
 			      * of garbage collection and tagging of values in general 
-			      * - mael 2002-07-15: 
+			      * - mael 2002-10-14: 
 			      *
-			      * Only pairs that are stored in infinite regions should be 
-			      * untagged, that is, pairs stored in finite regions on the stack
-			      * should still be tagged. Thus, we need to be careful to deal
+			      * Only pairs that are stored in infinite regions are untagged 
+			      * - that is, pairs stored in finite regions on the stack
+			      * are tagged. Thus, we must be careful to deal
 			      * correctly with regions passed to functions at runtime; if a
 			      * formal region variable has 'finite' multiplicity, the region
 			      * passed at runtime can either be finite or infinite, thus in
 			      * this case, the exact layout of the pair is not determined 
 			      * until runtime. 
 			      *
-			      * To deal with the above mentioned problem, we store elements
-			      * in the pair with the register tmp_reg0 as a base pointing to
-			      * the first element in the pair. Before the elements are 
-			      * stored, the pair is allocated (possibly with room for a tag),
-                              * and a pointer to the resulting pair is stored in the result
-			      * register... *)
-
-			     fun store_elems C =
-			       #2(foldr (fn (aty,(offset,C)) => 
-				       (offset-1,store_aty_in_reg_record(aty, (*temp=*)tmp_reg1, 
-                                                                              (*base=*)tmp_reg0,
-									 WORDS offset,size_ff, C))) 
-				(1,C) elems)
-			     
-			     val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff, 
-                                                       store_elems C)
-			     val reg_for_index0 = SOME tmp_reg0
-			     val num_elems = 2
-                         in alloc_ap_kill_tmp01(reg_for_index0,alloc,reg_for_result,num_elems,size_ff,C')
-			 end
-		     else *)
+			      * To deal with the above mentioned problem, we use the function
+			      * alloc_pair_ap_kill_tmp01, which takes care of storing the tag
+			      * in case the region is finite and returns a pointer to the 
+			      * object, or a pointer to the word before the object in case the
+			      * object represents an untagged pair in an infinite region. *)
 		     let 
 			 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 		         val num_elems = List.length elems
@@ -1805,12 +1861,23 @@ struct
 				       (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
 									 WORDS offset,size_ff, C))) 
 				(last_offset,C') elems)
+			 val _ = if maybeuntag andalso num_elems <> 2 then
+			             die "cannot untag other tuples than pairs"
+				 else ()
 		     in
-		       if BI.tag_values() then
+		       if BI.tag_values() andalso maybeuntag andalso tag_free_pairs_gc_p() then
+			   (* function alloc_pair_ap_kill_tmp01 takes care of storing the 
+			    * tag when the pair is stored in a finite region *)
+			 alloc_pair_ap_kill_tmp01 (alloc,reg_for_result,size_ff,
+			 store_elems num_elems)
+		       else if BI.tag_values() then
   		         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
-       		         load_immed(IMMED(Word32.toLargeIntX tag),tmp_reg0,
+	                 store_immed(tag, reg_for_result, WORDS 0,
+(*
+       		         load_immed(Word32.toLargeIntX tag,tmp_reg0,
  			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
-			 store_elems num_elems)))
+*)
+			 store_elems num_elems))
 		       else
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
 			 store_elems (num_elems-1))
@@ -1831,7 +1898,7 @@ struct
 				else i
 			      val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 			    in
-			      load_immed(IMMED (Int32.fromInt tag),reg_for_result,C')
+			      load_immed(Int32.fromInt tag,reg_for_result,C')
 			    end
 			| LS.UNBOXED i => 
 			    let
@@ -1842,7 +1909,7 @@ struct
 				       maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C)) 
 				C aux_regions
 			    in
-			      reset_regions(load_immed(IMMED (Int32.fromInt tag),reg_for_result,C'))
+			      reset_regions(load_immed(Int32.fromInt tag,reg_for_result,C'))
 			    end
 			| LS.BOXED i => 
 			    let 
@@ -1927,14 +1994,19 @@ struct
 		     in
 		       store_aty_in_aty_record(aty2,aty1,WORDS offset,tmp_reg1,tmp_reg0,size_ff,
                        if BI.tag_values() then
-			 load_immed(IMMED (Int32.fromInt BI.ml_unit),reg_for_result,C')
+			 load_immed(Int32.fromInt BI.ml_unit,reg_for_result,C')
                        else C')
 		     end
 		    | LS.PASS_PTR_TO_MEM(alloc,i) =>
 		     let
 		       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 		     in
-		       alloc_ap_kill_tmp01(alloc,reg_for_result,i,size_ff,C')
+			 (* HACK: When tagging is enabled, only pairs take up 3 words
+			  * (of those type of objects that can be returned from a C function) *)
+			 if BI.tag_values() andalso tag_free_pairs_gc_p() andalso i = 3 then
+			     alloc_pair_ap_kill_tmp01 (alloc,reg_for_result,size_ff,C')
+			 else
+			     alloc_ap_kill_tmp01(alloc,reg_for_result,i,size_ff,C')
 		     end
 		    | LS.PASS_PTR_TO_RHO(alloc) =>
 		     let
@@ -2071,6 +2143,17 @@ struct
 		  let 
 		    fun key place = mkIntAty (Effect.key_of_eps_or_rho place)
 
+		    fun maybe_store_pairtag (place,offset,C) =
+		      if pair_region_special place then 
+			let val tag = BI.tag_record (false,2)
+			in store_immed(tag, esp, WORDS(size_ff-offset-1), C)
+(*
+			    load_immed(Word32.toLargeIntX tag,tmp_reg1,
+			    store_indexed(esp,WORDS(size_ff-offset-1),tmp_reg1,C))
+*)
+			end
+		      else C
+
 		    fun alloc_region_prim(((place,phsize),offset),C) =
   	  	      if region_profiling() then
 		        case phsize
@@ -2088,7 +2171,8 @@ struct
 						   [SS.PHREG_ATY tmp_reg1,
 						    key place,
 						    mkIntAty i], NONE,
-						   size_ff,tmp_reg0(*not used*),C))
+						   size_ff,tmp_reg0(*not used*), 
+                                maybe_store_pairtag (place,offset,C)))
 			    end
 			   | LineStmt.INF =>
 			    let val name = if pair_region_special(place)
@@ -2103,7 +2187,9 @@ struct
 			    end
 		      else
 		        case phsize
-			  of LineStmt.WORDS i => C  (* finite region; no code generated *)
+			  of LineStmt.WORDS 0 => C
+			   | LineStmt.WORDS i => 
+			      maybe_store_pairtag (place,offset,C)  (* finite region; no code generated *)
 			   | LineStmt.INF => 
 			      let val name = if pair_region_special(place) then "allocatePairRegion"
 					     else "allocateRegion"

@@ -916,6 +916,12 @@ val _ = add_bool_entry {long="tag_values", short=SOME"tag", item=tag_values,
 			\collection is enabled for implementing pointer\n\
 			\traversal."}
 
+val _ = add_bool_entry {long="tag_free_pairs_gc", short=NONE, item=ref true,
+			menu=["Control", "tag free pairs for gc"], neg=true,
+			desc=
+			"Tag free collection of pairs when garbage\n\
+			\collection is enabled."}
+
 local
   val gc = ref false
   fun off() = (gc := false; 

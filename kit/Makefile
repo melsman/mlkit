@@ -64,6 +64,9 @@ tgz:
 	cd ..; cp -d -f -p -R kit mlkit-$(KITVERSION)
 	cd ../mlkit-$(KITVERSION); $(MAKE) clean
 	cd ../mlkit-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS */*/*/*/*/*/CVS
+	cd ../mlkit-$(KITVERSION); rm -rf .cvsignore */.cvsignore */*/.cvsignore \
+           */*/*/.cvsignore */*/*/*/.cvsignore */*/*/*/*/.cvsignore \
+           */*/*/*/*/*/.cvsignore
 	cd ..; tar czf mlkit-$(KITVERSION).tgz mlkit-$(KITVERSION)
 	cd ..; rm -rf mlkit-$(KITVERSION)
 
@@ -95,9 +98,11 @@ install:
 	$(MKDIR) $(INSTDIR)/bin
 	$(MKDIR) $(INSTDIR)/doc
 	$(INSTALL) bin/runtimeSystem.a $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemGC.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemProf.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGC.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemGCProf.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGCTP.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGCTPProf.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemTag.a $(INSTDIR)/bin
 	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
 	$(INSTALL) bin/mlkit.$(ARCH-OS) $(INSTDIR)/bin

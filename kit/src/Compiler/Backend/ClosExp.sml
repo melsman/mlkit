@@ -103,7 +103,7 @@ struct
     | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
     | REGVEC_RECORD   of {elems: sma list, alloc: sma}
     | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
-    | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word}
+    | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word, maybeuntag: bool}
     | SELECT          of int * ClosExp
     | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
     | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
@@ -232,10 +232,10 @@ struct
 								       finish="]sclos " ^ (flatten1(pr_sma alloc)),
 								       childsep=RIGHT ",",
 								       children= map layout_ce (rhos@excons@lvs)}
-      | layout_ce(RECORD{elems,alloc,tag}) = HNODE{start="(",
-						   finish=") " ^ (flatten1(pr_sma alloc)),
-						   childsep=RIGHT ",",
-						   children= map layout_ce elems}
+      | layout_ce(RECORD{elems,alloc,tag,maybeuntag}) = HNODE{start="(",
+							      finish=") " ^ (flatten1(pr_sma alloc)),
+							      childsep=RIGHT ",",
+							      children= map layout_ce elems}
       | layout_ce(SELECT(i,ce)) = HNODE{start="#" ^ Int.toString i ^ "(",
 					finish=")",
 					childsep=NOSEP,
@@ -1844,11 +1844,13 @@ struct
 					  scope=LET{pat=[lv3],
 						    bind=RECORD{elems=[VAR lv1,VAR lv2],
 								alloc=sma,
-								tag=BI.tag_exname false},
+								tag=BI.tag_exname false,
+								maybeuntag=false},
 						    scope=LET{pat=[lv4],
 							      bind=RECORD{elems=[VAR lv3],
 									  alloc=sma,
-									  tag=BI.tag_excon0 false},
+									  tag=BI.tag_excon0 false,
+									  maybeuntag=false},
 							      scope=insert_se (ccTrip scope env' lab cur_rv)}}},
 				      se_a)},NONE_SE)
 	       end
@@ -1869,7 +1871,8 @@ struct
 				scope=insert_se(LET{pat=[lv3],
 						    bind=RECORD{elems=[VAR lv1,VAR lv2],
 								alloc=sma,
-								tag=BI.tag_exname false},
+								tag=BI.tag_exname false,
+								maybeuntag=false},
 						    scope=insert_se (ccTrip scope env' lab cur_rv)},se_a)}},NONE_SE)
 	       end
 	   | MulExp.RAISE tr => 
@@ -2039,7 +2042,8 @@ struct
 	       in
 		 (insert_ses(RECORD{elems=ces,
 				    alloc=one_in_list(smas),
-				    tag=BI.tag_excon1 false},ses),NONE_SE)
+				    tag=BI.tag_excon1 false,
+				    maybeuntag=false},ses),NONE_SE)
 	       end
 	   | MulExp.DEEXCON(excon,tr) =>
 	       let
@@ -2052,10 +2056,23 @@ struct
 		 val ces_and_ses = List.foldr (fn (tr,b) => ccTrip tr env lab cur_rv::b) [] trs
 		 val (sma,se_a) = convert_alloc(alloc,env)
 		 val (smas,ces,ses) = unify_smas_ces_and_ses([(sma,se_a)],ces_and_ses)
+		 fun pairregion rho = 
+		     case Effect.get_place_ty rho
+		     of SOME Effect.PAIR_RT => 
+			 if length trs = 2 then true
+			 else die "RECORD.wrong number of elements in pair region"
+		   | _ => false
+		 val maybeuntag =
+		     case alloc
+		       of AtInf.ATTOP (rho,_) => pairregion rho
+		        | AtInf.ATBOT (rho,_) => pairregion rho
+			| AtInf.SAT (rho,_) => pairregion rho
+			| _ => false
 	       in
 		 (insert_ses(RECORD{elems=ces,
 				    alloc=one_in_list(smas),
-				    tag=BI.tag_record(false,length ces)},ses),NONE_SE)
+				    tag=BI.tag_record(false,length ces),
+				    maybeuntag=maybeuntag},ses),NONE_SE)
 	       end
 	   | MulExp.SELECT(i,tr) => 
 	       let
@@ -2185,7 +2202,8 @@ struct
 		      (RType.RECORD [], _) => (fn ce => LET{pat=[fresh_lvar("ccall")],bind=ce,
 							    scope=RECORD{elems=[],
 									 alloc=IGNORE,
-									 tag=BI.tag_ignore}})
+									 tag=BI.tag_ignore,
+									 maybeuntag=false}})
 		    | _ => (fn ce => ce))
 		   else (fn ce => ce)
 		 val fresh_lvs = map (fn _ => fresh_lvar "sma") smas
@@ -2638,9 +2656,11 @@ struct
 							    args=[],rhos_for_result=[]},
 						      STRING (Excon.pr_excon excon)],
 					       alloc=sma,
-					       tag=BI.tag_exname false}],
+					       tag=BI.tag_exname false,
+					       maybeuntag=false}],
 				 alloc=sma,
-				 tag=BI.tag_excon0 false},
+				 tag=BI.tag_excon0 false,
+				 maybeuntag=false},
 		     scope= liftTrip scope env' lab}
 	       end
 	   | MulExp.EXCEPTION(excon,false,typePlace,alloc,scope) => (* Unary exception constructor *)
@@ -2655,7 +2675,8 @@ struct
 					      rhos_for_result=[]},
 					STRING (Excon.pr_excon excon)],
 				 alloc=sma,
-				 tag=BI.tag_exname false},
+				 tag=BI.tag_exname false,
+				 maybeuntag=false},
 		     scope= liftTrip scope env' lab}
 	       end
 	   | MulExp.RAISE tr => RAISE(liftTrip tr env lab)
@@ -2778,12 +2799,14 @@ struct
 	   | MulExp.EXCON(excon,SOME(alloc,tr)) => 
 	       RECORD{elems=[lookup_excon env excon,liftTrip tr env lab],
 		      alloc=convert_alloc(alloc,env),
-		      tag=BI.tag_excon1 false}
+		      tag=BI.tag_excon1 false,
+		      maybeuntag=false}
 	   | MulExp.DEEXCON(excon,tr) => SELECT(1,liftTrip tr env lab)
 	   | MulExp.RECORD(alloc, trs) => 
 	       RECORD{elems=List.map (fn tr => liftTrip tr env lab) trs,
 		      alloc=convert_alloc(alloc,env),
-		      tag=BI.tag_record(false,length trs)}
+		      tag=BI.tag_record(false,length trs),
+		      maybeuntag=length trs = 2}
 	   | MulExp.SELECT(i,tr) => SELECT(i,liftTrip tr env lab)
 	   | MulExp.REF(a,tr) => REF(convert_alloc(a,env),liftTrip tr env lab)
 	   | MulExp.DEREF tr => DEREF(liftTrip tr env lab)

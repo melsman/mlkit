@@ -362,17 +362,16 @@ AllocatedSpaceInARegion(Ro *rp)
 
 /* Prints all pages in the region. */
 void 
-PrintRegion(Ro* rp)
+PrintRegion(Region r)
 { 
   int i;
-  Klump *ptr;
-  
-  if (rp!=NULL)
+  Klump *p;
+  if ( r )
     {
-      fprintf(stderr,"\nAddress of Ro %0x, First free word %0x, Border of region %0x\n     ",rp,rp->a,rp->b);
-      for ( ptr = rp->fp , i = 1 ; ptr ; ptr = ptr->n , i++ ) 
+      fprintf(stderr,"\nAddress of Ro %0x, First free word %0x, Border of region %0x\n     ",r,r->a,r->b);
+      for ( p = clear_pairregion(r->fp) , i = 1 ; p ; p = p->n , i++ ) 
 	{
-	  fprintf(stderr,"-->Page%2d:%d",i,ptr);
+	  fprintf(stderr,"-->Page%2d:%d",i,p);
 	  if (i%3 == 0)
 	    fprintf(stderr,"\n     ");      
 	}
@@ -616,16 +615,15 @@ pp_finite_region (FiniteRegionDesc *frd)
  * region on screen.                                *
  *--------------------------------------------------*/
 void 
-pp_infinite_region (int rAddr) 
+pp_infinite_region (Region r) 
 {
   ObjectDesc *fObj;
-  Klump *crp;
-  Ro *rp;
-  rp = (Ro *) clearStatusBits(rAddr);
-  for(crp=rp->fp; crp != NULL; crp=crp->n) 
+  Klump *rp;
+  r = clearStatusBits(r);
+  for( rp = clear_pairregion(r->fp) ; rp ; rp = rp->n ) 
     {
-      fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE); /* crp is a Klump. */
-      while ( ((int *)fObj < ((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+      fObj = (ObjectDesc *) (((int *)rp)+HEADER_WORDS_IN_REGION_PAGE);
+      while ( ((int *)fObj < ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
 	      && (fObj->atId!=notPP) ) 
 	{
 	  fprintf(stderr,"ObjAtId %d, Size: %d\n", fObj->atId, fObj->size);
@@ -643,16 +641,16 @@ void
 pp_infinite_regions() 
 {
   ObjectDesc *fObj;
-  Klump *crp;
-  Ro *rp;
+  Klump *rp;
+  Region r;
 
-  for ( rp = TOP_REGION ; rp ; rp = rp->p ) 
+  for ( r = TOP_REGION ; r ; r = r->p ) 
     {
-      fprintf(stderr,"Region %d\n", rp->regionId);
-      for(crp=rp->fp; crp!=NULL; crp=crp->n) 
+      fprintf(stderr,"Region %d\n", r->regionId);
+      for( rp = clear_pairregion(r->fp) ; rp ; rp = rp->n) 
 	{
-	  fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE); /* crp is a Klump. */
-	  while ( ((int *)fObj < ((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+	  fObj = (ObjectDesc *) (((int *)rp)+HEADER_WORDS_IN_REGION_PAGE);
+	  while ( ((int *)fObj < ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
 		  && (fObj->atId!=notPP) ) 
 	    {
 	      fprintf(stderr,"ObjAtId %d, Size: %d\n", fObj->atId, fObj->size);
@@ -1004,7 +1002,7 @@ profileTick(int *stackTop)
        * which is traversed independently; crp always points at the 
        * beginning of a regionpage(=nPtr|dummy|data). */
 
-      for( crp = rd->fp ; crp->n ; crp = crp->n ) 
+      for( crp = clear_pairregion(rd->fp) ; crp->n ; crp = crp->n ) 
 	{
 	  fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE); // crp is a Klump
 	  // notPP = 0 means no object allocated

@@ -115,6 +115,8 @@ typedef struct klump {
 #define clear_tospace_bit(p)  (Klump*)((unsigned int)(p) & 0xFFFFFFFE)
 #define set_tospace_bit(p)    (Klump*)((unsigned int)(p) | 0x1)
 #define is_tospace_bit(p)     ((unsigned int)(p) & 0x1)
+#else
+#define clear_tospace_bit(p)  (p)
 #endif
 
 /* Region large objects idea: Modify the region based memory model so
@@ -263,11 +265,11 @@ extern Ro * topRegion;
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
 #ifdef KAM
-int *allocateRegion(Ro *roAddr, Ro** topRegionCell);
-void deallocateRegionNew(Ro** topRegionCell);
-void deallocateRegionsUntil(Region rAdr, Ro** topRegionCell);
+Region allocateRegion(Region roAddr, Region* topRegionCell);
+void deallocateRegionNew(Region* topRegionCell);
+void deallocateRegionsUntil(Region rAdr, Region* topRegionCell);
 #else
-int *allocateRegion(Ro *roAddr);
+Region allocateRegion(Region roAddr);
 void deallocateRegionNew();
 void deallocateRegionsUntil(Region rAddr);
 void deallocateRegionsUntil_X86(Region rAddr);
@@ -278,6 +280,11 @@ void callSbrk();
 
 #ifdef ENABLE_GC
 void callSbrkArg(int no_of_region_pages);
+Region allocatePairRegion(Region roAddr);
+#ifdef PROFILING
+Region allocPairRegionInfiniteProfiling(Region r, unsigned int regionId);
+Region allocPairRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId);
+#endif /* PROFILING */
 #endif /* ENABLE_GC */
 
 Region resetRegion(Region rAddr);
@@ -371,8 +378,8 @@ extern int size_to_space;
 
 
 /* Profiling functions. */
-int *allocRegionInfiniteProfiling(Region roAddr, unsigned int regionId);
-int *allocRegionInfiniteProfilingMaybeUnTag(Region roAddr, unsigned int regionId);
+Region allocRegionInfiniteProfiling(Region roAddr, unsigned int regionId);
+Region allocRegionInfiniteProfilingMaybeUnTag(Region roAddr, unsigned int regionId);
 void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
 void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
 int *deallocRegionFiniteProfiling(void);

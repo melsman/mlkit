@@ -82,14 +82,18 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     local
       val region_profiling = Flags.is_on0 "region_profiling"
       val recompile_basislib = Flags.is_on0 "recompile_basislib"
+      val tag_free_pairs_gc_p = Flags.is_on0 "tag_free_pairs_gc"
     in 
+	(* Remember also to update RepositoryFinMap in Common/Elaboration.sml *)
       fun pmdir() = 
 	if recompile_basislib() then "PM/SCRATCH/"   (* avoid overwriting other files *)
-	else case (gc_p(), region_profiling())
-	       of (true,   true)  => "PM/RI_GC_PROF/"
-		| (true,   false) => "PM/RI_GC/"
-		| (false,  true)  => "PM/RI_PROF/"
-		| (false,  false) => "PM/RI/"
+	else case (gc_p(), region_profiling(), tag_free_pairs_gc_p())
+	       of (true,   true,               true)  => "PM/RI_GC_PROF/"
+		| (true,   false,              true)  => "PM/RI_GC/"
+		| (true,   true,               false) => "PM/RI_GC_TP_PROF/"
+		| (true,   false,              false) => "PM/RI_GC_TP/"
+		| (false,  true,               _)     => "PM/RI_PROF/"
+		| (false,  false,              _)     => "PM/RI/"
     end
 
     type linkinfo = Execution.linkinfo
@@ -103,13 +107,18 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	val tag_values = Flags.is_on0 "tag_values"
 
+	val tag_free_pairs_gc_p = Flags.is_on0 "tag_free_pairs_gc"
+
 	fun path_to_runtime () = 
-	  let fun file () = (if !region_profiling then 
-			       if gc_p() then "runtimeSystemGCProf.a"
-			       else "runtimeSystemProf.a"
-			     else if gc_p() then "runtimeSystemGC.a"
-				  else if tag_values() then "runtimeSystemTag.a"
-				       else"runtimeSystem.a")
+	  let fun file () = 
+	      if !region_profiling andalso gc_p() andalso tag_free_pairs_gc_p() then "runtimeSystemGCProf.a"   else
+	      if !region_profiling andalso gc_p()                               then "runtimeSystemGCTPProf.a" else
+	      if !region_profiling                                              then "runtimeSystemProf.a"     else
+              if                           gc_p() andalso tag_free_pairs_gc_p() then "runtimeSystemGC.a"       else
+              if                           gc_p()                               then "runtimeSystemGCTP.a"     else
+              if tag_values()                     andalso tag_free_pairs_gc_p() then "runtimeSystemTag.a"      else
+              if tag_values() then die "no runtime system supports tagging of values with tagging of pairs"    else
+		                                                                     "runtimeSystem.a"
 	  in OS.Path.concat(OS.Path.concat(!Flags.install_dir, "bin"), file())
 	  end
 

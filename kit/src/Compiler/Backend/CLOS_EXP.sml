@@ -67,7 +67,7 @@ signature CLOS_EXP =
     | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
     | REGVEC_RECORD   of {elems: sma list, alloc: sma}
     | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
-    | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word}
+    | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word, maybeuntag: bool}
     | SELECT          of int * ClosExp
     | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
     | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
