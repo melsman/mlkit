@@ -130,7 +130,7 @@ void inputProfile(void) {
   readWord(noOfTicks, logFile);
 
   if (noOfTicks == 0) {
-    printf("The profile file %s contains no profile ticks,\nso I cannot generate any PostScript file for you.\n", logFile);
+    printf("The profile file %s contains no profile ticks,\nso I cannot generate any PostScript file for you.\n", logName);
     exit(-1);
   }
   noOfSamples = noOfTicks;
