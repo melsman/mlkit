@@ -1,33 +1,7 @@
 
-functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
-		      structure Name : NAME
-		      structure LambdaBasics : LAMBDA_BASICS
-			sharing type LambdaBasics.LambdaExp = LambdaExp.LambdaExp
-			sharing type LambdaBasics.excon = LambdaExp.excon
-			sharing type LambdaBasics.lvar = LambdaExp.lvar
-			sharing type LambdaBasics.tyvar = LambdaExp.tyvar
-			sharing type LambdaBasics.Type = LambdaExp.Type
-		      structure Excon : EXCON
-		        sharing type Excon.excon = LambdaExp.excon
-			sharing type Excon.name = Name.name
-		      structure Con : CON
-		        sharing type Con.con = LambdaExp.con
-			sharing type Con.name = Name.name
-		      structure TyName : TYNAME
-		        sharing type TyName.TyName = LambdaExp.TyName
-			sharing type TyName.name = Name.name
-		      structure Lvars : LVARS 
-		        sharing type Lvars.lvar = LambdaExp.lvar
-			sharing type Lvars.name = Name.name
-		      structure Crash : CRASH
-		      structure NatSet : KIT_MONO_SET
-			sharing type NatSet.elt = LambdaExp.tyvar
-		      structure PP : PRETTYPRINT
-			sharing type PP.StringTree = LambdaExp.StringTree =
-			  Excon.Map.StringTree = Con.Map.StringTree = Lvars.Map.StringTree
-			  = TyName.Map.StringTree = NatSet.StringTree
-		      structure Flags : FLAGS) : LAMBDA_STAT_SEM =
+structure LambdaStatSem: LAMBDA_STAT_SEM =
   struct
+    structure PP = PrettyPrint
 
     (* ---------------------------------------------------------
      * We assume lambda variables and constructors and exception 

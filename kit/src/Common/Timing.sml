@@ -29,9 +29,7 @@ signature TIMING =
 
   end
 
-functor Timing(structure Flags: FLAGS
-	       structure Crash: CRASH) : TIMING =
-
+structure Timing: TIMING =
   struct
     
     fun die s = Crash.impossible ("Timing." ^ s)
@@ -115,7 +113,7 @@ functor Timing(structure Flags: FLAGS
            val _ = if !timingNow then ()
 		   else die "timing_end called with no timer started"
 	   val _ = timingNow := false
-	   val {gc, sys=system, usr=non_gc} = Timer.checkCPUTimer (!t)
+	   val {sys=system, usr=non_gc} = Timer.checkCPUTimer (!t)
 	   val wallclock = Timer.checkRealTimer (!rt)
 	       handle E => Time.zeroTime
 		   (* raise_again "timing_end.checkRealTimer" E *)
@@ -125,7 +123,7 @@ functor Timing(structure Flags: FLAGS
 	   val time_elem = {name = name,
 			    non_gc = non_gc,
 			    system = system,
-			    gc = gc,
+			    gc = Time.zeroTime,
 			    wallclock = wallclock}
 
 	   val _ = maybe_export_timings time_elem

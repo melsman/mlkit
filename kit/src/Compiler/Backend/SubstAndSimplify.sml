@@ -1,38 +1,25 @@
-functor SubstAndSimplify(structure PhysSizeInf : PHYS_SIZE_INF
-			 structure Con : CON
-			 structure Excon : EXCON
-			 structure Lvars : LVARS
-			 structure Effect : EFFECT
-			 structure RegvarFinMap : MONO_FINMAP
-			 structure Labels : ADDRESS_LABELS
-			 structure CallConv: CALL_CONV
+functor SubstAndSimplify(structure CallConv: CALL_CONV
+                           where type lvar = Lvars.lvar
 			 structure LineStmt: LINE_STMT
-			   sharing type Con.con = LineStmt.con
-			   sharing type Excon.excon = LineStmt.excon
-		           sharing type Lvars.lvar = LineStmt.lvar = CallConv.lvar
-                           sharing type Effect.effect = Effect.place = LineStmt.place
-                           sharing type Labels.label = LineStmt.label
-                           sharing type CallConv.cc = LineStmt.cc
-		           sharing type LineStmt.phsize = PhysSizeInf.phsize
+			   where type con = Con.con
+			   where type excon = Excon.excon
+		           where type lvar = Lvars.lvar
+                           where type place = Effect.effect
+                           where type label = AddressLabels.label
+		           where type phsize = PhysSizeInf.phsize
+ 		           where type StringTree = PrettyPrint.StringTree
+                         sharing type CallConv.cc = LineStmt.cc
 		         structure CalcOffset: CALC_OFFSET
-                           sharing type CalcOffset.lvar = LineStmt.lvar
-			   sharing type CalcOffset.Atom = LineStmt.Atom
-                           sharing type CalcOffset.place = LineStmt.place = RegvarFinMap.dom
-                       (*    sharing type CalcOffset.LinePrg = LineStmt.LinePrg *)
+                           where type lvar = Lvars.lvar
+                           where type place = Effect.place
 			   sharing type CalcOffset.Atom = LineStmt.Atom
 			 structure RI : REGISTER_INFO
-                           sharing type RI.lvar = Lvars.lvar
-		         structure PP : PRETTYPRINT
-		           sharing type PP.StringTree = 
-			                Effect.StringTree = 
-				        LineStmt.StringTree =
-					RegvarFinMap.StringTree
-                         structure Flags : FLAGS
-		         structure Report : REPORT
-		           sharing type Report.Report = Flags.Report
-		         structure Crash : CRASH) : SUBST_AND_SIMPLIFY =
+                           where type lvar = Lvars.lvar) 
+    : SUBST_AND_SIMPLIFY =
 struct
-
+  structure PP = PrettyPrint
+  structure Labels = AddressLabels
+  structure RegvarFinMap = EffVarEnv
   val _ = Flags.add_bool_entry 
     {long="print_simplified_program", short=NONE, item=ref false,
      menu=["Printing of intermediate forms", "print simplified program (LineStmt)"], neg=false, 

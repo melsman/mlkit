@@ -1,0 +1,22 @@
+local
+  basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
+  basis Edlib = bas ../Edlib/edlib.mlb end
+  basis Pickle = bas ../Pickle/pickle.mlb end
+  basis Tools = bas ../Common/tools.mlb end
+  basis SyntaxObjects = bas ../Common/syntax_objects.mlb end
+  basis SpecialObjects = bas ../Common/special_objects.mlb end
+  basis CompilerObjects = bas compiler_objects.mlb end
+  basis Basics = bas ../Common/basics.mlb end
+  basis Manager = bas ../Manager/manager.mlb end
+  basis Compiler = bas compiler.mlb end
+  open BasLib Compiler
+in
+  local open Pickle Tools SyntaxObjects SpecialObjects Basics CompilerObjects
+  in Lambda/CompilerEnv__dummy.sml
+     local open Manager 
+     in CompileBasis__dummy.sml 
+        BuildCompile__dummy.sml
+        Backend/Dummy/Execution__dummy.sml
+     end
+  end
+end

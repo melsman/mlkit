@@ -19,7 +19,6 @@ signature STATOBJECT =
 
     (*types from other modules:*)
     type ExplicitTyVar (*the type of type variables explicit in the source*)
-    structure TyName : TYNAME
     type TyName = TyName.TyName
     type StringTree = TyName.Set.StringTree
     type lab 

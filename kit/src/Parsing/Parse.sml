@@ -3,78 +3,29 @@
    on the base support modules for MLYacc (MyBase.sml), and my support functors
    - these are the functors that are referred to freely. *)
 
-functor Parse (structure TopdecGrammar : TOPDEC_GRAMMAR
-	       structure LexBasics : LEX_BASICS
-	       structure ParseInfo : PARSE_INFO
-	       sharing type ParseInfo.SourceInfo.pos = LexBasics.pos
-	       sharing type TopdecGrammar.info = ParseInfo.ParseInfo
-	       structure InfixBasis : INFIX_BASIS
-               sharing type InfixBasis.id = TopdecGrammar.DecGrammar.Ident.id
-	       sharing type InfixBasis.Basis = ParseInfo.DFInfo.InfixBasis
-               structure Report: REPORT
-               sharing type LexBasics.Report
-		           = ParseInfo.SourceInfo.Report
-		           = InfixBasis.Report
-		           = Report.Report
-               structure PrettyPrint: PRETTYPRINT
-               sharing type TopdecGrammar.StringTree = PrettyPrint.StringTree
-		  = LexBasics.StringTree
-	       sharing type PrettyPrint.Report = Report.Report
-               structure FinMap: FINMAP
-               structure BasicIO: BASIC_IO
-               structure Flags: FLAGS
-               structure Crash: CRASH
-		) : PARSE =
+structure Parse: PARSE =
   struct
     structure Stream = Stream()
 
     structure LrParser = ParserGen(structure LrTable = LrTable()
-                                   structure Stream = Stream
-                                  )
+                                   structure Stream = Stream)
 
-    structure GrammarUtils =
-      GrammarUtils (structure TopdecGrammar = TopdecGrammar
-		    structure LexBasics = LexBasics
-		    structure ParseInfo = ParseInfo
-		    structure Report = Report
-		    structure PrettyPrint = PrettyPrint
-		    structure Crash = Crash
-		      )
+    structure TopdecLrVals = TopdecLrVals(LrParser.Token)
 
-    structure TopdecLrVals =
-      TopdecLrVals(structure Token = LrParser.Token
-                   structure LexBasics = LexBasics
-                   structure GrammarUtils = GrammarUtils
-                  )
+    structure LexUtils = LexUtils(TopdecLrVals.Tokens)
 
-    structure LexUtils = LexUtils(structure LexBasics = LexBasics
-                                  structure Token = TopdecLrVals.Tokens
-                                  structure BasicIO = BasicIO
-                                  structure Flags = Flags
-                                  structure Crash = Crash
-                                 )
-
-    structure Infixing = Infixing(structure InfixBasis = InfixBasis
-                                  structure GrammarUtils = GrammarUtils
-				  structure ParseInfo = ParseInfo
-				  structure Report = Report
-                                  structure PP = PrettyPrint
-                                  structure Crash = Crash
-                                 )
+    structure Infixing = Infixing
 
     structure TopdecLex =
       TopdecLex(structure Tokens = TopdecLrVals.Tokens
-                structure LexBasics = LexBasics
-                structure LexUtils = LexUtils
-		structure Flags = Flags
-               )
+                structure LexUtils = LexUtils)
 
     structure TopdecParser =
       JoinWithArg(structure ParserData = TopdecLrVals.ParserData
                   structure Lex = TopdecLex
-                  structure LrParser = LrParser
-                 )
+                  structure LrParser = LrParser)
 
+    structure TopdecGrammar = PreElabTopdecGrammar
 
     val eof = TopdecLrVals.Tokens.EOF(LexBasics.DUMMY, LexBasics.DUMMY)
     val sc = TopdecLrVals.Tokens.SEMICOLON(LexBasics.DUMMY, LexBasics.DUMMY)

@@ -1,13 +1,12 @@
 
-functor CompileBasis(structure CompBasis : COMP_BASIS
-		     structure ClosExp : CLOS_EXP
-		       sharing type ClosExp.con = CompBasis.con
-		       sharing type ClosExp.excon = CompBasis.excon
-		       sharing type ClosExp.lvar = CompBasis.lvar
-		     structure PP: PRETTYPRINT
-		       sharing type PP.StringTree = CompBasis.StringTree = ClosExp.StringTree
-		     structure Flags : FLAGS) : COMPILE_BASIS =
+functor CompileBasis(structure ClosExp : CLOS_EXP
+		       where type con = CompBasis.con
+		       where type excon = CompBasis.excon
+		       where type lvar = CompBasis.lvar
+		       where type StringTree = PrettyPrint.StringTree) 
+    : COMPILE_BASIS =
   struct
+    structure PP = PrettyPrint
 
     fun log s = TextIO.output(TextIO.stdOut,s)
     fun say s = log s

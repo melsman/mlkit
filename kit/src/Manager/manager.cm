@@ -1,0 +1,25 @@
+group
+is
+  ../Edlib/edlib.cm
+  ../Pickle/pickle.cm
+  ../Common/tools.cm
+  ../Common/syntax_objects.cm
+  ../Common/special_objects.cm
+  ../Common/basics.cm
+  ../Compiler/compiler_objects.cm
+
+  MANAGER_OBJECTS.sml
+
+  INT_MODULES.sml 
+  MANAGER.sml
+
+  ../Compiler/COMPILE_BASIS.sml 
+  EXECUTION.sml
+
+  ManagerObjects.sml 
+  IntModules.sml
+
+  MspComp.sml
+  Scriptlet.sml
+  Manager.sml
+

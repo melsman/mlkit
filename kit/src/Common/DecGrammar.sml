@@ -1,23 +1,14 @@
 (* Bare language - Definition v3 pages 8,9,70,71 *)
 (* modified to have ident in place of con and var *)
 
-functor DecGrammar(structure GrammarInfo: sig type GrammarInfo 
-					      val bogus_info : GrammarInfo
-					  end
-		   structure Lab   : LAB
-		   structure SCon  : SCON
-		   structure TyVar : TYVAR
-		   structure TyCon : TYCON
-		   structure StrId : STRID 
-		   structure Ident : IDENT
-		     sharing type StrId.strid = Ident.strid = TyCon.strid
-		   structure PrettyPrint : PRETTYPRINT
-		  ): DEC_GRAMMAR =
+functor DecGrammar(GrammarInfo: sig type GrammarInfo 
+				    val bogus_info : GrammarInfo
+				end): DEC_GRAMMAR =
 struct
 
   structure Lab = Lab
   structure SCon = SCon
-  structure TyVar = TyVar
+  structure TyVar = SyntaxTyVar
   structure TyCon = TyCon
   structure StrId = StrId
   structure Ident = Ident

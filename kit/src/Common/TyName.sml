@@ -1,14 +1,6 @@
 (* Type names *)
 
-functor TyName(
-   structure TyCon                  : TYCON
-   structure Name                   : NAME
-   structure Flags                  : FLAGS
-   structure PrettyPrint            : PRETTYPRINT
-   structure Report                 : REPORT
-   structure IntStringFinMap        : MONO_FINMAP where type dom = int * string
-   structure Crash                  : CRASH
-	      ) : TYNAME =
+structure TyName: TYNAME =
   struct
       
     val print_type_name_stamps = Flags.add_bool_entry
@@ -174,23 +166,13 @@ functor TyName(
     structure QD : QUASI_DOM =
       struct
 	type dom = TyName
-	type name = Name.name
 	val name = name
 	val pp = pr_TyName
       end
 
-    structure Map = QuasiMap(structure IntStringFinMap = IntStringFinMap
-			     structure QD = QD
-			     structure Name = Name
-			     structure Crash = Crash
-			     structure PP = PrettyPrint
-			     structure Report = Report)
+    structure Map = QuasiMap(QD)
 
-    structure Set = QuasiSet(structure IntStringFinMap = IntStringFinMap
-			     structure QD = QD
-			     structure Name = Name
-			     structure Crash = Crash
-			     structure PP = PrettyPrint)
+    structure Set = QuasiSet(QD)
 
     type StringTree = PrettyPrint.StringTree
     val layout = PrettyPrint.LEAF o pr_TyName

@@ -1,7 +1,5 @@
 (* INFIXING - resolve infix expressions and patterns, and try to make some
 	      sense of `fun'-declarations. *)
-
-(*$INFIXING*)
 signature INFIXING =
   sig
     type InfixBasis

@@ -7,7 +7,7 @@ SHELL=/bin/sh
 # Some commands
 MKDIR=mkdir -p
 INSTALL=cp -p
-CLEAN=rm -rf PM CM *~ .\#*
+CLEAN=rm -rf MLB PM CM *~ .\#* a.out
 CLEAN_MLB=rm -rf MLB
 
 BINDIR=../bin

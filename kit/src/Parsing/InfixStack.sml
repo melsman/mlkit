@@ -5,12 +5,9 @@
 		functor and apply it once for expressions and once for
 		patterns. *)
 
-(*$InfixStack: INFIX_BASIS CRASH INFIX_STACK REPORT*)
-functor InfixStack(structure InfixBasis: INFIX_BASIS
-
-		   type FullObject	(* exp or pat *)
+functor InfixStack(type FullObject	(* exp or pat *)
 		   type AtomObject	(* atexp or atpat *)
-		   eqtype id sharing type id = InfixBasis.id
+		   type id = InfixBasis.id
 		   val pr_id: id -> string
 
 		   val atomToFull: AtomObject -> FullObject
@@ -23,7 +20,6 @@ functor InfixStack(structure InfixBasis: INFIX_BASIS
 		   val applyObj: FullObject * AtomObject -> FullObject
 
 		   exception InfixStack_error of string
-		   structure Crash: CRASH
 		  ): INFIX_STACK =
   struct
     fun impossible s = Crash.impossible ("InfixStack." ^ s)

@@ -1,44 +1,24 @@
-functor CodeGenKAM(structure PhysSizeInf : PHYS_SIZE_INF
-		   structure Con : CON
-		   structure Excon : EXCON
-		   structure Lvars : LVARS
-		   structure Effect : EFFECT
-		   structure Labels : ADDRESS_LABELS
-		   structure RegvarFinMap : MONO_FINMAP
-                     sharing type RegvarFinMap.dom =
-		                  Effect.effect =
-				  Effect.place =
-				  PhysSizeInf.place
-		   structure CallConv: CALL_CONV
+functor CodeGenKAM(structure CallConv: CALL_CONV
+                     where type lvar = Lvars.lvar
 		   structure ClosExp: CLOS_EXP
- 	             sharing type Con.con = ClosExp.con
-		     sharing type Excon.excon = ClosExp.excon
-                     sharing type Lvars.lvar = ClosExp.lvar = CallConv.lvar
-                     sharing type Effect.effect = Effect.place = ClosExp.place
-                     sharing type Labels.label = ClosExp.label
-                     sharing type CallConv.cc = ClosExp.cc
-		     sharing type ClosExp.phsize = PhysSizeInf.phsize
+ 	             where type con = Con.con
+		     where type excon = Excon.excon
+                     where type lvar = Lvars.lvar
+                     where type place = Effect.place
+                     where type label = AddressLabels.label
+		     where type phsize = PhysSizeInf.phsize
+		   sharing type CallConv.cc = ClosExp.cc
 		   structure BI : BACKEND_INFO
                    structure JumpTables : JUMP_TABLES
-		   structure Lvarset: LVARSET
-		     sharing type Lvarset.lvar = Lvars.lvar
-		   structure Kam: KAM
-                     sharing type Kam.label = Labels.label
-		   structure BuiltInCFunctions : BUILT_IN_C_FUNCTIONS_KAM
-		   structure PP : PRETTYPRINT
-		     sharing type PP.StringTree = 
-		                  Effect.StringTree = 
-				  ClosExp.StringTree =
-                                  Kam.StringTree =
-				  RegvarFinMap.StringTree =
-				  Lvars.Map.StringTree
-                   structure Flags : FLAGS
-		   structure Report : REPORT
-		     sharing type Report.Report = Flags.Report
-		   structure Crash : CRASH) : CODE_GEN_KAM (* : sig end *) =
+		       ) : CODE_GEN_KAM (* : sig end *) =
 
 struct
+  structure PP = PrettyPrint
+  structure Labels = AddressLabels
   structure LvarFinMap = Lvars.Map
+  structure RegvarFinMap = EffVarEnv
+  structure BuiltInCFunctions = BuiltInCFunctionsKAM
+  structure Opcodes = OpcodesKAM
 
   open Kam
 

@@ -1,0 +1,11 @@
+group 
+is
+  ../Pickle/pickle.cm
+  tools.cm
+  syntax_objects.cm
+  NAME.sml
+  TYNAME.sml
+  Name.sml
+  QuasiMap.sml
+  QuasiSet.sml
+  TyName.sml

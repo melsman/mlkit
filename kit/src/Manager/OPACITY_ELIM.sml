@@ -1,10 +1,6 @@
 
 signature OPACITY_ELIM =
   sig
-    structure TyName : TYNAME
-    structure OpacityEnv : OPACITY_ENV
-      sharing OpacityEnv.TyName = TyName
-
     type realisation    
     type topdec
     type opaq_env = OpacityEnv.opaq_env

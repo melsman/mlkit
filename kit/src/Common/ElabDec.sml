@@ -1,76 +1,12 @@
 (* Elaborator for Core Language Declarations*)
 
-functor ElabDec(structure ParseInfo : PARSE_INFO
-		structure ElabInfo : ELAB_INFO
-		  sharing ElabInfo.ParseInfo = ParseInfo
-                structure IG : DEC_GRAMMAR
-                  sharing type IG.info = ParseInfo.ParseInfo
-                structure OG : DEC_GRAMMAR
-		  sharing OG.Lab = IG.Lab
-		  sharing OG.SCon = IG.SCon
-		  sharing OG.Ident = IG.Ident
-		  sharing OG.TyVar = IG.TyVar
-		  sharing OG.TyCon = IG.TyCon
-		  sharing OG.StrId = IG.StrId
-                  sharing type OG.info = ElabInfo.ElabInfo
-
-                structure Environments : ENVIRONMENTS
-                  sharing type Environments.longid      = IG.longid
-                  sharing type Environments.longtycon   = IG.longtycon
-                  sharing type Environments.longstrid   = IG.longstrid
-                  sharing type Environments.tycon       = IG.tycon
-                  sharing type Environments.valbind     = IG.valbind
-                  sharing type Environments.id          = IG.id
-                  sharing type Environments.pat         = IG.pat
-                  sharing type Environments.ExplicitTyVar = IG.tyvar
-
-                structure StatObject : STATOBJECT
-		  sharing StatObject.TyName = Environments.TyName
-                  sharing type StatObject.TypeScheme   = Environments.TypeScheme
-                  sharing type StatObject.ExplicitTyVar  = IG.tyvar
-                  sharing type StatObject.TypeFcn      = Environments.TypeFcn
-                  sharing type StatObject.realisation  = Environments.realisation
-                  sharing type StatObject.Substitution = Environments.Substitution
-                  sharing type StatObject.Type  = Environments.Type
-                  sharing type StatObject.TyVar = Environments.TyVar
-                  sharing type StatObject.scon  = IG.scon
-                  sharing type StatObject.lab   = IG.lab
-                  sharing type StatObject.level = Environments.level
-                  sharing type ElabInfo.ErrorInfo.Type  = StatObject.Type
-                  sharing type ElabInfo.ErrorInfo.TyVar = StatObject.TyVar
-                  sharing type ElabInfo.ErrorInfo.TyName = StatObject.TyName
-                  sharing type ElabInfo.ErrorInfo.id    = Environments.id
-                  sharing type ElabInfo.ErrorInfo.longid = OG.longid
-                  sharing type ElabInfo.ErrorInfo.longstrid = OG.longstrid
-                  sharing type ElabInfo.ErrorInfo.tycon = OG.tycon
-                  sharing type ElabInfo.ErrorInfo.lab   = OG.lab
-                  sharing type ElabInfo.ErrorInfo.longtycon = OG.longtycon
-                  sharing type ElabInfo.OverloadingInfo.RecType = StatObject.RecType
-                  sharing type ElabInfo.OverloadingInfo.TyVar = StatObject.TyVar
-                  sharing type ElabInfo.TypeInfo.Type    = StatObject.Type
-                  sharing type ElabInfo.TypeInfo.TyEnv  = Environments.TyEnv
-                  sharing type ElabInfo.TypeInfo.TyVar   = StatObject.TyVar
-		  sharing type ElabInfo.TypeInfo.longid = IG.longid 
-		  sharing type ElabInfo.TypeInfo.realisation = StatObject.realisation
-		  sharing type ElabInfo.TypeInfo.strid = Environments.strid
-		  sharing type ElabInfo.TypeInfo.tycon = Environments.tycon
-		  sharing type ElabInfo.TypeInfo.id = Environments.id
-                structure FinMap : FINMAP
-
-                structure Report: REPORT
-
-                structure PP: PRETTYPRINT
-                  sharing type StatObject.StringTree
-                               = Environments.StringTree
-                               = IG.StringTree
-                               = OG.StringTree
-                               = PP.StringTree
-                  sharing type PP.Report = Report.Report
-
-                structure Flags: FLAGS
-                structure Crash: CRASH
-               ) : ELABDEC =
+structure ElabDec: ELABDEC =
   struct
+    structure IG = PreElabDecGrammar
+    structure OG = PostElabDecGrammar
+    structure PP = PrettyPrint
+    structure ParseInfo = AllInfo.ParseInfo
+    structure ElabInfo = AllInfo.ElabInfo
 
     structure ListHacks =
       struct
@@ -102,7 +38,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     (*import from StatObject:*)
     structure Level        = StatObject.Level
     structure TyVar        = StatObject.TyVar
-    structure TyName       = StatObject.TyName
          type Type         = StatObject.Type
          type TyVar        = StatObject.TyVar
          type RecType      = StatObject.RecType
@@ -132,7 +67,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     structure ErrorInfo = ElabInfo.ErrorInfo
     structure OverloadingInfo = ElabInfo.OverloadingInfo
     structure TypeInfo = ElabInfo.TypeInfo
-    structure Ident = IG.Ident
     type id = Ident.id
     type ParseInfo  = ParseInfo.ParseInfo
     type ElabInfo = ElabInfo.ElabInfo
@@ -1216,7 +1150,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 		 in
 		   if not(isEmptyTyVarList(tyvarsNotInTyVarList)) then
 		     (TE, OG.TYPBIND(errorConv(i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ 
-					       (map OG.TyVar.pr_tyvar tyvarsNotInTyVarList)),
+					       (map SyntaxTyVar.pr_tyvar tyvarsNotInTyVarList)),
 				     ExplicitTyVars, tycon, out_ty, out_typbind_opt))
 		   else
 		     if (EqSet.member tycon (TE.dom TE)) then 
@@ -1306,13 +1240,13 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
             val ((VE', TE'), out_datbind_opt) = elab_datbind_opt (C, datbind_opt)
 	    val out_i =
-	          if IG.TyCon.is_'true'_'nil'_etc tycon then
+	          if TyCon.is_'true'_'nil'_etc tycon then
 		    errorConv (i, ErrorInfo.REBINDING_TRUE_NIL_ETC [])
-		  else if IG.TyCon.is_'it' tycon then
+		  else if TyCon.is_'it' tycon then
 		    errorConv (i, ErrorInfo.REBINDING_IT)
 		  else if not (isEmptyTyVarList tyvarsNotInTyVarList) then
 		    errorConv (i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ 
-			       (map OG.TyVar.pr_tyvar
+			       (map SyntaxTyVar.pr_tyvar
 				  tyvarsNotInTyVarList))
 		  else
 		    let val repeated_ids_errorinfos =
@@ -1501,7 +1435,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 	        val i_out =
 		  case overloading
 		    of NONE => (case scon
-				  of OG.SCon.REAL _ => errorConv(i, ErrorInfo.REALSCON_ATPAT)
+				  of SCon.REAL _ => errorConv(i, ErrorInfo.REALSCON_ATPAT)
 				   | _ => okConv i)
 		     | SOME tv => preOverloadingConv (i, OverloadingInfo.UNRESOLVED_IDENT tv)
 		val i_out = addTypeInfo_MATCH(i_out, type_scon)
@@ -1808,7 +1742,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 		    case ty_opt of 
 			SOME _ => okConv i
 		      | NONE => errorConv (i,ErrorInfo.TYVARS_NOT_IN_TYVARSEQ 
-					   [OG.TyVar.pr_tyvar ExplicitTyVar])
+					   [SyntaxTyVar.pr_tyvar ExplicitTyVar])
 	    in (ty_opt, OG.TYVARty(i, ExplicitTyVar))
 	    end
 

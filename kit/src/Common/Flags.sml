@@ -1,12 +1,8 @@
 (* Global flags *)
 
-functor Flags (structure Crash : CRASH
-	       structure Report : REPORT
-	       structure PP : PRETTYPRINT
-	       val raggedRight : bool ref
-	       val colwidth : int ref) : FLAGS =
+structure Flags: FLAGS =
   struct
-
+    structure PP = PrettyPrint
     fun outLine (s) = print(s ^ "\n")
     fun quote s = "\"" ^ String.toString s ^ "\""
     fun die s = Crash.impossible ("Flags." ^ s)
@@ -38,7 +34,7 @@ functor Flags (structure Crash : CRASH
      
     (* Pretty Printing *)
 
-    val raggedRight = raggedRight
+    val raggedRight = PrettyPrint.raggedRight
 
     (* Debugging Flags *)
     val DEBUG_COMPILER          = ref false
@@ -70,7 +66,7 @@ functor Flags (structure Crash : CRASH
     val log_to_file = ref false
     val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
 
-    val colwidth = colwidth
+    val colwidth = PrettyPrint.colwidth
 
     val log = ref TextIO.stdOut
 (*
@@ -366,13 +362,9 @@ struct
                     | STRING_ENTRY of string entry
                     | STRINGLIST_ENTRY of string list entry
 
-    structure M = OrderFinMap (structure Order = struct type T = string
-							fun lt a (b:string) = a < b
-						 end
-			       structure PP = PP
-			       structure Report = Report
-			       structure Crash = Crash
-			       val pu_dom = Pickle.string)
+    structure M = OrderFinMap (struct type T = string
+				      fun lt a (b:string) = a < b
+			       end)
 
     val dir : entry0 M.map ref = ref M.empty
 
@@ -716,9 +708,7 @@ struct
 
 end (* Directory *)
 
-structure Menu = Menu(structure Crash = Crash
-		      val help_topic = Directory.help)
-
+structure Menu = Menu(val help_topic = Directory.help)
 
 fun add_bool_entry e = 
   case #menu e

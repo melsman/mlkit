@@ -1,52 +1,7 @@
 
-functor ParseElab(structure Parse: PARSE
-		  structure Timing : TIMING
-		  structure ElabTopdec: ELABTOPDEC
-		    sharing type ElabTopdec.PreElabTopdec = Parse.topdec
-
- 	          structure ModuleEnvironments : MODULE_ENVIRONMENTS
-		    sharing type ElabTopdec.StaticBasis = ModuleEnvironments.Basis
-                    sharing type ElabTopdec.absprjid = ModuleEnvironments.absprjid			  
-		  structure PreElabTopdecGrammar: TOPDEC_GRAMMAR
-		    sharing type PreElabTopdecGrammar.topdec
-				      = ElabTopdec.PreElabTopdec
-		  structure PostElabTopdecGrammar: TOPDEC_GRAMMAR
-		    sharing type PostElabTopdecGrammar.topdec
-				      = ElabTopdec.PostElabTopdec
-
-		  structure ErrorTraverse: ERROR_TRAVERSE
-		    sharing type ErrorTraverse.topdec
-					= ElabTopdec.PostElabTopdec
-
-		  structure InfixBasis: INFIX_BASIS
-		    sharing type InfixBasis.Basis = Parse.InfixBasis
-
-		  structure TopLevelReport: TOP_LEVEL_REPORT
-		    sharing type TopLevelReport.ElabBasis = ElabTopdec.StaticBasis
-		    sharing type TopLevelReport.InfixBasis = InfixBasis.Basis
-
-		  structure BasicIO: BASIC_IO
-
-		  structure Report: REPORT
-		    sharing type InfixBasis.Report
-					= Parse.Report
-					= ErrorTraverse.Report
-					= TopLevelReport.Report
-					= Report.Report
-
-		  structure PP: PRETTYPRINT
-		    sharing type PP.Report = Report.Report
-		    sharing type InfixBasis.StringTree
-					= PreElabTopdecGrammar.StringTree
-					= PostElabTopdecGrammar.StringTree
-					= ElabTopdec.StringTree
-					= PP.StringTree
-
-		  structure Flags: FLAGS
-		  structure Crash: CRASH
-		    ): PARSE_ELAB =
+structure ParseElab: PARSE_ELAB =
   struct
-
+    structure PP = PrettyPrint
     structure ErrorCode = ErrorTraverse.ErrorCode
 
     type Report = Report.Report

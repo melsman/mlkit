@@ -949,7 +949,7 @@ evacuate(unsigned int obj)
       new_obj_ptr = acopy_ref(copy_to_gen, obj_ptr);
       if ( ! points_into_tospace((unsigned int)(new_obj_ptr+1)) ) {
 	pp_gen(copy_to_gen);
-	fprintf(stderr,"new_obj_ptr: %x\n",new_obj_ptr);
+	debug_gc(fprintf(stderr,"new_obj_ptr: %x\n",new_obj_ptr));
 	die ("ref new obj is not in tospace??"); // ToDo: GenGC remove entire if
       }
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
@@ -984,7 +984,7 @@ evacuate(unsigned int obj)
 	      return clear_forward_ptr(*obj_ptr);             
 	    }
 	  //pp_gen(gen); // ToDo: GenGC remove
-	  fprintf(stderr,"obj_ptr: %x", obj_ptr);
+	  debug_gc(fprintf(stderr,"obj_ptr: %x", obj_ptr));
 	  pp_reg((int)get_ro_from_gen(*gen),"evacuate die - forward pointer failed");
 	  print_tagged_rp_content(rp);
 	  print(obj_ptr); // ToDo: GenGC remove
@@ -1016,21 +1016,21 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
   // All finite and large objects are temporarily annotated as immovable.
   // We therefore use val_tag_kind and not val_tag_kind_const
 
-  fprintf(stderr,"[scan...");
+  // fprintf(stderr,"[scan...");
   switch ( val_tag_kind(s) ) { 
   case TAG_STRING: {                        // Do not GC the content of a string but
     int sz;                                 //    adjust s to point after the string
     String str = (String)s;
-  fprintf(stderr,"string\n");
+    // fprintf(stderr,"string\n");
     sz = get_string_size(str->size) + 5;    // 1 for zero, 4 for tag
     sz = (sz%4) ? (1+sz/4) : (sz/4);
-  fprintf(stderr,"]\n");
+    // fprintf(stderr,"]\n");
     return s + sz;
   }
   case TAG_TABLE: {
     int sz;
     Table table = (Table)s;
-  fprintf(stderr,"table\n");
+    // fprintf(stderr,"table\n");
     sz = get_table_size(table->size);
     s++;
     while ( sz )
@@ -1039,12 +1039,12 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
 	s++;
 	sz--;
       }
-  fprintf(stderr,"]\n");
+    // fprintf(stderr,"]\n");
     return s;
   }
   case TAG_RECORD: {
     int remaining, num_to_skip, sz;
-  fprintf(stderr,"record\n");
+    // fprintf(stderr,"record\n");
     sz = get_record_size(*s);          // Size excludes descriptor
     num_to_skip = get_record_skip(*s);
     s = s + 1 + num_to_skip;
@@ -1055,18 +1055,18 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
 	s++;
 	remaining--;
       }
-  fprintf(stderr,"]\n");
+    // fprintf(stderr,"]\n");
     return s;
   }
   case TAG_CON0: {     // constant
-  fprintf(stderr,"con0]\n");
+    // fprintf(stderr,"con0]\n");
     return s+1;
   }
   case TAG_CON1:
   case TAG_REF: {
-  fprintf(stderr,"con1 or ref");
+    // fprintf(stderr,"con1 or ref");
     *(s+1) = evacuate(*(s+1));
-  fprintf(stderr,"]\n");
+    // fprintf(stderr,"]\n");
     return s+2;
   }
   default: {

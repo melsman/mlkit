@@ -1,34 +1,15 @@
 
-functor Mul(
-  structure Name : NAME
-  structure Lam: LAMBDA_EXP
-  structure Eff: EFFECT
-  structure Crash: CRASH
-  structure Flags: FLAGS
-  structure Lvar: LVARS
-    sharing type Lvar.lvar = Lam.lvar
-    sharing type Lvar.name = Name.name
-  structure TyName: TYNAME
-  structure RType: RTYPE
-   sharing type RType.effect = Eff.effect
-   sharing type TyName.TyName = RType.tyname = Lam.TyName
-   sharing type RType.cone = Eff.cone
-   sharing type RType.LambdaType = Lam.Type 
-   sharing type RType.runType = Eff.runType
-  structure RSE : REGION_STAT_ENV
-    sharing type RSE.lvar = Lvar.lvar
-    sharing type RSE.TyName = TyName.TyName
-    sharing type RSE.TypeAndPlaceScheme = RType.sigma
-    sharing type RSE.runType = RType.runType
-  structure PP: PRETTYPRINT
-    sharing type PP.StringTree = Eff.StringTree  = RType.StringTree =
-            Lvar.Map.StringTree
-  structure QM_EffVarEnv: QUASI_ENV
-    sharing type QM_EffVarEnv.StringTree = PP.StringTree
-    sharing type QM_EffVarEnv.dom = Eff.effect
-  ) : MUL =
+structure Mul: MUL =
 struct
-
+  structure Eff = Effect
+  structure Lam = LambdaExp
+  structure Lvar = Lvars
+  structure RSE = RegionStatEnv
+  structure PP = PrettyPrint
+  structure QM_EffVarEnv = 
+      QuasiEnv(structure OFinMap = EffVarEnv
+	       val key = Effect.key_of_eps_or_rho
+	       val eq = Effect.eq_effect)
   structure EdList = Edlib.List
 
   structure LvarMap = Lvar.Map
@@ -53,6 +34,7 @@ struct
     | hd [] = die "hd"
   type lvar = Lam.lvar
   type place = Eff.place
+  type cone = Eff.cone
   structure Effect = Eff
 
   fun rho_of ae = Eff.rho_of (Eff.find ae)
@@ -604,6 +586,17 @@ struct
               | mul => (ae1, mul)::diffef_aux(psi1', psi2'))
     | diffef_aux _ = raise DiffEf
 
+(* does not work:
+  fun diffef_aux (psi1:mulef,[]:mulef) = psi1
+    | diffef_aux ((ae1, mul1)::psi1', psi2 as (ae2, mul2)::psi2')=
+      if Ed.eq_effect(ae1,ae2) then
+       (case diffmul (mul1, mul2) of
+                NUM 0 => diffef_aux(psi1', psi2')
+              | mul => (ae1, mul)::diffef_aux(psi1', psi2'))
+      else (ae1, mul1)::diffef_aux(psi1', psi2)
+    | diffef_aux _ = raise DiffEf
+*)
+
   local 
       fun check ((e1,_)::(e2,_)::x) = 
 	  let fun toStr e = PP.flatten1 (Effect.layout_effect e)
@@ -627,7 +620,7 @@ struct
         outtree(layout_mulef mulef1);
         say "\nmulef2: ";
         outtree(layout_mulef mulef2);
-	check mulef1;
+(*	check mulef1; *)
         die "diffef failed")
   end
 
@@ -1063,7 +1056,8 @@ struct
 	 let
 (*             val _ = if checkPsi Psi' then () else 
                         (say "instantiate applied to ill-formed Xi = ";
-                         outtree(layout_qmul qmul))*)
+                         outtree(layout_qmul qmul))
+*)
 (*
              val t0 = layout_qmul qmul
              val t1 = layout_mularef (!(lookup_mularefmap(Psi, eps0)))
@@ -1078,20 +1072,26 @@ struct
                        maxef(actual_psi,
                              formal_psi) (* formal, acyclic *)
 	     val _ = check_psi "before nf" new_actual_psi (* mael 2004-10-19 *)
-             (* (eps0,new_actual_psi) is not necessarily acyclic, so nomalise it: *)
+             (* (eps0,new_actual_psi) is not necessarily acyclic, so normalise it: *)
              val (eps0,new_actual_psi) = nf (eps0,new_actual_psi)
 	     val _ = check_psi "after nf" new_actual_psi (* mael 2004-10-19 *)
-(*             val t4 = layout_mulef new_actual_psi  *)
+(*
+             val t4 = layout_mulef new_actual_psi 
+*)
              val Se:efsubst = [(eps0', (eps0,new_actual_psi))]
              val _ = doSubst(eps0, diffef(new_actual_psi,actual_psi), dep)
 	       handle X => (say "\ninstantiate.doSubst or diffef failed\n"; raise X)
+                                handle x => 				    
+				  (say "eps0 is "; outtree (Eff.layout_effect eps0);
+				   say "eps0' is "; outtree (Eff.layout_effect eps0');
 (*
-                                handle x => (say "qmul="; outtree t0;
-                                   say "lookup Psi gave"; outtree t1;
-                                   say "nf gave"; outtree t2;
-                                   say "lookup Psi' gave"; outtree t3;
-                                   say "new_actual_psi was:"; outtree t4; raise x) 
+				   say "\nqmul="; outtree t0;
+                                   say "\nlookup Psi gave"; outtree t1;
+                                   say "\nnf gave"; outtree t2;
+                                   say "\nlookup Psi' gave"; outtree t3;
+                                   say "\nnew_actual_psi was:"; outtree t4; 
 *)
+				   raise x) 
 	 in
               instantiate(plainarroweffects,
                           (epses', [], 

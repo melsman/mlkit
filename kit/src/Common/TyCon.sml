@@ -1,8 +1,6 @@
 (* Type constructors - Definition v3 page ?? *)
 
-functor TyCon(structure StrId: STRID
-	      structure Crash: CRASH
-	     ): TYCON =
+structure TyCon: TYCON =
   struct
 
     type strid = StrId.strid

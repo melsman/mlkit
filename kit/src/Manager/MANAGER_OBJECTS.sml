@@ -1,7 +1,10 @@
 
 signature MANAGER_OBJECTS =
   sig
-    type modcode and target and linkinfo and StringTree
+    type modcode 
+    type target 
+    type linkinfo 
+    type StringTree = PrettyPrint.StringTree
 
     type absprjid  
 
@@ -14,8 +17,6 @@ signature MANAGER_OBJECTS =
        to relocate the distribution of the kit, with the basis library
        compiled. *)
 		    
-    structure TyName : TYNAME
-
     structure SystemTools :
       sig
 	val delete_file : string -> unit
@@ -55,7 +56,8 @@ signature MANAGER_OBJECTS =
     val pmdir : unit -> string (* based on flags, returns a relative path to a directory
 				* in which to store object code. *)
 
-    type funstamp and funid
+    type funstamp 
+    type funid = FunId.funid
     structure FunStamp :
       sig
 	val new : funid -> funstamp
@@ -68,8 +70,13 @@ signature MANAGER_OBJECTS =
     val funid_from_filename : filename -> funid
     val funid_to_filename : funid -> filename
 
-    type IntFunEnv and IntBasis and ElabEnv and strexp and strid
-     and InfixBasis and ElabBasis and opaq_env
+    type IntFunEnv and IntBasis 
+    type ElabEnv = Environments.Env
+    type strexp = PostElabTopdecGrammar.strexp
+    type strid = StrId.strid
+    type InfixBasis = InfixBasis.Basis
+    type ElabBasis = ModuleEnvironments.Basis
+    type opaq_env = OpacityElim.opaq_env
 
     type BodyBuilderClos = {infB: InfixBasis,
 			    elabB: ElabBasis,
@@ -92,7 +99,8 @@ signature MANAGER_OBJECTS =
 	val pu : IntFunEnv Pickle.pu
       end
 
-    type IntSigEnv and sigid
+    type IntSigEnv 
+    type sigid = SigId.sigid
     structure IntSigEnv :
       sig
 	val empty : IntSigEnv
@@ -106,7 +114,11 @@ signature MANAGER_OBJECTS =
 	val pu : IntSigEnv Pickle.pu
       end
 
-    type CEnv and CompileBasis and longtycon and longid and longstrid
+    type CEnv = CompilerEnv.CEnv
+    type CompileBasis  (* generic *)
+    type longtycon = TyCon.longtycon
+    type longid = Ident.longid
+    type longstrid = StrId.longstrid
 
     type longids = {funids:funid list, sigids:sigid list, longstrids: longstrid list,
 		    longvids: longid list, longtycons: longtycon list}
@@ -128,7 +140,8 @@ signature MANAGER_OBJECTS =
 	val pu : IntBasis Pickle.pu
       end
 
-    type Basis and name
+    type Basis
+    type name = Name.name
 
     structure Basis :
       sig
@@ -161,7 +174,6 @@ signature MANAGER_OBJECTS =
 	val initialBasis0 : unit -> Basis0
 	val matchBasis0 : Basis0 * Basis0 -> Basis0
 	val eqBasis0 : Basis0 * Basis0 -> bool
-	val showBasis0 : (string -> unit) -> Basis0 -> unit
 
 	type Basis1 = opaq_env * IntBasis
 	val pu_Basis1 : Basis1 Pickle.pu
@@ -169,7 +181,6 @@ signature MANAGER_OBJECTS =
 	val initialBasis1 : unit -> Basis1
 	val matchBasis1 : Basis1 * Basis1 -> Basis1
 	val eqBasis1 : Basis1 * Basis1 -> bool
-	val showBasis1 : (string -> unit) -> Basis1 -> unit
       end
 
     structure Repository :

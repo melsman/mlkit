@@ -197,25 +197,17 @@ signature DIGRAPH_SCC =
   end
 
 
-functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
-		   structure PP: PRETTYPRINT
-		   structure Flags: FLAGS
-		   structure Crash: CRASH
-		   structure Report : REPORT):DIGRAPH_ALL =
+functor DiGraphAll(InfoDiGraph : INFO_DIGRAPH) : DIGRAPH_ALL =
   struct
-
+    structure PP = PrettyPrint
+    
     structure EdList = Edlib.List
 
     structure IdFinMap  =
-      OrderFinMap(structure Order =
-		    struct
+      OrderFinMap(struct
 		      type T = InfoDiGraph.nodeId
 		      fun lt (a:T) b = InfoDiGraph.lt a b
-		    end
-		  structure PP = PP
-		  structure Report = Report
-		  structure Crash = Crash
-		  val pu_dom = InfoDiGraph.pu)
+		  end)
 
 
     (*-------------------------------------------------------------------------------------*
@@ -634,37 +626,20 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
       end
   end
 
-functor DiGraph2(structure InfoDiGraph : INFO_DIGRAPH
-		structure PP: PRETTYPRINT
-		structure Flags: FLAGS
-		structure Crash: CRASH
-		structure Report : REPORT):DIGRAPH2 =
+functor DiGraph2(InfoDiGraph : INFO_DIGRAPH) : DIGRAPH2 =
   struct
-    structure DiGraph = DiGraphAll(structure InfoDiGraph = InfoDiGraph
-				   structure PP = PP
-				   structure Flags = Flags
-				   structure Crash = Crash
-				   structure Report = Report)
-      
+    structure DiGraph = DiGraphAll(InfoDiGraph)
     open DiGraph
   end
 
 
-functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
-		   structure PP: PRETTYPRINT
-		   structure Flags: FLAGS
-		   structure Crash: CRASH
-		   structure Report : REPORT):DIGRAPH_SCC =
+functor DiGraphScc(InfoDiGraph : INFO_DIGRAPH) : DIGRAPH_SCC =
   struct
+    structure PP = PrettyPrint
 
     structure EdList = Edlib.List
 
-    structure DiGraph = DiGraphAll(structure InfoDiGraph = InfoDiGraph
-				   structure PP = PP
-				   structure Flags = Flags
-				   structure Crash = Crash
-				   structure Report = Report)
-      
+    structure DiGraph = DiGraphAll(InfoDiGraph)
     open DiGraph
 
     fun footnote (x, y)   = x
@@ -674,19 +649,14 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
 
     (* We make a new graph holding the strongly connected components. *)
     (* Used when pretty printing the scc-graph.                       *)
-    structure SccDiGraph = DiGraphAll(structure InfoDiGraph =
-					struct
+    structure SccDiGraph = DiGraphAll(struct
 					  type nodeId = int
 					  type info = int * node list
 					  type edgeInfo = SCCedgeInfo
 					  fun lt (a:nodeId) b = (a<b)
 					  fun getId ((i,ns):info) = i
 					  val pu = Pickle.int
-					end
-				      structure PP = PP
-				      structure Flags = Flags
-				      structure Crash = Crash
-				      structure Report = Report)
+				      end)
 
     type sccGraph = SccDiGraph.graph
     type sccNode = SccDiGraph.node

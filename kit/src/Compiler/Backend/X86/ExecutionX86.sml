@@ -1,67 +1,25 @@
 
-functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
+structure ExecutionX86: EXECUTION =
   struct
-    structure ExecutionArgs = BuildCompile.ExecutionArgs
-    open ExecutionArgs
-
-    structure Basics = Elaboration.Basics
-    structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
-    structure Tools = Basics.Tools
-    structure AllInfo = Basics.AllInfo
-    structure PP = Tools.PrettyPrint
-    structure Name = Basics.Name
-    structure IntFinMap = Tools.IntFinMap
-    structure Flags = Tools.Flags
-    structure Report = Tools.Report
-    structure Crash = Tools.Crash
-
-    structure InstsX86 = InstsX86(structure Labels = Labels
-				  structure Lvars = Lvars
-				  structure Lvarset = Lvarset
-				  structure Crash = Crash
-				  structure PP = PP)
+    structure TopdecGrammar = PostElabTopdecGrammar
+    structure Labels = AddressLabels
+    structure PP = PrettyPrint
 
     structure BackendInfo = 
-      BackendInfo(structure Labels = Labels
-		  structure PP = PP
-		  structure Flags = Flags
-		  structure Report = Report
-		  structure Crash = Crash
-		  structure RegConst = BuildCompile.RegConst
-		  val down_growing_stack : bool = true)          (* true for x86 code generation *)
+      BackendInfo(val down_growing_stack : bool = true)          (* true for x86 code generation *)
 
-    structure NativeCompile = NativeCompile(open ExecutionArgs
-					    open BuildCompile
-					    structure BackendInfo = BackendInfo
+    structure NativeCompile = NativeCompile(structure BackendInfo = BackendInfo
 					    structure RegisterInfo = InstsX86.RI)
 
-    structure CompileBasis = CompileBasis(structure CompBasis = BuildCompile.CompBasis
-					  structure ClosExp = NativeCompile.ClosExp
-					  structure PP = PP
-					  structure Flags = Flags)
+    structure CompileBasis = CompileBasis(structure ClosExp = NativeCompile.ClosExp)
 
-    structure JumpTables = JumpTables(structure BI = BackendInfo
-				      structure Crash = Crash)
+    structure JumpTables = JumpTables(BackendInfo)
 
     structure CodeGen = CodeGenX86(structure BackendInfo = BackendInfo
-				   structure InstsX86 = InstsX86
-				   structure Con = Con
-				   structure Excon = Excon
-				   structure Lvars = Lvars
-				   structure Lvarset = Lvarset
-				   structure Labels = Labels
 				   structure JumpTables = JumpTables
 				   structure CallConv = NativeCompile.CallConv
 				   structure LineStmt = NativeCompile.LineStmt
-				   structure SubstAndSimplify = NativeCompile.SubstAndSimplify
-				   structure PP = PP
-				   structure Flags = Tools.Flags
-				   structure Report = Tools.Report
-				   structure Crash = Tools.Crash
-				   structure Effect = BuildCompile.Effect)
-
-    structure Compile = BuildCompile.Compile
-    structure CompilerEnv = BuildCompile.CompilerEnv
+				   structure SubstAndSimplify = NativeCompile.SubstAndSimplify)
 
     val _ = Flags.add_string_entry 
       {long="clibs", short=NONE, item=ref "-lm -lc",
@@ -117,8 +75,8 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
     val backend_name = "X86"
 
     type CompileBasis = CompileBasis.CompileBasis
-    type CEnv = BuildCompile.CompilerEnv.CEnv
-    type Env = BuildCompile.CompilerEnv.ElabEnv
+    type CEnv = CompilerEnv.CEnv
+    type Env = CompilerEnv.ElabEnv
     type strdec = TopdecGrammar.strdec
     type strexp = TopdecGrammar.strexp
     type funid = TopdecGrammar.funid
@@ -146,7 +104,7 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 	    let 
 	      val (closenv, target_new) = NativeCompile.compile(closenv,target,safe,vcg_file)
 	      val {main_lab, code, imports, exports, safe} = target_new
-	      val asm_prg = Tools.Timing.timing "CG" CodeGen.CG target_new
+	      val asm_prg = Timing.timing "CG" CodeGen.CG target_new
 	      val linkinfo = mk_linkinfo {code_label=main_lab,
 					  imports=imports, (* (MLFunLab, DatLab) *)
 					  exports=exports, (* (MLFunLab, DatLab) *)

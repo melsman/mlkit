@@ -6,84 +6,13 @@
  * multible compilation units (inlining of primitives will happen
  * automatically)). (martin) *)
 
-functor CompileDec(structure Con: CON   
-                   structure Excon: EXCON
-                   structure TyName: TYNAME
-                   structure Lvars: LVARS
-
-		   structure TopdecGrammar: TOPDEC_GRAMMAR
-
-                   structure StatObject : STATOBJECT
-                     sharing type StatObject.TyName = TyName.TyName
-
- 		   structure Environments : ENVIRONMENTS
-		     sharing type Environments.TypeFcn = StatObject.TypeFcn
-		     sharing type Environments.TypeScheme = StatObject.TypeScheme
-		     sharing type Environments.Type = StatObject.Type
-		     sharing type Environments.TyVar = StatObject.TyVar
-		     sharing type Environments.id = TopdecGrammar.id
-		     sharing type Environments.strid = TopdecGrammar.strid
-		     sharing Environments.TyName = TyName
-
-                   structure LambdaExp: LAMBDA_EXP
-                     sharing type LambdaExp.lvar = Lvars.lvar
-                     sharing type LambdaExp.con = Con.con
-                     sharing type LambdaExp.excon = Excon.excon
-		     sharing type LambdaExp.TyName = TyName.TyName
-		     sharing type LambdaExp.StringTree = Environments.StringTree = StatObject.StringTree
-
-		   structure LambdaBasics : LAMBDA_BASICS
-		     sharing type LambdaBasics.LambdaExp = LambdaExp.LambdaExp
-		     sharing type LambdaBasics.excon = LambdaExp.excon
-		     sharing type LambdaBasics.lvar = LambdaExp.lvar
-		     sharing type LambdaBasics.tyvar = LambdaExp.tyvar
-		     sharing type LambdaBasics.Type = LambdaExp.Type
-
-                   structure CompilerEnv: COMPILER_ENV
-                     sharing type CompilerEnv.con = Con.con
-                     sharing type CompilerEnv.excon = Excon.excon
-                     sharing type CompilerEnv.lvar = Lvars.lvar
-                     sharing type CompilerEnv.Type = LambdaExp.Type
-		     sharing type CompilerEnv.tyvar = LambdaExp.tyvar
-		     sharing type CompilerEnv.id = TopdecGrammar.id
-		     sharing type CompilerEnv.longid = TopdecGrammar.DecGrammar.longid
-		     sharing type CompilerEnv.TypeScheme = StatObject.TypeScheme
-		     sharing type CompilerEnv.strid = TopdecGrammar.strid
-		     sharing type CompilerEnv.longstrid = TopdecGrammar.longstrid
-		     sharing type CompilerEnv.ElabEnv = Environments.Env
-		     sharing type CompilerEnv.TyName = TyName.TyName
-		     sharing type CompilerEnv.tycon = Environments.tycon
-		     sharing type CompilerEnv.longtycon = TopdecGrammar.longtycon
-
-		   structure ElabInfo : ELAB_INFO
-                     sharing type ElabInfo.ElabInfo = TopdecGrammar.info
-                     sharing type ElabInfo.TypeInfo.longid = TopdecGrammar.DecGrammar.longid
-                     sharing type ElabInfo.TypeInfo.TyEnv = Environments.TyEnv
-                     sharing type ElabInfo.TypeInfo.TyVar = StatObject.TyVar
-                     sharing type ElabInfo.TypeInfo.realisation = Environments.realisation
-		     sharing type ElabInfo.TypeInfo.Type = StatObject.Type
-		     sharing type ElabInfo.TypeInfo.Env = Environments.Env
-		     sharing type ElabInfo.TypeInfo.strid = TopdecGrammar.strid
-		     sharing type ElabInfo.TypeInfo.tycon = TopdecGrammar.tycon = CompilerEnv.tycon
-		     sharing type ElabInfo.TypeInfo.id = TopdecGrammar.id
-
-	           structure FinMapEq: FINMAPEQ
-
-                   structure Flags : FLAGS
-                   structure PrettyPrint : PRETTYPRINT
-                     sharing type PrettyPrint.StringTree = CompilerEnv.StringTree
-		       = LambdaExp.StringTree = ElabInfo.StringTree
-                   structure Report : REPORT
-		     sharing type Report.Report = Flags.Report
-		       = PrettyPrint.Report
-		       = ElabInfo.ParseInfo.SourceInfo.Report
-                   structure Crash: CRASH
-
-                  ): COMPILE_DEC =
+structure CompileDec: COMPILE_DEC =
   struct
 
+    structure TopdecGrammar = PostElabTopdecGrammar
     structure DecGrammar = TopdecGrammar.DecGrammar
-      
+    structure ElabInfo = AllInfo.ElabInfo
+
     val tag_values = Flags.is_on0 "tag_values"
 
     fun chat s = if !Flags.chat then print (s ^ "\n")
@@ -814,11 +743,10 @@ Report: Opt:
   fun string_from_rhs' (_, rhs) = string_from_rhs rhs
 
   structure conset : KIT_MONO_SET = OrderSet
-    (structure Order : ORDERING = struct
-       type T = con
-       fun lt con1 con2 = lt_from_cmp con_cmp (con1, con2)
-     end (*structure Order*)
-     structure PP = PrettyPrint)
+      (struct
+	   type T = con
+	   fun lt con1 con2 = lt_from_cmp con_cmp (con1, con2)
+       end) (*structure Order*)
 
   structure negset = struct
     type negset = int (*number of cons in the set*) * conset.Set (*the cons*)
@@ -924,7 +852,7 @@ Report: Opt:
 					     
   local
     structure map = OrderFinMap
-      (structure Order : ORDERING = struct
+      (struct
 	 type T = ifeq
 	 (*lt ifeq1 ifeq2 = lexicographic ordering of the components of the
 	  tuples.  As long as it is a linear order, I can choose any
@@ -932,10 +860,7 @@ Report: Opt:
 	  frequent cases it is determined as quickly as possible whether
 	  ifeq1 < ifeq2.*)
 	 fun lt ifeq1 ifeq2 = lt_from_cmp ifeq_cmp (ifeq1, ifeq2)
-       end (*structure Order*)
-       structure PP = PrettyPrint
-       structure Report = Report
-       structure Crash = Crash)
+       end)
 
     type mapr = node map.map ref
     val mapr : mapr = ref map.empty
@@ -1643,14 +1568,10 @@ end; (*match compiler local*)
        here. *)
 
     local
-      structure CNameMap = OrderFinMap(structure Order = 
-					 struct 
-					   type T = string
-					   val lt : T -> T -> bool = fn a => fn b => a < b
-					 end
-				       structure PP = PrettyPrint
-				       structure Report = Report
-				       structure Crash = Crash)
+	structure CNameMap = OrderFinMap(struct 
+					     type T = string
+					     val lt : T -> T -> bool = fn a => fn b => a < b
+					 end)
 
       (* 32-bit primitives are resolved to primitives working on either 
        * boxed or unboxed representations *)

@@ -1,35 +1,21 @@
-functor RegAlloc(structure Con : CON
-		 structure Excon : EXCON
-		 structure Lvars : LVARS
-		 structure Effect : EFFECT
-		 structure Lvarset : LVARSET
-		   sharing type Lvarset.lvar = Lvars.lvar
-		 structure IntFinMap : MONO_FINMAP where type dom = int
-		 structure NatSet : KIT_MONO_SET where type elt = word
-		 structure Labels : ADDRESS_LABELS
-		 structure CallConv: CALL_CONV
+functor RegAlloc(structure CallConv: CALL_CONV
+		    where type lvar = Lvars.lvar
 		 structure LineStmt: LINE_STMT
-	           sharing type Con.con = LineStmt.con
-                   sharing type Excon.excon = LineStmt.excon
-                   sharing type Lvars.lvar = LineStmt.lvar = CallConv.lvar
-                   sharing type Effect.effect = Effect.place = LineStmt.place
-                   sharing type Labels.label = LineStmt.label
+	           where type con = Con.con
+		   where type excon = Excon.excon
+                   where type lvar = Lvars.lvar
+                   where type place = Effect.effect
+                   where type label = AddressLabels.label
+		   where type StringTree = PrettyPrint.StringTree
                    sharing type CallConv.cc = LineStmt.cc
 		 structure RI : REGISTER_INFO
-		   sharing type RI.lvar = Lvars.lvar
-		   sharing type RI.lvarset = Lvarset.lvarset
-		 structure PP : PRETTYPRINT
-		   sharing type PP.StringTree = 
-                                Effect.StringTree = 
-				LineStmt.StringTree
-                 structure Flags : FLAGS
-		 structure Report : REPORT
-		   sharing type Report.Report = Flags.Report
-		 structure Crash : CRASH) : REG_ALLOC =
+		   where type lvar = Lvars.lvar
+		   where type lvarset = Lvarset.lvarset) 
+    : REG_ALLOC =
 struct
-
+  structure Labels = AddressLabels
   structure LS = LineStmt
-
+  structure PP = PrettyPrint
   val _ = Flags.add_bool_entry
     {long="print_register_allocated_program", short=NONE, item=ref false, neg=false,
      menu=["Printing of intermediate forms", "print register allocated program (LineStmt)"],
@@ -1049,13 +1035,10 @@ struct
 
   local
     structure EdgeSet =
-      OrderSet(structure Order =
-		 struct
-		   type T = string * string
-		   fun lt((s11,s12): T) (s21,s22) = (s11^s12) < (s21^s22)
-		 end
-	       structure PP =PP
-	       structure Report = Report)
+	OrderSet(struct
+		     type T = string * string
+		     fun lt((s11,s12): T) (s21,s22) = (s11^s12) < (s21^s22)
+		 end)
     val edge_set = ref EdgeSet.empty
     val move_set = ref EdgeSet.empty
     fun reset_set() = (edge_set := EdgeSet.empty; move_set := EdgeSet.empty)

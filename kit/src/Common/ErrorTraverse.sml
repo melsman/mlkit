@@ -1,15 +1,9 @@
 (* Topdec error traversal. NICK, 16/Jan/92. *)
 
-functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
-		       structure ElabInfo : ELAB_INFO
-			 sharing type TopdecGrammar.info = ElabInfo.ElabInfo
-		       structure Report : REPORT
-		         sharing type ElabInfo.ErrorInfo.Report = Report.Report
-		       structure PrettyPrint : PRETTYPRINT
-		       sharing type PrettyPrint.StringTree = ElabInfo.StringTree
-		       structure Crash : CRASH
-			 ) : ERROR_TRAVERSE =
+structure ErrorTraverse : ERROR_TRAVERSE =
   struct
+    structure ElabInfo = AllInfo.ElabInfo
+    structure TopdecGrammar = PostElabTopdecGrammar
 
     open TopdecGrammar TopdecGrammar.DecGrammar
     structure TypeInfo = ElabInfo.TypeInfo

@@ -1,10 +1,8 @@
 (* Finite maps using balanced AVL trees *)
 
-functor OrderFinMap(structure Order : ORDERING
-		    structure PP : PRETTYPRINT
-		    structure Report : REPORT
-		    structure Crash : CRASH) : MONO_FINMAP =
+functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
   struct
+    structure PP = PrettyPrint
 
     fun die s = Crash.impossible ("OrderFinMap." ^ s)
 

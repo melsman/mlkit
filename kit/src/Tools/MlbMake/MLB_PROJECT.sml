@@ -34,6 +34,7 @@ signature MLB_PROJECT =
 
 	val sources : string -> (string * string) list  
         (* [sources mlbfile] returns the list of sources (.sml- and
-	 * .sig-files) mentioned in mlbfile. *)
+	 * .sig-files) mentioned in mlbfile, with the second components 
+	 * of the pairs being the hosting mlbfiles. *)
 
     end

@@ -1,9 +1,8 @@
 (* Finite maps with ordering *)
 
-functor SortedFinMap(structure Report: REPORT
-		     structure PP: PRETTYPRINT
-		    ): SORTED_FINMAP =
+structure SortedFinMap: SORTED_FINMAP =
   struct
+    structure PP = PrettyPrint
 
     type ('a, 'b) map = ('a * 'b) list
 
