@@ -5,7 +5,7 @@ structure Http : HTTP_EXTRA =
 	fun returnHtml h =
 	    ("HTTP/1.0 200 OK\n\
 	     \MIME-Version: 1.0\n\
-	     \Content-type: text/html\n\n" ^ 
+	     \Content-Type: text/html\n\n" ^ 
 	     XHtml.Unsafe.toString h)
 
         fun setCookies cookies =
@@ -15,7 +15,7 @@ structure Http : HTTP_EXTRA =
 	  | returnHtml' cookies h =
 	    ("HTTP/1.0 200 OK\n\
 	     \MIME-Version: 1.0\n\
-	     \Content-type: text/html\n" ^ setCookies cookies ^ "\n" ^
+	     \Content-Type: text/html\n" ^ setCookies cookies ^ "\n" ^
 	     XHtml.Unsafe.toString h)
 
 	structure Unsafe =
