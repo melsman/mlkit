@@ -115,7 +115,7 @@ struct
 	     val (L_set',F_set',R_set') = F_lss(lss,L_set,F_set,R_set)
 	   in 
 	     (Lvarset.union(L_set_acc,L_set'),F_set',R_set') 
-	   end) (L_set,F_set,R_set) sels
+	   end) (Lvarset.empty(*L_set*),F_set,R_set) sels
 	val (L_set_def,F_set_def,R_set_def) = F_lss(default,L_set,F_set_sels,R_set_sels)
       in
 	(lvset_add(Lvarset.union(L_set_def,L_set_sels),LS.get_lvar_atom(atom,[])),
@@ -154,13 +154,13 @@ struct
 	   in
 	     (L_set',lvset_difference(F_set',lvs_to_remove),lvset_add(R_set',phregs_to_add))
 	   end
-       | LS.HANDLE{default,handl,handl_return=[],offset} =>
+       | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv),offset} =>
 	   let
 	     val (L_set1,F_set1,R_set1) = F_lss(default,L_set,F_set,R_set)
-	     val (L_set2,F_set2,R_set2) = F_lss(handl,L_set,F_set1,R_set1)
-	     val R_set_all = Lvarset.union(R_set2,BI.callee_save_phregset) (* We must save ALL callee save registers across a handle! *)
+	     val (L_set2,F_set2,R_set2) = F_lss(handl,L_set1,F_set1,R_set1) (* was L_set *)
+	     val R_set_all = Lvarset.union(R_set2,BI.callee_save_phregset)  (* We must save ALL callee save registers across a handle! *)
 	   in
-	     (Lvarset.union(L_set1,L_set2),F_set2,R_set_all)
+	     (L_set2(*Lvarset.union(L_set1,L_set2)*),F_set2,R_set_all)  (* It should be possible to make L_set1 and L_set2 in sequence? *)
 	   end
        | LS.HANDLE{default,handl,handl_return,offset} => die "F_ls: handl_return in HANDLE not empty"
        | LS.SWITCH_I sw => F_sw(F_lss,sw,L_set,F_set,R_set)
@@ -226,8 +226,8 @@ struct
 	    end
 	  | IFF_lss'(LS.LETREGION{rhos,body}::lss) = LS.LETREGION{rhos=rhos,body=IFF_lss(body,F,[])} :: IFF_lss' lss
 	  | IFF_lss'(LS.SCOPE{pat,scope}::lss) = LS.SCOPE{pat=map (assign_sty F) pat,scope=IFF_lss(scope,F,[])} :: IFF_lss' lss
-	  | IFF_lss'(LS.HANDLE{default,handl,handl_return=[],offset}::lss) = 
-	    LS.HANDLE{default=IFF_lss(default,F,[]),handl=IFF_lss(handl,F,[]),handl_return=[],offset=offset} :: IFF_lss' lss
+	  | IFF_lss'(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv),offset}::lss) = 
+	    LS.HANDLE{default=IFF_lss(default,F,[]),handl=(IFF_lss(handl,F,[]),handl_lv),handl_return=([],handl_return_lv),offset=offset} :: IFF_lss' lss
 	  | IFF_lss'(LS.HANDLE{default,handl,handl_return,offset}::lss) = die "IFF_lss': handle_return in HANDLE not empty"
 	  | IFF_lss'(LS.RAISE{arg,defined_atys}::lss) = LS.RAISE{arg=arg,defined_atys=defined_atys} :: IFF_lss' lss
 	  | IFF_lss'(LS.SWITCH_I sw::lss) = LS.SWITCH_I(IFF_sw (fn lss => IFF_lss(lss,F,[])) sw) :: IFF_lss' lss
@@ -295,13 +295,13 @@ struct
 	  in
 	    (LS.SCOPE{pat=pat,scope=scope}::acc,U_set_scope)
 	  end
-	  | IF_lss'(LS.HANDLE{default,handl,handl_return=[],offset}::lss,U_set) =
+	  | IF_lss'(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv),offset}::lss,U_set) =
 	  let
 	    val (acc,U_set_acc) = IF_lss'(lss,U_set)
 	    val (lss1',U_set1) = IF_lss'(default,U_set_acc)
 	    val (lss2',U_set2) = IF_lss'(handl,U_set_acc)
 	  in
-	    (LS.HANDLE{default=lss1',handl=lss2',handl_return=insert_fetch_callee(BI.callee_save_phregs,[]),
+	    (LS.HANDLE{default=lss1',handl=(lss2',handl_lv),handl_return=(insert_fetch_callee(BI.callee_save_phregs,[]),handl_return_lv),
 		       offset=offset}::acc,Lvarset.union(U_set1,U_set2))
 	  end
 	  | IF_lss'(LS.HANDLE{default,handl,handl_return,offset}::lss,U_set) = die "IF_lss': handl_return in HANDLE not empty"
@@ -325,7 +325,7 @@ struct
     (*********************************)
     (* IFF on Top level Declarations *)
     (*********************************)
-    fun IFF_top_decl(LineStmt.FUN(lab,cc,lss)) = 
+    fun do_top_decl gen_fn (lab,cc,lss) =
       let
 	val (_,F_set,R_set) = F_lss(lss,Lvarset.empty,Lvarset.empty,Lvarset.empty)
 	val F = lvset_delete(F_set,CallConv.get_spilled_args cc)
@@ -336,21 +336,10 @@ struct
 							    IFF_lss(lss,F,insert_fetch_callee(R_list,[])))}]
 	val (lss_if,_) = IF_lss(lss_iff,F)
       in
-	LineStmt.FUN(lab,cc,lss_if)
+	gen_fn(lab,cc,lss_if)
       end
-      | IFF_top_decl(LineStmt.FN(lab,cc,lss)) = 
-      let
-	val (_,F_set,R_set) = F_lss(lss,Lvarset.empty,Lvarset.empty,Lvarset.empty)
-	val F = lvset_delete(F_set,CallConv.get_spilled_args cc)
-	val R = Lvarset.intersection(R_set,BI.callee_save_phregset)
-	val R_list = Lvarset.members R
-	val lss_iff = [LS.SCOPE{pat = mk_flushed_callee R_list,
-				scope = insert_flush_callee(R_list,
-							    IFF_lss(lss,F,insert_fetch_callee(R_list,[])))}]
-	val (lss_if,_) = IF_lss(lss_iff,F)
-      in
-	LineStmt.FN(lab,cc,lss_if)
-      end
+    fun IFF_top_decl(LineStmt.FUN(lab,cc,lss)) = do_top_decl LineStmt.FUN (lab,cc,lss)
+      | IFF_top_decl(LineStmt.FN(lab,cc,lss)) = do_top_decl LineStmt.FN (lab,cc,lss)
   in
     fun IFF {main_lab:label,
 	     code=ra_prg: (StoreTypeRA,unit,Atom) LinePrg,

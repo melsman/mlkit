@@ -84,14 +84,15 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val minJumpTabSize = 5
 
     (* Names For Primitive Functions *)
-    val EQUAL_INT     = "__equal_int"
-    val MINUS_INT     = "__minus_int"
-    val PLUS_INT      = "__plus_int"
-    val MUL_INT       = "__mul_int"
-    val NEG_INT       = "__neg_int"
-    val ABS_INT       = "__abs_int"
-    val LESS_INT      = "__less_int"
-    val LESSEQ_INT    = "__lesseq_int"
-    val GREATER_INT   = "__greater_int"
-    val GREATEREQ_INT = "__greatereq_int"
+    val EQUAL_INT      = "__equal_int"
+    val MINUS_INT      = "__minus_int"
+    val PLUS_INT       = "__plus_int"
+    val MUL_INT        = "__mul_int"
+    val NEG_INT        = "__neg_int"
+    val ABS_INT        = "__abs_int"
+    val LESS_INT       = "__less_int"
+    val LESSEQ_INT     = "__lesseq_int"
+    val GREATER_INT    = "__greater_int"
+    val GREATEREQ_INT  = "__greatereq_int"
+    val FRESH_EXN_NAME = "__fresh_exname"
   end

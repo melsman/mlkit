@@ -165,7 +165,7 @@ void deallocateRegionNew();
 int *alloc (int rAdr, int n);
 void alloc_new_block(Ro *rp);     /* inlining of alloc */
 void callSbrk();
-void resetRegion(int rAdr);
+int resetRegion(int rAdr);
 void deallocateRegionsUntil(int rAdr);
 
 /*----------------------------------------------------------------*
@@ -270,6 +270,8 @@ int *allocProfiling(int rAddr,int n, int pPoint);
 void storePrgPointProfiling(int pPoint, int *objPtr);
 int *updateSizeForDoublesProfiling(int size, int *doublePtr);
 #endif /*Profiling*/
+
+void printTopRegInfo();
 
 #endif /*REGION*/
 

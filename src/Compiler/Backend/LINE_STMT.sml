@@ -78,9 +78,13 @@ signature LINE_STMT =
 			reg_args: 'aty list, clos: 'aty option, free: 'aty list, res: 'aty list}
     | LETREGION     of {rhos: (binder*'offset) list, body: ('sty,'offset,'aty) LineStmt list}
     | SCOPE         of {pat: 'sty list, scope: ('sty,'offset,'aty) LineStmt list}
-    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
+(*    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
 			handl: ('sty,'offset,'aty) LineStmt list, 
 			handl_return: ('sty,'offset,'aty) LineStmt list, 
+			offset: 'offset}*)
+    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
+			handl: ('sty,'offset,'aty) LineStmt list * 'aty, 
+			handl_return: ('sty,'offset,'aty) LineStmt list * 'aty, 
 			offset: 'offset}
     | RAISE         of {arg: 'aty,defined_atys: 'aty list}
     | SWITCH_I      of (int,'sty,'offset,'aty) Switch

@@ -3,6 +3,7 @@ functor CodeGen(structure Con : CON
 		structure Lvars : LVARS
 		structure Labels : ADDRESS_LABELS
 		structure CallConv: CALL_CONV
+                  sharing type CallConv.lvar = Lvars.lvar
 		structure LineStmt: LINE_STMT
 		  sharing type Con.con = LineStmt.con
 		  sharing type Excon.excon = LineStmt.excon
@@ -15,6 +16,7 @@ functor CodeGen(structure Con : CON
                   sharing type SubstAndSimplify.LinePrg = LineStmt.LinePrg
 	        structure HpPaRisc : HP_PA_RISC
                   sharing type HpPaRisc.label = Labels.label
+                  sharing type HpPaRisc.lvar = Lvars.lvar
 	        structure BI : BACKEND_INFO
                   sharing type BI.reg = SubstAndSimplify.reg = HpPaRisc.reg
                   sharing type BI.label = Labels.label
@@ -78,6 +80,10 @@ struct
     open HpPaRisc
     structure SS = SubstAndSimplify
     structure LS = LineStmt
+
+    (* The global accessible exception pointer label *)
+    val exn_ptr_lab = NameLab "exn_ptr"
+    val exn_counter_lab = NameLab "exnameCounter"
 
     local
       structure LibFunSet =
@@ -250,29 +256,23 @@ struct
 
     (* dst_aty = lab[0] *)
     (* Kills Gen 1      *)
-    fun load_from_label(lab,dst_aty,size_ff,C) =
+    fun load_from_label(lab,dst_aty,tmp_reg:reg,size_ff,C) =
       let
-	val (reg_for_result,C') = resolve_aty_def(dst_aty,tmp_reg1,size_ff,C)
+	val (reg_for_result,C') = resolve_aty_def(dst_aty,tmp_reg,size_ff,C)
       in
 	ADDIL{i="L'" ^ pp_lab lab ^ "-$global$",r=dp} ::
-(*	LDW{d="R'" ^ pp_lab lab ^ "-$global$",b=Gen 1,t=reg_for_result,s=Space 0} :: C'*)
-	LDO{d="R'" ^ pp_lab lab ^ "-$global$",b=Gen 1,t=reg_for_result} :: 
-	LDW{d="0",s=Space 0,b=reg_for_result,t=reg_for_result} :: C'
+	LDW{d="R'" ^ pp_lab lab ^ "-$global$",b=Gen 1,t=reg_for_result,s=Space 0} :: C'
       end
 
     (* lab[0] = src_aty *)
     (* Kills Gen 1      *)
-    fun store_in_label(SS.PHREG_ATY src_reg,label,tmp_reg:reg,size_ff,C) =
+    fun store_in_label(SS.PHREG_ATY src_reg,label,tmp1:reg,size_ff,C) =
       ADDIL{i="L'" ^ pp_lab label ^ "-$global$",r=dp} ::
-(*      STW{r=src_reg,d="R'" ^ pp_lab label ^ "-$global$",b=Gen 1,s=Space 0} :: C*)
-      LDO{d="R'" ^ pp_lab label ^ "-$global$",b=Gen 1,t=tmp_reg1} :: 
-      STW{r=src_reg,d="0",s=Space 0,b=tmp_reg1} :: C
-      | store_in_label(src_aty,label,tmp_reg:reg,size_ff,C) =
-      move_aty_into_reg(src_aty,tmp_reg,size_ff,
+      STW{r=src_reg,d="R'" ^ pp_lab label ^ "-$global$",b=Gen 1,s=Space 0} :: C
+      | store_in_label(src_aty,label,tmp1:reg,size_ff,C) =
+      move_aty_into_reg(src_aty,tmp1,size_ff,
 			ADDIL{i="L'" ^ pp_lab label ^ "-$global$",r=dp} ::
-(*			STW{r=tmp_reg,d="R'" ^ pp_lab label ^ "-$global$",s=Space 0,b=Gen 1} :: C)*)
-			LDO{d="R'" ^ pp_lab label ^ "-$global$",b=Gen 1,t=tmp_reg1} :: 
-			STW{r=tmp_reg2,d="0",s=Space 0,b=tmp_reg1} :: C)
+			STW{r=tmp1,d="R'" ^ pp_lab label ^ "-$global$",s=Space 0,b=Gen 1} :: C)
 
 (* Generate a string label *)
     fun gen_string_lab str =
@@ -736,7 +736,7 @@ struct
 	       COMMENT (pr_ls ls) :: 
 	       (case bind of
 		  LS.ATOM src_aty => move_aty_to_aty(src_aty,pat,size_ff,C)
-		| LS.LOAD label => load_from_label(DatLab label,pat,size_ff,C)
+		| LS.LOAD label => load_from_label(DatLab label,pat,tmp_reg1,size_ff,C)
 		| LS.STORE(src_aty,label) => 
 		    (gen_data_lab label;
 		     store_in_label(src_aty,DatLab label,tmp_reg1,size_ff,C))
@@ -1003,8 +1003,90 @@ struct
 			    foldl (fn (_,C) => dealloc_region_prim C) C rhos_to_allocate)) rhos_to_allocate
 		  end
 	   | LS.SCOPE{pat,scope} => CG_lss(scope,size_ff,size_cc,size_rcf,size_ccf,C)
-	   | LS.HANDLE{default,handl,handl_return,offset} => not_impl("HANDLE",C)
-	   | LS.RAISE{arg,defined_atys} => not_impl("RAISE",C)
+	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_aty),offset} =>
+	   (* An exception handler in an activation record staring at address offset contains the following fields: *)
+	   (* sp[offset] = label for handl_return code.                                                             *)
+	   (* sp[offset+1] = pointer to handle closure.                                                             *)
+	   (* sp[offset+2] = pointer to previous exception handler used when updating expPtr.                       *)
+	   (* sp[offset+3] = address of the first cell after the activation record used when resetting sp.          *)
+	   (* Note that we call deallocate_regions_until to the address above the exception handler, (i.e., some of *)
+	   (* the infinite regions inside the activation record are also deallocated)!                              *)
+	   let
+	     val handl_return_lab = new_local_lab "handl_return"
+	     val handl_join_lab = new_local_lab "handl_join"
+	     fun handl_code C = COMMENT "HANDL_CODE" :: CG_lss(handl,size_ff,size_cc,size_rcf,size_ccf,C)
+	     fun store_handl_lv C =
+	       COMMENT "STORE HANDLE_LV: sp[offset+1] = handl_lv" ::
+	       store_aty_in_reg_record(handl_lv,tmp_reg1,sp,WORDS(~size_ff+offset+1),size_ff,C) 
+	     fun store_handl_return_lab C =
+	       COMMENT "STORE HANDL RETURN LAB: sp[offset] = handl_return_lab" ::
+	       load_label_addr(handl_return_lab,SS.PHREG_ATY tmp_reg1,size_ff,    
+			       store_indexed(sp,WORDS(~size_ff+offset),tmp_reg1,C))
+	     fun store_exn_ptr C =
+	       COMMENT "STORE EXN PTR: sp[offset+2] = exnPtr" ::
+	       load_from_label(exn_ptr_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff, 
+			       store_indexed(sp,WORDS(~size_ff+offset+2),tmp_reg1,
+					     COMMENT "CALC NEW expPtr: expPtr = sp-size_ff+offset+size_of_handle" ::
+					     base_plus_offset(sp,WORDS(~size_ff+offset+BI.size_of_handle()),tmp_reg1,
+							      store_in_label(SS.PHREG_ATY tmp_reg1,exn_ptr_lab,tmp_reg2,size_ff,C))))
+	     fun store_sp C =
+	       COMMENT "STORE SP: sp[offset+3] = sp" ::
+	       store_indexed(sp,WORDS(~size_ff+offset+3),sp,C) 
+	     fun default_code C = COMMENT "HANDLER DEFAULT CODE" :: 
+	       CG_lss(default,size_ff,size_cc,size_rcf,size_ccf,C)
+	     fun restore_exp_ptr C =
+	       COMMENT "RESTORE EXP PTR: exnPtr = sp[offset+2]"::
+	       load_indexed(tmp_reg1,sp,WORDS(~size_ff+offset+2),
+			    store_in_label(SS.PHREG_ATY tmp_reg1,exn_ptr_lab,tmp_reg1,size_ff,
+					   META_B{n=false,target=handl_join_lab} ::C))
+	     fun handl_return_code C =
+	       let
+		 val res_reg = lv_to_reg(CallConv.handl_return_phreg())
+	       in
+		 COMMENT "HANDL RETRUN CODE: handl_return_aty = res_phreg" ::
+		 LABEL handl_return_lab ::
+		 move_aty_to_aty(SS.PHREG_ATY res_reg,handl_return_aty,size_ff,
+				 CG_lss(handl_return,size_ff,size_cc,size_rcf,size_ccf,
+					LABEL handl_join_lab :: C))
+	       end
+	   in
+	     COMMENT "START OF EXCEPTION HANDLER" ::
+	     handl_code(store_handl_lv(store_handl_return_lab(store_exn_ptr(store_sp(default_code(restore_exp_ptr(handl_return_code(
+														  COMMENT "END OF EXCEPTION HANDLER" :: C))))))))
+	   end
+	   | LS.RAISE{arg=arg_aty,defined_atys} =>
+	   (* To raise arg we fetch the top most exception handler and pass arg to the handler function.  *)
+	   (* We put the label to which the handler function must return on top of the activation record. *)
+	   (* arg_aty isn't currently preserved!!! Problem whit RA - should we reserve a slot in the handler! *)
+	   let
+	     val (clos_lv,arg_lv) = CallConv.handl_arg_phreg()
+	     val (clos_reg,arg_reg) = (lv_to_reg clos_lv,lv_to_reg arg_lv)
+
+	     fun deallocate_regions_until C =
+	       COMMENT "DEALLOCATE REGIONS UNTIL" ::
+	       load_from_label(exn_ptr_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff,
+			       compile_c_call_prim("deallocateRegionsUntil",[SS.PHREG_ATY tmp_reg1],NONE,size_ff,tmp_reg1,C))
+	     fun restore_exn_ptr C =
+	       COMMENT "RESTORE EXN PTR" ::
+	       load_from_label(exn_ptr_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff,
+	       load_indexed(tmp_reg2,tmp_reg1,WORDS(~2),
+			    store_in_label(SS.PHREG_ATY tmp_reg2,exn_ptr_lab,tmp_reg2,size_ff,C)))
+	     fun push_return_lab C =
+	       COMMENT "LOAD ARGUMENT AND RESTORE SP AND PUSH RETURN LAB" ::
+	       move_aty_into_reg(arg_aty,arg_reg,size_ff, (* Note that we are still in the activation record where arg is raised *)
+	       load_indexed(sp,tmp_reg1,WORDS(~1),        (* Restore sp *)
+	       load_indexed(tmp_reg2,tmp_reg1,WORDS(~4),  (* Push Return Lab *)
+			    STWM{r=tmp_reg2,d="4",s=Space 0,b=sp} :: C)))
+	     fun jmp C =
+		 COMMENT "JUMP TO HANDLE FUNCTION" ::
+(*		 move_aty_into_reg(arg_aty,arg_reg,size_ff+1, (* Note that the return lab has been pushed on the stack (i.e., size_ff+1) *)*)
+				   load_indexed(clos_reg,tmp_reg1,WORDS(~3), (* Fetch Closure into Clossure Argument Register *)
+						LDW{d="0",s=Space 0,b=clos_reg,t=tmp_reg2} ::
+						META_BV{n=false,x=Gen 0,b=tmp_reg2}::C)
+	   in
+	     COMMENT ("START OF RAISE: " ^ pr_ls ls) ::
+	     deallocate_regions_until(restore_exn_ptr(push_return_lab(jmp(COMMENT "END OF RAISE" :: C))))
+	   end
 	   | LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY opr_reg,sels,default)) => 
 		  linear_search(sels,
 				default,
@@ -1067,6 +1149,12 @@ struct
 		   | ("__lesseq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])     => cmpi(LESSEQUAL,x,y,d,C)
 		   | ("__greater_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])    => cmpi(GREATERTHAN,x,y,d,C)
 		   | ("__greatereq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])  => cmpi(GREATEREQUAL,x,y,d,C)
+		   | ("__fresh_exname",[],[aty]) =>
+		       load_label_addr(exn_counter_lab,SS.PHREG_ATY tmp_reg1,size_ff,
+				       LDW{d="0",s=Space 0,b=tmp_reg1,t=tmp_reg2} ::
+				       move_reg_into_aty(tmp_reg2,aty,size_ff,
+							 ADDI {cond=NEVER, i="1", r=tmp_reg2, t=tmp_reg2} ::
+							 STW {r=tmp_reg2, d="0", s=Space 0, b=tmp_reg1} :: C))
 		   | _ => 
 		       (case res of
 			  [] => compile_c_call_prim(name,args@rhos_for_result,NONE,size_ff,tmp_reg1,C)
@@ -1132,6 +1220,7 @@ struct
 	val _ = add_static_data (map (fn lab => DOT_IMPORT(DatLab lab, "DATA")) (#2 imports))
 	val _ = add_static_data (map (fn lab => DOT_EXPORT(MLFunLab lab, "CODE")) (main_lab::(#1 exports))) 
 	val _ = add_static_data (map (fn lab => DOT_EXPORT(DatLab lab, "CODE")) (#2 exports)) 
+	val _ = add_static_data [DOT_IMPORT(exn_ptr_lab, "DATA"),DOT_IMPORT(exn_counter_lab,"DATA")]
 	val hp_parisc_prg = HppaResolveJumps.RJ{top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
 						init_code = init_hppa_code(),
 						exit_code = exit_hppa_code(),
@@ -1182,9 +1271,19 @@ struct
 					  DOT_DATA ::
 					  DOT_IMPORT (NameLab "$global$", "DATA") ::
 
+					  LABEL exn_counter_lab :: (* The Global Exception Counter *)
+					  DOT_WORD "0" ::
+					  DOT_EXPORT(exn_counter_lab, "DATA") ::
+
+					  LABEL exn_ptr_lab :: (* The Global Exception Pointer *)
+					  DOT_WORD "0" ::
+					  DOT_EXPORT(exn_ptr_lab, "DATA") ::
+
+
 					  LABEL(NameLab "exn_INTERRUPT") :: (* only temporary *)
 					  DOT_WORD "0" :: (* only temporary *)
 					  DOT_EXPORT(NameLab "exn_INTERRUPT","DATA") :: (* only temporary *)
+
 					  LABEL(NameLab "exn_OVERFLOW") :: (* only temporary *)
 					  DOT_WORD "0" :: (* only temporary *)
 					  DOT_EXPORT(NameLab "exn_OVERFLOW","DATA") :: (* only temporary *)
@@ -1221,10 +1320,10 @@ struct
 
          (* Push Address Of next_prog_unit function *)
 	 load_label_addr(NameLab (Labels.pr_label next_prog_unit),SS.PHREG_ATY tmp_reg1,0,
-         STW{r=tmp_reg1,d="0",s=Space 0,b=sp} ::
+			 STW{r=tmp_reg1,d="0",s=Space 0,b=sp} ::
 
-	  (* Jump to first program unit. *)
-	  META_B {n=false, target=first_progunit_lab} :: C)))
+			 (* Jump to first program unit. *)
+			 META_B {n=false, target=first_progunit_lab} :: C)))
 	  
 	fun nextlab_insts C =
 	  let val res = if !BI.tag_values then 1 (* 2 * 0 + 1 *)

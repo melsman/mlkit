@@ -33,6 +33,9 @@ signature CALL_CONV =
     val resolve_act_cc                : {clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} ->
                                         ('a * int) list * ('a * int) list * int
 
+    val handl_return_phreg            : unit -> lvar
+    val handl_arg_phreg               : unit -> lvar * lvar
+
     (******************)
     (* PrettyPrinting *)
     (******************)

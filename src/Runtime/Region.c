@@ -67,10 +67,31 @@ void printERROR(char *errorStr) {
   exit(-1);
 }
 
+/* Print info about a region. */
+void printTopRegInfo() {
+  Ro *rp;
+  Klump *kp;
+
+  rp = (Ro *) clearStatusBits((int) topRegion);
+  printf("printRegInfo\n");
+  printf("Region at address: %0x\n", rp);
+  printf("  fp: %0x\n", (rp->fp));
+  printf("  b : %0x\n", (rp->b));
+  printf("  a : %0x\n", (rp->a));
+  printf("  p : %0x\n", (rp->p));
+
+  printf("Region Pages\n");
+  for (kp=rp->fp;kp!=NULL;kp=kp->k.n)
+    printf(" %0x\n ", kp);
+
+  return;
+}
+
 
 /* Print info about a region. */
 void printRegionInfo(int rAddr,  char *str) {
   Ro *rp;
+  Klump *kp;
 
   rp = (Ro *) clearStatusBits(rAddr);
   printf("printRegionInfo called from: %s\n",str);
@@ -79,6 +100,11 @@ void printRegionInfo(int rAddr,  char *str) {
   printf("  b : %0x\n", (rp->b));
   printf("  a : %0x\n", (rp->a));
   printf("  p : %0x\n", (rp->p));
+
+  printf("Region Pages\n");
+  for (kp=rp->fp;kp!=NULL;kp=kp->k.n)
+    printf(" %0x\n ", kp);
+
   return;
 }
 
@@ -88,6 +114,20 @@ static int NoOfPagesInRegion(Ro *rp) {
   Klump *ptr;
   for (i=0,ptr=rp->fp;ptr!=NULL;ptr=ptr->k.n) i++;
   return i;
+}
+
+void printFreeList() {
+  Klump *kp;
+  extern Klump * freeList;
+
+  printf("Enter printFreeList\n");
+  kp = freelist;
+  while (kp != NULL) {
+    printf(" %0x ",kp);
+    kp = kp->k.n;
+  }
+  printf("Exit printFreeList\n");
+  return;
 }
 
 /*-------------------------------------------------------------------------*
@@ -111,10 +151,13 @@ int *allocateRegion(Ro *roAddr) {
   Klump *kp;
   extern Klump * freelist;
   
+  roAddr = (Ro *) clearStatusBits((int)roAddr);
+
   if (freelist==NULL) callSbrk();
 
   kp = freelist;
   freelist= freelist->k.n;
+
   kp->k.n = NULL;
 
   roAddr->a = (int *)(&(kp->k.i)); /* We allocate from k.i in the page. */ 
@@ -122,6 +165,8 @@ int *allocateRegion(Ro *roAddr) {
   roAddr->p = topRegion;	   /* Push this region onto the region stack. */
   roAddr->fp = kp;                 /* Update pointer to the first page. */
   topRegion = roAddr;
+
+
 
   /* We have to set the infinitebit. */
   roAddr = (Ro *) setInfiniteBit((int) roAddr);
@@ -195,6 +240,7 @@ void deallocateRegionNew() {
   (((Klump *)topRegion->b)-1)->k.n = freelist;
   freelist = topRegion->fp;
   topRegion=topRegion->p;
+
 
   return;
 }
@@ -315,6 +361,7 @@ int *alloc (int rAddr, int n) {
     t2 = t1+n;
   }
   rp->a = t2;
+  /*printf("now returning from alloc(%d)\n",n);*/
   return t1;
 }
 
@@ -324,7 +371,7 @@ int *alloc (int rAddr, int n) {
  *  the region administration structure is updated. The statusbits are  *
  *  not changed.                                                        *
  *----------------------------------------------------------------------*/
-void resetRegion(int rAdr) { 
+int resetRegion(int rAdr) { 
   Ro *rp;
   extern Klump * freelist;
   
@@ -335,6 +382,8 @@ void resetRegion(int rAdr) {
 #endif
 
   rp = (Ro *) clearStatusBits(rAdr);
+
+
 
 #ifdef PROFILING
   callsOfResetRegion++;
@@ -364,14 +413,14 @@ void resetRegion(int rAdr) {
   rp->allocProfNow = 0;
 #endif
 
-  return;
+  return rAdr; /* We preserve rAdr and the status bits. */
 }
 
 /*-------------------------------------------------------------------------*
  *deallocateRegionsUntil:                                                  *
- *  It is called with rAddr=sp, which do not nessesaraly point to a region *
+ *  It is called with rAddr=sp, which do not nessesaraly point at a region *
  *  description. It deallocates all regions that are placed over sp.       *
- *  The function do not return or alter anything.                          *
+ *  The function does not return or alter anything.                        *
  *-------------------------------------------------------------------------*/
 void deallocateRegionsUntil(int rAddr) { 
   Ro *rp;
@@ -385,7 +434,10 @@ void deallocateRegionsUntil(int rAddr) {
     deallocRegionFiniteProfiling();
 #endif
 
-  while (rp <= topRegion) deallocateRegion();
+  while (rp <= topRegion) 
+    {printf("rp: %0x, topRegion %0x\n",rp,topRegion);
+    deallocateRegion();}
+
   return;
 } 
 

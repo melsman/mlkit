@@ -109,14 +109,14 @@ struct
 			reg_args: 'aty list, clos: 'aty option, free: 'aty list, res: 'aty list}
     | LETREGION     of {rhos: (binder*'offset) list, body: ('sty,'offset,'aty) LineStmt list}
     | SCOPE         of {pat: 'sty list, scope: ('sty,'offset,'aty) LineStmt list}
-    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
+(*    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
 			handl: ('sty,'offset,'aty) LineStmt list, 
 			handl_return: ('sty,'offset,'aty) LineStmt list, 
-			offset: 'offset}
-(*    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
+			offset: 'offset}*)
+    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
 			handl: ('sty,'offset,'aty) LineStmt list * 'aty, 
 			handl_return: ('sty,'offset,'aty) LineStmt list * 'aty, 
-			offset: 'offset}*)
+			offset: 'offset}
     | RAISE         of {arg: 'aty,defined_atys: 'aty list}
     | SWITCH_I      of (int,'sty,'offset,'aty) Switch
     | SWITCH_S      of (string,'sty,'offset,'aty) Switch
@@ -343,13 +343,20 @@ struct
 			   childsep=NOSEP,
 			   children=[layout_lss_local scope]}
 		 end
-	   | HANDLE{default,handl,handl_return,offset} =>
+	   | HANDLE{default,handl=(handl,handl_aty),handl_return=(handl_return,handl_return_aty),offset} =>
 		 let
-		   val node_exn = NODE{start="[",finish="]",childsep=RIGHT"] handlereturn [", indent=2,children=[layout_lss_local handl,layout_lss_local handl_return]}
+		   val node_exn = NODE{start="[",finish="]",childsep=RIGHT("](" ^ pr_aty handl_aty ^ 
+				       ") handlereturn(" ^ pr_aty handl_return_aty ^ ") ["), 
+				       indent=2,children=[layout_lss_local handl,layout_lss_local handl_return]}
 		 in
 		   NODE{start="[",finish="",childsep=RIGHT("] handle " ^ pr_offset offset ^ " "),indent=2,children=[layout_lss_local default,node_exn]}
 		 end
-	   | RAISE{arg,defined_atys} => PP.LEAF("raise " ^ pr_aty arg) (* Defined atys not written 08/12/1998, Niels*)
+	   | RAISE{arg,defined_atys} => 
+		 let
+		   val lay_stys = flatten1(HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (fn aty => LEAF(pr_aty aty)) defined_atys})
+		 in
+		   PP.LEAF("raise " ^ pr_aty arg ^ "(defined: " ^ lay_stys ^ ")") (* Defined atys not written 08/12/1998, Niels*)
+		 end
 	   | SWITCH_I sw => layout_switch pr_aty layout_lss_local (Int.toString) sw
 	   | SWITCH_S sw => layout_switch pr_aty layout_lss_local (fn s => s) sw
 	   | SWITCH_C sw =>
@@ -524,17 +531,17 @@ struct
       | L_ce(ClosExp.LET{pat,bind,scope},lvars_res,acc) =
 	  SCOPE{pat=map mk_sty pat,scope=L_ce(bind,pat,L_ce(scope,lvars_res,[]))}::acc
       | L_ce(ClosExp.RAISE ce,lvars_res,acc) = RAISE{arg=ce_to_atom ce,defined_atys=map VAR lvars_res}::acc
-      | L_ce(ClosExp.HANDLE(ce1,ce2),lvars_res,acc) =
-	  HANDLE{default=L_ce(ce1,lvars_res,[]),handl=L_ce(ce2,lvars_res,[]),handl_return=[],offset=()}::acc (* for now, offset is unit *)
-(*      | L_ce(ClosExp.HANDLE(ce1,ce2),[lv_res],C) =
+(*      | L_ce(ClosExp.HANDLE(ce1,ce2),lvars_res,acc) =
+	  HANDLE{default=L_ce(ce1,lvars_res,[]),handl=L_ce(ce2,lvars_res,[]),handl_return=[],offset=()}::acc (* for now, offset is unit *)*)
+      | L_ce(ClosExp.HANDLE(ce1,ce2),[lv_res],C) =
 	  let
-	    val clos_lv = Labels.new_named "handleCloslv"
+	    val clos_lv = Lvars.new_named_lvar "handleCloslv"
 	  in
-	    HANDLE{{default=L_ce(ce1,lvars_res,[]),
-		    handl=(SCOPE{pat=mk_sty clos_lv,scope=L_ce(ce2,[clos_lv],[])},clos_lv),
-		    handl_return=([],lvars_res),offset=()}::C (* for now, offset is unit *)
+	    HANDLE{default=L_ce(ce1,[lv_res],[]),
+		   handl=([SCOPE{pat=[mk_sty clos_lv],scope=L_ce(ce2,[clos_lv],[])}],VAR clos_lv),
+		   handl_return=([],VAR lv_res),offset=()}::C (* for now, offset is unit *)
 	  end
-      | L_ce(ClosExp.HANDLE(ce1,ce2),lvars_res,C) = die "L_ce: HANDLE with more than one lvars_res"*)
+      | L_ce(ClosExp.HANDLE(ce1,ce2),lvars_res,C) = die "L_ce: HANDLE with more than one lvars_res"
       | L_ce(ClosExp.SWITCH_I sw,lvars_res,acc) = SWITCH_I(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn i => i))::acc
       | L_ce(ClosExp.SWITCH_S sw,lvars_res,acc) = SWITCH_S(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn s => s))::acc
       | L_ce(ClosExp.SWITCH_C sw,lvars_res,acc) = SWITCH_C(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),

@@ -17,6 +17,10 @@ signature CLOS_CONV_ENV =
       | B_NULLARY of int
       | B_UNARY of int
 
+    datatype arity_excon =
+        NULLARY_EXCON
+      | UNARY_EXCON
+
     datatype access_type =
         LVAR of lvar                            (* Variable                                  *)
       | RVAR of place                           (* Region variable                           *)
@@ -37,18 +41,19 @@ signature CLOS_CONV_ENV =
 
     val declareCon     : con * con_kind * env -> env
     val declareLvar    : lvar * access_type * env -> env
-    val declareExcon   : excon * access_type * env -> env
+    val declareExcon   : excon * (access_type*arity_excon) * env -> env
     val declareRho     : place * access_type * env -> env
     val declareRhoKind : place * rho_kind * env -> env
 
-    val lookupCon      : env -> con -> con_kind
-    val lookupVar      : env -> lvar -> access_type
-    val lookupVarOpt   : env -> lvar -> access_type option
-    val lookupExcon    : env -> excon -> access_type
-    val lookupExconOpt : env -> excon -> access_type option
-    val lookupRho      : env -> place -> access_type
-    val lookupRhoOpt   : env -> place -> access_type option
-    val lookupRhoKind  : env -> place -> rho_kind
+    val lookupCon        : env -> con -> con_kind
+    val lookupVar        : env -> lvar -> access_type
+    val lookupVarOpt     : env -> lvar -> access_type option
+    val lookupExcon      : env -> excon -> access_type
+    val lookupExconOpt   : env -> excon -> access_type option
+    val lookupExconArity : env -> excon -> arity_excon
+    val lookupRho        : env -> place -> access_type
+    val lookupRhoOpt     : env -> place -> access_type option
+    val lookupRhoKind    : env -> place -> rho_kind
 
     val enrich : env * env -> bool
     val match : env * env -> unit

@@ -48,6 +48,10 @@ functor ClosConvEnv(structure Lvars : LVARS
       | B_NULLARY of int
       | B_UNARY of int
 
+    datatype arity_excon =
+        NULLARY_EXCON
+      | UNARY_EXCON
+
     datatype access_type =
         LVAR of lvar                            (* Variable                                  *)
       | RVAR of place                           (* Region variable                           *)
@@ -65,7 +69,7 @@ functor ClosConvEnv(structure Lvars : LVARS
 
     type ConEnv     = con_kind ConFinMap.map
     type VarEnv     = access_type LvarFinMap.map
-    type ExconEnv   = access_type ExconFinMap.map
+    type ExconEnv   = (access_type * arity_excon) ExconFinMap.map
     type RhoEnv     = access_type RegvarFinMap.map
     type RhoKindEnv = rho_kind RegvarFinMap.map
     type env = {ConEnv    : ConEnv,
@@ -83,10 +87,10 @@ functor ClosConvEnv(structure Lvars : LVARS
        (Con.con_CONS, UB_UNARY 0)]      (* first unary constructor *)
     val initialVarEnv : VarEnv = LvarFinMap.empty
     val initialExconEnv: ExconEnv = ExconFinMap.fromList
-      [(Excon.ex_DIV, LABEL(BI.exn_DIV_lab)),
-       (Excon.ex_MATCH, LABEL(BI.exn_MATCH_lab)),
-       (Excon.ex_BIND, LABEL(BI.exn_BIND_lab)),
-       (Excon.ex_OVERFLOW, LABEL(BI.exn_OVERFLOW_lab))]
+      [(Excon.ex_DIV, (LABEL(BI.exn_DIV_lab),NULLARY_EXCON)),
+       (Excon.ex_MATCH, (LABEL(BI.exn_MATCH_lab),NULLARY_EXCON)),
+       (Excon.ex_BIND, (LABEL(BI.exn_BIND_lab),NULLARY_EXCON)),
+       (Excon.ex_OVERFLOW, (LABEL(BI.exn_OVERFLOW_lab),NULLARY_EXCON))]
     val initialRhoEnv : RhoEnv = RegvarFinMap.fromList
       [(Effect.toplevel_region_withtype_top,LABEL(BI.toplevel_region_withtype_top_lab)),
        (Effect.toplevel_region_withtype_bot,   (* arbitrary binding, but some binding
@@ -136,10 +140,10 @@ functor ClosConvEnv(structure Lvars : LVARS
        RhoEnv     = RhoEnv,
        RhoKindEnv = RhoKindEnv}
 
-    fun declareExcon (excon,access_type,{ConEnv,VarEnv,ExconEnv,RhoEnv,RhoKindEnv}) =
+    fun declareExcon (excon,(access_type,arity_excon),{ConEnv,VarEnv,ExconEnv,RhoEnv,RhoKindEnv}) =
       {ConEnv     = ConEnv,
        VarEnv     = VarEnv,
-       ExconEnv   = ExconFinMap.add(excon,access_type,ExconEnv),
+       ExconEnv   = ExconFinMap.add(excon,(access_type,arity_excon),ExconEnv),
        RhoEnv     = RhoEnv,
        RhoKindEnv = RhoKindEnv}
 
@@ -171,10 +175,18 @@ functor ClosConvEnv(structure Lvars : LVARS
 
     fun lookupExcon ({ExconEnv,...} : env) excon =
       case ExconFinMap.lookup ExconEnv excon of
-	SOME access_type => access_type
+	SOME (access_type,arity_excon) => access_type
       | NONE  => die ("lookupExcon(" ^ (Excon.pr_excon excon) ^ ")")
 
-    fun lookupExconOpt ({ExconEnv,...} : env) excon = ExconFinMap.lookup ExconEnv excon
+    fun lookupExconOpt ({ExconEnv,...} : env) excon = 
+      case ExconFinMap.lookup ExconEnv excon of
+	SOME (access_type,arity_excon) => SOME access_type
+      | NONE => NONE
+
+    fun lookupExconArity ({ExconEnv,...} : env) excon =
+      case ExconFinMap.lookup ExconEnv excon of
+	SOME (access_type,arity_excon) => arity_excon
+      | NONE  => die ("lookupExconArity(" ^ (Excon.pr_excon excon) ^ ")")
 
     fun lookupRho ({RhoEnv,...} : env) place =
       case RegvarFinMap.lookup RhoEnv place of
@@ -218,7 +230,7 @@ functor ClosConvEnv(structure Lvars : LVARS
     fun enrich({ConEnv=ConEnv0,VarEnv=VarEnv0,ExconEnv=ExconEnv0,RhoEnv=RhoEnv0,RhoKindEnv=RhoKindEnv0},
 	       {ConEnv,VarEnv,ExconEnv,RhoEnv,RhoKindEnv}) =
       ConFinMap.enrich (op =) (ConEnv0,ConEnv) andalso
-      ExconFinMap.enrich acc_type_eq (ExconEnv0,ExconEnv) andalso
+      ExconFinMap.enrich (fn ((e1,a1:arity_excon),(e2,a2)) => acc_type_eq(e1,e2) andalso a1=a2) (ExconEnv0,ExconEnv) andalso (*!!!*)
       LvarFinMap.enrich acc_type_eq (VarEnv0,VarEnv)
 	
     fun restrict_con_env(ConEnv,cons) = ConFinMap.restrict(Con.pr_con,ConEnv,cons)
@@ -243,9 +255,9 @@ functor ClosConvEnv(structure Lvars : LVARS
 			case LvarFinMap.lookup VarEnv0 lv
 			 of SOME acc_ty0 => match_acc_type(acc_ty,acc_ty0)
 			  | NONE => ()) () VarEnv;
-       ExconFinMap.Fold (fn ((excon,acc_ty), m) =>
+       ExconFinMap.Fold (fn ((excon,(acc_ty,_)), m) =>
 			 case ExconFinMap.lookup ExconEnv0 excon
-			   of SOME acc_ty0 => match_acc_type(acc_ty,acc_ty0)
+			   of SOME (acc_ty0,_)(*!!!*) => match_acc_type(acc_ty,acc_ty0)
 			    | NONE => ()) () ExconEnv)
 
     (* --------------------------------------------------------------------- *)
@@ -280,7 +292,7 @@ functor ClosConvEnv(structure Lvars : LVARS
       PP.NODE{start="ExconEnv = ",finish="",indent=2,childsep=PP.NOSEP,
 	      children=[ExconFinMap.layoutMap {start="{",eq=" -> ", sep=", ", finish="}"}
 			(PP.layoutAtom Excon.pr_excon)
-			 layout_access_type
+			 (fn (acc_type,arity) => PP.LEAF("(" ^ pr_access_type acc_type ^ "," ^ pr_excon_arity arity ^ ")"))
 			 ExconEnv]}
 
     and layoutRhoEnv = fn RhoEnv =>
@@ -326,5 +338,12 @@ functor ClosConvEnv(structure Lvars : LVARS
       | LF => PP.LEAF("LF")
       | FI => PP.LEAF("FI")
       | FF => PP.LEAF("FF")
+
+    and pr_access_type = 
+      fn acc_ty => PP.flatten1(layout_access_type acc_ty)
+
+    and pr_excon_arity =
+      fn NULLARY_EXCON => "nullary excon"
+       | UNARY_EXCON => "unary excon"
   end;
 
