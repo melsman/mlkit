@@ -154,7 +154,6 @@ signature STATOBJECT =
       sig
 	val eq                      : TypeScheme * TypeScheme -> bool
 	val to_TyVars_and_Type      : TypeScheme -> TyVar list * Type
-	val from_TyVars_and_Type    : TyVar list * Type -> TypeScheme
 	(*Make a type into a typescheme with no bound variables:*)
 	val from_Type               : Type -> TypeScheme
 	val tyvars                  : TypeScheme -> TyVar list
@@ -172,9 +171,14 @@ signature STATOBJECT =
 	val generalises_TypeScheme  : TypeScheme * TypeScheme -> bool
 	val generalises_Type        : TypeScheme * Type -> bool
 
-	(*close typescheme using the specified type variables (?):*)
-
+	(* close(sigma): generalise generic type 
+	 * variables in sigma except overload 
+	 * tyvars; used by Environments. *)
 	val close                   : bool -> TypeScheme -> TypeScheme
+
+	(* close_overload(tau): generalise generic type 
+	 * variables also overload tyvars. *)
+	val close_overload          : Type -> TypeScheme
 
 	(*violates_equality T sigma = false, iff, assuming the tynames in
 	 T admit equality, sigma admits equality, i.e., violates_equality
