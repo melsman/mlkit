@@ -320,7 +320,7 @@ struct
             empty
         end
       fun reset() = (* reset all entries of the depency map array to [] and then
-                       insert toplevel_arreff (e6) in the map with an empty list of
+                       insert toplevel_arreff (e9) in the map with an empty list of
                        dependants. *)
           let fun loop n = if n>=size then () 
                            else 
@@ -1109,7 +1109,8 @@ struct
        add_dependencies(dep, MULAREFF r, cons_if_not_there(eps',map #1 psi))
 
   fun mk_init_dependency_map (Psi:imp_mularefmap) = 
-        let val result = EffVarEnv.Fold  mk_init_dep empty_dep Psi
+        let val _ = reset_dep()
+	    val result = EffVarEnv.Fold  mk_init_dep empty_dep Psi
         in 
             (*say "initial dependency map";*)
             (*say "omitted"*)  
@@ -1143,7 +1144,7 @@ struct
   val pu_mularefset = Pickle.listGen pu_mularef
   val pu_qmularefset = Pickle.pairGen0(Pickle.tup3Gen0(Eff.pu_effects,Eff.pu_effects,pu_mularefset),
 				       Eff.pu_effect)
-  val pu_efenv = LvarMap.pu Lvar.pu (Pickle.refOneGen pu_qmularefset)
+  val pu_efenv = LvarMap.pu Lvar.pu (Pickle.ref0Gen pu_qmularefset)
       
-  val pu_mularefmap = GlobalEffVarEnv.pu Eff.pu_effect (Pickle.refOneGen pu_mularef)
+  val pu_mularefmap = GlobalEffVarEnv.pu Eff.pu_effect (Pickle.ref0Gen pu_mularef)
 end

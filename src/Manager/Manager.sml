@@ -550,6 +550,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 | NONE => (List.app Name.mk_rigid names_int) (*bad luck*)
 
     local (* Pickling *)
+	val pchat = chat
 	fun sizeToStr sz = 
 	    if sz < 10000 then Int.toString sz ^ " bytes"
 	    else if sz < 10000000 then Int.toString (sz div 1024) ^ "Kb (" ^ Int.toString sz ^ " bytes)" 
@@ -592,25 +593,41 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	    in ()
 	    end
 *)
-	fun writeBasis punit basis_os =
-	    let val basis_s = Pickle.toString basis_os
-		val _ = print ("\n [End pickling (sz = " ^ sizeToStr (size basis_s) ^ ")]\n")
-		val os = BinIO.openOut ("PM/" ^ punit ^ ".bas")
-	    in (  BinIO.output(os,Byte.stringToBytes basis_s)
+	fun writePickleStream punit pStream ext =
+	    let val pStream_s = Pickle.toString pStream
+		val _ = pchat ("\n [End pickling " ^ ext ^ " (sz = " ^ sizeToStr (size pStream_s) ^ ")]\n")
+		val os = BinIO.openOut ("PM/" ^ punit ^ "." ^ ext)
+	    in (  BinIO.output(os,Byte.stringToBytes pStream_s)
 		; BinIO.closeOut os
 		) handle _ => BinIO.closeOut os
 	    end
 
-	fun doPickleB punit (B:Basis) : unit =
-	    if false then () else
-		let open Pickle
-		    val os : outstream = empty()
-		    val _ = print ("\n [Begin pickling result basis for " ^ punit ^ "...]\n")
-		  (*  val timer = timerStart "Pickler" *)
-		    val os : outstream = pickler Basis.pu B os
-		  (* val _ = timerReport timer *)
-		    val _ = print "\n [Writing basis to file...]\n"
-		    val _ = writeBasis punit os
+	fun 'a doPickleGen (punit:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) =
+	    let open Pickle
+		val os : outstream = empty()
+		val _ = pchat ("\n [Begin pickling " ^ ext ^ "-result for " ^ punit ^ "...]\n")
+		(*  val timer = timerStart "Pickler" *)
+		val os : outstream = pickler pu_obj obj os
+		(* val _ = timerReport timer *)
+	    in
+		  pchat ("\n [Writing " ^ ext ^ "-result to file...]\n")
+		; writePickleStream punit os ext
+	    end
+
+	fun doPickleB punit (B:Basis) : unit = 
+	    doPickleGen punit Basis.pu "eb" B 
+
+	fun doPickleModCode punit (modc: modcode) : unit =
+	    doPickleGen punit ModCode.pu "lnk" modc 
+(*
+	    let open Pickle
+		val os : outstream = empty()
+		val _ = print ("\n [Begin pickling result basis for " ^ punit ^ "...]\n")
+		(*  val timer = timerStart "Pickler" *)
+		val os : outstream = pickler Basis.pu B os
+		(* val _ = timerReport timer *)
+		val _ = print "\n [Writing basis to file...]\n"
+		val _ = writePickleStream punit os "bas"
 (*
 		    val _ = print ("\n [Basis for " ^ punit ^ " after closure...]\n")
                     val _ = pr_st (MO.Basis.layout B)
@@ -623,12 +640,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		    val _ = print "\n [Begin printing...]\n"
                     val _ = pr_st (MO.Basis.layout B')
 *)
-		in ()
-		end
+	    in ()
+	    end
+*)
 
 	fun readFile f : string = 
-	    let val f = "PM/" ^ f ^ ".bas"
-		val is = BinIO.openIn f
+	    let val is = BinIO.openIn f
 	    in let val v = BinIO.inputAll is
 		   val s = Byte.bytesToString v
 	       in BinIO.closeIn is; s
@@ -640,17 +657,37 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	    in let 
 		   val all = TextIO.inputAll is handle _ => ""
 		   val uids = String.tokens Char.isSpace all
-		   val _ = print ("Depencies for " ^ uid ^ ": " ^ all ^ "\n")
+		   val _ = pchat ("Dependencies for " ^ uid ^ ": " ^ all ^ "\n")
 	       in TextIO.closeIn is; uids
 	       end handle _ => (TextIO.closeIn is; nil)
 	    end handle _ => nil
 
+	fun lnkFileFromSmlFile smlfile = "PM/" ^ smlfile ^ ".lnk"
+	fun ebFileFromSmlFile smlfile = "PM/" ^ smlfile ^ ".eb"
+
+	fun readLinkInfo ss =
+	    let fun process (nil,is,modc) = modc
+		  | process (uid::uids,is,modc) =
+		    let val s = readFile (lnkFileFromSmlFile uid)
+			val (modc',is) = Pickle.unpickler ModCode.pu 
+			    (Pickle.fromStringHashCons is s)
+		    in process(uids,is,ModCode.seq(modc,modc'))
+		    end
+	    in case ss of 
+		nil => ModCode.empty
+	      | uid::uids => 
+		    let val s = readFile (lnkFileFromSmlFile uid)
+			val (modc,is) = Pickle.unpickler ModCode.pu (Pickle.fromString s)
+		    in process(uids,is,modc)
+		    end handle _ => die ("readLinkInfo. error \n")
+	    end
+
 	fun doUnpickleBases uid : Basis = 
-	    let val _ = print "\n [Begin unpickling...]\n"
+	    let val _ = pchat "\n [Begin unpickling...]\n"
 	      (* val timer = timerStart "Unpickler" *)
 		fun process (nil,is,B) = B
 		  | process (uid::uids,is,B) =
-		    let val s = readFile uid
+		    let val s = readFile (ebFileFromSmlFile uid)
 			val (B',is) = Pickle.unpickler Basis.pu 
 			    (Pickle.fromStringHashCons is s)
 		    in process(uids,is,Basis.plus(B,B'))
@@ -660,10 +697,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		    case readDependencies uid of 
 			nil => B0
 		      | uid::uids => 
-			    let val s = readFile uid
+			    let val s = readFile (ebFileFromSmlFile uid)
 				val (B,is) = Pickle.unpickler Basis.pu (Pickle.fromString s)
 			    in process(uids,is,Basis.plus(B0,B))
-			    end handle _ => (print ("doUnpickleBases. error \n"); Basis.empty)
+			    end handle _ => die ("doUnpickleBases. error \n")
 	      (* val _ = timerReport timer *)
 (*		    val _ = print "\n [Begin printing...]\n"
                     val _ = pr_st (MO.Basis.layout B)
@@ -856,7 +893,23 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * Build an mlb-project
      * -------------------- *)
 
+    fun recompileUnnecessary smlfile : bool =
+    (* f.sml<f.{lnk,eb} and forall g \in F(f.d) . g.eb < f.eb *)
+	let fun modTime f = OS.FileSys.modTime f
+	    val op < = Time.<=
+	    val lnkFile = lnkFileFromSmlFile smlfile
+	    val ebFile = ebFileFromSmlFile smlfile
+	    val modTimeSmlFile = modTime smlfile
+	    val modTimeEbFile = modTime ebFile
+	in modTimeSmlFile < modTime lnkFile andalso
+	   modTimeSmlFile < modTimeEbFile andalso
+	   List.all (fn smlfile => modTime (ebFileFromSmlFile smlfile) < modTimeEbFile)
+	   (readDependencies smlfile)
+	end handle _ => false
+
     fun build_mlb_one mlbfile smlfile : unit =
+	if recompileUnnecessary smlfile then ()
+	else 
 	let (* load the bases that smlfile depends on *)
 	    val B = doUnpickleBases smlfile
 	    val log_cleanup = log_init smlfile
@@ -916,6 +969,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
 		val B'' = Basis.closure (B_im,B')
 		val _ = doPickleB smlfile B''
+		val _ = doPickleModCode smlfile modc
 
 	      in print_result_report report;
 		log_cleanup()
@@ -927,18 +981,22 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     structure Mlb = MlbProject()
 
+    val mlbchat = chat
+
     fun build_mlb mlbfile = (* May raise PARSE_ELAB_ERROR *)
 	let val _ = maybe_create_pmdir()
-	    val _ = print (" +++ Building mlb-project\n");
-	    val _ = print (" +++ Updating dependencies...\n")
+	    val _ = mlbchat (" +++ Building mlb-project\n");
+	    val _ = mlbchat (" +++ Updating dependencies...\n")
 	    val _ = Mlb.dep mlbfile
-	    val _ = print (" +++ Finding sources...\n")		
+	    val _ = mlbchat (" +++ Finding sources...\n")		
 	    val ss = Mlb.sources mlbfile
 		
-	    val _ = print (" +++ Compiling...\n")		
+	    val _ = mlbchat (" +++ Compiling...\n")		
 	    val _ = app (build_mlb_one mlbfile) ss
 
-	    val _ = print (" +++ Linking... (todo)\n")		
+	    val _ = mlbchat (" +++ Linking...\n")		
+	    val modc = readLinkInfo ss
+	    val _ = ModCode.mk_exe(ModuleEnvironments.mk_absprjid mlbfile, modc, nil, !run_file)
 	in ()
 	end
 
