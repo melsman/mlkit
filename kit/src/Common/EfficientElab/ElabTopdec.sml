@@ -817,6 +817,23 @@ functor ElabTopdec
       : (VarEnv * OG.valdesc) =
 	                                                    (*rule 79*)
       (case valdesc of
+	IG.VALDESC (i, id, ty, valdesc_opt) =>
+	  let
+	    val (tau, out_ty) = ElabDec.elab_ty (C, ty)
+	    val sigma = TypeScheme.from_Type tau
+	    val (VE, out_valdesc_opt) =
+	          elab_X_opt (C, valdesc_opt) elab_valdesc VE.empty
+	    val out_i = if EqSet.member id (VE.dom VE)
+			then repeatedIdsError (i, [ErrorInfo.ID_RID id])
+			else if IG.DecGrammar.is_'true'_'nil'_etc id
+			     then errorConv (i, ErrorInfo.SPECIFYING_TRUE_NIL_ETC [id])
+			     else okConv i
+	  in
+	    (VE.plus (VE.singleton_var (id, sigma), VE),
+	     OG.VALDESC (out_i, id, out_ty, out_valdesc_opt))
+	  end)
+(*KILL 24/06/1997 15:43. tho.:
+      (case valdesc of
 	IG.VALDESC (i, id, ty, None) =>
 	  let
 	    val (tau, out_ty) = ElabDec.elab_ty (C, ty)
@@ -838,6 +855,7 @@ functor ElabTopdec
 	    (VE.plus (VE.singleton_var (id, sigma), VE),
 	     OG.VALDESC (out_i, id, out_ty, Some out_valdesc))
 	  end)
+*)
 
     (*********************************************)
     (* Type Descriptions - Definition v3 page 41 *)
@@ -951,12 +969,10 @@ functor ElabTopdec
 	     val sigma = TypeScheme.from_Type tau
 	     val (constructor_map, out_condesc_opt) =
 	           elab_condesc_opt(C, tau, condesc_opt)
-	     val out_i = if constructor_map.in_dom con constructor_map
-			 then repeatedIdsError (i, [ErrorInfo.CON_RID con]) 
-			 else okConv i
 	   in
 	     (constructor_map.add con sigma constructor_map,
-	      OG.CONDESC (out_i, con, None, out_condesc_opt))
+	      OG.CONDESC (out_i_for_condesc con constructor_map i, con,
+			  None, out_condesc_opt))
 	   end
 
        | IG.CONDESC (i, con, Some ty, condesc_opt) =>
@@ -966,13 +982,20 @@ functor ElabTopdec
 	     val sigma = TypeScheme.from_Type arrow
 	     val (constructor_map, out_condesc_opt) =
 	           elab_condesc_opt (C, tau, condesc_opt)
-	     val out_i = if constructor_map.in_dom con constructor_map
-			 then repeatedIdsError (i, [ErrorInfo.CON_RID con])
-			 else okConv i
 	   in
 	     (constructor_map.add con sigma constructor_map,
-	      OG.CONDESC (out_i, con, Some out_ty, out_condesc_opt))
+	      OG.CONDESC (out_i_for_condesc con constructor_map i, con,
+			  Some out_ty, out_condesc_opt))
 	   end)
+
+    and out_i_for_condesc con constructor_map i = 
+          if constructor_map.in_dom con constructor_map
+	  then repeatedIdsError (i, [ErrorInfo.CON_RID con])
+	  else if IG.DecGrammar.is_'true'_'nil'_etc con
+	       then errorConv (i, ErrorInfo.SPECIFYING_TRUE_NIL_ETC [con])
+	       else if IG.DecGrammar.is_'it' con
+		    then errorConv (i, ErrorInfo.SPECIFYING_IT)
+		    else okConv i
 
     and elab_condesc_opt
       (C : Context, tau : Type, condesc_opt : IG.condesc Option)
@@ -990,15 +1013,12 @@ functor ElabTopdec
 	                                                    (*rule 83*)
        (case exdesc of
 	 IG.EXDESC (i, excon, None, exdesc_opt) =>
-	   let
-	     val (VE, out_exdesc_opt) =
-	           elab_X_opt (C, exdesc_opt) elab_exdesc VE.empty
-	     val out_i = if EqSet.member excon (VE.dom VE)
-			 then repeatedIdsError (i, [ErrorInfo.EXCON_RID excon])
-			 else okConv i
+	   let val (VE, out_exdesc_opt) =
+	             elab_X_opt (C, exdesc_opt) elab_exdesc VE.empty
 	   in
 	     (VE.plus (VE.singleton_excon (excon, Type.Exn), VE),
-	      OG.EXDESC (out_i, excon, None, out_exdesc_opt))
+	      OG.EXDESC (out_i_for_exdesc excon VE i, excon, None,
+			 out_exdesc_opt))
 	   end
 	| IG.EXDESC (i, excon, Some ty, exdesc_opt) =>
 	   let
@@ -1007,15 +1027,22 @@ functor ElabTopdec
 	     val arrow = Type.mk_Arrow (tau, Type.Exn)
 	     val (VE, out_exdesc_opt) =
 	           elab_X_opt (C, exdesc_opt) elab_exdesc VE.empty
-	     val out_i = (case tyvars of [] =>
-			    if EqSet.member excon (VE.dom VE) then
-			      repeatedIdsError (i, [ErrorInfo.EXCON_RID excon])
-			    else okConv i
+	     val out_i = (case tyvars of
+			    [] => out_i_for_exdesc excon VE i
 	                  | _ => errorConv (i, ErrorInfo.EXDESC_SIDECONDITION))
 	   in
 	     (VE.plus (VE.singleton_excon (excon, arrow), VE),
 	      OG.EXDESC (out_i, excon, Some out_ty, out_exdesc_opt))
 	   end)
+
+    and out_i_for_exdesc excon VE i =
+          if EqSet.member excon (VE.dom VE)
+	  then repeatedIdsError (i, [ErrorInfo.EXCON_RID excon])
+	  else if IG.DecGrammar.is_'true'_'nil'_etc excon
+	       then errorConv (i, ErrorInfo.SPECIFYING_TRUE_NIL_ETC [excon])
+	       else if IG.DecGrammar.is_'it' excon
+		    then errorConv (i, ErrorInfo.SPECIFYING_IT)
+		    else okConv i
 
     (***************************************************)
     (* Structure Desctriptions - Definition v3 page 41 *)
