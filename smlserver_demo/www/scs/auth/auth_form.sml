@@ -10,12 +10,12 @@ val msg =
 
 val login_info = Quot.toString
 `Indtast den email du anvender på ITU, eksempelvis <b>login@itu.dk</b> eller <b>dfs@ruc.dk</b>.
-Hvis du har en ITU email (f.eks. <b>tofte@itu.dk</b>), kan du nøjes med at 
-skrive dit login (dvs. <b>tofte</b>)).
+Hvis du har en ITU email (f.eks. <b>foo@itu.dk</b>), kan du nøjes med at 
+skrive dit login (dvs. <b>foo</b>)).
 
 <p>(Eng.: Please write the email that you use at ITU (e.g., <b>login@itu.dk</b> or <b>dfs@ruc.dk</b>)). 
-If you have an ITU email address (e.g. <b>tofte@itu.dk</b>), 
-then you only need to write your login (<b>tofte</b>)</p>`
+If you have an ITU email address (e.g. <b>foo@itu.dk</b>), 
+then you only need to write your login (<b>foo</b>)</p>`
 
 val passwd_info = Quot.toString
 `<b>Indtast dit password til UCS:</b> Er du ny bruger eller har du glemt password 

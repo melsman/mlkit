@@ -73,11 +73,6 @@ begin
     language2 => 'en', text2 => 'Thumbnail (fixed height)');
   vid := scs_enumeration.updateValue(
     enum_id => eid, text_id => tid, value => 'thumb_fixed_height');
-  tid := scs_text.updateText( 
-    language  => 'da', text  => 'Thumbnail (fast bredde)',
-    language2 => 'en', text2 => 'Thumbnail (fixed width)' );
-  vid := scs_enumeration.updateValue(
-    enum_id => eid, text_id => tid, value => 'thumb_fixed_width' );
 end;
 / 
 show errors
@@ -106,6 +101,12 @@ create table scs_portraits (
     constraint scs_portraits_official_p_nn not null
     constraint scs_portraits_official_p_ck
       check (official_p in ('t','f')),
+  last_modified date default sysdate 
+    constraint scs_portraits_official_p not null,
+  modifying_user integer
+    constraint scs_portraits_mod_user_fk 
+      references scs_users(user_id)
+    constraint scs_portraits_mod_user_nn not null,
   constraint scs_portraits_un 
     unique (party_id,portrait_type_vid,official_p)
 );
