@@ -70,14 +70,17 @@ struct
   (* Add Dynamic Flags                                            *)
   (****************************************************************)
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("print_HP-PARISC_program", "print HP-PARISC program", ref false),
+    [("print_HP-PARISC_program_meta", "print HP-PARISC program (with META instructions)", ref false),
+     ("print_HP-PARISC_program", "print HP-PARISC program", ref false),
      ("debug_codeGen","DEBUG CODE_GEN",ref false)]
 
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
-    [("inline_alloc", "Inline alloc", ref true)]
+    [("inline_alloc", "Inline alloc", ref true),
+     ("jump_tables", "Use jump tables", ref true)]
 
   val do_garbage_collection = Flags.lookup_flag_entry "garbage_collection"
   val inline_alloc = Flags.lookup_flag_entry "inline_alloc"
+  val jump_tables = Flags.lookup_flag_entry "jump_tables"
 
   (********************************)
   (* CG on Top Level Declarations *)
@@ -269,8 +272,8 @@ struct
       let
 	val (reg_for_result,C') = resolve_aty_def_kill_gen1(dst_aty,t,size_ff,C)
       in
-	ADDIL{i="L'" ^ pp_lab lab ^ "-$global$",r=dp} ::
-	LDO{d="R'" ^ pp_lab lab ^ "-$global$",b=Gen 1,t=reg_for_result} :: C'
+	ADDIL'{pr_i=fn () => "L'" ^ pp_lab lab ^ "-$global$",r=dp} ::
+	LDO'{pr_d=fn () => "R'" ^ pp_lab lab ^ "-$global$",b=Gen 1,t=reg_for_result} :: C'
       end
 
     (* dst_aty = lab[0] *)
@@ -279,19 +282,19 @@ struct
       let
 	val (reg_for_result,C') = resolve_aty_def_kill_gen1(dst_aty,t,size_ff,C)
       in
-	ADDIL{i="L'" ^ pp_lab lab ^ "-$global$",r=dp} ::
-	LDW{d="R'" ^ pp_lab lab ^ "-$global$",b=Gen 1,t=reg_for_result,s=Space 0} :: C'
+	ADDIL'{pr_i=fn () => "L'" ^ pp_lab lab ^ "-$global$",r=dp} ::
+	LDW'{pr_d=fn () => "R'" ^ pp_lab lab ^ "-$global$",b=Gen 1,t=reg_for_result,s=Space 0} :: C'
       end
 
     (* lab[0] = src_aty *)
     (* Kills Gen 1      *)
     fun store_in_label_kill_gen1(SS.PHREG_ATY src_reg,label,tmp1:reg,size_ff,C) =
-      ADDIL{i="L'" ^ pp_lab label ^ "-$global$",r=dp} ::
-      STW{r=src_reg,d="R'" ^ pp_lab label ^ "-$global$",b=Gen 1,s=Space 0} :: C
+      ADDIL'{pr_i=fn () => "L'" ^ pp_lab label ^ "-$global$",r=dp} ::
+      STW'{r=src_reg,pr_d=fn () => "R'" ^ pp_lab label ^ "-$global$",b=Gen 1,s=Space 0} :: C
       | store_in_label_kill_gen1(src_aty,label,tmp1:reg,size_ff,C) =
       move_aty_into_reg_kill_gen1(src_aty,tmp1,size_ff,
-			ADDIL{i="L'" ^ pp_lab label ^ "-$global$",r=dp} ::
-			STW{r=tmp1,d="R'" ^ pp_lab label ^ "-$global$",s=Space 0,b=Gen 1} :: C)
+			ADDIL'{pr_i=fn () => "L'" ^ pp_lab label ^ "-$global$",r=dp} ::
+			STW'{r=tmp1,pr_d=fn () => "R'" ^ pp_lab label ^ "-$global$",s=Space 0,b=Gen 1} :: C)
 
     (* Generate a string label *)
     fun gen_string_lab str =
@@ -755,7 +758,47 @@ struct
 				   compile_sel,
 				   if_no_match_go_lab,
 				   compile_insts,
-				   label,jmp,C)
+				   label,
+				   jmp,
+				   C)
+
+	fun binary_search(sels,
+			  default,
+			  opr_reg: reg,
+			  compile_insts,
+			  C) =
+	  let
+	    val compile_sel = fn (i,C) => load_immed(IMMED i, mrp, C)                                     (* compile_sel            *)
+	    val if_not_equal_go_lab = fn (lab,C) => META_IF{cond=EQUAL,r1=opr_reg,r2=mrp,target=lab} :: C (* if_not_equal_go_lab    *)
+	  in
+	    if !jump_tables then
+	      JumpTables.binary_search(sels,
+				       default,
+				       comment,
+				       new_label,
+				       compile_sel,
+				       if_not_equal_go_lab,
+				       fn (lab,C) => META_IF{cond=GREATEREQUAL,r1=opr_reg,r2=mrp,target=lab} :: C, (* if_less_than_go_lab    *)
+				       fn (lab,C) => META_IF{cond=LESSEQUAL,r1=opr_reg,r2=mrp,target=lab} :: C,    (* if_greater_than_go_lab *)
+				       compile_insts,
+				       label,
+				       jmp,
+				       fn (sel1,sel2) => Int.abs(sel1-sel2),                                       (* sel_dist               *)
+				       fn (lab,sel,C) => (ADDIL{i="L'" ^ (pp_lab lab) ^ "-(4*" ^ int_to_string sel ^ ")", r=Gen 0} :: (* jump_table_header *)
+							  SH2ADD{cond=NEVER, r1=opr_reg, r2=Gen 1, t=Gen 1} ::
+							  LDW{d="R'" ^ (pp_lab lab) ^ "-(4*" ^ int_to_string sel ^ ")", s=Space 0, b=Gen 1, t=mrp} ::
+							  META_BV{n=false, x=Gen 0, b=mrp} :: C),
+				       fn (lab,C) => DOT_WORD (pp_lab lab) :: C,                                   (* add_label_to_jump_tab  *)
+				       eq_lab,
+				       C)
+	    else
+	      linear_search(sels,
+			    default,
+			    compile_sel,
+			    if_not_equal_go_lab,
+			    compile_insts,
+			    C)
+	  end
       end
 
       fun cmpi(cond,x,y,d,size_ff,C) = 
@@ -1509,20 +1552,18 @@ struct
 	     deallocate_regions_until(restore_exn_ptr(push_return_lab(jmp(COMMENT "END OF RAISE" :: C))))
 	   end
 	   | LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY opr_reg,sels,default)) => 
-		  linear_search(sels,
-				default,
-				fn (i,C) => load_immed(IMMED i,mrp,C),
-				fn (lab,C) => META_IF{cond=EQUAL,r1=opr_reg,r2=mrp,target=lab} :: C,
-				fn (lss,C) => CG_lss (lss,size_ff,size_ccf,C),
-				C)
+	   binary_search(sels,
+			 default,
+			 opr_reg,
+			 fn (lss,C) => CG_lss(lss,size_ff,size_ccf,C), (* compile_insts *)
+			 C)
 	   | LS.SWITCH_I(LS.SWITCH(opr_aty,sels,default)) =>
-		  move_aty_into_reg_kill_gen1(opr_aty,tmp_reg1,size_ff,
-		  linear_search(sels,
-				default,
-				fn (i,C) => load_immed(IMMED i,mrp,C),
-				fn (lab,C) => META_IF{cond=EQUAL,r1=tmp_reg1,r2=mrp,target=lab} :: C,
-				fn (lss,C) => CG_lss (lss,size_ff,size_ccf,C),
-				C))
+	   move_aty_into_reg_kill_gen1(opr_aty,tmp_reg1,size_ff,
+	   binary_search(sels,
+			 default,
+			 tmp_reg1,
+			 fn (lss,C) => CG_lss(lss,size_ff,size_ccf,C), (* compile_insts *)
+			 C))
 	   | LS.SWITCH_S sw => die "SWITCH_S is unfolded in ClosExp"
 	   | LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)) => 
 		  let (* NOTE: selectors in sels are tagged in ClosExp but the operand is tagged here! *)
@@ -1679,10 +1720,21 @@ struct
 	  else
 	    ()
 	val _ = add_static_data (map (fn lab => DOT_IMPORT(DatLab lab, "DATA")) global_region_labs)
-	val hp_parisc_prg = HppaResolveJumps.RJ{top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
+	val hp_parisc_prg_meta = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
+				  init_code = init_hppa_code(),
+				  exit_code = exit_hppa_code(),
+				  static_data = static_data()}
+	val _ = 
+	  if Flags.is_on "print_HP-PARISC_program_meta" then
+	    display("\nReport: AFTER CODE GENERATION(HP-PARISC WITH META INSTRUCTIONS):", HpPaRisc.layout_AsmPrg hp_parisc_prg_meta)
+	  else
+	    ()
+
+	val hp_parisc_prg = HppaResolveJumps.RJ hp_parisc_prg_meta
+(*{top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
 						init_code = init_hppa_code(),
 						exit_code = exit_hppa_code(),
-						static_data = static_data()}
+						static_data = static_data()}29/03/1999, Niels*)
 	val _ = 
 	  if Flags.is_on "print_HP-PARISC_program" then
 	    display("\nReport: AFTER CODE GENERATION(HP-PARISC):", HpPaRisc.layout_AsmPrg hp_parisc_prg)

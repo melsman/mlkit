@@ -82,7 +82,8 @@ functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
     structure CompileBasis = BuildCompile.CompileBasis
     structure CompilerEnv = BuildCompile.CompilerEnv
 
-    structure JumpTables = JumpTables(structure BI = BackendInfo)
+    structure JumpTables = JumpTables(structure BI = BackendInfo
+				      structure Crash = Crash)
 
     structure HppaResolveJumps =
       HppaResolveJumps(structure HpPaRisc = HpPaRisc
