@@ -297,7 +297,9 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | REFprim {instance} => REFprim {instance=on_tau ren instance}
 	   | ASSIGNprim {instance} => ASSIGNprim {instance=on_tau ren instance}
 	   | EQUALprim {instance} => EQUALprim {instance=on_tau ren instance}
+(*KILL 12/11/1997 15:43. tho.:
 	   | NOTEQUALprim {instance} => NOTEQUALprim {instance=on_tau ren instance}
+*)
 	   | CCALLprim (s,{instance}) => CCALLprim (s,{instance=on_tau ren instance})
 	   | RESET_REGIONSprim {instance} => RESET_REGIONSprim {instance=on_tau ren instance}
 	   | FORCE_RESET_REGIONSprim {instance} => FORCE_RESET_REGIONSprim {instance=on_tau ren instance}
@@ -405,7 +407,9 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | REFprim {instance} => REFprim{instance=on_Type S instance}
 	   | ASSIGNprim {instance} => ASSIGNprim{instance=on_Type S instance}
 	   | EQUALprim {instance} => EQUALprim{instance=on_Type S instance}
+(*KILL 12/11/1997 15:44. tho.:
 	   | NOTEQUALprim {instance} => NOTEQUALprim{instance=on_Type S instance}
+*)
 	   | RESET_REGIONSprim {instance} => RESET_REGIONSprim{instance=on_Type S instance}
 	   | FORCE_RESET_REGIONSprim {instance} => FORCE_RESET_REGIONSprim{instance=on_Type S instance}
 	   | _ => prim

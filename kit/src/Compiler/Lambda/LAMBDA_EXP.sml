@@ -59,11 +59,14 @@ signature LAMBDA_EXP =
       | RECORDprim 
       | SELECTprim of int        
       | UB_RECORDprim                                 (* Unboxed record. *)
+(*KILL 12/11/1997 15:24. tho.:
       | NOTprim                                       (* Pervasives, Definition p. 75. *)
+*)
       | NEG_INTprim 
       | NEG_REALprim
       | ABS_INTprim
       | ABS_REALprim
+(*KILL 12/11/1997 15:15. tho.:
       | FLOORprim
       | REALprim
       | SQRTprim
@@ -76,21 +79,28 @@ signature LAMBDA_EXP =
       | CHRprim
       | EXPLODEprim
       | IMPLODEprim
+*)
       | DEREFprim of {instance: 'Type}
       | REFprim of {instance: 'Type}
       | ASSIGNprim of {instance: 'Type}
+(*KILL 12/11/1997 15:16. tho.:
       | DIV_REALprim                
       | DIV_INTprim
       | MODprim
+*)
       | MUL_REALprim
       | MUL_INTprim
       | PLUS_REALprim
       | PLUS_INTprim
       | MINUS_REALprim
       | MINUS_INTprim
+(*KILL 12/11/1997 15:24. tho.:
       | STRING_CONCATprim
+*)
       | EQUALprim of {instance: 'Type}
+(*KILL 12/11/1997 15:24. tho.:
       | NOTEQUALprim of {instance: 'Type}
+*)
       | LESS_REALprim
       | LESS_INTprim
       | GREATER_REALprim
@@ -99,6 +109,7 @@ signature LAMBDA_EXP =
       | LESSEQ_INTprim
       | GREATEREQ_REALprim
       | GREATEREQ_INTprim
+(*KILL 12/11/1997 15:17. tho.:
       | OPEN_INprim                                   (* I/O *)
       | OPEN_OUTprim
       | INPUTprim
@@ -111,6 +122,7 @@ signature LAMBDA_EXP =
       | FLUSH_OUTprim                                 (* NOT Standard ML *)
       | STD_INprim
       | STD_OUTprim
+*)
       | CCALLprim of string * {instance : 'Type}      (* NOT Standard ML *)
       | RESET_REGIONSprim of {instance: 'Type}        (* NOT Standard ML, for programmer-directed, but safe, resetting of
 						       * regions *)
