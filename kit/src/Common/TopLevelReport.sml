@@ -1,20 +1,16 @@
 (* Top-level reporting: ties static and dynamic basis together, generates
    a report of bindings. *)
 
-(*$TopLevelReport:
-	FUNID SIGID STRID IDENT BASIS INFIX_BASIS STATOBJECT
-	ENVIRONMENTS MODULE_STATOBJECT MODULE_ENVIRONMENTS
-	REPORT CRASH TOP_LEVEL_REPORT
- *)
+(*$TopLevelReport: FUNID SIGID STRID IDENT INFIX_BASIS STATOBJECT
+	ENVIRONMENTS MODULE_STATOBJECT MODULE_ENVIRONMENTS REPORT
+	CRASH TOP_LEVEL_REPORT *)
 
 functor TopLevelReport(structure FunId: FUNID
 		       structure SigId: SIGID
 		       structure StrId: STRID
 		       structure Ident: IDENT
-		       structure Basis: BASIS
 
 		       structure InfixBasis: INFIX_BASIS
-			 sharing type Basis.InfixBasis = InfixBasis.Basis
 
 		       structure StatObject: STATOBJECT
 
@@ -32,8 +28,6 @@ functor TopLevelReport(structure FunId: FUNID
 		       structure ModuleEnvironments: MODULE_ENVIRONMENTS
 			 sharing type ModuleEnvironments.sigid = SigId.sigid
 			     and type ModuleEnvironments.funid = FunId.funid
-			     and type ModuleEnvironments.Basis
-				      = Basis.StaticBasis
 			     and type ModuleEnvironments.Sig
 				      = ModuleStatObject.Sig
 			     and type ModuleEnvironments.FunSig
@@ -50,7 +44,8 @@ functor TopLevelReport(structure FunId: FUNID
 		       structure Crash: CRASH
 		      ): TOP_LEVEL_REPORT =
   struct
-    type Basis = Basis.Basis
+    type ElabBasis = ModuleEnvironments.Basis
+    type InfixBasis = InfixBasis.Basis
     type Report = Report.Report
 
     (*import from Environments:*)
@@ -167,7 +162,7 @@ functor TopLevelReport(structure FunId: FUNID
 	// reportVE(render, pathR, VE, bindings)
       end
 
-    fun reportStaticBasis(render, sb: Basis.StaticBasis, bindings: bool)
+    fun reportStaticBasis(render, sb: ElabBasis, bindings: bool)
           : Report =
       let
 	val funenv = B.to_F sb
@@ -181,11 +176,9 @@ functor TopLevelReport(structure FunId: FUNID
 	// reportEnv(render, nil, env, bindings)
       end
 
-    fun report{basis, bindings} =
+    fun report{infB=ib,elabB=sb, bindings} =
       let
-	val ib = Basis.Inf_of_B basis
-	val sb = Basis.Stat_of_B basis
-(*	val db = Basis.Dyn_of_B basis	(* Might be void (ELAB_ONLY) *) *)
+(*	val db =  (* Might be void (ELAB_ONLY) *) *)
 
 	fun render(pathR, id, tyScheme) = ""
 (*	  ValPrint.print(ValPrint.locate(db, rev pathR, id), tyScheme) *)

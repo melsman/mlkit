@@ -8,6 +8,8 @@ signature PAT_BINDINGS =
     type pat
     type (''a, 'b) map
     type CEnv
+    type TyVar and SType
+    type tyvar and LType
 
     datatype BindingTree =
         TUPLEbtree of (lab, TypeInfo * lvar * BindingTree) map
@@ -15,7 +17,7 @@ signature PAT_BINDINGS =
       | EXCONbtree of {info: TypeInfo,child: BindingTree, childLvar: lvar}
       | NILbtree
 
-    val patBindings: (lvar * pat) -> (BindingTree * CEnv)
+    val patBindings: (TyVar list * SType -> tyvar list * LType) -> (lvar * pat) -> (BindingTree * CEnv)
 
     type StringTree
     val layoutPatBindings: BindingTree * CEnv -> StringTree

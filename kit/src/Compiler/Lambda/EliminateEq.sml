@@ -77,7 +77,7 @@ functor EliminateEq (structure Lvars : LVARS
 	    val lvmap' = List.foldL (fn lv => fn acc =>
 				     case LvarMap.lookup lvmap lv
 				       of Some res => LvarMap.add(lv,res,acc)
-					| None => die "restrict.lv not in map") 
+					| None => die ("restrict.lv: " ^ Lvars.pr_lvar lv ^ " not in map"))
 	                 LvarMap.empty lvars
 	in (lvars', (tnmap',tvmap,lvmap'))
 	end

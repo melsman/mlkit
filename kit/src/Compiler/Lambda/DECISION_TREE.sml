@@ -49,10 +49,11 @@ signature DECTREE_DT =
 signature DECISION_TREE =
   sig
     include DECTREE_DT
-    type Decision
+    type Decision and TyVar and tyvar and SType and LType
 
     val decisionTree:
-      {pats: pat list, root: lvar, decisions: Decision list} -> DecisionTree
+      {compileTypeScheme: TyVar list * SType -> tyvar list * LType,
+       pats: pat list, root: lvar, decisions: Decision list} -> DecisionTree
 
     type StringTree
     val layoutDecisionTree: DecisionTree -> StringTree

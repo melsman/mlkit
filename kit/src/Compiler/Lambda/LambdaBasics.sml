@@ -1,9 +1,11 @@
-(*$LambdaBasics: LVARS FINMAP FINMAPEQ LAMBDA_EXP CRASH FLAGS
+(*$LambdaBasics: LVARS TYNAME FINMAP FINMAPEQ LAMBDA_EXP CRASH FLAGS
                  LAMBDA_BASICS *)
 
 functor LambdaBasics (structure Lvars : LVARS 
+		      structure TyName : TYNAME
 		      structure TLE : LAMBDA_EXP
 			sharing type TLE.lvar = Lvars.lvar
+			    and type TLE.TyName = TyName.TyName
 		      structure Crash : CRASH
 		      structure FinMap : FINMAP
 		      structure FinMapEq : FINMAPEQ
@@ -525,6 +527,69 @@ functor LambdaBasics (structure Lvars : LVARS
       val on_Type = on_Type
 
       val on_LambdaExp = on_LambdaExp
+
+      fun eq_Type(tau1, tau2) =
+	case (tau1,tau2)
+	  of (TYVARtype tv1, TYVARtype tv2) => tv1=tv2
+	   | (ARROWtype(taus1,taus1'), ARROWtype(taus2,taus2')) => 
+	    eq_Types(taus1,taus2) andalso eq_Types(taus1',taus2')
+	   | (CONStype(taus1,tn1), CONStype(taus2,tn2)) =>
+	    eq_Types(taus1,taus2) andalso TyName.eq(tn1,tn2)
+	   | (RECORDtype taus1, RECORDtype taus2) => eq_Types(taus1,taus2) 
+           | _ => false
+      and eq_Types([],[]) = true
+	| eq_Types(tau1::taus1,tau2::taus2) = eq_Type(tau1,tau2) andalso eq_Types(taus1,taus2)
+	| eq_Types _ = false
+
+      fun eq_sigma_with_il(([],tau1,[]),([],tau2,[])) = eq_Type(tau1,tau2)
+	| eq_sigma_with_il((tvs1,tau1,il1),(tvs2,tau2,il2)) = 
+	if length tvs1 <> length tvs2 then false
+	else let val tv_taus = map (fn _ => TYVARtype(fresh_tyvar())) tvs1
+	         val S1 = mk_subst "eq_sigma_with_il1" (tvs1,tv_taus)
+		 val S2 = mk_subst "eq_sigma_with_il2" (tvs2,tv_taus)
+		 val tau1' = on_Type S1 tau1
+		 val tau2' = on_Type S2 tau2
+		 val il1' = map (on_Type S1) il1
+		 val il2' = map (on_Type S2) il2
+	     in eq_Type(tau1',tau2') andalso eq_Types(il1',il2')
+	     end
+
+      fun eq_sigma((tvs1,tau1),(tvs2,tau2)) = 
+	eq_sigma_with_il((tvs1,tau1,[]),(tvs2,tau2,[]))
+
+      fun match_sigma((tvs,tau), tau') =
+	let fun add(tv,tau,S) =
+	      case FinMap.lookup S tv
+		of Some tau' => if eq_Type(tau,tau') then S
+				else die "match_sigma.add"
+		 | None => FinMap.add(tv,tau,S)
+ 
+	    fun match_tau(S, tau, tau') =
+	      case (tau, tau')
+		of (TYVARtype tv, _) => add(tv,tau',S)
+		 | (ARROWtype(taus1,taus1'), ARROWtype(taus2,taus2')) => 
+		  let val S' = match_taus(S,taus1,taus2)
+		  in match_taus(S',taus1',taus2')
+		  end
+		 | (RECORDtype taus, RECORDtype taus') => match_taus(S,taus,taus')
+		 | (CONStype(taus,tn), CONStype(taus', tn')) =>
+		  if TyName.eq(tn,tn') then match_taus(S,taus,taus')
+		  else die "match_tau2"
+		 | _ => die "match_tau3"
+
+	    and match_taus(S,[],[]) = S
+	      | match_taus(S,tau::taus,tau'::taus') = 
+	      let val S' = match_tau(S,tau,tau')
+	      in match_taus(S',taus,taus')
+	      end
+	      | match_taus _ = die "match_taus"
+	      
+	    val S = match_tau(FinMap.empty,tau,tau')
+	    val subst = map (fn tv => case FinMap.lookup S tv
+					of Some tau => (tv,tau)
+					 | None => die "match_sigma0") tvs
+	in subst
+	end
 
     end (*local*)
 

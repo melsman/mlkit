@@ -168,11 +168,15 @@ signature BASICS =
           sharing Environments.TyName       = StatObject.TyName
 
     structure AllInfo : ALL_INFO
-      sharing type AllInfo.TypeInfo.lab = Lab.lab
-	  and type AllInfo.TypeInfo.Type = StatObject.Type
+      sharing type AllInfo.TypeInfo.Type = StatObject.Type
 	  and type AllInfo.TypeInfo.TyVar = StatObject.TyVar
 	  and type AllInfo.TypeInfo.TyEnv = Environments.TyEnv
 	  and type AllInfo.TypeInfo.longid = Ident.longid
+	  and type AllInfo.TypeInfo.realisation = StatObject.realisation
+	  and type AllInfo.TypeInfo.Env = Environments.Env
+	  and type AllInfo.TypeInfo.strid = StrId.strid
+	  and type AllInfo.TypeInfo.tycon = TyCon.tycon
+	  and type AllInfo.TypeInfo.id = Ident.id
 	  and type AllInfo.ErrorInfo.Type = StatObject.Type
 	  and type AllInfo.ErrorInfo.TyVar = StatObject.TyVar
 	  and type AllInfo.ErrorInfo.TyName = TyName.TyName
@@ -317,14 +321,11 @@ functor Basics(structure Tools: TOOLS): BASICS =
 	   structure Report = Tools.Report
 	   structure PrettyPrint = Tools.PrettyPrint)
 	structure TypeInfo = TypeInfo
-	  (type lab = Lab.lab
-	   structure Ident = Ident
-	   type Type = StatObject.Type
-	   val layoutType = StatObject.Type.layout
-	   type TyVar = StatObject.TyVar
-	   val layoutTyVar = StatObject.TyVar.layout
-	   type TyEnv = Environments.TyEnv
-	   val layoutTyEnv = Environments.E.layout o Environments.E.from_TE
+	  (structure Ident = Ident
+	   structure StrId = StrId
+	   structure TyCon = TyCon
+	   structure StatObject=StatObject
+	   structure Environments=Environments
 	   structure PP = Tools.PrettyPrint)
 	structure OverloadingInfo = OverloadingInfo
 	  (structure StatObject = StatObject
@@ -437,6 +438,9 @@ signature STATIC_OBJECTS =
     structure Basics : BASICS
 
     structure Environments : ENVIRONMENTS
+      sharing Environments = Basics.Environments
+
+(*
       sharing type Environments.Type         = Basics.StatObject.Type
           and type Environments.TyVar        = Basics.StatObject.TyVar
 	  and type Environments.TypeScheme   = Basics.StatObject.TypeScheme
@@ -454,7 +458,7 @@ signature STATIC_OBJECTS =
 	  and type Environments.TyEnv        = Basics.AllInfo.TypeInfo.TyEnv
 	  and type Environments.strid       = Basics.StrId.strid
 	  sharing Environments.TyName      = Basics.TyName
-
+*)
     structure ModuleStatObject : MODULE_STATOBJECT
       sharing type ModuleStatObject.Env = Environments.Env
 	  and type ModuleStatObject.realisation = Basics.StatObject.realisation
@@ -673,17 +677,17 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING
   end;
 
 
-(*$EXECUTION: ELABORATION COMPILE_BASIS COMPILE FREE_IDS *)
+(*$EXECUTION: ELABORATION COMPILER_ENV COMPILE_BASIS COMPILE FREE_IDS *)
 signature EXECUTION =
   sig
     structure Elaboration: ELABORATION
+    structure CompilerEnv: COMPILER_ENV
     structure CompileBasis: COMPILE_BASIS
     structure FreeIds : FREE_IDS
-      sharing type FreeIds.ids = CompileBasis.ids
-	  and type FreeIds.topdec = Elaboration.ElabTopdec.PostElabTopdec
+      sharing type FreeIds.topdec = Elaboration.ElabTopdec.PostElabTopdec
     structure Compile: COMPILE
       sharing type Compile.CompileBasis = CompileBasis.CompileBasis
-	  and type Compile.topdec = Elaboration.ElabTopdec.PostElabTopdec
+	  and type Compile.CEnv = CompilerEnv.CEnv
   end;
 
 
@@ -702,15 +706,9 @@ functor Execution(structure Elaboration : ELABORATION) : EXECUTION =
        structure PP = Tools.PrettyPrint)
 	 
     structure BuildCompile = BuildCompile
-      (structure Lab = Basics.Lab
-       structure SCon = Basics.SCon
-       structure TyCon = Basics.TyCon
-       structure Ident = Basics.Ident
-       structure TyName = Basics.TyName
-       structure TyVar = Basics.TyVar
+      (structure TyName = Basics.TyName
        structure Name = Basics.Name
        structure FreeIds = FreeIds
-       structure DecGrammar = Elaboration.PostElabDecGrammar
        structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
        structure ElabInfo = AllInfo.ElabInfo
        structure StatObject = Basics.StatObject
@@ -734,8 +732,8 @@ functor Execution(structure Elaboration : ELABORATION) : EXECUTION =
    top-level interface. *)
 
 (*$KitCompiler: Tools Basics TopdecParsing StaticObjects Elaboration
-        Execution Basis ParseElab ErrorTraverse TopLevelReport
-        TestInfo TestEnv Manager MANAGER FLAGS*)
+        Execution ManagerObjects ParseElab ErrorTraverse TopLevelReport
+        TestInfo Manager IntModules MANAGER FLAGS TestEnv*)
 
 functor KitCompiler() : sig include MANAGER 
                             val test : unit -> unit
@@ -758,21 +756,21 @@ functor KitCompiler() : sig include MANAGER
 
     structure Flags = Tools.Flags
 
-    structure Basis =
-	Basis(structure InfixBasis = TopdecParsing.InfixBasis
-	      structure ModuleEnvironments = StaticObjects.ModuleEnvironments
-	      structure TyName = Basics.TyName
-	      structure CompileBasis = Execution.CompileBasis
-	      structure FreeIds = Execution.FreeIds
-	      structure Name = Basics.Name
-	      structure PP = Tools.PrettyPrint
-	      structure Flags = Flags)
-
-    structure Flags = Tools.Flags
-
+    structure ManagerObjects =
+      ManagerObjects(structure ModuleEnvironments = StaticObjects.ModuleEnvironments
+		     structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
+		     structure CompilerEnv = Execution.CompilerEnv
+		     structure CompileBasis = Execution.CompileBasis
+		     structure Compile = Execution.Compile
+		     structure InfixBasis = TopdecParsing.InfixBasis
+		     structure FinMap = Tools.FinMap
+		     structure PP = Tools.PrettyPrint
+		     structure Name = Basics.Name
+		     structure Flags = Flags
+		     structure Crash = Tools.Crash)
+      
     structure ParseElab = ParseElab
-      (structure Basis = Basis
-       structure Parse = TopdecParsing.Parse
+      (structure Parse = TopdecParsing.Parse
        structure ElabTopdec = Elaboration.ElabTopdec
        structure PreElabTopdecGrammar = TopdecParsing.PreElabTopdecGrammar
        structure PostElabTopdecGrammar = Elaboration.PostElabTopdecGrammar
@@ -788,7 +786,6 @@ functor KitCompiler() : sig include MANAGER
 				     structure SigId = Basics.SigId
 				     structure StrId = Basics.StrId
 				     structure Ident = Basics.Ident
-				     structure Basis = Basis
 				     structure InfixBasis = TopdecParsing.InfixBasis
 				     structure StatObject = Basics.StatObject
 				     structure Environments = StaticObjects.Environments
@@ -796,23 +793,34 @@ functor KitCompiler() : sig include MANAGER
 				     structure ModuleEnvironments = StaticObjects.ModuleEnvironments
 				     structure Report = Tools.Report
 				     structure Crash = Tools.Crash)
-		  structure BasicIO = Tools.BasicIO
-		  structure Report = Tools.Report
-		  structure PP = Tools.PrettyPrint
-		  structure Flags = Tools.Flags
-		  structure Crash = Tools.Crash)
+       structure BasicIO = Tools.BasicIO
+       structure Report = Tools.Report
+       structure PP = Tools.PrettyPrint
+       structure Flags = Tools.Flags
+       structure Crash = Tools.Crash)
 
-      structure Manager =
-	Manager(structure Basis = Basis
-		structure Name = Basics.Name
-		structure ParseElab = ParseElab
-		structure Compile = Execution.Compile
-		structure FreeIds = Execution.FreeIds
-		structure Timing = Tools.Timing
-		structure Crash = Tools.Crash
-		structure Report = Tools.Report
-		structure PP = Tools.PrettyPrint
-		structure Flags = Tools.Flags)
+    structure IntModules = 
+      IntModules(structure ManagerObjects = ManagerObjects
+		 structure CompilerEnv = Execution.CompilerEnv
+		 structure ElabInfo = AllInfo.ElabInfo
+		 structure CompileBasis = Execution.CompileBasis
+		 structure Compile = Execution.Compile
+		 structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
+		 structure Crash = Tools.Crash
+		 structure Flags = Tools.Flags)
+
+    structure Manager =
+      Manager(structure ManagerObjects = ManagerObjects
+	      structure Name = Basics.Name
+	      structure ModuleEnvironments = StaticObjects.ModuleEnvironments
+	      structure ParseElab = ParseElab
+	      structure IntModules = IntModules
+	      structure FreeIds = Execution.FreeIds
+	      structure Timing = Tools.Timing
+	      structure Crash = Tools.Crash
+	      structure Report = Tools.Report
+	      structure PP = Tools.PrettyPrint
+	      structure Flags = Tools.Flags)
 
       structure TestEnv = TestEnv(structure TestInfo = TestInfo (structure Flags = Tools.Flags)
 				  structure Flags = Tools.Flags

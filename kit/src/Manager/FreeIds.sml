@@ -1,12 +1,14 @@
 (*$FreeIds : DEC_GRAMMAR TOPDEC_GRAMMAR CRASH PRETTYPRINT
     FREE_IDS ELAB_INFO OrderSet*)
 
-functor FreeIds (
-		structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
-		structure ElabInfo : ELAB_INFO
-		sharing type ElabInfo.ElabInfo = TopdecGrammar.info
-		structure Crash : CRASH
-		structure PP : PRETTYPRINT
+functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
+		 structure ElabInfo : ELAB_INFO
+		   sharing type ElabInfo.ElabInfo = TopdecGrammar.info
+		       and type ElabInfo.TypeInfo.strid = TopdecGrammar.strid
+		       and type ElabInfo.TypeInfo.tycon = TopdecGrammar.tycon
+		       and type ElabInfo.TypeInfo.id = TopdecGrammar.id
+		 structure Crash : CRASH
+		 structure PP : PRETTYPRINT
 		  ) :  FREE_IDS =
   struct
     fun die s = Crash.impossible ("FreeIds."^s)
@@ -46,6 +48,13 @@ functor FreeIds (
 				    end
                                   structure PP = PP)
 
+
+    (* The way this works is by passing sets of those identifiers
+     * being declared downwards in the syntax tree, and before an
+     * identifier is added to a bucket it is checked if it is in a
+     * `declared set'. -- Martin *)
+
+
     type ids = {vids: IdSet.Set,
 		tycons: TyConSet.Set,
 		strids: StrIdSet.Set,
@@ -69,7 +78,6 @@ functor FreeIds (
     val strids_of_ids:   ids -> strid list  = StrIdSet.list o #strids
     val funids_of_ids:   ids -> funid list  = FunIdSet.list o #funids
     val sigids_of_ids:   ids -> sigid list  = SigIdSet.list o #sigids
-
 
     (* -------------------------------------
      * Sets of ids
@@ -174,17 +182,31 @@ functor FreeIds (
        | TYPEdec(_,typbind) => free_typbind I typbind
        | DATATYPEdec(_,datbind) => free_datbind I datbind
        | DATATYPE_REPLICATIONdec(_,tycon,longtycon) => (use_longtycon(I,longtycon); add_tycon(tycon,empty_ids))
-       | ABSTYPEdec(_,datbind,dec) => let val I1 = free_datbind I datbind
-					  val I2 = free_dec (I ++ I1) dec
-				      in I1 ++ I2
-				      end
+       | ABSTYPEdec(_,datbind,dec) => 
+         let fun Abs ({tycons,...}:ids) =
+	        {tycons=tycons, vids=IdSet.empty, strids=StrIdSet.empty,
+		 funids=FunIdSet.empty, sigids=SigIdSet.empty}
+	     val I1 = free_datbind I datbind
+	     val I2 = free_dec (I ++ I1) dec
+	 in Abs(I1) ++ I2                          (* Only tycons of I1 survives. -- Martin *)
+	 end
        | EXCEPTIONdec(_,exbind) => free_exbind I exbind
        | LOCALdec(_,dec1,dec2) => let val I1 = free_dec I dec1
 				  in free_dec (I ++ I1) dec2
 				  end
-       | OPENdec(_,longstrids_with_info) => die "free.OPENdec - not implemented"
-(*	  (List.apply (fn WITH_INFO(_,longstrid) => use_longstrid(I,longstrid)) 
-	   longstrids_with_info; empty_ids(*MEMO*)) *)
+       | OPENdec(info,longstrids_with_info) =>
+	  let fun use_longstrids_with_info(I,longstrids_with_info) =
+	         List.apply (fn WITH_INFO(_,longstrid) => use_longstrid(I,longstrid)) 
+		 longstrids_with_info
+	      val (strids, tycons, ids) = case ElabInfo.to_TypeInfo info
+					    of Some (ElabInfo.TypeInfo.OPEN_INFO decls) => decls
+					     | _ => die "OPENdec - no decl. info"
+	      val decl_strids = List.foldL (fn strid => fn ids => add_strid(strid,ids))
+	      val decl_tycons = List.foldL (fn tycon => fn ids => add_tycon(tycon,ids))
+	      val decl_ids = List.foldL (fn id => fn ids => add_vid(id,ids))
+	  in use_longstrids_with_info(I,longstrids_with_info);
+	     decl_strids (decl_tycons (decl_ids empty_ids ids) tycons) strids
+	  end
        | SEQdec(_,dec1,dec2) =>  let val I1 = free_dec I dec1
 				     val I2 = free_dec (I ++ I1) dec2
 				 in I1 ++ I2
@@ -409,16 +431,20 @@ functor FreeIds (
 
 
     (*
-     * MAIN FUNCTION
+     * MAIN FUNCTIONS
      *)
 
-    fun free_ids (topdec:topdec) : ids =
+    fun free_ids_any (free_any:ids->'a->'b) (any:'a) : ids =
       let val _ = free := empty_ids
-	  val _ = free_topdec empty_ids topdec
+	  val _ = free_any empty_ids any
 	  val free_ids = !free
 	  val _ = free := empty_ids
       in free_ids
       end
+
+    val free_ids = free_ids_any free_topdec
+    val free_ids_dec = free_ids_any free_dec
+    val free_ids_strexp = free_ids_any free_strexp
 
 
     (* 

@@ -4,11 +4,13 @@
 (*$TYPE_INFO*)
 signature TYPE_INFO =
   sig
-    type lab
     type longid
     type Type
     type TyVar
     type TyEnv
+    type Env
+    type realisation
+    type strid and tycon and id
 
     (*
      * Note that we record tyvars and types (and not typeschemes as 
@@ -76,6 +78,15 @@ signature TYPE_INFO =
 	                (* Attached to PLAINvalbind 
 			   for 'pat = exp' this is the type of the exp, and 
 			   a list of bound type variables. *)
+      | OPEN_INFO of strid list * tycon list * id list
+	                (* Attached to OPENdec; the lists contains those
+			 * identifiers being declared by the dec. *)
+      | FUNCTOR_APP_INFO of realisation
+                        (* Attached to functor applications *)
+      | TRANS_CONSTRAINT_INFO of Env
+	                (* Attached to transparent signature constraints *)
+
+    val on_TypeInfo : realisation * TypeInfo -> TypeInfo
 
     type StringTree
     val layout : TypeInfo -> StringTree

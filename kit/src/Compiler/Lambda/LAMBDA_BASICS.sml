@@ -28,4 +28,11 @@ signature LAMBDA_BASICS =
     val on_Type : subst -> Type -> Type
     val on_LambdaExp : subst -> LambdaExp -> LambdaExp
 
+    val eq_Type : Type * Type -> bool
+    val eq_sigma : (tyvar list * Type) * (tyvar list * Type) -> bool
+    val eq_sigma_with_il : (tyvar list * Type * Type list) * 
+                           (tyvar list * Type * Type list) -> bool    (* see COMPILER_ENV*)
+
+    val match_sigma : (tyvar list * Type) * Type -> subst
+
   end

@@ -113,7 +113,10 @@ functor MatchCompiler(structure SCon: SCON
     type longid = Ident.longid
     type (''a, 'b) map = (''a, 'b) FinMap.map
     type RuleNum = int
-
+    type SType = ElabInfo.TypeInfo.Type
+    type TyVar = ElabInfo.TypeInfo.TyVar
+    type LType = CompilerEnv.Type
+    type tyvar = CompilerEnv.tyvar
     val pr = Report.print o PrettyPrint.reportStringTree
 
     infix //
@@ -173,8 +176,8 @@ functor MatchCompiler(structure SCon: SCON
       end
               
 
-    fun matchCompiler(_, nil, _) = Crash.impossible "matchCompiler(nil)"
-      | matchCompiler(root: lvar, pats: pat list,
+    fun matchCompiler compileTypeScheme (_, nil, _) = Crash.impossible "matchCompiler(nil)"
+      | matchCompiler compileTypeScheme (root: lvar, pats: pat list,
                       flags: {warnInexhaustive: bool, warnNoBindings: bool}
                      ): DecisionTree =
           let
@@ -198,7 +201,7 @@ functor MatchCompiler(structure SCon: SCON
 
             val decTree =
               DecisionTree.decisionTree
-                {pats=pats, root=root, decisions=decisions}
+                {compileTypeScheme=compileTypeScheme,pats=pats, root=root, decisions=decisions}
             
             val _ =
               if !Flags.DEBUG_MATCHCOMPILER then

@@ -19,8 +19,6 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (* Global values in this module which should NOT change from version to version. *)
     (*********************************************************************************)
 
-    val c_compiler = Flags.lookup_string_entry "c_compiler"                               (* Should _not_ be changed. *)
-    val c_libs = Flags.lookup_string_entry "c_libs"                                       (* Should _not_ be changed. *)
     val test_env_directory = Flags.lookup_string_entry "test_env_directory"               (* Should _not_ be changed. *)
     val kit_source_directory = Flags.lookup_string_entry "kit_source_directory"           (* Should _not_ be changed. *)
     val kit_version = Flags.lookup_string_entry "kit_version"                             (* Should _not_ be changed. *)
@@ -30,9 +28,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
     fun kit_script_directory () = !test_env_directory ^ "KitScripts/"                     (* Should _not_ be changed. *)
     fun new_version_dir () = !test_env_directory ^ !kit_version ^ "/"                     (* Should _not_ be changed. *)
     val target_directory = new_version_dir                                                (* Should _not_ be changed. *)
-    val target_filename = "codefile"                                                      (* Should _not_ be changed. *)
     val kit_architecture = Flags.lookup_string_entry "kit_architecture"                   (* Should _not_ be changed. *)
-    val vcg_filename = "codefile"                                                         (* Should _not_ be changed. *)
 
     fun test_report_filename () = new_version_dir () ^ "test_report" ^ !kit_version       (* Should _not_ be changed. *)
     fun test_report_dvi () = new_version_dir () ^ "test_report" ^ !kit_version ^ ".dvi"   (* Should _not_ be changed. *)
@@ -705,14 +701,6 @@ functor TestEnv(structure TestInfo: TEST_INFO
     fun reset() = (Manager.reset();
 		   Basics.Ident.reset())
 
-    (* Function to compile ML source programs in the ML Kit. *)
-    fun evalFiles(sourcename: string, logname:string,
-		  targetname: string, linkname: string,
-		  vcgname: string) =
-	  Manager.compile {sourcename=sourcename,targetname=targetname,
-                           linkname=linkname,logname = logname,
-			   vcgname=vcgname} 
-
     (* This function compiles a project and leaves a file "run" in the target directory. *)
     (* This file can then be executed.                                                   *)
     fun evalProjects project_name =
@@ -760,7 +748,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (* Functions used by the ACCEPTANCE test.           *)
     (****************************************************)
     local
-      fun add_acceptance_strategy_test_report (ACCEPTANCE_STRATEGY {kit_script, runtime_system, strategy_name, comment, exec_opt, old_dir}) =
+      fun add_acceptance_strategy_test_report (ACCEPTANCE_STRATEGY {kit_script, runtime_system, strategy_name, 
+								    comment, exec_opt, old_dir}) =
 	add_lines_test_report
           ["\\subsection{" ^ strategy_name ^ "}",
 	   "The strategy is defined by: ",
@@ -775,11 +764,13 @@ functor TestEnv(structure TestInfo: TEST_INFO
 				  | Some v => (*(shorten_string v 50)*) v) ^ "\\\\",
 	   "\\end{tabular}",
 	   "\\end{quote}"]
-	| add_acceptance_strategy_test_report _ = raise Crash_test "Function add_acceptance_strategy_test_report called with wrong strategy."
+	| add_acceptance_strategy_test_report _ =
+	  raise Crash_test "Function add_acceptance_strategy_test_report called with wrong strategy."
 
       fun new_acceptance_dir () = new_version_dir () ^ "Acceptance/"
 
-      fun acceptance_test_strategy (strategy as (ACCEPTANCE_STRATEGY {kit_script, runtime_system, strategy_name, old_dir, exec_opt, ...})) =
+      fun acceptance_test_strategy (strategy as (ACCEPTANCE_STRATEGY {kit_script, runtime_system, strategy_name, 
+								      old_dir, exec_opt, ...})) =
 	(let
 	   val old_version_dir = case old_dir of
 	     None   => ""
@@ -797,26 +788,20 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	   fun acceptance_test_file (filename,input_to_file) =
 	     let
 	       val _ = reset()
+	       val _ = Flags.log_directory    := new_compile_strategy_dir
 	       val input_filename = source_directory () ^ filename ^ ".sml"
-	       val log_filename = new_compile_strategy_dir ^ filename ^ ".log" (*source_directory () ^ filename ^ ".log", changed 09/09/1996, Niels*)
 	       val _ = ok_log_report ("Compiling ML source file: " ^ new_line ^ (shorten_filename input_filename) ^ ".")
-	       val code_file = target_filename^"1"^(!Flags.target_file_extension)
-	       val link_file = (!Flags.link_filename)^(!Flags.target_file_extension)
-	       val vcg_file = vcg_filename^"1.vcg"
-	       val _ = (evalFiles(input_filename,log_filename,code_file,link_file,vcg_file)) handle X => 
-		         (output(std_out, "something happened.");raise Crash_test "Error: Compile Error")		     
+	       val _ = Manager.comp filename
+		       handle X => (output(std_out, "something happened.");raise Crash_test "Error: Compile Error")
+	       val _ = ok_log_report ("Compiled " ^ filename ^ new_line)
 
-	       val out_file =  "a.out"
-	       val shell_command = (!c_compiler ^ " -o " ^ out_file ^ " " ^ code_file ^ " " ^ link_file ^ " " ^ runtime_system () ^ " " ^ !c_libs)
-	       val shell_command_log = (!c_compiler ^ " -o " ^ out_file ^ " " ^ code_file ^ " " ^ link_file ^ " " ^ shorten_string (runtime_system ()) 15 ^ " " ^ !c_libs)
-	       val _ = ok_log_report ("Compiling and linking with runtime system: " ^ new_line ^ shell_command_log ^ ".")
-	       val _ = execute_shell_command shell_command (* If error it will raise Crash_test. *)
-		
+	       val exe_file = filename ^ ".exe"		
 	       val new_out_datafile = new_compile_strategy_dir ^ filename ^ ".out"
-	       val shell_command = ("a.out " ^ exec_opt ^ 
+	       val shell_command = (exe_file ^ " " ^ exec_opt ^ 
 				    (gen_input_str input_to_file) ^
 				    " > " ^ new_out_datafile)
-	       val _ = ok_log_report ("Executing target program: " ^ new_line ^ "a.out " ^ exec_opt ^ " > " ^ (shorten_filename new_out_datafile) ^ ".")
+	       val _ = ok_log_report ("Executing target program: " ^ new_line ^ exe_file ^ " " ^ exec_opt ^ " > " ^
+				      (shorten_filename new_out_datafile) ^ ".")
 	       val _ = execute_shell_command shell_command (* If error it will raise Crash_test. *)
 		
 	       val old_out_datafile = old_version_dir ^ filename ^ ".out"
@@ -828,11 +813,13 @@ functor TestEnv(structure TestInfo: TEST_INFO
 		     case diff new_out_datafile old_out_datafile of
 		       ERROR s => insert_row acceptance_table_files [table_entry_name, s]
 		     | MATCH   => insert_row acceptance_table_files [table_entry_name, "Match ok."]
-		     | DIFF n  => insert_row acceptance_table_files [table_entry_name, "Match error on line " ^ (Int.string n) ^ "."]
+		     | DIFF n  => insert_row acceptance_table_files [table_entry_name, "Match error on line " ^ 
+								     (Int.string n) ^ "."]
 	     in
 	       ()
 	     end
-	   handle Crash_test s => (error_log_report ("Error in acceptance_test_file: " ^ new_line ^ s ^ new_line ^ "Continue with next file.");
+	   handle Crash_test s => (error_log_report ("Error in acceptance_test_file: " ^ new_line ^ s ^ new_line ^
+						     "Continue with next file.");
 				   insert_row acceptance_table_files [filename, s ^ " Filename: " ^ filename])
 
 	   fun acceptance_test_project (project_name,input_to_project) =
@@ -862,11 +849,13 @@ functor TestEnv(structure TestInfo: TEST_INFO
 		     case diff new_out_datafile old_out_datafile of
 		       ERROR s => insert_row acceptance_table_projects [table_entry_name, s]
 		     | MATCH   => insert_row acceptance_table_projects [table_entry_name, "Match ok."]
-		     | DIFF n  => insert_row acceptance_table_projects [table_entry_name, "Match error on line " ^ (Int.string n) ^ "."]
+		     | DIFF n  => insert_row acceptance_table_projects [table_entry_name, "Match error on line " ^ 
+									(Int.string n) ^ "."]
 	     in
 	       ()
 	     end
-	   handle Crash_test s => (error_log_report ("Error in acceptance_test_project: " ^ new_line ^ s ^ new_line ^ "Continue with next file.");
+	   handle Crash_test s => (error_log_report ("Error in acceptance_test_project: " ^ new_line ^ s ^
+						     new_line ^ "Continue with next file.");
 				   insert_row acceptance_table_projects [project_name, s ^ " Projectname: " ^ project_name])
 
 
@@ -892,8 +881,10 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	 in
 	   ()
 	 end
-       handle Crash_test s => (add_error_test_report "Error in acceptance_test_strategy: " (s ^ ": Continue with next strategy.");
-			       error_log_report ("Error in acceptance_test_strategy: " ^ new_line ^ s ^ new_line ^ "Continue with next strategy.")))
+       handle Crash_test s => (add_error_test_report "Error in acceptance_test_strategy: " 
+			                             (s ^ ": Continue with next strategy.");
+			       error_log_report ("Error in acceptance_test_strategy: " ^ new_line ^ s ^ 
+						 new_line ^ "Continue with next strategy.")))
 	| acceptance_test_strategy _ = raise Crash_test "Function acceptance_test_strategy called with wrong strategy."
     in
       (* This function performs the acceptance test. *)
@@ -903,7 +894,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	        ["\\newpage",
 		 "\\section{Acceptance Test}",
 		 "This section contains the result of the acceptance test. Any error will be reported in the",
-		 "rightmost column of the test tables. The following sections contains the result of each strategy applied to the acceptance test."]
+		 "rightmost column of the test tables. The following sections contains the result of",
+		 "each strategy applied to the acceptance test."]
 
 	  val _ = ok_log_report (new_line ^ "*************Now starting ACCEPTANCE test.***************")
 	    
@@ -920,7 +912,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (* Functions used by the PERFORMANCE test.   *)
     (*********************************************)
     local
-      fun add_performance_strategy_test_report (PERFORMANCE_STRATEGY {kit_script, runtime_system, strategy_name, show_compiler_timings, comment}) =
+      fun add_performance_strategy_test_report (PERFORMANCE_STRATEGY {kit_script, runtime_system, strategy_name,
+								      show_compiler_timings, comment}) =
 	add_lines_test_report
           ["\\subsection{" ^ strategy_name ^ "}",
 	   "The strategy is defined by: ",
@@ -932,11 +925,13 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	   "Comment: & \\parbox{12cm}{" ^ comment ^ "}\\\\",
 	   "\\end{tabular}",
 	   "\\end{quote}"]
-	| add_performance_strategy_test_report _ = raise Crash_test "Function add_performance_strategy_test_report called with wrong strategy."
+	| add_performance_strategy_test_report _ = 
+	  raise Crash_test "Function add_performance_strategy_test_report called with wrong strategy."
 
       fun new_target_program_dir () = new_version_dir () ^ "PerformanceTest/"
 
-      fun performance_test_strategy (strategy as (PERFORMANCE_STRATEGY {kit_script, runtime_system, strategy_name, show_compiler_timings, ...})) =
+      fun performance_test_strategy (strategy as (PERFORMANCE_STRATEGY {kit_script, runtime_system, strategy_name,
+									show_compiler_timings, ...})) =
 	(let
 	   val performance_table_files = mk_table 8 [(["Source"],LEFT), 
 						     (["Size", "of", "exec."],RIGHT),
@@ -969,46 +964,43 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	     let
 	       val _ = reset()
 	       val input_filename = source_directory () ^ filename ^ ".sml"
-	       val log_filename = new_compile_strategy_dir ^ filename ^ ".log" (*source_directory () ^ filename ^ ".log"16/09/1996, Niels*)
+	       val log_filename = new_compile_strategy_dir ^ filename ^ ".log" 
+	                     (*source_directory () ^ filename ^ ".log"16/09/1996, Niels*)
 	       val _ = ok_log_report ("Compiling ML source file: " ^ new_line ^ (shorten_filename input_filename) ^ ".")
 
-	       val code_file =  target_filename^"1"^(!Flags.target_file_extension)
-	       val link_file =  (!Flags.link_filename)^(!Flags.target_file_extension)
-	       val vcg_file = vcg_filename^"1.vcg"
-	       val _ = (evalFiles(input_filename,log_filename,code_file,link_file,vcg_file);
-			timings := (!timings) @ (Timing.get_timings())) (* We only get timings, if the compilation has completed. *)
+	       val _ = (Manager.comp filename;
+			timings := (!timings) @ (Timing.get_timings())) 
+		                  (* We only get timings, if the compilation has completed. *)
                        handle Io msg => (raise Crash_test("Error: Compile Error:" ^ msg))
                        | X => 
 		         (raise Crash_test "Error: Compile Error")
 		     
-	       val out_file =  "a.out"
-	       val shell_command = (!c_compiler ^ " -o " ^ out_file ^ " " ^ code_file ^ " " ^ link_file ^ " " ^ runtime_system () ^ " " ^ !c_libs)
-	       val shell_command_log = (!c_compiler ^ " -o " ^ out_file ^ " " ^ code_file ^ " " ^ link_file ^ " " ^ shorten_string (runtime_system ()) 15 ^ " " ^ !c_libs)
-	       val _ = ok_log_report ("Compiling and linking with runtime system: " ^ new_line ^ shell_command_log ^ ".")
-	       val _ = execute_shell_command shell_command (* If error it will raise Crash_test. *)
-		
+	       val _ = ok_log_report ("Compiled " ^ filename ^ new_line)
+	       val exe_file = filename ^ ".exe"		
 	       val new_out_datafile = new_compile_strategy_dir ^ filename ^ ".out"
 	       val (max_mem_size: string, max_res_size: string,
 		    real : string, user : string, sys  : string) =
 		 let
-		   val res = memtime ("a.out " ^ (gen_input_str_memtime input_to_file)) new_out_datafile
+		   val res = memtime (exe_file ^ " " ^ (gen_input_str_memtime input_to_file)) new_out_datafile
 		 in
 		   (#max_mem_size res, #max_res_size res, 
 		    #real res, #user res, #sys res)
 		 end
 
-	       val size_of_exec = (Int.string ((size_of_file out_file) div 1024)) ^ "K"
+	       val size_of_exec = (Int.string ((size_of_file exe_file) div 1024)) ^ "K"
 		 
-	       val size_of_stripped_exec = (execute_shell_command ("strip " ^ out_file);
-					    (Int.string ((size_of_file out_file) div 1024)) ^ "K")
+	       val size_of_stripped_exec = (execute_shell_command ("strip " ^ exe_file);
+					    (Int.string ((size_of_file exe_file) div 1024)) ^ "K")
 
-	       val _ = insert_row performance_table_files [filename, size_of_exec, size_of_stripped_exec, max_mem_size, max_res_size, real, user, sys]
-
+	       val _ = insert_row performance_table_files [filename, size_of_exec, size_of_stripped_exec, 
+							   max_mem_size, max_res_size, real, user, sys]
 	     in
 	       ()
 	     end
-	   handle Crash_test s => (error_log_report ("Error in performance_test_file: " ^ s ^ new_line ^ "Continue with next file.");
-				   insert_row performance_table_files [filename, "Error", "Error", "Error", "Error", "Error", "Error", "Error"])
+	   handle Crash_test s => (error_log_report ("Error in performance_test_file: " ^ s ^ new_line ^ 
+						     "Continue with next file.");
+				   insert_row performance_table_files [filename, "Error", "Error", 
+								       "Error", "Error", "Error", "Error", "Error"])
 
 	   fun performance_test_project (project_name,input_to_project) =
 	     let
@@ -1026,20 +1018,20 @@ functor TestEnv(structure TestInfo: TEST_INFO
 		 end
 	       handle X => (output(std_out, "something happened.");raise Crash_test "Error: Compile Error")
 		
-	       val out_file =  "a.out"
-	       val _ = mv_file "run" out_file
+	       val exe_file =  "run"
+(*	       val _ = mv_file "run" out_file *)
 	       val new_out_datafile = new_compile_strategy_dir ^ project_name ^ ".out"
 	       val (max_mem_size: string, max_res_size: string,
 		    real : string, user : string, sys  : string) =
 		 let
-		   val res = memtime (out_file ^ (gen_input_str_memtime input_to_project)) new_out_datafile
+		   val res = memtime (exe_file ^ (gen_input_str_memtime input_to_project)) new_out_datafile
 		 in
 		   (#max_mem_size res, #max_res_size res, 
 		    #real res, #user res, #sys res)
 		 end
-	       val size_of_exec = (Int.string ((size_of_file out_file) div 1024)) ^ "K"
-	       val size_of_stripped_exec = (execute_shell_command ("strip " ^ out_file);
-					    (Int.string ((size_of_file out_file) div 1024)) ^ "K")
+	       val size_of_exec = (Int.string ((size_of_file exe_file) div 1024)) ^ "K"
+	       val size_of_stripped_exec = (execute_shell_command ("strip " ^ exe_file);
+					    (Int.string ((size_of_file exe_file) div 1024)) ^ "K")
 	       val _ = insert_row performance_table_projects [project_name, size_of_exec, size_of_stripped_exec, max_mem_size, max_res_size, real, user, sys]
 	     in
 	       ()
@@ -1150,7 +1142,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (* Top level functions controlling the test. *)
     (*********************************************)
     local      
-      (* This function check that the test directory exists, 
+      (* This function checks that the test directory exists, 
          and a sub directory for this test can be created.   *)
 
       fun dir_test () =
@@ -1206,7 +1198,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	      ()
 	in
 	  let
-	    (* Record state before we changes any flags. *)
+	    (* Record state before we change any flags. *)
 	    val state = Flags.get_state()
 
 	    val _ = dir_test ()

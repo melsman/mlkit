@@ -50,12 +50,14 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                   sharing type ElabInfo.ErrorInfo.lab   = OG.lab
                   sharing type ElabInfo.ErrorInfo.longtycon = OG.longtycon
                   sharing type ElabInfo.OverloadingInfo.Type = StatObject.Type
-                  sharing type ElabInfo.TypeInfo.lab     = IG.lab
                   sharing type ElabInfo.TypeInfo.Type    = StatObject.Type
                   sharing type ElabInfo.TypeInfo.TyEnv  = Environments.TyEnv
                   sharing type ElabInfo.TypeInfo.TyVar   = StatObject.TyVar
 		  sharing type ElabInfo.TypeInfo.longid = IG.longid 
-
+		  sharing type ElabInfo.TypeInfo.realisation = StatObject.realisation
+		      and type ElabInfo.TypeInfo.strid = Environments.strid
+		      and type ElabInfo.TypeInfo.tycon = Environments.tycon
+		      and type ElabInfo.TypeInfo.id = Environments.id
                 structure FinMap : FINMAP
 
                 structure Report: REPORT
@@ -234,31 +236,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
       fun addTypeInfo_DATBIND (ElabInfo, TE : TyEnv) =
 	    ElabInfo.plus_TypeInfo ElabInfo (DATBIND_INFO {TE=TE})
-
-(*old (martin)
-      fun addTypeInfo_DATBIND(datbind: OG.datbind,TE : TyEnv) =
-        (* insert type names for the type constructors in the datatype binding info
-         * --- cannot be done locally (in elab_datbind) since the type names
-         * are changed when maximising equality for DATATYPEdec and ABSTYPE_dec !!
-         * The type name are also changed by the ABS function !!
-         * That is, allways be careful with adding type info to datatype bindings
-         * and sub-phrases of datatype bindings.
-         *)
-        let
-          fun do_datbind (OG.DATBIND(i,tyvars,tycon,conbind,datbind_opt)) =
-            let 
-	      fun noSome_here opt = noSome opt "addTypeInfo_DATBIND"
-              val tyname = (noSome_here o TypeFcn.to_TyName
-			    o TyStr.to_theta o noSome_here o TE.lookup TE) tycon
-(*            val _ = pr("do_datbind: t = ",StatObject.layoutTyName t) *)
-            in
-              OG.DATBIND (ElabInfo.plus_TypeInfo i (DATBIND_INFO{TyName=t}),
-			  tyvars, tycon, conbind, map_opt do_datbind datbind_opt)
-            end
-        in
-          do_datbind datbind
-        end
-old*)
 
       fun addTypeInfo_PLAINvalbind (ElabInfo, tau) =
             ElabInfo.plus_TypeInfo ElabInfo
@@ -560,49 +537,15 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
     (*
      * phi_on_dec phi dec :
      *   applies the type realisation to the recorded type information in the 
-     * dec (used in connection with abstype declarations). Note that the 
-     * phi is _not_ applied to type names recorded in DATBIND_INFO
+     * dec (used in connection with abstype declarations).
      *)
 
     fun phi_on_dec phi (dec: OG.dec) =
-      let
-        val phi_on_TyName = Realisation.on_TyName phi
-        val phi_on_Type   = Realisation.on_Type phi
-	val phi_on_TE     = (* Environments.tyrea_on_TE *) fn TE => TE
-        open TypeInfo
-        fun phi_on_TypeInfo ti =
-          case ti of
-            LAB_INFO {index, tyvars, Type} =>
-              LAB_INFO {index=index,tyvars=tyvars,Type=phi_on_Type Type}
-          | RECORD_ATPAT_INFO{Type} =>
-              RECORD_ATPAT_INFO{Type=phi_on_Type Type}
-          | VAR_INFO {instances} =>
-              VAR_INFO {instances = map phi_on_Type instances}
-          | VAR_PAT_INFO {tyvars,Type} =>
-              VAR_PAT_INFO{tyvars=tyvars,Type=phi_on_Type Type}
-          | CON_INFO {numCons, index, instances, tyvars, Type,longid} =>
-              CON_INFO {numCons=numCons,index=index,
-                        instances=map phi_on_Type instances,
-                        tyvars=tyvars,Type=phi_on_Type Type,
-                        longid=longid}
-          | EXCON_INFO {Type,longid} =>
-              EXCON_INFO {Type=phi_on_Type Type,
-                          longid=longid}
-	  | EXBIND_INFO {TypeOpt} => 
-	      EXBIND_INFO {TypeOpt = map_opt phi_on_Type TypeOpt}
-	  | DATBIND_INFO {TE} =>
-	      DATBIND_INFO {TE=phi_on_TE TE}
-
-          | EXP_INFO {Type } =>
-              EXP_INFO{Type=phi_on_Type Type}
-          | MATCH_INFO {Type} =>
-              MATCH_INFO{Type=phi_on_Type Type}
-          | PLAINvalbind_INFO {tyvars, escaping, Type} =>
-              PLAINvalbind_INFO {tyvars=tyvars, escaping = escaping,Type=phi_on_Type Type}
-        fun phi_on_Info i =
-              (case ElabInfo.to_TypeInfo i of
-		 None => i
-	       | Some ti => ElabInfo.plus_TypeInfo i (phi_on_TypeInfo ti))
+      let fun phi_on_TypeInfo ti = TypeInfo.on_TypeInfo(phi,ti)
+          fun phi_on_Info i =
+	    (case ElabInfo.to_TypeInfo i of
+	       None => i
+	     | Some ti => ElabInfo.plus_TypeInfo i (phi_on_TypeInfo ti))
       in
         OG.map_dec_info phi_on_Info dec
       end
@@ -1070,8 +1013,13 @@ old*)
                     | nil => (E.empty, nil)
 
                val (E', list') = process(E.empty, list)
+	       val i' = ElabInfo.plus_TypeInfo (okConv i) 
+		 (TypeInfo.OPEN_INFO
+		  let val (SE,TE,VE) = E.un E'
+		  in (EqSet.list (SE.dom SE), EqSet.list (TE.dom TE), EqSet.list (VE.dom VE))
+		  end)
              in
-               (Substitution.Id, E', OG.OPENdec(okConv i, list'))
+               (Substitution.Id, E', OG.OPENdec(i', list'))
              end
 
          | IG.INFIXdec(i, prec, ids) =>    (* infix -- no rule in Definition *)
@@ -2211,6 +2159,11 @@ let
       | S on_TypeInfo (PLAINvalbind_INFO {tyvars,escaping,Type}) =
 	    PLAINvalbind_INFO {tyvars=tyvars, escaping=escaping,
 			       Type=S on_repeated Type}
+      | S on_TypeInfo (OPEN_INFO i) = OPEN_INFO i  (*only identifiers*)
+      | S on_TypeInfo (FUNCTOR_APP_INFO rea) = 
+	    FUNCTOR_APP_INFO rea   (* type functions are closed *)
+      | S on_TypeInfo (TRANS_CONSTRAINT_INFO E) =
+	    TRANS_CONSTRAINT_INFO E (* signatures are closed *)
   in
     fun resolve_i ElabInfo =
           (case ElabInfo.to_TypeInfo ElabInfo of

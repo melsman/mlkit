@@ -23,7 +23,9 @@ functor ElabTopdec
    sharing type ElabInfo.ErrorInfo.strid = StrId.strid
    sharing type ElabInfo.ErrorInfo.sigid = SigId.sigid
    sharing type ElabInfo.ErrorInfo.longstrid = StrId.longstrid
-   structure IG : TOPDEC_GRAMMAR
+   sharing type ElabInfo.TypeInfo.realisation = StatObject.realisation
+
+  structure IG : TOPDEC_GRAMMAR
      sharing type IG.strid = StrId.strid
      sharing type IG.longstrid = StrId.longstrid 
      sharing type IG.sigid = SigId.sigid
@@ -63,6 +65,7 @@ functor ElabTopdec
      sharing type Environments.longtycon = IG.longtycon
      sharing type Environments.longstrid = IG.longstrid
      sharing type Environments.ty = IG.ty
+         and type Environments.Env = ElabInfo.TypeInfo.Env
 
    structure ModuleStatObject: MODULE_STATOBJECT
      sharing ModuleStatObject.TyName = StatObject.TyName
@@ -166,6 +169,7 @@ functor ElabTopdec
     type strid             = IG.strid
     structure TyCon        = IG.DecGrammar.TyCon
     structure ErrorInfo    = ElabInfo.ErrorInfo
+    structure TypeInfo     = ElabInfo.TypeInfo
 
     infixr onE           val op onE = Realisation.on_Env
     infixr onB           val op onB = B.on
@@ -195,11 +199,13 @@ functor ElabTopdec
     fun errorConv (i : ParseInfo, error_info : ErrorInfo.ErrorInfo) : ElabInfo =
           ElabInfo.plus_ErrorInfo (okConv i) error_info
 
+    fun typeConv (i : ParseInfo, type_info : TypeInfo.TypeInfo) : ElabInfo =
+          ElabInfo.plus_TypeInfo (okConv i) type_info
+
     fun repeatedIdsError (i : ParseInfo,
 			  rids : ErrorInfo.RepeatedId list)
           : ElabInfo =
             errorConv (i, ErrorInfo.REPEATED_IDS rids)
-
 
     (*repeaters (op =) [1,2,1,3,4,4] = [1,4].  Used to check
      syntactic restrictions:*)
@@ -223,8 +229,10 @@ functor ElabTopdec
     error is as general as possible:*)
 
     fun Phi_match (i, funsig', E0) =
-	  (okConv i, Phi.match (funsig', E0))
-	  handle No_match reason =>
+      let val (res, rea) = Phi.match_via(funsig',E0)
+      in (typeConv(i,TypeInfo.FUNCTOR_APP_INFO rea), res)     
+	  (* was: (okConv i, Phi.match (funsig', E0)) *)
+      end handle No_match reason =>
 	    let
 	      val (T, E, T'E') = Phi.to_T_and_E_and_Sigma funsig'
 	      val (T', E') = Sigma.to_T_and_E T'E'
@@ -388,6 +396,7 @@ functor ElabTopdec
 	  let val (E, out_strexp) = elab_strexp (B, strexp)
 	      val (Sigma, out_sigexp) = elab_sigexp (B, sigexp)
 	      val (out_i, E') = Sigma_match (i, Sigma, E)
+	      val out_i = ElabInfo.plus_TypeInfo out_i (TypeInfo.TRANS_CONSTRAINT_INFO E')
 	  in
 	    (E', OG.TRANSPARENT_CONSTRAINTstrexp (out_i, out_strexp, out_sigexp))
 	  end

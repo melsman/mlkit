@@ -1,18 +1,12 @@
 
-(*$Compile: DEC_GRAMMAR TOPDEC_GRAMMAR EXCON LVARS COMPILE_BASIS
-        REPORT FLAGS PRETTYPRINT FINMAP LAMBDA_EXP COMPILER_ENV
-        COMPILE_DEC OPT_LAMBDA CRASH SPREAD_EXPRESSION COMP_LAMB
-        KAM_BACKEND LAMBDA_STAT_SEM ELIMINATE_EQ COMPILE TIMING EFFECT
-        RTYPE SPREAD_DATATYPE REGION_EXP REGINF MUL_INF MUL_EXP MUL
-        AT_INF DROP_REGIONS PHYS_SIZE_INF NAME 
-        REGION_FLOW_GRAPH_PROFILING*)
+(*$Compile: EXCON LVARS COMPILE_BASIS REPORT FLAGS PRETTYPRINT FINMAP
+        LAMBDA_EXP COMPILER_ENV COMPILE_DEC OPT_LAMBDA CRASH
+        SPREAD_EXPRESSION COMP_LAMB KAM_BACKEND LAMBDA_STAT_SEM
+        ELIMINATE_EQ COMPILE TIMING EFFECT RTYPE SPREAD_DATATYPE
+        REGION_EXP REGINF MUL_INF MUL_EXP MUL AT_INF DROP_REGIONS
+        PHYS_SIZE_INF NAME REGION_FLOW_GRAPH_PROFILING*)
 
-functor Compile(structure DecGrammar: DEC_GRAMMAR
-		structure TopdecGrammar: TOPDEC_GRAMMAR
-		  sharing type TopdecGrammar.dec = DecGrammar.dec
-		      and type DecGrammar.info = TopdecGrammar.info
-
-		structure Excon : EXCON
+functor Compile(structure Excon : EXCON
 		structure FinMap: FINMAP
 
 		structure Lvars : LVARS
@@ -100,9 +94,7 @@ functor Compile(structure DecGrammar: DEC_GRAMMAR
                       and type CompilerEnv.Type = LambdaExp.Type
 
                 structure CompileDec: COMPILE_DEC
-		  sharing type CompileDec.dec = DecGrammar.dec
-                      and type CompileDec.LambdaExp = LambdaExp.LambdaExp
-                      and type CompileDec.LambdaPgm = LambdaExp.LambdaPgm
+		  sharing type CompileDec.LambdaPgm = LambdaExp.LambdaPgm
                       and type CompileDec.CEnv = CompilerEnv.CEnv
 
                 structure OptLambda: OPT_LAMBDA
@@ -114,8 +106,7 @@ functor Compile(structure DecGrammar: DEC_GRAMMAR
 		      and type CompLamb.linkinfo = KAMBackend.linkinfo
 
 		structure CompileBasis: COMPILE_BASIS
-		  sharing type CompileBasis.CEnv = CompilerEnv.CEnv
-		      and type CompileBasis.EqEnv = EliminateEq.env
+		  sharing type CompileBasis.EqEnv = EliminateEq.env
 		      and type CompileBasis.OEnv = OptLambda.env
 		      and type CompileBasis.TCEnv = LambdaStatSem.env 
                       and type CompileBasis.rse = SpreadExp.RegionStatEnv.regionStatEnv
@@ -134,13 +125,11 @@ functor Compile(structure DecGrammar: DEC_GRAMMAR
 			             = EliminateEq.StringTree
                                      = CompilerEnv.StringTree
                                      = PP.StringTree
-                                     = DecGrammar.StringTree
                                      = SpreadExp.RegionStatEnv.StringTree
                                      = Effect.StringTree
                                      = RegionExp.StringTree
                                      = MulExp.StringTree
                                      = MulInf.StringTree
-                                     = TopdecGrammar.StringTree
 			             = AtInf.StringTree
 			             = PhysSizeInf.StringTree
 		                     = RegionFlowGraphProfiling.StringTree
@@ -153,12 +142,16 @@ functor Compile(structure DecGrammar: DEC_GRAMMAR
 		  ): COMPILE =
 
   struct
+
+    structure CE = CompilerEnv
+
     type CompileBasis = CompileBasis.CompileBasis
-    type topdec = TopdecGrammar.topdec
+    type CEnv = CompilerEnv.CEnv
+    type strdec = CompileDec.strdec
     type linkinfo = KAMBackend.linkinfo
     type basisinfo = (int*KAMBackend.EA) list
 
-    fun die s = Crash.impossible ("CompileAndRun."^s)
+    fun die s = Crash.impossible ("Compile." ^ s)
 
     (* ---------------------------------------------------------------------- *)
     (*  Dynamic Flags.                                                        *)
@@ -253,7 +246,7 @@ functor Compile(structure DecGrammar: DEC_GRAMMAR
 
 
     (* ---------------------------------------------------------------------- *)
-    (*  CompileAndRun RESET                                                   *)
+    (*  Compile RESET                                                         *)
     (* ---------------------------------------------------------------------- *)
     fun reset () = (CompLamb.reset();
 		    LambdaExp.reset();
@@ -273,44 +266,17 @@ functor Compile(structure DecGrammar: DEC_GRAMMAR
     (*  Compile the declaration using old compiler environment, ce            *)
     (* ---------------------------------------------------------------------- *)
 
-    fun ast2lambda(ce, dec) =
-    (ifthen (!Flags.DEBUG_COMPILER ) (fn () => (*  Display the elaborated declaration *)
-       display("After Elaboration:", DecGrammar.layoutDec dec));
-     ifthen (!Flags.chat) (fn _ => msg("\nCompiling into lambda language ..."));
-     Timing.timing_begin();
-     let         
-        open LambdaExp
-        val (ce1, lambFn) = CompileDec.compileDec ce dec 
-                                footnote Timing.timing_end("Com. dec.")
-                                (* val _ = printCEnv ce1 *)
-
-        (* Determine the scope of the declaration using returned compiler env, ce1  *)
-        (* declared_lvars and excons are those lvars and excons that are 
-           in the _range_ of ce1 *)
-
-        val declared_lvars : lvar list = CompilerEnv.lvarsOfCEnv ce1
-        val typed_declared_lvars = 
-              (* we associated the declared_lvars with dummy type schemes;
-                 the real type schemes are put in later *)
-            let val alpha = fresh_tyvar()
-            in
-               map (fn lv => {lvar  = lv,
-                              tyvars = [alpha],    (* forall alpha. alpha *)
-                              Type = TYVARtype(alpha)
-                             })
-                   declared_lvars
-            end
-        val declared_excons : (Excon.excon * Type Option) list =
-                 map (fn excon => (excon, None)) (CompilerEnv.exconsOfCEnv ce1)  (*dummy-None*)
-        val scope =  FRAME{declared_lvars = typed_declared_lvars,
-                           declared_excons = declared_excons}
-        (*   Apply the returned function to the scope to obtain the lambda pgm    *)
-        val lamb = lambFn scope (* a lambda program *)
-    in  
-        ifthen (!Flags.DEBUG_COMPILER) (fn _ => 
-           display("Report: UnOpt", layoutLambdaPgm lamb));
-        (lamb,ce1, declared_lvars, declared_excons) 
-    end)
+    fun ast2lambda(ce, strdecs) =
+      (ifthen (!Flags.chat) (fn _ => msg("\nCompiling into lambda language ..."));
+       Timing.timing_begin();
+       let val (ce1, lamb) =  Timing.timing_end_res 
+	        ("To lamb", CompileDec.compileStrdecs ce strdecs)
+	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
+	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
+       in  
+	 ifthen (!Flags.DEBUG_COMPILER) (fn _ => display("Report: UnOpt", layoutLambdaPgm lamb));
+	 (lamb,ce1, declared_lvars, declared_excons) 
+     end)
 
     (* ------------------------------------ *)
     (* isEmptyLambdaPgm lamb  returns true  *)
@@ -687,7 +653,7 @@ functor Compile(structure DecGrammar: DEC_GRAMMAR
     (* This is the main function; It invokes all the passes of the back end *)
     (************************************************************************)
 
-    fun compileDecFromBasis(Basis, dec, vcg_file) =
+    fun compile(CEnv, Basis, strdecs, vcg_file) =
       let
 	(* It is necessary to reset the timer because only 
 	 * one timer may be activated at the time. *)
@@ -698,10 +664,10 @@ functor Compile(structure DecGrammar: DEC_GRAMMAR
 
 (*	val _ = Timing.reset_timings() 28/04/1997, Niels*)
         val _ = RegionExp.printcount:=1;
-	val {CEnv,TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap,drop_env,psi_env,l2kam_ce} =
+	val {TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap,drop_env,psi_env,l2kam_ce} =
 	  CompileBasis.de_CompileBasis Basis
 
-        val (lamb,CEnv1, declared_lvars, declared_excons) = ast2lambda(CEnv, dec)
+        val (lamb,CEnv1, declared_lvars, declared_excons) = ast2lambda(CEnv, strdecs)
 	val (lamb',EqEnv1) = elim_eq_lambda (EqEnv, lamb)
         val (lamb_opt,OEnv1) = optlambda (OEnv, lamb')
 	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)
@@ -710,58 +676,12 @@ functor Compile(structure DecGrammar: DEC_GRAMMAR
 	else
 	  let val (rse1, mularefmap1, mulenv1, drop_env1, psi_env1, l2kam_ce1, target, linkinfo) = 
 	       comp_with_new_backend(rse, mularefmap, mulenv, drop_env, psi_env, l2kam_ce, lamb_opt, vcg_file)
-	      val Basis' = CompileBasis.mk_CompileBasis {CEnv=CEnv1,TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
+	      val Basis' = CompileBasis.mk_CompileBasis {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
 							 rse=rse1,mulenv=mulenv1,mularefmap=mularefmap1,
 							 drop_env=drop_env1,psi_env=psi_env1,l2kam_ce=l2kam_ce1}
-	  in Some (Basis', target, linkinfo)
+	  in Some (CEnv1, Basis', target, linkinfo)
 	  end
       end
-
-
-    local
-      open DecGrammar
-      open TopdecGrammar
-      open CompileBasis
-    in
-
-     (* compile is a hack - it interprets sequential/local declarations in a
-        rather ad-hoc way. This is because we need to deal with sequential
-        and local declarations for the core language, and we haven't done the
-        modules compiler yet (the parser treats them as module syntax). *)
-
-     (* The technique we use (assuming it works...) is to push LOCAL and
-        SEQ constructs from the modules level of the abstract syntax to the
-        core level. *)
-
-      fun dec_from_strdec strdec =
-	case strdec
-	  of LOCALstrdec(i, strdec1, strdec2) =>
-               let val dec1 = dec_from_strdec strdec1
-                   val dec2 = dec_from_strdec strdec2
-               in LOCALdec(i, dec1, dec2)
-               end
-           | SEQstrdec(i, strdec1, strdec2) =>
-               let val dec1 = dec_from_strdec strdec1
-                   val dec2 = dec_from_strdec strdec2
-               in SEQdec(i, dec1, dec2)
-               end
-           | DECstrdec(_, dec) => dec
-	   | _ => Crash.unimplemented "CompileAndRun.dec_from_strdec" 
-
-      fun dec_from_topdec topdec =
-	case topdec
-          of STRtopdec(_, strdec, None) => dec_from_strdec strdec
-           | STRtopdec(i, strdec1, Some topdec2) =>
-	    let val dec1 = dec_from_strdec strdec1
-	        val dec2 = dec_from_topdec topdec2
-	    in SEQdec(i, dec1, dec2)
-	    end
-           | SIGtopdec _ => Crash.unimplemented "Compile.compile(SIGtopdec)"
-           | FUNtopdec _ => Crash.unimplemented "Compile.compile(FUNtopdec)"
-
-      fun compile(basis, topdec, vcg_file) = compileDecFromBasis(basis, dec_from_topdec topdec, vcg_file)
-
-    end
 
     val generate_link_code = 
       let
