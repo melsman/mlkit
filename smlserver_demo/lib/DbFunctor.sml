@@ -145,6 +145,7 @@ val _ = NsDebug.addMsg `*******db=(^(#1 db),^(Int.toString (#2 db)))`
 	fun selectDb (db: db, q: quot) : set =
 	  let 
 val _ = NsDebug.addMsg `selectDb,db=(^(#1 db),^(Int.toString (#2 db)))`
+val _ = NsDebug.addMsg (`selectDb, SQL:` ^^ q)
 	    fun isNull(s : set) : bool = prim("__is_null",s)
 	    val res = prim("@Ns_DbSelect", (#2 db, quotToString q))
 	  in 
