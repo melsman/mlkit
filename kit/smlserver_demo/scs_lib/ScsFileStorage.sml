@@ -129,8 +129,12 @@ signature SCS_FILE_STORAGE =
     (* [delFile db root_label (priv,file_id)] deletes the file file_id physically
         from the file storage, that is, removes the file from disk and
         delete rows in database *)
-    val delFile : Db.Handle.db -> root_label -> priv * int -> unit
-      
+    val delFile    : Db.Handle.db -> root_label -> priv * int -> unit
+
+    (* [delFile db root_label (priv,file_id,errs)] same as delFile
+        except that errors are returned in errs. *)
+    val delFileErr : Db.Handle.db -> root_label -> priv * int * ScsFormVar.errs -> ScsFormVar.errs
+
     (* [getNumFilesInFolderId folder_id] returns the number of files in
         folder - not counting subdirectories *)
     val getNumFilesInFolderId : Db.Handle.db -> folder_id -> int
@@ -840,6 +844,44 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		      (ScsLang.da,`Du har ikke adgang til at slette filen. Hvis du mener dette er forkert, 
 		       så kan du <a href="mailto:^(ScsConfig.scs_site_adm_email())">kontakte administrator</a>.`)]);
 	 ())
+
+    fun delFileErr db root_label (priv,file_id,errs) =
+      if mayDelFile_p priv then
+	case getFileByFileId root_label file_id of
+	  NONE => ScsFormVar.addErr (ScsDict.s' 
+				     [(ScsLang.en,`The file does not exists - please try again or 
+				       <a href="mailto:^(ScsConfig.scs_site_adm_email())">contact the 
+				       administrator</a>.`),
+				      (ScsLang.da,`Filen findes ikke - du kan prøve igen eller 
+				       <a href="mailto:^(ScsConfig.scs_site_adm_email())">kontakte 
+				       administrator</a>.`)],errs)
+	| SOME file =>
+	    let
+	      val path = Db.Handle.wrapDb getAbsPath (#folder_id file)
+	      val files_to_delete =
+		Db.Handle.listDb db (fn g => g "filename") `select filename 
+                                                              from scs_fs_revisions
+                                                             where file_id = '^(Int.toString file_id)'`
+	      val _ = (* We delete all revisions *)
+		Db.Handle.dmlDb db `delete from scs_fs_revisions
+                                     where file_id = '^(Int.toString file_id)'`
+	      val _ =
+		Db.Handle.dmlDb db `delete from scs_fs_files
+		                     where file_id = '^(Int.toString file_id)'`
+	      val _ = List.app (fn filename_on_disk => 
+				FileSys.remove (path ^ "/" ^ filename_on_disk)
+				handle _ => ()) files_to_delete
+	    in
+	      errs
+	    end
+      else
+	ScsFormVar.addErr(ScsDict.s' [(ScsLang.en,`You do not have the privileges to delete the file. If 
+				       you believe this is an error, then please 
+				       <a href="mailto:^(ScsConfig.scs_site_adm_email())">contact 
+				       the administrator</a>.`),
+				      (ScsLang.da,`Du har ikke adgang til at slette filen. Hvis du mener dette er 
+				       forkert, så kan du <a href="mailto:^(ScsConfig.scs_site_adm_email())">
+				       kontakte administrator</a>.`)],errs)
 
     fun storeMultiformData (fv_filename,target_filename,errs) =
       (Ns.Conn.storeMultiformData(fv_filename,target_filename);

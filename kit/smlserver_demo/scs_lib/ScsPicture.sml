@@ -96,9 +96,12 @@ structure ScsPicture :> SCS_PICTURE =
       end
     fun rotatePicture (source,target,direction,errs) =
       let
+	val direc =
+	  case direction of
+	    left => "-90"
+	    | right => "90"
 	val cmd = Quot.toString
-	  `^(ScsConfig.scs_convert()) -sharpen 3 -quality 100 -rotate 90 ^source ^target`
-val _ = ScsError.log ("***************cmd="^cmd)
+	  `^(ScsConfig.scs_convert()) -sharpen 3 -quality 100 -rotate ^(direc) ^source ^target`
       in
 	ScsFile.systemCmd cmd;
 	errs
