@@ -213,7 +213,7 @@ You should not be seeing this!`;
 	val msg = 
 	  case cookie of
 	    NO_COOKIE => ``
-	    | COOKIE => `<b>Fejl ved login:</b> Er du ny bruger eller har du glemt password 
+	    | COOKIE => `<br><b>Fejl ved login:</b> Er du ny bruger eller har du glemt password 
  	                 så klik <a href="mail_passwd_form.sml">Glemt password?</a>.<br><br>
                          <b>Error on login:</b> If you are a new user or you forgot password then 
 		         click <a href="mail_passwd_form.sml">Forgot password?</a>.`
@@ -268,7 +268,7 @@ You should not be seeing this!`;
            holds one of the roles in the roles list before serving any
            of the protected_pages *)
 	if force_login andalso not (loggedIn()) then
-	  reject (`<b>Fejl ved login:</b> Er du ny bruger eller har du glemt password 
+	  reject (`<br><b>Fejl ved login:</b> Er du ny bruger eller har du glemt password 
 		   så klik <a href="mail_passwd_form.sml">Glemt password?</a>.<br><br>
                    <b>Error on login:</b> If you are a new user or you forgot password then 
 		   click <a href="mail_passwd_form.sml">Forgot password?</a>.`)

@@ -2,7 +2,7 @@ val email =
   case ScsFormVar.wrapOpt ScsFormVar.getEmailErr "email" of
     SOME email => email
   | NONE => ScsFormVar.wrapFail ScsFormVar.getLoginErr ("email","Email")
-val email = ScsPerson.fix_email email
+val email = ScsPersonData.fix_email email
 
 val lang = 
   case ScsFormVar.wrapOpt (ScsFormVar.getEnumErr (map ScsLang.toString ScsLang.all)) "lang" of

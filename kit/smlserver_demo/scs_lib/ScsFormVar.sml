@@ -134,6 +134,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getNameErr             : string formvar_fn 
     val getAddrErr             : string formvar_fn
     val getLoginErr            : string formvar_fn
+    val getLoginOrEmailErr     : string formvar_fn
     val getPhoneErr            : string formvar_fn
     val getHtmlErr             : string formvar_fn
     val getUrlErr              : string formvar_fn
@@ -142,6 +143,8 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getISBNErr             : string formvar_fn
     val getEnumErr             : string list -> string formvar_fn
     val getYesNoErr            : string formvar_fn
+    val getMthErr              : int formvar_fn
+    val getYearErr             : int formvar_fn
     val getDateErr             : Date.date formvar_fn
     val getDbTimestampErr      : Date.date formvar_fn
     val getTimestampErr        : Date.date formvar_fn
@@ -636,6 +639,25 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     Datoen skal være i formatet <code>DD/MM-YYYY</code> (f.eks. 25/01-2001), i formatet <code>DD-MM-YYYY</code> (f.eks. 28-12-1972) eller
 	     i formatet <code>YYYY-MM-DD</code> (f.eks. 2001-01-25). Datoen skal være efter 1900
 	     </blockquote>`)
+      fun msgMth s = 
+	(case ScsLogin.user_lang() of
+	   ScsLang.en => `^s
+	     <blockquote>
+	     The month be between 1 and 12
+	     </blockquote>`
+	| ScsLang.da => `^s
+	     Måned skal være i intervallet 1 til 12.
+	     </blockquote>`)
+
+      fun msgYear s = 
+	(case ScsLogin.user_lang() of
+	   ScsLang.en => `^s
+	     <blockquote>
+	     The year must be after 1900.
+	     </blockquote>`
+	| ScsLang.da => `^s
+	     År skal være efter 1900.
+	     </blockquote>`)
 
       fun msgDbTimestamp s = 
 	(case ScsLogin.user_lang() of
@@ -925,12 +947,30 @@ structure ScsFormVar :> SCS_FORM_VAR =
       val datePat1 = "([0-9][0-9]?)/([0-9][0-9]?)-([0-9][0-9][0-9][0-9])"
       val datePat2 = "([0-9][0-9]?)-([0-9][0-9]?)-([0-9][0-9][0-9][0-9])"
 
+      fun chkMth v =
+	case regExpExtract "([0-9][0-9]?)" v of
+	  SOME [m] => 
+	    let
+	      val m = ScsError.valOf (Int.fromString m)
+	    in
+	      if m >= 1 andalso m <= 12 then
+		true
+	      else
+		false
+	    end
+	| _ => false
+
+      fun chkYear v =
+	case regExpExtract "([0-9][0-9][0-9][0-9])" v of
+	  SOME [y] => if (ScsError.valOf o Int.fromString) y > 1900 then true else false
+	| _ => false
+
       fun chkDate v =
 	(case regExpExtract datePat1 v of
 	   SOME [dd,mm,yyyy] => dateOk(dd,mm,yyyy)
 	 | _ => ( case regExpExtract datePat2 v of
 	   	      SOME [dd,mm,yyyy] => dateOk(dd,mm,yyyy)
-		    | NONE 		=> chkDateIso v 
+		    | _ 		=> chkDateIso v 
 		)
 (* 2004-01-09, knp: inserted chkDateIso v instead
 case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
@@ -991,6 +1031,20 @@ case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 	(fn login =>
 	 regExpMatch "[a-z][a-z0-9\\-]+" login andalso 
 	 String.size login >= 2 andalso String.size login <= 15)
+
+      fun getLoginOrEmailErr (fv,field_name,errs) =
+	let
+	  val err_msg_dict =
+	    [(ScsLang.da,`Fejl i felt ^(field_name). Du skal indtaste en email. `),
+	     (ScsLang.en,`Error in field ^(field_name). You must type in an email.`)]
+        in
+	  case wrapOpt getEmailErr fv of
+	    NONE => 
+	      (case wrapOpt getLoginErr fv of
+		 NONE => ("",addErr(ScsDict.s' err_msg_dict,errs))
+	       | SOME l => (ScsPersonData.fix_email l,errs))
+	  | SOME e => (ScsPersonData.fix_email e,errs)
+	end
       val getPhoneErr = getErr' [(ScsLang.en, `phone number`),(ScsLang.da,`telefonnummer`)] 
                           msgPhone (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
 
@@ -1014,6 +1068,10 @@ case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 	  (msgEnum enums) (chkEnum ["t","f"]) args
 	end
       val getDateIso = getErr' [(ScsLang.en,`date`),(ScsLang.da,`dato`)] msgDateIso chkDateIso
+
+      val getMthErr = getErr 1 (ScsError.valOf o Int.fromString) [(ScsLang.da,`måned`),(ScsLang.en,`month`)] msgMth chkMth
+      val getYearErr = getErr 1 (ScsError.valOf o Int.fromString) [(ScsLang.da,`år`),(ScsLang.en,`year`)] msgYear chkYear
+
       val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate [(ScsLang.en,`date`),(ScsLang.da,`dato`)] 
                          msgDate chkDate
       val getDbTimestampErr = getErr (ScsDate.genTimestamp(1,1,1,0,0,0)) 
