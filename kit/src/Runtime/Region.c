@@ -825,11 +825,9 @@ int *allocGen (Gen *gen, int n) {
       lobjs = alloc_lobjs(n);
       lobjs->next = set_lobj_bit(r->lobjs);
       r->lobjs = lobjs;
-      //      die("Allocating Large Object \n"); // ToDo: GenGC remove
-      #ifdef PROFILING
-          fprintf(stderr,"Allocating Large Object %d bytes\n", 4*n);
+    #ifdef PROFILING
       allocatedLobjs++;
-      #endif
+    #endif
 #ifdef ENABLE_GC
       lobjs_current += 4*n;
       lobjs_period += 4*n;
@@ -864,7 +862,6 @@ int *allocGen (Gen *gen, int n) {
   }
   gen->a = t2;
 
-  //  chk_obj_in_gen(gen, (unsigned int*) t1, "allocGen");   // ToDo: GenGC remove when GC works
   debug(printf("]\n"));
 
   return t1;
