@@ -169,6 +169,7 @@ signature ENVIRONMENTS =
 	val initial              : Env
 	val bogus                : Env
 	val tyvars               : Env -> TyVar list
+	val tyvars'              : Env -> (id * TyVar list) list
 	val tynames              : Env -> TyName.Set.Set
 	val layout               : Env -> StringTree
 

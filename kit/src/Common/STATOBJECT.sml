@@ -139,7 +139,12 @@ signature STATOBJECT =
 	 allowed to be quantified.*)
 
 	val close                   : bool -> Type -> TyVar list
-	val unify                   : Type * Type -> Substitution Option
+
+	datatype unify_result = UnifyOk (* of Substitution *)
+                              | UnifyFail 
+                              | UnifyRankError of TyVar * TyName
+
+	val unify                   : Type * Type -> unify_result
 	val instantiate_arbitrarily : TyVar -> unit
              (*instantiate_arbitrarily tyvar = instantiate tyvar
 	      to some arbitrary type (int).  used by ElabTopdec.elab_topdec

@@ -18,14 +18,40 @@ functor TyName(
 
     type tycon = TyCon.tycon
     type name = Name.name
+    type rank = int
 
     type TyName = {tycon: tycon, 
 		   name: name, 
-		   arity: int, 
+		   arity: int,
+		   rank: rank ref,
 		   equality: bool}
 
+    structure Rank =
+      struct
+	type rank = rank
+	local val current_rank = ref 0
+              val rank_bucket : rank ref list ref = ref []
+	in
+	  fun current () = !current_rank
+	  fun new () = (current_rank := !current_rank + 1;
+			let val rr = ref (!current_rank)
+			in rank_bucket := rr :: ( !rank_bucket ) ;
+			  rr 
+			end)
+	  fun min(r1,r2) = Int.min r1 r2
+	  fun reset () =
+	    (List.apply (fn rr => rr := 0) (!rank_bucket);
+	     rank_bucket := [];
+	     current_rank := 0)
+	  val op <= : rank * rank -> bool = op <=
+
+	  fun from_TyName({rank=ref rank,...}:TyName) = rank
+	end
+      end
+			  
+
     fun freshTyName {tycon: tycon, arity: int, equality: bool} =
-      {tycon=tycon, name=Name.new(), arity=arity, equality=equality}
+      {tycon=tycon, name=Name.new(), rank=Rank.new(), arity=arity, equality=equality}
 
     fun arity ({arity, ...} : TyName) : int = arity
 
@@ -63,6 +89,8 @@ functor TyName(
     val tyName_LIST = freshTyName{tycon=TyCon.tycon_LIST, arity=1, equality=true}
     val tyName_REF = freshTyName{tycon=TyCon.tycon_REF, arity=1, equality=true}
     val tyName_EXN = freshTyName{tycon=TyCon.tycon_EXN, arity=0, equality=false}
+    val _ = Rank.reset()
+
     structure Order : ORDERING =
       struct
 	type T = TyName

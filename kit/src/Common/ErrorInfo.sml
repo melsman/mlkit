@@ -77,6 +77,7 @@ functor ErrorInfo(structure StatObject : STATOBJECT
      (* Core errors: *)
         UNIFICATION of Type * Type
       | UNIFICATION_TEXT of string * Type * string * Type
+      | UNIFICATION_RANK of Type * Type * TyVar * TyName
       | LOOKUP_LONGID of longid
       | LOOKUP_LONGTYCON of longtycon
       | NOTCONSTYPE of Type
@@ -180,6 +181,20 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 	    // line("   " ^ text1 ^ ": " ^  implode(pad(n-size text1)) ^ pr1 ty1)
 	    // line("   " ^ text2 ^ ": " ^  implode(pad(n-size text2))  ^ pr2 (ty2,ty1))
 	  end
+
+      | report (UNIFICATION_RANK(ty1,ty2,tv,tn)) =
+          let
+	    val names = StatObject.newTVNames ()
+	    val pr = Type.pretty_string names
+	    val pr_tv = TyVar.pretty_string names
+	  in
+	    line ("Type rank error,")
+	    // line ("   expecting: " ^ pr ty1)
+	    // line ("   found:     " ^ pr ty2)
+	    // line ("The generative type " ^ TyName.pr_TyName tn ^ 
+		     " is newer than the free type variable " ^ pr_tv tv ^ ".")
+	  end
+
 
       | report (LOOKUP_LONGID longid) =
 	  line ("unbound identifier " ^ Ident.pr_longid longid ^ ".")
