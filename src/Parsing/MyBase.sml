@@ -324,13 +324,10 @@ end;
 functor LrTable(): LR_TABLE = 
     struct
 
-        local structure NewArray = Array
-	in open Edlib
-	   structure Array = NewArray
-	end
-
-        open Array (*List*) (*NICK*)
 	infix 9 sub
+	fun a sub n = Array.sub(a,n)
+	type 'a array = 'a Array.array
+
 	datatype ('a,'b) pairlist = EMPTY
 				  | PAIR of 'a * 'b * ('a,'b) pairlist
 	datatype term = T of int
@@ -572,8 +569,6 @@ functor ParserGen(structure LrTable : LR_TABLE
 		  structure Stream : STREAM) : LR_PARSER =
    struct
 
-      open Edlib
-
       structure LrTable = LrTable
       structure Stream = Stream
 
@@ -631,12 +626,12 @@ functor ParserGen(structure LrTable : LR_TABLE
 	  noShift : term -> bool}
 
       local 
-	 val showState = fn (STATE s) => "STATE " ^ (Int.string s)
+	 val showState = fn (STATE s) => "STATE " ^ (Int.toString s)
       in
         fun printStack(stack: ('a,'b) stack, n: int) =
          case stack
            of (state,_) :: rest =>
-                 (TextIO.output(TextIO.stdOut, "\t" ^ Int.string n ^ ": ");
+                 (TextIO.output(TextIO.stdOut, "\t" ^ Int.toString n ^ ": ");
                   println(showState state);
                   printStack(rest, n+1))
             | nil => ()
@@ -653,7 +648,7 @@ functor ParserGen(structure LrTable : LR_TABLE
                         );
               case action
                 of SHIFT state => println ("SHIFT " ^ (showState state))
-                 | REDUCE i => println ("REDUCE " ^ (Int.string i))
+                 | REDUCE i => println ("REDUCE " ^ (Int.toString i))
                  | ERROR => println "ERROR"
 		 | ACCEPT => println "ACCEPT")
         | prAction _ (_,_,action) = ()
@@ -781,7 +776,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 	(* now number elements of stateList, giving distance from
 	   error token *)
 
-	val (_,numStateList) = List.foldR (fn a => fn (num,r) => (num+1,(a,num)::r))
+	val (_,numStateList) = foldr (fn (a, (num,r)) => (num+1,(a,num)::r))
 				(0,nil) stateList
 
 	(* Represent the set of potential changes as a linked list.
@@ -809,15 +804,15 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 	 val printChange = fn c =>
 	  let val CHANGE {oper,distance,new=TOKEN (t,_),
 			  orig=TOKEN (t',_),pos,...} = c
-	  in (TextIO.output(TextIO.stdOut, "{distance= " ^ (Int.string distance));
+	  in (TextIO.output(TextIO.stdOut, "{distance= " ^ (Int.toString distance));
 	      TextIO.output(TextIO.stdOut, ",orig = " ^ (showTerminal t'));
 	      TextIO.output(TextIO.stdOut, ",new = " ^ (showTerminal t));
 	      TextIO.output(TextIO.stdOut, ",oper= " ^ (operToString oper));
-	      TextIO.output(TextIO.stdOut, ",pos= " ^ (Int.string pos));
+	      TextIO.output(TextIO.stdOut, ",pos= " ^ (Int.toString pos));
 	      println "}")
 	  end
 
-	val printChangeList = List.apply printChange
+	val printChangeList = List.app printChange
 
 (* parse: given a lexPair, a stack, and the distance from the error
    token, return the distance past the error token that we are able to parse.*)
@@ -831,11 +826,11 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 (* foldStateList: accumulates results while scanning numStateList *)
 
 
-	fun foldStateList f start = List.foldR (General.curry f) start numStateList
+	fun foldStateList f start = foldr f start numStateList
 
 (* foldLexVList: accumulates results while scanning lexVList *)
 
-	fun foldLexVList f start = List.foldR (General.curry f) start lexVList
+	fun foldLexVList f start = foldr f start lexVList
 
 (* deleteFold: function which accumulates results of deleting the
    current terminal.  Does not delete the current terminal if that terminal
@@ -891,7 +886,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 				(foldStateList deleteFold nil)
 
 	val findMaxDist = fn l => 
-	  List.foldR (fn CHANGE {distance,...} => fn high => Int.max distance high) 0 l
+	  foldr (fn (CHANGE {distance,...}, high) => Int.max (distance, high)) 0 l
 
 (* maxDist: max distance past error taken that we could parse *)
 
@@ -900,7 +895,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 (* sieve: keep only the elements of a list for which pred is true *)
 
 	val sieve = fn pred => fn l => 
-	  List.foldR (fn elem => fn rest => if pred elem then elem::rest else rest) l nil
+	  foldr (fn (elem,rest) => if pred elem then elem::rest else rest) l nil
 
 (* remove changes which did not parse maxDist tokens past the error token *)
 
@@ -958,7 +953,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 		     | hd _ = raise Hd
 
 		   val a = 
-		     (if List.size l > 1 andalso DEBUG2 then
+		     (if length l > 1 andalso DEBUG2 then
 			(println "multiple fixes possible; could fix it by:";
 		 	 map print_msg l;
 		 	 println "chosen correction:")
@@ -1000,7 +995,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 
 		    val restQueue = 
 		     Fifo.put((stack,newLexPair),
-			      List.foldL (General.curry Fifo.put) Fifo.empty queueFront)
+			      foldl Fifo.put Fifo.empty queueFront)
 
 	 	   val (lexPair,stack,queue,_,_) =
 			distanceParse(newLexPair,stack,restQueue,pos)
@@ -1017,7 +1012,7 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 		   ec=ec as {showTerminal,...} : ('_a,'_b) ecRecord} =>
 	let val distance = 15   (* defer distance tokens *)
 	    val minAdvance = 1  (* must parse at least 1 token past error *)
-	    val maxAdvance = Int.max lookahead 0 (* max distance for parse check *)
+	    val maxAdvance = Int.max (lookahead, 0) (* max distance for parse check *)
 	    val lexPair = Stream.get lexer
 	    val (TOKEN (_,(_,leftPos,_)),_) = lexPair
 	    val startStack = [(initialState table,(void,leftPos,leftPos))]

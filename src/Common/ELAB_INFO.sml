@@ -17,8 +17,6 @@
  OverloadingInfo are also not always present.  Each kind of info
  is implemented by a module called the same as the info kind.*)
 
-(*$ELAB_INFO : PARSE_INFO ERROR_INFO TYPE_INFO OVERLOADING_INFO*)
-
 signature ELAB_INFO =
   sig
     (*type supplied by this module:*) 

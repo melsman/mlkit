@@ -52,9 +52,9 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                   sharing type ElabInfo.TypeInfo.TyVar   = StatObject.TyVar
 		  sharing type ElabInfo.TypeInfo.longid = IG.longid 
 		  sharing type ElabInfo.TypeInfo.realisation = StatObject.realisation
-		      and type ElabInfo.TypeInfo.strid = Environments.strid
-		      and type ElabInfo.TypeInfo.tycon = Environments.tycon
-		      and type ElabInfo.TypeInfo.id = Environments.id
+		  sharing type ElabInfo.TypeInfo.strid = Environments.strid
+		  sharing type ElabInfo.TypeInfo.tycon = Environments.tycon
+		  sharing type ElabInfo.TypeInfo.id = Environments.id
                 structure FinMap : FINMAP
 
                 structure Report: REPORT
@@ -72,9 +72,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                ) : ELABDEC =
   struct
 
-    fun concat97 x = concat x 
-    open Edlib
-    open General
+    structure List = Edlib.List
 
     structure ListHacks =
       struct
@@ -98,7 +96,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
       | noSome (SOME x) s = x
     fun map_opt f (SOME x) = SOME (f x)
       | map_opt f NONE = NONE
-    fun concat l = List.foldL (General.curry (op @)) [] l
     (*uniq [1,2,1,3] = [2,1,3]*)
     fun uniq [] = []
       | uniq (x::xs) = if List.exists (fn x' => x=x') xs then uniq xs
@@ -210,9 +207,9 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     fun memberTyVarList x xs = List.exists (fn y => TyVar.eq (x,y)) xs
 
     fun where' list elem =
-          (case List.index (General.curry (op =) elem) list of
-	     OK n => n
-	   | Fail _ => impossible "where'")
+          (case List.index (Edlib.General.curry (op =) elem) list of
+	     Edlib.General.OK n => n
+	   | Edlib.General.Fail _ => impossible "where'")
 
     (* Hooks needed by the compiler:
 
@@ -388,7 +385,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                         let
                           val index = where' sortedLabs lab
 (*
-val _ = output(std_out,"ElabDec.addLabelIndexInfo: index = " ^ Int.string index ^ "\n")
+val _ = output(std_out,"ElabDec.addLabelIndexInfo: index = " ^ Int.toString index ^ "\n")
 val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
            StatObject.layoutType (StatObject.mkTypeRecType recType))
 *)
@@ -891,7 +888,7 @@ old*)
     and elab_dec(C : Context, dec : IG.dec) :
         (Substitution * TyName list * Env * OG.dec) =
       let 
-         fun show_scheme(alphas, tau) = " all[" ^ concat97 (map StatObject.TyVar.string alphas) ^ "]." ^ StatObject.Type.string tau
+         fun show_scheme(alphas, tau) = " all[" ^ concat (map StatObject.TyVar.string alphas) ^ "]." ^ StatObject.Type.string tau
          fun dump(dec, sigma)= (PP.outputTree(print,IG.layoutDec dec, 100);
                                (TextIO.output(TextIO.stdOut, show_scheme(StatObject.TypeScheme.to_TyVars_and_Type sigma) ^ "\nn")))
                                  
@@ -2034,7 +2031,7 @@ old*)
 			   handle TypeScheme.InstanceError s => 
 			     (print ("InstanceError." ^ s ^"\n");
 			      print ("elab_ty.CONty.longtycon = " ^ IG.TyCon.pr_LongTyCon longtycon ^ "\n");
-			      print ("Arity(theta) = " ^ Int.string expectedArity ^ "\n");
+			      print ("Arity(theta) = " ^ Int.toString expectedArity ^ "\n");
 			      raise TypeScheme.InstanceError (s ^ "[elab_ty]"))
 			     
 			 else

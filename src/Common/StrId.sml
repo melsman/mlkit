@@ -1,12 +1,9 @@
 (* Exception constructors - Definition v3 page 4 *)
 
-(*$StrId: TIMESTAMP CRASH STRID*)
 functor StrId(structure Timestamp: TIMESTAMP
 	      structure Crash: CRASH
 	     ): STRID =
   struct
-    
-    open Edlib
     
     datatype strid = STRID of string
 
@@ -18,7 +15,7 @@ functor StrId(structure Timestamp: TIMESTAMP
       let
 	val strings = (map (fn s => pr_StrId s ^ ".") strids)
       in
-	List.foldR (General.curry op ^) (pr_StrId strid) strings
+	foldr (op ^) (pr_StrId strid) strings
       end
 
     fun implode_longstrid (strid_list, strid) = LONGSTRID(strid_list, strid)
@@ -36,8 +33,8 @@ functor StrId(structure Timestamp: TIMESTAMP
       STRID("<unique_StrId." ^ Timestamp.print(Timestamp.new()) ^ ">")
 
     fun invented_StrId (STRID s) : bool =  (* only invented strids may start with `<' *)
-      (String.nth 0 s = "<")
-      handle _ => Crash.impossible "StrId.invented_StrId"
+      String.isPrefix "<" s   (*(String.nth 0 s = "<")*)
+      (*handle _ => Crash.impossible "StrId.invented_StrId"*)
 
     fun longStrIdOfStrId strid = LONGSTRID(nil, strid)
 

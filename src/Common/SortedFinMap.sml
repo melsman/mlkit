@@ -1,13 +1,9 @@
-(* Finite maps with equality *)
-
-(*$SortedFinMap: REPORT PRETTYPRINT SORTED_FINMAP *)
+(* Finite maps with ordering *)
 
 functor SortedFinMap(structure Report: REPORT
 		     structure PP: PRETTYPRINT
 		    ): SORTED_FINMAP =
   struct
-
-    open Edlib
 
     type ('a, 'b) map = ('a * 'b) list
 
@@ -45,7 +41,7 @@ functor SortedFinMap(structure Report: REPORT
 	      if x = x' then (x, folder(y, y')) :: rest
 	      else (x, y) :: insert(x', y', rest)
       in
-	List.foldL (fn (x, y) => fn m => insert(x, y, m)) map1 map2
+	foldl (fn ((x, y), m) => insert(x, y, m)) map1 map2
       end
 
     val domSORTED   : ('a, 'b) map -> 'a list = fn x => map #1 x
@@ -63,10 +59,10 @@ functor SortedFinMap(structure Report: REPORT
 	map (fn(x,y)=>(x, f y)) m
 
     fun fold (f : ('a * 'b) -> 'b) (x : 'b) (m : (''d,'a) map) : 'b = 
-	List.foldL (fn (a, b) => fn c => f(b, c)) x m
+	foldl (fn ((a, b), c) => f(b, c)) x m
 
     fun Fold (f : ((''a * 'b) * 'c) -> 'c) (x : 'c) (m : (''a,'b) map) : 'c =
-	List.foldL (fn (a, b) => fn c => f((a, b), c)) x m
+	foldl (fn ((a, b), c) => f((a, b), c)) x m
 
     type StringTree = PP.StringTree
     fun layoutMap {start, eq, sep, finish} layoutDom layoutRan m =

@@ -30,8 +30,6 @@ functor Timing(structure Flags: FLAGS
 	       structure Crash: CRASH) : TIMING =
 
   struct
-
-    structure String = Edlib.String
     
     fun die s = Crash.impossible ("Timing." ^ s)
 
@@ -105,8 +103,7 @@ functor Timing(structure Flags: FLAGS
 	 val {gc, sys=system, usr=non_gc} = Timer.checkCPUTimer (!t)
 	 val wallclock = Timer.checkRealTimer (!rt)
 
-	 val padL = String.padL " " 15 
-	 val padC = String.padC " " 15 
+	 val padL = StringCvt.padLeft #" " 15 
 	   
 	 val time_elem = {name = name,
 			  non_gc = non_gc,
@@ -161,6 +158,6 @@ functor Timing(structure Flags: FLAGS
       (timer := Time.+ (!timer, #usr(Timer.checkCPUTimer(!local_timer)));
        local_timer_on := false)
     fun reset_local_time timer = timer := Time.zeroTime
-    fun pp_local_timing timer = String.padL " " 15 (Time.toString (!timer))
+    fun pp_local_timing timer = StringCvt.padLeft #" " 15 (Time.toString (!timer))
 
 end

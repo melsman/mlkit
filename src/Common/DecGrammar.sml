@@ -1,8 +1,6 @@
 (* Bare language - Definition v3 pages 8,9,70,71 *)
 (* modified to have ident in place of con and var *)
 
-(*$DecGrammar: LAB SCON TYVAR TYCON STRID IDENT DEC_GRAMMAR PRETTYPRINT*)
-
 functor DecGrammar(structure GrammarInfo: sig type GrammarInfo 
 					      val bogus_info : GrammarInfo
 					  end
@@ -16,8 +14,6 @@ functor DecGrammar(structure GrammarInfo: sig type GrammarInfo
 		   structure PrettyPrint : PRETTYPRINT
 		  ): DEC_GRAMMAR =
 struct
-
-  open Edlib
 
   structure Lab = Lab
   structure SCon = SCon
@@ -433,12 +429,9 @@ struct
 	TYVARty(_, tv) => tv::res
       | RECORDty(_, NONE) => res
       | RECORDty(_, SOME tyrow) => fTyrow tyrow res
-      | CONty(_, tys, _) =>
-	  List.foldL
-	  (fn ty => fn res => fTy ty res) res tys
-        | FNty(_, ty1, ty2) => 
-	    fTy ty1 (fTy ty2 res)
-	| PARty(_, ty) => fTy ty res
+      | CONty(_, tys, _) => foldl (fn (ty,res) => fTy ty res) res tys
+      | FNty(_, ty1, ty2) => fTy ty1 (fTy ty2 res)
+      | PARty(_, ty) => fTy ty res
 	    
     and fTyrow (TYROW(_, _, ty, tyrowopt)) res =
       case tyrowopt of 
@@ -474,10 +467,13 @@ struct
   (*is_'true'_'nil'_etc & is_'it' are used to enforce SOME syntactic
    restrictions (Definition, §2.9 & §3.5).*)
 
-  val idset_'true'_'nil'_etc =
-	EqSet.fromList [Ident.id_TRUE, Ident.id_FALSE, Ident.id_NIL,
-			Ident.id_CONS, Ident.id_REF]
-  fun is_'true'_'nil'_etc id = EqSet.member id idset_'true'_'nil'_etc
+  fun is_'true'_'nil'_etc id = 
+    id = Ident.id_TRUE orelse
+    id = Ident.id_FALSE orelse
+    id = Ident.id_NIL orelse
+    id = Ident.id_CONS orelse
+    id = Ident.id_REF
+
   fun is_'it' id = id = Ident.id_IT
 
 
@@ -707,7 +703,7 @@ struct
          | INFIXdec(_, prec, ids) =>
 	     NODE{start="infix ", finish="", indent=6,
 		     children=(case prec
-				 of SOME p => [LEAF(Int.string p)]
+				 of SOME p => [LEAF(Int.toString p)]
 				  | NONE => nil
 			      ) @ map (LEAF o Ident.pr_id) ids,
 		     childsep=RIGHT " "
@@ -716,7 +712,7 @@ struct
          | INFIXRdec(_, prec, ids) =>
 	     NODE{start="infixr ", finish="", indent=7,
 		     children=(case prec
-				 of SOME p => [LEAF(Int.string p)]
+				 of SOME p => [LEAF(Int.toString p)]
 				  | NONE => nil
 			      ) @ map (LEAF o Ident.pr_id) ids,
 		     childsep=RIGHT " "

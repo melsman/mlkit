@@ -80,6 +80,7 @@ in
 
   ../Parsing/MyBase.sml
 
+  ../Parsing/Topdec.grm.sig
   ../Parsing/Topdec.grm.sml
 
   ../Parsing/LEX_UTILS.sml
@@ -87,53 +88,57 @@ in
   ../Parsing/Topdec.lex.sml
   ../Parsing/PARSE.sml
   ../Parsing/Parse.sml
-(*
-TYPE_INFO.sml
-TypeInfo.sml
-OVERLOADING_INFO.sml
-OverloadingInfo.sml
-ERROR_CODE.sml
-ERROR_INFO.sml
-ErrorInfo.sml
+
+  TYPE_INFO.sml
 
   STATOBJECT.sml
-  EfficientElab/StatObject.sml
-  ENVIRONMENTS.sml
-  EfficientElab/Environments.sml
   EfficientElab/MODULE_STATOBJECT.sml
-  EfficientElab/ModuleStatObject.sml
+  ENVIRONMENTS.sml
   MODULE_ENVIRONMENTS.sml
+
+  ../Manager/OpacityEnv.sml
+
+  OVERLOADING_INFO.sml
+  ERROR_CODE.sml
+  ERROR_INFO.sml
+  ELAB_INFO.sml
+  ELABDEC.sml
+  ERROR_TRAVERSE.sml
+  TOP_LEVEL_REPORT.sml
+  ../Manager/ELAB_REPOSITORY.sml
+  ELABTOPDEC.sml
+  ../Compiler/Kam/UNION_FIND_POLY.sml
+  ../Compiler/Kam/STACK.sml
+  DIGRAPH.sml
+  QUASI_ENV.sml
+
+  TypeInfo.sml
+  OverloadingInfo.sml
+  ErrorInfo.sml
+
+  EfficientElab/StatObject.sml
+  EfficientElab/Environments.sml
+  EfficientElab/ModuleStatObject.sml
   EfficientElab/ModuleEnvironments.sml
 
 
 
-ELAB_INFO.sml
-ElabInfo.sml
-ELABDEC.sml
+  ElabInfo.sml
 ElabDec.sml
-ERROR_TRAVERSE.sml
 ErrorTraverse.sml
-TOP_LEVEL_REPORT.sml
 TopLevelReport.sml
-../Manager/ELAB_REPOSITORY.sml
 ../Manager/ElabRepository.sml
-ELABTOPDEC.sml
 EfficientElab/ElabTopdec.sml
 
-  ../Manager/OpacityEnv.sml
 
 
 IntDiGraph.sml
-../Compiler/Kam/UNION_FIND_POLY.sml
 ../Compiler/Kam/UnionFindPoly.sml
-../Compiler/Kam/STACK.sml
 ../Compiler/Kam/Stack.sml
-DIGRAPH.sml
 DiGraph.sml
 Heap.sml
 HashTable.sml
-QUASI_ENV.sml
 QuasiEnv.sml
 Timing.sml
-*)
+
 end

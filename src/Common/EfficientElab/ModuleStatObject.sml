@@ -7,7 +7,7 @@ functor ModuleStatObject(structure StrId  : STRID
 			   sharing type Name.name = TyName.name
 			 structure TyCon : TYCON
 			   sharing type TyCon.strid = StrId.strid
-			       and type TyCon.tycon = TyName.tycon
+			   sharing type TyCon.tycon = TyName.tycon
 
 			 structure StatObject : STATOBJECT
 			   sharing StatObject.TyName = TyName
@@ -15,12 +15,12 @@ functor ModuleStatObject(structure StrId  : STRID
 			 structure Environments : ENVIRONMENTS
 			   sharing Environments.TyName = StatObject.TyName
 			   sharing type Environments.TypeFcn    = StatObject.TypeFcn
-			       and type Environments.Type       = StatObject.Type
-			       and type Environments.TyVar      = StatObject.TyVar
-			       and type Environments.TypeScheme = StatObject.TypeScheme
-			       and type Environments.strid      = StrId.strid
-			       and type Environments.realisation = StatObject.realisation
-			       and type Environments.ExplicitTyVar = StatObject.ExplicitTyVar
+			   sharing type Environments.Type       = StatObject.Type
+			   sharing type Environments.TyVar      = StatObject.TyVar
+			   sharing type Environments.TypeScheme = StatObject.TypeScheme
+			   sharing type Environments.strid      = StrId.strid
+			   sharing type Environments.realisation = StatObject.realisation
+			   sharing type Environments.ExplicitTyVar = StatObject.ExplicitTyVar
 
 			 structure PP : PRETTYPRINT
 			   sharing type PP.StringTree (*= Environments.StringTree*)
@@ -29,8 +29,6 @@ functor ModuleStatObject(structure StrId  : STRID
 			 structure Flags : FLAGS
 			) : MODULE_STATOBJECT =
   struct
-
-    open Edlib
 
     (*import from StatObject:*)
     type realisation       = StatObject.realisation
@@ -65,8 +63,8 @@ functor ModuleStatObject(structure StrId  : STRID
 
     fun E_eq a = E.eq a         (* for profiling *)
     fun E_match a = E.match a
-    fun mark_names T = List.apply (Name.mark_gen o TyName.name) T
-    fun unmark_names T = List.apply (Name.unmark_gen o TyName.name) T
+    fun mark_names T = app (Name.mark_gen o TyName.name) T
+    fun unmark_names T = app (Name.unmark_gen o TyName.name) T
 
       
     (*Plan of this code: first two functions that are used for matching

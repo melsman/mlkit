@@ -1,11 +1,7 @@
 (* Labels - Definition v3 page 4 *)
 
-(*$Lab: LAB*)
 functor Lab(): LAB =
   struct
-
-    open Edlib
-    open General
       
     datatype lab = LAB of string
 
@@ -16,17 +12,19 @@ functor Lab(): LAB =
       ordering is transitive, or things could start going horribly wrong. *)
 
     val op < = fn (LAB str1, LAB str2) =>
-      case (IntParse.parse str1, IntParse.parse str2)
-	of (OK(i1, ""), OK(i2, "")) => Int.lt i1 i2
-	 | _ => str1 < str2
+      (case (Int.fromString str1, Int.fromString str2)
+	of (SOME i1, SOME i2) => i1 < i2
+	 | _ => str1 < str2)
+	 handle _ => str1 < str2 (* fromString may raise Overflow *)
 
     fun is_LabN(LAB str, i) =
-      case IntParse.parse str
-	of OK(i', "") => (i = i')
-	 | _ => false
+      (case Int.fromString str
+	 of SOME i' => (i = i')
+	  | _ => false)
+	 handle _ => false
 
     fun pr_Lab(LAB str) = str
 
     val mk_IdentLab = LAB
-    val mk_IntegerLab = LAB o Int.string
+    val mk_IntegerLab = LAB o Int.toString
   end;

@@ -1,6 +1,3 @@
-(*$ErrorTraverse : TOPDEC_GRAMMAR ELAB_INFO REPORT CRASH
-     PRETTYPRINT ERROR_TRAVERSE*)
-
 (* Topdec error traversal. NICK, 16/Jan/92. *)
 
 functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
@@ -35,10 +32,13 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
 
     local
       val errors = ref ([]:ErrorCode list) 
+      val error_counter = ref 0
     in
-      fun spot (ec : ErrorCode) = errors := ec :: !errors
+      fun report_more_errors() : bool =	!error_counter < 50
+      fun spot (ec : ErrorCode) = (errors := ec :: !errors;
+				   error_counter := !error_counter + 1)
       fun get_errors () = !errors
-      fun reset () = errors := []
+      fun reset () = (errors := []; error_counter := 0)
     end
 
     val report_SourceInfo_in_ElabInfo =
@@ -47,6 +47,7 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
 	  o ElabInfo.to_ParseInfo
 
     fun check i =
+      if report_more_errors() then
           (case ElabInfo.to_ErrorInfo i of
 	     SOME ei =>
 	       (spot (ErrorCode.from_ErrorInfo ei);
@@ -54,6 +55,7 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
 		// report_SourceInfo_in_ElabInfo i
 		// ElabInfo.ErrorInfo.report ei)
 	   | NONE => Report.null)
+      else Report.null
 
     fun report_escaping (i, msg : string) =
           report_SourceInfo_in_ElabInfo i

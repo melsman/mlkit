@@ -1,6 +1,5 @@
 (* Finite maps *)
 
-(*$FINMAP*)
 signature FINMAP =
   sig
     type (''a, 'b) map
@@ -14,8 +13,8 @@ signature FINMAP =
 
     val add        : (''a * 'b * (''a, 'b) map) -> (''a, 'b) map
     val plus       : (''a, 'b) map * (''a, 'b) map -> (''a, 'b) map
-    val remove     : ''a * (''a, 'b) map -> (((''a,'b) map,string) Edlib.General.Result)
-    val dom        : (''a, 'b) map -> ''a Edlib.EqSet.Set
+    val remove     : ''a * (''a, 'b) map -> (''a,'b) map option
+    val dom        : (''a, 'b) map -> ''a EqSet.Set
     val range      : (''a, 'b) map -> 'b list
     val list       : (''a, 'b) map -> (''a * 'b) list
     val fromList   : (''a * 'b) list -> (''a, 'b) map

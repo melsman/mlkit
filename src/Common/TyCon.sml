@@ -5,8 +5,6 @@ functor TyCon(structure StrId: STRID
 	     ): TYCON =
   struct
 
-    open Edlib
-
     type strid = StrId.strid
 
     datatype tycon = TYCON of string
@@ -62,9 +60,15 @@ functor TyCon(structure StrId: STRID
 
     val op < = fn (TYCON str1, TYCON str2) => str1 < str2
 
-    val strings_'true'_'nil'_etc = ["true", "false", "nil", "::", "ref"]
     fun is_'true'_'nil'_etc tycon =
-          List.member (pr_TyCon tycon) strings_'true'_'nil'_etc
+      case tycon
+	of TYCON "true" => true
+	 | TYCON "false" => true
+	 | TYCON "nil" => true
+	 | TYCON "::" => true
+	 | TYCON "ref" => true
+	 | TYCON _ => false
+
     fun is_'it' (TYCON "it") = true
-      | is_'it' (TYCON s) = false
+      | is_'it' (TYCON _) = false
   end;

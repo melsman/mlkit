@@ -38,7 +38,7 @@ signature ENVIRONMENTS =
     type Report
       
 
-    val ExplicitTyVarsTy : ty -> ExplicitTyVar Edlib.EqSet.Set
+    val ExplicitTyVarsTy : ty -> ExplicitTyVar EqSet.Set
     val unguarded_valbind : valbind -> ExplicitTyVar list
       (*TODO 26/01/1997 15:37. tho.: both functions above ought
        to return the same type, list or set.
@@ -60,7 +60,7 @@ signature ENVIRONMENTS =
 	val singleton_excon      : id  * Type -> VarEnv
 	val plus                 : VarEnv  * VarEnv -> VarEnv
 	val lookup               : VarEnv -> id -> range option
-	val dom                  : VarEnv -> id Edlib.EqSet.Set
+	val dom                  : VarEnv -> id EqSet.Set
 	val is_empty             : VarEnv -> bool
 	val eq                   : VarEnv * VarEnv -> bool (*up to bound vars*)
 	val fold                 : (range -> 'a -> 'a) -> 'a -> VarEnv -> 'a
@@ -108,7 +108,7 @@ signature ENVIRONMENTS =
 	val singleton            : tycon * TyStr -> TyEnv
 	val plus                 : TyEnv * TyEnv -> TyEnv
 	val lookup               : TyEnv -> tycon -> TyStr option
-	val dom                  : TyEnv -> tycon Edlib.EqSet.Set
+	val dom                  : TyEnv -> tycon EqSet.Set
 	val fold                 : (TyStr -> 'b -> 'b) -> 'b -> TyEnv -> 'b
 	val Fold                 : (tycon * TyStr -> 'c -> 'c) -> 'c -> TyEnv -> 'c
 	val apply                : (tycon * TyStr -> unit) -> TyEnv -> unit
@@ -132,7 +132,7 @@ signature ENVIRONMENTS =
 	val singleton            : strid * Env -> StrEnv
 	val plus                 : StrEnv * StrEnv -> StrEnv
 	val lookup               : StrEnv -> strid -> Env option
-	val dom                  : StrEnv -> strid Edlib.EqSet.Set
+	val dom                  : StrEnv -> strid EqSet.Set
 	val fold                 : (Env -> 'b  -> 'b) -> 'b -> StrEnv -> 'b
 	val Fold                 : (strid * Env -> 'c -> 'c) -> 'c -> StrEnv -> 'c
 	val apply                : (strid * Env -> unit) -> StrEnv -> unit
@@ -295,6 +295,10 @@ signature ENVIRONMENTS =
 	val renaming             : TyName.Set.Set -> realisation
 	val renaming'            : TyName.Set.Set -> TyName.Set.Set * realisation  
 	val layout : realisation -> StringTree
+
+	val mk_Efficient         : realisation -> realisation     (* see STATOBJECT *)
+	val is_Efficient         : realisation -> bool
+
       end (*Realisation*)
 
     val ABS : TyEnv * Env -> TyName list * Env * realisation

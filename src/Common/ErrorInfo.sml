@@ -1,15 +1,12 @@
 (* Error information *)
 
-(*$ErrorInfo: STATOBJECT MODULE_STATOBJECT IDENT LAB TYCON TYNAME
-        SIGID STRID FUNID REPORT PRETTYPRINT ERROR_INFO*)
-
 functor ErrorInfo(structure StatObject : STATOBJECT
 		  structure ModuleStatObject : MODULE_STATOBJECT
 		    sharing ModuleStatObject.TyName = StatObject.TyName
 		    sharing type ModuleStatObject.TyVar = StatObject.TyVar
-		        and type ModuleStatObject.Type = StatObject.Type
-			and type ModuleStatObject.TypeScheme = StatObject.TypeScheme
-			and type ModuleStatObject.TypeFcn = StatObject.TypeFcn
+		    sharing type ModuleStatObject.Type = StatObject.Type
+		    sharing type ModuleStatObject.TypeScheme = StatObject.TypeScheme
+		    sharing type ModuleStatObject.TypeFcn = StatObject.TypeFcn
                   structure Ident: IDENT
 		    sharing type Ident.id = ModuleStatObject.id
                   structure Lab:   LAB
@@ -18,15 +15,13 @@ functor ErrorInfo(structure StatObject : STATOBJECT
                   structure SigId: SIGID
                   structure StrId: STRID
 		    sharing type StrId.strid = ModuleStatObject.strid
-		        and type StrId.longstrid = ModuleStatObject.longstrid
+		    sharing type StrId.longstrid = ModuleStatObject.longstrid
                   structure FunId: FUNID
                   structure Report: REPORT
 		  structure PrettyPrint : PRETTYPRINT
 		    sharing type StatObject.StringTree = PrettyPrint.StringTree
 		    ) : ERROR_INFO =
   struct
-
-    open Edlib
 
     (*import from StatObject:*)
     structure TyVar        = StatObject.TyVar
@@ -130,8 +125,7 @@ functor ErrorInfo(structure StatObject : STATOBJECT
     val op // = Report.//
 
     fun prStrIds strids =
-          (case List.foldR
-                  (fn strid => fn str =>
+          (case foldr (fn (strid,str) =>
 		   (case str of
 		      "" => StrId.pr_StrId strid
 		    | _ => StrId.pr_StrId strid ^ "." ^ str))
@@ -221,8 +215,8 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 		^ pp_list Ident.pr_id ids  ^ ".")
 
       | report (WRONG_ARITY{expected, actual}) =
-	  line ("Wrong arity (expected " ^ Int.string expected
-		^ ", actual " ^ Int.string actual ^ ").")
+	  line ("Wrong arity (expected " ^ Int.toString expected
+		^ ", actual " ^ Int.toString actual ^ ").")
 
       | report (FLEX_REC_NOT_RESOLVED) =
 	  line "Overloading not resolved in record containing the\
@@ -317,8 +311,8 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 
       | report (WHERE_TYPE_ARITY (tyvars, (longtycon, tyname))) =
 	  line ("Does " ^ longtycon_and_tyname_as_string longtycon tyname
-		^ " have " ^ Int.string (TyName.arity tyname)
-	        ^ " or " ^ Int.string (List.size tyvars)
+		^ " have " ^ Int.toString (TyName.arity tyname)
+	        ^ " or " ^ Int.toString (length tyvars)
 	        ^ " arguments?")
 
 

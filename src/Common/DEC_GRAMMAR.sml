@@ -3,8 +3,6 @@
 (* modified to have ident in place of con  var and excon     *)
 (*************************************************************)
 
-(*$DEC_GRAMMAR : LAB SCON TYVAR TYCON STRID IDENT*)
-
 signature DEC_GRAMMAR =
 sig
   structure Lab   : LAB   (* labels *)

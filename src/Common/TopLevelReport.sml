@@ -1,10 +1,6 @@
 (* Top-level reporting: ties static and dynamic basis together, generates
    a report of bindings. *)
 
-(*$TopLevelReport: FUNID SIGID STRID IDENT INFIX_BASIS STATOBJECT
-	ENVIRONMENTS MODULE_STATOBJECT MODULE_ENVIRONMENTS REPORT
-	CRASH TOP_LEVEL_REPORT *)
-
 functor TopLevelReport(structure FunId: FUNID
 		       structure SigId: SIGID
 		       structure StrId: STRID
@@ -16,9 +12,9 @@ functor TopLevelReport(structure FunId: FUNID
 
 		       structure Environments: ENVIRONMENTS
 			 sharing type Environments.strid = StrId.strid
-			     and type Environments.id = Ident.id
-			     and type Environments.Type = StatObject.Type
-			     and type Environments.TypeScheme
+			 sharing type Environments.id = Ident.id
+			 sharing type Environments.Type = StatObject.Type
+			 sharing type Environments.TypeScheme
 				      = StatObject.TypeScheme
 
 		       structure ModuleStatObject: MODULE_STATOBJECT
@@ -27,12 +23,12 @@ functor TopLevelReport(structure FunId: FUNID
 
 		       structure ModuleEnvironments: MODULE_ENVIRONMENTS
 			 sharing type ModuleEnvironments.sigid = SigId.sigid
-			     and type ModuleEnvironments.funid = FunId.funid
-			     and type ModuleEnvironments.Sig
+			 sharing type ModuleEnvironments.funid = FunId.funid
+			 sharing type ModuleEnvironments.Sig
 				      = ModuleStatObject.Sig
-			     and type ModuleEnvironments.FunSig
+			 sharing type ModuleEnvironments.FunSig
 				      = ModuleStatObject.FunSig
-			     and type ModuleEnvironments.Env
+			 sharing type ModuleEnvironments.Env
 			              = Environments.Env
 
 		       structure Report: REPORT

@@ -10,17 +10,17 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 
 		 structure ParseInfo : PARSE_INFO
 		   sharing type ParseInfo.ParseInfo = GrammarUtils.TopdecGrammar.info
-		       and type ParseInfo.DFInfo.InfixBasis = InfixBasis.Basis
+		   sharing type ParseInfo.DFInfo.InfixBasis = InfixBasis.Basis
 
                  structure PP: PRETTYPRINT
                    sharing type GrammarUtils.TopdecGrammar.DecGrammar.StringTree = PP.StringTree
-		       and type PP.Report = Report.Report
+		   sharing type PP.Report = Report.Report
 
                  structure Crash: CRASH
 		   ) : INFIXING =
   struct
 
-    open Edlib
+    structure List = Edlib.List
 
     fun impossible s = Crash.impossible ("Infixing." ^ s)
     open GrammarUtils.TopdecGrammar

@@ -4,6 +4,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		    structure SCon : SCON
 		    structure Lab : LAB
 		    structure TyName : TYNAME
+		    structure Name : NAME
+		      sharing type Name.name = TyName.name
+		    structure IntFinMap : MONO_FINMAP where type dom = int
 		    structure TyCon : TYCON
 		      sharing type TyCon.tycon = TyName.tycon
 		    structure ExplicitTyVar : TYVAR
@@ -14,13 +17,14 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		    structure FinMapEq : FINMAPEQ
 		    structure PP : PRETTYPRINT
 		      sharing type PP.Report = Report.Report
-		      sharing type SortedFinMap.StringTree = PP.StringTree
+		      sharing type SortedFinMap.StringTree = PP.StringTree = IntFinMap.StringTree
 		       = TyName.StringTree
 		    structure Crash : CRASH
 		      ) : STATOBJECT =
   struct
 
-    open Edlib
+    structure List = Edlib.List
+    structure ListPair = Edlib.ListPair
 
     fun die s = Crash.impossible ("StatObject." ^ s)
     fun noSome NONE s = die s
@@ -77,7 +81,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       end (*local*)
       fun pr i = if i = GENERIC then "generic" 
 		 else if i = NONGENERIC then "nongeneric"
-		 else Int.string i
+		 else Int.toString i
     end (*Level*)
 
     val dummy_rank_ref = ref(Rank.current())  (* Used for bound type variables. *)
@@ -242,11 +246,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       fun fresh_bound {id, equality, overloaded} = (ref o NO_TYPE_INSTANCE o ORDINARY)
 	{id=id,equality=equality, overloaded=overloaded,rank=dummy_rank_ref}
 
-      val ordA = String.ord "a"
+      val ordA = ord #"a"
       fun pretty_string names 
 	(ref (NO_TYPE_INSTANCE (ORDINARY {equality, overloaded, id, ...}))) =
 	    let val boring = 
-	              if id < 0 then "S" ^ Int.string(~id) else "U" ^ Int.string id
+	              if id < 0 then "S" ^ Int.toString(~id) else "U" ^ Int.toString id
 	    in
 		(if is_overloaded0 overloaded then "OVERLOADED" else "")
 	      ^ (if equality then "''" else "'")
@@ -257,13 +261,13 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		       (let val {letter, ...} =
 			           List.first (fn {tv, ...} => tv = id) L'
 			in
-			  String.chr(ordA + letter)
+			  str(chr(ordA + letter))
 			end
 		        handle List.First _ =>
 			  let val len = List.size L'
 			  in
 			    L := L' @ [{tv=id, letter=len}] ;
-			    String.chr(ordA + len)
+			    str(chr(ordA + len))
 			  end)
 		 | NONAMES => boring)
 	    end
@@ -350,13 +354,13 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      SortedFinMap.layoutMap  {start="{", eq=" : ", sep=", ", finish=finish}
 		(PP.layoutAtom Lab.pr_Lab) layout m
 	    end
-      and pr_RowVar (ref (NO_REC_INSTANCE rho)) = "'r" ^ Int.string rho
+      and pr_RowVar (ref (NO_REC_INSTANCE rho)) = "'r" ^ Int.toString rho
 	| pr_RowVar _ = die "pr_RowVar"
 
       val layout_with_level = fn ty => 
 	    let val ty = findType ty in
 	      PP.NODE {start="TypeDesc: ",
-		       finish="\tlevel: " ^ Int.string (! (#level ty)),
+		       finish="\tlevel: " ^ Int.toString (! (#level ty)),
 		       indent=0, children=[layout ty], childsep=PP.NOSEP}
 	    end
 
@@ -455,7 +459,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	 tycon*)
 
 	fun full_works tyname = concat [TyName.pr_TyName tyname, "<", 
-					 Int.string (TyName.id tyname) , ">"]
+					 Int.toString (TyName.id tyname) , ">"]
 	fun TyName_string_as_opt (tyname, tyname'_opt) =
 	     case tyname'_opt of 
 	       SOME tyname' => 
@@ -924,15 +928,14 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			else level := Level.current ()
 		   else ()
 	       | ARROW (tau1, tau2) => 
-		    level := Int.min (generalise0 {ov=ov, imp=imp, tau=tau1}) 
-		                     (generalise0 {ov=ov, imp=imp, tau=tau2})
+		    level := Int.min (generalise0 {ov=ov, imp=imp, tau=tau1}, 
+				      generalise0 {ov=ov, imp=imp, tau=tau2})
 	       | RECTYPE r => 
 		    level := generaliseRecType {ov=ov, imp=imp, r=r}
 	       | CONSTYPE (taus, tyname) => 
-		    level := List.foldL 
-		               Int.min Level.NONGENERIC
-			           (map (fn tau => generalise0
-					     {ov=ov, imp=imp, tau=tau}) taus)) ;
+		    level := foldl Int.min Level.NONGENERIC
+		                 (map (fn tau => generalise0
+				       {ov=ov, imp=imp, tau=tau}) taus)) ;
 	    debug_print "generalise0 OUT" tau ;
 	    ! (#level tau)
 	  end
@@ -946,8 +949,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		 | VARrec (ref (NO_REC_INSTANCE _)) => Level.NONGENERIC
 		 | VARrec (ref (REC_INSTANCE _)) => die "generaliseRecType"
 		 | ROWrec (l,tau,r') => 
-		     Int.min (generalise0 {ov=ov, imp=imp, tau=tau})
-	                     (generaliseRecType {ov=ov, imp=imp, r=r'}))
+		     Int.min (generalise0 {ov=ov, imp=imp, tau=tau},
+			      generaliseRecType {ov=ov, imp=imp, r=r'}))
 	      end
 	in
 	fun generalise1 {fake, ov, imp, tau} =
@@ -1160,7 +1163,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	       | TYVAR (ref (NO_TYPE_INSTANCE (EXPLICIT _))) =>
 		   raise Unify "unify_with_overloaded_tyvar: explicit tyvar"
 	       | CONSTYPE (taus, tyname) =>
-		   if List.exists (General.curry TyName.eq tyname)
+		   if List.exists (fn tn => TyName.eq (tyname,tn))
 		        (TyName.Set.list tynames1) then ()
 		   else raise Unify "unify_with_overloaded_tyvar: not overloaded to this tyname"
 	       | _ => raise Unify "unify_with_overloaded_tyvar: only overloaded to tynames")
@@ -1272,10 +1275,10 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		 rank_ref' := rank ;
 	          if List.member tv restricted_tyvars then
 		    if List.member tv' restricted_tyvars then raise Unify "unifyTyVar0"
-		    else (level := Int.min (!level) (!level') ;
+		    else (level := Int.min (!level, !level') ;
 			  unify_with_tyvar(tv',ty))
 		  else
-		    (level' := Int.min (!level) (!level') ;
+		    (level' := Int.min (!level, !level') ;
 		     unify_with_tyvar(tv,ty'))
 	      end
 	  | unifyTyVar0 (ty  as {TypeDesc = TYVAR(tv as ref(NO_TYPE_INSTANCE(ORDINARY {rank, ...}))),
@@ -1899,6 +1902,15 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     datatype realisation = 
         Not_Id of TypeFcn' TyName.Map.map
       | Realisation_Id
+      | Efficient of (TyName * TypeFcn') IntFinMap.map (* For efficient realisation of
+							* functor bodies; the TyName is
+							* necessary to implement operations
+							* like dom, etc. Efficient realisations
+							* are not allowed to exist across
+							* matching of names, because mathing changes
+							* the tyname keys, which are used as
+							* the domain in efficient realisations. 
+							* ME 1998-11-02 *)
 
     structure Realisation = struct
       (*correct_levels_Type: correct levels of non-tyvar nodes in
@@ -1906,6 +1918,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       fun dom Realisation_Id = TyName.Set.empty
 	| dom (Not_Id m) = TyName.Set.fromList(TyName.Map.dom m)
+	| dom (Efficient m) = TyName.Set.fromList(map #1 (IntFinMap.range m))
 
       fun correct_levels_Type ty = 
 	    let val ty = findType ty 
@@ -1915,11 +1928,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		(case ty of
 		   {TypeDesc = TYVAR tv, level} => ()
 		 | {TypeDesc = ARROW (ty1,ty2), level} => 
-		     level := Int.min (correct_levels_Type ty1) (correct_levels_Type ty2)
+		     level := Int.min (correct_levels_Type ty1, correct_levels_Type ty2)
 		 | {TypeDesc = RECTYPE r, level} => 
 		     level := correct_levels_RecType r
 		 | {TypeDesc = CONSTYPE (tys,tyname), level} => 
-		     level := List.foldL 
+		     level := foldl 
 		                Int.min Level.NONGENERIC (map correct_levels_Type tys)) ;
 	      !(#level ty)
 	    end
@@ -1932,7 +1945,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	       | VARrec (ref (NO_REC_INSTANCE _)) => Level.NONGENERIC
 	       | VARrec (ref (REC_INSTANCE _)) => die "correct_levels_RecType"
 	       | ROWrec (l,ty,r') => 
-		   Int.min (correct_levels_Type ty) (correct_levels_RecType r'))
+		   Int.min (correct_levels_Type ty, correct_levels_RecType r'))
 	    end
 
       val Id = Realisation_Id
@@ -1968,6 +1981,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	in if TyName.Map.isEmpty m' then Realisation_Id
 	   else Not_Id m'
 	end
+	| restrict _ _ = die "Realisation.restrict: not implemented for efficient realisations"
 
       fun restrict_from T Realisation_Id = Realisation_Id
 	| restrict_from T (Not_Id m) =
@@ -1977,24 +1991,32 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	in if TyName.Map.isEmpty m' then Realisation_Id
 	   else Not_Id m'
 	end
+	| restrict_from _ _ = die "Realisation.restrict_from: not implemented for efficient realisations"
 
       local exception Inverse
       in fun inverse Realisation_Id = SOME Realisation_Id
 	   | inverse (Not_Id m) = 
-   	     SOME(Not_Id(TyName.Map.Fold(fn ((t, theta), acc) => 
-					 case theta
-					   of TYNAME t' => 
-					     if TyName.Set.member t' (TyName.Set.fromList(TyName.Map.dom acc)) then raise Inverse
-					     else TyName.Map.add(t', TYNAME t, acc)
-					    | EXPANDED theta' => raise Inverse) TyName.Map.empty m))
-	     handle Inverse => NONE 
+	      (SOME(Not_Id(TyName.Map.Fold(fn ((t, theta), acc) => 
+					   case theta
+					     of TYNAME t' => 
+					       if TyName.Set.member t' (TyName.Set.fromList(TyName.Map.dom acc)) then raise Inverse
+					       else TyName.Map.add(t', TYNAME t, acc)
+					      | EXPANDED theta' => raise Inverse) TyName.Map.empty m))
+	       handle Inverse => NONE)
+	   | inverse _ = die "Realisation.inverse: not implemented for efficient realisations"
       end
+
+      fun keyOfTyName tn = Name.key(TyName.name tn)
 
       fun on_TyName Realisation_Id t : TypeFcn = TypeFcn.from_TyName t
 	| on_TyName (Not_Id m) t = (case TyName.Map.lookup m t
 				      of SOME(TYNAME t) => TypeFcn.from_TyName t
 				       | SOME(EXPANDED theta) => theta
 				       | NONE => TypeFcn.from_TyName t)
+	| on_TyName (Efficient m) t : TypeFcn = (case IntFinMap.lookup m (keyOfTyName t)
+						   of SOME(_,TYNAME t) => TypeFcn.from_TyName t
+						    | SOME(_,EXPANDED theta) => theta
+						    | NONE => TypeFcn.from_TyName t)
 
       fun on_TyName_set (rea : realisation) (T : TyName.Set.Set) =
 	    if is_Id rea then T else
@@ -2004,9 +2026,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		  TyName.Set.empty T
 
       fun on_TyName' Realisation_Id t : TypeFcn' = TYNAME t
-	| on_TyName' (Not_Id m) t = case TyName.Map.lookup m t
-				      of SOME theta => theta
-				       | NONE => TYNAME t
+	| on_TyName' (Not_Id m) t = (case TyName.Map.lookup m t
+				       of SOME theta => theta
+					| NONE => TYNAME t)
+	| on_TyName' (Efficient m) t = (case IntFinMap.lookup m (keyOfTyName t)
+					  of SOME (_,theta) => theta
+					   | NONE => TYNAME t)
  
       fun on_Type Realisation_Id ty = ty
 	| on_Type phi ty = 
@@ -2075,12 +2100,33 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	| on_Realisation phi (Not_Id m) =
 	Not_Id(TyName.Map.Fold (fn ((t,theta), acc) =>
 				TyName.Map.add(t,on_TypeFcn' phi theta,acc)) TyName.Map.empty m)
+	| on_Realisation phi (Efficient m) =
+	Efficient(IntFinMap.Fold (fn ((d,(t,theta)), acc) =>
+				  IntFinMap.add(d,(t,on_TypeFcn' phi theta),acc)) IntFinMap.empty m)
 
-      fun (Realisation_Id : realisation) oo (phi : realisation) : realisation = phi
-	| phi oo Realisation_Id = phi
-	| (phi1 as Not_Id m1) oo (phi2) = (case on_Realisation phi1 phi2
+      fun mk_efficient_map m = 
+	TyName.Map.Fold (fn((t,theta),acc) => IntFinMap.add(keyOfTyName t, (t,theta), acc)) IntFinMap.empty m
+
+      fun mk_Efficient Realisation_Id = Realisation_Id
+	| mk_Efficient (Not_Id m) = Efficient(mk_efficient_map m)
+	| mk_Efficient _ = die "Realisation.mk_efficient: realisation is already efficient"
+
+      fun mk_ordinary_map m = IntFinMap.fold(fn((t,theta),acc) => TyName.Map.add(t,theta,acc)) TyName.Map.empty m
+
+      fun mk_ordinary (Efficient m) = Not_Id(mk_ordinary_map m)
+	| mk_ordinary phi = phi
+
+      fun (Realisation_Id : realisation) oo (phi : realisation) : realisation = mk_ordinary phi
+	| phi oo Realisation_Id = mk_ordinary phi
+	| (phi1 as Not_Id m1) oo phi2 = (case on_Realisation phi1 phi2
 					     of Realisation_Id => phi1
-					      | Not_Id m2 => Not_Id(TyName.Map.plus(m1, m2)))
+					      | Not_Id m2 => Not_Id(TyName.Map.plus(m1, m2))
+					      | Efficient m2 => Not_Id(TyName.Map.plus(m1, mk_ordinary_map m2)))
+	| (phi1 as Efficient m1) oo phi2 = (case on_Realisation phi1 phi2
+					     of Realisation_Id => mk_ordinary phi1
+					      | Not_Id m2 => Not_Id(TyName.Map.plus(mk_ordinary_map m1, m2))
+					      | Efficient m2 => Not_Id(mk_ordinary_map(IntFinMap.plus(m1,m2))))
+
 
       fun enrich (rea0, (rea,T)) =
 	TyName.Set.fold (fn t => fn acc => acc andalso 
@@ -2098,12 +2144,19 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      | convert (TYNAME t) = TypeFcn.from_TyName t
 	in TyName.Map.Fold(fn ((t, theta),_) => TypeFcn.match(convert theta,on_TyName rea0 t)) () m
 	end
+	| match _ = die "Realisation.match: not supported for efficient realisations"
 
       fun layout_TypeFcn' (TYNAME t) = TyName.layout t
 	| layout_TypeFcn' (EXPANDED theta) = TypeFcn.layout theta
       fun layout Realisation_Id = PP.LEAF "Id"
 	| layout (Not_Id m) = TyName.Map.layoutMap {start="{",eq=" -> ", finish="}",sep=", "}
 	TyName.layout layout_TypeFcn' m
+	| layout (Efficient m) =
+	let fun mk_normal m = IntFinMap.fold(fn ((t,theta), acc) => TyName.Map.add(t,theta,acc)) TyName.Map.empty m
+	in layout (Not_Id (mk_normal m))
+	end
+      fun is_Efficient (Efficient _) = true
+	| is_Efficient _ = false
 
     end (*Realisation*)
 

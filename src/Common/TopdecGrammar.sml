@@ -1,8 +1,5 @@
 (* Grammar for modules (modules version) - Definition v3 pages 12-14 *)
 
-(*$TopdecGrammar : DEC_GRAMMAR FUNID SIGID PRETTYPRINT
-    TOPDEC_GRAMMAR*)
-
 functor TopdecGrammar(structure FunId: FUNID
 		      structure SigId: SIGID
 		      structure DecGrammar : DEC_GRAMMAR
@@ -10,8 +7,6 @@ functor TopdecGrammar(structure FunId: FUNID
 		        sharing type DecGrammar.StringTree = PrettyPrint.StringTree
 			  ) : TOPDEC_GRAMMAR =
   struct
-
-    open Edlib
 
     structure DecGrammar = DecGrammar
     structure StrId = DecGrammar.StrId

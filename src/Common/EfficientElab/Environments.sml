@@ -9,8 +9,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 		     structure Ident: IDENT
 		       sharing type Ident.strid = StrId.strid
-			   and type Ident.longid = DecGrammar.longid
-			   and type Ident.id = DecGrammar.id
+		       sharing type Ident.longid = DecGrammar.longid
+		       sharing type Ident.id = DecGrammar.id
 
 		     structure TyCon: TYCON
 		       sharing type TyCon.strid = StrId.strid
@@ -43,7 +43,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		    ) : ENVIRONMENTS =
   struct
 
-    open Edlib
+    structure List = Edlib.List
+    structure ListSort = Edlib.ListSort
+    structure ListPair = Edlib.ListPair
+    fun uncurry f (a,b) = f a b 
 
     fun impossible s = Crash.impossible ("Environments." ^ s)
     fun noSome NONE s = impossible s
@@ -485,7 +488,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
       fun FoldPRIVATE (f : id * range_private -> 'a -> 'a)
       		      (start : 'a) (VARENV map) : 'a =
-		        FinMap.Fold (General.uncurry f) start map
+		        FinMap.Fold (uncurry f) start map
       fun Fold (f :   id * range -> 'a  -> 'a)
       	       (start : 'a)
 	       (VARENV map) : 'a = 
@@ -636,9 +639,9 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun map (f : TyStr -> TyStr) (TYENV m) : TyEnv =
 	    TYENV (FinMap.composemap f m)
       fun fold (f : TyStr -> 'a -> 'a) (start : 'a) (TYENV map) : 'a = 
-	    FinMap.fold (General.uncurry f) start map
+	    FinMap.fold (uncurry f) start map
       fun Fold (f : tycon * TyStr -> 'a -> 'a) (start : 'a) (TYENV map)
-	    : 'a = FinMap.Fold (General.uncurry f) start map
+	    : 'a = FinMap.Fold (uncurry f) start map
       fun apply (f : (tycon * TyStr -> unit)) (TYENV map) : unit = 
 	    List.apply f (FinMap.list map)
       fun size (TYENV v1) : int = FinMap.fold (fn (_, a) => a + 1) 0 v1
@@ -794,9 +797,9 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun dom (STRENV map) = FinMap.dom map
       fun is_empty (STRENV m) = FinMap.isEmpty m
       fun fold (f : Env -> 'a -> 'a) (start : 'a) (STRENV map) : 'a = 
-	    FinMap.fold (General.uncurry f) start map
+	    FinMap.fold (uncurry f) start map
       fun Fold (f : strid * Env -> 'a -> 'a) (start : 'a) (STRENV map) : 'a = 
-	    FinMap.Fold (General.uncurry f) start map
+	    FinMap.Fold (uncurry f) start map
       fun apply (f : strid * Env -> unit) (STRENV map) : unit = 
 	    List.apply f (FinMap.list map)
       fun map (f : Env -> Env) (STRENV map) =
@@ -1443,9 +1446,9 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
     end (*constructor_map*)
 
 
-
-
     structure Realisation = struct
+      open Realisation
+(*
       val on_TyName                = Realisation.on_TyName
       val on_TyName_set            = Realisation.on_TyName_set
       val on_Type                  = Realisation.on_Type
@@ -1460,6 +1463,14 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       val restrict                 = Realisation.restrict
       val restrict_from            = Realisation.restrict_from
       val inverse                  = Realisation.inverse
+      val renaming = Realisation.renaming       (*renaming T = a realisation that maps each tyname in T to a fresh tyname*)
+      val renaming' = Realisation.renaming'
+      val match = Realisation.match
+      val enrich = Realisation.enrich
+      val dom = Realisation.dom
+      val eq = Realisation.eq
+      val layout = Realisation.layout
+*)
 
       fun on_VarEnv (phi : realisation) (VE : VarEnv) =
 	    VE.map (fn LONGVARpriv sigma =>
@@ -1484,56 +1495,6 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
       and on_StrEnv phi (SE : StrEnv) =
 	    if is_Id phi then SE else SE.map (on_Env phi) SE
-
-      val renaming = Realisation.renaming       (*renaming T = a realisation that maps each tyname in T to a fresh tyname*)
-      val renaming' = Realisation.renaming'
-
-(*
-      fun renaming' (T : TyName.Set.Set) : TyName.Set.Set * realisation  =
-	let
-	  val new_tynames : (TyName * TyName) list =
-		TyName.Set.fold
-		  (fn n : TyName => fn names =>
-		   let
-		     val n' = TyName.freshTyName
-				{tycon = TyName.tycon n, arity= TyName.arity n,
-				 equality= TyName.equality n}
-		   in
-		     (n, n') :: names
-		   end) [] T
-
-	  fun mkphis (m, m') phi =
-		oo (phi, singleton (m, TypeFcn.from_TyName m'))
-	  fun buildphi [] = Id
-	    | buildphi tynames = List.foldL mkphis Id tynames
-	in
-	  (TyName.Set.fromList(map #2 new_tynames),  buildphi new_tynames)
-
-	  (*TODO 25/01/1997 22:06. tho.:
-	   mon ikke man kan lave det samme med:
-
-	   val ts = TyName.Set.list T
-	   val phis = map
-		       (fn t => mkphi(t, (TyName_in_TypeFcn o TyName.freshTyName)
-						{tycon = TyName.tycon n, arity= TyName.arity n,
-						 equality= TyName.equality n}))
-			ts
-	   val phi = foldL/R
-		       (fn phi1 => fn phi2 => oo_phi(phi2,phi1))
-		       id_phi phis
-		       (*betyder rækkefølgen noget?*)
-	   in
-	     phi
-	   *)
-	end
-
-      fun renaming (T: TyName.Set.Set) : realisation = #2 (renaming' T)
-*)
-      val match = Realisation.match
-      val enrich = Realisation.enrich
-      val dom = Realisation.dom
-      val eq = Realisation.eq
-      val layout = Realisation.layout
 
     end (*Realisation*)
 

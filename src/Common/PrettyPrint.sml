@@ -6,12 +6,11 @@ functor PrettyPrint(structure Report: REPORT
                    ): PRETTYPRINT =
   struct
 
-    open Edlib OldString
+    structure List = Edlib.List
+    fun explode' s = OldString.explode s
 
     val WIDTH = 75
     val DEBUG = false
-
-
           
     datatype childsep = NOSEP | LEFT of string | RIGHT of string
 
@@ -53,8 +52,6 @@ functor PrettyPrint(structure Report: REPORT
       | intersperceSep (LEFT s) l =  intersperce false s l;
 
 
-    
-              
     fun layoutAtom (f: 'a -> string) (x: 'a) = LEAF(f x)
       
     fun layoutSet f set =
@@ -105,8 +102,8 @@ functor PrettyPrint(structure Report: REPORT
             foldChildren f (rest, LEFT s, f(s, fold f (child, acc)))
     in
       val flatten: StringTree -> string list = fn t => rev(fold (op ::) (t, nil))
-      val flatten1: StringTree -> string = implode o flatten
-      fun flattenOrRaiseFlatString(t,width) = implode(rev(#1(fold consIfEnoughRoom (t, (nil,width)))))
+      val flatten1: StringTree -> string = concat o flatten
+      fun flattenOrRaiseFlatString(t,width) = concat(rev(#1(fold consIfEnoughRoom (t, (nil,width)))))
     end
     
     fun oneLiner (f: 'a -> StringTree) (x: 'a) = flatten1(f x)
@@ -116,7 +113,7 @@ functor PrettyPrint(structure Report: REPORT
                       | PILE of minipage * minipage
       
     val pilePages: minipage list -> minipage =
-      List.foldR (General.curry PILE) (LINES[])
+      foldr PILE (LINES[])
 
     fun indent (i: int) (m: minipage) =
       case m of
@@ -171,8 +168,8 @@ functor PrettyPrint(structure Report: REPORT
 
     fun smash(prefix, line: string, rest:minipage): minipage =
       let
-        val prefix' = explode prefix
-        val line' = explode line
+        val prefix' = explode' prefix
+        val line' = explode' line
 
         exception No
         fun try(p :: pRest, " " :: lRest) = p :: try(pRest, lRest)
@@ -180,7 +177,7 @@ functor PrettyPrint(structure Report: REPORT
           | try(pRest, nil) = pRest
           | try(_, _) = raise No
       in
-        PILE(LINES[implode(try(explode prefix, explode line))], rest)
+        PILE(LINES[concat(try(explode' prefix, explode' line))], rest)
         handle No => PILE(LINES[prefix, line], rest)
       end
 
@@ -208,7 +205,7 @@ functor PrettyPrint(structure Report: REPORT
         fun strip'(" " :: rest) = strip' rest
           | strip' s = s
       in
-        (implode o strip' o explode) s
+        (concat o strip' o explode') s
       end;
 
     fun print (width: int) (LEAF s): minipage = (* width >= 3 *)
@@ -228,7 +225,7 @@ functor PrettyPrint(structure Report: REPORT
                                     let val ind = blanks(size start)
                                     in map (fn line=> ind:: line) lines
                                     end
-                in  LINES(map implode stringLists')
+                in  LINES(map concat stringLists')
                 end
               else LINES["..."]
            end
@@ -418,7 +415,7 @@ old*)
         let fun loop (n) =
               if n>=jump then
                   let val (q,r) = (n div jump, n mod jump)
-                  in device("b" ^ Int.string(q*jump));
+                  in device("b" ^ Int.toString(q*jump));
                      loop(r)
                   end
               else if n>=32 then (device(s32); loop(n-32))

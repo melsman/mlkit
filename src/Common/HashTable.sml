@@ -27,9 +27,6 @@ signature HASH_TABLE =
 functor HashTable(structure PP : PRETTYPRINT) : HASH_TABLE =
   struct
 
-    structure List = Edlib.List
-    structure Int = Edlib.Int
-
     type dom = int
     type 'a hash_table = int * ((dom*'a)list Array.array)
     type StringTree = PP.StringTree
@@ -86,8 +83,8 @@ functor HashTable(structure PP : PRETTYPRINT) : HASH_TABLE =
     (* Return number of associations. *)
     fun size (table_size, table) =
       let
-	fun size' (0,s) = s + (List.size(Array.sub(table,0)))
-	  | size' (n,s) = size' ((n-1), s + (List.size(Array.sub(table,n))))
+	fun size' (0,s) = s + (length(Array.sub(table,0)))
+	  | size' (n,s) = size' ((n-1), s + (length(Array.sub(table,n))))
       in
 	size' (table_size,0)
       end
@@ -98,7 +95,7 @@ functor HashTable(structure PP : PRETTYPRINT) : HASH_TABLE =
 	fun range' (0,acc) = Array.sub(table,0) @ acc
 	  | range' (n,acc) = range' ((n-1),(Array.sub(table,n) @ acc))
       in
-	List.map (fn (key,value) => value) (range' (table_size,[]))
+	map (fn (key,value) => value) (range' (table_size,[]))
       end
     
     (* Domain and range of hash table. Not sorted!*)
@@ -158,7 +155,7 @@ functor HashTable(structure PP : PRETTYPRINT) : HASH_TABLE =
       layoutDom layoutRan table =
       PP.NODE {start=start,
 	       finish=finish,
-	       children=List.map (fn (d,r) => 
+	       children=map (fn (d,r) => 
 				  PP.NODE {start="",
 					   finish="",
 					   children=[layoutDom d, 
@@ -174,7 +171,7 @@ functor HashTable(structure PP : PRETTYPRINT) : HASH_TABLE =
 	fun bucket ([],acc) = acc
 	  | bucket (buckets,(no_of_associations,no_of_used_table_entries,longest_bucket,total_bucket_length)) =
 	  let
-	    val size_bucket = List.size buckets
+	    val size_bucket = length buckets
 	  in
 	    (no_of_associations+size_bucket,
 	     no_of_used_table_entries+1,
@@ -189,11 +186,11 @@ functor HashTable(structure PP : PRETTYPRINT) : HASH_TABLE =
 	val (no_of_associations,no_of_used_table_entries,longest_bucket,total_bucket_length) =
 	  table_usage' (table_size,(0,0,0,0))
       in
-	("Table size......................: " ^ (Int.string table_size) ^ "\n" ^
-	 "No. of associations.............: " ^ (Int.string no_of_associations) ^ "\n" ^
-	 "No. of used table entries.......: " ^ (Int.string no_of_used_table_entries) ^ "\n" ^
-	 "No. of unused table entries.....: " ^ (Int.string (table_size+1-no_of_used_table_entries)) ^ "\n" ^
-	 "Longest bucket..................: " ^ (Int.string (longest_bucket)) ^ "\n" ^
+	("Table size......................: " ^ (Int.toString table_size) ^ "\n" ^
+	 "No. of associations.............: " ^ (Int.toString no_of_associations) ^ "\n" ^
+	 "No. of used table entries.......: " ^ (Int.toString no_of_used_table_entries) ^ "\n" ^
+	 "No. of unused table entries.....: " ^ (Int.toString (table_size+1-no_of_used_table_entries)) ^ "\n" ^
+	 "Longest bucket..................: " ^ (Int.toString (longest_bucket)) ^ "\n" ^
 	 "Mean bucket length..............: " ^ (if no_of_used_table_entries <> 0 then
 						   Real.toString (real(total_bucket_length)/real(no_of_used_table_entries))
 						 else

@@ -102,13 +102,15 @@ signature TYPE_INFO =
 			 * rea_inst realisation instantiates formal type names with 
 			 * actual types and the rea_gen realisation maps generative 
 			 * names of the functor into fresh names. *)
-      | FUNBIND_INFO of {argE: Env, elabB: Basis, T: TyName.Set.Set, resE: Env, opaq_env_opt: opaq_env option}
+      | FUNBIND_INFO of {argE: Env, elabBref: Basis ref, T: TyName.Set.Set, resE: Env, opaq_env_opt: opaq_env option}
                         (* Attached to functor bindings; argE is the
 			 * environment resulting from elaborating the
-			 * sigexp in a functor binding; elabB is the
-			 * basis for elaborating the functor body; T
-			 * is the set of type names generated during
-			 * elaboration of the functor body; resE is
+			 * sigexp in a functor binding; elabBref is the
+			 * basis for elaborating the functor body; a reference
+			 * is used to allow for restricting the basis to
+			 * the free identifiers of the functor body during the
+			 * FreeIds phase; T is the set of type names generated 
+			 * during elaboration of the functor body; resE is
 			 * the environment resulting from elaborating
 			 * the functor body; rea_opt is used for
 			 * opacity elimination. Part of the info is

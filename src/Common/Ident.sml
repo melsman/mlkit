@@ -5,8 +5,6 @@ functor Ident(structure StrId: STRID
 	     ): IDENT =
   struct
 
-    open Edlib
-
     type strid = StrId.strid
 
     datatype id = ID of string
@@ -19,7 +17,7 @@ functor Ident(structure StrId: STRID
       let
 	val strings = (map (fn s => pr_id s ^ ".") ids)
       in
-	List.foldR (General.curry op ^) (pr_id id) strings
+	foldr (op ^) (pr_id id) strings
       end
 
     fun unqualified longid =
@@ -88,10 +86,10 @@ functor Ident(structure StrId: STRID
       val count = ref (!initial)
 (*      fun unique() = "var" ^ Timestamp.print(Timestamp.new()) *)
       fun unique() = (count := !count + 1;
-		      "var" ^ Int.string (!count))
+		      "var" ^ Int.toString (!count))
       fun unique_named (s:string) = 
                      (count := !count + 1;
-		      s (*^ Int.string (!count)*))
+		      s (*^ Int.toString (!count)*))
     in
       fun reset() = count := !initial
       fun commit() = initial := !count

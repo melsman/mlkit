@@ -8,9 +8,6 @@ functor LexBasics(structure BasicIO: BASIC_IO
 		 ): LEX_BASICS =
   struct
 
-    open Edlib OldIO OldString
-    open General 
-
     datatype pos = POSITION of unit -> {file: string, line: int, column: int,
 					getLine: int -> string
 				       }
@@ -45,102 +42,58 @@ functor LexBasics(structure BasicIO: BASIC_IO
     val op // = Report.//
 
     local
-      fun spaces n =
-	if n<0 then (output(std_out,
-			    "\n\n       ************ LexBasics.spaces: n<0  ************  \n\n\n");
-		     raise String.Size ("Alleluja, the Lord is come", 42))
-	else String.create n " "
+      fun spaces (n,a) = if n<=0 then a
+			 else spaces(n-1,#" "::a)
 
-      fun untabifyL(col, "\t" :: rest) =
-	    let
-	      val gap = 8 - col mod 8
-	    in
-	      spaces gap :: untabifyL(col + gap, rest)
-	    end
-
-	| untabifyL(col, x :: rest) =
-	    x :: untabifyL(col + 1, rest)
-
+      fun untabifyL(col, #"\t" :: rest) =
+	let val gap = 8 - col mod 8
+	in spaces (gap, untabifyL(col + gap, rest))
+	end
+	| untabifyL(col, x :: rest) = x :: untabifyL(col + 1, rest)
 	| untabifyL(_, nil) = nil
     in
       fun untabify indent line = implode(untabifyL(indent, explode line))
     end
 
+
+    fun withAbsCharacter(n, (x :: xs)) =
+      {absCharacter=n, line=x} :: withAbsCharacter(n+size x, xs)
+      | withAbsCharacter(_, nil) = nil
+
+    fun sourceReader getc cs =
+      let 
+	fun loop (cs, l, ll) =
+	  case getc cs
+	    of SOME(#"\n",cs) => loop(cs, [], implode(rev(#"\n"::l)) :: ll)
+	     | SOME(c, cs) => loop(cs, c::l, ll) 
+	     | NONE => SOME(rev(implode(rev l) :: ll),cs)
+      in loop (cs, [], [])
+      end
+      
     fun stringToSourceText(filename, string) =
       let
-	fun process "" = [""]
-	  | process string =
-	      case String.search String.MatchCase "\n" string 0
-		of OK n =>
-		     String.extract 0 (n+1) string (* Include `\n'. *)
-		     :: process(String.extract (n+1) (size string) string)
-
-		 | Fail() =>
-		     [string]
-
+	fun process s =
+	  case StringCvt.scanString sourceReader s
+	    of SOME lines => lines
+	     | NONE => [""]
 	val lines = map (untabify 0) (process string)
-
-	fun withAbsCharacter(n, (x :: xs)) =
-	      {absCharacter=n, line=x} :: withAbsCharacter(n+size x, xs)
-	  | withAbsCharacter(_, nil) = nil
       in
 	SOURCE_TEXT{filename=filename, lines=withAbsCharacter(0, lines)}
       end
 
-
-   (* I suspect doing that for an entire file might be rather painful. So,
-      we read a file a chunk at a time and build a sequence of SourceTexts.
-      Therefore, we need a SourceText concatenation function. *)
-
-    fun bumpChars(n: int, {absCharacter, line} :: rest) =
-          {absCharacter=absCharacter+n, line=line} :: bumpChars(n, rest)
-      | bumpChars(_, nil) = nil
-
-    fun concat(SOURCE_TEXT{filename, lines=list1},
-	       SOURCE_TEXT{lines=list2, ...}
-	      ) =
-      case (rev list1, list2)
-	of ({absCharacter=lastChar, line=lastLine} :: revFirstLines,
-	    {line=firstLine2, ...} :: restLines
-	   ) =>
-	     let
-	       val joinedLine =
-		 {absCharacter=lastChar, line=lastLine ^ firstLine2}
-	     in
-	       SOURCE_TEXT{
-		 filename=filename,
-		 lines=rev revFirstLines
-		       @ (joinedLine
-			  :: bumpChars(lastChar + size lastLine, restLines)
-			 )
-	       }
-	     end
-
-	 | _ => Crash.impossible "LexBasics.concat"
-
-    val BUFFER_SIZE = 1024		(* Say... *)
-
-    fun fileToSourceText file =
+    fun fileToSourceText filename =
       let
-	val stream = BasicIO.open_in file	(* Io raised here gets dealt
+	val stream = BasicIO.open_in filename	(* Io raised here gets dealt
 						   with in any calling
 						   context properly. *)
-(*ME 1998-08-17
-	val _ = BasicIO.println("[reading source file:\t" ^ file ^ "]")
-*)
-	fun read() =
-	  let
-	    val text = BasicIO.input(stream, BUFFER_SIZE)
-	    val st = stringToSourceText(file, text)
-	  in
-	    if size text = BUFFER_SIZE
-	    then concat(st, read())
-	    else st
-	  end
-
-	val st = read()
-      in
-	BasicIO.close_in stream; st
+	fun process s =
+	  case TextIO.scanStream sourceReader s
+	    of SOME lines => lines
+	     | NONE => [""]
+	val lines = map (untabify 0) (process stream)
+      in 
+	BasicIO.close_in stream;
+	SOURCE_TEXT{filename=filename, lines=withAbsCharacter(0, lines)}
       end
 
    (* `positionFn' is suspended, for efficiency. It's used in
@@ -156,9 +109,8 @@ functor LexBasics(structure BasicIO: BASIC_IO
 	    val ref(SOURCE_TEXT{lines, ...}) = sourceTextRef
 	  in
 	    Report.print(
-	      Report.decorate("getLine " ^ Int.string n ^ ": ",
-			      List.foldR (fn {line, ...} =>
-					    fn rep =>
+	      Report.decorate("getLine " ^ Int.toString n ^ ": ",
+			      foldr (fn ({line, ...}, rep) =>
 					      Report.line line // rep
 					 ) Report.null lines
 			     )
@@ -170,14 +122,14 @@ functor LexBasics(structure BasicIO: BASIC_IO
 	    val ref(SOURCE_TEXT{lines, ...}) = sourceTextRef
 	  in
 	    if !Flags.DEBUG_ERRORPRINT then pr n else ();
-	    #line(List.nth (n-1) lines)
+	    #line(List.nth (lines,n-1))
 	  end
       in
 	POSITION(fn () =>
 	  let
 	    val _ =
 	      if !Flags.DEBUG_ERRORPRINT then
-		 BasicIO.println("positionFn(absPos=" ^ Int.string absPos ^ ")")
+		 BasicIO.println("positionFn(absPos=" ^ Int.toString absPos ^ ")")
 	      else ()
 
 	    val ref(SOURCE_TEXT{filename, lines}) = sourceTextRef
@@ -269,7 +221,7 @@ functor LexBasics(structure BasicIO: BASIC_IO
 	    val _ = BasicIO.print prompt
 
 	    val line =
-	      untabify (String.size prompt) (TextIO.inputLine std_in)
+	      untabify (String.size prompt) (TextIO.inputLine TextIO.stdIn)
 
 	   (* The lines (and character positions) that we've got so far,
 	      in reverse order (latest at front of list): *)
@@ -284,8 +236,8 @@ functor LexBasics(structure BasicIO: BASIC_IO
 
 	    val _ =
 	      if !Flags.DEBUG_ERRORPRINT then
-		BasicIO.println("absPos(" ^ String.string line ^ ") = "
-				^ Int.string absPos
+		BasicIO.println("absPos(" ^ String.toString line ^ ") = "
+				^ Int.toString absPos
 			       )
 	      else ()
 
@@ -313,23 +265,27 @@ functor LexBasics(structure BasicIO: BASIC_IO
       let
 	val _ =
 	  if !Flags.DEBUG_ERRORPRINT then
-	    BasicIO.println("highlight " ^ String.string line
-			    ^ ", " ^ Int.string column
-			    ^ " =-> " ^ Int.string width
+	    BasicIO.println("highlight " ^ String.toString line
+			    ^ ", " ^ Int.toString column
+			    ^ " =-> " ^ Int.toString width
 			   )
 	  else
 	    ()
 
-	val line = String.dropR "\n" line
+	fun drop_nl [] = []
+	  | drop_nl (#"\n"::rest) = drop_nl rest
+	  | drop_nl (c::rest) = c :: drop_nl rest
+
+	val line = implode (drop_nl (explode line))
 	val width = if width <= 0 then 1 else width
 				(* Eliminate any 0-width error fields. *)
       in
 	Report.indent(
 	  String.size prompt,
 	     Report.line line
-	  // Report.line(String.create column " " ^ String.create width "^")
+	  // Report.line(StringCvt.padLeft #" " column "" ^ (StringCvt.padRight #"^" width ""))
 	)
-      end handle String.Size _ =>
+      end handle _ =>
 	Crash.impossible "LexBasics.highlight: width or column <0"
 
 
@@ -342,8 +298,8 @@ functor LexBasics(structure BasicIO: BASIC_IO
 	    PP.NODE {start="POSITION(", finish=")",
 		     indent=3, childsep=PP.RIGHT ",",
 		     children=[PP.LEAF("\"" ^ file ^ "\""),
-			       PP.LEAF("line " ^ Int.string line),
-			       PP.LEAF("column " ^ Int.string column),
+			       PP.LEAF("line " ^ Int.toString line),
+			       PP.LEAF("column " ^ Int.toString column),
 			       PP.LEAF("\"" ^ getLine line ^ "\"")]}
 	  end
       | layoutPos DUMMY = PP.LEAF "DUMMY"
@@ -367,8 +323,8 @@ functor LexBasics(structure BasicIO: BASIC_IO
 			 // highlightAll (fromL + 1, toL)
 		       end
 	  in
-	    Report.line (file ^ ", line " ^ Int.string line1
-			 ^ ", column " ^ Int.string column1 ^ ":")
+	    Report.line (file ^ ", line " ^ Int.toString line1
+			 ^ ", column " ^ Int.toString column1 ^ ":")
 	    // (if line1 = line2 then
 		  highlight (theLine1, column1, column2-column1)
 		else
@@ -388,33 +344,39 @@ functor LexBasics(structure BasicIO: BASIC_IO
 	  // PP.reportStringTree (layoutPos pos1)
 	  // PP.reportStringTree (layoutPos pos2)
 
-    fun output_source {os: outstream, left=POSITION posLfn, right=POSITION posRfn} : unit =
+    fun output_source {os: TextIO.outstream, left=POSITION posLfn, right=POSITION posRfn} : unit =
       let val {file, line=line1:int,column=column1:int, getLine} = posLfn()
 	  val {line=line2:int, column=column2:int, ...} = posRfn()
 	    
 	    (* If the first character is not `:' or `=' (it shows!!) then we emit `='. *)
 	  fun patch s = case explode s
 			     of [] => Crash.impossible "LexBasics.output_source"
-			      | ":" :: _ => s
-	                      | "=" :: _ => s
+			      | #":" :: _ => s
+	                      | #"=" :: _ => s
 			      | _ => " = " ^ s
 
+	  fun extract s a = String.extract a handle e => (print ("extract : " ^ s ^ "\n"); raise e)
       in if line1 = line2 then 
 	   let val line = getLine line1
-	   in output(os,patch(String.extract column1 column2 line))
+	       (* val _ = print ("line = " ^ line ^ "\n"); *)
+	   in TextIO.output(os,patch(extract "line" (line, column1, SOME (column2-column1))))
 	   end
 	 else 
 	   let val first = getLine line1
-	       val first = patch(String.extract column1 (size first) first)
+	       (* val _ = print ("first = " ^ first ^ "\n"); *)
+	       val first = patch(extract "first" (first, column1, NONE))
+	       (* val _ = print ("first = " ^ first ^ "\n"); *)
 	       val last = getLine line2
-	       val last = String.extract 0 column2 last
+	       (* val _ = print ("last = " ^ last ^ "\n"); *)
+	       val last = extract "last" (last, 0, SOME column2) 
+	       (* val _ = print ("last = " ^ last ^ "\n"); *)
 	       fun get_lines (l, lines) = 
 		 if l = line1 then first :: lines
 		 else get_lines(l-1,getLine l :: lines)
-	   in List.apply (fn s => output(os,s)) (get_lines(line2-1,[last]))
+	   in List.app (fn s => TextIO.output(os,s)) (get_lines(line2-1,[last]))
 	   end
       end
-      | output_source {os,...} = output(os,"*** POSITION UNKNOWN ***")
+      | output_source {os,...} = TextIO.output(os,"*** POSITION UNKNOWN ***")
 
     val FIELD_WIDTH = 18
 
