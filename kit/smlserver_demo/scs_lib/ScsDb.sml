@@ -15,16 +15,19 @@ signature SCS_DB =
 structure ScsDb :> SCS_DB =
   struct
     fun dbClickDml table_name id_column_name generated_id return_url insert_sql =
-      if Db.dml insert_sql = Ns.OK then
-        (Ns.returnRedirect return_url; Ns.exit())
-      else if Db.existsOneRow `select 1 as num from ^table_name where ^id_column_name = '^(Db.qq generated_id)'` 
-	     then (Ns.returnRedirect return_url; Ns.exit()) (* it's a double click, so just redirect the user to the index page *)
-	   else ScsError.panic (`DbFunctor.dbClickDml choked. DB returned error on SQL ` ^^ insert_sql)
-	     handle X => ScsError.panic (`DbFunctor.dbClickDml choked. DB returned error on SQL ` ^^ insert_sql ^^ `^(General.exnMessage X)`)
+      (Db.dml insert_sql;
+       Ns.returnRedirect return_url; Ns.exit())
+      handle Fail s =>
+	(if Db.existsOneRow `select 1 as num from ^table_name where ^id_column_name = '^(Db.qq generated_id)'` 
+	   then (Ns.returnRedirect return_url; Ns.exit()) (* it's a double click, so just redirect the user to the index page *)
+	 else ScsError.panic (`DbFunctor.dbClickDml choked. DB returned error on SQL ` ^^ insert_sql)
+	   handle X => ScsError.panic (`DbFunctor.dbClickDml choked. DB returned error on SQL ` 
+				       ^^ insert_sql ^^ `^(General.exnMessage X)`))
 
     fun panicDml f = Db.panicDml ScsError.panic f
     fun panicDmlTrans f = Db.panicDmlTrans ScsError.panic f
-    fun errorDml emsg sql = (Db.errorDml (fn () => (Ns.log (Ns.Notice, "hej");ScsPage.returnPg "Databasefejl" emsg)) sql;())
+    fun errorDml emsg sql = (Db.errorDml (fn () => (Ns.log (Ns.Notice, "hej");
+						    ScsPage.returnPg "Databasefejl" emsg)) sql;())
     fun toggleP table column_id column id =
       panicDml `update ^table set ^column=(case when ^column = 't' then 'f' else 't' end)
                  where ^table.^column_id=^(Db.qq' id)`

@@ -6,7 +6,7 @@ signature NS_DB_BASIC =
     val sysdateExp    : string
     val beginTrans    : quot
     val endTrans      : quot
-    val roolback      : quot
+    val rollback      : quot
     val fromDate      : Date.date -> string
   end
 
@@ -33,9 +33,8 @@ signature NS_DB =
     structure Pool : NS_POOL
 
     eqtype status
-    structure Set : NS_SET 
 
-    type set = Set.set (* BUG: we should have Ns.Set and this set share the same type => including structure set here should not be necessary , so type set should be Ns.Set.set so that we can use eg. Ns.Set.foldl on a Db.set; 2001-12-02, nh*)
+    type set
     type pool = Pool.pool
     type db
 
@@ -48,15 +47,41 @@ signature NS_DB =
     (* Quotation support *)
     type quot = string frag list 
 
-    val dmlDb           : db * quot -> status
+    (* [dmlDb (db,dml)] execute dml using database handle db. Raises
+    Fail msg if dml is unsuccessful (msg contains the error message
+    returned from the database). *)
+    val dmlDb           : db * quot -> unit
+
+    (* [dmlTransDb (db,f)] executes function f using handle db, which
+    probably sends a series of SQL statements to the database. All SQL
+    statements are one atomic transaction. If any statement fails or
+    any exception is raised inside f, then the transaction is rolled
+    back and the exception is raised. *)
     val dmlTransDb      : db * (db -> 'a) -> 'a
+
+    (* [panicDmlDb db f_panic sql] same as dmlDb, except that on error
+    function f_panic is executed. panicDmlDb returns unit and it only
+    raises an exception if f_panic does. *)
     val panicDmlDb      : db -> (quot -> 'a) -> quot -> unit
+
+    (* [panicDmlTransDb db f_panic f] same as dmlTransDb except that
+    on error function f_panic is executed. panicDmlTransDb returns the
+    value returned by f_panic unless f_panic raises an exception. *)
     val panicDmlTransDb : db -> (quot -> 'a) -> (db -> 'a) -> 'a
-    val selectDb        : db * quot -> set
-    val getRowDb        : db * set -> status
+
+    (* [getCol (s,key)] returns the value affiliated with key in set
+     s. Returns "##" if key is not in the set s. *)
     val getCol          : set * string -> string
+
+    (* [getColOpt (s,key)] returns the value SOME v where v is
+    affiliated with key in set s. NONE is returned if key is not in
+    the set s, *)
     val getColOpt       : set * string -> string option
+
+    (* [foldDb (db,f,b,sql)] executes SQL statements sql and folds over
+    the result set. Raises Fail msg on fail *)
     val foldDb          : db * ((string->string)*'a->'a) * 'a * quot -> 'a
+
     val foldSetDb       : db * (set*'a->'a) * 'a * quot -> 'a
     val appDb           : db * ((string->string)->'a) * quot -> unit
     val listDb          : db * ((string->string)->'a) * quot -> 'a list
@@ -65,7 +90,10 @@ signature NS_DB =
     val oneRowDb        : db * quot -> string list
     val zeroOrOneRowDb  : db * quot -> string list option
 
-    val dml           : quot -> status
+    (* [dml sql] similar to dmlDb *)
+    val dml           : quot -> unit
+
+    (* [dmlTrans f] similar to dmlTransDb *)
     val dmlTrans      : (db -> 'a) -> 'a
     val maybeDml      : quot -> unit
     val panicDml      : (quot -> 'a) -> quot -> unit

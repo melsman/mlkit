@@ -29,7 +29,7 @@ in
   demo/cache.sml
   demo/cache_add.sml
   demo/cache_lookup.sml
-
+  demo/db_test.sml
   demo/index.sml
   demo/rating/index.sml
   demo/rating/add.sml
@@ -53,11 +53,11 @@ in
   demo/currency_cache.sml
   demo/formvar.sml
   demo/formvar_chk.sml
-  demo/auth_form.sml
+(*  demo/auth_form.sml
   demo/auth_logout.sml
   demo/auth.sml
   demo/auth_new_form.sml
-  demo/auth_new.sml
+  demo/auth_new.sml*)
   demo/link/index.sml
   demo/link/add_form.sml
   demo/link/add.sml

@@ -30,8 +30,8 @@ fun sources n nil = ``
   | sources n (s::ss) = src_link n s ^^ `, ` ^^ sources (n+1) ss
 
 fun mkrow (desc, src, srcs) = 
-  `<tr><td><font size=-2><a href="^src">^desc</a></font></td><td align=right>
-   <font size=-2>` 
+  `<tr><td><font size=-1><a href="^src">^desc</a></font></td><td align=right>
+   <font size=-1>` 
   ^^ sources 1 (src::srcs) ^^ `</font></td></tr>`
 
 val _ = Page.return "SMLserver Examples" 

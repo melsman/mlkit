@@ -47,7 +47,7 @@ structure ScsAudit :> SCS_AUDIT =
 	end
 
     fun trail_row (columns_not_reported:string list) 
-      (s:Db.set,(acc:quot,old_values:(string,string) Splaymap.dict,audit_count:int)) : 
+      (s:Ns.Set.set,(acc:quot,old_values:(string,string) Splaymap.dict,audit_count:int)) : 
       (quot * (string,string) Splaymap.dict * int) =
       let
 	(* Loop through each column key and value in the selection *)
@@ -62,10 +62,10 @@ structure ScsAudit :> SCS_AUDIT =
 	else
 	  let val (acc,old_values,modification_count) =
 	    if audit_count = 0 then (* No previous audit entry for this row *)
-	      Db.Set.foldl trail_columns (acc ^^ `<h4>Insert on ^(g "last_modified") by ^(show_user())
+	      Ns.Set.foldl trail_columns (acc ^^ `<h4>Insert on ^(g "last_modified") by ^(show_user())
 					  </h4><table>`,old_values,0) s
 	    else (* This audit entry represents an update to the main row *)
-	      Db.Set.foldl trail_columns (acc ^^ `<h4>Update on ^(g "last_modified") by ^(show_user())
+	      Ns.Set.foldl trail_columns (acc ^^ `<h4>Update on ^(g "last_modified") by ^(show_user())
 					  </h4><table>`,old_values,0) s
 	  in 
 	    (acc ^^ `</table>`,old_values,audit_count+1) 

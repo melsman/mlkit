@@ -364,7 +364,7 @@ signature NS =
     val randomGenerator : Random.generator
 
     (* Creating the two supported database interfaces *)
-    structure DbOra   : NS_DB where type status = status
-    structure DbPg    : NS_DB where type status = status
-    structure DbMySQL : NS_DB where type status = status
+    structure DbOra   : NS_DB where type status = status and type set = Set.set
+    structure DbPg    : NS_DB where type status = status and type set = Set.set
+    structure DbMySQL : NS_DB where type status = status and type set = Set.set
   end
