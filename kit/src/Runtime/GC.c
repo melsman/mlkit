@@ -1096,7 +1096,7 @@ gc(unsigned int **sp, unsigned int reg_map)
   unsigned int **d_lab_ptr;
   int num_d_labs;
   int size_rcf, size_ccf, size_spilled_region_args;
-  Rp *rp_tmp, *p;
+  Rp *rp, *p;
   extern int rp_used;
   extern int rp_total;
   double ratio;
@@ -1232,43 +1232,90 @@ gc(unsigned int **sp, unsigned int reg_map)
     // printf("evacuating value in data labels end\n");
   }
 
+#ifdef ENABLE_GEN_GC
+  /* If minor gc, then refs and tables in g1 and lobjs are also 
+     part of the root-set */
+  /* ToDo: GenGC insert so only done in minor gc */
+  for ( r = TOP_REGION ; r ; r = r->p ) {
+    switch ( rtype(r->g1) ) {
+    case RTYPE_REF: {
+      value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
+      // evacuate content of refs in g1
+      // refs occupies one word only!
+      while ( ((int *)value_ptr) != r->g1.a ) 
+	{
+	  rp = get_rp_header(value_ptr);
+#if PROFILING
+	  value_ptr += sizeObjectDesc;
+#endif /* PROFILING */
+	  //	  *value_ptr = evacuate(*value_ptr); ToDo: GenGC uncomment
+	  value_ptr += 1;
+	      
+	  /* If at end of region page or the region page is full, go 
+	   * to next region page. */
+	  if ((((int *)value_ptr) != r->g1.a) && 
+	      ((((int *)value_ptr) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+	       || (*((int *)value_ptr) == notPP)))
+	    {
+	      value_ptr = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
+	    }
+	}
+      /* ToDo: GenGC: slet check */
+      if (r->lobjs != NULL) 
+	die("gc: r->lobjs is not null for RTYPE_REF region.");
+      break;
+    }
+    case RTYPE_ARRAY: { 
+      unsigned int tag;
+      int i;
+      Lobjs *lobjs;    
 
-  //  #ifdef ENABLE_GEN_GC
-  //    /* If minor gc, then refs and tables in g1 and lobjs are also 
-  //       part of the root-set */
-  //    /* ToDo: GenGC insert so only done in minor gc */
-  //    for ( r = TOP_REGION ; r ; r = r->p ) {
-  //      switch ( rtype(r->g1) ) {
-  //      case RTYPE_REF: {
-  //	value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
-  //	// evacuate content of refs in g1
-  //	while ( ((int *)value_ptr+1) != gen->a ) 
-  //	    {
-  //	      rp = get_rp_header(s);
-  //#if PROFILING
-  //	      s += sizeObjectDesc;
-  //#endif
-  //	      *(s+1) = evacuate(*(s+1));
-  //	      s += 1;
-  //	      
-  //	      /* If at end of region page or the region page is full, go 
-  //	       * to next region page. */
-  //	      if ((((int *)s+1) != gen->a) && 
-  //		  ((((int *)s+1) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
-  //		   || (*((int *)s+1) == notPP)))
-  //		{
-  //		  s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE - 1;
-  //		}
-  //	    }
-  //		  /* ToDo: GenGC: slet check */
-  //
-      // is r a ref-region, then evacuate all objects in r->g0 and r->g1
-      //   check that lobjs is empty
-
-      // is r a table-region, then evacuate all objects in r->g0 and r->g1 and r->lobjs
-  //    }
-  //  #endif /* ENABLE_GEN_GC */
-
+      value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
+      // evacuate content of arrays in g1
+      while ( ((int *)value_ptr) != r->g1.a ) 
+    	{ 
+    	  rp = get_rp_header(value_ptr);
+#if PROFILING
+    	  value_ptr += sizeObjectDesc;
+#endif /* PROFILING */
+// ToDo: GenGC use scan_tagged_value instead
+	  // Run through array and evacuate objects
+    	  tag = *value_ptr;
+    	  value_ptr++;
+    	  for (i=0; i<get_table_size(tag); i++) {
+	    //	    *value_ptr = evacuate(*value_ptr); ToDo: GenGC uncomment
+    	    value_ptr++;
+    	  }
+    	  /* If at end of region page or the region page is full, go 
+	   * to next region page. */
+    	  if ((((int *)value_ptr) != r->g1.a) && 
+    	      ((((int *)value_ptr) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+    	       || (*((int *)value_ptr) == notPP)))
+    	    {
+    	      value_ptr = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
+    	    }
+    	}
+      // evacuate contents of arrays in lobjs
+      for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) ) 
+	{
+#ifdef PROFILING
+	  value_ptr = &(lobjs->value) + sizeObjectDesc;
+#else
+	  value_ptr = &lobjs->value;
+#endif /* PROFILING */
+	  // ToDo: GenGC use scan_tagged_value instead
+	  tag = *value_ptr;
+	  value_ptr++; // Points at first element in array
+	  for (i=0; i<get_table_size(tag); i++) {
+	    //	    *value_ptr = evacuate(*value_ptr); ToDo: GenGC uncomment
+	    value_ptr++;
+	  }
+	}
+      break;
+    }
+    }
+  }
+#endif /* ENABLE_GEN_GC */
 
   do_scan_stack();
 
