@@ -46,7 +46,8 @@ functor ResolveLocalLabels(structure BC : BUFF_CODE
 	val lbl_k = Labels.key lbl
 	fun out_label L =
 	  (label_table := IntFinMap.add (lbl_k, Label_undefined ((!BC.out_position, orig) :: L), !label_table);
-	   BC.out_long_i 0)
+	   BC.out_long_i lbl_k)  (* instead of 0 - we put the label key as a place holder; used for 
+				  * data-labels in the KAM machine *)
       in
 	case IntFinMap.lookup (!label_table) lbl_k 
 	  of NONE => out_label []

@@ -39,13 +39,13 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | AllocAtbot(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
       | BlockAlloc(n) => (out_opcode BLOCK_ALLOC_N; out_int n)
-      | BlockAllocIfInf(n)  => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | BlockAllocIfInf(n) => (out_opcode BLOCK_ALLOC_IF_INF_N; out_int n)
       | BlockAllocSatInf(n) => (out_opcode BLOCK_ALLOC_SAT_INF_N; out_int n)
       | Block(n) => (out_opcode BLOCK_N; out_int n)
       | BlockAllocSatIfInf(n) => (out_opcode BLOCK_ALLOC_SAT_IF_INF_N; out_int n)
-      | BlockAllocAtbot(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | BlockAllocAtbot(n) => (out_opcode BLOCK_ALLOC_ATBOT_N; out_int n)
 
-      | ClearAtbotBit => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | ClearAtbotBit => out_opcode CLEAR_ATBOT_BIT
       | SetAtbotBit => out_opcode SET_ATBOT_BIT
 
       | SetBit30 => die ("inst " ^ (pr_inst inst) ^ " not emitted")
@@ -119,7 +119,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | LetregionInf => (out_opcode LETREGION_INF)
       | EndregionInf => (out_opcode ENDREGION_INF)
       | ResetRegion => (out_opcode RESET_REGION)
-      | MaybeResetRegion => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | MaybeResetRegion => (out_opcode MAYBE_RESET_REGION)
       | ResetRegionIfInf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
       | FetchData(lab) => (out_opcode FETCH_DATA; RLL.out_label lab)   (* fetch from data segment *)
