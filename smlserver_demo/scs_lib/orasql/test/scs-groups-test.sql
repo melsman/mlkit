@@ -49,6 +49,7 @@ declare
   grp_type_id9		integer;
   grp_type_id10		integer;
   default_grp_type_id	integer;
+
   illegal_id		integer;
 
   rand_name1		varchar2(10);
@@ -60,9 +61,9 @@ declare
 
   counter1_b		integer;
   counter1_a		integer;
-
   counter0_b		integer;
   counter0_a		integer;
+
   clean_up		exception;
 begin
   scs_test.printl( '-----------------------------' );
@@ -246,10 +247,11 @@ exception
     scs_test.print( 'an error occured: ' );
     scs_test.printl( SQLERRM );
     goto clean;
-end;
+end; --of test of package scs_grp_type block
 /
 show errors
 alter trigger scs_grp_types_def_grp_type_tr enable;
+--test of package scs_grp_type really ends here
 
 
 -- test of scs_group package
@@ -269,6 +271,7 @@ declare
 
   illegal_id		integer;
   id			integer;
+
   grp_type_id1		integer;
   A_grp_name		varchar2(100);
   A_modUser		integer;
@@ -288,7 +291,6 @@ declare
   sven			integer;
   stacy			integer;
 
-  rel_id		integer;
   A_rel_id_B		integer;
   B_rel_id_C		integer;
   B_rel_id_D		integer;
@@ -301,10 +303,10 @@ declare
   B_rel_id_C_member	integer;
   E_rel_id_betty	integer;
 
-  n_rows		integer;
+--  n_rows		integer;
 
   party_id1		integer;
-  party_id2		integer;
+--  party_id2		integer;
 
   counter1_b		integer;
   counter1_a		integer;
@@ -809,16 +811,12 @@ exception
     scs_test.print( 'an error occured: ' );
     scs_test.printl( SQLERRM );
     goto clean;
-end;
+end; -- of test of scs_group package
 /
 show errors
 
 -- testing scs_grp_composition_rel package
 declare
-  grp_id		integer;
-  grp_name		integer;
-  rand_nameA		varchar(10);
-  rand_name1		varchar(10);
   A			integer;
   B			integer;
   C			integer;
@@ -829,7 +827,6 @@ declare
   grp_no_email_id	integer;
 
   illegal_id		integer;
-  id			integer;
   grp_type_id1		integer;
   A_grp_name		varchar2(100);
   A_modUser		integer;
@@ -849,7 +846,6 @@ declare
   sven			integer;
   stacy			integer;
 
-  rel_id		integer;
   A_rel_id_B		integer;
   B_rel_id_C		integer;
   B_rel_id_C2		integer;
@@ -863,10 +859,7 @@ declare
   B_rel_id_C_member	integer;
   E_rel_id_betty	integer;
 
-  n_rows		integer;
-
   party_id1		integer;
-  party_id2		integer;
 
   counter1_b		integer;
   counter1_a		integer;
@@ -880,7 +873,8 @@ declare
   counter000_a		integer;
   counter0000_b		integer;
   counter0000_a		integer;
-
+  counter00000_b	integer;
+  counter00000_a	integer;
   clean_up		exception;
 begin
   scs_test.printl( '---------------------------------------' );
@@ -888,9 +882,10 @@ begin
   scs_test.printl( '---------------------------------------' );
 
   select count(*) into counter0_b from scs_groups;
-  select count(*) into counter00_b from scs_grp_types;
+  select count(*) into counter00_b from scs_grp_composition_rels;
   select count(*) into counter000_b from scs_parties;
   select count(*) into counter0000_b from scs_users;
+  select count(*) into counter00000_b from scs_grp_party_index;
 
   illegal_id := scs.new_obj_id;
 
@@ -974,6 +969,7 @@ begin
     grp_id_one => C, 
     grp_id_two => E, 
     modifying_user => scs_user.system );
+
   -- adding members
   C_rel_id_bob := scs_grp_member_rel.new(
     grp_id => C, party_id => bob, modifying_user => scs_user.system);
@@ -1375,20 +1371,504 @@ exception
     scs_test.printl( ' done]' );
 
     select count(*) into counter0_a from scs_groups;
-    select count(*) into counter00_a from scs_grp_types;
+    select count(*) into counter00_a from scs_grp_composition_rels;
     select count(*) into counter000_a from scs_parties;
     select count(*) into counter0000_a from scs_users;
-  
+    select count(*) into counter00000_a from scs_grp_party_index;
+
     scs_test.testBool( 'garbage check', 1, counter0_b = counter0_a );
     scs_test.testBool( 'garbage check', 2, counter00_b = counter00_a );
     scs_test.testBool( 'garbage check', 3, counter000_b = counter000_a );
     scs_test.testBool( 'garbage check', 4, counter0000_b = counter0000_a );
+    scs_test.testBool( 'garbage check', 5, counter00000_b = counter00000_a );
 
   when others then
     scs_test.print( 'an error occured: ' );
     scs_test.printl( SQLERRM );
     goto clean;
-end;
+end; -- of testing scs_grp_composition_rel package
+/
+show errors
+
+
+-- testing scs_grp_member_rel package
+declare
+  grp_id1		integer;
+  A			integer;
+  B			integer;
+  C			integer;
+  D			integer;
+  E			integer;
+  F			integer;
+  G			integer;
+  grp_no_email_id	integer;
+
+  illegal_id		integer;
+
+  grp_type_id1		integer;
+  A_grp_name		varchar2(100);
+  A_modUser		integer;
+  B_grp_type_id		integer;
+  C_email		varchar2(100);
+  D_url			varchar2(200);
+  E_join		varchar2(20);
+  F_join		varchar2(20);
+  G_join		varchar2(20);
+
+  joe			integer;
+  jane			integer;
+  bob			integer;
+  betty			integer;
+  jack			integer;
+  jill			integer;
+  sven			integer;
+  stacy			integer;
+
+
+  rel_id1		integer;
+  A_rel_id_B		integer;
+  B_rel_id_C		integer;
+  B_rel_id_C2		integer;
+  B_rel_id_D		integer;
+  A_rel_id_C		integer;
+  C_rel_id_E		integer;
+  D_rel_id_C		integer;
+  C_rel_id_bob		integer;
+  C_rel_id_jane		integer;
+  D_rel_id_jane		integer;
+  D_rel_id_joe		integer;
+  B_rel_id_C_member	integer;
+  E_rel_id_betty	integer;
+  E_rel_id_jack		integer;
+  A_rel_id_sven		integer;
+  B_rel_id_stacy	integer;  
+
+  member_state1		varchar(20);
+  party_id1		integer;
+
+  counter1_b		integer;
+  counter1_a		integer;
+  counter2_b		integer;
+  counter2_a		integer;
+  counter3_b		integer;
+  counter3_a		integer;
+  counter4_a		integer;
+  counter0_b		integer;
+  counter0_a		integer;
+  counter00_b		integer;
+  counter00_a		integer;
+  counter000_b		integer;
+  counter000_a		integer;
+  counter0000_b		integer;
+  counter0000_a		integer;
+  counter00000_b	integer;
+  counter00000_a	integer;
+
+  clean_up		exception;
+begin
+  scs_test.printl( '----------------------------------' );
+  scs_test.printl( 'testing scs_grp_member_rel package' );
+  scs_test.printl( '----------------------------------' );
+
+  select count(*) into counter0_b from scs_groups;
+  select count(*) into counter00_b from scs_grp_member_rels;
+  select count(*) into counter000_b from scs_parties;
+  select count(*) into counter0000_b from scs_users;
+  select count(*) into counter00000_b from scs_grp_party_index;
+
+  illegal_id := scs.new_obj_id;
+
+  -- creating groups A-G
+  A := scs_group.new( 
+    grp_name => 'A', 
+    email => 'A',  
+    modifying_user => scs_user.system );
+  B := scs_group.new( 
+    grp_name	      => 'B', 
+    email	      => 'B', 
+    modifying_user    => scs_user.system );
+  C := scs_group.new( 
+    grp_name	      => 'C', 
+    email	      => 'C',
+    modifying_user    => scs_user.system );
+  D := scs_group.new( 
+    grp_name	     => 'D', 
+    email	     => 'D', 
+    url		     => 'www.itu.dk/',		      
+    modifying_user   => scs_user.system );
+  E := scs_group.new( 
+    grp_name => 'E', 
+    email => 'E', 
+    modifying_user => scs_user.system );
+  F := scs_group.new( 
+    grp_name => 'F', 
+    email => 'F', 
+    modifying_user => scs_user.system );
+  G := scs_group.new( 
+    grp_name => 'G', 
+    email => 'G', 
+    modifying_user => scs_user.system );
+
+  -- Create the test users
+  joe   := scs_user.new(email => scs_random.rand_string(10),
+	                first_names => 'p1 Joe', last_name => 'Smith',
+		        password => 'assword', salt => 'p', 
+			modifying_user => scs_user.system);
+  jane  := scs_user.new(email => scs_random.rand_string(10),
+	                first_names => 'p2 Jane', last_name => 'Smith',
+		        password => 'assword', salt => 'p', 
+			modifying_user => scs_user.system);
+  bob   := scs_user.new(email => scs_random.rand_string(10),
+	                first_names => 'p3 Bob', last_name => 'Smith',
+		        password => 'assword', salt => 'p', 
+			modifying_user => scs_user.system);
+  betty := scs_user.new(email => scs_random.rand_string(10),
+	                first_names => 'p4 Betty', last_name => 'Smith',
+		        password => 'assword', salt => 'p', 
+			modifying_user => scs_user.system);
+  jack  := scs_user.new(email => scs_random.rand_string(10),
+	                first_names => 'Jack', last_name => 'Smith',
+		        password => 'assword', salt => 'p', 
+			modifying_user => scs_user.system);
+  jill  := scs_user.new(email => scs_random.rand_string(10),
+	                first_names => 'Jill', last_name => 'Smith',
+		        password => 'assword', salt => 'p', 
+			modifying_user => scs_user.system);
+  sven  := scs_user.new(email => scs_random.rand_string(10),
+	                first_names => 'Sven', last_name => 'Smith',
+		        password => 'assword', salt => 'p', 
+			modifying_user => scs_user.system);
+  stacy := scs_user.new(email => scs_random.rand_string(10),
+	                first_names => 'Stacy', last_name => 'Smith',
+		        password => 'assword', salt => 'p', 
+			modifying_user => scs_user.system);
+
+  select count(*) into counter1_b from scs_grp_party_index;
+  -- create group compositions
+  A_rel_id_C := scs_grp_composition_rel.new( 
+    grp_id_one => A, 
+    grp_id_two => C, 
+    modifying_user => scs_user.system );
+  B_rel_id_D := scs_grp_composition_rel.new( 
+    grp_id_one => B, 
+    grp_id_two => D, 
+    modifying_user => scs_user.system);
+  C_rel_id_E := scs_grp_composition_rel.new( 
+    grp_id_one => C, 
+    grp_id_two => E, 
+    modifying_user => scs_user.system );
+
+  scs_test.printl( 'testing function ''new'':' );
+  select count(*) into counter2_b from scs_grp_member_rels;
+  C_rel_id_bob := scs_grp_member_rel.new(
+    grp_id => C, party_id => bob, modifying_user => scs_user.system);
+  select count(*) into counter2_a from scs_grp_member_rels;
+  select grp_id, party_id, member_state into grp_id1, party_id1, member_state1 
+    from scs_grp_member_rels
+   where rel_id = C_rel_id_bob;
+  scs_test.testBool( 'new', 1, counter2_a = counter2_b + 1 );
+  scs_test.testBool( 'new', 2, 
+    grp_id1 = C AND party_id1 = bob AND member_state1 = 'approved' );
+
+  select count(*) into counter2_b from scs_grp_member_rels;
+  D_rel_id_jane := scs.new_obj_id;
+  rel_id1 := scs_grp_member_rel.new(
+	       rel_id => D_rel_id_jane,
+	       grp_id => D, 
+	       party_id => jane, 
+	       modifying_user => scs_user.system );
+  scs_test.testBool( 'new', 3, rel_id1 = D_rel_id_jane );
+  select count(*) into counter2_a from scs_grp_member_rels;
+  select grp_id, party_id into grp_id1, party_id1 
+    from scs_grp_member_rels
+   where rel_id = D_rel_id_jane;
+  scs_test.testBool( 'new', 4, counter2_a = counter2_b + 1 );
+  scs_test.testBool( 'new', 5, grp_id1 = D AND party_id1 = jane );
+
+  C_rel_id_jane := scs_grp_member_rel.new(
+		     grp_id         => C, 
+		     party_id	    => jane,
+		     member_state   => 'needs approval',
+		     modifying_user => scs_user.system );
+  select grp_id, party_id, member_state into grp_id1, party_id1, member_state1 
+    from scs_grp_member_rels
+   where rel_id = C_rel_id_jane;
+  scs_test.testBool( 'new', 6, 
+    grp_id1 = C AND party_id1 = jane AND member_state1 = 'needs approval' );  
+
+  D_rel_id_joe := scs_grp_member_rel.new(
+		    grp_id => D, 
+		    party_id => joe, 
+		    member_state   => 'banned',
+		    modifying_user => scs_user.system );
+  select grp_id, party_id, member_state into grp_id1, party_id1, member_state1 
+    from scs_grp_member_rels
+   where rel_id = D_rel_id_joe;
+  scs_test.testBool( 'new', 7, 
+    grp_id1 = D AND party_id1 = joe AND member_state1 = 'banned' );  
+
+  E_rel_id_betty := scs_grp_member_rel.new(
+		      grp_id => E, 
+		      party_id => betty, 
+		      member_state   => 'rejected',
+		      modifying_user => scs_user.system);
+  select grp_id, party_id, member_state into grp_id1, party_id1, member_state1 
+    from scs_grp_member_rels
+   where rel_id = E_rel_id_betty;
+  scs_test.testBool( 'new', 8, 
+    grp_id1 = E AND party_id1 = betty AND member_state1 = 'rejected' );  
+
+  E_rel_id_jack := scs_grp_member_rel.new(
+		      grp_id => E, 
+		      party_id => jack, 
+		      member_state   => 'deleted',
+		      modifying_user => scs_user.system);
+  select grp_id, party_id, member_state into grp_id1, party_id1, member_state1 
+    from scs_grp_member_rels
+   where rel_id = E_rel_id_jack;
+  scs_test.testBool( 'new', 9, 
+    grp_id1 = E AND party_id1 = jack AND member_state1 = 'deleted' );  
+
+  -- illegal values: existing rel_id
+  scs_test.testExn( 'new', 10, '
+    declare
+      id	integer;
+    begin
+      id := scs_grp_member_rel.new(
+	      rel_id         => ' || E_rel_id_jack || ',
+	      grp_id         => ' || E ||', 
+	      party_id	     => ' || jill || ',
+	      modifying_user => scs_user.system);
+    end;', 'f' );
+
+  -- illegal values: grp_id is unknown
+  scs_test.testExn( 'new', 11, '
+    declare
+      id	integer;
+    begin
+      id := scs_grp_member_rel.new(
+	      grp_id         => ' || illegal_id ||', 
+	      party_id	     => ' || jill || ',
+	      modifying_user => scs_user.system);
+    end;', 'f' );
+
+  -- illegal values: grp_id is null
+  scs_test.testExn( 'new', 12, '
+    declare
+      id	integer;
+    begin
+      id := scs_grp_member_rel.new(
+	      grp_id         => null,
+	      party_id	     => ' || jill || ',
+	      modifying_user => scs_user.system);
+    end;', 'f' );
+
+  -- illegal values: party_id is unknown
+  scs_test.testExn( 'new', 13, '
+    declare
+      id	integer;
+    begin
+      id := scs_grp_member_rel.new(
+	      grp_id         => ' || E ||', 
+	      party_id	     => ' || illegal_id || ',
+	      modifying_user => scs_user.system);
+    end;', 'f' );
+
+  -- illegal values: party_id is null
+  scs_test.testExn( 'new', 14, '
+    declare
+      id	integer;
+    begin
+      id := scs_grp_member_rel.new(
+	      grp_id         => ' || E ||',
+	      party_id	     => null,
+	      modifying_user => scs_user.system);
+    end;', 'f' );
+
+  -- illegal values: member_state is unknown
+  scs_test.testExn( 'new', 15, '
+    declare
+      id	integer;
+    begin
+      id := scs_grp_member_rel.new(
+	      grp_id         => ' || E ||', 
+	      party_id	     => ' || jill || ',
+	      member_state   => scs_random.rand_string(20),
+	      modifying_user => scs_user.system);
+    end;', 'f' );
+
+  -- illegal values: member_state is null
+  scs_test.testExn( 'new', 16, '
+    declare
+      id	integer;
+    begin
+      id := scs_grp_member_rel.new(
+	      grp_id         => ' || E ||', 
+	      party_id	     => ' || jill || ',
+	      member_state   => null,
+	      modifying_user => scs_user.system);
+    end;', 'f' );
+
+  -- illegal values: modifying user is unknown
+  scs_test.testExn( 'new', 17, '
+    declare
+      id	integer;
+    begin
+      id := scs_grp_member_rel.new(
+	      grp_id         => ' || E ||', 
+	      party_id	     => ' || jill || ',
+	      modifying_user => ' || illegal_id || ');
+    end;', 'f' );
+
+  -- illegal values: modifying user is null
+  scs_test.testExn( 'new', 18, '
+    declare
+      id	integer;
+    begin
+      id := scs_grp_member_rel.new(
+	      grp_id         => ' || E ||', 
+	      party_id	     => ' || jill || ',
+	      modifying_user => null );
+    end;', 'f' );
+
+  scs_test.printl( 'testing procedure ''destroy'':' );  
+  -- first rel_id version (1 parameter version)
+  A_rel_id_sven := scs_grp_member_rel.new(
+		     grp_id          => A,
+		     party_id	     => sven,
+		     modifying_user  => scs_user.system );
+  B_rel_id_stacy := scs_grp_member_rel.new(
+		     grp_id          => B,
+		     party_id	     => stacy,
+		     modifying_user  => scs_user.system );
+  -- sven direct member of A
+  select count(*) into counter2_b 
+    from scs_grp_member_rels
+   where rel_id = A_rel_id_sven;
+  select count(*) into counter3_b from scs_grp_party_index;
+  scs_grp_member_rel.destroy ( 
+    rel_id         => A_rel_id_sven,
+    modifying_user => scs_user.system );
+  select count(*) into counter2_a
+    from scs_grp_member_rels
+   where rel_id = A_rel_id_sven;
+  select count(*) into counter3_a from scs_grp_party_index;
+  scs_test.testBool( 'destroy, rel_id version', 1, counter2_a = counter2_b - 1 );
+  scs_test.testBool( 'destroy, rel_id version', 2, counter3_a = counter3_b - 1 );
+
+  -- stacy direct member of B, A composed of B
+  select count(*) into counter2_b 
+    from scs_grp_member_rels
+   where rel_id = B_rel_id_stacy;
+  select count(*) into counter3_b from scs_grp_party_index;
+  scs_grp_member_rel.destroy ( 
+    rel_id         => B_rel_id_stacy,
+    modifying_user => scs_user.system );
+  select count(*) into counter2_a
+    from scs_grp_member_rels
+   where rel_id = B_rel_id_stacy;
+  select count(*) into counter3_a from scs_grp_party_index;
+  select count(*) into counter4_a 
+    from scs_grp_party_index
+   where rel_id = B_rel_id_stacy;
+  scs_test.testBool( 'destroy, rel_id version', 3, counter2_a = counter2_b - 1 );
+  scs_test.testBool( 'destroy, rel_id version', 4, counter3_a = counter3_b - 1 );
+  scs_test.testBool( 'destroy, rel_id version', 5, counter4_a = 0 );
+
+  -- try to create new composition and then destroy joes membership of D:
+  D_rel_id_C := scs_grp_composition_rel.new( 
+    grp_id_one => D, 
+    grp_id_two => C, 
+    modifying_user => scs_user.system );
+  scs_grp_member_rel.destroy( rel_id => D_rel_id_joe );
+  select count(*) into counter4_a 
+    from scs_grp_party_index
+   where rel_id = D_rel_id_joe;
+  scs_test.testBool( 'destroy, rel_id version', 6, counter4_a = 0 );
+
+  -- repeated new/destroy
+  select count(*) into counter2_b from scs_grp_member_rels;
+  select count(*) into counter3_b from scs_grp_party_index;
+  scs_test.testUnit( 'destroy, rel_id version', 7, '
+    declare
+      id	integer;
+      i		integer;
+    begin
+      for i in 1..1000 loop
+        id := scs_grp_member_rel.new(
+	        grp_id          => ' || A ||',
+	        party_id	      => ' || sven ||',
+	        modifying_user  => scs_user.system );
+	scs_grp_member_rel.destroy( rel_id => id );
+      end loop;
+    end;' );
+  select count(*) into counter2_a from scs_grp_member_rels;
+  select count(*) into counter3_a from scs_grp_party_index;
+  scs_test.testBool( 'destroy, rel_id version', 8, 
+    counter2_a = counter2_b AND counter3_a = counter3_b );
+
+  -- illegal values: rel_id is unknown
+  scs_test.testUnit( 'destroy, rel_id version', 9, '
+    begin
+      scs_grp_member_rel.destroy( rel_id => ' || illegal_id || ' );
+    end;' );
+
+  -- illegal values: rel_id is null
+  scs_test.testUnit( 'destroy, rel_id version', 10, '
+    begin
+      scs_grp_member_rel.destroy( rel_id => null );
+    end;' );
+
+  -- now (grp_id, party_id) version (2 parameter version)
+  
+
+  -- cleaning up
+  scs_test.print( 'finished, ' );
+  raise clean_up;
+
+exception
+  when clean_up then
+    <<clean>>
+    scs_test.printl( 'cleaning up:' );
+    delete scs_grp_member_rels where rel_id in (
+      C_rel_id_bob, C_rel_id_jane, D_rel_id_jane,
+      D_rel_id_joe, B_rel_id_C_member, E_rel_id_betty,
+      E_rel_id_jack, A_rel_id_sven ,B_rel_id_stacy );
+    delete scs_grp_composition_rels where rel_id in (
+      A_rel_id_B, B_rel_id_C, B_rel_id_C2, B_rel_id_D,
+      A_rel_id_C, C_rel_id_E, D_rel_id_C );
+    delete scs_groups where grp_id in (
+      A, B, C, D, E, F, G, grp_no_email_id);
+    delete scs_grp_types where grp_type_id in ( grp_type_id1 );
+    scs_test.print( '[Deleting test users...' );
+    delete scs_user_preferences where user_id in (
+        joe, jane, bob, betty, jack, jill, sven, stacy );
+    delete scs_users where user_id in (
+        joe, jane, bob, betty, jack, jill, sven, stacy );
+    delete scs_persons where person_id in (
+        joe, jane, bob, betty, jack, jill, sven, stacy );
+    delete scs_parties where party_id in 
+      ( A, B, C, D, E, F, G, grp_no_email_id, party_id1,
+        joe, jane, bob, betty, jack, jill, sven, stacy );
+    scs_test.printl( ' done]' );
+
+    select count(*) into counter0_a from scs_groups;
+    select count(*) into counter00_a from scs_grp_member_rels;
+    select count(*) into counter000_a from scs_parties;
+    select count(*) into counter0000_a from scs_users;
+    select count(*) into counter00000_a from scs_grp_party_index;
+  
+    scs_test.testBool( 'garbage check', 1, counter0_b = counter0_a );
+    scs_test.testBool( 'garbage check', 2, counter00_b = counter00_a );
+    scs_test.testBool( 'garbage check', 3, counter000_b = counter000_a );
+    scs_test.testBool( 'garbage check', 4, counter0000_b = counter0000_a );
+    scs_test.testBool( 'garbage check', 5, counter00000_b = counter00000_a );
+
+  when others then
+    scs_test.print( 'an error occured: ' );
+    scs_test.printl( SQLERRM );
+    goto clean;
+end; -- of testing scs_grp_composition_rel package
 /
 show errors
 
