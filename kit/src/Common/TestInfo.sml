@@ -160,7 +160,6 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 	@ leave_out_if_quicker
 	  [("scan_rev1", None),
 	   ("scan_rev2", None),
-	   ("vpprob", None),
 	   ("fft", None)]
 
     (*--------------------------------------------*)
