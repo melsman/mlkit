@@ -1,3 +1,5 @@
+structure Main :> sig val doit : unit -> unit end
+= struct
 (*------------------------------------------------------------------*
  * The professor game is about placing 16 carts with two professor  *
  * jackets and two professor trousers in different colors on a      *
@@ -274,6 +276,9 @@ val cartSet = [{top= BLUE_TROUSERS, bot=BROWN_JACKET, left= BLUE_JACKET, right=B
 fun doit() = let
 val res = findSol cartSet [] emptyBoard []
 in
- pp_boards res
+ pp_boards res; ()
 end
 
+end
+
+val doit= Main.doit
