@@ -8,9 +8,9 @@ structure Benchmark =
 	  let 
 	    val out = t ^ ".out.txt"
 	    val png = t ^ ".png"
-	    val res = SOME (out, png, MemUsage.memUsage {cmd=t,args=nil,out_file=out})
+	    val res = SOME (out, png, MemUsage.memUsage {cmd="./" ^ t,args=nil,out_file=out})
 	      handle _ => NONE
-	    val memusage = "memusage -t -T --title=" ^ t ^ " -p " ^ png ^ " " ^ t
+	    val memusage = "memusage -t -T --title=" ^ t ^ " -p " ^ png ^ " ./" ^ t
 	  in if OS.Process.system memusage = OS.Process.success then (s, res)
 	     else (s, NONE)
 	  end
