@@ -492,6 +492,7 @@ before insert or update on scs_persons
 for each row
 begin
   :new.norm_name := scs_person.norm_name(:new.first_names,:new.last_name);
+  :new.full_name_lower := lower(replace(:new.first_names, ' ', ''))  || lower(:new.last_name);
 end;
 /
 show errors
