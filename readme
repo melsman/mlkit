@@ -3,6 +3,7 @@ The ML Kit with Regions, Version 3                 August 26, 1998
 
                            INSTALLING
 
+                         Version 3 of
                     The ML Kit with Regions 
 
    http://www.diku.dk/research-groups/topps/activities/mlkit.html
@@ -10,7 +11,7 @@ The ML Kit with Regions, Version 3                 August 26, 1998
 
 This file describes how to install The ML Kit with Regions version 3.
 
-Because you are reading this, you have already succeeded in unpacking
+Since you are reading this, you have already succeeded in unpacking
 the kit directory, "kit". This directory contains the sources of the
 kit (src), the documentation (doc), the standard basis library
 (basislib), and accompanying examples (kitdemo). As you install and
@@ -49,17 +50,17 @@ system and on the LINUX-X86 system.
 If you want to build both the C version and the native code version,
 you need to do so in distinct copies of the distribution.
 
-The build script will compile the runtime system, a profiling tool
+The build script compiles the runtime system, a profiling tool
 called rp2ps, a tool for testing the Kit called kittester, the ML Kit
 with Regions compiler, and the Standard ML Basis Library. When the ML
 Kit is installed, an executable version of the Kit is available as
 "kit" in the "kit/bin" directory.
 
 
-2. Check whether things are properly configured
+2. Check whether the Kit is properly configured
 -----------------------------------------------
 
-You can check whether things are properly configured by compiling a
+You can check whether the Kit is configured properly by compiling a
 small example. Start the executable kit from within the "kit/kitdemo"
 directory:
 
@@ -78,11 +79,11 @@ directory.
 
 As explained in "Programming with Regions in the ML Kit"
 (doc/manual/manual.ps.gz), every user can have his or her own kit
-script with personal preferences (flags to control optimizations, how
-programs should be pretty-printed, etc.) The Kit does not force you to
-use script files; it will work fine with the default settings. A
-sample kit script file "kit.script" is located in the "kitdemo"
-directory.
+script with personal preferences (flags to control optimizations,
+pretty-printing of intermediate forms, etc.) The Kit does not force
+you to use script files; it will work fine with the default
+settings. A sample kit script file "kit.script" is located in the
+"kitdemo" directory.
 
 
 3. On other platforms
@@ -114,3 +115,8 @@ The VCG tool, which is used to show region flow graphs, can be found at
 Please see the www site:
 
    http://www.diku.dk/research-groups/topps/activities/mlkit.html
+
+
+-------
+
+Have fun!

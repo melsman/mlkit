@@ -11,19 +11,20 @@ The ML Kit with Regions                              November 6, 1998
 Directory structure
 -------------------
 
-  bin/		executable kits, compiled programs, and related things
-  src/		sources for the kit and some utilities
-  doc/		documentation
-  test/  	for testing the kit
+  bin/		executable versions of the Kit and other programs
+  src/		sources for the Kit and some utilities
+  doc/		documentation. The User's Guide is called
+                "Programming with Regions in the ML Kit" and is
+                in doc/manuals/manual.ps . It is a PostScript file.
+  test/  	test of the kit
   kitdemo/      example input for the kit (i.e., sml source files
                 and project files)
-  basislib/     basis library
-  kitlib/       kit specific library functions
+  basislib/     Standard ML Basis Library for the Kit
+  kitlib/       kit-specific library functions
   ml-yacc-lib/  interface to ML Yacc generated parsers
   readme	read it
   roadmap	this file
   copyright	copyright notices
-  to_do         things that need be done
 
 
 bin/ in detail
@@ -44,14 +45,17 @@ src/ in detail
 
   src/sources.cm	list of source files for the kit
       Common/           source files
-      Edlib/
-      Manager/
-      Parsing/
+      Edlib/            the Kit still uses a couple of modules that
+                        stem from the Edinburgh Library. These modules
+                        are in the Edlib directory.
+      Manager/          Modules concerning separate compilation and 
+                        static interpretation.
+      Parsing/          
       Compiler/ ...
                Hppa/	files specific to HP PA-RISC kit
 	       C/	files specific to ANSI C kit
 		...
-      Runtime/		C source files and executables for runtime system
+      Runtime/		C source files and executables for runtime system.
       Tools/            sources for Kit tools (rp2ps and kittester)
 
 
