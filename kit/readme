@@ -1,4 +1,4 @@
-The ML Kit with Regions version 2.2                July 27, 1998
+The ML Kit with Regions, Version 3                 August 26, 1998
 
 
                            INSTALLING
@@ -46,6 +46,9 @@ only the HPUX-HPPA system) or if you want the Kit to generate C code
 to be compiled by gcc. The C backend has been tested on the HPUX-HPPA
 system and on the LINUX-X86 system.
 
+If you want to build both the C version and the native code version,
+you need to do so in distinct copies of the distribution.
+
 The build script will compile the runtime system, a profiling tool
 called rp2ps, the ML Kit with Regions compiler, and the Standard ML
 Basis Library. When the ML Kit is installed, an executable version of
@@ -57,19 +60,31 @@ the Kit is available as "kit" in the "kit/bin" directory.
 
 You can check whether things are properly configured by compiling a
 small example. Start the executable kit from within the "kit/kitdemo"
-directory; type 0 followed by carriage return (to enter the Project
-menu); type 0 (and carriage return); type "hello.pm" (including the
-quotes and carriage return); then compile the example by typing 1. When 
-the Kit has compiled and linked the project "hello.pm", exit by 
-typing q; and the executable "run", which is now located in the
-"kitdemo" directory, can be run.
+directory:
+
+   cd ../kitdemo
+   ../bin/kit
+
+
+When the menu appears, type 0 followed by carriage return (to enter
+the Project menu); type 0 (and carriage return); type "hello.pm"
+(including the quotes and carriage return); then compile the example
+by typing 1. When the Kit has compiled and linked the project
+"hello.pm", exit by typing 
+
+   quit
+
+This sends you back to the UNIX shell, where you can run the 
+executable "run", which the Kit has placed in the "kitdemo" 
+directory.
 
 As explained in "Programming with Regions in the ML Kit"
-(doc/manual/manual.ps.gz), every user can have her own kit script with
-personal preferences (flags to control optimizations, how programs
-should be pretty-printed, etc.) The Kit does not force you to use
-script files; it will work fine with the default settings. A sample
-kit script file "kit.script" is located in the "kitdemo" directory.
+(doc/manual/manual.ps.gz), every user can have his or her own kit
+script with personal preferences (flags to control optimizations, how
+programs should be pretty-printed, etc.) The Kit does not force you to
+use script files; it will work fine with the default settings. A
+sample kit script file "kit.script" is located in the "kitdemo"
+directory.
 
 
 3. On other platforms
