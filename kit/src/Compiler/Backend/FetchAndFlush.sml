@@ -154,7 +154,7 @@ struct
 	   in
 	     (L_set',lvset_difference(F_set',lvs_to_remove),lvset_add(R_set',phregs_to_add))
 	   end
-       | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv),offset} =>
+       | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset} =>
 	   let
 	     val (L_set1,F_set1,R_set1) = F_lss(default,L_set,F_set,R_set)
 	     val (L_set2,F_set2,R_set2) = F_lss(handl,L_set1,F_set1,R_set1) (* was L_set *)
@@ -226,8 +226,8 @@ struct
 	    end
 	  | IFF_lss'(LS.LETREGION{rhos,body}::lss) = LS.LETREGION{rhos=rhos,body=IFF_lss(body,F,[])} :: IFF_lss' lss
 	  | IFF_lss'(LS.SCOPE{pat,scope}::lss) = LS.SCOPE{pat=map (assign_sty F) pat,scope=IFF_lss(scope,F,[])} :: IFF_lss' lss
-	  | IFF_lss'(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv),offset}::lss) = 
-	    LS.HANDLE{default=IFF_lss(default,F,[]),handl=(IFF_lss(handl,F,[]),handl_lv),handl_return=([],handl_return_lv),offset=offset} :: IFF_lss' lss
+	  | IFF_lss'(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset}::lss) = 
+	    LS.HANDLE{default=IFF_lss(default,F,[]),handl=(IFF_lss(handl,F,[]),handl_lv),handl_return=([],handl_return_lv,bv),offset=offset} :: IFF_lss' lss
 	  | IFF_lss'(LS.HANDLE{default,handl,handl_return,offset}::lss) = die "IFF_lss': handle_return in HANDLE not empty"
 	  | IFF_lss'(LS.RAISE{arg,defined_atys}::lss) = LS.RAISE{arg=arg,defined_atys=defined_atys} :: IFF_lss' lss
 	  | IFF_lss'(LS.SWITCH_I sw::lss) = LS.SWITCH_I(IFF_sw (fn lss => IFF_lss(lss,F,[])) sw) :: IFF_lss' lss
@@ -297,13 +297,13 @@ struct
 	  in
 	    (LS.SCOPE{pat=pat,scope=scope}::acc,U_set_scope)
 	  end
-	  | IF_lss'(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv),offset}::lss,U_set) =
+	  | IF_lss'(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset}::lss,U_set) =
 	  let
 	    val (acc,U_set_acc) = IF_lss'(lss,U_set)
 	    val (lss1',U_set1) = IF_lss'(default,U_set_acc)
 	    val (lss2',U_set2) = IF_lss'(handl,U_set_acc)
 	  in
-	    (LS.HANDLE{default=lss1',handl=(lss2',handl_lv),handl_return=(insert_fetch_callee(BI.callee_save_phregs,[]),handl_return_lv),
+	    (LS.HANDLE{default=lss1',handl=(lss2',handl_lv),handl_return=(insert_fetch_callee(BI.callee_save_phregs,[]),handl_return_lv,bv),
 		       offset=offset}::acc,Lvarset.union(U_set1,U_set2))
 	  end
 	  | IF_lss'(LS.HANDLE{default,handl,handl_return,offset}::lss,U_set) = die "IF_lss': handl_return in HANDLE not empty"

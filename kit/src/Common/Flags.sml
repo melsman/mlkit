@@ -1076,7 +1076,8 @@ struct
     val lambda_backend : item = mk_header "Lambda Backend"
       (DISPLAY
        [mk_toggle ("enable lambda backend", enable_lambda_backend),
-	mk_toggle ("perform register allocation", perform_register_allocation)])
+	mk_toggle ("perform register allocation", perform_register_allocation),
+	mk_toggle("Garbage Collection", garbage_collection)])
   in
     val control_item : item = mk_header "Control"
           (DISPLAY

@@ -731,7 +731,12 @@ functor Compile(structure Excon : EXCON
 	  else RegAlloc.ra_dummy all_line_stmt
 	val all_fetch_flush = FetchAndFlush.IFF all_reg_alloc
 	val all_calc_offset = CalcOffset.CO all_fetch_flush
-	val all_subst_and_simplify = SubstAndSimplify.SS all_calc_offset
+	val all_calc_offset_with_bv = 
+	  if Flags.is_on "garbage_collection" then
+	    CalcOffset.CBV all_calc_offset
+	  else
+	    all_calc_offset
+	val all_subst_and_simplify = SubstAndSimplify.SS all_calc_offset_with_bv
 (*
 	val all_risc_prg = CodeGen.CG all_subst_and_simplify
 	val link_prg = CodeGen.generate_link_code [#main_lab all_clos_exp]

@@ -177,21 +177,23 @@ struct
 	fun sma_to_sma' sma = sma_to_sma(sma,ATYmap,RHOmap)
 	fun atom_to_aty' atom = atom_to_aty(atom,ATYmap,RHOmap) 
 
-	fun do_fn_app{opr,args,clos,free,res} =
+	fun do_fn_app{opr,args,clos,free,res,bv} =
 	  {opr=atom_to_aty' opr,
 	   args=atoms_to_atys args,
 	   clos=atom_to_aty_opt(clos,ATYmap,RHOmap),
 	   free=atoms_to_atys free,
-	   res=atoms_to_atys res}
+	   res=atoms_to_atys res,
+	   bv=bv}
 
-	fun do_fun_app{opr,args,clos,free,res,reg_vec,reg_args} =
+	fun do_fun_app{opr,args,clos,free,res,reg_vec,reg_args,bv} =
 	  {opr=opr,
 	   args=atoms_to_atys args,
 	   clos=atom_to_aty_opt(clos,ATYmap,RHOmap),
 	   free=atoms_to_atys free,
 	   res=atoms_to_atys res,
 	   reg_vec=atom_to_aty_opt(reg_vec,ATYmap,RHOmap),
-	   reg_args=atoms_to_atys reg_args}
+	   reg_args=atoms_to_atys reg_args,
+	   bv=bv}
 
 	fun SS_se(LS.ATOM atom) = LS.ATOM (atom_to_aty' atom)
 	  | SS_se(LS.LOAD label) = LS.LOAD label
@@ -231,7 +233,7 @@ struct
 	  | SS_lss'(LS.FUNCALL a::lss) = LS.FUNCALL(do_fun_app a) :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.LETREGION{rhos,body}::lss) = LS.LETREGION{rhos=rhos,body=SS_lss(body,ATYmap,add_sty_binders(rhos,RHOmap))} :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.SCOPE{pat,scope}::lss) = LS.SCOPE{pat=pat,scope=SS_lss(scope,add_sty_lvs(pat,ATYmap),RHOmap)} :: SS_lss(lss,ATYmap,RHOmap)
-	  | SS_lss'(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_lv),offset}::lss) =
+	  | SS_lss'(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_lv,bv),offset}::lss) =
 	  (* MEGA HACK: *)
 	  (* The lvar handl_lv is the lvar that the handle closure is bound to in handl. We need *)
 	  (* use the handl_lv in CodeGen to make code that store the handle closure in the       *)
@@ -249,7 +251,7 @@ struct
 	  in
 	    LS.HANDLE{default=SS_lss(default,ATYmap,RHOmap),
 		      handl=(SS_lss(handl,ATYmap,RHOmap),handl_aty),
-		      handl_return=(SS_lss(handl_return,ATYmap,RHOmap),atom_to_aty' handl_return_lv),
+		      handl_return=(SS_lss(handl_return,ATYmap,RHOmap),atom_to_aty' handl_return_lv,bv),
 		      offset=offset} :: SS_lss(lss,ATYmap,RHOmap)
 	  end
 	  | SS_lss'(LS.RAISE{arg,defined_atys}::lss) = LS.RAISE{arg=atom_to_aty' arg,defined_atys=atoms_to_atys defined_atys} :: SS_lss(lss,ATYmap,RHOmap)

@@ -563,6 +563,7 @@ functor BuildCompile (structure Name : NAME
 				      structure LineStmt = LineStmt
 				      structure FetchAndFlush = FetchAndFlush
 				      structure BI = BackendInfo
+				      structure IntSet = IntSet
 				      structure PP = PP
 				      structure Flags = Flags
 				      structure Report = Report
