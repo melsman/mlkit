@@ -113,4 +113,12 @@ word.sml                      gc
 word8.sml                     gc
 word31.sml                    gc
 word32.sml                    gc 
-
+regexp1.sml                   gc
+regexp2.sml                   gc
+pickle.pm                     gc
+packreal.sml                  gc
+patricia.sml                  gc
+stream.pm                     gc
+natset.sml                    gc
+fns.sml                       gc
+datatypes.sml                 gc
