@@ -109,18 +109,17 @@ struct
 	else
 	  (max_offset := offset+inc;
 	   offset+inc)
+
       fun get_max_offset() = 
-	(case !is_frame_db_aligned of
-	   true =>
-	     (if !max_offset mod 2 = 0 then
-		!max_offset
-	      else
-		!max_offset+1)
-	 | false => 
-	     (if !max_offset mod 2 = 0 then
-		!max_offset+1
-	      else
-		!max_offset))
+	if not(BI.double_alignment_required) then !max_offset
+	else
+	  if !is_frame_db_aligned then
+	    if !max_offset mod 2 = 0 then !max_offset
+	    else !max_offset+1
+	  else
+	    if !max_offset mod 2 = 0 then !max_offset+1
+	    else !max_offset
+
       fun double_align_offset offset =
 	(case !is_frame_db_aligned of
 	   true =>
