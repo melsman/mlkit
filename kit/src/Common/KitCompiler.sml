@@ -54,6 +54,7 @@ functor ExecutionArgs() : EXECUTION_ARGS = (* The EXECUTION_ARGS signature is *)
 signature KIT_COMPILER = 
   sig include MANAGER 
     val build_basislib : unit -> unit
+    val install : unit -> unit 
     val kit : string -> unit
     structure Flags : FLAGS
     structure Crash : CRASH

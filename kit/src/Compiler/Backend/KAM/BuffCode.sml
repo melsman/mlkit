@@ -25,7 +25,7 @@ functor BuffCode () : BUFF_CODE =
       fun out_w8 (b : Word8.word) =
 	let
           val out_w8 = b
-	  val _ = print (Word8.toString out_w8 ^ ",")
+(*	  val _ = print (Word8.toString out_w8 ^ ",") *)
 	in
 	  (if !out_position < Word8Array.length (!out_buffer) then 
 	     () 
@@ -74,9 +74,23 @@ functor BuffCode () : BUFF_CODE =
 	 BinIO.output1 (os, w32tow8 (Word32.>> (l,Word.fromInt 8)));
 	 BinIO.output1 (os, w32tow8 (Word32.>> (l,Word.fromInt 16)));	 
 	 BinIO.output1 (os, w32tow8 (Word32.>> (l,Word.fromInt 24))))
-	 
+
+      fun out_real (r : real) : unit =
+	let
+	  (* Contributed by John H. Reppy <jhr@research.bell-labs.com> 
+	   * and Allen Leung <leunga@cs.nyu.edu> - very SML/NJ specific *)
+	  fun realToBytes r =   
+	    let val ra = RealArray.array(1, r)
+	      val ba : Word8Array.array = Unsafe.cast ra
+	      fun b i = Unsafe.Word8Array.sub(ba, i)
+	    in
+	      [b 0, b 1, b 2, b 3, b 4, b 5, b 6, b 7]
+	    end
+	in app out_w8 (realToBytes r)
+	end
+
       fun out_pairs (os, ps) =
-	app (fn (a,b) => (print ("  (" ^ Int.toString a ^ ", " ^ Int.toString b ^ ")\n");
+	app (fn (a,b) => ( (* print ("  (" ^ Int.toString a ^ ", " ^ Int.toString b ^ ")\n"); *)
 			  out_long_w32'(os, Word32.fromInt a);
 			  out_long_w32'(os, Word32.fromInt b))) ps
 
@@ -95,7 +109,7 @@ functor BuffCode () : BUFF_CODE =
 			of SOME magic => magic
 			 | NONE => raise Fail "NO WAY!"
 	in
-	  print ("Out position is " ^ Int.toString (!out_position) ^ "\n");
+(*	  print ("Out position is " ^ Int.toString (!out_position) ^ "\n"); *)
 	  (out_long_w32'(os, Word32.fromInt (!out_position));
 	   out_long_w32'(os, Word32.fromInt main_lab);
 	   out_long_w32'(os, Word32.fromInt (List.length map_import_code));
@@ -104,13 +118,13 @@ functor BuffCode () : BUFF_CODE =
 	   out_long_w32'(os, Word32.fromInt (List.length map_export_data));
 	   out_long_w32'(os, magic);
 	   BinIO.output(os, Word8Array.extract(!out_buffer, 0, SOME (!out_position)));
-	   print ("Writing code import (address,label)-pairs\n");
+(*	   print ("Writing code import (address,label)-pairs\n"); *)
 	   out_pairs(os, map_import_code);
-	   print ("Writing data import (address,label)-pairs\n");
+(*	   print ("Writing data import (address,label)-pairs\n"); *)
 	   out_pairs(os, map_import_data);
-	   print ("Writing code export (label,address)-pairs\n");
+(*	   print ("Writing code export (label,address)-pairs\n"); *)
 	   out_pairs(os, map_export_code);
-	   print ("Writing data export (label,address)-pairs\n");
+(*	   print ("Writing data export (label,address)-pairs\n"); *)
 	   out_pairs(os, map_export_data);
 	   BinIO.closeOut os) handle E => (BinIO.closeOut os; raise E)
 	end 

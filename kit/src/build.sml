@@ -102,19 +102,25 @@ fun build_kam () =
   in 
       disable "garbage_collection";
       disable "delete_target_files";
-      disable "auto_import_basislib";
       disable "unbox_function_arguments";
+      disable "link_time_dead_code_elimination";
+(*      enable "disable_atbot_analysis"; *)
+(*      disable "unbox_datatypes"; *)
 (*      List.app disable opts;*)
       enable "delay_assembly";
-      enable "print_KAM_program";
-      enable "print_lift_conv_program"; 
+(*      enable "print_KAM_program"; *)
+(*      enable "print_lift_conv_program";     PrettyPrint.sml is broken!! *)
 (*      enable "chat"; *)
       KitKAM.Flags.target_file_extension := ".uo"
 
-  (*   ; KitKAM.build_basislib() *)
   (*   ; List.app (fn tf => KitKAM.comp ("../test_dev/"^tf)) test_files *)
   (*   ; KitKAM.comp "../testprogs/f1.sml"*)
-  (*   ; KitKAM.install() *)
+     ; disable "auto_import_basislib"
+
+(*
+   ; KitKAM.build_basislib() 
+   ; KitKAM.install() 
+*)
   end;
 
 val _ = build_kam()
