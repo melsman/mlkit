@@ -766,26 +766,33 @@ struct
                                     E.cone * sigma * string option =
   let
      (*val _ = Profile.profileOn()*)
-     (* debugging
-     val _ = logsay("regEffClos enter, tau = \n");
+(*
+     val _ = logsay("\nregEffClos enter, tau = ");
      val (lay_ty, _) = mk_layout false
      val _ = PP.outputTree(logsay,lay_ty tau,!Flags.colwidth)
-     *)
+*)
      val n = B_0
+(*
+     val _ = print ("\nphi = " ^ PP.flatten1(E.layout_effect_deep phi) ^ "\n")
+*)
      val B_1 = E.lower B_0 phi B
+
      val annotations = (ann_ty tau [])
+
      (* if there are no potentially generalisable nodes, we can escape right away,
         without going into the expensive operation of contracting effects *)
-     val _ = if List.exists (potentially_generalisable n) annotations 
-             then () else raise MONOMORPHIC(B_1,FORALL([],[],[],tau),NONE)
+     val _ = if List.exists (potentially_generalisable n) annotations then () 
+	     else raise MONOMORPHIC(B_1,FORALL([],[],[],tau),NONE)
 
      (* make sure there is at most one generalisable secondary effect variable *)
      val reachable_nodes = E.subgraph annotations
+
      val B_2 = unify_generic_secondary_epss(B_1,n,reachable_nodes, annotations)
 
      val subgraph = E.contract_effects annotations
                     (* nodes in "subgraph" are listed in bottom-up order, without
                        duplicates *)
+
      val frv_tau = List.all E.is_rho subgraph  (* no duplicates in frv_tau *)
      val pfrv_tau = pfrv tau  (* syntactic order *)
      val problematic_secondary_frv_tau =  (* no duplicates *)
@@ -817,7 +824,8 @@ struct
      *)
   in
     (B_3, sigma, NONE) (*footnote Profile.profileOff()*)
-  end handle MONOMORPHIC result => result;
+  end handle MONOMORPHIC result => result
+           | X => (print "regEffClos failed\n"; raise X)
 
   fun effClos(B: E.cone, B_0: int, phi: E.effect, tau: Type): 
                                     E.cone * sigma * string option = die "effClos not implemented"
@@ -1184,31 +1192,52 @@ struct
 	      ^ TyName.pr_TyName tyname
 	      ^ " are not supported yet.\n")
   
-  fun frv_except_tyvar_rhos mus =
-        E.remove_duplicates (frv_except_tyvar_rhos0 mus)
-  and frv_except_tyvar_rhos0 mus =
-        concat_lists (map frv_except_tyvar_rhos1 mus)
-  and frv_except_tyvar_rhos1 (tau, rho) =
-        (case tau of
-  	   TYVAR tyvar => []
-  	 | CONSTYPE (tyname, mus, rhos, epss) =>
-  	     rho :: epss @ rhos @ frv_except_tyvar_rhos0 mus
-  	 | RECORD mus =>
-  	     rho :: frv_except_tyvar_rhos0 mus
-  	 | FUN (mus, eps0, mus') => die "frv_except_tyvar_rhos1")
-  
+  local
+    fun add_rho(rho,acc) = 
+      case E.get_place_ty rho
+	of SOME E.WORD_RT => acc
+	 | SOME _ => if !(E.get_visited rho) then acc 
+		     else (E.get_visited rho := true; rho::acc)
+	 | NONE => die "add_rho"
+    fun add_rhos(rhos,acc) = foldl add_rho acc rhos
+    fun fv_mus (mus,acc) = foldl fv_mu acc mus
+    and fv_mu ((tau,rho),acc) =
+      case tau 
+	of TYVAR tyvar => acc
+	 | CONSTYPE (tyname, mus, rhos, nil) => fv_mus(mus,add_rho(rho,add_rhos(rhos,acc)))
+	 | CONSTYPE (tyname, _, _, _) => die "frv_except_tyvar_rhos.non-empty arrow-effect set"
+	 | RECORD mus => fv_mus(mus,add_rho(rho,acc))
+	 | FUN (mus, eps0, mus') => die "frv_except_tyvar_rhos1"
+  in
+    fun frv_except_tyvar_rhos mus =
+      let val rhos = fv_mus (mus, nil)
+      in rhos before app (fn r => E.get_visited r := false) rhos
+      end
+  end
+
+  fun pr_mu s mu =
+    print ("\n" ^ s ^ ": " ^ PP.flatten1(#2 (mk_layout false) mu) ^ "\n")
+
+  fun pr_effects s effs = print ("\n" ^ s ^ ": " ^ PP.flatten1(PP.layout_list E.layout_effect effs) ^ "\n") 
+
   fun sigma_for_c_function tyvars mu B =
         let val B = unify_rhos_on_same_tyvars mu B
   	in
   	  (case mu of
   	     (FUN (mus1, eps0, mus2), rho) =>
-  	       let val rhos_get = frv_except_tyvar_rhos mus1
+  	       let (* val _ = pr_mu "cf1" mu *)
+		   val rhos_get = frv_except_tyvar_rhos mus1
   		   val rhos_put = frv_except_tyvar_rhos mus2
+(*		   val _ = pr_effects "rhos_get" rhos_get     
+		   val _ = pr_effects "rhos_put" rhos_put
+*)
   		   val phi0 = E.mkUnion (map E.mkGet rhos_get
   					 @ map E.mkPut rhos_put)
   	       in
   		 E.edge (eps0, phi0) ; (*insert effect phi0 on the arrow in mu*)
-  		 let val (B, sigma, msg_opt) = generalize_all (B, 0, tyvars, #1 mu)
+  		 let (* val _ = pr_mu "cf2" mu *)
+		     val (B, sigma, msg_opt) = generalize_all (B, 0, tyvars, #1 mu)
+		   handle X => (print ("generalize_all failed\n"); raise X)
   		 in (sigma, B)
   		 end
   	       end

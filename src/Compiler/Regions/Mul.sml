@@ -659,18 +659,6 @@ struct
    
   fun getmultiplicities_loop(psi, [])= []
     | getmultiplicities_loop((ae1, mul1)::psi, rho::rhos) =
-(*experiment
-        let
-  	    val rho_key = Eff.key_of_eps_or_rho rho
-            val ae_key = Eff.key_of_eps_or_rho(Eff.rho_of ae1)
-        in
-          if rho_key = ae_key
-            then mul1:: getmultiplicities_loop(psi, rhos)
-          else if rho_key < ae_key
-               then NUM 0 :: getmultiplicities_loop((ae1, mul1)::psi, rhos)
-          else getmultiplicities_loop(psi, rho::rhos)
-        end
-*)
         let
   	    val ae2 = Eff.mkPut rho (* important: mkPut returns existing Put rho, if one exists*)
         in
@@ -686,13 +674,6 @@ struct
   fun getmultiplicities(psi,rhos) = getmultiplicities_loop(psi,rhos)
 
   fun getmultiplicities_unsorted(psi,rhos) = 
-(*experiment
-      map (fn rho => let val key_rho = Eff.key_of_eps_or_rho rho
-                     in #2(List.first (fn (ae,mul) => Eff.is_put_with_key key_rho ae) psi)
-                        handle List.First _ => NUM 0
-                     end)
-          rhos
-*)
       map (fn rho => let val ae_rho = Eff.mkPut rho
                      in #2(List.first (fn (ae,mul) => Eff.eq_effect(ae, ae_rho)) psi)
                         handle List.First _ => NUM 0
@@ -1012,15 +993,12 @@ struct
                         handle x => (mes("substitution: " ^ PP.flatten1(layout_subst Se) ^ "\n");
                                      raise x)
                  end
-
+(*
   fun eq_epss(epses1,epses2): bool = 
       List.forAll Eff.eq_effect (ListPair.zip(epses1,epses2))
 
-(*old
-  fun selfcont (eps, phi) = eps_member eps phi
-old*)
-
   fun makeinf_arroweffect(eps, phi) = (eps, map (fn x => (x, INF)) phi) (* phi must be sorted! *)
+*)
 
   (* makezero_muleffect phi sets all multiplicites to 1 (!).
      In Magnus' dissertation, they are all set to 0, but it turns out
@@ -1054,24 +1032,28 @@ old*)
 (*             val _ = if checkPsi Psi' then () else 
                         (say "instantiate applied to ill-formed Xi = ";
                          outtree(layout_qmul qmul))*)
+(*
              val t0 = layout_qmul qmul
              val t1 = layout_mularef (!(lookup_mularefmap(Psi, eps0)))
              val t2 = layout_mularef (nf(!(lookup_mularefmap(Psi, eps0))))
              val t3 = layout_mulef   (lookup_mularefset(Psi', eps0'))
+*)
              val actual_psi = #2(nf(!(lookup_mularefmap(Psi, eps0))))
              val new_actual_psi:mulef = 
                        maxef(actual_psi,
                              lookup_mularefset(Psi', eps0')) (* formal, acyclic *)
              (* (eps0,new_actual_psi) is not necessarily acyclic, so nomalise it: *)
              val (eps0,new_actual_psi) = nf (eps0,new_actual_psi)
-             val t4 = layout_mulef new_actual_psi
+(*             val t4 = layout_mulef new_actual_psi *)
              val Se:efsubst = [(eps0', (eps0,new_actual_psi))]
              val _ = doSubst(eps0, diffef(new_actual_psi,actual_psi), dep)
-                                handle x => (say "qmul="; outtree t0;
+	       handle X => (say "\ninstantiate.doSubst or diffef failed\n"; raise X)
+(*                                handle x => (say "qmul="; outtree t0;
                                    say "lookup Psi gave"; outtree t1;
                                    say "nf gave"; outtree t2;
                                    say "lookup Psi' gave"; outtree t3;
                                    say "new_actual_psi was:"; outtree t4; raise x) 
+*)
 	 in
               instantiate(plainarroweffects,
                           (epses', [], 
@@ -1146,102 +1128,5 @@ old*)
     (*************************************)
 
   val initial: efenv = empty_efenv
-
-(*
-  local
-
-    fun lookup_tyname tyname =
-      case RSE.lookupTyName RSE.initial tyname
-	of SOME arity => SOME (RSE.un_arity arity)
-	 | NONE => NONE
-
-     val (mkTy, mkMu) = RType.freshType lookup_tyname
-
-     fun mkMus(taus,B) =
-        case taus of [] => ([], B)
-        | tau::rest => 
-           let val (mu', B) = mkMu(tau,B)
-               val (mus',B) = mkMus(rest,B)
-           in
-               (mu'::mus', B)
-           end	
-
-     val B0 = Eff.initCone
-     val lev0 = Eff.level B0
-     
-     (* exoclos(B, mu1, epsmu2): make a qmularefset for exomorphism
-        of LambdaExp type tau1 -> tau2. In the resulting qmularefset
-        there will be a Get with multiplicty 1 of each region variable
-        in the domain type and a Put with multiplicity 1 on each region
-        variable in the result type *)
-
-     (* Somebody has commented out the get-effects in the function exoClos! I guess 
-      * this is ok, because, multiplicity inference only bother with put-effects? 
-      * -- martin 7/3-1998 *)
-
-     fun exoClos(B,taus1,taus2):qmularefset = 
-         let val B = Eff.push B0
-             val (mus1,B) = mkMus(taus1,B)
-             val (mus2,B) = mkMus(taus2,B)
-             val ann1 = RType.ann_mus mus1 []
-             val ann2 = RType.ann_mus mus2 []
-             val (eps,B) = Eff.freshEps B
-(*             val _ = List.apply (fn rho => Eff.edge(eps,Eff.mkGet rho)) ann1 *)
-             val _ = List.apply (fn rho => Eff.edge(eps,Eff.mkPut rho)) ann2
-             val (_, B) = Eff.pop B
-             val rhos = List.all (fn node => case Eff.level_of(Eff.find node) of
-                                      SOME l => l> lev0 | NONE => false) (ann2@ann1)
-	     fun sum_psis' [] = []
-	       | sum_psis' l = sum_psis l
-         in 
-             (([eps], rhos, [(eps, sum_psis'((*map get ann1 @*) map put ann2))]:mularefset), Eff.toplevel_region_withtype_top)
-         end
-
-     fun cl(taus,tau) = exoClos(B0, taus, [tau])
-    
-     val Int = Lam.intType
-     val Real = Lam.realType
-     val Bool = Lam.boolType
-
-     val int2int = cl([Int],Int)
-     val int2real = cl([Int], Real)
-     val intXint2int = cl([Int,Int], Int)
-     val intXint2bool = cl([Int,Int], Bool)
-     val real2int = cl([Real],Int)
-     val real2real = cl([Real],Real)
-     val realXreal2bool = cl([Real,Real],Bool)
-     val realXreal2real = cl([Real,Real],Real)
-
-     val lvars_and_sigmas = let open Lvar in [
-
-        (plus_int_lvar, intXint2int),
-        (minus_int_lvar, intXint2int),
-        (mul_int_lvar, intXint2int),
-        (negint_lvar, int2int),
-        (absint_lvar, int2int),
-        (less_int_lvar, intXint2bool),
-        (lesseq_int_lvar, intXint2bool),
-        (greater_int_lvar, intXint2bool),
-        (greatereq_int_lvar, intXint2bool),
-
-        (plus_float_lvar,realXreal2real),
-        (minus_float_lvar,realXreal2real),
-        (mul_float_lvar, realXreal2real),
-        (negfloat_lvar, real2real),
-        (absfloat_lvar, real2real),
-        (less_float_lvar, realXreal2bool),
-        (greater_float_lvar,realXreal2bool),
-        (lesseq_float_lvar, realXreal2bool),
-        (greatereq_float_lvar, realXreal2bool)
-       ]
-     end (* open Lvar *)
-  in
-     val initial: efenv = 
-          List.foldL(fn (lvar, qmularefset) => fn EE =>
-                     declare(EE, lvar, ref qmularefset))
-           empty_efenv
-           lvars_and_sigmas
-  end
-*)
 
 end

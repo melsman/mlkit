@@ -97,7 +97,7 @@ struct
                            instance : einfo G.node option ref,
                            pix: int ref}
                  | UNION of {represents: einfo G.node list option}
-                 | PUT | GET  
+                 | PUT | GET | WORDEFFECT
                  | RHO of {put: einfo G.node option,
                            get: einfo G.node option,
                            key: key,
@@ -115,6 +115,7 @@ struct
       | PUT   => PP.LEAF "put"
       | GET   => PP.LEAF "get"
       | UNION _=> PP.LEAF "U"
+      | WORDEFFECT => PP.LEAF ""  (*"U"*)
       | RHO{key, level,ty,put,...} => 
 	  PP.LEAF ("r" ^ show_key key ^ 
 		   (if !print_rho_types then show_runType ty
@@ -125,9 +126,6 @@ struct
 		      case put of SOME _ => "$" | NONE => ""
 		    else "")*)
                   )
-
-  fun transparent(UNION _) = true
-    | transparent _     = false
 
   type effect = einfo G.node 
   type place = effect
@@ -140,7 +138,7 @@ struct
      case G.find_info (G.find effect) of
        EPS{instance, ...} => instance
      | RHO{instance, ...} => instance
-     | _ => die ".get_instance"
+     | _ => die "get_instance"
 
   fun is_arrow_effect effect =  (* effect node not necessarily canonical *)
      case G.find_info  effect of
@@ -346,7 +344,7 @@ struct
           let val i = k0 mod lsize
               val l = Array.sub(t,i)
           in Array.update(t, i, (k0,d0)::l); t
-          end
+          end (* handle _ => die ("add: lsize = " ^ Int.toString lsize ^ " , k0 = " ^ Int.toString k0) *)
      
          fun remove(k0, t) = 
           let val i = k0 mod lsize
@@ -444,10 +442,7 @@ struct
        fun remove(i,_) =
           (update(global_array, i, ConeLayer.empty);
            SOME global_array)
-           handle _ => NONE (* General.Fail ("Cone.remove: index " 
-                                     ^ Int.toString i 
-                                     ^ "out of range [0.." 
-                                     ^ Int.toString (i-1) ^ "]\n") *)
+           handle _ => NONE
     
        fun reset (_,array) =      (* reset levels 0 to max_cone_level -1 in array *)
 	 let fun reset_loop(i) =
@@ -505,12 +500,14 @@ struct
   (* remove "effect" with "key" from "cone" at "level" *)
 
   fun remove(effect, level, key, cone as (n, c)): cone=
-       case Cone.lookup c (!level) of
+    case Cone.lookup c (!level) of
          NONE => die "remove: (no such level in cone)"
        | SOME layer => (case ConeLayer.remove(key,layer) of
            SOME layer' => (n,Cone.add(!level,layer',c)) 
                                     (* replaces old layer*)
-         | _ => die "remove: (no such key in cone)")
+         | _ => die ("remove: failed to remove effect " ^ PP.flatten1 (layout_effect effect) ^ 
+		     "\nfrom cone at level " ^ Int.toString (!level) ^ 
+		     "\n(no key " ^ Int.toString key ^ " in cone)"))
 
   (* add "effect" with "key" to "cone" at "level" *)
 
@@ -523,7 +520,7 @@ struct
 
 
   (* push(cone):   start a new level on top of cone *)
-
+	   
   fun push(cone as (n,c):cone): cone = (n+1, Cone.add(n+1,ConeLayer.mkEmpty(), c))
 
   (* sort: effect list -> effect list
@@ -735,13 +732,18 @@ struct
     
     (* Atomic effects put(r) and get(r) are memorized for each r (see
      * the definitions of mkPut and mkGet). For the word region (r2),
-     * we initially set the memorized node to the empty effect, which
-     * will then be returned by mkPut and mkGet when called with
-     * r2. Thus, no atomic effects on the form put(r2) or get(r2) will
-     * appear in effects, I conjecture! ME 1998-09-03 *)
+     * we initially set the memorized node to the ``empty effect'' 
+     * WORDEFFECT, which is then returned by mkPut and mkGet when called 
+     * with r2. Thus, no atomic effects on the form put(r2) or get(r2) 
+     * appear in effects, I conjecture! ME 1998-09-03. To make this work,
+     * the unification of two region variables (RHOs) needs also unify
+     * correctly the cached put and get effects (which may be WORDEFFECTs) 
+     * annotated on the RHOs -- see the code for aux_combine below.
+     *)
     
       fun freshRhoWithWordTy(cone:cone as (n, c)): effect * cone =
 	let val key = freshInt()
+	  val empty = G.mk_node WORDEFFECT 
             val node =G.mk_node(RHO{key = ref key, level = ref n, 
 				    put = SOME empty, get = SOME empty, instance = ref NONE, 
 				    pix = ref ~1, ty = WORD_RT})
@@ -888,6 +890,7 @@ tracing *)
                                   ns
                            | PUT  =>  n::ns 
                            | GET  =>  n::ns
+			   | WORDEFFECT => ns
                            | EPS _  => 
                              search'(
                                     (case Increments.lookup (!globalIncs) n of
@@ -928,8 +931,19 @@ tracing *)
           SOME (l as ref( n:int),key) =>
             if newlevel>= n then cone
             else   (* newlevel < level: lower level *)
-                   let val cone' = remove(effect,l,!key,cone) (* take 
+                   let 
+(*		     val _ = if !key = 59 then print (" *** Lowering effect " ^ PP.flatten1 (layout_effect effect) ^ 
+							" from level " ^ Int.toString n ^ " to level " ^ Int.toString newlevel ^ "\n")
+			     else ()
+*)
+		     val cone' = remove(effect,l,!key,cone) (* take 
                                       node out of cone high cone level*)
+(*
+		     handle X => (print ("Exception raised in Effect.low - newlevel = " ^ Int.toString newlevel ^ " \n"); 
+				  print ("Level of effect " ^ PP.flatten1 (layout_effect effect) ^ " is " ^
+					 (case level_of effect of SOME i => Int.toString i | NONE => "_") ^ "\n");
+				  raise X)
+*)
                        val _  = l:= newlevel
                        val cone'' = add(effect, newlevel, !key,cone') (* put 
                                           node back in cone at lower level*)
@@ -1020,7 +1034,8 @@ tracing *)
           orelse !k1 = 3 andalso t2<>BOT_RT
           orelse !k2 = 3 andalso t1<>BOT_RT
          then 
-         die ("illegal unification involving global region(s) " ^ Int.toString (!k1) ^ " / " ^ Int.toString (!k2))
+         die ("illegal unification involving global region(s) " ^ 
+	      Int.toString (!k1) ^ " / " ^ Int.toString (!k2))
        else
 	RHO{level = l1, put = aux_combine(p1,p2), 
 	    get = aux_combine(g1,g2), key =min_key(k1,k2), instance = instance1, pix = pix1, ty = lub_runType(t1,t2)}
@@ -1035,9 +1050,19 @@ tracing *)
             or both GET nodes *)
          (* The resulting node (a PUT/GET) will have only one out-edge,
             namely to the region variable which n1 points to *)
-         SOME(G.union_left (fn (putOrGet1,putOrGet2) => putOrGet1) 
-              (G.find n1, G.find n2))
-
+	SOME(G.union_left (fn (a,b) =>
+		      case (a,b)
+			of (WORDEFFECT,_) => WORDEFFECT    (* see comment by freshRhoWithWordTy above *)
+			 | (_,WORDEFFECT) => WORDEFFECT
+			 | (PUT,PUT) => a
+			 | (GET,GET) => a
+			 | _ => die ("aux_combine: (a,b) = (" ^ PP.flatten1 (layout_einfo a) ^ ", " ^
+				     PP.flatten1 (layout_einfo b) ^ ")\n"))
+	     (G.find n1, G.find n2))
+(*
+	SOME(G.union_left (fn (putOrGet1,putOrGet2) => putOrGet1)
+	     (G.find n1, G.find n2))
+*)
 
   fun mkSameLevel(node1, node2) (cone) : cone = 
        (* node1 and node2 must both be either EPS nodes or RHO nodes *)
@@ -1095,19 +1120,13 @@ tracing *)
 
   (* cone' = instNodes(l) cone:
 
-     l is a list or pairs of effects; it represents a substitution with
+     l is a list of pairs of effects; it represents a substitution with
      domain map #1 l and range map #2 l. Edges are grafted onto the target
      nodes and level of non-generic nodes that are hence 
      grafted onto the target nodes
      are lowered to be at most the level of their new parent, 
      if their level is higher.
   *)
-
-
-
-   val badsubst = "bound_to_free_no_transparent:\
-                                 \node with negative level not in domain\
-                                 \of substitution"
 
   fun instNodes l cone = #1(instNodesClever l cone)
   and instNodesClever(l : (effect * effect) list) cone : cone * (effect * delta_phi)list=
@@ -1151,12 +1170,16 @@ tracing *)
               )
           | UNION _ => (* node not bound *) 
                        NONE
+	  | WORDEFFECT => SOME node           (*do not return NONE as this would make G.multi_graft
+					       *trace the outedges of the node, which include
+					       *the region variable r2 (global word region). *)
           | EPS{instance as ref i,  ...} => 
                ( case i of
                   g as (SOME n') => (* generic *) g
                 | NONE => (* non-generic*) SOME node
                )
-          | RHO{instance as ref i, ...} => die ".bound_to_free"
+          | RHO{instance as ref i, key,...} => die ("bound_to_free.RHO: " ^ 
+						    PP.flatten1 (layout_effect node) ^ "\n")
       end
 
       fun lower_new_edges(n: effect, new_target_nodes:effect list)cone: cone =
@@ -1166,7 +1189,7 @@ tracing *)
         end
 
       val targets_and_new_children: (effect * effect list) list =
-                 G.multi_graft bound_to_free l 
+	G.multi_graft bound_to_free l 
     in 
       (foldl (fn (a,b) => lower_new_edges a b) cone targets_and_new_children,
        map(fn (target, its_new_children) => (target, Lf(its_new_children)))targets_and_new_children)
@@ -1258,6 +1281,7 @@ tracing *)
                                                      else (r_acc:= n :: !r_acc; ns))
                            | GET  => (sawPutOrGet(); if include_put_or_get n then n::ns 
                                                      else (r_acc:= n :: !r_acc; ns))
+			   | WORDEFFECT => ns
                            | EPS{level as ref l', ...} => 
                                  if l'<=l then
                                    (* include it, without examining children *)
@@ -1552,6 +1576,7 @@ tracing *)
         | UNION{represents = SOME l} => l
         | PUT  => [n]
         | GET  => []
+	| WORDEFFECT => []
         | RHO _ => []
         | _ => die "mk_phi"
      end
@@ -1700,7 +1725,8 @@ tracing *)
                    )
               | PUT => [n]
               | GET => []
-              | _ => (say "bottom_up_eval: unexpected node(1): "  ;
+	      | WORDEFFECT => []
+	      | _ => (say "bottom_up_eval: unexpected node(1): "  ;
                       say_eps n; say "\n";
                       []
                      )
@@ -1725,6 +1751,7 @@ tracing *)
                     end)            
                | PUT => [n]
                | GET => []
+	       | WORDEFFECT => []
                | RHO _ => []
               )
           end

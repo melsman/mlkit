@@ -15,7 +15,7 @@ functor RegInf(
                   = RType.StringTree = RSE.StringTree 
                   = Effect.StringTree = Exp.StringTree 
   structure Flags: FLAGS
-    sharing type RSE.place = RType.place = Exp.place
+    sharing type RSE.place = RType.place = Exp.place = Effect.effect = RSE.effectvar
     sharing type Exp.effect = RType.effect = RType.place = Effect.effect
     sharing type RSE.Type = RType.Type = Exp.Type
     sharing type RSE.TypeAndPlaceScheme = RType.sigma = Exp.sigma
@@ -35,6 +35,8 @@ struct
   type prog = (place,unit)Exp.LambdaPgm
   type rse  = RSE.regionStatEnv
 
+  val tag_integers = Flags.is_on0 "tag_integers"
+
   fun footnote(x,y) = x
   infix footnote
 
@@ -48,7 +50,7 @@ struct
                          the region inference algorithm, which 
                          calls Crash.impossible *)
 
-  fun die msg = Crash.impossible ("R." ^ msg)
+  fun die msg = Crash.impossible ("RegInf." ^ msg)
 
   fun say s = TextIO.output(TextIO.stdOut, s)
   fun checkMsgOpt (SOME msg) = Flags.warn_string msg
@@ -147,6 +149,65 @@ struct
      device ("RegEffGen (number of times called during R)" ^ Int.toString(! count_RegEffClos) ^ "\n");
      result)
 
+    (* When garbage collection is enabled, we must make sure that no dangling pointers
+     * are introduced; a way to ensure this is to enforce the following side condition in
+     * rule 22 of TT'93:
+     *
+     *     forall y in fv(\x.e) . frev(TE(y)) \subseteq frev(mu)
+     *
+     * As Mads pointed out at a meeting June 1st 2001, for the algorithm to work
+     * correctly, it is important that the side condition is closed under substitution, 
+     * which is not the case for the weaker side condition mentioned on page 50 of 
+     * Tofte & Talpin, A Theory of Stack Allocation in Polymorphically Typed Languages. 
+     * 1993. Technical Report. 
+     *
+     * -- anyway, we do *not* (currently) implement the side condition that is closed 
+     * under substitution because this side condition has an effect on multiplicity 
+     * inference, as not only get-effects are added but also arroweffects (epsilons), 
+     * which may contribute to put effects. The right thing to do, of course, is to 
+     * modify multiplicity inference also. mael 2001-06-06 *)
+
+
+    fun gc_compute_delta(rse,free,(ty0,rho0)) = 
+      if not(tag_integers()) then Effect.Lf[]
+      else 
+	let 
+	  fun effects_lv (lv, acc: effect list) : effect list = 
+	    case RSE.lookupLvar rse lv
+	      of SOME(_,_,sigma,p,_,_) => p :: RType.frv_sigma sigma @ acc   (*should be: ferv_sigma*)
+	       | NONE => die "gc_compute_delta.effects_lv"
+	  fun effects_ex (ex, acc: effect list) : effect list = 
+	    case RSE.lookupExcon rse ex
+	      of SOME (ty,p) => p :: RType.frv_sigma(RType.type_to_scheme ty) @ acc  (*should be: ferv_sigma*)
+	       | NONE => die "gc_compute_delta.effects_ex"
+	  val (lvs,exs) = case free 
+			    of SOME p => p 
+			     | NONE => die "gc_compute_delta.free variables not annotated"
+	  val effects = foldl effects_ex (foldl effects_lv nil lvs) exs
+	  val effects = Effect.remove_duplicates effects
+
+	  val effects_not = 
+	    [rho0,
+	     Effect.toplevel_arreff,
+	     Effect.toplevel_region_withtype_top,
+	     Effect.toplevel_region_withtype_bot,
+	     Effect.toplevel_region_withtype_word,
+	     Effect.toplevel_region_withtype_string,
+	     Effect.toplevel_region_withtype_real] @ 
+	    RType.ferv_sigma(RType.type_to_scheme ty0) 
+	  val effects = Effect.setminus(effects, effects_not)
+
+	  val effects = map (fn e => if Effect.is_rho e then Effect.mkGet e
+				     else if Effect.is_put e orelse Effect.is_get e then 
+				       die "gc_compute_delta.put or get" 
+				     else e) effects
+	  val _ = app (fn e => if Effect.is_rho e then die "gc_compute_delta.is_rho"
+			       else ()) effects
+(*
+	  val _ = print ("New effects are " ^ PrettyPrint.flatten1 (PrettyPrint.layout_list Effect.layout_effect_deep effects) ^ "\n")
+*)
+	in Effect.Lf effects
+	end
 
     fun R(B:cone, rse: rse, t as Exp.TR(e, mt: Exp.metaType, phi: effect)): cone * Effect.delta_phi =
       let 
@@ -197,19 +258,22 @@ struct
        | Exp.UB_RECORD ts => foldr(fn (t, (B, d)) => 
                                         let val (B', d') = R(B,rse,t) in (B',Effect.Br(d,d')) end) 
                                         (B,Effect.Lf[]) ts
-       | Exp.FN{pat, body, alloc} =>
+       | Exp.FN{pat, body, alloc, free} =>
            (case mt of
-              Exp.Mus [(RType.FUN(mus2,eps_phi0,mus1),_)] =>
-                let val rse' = foldl (fn ((lvar, mu as (tau,rho)), rse) =>
+              Exp.Mus [mu0 as (RType.FUN(mus2,eps_phi0,mus1),_)] =>
+                let 
+		    val rse' = foldl (fn ((lvar, mu as (tau,rho)), rse) =>
                           RSE.declareLvar(lvar, (false,false,
                                  RType.type_to_scheme tau, rho,NONE,NONE), 
                                           rse)) rse
                               (ListPair.zip(map #1 pat, mus2))
                     val (B, delta_body) = R(B,rse', body)
+		    val delta_gc = gc_compute_delta(rse,free,mu0)
+		    val delta = Effect.Br(delta_body, delta_gc)
                     val lev_eps = case Effect.level_of eps_phi0 of SOME n => n | NONE => die "bad arrow effect (FN)"
-                    val B = lower_delta lev_eps delta_body B  
+                    val B = lower_delta lev_eps delta B  
                 in 
-                    update_increment(eps_phi0, delta_body);
+                    update_increment(eps_phi0, delta);
                     update_areff(eps_phi0);
                     (B, Effect.Lf [])
                 end
@@ -271,25 +335,26 @@ struct
               let
                     fun Rrec(B3,sigma_3hat,previous_functions_ok:bool) =
                       let
-                        (*val _ = sayLn("fix:entering Rrec " ^ Lvar.pr_lvar f (*^ ":" ^ show_sigma sigma_3hat*))*)
+                        (* val _ = sayLn("fix:entering Rrec " ^ Lvar.pr_lvar f ^ ":" ^ show_sigma sigma_3hat) *)
                        (* val _ = sayCone B3*)
-                       (* val _ = sayLn("before rename , sigma is " ^ show_sigma (sigma_3hat))*)
+			(* val _ = sayLn("before rename , sigma is " ^ show_sigma (sigma_3hat))*)
                         val sigma3_hat_save = alpha_rename(sigma_3hat,B3) (* for checking 
                                                                                    alpha_equality below *)
                                handle _ => die("failed to rename type scheme " ^ 
                                                 show_sigma sigma_3hat)
 
-                       (* val _ = sayLn("after  rename , sigma is " ^ show_sigma sigma3_hat_save)*)
-                        val rse' = RSE.declareLvar(f,(true,true,sigma3_hat_save, rho0, SOME occ, NONE),rse) (*mads 5/2/97*)
+			(* val _ = sayLn("after  rename , sigma is " ^ show_sigma sigma3_hat_save) *)
+                        val rse' = RSE.declareLvar(f,(true,true,(*sigma3_hat_save*) sigma_3hat, rho0, SOME occ, NONE),rse) (*mads 5/2/97*)
                         val bv_sigma3_hat as (_,rhos,epsilons) = RType.bv sigma_3hat
                         val B3' = pushLayer(sort(epsilons@rhos), B3)
                                     handle _ => die "pushLayer failed\n"
-                        val (B4,delta_rhs) = R(B3', rse',bind)
+                        val (B4,delta_rhs) = R(B3', rse',bind)   (* bind is a fn, so delta_rhs is empty *)
                         val _ = count_RegEffClos:= !count_RegEffClos+1
                         val (B5,sigma_5hat, msg_opt) = regEffClos(B4, Effect.level(B3),phi4,tau4)
                         val _ = checkMsgOpt msg_opt 
                         val (_, B5) = pop(B5)
                         val (_,newrhos,newepss) = RType.bv sigma_5hat
+			(* val _ = sayLn("sigma_5hat is " ^ show_sigma (sigma_5hat)) *)
                         (*val _ = Profile.profileOn();*)
                       in
                          if alpha_equal(sigma3_hat_save, sigma_5hat) B5 (*footnote Profile.profileOff()*)
@@ -297,7 +362,7 @@ struct
                                                "sigma_3_hat_save = \n" ^ show_sigma sigma3_hat_save ^
                                                "\nsigma5_hat       = \n" ^ show_sigma sigma_5hat)
                          then 
-                                ((*sayLn("fix:  leaving " ^ Lvar.pr_lvar f);*)
+                                ((* sayLn("fix:  leaving " ^ Lvar.pr_lvar f); *)
                                  (*log_sigma(RType.insert_alphas(alphavec,sigma_5hat), f);*)
                                  (* update bindings in syntax tree *)
                                  rhosr:= newrhos;  
@@ -317,7 +382,7 @@ struct
                              (* update bindings in syntax tree *)
                              rhosr:= newrhos;  
                              epssr:= newepss;
-                             (*sayLn("fix:looping for " ^ Lvar.pr_lvar f);         *)
+			     (* sayLn("fix:looping for " ^ Lvar.pr_lvar f); *)
                              (B5,false)
                            end
                       end
@@ -345,9 +410,8 @@ struct
               val B1 = loop(B,functions,true, foldl (uncurry addBindingForRhs) rse functions)
 
               val rse' = foldl (uncurry addBindingForScope) rse functions
-              
             in
-              R(B, rse', t2)
+              R(B1, rse', t2)  (*was B; mael 2001-06-03*)
             end
    
        | Exp.APP(t1,t2) => 
