@@ -10,6 +10,11 @@ signature SCS_ERROR =
     val panic      : quot -> 'a
     val valOf      : 'a option -> 'a
 
+    (* [valOfMsg msg v_opt] returns the msg to the user and no error
+        is logged if v_opt is NONE; otherwise returns the value v
+        where SOME v = v_opt *)
+    val valOfMsg   : quot -> 'a option -> 'a
+
     (* [wrapPanic f a] applies f a and returns the result. If an
         exception is raised then the web-service fails with a system
         error page. *)
@@ -17,7 +22,7 @@ signature SCS_ERROR =
 
     (* [wrapOpt f a] applies f a and returns SOME (result). If an
         exception is raised then NONE is returned. No error is logged
-        or mailed. This is no a panic error. *)
+        or mailed. This is not a panic error. *)
     val wrapOpt   : ('a -> 'b) -> 'a -> 'b option
 
     (* [wrapMsg msg f a] similar to wrapPanic except that msg is
@@ -59,7 +64,11 @@ structure ScsError :> SCS_ERROR =
       end
 
     fun valOf NONE = panic `valOf(NONE)`
-      | valOf (SOME(v)) = v
+      | valOf (SOME v) = v
+
+    fun valOfMsg msg NONE = (ScsPage.returnPg "" msg;
+			     Ns.exit())
+      | valOfMsg msg (SOME v) = v
 
     fun wrapPanic f a = f a 
       handle Fail s => panic (`Fail raised: ^s`)
