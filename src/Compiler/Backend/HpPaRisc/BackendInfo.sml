@@ -202,6 +202,6 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 
     (* For the KAM machine *)
     val env_lvar = Lvars.new_named_lvar("env")
-
+    val notused_lvar = Lvars.new_named_lvar("notused")
   end
 
