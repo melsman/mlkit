@@ -82,8 +82,10 @@ functor RegionStatEnv(structure R: RTYPE
 		     TyNameMap.add(TyName.tyName_REF, (1,[],0),
 		     TyNameMap.add(TyName.tyName_BOOL, (0,[],0),
 		     TyNameMap.add(TyName.tyName_INT, (0,[],0), 
+		     TyNameMap.add(TyName.tyName_CHAR, (0,[],0), 
+		     TyNameMap.add(TyName.tyName_WORD, (0,[],0), 
 		     TyNameMap.add(TyName.tyName_LIST, (1,[E.TOP_RT],0),  (* the auxliry region is for a pair; hence TOP_RT *)
-		     TyNameMap.empty)))))))
+		     TyNameMap.empty)))))))))
 
     local
 	val c = E.initCone
