@@ -71,7 +71,7 @@ signature DIGRAPH2 =
     (* node does not exists.                                       *)
     (* findNodeOpt does not raise DiGraphExn but return NONE.      *)
     val findNode    : nodeId -> graph -> node
-    val findNodeOpt    : nodeId -> graph -> node Option
+    val findNodeOpt    : nodeId -> graph -> node option
 
     (* Given a node a ref to the info field is returned. *)
     val getInfoNode : node -> info ref
@@ -82,7 +82,7 @@ signature DIGRAPH2 =
 
     (* Given two nodes, the edgeInfo is returned if they exists. *)
     val findEdge : node -> node -> edgeInfo
-    val findEdgeOpt : node -> node -> edgeInfo Option
+    val findEdgeOpt : node -> node -> edgeInfo option
 
     (* Given two nodes n1 and n2 an edge n1--edgeInfo-->n2 is inserted. *)
     val addEdge : node -> node ->edgeInfo -> unit
@@ -116,7 +116,7 @@ signature DIGRAPH2 =
 			 (edgeInfo -> string) -> 
 			 (nodeId -> string) -> 
                          (int * string * (node * node) list) list -> 
-			 graph -> outstream -> unit
+			 graph -> TextIO.outstream -> unit
   end
 
 (*$DIGRAPH_ALL: DIGRAPH2*)
@@ -194,7 +194,7 @@ signature DIGRAPH_SCC =
     val convertSccNodeToNodes : sccNode -> node list
     val layoutPaths: (nodeId -> string) -> sccNode list list -> StringTree
     val layoutScc : (nodeId -> string) -> sccGraph -> StringTree
-    val exportSccVCG : string -> (nodeId -> string) -> sccGraph -> outstream -> unit
+    val exportSccVCG : string -> (nodeId -> string) -> sccGraph -> TextIO.outstream -> unit
   end
 
 
@@ -206,10 +206,12 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 		   structure Report : REPORT):DIGRAPH_ALL =
   struct
 
-    structure IdFinMap : sig 
-			   include ORDER_FINMAP;
-                           sharing type dom = InfoDiGraph.nodeId
-			 end  =
+    open Edlib
+
+    structure IdFinMap (*: sig 
+			   include ORDER_FINMAP
+                           where type dom = InfoDiGraph.nodeId
+			 end *) =
       OrderFinMap(structure Order =
 		    struct
 		      type T = InfoDiGraph.nodeId
@@ -252,7 +254,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
      *-------------------------------------------------------------------*)
 
     fun pp(t):string      = PP.flatten(PP.format(!Flags.colwidth, t))
-    fun log s             = output(!Flags.log,s ^ "\n")
+    fun log s             = TextIO.output(!Flags.log,s ^ "\n")
     fun die errmsg        = Crash.impossible ("IntDiGraph." ^ errmsg)
     fun footnote (x, y)   = x
     infix footnote
@@ -364,18 +366,18 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 
     fun findNode (id : nodeId) (g : graph) : node =
       case IdFinMap.lookup (!g) id of
-	Some n => n
-      | None => raise DiGraphExn "DiGraph error in findNode: Node doesn't exist."
+	SOME n => n
+      | NONE => raise DiGraphExn "DiGraph error in findNode: Node doesn't exist."
 
-    fun findNodeOpt (id : nodeId) (g : graph) : node Option =
+    fun findNodeOpt (id : nodeId) (g : graph) : node option =
       IdFinMap.lookup (!g) id
 
     (* Add node n to graph g; that is just insert n in map, but *)
     (* check first, that n doesn't exists.                      *)
     fun addNode (n : node) (g : graph) =
       case IdFinMap.lookup (!g) (getNodeId n) of
-	None => g := IdFinMap.add (getNodeId n, n, (!g))
-      | Some _ => raise DiGraphExn "DiGraph error in addNode: Node allready exist."
+	NONE => g := IdFinMap.add (getNodeId n, n, (!g))
+      | SOME _ => raise DiGraphExn "DiGraph error in addNode: Node allready exist."
 
     (* If node exists info field is copied to existing ndoe.     *)
     (* Edges are not copied, so be carefull with this functions. *)
@@ -390,10 +392,10 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 	GRAPHNODE {out, ...} =>
 	   (#2 (List.first (fn (n,i) => n = n2) (!out))) handle List.First _ => raise DiGraphExn "Digraph error in findEdge: Edge does not exist."
 
-    fun findEdgeOpt (n1 : node) (n2 : node) : edgeInfo Option =
+    fun findEdgeOpt (n1 : node) (n2 : node) : edgeInfo option =
       case (!n1) of
 	GRAPHNODE {out, ...} =>
-	   (Some (#2 (List.first (fn (n,i) => n = n2) (!out)))) handle List.First _ => None
+	   (SOME (#2 (List.first (fn (n,i) => n = n2) (!out)))) handle List.First _ => NONE
 
     fun addEdge (n1 : node) (n2 : node) (info : edgeInfo) =
       case (!n1) of 
@@ -500,7 +502,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 		 finish="",
 		 indent=0,
 		 children=[],
-		 childsep=PP.NONE}
+		 childsep=PP.NOSEP}
 	
     fun layoutGraph (layoutInfo : info -> string) 
                     (layoutEdgeInfo : edgeInfo -> string)
@@ -521,7 +523,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 				 finish = ";",
 				 indent = (*level+*)(String.size startStr),
 				 children = makeChildren (level+(String.size startStr)) n',
-				 childsep = PP.NONE}
+				 childsep = PP.NOSEP}
 		       end)
 		    else
 		      let
@@ -531,7 +533,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 			      finish = ";",
 			      indent = (*level+*)(String.size startStr),
 			      children = [PP.LEAF " "],
-			      childsep = PP.NONE}
+			      childsep = PP.NOSEP}
 		      end)
 	  (!(getOutSet node))
 
@@ -542,7 +544,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 		      finish = "",
 		      indent = sizeIndent,
 		      children = makeChildren 0 node,
-		      childsep = PP.NONE})::acc)
+		      childsep = PP.NOSEP})::acc)
 	  else
 	    acc
 		  
@@ -551,7 +553,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 		finish = "...Finishing layout of graph]",
 		indent = 0,
 		children = List.rev (List.foldL layout [] rootNodes),
-		childsep = PP.NONE}
+		childsep = PP.NOSEP}
       end
 
     fun exportGraphVCG title 
@@ -560,7 +562,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 		       (layoutId : nodeId -> string)
 		       (classes : (int * string * (node * node) list) list)
                        (g : graph)
-		       (out : outstream) =
+		       (out : TextIO.outstream) =
       let
 	val newLine = "\n"
 	      
@@ -571,7 +573,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 	    val labelNode = "label: \"" ^ (layoutInfo (!(getInfoNode node))) ^ "\" "
 	    val endNode = "}" ^ newLine
 	  in
-	    output(out, beginNode ^ titleNode ^ labelNode ^ endNode)
+	    TextIO.output(out, beginNode ^ titleNode ^ labelNode ^ endNode)
 	  end
 
 	fun exportEdge node =
@@ -584,7 +586,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 	    val endEdge = "}" ^ newLine
 
 	    fun addEdge (node',edgeInfo') =
-	      output(out, beginEdge ^ sourcename ^ (targetname ^ (layoutId (getNodeId node')) ^ "\" ") ^
+	      TextIO.output(out, beginEdge ^ sourcename ^ (targetname ^ (layoutId (getNodeId node')) ^ "\" ") ^
 		     class ^ "1 " ^ label ^ layoutEdgeInfo(edgeInfo') ^ "\"" ^ endEdge)
 	  in
             map addEdge (!(getOutSet node))		 
@@ -606,14 +608,14 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 	 in
 	   List.apply 
 	    (fn (node1, node2) =>
-	     output(out, beginEdge ^ (sourcename ^ (layoutId (getNodeId node1)) ^ "\" ") ^
+	     TextIO.output(out, beginEdge ^ (sourcename ^ (layoutId (getNodeId node1)) ^ "\" ") ^
 		      (targetname ^ (layoutId (getNodeId node2)) ^ "\" ") ^
 		      class ^ (label(node1, node2)) ^ endEdge))
 	    nodePairs
 	 end     
 
        fun exportClassNames (classNo, className, nodePairs) = 
-	 output(out, "classname " ^ (Int.string classNo) ^ ":\"" ^ className ^ "\"" ^ newLine)
+	 TextIO.output(out, "classname " ^ (Int.string classNo) ^ ":\"" ^ className ^ "\"" ^ newLine)
 
 	val beginGraph = "graph: {" ^ newLine
 	val attrGraph = "title: \"" ^ title ^ "\"" ^ newLine ^
@@ -626,13 +628,13 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 
 	val range_g = rangeGraph g
       in
-	(output(out, beginGraph);
-	 output(out, attrGraph);
+	(TextIO.output(out, beginGraph);
+	 TextIO.output(out, attrGraph);
 	 map exportClassNames classes;
 	 map exportNode range_g;
 	 map exportEdge range_g;
 	 map exportClass classes;
-	 output(out, endGraph))
+	 TextIO.output(out, endGraph))
       end
   end
 
@@ -660,6 +662,8 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
 		   structure Crash: CRASH
 		   structure Report : REPORT):DIGRAPH_SCC =
   struct
+
+    open Edlib
 
     structure DiGraph = DiGraphAll(structure InfoDiGraph = InfoDiGraph
 				   structure PP = PP
@@ -850,13 +854,15 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
       end
   end
 
-
+(*
 (*$Test: FLAGS PRETTYPRINT CRASH REPORT DiGraphScc *)
 functor Test(structure Flags      : FLAGS
 	     structure PP         : PRETTYPRINT
 	     structure Crash      : CRASH
 	     structure Report     : REPORT)  =
   struct
+
+    open Edlib
 
     structure IntDiGraph = DiGraphScc(structure InfoDiGraph =
 					struct
@@ -874,7 +880,7 @@ functor Test(structure Flags      : FLAGS
     open IntDiGraph
 
     fun pp(t):string      = PP.flatten(PP.format(!Flags.colwidth, t))
-    fun log s             = output(!Flags.log,s ^ "\n")
+    fun log s             = TextIO.output(!Flags.log,s ^ "\n")
 
 
     fun getInfo i = !(getInfoNode i)
@@ -899,12 +905,12 @@ functor Test(structure Flags      : FLAGS
 	log (layoutInfoString(findNode 2 g));
 	
 	case findNodeOpt 42 g of
-	  None => log "findNodeOpt works"
-	| Some v => log ("findNodeOpt doesn't work with info " ^ (layoutInfoString v));
+	  NONE => log "findNodeOpt works"
+	| SOME v => log ("findNodeOpt doesn't work with info " ^ (layoutInfoString v));
 
 	case findNodeOpt 2 g of
-	  None => log "findNodeOpt doesn't work"
-	| Some v => log ("findNodeOpt works, with info " ^ (layoutInfoString v));
+	  NONE => log "findNodeOpt doesn't work"
+	| SOME v => log ("findNodeOpt works, with info " ^ (layoutInfoString v));
 
 	addNode (mkNode (1, "niels")) g
 	handle DiGraphExn _  => log "addNode works by first looking for id.";
@@ -1013,3 +1019,4 @@ structure Test = Test(structure Flags = Flags
 		      structure Report = Report)
 
 
+*)

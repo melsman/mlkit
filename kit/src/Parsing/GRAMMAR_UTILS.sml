@@ -9,7 +9,7 @@ signature GRAMMAR_UTILS =
     (*these two are abbreviations: (get rid of them)*)
     structure M : TOPDEC_GRAMMAR   sharing M = TopdecGrammar
     structure C : DEC_GRAMMAR      sharing C = TopdecGrammar.DecGrammar
-    type info sharing type info = TopdecGrammar.info
+    type info = TopdecGrammar.info
     type Report
 
    (*We can get syntax errors while analysing layered patterns (this is
@@ -49,8 +49,8 @@ signature GRAMMAR_UTILS =
           M.info * M.info -> info * M.spec
     val fold_specs_to_spec : (info * M.spec) list -> M.spec
 
-    val raise_lexical_error_if_none : pos -> 'a Option -> 'a
-        (*raise LexBasics.LEXICAL_ERROR (pos, "grr") if the option is None.*)
+    val raise_lexical_error_if_none : pos -> 'a option -> 'a
+        (*raise LexBasics.LEXICAL_ERROR (pos, "grr") if the option is NONE.*)
 
    (* The following all come from the appropriate modules, but they're here
       for convenience and brevity. *)
@@ -78,13 +78,13 @@ signature GRAMMAR_UTILS =
 					   information. *)
     val un_PP : info -> pos * pos
     val rightmost :  ('a -> info) -> 'a ->
-                     ('b -> info) -> 'b Option -> pos
-    val rightmost' : pos -> ('b -> info) -> 'b Option -> pos
-    val rightmost_of_three : pos -> ('b -> info) -> 'b Option ->
-                                    ('c -> info) -> 'c Option -> pos
-    val rightmost_of_four  : pos -> ('b -> info) -> 'b Option ->
-                                    ('c -> info) -> 'c Option ->
-                                    ('d -> info) -> 'd Option -> pos
+                     ('b -> info) -> 'b option -> pos
+    val rightmost' : pos -> ('b -> info) -> 'b option -> pos
+    val rightmost_of_three : pos -> ('b -> info) -> 'b option ->
+                                    ('c -> info) -> 'c option -> pos
+    val rightmost_of_four  : pos -> ('b -> info) -> 'b option ->
+                                    ('c -> info) -> 'c option ->
+                                    ('d -> info) -> 'd option -> pos
     val right : info -> pos
     val wi_Convert: ('a -> 'b) -> 'a C.WithInfo list -> 'b C.WithInfo list
 					(* Conversion of "with-info" tagged

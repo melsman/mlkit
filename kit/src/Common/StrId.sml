@@ -5,6 +5,9 @@ functor StrId(structure Timestamp: TIMESTAMP
 	      structure Crash: CRASH
 	     ): STRID =
   struct
+    
+    open Edlib
+    
     datatype strid = STRID of string
 
     fun pr_StrId(STRID str) = str
@@ -38,5 +41,5 @@ functor StrId(structure Timestamp: TIMESTAMP
 
     fun longStrIdOfStrId strid = LONGSTRID(nil, strid)
 
-    fun (STRID str1) < (STRID str2) = AsciiOrdString.lt str1 str2
+    val op < = fn (STRID str1, STRID str2) => str1 < str2
   end;

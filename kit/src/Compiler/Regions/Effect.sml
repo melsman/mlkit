@@ -12,6 +12,9 @@ functor Effect(structure G: DIGRAPH
 
 struct
 
+  structure NewArray = Array
+  open Edlib
+
   (* Add some dynamic flags for pretty-printing region variables. *) 
   
   val add_entry = fn (s, s', r) => Flags.add_flag_to_menu (["Layout"], s, s', r)
@@ -26,16 +29,16 @@ struct
   infix footnote
   fun x footnote y = x
   fun die s = Crash.impossible("Effect." ^ s)
-  fun log_tree(tr: StringTree) = PP.outputTree(fn s => output(!Flags.log, s), tr, !Flags.colwidth)
+  fun log_tree(tr: StringTree) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), tr, !Flags.colwidth)
   fun say_etas(trl: StringTree list) = 
-         PP.outputTree(fn s => output(std_out, s), 
+         PP.outputTree(fn s => TextIO.output(TextIO.stdOut, s), 
                        PP.NODE{start = "[", finish= "]", indent=1, 
                                childsep = PP.RIGHT",", children = trl},
                        !Flags.colwidth)
-  fun log_string  s = output(!Flags.log, s ^ "\n")
+  fun log_string  s = TextIO.output(!Flags.log, s ^ "\n")
 
-  fun noSome(None, s) = die s
-    | noSome(Some v, _) = v
+  fun noSome(NONE, s) = die s
+    | noSome(SOME v, _) = v
 
   datatype runType = WORD_RT | STRING_RT | REAL_RT | TOP_RT | BOT_RT
 
@@ -80,16 +83,16 @@ struct
   (* info in nodes of effect graphs *)
   datatype einfo = EPS of {key: key, 
                            level:  level, 
-                           represents: einfo G.node list Option, 
-                           instance : einfo G.node Option ref,
+                           represents: einfo G.node list option, 
+                           instance : einfo G.node option ref,
                            pix: int ref}
-                 | UNION of {represents: einfo G.node list Option}
+                 | UNION of {represents: einfo G.node list option}
                  | PUT | GET  
-                 | RHO of {put: einfo G.node Option,
-                           get: einfo G.node Option,
+                 | RHO of {put: einfo G.node option,
+                           get: einfo G.node option,
                            key: key,
                            level: level,
-                           instance : einfo G.node Option ref,
+                           instance : einfo G.node option ref,
                            pix : int ref,      (* pre-order index; for normalised type schemes *)
                            ty : runType}
   
@@ -105,14 +108,14 @@ struct
 		    else "") ^ 
 		   (if !print_rho_levels then "(" ^ show_level level ^ ")" 
 		    else "")^
-                   (case put of Some _ => "$" | None => ""))
+                   (case put of SOME _ => "$" | NONE => ""))
 
   fun transparent(UNION _) = true
     | transparent _     = false
 
   type effect = einfo G.node 
   type place = effect
-  val empty = G.mk_node (UNION{represents = None})
+  val empty = G.mk_node (UNION{represents = NONE})
 
   fun layout_effect e = G.layout_node layout_einfo (G.find e)
   fun layout_effect_deep e = G.layout_nodes_deep layout_einfo [G.find(e)]
@@ -146,7 +149,7 @@ struct
   let val effect = G.find effect
   in
     case (G.find_info effect, G.get_visited effect) of
-      (RHO{put = Some _, ...}, r as ref false) => (r:= true; effect::acc)
+      (RHO{put = SOME _, ...}, r as ref false) => (r:= true; effect::acc)
     | _ => acc
   end
 
@@ -166,22 +169,22 @@ struct
      | PUT => true
      | _ => false
 
-  fun get_level_and_key(effect): (level*key) Option =
+  fun get_level_and_key(effect): (level*key) option =
      case G.find_info (G.find effect) of
-       EPS{level, key,...} => Some(level,key)
-     | RHO{level, key,...} => Some(level,key)
-     | _ => None
+       EPS{level, key,...} => SOME(level,key)
+     | RHO{level, key,...} => SOME(level,key)
+     | _ => NONE
 
   fun key_of_rho(effect): int =
      case G.find_info (effect) of
       RHO{key,...} => !key
      | _ => die "key_of_rho (not a RHO)"
 
-  fun get_level_and_key'(effect): (level*key) Option = (* effect canonical *)
+  fun get_level_and_key'(effect): (level*key) option = (* effect canonical *)
      case G.get_info (effect) of
-       EPS{level, key,...} => Some(level,key)
-     | RHO{level, key,...} => Some(level,key)
-     | _ => None
+       EPS{level, key,...} => SOME(level,key)
+     | RHO{level, key,...} => SOME(level,key)
+     | _ => NONE
 
   fun setkey generator (effect) =
      case G.get_info(G.find effect) of
@@ -199,32 +202,32 @@ struct
        EPS{key as ref (k),...} => k
      | _ => die "GetKeyOfEps"
 
-  fun get_place_ty(effect): runType Option =
+  fun get_place_ty(effect): runType option =
      case G.find_info (effect) of
-      RHO{ty,...} => Some ty
-     | _ => None
+      RHO{ty,...} => SOME ty
+     | _ => NONE
 
-  fun level_of(effect) : int Option =
+  fun level_of(effect) : int option =
      case G.find_info (effect) of
-       EPS{level, key,...} => Some(!level)
-     | RHO{level, key,...} => Some(!level)
-     | _ => None
+       EPS{level, key,...} => SOME(!level)
+     | RHO{level, key,...} => SOME(!level)
+     | _ => NONE
 
   fun edge(from,to) = G.mk_edge(from,to);
 
   fun mkRho(level, key) = 
        G.mk_node(RHO{key = ref key, level = ref level, 
-                     put = None, get = None, instance = ref None, pix = ref ~1, ty = BOT_RT})
+                     put = NONE, get = NONE, instance = ref NONE, pix = ref ~1, ty = BOT_RT})
   
   fun mkPut(n: effect) = (* n must represent a region variable*)
       let val n = G.find n
       in
        case G.get_info n of
-         RHO{put = Some n',...} => n'  (* hash consing *)
-       | RHO{put = None, key, level,get,instance,pix,ty} =>
+         RHO{put = SOME n',...} => n'  (* hash consing *)
+       | RHO{put = NONE, key, level,get,instance,pix,ty} =>
            let (* create new node *)
                val new = G.mk_node(PUT)
-           in G.set_info n (RHO{put = Some new, 
+           in G.set_info n (RHO{put = SOME new, 
                                 get = get, key = key, level = level, instance = instance, pix=pix,ty =ty});
               G.mk_edge(new,n);
               new
@@ -236,11 +239,11 @@ struct
       let val n = G.find n
       in
        case G.get_info n of
-         RHO{get = Some n',...} => n'  (* hash consing *)
-       | RHO{get = None, key, level,put,instance,pix,ty} =>
+         RHO{get = SOME n',...} => n'  (* hash consing *)
+       | RHO{get = NONE, key, level,put,instance,pix,ty} =>
            let (* create new node *)
                val new = G.mk_node(GET)
-           in G.set_info n (RHO{get = Some new, 
+           in G.set_info n (RHO{get = SOME new, 
                                 put = put, key = key, level = level, instance=instance, pix=pix,ty=ty});
               G.mk_edge(new,n);
               new
@@ -250,20 +253,20 @@ struct
 
   fun mkUnion(l : effect list) =
       let 
-          val new = G.mk_node(UNION{represents=None})
+          val new = G.mk_node(UNION{represents=NONE})
       in
           List.apply (fn n => G.mk_edge(new, G.find n)) l;
           new
       end
 
-  fun mkEps(level,key) = G.mk_node(EPS{key = ref key, level = ref level, represents = None, pix = ref ~1, instance = ref None})
+  fun mkEps(level,key) = G.mk_node(EPS{key = ref key, level = ref level, represents = NONE, pix = ref ~1, instance = ref NONE})
 
   fun find node = G.find node
 
   fun setInstance(node,node') =  (* see explanation in signature *)
-      get_instance node := Some node'
+      get_instance node := SOME node'
 
-  fun clearInstance(node,_) = get_instance node := None
+  fun clearInstance(node,_) = get_instance node := NONE
 
 (*
   fun remove_duplicates effects =
@@ -305,7 +308,7 @@ struct
 
   structure ConeLayer(*:ORDER_FINMAP*) = 
       struct
-        structure Array = NewJersey.Array
+        structure Array = NewArray
         val lsize  = 10
          infix eq
      
@@ -323,8 +326,8 @@ struct
      
          fun lookup t key =
            let 
-             fun loop [] = None
-               | loop ((key',y)::rest) = if key = key' then Some y else loop rest
+             fun loop [] = NONE
+               | loop ((key',y)::rest) = if key = key' then SOME y else loop rest
            in 
              loop(Array.sub(t,key mod lsize))
            end
@@ -401,7 +404,7 @@ struct
                      type cone
                      val max_cone_level: int
                      val empty:  map
-                     val lookup: map -> int -> coneLayer Option
+                     val lookup: map -> int -> coneLayer option
                      val add: int * coneLayer * map -> map
                      val remove: int * map -> (map, string)General.Result
                      val layoutMap: {start: string, eq: string, sep: string, finish: string} ->
@@ -410,7 +413,7 @@ struct
                      val reset: cone -> unit
                   end =
   struct
-    local open NewJersey.Array
+    local open NewArray
     in
        val max_cone_level = 1000
        type map = coneLayer array
@@ -419,8 +422,8 @@ struct
         initially 0 *)
        val global_array:map  = array(max_cone_level, ConeLayer.empty)
        val empty = global_array
-       fun lookup _ i = Some(sub(global_array, i))
-                    handle _ => None
+       fun lookup _ i = SOME(sub(global_array, i))
+                    handle _ => NONE
        fun add(i,coneLayer,_) = 
           (update(global_array, i, coneLayer)
                     handle _ => die ("Cone.add: index " 
@@ -494,8 +497,8 @@ struct
 
   fun remove(effect, level, key, cone as (n, c)): cone=
        case Cone.lookup c (!level) of
-         None => die "remove: (no such level in cone)"
-       | Some layer => (case ConeLayer.remove(key,layer) of
+         NONE => die "remove: (no such level in cone)"
+       | SOME layer => (case ConeLayer.remove(key,layer) of
            General.OK layer' => (n,Cone.add(!level,layer',c)) 
                                     (* replaces old layer*)
          | _ => die "remove: (no such key in cone)")
@@ -504,8 +507,8 @@ struct
 
   fun add(effect, level:int, key:int, cone as (n,c)): cone =
        case Cone.lookup c level of
-         None => die ("add: (no such level in cone): " ^ Int.string level)
-       | Some layer => 
+         NONE => die ("add: (no such level in cone): " ^ Int.string level)
+       | SOME layer => 
            (n,Cone.add(level, ConeLayer.add(key,effect,layer), c)) 
                                    (* replaces old layer*)
 
@@ -532,14 +535,14 @@ struct
 
   fun lt_eps_or_rho(eps_or_rho1, eps_or_rho2) = 
     case (get_level_and_key eps_or_rho1, get_level_and_key eps_or_rho2) of
-          (Some(_, ref x'), Some(_, ref y')) => x' < y'
+          (SOME(_, ref x'), SOME(_, ref y')) => x' < y'
     | _ => die "lt_eps_or_rho"
 
   fun merge([], ys) = ys:effect list
     | merge(xs, []) = xs
     | merge(l as x::xs, r as y:: ys) =
        (case (get_level_and_key x, get_level_and_key y) of
-          (Some(_, ref x'), Some(_, ref y')) =>
+          (SOME(_, ref x'), SOME(_, ref y')) =>
            if x'>= y' then x::merge(xs, r)
            else y:: merge(l, ys)
         | _ => die "merge: cannot sort effects that are neither region variables nor effect variables")
@@ -559,7 +562,7 @@ struct
   fun pushLayer(ateffects: effect list, cone as (n,c):cone): cone = 
       let val l = rev((map (fn effect => 
                           case get_level_and_key effect of
-                            Some(level,key) => (level:= n+1;
+                            SOME(level,key) => (level:= n+1;
                                                 (! key, effect))
                           | _ => die "pushLayer: atomic effect neither region- nor effect variable")
                               ateffects))
@@ -645,7 +648,7 @@ struct
                      let val k = freshInt()
                          val new_rho = 
                       G.mk_node(RHO{key = ref(k), level = ref(g level),
-                                    put = None, get = None, instance = ref None,
+                                    put = NONE, get = NONE, instance = ref NONE,
                                     pix = ref(f(pix)), ty = ty})
                      in
                         (new_rho::rhos', add(new_rho, n, k, c))
@@ -664,12 +667,12 @@ struct
   fun rename_epss_aux(epss, c: cone as (n,_), f, g) : effect list * cone =
       List.foldR (fn eps => fn (epss',c) =>
                   case G.find_info(G.find eps) of
-                    EPS{level,pix,(*represents = None,*)...} =>
+                    EPS{level,pix,(*represents = NONE,*)...} =>
                      let val k = freshInt()
                          val new_eps= 
                       G.mk_node(EPS{key = ref(k), level = ref(g level),
-                                    instance = ref None,
-                                    represents = None,
+                                    instance = ref NONE,
+                                    represents = NONE,
                                     pix = ref(f(pix))})
                      in
                         (new_eps::epss', add(new_eps, n, k, c))
@@ -687,7 +690,7 @@ struct
   fun freshRhoWithTy(rt: runType, cone:cone as (n, c)): effect * cone =
       let val key = freshInt()
           val node =G.mk_node(RHO{key = ref key, level = ref n, 
-                                  put = None, get = None, instance = ref None, pix = ref ~1, ty = rt})
+                                  put = NONE, get = NONE, instance = ref NONE, pix = ref ~1, ty = rt})
         in (node, add(node, n, key, cone))
       end
   
@@ -765,7 +768,7 @@ struct
                  sort(drop(k, xs)))
         end
     
-    fun say i = output(std_out, i)
+    fun say i = TextIO.output(TextIO.stdOut, i)
     val l = sort(!ConeLayer.trace)
     fun report[] = []
       | report(x::rest) = 
@@ -819,12 +822,12 @@ tracing *)
        if is_arrow_effect eff
        then
         case Increments.lookup (!globalIncs) eff of
-          Some delta => globalIncs:= Increments.add(eff,Br(delta, delta_new),!globalIncs)
-        | None =>       globalIncs:= Increments.add(eff,delta_new,!globalIncs)
+          SOME delta => globalIncs:= Increments.add(eff,Br(delta, delta_new),!globalIncs)
+        | NONE =>       globalIncs:= Increments.add(eff,delta_new,!globalIncs)
        else ()
                                              
   fun key_of_eps_or_rho node = case get_level_and_key(node)
-       of Some(level,key) => !key | _ => die "key_of_eps_or_rho"
+       of SOME(level,key) => !key | _ => die "key_of_eps_or_rho"
 
 
 
@@ -860,8 +863,8 @@ tracing *)
                            | EPS _  => 
                              search'(
                                     (case Increments.lookup (!globalIncs) n of
-                                       Some delta' => searchDelta(delta', n::ns)
-                                     | None => n::ns),
+                                       SOME delta' => searchDelta(delta', n::ns)
+                                     | NONE => n::ns),
                                     (G.out_of_node n))
                                    
                   end
@@ -874,8 +877,8 @@ tracing *)
 
   fun current_increment(eps) = 
         case Increments.lookup (!globalIncs) eps of
-          Some delta =>  delta
-        | None => Lf []
+          SOME delta =>  delta
+        | NONE => Lf []
 
   (*****************************************************)
   (*     unification of region- and effect variables   *)
@@ -894,7 +897,7 @@ tracing *)
               
     and low (effect,(cone as (n,c):cone)): cone =
         case get_level_and_key effect of
-          Some (l as ref( n:int),key) =>
+          SOME (l as ref( n:int),key) =>
             if newlevel>= n then cone
             else   (* newlevel < level: lower level *)
                    let val cone' = remove(effect,l,!key,cone) (* take 
@@ -905,7 +908,7 @@ tracing *)
                    in
                        low' (cone'',G.out_of_node (G.find effect))
                    end
-        | None => (* not EPS or RHO, no level; just lower children *)
+        | NONE => (* not EPS or RHO, no level; just lower children *)
              low'(cone,G.out_of_node (G.find effect))
    in 
        fn effect => fn cone => low(effect,cone)
@@ -937,14 +940,14 @@ tracing *)
     if is_arrow_effect eps
     then 
       case Increments.lookup (!globalIncs) eps of
-          Some delta => 
+          SOME delta => 
             let val nodes = computeIncrement delta
                 val to_be_added = setminus(nodes, G.nodes(G.subgraph [eps]))
             in  G.add_edges(G.find eps, to_be_added)(*;
                 say "update_areff:result = ";*)
                 (*PP.outputTree(say, layout_effect_deep eps, !Flags.colwidth) *)
             end
-        | None =>       ()
+        | NONE =>       ()
     else ()
    )
 
@@ -967,16 +970,16 @@ tracing *)
 	  if k1 < k2 then
 	    (if !algorithm_R then
 	       case Increments.lookup(!globalIncs)eps2
-		 of Some delta2 => (update_increment(eps1,delta2);
+		 of SOME delta2 => (update_increment(eps1,delta2);
 				    update_areff(eps1) handle _ => die "einfo_combine_eps1")
-		  | None => ()
+		  | NONE => ()
 	     else (); einfo1)
 	  else (* k2 < k1 *)
 	    (if !algorithm_R then
 	       case Increments.lookup(!globalIncs)eps1
-		 of Some delta1 => (update_increment(eps2,delta1);
+		 of SOME delta1 => (update_increment(eps2,delta1);
 				    update_areff(eps2) handle _ => die "einfo_combine_eps2")
-		  | None => ()
+		  | NONE => ()
 	     else (); einfo2)
        | _ => die "einfo_combine_eps"
  
@@ -996,22 +999,22 @@ tracing *)
 	| _ => die "einfo_combine_rho"
   and aux_combine(op1,op2) =
     case (op1,op2) of
-      (None,None) => op1
-    | (Some _, None) => op1
-    | (None, Some _) => op2
-    | (Some n1, Some n2) => 
+      (NONE,NONE) => op1
+    | (SOME _, NONE) => op1
+    | (NONE, SOME _) => op2
+    | (SOME n1, SOME n2) => 
          (* n1 and n2 are supposed to be either both PUT nodes 
             or both GET nodes *)
          (* The resulting node (a PUT/GET) will have only one out-edge,
             namely to the region variable which n1 points to *)
-         Some(G.union_left (fn (putOrGet1,putOrGet2) => putOrGet1) 
+         SOME(G.union_left (fn (putOrGet1,putOrGet2) => putOrGet1) 
               (G.find n1, G.find n2))
 
 
   fun mkSameLevel(node1, node2) (cone) : cone = 
        (* node1 and node2 must both be either EPS nodes or RHO nodes *)
     case (get_level_and_key' node1, get_level_and_key' node2) of
-      (Some(ref l1, _), Some(ref l2, _)) =>          
+      (SOME(ref l1, _), SOME(ref l2, _)) =>          
         if l1=l2 then cone
         else if l1<l2 then lower l1 node2 cone
         else (* l1>l2 *)   lower l2 node1 cone
@@ -1103,9 +1106,9 @@ tracing *)
               (case G.out_of_node node of
                  (rho_origin::_) =>
                        (case !(get_instance rho_origin) of
-                          (Some node') => (* generic *) Some(mkPut node')
-                        | None => (* non-generic *)
-                            Some node
+                          (SOME node') => (* generic *) SOME(mkPut node')
+                        | NONE => (* non-generic *)
+                            SOME node
                        )
                | _ => die "instNodes: put node has no region argument"
               )
@@ -1113,17 +1116,17 @@ tracing *)
               (case G.out_of_node node of
                  (rho_origin::_) =>
                        (case !(get_instance rho_origin) of
-                          Some node' => (* generic *) Some(mkGet node')
-                        | None => (* non-generic *) Some node
+                          SOME node' => (* generic *) SOME(mkGet node')
+                        | NONE => (* non-generic *) SOME node
                        )
                | _ => die "instNodes: get node has no region argument"
               )
           | UNION _ => (* node not bound *) 
-                       None
+                       NONE
           | EPS{instance as ref i,  ...} => 
                ( case i of
-                  g as (Some n') => (* generic *) g
-                | None => (* non-generic*) Some node
+                  g as (SOME n') => (* generic *) g
+                | NONE => (* non-generic*) SOME node
                )
           | RHO{instance as ref i, ...} => die ".bound_to_free"
       end
@@ -1153,7 +1156,7 @@ tracing *)
    * resulting effect list.                                                            *
    *************************************************************************************)
   
-  fun say s = (output(std_out, s); output(!Flags.log, s))
+  fun say s = (TextIO.output(TextIO.stdOut, s); TextIO.output(!Flags.log, s))
 
   fun observeDelta(l: int, source: delta_phi, destination: effect): effect list * delta_phi =
     let
@@ -1360,16 +1363,16 @@ tracing *)
   fun get_visited node = G.find_visited node (*G.get_visited(G.find node)*)
 
   fun get_opt l = List.foldR (fn opt => fn acc => 
-                         case opt of Some t => t::acc | None => acc) [] l
+                         case opt of SOME t => t::acc | NONE => acc) [] l
 
   fun layoutEtas(etas: effect list): StringTree list = 
        get_opt(map (fn eff => if is_rho eff then 
                                      if !Flags.print_regions 
-                                     then Some(layout_effect_deep eff)
-                                     else None
+                                     then SOME(layout_effect_deep eff)
+                                     else NONE
                               else if !Flags.print_effects
-                                   then Some(layout_effect_deep eff)
-                                   else None) (etas))
+                                   then SOME(layout_effect_deep eff)
+                                   else NONE) (etas))
 
   val reset_cone = Cone.reset
   fun reset() = (reset_cone emptyCone;
@@ -1434,12 +1437,12 @@ tracing *)
                   (G.find toplevel_arreff,G.find rho_eps);())
 	  else if is_rho (G.find rho_eps) then
 	    case get_place_ty rho_eps
-	      of Some WORD_RT =>   union_with(toplevel_region_withtype_word)
-	       | Some TOP_RT =>    union_with(toplevel_region_withtype_top)
-	       | Some BOT_RT =>    union_with(toplevel_region_withtype_bot)
-	       | Some STRING_RT => union_with(toplevel_region_withtype_string)
-	       | Some REAL_RT =>   union_with(toplevel_region_withtype_real)    
-	       | None => die "unify_with_toplevel_rhos.no runtype info"
+	      of SOME WORD_RT =>   union_with(toplevel_region_withtype_word)
+	       | SOME TOP_RT =>    union_with(toplevel_region_withtype_top)
+	       | SOME BOT_RT =>    union_with(toplevel_region_withtype_bot)
+	       | SOME STRING_RT => union_with(toplevel_region_withtype_string)
+	       | SOME REAL_RT =>   union_with(toplevel_region_withtype_real)    
+	       | NONE => die "unify_with_toplevel_rhos.no runtype info"
 	  else die "unify_with_toplevel_rhos_eps.not rho or eps"
        end) nodes_for_unification);
     (* the above side-effects cone; now return it: *)
@@ -1501,8 +1504,8 @@ tracing *)
   fun mk_phi eps_node =
      let val n = G.find eps_node
      in case G.get_info n of
-          EPS{represents = Some l, ...} => l
-        | UNION{represents = Some l} => l
+          EPS{represents = SOME l, ...} => l
+        | UNION{represents = SOME l} => l
         | PUT  => [n]
         | GET  => []
         | RHO _ => []
@@ -1518,8 +1521,8 @@ tracing *)
           EPS _ => (r:=true; r::acc)
         | RHO{put, ...} =>
            (case put of 
-              None => (r:=true; r::acc)
-            | Some n => 
+              NONE => (r:=true; r::acc)
+            | SOME n => 
                    let
                        val r' = G.get_visited(n)
                    in r:= true; r':=true; r::r'::acc 
@@ -1634,8 +1637,8 @@ tracing *)
           in
             if !r then
               case G.get_info n of 
-                EPS{represents = Some l, ...} => insert_into_list(n,l)
-              | UNION{represents = Some l} => l
+                EPS{represents = SOME l, ...} => insert_into_list(n,l)
+              | UNION{represents = SOME l} => l
               | PUT => [n]
               | GET => []
               | _ => die "bottom_up_eval: unexpected node(1)"
@@ -1647,7 +1650,7 @@ tracing *)
                       val ns = G.out_of_node n
                       val result = MultiMerge.multimerge(map search ns)
                     in
-                      G.set_info n (EPS{represents= Some ((*check_represents*) result), key=key,level=level,pix =pix,instance=instance});
+                      G.set_info n (EPS{represents= SOME ((*check_represents*) result), key=key,level=level,pix =pix,instance=instance});
                       insert_into_list(n,result)
                     end)            
                | UNION{represents} =>
@@ -1655,7 +1658,7 @@ tracing *)
                       val ns = G.out_of_node n
                       val result = MultiMerge.multimerge(map search ns)
                     in
-                      G.set_info n (UNION{represents= Some ((*check_represents*) result)});
+                      G.set_info n (UNION{represents= SOME ((*check_represents*) result)});
                       result
                     end)            
                | PUT => [n]
@@ -1683,12 +1686,16 @@ tracing *)
 
   fun represents(eps) =
     case G.get_info(G.find eps) of
-      EPS{represents = Some l, ...} => l
+      EPS{represents = SOME l, ...} => l
     | _ => die "represents"
 
 
 end; 
 
+(*
+
+functor TestEffect() =
+struct
 (*$TestEffect: 
         Effect DiGraph Flags BasicIO Crash Report PrettyPrint Stack UnionFindPoly 
 *)
@@ -1713,7 +1720,7 @@ structure Effect = Effect(structure G = DiGraph
 open Effect;
 
 fun pp(t) = PP.flatten1 t
-fun say s = output(std_out, s^"\n")
+fun say s = TextIO.output(TextIO.stdOut, s^"\n")
 fun etest(label,expected,found) =
  say(label ^ (if expected = found then " OK" else " ****** NOT OK *******" ^
 "\n expected: " ^ expected ^ 
@@ -1731,75 +1738,75 @@ val _ = DiGraph.union einfo_combine (rho1, rho2)
 val s2 = pp(layout_effect_deep e);
 
 
-say "---------------testing cones ---------------------";
+val _ = say "---------------testing cones ---------------------";
 
 val _ = resetCount();
 val ec = emptyCone;
-say "the empty cone:";
-say(pp (layoutCone ec));
-say "now creating two region variables at level 0";
+val _ = say "the empty cone:";
+val _ = say(pp (layoutCone ec));
+val _ = say "now creating two region variables at level 0";
 val c0 = push ec;
 val (rho1,c1) = freshRho(c0)
 val (rho2,c2) = freshRho(c1);
-say "now the cone is:";
-say(pp (layoutCone c2));
-say "now pushing new level and creating two effect variables";
+val _ = say "now the cone is:";
+val _ = say(pp (layoutCone c2));
+val _ = say "now pushing new level and creating two effect variables";
 val c2' = push c2
 val (eps3,c3) = freshEps(c2')
 val (eps4,c4) = freshEps(c3);
-say "now the cone is: ";
-say(pp (layoutCone c4));
-say "now lowering e4 to level 1: ";
+val _ = say "now the cone is: ";
+val _ = say(pp (layoutCone c4));
+val _ = say "now lowering e4 to level 1: ";
 val c5 = lower 1 eps4 c4;
-say(pp (layoutCone c5));
-say "now creating rho6: ";
+val _ = say(pp (layoutCone c5));
+val _ = say "now creating rho6: ";
 val (rho6,c6) = freshRho c5;
-say(pp (layoutCone c6));
-say "now making Put(r6)";
+val _ = say(pp (layoutCone c6));
+val _ = say "now making Put(r6)";
 val put_r6 = mkPut rho6;
-say "now inserting edge from eps3 to put(r6): ";
+val _ = say "now inserting edge from eps3 to put(r6): ";
 val _ = DiGraph.mk_edge(eps3, put_r6);
-say(pp (layoutCone c6));
-say "now lowering eps3 to level 1, r6 should follow suit ";
+val _ = say(pp (layoutCone c6));
+val _ = say "now lowering eps3 to level 1, r6 should follow suit ";
 val c7 = lower 1 eps3 c6;
-say(pp (layoutCone c7));
+val _ = say(pp (layoutCone c7));
 val _ = etest("checkpoint 1: ", 
               "{level 1={1=r1,2=r2,3=e3(put(r5)),4=e4,5=r5},level 2={}}",
               pp(layoutCone c7));          
-say "now popping layer";
+val _ = say "now popping layer";
 val (layer1, c8) = pop c7;
-say "top layer was";
-say(pp(layoutLayer layer1));
-say "remaing cone is";
-say(pp(layoutCone c8));
+val _ = say "top layer was";
+val _ = say(pp(layoutLayer layer1));
+val _ = say "remaing cone is";
+val _ = say(pp(layoutCone c8));
 
-say "---------------testing unification of region variables ---------------------";
+val _ = say "---------------testing unification of region variables ---------------------";
 
 val _ = resetCount();
 val ec = emptyCone;
 val c0 = push ec;
 val (rho1,c1) = freshRho(c0)
 val (rho2,c2) = freshRho(c1);
-say "now the cone is:";
-etest("unifyRho1", "{level 1={1=r1,2=r2}}", (pp (layoutCone c2)));
-say "making put rho1 and put rho2: ";
+val _ = say "now the cone is:";
+val _ = etest("unifyRho1", "{level 1={1=r1,2=r2}}", (pp (layoutCone c2)));
+val _ = say "making put rho1 and put rho2: ";
 val (p1,p2) = (mkPut rho1, mkPut rho2);
-say "now the cone is:";
-etest("unifyRho2", "{level 1={1=r1,2=r2}}", pp (layoutCone c2));
-say "unifying rho1 and rho2";
+val _ = say "now the cone is:";
+val _ = etest("unifyRho2", "{level 1={1=r1,2=r2}}", pp (layoutCone c2));
+val _ = say "unifying rho1 and rho2";
 val c3 = unifyRho(rho1,rho2) c2;
-say "now the cone is:";
-say(pp (layoutCone c3));
-say "are rho1 and rho2 now equal (after find)?";
+val _ = say "now the cone is:";
+val _ = say(pp (layoutCone c3));
+val _ = say "are rho1 and rho2 now equal (after find)?";
 val equal = DiGraph.eq_nodes(DiGraph.find rho1, DiGraph.find rho2);
-etest("unifyRho3", "true", Bool.string equal);
+val _ = etest("unifyRho3", "true", Bool.string equal);
 
-say "put rho1 has become:";
-etest("unifyRho4", "put(r1)", pp(layout_effect_deep (DiGraph.find p1)));
-say "put rho2 has become:";
+val _ = say "put rho1 has become:";
+val _ = etest("unifyRho4", "put(r1)", pp(layout_effect_deep (DiGraph.find p1)));
+val _ = say "put rho2 has become:";
 val _ = say(pp(layout_effect_deep (DiGraph.find p2)));
 
-say "---------------testing unification of arrow effects ---------------------";
+val _ = say "---------------testing unification of arrow effects ---------------------";
 
 fun mkRhos 0 (cone,acc) =acc
   | mkRhos n (cone, acc) = 
@@ -1898,7 +1905,7 @@ val _ = etest("Case 4" ,
 \4=r4,5=e5(put(r7),e6(@e5,e2(e3(get(r4),@e6)))),\
 \6=e6(e5(put(r7),@e6),e2(e3(get(r4),@e6))),7=r7},level 2={}}",(pp(layoutCone c)));
 
-say "-------------- end of test of unification ------------";
+val _ = say "-------------- end of test of unification ------------";
 
 
 fun loop 0 (cone, l) = (cone, l)
@@ -2125,3 +2132,6 @@ val _ = edge(eps2, eps4)
 val case7 = sameSetUptoBijection  [(eps1,eps4),(eps5,eps2)](eps1,eps2);
 val _ = etest("sameSetUptoBijection, case 7", "false", Bool.string case7);
 
+end (*TestEffect*)
+
+*)

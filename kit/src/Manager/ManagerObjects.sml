@@ -46,6 +46,9 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       structure Crash : CRASH) : MANAGER_OBJECTS =
   struct
 
+    structure Int = Edlib.Int
+    structure List = Edlib.List
+
     fun die s = Crash.impossible("ManagerObjects." ^ s)
 
     structure FunId = TopdecGrammar.FunId
@@ -63,13 +66,13 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
       struct
 	exception Execute of string
 	fun execute_command command : unit =
-	  let val error_code = SML_NJ.system command
-	            handle SML_NJ.Unsafe.CInterface.SystemCall s =>
-		      raise Execute ("Exception SML_NJ.Unsafe.CInterface.SystemCall \""
+	  let val status = OS.Process.system command
+	            handle OS.SysErr(s,_) =>
+		      raise Execute ("Exception OS.SysErr \""
 				     ^ s ^ "\"\nwhen executing shell command:\n"
 			             ^ command)
-	  in if error_code <> 0 then
-	        raise Execute ("Error code " ^ Int.string error_code ^
+	  in if status <> OS.Process.success then
+	        raise Execute ("Error code " ^ Int.string status ^
 			       " when executing shell command:\n"
 			       ^ command)
 	     else ()
@@ -157,10 +160,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
           let val files = map (fn s => s ^ " ") files
 	  in
 	    (Shell.execute_command
-	     (!c_compiler ^ " -o " ^ run ^ " " ^ implode files
+	     (!c_compiler ^ " -o " ^ run ^ " " ^ concat files
 	      ^ path_to_runtime () ^ " " ^ !c_libs)
               (*see comment at `assemble' above*);
-	     output (std_out, "[wrote executable file:\t" ^ run ^ "]\n"))
+	     TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n"))
 	  end handle Shell.Execute s => die ("link_files_with_runtime_system:\n" ^ s)
 
 
@@ -229,14 +232,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
      * Modification times of files
      *)
 
-    type time = SML_NJ.Timer.time  
-    val time_to_string : time -> string = SML_NJ.Timer.makestring  
+    type time = Time.time  
+    val time_to_string : time -> string = Time.toString      
     fun mtime (s: string) : time = 
-      let val fname = SML_NJ.Unsafe.SysIO.PATH s 
-      in SML_NJ.Unsafe.SysIO.mtime fname
-	    handle _ => die ("mtime \"" ^ s
-			     ^ "\": SML_NJ.Unsafe.SysIO.mtime raised exception")
-      end
+      (OS.FileSys.modTime s)
+      handle _ => die ("mtime \"" ^ s ^ "\": Time.modTime raised exception")
 
     type funid = FunId.funid
     fun funid_from_filename (filename: filename) =    (* contains .sml - hence it cannot *)
@@ -276,18 +276,18 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun add(funid,e,IFE ife) = IFE(FinMap.add(funid,e,ife))
 	fun lookup (IFE ife) funid =
 	  case FinMap.lookup ife funid
-	    of Some res => res
-	     | None => die "IntFunEnv.lookup"
+	    of SOME res => res
+	     | NONE => die "IntFunEnv.lookup"
 	fun restrict (IFE ife, funids) = IFE
 	  (List.foldR (fn funid => fn acc =>
 		       case FinMap.lookup ife funid
-			 of Some e => FinMap.add(funid,e,acc)
-			  | None => die "IntFunEnv.restrict") FinMap.empty funids)
+			 of SOME e => FinMap.add(funid,e,acc)
+			  | NONE => die "IntFunEnv.restrict") FinMap.empty funids)
 	fun enrich(IFE ife0, IFE ife) : bool = (* using funstamps; enrichment for free variables is checked *)
 	  FinMap.Fold(fn ((funid, obj), b) => b andalso         (* when the functor is being declared!! *)
 		      case FinMap.lookup ife0 funid
-			of Some obj0 => FunStamp.eq(#1 obj,#1 obj0)
-			 | None => false) true ife
+			of SOME obj0 => FunStamp.eq(#1 obj,#1 obj0)
+			 | NONE => false) true ife
 	fun layout (IFE ife) = FinMap.layoutMap{start="IntFunEnv = [", eq="->",sep=", ", finish="]"}
 	  (PP.LEAF o FunId.pr_FunId) (PP.LEAF o FunStamp.pr o #1) ife
       end
@@ -357,7 +357,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		 OpacityElim.plus(rea,rea'), IntBasis.plus(intb, intb'))
 
 	val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
-	fun log s = output(std_out,s)			
+	fun log s = TextIO.output(TextIO.stdOut,s)			
 	fun debug(s, b) = 
 	  if !debug_man_enrich then
 	    (if b then log("\n" ^ s ^ ": enrich succeeded.")
@@ -395,26 +395,26 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       List.apply (List.apply (ModCode.delete_files o #5)) (FinMap.range (!intRep));  
 		       intRep := FinMap.empty)
 	fun delete_rep rep funid = case FinMap.remove (funid, !rep)
-				     of OK res => rep := res
+				     of Edlib.General.OK res => rep := res
 				      | _ => ()
 	fun delete_entries funid = (ElabRep.delete_entries funid; 
 				    delete_rep intRep funid)
 	fun lookup_rep rep exportnames_from_entry funid =
 	  let val all_gen = List.foldR (fn n => fn b => b andalso
 					Name.is_gen n) true
-	      fun find ([], n) = None
+	      fun find ([], n) = NONE
 		| find (entry::entries, n) = 
-		if (all_gen o exportnames_from_entry) entry then Some(n,entry)
+		if (all_gen o exportnames_from_entry) entry then SOME(n,entry)
 		else find(entries,n+1)
 	  in case FinMap.lookup (!rep) funid
-	       of Some entries => find(entries, 0)
-		| None => None
+	       of SOME entries => find(entries, 0)
+		| NONE => NONE
 	  end
 	fun add_rep rep (funid,entry) : unit =
 	  rep := let val r = !rep 
 		 in case FinMap.lookup r funid
-		      of Some res => FinMap.add(funid,res @ [entry],r)
-		       | None => FinMap.add(funid,[entry],r)
+		      of SOME res => FinMap.add(funid,res @ [entry],r)
+		       | NONE => FinMap.add(funid,[entry],r)
 		 end
 	fun owr_rep rep (funid,n,entry) : unit =
 	  rep := let val r = !rep
@@ -422,8 +422,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
 		       | owr _ = die "owr_rep.owr"
 		 in case FinMap.lookup r funid
-		      of Some res => FinMap.add(funid,owr(n,res,entry),r)
-		       | None => die "owr_rep.None"
+		      of SOME res => FinMap.add(funid,owr(n,res,entry),r)
+		       | NONE => die "owr_rep.NONE"
 		 end
 	val lookup_int = lookup_rep intRep #4
 

@@ -72,7 +72,7 @@ signature PRETTYPRINT =
                         | HNODE of {start : string, finish: string, 
                                     children: StringTree list,
                                     childsep: childsep}
-    and childsep = NONE | LEFT of string | RIGHT of string
+    and childsep = NOSEP | LEFT of string | RIGHT of string
 
     type minipage
 
@@ -80,9 +80,9 @@ signature PRETTYPRINT =
 			(* Given a simple printing routine, return a function
 			   to build a leaf. *)
 
-    val layoutSet: ('a -> StringTree) -> 'a EqSet.Set -> StringTree
+    val layoutSet: ('a -> StringTree) -> 'a Edlib.EqSet.Set -> StringTree
 
-    val layout_opt : ('a -> StringTree) -> 'a Option -> StringTree
+    val layout_opt : ('a -> StringTree) -> 'a option -> StringTree
     val layout_pair : ('a -> StringTree) -> ('b -> StringTree)
                       -> 'a * 'b -> StringTree
     val layout_list : ('a -> StringTree) -> 'a list -> StringTree

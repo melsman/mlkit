@@ -105,8 +105,8 @@ functor TopLevelReport(structure FunId: FUNID
 			      else
 				" of "
 				^ (case Type.un_Arrow tau of
-				     Some (domTy, _) => Type.string domTy
-				   | None => Crash.impossible "TopLevelReport.reportVE"))) ,
+				     SOME (domTy, _) => Type.string domTy
+				   | NONE => Crash.impossible "TopLevelReport.reportVE"))) ,
 	 VE)
 
     fun reportSig(sigid, Sig) =

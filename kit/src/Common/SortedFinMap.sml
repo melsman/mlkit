@@ -6,6 +6,9 @@ functor SortedFinMap(structure Report: REPORT
 		     structure PP: PRETTYPRINT
 		    ): SORTED_FINMAP =
   struct
+
+    open Edlib
+
     type (''a, ''b) map = (''a * ''b) list
 
     val empty = []
@@ -14,9 +17,9 @@ functor SortedFinMap(structure Report: REPORT
 
     fun isEmpty nil = true | isEmpty _ = false
 
-    fun lookup [] x = None
+    fun lookup [] x = NONE
       | lookup ((x,y)::rest) x' =
-	if x=x' then Some(y) else lookup rest x'
+	if x=x' then SOME(y) else lookup rest x'
 
     fun add (op <) (x , y , nil) = [(x, y)]
       | add (op <) (x', y', (x, y) :: rest) = 
@@ -45,8 +48,8 @@ functor SortedFinMap(structure Report: REPORT
 	List.foldL (fn (x, y) => fn m => insert(x, y, m)) map1 map2
       end
 
-    val domSORTED   : ('a, 'b) map -> 'a list = map #1
-    val rangeSORTED : ('a, 'b) map -> 'b list = map #2
+    val domSORTED   : ('a, 'b) map -> 'a list = fn x => map #1 x
+    val rangeSORTED : ('a, 'b) map -> 'b list = fn x => map #2 x
 
     fun matches f map =
       let

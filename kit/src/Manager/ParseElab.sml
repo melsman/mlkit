@@ -55,7 +55,7 @@ functor ParseElab(structure Parse: PARSE
     type Report = Report.Report
     type topdec = PostElabTopdecGrammar.topdec
 
-    fun log s = output(!Flags.log, s)
+    fun log s = TextIO.output(!Flags.log, s)
     fun chat s = if !Flags.chat then log s else ()
 
     (* -----------------------------------------------------------------
@@ -108,15 +108,15 @@ functor ParseElab(structure Parse: PARSE
        topdec after topdec_opt.  Linear in the number of nested topdecs in
        the first argument.*)
       open PreElabTopdecGrammar
-      fun append_topdecs [] = None
+      fun append_topdecs [] = NONE
 	| append_topdecs (topdec::topdecs) =
-	Some(case topdec
-	       of STRtopdec (i, strdec, None) => STRtopdec(i, strdec, append_topdecs topdecs)
-		| STRtopdec (i, strdec, Some topdec') => STRtopdec(i, strdec, append_topdecs (topdec'::topdecs))
-		| SIGtopdec (i, sigdec, None) => SIGtopdec(i, sigdec, append_topdecs topdecs)
-		| SIGtopdec (i, sigdec, Some topdec') => SIGtopdec(i, sigdec, append_topdecs (topdec'::topdecs))
-		| FUNtopdec (i, fundec, None) => FUNtopdec(i, fundec, append_topdecs topdecs)
-		| FUNtopdec (i, fundec, Some topdec') => FUNtopdec(i, fundec, append_topdecs (topdec'::topdecs)))
+	SOME(case topdec
+	       of STRtopdec (i, strdec, NONE) => STRtopdec(i, strdec, append_topdecs topdecs)
+		| STRtopdec (i, strdec, SOME topdec') => STRtopdec(i, strdec, append_topdecs (topdec'::topdecs))
+		| SIGtopdec (i, sigdec, NONE) => SIGtopdec(i, sigdec, append_topdecs topdecs)
+		| SIGtopdec (i, sigdec, SOME topdec') => SIGtopdec(i, sigdec, append_topdecs (topdec'::topdecs))
+		| FUNtopdec (i, fundec, NONE) => FUNtopdec(i, fundec, append_topdecs topdecs)
+		| FUNtopdec (i, fundec, SOME topdec') => FUNtopdec(i, fundec, append_topdecs (topdec'::topdecs)))
 
       fun parse0 (infB, state) =
 	case Parse.parse (infB, state) 
@@ -133,12 +133,12 @@ functor ParseElab(structure Parse: PARSE
       (*parse may raise Parse*)
 
       fun parse (infB : InfixBasis, file_name : string)
-	    : InfixBasis * PreElabTopdecGrammar.topdec Option =
+	    : InfixBasis * PreElabTopdecGrammar.topdec option =
 	    let val state = Parse.begin (Parse.sourceFromFile file_name
 					 (*may raise Io s*))
 	        val (infB', topdecs) = parse0 (infB, state)
 	    in (infB', append_topdecs topdecs)
-	    end handle Io s => raise Parse (Report.line s)
+	    end handle IO.Io {name,...} => raise Parse (Report.line name)
 
     end (*local*)
 
@@ -151,8 +151,8 @@ functor ParseElab(structure Parse: PARSE
 	  val _ = chat "[parsing end...]\n"
 	  val _ = chat "[elaboration begin...]\n"
 	  val elab_res = case parse_res 
-			   of (infB, Some topdec) => elab (infB, elabB, topdec)
-			    | (infB, None) => empty_success
+			   of (infB, SOME topdec) => elab (infB, elabB, topdec)
+			    | (infB, NONE) => empty_success
 	  val _ = chat "[elaboration end...]\n"
       in elab_res
       end handle Parse report => (chat "[parsing end...]\n"; FAILURE (report, [ErrorCode.error_code_parse]))

@@ -16,6 +16,10 @@ functor TypeInfo (structure Ident: IDENT
 		    sharing type ModuleEnvironments.StringTree = PP.StringTree
 		    ) : TYPE_INFO =
   struct
+
+
+    structure Int = Edlib.Int
+
     type longid = Ident.longid
     type Type = StatObject.Type
     type TyVar = StatObject.TyVar
@@ -28,8 +32,8 @@ functor TypeInfo (structure Ident: IDENT
     type Basis = ModuleEnvironments.Basis
     type TyName = Environments.TyName
 
-    fun map_opt f (Some a) = Some (f a)
-      | map_opt f None = None
+    fun map_opt f (SOME a) = SOME (f a)
+      | map_opt f NONE = NONE
 
     val layoutType = StatObject.Type.layout
     val layoutTyVar = StatObject.TyVar.layout
@@ -44,7 +48,7 @@ functor TypeInfo (structure Ident: IDENT
     | CON_INFO of {numCons: int, index: int, instances: Type list,
 		   tyvars: TyVar list, Type: Type,longid:longid}
     | EXCON_INFO of {Type:Type,longid:longid}
-    | EXBIND_INFO of {TypeOpt : Type Option}
+    | EXBIND_INFO of {TypeOpt : Type option}
     | TYENV_INFO of TyEnv
     | ABSTYPE_INFO of TyEnv * realisation
     | EXP_INFO of {Type:Type}
@@ -53,7 +57,7 @@ functor TypeInfo (structure Ident: IDENT
     | OPEN_INFO of strid list * tycon list * id list
     | INCLUDE_INFO of strid list * tycon list
     | FUNCTOR_APP_INFO of realisation * Env
-    | FUNBIND_INFO of {argE: Env,elabB: Basis, T: TyName list, resE: Env, rea_opt: realisation Option}
+    | FUNBIND_INFO of {argE: Env,elabB: Basis, T: TyName list, resE: Env, rea_opt: realisation option}
     | TRANS_CONSTRAINT_INFO of Env
     | OPAQUE_CONSTRAINT_INFO of Env * realisation
     | DELAYED_REALISATION of realisation * TypeInfo
@@ -86,7 +90,7 @@ functor TypeInfo (structure Ident: IDENT
 	    | INCLUDE_INFO i => INCLUDE_INFO i
 	    | FUNCTOR_APP_INFO (phi',E) => FUNCTOR_APP_INFO (phi_on_phi' phi', phi_on_E E)
             | FUNBIND_INFO {argE,elabB,T,resE,rea_opt} => 
-	     FUNBIND_INFO {argE=phi_on_E argE,elabB=elabB,T=T,resE=resE,rea_opt=Some phi}
+	     FUNBIND_INFO {argE=phi_on_E argE,elabB=elabB,T=T,resE=resE,rea_opt=SOME phi}
             | TRANS_CONSTRAINT_INFO E => TRANS_CONSTRAINT_INFO (phi_on_E E)
             | OPAQUE_CONSTRAINT_INFO (E,phi') => OPAQUE_CONSTRAINT_INFO (phi_on_E E, phi_on_phi' phi')
 	    | DELAYED_REALISATION (phi',ti) => on_TypeInfo'(phi_on_phi' phi', ti)
@@ -121,7 +125,7 @@ functor TypeInfo (structure Ident: IDENT
          | RECORD_ATPAT_INFO {Type} =>
 	     PP.NODE{start="RECORD_ATPAT_INFO(",finish=")",indent=2,
 		  children=[layoutType Type],
-		  childsep = PP.NONE}
+		  childsep = PP.NOSEP}
          | VAR_INFO {instances} => 
 	     PP.NODE{start="VAR_INFO(", finish=")",indent=2,
 		     children=map layoutType instances,
@@ -138,11 +142,11 @@ functor TypeInfo (structure Ident: IDENT
 			       PP.NODE{start="tyvars: ",finish="",
 				       indent=4,
 				       children=[layout_tyvars tyvars],
-				       childsep = PP.NONE},
+				       childsep = PP.NOSEP},
 			       PP.NODE{start="Type: ",finish="",
 				       indent=4,
 				       children=[layoutType Type],
-				       childsep = PP.NONE},
+				       childsep = PP.NOSEP},
 			       PP.NODE{start="instances: ",finish="",
 				       indent=4,
 				       children=map layoutType instances,
@@ -157,19 +161,19 @@ functor TypeInfo (structure Ident: IDENT
 		     children=[PP.NODE{start="Type: ",finish="",
 				       indent=4,
 				       children=[layoutType Type],
-				       childsep = PP.NONE},
+				       childsep = PP.NOSEP},
 			       PP.LEAF("longid: " ^ Ident.pr_longid longid)],
-		       childsep = PP.NONE}
+		       childsep = PP.NOSEP}
 	 | EXBIND_INFO{TypeOpt} =>
 	     PP.NODE{start="EXBIND_INFO(",finish=")",indent=2,
 		     children=[case TypeOpt
-				 of None => PP.LEAF "None"
-				  | Some tau => layoutType tau],
-		     childsep = PP.NONE}
+				 of NONE => PP.LEAF "NONE"
+				  | SOME tau => layoutType tau],
+		     childsep = PP.NOSEP}
 	 | TYENV_INFO TE =>
 	     PP.NODE{start="TYENV_INFO(",finish=")",indent=2,
 		     children=[layoutTyEnv TE],
-		     childsep = PP.NONE}
+		     childsep = PP.NOSEP}
 	 | ABSTYPE_INFO (TE,phi) =>
 	     PP.NODE{start="ABSTYPE_INFO(",finish=")",indent=2,
 		     children=[layoutTyEnv TE, PP.LEAF "phi"],
@@ -177,16 +181,16 @@ functor TypeInfo (structure Ident: IDENT
 	 | EXP_INFO{Type} => 
 	     PP.NODE{start="EXP_INFO(",finish=")",indent=2,
 		     children=[layoutType Type],
-		     childsep = PP.NONE}
+		     childsep = PP.NOSEP}
 	 | MATCH_INFO{Type} => 
 	     PP.NODE{start="MATCH_INFO(",finish=")",indent=2,
 		     children=[layoutType Type],
-		     childsep = PP.NONE}
+		     childsep = PP.NOSEP}
 	 | PLAINvalbind_INFO{tyvars, Type} => 
 	     PP.NODE{start="PLAINvalbind_INFO(",finish=")",indent=2,
 		     children=[layout_tyvars tyvars,
 			       layoutType Type],
-		     childsep = PP.NONE}
+		     childsep = PP.NOSEP}
 	 | OPEN_INFO (strids,tycons,ids) => PP.NODE{start="OPEN_INFO(",finish=")",indent=2,childsep=PP.RIGHT ", ",
 						    children=[layout_strids strids,
 							      layout_tycons tycons,
@@ -196,10 +200,10 @@ functor TypeInfo (structure Ident: IDENT
 							     layout_tycons tycons]}
 	 | FUNCTOR_APP_INFO (realisation,E) => PP.LEAF "FUNCTOR_APP_INFO(rea,E)"
 	 | FUNBIND_INFO {argE,elabB,T,resE,rea_opt} => PP.NODE{start="FUNBIND_INFO(", finish=")",
-							   indent=2,childsep=PP.NONE,
+							   indent=2,childsep=PP.NOSEP,
 							   children=[layoutEnv argE]}
 	 | TRANS_CONSTRAINT_INFO Env => PP.NODE{start="TRANS_CONSTRAINT_INFO(", finish=")",
-						indent=2,childsep=PP.NONE,
+						indent=2,childsep=PP.NOSEP,
 						children=[layoutEnv Env]}
 	 | OPAQUE_CONSTRAINT_INFO (Env,phi) => PP.NODE{start="OPAQUE_CONSTRAINT_INFO(", finish=")",
 						indent=2,childsep=PP.RIGHT ", ",

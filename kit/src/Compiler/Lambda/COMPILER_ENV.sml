@@ -87,7 +87,7 @@ signature COMPILER_ENV =
         (* Only `prim' should give you back `PRIM' (and even then it can be 
 	 * overwritten). *)
 
-    val lookup_longid : CEnv -> longid -> result Option
+    val lookup_longid : CEnv -> longid -> result option
     val lookup_strid : CEnv -> strid -> CEnv
 
     type subst

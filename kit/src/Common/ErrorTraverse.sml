@@ -13,6 +13,9 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
 		       structure Crash : CRASH
 			 ) : ERROR_TRAVERSE =
   struct
+
+    structure List = Edlib.List
+
     open TopdecGrammar TopdecGrammar.DecGrammar
     structure TypeInfo = ElabInfo.TypeInfo
 
@@ -45,19 +48,19 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
 
     fun check i =
           (case ElabInfo.to_ErrorInfo i of
-	     Some ei =>
+	     SOME ei =>
 	       (spot (ErrorCode.from_ErrorInfo ei);
 		Report.line ""
 		// report_SourceInfo_in_ElabInfo i
 		// ElabInfo.ErrorInfo.report ei)
-	   | None => Report.null)
+	   | NONE => Report.null)
 
     fun report_escaping (i, msg : string) =
           report_SourceInfo_in_ElabInfo i
 	  // Report.line ("escaping type variable(s): " ^ msg)
 
-    fun walk_opt _ None = ok
-      | walk_opt walk (Some obj) = walk obj
+    fun walk_opt _ NONE = ok
+      | walk_opt walk (SOME obj) = walk obj
 
     fun walk_IdInfoList list =
       case list

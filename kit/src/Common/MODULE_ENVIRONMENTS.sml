@@ -11,7 +11,7 @@ signature MODULE_ENVIRONMENTS =
 
     (*types from other modules:*)
     structure TyName : TYNAME
-    type TyName sharing type TyName = TyName.TyName
+    type TyName = TyName.TyName
     type TyVar
     type TyStr
     type Env
@@ -21,12 +21,12 @@ signature MODULE_ENVIRONMENTS =
     type realisation
     eqtype id
     type strid
-    type tycon sharing type tycon = TyName.tycon
+    type tycon = TyName.tycon
     type longstrid
     type longtycon
     type sigid
     type funid
-    type StringTree sharing type StringTree = TyName.Set.StringTree
+    type StringTree = TyName.Set.StringTree
     type Report
     (*The report functions below are used for top-level printout*)
 
@@ -38,9 +38,9 @@ signature MODULE_ENVIRONMENTS =
 	val empty            : SigEnv
 	val singleton        : sigid  * Sig    -> SigEnv
 	val plus             : SigEnv * SigEnv -> SigEnv
-	val lookup           : SigEnv -> sigid -> Sig Option
+	val lookup           : SigEnv -> sigid -> Sig option
 	val tynames          : SigEnv -> TyName.Set.Set
-	val dom              : SigEnv -> sigid EqSet.Set
+	val dom              : SigEnv -> sigid Edlib.EqSet.Set
 	val layout           : SigEnv -> StringTree
 	val report           : (sigid * Sig -> Report) * SigEnv -> Report
       end
@@ -53,11 +53,11 @@ signature MODULE_ENVIRONMENTS =
 	val empty            : FunEnv
 	val singleton        : funid  * FunSig -> FunEnv
 	val plus             : FunEnv * FunEnv -> FunEnv
-	val lookup           : FunEnv -> funid -> FunSig Option
+	val lookup           : FunEnv -> funid -> FunSig option
 	val tynames          : FunEnv -> TyName.Set.Set
 	val tyvars           : FunEnv -> TyVar list
 	val tyvars'          : FunEnv -> (id * TyVar list) list
-	val dom              : FunEnv -> funid EqSet.Set
+	val dom              : FunEnv -> funid Edlib.EqSet.Set
 	val layout           : FunEnv -> StringTree
 	val report           : (funid * FunSig -> Report) * FunEnv -> Report
       end
@@ -82,21 +82,21 @@ signature MODULE_ENVIRONMENTS =
 	val plus_E           : Basis * Env     -> Basis
 	val from_E           : Env -> Basis
 	val to_E             : Basis -> Env
-	val lookup_strid     : Basis -> strid -> Env Option
-	val lookup_longstrid : Basis -> longstrid -> Env Option
-	val lookup_longtycon : Basis -> longtycon -> TyStr Option
+	val lookup_strid     : Basis -> strid -> Env option
+	val lookup_longstrid : Basis -> longstrid -> Env option
+	val lookup_longtycon : Basis -> longtycon -> TyStr option
 
 	                (*G component*)
 	val from_G           : SigEnv -> Basis
 	val to_G             : Basis -> SigEnv
 	val plus_G           : Basis  * SigEnv -> Basis
-	val lookup_sigid  : Basis -> sigid -> Sig Option
+	val lookup_sigid  : Basis -> sigid -> Sig option
 
 	                (*F component*)
 	val from_F           : FunEnv -> Basis
 	val to_F             : Basis -> FunEnv
 	val plus_F           : Basis  * FunEnv -> Basis
-	val lookup_funid     : Basis -> funid -> FunSig Option
+	val lookup_funid     : Basis -> funid -> FunSig option
 
 	           (*for compilation manager*)
 	val enrich           : Basis * Basis -> bool

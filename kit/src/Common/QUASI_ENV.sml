@@ -16,7 +16,7 @@ signature QUASI_ENV =
     type dom sharing type Env.dom = dom
  
     val mk : int -> '_a map -> '_a qmap
-    val lookup : '_a qmap -> dom -> '_a Option
+    val lookup : '_a qmap -> dom -> '_a option
     val update : dom * '_a * '_a qmap -> unit
 
     val Fold : (((int * '_b) * 'a) -> 'a) -> 'a -> '_b qmap -> 'a

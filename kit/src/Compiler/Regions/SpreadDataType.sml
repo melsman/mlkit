@@ -1,6 +1,3 @@
-(*$SpreadDatatype: SPREAD_DATATYPE CON EXCON LAMBDA_EXP RTYPE FINMAP
-     REGION_EXP EFFECT REGION_STAT_ENV PRETTYPRINT LVARS TYNAME FLAGS CRASH
-     *)
 
 (*
 *
@@ -10,13 +7,6 @@
 *   region and effect arity). Moreover, the module infers a region-polymorphic
 *   type scheme for each value constructor declared in the source program.
 *   
-*)
-
-
-(* LOG: 22/02/1995 15:50, Martin: CompileLambda v.23e needs info about
-    the arity of constructors. We propagate a dummy type in the case a
-    constructor takes an argument... (E.Type \not = R.Type)
-
 *)
 
 functor SpreadDatatype(
@@ -49,6 +39,9 @@ functor SpreadDatatype(
     sharing type PP.StringTree = FinMap.StringTree = E.StringTree = RSE.StringTree = R.StringTree
 ): SPREAD_DATATYPE =
 struct
+
+  open Edlib
+
   structure E = E
   structure E' = E'
   structure LambdaExp = E
@@ -73,8 +66,8 @@ struct
 
   fun noSome x msg = 
     case x of 
-      Some it => it
-    | None => die msg
+      SOME it => it
+    | NONE => die msg
 
   fun apply_n f 0 = []
     | apply_n f n = f() :: apply_n f (n-1)
@@ -177,10 +170,10 @@ struct
                      let val (global, local_rse) = rse 
                      in
                       (case RSE.lookupTyName local_rse tyname of
-                         Some arity => mk_abstract(zap_ty_arity(RSE.un_arity arity))
-                       | None => (case RSE.lookupTyName global tyname of
-                           Some arity => mk_abstract(zap_ty_arity(RSE.un_arity arity))
-                         | None => die ("infer_arity_ty. Type name: " 
+                         SOME arity => mk_abstract(zap_ty_arity(RSE.un_arity arity))
+                       | NONE => (case RSE.lookupTyName global tyname of
+                           SOME arity => mk_abstract(zap_ty_arity(RSE.un_arity arity))
+                         | NONE => die ("infer_arity_ty. Type name: " 
                                   ^ TyName.pr_TyName tyname)))
                      end)
   |  E.RECORDtype(types) => 
@@ -191,11 +184,11 @@ struct
 
   fun infer_arity_conbind_list rse current_tynames conbind_list =
     List.foldR 
-     (fn (con, Some tau) => (fn  acc => infer_arity_ty rse  current_tynames tau   ++ acc)
+     (fn (con, SOME tau) => (fn  acc => infer_arity_ty rse  current_tynames tau   ++ acc)
        | _  => fn acc => acc
      ) arity0 conbind_list
 
-  type single_datbind = tyvar list * tyname * (con * Type Option) list
+  type single_datbind = tyvar list * tyname * (con * Type option) list
   type datbind = single_datbind list
 
   fun infer_arity_single_datbind rse (current_tynames : tyname list)
@@ -226,7 +219,7 @@ struct
                       arreff)
 
 
-  fun spread_ty_to_mu(tyvar_to_place: tyvar -> place Option,
+  fun spread_ty_to_mu(tyvar_to_place: tyvar -> place option,
                       get_with_rt: Effect.runType -> place,
                       get_eps: unit -> effect,
                       being_defined: tyname -> bool,
@@ -260,11 +253,11 @@ struct
              else (* tyname not in the current datbind. 
                    Look for it amongst previously declared datbinds: *)
                (case spread_constructed_type(rse, tyname, taus) of
-                  Some mu => mu
-                | None => (* look for it in the global rse *)
+                  SOME mu => mu
+                | NONE => (* look for it in the global rse *)
                     (case spread_constructed_type(global_rse, tyname, taus) of
-                       Some mu => mu
-                     | None => die ("ty_to_mu: \
+                       SOME mu => mu
+                     | NONE => die ("ty_to_mu: \
                       \ undeclared type name: " ^ TyName.pr_TyName tyname)
                     )
                )
@@ -272,17 +265,17 @@ struct
             extend(R.RECORD(map ty_to_mu taus)) 
 
       and spread_constructed_type(rse, tyname, taus): 
-                                           (R.Type*R.effect) Option = 
+                                           (R.Type*R.effect) option = 
          case RSE.lookupTyName rse tyname of
-           Some arity => 
+           SOME arity => 
              let val (number_of_alphas, rho_runtypes, number_of_epsilons) = 
                   RSE.un_arity arity 
              in
-               Some(extend(R.CONSTYPE(tyname, map ty_to_mu taus,
+               SOME(extend(R.CONSTYPE(tyname, map ty_to_mu taus,
                                              get_list_with_runtypes rho_runtypes,
                                              apply_n get_eps number_of_epsilons)))
              end
-         | None => None
+         | NONE => NONE
 
     in
        ty_to_mu ty
@@ -336,7 +329,7 @@ struct
 
       val (common_place,cone) = Effect.freshRhoWithTy(Effect.TOP_RT, cone)
 
-   (*mads   val _ = output(std_out,PP.flatten(PP.format(80,layout_arity(mk_concrete( common_arity)))))*)
+   (*mads   val _ = TextIO.output(TextIO.stdOut,PP.flatten(PP.format(80,layout_arity(mk_concrete( common_arity)))))*)
 
       val (fresh_aux_rhos,cone) = fresh_list(Effect.freshRho,length(#2 common_arity),cone) 
       val l = map (fn (rt,rho) => (Effect.setRunType rho rt; (rt,rho)))
@@ -378,7 +371,7 @@ struct
               fun spreadCon (con, tau_opt) (acc as (list,cone) : 
                         ((Con.con * E'.constructorKind * R.sigma)list * cone)) =
                    (case tau_opt of
-                        Some tau => 
+                        SOME tau => 
                           let val mu1 = spread_ty_to_mu(
                                           FinMap.lookup tyvarPairMap0,
                                           (get_place rho_resource),
@@ -400,7 +393,7 @@ struct
                           in
                             ((con, E'.VALUE_CARRYING, sigma)::list,cone)
                           end
-                      | None     => 
+                      | NONE     => 
                           let val (cone,sigma,_) = 
                                   R.generalize_all(cone,level_of_TE,tyvar_list,result_type)
                           in ((con, E'.CONSTANT, sigma)::list, cone)
@@ -413,7 +406,8 @@ struct
               ((tyname,db') :: tdb_list, cone) 
           end (* spread_single_datbind *)
 
-      fun msg(s) = if !Flags.chat then (*mads*) output(std_out, s^"\n") else ()
+      fun msg(s) = if !Flags.chat then (*mads*) TextIO.output(TextIO.stdOut, s^"\n") else ()
+
       val _ = msg "Computing new datatype bindings..."
       val (target_datbind,cone) = List.foldL (spread_single_datbind) ([],cone) datbind
       val _ = msg "Computing new constructor env..."

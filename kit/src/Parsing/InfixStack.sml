@@ -18,7 +18,7 @@ functor InfixStack(structure InfixBasis: INFIX_BASIS
 
 		   val pair: FullObject * FullObject -> AtomObject
 
-		   val asId: AtomObject -> id Option
+		   val asId: AtomObject -> id option
 		   val applyId: id * AtomObject -> FullObject
 		   val applyObj: FullObject * AtomObject -> FullObject
 
@@ -156,7 +156,7 @@ functor InfixStack(structure InfixBasis: INFIX_BASIS
 
 	 | this :: rest =>
 	     (case asId this
-		of Some id =>		(* Dealing with an unqual. id. *)
+		of SOME id =>		(* Dealing with an unqual. id. *)
 		     (case lookup iBas id
 			of INFIX n =>
 			     operator(iBas, INFIXentry(id, n),

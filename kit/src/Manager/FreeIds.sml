@@ -11,6 +11,9 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 		 structure PP : PRETTYPRINT
 		  ) :  FREE_IDS =
   struct
+
+    structure List = Edlib.List
+
     fun die s = Crash.impossible ("FreeIds."^s)
 
     open TopdecGrammar
@@ -135,8 +138,8 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
     local fun normalise ti = ElabInfo.TypeInfo.normalise ti
     in fun to_TypeInfo i =
          case ElabInfo.to_TypeInfo i
-	   of Some ti => Some(normalise ti)
-	    | None => None 
+	   of SOME ti => SOME(normalise ti)
+	    | NONE => NONE 
     end
 
     (* --------------------------------------
@@ -158,8 +161,8 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
        | PARatexp(_,exp) => free_exp I exp
 
     and free_exprow I (EXPROW(_,_,exp,exprow_opt)) : unit = (free_exp I exp; free_exprow_opt I exprow_opt)
-    and free_exprow_opt I None = ()
-      | free_exprow_opt I (Some exprow) = free_exprow I exprow
+    and free_exprow_opt I NONE = ()
+      | free_exprow_opt I (SOME exprow) = free_exprow I exprow
 
     and free_exp I =
       fn ATEXPexp(_,atexp) => free_atexp I atexp
@@ -172,8 +175,8 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
       
     and free_match I (MATCH(_,mrule,match_opt)) : unit =
       (free_mrule I mrule; free_match_opt I match_opt)
-    and free_match_opt I None = ()
-      | free_match_opt I (Some match) = free_match I match
+    and free_match_opt I NONE = ()
+      | free_match_opt I (SOME match) = free_match I match
 
     and free_mrule I (MRULE(_,pat,exp)) : unit =
       let val I' = free_pat I pat
@@ -201,7 +204,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 	         List.apply (fn WITH_INFO(_,longstrid) => use_longstrid(I,longstrid)) 
 		 longstrids_with_info
 	      val (strids, tycons, ids) = case to_TypeInfo info
-					    of Some (ElabInfo.TypeInfo.OPEN_INFO decls) => decls
+					    of SOME (ElabInfo.TypeInfo.OPEN_INFO decls) => decls
 					     | _ => die "OPENdec - no decl. info"
 	      val decl_strids = List.foldL (fn strid => fn ids => add_strid(strid,ids))
 	      val decl_tycons = List.foldL (fn tycon => fn ids => add_tycon(tycon,ids))
@@ -222,31 +225,31 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
       fn PLAINvalbind(_,pat,exp,valbind_opt) =>
       (free_exp I exp; free_pat I pat ++ free_valbind_opt I valbind_opt)
        | RECvalbind(_,valbind) =>
-      let fun f (PLAINvalbind(_,pat,_,None)) = free_pat I pat
-	    | f (PLAINvalbind(_,pat,_,Some valbind)) = free_pat I pat ++ f valbind
+      let fun f (PLAINvalbind(_,pat,_,NONE)) = free_pat I pat
+	    | f (PLAINvalbind(_,pat,_,SOME valbind)) = free_pat I pat ++ f valbind
 	    | f (RECvalbind(_,valbind)) = f valbind
 	  val I' = f valbind
       in free_valbind' (I ++ I') valbind; I'
       end
-    and free_valbind_opt I None = empty_ids
-      | free_valbind_opt I (Some valbind) = free_valbind I valbind
+    and free_valbind_opt I NONE = empty_ids
+      | free_valbind_opt I (SOME valbind) = free_valbind I valbind
  
     and free_valbind' I =
       fn PLAINvalbind(_,_,exp,valbind_opt) => (free_exp I exp; free_valbind_opt' I valbind_opt)
        | RECvalbind(_,valbind) => free_valbind' I valbind
-    and free_valbind_opt' I None = ()
-      | free_valbind_opt' I (Some valbind) = free_valbind' I valbind
+    and free_valbind_opt' I NONE = ()
+      | free_valbind_opt' I (SOME valbind) = free_valbind' I valbind
 
     and free_typbind I (TYPBIND(_,_,tycon,ty,typbind_opt)) : ids =
       (free_ty I ty; add_tycon(tycon,empty_ids) ++ free_typbind_opt I typbind_opt)
-    and free_typbind_opt I None = empty_ids
-      | free_typbind_opt I (Some typbind) = free_typbind I typbind
+    and free_typbind_opt I NONE = empty_ids
+      | free_typbind_opt I (SOME typbind) = free_typbind I typbind
 
     and free_datbind I datbind : ids =
-      let fun f (DATBIND(_,_,tycon,_,None)) = add_tycon(tycon,empty_ids)
-	    | f (DATBIND(_,_,tycon,_,Some datbind)) = add_tycon(tycon,f datbind)
-	  fun g I (DATBIND(_,_,_,conbind,None)) = free_conbind I conbind 
-	    | g I (DATBIND(_,_,_,conbind,Some datbind)) = free_conbind I conbind ++ g I datbind
+      let fun f (DATBIND(_,_,tycon,_,NONE)) = add_tycon(tycon,empty_ids)
+	    | f (DATBIND(_,_,tycon,_,SOME datbind)) = add_tycon(tycon,f datbind)
+	  fun g I (DATBIND(_,_,_,conbind,NONE)) = free_conbind I conbind 
+	    | g I (DATBIND(_,_,_,conbind,SOME datbind)) = free_conbind I conbind ++ g I datbind
 	  val I1 = f datbind
 	  val I2 = g (I ++ I1) datbind
       in I1 ++ I2
@@ -254,28 +257,28 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 
     and free_conbind I (CONBIND(_,OP_OPT(con,_),ty_opt,conbind_opt)) : ids =
       (free_ty_opt I ty_opt; add_vid(con,empty_ids) ++ free_conbind_opt I conbind_opt)
-    and free_conbind_opt I None = empty_ids
-      | free_conbind_opt I (Some conbind) = free_conbind I conbind
+    and free_conbind_opt I NONE = empty_ids
+      | free_conbind_opt I (SOME conbind) = free_conbind I conbind
 
     and free_exbind I =
       fn EXBIND(_,OP_OPT(excon,_),ty_opt,exbind_opt) =>
       (free_ty_opt I ty_opt; add_vid(excon,empty_ids) ++ free_exbind_opt I exbind_opt)
        | EXEQUAL(_,OP_OPT(excon,_),OP_OPT(longid,_),exbind_opt) =>
       (use_longid(I,longid); add_vid(excon,empty_ids) ++ free_exbind_opt I exbind_opt)
-    and free_exbind_opt I None = empty_ids
-      | free_exbind_opt I (Some exbind) = free_exbind I exbind
+    and free_exbind_opt I NONE = empty_ids
+      | free_exbind_opt I (SOME exbind) = free_exbind I exbind
 
     and free_atpat I =
       fn WILDCARDatpat _ => empty_ids
        | SCONatpat _ => empty_ids
        | LONGIDatpat(info,OP_OPT(longid,_)) => 
           (case to_TypeInfo info
-	     of Some (ElabInfo.TypeInfo.VAR_PAT_INFO _) =>
+	     of SOME (ElabInfo.TypeInfo.VAR_PAT_INFO _) =>
 	       (case Ident.decompose longid
 		  of ([],id) => add_vid(id, empty_ids)
 		   | _ => die "free_atpat.longid in pattern.") 
-              | Some (ElabInfo.TypeInfo.CON_INFO _) => (use_longid(I,longid); empty_ids)
-	      | Some (ElabInfo.TypeInfo.EXCON_INFO _) => (use_longid(I,longid); empty_ids)
+              | SOME (ElabInfo.TypeInfo.CON_INFO _) => (use_longid(I,longid); empty_ids)
+	      | SOME (ElabInfo.TypeInfo.EXCON_INFO _) => (use_longid(I,longid); empty_ids)
 	      | _ => die "free_atpat.no type info")  
        | RECORDatpat(_,patrow_opt) => free_patrow_opt I patrow_opt
        | PARatpat(_,pat) => free_pat I pat
@@ -283,8 +286,8 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
     and free_patrow I =
       fn DOTDOTDOT _ => empty_ids
        | PATROW(_,lab,pat,patrow_opt) => (free_pat I pat ++ free_patrow_opt I patrow_opt)
-    and free_patrow_opt I None = empty_ids
-      | free_patrow_opt I (Some patrow) = free_patrow I patrow
+    and free_patrow_opt I NONE = empty_ids
+      | free_patrow_opt I (SOME patrow) = free_patrow I patrow
 
     and free_pat I =
       fn ATPATpat(_,atpat) => free_atpat I atpat
@@ -299,12 +302,12 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
        | CONty(_,tys,longtycon) => (List.apply (free_ty I) tys; use_longtycon(I,longtycon))
        | FNty(_,ty1,ty2) => (free_ty I ty1; free_ty I ty2)
        | PARty(_,ty) => free_ty I ty
-    and free_ty_opt I None = ()
-      | free_ty_opt I (Some ty) = free_ty I ty
+    and free_ty_opt I NONE = ()
+      | free_ty_opt I (SOME ty) = free_ty I ty
 
     and free_tyrow I (TYROW(_,lab,ty,tyrow_opt)) : unit = (free_ty I ty; free_tyrow_opt I tyrow_opt)
-    and free_tyrow_opt I None = ()
-      | free_tyrow_opt I (Some tyrow) = free_tyrow I tyrow
+    and free_tyrow_opt I NONE = ()
+      | free_tyrow_opt I (SOME tyrow) = free_tyrow I tyrow
 
  
     (*
@@ -338,8 +341,8 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 
     and free_strbind I (STRBIND(_,strid,strexp,strbind_opt)) : ids =
       (free_strexp I strexp; add_strid(strid,empty_ids) ++ free_strbind_opt I strbind_opt)
-    and free_strbind_opt I None = empty_ids
-      | free_strbind_opt I (Some strbind) = free_strbind I strbind
+    and free_strbind_opt I NONE = empty_ids
+      | free_strbind_opt I (SOME strbind) = free_strbind I strbind
 
     and free_sigexp I =
       fn SIGsigexp(_,spec) => (free_spec I spec; ())
@@ -351,8 +354,8 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 
     and free_sigbind I (SIGBIND(_,sigid,sigexp,sigbind_opt)) : ids =
       (free_sigexp I sigexp; add_sigid(sigid,empty_ids) ++ free_sigbind_opt I sigbind_opt)
-    and free_sigbind_opt I None = empty_ids
-      | free_sigbind_opt I (Some sigbind) = free_sigbind I sigbind
+    and free_sigbind_opt I NONE = empty_ids
+      | free_sigbind_opt I (SOME sigbind) = free_sigbind I sigbind
 
     and free_spec I =
       fn VALspec(_,valdesc) => (free_valdesc I valdesc; empty_ids)
@@ -365,7 +368,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
        | STRUCTUREspec(_,strdesc) => free_strdesc I strdesc
        | INCLUDEspec(info,sigexp) =>
 	  let val (strids, tycons) = case to_TypeInfo info
-				       of Some (ElabInfo.TypeInfo.INCLUDE_INFO specs) => specs
+				       of SOME (ElabInfo.TypeInfo.INCLUDE_INFO specs) => specs
 					| _ => die "INCLUDEspec - no specs info"
 	      val decl_strids = List.foldL (fn strid => fn ids => add_strid(strid,ids))
 	      val decl_tycons = List.foldL (fn tycon => fn ids => add_tycon(tycon,ids))
@@ -383,47 +386,47 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 
     and free_valdesc I (VALDESC(_,id,ty,valdesc_opt)) : unit = (*no need to add id*)
       (free_ty I ty; free_valdesc_opt I valdesc_opt)
-    and free_valdesc_opt I None = ()
-      | free_valdesc_opt I (Some valdesc) = free_valdesc I valdesc
+    and free_valdesc_opt I NONE = ()
+      | free_valdesc_opt I (SOME valdesc) = free_valdesc I valdesc
 
     and free_typdesc I (TYPDESC(_,_,tycon,typdesc_opt)) : ids =
       add_tycon(tycon,empty_ids) ++ free_typdesc_opt I typdesc_opt
-    and free_typdesc_opt I None = empty_ids
-      | free_typdesc_opt I (Some typdesc) = free_typdesc I typdesc 
+    and free_typdesc_opt I NONE = empty_ids
+      | free_typdesc_opt I (SOME typdesc) = free_typdesc I typdesc 
 
     and free_datdesc I datdesc : ids =
-      let fun f (DATDESC(_,_,tycon,_,None)) = add_tycon(tycon,empty_ids)
-	    | f (DATDESC(_,_,tycon,_,Some datdesc)) = add_tycon(tycon,f datdesc)
+      let fun f (DATDESC(_,_,tycon,_,NONE)) = add_tycon(tycon,empty_ids)
+	    | f (DATDESC(_,_,tycon,_,SOME datdesc)) = add_tycon(tycon,f datdesc)
 	  val I' = f datdesc
       in free_datdesc' (I ++ I') datdesc; I'
       end
     and free_datdesc' I (DATDESC(_,_,_,condesc,datdesc_opt)) : unit =
       (free_condesc I condesc; free_datdesc_opt' I datdesc_opt)
-    and free_datdesc_opt' I None = ()
-      | free_datdesc_opt' I (Some datdesc) = free_datdesc' I datdesc
+    and free_datdesc_opt' I NONE = ()
+      | free_datdesc_opt' I (SOME datdesc) = free_datdesc' I datdesc
 
     and free_condesc I (CONDESC(_,con,ty_opt,condesc_opt)) : unit = (*no need to add con*)
       (free_ty_opt I ty_opt; free_condesc_opt I condesc_opt)
-    and free_condesc_opt I None = ()
-      | free_condesc_opt I (Some condesc) = free_condesc I condesc
+    and free_condesc_opt I NONE = ()
+      | free_condesc_opt I (SOME condesc) = free_condesc I condesc
 
     and free_exdesc I (EXDESC(_,excon,ty_opt,exdesc_opt)) : unit = (*no need to add excon*)
       (free_ty_opt I ty_opt; free_exdesc_opt I exdesc_opt)
-    and free_exdesc_opt I None = ()
-      | free_exdesc_opt I (Some exdesc) = free_exdesc I exdesc
+    and free_exdesc_opt I NONE = ()
+      | free_exdesc_opt I (SOME exdesc) = free_exdesc I exdesc
 
     and free_strdesc I (STRDESC(_,strid,sigexp,strdesc_opt)) : ids =
       (free_sigexp I sigexp; (add_strid(strid,empty_ids)) ++ free_strdesc_opt I strdesc_opt)
-    and free_strdesc_opt I None = empty_ids
-      | free_strdesc_opt I (Some strdesc) = free_strdesc I strdesc
+    and free_strdesc_opt I NONE = empty_ids
+      | free_strdesc_opt I (SOME strdesc) = free_strdesc I strdesc
 
     fun free_fundec I (FUNCTORfundec(_,funbind)) : ids = free_funbind I funbind
     and free_funbind I (FUNBIND(_,funid,strid,sigexp,strexp,funbind_opt)) : ids =
       (free_sigexp I sigexp;
        free_strexp (add_strid(strid,I)) strexp;
        (add_funid(funid,empty_ids)) ++ free_funbind_opt I funbind_opt)
-    and free_funbind_opt I None = empty_ids
-      | free_funbind_opt I (Some funbind) = free_funbind I funbind
+    and free_funbind_opt I NONE = empty_ids
+      | free_funbind_opt I (SOME funbind) = free_funbind I funbind
 
     fun free_topdec I =
       fn STRtopdec(_,strdec,topdec_opt) => let val I' = free_strdec I strdec
@@ -435,8 +438,8 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
        | FUNtopdec(_,fundec,topdec_opt) => let val I' = free_fundec I fundec
 					   in free_topdec_opt (I ++ I') topdec_opt
 					   end
-    and free_topdec_opt I None = empty_ids
-      | free_topdec_opt I (Some topdec) = free_topdec I topdec
+    and free_topdec_opt I NONE = empty_ids
+      | free_topdec_opt I (SOME topdec) = free_topdec I topdec
 
 
     (*

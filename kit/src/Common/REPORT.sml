@@ -17,5 +17,5 @@ signature REPORT =
 	   the rest.  If there are no lines in report, return s
 	   as the report.*)
     val print: Report -> unit		(* Output on std_out *)
-    val print' : Report -> outstream -> unit   (* Output on outstream *)
+    val print' : Report -> TextIO.outstream -> unit   (* Output on outstream *)
   end;

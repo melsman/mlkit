@@ -34,13 +34,15 @@ functor RegionStatEnv(structure R: RTYPE
 
   struct
 
+    open Edlib
+
     fun die s = Crash.impossible ("RegionStatEnv." ^ s)
-    fun log s = output(std_out,s ^ "\n")
-    fun log_st st = PP.outputTree(fn s => output(std_out,s), st, 70)
+    fun log s = TextIO.output(TextIO.stdOut,s ^ "\n")
+    fun log_st st = PP.outputTree(fn s => TextIO.output(TextIO.stdOut,s), st, 70)
     fun layout_effects effects = PP.NODE{start="[",finish="]",indent=1,childsep=PP.RIGHT ",",
 					 children=map E.layout_effect effects}
     fun dump(t: PP.StringTree):unit = 
-        PP.outputTree(fn s => output(!Flags.log,s), t, !Flags.colwidth)
+        PP.outputTree(fn s => TextIO.output(!Flags.log,s), t, !Flags.colwidth)
 
       (* arity: number of quantified type variables, 
 		list of runtime types,
@@ -56,7 +58,7 @@ functor RegionStatEnv(structure R: RTYPE
     type instance_list = (il * (il * cone -> il * cone)) ref list
 
     type lvar_env_range = bool * bool * R.sigma * R.place 
-			* instance_list ref Option * (il ->unit)Option
+			* instance_list ref option * (il ->unit)option
 
     type regionStatEnv = {tyname_env:  arity TyNameMap.map,
 			  con_env: R.sigma ConMap.map,
@@ -125,8 +127,8 @@ functor RegionStatEnv(structure R: RTYPE
       fun lookup_tyname tyname = TyNameMap.lookup tyname_env0 tyname (* 17/10/96-Martin *)
   (*
 	   case TyNameMap.lookup tyname_env0 tyname of 
-	    Some (a, l, c) => Some(a, List.size (l), c)
-	  | None => None
+	    SOME (a, l, c) => SOME(a, List.size (l), c)
+	  | NONE => NONE
   *)
       val (mkTy, mkMu) = R.freshType lookup_tyname
 
@@ -273,7 +275,7 @@ functor RegionStatEnv(structure R: RTYPE
 
     val lvar_env0 = 
        List.foldL (fn (lvar,sigma) => fn env =>
-			LvarMap.add(lvar,(true,false,sigma,E.toplevel_region_withtype_top,None,None), env))
+			LvarMap.add(lvar,(true,false,sigma,E.toplevel_region_withtype_top,NONE,NONE):lvar_env_range, env))
 		  lvar_env00
 		  lvars_and_sigmas_functions
 
@@ -346,9 +348,9 @@ functor RegionStatEnv(structure R: RTYPE
 	  val rhos_epss_free = 
 	    List.foldL (fn node => fn acc => 
 			case E.level_of node
-			  of Some level => if level = toplevel then node :: acc
+			  of SOME level => if level = toplevel then node :: acc
 					   else acc
-			   | None => die "mkConeToplevel.rhos_epss_free.node not rho or eps.") 
+			   | NONE => die "mkConeToplevel.rhos_epss_free.node not rho or eps.") 
 	    [] rhos_epss
 	  val rhos_epss_free = E.remove_duplicates rhos_epss_free
 	  fun closure ([],acc) = acc
@@ -361,9 +363,9 @@ functor RegionStatEnv(structure R: RTYPE
 					  else if E.is_put node orelse E.is_get node then
 					    E.rho_of node :: acc
 					  else 
-                                            (output(!Flags.log, "arrow effect:\n");
+                                            (TextIO.output(!Flags.log, "arrow effect:\n");
                                              dump(E.layout_effect_deep(rho_eps));
-                                             output(!Flags.log, "atomic effect:\n");
+                                             TextIO.output(!Flags.log, "atomic effect:\n");
                                              dump(E.layout_effect_deep(node));
                                              die "mkConeToplevel.closure.node not arrow effect or get/put effect")
                                         end)
@@ -437,18 +439,17 @@ functor RegionStatEnv(structure R: RTYPE
 		  children = PP.LEAF (Int.string a) ::
 			     (map (PP.LEAF o E.show_runType) b) @ [PP.LEAF (Int.string c)]}
 
-    val layout_tyname_env = TyNameMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
-					     (PP.LEAF o TyName.pr_TyName)
-					     layout_arity
-    val layout_con_env = ConMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
-					     (PP.LEAF o Con.pr_con)
-					     layout_scheme
-    val layout_excon_env = ExconMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
-					     (PP.LEAF o Excon.pr_excon)
-					     layout_mu
-    val layout_lvar_env=LvarMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
-					     (PP.LEAF o Lvar.pr_lvar)
-					     layout_pair 
+    fun layout_tyname_env e = TyNameMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
+      (PP.LEAF o TyName.pr_TyName) layout_arity e
+
+    fun layout_con_env e = ConMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
+      (PP.LEAF o Con.pr_con) layout_scheme e
+
+    fun layout_excon_env e = ExconMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
+      (PP.LEAF o Excon.pr_excon) layout_mu e
+
+    fun layout_lvar_env e = LvarMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
+      (PP.LEAF o Lvar.pr_lvar) layout_pair e
 
     fun layout(rse as {tyname_env, con_env, excon_env,lvar_env}) =
 	PP.NODE{start = "RegionStaticEnvironment:", finish = "(end of RegionStatEnvironment)",

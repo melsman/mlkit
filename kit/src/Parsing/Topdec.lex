@@ -155,13 +155,13 @@ QualifiedId	   = ({AnyId} ".")+ {AnyId};
 			    token1(STRING, "", arg, yypos, yytext)
 			   );
 <S>\\{VWhiteSpace}\\	=> (continue());
-<S>\\a			=> (lex (LexUtils.addChars (chr 7) arg) ());
-<S>\\b			=> (lex (LexUtils.addChars (chr 8) arg) ());
+<S>\\a			=> (lex (LexUtils.addChars (str(chr 7)) arg) ());
+<S>\\b			=> (lex (LexUtils.addChars (str(chr 8)) arg) ());
 <S>\\t			=> (lex (LexUtils.addChars "\t" arg) ());
 <S>\\n			=> (lex (LexUtils.addChars "\n" arg) ());
-<S>\\v			=> (lex (LexUtils.addChars (chr 11) arg) ());
-<S>\\f			=> (lex (LexUtils.addChars (chr 12) arg) ());
-<S>\\r			=> (lex (LexUtils.addChars (chr 13) arg) ());
+<S>\\v			=> (lex (LexUtils.addChars (str(chr 11)) arg) ());
+<S>\\f			=> (lex (LexUtils.addChars (str(chr 12)) arg) ());
+<S>\\r			=> (lex (LexUtils.addChars (str(chr 13)) arg) ());
 <S>\\\^[@-_]		=> (lex (LexUtils.addControlChar yytext arg) ());
 <S>\\[0-9]{3}		=> (lex (addAsciiChar (arg, yypos, yytext)) ());
 <S>\\u{HexDigit}{4}	=> (lex (addUnicodeChar (arg, yypos, yytext)) ());

@@ -6,12 +6,12 @@ val EOF:  'a * 'a -> (svalue,'a) token
 val TYVAR: (string) *  'a * 'a -> (svalue,'a) token
 val ID: (string) *  'a * 'a -> (svalue,'a) token
 val STRING: (string) *  'a * 'a -> (svalue,'a) token
-val REAL: (real Option) *  'a * 'a -> (svalue,'a) token
-val WORD: (int Option) *  'a * 'a -> (svalue,'a) token
+val REAL: (real option) *  'a * 'a -> (svalue,'a) token
+val WORD: (int option) *  'a * 'a -> (svalue,'a) token
 val DIGIT: (int) *  'a * 'a -> (svalue,'a) token
-val HEXINTEGER: (int Option) *  'a * 'a -> (svalue,'a) token
-val DECNEGINTEGER: (int Option) *  'a * 'a -> (svalue,'a) token
-val DECPOSINTEGER: (int Option) *  'a * 'a -> (svalue,'a) token
+val HEXINTEGER: (int option) *  'a * 'a -> (svalue,'a) token
+val DECNEGINTEGER: (int option) *  'a * 'a -> (svalue,'a) token
+val DECPOSINTEGER: (int option) *  'a * 'a -> (svalue,'a) token
 val STAR:  'a * 'a -> (svalue,'a) token
 val EQUALS:  'a * 'a -> (svalue,'a) token
 val HASH:  'a * 'a -> (svalue,'a) token

@@ -91,7 +91,7 @@ signature FLAGS =
     val log_directory :        string ref
     val target_file_extension: string ref (*21/03/1997, Niels*)
     val link_filename:        string ref
-    val log:                  outstream ref
+    val log:                  TextIO.outstream ref
     val colwidth:             int ref
     val indent_ccode:         bool ref
 

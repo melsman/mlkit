@@ -8,6 +8,12 @@ functor LambdaExp(structure Lvars: LVARS
 		  structure Crash: CRASH
 		  structure Flags: FLAGS) : LAMBDA_EXP =
   struct
+
+    structure EqSet = Edlib.EqSet
+    structure Int = Edlib.Int
+    structure List = Edlib.List
+    structure String = Edlib.String
+
     type lvar = Lvars.lvar
     type con = Con.con
     type excon = Excon.excon
@@ -15,16 +21,16 @@ functor LambdaExp(structure Lvars: LVARS
 
     fun die s = Crash.impossible ("LambdaExp." ^ s)
 
-    type tyvar = int
-    fun equality_tyvar tyvar = (tyvar mod 2) = 1
-    fun pr_tyvar tyvar = (if equality_tyvar tyvar then "''a" else "'a") ^ Int.string tyvar
+    type tyvar = word
+    fun equality_tyvar tyvar = Word.mod(tyvar, 0w2) = 0w1
+    fun pr_tyvar tyvar = (if equality_tyvar tyvar then "''a" else "'a") ^ Word.toString tyvar
     val lt_tyvar : tyvar * tyvar -> bool = op <
     local 
-      val init_tyvar_no = ref 0
-      val init_eqtyvar_no = ref 1
+      val init_tyvar_no = ref 0w0
+      val init_eqtyvar_no = ref 0w1
       val tyvar_no = ref (!init_tyvar_no)
       val eqtyvar_no = ref (!init_eqtyvar_no)
-      fun incr2 c = let val n = !c in c := !c + 2; n end
+      fun incr2 c = let val n = !c in c := !c + 0w2; n end
     in
       fun fresh_tyvar () = incr2 tyvar_no
       fun fresh_eqtyvar () = incr2 eqtyvar_no
@@ -66,7 +72,7 @@ functor LambdaExp(structure Lvars: LVARS
     datatype TypeList =                               (* To allow the result of a declaration *)  
         Types of Type list                            (* to be a raised Bind exception. *)
       | Frame of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
-		  declared_excons: (excon * Type Option) list}
+		  declared_excons: (excon * Type option) list}
       | RaisedExnBind
 
     datatype 'Type prim =                             (* The primitives are always fully applied ! *)
@@ -111,7 +117,7 @@ functor LambdaExp(structure Lvars: LVARS
 
     datatype LambdaPgm = PGM of datbinds * LambdaExp
 
-    and datbinds = DATBINDS of (tyvar list * TyName * (con * Type Option) list) list list
+    and datbinds = DATBINDS of (tyvar list * TyName * (con * Type option) list) list list
       (* list of mutual recursive datatype declarations *)
 
     and LambdaExp =
@@ -129,7 +135,7 @@ functor LambdaExp(structure Lvars: LVARS
 				  bind : LambdaExp} list,
 		     scope : LambdaExp}
       | APP      of LambdaExp * LambdaExp
-      | EXCEPTION of excon * Type Option * LambdaExp
+      | EXCEPTION of excon * Type option * LambdaExp
       | RAISE    of LambdaExp * TypeList
       | HANDLE   of LambdaExp * LambdaExp
       | SWITCH_I of int Switch
@@ -138,12 +144,12 @@ functor LambdaExp(structure Lvars: LVARS
       | SWITCH_E of excon Switch
       | PRIM     of Type prim * LambdaExp list
       | FRAME    of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
-                     declared_excons: (excon * Type Option) list}
+                     declared_excons: (excon * Type option) list}
                        (* a frame is the result of a structure-level
                         * declaration. 
 			*)
 
-    and 'a Switch = SWITCH of LambdaExp * ('a * LambdaExp) list * LambdaExp Option
+    and 'a Switch = SWITCH of LambdaExp * ('a * LambdaExp) list * LambdaExp option
 
       
     fun foldTD (fcns as (f:'a->LambdaExp->'a, g: 'a -> Type -> 'a))
@@ -156,8 +162,8 @@ functor LambdaExp(structure Lvars: LVARS
 	    val acc' = foldl (foldTD fcns) (foldTD fcns new_acc arg) (map #2 selections)
           in
 	    case wildcard
-	      of Some lamb => foldTD fcns acc' lamb
-	       | None => acc'
+	      of SOME lamb => foldTD fcns acc' lamb
+	       | NONE => acc'
           end
           
       in
@@ -171,8 +177,8 @@ functor LambdaExp(structure Lvars: LVARS
 	| FIX{functions,scope} => foldTD fcns (foldl (foldTD fcns) (foldl (foldType g) new_acc (map #Type functions))  (map #bind functions)) scope
 	| APP(lamb1, lamb2) => foldTD fcns (foldTD fcns new_acc lamb1) lamb2
 	| EXCEPTION(excon,tauOpt,lamb) => 
-             (case tauOpt of None => foldTD fcns new_acc lamb
-                 | Some tau => foldTD fcns (g new_acc tau) lamb
+             (case tauOpt of NONE => foldTD fcns new_acc lamb
+                 | SOME tau => foldTD fcns (g new_acc tau) lamb
              )
 	| RAISE(lamb,taus) => foldTD fcns new_acc lamb
 	| HANDLE(lamb1, lamb2) => foldTD fcns (foldTD fcns new_acc lamb1) lamb2
@@ -222,7 +228,7 @@ functor LambdaExp(structure Lvars: LVARS
 		  indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
           else 
 		  PP.NODE{start= "decon(" ^ Con.pr_con con,finish=")", 
-		  indent=2,children=[],childsep=PP.NONE}
+		  indent=2,children=[],childsep=PP.NOSEP}
       | EXCONprim excon => 
 	  PP.LEAF(Excon.pr_excon excon)
       | DEEXCONprim excon => 
@@ -237,17 +243,17 @@ functor LambdaExp(structure Lvars: LVARS
       | DEREFprim {instance} => 
           if !Flags.print_types then
 	     PP.NODE{start="!(",finish=")",indent=2,
-		  children=[layoutType instance],childsep=PP.NONE}
+		  children=[layoutType instance],childsep=PP.NOSEP}
           else PP.LEAF "!"
       | REFprim {instance} => 
           if !Flags.print_types then
 	     PP.NODE{start="ref(",finish=")",indent=2,
-		  children=[layoutType instance],childsep=PP.NONE}
+		  children=[layoutType instance],childsep=PP.NOSEP}
           else PP.LEAF" ref "
       | ASSIGNprim {instance} => 
           if !Flags.print_types then
 	       PP.NODE{start=":=(",finish=")",indent=2,
-		  children=[layoutType instance],childsep=PP.NONE}
+		  children=[layoutType instance],childsep=PP.NOSEP}
           else PP.LEAF " := "
       | MUL_REALprim => PP.LEAF("*")
       | MUL_INTprim => PP.LEAF("*")
@@ -263,7 +269,7 @@ functor LambdaExp(structure Lvars: LVARS
       | EQUALprim {instance} => 
           if !Flags.print_types then
 	      PP.NODE{start="=(",finish=")",indent=2,
-		  children=[layoutType instance],childsep=PP.NONE}
+		  children=[layoutType instance],childsep=PP.NOSEP}
           else
 	    PP.LEAF " = "
       | LESS_REALprim =>PP.LEAF("<")
@@ -282,12 +288,12 @@ functor LambdaExp(structure Lvars: LVARS
       | RESET_REGIONSprim {instance} => 
           if !Flags.print_types then
 	      PP.NODE{start="resetRegions(", finish=")",indent=2,
-		  children=[layoutType instance],childsep=PP.NONE}
+		  children=[layoutType instance],childsep=PP.NOSEP}
           else PP.LEAF("resetRegions")
       | FORCE_RESET_REGIONSprim {instance} => 
           if !Flags.print_types then
 	      PP.NODE{start="forceResetting(", finish=")",indent=2,
-		  children=[layoutType instance],childsep=PP.NONE}
+		  children=[layoutType instance],childsep=PP.NOSEP}
           else PP.LEAF("forceResetting")
 
     fun layoutSwitch layoutLambdaExp show_const (SWITCH(lamb,rules,wildcardOpt)) =
@@ -303,8 +309,8 @@ functor LambdaExp(structure Lvars: LVARS
 			  PP.NODE{start="",finish="",indent=0,
 				  children=(map child rules) @ 
 				  (case wildcardOpt of 
-				     None => []
-				   | Some lamb => 
+				     NONE => []
+				   | SOME lamb => 
 				       [PP.NODE{start="",finish="",indent=0,
 						children=[PP.LEAF "_",
 							  layoutLambdaExp(lamb,0)],
@@ -315,14 +321,14 @@ functor LambdaExp(structure Lvars: LVARS
 
 
    fun parenthesise(st: PP.StringTree): PP.StringTree=
-     PP.NODE{start = "(", finish= ")", indent=1, children = [st], childsep = PP.NONE}
+     PP.NODE{start = "(", finish= ")", indent=1, children = [st], childsep = PP.NOSEP}
 
 
    fun layoutTyvarseq tyvars =
       case tyvars
-	of nil => None
-	 | [tv] => Some(PP.LEAF (pr_tyvar tv))
-	 | tvs => Some(PP.NODE{start="(", finish=")", indent=1,
+	of nil => NONE
+	 | [tv] => SOME(PP.LEAF (pr_tyvar tv))
+	 | tvs => SOME(PP.NODE{start="(", finish=")", indent=1,
 			       children=map (PP.LEAF o pr_tyvar) tvs,
 			       childsep=PP.RIGHT ", "
 			      }
@@ -337,9 +343,9 @@ functor LambdaExp(structure Lvars: LVARS
 		   childsep=PP.LEFT "->"}
        | CONStype(taus,tyname) =>
 	   (case layoutTypeseq taus of
-	      None => PP.LEAF (TyName.pr_TyName tyname)
-	    | Some x => PP.NODE{start="",finish=" " ^ TyName.pr_TyName tyname,indent=1,
-			       children=[x],childsep=PP.NONE})
+	      NONE => PP.LEAF (TyName.pr_TyName tyname)
+	    | SOME x => PP.NODE{start="",finish=" " ^ TyName.pr_TyName tyname,indent=1,
+			       children=[x],childsep=PP.NOSEP})
        | RECORDtype taus => 
 	   (case taus of 
 	      [] (* unit *) => PP.LEAF "{}"
@@ -349,9 +355,9 @@ functor LambdaExp(structure Lvars: LVARS
 
     and layoutTypeseq taus =
       case taus of 
-	[] => None
-      | [tau] => Some(layoutType tau)
-      | taus => Some(PP.NODE{start="(",finish=")",indent=1,
+	[] => NONE
+      | [tau] => SOME(layoutType tau)
+      | taus => SOME(PP.NODE{start="(",finish=")",indent=1,
 			     children=map layoutType taus,
 			     childsep=PP.LEFT", "})
 
@@ -361,12 +367,12 @@ functor LambdaExp(structure Lvars: LVARS
     and layoutTypeList tl =
       (case tl
 	 of Types taus => PP.NODE{start="Types(", finish=")", indent=1,
-				  children = [layoutTypes taus], childsep=PP.NONE}
+				  children = [layoutTypes taus], childsep=PP.NOSEP}
 	  | Frame fr => layoutFrame "Frame" fr
 	  | RaisedExnBind => PP.LEAF "RaisedExnBind")
  
-    and layoutTypeOpt (Some tau) = [layoutType tau]
-      | layoutTypeOpt None = []
+    and layoutTypeOpt (SOME tau) = [layoutType tau]
+      | layoutTypeOpt NONE = []
 
 
     and layoutFrame str {declared_lvars, declared_excons} =
@@ -374,19 +380,19 @@ functor LambdaExp(structure Lvars: LVARS
 	fun lvar_child({lvar,tyvars,Type}) =
 	  PP.NODE{start=Lvars.pr_lvar lvar ^ ": ", finish="", indent=3,
 		  children=[layoutTypeScheme(tyvars,Type)],
-		  childsep=PP.NONE
+		  childsep=PP.NOSEP
 		  }
 	  
 	val lvars_children = map lvar_child  declared_lvars
 	fun excon_child(excon, ty_opt) =
 	  let val (connect,type_tree) = 
 	    case ty_opt of
-	      None => ( "", PP.LEAF "")
-	    | Some tau => (" of ", layoutType tau)
+	      NONE => ( "", PP.LEAF "")
+	    | SOME tau => (" of ", layoutType tau)
 	  in
 	    PP.NODE{start=Excon.pr_excon excon  ^ connect, finish="", indent=3,
 		    children=[type_tree],
-		    childsep=PP.NONE
+		    childsep=PP.NOSEP
 		             }	  
 	  end
 	val excons_children = map excon_child  declared_excons
@@ -403,8 +409,8 @@ functor LambdaExp(structure Lvars: LVARS
 	val tauT = layoutType tau
       in
 	case tyvarsT of
-	  None => tauT
-	| Some T => 
+	  NONE => tauT
+	| SOME T => 
 	    PP.NODE{start="FORALL",finish="",indent=1,
 		    children=[T,tauT],
 		    childsep=PP.RIGHT"."}
@@ -416,7 +422,7 @@ functor LambdaExp(structure Lvars: LVARS
          let val sigma_t = layoutTypeScheme(alphas, tau)
              val start:string = Lvars.pr_lvar lvar ^ " :" 
          in PP.NODE{start = start, finish = "", indent = String.size start +1,
-                    childsep = PP.NONE, children = [sigma_t]}
+                    childsep = PP.NOSEP, children = [sigma_t]}
          end
      else PP.LEAF(Lvars.pr_lvar lvar)
 
@@ -439,16 +445,16 @@ functor LambdaExp(structure Lvars: LVARS
 	  let
 	    val tyvars_tynameT = 
 	      case layoutTyvarseq tyvars
-		of Some t => PP.NODE {start="",finish="",childsep=PP.RIGHT " ",indent=0,
+		of SOME t => PP.NODE {start="",finish="",childsep=PP.RIGHT " ",indent=0,
 				      children=[t, PP.LEAF(TyName.pr_TyName tyname)]}
-		 | None => PP.LEAF(TyName.pr_TyName tyname)
+		 | NONE => PP.LEAF(TyName.pr_TyName tyname)
 	    val cbT = PP.NODE{start="",finish="",indent=0,
 			      children=layoutcb cb,
 			      childsep=PP.LEFT" | "}
 	  in
 	    PP.NODE{start="",finish="",indent=0,
 		    children=[tyvars_tynameT,PP.LEAF " = ",cbT],
-		    childsep=PP.NONE}
+		    childsep=PP.NOSEP}
 	  end
 	  
 	fun layoutMutualRec_db db =
@@ -460,7 +466,7 @@ functor LambdaExp(structure Lvars: LVARS
 	val lambT = layoutLambdaExp(lamb,0)
       in
 	PP.NODE{start="",finish="",indent=0,
-		children=dbTs @ [lambT],childsep=PP.NONE}
+		children=dbTs @ [lambT],childsep=PP.NOSEP}
       end
 
     and layout_infix (context:int) (precedence: int) (operator: string) expressions = 
@@ -481,7 +487,7 @@ functor LambdaExp(structure Lvars: LVARS
           else PP.LEAF(Lvars.pr_lvar lv)
       | INTEGER i => PP.LEAF(Int.string i)
       | STRING s => PP.LEAF(String.string s)
-      | REAL r => PP.LEAF(Real.string r)
+      | REAL r => PP.LEAF(Real.toString r)
       | FN {pat,body} => 
 	  PP.NODE{start="(fn ",finish=")", indent=1,
 		  children=[layoutFnPat pat,
@@ -498,7 +504,7 @@ functor LambdaExp(structure Lvars: LVARS
                                   layoutLambdaExp(bind,0)], childsep=PP.RIGHT " = "}
               else
                 PP.NODE{start=Lvars.pr_lvar lvar ^ " = ", finish="", indent=3,
-                        children=[layoutLambdaExp(bind,0)], childsep=PP.NONE}
+                        children=[layoutLambdaExp(bind,0)], childsep=PP.NOSEP}
 	  in
 	    PP.NODE{start="fix ", finish=" end ", indent=4,
 		    childsep=PP.LEFT " in ",
@@ -516,16 +522,16 @@ functor LambdaExp(structure Lvars: LVARS
                   indent=1,
 		  children=[layoutLambdaExp(lamb1,13), layoutLambdaExp(lamb2,14)]
 		  }
-      | EXCEPTION(excon,None,lamb) =>
+      | EXCEPTION(excon,NONE,lamb) =>
 	  PP.NODE{start="exception " ^ Excon.pr_excon excon ^ " in",finish="",
 		  indent=0, children=[layoutLambdaExp(lamb,0)],
-		  childsep=PP.NONE}
-      | EXCEPTION(excon,Some tau,lamb) =>
+		  childsep=PP.NOSEP}
+      | EXCEPTION(excon,SOME tau,lamb) =>
 	  PP.NODE{start="",finish="", indent=0,
 		  children=[PP.NODE{start="exception  " ^ Excon.pr_excon excon ^ ": ",
 				    finish="",indent=0,
 				    children=[layoutType tau],
-				    childsep=PP.NONE},
+				    childsep=PP.NOSEP},
 			    layoutLambdaExp(lamb,0)], 
 		  childsep=PP.RIGHT " in "
 		  }
@@ -565,15 +571,15 @@ functor LambdaExp(structure Lvars: LVARS
          | (SELECTprim i, [lamb]) => 
              PP.NODE{start="#" ^ Int.string i ^ "(",finish=")",indent=1,
                      children=[layoutLambdaExp(lamb,0)],
-                     childsep=PP.NONE}
+                     childsep=PP.NOSEP}
          | (DEREFprim{instance},[lamb]) =>
              PP.NODE{start="!(",finish=")",indent=2,
                      children=[layoutLambdaExp(lamb,0)],
-                     childsep=PP.NONE}
+                     childsep=PP.NOSEP}
          | (REFprim{instance},[lamb]) =>
              PP.NODE{start="ref(",finish=")",indent=2,
                      children=[layoutLambdaExp(lamb,0)],
-                     childsep=PP.NONE}
+                     childsep=PP.NOSEP}
          | (ASSIGNprim{instance},_) => layout_infix context 3 " := "lambs
          | (MUL_REALprim, [_,_]) => layout_infix context 7 " * " lambs
          | (MUL_INTprim, [_,_]) =>  layout_infix context 7 " * " lambs
@@ -652,9 +658,9 @@ functor LambdaExp(structure Lvars: LVARS
                excpetion EXCON : mu 
             *)
          (case ty_opt of
-            None =>  PP.NODE{start = "exception ",finish="",childsep=PP.RIGHT " : ",
+            NONE =>  PP.NODE{start = "exception ",finish="",childsep=PP.RIGHT " : ",
                  indent=4,  children=[PP.LEAF(Excon.pr_excon excon)] }
-          | Some ty => PP.NODE{start = "exception ",finish="",childsep=PP.RIGHT " ",
+          | SOME ty => PP.NODE{start = "exception ",finish="",childsep=PP.RIGHT " ",
                  indent=4,  children=[PP.LEAF(Excon.pr_excon excon), PP.LEAF ":", layoutType ty]}
         )
       and  mk_mutual_binding(functions) = 
@@ -682,23 +688,23 @@ functor LambdaExp(structure Lvars: LVARS
                      val t1 = let val s: string = Lvars.pr_lvar lvar ^ 
                                  (if !Flags.print_types then ":" else "")
                               in  PP.NODE{start = s, finish = "", indent = String.size s +1,
-                                          childsep = PP.NONE, children = [sigma_t]}
+                                          childsep = PP.NOSEP, children = [sigma_t]}
                               end
                      val formals = PP.HNODE{start="(", finish = ") =", childsep = PP.RIGHT ", ", 
                                                   children = map (fn (lvar,_) => PP.LEAF(Lvars.pr_lvar lvar))
                                                                  pat}
                      val keyword = if no = 1 then "fun " else "and "
-                     val body_t = PP.NODE{start = "", finish ="", indent = 4, childsep = PP.NONE,
+                     val body_t = PP.NODE{start = "", finish ="", indent = 4, childsep = PP.NOSEP,
                                           children = [layoutLambdaExp(body, 0)]}
                     in
-                      PP.NODE{start = keyword , finish = "", indent = 4, childsep = PP.NONE, 
+                      PP.NODE{start = keyword , finish = "", indent = 4, childsep = PP.NOSEP, 
                               children = [t1, formals, body_t]}
                     end
                   :: rest_of_mutual_binding)
             | mk_fix _ _ = die "mk_fix: rhs of fix does not begin with lambda"
        in
         PP.NODE{start = "", finish = "", indent = 0,
-                childsep = PP.NONE, 
+                childsep = PP.NOSEP, 
                 children = #2(List.foldL mk_fix (List.size functions,[]) functions)}
        end
 
@@ -715,14 +721,14 @@ functor LambdaExp(structure Lvars: LVARS
     and layoutFnAtPat (lvar, Type) =
       if !Flags.print_types then
         PP.NODE {start=Lvars.pr_lvar lvar ^ ":", finish="", indent=0,
-                 children=[layoutType Type], childsep=PP.NONE}
+                 children=[layoutType Type], childsep=PP.NOSEP}
       else
         PP.LEAF(Lvars.pr_lvar lvar)
 
     and layoutLetAtPat (lvar, tyvars, Type) =
       if !Flags.print_types then
         PP.NODE {start=Lvars.pr_lvar lvar ^ ":", finish="", indent=0,
-	         children=[layoutTypeScheme(tyvars,Type)], childsep=PP.NONE}
+	         children=[layoutTypeScheme(tyvars,Type)], childsep=PP.NOSEP}
       else
         PP.LEAF(Lvars.pr_lvar lvar)
 

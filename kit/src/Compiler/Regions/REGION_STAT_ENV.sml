@@ -33,34 +33,34 @@ signature REGION_STAT_ENV =
                           * bool  (* true iff reference to lvar should create region record *)
                           * TypeAndPlaceScheme
                           * place
-                          * (il * (il * cone -> il * cone)) ref list ref Option (* il node at applied instances of the lvars *)
-                          * (il->unit) Option) (* il transformer which can be used for pruning in later topdecs*)
+                          * (il * (il * cone -> il * cone)) ref list ref option (* il node at applied instances of the lvars *)
+                          * (il->unit) option) (* il transformer which can be used for pruning in later topdecs*)
                        * regionStatEnv) -> regionStatEnv
 
     val plus: regionStatEnv * regionStatEnv -> regionStatEnv
       
-    val lookupTyName : regionStatEnv -> TyName -> arity Option
-    val lookupCon : regionStatEnv -> con -> TypeAndPlaceScheme Option
-    val lookupExcon: regionStatEnv -> excon -> (Type * place) Option
+    val lookupTyName : regionStatEnv -> TyName -> arity option
+    val lookupCon : regionStatEnv -> con -> TypeAndPlaceScheme option
+    val lookupExcon: regionStatEnv -> excon -> (Type * place) option
     val lookupLvar : regionStatEnv -> lvar -> 
                      (  bool
                       * bool
                       * TypeAndPlaceScheme
                       * place 
-                      * (il * (il * cone -> il * cone)) ref list ref Option  (* il node at applied instances of the lvars *)
-                      * (il -> unit)Option  (* il transformer which can be used for pruning in later topdecs*)
-                     ) Option
+                      * (il * (il * cone -> il * cone)) ref list ref option  (* il node at applied instances of the lvars *)
+                      * (il -> unit)option  (* il transformer which can be used for pruning in later topdecs*)
+                     ) option
 
     val FoldExcon: (((excon * (Type * place)) * 'a) -> 'a) -> 'a -> regionStatEnv -> 'a
     val FoldLvar : (((lvar * (bool * bool * TypeAndPlaceScheme
                       * place 
-                      * (il * (il * cone -> il * cone))ref list ref Option  
-                      * (il -> unit)Option  
+                      * (il * (il * cone -> il * cone))ref list ref option  
+                      * (il -> unit)option  
                     )) * 'a) -> 'a) -> 'a  -> regionStatEnv -> 'a
 		    
 
-    val mapLvar : ((bool*bool*TypeAndPlaceScheme*place*(il * (il * cone -> il * cone))ref list ref Option * (il->unit)Option) -> 
-                   (bool*bool*TypeAndPlaceScheme*place*(il * (il * cone -> il * cone))ref list ref Option * (il->unit)Option)) 
+    val mapLvar : ((bool*bool*TypeAndPlaceScheme*place*(il * (il * cone -> il * cone))ref list ref option * (il->unit)option) -> 
+                   (bool*bool*TypeAndPlaceScheme*place*(il * (il * cone -> il * cone))ref list ref option * (il->unit)option)) 
         	-> regionStatEnv -> regionStatEnv
 
     val restrict : regionStatEnv * {lvars:lvar list, 

@@ -22,7 +22,7 @@ signature ELAB_REPOSITORY =
 	   * entry. *)
 
     val lookup_elab : funid -> (int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
-				       InfixBasis * ElabBasis * realisation)) Option
+				       InfixBasis * ElabBasis * realisation)) option
 
     val add_elab : funid * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
 			    InfixBasis * ElabBasis * realisation) -> unit

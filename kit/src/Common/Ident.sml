@@ -2,15 +2,12 @@
 
 (*$Ident: STRID TIMESTAMP CRASH IDENT*)
 functor Ident(structure StrId: STRID
-
-(*old
-	      structure Timestamp: TIMESTAMP     (* don't use this - identifiers should have *)
-                                                 (* their own name space; tyvars, etc. also uses *)
-		                                 (* Timestamp... (martin) *)
-old*)
 	      structure Crash: CRASH
 	     ): IDENT =
   struct
+
+    open Edlib
+
     type strid = StrId.strid
 
     datatype id = ID of string
@@ -42,7 +39,7 @@ old*)
     fun implode_LongId(strids,id) =
       LONGID(map (ID o StrId.pr_StrId) strids,id)
 
-    fun (ID str1) < (ID str2) = AsciiOrdString.lt str1 str2
+    val op < = fn (ID str1, ID str2) => str1 < str2
 
    (* Identifiers needed for derived forms: *)
 

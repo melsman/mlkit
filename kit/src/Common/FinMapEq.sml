@@ -6,6 +6,9 @@ functor FinMapEq(structure Report: REPORT
 	       structure PP: PRETTYPRINT
 	      ): FINMAPEQ =
   struct
+
+    open Edlib
+
     type ('a, 'b) map = ('a *  'b) list
 
     val empty = []
@@ -14,9 +17,9 @@ functor FinMapEq(structure Report: REPORT
 
     fun isEmpty nil = true | isEmpty _ = false
 
-    fun lookup eq [] x  = None
+    fun lookup eq [] x  = NONE
       | lookup eq ((x,y)::rest) x' =
-	if eq(x,x') then Some(y) else lookup eq rest x'
+	if eq(x,x') then SOME(y) else lookup eq rest x'
 
     fun isin eq (x,[]) = false
       | isin eq (x,(x',y)::rest) = eq(x,x') orelse isin eq (x,rest)
@@ -52,7 +55,7 @@ functor FinMapEq(structure Report: REPORT
       end
 
     fun dom eq (m: ('a, 'b) map) = Set.fromList (General.curry eq) (map #1 m)
-    val range : ('a, 'b) map -> 'b list  = map #2
+    val range : ('a, 'b) map -> 'b list  = fn x => map #2 x
     val list : ('a, 'b) map -> ('a * 'b) list  = fn x => x
 
     fun composemap (f: 'b -> 'c) (m: ('a, 'b) map): ('a, 'c) map = 

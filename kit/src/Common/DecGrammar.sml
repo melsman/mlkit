@@ -16,6 +16,9 @@ functor DecGrammar(structure GrammarInfo: sig type GrammarInfo
 		   structure PrettyPrint : PRETTYPRINT
 		  ): DEC_GRAMMAR =
 struct
+
+  open Edlib
+
   structure Lab = Lab
   structure SCon = SCon
   structure TyVar = TyVar
@@ -42,14 +45,14 @@ struct
   datatype atexp =
 	SCONatexp of info * scon |         
 	IDENTatexp of info * longid op_opt |
-	RECORDatexp of info * exprow Option |
+	RECORDatexp of info * exprow option |
 	LETatexp of info * dec * exp |
 	PARatexp of info * exp
 
   and opid = OPID of longid * bool
 
   and exprow =
-	EXPROW of info * lab * exp * exprow Option
+	EXPROW of info * lab * exp * exprow option
 
   and exp =
 	ATEXPexp of info * atexp |
@@ -61,7 +64,7 @@ struct
 	UNRES_INFIXexp of info * atexp list
 
   and match =
-        MATCH of info * mrule * match Option
+        MATCH of info * mrule * match option
 
   and mrule =
         MRULE of info * pat * exp
@@ -77,58 +80,58 @@ struct
 	LOCALdec of info * dec * dec |
 	OPENdec of info * longstrid WithInfo list |
 	SEQdec of info * dec * dec |
-	INFIXdec of info * int Option * id list |
-	INFIXRdec of info * int Option * id list |
+	INFIXdec of info * int option * id list |
+	INFIXRdec of info * int option * id list |
 	NONFIXdec of info * id list |
 	EMPTYdec of info
 
   and valbind =
-	PLAINvalbind of info * pat * exp * valbind Option |
+	PLAINvalbind of info * pat * exp * valbind option |
 	RECvalbind of info * valbind
 
-  and FValBind = FVALBIND of info * FClause * FValBind Option
-  and FClause = FCLAUSE of info * atpat list * ty Option * exp * FClause Option
+  and FValBind = FVALBIND of info * FClause * FValBind option
+  and FClause = FCLAUSE of info * atpat list * ty option * exp * FClause option
 
   and typbind =
-        TYPBIND of info * tyvar list * tycon * ty * typbind Option
+        TYPBIND of info * tyvar list * tycon * ty * typbind option
 
   and datbind =
-        DATBIND of info * tyvar list * tycon * conbind * datbind Option
+        DATBIND of info * tyvar list * tycon * conbind * datbind option
 
   and conbind =
-        CONBIND of info * id op_opt * ty Option * conbind Option
+        CONBIND of info * id op_opt * ty option * conbind option
 
   and exbind =
-        EXBIND of info * id op_opt * ty Option * exbind Option |
-        EXEQUAL of info * id op_opt * longid op_opt * exbind Option
+        EXBIND of info * id op_opt * ty option * exbind option |
+        EXEQUAL of info * id op_opt * longid op_opt * exbind option
 
   and atpat =
         WILDCARDatpat of info |
 	SCONatpat of info * scon |
 	LONGIDatpat of info * longid op_opt |
-	RECORDatpat of info * patrow Option |
+	RECORDatpat of info * patrow option |
 	PARatpat of info * pat
 
   and patrow =
         DOTDOTDOT of info |
-        PATROW of info * lab * pat * patrow Option
+        PATROW of info * lab * pat * patrow option
 
   and pat =
         ATPATpat of info * atpat |
         CONSpat of info * longid op_opt * atpat |
         TYPEDpat of info * pat * ty |
-        LAYEREDpat of info * id op_opt * ty Option * pat |
+        LAYEREDpat of info * id op_opt * ty option * pat |
 	UNRES_INFIXpat of info * atpat list
 
   and ty =
         TYVARty of info * tyvar |
-        RECORDty of info * tyrow Option |
+        RECORDty of info * tyrow option |
         CONty of info * ty list * longtycon |
         FNty of info * ty * ty |
         PARty of info * ty
 
   and tyrow =
-        TYROW of info * lab * ty * tyrow Option
+        TYROW of info * lab * ty * tyrow option
 
   fun get_info_atexp obj =
     case obj of
@@ -233,24 +236,24 @@ struct
   local 
     fun do_opt opt f =
       case opt of 
-	None => None 
-      | Some x  => Some(f x)
+	NONE => NONE 
+      | SOME x  => SOME(f x)
   in
     fun map_atexp_info f (atexp : atexp) : atexp =
       case atexp of
 	SCONatexp(i,scon) => SCONatexp(f i,scon)
       | IDENTatexp(i, op_opt) => IDENTatexp(f i, op_opt)
-      | RECORDatexp(i, None) => RECORDatexp(f i,None)
-      | RECORDatexp(i, Some exprow) =>
-	  RECORDatexp(f i, Some (map_exprow_info f exprow))
+      | RECORDatexp(i, NONE) => RECORDatexp(f i,NONE)
+      | RECORDatexp(i, SOME exprow) =>
+	  RECORDatexp(f i, SOME (map_exprow_info f exprow))
       | LETatexp(i, dec, exp) => LETatexp(f i, map_dec_info f dec, map_exp_info f exp)
       | PARatexp(i, exp) => PARatexp(f i, map_exp_info f exp)
 	    
     and map_exprow_info f (exprow: exprow) : exprow =
       case exprow of 
-	EXPROW(i, l, exp, None) => EXPROW(f i, l, map_exp_info f exp, None)
-      | EXPROW(i, l, exp, Some exprow) =>
-	  EXPROW(f i, l, map_exp_info f exp, Some (map_exprow_info f exprow))
+	EXPROW(i, l, exp, NONE) => EXPROW(f i, l, map_exp_info f exp, NONE)
+      | EXPROW(i, l, exp, SOME exprow) =>
+	  EXPROW(f i, l, map_exp_info f exp, SOME (map_exprow_info f exprow))
 	    
     and map_exp_info f (exp: exp) : exp =
       case exp of
@@ -270,10 +273,10 @@ struct
 	    
     and map_match_info f (match: match) : match =
       case match of 
-	MATCH(i, mrule, None) => 
-	  MATCH(f i, map_mrule_info f mrule, None)
-      | MATCH(i, mrule, Some match) =>
-	  MATCH(f i, map_mrule_info f mrule, Some (map_match_info f match))
+	MATCH(i, mrule, NONE) => 
+	  MATCH(f i, map_mrule_info f mrule, NONE)
+      | MATCH(i, mrule, SOME match) =>
+	  MATCH(f i, map_mrule_info f mrule, SOME (map_match_info f match))
 	    
     and map_mrule_info f (MRULE(i, pat, exp) : mrule) : mrule =
       MRULE(f i, map_pat_info f pat, map_exp_info f exp)
@@ -306,26 +309,26 @@ struct
     and map_FValBind_info f (FVALBIND(i,FClause,FValBind_opt)) : FValBind =
       FVALBIND(f i, map_FClause_info f FClause,
 	       case FValBind_opt of
-		 None => None 
-	       | Some FValBind => Some (map_FValBind_info f FValBind))
+		 NONE => NONE 
+	       | SOME FValBind => SOME (map_FValBind_info f FValBind))
 	  
     and map_FClause_info f (FCLAUSE(i,atpats,tyOpt,exp,FClause_opt)) : FClause =
       FCLAUSE(f i, map (map_atpat_info f) atpats,
 	      case tyOpt of 
-		None => None
-	      | Some ty => Some(map_ty_info f ty),
+		NONE => NONE
+	      | SOME ty => SOME(map_ty_info f ty),
 		  map_exp_info f exp,
 		  case FClause_opt of
-		    None => None 
-		  | Some FClause => Some(map_FClause_info f FClause))
+		    NONE => NONE 
+		  | SOME FClause => SOME(map_FClause_info f FClause))
 			      
     and map_valbind_info f (valbind : valbind) : valbind =
       case valbind of
-	PLAINvalbind(i, pat, exp, None) =>
-	  PLAINvalbind(f i, map_pat_info f pat, map_exp_info f exp, None)
-      | PLAINvalbind(i, pat, exp, Some valbind) =>
+	PLAINvalbind(i, pat, exp, NONE) =>
+	  PLAINvalbind(f i, map_pat_info f pat, map_exp_info f exp, NONE)
+      | PLAINvalbind(i, pat, exp, SOME valbind) =>
 	  PLAINvalbind(f i, map_pat_info f pat, 
-		       map_exp_info f exp, Some (map_valbind_info f valbind))
+		       map_exp_info f exp, SOME (map_valbind_info f valbind))
       | RECvalbind(i, valbind) =>
 	  RECvalbind(f i, map_valbind_info f valbind)
       
@@ -354,18 +357,18 @@ struct
 	WILDCARDatpat i => WILDCARDatpat (f i)
       | SCONatpat(i,scon) => SCONatpat(f i, scon)
       | LONGIDatpat(i,x) => LONGIDatpat(f i,x)
-      | RECORDatpat(i, None) => RECORDatpat(f i,None)
-      | RECORDatpat(i, Some patrow) =>
-	  RECORDatpat(f i, Some (map_patrow_info f patrow))
+      | RECORDatpat(i, NONE) => RECORDatpat(f i,NONE)
+      | RECORDatpat(i, SOME patrow) =>
+	  RECORDatpat(f i, SOME (map_patrow_info f patrow))
       | PARatpat(i, pat) => PARatpat(f i, map_pat_info f pat)
 
     and map_patrow_info f (patrow : patrow): patrow  =
       case patrow of
 	DOTDOTDOT(i) => DOTDOTDOT (f i)
-      | PATROW(i, lab, pat, None) => 
-	  PATROW(f i, lab, map_pat_info f pat, None)
-      | PATROW(i, lab, pat, Some patrow) =>
-	  PATROW(f i, lab, map_pat_info f pat, Some (map_patrow_info f patrow))
+      | PATROW(i, lab, pat, NONE) => 
+	  PATROW(f i, lab, map_pat_info f pat, NONE)
+      | PATROW(i, lab, pat, SOME patrow) =>
+	  PATROW(f i, lab, map_pat_info f pat, SOME (map_patrow_info f patrow))
 
     and map_pat_info f (pat : pat) : pat =
       case pat of
@@ -407,9 +410,9 @@ struct
 	| nexp_atexp (PARatexp(info, exp)) = nexp_exp exp
 	| nexp_atexp _ = false
 
-      and nexp_exprow_opt (Some(EXPROW(info, lab, exp, exprow_opt))) =
+      and nexp_exprow_opt (SOME(EXPROW(info, lab, exp, exprow_opt))) =
 	    nexp_exp exp andalso nexp_exprow_opt exprow_opt
-	| nexp_exprow_opt None = true
+	| nexp_exprow_opt NONE = true
 
       and conexp_exp (ATEXPexp(info, atexp)) = conexp_atexp atexp
 	| conexp_exp (TYPEDexp(info, exp, ty)) = conexp_exp exp
@@ -428,8 +431,8 @@ struct
     fun fTy ty res =
       case ty of
 	TYVARty(_, tv) => tv::res
-      | RECORDty(_, None) => res
-      | RECORDty(_, Some tyrow) => fTyrow tyrow res
+      | RECORDty(_, NONE) => res
+      | RECORDty(_, SOME tyrow) => fTyrow tyrow res
       | CONty(_, tys, _) =>
 	  List.foldL
 	  (fn ty => fn res => fTy ty res) res tys
@@ -439,16 +442,16 @@ struct
 	    
     and fTyrow (TYROW(_, _, ty, tyrowopt)) res =
       case tyrowopt of 
-	None => fTy ty res
-      | Some tyrow => fTyrow tyrow (fTy ty res)
+	NONE => fTy ty res
+      | SOME tyrow => fTyrow tyrow (fTy ty res)
 
     and fConbind (CONBIND(_, _, tyopt, conopt)) res =
       let
-	val res' = case tyopt of None => res | Some ty => fTy ty res
+	val res' = case tyopt of NONE => res | SOME ty => fTy ty res
       in
 	case conopt of 
-	  None => res'
-	| Some conbind => fConbind conbind res'
+	  NONE => res'
+	| SOME conbind => fConbind conbind res'
       end
 
   in
@@ -458,17 +461,17 @@ struct
 
   (* finding the string name of a topmost value identifier in a pattern, if any exists: *)
 
-  fun find_topmost_id_in_pat (ATPATpat(_, atpat)): string Option = find_topmost_id_in_atpat atpat
-    | find_topmost_id_in_pat (LAYEREDpat(_,OP_OPT(id, _),_,_)) = Some(Ident.pr_id id)
+  fun find_topmost_id_in_pat (ATPATpat(_, atpat)): string option = find_topmost_id_in_atpat atpat
+    | find_topmost_id_in_pat (LAYEREDpat(_,OP_OPT(id, _),_,_)) = SOME(Ident.pr_id id)
     | find_topmost_id_in_pat (TYPEDpat(_,pat,_)) = find_topmost_id_in_pat pat
-    | find_topmost_id_in_pat _ = None
+    | find_topmost_id_in_pat _ = NONE
 
-  and find_topmost_id_in_atpat (LONGIDatpat(_,OP_OPT(longid,_))) = Some(Ident.pr_longid longid)
+  and find_topmost_id_in_atpat (LONGIDatpat(_,OP_OPT(longid,_))) = SOME(Ident.pr_longid longid)
     | find_topmost_id_in_atpat (PARatpat(_,pat)) = find_topmost_id_in_pat pat
-    | find_topmost_id_in_atpat _ = None
+    | find_topmost_id_in_atpat _ = NONE
 
 
-  (*is_'true'_'nil'_etc & is_'it' are used to enforce some syntactic
+  (*is_'true'_'nil'_etc & is_'it' are used to enforce SOME syntactic
    restrictions (Definition, §2.9 & §3.5).*)
 
   val idset_'true'_'nil'_etc =
@@ -483,8 +486,8 @@ struct
     type StringTree = StringTree
     type minipage = minipage
 
-    fun list_from_opt (Some x) = [x]
-      | list_from_opt None = []
+    fun list_from_opt (SOME x) = [x]
+      | list_from_opt NONE = []
 
     (* layoutXXX: convert grammar of declarations into a StringTree. *)
 
@@ -499,13 +502,13 @@ struct
 
 	 | RECORDatexp(_, exprow_opt) =>
 	     (case exprow_opt
-		of Some exprow =>
+		of SOME exprow =>
 		     NODE{start="{", finish="}", indent=1,
 			     children=[layoutExprow exprow],
-			     childsep=NONE
+			     childsep=NOSEP
 			    }
 
-	         | None =>
+	         | NONE =>
 		     LEAF "{}"	(* Keep this atomic... *)
 	     )
 
@@ -523,7 +526,7 @@ struct
 	 | PARatexp(_, exp) =>
 	     NODE{start="(", finish=")", indent=1,
 		     children=[layoutExp exp],
-		     childsep=NONE
+		     childsep=NOSEP
 		    }
 
     and layoutExprow row: StringTree =
@@ -537,8 +540,8 @@ struct
 		     }
 	  in
 	    this :: (case exprow_opt
-		       of Some row => treesOfExprow row
-		        | None => nil
+		       of SOME row => treesOfExprow row
+		        | NONE => nil
 		    )
 	  end
       in
@@ -589,13 +592,13 @@ struct
 	 | RAISEexp(_, exp) =>
 	     NODE{start="raise ", finish="", indent=6,
 		     children=[layoutExp exp],
-		     childsep=NONE
+		     childsep=NOSEP
 		    }
 
 	 | FNexp(_, match) =>
 	     NODE{start="fn ", finish="", indent=3,
 		     children=[layoutMatch match],
-		     childsep=NONE
+		     childsep=NOSEP
 		    }
 
 	 | UNRES_INFIXexp(_, atexps) =>
@@ -608,8 +611,8 @@ struct
 	fun treesOfMatch(MATCH(_, mrule, match_opt)) : StringTree list =
 	  layoutMrule mrule
 	  :: (case match_opt
-	        of Some match => treesOfMatch match
-	         | None => nil
+	        of SOME match => treesOfMatch match
+	         | NONE => nil
 	     )
       in
 	NODE{start="", finish="", indent=0,
@@ -635,7 +638,7 @@ struct
 	     NODE{start="val ", finish="", indent=4,
 		     children = list_from_opt (layoutTyvarseq tyvars)
 		                @ [layoutValbind valbind],
-		     childsep=NONE
+		     childsep=NOSEP
 		     }
 
 
@@ -645,13 +648,13 @@ struct
 	 | TYPEdec(_, typbind) =>
 	     NODE{start="type ", finish="", indent=5,
 		     children=[layoutTypbind typbind],
-		     childsep=NONE
+		     childsep=NOSEP
 		    }
 
 	 | DATATYPEdec(_, datbind) =>
 	     NODE{start="datatype ", finish="", indent=INDENT,
 		     children=[layoutDatbind datbind],
-		     childsep=NONE
+		     childsep=NOSEP
 		    }
 
 	 | DATATYPE_REPLICATIONdec(i, tycon, longtycon) =>
@@ -671,7 +674,7 @@ struct
 	 | EXCEPTIONdec(_, exbind) =>
 	     NODE{start="exception ", finish="", indent=INDENT,
 		     children=[layoutExbind exbind],
-		     childsep=NONE
+		     childsep=NOSEP
 		    }
 
 	 | LOCALdec(_, dec1, dec2) =>
@@ -704,8 +707,8 @@ struct
          | INFIXdec(_, prec, ids) =>
 	     NODE{start="infix ", finish="", indent=6,
 		     children=(case prec
-				 of Some p => [LEAF(Int.string p)]
-				  | None => nil
+				 of SOME p => [LEAF(Int.string p)]
+				  | NONE => nil
 			      ) @ map (LEAF o Ident.pr_id) ids,
 		     childsep=RIGHT " "
 		    }
@@ -713,8 +716,8 @@ struct
          | INFIXRdec(_, prec, ids) =>
 	     NODE{start="infixr ", finish="", indent=7,
 		     children=(case prec
-				 of Some p => [LEAF(Int.string p)]
-				  | None => nil
+				 of SOME p => [LEAF(Int.string p)]
+				  | NONE => nil
 			      ) @ map (LEAF o Ident.pr_id) ids,
 		     childsep=RIGHT " "
 		    }
@@ -747,8 +750,8 @@ struct
 			  }
 	      in
 		this :: (case valbind_opt
-			   of Some valbind => treesOfValbind valbind
-		            | None => nil
+			   of SOME valbind => treesOfValbind valbind
+		            | NONE => nil
 			)
 	      end
 
@@ -767,9 +770,9 @@ struct
 
     and layoutTyvarseq tyvars =
       case tyvars
-	of nil => None
-	 | [tv] => Some(LEAF(TyVar.pr_tyvar tv))
-	 | tvs => Some(NODE{start="(", finish=")", indent=1,
+	of nil => NONE
+	 | [tv] => SOME(LEAF(TyVar.pr_tyvar tv))
+	 | tvs => SOME(NODE{start="(", finish=")", indent=1,
 			       children=map (LEAF o TyVar.pr_tyvar) tvs,
 			       childsep=RIGHT ", "
 			      }
@@ -787,15 +790,15 @@ struct
 
 	    val this =
 	      NODE{start="", finish="", indent=0,
-		      children=(case tyvars_opt of Some x => [x]
-		    				 | None => nil
+		      children=(case tyvars_opt of SOME x => [x]
+		    				 | NONE => nil
 			       ) @  [tyconT, eqT, tyT],
-		      childsep=NONE
+		      childsep=NOSEP
 		     }
 	  in
 	    this :: (case typbind_opt
-		       of Some typbind => treesOfTypbind typbind
-		        | None => nil
+		       of SOME typbind => treesOfTypbind typbind
+		        | NONE => nil
 		    )
 	  end
       in
@@ -814,8 +817,8 @@ struct
 	    val tyconT = LEAF(TyCon.pr_TyCon tycon)
 	    val tyBindingT =
 	      case tyvarsT_opt
-		of None => tyconT
-		 | Some x => NODE{start="", finish="", indent=0,
+		of NONE => tyconT
+		 | SOME x => NODE{start="", finish="", indent=0,
 				     children=[x, tyconT],
 				     childsep=RIGHT " "
 				    }
@@ -825,12 +828,12 @@ struct
 	    val this =
 	      NODE{start="", finish="", indent=0,
 		      children=[tyBindingT, eqT, conbindT],
-		      childsep=NONE
+		      childsep=NOSEP
 		     }
 	  in
 	    this :: (case datbind_opt
-		       of Some datbind => treesOfDatbind datbind
-		        | None => nil
+		       of SOME datbind => treesOfDatbind datbind
+		        | NONE => nil
 		    )
 	  end
       in
@@ -850,15 +853,15 @@ struct
 
 	    val this =
 	      case ty_opt
-		of Some ty => NODE{start="", finish="", indent=0,
+		of SOME ty => NODE{start="", finish="", indent=0,
 				      children=[conT, layoutTy ty],
 				      childsep=LEFT " of "
 				     }
-	      | None => conT
+	      | NONE => conT
 	  in
 	    this :: (case conbind_opt
-		       of Some conbind => treesOfConbind conbind
-		        | None => nil
+		       of SOME conbind => treesOfConbind conbind
+		        | NONE => nil
 		    )
 	  end
       in
@@ -883,21 +886,21 @@ struct
 		     }
 	  in
 	    this :: (case rest
-		       of Some exbind => treesOfExbind exbind
-		        | None => nil
+		       of SOME exbind => treesOfExbind exbind
+		        | NONE => nil
 		    )
 	  end
 
 	and treesOfExbind exbind : StringTree list =
 	  case exbind
-	    of EXBIND(_, OP_OPT(id, withOp), Some ty, exbind_opt) =>
+	    of EXBIND(_, OP_OPT(id, withOp), SOME ty, exbind_opt) =>
 	      layoutIdSubTRest(id, withOp, " of ", layoutTy ty, exbind_opt)
 
-	  | EXBIND(_, OP_OPT(id, withOp), None, exbind_opt) =>
+	  | EXBIND(_, OP_OPT(id, withOp), NONE, exbind_opt) =>
 	      LEAF((if withOp then "op " else "") ^ Ident.pr_id id)
 	      :: (case exbind_opt
-		    of Some exbind => treesOfExbind exbind
-		     | None => nil
+		    of SOME exbind => treesOfExbind exbind
+		     | NONE => nil
 		 )
 
 	  | EXEQUAL(_, OP_OPT(id, exconOp),
@@ -928,20 +931,20 @@ struct
 
 	 | RECORDatpat(_, patrow_opt) =>
 	     (case patrow_opt
-		of Some patrow =>
+		of SOME patrow =>
 		     NODE{start="{", finish="}", indent=1,
 			     children=[layoutPatrow patrow],
-			     childsep=NONE
+			     childsep=NOSEP
 			     }
 
-	         | None =>
+	         | NONE =>
 		     LEAF "{}"
 	     )
 
 	 | PARatpat(_, pat) =>
 	     NODE{start="(", finish=")", indent=1,
 		     children=[layoutPat pat],
-		     childsep=NONE
+		     childsep=NOSEP
 		     }
 
     and layoutPatrow row : StringTree =
@@ -960,8 +963,8 @@ struct
 			     }
 		 in
 		   this :: (case patrow_opt
-			      of Some row => treesOfPatrow row
-			       | None => nil
+			      of SOME row => treesOfPatrow row
+			       | NONE => nil
 			    )
 		 end
       in
@@ -983,7 +986,7 @@ struct
 		     finish="",
 		     indent=INDENT,
 		     children=[layoutAtpat atpat],
-		     childsep=NONE
+		     childsep=NOSEP
 		    }
 
 	 | TYPEDpat(_, pat, ty) =>
@@ -1003,12 +1006,12 @@ struct
 
 	       val identColonTyT =
 		 case ty_opt
-		   of Some ty =>
+		   of SOME ty =>
 			NODE{start="", finish="", indent=0,
 				children=[idT, layoutTy ty],
 				childsep=LEFT " : "
 				}
-		    | None =>
+		    | NONE =>
 			idT
 
 	       val patT = layoutPat pat
@@ -1031,13 +1034,13 @@ struct
 
 	 | RECORDty(_, tyrow_opt) =>
 	     (case tyrow_opt
-		of Some tyrow =>
+		of SOME tyrow =>
 		     NODE{start="{", finish="}", indent=1,
 			     children=[layoutTyrow tyrow],
-			     childsep=NONE
+			     childsep=NOSEP
 			     }
 
-		 | None =>
+		 | NONE =>
 		     LEAF "{}"	(* "unit" ? *)
 		     )
 
@@ -1045,7 +1048,7 @@ struct
 	     let
 	       fun idTail t =
 		 NODE{start="", finish=" " ^ TyCon.pr_LongTyCon longtycon,
-			 indent=0, children=[t], childsep=NONE
+			 indent=0, children=[t], childsep=NOSEP
 			 }
 	     in
 	       case tys
@@ -1069,7 +1072,7 @@ struct
 	 | PARty(_, ty) =>
 	     NODE{start="(", finish=")", indent=1,
 		     children=[layoutTy ty],
-		     childsep=NONE
+		     childsep=NOSEP
 		    }
 
     and layoutTyrow row : StringTree =
@@ -1083,8 +1086,8 @@ struct
 		     }
 	  in
 	    this :: (case tyrow_opt
-		       of Some row => treesOfTyrow row
-		        | None => nil
+		       of SOME row => treesOfTyrow row
+		        | NONE => nil
 		    )
 	  end
       in

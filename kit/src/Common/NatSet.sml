@@ -19,11 +19,20 @@
 functor NatSet(structure PP : PRETTYPRINT) : KIT_MONO_SET =
   struct 
 
-    type word = int
-    val bits_word = 31
-    fun bit n = Bits.lshift(1,n)
+    structure Bits =
+      struct
+	val xorb : word * word -> word = Word.xorb
+	val lshift : word * word -> word = Word.<<
+	val andb : word * word -> word = Word.andb
+	val notb : word -> word = Word.notb
+	val rshift : word * word -> word = Word.>>
+	val orb : word * word -> word = Word.orb
+      end
+
+    val bits_word = 0w31
+    fun bit n = Bits.lshift(0w1,n)
     fun setb(w,n) = Bits.orb(w,bit n)
-    fun isb(w,n) = Bits.andb(Bits.rshift(w,n),1) <> 0
+    fun isb(w,n) = Bits.andb(Bits.rshift(w,n),0w1) <> 0w0
     fun unsetb(w,n) = Bits.andb(w, Bits.notb (bit n))
       
     datatype natset = 
@@ -31,42 +40,42 @@ functor NatSet(structure PP : PRETTYPRINT) : KIT_MONO_SET =
       | some of word * natset * natset
 
     type Set = natset
-    type elt = int
+    type elt = word
 
     fun member (n, empty) = false
       | member (n, some(w,t1,t2)) =
          if n < bits_word then isb(w,n)
-	 else if Bits.andb(n,1) <> 0 then member (Bits.rshift(n-bits_word,1), t1)
-         else member(Bits.rshift(n-bits_word-1,1), t2)
+	 else if Bits.andb(n,0w1) <> 0w0 then member (Bits.rshift(n-bits_word,0w1), t1)
+         else member(Bits.rshift(n-bits_word-0w1,0w1), t2)
 
     fun add0(empty,n) = 
-         if n < bits_word then some(setb(0,n),empty,empty)
-	 else if Bits.andb(n,1) <> 0 then some(0,add0(empty, Bits.rshift(n-bits_word,1)), empty)
-	 else some(0, empty, add0(empty, Bits.rshift(n-bits_word-1,1)))
+         if n < bits_word then some(setb(0w0,n),empty,empty)
+	 else if Bits.andb(n,0w1) <> 0w0 then some(0w0,add0(empty, Bits.rshift(n-bits_word,0w1)), empty)
+	 else some(0w0, empty, add0(empty, Bits.rshift(n-bits_word-0w1,0w1)))
       | add0(some(w,t1,t2),n) =
          if n < bits_word then some(setb(w,n),t1,t2)
-	 else if Bits.andb(n,1) <> 0 then some(w,add0(t1, Bits.rshift(n-bits_word,1)), t2)
-	 else some(w, t1, add0(t2, Bits.rshift(n-bits_word-1,1)))
+	 else if Bits.andb(n,0w1) <> 0w0 then some(w,add0(t1, Bits.rshift(n-bits_word,0w1)), t2)
+	 else some(w, t1, add0(t2, Bits.rshift(n-bits_word-0w1,0w1)))
 
     fun singleton i = add0(empty,i)
       
     fun add(is,n) = if member(n,is) then is else add0(is,n)
 	
     fun count(w,n) = if n < bits_word then 
-                       if isb(w,n) then 1 + count(w,n+1)
-		       else count(w,n+1)
+                       if isb(w,n) then 1 + count(w,n+0w1)
+		       else count(w,n+0w1)
 		     else 0
 
     fun cardinality is =
-      let fun count(0,n,a) = a
-	    | count(w,n,a) = if isb(w,n) then count(unsetb(w,n),n+1,a+1)
-			     else count(w,n+1,a)
+      let fun count(0w0,n,a) = a
+	    | count(w,n,a) = if isb(w,n) then count(unsetb(w,n),n+0w1,a+1)
+			     else count(w,n+0w1,a)
 	  fun c (empty,a) = a
-	    | c (some(w,t1,t2),a) = c(t2,c(t1,count(w,0,a)))
+	    | c (some(w,t1,t2),a) = c(t2,c(t1,count(w,0w0,a)))
       in c (is,0)
       end
     
-    fun mksome (0, empty, empty) = empty
+    fun mksome (0w0, empty, empty) = empty
       | mksome t = some t
 	
     fun union (empty, ns2) = ns2
@@ -87,33 +96,33 @@ functor NatSet(structure PP : PRETTYPRINT) : KIT_MONO_SET =
     fun delete0(empty, n) = empty
       | delete0(some(w,t1,t2), n) =
          if n < bits_word then mksome(unsetb(w,n),t1,t2)
-	 else if Bits.andb(n,1) <> 0 then mksome(w,delete0(t1, Bits.rshift(n-bits_word,1)), t2)
-	 else mksome(w, t1, delete0(t2, Bits.rshift(n-bits_word-1,1)))
+	 else if Bits.andb(n,0w1) <> 0w0 then mksome(w,delete0(t1, Bits.rshift(n-bits_word,0w1)), t2)
+	 else mksome(w, t1, delete0(t2, Bits.rshift(n-bits_word-0w1,0w1)))
       
     fun delete(is,n) = if member(n,is) then delete0(is,n) else is
 
     fun disjoint (empty, ns2) = true
       | disjoint (ns1, empty) = true
       | disjoint (some(w1, t11, t12), some(w2, t21, t22)) =
-	(Bits.andb(w1,w2) = 0) 
+	(Bits.andb(w1,w2) = 0w0) 
 	andalso disjoint(t11, t21) 
 	andalso disjoint(t12, t22)  
 
     fun foldset f (e, t) =
 	let fun slb (n, d, w, a) =
-	      let fun slb' (0,i,a) = a
-		    | slb' (w,i,a) = if isb(w,i) then slb'(unsetb(w,i),i+1,f(a,n+d*i))
-				     else slb'(w,i+1,a)
-	      in slb' (w,0,a)
+	      let fun slb' (0w0,i,a) = a
+		    | slb' (w,i,a) = if isb(w,i) then slb'(unsetb(w,i),i+0w1,f(a,n+d*i))
+				     else slb'(w,i+0w1,a)
+	      in slb' (w,0w0,a)
 	      end     
 	  fun sl (n, d, empty, a) = a
 	    | sl (n, d, some(w, t1, t2), a) =
 	      let val temp = n+d*bits_word
-		  val d' = 2*d
+		  val d' = 0w2*d
 	      in sl(temp, d', t1, 
 		   sl(temp+d, d', t2, slb(n, d, w, a)))
 	      end
-	in sl(0, 1, t, e) 
+	in sl(0w0, 0w1, t, e) 
 	end
 
     fun mapset f t = foldset (fn (a,i) => f i :: a) ([], t)
@@ -123,22 +132,22 @@ functor NatSet(structure PP : PRETTYPRINT) : KIT_MONO_SET =
     fun natsetof []      = empty
       | natsetof (x::xs) = add(natsetof xs, x)
 
-    fun fromto(i, j) = if i > j then empty else add0(fromto(i+1, j), i)
+    fun fromto(i, j) = if i > j then empty else add0(fromto(i+0w1, j), i)
 
     fun setfilter p t =
         let
 	  fun h' (n, d, w) =
 	    let fun h'' (i,w') =
 	          if i < bits_word then
-		    if isb(w,i) andalso p(n+2*i) then h''(i+1, setb(w',i))
-		    else h''(i+1,w')
+		    if isb(w,i) andalso p(n+0w2*i) then h''(i+0w1, setb(w',i))
+		    else h''(i+0w1,w')
 		  else w'
-	    in h'' (0,0)
+	    in h'' (0w0,0w0)
 	    end
 	  fun h (n, d, empty) = empty
 	    | h (n, d, some(w, t1, t2)) = 
-		mksome(h' (n, d, w), h(n+d*bits_word, 2*d, t1), h(n+d*(bits_word+1), 2*d, t2))
-	in h(0, 1, t) 
+		mksome(h' (n, d, w), h(n+d*bits_word, 0w2*d, t1), h(n+d*(bits_word+0w1), 0w2*d, t2))
+	in h(0w0, 0w1, t) 
 	end
 
     val size = cardinality

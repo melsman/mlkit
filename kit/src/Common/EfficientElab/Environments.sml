@@ -43,16 +43,17 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 				    = Report.Report
 
 		     structure Flags: FLAGS
-		     structure ListHacks: LIST_HACKS
-		     structure ListSort: LIST_SORT
 		     structure Crash: CRASH
 		    ) : ENVIRONMENTS =
   struct
+
+    open Edlib
+
     fun impossible s = Crash.impossible ("Environments." ^ s)
-    fun noSome None s = impossible s
-      | noSome (Some x) s = x
-    fun map_opt f (Some x) = Some (f x)
-      | map_opt f None = None
+    fun noSome NONE s = impossible s
+      | noSome (SOME x) s = x
+    fun map_opt f (SOME x) = SOME (f x)
+      | map_opt f NONE = NONE
 
     (*import from StatObject:*)
     type level             = StatObject.level
@@ -118,9 +119,9 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	case ty of 
 	  TYVARty(_, tyvar) => 
 	    EqSet.singleton tyvar
-	| RECORDty(_, None) => 
+	| RECORDty(_, NONE) => 
 	    EqSet.empty
-	| RECORDty(_, Some tyrow) =>  
+	| RECORDty(_, SOME tyrow) =>  
 	    ExplicitTyVarsTyRow tyrow
 	| CONty(_, tylist, _) => 
 	    List.foldL EqSet.union EqSet.empty (map ExplicitTyVarsTy tylist)
@@ -134,16 +135,17 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	EqSet.union 
 	(ExplicitTyVarsTy ty) 
 	(case tyrowopt of
-	   None => EqSet.empty
-	 | Some tyrow => ExplicitTyVarsTyRow tyrow)
+	   NONE => EqSet.empty
+	 | SOME tyrow => ExplicitTyVarsTyRow tyrow)
     end
 
     local
-      val ++ = ListHacks.union
-      infix ++
 
-      fun unguarded_opt f (Some x) = f x
-	| unguarded_opt f (None  ) = []
+      infix ++
+      fun set1 ++ set2 = set1 @ List.all (fn x => not(List.member x set1)) set2
+
+      fun unguarded_opt f (SOME x) = f x
+	| unguarded_opt f (NONE  ) = []
 
       fun unguarded_atexp(DecGrammar.RECORDatexp(_,exprow_opt)) =
 	  unguarded_opt unguarded_exprow exprow_opt
@@ -267,14 +269,14 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
           let val l = FinMap.Fold (op ::) nil m
 
 	  fun format_strid strid =
-	        implode ["structure ", StrId.pr_StrId strid, " : "]
+	        concat ["structure ", StrId.pr_StrId strid, " : "]
 
 	  fun layoutPair (strid,S) =
 	        PP.NODE {start=format_strid strid,
 			 finish="",
 			 indent=3,
 			 children=[layoutEnv S],
-			 childsep=PP.NONE}
+			 childsep=PP.NOSEP}
 	  in
 	    PP.NODE {start="", finish="", indent=0, children=map layoutPair l,
 		     childsep=PP.RIGHT " "}
@@ -286,7 +288,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  fun layoutPair (tycon, tystr) =
 	        PP.NODE {start=TyCon.pr_TyCon tycon ^ " ",
 			 finish="", indent=3, children=[layoutTystr tystr],
-			 childsep=PP.NONE}
+			 childsep=PP.NOSEP}
 	  in
 	    PP.NODE {start="", finish="", indent=0,
 		     children=map layoutPair l, childsep=PP.RIGHT " "}
@@ -297,13 +299,13 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 	  fun format_id id =
 	        (case FinMap.lookup m id of
-		   Some(LONGVARpriv _) =>
-		     implode ["val ", Ident.pr_id id, ":"]
-		 | Some(LONGCONpriv _) =>
-		     implode ["con ", Ident.pr_id id, ":"]
-		 | Some(LONGEXCONpriv _) =>
-		     implode ["exception ", Ident.pr_id id, ":"]
-		 | None => "<failure: Environments.layoutVE.format_id>")
+		   SOME(LONGVARpriv _) =>
+		     concat ["val ", Ident.pr_id id, ":"]
+		 | SOME(LONGCONpriv _) =>
+		     concat ["con ", Ident.pr_id id, ":"]
+		 | SOME(LONGEXCONpriv _) =>
+		     concat ["exception ", Ident.pr_id id, ":"]
+		 | NONE => "<failure: Environments.layoutVE.format_id>")
 
 	  fun layoutRng (LONGVARpriv sigma) =
 	        TypeScheme.layout sigma
@@ -314,7 +316,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 	  fun layoutPair(id, rng) = 
 	        PP.NODE {start=format_id id ^ " ", finish="", indent=3,
-			 children=[layoutRng rng], childsep = PP.NONE}
+			 children=[layoutRng rng], childsep = PP.NOSEP}
 	  in
 	    PP.NODE {start="", finish="", indent=0,
 		     children=map layoutPair l, childsep=PP.RIGHT " "}
@@ -361,7 +363,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun range_private_to_range (LONGVARpriv sigma) = LONGVAR sigma
 	| range_private_to_range (LONGCONpriv(sigma, _)) = LONGCON sigma
 	| range_private_to_range (LONGEXCONpriv tau) = LONGEXCON tau
-      fun lookup (VARENV v) id : range Option =
+      fun lookup (VARENV v) id : range option =
             map_opt range_private_to_range (FinMap.lookup v id)
       fun dom (VARENV m) = FinMap.dom m
       fun is_empty (VARENV v) = FinMap.isEmpty v
@@ -370,7 +372,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun eq (VARENV v1, VARENV v2) : bool =
 	    let val finmap_to_sorted_alist =
 		      ListSort.sort
-		        (fn ((id1, _), (id2, _)) => Ident.< (id1,id2))
+		        (fn (id1, _) => fn (id2, _) => Ident.< (id1,id2))
 		      o FinMap.list
 		val alist1 = finmap_to_sorted_alist v1
 		val alist2 = finmap_to_sorted_alist v2
@@ -438,10 +440,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 			| LONGEXCONpriv tau => LONGEXCONpriv tau))
 	         empty VE
 
-      fun lookup_fellow_constructors (VARENV v) id : id list Option =
+      fun lookup_fellow_constructors (VARENV v) id : id list option =
 	    (case FinMap.lookup v id of
-	       Some (LONGCONpriv(sigma, ids)) => Some ids
-	     | _ => None)
+	       SOME (LONGCONpriv(sigma, ids)) => SOME ids
+	     | _ => NONE)
 
       fun on (S : Substitution, VE as VARENV m) : VarEnv = VE
 
@@ -465,8 +467,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       in
 	fun match (VE,VE0) = Fold (fn (id,r) => fn () =>
 				   (case lookup VE0 id 
-				      of Some r0 => match_range (r,r0)
-				       | None => ())) () VE
+				      of SOME r0 => match_range (r,r0)
+				       | NONE => ())) () VE
       end
 
       fun report (f, VARENV m) =
@@ -542,7 +544,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       val bogus = empty
       val singleton : tycon * TyStr -> TyEnv = TYENV o FinMap.singleton
       fun plus (TYENV t, TYENV t') : TyEnv = TYENV (FinMap.plus (t, t'))
-      fun lookup (TYENV m) tycon : TyStr Option = FinMap.lookup m tycon
+      fun lookup (TYENV m) tycon : TyStr option = FinMap.lookup m tycon
       fun dom (TYENV map) = FinMap.dom map
       fun map (f : TyStr -> TyStr) (TYENV m) : TyEnv =
 	    TYENV (FinMap.composemap f m)
@@ -606,7 +608,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	        (fn tyname => fn phi => Realisation.oo (phi, generate0 tyname))
 		  Realisation.Id T
 	and generate0 tyname =
-	      (if !Flags.DEBUG_TYPES then output (std_out,"generate0\n")
+	      (if !Flags.DEBUG_TYPES then TextIO.output (TextIO.stdOut,"generate0\n")
 	       else () ;
 	       Realisation.singleton
 	         (tyname, TypeFcn.from_TyName
@@ -631,8 +633,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       (* Matching *)
       fun match (TE,TE0) = Fold (fn (tycon, TyStr) => fn () =>
 				 (case lookup TE0 tycon 
-				    of Some TyStr0 => TyStr.match(TyStr,TyStr0)
-				     | None => ())) () TE
+				    of SOME TyStr0 => TyStr.match(TyStr,TyStr0)
+				     | NONE => ())) () TE
 
       (*For the TE: report TyStrs with empty ConEnv as
 
@@ -691,7 +693,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       val singleton : strid * Env -> StrEnv = STRENV o FinMap.singleton
       fun plus (STRENV s, STRENV s') : StrEnv =
 	    STRENV(FinMap.plus(s, s'))
-      fun lookup (STRENV map) (strid : strid) : Env Option =
+      fun lookup (STRENV map) (strid : strid) : Env option =
 	    FinMap.lookup map strid
       fun dom (STRENV map) = FinMap.dom map
       fun is_empty (STRENV m) = FinMap.isEmpty m
@@ -740,23 +742,23 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun plus (ENV {SE, TE, VE}, ENV {SE=SE', TE=TE', VE=VE'}) =
 	    ENV {SE = SE.plus (SE, SE'), TE = TE.plus (TE, TE'),
 		 VE = VE.plus (VE, VE')}
-      fun lookup_tycon (ENV {TE, ...}) tycon : TyStr Option =
+      fun lookup_tycon (ENV {TE, ...}) tycon : TyStr option =
 	    TE.lookup TE tycon
-      fun lookup_strid (ENV {SE, ...}) strid : Env Option =
+      fun lookup_strid (ENV {SE, ...}) strid : Env option =
 	    SE.lookup SE strid
-      fun lookup_strids E [] = Some E
+      fun lookup_strids E [] = SOME E
 	| lookup_strids E (strid :: rest) =
 	    (case lookup_strid E strid of
-	       Some E' => lookup_strids E' rest
-	     | None => None)
+	       SOME E' => lookup_strids E' rest
+	     | NONE => NONE)
 
       (*`lookup_longsomething to_TE TE.lookup E ([strid1,strid2], tycon)'
        will look up `strid1.strid2.tycon'
        (or is it `strid2.strid1.tycon'?) in E:*)
       fun lookup_longsomething projection lookup E (strids, something) =
 	    (case lookup_strids E strids of
-	       None => None
-	     | Some E' => lookup (projection E') something)
+	       NONE => NONE
+	     | SOME E' => lookup (projection E') something)
       fun lookup_longid E longid = 
 	    lookup_longsomething to_VE VE.lookup E (Ident.decompose longid)
       fun lookup_fellow_constructors E longid =
@@ -1060,16 +1062,16 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun enrich_TyEnv (TE1,TE2) =
 	    TE.Fold (fn (tycon2, TyStr2) => fn b => b andalso
 		     case TE.lookup TE1 tycon2 of
-		       Some TyStr1 => TyStr.eq (TyStr1,TyStr2)
-		     | None => false) true TE2
+		       SOME TyStr1 => TyStr.eq (TyStr1,TyStr2)
+		     | NONE => false) true TE2
 
       fun equal_TyEnv(TE1,TE2) = TE.size TE1 = TE.size TE2 andalso enrich_TyEnv (TE1,TE2)
 
       fun enrich_VarEnv(VE1,VE2) =
 	    VE.Fold (fn (id2,r2) => fn b => b andalso
 			  (case VE.lookup VE1 id2 of
-			     Some r1 => equal_VarEnvRan(r1,r2)
-			   | None => false)) true VE2
+			     SOME r1 => equal_VarEnvRan(r1,r2)
+			   | NONE => false)) true VE2
 
       fun equal_VarEnv(VE1,VE2) = VE.size VE1 = VE.size VE2 andalso enrich_VarEnv(VE1,VE2)
 
@@ -1083,8 +1085,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
       and enrich_StrEnv(SE1,SE2) = SE.Fold (fn (strid2,S2) => fn b => b andalso
 					    case SE.lookup SE1 strid2 
-					      of Some S1 => equal_Env(S1,S2)
-					       | None => false) true SE2
+					      of SOME S1 => equal_Env(S1,S2)
+					       | NONE => false) true SE2
 
       and equal_StrEnv(SE1,SE2) = SE.size SE1 = SE.size SE2 andalso enrich_StrEnv (SE1,SE2)
 
@@ -1106,15 +1108,15 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    val SE' = List.foldL
 	                (fn strid => fn SEnew =>
 			 let val E = (case SE.lookup SE strid of
-					Some E => E
-				      | None => impossible "restrictE: strid not in env.")
+					SOME E => E
+				      | NONE => impossible "restrictE: strid not in env.")
 			 in SE.plus (SEnew, SE.singleton (strid,E))
 			 end) SE.empty strids
 	    val TE' = List.foldL
 	                (fn tycon => fn TEnew =>
 			 let val TyStr = (case TE.lookup TE tycon of
-					    Some TyStr => TyStr
-					  | None => impossible "restrictE: tycon not in env.")
+					    SOME TyStr => TyStr
+					  | NONE => impossible "restrictE: tycon not in env.")
 			 in TE.plus (TEnew, TE.singleton (tycon,TyStr))
 			 end) TE.empty tycons
 	    val VE' = VE.restrict (VE,ids)
@@ -1133,8 +1135,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	end
 
       and matchSE (SE,SE0) = SE.Fold (fn (strid,E) => fn () => (case SE.lookup SE0 strid 
-								  of Some E0 => match (E,E0)
-								   | None => ())) () SE
+								  of SOME E0 => match (E,E0)
+								   | NONE => ())) () SE
     end (*E*)
 
 
@@ -1158,8 +1160,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun to_U' (CONTEXT {U,E}) : ExplicitTyVarEnv = U 
       fun ExplicitTyVarEnv_lookup (EXPLICITTYVARENV m) ExplicitTyVar =
 	    (case FinMap.lookup m ExplicitTyVar of
-	       None => Level.GENERIC
-	     | Some l => l)
+	       NONE => Level.GENERIC
+	     | SOME l => l)
       fun to_E (CONTEXT {U, E}) = E
       fun plus_E (CONTEXT {U, E}, E') = CONTEXT {U=U, E=E.plus (E, E')}
       fun plus_TE(C,TE) = plus_E(C,E.from_TE TE)
@@ -1185,24 +1187,24 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		  DOTDOTDOT _ =>
 		    nil
 
-		| PATROW(_, _, pat, None) =>
+		| PATROW(_, _, pat, NONE) =>
 		    dom_pat' pat
 
-		| PATROW(_, _, pat, Some patrow') =>
+		| PATROW(_, _, pat, SOME patrow') =>
 		    dom_pat' pat @ dom_patrow patrow'
 
 	      and dom_atpat(atpat: atpat): id list =
 		case atpat of
 		  WILDCARDatpat _ => nil
 		| SCONatpat(_, _) => nil
-		| RECORDatpat(_, None) => nil
-		| RECORDatpat(_, Some patrow) => dom_patrow patrow
+		| RECORDatpat(_, NONE) => nil
+		| RECORDatpat(_, SOME patrow) => dom_patrow patrow
 		| PARatpat(_, pat) => dom_pat' pat
 
 		| LONGIDatpat(i, OP_OPT(longid, _)) =>
 		    (case lookup_longid C longid of
-		       Some (VE.LONGCON _) => []
-		     | Some (VE.LONGEXCON _) => []
+		       SOME (VE.LONGCON _) => []
+		     | SOME (VE.LONGEXCON _) => []
 		     | _ => (case Ident.decompose longid of
 			       ([], id) => [id]
 			     | _ => impossible "dom_atpat"))
@@ -1249,11 +1251,11 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		let
 		  fun harmless_con longid =
 			(case lookup_longid C longid of
-			   Some(VE.LONGVAR _) => false
-			 | Some(VE.LONGCON _) =>
+			   SOME(VE.LONGVAR _) => false
+			 | SOME(VE.LONGCON _) =>
 			     #2 (Ident.decompose longid) <> Ident.id_REF
-			 | Some(VE.LONGEXCON _) => true
-			 | None => true)
+			 | SOME(VE.LONGEXCON _) => true
+			 | NONE => true)
 		  (*why `true' and not `false' or `impossible ...'?  see my diary
 		   19/12/1996 14:17. tho.*)
 		  val b = DecGrammar.expansive harmless_con exp
@@ -1265,8 +1267,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		end  
 	    in
 	      (case valbind of
-		 PLAINvalbind (_, pat, exp, None) => makemap pat exp
-	       | PLAINvalbind (_, pat, exp, Some valbind) =>
+		 PLAINvalbind (_, pat, exp, NONE) => makemap pat exp
+	       | PLAINvalbind (_, pat, exp, SOME valbind) =>
 		   let val m1 = makemap pat exp
 		       val m2 = isExpansiveId valbind
 		   in
@@ -1283,10 +1285,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  fun remake isVar id sigma =
 	    let val isExp = 
 		(case FinMap.lookup isExpansiveId_map id of 
-		   None => false
-		 | Some b => 
+		   NONE => false
+		 | SOME b => 
 		     (if !Flags.DEBUG_ELABDEC then
-			 output (std_out, Ident.pr_id id ^ "'s exp is " 
+			 TextIO.output (TextIO.stdOut, Ident.pr_id id ^ "'s exp is " 
 				 ^ (if not b then "NOT " else "") ^ "expansive\n")
 		      else () ;
 		      b))
@@ -1333,7 +1335,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
             EqSet.member id (FinMap.dom constructor_map)
       fun to_VE (constructor_map : constructor_map) : VarEnv =
 	    let val fellow_constructors =
-		      (ListSort.sort Ident.< o EqSet.list o FinMap.dom)
+		      (ListSort.sort (fn x => fn y => Ident.< (x,y)) o EqSet.list o FinMap.dom)
 			constructor_map
 	    in
 	      FinMap.Fold
@@ -1481,54 +1483,6 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    (Realisation.on_VarEnv phi VE, Realisation.on_TyEnv phi TE)
 	  end
 
-  end; (*Environments*)
+  end (*Environments*)
 
 
-
-(*$TestEnvironments: DEC_GRAMMAR STRID IDENT TYCON TYNAME
-                     STATOBJECT PRETTYPRINT SORTED_FINMAP FINMAP
-                     TIMESTAMP REPORT FLAGS LIST_HACKS CRASH
-                     ENVIRONMENTS ENVIRONMENTS *)
-
-functor TestEnvironments(structure DecGrammar: DEC_GRAMMAR
-			 structure StrId: STRID
-			 structure Ident: IDENT
-			   sharing type Ident.strid = StrId.strid
-			       and type Ident.id = DecGrammar.id
-		               and type Ident.longid = DecGrammar.longid
-			 structure TyCon: TYCON
- 	                   sharing type TyCon.strid = StrId.strid
-			 structure TyName: TYNAME
-			 structure StatObject: STATOBJECT
-	                   sharing type StatObject.ExplicitTyVar = DecGrammar.tyvar
-		               and type StatObject.TyName = TyName.TyName
-			 structure PP: PRETTYPRINT
-			   sharing type StatObject.StringTree = PP.StringTree
-	                 structure SortedFinMap: SORTED_FINMAP
-	                   sharing type SortedFinMap.StringTree = PP.StringTree
-	                 structure FinMap: FINMAP
-			   sharing type FinMap.StringTree = PP.StringTree
-	                 structure Timestamp: TIMESTAMP
-			 structure Report: REPORT
-	                   sharing type SortedFinMap.Report = FinMap.Report = Report.Report
-	                 structure Flags: FLAGS
-	                 structure ListHacks: LIST_HACKS
-			 structure Crash: CRASH ) 
-  : sig end =
-  struct
-      structure Environments : ENVIRONMENTS = 
-	Environments(structure DecGrammar = DecGrammar
-		     structure Ident = Ident
-		     structure TyCon = TyCon
-		     structure StrId = StrId
-		     structure StatObject = StatObject
-		     structure TyName = TyName
-		     structure PP = PP
-		     structure SortedFinMap = SortedFinMap
-		     structure FinMap = FinMap
-		     structure Timestamp = Timestamp
-		     structure Report = Report
-		     structure Flags = Flags
-		     structure ListHacks = ListHacks
-		     structure Crash = Crash)
-  end;

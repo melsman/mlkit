@@ -7,12 +7,15 @@ functor PrettyPrint(structure Report: REPORT
                     structure Flags: FLAGS
                    ): PRETTYPRINT =
   struct
+
+    open Edlib OldString
+
     val WIDTH = 75
     val DEBUG = false
 
 
           
-    datatype childsep = NONE | LEFT of string | RIGHT of string
+    datatype childsep = NOSEP | LEFT of string | RIGHT of string
 
     datatype StringTree =
         NODE of {start : string, finish: string, indent: int,
@@ -47,7 +50,7 @@ functor PrettyPrint(structure Report: REPORT
       | intersperce false s (x :: (x' ::rest)) =
            x :: intersperce false s ((s ^ x') ::rest);
 
-    fun intersperceSep NONE l = l
+    fun intersperceSep NOSEP l = l
       | intersperceSep (RIGHT s) l = intersperce true s l
       | intersperceSep (LEFT s) l =  intersperce false s l;
 
@@ -61,8 +64,8 @@ functor PrettyPrint(structure Report: REPORT
            children=map f (EqSet.list set)
           }
 
-    fun layout_opt layout (Some x) = layout x
-      | layout_opt layout None = LEAF "_|_"
+    fun layout_opt layout (SOME x) = layout x
+      | layout_opt layout NONE = LEAF "_|_"
 
     fun layout_pair layout_x layout_y (x,y) =
           NODE {start = "(", finish = ")", childsep = RIGHT ",", indent=1,
@@ -73,7 +76,7 @@ functor PrettyPrint(structure Report: REPORT
 		children = map layout xs}
   
     fun layout_together children indent =
-          NODE {start = "", children = children, childsep = NONE,
+          NODE {start = "", children = children, childsep = NOSEP,
 		indent = indent, finish = ""}
 
     exception FlatString
@@ -94,8 +97,8 @@ functor PrettyPrint(structure Report: REPORT
       and foldChildren f (nil, childsep, acc) = acc
         | foldChildren f ([t], _, acc) = fold f (t, acc)
 
-        | foldChildren f (child :: rest, NONE , acc) = 
-            foldChildren f (rest, NONE, fold f (child, acc))
+        | foldChildren f (child :: rest, NOSEP , acc) = 
+            foldChildren f (rest, NOSEP, fold f (child, acc))
 
         | foldChildren f (child :: rest, RIGHT s, acc) = 
             foldChildren f (rest, RIGHT s, f(s, fold f (child, acc)))
@@ -128,35 +131,35 @@ functor PrettyPrint(structure Report: REPORT
 
     fun indent_line (ind: int) (text:string):string =  blanks ind ^ text
 
-    fun get_first_line(m: minipage): (string * minipage) Option = 
+    fun get_first_line(m: minipage): (string * minipage) option = 
     let fun loop (ind,m) = 
         case m of
-            LINES [] => None
-         |  LINES (hd::tl) => Some(indent_line ind hd, indent ind (LINES tl))
+            LINES [] => NONE
+         |  LINES (hd::tl) => SOME(indent_line ind hd, indent ind (LINES tl))
          |  INDENT(i, m') => loop(ind+i, m')
          |  PILE(m1,m2) => 
                (case loop(ind,m1) of
-                  None => loop(ind,m2)
-                | Some (string , m1') => Some(string, PILE(m1', indent ind m2))
+                  NONE => loop(ind,m2)
+                | SOME (string , m1') => SOME(string, PILE(m1', indent ind m2))
                )
                 
     in
          loop(0,m)
     end;
 
-    fun get_last_line(m: minipage): (string * minipage) Option = 
+    fun get_last_line(m: minipage): (string * minipage) option = 
     let fun loop (ind,m) = 
         case m of
-             LINES [] => None
+             LINES [] => NONE
           |  LINES (list) => 
                let val (last,others) = List.removeLast list
-               in Some(indent_line ind last, indent ind (LINES others))
+               in SOME(indent_line ind last, indent ind (LINES others))
                end
           |  INDENT(i, m') => loop(ind+i, m')
           |  PILE(m1,m2) => 
                (case loop(ind,m2) of
-                    None => loop(ind,m1)
-                  | Some (lastline, m2') => Some(lastline, PILE(indent ind m1, m2'))
+                    NONE => loop(ind,m1)
+                  | SOME (lastline, m2') => SOME(lastline, PILE(indent ind m1, m2'))
                )
                 
     in
@@ -185,13 +188,13 @@ functor PrettyPrint(structure Report: REPORT
 
     fun topLeftConcat (s: string) (m: minipage): minipage =
       case get_first_line m of 
-          None =>LINES([])
-        | Some(thisline, rest:minipage)=> smash(s,thisline,rest)
+          NONE =>LINES([])
+        | SOME(thisline, rest:minipage)=> smash(s,thisline,rest)
 
     fun botRightConcat (s: string) (m: minipage): minipage =
       case get_last_line m of
-        None => LINES[]
-      | Some(lastline, rest:minipage) => 
+        NONE => LINES[]
+      | SOME(lastline, rest:minipage) => 
           PILE(rest, LINES[lastline ^s])
 
     
@@ -256,8 +259,8 @@ functor PrettyPrint(structure Report: REPORT
 
                       val startAndChildren: minipage =
                         case get_first_line childrenLines
-                          of None =>startLines
-                           | Some(hd, tl:minipage) =>
+                          of NONE =>startLines
+                           | SOME(hd, tl:minipage) =>
                                 (* `smash' sees if start and hd can be
                                    collapsed into one line *)
                                smash(start, hd, tl)
@@ -291,7 +294,7 @@ functor PrettyPrint(structure Report: REPORT
       | pileChildren(width, ind, childsep, [child]) =
           indent ind (print (width-ind) child)
 
-      | pileChildren(width, ind, NONE, children) =
+      | pileChildren(width, ind, NOSEP, children) =
           indent ind (pilePages(map (print (width-ind)) children))
 
       | pileChildren(width, ind, LEFT s, first :: rest) =
@@ -338,7 +341,7 @@ functor PrettyPrint(structure Report: REPORT
           end
 
 
-    fun prSep NONE = "NONE"
+    fun prSep NOSEP = "NOSEP"
       | prSep(LEFT s) = "LEFT \"" ^ s ^ "\""
       | prSep(RIGHT s) = "RIGHT \"" ^ s ^ "\""
 

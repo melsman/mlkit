@@ -8,5 +8,5 @@ functor SigId(): SIGID =
     val mk_SigId = SIGID
     fun pr_SigId(SIGID str) = str
 
-    fun (SIGID str1) < (SIGID str2) = AsciiOrdString.lt str1 str2
+    val op < = fn (SIGID str1, SIGID str2) => str1 < str2
   end;

@@ -1,6 +1,3 @@
-(*$Manager: MANAGER_OBJECTS NAME ENVIRONMENTS MODULE_ENVIRONMENTS
-            PARSE_ELAB CRASH REPORT PRETTYPRINT FLAGS INT_MODULES
-            FREE_IDS OPACITY_ELIM MANAGER TIMING*)
 
 functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		structure Name : NAME
@@ -37,6 +34,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 structure Flags : FLAGS) : MANAGER =
   struct
 
+    structure Int = Edlib.Int
+    structure List = Edlib.List
+    structure String = Edlib.String
+    structure StringParse = Edlib.StringParse
+    structure EqSet = Edlib.EqSet
+
     structure Basis = ManagerObjects.Basis
     structure FunStamp = ManagerObjects.FunStamp
     structure ModCode = ManagerObjects.ModCode
@@ -64,7 +67,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun unitname_to_sourcefile unitname = !source_directory ^ unitname ^ ".sml"
     fun filename_to_unitname (f:string) : string =
       case rev (explode f)
-	of "l"::"m"::"s"::"."::unitname => implode (rev unitname)
+	of #"l":: #"m":: #"s":: #"."::unitname => implode (rev unitname)
 	 | _ => die "filename_to_unitname.filename not ending with .sml"
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
@@ -79,20 +82,21 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  val log_file = unitname_to_logfile unitname
 	  val source_file = unitname_to_sourcefile unitname
       in if !log_to_file then
-	   let val log_stream = open_out log_file
-	             handle Io msg => die ("Cannot open log file\n\
-		                           \(non-exsisting directory or write-\
-			                   \protected existing log file?)\n" ^ msg)
+	   let val log_stream = TextIO.openOut log_file
+	             handle IO.Io {name=msg,...} => 
+		       die ("Cannot open log file\n\
+			    \(non-exsisting directory or write-\
+			    \protected existing log file?)\n" ^ msg)
 	       fun log_init() = (Flags.log := log_stream;
-				 output (log_stream, "\n\n********** "
+				 TextIO.output (log_stream, "\n\n********** "
 					 ^ source_file ^ " *************\n\n"))
-	       fun log_cleanup() = (Flags.log := old_log_stream; close_out log_stream;
-				    output (std_out, "[wrote log file:\t" ^ log_file ^ "]\n"))
+	       fun log_cleanup() = (Flags.log := old_log_stream; TextIO.closeOut log_stream;
+				    TextIO.output (TextIO.stdOut, "[wrote log file:\t" ^ log_file ^ "]\n"))
 	   in log_init();
 	      log_cleanup
 	   end
 	 else 
-	   let val log_stream = std_out
+	   let val log_stream = TextIO.stdOut
 	       fun log_init() = Flags.log := log_stream
 	       fun log_cleanup() = Flags.log := old_log_stream
 	   in log_init();
@@ -100,7 +104,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	   end
       end
 
-    fun log (s:string) : unit = output (!Flags.log, s)
+    fun log (s:string) : unit = TextIO.output (!Flags.log, s)
     fun log' s = log (s ^ "\n")
     fun log_st (st) : unit = PP.outputTree (log, st, 70)
     fun chat s = if !Flags.chat then log s else ()
@@ -130,7 +134,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
        log "\n")
 
     fun print_error_report report = Report.print' report (!Flags.log)
-    fun print_result_report report = (Report.print' report (std_out(*!Flags.log*));
+    fun print_result_report report = (Report.print' report (TextIO.stdOut(*!Flags.log*));
 				      Flags.report_warnings ())
 
     (* ---------------------------------------
@@ -191,9 +195,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  fun lex_whitesp (all as c::rest) = if is_whitesp c then lex_whitesp rest
 					     else all 
 	    | lex_whitesp [] = []
-	  fun lex_name(c::rest, acc) = if is_whitesp c then (implode(rev acc), rest)
+	  fun lex_name(c::rest, acc) = if is_whitesp c then (concat(rev acc), rest)
 				       else lex_name (rest, c::acc)
-	    | lex_name ([], acc) = (implode(rev acc), [])
+	    | lex_name ([], acc) = (concat(rev acc), [])
 	  fun lex_names acc cs = case lex_whitesp cs
 				   of [] => rev acc
 				    | cs => let val (name,cs') = lex_name(cs, [])
@@ -201,7 +205,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 					       else lex_names (name::acc) cs'
 					    end
 
-	  val unitnames = (lex_names [] o drop_comments o explode o StringParse.fromFile) s
+	  val unitnames = (lex_names [] o drop_comments o (map str) o explode o StringParse.fromFile) s
 
 	  (* For the repository not to be messed up it is important to
 	   * keep functor identifiers stemming from user declarations
@@ -214,7 +218,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       in
 	 project := map (fn f => (ManagerObjects.funid_from_filename f,
 				  !source_directory ^ f)) filenames
-      end handle Io io_s => 
+      end handle IO.Io {name=io_s,...} => 
 	           error ("Project file `" ^ s ^ "' cannot be opened.")
                | ParseProjectFile s1 => 
 	           error ("Parsing project file `" ^ s ^ "': " ^ s1)
@@ -230,19 +234,19 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun match_elab(names_elab, elabB, funid) =
       case Repository.lookup_elab funid
-	of Some (_,(_,_,_,names_elab',_,elabB',_)) =>    (* names_elab' are already marked generative - lookup *)
+	of SOME (_,(_,_,_,names_elab',_,elabB',_)) =>    (* names_elab' are already marked generative - lookup *)
 	  (List.apply Name.mark_gen names_elab;          (* returned the entry. The invariant is that every *)
 	   ElabBasis.match(elabB, elabB');               (* name in the bucket is generative. *)
 	   List.apply Name.unmark_gen names_elab)
-	 | None => () (*bad luck*)
+	 | NONE => () (*bad luck*)
 
     fun match_int(names_int, intB, funid) =
       case Repository.lookup_int funid
-	of Some(_,(_,_,_,names_int',_,intB')) =>     (* names_int' are already marked generative - lookup *)
+	of SOME(_,(_,_,_,names_int',_,intB')) =>     (* names_int' are already marked generative - lookup *)
 	  (List.apply Name.mark_gen names_int;     (* returned the entry. The invariant is that every *)
 	   IntBasis.match(intB, intB');            (* name in the bucket is generative. *)
 	   List.apply Name.unmark_gen names_int)
-	 | None => () (*bad luck*)
+	 | NONE => () (*bad luck*)
 
     (* --------------------------------
      * Parse, elaborate and interpret
@@ -341,8 +345,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       let val funstamp_now = FunStamp.from_filemodtime filepath  (*always get funstamp before reading content*)
 	  exception CAN'T_REUSE
       in (case (Repository_lookup_elab funid, Repository_lookup_int funid)
-	    of (Some(_,(infB, elabB, (rea,dom_rea), names_elab,infB',elabB', rea')), 
-		Some(_,(funstamp,elabE,intB,names_int,modc,intB'))) =>
+	    of (SOME(_,(infB, elabB, (rea,dom_rea), names_elab,infB',elabB', rea')), 
+		SOME(_,(funstamp,elabE,intB,names_int,modc,intB'))) =>
 	      let val B_im = Basis.mk(infB,elabB,rea,intB)
 	      in if FunStamp.eq(funstamp,funstamp_now) andalso
 		     let (* val _ = print "\n[checking enrichment ...\n" *)
@@ -455,7 +459,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * See comment in FLAGS.*)
 
     fun wrap f a = (f a) handle PARSE_ELAB_ERROR _ => 
-      output(std_out, "\n ** Parse or elaboration error occurred. **\n")
+      TextIO.output(TextIO.stdOut, "\n ** Parse or elaboration error occurred. **\n")
 
     val _ = Flags.build_project_ref := wrap build
     val _ = Flags.show_project_ref := show

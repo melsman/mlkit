@@ -44,7 +44,7 @@ signature MUL_EXP =
     datatype ('a,'b,'c) LambdaPgm = PGM of 
                         {expression: ('a,'b,'c)trip,
                          export_datbinds: datbinds,
-			 import_vars: (lvar list * excon list * place list) Option ref,
+			 import_vars: (lvar list * excon list * place list) option ref,
 			 export_vars: lvar list * excon list * place list, 
                          export_basis: ateffect list,  (* list of region variables and arrow effects *)
                          export_Psi:   mularef ref list
@@ -57,7 +57,7 @@ signature MUL_EXP =
 
     and ('a,'b,'c)LambdaExp =
         VAR      of {lvar: lvar, il : il, plain_arreffs: (effectvar * ateffect list) list,
-                     alloc: 'a Option, rhos_actuals: 'a list ref, other: 'c}
+                     alloc: 'a option, rhos_actuals: 'a list ref, other: 'c}
 
       | INTEGER  of int	* 'a		
       | STRING   of string * 'a
@@ -66,7 +66,7 @@ signature MUL_EXP =
 
       | FN       of {pat : (lvar * (Type*place)) list, 
                      body : ('a,'b,'c)trip,
-		     free: (lvar list * excon list * place list) Option ref, 
+		     free: (lvar list * excon list * place list) option ref, 
                      alloc: 'a}
 
       | LETREGION of {B: effect list ref,  (* contains both region variables and arrow effects *)
@@ -78,7 +78,7 @@ signature MUL_EXP =
                                    effect list ref * Type * place * 'c) list,
 		     bind : ('a,'b,'c)trip,
 		     scope: ('a,'b,'c)trip}
-      | FIX      of {free: (lvar list * excon list * place list) Option ref, 
+      | FIX      of {free: (lvar list * excon list * place list) option ref, 
 		     shared_clos: 'a,
                      functions : {lvar : lvar, 
                                   occ : il list,                        (* instantiation lists              *)
@@ -88,12 +88,12 @@ signature MUL_EXP =
                                   epss: effect list,                    (* type     *)
 				  Type : Type,                          (* scheme.  *)
 				  rhos_formals: 'b list ref, 
-                                  bound_but_never_written_into: 'b list Option, (* set by DropRegions; used by CompLamb*)
+                                  bound_but_never_written_into: 'b list option, (* set by DropRegions; used by CompLamb*)
                                   other:  'c,
 				  bind : ('a,'b,'c)trip} list,
 		     scope : ('a,'b,'c)trip}
 
-      | APP      of callKind Option * saveRestore * ('a,'b,'c)trip * ('a,'b,'c)trip
+      | APP      of callKind option * saveRestore * ('a,'b,'c)trip * ('a,'b,'c)trip
 
       | EXCEPTION of excon * bool * (Type*place)  * 'a * ('a,'b,'c)trip
                              (* Type*place: of exception constructor 
@@ -107,7 +107,7 @@ signature MUL_EXP =
       | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a}
       | CON1     of {con : con, il : il, alloc: 'a} * ('a,'b,'c)trip
       | DECON    of {con : con, il : il} * ('a,'b,'c)trip
-      | EXCON    of excon * ('a * ('a,'b,'c)trip) Option     (* nullary excons are looked up in dyn env. *)
+      | EXCON    of excon * ('a * ('a,'b,'c)trip) option     (* nullary excons are looked up in dyn env. *)
       | DEEXCON  of excon * ('a,'b,'c)trip
       | RECORD   of 'a * ('a,'b,'c)trip list
       | SELECT   of int * ('a,'b,'c)trip    
@@ -117,7 +117,7 @@ signature MUL_EXP =
       | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b,'c)trip * ('a,'b,'c)trip
       | CCALL    of {name : string,
 		     mu_result : Type * place, (*mu of result from c function*)
-		     rhos_for_result : ('a * int Option) list}
+		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b,'c)trip list  (* Calling C functions *)
 
 	(*`rhos_for_result' is technical but needed in PhysSizeInf, MulInf &
@@ -144,13 +144,13 @@ signature MUL_EXP =
                                       sigma : sigma,
                                       other : 'c,
                                       place : place} list,
-                     declared_excons: (excon * (Type*place) Option) list}
+                     declared_excons: (excon * (Type*place) option) list}
                        (* a frame is the result of a structure-level
                         * declaration. 
 			*)
 
     and ('a,'b,'c,'d) Switch = SWITCH of ('a,'b,'c)trip * 
-                                      ('d * ('a,'b,'c)trip) list * ('a,'b,'c)trip Option
+                                      ('d * ('a,'b,'c)trip) list * ('a,'b,'c)trip option
 
 
 
@@ -185,16 +185,16 @@ signature MUL_EXP =
 
     type StringTree
     val printcount: int ref  (* controls printing of effects on expressions*)
-    val layoutLambdaPgm: ('a -> StringTree Option) -> ('a -> StringTree Option) -> 
-                         ('b -> StringTree Option) -> 
-                         ('c -> StringTree Option) -> ('a, 'b, 'c)LambdaPgm -> StringTree
-    val layoutLambdaExp: ('a -> StringTree Option)-> ('a -> StringTree Option) -> 
-                         ('b -> StringTree Option) -> 
-                         ('c -> StringTree Option) -> ('a,'b,'c)LambdaExp -> StringTree
+    val layoutLambdaPgm: ('a -> StringTree option) -> ('a -> StringTree option) -> 
+                         ('b -> StringTree option) -> 
+                         ('c -> StringTree option) -> ('a, 'b, 'c)LambdaPgm -> StringTree
+    val layoutLambdaExp: ('a -> StringTree option)-> ('a -> StringTree option) -> 
+                         ('b -> StringTree option) -> 
+                         ('c -> StringTree option) -> ('a,'b,'c)LambdaExp -> StringTree
 
-    val layoutLambdaTrip: ('a -> StringTree Option) -> ('a -> StringTree Option) -> 
-                          ('b -> StringTree Option) -> 
-                          ('c -> StringTree Option) -> ('a,'b,'c)trip -> StringTree
+    val layoutLambdaTrip: ('a -> StringTree option) -> ('a -> StringTree option) -> 
+                          ('b -> StringTree option) -> 
+                          ('c -> StringTree option) -> ('a,'b,'c)trip -> StringTree
 
   end
 

@@ -10,7 +10,9 @@ signature TYPE_INFO =
     type TyEnv
     type Env
     type realisation
-    type strid and tycon and id
+    type strid 
+    eqtype tycon 
+    type id
     type Basis
     type TyName
 
@@ -66,7 +68,7 @@ signature TYPE_INFO =
 			(* Attached to IDENTatexp, LONGIDatpat, CONSpat.
 			   The Type field is the type of the occurrence of the
 			   excon. *)
-      | EXBIND_INFO of {TypeOpt: Type Option}
+      | EXBIND_INFO of {TypeOpt: Type option}
 	                (* Attached to EXBIND
 			 * None if nullary exception constructor *)
       | TYENV_INFO of TyEnv
@@ -95,7 +97,7 @@ signature TYPE_INFO =
       | FUNCTOR_APP_INFO of realisation * Env
                         (* Attached to functor applications; The env is the
 			 * elaboration result of the functor application. *)
-      | FUNBIND_INFO of {argE: Env, elabB: Basis, T: TyName list, resE: Env, rea_opt: realisation Option}
+      | FUNBIND_INFO of {argE: Env, elabB: Basis, T: TyName list, resE: Env, rea_opt: realisation option}
                         (* Attached to functor bindings; the arg env is the environment
 			 * resulting from elaborating the sigexp in a functor 
 			 * binding. All other info is there to make it possible to re-build an 

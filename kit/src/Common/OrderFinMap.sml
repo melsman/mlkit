@@ -13,6 +13,8 @@ functor OrderFinMap(structure Order : ORDERING
 		    structure Report : REPORT) : ORDER_FINMAP =
   struct
 
+    open Edlib
+
     infix eq
 
     type dom = Order.T
@@ -40,11 +42,11 @@ functor OrderFinMap(structure Order : ORDERING
 
     fun lookup t key =
       let 
-	fun search E = None
+	fun search E = NONE
             | search(N(key', data, l, r, _)) = 
               if key < key' then search l
               else if key' < key then search r
-              else (*key eq key' *) Some data
+              else (*key eq key' *) SOME data
       in 
 	search t 
       end
@@ -413,8 +415,8 @@ old*)
 	    let
 	      val (e, t2') = 
 		case lookup t2 k of
-		  Some d' => (f (d,d'), delete (k, t2))
-		| None => (d, t2)
+		  SOME d' => (f (d,d'), delete (k, t2))
+		| NONE => (d, t2)
 	      val t1' = delete (k, t1)
 	    in
 	      merge t1' t2' (add(k,e,a))
@@ -449,29 +451,29 @@ old *)
       end
 
     fun oneForWhich (f : ((dom * 'b) -> bool)) (t : 'b map) 
-          : (dom * 'b) Option =
+          : (dom * 'b) option =
       case t of
-	E => None
+	E => NONE
       | N(k,d,l,r,_) => 
-	  if f (k,d) then Some (k,d)
+	  if f (k,d) then SOME (k,d)
 	  else 
 	    case oneForWhich f l of
-	      Some p => Some p
-	    | None => oneForWhich f r  
+	      SOME p => SOME p
+	    | NONE => oneForWhich f r  
 
 
     exception Restrict
     fun restrict(m: 'b map, dom : dom list) : 'b map =
       List.foldL(fn d => fn acc => 
 		 case lookup m d
-		   of Some res => add(d,res,acc)
-		    | None => raise Restrict) empty dom 
+		   of SOME res => add(d,res,acc)
+		    | NONE => raise Restrict) empty dom 
 
     fun enrich en (m0, m) =
       Fold(fn ((d,r),b) => b andalso
 	   case lookup m0 d
-	     of Some r0 => en(r0,r)
-	      | None => false) true m
+	     of SOME r0 => en(r0,r)
+	      | NONE => false) true m
 
     type StringTree = PP.StringTree
 

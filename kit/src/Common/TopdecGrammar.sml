@@ -10,6 +10,9 @@ functor TopdecGrammar(structure FunId: FUNID
 		        sharing type DecGrammar.StringTree = PrettyPrint.StringTree
 			  ) : TOPDEC_GRAMMAR =
   struct
+
+    open Edlib
+
     structure DecGrammar = DecGrammar
     structure StrId = DecGrammar.StrId
     structure FunId = FunId
@@ -38,7 +41,7 @@ functor TopdecGrammar(structure FunId: FUNID
       SEQstrdec of info * strdec * strdec
 
     and strbind =
-      STRBIND of info * strid * strexp * strbind Option
+      STRBIND of info * strid * strexp * strbind option
 
     and sigexp =
       SIGsigexp of info * spec |
@@ -50,7 +53,7 @@ functor TopdecGrammar(structure FunId: FUNID
       SIGNATUREsigdec of info * sigbind
 
     and sigbind =
-      SIGBIND of info * sigid * sigexp * sigbind Option
+      SIGBIND of info * sigid * sigexp * sigbind option
 
 			    (* Figure 7 *)
 
@@ -69,22 +72,22 @@ functor TopdecGrammar(structure FunId: FUNID
       SEQspec of info * spec * spec
 
     and valdesc =
-      VALDESC of info * id * ty * valdesc Option
+      VALDESC of info * id * ty * valdesc option
 
     and typdesc =
-      TYPDESC of info * tyvar list * tycon * typdesc Option
+      TYPDESC of info * tyvar list * tycon * typdesc option
 
     and datdesc =
-      DATDESC of info * tyvar list * tycon * condesc * datdesc Option
+      DATDESC of info * tyvar list * tycon * condesc * datdesc option
 
     and condesc =
-      CONDESC of info * id * ty Option * condesc Option
+      CONDESC of info * id * ty option * condesc option
 
     and exdesc =
-      EXDESC of info * id * ty Option * exdesc Option
+      EXDESC of info * id * ty option * exdesc option
 
     and strdesc =
-      STRDESC of info * strid * sigexp * strdesc Option
+      STRDESC of info * strid * sigexp * strdesc option
 
 			    (* Figure 8 *)
 
@@ -92,14 +95,14 @@ functor TopdecGrammar(structure FunId: FUNID
       FUNCTORfundec of info * funbind
 
     and funbind =
-      FUNBIND of info * funid * strid * sigexp * strexp * funbind Option
+      FUNBIND of info * funid * strid * sigexp * strexp * funbind option
 
     and topdec =
-      STRtopdec of info * strdec * topdec Option |
-      SIGtopdec of info * sigdec * topdec Option |
-      FUNtopdec of info * fundec * topdec Option 
+      STRtopdec of info * strdec * topdec option |
+      SIGtopdec of info * sigdec * topdec option |
+      FUNtopdec of info * fundec * topdec option 
 
-    val empty_topdec = STRtopdec(bogus_info, EMPTYstrdec bogus_info, None)
+    val empty_topdec = STRtopdec(bogus_info, EMPTYstrdec bogus_info, NONE)
 
     fun info_on_strexp (STRUCTstrexp (info, strdec)) = info
       | info_on_strexp (LONGSTRIDstrexp (info, longstrid)) = info
@@ -185,8 +188,8 @@ functor TopdecGrammar(structure FunId: FUNID
 	of STRBIND (info, strid, strexp, strbind_opt) => 
 	  STRBIND(f info, strid, map_strexp_info f strexp, 
 		  case strbind_opt
-		    of Some strbind => Some (map_strbind_info f strbind)
-		     | None => None) 
+		    of SOME strbind => SOME (map_strbind_info f strbind)
+		     | NONE => NONE) 
 
     (* pretty-printing *)
 
@@ -195,12 +198,12 @@ functor TopdecGrammar(structure FunId: FUNID
 	let
 	  val res' = 
 	    case tyopt of 
-	      None => res 
-	    | Some ty => (DecGrammar.getExplicitTyVarsTy ty) @ res
+	      NONE => res 
+	    | SOME ty => (DecGrammar.getExplicitTyVarsTy ty) @ res
 	in
 	  case conopt of 
-	    None => res'
-	  | Some condesc => f res' condesc 
+	    NONE => res'
+	  | SOME condesc => f res' condesc 
 	end
     in
       val getExplicitTyVarsCondesc = f []
@@ -213,17 +216,17 @@ functor TopdecGrammar(structure FunId: FUNID
     type StringTree = StringTree
     val INDENT = 3			(* standard indentation level. *)
 
-    fun makeList (f: 'a -> 'a Option) (x: 'a) =
+    fun makeList (f: 'a -> 'a option) (x: 'a) =
       x :: (case f x
-	      of Some y => makeList f y
-	       | None => nil
+	      of SOME y => makeList f y
+	       | NONE => nil
 	   )
 
     fun layoutStrexp strexp =
       case strexp
 	of STRUCTstrexp(_, strdec) =>
 	     NODE{start="struct ", finish=" end", indent=INDENT,
-		     children=[layoutStrdec strdec], childsep=NONE
+		     children=[layoutStrdec strdec], childsep=NOSEP
 		    }
 
 	 | LONGSTRIDstrexp(_, longstrid) =>
@@ -240,7 +243,7 @@ functor TopdecGrammar(structure FunId: FUNID
 	 | APPstrexp(_, funid, strexp) =>
 	     NODE{start=FunId.pr_FunId funid ^ "(", finish=")",
 		     indent=INDENT,
-		     children=[layoutStrexp strexp], childsep=NONE
+		     children=[layoutStrexp strexp], childsep=NOSEP
 		    }
 
 	 | LETstrexp(_, strdec, strexp) =>
@@ -256,7 +259,7 @@ functor TopdecGrammar(structure FunId: FUNID
 
 	 | STRUCTUREstrdec(_, strbind) =>
 	     NODE{start="structure ", finish="", indent=INDENT,
-		     children=[layoutStrbind strbind], childsep=NONE
+		     children=[layoutStrbind strbind], childsep=NOSEP
 		    }
 
 	 | LOCALstrdec(_, strdec, strdec') =>
@@ -294,7 +297,7 @@ functor TopdecGrammar(structure FunId: FUNID
       (case sigexp
 	of SIGsigexp(_, spec) =>
 	     NODE{start="sig ", finish=" end", indent=INDENT,
-		     children=[layoutSpec spec], childsep=NONE
+		     children=[layoutSpec spec], childsep=NOSEP
 		    }
 
 	 | SIGIDsigexp(_, sigid) =>
@@ -307,15 +310,15 @@ functor TopdecGrammar(structure FunId: FUNID
 		       children=
 		       [layout_together
 			((case DecGrammar.layoutTyvarseq tyvars of
-			    Some st => [st]
-			  | None => [])
+			    SOME st => [st]
+			  | NONE => [])
 			  @ [LEAF (TyCon.pr_LongTyCon longtycon)]) INDENT,
 			DecGrammar.layoutTy ty],
 		       childsep=RIGHT " = "}] INDENT)
 
     and layoutSigdec (SIGNATUREsigdec(_, sigbind)) =
           NODE{start="signature ", finish="", indent=INDENT,
-		  children=[layoutSigbind sigbind], childsep=NONE}
+		  children=[layoutSigbind sigbind], childsep=NOSEP}
 
     and layoutSigbind sigbind =
       let
@@ -339,22 +342,22 @@ functor TopdecGrammar(structure FunId: FUNID
       case spec
 	of VALspec(_, valdesc) =>
 	     NODE{start="val ", finish="", indent=INDENT,
-		     children=[layoutValdesc valdesc], childsep=NONE
+		     children=[layoutValdesc valdesc], childsep=NOSEP
 		    }
 
 	 | TYPEspec(_, typdesc) =>
 	     NODE{start="type ", finish="", indent=INDENT,
-		     children=[layoutTypdesc typdesc], childsep=NONE
+		     children=[layoutTypdesc typdesc], childsep=NOSEP
 		    }
 
 	 | EQTYPEspec(_, typdesc) =>
 	     NODE{start="eqtype ", finish="", indent=INDENT,
-		     children=[layoutTypdesc typdesc], childsep=NONE
+		     children=[layoutTypdesc typdesc], childsep=NOSEP
 		    }
 
 	 | DATATYPEspec(_, datdesc) =>
 	     NODE{start="datatype ", finish="", indent=INDENT,
-		     children=[layoutDatdesc datdesc], childsep=NONE
+		     children=[layoutDatdesc datdesc], childsep=NOSEP
 		    }
 
 	 | DATATYPE_REPLICATIONspec(i,tycon,longtycon) => 
@@ -363,18 +366,18 @@ functor TopdecGrammar(structure FunId: FUNID
 
 	 | EXCEPTIONspec(_, exdesc) =>
 	     NODE{start="exception ", finish="", indent=INDENT,
-		     children=[layoutExdesc exdesc], childsep=NONE
+		     children=[layoutExdesc exdesc], childsep=NOSEP
 		    }
 
 	 | STRUCTUREspec(_, strdesc) =>
 	     NODE{start="structure ", finish="", indent=INDENT,
-		     children=[layoutStrdesc strdesc], childsep=NONE
+		     children=[layoutStrdesc strdesc], childsep=NOSEP
 		    }
 
 	 | INCLUDEspec(_, sigexp) =>
 	     NODE{start="include ", finish="", indent=8,
 		     children=[layoutSigexp sigexp],
-		     childsep=NONE}
+		     childsep=NOSEP}
 
 	 | SHARING_TYPEspec(i, spec, longtycon_withinfo_list) =>
 	     let	     
@@ -436,8 +439,8 @@ functor TopdecGrammar(structure FunId: FUNID
 	fun layout1(TYPDESC(_, tyvarseq, tycon, _)) =
 	  NODE{start="", finish="", indent=0,
 		  children=(case DecGrammar.layoutTyvarseq tyvarseq
-			      of Some t => [t]
-			       | None => nil
+			      of SOME t => [t]
+			       | NONE => nil
 			   ) @ [layoutAtom TyCon.pr_TyCon tycon],
 		  childsep=RIGHT " "
 		 }
@@ -460,8 +463,8 @@ functor TopdecGrammar(structure FunId: FUNID
 	      NODE{start="", finish="", indent=0,
 		      children=
 		        layoutAtom Ident.pr_id id
-			:: (case ty_opt of Some ty => [DecGrammar.layoutTy ty]
-			      		 | None => nil
+			:: (case ty_opt of SOME ty => [DecGrammar.layoutTy ty]
+			      		 | NONE => nil
 			   ),
 		      childsep=LEFT " of "
 		     }
@@ -475,8 +478,8 @@ functor TopdecGrammar(structure FunId: FUNID
 	fun layoutBind(tyvarseq, tycon) =
 	  NODE{start="", finish="", indent=0,
 		  children=(case DecGrammar.layoutTyvarseq tyvarseq
-			      of Some t => [t]
-			       | None => nil
+			      of SOME t => [t]
+			       | NONE => nil
 			   ) @ [layoutAtom TyCon.pr_TyCon tycon],
 		  childsep=RIGHT " "
 		 }
@@ -501,8 +504,8 @@ functor TopdecGrammar(structure FunId: FUNID
 	  NODE{start="", finish="", indent=0,
 		  children=
 		    layoutAtom Ident.pr_id id
-		    :: (case ty_opt of Some ty => [DecGrammar.layoutTy ty]
-				     | None => nil
+		    :: (case ty_opt of SOME ty => [DecGrammar.layoutTy ty]
+				     | NONE => nil
 		       ),
 		  childsep=LEFT " of "
 		 }
@@ -533,7 +536,7 @@ functor TopdecGrammar(structure FunId: FUNID
 
     and layoutFundec (FUNCTORfundec(_, funbind)) =
           NODE{start="functor ", finish="", indent=INDENT,
-		  children=[layoutFunbind funbind], childsep=NONE}
+		  children=[layoutFunbind funbind], childsep=NOSEP}
 
     and layoutFunbind funbind =
       let

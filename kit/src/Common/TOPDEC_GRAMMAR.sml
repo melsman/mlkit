@@ -8,25 +8,25 @@ signature TOPDEC_GRAMMAR =
     (* Core declarations. *)
 
     structure DecGrammar : DEC_GRAMMAR
-    type dec       sharing type dec = DecGrammar.dec
+    type dec = DecGrammar.dec
 
     (* Various kinds of module identifiers. *)
 
     structure StrId : STRID sharing StrId = DecGrammar.StrId
     structure FunId : FUNID
     structure SigId : SIGID
-    type strid     sharing type strid = StrId.strid
-    type longstrid sharing type longstrid = StrId.longstrid 
-    type funid     sharing type funid = FunId.funid
-    type sigid     sharing type sigid = SigId.sigid
+    type strid = StrId.strid
+    type longstrid = StrId.longstrid 
+    type funid = FunId.funid
+    type sigid = SigId.sigid
 
     (* Objects from the core syntax (needed for specs). *)
 
-    type id        sharing type id = DecGrammar.id
-    type tyvar     sharing type tyvar = DecGrammar.tyvar
-    type ty        sharing type ty = DecGrammar.ty
-    type tycon     sharing type tycon = DecGrammar.tycon
-    type longtycon sharing type longtycon = DecGrammar.longtycon
+    type id = DecGrammar.id
+    type tyvar = DecGrammar.tyvar
+    type ty = DecGrammar.ty
+    eqtype tycon sharing type tycon = DecGrammar.tycon
+    type longtycon = DecGrammar.longtycon
 
     (* info place-holder. *)
 
@@ -53,7 +53,7 @@ signature TOPDEC_GRAMMAR =
       SEQstrdec of info * strdec * strdec
 
     and strbind =
-      STRBIND of info * strid * strexp * strbind Option
+      STRBIND of info * strid * strexp * strbind option
 
     and sigexp =
       SIGsigexp of info * spec |
@@ -64,7 +64,7 @@ signature TOPDEC_GRAMMAR =
       SIGNATUREsigdec of info * sigbind
 
     and sigbind =
-      SIGBIND of info * sigid * sigexp * sigbind Option
+      SIGBIND of info * sigid * sigexp * sigbind option
 
 			    (* Figure 7 *)
 
@@ -83,22 +83,22 @@ signature TOPDEC_GRAMMAR =
       SEQspec of info * spec * spec
 
     and valdesc =
-      VALDESC of info * id * ty * valdesc Option
+      VALDESC of info * id * ty * valdesc option
 
     and typdesc =
-      TYPDESC of info * tyvar list * tycon * typdesc Option
+      TYPDESC of info * tyvar list * tycon * typdesc option
 
     and datdesc =
-      DATDESC of info * tyvar list * tycon * condesc * datdesc Option
+      DATDESC of info * tyvar list * tycon * condesc * datdesc option
 
     and condesc =
-      CONDESC of info * id * ty Option * condesc Option
+      CONDESC of info * id * ty option * condesc option
 
     and exdesc =
-      EXDESC of info * id * ty Option * exdesc Option
+      EXDESC of info * id * ty option * exdesc option
 
     and strdesc =
-      STRDESC of info * strid * sigexp * strdesc Option
+      STRDESC of info * strid * sigexp * strdesc option
 
 			    (* Figure 8 *)
 
@@ -106,12 +106,12 @@ signature TOPDEC_GRAMMAR =
       FUNCTORfundec of info * funbind 
 
     and funbind =
-      FUNBIND of info * funid * strid * sigexp * strexp * funbind Option
+      FUNBIND of info * funid * strid * sigexp * strexp * funbind option
 
     and topdec =
-      STRtopdec of info * strdec * topdec Option |
-      SIGtopdec of info * sigdec * topdec Option |
-      FUNtopdec of info * fundec * topdec Option
+      STRtopdec of info * strdec * topdec option |
+      SIGtopdec of info * sigdec * topdec option |
+      FUNtopdec of info * fundec * topdec option
 
     val empty_topdec : topdec
 

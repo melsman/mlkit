@@ -1,26 +1,12 @@
 
 (* Build-file for the compiler. It returns a compile basis structure
-   and a compile structure. This version believes in the core language
-   only. *)
+ * and a compile structure. 
+ *)
 
-(*$BuildCompile : TYNAME TOPDEC_GRAMMAR ELAB_INFO STATOBJECT ENVIRONMENTS
-     FINMAP FINMAPEQ BASIC_IO REPORT FLAGS PRETTYPRINT CRASH TIMING
-     COMPILER_ENV COMPILE_BASIS COMPILE EFFECT RTYPE NAME FREE_IDS Lvars
-     Lvarset Con Excon CompilerEnv LambdaExp OptLambda LambdaBasics HashTable
-     QuasiEnv CompileBasis LambdaStatSem EliminateEq Compile CompileDec
-     IOStreams RType Effect SpreadDatatype SpreadExpression RegionStatEnv
-     DiGraphScc DiGraph UnionFindPoly Stack CompLamb CompLambEnv KAMBackend
-     RegionExp CConst OrderFinMap OrderSet NatSet RegInf Mul MulExp MulInf
-     AtInf DropRegions PhysSizeInf ListSort IntSet IntFinMap EqFinMap
-     LocallyLiveVariables RegFlow RegionFlowGraphProfiling*)
 
 functor BuildCompile (structure TyName : TYNAME
 		      structure Name : NAME
 		      structure TopdecGrammar: TOPDEC_GRAMMAR
-			sharing type TopdecGrammar.tycon = TyName.tycon
-		      structure FreeIds : FREE_IDS
-			sharing type FreeIds.id = TopdecGrammar.id
-
 		      structure ElabInfo : ELAB_INFO
 			sharing type ElabInfo.ElabInfo = TopdecGrammar.info
 			    and type ElabInfo.TypeInfo.longid = TopdecGrammar.DecGrammar.longid
@@ -29,20 +15,18 @@ functor BuildCompile (structure TyName : TYNAME
 			    and type ElabInfo.TypeInfo.id = TopdecGrammar.id
 		      structure StatObject: STATOBJECT
 			sharing type StatObject.Type = ElabInfo.TypeInfo.Type
-			    and type StatObject.TyName = TyName.TyName
 			    and type StatObject.TyVar = ElabInfo.TypeInfo.TyVar
 		      structure Environments : ENVIRONMENTS
-			sharing type Environments.TyEnv = ElabInfo.TypeInfo.TyEnv
+			sharing Environments.TyName = StatObject.TyName
+			    and type Environments.TyEnv = ElabInfo.TypeInfo.TyEnv
 			    and type Environments.Type = StatObject.Type
-			    and type Environments.tycon = TopdecGrammar.tycon
 			    and type Environments.TypeFcn = StatObject.TypeFcn
+		   	    and type Environments.tycon = TopdecGrammar.tycon
 			    and type Environments.TypeScheme = StatObject.TypeScheme
 			    and type Environments.TyVar = StatObject.TyVar
-			    and type Environments.TyName = TyName.TyName
 			    and type Environments.id = TopdecGrammar.id
 			    and type Environments.strid = TopdecGrammar.strid
 			    and type Environments.Env = ElabInfo.TypeInfo.Env
-			    and Environments.TyName = TyName
 		      structure FinMap: FINMAP
 		      structure FinMapEq : FINMAPEQ 
 		      structure BasicIO: BASIC_IO
@@ -50,22 +34,23 @@ functor BuildCompile (structure TyName : TYNAME
 		      structure Flags: FLAGS
 		      sharing type Report.Report = Flags.Report
 		      structure PP: PRETTYPRINT
-			sharing type FinMap.StringTree
-				     = FinMapEq.StringTree
-				     = TopdecGrammar.StringTree
-				     = ElabInfo.StringTree
-				     = PP.StringTree = TyName.StringTree
+			sharing type PP.StringTree = FinMapEq.StringTree
+			    and type PP.StringTree = FinMap.StringTree 
+			    and type PP.StringTree = TopdecGrammar.StringTree
+			    and type PP.StringTree = ElabInfo.StringTree 
+			    and type PP.StringTree = StatObject.StringTree
 			    and type PP.Report = Report.Report
 				  = ElabInfo.ParseInfo.SourceInfo.Report
 		      structure Crash: CRASH
 		      structure Timing: TIMING
-                  ) : sig
+                  )  : sig
 			structure CompilerEnv : COMPILER_ENV
 			structure CompileBasis: COMPILE_BASIS
 			structure Compile: COMPILE
 		       end  = 
   struct
 
+    structure TyName = StatObject.TyName
     structure DecGrammar = TopdecGrammar.DecGrammar
     structure SCon = DecGrammar.SCon
     structure Lab = DecGrammar.Lab
@@ -75,8 +60,11 @@ functor BuildCompile (structure TyName : TYNAME
     structure TyCon = DecGrammar.TyCon
 
     structure Lvars = Lvars(structure Name = Name)
+
     structure Lvarset = Lvarset(structure Lvars = Lvars)
+
     structure Con = Con(structure Name = Name)
+
     structure Excon = Excon(structure Name = Name)
 
     structure LvarEqMap = EqFinMap(structure Report = Report
@@ -159,7 +147,7 @@ functor BuildCompile (structure TyName : TYNAME
                                 structure Flags = Flags
                                 structure Crash = Crash)
 
-   structure Effect:EFFECT = Effect(structure G = DiGraph
+   structure Effect :EFFECT = Effect(structure G = DiGraph
 				    structure Flags = Flags
 				    structure PP = PP
 				    structure Crash = Crash
@@ -223,8 +211,7 @@ functor BuildCompile (structure TyName : TYNAME
            structure PP = PP
           )
 
-
-     structure SpreadExpression =  SpreadExpression(
+  structure SpreadExpression =  SpreadExpression(
        structure Con = Con
        structure ExCon = Excon
        structure E = LambdaExp
@@ -242,6 +229,7 @@ functor BuildCompile (structure TyName : TYNAME
        structure Report = Report
        structure CConst = CConst
 	 )
+
 
    structure RegInf= RegInf(
       structure Con = Con
@@ -267,7 +255,6 @@ functor BuildCompile (structure TyName : TYNAME
                   structure Report = Report
                  )
 
-   structure Sort = ListSort()
 
    structure HashTable = HashTable(structure PP = PP)
 
@@ -277,6 +264,7 @@ functor BuildCompile (structure TyName : TYNAME
       structure HashTable = HashTable
       structure PP = PP
       structure Crash = Crash)
+
 
    structure Mul = Mul(
       structure Lam = LambdaExp
@@ -289,7 +277,6 @@ functor BuildCompile (structure TyName : TYNAME
       structure RType = RType
       structure RSE = RegionStatEnv
       structure PP = PP
-      structure Sort = Sort
       structure UF = UnionFindPoly
       structure QM_EffVarEnv = QM_EffVarEnv
       )
@@ -323,7 +310,7 @@ functor BuildCompile (structure TyName : TYNAME
       structure Report = Report
       structure PP = PP
       structure Crash = Crash)
-      
+
     structure KAMBackend = KAMBackend(structure PP = PP
 				      structure Report = Report
 				      structure Name = Name
@@ -331,6 +318,7 @@ functor BuildCompile (structure TyName : TYNAME
 				      structure Flags = Flags
 				      structure Timing = Timing
 				      structure Crash = Crash)
+
 
     structure CompilerEnv =
       CompilerEnv(structure Ident = Ident
@@ -427,6 +415,7 @@ functor BuildCompile (structure TyName : TYNAME
 			    structure Report = Report
                             structure Timing = Timing)
 
+
     structure DropRegions = DropRegions(structure MulExp = MulExp
 					structure AtInf = AtInf
 					structure RSE = RegionStatEnv
@@ -441,6 +430,7 @@ functor BuildCompile (structure TyName : TYNAME
                                         structure RegionExp = RegionExp
                                         structure ExCon = Excon)
 
+      
     structure PhysSizeInf = PhysSizeInf(structure MulExp = MulExp
 					structure Effect = Effect
 					structure TyName = TyName
@@ -482,7 +472,8 @@ functor BuildCompile (structure TyName : TYNAME
 			       structure Flags = Flags
 			       structure Crash = Crash
 			       structure Report = Report)
-      
+
+
     structure CompLamb = CompLamb(structure Con = Con
 				  structure Excon = Excon
 				  structure Lvars = Lvars
@@ -517,32 +508,14 @@ functor BuildCompile (structure TyName : TYNAME
 		   structure DropRegions = DropRegions
 		   structure PhysSizeInf = PhysSizeInf
 		   structure CompLamb = CompLamb
-		   structure FreeIds = FreeIds
 		   structure Report = Report
 		   structure PP = PP
 		   structure Flags = Flags
 		   structure Mul = Mul
 		     )
 
-(*KILL 06/01/1998 18:16. tho.:
-    structure MatchCompiler = MatchCompiler(
-                            structure SCon = SCon
-			    structure Ident = Ident
-                            structure Lab = Lab
-                            structure Grammar = DecGrammar
-                            structure CompilerEnv = CompilerEnv
-                            structure ElabInfo = ElabInfo
-                            structure Lvars = Lvars
-                            structure FinMap = FinMap
-                            structure BasicIO = BasicIO
-                            structure Report = Report
-                            structure Flags = Flags
-                            structure PrettyPrint = PP
-                            structure Crash = Crash
-                          )
-*)
 
-     structure CompileDec = CompileDec(
+    structure CompileDec = CompileDec(
 			structure Ident = Ident
                         structure Lab = Lab
                         structure SCon = SCon
@@ -559,10 +532,6 @@ functor BuildCompile (structure TyName : TYNAME
                         structure LambdaExp = LambdaExp
                         structure LambdaBasics = LambdaBasics
                         structure CompilerEnv = CompilerEnv
-(*KILL 06/01/1998 18:16. tho.:
-
-                        structure MatchCompiler = MatchCompiler
-*)
 			structure ElabInfo = ElabInfo
                         structure FinMap = FinMap
                         structure FinMapEq = FinMapEq
@@ -571,6 +540,7 @@ functor BuildCompile (structure TyName : TYNAME
                         structure Flags = Flags
                         structure Crash = Crash
                       )
+
 
     structure Compile =
       Compile(structure RegionExp = RegionExp

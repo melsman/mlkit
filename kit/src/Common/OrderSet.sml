@@ -11,6 +11,8 @@ functor OrderSet(structure Order : ORDERING
 		 structure PP : PRETTYPRINT): KIT_MONO_SET =
   struct
 
+    open Edlib
+
     infix ==
 
     type elt = Order.T

@@ -8,10 +8,14 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 		 structure Crash: CRASH
 		): LEX_UTILS =
   struct
+    
+    open Edlib OldString OldIO
+    open General
+
     open LexBasics Token
     fun impossible s = Crash.impossible ("LexUtils." ^ s)
-    fun noSome None s = impossible s
-      | noSome (Some x) s = x
+    fun noSome NONE s = impossible s
+      | noSome (SOME x) s = x
 
     datatype LexArgument = LEX_ARGUMENT of {sourceReader: SourceReader,
 					    stringChars: string list,
@@ -62,16 +66,16 @@ functor LexUtils(structure LexBasics: LEX_BASICS
       and chars_to_posint_in_base0 base n [] = n
 	| chars_to_posint_in_base0 base n (char :: chars) =
 	    (case char_to_int_opt base char of
-	       Some i => chars_to_posint_in_base0 base (n * base + i) chars
-	     | None => n)
+	       SOME i => chars_to_posint_in_base0 base (n * base + i) chars
+	     | NONE => n)
       and char_to_int_opt base char =
 	    let val i = if StringType.isUpper char then ord char - ord "A" + 10
 			else if StringType.isLower char then ord char - ord "a" + 10
 			     else if StringType.isDigit char then ord char - ord "0"
 				  else ~1 (*hack*)
 	    in 
-	      if i>=0 andalso i<base then Some i else None
-	    end handle _ => None
+	      if i>=0 andalso i<base then SOME i else NONE
+	    end handle _ => NONE
       fun char_to_int base char =
 	    noSome (char_to_int_opt base char) "char_to_int"
 
@@ -98,7 +102,7 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 	| asWord0 ("0" :: "w" :: chars) = chars_to_posint_in_base 10 chars
 	| asWord0 _ = impossible "asWord0"
 
-      fun exception_to_opt p x = Some (p x) handle Overflow => None
+      fun exception_to_opt p x = SOME (p x) handle Overflow => NONE
     in
       val asInteger = exception_to_opt (chars_to_int o explode)
       val asWord = exception_to_opt (asWord0 o explode)
@@ -109,7 +113,7 @@ functor LexUtils(structure LexBasics: LEX_BASICS
        (because it used accumInt instead of accumReal)*)
       fun asReal text =
 	let
-          val ln10 = ln(10.0)
+          val ln10 = Math.ln(10.0)
 	  val (sign, intPart_as_real, rest) = accumReal(1, 0.0, explode text)
 	  val (decPart, rest') = (case rest of
 				    "." :: xs => accumDec (0.1, 0.0, xs)
@@ -119,10 +123,10 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 	  val expPart : int = (case rest' of 
 				 "E" :: xs => chars_to_int xs
 			       | _ => 0)
-	  fun E(x, y) = x * exp(y*ln10)
+	  fun E(x, y) = x * Math.exp(y*ln10)
 	in
-          Some (real sign*E(intPart_as_real + decPart, real expPart))
-	end handle _ => None
+          SOME (real sign*E(intPart_as_real + decPart, real expPart))
+	end handle _ => NONE
     end (*local*)
 
     fun initArg sourceReader = LEX_ARGUMENT{sourceReader=sourceReader,

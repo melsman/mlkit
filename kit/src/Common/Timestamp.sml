@@ -8,5 +8,5 @@ functor Timestamp(): TIMESTAMP =
 
     fun stamp2int i = i
 
-    fun print i = (*"$" ^*) Int.string i
+    fun print i = (*"$" ^*) Int.toString i
   end;

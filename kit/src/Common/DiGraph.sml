@@ -14,15 +14,20 @@ functor DiGraph(structure UF : UNION_FIND_POLY
                 structure Crash : CRASH
                ): DIGRAPH  =
   struct
-    fun say s = output(std_out, s ^ "\n")
 
+    structure List = Edlib.List
+    structure Int = Edlib.Int
+
+    fun say s = TextIO.output(TextIO.stdOut, s ^ "\n")
+
+    type StringTree = PP.StringTree
 
     (* ---------------------------------------------------------------------- *)
     (*    General Abbreviations                                               *)
     (* ---------------------------------------------------------------------- *)
 
     fun pp(t):string      = PP.flatten(PP.format(!Flags.colwidth, t))
-    fun log s             = output(!Flags.log,s ^ "\n")
+    fun log s             = TextIO.output(!Flags.log,s ^ "\n")
     fun die errmsg        = Crash.impossible ("DiGraph." ^ errmsg)
 
     nonfix footnote
@@ -235,8 +240,6 @@ functor DiGraph(structure UF : UNION_FIND_POLY
     (*   Basic Pretty Printing                                                *)
     (* ---------------------------------------------------------------------- *)
 
-    type StringTree = PP.StringTree
-
     fun layout_node layout_info n : StringTree =
       (* n canonical *)
       case UF.get_info n of
@@ -253,7 +256,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
         case out_of_node n of
           [] => (* leaf *) layout_node layout_info n
         | ns =>
-              PP.NODE{start = "", finish = "", childsep = PP.NONE, indent = 0,
+              PP.NODE{start = "", finish = "", childsep = PP.NOSEP, indent = 0,
                       children = [layout_node layout_info n,
                                   PP.NODE{start = "(", finish = ")", indent = 2, childsep = PP.RIGHT",",
                                           children = map (layout_node layout_info o find) ns}]}
@@ -606,10 +609,10 @@ functor DiGraph(structure UF : UNION_FIND_POLY
 	               let val child = find n
         	       in 
                 	 case bound_to_free child of
-	                   Some n' =>
+	                   SOME n' =>
         	              if !(get_visited n') then accum(ns,(added_acc,append_acc))
                 	      else accum(ns, (n'::added_acc, n':: append_acc))
-	                 | None => (* UNION node, proceed to children *)
+	                 | NONE => (* UNION node, proceed to children *)
         	              accum(ns,
                 	            accum(out_of_node child, acc))
 	               end	
@@ -639,14 +642,14 @@ functor DiGraph(structure UF : UNION_FIND_POLY
         fun layout(n: 'info node): StringTree =
           let val n = find n
           in if !(get_visited n) then (* detected sharing; print node with "@" prefixed *)
-                PP.NODE{start = "@", finish = "", indent = 1, childsep = PP.NONE,
+                PP.NODE{start = "@", finish = "", indent = 1, childsep = PP.NOSEP,
                         children = [layout_node layout_info n]}
              else
                ((get_visited n):= true;
                 case (out_of_node n) of
                   [] => layout_node layout_info n
                 | _ => 
-                    PP.NODE{start = "", finish = "", indent = 0, childsep = PP.NONE,
+                    PP.NODE{start = "", finish = "", indent = 0, childsep = PP.NOSEP,
                         children = [layout_node layout_info n,
                                     PP.NODE{start="(", finish = ")", indent = 1, 
                                             childsep = PP.RIGHT ",",
@@ -667,20 +670,24 @@ functor DiGraph(structure UF : UNION_FIND_POLY
 
   end;
 
+(*
+
 (*$Test: DIGRAPH FLAGS PRETTYPRINT
 *)
-functor Test(structure DiGraph : DIGRAPH
-             structure Flags   : FLAGS
-             structure PP      : PRETTYPRINT
-               sharing type DiGraph.StringTree = PP.StringTree
-            ) (* : sig end *) =
+functor TestDiGraph(structure DiGraph : DIGRAPH
+		    structure Flags   : FLAGS
+		    structure PP      : PRETTYPRINT
+		    sharing type DiGraph.StringTree = PP.StringTree
+		      ) (* : sig end *) =
   struct
+
+    open Edlib OldString
 
     fun etest(found, expected) = 
         if found = expected then "OK"
         else "NOT OK"
 
-fun say s = output(std_out, s^"\n")
+fun say s = TextIO.output(TextIO.stdOut, s^"\n")
 fun etest(label,found,expected) =
  say(label ^ (if expected = found then " OK" else " ****** NOT OK *******" ^
 "\n found    :    " ^ found ^ 
@@ -689,7 +696,7 @@ fun etest(label,found,expected) =
     open DiGraph
 
     fun pp(t):string      = PP.flatten(PP.format(!Flags.colwidth, t))
-    fun log s             = output(!Flags.log,s ^ "\n")
+    fun log s             = TextIO.output(!Flags.log,s ^ "\n")
 
 
 
@@ -922,6 +929,9 @@ fun etest(label,found,expected) =
  *   and 'Test.do_test()' then performs the test
  *)
 
+functor DiGraphTest' () =
+struct
+
 (*$DiGraphTest: 
       DiGraph Flags BasicIO Crash Report PrettyPrint Stack UnionFindPoly Test
 *)
@@ -939,11 +949,14 @@ structure DiGraph = DiGraph(structure UF = UF
                             structure PP = PP
                             structure Flags = Flags
                             structure Crash = Crash)
-structure Test = Test(structure DiGraph = DiGraph
-                      structure Flags = Flags
-                      structure PP = PP);
+structure Test = DiGraphTest(structure DiGraph = DiGraph
+			     structure Flags = Flags
+			     structure PP = PP);
 
+val _ = Test.do_test();
+val _ = Test.test_graft();
+val _ = Test.test_multi_graft();
 
-Test.do_test();
-Test.test_graft();
-Test.test_multi_graft();
+end (* DiGraphTest' *)
+
+*)

@@ -6,14 +6,14 @@ functor BasicIO(): BASIC_IO =
     val len = ref 0
     val dots = ref false
 
-    fun P x = Outstream.output(Outstream.std_out, x)
+    fun P x = TextIO.output(TextIO.stdOut, x)
 		(* Qualified names since we've disabled `input' and
 		   `output' and so on at top-level. *)
 
-    fun P' os x = Outstream.output(os, x)
+    fun P' os x = TextIO.output(os, x)
 
     fun sym s = (if !len = 75 then (P "\n"; len := 0) else ();
-                 Outstream.flush Outstream.std_out;
+                 TextIO.flushOut TextIO.stdOut;
                  P s;
                  len := !len + 1;
                  dots := true)
@@ -51,7 +51,7 @@ functor BasicIO(): BASIC_IO =
    (* Eventually we might have a more abstract I/O mechanism. But, for
       now, we just mirror the standard one. *)
 
-    val open_in = Instream.open_in
-    val input = Instream.input
-    val close_in = Instream.close_in
+    val open_in = TextIO.openIn
+    val input = TextIO.inputN
+    val close_in = TextIO.closeIn
   end;

@@ -21,8 +21,8 @@ signature MANAGER_OBJECTS =
 	val mk_exe : modcode * string -> unit   (* produces executable `string' in target directory *)
       end
     
-    type filepath sharing type filepath = string    (* absolute path *)
-    type filename sharing type filename = string    (* just filename *)
+    type filepath = string    (* absolute path *)
+    type filename = string    (* just filename *)
     type funstamp and funid
     structure FunStamp :
       sig
@@ -95,8 +95,8 @@ signature MANAGER_OBJECTS =
 	   * if reuse is allowed. *)
 
 	val lookup_elab : funid -> (int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
-					   InfixBasis * ElabBasis * realisation)) Option
-	val lookup_int : funid -> (int * (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis)) Option
+					   InfixBasis * ElabBasis * realisation)) option
+	val lookup_int : funid -> (int * (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis)) option
 
 	val add_elab : funid * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
 				InfixBasis * ElabBasis * realisation) -> unit

@@ -33,7 +33,7 @@ signature REGION_EXP =
 				   create_region_record : bool,
                                    sigma: sigma ref,
                                    place: place}list,
-		  declared_excons: (excon* (Type*place)Option) list}
+		  declared_excons: (excon* (Type*place)option) list}
 
       | RaisedExnBind (* to be a raised Bind exception. *)
 
@@ -47,7 +47,7 @@ signature REGION_EXP =
 
     and ('a,'b)trip = TR of ('a,'b)LambdaExp * metaType * effect
     and ('a,'b)LambdaExp =
-        VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, alloc: 'a Option}
+        VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, alloc: 'a option}
       | INTEGER  of int	* 'a		
       | STRING   of string * 'a
       | REAL     of real * 'a
@@ -66,7 +66,7 @@ signature REGION_EXP =
                                   rhos: place list ref,
                                   epss: effect list ref,
 				  Type : Type,
-                                  formal_regions: 'b list Option,
+                                  formal_regions: 'b list option,
 				  bind : ('a,'b)trip} list,
 		     scope : ('a,'b)trip}
       | APP      of ('a,'b)trip * ('a,'b)trip
@@ -82,7 +82,7 @@ signature REGION_EXP =
       | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a}
       | CON1     of {con : con, il : il, alloc: 'a} * ('a,'b)trip
       | DECON    of {con : con, il : il} * ('a,'b)trip
-      | EXCON    of excon * ('a * ('a,'b)trip) Option     (* nullary excons are looked up in dyn env. *)
+      | EXCON    of excon * ('a * ('a,'b)trip) option     (* nullary excons are looked up in dyn env. *)
       | DEEXCON  of excon * ('a,'b)trip
       | RECORD   of 'a * ('a,'b)trip list
       | SELECT   of int * ('a,'b)trip    
@@ -92,7 +92,7 @@ signature REGION_EXP =
       | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b)trip * ('a,'b)trip
       | CCALL    of {name : string,
 		     mu_result : Type * place, (*mu of result from c function*)
-		     rhos_for_result : ('a * int Option) list}
+		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b)trip list  (* Calling C functions *)
 
       (*`rhos_for_result' is technical; see comment in signature MUL_EXP*)
@@ -104,13 +104,13 @@ signature REGION_EXP =
       | FRAME    of {declared_lvars: {lvar : lvar, 
                                       sigma: sigma ref,
                                       place: place} list,
-                     declared_excons: (excon * (Type*place) Option) list}
+                     declared_excons: (excon * (Type*place) option) list}
                        (* a frame is the result of a structure-level
                         * declaration. 
 			*)
 
     and ('a,'b,'c) Switch = SWITCH of ('a,'b)trip * 
-                                      ('c * ('a,'b)trip) list * ('a,'b)trip Option
+                                      ('c * ('a,'b)trip) list * ('a,'b)trip option
 
 
     val mkPhi: (place,'b)trip * effect list -> effect list
@@ -124,9 +124,9 @@ signature REGION_EXP =
     type StringTree
     val printcount: int ref  (* controls printing of effects on expressions*)
     val layMeta : metaType -> StringTree
-    val layoutLambdaPgm: ('a -> StringTree Option) -> ('b -> StringTree Option) -> 
+    val layoutLambdaPgm: ('a -> StringTree option) -> ('b -> StringTree option) -> 
                          ('a, 'b)LambdaPgm -> StringTree
-    val layoutLambdaExp: ('a -> StringTree Option) -> ('b -> StringTree Option) -> 
+    val layoutLambdaExp: ('a -> StringTree option) -> ('b -> StringTree option) -> 
                          ('a,'b)LambdaExp -> StringTree
     val layoutLambdaExp': (place, unit)LambdaExp ->StringTree
   end

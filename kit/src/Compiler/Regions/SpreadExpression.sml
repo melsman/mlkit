@@ -1,6 +1,3 @@
-(*$SpreadExpression: SPREAD_EXPRESSION CON EXCON LAMBDA_EXP REGION_EXP 
-   FINMAP RTYPE EFFECT SPREAD_DATATYPE REGION_STAT_ENV 
-   LVARS TYNAME CRASH PRETTYPRINT FLAGS C_CONST REPORT*)
 
 (*
 *
@@ -60,6 +57,9 @@ functor SpreadExpression(
     sharing TyName = CConst.TyName
 ): SPREAD_EXPRESSION =
 struct
+
+  open Edlib
+
   structure E = E
   structure E' = E'
   structure RegionStatEnv = RSE 
@@ -82,8 +82,8 @@ struct
 
   infix footnote
   fun x footnote y = x
-  fun say(s) = output(std_out, s ^ "\n");
-  fun logsay(s) = output(!Flags.log, s);
+  fun say(s) = TextIO.output(TextIO.stdOut, s ^ "\n");
+  fun logsay(s) = TextIO.output(!Flags.log, s);
   fun logtree(t:PP.StringTree) = PP.outputTree(logsay, t, !Flags.colwidth)
 
   fun log_sigma(sigma1, lvar) = 
@@ -106,17 +106,16 @@ struct
 
   fun noSome x msg = 
     case x of 
-      Some it => it
-    | None => Crash.impossible msg
+      SOME it => it
+    | NONE => Crash.impossible msg
 
   fun die s = Crash.impossible ("SpreadExpression." ^ s)
 
-  fun warn (lvar, Some s) = Flags.warn
+  fun warn (lvar, SOME s) = Flags.warn
 	(Report.// (Report.line ("algorithm S (SpreadExpression), while processing\
 				 \ lvar: " ^ Lvars.pr_lvar lvar ^ ":"),
 		    Report.line s))
     | warn _ = ()
-
 
   (* operations which are imported from other modules (for profiling) *)
 
@@ -173,7 +172,7 @@ struct
 
   fun declareMany(rho,rse)([],[]) = rse
     | declareMany(rho,rse)((lvar,tyvars,sigma_hat,bind):: rest1, occ::occ1) =
-        declareMany(rho,(*RSE.*)declareLvar(lvar,(true,true,sigma_hat, rho, Some occ, None), rse))(rest1,occ1)
+        declareMany(rho,(*RSE.*)declareLvar(lvar,(true,true,sigma_hat, rho, SOME occ, NONE), rse))(rest1,occ1)
     | declareMany _ _ = die ".declareMany"
 
 
@@ -196,9 +195,9 @@ struct
           die ("mkRhs: lvar = " ^ Lvars.pr_lvar lvar ^ "\n" ^ msg)
       val _ = adjust_instances(transformer, occ)
       val function = {lvar = lvar, occ = occ, tyvars = tyvars, rhos = ref brhos, epss = ref bepss,
-                      Type = tau1, formal_regions = None, bind = t1}
+                      Type = tau1, formal_regions = NONE, bind = t1}
       val rse2 = (*RSE.*)declareLvar(lvar,(true, true, R.insert_alphas(tyvars, sigma1),
-                                       rho, Some occ, None), rse)
+                                       rho, SOME occ, NONE), rse)
       val (rse2', l) = mkRhs(rse2,rho)(rest1,rest2,rest3)
     in
       (rse2', function::l)
@@ -208,7 +207,7 @@ struct
   exception Abort
 
   fun die_from_S(e) =
-         (output(std_out,
+         (TextIO.output(TextIO.stdOut,
 		"Failed to spread expression:" ^
 		 PP.flatten(PP.format(200, E.layoutLambdaExp e )) ^ "\n");
           raise Abort)
@@ -217,7 +216,7 @@ struct
     (* record il in the environment --- 
      to be picked up for letrec-bound variables at fix *)
     (case instances_opt of
-       Some(r as ref(list)) => 
+       SOME(r as ref(list)) => 
          (* lvar is fix bound or global 
           (from earlier topdec);
           extend the instances list for 
@@ -225,7 +224,7 @@ struct
           with the instantiation list of the lvar
          *)
          r:= il_r::list
-     | None => ()
+     | NONE => ()
   );
 
   fun pushIfNotTopLevel(toplevel,B) =
@@ -266,11 +265,11 @@ struct
   fun spreadExp(B: cone, rse,  e: E.LambdaExp, toplevel): cone * (place,unit)E'.trip =
   let
     fun lookup tyname = case (*RSE.*)lookupTyName rse tyname of
-          Some arity =>
+          SOME arity =>
             let val (a, l, c) = RSE.un_arity arity
-            in Some(a, (*List.size*) (l), c)
+            in SOME(a, (*List.size*) (l), c)
             end
-        | None => None
+        | NONE => NONE
 
     local
       val (freshType', freshMu') = R.freshType lookup 
@@ -302,7 +301,7 @@ struct
      fun mk_sigma_hat_list(B,retract_level) [] = (B,[])
        | mk_sigma_hat_list(B,retract_level)({lvar, tyvars,Type,bind}::rest) = 
           let
-            (*val _ = output(std_out, "mk_sigma_hat_list: " ^ Lvars.pr_lvar lvar ^ "\n")*)
+            (*val _ = TextIO.output(TextIO.stdOut, "mk_sigma_hat_list: " ^ Lvars.pr_lvar lvar ^ "\n")*)
             val _ = count_fix_rhs()
             val B = (*Eff.*)push(B);         (* for generalize_all *)
               val E.ARROWtype(tau_x_ml, tau_1_ml) = Type
@@ -335,7 +334,7 @@ struct
     fun spreadSwitch (B:cone) spread con excon_mus
                  (E.SWITCH(e0: E.LambdaExp,
                            choices: ('c * E.LambdaExp) list,
-                           last: E.LambdaExp Option),toplevel): cone * (place,unit)E'.trip=
+                           last: E.LambdaExp option),toplevel): cone * (place,unit)E'.trip=
     let
       val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
       val (B,t0 as E'.TR(e', E'.Mus mus_0, phi_0)) = spread(B,e0,false)
@@ -346,9 +345,9 @@ struct
                                 let val (B, t) = spread(B,e,toplevel)
                                 in (B, t:: ts)
                                 end) (B,[]) choices
-      val (B, new_last) = case last of None => (B,None)
-                            | Some e_last => let val (B, t_last) = spread(B,e_last,toplevel)
-                                             in (B, Some t_last)
+      val (B, new_last) = case last of NONE => (B,NONE)
+                            | SOME e_last => let val (B, t_last) = spread(B,e_last,toplevel)
+                                             in (B, SOME t_last)
                                              end
       (* unify types of branches - when they are not frames or raised Bind types *)
 
@@ -357,7 +356,7 @@ struct
             E'.TR(_,E'.Mus mus1,_) => 
                 (List.foldL (fn E'.TR(_,E'.Mus mus,_) => unify_mus(mus,mus1)
                              | E'.TR(_, _, _) => (fn B=>B)) B
-                           (case new_last of None => new_choices | Some t' => t'::new_choices),
+                           (case new_last of NONE => new_choices | SOME t' => t'::new_choices),
                  E'.Mus mus1)
 	  | _ => die "spreadSwitch" 
           )handle List.First _ => 
@@ -367,8 +366,8 @@ struct
           
       (* val accumulate effects*)
       val phi = (*Eff.*)mkUnion(phi_0:: (*Eff.*)mkGet object_rho::
-                            (fn rest => case new_last of None => rest 
-                                          | Some (E'.TR(_,_,phi_n)) => phi_n ::rest)
+                            (fn rest => case new_last of NONE => rest 
+                                          | SOME (E'.TR(_,_,phi_n)) => phi_n ::rest)
                             (map (fn E'.TR(_,_,phi_i)=> phi_i) new_choices)
                             )
       val e' = E'.SWITCH(t0,ListPair.zip(map #1 choices, new_choices), new_last)
@@ -380,7 +379,7 @@ struct
       (case e of
       E.VAR{lvar, instances : E.Type list} =>
        (case (*RSE.*)lookupLvar rse lvar of
-	  Some(compound,create_region_record, 
+	  SOME(compound,create_region_record, 
                sigma,place0,instances_opt, transformer) =>
             let 
               val (B, tau, il_1) = newInstance(B,sigma,instances)
@@ -394,14 +393,14 @@ struct
                                                map (*Eff*).mkGet (#2 (R.un_il il_1))*))
                           
                      in 
-                        (B,E'.TR(E'.VAR{lvar = lvar, alloc = Some rho', il_r = il_r}, 
+                        (B,E'.TR(E'.VAR{lvar = lvar, alloc = SOME rho', il_r = il_r}, 
                                  E'.Mus [(tau,rho')], phi))
                      end 
               else
-                  (B,E'.TR(E'.VAR{lvar = lvar, alloc = None, il_r = il_r}, 
+                  (B,E'.TR(E'.VAR{lvar = lvar, alloc = NONE, il_r = il_r}, 
                            E'.Mus [(tau,place0)], Eff.empty))
             end
-         | None => die "spreadExp: free lvar"
+         | NONE => die "spreadExp: free lvar"
        )
 
     | E.INTEGER(i: int)=> 
@@ -449,7 +448,7 @@ struct
         let 
           val (mus, B) = freshTypesWithPlaces (B, map #2 pat)
           val rse' = List.foldL (fn (lvar, mu as (tau,rho))=> fn rse =>
-                         (*RSE.*)declareLvar(lvar, (false,false,R.type_to_scheme tau, rho,None,None), rse)) rse
+                         (*RSE.*)declareLvar(lvar, (false,false,R.type_to_scheme tau, rho,NONE,NONE), rse)) rse
                          (ListPair.zip(map #1 pat, mus))
           val (B,t1 as E'.TR(e1',E'.Mus mu_list1, phi1)) = spreadExp(B,rse',body,false)
           val (eps, B) = (*Eff.*)freshEps B
@@ -464,7 +463,7 @@ struct
             val simple_application: bool =
                 case e1_ML of E.VAR{lvar, ...} =>
                        (case (*RSE.*)lookupLvar rse lvar of
-                          Some(compound, _,_,_,_,_) => not(compound)
+                          SOME(compound, _,_,_,_,_) => not(compound)
                         | _ => die ("E.APP(E.VAR ...): Lvar " ^ Lvars.pr_lvar lvar ^ " not in RSE."))
                 | _ => false
          
@@ -492,7 +491,7 @@ struct
 (*                      val _ = log_sigma(R.insert_alphas(alphas, sigma),lvar)*)
                       val rse = (*RSE.*)declareLvar(lvar,
                                  (false,false,R.insert_alphas(alphas, sigma), 
-                                  rho_1, None, None),rse)
+                                  rho_1, NONE, NONE),rse)
                  in
                       loop_pat(rest_bind, mu_rest, B, rse, 
                                (lvar,alphas, tau_1, rho_1) :: pat'_list)
@@ -521,7 +520,7 @@ struct
               val sigma_hat = R.drop_alphas sigma
               val occ = ref []  : R.il ref list ref
               val (B, t1 as E'.TR(E'.FN{pat, body = t1', alloc}, E'.Mus [(tau1, rho1)], phi1)) =
-                  spreadExp(B, (*RSE.*)declareLvar(lvar,(true,true,sigma_hat, rho, Some occ, None), rse), bind)
+                  spreadExp(B, (*RSE.*)declareLvar(lvar,(true,true,sigma_hat, rho, SOME occ, NONE), rse), bind)
               val B = Eff.unifyRho(rho1,rho) B          
               val (B,sigma1,msg_opt) = regEffClos(B, retract_level, phi1, tau1)
             val (_,B) = Eff.pop B (* back to retract level *)
@@ -530,11 +529,11 @@ struct
             val _ = adjust_instances(transformer, occ)
             val (B, t2 as E'.TR(e2, E'.Mus mus, phi2)) = 
                   spreadExp(B, (*RSE.*)declareLvar(lvar,(true, true, R.insert_alphas(tyvars, sigma1),
-                                                     rho1, Some occ, None), rse), scope)
+                                                     rho1, SOME occ, NONE), rse), scope)
             val (_,brhos, bepss) = R.bv(sigma1)
             val e' = E'.FIX{shared_clos = rho,
                           functions = [{lvar = lvar, tyvars = tyvars, rhos = brhos, epss = bepss,
-                                        Type = tau1, formal_regions = None, bind = t1}],
+                                        Type = tau1, formal_regions = NONE, bind = t1}],
                           scope = t2}
         in
           retract(B, E'.TR(e', E'.Mus mus, Eff.mkUnion[phi1,phi2]))
@@ -555,12 +554,12 @@ good *)
           retract(B, E'.TR(e', meta2, (*Eff.*)mkUnion([phi1,phi2])))
         end (* FIX *)
 
-    | E.EXCEPTION(excon, ty_opt: E.Type Option, e2: E.LambdaExp) =>  
+    | E.EXCEPTION(excon, ty_opt: E.Type option, e2: E.LambdaExp) =>  
         let
             val (ty,nullary) = 
               case ty_opt of
-                Some ty1 => (E.ARROWtype([ty1], [exn_ty]),false)
-              | None => (exn_ty, true)
+                SOME ty1 => (E.ARROWtype([ty1], [exn_ty]),false)
+              | NONE => (exn_ty, true)
             val (mu as (tau, rho), B) = freshMu(ty, B)
             (* lower all the region and effect variables of mu to have level 2 (not 0),
                so that they cannot be generalised ever. Level 2, because it is generated 
@@ -775,7 +774,7 @@ good *)
              environment, as in the Definition, rule 106
           *)
         in
-          (B, E'.TR(E'.EXCON(excon,None), E'.Mus [mu], (*Eff.*)mkUnion([])))
+          (B, E'.TR(E'.EXCON(excon,NONE), E'.Mus [mu], (*Eff.*)mkUnion([])))
         end 
     | E.PRIM(E.EXCONprim excon, [arg]) =>
         (case S(B,arg, false) of 
@@ -790,7 +789,7 @@ good *)
                       val B = unify_mus(mus1,mus) B
                       val phi = (*Eff.*)mkPut(rho_result)
                     in
-                      (B, E'.TR(E'.EXCON(excon,Some (rho_result,t_arg)), 
+                      (B, E'.TR(E'.EXCON(excon,SOME (rho_result,t_arg)), 
                          E'.Mus mus_result, (*Eff.*)mkUnion([phi,phi_arg])))
                     end
                   | _ => die "S: unary exception constructor ill-typed"
@@ -1012,7 +1011,7 @@ good *)
             fun spreadRhss(B)[] = (B,[]) 
               | spreadRhss(B)((lvar,tyvars,sigma_hat,bind)::rest) =
                   let 
-                    (*val _ = output(std_out, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
+                    (*val _ = TextIO.output(TextIO.stdOut, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
                     val B = (*Eff.*)push(B)
                       val (B, t1 as E'.TR(_, E'.Mus [(tau1, rho1)], phi1)) = spreadExp(B, rse1, bind,false)
                       val B = (*Eff.*)unifyRho(rho1,rho) B          
@@ -1034,7 +1033,7 @@ good *)
 
   fun spreadPgm(cone, rse: rse,p: E.LambdaPgm): cone * rse * (place,unit)E'.LambdaPgm =
   let
-     fun msg(s: string) = (output(std_out, s); NonStandard.flush_out (std_out)) 
+     fun msg(s: string) = (TextIO.output(TextIO.stdOut, s); TextIO.flushOut TextIO.stdOut) 
      val _ = Eff.algorithm_R:=false
      (*val _ = Eff.trace := []*)
      val E.PGM(datbinds,e) = p
@@ -1045,7 +1044,7 @@ good *)
      val (cone',t') = spreadExp (cone,(*RSE.*)plus(rse,new_rse), e,true) 
 
     (* for toplas submission: 
-     val _ = output(!Flags.log, "\nRegEffGen (times called during S)" ^ Int.string (!count_RegEffClos) ^ "\n")
+     val _ = TextIO.output(!Flags.log, "\nRegEffGen (times called during S)" ^ Int.string (!count_RegEffClos) ^ "\n")
     *)
      (*val _ = Eff.traceOrderFinMap()*)
   in 

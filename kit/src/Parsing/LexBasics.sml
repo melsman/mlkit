@@ -7,6 +7,10 @@ functor LexBasics(structure BasicIO: BASIC_IO
 		  structure Crash: CRASH
 		 ): LEX_BASICS =
   struct
+
+    open Edlib OldIO OldString
+    open General 
+
     datatype pos = POSITION of unit -> {file: string, line: int, column: int,
 					getLine: int -> string
 				       }
@@ -185,32 +189,32 @@ functor LexBasics(structure BasicIO: BASIC_IO
 				   the previous line. *)
 		  then
 		    case previousLine
-		      of Some{absCharacter, line} =>
+		      of SOME{absCharacter, line} =>
 			   {file=filename, line=n,
 			    column=absPos-absCharacter,
 			    getLine=getLine
 			   }
 
-		       | None =>
+		       | NONE =>
 			   Crash.impossible "LexBasics.search(previous/1)"
 		  else
-		    search(n+1, Some L, rest)
+		    search(n+1, SOME L, rest)
 
 	      | search(n, previousLine, nil) =
 				(* No more lines, so we must want the
 				   previous line. *)
 		  (case previousLine
-		     of Some{absCharacter, line} =>
+		     of SOME{absCharacter, line} =>
 			  {file=filename, line=n,
 			   column=absPos-absCharacter,
 			   getLine=getLine
 			  }
 
-		      | None =>
+		      | NONE =>
 			  Crash.impossible "LexBasics.search(previous/2)"
 		  )
 	  in
-	    search(0, None, lines)
+	    search(0, NONE, lines)
 	  end
 	)
       end
@@ -265,7 +269,7 @@ functor LexBasics(structure BasicIO: BASIC_IO
 	    val _ = BasicIO.print prompt
 
 	    val line =
-	      untabify (String.size prompt) (Instream.inputLine std_in)
+	      untabify (String.size prompt) (TextIO.inputLine std_in)
 
 	   (* The lines (and character positions) that we've got so far,
 	      in reverse order (latest at front of list): *)

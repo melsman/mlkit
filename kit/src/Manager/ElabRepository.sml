@@ -9,6 +9,10 @@ functor ElabRepository(structure Name : NAME
 		       type realisation
 		       structure Crash : CRASH) : ELAB_REPOSITORY =
   struct
+
+    open Edlib
+    open General
+
     type name = Name.name
      and InfixBasis = InfixBasis.Basis
      and funid = funid
@@ -35,20 +39,20 @@ functor ElabRepository(structure Name : NAME
     fun lookup_rep rep exportnames_from_entry funid =
       let val all_gen = List.foldR (fn n => fn b => b andalso
 				    Name.is_gen n) true
-	  fun find ([], n) = None
+	  fun find ([], n) = NONE
 	    | find (entry::entries, n) = 
-	    if (all_gen o exportnames_from_entry) entry then Some(n,entry)
+	    if (all_gen o exportnames_from_entry) entry then SOME(n,entry)
 	    else find(entries,n+1)
       in case FinMap.lookup (!rep) funid
-	   of Some entries => find(entries, 0)
-	    | None => None
+	   of SOME entries => find(entries, 0)
+	    | NONE => NONE
       end
 
     fun add_rep rep (funid,entry) : unit =
       rep := let val r = !rep 
 	     in case FinMap.lookup r funid
-		  of Some res => FinMap.add(funid,res @ [entry],r)
-		   | None => FinMap.add(funid,[entry],r)
+		  of SOME res => FinMap.add(funid,res @ [entry],r)
+		   | NONE => FinMap.add(funid,[entry],r)
 	     end
 
     fun owr_rep rep (funid,n,entry) : unit =
@@ -57,8 +61,8 @@ functor ElabRepository(structure Name : NAME
 		   | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
 		   | owr _ = die "owr_rep.owr"
 	     in case FinMap.lookup r funid
-		  of Some res => FinMap.add(funid,owr(n,res,entry),r)
-		   | None => die "owr_rep.None"
+		  of SOME res => FinMap.add(funid,owr(n,res,entry),r)
+		   | NONE => die "owr_rep.NONE"
 	     end
 
     val lookup_elab = lookup_rep elabRep #4 

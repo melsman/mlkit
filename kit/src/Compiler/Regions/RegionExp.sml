@@ -16,6 +16,9 @@ functor RegionExp(
         and type Lam.tyvar = R.tyvar
 ) : REGION_EXP = 
 struct
+
+  open Edlib
+
     fun die s  = Crash.impossible ("RegionExp." ^ s)
 
     type lvar = Lvar.lvar
@@ -44,7 +47,7 @@ struct
 				   create_region_record : bool, 
                                    sigma: sigma ref,
                                    place: place}list,
-		  declared_excons: (excon* (Type*place)Option) list}
+		  declared_excons: (excon* (Type*place)option) list}
       | RaisedExnBind (* to be a raised Bind exception. *)
 
 
@@ -57,7 +60,7 @@ struct
 
     and ('a,'b)trip = TR of ('a,'b)LambdaExp * metaType * effect
     and ('a,'b)LambdaExp =
-        VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, alloc: 'a Option}
+        VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, alloc: 'a option}
       | INTEGER  of int * 'a            
       | STRING   of string * 'a
       | REAL     of real * 'a
@@ -76,7 +79,7 @@ struct
                                   rhos: place list ref,
                                   epss: effect list ref,
                                   Type : Type,
-                                  formal_regions: 'b list Option,
+                                  formal_regions: 'b list option,
                                   bind : ('a,'b)trip} list,
                      scope : ('a,'b)trip}
       | APP      of ('a,'b)trip * ('a,'b)trip
@@ -92,7 +95,7 @@ struct
       | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a}
       | CON1     of {con : con, il : il, alloc: 'a} * ('a,'b)trip
       | DECON    of {con : con, il : il} * ('a,'b)trip
-      | EXCON    of excon * ('a * ('a,'b)trip) Option     (* nullary excons are looked up in dyn env. *)
+      | EXCON    of excon * ('a * ('a,'b)trip) option     (* nullary excons are looked up in dyn env. *)
       | DEEXCON  of excon * ('a,'b)trip
       | RECORD   of 'a * ('a,'b)trip list
       | SELECT   of int * ('a,'b)trip    
@@ -102,7 +105,7 @@ struct
       | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b)trip * ('a,'b)trip
       | CCALL    of {name : string,
 		     mu_result : Type * place, 
-		     rhos_for_result : ('a * int Option) list}
+		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b)trip list
       | RESET_REGIONS of {force: bool, alloc : 'a, regions_for_resetting: 'a list} * ('a,'b)trip     (* for programmer-directed resetting of regions;
 								      * resetting is forced iff "force" is true.
@@ -110,16 +113,16 @@ struct
       | FRAME    of {declared_lvars: {lvar : lvar, 
                                       sigma: sigma ref,
                                       place: place} list,
-                     declared_excons: (excon * (Type*place) Option) list}
+                     declared_excons: (excon * (Type*place) option) list}
                        (* a frame is the result of a structure-level
                         * declaration. 
                         *)
 
     and ('a,'b,'c) Switch = SWITCH of ('a,'b)trip *
-                   ('c * ('a,'b)trip) list * ('a,'b)trip Option
+                   ('c * ('a,'b)trip) list * ('a,'b)trip option
 
-  fun cons_if_there(None, l) = l
-    | cons_if_there(Some x, l) = x::l 
+  fun cons_if_there(NONE, l) = l
+    | cons_if_there(SOME x, l) = x::l 
 
   (* mkPhiTr(tr) traverses tr and collects the allow effects
      that are bound locally in tr (in LET, FIX and LETREGION). 
@@ -159,8 +162,8 @@ struct
       | CON0 _ => acc
       | CON1 (_,tr) => mkPhiTr tr acc
       | DECON (_,tr) => mkPhiTr tr acc
-      | EXCON (_,None) => acc
-      | EXCON (_,Some(_,tr)) => mkPhiTr tr acc
+      | EXCON (_,NONE) => acc
+      | EXCON (_,SOME(_,tr)) => mkPhiTr tr acc
       | DEEXCON (_,tr) => mkPhiTr tr acc
       | RECORD (_,trs) => List.foldL mkPhiTr acc trs
       | SELECT (_,tr) => mkPhiTr tr acc
@@ -192,7 +195,7 @@ struct
                                children = [t1, t2]}
 
   fun get_opt l = List.foldR (fn opt => fn acc => 
-                         case opt of Some t => t::acc | None => acc) [] l
+                         case opt of SOME t => t::acc | NONE => acc) [] l
 
 
   val printcount = ref 1  (* controls when effects are printed *)
@@ -224,12 +227,12 @@ struct
 
   end;
 
-  fun mkLay (omit_region_info: bool) (layout_alloc: 'a -> StringTree Option)
-                                     (layout_bind: 'b -> StringTree Option) =
+  fun mkLay (omit_region_info: bool) (layout_alloc: 'a -> StringTree option)
+                                     (layout_bind: 'b -> StringTree option) =
     let
       open PP
 
-      fun alloc_string alloc = case (layout_alloc alloc) of Some t => " " ^PP.flatten1 t | None => ""
+      fun alloc_string alloc = case (layout_alloc alloc) of SOME t => " " ^PP.flatten1 t | NONE => ""
 
       fun layList f l = NODE{start = "[", finish = "]", indent = 1, childsep = RIGHT ",",
                              children = map f l}
@@ -240,23 +243,23 @@ struct
 
       infix ^^
       (*  s ^^ st_opt:   tag  the string tree option st_opt onto the string s *)
-      fun s ^^ None = s
-        | s ^^ (Some st') = s ^ PP.flatten1(st')
+      fun s ^^ NONE = s
+        | s ^^ (SOME st') = s ^ PP.flatten1(st')
 
       fun pp_fun_allocation a =
           case layout_alloc a of
-            Some st => PP.flatten1 st
-          | None => ""
+            SOME st => PP.flatten1 st
+          | NONE => ""
 
       val (layTau, layMu) = R.mk_layout omit_region_info
       fun layMus mus = NODE{start = "(", finish = ")", indent = 1, childsep = RIGHT",", 
                             children = map layMu mus}
 
 
-      fun layVarMu(x,mu) = LEAF (implode[Lvar.pr_lvar x, ":",  PP.flatten1(layMu mu)])
+      fun layVarMu(x,mu) = LEAF (concat[Lvar.pr_lvar x, ":",  PP.flatten1(layMu mu)])
 
       fun layPatFn  [] = LEAF("() => ")
-        | layPatFn  [(x,mu)] = NODE{start = "", finish = "=>", indent = 0, childsep = NONE,
+        | layPatFn  [(x,mu)] = NODE{start = "", finish = "=>", indent = 0, childsep = NOSEP,
                                     children = [layVarMu(x,mu)]}
         | layPatFn  pat = HNODE{start = "(", finish = ") =>", childsep = RIGHT",", 
                               children = map layVarMu pat}
@@ -267,9 +270,9 @@ struct
                children = [layTau tau]}
         | layVarLet(lvar,_,alphas,effs, tau) =
           NODE{start = Lvar.pr_lvar lvar ^ ":", finish = "", indent  =2 , childsep = RIGHT" ",
-               children = [HNODE{start = "/\\", finish = "", childsep = NONE, 
+               children = [HNODE{start = "/\\", finish = "", childsep = NOSEP, 
                                  children = map (LEAF o Lam.pr_tyvar) alphas},
-                           HNODE{start = "", finish = ". ", childsep = NONE, 
+                           HNODE{start = "", finish = ". ", childsep = NOSEP, 
                                  children = map Eff.layout_effect effs},
                            layTau tau]}
 old*)
@@ -284,7 +287,7 @@ old*)
                                else sigma_t
 
          in PP.NODE{start = start, finish = "", indent = size start +1,
-                    childsep = PP.NONE, children = [sigma_rho_t]}
+                    childsep = PP.NOSEP, children = [sigma_rho_t]}
          end
 
 
@@ -303,29 +306,29 @@ old*)
                   children=[PP.LEAF (show_const x),
                             laytrip(lamb,0)],
                   childsep=PP.RIGHT " => "}
-        val t1 = PP.NODE{start="(case ",finish=" ",indent=6, childsep = PP.NONE, 
+        val t1 = PP.NODE{start="(case ",finish=" ",indent=6, childsep = PP.NOSEP, 
                          children=[laytrip(lamb,0)]}
         val t2 = PP.NODE{start = "of " , finish = ") (*case*) ", indent = 3,
                          childsep=PP.LEFT " | ",
                          children = (map child rules) @ 
                                   (case wildcardOpt of 
-                                     None => []
-                                   | Some lamb => 
+                                     NONE => []
+                                   | SOME lamb => 
                                        [PP.NODE{start="",finish="",indent=0,
                                                 children=[PP.LEAF "_",
                                                           laytrip(lamb,0)],
                                                 childsep=PP.RIGHT " => "}])}
 
       in 
-       PP.NODE{start = "", finish = "", indent = 0, childsep = PP.NONE, 
+       PP.NODE{start = "", finish = "", indent = 0, childsep = PP.NOSEP, 
                children = [t1,t2]}
       end
 
       fun lay_il (lvar_string:string, terminator: string, il) : StringTree =
           let val (taus,rhos,epss)= R.un_il(il)
-              val taus_opt = if !(Flags.print_types) then Some(layList layTau taus) else None
-              val rhos_opt = if !(Flags.print_regions) then Some(layHlist Eff.layout_effect rhos) else None
-              val epss_opt = if !(Flags.print_effects) then Some(layList Eff.layout_effect epss) else None
+              val taus_opt = if !(Flags.print_types) then SOME(layList layTau taus) else NONE
+              val rhos_opt = if !(Flags.print_regions) then SOME(layHlist Eff.layout_effect rhos) else NONE
+              val epss_opt = if !(Flags.print_effects) then SOME(layList Eff.layout_effect epss) else NONE
           in
               case get_opt [taus_opt,rhos_opt,epss_opt] of
                 [] => LEAF(lvar_string ^ terminator)
@@ -340,14 +343,14 @@ old*)
 
       fun layBin(bop:string, n, t1, t2, a) =
          case layout_alloc a of
-           None => (* put parenthesis, if precedence dictates it *)
+           NONE => (* put parenthesis, if precedence dictates it *)
                    if n>=2 then 
                       NODE{start = "(", finish = ")", indent = 1, childsep = PP.RIGHT bop, 
                            children = [layTrip(t1,2), layTrip(t2,2)]}
                    else
                       NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT bop, 
                            children = [layTrip(t1,2), layTrip(t2,2)]}
-         | Some t_alloc => (* assume allocation string is short: flatten it and use it as terminator *)
+         | SOME t_alloc => (* assume allocation string is short: flatten it and use it as terminator *)
                    let val s_alloc = PP.flatten1 t_alloc
                    in NODE{start = "(", finish = ") " ^ s_alloc, indent =1, childsep = PP.RIGHT bop,
                            children = [layTrip(t1,2), layTrip(t2,2)]}
@@ -355,7 +358,7 @@ old*)
 
       and layExp(lamb: ('a, 'b) LambdaExp,n): StringTree =  
         case lamb of 
-          VAR{lvar, il_r, alloc = None} => 
+          VAR{lvar, il_r, alloc = NONE} => 
             (case R.un_il(#1(!il_r)) of 
                ([],[],[]) => LEAF(Lvar.pr_lvar lvar)
              | _ => lay_il(Lvar.pr_lvar lvar, "", #1(! il_r)))
@@ -366,25 +369,25 @@ old*)
                                       layList Eff.layout_effect epss]})
 *)
           
-        | VAR{lvar, il_r, alloc = Some a} => 
+        | VAR{lvar, il_r, alloc = SOME a} => 
             lay_il(Lvar.pr_lvar lvar, " at" ^^ layout_alloc a, #1(! il_r))
           
         | INTEGER(i, a) => LEAF(Int.string i ^^ layout_alloc a)
         | STRING(s, a) => LEAF(String.string s ^^ layout_alloc a)
-        | REAL(r, a) => LEAF(Real.string r ^^ layout_alloc a)
+        | REAL(r, a) => LEAF(Real.toString r ^^ layout_alloc a)
         | UB_RECORD(args) =>
             PP.NODE{start = "<", finish = ">" , indent = 1, childsep = PP.RIGHT", ", 
                     children = map (fn trip => layTrip(trip,0)) args}
         | CON0{con, il, aux_regions, alloc} => (* nullary constructor *)
             let
                val alloc_s = 
-                   case (layout_alloc alloc) of Some t => " " ^PP.flatten1 t | None => ""
+                   case (layout_alloc alloc) of SOME t => " " ^PP.flatten1 t | NONE => ""
             in PP.LEAF(Con.pr_con con ^ alloc_s) (*lay_il(Con.pr_con con, alloc_s, il)*)
             end
         | CON1({con, il, alloc}, trip) => (* unary constructor *)
             let
                val alloc_s = 
-                   case (layout_alloc alloc) of Some t => " " ^PP.flatten1 t | None => ""
+                   case (layout_alloc alloc) of SOME t => " " ^PP.flatten1 t | NONE => ""
                val t1 = PP.LEAF(Con.pr_con con^alloc_s) (* lay_il(Con.pr_con con, alloc_s, il)*)
             in 
              PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ", 
@@ -398,9 +401,9 @@ old*)
                      children = [t1, layTrip(trip,3)]}
             end
             
-        | EXCON(excon, None) => (* nullary exception constructor *)
+        | EXCON(excon, NONE) => (* nullary exception constructor *)
              PP.LEAF(Excon.pr_excon excon)
-        | EXCON(excon, Some (alloc,t)) => (* unary exception constructor *)
+        | EXCON(excon, SOME (alloc,t)) => (* unary exception constructor *)
              let 
                val alloc_s = alloc_string alloc
              in
@@ -415,10 +418,10 @@ old*)
                     children = map (fn trip => layTrip(trip,0)) args}
             end
         | SELECT(i, trip) =>
-             PP.NODE{start = "#"^Int.string i ^ " ", finish = "", indent = 4, childsep = PP.NONE,
+             PP.NODE{start = "#"^Int.string i ^ " ", finish = "", indent = 4, childsep = PP.NOSEP,
                      children = [layTrip(trip,3)]}
         | FN{pat, body, alloc}=> layLam((pat,body,alloc), n, "")
-        | APP(TR(VAR{lvar, il_r, alloc = Some alloc},_,_), t2) =>
+        | APP(TR(VAR{lvar, il_r, alloc = SOME alloc},_,_), t2) =>
            let
                   (*        f il at rho (exp) 
                                       OR
@@ -427,7 +430,7 @@ old*)
                   *)
 
              val alloc_s = 
-                   case (layout_alloc alloc) of Some t => " " ^PP.flatten1 t | None => ""
+                   case (layout_alloc alloc) of SOME t => " " ^PP.flatten1 t | NONE => ""
              val t1 = lay_il(Lvar.pr_lvar lvar, alloc_s, #1(! il_r))
           in
              PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ", 
@@ -447,7 +450,7 @@ old*)
         | RAISE(t1) =>            
            NODE{start = if n>=3 then "raise(" else "raise ", 
                 finish = if n>=3 then ")" else "", 
-                childsep = NONE, indent = 6,
+                childsep = NOSEP, indent = 6,
                 children = [layTrip(t1,2)]}
         | LET{pat, bind, scope} => layout_let_fix_and_exception lamb
         | FIX _ => layout_let_fix_and_exception lamb
@@ -456,13 +459,13 @@ old*)
             in  PP.NODE{start = if n>3 then "(ref " ^ s ^ " "
                                 else "ref " ^ s ^ " ", 
                         finish = if n>3 then ")" else "", 
-                        indent = 6, childsep = PP.NONE,
+                        indent = 6, childsep = PP.NOSEP,
                         children = [layTrip(t,4)]}
             end
         | DEREF t =>
             PP.NODE{start = if n>3 then "(! " else " ! ",
                     finish = if n>3 then ")" else "", 
-                    indent = 3, childsep = PP.NONE,
+                    indent = 3, childsep = PP.NOSEP,
                     children = [layTrip(t,4)]}
         | ASSIGN(alloc,t1,t2) =>
             let val s = alloc_string alloc
@@ -472,7 +475,7 @@ old*)
         | EQUAL({mu_of_arg1,mu_of_arg2, alloc},arg1,arg2) =>
             let val eq = if !Flags.print_regions then  "=" ^ alloc_string alloc else "="
                 val ty = if !(Flags.print_types) 
-                           then implode["(* domain of = is: ", 
+                           then concat["(* domain of = is: ", 
                                         PP.flatten1(layMu mu_of_arg1), "*",
                                         PP.flatten1(layMu mu_of_arg2), " *)"]
                          else ""
@@ -492,10 +495,10 @@ old*)
 		     children = PP.LEAF name :: (map (fn t => layTrip(t,0)) args)}
         | RESET_REGIONS({force, alloc,regions_for_resetting}, t) =>
            let val fcn = if force then "forceResetting " else "resetRegions "
-               val aux_regions_t = HNODE{start="[",finish="]", childsep=NONE,
+               val aux_regions_t = HNODE{start="[",finish="]", childsep=NOSEP,
                             children=[layHlist  (fn a => PP.LEAF(alloc_string a)) regions_for_resetting]}
            in PP.NODE{start = "(" ^ fcn , finish = ")" ^ (if !Flags.print_regions then alloc_string alloc else ""),
-                      indent = size fcn + 2, childsep = PP.NONE,
+                      indent = size fcn + 2, childsep = PP.NOSEP,
                       children = [aux_regions_t,layTrip(t,0)]}
            end
         | LETREGION_B{B = ref [], body,...} => layTrip(body,n) 
@@ -505,17 +508,17 @@ old*)
             | binders =>
                  let 
                    val t1 = 
-                     NODE{start = "letregion ", finish = " ", childsep = NONE, indent = 10,
+                     NODE{start = "letregion ", finish = " ", childsep = NOSEP, indent = 10,
                           children = [HNODE{start = "", finish = "", childsep = RIGHT", ", 
                                             children = binders}]}
                    val t2 = 
-                     NODE{start = "in ", finish = "", childsep = NONE, indent = 3,
+                     NODE{start = "in ", finish = "", childsep = NOSEP, indent = 3,
                           children = [layTrip(body,0)]}
                    val t3 = 
-                     NODE{start = "end (*", finish = "*)", childsep = NONE, indent =  6,
+                     NODE{start = "end (*", finish = "*)", childsep = NOSEP, indent =  6,
                           children = [HNODE{start = "", finish = "", childsep = RIGHT", ", 
                                             children = binders}]}
-                 in NODE{start = "", finish = "", indent = 0, childsep = NONE, children = [t1,t2,t3]}
+                 in NODE{start = "", finish = "", indent = 0, childsep = NOSEP, children = [t1,t2,t3]}
                  end
                )
         | SWITCH_I(sw) => layoutSwitch layTrip Int.string  sw
@@ -525,7 +528,7 @@ old*)
         | FRAME{declared_lvars, declared_excons} =>
              let val l1 = map layout_declared_lvar  declared_lvars
                  val l2 = map layout_declared_excon declared_excons
-             in NODE{start = "{|", finish = "|}", indent = 0, childsep = NONE, 
+             in NODE{start = "{|", finish = "|}", indent = 0, childsep = NOSEP, 
                      children = l1 @ l2}
              end
                                     
@@ -564,14 +567,14 @@ for more info*)
               )
            *)
           let 
-             val start_s = implode["fn ", eps, pp_fun_allocation alloc, " "]
+             val start_s = concat["fn ", eps, pp_fun_allocation alloc, " "]
              val pat_t = layPatFn pat
              val first_line = NODE{start = start_s, finish = "", indent = size(start_s),
-                                   children = [pat_t], childsep = NONE}
+                                   children = [pat_t], childsep = NOSEP}
           in
               PP.NODE{start= if n>1 then "(" else "", 
                       finish=if n>1 then ")" else "", 
-                      indent=1, childsep = PP.NONE,
+                      indent=1, childsep = PP.NOSEP,
                       children=[first_line,layTrip(body,1)]}
           end
       and layout_let_fix_and_exception lexp =
@@ -630,9 +633,9 @@ for more info*)
                excpetion EXCON : mu 
             *)
          (case alloc_t of
-            None =>  NODE{start = "exception ",finish="",childsep=RIGHT " : ",
+            NONE =>  NODE{start = "exception ",finish="",childsep=RIGHT " : ",
                  indent=4,  children=[LEAF(Excon.pr_excon excon), layMu mu] }
-          | Some t => NODE{start = "exception ",finish="",childsep=RIGHT " ",
+          | SOME t => NODE{start = "exception ",finish="",childsep=RIGHT " ",
                  indent=4,  children=[LEAF(Excon.pr_excon excon), LEAF ":", layMu mu, 
                                       LEAF("(* exn value or name " ^ PP.flatten1 t ^ " *)")]}
         )
@@ -658,36 +661,36 @@ for more info*)
               *)
               (no-1,
                 (case formal_regions of
-                   None=>
+                   NONE=>
                     let
                      val sigma_t = R.mk_lay_sigma' omit_region_info (tyvars,rhos,epss,Type)
-                     val alloc_s = case opt_alloc of None => "" | Some t => PP.flatten1 t
+                     val alloc_s = case opt_alloc of NONE => "" | SOME t => PP.flatten1 t
                      val t1 = let val s: string = Lvar.pr_lvar lvar ^ " " ^ alloc_s ^ 
                                  (if !Flags.print_types then ":" else "")
                               in  PP.NODE{start = s, finish = "", indent = size s +1,
-                                          childsep = PP.NONE, children = [sigma_t]}
+                                          childsep = PP.NOSEP, children = [sigma_t]}
                               end
                      val formals = PP.HNODE{start="(", finish = ") =", childsep = PP.RIGHT ", ", 
                                                   children = map (fn (lvar,_) => PP.LEAF(Lvar.pr_lvar lvar))
                                                                  pat}
                      val keyword = if no = 1 then "fun " else "and "
-                     val body_t = PP.NODE{start = "", finish ="", indent = 4, childsep = PP.NONE,
+                     val body_t = PP.NODE{start = "", finish ="", indent = 4, childsep = PP.NOSEP,
                                           children = [layTrip(body, 0)]}
                     in
-                      PP.NODE{start = keyword , finish = "", indent = 4, childsep = PP.NONE, 
+                      PP.NODE{start = keyword , finish = "", indent = 4, childsep = PP.NOSEP, 
                               children = [t1, formals, body_t]}
                     end
 
-                 | Some formals => 
+                 | SOME formals => 
                  let
-                     fun layout_bind' b = case layout_bind b of Some t => t | _ => die ".layout_bind'"
+                     fun layout_bind' b = case layout_bind b of SOME t => t | _ => die ".layout_bind'"
                      val region_binder_trees = PP.HNODE{start="", finish = "", childsep = PP.RIGHT ", ", 
                                                   children = map layout_bind' formals}
                      val formals_t = PP.NODE{start = "(", finish = ") = ", indent = 1, childsep = PP.RIGHT", ",
                                            children = region_binder_trees :: map layVarMu pat}
                      val alloc_s = case opt_alloc of
-                           None => ""
-                         | Some t => PP.flatten1 t
+                           NONE => ""
+                         | SOME t => PP.flatten1 t
 
                      val fun_f = 
                        (if no = 1 then
@@ -695,12 +698,12 @@ for more info*)
                         else
                           "and " ^ Lvar.pr_lvar lvar) ^ alloc_s
 
-                     val header = PP.NODE{start = fun_f, finish ="", indent = 0, childsep = PP.NONE,
+                     val header = PP.NODE{start = fun_f, finish ="", indent = 0, childsep = PP.NOSEP,
                                           children = [formals_t]}
-                     val body_t = PP.NODE{start = "", finish ="", indent = 4, childsep = PP.NONE,
+                     val body_t = PP.NODE{start = "", finish ="", indent = 4, childsep = PP.NOSEP,
                                           children = [layTrip(body, 0)]}
                  in
-                   PP.NODE{start = "" , finish = "", indent = 0, childsep = PP.NONE, 
+                   PP.NODE{start = "" , finish = "", indent = 0, childsep = PP.NOSEP, 
                            children = [header, body_t]}
 
                  end
@@ -710,7 +713,7 @@ for more info*)
             | mk_fix _ _ = die "mk_fix: rhs of fix does not begin with lambda"
        in
         PP.NODE{start = "", finish = "", indent = 0,
-                childsep = PP.NONE, 
+                childsep = PP.NOSEP, 
                 children = #2(List.foldL mk_fix (List.size functions,[]) functions)}
        end
 
@@ -722,8 +725,8 @@ for more info*)
     end
 
 
-  fun layoutLambdaExp(layout_alloc: ('a -> StringTree Option))
-                       (layout_binder: ('b -> StringTree Option))
+  fun layoutLambdaExp(layout_alloc: ('a -> StringTree option))
+                       (layout_binder: ('b -> StringTree option))
                        (e: ('a, 'b)LambdaExp) :StringTree = 
             #1(mkLay(not(!Flags.print_regions))
                   layout_alloc layout_binder) e
@@ -731,20 +734,20 @@ for more info*)
   fun layoutLambdaExp' e  =
       layoutLambdaExp
        (if !Flags.print_regions 
-          then (fn rho => Some(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-        else (fn _ => None))
-       (fn _ => None) 
+          then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
+        else (fn _ => NONE))
+       (fn _ => NONE) 
        e
 
 
-  fun layoutLambdaTrip(layout_alloc: ('a -> StringTree Option))
-                       (layout_binder: ('b -> StringTree Option))
+  fun layoutLambdaTrip(layout_alloc: ('a -> StringTree option))
+                       (layout_binder: ('b -> StringTree option))
                        (t: ('a, 'b)trip) :StringTree = 
             #2(mkLay(not(!Flags.print_regions))
                        layout_alloc layout_binder) t
 
-  fun layoutLambdaPgm(layout_alloc: ('a -> StringTree Option))
-                       (layout_binder: ('b -> StringTree Option))
+  fun layoutLambdaPgm(layout_alloc: ('a -> StringTree option))
+                       (layout_binder: ('b -> StringTree option))
                        (p: ('a, 'b)LambdaPgm as 
                             PGM{expression = TR(lamb,meta,rea),
                                  export_datbinds = DATBINDS dblist,
@@ -775,15 +778,15 @@ for more info*)
         val dbTs = map layoutMutualRec_db dblist
         val lambT = layoutLambdaExp  layout_alloc layout_binder lamb
         val t1 = PP.NODE{start="",finish="",indent=0,
-                         children=dbTs @ [lambT],childsep=PP.NONE}
-        val t2 = PP.NODE{start = "META TYPE: ", finish = "", childsep = PP.NONE, indent = 2,
+                         children=dbTs @ [lambT],childsep=PP.NOSEP}
+        val t2 = PP.NODE{start = "META TYPE: ", finish = "", childsep = PP.NOSEP, indent = 2,
                          children = [layMeta meta]}
-        val t3 = PP.NODE{start = "EFFECT: ", finish = "", childsep = PP.NONE, indent = 2,
+        val t3 = PP.NODE{start = "EFFECT: ", finish = "", childsep = PP.NOSEP, indent = 2,
                          children = [Eff.layout_effect_deep rea]}
         val t4 = PP.NODE{start = "EXPORT REGION BASIS: [", finish = "]", indent = 1, childsep = PP.RIGHT ", ",
                                children = Eff.layoutEtas export_basis}
       in
-        PP.NODE{start = "", finish = "", indent = 0, childsep = PP.NONE, children = [t1,t4,t2,t3]}
+        PP.NODE{start = "", finish = "", indent = 0, childsep = PP.NOSEP, children = [t1,t4,t2,t3]}
       end
 
     fun normPgm(PGM{expression, export_datbinds, export_basis}, tick: unit -> int) =
@@ -800,8 +803,8 @@ for more info*)
            fun normsw(SWITCH(tr1,rhsides, tr_opt)) =
                 (normTrip tr1;
                  List.apply (fn (_, tr) => normTrip tr) rhsides;
-                 case tr_opt of None => ()
-                 | Some tr => normTrip tr)
+                 case tr_opt of NONE => ()
+                 | SOME tr => normTrip tr)
          in 
           case e of
              UB_RECORD ts => List.apply normTrip ts
@@ -827,8 +830,8 @@ for more info*)
 	   | CON0 _ => ()
 	   | CON1 (_,tr) => normTrip tr
 	   | DECON (_,tr) => normTrip tr
-	   | EXCON (_,None) => ()
-	   | EXCON (_,Some(_,tr)) => normTrip tr
+	   | EXCON (_,NONE) => ()
+	   | EXCON (_,SOME(_,tr)) => normTrip tr
 	   | DEEXCON (_,tr) => normTrip tr
 	   | RECORD (_,trs) => List.apply normTrip trs
 	   | SELECT (_,tr) => normTrip tr
