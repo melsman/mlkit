@@ -16,7 +16,7 @@ and msp-files. Together with database pooling, the scheme makes it
 possible to create database backed web sites in SML that are capable
 of answering a high number of requests compared to systems using a
 traditional CGI based approach. The database API supports many
-different RDBMS's, including Oracle and Postgresql.
+different RDBMS's, including Oracle and PostgreSQL.
 
 A project file (pm-file) maintained by the web-programmer is used to
 keep track of library modules, msp-files, and sml-files that are part
@@ -43,10 +43,10 @@ To use SMLserver you need the following:
 
   * An RDBMS. To get access to a database from within your sml/msp
     scripts, you need to have an RDBMS system installed that is
-    supported by AOLserver - see below. One such RDBMS is Postgresql,
+    supported by AOLserver - see below. One such RDBMS is PostgreSQL,
     which you can fetch from www.postgresql.org (if you're running
     Redhat Linux, you can even find some rpm's there). Detailed
-    information about setting up a database with Postgresql for the
+    information about setting up a database with PostgreSQL for the
     purpose of using it with SMLserver is given below.
 
   * SMLserver. Binary RPMs, source RPMs, and tgz-packages are
