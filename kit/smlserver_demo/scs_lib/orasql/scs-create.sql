@@ -11,6 +11,7 @@ as
   function new_obj_id (
     obj_id in integer default null
   ) return integer;
+
 end scs;
 /
 show errors
@@ -32,6 +33,7 @@ as
     end if;
     return v_obj_id;
   end new_obj_id;
+
 end scs;
 /
 show errors
@@ -40,6 +42,8 @@ show errors
 -- LOAD THE ENTIRE SCS DATA MODEL --
 ------------------------------------
 
+@scs-math-create.sql;
+@scs-random-create.sql;
 @scs-logs-create.sql;
 @scs-locales-create.sql;
 @scs-enumerations-create.sql;

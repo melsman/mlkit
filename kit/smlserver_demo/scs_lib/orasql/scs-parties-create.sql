@@ -29,17 +29,24 @@ comment on column scs_parties.url is '
  without joining to any other table.
 ';
 
--- DRB: I added this trigger to enforce the storing of e-mail in lower case.
--- party.new() already did so but I found an update that didn't...
+-- DRB: I added this trigger to enforce the storing of e-mail in lower
+-- case.  party.new() already did so but I found an update that
+-- didn't...  Also, we makes sure that email is never null. This may
+-- happen otherwise because we do not always know email-addresses on
+-- persons we create.
 
 create or replace trigger scs_parties_in_up_tr
 before insert or update on scs_parties
 for each row
 begin
   :new.email := lower(:new.email);
+  if :new.email is null then
+    :new.email := :new.party_id;
+  end if;
 end;
 /
 show errors
+
 
 -------------------
 -- PARTY PACKAGE --
@@ -50,20 +57,24 @@ as
   function new (
     party_id	   in scs_parties.party_id%TYPE default null,
     party_type     in scs_parties.party_type%TYPE default null,
-    email	   in scs_parties.email%TYPE,
+    email	   in scs_parties.email%TYPE default null,
     url		   in scs_parties.url%TYPE default null,
     last_modified  in scs_parties.last_modified%TYPE default sysdate,
     modifying_user in scs_parties.modifying_user%TYPE default null,
     deleted_p      in scs_parties.deleted_p%TYPE default 'f'
   ) return scs_parties.party_id%TYPE;
 
-  procedure delete (
+  procedure destroy (
     party_id in scs_parties.party_id%TYPE
   );
 
   function email (
     party_id in scs_parties.party_id%TYPE
-  ) return varchar2;
+  ) return scs_parties.email%TYPE;
+
+  function url (
+    party_id in scs_parties.party_id%TYPE
+  ) return scs_parties.url%TYPE;
 
 end scs_party;
 /
@@ -74,7 +85,7 @@ as
   function new (
     party_id	   in scs_parties.party_id%TYPE default null,
     party_type     in scs_parties.party_type%TYPE default null,
-    email	   in scs_parties.email%TYPE,
+    email	   in scs_parties.email%TYPE default null,
     url		   in scs_parties.url%TYPE default null,
     last_modified  in scs_parties.last_modified%TYPE default sysdate,
     modifying_user in scs_parties.modifying_user%TYPE default null,
@@ -92,7 +103,7 @@ as
     return v_party_id;
   end new;
 
-  procedure delete (
+  procedure destroy (
     party_id in scs_parties.party_id%TYPE
   )
   is
@@ -100,12 +111,12 @@ as
     update scs_parties
        set deleted_p = 't',
            email = party_id || '-' || email
-     where scs_parties.party_id = scs_party.delete.party_id;
-  end delete;
+     where scs_parties.party_id = scs_party.destroy.party_id;
+  end destroy;
 
   function email (
     party_id in scs_parties.party_id%TYPE
-  ) return varchar2
+  ) return scs_parties.email%TYPE
   is
     v_email scs_parties.email%TYPE;
   begin
@@ -116,6 +127,20 @@ as
 
     return v_email;
  end email;
+
+  function url (
+    party_id in scs_parties.party_id%TYPE
+  ) return scs_parties.url%TYPE
+  is
+    v_url scs_parties.url%TYPE;
+  begin
+    select url
+      into v_url
+      from scs_parties
+     where party_id = url.party_id;
+
+    return v_url;
+ end url;
 
 end scs_party;
 /
