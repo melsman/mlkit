@@ -29,6 +29,8 @@ signature SCS_LIST =
    (* [contains x xs] retruns true if atleast one x exists in xs;
        otherwise returns false. *)
     val contains : ''a -> ''a list -> bool
+
+    val union : (''a * ''a -> bool) -> ''a list * ''a list -> ''a list
   end
 
 structure ScsList :> SCS_LIST =
@@ -72,4 +74,51 @@ structure ScsList :> SCS_LIST =
       List.foldr (fn (x,acc) => case x of NONE => acc | SOME e => e::acc) [] xs
 
     fun contains x xs = List.exists (fn y => x = y) xs
+
+    (* A few functions taken from: http://aleph0.clarku.edu/~djoyce/cs170/mlexample3.html *)
+
+    (* membership. member(x,y) should be true when x is an element of the set y *)
+    fun member fn_eq (x,[]) = false
+      | member fn_eq (x,b::y) =
+      if fn_eq(x,b) then true
+      else member fn_eq (x,y)
+
+    (* subset. subset(x,y) should be true when every element of the set x is a member of the set y *)
+    fun subset fn_eq ([],y) = true
+      | subset fn_eq (a::x,y) =
+      if member fn_eq (a,y) then subset fn_eq (x,y)
+      else false
+
+    (* equal. equal(x,y) should be true when x and y are the same set *)
+    fun equal fn_eq (x,y) = subset fn_eq (x,y) andalso subset fn_eq (y,x)
+
+    (* union. union(x,y) should give the union of the two sets x and y *)
+    fun union fn_eq  ([],y) = y
+      | union fn_eq (a::x,y) =
+      if member fn_eq (a,y) then union fn_eq (x,y)
+      else a::union fn_eq (x,y)
+
+    (* intersection. intersection(x,y) should give the intersection of the two sets *)
+    fun intersection fn_eq ([],y) = []
+      | intersection fn_eq (a::x,y) =
+      if member fn_eq (a,y) then a::intersection fn_eq (x,y)
+      else intersection fn_eq (x,y)
+
+   (* difference. difference(x,y) should give the difference, that is, 
+      the elements of the set x that do not belong to the set y *)
+    fun difference fn_eq ([],y) = []
+      | difference fn_eq (a::x,y) =
+      if member fn_eq (a,y) then difference fn_eq (x,y)
+      else a::difference fn_eq (x,y)
+
+   (* power. power(x) should give the power set of x. 
+      For instance, if x is the set [1,2], then power(x) should be 
+      the set of sets [[], [1], [2], [1,2]] *)
+(*   local
+     fun insert fn_eq (a,[]) = []
+       | insert fn_eq (a,b::y) = union fn_eq ([a],b):: insert fn_eq (a,y)
+   in
+     fun power fn_eq ([]) = [[]]
+       | power fn_eq (a::y) = union fn_eq (power fn_eq y,insert fn_eq (a,power fn_eq y))
+   end*)
   end
