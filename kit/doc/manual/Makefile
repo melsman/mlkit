@@ -1,14 +1,15 @@
 dvi: root.tex
 	latex root
+	bibtex root
 	makeindex root
 	latex root
 	latex root
 
 ps: dvi
-	dvips -o root.ps root.dvi
+	dvips -o mlkit.ps root.dvi
 
 ps2: ps
-	pstops '4:0L@.7(21cm,0)+1L@.7(21cm,14.85cm),2L@.7(21cm,0)+3L@.7(21cm,14.85cm)' root.ps root2.ps
+	pstops '4:0L@.7(21cm,0)+1L@.7(21cm,14.85cm),2L@.7(21cm,0)+3L@.7(21cm,14.85cm)' mlkit.ps mlkit2.ps
 
 pdf: dvi
 	dvips -Ppdf -o root.ps root.dvi 
