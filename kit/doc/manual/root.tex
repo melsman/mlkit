@@ -7,7 +7,7 @@
 \input{mac}
 \newcommand{\rhoword}{\rho_{\rm w}}
 \title{Programming with Regions in the ML Kit\\
-$2^{nd}$ edition}
+(for Version 3)}
 \author{Mads Tofte \and Lars Birkedal \and Martin Elsman \and
 \and Niels Hallenberg \and Tommy H\o jfeld Olesen \and
 Peter Sestoft \and Peter Bertelsen}
@@ -16,7 +16,25 @@ Peter Sestoft \and Peter Bertelsen}
 {\theorembodyfont{\rmfamily} \newtheorem{example}{Example}}
 
 \begin{document}
+\setcounter{page}{0}
+\thispagestyle{empty}
+\begin{center}{\bf
+Technical Report DIKU-TR-98/25\\
+Department of Computer Science\\ 
+University of Copenhagen\\
+Universitetsparken 1\\
+DK-2100 KBH \O\\
+DENMARK\\
+\ \\
+November 1998}\vspace{4.5cm}
 
+{\Large Programming with Regions in the ML Kit\\ (for Version~3)}\vspace{2cm}
+
+{\large Mads Tofte, Lars Birkedal, Martin Elsman, Niels Hallenberg, Tommy H{\o}jfeld Olesen, Peter Sestoft and Peter
+     Bertelsen }\vfill
+
+\end{center}
+\newpage
 % Do not include the page in comments below; it will cause the document to be aligned on odd pages, which is not
 % good for printing.
 %\setcounter{page}{0}
@@ -2059,7 +2077,7 @@ polymorphic recursion, the analogous concept for types.
 Polymorphic recursion in regions is vital for achieving good 
 memory management in connection with recursion.
 Unfortunately, it is also makes  the region inference problem considerably more
-challenging, but that is a different story \cite{tofte:birkedal:98}.
+challenging, but that is a different story \cite{tofbir98}.
 
 We now show a typical use of polymorphic recursion in regions, namely
 merge sorting of lists. The basic idea of merge sort is simple: first
@@ -7706,6 +7724,25 @@ Library, based on the Moscow ML version of the Library. To
 see exactly what parts of the Standard Basis Library are supported, consult the
 project file {\tt basislib.pm} located in the directory {\tt
   kit/basislib}. 
+\section{Scalability}
+The Kit now compiles fairly large programs, including Hafnium's AnnoDomini
+(58.000 lines of SML) and the ML Kit itself (around 80.000 lines).
+
+\section{New Match Compiler}
+The pattern compiler has been rewritten, based on Sestoft's 
+method~\cite{sestoft96}, which also is the basis of the Moscow ML 
+match compiler. 
+
+\section{New StatObject Module}
+The Kit contains a module, StatObject,\index{StatObject}
+which implements the semantic objects of the static semantics of
+the Core. Origianally, this was a very clean and very inefficient
+implementation of the Defininion. In Version 2 of the Kit, StatObject
+was replaced by an imperative and efficient, but complicated module.
+In Version 3, StatObject uses a clean, efficient and imperative 
+implementation of StatObject. This is particularly useful for those that
+want to reuse the front-end of the Kit for other purposes.
+
 \section{More Efficient Representation of Lists}
 \index{list} List constructors are now represented unboxed, that is,
 the least significant bits of a list value is used to distinguish
@@ -7713,6 +7750,8 @@ between \boxml{nil} and a pointer to a pair (\boxml{::}) holding the
 head and the tail of the list. Thus, a list takes up only one region
 (for the auxiliary pairs) plus any regions for the elements of the
 list. Consult Chapter~\ref{lists.sec} for details.
+
+\nocite{total97,total94,btv96,elshal95,koch&olesen}
 
 \bibliographystyle{alpha}
 \bibliography{tofte}
