@@ -310,7 +310,7 @@ structure ScsUserImp :> SCS_USER_IMP =
                                                      and scs_person_rels.on_which_id = person.person_id`}
 
     val ucs_ob =
-      UCS_OB {name = [(ScsLang.en,`Admittance Database`),
+      UCS_OB {name = [(ScsLang.en,`Application Database`),
 			       (ScsLang.da,`Optag Database`)],
 	      db_name = "ucs_ob",
 	      security_id_chk_sql = SOME
