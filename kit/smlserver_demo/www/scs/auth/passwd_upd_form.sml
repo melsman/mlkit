@@ -3,7 +3,7 @@ val user_id = ScsLogin.auth()
 val title = ScsDict.s [(ScsLang.en,`IT-C.net Password Update`),(ScsLang.da,`IT-C.net Opdatering af Kodeord`)]
 
 val _ = ScsAuth.returnPg title
-  (`<h1>^(ScsDict.s [(ScsLang.en,`Update password for`),(ScsLang.da,`Opdater kodeord for`)]) ^(ScsPerson.name user_id)</h1>
+  (`<h1>^(ScsDict.s [(ScsLang.en,`Update password for`),(ScsLang.da,`Opdater kodeord for`)]) ^(ScsPersonData.name user_id)</h1>
    <blockquote>
    ^(ScsDict.s [(ScsLang.en,`Write your old password and choose a new password. Then click the update button.`),
 		(ScsLang.da,`Skriv dit gamle kodeord og vælg et nyt. Klik derefter Opdater`)])<p>` ^^ 

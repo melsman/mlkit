@@ -222,13 +222,6 @@ signature SCS_PERSON =
       deleted persons *)
     val searchPerson : string -> bool -> person_record list
 
-    (* [name user_id] returns the name found in the database for user
-       identified by user_id. Returns "" if no email exists. *)
-    val name : int -> string
-
-    (* [email user_id] returns the email found in the database for user
-       identified by user_id. Returns "" if no email exists. *)
-    val email : int -> string
 
     (* [nameToHtml name email] returns HTML for a name linking to
         email *)
@@ -301,6 +294,9 @@ signature SCS_PERSON =
 
 structure ScsPerson :> SCS_PERSON =
   struct
+(*
+    val name = ScsPersonData.name
+*)
     datatype sex = Female | Male
 
     type person_record = {
@@ -429,23 +425,6 @@ structure ScsPerson :> SCS_PERSON =
       | MAY_SHOW_PORTRAIT => "may_show_portrait"
       | MAKE_NON_OFFICIAL_OFFICIAL => "make_non_official_official"
 
-    local
-
-      (* Names only change in external sources once a day. Hence, it
-         shouldn't be a big problem not updating the cache. *)
-      val name_cache = 	
-	Ns.Cache.get(Ns.Cache.Int,
-		     Ns.Cache.String,
-		     "ScsPersonName",
-		     Ns.Cache.TimeOut 10000)
-      fun name' user_id =
-	Db.oneField `select scs_person.name(person_id)
-                       from scs_persons
-                      where scs_persons.person_id = '^(Int.toString user_id)'`
-	handle Fail _ => ""
-    in
-      fun name user_id = Ns.Cache.memoize name_cache name' user_id
-    end
 
    (* Check for form variables *)
     fun getPersonIdErr (fv,errs) = ScsFormVar.getIntErr(fv,"Person id",errs)
@@ -765,10 +744,10 @@ val _ = Ns.NsDebug.addMsg `******returnPortraitFile begin*****`
 	    SOME thumb => 
 	      UcsPage.info
 	      (ScsDict.s [(ScsLang.da,`<h2>Nuværende billede</h2>
-			   Nuværende billede er gemt af ^(name (#modifying_user thumb)) den 
+			   Nuværende billede er gemt af ^(ScsPersonData.name (#modifying_user thumb)) den 
 			   ^(ScsDate.ppTimestamp (#last_modified thumb)).`),
 			  (ScsLang.en,`<h2>Current picture.</h2>
-			   Current picture is uploaded by ^(name (#modifying_user thumb)) on
+			   Current picture is uploaded by ^(ScsPersonData.name (#modifying_user thumb)) on
 			   ^(ScsDate.ppTimestamp (#last_modified thumb))`)])
 	  | NONE => ""
 	val upload_form = `^(current_picture_html) ` ^^
@@ -1049,10 +1028,6 @@ val _ = Ns.NsDebug.addMsg `******returnPortraitFile begin*****`
 
     end
 
-    fun email user_id =
-      Db.oneField `select scs_party.email(^(Int.toString user_id))
-                     from dual`
-      handle Fail _ => ""
 
     fun nameToHtml (name,email) = Quot.toString
       `<a href="mailto:^(email)">^(name)</a>`
