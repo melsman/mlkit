@@ -1892,7 +1892,7 @@ struct
 		  compileNumSwitch {size_ff=size_ff,
 				    size_ccf=size_ccf,
 				    CG_lss=CG_lss,
-				    toInt=fn w => maybeTagInt{value=Word32.toLargeIntX w, precision=precision},
+				    toInt=fn w => Word32.toLargeIntX (maybeTagWord{value=w, precision=precision}),
 				    opr_aty=opr_aty,
 				    oprBoxed=boxedNum precision,
 				    sels=sels,

@@ -1,4 +1,8 @@
 ML Kit NEWS file                                       October, 2001
+ 
+ * mael 2001-10-23: Bug fix in X86-backend; when tagging is enabled an
+   Overflow exception was raised when the largest Word31-word appeared
+   in a pattern.
 
  * nh 2001-10-20: The Garbage Collection algorithm now uses two stacks;
    one for infinite regions and one for finite regions. Each finite
