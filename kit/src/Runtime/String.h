@@ -25,7 +25,7 @@
 
 typedef struct stringDesc {
   unsigned int size;             // Size of string (tagged)
-  unsigned char data;            // C String (null-terminated
+  unsigned char data;            // C String (null-terminated)
 } StringDesc;
 
 typedef StringDesc* String;
