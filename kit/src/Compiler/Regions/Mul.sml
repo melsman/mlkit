@@ -109,7 +109,7 @@ struct
 
   structure EffVarEnv = 
     struct
-      type 'a map =  'a QM_EffVarEnv.qmap
+      type 'a map = 'a QM_EffVarEnv.qmap
 
       val lookup = QM_EffVarEnv.lookup
       fun layoutMap format f g Psi = QM_EffVarEnv.layout format f g Psi
@@ -401,8 +401,10 @@ struct
   fun layout_mularefset Psi = 
         layout_set (map layout_mularef Psi)
 
+(*
   (*  layout_effectvar_int: no side-effect *)
-  fun layout_effectvar_int (i:int) = PP.LEAF(Int.toString i)
+  fun layout_effectvar_int e = PP.LEAF(Int.toString (Effect.key_of_eps_or_rho e))
+*)
 
   (*  layout_mularefmap sets and clears visited fields *)
   fun layout_mularefmap Psi = 
@@ -412,7 +414,7 @@ struct
   (*  layout_imp_mularefmap: sets and clears visited fields *)
   fun layout_imp_mularefmap Psi = 
         EffVarEnv.layoutMap{start = "{", finish = "}", eq = "=", sep = ","}
-          layout_effectvar_int (layout_mularef o !) Psi
+          layout_effectvar (layout_mularef o !) Psi
 
   (*  layout_effectvars: no side-effect *)
   fun layout_effectvars epss =
@@ -1110,7 +1112,7 @@ struct
 
   fun mk_init_dependency_map (Psi:imp_mularefmap) = 
         let val _ = reset_dep()
-	    val result = EffVarEnv.Fold  mk_init_dep empty_dep Psi
+	    val result = EffVarEnv.Fold mk_init_dep empty_dep Psi
         in 
             (*say "initial dependency map";*)
             (*say "omitted"*)  

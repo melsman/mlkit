@@ -132,7 +132,7 @@ Stack.sml
 DIGRAPH.sml
 DiGraph.sml
 Heap.sml
-HashTable.sml
+(* HashTable.sml *)
 QUASI_ENV.sml
 QuasiEnv.sml
 Timing.sml

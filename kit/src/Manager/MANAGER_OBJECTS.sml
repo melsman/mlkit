@@ -136,9 +136,13 @@ signature MANAGER_OBJECTS =
 
 	val agree   : longstrid list * Basis * (Basis * TyName.Set.Set) -> bool
 	val enrich  : Basis * (Basis * TyName.Set.Set) -> bool
+
+	val eq      : Basis * Basis -> bool
 	val restrict: Basis * longids -> Basis * TyName.Set.Set
 	    (* The tyname set is the set of free type names in
 	     * the elaboration basis of the result *)
+
+	val match   : Basis * Basis -> Basis
 
 	val closure : Basis * Basis -> Basis
 	(* closure(B',B) : the closure of B w.r.t. B' - also written closure_B'(B) *)

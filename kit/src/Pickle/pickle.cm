@@ -2,6 +2,7 @@ Group
 
 structure Pickle
 signature PICKLE
+structure Polyhash
 
 is
 

@@ -38,6 +38,10 @@ functor Name(structure Crash : CRASH) : NAME =
 	in i1 < i2 orelse (i1=i2 andalso s1 < s2)
 	end
 
+    (* used by Manager to alpha-rename export bases *)
+    fun assignKey (r as ref {key=(_,s),rigid,gen_mark=g},i) =
+	r := {key=(i,s),rigid=rigid,gen_mark=g}
+
     (* Bucket for generated names *)
     val bucket = ref ([] : name list) 
 
@@ -56,8 +60,7 @@ functor Name(structure Crash : CRASH) : NAME =
     fun mk_rigid (ref {rigid=true,...}) = ()
       | mk_rigid (r as ref {key,...}) = r := {key=key, rigid=true, gen_mark=ref false}
 
-    fun rigid (ref {rigid=true,...} : name) = true
-      | rigid _ = false
+    fun rigid (ref {rigid,...} : name) = rigid
 
     fun match(n1 as ref {gen_mark=ref true,rigid=false,key=k1} : name, 
 	      ref (n0 as {gen_mark=gen_mark as ref true,key=k2,...})) =

@@ -105,7 +105,7 @@ signature MODULE_ENVIRONMENTS =
 	val from_G           : SigEnv -> Basis
 	val to_G             : Basis -> SigEnv
 	val plus_G           : Basis  * SigEnv -> Basis
-	val lookup_sigid  : Basis -> sigid -> Sig option
+	val lookup_sigid     : Basis -> sigid -> Sig option
 
 	                (*F component*)
 	val from_F           : FunEnv -> Basis

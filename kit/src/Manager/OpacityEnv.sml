@@ -14,6 +14,9 @@ signature OPACITY_ENV =
     val initial : opaq_env
     val plus : opaq_env * opaq_env -> opaq_env
     val enrich : opaq_env * (opaq_env * TyName.Set.Set) -> bool
+
+    val eq : opaq_env * opaq_env -> bool
+
     val restrict : opaq_env * (funid list * TyName.Set.Set) -> opaq_env
     val match : opaq_env * opaq_env -> unit
 
@@ -58,6 +61,11 @@ functor OpacityEnv(structure FunId : FUNID
     fun eq_fe_entry((T1,rea1),(T2,rea2)) = TyName.Set.eq T1 T2 andalso Realisation.eq (rea1,rea2)
     fun enrich ((fe1, rea1),((fe2,rea2),T)) = 
       FE.enrich eq_fe_entry (fe1,fe2) andalso Realisation.enrich(rea1,(rea2,T))
+
+    fun eq((fe1,re1),(fe2,re2)) = 
+	FE.enrich eq_fe_entry (fe1,fe2) andalso FE.dom fe1 = FE.dom fe2
+	andalso Realisation.eq(re1,re2)
+	
     fun restrict((fe,rea), (funids,T)) = (FE.restrict (FunId.pr_FunId,fe,funids), Realisation.restrict T rea)
       handle FE.Restrict s => die ("restrict; funid " ^ s ^ " is not in the environment")
     fun match((fe1,rea1),(fe2,rea2)) = Realisation.match(rea1,rea2)
