@@ -131,6 +131,8 @@ structure Ns :> NS =
 	val return = fn fl => return (flatten fl)
 	  
 	val write = fn fl => write (flatten fl)
+
+        val op ^^ = op @
       end
 
     structure Mail =
@@ -193,3 +195,6 @@ structure Ns :> NS =
 				     structure Set = Set
 				     structure Info = Info)
   end
+
+infixr 5 ^^
+val op ^^ = Ns.Quot.^^

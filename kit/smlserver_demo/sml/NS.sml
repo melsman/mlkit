@@ -214,6 +214,8 @@ signature NS =
 	val write : string frag list -> status  
       
 	val flatten : string frag list -> string
+
+        val ^^ : 'a frag list * 'a frag list -> 'a frag list
       end
 
     structure Mail : 

@@ -1,28 +1,15 @@
 let
-  val s = Ns.Quot.flatten(List.concat(List.rev(Db.fold ((fn (g, s) => `
+  val s = (Db.fold ((fn (g, s) => s ^^ `
     <li><b>^(g "name")</b>:
-    <ul>
-    ^(Ns.Quot.flatten(List.concat(List.rev(Db.fold ((fn (g, s) => `<li>^(g "name")(^(g "email"))^("\n")`:: s),nil,
-						    Ns.Quot.flatten (`select users.name, users.email from users, user_group 
-                                                                      where users.id = user_group.user_id 
-                                                                      and user_group.group_id = '^(g "id")'`))))))
-    </ul>` :: s),nil,"select id, name from groups order by name"))))
-
-(*
-If we implement the SEQ-constructor, then the above can be written as follows:
-
-  val s = Ns.Quot.flatten(Db.fold ((fn (g, s) => s ^^ `
-    <li><b>^(g "name")</b>:
-    <ul>` ^^
+    <ul>` ^^ 
     (Db.fold ((fn (g, s) => s ^^ `<li>^(g "name")(^(g "email"))^("\n")`),``,
               Ns.Quot.flatten (`select users.name, users.email from users, user_group 
                                 where users.id = user_group.user_id 
-                                and user_group.group_id = '^(g "id")'`)))
-    </ul>`),``,"select id, name from groups order by name"))
-*)
+                                and user_group.group_id = '^(g "id")'`))) ^^
+    `</ul>`),``,"select id, name from groups order by name"))
 
 in
-  Ns.Quot.return `
+  Ns.Quot.return (`
   <html>
     <body bgcolor=white>
       <h2>User Group Example</h2> 
@@ -37,9 +24,8 @@ in
 
       This nested bullet-list is generated with two nested Db.fold's:<p>
 
-      <ul>
-      ^s
-      </ul>
+      <ul>` ^^ s ^^
+      `</ul>
   
       <p>
       Back to the <a href="index.msp">example</a> page<p>
@@ -47,7 +33,7 @@ in
       <a href="http://www.smlserver.org/">SMLserver Home Page</a> (<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-07-29
 
    </body> 
-</html>`
+</html>`)
 end
 handle _ (*Db.Pool.DbPoolError err*) => 
   Ns.Quot.return `
