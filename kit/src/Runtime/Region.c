@@ -435,7 +435,7 @@ void deallocateRegionsUntil(int rAddr) {
 #endif
 
   while (rp <= topRegion) 
-    {printf("rp: %0x, topRegion %0x\n",rp,topRegion);
+    {/*printf("rp: %0x, topRegion %0x\n",rp,topRegion);*/
     deallocateRegion();}
 
   return;

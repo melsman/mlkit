@@ -84,6 +84,9 @@ struct
     (* The global accessible exception pointer label *)
     val exn_ptr_lab = NameLab "exn_ptr"
     val exn_counter_lab = NameLab "exnameCounter"
+    val global_region_labs = [BI.toplevel_region_withtype_top_lab,
+			      BI.toplevel_region_withtype_string_lab,
+			      BI.toplevel_region_withtype_real_lab]
 
     local
       structure LibFunSet =
@@ -684,17 +687,43 @@ struct
 				   label,jmp,C)
       end
 
-      fun cmpi(cond,x:reg,y:reg,d:reg,C) = 
-	LDI {i=int_to_string BI.ml_true, t=d} ::
-	COMCLR {cond=cond,r1=x,r2=y,t=Gen 1} ::
-	LDI {i=int_to_string BI.ml_false,t=d} :: C
+      fun cmpi(cond,x,y,d,size_ff,C) = 
+	let
+	  val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	  val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	  val (d_reg,C') = resolve_aty_def(d,tmp_reg2,size_ff,C)
+	in
+	  x_C(y_C(LDI {i=int_to_string BI.ml_true, t=d_reg} ::
+		  COMCLR {cond=cond,r1=x_reg,r2=y_reg,t=Gen 1} ::
+		  LDI {i=int_to_string BI.ml_false,t=d_reg} :: C'))
+	end
 
       fun maybe_tag_integers(inst,C) =		  
 	if !BI.tag_integers then
 	  inst :: C
 	else
 	  C
-		  
+		
+      fun subi(x,y,d,size_ff,C) =
+	let
+	  val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	  val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	  val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+	in
+	  x_C(y_C(SUBO{cond=NEVER,r1=x_reg,r2=y_reg,t=d_reg} :: 
+		  maybe_tag_integers(LDO{d="1",b=d_reg,t=d_reg},C')))
+	end
+  
+      fun addi(x,y,d,size_ff,C) =
+	let
+	  val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	  val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	  val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+	in
+	  x_C(y_C(ADDO{cond=NEVER,r1=x_reg,r2=y_reg,t=d_reg} ::
+		  maybe_tag_integers(LDO{d="-1",b=d_reg,t=d_reg},C')))
+	end
+
       fun muli(x:reg,y:reg,d:reg,C) = (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
 	if !BI.tag_integers then
 	  (add_lib_function("$$mulI");
@@ -714,27 +743,31 @@ struct
 		    callStr=";in=25,26;out=29; (MILLICALL)"} ::
 	   COPY{r=ret1,t=d} :: C)
 
-      fun negi(x:reg,d:reg,C) = (* Exception Overflow not implemented *)
+      fun negi(x,d,size_ff,C) = (* Exception Overflow not implemented *)
 	let
+	  val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	  val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
 	  val base = 
 	    if !BI.tag_integers then 
 	      "2" 
 	    else 
 	      "0"
 	in
-	  SUBI{cond=NEVER,i=base,r=x,t=d} :: C
+	  x_C(SUBI{cond=NEVER,i=base,r=x_reg,t=d_reg} :: C')
 	end
 
-     fun absi(x:reg,d:reg,C) = (* Exception Overflow not implemented *)
+     fun absi(x,d,size_ff,C) = (* Exception Overflow not implemented *)
        let
+	 val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	 val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
 	 val base = 
 	   if !BI.tag_integers then 
 	     "2" 
 	   else 
 	     "0"
        in
-	 ADD{cond=GREATERTHAN,r1=x,r2=Gen 0,t=d} ::
-	 SUBI{cond=NEVER,i=base,r=x,t=d} :: C
+	 x_C(ADD{cond=GREATERTHAN,r1=x_reg,r2=Gen 0,t=d_reg} ::
+	     SUBI{cond=NEVER,i=base,r=x_reg,t=d_reg} :: C')
        end
 
     fun addf(x,y,b,d,size_ff,C) =
@@ -817,6 +850,118 @@ struct
 		FTEST ::
 		LDI{i=int_to_string BI.ml_false,t=d_reg} :: C'))
       end
+
+    fun addw8(x,y,d,size_ff,C) =
+      let
+	val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+      in
+	x_C(y_C(ADD{cond=NEVER,r1=x_reg,r2=y_reg,t=d_reg} ::
+		DEPI{cond=NEVER,i="0",p="23",len="23",t=d_reg} :: C'))
+      end
+
+    fun subw8(x,y,d,size_ff,C) =
+      let
+	val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+      in
+	x_C(y_C(COPY{r=x_reg,t=d_reg} :: (* I may not destroy x_reg *)
+		DEPI{cond=NEVER,i="1",p="23",len="1",t=d_reg} ::
+		SUB{cond=NEVER,r1=d_reg,r2=y_reg,t=d_reg} ::
+		DEPI{cond=NEVER,i="0",p="23",len="23",t=d_reg} :: C'))
+      end
+
+    fun mulw8(x:reg,y:reg,d:reg,C) =
+      (add_lib_function("$$mulI");
+       META_BL{n=false,target=NameLab "$$mulI",rpLink=mrp, 
+	       callStr=";in=25,26;out=29; (MILLICALL)"} ::
+       DEPI{cond=NEVER,i="0",p="23",len="23",t=ret1} ::
+       COPY{r=ret1,t=d} :: C)
+
+    fun andi(x,y,d,size_ff,C) = (* A[x&y] = A[x] & A[y]    tagging *)
+      let
+	val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+      in
+	x_C(y_C(AND{cond=NEVER,r1=x_reg,r2=y_reg,t=d_reg} :: C'))
+      end
+
+    fun ori(x,y,d,size_ff,C) =
+      let
+	val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+      in
+	x_C(y_C(OR{cond=NEVER,r1=x_reg,r2=y_reg,t=d_reg} :: C'))
+      end
+
+    fun xori(x,y,d,size_ff,C) =
+      let
+	val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+      in
+	x_C(y_C(XOR{cond=NEVER,r1=x_reg,r2=y_reg,t=d_reg} :: C'))
+      end
+
+    fun shift_lefti(x,y,d,size_ff,C) =
+      let
+	val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+      in
+	x_C(y_C(SUBI{cond=NEVER,i="31",r=y_reg,t=d_reg} ::
+		MTSAR{r=d_reg} ::
+		ZVDEP{cond=NEVER,r=x_reg,d="32",t=d_reg} :: C'))
+      end
+
+    fun shift_right_signedi(x,y,d,size_ff,C) =
+      let
+	val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+      in
+	x_C(y_C(SUBI{cond=NEVER,i="31",r=y_reg,t=d_reg} :: 
+		MTSAR{r=d_reg} ::
+		VEXTRS{cond=NEVER,r=x_reg,d="32",t=d_reg} :: C'))
+      end
+
+    fun shift_right_unsignedi(x,y,d,size_ff,C) =
+      let
+	val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+      in
+	x_C(y_C(MTSAR{r=y_reg} ::
+		VSHD{cond=NEVER,r1=Gen 0,r2=x_reg,t=d_reg} :: C'))
+      end
+
+    fun addw(x,y,d,size_ff,C) =
+      let
+	val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+      in
+	x_C(y_C(ADD{cond=NEVER,r1=x_reg,r2=y_reg,t=d_reg} :: C'))
+      end
+
+    fun subw(x,y,d,size_ff,C) =
+      let
+	val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+      in
+	x_C(y_C(SUB{cond=NEVER,r1=x_reg,r2=y_reg,t=d_reg} :: C'))
+      end
+
+    fun mulw(x,y,d,C) =
+      (add_lib_function("$$mulI");
+       META_BL{n=false,target=NameLab "$$mulI",rpLink=mrp, 
+	       callStr=";in=25,26;out=29; (MILLICALL)"} ::
+       COPY{r=ret1,t=d} :: C)
 
     (*******************)
     (* Code Generation *)
@@ -1248,26 +1393,47 @@ struct
 		  COMMENT (pr_ls ls) :: 
 		  (* Note that the prim names are defined in BackendInfo! *)
 		  (case (name,rhos_for_result@args,res) of
-		     ("__equal_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])      => cmpi(EQUAL,x,y,d,C)
-		   | ("__minus_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])      => SUBO{cond=NEVER,r1=x,r2=y,t=d} :: maybe_tag_integers(LDO{d="1",b=d,t=d},C)
-		   | ("__plus_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])       => ADDO{cond=NEVER,r1=x,r2=y,t=d} :: maybe_tag_integers(LDO {d="-1",b=d,t=d},C)
+		     ("__equal_int",[x,y],[d])            => cmpi(EQUAL,x,y,d,size_ff,C)
+		   | ("__minus_int",[x,y],[d])            => subi(x,y,d,size_ff,C)
+		   | ("__plus_int",[x,y],[d])             => addi(x,y,d,size_ff,C)
 		   | ("__mul_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])        => muli(x,y,d,C)
-		   | ("__neg_int",[SS.PHREG_ATY x],[SS.PHREG_ATY d])                       => negi(x,d,C)
-		   | ("__abs_int",[SS.PHREG_ATY x],[SS.PHREG_ATY d])                       => absi(x,d,C)
-		   | ("__less_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])       => cmpi(LESSTHAN,x,y,d,C)
-		   | ("__lesseq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])     => cmpi(LESSEQUAL,x,y,d,C)
-		   | ("__greater_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])    => cmpi(GREATERTHAN,x,y,d,C)
-		   | ("__greatereq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])  => cmpi(GREATEREQUAL,x,y,d,C)
-		   | ("__plus_float",[b,x,y],[d])     => addf(x,y,b,d,size_ff,C)
-		   | ("__minus_float",[b,x,y],[d])    => subf(x,y,b,d,size_ff,C)
-		   | ("__mul_float",[b,x,y],[d])      => mulf(x,y,b,d,size_ff,C)
-		   | ("__div_float",[b,x,y],[d])      => divf(x,y,b,d,size_ff,C)
-		   | ("__neg_float",[b,x],[d])        => negf(b,x,d,size_ff,C)
-		   | ("__abs_float",[b,x],[d])        => absf(b,x,d,size_ff,C)
-		   | ("__less_float",[x,y],[d])       => cmpf(LESSTHAN,x,y,d,size_ff,C)
-		   | ("__lesseq_float",[x,y],[d])     => cmpf(LESSEQUAL,x,y,d,size_ff,C)
-		   | ("__greater_float",[x,y],[d])    => cmpf(GREATERTHAN,x,y,d,size_ff,C)
-		   | ("__greatereq_float",[x,y],[d])  => cmpf(GREATEREQUAL,x,y,d,size_ff,C)
+		   | ("__neg_int",[x],[d])                => negi(x,d,size_ff,C)
+		   | ("__abs_int",[x],[d])                => absi(x,d,size_ff,C)
+		   | ("__less_int",[x,y],[d])             => cmpi(LESSTHAN,x,y,d,size_ff,C)
+		   | ("__lesseq_int",[x,y],[d])           => cmpi(LESSEQUAL,x,y,d,size_ff,C)
+		   | ("__greater_int",[x,y],[d])          => cmpi(GREATERTHAN,x,y,d,size_ff,C)
+		   | ("__greatereq_int",[x,y],[d])        => cmpi(GREATEREQUAL,x,y,d,size_ff,C)
+		   | ("__plus_float",[b,x,y],[d])         => addf(x,y,b,d,size_ff,C)
+		   | ("__minus_float",[b,x,y],[d])        => subf(x,y,b,d,size_ff,C)
+		   | ("__mul_float",[b,x,y],[d])          => mulf(x,y,b,d,size_ff,C)
+		   | ("__div_float",[b,x,y],[d])          => divf(x,y,b,d,size_ff,C)
+		   | ("__neg_float",[b,x],[d])            => negf(b,x,d,size_ff,C)
+		   | ("__abs_float",[b,x],[d])            => absf(b,x,d,size_ff,C)
+		   | ("__less_float",[x,y],[d])           => cmpf(LESSTHAN,x,y,d,size_ff,C)
+		   | ("__lesseq_float",[x,y],[d])         => cmpf(LESSEQUAL,x,y,d,size_ff,C)
+		   | ("__greater_float",[x,y],[d])        => cmpf(GREATERTHAN,x,y,d,size_ff,C)
+		   | ("__greatereq_float",[x,y],[d])      => cmpf(GREATEREQUAL,x,y,d,size_ff,C)
+
+		   | ("less_word__",[x,y],[d])            => cmpi(LESSTHAN_UNSIGNED,x,y,d,size_ff,C)
+		   | ("greater_word__",[x,y],[d])         => cmpi(GREATERTHAN_UNSIGNED,x,y,d,size_ff,C)
+		   | ("lesseq_word__",[x,y],[d])          => cmpi(LESSEQUAL_UNSIGNED,x,y,d,size_ff,C)
+		   | ("greatereq_word__",[x,y],[d])       => cmpi(GREATEREQUAL_UNSIGNED,x,y,d,size_ff,C)
+
+		   | ("plus_word8__",[x,y],[d])           => addw8(x,y,d,size_ff,C)
+		   | ("minus_word8__",[x,y],[d])          => subw8(x,y,d,size_ff,C)
+		   | ("mul_word8__",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d]) => mulw8(x,y,d,C)
+
+		   | ("and__",[x,y],[d])                  => andi(x,y,d,size_ff,C)
+		   | ("or__",[x,y],[d])                   => ori(x,y,d,size_ff,C)
+		   | ("xor__",[x,y],[d])                  => xori(x,y,d,size_ff,C)
+		   | ("shift_left__",[x,y],[d])           => shift_lefti(x,y,d,size_ff,C)
+		   | ("shift_right_signed__",[x,y],[d])   => shift_right_signedi(x,y,d,size_ff,C)
+		   | ("shift_right_unsigned__",[x,y],[d]) => shift_right_unsignedi(x,y,d,size_ff,C)
+
+		   | ("plus_word__",[x,y],[d])            => addw(x,y,d,size_ff,C)
+		   | ("minus_word__",[x,y],[d])           => subw(x,y,d,size_ff,C)
+		   | ("mul_word__",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d]) => mulw(x,y,d,C)
+
 		   | ("__fresh_exname",[],[aty]) =>
 		       load_label_addr(exn_counter_lab,SS.PHREG_ATY tmp_reg1,size_ff,
 				       LDW{d="0",s=Space 0,b=tmp_reg1,t=tmp_reg2} ::
@@ -1320,8 +1486,12 @@ struct
     (*********************************************************)
     (* Init, Static Data and Exit Code for this program unit *)
     (*********************************************************)
-    fun static_data() = DOT_DATA :: get_static_data([DOT_IMPORT (NameLab "$global$", "DATA"),
-						     DOT_END])
+    fun static_data() = 
+      DOT_DATA :: 
+      COMMENT "START OF STATIC DATA AREA" ::
+      get_static_data([DOT_IMPORT (NameLab "$global$", "DATA"),
+		       COMMENT "END OF STATIC DATA AREA",
+		       DOT_END])
     fun init_hppa_code() = DOT_CODE :: []
     fun exit_hppa_code () = get_lib_functions([])
   in
@@ -1338,8 +1508,9 @@ struct
 	val _ = add_static_data (map (fn lab => DOT_IMPORT(MLFunLab lab, "CODE")) (#1 imports))
 	val _ = add_static_data (map (fn lab => DOT_IMPORT(DatLab lab, "DATA")) (#2 imports))
 	val _ = add_static_data (map (fn lab => DOT_EXPORT(MLFunLab lab, "CODE")) (main_lab::(#1 exports))) 
-	val _ = add_static_data (map (fn lab => DOT_EXPORT(DatLab lab, "CODE")) (#2 exports)) 
+	val _ = add_static_data (map (fn lab => DOT_EXPORT(DatLab lab, "DATA")) (#2 exports)) 
 	val _ = add_static_data [DOT_IMPORT(exn_ptr_lab, "DATA"),DOT_IMPORT(exn_counter_lab,"DATA")]
+	val _ = add_static_data (map (fn lab => DOT_IMPORT(DatLab lab, "DATA")) global_region_labs)
 	val hp_parisc_prg = HppaResolveJumps.RJ{top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
 						init_code = init_hppa_code(),
 						exit_code = exit_hppa_code(),
@@ -1363,9 +1534,6 @@ struct
 	val _ = reset_label_counter()
 	val _ = reset_lib_functions()
 
-	val global_region_labs = [BI.toplevel_region_withtype_top_lab,
-				  BI.toplevel_region_withtype_string_lab,
-				  BI.toplevel_region_withtype_real_lab]
 	val lab_exit = NameLab "__lab_exit"
 	val next_prog_unit = Labels.new_named "next_prog_unit"
 	val progunit_labs = map MLFunLab linkinfos
