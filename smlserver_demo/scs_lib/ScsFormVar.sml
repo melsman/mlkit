@@ -79,6 +79,7 @@ signature SCS_FORM_VAR =
     val getEnumErr     : string list -> string formvar_fn
     val getYesNoErr    : string formvar_fn
     val getDateErr     : Date.date formvar_fn
+    val getPeriodErr   : (Date.date * Date.date) formvar_fn
     val getDateIso     : string formvar_fn
     val getTableName   : string formvar_fn
     val getLangErr     : ScsLang.lang formvar_fn
@@ -681,6 +682,25 @@ structure ScsFormVar :> SCS_FORM_VAR =
       val getDateIso = getErr' (ScsDict.s [(ScsLang.en,`date`),(ScsLang.da,`dato`)]) msgDateIso chkDateIso
       val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate (ScsDict.s [(ScsLang.en,`date`),(ScsLang.da,`dato`)]) 
                          msgDate chkDate
+
+      fun getPeriodErr (fv:string,emsg:string,errs:errs) = 
+        (* we append fv with _FV_start__ and _FV_end__ because we actually
+           have two separate input boxes, see function period in ScsWidget. *)
+        let
+          val (start_date,errs) = 
+            getDateErr(fv^"_FV_start__",ScsDict.s [(ScsLang.en,`start date of period`),(ScsLang.da,`start dato for periode`)],errs) 
+          val (end_date,errs) =
+            getDateErr(fv^"_FV_end__",ScsDict.s [(ScsLang.en,`start date of period`),(ScsLang.da,`start dato for periode`)],errs)
+          val errs = 
+            if Date.compare(start_date,end_date) = General.GREATER then
+              addErr(ScsDict.sl' [(ScsLang.en,`The start date <i>%0</i> must be before the end date <i>%1</i>.`),
+                                  (ScsLang.da,`Startdatoen <i>%0</i> skal ligge før slutdatoen <i>%1</i>.`)] 
+                                 [ScsDate.pp start_date,ScsDate.pp end_date],errs)
+            else errs
+        in
+          ((start_date,end_date),errs)
+        end
+
       val getTableName = getErr' (ScsDict.s [(ScsLang.da,`table name`),(ScsLang.en,`tabelnavn`)]) 
                            msgTableName (regExpMatch "[a-zA-Z_]+")
       val getLangErr = getErr ScsLang.en ScsLang.fromString (ScsDict.s [(ScsLang.en,`language`),(ScsLang.da,`sprog`)])
@@ -691,6 +711,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
     end
 
     fun getStrings fv = List.map trim (Ns.Conn.formvarAll fv)
+
+
 
     fun getRoleIdErr (fv,errs) = getIntErr(fv,ScsDict.s [(ScsLang.en,`Role id`),(ScsLang.da,`Rolle id`)],errs)
 

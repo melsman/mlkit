@@ -12,6 +12,11 @@ signature SCS_DB =
     val panicOneRow   : ((string->string)->'a) -> quot -> 'a
     val panicZeroOrOneRow : ((string->string)->'a) -> quot -> 'a option
 
+    (* [userLang user_id] returns the language preference for user
+       user_id formatted as a string that can be used when accessing
+       Oracle. *)
+    val userLang : int -> string
+
     val ppDate        : string -> string
   end
 
@@ -62,6 +67,8 @@ structure ScsDb :> SCS_DB =
 
     fun oneFieldErrPg (sql,emsg) =
       Db.oneField sql handle _ => (ScsPage.returnPg "" emsg;Ns.exit())
+
+    fun userLang user_id = ScsLang.toString ScsLogin.user_lang
 
     val ppDate = ScsDate.ppDb o Db.toDate
   end

@@ -3,8 +3,8 @@ signature SCS_LOGIN =
     val default_lang : ScsLang.lang
     val default_id : int
 
-    val user_lang : ScsLang.lang
     val user_id   : int
+    val user_lang : ScsLang.lang
 
     val verifyUser : unit -> int * ScsLang.lang
     val loggedIn   : bool

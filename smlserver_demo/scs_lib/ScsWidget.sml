@@ -42,7 +42,7 @@ signature SCS_WIDGET =
     (* [mediumTa] presized textarea. *)
     val mediumTa : string -> quot -> quot
 
-    (* [mediumTa] presized textarea. *)
+    (* [mediumWideTa] presized textarea. *)
     val mediumWideTa : string -> quot -> quot
 
     (* [smallTa] presized textarea. *)
@@ -151,6 +151,12 @@ signature SCS_WIDGET =
     (* [selectLang lang default] returns an HTML selection box with
        all languages and the users default language preselected. *)
     val selectLang      : ScsLang.lang -> string -> quot
+
+    (* [period p fv]: returns HTML for two entry boxes: one for
+       start date and one for end date. A period p is a pair
+       (start_date option,end_date option) and the two boxes will be
+       pre-filled if possible. *)
+    val period : Date.date option * Date.date option -> string -> quot
   end
 
 structure ScsWidget :> SCS_WIDGET =
@@ -294,4 +300,10 @@ structure ScsWidget :> SCS_WIDGET =
     fun selectLang default fv = 
       selectWithDefault (ScsLang.all_for_sel_box ScsLogin.user_lang)
       (ScsLang.toString default) fv
+
+    fun period (start_date_opt,end_date_opt) fv = 
+      (* we append fv with _FV_start__ and _FV_end__ because we actually
+         have two separate input boxes. *)
+      intextDate start_date_opt (fv^"_FV_start__") ^^ ` <b>--</b> ` ^^
+      intextDate end_date_opt (fv^"_FV_end__")
   end

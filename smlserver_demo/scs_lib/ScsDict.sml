@@ -124,13 +124,13 @@ signature SCS_DICT =
     (* [s dict] returns the first phrase in the dictionary dict
        corresponding to the preferred language by the logged in user. 
        The first phrase in dict is returned if the preferred language
-       is not in dict. Raises EmptyDict if the dictionary is empty. *)
+       is not in dict. Raises ScsDict if the dictionary is empty. *)
     val s : dict -> string
 
     (* [s' dict] returns the first phrase in the dictionary dict
        corresponding to the preferred language by the logged in user. 
        The first phrase in dict is returned if the preferred language
-       is not in dict. Raises EmptyDict if the dictionary is empty. *)
+       is not in dict. Raises ScsDict if the dictionary is empty. *)
     val s' : dict -> quot
  
     (* [sl dict args] returns the first phrase in the dictionary dict
