@@ -816,15 +816,15 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	val bound_id = ref 0;
 	val escaping_tyvars = ref ([]: TyVar list)
 	   (* type variables escaping due to the value polymorphism *)
-	val fake_generic_tyvars = ref ([]: TyVar list)
+	val generic_tyvars = ref ([]: TyVar list)
 	  (* when faking, we just collect those type variables which could be 
-	   * generalised in fake_generic_tyvars, but do not actually generalise
+	   * generalised in generic_tyvars, but do not actually generalise
 	   * the variables, i.e. we do not modify the levels.
 	   *)
-	fun fake_insert r tv = 
+	fun insert r tv = 
 	  let 
 	    (* We need to compare both with TyVar.eq_free and TyVar.eq_bound 
-	     * because as fake_generalise does not modify the levels, fake_insert
+	     * because as fake_generalise does not modify the levels, insert
 	     * can be called with type variables that are different according to 
 	     * TyVar.eq_free, but which are equal according to TyVar.eq_bound 
 	     * --- XXX this equality stuff is certainly a mess, and should be 
@@ -834,15 +834,15 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	     * is the same as TyVar.eq.
 	     *)
 	    fun mem x set = List.exists (fn y => TyVar.eq (x,y)) set
-	    fun insert x set = if mem x set then set else x::set
+	    fun insert0 x set = if mem x set then set else x::set
 	  in
-	    r := insert tv (!r)
+	    r := insert0 tv (!r)
 	  end
-	val fake = ref false
+	val faker = ref false
 	fun reset () = (bound_id := 0; 
 			ordinaryMap := [];
 			explicitMap := FinMap.empty;
-			fake_generic_tyvars := [];
+			generic_tyvars := [];
 			escaping_tyvars := [])
 	fun next_bound_id () = (bound_id := !bound_id - 1; !bound_id)
 	fun mk_bound_tyvar0 (tv as (ref (NO_TYPE_INSTANCE(EXPLICIT ExplicitTyVar)))) =
@@ -868,69 +868,75 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	  | mk_bound_tyvar0 _ = impossible "mk_bound_tyvar0"
 
 	fun mk_bound_tyvar tv level =
-	      if !fake then fake_insert fake_generic_tyvars tv
-	      else (level := Level.GENERIC ; mk_bound_tyvar0 tv)
+	      (insert generic_tyvars tv ;
+	       if !faker then ()
+	       else (level := Level.GENERIC ; mk_bound_tyvar0 tv))
 
 	fun mk_escaping_tyvar tv level =
-	      if !fake then (fake_insert escaping_tyvars tv ;
-			     level := Level.current ())
-	      else ()
+	      (insert escaping_tyvars tv ;
+	       if !faker then ()
+	       else level := Level.current ())
+	      
 
 	local
-	fun generalise0 ov imp ty = 
+	fun generalise0 {ov, imp, tau} = 
 	  (*generalise overloaded type variables  iff  ov and level > current_level.
 	   generalise imperative type variables  iff imp and level > current_level.
 	   Do not call generalise0 directly; use generalise1 instead, as it
 	   initialises things correctly.*)
 
-	  let val ty = findType ty 
+	  let val tau = findType tau
+	      val {TypeDesc, level} = tau
 	  in
-	    debug_print "generalise0 IN " ty ;
-	    if !(#level ty) = Level.GENERIC then ()
+	    debug_print "generalise0 IN " tau ;
+	    if !level = Level.GENERIC then ()
 	    else
-	      (case ty of
-		 {TypeDesc = TYVAR tv, level} =>
+	      (case TypeDesc of
+		 TYVAR tv =>
 		   if !level > Level.current ()
 		   then if ov orelse not (TyVar.is_overloaded tv)
 			then if imp then mk_bound_tyvar tv level
 			     else mk_escaping_tyvar tv level
 			else level := Level.current ()
 		   else ()
-	       | {TypeDesc = ARROW(ty1,ty2), level} => 
-		    level := Int.min (generalise0 ov imp ty1) 
-		                     (generalise0 ov imp ty2)
-	       | {TypeDesc = RECTYPE r, level} => 
-		    level := generaliseRecType ov imp r
-	       | {TypeDesc = CONSTYPE(tys,tyname),level} => 
+	       | ARROW (tau1, tau2) => 
+		    level := Int.min (generalise0 {ov=ov, imp=imp, tau=tau1}) 
+		                     (generalise0 {ov=ov, imp=imp, tau=tau2})
+	       | RECTYPE r => 
+		    level := generaliseRecType {ov=ov, imp=imp, r=r}
+	       | CONSTYPE (taus, tyname) => 
 		    level := List.foldL 
-		               Int.min Level.NONGENERIC (map (generalise0 ov imp) tys)) ;
-	    debug_print "generalise0 OUT" ty ;
-	    ! (#level ty)
+		               Int.min Level.NONGENERIC
+			           (map (fn tau => generalise0
+					     {ov=ov, imp=imp, tau=tau}) taus)) ;
+	    debug_print "generalise0 OUT" tau ;
+	    ! (#level tau)
 	  end
 
-	and generaliseRecType ov imp r =
-	  let 
-	    val r = findRecType r 
-	    val _ = debug_print_RecType "generaliseRecType" r
-	  in case r of
-	    NILrec => Level.NONGENERIC
-	  | VARrec (ref (NO_REC_INSTANCE _)) => Level.NONGENERIC
-	  | VARrec (ref (REC_INSTANCE _)) => impossible "generaliseRecType"
-	  | ROWrec(l,ty,r') => 
-	      Int.min (generalise0 ov imp ty) (generaliseRecType ov imp r')
-	  end
+	and generaliseRecType {ov, imp, r} =
+	      let val r = findRecType r 
+	      in
+		debug_print_RecType "generaliseRecType" r ;
+		(case r of
+		   NILrec => Level.NONGENERIC
+		 | VARrec (ref (NO_REC_INSTANCE _)) => Level.NONGENERIC
+		 | VARrec (ref (REC_INSTANCE _)) => impossible "generaliseRecType"
+		 | ROWrec (l,tau,r') => 
+		     Int.min (generalise0 {ov=ov, imp=imp, tau=tau})
+	                     (generaliseRecType {ov=ov, imp=imp, r=r'}))
+	      end
 	in
-	fun generalise1 fake_flag ov imp tau =
-	      (reset () ; fake := fake_flag ; generalise0 ov imp tau ;
-	       (!fake_generic_tyvars, !escaping_tyvars))
+	fun generalise1 {fake, ov, imp, tau} =
+	      (reset () ; faker := fake ; generalise0 {ov=ov, imp=imp, tau=tau} ;
+	       (!generic_tyvars, !escaping_tyvars))
 	end (*local*)
       in
-	fun generalise_and_return_escaping_tyvars ov imp tau =
-	      #2 (generalise1 (*fake=*)false ov imp tau)
-	fun generalise ov imp tau =
-	      (generalise_and_return_escaping_tyvars ov imp tau; ())
+	fun generalise_and_return_escaping_tyvars {ov, imp, tau} =
+	      #2 (generalise1 {fake=false, ov=ov, imp=imp, tau=tau})
+	fun generalise {ov, imp, tau} =
+	      (generalise_and_return_escaping_tyvars {ov=ov, imp=imp, tau=tau}; ())
 	fun fake_generalise imp tau =
-	      #1 (generalise1 (*fake=*)true (*ov=*)false imp tau)
+	      #1 (generalise1 {fake=true, ov=false, imp=imp, tau=tau})
       end (*local*)
 
       (* close imp tau = a list of those type variables of tau which are
@@ -1487,7 +1493,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    (*with generalisation of overloaded tyvars (because of the
 	     first `true' argument to `Type.generalise' below).*)
 	    let val tau = Type.copy true false tau
-	        val _ = Type.generalise true true tau
+	        val _ = Type.generalise {ov=true, imp=true, tau=tau}
 		val tvs = Type.generic_tyvars tau 
 	    in (tvs, tau)
 	    end
@@ -1498,8 +1504,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	     non-expansive, and then type variables must be generalised.*)
 	    let val tau = Type.copy false imp tau
 	              (*(the `false' means no generalisation of overloaded tyvars.)*)
-	        val escaping_tyvars =
-		      Type.generalise_and_return_escaping_tyvars false imp tau
+	        val escaping_tyvars = Type.generalise_and_return_escaping_tyvars
+		      {ov=false, imp=imp, tau=tau}
 		val tvs = Type.generic_tyvars tau 
 	    in ((tvs, tau), escaping_tyvars)
 	    end
@@ -1594,7 +1600,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      val tau' = Type.copy false true tau
 	      val tyvars_tau' = Type.tyvars tau'
 	      val tyvars'' = map (subst (tyvars_tau,tyvars_tau')) tyvars'
-	  in Type.generalise false true tau' ;
+	  in Type.generalise {ov=false, imp=true, tau=tau'} ;
 	     TYPEFCN {tyvars=tyvars'', tau=tau'}
 	  end
       end
@@ -1711,7 +1717,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       and a'_type = Type.from_TyVar a
       val _ = Level.pop ()
       val tau1 = Type.from_pair(a_type,a'_type)
-      val _ = Type.generalise false true tau1
+      val _ = Type.generalise {ov=false, imp=true, tau=tau1}
 
       val tau2 = 
 	let
@@ -1772,7 +1778,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       and a'_type = Type.from_TyVar a'
       val _ = Level.pop ()
       val tau1 = Type.from_pair(a_type,a'_type)
-      val _ = Type.generalise false true tau1
+      val _ = Type.generalise {ov=false, imp=true, tau=tau1}
       val tau2 = 
 	let
 	  val tv = ref (NO_TYPE_INSTANCE(ORDINARY{id= ~1, equality = false,
