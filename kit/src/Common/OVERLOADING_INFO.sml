@@ -12,6 +12,9 @@ signature OVERLOADING_INFO =
       UNRESOLVED of Type
     | RESOLVED_INT
     | RESOLVED_REAL
+    | RESOLVED_STRING
+    | RESOLVED_CHAR
+    | RESOLVED_WORD
 
     val string : OverloadingInfo -> string
     val layout : OverloadingInfo -> StringTree
