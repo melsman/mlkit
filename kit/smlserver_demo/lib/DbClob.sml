@@ -28,6 +28,11 @@ signature DB_CLOB =
     (* [delete_fn clob_id] lambda version of delete - to use in a
        larger transaction *)
     val delete_fn : string -> (Db.Handle.db -> unit)  
+
+    (* [gToStringOpt g field_name] is used to extract text from 
+       database (clob) fields that are nullable. returns (SOME clob_text)
+       if g field_name contains an integer *)
+    val gToStringOpt : (string->string) -> string -> string option
   end
 
 structure DbClob :> DB_CLOB =
@@ -68,4 +73,9 @@ structure DbClob :> DB_CLOB =
                                                where clob_id=^(Db.qqq clob_id)
                                                order by idx`
     fun select clob_id = Db.Handle.wrapDb (select_fn clob_id)
+
+    fun gToStringOpt    g field_name = case Int.fromString( g field_name ) of 
+        SOME cid => SOME (Quot.toString (select (g field_name)))
+      | NONE	 => NONE
+
   end
