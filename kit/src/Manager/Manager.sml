@@ -468,10 +468,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun Basis_plus' (B,B') = Basis.plus'(B,B')		    
 
     fun maybe_create_dir d : unit =
-      if OS.FileSys.access (d, []) handle _ => error ("I cannot access `" ^ d ^ "' directory") then
+      if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
 	if OS.FileSys.isDir d then ()
-	else error ("the file `" ^ d ^ "' is not a directory")
-      else (OS.FileSys.mkDir d handle _ => error ("I cannot create `" ^ d ^ "' directory"))
+	else error ("The file " ^ quot d ^ " is not a directory")
+      else (OS.FileSys.mkDir d handle _ => error ("I cannot create directory " ^ quot d))
 
     fun maybe_create_PM_dir() : unit =
       (maybe_create_dir "PM"; maybe_create_dir "PM/Prof"; maybe_create_dir "PM/NoProf")
@@ -484,7 +484,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 else let val old_dir = OS.FileSys.getDir()
 	          val _ = OS.FileSys.chDir dir
 	      in {cd_old=fn()=>OS.FileSys.chDir old_dir, file=file}
-	      end handle OS.SysErr _ => error ("I could not access directory " ^ quot dir)
+	      end handle OS.SysErr _ => error ("I cannot access directory " ^ quot dir)
       end
 
     fun build_body (prjid, B:TopBasis, Bacc, body, clean) : TopBasis * Basis * modcode * bool =  (* the bool is a `clean' flag *)
@@ -575,9 +575,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     (* Add basislib project if auto import is enabled *)
 
-    fun maybe_add_basislib imports = 
+    fun maybe_add_basislib prjid imports = 
       let val p = !Flags.basislib_project
-      in if !Flags.auto_import_basislib then p :: imports
+	  val prjid_basislib = OS.Path.file p
+      in if !Flags.auto_import_basislib andalso prjid <> prjid_basislib then p :: imports
 	 else imports
       end 
 	
@@ -594,7 +595,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	             error ("There is a cycle in your project; problematic project identifier: " ^ quot prjid)
 		  else ()
       in let val prj as {imports, extobjs, body} = parse_project prjid
-	     val imports = maybe_add_basislib imports
+	     val imports = maybe_add_basislib prjid imports
 	     val prjid_date_file = pmdir() ^ prjid ^ ".date"
 	     val clean = older (OS.FileSys.modTime prjid, OS.FileSys.modTime prjid_date_file) handle _ => false
 	     val _ = if clean then () else local_check_project (prjid, prj)
@@ -657,12 +658,21 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * ----------------------------- *)
 
     fun comp (filepath : string) : unit =
-      let val prjid = OS.Path.base (OS.Path.file filepath)
-	  val _ = reset()
-	  val (_, _, modc, _) = build_body(prjid, Basis.initial(), Basis.empty, UNITbody filepath, false)
-      in maybe_create_PM_dir();
-	ModCode.mk_exe(prjid, modc, [], OS.Path.file prjid ^ ".exe")  (* No external object files generated *)
-      end                                                             (* by foreign compilers. *)
+      let val _ = Repository.recover()
+	  val emitted_files = EqSet.fromList (Repository.emitted_files())
+	  val prjid = OS.Path.base (OS.Path.file filepath)
+	  val _ = maybe_create_PM_dir()
+	  val (modc_basislib, basis_basislib, extobjs_basislib) = 
+	    if !Flags.auto_import_basislib then 
+	      let val {res_modc, res_basis, extobjs, ...} = build_project{cycleset=[], pmap=[], longprjid= !Flags.basislib_project}
+	      in (res_modc, Basis.plus'(Basis.initial(),res_basis), extobjs)
+	      end
+	    else (ModCode.empty, Basis.initial(), [])
+	  val (_, _, modc_file, _) = build_body(prjid, basis_basislib, Basis.empty, UNITbody filepath, false)
+	  val modc = ModCode.seq(modc_basislib, modc_file)
+      in  
+	ModCode.mk_exe(prjid, modc, extobjs_basislib, "run")
+      end
 
 
     (* -----------------------------
