@@ -81,6 +81,9 @@ structure Ns :> NS =
 	fun puts(s: string) : status =
 	  prim("@Ns_ConnPuts", (getConn(), s))
 
+	fun flushHeaders(status: int) : status =
+	  prim("@Ns_ConnFlushHeaders", (getConn(),status))
+
 	fun setRequiredHeaders(contentType: string, contentLength: int) : unit =
 	  prim("@Ns_ConnSetRequiredHeaders", (getConn(), contentType, contentLength))
 
@@ -245,8 +248,10 @@ structure Ns :> NS =
     fun write (q : quot) : status = 
       Conn.puts (Quot.toString q)
 
-    fun returnHeaders () : unit =
-      Conn.setRequiredHeaders("text/html", 0)
+    fun returnHeaders () : unit = 
+      (Conn.setRequiredHeaders("text/html", 0);
+       Conn.flushHeaders(200);
+       ())
 
     fun getMimeType(s: string) : string =
       prim("nssml_GetMimeType", s)

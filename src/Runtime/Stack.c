@@ -10,7 +10,7 @@ extern Ns_Mutex stackPoolMutex;
 #define STACK_POOL_MUTEX_UNLOCK
 #endif
 
-#define MAX_LIVE_STACKS 5
+#define MAX_LIVE_STACKS 8
 unsigned long* stackPool[MAX_LIVE_STACKS];
 int stackPoolIndex = -1;
 

@@ -11,6 +11,7 @@ Ns_SetCreate
 nssml_SetSize
 Ns_SetUnique
 Ns_ConnPuts
+Ns_ConnFlushHeaders
 Ns_ConnSetRequiredHeaders
 nssml_PageRoot
 Ns_ConnReturnRedirect
