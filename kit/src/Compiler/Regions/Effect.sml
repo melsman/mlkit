@@ -799,7 +799,7 @@ struct
 	    | WORD_RT => die "maybeFreshRhoWithTy.not possible"
 
   val freshRhoWithTy = fn (WORD_RT,cone) => (toplevel_region_withtype_word, cone)
-                        | p => maybeFreshRhoWithTy p 
+                        | p => freshRhoWithTy p (*maybeFreshRhoWithTy p *) 
 
 
 

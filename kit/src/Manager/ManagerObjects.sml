@@ -100,12 +100,16 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	(*linking*)
 	val region_profiling = Flags.lookup_flag_entry "region_profiling"
+
+	val tag_values = Flags.is_on0 "tag_values"
+
 	fun path_to_runtime () = 
 	  let fun file () = (if !region_profiling then 
 			       if gc_p() then "runtimeSystemGCProf.o"
 			       else "runtimeSystemProf.o"
 			     else if gc_p() then "runtimeSystemGC.o"
-				  else "runtimeSystem.o")
+				  else if tag_values() then "runtimeSystemTag.o"
+				       else"runtimeSystem.o")
 	  in OS.Path.concat(OS.Path.concat(!Flags.install_dir, "bin"), file())
 	  end
 

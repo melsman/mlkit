@@ -47,8 +47,6 @@ functor Flags (structure Crash : CRASH
 
     (* Elimination of polymorphic equality *)
     val eliminate_polymorphic_equality = ref true
-    val tag_integers            = ref false
-    val tag_values              = ref false
 
    (* Region inference *)
     val print_effects = ref false
@@ -910,18 +908,24 @@ val _ = add_bool_entry {long="dangling_pointers", short=SOME"dangle", item=dangl
 			\this option is disabled by default when garbage\n\
 			\collection is enabled."}
 
+val tag_values = ref false
+val _ = add_bool_entry {long="tag_values", short=SOME"tag", item=tag_values,
+			menu=["Control", "tag values"], neg=false,
+			desc=
+			"Enable tagging of values as used when garbage\n\
+			\collection is enabled for implementing pointer\n\
+			\traversal."}
+
 local
   val gc = ref false
   fun off() = (gc := false; 
 	       preserve_tail_calls := false;
 	       dangling_pointers := true;
-	       Directory.turn_off "tag_values"; 
-	       Directory.turn_off "tag_integers") 
+	       tag_values := false) 
   fun on() = (gc := true; 
 	      preserve_tail_calls := true;	      
 	      dangling_pointers := false;
-	      Directory.turn_on "tag_values"; 
-	      Directory.turn_on "tag_integers") 
+	      tag_values := true) 
 in
   val _ = add_bool_action_entry
     {long="garbage_collection", menu=["Control", "garbage collection"], 
@@ -1114,8 +1118,6 @@ end
 
   val _ = app add_bool_entry0
     [
-     ("tag_integers", tag_integers),
-     ("tag_values", tag_values), 
      ("enhanced_atbot_analysis", enhanced_atbot_analysis),
      ("eliminate_polymorphic_equality", eliminate_polymorphic_equality)
      ]

@@ -1498,7 +1498,7 @@ struct
 	   | MulExp.INTEGER(i,t,alloc) =>
 	       (INTEGER {value=i, precision=precisionNumType t}, NONE_SE)
 (*
-	       ((if BI.tag_integers() then 
+	       ((if BI.tag_values() then 
 		   (INTEGER(int32_to_string(2*(Int32.fromInt i)+1)),NONE_SE) 
 		 else (INTEGER (int_to_string i), NONE_SE))
 		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
@@ -1871,7 +1871,7 @@ struct
 		  * CodeGenX86.sml - so in that case we must use an untagged representation 
 		  * of true, which is 1 (given that BI.ml_true is 3). *)
 		 val True = Int32.fromInt (if BI.ml_true = 3 then 
-					     if BI.tag_integers() then 1
+					     if BI.tag_values() then 1
 					     else BI.ml_true
 					   else die "True")
 		 fun compile_seq_switch(ce,[],default) = default
@@ -2081,12 +2081,12 @@ struct
 			else if TyName.eq(tn,TyName.tyName_INT31) then 
 			  eq_prim "__equal_int31"
 			else if TyName.eq(tn,TyName.tyName_INT32) then 
-			  (if BI.tag_integers() then eq_prim "__equal_int32b"
+			  (if BI.tag_values() then eq_prim "__equal_int32b"
 			   else eq_prim "__equal_int32ub")
                         else if TyName.eq(tn,TyName.tyName_WORD31) then
 			  eq_prim "__equal_word31"
 			else if TyName.eq(tn,TyName.tyName_WORD32) then
-			  (if BI.tag_integers() then eq_prim "__equal_word32b"
+			  (if BI.tag_values() then eq_prim "__equal_word32b"
 			   else eq_prim "__equal_word32ub")
 		        else if TyName.eq(tn,TyName.tyName_STRING) then
 			  eq_prim "equalStringML"
@@ -2299,7 +2299,7 @@ struct
 	     MulExp.VAR{lvar,...} => lookup_ve env lvar
 	   | MulExp.INTEGER(i,t,alloc) => INTEGER{value=i, precision=precisionNumType t}
 (*
-	       ((if BI.tag_integers() then 
+	       ((if BI.tag_values() then 
 		   INTEGER(int32_to_string(2*(Int32.fromInt i)+1)) 
 		 else INTEGER (int_to_string i))
 		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
@@ -2618,7 +2618,7 @@ struct
 		  * CodeGenX86.sml - so in that case we must use an untagged representation 
 		  * of true, which is 1 (given that BI.ml_true is 3). *)
 		 val True = Int32.fromInt (if BI.ml_true = 3 then 
-					     if BI.tag_integers() then 1
+					     if BI.tag_values() then 1
 					     else BI.ml_true
 					   else die "True")
 		 fun compile_seq_switch(ce,[],default) = default
@@ -2743,12 +2743,12 @@ struct
 			else if TyName.eq(tn,TyName.tyName_INT31) then 
 			  eq_prim "__equal_int31"
 			else if TyName.eq(tn,TyName.tyName_INT32) then 
-			  (if BI.tag_integers() then eq_prim "__equal_int32b"
+			  (if BI.tag_values() then eq_prim "__equal_int32b"
 			   else eq_prim "__equal_int32ub")
                         else if TyName.eq(tn,TyName.tyName_WORD31) then
 			  eq_prim "__equal_word31"
 			else if TyName.eq(tn,TyName.tyName_WORD32) then
-			  (if BI.tag_integers() then eq_prim "__equal_word32b"
+			  (if BI.tag_values() then eq_prim "__equal_word32b"
 			   else eq_prim "__equal_word32ub")
 		        else if TyName.eq(tn,TyName.tyName_STRING) then
 			  eq_prim "equalStringML"

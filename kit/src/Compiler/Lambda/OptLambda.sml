@@ -596,13 +596,13 @@ functor OptLambda(structure Lvars: LVARS
       fun is_boolean con = 
 	Con.eq(Con.con_TRUE, con) orelse Con.eq(Con.con_FALSE, con)
 	
-      val tag_integers = Flags.is_on0 "tag_integers"
+      val tag_values = Flags.is_on0 "tag_values"
 
       fun is_unboxed_value lamb =
 	case lamb
-	  of INTEGER (v,t) => if tag_integers() then not(eq_Type(t, int32Type))
+	  of INTEGER (v,t) => if tag_values() then not(eq_Type(t, int32Type))
 			      else true
-	   | WORD (v,t) => if tag_integers() then not(eq_Type(t, word32Type))
+	   | WORD (v,t) => if tag_values() then not(eq_Type(t, word32Type))
 			   else true
 	   | PRIM(CONprim {con,...},nil) => is_boolean con
 	   | _ => false

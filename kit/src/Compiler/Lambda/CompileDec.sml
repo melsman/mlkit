@@ -84,7 +84,7 @@ functor CompileDec(structure Con: CON
     structure ListPair = Edlib.ListPair
     structure DecGrammar = TopdecGrammar.DecGrammar
       
-    val tag_integers = Flags.is_on0 "tag_integers"
+    val tag_values = Flags.is_on0 "tag_values"
 
     open LambdaExp
     type function = {lvar : lvar, tyvars : tyvar list, Type : Type,
@@ -1459,12 +1459,12 @@ end; (*match compiler local*)
     (*         Compilation of CCall names                                     *)
     (* ---------------------------------------------------------------------- *)
 
-    (* The flag "tag_integers" determines whether 32-bit integer
+    (* The flag "tag_values" determines whether 32-bit integer
        values and 32-bit word values are implemented boxed or
-       unboxed. When "tag_integers" is enabled, 32-bit integers and
+       unboxed. When "tag_values" is enabled, 32-bit integers and
        32-bit words are represented boxed and the default integer type
        (int) is defined, internally, to be int31 and the default word
-       type is defined to be word31. Contrary, when "tag_integers" is
+       type is defined to be word31. Contrary, when "tag_values" is
        disabled, 32-bit integers and 32-bit words are represented
        unboxed-untagged and the default integer type (int) is defined,
        internally, to be int32 and the default word type is defined to
@@ -1472,7 +1472,7 @@ end; (*match compiler local*)
 
        The function compileCName transforms 32-bit primitives into
        primitives on either boxed or unboxed representations dependent
-       on the value of the "tag_integers" flag. The function also
+       on the value of the "tag_values" flag. The function also
        transforms operations on integers and words into operations on
        either 32-bit representations or 31-bit representations. 
 
@@ -1541,7 +1541,7 @@ end; (*match compiler local*)
       fun compileCName name =
 	case CNameMap.lookup M name
 	  of SOME (tagged, untagged) =>
-	    if tag_integers() then tagged
+	    if tag_values() then tagged
 	    else untagged
 	   | NONE => name
     end
@@ -1627,44 +1627,44 @@ end; (*match compiler local*)
 	
       val plus_word31 = binary_ccall word31Type "__plus_word31"
       val plus_word32 = binary_ccall word32Type "__plus_word32"
-      fun plus_word8 args = if tag_integers() then norm31 (plus_word31 args)
+      fun plus_word8 args = if tag_values() then norm31 (plus_word31 args)
 			    else norm32 (plus_word32 args)
 
       val minus_word31 = binary_ccall word31Type "__minus_word31"
       val minus_word32 = binary_ccall word32Type "__minus_word32"
-      fun minus_word8 args = if tag_integers() then norm31 (minus_word31 args)
+      fun minus_word8 args = if tag_values() then norm31 (minus_word31 args)
 			     else norm32 (minus_word32 args)
 
       val mul_word31 = binary_ccall word31Type "__mul_word31"
       val mul_word32 = binary_ccall word32Type "__mul_word32"
-      fun mul_word8 args = if tag_integers() then norm31 (mul_word31 args)
+      fun mul_word8 args = if tag_values() then norm31 (mul_word31 args)
 			   else norm32 (mul_word32 args)
 
       val div_word31 = binary_ccall_exn word31Type "__div_word31"
       val div_word32 = binary_ccall_exn word32Type "__div_word32"
-      fun div_word8 args = if tag_integers() then div_word31 args
+      fun div_word8 args = if tag_values() then div_word31 args
 			   else div_word32 args
 
       val mod_word31 = binary_ccall_exn word31Type "__mod_word31"
       val mod_word32 = binary_ccall_exn word32Type "__mod_word32"
-      fun mod_word8 args = if tag_integers() then mod_word31 args
+      fun mod_word8 args = if tag_values() then mod_word31 args
 			   else mod_word32 args
 
       val less_word31 = cmp_ccall word31Type "__less_word31"
       val less_word32 = cmp_ccall word32Type "__less_word32"
-      fun less_word8 args = if tag_integers() then less_word31 args
+      fun less_word8 args = if tag_values() then less_word31 args
 			    else less_word32 args
       val greater_word31 = cmp_ccall word31Type "__greater_word31"
       val greater_word32 = cmp_ccall word32Type "__greater_word32"
-      fun greater_word8 args = if tag_integers() then greater_word31 args
+      fun greater_word8 args = if tag_values() then greater_word31 args
 			       else greater_word32 args
       val lesseq_word31 = cmp_ccall word31Type "__lesseq_word31"
       val lesseq_word32 = cmp_ccall word32Type "__lesseq_word32"
-      fun lesseq_word8 args = if tag_integers() then lesseq_word31 args
+      fun lesseq_word8 args = if tag_values() then lesseq_word31 args
 			      else lesseq_word32 args
       val greatereq_word31 = cmp_ccall word31Type "__greatereq_word31"
       val greatereq_word32 = cmp_ccall word32Type "__greatereq_word32"
-      fun greatereq_word8 args = if tag_integers() then greatereq_word31 args
+      fun greatereq_word8 args = if tag_values() then greatereq_word31 args
 				 else greatereq_word32 args
 
       (* Operations on Integers (int31, int32) *)

@@ -4,9 +4,11 @@ functor DropRegions(structure Name : NAME
                     structure MulExp : MUL_EXP
                     structure Mul: MUL
                       sharing type Mul.mulef = MulExp.mulef
+                      sharing type Mul.mul = MulExp.mul
 		    structure AtInf : AT_INF
 		      sharing type AtInf.LambdaPgm = MulExp.LambdaPgm 
                       sharing type AtInf.LambdaExp = MulExp.LambdaExp
+                      sharing type AtInf.mul = Mul.mul
 		    structure RSE : REGION_STAT_ENV
 		      sharing type RSE.lvar = MulExp.lvar
 		    structure RType : RTYPE
@@ -33,6 +35,8 @@ functor DropRegions(structure Name : NAME
     structure LvarMap = Lvars.Map
 
     open MulExp AtInf
+
+    val region_inference = Flags.is_on0 "region_inference"
 
     fun die s = Crash.impossible ("DropRegions."^s)
 
@@ -168,15 +172,16 @@ functor DropRegions(structure Name : NAME
     * Environment for Region Variables
     * ----------------------------------------------------------------- *)
 
-    datatype regenv_res = DROPIT | KEEP
+    datatype regenv_res = DROPIT | KEEP | LETREGION_INF (*to disable global regions*)
     type place = RType.place
     type regenv = (place, regenv_res) FinMapEq.map
     val empty_regenv = FinMapEq.empty : regenv
     fun add_regenv (rho, res, regenv) = FinMapEq.add Eff.eq_effect (rho, res, regenv)
-
+    fun add_regenv' (rho, res, (env,renv)) = (env, add_regenv (rho,res,renv))
     type StringTree = PP.StringTree
     fun layout_regenv_res DROPIT = PP.LEAF "drop"
       | layout_regenv_res KEEP = PP.LEAF "keep"
+      | layout_regenv_res LETREGION_INF = PP.LEAF "letregion_inf"
     val layout_regenv = FinMapEq.layoutMap 
            {start="Environment for region variables in DropRegions:(",finish=")",
             eq=" -> ",sep=", "} Eff.layout_effect layout_regenv_res
@@ -230,6 +235,26 @@ functor DropRegions(structure Name : NAME
              (place at, place*mul, unit)trip * place list=
 
       let
+	fun S atp =
+	  if region_inference() then atp
+	  else
+	    let 
+	      fun subst rho =
+		case FinMapEq.lookup Eff.eq_effect regvar_env rho
+		  of SOME LETREGION_INF => ATTOP
+		    (case Eff.get_place_ty (Eff.find rho)
+		       of SOME Eff.STRING_RT => Eff.toplevel_region_withtype_string
+			| SOME Eff.REAL_RT => Eff.toplevel_region_withtype_real
+			| SOME _ => Eff.toplevel_region_withtype_top
+			| NONE => die "S_atp.lookup")
+		   | _ => atp
+	    in case atp 
+		 of IGNORE => atp
+		  | ATTOP rho => subst rho
+		  | ATBOT rho => subst rho
+		  | SAT rho => subst rho
+	    end
+
 	fun drop_sw (SWITCH(tr,sel,opt)) acc =
 	  let val (sel', acc) = List.foldR (fn (a,tr) => fn (trs, acc) =>
                                             let val (tr', acc) = drop env tr acc
@@ -252,15 +277,15 @@ functor DropRegions(structure Name : NAME
 	      if RType.unboxed t then (check_atp_w atp "INTEGER"; 
 				       (INTEGER (n, t, IGNORE), acc))
 	      else (check_atp_t atp "INTEGER_BOXED"; 
-		    (e, maybe_add regvar_env atp acc))
+		    (INTEGER(n,t,S atp), maybe_add regvar_env atp acc))
 	     | WORD (w, t, atp) => 
 	      if RType.unboxed t then (check_atp_w atp "WORD"; 
 				       (WORD (w, t, IGNORE), acc))
 	      else (check_atp_t atp "WORD_BOXED"; 
-		    (e, maybe_add regvar_env atp acc))
+		    (WORD(w,t,S atp), maybe_add regvar_env atp acc))
 	     | STRING (s, atp) => (check_atp_s  atp "STRING";
-                                   (e, maybe_add regvar_env atp acc))
-	     | REAL (s, atp) => (check_atp_r atp "REAL"; (e, maybe_add regvar_env atp acc))
+                                   (STRING(s,S atp), maybe_add regvar_env atp acc))
+	     | REAL (s, atp) => (check_atp_r atp "REAL"; (REAL(s,S atp), maybe_add regvar_env atp acc))
 	     | UB_RECORD trips => 
                            let val (trips', acc) = List.foldR (fn tr => fn (trs,acc) =>
                                                     let val (tr', acc)= drop env tr acc
@@ -272,7 +297,7 @@ functor DropRegions(structure Name : NAME
                            (check_atp_t atp "FN_CLOS"; 
                             let val (body', acc) = drop env body acc
                             in
-                              (FN{pat=pat,body=body',free=free,alloc=atp},
+                              (FN{pat=pat,body=body',free=free,alloc=S atp},
                                maybe_add regvar_env atp acc)
                             end)
 	     | LETREGION{B,rhos=ref rhos,body} =>
@@ -282,6 +307,10 @@ functor DropRegions(structure Name : NAME
 		       else ((*if bot_region p then die "letregion bound variable with runtype BOT."
 			     else ();mads *)   rho::drop_rhos rhos)
 		  val rhos' = drop_rhos rhos
+		  val (rhos', env) = 
+		    if region_inference() then (rhos', env)
+		    else foldr (fn (rho as (p,Mul.INF),(rhos',env)) => (rhos',add_regenv'(p,LETREGION_INF,env))
+                                 | (rho,(rhos',env)) => (rho::rhos',env)) (nil,env) rhos'		      
                   val (body', acc) = drop env body acc
 	      in (LETREGION{B=B,rhos=ref rhos',body=body'}, acc)
 	      end
@@ -349,7 +378,7 @@ functor DropRegions(structure Name : NAME
 		    | new_functions _ _ acc = die "new_functions"
 		  val (functions', acc) = new_functions functions trs acc
 		  val (scope',acc) = drop (lvar_env', regvar_env) scope acc
-	      in (FIX{free=free,shared_clos=atp,functions=functions',scope=scope'}, acc)
+	      in (FIX{free=free,shared_clos=S atp,functions=functions',scope=scope'}, acc)
 	      end
 	     | APP(ck,sr,tr1 as TR(VAR{lvar,il,plain_arreffs, fix_bound, 
                                        rhos_actuals=ref actuals, other},metaType,
@@ -360,6 +389,7 @@ functor DropRegions(structure Name : NAME
 		       val actuals' = filter_bl(bool_list,actuals)
                        val acc = List.foldL (maybe_add regvar_env) acc actuals'
                        val (tr2', acc) = drop env tr2 acc
+		       val actuals' = map S actuals'
 		   in (APP(ck,sr,TR(VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,fix_bound=fix_bound,
 				 rhos_actuals=ref actuals',other=other},metaType,ateffs,mulef), 
                           tr2'), acc)
@@ -380,7 +410,7 @@ functor DropRegions(structure Name : NAME
                  let val acc = maybe_add regvar_env atp acc
                      val (tr', acc) =  drop env tr acc
                  in check_atp_t atp "EXCEPTION"; 
-                    (EXCEPTION(excon,b,mu,atp, tr'), acc)
+                    (EXCEPTION(excon,b,mu,S atp, tr'), acc)
                  end
 	     | RAISE tr => 
                  let val (tr', acc) = drop env tr acc in (RAISE (tr'), acc) end
@@ -414,15 +444,15 @@ functor DropRegions(structure Name : NAME
 		 let val aux_regions' = filter(map drop_atplace aux_regions)
                      val acc = List.foldL (maybe_add regvar_env) acc (alloc::aux_regions')
 		 in (CON0{con=con,il=il,
-                          aux_regions=aux_regions',
-                          alloc=drop_atplace alloc}, acc)
+                          aux_regions=map S aux_regions',
+                          alloc=S(drop_atplace alloc)}, acc)
 		 end
 	     | CON1 ({con, il, alloc}, tr) => 
                  let val (tr', acc) = drop env tr acc
                      val acc = maybe_add regvar_env alloc acc
                  in
                    (CON1({con=con,il=il,
-                          alloc= drop_atplace alloc},tr'),
+                          alloc=S(drop_atplace alloc)},tr'),
                     acc)
                  end
 	     | DECON (c, tr) => 
@@ -434,7 +464,7 @@ functor DropRegions(structure Name : NAME
                    case opt of
                      SOME (alloc,tr) => let val acc = maybe_add regvar_env alloc acc
                                             val (tr', acc) = drop env tr acc
-                                        in (SOME(drop_atplace alloc, tr'), acc)
+                                        in (SOME(S(drop_atplace alloc), tr'), acc)
                                         end
                    | NONE => (NONE, acc)
                  in
@@ -452,7 +482,7 @@ functor DropRegions(structure Name : NAME
                                                   end)
                                       ([], acc) trs
                   in
-                     (RECORD(drop_atplace alloc, trs'), acc)
+                     (RECORD(S(drop_atplace alloc), trs'), acc)
                   end
 	     | SELECT (i, tr) => 
                   let val (tr', acc) = drop env tr acc
@@ -466,13 +496,13 @@ functor DropRegions(structure Name : NAME
                   let val acc = maybe_add regvar_env alloc acc
                     val (tr', acc)= drop env tr acc
                   in
-                    (REF(drop_atplace alloc,tr'), acc)
+                    (REF(S(drop_atplace alloc),tr'), acc)
                   end
 	     | ASSIGN (alloc,tr1,tr2) => 
                   let val acc = maybe_add regvar_env alloc acc
                       val (tr1', acc) = drop env tr1 acc
                       val (tr2', acc) = drop env tr2 acc
-                  in (ASSIGN(drop_atplace alloc, tr1', tr2'),
+                  in (ASSIGN(S(drop_atplace alloc), tr1', tr2'),
                       acc)
                   end
 	     | DROP tr => 
@@ -486,7 +516,7 @@ functor DropRegions(structure Name : NAME
                  in
                    (EQUAL ({mu_of_arg1=mu_of_arg1, 
                             mu_of_arg2=mu_of_arg2, 
-                            alloc=drop_atplace alloc}, tr1', tr2'), acc)
+                            alloc=S(drop_atplace alloc)}, tr1', tr2'), acc)
                  end
 	     | CCALL ({name, mu_result, rhos_for_result}, trs) =>
 		 let
@@ -506,7 +536,7 @@ functor DropRegions(structure Name : NAME
 			    mu_result = mu_result,
 			    rhos_for_result =
 			      filter (map (fn (atp, i_opt) =>
-					   (drop_atplace atp, i_opt)) rhos_for_result)},
+					   (S(drop_atplace atp), i_opt)) rhos_for_result)},
 			   trs'), acc)
 		 end
 	     | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => 
@@ -515,8 +545,11 @@ functor DropRegions(structure Name : NAME
                    val regions_for_resetting' = map drop_atplace regions_for_resetting
                    val acc = List.foldL (maybe_add regvar_env) acc regions_for_resetting'
                    val (tr', acc) = drop env tr acc
+		   val regions_for_resetting' =
+		     if region_inference() then regions_for_resetting'
+		     else nil
                  in
-                  (RESET_REGIONS ({force=force,alloc=drop_atplace alloc, 
+                  (RESET_REGIONS ({force=force,alloc=S(drop_atplace alloc), 
                                   regions_for_resetting = regions_for_resetting'}, 
                                  tr'), acc)
                  end

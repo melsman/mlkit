@@ -803,11 +803,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       (* Special constants *)
 
-      val tag_integers = Flags.is_on0 "tag_integers"
+      val tag_values = Flags.is_on0 "tag_values"
 
       val Int31        = mk_ConsType ([], TyName.tyName_INT31)
       val Int32        = mk_ConsType ([], TyName.tyName_INT32)
-      fun IntDefault() = if tag_integers() then Int31 else Int32
+      fun IntDefault() = if tag_values() then Int31 else Int32
 
       val Real         = mk_ConsType ([], TyName.tyName_REAL)
       val String       = mk_ConsType ([], TyName.tyName_STRING)
@@ -817,7 +817,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val Word8        = mk_ConsType ([], TyName.tyName_WORD8)
       val Word31       = mk_ConsType ([], TyName.tyName_WORD31)
       val Word32       = mk_ConsType ([], TyName.tyName_WORD32)
-      fun WordDefault() = if tag_integers() then Word31 else Word32
+      fun WordDefault() = if tag_values() then Word31 else Word32
 
       fun simple_scon ty = {type_scon = ty, overloading = NONE}
       fun of_scon sc =

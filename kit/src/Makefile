@@ -27,6 +27,7 @@ mlkit: basics
 	cd RuntimeWithGC; $(MAKE) runtimeSystemGC.o
 	cd RuntimeWithGC; $(MAKE) runtimeSystemProf.o
 	cd RuntimeWithGC; $(MAKE) runtimeSystemGCProf.o
+	cd RuntimeWithGC; $(MAKE) runtimeSystemTag.o
 	echo 'use "build.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit.$(ARCH-OS)
 	rm -f $(BINDIR)/mlkit

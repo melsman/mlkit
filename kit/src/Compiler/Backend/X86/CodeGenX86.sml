@@ -213,7 +213,7 @@ struct
       end
 
     fun mkIntAty i = SS.INTEGER_ATY {value=Int32.fromInt i, 
-				     precision=if BI.tag_integers() then 31 else 32}
+				     precision=if BI.tag_values() then 31 else 32}
 
     fun maybeTagInt {value: Int32.int, precision:int} : Int32.int =
       case precision
@@ -248,7 +248,7 @@ struct
       else I.movl(I x, R dst_reg) :: C
 
     fun loadNumBoxed(x,dst_reg:reg,C) = 
-      if not(BI.tag_integers()) then die "loadNumBoxed.boxed integers/words necessary only when tagging is enabled"
+      if not(BI.tag_values()) then die "loadNumBoxed.boxed integers/words necessary only when tagging is enabled"
       else 
 	let val num_lab = new_num_lab()
 	  val _ = add_static_data [I.dot_data,
@@ -262,7 +262,7 @@ struct
     (* returns true if boxed representation is used for 
      * integers of the given precision *)
     fun boxedNum (precision:int) : bool = 
-      precision > 31 andalso BI.tag_integers()
+      precision > 31 andalso BI.tag_values()
 
 
     (* Find a register for aty and generate code to store into the aty *)
@@ -290,7 +290,7 @@ struct
 	  if boxedNum (#precision w) then loadNumBoxed(fmtWord w, dst_reg, C)
 	  else loadNum(fmtWord w, dst_reg, C)
 	 | SS.UNIT_ATY => 
-	    if BI.tag_integers() then 
+	    if BI.tag_values() then 
 	      load_immed(IMMED(Int32.fromInt BI.ml_unit),dst_reg,C) (* gc needs value! *)
 	    else C
 	 | SS.FLOW_VAR_ATY _ => die "move_aty_into_reg: FLOW_VAR_ATY cannot be moved"
@@ -452,7 +452,7 @@ struct
       let
 	val (convert: bool,name: string) =
 	  case explode name 
-	    of #"@" :: rest => (BI.tag_integers(), implode rest)
+	    of #"@" :: rest => (BI.tag_values(), implode rest)
 	     | _ => (false, name)
 
 	fun convert_int_to_c(reg,C) =
@@ -886,7 +886,7 @@ struct
 
       (* version with boxed arguments; assume tagging is enabled *)
       fun cmpbi_and_jmp_kill_tmp01(jump,x,y,lab_t,lab_f,size_ff,C) = 
-	if BI.tag_integers() then
+	if BI.tag_values() then
 	  let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	      val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
 	  in
@@ -978,7 +978,7 @@ struct
 	end
 
       fun neg_int32b_kill_tmp0 (b,x,d,size_ff,C) =
-	if not(BI.tag_integers()) then die "neg_int32b_kill_tmp0.tagging required"
+	if not(BI.tag_values()) then die "neg_int32b_kill_tmp0.tagging required"
 	else 
 	  let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	    val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
@@ -1181,7 +1181,7 @@ struct
        end
 
      fun bin_op_w32boxed__ {ovf} inst (r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
-       if not(BI.tag_integers()) then die "bin_op_w32boxed__.tagging_disabled"
+       if not(BI.tag_values()) then die "bin_op_w32boxed__.tagging_disabled"
        else 
 	 let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	     val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
@@ -1228,7 +1228,7 @@ struct
        bin_op_w32boxed__ {ovf=true} I.addl (b,x,y,d,size_ff,C)
 
      fun num31_to_num32b(b,x,d,size_ff,C) =   (* a boxed word is tagged as a scalar record *)
-       if BI.tag_integers() then 
+       if BI.tag_values() then 
 	 let val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
 	 in
 	   move_aty_into_reg(x,tmp_reg0,size_ff,
@@ -1241,7 +1241,7 @@ struct
        else die "num31_to_num32b.tagging_disabled"
 
      fun num32b_to_num32b {ovf:bool} (b,x,d,size_ff,C) =
-       if not(BI.tag_integers()) then die "num32b_to_num32b.tagging_disabled"
+       if not(BI.tag_values()) then die "num32b_to_num32b.tagging_disabled"
        else 
 	 let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	     val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
@@ -1261,7 +1261,7 @@ struct
 	 end
 
      fun shift_w32boxed__ inst (r,x,y,d,size_ff,C) = 
-       if not(BI.tag_integers()) then die "shift_w32boxed__.tagging is not enabled as required"
+       if not(BI.tag_values()) then die "shift_w32boxed__.tagging is not enabled as required"
        else
        (* y is unboxed and tagged *)
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
@@ -1293,8 +1293,8 @@ struct
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-	   (* y is represented tagged only when BI.tag_integers() is true *)
-	   fun untag_y C = if BI.tag_integers() then I.sarl (I "1", R ecx) :: C     (* y >> 1 *)
+	   (* y is represented tagged only when BI.tag_values() is true *)
+	   fun untag_y C = if BI.tag_values() then I.sarl (I "1", R ecx) :: C     (* y >> 1 *)
 			   else C
        in 
 	 if tag then                     (* 1 + ((x - 1) << (y >> 1)) *)
@@ -1316,8 +1316,8 @@ struct
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-	   (* y is represented tagged only when BI.tag_integers() is true *)
-	   fun untag_y C = if BI.tag_integers() then I.sarl (I "1", R ecx) :: C     (* y >> 1 *)
+	   (* y is represented tagged only when BI.tag_values() is true *)
+	   fun untag_y C = if BI.tag_values() then I.sarl (I "1", R ecx) :: C     (* y >> 1 *)
 			   else C
        in 
 	 if tag then                         (* 1 | ((x) >> (y >> 1)) *)
@@ -1338,8 +1338,8 @@ struct
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
-	   (* y is represented tagged only when BI.tag_integers() is true *)
-	   fun untag_y C = if BI.tag_integers() then I.sarl (I "1", R ecx) :: C     (* y >> 1 *)
+	   (* y is represented tagged only when BI.tag_values() is true *)
+	   fun untag_y C = if BI.tag_values() then I.sarl (I "1", R ecx) :: C     (* y >> 1 *)
 			   else C
        in 
 	 if tag then                         (* 1 | ((unsigned long)(x) >> (y >> 1)) *)
@@ -1610,7 +1610,7 @@ struct
 		       val offset = if BI.tag_values() then 1 else 0
 		     in
 		       store_aty_in_aty_record(aty2,aty1,WORDS offset,tmp_reg1,tmp_reg0,size_ff,
-                       if BI.tag_integers() then
+                       if BI.tag_values() then
 			 load_immed(IMMED (Int32.fromInt BI.ml_unit),reg_for_result,C')
                        else C')
 		     end
