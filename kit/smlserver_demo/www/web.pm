@@ -6,6 +6,7 @@ local
   ../sml/FormVar.sml
 in
  [
+  guess.sml
   counter.sml
   temp.sml
   recipe.sml
