@@ -63,7 +63,13 @@ functor TyName(
 
     fun name ({name, ...} : TyName) : name = name
 
-    fun match(tn1,tn2) = Name.match(name tn1, name tn2)
+    (* We should only allow matching of type names when their attributes 
+     * are equal; otherwise changes in attributes are not caught by
+     * the system.. *)
+    fun match(tn1,tn2) =
+      if equality tn1 = equality tn2 andalso arity tn1 = arity tn2 then 
+	Name.match(name tn1, name tn2)
+      else ()
 
     val id = Name.key o name
 
