@@ -299,7 +299,7 @@ The ML Kit is released under the GNU General Public License.
 \label{intro.sec}
 %---------------------------------------------------------
 Region-Based Memory Management is a technique for managing
-memory for programs that have dynamic data structures, such as lists,
+memory for programs that use dynamic data structures, such as lists,
 trees, pointers, and function closures.
 
 \section{%
@@ -1198,7 +1198,7 @@ command-line options to the {\tt mlkit} executable.
 
 In both cases, you need an executable version of the Kit; let us
 assume it is available on your system as a UNIX program called {\tt
-  mlkit}.\footnote{The {\tt README} file in the distribution tells you
+  mlkit}.\footnote{The {\tt INSTALL} file in the distribution tells you
   how to install the Kit.}
 
 Compiling a project is similar to compiling a single SML source file,
@@ -1575,7 +1575,9 @@ take a tuple as parameter, the Kit passes the argument tuple unboxed
 \index{record!unboxed}%
 if it can see that the boxed representation of the tuple is not needed
 by the function. The Kit does not at present unbox records returned
-from functions.
+from functions. See Section~\ref{region-polymorphic-functions.sec} on
+page~\pageref{region-polymorphic-functions.sec} for details about
+unboxed function arguments.
 
 A tuple is not allocated until its components have been evaluated.
 
@@ -2036,6 +2038,7 @@ uniformly over all types; we use lists as an example of the general
 scheme.
 
 \section{Region-Polymorphic Functions}
+\label{region-polymorphic-functions.sec}
 \index{region polymorphism|(}%
 It would be a serious limitation if all lists produced by a series of
 calls to a function were stored in the same region, for then all those
@@ -2077,10 +2080,13 @@ denoting the arguments to the call. Notice that region parameters are
 enclosed in brackets (\boxml{[ ]}); this should not cause confusion
 with ML lists, because $\RegExp$ and $\MulExp$ do not use
 \index{[ ]@\texttt{[ ]}}%
-brackets for lists.
+brackets for lists. In the special case $k=0$, no region parameters
+are passed to the function, and we shall often omit the brackets in
+this case.
 
-In the special case $k=0$, no region parameters are passed to the
-function, and we shall often omit the brackets in this case.
+Also notice that, unlike for Standard ML, functions are allowed to be
+passed multiple value arguments; see below. In the case $n=1$, we
+often omit the surrounding brackets $\verb+<+ \cdots \verb+>+$.
 
 Different calls of $f$ can use different actual regions; this feature
 is essential for obtaining good separation of lifetimes.  For an
@@ -2177,8 +2183,11 @@ For example, the region-annotated type scheme of {\tt fromto} from
 Figure~\ref{fromto.fig} is
 $$\forall\rho_7\epsilon. [\boxml{int}, \boxml{int} ]
 \ar{\epsilon.\{\Put(\rho_7)\}} (\boxml{int},[\rho_7])\boxml{list}$$
-where we use $[\boxml{int}, \boxml{int}]$ to denote an unboxed pair of
-two integers.
+where we use the syntax $[\tau_1, \ldots, \tau_n], n \geq 1$ to denote
+an unboxed tuple of types $\tau_1, \ldots,\tau_n$. This syntax is not
+to be confused with the auxiliary region variables of type
+constructors (e.g., the list $[\rho_7]$ in the region-annotated type
+scheme of {\tt fromto}.)
 
 At the last call of {\tt fromto} in Figure~\ref{fromto.fig},
 the type scheme is instantiated to the region-annotated type
@@ -2372,7 +2381,7 @@ A
 \index{recursion!polymorphic}%
 recursive region-polymorphic function
 \begin{tabbing}
-\ \ \ \ \ \=\tt fun $f$ $\at\,\rho_0$ [$\rho_1$, $\cdots$, $\rho_k$] <$x_1,\cdots,x_n$> = $e$
+\ \ \ \ \ \=\tt fun $f$ $\at\,\rho_0$ [$\rho_1$, $\cdots$, $\rho_k$] ($x_1,\cdots,x_n$) = $e$
 \end{tabbing}
 may call itself inside its own body ($e$) with regions that are different
 from its own formal region parameter ({\tt [$\rho_1$, $\cdots$, $\rho_k$]}).
