@@ -27,6 +27,7 @@ alter table scs_fs_folders
 
 /* Necessary for the code below */
 @scs-file-storage-packages-create
+drop trigger scs_fs_folders_up_in_tr;
 
 /* Update folders already in the database */
 declare
@@ -46,4 +47,4 @@ show errors
 
 commit;
 
-
+@scs-file-storage-packages-create
