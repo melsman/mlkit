@@ -9,7 +9,7 @@ functor SortedFinMap(structure Report: REPORT
 
     open Edlib
 
-    type (''a, ''b) map = (''a * ''b) list
+    type ('a, 'b) map = ('a * 'b) list
 
     val empty = []
 

@@ -324,7 +324,7 @@ functor OpacityElim(structure Crash : CRASH
 	 | LONGSTRIDstrexp(i, longstrid) => (LONGSTRIDstrexp(on_info(rea_of oenv,i), longstrid), Id)
 	 | TRANSPARENT_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	  let val (strexp', rea') = elim_strexp(oenv, strexp)
-	  in (TRANSPARENT_CONSTRAINTstrexp(on_info(rea_of oenv,i),strexp',sigexp), rea')
+	  in (TRANSPARENT_CONSTRAINTstrexp(on_info((rea_of oenv) oo rea',i),strexp',sigexp), rea')
 	  end
 	 | OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	  let val (strexp', rea') = elim_strexp(oenv, strexp)
