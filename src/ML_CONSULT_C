@@ -64,7 +64,6 @@ Common/OverloadingInfo.sml
 Common/PARSE_INFO.sml
 Common/PRETTYPRINT.sml
 Common/ParseInfo.sml
-Common/Prelude.sml
 Common/PrettyPrint.sml
 Common/QUASI_ENV.sml
 Common/QuasiEnv.sml
