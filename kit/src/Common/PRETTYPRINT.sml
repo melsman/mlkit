@@ -112,6 +112,10 @@ signature PRETTYPRINT =
 
     val printTree : StringTree -> unit
 
+    (* The first argument is a function for pretty-printing n 
+     * blanks (a multiply of 64) shortly. *)
+    val outputTree' : (int -> string) -> (string -> unit) * StringTree * int -> unit
+
     type Report
     val reportStringTree: StringTree -> Report
     val reportStringTree': int -> StringTree -> Report

@@ -373,7 +373,7 @@ functor PrettyPrint(structure Report: REPORT
     val s128="                                                                                                                                ";
         
 
-  fun outputTree(device: string -> unit, t: StringTree, width) : unit =
+  fun outputTree' (blanks: int -> string) (device: string -> unit, t: StringTree, width) : unit =
     let
 (*old
        fun output_line indent text =
@@ -412,7 +412,7 @@ old*)
         let fun loop (n) =
               if n>=jump then
                   let val (q,r) = (n div jump, n mod jump)
-                  in device("b" ^ Int.toString(q*jump));
+                  in device(blanks(q*jump));
                      loop(r)
                   end
               else if n>=32 then (device(s32); loop(n-32))
@@ -441,6 +441,8 @@ old*)
     in
         output_minipage(0,minipage)
     end
+
+    fun outputTree a = outputTree' (fn n => "b" ^ Int.toString n) a
 
     fun printTree t = outputTree (TextIO.print, t, !colwidth)
 
