@@ -32,16 +32,17 @@ structure MemUsage : MEM_USAGE =
       {count=count+1, size=max size size', rss=max rss rss'}
 
     fun loop_and_monitor_child (delay: time) (pid:Posix.Process.pid) (acc: report) =
-      let val _ = Posix.Process.sleep delay
+      let 
 	val pid_s = (Int.toString o Word32.toInt o Posix.Process.pidToWord) pid
-      in case Info.getInfo pid_s
-	   of SOME minfo => loop_and_monitor_child delay pid (new acc minfo)
-	    | NONE => 
-	     let val (pid', _) = Posix.Process.waitpid (Posix.Process.W_CHILD pid, nil)
-	     in if pid <> pid' then raise Fail "loop_and_monitor_child: wrong pid"
-		else acc
-	     end
-      end 
+	fun loop acc = case (Posix.Process.sleep delay; Info.getInfo pid_s)
+			 of SOME minfo => loop (new acc minfo)
+			  | NONE => acc
+	val acc = loop acc
+      in 
+	(* Wait for the dead child *)
+	if #1 (Posix.Process.waitpid (Posix.Process.W_CHILD pid, nil)) = pid then acc
+	else raise Fail "loop_and_monitor_child: wrong pid"
+      end
 
     fun memUsage {cmd, args, out_file, delay} : report =
       case Posix.Process.fork () 
