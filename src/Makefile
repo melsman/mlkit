@@ -16,7 +16,6 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
  Compiler/Backend/KAM/BuiltInCFunctionsNsSml.spec
 
 mlkit: basics
-	mkdir -p $(BINDIR)
 	cd $(RUNDIR); $(MAKE) runtimeSystem.o
 	cd $(RUNDIR); $(MAKE) runtimeSystemGC.o
 #	cd $(RUNDIR); $(MAKE) runtimeSystemProf.o
@@ -50,6 +49,7 @@ basics: genopcodes rp2ps tester heap2exec
 genopcodes: $(GENOPCODES_TARGETS)
 
 $(GENOPCODES_TARGETS): $(GENOPCODES_SOURCES)
+	mkdir -p $(BINDIR)
 	cd Tools/GenOpcodes; $(MAKE)
 	../bin/kitgen_opcodes `pwd`
 
@@ -119,8 +119,9 @@ clean:
 	(cd heap2exec; $(MAKE) clean)
 	(cd Runtime; $(MAKE) clean)
 	(cd RuntimeWithGC; $(MAKE) clean)
-	(cd Tools/Tester; rm -rf PM CM *~)
+	(cd Tools/Tester; $(MAKE) clean)
 	(cd Tools/Rp2ps; $(MAKE) clean)
+	(cd Tools/GenOpcodes; $(MAKE) clean)
 	(cd Compiler; rm -rf PM CM *~)
 	(cd Compiler/Backend; rm -rf PM CM *~)
 	(cd Compiler/Backend/Dummy; rm -rf PM CM *~)
