@@ -992,7 +992,7 @@ struct
       end
       else C*)
 
-    fun CG_lss(lss,size_ff,size_cc,size_rcf,size_ccf,C) =
+    fun CG_lss(lss,size_ff,size_ccf,C) =
       let
 	fun pr_ls ls = LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls
 	fun not_impl(s,C) = COMMENT s :: C
@@ -1193,7 +1193,7 @@ struct
 		 if List.length spilled_args > 0 then
 		     CG_ls(LS.FNCALL cc,C)
 		 else
-		     case opr of  (* We fetch the add from the closure and opr points at the closure *)
+		     case opr of  (* We fetch the addr from the closure and opr points at the closure *)
 		       SS.PHREG_ATY opr_reg => 
 			 LDW{d="0",s=Space 0,b=opr_reg,t=tmp_reg1} ::                (* Fetch code label from closure *)
 			 base_plus_offset(sp,WORDS(~size_ff-size_ccf),sp,            (* return label is now at top of stack *)
@@ -1207,6 +1207,9 @@ struct
 	       COMMENT (pr_ls ls) :: 
 		  let
 		    val (spilled_args,spilled_res,return_lab_offset) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=[],reg_vec=NONE,res=res}
+		    val size_rcf = List.length spilled_res
+		    val size_ccf = List.length spilled_args
+		    val size_cc = size_rcf+size_ccf+1
 		    val return_lab = new_local_lab "return_from_app"
 		    fun flush_args C =
 		      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
@@ -1240,6 +1243,7 @@ struct
 		  COMMENT (pr_ls ls) :: 
 		  let
 		    val (spilled_args,spilled_res,return_lab_offset) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
+		    val size_rcf = List.length spilled_res
 		    val return_lab = new_local_lab "return_from_app"
 		    fun flush_args C =
 		      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
@@ -1266,10 +1270,10 @@ struct
 		    val rhos_to_allocate = remove_finite_rhos rhos
 		  in
 		    foldr alloc_region_prim 
-		    (CG_lss(body,size_ff,size_cc,size_rcf,size_ccf,
+		    (CG_lss(body,size_ff,size_ccf,
 			    foldl (fn (_,C) => dealloc_region_prim C) C rhos_to_allocate)) rhos_to_allocate
 		  end
-	   | LS.SCOPE{pat,scope} => CG_lss(scope,size_ff,size_cc,size_rcf,size_ccf,C)
+	   | LS.SCOPE{pat,scope} => CG_lss(scope,size_ff,size_ccf,C)
 	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_aty),offset} =>
 	   (* An exception handler in an activation record staring at address offset contains the following fields: *)
 	   (* sp[offset] = label for handl_return code.                                                             *)
@@ -1281,7 +1285,7 @@ struct
 	   let
 	     val handl_return_lab = new_local_lab "handl_return"
 	     val handl_join_lab = new_local_lab "handl_join"
-	     fun handl_code C = COMMENT "HANDL_CODE" :: CG_lss(handl,size_ff,size_cc,size_rcf,size_ccf,C)
+	     fun handl_code C = COMMENT "HANDL_CODE" :: CG_lss(handl,size_ff,size_ccf,C)
 	     fun store_handl_lv C =
 	       COMMENT "STORE HANDLE_LV: sp[offset+1] = handl_lv" ::
 	       store_aty_in_reg_record(handl_lv,tmp_reg1,sp,WORDS(~size_ff+offset+1),size_ff,C) 
@@ -1300,7 +1304,7 @@ struct
 	       COMMENT "STORE SP: sp[offset+3] = sp" ::
 	       store_indexed(sp,WORDS(~size_ff+offset+3),sp,C) 
 	     fun default_code C = COMMENT "HANDLER DEFAULT CODE" :: 
-	       CG_lss(default,size_ff,size_cc,size_rcf,size_ccf,C)
+	       CG_lss(default,size_ff,size_ccf,C)
 	     fun restore_exp_ptr C =
 	       COMMENT "RESTORE EXP PTR: exnPtr = sp[offset+2]"::
 	       load_indexed(tmp_reg1,sp,WORDS(~size_ff+offset+2),
@@ -1313,7 +1317,7 @@ struct
 		 COMMENT "HANDL RETRUN CODE: handl_return_aty = res_phreg" ::
 		 LABEL handl_return_lab ::
 		 move_aty_to_aty(SS.PHREG_ATY res_reg,handl_return_aty,size_ff,
-				 CG_lss(handl_return,size_ff,size_cc,size_rcf,size_ccf,
+				 CG_lss(handl_return,size_ff,size_ccf,
 					LABEL handl_join_lab :: C))
 	       end
 	   in
@@ -1358,7 +1362,7 @@ struct
 				default,
 				fn (i,C) => load_immed(IMMED i,tmp_reg2,C),
 				fn (lab,C) => META_IF{cond=EQUAL,r1=opr_reg,r2=tmp_reg2,target=lab} :: C,
-				fn (lss,C) => CG_lss (lss,size_ff,size_cc,size_rcf,size_ccf,C),
+				fn (lss,C) => CG_lss (lss,size_ff,size_ccf,C),
 				C)
 	   | LS.SWITCH_I(LS.SWITCH(opr_aty,sels,default)) =>
 		  move_aty_into_reg(opr_aty,tmp_reg1,size_ff,
@@ -1366,7 +1370,7 @@ struct
 						  default,
 						  fn (i,C) => load_immed(IMMED i,tmp_reg2,C),
 						  fn (lab,C) => META_IF{cond=EQUAL,r1=tmp_reg1,r2=tmp_reg2,target=lab} :: C,
-						  fn (lss,C) => CG_lss (lss,size_ff,size_cc,size_rcf,size_ccf,C),
+						  fn (lss,C) => CG_lss (lss,size_ff,size_ccf,C),
 						  C))
 	   | LS.SWITCH_S sw => die "SWITCH_S is unfolded in ClosExp"
 	   | LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)) => 
@@ -1482,8 +1486,8 @@ struct
       let
 	val size_ff = CallConv.get_frame_size cc
 	val size_ccf = CallConv.get_ccf_size cc
-	val size_rcf = CallConv.get_rcf_size cc
-	val size_cc = CallConv.get_cc_size cc
+(*	val size_rcf = CallConv.get_rcf_size cc 04/01/1999, Niels*)
+(*	val size_cc = CallConv.get_cc_size cc 04/01/1999, Niels*)
 	val C = base_plus_offset(sp,WORDS(~size_ff-size_ccf),sp,
 				 LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg1} ::
 				 META_BV{n=false,x=Gen 0,b=tmp_reg1}::[])
@@ -1492,7 +1496,7 @@ struct
 	       LABEL(MLFunLab lab) ::
 	       debug_label (MLFunLab lab,
 			    base_plus_offset(sp,WORDS(size_ff),sp,
-					     CG_lss(lss,size_ff,size_cc,size_rcf,size_ccf,C))))
+					     CG_lss(lss,size_ff,size_ccf,C))))
       end
 
     fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' FUN (lab,cc,lss)
