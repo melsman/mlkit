@@ -6,6 +6,7 @@ signature TOOLS =
     structure FinMapEq : FINMAPEQ
     structure SortedFinMap: SORTED_FINMAP
     structure IntFinMap : MONO_FINMAP where type dom = int
+    structure WordFinMap : MONO_FINMAP where type dom = word
 
     structure PrettyPrint: PRETTYPRINT
       sharing type FinMap.StringTree
@@ -13,6 +14,7 @@ signature TOOLS =
 		   = SortedFinMap.StringTree
 		   = PrettyPrint.StringTree
 	           = IntFinMap.StringTree
+                   = WordFinMap.StringTree
 
     structure Flags: FLAGS
             
@@ -46,6 +48,9 @@ functor Tools(): TOOLS =
     structure IntFinMap = IntFinMap(structure Report = Report
 				    structure PP = PrettyPrint
 				   )
+
+    structure WordFinMap = WordFinMap(structure Report = Report
+				      structure PP = PrettyPrint)
 
     structure FinMap = FinMap(structure Report = Report
 			      structure PP = PrettyPrint

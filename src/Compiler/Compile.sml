@@ -87,6 +87,23 @@ functor Compile(structure Excon : EXCON
                   sharing type RegAlloc.phsize = LineStmt.phsize
                   sharing type RegAlloc.LinePrg = LineStmt.LinePrg
                   sharing type RegAlloc.label = LineStmt.label
+                  sharing type RegAlloc.lvar = LineStmt.lvar
+
+	        structure FetchAndFlush : FETCH_AND_FLUSH
+		  sharing type FetchAndFlush.place = LineStmt.place
+                  sharing type FetchAndFlush.phsize = LineStmt.phsize
+                  sharing type FetchAndFlush.LinePrg = LineStmt.LinePrg
+                  sharing type FetchAndFlush.label = LineStmt.label
+                  sharing type FetchAndFlush.lvar = LineStmt.lvar
+                  sharing type FetchAndFlush.StoreTypeRA = RegAlloc.StoreType
+
+	        structure CalcOffset : CALC_OFFSET
+		  sharing type CalcOffset.place = LineStmt.place
+                  sharing type CalcOffset.phsize = LineStmt.phsize
+                  sharing type CalcOffset.LinePrg = LineStmt.LinePrg
+                  sharing type CalcOffset.label = LineStmt.label
+                  sharing type CalcOffset.lvar = LineStmt.lvar
+                  sharing type CalcOffset.StoreTypeIFF = FetchAndFlush.StoreType
 
 		structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING
 		  sharing type RegionFlowGraphProfiling.place = PhysSizeInf.place
@@ -683,6 +700,8 @@ functor Compile(structure Excon : EXCON
 	    RegAlloc.ra all_line_stmt
 	  else
 	    RegAlloc.ra_dummy all_line_stmt
+	val all_fetch_flush = FetchAndFlush.IFF all_reg_alloc
+	val all_calc_offset = CalcOffset.CO all_fetch_flush
       in
 	#env(all_clos_exp)
       end

@@ -37,6 +37,7 @@ functor Execution(structure Elaboration : ELABORATION) : EXECUTION =
        structure Environments = Elaboration.Basics.Environments
        structure FinMap = Tools.FinMap
        structure IntFinMap = Tools.IntFinMap
+       structure WordFinMap = Tools.WordFinMap
        structure FinMapEq = Tools.FinMapEq
        structure BasicIO = Tools.BasicIO
        structure Report = Tools.Report

@@ -43,6 +43,7 @@ functor BuildCompile (structure Name : NAME
 		      structure Flags: FLAGS
 		        sharing type Report.Report = Flags.Report
 		      structure IntFinMap : MONO_FINMAP where type dom = int
+		      structure WordFinMap : MONO_FINMAP where type dom = word
 		      structure PP: PRETTYPRINT
 			sharing type PP.StringTree = FinMapEq.StringTree
 			sharing type PP.StringTree = FinMap.StringTree 
@@ -50,6 +51,7 @@ functor BuildCompile (structure Name : NAME
 			sharing type PP.StringTree = ElabInfo.StringTree 
 			sharing type PP.StringTree = StatObject.StringTree
 			sharing type PP.StringTree = IntFinMap.StringTree
+                        sharing type PP.StringTree = WordFinMap.StringTree
 			sharing type PP.Report = Report.Report
 				  = ElabInfo.ParseInfo.SourceInfo.Report
 		      structure Crash: CRASH
@@ -126,6 +128,8 @@ functor BuildCompile (structure Name : NAME
 		   structure FinMapEq = FinMapEq
 		   structure Crash = Crash
 		   structure Flags = Flags)
+      
+    structure NatSet = NatSet(structure PP = PP)
 
     structure LambdaStatSem =
       LambdaStatSem(structure Lvars = Lvars
@@ -133,7 +137,7 @@ functor BuildCompile (structure Name : NAME
 		    structure Excon = Excon
 		    structure TyName = TyName
 		    structure Name = Name
-		    structure NatSet = NatSet(structure PP = PP)
+		    structure NatSet = NatSet
 		    structure LambdaExp = LambdaExp
 		    structure LambdaBasics = LambdaBasics
 		    structure Crash = Crash
@@ -490,6 +494,7 @@ functor BuildCompile (structure Name : NAME
     structure Labels = AddressLabels(structure Name = Name)
 
     structure BackendInfo = BackendInfo(structure Labels = Labels
+					structure NatSet = NatSet
 					structure PP = PP
 					structure Flags = Flags
 					structure Report = Report
@@ -560,6 +565,39 @@ functor BuildCompile (structure Name : NAME
 				  structure Flags = Flags
 				  structure Report = Report
 				  structure Crash = Crash)
+
+    structure FetchAndFlush = FetchAndFlush(structure PhysSizeInf = PhysSizeInf
+					    structure Con = Con
+					    structure Excon = Excon
+					    structure Lvars = Lvars
+					    structure Effect = Effect
+					    structure Labels = Labels
+					    structure CallConv = CallConv
+					    structure LineStmt = LineStmt
+					    structure RegAlloc = RegAlloc
+					    structure BI = BackendInfo
+					    structure Lvarset = Lvarset
+					    structure NatSet = NatSet
+					    structure PP = PP
+					    structure Flags = Flags
+					    structure Report = Report
+					    structure Crash = Crash)
+
+    structure CalcOffset = CalcOffset(structure PhysSizeInf = PhysSizeInf
+				      structure Con = Con
+				      structure Excon = Excon
+				      structure Lvars = Lvars
+				      structure Effect = Effect
+				      structure Labels = Labels
+				      structure CallConv = CallConv
+				      structure LineStmt = LineStmt
+				      structure FetchAndFlush = FetchAndFlush
+				      structure PHregFinMap = WordFinMap
+				      structure BI = BackendInfo
+				      structure PP = PP
+				      structure Flags = Flags
+				      structure Report = Report
+				      structure Crash = Crash)
 
     structure CompLamb = CompLamb(structure Con = Con
 				  structure Excon = Excon
@@ -647,6 +685,8 @@ functor BuildCompile (structure Name : NAME
 	      structure ClosExp = ClosExp
 	      structure LineStmt = LineStmt
 	      structure RegAlloc = RegAlloc
+	      structure FetchAndFlush = FetchAndFlush
+	      structure CalcOffset = CalcOffset
 	      structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
 	      structure CompLamb = CompLamb
 	      structure KAMBackend = KAMBackend

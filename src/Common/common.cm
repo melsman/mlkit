@@ -39,6 +39,7 @@ SORTED_FINMAP.sml
 SortedFinMap.sml
 MONO_FINMAP.sml
 IntFinMapPT.sml
+WordFinMapPT.sml
 (*IntFinMap.sml*)
 OrderFinMap.sml
 QuasiMap.sml

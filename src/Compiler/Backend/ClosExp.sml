@@ -1447,7 +1447,6 @@ struct
 		 val shared_clos_size = size3 free_vars_in_shared_clos
 
 		 val lv_sclos = fresh_lvar("sclos")
-		 val env_bodies = build_clos_env env (get_global_env()) lv_sclos BI.init_sclos_offset free_vars_all
 		 val ces_and_ses = gen_ces_and_ses_free env free_vars_in_shared_clos
 
 		 val lvars = map #lvar functions
@@ -1474,6 +1473,8 @@ struct
 		     | _ => die "compile_fn: bind is not a FN"
 		     val ress = gen_fresh_res_lvars metaType (* Result variables are not bound in env as they only exists in cc *)
 		     val lv_sclos_fn = fresh_lvar("sclos")
+		     val env_bodies = build_clos_env env (get_global_env()) lv_sclos_fn BI.init_sclos_offset free_vars_all
+
 		     val env_with_funs =
 		       if shared_clos_size = 0 then
 			 (env_bodies plus_decl_with CE.declareLvar)
