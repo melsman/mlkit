@@ -280,6 +280,8 @@ functor Basics(structure Tools: TOOLS): BASICS =
       (structure GrammarInfo =
 	 struct
 	   type GrammarInfo = ParseInfo.ParseInfo
+	   val bogus_info = 
+	     ParseInfo.from_SourceInfo(SourceInfo.from_positions LexBasics.DUMMY LexBasics.DUMMY)
 	 end
        structure Lab = Lab
        structure SCon = SCon
@@ -628,6 +630,7 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING
 	DecGrammar(structure GrammarInfo =
 		     struct
 		       type GrammarInfo = AllInfo.ElabInfo.ElabInfo
+		       val bogus_info = AllInfo.ElabInfo.from_ParseInfo TopdecParsing.PreElabDecGrammar.bogus_info
 		     end
 		   structure Lab         = Basics.Lab
 		   structure SCon        = Basics.SCon
@@ -646,8 +649,10 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING
 
       structure ElabRepository = ElabRepository(structure Name = Basics.Name
 						structure InfixBasis = TopdecParsing.InfixBasis
+						structure TyName = Basics.TyName
 						type funid = Basics.FunId.funid
 						type ElabBasis = ModuleEnvironments.Basis
+						type realisation = Environments.realisation
 						structure Crash =  Tools.Crash
 						structure FinMap = Tools.FinMap)
 
@@ -748,8 +753,9 @@ functor Execution(structure Elaboration : ELABORATION) : EXECUTION =
    top-level interface. *)
 
 (*$KitCompiler: Tools Basics TopdecParsing StaticObjects Elaboration
-        Execution ManagerObjects ParseElab ErrorTraverse TopLevelReport
-        TestInfo Manager IntModules MANAGER FLAGS TestEnv*)
+        Execution ManagerObjects OpacityElim ParseElab ErrorTraverse
+        TopLevelReport TestInfo Manager IntModules MANAGER FLAGS
+        TestEnv*)
 
 functor KitCompiler() : sig include MANAGER 
                             val test : unit -> unit
@@ -770,10 +776,17 @@ functor KitCompiler() : sig include MANAGER
 
     structure Execution = Execution(structure Elaboration = Elaboration)
 
+    structure OpacityElim = OpacityElim(structure Crash = Tools.Crash
+					structure ElabInfo = AllInfo.ElabInfo
+					structure Environments = StaticObjects.Environments
+					structure StatObject = Basics.StatObject
+					structure TopdecGrammar = Elaboration.PostElabTopdecGrammar)
+
     structure Flags = Tools.Flags
 
     structure ManagerObjects =
       ManagerObjects(structure ModuleEnvironments = StaticObjects.ModuleEnvironments
+		     structure OpacityElim = OpacityElim
 		     structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
 		     structure CompilerEnv = Execution.CompilerEnv
 		     structure ElabRep = Elaboration.ElabRepository
@@ -789,6 +802,7 @@ functor KitCompiler() : sig include MANAGER
     structure ParseElab = ParseElab
       (structure Parse = TopdecParsing.Parse
        structure ElabTopdec = Elaboration.ElabTopdec
+       structure ModuleEnvironments = StaticObjects.ModuleEnvironments
        structure PreElabTopdecGrammar = TopdecParsing.PreElabTopdecGrammar
        structure PostElabTopdecGrammar = Elaboration.PostElabTopdecGrammar
        structure ErrorTraverse = ErrorTraverse
@@ -831,6 +845,7 @@ functor KitCompiler() : sig include MANAGER
 
     structure Manager =
       Manager(structure ManagerObjects = ManagerObjects
+	      structure OpacityElim = OpacityElim
 	      structure Name = Basics.Name
 	      structure Environments = StaticObjects.Environments
 	      structure ModuleEnvironments = StaticObjects.ModuleEnvironments

@@ -68,8 +68,14 @@ signature TYPE_INFO =
 	                (* Attached to EXBIND
 			 * None if nullary exception constructor *)
       | TYENV_INFO of TyEnv
-	                (* Attached to DATATYPEdec, TYPEdec, DATATYPE_REPLICATIONdec and ABSTYPEdec
+	                (* Attached to DATATYPEdec, TYPEdec and DATATYPE_REPLICATIONdec
 			 * The type environment associated with the declaration *)
+      | ABSTYPE_INFO of TyEnv * realisation
+	                (* Attached to ABSTYPEdec
+			 * The type environment associated with the declaration and
+			 * a realisation to get from the abstract type names to the
+			 * type names of the datbind associated with the abstype 
+			 * construct *)
       | EXP_INFO of {Type: Type} 
 	                (* Attached to all exp's *)
       | MATCH_INFO of {Type: Type}
@@ -93,6 +99,8 @@ signature TYPE_INFO =
 			 * binding. *)
       | TRANS_CONSTRAINT_INFO of Env
 	                (* Attached to transparent signature constraints *)
+      | OPAQUE_CONSTRAINT_INFO of Env * realisation
+	                (* Attached to opaque signature constraints *)
 
     val on_TypeInfo : realisation * TypeInfo -> TypeInfo
 

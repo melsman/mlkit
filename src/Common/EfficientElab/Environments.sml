@@ -585,15 +585,13 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	      generate (iterate (tynames_of_nonequality_datatypes TE) TE)
       end (*local*)    
 
-      fun init explicittyvars tycon =
-	    singleton
-	      (tycon,
-	       TyStr.from_theta_and_VE
-	         (TypeFcn.from_TyName
-		    (TyName.freshTyName
-		       {tycon = tycon, arity = List.size explicittyvars,
-			equality = false}),
-		  VE.empty))
+      fun init' explicittyvars tycon =
+	let val tyname = TyName.freshTyName {tycon=tycon, arity=List.size explicittyvars, equality=false}
+	    val TE = singleton (tycon, TyStr.from_theta_and_VE (TypeFcn.from_TyName tyname, VE.empty))
+	in (tyname, TE)
+	end
+
+      fun init explicittyvars tycon = #2 (init' explicittyvars tycon)
 
       val tynames = fold (TyName.Set.union o TyStr.tynames) TyName.Set.empty
 
@@ -1173,8 +1171,9 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun cplus_E (CONTEXT {T, U, E}, E') =
 	    CONTEXT {T=TyName.Set.union T (E.tynames E'),
 		     U=U, E=E.plus (E, E')}
+      fun plus_E (CONTEXT {T, U, E}, E') = CONTEXT {T=T, U=U, E=E.plus (E, E')}
       fun cplus_TE (C, TE) = cplus_E (C, E.from_TE TE)
-
+      fun plus_TE(C,TE) = plus_E(C,E.from_TE TE)
       fun cplus_VE_and_TE (C, (VE, TE)) = cplus_E (C, E.from_VE_and_TE (VE,TE))
       fun plus_VE (CONTEXT {T, U, E as ENV {SE, TE, VE}}, VE') =
 	    CONTEXT {T=T, U=U,
@@ -1388,7 +1387,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    if is_Id phi then SE else SE.map (on_Env phi) SE
 
       (*renaming T = a realisation that maps each tyname in T to a fresh tyname*)
-      fun renaming (T : TyName.Set.Set) : realisation  =
+      fun renaming' (T : TyName.Set.Set) : TyName.Set.Set * realisation  =
 	let
 	  val new_tynames : (TyName * TyName) list =
 		TyName.Set.fold
@@ -1406,7 +1405,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  fun buildphi [] = Id
 	    | buildphi tynames = List.foldL mkphis Id tynames
 	in
-	  buildphi new_tynames
+	  (TyName.Set.fromList(map #2 new_tynames),  buildphi new_tynames)
 
 	  (*TODO 25/01/1997 22:06. tho.:
 	   mon ikke man kan lave det samme med:
@@ -1425,40 +1424,44 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	     phi
 	   *)
 	end
+
+      fun renaming (T: TyName.Set.Set) : realisation = #2 (renaming' T)
+      val enrich = Realisation.enrich
+      val layout = Realisation.layout
+
     end (*Realisation*)
 
     (*ABS and ABS'*)
     local
-      fun modifyTyStr (TYSTR {theta, ...}) =
-	    let
-	      val tyname1 = noSome (TypeFcn.to_TyName theta) 
-			      "modifyTyStr"
-	      val tycon   = TyName.tycon tyname1
-	      val arity   = TyName.arity tyname1
-	      val tyname2 = TyName.freshTyName {tycon=tycon, arity=arity, equality=false}
-	      val typefcn = TypeFcn.from_TyName tyname2
-	    in
-	      Realisation.singleton (tyname1, typefcn)
-	    end
+      open Realisation
+      infix oo
 
-      fun modifyTE (TE: TyEnv) =
-	    TE.fold
-	      (fn tystr => fn res =>
-		    Realisation.oo (modifyTyStr tystr, res))
-		Realisation.Id TE
+      fun abstract_tystr (TYSTR {theta, ...}) =
+	let val tyname = noSome (TypeFcn.to_TyName theta) "modifyTyStr"
+	    val tyname_abs = TyName.freshTyName {tycon=TyName.tycon tyname,
+						 arity=TyName.arity tyname,
+						 equality=false}
+	    val phi = singleton(tyname_abs, TypeFcn.from_TyName tyname)
+	    val phi_inv = singleton(tyname, TypeFcn.from_TyName tyname_abs) 
+	in (phi, phi_inv)
+	end
+	
+      fun abstract (TE: TyEnv) =
+	TE.fold (fn tystr => fn (phi, phi_inv) =>
+		 let val (phi', phi_inv') = abstract_tystr tystr
+		 in (phi oo phi', phi_inv oo phi_inv')
+		 end) (Id,Id) TE
 
       fun strip (TE : TyEnv) : TyEnv =
 	TE.map (fn (TYSTR {theta, ...}) => TYSTR {theta = theta, VE = VE.empty}) TE
     in
-      fun ABS' (TE : TyEnv, E : Env) : Env * TyEnv * realisation =
-	    let
-	      val phi = modifyTE TE
-	      val TE' = strip TE
-	      val E'  = E.plus (E.from_TE TE', E)
-	    in
-	      (Realisation.on_Env phi E', Realisation.on_TyEnv phi TE, phi)
+      fun ABS (TE : TyEnv, E : Env) : Env * realisation =
+	    let val TE' = strip TE
+	        val (phi, phi_inv) = abstract TE'
+		val E' = E.plus (E.from_TE TE', E)
+		val E' = on_Env phi_inv E'
+	    in (E', phi)
 	    end
-      val ABS = #1 o ABS'
     end (*local*)
 
     (*maximise_equality_in_VE_and_TE (VE, TE) = maximise equality in TE.

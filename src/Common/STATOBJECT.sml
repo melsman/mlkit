@@ -250,6 +250,8 @@ signature STATOBJECT =
 	val singleton               : TyName * TypeFcn -> realisation
 	val from_T_and_theta        : TyName.Set.Set * TypeFcn -> realisation
 	val restrict                : TyName.Set.Set -> realisation -> realisation
+	val enrich                  : realisation * (realisation * TyName.Set.Set) -> bool
+	val layout                  : realisation -> StringTree
       end (*Realisation*)
 
   end;

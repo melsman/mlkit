@@ -1804,7 +1804,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
     datatype TypeFcn' = TYNAME of TyName |  EXPANDED of TypeFcn
     datatype realisation = 
-        Not_Id of TyName -> TypeFcn'
+        Not_Id of TypeFcn' TyName.Map.map
       | Realisation_Id
 
     structure Realisation = struct
@@ -1827,6 +1827,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		                Int.min Level.NONGENERIC (map correct_levels_Type tys)) ;
 	      !(#level ty)
 	    end
+
       and correct_levels_RecType r =
 	    let val r = findRecType r 
 	    in
@@ -1837,21 +1838,30 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	       | ROWrec (l,ty,r') => 
 		   Int.min (correct_levels_Type ty) (correct_levels_RecType r'))
 	    end
+
       val Id = Realisation_Id
-      fun is_Id Realisation_Id = true
+
+      fun is_Id Realisation_Id = true   (* conservative test *)
 	| is_Id _ = false
-      fun singleton (t,theta) =
-	Not_Id (fn t' => if TyName.eq (t,t') then EXPANDED theta else TYNAME t')
-      fun from_T_and_theta (T, theta) =
-	Not_Id (fn t => if TyName.Set.member t T then EXPANDED theta else TYNAME t)
-      fun restrict tset Realisation_Id = Realisation_Id
-	| restrict tset (Not_Id f) =
-	  Not_Id(fn t => if TyName.Set.member t tset then f t else TYNAME t)
+
+      fun singleton (t,theta) = Not_Id (TyName.Map.singleton(t,EXPANDED theta))
+
+      fun from_T_and_theta (T, theta) = 
+	Not_Id(TyName.Set.fold (fn t => fn acc => TyName.Map.add(t,EXPANDED theta,acc)) TyName.Map.empty T)
+
+      fun restrict T Realisation_Id = Realisation_Id
+	| restrict T (Not_Id m) =
+	Not_Id(TyName.Set.fold(fn t => fn acc =>
+			       case TyName.Map.lookup m t
+				 of Some theta => TyName.Map.add(t,theta,acc)
+				  | None => acc) TyName.Map.empty T) 
+
       fun on_TyName Realisation_Id t : TypeFcn = TypeFcn.from_TyName t
-	| on_TyName (Not_Id f) t =
-	  (case f t of
-	     TYNAME t => TypeFcn.from_TyName t
-	   | EXPANDED theta => theta)
+	| on_TyName (Not_Id m) t = (case TyName.Map.lookup m t
+				      of Some(TYNAME t) => TypeFcn.from_TyName t
+				       | Some(EXPANDED theta) => theta
+				       | None => TypeFcn.from_TyName t)
+
       fun on_TyName_set (rea : realisation) (T : TyName.Set.Set) =
 	    if is_Id rea then T else
 	      TyName.Set.fold
@@ -1860,7 +1870,10 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		  TyName.Set.empty T
 
       fun on_TyName' Realisation_Id t : TypeFcn' = TYNAME t
-	| on_TyName' (Not_Id f) t = f t
+	| on_TyName' (Not_Id m) t = case TyName.Map.lookup m t
+				      of Some theta => theta
+				       | None => TYNAME t
+ 
       fun on_Type Realisation_Id ty = ty
 	| on_Type phi ty = 
 	  (* NB: keep levels, so that it works for type schemes and type functions as well *)
@@ -1890,6 +1903,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	       in
 		 TypeFcn_apply' (theta, map (on_Type phi) tylist)
 	       end)
+
       fun on_TypeFcn Realisation_Id typefcn = typefcn
 	| on_TypeFcn phi (TYPEFCN {tyvars, tau}) =
 	let val tau = on_Type phi tau
@@ -1906,17 +1920,33 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    val tyvars' = map f tyvars
 	in TypeFcn.from_TyVars_and_Type(tyvars',tau')
 	end
+
       fun on_TypeFcn' Realisation_Id typefcn' = typefcn'
 	| on_TypeFcn' phi (TYNAME t) =  
 	    on_TyName' phi t
 	| on_TypeFcn' phi (EXPANDED theta) = 
 	    EXPANDED (on_TypeFcn phi theta)
+
       fun on_TypeScheme Realisation_Id sigma = sigma 
 	| on_TypeScheme phi sigma = on_Type phi sigma
+
+      fun on_Realisation Realisation_Id phi = phi
+	| on_Realisation phi Realisation_Id = Realisation_Id
+	| on_Realisation phi (Not_Id m) =
+	Not_Id(TyName.Map.Fold (fn ((t,theta), acc) =>
+				TyName.Map.add(t,on_TypeFcn' phi theta,acc)) TyName.Map.empty m)
+
       fun (Realisation_Id : realisation) oo (phi : realisation) : realisation = phi
 	| phi oo Realisation_Id = phi
-	| phi1 oo phi2 = 
-	    Not_Id (on_TypeFcn' phi1 o on_TyName' phi2)
+	| (phi1 as Not_Id m1) oo (phi2) = (case on_Realisation phi1 phi2
+					     of Realisation_Id => phi1
+					      | Not_Id m2 => Not_Id(TyName.Map.plus(m1, m2)))
+
+      fun enrich (rea0, (rea,T)) =
+	TyName.Set.fold (fn t => fn acc => acc andalso 
+			 TypeFcn.eq(on_TyName rea0 t, on_TyName rea t)) true T
+			 
+      fun layout phi = PP.LEAF "phi(not implemented)"
 
     end (*Realisation*)
 

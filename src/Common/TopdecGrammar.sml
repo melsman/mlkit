@@ -99,6 +99,8 @@ functor TopdecGrammar(structure FunId: FUNID
       SIGtopdec of info * sigdec * topdec Option |
       FUNtopdec of info * fundec * topdec Option 
 
+    val empty_topdec = STRtopdec(bogus_info, EMPTYstrdec bogus_info, None)
+
     fun info_on_strexp (STRUCTstrexp (info, strdec)) = info
       | info_on_strexp (LONGSTRIDstrexp (info, longstrid)) = info
       | info_on_strexp (TRANSPARENT_CONSTRAINTstrexp (info, strexp, sigexp)) = info

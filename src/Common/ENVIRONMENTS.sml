@@ -117,6 +117,7 @@ signature ENVIRONMENTS =
 	 initial TE used when elaborating datbind's and datdesc's:*)
 
 	val init                 : ExplicitTyVar list -> tycon -> TyEnv
+	val init'                : ExplicitTyVar list -> tycon -> TyName * TyEnv
 	val report               : {tyEnv : TyEnv, bindings : bool} -> Report
 	val tynames              : TyEnv -> TyName.Set.Set
 	val layout               : TyEnv -> StringTree
@@ -196,6 +197,7 @@ signature ENVIRONMENTS =
 	val plus_U               : Context * ExplicitTyVar list -> Context
 	val cplus_E              : Context * Env      -> Context
 	val cplus_TE             : Context * TyEnv    -> Context
+	val plus_TE              : Context * TyEnv    -> Context    (* does not add to T component *)
 	val cplus_VE_and_TE      : Context * (VarEnv * TyEnv) -> Context
 	val to_U                 : Context -> ExplicitTyVar list
 	val to_U'                : Context -> ExplicitTyVarEnv
@@ -275,20 +277,24 @@ signature ENVIRONMENTS =
 	val singleton            : TyName * TypeFcn -> realisation
 
 	(*from_T_and_theta (T, theta) = the realisation {t |-> theta | t in T}:*)
-	  
 	val from_T_and_theta     : TyName.Set.Set * TypeFcn -> realisation
+
 	val restrict             : TyName.Set.Set -> realisation -> realisation
+
+	(* enrich(phi0,(phi,T)) : phi(t) = phi0(t), for each t in T *)
+	val enrich               : realisation * (realisation * TyName.Set.Set) -> bool
 
 	(*renaming T = a realisation that maps each tyname in T
 	 to a fresh tyname:*)
 
 	val renaming             : TyName.Set.Set -> realisation
+	val renaming'            : TyName.Set.Set -> TyName.Set.Set * realisation  
+	val layout : realisation -> StringTree
       end (*Realisation*)
 
-    val ABS : TyEnv * Env -> Env
-    val ABS' : TyEnv * Env -> Env * TyEnv * realisation
-	  (*The TE returned is the argument type environment with type
-	   realisations applied to it*)
+    val ABS : TyEnv * Env -> Env * realisation
+	  (* The realisation returned maps abstract type names into
+	   * type names for the datbind. *)
 
     (*maximise_equality_in_VE_and_TE (VE, TE) = maximise equality in
      TE.  Only used by ElabDec, rule 19 and 20, and ElabTopdec, rule

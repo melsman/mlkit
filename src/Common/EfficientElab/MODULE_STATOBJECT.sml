@@ -41,12 +41,15 @@ signature MODULE_STATOBJECT =
 	 tynames have been replaced by fresh tynames:*)
 
 	val instance               : Sig -> Env
+	val instance'              : Sig -> TyName.Set.Set * Env
 
 	(*If E' = match (Sigma, E) succeeds, then E matches Sigma, i.e.,
 	 E' is an instance of Sigma and E enriches E'.
 	 match will raise No_match if there is no match*)
 
 	val match                  : Sig * Env -> Env
+	val match'                 : Sig * Env -> Env * Env * realisation
+	  (* for opaque signature matching *)
 
 	val eq : Sig * Sig -> bool
       end
