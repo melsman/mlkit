@@ -14,10 +14,6 @@ signature REGISTER_INFO =
     val args_phreg_ccall : lvar list  (* Machine registers containing arguments in CCALLs *)
     val res_phreg_ccall  : lvar list  (* Machine registers containing results in CCALLs *)
 
-    val callee_save_phregs   : lvar list
-    val callee_save_phregset : lvarset
-    val is_callee_save       : lvar -> bool
-
     val caller_save_phregs   : lvar list
     val caller_save_phregset : lvarset
     val is_caller_save       : lvar -> bool      

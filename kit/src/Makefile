@@ -16,6 +16,7 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
  Compiler/Backend/KAM/BuiltInCFunctionsNsSml.spec
 
 mlkit: basics
+	mkdir -p $(BINDIR)
 	cd $(RUNDIR); $(MAKE) runtimeSystem.o
 	cd $(RUNDIR); $(MAKE) runtimeSystemGC.o
 #	cd $(RUNDIR); $(MAKE) runtimeSystemProf.o

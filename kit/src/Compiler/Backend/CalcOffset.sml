@@ -412,7 +412,7 @@ struct
 	fun CBV_lss'([],LVenv,L_set) = (L_set,[])
 	  | CBV_lss'(ls::lss,LVenv,L_set) =
 	  (case ls of
-	     LS.FNJMP(cc as {opr,args,clos,free,res,bv}) => 
+	     LS.FNJMP(cc as {opr,args,clos,res,bv}) => 
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = LineStmt.def_use_lvar_ls ls
@@ -420,9 +420,9 @@ struct
 		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
 		(lvset_add(lvset_kill_def,use,LVenv),
-		 LS.FNJMP{opr=opr,args=args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
+		 LS.FNJMP{opr=opr,args=args,clos=clos,res=res,bv=bit_vector}::lss')
 	       end
-	   | LS.FNCALL(cc as {opr,args,clos,free,res,bv}) =>
+	   | LS.FNCALL(cc as {opr,args,clos,res,bv}) =>
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = LineStmt.def_use_lvar_ls ls
@@ -433,9 +433,9 @@ struct
 		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
 		(lvset_add(lvset_kill_def,use,LVenv),
-		 LS.FNCALL{opr=opr,args=args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
+		 LS.FNCALL{opr=opr,args=args,clos=clos,res=res,bv=bit_vector}::lss')
 	       end
-	  | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,free,res,bv}) =>
+	  | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) =>
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = LineStmt.def_use_lvar_ls ls
@@ -443,9 +443,9 @@ struct
 		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
 		(lvset_add(lvset_kill_def,use,LVenv),
-		 LS.JMP{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
+		 LS.JMP{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,res=res,bv=bit_vector}::lss')
 	       end
-	   | LS.FUNCALL(cc as {opr,args,reg_vec,reg_args,clos,free,res,bv}) =>
+	   | LS.FUNCALL(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) =>
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = LineStmt.def_use_lvar_ls ls
@@ -453,7 +453,7 @@ struct
 		 val bit_vector = gen_bitvector(lvset_kill_def,size_ccf,size_rcf,size_ff)
 	       in
 		(lvset_add(lvset_kill_def,use,LVenv),
-		 LS.FUNCALL{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
+		 LS.FUNCALL{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,res=res,bv=bit_vector}::lss')
 	       end
 	   | LS.LETREGION{rhos,body} => 
 	       let

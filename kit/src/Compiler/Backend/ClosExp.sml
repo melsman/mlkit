@@ -93,12 +93,12 @@ struct
     | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
     | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word}
     | SELECT          of int * ClosExp
-    | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option, free: ClosExp list}
-    | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option, free: ClosExp list}
+    | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
+    | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
     | JMP             of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list, 
-			  clos: ClosExp option, free: ClosExp list}
+			  clos: ClosExp option}
     | FUNCALL         of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list, 
-			  clos: ClosExp option, free: ClosExp list}
+			  clos: ClosExp option}
     | LETREGION       of {rhos: binder list, body: ClosExp}
     | LET             of {pat: lvar list, bind: ClosExp, scope: ClosExp}
     | RAISE           of ClosExp
@@ -213,53 +213,49 @@ struct
 					finish=")",
 					childsep=NOSEP,
 					children=[layout_ce ce]}
-      | layout_ce(FNJMP{opr,args,clos,free}) = 
+      | layout_ce(FNJMP{opr,args,clos}) = 
           let
 	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
 	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt clos]}
-	    val t3 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce free}
 	  in
 	    NODE{start=flatten1(layout_ce opr) ^ "_fnjmp ",
 		 finish="", childsep=RIGHT " ",
 		 indent=3,
-		 children=[t1,t2,t3]}
+		 children=[t1,t2]}
 	  end
-      | layout_ce(FNCALL{opr,args,clos,free}) = 
+      | layout_ce(FNCALL{opr,args,clos}) = 
           let
 	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
 	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt clos]}
-	    val t3 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce free}
 	  in
 	    NODE{start=flatten1(layout_ce opr) ^ "_fncall ",
 		 finish="", childsep=RIGHT " ",
 		 indent=3,
-		 children=[t1,t2,t3]}
+		 children=[t1,t2]}
 	  end
-      | layout_ce(JMP{opr,args,reg_vec,reg_args,clos,free}) = 
+      | layout_ce(JMP{opr,args,reg_vec,reg_args,clos}) = 
           let
 	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
 	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt reg_vec]}
 	    val t3 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce reg_args}
 	    val t4 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt clos]}
-	    val t5 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce free}
 	  in
 	    NODE{start=Labels.pr_label opr ^ "_funjmp",
 		 finish="", childsep=RIGHT " ",
 		 indent=3,
-		 children=[t1,t2,t3,t4,t5]}
+		 children=[t1,t2,t3,t4]}
 	  end
-      | layout_ce(FUNCALL{opr,args,reg_vec,reg_args,clos,free}) = 
+      | layout_ce(FUNCALL{opr,args,reg_vec,reg_args,clos}) = 
           let
 	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
 	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt reg_vec]}
 	    val t3 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce reg_args}
 	    val t4 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt clos]}
-	    val t5 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce free}
 	  in
 	    NODE{start=Labels.pr_label opr ^ "_funcall",
 		 finish="", childsep=RIGHT " ",
 		 indent=3,
-		 children=[t1,t2,t3,t4,t5]}
+		 children=[t1,t2,t3,t4]}
 	  end
       | layout_ce(LETREGION{rhos=[],body}) = layout_ce body
       | layout_ce(LETREGION{rhos,body}) =
@@ -1475,7 +1471,7 @@ struct
 		 val lv_clos = fresh_lvar("clos")
 		 val args = List.map #1 pat
 		 val ress = gen_fresh_res_lvars metaType (* Result variables are not bound in env as they only exists in cc *)
-		 val cc = CallConv.mk_cc_fn(args,SOME lv_clos,[],ress)
+		 val cc = CallConv.mk_cc_fn(args,SOME lv_clos,ress)
 
 		 val env_body = build_clos_env env (get_global_env()) lv_clos BI.init_clos_offset free_vars_all
 		 val env_with_args = (env_body plus_decl_with CE.declareLvar) (map (fn lv => (lv, CE.LVAR lv)) args)
@@ -1560,8 +1556,8 @@ struct
 		     val sclos = if shared_clos_size = 0 then NONE else SOME lv_sclos_fn (* 14/06-2000, Niels *)
 		     val cc = 
 		       (case formals of
-			  [] => CallConv.mk_cc_fun(args,sclos,[],NONE,[],ress) (* No Region Vector Argument *)
-			| _ => CallConv.mk_cc_fun(args,sclos,[],SOME lv_rv,[],ress))
+			  [] => CallConv.mk_cc_fun(args,sclos,NONE,[],ress) (* No Region Vector Argument *)
+			| _ => CallConv.mk_cc_fun(args,sclos,SOME lv_rv,[],ress))
 		   in
 		     (case formals of
 			[] => add_new_fun(lab,cc,insert_se(ccTrip body env_with_args lab NONE))
@@ -1600,7 +1596,7 @@ struct
 		   else
 		     cur_rv
 	       in
-		 (insert_ses(JMP{opr=lab_f,args=ces_arg,reg_vec=rv_opt,reg_args=[],clos=ce_clos,free=[]},
+		 (insert_ses(JMP{opr=lab_f,args=ces_arg,reg_vec=rv_opt,reg_args=[],clos=ce_clos},
 			     ses),NONE_SE)
 	       end
 	   | MulExp.APP(SOME MulExp.JMP, _, tr1 (*not lvar: error *), tr2) => die "JMP to other than lvar"
@@ -1632,13 +1628,13 @@ struct
 		 val rv = fresh_lvar ("rv")
 	       in
 		 if actual_region_vector_size = 0 then
-		   (insert_ses(FUNCALL{opr=lab_f,args=ces_arg,reg_vec=NONE,reg_args=[],clos=ce_clos,free=[]},
+		   (insert_ses(FUNCALL{opr=lab_f,args=ces_arg,reg_vec=NONE,reg_args=[],clos=ce_clos},
 			       ses),NONE_SE)
 		 else
 		    (insert_ses(LET{pat=[rv],
 				    bind=REGVEC_RECORD{elems=smas,alloc=sma},
 				    scope=insert_ses(FUNCALL{opr=lab_f,args=ces_arg,reg_vec=SOME (VAR rv),
-							     reg_args=[],clos=ce_clos,free=[]},
+							     reg_args=[],clos=ce_clos},
 						     ses)},ses_sma),NONE_SE)
 	       end
 	  | MulExp.APP(SOME MulExp.FNJMP,_, tr1,tr2) =>
@@ -1651,7 +1647,7 @@ struct
 		 val (ces1,ses',_) = unify_ce_se ((ce_opr,se_opr)::ces_and_ses) SEMap.empty
 		 val (ce_opr',ces') = split_in_hd_and_tl ces1
 	       in
-		 (insert_ses(FNJMP{opr=ce_opr',args=ces',clos=SOME ce_opr', free=[]},
+		 (insert_ses(FNJMP{opr=ce_opr',args=ces',clos=SOME ce_opr'},
 			     ses'),NONE_SE)
 	       end
 	   | MulExp.APP(NONE,_, (*  primitive *)
@@ -1719,7 +1715,7 @@ struct
 		 val (ces1,ses',_) = unify_ce_se ((ce_opr,se_opr)::ces_and_ses) SEMap.empty
 		 val (ce_opr',ces') = split_in_hd_and_tl ces1
 	       in
-		 (insert_ses(FNCALL{opr=ce_opr',args=ces',clos=SOME ce_opr', free=[]},
+		 (insert_ses(FNCALL{opr=ce_opr',args=ces',clos=SOME ce_opr'},
 			     ses'),NONE_SE)
 	       end
 	   | MulExp.APP _ => die "application form not recognised"
@@ -2236,7 +2232,7 @@ struct
 		 val args = List.map #1 pat
 		 val lv_clos = Lvars.env_lvar 
 		 val pseudo_res_lvars = gen_pseudo_res_lvars metaType (* Only used to remember the number of return values in cc *)
-		 val cc = CallConv.mk_cc_fn(args,SOME lv_clos,[],pseudo_res_lvars)
+		 val cc = CallConv.mk_cc_fn(args,SOME lv_clos,pseudo_res_lvars)
 
 		 val env_body = build_clos_env env (get_global_env()) lv_clos BI.init_clos_offset free_vars_all
 		 val env_with_args = (env_body plus_decl_with CE.declareLvar) (map (fn lv => (lv, CE.LVAR lv)) args)
@@ -2326,7 +2322,7 @@ struct
 (*		     val _ = print ("Closure size, " ^ (Lvars.pr_lvar lv_sclos_fn) ^ ": " ^ (Int.toString shared_clos_size) ^ 
 				    " " ^ (pr_free free_vars_in_shared_clos) ^ "\n") *)
 		     val sclos = if shared_clos_size = 0 then NONE else SOME lv_sclos_fn (* 14/06-2000, Niels *)
-		     val cc = CallConv.mk_cc_fun(args,sclos,[],NONE,rho_lvs,pseudo_res_lvars)
+		     val cc = CallConv.mk_cc_fun(args,sclos,NONE,rho_lvs,pseudo_res_lvars)
 		   in
 		     add_new_fun(lab,cc,liftTrip body env_with_args lab)
 		   end
@@ -2356,7 +2352,7 @@ struct
 		 val (ce_clos,lab_f) = compile_letrec_app env lvar
 		 val smas = List.map (fn alloc => PASS_PTR_TO_RHO(convert_alloc(alloc,env))) rhos_actuals
 	       in
-		 JMP{opr=lab_f,args=ces_arg,reg_vec=NONE,reg_args=smas,clos=ce_clos,free=[]}
+		 JMP{opr=lab_f,args=ces_arg,reg_vec=NONE,reg_args=smas,clos=ce_clos}
 	       end
 	   | MulExp.APP(SOME MulExp.JMP, _, tr1 (*not lvar: error *), tr2) => die "JMP to other than lvar"
 	   | MulExp.APP(SOME MulExp.FUNCALL, _,
@@ -2372,7 +2368,7 @@ struct
 
 		 val smas = List.map (fn alloc => PASS_PTR_TO_RHO(convert_alloc(alloc,env))) rhos_actuals
 	       in
-		 FUNCALL{opr=lab_f,args=ces_arg,reg_vec=NONE,reg_args=smas,clos=ce_clos,free=[]}
+		 FUNCALL{opr=lab_f,args=ces_arg,reg_vec=NONE,reg_args=smas,clos=ce_clos}
 	       end
 	  | MulExp.APP(SOME MulExp.FNJMP,_, tr1,tr2) =>
 	       let
@@ -2382,7 +2378,7 @@ struct
 		   | _ => [liftTrip tr2 env lab]
 		 val ce_opr = liftTrip tr1 env lab
 	       in
-		 FNJMP{opr=ce_opr,args=ces,clos=NONE (*SOME ce_opr*), free=[]} (* opr and clos is similar, we only want to the opr expression once! I therefore set clos equal to NONE17/09-2000, Niels *)
+		 FNJMP{opr=ce_opr,args=ces,clos=NONE (*SOME ce_opr*)} (* opr and clos is similar, we only want to the opr expression once! I therefore set clos equal to NONE17/09-2000, Niels *)
 	       end
 	   | MulExp.APP(NONE,_, (*  primitive *)
 			tr1 as MulExp.TR(MulExp.VAR{lvar,alloc as NONE, rhos_actuals=ref rhos_actuals,...},_,_,_), 
@@ -2438,7 +2434,7 @@ struct
 		   | _ => [liftTrip tr2 env lab]
 		 val ce_opr = liftTrip tr1 env lab
 	       in
-		 FNCALL{opr=ce_opr,args=ces,clos=NONE (*SOME ce_opr*), free=[]} (* opr and clos is similar, we only want to the opr expression once! I therefore set clos equal to NONE17/09-2000, Niels *)
+		 FNCALL{opr=ce_opr,args=ces,clos=NONE (*SOME ce_opr*)} (* opr and clos is similar, we only want to the opr expression once! I therefore set clos equal to NONE17/09-2000, Niels *)
 	       end
 	   | MulExp.APP _ => die "application form not recognised"
 
@@ -2768,7 +2764,7 @@ struct
 	val _ = set_global_env global_env
 	val main_lab = fresh_lab "main"
 	val clos_exp = insert_se(ccTrip tr global_env main_lab NONE)
-	val _ = add_new_fn(main_lab,CallConv.mk_cc_fn([],NONE,[],[]),clos_exp)
+	val _ = add_new_fn(main_lab,CallConv.mk_cc_fn([],NONE,[]),clos_exp)
 	val export_env = CE.plus (env_datbind, (get_frame_env()))
 	val export_labs = find_globals_in_env (export_vars) (get_frame_env())
       (* val _ = display("\nReport: export_env:", CE.layoutEnv export_env)*)
@@ -2824,7 +2820,7 @@ struct
 	val _ = set_global_env global_env
 	val main_lab = fresh_lab "main"
 	val lift_exp = liftTrip tr global_env main_lab
-	val _ = add_new_fn(main_lab,CallConv.mk_cc_fn([],NONE,[],[]),lift_exp)
+	val _ = add_new_fn(main_lab,CallConv.mk_cc_fn([],NONE,[]),lift_exp)
 	val export_env = CE.plus (env_datbind, (get_frame_env()))
 	val export_labs = find_globals_in_env_all (get_frame_env())
 	val code = get_top_decls() 

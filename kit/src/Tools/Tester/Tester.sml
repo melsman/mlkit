@@ -39,7 +39,7 @@ structure Tester : TESTER =
       Int.toString ((OS.FileSys.fileSize filename) div 1024) ^ "K"
       handle _ => (msgErr("failed to obtain size of file `" ^ filename ^ "'"); "err")
 
-    fun process_entry (filepath, opts) =
+    fun process_entry (filepath, opts, kitexe) =
       let
 	val _ = msg ("Processing file `" ^ filepath ^ "'")
 	val _ = OS.Process.system "rm -f -r PM"     (* first delete PM directory *)
@@ -50,7 +50,7 @@ structure Tester : TESTER =
 	  end
 	val {dir, file} = OS.Path.splitDirFile filepath
 	val _ = if dir="" then () else OS.FileSys.chDir dir
-	val compile_command_base = "kit --log_to_file " ^ 
+	val compile_command_base = kitexe ^ " --log_to_file " ^ 
 	  (if opt TestFile.NoBasisLib then "-no_basislib " else "") ^
           (if opt TestFile.NoOptimiser then "--no_optimiser " else "") ^
 	  (if opt TestFile.TimeCompiler then "--timings " else "") ^
@@ -221,14 +221,16 @@ structure Tester : TESTER =
 	recover()
       end
 
-    fun process_args [testfile] = SOME testfile
+    fun process_args [kitexe,testfile] = SOME (kitexe,testfile)
       | process_args _ = NONE
 
-    fun print_usage progname = print("\nUsage: kittester testfile\n")
+    fun print_usage progname = print("\nUsage: kittester kit testfile\n\
+				     \  kit: path to executable kit\n\
+				     \  testfile: path to test file.\n")
 
     fun main (progname, args) =
       case process_args args
-	of SOME testfile =>
+	of SOME (kitexe,testfile) =>
 	  let val log = "TESTmessages"
 	    val _ = reset_error_counter()
 	    val _ = TestReport.reset()
@@ -237,8 +239,8 @@ structure Tester : TESTER =
 	      case TestFile.parse testfile
 		of NONE => OS.Process.failure
 		 | SOME (testfile_string,entries) => 
-		  let val entries = map (fn TestFile.SML entry => entry
-		                          | TestFile.PM entry => entry) entries
+		  let val entries = map (fn TestFile.SML (filepath,opt) => (filepath,opt,kitexe)
+		                          | TestFile.PM (filepath,opt) => (filepath,opt,kitexe)) entries
 		  in app process_entry entries;
 		    msgErrors();
 		    TestReport.export {errors=noOfErrors(),testfile_string=testfile_string};

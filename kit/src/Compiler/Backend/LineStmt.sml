@@ -115,13 +115,13 @@ struct
     | FLUSH         of 'aty * 'offset
     | FETCH         of 'aty * 'offset
     | FNJMP         of {opr: 'aty, args: 'aty list, clos: 'aty option, 
-			free: 'aty list, res: 'aty list, bv: Word32.word list}
+			res: 'aty list, bv: Word32.word list}
     | FNCALL        of {opr: 'aty, args: 'aty list, clos: 'aty option, 
-			free: 'aty list, res: 'aty list, bv: Word32.word list}
+			res: 'aty list, bv: Word32.word list}
     | JMP           of {opr: label, args: 'aty list, reg_vec: 'aty option, 
-			reg_args: 'aty list, clos: 'aty option, free: 'aty list, res: 'aty list, bv: Word32.word list}
+			reg_args: 'aty list, clos: 'aty option, res: 'aty list, bv: Word32.word list}
     | FUNCALL       of {opr: label, args: 'aty list, reg_vec: 'aty option, 
-			reg_args: 'aty list, clos: 'aty option, free: 'aty list, res: 'aty list, bv: Word32.word list}
+			reg_args: 'aty list, clos: 'aty option, res: 'aty list, bv: Word32.word list}
     | LETREGION     of {rhos: (binder*'offset) list, body: ('sty,'offset,'aty) LineStmt list}
     | SCOPE         of {pat: 'sty list, scope: ('sty,'offset,'aty) LineStmt list}
     | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
@@ -291,79 +291,73 @@ struct
 				       children=[LEAF(pr_aty pat),layout_se pr_aty bind]}
 	   | FLUSH(aty,offset) => LEAF("flush(" ^ pr_aty aty ^ "," ^ pr_offset offset ^ ")")
 	   | FETCH(aty,offset) => LEAF("fetch(" ^ pr_aty aty ^ "," ^ pr_offset offset ^ ")")
-	   | FNJMP{opr,args,clos,free,res,bv} =>
+	   | FNJMP{opr,args,clos,res,bv} =>
 	       let
 		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
 		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
 		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
-		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
 	       in
 		 HNODE{start=flatten1(t0) ^ " = " ^ pr_aty opr ^ "_fnjmp ",
 		       finish="", childsep=RIGHT " ",
-		       children=[t1,t2,t3]}
+		       children=[t1,t2]}
 	       end
-	   | FNCALL{opr,args,clos,free,res,bv=[]} =>
+	   | FNCALL{opr,args,clos,res,bv=[]} =>
 	       let
 		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
 		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
 		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
-		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
+	       in
+		 HNODE{start=flatten1(t0) ^ " = " ^ pr_aty opr ^ "_fncall ",
+		       finish="", childsep=RIGHT " ",
+		       children=[t1,t2]}
+	       end
+	   | FNCALL{opr,args,clos,res,bv} =>
+	       let
+		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
+		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
+		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
+		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[PP.LEAF(pr_bv bv)]}
 	       in
 		 HNODE{start=flatten1(t0) ^ " = " ^ pr_aty opr ^ "_fncall ",
 		       finish="", childsep=RIGHT " ",
 		       children=[t1,t2,t3]}
 	       end
-	   | FNCALL{opr,args,clos,free,res,bv} =>
+	   | JMP{opr,args,reg_vec,reg_args,clos,res,bv} =>
 	       let
 		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
 		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
 		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
-		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
-		 val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[PP.LEAF(pr_bv bv)]}
-	       in
-		 HNODE{start=flatten1(t0) ^ " = " ^ pr_aty opr ^ "_fncall ",
-		       finish="", childsep=RIGHT " ",
-		       children=[t1,t2,t3,t4]}
-	       end
-	   | JMP{opr,args,reg_vec,reg_args,clos,free,res,bv} =>
-	       let
-		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
-		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
-		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
-		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
 		 val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) reg_args}
 		 val t5 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty reg_vec]}
 	       in
 		 HNODE{start=flatten1(t0) ^ " = " ^ Labels.pr_label opr ^ "_funjmp ",
 		       finish="", childsep=RIGHT " ",
-		       children=[t1,t5,t4,t2,t3]}
+		       children=[t1,t5,t4,t2]}
 	       end
-	   | FUNCALL{opr,args,reg_vec,reg_args,clos,free,res,bv=[]} =>
+	   | FUNCALL{opr,args,reg_vec,reg_args,clos,res,bv=[]} =>
 	       let
 		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
 		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
 		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
-		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
 		 val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) reg_args}
 		 val t5 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty reg_vec]}
 	       in
 		 HNODE{start=flatten1(t0) ^ " = " ^ Labels.pr_label opr ^ "_funcall ",
 		       finish="", childsep=RIGHT " ",
-		       children=[t1,t5,t4,t2,t3]}
+		       children=[t1,t5,t4,t2]}
 	       end
-	   | FUNCALL{opr,args,reg_vec,reg_args,clos,free,res,bv} =>
+	   | FUNCALL{opr,args,reg_vec,reg_args,clos,res,bv} =>
 	       let
 		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
 		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
 		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
-		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
 		 val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) reg_args}
 		 val t5 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty reg_vec]}
 		 val t6 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[PP.LEAF(pr_bv bv)]}
 	       in
 		 HNODE{start=flatten1(t0) ^ " = " ^ Labels.pr_label opr ^ "_funcall ",
 		       finish="", childsep=RIGHT " ",
-		       children=[t1,t5,t4,t2,t3,t6]}
+		       children=[t1,t5,t4,t2,t6]}
 	       end
 	   | LETREGION{rhos,body} =>
 	       let
@@ -591,16 +585,16 @@ struct
 	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=RECORD{elems=ces_to_atoms elems,alloc=sma_to_sma alloc,tag=tag}}::acc
       | L_ce(ClosExp.SELECT(i,ce),lvars_res,acc) = 
 	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=SELECT(i,ce_to_atom ce)}::acc
-      | L_ce(ClosExp.FNJMP{opr,args,clos,free},lvars_res,acc) = 
-	  FNJMP{opr=ce_to_atom opr,args=ces_to_atoms args,clos=ce_to_atom_opt clos,free=ces_to_atoms free,res=map VAR lvars_res, bv=[]}::acc
-      | L_ce(ClosExp.FNCALL{opr,args,clos,free},lvars_res,acc) =
-	  FNCALL{opr=ce_to_atom opr,args=ces_to_atoms args,clos=ce_to_atom_opt clos,free=ces_to_atoms free,res=map VAR lvars_res, bv=[]}::acc
-      | L_ce(ClosExp.JMP{opr,args,reg_vec,reg_args,clos,free},lvars_res,acc) =
+      | L_ce(ClosExp.FNJMP{opr,args,clos},lvars_res,acc) = 
+	  FNJMP{opr=ce_to_atom opr,args=ces_to_atoms args,clos=ce_to_atom_opt clos,res=map VAR lvars_res, bv=[]}::acc
+      | L_ce(ClosExp.FNCALL{opr,args,clos},lvars_res,acc) =
+	  FNCALL{opr=ce_to_atom opr,args=ces_to_atoms args,clos=ce_to_atom_opt clos,res=map VAR lvars_res, bv=[]}::acc
+      | L_ce(ClosExp.JMP{opr,args,reg_vec,reg_args,clos},lvars_res,acc) =
 	  JMP{opr=opr,args=ces_to_atoms args,reg_vec=ce_to_atom_opt reg_vec,reg_args=ces_to_atoms reg_args,
-	      clos=ce_to_atom_opt clos,free=ces_to_atoms free,res=map VAR lvars_res,bv=[]}::acc
-      | L_ce(ClosExp.FUNCALL{opr,args,reg_vec,reg_args,clos,free},lvars_res,acc) =
+	      clos=ce_to_atom_opt clos,res=map VAR lvars_res,bv=[]}::acc
+      | L_ce(ClosExp.FUNCALL{opr,args,reg_vec,reg_args,clos},lvars_res,acc) =
 	  FUNCALL{opr=opr,args=ces_to_atoms args,reg_vec=ce_to_atom_opt reg_vec,reg_args=ces_to_atoms reg_args,
-		  clos=ce_to_atom_opt clos,free=ces_to_atoms free,res=map VAR lvars_res,bv=[]}::acc
+		  clos=ce_to_atom_opt clos,res=map VAR lvars_res,bv=[]}::acc
       | L_ce(ClosExp.LETREGION{rhos,body},lvars_res,acc) =
 	  LETREGION{rhos=map binder_to_binder rhos,body=L_ce(body,lvars_res,[])}::acc
       | L_ce(ClosExp.LET{pat,bind,scope},lvars_res,acc) =
@@ -749,14 +743,12 @@ struct
     | get_phreg_se(PASS_PTR_TO_MEM(sma,i),acc) = get_phreg_sma(sma,acc)
     | get_phreg_se(PASS_PTR_TO_RHO sma,acc) = get_phreg_sma(sma,acc)
 
-  fun get_phreg_in_fun{opr,args,reg_vec,reg_args,clos,free,res,bv} = (* Operand is always a label *)
+  fun get_phreg_in_fun{opr,args,reg_vec,reg_args,clos,res,bv} = (* Operand is always a label *)
        get_phreg_atoms(args,get_phreg_atom_opt(reg_vec,
-	 get_phreg_atoms(reg_args,get_phreg_atom_opt(clos,get_phreg_atoms(free,
-          get_phreg_atoms(res,[]))))))
+	 get_phreg_atoms(reg_args,get_phreg_atom_opt(clos,get_phreg_atoms(res,[])))))
 
-  fun get_phreg_in_fn{opr,args,clos,free,res,bv} =
-       get_phreg_atoms(args,get_phreg_atom_opt(clos,get_phreg_atoms(free,
-        get_phreg_atom(opr,get_phreg_atoms(res,[])))))
+  fun get_phreg_in_fn{opr,args,clos,res,bv} =
+       get_phreg_atoms(args,get_phreg_atom_opt(clos,get_phreg_atom(opr,get_phreg_atoms(res,[]))))
 
   fun get_phreg_ls(ASSIGN{pat,bind}) = get_phreg_se(bind,[])
     | get_phreg_ls(FLUSH(atom,_)) = get_phreg_atom(atom,[])
@@ -816,16 +808,16 @@ struct
     | use_var_se(PASS_PTR_TO_MEM(sma,i),acc) = get_var_sma(sma,acc)
     | use_var_se(PASS_PTR_TO_RHO sma,acc) = get_var_sma(sma,acc)
 
-  fun use_var_on_fun{opr,args,reg_vec,reg_args,clos,free,res,bv} = (* Operand is always a label *)
+  fun use_var_on_fun{opr,args,reg_vec,reg_args,clos,res,bv} = (* Operand is always a label *)
     get_var_atoms(args,get_var_atom_opt(reg_vec,
-					get_var_atoms(reg_args,get_var_atom_opt(clos,get_var_atoms(free,[])))))
+					get_var_atoms(reg_args,get_var_atom_opt(clos,[]))))
 
-  fun def_var_on_fun{opr,args,reg_vec,reg_args,clos,free,res,bv} = get_var_atoms(res,[])
+  fun def_var_on_fun{opr,args,reg_vec,reg_args,clos,res,bv} = get_var_atoms(res,[])
 
-  fun use_var_on_fn{opr,args,clos,free,res,bv} =
-    get_var_atoms(args,get_var_atom_opt(clos,get_var_atoms(free,get_var_atom(opr,[]))))
+  fun use_var_on_fn{opr,args,clos,res,bv} =
+    get_var_atoms(args,get_var_atom_opt(clos,get_var_atom(opr,[])))
 
-  fun def_var_on_fn{opr,args,clos,free,res,bv} = get_var_atoms(res,[])
+  fun def_var_on_fn{opr,args,clos,res,bv} = get_var_atoms(res,[])
 
   fun use_var_ls(ASSIGN{pat,bind}) = use_var_se(bind,[])
     | use_var_ls(FLUSH(atom,_)) = get_var_atom(atom,[])
@@ -916,19 +908,17 @@ struct
 	    switch_con(SWITCH(map_aty atom,sels',default'))
 	  end 
 
-	fun map_fn_app{opr,args,clos,free,res,bv} =
+	fun map_fn_app{opr,args,clos,res,bv} =
 	  {opr=map_aty opr,
 	   args=map_atys args,
 	   clos=map_aty_opt clos,
-	   free=map_atys free,
 	   res=map_atys res,
 	   bv=bv}
 
-	fun map_fun_app{opr,args,clos,free,res,reg_vec,reg_args,bv} =
+	fun map_fun_app{opr,args,clos,res,reg_vec,reg_args,bv} =
 	  {opr=opr,
 	   args=map_atys args,
 	   clos=map_aty_opt clos,
-	   free=map_atys free,
 	   res=map_atys res,
 	   reg_vec=map_aty_opt reg_vec,
 	   reg_args=map_atys reg_args,

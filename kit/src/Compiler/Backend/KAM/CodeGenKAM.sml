@@ -396,13 +396,13 @@ struct
       else
 	CG_ce(ce,env,sp,cc, select(i,acc))
       | CG_ce(ClosExp.SELECT(i,ce),env,sp,cc,acc) = CG_ce(ce,env,sp,cc, select(i,acc))
-      | CG_ce(ClosExp.FNJMP{opr,args,clos=NONE,free=[]},env,sp,cc,acc) = 
+      | CG_ce(ClosExp.FNJMP{opr,args,clos=NONE},env,sp,cc,acc) = 
       CG_ce(opr,env,sp,cc,
 	    push (comp_ces(args,env,sp+1,cc, 
 			   ApplyFnJmp(List.length args, sp) :: 
 			   dead_code_elim acc)))
-      | CG_ce(ClosExp.FNJMP{opr,args,clos,free},env,sp,cc,acc) = die "FNJMP: either clos or free are non empty."
-      | CG_ce(ClosExp.FNCALL{opr,args,clos=NONE,free=[]},env,sp,cc,acc) = 
+      | CG_ce(ClosExp.FNJMP{opr,args,clos},env,sp,cc,acc) = die "FNJMP: clos is non-empty."
+      | CG_ce(ClosExp.FNCALL{opr,args,clos=NONE},env,sp,cc,acc) = 
       let
 	val return_lbl = Labels.new_named "return_from_app"
       in
@@ -411,20 +411,20 @@ struct
 	      push (comp_ces(args,env,sp+2,cc,
 			     ApplyFnCall(List.length args) :: Label(return_lbl) :: acc)))
       end
-      | CG_ce(ClosExp.FNCALL{opr,args,clos,free},env,sp,cc,acc) = 
-      die "FNCALL: either clos or free are non empty."      
-      | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=NONE,free=[]},env,sp,cc,acc) =
+      | CG_ce(ClosExp.FNCALL{opr,args,clos},env,sp,cc,acc) = 
+      die "FNCALL: clos is non-empty."      
+      | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=NONE},env,sp,cc,acc) =
       ImmedIntPush "0" ::        (* is it always all the region arguments that are reused? *)
       comp_ces(args,env,sp+1,cc,
 	       ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: 
 	       dead_code_elim acc)
-      | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=SOME clos_ce,free=[]},env,sp,cc,acc) =
+      | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=SOME clos_ce},env,sp,cc,acc) =
       CG_ce(clos_ce,env,sp,cc,
 	    push (comp_ces(args,env,sp+1,cc,
 			   ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: 
 			   dead_code_elim acc)))
-      | CG_ce(ClosExp.JMP{opr,args,reg_vec,reg_args,clos,free},env,sp,cc,acc) = die "JMP either reg_vec or free are non empty."
-      | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos=NONE,free=[]},env,sp,cc,acc) =
+      | CG_ce(ClosExp.JMP{opr,args,reg_vec,reg_args,clos},env,sp,cc,acc) = die "JMP reg_vec is non-empty."
+      | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos=NONE},env,sp,cc,acc) =
       let
 	val return_lbl = Labels.new_named "return_from_app"
       in
@@ -434,7 +434,7 @@ struct
 		 ApplyFunCall(opr,List.length args + List.length reg_args) :: 
 		 Label(return_lbl) :: acc)
       end
-      | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos=SOME clos_ce,free=[]},env,sp,cc,acc) = 
+      | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos=SOME clos_ce},env,sp,cc,acc) = 
       let
 	val return_lbl = Labels.new_named "return_from_app"
       in
@@ -444,7 +444,7 @@ struct
 			     ApplyFunCall(opr,List.length args + List.length reg_args) :: 
 			     Label(return_lbl) :: acc)))
       end
-      | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec,reg_args,clos,free},env,sp,cc,acc) = die "FUNCALL: either reg_vec or free are non empty."
+      | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec,reg_args,clos},env,sp,cc,acc) = die "FUNCALL: reg_vec is non-empty."
       | CG_ce(ClosExp.LETREGION{rhos,body},env,sp,cc,acc) = 
       let
 	fun comp_alloc_rhos([],env,sp,cc,fn_acc) = fn_acc(env,sp)
