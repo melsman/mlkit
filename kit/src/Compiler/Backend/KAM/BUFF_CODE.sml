@@ -7,6 +7,7 @@ signature BUFF_CODE =
     val init_out_code : unit -> unit
 
     val out_i : int -> unit
+    val out_long_i32 : Int32.int -> unit
     val out_short_i : int -> unit
     val out_long_i : int -> unit 
 

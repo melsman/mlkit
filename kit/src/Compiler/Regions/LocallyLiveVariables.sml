@@ -15,6 +15,7 @@ functor LocallyLiveVariables(
     structure MulInf: MUL_INF
       sharing type PrettyPrint.StringTree=Eff.StringTree= MulExp.StringTree = MulInf.StringTree
       sharing type RType.effect = Eff.effect = Eff.place = MulExp.effect = MulExp.place = MulInf.place
+      sharing type RType.Type = MulExp.Type
       sharing type Lvars.lvar = MulExp.lvar = Lvarset.lvar
       sharing type Excon.excon = MulExp.excon
       sharing type MulInf.LambdaExp = MulExp.LambdaExp
@@ -183,7 +184,10 @@ struct
                  other = other}
       | cp_triv_exp (VAR{lvar, ...}) = die
             ("cp_triv_exp: lvar badly annotated: " ^ Lvars.pr_lvar lvar)
-      | cp_triv_exp (INTEGER(i, place)) = INTEGER(i, (place, empty_liveset)) (* the 
+      | cp_triv_exp (INTEGER(i, t, place)) = INTEGER(i, t, (place, empty_liveset)) (* the 
+            lvarset is not
+            needed for integers, since no code is generated for it *)
+      | cp_triv_exp (WORD(i, t, place)) = WORD(i, t, (place, empty_liveset)) (* the 
             lvarset is not
             needed for integers, since no code is generated for it *)
       | cp_triv_exp (RECORD(place,[])) = RECORD((place,empty_liveset), []) (* the 
@@ -196,7 +200,8 @@ struct
   
     fun freeInTrivExp (VAR{lvar,...}) = (singleton lvar, [])
       | freeInTrivExp (INTEGER _    ) = (empty, [])
-      | freeInTrivExp (RECORD(_,[])) =  (empty, [])
+      | freeInTrivExp (WORD _    )    = (empty, [])
+      | freeInTrivExp (RECORD(_,[]))  = (empty, [])
       | freeInTrivExp _  = die
                      "sub-expression not atomic (expected K-normal form)"
 
@@ -244,7 +249,12 @@ struct
       in
       case e of
         VAR{lvar,...} => (cp_triv_exp e, (singleton lvar, []))
-      | INTEGER(i,a) =>  (cp_triv_exp e, empty_liveset)
+      | INTEGER(i,t,a) =>  
+	  if RType.unboxed t then (cp_triv_exp e, empty_liveset)
+	  else (INTEGER(i,t, (a, norm_liveset liveset)), empty_liveset)
+      | WORD(i,t,a) =>
+	  if RType.unboxed t then (cp_triv_exp e, empty_liveset)
+	  else (WORD(i,t, (a, norm_liveset liveset)), empty_liveset)
       | STRING(s,place)  => (STRING(s, (place, norm_liveset liveset)),  empty_liveset)
       | REAL(r,place)    => (REAL(r, (place, norm_liveset liveset)),    empty_liveset)
       | UB_RECORD(trs)   => 
@@ -333,7 +343,7 @@ struct
            (APP(ck,sr,tr1',tr2'),
             union_llv(free_tr1,free_tr2))
         end
-
+(*
       | APP(ck,sr,tr1 as TR(VAR{lvar, il, plain_arreffs,fix_bound=false, rhos_actuals,other}, meta,phi,psi),tr2) =>
            (* non-empty list of actual regions: has to be primitive lvar *)
           (case Lvars.primitive lvar of
@@ -350,10 +360,11 @@ struct
                             live_tr2) (* do not include free_tr1: the lvar will be inlined! *)
                        end
 
-           | NONE => die  "ill-formed application (expeced K-normal form)"
+           | NONE => die  "ill-formed application (expected K-normal form)"
           )
+*)
       | APP(ck,sr, _ , _) =>
-           die  "ill-formed application; operator not variable (expeced K-normal form)"
+           die  "ill-formed application; operator not variable (expected K-normal form)"
       
       | EXCEPTION(excon,b,mu,rho,tr1) =>
          let val (tr1',freeInScope) = llv(tr1, liveset)
@@ -378,9 +389,13 @@ struct
             union_llv(live_in_tr2, live_in_tr1)
            )
          end
-      | SWITCH_I(switch) => 
+      | SWITCH_I {switch,precision} => 
           let val (switch', liveset') = llv_switch(switch,liveset)
-          in (SWITCH_I(switch'),liveset')
+          in (SWITCH_I {switch=switch',precision=precision},liveset')
+          end 
+      | SWITCH_W {switch,precision} => 
+          let val (switch', liveset') = llv_switch(switch,liveset)
+          in (SWITCH_W {switch=switch',precision=precision},liveset')
           end 
       | SWITCH_C(switch) => 
           let val (switch', liveset') = llv_switch(switch,liveset)

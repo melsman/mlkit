@@ -1,4 +1,4 @@
-(*$ERROR_INFO: ERROR_CODE*)
+
 signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_INFO for an
 				* overview of the different kinds of info.*)
   sig
@@ -38,6 +38,7 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
       | QUALIFIED_ID of longid
       | UNGUARDED_TYVARS of TyVar list
       | UNGENERALISABLE_TYVARS of id list
+      | REALSCON_ATPAT
       | WRONG_ARITY of {expected: int, actual: int}
       | FLEX_REC_NOT_RESOLVED 
       | REPEATED_IDS of RepeatedId list

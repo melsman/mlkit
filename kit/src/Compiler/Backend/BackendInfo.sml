@@ -5,8 +5,7 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 		    sharing type Report.Report = Flags.Report
 		    structure Crash : CRASH
 		    structure RegConst : REG_CONST
-		    val down_growing_stack : bool
-		    val extra_prims : string list) : BACKEND_INFO =
+		    val down_growing_stack : bool) : BACKEND_INFO =
   struct
     fun die s  = Crash.impossible ("BackendInfo." ^ s)
 
@@ -108,6 +107,9 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val finiteRegionDescSizeP = 2 (* Number of words in a finite region descriptor when profiling is used. *)
     val objectDescSizeP = 2       (* Number of words in an object descriptor when profiling is used. *)
 
+    fun defaultIntPrecision() = if tag_integers() then 31 else 32
+    fun defaultWordPrecision() = if tag_integers() then 31 else 32
+
     val toplevel_region_withtype_top_lab    = Labels.reg_top_lab
     val toplevel_region_withtype_bot_lab    = Labels.reg_bot_lab
     val toplevel_region_withtype_string_lab = Labels.reg_string_lab
@@ -125,7 +127,7 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val minCodeInBinSearch = 5
     val maxDiff = 10
     val minJumpTabSize = 5
-
+(*
     (* Names For Primitive Functions *)
     val EQUAL_INT       = "__equal_int"
     val MINUS_INT       = "__minus_int"
@@ -149,22 +151,69 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val LESSEQ_FLOAT    = "__lesseq_float"
     val GREATER_FLOAT   = "__greater_float"
     val GREATEREQ_FLOAT = "__greatereq_float"
+*)
 
-    val prims = ["__equal_int", "__minus_int", "__plus_int", (* "__mul_int", *) (* treat millicode calls as C calls (e.g., mul) *)
-		 "__neg_int", "__abs_int", "__less_int", "__lesseq_int",        (*  ; for def-use.. *)
-		 "__greater_int", "__greatereq_int", "__exn_ptr", "__fresh_exname",
-		 "__plus_float", "__minus_float", "__mul_float", "__div_float",
-		 "__neg_float", "__abs_float", "__less_float", "__lesseq_float",
-		 "__greater_float", "__greatereq_float", "less_word__", "greater_word__",
-		 "lesseq_word__", "greatereq_word__", "plus_word8__", "minus_word8__",
-		 (*"mul_word8__",*) "and__", "or__", "xor__", "shift_left__", "shift_right_signed__",
-		 "shift_right_unsigned__", "plus_word__", "minus_word__" (*, "mul_word__"*),
-		 "toIntw32boxed__"] @ extra_prims
 
-    fun member n [] = false
-      | member n (n'::ns) = n=n' orelse member n ns
+    (* Primitives that are inlined by the compiler; in contrast to
+     * those primitives that are implemented as C calls *)
 
-    fun is_prim name = member name prims
+    local
+      structure S = OrderSet(structure Order = 
+			       struct type T = string
+				 fun lt (a: T) b = a < b
+			       end
+			     structure PP = PP)
+
+      val S_flow = S.fromList
+	["__equal_int31", "__equal_int32ub", "__equal_int32b", "__equal_word8", 
+	 "__equal_word31", "__equal_word32ub", "__equal_word32b", 
+	 "__less_int31", "__less_int32ub", "__less_int32b", "__less_word8",
+	 "__less_word31", "__less_word32ub", "__less_word32b", 
+	 "__lesseq_int31", "__lesseq_int32ub", "__lesseq_int32b", "__lesseq_word8",
+	 "__lesseq_word31", "__lesseq_word32ub", "__lesseq_word32b", 
+	 "__greater_int31", "__greater_int32ub", "__greater_int32b", "__greater_word8",    
+	 "__greater_word31", "__greater_word32ub", "__greater_word32b", 
+	 "__greatereq_int31", "__greatereq_int32ub", "__greatereq_int32b", "__greatereq_word8",
+	 "__greatereq_word31", "__greatereq_word32ub", "__greatereq_word32b"
+	 ]
+
+      val S = S.fromList
+	["__less_real", "__lesseq_real", "__greater_real", "__greatereq_real",
+	 "__plus_int31", "__plus_int32ub", "__plus_int32b", "__plus_word8",
+	 "__plus_word31", "__plus_word32ub", "__plus_word32b", "__plus_real",
+	 "__minus_int31", "__minus_int32ub", "__minus_int32b", "__minus_word8", 
+	 "__minus_word31", "__minus_word32ub", "__minus_word32b", "__minus_real", 
+	 "__mul_int31", "__mul_int32ub", "__mul_int32b", "__mul_word8",
+	 "__mul_word31", "__mul_word32ub", "__mul_word32b", "__mul_real",
+	 "__div_real",
+	 "__neg_int31", "__neg_int32ub", "__neg_int32b", "__neg_real",  
+	 "__abs_int31", "__abs_int32ub", "__abs_int32b", "__abs_real",  
+	 "__andb_word8", "__andb_word31", "__andb_word32ub", "__andb_word32b",
+	 "__orb_word8", "__orb_word31", "__orb_word32ub", "__orb_word32b",
+	 "__xorb_word8", "__xorb_word31", "__xorb_word32ub", "__xorb_word32b",
+	 "__shift_left_word8", "__shift_left_word31", "__shift_left_word32ub", "__shift_left_word32b", 
+	 "__shift_right_signed_word8", "__shift_right_signed_word31", 
+	 "__shift_right_signed_word32ub", "__shift_right_signed_word32b", 
+	 "__shift_right_unsigned_word8", "__shift_right_unsigned_word31", 
+	 "__shift_right_unsigned_word32ub", "__shift_right_unsigned_word32b", 
+	 
+	 "__int31_to_int32b", "__int31_to_int32ub", "__int32b_to_int31", "__int32ub_to_int31",
+
+	 "__word31_to_word32b", "__word31_to_word32ub", "__word32b_to_word31", "__word32ub_to_word31",
+	 "__word31_to_word8", "__word32ub_to_word8", "__word32b_to_word8", "__word8_to_word31",
+	 "__word8_to_word32ub", "__word8_to_word32b",
+
+	 "__word8_to_word31_X", "__word8_to_word32ub_X", "__word8_to_word32b_X", 
+	 "__word31_to_word32ub_X", "__word31_to_word32b_X", 
+
+	 "__word32b_to_int32b", "__word32ub_to_int32ub", "__word31_to_int31", 
+	 "__word32b_to_int31", 
+
+	 "__exn_ptr", "__fresh_exname"]
+    in
+      fun is_prim name = S.member name S orelse S.member name S_flow
+      fun is_flow_prim name = S.member name S_flow
+    end
 
     val down_growing_stack = down_growing_stack
   end

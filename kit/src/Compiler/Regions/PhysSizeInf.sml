@@ -109,25 +109,7 @@ functor PhysSizeInf(structure Name : NAME
 
 	val (mark_place, unmark_place, add_place) = gen_marker(place_bucket, E.get_visited)
 
-	local val (mark_lvar, unmark_lvar, add_lvar) = gen_marker(lvar_bucket, Lvars.is_free)
-	in 
-
-	  (* Primitives are treated as lvars -- and should not be
-           * considered free in a lambda expression. *)
-
-	  val mark_lvar = fn lv => 
-	    case Lvars.primitive lv
-	      of SOME _ => ()
-	       | NONE => mark_lvar lv
-	  val unmark_lvar = fn lv => 
-	    case Lvars.primitive lv
-	      of SOME _ => ()
-	       | NONE => unmark_lvar lv
-	  val add_lvar = fn lv => 
-	    case Lvars.primitive lv
-	      of SOME _ => ()
-	       | NONE => add_lvar lv
-	end 
+	val (mark_lvar, unmark_lvar, add_lvar) = gen_marker(lvar_bucket, Lvars.is_free)
 
 	fun add_excon (excon:excon) : unit =
 	  if List.exists (fn excon' => ExCon.eq(excon,excon')) (!excon_bucket) then ()
@@ -173,7 +155,8 @@ functor PhysSizeInf(structure Name : NAME
 	in case e
 	     of VAR{lvar,rhos_actuals=ref actuals,...} =>
 	       (add_lvar lvar; List.apply add_atp actuals)
-	      | INTEGER(n,alloc) => add_atp alloc
+	      | INTEGER(n,t,alloc) => add_atp alloc
+	      | WORD(n,t,alloc) => add_atp alloc
 	      | STRING(s,alloc) => add_atp alloc
 	      | REAL(s,alloc) => add_atp alloc
 	      | UB_RECORD trips => List.apply fv trips
@@ -211,7 +194,8 @@ functor PhysSizeInf(structure Name : NAME
 		      kill_excon excon)
 	      | RAISE tr => fv tr
 	      | HANDLE(tr1,tr2) => (fv tr1; fv tr2)
-	      | SWITCH_I sw => fv_sw sw
+	      | SWITCH_I {switch, precision} => fv_sw switch
+	      | SWITCH_W {switch, precision} => fv_sw switch
 	      | SWITCH_S sw => fv_sw sw
 	      | SWITCH_C sw => fv_sw sw
 	      | SWITCH_E sw => let val SWITCH(_,choices,_) = sw
@@ -259,6 +243,7 @@ functor PhysSizeInf(structure Name : NAME
 	in case e
 	     of VAR _ => ()
 	      | INTEGER _ => ()
+	      | WORD _ => ()
 	      | STRING _ => ()
 	      | REAL _ => ()
 	      | UB_RECORD trips => List.apply ifv trips
@@ -312,7 +297,8 @@ functor PhysSizeInf(structure Name : NAME
 	      | EXCEPTION(excon,b,tp,alloc,scope) => ifv scope
 	      | RAISE tr => ifv tr
 	      | HANDLE(tr1,tr2) => (ifv tr1; ifv tr2)
-	      | SWITCH_I sw => ifv_sw sw
+	      | SWITCH_I {switch,precision} => ifv_sw switch
+	      | SWITCH_W {switch,precision} => ifv_sw switch
 	      | SWITCH_S sw => ifv_sw sw
 	      | SWITCH_C sw => ifv_sw sw
 	      | SWITCH_E sw => ifv_sw sw
@@ -391,60 +377,8 @@ functor PhysSizeInf(structure Name : NAME
     val empty = LvarMap.empty
     fun plus a = LvarMap.plus a
     fun add_env a = LvarMap.add a
-      
-    local val size_real = size_of_real()  (* MEMO : How is this done dynamically? 
-					   * Well - see the lookup function... *)
-          open Lvars 
-    in
-      val init =
-	let val size_string = INF
-	    val sizes_string_list = [INF,INF,INF]
-	    val init_lvars_formalsizes = 
-	    [(plus_int_lvar, []),
-	     (minus_int_lvar, []),
-	     (mul_int_lvar, []),
-	     (less_int_lvar, []),
-	     (lesseq_int_lvar, []),
-	     (greater_int_lvar, []),
-	     (greatereq_int_lvar, []),
-	     (negint_lvar, []),
-	     (absint_lvar, []),
-
-	     (negfloat_lvar, [size_real]),
-	     (absfloat_lvar, [size_real]),
-	     (mul_float_lvar, [size_real]),
-	     (plus_float_lvar, [size_real]),
-	     (minus_float_lvar, [size_real]),
-	     (less_float_lvar, []),
-	     (greater_float_lvar, []),
-	     (lesseq_float_lvar, []),
-	     (greatereq_float_lvar, [])
-	     ]
-	in List.foldL (fn (lv,r) => fn env => add_env(lv, FORMAL_SIZES r,env)) 
-	  empty init_lvars_formalsizes 	    
-	end
-
-      fun member_lv lvs lv =
-	let fun loop []  = false
-	      | loop (x::xs) = Lvars.eq(lv,x) orelse loop xs
-	in loop lvs
-	end
-
-      (* To allow for the size of reals to change dynamically and
-       * still have a consistent initial basis, we check if the
-       * current size is different from the default size (the size at
-       * build-time). If the sizes differ for those questionable
-       * identifiers, we return a result that corresponds to the
-       * actual size. Only the initial basis is made consistent this
-       * way. Martin-08/03/1998 *)
-
-      fun lookup_env env lv =
-	if size_of_real() <> size_real then
-	  if member_lv [negfloat_lvar, absfloat_lvar, mul_float_lvar, plus_float_lvar, minus_float_lvar] lv then
-	    SOME(FORMAL_SIZES [size_of_real()])
-	  else LvarMap.lookup env lv
-	else LvarMap.lookup env lv
-    end
+    fun lookup_env env lv = LvarMap.lookup env lv
+    val init = empty
 
     fun equal_res (FORMAL_SIZES phs1,FORMAL_SIZES phs2) = (phs1 = phs2)
       | equal_res (NOTFIXBOUND, NOTFIXBOUND) = true
@@ -578,6 +512,7 @@ functor PhysSizeInf(structure Name : NAME
 	of VAR{lvar,fix_bound=false,rhos_actuals=ref [],...} => ()
 	 | VAR _ => die "psi_tr.variables not fully applied as assumed." 
 	 | INTEGER _ => ()
+	 | WORD _ => ()
 	 | STRING _ => ()  (* immediate strings are allocated statically.. *)
 	 | REAL _ => ()    (* immediate reals are allocated statically.. *)
 	 | UB_RECORD trips => List.apply (psi_tr env) trips
@@ -660,7 +595,8 @@ functor PhysSizeInf(structure Name : NAME
 	  end
 	 | RAISE tr => psi_tr env tr
 	 | HANDLE(tr1,tr2) => (psi_tr env tr1; psi_tr env tr2)
-	 | SWITCH_I sw => psi_sw (psi_tr env) sw
+	 | SWITCH_I {switch,precision} => psi_sw (psi_tr env) switch
+	 | SWITCH_W {switch,precision} => psi_sw (psi_tr env) switch
 	 | SWITCH_S sw => psi_sw (psi_tr env) sw
 	 | SWITCH_C sw => psi_sw (psi_tr env) sw
 	 | SWITCH_E sw => psi_sw (psi_tr env) sw
@@ -753,7 +689,8 @@ functor PhysSizeInf(structure Name : NAME
 	      of VAR {lvar,il,plain_arreffs,fix_bound,rhos_actuals,other} => 
 		VAR {lvar=lvar,il=il,plain_arreffs=plain_arreffs,fix_bound=fix_bound,
 		     rhos_actuals=ref (map pp (!rhos_actuals)),other=other} 
-	       | INTEGER (a,p) => INTEGER (a,pp p)
+	       | INTEGER (a,t,p) => INTEGER (a,t,pp p)
+	       | WORD (a,t,p) => WORD (a,t,pp p)
 	       | STRING (a,p) => STRING (a,pp p)
 	       | REAL (a,p) => REAL (a,pp p)
 	       | UB_RECORD trs => UB_RECORD (map ips trs) 
@@ -775,7 +712,8 @@ functor PhysSizeInf(structure Name : NAME
 	       | EXCEPTION(excon,b,mu,atp,tr) => EXCEPTION(excon,b,mu,pp atp,ips tr)
 	       | RAISE tr => RAISE(ips tr)
 	       | HANDLE(tr1,tr2) => HANDLE(ips tr1, ips tr2)
-	       | SWITCH_I sw => SWITCH_I(ips_sw sw)
+	       | SWITCH_I {switch,precision} => SWITCH_I {switch=ips_sw switch, precision=precision}
+	       | SWITCH_W {switch,precision} => SWITCH_W {switch=ips_sw switch, precision=precision}
 	       | SWITCH_S sw => SWITCH_S(ips_sw sw)
 	       | SWITCH_C sw => SWITCH_C(ips_sw sw)
 	       | SWITCH_E sw => SWITCH_E(ips_sw sw)

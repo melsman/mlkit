@@ -16,7 +16,7 @@ signature COMPILER_ENV =
     type TyName
 
     val emptyCEnv: CEnv
-    val initialCEnv: CEnv
+    val initialCEnv: unit -> CEnv
 
     (* We support lazy instantiation of values and value
      * constructors. This is all dealt with in the translation
@@ -89,8 +89,12 @@ signature COMPILER_ENV =
       (* Return the list of tynames occurring in CEnv *)
     val lvarsOfCEnv: CEnv -> lvar list
       (* Return the list of lvars which the declared ids in CEnv are mapped to *)
+
+(*
     val primlvarsOfCEnv: CEnv -> lvar list
       (* Adds the list of `primitive' lvars associated with overloaded primitives in CEnv *) 
+*)
+
     val exconsOfCEnv: CEnv -> excon list
       (* Return the list of excons which the declared ids in CEnv are mapped to *)
     val consOfCEnv: CEnv -> con list

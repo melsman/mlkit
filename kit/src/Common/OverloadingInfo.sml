@@ -2,6 +2,7 @@
 
 functor OverloadingInfo (structure StatObject : STATOBJECT
 			 structure PrettyPrint : PRETTYPRINT
+			 structure Flags : FLAGS
 			   ) : OVERLOADING_INFO =
   struct
     type RecType = StatObject.RecType
@@ -11,21 +12,35 @@ functor OverloadingInfo (structure StatObject : STATOBJECT
     datatype OverloadingInfo =
       UNRESOLVED_IDENT of TyVar
     | UNRESOLVED_DOTDOTDOT of RecType
-    | RESOLVED_INT
+    | RESOLVED_INT31
+    | RESOLVED_INT32
     | RESOLVED_REAL		
     | RESOLVED_STRING
     | RESOLVED_CHAR
     | RESOLVED_WORD8
-    | RESOLVED_WORD
+    | RESOLVED_WORD31
+    | RESOLVED_WORD32
+
+    val tag_integers = Flags.is_on0 "tag_integers"
+
+    fun resolvedIntDefault () = 
+      if tag_integers() then RESOLVED_INT31
+      else RESOLVED_INT32
+
+    fun resolvedWordDefault () = 
+      if tag_integers() then RESOLVED_WORD31
+      else RESOLVED_WORD32
 
     fun string (UNRESOLVED_IDENT tyvars) = "UNRESOLVED_IDENT"
       | string (UNRESOLVED_DOTDOTDOT tau) = "UNRESOLVED_DOTDOTDOT"
-      | string RESOLVED_INT =    "RESOLVED_INT"
+      | string RESOLVED_INT31 =  "RESOLVED_INT31"
+      | string RESOLVED_INT32 =  "RESOLVED_INT32"
       | string RESOLVED_REAL =   "RESOLVED_REAL"
       | string RESOLVED_STRING = "RESOLVED_STRING"
       | string RESOLVED_CHAR =   "RESOLVED_CHAR"
-      | string RESOLVED_WORD8 =   "RESOLVED_WORD8"
-      | string RESOLVED_WORD =   "RESOLVED_WORD"
+      | string RESOLVED_WORD8 =  "RESOLVED_WORD8"
+      | string RESOLVED_WORD31 = "RESOLVED_WORD31"
+      | string RESOLVED_WORD32 = "RESOLVED_WORD32"
 
     val layout = PrettyPrint.LEAF o string
 

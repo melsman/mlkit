@@ -225,8 +225,12 @@ struct
 		  handl_return=(handl_return',handl_return_lv,bv),offset=ann_offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
       end
       | CO_lss(LS.RAISE a::lss,LVmap,PHmap,offset,acc) = LS.RAISE a :: CO_lss(lss,LVmap,PHmap,offset,acc)
-      | CO_lss(LS.SWITCH_I sw::lss,LVmap,PHmap,offset,acc) = 
-          CO_sw(CO_lss,LS.SWITCH_I,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss(LS.SWITCH_I {switch,precision}::lss,LVmap,PHmap,offset,acc) = 
+      CO_sw(CO_lss, fn sw => LS.SWITCH_I {switch=sw,precision=precision},
+	    switch,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss(LS.SWITCH_W {switch,precision}::lss,LVmap,PHmap,offset,acc) = 
+      CO_sw(CO_lss, fn sw => LS.SWITCH_W {switch=sw,precision=precision},
+	    switch,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.SWITCH_S sw::lss,LVmap,PHmap,offset,acc) = 
           CO_sw(CO_lss,LS.SWITCH_S,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.SWITCH_C sw::lss,LVmap,PHmap,offset,acc) = 
@@ -457,7 +461,12 @@ struct
 					  bv_handl_return),
 			    offset=offset}::lss')
 	       end
-	   | LS.SWITCH_I sw => CBV_sw(CBV_lss',LS.SWITCH_I,sw,L_set,LVenv,lss)
+	   | LS.SWITCH_I {switch, precision} => 
+	       CBV_sw(CBV_lss', fn sw => LS.SWITCH_I{switch=sw,precision=precision},
+		      switch,L_set,LVenv,lss)
+	   | LS.SWITCH_W {switch, precision} => 
+	       CBV_sw(CBV_lss', fn sw => LS.SWITCH_W{switch=sw,precision=precision},
+		      switch,L_set,LVenv,lss)
 	   | LS.SWITCH_S sw => CBV_sw(CBV_lss',LS.SWITCH_S,sw,L_set,LVenv,lss)
 	   | LS.SWITCH_C sw => CBV_sw(CBV_lss',LS.SWITCH_C,sw,L_set,LVenv,lss)
 	   | LS.SWITCH_E sw => CBV_sw(CBV_lss',LS.SWITCH_E,sw,L_set,LVenv,lss)

@@ -800,24 +800,41 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       (* Special constants *)
 
-      val Int    = mk_ConsType ([], TyName.tyName_INT)
-      val Real   = mk_ConsType ([], TyName.tyName_REAL)
-      val String = mk_ConsType ([], TyName.tyName_STRING)
-      val Bool   = mk_ConsType ([], TyName.tyName_BOOL)
-      val Char   = mk_ConsType ([], TyName.tyName_CHAR)
-      val Word8  = mk_ConsType ([], TyName.tyName_WORD8)
-      val Word   = mk_ConsType ([], TyName.tyName_WORD)
+      val tag_integers = Flags.is_on0 "tag_integers"
+
+      val Int31        = mk_ConsType ([], TyName.tyName_INT31)
+      val Int32        = mk_ConsType ([], TyName.tyName_INT32)
+      fun IntDefault() = if tag_integers() then Int31 else Int32
+
+      val Real         = mk_ConsType ([], TyName.tyName_REAL)
+      val String       = mk_ConsType ([], TyName.tyName_STRING)
+      val Bool         = mk_ConsType ([], TyName.tyName_BOOL)
+      val Char         = mk_ConsType ([], TyName.tyName_CHAR)
+
+      val Word8        = mk_ConsType ([], TyName.tyName_WORD8)
+      val Word31       = mk_ConsType ([], TyName.tyName_WORD31)
+      val Word32       = mk_ConsType ([], TyName.tyName_WORD32)
+      fun WordDefault() = if tag_integers() then Word31 else Word32
 
       fun simple_scon ty = {type_scon = ty, overloading = NONE}
-      fun of_scon (SCon.INTEGER _) = simple_scon Int
-	| of_scon (SCon.STRING _) = simple_scon String
-	| of_scon (SCon.REAL _) = simple_scon Real
-	| of_scon (SCon.CHAR _) = simple_scon Char
-	| of_scon (SCon.WORD i) = 
-	if i > 255 then simple_scon Word
-	else let val tv = TyVar.fresh_overloaded [TyName.tyName_WORD8, TyName.tyName_WORD]
-	     in {type_scon=from_TyVar tv, overloading=SOME tv}
-	     end 
+      fun of_scon sc =
+	case sc
+	  of SCon.INTEGER i =>
+	    if i > 1073741823 (* 2^30-1 *) then simple_scon Int32
+	    else let val tv = TyVar.fresh_overloaded [TyName.tyName_INT31, TyName.tyName_INT32]
+		 in {type_scon=from_TyVar tv, overloading=SOME tv}
+		 end 
+	   | SCon.STRING _ => simple_scon String
+	   | SCon.REAL _ => simple_scon Real
+	   | SCon.CHAR _ => simple_scon Char
+	   | SCon.WORD w => 
+		 if w > 0wx7FFFFFFF then simple_scon Word32
+		 else let 
+			val tv = TyVar.fresh_overloaded 
+			  (if w > 0w255 (* 2^8 *) then [TyName.tyName_WORD31, TyName.tyName_WORD32]
+			   else [TyName.tyName_WORD8, TyName.tyName_WORD31, TyName.tyName_WORD32])
+		      in {type_scon=from_TyVar tv, overloading=SOME tv}
+		      end
 
       local
 
@@ -1223,10 +1240,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       fun unify (ty1,ty2) = restricted_unify nil (ty1,ty2)
 
       fun instantiate_arbitrarily tyvar =
-	case unify (from_TyVar tyvar, Int) 
+	case unify (from_TyVar tyvar, IntDefault()) 
 	  of UnifyOk => ()
 	   | _ => die "instantiate_arbitrarily"
-
 
       (* Matching functions for compilation manager *)
 

@@ -165,7 +165,8 @@ struct
               in
 		psi_r:= psi
 	      end		    
-          | INTEGER(_,p) => psi_r:= Mul.put p
+          | INTEGER(_,t,p) => psi_r:= Mul.put p
+          | WORD(_,t,p) => psi_r:= Mul.put p
           | STRING(_,p) => psi_r:= Mul.put p
           | REAL(_,p) => psi_r:= Mul.put p
           | UB_RECORD(trips) =>
@@ -284,7 +285,8 @@ struct
               in
                  psi_r:= sum_psis[psi_aux, get_psi tr1, get_psi tr2]
               end
-          | SWITCH_I sw => infer_sw sw
+          | SWITCH_I {switch,precision} => infer_sw switch
+          | SWITCH_W {switch,precision} => infer_sw switch
           | SWITCH_S sw => infer_sw sw
           | SWITCH_C sw => infer_sw sw
           | SWITCH_E sw => infer_sw sw
@@ -446,6 +448,7 @@ struct
           case e of
             VAR _ => ()
           | INTEGER _ => ()
+          | WORD _ => ()
           | STRING _ => ()
           | REAL _ => ()
           | UB_RECORD(trips) => app(fn tr => set_trip(tr))trips
@@ -466,7 +469,8 @@ struct
           | EXCEPTION(_, _, _ , _, body) => set_trip body
           | RAISE(tr1) => set_trip tr1
           | HANDLE(tr1, tr2) => (set_trip(tr1); set_trip(tr2))
-          | SWITCH_I sw => set_sw sw
+          | SWITCH_I {switch,precision} => set_sw switch
+          | SWITCH_W {switch,precision} => set_sw switch
           | SWITCH_S sw => set_sw sw
           | SWITCH_C sw => set_sw sw
           | SWITCH_E sw => set_sw sw

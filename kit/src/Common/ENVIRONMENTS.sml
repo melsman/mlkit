@@ -162,7 +162,7 @@ signature ENVIRONMENTS =
 	val lookup_longstrid     : Env -> longstrid -> Env option
 	val on                   : Substitution * Env -> Env
 	val empty                : Env
-	val initial              : Env
+	val initial              : unit -> Env
 	val bogus                : Env
 	val tyvars               : Env -> TyVar list
 	val tyvars'              : Env -> (id * TyVar list) list

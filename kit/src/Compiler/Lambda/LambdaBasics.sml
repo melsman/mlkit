@@ -39,6 +39,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	case f lamb 
 	  of VAR _ => lamb
 	   | INTEGER _ => lamb
+	   | WORD _ => lamb
 	   | STRING _ => lamb
 	   | REAL _ => lamb
 	   | FN{pat,body} => FN{pat=pat,body=passTD f body}
@@ -51,7 +52,10 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | EXCEPTION(excon,tauOpt,lamb) => EXCEPTION(excon,tauOpt, passTD f lamb)
 	   | RAISE(lamb,tl) => RAISE(passTD f lamb,tl)
 	   | HANDLE(lamb1, lamb2) => HANDLE(passTD f lamb1, passTD f lamb2)
-	   | SWITCH_I switch => SWITCH_I(passSwitch (passTD f) switch)
+	   | SWITCH_I {switch, precision} => 
+	    SWITCH_I {switch=passSwitch (passTD f) switch, precision=precision}
+	   | SWITCH_W {switch, precision} => 
+	    SWITCH_W {switch=passSwitch (passTD f) switch, precision=precision}
 	   | SWITCH_S switch => SWITCH_S(passSwitch (passTD f) switch)
 	   | SWITCH_C switch => SWITCH_C(passSwitch (passTD f) switch)
 	   | SWITCH_E switch => SWITCH_E(passSwitch (passTD f) switch)
@@ -77,6 +81,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	f (case lamb 
 	     of VAR _ => lamb
 	      | INTEGER _ => lamb
+	      | WORD _ => lamb
 	      | STRING _ => lamb
 	      | REAL _ => lamb
 	      | FN{pat,body} => FN{pat=pat,body=passBU f body}
@@ -89,7 +94,10 @@ functor LambdaBasics (structure Lvars : LVARS
 	      | EXCEPTION(excon,tauOpt,lamb) => EXCEPTION(excon,tauOpt, passBU f lamb)
 	      | RAISE(lamb,tl) => RAISE(passBU f lamb,tl)
 	      | HANDLE(lamb1, lamb2) => HANDLE(passBU f lamb1, passBU f lamb2)
-	      | SWITCH_I switch => SWITCH_I(passSwitch (passBU f) switch)
+	      | SWITCH_I {switch, precision} => 
+	       SWITCH_I {switch=passSwitch (passBU f) switch, precision=precision}
+	      | SWITCH_W {switch, precision} => 
+	       SWITCH_W {switch=passSwitch (passBU f) switch, precision=precision}
 	      | SWITCH_S switch => SWITCH_S(passSwitch (passBU f) switch)
 	      | SWITCH_C switch => SWITCH_C(passSwitch (passBU f) switch)
 	      | SWITCH_E switch => SWITCH_E(passSwitch (passBU f) switch)
@@ -113,6 +121,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	case lamb 
 	  of VAR _ => new_acc
 	   | INTEGER _ => new_acc
+	   | WORD _ => new_acc
 	   | STRING _ => new_acc
 	   | REAL _ => new_acc
 	   | FN{pat,body} => foldTD f new_acc body
@@ -122,7 +131,8 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | EXCEPTION(excon,tauOpt,lamb) => foldTD f new_acc lamb
 	   | RAISE(lamb,tl) => foldTD f new_acc lamb
 	   | HANDLE(lamb1, lamb2) => foldTD f (foldTD f new_acc lamb1) lamb2
-	   | SWITCH_I switch => foldSwitch switch
+	   | SWITCH_I {switch,precision} => foldSwitch switch
+	   | SWITCH_W {switch,precision} => foldSwitch switch
 	   | SWITCH_S switch => foldSwitch switch
 	   | SWITCH_C switch => foldSwitch switch
 	   | SWITCH_E switch => foldSwitch switch
@@ -148,6 +158,7 @@ functor LambdaBasics (structure Lvars : LVARS
       case lamb
         of VAR _ => lamb
          | INTEGER _ => lamb
+         | WORD _ => lamb
          | REAL _ => lamb
          | STRING _ => lamb
 	 | FN{pat,body} => FN{pat=pat,body=f body} 
@@ -162,7 +173,10 @@ functor LambdaBasics (structure Lvars : LVARS
 	 | EXCEPTION(excon,ty_opt,scope) => EXCEPTION(excon,ty_opt, f scope) 
          | RAISE(e,tl) => RAISE(f e, tl) 
 	 | HANDLE(e1,e2) => HANDLE(f e1, f e2) 	   
-	 | SWITCH_I sw => SWITCH_I (map_lamb_sw f sw)
+	 | SWITCH_I {switch,precision} => 
+	       SWITCH_I {switch=map_lamb_sw f switch, precision=precision}
+	 | SWITCH_W {switch,precision} => 
+	       SWITCH_W {switch=map_lamb_sw f switch, precision=precision}
 	 | SWITCH_S sw => SWITCH_S (map_lamb_sw f sw)
 	 | SWITCH_C sw => SWITCH_C (map_lamb_sw f sw)
 	 | SWITCH_E sw => SWITCH_E (map_lamb_sw f sw)
@@ -186,6 +200,7 @@ functor LambdaBasics (structure Lvars : LVARS
       case lamb
         of VAR _ => ()
          | INTEGER _ => ()
+         | WORD _ => ()
          | REAL _ => ()
          | STRING _ => ()
 	 | FN{pat,body} => f body
@@ -195,7 +210,8 @@ functor LambdaBasics (structure Lvars : LVARS
 	 | EXCEPTION(excon,ty_opt,scope) => f scope 
          | RAISE(e,tl) => f e
 	 | HANDLE(e1,e2) => (f e1; f e2) 	   
-	 | SWITCH_I sw => app_lamb_sw f sw
+	 | SWITCH_I {switch,...} => app_lamb_sw f switch
+	 | SWITCH_W {switch,...} => app_lamb_sw f switch
 	 | SWITCH_S sw => app_lamb_sw f sw
 	 | SWITCH_C sw => app_lamb_sw f sw
 	 | SWITCH_E sw => app_lamb_sw f sw
@@ -315,6 +331,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	  of VAR{lvar,instances} => VAR{lvar=on_lv ren lvar, 
 					instances=map (on_tau ren) instances}
 	   | INTEGER _ => lamb
+	   | WORD _ => lamb
 	   | STRING _ => lamb
 	   | REAL _ => lamb
 	   | FN{pat,body} => let val (pat', ren') = new_fnpat pat ren
@@ -331,7 +348,10 @@ functor LambdaBasics (structure Lvars : LVARS
 						      on_e ren e)
 	   | RAISE(e,tl) => RAISE(on_e ren e, on_tl ren tl)
 	   | HANDLE(e1,e2) => HANDLE(on_e ren e1, on_e ren e2)
-	   | SWITCH_I sw => SWITCH_I (on_sw (on_e ren) sw) 
+	   | SWITCH_I {switch,precision} => 
+	    SWITCH_I {switch=on_sw (on_e ren) switch, precision=precision} 
+	   | SWITCH_W {switch,precision} => 
+	    SWITCH_W {switch=on_sw (on_e ren) switch, precision=precision} 
 	   | SWITCH_S sw => SWITCH_S (on_sw (on_e ren) sw) 
 	   | SWITCH_C sw => SWITCH_C (on_sw (on_e ren) sw) 
 	   | SWITCH_E sw => SWITCH_E (on_sw (on_e ren) sw) 
@@ -485,6 +505,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	      case lamb 
 		of VAR{lvar,instances} => VAR{lvar=lvar,instances=on_Types S instances}
 		 | INTEGER _ => lamb
+		 | WORD _ => lamb
 		 | STRING _ => lamb
 		 | REAL _ => lamb
 		 | FN{pat,body} => FN{pat = map (fn (lv, Type) => (lv, on_Type S Type)) pat, 
@@ -511,7 +532,10 @@ functor LambdaBasics (structure Lvars : LVARS
 			    f S lamb)
 		 | RAISE(lamb,tl) => RAISE(f S lamb,on_TypeList S tl)
 		 | HANDLE(lamb1,lamb2) => HANDLE(f S lamb1,f S lamb2)
-		 | SWITCH_I switch => SWITCH_I(on_switch S switch)
+		 | SWITCH_I {switch,precision} => 
+		  SWITCH_I {switch=on_switch S switch, precision=precision}
+		 | SWITCH_W {switch,precision} => 
+		  SWITCH_W {switch=on_switch S switch, precision=precision}
 		 | SWITCH_S switch => SWITCH_S(on_switch S switch)
 		 | SWITCH_C switch => SWITCH_C(on_switch S switch)
 		 | SWITCH_E switch => SWITCH_E(on_switch S switch)

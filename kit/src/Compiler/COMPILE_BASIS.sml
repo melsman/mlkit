@@ -17,7 +17,7 @@ signature COMPILE_BASIS =
     val enrich : CompileBasis * CompileBasis -> bool
 
     val match : CompileBasis * CompileBasis -> CompileBasis
-    val restrict : CompileBasis * (lvar list * lvar list * TyName list * con list * excon list) -> CompileBasis
+    val restrict : CompileBasis * (lvar list * TyName list * con list * excon list) -> CompileBasis
 
     val mk_CompileBasis: CompBasis * BackendEnv -> CompileBasis
 

@@ -275,18 +275,18 @@ functor JumpTables(structure BI : BACKEND_INFO
       end
 *)
 
-    fun binary_search_new(sels:(int*'sinst) list,
+    fun binary_search_new(sels:(Int32.int*'sinst) list,
 			  default: 'sinst,
 			  comment: string * 'inst list -> 'inst list,
 			  new_label : string -> 'label,
-			  if_not_equal_go_lab_sel: 'label * int * 'inst list -> 'inst list,
-			  if_less_than_go_lab_sel: 'label * int * 'inst list -> 'inst list,
-			  if_greater_than_go_lab_sel: 'label * int * 'inst list -> 'inst list,
+			  if_not_equal_go_lab_sel: 'label * Int32.int * 'inst list -> 'inst list,
+			  if_less_than_go_lab_sel: 'label * Int32.int * 'inst list -> 'inst list,
+			  if_greater_than_go_lab_sel: 'label * Int32.int * 'inst list -> 'inst list,
 			  compile_insts: 'sinst * 'inst list -> 'inst list,
 			  label: 'label * 'inst list -> 'inst list,
 			  jmp: 'label * 'inst list -> 'inst list,
-			  sel_dist: int * int -> int,
-			  jump_table_header: 'label * int * 'inst list -> 'inst list,
+			  sel_dist: Int32.int * Int32.int -> Int32.int,
+			  jump_table_header: 'label * Int32.int * 'inst list -> 'inst list,
 			  add_label_to_jump_tab: 'label * 'inst list -> 'inst list,
 			  eq_lab : 'label * 'label -> bool,
 			  C: 'inst list) =
@@ -321,7 +321,7 @@ functor JumpTables(structure BI : BACKEND_INFO
 	      | group_sel_list(NONE, NONE, (sel, selCode)::rest, [], acc) =
 	      group_sel_list(SOME sel, SOME sel, rest, [(sel,selCode)], acc)
 	      | group_sel_list(SOME startSel, SOME finishSel, (sel,selCode)::rest, accGrp, acc) =
-	      if sel_dist(startSel,sel) <= BI.maxDiff then
+	      if sel_dist(startSel,sel) <= Int32.fromInt BI.maxDiff then
 		group_sel_list(SOME sel, SOME finishSel, rest, (sel,selCode)::accGrp, acc)
 	      else
 		group_sel_list(SOME sel, SOME sel, rest, [(sel,selCode)],
@@ -462,19 +462,19 @@ functor JumpTables(structure BI : BACKEND_INFO
 	  bin_search()
       end
 
-    fun binary_search(sels:(int*'sinst) list,
+    fun binary_search(sels:(Int32.int*'sinst) list,
 		      default: 'sinst,
 		      comment: string * 'inst list -> 'inst list,
 		      new_label : string -> 'label,
-		      compile_sel: int * 'inst list -> 'inst list,
+		      compile_sel: Int32.int * 'inst list -> 'inst list,
 		      if_not_equal_go_lab: 'label * 'inst list -> 'inst list,
 		      if_less_than_go_lab: 'label * 'inst list -> 'inst list,
 		      if_greater_than_go_lab: 'label * 'inst list -> 'inst list,
 		      compile_insts: 'sinst * 'inst list -> 'inst list,
 		      label: 'label * 'inst list -> 'inst list,
 		      jmp: 'label * 'inst list -> 'inst list,
-		      sel_dist: int * int -> int,
-		      jump_table_header: 'label * int * 'inst list -> 'inst list,
+		      sel_dist: Int32.int * Int32.int -> Int32.int,
+		      jump_table_header: 'label * Int32.int * 'inst list -> 'inst list,
 		      add_label_to_jump_tab: 'label * 'inst list -> 'inst list,
 		      eq_lab : 'label * 'label -> bool,
 		      C: 'inst list) =

@@ -30,6 +30,7 @@ weeks.sml
 weeks2.sml          ccl       ecte
 weeks3.sml          ccl       ecte
 typerr.sml          ccl       ecte
+testcon.sml         ccl       ecte
 freedatatype.sml    ccl       ecte
 freedatatype2.sml   ccl       ecte
 sharing.sml         ccl       ecte
@@ -42,6 +43,7 @@ lex.sml                               nobasislib
 layout.sml
 anoq_Exception.sml
 danwang.pm                    tc
+testmatc.sml        ccl
 
 (* Tests of some benchmark programs *)
 
@@ -81,6 +83,10 @@ check_arrays.sml
 array.sml                    
 general.sml                  
 int.sml                      
+int31.sml                      
+int31_2.sml                      
+int32.sml                      
+int32_2.sml        
 list.sml                     
 listpair.sml                 
 string.sml                   
@@ -102,7 +108,7 @@ cmdline.sml
 filesys.sml                     (* See test/README *)
 real.sml                     
 word.sml                     
-word8.sml                    	   (* the C backend does not
-	                                 implement overflow on
-	                                 arithmetic operations. *) 
+word8.sml
+word31.sml
+word32.sml 
 

@@ -248,7 +248,16 @@ functor DropRegions(structure Name : NAME
 	 (case e
 	    of VAR {fix_bound=false,rhos_actuals=ref[],...} => (e, acc)       (* fix-bound and prim lvars are dealt with below *)
 	     | VAR _ => die "drop.should be fix-bound"
-	     | INTEGER (n, atp) => (check_atp_w atp "INTEGER"; (INTEGER (n, IGNORE), acc))
+	     | INTEGER (n, t, atp) => 
+	      if RType.unboxed t then (check_atp_w atp "INTEGER"; 
+				       (INTEGER (n, t, IGNORE), acc))
+	      else (check_atp_t atp "INTEGER_BOXED"; 
+		    (e, maybe_add regvar_env atp acc))
+	     | WORD (w, t, atp) => 
+	      if RType.unboxed t then (check_atp_w atp "WORD"; 
+				       (WORD (w, t, IGNORE), acc))
+	      else (check_atp_t atp "WORD_BOXED"; 
+		    (e, maybe_add regvar_env atp acc))
 	     | STRING (s, atp) => (check_atp_s  atp "STRING";
                                    (e, maybe_add regvar_env atp acc))
 	     | REAL (s, atp) => (check_atp_r atp "REAL"; (e, maybe_add regvar_env atp acc))
@@ -381,9 +390,13 @@ functor DropRegions(structure Name : NAME
                  in
                    (HANDLE(tr1', tr2'), acc)
                  end
-	     | SWITCH_I sw => 
-                 let val (sw', acc) = drop_sw sw acc
-                 in (SWITCH_I sw', acc)
+	     | SWITCH_I {switch, precision} => 
+                 let val (switch', acc) = drop_sw switch acc
+                 in (SWITCH_I {switch=switch', precision=precision}, acc)
+                 end
+	     | SWITCH_W {switch, precision} => 
+                 let val (switch', acc) = drop_sw switch acc
+                 in (SWITCH_W {switch=switch', precision=precision}, acc)
                  end
 	     | SWITCH_S sw => 
                  let val (sw', acc) = drop_sw sw acc

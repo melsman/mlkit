@@ -41,7 +41,7 @@ local
     val op + = add and op - = sub and op * = mul 
     and op div = idiv and op mod = imod;
     val i2w = fromInt
-    and w2i = toInt;
+    and w2i = toIntX;
     fun pr_ln s s' = print (s ^ ": " ^ s' ^ "\n")
 in
 

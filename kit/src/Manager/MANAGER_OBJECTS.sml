@@ -98,7 +98,7 @@ signature MANAGER_OBJECTS =
 
 	val enrich : IntBasis * IntBasis -> bool
 
-	val initial : IntBasis
+	val initial : unit -> IntBasis
 	val restrict : IntBasis * {funids:funid list, sigids:sigid list, longstrids: longstrid list,
 				   longvids: longid list, longtycons: longtycon list} -> IntBasis
       end
@@ -115,7 +115,7 @@ signature MANAGER_OBJECTS =
 	val agree : longstrid list * Basis * (Basis * TyName.Set.Set) -> bool
 	val enrich : Basis * (Basis * TyName.Set.Set) -> bool
 
-	val initial : Basis
+	val initial : unit -> Basis
       end
 
     type name

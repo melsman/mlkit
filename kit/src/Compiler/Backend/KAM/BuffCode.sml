@@ -69,6 +69,9 @@ functor BuffCode () : BUFF_CODE =
 	 out_w8 (w32tow8 (Word32.>> (l,Word.fromInt 16)));
 	 out_w8 (w32tow8 (Word32.>> (l,Word.fromInt 24))))
 
+      fun out_long_i32 (l : Int32.int) =
+	out_long_w32 (Word32.fromLargeInt l)
+
       fun out_long_w32' (os, l : Word32.word) = 
 	(BinIO.output1 (os, w32tow8 l);
 	 BinIO.output1 (os, w32tow8 (Word32.>> (l,Word.fromInt 8)));

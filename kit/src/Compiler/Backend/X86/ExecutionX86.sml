@@ -28,8 +28,7 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 		  structure Report = Report
 		  structure Crash = Crash
 		  structure RegConst = BuildCompile.RegConst
-		  val down_growing_stack : bool = true          (* true for x86 code generation *)
-		  val extra_prims = nil)                        (* for KAM *)
+		  val down_growing_stack : bool = true)          (* true for x86 code generation *)
 
     structure NativeCompile = NativeCompile(open ExecutionArgs
 					    open BuildCompile

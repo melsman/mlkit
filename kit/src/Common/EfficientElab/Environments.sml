@@ -898,11 +898,12 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	fun joinTE [] = TE.empty
 	  | joinTE (TE :: rest) = TE.plus (TE, joinTE rest)
 
-	val TE_int = te (TyCon.tycon_INT, TyName.tyName_INT)
+	val TE_int31 = te (TyCon.tycon_INT31, TyName.tyName_INT31)
+	val TE_int32 = te (TyCon.tycon_INT32, TyName.tyName_INT32)
 	val TE_char = te (TyCon.tycon_CHAR, TyName.tyName_CHAR)
-	val TE_word = te (TyCon.tycon_WORD, TyName.tyName_WORD)
 	val TE_word8 = te (TyCon.tycon_WORD8, TyName.tyName_WORD8)
-	val TE_word_boxed = te (TyCon.tycon_WORD_BOXED, TyName.tyName_WORD_BOXED)
+	val TE_word31 = te (TyCon.tycon_WORD31, TyName.tyName_WORD31)
+	val TE_word32 = te (TyCon.tycon_WORD32, TyName.tyName_WORD32)
 	val TE_real = te (TyCon.tycon_REAL, TyName.tyName_REAL)
 	val TE_string = te (TyCon.tycon_STRING, TyName.tyName_STRING)
 	val TE_exn = te (TyCon.tycon_EXN, TyName.tyName_EXN)
@@ -1030,9 +1031,11 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 	  val sigma_alpha_to_beta = TypeScheme.from_Type tau_alpha_to_beta
 
-	  val tyvar_num = TyVar.fresh_overloaded [TyName.tyName_INT,
-						  TyName.tyName_WORD,
+	  val tyvar_num = TyVar.fresh_overloaded [TyName.tyName_INT31,
+						  TyName.tyName_INT32,
 						  TyName.tyName_WORD8,
+						  TyName.tyName_WORD31,
+						  TyName.tyName_WORD32,
 						  TyName.tyName_REAL]
 	  val tau_num = Type.from_TyVar tyvar_num
 
@@ -1040,24 +1043,27 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		Type.mk_Arrow (Type.from_pair (tau_num, tau_num), tau_num)
 
 	  val tyvar_realint =
-	        TyVar.fresh_overloaded [TyName.tyName_REAL, TyName.tyName_INT]
+	    TyVar.fresh_overloaded [TyName.tyName_REAL, TyName.tyName_INT31, TyName.tyName_INT32]
+
 	  val tau_realint = Type.from_TyVar tyvar_realint
 
 	  val tau_realint_to_realint = Type.mk_Arrow (tau_realint, tau_realint)
 
 	  val tyvar_numtxt = TyVar.fresh_overloaded 
-				[TyName.tyName_INT, TyName.tyName_WORD, TyName.tyName_WORD8,
-				 TyName.tyName_REAL, TyName.tyName_CHAR,
-				 TyName.tyName_STRING]
+	    [TyName.tyName_INT31, TyName.tyName_INT32, 
+	     TyName.tyName_WORD8, TyName.tyName_WORD31, TyName.tyName_WORD32,
+	     TyName.tyName_REAL, TyName.tyName_CHAR,
+	     TyName.tyName_STRING]
+
 	  val tau_numtxt = Type.from_TyVar tyvar_numtxt
 	  val tau_numtxt_X_numtxt_to_bool =
 		Type.mk_Arrow (Type.from_pair (tau_numtxt, tau_numtxt),
 			       Type.Bool)
 
-	  val tyvar_wordint = TyVar.fresh_overloaded [TyName.tyName_INT,
-						      TyName.tyName_WORD, 
-						      TyName.tyName_WORD8,
-						      TyName.tyName_WORD_BOXED]
+	  val tyvar_wordint = TyVar.fresh_overloaded 
+	    [TyName.tyName_INT31, TyName.tyName_INT32,
+	     TyName.tyName_WORD8, TyName.tyName_WORD31, TyName.tyName_WORD32]
+
 	  val tau_wordint = Type.from_TyVar tyvar_wordint
 	  val tau_wordint_X_wordint_to_wordint =
 	        Type.mk_Arrow (Type.from_pair (tau_wordint, tau_wordint),
@@ -1121,11 +1127,26 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 	val TE_word_table = te (TyCon.tycon_WORD_TABLE, TyName.tyName_WORD_TABLE)
 
-	val TE_initial = joinTE [TE_unit, TE_int, TE_real,
-				 TE_word, TE_word8, 
-				 TE_word_boxed (*2001-02-17, Niels*), TE_char, 
-				 TE_string, TE_exn, TE_ref, TE_bool, TE_list,
-				 TE_word_table]
+	val TE_initial0 = joinTE [TE_unit, TE_char, TE_real,
+				  TE_int31, TE_int32, 
+				  TE_word8, TE_word31, TE_word32,
+				  TE_string, TE_exn, TE_ref, TE_bool, TE_list,
+				  TE_word_table]
+
+	val tag_integers = Flags.is_on0 "tag_integers"
+
+	fun TE_initial() =
+	  let 
+	    val (defaultTyNameInt, defaultTyNameWord) = 
+	      if tag_integers() then (TyName.tyName_INT31, TyName.tyName_WORD31)
+	      else (TyName.tyName_INT32, TyName.tyName_WORD32)
+	    val TE_int = te (TyCon.tycon_INT, defaultTyNameInt)
+	    val TE_word = te (TyCon.tycon_WORD, defaultTyNameWord)
+	  in
+	    joinTE [TE_initial0, TE_word, TE_int]
+	  end
+		 
+
 	local 
 	  fun mk_sigma() = (*construct the type scheme: forall 'a.'a->unit*)
 	    let val _ = Level.push()
@@ -1153,7 +1174,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		      resetRegionsVE, forceResettingVE, DivVE, 
 		      BindVE, MatchVE, OverflowVE]
       in
-	val initial = ENV {SE=SE.empty, TE=TE_initial, VE=VE_initial}
+	fun initial() = ENV {SE=SE.empty, TE=TE_initial(), VE=VE_initial}
       end
 
 

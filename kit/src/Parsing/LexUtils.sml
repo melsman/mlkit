@@ -39,38 +39,55 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 	 | _ => false			(* We can't get nil (or [_]). *)
 
     local
-      fun chars_to_int (#"~" :: chars) = ~1 * chars_to_posint chars
-	| chars_to_int chars = chars_to_posint chars
-      and chars_to_posint (#"0" :: #"x" :: chars) =
-	    chars_to_posint_in_base 16 chars
-	| chars_to_posint chars = chars_to_posint_in_base 10 chars
-      and chars_to_posint_in_base base chars = chars_to_posint_in_base0 base 0 chars
-      and chars_to_posint_in_base0 base n [] = n
-	| chars_to_posint_in_base0 base n (char :: chars) =
-	    (case char_to_int_opt base char of
-	       SOME i => chars_to_posint_in_base0 base (n * base + i) chars
-	     | NONE => n)
-      and char_to_int_opt base char =
-            let val i = if Char.isUpper char then ord char - ord #"A" + 10
-                        else if Char.isLower char then ord char - ord #"a" + 10
-                             else if Char.isDigit char then ord char - ord #"0"
-                                  else ~1 (*hack*)
-            in 
-              if i>=0 andalso i<base then SOME i else NONE
-            end handle _ => NONE
+      fun ordw c = Word32.fromInt(ord c)
 
-      fun asWord0 (#"0" :: #"w" :: #"x" :: chars) =
-	    chars_to_posint_in_base 16 chars 
-	| asWord0 (#"0" :: #"w" :: chars) = chars_to_posint_in_base 10 chars
+      fun chars_to_w (#"0" :: #"x" :: chars) = chars_to_w_in_base 0w16 chars
+	| chars_to_w chars = chars_to_w_in_base 0w10 chars
+      and chars_to_w_in_base base chars = chars_to_w_in_base0 base 0w0 chars
+      and chars_to_w_in_base0 base n [] = n
+	| chars_to_w_in_base0 base n (char :: chars) =
+	    (case char_to_w_opt base char of
+	       SOME i => (* a new digit is added; manually raise Overflow if 
+			  * new value is smaller than old value *)
+		 let val new = n * base + i
+		 in if new < n then raise Overflow
+		    else chars_to_w_in_base0 base new chars
+		 end
+	     | NONE => n)
+      and char_to_w_opt base char =
+	let val i = if Char.isUpper char then ordw char - ordw #"A" + 0w10
+		    else if Char.isLower char then ordw char - ordw #"a" + 0w10
+			 else if Char.isDigit char then ordw char - ordw #"0"
+			      else base (*hack*)
+	in 
+	  if i<base then SOME i else NONE
+	end handle _ => NONE
+
+      fun asWord0 (#"0" :: #"w" :: #"x" :: chars) = chars_to_w_in_base 0w16 chars 
+	| asWord0 (#"0" :: #"w" :: chars) = chars_to_w_in_base 0w10 chars
 	| asWord0 _ = impossible "asWord0"
 
       fun exception_to_opt p x = SOME (p x) handle Overflow => NONE
     in
-      val asInteger = exception_to_opt (chars_to_int o explode)
+      local
+	fun chars_to_int cs : Int32.int =
+	  let fun chars_to_posint cs = Int32.fromLarge(Word32.toLargeInt(chars_to_w cs))
+	  in case cs
+	       of #"~" :: cs =>
+		 (let (* be careful here! ~Int32.minInt is not representable *)
+		    val w = chars_to_w cs
+		  in if w = 0w2147483648 (* ~Int32.minInt *) then Option.valOf Int32.minInt
+		     else ~ (chars_to_posint cs)
+		  end handle _ => impossible "chars_to_int")
+		| _ => chars_to_posint cs
+	  end
+      in
+	val asInteger = exception_to_opt (chars_to_int o explode)
+      end
       val asWord = exception_to_opt (asWord0 o explode)
-      val chars_to_posint_in_base = fn base => fn chars =>
-	    chars_to_posint_in_base base chars
-	    handle Overflow => impossible "chars_to_posint_in_base"
+      val chars_to_w_in_base = fn base => fn chars =>
+	chars_to_w_in_base base chars
+	handle Overflow => impossible "chars_to_w_in_base"
 
       fun asReal text =  (* the old code dealt incorrectly with 2147483647.0 *)
 	case Real.fromString text
@@ -82,14 +99,12 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 
     fun initArg sourceReader = LEX_ARGUMENT{sourceReader=sourceReader,
 					    stringChars=nil,
-					    commentDepth=0
-					   }
+					    commentDepth=0}
 
     fun clearString arg = initArg(sourceReaderOf arg)
 
     fun newComment arg = LEX_ARGUMENT{sourceReader=sourceReaderOf arg,
-				      stringChars=nil, commentDepth=1
-				     }
+				      stringChars=nil, commentDepth=1}
 
     fun addChars text (LEX_ARGUMENT{sourceReader, stringChars, ...}) =
       LEX_ARGUMENT{sourceReader=sourceReader,
@@ -103,34 +118,35 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 
     local
       fun add_numbered_char (pos, text) arg limit n =
-	    if n > limit then
-	      raise LexBasics.LEXICAL_ERROR
-		      (pos, "ASCII escape " ^ text ^ " must be <= " ^ Int.toString limit)
-	    else
-	      addChars (str(chr n)) arg
+	if n > limit then
+	  raise LexBasics.LEXICAL_ERROR
+	    (pos, "ASCII escape " ^ text ^ " must be <= " ^ Int.toString limit)
+	else
+	  addChars (str(chr n)) arg
     in
       fun addAsciiChar (pos, text) arg =
-	    add_numbered_char (pos, text) arg 255
-	      (case explode text of
-		 [#"\\", c1, c2, c3] => chars_to_posint_in_base 10 [c1, c2, c3]
-	       | _ => impossible "addAsciiChar")
+	add_numbered_char (pos, text) arg 255
+	(case explode text 
+	   of [#"\\", c1, c2, c3] => (Word32.toInt(chars_to_w_in_base 0w10 [c1, c2, c3])
+				      handle _ => impossible "addAsciiChar.Overflow")
+	    | _ => impossible "addAsciiChar")
 
-
-
-      (*indtil videre, `addUnicodeChar' will only allow `unicode' chars in
-       the range [0; 255].  20/06/1997 18:53. tho.*)
+      (* Currently, `addUnicodeChar' will only allow `unicode' chars in
+       * the range [0; 255].  20/06/1997 18:53. tho.*)
 
       fun addUnicodeChar (pos, text) arg =
-	    add_numbered_char (pos, text) arg 255
-	      (case explode text of
-		 [#"\\", #"u", c1, c2, c3, c4] =>
-		   chars_to_posint_in_base 16 [c1, c2, c3, c4]
-	       | _ => impossible "addUnicodeChar")
+	add_numbered_char (pos, text) arg 255
+	(case explode text 
+	   of [#"\\", #"u", c1, c2, c3, c4] =>
+	     (Word32.toInt(chars_to_w_in_base 0w16 [c1, c2, c3, c4])
+	      handle _ => impossible "addUnicodeChar.Overflow")
+	    | _ => impossible "addUnicodeChar")
+
     end (*local*)
 
     fun asString(LEX_ARGUMENT{stringChars, ...}) = concat(rev stringChars)
 
-   (*keyword detection (better done here than by the lexer). *)
+   (* Keyword detection (better done here than by the lexer). *)
 
     fun identifier(text, p1, p2) =
       let

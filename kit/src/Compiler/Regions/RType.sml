@@ -17,6 +17,9 @@ struct
 
   structure List = Edlib.List
   structure ListPair = Edlib.ListPair
+
+  val tag_integers = Flags.is_on0 "tag_integers"
+
   fun curry f a b = f(a,b)
 
   fun say s= TextIO.output(TextIO.stdOut, s ^ "\n");
@@ -63,16 +66,14 @@ struct
   (* details of runtype are exploited in SpreadDataType.infer_arity_ty *)
 
   local open TyName
-        fun tyname_unboxed tn =                                     (* NB: unit is also unboxed *)
-	  eq(tn, tyName_INT) orelse eq(tn, tyName_BOOL) orelse eq(tn, tyName_LIST)
   in
     fun runtype (CONSTYPE(tn, _, _, _)) =  
-      if tyname_unboxed tn then E.WORD_RT
+      if TyName.unboxed tn then E.WORD_RT
       else if eq(tn, tyName_STRING) orelse eq(tn, tyName_WORD_TABLE) then E.STRING_RT
       else if eq(tn, tyName_REAL) then E.REAL_RT
       else E.TOP_RT
     | runtype (TYVAR _) = E.BOT_RT
-    | runtype (RECORD[]) = E.WORD_RT 
+    | runtype (RECORD[]) = E.WORD_RT    (* unit is also unboxed *)
     | runtype _ = E.TOP_RT
   end
 
@@ -1084,13 +1085,31 @@ struct
   | matchSchemes _ = raise FAIL_MATCH "matchSchemes: type scheme had bound type variables"
 
 
+  (* Whether word32 and int32 types are boxed is determined dynamically
+   * in SpreadExpression on the basis of the function TyName.unboxed(tn),
+   * which depends on the flag tag_integers. At the stage of region
+   * inference, integer and word types are resolved to be either word8,
+   * word31, word32, int31, or int32. The default integer type is 
+   * dynamically determined to be the largest integer type that fits 
+   * in 32 bits; similarly for words. *)
+
+  val int31Type: Type = CONSTYPE(TyName.tyName_INT31,[],[],[])  
+  val int32Type: Type = CONSTYPE(TyName.tyName_INT32,[],[],[])  
+  val word8Type: Type = CONSTYPE(TyName.tyName_WORD8,[],[],[])  
+  val word31Type: Type = CONSTYPE(TyName.tyName_WORD31,[],[],[])  
+  val word32Type: Type = CONSTYPE(TyName.tyName_WORD32,[],[],[])  
+
   val exnType: Type = CONSTYPE(TyName.tyName_EXN,[],[],[])  
-  val intType: Type = CONSTYPE(TyName.tyName_INT,[],[],[])  
   val boolType: Type = CONSTYPE(TyName.tyName_BOOL,[],[],[])  
   val realType: Type = CONSTYPE(TyName.tyName_REAL,[],[],[])  
   val stringType: Type = CONSTYPE(TyName.tyName_STRING,[],[],[])  
   val unitType: Type = RECORD[]
 
+  fun unboxed t =
+    case t
+      of RECORD[] => true
+       | CONSTYPE(tn,_,_,_) => TyName.unboxed tn
+       | _ => false
 
   (*the following two functions are only used when spreading ccalls (in
    SpreadExpression---see also the comment there):
@@ -1152,16 +1171,18 @@ struct
   and yes i_opt = NONE (*i.e., `yes, we are below a list constructor'*)
   and no i_opt = i_opt (*i.e., `no, we are not below a list constructor'*)
   and size_of_tyname tyname =
-        if TyName.eq (tyname, TyName.tyName_REAL)
-  	then SOME (RegConst.size_of_real ())
-	else if TyName.eq (tyname, TyName.tyName_WORD_BOXED)
-        then SOME (RegConst.size_of_record [1]) (* 2001-02-17, Niels - dummy list [1] with one element! *)
-  	else if TyName.eq (tyname, TyName.tyName_STRING)
-	 orelse TyName.eq (tyname, TyName.tyName_WORD_TABLE) then NONE
-        else if RegConst.unboxed_tyname tyname then SOME 0
-  	else die ("S (CCALL ...): \nI am sorry, but c functions returning "
-  		  ^ TyName.pr_TyName tyname
-  		  ^ " are not supported yet.\n")
+    if TyName.unboxed tyname then SOME 0
+    else if TyName.eq (tyname, TyName.tyName_REAL) then 
+      SOME (RegConst.size_of_real ())
+    else if (TyName.eq (tyname, TyName.tyName_WORD32)
+	     orelse TyName.eq (tyname, TyName.tyName_INT32)) then
+      (* boxed because RegConst.unboxed_tyname(tyname) returned false! *)
+      SOME (RegConst.size_of_record [1]) (* 2001-02-17, Niels - dummy list [1] with one element! *)
+    else if (TyName.eq (tyname, TyName.tyName_STRING)
+	     orelse TyName.eq (tyname, TyName.tyName_WORD_TABLE)) then NONE
+    else die ("S (CCALL ...): \nI am sorry, but c functions returning "
+	      ^ TyName.pr_TyName tyname
+	      ^ " are not supported yet.\n")
   
   fun frv_except_tyvar_rhos mus =
         E.remove_duplicates (frv_except_tyvar_rhos0 mus)

@@ -158,8 +158,7 @@ end
 				       [CONStype([TYVARtype tyvar], tyName_LIST)]))
 	      end
 	  in
-	    ConMap.fromList [ (* (Con.con_REF, typescheme_REF), *)
-			      (Con.con_TRUE, typescheme_TRUE),
+	    ConMap.fromList [ (Con.con_TRUE, typescheme_TRUE),
 			      (Con.con_FALSE, typescheme_FALSE),
 			      (Con.con_NIL, typescheme_NIL),
 			      (Con.con_CONS, typescheme_CONS)]
@@ -167,12 +166,11 @@ end
 
 	val initial_tyname_env = 
 	  TyNameMap.fromList  [(tyName_BOOL, [Con.con_TRUE, Con.con_FALSE]),
-			       (tyName_INT, []),
-(*old
-			       (tyName_CHAR, []),
-			       (tyName_WORD, []),
-old*)
-			       (tyName_WORD_BOXED, []), (*2001-02-17, Niels*)
+			       (tyName_INT31, []),
+			       (tyName_INT32, []),
+			       (tyName_WORD8, []),
+			       (tyName_WORD31, []),
+			       (tyName_WORD32, []),
 			       (tyName_REAL, []),
 			       (tyName_STRING, []),
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
@@ -525,10 +523,6 @@ old*)
 				 | _ => die "SELECTprim.Arg not of record type")
 			    | _ => die "SELECTprim.Wrong number of args.")  
 	   | UB_RECORDprim => map ((unTypeListOne "UB_RECORDprim") o type_e) lexps
-	   | NEG_INTprim => type_prim' [tyName_INT] tyName_INT "NEG_INTprim"
-	   | NEG_REALprim => type_prim' [tyName_REAL] tyName_REAL "NEG_REALprim"
-	   | ABS_INTprim => type_prim' [tyName_INT] tyName_INT "ABS_INTprim"
-	   | ABS_REALprim => type_prim' [tyName_REAL] tyName_REAL "ABS_REALprim"
 	   | DEREFprim {instance} => (* instance: argument type of primitive *)
 	       (case lexps
 		  of [lexp] => (case instance 
@@ -573,12 +567,6 @@ old*)
 		  (case lexps
 		     of [lexp] => (type_e lexp; nil)
 		      | _ => die "DROPprim -- one parameter expected")
-	   | MUL_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "MUL_REALprim"
-	   | MUL_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "MUL_INTprim"
-	   | PLUS_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "PLUS_REALprim"
-	   | PLUS_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "PLUS_INTprim"
-	   | MINUS_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "MINUS_REALprim"
-	   | MINUS_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "MINUS_INTprim"
 	   | EQUALprim {instance} => (* instance: argument type of primitive *)
 	       (case lexps
 		  of [lexp1,lexp2] => (case instance
@@ -591,15 +579,6 @@ old*)
 					   end 
 					  | _ => die "EQUALprim.Wrong instance kind")
 		   | _ => die "EQUALprim.Wrong number of args") 
-	   | LESS_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "LESS_REALprim"
-	   | EQUAL_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "EQUAL_INTprim"
-	   | LESS_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "LESS_INTprim"
-	   | GREATER_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "GREATER_REALprim"
-	   | GREATER_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "GREATER_INTprim"
-	   | LESSEQ_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "LESSEQ_REALprim"
-	   | LESSEQ_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "LESSEQ_INTprim"
-	   | GREATEREQ_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "GREATEREQ_REALprim"
-	   | GREATEREQ_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "GREATEREQ_INTprim"
 	   | CCALLprim {name, instances, tyvars, Type} => 
 	       (case mk_instance ((tyvars, Type), instances) of
 		  ARROWtype (ts_arg, ts_res) =>
@@ -636,7 +615,8 @@ old*)
     and type_lexp (env:env) (lexp:LambdaExp) : TypeList =
       (case lexp
 	of VAR{lvar,instances} => Types [mk_instance(lookup_lvar env lvar, instances)] 
-	 | INTEGER i => Types [CONStype([], tyName_INT)]
+	 | INTEGER (i,t) => Types [t]
+	 | WORD (w,t) => Types [t]
 	 | STRING s => Types [CONStype([], tyName_STRING)]
 	 | REAL s => Types [CONStype([], tyName_REAL)]
 	 | FN {pat,body} =>
@@ -722,7 +702,20 @@ old*)
 			else die "HANDLE"
 		     end
 		    | _ => die "HANDLE.wrong handler type")
-	 | SWITCH_I sw => type_switch (type_lexp env) (fn (i:int) => tyName_INT) sw  
+	 | SWITCH_I {switch, precision} => 
+	   let val tn = case precision
+			  of 31 => tyName_INT31
+			   | 32 => tyName_INT32
+			   | _ => die "SWITCH_I"
+	   in type_switch (type_lexp env) (fn _ => tn) switch
+	   end
+	 | SWITCH_W {switch, precision} => 
+	   let val tn = case precision
+			  of 31 => tyName_WORD31  (* word8 type translated into default word type in CompileDec *)
+			   | 32 => tyName_WORD32
+			   | _ => die "SWITCH_I"
+	   in type_switch (type_lexp env) (fn _ => tn) switch
+	   end
 	 | SWITCH_S sw => type_switch (type_lexp env) (fn (s:string) => tyName_STRING) sw  
 	 | SWITCH_C sw => type_switch (type_lexp env) 
 		   (fn (con:con) => case lookup_con env con

@@ -203,6 +203,36 @@ struct
     fn acc_ty => PP.flatten1(layout_access_type acc_ty)
 
 
+
+  (* Convert ~n to -n; works for all int32 values including Int32.minInt *)
+  fun intToStr (i : Int32.int) : string = 
+    let fun tr s = case explode s
+		     of #"~"::rest => implode (#"-"::rest)
+		      | _ => s
+    in tr (Int32.toString i)
+    end
+
+  fun wordToStr (w : Word32.word) : string =
+    "0x" ^ Word32.toString w
+
+  (* formatting of immediate integer and word values *)
+  fun fmtInt {value: Int32.int, precision:int} : string =
+    if BI.tag_integers() then
+      if precision <= 31 then 
+	(intToStr (2 * value + 1)         (* use tagged-unboxed representation *)
+	 handle Overflow => 
+	   die "formatInt.Overflow")
+      else intToStr value                 (* use untagged-boxed representation *)
+    else intToStr value                   (* use untagged-unboxed representation *)
+      
+  fun fmtWord {value: Word32.word, precision: int} : string =
+    if BI.tag_integers() then
+      if precision <= 31 then 
+	wordToStr (0w2 * value + 0w1)  (* use tagged-unboxed representation *)
+      else wordToStr value             (* use untagged-boxed representation *)
+    else wordToStr value               (* use untagged-unboxed representation *)
+
+
   (* ----------------------------------------------------------------------------
    * Dead code elimination; during code generation we eliminate code that is non-
    * reachable by eliminating code from the continuation---down to a label---when 
@@ -256,6 +286,20 @@ struct
     case acc
       of Push :: acc => ImmedIntPush i :: acc
        | _ => ImmedInt i :: acc
+
+  fun immedInt' (i, acc) =
+    let val s = fmtInt i
+    in case acc
+	 of Push :: acc => ImmedIntPush s :: acc
+	  | _ => ImmedInt s :: acc
+    end
+
+  fun immedWord' (w, acc) =
+    let val s = fmtWord w
+    in case acc
+	 of Push :: acc => ImmedIntPush s :: acc
+	  | _ => ImmedInt s :: acc
+    end
 
   fun stackOffset(i, acc) =
     case acc 
@@ -330,34 +374,43 @@ struct
 	  
       fun binary_search(sels,
 			default,
-			if_not_equal_go_lab_sel: label * int * KamInst list -> KamInst list,
-			if_less_than_go_lab_sel: label * int * KamInst list -> KamInst list,
-			if_greater_than_go_lab_sel: label * int * KamInst list -> KamInst list,
+			if_not_equal_go_lab_sel: label * Int32.int * KamInst list -> KamInst list,
+			if_less_than_go_lab_sel: label * Int32.int * KamInst list -> KamInst list,
+			if_greater_than_go_lab_sel: label * Int32.int * KamInst list -> KamInst list,
 			compile_insts: ClosExp.ClosExp * KamInst list -> KamInst list,
+			precision,
+			toInt,
 			C) =
-	if jump_tables then
-	  JumpTables.binary_search_new(sels,
-				       default,
-				       comment,
-				       new_label,
-				       if_not_equal_go_lab_sel,
-				       if_less_than_go_lab_sel,
-				       if_greater_than_go_lab_sel,
-				       compile_insts,
-				       label,
-				       jmp,
-				       fn (sel1,sel2) => Int.abs(sel1-sel2),
-				       fn (lab,sel,C) => JmpVector(lab,sel)::C,
-				       fn (lab,C) => DotLabel(lab) :: C, (* add_label_to_jump_tab  *)
-				       eq_lab,C)
-	else
-	  linear_search(sels,
-			default,
-			if_not_equal_go_lab_sel,
-			compile_insts,
-			C)
+	let
+ 	  fun maybe_tag (i : Int32.int) : Int32.int = 
+	    if BI.tag_integers() andalso precision < 32 then 2*i+1
+	    else i
+	  val sels = map (fn (i,e) => (maybe_tag(toInt i), e)) sels
+	in
+	  if jump_tables then
+	    JumpTables.binary_search_new(sels,
+					 default,
+					 comment,
+					 new_label,
+					 if_not_equal_go_lab_sel,
+					 if_less_than_go_lab_sel,
+					 if_greater_than_go_lab_sel,
+					 compile_insts,
+					 label,
+					 jmp,
+					 fn (sel1,sel2) => Int32.abs(sel1-sel2),
+					 fn (lab,sel,C) => JmpVector(lab,sel)::C,
+					 fn (lab,C) => DotLabel(lab) :: C, (* add_label_to_jump_tab  *)
+					 eq_lab,C)
+	  else
+	    linear_search(sels,
+			  default,
+			  if_not_equal_go_lab_sel,
+			  compile_insts,
+			  C)
+	end
     end
-    
+
     fun name_to_built_in_C_function_index name = 
       if !Flags.SMLserver then BuiltInCFunctions.name_to_built_in_C_function_index_nssml name
       else BuiltInCFunctions.name_to_built_in_C_function_index name
@@ -367,7 +420,8 @@ struct
       | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = die "DROPPED_RVAR not implemented"
       | CG_ce(ClosExp.FETCH lab,env,sp,cc,acc)          = FetchData lab :: acc
       | CG_ce(ClosExp.STORE(ce,lab),env,sp,cc,acc)      = CG_ce(ce,env,sp,cc, storeData lab :: acc)
-      | CG_ce(ClosExp.INTEGER i,env,sp,cc,acc)          = immedInt (i, acc)
+      | CG_ce(ClosExp.INTEGER i,env,sp,cc,acc)          = immedInt' (i, acc)
+      | CG_ce(ClosExp.WORD w,env,sp,cc,acc)             = immedWord' (w, acc)
       | CG_ce(ClosExp.STRING s,env,sp,cc,acc)           = ImmedString s :: acc
       | CG_ce(ClosExp.REAL s,env,sp,cc,acc)             = ImmedReal s :: acc
       | CG_ce(ClosExp.PASS_PTR_TO_MEM(sma,i),env,sp,cc,acc) = alloc(sma,i,env,sp,cc,acc)
@@ -517,7 +571,8 @@ struct
 	      CG_ce(ce1,env,sp+4,cc, PopExnPtr :: Pop(3) :: Label return_lbl :: acc))
       end
 
-      | CG_ce(ClosExp.SWITCH_I (ClosExp.SWITCH(ce,sels,default)),env,sp,cc,acc) = 
+      | CG_ce(ClosExp.SWITCH_I {switch=ClosExp.SWITCH(ce,sels,default),
+				precision},env,sp,cc,acc) = 
       CG_ce(ce,env,sp,cc, 
             binary_search(sels,
 			  default,
@@ -525,6 +580,20 @@ struct
 			  fn (lab,i,C) => IfLessThanJmpRelImmed (lab,i) :: C,
 			  fn (lab,i,C) => IfGreaterThanJmpRelImmed (lab,i) :: C,
 			  fn (ce,C) => CG_ce(ce,env,sp,cc,C),
+			  precision,
+			  fn i => i,
+			  acc))
+      | CG_ce(ClosExp.SWITCH_W {switch=ClosExp.SWITCH(ce,sels,default),
+				precision},env,sp,cc,acc) = 
+      CG_ce(ce,env,sp,cc, 
+            binary_search(sels,
+			  default,
+			  fn (lab,i,C) => IfNotEqJmpRelImmed (lab,i) :: C,
+			  fn (lab,i,C) => IfLessThanJmpRelImmed (lab,i) :: C,
+			  fn (lab,i,C) => IfGreaterThanJmpRelImmed (lab,i) :: C,
+			  fn (ce,C) => CG_ce(ce,env,sp,cc,C),
+			  precision,
+			  Word32.toLargeIntX,
 			  acc))
       | CG_ce(ClosExp.SWITCH_S sw,env,sp,cc,acc) = die "SWITCH_S is unfolded in ClosExp"
       | CG_ce(ClosExp.SWITCH_C (ClosExp.SWITCH(ce,sels,default)),env,sp,cc,acc) =
@@ -535,9 +604,9 @@ struct
 	   | ((con,con_kind),_)::rest => con_kind)
 	val sels' = map (fn ((con,con_kind),sel_ce) => 
 			 case con_kind of
-			   ClosExp.ENUM i => (i,sel_ce)
-			 | ClosExp.UNBOXED i => (i,sel_ce)
-			 | ClosExp.BOXED i => (i,sel_ce)) sels
+			   ClosExp.ENUM i => (Int32.fromInt i,sel_ce)
+			 | ClosExp.UNBOXED i => (Int32.fromInt i,sel_ce)
+			 | ClosExp.BOXED i => (Int32.fromInt i,sel_ce)) sels
       in
 	CG_ce(ce,env,sp,cc,
 	      (case con_kind of
@@ -550,6 +619,8 @@ struct
 			       fn (lab,i,C) => IfLessThanJmpRelImmed(lab,i) :: C,
 			       fn (lab,i,C) => IfGreaterThanJmpRelImmed(lab,i) :: C,
 			       fn (ce,C) => CG_ce(ce,env,sp,cc,C),
+			       BI.defaultIntPrecision(),
+			       fn i => i,
 			       acc)))
       end
       | CG_ce(ClosExp.SWITCH_E sw,env,sp,cc,acc) = die "SWITCH_E is unfolded in ClosExp"
@@ -615,53 +686,135 @@ struct
 	  foldr (fn (alloc,C) => force_reset_aux_region(alloc,env,sp,cc,C)) acc regions_for_resetting
       | CG_ce(ClosExp.CCALL{name,rhos_for_result,args},env,sp,cc,acc) =
 	  let
+	    fun not_impl n = die ("Prim(" ^ n ^ ") is not yet implemented!")
+
 	    (* Note that the prim names are defined in BackendInfo! *)
 	    fun prim_name_to_KAM name =
-	      (case name
-		 of "__equal_int"         => PrimEquali
-	       | "__minus_int"            => PrimSubi
-	       | "__plus_int"             => PrimAddi
-	       | "__mul_int"              => PrimMuli
-	       | "__neg_int"              => PrimNegi
-	       | "__abs_int"              => PrimAbsi
-	       | "__less_int"             => PrimLessThan
-	       | "__lesseq_int"           => PrimLessEqual
-	       | "__greater_int"          => PrimGreaterThan
-	       | "__greatereq_int"        => PrimGreaterEqual
-	       | "__plus_float"           => PrimAddf
-	       | "__minus_float"          => PrimSubf
-	       | "__mul_float"            => PrimMulf
-	       | "__div_float"            => PrimDivf
-	       | "__neg_float"            => PrimNegf
-	       | "__abs_float"            => PrimAbsf
-	       | "__less_float"           => PrimLessThanFloat
-	       | "__lesseq_float"         => PrimLessEqualFloat
-	       | "__greater_float"        => PrimGreaterThanFloat
-	       | "__greatereq_float"      => PrimGreaterEqualFloat
-		       
-	       | "less_word__"            => PrimLessThanUnsigned
-	       | "greater_word__"         => PrimGreaterThanUnsigned
-	       | "lesseq_word__"          => PrimLessEqualUnsigned
-	       | "greatereq_word__"       => PrimGreaterEqualUnsigned
-		       
-	       | "plus_word8__"           => PrimAddw8
-	       | "minus_word8__"          => PrimSubw8
-	       | "mul_word8__"            => PrimMulw8
-		       
-	       | "and__"                  => PrimAndi
-	       | "or__"                   => PrimOri
-	       | "xor__"                  => PrimXori
-	       | "shift_left__"           => PrimShiftLefti
-	       | "shift_right_signed__"   => PrimShiftRightSignedi
-	       | "shift_right_unsigned__" => PrimShiftRightUnsignedi
-		       
-	       | "plus_word__"            => PrimAddw
-	       | "minus_word__"           => PrimSubw
-	       | "mul_word__"             => PrimMulw
-		       
-	       | "__fresh_exname"         => PrimFreshExname
-	       | _ => die ("PRIM(" ^ name ^ ") not implemented"))
+	       case name
+		 of "__equal_int32ub"     => PrimEquali
+		  | "__equal_int32b"      => not_impl name
+		  | "__equal_int31"       => PrimEquali
+		  | "__equal_word8"       => PrimEquali
+		  | "__equal_word31"      => PrimEquali
+		  | "__equal_word32ub"    => PrimEquali
+		  | "__equal_word32b"     => not_impl name
+		  | "__plus_int32ub"      => PrimAddi
+		  | "__plus_int32b"       => not_impl name
+		  | "__plus_int31"        => not_impl name
+		  | "__plus_word8"        => PrimAddw8
+		  | "__plus_word31"       => not_impl name
+		  | "__plus_word32ub"     => PrimAddw
+		  | "__plus_word32b"      => not_impl name
+		  | "__plus_real"         => PrimAddf
+		  | "__minus_int32ub"     => PrimSubi
+		  | "__minus_int32b"      => not_impl name
+		  | "__minus_int31"       => not_impl name
+		  | "__minus_word8"       => PrimSubw8
+		  | "__minus_word31"      => not_impl name
+		  | "__minus_word32ub"    => PrimSubw
+		  | "__minus_word32b"     => not_impl name
+		  | "__minus_real"        => PrimSubf
+		  | "__mul_int32ub"       => PrimMuli
+		  | "__mul_int32b"        => not_impl name
+		  | "__mul_int31"         => not_impl name
+		  | "__mul_word8"         => PrimMulw8
+		  | "__mul_word31"        => not_impl name
+		  | "__mul_word32ub"      => PrimMulw
+		  | "__mul_word32b"       => not_impl name
+		  | "__mul_real"          => PrimMulf
+		  | "__div_real"          => PrimDivf
+		  | "__neg_int32ub"       => PrimNegi
+		  | "__neg_int32b"        => not_impl name
+		  | "__neg_int31"         => not_impl name
+		  | "__neg_real"          => PrimNegf
+		  | "__abs_int32ub"       => PrimAbsi
+		  | "__abs_int32b"        => not_impl name
+		  | "__abs_int31"         => not_impl name
+		  | "__abs_real"          => PrimAbsf
+		  | "__less_int32ub"      => PrimLessThan
+		  | "__less_int32b"       => not_impl name
+		  | "__less_int31"        => not_impl name
+		  | "__less_word8"        => PrimLessThanUnsigned
+		  | "__less_word31"       => not_impl name
+		  | "__less_word32ub"     => PrimLessThanUnsigned
+		  | "__less_word32b"      => not_impl name
+		  | "__less_real"         => PrimLessThanFloat
+		  | "__lesseq_int32ub"    => PrimLessEqual
+		  | "__lesseq_int32b"     => not_impl name
+		  | "__lesseq_int31"      => not_impl name
+		  | "__lesseq_word8"      => PrimLessEqualUnsigned
+		  | "__lesseq_word31"     => not_impl name
+		  | "__lesseq_word32ub"   => PrimLessEqualUnsigned
+		  | "__lesseq_word32b"    => not_impl name
+		  | "__lesseq_real"       => PrimLessEqualFloat
+		  | "__greater_int32ub"   => PrimGreaterThan
+		  | "__greater_int32b"    => not_impl name
+		  | "__greater_int31"     => not_impl name
+		  | "__greater_word8"     => PrimGreaterThanUnsigned
+		  | "__greater_word31"    => not_impl name
+		  | "__greater_word32ub"  => PrimGreaterThanUnsigned
+		  | "__greater_word32b"   => not_impl name
+		  | "__greater_real"      => PrimGreaterThanFloat
+		  | "__greatereq_int32ub" => PrimGreaterEqual
+		  | "__greatereq_int32b"  => not_impl name
+		  | "__greatereq_int31"   => not_impl name
+		  | "__greatereq_word8"   => PrimGreaterEqualUnsigned
+		  | "__greatereq_word31"  => not_impl name
+		  | "__greatereq_word32ub" => PrimGreaterEqualUnsigned
+		  | "__greatereq_word32b" => not_impl name
+		  | "__greatereq_real"    => PrimGreaterEqualFloat
+		  | "__andb_word8"        => PrimAndi
+		  | "__andb_word31"       => not_impl name
+		  | "__andb_word32ub"     => PrimAndi
+		  | "__andb_word32b"      => not_impl name
+		  | "__orb_word8"         => PrimOri
+		  | "__orb_word31"        => not_impl name
+		  | "__orb_word32ub"      => PrimOri
+		  | "__orb_word32b"       => not_impl name
+		  | "__xorb_word8"        => PrimXori
+		  | "__xorb_word31"       => not_impl name
+		  | "__xorb_word32ub"     => PrimXori
+		  | "__xorb_word32b"      => not_impl name
+		  | "__shift_left_word8"              => PrimShiftLefti
+		  | "__shift_left_word31"             => not_impl name
+		  | "__shift_left_word32ub"           => PrimShiftLefti
+		  | "__shift_left_word32b"            => not_impl name
+		  | "__shift_right_signed_word8"      => not_impl name
+		  | "__shift_right_signed_word31"     => not_impl name
+		  | "__shift_right_signed_word32ub"   => PrimShiftRightSignedi
+		  | "__shift_right_signed_word32b"    => not_impl name
+		  | "__shift_right_unsigned_word8"    => not_impl name
+		  | "__shift_right_unsigned_word31"   => not_impl name
+		  | "__shift_right_unsigned_word32ub" => PrimShiftRightUnsignedi
+		  | "__shift_right_unsigned_word32b"  => not_impl name
+		   
+		  | "__int31_to_int32ub"   => not_impl name
+		  | "__int31_to_int32b"    => not_impl name
+		  | "__word31_to_word32ub" => not_impl name
+		  | "__word31_to_word32ub_X" => not_impl name
+		  | "__word31_to_word32b"  => not_impl name
+		  | "__word32b_to_word31"  => not_impl name
+		  | "__word32ub_to_word31" => not_impl name
 
+		  | "__word8_to_word32ub"  => not_impl name
+		  | "__word8_to_word32ub_X" => not_impl name
+		  | "__word8_to_word31"    => not_impl name
+		  | "__word8_to_word31_X"  => not_impl name
+		  | "__word31_to_word8"    => not_impl name
+		  | "__word32ub_to_word8"  => not_impl name
+		  | "__word32b_to_word8"   => not_impl name
+
+		  | "__int32b_to_int31"    => not_impl name
+		  | "__int32ub_to_int31"   => not_impl name
+
+		  | "__word32b_to_int32b"  => not_impl name
+		  | "__word32ub_to_int32ub" => not_impl name
+		  | "__word31_to_int31"    => not_impl name
+		  | "__word32b_to_int31"   => not_impl name
+		   
+		  | "__fresh_exname"      => PrimFreshExname
+
+		  | _ => die ("PRIM(" ^ name ^ ") not implemented")
 	  in
 	    if BI.is_prim name then 
 	      (* rhos_for_result comes after args so that the accumulator holds the *)

@@ -54,9 +54,12 @@ signature BACKEND_INFO =
 
     val size_of_reg_desc : unit -> int  (* dependent on whether region profiling is enabled *)
 
-    val finiteRegionDescSizeP : int     (* Number of words in a finite region descriptor when profiling is used. *)
-    val objectDescSizeP       : int     (* Number of words in an object descriptor when profiling is used. *)
-
+    val finiteRegionDescSizeP : int     (* Number of words in a finite region 
+					 * descriptor when profiling is used. *)
+    val objectDescSizeP       : int     (* Number of words in an object descriptor 
+					 * when profiling is used. *)
+    val defaultIntPrecision : unit -> int
+    val defaultWordPrecision : unit -> int
 
     val init_frame_offset : offset
 
@@ -76,6 +79,7 @@ signature BACKEND_INFO =
     val maxDiff            : int
     val minJumpTabSize     : int
 
+(*
     (* Names For Primitive Functions *)
     val EQUAL_INT      : string
     val MINUS_INT      : string
@@ -100,12 +104,16 @@ signature BACKEND_INFO =
     val LESSEQ_FLOAT    : string
     val GREATER_FLOAT   : string
     val GREATEREQ_FLOAT : string
-
-    (* is_prim(n) returns true if name is not implemented by a C call,
+*)
+    (* is_prim(name) returns true if name is not implemented by a C call,
      * but rather in machine code; primitives do not destroy all
      * caller save registers, as C calls do. *)
       
     val is_prim : string -> bool   
+
+    (* is_flow_prim(name) returns true if name is a flow primitive such 
+     * as __less_int31 and __equal_word32ub. *)
+    val is_flow_prim : string -> bool
 
     val down_growing_stack : bool         (* true for x86 code generation *)
   end

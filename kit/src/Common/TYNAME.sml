@@ -57,10 +57,13 @@ signature TYNAME =
 
     (* Predefined type names *)
     val tyName_BOOL    : TyName
-    val tyName_INT     : TyName
-    val tyName_WORD    : TyName
+    val tyName_INT31   : TyName
+    val tyName_INT32   : TyName
+    val tyName_IntDefault : unit -> TyName   (* int31 or int32 dependent on tagging *)
     val tyName_WORD8   : TyName
-    val tyName_WORD_BOXED : TyName (* 2001-02-17, Niels *)
+    val tyName_WORD31   : TyName
+    val tyName_WORD32  : TyName
+    val tyName_WordDefault : unit -> TyName  (* word31 or word32 dependent on tagging *)
     val tyName_REAL    : TyName
     val tyName_STRING  : TyName
     val tyName_CHAR    : TyName
@@ -68,6 +71,10 @@ signature TYNAME =
     val tyName_WORD_TABLE : TyName
     val tyName_REF     : TyName
     val tyName_EXN     : TyName
+
+    val unboxed : TyName -> bool   (* Returns true for type names that are 
+				    * implemented unboxed; depends on whether
+				    * tagging of integers is enabled. *)
 
     type StringTree
     val layout : TyName -> StringTree

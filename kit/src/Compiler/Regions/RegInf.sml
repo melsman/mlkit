@@ -191,6 +191,7 @@ struct
             )
          end
        | Exp.INTEGER _ => (B, Effect.Lf [])
+       | Exp.WORD _    => (B, Effect.Lf [])
        | Exp.STRING  _ => (B, Effect.Lf [])
        | Exp.REAL    _ => (B, Effect.Lf [])
        | Exp.UB_RECORD ts => foldr(fn (t, (B, d)) => 
@@ -366,7 +367,8 @@ struct
            in  (B,Effect.Br(current_increment(eps_phi0),Effect.Br(d1,d2)))
                (*(B,Effect.Br(Effect.Lf[eps_phi0],Effect.Br(d1,d2)))*)
            end
-       | Exp.SWITCH_I sw => R_sw(B,rse,sw)
+       | Exp.SWITCH_I {switch,precision} => R_sw(B,rse,switch)
+       | Exp.SWITCH_W {switch,precision} => R_sw(B,rse,switch)
        | Exp.SWITCH_S sw => R_sw(B,rse,sw)
        | Exp.SWITCH_C sw => R_sw(B,rse,sw)
        | Exp.SWITCH_E sw => R_sw(B,rse,sw)

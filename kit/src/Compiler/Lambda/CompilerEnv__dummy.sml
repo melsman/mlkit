@@ -58,7 +58,7 @@ functor CompilerEnvDummy(structure Ident: IDENT
     type CEnv = unit
 
     val emptyCEnv      = ()
-    val initialCEnv = ()
+    fun initialCEnv _ = ()
 
     fun declareVar(id, (lv, tyvars, tau), ()) = ()
 

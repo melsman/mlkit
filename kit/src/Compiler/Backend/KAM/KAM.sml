@@ -102,11 +102,11 @@ signature KAM =
       | IfLessThanJmpRel of label
       | IfGreaterThanJmpRel of label
 *)
-      | IfNotEqJmpRelImmed of label * int
-      | IfLessThanJmpRelImmed of label * int
-      | IfGreaterThanJmpRelImmed of label * int
+      | IfNotEqJmpRelImmed of label * Int32.int
+      | IfLessThanJmpRelImmed of label * Int32.int
+      | IfGreaterThanJmpRelImmed of label * Int32.int
       | DotLabel of label
-      | JmpVector of label * int
+      | JmpVector of label * Int32.int
 
       | Raise
       | PushExnPtr

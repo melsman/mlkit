@@ -8,6 +8,11 @@ functor LambdaExp(structure Lvars: LVARS
 		  structure Flags: FLAGS) : LAMBDA_EXP =
   struct
 
+    structure StrSet = OrderSet(structure Order = struct type T = string
+							 fun lt (a:string) b = a < b
+						  end
+				structure PP = PP)
+
     fun uncurry f (x,y) = f x y
 
     fun quote s = "\"" ^ String.toString s ^ "\""
@@ -56,7 +61,12 @@ functor LambdaExp(structure Lvars: LVARS
         
     fun size_type tau = foldType (fn n:int => fn _ => n+1)
 
-    val intType = CONStype([], TyName.tyName_INT)
+    val int31Type = CONStype([], TyName.tyName_INT31)
+    val int32Type = CONStype([], TyName.tyName_INT32)
+    fun intDefaultType() = CONStype([], TyName.tyName_IntDefault())
+    val word31Type = CONStype([], TyName.tyName_WORD31)
+    val word32Type = CONStype([], TyName.tyName_WORD32)
+    fun wordDefaultType() = CONStype([], TyName.tyName_WordDefault())
     val boolType = CONStype([], TyName.tyName_BOOL)
     val exnType = CONStype([], TyName.tyName_EXN)
     val realType = CONStype([], TyName.tyName_REAL)
@@ -82,37 +92,18 @@ functor LambdaExp(structure Lvars: LVARS
       | SELECTprim of int        
       | UB_RECORDprim                                 (* Unboxed record. *)
       | DROPprim
-      | NEG_INTprim 
-      | NEG_REALprim
-      | ABS_INTprim
-      | ABS_REALprim
       | DEREFprim of {instance: 'Type}
       | REFprim of {instance: 'Type}
       | ASSIGNprim of {instance: 'Type}
-      | MUL_REALprim
-      | MUL_INTprim
-      | PLUS_REALprim
-      | PLUS_INTprim
-      | MINUS_REALprim
-      | MINUS_INTprim
       | EQUALprim of {instance: 'Type}
-      | EQUAL_INTprim
-      | LESS_REALprim
-      | LESS_INTprim
-      | GREATER_REALprim
-      | GREATER_INTprim
-      | LESSEQ_REALprim
-      | LESSEQ_INTprim
-      | GREATEREQ_REALprim
-      | GREATEREQ_INTprim
-      | CCALLprim of {name : string,                  (* NOT Standard ML *)
+      | CCALLprim of {name : string,                  (* Primitives, etc. *)
 		      instances : 'Type list,
 		      tyvars : tyvar list,
 		      Type : 'Type} 
-      | RESET_REGIONSprim of {instance: 'Type}        (* NOT Standard ML, for programmer-directed, but safe, resetting of
-						       * regions *)
-      | FORCE_RESET_REGIONSprim of {instance: 'Type}  (* NOT Standard ML, for programmer-controlled, unsafe resetting of
-						       * regions *)
+      | RESET_REGIONSprim of {instance: 'Type}        (* NOT Standard ML, for programmer-directed, 
+						       * but safe, resetting of regions *)
+      | FORCE_RESET_REGIONSprim of {instance: 'Type}  (* NOT Standard ML, for programmer-controlled, 
+						       * unsafe resetting of regions *)
 
     datatype LambdaPgm = PGM of datbinds * LambdaExp
 
@@ -121,7 +112,8 @@ functor LambdaExp(structure Lvars: LVARS
 
     and LambdaExp =
         VAR      of {lvar: lvar, instances : Type list}
-      | INTEGER  of int			
+      | INTEGER  of Int32.int * Type
+      | WORD     of Word32.word * Type
       | STRING   of string
       | REAL     of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
@@ -137,7 +129,8 @@ functor LambdaExp(structure Lvars: LVARS
       | EXCEPTION of excon * Type option * LambdaExp
       | RAISE    of LambdaExp * TypeList
       | HANDLE   of LambdaExp * LambdaExp
-      | SWITCH_I of int Switch
+      | SWITCH_I of {switch: Int32.int Switch, precision: int}
+      | SWITCH_W of {switch: Word32.word Switch, precision: int}
       | SWITCH_S of string Switch
       | SWITCH_C of con Switch
       | SWITCH_E of excon Switch
@@ -169,6 +162,7 @@ functor LambdaExp(structure Lvars: LVARS
 	case lamb of
           VAR{instances, ...} => foldl' g new_acc instances
         | INTEGER _ => new_acc
+        | WORD _ => new_acc
         | STRING _ => new_acc
         | REAL _ => new_acc
 	| FN{pat,body} => foldTD fcns (foldl' (foldType g) new_acc (map #2 pat)) body
@@ -181,7 +175,8 @@ functor LambdaExp(structure Lvars: LVARS
              )
 	| RAISE(lamb,taus) => foldTD fcns new_acc lamb
 	| HANDLE(lamb1, lamb2) => foldTD fcns (foldTD fcns new_acc lamb1) lamb2
-	| SWITCH_I switch => foldSwitch switch
+	| SWITCH_I {switch,precision} => foldSwitch switch
+	| SWITCH_W {switch,precision} => foldSwitch switch
 	| SWITCH_S switch => foldSwitch switch
 	| SWITCH_C switch => foldSwitch switch
 	| SWITCH_E switch => foldSwitch switch
@@ -210,10 +205,97 @@ functor LambdaExp(structure Lvars: LVARS
                                               fn n: int => fn tau => n+1) 
                                        0 e
 
-   (* safeLambdaPgm: This predicate approximates whether a lambda
+
+   (* -----------------------------------------------------------------
+    * safeLambdaPgm: This predicate approximates whether a lambda
     * program performs side effects; it is used to determine if a
     * program unit can be discharged at link time in case it is not
-    * used. *)
+    * used. It is also used by the optimiser so as to remove bindings
+    * of values that are not used.
+    * ----------------------------------------------------------------- *)
+   
+   local
+     exception NotSafe
+
+     val safeCNames = StrSet.fromList 
+       ["__plus_word31", "__plus_word32ub", "__plus_word32b",
+	"__minus_word31", "__minus_word32ub", "__minus_word32b",
+	"__mul_word31", "__mul_word32ub", "__mul_word32b",
+	"__less_word31", "__less_word32ub", "__less_word32b",
+	"__greater_word31", "__greater_word32ub", "__greater_word32b",
+	"__lesseq_word31", "__lesseq_word32ub", "__lesseq_word32b",
+	"__greatereq_word31", "__greatereq_word32ub", "__greatereq_word32b",
+	"__less_int31", "__less_int32ub", "__less_int32b",
+	"__greater_int31", "__greater_int32ub", "__greater_int32b",
+	"__lesseq_int31", "__lesseq_int32ub", "__lesseq_int32b",
+	"__greatereq_int31", "__greatereq_int32ub", "__greatereq_int32b",
+	"lessStringML",
+	"greaterStringML",
+	"lesseqStringML",
+	"greatereqStringML",
+	"__less_real",
+	"__greater_real",
+	"__lesseq_real",
+	"__greatereq_real"]
+
+     fun safeCName n = if StrSet.member n safeCNames then () 
+		       else raise NotSafe
+
+     fun safe_prim prim =
+       case prim
+	 of CONprim _          => ()
+	  | DECONprim _        => ()
+	  | EXCONprim _        => ()
+	  | DEEXCONprim _      => ()
+	  | RECORDprim         => ()
+	  | SELECTprim _       => ()
+	  | EQUALprim _        => ()
+	  | DROPprim           => ()            
+	  | CCALLprim {name,...} => safeCName name 
+	   
+	       (* likewise for other primitives that do not perform side effects
+		* and cannot raise exceptions *)
+	  | _ => raise NotSafe 
+
+     fun safe_sw safe (SWITCH(e,sel,opt_e)) =
+       let fun safe_sel [] = ()
+	     | safe_sel ((a,e)::rest) = (safe e; safe_sel rest)
+	   fun safe_opt (SOME e) = safe e
+	     | safe_opt NONE = ()
+       in (safe e; safe_sel sel; safe_opt opt_e)
+       end
+
+     fun safe lamb =
+       case lamb
+	 of VAR _	                => ()
+	  | INTEGER _                   => ()
+	  | WORD _                      => ()
+	  | STRING _	                => ()
+	  | REAL _	                => ()
+	  | FN _	                => ()
+	  | LET {bind,scope,...}        => (safe bind; safe scope)
+	  | FIX {scope,...}             => safe scope
+	  | APP _	                => raise NotSafe
+	  | EXCEPTION (_,_,scope)       => safe scope
+	  | RAISE _                     => raise NotSafe
+	  | HANDLE(lamb, _)             => safe lamb
+	  (* if `lamb' is safe, then the actual handler can never be
+	   * activated. If `lamb' is unsafe, then the entire expression
+	   * is unsafe anyway. *)
+	  | SWITCH_I {switch,precision} => safe_sw safe switch
+	  | SWITCH_W {switch,precision} => safe_sw safe switch
+	  | SWITCH_S sw                 => safe_sw safe sw
+	  | SWITCH_C sw                 => safe_sw safe sw
+	  | SWITCH_E sw                 => safe_sw safe sw
+	  | PRIM(prim,lambs)            => (safe_prim prim; app safe lambs) 
+	  | FRAME _                     => ()
+   in
+     fun safeLambdaExps lambs = (app safe lambs; true) handle NotSafe => false
+     fun safeLambdaExp lamb = safeLambdaExps [lamb]
+     fun safeLambdaPgm(PGM(_,exp)) = safeLambdaExp exp
+   end   
+
+(*
 
    local
      fun safe_prim prim =
@@ -265,6 +347,7 @@ functor LambdaExp(structure Lvars: LVARS
        case exp
 	 of VAR _ => true
 	  | INTEGER _ => true			
+	  | WORD _ => true			
 	  | STRING _ => true
 	  | REAL _ => true
 	  | FN _ => true
@@ -286,6 +369,7 @@ functor LambdaExp(structure Lvars: LVARS
      fun safeLambdaPgm(PGM(_,exp)) = safe_exp exp
 
    end (* local *)
+*)
 
    (* prettyprinting. *)
    type StringTree = PP.StringTree
@@ -312,10 +396,12 @@ functor LambdaExp(structure Lvars: LVARS
       | SELECTprim i => PP.LEAF("select(" ^ Int.toString i ^ ")")
       | UB_RECORDprim => PP.LEAF("ubrecord") 
       | DROPprim => PP.LEAF("DROP")
-      | NEG_INTprim => PP.LEAF("~" )
-      | NEG_REALprim => PP.LEAF("~")
-      | ABS_INTprim => PP.LEAF("abs")
-      | ABS_REALprim => PP.LEAF("abs")
+      | CCALLprim{name="__neg_int31",...} => PP.LEAF("~" )
+      | CCALLprim{name="__neg_int32",...} => PP.LEAF("~" )
+      | CCALLprim{name="__neg_real",...} => PP.LEAF("~" )
+      | CCALLprim{name="__abs_int31",...} => PP.LEAF("abs" )
+      | CCALLprim{name="__abs_int32",...} => PP.LEAF("abs" )
+      | CCALLprim{name="__abs_real",...} => PP.LEAF("abs" )
       | DEREFprim {instance} => 
           if !Flags.print_types then
 	     PP.NODE{start="!(",finish=")",indent=2,
@@ -331,31 +417,51 @@ functor LambdaExp(structure Lvars: LVARS
 	       PP.NODE{start=":=(",finish=")",indent=2,
 		  children=[layoutType instance],childsep=PP.NOSEP}
           else PP.LEAF " := "
-      | MUL_REALprim => PP.LEAF("*")
-      | MUL_INTprim => PP.LEAF("*")
-      | PLUS_REALprim => PP.LEAF("+")
-      | PLUS_INTprim => PP.LEAF("+")
-      | MINUS_REALprim => PP.LEAF("-")
-      | MINUS_INTprim => PP.LEAF("-")
-      | EQUAL_INTprim => 
-          if !Flags.print_types then
-            PP.LEAF("=[int]")
-          else
-            PP.LEAF("=")
+      | CCALLprim{name="__mul_real", ...} => PP.LEAF("*")
+      | CCALLprim{name="__mul_int31", ...} => PP.LEAF("*")
+      | CCALLprim{name="__mul_int32", ...} => PP.LEAF("*")
+      | CCALLprim{name="__plus_real", ...} => PP.LEAF("+")
+      | CCALLprim{name="__plus_int31", ...} => PP.LEAF("+")
+      | CCALLprim{name="__plus_int32", ...} => PP.LEAF("+")
+      | CCALLprim{name="__minus_real", ...} => PP.LEAF("-")
+      | CCALLprim{name="__minus_int31", ...} => PP.LEAF("-")
+      | CCALLprim{name="__minus_int32", ...} => PP.LEAF("-")
+      | CCALLprim{name="__equal_int31", ...} => 
+	    if !Flags.print_types then PP.LEAF("=[int31]")
+	    else PP.LEAF("=")
       | EQUALprim {instance} => 
           if !Flags.print_types then
 	      PP.NODE{start="=(",finish=")",indent=2,
 		  children=[layoutType instance],childsep=PP.NOSEP}
-          else
-	    PP.LEAF " = "
-      | LESS_REALprim =>PP.LEAF("<")
-      | LESS_INTprim =>PP.LEAF("<")
-      | GREATER_REALprim => PP.LEAF(">")
-      | GREATER_INTprim => PP.LEAF(">")
-      | LESSEQ_REALprim => PP.LEAF("<=")
-      | LESSEQ_INTprim => PP.LEAF("<=")
-      | GREATEREQ_REALprim => PP.LEAF(">=")
-      | GREATEREQ_INTprim => PP.LEAF(">=")
+          else PP.LEAF " = "
+      | CCALLprim{name="__less_real", ...} => PP.LEAF("<")
+      | CCALLprim{name="__less_int31", ...} => PP.LEAF("<")
+      | CCALLprim{name="__less_int32", ...} => PP.LEAF("<")
+      | CCALLprim{name="__less_string", ...} => PP.LEAF("<")
+      | CCALLprim{name="__less_word31", ...} => PP.LEAF("<")
+      | CCALLprim{name="__less_word32", ...} => PP.LEAF("<")
+
+      | CCALLprim{name="__greater_real", ...} => PP.LEAF(">")
+      | CCALLprim{name="__greater_int31", ...} => PP.LEAF(">")
+      | CCALLprim{name="__greater_int32", ...} => PP.LEAF(">")
+      | CCALLprim{name="__greater_string", ...} => PP.LEAF(">")
+      | CCALLprim{name="__greater_word31", ...} => PP.LEAF(">")
+      | CCALLprim{name="__greater_word32", ...} => PP.LEAF(">")
+
+      | CCALLprim{name="__lesseq_real", ...} => PP.LEAF("<=")
+      | CCALLprim{name="__lesseq_int31", ...} => PP.LEAF("<=")
+      | CCALLprim{name="__lesseq_int32", ...} => PP.LEAF("<=")
+      | CCALLprim{name="__lesseq_string", ...} => PP.LEAF("<=")
+      | CCALLprim{name="__lesseq_word31", ...} => PP.LEAF("<=")
+      | CCALLprim{name="__lesseq_word32", ...} => PP.LEAF("<=")
+
+      | CCALLprim{name="__greatereq_real", ...} => PP.LEAF(">=")
+      | CCALLprim{name="__greatereq_int31", ...} => PP.LEAF(">=")
+      | CCALLprim{name="__greatereq_int32", ...} => PP.LEAF(">=")
+      | CCALLprim{name="__greatereq_string", ...} => PP.LEAF(">=")
+      | CCALLprim{name="__greatereq_word31", ...} => PP.LEAF(">=")
+      | CCALLprim{name="__greatereq_word32", ...} => PP.LEAF(">=")
+
       | CCALLprim {name, instances, tyvars, Type} => 
           if !Flags.print_types then
 	      PP.NODE {start="ccall (" ^ name ^ " ", finish=")", indent=2,
@@ -561,7 +667,19 @@ functor LambdaExp(structure Lvars: LVARS
                     children=map layoutType taus,
                     childsep=PP.RIGHT ","}
           else PP.LEAF(Lvars.pr_lvar lv)
-      | INTEGER i => PP.LEAF(Int.toString i)
+      | INTEGER (i,tau) => 
+          if !Flags.print_types then 
+            PP.NODE{start=Int32.toString i ^ ":", finish=" ",indent=0,
+                    children=[layoutType tau],
+                    childsep=PP.NOSEP}
+          else PP.LEAF(Int32.toString i)
+      | WORD (w,tau) =>
+	    if !Flags.print_types then 
+	      PP.NODE{start="0x" ^ Word32.toString w ^ ":", finish=" ",indent=0,
+		      children=[layoutType tau],
+		      childsep=PP.NOSEP}
+	    else PP.LEAF("0x" ^ Word32.toString w)
+
       | STRING s => PP.LEAF(quote s)
       | REAL r => PP.LEAF(r)
       | FN {pat,body} => 
@@ -626,8 +744,10 @@ functor LambdaExp(structure Lvars: LVARS
 		  children=[layoutLambdaExp(lamb1,12), layoutLambdaExp(lamb2,12)],
 		  childsep=PP.LEFT " handle "
 		  }
-      | SWITCH_I sw => 
-	  layoutSwitch layoutLambdaExp Int.toString sw
+      | SWITCH_I {switch, precision} => 
+	  layoutSwitch layoutLambdaExp Int32.toString switch
+      | SWITCH_W {switch, precision} => 
+	  layoutSwitch layoutLambdaExp (fn w => "0x" ^ Word32.toString w) switch
       | SWITCH_S sw => 
 	  layoutSwitch layoutLambdaExp (fn x => x) sw
       | SWITCH_C sw => 
@@ -658,22 +778,45 @@ functor LambdaExp(structure Lvars: LVARS
                      childsep=PP.NOSEP}
          | (DROPprim,[lamb]) => layoutLambdaExp(lamb,context)
          | (ASSIGNprim{instance},_) => layout_infix context 3 " := "lambs
-         | (MUL_REALprim, [_,_]) => layout_infix context 7 " * " lambs
-         | (MUL_INTprim, [_,_]) =>  layout_infix context 7 " * " lambs
-         | (PLUS_REALprim, [_,_]) => layout_infix context 6 " + " lambs
-         | (PLUS_INTprim, [_,_]) =>  layout_infix context 6 " + " lambs
-         | (MINUS_REALprim, [_,_]) => layout_infix context 6 " - "lambs
-         | (MINUS_INTprim, [_,_]) =>  layout_infix context 6 " - "lambs
+         | (CCALLprim{name="__mul_real", ...}, [_,_]) => layout_infix context 7 " * " lambs
+         | (CCALLprim{name="__mul_int31", ...}, [_,_]) =>  layout_infix context 7 " * " lambs
+         | (CCALLprim{name="__mul_int32", ...}, [_,_]) =>  layout_infix context 7 " * " lambs
+         | (CCALLprim{name="__plus_real", ...}, [_,_]) => layout_infix context 6 " + " lambs
+         | (CCALLprim{name="__plus_int31", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
+         | (CCALLprim{name="__plus_int32", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
+         | (CCALLprim{name="__minus_real", ...}, [_,_]) => layout_infix context 6 " - " lambs
+         | (CCALLprim{name="__minus_int31", ...}, [_,_]) =>  layout_infix context 6 " - "lambs
+         | (CCALLprim{name="__minus_int32", ...}, [_,_]) =>  layout_infix context 6 " - "lambs
          | (EQUALprim{instance},[_,_]) => layout_infix context 4 " = "lambs
-         | (EQUAL_INTprim, [_,_]) => layout_infix context 4 " = "lambs
-         | (LESS_REALprim, [_,_]) => layout_infix context 4 " < "lambs
-         | (LESS_INTprim, [_,_]) => layout_infix context 4 " < "lambs
-         | (GREATER_REALprim, [_,_]) => layout_infix context 4 " > "lambs
-         | (GREATER_INTprim, [_,_]) => layout_infix context 4 " > "lambs
-         | (LESSEQ_REALprim, [_,_]) => layout_infix context 4 " <= "lambs
-         | (LESSEQ_INTprim, [_,_]) => layout_infix context 4 " <= "lambs
-         | (GREATEREQ_REALprim, [_,_]) => layout_infix context 4 " >= "lambs
-         | (GREATEREQ_INTprim, [_,_]) => layout_infix context 4 " >= "lambs
+
+         | (CCALLprim{name="__less_word31", ...}, [_,_]) => layout_infix context 4 " < "lambs
+         | (CCALLprim{name="__less_word32", ...}, [_,_]) => layout_infix context 4 " < "lambs
+         | (CCALLprim{name="__less_int31", ...}, [_,_]) => layout_infix context 4 " < "lambs
+         | (CCALLprim{name="__less_int32", ...}, [_,_]) => layout_infix context 4 " < "lambs
+         | (CCALLprim{name="__less_real", ...}, [_,_]) => layout_infix context 4 " < "lambs
+         | (CCALLprim{name="__less_string", ...}, [_,_]) => layout_infix context 4 " < "lambs
+
+         | (CCALLprim{name="__greater_word31", ...}, [_,_]) => layout_infix context 4 " > "lambs
+         | (CCALLprim{name="__greater_word32", ...}, [_,_]) => layout_infix context 4 " > "lambs
+         | (CCALLprim{name="__greater_int31", ...}, [_,_]) => layout_infix context 4 " > "lambs
+         | (CCALLprim{name="__greater_int32", ...}, [_,_]) => layout_infix context 4 " > "lambs
+         | (CCALLprim{name="__greater_real", ...}, [_,_]) => layout_infix context 4 " > "lambs
+         | (CCALLprim{name="__greater_string", ...}, [_,_]) => layout_infix context 4 " > "lambs
+
+         | (CCALLprim{name="__lesseq_word31", ...}, [_,_]) => layout_infix context 4 " <= "lambs
+         | (CCALLprim{name="__lesseq_word32", ...}, [_,_]) => layout_infix context 4 " <= "lambs
+         | (CCALLprim{name="__lesseq_int31", ...}, [_,_]) => layout_infix context 4 " <= "lambs
+         | (CCALLprim{name="__lesseq_int32", ...}, [_,_]) => layout_infix context 4 " <= "lambs
+         | (CCALLprim{name="__lesseq_real", ...}, [_,_]) => layout_infix context 4 " <= "lambs
+         | (CCALLprim{name="__lesseq_string", ...}, [_,_]) => layout_infix context 4 " <= "lambs
+
+         | (CCALLprim{name="__greatereq_word31", ...}, [_,_]) => layout_infix context 4 " >= "lambs
+         | (CCALLprim{name="__greatereq_word32", ...}, [_,_]) => layout_infix context 4 " >= "lambs
+         | (CCALLprim{name="__greatereq_int31", ...}, [_,_]) => layout_infix context 4 " >= "lambs
+         | (CCALLprim{name="__greatereq_int32", ...}, [_,_]) => layout_infix context 4 " >= "lambs
+         | (CCALLprim{name="__greatereq_real", ...}, [_,_]) => layout_infix context 4 " >= "lambs
+         | (CCALLprim{name="__greatereq_string", ...}, [_,_]) => layout_infix context 4 " >= "lambs
+
          | _ => 
   	  PP.NODE{start="PRIM(",finish=")",indent=3,
 		  children=[layoutPrim layoutType prim,

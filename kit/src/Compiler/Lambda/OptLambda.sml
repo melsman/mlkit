@@ -216,7 +216,8 @@ functor OptLambda(structure Lvars: LVARS
     * Equality on lambda expressions (conservative approximation)
     * ----------------------------------------------------------------- *)
 
-    fun eq_lamb (INTEGER n, INTEGER n') = (n = n')
+    fun eq_lamb (INTEGER (n,t), INTEGER (n',t')) = n=n' andalso eq_tau(t,t')
+      | eq_lamb (WORD(n,t), WORD(n',t')) = n=n' andalso eq_tau(t,t')
       | eq_lamb (REAL r, REAL r') = (r = r')
       | eq_lamb (STRING s, STRING s') = (s = s')
       | eq_lamb (VAR{lvar,instances=il},VAR{lvar=lvar',instances=il'}) = Lvars.eq(lvar,lvar') andalso eq_taus(il,il')
@@ -255,73 +256,6 @@ functor OptLambda(structure Lvars: LVARS
       in (foldTD count 0 lamb; true) handle Big => false
       end
     
-
-   (* -----------------------------------------------------------------
-    * safe_lamb - Determines whether a lambda expression can be moved
-    * without changing the semantic of the program.
-    * ----------------------------------------------------------------- *)
-   
-   local
-     exception NotSafe
-
-     fun safe_prim prim =
-       case prim
-	 of CONprim _          => ()
-	  | DECONprim _        => ()
-	  | EXCONprim _        => ()
-	  | DEEXCONprim _      => ()
-	  | RECORDprim         => ()
-	  | SELECTprim _       => ()
-	  | EQUALprim _        => ()
-          | EQUAL_INTprim      => ()
-	  | DROPprim           => ()            
-	  | LESS_INTprim       => ()
-	  | LESS_REALprim      => ()
-	  | GREATER_INTprim    => ()
-	  | GREATER_REALprim   => ()
-	  | LESSEQ_INTprim     => ()
-	  | LESSEQ_REALprim    => ()
-	  | GREATEREQ_INTprim  => ()
-	  | GREATEREQ_REALprim => ()
-	       (* likewise for other primitives that do not perform side effects
-		* and cannot raise exceptions *)
-	  | _ => raise NotSafe 
-
-     fun safe_sw safe (SWITCH(e,sel,opt_e)) =
-       let fun safe_sel [] = ()
-	     | safe_sel ((a,e)::rest) = (safe e; safe_sel rest)
-	   fun safe_opt (SOME e) = safe e
-	     | safe_opt NONE = ()
-       in (safe e; safe_sel sel; safe_opt opt_e)
-       end
-
-     fun safe lamb =
-       case lamb
-	 of VAR _	                => ()
-	  | INTEGER _                   => ()
-	  | STRING _	                => ()
-	  | REAL _	                => ()
-	  | FN _	                => ()
-	  | LET {bind,scope,...}        => (safe bind; safe scope)
-	  | FIX {scope,...}             => safe scope
-	  | APP _	                => raise NotSafe
-	  | EXCEPTION (_,_,scope)       => safe scope
-	  | RAISE _                     => raise NotSafe
-	  | HANDLE(lamb, _)             => safe lamb
-	  (* if `lamb' is safe, then the actual handler can never be
-	   * activated. If `lamb' is unsafe, then the entire expression
-	   * is unsafe anyway. *)
-	  | SWITCH_I sw                 => safe_sw safe sw
-	  | SWITCH_S sw                 => safe_sw safe sw
-	  | SWITCH_C sw                 => safe_sw safe sw
-	  | SWITCH_E sw                 => safe_sw safe sw
-	  | PRIM(prim,lambs)            => (safe_prim prim; app safe lambs) 
-	  | FRAME _                     => raise NotSafe
-   in
-     fun safe_lambs lambs = (app safe lambs; true) handle NotSafe => false
-     fun safe_lamb lamb = safe_lambs [lamb]
-   end   
-
 
    (* -----------------------------------------------------------------
     * Closedness of a lambda expression
@@ -573,11 +507,11 @@ functor OptLambda(structure Lvars: LVARS
 	      | allEqual (x::(ys as y::_)) = eq_lamb(x,y) andalso allEqual ys
 	in case opt
 	     of SOME lamb =>
-	       if safe_lamb arg andalso allEqual (lamb::(map snd sel)) then
+	       if safeLambdaExp arg andalso allEqual (lamb::(map snd sel)) then
 		 (tick "reduce - switch"; decr_uses arg; app (decr_uses o snd) sel; reduce (env, (lamb, cv)))
 	       else fail
 	      | NONE =>
-		 if safe_lamb arg andalso allEqual (map snd sel) then
+		 if safeLambdaExp arg andalso allEqual (map snd sel) then
 		   case sel
 		     of (_,lamb)::sel' => (tick "reduce - switch"; decr_uses arg; 
 					   app (decr_uses o snd) sel'; reduce (env, (lamb, cv)))
@@ -593,9 +527,14 @@ functor OptLambda(structure Lvars: LVARS
       fun is_boolean con = 
 	Con.eq(Con.con_TRUE, con) orelse Con.eq(Con.con_FALSE, con)
 	
+      val tag_integers = Flags.is_on0 "tag_integers"
+
       fun is_unboxed_value lamb =
 	case lamb
-	  of INTEGER _ => true
+	  of INTEGER (v,t) => if tag_integers() then not(eq_tau(t, int32Type))
+			      else true
+	   | WORD (v,t) => if tag_integers() then not(eq_tau(t, word32Type))
+			   else true
 	   | PRIM(CONprim {con,...},nil) => is_boolean con
 	   | _ => false
 
@@ -637,6 +576,7 @@ functor OptLambda(structure Lvars: LVARS
 			    end)
 		| NONE => ((*output(!Flags.log, "none\n");*) (lamb, CVAR lamb)))
 	   | INTEGER _ => (lamb, CCONST lamb)
+	   | WORD _ => (lamb, CCONST lamb)
 	   | PRIM(CONprim {con,...},[]) => if is_boolean con then (lamb, CCONST lamb)
 					   else fail
 	   | STRING _ => (lamb, CCONST lamb)
@@ -651,7 +591,7 @@ functor OptLambda(structure Lvars: LVARS
 		     else fail
 		     | do_sw _ _ = fail
 	       in if Lvars.zero_use lvar then
-		    if safe_lamb bind then 
+		    if safeLambdaExp bind then 
 		      (decr_uses bind; tick "reduce - dead-let"; reduce (env, (scope, cv)))
 		    else (*case scope
 			   of PRIM(RECORDprim,[]) => fail
@@ -678,14 +618,17 @@ functor OptLambda(structure Lvars: LVARS
 			       in tick "reduce - let-var-cons"; reduce (env, (e, cv))
 			       end
 			     else fail
-			  | SWITCH_I sw => do_sw SWITCH_I sw
+			  | SWITCH_I {switch,precision} => 
+			       do_sw (fn sw => SWITCH_I {switch=sw,precision=precision}) switch
+			  | SWITCH_W {switch,precision} => 
+			       do_sw (fn sw => SWITCH_W {switch=sw,precision=precision}) switch
 			  | SWITCH_S sw => do_sw SWITCH_S sw
 			  | SWITCH_C sw => do_sw SWITCH_C sw
 			  | SWITCH_E sw => do_sw SWITCH_E sw
 			  | _ => fail
 	       end
 	   | LET{pat=nil,bind,scope} =>
-	       if safe_lamb bind then 
+	       if safeLambdaExp bind then 
 		 (decr_uses bind; tick "reduce - dead-let"; reduce (env, (scope, cv)))
 	       else fail
 	  | PRIM(SELECTprim n,[lamb]) =>
@@ -696,14 +639,17 @@ functor OptLambda(structure Lvars: LVARS
 			    handle List.Subscript _ => die "reduce4"
 			  in case nth_cv 
 			       of CVAR var => (tick "reduce - sel-var"; decr_uses lamb; incr_uses var; reduce (env, (var,nth_cv)))
-				| CCONST(INTEGER n) => (tick "reduce - sel-int"; decr_uses lamb; (INTEGER n, nth_cv))
+				| CCONST(e as INTEGER _) => (tick "reduce - sel-int"; 
+							     decr_uses lamb; (e, nth_cv))
+				| CCONST(e as WORD _) => (tick "reduce - sel-word"; 
+							  decr_uses lamb; (e, nth_cv))
 				| _ => (lamb, nth_cv)
 			  end
 			 | _ => fail
 	       in case lamb
 		    of PRIM(RECORDprim,lambs) =>
 		      let val (lamb', lambs') = List.removeNth n lambs
-		      in if List.foldL (fn a => fn b => safe_lamb a andalso b) true lambs' then
+		      in if safeLambdaExps lambs' then
 			   (tick "reduce - sel-record"; app decr_uses lambs'; reduce(env, (lamb', CUNKNOWN)))
 			 else do_select()
 		      end
@@ -756,7 +702,8 @@ functor OptLambda(structure Lvars: LVARS
 		   in tick "appletfn-fn"; reduce (env, (res, CUNKNOWN))
 		   end handle NoBetaReduction => fail
 		end
-	  | SWITCH_I switch => reduce_switch (reduce, env, fail, switch)
+	  | SWITCH_I {switch,precision} => reduce_switch (reduce, env, fail, switch)
+	  | SWITCH_W {switch,precision} => reduce_switch (reduce, env, fail, switch)
 	  | SWITCH_S switch => reduce_switch (reduce, env, fail, switch)
 	  | SWITCH_C switch => reduce_switch (reduce, env, fail, switch)
 	  | SWITCH_E switch => reduce_switch (reduce, env, fail, switch)
@@ -863,7 +810,10 @@ functor OptLambda(structure Lvars: LVARS
 	       end
 	      | RAISE(lamb,tl) => (RAISE(fst(contr (env, lamb)),tl),CUNKNOWN)
 	      | HANDLE(lamb1, lamb2) => (HANDLE(fst(contr (env, lamb1)), fst(contr (env, lamb2))),CUNKNOWN)
-	      | SWITCH_I switch => contr_switch (contr, reduce, env, SWITCH_I, switch)
+	      | SWITCH_I {switch,precision} => 
+	       contr_switch (contr, reduce, env, fn sw => SWITCH_I {switch=sw, precision=precision}, switch)
+	      | SWITCH_W {switch,precision} => 
+	       contr_switch (contr, reduce, env, fn sw => SWITCH_W {switch=sw, precision=precision}, switch)
 	      | SWITCH_S switch => contr_switch (contr, reduce, env, SWITCH_S, switch)
 	      | SWITCH_C switch => contr_switch (contr, reduce, env, SWITCH_C, switch)
 	      | SWITCH_E switch => 
