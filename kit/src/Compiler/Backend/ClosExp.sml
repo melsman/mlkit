@@ -1406,9 +1406,14 @@ struct
 	   | SOME(CE.SELECT _)                            => die "find_globals_in_env: global bound to select expression."
 	   | SOME(CE.LABEL lab)                           => (fun_lab,lab::dat_lab) (* Is a DatLab *)
 	   | NONE                                         => die ("find_globals_in_env: lvar not bound in env."))
-	val lvar_pair_labs = foldr (fn (lv,acc) => lookup lv CE.lookupVarOpt acc) ([],[]) lvars
-      in
-	foldr (fn (excon,acc) => lookup excon CE.lookupExconOpt acc) lvar_pair_labs excons
+	val pair_labs = foldr (fn (lv,a) => lookup lv CE.lookupVarOpt a) ([],[]) lvars
+	val pair_labs = foldr (fn (ex,a) => lookup ex CE.lookupExconOpt a) pair_labs excons
+(*	val pair_labs = foldr (fn (rho,a) => lookup rho CE.lookupRhoOpt a) pair_labs regvars 
+
+ this one does not seem necessary because no new regions survive program units and because the
+ the global regions 0-3 are allocated statically with address labels 0-3. ME 2000-10-31 
+*)
+      in pair_labs
       end
 
     fun gen_fresh_res_lvars(RegionExp.Mus type_and_places) =

@@ -31,7 +31,7 @@ let
 	  show_move(from,to);
 	  hanoi(n-1, via, to, from))
   val _ = out_str "Hello\n"
-  val _ = hanoi(14,1,2,3);
+  val _ = hanoi(3,1,2,3);
   val _ = out_str "Hello again\n"
 in
   ()

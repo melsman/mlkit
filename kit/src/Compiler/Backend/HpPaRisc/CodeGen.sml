@@ -1472,7 +1472,7 @@ struct
 	   (* An exception handler in an activation record staring at address offset contains the following fields: *)
 	   (* sp[offset] = label for handl_return code.                                                             *)
 	   (* sp[offset+1] = pointer to handle closure.                                                             *)
-	   (* sp[offset+2] = pointer to previous exception handler used when updating expPtr.                       *)
+	   (* sp[offset+2] = pointer to previous exception handler used when updating exnPtr.                       *)
 	   (* sp[offset+3] = address of the first cell after the activation record used when resetting sp.          *)
 	   (* Note that we call deallocate_regions_until to the address above the exception handler, (i.e., some of *)
 	   (* the infinite regions inside the activation record are also deallocated)!                              *)

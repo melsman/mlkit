@@ -1,5 +1,5 @@
 (* This file is auto-generated with Tools/GenOpcodes on *)
-(* Mon Oct 30 17:09:55 2000 *)
+(* Wed Nov  1 02:18:53 2000 *)
 signature OPCODES_KAM = 
   sig
     val ALLOC_N : int 
@@ -53,6 +53,7 @@ signature OPCODES_KAM =
     val RAISE : int 
     val PUSH_EXN_PTR : int 
     val POP_EXN_PTR : int 
+    val GLOBAL_EXN_HANDLER_REPORT : int 
     val LETREGION_FIN : int 
     val LETREGION_INF : int 
     val ENDREGION_INF : int 

@@ -54,7 +54,7 @@ functor Name(structure Crash : CRASH) : NAME =
        * marked generative. After a succeding match, n and n' 
        * are unmarked. *)
 *)
-    local val c = ref 1
+    local val c = ref 0
           fun incr() = let val a = !c
 		       in c:= a + 1; a
 		       end
@@ -86,5 +86,24 @@ functor Name(structure Crash : CRASH) : NAME =
 
     fun reset () = ()
     fun commit () = ()
+
+    (* Because the runtime system needs to know about the labels
+     * of certain symbols, we predefine some names here *)
+      
+    fun new_rigid () : name =
+      let val n = new()
+      in mk_rigid n; bucket := nil; n
+      end
+
+    val reg_top = new_rigid()             (* name 0 *)
+    val reg_bot = new_rigid()             (* name 1 *)
+    val reg_string = new_rigid()          (* name 2 *)
+    val reg_real = new_rigid()            (* name 3 *)
+
+    val exn_DIV = new_rigid()             (* name 4 *)
+    val exn_MATCH = new_rigid()           (* name 5 *)
+    val exn_BIND = new_rigid()            (* name 6 *)
+    val exn_OVERFLOW = new_rigid()        (* name 7 *)
+    val exn_INTERRUPT = new_rigid()       (* name 8 *)
 
   end
