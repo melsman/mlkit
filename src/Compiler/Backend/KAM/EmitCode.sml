@@ -86,15 +86,9 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | ApplyFnCall(n) => (out_opcode APPLY_FN_CALL; out_int n)
       | ApplyFnJmp(n1,n2) => (out_opcode APPLY_FN_JMP; out_int n1; out_int n2)
       | ApplyFunCall(lab,n) => (out_opcode APPLY_FUN_CALL; RLL.out_label lab; out_int n)
-      | ApplyFunCallNoClos(lab,n) => (out_opcode APPLY_FUN_CALL_NO_CLOS; RLL.out_label lab; out_int n)
       | ApplyFunJmp(lab,n1,n2) => (out_opcode APPLY_FUN_JMP; RLL.out_label lab; out_int n1; out_int n2)
-      | ApplyFunJmpNoClos(lab,n1,n2) => (out_opcode APPLY_FUN_JMP_NO_CLOS; RLL.out_label lab; out_int n1; out_int n2)
       | Return(n1,n2) => 
 	  (out_opcode RETURN;
-	   out_int n1;
-	   out_int n2)
-      | ReturnNoClos(n1,n2) => 
-	  (out_opcode RETURN_NO_CLOS;
 	   out_int n1;
 	   out_int n2)
 

@@ -90,11 +90,8 @@ signature KAM =
       | ApplyFnCall of int
       | ApplyFnJmp of int * int
       | ApplyFunCall of label * int
-      | ApplyFunCallNoClos of label * int
       | ApplyFunJmp of label * int * int
-      | ApplyFunJmpNoClos of label * int * int
       | Return of int * int
-      | ReturnNoClos of int * int
 
       | Ccall of int * int
 
