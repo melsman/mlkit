@@ -108,7 +108,6 @@ functor NativeCompile (include EXECUTION_ARGS
 					structure Crash = Crash)
 
     structure CallConv = CallConv(structure Lvars = Lvars
-				  structure RI = RegisterInfo
 				  structure BI = BackendInfo
 				  structure PP = PP
 				  structure Flags = Flags

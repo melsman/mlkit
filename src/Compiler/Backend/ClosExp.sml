@@ -413,7 +413,8 @@ struct
 
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
     [("print_normalized_program", "print normalized expression (MulExp)", ref false),
-     ("print_clos_conv_program", "print closure converted expression (ClosExp)", ref false)]
+     ("print_clos_conv_program", "print closure converted expression (ClosExp)", ref false),
+     ("print_lift_conv_program", "print lifted expression for the KAM (ClosExp)", ref false)]
 
   (*****************************************************************************************)
   (*****************************************************************************************)
@@ -2748,11 +2749,12 @@ struct
 	 exports=export_labs}
       end (* End clos_conv *)
 
-    (* For bytecode 13/09-2000, Niels *)
+    (* For bytecode *)
     fun lift(clos_env, prog) = 
       let
 	val _ = chat "[Lifting for bytecode generation..."
-	val n_prog = N prog
+      (*	val n_prog = N prog 04/10-2000, Niels *)
+	val n_prog = prog
 
 	val _ = 
 	  if Flags.is_on "print_normalized_program" then
@@ -2782,16 +2784,20 @@ struct
 	val export_env = CE.plus (env_datbind, (get_frame_env()))
 	val export_labs = find_globals_in_env (export_vars) (get_frame_env())
 	val code = get_top_decls() 
-
-      (* val _ = display("\nReport: export_env:", CE.layoutEnv export_env)*)
-      (*val _ = display("\nReport: AFTER LIFT: ", layout_clos_prg(#code(all_lift))) 21/09-2000, Niels*)
-
+	val all =
+	  {main_lab=main_lab,
+	   code=code,
+	   env=export_env,
+	   imports=import_labs,
+	   exports=export_labs}
+	val _ = 
+	  if Flags.is_on "print_lift_conv_program" then
+	    (display("\nReport: export_env:", CE.layoutEnv export_env);
+	     display("\nReport: AFTER LIFT: ", layout_clos_prg(#code(all))))
+	  else
+	    ()
       in
-	{main_lab=main_lab,
-	 code=code,
-	 env=export_env,
-	 imports=import_labs,
-	 exports=export_labs}
+	all
       end (* End lift *)
   end
 
@@ -2823,7 +2829,6 @@ struct
 	  ()
       val Fenv = F n_prog
       val all = clos_conv (clos_env, Fenv, n_prog)
- (* val all_lift = lift(clos_env, Fenv, MulExp.k_evalPgm n_prog) (* For bytecode 13/09-2000, Niels *) *)
       val _ = 
 	if Flags.is_on "print_clos_conv_program" then
 	  display("\nReport: AFTER CLOSURE CONVERSION:", layout_clos_prg (#code(all)))
@@ -2833,6 +2838,7 @@ struct
     in
       all
     end
+
 end;
 
 

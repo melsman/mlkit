@@ -344,6 +344,7 @@ in
 
   structure KitX86 = KitCompiler(ExecutionX86(ExecutionArgs))
   structure KitHPPA = KitCompiler(ExecutionHPPA(ExecutionArgs))
+  structure KitKAM = KitCompiler(ExecutionKAM(ExecutionArgs))
   structure KitDummy = KitCompiler(ExecutionDummy(ExecutionArgs))
 
 end (*local*)

@@ -4,6 +4,7 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
     open ExecutionArgs
 
     structure Basics = Elaboration.Basics
+    structure TyName = Basics.TyName
     structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
     structure Tools = Basics.Tools
     structure AllInfo = Basics.AllInfo
@@ -43,7 +44,6 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 					structure Crash = Crash)
 
     structure CallConv = CallConv(structure Lvars = Lvars
-				  structure RI = RegisterInfo
 				  structure BI = BackendInfo
 				  structure PP = PP
 				  structure Flags = Flags
@@ -102,7 +102,7 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = BuildCompile.CompilerEnv.CEnv
     type strdec = TopdecGrammar.strdec
-    type target = unit (* CodeGen.AsmPrg *)
+    type target = CodeGen.AsmPrg
     type label = Labels.label
 
     type linkinfo = {code_label:label, imports: label list, exports : label list, unsafe:bool}
@@ -135,7 +135,7 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 	    end
       end
 
-    fun generate_link_code (labs : label list) : target = ()
+    fun generate_link_code (labs : label list) : target = CodeGen.generate_link_code labs
 
     fun emit {target, filename:string} : unit = ()
 
