@@ -1,5 +1,3 @@
-(*$LOCALLY_LIVE_VARIABLES*)
-
 (* Locally live variables: second pass of Storage Mode Analysis *)
 
 signature LOCALLY_LIVE_VARIABLES =

@@ -431,7 +431,8 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 			     of SOME (TypeInfo.PLAINvalbind_INFO{tyvars=[],Type}) =>
 			       ElabInfo.plus_TypeInfo i 
 			       (TypeInfo.PLAINvalbind_INFO{tyvars= !generic_tyvars_pat, Type=Type})
-			      | _ => impossible "ElabDec.do_valbind: wrong type info"
+			      | _ => (*impossible "ElabDec.do_valbind: wrong type info"*)
+			       i (* in case of dublicated identifiers in bindings *)
 		  val vb_opt' = case vb_opt
 				  of SOME vb => SOME(do_valbind vb)
 				   | NONE => NONE
@@ -1134,7 +1135,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                   in
                     (S' oo S, OG.PATROW(i, l, pat', patrowOpt'))
                   end
-
 
             (* set up a value environment, VE, for the recursively declared values *)
 

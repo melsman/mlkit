@@ -2,7 +2,6 @@
    holes resulting from ambiguities in the SML grammar, and generally assist
    in the building of the parse tree. *)
 
-(*$GRAMMAR_UTILS : DEC_GRAMMAR TOPDEC_GRAMMAR*)
 signature GRAMMAR_UTILS =
   sig
     structure TopdecGrammar : TOPDEC_GRAMMAR
