@@ -2,7 +2,7 @@
 
 (* sets of integers represented as sorted lists, without repetitions*)
 
-structure EqSetList (*: EQ_SET where type 'a Set = int list *)=  
+structure EqSetList (* more or less EQ_SET where type 'a Set = int list *)=  
   struct
        type 'a Set = int list
        fun insert (x:int) l =
@@ -44,6 +44,35 @@ structure EqSetList (*: EQ_SET where type 'a Set = int list *)=
              else if x=y then x ::int(xs, ys)
              else (* x>y *) int(l1, ys)
        fun intersect l1 l2 = int(l1,l2)
+
+       datatype inter_size = NONE | ONE of int | MANY of int * int
+
+       fun inc(x, NONE)= ONE x
+         | inc(x, b as (ONE y))= if x=y then b else MANY(y,x)
+         | inc(x, b as (MANY _)) = b
+
+       fun int'(l1,[],s) = s
+         | int'([],l2,s) = s
+         | int'(_,_, s as (MANY _ ))= s
+         | int'(l1 as (x::xs),l2 as (y::ys),s)=
+             if x=y then int'(xs,ys,inc(x,s))
+             else if x<y then int'(xs, l2, s)
+                  else (* x>y *)int'(l1, ys, s)
+
+       fun showl msg l = (output(std_out, msg ^ List.stringSep "[" "]" ", " Int.string l ^ "\n"))
+
+       fun showsize (NONE) = "NO_INTER"
+         | showsize (ONE r) = "SINGLETON: " ^ Int.string r
+         | showsize (MANY(r1,r2)) = "MANY(" ^ Int.string r1 ^ "," ^ Int.string r2 ^ ")"
+
+       fun smallInter(l1,l2) = 
+        ((*showl "smallInter.l1 = " l1;
+         showl "smallInter.l2 = " l2;*)
+         let val result = int'(l1,l2,NONE)
+         in (*output(std_out, "smallInter.result= " ^ showsize result ^ "\n");*)
+            result
+         end)
+
        fun size l = List.size l
        fun list l = l
        fun fromList l = l (* assumes l already sorted!! *)
