@@ -7,6 +7,9 @@ in
        ../demo_lib/RatingUtil.sml
   in 
     [
+     demo/guest.sml
+     demo/guest_add.sml
+     demo/exchange.sml
      demo/regexp.sml
      demo/cache.sml
      demo/cache_add.sml
