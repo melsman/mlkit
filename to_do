@@ -2,12 +2,35 @@ mael 2004-12-14: The definition of a "basis closure" is too strong. At
 the moment too much is included in the closure, which means that
 serialized bases take up a large amount of space on disk.
 
+mael 2005-01-19: New strategy for ML Kit executables:
+
+  mlkit:   The ML Kit compiler, which knows nothing about mlb-files
+  mlkitc:  Link to mlbmake
+  mlbmake: Make tool that calls mlkit for each source file in the
+           mlb-file hierachy. When a single sml-file f.sml is given as
+           argument to mlbmake, the following mlb-file is constructed
+           and compiled: 'local $(SML_LIB)/basis/basis.mlb in f.sml end'.
+
+mael 2005-01-31: Write MLKit users manual including:
+   Compiling
+     MLB files
+   Interfacing with C
+     Calling C from ML
+     Calling ML from C
+   Bootstrapping
+   Profiling
+   Garbage Collection
+
+ Should this be in a Wiki?  
 
 mael 2004-12-13: Status on MLB files.
 
 It is now possible to compile the ML Kit itself using
 MLB-files. Unfortunately, a segmentation fault occurs when compiling
-General.sml - compilation of Initial.sml goes well. Some things to do:
+General.sml with the generated executable - compilation of Initial.sml
+goes well. 
+
+Some things to do:
 
   * Check for cycles in MLB-graph.
 

@@ -1,5 +1,5 @@
 local 
-  $(MLKIT_ROOT)/basislib/basislib.mlb
+  $(SML_LIB)/basis/basis.mlb
   basis Polyhash = 
     bas 
         POLYHASH.sml Polyhash.sml 

@@ -1,4 +1,4 @@
-*.log *.out *.outp profile.rp *.outgc *.outgcp *.outgengc *.outgengcp *.out.txt *.exe.png *.exe.x86-linux *.dvi *.html
+*.log *.out *.outp profile.rp *.outgc *.outgcp *.outgengc *.outgengcp *.out.txt *.exe.png *.exe.x86-linux *.dvi *.html MLB
 testbadl hardlinkA hardlinkB testcycl testlink 
 run runexe auto PM timex.temp 
 test_report.aux test_report.dvi test_report.log test_report.tex

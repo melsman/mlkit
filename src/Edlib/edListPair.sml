@@ -13,8 +13,8 @@ Maintenance:    Author
 RCS LOG
 
 $Log$
-Revision 1.2  2004/12/16 09:04:09  mael
-changed directory kit/basislib to kit/basis and kit/basislib/basislib.mlb to kit/basis/basis.mlb (etc) so that the same mlb-files can be compiled with MLKit and MLton
+Revision 1.3  2005/02/22 15:43:16  mael
+many changes to accomodate separate compilation
 
 Revision 1.1  2000/05/05 14:22:19  kfl
 Changes made to the kit so as it can be compiled with mosml 1.99

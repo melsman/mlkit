@@ -26,52 +26,10 @@ signature COMPILE_BARRY =
   end 
 
 
-functor CompileBarry
-               (structure LambdaExp: LAMBDA_EXP
-
-	        structure LambdaStatSem : LAMBDA_STAT_SEM
-		  sharing type LambdaStatSem.LambdaPgm = LambdaExp.LambdaPgm
-
-	        structure EliminateEq : ELIMINATE_EQ 
-		  sharing type EliminateEq.LambdaPgm = LambdaExp.LambdaPgm
-
-		structure CompilerEnv: COMPILER_ENV
-		  sharing type CompilerEnv.lvar = LambdaExp.lvar
-                  sharing type CompilerEnv.excon = LambdaExp.excon
-                  sharing type CompilerEnv.Type = LambdaExp.Type
-
-                structure CompileDec: COMPILE_DEC
-		  sharing type CompileDec.LambdaPgm = LambdaExp.LambdaPgm
-                  sharing type CompileDec.CEnv = CompilerEnv.CEnv
-                  sharing type CompileDec.Env = CompilerEnv.ElabEnv
-
-                structure OptLambda: OPT_LAMBDA
-		  sharing type OptLambda.LambdaPgm = LambdaExp.LambdaPgm
-
-		structure CompBasis: COMP_BASIS_BARRY
-		  sharing type CompBasis.EqEnv = EliminateEq.env
-		  sharing type CompBasis.OEnv = OptLambda.env
-		  sharing type CompBasis.TCEnv = LambdaStatSem.env 
-
-                structure Report: REPORT
-		structure Flags: FLAGS
-
-		structure PP: PRETTYPRINT
-		  sharing type CompBasis.StringTree
-                                     = LambdaExp.StringTree
-			             = EliminateEq.StringTree
-                                     = CompilerEnv.StringTree
-                                     = PP.StringTree
-
-                  sharing type PP.Report = Report.Report
-			
-	        structure Name : NAME
-
-                structure Crash: CRASH
-		structure Timing: TIMING
-		  ): COMPILE_BARRY =
-
+structure CompileBarry: COMPILE_BARRY =
   struct
+    structure CompBasis = CompBasisBarry
+    structure PP = PrettyPrint
 
     structure CE = CompilerEnv
 

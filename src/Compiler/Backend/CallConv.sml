@@ -7,13 +7,7 @@
 (* (e.g., resolve_cc, resolve_ccall, handl_arg_phreg,                   *)
 (*        handl_return_phreg, resolve_act_cc)                           *)
 
-functor CallConv(structure Lvars : LVARS
-                 structure BI : BACKEND_INFO
-		 structure PP : PRETTYPRINT
-		 structure Flags : FLAGS
-                 structure Report : REPORT
-		   sharing type Report.Report = Flags.Report
-		 structure Crash : CRASH) : CALL_CONV = 
+functor CallConv(BI : BACKEND_INFO) : CALL_CONV = 
   struct
     type lvar = Lvars.lvar
     type offset = int

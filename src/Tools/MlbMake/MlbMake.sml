@@ -139,7 +139,8 @@ structure BarryComp : COMP =
 
 
 functor Mlb(structure C: COMP
-	    val verbose : bool ref) 
+	    val verbose : bool ref
+	    val oneSrcFile : string option ref)
     : sig val build : string -> string -> unit 
       end =
 struct
@@ -320,11 +321,55 @@ struct
 	in check (srcs_mlbs,nil)
 	end
 
+    fun writeFile f c =
+	let val os = TextIO.openOut f
+	in (TextIO.output(os,c) before TextIO.closeOut os)
+	    handle _ => TextIO.closeOut os
+	end
+
+    fun maybeWriteDefaultMlbFile mlbfile : string =
+	case OS.Path.ext mlbfile of
+	    SOME "sml" =>
+		let val content =
+		      "local open $(SML_LIB)/basis/basis.mlb in " 
+		      ^ mlbfile ^ " end"
+		    val file = mlbfile ^ ".mlb"
+		in (writeFile file content; file)
+		    handle _ => error ("Failed to generate file " ^ file)
+		end
+	  | SOME "mlb" => mlbfile
+	  | _ => error "Expects file with extension '.mlb' or '.sml'"
+
+    fun del f = OS.FileSys.remove f handle _ => ()
+
+    exception Exit
+    fun maybeWriteOneSourceFile ss =
+	case !oneSrcFile of
+	    NONE => ()
+	  | SOME f => 
+		let fun readAll s =
+		      let val is = TextIO.openIn s
+		      in TextIO.inputAll is
+		      end
+		    fun appendAll st =
+			let val os = TextIO.openAppend f
+			in TextIO.output(os,st)
+			end
+		    fun w s =
+			let val st = readAll s
+			in appendAll st
+			end
+		in del f; app w ss; raise Exit
+		end
+
     fun build flags mlbfile =
-	let val _ = vchat ("Finding sources...\n")		
+	let val mlbfile = maybeWriteDefaultMlbFile mlbfile
+	    val _ = vchat ("Finding sources...\n")		
 	    val srcs_mlbs : (string * string) list = MlbProject.sources mlbfile
 	    val _ = check_sources srcs_mlbs
 	    val ss = map #1 srcs_mlbs
+
+	    val _ = maybeWriteOneSourceFile ss
 
 	    val _ = vchat ("Updating dependencies...\n")
 	    val _ = maybe_create_mlbdir()
@@ -339,7 +384,7 @@ struct
 	in case C.link {target="a.out", lnkFiles=lnkFiles} of
 	    SOME cmd => system cmd
 	  | NONE => ()
-	end
+	end handle Exit => ()
 
 end
 
@@ -353,11 +398,14 @@ struct
     val verbose = ref false
     fun vchat0 s = if !verbose then print s else ()
 
+    val oneSrcFile : string option ref = ref NONE
     structure MlbMLKit = Mlb(structure C = MLKitComp
-			     val verbose = verbose) 
+			     val verbose = verbose
+			     val oneSrcFile = oneSrcFile) 
 
     structure MlbBarry = Mlb(structure C = BarryComp
-			     val verbose = verbose) 
+			     val verbose = verbose
+			     val oneSrcFile = oneSrcFile) 
 
 (*    structure MlbMosml = Mlb(MosmlComp) *)
 
@@ -365,7 +413,7 @@ struct
 			      raise Fail "error")
 
     val date = Date.fmt "%b %d, %Y" (Date.fromTimeLocal (Time.now()))
-    val version = "0.1"
+    val version = "0.2"
 
     fun cmdName() = "mlbmake"
 	    
@@ -376,6 +424,7 @@ struct
 			       "Options:\n\n")
 
     val options = [("-compiler {mlkit,barry}", ["Specify compiler to use (default: mlkit)."]),
+		   ("-oneSrcFile s", ["Copy all sources to the file s and exit."]),
 		   ("-version", ["Print version information and exit."]),
 		   ("-help", ["Print help information and exit."])
 		   ]
@@ -386,8 +435,10 @@ struct
     fun print_options() = app (fn (t, l) => (print(t ^ "\n"); print_indent l; print "\n")) options
  
     val compiler = ref "mlkit"
+
     val unary_options =
-	[("compiler", fn s => compiler := s)]
+	[("compiler", fn s => compiler := s),
+	 ("oneSrcFile", fn s => oneSrcFile := SOME s)]
 
     fun show_version() =
 	(print (greetings(!compiler)); OS.Process.exit OS.Process.success)
@@ -396,8 +447,8 @@ struct
 	[("version", fn () => show_version()),
 	 ("V", fn () => show_version()),
 	 ("verbose", fn () => verbose := true),
-	 ("v", fn () => verbose := true),
-	 ("help", fn () => (print (greetings(!compiler));
+	 ("v", fn () => verbose := true),	 
+   	 ("help", fn () => (print (greetings(!compiler));
 			    print_usage();
 			    print_options();
 			    OS.Process.exit OS.Process.success))]

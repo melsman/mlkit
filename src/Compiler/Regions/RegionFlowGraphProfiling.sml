@@ -1,19 +1,11 @@
 
-functor RegionFlowGraphProfiling(structure Effect    : EFFECT
-				 structure AtInf     : AT_INF
-				 structure PhySizeInf: PHYS_SIZE_INF
-				 structure PP        : PRETTYPRINT
-				 structure Flags     : FLAGS
-				 structure Crash     : CRASH
-				 structure Report    : REPORT
-				 sharing type Report.Report = Flags.Report
-				   ) : REGION_FLOW_GRAPH_PROFILING =
-  struct
-
+structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING =
+  struct   
+    structure PP = PrettyPrint
     type place = Effect.place
     type 'a at = 'a AtInf.at
-    type phsize = PhySizeInf.phsize
-    type pp = PhySizeInf.pp
+    type phsize = PhysSizeInf.phsize
+    type pp = PhysSizeInf.pp
     type StringTree = PP.StringTree
 
     fun die errmsg   = Crash.impossible ("RegionFlowGraphProfiling." ^ errmsg)
@@ -33,8 +25,8 @@ functor RegionFlowGraphProfiling(structure Effect    : EFFECT
       else
 	die "get_rho_key"
 
-    fun show_phsize (PhySizeInf.INF) = "inf"
-      | show_phsize (PhySizeInf.WORDS n) = Int.toString n
+    fun show_phsize (PhysSizeInf.INF) = "inf"
+      | show_phsize (PhysSizeInf.WORDS n) = Int.toString n
 
     fun show_atkind (AtInf.ATTOP _) = "attop" 
       | show_atkind (AtInf.ATBOT _) = "atbot"
@@ -68,22 +60,14 @@ functor RegionFlowGraphProfiling(structure Effect    : EFFECT
      *  by the lambda optimizer.                                                            *
      *--------------------------------------------------------------------------------------*)
 
-    structure DiGraphScc = DiGraphScc(structure InfoDiGraph =
-					struct
+    structure DiGraphScc = DiGraphScc(struct
 					  type nodeId = int
 					  type info = int * string * string
 					  type edgeInfo = (place*pp) AtInf.at (* We put the storage mode on the edge. *)
 					  fun lt (a:nodeId) b = (a<b)
 					  fun getId ((id,s,size):info) = id
 					  val pu = Pickle.int
-					end
-				      structure PP = PP
-				      structure Flags = Flags
-				      structure Crash = Crash
-				      structure Report = Report)
-
-
-
+				      end)
     local 
       val region_flow_graph : DiGraphScc.graph ref = ref (DiGraphScc.mkGraph())
     in

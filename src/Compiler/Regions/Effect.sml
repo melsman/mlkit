@@ -1,15 +1,12 @@
 
-functor Effect(structure G: DIGRAPH
-               structure Crash: CRASH
-               structure Report: REPORT
-               structure Flags: FLAGS
-               structure PP: PRETTYPRINT
-                sharing type PP.StringTree = G.StringTree): EFFECT =  (* comment out this signature before 
-                                                                         running TestEffect *)
+structure Effect: EFFECT =  (* comment out this signature before 
+			     running TestEffect *)
 
 (* effect1.sml: added run-time region types *)
 
 struct
+  structure PP = PrettyPrint
+  structure G = DiGraph
 
   (* Add some dynamic flags for pretty-printing region variables. *) 
   
@@ -993,16 +990,10 @@ tracing *)
   datatype delta_phi = Lf of effect list | Br of delta_phi * delta_phi
 
   structure Increments = 
-    OrderFinMap(structure Order = 
-                  struct type T = effect
-                    fun lt (i: effect) (j:effect) = 
-                         get_key_of_eps i < get_key_of_eps j
-                  end
-                structure PP = PP
-                structure Report = Report
-		structure Crash = Crash
-		val pu_dom = pu_effect)
-
+      OrderFinMap(struct type T = effect
+			 fun lt (i: effect) (j:effect) = 
+			     get_key_of_eps i < get_key_of_eps j
+                  end)
 
   val globalIncs: delta_phi Increments.map ref = ref(Increments.empty)
 

@@ -85,7 +85,7 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 				     orelse c = #"_") 
 				else (b andalso (Char.isAlphaNum c 
 						 orelse c = #"_" 
-						 orelse c = #"'")))) true (token,0,NONE)
+						 orelse c = #"'")))) true token
 
 	fun isLongid token : bool = 
 	    let val subtokens = String.tokens (fn c => c = #".") token

@@ -3,7 +3,6 @@
 
 signature TYPE_INFO =
   sig
-    structure TyName : TYNAME
     type TyName = TyName.TyName
 
     type longid

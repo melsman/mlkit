@@ -1,49 +1,11 @@
 
-functor Manager(structure StrId : STRID
-		structure TyCon : TYCON sharing type TyCon.strid = StrId.strid
-		structure Ident : IDENT sharing type Ident.strid = StrId.strid
-                structure ManagerObjects : MANAGER_OBJECTS
-		structure Name : NAME
-		  sharing type Name.name = ManagerObjects.name
-		structure ModuleEnvironments : MODULE_ENVIRONMENTS
-		  sharing type ModuleEnvironments.Basis = ManagerObjects.ElabBasis
-		structure Environments : ENVIRONMENTS
-		  sharing type Environments.Env = ManagerObjects.ElabEnv = ModuleEnvironments.Env
-		  sharing type Environments.id = Ident.id
-		  sharing type Environments.tycon = TyCon.tycon
-		  sharing type Environments.strid = TyCon.strid
-		structure ParseElab : PARSE_ELAB
-		  sharing type ParseElab.InfixBasis = ManagerObjects.InfixBasis
-		  sharing type ParseElab.ElabBasis = ManagerObjects.ElabBasis
-	        structure IntModules : INT_MODULES
-		  sharing type IntModules.IntBasis = ManagerObjects.IntBasis
-		  sharing type IntModules.topdec = ParseElab.topdec
-		  sharing type IntModules.modcode = ManagerObjects.modcode
-		structure FreeIds : FREE_IDS
-		  sharing type FreeIds.topdec = ParseElab.topdec
-		  sharing type FreeIds.longid = ManagerObjects.longid = ModuleEnvironments.longid = Environments.longid = Ident.longid
-		  sharing type FreeIds.longtycon = ManagerObjects.longtycon = ModuleEnvironments.longtycon = Environments.longtycon = TyCon.longtycon
-		  sharing type FreeIds.longstrid = ManagerObjects.longstrid = ModuleEnvironments.longstrid = Environments.longstrid = StrId.longstrid
-		  sharing type FreeIds.funid = ManagerObjects.funid = ModuleEnvironments.funid
-		  sharing type FreeIds.sigid = ManagerObjects.sigid = ModuleEnvironments.sigid
-		structure OpacityElim : OPACITY_ELIM
-		  sharing OpacityElim.TyName = Environments.TyName = ManagerObjects.TyName = ModuleEnvironments.TyName
-		  sharing type OpacityElim.topdec = ParseElab.topdec
-		  sharing type OpacityElim.opaq_env = ManagerObjects.opaq_env
-		  sharing type OpacityElim.OpacityEnv.funid = FreeIds.funid
-	        structure Timing : TIMING
-		structure Crash : CRASH
-		structure Report : REPORT
-		  sharing type Report.Report = ParseElab.Report
-		structure PP : PRETTYPRINT
-		  sharing type PP.StringTree = FreeIds.StringTree = ManagerObjects.StringTree = OpacityElim.OpacityEnv.StringTree
-                structure Flags : FLAGS
-		  sharing type ModuleEnvironments.absprjid = ManagerObjects.absprjid = 
-		    IntModules.absprjid = ParseElab.absprjid
-		    
-		    ) : MANAGER =
+functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid = string
+		structure IntModules : INT_MODULES where type absprjid = string
+		sharing type ManagerObjects.IntBasis = IntModules.IntBasis
+		sharing type ManagerObjects.modcode = IntModules.modcode) 
+    : MANAGER =
   struct
-
+    structure PP = PrettyPrint
     structure MO = ManagerObjects
     structure Basis = MO.Basis
     structure FunStamp = MO.FunStamp
@@ -166,7 +128,7 @@ functor Manager(structure StrId : STRID
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
-    fun mk_absolute p = OS.Path.mkAbsolute(p,OS.FileSys.getDir())
+    fun mk_absolute p = OS.Path.mkAbsolute{path=p,relativeTo=OS.FileSys.getDir()}
     fun mk_absprjid_from_path s = ModuleEnvironments.mk_absprjid(mk_absolute s)
 
     (* ----------------------------------------------------
@@ -580,7 +542,7 @@ functor Manager(structure StrId : STRID
 	of SOME (_,(_,_,_,_,names_elab',_,elabB',opaq_env')) => (* names_elab' are already marked generative - lookup *)
 	  (List.app Name.mark_gen names_elab;                   (* returned the entry. The invariant is that every *)
 	   ElabBasis.match(elabB, elabB');                      (* name in the bucket is generative. *)
-	   OpacityElim.OpacityEnv.match(opaq_env,opaq_env');
+	   OpacityEnv.match(opaq_env,opaq_env');
 	   List.app Name.unmark_gen names_elab;
 	   List.app Name.mk_rigid names_elab)
 	 | NONE => (List.app Name.mk_rigid names_elab) (*bad luck*)
@@ -616,10 +578,9 @@ functor Manager(structure StrId : STRID
 	    (s,Timer.startCPUTimer(),Timer.startRealTimer())
 	    
 	fun timerReport ((s,cputimer,realtimer):timer) : unit = 
-	    let fun showTimerResult (s,{usr,gc,sys},real) =
+	    let fun showTimerResult (s,{usr,sys},real) =
 		print ("\nTiming " ^ s ^ ":" 
 		       ^ "\n  usr  = " ^ Time.toString usr 
-		       ^ "\n  gc   = " ^ Time.toString gc
 		       ^ "\n  sys  = " ^ Time.toString sys
 		       ^ "\n  real = " ^ Time.toString real
 		       ^ "\n")
@@ -687,7 +648,6 @@ functor Manager(structure StrId : STRID
 	    end
 
 	fun 'a doPickleNGen 
-	    (show : (string -> unit) -> 'a -> unit)
 	    (smlfile : string) 
 	    (pu : (name list *'a) Pickle.pu) 
 	    (ext : string)
@@ -716,12 +676,6 @@ functor Manager(structure StrId : STRID
 			val _ = app (fn n => H.insert H (#1(Name.key n),())) (#1 N0B0)
 			val _ = renameN 1 H (#1 NB)
 			val NB = matchGen match (NB,N0B0)
-(*
-			val _ = pchat ("Basis from file " ^ smlfile ^ ":")
-			val _ = show print (#2 N0B0)
-			val _ = pchat ("New computed Basis:")
-			val _ = show print (#2 NB)
-*)
 		    in if length (#1 NB) = length (#1 N0B0) andalso eq (#2 NB, #2 N0B0) then 
 			(  List.app Name.mk_rigid (#1 NB)
 			 ; pchat "identical NB in eb-file"
@@ -738,10 +692,10 @@ functor Manager(structure StrId : STRID
 	val pu_NB = Pickle.pairGen(pu_names,Basis.pu)
 *)
 	fun doPickleNB0 smlfile (NB0:Name.name list * Basis.Basis0) : unit = 
-	    doPickleNGen Basis.showBasis0 smlfile pu_NB0 "eb" Basis.matchBasis0 Basis.eqBasis0 NB0
+	    doPickleNGen smlfile pu_NB0 "eb" Basis.matchBasis0 Basis.eqBasis0 NB0
 
 	fun doPickleNB1 smlfile (NB1:Name.name list * Basis.Basis1) : unit = 
-	    doPickleNGen Basis.showBasis1 smlfile pu_NB1 "eb1" Basis.matchBasis1 Basis.eqBasis1 NB1
+	    doPickleNGen smlfile pu_NB1 "eb1" Basis.matchBasis1 Basis.eqBasis1 NB1
 (*
 	fun doPickleNB smlfile (NB:Name.name list * Basis) : unit = 
 	    doPickleNGen smlfile pu_NB "eb" Basis.match Basis.eq NB

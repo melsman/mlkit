@@ -6,10 +6,7 @@
     ALLOCATABLE_WORDS_IN_PRIM_ARRAY, remember also to change
     src/Runtime/Array.h*)
 
-functor RegConst
-  (structure Flags : FLAGS
-   structure Crash : CRASH
-   structure TyName : TYNAME) : REG_CONST =
+structure RegConst: REG_CONST =
 
 struct
 

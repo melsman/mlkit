@@ -4,49 +4,11 @@
 
 (* Static semantic objects - Definition v3 page 17 *)
 
-functor Environments(structure DecGrammar: DEC_GRAMMAR
-		     structure StrId: STRID
-
-		     structure Ident: IDENT
-		       sharing type Ident.strid = StrId.strid
-		       sharing type Ident.longid = DecGrammar.longid
-		       sharing type Ident.id = DecGrammar.id
-
-		     structure TyCon: TYCON
-		       sharing type TyCon.strid = StrId.strid
-
-		     structure TyName: TYNAME
-		       sharing type TyName.tycon = TyCon.tycon
-
-		     structure StatObject: STATOBJECT
-		       sharing type StatObject.ExplicitTyVar = DecGrammar.tyvar
-		       sharing StatObject.TyName = TyName
-
-		     structure PP: PRETTYPRINT
-		       sharing type StatObject.StringTree = PP.StringTree
-
-		     structure SortedFinMap: SORTED_FINMAP
-		       sharing type SortedFinMap.StringTree = PP.StringTree
-
-		     structure FinMap: FINMAP
-		       sharing type FinMap.StringTree = PP.StringTree
-
-                     structure OrderFinMap: MONO_FINMAP
-                       sharing type OrderFinMap.dom = Ident.id
-                           and type OrderFinMap.StringTree = PP.StringTree
-
-		     structure Timestamp: TIMESTAMP
-
-		     structure Report: REPORT
-		       sharing type SortedFinMap.Report
-				    = FinMap.Report
-				    = Report.Report
-
-		     structure Flags: FLAGS
-		     structure Crash: CRASH
-		    ) : ENVIRONMENTS =
+structure Environments: ENVIRONMENTS =
   struct
-
+    structure DecGrammar = PreElabDecGrammar
+    structure PP = PrettyPrint
+    structure OrderFinMap = IdentFinMap
     val quotation = Flags.is_on0 "quotation"
 
     fun uncurry f (a,b) = f a b 
@@ -65,7 +27,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
     (*import from StatObject:*)
     type level             = StatObject.level
     type ExplicitTyVar     = StatObject.ExplicitTyVar
-    type TyName            = StatObject.TyName.TyName
+    type TyName            = TyName.TyName
     type Type              = StatObject.Type
     type TypeScheme        = StatObject.TypeScheme
     type RecType           = StatObject.RecType
@@ -75,7 +37,6 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
     type realisation       = StatObject.realisation
     structure Level        = StatObject.Level
     structure TyVar        = StatObject.TyVar
-    structure TyName       = StatObject.TyName
     structure Type         = StatObject.Type
     structure TypeScheme   = StatObject.TypeScheme
     structure Substitution = StatObject.Substitution
@@ -315,7 +276,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
     val pu_ExplicitTyVarEnv : ExplicitTyVarEnv Pickle.pu =
 	Pickle.convert (EXPLICITTYVARENV, fn EXPLICITTYVARENV s => s) 
-	(FinMap.pu (DecGrammar.TyVar.pu,Type.pu))
+	(FinMap.pu (SyntaxTyVar.pu,Type.pu))
 
     val (pu_Env, pu_StrEnv) =
 	let fun EnvToInt (ENV _) = 0

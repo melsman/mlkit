@@ -4,46 +4,13 @@
 (* COMPILE_BASIS is the combined basis of all environments in 
  * the backend *) 
 
-functor ManagerObjects(structure Execution : EXECUTION
-		       structure TopdecGrammar : TOPDEC_GRAMMAR   (*needed for type strexp*)
-			 sharing type TopdecGrammar.DecGrammar.Ident.longid = Execution.CompilerEnv.longid
-			 sharing type TopdecGrammar.funid = Execution.Elaboration.Basics.ModuleEnvironments.funid
-			 sharing type TopdecGrammar.sigid = Execution.Elaboration.Basics.ModuleEnvironments.sigid
-			 sharing type TopdecGrammar.id = Execution.Elaboration.Basics.ModuleEnvironments.id
-			 sharing type TopdecGrammar.longtycon = Execution.Elaboration.Basics.ModuleEnvironments.longtycon
-			 sharing type TopdecGrammar.longstrid = Execution.Elaboration.Basics.ModuleEnvironments.longstrid
-			 sharing type TopdecGrammar.strid = Execution.Elaboration.Basics.ModuleEnvironments.strid
-		       structure OpacityElim : OPACITY_ELIM
-			 sharing OpacityElim.TyName = Execution.Elaboration.Basics.ModuleEnvironments.TyName
-			 sharing type OpacityElim.OpacityEnv.realisation = Execution.Elaboration.Basics.ModuleEnvironments.realisation
-			 sharing type OpacityElim.topdec = TopdecGrammar.topdec
-		       structure ElabRep : ELAB_REPOSITORY
-			 sharing type ElabRep.funid = TopdecGrammar.funid = OpacityElim.OpacityEnv.funid
-			 sharing type ElabRep.InfixBasis = Execution.Elaboration.Basics.InfixBasis.Basis
-			 sharing type ElabRep.ElabBasis = Execution.Elaboration.Basics.ModuleEnvironments.Basis
-			 sharing type ElabRep.opaq_env = OpacityElim.opaq_env
-			 sharing type ElabRep.longstrid = Execution.Elaboration.Basics.ModuleEnvironments.longstrid
-			 sharing ElabRep.TyName = Execution.Elaboration.Basics.ModuleEnvironments.TyName
-                         sharing type ElabRep.absprjid = Execution.Elaboration.Basics.ModuleEnvironments.absprjid  
-			 sharing type ElabRep.name = Execution.Elaboration.Basics.Name.name   
-		       structure RepositoryFinMap : MONO_FINMAP
-			 where type dom = Execution.Elaboration.Basics.ModuleEnvironments.absprjid * TopdecGrammar.funid 
-		       structure FinMap : FINMAP
-		       structure PP : PRETTYPRINT
-			 sharing type PP.StringTree
-			   = Execution.Elaboration.Basics.ModuleEnvironments.StringTree = FinMap.StringTree 
-			   = OpacityElim.OpacityEnv.StringTree
-		       structure Flags : FLAGS
-		       structure Crash : CRASH) : MANAGER_OBJECTS =
+functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
   struct
-
-    structure CompilerEnv = Execution.CompilerEnv
+    structure PP = PrettyPrint
+    structure TopdecGrammar = PostElabTopdecGrammar
+    structure ElabRep = ElabRepository
     structure CompileBasis = Execution.CompileBasis
-    structure Environments = Execution.Elaboration.Basics.Environments
-    structure ModuleEnvironments = Execution.Elaboration.Basics.ModuleEnvironments
-    structure Name = Execution.Elaboration.Basics.Name
-    structure InfixBasis = Execution.Elaboration.Basics.InfixBasis
-    structure Labels = Execution.Labels
+    structure Labels = AddressLabels
 
     val compile_only = Flags.is_on0 "compile_only"
 
@@ -57,10 +24,6 @@ functor ManagerObjects(structure Execution : EXECUTION
       fun pr_debug_linking s = if !debug_linking then print s else ()
     end
 
-    structure FunId = TopdecGrammar.FunId
-    structure SigId = TopdecGrammar.SigId
-    structure StrId = TopdecGrammar.StrId
-    structure TyName = ModuleEnvironments.TyName
     type StringTree = PP.StringTree
     type filename = string
 
@@ -159,7 +122,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 		       let 
 			   val target_filename = OS.Path.base(OS.Path.file absprjid) ^ "-" ^ esc filename
 			   val target_filename = pmdir() ^ target_filename
-		       in OS.Path.mkAbsolute(target_filename, OS.FileSys.getDir())
+		       in OS.Path.mkAbsolute{path=target_filename, relativeTo=OS.FileSys.getDir()}
 		       end
 	    in Execution.emit {target=target,filename=target_filename}
 	    end
@@ -541,8 +504,8 @@ functor ManagerObjects(structure Execution : EXECUTION
 		      opaq_env=opaq_env,T=T,resE=resE} = ((infB,elabB,absprjid),(filename,opaq_env,T),resE)
 	in Pickle.convert (to,from)
 	    (Pickle.tup3Gen0(Pickle.tup3Gen0(InfixBasis.pu,ModuleEnvironments.B.pu,ModuleEnvironments.pu_absprjid),
-			     Pickle.tup3Gen0(Pickle.string,OpacityElim.OpacityEnv.pu,Pickle.listGen TyName.pu), 
-			     Execution.Elaboration.Basics.Environments.E.pu))
+			     Pickle.tup3Gen0(Pickle.string,OpacityEnv.pu,Pickle.listGen TyName.pu), 
+			     Environments.E.pu))
 	end
 
     val pu_IntSigEnv =
@@ -557,7 +520,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 		(FinMap.pu (FunId.pu,
 			    Pickle.convert (fn ((a,b,c),(d,e,f)) => (a,b,c,d,e,f), fn (a,b,c,d,e,f) => ((a,b,c),(d,e,f)))
 			    (Pickle.pairGen0(Pickle.tup3Gen0(ModuleEnvironments.pu_absprjid,FunStamp.pu,StrId.pu),
-					     Pickle.tup3Gen0(Execution.Elaboration.Basics.Environments.E.pu,
+					     Pickle.tup3Gen0(Environments.E.pu,
 							     pu_BodyBuilderClos,pu_IntBasis)))))
 	    fun fun_IB (pu_IntFunEnv, pu_IntBasis) =
 		Pickle.con1 IB (fn IB a => a)
@@ -622,9 +585,9 @@ functor ManagerObjects(structure Execution : EXECUTION
       end
 
 
-    type longid = TopdecGrammar.DecGrammar.Ident.longid
-    type longstrid = TopdecGrammar.StrId.longstrid
-    type longtycon = TopdecGrammar.DecGrammar.TyCon.longtycon
+    type longid = Ident.longid
+    type longstrid = StrId.longstrid
+    type longtycon = TyCon.longtycon
     structure IntBasis =
       struct
 	val mk = IB
@@ -794,12 +757,12 @@ functor ManagerObjects(structure Execution : EXECUTION
 
     structure Basis =
       struct
-	val empty = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.empty, OpacityElim.OpacityEnv.empty, IntBasis.empty)
+	val empty = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.empty, OpacityEnv.empty, IntBasis.empty)
 	fun mk b = BASIS b
 	fun un (BASIS b) = b
 	fun plus (BASIS (infb,elabb,rea,intb), BASIS (infb',elabb',rea',intb')) =
 	  BASIS (InfixBasis.compose(infb,infb'), ModuleEnvironments.B.plus (elabb, elabb'),
-		 OpacityElim.OpacityEnv.plus(rea,rea'), IntBasis.plus(intb, intb'))
+		 OpacityEnv.plus(rea,rea'), IntBasis.plus(intb, intb'))
 
 	val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
 	fun log s = TextIO.output(TextIO.stdOut,s)			
@@ -811,7 +774,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 	local
 	  fun InfixBasis_eq a = InfixBasis.eq a
 	  fun ModuleEnvironments_B_enrich a = ModuleEnvironments.B.enrich a
-	  fun OpacityElim_enrich a = OpacityElim.OpacityEnv.enrich a
+	  fun OpacityElim_enrich a = OpacityEnv.enrich a
 	  fun IntBasis_enrich a = IntBasis.enrich a
 	in
 	  fun enrich (BASIS (infB1,elabB1,rea1,tintB1), (BASIS (infB2,elabB2,rea2,tintB2), dom_rea)) = 
@@ -834,8 +797,8 @@ functor ManagerObjects(structure Execution : EXECUTION
 		val _ = chat "[finding tynames in elaboration basis end...]"
 		    
 		val _ = chat "[restricting opacity env begin...]"
-		val oe' = OpacityElim.OpacityEnv.restrict(oe,(#funids ids,tynames_eB'))
-		val tynames_oe' = Execution.Elaboration.Basics.StatObject.Realisation.tynamesRng(OpacityElim.OpacityEnv.rea_of oe')
+		val oe' = OpacityEnv.restrict(oe,(#funids ids,tynames_eB'))
+		val tynames_oe' = StatObject.Realisation.tynamesRng(OpacityEnv.rea_of oe')
 		val tynames = TyName.Set.union tynames_oe' tynames_eB'
 		val _ = chat "[restricting opacity env end...]"
 
@@ -847,7 +810,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 
 	fun match (BASIS(infB,eB,oe,iB), BASIS(infB0,eB0,oe0,iB0)) =
 	    let val _ = ModuleEnvironments.B.match(eB,eB0)
-		val _ = OpacityElim.OpacityEnv.match(oe,oe0)
+		val _ = OpacityEnv.match(oe,oe0)
 		val iB = IntBasis.match(iB,iB0)
 	    in BASIS(infB,eB,oe,iB)
 	    end
@@ -860,7 +823,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 	fun eq(BASIS(infB1,eB1,oe1,iB1), BASIS(infB2,eB2,oe2,iB2)) =
 	    db_f "InfixBasis" (InfixBasis.eq(infB1,infB2)) andalso 
 	    db_f "B_l" (ModuleEnvironments.B.enrich(eB1,eB2)) andalso db_f "B_r" (ModuleEnvironments.B.enrich(eB2,eB1)) andalso
-	    db_f "OpacityEnv" (OpacityElim.OpacityEnv.eq(oe1,oe2)) andalso 
+	    db_f "OpacityEnv" (OpacityEnv.eq(oe1,oe2)) andalso 
 	    db_f "IB_l" (IntBasis.enrich(iB1,iB2)) andalso db_f "IB_r" (IntBasis.enrich(iB2,iB1))
 
 	fun closure (B': Basis, B: Basis) : Basis = 
@@ -876,10 +839,10 @@ functor ManagerObjects(structure Execution : EXECUTION
 		fun subtractPredefinedTynames tns = 
 		    TyName.Set.difference tns (TyName.Set.fromList TyName.tynamesPredefined)
 		val tynames_eB = subtractPredefinedTynames(ModuleEnvironments.B.tynames eB)
-		val oe1 = OpacityElim.OpacityEnv.plus(oe',oe)
-		val oe2 = OpacityElim.OpacityEnv.restrict(oe1,(#funids dom,tynames_eB))
+		val oe1 = OpacityEnv.plus(oe',oe)
+		val oe2 = OpacityEnv.restrict(oe1,(#funids dom,tynames_eB))
 
-		val tynames_oe2 = Execution.Elaboration.Basics.StatObject.Realisation.tynamesRng(OpacityElim.OpacityEnv.rea_of oe2)
+		val tynames_oe2 = StatObject.Realisation.tynamesRng(OpacityEnv.rea_of oe2)
 		val tynames = TyName.Set.union tynames_oe2 tynames_eB
 
 		val iBclosed = IntBasis.closure (TyName.Set.list tynames_oe2) dom (iB',iB)
@@ -890,11 +853,11 @@ functor ManagerObjects(structure Execution : EXECUTION
 	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
 	  PP.NODE{start="BASIS(", finish = ")",indent=1,childsep=PP.RIGHT ", ",
 		  children=[InfixBasis.layoutBasis infB, ModuleEnvironments.B.layout elabB,
-			    OpacityElim.OpacityEnv.layout rea, IntBasis.layout intB]}
+			    OpacityEnv.layout rea, IntBasis.layout intB]}
 
 	fun initial() = BASIS (InfixBasis.emptyB, 
 			       ModuleEnvironments.B.initial(), 
-			       OpacityElim.OpacityEnv.initial, 
+			       OpacityEnv.initial, 
 			       IntBasis.initial())
 	val _ = app Name.mk_rigid (!Name.bucket)
 
@@ -903,16 +866,10 @@ functor ManagerObjects(structure Execution : EXECUTION
 	    (Pickle.convert (BASIS, fn BASIS a => a)
 	     (Pickle.tup4Gen0(InfixBasis.pu, 
 			      Pickle.comment "ModuleEnvironments.B.pu" ModuleEnvironments.B.pu, 
-			      Pickle.comment "OpacityEnv.pu" OpacityElim.OpacityEnv.pu, 
+			      Pickle.comment "OpacityEnv.pu" OpacityEnv.pu, 
 			      IntBasis.pu)))
 
 	type Basis0 = InfixBasis * ElabBasis
-	fun showBasis0 pr p : unit =
-	    let fun pp (ib,eb) =
-		PP.NODE{start="Basis0(", finish=")", childsep=PP.RIGHT",",
-			indent=1,children=[InfixBasis.layoutBasis ib, ModuleEnvironments.B.layout eb]}
-	    in PP.outputTree(pr,pp p,100) 
-	    end
 	val pu_Basis0 =
 	    Pickle.pairGen(InfixBasis.pu, ModuleEnvironments.B.pu)
 	fun plusBasis0 ((ib,eb),(ib',eb')) = 
@@ -928,26 +885,20 @@ functor ManagerObjects(structure Execution : EXECUTION
 	    db_f "B_l" (ModuleEnvironments.B.enrich(eB1,eB2)) andalso db_f "B_r" (ModuleEnvironments.B.enrich(eB2,eB1))
 
 	type Basis1 = opaq_env * IntBasis
-	fun showBasis1 pr p : unit =
-	    let fun pp (rea,intB) =
-		PP.NODE{start="Basis1(", finish=")", childsep=PP.RIGHT",",
-			indent=1,children=[OpacityElim.OpacityEnv.layout rea, IntBasis.layout intB]}
-	    in PP.outputTree(pr,pp p,100) 
-	    end
 	val pu_Basis1 =
-	    Pickle.pairGen(OpacityElim.OpacityEnv.pu, IntBasis.pu)
+	    Pickle.pairGen(OpacityEnv.pu, IntBasis.pu)
 	fun plusBasis1((oe,ib),(oe',ib')) = 
-	    (OpacityElim.OpacityEnv.plus(oe,oe'),
+	    (OpacityEnv.plus(oe,oe'),
 	     IntBasis.plus(ib,ib'))
-	fun initialBasis1() = (OpacityElim.OpacityEnv.initial, 
+	fun initialBasis1() = (OpacityEnv.initial, 
 			       IntBasis.initial())
 	fun matchBasis1 ((oe,iB), (oe0,iB0)) =
-	    let val _ = OpacityElim.OpacityEnv.match(oe,oe0)
+	    let val _ = OpacityEnv.match(oe,oe0)
 		val iB = IntBasis.match(iB,iB0)
 	    in (oe,iB)
 	    end
 	fun eqBasis1((oe1,iB1), (oe2,iB2)) =
-	    db_f "OpacityEnv" (OpacityElim.OpacityEnv.eq(oe1,oe2)) andalso 
+	    db_f "OpacityEnv" (OpacityEnv.eq(oe1,oe2)) andalso 
 	    db_f "IB_l" (IntBasis.enrich(iB1,iB2)) andalso db_f "IB_r" (IntBasis.enrich(iB2,iB1))
 
       end
@@ -1028,7 +979,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 		of EMPTY_MODC => EMPTY_MODC
 		 | SEQ_MODC(modc1,modc2) => SEQ_MODC(remove_install_dir_modcode modc1, 
 						     remove_install_dir_modcode modc2)
-		 | EMITTED_MODC(fp,li) => EMITTED_MODC(OS.Path.mkRelative(fp, !Flags.install_dir),li)
+		 | EMITTED_MODC(fp,li) => EMITTED_MODC(OS.Path.mkRelative{path=fp, relativeTo= !Flags.install_dir},li)
 		 | NOTEMITTED_MODC(target,linkinfo,filename) => die "remove_install_dir_modcode" 
 	  in (funstamp, ElabEnv, IntBasis, longstrids, names, remove_install_dir_modcode modcode, IntBasis')
 	  end

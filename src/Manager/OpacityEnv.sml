@@ -2,7 +2,6 @@
 (* Environment for Opacity elimination *)
 signature OPACITY_ENV =
   sig
-    structure TyName : TYNAME
     type opaq_env and funid and realisation
 
     val from_rea : realisation -> opaq_env
@@ -26,25 +25,15 @@ signature OPACITY_ENV =
     val pu : opaq_env Pickle.pu
   end
 
-functor OpacityEnv(structure FunId : FUNID
-		   structure Crash : CRASH
-		   structure PP : PRETTYPRINT
-		   structure Report : REPORT
-		   structure Environments : ENVIRONMENTS   (* for TyName and for env and for Realisation *)
-		     sharing type Environments.StringTree = PP.StringTree
-		     ) : OPACITY_ENV =
+structure OpacityEnv: OPACITY_ENV =
   struct
+    structure PP = PrettyPrint
     fun die s = Crash.impossible ("OpacityEnv." ^ s)
-    structure TyName = Environments.TyName
     structure Realisation = Environments.Realisation
     type realisation = Environments.realisation
-    structure FE = OrderFinMap(structure Order = 
-				 struct type T = FunId.funid
-				   val lt = fn a => fn b => FunId.<(a,b)
-				 end
-			       structure PP = PP
-			       structure Report = Report
-			       structure Crash = Crash)
+    structure FE = OrderFinMap(struct type T = FunId.funid
+				      val lt = fn a => fn b => FunId.<(a,b)
+			       end)
 
     type funenv = (TyName.Set.Set * realisation) FE.map
 

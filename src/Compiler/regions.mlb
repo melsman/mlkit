@@ -1,0 +1,105 @@
+local
+  basis BasLib = bas $(SML_LIB)/basis/basis.mlb end
+  basis Edlib = bas ../Edlib/edlib.mlb end
+  basis Pickle = bas ../Pickle/pickle.mlb end
+  basis Tools = bas ../Common/tools.mlb end
+  basis SyntaxObjects = bas ../Common/syntax_objects.mlb end
+  basis SpecialObjects = bas ../Common/special_objects.mlb end
+  basis CompilerObjects = bas compiler_objects.mlb end
+  basis Basics = bas ../Common/basics.mlb end
+  basis Manager = bas ../Manager/manager.mlb end
+  basis Compiler = bas compiler.mlb end
+  open BasLib Compiler
+in
+  local open Tools SpecialObjects in Regions/REG_CONST.sml end
+  Regions/AT_INF.sml
+  local open Pickle in Regions/DROP_REGIONS.sml end
+  local open Pickle in Regions/EFFECT.sml end
+  Regions/LOCALLY_LIVE_VARIABLES.sml
+  local open Pickle in Regions/MUL.sml end
+  Regions/REGION_EXP.sml
+  Regions/MUL_EXP.sml
+  Regions/MUL_INF.sml
+  Regions/REGINF.sml
+  local open Pickle in Regions/REGION_STAT_ENV.sml end
+  Regions/REG_FLOW.sml
+  local open Pickle in Regions/RTYPE.sml end
+  local open CompilerObjects 
+  in Regions/SPREAD_DATATYPE.sml 
+     Regions/SPREAD_EXPRESSION.sml
+  end
+  local open Pickle 
+  in Regions/PHYS_SIZE_INF.sml
+  end
+  Regions/REGION_FLOW_GRAPH_PROFILING.sml
+
+  local open Tools
+  in
+     local open SpecialObjects
+     in Regions/RegConst.sml
+     end
+     local open Pickle 
+     in Regions/Effect.sml 
+        local open Edlib CompilerObjects in Regions/RType.sml end
+     end
+     local open CompilerObjects 
+     in Regions/RegionExp.sml 
+        local open Pickle in Regions/RegionStatEnv.sml end
+     end
+     Regions/EffVarEnv.sml
+     ../Common/QUASI_ENV.sml
+     local open Pickle in ../Common/QuasiEnv.sml end
+     local open Edlib Pickle CompilerObjects in Regions/Mul.sml end
+     local open CompilerObjects 
+     in Regions/MulExp.sml 
+        Regions/MulInf.sml
+        Regions/LocallyLiveVariables.sml
+        Regions/RegFlow.sml
+        Regions/RegInf.sml 
+        Regions/SpreadDataType.sml
+        local open Edlib 
+        in Regions/SpreadExpression.sml 
+           Regions/AtInf.sml
+           local open Pickle in Regions/DropRegions.sml end
+        end
+        local open Pickle 
+        in Regions/PhysSizeInf.sml 
+           Regions/RegionFlowGraphProfiling.sml
+        end
+     end          
+(*     
+     Regions/TestSpreadDataType.sml
+     Regions/TestSpreadExp.sml
+*)
+
+     local open Edlib Pickle SyntaxObjects SpecialObjects Basics CompilerObjects
+     in CompBasis.sml
+        Compile.sml
+     end
+  end
+
+  (* Generic Modules; used both by KAM and X86 backend *)
+
+  local open Pickle 
+  in Backend/CLOS_CONV_ENV.sml 
+     Backend/CLOS_EXP.sml
+  end
+  Backend/CALL_CONV.sml  
+  Backend/BACKEND_INFO.sml 
+  Backend/REGISTER_INFO.sml 
+  Backend/JUMP_TABLES.sml
+
+  local open Tools
+  in local open CompilerObjects 
+     in Backend/BackendInfo.sml
+        local open Pickle in Backend/ClosConvEnv.sml end
+        Backend/CallConv.sml
+        Backend/ClosExp.sml
+     end
+     local open Edlib in Backend/JumpTables.sml end
+     local open Pickle SyntaxObjects SpecialObjects Basics CompilerObjects
+     in local open Manager in CompileBasis.sml end
+     end
+  end
+
+end

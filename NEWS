@@ -1,5 +1,52 @@
 ML Kit NEWS file
 
+mael 2005-02-22: The scheme for mlb-files (shown below) is now also
+used for cm-files when the MLKit is compiled with SML/NJ. See
+e.g. kit/src/build.sml and kit/src/build_kam.sml.
+
+mael 2004-12-17: To actually split sources so that Barry, SMLserver,
+Kit(native) and Kit(bytecode) can be built independently, we have the
+following mlb-hierachy (transitive dependencies are omitted), where
+the mlb-files in boxes denote main mlb-files that, when built, result
+in mlkit executables:
+
+          pickle.mlb      edlib.mlb
+              \             /  
+               \           /     
+                 tools.mlb           
+                    |
+                    |
+             syntax_objects.mlb
+                    |
+                    |
+            special_objects.mlb
+                /         \   
+               /           \
+    compiler_objects.mlb   basics.mlb
+              \             /  
+               \           /     
+                manager.mlb  
+                    |
+                    |
+               compiler.mlb
+                /         \   
+               /           \
+          +---------+       \
+          |barry.mlb|    regions.mlb
+          +---------+    /        \
+                        /          \
+                 +----------+   +------------+
+                 |native.mlb|   |bytecode.mlb|
+                 +----------+   +------------+
+                  
+ * mael 2004-12-16: Defunctorized much of the MLKit sources to make
+   bootstrapping more tractable with the new recompilation scheme
+   (serialization of bases). There are now MLB-files and CM-files for
+   compiling MLKit, so that it can be compiled both with SML/NJ,
+   MLton, and MLkit itself. Compiling with MLton on my 1GB(+1GB swap)
+   does not work - I suspect more memory is needed. I hope it
+   works when I try it on a 4GB machine.
+
  * mael 2004-12-15: Changed directory kit/basislib to kit/basis and
    kit/basislib/basislib.pm to kit/basis/basis.pm.
 

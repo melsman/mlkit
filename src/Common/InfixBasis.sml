@@ -1,15 +1,7 @@
 
-functor InfixBasis(structure Ident: IDENT
-		   structure FinMap: FINMAP
-
-		   structure Report: REPORT
-		     sharing type FinMap.Report = Report.Report
-
-		   structure PP: PRETTYPRINT
-		     sharing type FinMap.StringTree = PP.StringTree
-   	           structure Crash : CRASH
-		  ): INFIX_BASIS =
+structure InfixBasis: INFIX_BASIS =
   struct
+    structure PP = PrettyPrint
 
     fun die s = Crash.impossible ("InfixBasis." ^ s)
 

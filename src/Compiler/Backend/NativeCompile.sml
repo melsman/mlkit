@@ -44,178 +44,47 @@ signature NATIVE_COMPILE =
   end
 
 
-functor NativeCompile (include EXECUTION_ARGS
-                       structure Effect : EFFECT
-		       structure AtInf : AT_INF
-		       structure PhysSizeInf : PHYS_SIZE_INF
-		       structure MulExp : MUL_EXP
-		       structure EffVarEnv : MONO_FINMAP
-		       structure RType : RTYPE
-		       structure Mul : MUL
-			 sharing type Effect.place = AtInf.place = PhysSizeInf.place = MulExp.place = RType.place = EffVarEnv.dom = Mul.place
-			 sharing type Effect.effect = MulExp.effect = Mul.effectvar
-			 sharing type Lvars.lvar = MulExp.lvar = Mul.lvar
-			 sharing type Excon.excon = MulExp.excon
-			 sharing type Con.con = MulExp.con
-			 sharing type Elaboration.Basics.TyName.TyName = MulExp.TyName = RType.tyname
-			 sharing type Elaboration.Basics.Tools.PrettyPrint.StringTree = Mul.StringTree = 
-			   RType.StringTree = MulExp.StringTree = PhysSizeInf.StringTree =
-			   Effect.StringTree = AtInf.StringTree = EffVarEnv.StringTree
-			 sharing type PhysSizeInf.at = AtInf.at
-			 sharing type MulExp.mulef = Mul.mulef
-			 sharing type MulExp.qmularefset = Mul.qmularefset
-			 sharing type RType.Type = MulExp.Type
-			 sharing type MulExp.LambdaPgm = PhysSizeInf.LambdaPgm
-		         sharing type MulExp.il = RType.il
-		       structure BackendInfo : BACKEND_INFO
-			 sharing type BackendInfo.label = Labels.label
+functor NativeCompile (structure BackendInfo : BACKEND_INFO
+			 where type label = AddressLabels.label
 		       structure RegisterInfo : REGISTER_INFO
-			 sharing type RegisterInfo.lvar = Lvars.lvar
-			 sharing type RegisterInfo.lvarset = Lvarset.lvarset
+			 where type lvar = Lvars.lvar
+			 where type lvarset = Lvarset.lvarset
 		       ) : NATIVE_COMPILE =
   struct
     structure RegionExp = MulExp.RegionExp
-    structure Basics = Elaboration.Basics
-    structure Tools = Basics.Tools
-    structure PP = Tools.PrettyPrint
-    structure Crash = Tools.Crash
-    structure Flags = Tools.Flags
-    structure Report = Tools.Report
-    structure IntFinMap = Tools.IntFinMap
-    structure Timing = Tools.Timing
-    structure NatSet = NatSet(structure PP = PP)
+    structure PP = PrettyPrint
 
-    structure TyName = Basics.TyName
+    structure ClosConvEnv = ClosConvEnv(BackendInfo)
 
-    structure RegionFlowGraphProfiling =
-      RegionFlowGraphProfiling(structure Effect = Effect
-			       structure AtInf = AtInf
-			       structure PhySizeInf = PhysSizeInf
-			       structure PP = PP
-			       structure Flags = Flags
-			       structure Crash = Crash
-			       structure Report = Report)
+    structure CallConv = CallConv(BackendInfo)
 
-    structure ClosConvEnv = ClosConvEnv(structure Lvars = Lvars
-					structure Con = Con
-					structure Excon = Excon
-					structure Effect = Effect
-					structure MulExp = MulExp
-					structure RegvarFinMap = EffVarEnv
-					structure PhysSizeInf = PhysSizeInf
-					structure Labels = Labels
-					structure BI = BackendInfo
-					structure PP = PP
-					structure Crash = Crash)
-
-    structure CallConv = CallConv(structure Lvars = Lvars
-				  structure BI = BackendInfo
-				  structure PP = PP
-				  structure Flags = Flags
-				  structure Report = Report
-				  structure Crash = Crash)
-
-    structure ClosExp = ClosExp(structure Con = Con
-				structure Excon = Excon
-				structure Lvars = Lvars
-				structure TyName = TyName
-				structure Effect = Effect
-				structure RType = RType
-				structure MulExp = MulExp
-				structure Mul = Mul
-				structure RegionExp = RegionExp
-				structure AtInf = AtInf
-				structure PhysSizeInf = PhysSizeInf
-				structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
-				structure Labels = Labels
-				structure ClosConvEnv = ClosConvEnv
+    structure ClosExp = ClosExp(structure ClosConvEnv = ClosConvEnv
 				structure BI = BackendInfo
-				structure CallConv = CallConv
-				structure PP = PP
-				structure Flags = Flags
-				structure Report = Report
-				structure Crash = Crash)
+				structure CallConv = CallConv)
 
-    structure LineStmt = LineStmt(structure PhysSizeInf = PhysSizeInf
-				  structure Con = Con
-				  structure Excon = Excon
-				  structure Lvars = Lvars
-				  structure Effect = Effect
-				  structure Labels = Labels
-				  structure CallConv = CallConv
+    structure LineStmt = LineStmt(structure CallConv = CallConv
 				  structure ClosExp = ClosExp
 				  structure RI = RegisterInfo
-				  structure BI = BackendInfo
-				  structure Lvarset = Lvarset
-				  structure PP = PP
-				  structure Flags = Flags
-				  structure Report = Report
-				  structure Crash = Crash)
+				  structure BI = BackendInfo)
 
-    structure RegAlloc = RegAlloc(structure PhysSizeInf = PhysSizeInf
-				  structure Con = Con
-				  structure Excon = Excon
-				  structure Lvars = Lvars
-				  structure IntFinMap = IntFinMap
-				  structure NatSet = NatSet
-				  structure Effect = Effect
-				  structure Lvarset = Lvarset
-				  structure Labels = Labels
-				  structure CallConv = CallConv
+    structure RegAlloc = RegAlloc(structure CallConv = CallConv
 				  structure LineStmt = LineStmt
-				  structure RI = RegisterInfo
-				  structure PP = PP
-				  structure Flags = Flags
-				  structure Report = Report
-				  structure Crash = Crash)
+				  structure RI = RegisterInfo)
 
-    structure FetchAndFlush = FetchAndFlush(structure PhysSizeInf = PhysSizeInf
-					    structure Con = Con
-					    structure Excon = Excon
-					    structure Lvars = Lvars
-					    structure Effect = Effect
-					    structure Labels = Labels
-					    structure CallConv = CallConv
+    structure FetchAndFlush = FetchAndFlush(structure CallConv = CallConv
 					    structure LineStmt = LineStmt
 					    structure RegAlloc = RegAlloc
-					    structure RI = RegisterInfo
-					    structure Lvarset = Lvarset
-					    structure PP = PP
-					    structure Flags = Flags
-					    structure Report = Report
-					    structure Crash = Crash)
+					    structure RI = RegisterInfo)
 
-    structure CalcOffset = CalcOffset(structure PhysSizeInf = PhysSizeInf
-				      structure Con = Con
-				      structure Excon = Excon
-				      structure Lvars = Lvars
-				      structure Effect = Effect
-				      structure Labels = Labels
-				      structure CallConv = CallConv
+    structure CalcOffset = CalcOffset(structure CallConv = CallConv
 				      structure LineStmt = LineStmt
 				      structure FetchAndFlush = FetchAndFlush
-				      structure BI = BackendInfo
-				      structure IntSet = IntSet(structure PP = PP)
-				      structure PP = PP
-				      structure Flags = Flags
-				      structure Report = Report
-				      structure Crash = Crash)
+				      structure BI = BackendInfo)
 
-    structure SubstAndSimplify = SubstAndSimplify(structure PhysSizeInf = PhysSizeInf
-						  structure Con = Con
-						  structure Excon = Excon
-						  structure Lvars = Lvars
-						  structure Effect = Effect
-						  structure RegvarFinMap = EffVarEnv
-						  structure Labels = Labels
-						  structure CallConv = CallConv
+    structure SubstAndSimplify = SubstAndSimplify(structure CallConv = CallConv
 						  structure LineStmt = LineStmt
 						  structure CalcOffset = CalcOffset
-						  structure RI = RegisterInfo
-						  structure PP = PP
-						  structure Flags = Flags
-						  structure Report = Report
-						  structure Crash = Crash)
+						  structure RI = RegisterInfo)
 
     type BackendEnv = ClosExp.env
     type place = PhysSizeInf.place

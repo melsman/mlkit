@@ -1,12 +1,8 @@
 (* Exception constructors for the lambda language *)
 
-functor Excon(structure Name : NAME
-	      structure Report : REPORT
-	      structure Crash : CRASH
-	      structure PP : PRETTYPRINT
-	      structure IntStringFinMap : MONO_FINMAP where type dom = int * string
-		) : EXCON =
+structure Excon: EXCON =
   struct
+    structure PP = PrettyPrint
 
     (* Exception constructors are based on names which may be
      * `matched'. In particular, if two exception constructors, exc1
@@ -62,11 +58,6 @@ functor Excon(structure Name : NAME
 	val pp = pr_excon
       end
 
-    structure Map = QuasiMap(structure IntStringFinMap = IntStringFinMap
-			     structure Name = Name
-			     structure Crash = Crash
-			     structure PP = PP
-			     structure Report = Report
-			     structure QD = QD)
+    structure Map = QuasiMap(QD)
 
   end

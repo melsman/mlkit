@@ -1,39 +1,28 @@
 (* Generate Target Code *)
 
 functor CodeGenX86(structure BackendInfo : BACKEND_INFO
-		   structure InstsX86 : INSTS_X86
-		     sharing type InstsX86.label = BackendInfo.label 
+                     where type label = AddressLabels.label
 		   structure JumpTables : JUMP_TABLES
-		   structure Con : CON
-		   structure Excon : EXCON
-		   structure Lvars : LVARS
-		   structure Lvarset : LVARSET
-		     sharing type Lvarset.lvar = Lvars.lvar
-		   structure Labels : ADDRESS_LABELS
-		     sharing type Labels.label = BackendInfo.label
 		   structure CallConv: CALL_CONV
+	 	     where type lvar = Lvars.lvar
 		   structure LineStmt: LINE_STMT
- 		   sharing type Con.con = LineStmt.con
-		   sharing type Excon.excon = LineStmt.excon
-		   sharing type Lvars.lvar = LineStmt.lvar = CallConv.lvar
-                   sharing type Labels.label = LineStmt.label
+ 		     where type con = Con.con
+		     where type excon = Excon.excon
+		     where type lvar = Lvars.lvar
+                     where type label = AddressLabels.label
+                     where type place = Effect.effect
+                     where type StringTree = PrettyPrint.StringTree
 		   sharing type CallConv.cc = LineStmt.cc
 	           structure SubstAndSimplify: SUBST_AND_SIMPLIFY
                     where type ('a,'b,'c) LinePrg = ('a,'b,'c) LineStmt.LinePrg
-		   sharing type SubstAndSimplify.lvar = LineStmt.lvar = InstsX86.lvar 
-                   sharing type SubstAndSimplify.place = LineStmt.place
-                   sharing type SubstAndSimplify.reg = InstsX86.reg
-                   sharing type SubstAndSimplify.label = Labels.label
-                   structure Effect : EFFECT
-		   sharing type Effect.place = SubstAndSimplify.place
-	           structure PP : PRETTYPRINT
-		   sharing type PP.StringTree = LineStmt.StringTree
-		   structure Flags : FLAGS
-	           structure Report : REPORT
-		   sharing type Report.Report = Flags.Report
-		   structure Crash : CRASH) : CODE_GEN =       
+		     where type lvar = Lvars.lvar
+                     where type place = Effect.effect
+                     where type reg = InstsX86.reg
+                     where type label = AddressLabels.label)
+    : CODE_GEN =       
 struct
-
+  structure PP = PrettyPrint
+  structure Labels = AddressLabels
   structure I = InstsX86
   structure RI = I.RI (* RegisterInfo *)
   structure BI = BackendInfo
@@ -2345,7 +2334,7 @@ struct
 		  compileNumSwitch {size_ff=size_ff,
 				    size_ccf=size_ccf,
 				    CG_lss=CG_lss,
-				    toInt=fn w => Word32.toLargeIntX (maybeTagWord{value=w, precision=precision}),
+				    toInt=fn w => Int32.fromLarge(Word32.toLargeIntX (maybeTagWord{value=w, precision=precision})),
 				    opr_aty=opr_aty,
 				    oprBoxed=boxedNum precision,
 				    sels=sels,

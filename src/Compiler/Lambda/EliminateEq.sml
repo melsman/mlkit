@@ -1,24 +1,11 @@
 
-functor EliminateEq (structure Name : NAME
-		     structure Lvars : LVARS
-		       sharing type Lvars.name = Name.name
-		     structure Con : CON
-		     structure TyName : TYNAME
-		       sharing type TyName.name = Name.name
-		     structure LambdaExp : LAMBDA_EXP
-		       sharing type LambdaExp.lvar = Lvars.lvar
-		       sharing type LambdaExp.con = Con.con
-		       sharing type LambdaExp.TyName = TyName.TyName
-		     structure Crash : CRASH
-		     structure Flags : FLAGS
-		     structure PP : PRETTYPRINT
-		       sharing type PP.StringTree = TyName.Map.StringTree
-			                          = Lvars.Map.StringTree
-		     structure TyVarMap : MONO_FINMAP
-		       sharing type TyVarMap.dom = LambdaExp.tyvar
-	   	       sharing type TyVarMap.StringTree = PP.StringTree) 
-  : ELIMINATE_EQ =
+structure EliminateEq: ELIMINATE_EQ =
   struct
+    structure PP = PrettyPrint
+    structure TyVarMap = 
+	OrderFinMap(struct type T = LambdaExp.tyvar
+			   fun lt (a:T) b = LambdaExp.lt_tyvar(a,b)
+		    end)
 
     structure TyNameMap = TyName.Map
     structure LvarMap = Lvars.Map

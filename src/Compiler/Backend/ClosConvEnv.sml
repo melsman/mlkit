@@ -1,29 +1,10 @@
 
-functor ClosConvEnv(structure Lvars : LVARS
-		    structure Con : CON
-		    structure Excon : EXCON
-		    structure Effect : EFFECT
-		    structure MulExp : MUL_EXP
-		    structure RegvarFinMap : MONO_FINMAP
-		    structure PhysSizeInf : PHYS_SIZE_INF
-		      sharing type RegvarFinMap.dom 
-			= Effect.effect 
-			= Effect.place 
-			= MulExp.place 
-			= PhysSizeInf.place
-		    structure Labels : ADDRESS_LABELS
-		    structure BI : BACKEND_INFO
-                      sharing type BI.label = Labels.label
-		    structure PP : PRETTYPRINT
-		      sharing type PP.StringTree
-			= RegvarFinMap.StringTree
-			= Effect.StringTree
-			= Lvars.Map.StringTree
-			= Con.Map.StringTree
-			= Excon.Map.StringTree
-		    structure Crash : CRASH) :  CLOS_CONV_ENV =
+functor ClosConvEnv(BI : BACKEND_INFO where type label = AddressLabels.label) :  CLOS_CONV_ENV =
   struct
 
+    structure RegvarFinMap = EffVarEnv
+    structure Labels = AddressLabels
+    structure PP = PrettyPrint
     structure LvarFinMap = Lvars.Map
     structure ConFinMap = Con.Map
     structure ExconFinMap = Excon.Map

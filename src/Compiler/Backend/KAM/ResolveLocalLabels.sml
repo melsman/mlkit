@@ -1,13 +1,12 @@
 (* Handlings of local labels and backpatching *)
 (* Taken from the Moscow ML compiler *)
 
-functor ResolveLocalLabels(structure BC : BUFF_CODE
-			   structure IntStringFinMap : MONO_FINMAP where type dom = int * string
-			   structure Labels : ADDRESS_LABELS
-			   structure Crash : CRASH) : RESOLVE_LOCAL_LABELS =
+structure ResolveLocalLabels : RESOLVE_LOCAL_LABELS =
   struct
-
+    structure BC = BuffCode
+    structure Labels = AddressLabels
     structure M = IntStringFinMap
+
     fun die s  = Crash.impossible ("ResolveLocalLabels." ^ s)
 
     type label = Labels.label

@@ -1,19 +1,9 @@
 
-functor RType(structure Flags : FLAGS
-              structure Crash : CRASH
-              structure E: EFFECT
-              structure DiGraph : DIGRAPH
-              structure L: LAMBDA_EXP
-              structure TyName: TYNAME
-                sharing type L.TyName = TyName.TyName 
-	      structure RegConst : REG_CONST
-			sharing TyName = RegConst.TyName
-	      structure FinMap : FINMAP
-              structure PP : PRETTYPRINT
-                sharing type PP.StringTree = E.StringTree
-
-             ) : RTYPE = 
+structure RType: RTYPE = 
 struct
+  structure PP = PrettyPrint
+  structure L = LambdaExp
+  structure E = Effect
 
   structure EdList = Edlib.List
 

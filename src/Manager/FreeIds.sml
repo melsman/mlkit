@@ -1,23 +1,9 @@
 
-functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
-		 structure Environments : ENVIRONMENTS
-		 structure ModuleEnvironments : MODULE_ENVIRONMENTS
-		   sharing type ModuleEnvironments.longid = TopdecGrammar.DecGrammar.longid
-		   sharing type ModuleEnvironments.longtycon = TopdecGrammar.longtycon
-		   sharing type ModuleEnvironments.longstrid = TopdecGrammar.longstrid
-		   sharing type ModuleEnvironments.funid = TopdecGrammar.funid
-		   sharing type ModuleEnvironments.sigid = TopdecGrammar.sigid
-		 structure ElabInfo : ELAB_INFO
-		   sharing type ElabInfo.ElabInfo = TopdecGrammar.info
-		   sharing type ElabInfo.TypeInfo.strid = TopdecGrammar.strid
-		   sharing type ElabInfo.TypeInfo.tycon = TopdecGrammar.tycon = Environments.tycon
-		   sharing type ElabInfo.TypeInfo.id = TopdecGrammar.id = Environments.id
-                   sharing type ElabInfo.TypeInfo.TyEnv = Environments.TyEnv
-                   sharing type ElabInfo.TypeInfo.Basis = ModuleEnvironments.Basis
-		 structure Crash : CRASH
-		 structure PP : PRETTYPRINT
-		  ) :  FREE_IDS =
+structure FreeIds:  FREE_IDS =
   struct
+    structure PP = PrettyPrint
+    structure TopdecGrammar = PostElabTopdecGrammar
+    structure ElabInfo = AllInfo.ElabInfo
 
     fun die s = Crash.impossible ("FreeIds."^s)
 

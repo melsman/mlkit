@@ -3,37 +3,12 @@
  * ``Program Modules, Separate Compilation, and Intermodule
  * Optimisation''. *)
 
-functor OpacityElim(structure Crash : CRASH
-		    structure PP : PRETTYPRINT
-		    structure OpacityEnv : OPACITY_ENV
-		    structure ElabInfo : ELAB_INFO
-		      sharing type ElabInfo.TypeInfo.opaq_env = OpacityEnv.opaq_env
-		    structure Environments : ENVIRONMENTS
-		      sharing type Environments.realisation = ElabInfo.TypeInfo.realisation 
-			                                 = OpacityEnv.realisation
-		      sharing type Environments.TyEnv = ElabInfo.TypeInfo.TyEnv
-		      sharing type Environments.Env = ElabInfo.TypeInfo.Env
-		      sharing type Environments.StringTree = PP.StringTree
-		    structure StatObject : STATOBJECT
-		      sharing StatObject.TyName = Environments.TyName = OpacityEnv.TyName = ElabInfo.TypeInfo.TyName
-		      sharing type StatObject.TypeFcn = Environments.TypeFcn
-			sharing type OpacityEnv.StringTree = Environments.StringTree
-		    structure TopdecGrammar : TOPDEC_GRAMMAR
-		      sharing type TopdecGrammar.info = ElabInfo.ElabInfo
-		      sharing type TopdecGrammar.tycon = Environments.tycon
-		      sharing type TopdecGrammar.funid = OpacityEnv.funid
-		      sharing type TopdecGrammar.StringTree = PP.StringTree
-		    structure ModuleEnvironments : MODULE_ENVIRONMENTS
-		      sharing ModuleEnvironments.TyName = Environments.TyName
-		      sharing type ModuleEnvironments.Basis = ElabInfo.TypeInfo.Basis
-		      sharing type ModuleEnvironments.realisation = ElabInfo.TypeInfo.realisation
-		      sharing type ModuleEnvironments.TyName = ElabInfo.TypeInfo.TyName
-			    ) : OPACITY_ELIM =
+structure OpacityElim: OPACITY_ELIM =
   struct
-    structure TyName = Environments.TyName
+    structure PP = PrettyPrint
+    structure TopdecGrammar = PostElabTopdecGrammar
+    structure ElabInfo = AllInfo.ElabInfo
     structure DecGrammar = TopdecGrammar.DecGrammar
-    structure FunId = TopdecGrammar.FunId
-    structure TyCon = DecGrammar.TyCon
     structure TypeInfo = ElabInfo.TypeInfo
     structure VE = Environments.VE
     structure TE = Environments.TE

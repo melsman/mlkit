@@ -1,9 +1,9 @@
 (* Specification of the Kit Abstract Machine (Byte code machine). *)
 
-functor Kam(structure Labels : ADDRESS_LABELS
-	    structure PP : PRETTYPRINT
-	    structure Crash : CRASH):KAM =
+structure Kam : KAM =
   struct
+    structure Labels = AddressLabels
+    structure PP = PrettyPrint
 
     (***********)
     (* Logging *)

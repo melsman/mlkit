@@ -1,7 +1,7 @@
 (* To buffer bytecode during emission *)
 (* Taken from the Moscow ML compiler  *)
 
-functor BuffCode () : BUFF_CODE =
+structure BuffCode : BUFF_CODE =
   struct
     type key = int * string
     local

@@ -8,10 +8,10 @@ signature QUASI_ENV =
 
     structure Env : MONO_FINMAP
 
-    type 'a qmap                               (* combined map *)
-    type 'a map sharing type Env.map = map     (* persistent map *)
+    type 'a qmap                   (* combined map *)
+    type 'a map = 'a Env.map       (* persistent map *)
 
-    type dom sharing type Env.dom = dom
+    type dom = Env.dom
  
     val mk : int -> 'a map -> 'a qmap
     val lookup : 'a qmap -> dom -> 'a option
@@ -21,7 +21,7 @@ signature QUASI_ENV =
 
     val combine: 'a map * 'a qmap -> 'a qmap
 
-    type StringTree sharing type StringTree = Env.StringTree
+    type StringTree = Env.StringTree
     val layout : {start:string,finish:string,eq:string,sep:string} -> 
       (dom -> StringTree) -> ('a -> StringTree) -> 'a qmap -> StringTree
   end

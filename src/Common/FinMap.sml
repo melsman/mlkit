@@ -1,10 +1,8 @@
 (* Finite maps *)
 
-functor FinMap(structure Report: REPORT
-	       structure PP: PRETTYPRINT
-               structure Crash: CRASH
-	      ): FINMAP =
+structure FinMap: FINMAP =
   struct
+    structure PP = PrettyPrint
 
     datatype (''a, 'b) map = FM of {elts: (''a * 'b) list, unique : bool ref}
 

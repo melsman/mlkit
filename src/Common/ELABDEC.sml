@@ -1,7 +1,5 @@
 (* Elaborate a Core Language Declaration, dec *)
 
-(*$ELABDEC*)
-
 signature ELABDEC =
 sig
   type Context and Env and Type and TyName

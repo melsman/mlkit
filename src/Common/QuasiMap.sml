@@ -1,20 +1,13 @@
 signature QUASI_DOM =
   sig
     type dom
-    type name 
-    val name : dom -> name
+    val name : dom -> Name.name
     val pp : dom -> string
   end
 
-functor QuasiMap(structure IntStringFinMap : MONO_FINMAP where type dom = int * string
-  	         structure QD : QUASI_DOM
-	         structure Name : NAME
-		   sharing type Name.name = QD.name
-		 structure Crash : CRASH
-		 structure PP : PRETTYPRINT
-		 structure Report : REPORT) : MONO_FINMAP = 
+functor QuasiMap(QD : QUASI_DOM) : MONO_FINMAP = 
   struct
-
+    structure PP = PrettyPrint
     structure M = IntStringFinMap
 
     fun die s = Crash.impossible ("QuasiMap2." ^ s)

@@ -1,22 +1,7 @@
 
-functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
-		      structure LexBasics : LEX_BASICS
-		      structure ParseInfo : PARSE_INFO
-		      sharing type ParseInfo.SourceInfo.pos = LexBasics.pos
-		      sharing type ParseInfo.ParseInfo = TopdecGrammar.info			
-		      structure Report : REPORT 
-		      sharing type LexBasics.Report
-			         = Report.Report
-			         = ParseInfo.SourceInfo.Report
-		      structure PrettyPrint : PRETTYPRINT
-		      sharing type PrettyPrint.StringTree
-			= TopdecGrammar.StringTree
-			= LexBasics.StringTree
-		      sharing type PrettyPrint.Report = Report.Report
-		      structure Crash : CRASH
-			) : GRAMMAR_UTILS =
+structure GrammarUtils: GRAMMAR_UTILS =
   struct
-
+    structure TopdecGrammar = PreElabTopdecGrammar
     fun impossible s = Crash.impossible ("GrammarUtils." ^ s)
 
     structure TopdecGrammar = TopdecGrammar
@@ -45,7 +30,7 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
     val mk_LongStrId = StrId.mk_LongStrId
     val longStrIdOfStrId = StrId.longStrIdOfStrId
     val mk_SigId = SigId.mk_SigId
-    val mk_TyVar = TyVar.mk_TyVar
+    val mk_TyVar = SyntaxTyVar.mk_TyVar
     val mk_TyCon = TyCon.mk_TyCon
     val mk_LongTyCon = TyCon.mk_LongTyCon
     val mk_IntSCon = SCon.INTEGER

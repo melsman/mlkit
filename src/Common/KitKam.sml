@@ -1,1 +1,1 @@
-functor KitKAM() = KitCompiler(ExecutionKAM(BuildCompile))
+structure K = = KitMain(KitCompiler(ExecutionKAM))

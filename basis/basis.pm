@@ -25,8 +25,8 @@ inline funapps in
     in VECTOR.sml Vector.sml ARRAY.sml Array.sml ARRAY2.sml Array2.sml
     end
 
-    MONO_VECTOR.sml MONO_ARRAY.sml 
-    ByteTable.sml 
+    MONO_VECTOR-1997.sml MONO_ARRAY-1997.sml 
+    ByteTable-1997.sml 
 end
 
 ARRAYSORT.sml Arraysort.sml
@@ -61,7 +61,7 @@ IO.sml TEXT_IO-1997.sml TextIO-1997.sml BIN_IO.sml BinIO.sml
 
 (* System *)
 TIME.sml Time.sml RANDOM.sml Random.sml OS_PATH-1997.sml Path-1997.sml
-OS_FILE_SYS.sml FileSys.sml OS_PROCESS.sml Process.sml OS.sml
+OS_FILE_SYS.sml FileSys-1997.sml OS_PROCESS.sml Process.sml OS.sml
 COMMAND_LINE.sml CommandLine.sml DATE.sml Date.sml TIMER-1997.sml Timer-1997.sml
 
 (* Suspension *)

@@ -1,36 +1,7 @@
 
-functor CompilerEnv(structure Ident: IDENT
-		    structure TyCon : TYCON
-		    structure TyName : TYNAME
-		    structure StrId : STRID
-		      sharing type Ident.strid = StrId.strid = TyCon.strid
-		    structure Con: CON
-		    structure Excon: EXCON
-		    structure Environments : ENVIRONMENTS
-		      sharing type Environments.strid = StrId.strid
-		      sharing type Environments.id = Ident.id
-		      sharing type Environments.longid = Ident.longid
-		      sharing type Environments.tycon = TyCon.tycon
-		      sharing type Environments.longtycon = TyCon.longtycon
-		      sharing type Environments.longstrid = StrId.longstrid
-		    structure LambdaExp : LAMBDA_EXP
-		      sharing type LambdaExp.TyName = TyName.TyName
-		    structure LambdaBasics : LAMBDA_BASICS
-		      sharing type LambdaBasics.Type = LambdaExp.Type
-                      sharing type LambdaBasics.tyvar = LambdaExp.tyvar
-		    structure Lvars: LVARS
-		    structure FinMap: FINMAP
-		    structure FinMapEq : FINMAPEQ
-		    structure PP: PRETTYPRINT
-		      sharing type FinMap.StringTree = PP.StringTree
-		      sharing type LambdaExp.StringTree = PP.StringTree 
-			           = FinMapEq.StringTree = TyName.StringTree = Environments.StringTree
-	            structure Flags : FLAGS
-		    structure Crash: CRASH
-		    structure Report : REPORT
-		   ): COMPILER_ENV =
+structure CompilerEnv: COMPILER_ENV =
   struct
-
+    structure PP = PrettyPrint
     fun die s = Crash.impossible ("CompilerEnv."^s)
 
     type con = Con.con
@@ -97,13 +68,10 @@ functor CompilerEnv(structure Ident: IDENT
       | spath_lt (x::xs,y::ys) = x < y orelse (x=y andalso spath_lt(xs,ys))
 
     structure PathEnv = 
-	OrderFinMap(structure Order = struct
-					  type T = spath
-					  fun lt (a:T) b = spath_lt(a,b)
-				      end
-		    structure PP = PP
-		    structure Report = Report
-		    structure Crash = Crash)
+	OrderFinMap(struct
+			type T = spath
+			fun lt (a:T) b = spath_lt(a,b)
+		    end)
 
     type PathEnv = (lvar*Type) PathEnv.map
     type VarEnv = (id,result) FinMap.map

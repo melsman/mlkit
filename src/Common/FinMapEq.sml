@@ -1,10 +1,9 @@
 (* Finite maps *)
 
-functor FinMapEq(structure Report: REPORT
-		 structure PP: PRETTYPRINT
-	      ): FINMAPEQ =
+structure FinMapEq: FINMAPEQ =
   struct
-
+    structure PP = PrettyPrint
+    
     type ('a, 'b) map = ('a *  'b) list
 
     val empty = []
