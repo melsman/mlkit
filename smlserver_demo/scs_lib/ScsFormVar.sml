@@ -83,6 +83,7 @@ signature SCS_FORM_VAR =
     val getTableName   : string formvar_fn
     val getLangErr     : ScsLang.lang formvar_fn
     val getRegExpErr   : RegExp.regexp formvar_fn
+    val getRoleIdErr   : string * errs -> int * errs
 
     val wrapQQ  : string formvar_fn -> (string * string) formvar_fn
     val wrapOpt : 'a formvar_fn -> (string -> 'a option)
@@ -662,5 +663,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
     end
 
     fun getStrings fv = List.map trim (Ns.Conn.formvarAll fv)
+
+    fun getRoleIdErr (fv,errs) = getIntErr(fv,%"Role id",errs)
+
   end
 

@@ -153,6 +153,11 @@ as
     user_imp_id in scs_user_imports.user_imp_id%TYPE
   ) return scs_persons.person_id%TYPE;
 
+  procedure imp_row_into_user (
+    user_imp_id in scs_user_imports.user_imp_id%TYPE,
+    user_id     in scs_users.user_id%TYPE
+  );
+  
   procedure imp_row (
     user_imp_id in scs_user_imports.user_imp_id%TYPE,
     always_p    in char default 'f'
@@ -397,6 +402,64 @@ as
       end;
     end;
   end imp_exact_match;
+
+  procedure imp_row_into_user (
+    user_imp_id in scs_user_imports.user_imp_id%TYPE,
+    user_id     in scs_users.user_id%TYPE
+  )
+  is
+    row scs_user_imports%ROWTYPE;
+  begin
+    select *
+      into imp_row_into_user.row
+      from scs_user_imports
+     where scs_user_imports.user_imp_id = imp_row_into_user.user_imp_id;
+
+    /* first_names */
+    if imp_row_into_user.row.first_names is not null then
+      update scs_persons
+         set first_names = imp_row_into_user.row.first_names
+       where scs_persons.person_id = imp_row_into_user.user_id;
+    end if;
+    /* last_name */
+    if imp_row_into_user.row.last_name is not null then
+      update scs_persons
+         set last_name = imp_row_into_user.row.last_name
+       where scs_persons.person_id = imp_row_into_user.user_id;
+    end if;
+    /* security_id */
+    if imp_row_into_user.row.security_id is not null then
+      update scs_persons
+         set security_id = imp_row_into_user.row.security_id
+       where scs_persons.person_id = imp_row_into_user.user_id;
+    end if;
+    /* email */
+    if imp_row_into_user.row.email is not null then
+      update scs_parties
+         set email = imp_row_into_user.row.email
+       where scs_parties.party_id = imp_row_into_user.user_id;
+    end if;
+    /* url */
+    if imp_row_into_user.row.url is not null then
+      update scs_parties
+         set url = imp_row_into_user.row.url
+       where scs_parties.party_id = imp_row_into_user.user_id;
+    end if;
+    /* on_what_table and on_which_id */
+    if imp_row_into_user.row.on_what_table is not null and 
+       imp_row_into_user.row.on_which_id is not null then
+      scs_person_rel.add(person_id => imp_row_into_user.user_id,
+                         on_what_table => imp_row_into_user.row.on_what_table,
+                         on_which_id => imp_row_into_user.row.on_which_id);
+    end if;
+
+    /* Delete imported row */
+    delete from scs_user_imports
+     where scs_user_imports.user_imp_id = imp_row_into_user.row.user_imp_id;
+  exception
+    when no_data_found then
+      return; /* We silently ignore that the import row does not exist. */
+  end imp_row_into_user;
 
   procedure imp_row (
     user_imp_id in scs_user_imports.user_imp_id%TYPE,
