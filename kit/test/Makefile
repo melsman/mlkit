@@ -1,4 +1,4 @@
-all: smallbench test_mlkit test_kam
+all: test_kam test_mlkit smallbench 
 
 smallbench:
 #	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkit:-gc: -smlnj -mlton -o small.html small.tst)' | tcsh -s
@@ -14,8 +14,8 @@ gcregions4:
 	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-gc: -o gcregions4.html gcregions.tst)' | tcsh -s
 
 test_mlkit:
-#	../bin/kittester ../bin/mlkit all.tst
-	../bin/kittester ../bin/mlkit x86_noprof_nogc.tst
+	../bin/kittester ../bin/mlkit all.tst
+#	../bin/kittester ../bin/mlkit x86_noprof_nogc.tst
 	/bin/mv test_report.dvi test_report-native-`/bin/date -I`.dvi
 
 test_kam:

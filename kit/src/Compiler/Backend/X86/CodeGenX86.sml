@@ -1406,7 +1406,7 @@ struct
 	 in 
 	    move_aty_into_reg(t,tmp_reg0,size_ff,               (* tmp_reg0 = t *)
 	    move_aty_into_reg(i,tmp_reg1,size_ff,               (* tmp_reg1 = i *)
-	    I.sarl (I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
+            I.sarl (I "1", R tmp_reg1) ::                       (* untag i: tmp_reg1 >> 1 *)
 	    I.addl(R tmp_reg0, R tmp_reg1) ::                   (* tmp_reg1 += tmp_reg0 *)
 	    move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%ecx) = x *)
 	    I.sarl (I "1", R tmp_reg0) ::                       (* untag x: tmp_reg0 >> 1 *)
@@ -1418,8 +1418,8 @@ struct
 	 (case resolve_args([t,i],[tmp_reg1],size_ff)
 	    of SOME ([t_reg,i_reg],F) =>
 	      F(
-              move_aty_into_reg(x,tmp_reg0,size_ff,
-              I.movb(R cl, DD("4", t_reg, i_reg, "1")) ::
+              move_aty_into_reg(x,tmp_reg0,size_ff,            
+              I.movb(R cl, DD("4", t_reg, i_reg, "1")) ::      (*tmp_reg0=%ecx*)
               C))
 	     | SOME _ => die "bytetable_update"
 	     | NONE => 
@@ -1449,18 +1449,21 @@ struct
 
      fun word_sub0(t,i,d,size_ff,C) =
        let val (t_reg,t_C) = resolve_arg_aty(t,tmp_reg1,size_ff)
-	   val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
 	   (* i is represented tagged only when BI.tag_values() is true *)
        in if BI.tag_values() then 
-	    t_C(i_C(
-	    I.sarl (I "1", R i_reg) ::         (* i >> 1 *)
-            I.movl(DD("4",t_reg,i_reg,"4"), R d_reg) :: 
+	    t_C(
+            move_aty_into_reg(i,tmp_reg0,size_ff,
+(*I.sarl*)  I.sarl (I "1", R tmp_reg0) ::         (* i >> 1 *)
+            I.movl(DD("4",t_reg,tmp_reg0,"4"), R d_reg) :: 
             C'))
 	  else
-	    t_C(i_C(
-            I.movl(DD("4",t_reg,i_reg,"4"), R d_reg) :: 
-            C'))		  
+	    let val (i_reg,i_C) = resolve_arg_aty(i,tmp_reg0,size_ff)
+	    in
+	      t_C(i_C(
+              I.movl(DD("4",t_reg,i_reg,"4"), R d_reg) :: 
+              C'))
+	    end
        end
        
      fun word_update0(t,i,x,d,size_ff,C) =
@@ -1469,21 +1472,30 @@ struct
 	   (* i, x are represented tagged only when BI.tag_values() is true *)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
 	 in 
-	   move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
-           I.sarl (I "1", R tmp_reg1) ::                    (* untag i: tmp_reg1 >> 1 *)
-     	   I.imull(I "4", R tmp_reg1) ::                    (* i << 2 *)
-	   move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
-	   I.addl(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
-           move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 = x *)
-           I.movl(R tmp_reg0, D("4", tmp_reg1)) ::          (* *(tmp_reg1+4) = tmp_reg0 *)
-	   load_immed(IMMED (Int32.fromInt BI.ml_unit),d_reg,  (* d = () *)
-           C'))))
+	    case resolve_args([t,x],[tmp_reg1], size_ff)
+	      of SOME ([t_reg,x_reg], F) =>
+		F(move_aty_into_reg(i,tmp_reg0,size_ff,
+                  I.sarl (I "1", R tmp_reg0) ::
+                  I.movl(R x_reg, DD("4", t_reg, tmp_reg0, "4")) :: 
+                  load_immed(IMMED (Int32.fromInt BI.ml_unit),d_reg,
+                  C')))
+	       | SOME _ => die "word_update0_1"
+	       | NONE => 
+		(move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
+		 I.sarl (I "1", R tmp_reg1) ::                    (* untag i: tmp_reg1 >> 1 *)
+		 I.imull(I "4", R tmp_reg1) ::                    (* i << 2 *)
+		 move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
+		 I.addl(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
+		 move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 = x *)
+		 I.movl(R tmp_reg0, D("4", tmp_reg1)) ::          (* *(tmp_reg1+4) = tmp_reg0 *)
+		 load_immed(IMMED (Int32.fromInt BI.ml_unit),d_reg,  (* d = () *)
+	 	 C')))))
 	 end
        else
 	 (case resolve_args([t,i,x],[tmp_reg0,tmp_reg1], size_ff)
 	    of SOME ([t_reg,i_reg,x_reg], F) =>
 	      F(I.movl(R x_reg, DD("4", t_reg, i_reg, "4")) :: C)
-	     | SOME _ => die "word_update0"
+	     | SOME _ => die "word_update0_2"
 	     | NONE => 
 	      move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
 	      I.imull(I "4", R tmp_reg1) ::                    (* i << 2 *)
