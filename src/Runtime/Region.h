@@ -4,12 +4,7 @@
 #ifndef REGION
 #define REGION
 
-/*----------------------------------------------------------------*
- * Include files                                                  *
- * Compiling: cc -Aa -c Region.c                                  *
- *----------------------------------------------------------------*/
 #include "Flags.h"
-
  
 /*
 Overview
@@ -60,39 +55,61 @@ words in all.
 The Danish word 'klump' means 'chunk', in this case:  'region page'.
 */
 
-#define ALLOCATABLE_WORDS_IN_REGION_PAGE 200 
+
+#define ALLOCATABLE_WORDS_IN_REGION_PAGE 254
 /*Number of words that can be allocated in each regionpage.*/
-/*If you change this, remember also to change src/Compiler/Kam/CConst.sml.*/
+/*If you change this, remember also to change src/Compiler/Kam/CConst.sml
+  and src/Compiler/Backend/HpPaRisc/BackendInfo.sml. */
 
 typedef union klump {
   struct {
     union klump * n;                   /* NULL or pointer to next page. */
-    int           dummy;               /* to ensure double alignment    */
-    int           i[ALLOCATABLE_WORDS_IN_REGION_PAGE]; /* space for data*/
+    struct ro * r;                     /* Pointer back to region descriptor. Used by GC. */
+    int i[ALLOCATABLE_WORDS_IN_REGION_PAGE]; /* space for data*/
   } k;
   double x; /* The union ensures alignment of region pages on double aligned
                addresses (i.e., addresses that are divisible by 8). */
 } Klump;
 
-
-
 #define HEADER_WORDS_IN_REGION_PAGE 2 
 /*Number of words in the header part of a region page.*/
-/*If you change this, remember also to change src/Compiler/Kam/CConst.sml.*/
+/*If you change this, remember also to change src/Compiler/Kam/CConst.sml
+  and src/Compiler/Backend/HpPaRisc/BackendInfo.sml. */
 
+/* ALLOCATABLE_WORDS_IN_REGION_PAGE + HEADER_WORDS_IN_REGION_PAGE must be one 1Kb, used by GC. */
+#define is_rp_aligned(rp)  (((rp) & 0x3FF) == 0)
 
 /*
 Free pages are kept in a free list. When the free list becomes empty and
 more space is requiredd, the runtime system calls the operating system
-function malloc in order to get space for a number (here 30) fresh
+function malloc in order to get space for a number (here 30) of fresh
 region pages:
 */
 
-#define BYTES_ALLOC_BY_SBRK 30*sizeof(Klump)  /* Size of allocated space in each SBRK-call. */
+/* Size of allocated space in each SBRK-call. */
+#define BYTES_ALLOC_BY_SBRK REGION_PAGE_BAG_SIZE*sizeof(Klump)  
 
+/* 
+Region large objects idea: Modify the region based memory model so
+that each ``infinite region'' (i.e., a region for which the size of
+the region is not determined statically) contains a list of objects
+allocated using the C library function `malloc'. When a region is
+deallocated or reset, the list of malloced objects in the region are
+freed using the C library function `free'. The major reason for large
+object support is to gain better indexing properties for arrays and
+vectors. Without support for large objects, arrays and vectors must be
+split up in chunks. With strings implemented as linked list of pages,
+indexing in large character arrays takes time which is linear in the
+index parameter and with word-vectors and word-arrays being
+implemented as a tree structure, indexing in word-vectors and
+word-arrays take time which is logarithmic in the index parameter. 
+ -- mael 2001-09-13
+*/
 
-/*if you change any of the above declarations, remember to also change
- ---at least---Compiler/Hppa/KbpToHpPa.*/
+typedef struct lobjs {
+  struct lobjs* next;     /* pointer to next large object or NULL */
+  int value;              /* a large object; inlined to avoid pointer-indirection */
+} Lobjs;
 
 /* 
 Region descriptors
@@ -126,12 +143,14 @@ typedef struct ro {
   unsigned int regionId;     /* Id on region. */
   #endif
 
+  Lobjs *lobjs;     // large objects: a list of malloced memory in each region
 } Ro;
 #define sizeRo (sizeof(Ro)/4) /* size of region descriptor in words */
 #define sizeRoProf (3)        /* We use three words extra when profiling. */
 
 #define freeInRegion(rAddr)   (rAddr->b - rAddr->a) /* Returns freespace in words. */
 
+#define descRo_a(rAddr,w) (rAddr->a = rAddr->a - w) /* Used in IO.inputStream */
 
 /*
 Region polymorphism
@@ -155,22 +174,53 @@ of the region and is useful for, among other things, tail recursion).
 #define setStatusBits(x)    ((x) | 0x00000003)
 #define clearStatusBits(x)  ((x) & 0xFFFFFFFC)
 #define is_inf_and_atbot(x) (((x) & 0x00000003)==0x00000003)
+#define is_inf(x)           (((x) & 0x00000001)==0x00000001)
+#define is_atbot(x)         (((x) & 0x00000002)==0x00000002)
+
+/*----------------------------------------------------------------*
+ * Type of freelist and top-level region                          *
+ *                                                                *
+ * When the KAM backend is used, we use an indirection to hold    *
+ * the top-level region, so as to support multiple threads.       *
+ *----------------------------------------------------------------*/
+
+extern Klump * freelist;
+
+#ifdef KAM
+#define TOP_REGION   (*topRegionCell)
+#else
+extern Ro * topRegion;
+#define TOP_REGION   topRegion
+#endif
+
 
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
+#ifdef KAM
+int *allocateRegion(Ro *roAddr, Ro** topRegionCell);
+void deallocateRegionNew(Ro** topRegionCell);
+void deallocateRegionsUntil(int rAdr, Ro** topRegionCell);
+#else
 int *allocateRegion(Ro *roAddr);
-int *deallocateRegion();
 void deallocateRegionNew();
-int *alloc (int rAdr, int n);
-void alloc_new_block(Ro *rp);     /* inlining of alloc */
-void callSbrk();
-int resetRegion(int rAdr);
 void deallocateRegionsUntil(int rAdr);
+void deallocateRegionsUntil_X86(int rAdr);
+#endif
+
+int *alloc (int rAdr, int n);
+void callSbrk();
+
+#ifdef ENABLE_GC
+void callSbrkArg(int no_of_region_pages);
+#endif /* ENABLE_GC */
+
+int resetRegion(int rAdr);
 
 /*----------------------------------------------------------------*
  *        Declarations to support profiling                       *
  *----------------------------------------------------------------*/
+#define notPP 0 /* Also used by GC */
 #ifdef PROFILING
 
 /* 
@@ -198,9 +248,6 @@ it print programs annotated with their program points.
 
 Every object is stored taking up a multiple of words (not bytes).
 This applies irrespective of whether profiling is turned on or not.
-
-CompLamb.sml (search after storePrgPointProfiling) depends on the 
-position of atId in an object descriptor; ME 1998-09-09
 */
 
 typedef struct objectDesc {
@@ -221,11 +268,6 @@ from object to object (using the size information that prefixes
 every object) and it stops when the value 'notPP' follows after
 an object:
 */
-
-#define notPP 0
-
-#define dummyDouble 42424242 /* Sorry, I have no idea what this
-                                is (mads). */
 
 /*----------------------------------------------------------------------*
  * Extern declarations, mostly of global variables that store profiling *
@@ -256,25 +298,23 @@ extern unsigned int callsOfDeallocateRegionInf,
                     maxRegionDescUseProfInf,
                     regionDescUseProfFin,
                     maxRegionDescUseProfFin,
-                    maxProfStack;
+                    maxProfStack,
+                    allocatedLobjs;
 
-extern Ro * topRegion;
 extern FiniteRegionDesc * topFiniteRegion;
+extern int size_to_space;
 
 
 /* Profiling functions. */
 int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId);
+int *allocRegionInfiniteProfilingMaybeUnTag(Ro *roAddr, unsigned int regionId);
 void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
+void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
 int *deallocRegionFiniteProfiling(void);
-int *allocProfiling(int rAddr,int n, int pPoint);
-void storePrgPointProfiling(int pPoint, int *objPtr);
-int *updateSizeForDoublesProfiling(int size, int *doublePtr);
+int *allocProfiling(int rAddr,int n, int pPoint);  // used by Table.c
 #endif /*Profiling*/
 
 void printTopRegInfo();
+int size_free_list();
 
 #endif /*REGION*/
-
-
-
-

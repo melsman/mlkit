@@ -1,7 +1,7 @@
-#ifndef Stack_h 
-#define Stack_h
+#ifndef __Stack_h__ 
+#define __Stack_h__
 
-/* This module is not used in the Kit anymore. */
+/* This module is used by the KAM interpreter. */
 
 #define DEBUG_STACK 0
 
@@ -15,27 +15,22 @@
  * ----------------------------------------------------------------------- */
 
 #define STACK_SIZE_INIT  (20 * 1024 * 1024)
-#define STACK_SIZE_THRESHOLD  (4 * 200)	
 
-#define sp IntReg30
+#define popValDef (*--sp)
+#define popNDef(N) { sp -= (N); }
 
-#define popDef(Res) { sp -= sizeof(int); \
-                       (Res) = *((int *)sp);\
+#define pushDef(Arg) { *sp = (Arg); \
+  	               sp += 1; \
 		     }
 
-#define pushDef(Arg) { *((int *)sp) = (Arg); \
-  	               sp += sizeof(int); \
-		     }
+#define offsetSP(N) { sp += (N); }
 
-/* This version does not return the first free address. */
-#define offsetSPDef(Arg) { sp += sizeof(int)*(Arg); }
+#define selectStackDef(N) (*(sp + (N)))
 
-void init_stack();
-int pop();
-void push(int);
-int offsetSP(int);
+unsigned long * allocate_stack();
+void release_stack(unsigned long* sp);
 
-#endif /* Stack_h */
+#endif /* __Stack_h__ */
 
 
 

@@ -53,8 +53,13 @@ typedef struct objectListHashList {
   struct objectListHashList * next;    /* next hashed element */  
 } ObjectListHashList;
 
-#define REGION_LIST_HASH_TABLE_SIZE 3881
-#define OBJECT_LIST_HASH_TABLE_SIZE 3881
+#define REGION_LIST_HASH_TABLE_SIZE 4096
+#define OBJECT_LIST_HASH_TABLE_SIZE 4096
+
+#define regionListHashTabIndex(regionId)  ((regionId) & (REGION_LIST_HASH_TABLE_SIZE-1))
+#define objectListHashTabIndex(atId)      ((atId) & (OBJECT_LIST_HASH_TABLE_SIZE-1))
+
+
 
 /* ---------------------------------------------------
  * A global profiling table is used to collect
@@ -75,10 +80,12 @@ typedef struct profTabList {
 } ProfTabList;
 
 /* size of hash table */
+
 /*
 #define PROF_HASH_TABLE_SIZE 3881
 #define profHashTabIndex(regionId) ((regionId) % PROF_HASH_TABLE_SIZE)
 */
+
 #define PROF_HASH_TABLE_SIZE 4096
 #define profHashTabIndex(regionId) ((regionId) & (PROF_HASH_TABLE_SIZE-1))
 
@@ -88,16 +95,36 @@ extern ProfTabList * profHashTab[];
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
 
+void checkProfTab(char* s);
+void printProfTab(void);
 void profileTick(int *stackTop);
 void profiling_on(void);
 void profiling_off(void);
 void AlarmHandler();
 void Statistik();
 void resetProfiler();
-void updateMaxProfStack();
 void queueMarkProf();  /* tell the time next time there is a profile tick */
-char *allocMemProfiling(int i);
+char *allocMemProfiling_xx(int i);
 ProfTabList* profTabListInsertAndInitialize(ProfTabList* p, int regionId);
+void outputProfilePre(void);
+void outputProfileTick(TickList *tick);
+void outputProfilePost(void);
+
+extern int noTimer;
+extern int profType;
+extern int profNo;
+extern int signalType;
+extern int printProfileTab;
+extern int microsec;
+extern int sec;
+extern char logName[100];
+extern int verboseProfileTick;
+extern int exportProfileDatafile;
+extern int showStat;
+extern int doing_prof;
+extern int raised_exn_interupt_prof;
+extern int raised_exn_overflow_prof;
+
 
 #else /*PROFILING not defined */
 

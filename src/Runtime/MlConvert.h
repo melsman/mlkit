@@ -1,3 +1,5 @@
+/* NOT UPDATED 10/01/1999, Niels */
+
 /***************************************************************/
 /* This module implements some converter functions between the */
 /* representation of values in ML and C.                       */
@@ -7,8 +9,8 @@
 /* untagged and datatypes boxed.                               */
 /***************************************************************/
 
-#ifndef ML_CONVERT
-#define ML_CONVERT
+#ifndef __ML_CONVERT
+#define __ML_CONVERT
 
 /*----------------------------------------------------------------*
  * Allocating into infinite regions.                              *
@@ -87,7 +89,7 @@ void printString(StringDesc *str);
 void convertStringToC(StringDesc *mlStr, char *cStr, int cStrLen, int exn);
 StringDesc *convertStringToML(int rhoString, char *cStr);
 StringDesc *convertStringToMLProfiling(int rhoString, char *cStr, int pPoint);
-int sizeString(StringDesc *str);
+int sizeStringML(StringDesc *str);
 
 /*-------------------------------------------------------------------*
  * Construction of (converting) lists.                               *
@@ -177,4 +179,4 @@ typedef struct objectDesc {
  *----------------------------------------------------------------*/
 void raise_exn(int exn);
 
-#endif /*ML_CONVERT*/
+#endif /*__ML_CONVERT*/

@@ -2,87 +2,63 @@
  *                         Strings                                *
  *----------------------------------------------------------------*/
 
-#ifndef STRING
-#define STRING
+/*
+  A string is represented as a C-string prepended with the 
+  string size (tagged).
 
-/*----------------------------------------------------------------*
- * Include files                                                  *
- * Compiling: cc -Aa -c String.c                                  *
- *----------------------------------------------------------------*/
+  A char is represented as an integer (i.e., either as i or 2i+1 if
+  tagging is enabled).
+
+  Functions named ML are called from the ML Kit and handles tagging
+  etc. Garbage collection may also involve certain restrictions, for
+  instance, that a table is initialized before returning.
+*/
+
+#ifndef __STRING_H
+#define __STRING_H
+
 #include "Flags.h"
 
-/* Representation of strings and stringfragments                  */
-/* Same representation as in the runtime system by Lars Birkedal. */
-/* The size of these structures, have to be a multiplum of words. */
-
-typedef struct stringFragment {
-  unsigned int fragmentSize;  /* Size of this fragment. */
-  struct stringFragment * n;  /* Ptr. to next fragment in string. */
-} StringFragment;
+// Representation of ML strings
 
 typedef struct stringDesc {
-  unsigned int stringSize; /* Total size of string. */
-  StringFragment sf;       /* StringDesc contains the first fragment and not a ptr. to it. */
+  unsigned int size;             // Size of string (tagged)
+  char data;                     // C String (null-terminated
 } StringDesc;
 
-#define sizeStringDefine(str)    ((((StringDesc *)str)->stringSize) >> 3) /* Remove stringtag. We do not tag the size. */
+#define sizeStringDefine(str)    ((((StringDesc *)str)->size) >> 6) /* Remove stringtag. We do not tag the size. */
 
-#define C_STRING_LENGTH 4096    /* Maximal length of C-string. */
+/******************************************************************
+ * EXTERNAL DECLARATIONS (ML functions, basislib)                 *
+ ******************************************************************/
 
-
-/*----------------------------------------------------------------*
- *        Prototypes for external and internal functions.         *
- *----------------------------------------------------------------*/
-extern char cString[C_STRING_LENGTH];
-
-StringDesc *makeChar(int rAddr, char ch);
-int chrChar (int charNr, int exn);
-int sizeString(StringDesc *str);
-int equalString (StringDesc *str1, StringDesc *str2);
-int lessString (StringDesc *str1, StringDesc *str2);
-int lesseqString (StringDesc *str1, StringDesc *str2);
-int greaterString (StringDesc *str1, StringDesc *str2);
-int greatereqString (StringDesc *str1, StringDesc *str2);
-StringDesc *concatString(int rAddr, StringDesc *str1, StringDesc *str2);
-void printString(StringDesc *str);
-StringDesc *implodeChars (int rAddr, int xs);
-StringDesc *implodeString(int rAddr, int xs);
-int subString(StringDesc *str, int i);
-void updateString(StringDesc *str, int i, int c);
-StringDesc* allocString(int rAddr, int sz);
-StringDesc* exnName(int rAddr, int e);
-
-#if UNBOX_LISTS
-int *explodeString (int rAddr2, StringDesc *str);  /* no region for the cons cells */
-#else
-int *explodeString (int rAddr1, int rAddr2, StringDesc *str);
-#endif
-
-void printString(StringDesc *str);
-void printStringList(int xs);
-
-
-/*Converting functions. */
-void convertStringToC(StringDesc *mlStr, char *cStr, int cStrLen, int exn);
-StringDesc *convertStringToML(int rAddr, char *cStr);
+int chrCharML(int charNrML, int exn);
+int sizeStringML(StringDesc *str);
+int subStringML(StringDesc *str, int i);
+void updateStringML(StringDesc *str, int i, int c);
+void printStringML(StringDesc *str);
+int lessStringML(StringDesc *str1, StringDesc *str2);
+int lesseqStringML(StringDesc *str1, StringDesc *str2);
+int greaterStringML(StringDesc *str1, StringDesc *str2);
+int greatereqStringML(StringDesc *str1, StringDesc *str2);
+int equalStringML(StringDesc *str1, StringDesc *str2);
 
 #ifdef PROFILING
-/* Profiling functions. */
-StringDesc *implodeCharsProfiling (int rAddr, int xs, int pPoint);
-StringDesc *implodeStringProfiling(int rAddr, int xs, int pPoint);
+StringDesc *allocStringProfilingML(int rAddr, int sizeML, int pPoint);
+StringDesc *concatStringProfilingML(int rAddr, StringDesc *str1, StringDesc *str2, int pPoint);
+StringDesc *implodeCharsProfilingML (int rAddr, int xs, int pPoint);
+StringDesc *implodeStringProfilingML(int rAddr, int xs, int pPoint);
 StringDesc *convertStringToMLProfiling(int rAddr, char *cStr, int pPoint);
-StringDesc *allocStringProfiling(int rAddr, int sz, int pPoint);
-StringDesc *exnNameProfiling(int rAddr, int e, int pPoint);
-
-#if UNBOX_LISTS
-int *explodeStringProfiling (int rAddr2, StringDesc *str, int pPoint); /* no region for the cons cells */
+StringDesc *exnNameProfilingML(int rAddr, int e, int pPoint);
+int *explodeStringProfilingML(int rAddr2, StringDesc *str, int pPoint);   // no region for the cons cells
 #else
-int *explodeStringProfiling (int rAddr1, int rAddr2, StringDesc *str, int pPoint);
-#endif
-
-StringDesc *concatStringProfiling(int rAddr, StringDesc *str1, StringDesc *str2, int pPoint);
+StringDesc *allocStringML(int rAddr, int sizeML);
+StringDesc *concatStringML(int rAddr, StringDesc *str1, StringDesc *str2);
+StringDesc *implodeCharsML (int rAddr, int xs);
+StringDesc *implodeStringML(int rAddr, int xs);
+StringDesc *convertStringToML(int rAddr, char *cStr);
+StringDesc* exnNameML(int rAddr, int e);
+int *explodeStringML(int rAddr2, StringDesc *str);  // no region for the cons cells
 #endif /*PROFILING*/
 
-void printNum(int n);
-
-#endif /*STRING*/
+#endif /* __STRING_H */

@@ -2,13 +2,9 @@
  *                         Lists                                  *
  *----------------------------------------------------------------*/
 
-#ifndef LIST
-#define LIST
+#ifndef __LIST_H
+#define __LIST_H
 
-/*----------------------------------------------------------------*
- * Include files                                                  *
- * Compiling: cc -Aa -c List.c                                    *
- *----------------------------------------------------------------*/
 #include "Flags.h"
 #include "Tagging.h"
 #include "Region.h"
@@ -21,7 +17,6 @@
  * second) for accessing arguments to CONS.                               *
  *------------------------------------------------------------------------*/
 
-#if UNBOX_LISTS
 #define NIL 3
 #define CONS 0
 #define isNIL(x)        ((x) == NIL)
@@ -30,56 +25,7 @@
 #define makeNIL(ptr)    {ptr = (int *)NIL;}
 #define makeCONS(pair,ptr)  {ptr = pair;}
 
-#else /* BOX LISTS */
-
-#define contag(x)  (*(int *)x)            /* Constructor tag of a value.   */
-#define conarg(x)  (*((int *)(x)+1))      /* Constructor arg of a value.   */
-#define NIL        (8*0+valueTagCon0)     /* Tag for a NIL constructor.    */
-#define CONS       (8*0+valueTagCon1)     /* Tag for a CONS constructor.   */
-#define isNIL(x)   (contag(x) == NIL)     /* Is the con. tag NIL.          */
-#define isCONS(x)  (contag(x) == CONS)    /* Is the con. tag CONS.         */
-
-/* Operations for constructing lists. */
-
-#define makeNIL(rAddr, ptr) {ptr = alloc(rAddr, 1);\
-                             contag(ptr) = NIL;}
-
-#define makeCONS(rAddr, pair, ptr) {ptr = alloc(rAddr, 2);\
-				    contag(ptr) = CONS;\
-				    conarg(ptr) = (int) pair;}
-
-
-/***************************************************************************
- *     Changed runtime operations for making profiling possible.           *
- *                                                                         *
- * Only defined when not unboxing lists...                                 *
- *                                                                         *
- * makeNILProf(rAddr, ptr, pPoint)                                         *
- * makeCONSProf(rAddr, pair, ptr, pPoint)                                  *
- ***************************************************************************/
-#ifdef PROFILING
-
-#define makeNILProf(rAddr, ptr, pPoint) {\
-  ptr = alloc(rAddr, 1+sizeObjectDesc);\
-  ((ObjectDesc *) ptr)->atId = pPoint; \
-  ((ObjectDesc *) ptr)->size = 1; /* Size is one word. */ \
-  ptr = (int *)(((ObjectDesc *)ptr)+1); \
-  contag(ptr) = NIL;\
-}
-
-#define makeCONSProf(rAddr, pair, ptr, pPoint) {\
-  ptr = alloc(rAddr, 2+sizeObjectDesc);\
-  ((ObjectDesc *) ptr)->atId = pPoint; \
-  ((ObjectDesc *) ptr)->size = 2; /* Size is two words. */ \
-  ptr = (int *)(((ObjectDesc *)ptr)+1); \
-  contag(ptr) = CONS; \
-  conarg(ptr) = (int) pair; \
-}
-#endif /*UNBOX_LISTS*/
-
-#endif /*PROFILING*/
-
 #define hd(x)      (first(conarg(x)))     /* Head of a list.               */
 #define tl(x)      (second(conarg(x)))    /* Tail of a list.               */
 
-#endif /*LIST*/
+#endif /* __LIST_H */

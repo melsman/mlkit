@@ -1,56 +1,59 @@
 #include "Stack.h"
 
-extern int sp;
-extern int stackBot;
-
-/* ----------------------------------------------------------------------- *
- *   Stack operations                                                      *
- * The stack grows toward higher addresses, and consists of words of data. *
- *     int pop()          : Return the top element, and ajust sp.          *
- *     void push(val)     : Push val onto the stack, and ajust sp.         *
- *     void offsetSP(val) : Offsets sp val words, and returns first free   *
- *                          address on the stack.                          *
- * ----------------------------------------------------------------------- */
-
-void init_stack() {
-#if DEBUG_STACK
-  printf("Init stack\n");
+#ifdef THREADS
+#include "/usr/share/aolserver/include/ns.h"
+extern Ns_Mutex stackPoolMutex;
+#define STACK_POOL_MUTEX_LOCK     Ns_LockMutex(&stackPoolMutex);
+#define STACK_POOL_MUTEX_UNLOCK   Ns_UnlockMutex(&stackPoolMutex);
+#else
+#define STACK_POOL_MUTEX_LOCK
+#define STACK_POOL_MUTEX_UNLOCK
 #endif
 
-  if ((sp = (int) malloc/*sbrk*/(STACK_SIZE_INIT)) == 0) 
-    die("init: Cannot increase vm address space\n");
-  stackBot = sp;
-#if DEBUG_STACK
-  printf("  sp = %10d\n", (int)sp);
-#endif
+#define MAX_LIVE_STACKS 5
+unsigned long* stackPool[MAX_LIVE_STACKS];
+int stackPoolIndex = -1;
+
+/*
+  Invariant: if stackPoolIndex = -1 then there are no stacks in the stackPool to choose from
+           ; otherwise, the stackPool contains a stack we can use (index stackPoolIndex).
+*/
+
+unsigned long * 
+allocate_stack() 
+{
+  unsigned long* sp;
+
+  STACK_POOL_MUTEX_LOCK;
+
+  if ( stackPoolIndex >= 0 )
+    {
+      sp = stackPool[stackPoolIndex--];
+      STACK_POOL_MUTEX_UNLOCK;
+    }
+  else   // allocate new stack       
+    { 
+      STACK_POOL_MUTEX_UNLOCK;
+      if ( (sp = (unsigned long *) malloc(STACK_SIZE_INIT)) == 0 ) 
+	{
+	  die("Stack.allocate_stack: Cannot allocated new stack\n");
+	}
+    }
+  return sp;
 }
 
-int pop() {
-  int val;
-
-  sp -= sizeof(int);
-  val = *((int *)sp);
-
-#if DEBUG_STACK
-  printf("Pop with sp    = %10d (value: %10d)\n", (int)sp, val);  
-#endif
-
-  return val;
-}
-
-void push(int val) {
-#if DEBUG_STACK
-  printf("Push with sp   = %10d (value: %10d)\n", (int)sp, (int)val);  
-#endif
-  *((int *)sp) = val;
-  sp += sizeof(int);
-  return;
-}
-
-int offsetSP(int val) {
-#if DEBUG_STACK
-  printf("Offset with sp = %10d (value: %10d)\n", (int)sp, val);  
-#endif
-  sp += sizeof(int)*val;
-  return (sp-(sizeof(int)*val));
+void
+release_stack(unsigned long* sp) 
+{
+  STACK_POOL_MUTEX_LOCK;
+  if ( stackPoolIndex < MAX_LIVE_STACKS ) 
+    {
+      stackPool[++stackPoolIndex] = sp;
+      STACK_POOL_MUTEX_UNLOCK;
+    }
+  else
+    {
+      STACK_POOL_MUTEX_UNLOCK;
+      free(sp);
+    } 
 }
