@@ -129,17 +129,45 @@ functor Compile(structure Excon : EXCON
     (*  Dynamic Flags.                                                        *)
     (* ---------------------------------------------------------------------- *)
 
-    val print_opt_lambda_expression = 
-      Flags.lookup_flag_entry "print_opt_lambda_expression" 
-    val print_drop_regions_expression_with_storage_modes = 
-      Flags.lookup_flag_entry "print_drop_regions_expression_with_storage_modes"
-    val print_physical_size_inference_expression =
-      Flags.lookup_flag_entry "print_physical_size_inference_expression"
-    val print_call_explicit_expression =
-      Flags.lookup_flag_entry "print_call_explicit_expression"
-(*
-    val print_program_points = Flags.lookup_flag_entry "print_program_points"
-*)
+    val eliminate_polymorphic_equality_p = Flags.is_on0 "eliminate_polymorphic_equality"
+    val type_check_lambda_p = Flags.is_on0 "type_check_lambda"
+    val print_opt_lambda_expression = Flags.is_on0 "print_opt_lambda_expression" 
+
+    val region_profiling_p = Flags.is_on0 "region_profiling"
+
+    val print_storage_mode_expression = Flags.add_bool_entry 
+	{long="print_storage_mode_expression", short=SOME "Psme", 
+	 menu=["Printing of intermediate forms","print storage mode expression"],
+	 item=ref false, neg=false, desc=
+	 "Print Region Expression after storage mode analysis"}
+
+    val print_drop_regions_expression_with_storage_modes = Flags.add_bool_entry 
+	{long="print_drop_regions_expression_with_storage_modes", short=SOME "Pdresm", 
+	 menu=["Printing of intermediate forms","print drop regions expression with storage modes"],
+	 item=ref false, neg=false, desc=
+	 "Print Region Expression after dropping word regions and\n\
+	  \regions arguments with only get-effects. Also print\n\
+	  \atbot and attop annotations resulting from storage mode\n\
+	  \analysis."}
+
+    val print_drop_regions_expression = Flags.add_bool_entry 
+	{long="print_drop_regions_expression", short=SOME "Pdre", 
+	 menu=["Printing of intermediate forms","print drop regions expression"],
+	 item=ref false, neg=false, desc=
+	 "Print Region Expression after dropping word regions and\n\
+	  \regions arguments with only get-effects."}
+
+    val print_physical_size_inference_expression = Flags.add_bool_entry 
+	 {long="print_physical_size_inference_expression", short=SOME "Ppse", 
+	  menu=["Printing of intermediate forms","print physical size inference expression"],
+	  item=ref false, neg=false, desc=
+	  "Print Region Expression after physical size inference."}
+
+    val print_call_explicit_expression = Flags.add_bool_entry 
+	 {long="print_call_explicit_expression", short=SOME "Pcee", 
+	  menu=["Printing of intermediate forms","print call-explicit expression"],
+	  item=ref false, neg=false, desc=
+	  "Print Region Expression with call annotations."}
 
     (* ---------------------------------------------------------------------- *)
     (*  Printing utilities                                                    *)
@@ -273,7 +301,7 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     fun type_check_lambda (a,b) =
-      if Flags.is_on "type_check_lambda" then
+      if type_check_lambda_p() then
 	(chat "[Type checking lambda term...";
 	 Timing.timing_begin();
 	 let 
@@ -291,7 +319,7 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     fun elim_eq_lambda (env,lamb) =
-      if Flags.is_on "eliminate_polymorphic_equality" then
+      if eliminate_polymorphic_equality_p() then
 	(chat "[Eliminating polymorphic equality...";
 	 Timing.timing_begin();
 	 let val (lamb', env') = 
@@ -312,8 +340,10 @@ functor Compile(structure Excon : EXCON
     (*   Optimise the lambda code                                             *)
     (* ---------------------------------------------------------------------- *)
 
+    val optimise_p = Flags.is_on0 "optimiser"
+
     fun optlambda (env, lamb) =
-          ((if !Flags.optimiser then chat "[Optimising lambda term..."
+          ((if optimise_p() then chat "[Optimising lambda term..."
 	    else chat "[Rewriting lambda term...");
 	   Timing.timing_begin();
 	   let 
@@ -321,7 +351,7 @@ functor Compile(structure Excon : EXCON
 	           Timing.timing_end_res ("OptLam", OptLambda.optimise(env,lamb))
 	   in
 	     chat "]\n";
-	     if !Flags.DEBUG_COMPILER orelse !print_opt_lambda_expression
+	     if !Flags.DEBUG_COMPILER orelse print_opt_lambda_expression()
 	     then display("Report: Opt", layoutLambdaPgm lamb_opt) else () ;
 	     (lamb_opt, env')
 	   end)
@@ -402,8 +432,7 @@ functor Compile(structure Excon : EXCON
                       export_basis= new_layer  (* list of region variables and arrow effects *)}
 
 	(* call of normPgm no longer commented out; mads *)
-        val _ = if Flags.is_on "region_profiling" then
-	          ()
+        val _ = if region_profiling_p() then ()
 		else
 		  ((*print "RegInf.Normalising program ...\n";*)
 		   reset_effect_count();      (* inserted; mads *)
@@ -533,7 +562,7 @@ functor Compile(structure Excon : EXCON
          (* chatting and timing done in AtInf*)
 	 let val pgm' = sma pgm
 	 in 
-	    if Flags.is_on "print_storage_mode_expression" 
+	    if print_storage_mode_expression() 
                orelse !Flags.DEBUG_COMPILER then 
 	          display("\nReport: Storage Mode Expression:", layout_pgm pgm')
 	    else ();
@@ -555,10 +584,10 @@ functor Compile(structure Excon : EXCON
          let val (pgm',env') = drop_regions(env, pgm)
 	 in Timing.timing_end("Drop");
 	   chat "]\n";
-	    if Flags.is_on "print_drop_regions_expression" then 
+	    if print_drop_regions_expression() then 
 	      display("Report: AFTER DROP REGIONS:", AtInf.layout_pgm_brief pgm')
 	    else ();
-	    if Flags.is_on "print_drop_regions_expression_with_storage_modes" orelse !Flags.DEBUG_COMPILER then 
+	    if print_drop_regions_expression_with_storage_modes() orelse !Flags.DEBUG_COMPILER then 
 	      display("Report: AFTER DROP REGIONS (with storage modes):", AtInf.layout_pgm pgm')
 	    else ();
 	    (pgm',env')
@@ -579,7 +608,7 @@ functor Compile(structure Excon : EXCON
          let val (pgm',env') = psi(pp_counter, env, pgm)
 	 in Timing.timing_end("PSI");
 	   chat "]\n";
-	    if !print_physical_size_inference_expression orelse !Flags.DEBUG_COMPILER then 
+	    if print_physical_size_inference_expression() orelse !Flags.DEBUG_COMPILER then 
 	      display("Report: AFTER PHYSICAL SIZE INFERENCE:", layout_pgm pgm')
 	    else ();
 	    (pgm',env')
@@ -619,7 +648,7 @@ functor Compile(structure Excon : EXCON
          let val pgm' = PhysSizeInf.appConvert(pgm)
 	 in Timing.timing_end("AppConv");
 	   chat "]\n";
-	    if !print_call_explicit_expression orelse !Flags.DEBUG_COMPILER then 
+	    if print_call_explicit_expression() orelse !Flags.DEBUG_COMPILER then 
 	      display("Report: AFTER APPLICATION CONVERSION:", layout_pgm pgm')
 	    else ();
 	    pgm'

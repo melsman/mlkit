@@ -50,23 +50,102 @@ functor OptLambda(structure Lvars: LVARS
     * Dynamic flags
     * ----------------------------------------------------------------- *)
 
-    val statistics_after_optimisation = Flags.lookup_flag_entry "statistics_after_optimisation"
-    val minimize_fixs = Flags.lookup_flag_entry "minimize_fixs"
+    val optimise_p = Flags.add_bool_entry 
+	{long="optimiser",short=SOME "opt", menu=["Control", "Optimiser", "optimiser"],
+	 item=ref true, neg=true, desc=
+	 "Enable optimisation of intermediate language code\n\
+	  \(Lambda Expressions). Which optimisations are performed\n\
+	  \is controlled by individual flags. The optimisations\n\
+	  \include function in-lining, function specialisation,\n\
+	  \fix-minimization, unboxing of function arguments, and\n\
+	  \elimination of unnecessary record constructions."}
+
+    val statistics_after_optimisation = Flags.add_bool_entry 
+	{long="statistics_after_optimisation", short=NONE, 
+	 menu=["Control", "Optimiser", "statistics after optimisation"],
+	 item=ref false, neg=false, desc=
+	 "Report optimisation statistics after optimisation of\n\
+	  \Lambda Expression."}
+
+    val minimize_fixs = Flags.add_bool_entry 
+	 {long="minimize_fixs", short=NONE, menu=["Control", "Optimiser", "minimize fixs"],
+	  item=ref true, neg=true, desc=
+	  "Minimize fix constructs (Lambda Expression Optimiser)."}
+
     val fix_conversion_ref = ref true  (* users should not be able to disable fix_conversion
 					* because polymorphism in regions must co-work
 					* with polymorphism in type variables *)
-    val contract_ref = Flags.lookup_flag_entry "contract"
-    val specialize_recursive_functions = Flags.lookup_flag_entry "specialize_recursive_functions"
-    val eliminate_explicit_records_ref = Flags.lookup_flag_entry "eliminate_explicit_records"
-    val unbox_function_arguments = Flags.lookup_flag_entry "unbox_function_arguments"
 
-    val max_specialise_size = Flags.lookup_int_entry "maximum_specialise_size"
-       (* max size of recursive function defs. to be specialised. *) 
+    val contract_p = Flags.add_bool_entry 
+	 {long="contract", short=NONE, menu=["Control", "Optimiser", "contract"],
+	  item=ref true, neg=true, desc=
+	  "Contract is responsible for in-lining, specialization,\n\
+	   \elimination of dead code, and much else (Lambda\n\
+	   \Expression Optimiser)."}
 
-    val max_inline_size = Flags.lookup_int_entry "maximum_inline_size"
-       (* max size of non-recursive function defs. to be inlined. *)
+    val specialize_recursive_functions = Flags.add_bool_entry 
+	  {long="specialize_recursive_functions", short=NONE, 
+	   menu=["Control", "Optimiser", "specialize recursive functions"],
+	   item=ref true, neg=true, desc=
+	   "Specialise recursive functions. Use the option\n\
+	    \maximum_specialise_size to control which functions\n\
+	    \are specialised. If this flag is on, functions that are\n\
+	    \applied only once are specialised, no matter the setting\n\
+	    \of maximum_specialise_size (Lambda Expression Optimiser)."}
 
-    val cross_module_opt = Flags.is_on0 "cross_module_opt"
+    val eliminate_explicit_records_p = Flags.add_bool_entry 
+	   {long="eliminate_explicit_records", short=NONE, 
+	    menu=["Control", "Optimiser", "eliminate explicit records"],
+	    item=ref true, neg=true, desc=
+	    "Eliminate bindings of explicit records only used for\n\
+	     \selections. Transform\n\
+	     \      let r = (e1,...,en) in ... #i r .. #j r ...\n\
+	     \into\n\
+	     \      let x1=e1 in ... let xn=en in ... xi .. xj ...\n\
+	     \(Lambda Expression Optimiser)."}
+
+    val unbox_function_arguments = Flags.add_bool_entry 
+	    {long="unbox_function_arguments", short=NONE, 
+	     menu=["Control", "Optimiser", "unbox function arguments"],
+	     item=ref true, neg=true, desc=
+	     "Unbox arguments to fix-bound functions, for which the\n\
+	      \argument `a' is used only in contexts `#i a'. All call \n\
+	      \sites are transformed to match the new function (Lambda\n\
+	      \Expression Optimiser)."}
+	    
+    (* max size of recursive function defs. to be specialised. *) 
+    val max_specialise_size = Flags.add_int_entry 
+	{long="maximum_specialise_size",short=NONE, 
+	 menu=["Control", "Optimiser", "maximum specialise size"], 
+	 item=ref 200, desc=
+	 "Curried functions smaller than this size (counted in\n\
+	  \abstract syntax tree nodes) are specialised if all\n\
+	  \applications of the function within its own body are\n\
+	  \applied to its formal argument, even if they are used\n\
+	  \more than once. Functions that are used only once are\n\
+	  \specialised no matter their size. See also the option\n\
+	  \--specialize_recursive_functions."}
+
+    (* max size of non-recursive function defs. to be inlined. *)
+    val max_inline_size = Flags.add_int_entry 
+	{long="maximum_inline_size", short=NONE, 
+	 menu=["Control", "Optimiser", "maximum inline size"], 
+	 item=ref 50, desc=
+	 "Functions smaller than this size (counted in abstract\n\
+	  \syntax tree nodes) are in-lines, even if they are used\n\
+	  \more than once. Functions that are used only once are\n\
+	  \always in-lined."}
+
+    val cross_module_opt = Flags.add_bool_entry 
+	{long="cross_module_opt",short=SOME "cross_opt", 
+	 menu=["Control", "Optimiser", "cross module optimisation"],
+	 item=ref true,neg=true, 
+	 desc=
+	 "Enable cross-module optimisation including in-lining\n\
+	  \of small functions and specialisation of small\n\
+	  \recursive functions. Which optimisations are performed\n\
+	  \across modules is controlled by individual optimisation\n\
+	  \flags."}
 
    (* -----------------------------------------------------------------
     * Some helpful functions
@@ -74,7 +153,7 @@ functor OptLambda(structure Lvars: LVARS
 
     val unit_Type = RECORDtype []
 
-    fun log x = if !statistics_after_optimisation then TextIO.output(!Flags.log,x)
+    fun log x = if statistics_after_optimisation() then TextIO.output(!Flags.log,x)
 		else ()
 
     fun die s = Crash.impossible ("OptLambda." ^ s)
@@ -171,7 +250,7 @@ functor OptLambda(structure Lvars: LVARS
 	in (* log ("  " ^ s ^ "\n"); *) stat_map := new_stat_map
 	end
       fun print_stat lamb lamb' =
-	if not (!statistics_after_optimisation) then ()
+	if not (statistics_after_optimisation()) then ()
 	else let val st = layout_stat (!stat_map)
 	     in PP.outputTree (log, st, !Flags.colwidth);
 	        print_size_difference (size_lamb lamb) (size_lamb lamb');
@@ -194,7 +273,7 @@ functor OptLambda(structure Lvars: LVARS
       val flag = ref false
     in
       fun tick (s : string) = (flag := true; 
-			       if !statistics_after_optimisation then add_statistics s
+			       if statistics_after_optimisation() then add_statistics s
 			       else ())
       fun reset_tick() = flag := false
       fun test_tick() = !flag
@@ -552,7 +631,7 @@ functor OptLambda(structure Lvars: LVARS
 *)
       fun is_small_fn lamb =
 	case lamb 
-	  of FN _ => small_lamb (!max_inline_size) lamb
+	  of FN _ => small_lamb (max_inline_size()) lamb
 	   | _ => false
 
       fun is_fn (FN _) = true
@@ -874,8 +953,8 @@ functor OptLambda(structure Lvars: LVARS
 		   val _ = app unmark_lvar lvs
 		   val env' = case functions
 				of [function as {lvar,tyvars,Type,bind}] => 
-				  let val cv = if !specialize_recursive_functions andalso specializable function then 
-				                  CFIX{Type=Type,bind=bind,large=not(small_lamb (!max_specialise_size) bind)} 
+				  let val cv = if specialize_recursive_functions() andalso specializable function then 
+				                  CFIX{Type=Type,bind=bind,large=not(small_lamb (max_specialise_size()) bind)} 
 					       else CUNKNOWN
 				  in updateEnv [lvar] [(tyvars,cv)] env
 				  end
@@ -937,7 +1016,7 @@ functor OptLambda(structure Lvars: LVARS
 	end
 
       fun contract (ce:contract_env) lamb =
-	if !contract_ref then
+	if contract_p() then
 	  let val _ = log "contracting\n"
 	      val _ = reset_excon_bucket()
 	      val _ = init lamb
@@ -1035,7 +1114,7 @@ functor OptLambda(structure Lvars: LVARS
            | _ => map_lamb (transf env) lamb
    in
      fun eliminate_explicit_records lamb =
-       if !eliminate_explicit_records_ref then
+       if eliminate_explicit_records_p() then
 	 (log "eliminating explicit records\n";
 (*	  log " traversing\n"; *)
 	  traverse lamb;
@@ -1192,7 +1271,7 @@ functor OptLambda(structure Lvars: LVARS
 	     | maybe_FIX f = FIX f
 	   fun min_fixs (FIX fs) = map_lamb min_fixs (maybe_FIX (minimize_fix fs))
 	     | min_fixs lamb = map_lamb min_fixs lamb
-       in if !minimize_fixs then min_fixs lamb
+       in if minimize_fixs() then min_fixs lamb
 	  else lamb
        end
    end
@@ -1409,7 +1488,7 @@ functor OptLambda(structure Lvars: LVARS
 		 case Type
 		   of ARROWtype([RECORDtype nil],res) => normal()
 		    | ARROWtype([rt as RECORDtype ts],res) =>
-		     if !Flags.optimiser andalso !unbox_function_arguments andalso unboxable lv body then
+		     if optimise_p() andalso unbox_function_arguments() andalso unboxable lv body then
 		       LvarMap.add(lvar,UNBOXED_ARGS (if r then nil else tyvars,ARROWtype(ts,res)),env)
 		     else 
 		       normal()
@@ -1959,7 +2038,7 @@ functor OptLambda(structure Lvars: LVARS
     * ----------------------------------------------------------------- *)
 
     fun maybeoptimise cenv e =
-	if !Flags.optimiser then optimise cenv e
+	if optimise_p() then optimise cenv e
 	else (e, contract_env_dummy e)
 
     fun optimise (env, PGM(DATBINDS db,lamb)) =

@@ -38,7 +38,6 @@ functor Flags (structure Crash : CRASH
     val DEBUG_COMPILER          = ref false
     val chat                    = ref false
 
-    val optimiser               = ref true
     val type_check_lambda       = ref true    (* enforce checking as the default *)
 
     (* Elimination of polymorphic equality *)
@@ -53,24 +52,8 @@ functor Flags (structure Crash : CRASH
     val all_multiplicities_infinite = ref false   
     val region_inference = ref true
 
-    (* Optimiser *)
-    val cross_module_opt = ref true
-    val statistics_after_optimisation = ref false
-    val minimize_fixs = ref true
-    val contract = ref true
-    val specialize_recursive_functions = ref true
-    val unbox_function_arguments = ref true
-    val eliminate_explicit_records = ref true
-    val maximum_inline_size = ref 50            
-    val maximum_specialise_size = ref 200
-
     (* Printing of intermediate forms *)
     val print_opt_lambda_expression = ref false
-    val print_storage_mode_expression = ref false
-    val print_drop_regions_expression = ref false
-    val print_drop_regions_expression_with_storage_modes = ref false
-    val print_physical_size_inference_expression = ref false
-    val print_call_explicit_expression = ref false
 
     val disable_atbot_analysis = ref false
     val print_K_normal_forms = ref false
@@ -342,18 +325,18 @@ end (* ParseScript *)
 
 
 structure Directory : sig
-			val bool_entry          : bentry -> unit
-			val string_entry        : string entry -> unit
-			val int_entry           : int entry -> unit
+			val bool_entry          : bentry -> (unit -> bool)
+			val string_entry        : string entry -> (unit -> string)
+			val int_entry           : int entry -> (unit -> int)
 			val bool_action_entry   : baentry -> unit
 
 			val is_on               : string -> bool 
 			val is_on0              : string -> unit -> bool 
 			val turn_on             : string -> unit
 			val turn_off            : string -> unit
-			val add_string_entry    : string * string ref -> unit
-			val add_int_entry       : string * int ref -> unit
-			val add_bool_entry      : string * bool ref -> unit
+			val add_string_entry    : string * string ref -> (unit -> string)
+			val add_int_entry       : string * int ref -> (unit -> int)
+			val add_bool_entry      : string * bool ref -> (unit -> bool)
 			val get_string_entry    : string -> string
 			val lookup_string_entry : string -> string ref
 			val lookup_flag_entry   : string -> bool ref
@@ -389,13 +372,16 @@ struct
 
     val dir : entry0 M.map ref = ref M.empty
 
-    fun bool_entry (e:bentry) : unit =
+    fun bool_entry (e:bentry) : unit -> bool =
       case M.lookup (!dir) (#long e) 
 	of SOME _ => die ("bool_entry: entry " ^ (#long e) ^ " already in directory")
-	 | NONE => dir := M.add(#long e, BOOL_ENTRY e,
-				case #short e
-				  of SOME s => M.add(s, BOOL_ENTRY e, !dir)
-				   | NONE => !dir)
+	 | NONE => (dir := M.add(#long e, BOOL_ENTRY e,
+				 case #short e of 
+				     SOME s => M.add(s, BOOL_ENTRY e, !dir)
+				   | NONE => !dir);
+		    let val r = #item e
+		    in fn () => !r
+		    end)
 
     fun bool_action_entry (e:baentry) : unit =
       case M.lookup (!dir) (#long e) 
@@ -405,21 +391,27 @@ struct
 				  of SOME s => M.add(s, BOOLA_ENTRY e, !dir)
 				   | NONE => !dir)
 
-    fun string_entry (e:string entry) : unit =
+    fun string_entry (e:string entry) : unit -> string =
       case M.lookup (!dir) (#long e) 
 	of SOME _ => die ("string_entry: entry " ^ (#long e) ^ " already in directory")
-	 | NONE => dir := M.add(#long e, STRING_ENTRY e,
-				case #short e
-				  of SOME s => M.add(s, STRING_ENTRY e, !dir)
-				   | NONE => !dir)
+	 | NONE => (dir := M.add(#long e, STRING_ENTRY e,
+				 case #short e of 
+				     SOME s => M.add(s, STRING_ENTRY e, !dir)
+				   | NONE => !dir);
+		    let val r = #item e
+		    in fn () => !r
+		    end)
 
-    fun int_entry (e:int entry) : unit =
+    fun int_entry (e:int entry) : unit -> int =
       case M.lookup (!dir) (#long e) 
 	of SOME _ => die ("int_entry: entry " ^ (#long e) ^ " already in directory")
-	 | NONE => dir := M.add(#long e, INT_ENTRY e, 
-				case #short e
-				  of SOME s => M.add(s, INT_ENTRY e, !dir)
-				   | NONE => !dir)
+	 | NONE => (dir := M.add(#long e, INT_ENTRY e, 
+				 case #short e of 
+				     SOME s => M.add(s, INT_ENTRY e, !dir)
+				   | NONE => !dir);
+		    let val r = #item e
+		    in fn () => !r
+		    end)
 
     fun lookup_flag_entry (key) : bool ref =
       case M.lookup (!dir) key
@@ -723,44 +715,20 @@ fun add_bool_action_entry e =
   (*1. Printing of intermediate forms*)
 
 local
-  fun add (l, sh, s, r, desc) = add_bool_entry {long=l, short=sh, menu=["Printing of intermediate forms",s],
-						item=r, neg=false, desc=desc}
+  fun add (l, sh, s, r, desc) : unit = 
+      (add_bool_entry {long=l, short=sh, menu=["Printing of intermediate forms",s],
+		       item=r, neg=false, desc=desc}; 
+       ())
 in
-  val _ = app add
-  [
-   ("print_opt_lambda_expression", SOME "Pole", "print optimised lambda expression", print_opt_lambda_expression,
-    "Print Lambda Expression after optimisation."),
-   ("print_storage_mode_expression", SOME "Psme", "print storage mode expression", print_storage_mode_expression,
-    "Print Region Expression after storage mode analysis"),
-   ("print_drop_regions_expression", SOME "Pdre", "print drop regions expression", print_drop_regions_expression,
-    "Print Region Expression after dropping word regions and\n\
-     \regions arguments with only get-effects."),
-   ("print_drop_regions_expression_with_storage_modes", SOME "Pdresm", "print drop regions expression with storage modes", 
-    print_drop_regions_expression_with_storage_modes,
-    "Print Region Expression after dropping word regions and\n\
-     \regions arguments with only get-effects. Also print\n\
-     \atbot and attop annotations resulting from storage mode\n\
-     \analysis."),
-   ("print_physical_size_inference_expression", SOME "Ppse", "print physical size inference expression", 
-    print_physical_size_inference_expression,
-    "Print Region Expression after physical size inference."),
-   ("print_call_explicit_expression", SOME "Pcee", "print call-explicit expression", print_call_explicit_expression,
-    "Print Region Expression with call annotations."),
-   ("print_normalized_program", NONE, "print normalized expression", ref false,
-    "Print Region Expression after K-normalisation."),
-   ("print_clos_conv_program", SOME "Pccp", "print closure converted expression", ref false,
-    "Print Region Expression after closure conversion."),
-   ("print_lift_conv_program", SOME "Plcp", "print lifted expression for the KAM", ref false,
-    "Print Region Expression after lifting. Used for the\n\
-     \compilation into byte code (KAM).")
-    ]
+  val _ = add  ("print_opt_lambda_expression", SOME "Pole", "print optimised lambda expression", 
+		print_opt_lambda_expression, "Print Lambda Expression after optimisation.")
 end
 
   (*2. Layout*)
 
 local
-  fun add neg (l, sh, s, r, desc) = add_bool_entry {long=l, short=sh, menu=["Layout",s],
-						    item=r, neg=neg, desc=desc}
+  fun add neg (l, sh, s, r, desc) : unit = (add_bool_entry {long=l, short=sh, menu=["Layout",s],
+							    item=r, neg=neg, desc=desc}; ())
 in
   val _ = app (add false)
     [
@@ -797,26 +765,6 @@ val _ = add_int_entry {long="width",short=SOME "w", menu=["Layout", "text width 
 
   (*3. Control*)
 
-val _ = add_bool_entry {long="optimiser",short=SOME "opt", menu=["Control", "Optimiser", "optimiser"],
-			item=optimiser,neg=true, 
-			desc=
-			"Enable optimisation of intermediate language code\n\
-			\(Lambda Expressions). Which optimisations are performed\n\
-			\is controlled by individual flags. The optimisations\n\
-			\include function in-lining, function specialisation,\n\
-			\fix-minimization, unboxing of function arguments, and\n\
-			\elimination of unnecessary record constructions."}
-
-val _ = add_bool_entry {long="cross_module_opt",short=SOME "cross_opt", 
-			menu=["Control", "Optimiser", "cross module optimisation"],
-			item=cross_module_opt,neg=true, 
-			desc=
-			"Enable cross-module optimisation including in-lining\n\
-			\of small functions and specialisation of small\n\
-                        \recursive functions. Which optimisations are performed\n\
-                        \across modules is controlled by individual optimisation\n\
-			\flags."}
-
 val recompile_basislib = ref false
 val _ = add_bool_entry {long="recompile_basislib",short=SOME "scratch", 
 			menu=["Control", "recompile basis library"],
@@ -825,65 +773,6 @@ val _ = add_bool_entry {long="recompile_basislib",short=SOME "scratch",
 			"Recompile basis library from scratch. This option\n\
 			 \is useful together with other options that control\n\
 			 \code generation."}
-
-local
-  fun add neg (l, s, r, desc) = add_bool_entry {long=l, short=NONE, menu=["Control", "Optimiser", s],
-						item=r, neg=neg, desc=desc}
-in
-  val _ = app (add false)
-  [
-   ("statistics_after_optimisation", "statistics after optimisation", statistics_after_optimisation,
-    "Report optimisation statistics after optimisation of\n\
-     \Lambda Expression.")
-    ]
-  val _ = app (add true)
-    [
-    ("minimize_fixs", "minimize fixs", minimize_fixs,
-     "Minimize fix constructs (Lambda Expression Optimiser)."), 	
-     ("contract", "contract", contract,
-      "Contract is responsible for in-lining, specialization,\n\
-       \elimination of dead code, and much else (Lambda\n\
-       \Expression Optimiser)."),
-      ("specialize_recursive_functions", "specialize recursive functions", specialize_recursive_functions,
-       "Specialise recursive functions. Use the option\n\
-	\maximum_specialise_size to control which functions\n\
-	\are specialised. If this flag is on, functions that are\n\
-	\applied only once are specialised, no matter the setting\n\
-	\of maximum_specialise_size (Lambda Expression Optimiser)."), 
-       ("unbox_function_arguments", "unbox function arguments", unbox_function_arguments,
-	"Unbox arguments to fix-bound functions, for which the\n\
-	 \argument `a' is used only in contexts `#i a'. All call \n\
-	 \sites are transformed to match the new function (Lambda\n\
-	 \Expression Optimiser)."), 
-       ("eliminate_explicit_records", "eliminate explicit records", eliminate_explicit_records,
-	"Eliminate bindings of explicit records only used for\n\
-	 \selections. Transform\n\
-	 \      let r = (e1,...,en) in ... #i r .. #j r ...\n\
-	 \into\n\
-	 \      let x1=e1 in ... let xn=en in ... xi .. xj ...\n\
-	 \(Lambda Expression Optimiser).")
-   ]
-end
-
-local 
-  fun add (l, s, r, d) = 
-	add_int_entry {long=l,short=NONE, menu=["Control", "Optimiser", s], item=r, desc=d}
-in
-  val _ = add("maximum_inline_size", "maximum inline size", maximum_inline_size,
-	      "Functions smaller than this size (counted in abstract\n\
-	       \syntax tree nodes) are in-lines, even if they are used\n\
-	       \more than once. Functions that are used only once are\n\
-	       \always in-lined.")
-
-  val _ = add("maximum_specialise_size", "maximum specialise size", maximum_specialise_size,
-	      "Curried functions smaller than this size (counted in\n\
-	      \abstract syntax tree nodes) are specialised if all\n\
-	      \applications of the function within its own body are\n\
-	      \applied to its formal argument, even if they are used\n\
-	      \more than once. Functions that are used only once are\n\
-	      \specialised no matter their size. See also the option\n\
-	      \--specialize_recursive_functions.")
-end
 
 val preserve_tail_calls = ref false
 val _ = add_bool_entry {long="preserve_tail_calls", short=SOME"ptc", item=preserve_tail_calls,
@@ -948,8 +837,8 @@ in
 end
 
 local
-  fun add neg (l, sh, s, r, desc) = add_bool_entry {long=l, short=sh, menu=["Control",s],
-						    item=r, neg=neg, desc=desc}
+  fun add neg (l, sh, s, r, desc) : unit = (add_bool_entry {long=l, short=sh, menu=["Control",s],
+							    item=r, neg=neg, desc=desc}; ())
 in
   val _ = app (add false)
   [
@@ -1030,8 +919,8 @@ end
   (*5. Profiling menu*)
 
 local
-  fun add neg (l, sh, s, r, desc) = add_bool_entry {long=l, short=sh, menu=["Profiling",s],
-						    item=r, neg=neg, desc=desc}
+  fun add neg (l, sh, s, r, desc) = (add_bool_entry {long=l, short=sh, menu=["Profiling",s],
+						     item=r, neg=neg, desc=desc}; ())
 in
   val _ = app (add false)
   [
@@ -1062,8 +951,8 @@ val _ = Menu.add_int_pair_list_to_menu ("", ["Profiling", "paths between two nod
   (*6. Debug Kit*)
 
 local
-  fun add p n (l,sh,s,r,d) = add_bool_entry {long=l, short=sh, menu=p @[s],
-					  item=r, neg=n, desc=d}
+    fun add p n (l,sh,s,r,d) : unit = (add_bool_entry {long=l, short=sh, menu=p @[s],
+						       item=r, neg=n, desc=d}; ())
 in
   val _ = app (add ["Debug", "Lambda"] true) 
   [
@@ -1116,15 +1005,11 @@ end
 
   (*Entries not included in menu and exe-options, but in lookup functions*)
 
-  val _ = app add_string_entry0
-    [("c_compiler", c_compiler)                       (*e.g. "cc -Aa" or "gcc -ansi"*)
-     ]
+  val _ = add_string_entry0 ("c_compiler", c_compiler)
+                        (*e.g. "cc -Aa" or "gcc -ansi"*)
 
-  val _ = app add_bool_entry0
-    [
-     ("enhanced_atbot_analysis", enhanced_atbot_analysis),
-     ("eliminate_polymorphic_equality", eliminate_polymorphic_equality)
-     ]
+  val _ = add_bool_entry0 ("enhanced_atbot_analysis", enhanced_atbot_analysis)
+  val _ = add_bool_entry0 ("eliminate_polymorphic_equality", eliminate_polymorphic_equality)
 
 exception ParseScript = ParseScript.ParseScript
 
