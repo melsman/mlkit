@@ -33,6 +33,7 @@ in
   end
 
   local open Tools Manager 
+        ../Version.sml
   in ../Common/KitCompiler.sml
   end
   ../Common/KitMain.sml

@@ -51,14 +51,13 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	  end
 
 	val date = Date.fmt "%b %d, %Y" (Date.fromTimeLocal (Time.now()))
-	val version = "4.1.5"
 
 	fun print_greetings() =
 	  if !Flags.SMLserver then
-	    print("SMLserver (" ^ !Flags.WEBserver ^ ") version " ^ version ^ ", " ^ date ^ "\n" ^
+	    print("SMLserver (" ^ !Flags.WEBserver ^ ") version " ^ Version.version ^ ", " ^ date ^ "\n" ^
 		  "Based on the ML Kit [" ^ backend_name ^ " Backend]\n")
 	  else 
-	    print("ML Kit version " ^ version ^ ", " ^ date ^ " [" ^
+	    print("ML Kit version " ^ Version.version ^ ", " ^ date ^ " [" ^
 		  backend_name ^ " Backend]\n")
 
 	fun cmd_name() = 

@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-KITVERSION=4.1.4
+KITVERSION=$(shell cat version)
 ARCH-OS=x86-linux
 #ARCH-OS=x86-bsd
 INSTDIR=/usr/share/mlkit
@@ -34,7 +34,7 @@ barry:
 	cd src; $(MAKE) barry
 
 clean:
-	$(CLEAN) bin run
+	$(CLEAN) bin run mlkit.spec smlserver.spec
 	cd basis; $(MAKE) clean
 	cd doc/manual; $(MAKE) clean
 	cd kitlib; $(CLEAN) run
@@ -96,14 +96,17 @@ tgz_smlserver:
 	cd ..; tar czf smlserver-$(KITVERSION).tgz smlserver-$(KITVERSION)
 	cd ..; rm -rf smlserver-$(KITVERSION)
 
-rpm_smlserver:
+%.spec: %.spec.in
+	sed -e "s+@VERSION@+$(KITVERSION)+g" < $< > $@
+
+rpm_smlserver: smlserver.spec
 	# assume that ``make tgz_smlserver'' has been run 
 	# as a user other than root!
 	cp -f ../smlserver-$(KITVERSION).tgz $(RPMDIR)/SOURCES/
 	cp -f smlserver.spec $(RPMDIR)/SPECS/smlserver-$(KITVERSION).spec
 	(cd $(RPMDIR)/SPECS; rpm -ba smlserver-$(KITVERSION).spec)
 
-rpm:
+rpm: mlkit.spec
 	# assume that ``make tgz'' has been run 
 	# as a user other than root!
 	cp -f ../mlkit-$(KITVERSION).tgz $(RPMDIR)/SOURCES/

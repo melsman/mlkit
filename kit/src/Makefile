@@ -74,7 +74,13 @@ barry: basics
 	cd ..; echo `pwd`/bin/barry.$(ARCH-OS) `pwd` \$$* >> bin/barry
 	chmod a+x $(BINDIR)/barry
 
-basics: genopcodes heap2exec
+basics: genopcodes heap2exec version
+
+version: Version.sml
+
+Version.sml: Version.sml.in ../version
+	sed -e "s+@VERSION@+`cat ../version`+g" < $< > $@
+
 
 genopcodes: $(GENOPCODES_TARGETS)
 
@@ -100,7 +106,7 @@ heap2exec: heap2exec/heap2exec
 	cd heap2exec; $(MAKE)
 
 clean:
-	$(CLEAN) run $(GENOPCODES_TARGETS)
+	$(CLEAN) run $(GENOPCODES_TARGETS) Version.sml
 	cd Pickle; $(CLEAN)
 	cd Common; $(CLEAN)
 	cd Common/EfficientElab; $(CLEAN)
