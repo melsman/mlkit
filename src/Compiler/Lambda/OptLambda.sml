@@ -1095,7 +1095,7 @@ functor OptLambda(structure Lvars: LVARS
     *   ensure that all let-constructs, binding other things than
     *   lambdas are not polymorphic; this is done by translating
     *   polymorphic non-functional let-constructs into functional ones
-    *   (this is ok. since polymorphism is only allowed for
+    *   (this is ok. because polymorphism is allowed only for
     *   non-expansive expressions.
     * ----------------------------------------------------------------- *)
    
@@ -1183,6 +1183,106 @@ functor OptLambda(structure Lvars: LVARS
    end	 
 
 
+   (* ----------------------------------------------------------------
+    * unbox_fix_args; Unbox arguments to fix-bound functions, for which
+    * the argument `a' is used only in contexts `#i a'. All call sites
+    * are transformed to match the new function.
+    * ---------------------------------------------------------------- *)
+   local 
+
+
+     (* Given a lambda variable lv, see if there are any non-select
+      * occurences of it in exp; if so, the function is not unboxable,
+      * wrt. its arguments. *)
+
+     fun unboxable lv exp : bool =
+       let exception NonSelect
+	 fun f lv exp =
+	   case exp
+	     of PRIM (SELECTprim i, VAR _) => ()
+	      | VAR {lvar,...} => if lv = lvar then raise NonSelect
+				  else ()
+	      | _ => app_lamb (f lv) exp
+       in (f lv exp; true) handle NonSelect => false
+       end 
+
+     (* The environment *)
+
+     datatype fix_boxity = NORMAL_ARGS | UNBOXED_ARGS of int (* number of arguments *)
+
+     fun layout_fix_boxity NORMAL_ARGS = PP.LEAF "NORMAL_ARGS"
+       | layout_fix_boxity (UNBOXED_ARGS i) = PP.LEAF ("UNBOXED_ARGS(" ^ Int.toString i ^ ")")
+
+     type unbox_fix_env = fix_boxity LvarMap.map
+
+     fun enrich_unbox_fix_env(unbox_fix_env1, unbox_fix_env2) =
+       LvarMap.Fold (fn ((lv2,res2),b) => b andalso
+		       case LvarMap.lookup unbox_fix_env1 lv2
+			 of SOME res1 => res1=res2
+			  | NONE => false) true unbox_fix_env2
+
+     fun restrict_unbox_fix_env(unbox_fix_env,lvars) = 
+       List.foldL (fn lv => fn acc => 
+		   case LvarMap.lookup unbox_fix_env lv
+		     of SOME res => LvarMap.add(lv,res,acc)
+		      | NONE => die "restrict_unbox_fix_env.lv not in env") LvarMap.empty lvars 
+
+     val layout_unbox_fix_env = LvarMap.layoutMap {start="UnboxFixEnv={",eq="->", sep=", ", finish="}"} 
+      (PP.LEAF o Lvars.pr_lvar) layout_fix_boxity
+
+     fun lookup env lv = LvarMap.lookup env lv
+     fun add_lv (lv,res,env) = LvarMap.add(lv,res,env)
+
+     val frame_unbox_fix_env = ref (LvarMap.empty : unbox_fix_env)
+
+     fun trans env lamb =
+       case lamb 
+	 of FIX {functions, scope} => 
+	   let 
+	     fun mk_env {lvar,tyvars,Type,bind=FN{pat=[lv,pt],body}} =
+	       let fun normal () = LvarMap.add (lvar, NORMAL_ARGS, LvarMap.empty)
+	       in (* interesting only if the function takes a tuple of arguments *)
+		 case Type
+		   of ARROWtype([RECORDtype nil],res) => normal()
+		    | ARROWtype([RECORDtype ts],res) =>
+		     if unboxable lv body then
+		       LvarMap.add(lvar,UNBOXED_ARGS (length ts),LvarMap.empty)
+		     else 
+		       normal()
+		    | _ => normal()
+	       end
+	       | mk_env _ = die "unbox_fix_args.f.mk_env"	       
+	     fun trans_function env {lvar,tyvars,Type,bind=FN{pat=[lv,pt],body}} =
+	       let fun mk_fun body = {lvar=lvar,tyvars=tyvars,Type=Type, 
+				      bind=FN{pat=[lv,pt], body=body}}
+	       in case lookup env lvar
+		    of SOME NORMAL_ARGS => mk_fun (trans env body)
+		     | SOME (UNBOXED_ARGS sz) =>
+		      let (* create argument env *)
+			val vector = Vector.tabulate 
+			  (sz, fn i => Lvars.new_named_lvar (Lvars.pr_lvar lv ^ "-" ^ Int.toString i))
+			val env' = LvarMap.add(lv, ARG_VARS vector, env)
+		      in mk_fun (trans env' body)
+		      end
+		     | _ => die "unbox_fix_args.f.trans_function"
+	       end
+	       | trans_function _ _ = die "unbox_fix_args.f.do_fun"
+	     val env' = foldl (fn (e, f) => LvarMap.plus(e,mk_env f)) functions
+	     val env'' = LvarMap.plus(env,env')
+	     val functions' = map (trans_function env'') functions
+	     val scope = trans env'' scope
+	   in
+	     FIX{functions=functions',scope=scope'}
+	   end
+   in
+   end
+
+
+
+
+
+
+
    (* -----------------------------------------------------------------
     * inverse_eta_for_fix_bound_lvars lamb 
     *   ensure that every fix-bound variable is always fully applied, i.e.
@@ -1262,7 +1362,8 @@ functor OptLambda(structure Lvars: LVARS
                          * on the rhs of a val rec which declares lvar' *)
 		       val tau_lv = case on_Type subst Type 
                                       of ARROWtype([tau1],_) => tau1
-	                               | _ => die "inverse_eta --- fix bound lvar of non-function type"
+				       | ARROWtype(_,_) => die "inverse_eta -- fix bound lvar of multi-arg function-type"
+	                               | _ => die "inverse_eta -- fix bound lvar of non-function type"
 		   in FN{pat=[(lv,tau_lv)], body=APP(lamb,VAR{lvar=lv,instances=[]})}
 		   end                 
 		  | _ => lamb) 
