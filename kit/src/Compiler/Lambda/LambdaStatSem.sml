@@ -390,6 +390,10 @@ end
 				    log_st (layoutType tau');
 				    log "--------------------------------\n";
 				    die ("eqType"))
+    fun eqTypes s ([],[]) = ()
+      | eqTypes s (ty1::tys1, ty2::tys2) = (eqType s (ty1,ty2); eqTypes s (tys1, tys2))
+      | eqTypes s _ = die "eqTypes"
+
 
     val unit_Type = RECORDtype []
 
@@ -456,6 +460,8 @@ end
       end
 
 
+   exception AbortExp
+
     (* Type checking of primitives *)
     fun type_prim (env:env) (prim:Type prim) lexps : Type list = 
       let
@@ -485,8 +491,7 @@ end
 		 (case mk_instance(lookup_con env con, instances)
 		    of ARROWtype([t1],[t2]) =>
 		      let val ts = unTypeList "CONprim" (type_e lexp)
-		      in if eq_Types([t1],ts) then [t2]
-			 else die ("CONprim: " ^ Con.pr_con con)
+		      in (eqTypes ("CONprim: " ^ Con.pr_con con)([t1],ts); [t2])
 		      end
 		     | _ => die "CONprim.Unary constructor does not have arrow type")
 		| _ => die "CONprim.Wrong number of args")
@@ -744,8 +749,10 @@ end
 		     Frame {declared_lvars = map on_lvar declared_lvars,
 			    declared_excons = map on_excon declared_excons}
 		   end
-		 ) 
-
+		 ) handle AbortExp => raise AbortExp
+                        | ? => (log_st (layoutLambdaExp lexp) ; 
+                                log_st (layout_env env);
+                                raise AbortExp)
 
   (* Analyse the datatype bindings and yield an environment which
    * maps all constructors to type schemes and all tynames to

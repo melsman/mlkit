@@ -381,15 +381,15 @@ functor LambdaBasics (structure Lvars : LVARS
       fun on_Type [] tau : Type = tau
 	| on_Type S tau : Type = 
 	let 
-	  fun tv_Subst (tyvar',tau') tau = 
-	    let val f = tv_Subst(tyvar',tau') 
-	    in case tau 
-		 of TYVARtype tyvar => if tyvar = tyvar' then tau' else tau
-		  | ARROWtype(taus1,taus2) => ARROWtype(map f taus1,map f taus2)
-		  | CONStype(taus,tyname) => CONStype(map f taus,tyname)
-		  | RECORDtype taus => RECORDtype (map f taus)
-	    end
-	in List.foldL tv_Subst tau S
+	  fun tv_Subst tau = 
+	    (case tau 
+		 of TYVARtype tyvar =>((#2(List.first (fn (tyvar':tyvar, tau') => tyvar = tyvar') S))
+                                       handle _ => tau)
+		  | ARROWtype(taus1,taus2) => ARROWtype(map tv_Subst taus1,map tv_Subst taus2)
+		  | CONStype(taus,tyname) => CONStype(map tv_Subst taus,tyname)
+		  | RECORDtype taus => RECORDtype (map tv_Subst taus)
+            )
+	in tv_Subst tau
 	end
 
       fun on_Types [] types : Type list = types 
