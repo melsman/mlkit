@@ -138,7 +138,6 @@ signature KAM =
       | SelectStackPush of int 
       | EnvPush
 
-      | PrimGetConn
       | PrimEquali
       | PrimSubi
       | PrimAddi

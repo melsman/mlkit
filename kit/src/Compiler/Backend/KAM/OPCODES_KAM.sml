@@ -71,7 +71,6 @@ signature OPCODES_KAM =
     val STACK_ADDR_INF_BIT_ATBOT_BIT_PUSH : int 
     val SELECT_STACK_PUSH : int 
     val ENV_PUSH : int 
-    val PRIM_GET_CONN : int 
     val PRIM_EQUAL_I : int 
     val PRIM_SUB_I : int 
     val PRIM_ADD_I : int 

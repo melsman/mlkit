@@ -160,7 +160,6 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       (* primitives *)
 
-      | PrimGetConn
       | PrimEquali
       | PrimSubi
       | PrimAddi
@@ -360,7 +359,6 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       (* primitives *)
 
-      | PrimGetConn => "PrimGetConn" :: acc
       | PrimEquali => "PrimEquali" :: acc
       | PrimSubi => "PrimSubi" :: acc
       | PrimAddi => "PrimAddi" :: acc

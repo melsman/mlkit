@@ -15,27 +15,46 @@
  */
 
 #include <stdio.h>
+#include <sys/stat.h>
 #include "ns.h"
 #include "../RuntimeWithGC/LoadKAM.h"
 
+#define NSSML_PATH_MAX 255
+#define NSSML_ERROR_BUFF 4096
+
+time_t
+nssml_fileModTime(char* file) 
+{
+  struct stat buf;
+  if ( stat(file, &buf) != 0 )
+    return (time_t)-1;
+  return buf.st_mtime;
+}  
+    
+  
+
 /*
- * The Ns_ModuleVersion variable is required.
+ * The Ns_ModuleVersion exported integer is used to verify
+ * this module version when loaded.  For AOLserver 2.0,
+ * 1 (one) is the only valid value for this variable.
  */
 int Ns_ModuleVersion = 1;
 
 static Ns_OpProc nssml_handleSmlFile;
 
 /*
- * Temporarily, we have only one interpreter, protected with mutexes
+ * Temporarily, we have only one interpreter, protected with a mutex
  */
 
-Interp * theOneInterp;
-
-/*
- * Private functions
- */
-int
-Ns_ModuleInit(char *hServer, char *hModule);
+typedef struct {
+  Ns_Mutex lock;
+  Interp* interp;
+  char* hServer;
+  char* prjid;
+  char ulFileName[NSSML_PATH_MAX];
+  char timeStampFileName[NSSML_PATH_MAX];
+  time_t timeStamp;
+} InterpContext;
 
 /*
  *----------------------------------------------------------------------
@@ -49,6 +68,28 @@ Ns_ModuleInit(char *hServer, char *hModule);
  *      initialized and the SML Basis Library is loaded together with
  *      an SML interface to access the AOLserver.
  *
+ * The function is passed two parameters:
+ *
+ * hServer:   The server `handle' as a string. This is the
+ *            short name given to the virtual server such
+ *            as `server1'.
+ *
+ * hModule:   The module `handle' as a string. This is the
+ *            short name given to the module such as `nssml'
+ *
+ * For example, if this module is known as `nssml' and loaded
+ * into the `server1' server with entries similar to the following
+ * in the nsd.ini file:
+ *
+ * [ns\servers]
+ * server1=My First Server
+ *
+ * [ns\server1\modules]
+ * nssml=nssml.so
+ *
+ * This function would be called with "server1" and "nssml" as
+ * its arguments.
+ *
  * Results:
  *	NS_OK or NS_ERROR
  *
@@ -60,68 +101,54 @@ Ns_ModuleInit(char *hServer, char *hModule);
 int
 Ns_ModuleInit(char *hServer, char *hModule)
 {
-  FILE* is;
-
-  #define BUFF_SIZE 1000
-  char buff[BUFF_SIZE];
-
+  InterpContext* ctx;
   char* configPath;
-  char* uoListFile;
 
   /*
-   * Initialize the one interpreter
+   * Create and initalize the interpreter context.
    */
-  theOneInterp = interpNew();
+  ctx = (InterpContext*)Ns_Malloc(sizeof(InterpContext));
+  Ns_InitializeMutex(&ctx->lock);
+  ctx->interp = interpNew();
+  ctx->hServer = hServer;
+  configPath = Ns_ConfigGetPath(hServer, hModule, NULL);   // Fetch the name of the project (prjid)
+  ctx->prjid = Ns_ConfigGetValue(configPath, "prjid");     // from the config file.
 
-  /*
-   * Fetch the name of the KAM uolistfile from the config file.
-   */
-  configPath = Ns_ConfigGetPath(hServer, hModule, NULL);
-  uoListFile = Ns_ConfigGetValue(configPath, "uoListFile");
-
-  if (uoListFile == NULL) {
-    Ns_Log(Error, "nssml: uoListFile must be set in config file");
+  if (ctx->prjid == NULL) {
+    Ns_Log(Error, "nssml: You must set prjid in the config file");
     return NS_ERROR;
   }
 
-  if ( (is = fopen(uoListFile, "r")) == NULL ) {
-    Ns_Log(Error, "nssml: Failed to open uoListFile for reading");
-    return NS_ERROR;
-  }
-    
-  while ( fgets ( buff, BUFF_SIZE, is ) != NULL ) {
-    if ( buff[strlen(buff) - 1] == '\n' ) {
-      buff[strlen(buff) - 1] = '\0';
-    }
-    interpLoadExtend(theOneInterp, buff);
-    Ns_Log(Notice, "nssml: Loading %s", buff);
-  }
+  sprintf(ctx->ulFileName, "%s/PM/%s.ul", Ns_PageRoot(hServer), ctx->prjid);
+  sprintf(ctx->timeStampFileName, "%s/PM/%s.timestamp", Ns_PageRoot(hServer), ctx->prjid);
+  
+  ctx->timeStamp = (time_t)-1; 
 
   Ns_RegisterRequest(hServer, "GET", "/*.sml", nssml_handleSmlFile, 
-		     NULL, theOneInterp, 0);
+		     NULL, ctx, 0);
     
-  Ns_Log(Notice, "nssml: It works - nssml module is loaded!");
+  Ns_Log(Notice, "nssml: module is now loaded");
+  Ns_Log(Notice, "nssml: ulFileName is %s", ctx->ulFileName);
+  Ns_Log(Notice, "nssml: timeStampFileName is %s", ctx->timeStampFileName);
+  
   return NS_OK;
 }
 
-#define NSSML_PATH_MAX 255
-#define NSSML_ERROR_BUFF 4096
-
 /* -------------------------------------------------
- * smlFileToUoFile - convert sml-absolute filename
+ * nssml_smlFileToUoFile - convert sml-absolute filename
  * into the uo-file for the sml-file. 
  * ------------------------------------------------- */
 
 void 
-nssml_smlFileToUoFile(char* url, char* uo) 
+nssml_smlFileToUoFile(char* url, char* uo, char* prjid) 
 {
   char* p = strrchr(url, '/');   
   char name[NSSML_PATH_MAX];
   strcpy(name, p+1);
   strncpy(uo, url, p-url);
   uo[p-url] = 0;
-  strcat(uo, "/PM/NoProf/");
-  strcat(uo, name);
+  strcat(uo, "/PM/NoProf/"); 
+  strcat(uo, prjid);
   strcat(uo, "-");
   strcat(uo, name);
   strcat(uo, ".uo");
@@ -136,35 +163,96 @@ nssml_smlFileToUoFile(char* url, char* uo)
 static int
 nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
 {
-  Interp* interp;        /* interpreter */
+  InterpContext* ctx;
   char* url;             /* the requested url */
   Ns_DString ds;
   char *server;          /* the server */
   char uo[NSSML_PATH_MAX];
   int res;
+  time_t t;
 
-  interp = (Interp*)context;
+  ctx = (InterpContext*)context;
   server = Ns_ConnServer(conn);
 
   /* Check that sml-file exists */
   
   if ( Ns_UrlIsFile(server, conn->request->url) != 1 ) {
-    char error_buff[NSSML_ERROR_BUFF];
-    sprintf(error_buff, "The sml-file %s that you requested is not on the server!", 
-	    conn->request->url);
-    Ns_ConnReturnNotice(conn, 200, error_buff, NULL);
+    Ns_ConnReturnNotFound(conn);
     return NS_ERROR;
   }
+
+  /*
+   * Test to see if the time stamp file is existing
+   */
+
+  t = nssml_fileModTime(ctx->timeStampFileName);
+  
+  if ( t == (time_t)-1 )
+    {
+      // Return error page
+      Ns_ConnReturnNotice(conn, 200, "The web service is temporarily out of service",
+			  "Please come back later!");
+      Ns_Log(Error, "nssml: time stamp file %s not existing - web service not working",
+	     &ctx->timeStampFileName);
+      return NS_OK;
+    }
+
+  /*
+   * Project the running of this code from simultaneous requests
+   */
+  Ns_LockMutex(&ctx->lock);
+
+  /*
+   * (Re)load interpreter if timeStamps do not match
+   */
+ 
+  if ( ctx->timeStamp != t ) 
+    {
+      // Reload the interpreter
+      FILE* is;
+      char buff[NSSML_PATH_MAX];
+      int count = 0;
+
+      interpClear(ctx->interp);      /* free all code elements present in the
+				      * interpreter... */
+
+      is = fopen(ctx->ulFileName, "r");
+      if ( is == NULL ) 
+	{
+	  // Return error page
+	  Ns_ConnReturnNotice(conn, 200, "The web service is temporarily out of service",
+			      "Please come back later!");
+	  Ns_Log(Error, "nssml: Failed to open file %s for reading", &ctx->ulFileName);
+
+	  // Release the lock
+	  Ns_UnlockMutex(&ctx->lock);
+	  return NS_OK;
+	}
+    
+      while ( fgets ( buff, NSSML_PATH_MAX, is ) != NULL ) 
+	{
+	  if ( buff[strlen(buff) - 1] == '\n' ) 
+	    buff[strlen(buff) - 1] = '\0';
+
+	  interpLoadExtend(ctx->interp, buff);
+	  // Ns_Log(Notice, "nssml: Loading %s", buff);
+	  count++;
+	}
+      ctx->timeStamp = t;
+      Ns_Log(Notice, "nssml: (Re)loaded %d uo-files", count);
+    }
 
   Ns_DStringInit(&ds);
   Ns_UrlToFile(&ds, server, conn->request->url);
   url = ds.string;
 
-  nssml_smlFileToUoFile(url,uo);
-  /*  Ns_Log(Notice, "Starting interpreter on file %s", uo); */
-  res = interpLoadRun(interp, uo, conn);
-  /*  Ns_Log(Notice, "Interpreter returned %d", res); */
+  nssml_smlFileToUoFile(url,uo,ctx->prjid);
+  // Ns_Log(Notice, "Starting interpreter on file %s", uo);
+  res = interpLoadRun(ctx->interp, uo);
+  // Ns_Log(Notice, "Interpreter returned %d", res);
   Ns_DStringFree(&ds);
+
+  // Release the lock
+  Ns_UnlockMutex(&ctx->lock);
   return NS_OK; 
 }
-

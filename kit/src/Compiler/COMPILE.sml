@@ -8,7 +8,7 @@ signature COMPILE =
 
     type CompBasis
     type CEnv 
-    type strdec 
+    type strdec
 
     type place 
     type pp

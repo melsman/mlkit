@@ -2366,6 +2366,33 @@ the 12 lines above are very similar to the code below
   fun chat s = if !Flags.chat then print (s ^ "\n")
 	       else ()
 
+  (* Determine the scope of the declaration. Those lvars and
+   * excons which are declared by the declarations are those
+   * that appear in env1 but not in env. *)
+  fun typed_declared_lvars env env1 = 
+    (* we associated the declared_lvars with dummy type schemes;
+     * the real type schemes are put in later; actually, now we 
+     * could put them in... *)
+    let val lvars_env = CE.lvarsOfCEnv env
+      val lvars_decl = 
+	foldl (fn (lv1, lvs) =>
+	       if List.exists (fn lv => Lvars.eq(lv,lv1)) lvars_env then lvs
+	       else lv1::lvs) [] (CE.lvarsOfCEnv env1)
+      val lvars_decl = remove_dubs Lvars.eq lvars_decl
+      val alpha = fresh_tyvar()
+    in map (fn lv => {lvar=lv,tyvars = [alpha],Type=TYVARtype alpha})    (* forall alpha. alpha *)
+      lvars_decl
+    end
+  fun declared_excons env env1 : (Excon.excon * Type option) list =
+    let val excons_env = CompilerEnv.exconsOfCEnv env
+      val excons_decl = 
+	foldl (fn (ex1, exs) =>
+	       if List.exists (fn ex => Excon.eq(ex,ex1)) excons_env then exs
+	       else ex1::exs) [] (CE.exconsOfCEnv env1)
+      val excons_decl = remove_dubs Excon.eq excons_decl
+    in map (fn excon => (excon, NONE)) excons_decl  (*dummy-NONE*)
+    end
+
   type strdec = TopdecGrammar.strdec
   fun compileStrdecs env strdecs = 
     let val _ = DatBinds.reset()
@@ -2377,40 +2404,8 @@ the 12 lines above are very similar to the code below
         val (env1, f1) = comp_strdecs(env, strdecs)
 	(* val _ = chat "[comp_strdecs end]" *)
 
-        (* Determine the scope of the declaration. Those lvars and
-	 * excons which are declared by the declarations are those
-	 * that appear in env1 but not in env. *)
-
-	(* val _ = chat "[building scope begin]" *)
-	fun typed_declared_lvars() = 
-              (* we associated the declared_lvars with dummy type schemes;
-	       * the real type schemes are put in later; actually, now we 
-	       * could put them in... *)
-	  let val lvars_env = CE.lvarsOfCEnv env
-	      val lvars_decl = 
-	        foldl (fn (lv1, lvs) =>
-			    if List.exists (fn lv => Lvars.eq(lv,lv1)) lvars_env then lvs
-			    else lv1::lvs) [] (CE.lvarsOfCEnv env1)
-	      val lvars_decl = remove_dubs Lvars.eq lvars_decl
-	      val alpha = fresh_tyvar()
-	  in map (fn lv => {lvar=lv,tyvars = [alpha],Type=TYVARtype alpha})    (* forall alpha. alpha *)
-	     lvars_decl
-	  end
-	val typed_declared_lvars = typed_declared_lvars()
-
-       fun declared_excons() : (Excon.excon * Type option) list =
-	 let val excons_env = CompilerEnv.exconsOfCEnv env
-	     val excons_decl = 
-	       foldl (fn (ex1, exs) =>
-			   if List.exists (fn ex => Excon.eq(ex,ex1)) excons_env then exs
-			   else ex1::exs) [] (CE.exconsOfCEnv env1)
-	     val excons_decl = remove_dubs Excon.eq excons_decl
-	 in map (fn excon => (excon, NONE)) excons_decl  (*dummy-NONE*)
-	 end
-       val declared_excons = declared_excons ()
-
-       val scope = FRAME{declared_lvars=typed_declared_lvars,
-			 declared_excons=declared_excons}
+       val scope = FRAME{declared_lvars=typed_declared_lvars env env1,
+			 declared_excons=declared_excons env env1}
        (* val _ = chat "[building scope end]" *)
 
        (* Build the lambda expression *)

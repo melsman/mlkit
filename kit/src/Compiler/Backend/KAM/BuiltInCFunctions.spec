@@ -100,7 +100,7 @@ sml_asctime
 sml_strftime
 nssml_ConnReturnHtml
 nssml_log
-
+nssml_GetConn
 
 
 

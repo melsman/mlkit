@@ -104,9 +104,9 @@ functor IntModules(structure Name : NAME
       PP.outputTree(print,ModuleEnvironments.B.layout B, 100)
 
     (* For statistics *)
-    val functor_application_file = "/tmp/functor_apps.txt"
     fun out_functor_application s =
-      let val os = TextIO.openAppend functor_application_file
+      let val functor_application_file = "/tmp/functor_apps.txt"
+	  val os = TextIO.openAppend functor_application_file
       in TextIO.output(os, s ^ "\n");
 	TextIO.closeOut os
       end
@@ -679,6 +679,20 @@ functor IntModules(structure Name : NAME
 		| NONE => (intB1,ModCode.empty)
 	  end
 
+    (* ----------------------------------------------------
+     * Compile a topdec by first compiling the topdec into
+     * a sequence of strdecs. In the process functors are
+     * eliminated by inlining. After this compilation, the
+     * resulting strdecs are compiled as usual. 
+     * ---------------------------------------------------- *)
+
+    (* MEMO: we'll do this later... *)
+
+
+    (* ----------------------------------------------------
+     * The main interpretation function
+     * ---------------------------------------------------- *)
+
     fun interp(absprjid,intB,topdec, unitname) =
       case push_topdec topdec
 	of (SOME strdec, topdec_opt) => 
@@ -693,6 +707,10 @@ functor IntModules(structure Name : NAME
 	  end 
 	 | (NONE, NONE) => (IntBasis.empty, ModCode.empty)
 	 | (NONE, SOME topdec) => int_topdec(absprjid,intB,topdec)
+
+
+
+
 (*
     fun reset() = (Compile.reset(); reset_unitname_counter())
     val commit = Compile.commit
