@@ -2,6 +2,7 @@
 
 functor FinMap(structure Report: REPORT
 	       structure PP: PRETTYPRINT
+               structure Crash: CRASH
 	      ): FINMAP =
   struct
 
@@ -19,6 +20,8 @@ functor FinMap(structure Report: REPORT
 	let fun look [] = NONE
 	      | look ((x',y)::rest) = if x=x' then SOME(y) else look rest
 	in
+            (*if List.length l > 500 then Crash.impossible ("FinMap.lookup on list of length"  ^ Int.toString(List.length l))
+            else *)
 	    look l
 	end
 

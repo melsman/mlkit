@@ -742,3 +742,5 @@ functor IntModules(structure Name : NAME
 	 | (NONE, NONE) => (IntBasis.empty, ModCode.empty)
 	 | (NONE, SOME topdec) => int_topdec(fi,SOME unitname,absprjid,intB,topdec)
   end
+
+

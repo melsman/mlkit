@@ -149,6 +149,8 @@ functor ParseElab(structure Parse: PARSE
 	  val _ = Timing.timing_end "Parse" 
 	  val _ = chat "]\n"
 	  val _ = chat "[elaboration..."
+          (*val _ = Compiler.Profile.reset(); mads*)
+          (*val _ = Compiler.Profile.setTimingMode true; mads*)
 	  val _ = Timing.timing_begin()
 	  val elab_res = case parse_res 
 			   of (infB, SOME topdec) => (maybe_print_topdec topdec;
@@ -156,6 +158,14 @@ functor ParseElab(structure Parse: PARSE
 						      handle E => (Timing.timing_end "Elab" ; raise E))
 			    | (infB, NONE) => empty_success
 	  val _ = Timing.timing_end "Elab" 
+      (*  val _ = Compiler.Profile.setTimingMode false; 
+          val _ = if Flags.is_on0 "compiler_timings" ()
+                  then let val os = TextIO.openOut "elabprofile"
+                       in Compiler.Profile.report os;
+                          TextIO.closeOut os
+                       end
+                   else ()
+      mads*)
 	  val _ = chat "]\n"
       in elab_res
       end handle Parse report => (chat "[parsing end...]\n"; FAILURE (report, [ErrorCode.error_code_parse]))

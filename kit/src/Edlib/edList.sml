@@ -19,6 +19,14 @@ DESCRIPTION
 RCS LOG
 
 $Log$
+Revision 1.3  2005/02/18 19:05:39  tofte
+Forberedrede elaboreringen ved at gøre følgende to ting:
+(1) Erstattede implementationen af værdienvironments (VE) i elaboratoren,
+    som var FinMap, med OrderFinMap
+(2) Ændrede elaboratoren (ElabDec og ElabTopDec) så den tager hensyn til
+    at sekventielle erklæringer associerer til venstre, bortset fra på
+    topniveau i programmer, hvor de associerer til højre.
+
 Revision 1.2  2004/12/16 09:04:08  mael
 changed directory kit/basislib to kit/basis and kit/basislib/basislib.mlb to kit/basis/basis.mlb (etc) so that the same mlb-files can be compiled with MLKit and MLton
 
@@ -609,3 +617,4 @@ struct
   type 'a list = 'a list
 
 end
+ 

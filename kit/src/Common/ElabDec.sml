@@ -925,14 +925,33 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
            (* Sequential declaration *)                         (*rule 24*)
          | IG.SEQdec(i, dec1, dec2) =>
              let
-               val (S1, T1, E1, out_dec1) = elab_dec(C,dec1)
-               val (S2, T2, E2, out_dec2) = elab_dec((S1 onC C) C_plus_E E1,dec2)
+               val (S,T,E,C',out_dec) = elab_decs(C,dec)
+             in
+               (S,T,E, out_dec)
+             end
+        )
+    and elab_decs(C : Context, dec : IG.dec) :  (* fast elaboration when SEQ associates to the left *)
+        (Substitution * TyName list * Env * Context * OG.dec) =
+        (case dec of
+           IG.SEQdec(i, dec1, dec2) =>
+             let
+               val (S1, T1, E1, C1res, out_dec1) = elab_decs(C,dec1)
+                                (*C1res= (S1 onC C) C_plus_E E1*)
+               val (S2, T2, E2, out_dec2) = elab_dec(C1res,dec2)     
                val E1' = E.on (S2, E1)
              in
                (S2 oo S1, T1 @ T2,
                 E.plus (E1',E2),
+                (S2 onC C1res) C_plus_E E2,
                 OG.SEQdec(okConv i,out_dec1,out_dec2)) 
-             end)
+             end
+         | dec1 => 
+             let
+               val (S1, T1, E1, out_dec1) = elab_dec(C,dec1)
+             in
+               (S1, T1, E1, (S1 onC C) C_plus_E E1, out_dec1)
+             end
+        )
 
     (****** value bindings - Definition, p. ? ******)
 
