@@ -124,19 +124,27 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				     ("kitreynolds2",None),
 				     ("kitreynolds3",None), 
 				     ("kitloop2",None), 
+(*TODO 11/07/1997 18:39. tho.:
 				     ("kittmergesort",None), 
 				     ("kitqsort36c",None), (*new 31/03/1997 15:28. tho.*)
 				     ("kitmandelbrot",None),
 				     ("kitlife35u",None), (*new 31/03/1997 15:28. tho.*) 
+*)
 				     ("klife_eq",None),
+(*TODO 11/07/1997 18:41. tho.:
 				     ("kitkbjul9",None), 
 				     ("kkb_eq",None), 
+*)
 				     ("kitknuth_bendix36c",None), (*new 31/03/1997 15:28. tho.*) 
+(*TODO 11/07/1997 18:40. tho.:
 				     ("kitsimple",None),
+*)
 
 				     ("tststrcmp",None),
 				     ("FuhMishra",None),
+(*TODO 11/07/1997 18:40. tho.:
 				     ("life",None),
+*)
 				     ("compose",None),
 				     ("minilist",None),
 				     ("sma",None),
@@ -152,9 +160,13 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				     ("trees",None),
 				     ("fold",None),
 				     ("testdyn1",None),
-				     ("testdyn2",Some "../Sources/input_to_testdyn2"),
-				     ("scan_rev1", None),
-				     ("scan_rev2", None)]
+				     ("testdyn2",Some "../Sources/input_to_testdyn2")
+(*TODO 11/07/1997 18:40. tho.:
+				   ,
+                                     ("scan_rev1", None),
+				     ("scan_rev2", None)
+*)
+				     ]
 
     (*--------------------------------------------*)
     (* Variables controlling the PERFORMANCE test *)
