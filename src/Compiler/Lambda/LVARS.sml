@@ -34,14 +34,17 @@ signature LVARS =
     val match : lvar * lvar -> unit
     val name : lvar -> name
 
-    (* ------------------------------------ 
-     * Compiler-supported primitives
-     * ------------------------------------ *)
+    (* ------------------------------------------------------------------
+     * Compiler-supported primitives; these are only here to allow for
+     * overloading resolution. In fact, I think that we can get rid of
+     * them altogether by resolving overloaded identifiers to
+     * ``ccalls''. Then, the backend can grab those ``ccalls'' and
+     * generate appropriate assembly code instead of calls.
+     * ------------------------------------------------------------------ *)
 
     val plus_int_lvar : lvar           (* integer operations *)
     val minus_int_lvar : lvar
     val mul_int_lvar : lvar
-    val div_int_lvar : lvar
     val negint_lvar : lvar
     val absint_lvar : lvar
     val less_int_lvar : lvar
@@ -52,7 +55,6 @@ signature LVARS =
     val plus_float_lvar : lvar         (* real operations *)
     val minus_float_lvar : lvar
     val mul_float_lvar : lvar
-    val div_float_lvar : lvar
     val negfloat_lvar : lvar
     val absfloat_lvar : lvar
     val less_float_lvar : lvar
@@ -71,42 +73,6 @@ signature LVARS =
                        | LESS_FLOAT | LESSEQ_FLOAT | GREATER_FLOAT | GREATEREQ_FLOAT
 
     val primitive : lvar -> primitive option
-
-    (* ------------------------------------ 
-     * Non-compiler-supported primitives;
-     *    these should be replaced by
-     *    appropriate ccalls, later.
-     * ------------------------------------ *)
-
-    val floor_lvar: lvar              (* real operations *)
-    val real_lvar: lvar
-    val sqrt_lvar: lvar
-    val sin_lvar : lvar
-    val cos_lvar: lvar
-    val arctan_lvar: lvar
-    val exp_lvar: lvar
-    val ln_lvar: lvar
-
-    val open_in_lvar: lvar            (* streams *)
-    val open_out_lvar: lvar
-    val input_lvar: lvar
-    val lookahead_lvar: lvar
-    val close_in_lvar: lvar
-    val end_of_stream_lvar: lvar
-    val output_lvar: lvar
-    val close_out_lvar: lvar
-    val flush_out_lvar: lvar
-
-    val chr_lvar: lvar                (* strings *)
-    val ord_lvar: lvar
-    val size_lvar: lvar
-    val explode_lvar: lvar
-    val implode_lvar: lvar
-
-    val mod_int_lvar: lvar            (* others *)
-    val use_lvar: lvar
-    val lvar_STD_IN: lvar
-    val lvar_STD_OUT: lvar
 
   end;
 

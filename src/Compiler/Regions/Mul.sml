@@ -1131,7 +1131,9 @@ old*)
         in the domain type and a Put with multiplicity 1 on each region
         variable in the result type *)
 
-
+     (* Somebody has commented out the get-effects in the function exoClos! I guess 
+      * this is ok, because, multiplicity inference only bother with put-effects? 
+      * -- martin 7/3-1998 *)
 
      fun exoClos(B,taus1,taus2):qmularefset = 
          let val B = Eff.push B0
@@ -1154,54 +1156,21 @@ old*)
      val Int = Lam.intType
      val Real = Lam.realType
      val Bool = Lam.boolType
-     val String = Lam.stringType
-     val Exn = Lam.exnType
-     val Unit = Lam.unitType
-     val StringList = Lam.CONStype([String], TyName.tyName_LIST)
-     val Instream = Lam.intType
-     val Outstream = Lam.intType
 
-     val int2bool = cl([Int],Bool)
-     val int2string = cl([Int],String)
      val int2int = cl([Int],Int)
-     val int2unit = cl([Int], Unit)
      val int2real = cl([Int], Real)
-     val intXexn2int = cl( [Int, Exn], Int)
      val intXint2int = cl([Int,Int], Int)
      val intXint2bool = cl([Int,Int], Bool)
-     val intXexn2string = cl([Int,Exn], String)
-     val intXint2string = cl([Int,Int],String)
-     val intXintXexn2int = cl([Int,Int,Exn],Int)
-     val intXstringXexn2unit = cl ([Int,String,Exn],Unit)
      val real2int = cl([Real],Int)
      val real2real = cl([Real],Real)
-     val realXexn2int = cl([Real,Exn],Int)
-     val realXexn2real = cl([Real,Exn],Real)
      val realXreal2bool = cl([Real,Real],Bool)
      val realXreal2real = cl([Real,Real],Real)
-     val realXrealXexn2real = cl([Real,Real,Exn],Real)
-     val string2int = cl ([String], Int)
-     val string2stringList = cl([String], StringList)
-     val string2unit = cl([String], Unit)
-     val stringXexn2int = cl([String,Exn], Int)
-     val stringList2string = cl([StringList], String)
-     val stringXexn2instream = cl([String,Exn], Instream)
-     val stringXexn2outstream = cl([String,Exn], Outstream)
-     val instreamXint2string = cl([Instream,Int], String)
-     val instream2string = cl([Instream], String)
-     val instream2unit = cl([Instream], Unit)
-     val instream2bool = cl([Instream], Bool)
-     val outstreamXstringXexn2unit = cl([Outstream,String,Exn], Unit)
-     val outstream2unit = cl([Outstream], Unit)
-     val stdIn = empty_qmularefset
-     val stdOut = empty_qmularefset
 
      val lvars_and_sigmas = let open Lvar in [
 
         (plus_int_lvar, intXint2int),
         (minus_int_lvar, intXint2int),
         (mul_int_lvar, intXint2int),
-        (div_int_lvar, intXint2int),
         (negint_lvar, int2int),
         (absint_lvar, int2int),
         (less_int_lvar, intXint2bool),
@@ -1212,46 +1181,12 @@ old*)
         (plus_float_lvar,realXreal2real),
         (minus_float_lvar,realXreal2real),
         (mul_float_lvar, realXreal2real),
-        (div_float_lvar, realXreal2real),
         (negfloat_lvar, real2real),
         (absfloat_lvar, real2real),
         (less_float_lvar, realXreal2bool),
         (greater_float_lvar,realXreal2bool),
         (lesseq_float_lvar, realXreal2bool),
-        (greatereq_float_lvar, realXreal2bool),
-
-      (* Non-compiler-supported primitives; Later these should be ommitted. *)
-
-        (floor_lvar, realXexn2int),
-        (real_lvar, int2real),
-        (sqrt_lvar, realXexn2real),
-        (sin_lvar, real2real),
-        (cos_lvar, real2real),
-        (arctan_lvar, real2real),
-        (exp_lvar, realXexn2real),
-        (ln_lvar, realXexn2real),
-
-        (open_in_lvar, stringXexn2int),         (* int represents instream and outstream*)
-        (open_out_lvar, stringXexn2int),
-        (input_lvar,intXint2string),
-        (lookahead_lvar, int2string),
-        (close_in_lvar, int2unit),
-        (end_of_stream_lvar, int2bool),
-        (output_lvar, intXstringXexn2unit),
-        (close_out_lvar, int2unit),
-        (flush_out_lvar, int2unit),
-
-        (chr_lvar, intXexn2string),
-        (ord_lvar, stringXexn2int),
-        (size_lvar, string2int),
-        (explode_lvar, string2stringList),
-        (implode_lvar, stringList2string),
-
-        (mod_int_lvar, intXintXexn2int),
-        (use_lvar, string2unit),
-        (Lvar.lvar_STD_IN, stdIn),
-        (Lvar.lvar_STD_OUT, stdOut)
-
+        (greatereq_float_lvar, realXreal2bool)
        ]
      end (* open Lvar *)
   in

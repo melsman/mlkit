@@ -1,6 +1,3 @@
-(*$CompilerEnv: IDENT TYCON TYNAME STRID CON EXCON ENVIRONMENTS
-	LAMBDA_EXP LVARS FINMAP FINMAPEQ PRETTYPRINT CRASH FLAGS
-	COMPILER_ENV *)
 
 functor CompilerEnv(structure Ident: IDENT
 		    structure TyCon : TYCON
@@ -130,15 +127,15 @@ functor CompilerEnv(structure Ident: IDENT
 
     local open TyCon TyName
     in val initialTyEnv = TYENV(initMap [(tycon_INT, [tyName_INT]),
-					 (tycon_WORD, [tyName_WORD]),
+					 (tycon_WORD, [tyName_INT]),
+					 (tycon_WORD8, [tyName_INT]),
 					 (tycon_REAL, [tyName_REAL]),
 					 (tycon_STRING, [tyName_STRING]),
-					 (tycon_CHAR, [tyName_CHAR]),
+					 (tycon_CHAR, [tyName_INT]),
 					 (tycon_EXN, [tyName_EXN]),
 					 (tycon_REF, [tyName_REF]),
 					 (tycon_BOOL, [tyName_BOOL]),
 					 (tycon_LIST, [tyName_LIST]),
-					 (tycon_BYTE_TABLE, [tyName_BYTE_TABLE]),
 					 (tycon_WORD_TABLE, [tyName_WORD_TABLE]),
 					 (tycon_UNIT, [])
 					 ])
@@ -217,8 +214,6 @@ functor CompilerEnv(structure Ident: IDENT
 	 | PLUS => Lvars.plus_int_lvar :: Lvars.plus_float_lvar :: lvs
 	 | MINUS => Lvars.minus_int_lvar :: Lvars.minus_float_lvar :: lvs
 	 | MUL => Lvars.mul_int_lvar :: Lvars.mul_float_lvar :: lvs
-	 | DIV => Lvars.div_int_lvar :: lvs
-	 | MOD => Lvars.mod_int_lvar :: lvs
 	 | LESS => Lvars.less_int_lvar :: Lvars.less_float_lvar :: lvs
 	 | GREATER => Lvars.greater_int_lvar :: Lvars.greater_float_lvar :: lvs
 	 | LESSEQ => Lvars.lesseq_int_lvar :: Lvars.lesseq_float_lvar :: lvs

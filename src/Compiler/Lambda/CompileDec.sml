@@ -348,7 +348,7 @@ functor CompileDec(structure Con: CON
     (*         Compilation of the semantic objects Type and TypeScheme        *)
     (* ---------------------------------------------------------------------- *)
 
-    (* compileTyName is necessary because char and word from
+    (* compileTyName is necessary because char, word8, and word from
      * CompileDec onwards are treated as int. I think we should
      * eventually support all base types in the backend (the fact that
      * there is not a one-to-one correspondence between type names
@@ -465,7 +465,7 @@ functor CompileDec(structure Con: CON
      in (tyvars0,tau') (* the normalized type scheme *)
      end
 
-   fun compile_and_normalize_cb tyname tyvars0 (con, Type) (env, cons_TypeOpts) 
+   fun compile_and_normalize_cb tyvars0 (con, Type) (env, cons_TypeOpts) 
      : CE.CEnv * (con * Type option) list =
      let val con' = compileCon con
        val (tyvars,_, tau, tauOpt') = normalize_sigma'(tyvars0, Type)
@@ -497,7 +497,7 @@ functor CompileDec(structure Con: CON
 		      in (con, tau') :: cbs
 		      end) [] VE 
 	val (env, cons_TypeOpts) =
-	  List.foldL (compile_and_normalize_cb tyname tyvars') (CE.emptyCEnv,[]) (rev cbs)
+	  List.foldL (compile_and_normalize_cb tyvars') (CE.emptyCEnv,[]) (rev cbs)
       in
 	(env, tyvars', cons_TypeOpts)
       end
@@ -1457,6 +1457,7 @@ end; (*match compiler local*)
 	    (case NoSome "int_or_real" (ElabInfo.to_OverloadingInfo info) of
 	       OverloadingInfo.RESOLVED_INT => int
 	     | OverloadingInfo.RESOLVED_REAL => real
+	     | OverloadingInfo.RESOLVED_WORD8 => int
 	     | OverloadingInfo.RESOLVED_WORD => int
 	     | OverloadingInfo.RESOLVED_CHAR => int
 	     | OverloadingInfo.RESOLVED_STRING => die "int_or_real: string"
@@ -1465,6 +1466,7 @@ end; (*match compiler local*)
 	    (case NoSome "string_or_int_or_real" (ElabInfo.to_OverloadingInfo info) of
 	       OverloadingInfo.RESOLVED_INT => int
 	     | OverloadingInfo.RESOLVED_REAL => real
+	     | OverloadingInfo.RESOLVED_WORD8 => int
 	     | OverloadingInfo.RESOLVED_WORD => int
 	     | OverloadingInfo.RESOLVED_CHAR => int
 	     | OverloadingInfo.RESOLVED_STRING => string
@@ -2141,7 +2143,7 @@ the 12 lines above are very similar to the code below
 	       else let val tyname = (NoSome "TypeFcn not simple" o 
 				      TypeFcn.to_TyName o TyStr.to_theta) tystr
 			val VE = TyStr.to_VE tystr
-			val (env_ve', tyvars, cbs) = compile'TyStr' (compileTyName tyname, VE) 
+			val (env_ve', tyvars, cbs) = compile'TyStr' (tyname, VE) 
 			val env_te' = CE.declare_tycon(tycon, [tyname], env_te)
 		    in (env_ve plus env_ve', env_te', (tyvars,tyname,cbs)::dats)
 		    end) (CE.emptyCEnv,CE.emptyCEnv,[]) TyEnv
@@ -2153,13 +2155,14 @@ the 12 lines above are very similar to the code below
 	  (* A datatype replication may or may not introduce an empty VE component. *)
 	  TE.Fold (fn (tycon, tystr) => fn env' => 
 		   if VE.is_empty (TyStr.to_VE tystr) then
-		     let val tns = TyName.Set.list(TyStr.tynames tystr)
+		     let val tns = (TyName.Set.list o TyName.Set.map compileTyName) (TyStr.tynames tystr)
 		     in CE.declare_tycon(tycon,tns,env')
 		     end
 		   else let val tyname = (NoSome "TypeFcn not simple" o 
 					  TypeFcn.to_TyName o TyStr.to_theta) tystr
+			    val tyname = compileTyName tyname
 			    val VE = TyStr.to_VE tystr
-			    val (env'', tyvars, cbs) = compile'TyStr' (compileTyName tyname, VE) 
+			    val (env'', tyvars, cbs) = compile'TyStr' (tyname, VE) 
 			in CE.declare_tycon(tycon,[tyname],env' plus env'')
 			end) CE.emptyCEnv TyEnv
 	 | _ => die "No TyEnv type info for compiling datatype replication/type declaration"
