@@ -100,7 +100,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
     fun mk_absolute p = OS.Path.mkAbsolute(p,OS.FileSys.getDir())
-
+    fun mk_absprjid_from_path s = ModuleEnvironments.mk_absprjid(mk_absolute s)
 
     (* ----------------------------------------------------
      * log_init  gives you back a function for cleaning up
@@ -136,84 +136,81 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun log (s:string) : unit = TextIO.output (!Flags.log, s)
     fun log_st (st) : unit = PP.outputTree (log, st, 70)
     fun chat s = if !Flags.chat then log (s ^ "\n") else ()
-	  
-    (* ----------------------------------------
-     * Some parsing functions
-     * ---------------------------------------- *)
-
-    fun drop_comments (absprjid:absprjid) (l: char list) : char list =
-      let fun loop(n, #"(" :: #"*" :: rest ) = loop(n+1, rest)
-	    | loop(n, #"*" :: #")" :: rest ) = loop(n-1, if n=1 then #" "::rest else rest)
-	    | loop(0, ch ::rest) = ch :: loop (0,rest)
-	    | loop(0, []) = []
-	    | loop(n, ch ::rest) = loop(n,rest)
-	    | loop(n, []) = error ("Unclosed comment in project " ^quot(ModuleEnvironments.absprjid_to_string absprjid))
-      in loop(0,l)
-      end
-	
+	  	
     (* ------------------------------------------- 
      * Debugging and reporting
      * ------------------------------------------- *)
-
-    fun debug_free_longids longids =
-      (log ("\nFree longids:");
-       log_st (FreeIds.layout_longids longids);
-       log "\n")
 
     fun print_error_report report = Report.print' report (!Flags.log)
     fun print_result_report report = (Report.print' report (!Flags.log);
 				      Flags.report_warnings ())
 
+
     (* ----------
      * Projects
      * ---------- *)
 
-    fun mk_absprjid_from_path s = ModuleEnvironments.mk_absprjid(mk_absolute s)
-    type extobj = string   (* externally compiled objects; .o-files *)
-    type unitid = string
-    datatype body = EMPTYbody
-                  | LOCALbody of body * body * body
-                  | UNITbody of unitid * body
-                  | PARbody of unitid list  (* parallel interpretation *)
-    type prj = {imports : absprjid list, extobjs: extobj list, body : body}
+    structure Project : 
+      sig
+	type extobj = string   (* externally compiled objects; .o-files *)
+	type unitid = string
+	datatype body = EMPTYbody
+	              | LOCALbody of body * body * body
+	              | UNITbody of unitid * body
+	              | PARbody of unitid list  (* parallel interpretation *)
+	type prj = {imports : absprjid list, extobjs: extobj list, body : body}
+	
+	val parse_project : absprjid -> prj      
+	val local_check_project : absprjid * prj -> unit
+      end =
+    struct
+      type extobj = string   (* externally compiled objects; .o-files *)
+      type unitid = string
+      datatype body = EMPTYbody
+                    | LOCALbody of body * body * body
+                    | UNITbody of unitid * body
+                    | PARbody of unitid list  (* parallel interpretation *)
+      type prj = {imports : absprjid list, extobjs: extobj list, body : body}
 
-    fun layout_body (b: body): PP.StringTree = 
-      case layout_body' b of
-	nil => PP.LEAF ""
-      | l => PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ", children = l}
-    and layout_body' (b: body) : PP.StringTree list =
-      case b of
-	EMPTYbody => []
-      | LOCALbody(b1,b2,b3) => PP.NODE{start = "local ", finish = " end", indent = 2, childsep = PP.LEFT " in ",
-				       children = map layout_body [b1,b2]}:: layout_body' b3
-      | UNITbody(uid,b') => PP.LEAF uid :: layout_body' b'
-      | PARbody uids => [PP.NODE{start="[", finish="]",indent=2, childsep=PP.RIGHT " ",
-				 children=map PP.LEAF uids}]
+      fun layout_body (b: body): PP.StringTree = 
+	case layout_body' b of
+	  nil => PP.LEAF ""
+	| l => PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ", children = l}
+      and layout_body' (b: body) : PP.StringTree list =
+	case b of
+	  EMPTYbody => []
+	| LOCALbody(b1,b2,b3) => PP.NODE{start = "local ", finish = " end", 
+					 indent = 2, childsep = PP.LEFT " in ",
+					 children = map layout_body [b1,b2]}:: layout_body' b3
+	| UNITbody(uid,b') => PP.LEAF uid :: layout_body' b'
+	| PARbody uids => [PP.NODE{start="[", finish="]",indent=2, childsep=PP.RIGHT " ",
+				   children=map PP.LEAF uids}]
 	  
-    fun layout_prj{imports, extobjs, body} = 
-      let val t1 = PP.NODE{start="imports= ", finish = ";", indent=1, childsep = PP.RIGHT " ",
-                           children = map (PP.LEAF o ModuleEnvironments.absprjid_to_string) imports}
+      fun layout_prj{imports, extobjs, body} = 
+	let val t1 = PP.NODE{start="imports= ", finish = ";", indent=1, childsep = PP.RIGHT " ",
+			     children = map (PP.LEAF o ModuleEnvironments.absprjid_to_string) imports}
           val t2 = PP.NODE{start="extobjs= ", finish = ";", indent=1, childsep = PP.RIGHT " ",
                            children = map PP.LEAF extobjs}
           val t3 = PP.NODE{start="body= ", finish = ";", indent=1, childsep = PP.RIGHT " ",
                            children = [layout_body body]}
-      in
-         PP.NODE{start = "project ", finish = " end", childsep = PP.RIGHT " ", indent =1,
-                 children = [t1,t2,t3]}
-      end 
+	in
+	  PP.NODE{start = "project ", finish = " end", childsep = PP.RIGHT " ", indent =1,
+		  children = [t1,t2,t3]}
+	end 
 
-    fun fromFile (filename:string) =
-      let val is = TextIO.openIn filename 
+      fun fromFile (filename:string) =
+	let val is = TextIO.openIn filename 
           (*val _ = TextIO.output(TextIO.stdOut, "opened " ^filename^"\n")*)
 	  val s = TextIO.inputAll is handle E => (TextIO.closeIn is; raise E)
-      in TextIO.closeIn is; s
-      end
+	in TextIO.closeIn is; s
+	end
     
-    fun parse_project (absprjid : absprjid) : prj =  (* This function requires the current directory to
-						      * be the directory that holds the project to be parsed;
-						      * otherwise, incorrect absolute paths are made. *)
+      (* [parse_project absprjid] This function requires the current directory to
+       * be the directory that holds the project to be parsed;
+       * otherwise, incorrect absolute paths are made. *)     
+      fun parse_project (absprjid : absprjid) : prj =  
       let
-         val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
+	val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
 
         fun parse_error s' = error ("while parsing project: " ^ quot absprjid_s ^ " : " ^ s')
         fun parse_error1(s', rest: string list) = 
@@ -252,6 +249,17 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 					in (chs, s::acc) 
 					end)
 	val lex = fn chs => lex(chs,[])
+
+	fun drop_comments (absprjid:absprjid) (l: char list) : char list =
+	  let fun loop(n, #"(" :: #"*" :: rest ) = loop(n+1, rest)
+		| loop(n, #"*" :: #")" :: rest ) = loop(n-1, if n=1 then #" "::rest else rest)
+		| loop(0, ch ::rest) = ch :: loop (0,rest)
+		| loop(0, []) = []
+		| loop(n, ch ::rest) = loop(n,rest)
+		| loop(n, []) = error ("Unclosed comment in project " ^
+				     quot(ModuleEnvironments.absprjid_to_string absprjid))
+	  in loop(0,l)
+	  end
 
 	fun smlFileExtOk s = 
 	  has_ext(s,"sml") orelse has_ext(s,"sig") orelse has_ext(s,"fun") orelse has_ext(s,"msp")
@@ -352,25 +360,23 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		end 
 	      else NONE
 	     | _  => NONE
-
-	val prj = (parse_prj o lex o (drop_comments absprjid) o explode o fromFile) absprjid_s
-	  handle IO.Io {name=io_s,...} => error ("The project " ^ quot absprjid_s ^ " cannot be opened")
-
-      in prj
+      in
+	(parse_prj o lex o (drop_comments absprjid) o explode o fromFile) absprjid_s
+	handle IO.Io {name=io_s,...} => error ("The project " ^ quot absprjid_s ^ " cannot be opened")
       end
 
-    (* local_check_project  checks that a project file (1) mentions a
-     * program unit atmost once, (2) mentions a project file atmost once,
-     * and (3) mentions only existing external object files (o-files). *)
+      (* local_check_project  checks that a project file (1) mentions a
+       * program unit atmost once, (2) mentions a project file atmost once,
+       * and (3) mentions only existing external object files (o-files). *)
 
-    fun local_check_project (absprjid0:absprjid, {imports,extobjs,body}:prj) : unit =
-      let fun check_imports (_,[]) = ()
-	    | check_imports (P, absprjid :: rest) =
+      fun local_check_project (absprjid0:absprjid, {imports,extobjs,body}:prj) : unit =
+	let fun check_imports (_,[]) = ()
+	      | check_imports (P, absprjid :: rest) =
 	       if member absprjid P then 
 		 error ("The project " ^ quot(ModuleEnvironments.absprjid_to_string absprjid) ^ 
 			" is imported twice in project " ^ quot(ModuleEnvironments.absprjid_to_string absprjid0))
 		else check_imports(absprjid::P,rest)
-	  fun check_extobj extobj =
+	    fun check_extobj extobj =
 	     let val extobj = OS.Path.file extobj
 	         fun exists file = OS.FileSys.access(file,[])
 	     in if not(exists extobj) then 
@@ -379,16 +385,16 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      " does not exist; first, compile this file.") 
 		else ()
 	     end
-	  fun check_body (U, body) =    (* Hmm; we do not allow two program units residing
-					 * in different directories to have the same name!
-					 * - now we do;  mael 2001-09-26 *)
+	    fun check_body (U, body) =    (* Hmm; we do not allow two program units residing
+					   * in different directories to have the same name!
+					   * - now we do;  mael 2001-09-26 *)
 	    case body                   
 	      of EMPTYbody => U
 	       | LOCALbody(body1,body2,body3) => check_body(check_body(check_body(U,body1), body2), body3)
 	       | UNITbody (longuid, body') => check_longuid(U,longuid,body')
 	       | PARbody nil => U
 	       | PARbody (longuid::rest) => check_longuid(U,longuid,PARbody rest)
-	  and check_longuid (U, longuid,body) =
+	    and check_longuid (U, longuid,body) =
 	    let val unitid = (* OS.Path.file*) longuid
 	    in 
 	      if member unitid U then 
@@ -396,9 +402,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		       quot(ModuleEnvironments.absprjid_to_string absprjid0))
 	      else check_body(unitid::U,body)
 	    end
-      in check_body([], body); check_imports([], imports); List.app check_extobj extobjs
-      end
+	in check_body([], body); check_imports([], imports); List.app check_extobj extobjs
+	end
+    end (*structure Project*)
 
+    datatype body = datatype Project.body
 
     type Basis = MO.Basis
     type modcode = MO.modcode
@@ -766,7 +774,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     val strip_install_dir = ModuleEnvironments.strip_install_dir
 
-    type projectmap = (absprjid * extobj list * Basis) list
+    type projectmap = (absprjid * Project.extobj list * Basis) list
 
     fun projectmap_lookup map absprjid =
       let fun look [] = NONE
@@ -796,7 +804,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun build_project {cycleset : absprjid list, pmap : projectmap, absprjid : absprjid, modc:modcode} 
 
       : {res_basis_opt : Basis option, modc : modcode, 
-	 pmap : projectmap, extobjs : extobj list, clean : bool} =
+	 pmap : projectmap, extobjs : Project.extobj list, clean : bool} =
 
       let val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
 	  val {cd_old, file=prjid} = change_dir absprjid_s
@@ -804,14 +812,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       in let val _ = if member absprjid cycleset then
 	               error ("There is a cycle in your project; problematic project identifier: " ^ quot absprjid_s)
 		     else ()
-	     val prj as {imports, extobjs, body} = parse_project absprjid
+	     val prj as {imports, extobjs, body} = Project.parse_project absprjid
 (*             val _ = (testout("Parsed project:\n"); testouttree(layout_prj prj); testout "\n") *)
 	     val imports = maybe_add_basislib absprjid imports
 	     val prj = {imports=imports,extobjs=extobjs,body=body}
 	     val prjid_date_file = MO.pmdir() ^ prjid ^ ".date"
 	     val clean = older (OS.FileSys.modTime prjid, OS.FileSys.modTime prjid_date_file) handle _ => false
 (*	     val _ = print (absprjid_s ^ ": clean0 " ^ Bool.toString clean ^ "\n") *)
-	     val _ = if clean then () else local_check_project (absprjid, prj)
+	     val _ = if clean then () else Project.local_check_project (absprjid, prj)
 	     val (B, modc, pmap, extobjs, clean) = 
 	       foldl(fn (absprjid1:absprjid,(B, modc, pmap, extobjs, clean0)) => 
 		     case projectmap_lookup pmap absprjid1
