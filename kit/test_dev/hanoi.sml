@@ -30,7 +30,9 @@ let
     else (hanoi(n-1, from, via, to); 
 	  show_move(from,to);
 	  hanoi(n-1, via, to, from))
+  val _ = out_str "Hello\n"
   val _ = hanoi(14,1,2,3);
+  val _ = out_str "Hello again\n"
 in
   ()
 end
