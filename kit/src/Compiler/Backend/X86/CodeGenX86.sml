@@ -1878,6 +1878,7 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 		    val pp = 34343 (*dummy program point!! mael 2001-03-14 *)
 		    fun comp_c_call(all_args,res,C) = 
 		      let 
+
 (*
 			val all_args = 
 			  if region_profiling() andalso not(List.null rhos_for_result) then 

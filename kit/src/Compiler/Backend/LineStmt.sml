@@ -33,6 +33,11 @@ struct
      menu=["Printing of intermediate forms", "print linearised program (LineStmt)"],
      desc=""}
 
+  val _ = Flags.add_bool_entry
+    {long="disable_flow_var", short=NONE, item=ref false,neg=false,
+     menu=["Disable Flow Variables", "Disable Flow Variables (LineStmt)"],
+     desc=""}
+
   type place = Effect.place
   type excon = Excon.excon
   type con = Con.con
@@ -170,6 +175,10 @@ struct
   fun remove_finite_rhos([]) = []
     | remove_finite_rhos(((place,PhysSizeInf.WORDS i),offset)::rest) = remove_finite_rhos rest
     | remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
+
+  fun remove_zero_rhos([]) = []
+    | remove_zero_rhos(((place,PhysSizeInf.WORDS 0),offset)::rest) = remove_zero_rhos rest
+    | remove_zero_rhos(rho::rest) = rho :: remove_zero_rhos rest
 
   fun pr_atom(VAR lv) = Lvars.pr_lvar lv
     | pr_atom(FLOW_VAR(lv,l1,l2)) = Lvars.pr_lvar lv
@@ -497,8 +506,6 @@ struct
     fun pr_line_stmt pr_sty pr_offset pr_aty simplify ls =
       PP.flatten1(layout_line_stmt' pr_sty pr_offset pr_aty simplify ls)
   end
-
-  val flow_var_flag = true
 
   (*************)
   (* Utilities *)
@@ -1200,8 +1207,10 @@ struct
 	     end
 	   else
 	     FV_CalcSets_sw(FV_CalcSets_lss,sw,OKset,notOKset,prev_use_lv)
-       | LETREGION{rhos,body} => (* only infinite regions execute code *)
-	     (case remove_finite_rhos rhos of
+       | LETREGION{rhos,body} => 
+	     (* if region_profiling is disabled, then only infinite regions execute code *)
+             (* if region_profiling is enabled, then all non zero regions execute code   *)
+	     (case (if Flags.is_on "region_profiling" then remove_zero_rhos else remove_finite_rhos) rhos of
 		[] => FV_CalcSets_lss(body,(OKset,notOKset,prev_use_lv))
 	      | _ => 
 		  let
@@ -1285,7 +1294,7 @@ struct
       val _ = reset_flow_var_stat()
       val line_prg = L_clos_prg clos_prg	
       val line_prg_flow_var = 
-	if flow_var_flag then
+	if not (Flags.is_on "disable_flow_var") then
 	  FV_prg line_prg
 	else
 	  line_prg
