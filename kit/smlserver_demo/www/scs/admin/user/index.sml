@@ -1,16 +1,16 @@
 val user_id = ScsLogin.auth_roles [ScsRole.SiteAdm]
 
-val person_id = ScsFormVar.wrapOpt ScsFormVar.getIntErr "person_id"
+val person_id_opt = ScsFormVar.wrapOpt ScsFormVar.getIntErr "person_id"
 
 val title = 
-  case person_id of 
+  case person_id_opt of 
     NONE => ScsDict.s [(ScsLang.en,`User administration`),(ScsLang.da,`Brugeradministration`)]
   | SOME pid => 
       ScsDict.sl [(ScsLang.en,`User administration for %0 (%1)`),(ScsLang.da,`Brugeradministration for %0 (%1)`)] 
         [ScsPerson.name pid, ScsPerson.email pid]
 
 val body = 
-  case person_id of
+  case person_id_opt of
     NONE => ``
   | SOME pid => 
       let
@@ -38,9 +38,35 @@ val body =
 	roleadm ^^ `<hr>` ^^ passwd ^^ `<hr>` ^^ become
       end
 
+val new_user_form = 
+  let
+    val new_person = {
+      first_names 	= "",
+      last_name		= "",
+      name 		= "",
+      email		= "",
+      url		= "",
+      cpr		= ""
+    }
+  in
+    UcsWidget.layoutComponentGrp (
+	  UcsWidget.FORMBOX{
+	    action="new_user.sml",
+	    buts = [("submit", ScsDict.s UcsDict.create_dict,NONE)],
+	    header = (Html.export_hiddens [
+	    ] ),
+	    body = UcsPerson.userComponent (new_person,true),
+	    table_attr = []} 
+	  )
+  end
+
+
 val _ = UcsPage.returnPg title
   (`<h1>^title</h1>
 
     ` ^^ (ScsPerson.search_form "/scs/admin/user/index.sml" []) ^^ `<hr>` ^^
+   (case person_id_opt of 
+        SOME id => `` 
+      | NONE => `<h2>Opret ny bruger</h2>` ^^ new_user_form ) ^^
    body)
 

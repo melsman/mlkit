@@ -7,7 +7,8 @@ signature SCS_PERSON =
       last_name		: string,
       name 		: string,
       email		: string,
-      url		: string
+      url		: string,
+      cpr               : string
     }
 
     (* [getPerson user_id] fetches a person from the database *)
@@ -85,7 +86,8 @@ structure ScsPerson :> SCS_PERSON =
       last_name		: string,
       name 		: string,
       email		: string,
-      url		: string
+      url		: string,
+      cpr		: string
     }
 
     fun getPerson user_id = 
@@ -95,13 +97,15 @@ structure ScsPerson :> SCS_PERSON =
 	  last_name = g "last_name",
 	  name = g "name",
 	  email = g "email",
-	  url = g "url"
+	  url = g "url",
+          cpr = g "cpr"
 	}
 	val personSQL = `
 	  select first_names, last_name, 
 		 scs_person.name(^(Int.toString user_id)) name, 
 		 scs_party.email(^(Int.toString user_id)) email,
-		 scs_party.url(^(Int.toString user_id)) url
+		 scs_party.url(^(Int.toString user_id)) url,
+		 security_id cpr
 	    from scs_persons
 	   where person_id = ^(Int.toString user_id)` 
       in
