@@ -4,7 +4,7 @@ in
 structure Page : 
     sig
 	type blockElt = (nil,nil,aclosed,formclosed,
-			 preclosed,block flow) elt
+			 preclosed,(block,NOT)flow) elt
 
 	val pageWithCookies : SMLserver.Cookie.cookiedata list ->
 	    string -> blockElt -> Http.response
@@ -15,7 +15,7 @@ structure Page :
 =
     struct
 	type blockElt = (nil,nil,aclosed,formclosed,
-			 preclosed,block flow) elt
+			 preclosed,(block,NOT)flow) elt
 	local 
 	    open Scripts infix &
 	    val smlserver_link = Unsafe.ahref {src="http://www.smlserver.org"} ($"SMLserver")
