@@ -16,7 +16,7 @@ fun do_regExp p s =
 
 val emailp = "^([a-zA-Z][0-9a-zA-Z\\._]*)@([0-9a-zA-Z\\._]+)$"
 val _ =
-  Ns.Quot.return `<html>
+  Ns.return `<html>
    <head>
    <title>RegExp examples</title>
    </head>

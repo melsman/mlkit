@@ -6,6 +6,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     type ns_db = int
     type set = Set.set
     type status = NsBasics.status
+    type quot = string frag list
+    fun quotToString (q : quot) : string =
+      concat(map (fn QUOTE s => s | ANTIQUOTE s => s) q)
 
     structure Pool : NS_POOL =
       struct
@@ -47,23 +50,23 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       (pool, prim("nssml_DbPoolGetHandle", "nssml_DbPoolGetHandle", pool))
     fun poolPutHandle (db : db) : unit =
       prim("nssml_DbPoolPutHandle", "nssml_DbPoolPutHandle", #2 db)
-    fun dmlDb (db : db, s: string) : status =
-      prim("nssml_DbDML", "nssml_DbDML", (#2 db, s))
+    fun dmlDb (db : db, q: quot) : status =
+      prim("nssml_DbDML", "nssml_DbDML", (#2 db, quotToString q))
 
     fun getHandle () : db = poolGetHandle(Pool.getPool())
     fun putHandle db : unit = (poolPutHandle db; Pool.putPool (#1 db))
       
-    fun dml (s: string) : status =
+    fun dml (q: quot) : status =
       let val db = getHandle()
-      in (dmlDb (db,s) before putHandle db)
+      in (dmlDb (db,q) before putHandle db)
 	handle X => (putHandle db; raise X)
       end
-    fun select (db : db, s : string) : Set.set =
-      prim("nssml_DbSelect", "nssml_DbSelect", (#2 db, s))
+    fun select (db: db, q: quot) : Set.set =
+      prim("nssml_DbSelect", "nssml_DbSelect", (#2 db, quotToString q))
     fun getRow (db : db, s : Set.set) : status =
       prim("nssml_DbGetRow", "nssml_DbGetRow", (#2 db, s))
 
-    fun foldDb (db:db, f:(string->string)*'a->'a, acc:'a, sql:string) : 'a =
+    fun foldDb (db:db, f:(string->string)*'a->'a, acc:'a, sql:quot) : 'a =
       let val s : Set.set = select(db, sql)
 	fun g n = Set.getOpt(s, n, "##")
 	fun loop (acc:'a) : 'a =
@@ -78,7 +81,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	handle X => (putHandle db; raise X)
       end
       
-    fun fold (f:(string->string)*'a->'a, acc:'a, sql:string) : 'a =
+    fun fold (f:(string->string)*'a->'a, acc:'a, sql:quot) : 'a =
       wrapDb (fn db => foldDb (db,f,acc,sql))
 
     fun oneFieldDb(db,sql) : string =
@@ -93,7 +96,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	else raise Fail "Db.oneFieldDb.no rows"
       end
 
-    fun oneField (sql : string) : string = 
+    fun oneField (sql : quot) : string = 
       wrapDb (fn db => oneFieldDb(db,sql))
 
     fun zeroOrOneFieldDb(db,sql) : string option =
@@ -106,7 +109,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	else NONE
       end
 
-    fun zeroOrOneField (sql : string) : string option =
+    fun zeroOrOneField (sql : quot) : string option =
       wrapDb (fn db => zeroOrOneFieldDb(db,sql))
 
     fun oneRowDb(db,sql) : string list =
@@ -142,7 +145,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun qq' s = concat ["'", qq s, "'"]
 
     fun seqNextval (seqName:string) : int = 
-      let val s = oneField ("select " ^ seqNextvalExp seqName ^ " " ^ fromDual)
+      let val s = oneField `select ^(seqNextvalExp seqName) ^fromDual`
       in case Int.fromString s of
 	SOME i => i
       | NONE => raise Fail "Db.seqNextval.nextval not an integer"	

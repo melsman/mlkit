@@ -6,9 +6,10 @@ fun auth_verify_user () =
   in
     case (auth_user_id,auth_password) of
       (SOME user_id, SOME psw) =>
-	(case Db.zeroOrOneField (Ns.Quot.flatten `select password from auth_user where user_id = '^(Db.qq user_id)'`) of
-	   NONE => 0
-	 | SOME db_psw => 
+	(case Db.zeroOrOneField `select password from auth_user 
+                                 where user_id = ^(Db.qq' user_id)` 
+	   of NONE => 0
+	    | SOME db_psw => 
 	     if db_psw = psw then 
 	       (case Int.fromString user_id of
 		  NONE => 0

@@ -7,7 +7,7 @@ fun calculate c = concat
    "<a href=temp.html>calculate a new temperature</a>.",
    "<hr> <i>Served by SMLserver</i> </body></html>"]
 
-val _ = Ns.return 
+val _ = Ns.Conn.return 
   (case FormVar.getInt "temp_c"
      of NONE => "Go back and enter an interger!"
       | SOME i => calculate i)

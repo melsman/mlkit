@@ -75,9 +75,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 				    | NONE => false
 
     structure MspComp = MspComp(val error = error
-				val pr = "Ns.write"
+				val pr = "Ns.Conn.write"
 				val pre = "val _ = Ns.returnHeaders()\n\
-                                          \val print = Ns.write\n\n")
+                                          \val print = Ns.Conn.write\n\n")
 
     fun member s l = let fun m [] = false
 			   | m (x::xs) = x = s orelse m xs

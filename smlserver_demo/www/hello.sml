@@ -8,8 +8,8 @@ fun fib n =
 val body = ("<ul><li>fib(5) = " ^ Int.toString (fib 5) ^ 
 	    " <li>fib(12) = " ^ Int.toString(fib 12) ^ "</ul>")
 
-val _ = Ns.return ("<html><body bgcolor=white><h2>My First SML-Page</h2>" ^
-		   body ^ "<p>You can go visit the <a href=\"show.sml\">red page</a>...</body></html>")
+val _ = Ns.Conn.return ("<html><body bgcolor=white><h2>My First SML-Page</h2>" ^
+		        body ^ "<p>You can go visit the <a href=\"show.sml\">red page</a>...</body></html>")
 
 
 

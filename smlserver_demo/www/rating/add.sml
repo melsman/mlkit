@@ -5,7 +5,7 @@
     case FormVar.getNat "wid" of 
       SOME wid =>   (* get name and year *)
 	let val wid = Int.toString wid
-	    val query = Ns.Quot.flatten
+	    val query = 
 	      `select name, year from wine 
 	       where wid = ^wid`
 	in case Db.oneRow query of
@@ -17,7 +17,7 @@
 	    val year = 
 	      FormVar.getIntRangeOrFail 0 3000 "year"
 	    val year = Int.toString year
-	    val query = Ns.Quot.flatten
+	    val query = 
 	      `select wid from wine 
 	       where name = ^(Db.qq' name)
 		 and year = ^(Db.qq' year)`
@@ -27,7 +27,7 @@
 	  | _ => (* get fresh wid from RDBMS *)
 	      let val wid = Int.toString 
 		    (Db.seqNextval "wid_sequence")
-		  val _ = (Db.dml o Ns.Quot.flatten) 
+		  val _ = Db.dml
 		    `insert into wine (wid, name, year)
 		     values (^wid, 
 			     ^(Db.qq' name), 

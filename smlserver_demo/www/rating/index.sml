@@ -1,5 +1,5 @@
   (* the complex query that calculates the scores *)
-  val query = Ns.Quot.flatten
+  val query = 
     `select wine.wid, name, year, 
 	    avg(rating) as average, 
 	    count(*) as ratings

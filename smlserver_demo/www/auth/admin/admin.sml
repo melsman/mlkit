@@ -1,4 +1,4 @@
-val _ = Ns.Quot.return `
+val _ = Ns.return `
 <html>
 <body bgcolor=white>
 This is a password protected page.<p>

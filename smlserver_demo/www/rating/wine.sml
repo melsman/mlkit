@@ -1,7 +1,7 @@
   (* Present comments and ratings for a specific wine *)
   val wid = Int.toString(FormVar.getNatOrFail "wid")
 
-  val query = Ns.Quot.flatten
+  val query = 
     `select comment, fullname, email, rating
      from rating 
      where wid = ^wid`
@@ -24,9 +24,8 @@
     `</table>
      <p>Back to <a href=index.sml>Best Wines</a>`
 
-  val name = Db.oneField (Ns.Quot.flatten 
-			  `select name from wine
-			   where wid = ^wid`)
+  val name = Db.oneField `select name from wine
+			  where wid = ^wid`
 
   val _ = RatingUtil.returnPageWithTitle 
     ("Ratings - " ^ name) body

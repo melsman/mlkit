@@ -5,7 +5,7 @@
   val rating   = Int.toString(FormVar.getIntRangeOrFail 
 			      0 6 "rating")
 
-  val _ = (Db.dml o Ns.Quot.flatten)
+  val _ = Db.dml
     `insert into rating (wid, comment, fullname, 
                          email, rating)
      values (^wid, ^(Db.qq' comment), ^(Db.qq' fullname), 

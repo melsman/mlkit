@@ -1,11 +1,11 @@
 fun returnPage title body =
-  (Ns.Quot.return `<html>
-	             <head><title>^title</title></head>
-		     <body bgcolor=white><h2>^title</h2>
-		       ^(Ns.Quot.flatten body)
-                     <hr> <i>Served by SMLserver</i>
-		     </body>
-		   </html>`;
+  (Ns.return `<html>
+	      <head><title>^title</title></head>
+	      <body bgcolor=white><h2>^title</h2>
+		 ^(Ns.quotToString body)
+                 <hr> <i>Served by SMLserver</i>
+	      </body>
+	      </html>`;
    Ns.exit())
 
 fun error s = returnPage ("Error: " ^ s)

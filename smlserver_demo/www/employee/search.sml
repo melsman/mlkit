@@ -1,11 +1,11 @@
-  fun returnPage title body = Ns.Quot.return 
-    `<html> 
-     <head><title>^title</title></head>
-     <body bgcolor=white>
-       <center><h2>^title</h2><p> ^(Ns.Quot.flatten body) 
-       </center>
-     </body>
-     </html>`
+  fun returnPage title body = Ns.return 
+    (`<html> 
+      <head><title>^title</title></head>
+      <body bgcolor=white>
+        <center><h2>^title</h2><p>` ^^ body ^^
+        `</center>
+      </body>
+      </html>`)
 
   val email = FormVar.getStringOrFail "email"
 
@@ -14,7 +14,7 @@
 	     where email = ^(Db.qq' email)`
 
   val _ =
-    case Db.zeroOrOneRow (Ns.Quot.flatten sql) of
+    case Db.zeroOrOneRow sql of
       SOME [name, note] => 
 	returnPage "Employee Search Success" 
 	`<form action=update.sml method=post>

@@ -1,4 +1,4 @@
-fun error s = (Ns.return ("Missing formvariable " ^ s);
+fun error s = (Ns.return `Missing formvariable ^s`;
 	       raise Fail "Missing formvar")
 
 fun formVar (k:string) : string =
@@ -16,7 +16,7 @@ val body = formVar "body"
 val _ = Ns.Mail.send {to=to, from=from,subject=subject,body=body}
 
 val _ =
-Ns.Quot.return `
+Ns.return `
 <html>
 <body bgcolor=lightgreen>
 <h2>Email has been sent</h2>

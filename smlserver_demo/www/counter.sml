@@ -6,7 +6,7 @@
                         | _ => c)
         | NONE => 0)
 
-  val _ = Ns.Quot.return `
+  val _ = Ns.return `
     <html>
       <body bgcolor=white>
         <h2>Count: ^counter</h2>

@@ -12,8 +12,8 @@ fun unique s =
 fun getFormVar n =
   let 
     fun return_formvar_error n msg =
-      (Ns.return("<html><body bgcolor=white><h2>Formvar Error: form variable `" ^ n ^ 
-		 "' " ^ msg ^ "</h2>Go back and fill in the form...</body></html>");
+      (Ns.Conn.return("<html><body bgcolor=white><h2>Formvar Error: form variable `" ^ n ^ 
+		      "' " ^ msg ^ "</h2>Go back and fill in the form...</body></html>");
        Process.exit Process.success)
   in
     case get n
@@ -25,5 +25,5 @@ fun getFormVar n =
 val name = getFormVar "name"
 
 val _ =
-  Ns.return("<html><body bgcolor=green><h2>Hi " ^ name ^ 
-	    "</h2> how are you today?</body></html>")
+  Ns.Conn.return("<html><body bgcolor=green><h2>Hi " ^ name ^ 
+	         "</h2> how are you today?</body></html>")

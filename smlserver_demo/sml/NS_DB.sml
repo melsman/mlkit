@@ -37,21 +37,24 @@ signature NS_DB =
     val getHandle      : unit -> db
     val putHandle      : db -> unit
 
-    val dmlDb           : db * string -> status
-    val select          : db * string -> set
-    val getRow          : db * set -> status
-    val foldDb          : db * ((string->string)*'a->'a) * 'a * string -> 'a
-    val oneFieldDb      : db * string -> string
-    val zeroOrOneFieldDb: db * string -> string option
-    val oneRowDb        : db * string -> string list
-    val zeroOrOneRowDb  : db * string -> string list option
+    (* Quotation support *)
+    type quot = string frag list 
 
-    val dml           : string -> status
-    val fold          : ((string->string)*'a->'a) * 'a * string -> 'a
-    val oneField      : string -> string
-    val zeroOrOneField: string -> string option
-    val oneRow        : string -> string list
-    val zeroOrOneRow  : string -> string list option
+    val dmlDb           : db * quot -> status
+    val select          : db * quot -> set
+    val getRow          : db * set -> status
+    val foldDb          : db * ((string->string)*'a->'a) * 'a * quot -> 'a
+    val oneFieldDb      : db * quot -> string
+    val zeroOrOneFieldDb: db * quot -> string option
+    val oneRowDb        : db * quot -> string list
+    val zeroOrOneRowDb  : db * quot -> string list option
+
+    val dml           : quot -> status
+    val fold          : ((string->string)*'a->'a) * 'a * quot -> 'a
+    val oneField      : quot -> string
+    val zeroOrOneField: quot -> string option
+    val oneRow        : quot -> string list
+    val zeroOrOneRow  : quot -> string list option
 
     val seqNextvalExp : string -> string  (*construct new-sequence expression*)
     val seqNextval    : string -> int     (*obtain new sequence number from database*)
