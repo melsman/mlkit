@@ -1,13 +1,10 @@
 val user_id = ScsLogin.auth_roles [ScsRole.SiteAdm]
 
-val d = ScsDict.d ScsLang.en "scs/admin/user" "imp_form.sml"
-val dl = ScsDict.dl ScsLang.en "scs/admin/user" "imp_form.sml"
-
-val title = d"Import New Users"
+val title = ScsDict.s [(ScsLang.en,`Import New Users`),(ScsLang.da,`Importer Nye Brugere`)]
 
 val imp_users = Db.list (fn g => (g "user_imp_id", g "first_names", g "last_name", g "norm_name",
                                   g "security_id", g "email", g "url", g "on_what_table", g "on_which_id",
-                                  Option.valOf(Db.toDate (g "last_auto_import_try")),
+                                  Db.toDate (g "last_auto_import_try"),
                                   Option.valOf(Db.toDate (g "last_modified")), g "modifying_user",
                                   g "exact_match_id"))
                               `select scs_user_imports.*,
@@ -28,12 +25,12 @@ case
     `
        <tr><td align=left>
        <table border=1>
-         <tr><td>^(d"Name"):</td><th align=left><b>^first_names ^last_name</b></th></tr>
-         <tr><td>^(d"Norm"):</td><td>^norm_name</td></tr>
-         <tr><td>^(d"Security id"):</td><td>^security_id</td></tr>
-         <tr><td>^(d"Email"):</td><td>^email</td></tr>
-         <tr><td>^(d"Url"):</td><td>^url</td></tr> ` ^^
-            (Db.fold (fn (g,acc) => acc ^^ `<tr><td>^(d"Relation"):</td><td>
+         <tr><td>^("Name"):</td><th align=left><b>^first_names ^last_name</b></th></tr>
+         <tr><td>^("Norm"):</td><td>^norm_name</td></tr>
+         <tr><td>^("Security id"):</td><td>^security_id</td></tr>
+         <tr><td>^("Email"):</td><td>^email</td></tr>
+         <tr><td>^("Url"):</td><td>^url</td></tr> ` ^^
+            (Db.fold (fn (g,acc) => acc ^^ `<tr><td>^("Relation"):</td><td>
                  ^(g "on_what_table").^(g "on_which_id")</td></tr>`) ``
                `select scs_person_rels.on_what_table,scs_person_rels.on_which_id
                   from scs_persons, scs_person_rels
@@ -43,10 +40,10 @@ case
       </td>
 	    <td><a href="^(Html.genUrl "imp_row.sml" 
                             [("user_imp_id",user_imp_id),
-                             ("person_id",person_id)])">^(d "Import as same person")</a></td></tr>`
+                             ("person_id",person_id)])">^("Import as same person")</a></td></tr>`
 
 fun layout_same_norm_name user_imp_id norm_name =
-  Db.fold (fn (g,acc) => acc ^^ layout_user (d"Maybe same person") (d"None") 
+  Db.fold (fn (g,acc) => acc ^^ layout_user ("Maybe same person") ("None") 
                                             user_imp_id (g "person_id")) `` 
     `select person_id
       from scs_persons
@@ -59,21 +56,22 @@ fun layout_imp_user (user_imp_id,first_names,last_name,norm_name,security_id,ema
    <table border=0>
     <tr><td align=left>
      <table border=0>
-     <tr><td>^(d"Name"):</td><th align=left><b>^first_names ^last_name</b></th></tr>
-     <tr><td>^(d"Norm"):</td><td>^norm_name</td></tr>
-     <tr><td>^(d"Security id"):</td><td>^security_id</td></tr>
-     <tr><td>^(d"Email"):</td><td>^email</td></tr>
-     <tr><td>^(d"Url"):</td><td>^url</td></tr>
-     <tr><td>^(d"Source"):</td><td>^on_what_table.^on_which_id</td></tr>
+     <tr><td>^("Name"):</td><th align=left><b>^first_names ^last_name</b></th></tr>
+     <tr><td>^("Norm"):</td><td>^norm_name</td></tr>
+     <tr><td>^("Security id"):</td><td>^security_id</td></tr>
+     <tr><td>^("Email"):</td><td>^email</td></tr>
+     <tr><td>^("Url"):</td><td>^url</td></tr>
+     <tr><td>^("Source"):</td><td>^on_what_table.^on_which_id</td></tr>
+     <tr><td>^("Last import try"):</td><td>^(UcsWidget.valOfDate last_auto_import_try)</td></tr>
      </table>
     </td>
 	    <td><a href="^(Html.genUrl "imp_row.sml" 
-                            [("user_imp_id",user_imp_id)])">^(d"Create as new user")</a><br>
+                            [("user_imp_id",user_imp_id)])">^("Create as new user")</a><br>
                           <a href="^(Html.genUrl "del_imp_row.sml" 
-                            [("user_imp_id",user_imp_id)])">^(d"Delete row from import table")</a>
+                            [("user_imp_id",user_imp_id)])">^("Delete row from import table")</a>
 </td>
      </tr>
-     ` ^^ (layout_user (d"Exact match") (d"None") user_imp_id exact_match_id) ^^ 
+     ` ^^ (layout_user ("Exact match") ("None") user_imp_id exact_match_id) ^^ 
           (layout_same_norm_name user_imp_id norm_name) ^^ `
     </table>
     </td>`
@@ -81,13 +79,14 @@ fun layout_imp_user (user_imp_id,first_names,last_name,norm_name,security_id,ema
 val user_imp_table =
   (ScsWidget.lineTable
      {hdcolor="silver",row_col1="silver",row_col2="lightgrey",
-      header=`<th>^(d"User")</th>`,
+      header=`<th>^("User")</th>`,
       align="center",
       footer=``}
        layout_imp_user imp_users)
 
 val _ = UcsPage.returnPg title
   (`<h1>^title</h1> 
-   ^(dl [Int.toString (List.length imp_users)] "There are %0 entries.")<p>
-   <h2><a href="^(Html.genUrl "apply_auto_import.sml" [])">^(d"Apply auto import")</h2>
+   ^(ScsDict.sl [(ScsLang.en,`There are %0 entries.`),(ScsLang.da,`Der er %0 poster.`)] [Int.toString (List.length imp_users)])<p>
+   <h2><a href="^(Html.genUrl "apply_auto_import.sml" [])">^(ScsDict.s[(ScsLang.en,`Apply auto import`),
+								       (ScsLang.da,`Anvend auto import`)])</h2>
    ` ^^ user_imp_table)

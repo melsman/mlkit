@@ -1,3 +1,5 @@
+val user_id = ScsLogin.auth_roles [ScsRole.StudAdm]
+
 val qs = (Db.fold (fn (g,acc) => acc ^^ `
 		   <li>^(g "category"): <a href="show.sml?id=^(g "id")">^(g "name")</a>`) `<ul>`
             `select id, category, name
