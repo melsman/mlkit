@@ -4,8 +4,8 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 		    structure Report : REPORT
 		    sharing type Report.Report = Flags.Report
 		    structure Crash : CRASH
+		    structure RegConst : REG_CONST
 		    val down_growing_stack : bool
-		    val double_alignment_required : bool
 		    val extra_prims : string list) : BACKEND_INFO =
   struct
     fun die s  = Crash.impossible ("BackendInfo." ^ s)
@@ -25,8 +25,8 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val bOff  = 2 (* Offset for border pointer (b) in a region descriptor. *)
     val fpOff = 3 (* Offset for first region page pointer (fp) in a region descriptor. *)
 
-    val regionPageTotalSize = 254 (*ALLOCATABLE_WORDS_IN_REGION_PAGE*) + 2 (*HEADER_WORDS_IN_REGION_PAGE*)
-    val regionPageHeaderSize = 2 (*HEADER_WORDS_IN_REGION_PAGE*)
+    val regionPageTotalSize = RegConst.ALLOCATABLE_WORDS_IN_REGION_PAGE + RegConst.HEADER_WORDS_IN_REGION_PAGE
+    val regionPageHeaderSize = RegConst.HEADER_WORDS_IN_REGION_PAGE
 
     (***********)
     (* Tagging *)
@@ -93,14 +93,20 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val inf_bit = 1   (* We add 1 to an address to set the infinite bit. *)
     val atbot_bit = 2 (* We add 2 to an address to set the atbot bit. *)
 
-    val tag_values      = Flags.lookup_flag_entry "tag_values"
-    val tag_integers    = Flags.lookup_flag_entry "tag_integers"
+    val tag_values       = Flags.is_on0 "tag_values"
+    val tag_integers     = Flags.is_on0 "tag_integers"
+    val region_profiling = Flags.is_on0 "region_profiling"
 
-    fun size_of_real ()    = if !tag_values then 4 else 2
-    fun size_of_ref ()     = if !tag_values then 2 else 1
-    fun size_of_record l   = if !tag_values then List.length l + 1 else List.length l
-    fun size_of_reg_desc() = 4
+    val size_of_real = RegConst.size_of_real
+    val size_of_ref = RegConst.size_of_ref
+    val size_of_record = RegConst.size_of_record
     fun size_of_handle()   = 4
+
+    fun size_of_reg_desc() = if region_profiling() then 7 
+			     else 4
+
+    val finiteRegionDescSizeP = 2 (* Number of words in a finite region descriptor when profiling is used. *)
+    val objectDescSizeP = 2       (* Number of words in an object descriptor when profiling is used. *)
 
     val toplevel_region_withtype_top_lab    = Labels.reg_top_lab
     val toplevel_region_withtype_bot_lab    = Labels.reg_bot_lab
@@ -161,5 +167,4 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     fun is_prim name = member name prims
 
     val down_growing_stack = down_growing_stack
-    val double_alignment_required = double_alignment_required
   end

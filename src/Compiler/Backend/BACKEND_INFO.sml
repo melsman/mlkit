@@ -45,13 +45,18 @@ signature BACKEND_INFO =
     val inf_bit          : int (* We must add 1 to an address to set the infinite bit. *)
     val atbot_bit        : int (* We must add 2 to an address to set the atbot bit. *)
 
-    val tag_values       : bool ref
-    val tag_integers     : bool ref
+    val tag_values       : unit -> bool
+    val tag_integers     : unit -> bool
     val size_of_real     : unit -> int
     val size_of_ref      : unit -> int
     val size_of_record   : 'a list -> int
-    val size_of_reg_desc : unit -> int
     val size_of_handle   : unit -> int
+
+    val size_of_reg_desc : unit -> int  (* dependent on whether region profiling is enabled *)
+
+    val finiteRegionDescSizeP : int     (* Number of words in a finite region descriptor when profiling is used. *)
+    val objectDescSizeP       : int     (* Number of words in an object descriptor when profiling is used. *)
+
 
     val init_frame_offset : offset
 
@@ -103,8 +108,6 @@ signature BACKEND_INFO =
     val is_prim : string -> bool   
 
     val down_growing_stack : bool         (* true for x86 code generation *)
-    val double_alignment_required : bool  (* false for x86 code generation *)
-
   end
 
 

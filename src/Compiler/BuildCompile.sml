@@ -25,8 +25,6 @@ signature BUILD_COMPILE =
     structure PhysSizeInf : PHYS_SIZE_INF 
       sharing type PhysSizeInf.phsize = Compile.phsize
       sharing type PhysSizeInf.at = AtInf.at = Compile.at
-(*      sharing type PhysSizeInf.pp = Compile.pp *)
-(*      sharing type PhysSizeInf.env = CompBasis. *)
     structure MulExp : MUL_EXP
       sharing type MulExp.LambdaPgm = PhysSizeInf.LambdaPgm = Compile.LambdaPgm
       sharing type MulExp.con = ExecutionArgs.Con.con = CompBasis.con = CompilerEnv.con
@@ -47,6 +45,7 @@ signature BUILD_COMPILE =
       sharing type MulExp.lvar = ExecutionArgs.Lvars.lvar = Mul.lvar = CompBasis.lvar = CompilerEnv.lvar = PhysSizeInf.lvar
       sharing type MulExp.effect = Mul.effectvar = RType.place = PhysSizeInf.place 
 	= AtInf.place = Effect.place = EffVarEnv.dom = Mul.place = MulExp.place = Compile.place
+    structure RegConst : REG_CONST
   end
 
 functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
@@ -427,7 +426,6 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
 		structure Flags = Flags
 		structure Mul = Mul)
 
-
     structure CompileDec = CompileDec(
 			structure Ident = Ident
                         structure Lab = Lab
@@ -467,15 +465,6 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
 	      structure AtInf = AtInf
 	      structure DropRegions = DropRegions
 	      structure PhysSizeInf = PhysSizeInf
-(*
-	      structure ClosExp = ClosExp
-	      structure LineStmt = LineStmt
-	      structure RegAlloc = RegAlloc
-	      structure FetchAndFlush = FetchAndFlush
-	      structure CalcOffset = CalcOffset
-	      structure SubstAndSimplify = SubstAndSimplify
-	      structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
-*)
 	      structure CompilerEnv = CompilerEnv
 	      structure RType = RType
 	      structure Effect = Effect

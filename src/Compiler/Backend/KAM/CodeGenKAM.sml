@@ -562,7 +562,7 @@ struct
 	  ClosExp.ENUM i => 
 	    let 
 	      val tag = 
-		if !BI.tag_values orelse (*hack to treat booleans tagged*)
+		if BI.tag_values() orelse (*hack to treat booleans tagged*)
 		  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then 
 		  2*i+1 
 		else i

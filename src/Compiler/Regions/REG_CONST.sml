@@ -38,15 +38,6 @@ signature REG_CONST = sig
   val size_con0          : unit -> int
   val size_con1          : unit -> int
 
-    
-  (*runtime value tags for boxed values (for polymorphic equality):*)
-(*  val valueTagReal    : int
-  val valueTagString  : int
-  val valueTagCon0    : int
-  val valueTagCon1    : int
-  val valueTagRecord  : int
-  val valueTagRef     : int 2001-01-17, Niels *)
-
   structure TyName : TYNAME
   val unboxed_tyname : TyName.TyName -> bool
 end;

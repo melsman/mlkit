@@ -147,13 +147,17 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 			 else d ^ "(" ^ pr_reg r ^ ")"
 
     fun emit_insts (os, insts: inst list): unit = 
-      let fun emit s = TextIO.output(os, s)
+      let 
+	  fun emit s = TextIO.output(os, s)
+	  fun emit_n i = emit(Int.toString i)
+	  fun emit_nl() = emit "\n"
 	  fun emit_bin (s, (ea1, ea2)) = (emit "\t"; emit s; emit " "; 
 					  emit(pr_ea ea1); emit ","; 
-					  emit(pr_ea ea2); emit "\n")
-	  fun emit_unary(s, ea) = (emit "\t"; emit s; emit " "; emit(pr_ea ea); emit "\n")
-	  fun emit_nullary s = (emit "\t"; emit s; emit "\n")
-	  fun emit_jump(s,l) = (emit "\t"; emit s; emit " "; emit(pr_lab l); emit "\n")
+					  emit(pr_ea ea2); emit_nl())
+	  fun emit_unary(s, ea) = (emit "\t"; emit s; emit " "; emit(pr_ea ea); emit_nl())
+	  fun emit_nullary s = (emit "\t"; emit s; emit_nl())
+	  fun emit_nullary0 s = (emit s; emit_nl())
+	  fun emit_jump(s,l) = (emit "\t"; emit s; emit " "; emit(pr_lab l); emit_nl())
 	  fun emit_inst i =  
 	    case i
 	      of movl a => emit_bin ("movl", a)
@@ -191,7 +195,7 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	       | fnstsw => emit_nullary "fnstsw"
 
 	       | jmp (L l) => emit_jump("jmp", l)
-	       | jmp ea => (emit "\tjmp *"; emit(pr_ea ea); emit "\n")  
+	       | jmp ea => (emit "\tjmp *"; emit(pr_ea ea); emit_nl())  
 	       | jl l => emit_jump("jl", l)
 	       | jg l => emit_jump("jg", l)
 	       | jle l => emit_jump("jle", l)
@@ -207,21 +211,21 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
                | jo l => emit_jump("jo", l)
 
 	       | call l => emit_jump("call", l)
-	       | ret => emit "\tret\n"
-	       | leave => emit "\tleave\n"
+	       | ret => emit_nullary "ret"
+	       | leave => emit_nullary "leave"
 
-	       | dot_align i => (emit "\t.align "; emit(Int.toString i); emit "\n")
-	       | dot_globl l => (emit ".globl "; emit(pr_lab l); emit "\n")
-	       | dot_text => emit ".text\n"
-	       | dot_data => emit ".data\n"
-	       | dot_byte s => (emit "\t.byte "; emit s; emit "\n")
-	       | dot_long s => (emit "\t.long "; emit s; emit "\n")
-	       | dot_double s => (emit "\t.double "; emit s; emit "\n")
-	       | dot_string s => (emit "\t.string \""; emit s; emit "\"\n")
+	       | dot_align i => (emit "\t.align "; emit_n i; emit_nl())
+	       | dot_globl l => (emit ".globl "; emit(pr_lab l); emit_nl())
+	       | dot_text => emit_nullary0 ".text"
+	       | dot_data => emit_nullary0 ".data"
+	       | dot_byte s => (emit "\t.byte "; emit s; emit_nl())
+	       | dot_long s => (emit "\t.long "; emit s; emit_nl())
+	       | dot_double s => (emit "\t.double "; emit s; emit_nl())
+	       | dot_string s => (emit "\t.string \""; emit s; emit "\""; emit_nl())
 	       | dot_size (l, i) => (emit "\t.size "; emit(pr_lab l); emit ","; 
-				     emit(Int.toString i); emit "\n")
-	       | lab l => (emit(pr_lab l); emit":\n")
-	       | comment s => (emit " # "; emit s; emit " \n") 
+				     emit_n i; emit_nl())
+	       | lab l => (emit(pr_lab l); emit":"; emit_nl())
+	       | comment s => (emit " # "; emit s; emit_nl()) 
       in app emit_inst insts
       end
 

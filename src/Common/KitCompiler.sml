@@ -303,5 +303,4 @@ structure BuildCompile = BuildCompile (ExecutionArgs)
 functor KitX86() = KitCompiler(ExecutionX86(BuildCompile))
 
 functor KitKAM() = KitCompiler(ExecutionKAM(BuildCompile))
-functor KitHPPA() = KitCompiler(ExecutionHPPA(BuildCompile))
 functor KitDummy() = KitCompiler(ExecutionDummy(ExecutionArgs))

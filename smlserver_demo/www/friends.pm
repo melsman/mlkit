@@ -1,0 +1,13 @@
+local
+  ../sml/Ns.sml
+  ../sml/MOSML_CGI.sml
+  ../sml/Mosmlcgi.sml
+  ../sml/MSP.sml
+  ../sml/Msp.sml
+in
+ [
+  friends.msp
+  friends_add_form.msp
+  friends_add.msp
+ ]
+end

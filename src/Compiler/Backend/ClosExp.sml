@@ -1442,7 +1442,7 @@ struct
 	  (case e of
 	     MulExp.VAR{lvar,...} => lookup_ve env lvar 
 	   | MulExp.INTEGER(i,alloc) => 
-	       ((if !BI.tag_integers then 
+	       ((if BI.tag_integers() then 
 		   (INTEGER(int32_to_string(2*(Int32.fromInt i)+1)),NONE_SE) 
 		 else (INTEGER (int_to_string i), NONE_SE))
 		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
@@ -1821,7 +1821,7 @@ struct
 						insert_se(ccTrip tr2 env lab cur_rv)),NONE_SE)
 	   | MulExp.SWITCH_I(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
-		 fun compile_match i = ((if !BI.tag_integers then 2*i+1 else i)
+		 fun compile_match i = ((if BI.tag_integers() then 2*i+1 else i)
 					   handle Overflow => die "ClosExp.SWITCH_I Overflow raised")
 		 val (selections,opt) = 
 		   compile_sels_and_default selections opt compile_match (fn tr => ccTrip tr env lab cur_rv)
@@ -1856,7 +1856,7 @@ struct
 		 fun tag con = 
 		   (case CE.lookupCon env con of
 		      CE.ENUM i => 
-			if !BI.tag_values orelse (* hack to treat booleans tagged *)
+			if BI.tag_values() orelse (* hack to treat booleans tagged *)
 			  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then
 			  (con,ENUM(2*i+1))
 			else
@@ -2140,9 +2140,9 @@ struct
 			      let
 				val (ce,se) = lookup_excon env excon
 			      in
-				LET{pat=[fresh_lvar("not_used")],bind=insert_se(STORE(ce,label),se),scope=acc}
+				LET{pat=[(*fresh_lvar("not_used")*)],bind=insert_se(STORE(ce,label),se),scope=acc}
 			      end)
-		  (List.foldr (fn ({lvar,label},acc) => LET{pat=[fresh_lvar("not_used")],bind=STORE(VAR lvar,label),scope=acc})
+		  (List.foldr (fn ({lvar,label},acc) => LET{pat=[(*fresh_lvar("not_used")*)],bind=STORE(VAR lvar,label),scope=acc})
 		   (FRAME{declared_lvars=lvars_and_labels,declared_excons=excons_and_labels}) lvars_and_labels)
 		  excons_and_labels, NONE_SE)
 	       end)
@@ -2229,7 +2229,7 @@ struct
 	  (case e of
 	     MulExp.VAR{lvar,...} => lookup_ve env lvar
 	   | MulExp.INTEGER(i,alloc) => 
-	       ((if !BI.tag_integers then 
+	       ((if BI.tag_integers() then 
 		   INTEGER(int32_to_string(2*(Int32.fromInt i)+1)) 
 		 else INTEGER (int_to_string i))
 		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
@@ -2522,7 +2522,7 @@ struct
 	   | MulExp.SWITCH_I(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
 		 fun compile_match i = 
-		   ((if !BI.tag_integers then 2*i+1 else i)
+		   ((if BI.tag_integers() then 2*i+1 else i)
 		       handle Overflow => die "ClosExp.INTEGER Overflow raised")
 		 val (selections,opt) = 
 		   compile_sels_and_default selections opt compile_match (fn tr => liftTrip tr env lab)
@@ -2552,7 +2552,7 @@ struct
 		 fun tag con = 
 		   (case CE.lookupCon env con of
 		      CE.ENUM i => 
-			if !BI.tag_values orelse (* hack to treat booleans tagged *)
+			if BI.tag_values() orelse (* hack to treat booleans tagged *)
 			  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then
 			  (con,ENUM(2*i+1))
 			else
@@ -2753,7 +2753,7 @@ struct
 					      Labels.pr_label label ^ "\n")
 *)
 			     in
-			       LET{pat=[fresh_lvar("not_used")],bind=STORE(ce,label),scope=acc}
+			       LET{pat=[(*fresh_lvar("not_used") *)],bind=STORE(ce,label),scope=acc}
 			     end)
 		 (List.foldr (fn ({lvar,label},acc) => 
 			      let 
@@ -2761,7 +2761,7 @@ struct
 					       Labels.pr_label label ^ "\n")
 *)
 			      in
-				LET{pat=[fresh_lvar("not_used")],bind=STORE(VAR lvar,label),scope=acc}
+				LET{pat=[(* fresh_lvar("not_used") *)],bind=STORE(VAR lvar,label),scope=acc}
 			      end)
 		  (FRAME{declared_lvars=lvars_and_labels,declared_excons=excons_and_labels}) lvars_and_labels)
 		  excons_and_labels

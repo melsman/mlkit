@@ -39,6 +39,8 @@ struct
     {long="print_bit_vectors", short=NONE, item=ref false, neg=false,
      menu=["Printing of intermediate forms", "print bit vectors when garbage collection is enabled (LineStmt)"],
      desc=""}
+
+  val region_profiling = Flags.is_on0 "region_profiling"
     
   type place = Effect.place
   type excon = Excon.excon
@@ -99,10 +101,8 @@ struct
 
     local
       val max_offset = ref 0
-      val is_frame_db_aligned = ref true
     in
       fun reset_max_offset() = (max_offset := BI.init_frame_offset)
-      fun set_frame_db_alignment t = is_frame_db_aligned := t
       infix ++
       fun offset ++ inc =
 	if offset+inc < !max_offset then
@@ -110,29 +110,7 @@ struct
 	else
 	  (max_offset := offset+inc;
 	   offset+inc)
-
-      fun get_max_offset() = 
-	if not(BI.double_alignment_required) then !max_offset
-	else
-	  if !is_frame_db_aligned then
-	    if !max_offset mod 2 = 0 then !max_offset
-	    else !max_offset+1
-	  else
-	    if !max_offset mod 2 = 0 then !max_offset+1
-	    else !max_offset
-
-      fun double_align_offset offset =
-	(case !is_frame_db_aligned of
-	   true =>
-	     (if offset mod 2 = 0 then
-		offset
-	      else
-		offset++1)
-	 | false => 
-	     (if offset mod 2 = 0 then
-		offset++1
-	      else
-		offset))
+      fun get_max_offset() = !max_offset
     end
 
     fun lookup_lv(lv_map,lv) =
@@ -155,44 +133,34 @@ struct
      offset (offset+obj_size-1) is eventually subtracted from
      (sp+size_ff). *)
 
-    fun assign_binders(binders,offset) =
+    fun assign_binders(binders,offset) =    (* We assume that the stack is growing downwards *)
       let
-	fun assign_binder(((place,phsize as PhysSizeInf.INF),_),offset) = 
-	  let 
-	    val obj_size = BI.size_of_reg_desc()
-	    val ann_offset = if BI.down_growing_stack then offset+obj_size-1 else offset
-	  in 
-	    (((place,phsize),ann_offset),offset++obj_size)
-	  end
-	  | assign_binder(((place,phsize as PhysSizeInf.WORDS i),_),offset) = 
-	    let 
-	      val offset' = 
-		if LS.is_region_real place andalso BI.double_alignment_required then
-		  double_align_offset offset
-		else
-		  offset
-	      val ann_offset = 
-		if BI.down_growing_stack then 
-		  offset'+i-1
-		else 
-		  offset'
-	    in 
-	      (((place,phsize),ann_offset),offset'++i) 
-	    end
-(*	  else
-	    let val obj_size = i(*+1*) (*psi_tr updated 2001-01-18, Niels*)    (* +1 necessary for tagging hack 11/01/1999, 
-				       * Niels, we should correct this in PSI, function psi_tr *)
-	        val ann_offset = if BI.down_growing_stack then offset+obj_size-1 (*offset+(1-obj_size)*)
-				 else offset
-	    in (((place,phsize),ann_offset),offset++obj_size) 
-	    end*)
-      in
-	foldr (fn (binder,(acc,offset)) => 
-	       let
-		 val (binder',offset') = assign_binder(binder,offset)
-	       in
-		 (binder'::acc,offset')
-	       end) ([],offset) binders
+	fun assign_binder(((place,phsize),_),(acc,offset)) = 
+	  let fun f ann_offset = ((place,phsize),ann_offset)::acc
+	  in case phsize
+	       of PhysSizeInf.INF => 
+		 let val size = BI.size_of_reg_desc()
+		     val ann_offset = offset + size - 1
+		 in (f ann_offset, offset ++ size)                                   
+		 end                                                                    
+		| PhysSizeInf.WORDS 0 => 
+		 let val ann_offset = offset - 1
+		 in (f ann_offset, offset)                              (*          X86, profiling           *)
+		 end							(*                                   *)
+ 		| PhysSizeInf.WORDS obj_size =>				(*       |       | <- sp+size_ff     *)
+       	       	 if region_profiling() then				(*       +-------+                   *)
+		   let val size = (obj_size + BI.objectDescSizeP 	(*       :       :                   *)
+				   + BI.finiteRegionDescSizeP)	        (*       +-------+                   *)
+		       val ann_offset = offset + obj_size - 1		(*      /|       | <- sp+size_ff     *)
+		   in (f ann_offset, offset ++ size)  		        (* s   / |  obj  |     - offset      *)
+		   end							(* i _/  |       | <- sp+size_ff     *)
+		 else 							(* z  \  +-------+     - ann_offset  *)
+		   let val ann_offset = offset + obj_size - 1		(* e   \ |objDesc|                   *)
+		   in (f ann_offset, offset ++ obj_size)		(*      \|regDesc|            | s    *)
+		   end							(*       +-------+            | t    *)
+	  end                                                           (*       :       :            | a    *)
+      in                                                                (*       |       | <- sp      | c    *)
+	foldr assign_binder ([],offset) binders                         (*       +-------+            V k    *)
       end
 
     fun assign_stys(stys,LVmap,PHmap,offset) =
@@ -248,8 +216,7 @@ struct
 			 handl_return=(handl_return,handl_return_lv,bv),...}::lss,LVmap,PHmap,offset,acc) = 
       let
 	val obj_size = BI.size_of_handle()
-	val ann_offset = if BI.down_growing_stack then offset+obj_size-1 (*offset+(1-obj_size)*)
-			 else offset
+	val ann_offset = offset+obj_size-1 (*offset+(1-obj_size)*)
 	val handl' = CO_lss(handl,LVmap,PHmap,offset++obj_size,[])
 	val default' = CO_lss(default,LVmap,PHmap,offset++obj_size,[])
 	val handl_return' = CO_lss(handl_return,LVmap,PHmap,offset(*++(BI.size_of_handle())*),[])
@@ -274,13 +241,8 @@ struct
     (* CO on Top level Declarations *)
     (********************************)
     fun do_top_decl gen_fn (lab,cc,lss) =
-      (* We preserve the invariant that sp is always double aligned after an activation record. *)
       let
 	val _ = reset_max_offset()
-	val size_cc = CallConv.get_cc_size cc
-	(* If size_cc is odd then the frame is _not_ double aligned *)
-	val _ = if size_cc mod 2 = 0 then set_frame_db_alignment true
-		else set_frame_db_alignment false
 	val LVmap_args = LvarFinMap.fromList (CallConv.get_spilled_args_with_offsets cc)
 	val LVmap_res = LvarFinMap.addList (CallConv.get_spilled_res_with_offsets cc) LVmap_args
 	val lss_co = CO_lss(lss,LVmap_res,LvarFinMap.empty,BI.init_frame_offset,[])
@@ -478,7 +440,7 @@ struct
 	       (* Pointer to handle closure is at offset+1, see CodeGen.sml - for upgrowing stacks *)
 	       (* Pointer to handle closure is at offset-1, see CodeGenX86.sml - for down growing stacks *)
 	       let
-		 val handle_lv_offset = if BI.down_growing_stack then offset - 1 + size_cc else offset + 1 + size_cc
+		 val handle_lv_offset = offset - 1 + size_cc
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (L_set_handl_return,handl_return') = CBV_lss'(handl_return,LVenv,
 								   lvset_difference(L_set',LS.get_var_atom(handl_return_lv,[]),LVenv))            (* Handler is dead in handlreturn code *) (* was get_lvar_atom 2001-03-15, Niels *)

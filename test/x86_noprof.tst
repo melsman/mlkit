@@ -32,6 +32,7 @@ weeks3.sml          ccl       ecte
 typerr.sml          ccl       ecte
 freedatatype.sml    ccl       ecte
 freedatatype2.sml   ccl       ecte
+sharing.sml         ccl       ecte
 opaque.sml          ccl
 opaque2.sml                           nobasislib
 functor.sml         ccl

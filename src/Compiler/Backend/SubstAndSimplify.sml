@@ -95,7 +95,7 @@ struct
     | pr_aty(DROPPED_RVAR_ATY) = "DROPPED_RVAR"
     | pr_aty(PHREG_ATY phreg) = pr_phreg phreg
     | pr_aty(INTEGER_ATY i) = i
-    | pr_aty(UNIT_ATY) = "()"
+    | pr_aty(UNIT_ATY) = "(.)"
 
   fun eq_aty(REG_I_ATY offset1,REG_I_ATY offset2) = offset1 = offset2
     | eq_aty(REG_F_ATY offset1,REG_F_ATY offset2) = offset1 = offset2
