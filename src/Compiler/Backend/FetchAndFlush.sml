@@ -17,11 +17,11 @@ functor FetchAndFlush(structure PhysSizeInf : PHYS_SIZE_INF
                         sharing type RegAlloc.lvar = LineStmt.lvar
 			sharing type RegAlloc.Atom = LineStmt.Atom
                         sharing type RegAlloc.label = LineStmt.label
-		      structure BI : BACKEND_INFO
-                        sharing type BI.lvar = Lvars.lvar
+		      structure RI : REGISTER_INFO
+                        sharing type RI.lvar = Lvars.lvar
 		      structure Lvarset: LVARSET
 		        sharing type Lvarset.lvar = LineStmt.lvar
-			sharing type Lvarset.lvarset= BI.lvarset
+			sharing type Lvarset.lvarset= RI.lvarset
 		      structure PP : PRETTYPRINT
 		        sharing type PP.StringTree = 
                                    Effect.StringTree = 
@@ -199,7 +199,7 @@ struct
 	     in (* No variables are defined in a letregion construct. *)
 	       (L_set',F_set',Lvarset.union(C_set',L_set'),R_set')
 	     end
-       | LS.SCOPE{pat,scope} => (* do also remove from C_set using BI.is_callee_save_c_call. 17/02/1999, Niels *)
+       | LS.SCOPE{pat,scope} => (* do also remove from C_set using RI.is_callee_save_c_call. 17/02/1999, Niels *)
 	   let
 	     val (L_set',F_set',C_set',R_set') = F_lss(scope,L_set,F_set,C_set,R_set)
 	     fun lv_to_remove(RA.STACK_STY lv,acc) f = lv::acc
@@ -209,8 +209,8 @@ struct
 	       else
 		 acc
 	       | lv_to_remove(RA.FV_STY lv,acc) f = acc
-	     val lvs_to_remove = foldr (fn (sty,acc) => lv_to_remove (sty,acc) BI.is_callee_save) [] pat
-	     val lvs_to_remove_ccall = foldr (fn (sty,acc) => lv_to_remove (sty,acc) BI.is_callee_save_ccall) [] pat
+	     val lvs_to_remove = foldr (fn (sty,acc) => lv_to_remove (sty,acc) RI.is_callee_save) [] pat
+	     val lvs_to_remove_ccall = foldr (fn (sty,acc) => lv_to_remove (sty,acc) RI.is_callee_save_ccall) [] pat
 	     fun add_phreg(RA.STACK_STY lv,acc) = acc
 	       | add_phreg(RA.PHREG_STY (lv,phreg),acc) = phreg::acc
 	       | add_phreg(RA.FV_STY lv,acc) = acc
@@ -225,7 +225,7 @@ struct
 	   let
 	     val (L_set1,F_set1,C_set1,R_set1) = F_lss(default,L_set,F_set,C_set,R_set)
 	     val (L_set2,F_set2,C_set2,R_set2) = F_lss(handl,L_set1,F_set1,C_set1,R_set1) 
-	     val R_set_all = Lvarset.union(R_set2,BI.callee_save_phregset)  (* We must save ALL callee save registers across a handle! *)
+	     val R_set_all = Lvarset.union(R_set2,RI.callee_save_phregset)  (* We must save ALL callee save registers across a handle! *)
 	     val handl_return_lvar = LS.get_var_atom (handl_return_lv,nil)
 	     val F_set3 = Lvarset.union(F_set2,lvset_difference(L_set,handl_return_lvar)) (* We must flush all caller save registers that are live *)
                                                                                           (* after the handle. We define handl_return_lv in the    *)
@@ -399,11 +399,11 @@ struct
 	  in
 	    case handl_return of
 	      [] => (LS.HANDLE{default=lss1',handl=(lss2',handl_lv),
-			       handl_return=(insert_fetch_callee(BI.callee_save_phregs,  (* forkert, de skal fetches i raise 23/02/1999, Niels *)
+			       handl_return=(insert_fetch_callee(RI.callee_save_phregs,  (* forkert, de skal fetches i raise 23/02/1999, Niels *)
 								 insert_fetch_if(lvars_to_fetch,[])),handl_return_lv,bv),
 			       offset=offset}::acc,U_set2)
 	    | [flush_ls] => (LS.HANDLE{default=lss1',handl=(lss2',handl_lv),
-				       handl_return=(flush_ls :: (insert_fetch_callee(BI.callee_save_phregs, (* forkert, de skal fetches i raise 23/02/1999, Niels *)
+				       handl_return=(flush_ls :: (insert_fetch_callee(RI.callee_save_phregs, (* forkert, de skal fetches i raise 23/02/1999, Niels *)
 										      insert_fetch_if(lvars_to_fetch,[]))),handl_return_lv,bv),
 				       offset=offset}::acc,U_set2)
 	    | _ => die "IF_lss': handl_return contains more than one statement."
@@ -434,7 +434,7 @@ struct
 	val (_,F_set,C_set,R_set) = F_lss(lss,Lvarset.empty,Lvarset.empty,Lvarset.empty,Lvarset.empty)
 	val F = lvset_delete(F_set,CallConv.get_spilled_args cc)
 	val C = lvset_delete(C_set,CallConv.get_spilled_args cc)
-	val R = Lvarset.intersection(R_set,BI.callee_save_phregset)
+	val R = Lvarset.intersection(R_set,RI.callee_save_phregset)
 	val R_list = Lvarset.members R
 	val lss_iff = [LS.SCOPE{pat = mk_flushed_callee R_list,
 				scope = insert_flush_callee(R_list,

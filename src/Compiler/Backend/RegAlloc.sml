@@ -13,9 +13,9 @@ functor RegAlloc(structure Con : CON
                    sharing type Effect.effect = Effect.place = LineStmt.place
                    sharing type Labels.label = LineStmt.label
                    sharing type CallConv.cc = LineStmt.cc
-		 structure BI : BACKEND_INFO
-		   sharing type BI.lvar = Lvars.lvar
-		   sharing type BI.lvarset = Lvarset.lvarset
+		 structure RI : REGISTER_INFO
+		   sharing type RI.lvar = Lvars.lvar
+		   sharing type RI.lvarset = Lvarset.lvarset
 		 structure PP : PRETTYPRINT
 		   sharing type PP.StringTree = 
                                 Effect.StringTree = 
@@ -351,7 +351,7 @@ struct
 		   worklist=ref precolored_enum, adjList=ref nil,
 		   alias = ref NONE, color=ref (SOME lv),
 		   lrs = ref no_call, uses = ref 0})
-    (BI.caller_save_phregs @ BI.callee_save_phregs)  
+    (RI.caller_save_phregs @ RI.callee_save_phregs)  
   fun reset_precolored() = 
     app (fn ({lv,degree, mv_related, worklist, adjList, alias, color, lrs, uses} : node) =>
 	 (degree:=0; mv_related:=NONE; worklist:=precolored_enum;
@@ -729,9 +729,9 @@ struct
       fun find_color (n:node,notOkColors) =
 	let
 	  val (callee_save_ccall,callee_save_mlkit,caller_save_mlkit) =
-	    (Lvarset.difference(BI.callee_save_ccall_phregset,notOkColors),
-	     Lvarset.difference(BI.callee_save_phregset,notOkColors),
-	     Lvarset.difference(BI.caller_save_phregset,notOkColors))
+	    (Lvarset.difference(RI.callee_save_ccall_phregset,notOkColors),
+	     Lvarset.difference(RI.callee_save_phregset,notOkColors),
+	     Lvarset.difference(RI.caller_save_phregset,notOkColors))
 	in
 	  if !(#lrs n) = ml_call then
 	    (inc_ml_call(); assign_color(n,callee_save_mlkit,callee_save_ccall,caller_save_mlkit))

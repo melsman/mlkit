@@ -1,23 +1,13 @@
 
-functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
-		  structure Labels : ADDRESS_LABELS
-		  structure Basics : BASICS
-		  sharing TopdecGrammar.StrId = Basics.StrId
-		  sharing TopdecGrammar.SigId = Basics.SigId
-		  sharing TopdecGrammar.FunId = Basics.FunId
-                  sharing type TopdecGrammar.DecGrammar.tycon = Basics.TyCon.tycon
-                  sharing type TopdecGrammar.DecGrammar.longtycon = Basics.TyCon.longtycon
-                  sharing type TopdecGrammar.DecGrammar.tyvar = Basics.TyVar.SyntaxTyVar
-                  sharing type TopdecGrammar.DecGrammar.id = Basics.Ident.id
-                  sharing type TopdecGrammar.DecGrammar.longid = Basics.Ident.longid = 
-		    Basics.ModuleEnvironments.longid
-                  sharing type TopdecGrammar.DecGrammar.info = Basics.AllInfo.ElabInfo.ElabInfo
-                  sharing type TopdecGrammar.DecGrammar.StringTree = Basics.Tools.PrettyPrint.StringTree
-		    ) : EXECUTION =
+functor ExecutionDummy(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
   struct
-    structure Tools       = Basics.Tools
-    structure PP          = Tools.PrettyPrint
-    structure Crash       = Tools.Crash
+    open ExecutionArgs
+
+    structure Basics = Elaboration.Basics
+    structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
+    structure Tools = Basics.Tools
+    structure PP = Tools.PrettyPrint
+    structure Crash = Tools.Crash
 
     structure TyName = Basics.ModuleEnvironments.TyName
     structure DecGrammar = TopdecGrammar.DecGrammar
@@ -26,21 +16,18 @@ functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
     structure StrId = DecGrammar.StrId
     structure TyCon = DecGrammar.TyCon
 
-    structure CompilerEnv =
-      CompilerEnv(structure Ident = Ident
-		  structure StrId = StrId
-		  structure Environments = Basics.Environments
-                  structure TyCon = TyCon
-		  structure Flags = Tools.Flags
-                  structure TyVar = TyVar
-                  structure TyName = TyName
-                  structure PP = PP
-                  structure Crash = Crash
-                 )
+    structure CompilerEnv = CompilerEnvDummy(structure Ident = Ident
+					     structure StrId = StrId
+					     structure Environments = Basics.Environments
+					     structure TyCon = TyCon
+					     structure Flags = Tools.Flags
+					     structure TyVar = TyVar
+					     structure TyName = TyName
+					     structure PP = PP
+					     structure Crash = Crash)
 
-    structure CompileBasis =
-      CompileBasis(structure TyName = TyName
-		   structure PP = PP)
+    structure CompileBasis = CompileBasisDummy(structure TyName = TyName
+					       structure PP = PP)
 
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = CompilerEnv.CEnv
@@ -60,5 +47,5 @@ functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
     fun generate_link_code _ = ()
     fun emit _ = ()
 
-  end;
+  end
 

@@ -20,8 +20,8 @@ functor SubstAndSimplify(structure PhysSizeInf : PHYS_SIZE_INF
                            sharing type CalcOffset.place = LineStmt.place = RegvarFinMap.dom
                        (*    sharing type CalcOffset.LinePrg = LineStmt.LinePrg *)
 			   sharing type CalcOffset.Atom = LineStmt.Atom
-			 structure BI : BACKEND_INFO
-                           sharing type BI.lvar = Lvars.lvar
+			 structure RI : REGISTER_INFO
+                           sharing type RI.lvar = Lvars.lvar
 		         structure PP : PRETTYPRINT
 		           sharing type PP.StringTree = 
 			                Effect.StringTree = 
@@ -44,7 +44,7 @@ struct
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
   type StoreTypeCO = CalcOffset.StoreType
   type AtomCO = CalcOffset.Atom
-  type reg = BI.reg
+  type reg = RI.reg
   type offset = int
 
   (***********)
@@ -80,7 +80,7 @@ struct
     | UNIT_ATY
 
   fun pr_offset offset = CalcOffset.pr_offset offset
-  fun pr_phreg phreg = BI.pr_reg phreg
+  fun pr_phreg phreg = RI.pr_reg phreg
 
   fun pr_aty(REG_I_ATY offset) = "reg_i(" ^ Int.toString offset ^ ")"
     | pr_aty(REG_F_ATY offset) = "reg_f(" ^ Int.toString offset ^ ")"
@@ -118,9 +118,9 @@ struct
     structure RhoFinMap = RegvarFinMap
 
     fun add_sty_lv(CO.STACK_STY(lv,offset),ATYmap) = LvarFinMap.add(lv,STACK_ATY offset,ATYmap)
-      | add_sty_lv(CO.PHREG_STY(lv,phreg),ATYmap) = LvarFinMap.add(lv,PHREG_ATY (BI.lv_to_reg phreg),ATYmap)
+      | add_sty_lv(CO.PHREG_STY(lv,phreg),ATYmap) = LvarFinMap.add(lv,PHREG_ATY (RI.lv_to_reg phreg),ATYmap)
       | add_sty_lv(CO.FLUSHED_CALLEE_STY(phreg,offset),ATYmap) = ATYmap
-      | add_sty_lv(CO.FLUSHED_CALLER_STY(lv,phreg,offset),ATYmap) = LvarFinMap.add(lv,PHREG_ATY (BI.lv_to_reg phreg),ATYmap)
+      | add_sty_lv(CO.FLUSHED_CALLER_STY(lv,phreg,offset),ATYmap) = LvarFinMap.add(lv,PHREG_ATY (RI.lv_to_reg phreg),ATYmap)
       | add_sty_lv(CO.FV_STY lv,ATYmap) = ATYmap
 
     fun binder_to_aty((place,PhysSizeInf.INF),offset) = REG_I_ATY offset
@@ -143,7 +143,7 @@ struct
     fun atom_to_aty(LS.VAR lv,ATYmap,RHOmap) = lookup_lv_aty(ATYmap,lv)
       | atom_to_aty(LS.RVAR place,ATYmap,RHOmap) = lookup_rho_aty(RHOmap,place)
       | atom_to_aty(LS.DROPPED_RVAR place,ATYmap,RHOmap) = DROPPED_RVAR_ATY
-      | atom_to_aty(LS.PHREG phreg,ATYmap,RHOmap) = PHREG_ATY (BI.lv_to_reg phreg)
+      | atom_to_aty(LS.PHREG phreg,ATYmap,RHOmap) = PHREG_ATY (RI.lv_to_reg phreg)
       | atom_to_aty(LS.INTEGER i,ATYmap,RHOmap) = INTEGER_ATY i
       | atom_to_aty(LS.UNIT,ATYmap,RHOmap) = UNIT_ATY 
       | atom_to_aty(LS.FLOW_VAR lv,ATYmap,RHOmap) = FLOW_VAR_ATY lv
@@ -155,7 +155,7 @@ struct
       | eq_aty(REG_F_ATY offset1,REG_F_ATY offset2) = offset1 = offset2
       | eq_aty(STACK_ATY offset1,STACK_ATY offset2) = offset1 = offset2
       | eq_aty(DROPPED_RVAR_ATY,DROPPED_RVAR_ATY) = true
-      | eq_aty(PHREG_ATY phreg1,PHREG_ATY phreg2) = BI.reg_eq(phreg1,phreg2)
+      | eq_aty(PHREG_ATY phreg1,PHREG_ATY phreg2) = RI.reg_eq(phreg1,phreg2)
       | eq_aty(INTEGER_ATY i1,INTEGER_ATY i2) = i1 = i2
       | eq_aty(UNIT_ATY,UNIT_ATY) = true
       | eq_aty _ = false

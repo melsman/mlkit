@@ -19,7 +19,6 @@ functor CodeGenKAM(structure PhysSizeInf : PHYS_SIZE_INF
                      sharing type CallConv.cc = ClosExp.cc
 		     sharing type ClosExp.phsize = PhysSizeInf.phsize
 		   structure BI : BACKEND_INFO
-                     sharing type BI.lvar = Lvars.lvar
                    structure JumpTables : JUMP_TABLES
 		   structure Lvarset: LVARSET
 		     sharing type Lvarset.lvar = Lvars.lvar

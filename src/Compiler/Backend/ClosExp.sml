@@ -41,7 +41,6 @@ functor ClosExp(structure Con : CON
                   sharing type ClosConvEnv.lvar = Lvars.lvar
                   sharing type ClosConvEnv.label = Labels.label
 		structure BI : BACKEND_INFO
-		  sharing type BI.lvar = Lvars.lvar
 	        structure PP : PRETTYPRINT
 		  sharing type PP.StringTree = Effect.StringTree = AtInf.StringTree = PhysSizeInf.StringTree =
 		               ClosConvEnv.StringTree
@@ -2123,7 +2122,7 @@ struct
       let
 	fun gen_pseudo_res_lvars(RegionExp.Mus type_and_places) =
 	  (case type_and_places of
-	     [(RType.FUN(mus1,arroweffect,mus2),_)] => List.map (fn _ => BI.notused_lvar) mus2
+	     [(RType.FUN(mus1,arroweffect,mus2),_)] => List.map (fn _ => Lvars.notused_lvar) mus2
 	   | _ => die "gen_fresh_res: not a function type.")
 	  | gen_pseudo_res_lvars(RegionExp.Frame _) = []
 	  | gen_pseudo_res_lvars(RegionExp.RaisedExnBind) = []
@@ -2220,7 +2219,7 @@ struct
 		   
 		 val new_lab = fresh_lab (Labels.pr_label lab ^ ".anon")
 		 val args = List.map #1 pat
-		 val lv_clos = BI.env_lvar 
+		 val lv_clos = Lvars.env_lvar 
 		 val pseudo_res_lvars = gen_pseudo_res_lvars metaType (* Only used to remember the number of return values in cc *)
 		 val cc = CallConv.mk_cc_fn(args,SOME lv_clos,[],pseudo_res_lvars)
 
@@ -2278,7 +2277,7 @@ struct
 		     | _ => die "compile_fn: bind is not a FN"
 		     val pseudo_res_lvars = gen_pseudo_res_lvars metaType (* Only used to remember the number of return values in cc *)
 
-		     val lv_sclos_fn = BI.env_lvar
+		     val lv_sclos_fn = Lvars.env_lvar
 		     val env_bodies = build_clos_env env (get_global_env()) lv_sclos_fn BI.init_sclos_offset free_vars_all
 
 		     val env_with_funs =

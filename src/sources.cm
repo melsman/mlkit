@@ -1,6 +1,7 @@
 Group 
 
-structure K
+structure KitX86
+structure KitDummy
 
 is
 
@@ -23,19 +24,11 @@ Manager/Manager.sml
 Common/Elaboration.sml
 
 Compiler/EXECUTION.sml
-#if defined(KIT_TARGET_X86)
-  Compiler/Backend/X86/ExecutionX86.sml
-#elif defined(KIT_TARGET_DUMMY)
-  Compiler/Backend/Dummy/Execution__dummy.sml
-#elif defined(KIT_TARGET_PAML)
-  Compiler/Backend/PaML/ExecutionPaML.sml
-#else
-  Compiler/Backend/HpPaRisc/ExecutionHPPA.sml
-#endif
+Compiler/Backend/X86/ExecutionX86.sml
+Compiler/Backend/Dummy/Execution__dummy.sml
+(* Compiler/Backend/PaML/ExecutionPaML.sml 
+Compiler/Backend/HpPaRisc/ExecutionHPPA.sml 
+*)
 
+Compiler/BuildCompile.sml
 Common/KitCompiler.sml
-
-
-
-
-

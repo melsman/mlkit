@@ -132,8 +132,7 @@ signature BASICS =
       sharing type LexBasics.StringTree = Tools.PrettyPrint.StringTree
 
     structure PreElabDecGrammar: DEC_GRAMMAR
-	sharing type PreElabDecGrammar.StringTree     = Tools.PrettyPrint.StringTree
-
+      sharing type PreElabDecGrammar.StringTree = Tools.PrettyPrint.StringTree
       sharing PreElabDecGrammar.Ident = Ident
       sharing PreElabDecGrammar.StrId = StrId
       sharing PreElabDecGrammar.TyCon = TyCon
@@ -142,23 +141,24 @@ signature BASICS =
       sharing PreElabDecGrammar.SCon = SCon
 
     structure Environments : ENVIRONMENTS
-      sharing Environments.TyName       = StatObject.TyName
-      sharing type Environments.Type         = StatObject.Type
-      sharing type Environments.TyVar        = StatObject.TyVar
-      sharing type Environments.TypeScheme   = StatObject.TypeScheme
-      sharing type Environments.TypeFcn      = StatObject.TypeFcn
-      sharing type Environments.realisation  = StatObject.realisation
-      sharing type Environments.level        = StatObject.level
-      sharing type Environments.id           = Ident.id
-      sharing type Environments.longid       = Ident.longid
+      sharing Environments.TyName = StatObject.TyName
+      sharing type Environments.Type = StatObject.Type
+      sharing type Environments.TyVar = StatObject.TyVar
+      sharing type Environments.TypeScheme = StatObject.TypeScheme
+      sharing type Environments.TypeFcn = StatObject.TypeFcn
+      sharing type Environments.realisation = StatObject.realisation
+      sharing type Environments.level = StatObject.level
+      sharing type Environments.id = Ident.id
+      sharing type Environments.longid = Ident.longid
       sharing type Environments.Substitution = StatObject.Substitution
-      sharing type Environments.ty           = PreElabDecGrammar.ty
-      sharing type Environments.longtycon    = TyCon.longtycon
-      sharing type Environments.longstrid    = StrId.longstrid
-      sharing type Environments.ExplicitTyVar  = TyVar.SyntaxTyVar
-      sharing type Environments.strid       = StrId.strid
+      sharing type Environments.ty = PreElabDecGrammar.ty
+      sharing type Environments.longtycon = TyCon.longtycon
+      sharing type Environments.longstrid = StrId.longstrid
+      sharing type Environments.ExplicitTyVar = TyVar.SyntaxTyVar
+      sharing type Environments.strid = StrId.strid
       sharing type Environments.valbind = PreElabDecGrammar.valbind
       sharing type Environments.pat = PreElabDecGrammar.pat
+      sharing type Environments.Report = Tools.Report.Report
 
     structure ModuleStatObject : MODULE_STATOBJECT
       sharing ModuleStatObject.TyName = TyName
@@ -189,11 +189,13 @@ signature BASICS =
       sharing type ModuleEnvironments.funid = FunId.funid
       sharing type ModuleEnvironments.Env = Environments.Env
       sharing type ModuleEnvironments.Sig = ModuleStatObject.Sig
+      sharing type ModuleEnvironments.Report = Tools.Report.Report
 
     structure OpacityEnv : OPACITY_ENV
       sharing OpacityEnv.TyName = TyName
       sharing type OpacityEnv.funid = FunId.funid
       sharing type OpacityEnv.StringTree = Tools.PrettyPrint.StringTree
+      sharing type OpacityEnv.realisation = StatObject.realisation
 
     structure AllInfo : ALL_INFO
       sharing type AllInfo.TypeInfo.Type = StatObject.Type
@@ -205,6 +207,7 @@ signature BASICS =
       sharing type AllInfo.TypeInfo.strid = StrId.strid
       sharing type AllInfo.TypeInfo.tycon = TyCon.tycon
       sharing type AllInfo.TypeInfo.id = Ident.id
+      sharing type AllInfo.TypeInfo.opaq_env = OpacityEnv.opaq_env
       sharing AllInfo.TypeInfo.TyName = StatObject.TyName
       sharing type AllInfo.TypeInfo.Basis = ModuleEnvironments.Basis
       sharing type AllInfo.ErrorInfo.Type = StatObject.Type
@@ -240,12 +243,10 @@ functor Basics(structure Tools: TOOLS): BASICS =
     structure Tools = Tools
 
     structure StrId = StrId(structure Timestamp = Tools.Timestamp
-			    structure Crash = Tools.Crash
-			   )
+			    structure Crash = Tools.Crash)
 
     structure Ident = Ident(structure StrId = StrId
-			    structure Crash = Tools.Crash
-			   )
+			    structure Crash = Tools.Crash)
 
     structure InfixBasis = InfixBasis
       (structure Ident = Ident
@@ -259,8 +260,7 @@ functor Basics(structure Tools: TOOLS): BASICS =
 	  and Lab = Lab()
     	  and SCon = SCon()
     	  and TyCon = TyCon(structure StrId = StrId
-			    structure Crash = Tools.Crash
-			   )
+			    structure Crash = Tools.Crash)
 
     structure Name = Name (structure Crash = Tools.Crash)
 
@@ -288,8 +288,7 @@ functor Basics(structure Tools: TOOLS): BASICS =
 		   structure FinMap = Tools.FinMap
 		   structure FinMapEq = Tools.FinMapEq
 		   structure PP = Tools.PrettyPrint
-		   structure Crash = Tools.Crash
-		  )
+		   structure Crash = Tools.Crash)
 
    (* LexBasics is needed by SourceInfo, as well as all the parsing
       stuff. *)
@@ -298,8 +297,7 @@ functor Basics(structure Tools: TOOLS): BASICS =
 				    structure Report = Tools.Report
 				    structure PP = Tools.PrettyPrint
 				    structure Flags = Tools.Flags
-				    structure Crash = Tools.Crash
-				   )
+				    structure Crash = Tools.Crash)
 
     structure DFInfo = DFInfo
       (structure PrettyPrint = Tools.PrettyPrint
@@ -361,8 +359,7 @@ functor Basics(structure Tools: TOOLS): BASICS =
 		       structure PP           = Tools.PrettyPrint
 		       structure Report       = Tools.Report
 		       structure Flags        = Tools.Flags
-		       structure Crash        = Tools.Crash
-		      )
+		       structure Crash        = Tools.Crash)
 
 
     structure ModuleEnvironments =
@@ -379,8 +376,7 @@ functor Basics(structure Tools: TOOLS): BASICS =
 			 structure PP                = Tools.PrettyPrint
 			 structure Report	     = Tools.Report
 			 structure Flags             = Tools.Flags
-			 structure Crash             = Tools.Crash
-			)
+			 structure Crash             = Tools.Crash)
 
     structure OpacityEnv = OpacityEnv(structure FunId = FunId
 				      structure Crash = Tools.Crash					
@@ -447,6 +443,7 @@ signature TOPDEC_PARSING =
     structure Parse: PARSE
       sharing type Parse.topdec = PreElabTopdecGrammar.topdec
       sharing type Parse.InfixBasis = InfixBasis.Basis
+      sharing type Parse.Report = Basics.Tools.Report.Report
   end;
 
 
@@ -490,9 +487,19 @@ signature ELABORATION =
       sharing type ElabRepository.funid = Basics.FunId.funid
       sharing type ElabRepository.name = Basics.Name.name
       sharing type ElabRepository.ElabBasis = Basics.ModuleEnvironments.Basis 
-	    
+      sharing type ElabRepository.absprjid = Basics.ModuleEnvironments.absprjid
+      sharing type ElabRepository.longstrid = Basics.ModuleEnvironments.longstrid
+      sharing type ElabRepository.InfixBasis = Basics.InfixBasis.Basis
+      sharing type ElabRepository.opaq_env = Basics.OpacityEnv.opaq_env
+      sharing ElabRepository.TyName = Basics.TyName
+
     structure ElabTopdec : ELABTOPDEC
       sharing type ElabTopdec.StaticBasis = ElabRepository.ElabBasis
+      sharing type ElabTopdec.StringTree = Basics.Tools.PrettyPrint.StringTree
+      sharing type ElabTopdec.absprjid = Basics.ModuleEnvironments.absprjid
+(*
+      sharing type ElabTopdec.PreElabTopdec = Basics.PreElabTopdecGrammar.topdec
+*)
 
     structure PostElabDecGrammar : DEC_GRAMMAR
       sharing type PostElabDecGrammar.lab = Basics.Lab.lab
@@ -513,18 +520,19 @@ signature ELABORATION =
       sharing PostElabTopdecGrammar.SigId = Basics.SigId
       sharing PostElabTopdecGrammar.FunId = Basics.FunId
       sharing type PostElabTopdecGrammar.topdec = ElabTopdec.PostElabTopdec
+
   end;
 
 
 
 functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
   struct
-    structure Basics     = TopdecParsing.Basics
+    structure Basics = TopdecParsing.Basics
 
     local
-      structure Tools      = Basics.Tools
-      structure AllInfo    = Basics.AllInfo
-      structure ElabInfo   = AllInfo.ElabInfo
+      structure Tools = Basics.Tools
+      structure AllInfo = Basics.AllInfo
+      structure ElabInfo = AllInfo.ElabInfo
     in
 
       structure PostElabDecGrammar =

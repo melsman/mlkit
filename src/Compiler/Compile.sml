@@ -709,7 +709,7 @@ functor Compile(structure Excon : EXCON
 		       safe: bool}     (* true if the fragment has no side-effects;
 					* for dead code elimination. *)
 
-    fun new_lambda_backend(clos_env,pgm,safe) : ClosExp.env * 
+    fun lambda_backend(clos_env,pgm,safe) : ClosExp.env * 
       {main_lab: label, code:(StoreTypeCO,offset,AtySS) LinePrg,
        imports: label list * label list, exports: label list * label list, safe:bool}  =
       let
@@ -762,7 +762,7 @@ functor Compile(structure Excon : EXCON
      * Compile with the NEW backend
      * =================================== *)
 
-    fun comp_with_new_backend(rse, Psi, mulenv, drop_env, psi_env, clos_env, lamb_opt, vcg_file) =
+    fun comp_with_backend(rse, Psi, mulenv, drop_env, psi_env, clos_env, lamb_opt, vcg_file) =
       let
 	val safe = LambdaExp.safeLambdaPgm lamb_opt
 	val (mul_pgm, rse1, mulenv1, Psi1) = SpreadRegMul(rse, Psi, mulenv, lamb_opt)
@@ -775,7 +775,7 @@ functor Compile(structure Excon : EXCON
         val app_conv_psi_pgm = appConvert psi_pgm
 	val _ = RegionFlowGraphProfiling.reset_graph ()
 	  
-	val (clos_env1, target_new) = new_lambda_backend(clos_env,app_conv_psi_pgm, safe)
+	val (clos_env1, target_new) = lambda_backend(clos_env,app_conv_psi_pgm, safe)
 (*
 	(* Generate lambda code file with program points *)
 	val old_setting = !print_program_points
@@ -837,15 +837,14 @@ functor Compile(structure Excon : EXCON
           then (chat "Empty lambda program; skipping code generation.";
                 CEnvOnlyRes CEnv1)
 	else
-	  let val (rse1, mularefmap1, mulenv1, drop_env1, psi_env1, 
-		   clos_env1, target_new) = 
-	              comp_with_new_backend(rse, mularefmap, mulenv, drop_env, psi_env, 
-					    clos_env, lamb_opt, vcg_file)
+	  let val (rse1, mularefmap1, mulenv1, drop_env1, psi_env1, clos_env1, target) = 
+	        comp_with_backend(rse, mularefmap, mulenv, drop_env, psi_env, 
+				  clos_env, lamb_opt, vcg_file)
 	      val Basis' = CompileBasis.mk_CompileBasis {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
 							 rse=rse1,mulenv=mulenv1,mularefmap=mularefmap1,
 							 drop_env=drop_env1,psi_env=psi_env1,
 							 clos_env=clos_env1}
-	  in CodeRes (CEnv1, Basis', target_new)
+	  in CodeRes (CEnv1, Basis', target)
 	  end
       end
 

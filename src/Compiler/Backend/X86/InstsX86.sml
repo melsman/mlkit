@@ -1,11 +1,14 @@
 functor InstsX86(structure Labels : ADDRESS_LABELS
 		 structure Lvars : LVARS
+		 structure Lvarset : LVARSET
+		   sharing type Lvarset.lvar = Lvars.lvar
 		 structure Crash : CRASH
 		 structure PP : PRETTYPRINT) : INSTS_X86 =
   struct
 
     fun die s = Crash.impossible("X86Inst." ^ s)
 
+    type lvar = Lvars.lvar
     datatype reg = eax | ebx | ecx | edx | esi | edi | ebp | esp 
                  | ah | cl
 
@@ -223,65 +226,6 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	of FUN (l, insts) => emit_insts(os, lab (MLFunLab l)::insts)
 	 | FN (l, insts) =>  emit_insts(os, lab (MLFunLab l)::insts)
 
-    (*-----------------------------------------------------------*)
-    (* Converting Between General Registers and Precolored Lvars *)
-    (* As Used In The Phases Preceeding Code Generation          *)
-    (*-----------------------------------------------------------*)
-    type lvar = Lvars.lvar
-    local
-      structure LvarFinMap = Lvars.Map
-
-      val regs = [eax,ebx,ecx,edx,esi,edi,ebp,esp]
-      val reg_lvs as [eax_lv,ebx_lv,ecx_lv,edx_lv,esi_lv,edi_lv,ebp_lv,esp_lv] =
-	map (fn r => Lvars.new_named_lvar (pr_reg r)) regs
-      val map_lvs_to_reg = LvarFinMap.fromList(ListPair.zip(reg_lvs,regs))
-    in
-      val all_regs_as_lvs = reg_lvs 
-
-      fun is_reg lv = 
-	(case LvarFinMap.lookup map_lvs_to_reg lv of
-	   SOME reg => true
-	 | NONE  => false)
-
-      fun lv_to_reg lv = 
-	(case LvarFinMap.lookup map_lvs_to_reg lv of
-	   NONE => die "lv_to_reg: lv not a register"
-	 | SOME i => i)
-
-      fun reg_to_lv r = 
-	case r 
-	  of eax => eax_lv | ebx => ebx_lv | ecx => ecx_lv | edx => edx_lv
-	   | esi => esi_lv | edi => edi_lv | ebp => ebp_lv | esp => esp_lv
-	   | ah => die "reg_to_lv: ah not available for register allocation"
-	   | cl => die "reg_to_lv: cl not available for register allocation"
-
-      val reg_args = [eax,ebx,edi]
-      val reg_args_as_lvs = map reg_to_lv reg_args
-      val reg_res = [edi,ebx,eax] 
-      val reg_res_as_lvs = map reg_to_lv reg_res
-
-      val reg_args_ccall = []
-      val reg_args_ccall_as_lvs = map reg_to_lv reg_args_ccall
-      val reg_res_ccall = [eax] 
-      val reg_res_ccall_as_lvs = map reg_to_lv reg_res_ccall
-
-      val callee_save_regs_mlkit = []
-      val callee_save_regs_mlkit_as_lvs = map reg_to_lv callee_save_regs_mlkit
-
-      val caller_save_regs_mlkit = [eax,ebx,edi,edx,esi]
-      val caller_save_regs_mlkit_as_lvs = map reg_to_lv caller_save_regs_mlkit
-
-      val callee_save_regs_ccall = []
-      val callee_save_regs_ccall_as_lvs = map reg_to_lv callee_save_regs_ccall
-
-      (* tmp_reg0 and tmp_reg1 should not be in this list as they are never live across a C call *)
-      val caller_save_regs_ccall = [eax,ebx,edi,edx,esi]
-      val caller_save_regs_ccall_as_lvs = map reg_to_lv caller_save_regs_ccall
-    end
-
-    val tmp_reg0 = ecx
-    val tmp_reg1 = ebp
-
     fun emit ({top_decls: top_decl list,
 	       init_code: inst list,
 	       static_data: inst list}, filename) =
@@ -291,6 +235,96 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	  emit_insts (os, static_data);
 	  TextIO.closeOut os) handle E => (TextIO.closeOut os; raise E)
       end
+
+    (*-----------------------------------------------------------*)
+    (* Converting Between General Registers and Precolored Lvars *)
+    (* As Used In The Phases Preceeding Code Generation          *)
+    (*-----------------------------------------------------------*)
+  
+    structure RI : REGISTER_INFO =
+      struct
+	type lvar = lvar
+	type lvarset = Lvarset.lvarset
+	type reg = reg
+
+	val pr_reg = pr_reg
+	  
+	structure LvarFinMap = Lvars.Map
+
+	val regs = [eax,ebx,ecx,edx,esi,edi,ebp,esp]
+	val reg_lvs as [eax_lv,ebx_lv,ecx_lv,edx_lv,esi_lv,edi_lv,ebp_lv,esp_lv] =
+	  map (fn r => Lvars.new_named_lvar (pr_reg r)) regs
+	val map_lvs_to_reg = LvarFinMap.fromList(ListPair.zip(reg_lvs,regs))
+	  
+(*	val all_regs_as_lvs = reg_lvs  *)
+	val all_regs = reg_lvs
+	  
+	fun is_reg lv = 
+	  (case LvarFinMap.lookup map_lvs_to_reg lv of
+	     SOME reg => true
+	   | NONE  => false)
+	     
+	fun lv_to_reg lv = 
+	  (case LvarFinMap.lookup map_lvs_to_reg lv of
+	     NONE => die "lv_to_reg: lv not a register"
+	   | SOME i => i)
+	     
+	fun reg_to_lv r = 
+	  case r 
+	    of eax => eax_lv | ebx => ebx_lv | ecx => ecx_lv | edx => edx_lv
+	     | esi => esi_lv | edi => edi_lv | ebp => ebp_lv | esp => esp_lv
+	     | ah => die "reg_to_lv: ah not available for register allocation"
+	     | cl => die "reg_to_lv: cl not available for register allocation"
+	      
+	val reg_args = [eax,ebx,edi]
+(*	val reg_args_as_lvs = map reg_to_lv reg_args *)
+	val args_phreg = map reg_to_lv reg_args
+	val reg_res = [edi,ebx,eax] 
+(*	val reg_res_as_lvs = map reg_to_lv reg_res *)
+	val res_phreg = map reg_to_lv reg_res
+	
+	val reg_args_ccall = []
+(*	val reg_args_ccall_as_lvs = map reg_to_lv reg_args_ccall *)
+	val reg_res_ccall = [eax] 
+(*	val reg_res_ccall_as_lvs = map reg_to_lv reg_res_ccall *)
+	val args_phreg_ccall = map reg_to_lv reg_args_ccall
+	val res_phreg_ccall = map reg_to_lv reg_res_ccall
+	  
+	  
+(* 	val caller_save_regs_mlkit_as_lvs = map reg_to_lv caller_save_regs_mlkit *)
+	  
+	  
+	(* tmp_reg0 and tmp_reg1 should not be in this list as they are never live across a C call *)
+(* 	val caller_save_regs_ccall_as_lvs = map reg_to_lv caller_save_regs_ccall *)
+	  
+	fun reg_eq(reg1,reg2) = reg1 = reg2
+
+	val callee_save_regs_mlkit = []
+	val callee_save_regs_mlkit_as_lvs = []
+	val callee_save_regs_ccall = []
+	val callee_save_regs_ccall_as_lvs = []
+	val callee_save_phregs   = []
+	val callee_save_phregset = Lvarset.lvarsetof []
+	fun is_callee_save phreg = false	  
+	val callee_save_ccall_phregs   = []
+	val callee_save_ccall_phregset = Lvarset.lvarsetof []
+	fun is_callee_save_ccall phreg = false
+
+	  
+	val caller_save_regs_mlkit = [eax,ebx,edi,edx,esi]
+	val caller_save_phregs = map reg_to_lv caller_save_regs_mlkit
+	val caller_save_phregset = Lvarset.lvarsetof caller_save_phregs
+	fun is_caller_save phreg = Lvarset.member(phreg,caller_save_phregset)
+	  
+	val caller_save_regs_ccall = [eax,ebx,edi,edx,esi]
+	val caller_save_ccall_phregs   = map reg_to_lv caller_save_regs_ccall
+	val caller_save_ccall_phregset = Lvarset.lvarsetof caller_save_ccall_phregs
+	fun is_caller_save_ccall phreg = Lvarset.member(phreg,caller_save_ccall_phregset)
+      end
+    
+    val tmp_reg0 = ecx
+    val tmp_reg1 = ebp
+    
     type StringTree = PP.StringTree
     fun layout _ = PP.LEAF "not implemented"
   end

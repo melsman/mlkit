@@ -75,6 +75,11 @@ signature LVARS =
 
     structure Map : MONO_FINMAP where type dom = lvar
 
+
+    (* Special for the KAM machine (Bytecode-machine) *)
+    val env_lvar : lvar
+    val notused_lvar : lvar
+
   end;
 
 

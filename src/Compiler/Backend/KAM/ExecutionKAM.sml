@@ -39,13 +39,6 @@ functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
     structure Report      = Tools.Report
     structure Crash       = Tools.Crash
 
-(*
-    structure InstsX86 = InstsX86(structure Labels = Labels
-				  structure Lvars = Lvars
-				  structure Crash = Crash
-				  structure PP = PP)
-*)
-
   structure BackendInfo = BackendInfoKAM(structure Labels = Labels
 					   structure Lvars = Lvars
 					   structure Lvarset = Lvarset

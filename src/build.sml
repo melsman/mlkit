@@ -13,76 +13,9 @@ local
   fun die s = (print " **  DIE: Installation procedure terminated.  ** \n";
 	       cdsrc(); raise Die)
 
-  (* Read characters until a newline is found. *)
-  fun read_string s =
-    let val ch = TextIO.inputN(TextIO.stdIn, 1)
-    in if ch = "\n" then s
-       else read_string (s^ch)
-    end;
-
-  (* If we can't open the .config file then assume it is non-existing. *)
-  (* Assume we are in the source directory.                            *)
-  fun load_config_file(file_name) =
-    let
-      val file_strm = TextIO.openIn(file_name)
-      val arch_info = TextIO.inputLine(file_strm)
-      val os_info = TextIO.inputLine(file_strm)
-      val _ = TextIO.closeIn(file_strm)
-    in
-      (* Remove the newlines *)
-      (String.extract(arch_info, 0, SOME (String.size arch_info-1)), 
-       String.extract(os_info, 0, SOME (String.size os_info-1)))
-    end
-  handle _ => ("unknown", "unknown")
-
-  (* Save the .config file *)
-  (* Assume we are in the source directory. *)
-  fun save_config_file() =
-    let
-      val file_strm = TextIO.openOut(".config")
-      val _ = TextIO.output(file_strm, SMLofNJ.SysInfo.getHostArch()^"\n")
-      val _ = TextIO.output(file_strm, SMLofNJ.SysInfo.getOSName())
-      val _ = TextIO.closeOut(file_strm)
-    in
-      ()
-    end
-  handle _ => die "save_config_file: can't open or write to file."
-
-  val upper = implode o map Char.toUpper o explode
-    
-  fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
-  
-  fun no_cross () : string =
-    (print ("\n **  ERROR: Cross compilation is possible only from the  **\n" ^
-	    " **  x86 platform to the Palm platform or with the       **\n" ^
-	    " **  DUMMY platform. Try again...                        **\n");
-     resolve_backend())
-    
-  and resolve_backend () =
-    let val _ = print "\nWhich platform do you want to use as target?\n(type \
-                       \HPPA, X86, PaML, or DUMMY): "
-      val s = upper (read_string "")  
-    in 
-      case s           (* set a symbol for the compilation manager CM *)
-	of "HPPA" => if #1(arch_os()) = "HPPA" then (CM.SymVal.define("KIT_TARGET_HPPA", 1); s)
-		     else no_cross()
-	 | "X86" => if #1(arch_os()) = "X86" then (CM.SymVal.define("KIT_TARGET_X86", 1); s)
-		    else no_cross()
-	 | "PAML" => if #1(arch_os()) = "X86" then (CM.SymVal.define("KIT_TARGET_PAML", 1); s)
-		     else no_cross()
-	 | "DUMMY" => (CM.SymVal.define("KIT_TARGET_DUMMY", 1); s)
-	 | _ => (print "\n  ** ERROR: Platform not known! Try again...  **\n"; resolve_backend())
-    end
-
   fun build_runtime(runtime_path) =
       (print "\n **  Building runtime system  **\n\n";
        cd runtime_path;
-       if (load_config_file("../.config") <> arch_os()) then
-	 (if OS.Process.system ("gmake clean") = OS.Process.success then ()
-	  else die "build_runtime: gmake clean failed";
-	  if OS.Process.system ("gmake depend") = OS.Process.success then ()
-	  else die "build_runtime: gmake depend failed")
-       else ();
        if OS.Process.system "gmake" = OS.Process.success then ()
        else die "build_runtime: gmake failed";
        cdsrc())
@@ -90,12 +23,6 @@ local
   fun build_rp2ps() =
     (print "\n ** Building profiling tool rp2ps **\n\n";
      cd "Tools/Rp2ps";
-     if (load_config_file("../../.config") <> arch_os()) then
-       (if OS.Process.system ("gmake clean") = OS.Process.success then ()
-	else die "build_rp2ps: gmake clean failed";
-	if OS.Process.system ("gmake depend") = OS.Process.success then ()
-	else die "build_rp2ps: gmake depend failed")
-     else ();
      if OS.Process.system ("gmake") = OS.Process.success then () 
      else die "build_rp2ps: gmake failed";
      cdsrc();
@@ -115,27 +42,23 @@ local
 in
   val _ = print "\n\n ** ML Kit with Regions installation ** \n\n";  
   val _ = 
-    case resolve_backend()
-      of "PAML" =>
-	(build_runtime("RuntimePaML");
-	 build_kit())
-       | _ => 
-	(build_runtime("Runtime");
+	((* build_runtime("RuntimePaML");
+	 build_runtime("Runtime"); *)
 	 build_runtime("RuntimeWithGC");
 	 build_rp2ps();
 	 build_kittester();
-	 save_config_file();
 	 build_kit())
 end ;
+
 
 (* This is only temporary; 09/02/1999, Niels *)
 val _ = 
   let
-    fun enable s = K.Flags.lookup_flag_entry s := true
-    fun disable s =  K.Flags.lookup_flag_entry s := false
+    fun enable s = KitX86.Flags.lookup_flag_entry s := true
+    fun disable s =  KitX86.Flags.lookup_flag_entry s := false
   in 
-      (disable "garbage_collection";
-       disable "delete_target_files";
-       K.build_basislib();
-       K.install())
+      disable "garbage_collection";
+      disable "delete_target_files";
+      KitX86.build_basislib()
+(*      ; KitX86.install() *)
   end;
