@@ -142,7 +142,10 @@ functor Flags(structure Crash: CRASH): FLAGS =
     val test_ref: (unit -> unit)ref  = ref dummy
     val current_source_file = ref "dummy"
 
+    (* Garbage Collection *)
            
+    val garbage_collection = ref true
+
           (*************************************************)
           (*           structure ParseScript               *)
           (*                                               *)
@@ -461,6 +464,7 @@ struct
      ("print_all_program_points", print_all_program_points),
      ("all_multiplicities_infinite", all_multiplicities_infinite), 
      ("log_to_file", log_to_file),  (*true => generate a .log file*)
+     ("garbage_collection", garbage_collection),
      ("DEBUG_COMPILER", DEBUG_COMPILER)]
 
 end (* Directory *)
@@ -507,6 +511,7 @@ struct
   val menu = ref(DISPLAY[]) ; (* updated later*)
     
   fun mk_toggle (text, b: bool ref) = {text= text, attr = SWITCH b, below = NOMENU}
+
 
   fun mk_header text below : item = {text=text,attr=VALUE(fn _ => ""),below=below}
 
@@ -1080,6 +1085,9 @@ old*)
 	   below = ACTION comp_current_source_file}
   end (*local*)
 
+  (* 9. Garbage Collection *)
+  val gc_item = mk_toggle("Garbage Collection", garbage_collection)
+
   (* ---------------------------------------------------------------------- *)
   (*    Initializing menu.                                                  *)
   (* ---------------------------------------------------------------------- *)
@@ -1093,7 +1101,8 @@ old*)
 			     (*5.*) test_environment_item,
 			     (*6.*) debug_kit_item,
                              (*7.*) compile_an_sml_file_item,
-			     (*8.*) compile_it_again_item]) ;
+			     (*8.*) compile_it_again_item,
+                             (*9.*) gc_item]) ;
 
                          (**************************)
                          (* interact               *)
