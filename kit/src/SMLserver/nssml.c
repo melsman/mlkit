@@ -17,7 +17,8 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include "ns.h"
-#include "../RuntimeWithGC/LoadKAM.h"
+#include "../Runtime/LoadKAM.h"
+#include "../Runtime/Region.h"
 
 #define NSSML_PATH_MAX 255
 #define NSSML_ERROR_BUFF 4096
@@ -116,6 +117,10 @@ Ns_ModuleInit(char *hServer, char *hModule)
 {
   InterpContext* ctx;
   char* configPath;
+
+#ifdef REGION_PAGE_STAT
+rpMap = regionPageMapNew();
+#endif /* REGION_PAGE_STAT */
 
   // initialize stackPool Mutex, freelist Mutex, and codeCache Mutex
   Ns_InitializeMutex(&stackPoolMutex);

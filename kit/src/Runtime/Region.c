@@ -18,6 +18,115 @@ extern Ns_Mutex freelistMutex;
 #define FREELIST_MUTEX_UNLOCK
 #endif
 
+/*----------------------------------------------------*
+ * Hash table to collect region page reuse statistics *
+ *  region_page_addr -> int                           *
+ *----------------------------------------------------*/
+
+#if ( REGION_PAGE_STAT )
+
+RegionPageMap* 
+regionPageMapInsert(RegionPageMap* regionPageMap, unsigned int addr)
+{
+  int index;
+  RegionPageMapHashList* newElem;
+
+  newElem = (RegionPageMapHashList*)malloc(sizeof(RegionPageMapHashList));
+  if ( newElem <= (RegionPageMapHashList*)0 ) {
+    die("regionPageMapInsert error");
+  }
+
+  newElem->n = 1;
+  newElem->addr = addr;
+
+  index = hashRegionPageIndex(addr);
+  newElem->next = regionPageMap[index];
+
+  regionPageMap[index] = newElem;
+  return regionPageMap;    /* We want to allow for hash-table 
+			    * resizing in the future */
+}  
+
+/* Create and allocate space for a new regionPageMapHashTable */
+void 
+regionPageMapZero(RegionPageMap* regionPageMap)
+{
+  int i;
+  for ( i = 0 ; i < REGION_PAGE_MAP_HASH_TABLE_SIZE ; i++ ) 
+    {
+      regionPageMap[i] = NULL;
+    }
+}
+
+RegionPageMap* 
+regionPageMapNew(void) 
+{
+  RegionPageMap* regionPageMap;
+
+  regionPageMap = (RegionPageMap*)malloc(sizeof(unsigned long) * REGION_PAGE_MAP_HASH_TABLE_SIZE);
+  if ( regionPageMap <= 0 ) {
+    die("Unable to allocate memory for RegionPageMapHashTable");
+  }
+
+  regionPageMapZero(regionPageMap);
+  return regionPageMap;
+}
+
+RegionPageMap*
+regionPageMapIncr(RegionPageMap* regionPageMap, unsigned int addr)
+{
+  RegionPageMapHashList* p;
+  for ( p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next ) 
+    {
+      if ( p->addr == addr ) 
+	{
+	  p->n++;
+	  return regionPageMap;
+	}
+    }
+  return regionPageMapInsert(regionPageMap,addr);
+}  
+
+unsigned int
+regionPageMapLookup(RegionPageMap* regionPageMap, unsigned int addr)
+{
+  RegionPageMapHashList* p;
+  for ( p = regionPageMap[hashRegionPageIndex(addr)]; p != NULL ; p = p->next ) 
+    {
+      if ( p->addr == addr ) 
+	{
+	  return p->n;
+	}
+    }
+  return (unsigned int) NULL;
+}
+
+void
+regionPageMapClear(RegionPageMap* regionPageMap)
+{
+  int i;
+  RegionPageMapHashList *p, *n;
+
+  for ( i = 0 ; i < REGION_PAGE_MAP_HASH_TABLE_SIZE ; i++ ) 
+    {
+      p = regionPageMap[i];
+      while ( p )
+	{
+	  n = p->next;
+	  free(p);
+	  p = n;
+	}
+      regionPageMap[i] = 0;
+    }
+}
+
+RegionPageMap* rpMap = NULL;
+#define REGION_PAGE_MAP_INCR(rp) (regionPageMapIncr(rpMap,(unsigned int)(rp)));
+#else
+#define REGION_PAGE_MAP_INCR(rp) 
+#endif /* REGION_PAGE_STAT */
+
+
 /*----------------------------------------------------------------*
  * Global declarations                                            *
  *----------------------------------------------------------------*/
@@ -71,7 +180,6 @@ unsigned int callsOfDeallocateRegionInf=0,
                                         /* called from the assembler file.                                  */
              allocatedLobjs=0;          /* Total number of allocated large objects allocated with malloc */
 #endif /*PROFILING*/
-
 
 static unsigned int max(unsigned int a, unsigned int b) {
   return (a<b)?b:a;
@@ -224,7 +332,9 @@ int *allocateRegion(Ro *roAddr
 
   kp = freelist;
   freelist= freelist->n;
-  /* Niels - update frequency hashtable */
+
+  REGION_PAGE_MAP_INCR(kp)   /* Niels - update frequency hashtable */
+
   FREELIST_MUTEX_UNLOCK;
 
   kp->n = NULL;                  // First and last region page
@@ -472,7 +582,9 @@ void alloc_new_block(Ro *rp) {
   if (freelist==NULL) callSbrk(); 
   np = freelist;
   freelist= freelist->n;
-  /* Niels - update frequency hashtable */
+
+  REGION_PAGE_MAP_INCR(np); /* Niels - update frequency hashtable */
+
   FREELIST_MUTEX_UNLOCK;
 
   if (!is_rp_aligned((unsigned int)np))
