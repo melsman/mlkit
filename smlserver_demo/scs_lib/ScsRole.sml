@@ -10,6 +10,8 @@ signature SCS_ROLE =
     | StudAdm
     | OaAdm
     | SupervisorAdm
+    | EventEditor
+    | EventAnnouncer
     | ScsPersonAdm (* Created in scs-users-initialdata-create.sql *)
     | Other of string
 
@@ -44,6 +46,8 @@ structure ScsRole :> SCS_ROLE =
     | StudAdm
     | OaAdm
     | SupervisorAdm
+    | EventEditor
+    | EventAnnouncer
     | ScsPersonAdm
     | Other of string
 
@@ -53,23 +57,40 @@ structure ScsRole :> SCS_ROLE =
       | "StudAdm" => StudAdm
       | "VejlederAdm" => SupervisorAdm
       | "OaAdm" => OaAdm
+      | "EventEditor" => EventEditor
+      | "EventAnnouncer" => EventAnnouncer
       | "ScsPersonAdm" => ScsPersonAdm
       | s => Other s
  
     (* [toString role] returns the string representation of the role
        as stored in the database. *)
-    fun toString role =
+    fun toString (role:role) =
       case role of
         SiteAdm => "SiteAdm"
       | StudAdm => "StudAdm"
       | OaAdm   => "OaAdm"
       | SupervisorAdm => "VejlederAdm"
+      | EventEditor => "EventEditor"
+      | EventAnnouncer => "EventAnnouncer"
       | ScsPersonAdm => "ScsPersonAdm"
       | Other s => s
 
-    fun has_p uid role =
-      Db.oneField `select scs_role.has_p(^(Int.toString uid),^(Db.qqq (toString role)))
-                     from dual` = "t"
+    fun has_p uid (role:role) =
+      let
+	val uid_text = Int.toString uid
+        val EventAnn_sql = `
+          select person_id 
+	  from scs_person_rels 
+	  where person_id = ^uid_text
+	  and on_what_table = ^(Db.qqq "person") `
+        val Others_sql = `
+          select scs_role.has_p(^uid_text,^(Db.qqq (toString role)))
+          from dual`
+      in
+	case role of
+	    EventAnnouncer => Db.existsOneRow EventAnn_sql = true 
+	  | _              => Db.oneField Others_sql = "t"
+      end 
 
     fun has_one_p uid [] = false
       | has_one_p uid (x::xs) = has_p uid x orelse (has_one_p uid xs)
@@ -78,3 +99,8 @@ structure ScsRole :> SCS_ROLE =
       | has_one_or_empty_p uid xs = has_one_p uid xs
 
   end
+
+
+
+
+
