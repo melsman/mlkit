@@ -3,7 +3,11 @@
 #include "Runtime.h"
 
 /*
- * static function declarations
+ * Checkpointing execution of library code
+ */
+
+/*
+ * Static function declarations
  */
 
 // [newHeap()] returns an uninitialized heap - with status 
@@ -37,9 +41,24 @@ static int heapid_counter = 0;
 extern Ns_Mutex stackPoolMutex;
 #define HEAP_POOL_MUTEX_LOCK     Ns_LockMutex(&stackPoolMutex);
 #define HEAP_POOL_MUTEX_UNLOCK   Ns_UnlockMutex(&stackPoolMutex);
+
+static void 
+dienow(char *s)
+{
+  Ns_Log(Notice,"die2: %s",s);
+  die(s);
+}
+
 #else
 #define HEAP_POOL_MUTEX_LOCK
 #define HEAP_POOL_MUTEX_UNLOCK
+
+static void 
+dienow(char *s)
+{
+  die(s);
+}
+
 #endif
 
 static Heap* heapPool[MAX_HEAP_POOL_SZ];
@@ -68,10 +87,11 @@ static RegionCopy* copyRegion(Ro *r)
 
   if ( r->lobjs ) 
     {
-      #ifdef THREADS
-      Ns_Log(Error, "Large object constructed during initialization of library code");
-      #endif
-      die ("copyRegion: copying of large objects not supported");
+      int c = 0;
+      Lobjs* lobjs;
+      for ( lobjs = r->lobjs ; lobjs ; lobjs = lobjs->next )
+	c++;
+      dienow ("copyRegion: copying of large objects not supported");
     }
   // printf("entering copyRegion r = %x\n", r);
 
@@ -79,8 +99,8 @@ static RegionCopy* copyRegion(Ro *r)
 
   // printf("%d pages\n", np);
 
-  bytes = sizeof(RegionCopy) + 4 /*for final null-pointer*/ 
-    + np * (4 * (ALLOCATABLE_WORDS_IN_REGION_PAGE + 1));
+  bytes = sizeof(RegionCopy) + 4                             // for final null-pointer
+    + np * (4 * (ALLOCATABLE_WORDS_IN_REGION_PAGE + 1));     // + 1 is for page pointer 
   rc = (RegionCopy*)malloc(bytes);
   
   rc->r = r;     // not really necessary
@@ -90,30 +110,32 @@ static RegionCopy* copyRegion(Ro *r)
   q = rc->pages;
   for ( p = r->fp ; p ; p = p->n )
     {
-      int i;
-      (Klump*)(*q++) = p;
-      for ( i = 0; i < ALLOCATABLE_WORDS_IN_REGION_PAGE ; i++, q++ )
-	*q = p->i[i];
+      int i = 0;
+      (Klump*)(*q++) = p;                             // set pointer to original page
+      while ( i < ALLOCATABLE_WORDS_IN_REGION_PAGE )
+	*q++ = p->i[i++];
     }
-  (Klump*)(*q) = 0;
+  (Klump*)(*q) = 0;    // final null-pointer
   return rc;
 }
 
 static int restoreRegion(RegionCopy *rc)
 {
-  Klump *p;
+  Klump *p = 0;
+  Klump *p_next = 0;
   int i = 0;
-  p = (Klump*)(rc->pages[0]);
 
-  while ( (Klump*)(rc->pages[i]) )
+  while ( p_next = (Klump*)(rc->pages[i++]) )   // pointer to original region page is stored in copy!
     {
       int j = 0;
-      p = (Klump*)(rc->pages[i++]);
+      p = p_next;
       while ( j < ALLOCATABLE_WORDS_IN_REGION_PAGE )
 	p->i[j++] = rc->pages[i++];
     }
+
   free_region_pages(p->n,((Klump*)rc->r->b)-1);
-  p->n = NULL;
+
+  p->n = NULL;                // there is at least one page
   rc->r->a = rc->a;
   rc->r->b = rc->b;
   free_lobjs(rc->r->lobjs);
@@ -126,7 +148,7 @@ static Heap* newHeap(void)
   Heap* h;
   h = (Heap*)malloc(sizeof(Heap));
   if ( h == 0 )
-    die ("newHeap: couldn't allocate room for heap");
+    dienow ("newHeap: couldn't allocate room for heap");
   h->status = HSTAT_UNINITIALIZED;
   h->r0copy = NULL;
   h->r2copy = NULL;
@@ -156,17 +178,13 @@ Heap* getHeap(void)
       h->heapid = hid;
     }
 
-#ifdef THREADS
-  //  Ns_Log(Notice, "starting execution in heap %d", h->heapid);
-#endif
-
   return h;
 }
 
 void touchHeap(Heap* h)
 {
   if ( h->status != HSTAT_CLEAN )
-    die("touchHeap: status <> HSTAT_CLEAN");
+    dienow("touchHeap: status <> HSTAT_CLEAN");
   h->status = HSTAT_DIRTY;
 }
 
@@ -193,7 +211,6 @@ void deleteHeap(Heap *h)
 void releaseHeap(Heap *h)
 {
   restoreHeap(h);
-
   HEAP_POOL_MUTEX_LOCK;
   if ( heapPoolIndex < MAX_HEAP_POOL_SZ ) 
     {
@@ -210,25 +227,25 @@ void releaseHeap(Heap *h)
 static void restoreHeap(Heap *h)
 {
   if ( h->status != HSTAT_DIRTY )
-    die ("restoreHeap: status <> HSTAT_DIRTY");
+    dienow ("restoreHeap: status <> HSTAT_DIRTY");
  
   if ( restoreRegion(h->r0copy) == -1 )
-    die ("restoreHeap: failed to restore r0");
+    dienow ("restoreHeap: failed to restore r0");
 
   if ( restoreRegion(h->r2copy) == -1 )
-    die ("restoreHeap: failed to restore r2");
+    dienow ("restoreHeap: failed to restore r2");
 
   if ( restoreRegion(h->r3copy) == -1 )
-    die ("restoreHeap: failed to restore r3");
+    dienow ("restoreHeap: failed to restore r3");
 
   if ( restoreRegion(h->r4copy) == -1 )
-    die ("restoreHeap: failed to restore r4");
+    dienow ("restoreHeap: failed to restore r4");
 
   if ( restoreRegion(h->r5copy) == -1 )
-    die ("restoreHeap: failed to restore r5");
+    dienow ("restoreHeap: failed to restore r5");
 
   if ( restoreRegion(h->r6copy) == -1 )
-    die ("restoreHeap: failed to restore r6");
+    dienow ("restoreHeap: failed to restore r6");
 
   h->status = HSTAT_CLEAN;
 }
@@ -238,10 +255,10 @@ void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt)
   Ro *r0, *r2, *r3, *r4, *r5, *r6; 
 
   if ( h->status != HSTAT_UNINITIALIZED )
-    die ("initializeHeap: status <> HSTAT_UNINITIALIZED");
+    dienow ("initializeHeap: status <> HSTAT_UNINITIALIZED");
 
-  r0 = clearStatusBits(*(Ro**)(h->ds));
-  r2 = r0+1;
+  r0 = clearStatusBits(*(Ro**)(h->ds));    // r0 is a pointer to a region description on the stack
+  r2 = r0+1;                               // r2 is a pointer to the next region description on the stack
   r3 = r0+2;
   r4 = r0+3;
   r5 = r0+4;
@@ -259,7 +276,6 @@ void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt)
   h->r4copy = copyRegion(r4);
   h->r5copy = copyRegion(r5);
   h->r6copy = copyRegion(r6);
-
   h->status = HSTAT_CLEAN;
 }
 

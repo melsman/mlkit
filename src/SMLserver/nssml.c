@@ -330,7 +330,7 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
       int count = 0;
 
       // MEMO: somehow wait for all executions to finish!
-      // Ns_Log(Notice, "nssml: (re)loading interpreter");
+      Ns_Log(Notice, "nssml: (re)loading interpreter");
 
       // free all code elements present in the
       // interpreter, including code cache entries...
@@ -419,9 +419,11 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
       return NSSML_FILENOTFOUND;
     }
 
-  // Ns_Log(Notice, "Starting interpreter on file %s", uo);
+  // Ns_Log(Notice, "Starting interpreter on file %s", uo_file);
 
   res = interpLoadRun(ctx->interp, uo, &errorStr);
+
+  // Ns_Log(Notice, "Interpretation ended on file %s", uo_file);
 
   if ( res < 0 ) {    // uncaught exception; errorStr allocated
     if ( res == -1 )  // exception other than Interrupt raised

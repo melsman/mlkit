@@ -875,8 +875,8 @@ struct
 		  | "terminateML"          => Halt
 
 		  | _ => die ("PRIM(" ^ name ^ ") not implemented")
-	  in
-	    if BI.is_prim name then 
+	  in	    
+	    if BI.is_prim name orelse name = "terminateML" then 
 	      (* rhos_for_result comes after args so that the accumulator holds the *)
 	      (* pointer to allocated memory. *)
 	      comp_ces(args @ rhos_for_result,env,sp,cc,

@@ -1,6 +1,10 @@
 #ifndef HEAP_CACHE_H
 #define HEAP_CACHE_H
 
+/*
+ * Checkpointing execution of library code
+ */
+
 #include "Region.h"
 
 // Pages are layed out in continuous memory, where each page 
@@ -25,7 +29,7 @@ typedef struct regionCopy {
 // The effect of using a heap from the heap pool is that execution of
 // library code is cached. To enable execution of library code for
 // every request, set MAX_HEAP_POOL_SZ to 0.
-#define MAX_HEAP_POOL_SZ     6
+#define MAX_HEAP_POOL_SZ     4
 
 typedef struct heap {
   int heapid;               // unique heap id
