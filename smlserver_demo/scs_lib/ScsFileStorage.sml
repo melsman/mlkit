@@ -77,6 +77,10 @@ signature SCS_FILE_STORAGE =
         from the file storage, that is, removes the file from disk and
         delete rows in database *)
     val delFile : Db.Handle.db -> priv * int -> unit
+
+   (* [numFilesInFolder folder_id] returns the number of files in
+       folder - not counting subdirectories *)
+    val numFilesInFolder : folder_id -> int
   end
 
 structure ScsFileStorage :> SCS_FILE_STORAGE =
@@ -293,6 +297,14 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	  Db.zeroOrOneRow' f sql
 	end
     end
+
+    fun numFilesInFolder folder_id =
+      (ScsError.valOf o Int.fromString)
+      (ScsError.wrapPanic
+       Db.oneField `select count(file_id) 
+                      from scs_fs_files
+                     where folder_id = '^(Int.toString folder_id)'
+                       and deleted_p = 'f'`)
 	
     type fs_type = {type_id             : int,
 		    name                : string,
