@@ -12,10 +12,8 @@ functor RegAlloc(structure PhysSizeInf : PHYS_SIZE_INF
                    sharing type Effect.effect = Effect.place = LineStmt.place
                    sharing type Labels.label = LineStmt.label
                    sharing type CallConv.cc = LineStmt.cc
-                   sharing type CallConv.phreg = LineStmt.phreg
 		   sharing type LineStmt.phsize = PhysSizeInf.phsize
 		 structure BI : BACKEND_INFO
-                   sharing type BI.phreg = Lvars.lvar
 		 structure PP : PRETTYPRINT
 		   sharing type PP.StringTree = 
                                 Effect.StringTree = 
@@ -35,12 +33,11 @@ struct
   type cc = CallConv.cc
   type label = Labels.label
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
-  type phreg = LineStmt.phreg
   type Atom = LineStmt.Atom
 
   datatype StoreType =
     STACK_STY of lvar
-  | PHREG_STY of lvar * phreg
+  | PHREG_STY of lvar * lvar
     
   fun pr_sty(STACK_STY lv) = Lvars.pr_lvar lv ^ ":stack"
     | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ LineStmt.pr_phreg phreg

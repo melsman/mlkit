@@ -15,7 +15,6 @@ functor CalcOffset(structure PhysSizeInf : PHYS_SIZE_INF
 		        sharing type LineStmt.phsize = PhysSizeInf.phsize
 		      structure FetchAndFlush: FETCH_AND_FLUSH
                         sharing type FetchAndFlush.lvar = LineStmt.lvar
-                        sharing type FetchAndFlush.phreg = LineStmt.phreg = Lvars.lvar
                         sharing type FetchAndFlush.Atom = LineStmt.Atom
 		      structure BI : BACKEND_INFO
 		      structure PP : PRETTYPRINT
@@ -38,15 +37,14 @@ struct
   type label = Labels.label
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
   type StoreTypeIFF = FetchAndFlush.StoreType
-  type phreg = FetchAndFlush.phreg
   type offset = int
   type Atom = LineStmt.Atom
 
   datatype StoreType =
     STACK_STY of lvar * offset
-  | PHREG_STY of lvar * phreg 
-  | FLUSHED_CALLEE_STY of phreg * offset
-  | FLUSHED_CALLER_STY of lvar * phreg * offset
+  | PHREG_STY of lvar * lvar 
+  | FLUSHED_CALLEE_STY of lvar * offset
+  | FLUSHED_CALLER_STY of lvar * lvar * offset
 
   fun pr_sty(STACK_STY(lv,offset)) = Lvars.pr_lvar lv ^ ":stack(" ^ Int.toString offset ^ ")"
     | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ LineStmt.pr_phreg phreg

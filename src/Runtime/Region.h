@@ -161,6 +161,7 @@ of the region and is useful for, among other things, tail recursion).
  *----------------------------------------------------------------*/
 int *allocateRegion(Ro *roAddr);
 int *deallocateRegion();
+void deallocateRegionNew();
 int *alloc (int rAdr, int n);
 void alloc_new_block(Ro *rp);     /* inlining of alloc */
 void callSbrk();

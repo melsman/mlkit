@@ -14,7 +14,7 @@ functor LineStmt(structure PhysSizeInf : PHYS_SIZE_INF
                    sharing type CallConv.cc = ClosExp.cc
 		   sharing type ClosExp.phsize = PhysSizeInf.phsize
 	         structure BI : BACKEND_INFO
-                   sharing type BI.phreg = Lvars.lvar
+                   sharing type BI.lvar = Lvars.lvar
 		 structure PP : PRETTYPRINT
 		   sharing type PP.StringTree = 
                                 Effect.StringTree = 
@@ -66,13 +66,12 @@ struct
     | BOXED of int
 
   type binder = place * phsize
-  type phreg = BI.phreg
 
   datatype Atom =
       VAR           of lvar
     | RVAR          of place
     | DROPPED_RVAR  of place
-    | PHREG         of phreg
+    | PHREG         of lvar
     | INTEGER       of int 
     | UNIT
 
@@ -150,7 +149,7 @@ struct
   (************************)
   type StringTree = PP.StringTree
 
-  fun pr_phreg phreg = BI.pr_phreg phreg
+  fun pr_phreg phreg = Lvars.pr_lvar phreg
 
   fun pr_atom(VAR lv) = Lvars.pr_lvar lv
     | pr_atom(RVAR place) = PP.flatten1(Effect.layout_effect place)
@@ -701,7 +700,7 @@ struct
   (***************************************************)
   (* Def and Use sets for LineStmt RETURN ONLY lvars *)
   (***************************************************)
-  fun filter_out_phregs lvs = List.filter (fn lvar => not (BI.is_phreg lvar)) lvs
+  fun filter_out_phregs lvs = List.filter (fn lvar => not (BI.is_reg lvar)) lvs
 
   fun get_lvar_atom(atom,acc) = filter_out_phregs (get_var_atom(atom,acc))
   fun get_lvar_atoms(atoms,acc) = filter_out_phregs (get_var_atoms(atoms,acc))

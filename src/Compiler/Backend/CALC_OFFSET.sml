@@ -18,16 +18,15 @@ signature CALC_OFFSET =
     type cc
     type label
     type ('sty,'offset,'aty) LinePrg
-    type phreg
     type StoreTypeIFF
     type offset = int
     type Atom
 
     datatype StoreType =
         STACK_STY of lvar * offset
-      | PHREG_STY of lvar * phreg
-      | FLUSHED_CALLEE_STY of phreg * offset
-      | FLUSHED_CALLER_STY of lvar * phreg * offset
+      | PHREG_STY of lvar * lvar
+      | FLUSHED_CALLEE_STY of lvar * offset
+      | FLUSHED_CALLER_STY of lvar * lvar * offset
 
     val CO : {main_lab:label,code:(StoreTypeIFF,unit,Atom) LinePrg,imports:label list,exports:label list} ->
              {main_lab:label,code:(StoreType,offset,Atom) LinePrg,imports:label list,exports:label list}

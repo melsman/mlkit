@@ -97,6 +97,13 @@ Backend/CALC_OFFSET.sml
 Backend/CalcOffset.sml
 Backend/SUBST_AND_SIMPLIFY.sml
 Backend/SubstAndSimplify.sml
+Backend/CODE_GEN.sml
+
+(* HP-PARISC *)
+Backend/HpPaRisc/CodeGen.sml
+Backend/HpPaRisc/HP_PA_RISC.sml
+Backend/HpPaRisc/HpPaRisc.sml
+
 
 #if defined(KIT_TARGET_C)
 

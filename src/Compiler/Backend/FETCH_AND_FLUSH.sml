@@ -16,15 +16,14 @@ signature FETCH_AND_FLUSH =
     type cc
     type label
     type ('sty,'offset,'aty) LinePrg
-    type phreg
     type StoreTypeRA
     type Atom
 
     datatype StoreType =
         STACK_STY of lvar
-      | PHREG_STY of lvar * phreg
-      | FLUSHED_CALLEE_STY of phreg
-      | FLUSHED_CALLER_STY of lvar * phreg
+      | PHREG_STY of lvar * lvar
+      | FLUSHED_CALLEE_STY of lvar
+      | FLUSHED_CALLER_STY of lvar * lvar
 
     val IFF : {main_lab:label,code:(StoreTypeRA,unit,Atom) LinePrg,imports:label list,exports:label list} ->
               {main_lab:label,code:(StoreType,unit,Atom) LinePrg,imports:label list,exports:label list}

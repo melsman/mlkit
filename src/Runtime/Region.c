@@ -166,6 +166,40 @@ int *deallocateRegion() {
 }
 
 /*----------------------------------------------------------------------*
+ * NEW NEW NEW NEW NEW                                                  *
+ * We may not change sp!                                                *
+ *deallocateRegion:                                                     *
+ *  Pops the top region of the stack, and insert the regionpages in the *
+ *  free list. There have to be atleast one region on the stack.        *
+ *  When profiling we also use this function.                           *
+ *----------------------------------------------------------------------*/
+void deallocateRegionNew() { 
+  extern Klump * freelist;
+  extern Ro * topRegion;
+
+#ifdef PROFILING
+  int i;
+  callsOfDeallocateRegionInf++;
+  regionDescUseInf -= (sizeRo-sizeRoProf);
+  regionDescUseProfInf -= sizeRoProf;
+  i = NoOfPagesInRegion(topRegion);
+  noOfPages -= i;
+  allocNowInf -= topRegion->allocNow;
+  allocProfNowInf -= topRegion->allocProfNow;
+  profTabDecrNoOfPages(topRegion->regionId, i);
+  profTabDecrAllocNow(topRegion->regionId, topRegion->allocNow);
+#endif
+
+  /* Insert the region pages in the freelist; there is always 
+   * at-least one page in a region. */
+  (((Klump *)topRegion->b)-1)->k.n = freelist;
+  freelist = topRegion->fp;
+  topRegion=topRegion->p;
+
+  return;
+}
+
+/*----------------------------------------------------------------------*
  *callSbrk:                                                             *
  *  Sbrk is called and the free list is updated.                        *
  *  The free list has to be empty.                                      *
