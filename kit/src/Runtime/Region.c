@@ -224,7 +224,7 @@ int *allocateRegion(Ro *roAddr
 
   kp = freelist;
   freelist= freelist->n;
-
+  /* Niels - update frequency hashtable */
   FREELIST_MUTEX_UNLOCK;
 
   kp->n = NULL;                  // First and last region page
@@ -472,6 +472,7 @@ void alloc_new_block(Ro *rp) {
   if (freelist==NULL) callSbrk(); 
   np = freelist;
   freelist= freelist->n;
+  /* Niels - update frequency hashtable */
   FREELIST_MUTEX_UNLOCK;
 
   if (!is_rp_aligned((unsigned int)np))
@@ -550,6 +551,7 @@ int *alloc (Region rAddr, int n) {
 	  time_to_gc = 1;
 	}
 #endif	  
+      /* Niels - log that a large object has been allocated */
       return &(lobjs->value);
     }
 
