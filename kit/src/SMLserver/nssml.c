@@ -54,6 +54,7 @@ static Ns_OpProc nssml_handleSmlFile;
 typedef struct {
   Interp* interp;
   char* hServer;
+  char* hModule;
   char* prjid;
   char ulFileName[NSSML_PATH_MAX];
   char timeStampFileName[NSSML_PATH_MAX];
@@ -160,6 +161,7 @@ rpMap = regionPageMapNew();
   ctx = (InterpContext*)Ns_Malloc(sizeof(InterpContext));
   ctx->interp = interpNew();
   ctx->hServer = hServer;
+  ctx->hModule = hModule;
   configPath = Ns_ConfigGetPath(hServer, hModule, NULL);    // Fetch the name of the project
   ctx->prjid = Ns_ConfigGetValue(configPath, "prjid");      // (prjid) from config file.
 
@@ -379,7 +381,21 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
 static int
 nssml_trapProc(void *ctx, Ns_Conn *conn)
 {
-  return nssml_processSmlFile((InterpContext*)ctx, "../sys/trap.sml");
+  char* configPath;
+  char* trapScript;
+
+  // Execute trap script if it appears in the configuration file
+  configPath = Ns_ConfigGetPath(((InterpContext*)ctx)->hServer, ((InterpContext*)ctx)->hModule, NULL);  
+  trapScript = Ns_ConfigGetValueExact(configPath, "trapscript");    // Fetch init script
+  if ( trapScript != NULL ) 
+    {
+      return nssml_processSmlFile((InterpContext*)ctx, trapScript);
+    }
+  else
+    { // We assume the path below in case there is no entry in the 
+      // configuration file; for backward compatibility
+      return nssml_processSmlFile((InterpContext*)ctx, "../sys/trap.sml");
+    }
 }
 
 void

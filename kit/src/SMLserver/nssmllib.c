@@ -280,13 +280,9 @@ nssml_CacheValueFree(void *p)
 // ML: string * int -> cache ptr_option
 Ns_Cache*
 nssml_CacheCreate(String cacheName, int timeout)
-{
-  Ns_Cache* cPtr;
-  
-  cPtr = Ns_CacheCreate(&(cacheName->data), TCL_STRING_KEYS, 
+{ 
+  return Ns_CacheCreate(&(cacheName->data), TCL_STRING_KEYS, 
 			timeout, nssml_CacheValueFree);
-  Ns_Log(Notice, "CacheCreate: %d\n",(int)cPtr);
-  return cPtr;
 }
   
 // ML: string * int -> cache ptr_option
@@ -308,34 +304,15 @@ nssml_CacheSet(Ns_Cache* cache, String key, String value)
   Ns_Entry *ePtr;
 
   sz = sizeStringDefine(key) + 1;         // copying strings is essential!!
-Ns_Log(Notice, "1");
-Ns_Log(Notice,"key sz: %d",sz);
-Ns_Log(Notice, &(key->data));
   key_c = (char*)Ns_Malloc(sz);
-Ns_Log(Notice, "2");
   strcpy(key_c,&(key->data));
-
-Ns_Log(Notice, "3");
   sz = sizeStringDefine(value) + 1;
-Ns_Log(Notice,"value_c sz: %d",sz);
-Ns_Log(Notice, "4");
   value_c = (char*)Ns_Malloc(sz);
-Ns_Log(Notice, "5");
-Ns_Log(Notice, &(value->data));
   strcpy(value_c,&(value->data));
-Ns_Log(Notice, value_c);
-Ns_Log(Notice, "6");
   Ns_CacheLock(cache);
-Ns_Log(Notice, "7");
-Ns_Log(Notice,"cache addr: %d",(int)cache);
-Ns_Log(Notice, key_c);
   ePtr = Ns_CacheCreateEntry(cache, key_c, &new);
-Ns_Log(Notice, "8");
-Ns_Log(Notice,"value_c ePtr: %d",(int)ePtr);
   Ns_CacheSetValueSz(ePtr, value_c, sz);
-Ns_Log(Notice, "9");
   Ns_CacheUnlock(cache);
-Ns_Log(Notice, "10");
   return new;
 }
 

@@ -26,11 +26,6 @@ fun returnPage s = Page.return "Caching Demonstration"
 
   Using cache kind: ` ^^ (pp_kind kind) ^^ `<p>
 
-  Pretty printing the cache: 
-  <pre>
-  ^(Ns.Cache.pp_cache cache)
-  </pre><p>
- 
   Go back to <a href=cache.sml?kind=^kind>Cache Demo Home Page</a>.`)
 
 val _ = (* new_p is true if new value added *)

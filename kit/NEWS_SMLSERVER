@@ -1,5 +1,14 @@
 File NEWS_SMLSERVER
 
+ * nh 2003-01-08: Added hModule to the interpreter context in
+   nssml.c. This makes it easier to access parameters in the
+   configuration file. Used to access the trap-file in function
+   nssml_trapProc.
+
+ * nh 2003-01-08: Fixed bug with cache name in Ns.Cache. Cache names
+   can have a max size of 32 characters i AOLserver versions
+   3.X. After version 4, cache names can be of arbitrary size.
+
  * nh 2003-01-07: Updated NS_CACHE.sml signature such that it matches
    the PADL paper. Re-implemented the Triple constructor, so that
    result type is 'a*'b*'c instead of (('a*'b)*'c).

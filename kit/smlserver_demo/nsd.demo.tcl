@@ -50,7 +50,11 @@ ns_param prjid sources
 # Initialization script to schedule script execution and 
 # register trapping of URL requests; remember to include
 # the initialization script in the project file.
-#ns_param initscript ../sys/init.sml
+ns_param initscript ../sys/init.sml
+
+# If you have registered trapping, then this script is 
+# called.
+ns_param trapscript ../sys/trap.sml
 
 # 
 # Database drivers 
