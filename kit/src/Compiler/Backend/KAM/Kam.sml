@@ -153,6 +153,12 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | PrimDivf
       | PrimNegf
       | PrimAbsf
+
+      | PrimLessThanFloat
+      | PrimLessEqualFloat
+      | PrimGreaterThanFloat
+      | PrimGreaterEqualFloat
+
       | PrimLessThan
       | PrimLessEqual
       | PrimGreaterThan
@@ -326,6 +332,11 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | PrimDivf => "PrimDivf" :: acc
       | PrimNegf => "PrimNegf" :: acc
       | PrimAbsf => "PrimAbsf" :: acc                    
+
+      | PrimLessThanFloat => "PrimLessThanFloat" :: acc
+      | PrimLessEqualFloat => "PrimLessEqualFloat" :: acc
+      | PrimGreaterThanFloat => "PrimGreaterThanFloat" :: acc
+      | PrimGreaterEqualFloat => "PrimGreaterEqualFloat" :: acc
 
       | PrimLessThan => "PrimLessThan" :: acc
       | PrimLessEqual => "PrimLessEqual" :: acc

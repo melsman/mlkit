@@ -140,6 +140,11 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | PrimNegf => out_opcode PRIM_NEG_F
       | PrimAbsf => out_opcode PRIM_ABS_F
 
+      | PrimLessThanFloat => (out_opcode PRIM_LESS_THAN_F)
+      | PrimLessEqualFloat => (out_opcode PRIM_LESS_EQUAL_F)
+      | PrimGreaterThanFloat => (out_opcode PRIM_GREATER_THAN_F)
+      | PrimGreaterEqualFloat => (out_opcode PRIM_GREATER_EQUAL_F)
+
       | PrimLessThan => (out_opcode PRIM_LESS_THAN)
       | PrimLessEqual => (out_opcode PRIM_LESS_EQUAL)
       | PrimGreaterThan => (out_opcode PRIM_GREATER_THAN)

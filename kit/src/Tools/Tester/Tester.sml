@@ -61,11 +61,11 @@ structure Tester : TESTER =
 	fun maybe_compare_complogs success =
 	  let fun success_as_expected() =
 	        if opt TestFile.ExpectCompileTimeError then 
-		  if success then (msgErr "unexpected success"; false)
-		  else (msgOk "expected failure"; true)
+		  if success then (msgErr "unexpected compile time success"; false)
+		  else (msgOk "expected compile time failure"; true)
 		else 
-		  if success then (msgOk "expected success"; true)
-		  else (msgErr "unexpected failure"; false)
+		  if success then (msgOk "expected compile time success"; true)
+		  else (msgErr "unexpected compile time failure"; false)
 	  in
 	    if opt TestFile.CompareCompilerLogs then
 	      let val match = if equal_to_okfile (file ^ ".log") then (msgOk "log equal to log.ok"; true)
@@ -102,7 +102,7 @@ structure Tester : TESTER =
 		    val exesize_stripped = 
 		      if OS.Process.system ("strip " ^ exe_file) = OS.Process.success then
 			size_of_file exe_file
-		      else (msgErr ("the command `strip " ^ exe_file ^ "' failed"); "err")
+		      else (msgOk ("the command `strip " ^ exe_file ^ "' failed"); "N/A")
 		in
 		  TestReport.add_runtime_line{name=filepath,ok=ok,exesize=exesize, 
 					      exesize_stripped=exesize_stripped, 
