@@ -2099,6 +2099,9 @@ Also notice that, unlike for Standard ML, functions are allowed to be
 passed multiple value arguments; see below. In the case $n=1$, we
 often omit the surrounding brackets $\verb+<+ \cdots \verb+>+$.
 
+In the special case $k=0$, no region parameters are passed to the
+function, and we shall often omit the brackets in this case.
+
 Different calls of $f$ can use different actual regions; this feature
 is essential for obtaining good separation of lifetimes.  For an
 example, consider the following program:
@@ -8229,7 +8232,11 @@ directory for detailed comments.)
 
 %---------------------------------------------------------
 \chapter{Bootstrapping}
+\label{bootstrap.sec}
 %---------------------------------------------------------
+
+\index{bootstrap}%
+\index{bootstrap!overview}%
 
 In this chapter, we demonstrate the process of generating an
 executable ML Kit that uses regions itself for compiling Standard ML
@@ -8252,7 +8259,7 @@ when running, uses SML/NJ's runtime system. This version of the ML Kit
 is pictured to the right of the SML/NJ executable and is named
 \emph{kit\_v1}.
 
-To build \emph{kit\_v1} you enter the directory \texttt{kit} (i.e.,
+To build \emph{kit\_v1} \index{bootstrap!\emph{kit\_v1}} you enter the directory \texttt{kit} (i.e.,
 the directory containing the file \texttt{copyright}). The
 \texttt{kit} directory contains a Makefile that automates the
 bootstrapping process.  Assuming, that you installed the ML Kit in the
@@ -8269,7 +8276,7 @@ following commands in order to generate \emph{kit\_v1}.
 # make
 ...
 # ll bin/kit.x86-linux 
-... 32614528 May 22 23:11 bin/kit.x86-linux
+...  32742964 Jun  7 12:29 bin/kit.x86-linux
 # 
 \end{verbatim}
 \end{quote}
@@ -8298,15 +8305,18 @@ necessary to bootstrap and test \emph{kit\_v1}. The command \texttt{unlimit
 the stack (i.e., in finite regions).
 
 Compiling the ML Kit source with \emph{kit\_v1} generates
-\emph{kit\_v2}. The \emph{kit\_v2} executable runs on the runtime
-system of the ML Kit using region inference. However, \emph{kit\_v2}
-is still affected by SML/NJ, for instance, many constants including
-bit-vectors are calculated using the Basis Library of SML/NJ.
-\emph{kit\_v2} may work even though our own Basis Library is buggy.
+\emph{kit\_v2} \index{bootstrap!\emph{kit\_v2}}. The \emph{kit\_v2}
+executable runs on the runtime system of the ML Kit using region
+inference. However, \emph{kit\_v2} is still affected by SML/NJ, for
+instance, many constants including bit-vectors are calculated using
+the Basis Library of SML/NJ.  \emph{kit\_v2} may work even though our
+own Basis Library is buggy.
 
 Unfortunately, because of the engineering of the recompilation scheme
-used in the ML Kit, it is not at present possible to memorize the
-compilation of the Standard ML Basis Library when using the
+used in the ML Kit, it is not at present possible to memorize 
+\label{memorize_bootstrap.sec}
+the compilation of the Standard ML Basis Library
+\index{bootstrap!Standard ML Basis Library} when using the
 bootstrapped version of the compiler, that is, \emph{kit\_v2} $\ldots$
 \emph{kit\_v4}; the Basis Library is compiled every time you compile a
 program.
@@ -8335,9 +8345,9 @@ several hours depending on your machine.\footnote{Your machine should
 \end{quote}
 \end{small}
 
-To generate \emph{kit\_v3} you enter the \texttt{mlkit-v2} directory
-and bootstraps once more using the {\tt Makefile} located in
-\texttt{mlkit-v2}.
+To generate \emph{kit\_v3} \index{bootstrap!\emph{kit\_v3}} you enter
+the \texttt{mlkit-v2} directory and bootstraps once more using the
+{\tt Makefile} located in \texttt{mlkit-v2}.
 
 \begin{small}
 \begin{quote}
@@ -8350,9 +8360,9 @@ and bootstraps once more using the {\tt Makefile} located in
 \end{quote}
 \end{small}
 
-To generate \emph{kit\_v4} you enter the \texttt{mlkit-v3} directory
-and bootstraps once more using the {\tt Makefile} located in
-\texttt{mlkit-v3}.
+To generate \emph{kit\_v4} \index{bootstrap!\emph{kit\_v4}} you enter
+the \texttt{mlkit-v3} directory and bootstraps once more using the
+{\tt Makefile} located in \texttt{mlkit-v3}.
 
 \begin{small}
 \begin{quote}
@@ -8372,12 +8382,12 @@ binaries:
 \begin{small}
 \begin{quote}
 \begin{verbatim}
-# ll /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit 
-...  8819606 May 23 /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit*
-# ll /import/home/nh/ITU/MLKit/mlkit-v4/bin/mlkit
-...  8819606 May 23 /import/home/nh/ITU/MLKit/mlkit-v4/bin/mlkit*
-# diff /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit 
-        /import/home/nh/ITU/MLKit/mlkit-v4/bin/mlkit
+# ll /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit.img 
+...  8867248 Jun  8 11:02 /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit.img*
+# ll /import/home/nh/ITU/MLKit/mlkit-v4/bin/mlkit.img
+...  8867248 Jun  9 01:40 /import/home/nh/ITU/MLKit/mlkit-v4/bin/mlkit.img*
+# diff /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit.img 
+       /import/home/nh/ITU/MLKit/mlkit-v4/bin/mlkit.img
 #
 \end{verbatim}
 \end{quote}
@@ -8387,32 +8397,34 @@ binaries:
 
 You can look in the Makefiles to see how to compile the ML Kit with
 the ML Kit manually. You basically enter a \texttt{src} directory
-where the file \texttt{sources.pm} is located. You compile
+where the file \texttt{sources.pm}
+\index{bootstrap!\texttt{sources.pm}} is located. You compile
 \texttt{sources.pm} using the ML Kit version of your choise (e.g.,
 \emph{kit\_v1} $\ldots$ \emph{kit\_v4}). Assuming everything works out
 fine, an executable version of the ML Kit is now available as the file
 {\tt run} in the \texttt{src} directory.
 
-If you are using one of the versions: \emph{kit\_v2}, $\ldots$,
-\emph{kit\_v3} you must supply an install directory:
+%If you are using one of the versions: \emph{kit\_v2}, $\ldots$,
+%\emph{kit\_v4} you must supply an install directory:
 
 \begin{small}
 \begin{quote}
 \begin{verbatim}
 # pwd
 /import/home/nh/ITU/MLKit/mlkit-v3/src
-# ../bin/mlkit /import/home/nh/ITU/MLKit/mlkit-v3 sources.pm
-ML Kit version 3.4.0, May 23, 2001 [X86 Backend]
+# ../bin/mlkit sources.pm
+ML Kit version 3.4.0, Jun 09, 2001 [X86 Backend]
 [reading source file:   Initial.sml]
 ...
 \end{verbatim}
 \end{quote}
 \end{small}
 
-The install directory is necessary for the ML Kit to find the runtime
-system when building the executable file \texttt{run}.
+% The install directory is necessary for the ML Kit to find the runtime
+% system when building the executable file \texttt{run}.
 
 \section{Testing while bootstrapping}
+\index{bootstrap!testing}%
 
 It is possible to apply all the ML Kit tests in the test directory.
 The regression test performs a test on the following four
@@ -8430,17 +8442,7 @@ Choose the kit to test (e.g., \emph{kit\_v3}).
 \begin{quote}
 \begin{verbatim}
 # pwd
-/home/nh/ITU/MLKit/mlkit/kit
-# make clean
-...
-# make
-...
-# make install INSTDIR=/home/nh/ITU/MLKit/mlkit-v1
-...
-# make bootstrap INSTDIR=/home/nh/ITU/MLKit/mlkit-v1
-# cd /home/nh/ITU/MLKit/mlkit-v1/
-# pwd
-/home/nh/ITU/MLKit/mlkit-v1
+/import/home/nh/ITU/MLKit/mlkit-v3
 # make all_test
 ...
 \end{verbatim}
@@ -8448,27 +8450,141 @@ Choose the kit to test (e.g., \emph{kit\_v3}).
 
 If you look in the \texttt{all\_test} entry in the {\tt Makefile}, you will
 find a program called \texttt{kittester} and a file
-\texttt{all\_test}. The file \texttt{all\_test} contains the programs
+\texttt{all.tst}. The file \texttt{all.tst} contains the programs
 that are tested and under what configurations. The program
 \texttt{kittester} performs the test, that is, each program is
 compiled, executed and output is compared to the expected output.
 Finally a \LaTeX{} report with the result of the test is generated in
 the file \texttt{test\_report.dvi}.
 
+When you inspect the test report \texttt{test\_report.dvi}, you will
+notice that some errors are reported (at the time of writing 16 errors
+are reported but that may change as we extend the test suite). All
+files resulting in compile time errors (option \texttt{-ecte} in file
+\texttt{all.tst}) are reported twice with an error in
+\texttt{test\_report.dvi}. The errors are reported because the Basis
+Library is compiled for each program and output therefore differs from
+expected output (ref. memorization of the Basis Library on page
+\pageref{memorize_bootstrap.sec}).
+
 \section{Profiling the ML Kit}
 
-The Kit can only compile itself when garbage collection is enabled,
-that is, the ML Kit compiler is not optimized for regions. The memory
-usage is the same for all the kits generated during the bootstrapping
-process.
+The Kit can only compile itself when garbage collection is enabled.
+The memory usage is the same for all the kits generated during the
+bootstrapping process.
 
-We arbitrarily choose to profile $\emph{kit}{v3}$ while it generates
-$\emph{kit}_{v4}$.
+To profile the ML Kit, we must generate a Kit with profiling enabled;
+we call it $\emph{kit\_v4prof}$ \index{bootstrap!\emph{kit\_v4prof}} and build it using $\emph{kit}_{v4}$:
 
+\begin{small}
+\begin{quote}
 \begin{verbatim}
+# cd /import/home/nh/ITU/MLKit/mlkit-v4
+# unlimit stacksize
+# make bootstrap COMP_FLAGS=-prof 
+    INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v4prof
+...
 \end{verbatim}
+\end{quote}
+\end{small}
 
 
+To generate a region profile of the ML Kit we use
+$\emph{kit\_v4prof}$ to compile a smaller program
+\texttt{kitkbjul9.sml} found in the \texttt{test} directory.
+
+We enter the \texttt{test} directory and compiles
+\texttt{kitkbjul9.sml} using \texttt{mlkit} (with profiling enabled)
+located in the \texttt{bin} directory.
+
+\begin{figure}
+\hrule \medskip
+\begin{center}
+\includegraphics{mlkit_compiling_kitkbjul9.eps}
+\end{center}
+\caption{A region profile of the MLKit compiling the program \texttt{kitkbjul9.sml}.}
+\label{mlkit_compiling_kitkbjul9.fig}
+\medskip\hrule
+\end{figure}
+
+\begin{small}
+\begin{quote}
+\begin{verbatim}
+# pwd
+/import/home/nh/ITU/MLKit/mlkit-v4prof/test
+# unlimit stacksize
+# ../bin/mlkit kitkbjul9.sml
+ML Kit version 3.4.0, Jun 11, 2001 [X86 Backend]
+[reading source file:   Initial.sml]
+...
+[wrote executable file: run]
+# ll profile.rp 
+...       5457344 Jun 11 21:39 profile.rp
+# rp2ps -region -name "MLKit compiling kitkbjul9" -sampleMax 2000 
+        -eps 137 mm
+Region profiling to output file region.ps.
+Using name MLKit compiling kitkbjul9.
+Using 2000 samples.
+Using encapsulated postscript with width 388 pt.
+# gv -seascape region.ps
+\end{verbatim}
+\end{quote}
+\end{small}
+
+\begin{figure}
+\hrule \medskip
+\begin{center}
+\includegraphics{mlkit_compiling_kitkbjul9_400msec.eps}
+\end{center}
+\caption{A region profile of the MLKit compiling the program \texttt{kitkbjul9.sml}. 
+ Memory is traversed once every 0.1 second.}
+\label{mlkit_compiling_kitkbjul9_400msec.fig}
+\medskip\hrule
+\end{figure}
+
+The Figure \ref{mlkit_compiling_kitkbjul9.fig} shows the region
+profile obtained with the commands shown above.
+
+\subsection{Controlling Profiling Options at Runtime}
+
+To control the profiling options at runtime as described in Chapter
+\ref{useOfProf.sec} we use the program \texttt{mlkit.img} in the
+\texttt{bin} directory and supply all command line parameters
+necessary. This includes an install directory (i.e., the directory you
+specified when building the ML Kit). You can look in the file
+\texttt{bin/mlkit} to find the install directory. 
+
+The Figure \ref{mlkit_compiling_kitkbjul9_400msec.fig} shows a region
+profile similar to Figure \ref{mlkit_compiling_kitkbjul9.fig} except that
+we increase the number of profile ticks (\texttt{-microsec 100000}):
+
+\begin{small}
+\begin{quote}
+\begin{verbatim}
+# unlimit stacksize
+# pwd
+/import/home/nh/ITU/MLKit/mlkit-v4prof/test
+# ../bin/mlkit.img -realtime -microsec 100000 
+  /import/home/nh/ITU/MLKit/mlkit-v4prof/ kitkbjul9.sml 
+ML Kit version 3.4.0, Jun 11, 2001 [X86 Backend]
+[reading source file:   Initial.sml]
+...
+[wrote executable file: run]
+# ll profile.rp 
+...     50384960 Jun 11 22:19 profile.rp
+# rp2ps -region -name "MLKit compiling kitkbjul9 (100000 microsec)" 
+        -sampleMax 2000 -eps 137 mm
+Region profiling to output file region.ps.
+Using name MLKit compiling kitkbjul9 (100000 microsec).
+Using 2000 samples.
+Using encapsulated postscript with width 388 pt.
+# ll region.ps 
+...       897954 Jun 11 22:24 region.ps
+# gv -seascape region.ps
+\end{verbatim}
+\end{quote}
+\end{small}
+                                
 
 %---------------------------------------------------------
 \chapter{Summary of Changes}
