@@ -149,6 +149,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getLangErr             : ScsLang.lang formvar_fn
     val getRegExpErr           : RegExp.regexp formvar_fn
     val getRoleIdErr           : string * errs -> int * errs
+    val getBoolErr	       : bool formvar_fn
 
     val wrapQQ  : string formvar_fn -> (string * string) formvar_fn
     val wrapOpt : 'a formvar_fn -> (string -> 'a option)
@@ -162,7 +163,8 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getStrings : string -> string list
 
     (* For extensions *)
-    val getErr : 'a -> (string->'a) -> ScsDict.dict -> (string->quot) -> (string->bool) -> 'a formvar_fn
+    val getErr : 'a -> (string->'a) -> ScsDict.dict -> (string->quot) 
+      -> (string->bool) -> 'a formvar_fn
   end
 
 structure ScsFormVar :> SCS_FORM_VAR =
@@ -639,6 +641,17 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     </blockquote>`)
       fun msgLang s = msgEnum (ScsLang.all_as_text (ScsLogin.user_lang())) s
 
+      fun msgBool s = ( case ScsLogin.user_lang() of
+	   ScsLang.en => `^s
+	     <blockquote>
+	     This is not a <b>boolean</b> value
+	     </blockquote>`
+	| ScsLang.da => `^s
+	     Dette er ikke en <b>sand/falsk</b> værdi.
+	     </blockquote>`
+      )
+
+
       fun convCpr cpr =
 	case String.explode (trim cpr) of
 	  d1 :: d2 :: m1 :: m2 :: y1 :: y2 :: (#"-") :: t1 :: t2 :: t3 :: t4 :: [] =>
@@ -768,8 +781,10 @@ structure ScsFormVar :> SCS_FORM_VAR =
 
       val getEmailErr = getErr' [(ScsLang.en,`email`),(ScsLang.da,`email`)] msgEmail
 	(fn email => regExpMatch "[^@\t ]+@[^@.\t ]+(\\.[^@.\n ]+)+" (trim email)) 
+
       val getNameErr = getErr' [(ScsLang.en,`name`),(ScsLang.da,`navn`)] 
                          msgName (regExpMatch "[a-zA-ZAÆØÅaæøåüäéá '\\-]+")
+
       val getAddrErr = getErr' [(ScsLang.en, `address`),(ScsLang.da, `adresse`)]
                          msgAddr (regExpMatch "[a-zA-Z0-9ÆØÅæøåüá '\\-.:;,]+")
 
@@ -779,11 +794,13 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	 String.size login >= 2 andalso String.size login <= 15)
       val getPhoneErr = getErr' [(ScsLang.en, `phone number`),(ScsLang.da,`telefonnummer`)] 
                           msgPhone (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
+
       (* getHtml : not implemented yet *)
       val getHtmlErr = getErr' [(ScsLang.en, `HTML text`),(ScsLang.da,`HTML tekst`)] 
                           msgHTML (fn html => html <> "")
       val getUrlErr =  getErr' [(ScsLang.en,`URL`),(ScsLang.da,`URL`)] 
                           msgURL (regExpMatch "http://[0-9a-zA-Z/\\-\\\\._~]+(:[0-9]+)?")
+
       val getCprErr = getErr "" convCpr [(ScsLang.en,`cpr number`),(ScsLang.da,`cpr nummer`)] msgCpr chkCpr
       val getEnumErr = fn enums => getErr' [(ScsLang.en,`enumeration`),(ScsLang.da,`enumerering`)] 
                                      (msgEnum enums) (chkEnum enums)
@@ -878,13 +895,23 @@ structure ScsFormVar :> SCS_FORM_VAR =
       val getRegExpErr = getErr (RegExp.fromString "$") RegExp.fromString [(ScsLang.en,`regular expression`),
 									   (ScsLang.da,`regulaert udtryk`)]
                            msgRegExp chkRegExp
-    end
+
+      val getBoolErr = getErr true (valOf o Db.toBool) 
+        [(ScsLang.da, `boolsk værdi`),(ScsLang.en, `boolean value`)] msgBool 
+	(fn str => if str = "t" then true 
+	           else if str = "f" then true 
+		   else false)
+
+    end (* of local block *)
 
     fun getStrings fv = List.map trim (Ns.Conn.formvarAll fv)
 
 
 
     fun getRoleIdErr (fv,errs) = getIntErr(fv,ScsDict.s [(ScsLang.en,`Role id`),(ScsLang.da,`Rolle id`)],errs)
+
+
+
 
   end
 
