@@ -186,6 +186,7 @@ end
 			       (tyName_WORD32, []),
 			       (tyName_REAL, []),
 			       (tyName_STRING, []),
+			       (tyName_CHAR, []),
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
 			       (tyName_FRAG, [Con.con_QUOTE, Con.con_ANTIQUOTE]),
 			       (tyName_CHARARRAY, []),
