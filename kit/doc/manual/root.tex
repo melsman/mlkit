@@ -8185,44 +8185,167 @@ Figure~\ref{bootstrap.fig}
 The lowest block in the picture denotes the SML/NJ compiler, which is
 used to compile the ML Kit sources to a version of the ML Kit that,
 when running, uses SML/NJ's runtime system. This version of the ML Kit
-is pictured to the right of the SML/NJ executable and is created using
-the standard built procedure:
+is pictured to the right of the SML/NJ executable and is named
+\emph{kit\_v1}.
+
+To build \emph{kit\_v1} you enter the directory \texttt{kit} (i.e.,
+the directory containing the file \texttt{copyright}). The
+\texttt{kit} directory contains a Makefile that automates the
+bootstrapping process.  Assuming, that you installed the ML Kit in the
+directory \texttt{/import/home/nh/ITU/MLKit/mlkit}, then you type the
+following commands in order to generate \emph{kit\_v1}.
+
+\begin{small}
+\begin{quote}
 \begin{verbatim}
-[23:01-kit]# pwd
+# pwd
 /import/home/nh/ITU/MLKit/mlkit/kit
-[23:02-kit]# make clean
+# make clean
 ...
-[23:04-kit]# make
+# make
 ...
-[23:11-kit]# make install INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v1
-...
-[23:14-kit]# make bootstrap INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v1
-...
-[23:16-kit]# cd /import/home/nh/ITU/MLKit/mlkit-v1
-...
-[23:25-mlkit-v1]# make bootstrap INSTDIR=/import/home/nh/MLKit/mlkit-v2
+# ll bin/kit.x86-linux 
+... 32614528 May 22 23:11 bin/kit.x86-linux
+# 
 \end{verbatim}
+\end{quote}
+\end{small}
 
-To construct a version of the ML Kit that is based on the ML Kit runtime
-system, execute the command
+The file \texttt{bin/kit.x86-linux} is \emph{kit\_v1}. It is an SML/NJ
+image that can be executed using the file \texttt{bin/mlkit}. It has
+been compiled using the Basis Library of SML/NJ and executes using the
+runtime system of SML/NJ. We now install \texttt{kit\_v1} in a new
+directory, say \texttt{mlkit-v1}:
+
+\begin{small}
+\begin{quote}
 \begin{verbatim}
-  > $(HOME)/mlkit-v1/bin/mlkit -gc sources.pm
-  ...
+# make install INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v1
+...
+# unlimit stacksize
+# make bootstrap INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v1
 \end{verbatim}
-Assuming everything works out fine, an executable version of the ML
-Kit is now available as the file {\tt run} in the current working
-directory; this version of the ML Kit executable is based on the ML
-Kit runtime system.\footnote{Unfortunately, because of the engineering
-  of the recompilation scheme used in the ML Kit, it is not at present
-  possible to memorize the compilation of the Standard ML Basis
-  Library when using the bootstrapped version of the compiler.}
+\end{quote}
+\end{small}
 
-It is left as an exercise to the reader to verify that after two more
-iterations of bootstrapping, the resulting ML Kit is identical to the
-version of the ML Kit used for compilation; the reason that two
-iterations are necessary has to do with the way that machine code
-labels are choosen when memorization of the Basic Library is supported
-(compared to when memorization is not supported.)
+This creates the directory \texttt{mlkit-v1}, containing all the files
+necessary to bootstrap and test \emph{kit\_v1}. The \texttt{unlimit
+  stacksize} is necessary because the ML Kit stores lots of data on
+the stack (i.e., in finite regions).
+
+Compiling the ML Kit source with \emph{kit\_v1} generates
+\emph{kit\_v2}. \emph{kit\_v2} runs on the runtime system of the ML
+Kit using region inference. However, \emph{kit\_v2} is still affected
+by SML/NJ, for instance, many constants including bit-vectors are
+calculated using the Basis Library of SML/NJ.  \emph{kit\_v2} may work
+even though our own Basis Library is buggy.
+
+Unfortunately, because of the engineering of the recompilation scheme
+used in the ML Kit, it is not at present possible to memorize the
+compilation of the Standard ML Basis Library when using the
+bootstrapped version of the compiler, that is, \emph{kit\_v2} $\ldots$
+\emph{kit\_v4}; the Basis Library is compiled every time you compile a
+program.
+
+Another reason that \emph{kit\_v2} and \emph{kit\_v3} are different
+has to do with the way machine code labels are chosen when
+memorization of the Basis Library is supported (compared to when
+memorization is not supported.)
+
+To generate \emph{kit\_v2} you enter the directory \texttt{mlkit-v1},
+where you find a Makefile with an bootstrap entry. Using the bootstrap
+entry specifying the directory where \emph{kit\_v2} should be
+installed will generate and install \texttt{kit\_v2}. This may take
+several hours depending on your machine.\footnote{Your machine should
+  have 1 Gb of RAM to avoid swapping during the entire bootstrapping
+  process.}
+
+\begin{small}
+\begin{quote}
+\begin{verbatim}
+# cd /import/home/nh/ITU/MLKit/mlkit-v1
+...
+# unlimit stacksize
+# make bootstrap INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v2
+\end{verbatim}
+\end{quote}
+\end{small}
+
+To generate \emph{kit\_v3} you enter the \texttt{mlkit-v2} directory
+and bootstraps once more using the Makefile located in
+\texttt{mlkit-v2}.
+
+\begin{small}
+\begin{quote}
+\begin{verbatim}
+# cd /import/home/nh/ITU/MLKit/mlkit-v2
+# unlimit stacksize
+# make bootstrap INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v3
+...
+\end{verbatim}
+\end{quote}
+\end{small}
+
+To generate \emph{kit\_v4} you enter the \texttt{mlkit-v3} directory
+and bootstraps once more using the Makefile located in
+\texttt{mlkit-v3}.
+
+\begin{small}
+\begin{quote}
+\begin{verbatim}
+# cd /import/home/nh/ITU/MLKit/mlkit-v3
+# unlimit stacksize
+# make bootstrap INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v4
+...
+\end{verbatim}
+\end{quote}
+\end{small}
+
+To see that \emph{kit\_v3} and \emph{kit\_v4} are equal, you can apply
+the \texttt{diff} command on the two binaries:
+
+\begin{small}
+\begin{quote}
+\begin{verbatim}
+# ll /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit 
+...  8819606 May 23 /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit*
+# ll /import/home/nh/ITU/MLKit/mlkit-v4/bin/mlkit
+...  8819606 May 23 /import/home/nh/ITU/MLKit/mlkit-v4/bin/mlkit*
+# diff /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit 
+        /import/home/nh/ITU/MLKit/mlkit-v4/bin/mlkit
+#
+\end{verbatim}
+\end{quote}
+\end{small}
+
+\subsection{How it works}
+
+You can look in the Makefiles to see how to compile the ML Kit with
+the ML Kit manually. You basically enter a \texttt{src} directory
+where the file \texttt{sources.pm} is located. You compile
+\texttt{sources.pm} using the ML Kit version of your choise (e.g.,
+\emph{kit\_v1} $\ldots$ \emph{kit\_v4}). Assuming everything works out
+fine, an executable version of the ML Kit is now available as the file
+{\tt run} in the \texttt{src} directory.
+
+If you are using one of the versions: \emph{kit\_v2}, $\ldots$,
+\emph{kit\_v3} you must supply an install directory:
+
+\begin{small}
+\begin{quote}
+\begin{verbatim}
+# pwd
+/import/home/nh/ITU/MLKit/mlkit-v3/src
+# ../bin/mlkit /import/home/nh/ITU/MLKit/mlkit-v3 sources.pm
+ML Kit version 3.4.0, May 23, 2001 [X86 Backend]
+[reading source file:   Initial.sml]
+...
+\end{verbatim}
+\end{quote}
+\end{small}
+
+The install directory is necessary for the ML Kit to find the runtime
+system when building the executable file \texttt{run}.
 
 \subsection{Testing while bootstrapping}
 
@@ -8236,16 +8359,48 @@ will, perform an acceptance test on the four configurations of the ML:
 \item with region inference and garbage collection
 \item with region inference, garbage collection and profiling
 
-Below we show the process of building the kits 
 \end{enumerate}
 
-\begin{verbatim}
-[23:38-kit]# pwd
-/home/nh/ITU/MLKit/mlkit/kit
-[23:40-kit]# make clean
-...
+Choose the kit to test (e.g., \emph{kit\_v3}).
 
+\begin{verbatim}
+# pwd
+/home/nh/ITU/MLKit/mlkit/kit
+# make clean
+...
+# make
+...
+# make install INSTDIR=/home/nh/ITU/MLKit/mlkit-v1
+...
+# make bootstrap INSTDIR=/home/nh/ITU/MLKit/mlkit-v1
+# cd /home/nh/ITU/MLKit/mlkit-v1/
+# pwd
+/home/nh/ITU/MLKit/mlkit-v1
+# make all_test
+...
 \end{verbatim}
+
+If you look in the \texttt{all\_test} entry in the Makefile, you will
+find a program called \texttt{kittester} and a file
+\texttt{all\_test}. The file \texttt{all\_test} contains the programs
+that are tested and under what configurations. The program
+\texttt{kittester} performs the test, that is, each program is
+compiled, executed and output is compared to expected output. Finally
+a \LaTeX{} report with the result of the test is generated in the file
+\texttt{test\_report.dvi}.
+
+\subsection{Profiling the ML Kit}
+
+The Kit can only compile itself when garbage collection is enabled,
+that is, the ML Kit compiler is not optimized for regions. The memory
+usage is the same for all the kits generated during the bootstrapping.
+
+We arbitrarily choose to profile $\emph{kit}{v3}$ while it generates
+$\emph{kit}_{v4}$.
+
+\begin{verbatim}
+\end{verbatim}
+
 
 
 %---------------------------------------------------------
