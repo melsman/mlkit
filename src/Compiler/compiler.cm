@@ -93,6 +93,7 @@ Cfg/CfgKitAM.sml
 Cfg/TRANSFORM_KBP.sml
 Cfg/TransformKbp.sml
 
+(*
 Hppa/DELAY_SLOT_OPTIMIZATION.sml
 Hppa/DelaySlotOptimization.sml
 Hppa/HPPA_INFO.sml
@@ -106,6 +107,16 @@ Hppa/KBP_TO_HPPA.sml
 Hppa/KbpToHpPa.sml
 Hppa/RESOLVE_JUMPS.sml
 Hppa/ResolveJumps.sml
+*)
+
+
+C/C_INFO.sml
+C/CInfo.sml
+C/KBP_TO_C.sml
+C/KbpToC.sml
+C/C_CODE.sml
+C/CCode.sml
+C/CKAMBackend.sml
 
 COMPILE_BASIS.sml
 CompileBasis.sml
