@@ -216,7 +216,7 @@ structure ScsPrint :> SCS_PRINT =
 	  [("submit", "Print"),("submit","Update Source")] 
 	  (`You may change the source below and then either print the 
 	   changed document or update the preview link.<p>` ^^ 
-	   `<a href="^(pdf)">preview</a><br>` ^^
+	   `<a href="^(pdf)">preview ^pdf</a><br>` ^^
 	   (Html.inhidden "doc_type" (docTypeToString doc_type)) ^^
 	   (Html.inhidden "category" category) ^^
 	   (Html.inhidden "on_what_table" on_what_table) ^^
@@ -226,8 +226,13 @@ structure ScsPrint :> SCS_PRINT =
 	   (ScsWidget.largeTa "source" source) ^^
   *)
    `<p>` ^^
-   `<p>^note_text sek</p>` ^^
-	   (ScsWidget.oneLine (choosePrinter "printer")))
+   `<p>^note_text sek</p>`
+(*
+ ^^
+
+	   (ScsWidget.oneLine (choosePrinter "printer"))
+*)
+)
 	end
 
       fun returnAsPDF doc_type sources =
