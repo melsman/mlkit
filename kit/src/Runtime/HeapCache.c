@@ -131,6 +131,9 @@ static Heap* newHeap(void)
   h->r0copy = NULL;
   h->r2copy = NULL;
   h->r3copy = NULL;
+  h->r4copy = NULL;
+  h->r5copy = NULL;
+  h->r6copy = NULL;
   h->sp = NULL;
   return h;
 }
@@ -181,6 +184,9 @@ void deleteHeap(Heap *h)
   freePages(h->r0copy);
   freePages(h->r2copy);
   freePages(h->r3copy);
+  freePages(h->r4copy);
+  freePages(h->r5copy);
+  freePages(h->r6copy);
   free(h);
 }
 
@@ -215,12 +221,21 @@ static void restoreHeap(Heap *h)
   if ( restoreRegion(h->r3copy) == -1 )
     die ("restoreHeap: failed to restore r3");
 
+  if ( restoreRegion(h->r4copy) == -1 )
+    die ("restoreHeap: failed to restore r4");
+
+  if ( restoreRegion(h->r5copy) == -1 )
+    die ("restoreHeap: failed to restore r5");
+
+  if ( restoreRegion(h->r6copy) == -1 )
+    die ("restoreHeap: failed to restore r6");
+
   h->status = HSTAT_CLEAN;
 }
 
 void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt)
 {
-  Ro *r0, *r2, *r3; 
+  Ro *r0, *r2, *r3, *r4, *r5, *r6; 
 
   if ( h->status != HSTAT_UNINITIALIZED )
     die ("initializeHeap: status <> HSTAT_UNINITIALIZED");
@@ -228,6 +243,9 @@ void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt)
   r0 = clearStatusBits(*(Ro**)(h->ds));
   r2 = r0+1;
   r3 = r0+2;
+  r4 = r0+3;
+  r5 = r0+4;
+  r6 = r0+5;
   
   h->sp = sp;
   h->exnPtr = exnPtr;
@@ -238,8 +256,10 @@ void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt)
   h->r0copy = copyRegion(r0);
   h->r2copy = copyRegion(r2);
   h->r3copy = copyRegion(r3);
+  h->r4copy = copyRegion(r4);
+  h->r5copy = copyRegion(r5);
+  h->r6copy = copyRegion(r6);
 
   h->status = HSTAT_CLEAN;
 }
-
 

@@ -88,7 +88,7 @@ functor RegionStatEnv(structure Name : NAME
 		     TyNameMap.add(TyName.tyName_WORD31, (0,[],0),
 		     TyNameMap.add(TyName.tyName_WORD32, (0,[],0),
 		     TyNameMap.add(TyName.tyName_LIST, (1,[E.PAIR_RT],0),
-				   (* the auxiliary region is for a pair; hence TOP_RT *)
+				   (* the auxiliary region is for a pair; hence PAIR_RT *)
 		     TyNameMap.add(TyName.tyName_FRAG, (1,[E.STRING_RT],0),
 				   (* the auxiliary region is for a string; hence STRING_RT *)
 		     TyNameMap.add(TyName.tyName_CHARARRAY, (0,[],0),
@@ -184,104 +184,6 @@ functor RegionStatEnv(structure Name : NAME
 				     (Con.con_ANTIQUOTE, antiquote_sigma)]
     end
 
-(*
-
-    local  (* types of built-in lvars *)
-
-      fun lookup_tyname tyname = TyNameMap.lookup tyname_env0 tyname (* 17/10/96-Martin *)
-
-      val (mkTy, mkMu) = R.freshType lookup_tyname
-
-      fun mkMus(taus,B) =
-	  case taus of [] => ([], B)
-	  | tau::rest => 
-	     let val (mu', B) = mkMu(tau,B)
-		 val (mus',B) = mkMus(rest,B)
-	     in
-		 (mu'::mus', B)
-	     end	
-      val B0 = E.initCone
-      val lev0 = E.level B0
-
-      (* exoClos(B, tau1, tau2): make an type scheme for exomorphism of
-	 LambdaExp type tau1 -> tau2. In the resulting region type scheme,
-	 there will be a Get on each region variable in the domain type
-	 and a Put on each region variable in the result type. *)
-
-      fun exoClos(B,taus1,taus2) = 
-	   let val B = E.push B0
-	       val (mus1,B) = mkMus(taus1,B)
-	       val (mus2,B) = mkMus(taus2,B)
-	       val ann1 = R.ann_mus mus1 []
-	       val ann2 = R.ann_mus mus2 []
-	       val (eps,B) = E.freshEps B
-	       val _ = app (fn rho => E.edge(eps,E.mkGet rho)) ann1
-	       val _ = app (fn rho => E.edge(eps,E.mkPut rho)) ann2
-	       val (B, sigma, msg) = R.regEffClos(B, lev0, E.empty, R.FUN(mus1,eps,mus2))
-	       val (_, B) = E.pop B
-
-	       (* evaluate eps *)
-	       val _ = E.eval_phis [eps] 
-	   in sigma
-	   end
-
-      fun cl(taus,tau) = exoClos(B0, taus, [tau])
-
-      val Int31 = L.int31Type
-      val Int32 = L.int32Type
-      val Real = L.realType
-      val Bool = L.boolType
-      val Unit = L.unitType
-
-      val int2bool = cl([Int],Bool)
-      val int2int = cl([Int],Int)
-      val int2real = cl([Int], Real)
-      val intXint2int = cl([Int,Int],Int)
-      val intXint2bool = cl([Int,Int],Bool)
-      val real2int = cl([Real],Int)
-      val real2real = cl([Real],Real)
-      val realXreal2bool = cl([Real,Real],Bool)
-      val realXreal2real = cl([Real,Real],Real)
-
-      val lvars_and_sigmas_functions = 
-	let open Lvar 
-	in [             (* Compiler-supported primitives; see SpreadExpression *)
-
-	  (plus_int_lvar, intXint2int),                  (* integer operations *)
-	  (minus_int_lvar, intXint2int),
-	  (mul_int_lvar, intXint2int),
-	  (negint_lvar, int2int),
-	  (absint_lvar, int2int),
-	  (less_int_lvar, intXint2bool),
-	  (lesseq_int_lvar, intXint2bool),
-	  (greater_int_lvar, intXint2bool),
-	  (greatereq_int_lvar, intXint2bool),
-
-	  (plus_float_lvar, realXreal2real),             (* real operations *)
-	  (minus_float_lvar, realXreal2real),
-	  (mul_float_lvar, realXreal2real),
-	  (negfloat_lvar, real2real),
-	  (absfloat_lvar, real2real),
-	  (less_float_lvar, realXreal2bool),
-	  (greater_float_lvar, realXreal2bool),
-	  (lesseq_float_lvar, realXreal2bool),
-	  (greatereq_float_lvar, realXreal2bool)
-	 ]
-       end (* open Lvar *)
-
-    in
-
-    val lvar_env00 = LvarMap.empty
-
-    val lvar_env0 = 
-       foldl (fn ((lvar,sigma), env) =>
-			LvarMap.add(lvar,(true,false,sigma,E.toplevel_region_withtype_top,NONE,NONE):lvar_env_range, env))
-		  lvar_env00
-		  lvars_and_sigmas_functions
-
-    end
-
-*)
     val excon_env0 = ExconMap.fromList 
       (map (fn excon => (excon, (R.exnType,E.toplevel_region_withtype_top)))
        [Excon.ex_DIV, Excon.ex_MATCH,

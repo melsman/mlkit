@@ -33,6 +33,9 @@ typedef struct heap {
   RegionCopy *r0copy;       // rtype top
   RegionCopy *r2copy;       // rtype pair
   RegionCopy *r3copy;       // rtype string
+  RegionCopy *r4copy;       // rtype array
+  RegionCopy *r5copy;       // rtype ref
+  RegionCopy *r6copy;       // rtype triple
   int *sp;                  // stack pointer
   int *exnPtr;
   unsigned long exnCnt;

@@ -1,5 +1,9 @@
 ML Kit NEWS file
 
+ * mael 2003-05-14: Added three new distinct region types to allow 
+   for generational garbage collection of regions with untagged 
+   pairs, untagged triples, and untagged references.
+
  * mael 2003-05-13: Reals now only take up three words (instead of
    four) when tagging is enabled.
 

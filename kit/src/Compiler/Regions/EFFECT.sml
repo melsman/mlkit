@@ -3,6 +3,8 @@ signature EFFECT =
 sig
 
   datatype runType = WORD_RT | STRING_RT | PAIR_RT | TOP_RT | BOT_RT
+                   | ARRAY_RT | REF_RT | TRIPLE_RT
+
   val is_wordsize: runType -> bool
   val ord_runType: runType -> int
   val show_runType: runType -> string
@@ -74,6 +76,9 @@ sig
   val toplevel_region_withtype_bot    : effect
   val toplevel_region_withtype_string : effect
   val toplevel_region_withtype_pair   : effect
+  val toplevel_region_withtype_array  : effect
+  val toplevel_region_withtype_ref    : effect
+  val toplevel_region_withtype_triple : effect
   val toplevel_arreff : effect
 
   val push: cone -> cone

@@ -243,7 +243,7 @@ functor Compile(structure Excon : EXCON
      * ----------------------------------------- *)
 
     local 
-      val effect_init = ref 6   (* there are six free variables (global_regions) in init_rse. *)
+      val effect_init = ref 9   (* there are six free variables (global_regions) in init_rse. *)
       val effect_count = ref (!effect_init)
     in
       fun effect_counter() = (effect_count := !effect_count + 1; !effect_count)

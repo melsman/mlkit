@@ -25,12 +25,15 @@ signature ADDRESS_LABELS =
     val reg_bot_lab : label             (* label 1 *)
     val reg_string_lab : label          (* label 2 *)
     val reg_pair_lab : label            (* label 3 *)
+    val reg_array_lab : label           (* label 4 *)
+    val reg_ref_lab : label             (* label 5 *)
+    val reg_triple_lab : label          (* label 6 *)
 
-    val exn_DIV_lab : label             (* label 4 *)
-    val exn_MATCH_lab : label           (* label 5 *)
-    val exn_BIND_lab : label            (* label 6 *)
-    val exn_OVERFLOW_lab : label        (* label 7 *)
-    val exn_INTERRUPT_lab : label       (* label 8 *)
+    val exn_DIV_lab : label             (* label 7 *)
+    val exn_MATCH_lab : label           (* label 8 *)
+    val exn_BIND_lab : label            (* label 9 *)
+    val exn_OVERFLOW_lab : label        (* label 10 *)
+    val exn_INTERRUPT_lab : label       (* label 11 *)
 
   end
 

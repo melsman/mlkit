@@ -23,37 +23,7 @@ functor Name(structure Crash : CRASH) : NAME =
 
     (* Bucket for generated names *)
     val bucket = ref ([] : name list) 
-(*
-    local val init = ref 0
-          val count = ref (!init)
-    in
-       fun reset() = count := (!init)
-       fun commit () = init := (!count)
-       fun new () : name = 
-	 let val key = ref (!count)
-	     val name = {key = key, mark = ref false}
-	 in bucket := name :: !bucket;
-	    count := !count + 1; name
-	 end
-    end
 
-    fun mark_gen ({mark=ref true,...} : name) = ()
-      | mark_gen ({mark,...} : name) = mark := true
-    fun unmark_gen ({mark=ref false,...} : name) = ()
-      | unmark_gen ({mark,...} : name) = mark := false
-
-    fun is_gen ({mark=ref true,...}: name) = true
-      | is_gen _ = false
-
-    fun match ({key,mark=m as ref true}:name, 
-	       {key=key',mark=m' as ref true}:name) = 
-      (key := (!key'); m := false; m' := false)
-      | match _ = () 
-      
-      (* match(n,n')  matches n to n' if both n and n' are
-       * marked generative. After a succeding match, n and n' 
-       * are unmarked. *)
-*)
     local val c = ref 0
           fun incr() = let val a = !c
 		       in c:= a + 1; a
@@ -99,11 +69,14 @@ functor Name(structure Crash : CRASH) : NAME =
     val reg_bot = new_rigid()             (* name 1 *)
     val reg_string = new_rigid()          (* name 2 *)
     val reg_pair = new_rigid()            (* name 3 *)
+    val reg_array = new_rigid()           (* name 4 *)
+    val reg_ref = new_rigid()             (* name 5 *)
+    val reg_triple = new_rigid()          (* name 6 *)
 
-    val exn_DIV = new_rigid()             (* name 4 *)
-    val exn_MATCH = new_rigid()           (* name 5 *)
-    val exn_BIND = new_rigid()            (* name 6 *)
-    val exn_OVERFLOW = new_rigid()        (* name 7 *)
-    val exn_INTERRUPT = new_rigid()       (* name 8 *)
+    val exn_DIV = new_rigid()             (* name 7 *)
+    val exn_MATCH = new_rigid()           (* name 8 *)
+    val exn_BIND = new_rigid()            (* name 9 *)
+    val exn_OVERFLOW = new_rigid()        (* name 10 *)
+    val exn_INTERRUPT = new_rigid()       (* name 11 *)
 
   end

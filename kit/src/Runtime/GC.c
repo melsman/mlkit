@@ -300,16 +300,19 @@ static void mk_from_space() {
 
     /* Move region pages to from-space */
     (((Klump *)r->b)-1)->n = from_space_begin;
-    from_space_begin = clear_pairregion(r->fp);
+    from_space_begin = clear_rtype(r->fp);
 
     /* Allocate new region page */
-    if ( is_pairregion(r) )
-      {
+    {
+      int rt;
+      if ( rt = rtype(r) )
+	{
+	  r->fp = NULL;
+	  set_rtype(r,rt);
+	}
+      else
 	r->fp = NULL;
-	set_pairregion(r);
-      }
-    else
-      r->fp = NULL;
+    }
     alloc_new_block(r);
   }
 
@@ -442,7 +445,7 @@ allocated_bytes_in_pairregion(Ro* r)
 {
   Klump* rp;
   int n = 0;
-  for ( rp = clear_pairregion(r->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
+  for ( rp = clear_rtype(r->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
     {
       if ( clear_tospace_bit(rp->n) )
 	n += 4 * ALLOCATABLE_WORDS_IN_REGION_PAGE;  // not last page
@@ -459,10 +462,13 @@ allocated_bytes_in_regions(void)
   Ro* r;
   for ( r = TOP_REGION ; r ; r = r->p )
     {
-      if ( is_pairregion(r) )
+      switch (rtype(r)) {
+      case RTYPE_PAIR:
 	n += allocated_bytes_in_pairregion(r);
-      else 
+	break;
+      default:
 	n += allocated_bytes_in_region(r);
+      }
     }
   return n;
 }
@@ -628,7 +634,8 @@ evacuate(unsigned int obj)
   // Object is in an infinite region
   r = rp->r;
 
-  if ( is_pairregion(r) )
+  switch ( rtype(r) ) {
+  case RTYPE_PAIR:
     {
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
 	{
@@ -636,12 +643,12 @@ evacuate(unsigned int obj)
 	}
       new_obj_ptr = acopy_pair(r, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
+      break;
     }
-  else 
+  default:   // Object is tagged 
     {
-      // Object is tagged 
       if ( is_forward_ptr(*obj_ptr) ) 
-	{                                      // object already copied
+	{                                       // object already copied
 	  if ( points_into_tospace(*obj_ptr) )
 	    {
 	      return clear_forward_ptr(*obj_ptr);             
@@ -649,8 +656,9 @@ evacuate(unsigned int obj)
 	  die ("forward ptr check failed\n");
 	}
       new_obj_ptr = acopy(r, obj_ptr);
-      *obj_ptr = tag_forward_ptr(new_obj_ptr); // install forward pointer
+      *obj_ptr = tag_forward_ptr(new_obj_ptr);  // install forward pointer
     }
+  }
   if ( is_status_NONE(r) ) 
     {
 #ifdef PROFILING 
@@ -741,8 +749,9 @@ do_scan_stack()
       /* Get Region Page and Region Descriptor */
       rp = get_rp_header(s);
       r = rp->r;
-
-      if ( is_pairregion(r) )
+      
+      switch ( rtype(r) ) {
+      case RTYPE_PAIR:
 	{
 	  while ( ((int *)s+1) != r->a ) 
 	    {
@@ -763,8 +772,9 @@ do_scan_stack()
 		  s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE - 1;
 		}
 	    }
+	  break;
 	}
-      else
+      default:
 	{
 	  while ( ((int *)s) != r->a ) 
 	    {
@@ -784,6 +794,7 @@ do_scan_stack()
 		}
 	    }
 	}
+      }
       set_status_NONE(r);
     }
   }
@@ -1013,7 +1024,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 
   // Unmark all tospace bits in region pages in regions on the stack
   for( r = TOP_REGION ; r ; r = r->p ) 
-    for ( p = clear_pairregion(r->fp) ; p ; p = p->n ) 
+    for ( p = clear_rtype(r->fp) ; p ; p = p->n ) 
       {
 	if ( is_tospace_bit(p->n) ) { 
 	  // check that all region pages have their tospace bit set

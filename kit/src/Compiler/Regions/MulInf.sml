@@ -1077,7 +1077,10 @@ struct
 		  val reg_stack : place list list ref = ref 
 		      [[Eff.toplevel_region_withtype_top,
 			Eff.toplevel_region_withtype_string,
-			Eff.toplevel_region_withtype_pair]]
+			Eff.toplevel_region_withtype_pair,
+			Eff.toplevel_region_withtype_array,
+			Eff.toplevel_region_withtype_ref,
+			Eff.toplevel_region_withtype_triple]]
 	      in
 		  fun push_lv lv : unit = fix_stack := (lv :: (!fix_stack))
 		  fun pop_lv() : unit =

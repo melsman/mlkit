@@ -29,8 +29,13 @@ struct
 	 \       regions are dropped from the program because word\n\
 	 \       values are represented unboxed.\n\
 	 \    p  Type of regions containing pairs.\n\
-	 \    s  Type of regions containing only strings.\n\
-	 \    t  Type of regions containing other than the above\n\
+	 \    a  Type of regions containing arrays.\n\
+	 \    r  Type of regions containing references.\n\
+	 \    t  Type of regions containing triples.\n\
+	 \    s  Type of regions containing strings.\n\
+	 \    B  Type of regions associated with type variables.\n\
+	 \       Regions of this type do not exist at runtime.\n\
+	 \    T  Type of regions containing other than the above\n\
 	 \       kinds of values."}
 
   val print_regions = Flags.add_bool_entry
@@ -60,12 +65,16 @@ struct
     | noSome(SOME v, _) = v
 
   datatype runType = WORD_RT | STRING_RT | PAIR_RT | TOP_RT | BOT_RT
+                   | ARRAY_RT | REF_RT | TRIPLE_RT
 
   fun ord_runType WORD_RT = 0
     | ord_runType STRING_RT = 1
     | ord_runType PAIR_RT = 2
-    | ord_runType TOP_RT = 3
-    | ord_runType BOT_RT = 4
+    | ord_runType ARRAY_RT = 3
+    | ord_runType REF_RT = 4
+    | ord_runType TRIPLE_RT = 5
+    | ord_runType TOP_RT = 6
+    | ord_runType BOT_RT = 7
 
   fun is_wordsize WORD_RT = true
     | is_wordsize _ = false
@@ -75,20 +84,17 @@ struct
            WORD_RT => "w"
          | PAIR_RT => "p"
          | STRING_RT => "s"
-         | TOP_RT => "t"
-         | BOT_RT => "b"
+	 | ARRAY_RT => "a"
+	 | REF_RT => "r"
+	 | TRIPLE_RT => "t"
+         | TOP_RT => "T"
+         | BOT_RT => "B"
 
   fun lub_runType(rt1,rt2) = 
       if rt1 = rt2 then rt1
       else if rt1 = BOT_RT then rt2
       else if rt2 = BOT_RT then rt1
-      else 
-	die ("Trying to unify runtype " ^ show_runType rt1 ^ " with runtype " ^ show_runType rt2)
-(*
-      if rt1 = WORD_RT orelse rt2 = WORD_RT 
-           then die "cannot unify word runtype region with other region"
-      else TOP_RT (* mael: shouldn't this be "die"? *)
-*)
+      else die ("Trying to unify runtype " ^ show_runType rt1 ^ " with runtype " ^ show_runType rt2)
 
   type key = int ref (* for printing and sorting of nodes *)
   fun show_key(ref i) = Int.toString i
@@ -96,10 +102,10 @@ struct
 
   fun key_lt(ref i, ref (j:int)) = i<j
 
-  fun show_key(ref i ) = Int.toString i
+  fun show_key(ref i) = Int.toString i
 
   type level = int ref (* for stratification of cones *)
-  fun show_level(ref i ) = Int.toString i
+  fun show_level(ref i) = Int.toString i
   fun layout_level(l) = PP.LEAF(show_level l)
 
 
@@ -134,10 +140,7 @@ struct
 		   (if print_rho_types() then show_runType ty
 		    else "") ^ 
 		   (if print_rho_levels() then "(" ^ show_level level ^ ")" 
-		    else "")(*^
-                   (if print_rho_types() then 
-		      case put of SOME _ => "$" | NONE => ""
-		    else "")*)
+		    else "")
                   )
 
   type effect = einfo G.node 
@@ -155,8 +158,8 @@ struct
 
   fun is_arrow_effect effect =  (* effect node not necessarily canonical *)
      case G.find_info  effect of
-       EPS _ => true
-    | _ => false
+	 EPS _ => true
+       | _ => false
 
 
   fun is_union(UNION _) = true
@@ -164,8 +167,8 @@ struct
 
   fun is_rho effect =
      case G.find_info effect of (* effect node not necessarily canonical *)
-       RHO _ => true
-    | _ => false
+	 RHO _ => true
+       | _ => false
 
   (* acc_rho effect acc conses effect onto acc iff
      acc is a RHO node which has a put effect on it.
@@ -173,12 +176,11 @@ struct
      (Such a region should not be dropped - see DropRegions.drop_places *)
 
   fun acc_rho effect (acc: effect list): effect list =
-  let val effect = G.find effect
-  in
-    case (G.find_info effect, G.get_visited effect) of
-      (RHO{put = SOME _, ...}, r as ref false) => (r:= true; effect::acc)
-    | _ => acc
-  end
+      let val effect = G.find effect
+      in  case (G.find_info effect, G.get_visited effect) of
+	      (RHO{put = SOME _, ...}, r as ref false) => (r:= true; effect::acc)
+	    | _ => acc
+      end
 
   fun is_put effect =           (* effect node not necessarily canonical *)
      case G.find_info effect of
@@ -286,30 +288,15 @@ struct
           new
       end
 
-  fun mkEps(level,key) = G.mk_node(EPS{key = ref key, level = ref level, represents = NONE, pix = ref ~1, instance = ref NONE})
-
+  fun mkEps(level,key) = G.mk_node(EPS{key = ref key, level = ref level, 
+				       represents = NONE, pix = ref ~1, 
+				       instance = ref NONE})
   fun find node = G.find node
 
   fun setInstance(node,node') =  (* see explanation in signature *)
       get_instance node := SOME node'
 
   fun clearInstance(node,_) = get_instance node := NONE
-
-(*
-  fun remove_duplicates effects =
-    let fun loop([], acc) = acc
-          | loop(effect::rest, acc) =
-              let val r = (G.get_visited effect)
-              in if !r then loop(rest,acc)
-                 else (r:= true; loop(rest, effect::acc))
-              end
-
-        val effects = map find effects
-    in
-        loop(effects,[])
-          footnote app (fn node => G.get_visited node:= false) effects
-    end
-*)
 
   fun remove_duplicates effects =
     let fun loop([], acc) = acc
@@ -636,7 +623,7 @@ struct
       (topLayer cone, #2(pop cone))    
 
   local
-    val init_count = ref 6    (* 6 top-level predefined rhos/eps declared below! *)
+    val init_count = ref 9    (* 9 top-level predefined rhos/eps declared below! *)
     val count = ref 0
     fun inc r = r:= !r + 1;
   in
@@ -769,27 +756,31 @@ struct
     
       fun freshRhoWithWordTy(cone:cone as (n, c)): effect * cone =
 	let val key = freshInt()
-	  val empty = G.mk_node WORDEFFECT 
-            val node =G.mk_node(RHO{key = ref key, level = ref n, 
+	    val empty = G.mk_node WORDEFFECT 
+	    val node =G.mk_node(RHO{key = ref key, level = ref n, 
 				    put = SOME empty, get = SOME empty, instance = ref NONE, 
 				    pix = ref ~1, ty = WORD_RT})
         in (node, add(node, n, key, cone))
 	end
   in
     
-    val (toplevel_region_withtype_top, initCone) = freshRhoWithTy(TOP_RT,push emptyCone)
-    val (toplevel_region_withtype_word, initCone) = freshRhoWithWordTy(initCone)
-    val (toplevel_region_withtype_bot, initCone) = freshRhoWithTy(BOT_RT,initCone)
-    val (toplevel_region_withtype_string, initCone) = freshRhoWithTy(STRING_RT,initCone)
-    val (toplevel_region_withtype_pair, initCone) = freshRhoWithTy(PAIR_RT,initCone)
-    val (toplevel_arreff, initCone) = freshEps(initCone)
+    val (toplevel_region_withtype_top, initCone) = freshRhoWithTy(TOP_RT,push emptyCone)   (*1*)
+    val (toplevel_region_withtype_word, initCone) = freshRhoWithWordTy(initCone)           (*2*)
+    val (toplevel_region_withtype_bot, initCone) = freshRhoWithTy(BOT_RT,initCone)         (*3*)
+    val (toplevel_region_withtype_string, initCone) = freshRhoWithTy(STRING_RT,initCone)   (*4*)
+    val (toplevel_region_withtype_pair, initCone) = freshRhoWithTy(PAIR_RT,initCone)       (*5*)
+    val (toplevel_region_withtype_array, initCone) = freshRhoWithTy(ARRAY_RT,initCone)     (*6*)
+    val (toplevel_region_withtype_ref, initCone) = freshRhoWithTy(REF_RT,initCone)         (*7*)
+    val (toplevel_region_withtype_triple, initCone) = freshRhoWithTy(TRIPLE_RT,initCone)   (*8*)
+    val (toplevel_arreff, initCone) = freshEps(initCone)                                   (*9*)
 
   end
 
   val _ =
     let val toplevel_rhos = [toplevel_region_withtype_top, (*toplevel_region_withtype_word, ME 1998-09-03*)
 			     toplevel_region_withtype_bot, toplevel_region_withtype_string,
-			     toplevel_region_withtype_pair]
+			     toplevel_region_withtype_pair, toplevel_region_withtype_array,
+			     toplevel_region_withtype_ref, toplevel_region_withtype_triple]
         val puts = map mkPut toplevel_rhos
         val gets = map mkGet toplevel_rhos
     in app (fn to => edge(find toplevel_arreff,find to)) (puts@gets)
@@ -809,6 +800,9 @@ struct
 	    | BOT_RT => freshRhoWithTy p (* toplevel_region_withtype_bot *)
 	    | STRING_RT => (toplevel_region_withtype_string,cone)
 	    | PAIR_RT => (toplevel_region_withtype_pair,cone)
+	    | ARRAY_RT => (toplevel_region_withtype_array,cone)
+	    | REF_RT => (toplevel_region_withtype_ref,cone)
+	    | TRIPLE_RT => (toplevel_region_withtype_triple,cone)
 	    | WORD_RT => die "maybeFreshRhoWithTy.not possible"
 
   val freshRhoWithTy = fn (WORD_RT,cone) => (toplevel_region_withtype_word, cone)
@@ -1057,7 +1051,7 @@ tracing *)
     case (einfo1, einfo2) 
       of (RHO{level = l1, put = p1, get = g1,key=k1,instance=instance1, pix = pix1,ty = t1}, 
 	  RHO{level=l2,put=p2,get=g2,key=k2, instance = instance2, pix = pix2, ty = t2}) =>
-       if !k1<> !k2 andalso (!k1 < 6 andalso !k2 < 6) 
+       if !k1 <> !k2 andalso (!k1 < 9 andalso !k2 < 9) 
           orelse !k1 = 3 andalso t2<>BOT_RT
           orelse !k2 = 3 andalso t1<>BOT_RT
          then 
@@ -1086,10 +1080,6 @@ tracing *)
 			 | _ => die ("aux_combine: (a,b) = (" ^ PP.flatten1 (layout_einfo a) ^ ", " ^
 				     PP.flatten1 (layout_einfo b) ^ ")\n"))
 	     (G.find n1, G.find n2))
-(*
-	SOME(G.union_left (fn (putOrGet1,putOrGet2) => putOrGet1)
-	     (G.find n1, G.find n2))
-*)
 
   fun mkSameLevel(node1, node2) (cone) : cone = 
        (* node1 and node2 must both be either EPS nodes or RHO nodes *)
@@ -1137,12 +1127,6 @@ tracing *)
 
   fun unifyRho_no_lowering(r1,r2) : unit =
     unifyNodes_no_lowering (G.union einfo_combine_rho) (r1,r2)
-      
-
-  (* unifyEps(eps_node1, eps_node2) cone : cone
-     First lower eps_node1 and eps_node2 to the same level; then union
-     the two nodes without duplication of out-edges.
-  *)
 
   fun unifyEps(eps_node1, eps_node2) cone : cone = 
     unifyNodes(G.union_without_edge_duplication 
@@ -1538,6 +1522,9 @@ tracing *)
 	     | SOME BOT_RT =>    union_with(toplevel_region_withtype_bot)
 	     | SOME STRING_RT => union_with(toplevel_region_withtype_string)
 	     | SOME PAIR_RT =>   union_with(toplevel_region_withtype_pair)    
+	     | SOME ARRAY_RT =>  union_with(toplevel_region_withtype_array)    
+	     | SOME REF_RT =>    union_with(toplevel_region_withtype_ref)    
+	     | SOME TRIPLE_RT => union_with(toplevel_region_withtype_triple)    
 	     | NONE => die "unify_with_toplevel_effect.no runtype info"
 	else die "unify_with_toplevel_effect.not rho or eps"
     end    

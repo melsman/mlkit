@@ -788,7 +788,7 @@ good *)
 *)
         let
           val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,e1, false, NOTAIL)
-          val (rho_new, B) = (*Eff.*)freshRhoWithTy(Eff.TOP_RT, B)
+          val (rho_new, B) = (*Eff.*)freshRhoWithTy(Eff.REF_RT, B)
           val phi = (*Eff.*)mkUnion([(*Eff.*)mkPut rho_new, phi1])
           val mus = [(R.CONSTYPE(TyName.tyName_REF, mus1,[],[]),rho_new)]
         in

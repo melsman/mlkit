@@ -206,9 +206,9 @@ labelMapLookup(LabelMap* labelMap, unsigned long label)
   return (unsigned long)0;
 }
 
-/* Global regions 0-3 and global exception 
- * constructors 4-8 are allocated in data segment */
-#define INTERP_INITIAL_DATASIZE 9
+/* Global regions 0-6 and global exception 
+ * constructors 7-11 are allocated in data segment */
+#define INTERP_INITIAL_DATASIZE 12
 
 /* Create a new interpreter:
  *   - We could perhaps allocate the interpreter stack when 
@@ -778,16 +778,19 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
       // GLOBAL_REGION(1);   // rtype bot
       GLOBAL_REGION(2);   // rtype pair
       GLOBAL_REGION(3);   // rtype string
+      GLOBAL_REGION(4);   // rtype array
+      GLOBAL_REGION(5);   // rtype ref
+      GLOBAL_REGION(6);   // rtype triple
 
       // Initialize primitive exceptions
-      GLOBAL_EXCON(4,"Div");     // uses ds, modifies sp
-      GLOBAL_EXCON(5,"Match");
-      GLOBAL_EXCON(6,"Bind");
-      GLOBAL_EXCON(7,"Overflow");
-      GLOBAL_EXCON(8,"Interrupt");
+      GLOBAL_EXCON(7,"Div");     // uses ds, modifies sp
+      GLOBAL_EXCON(8,"Match");
+      GLOBAL_EXCON(9,"Bind");
+      GLOBAL_EXCON(10,"Overflow");
+      GLOBAL_EXCON(11,"Interrupt");
 
-      exn_OVERFLOW = (Exception*)**(unsigned long**)(ds+7);
-      exn_INTERRUPT = (Exception*)**(unsigned long**)(ds+8);
+      exn_OVERFLOW = (Exception*)**(unsigned long**)(ds+10);
+      exn_INTERRUPT = (Exception*)**(unsigned long**)(ds+11);
 
       // Push global exception handler on the stack
       pushDef((unsigned long)exit_code);         // push return address on stack
@@ -839,7 +842,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
     (int*)ds = h->ds;
     (int*)exnPtr = h->exnPtr;
     exnCnt = h->exnCnt;
-    topRegion = h->r3copy->r;
+    topRegion = h->r6copy->r;
 
     touchHeap(h);
 
