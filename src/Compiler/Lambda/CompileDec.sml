@@ -2253,11 +2253,36 @@ end; (*match compiler local*)
 	    | CE.LESSEQ =>    overloaded_prim info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false []
 	    | CE.GREATEREQ => overloaded_prim info CE.GREATEREQ (compileAtexp env) (compileExp env) arg false []
 	    | CE.PRIM => compile_application_of_prim env info arg
-     
-	    | _ (*CON/EXCON*) => let val f' = compileExp env f
-	                             val arg' = compileAtexp env arg
-				 in APP(f',arg')
-				 end
+
+	    | CE.CON(con,tyvars,tau0,il) => (*See COMPILER_ENV*)
+	       let
+		 val instances = 
+		   case to_TypeInfo info 
+		     of SOME (TypeInfo.CON_INFO{instances,...}) => instances
+		      | SOME (TypeInfo.VAR_INFO{instances}) => instances
+		      | _ => die "compileAtexp(CON..): no type info"
+		 val instances' = map compileType instances
+		 val S = mk_subst (fn () => "CompileDec.CON") (tyvars, instances')
+		 val il' = on_il(S,il)
+	       in PRIM(CONprim{con=con, instances=il'},
+		       [compileAtexp env arg])
+	       end
+	    | CE.REF =>
+	       let val instance =
+		     case to_TypeInfo info 
+		       of SOME (TypeInfo.CON_INFO{instances=[instance],...}) => instance
+			| _ => die "compileAtexp(REF..): wrong type info"
+		   val instance' = compileType instance
+	       in PRIM(REFprim {instance=instance'},
+		       [compileAtexp env arg])
+	       end
+	    | CE.EXCON (excon,_) => PRIM(EXCONprim excon, [compileAtexp env arg])
+(*
+	    | _ => let val f' = compileExp env f
+		       val arg' = compileAtexp env arg
+		   in APP(f',arg')
+		   end
+*)
             ) (*fun compile_application_of_ident*)
 
 

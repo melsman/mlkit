@@ -1,5 +1,11 @@
 ML Kit NEWS file
 
+ * mael 2002-11-08: Implemented uncurrying of functions. This
+   optimization has an important impact on execution times of compiled
+   programs. The optimization is safe-for space w.r.t. the region-based
+   memory management. The optimization can be disabled with the option
+   -no_uncurry.
+
  * mael 2002-11-05: Improved pattern-match compilation. The generated
    code now shares (in most cases) the extraction of values from the
    root node in a match.

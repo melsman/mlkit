@@ -1,10 +1,13 @@
 all: test_kam test_mlkit
 
-tp:
-#	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-gc: -o tp2.html tp.tst)' | tcsh -s
-	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-gc -tag_pairs: -mlkit:-gc: -o tp.html tp.tst)' | tcsh -s
+bench_uc:
+	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-scratch -no_uncurry: -mlkit -o uc3.html tp.tst)' | tcsh -s
 
-dangle:
+bench_tp:
+	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-gc: -o tp3.html tp.tst)' | tcsh -s
+#	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-gc -tag_pairs: -mlkit:-gc: -o tp.html tp.tst)' | tcsh -s
+
+bench_dangle:
 	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-no_dangle -scratch -dangling_pointers_statistics: -mlkit -mlkit:-gc: -o dangle.html dangle.tst)' | tcsh -s
 
 smallbench:
