@@ -90,9 +90,6 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun panicDml (f_panic: quot -> 'a) (q: quot) : unit =
       ((dml q; ()) handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
 
-(*    fun errorDml (f_error: unit -> 'a) (q: quot) : unit =
-      ((dml q; ()) handle X => (f_error(); ()))*)
-
     fun dmlTrans (f: db -> 'a) : 'a =
       let 
 	val db = getHandle()
@@ -121,9 +118,6 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	    end
 	else res
       end
-
-(*    fun selectDb (db: db, q: quot) : Set.set =
-	prim("@Ns_DbSelect", (#2 db, quotToString q))*)
 
     fun getRowDb (db : db, s : Set.set) : status =
       prim("@Ns_DbGetRow", (#2 db, s))
@@ -315,32 +309,45 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 
     fun qq' s = concat ["'", qq s, "'"]
 
-    fun toDate s = 
-      let
-	fun mthToName mth =
-	  case mth of
-	    1 => Date.Jan
-	  | 2 => Date.Feb
-	  | 3 => Date.Mar
-	  | 4 => Date.Apr
-	  | 5 => Date.May
-	  | 6 => Date.Jun
-	  | 7 => Date.Jul
-	  | 8 => Date.Aug
-	  | 9 => Date.Sep
-	  | 10 => Date.Oct
-	  | 11 => Date.Nov
-	  | 12 => Date.Dec
-	  | _ => raise Fail ("DbFunctor.toDate: " ^ (Int.toString mth))
-      in
-	(case (RegExp.extract o RegExp.fromString) "([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9])" s of
+    local
+      fun mthToName mth =
+	case mth of
+	  1 => Date.Jan
+	| 2 => Date.Feb
+	| 3 => Date.Mar
+	| 4 => Date.Apr
+	| 5 => Date.May
+	| 6 => Date.Jun
+	| 7 => Date.Jul
+	| 8 => Date.Aug
+	| 9 => Date.Sep
+	| 10 => Date.Oct
+	| 11 => Date.Nov
+	| 12 => Date.Dec
+	| _ => raise Fail ("DbFunctor.toDate: " ^ (Int.toString mth))
+    in
+      fun toDate s = 
+	(case (RegExp.extract o RegExp.fromString) "([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9]).*" s of
 	   SOME [yyyy,mm,dd] => SOME (Date.date{year=Option.valOf (Int.fromString yyyy),
 						month=mthToName (Option.valOf (Int.fromString mm)),
 						day=Option.valOf (Int.fromString dd),
 						hour=0,minute=0,second=0,offset=NONE})
 	 | _ => NONE)
-      end
-    handle _ => NONE
+	   handle _ => NONE
+
+      fun toTimestamp t =
+	(case (RegExp.extract o RegExp.fromString) "([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9]) ([0-9][0-9]):([0-9][0-9]):([0-9][0-9]).*" t of
+	   SOME [yyyy,mm,dd,h,m,s] => SOME (Date.date{year=Option.valOf (Int.fromString yyyy),
+						      month=mthToName (Option.valOf (Int.fromString mm)),
+						      day=Option.valOf (Int.fromString dd),
+						      hour=Option.valOf(Int.fromString h),
+						      minute=Option.valOf(Int.fromString m),
+						      second=Option.valOf(Int.fromString s),
+						      offset=NONE})
+	 | _ => NONE)
+	   handle _ => NONE
+    end
+
 
     fun valueList vs = String.concatWith "," (List.map qq' vs)
     fun setList vs = String.concatWith "," (List.map (fn (n,v) => n ^ "=" ^ qq' v) vs)
@@ -376,6 +383,8 @@ structure NsDbBasicOra : NS_DB_BASIC =
     val endTrans = `end transaction`
     val rollback = `rollback`
     fun fromDate d = "to_date('" ^ (Date.fmt "%Y-%m-%d %H:%M:%S" d) ^ "','YYYY-MM-DD HH24:MI:SS')"
+    fun toTimestampExp d = "to_char(" ^ d ^ ",'YYYY-MM-DD HH24:MI:SS')"
+    val timestampType = "date"
   end
 
 structure NsDbBasicPG : NS_DB_BASIC =
@@ -387,7 +396,9 @@ structure NsDbBasicPG : NS_DB_BASIC =
     val beginTrans = `begin`
     val endTrans = `commit`
     val rollback = `rollback`
-    fun fromDate d = Date.fmt "%Y-%m-%d %H:%M:%S" d
+    fun fromDate d = "'" ^ (Date.fmt "%Y-%m-%d %H:%M:%S" d) ^ "'"
+    fun toTimestampExp d = "to_char(" ^ d ^ ",'YYYY-MM-DD HH24:MI:SS')"
+    val timestampType = "datetime"
   end
 
 structure NsDbBasicMySQL : NS_DB_BASIC =
@@ -399,6 +410,8 @@ structure NsDbBasicMySQL : NS_DB_BASIC =
     val beginTrans = `begin`
     val endTrans = `commit`
     val rollback = `rollback`
-    fun fromDate d = Date.fmt "%Y-%m-%d %H:%M:%S" d  (* type DATETIME in MySQL *)
+    fun fromDate d = "'" ^ (Date.fmt "%Y-%m-%d %H:%M:%S" d) ^ "'"
+    fun toTimestampExp d = d (*"to_char(" ^ d ^ ",'YYYY-MM-DD HH24:MI:SS')"*)
+    val timestampType = "datetime"
   end
 
