@@ -1,3 +1,13 @@
+(* Things to do better:
+
+    - we should save the physical filename in both scs-folders and
+      scs-revisions so that there is no need for the function
+      getAbsPath. Its slow!!!
+      2003-11-09, nh
+
+*)
+
+
 signature SCS_FILE_STORAGE = 
   sig
     (* The File Storage system is case sensitive! *)
@@ -7,7 +17,8 @@ signature SCS_FILE_STORAGE =
     type folder_id = int
 
     datatype priv = 
-      read            (* may read files *)
+      no_priv         (* may not read files *)
+    | read            (* may read files *)
     | read_add        (* may read and add files *)
     | read_add_delete (* may read, add and delete files *)
     | admin           (* same as read_add_delete except that there 
@@ -37,6 +48,19 @@ signature SCS_FILE_STORAGE =
 		    max_filesize_bytes  : int,
 		    mime_types          : mime_type list} 
 
+    type file_type = {file_id                   : int,
+		      folder_id                 : int,
+		      revision_id               : int,
+		      filename                  : string,
+		      description               : string,
+		      filename_on_disk          : string,
+		      path_on_disk              : string,
+		      filesize                  : int,
+		      last_modified             : Date.date,
+		      last_modifying_user       : int,
+		      mime_type                 : mime_type}
+
+
     (* [getFsType root_label] Return the file storage type for the
         instance represented by root_label. Returns NONE if no
         instance exists.*)
@@ -52,7 +76,7 @@ signature SCS_FILE_STORAGE =
         builds the url used to return the file. The function
         fn_del_file takes a file_id as argument and generates the url
         to call when deleting the file. The argument upload_info_dict
-	contains a help message placed at right og the upload-button.*)
+	contains a help message placed at right of the upload-button.*)
     val uploadFolderForm : 
       root_label * folder_id * string * priv * (string * string) list * string * string * string * 
       (int -> string -> string -> string) * (int -> string) * ScsDict.dict -> (int * quot)
@@ -60,13 +84,29 @@ signature SCS_FILE_STORAGE =
     (* [uploadFile (db,user_id,folder_id,priv,fv_file,description)]
         uploads file represented by form variable fv_file with the
         given description. The file is uploaded to folder folder_id by
-        user_id. Privileges are checked (priv) *)
-    val uploadFile : Db.Handle.db * int * int * priv * string * string -> ScsFormVar.errs
+        user_id. Privileges are checked (priv). A file_id and physical
+        path and filename of uploaded file is returned. *)
+    val uploadFile : Db.Handle.db * int * int * priv * string * string -> int * string * ScsFormVar.errs
+
+    (* [storeFile
+        (db,user_id,folder_id,priv,phys_filename,db_filename,description)]
+        stores the file phys_filename with the given description. The
+        file is named db_filename in the database. The file is stored
+        in folder folder_id by user_id. Privileges are checked
+        (priv). A new file_id and a complete path to the new physical
+        file is returned. *)
+    val storeFile : Db.Handle.db * int * int * priv * string * string * string -> int * string * ScsFormVar.errs
+
+    (* [replaceFile (db,user_id,file:
+       file_type,priv,source_file,errs)] replaces the file described
+       by file with new source file. It's the latest revision that is
+       replaced. Privileges are checked (priv). *)
+    val replaceFile : Db.Handle.db * int * file_type * priv * string * ScsFormVar.errs -> ScsFormVar.errs
 
     (* [returnFile root_label file_id] returns the file file_id if
         exists in the given root_label; otherwise returns an error
         page to the user. The root_label increase security so that it
-        is required that file_id are actually in the instance named
+        is required that file_id is actually in the instance named
         root_label. *)
     val returnFile : root_label -> int -> unit
 
@@ -78,14 +118,35 @@ signature SCS_FILE_STORAGE =
         file_id) *)
     val getFileIdErr : string * ScsFormVar.errs -> int * ScsFormVar.errs
 
+    (* [getFilenameErr (fv_filename,errs)] returns the filename
+        represented by form variable fv_filename. *)
+    val getFilenameErr : string * ScsFormVar.errs -> string * ScsFormVar.errs
+
+    (* [getFilesizeErr (fv_filename,errs)] returns the file size
+        represented by form variable fv_filename. *)
+    val getFilesizeErr : string * ScsFormVar.errs -> int * ScsFormVar.errs
+
     (* [delFile db root_label (priv,file_id)] deletes the file file_id physically
         from the file storage, that is, removes the file from disk and
         delete rows in database *)
     val delFile : Db.Handle.db -> root_label -> priv * int -> unit
-
-   (* [getNumFilesInFolderId folder_id] returns the number of files in
-       folder - not counting subdirectories *)
+      
+    (* [getNumFilesInFolderId folder_id] returns the number of files in
+        folder - not counting subdirectories *)
     val getNumFilesInFolderId : Db.Handle.db -> folder_id -> int
+
+    (* [storeMultiformData (fv_filename,target_file,errs)] store an
+        uploaded file fv_filename in target_file. If unsuccessful an
+        error is appended to errs. *)
+    val storeMultiformData : string * string * ScsFormVar.errs -> ScsFormVar.errs
+
+    (* [getFilesInFolderId root_label folder_id] returns the files in
+        folder folder_id stored in the fs-instance root_label. *)
+    val getFilesInFolderId : string -> int -> file_type list
+
+    (* [getFileByFileId root_label file_id] returns the file
+        represented by file_id in fs-instance root_label. *)
+    val getFileByFileId : string -> int -> file_type option
   end
 
 structure ScsFileStorage :> SCS_FILE_STORAGE =
@@ -96,7 +157,8 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
     type folder_id = int
 
     datatype priv = 
-      read            (* may read files *)
+      no_priv         (* may not read files *)
+    | read            (* may read files *)
     | read_add        (* may read and add files *)
     | read_add_delete (* may read, add and delete files *)
     | admin           (* same as read_add_delete except that there are no restrictions on filesize etc. *)
@@ -237,31 +299,56 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		      file_ext            : string,
 		      file_icon           : string}
 
-    type file_type = {file_id             : int,
-		      folder_id           : int,
-		      revision_id         : int,
-		      filename            : string,
-		      description         : string,
-		      filename_on_disk    : string,
-		      filesize            : int,
-		      last_modified       : Date.date,
-		      last_modifying_user : int,
-		      mime_type           : mime_type}
+    type file_type = {file_id                   : int,
+		      folder_id                 : int,
+		      revision_id               : int,
+		      filename                  : string,
+		      description               : string,
+		      filename_on_disk          : string,
+		      path_on_disk              : string,
+		      filesize                  : int,
+		      last_modified             : Date.date,
+		      last_modifying_user       : int,
+		      mime_type                 : mime_type}
+
+    fun getPath (db,folder_id) = 
+      let
+	val arcs = 
+	  ScsError.wrapPanic
+	  (Db.Handle.listDb db (fn g => g "label"))
+	  ` select label
+	      from scs_fs_folders
+           connect by folder_id = prior parent_id
+             start with folder_id = '^(Int.toString folder_id)'`
+      in
+	String.concatWith "/" (List.rev arcs)
+      end
+
+    fun getAbsPath db folder_id =
+      ScsConfig.scs_file_storage_root() ^ "/" ^ 
+      ScsError.valOf (getRootLabelByFolderId(db,folder_id)) ^ "/" ^ 
+      getPath (db,folder_id)
 
     local
-      fun f g = {file_id = (ScsError.valOf o Int.fromString) (g "file_id"),
-		 folder_id = (ScsError.valOf o Int.fromString) (g "folder_id"),
-		 revision_id = (ScsError.valOf o Int.fromString) (g "revision_id"),
-		 filename = g "filename",
-		 description = g "description",
-		 filename_on_disk = g "filename_on_disk",
-		 filesize = (ScsError.valOf o Int.fromString) (g "filesize"),
-		 last_modified = (ScsError.valOf o Db.toDate) (g "last_modified"),
-		 last_modifying_user = (ScsError.valOf o Int.fromString) (g "last_modifying_user"),
-		 mime_type = {mime_type_id = (ScsError.valOf o Int.fromString) (g "mime_type_id"),
-			      mime_type = g "mime_type",
-			      file_ext = g "file_extension",
-			      file_icon = g "file_icon"}}
+      fun f g = 
+	let
+	  val folder_id = (ScsError.valOf o Int.fromString) (g "folder_id")
+	in
+	  {file_id = (ScsError.valOf o Int.fromString) (g "file_id"),
+	   folder_id = folder_id,
+	   revision_id = (ScsError.valOf o Int.fromString) (g "revision_id"),
+	   filename = g "filename",
+	   description = g "description",
+	   filename_on_disk = g "filename_on_disk",
+	   path_on_disk = Db.Handle.wrapDb getAbsPath folder_id, (* this is not efficient!!! *)
+	   filesize = (ScsError.valOf o Int.fromString) (g "filesize"),
+	   last_modified = (ScsError.valOf o Db.toDate) (g "last_modified"),
+	   last_modifying_user = (ScsError.valOf o Int.fromString) (g "last_modifying_user"),
+	   mime_type = {mime_type_id = (ScsError.valOf o Int.fromString) (g "mime_type_id"),
+			mime_type = g "mime_type",
+			file_ext = g "file_extension",
+			file_icon = g "file_icon"}}
+	end
       fun genSql root_label wh =
 	(* Get latest revision of each file *)
 	`select scs_fs_revisions.revision_id,
@@ -289,8 +376,6 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
             and scs_fs_revisions.revision_id = scs_file_storage.getMaxRevisionId(scs_fs_files.file_id)
             and scs_fs_mime_types.id = scs_fs_files.mime_type_id
             ` ^^ wh
-
-
     in
       fun getFilesInFolderId root_label folder_id : file_type list =
 	let
@@ -305,14 +390,6 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	  Db.zeroOrOneRow' f sql
 	end
     end
-
-(*    fun numFilesInFolder folder_id =
-      (ScsError.valOf o Int.fromString)
-      (ScsError.wrapPanic
-       Db.oneField `select count(file_id) 
-                      from scs_fs_files
-                     where folder_id = '^(Int.toString folder_id)'
-                       and deleted_p = 'f'`)2003-07-04, nh*)
 	
     type fs_type = {type_id             : int,
 		    name                : string,
@@ -362,6 +439,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 			  fn_return_file,fn_del_file,upload_info_dict) = 
       let
 	fun upload_fn_row bgcolor ({file_id,folder_id,revision_id,filename,description,filename_on_disk,
+				    path_on_disk,
 				    filesize,last_modified,last_modifying_user,mime_type}:file_type) = 
 	  let
 	    val confirm_del_dict = [(ScsLang.en,`Delete the file ^filename?`),
@@ -396,7 +474,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	  else
 	    (``,``)
 	val table =
-	  if priv = read andalso null files then
+	  if priv = no_priv orelse (priv = read andalso null files) then
 	    `` (* No need to show table *)
 	  else
 	    UcsPage.lineTable {hdcolor = "white",
@@ -424,9 +502,9 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
     local
       val file_missing_dict = [(ScsLang.en,`No file has been specified`),
 			       (ScsLang.da,`Der er ikke angivet en fil`)]
+    in
       val filesize_missing_dict = [(ScsLang.en,`Can't find filesize - maybe no file is specified`),
 				   (ScsLang.da,`Kan ikke beregne størrelse på fil - måske er der ikke angivet en fil.`)]
-    in
       fun getFilenameErr (fv,errs) =	
 	ScsFormVar.getStringErr(fv,ScsDict.s file_missing_dict,errs)
       fun getFilesizeErr (fv,errs) =
@@ -467,24 +545,6 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
                     where scs_fs_mime_types.mime_type = '*/*'`,errs)
 	| SOME id => (ScsError.valOf (Int.fromString id),errs)
 
-    fun getPath (db,folder_id) = 
-      let
-	val arcs = 
-	  ScsError.wrapPanic
-	  (Db.Handle.listDb db (fn g => g "label"))
-	  ` select label
-	      from scs_fs_folders
-           connect by folder_id = prior parent_id
-             start with folder_id = '^(Int.toString folder_id)'`
-      in
-	String.concatWith "/" (List.rev arcs)
-      end
-
-    fun getAbsPath db folder_id =
-      ScsConfig.scs_file_storage_root() ^ "/" ^ 
-      ScsError.valOf (getRootLabelByFolderId(db,folder_id)) ^ "/" ^ 
-      getPath (db,folder_id)
-
     fun mime_type_allowed_p ({mime_types,...}: fs_type, file_ext') =
       List.exists (fn {mime_type_id,mime_type,file_ext,file_icon} => 
 		   ScsString.lower file_ext = ScsString.lower file_ext') mime_types
@@ -494,124 +554,147 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
       Int.toString rev_id ^ "-" ^ 
       ScsFile.encodeFileNameUnix file_base ^ "." ^ 
       file_ext
+      
+    local
+      fun check_of_file_1 (filename,errs) =
+	let
+	  (* Only keep filename (i.e., throw away directory) *)
+	  val filename = (ScsPathMac.file o ScsPathWin.file o ScsPathUnix.file) filename
+	  val fileextension = 
+	    case Path.ext filename of
+	      NONE => ""
+	    | SOME ext => ext
+	  val filebase = Path.base filename
+	  val (mime_type_id,errs) = getMimeTypeErr (fileextension,errs)
+	in
+	  (filename,fileextension,filebase,mime_type_id,errs)
+	end
 
-    fun uploadFile (db, user_id, folder_id, priv, fv_file, description) =
-      let
-	val errs = ScsFormVar.emptyErr
-	val (filename,errs) = getFilenameErr(fv_file,errs)
-	(* Only keep filename (i.e., throw away directory) *)
-	val filename = (ScsPathMac.file o ScsPathWin.file o ScsPathUnix.file) filename
-	val fileextension = 
-	  case Path.ext filename of
-	    NONE => ""
-	  | SOME ext => ext
-	val filebase = Path.base filename
-	val (filesize,errs) = getFilesizeErr(fv_file,errs)
-	val (mime_type_id,errs) = getMimeTypeErr (fileextension,errs)
-      in
-	if errs <> ScsFormVar.emptyErr then
-	  errs
-	else
-	  (* Continue checking mimetype, filesize, priv etc. *)
-	  let
-	    val root_label = ScsError.valOf (getRootLabelByFolderId (db,folder_id))
-	    val fs_type = ScsError.valOf (getFsType (db,root_label))
-	    val errs =
-	      if priv = read then
-		ScsFormVar.addErr(ScsDict.s' [(ScsLang.en,`You do not have the privileges to add a 
-					       file in this directory.`),
-					      (ScsLang.da,`Du har ikke rettigheder til at tilføje en 
-					       fil i dette katalog.`)],errs)
-	      else if priv = read_add orelse priv = read_add_delete then
-		(* check constants in fs_type *)
-		(if filesize > #max_filesize_bytes fs_type then
-		   ScsFormVar.addErr(ScsDict.sl' [(ScsLang.en,`The file you are storing is too large. The maximum size
-						   is %0 and your file has size %1`),
-						  (ScsLang.da,`Filen du er ved at gemme er for stor. Den maksimale
-						   filstørrelse er %0 men din fil har størrelse %1.`)]
-				     [ScsFile.ppFilesize (#max_filesize_bytes fs_type), 
-				      ScsFile.ppFilesize filesize],errs)
-		 else if not (mime_type_allowed_p (fs_type,fileextension)) then
-		   ScsFormVar.addErr (ScsDict.sl' [(ScsLang.en,`The filetype %0 is not supported. You can upload files of type %1.`),
-						   (ScsLang.da,`Filtypen %0 er ikke understøttet. Du kan kun gemme filer af typen: %1.`)]
-				      ["<b>"^fileextension^"</b>",
-				       "<b>" ^ 
-				       (String.concatWith "</b>,<b> " (List.map #file_ext (#mime_types fs_type))) ^ 
-					"</b>"], errs)
-		 else errs)
-	      else errs (* priv = admin may do anything *)
-     	  in
-	    if errs <> ScsFormVar.emptyErr then
-	      errs 
-	    else
-	      (* Continue with storing the file *)
-	      let
-		val file_id_opt = getFileIdByFolderIdAndFilename (db,folder_id,filename)
-		fun storeFile file_id =
-		  let
-		    val new_rev_id = ScsDb.newObjIdDb db
-		    val phys_file_name = mkPhysFile (file_id,new_rev_id,filebase,fileextension)
-		    val _ = Db.Handle.dmlDb db
-		      `insert into scs_fs_revisions (revision_id, file_id, mime_type_id, 
-						     filename, filesize, last_modifying_user)
-		         values ('^(Int.toString new_rev_id)', '^(Int.toString file_id)', 
+      fun check_of_file_2 (db,fileextension,filesize,priv,folder_id,errs) =
+	(* Check mimetype, filesize, priv etc. *)
+	let
+	  val root_label = ScsError.valOf (getRootLabelByFolderId (db,folder_id))
+	  val fs_type = ScsError.valOf (getFsType (db,root_label))
+	  val errs =
+	    if priv = read orelse priv = no_priv then
+	      ScsFormVar.addErr(ScsDict.s' [(ScsLang.en,`You do not have the privileges to add a 
+					     file in this directory.`),
+					    (ScsLang.da,`Du har ikke rettigheder til at tilføje en 
+					     fil i dette katalog.`)],errs)
+	    else if priv = read_add orelse priv = read_add_delete then
+	      (* check constants in fs_type *)
+	      (if filesize > #max_filesize_bytes fs_type then
+		 ScsFormVar.addErr(ScsDict.sl' [(ScsLang.en,`The file you are storing is too large. The 
+						 maximum size is %0 and your file has size %1`),
+						(ScsLang.da,`Filen du er ved at gemme er for stor. Den maksimale
+						 filstørrelse er %0 men din fil har størrelse %1.`)]
+				   [ScsFile.ppFilesize (#max_filesize_bytes fs_type), 
+				    ScsFile.ppFilesize filesize],errs)
+	       else if not (mime_type_allowed_p (fs_type,fileextension)) then
+		 ScsFormVar.addErr (ScsDict.sl' [(ScsLang.en,`The filetype %0 is not supported. You can upload 
+						  files of type %1.`),
+						 (ScsLang.da,`Filtypen %0 er ikke understøttet. Du kan kun gemme 
+						  filer af typen: %1.`)]
+				    ["<b>"^fileextension^"</b>",
+				     "<b>" ^ 
+				     (String.concatWith "</b>,<b> " (List.map #file_ext (#mime_types fs_type))) ^ 
+				     "</b>"], errs)
+		    else errs)
+		 else errs (* priv = admin may do anything *)
+        in
+          (fs_type,errs)
+	end
+
+      fun uploadFile' (filename,filesize,saveFile: string -> unit) 
+	(db, user_id, folder_id, priv, description, errs) =
+	let
+	  val (filename,fileextension,filebase,mime_type_id,errs) = check_of_file_1 (filename,errs)
+	in
+	  if errs <> ScsFormVar.emptyErr then
+	    (0,"",errs)
+	  else
+	    (* Continue checking mimetype, filesize, priv etc. *)
+	    let
+	      val (fs_type,errs) = check_of_file_2(db,fileextension,filesize,priv,folder_id,errs)
+            in
+	      if errs <> ScsFormVar.emptyErr then
+		(0,"",errs)
+	      else
+		(* Continue with storing the file *)
+		let
+		  val file_id_opt = getFileIdByFolderIdAndFilename (db,folder_id,filename)
+		  fun storeFile file_id =
+		    let
+		      val new_rev_id = ScsDb.newObjIdDb db
+		      val phys_file_name = mkPhysFile (file_id,new_rev_id,filebase,fileextension)
+		      val _ = Db.Handle.dmlDb db
+			`insert into scs_fs_revisions (revision_id, file_id, mime_type_id, 
+						       filename, filesize, last_modifying_user)
+  			 values ('^(Int.toString new_rev_id)', '^(Int.toString file_id)', 
 				 '^(Int.toString mime_type_id)', ^(Db.qqq phys_file_name), 
 				 '^(Int.toString filesize)', '^(Int.toString (ScsLogin.user_id()))')`
-		    val path = getAbsPath db folder_id
-		    val _ = ScsError.wrapPanic ScsFile.mkDir path
-		    val _ = ScsError.wrapPanic Ns.Conn.storeMultiformData (fv_file,path ^ "/" ^ phys_file_name)
-		  in
-		    ()
-		  end
-	      in
-		case file_id_opt of
-		  NONE => 
-                    (* We are storing a new file *)
-		    let
-		      val num_files_in_folder = getNumFilesInFolderId db folder_id
+		      val path = getAbsPath db folder_id
+		      val _ = ScsError.wrapPanic ScsFile.mkDir path
+		      val phys_path_and_file_name = path ^ "/" ^ phys_file_name
+		      val _ = saveFile phys_path_and_file_name
 		    in
-		      if #max_files fs_type <= num_files_in_folder andalso priv <> admin then
-			ScsFormVar.addErr(ScsDict.sl' [(ScsLang.en,`You can't store file because there is already %0 
-							files in the directory. You are only allowed to store %1
-							files in the directory.`),
-						       (ScsLang.da,`Du kan ikke gemme filen fordi der er allerede
-							gemt %0 filer i kataloget. Du kan ikke gemme mere end %1 filer
-							i kataloget.`)]
-					  [Int.toString num_files_in_folder, Int.toString (#max_files fs_type)],errs)
-		      else
-			(* Store New File *)
-			let
-			  val new_file_id = ScsDb.newObjIdDb db
-			  val _ = Db.Handle.dmlDb db 
-			    `insert into scs_fs_files (file_id, folder_id, name, description, mime_type_id, last_modifying_user)
-                               values ('^(Int.toString new_file_id)','^(Int.toString folder_id)', ^(Db.qqq filename),
+		      (file_id,phys_path_and_file_name)
+		    end
+		in
+		  case file_id_opt of
+		    NONE => 
+		      (* We are storing a new file *)
+		      let
+			val num_files_in_folder = getNumFilesInFolderId db folder_id
+		      in
+			if #max_files fs_type <= num_files_in_folder andalso priv <> admin then
+			  (0,"",ScsFormVar.addErr(ScsDict.sl' 
+						  [(ScsLang.en,`You can't store file because there is 
+						    already %0 files in the directory. You are only allowed 
+						    to store %1 files in the directory.`),
+						   (ScsLang.da,`Du kan ikke gemme filen fordi der er allerede
+						    gemt %0 filer i kataloget. Du kan ikke gemme mere end %1 
+						    filer i kataloget.`)]
+						  [Int.toString num_files_in_folder, 
+						   Int.toString (#max_files fs_type)],
+						  errs))
+			else
+			  (* Store New File *)
+			  let
+			    val new_file_id = ScsDb.newObjIdDb db
+			    val _ = Db.Handle.dmlDb db 
+			      `insert into scs_fs_files (file_id, folder_id, name, description, 
+							 mime_type_id, last_modifying_user)
+			       values ('^(Int.toString new_file_id)','^(Int.toString folder_id)', ^(Db.qqq filename),
 				       ^(Db.qqq description), 
 				       scs_file_storage.getMimeTypeIdByFileExt(lower(^(Db.qqq fileextension))),
 				       '^(Int.toString (ScsLogin.user_id()))')`
-			  val _ = storeFile new_file_id
-			in
-			  errs
-			end
-		    end
-		  | SOME file_id =>
+			    val (file_id,phys_path_and_file_name) = storeFile new_file_id
+			  in
+			    (file_id,phys_path_and_file_name,errs)
+			  end
+		      end
+	          | SOME file_id =>
 		    (* We are storing a new revision of an existing file *)
 		    let
 		      val num_revs = ScsError.valOf (getNumRevisions (db,file_id))
 		    in
 		      if #max_revisions fs_type <= num_revs andalso priv <> admin then
 			(if num_revs = 1 then
-			   ScsFormVar.addErr(ScsDict.s' [(ScsLang.en,`You can't store the file ^filename because the file already
-							  exists.`),
-							 (ScsLang.da,`Du kan ikke gemme filen ^filename fordi den allerede 
-							  eksisterer.`)], errs)
+			   (0,"",ScsFormVar.addErr(ScsDict.s' [(ScsLang.en,`You can't store the file ^filename 
+								because the file already exists.`),
+							       (ScsLang.da,`Du kan ikke gemme filen ^filename 
+								fordi den allerede eksisterer.`)], errs))
 			 else
-			   ScsFormVar.addErr(ScsDict.sl' [(ScsLang.en,`You can't store the file ^filename because 
-							   there already exists
-							   %0 revisions. You are only allowed to store %1 revisions.`),
-							  (ScsLang.da,`Du kan ikke gemme filen ^filename fordi der allerede 
-							   eksisterer %0 versioner. Du kan kun gemme %1 versioner af 
-							   samme fil.`)]
-					     [Int.toString num_revs, Int.toString (#max_revisions fs_type)],errs))
+			   (0,"",ScsFormVar.addErr(ScsDict.sl' [(ScsLang.en,`You can't store the file ^filename 
+								 because there already exists
+								 %0 revisions. You are only allowed to
+								 store %1 revisions.`),
+								(ScsLang.da,`Du kan ikke gemme filen ^filename fordi 
+								 der allerede eksisterer %0 versioner. Du kan kun 
+								 gemme %1 versioner af samme fil.`)]
+						   [Int.toString num_revs, Int.toString (#max_revisions fs_type)],
+						   errs)))
 		      else
 			(* Store New Revision *)
 			let
@@ -622,14 +705,71 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 				    mime_type_id = scs_file_storage.getMimeTypeIdByFileExt(lower(^(Db.qqq fileextension))),
 				    last_modified = sysdate
                              where file_id = '^(Int.toString file_id)'`
-			  val _ = storeFile file_id
+			  val (file_id,phys_path_and_file_name) = storeFile file_id
 			in
-			  errs
+			  (file_id,phys_path_and_file_name,errs)
 			end
 		    end
-	      end
+	    end
 	  end
       end
+    in
+      fun uploadFile (db, user_id, folder_id, priv, fv_file, description) =
+	let
+	  val errs = ScsFormVar.emptyErr
+	  val (filename,errs) = getFilenameErr(fv_file,errs)
+	  val (filesize,errs) = getFilesizeErr(fv_file,errs)
+	  fun saveFile phys_filename =
+	    ScsError.wrapPanic Ns.Conn.storeMultiformData (fv_file,phys_filename)
+	in
+	  uploadFile' (filename,filesize,saveFile) (db, user_id, folder_id, priv, description, errs)
+	end
+      fun storeFile (db,user_id,folder_id,priv,phys_filename,db_filename,description) =
+	let
+	  val errs = ScsFormVar.emptyErr
+	  val (filesize,errs) = 
+	    (FileSys.fileSize phys_filename,errs)
+	    handle _ => (0,ScsFormVar.addErr(ScsDict.s' filesize_missing_dict,errs))
+	  fun saveFile fs_filename = ScsError.wrapPanic (ScsFile.cp phys_filename) fs_filename
+	in
+	  uploadFile' (db_filename,filesize,saveFile) (db, user_id, folder_id, priv, description, errs)
+	end	  
+      fun replaceFile (db,user_id,file: file_type,priv,source_file,errs) =
+	let
+	  val (filename,fileextension,filebase,mime_type_id,errs) = check_of_file_1 (source_file,errs)
+	in
+	  if errs <> ScsFormVar.emptyErr then errs 
+	  else
+	    let
+	      val (filesize,errs) = (FileSys.fileSize source_file,errs)
+		handle _ => (0,ScsFormVar.addErr(ScsDict.s' filesize_missing_dict,errs))
+	      val (fs_type,errs) = check_of_file_2(db,fileextension,filesize,priv,#folder_id file,errs)
+	    in
+	      if errs <> ScsFormVar.emptyErr then errs
+	      else
+		(* Now replace file on disk and update DB with new size and name. *)
+		let
+		  val _ = ScsError.wrapPanic (Db.Handle.dmlDb db)
+		    `update scs_fs_files
+                        set ^(Db.setList [("last_modifying_user",Int.toString (ScsLogin.user_id()))]),
+			    mime_type_id = scs_file_storage.getMimeTypeIdByFileExt(lower(^(Db.qqq fileextension))),
+			    last_modified = sysdate
+                           where file_id = '^(Int.toString (#file_id file))'`
+		  val _ = ScsError.wrapPanic (Db.Handle.dmlDb db)
+		    `update scs_fs_revisions
+                       set ^(Db.setList [("filesize",Int.toString filesize),
+					 ("last_modifying_user",Int.toString (ScsLogin.user_id()))]),
+			    mime_type_id = scs_file_storage.getMimeTypeIdByFileExt(lower(^(Db.qqq fileextension))),
+			    last_modified = sysdate
+                      where revision_id = '^(Int.toString (#revision_id file))'`
+		  val _ = ScsError.wrapPanic (ScsFile.cp source_file) 
+		    (#path_on_disk file ^ "/" ^ (#filename_on_disk file))
+		in
+		  errs
+		end
+	    end
+	end
+    end
 
     fun returnFile root_label file_id =
       case getFileByFileId root_label file_id of
@@ -700,4 +840,10 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		      (ScsLang.da,`Du har ikke adgang til at slette filen. Hvis du mener dette er forkert, 
 		       så kan du <a href="mailto:^(ScsConfig.scs_site_adm_email())">kontakte administrator</a>.`)]);
 	 ())
+
+    fun storeMultiformData (fv_filename,target_filename,errs) =
+      (Ns.Conn.storeMultiformData(fv_filename,target_filename);
+       errs)
+      handle _ => ScsFormVar.addErr(ScsDict.s' [(ScsLang.da,`Der er opstået en fejl ved upload af fil.`),
+						(ScsLang.en,`An error happended when uploading file.`)],errs)
   end
