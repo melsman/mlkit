@@ -62,10 +62,6 @@ StringDesc *allocString(int rAddr, int size) {
   int free_in_page;       /* Number of words free in the last regionpage. */
   int sizeWords;  /* size of the string in words. */
 
-#if DEBUG_STRING
-  printf("allocString - ENTER\n");
-#endif
-
   rp = (Ro *) clearStatusBits(rAddr);
   free_in_page = freeInRegion(rp); /* free is in words. */
   sizeWords = ((size % 4) ? (size / 4)+1 : (size / 4));
@@ -94,10 +90,6 @@ StringDesc *allocString(int rAddr, int size) {
     size -= fragPtr->fragmentSize;
   }
 
-#if DEBUG_STRING
-  printf("allocString - LEAVE\n");
-#endif
-
   return returnPtr; 
 }
 
@@ -109,28 +101,14 @@ StringDesc *allocString(int rAddr, int size) {
  *            0..255 the exeption Chr is raised.                      *
  *--------------------------------------------------------------------*/
 
-int chrChar (/*int rAddr,*/ int charNr, int exn) {
+int chrChar (int charNr, int exn) {
 
-#if DEBUG_STRING
-  printf("chrChar - ENTER\n");
-#endif
-
-  /* Inserted 24/03/1997, Niels */
-  /* Only safe because exn is allocated in a global region, */
-  /* and can therefore not be reset.                        */
-/*08/07/1997 23:29. tho. KILL:
-  if (is_inf_and_atbot(rAddr))
-    resetRegion(rAddr);
-*/
   charNr = convertIntToC(charNr); /* We have to untag the charNr. */
   if (charNr >= 0 && charNr <= 255) {
-#if DEBUG_EXN
-    printf("chrChar raise exn.\n");
-#endif
     /*08/07/1997 23:22. tho.  TODO:  untagging, checking, & then 
       tagging immediately afterwards is maybe a bit silly:*/
-    return convertIntToML (charNr); }
-/*    return makeChar(rAddr, charNr); }  08/07/1997 23:21. tho.*/
+    return convertIntToML (charNr); 
+  }
   else {
     raise_exn(exn);
     return;
@@ -141,14 +119,8 @@ int chrChar (/*int rAddr,*/ int charNr, int exn) {
  * sizeString: Return the size of a string represented as ML int.     *
  *--------------------------------------------------------------------*/
 int sizeString(StringDesc *str) {
- int i;
-#if DEBUG_STRING
-  printf("sizeString - ENTER");
-#endif
+  int i;
   i = convertIntToML(sizeStringDefine(str)); /* We have to tag the size. */
-#if DEBUG_STRING
-  printf("- LEAVE\n");
-#endif
   return i;
 }
 
@@ -166,10 +138,6 @@ void convertString(StringDesc *str) {
   int i;
   StringFragment *fragPtr;
   char *ch=&cString[0], *fragCh;
-
-#if DEBUG_STRING
-  printf("convertString - ENTER\n");
-#endif
 
   if (sizeStringDefine(str) > C_STRING_LENGTH-1)
     printf("convertString: String too large.\n");
@@ -190,10 +158,6 @@ void convertFragment(StringFragment *fragPtr) {
   int i;
   char *ch=&cString[0], *fragCh;
 
-#if DEBUG_STRING
-  printf("convertFragment - ENTER\n");
-#endif
-
   if (fragPtr->fragmentSize > C_STRING_LENGTH-1)
     printf("convertFragment: Fragment too large.\n");
   else {
@@ -202,11 +166,6 @@ void convertFragment(StringFragment *fragPtr) {
       *ch++=*fragCh++;
     *ch = '\0';
   }
-
-#if DEBUG_STRING
-  printf("convertFragment - LEAVE\n");
-#endif
-
 }
 
 
@@ -225,10 +184,6 @@ cmpString (StringDesc *str1, StringDesc *str2, int less, int equal, int greater)
   int numToExamine_in_all, numToExamine_in_this_frag, i;
   int size1, size2;
   char *ch1, *ch2;
-
-#if DEBUG_STRING
-  printf("cmpString - ENTER\n");
-#endif
   
   fragPtr1  = &(str1->sf);
   fragSize1 = fragPtr1->fragmentSize;
@@ -260,20 +215,12 @@ cmpString (StringDesc *str1, StringDesc *str2, int less, int equal, int greater)
     else
       fragSize2 -= numToExamine_in_this_frag;}
 
-#if DEBUG_STRING
-  printf("cmpString - LEAVE(2)\n");
-#endif
-
-
   /*no diff found, the string lengths must decide it:*/
   if (size1 < size2)      { return less; }
   else if (size1 > size2) { return greater; }
   else                    { return equal; }
 
- diff_found: /*ch1-1 and ch2-1 point to chars in str1 & str2 that are not the same*/
-#if DEBUG_STRING
-  printf("cmpString - LEAVE(2)\n");
-#endif
+diff_found: /*ch1-1 and ch2-1 point to chars in str1 & str2 that are not the same*/
   return (*(ch1-1) < *(ch2-1) ? less : greater);
 }
 
@@ -317,10 +264,6 @@ char *copyString(StringDesc *str1, StringFragment **str2, char *ch2) {
   int fragSize1, fragSize2, totalSize, numToCopy, i;
   char *ch1;
 
-#if DEBUG_STRING
-  printf("copyString - ENTER\n");
-#endif
-
   totalSize = sizeStringDefine(str1);
   if (totalSize > 0) {
     fragPtr1  = &(str1->sf);
@@ -354,9 +297,6 @@ char *copyString(StringDesc *str1, StringFragment **str2, char *ch2) {
     }
     (*str2) = fragPtr2;
   }
-#if DEBUG_STRING
-  printf("copyString - LEAVE\n");
-#endif
   return ch2;
 }
 
@@ -365,22 +305,11 @@ char *copyString(StringDesc *str1, StringFragment **str2, char *ch2) {
  *               region rAddr.                                      *
  *------------------------------------------------------------------*/
 StringDesc *concatString(int rAddr, StringDesc *str1, StringDesc *str2) {
-
   StringDesc *res;
   StringFragment *fragPtr;
-
-#if DEBUG_STRING
-  printf("concatString - ENTER\n");
-#endif
-
   res = allocString(rAddr, sizeStringDefine(str1)+sizeStringDefine(str2));
   fragPtr = &(res->sf);
   copyString(str2, &fragPtr, copyString(str1, &fragPtr, (char *) (res+1)));
-
-#if DEBUG_STRING
-  printf("concatString - LEAVE\n");
-#endif
-
   return res;
 }
 
@@ -389,20 +318,10 @@ StringDesc *concatString(int rAddr, StringDesc *str1, StringDesc *str2) {
  * and do a flush.                                                *
  *----------------------------------------------------------------*/
 void printString(StringDesc *str) {
-
   StringFragment *fragPtr;
-
-  #if DEBUG_PRINT_STRING
-  printf("Print string at %8x, with length %d.\n", str, sizeStringDefine(str));
-  #endif
-
   for (fragPtr=&(str->sf);fragPtr;fragPtr=fragPtr->n) {
     convertFragment(fragPtr);
     printf("%s",cString);
-
-    #if DEBUG_PRINT_STRING
-    printf("Fragment at %8x: %s\n",fragPtr, cString);
-    #endif
   }
   fflush(stdout);
 }
@@ -416,31 +335,13 @@ int subString(StringDesc *str,int i) {
   unsigned char ch;
   StringFragment *fragPtr;
 
-#if DEBUG_STRING
-   printf("enter substring: %d\n",i); 
-#endif
   fragPtr=&(str->sf);
 
-  /*
-  printf("fragPtr: %d\n",(int)fragPtr);
-  printf("size: %d\n",(int)(fragPtr->fragmentSize));
-  printf("n: %d\n",(int)(fragPtr->n));
-  */
+  for (fragPtr=&(str->sf);fragPtr->fragmentSize <= i; fragPtr = fragPtr->n)
+    i = i - fragPtr->fragmentSize; 
 
-    for (fragPtr=&(str->sf);fragPtr->fragmentSize <= i; fragPtr = fragPtr->n){   
-      i = i - fragPtr->fragmentSize; 
-                                     
-    /* printf("substring loop: %d\n",i)*/
-         
-      }  
-
-  /*  ch = *((char *)(fragPtr+i));*/
-     ch = *((unsigned char *)(fragPtr)+8+i); /* 8 is the size of two words containing the fragment size 
-                                      and next pointer (mads) */
-
-#if DEBUG_STRING
-   printf("substring%d\n",(int)ch); 
-#endif
+  ch = *((unsigned char *)(fragPtr)+8+i); /* 8 is the size of two words containing the fragment size 
+					   * and next pointer (mads) */
   return (int)ch;
 }
 
@@ -533,10 +434,6 @@ StringDesc *implodeChars (int rAddr, int xs) {
   int ys;
   char *ch;
 
-#if DEBUG_STRING
-  printf("implodeChars - ENTER\n");
-#endif
-
   /*calculate the length of the resultstring:*/
   length = 0;
   for (ys=xs; isCONS(ys); ys=tl(ys)) {
@@ -557,10 +454,6 @@ StringDesc *implodeChars (int rAddr, int xs) {
       ys = tl (ys); }
     fragPtr = fragPtr->n; }
 
-#if DEBUG_STRING
-  printf("implodeChars - LEAVE\n");
-#endif
-
   return res;
 }
 
@@ -580,10 +473,6 @@ StringDesc *implodeString(int rAddr, int xs) {
   char *ch;
   StringFragment *fragPtr;
 
-#if DEBUG_STRING
-  printf("implodeString - ENTER\n");
-#endif
-
   /* We have to calculate the length of the resultstring. */
   for (ys=xs;isCONS(ys);ys=tl(ys))
     totalSize += sizeStringDefine(hd(ys));
@@ -594,10 +483,6 @@ StringDesc *implodeString(int rAddr, int xs) {
   fragPtr = &(res->sf);
   for (ys=xs; isCONS(ys); ys=tl(ys))
     ch = copyString((StringDesc *) hd(ys), &fragPtr, ch);
-
-#if DEBUG_STRING
-  printf("implodeString - LEAVE\n");
-#endif
 
   return res;
 }
@@ -616,10 +501,6 @@ int *explodeString(int rAddr2, /*int rAddr3,*/ StringDesc *str) {
   StringDesc *charPtr;
   StringFragment *fragPtr;
 
-#if DEBUG_STRING
-  printf("explodeString - ENTER\n");
-#endif
-
   if (sizeStringDefine(str) == 0)
     makeNIL(res)
   else {
@@ -627,7 +508,6 @@ int *explodeString(int rAddr2, /*int rAddr3,*/ StringDesc *str) {
     fragPtr = &(str->sf);
     allocRecordML(rAddr2, 2, pair);
     first(pair) = convertIntToML (*(char *)(fragPtr+1)); 
-/*    first(pair) = (int) makeChar(rAddr3, *(char *)(fragPtr+1));   08/07/1997 23:00. tho.*/
     makeCONS(pair, consPtr);
     res = consPtr;
     i = 1;
@@ -636,7 +516,6 @@ int *explodeString(int rAddr2, /*int rAddr3,*/ StringDesc *str) {
       for (;i<fragPtr->fragmentSize;i++) {
 	allocRecordML(rAddr2, 2, tpair); 
 	first(tpair) = convertIntToML (*ch++);
-/*	first(tpair) = (int) makeChar(rAddr3, *ch++);    08/07/1997 23:01. tho.*/
 	makeCONS(tpair, consPtr);
 	second(pair) = (int) consPtr;
 	pair = tpair;
@@ -646,11 +525,6 @@ int *explodeString(int rAddr2, /*int rAddr3,*/ StringDesc *str) {
     makeNIL(consPtr)
     second(pair) = (int) consPtr;
   }
-
-#if DEBUG_STRING
-  printf("explodeString - LEAVE\n");
-#endif
-
   return res;
 }
 
@@ -663,10 +537,6 @@ int *explodeString(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *str) {
   StringDesc *charPtr;
   StringFragment *fragPtr;
 
-#if DEBUG_STRING
-  printf("explodeString - ENTER\n");
-#endif
-
   if (sizeStringDefine(str) == 0)
     makeNIL(rAddr1, res)
   else {
@@ -675,7 +545,6 @@ int *explodeString(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *str) {
     allocRecordML(rAddr2, 2, pair);
     /*first(x) betyder `*x' */
     first(pair) = convertIntToML (*(char *)(fragPtr+1));
-/*    first(pair) = (int) makeChar(rAddr3, *(char *)(fragPtr+1)); 08/07/1997 22:45. tho.*/
     makeCONS(rAddr1, pair, consPtr);
     res = consPtr;
     i = 1;
@@ -684,11 +553,6 @@ int *explodeString(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *str) {
       for (;i<fragPtr->fragmentSize;i++) {
 	allocRecordML(rAddr2, 2, tpair); 
 	first(tpair) = convertIntToML (*ch++);
-/*08/07/1997 23:03. tho.  TODO:
-  hvorfor skal der ikke stå (int) foran convertIntToML eller 
-  foran dens argument? det er nok alm. char->int-subtypning.*/
-
-/*	  first(tpair) = (int) makeChar(rAddr3, *ch++);  08/07/1997 22:50. tho.*/
 	makeCONS(rAddr1, tpair, consPtr);
 	second(pair) = (int) consPtr;
 	pair = tpair;
@@ -698,11 +562,6 @@ int *explodeString(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *str) {
     makeNIL(rAddr1, consPtr)
     second(pair) = (int) consPtr;
   }
-
-#if DEBUG_STRING
-  printf("explodeString - LEAVE\n");
-#endif
-
   return res;
 }
 #endif /*UNBOX_LISTS*/
@@ -752,10 +611,6 @@ StringDesc *allocStringProfiling(int rAddr, int size, int pPoint) {
   int free_in_page;       /* Number of words free in the last regionpage. */
   int sizeWords;  /* size of the string in words. */
 
-#if DEBUG_STRING
-  printf("allocStringProfiling - ENTER\n");
-#endif
-
   rp = (Ro *) clearStatusBits(rAddr);
   free_in_page = freeInRegion(rp); /* free is in words. */
   sizeWords = ((size % 4) ? (size / 4)+1 : (size / 4));
@@ -790,11 +645,6 @@ StringDesc *allocStringProfiling(int rAddr, int size, int pPoint) {
     fragPtr->n = NULL;
     size -= fragPtr->fragmentSize;
   }
-
-#if DEBUG_STRING
-  printf("allocStringProfiling - LEAVE\n");
-#endif
-
   return returnPtr; 
 }
 
@@ -805,19 +655,11 @@ StringDesc *allocStringProfiling(int rAddr, int size, int pPoint) {
 StringDesc *makeCharProfiling(int rAddr, char ch, int pPoint) {
   StringDesc *res;
 
-#if DEBUG_STRING
-  printf("makeCharProfiling - ENTER\n");
-#endif
-
   res = allocStringProfiling(rAddr, 1, pPoint);
   /* I know that there is room for a singleton string in the first fragment, */
   /* see allocstring.                                              */
+
   *(char *)(res+1) = ch;
-
-#if DEBUG_STRING
-  printf("makeCharProfiling - LEAVE\n");
-#endif
-
   return res;
 }
 
@@ -831,10 +673,6 @@ StringDesc *implodeCharsProfiling (int rAddr, int xs, int pPoint) {
   int i;
   int ys;
   char *ch;
-
-#if DEBUG_STRING
-  printf("implodeChars - ENTER\n");
-#endif
 
   length = 0;
   for (ys=xs; isCONS(ys); ys=tl(ys)) {
@@ -850,13 +688,10 @@ StringDesc *implodeCharsProfiling (int rAddr, int xs, int pPoint) {
       i++;
       length--;
       *ch++ = (char) convertIntToC (hd (ys));
-      ys = tl (ys); }
-    fragPtr = fragPtr->n; }
-
-#if DEBUG_STRING
-  printf("implodeChars - LEAVE\n");
-#endif
-
+      ys = tl (ys); 
+    }
+    fragPtr = fragPtr->n; 
+  }
   return res;
 }
 
@@ -876,10 +711,6 @@ StringDesc *implodeStringProfiling(int rAddr, int xs, int pPoint) {
   char *ch;
   StringFragment *fragPtr;
 
-#if DEBUG_STRING
-  printf("implodeStringProfiling - ENTER\n");
-#endif
-
   /* We have to calculate the length of the result string. */
   for (ys=xs;isCONS(ys);ys=tl(ys))
     totalSize += sizeStringDefine(hd(ys));
@@ -890,10 +721,6 @@ StringDesc *implodeStringProfiling(int rAddr, int xs, int pPoint) {
   fragPtr = &(res->sf);
   for (ys=xs; isCONS(ys); ys=tl(ys))
     ch = copyString((StringDesc *) hd(ys), &fragPtr, ch);
-
-#if DEBUG_STRING
-  printf("implodeStringProfiling - LEAVE\n");
-#endif
 
   return res;
 }
@@ -908,10 +735,6 @@ int *explodeStringProfiling(int rAddr2, /*int rAddr3,*/ StringDesc *str, int pPo
   StringDesc *charPtr;
   StringFragment *fragPtr;
 
-#if DEBUG_STRING
-  printf("explodesStringProfiling - unboxed - ENTER with prg. point %d and size string %d\n", pPoint, sizeStringDefine(str));
-#endif
-
   if (sizeStringDefine(str) == 0)
     makeNIL(res)
   else {
@@ -919,7 +742,6 @@ int *explodeStringProfiling(int rAddr2, /*int rAddr3,*/ StringDesc *str, int pPo
     fragPtr = &(str->sf);
     allocRecordMLProf(rAddr2, 2, pair, pPoint);
     first(pair) = convertIntToML (*(char *)(fragPtr+1)); 
-/*    first(pair) = (int) makeCharProfiling(rAddr3, *(char *)(fragPtr+1), pPoint);   08/07/1997 23:13. tho.*/
     makeCONS(pair, consPtr);
     res = consPtr;
     i = 1;
@@ -928,7 +750,6 @@ int *explodeStringProfiling(int rAddr2, /*int rAddr3,*/ StringDesc *str, int pPo
       for (;i<fragPtr->fragmentSize;i++) {
 	allocRecordMLProf(rAddr2, 2, tpair, pPoint);
 	first(tpair) = convertIntToML (*ch++);
-/*	first(tpair) = (int) makeCharProfiling(rAddr3, *ch++, pPoint);  08/07/1997 23:14. tho.*/
 	makeCONS(tpair, consPtr);
 	second(pair) = (int) consPtr;
 	pair = tpair;
@@ -938,10 +759,6 @@ int *explodeStringProfiling(int rAddr2, /*int rAddr3,*/ StringDesc *str, int pPo
     makeNIL(consPtr)
     second(pair) = (int) consPtr;
   }
-
-#if DEBUG_STRING
-  printf("explodeString - LEAVE\n");
-#endif
 
   return res;
 }
@@ -956,10 +773,6 @@ int *explodeStringProfiling(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *
   StringDesc *charPtr;
   StringFragment *fragPtr;
 
-#if DEBUG_STRING
-  printf("explodesStringProfiling -- ENTER with prg. point %d\n", pPoint);
-#endif
-
   if (sizeStringDefine(str) == 0)
     makeNILProf(rAddr1, res, pPoint)
   else {
@@ -967,7 +780,6 @@ int *explodeStringProfiling(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *
     fragPtr = &(str->sf);
     allocRecordMLProf(rAddr2, 2, pair, pPoint);
     first(pair) = convertIntToML (*(char *)(fragPtr+1)); 
-/*    first(pair) = (int) makeCharProfiling(rAddr3, *(char *)(fragPtr+1), pPoint);   08/07/1997 23:15. tho.*/
     makeCONSProf(rAddr1, pair, consPtr, pPoint);
     res = consPtr;
     i = 1;
@@ -976,7 +788,6 @@ int *explodeStringProfiling(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *
       for (;i<fragPtr->fragmentSize;i++) {
 	allocRecordMLProf(rAddr2, 2, tpair, pPoint);
 	first(tpair) = convertIntToML (*ch++);
-/*	first(tpair) = (int) makeCharProfiling(rAddr3, *ch++, pPoint);  08/07/1997 23:16. tho.*/
 	makeCONSProf(rAddr1, tpair, consPtr, pPoint);
 	second(pair) = (int) consPtr;
 	pair = tpair;
@@ -986,11 +797,6 @@ int *explodeStringProfiling(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *
     makeNILProf(rAddr1, consPtr, pPoint)
     second(pair) = (int) consPtr;
   }
-
-#if DEBUG_STRING
-  printf("explodeString - LEAVE\n");
-#endif
-
   return res;
 }
 #endif /*UNBOX_LISTS*/
@@ -1004,22 +810,9 @@ StringDesc *concatStringProfiling(int rAddr, StringDesc *str1, StringDesc *str2,
   StringDesc *res;
   StringFragment *fragPtr;
 
-#if DEBUG_STRING
-  printf("concatStringProfiling - ENTER\n");
-#endif
-
-  /* Inserted 24/03/1997, Niels */
-  /* In general unsafe
-  if (is_inf_and_atbot(rAddr))
-    resetRegion(rAddr);*/
-
   res = allocStringProfiling(rAddr, sizeStringDefine(str1)+sizeStringDefine(str2), pPoint);
   fragPtr = &(res->sf);
   copyString(str2, &fragPtr, copyString(str1, &fragPtr, (char *) (res+1)));
-
-#if DEBUG_STRING
-  printf("concatStringProfiling - LEAVE\n");
-#endif
 
   return res;
 }
@@ -1137,18 +930,10 @@ StringDesc *convertStringToMLProfiling(int rAddr, char *cStr, int pPoint) {
 StringDesc *makeChar(int rAddr, char ch) {
   StringDesc *res;
 
-#if DEBUG_STRING
-  printf("makeChar - ENTER\n");
-#endif
-
   res = allocString(rAddr, 1);
   /* I know, that there is room for 1 char in the first fragment,  */
   /* see allocstring.                                              */
   *(char *)(res+1) = ch;
-
-#if DEBUG_STRING
-  printf("makeChar - LEAVE\n");
-#endif
 
   return res;
 }

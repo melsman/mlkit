@@ -286,7 +286,11 @@ functor Compile(structure Excon : EXCON
     fun ast2lambda(ce, strdecs) =
       (ifthen (!Flags.chat) (fn _ => msg("\nCompiling abstract syntax tree into lambda language ..."));
        Timing.timing_begin();
-       let val (ce1, lamb) =  Timing.timing_end_res 
+       let val _ = LambdaExp.reset()  (* Reset type variable counter to improve pretty printing; The generated
+				       * Lambda programs are closed w.r.t. type variables, because code 
+				       * generation of the strdecs is done after an entire top-level 
+				       * declaration is elaborated. ME 1998-09-04 *)
+	   val (ce1, lamb) =  Timing.timing_end_res 
 	        ("To lamb", CompileDec.compileStrdecs ce strdecs)
 	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
 	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
@@ -405,12 +409,14 @@ functor Compile(structure Excon : EXCON
     let
         val _ = (chat "\nInferring regions and effects ...";
 		 Timing.timing_begin()
-                 (*;Profile.reset()
-                 ;Profile.profileOn()*))
+                 (*;Compiler.Profile.reset()
+                 ;Compiler.Profile.setTimingMode true*))
         val rse_with_con = SpreadExp.RegionStatEnv.plus(rse,rse_con)
+(*	val _ = print "RegInf.inferEffects begin... \n" *)
         val cone = RegInf.inferEffects
                    (fn s => (TextIO.output(!Flags.log, s); TextIO.flushOut(!Flags.log)))
                    (cone,rse_with_con, spread_lamb_exp)
+(*	val _ = print "RegInf.inferEffects end.\n"*)
         val new_layer = Effect.topLayer cone (* to get back to level of "cone" *)
 (*
         val _ = print "new_layer before lowering:\n"

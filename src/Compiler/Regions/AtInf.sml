@@ -702,10 +702,10 @@ functor AtInf(structure Lvars: LVARS
                         handle _ => die "call of LLV.llv failed"
          in 
            Timing.timing_end("LocLiveVar");
-           chat "\nStorage mode analysis (NEW)...\n";
+           chat "\nStorage mode analysis ...\n";
            Timing.timing_begin();
            (sma0(pgm')handle AbortExpression => die "call of sma0 failed")
-             footnote Timing.timing_end("SMA (NEW)")
+             footnote Timing.timing_end("SMA")
          end
         )
 

@@ -160,7 +160,6 @@ of the region and is useful for, among other things, tail recursion).
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
 int *allocateRegion(Ro *roAddr);
-int *allocateRegionFast(Ro *roAddr);
 int *deallocateRegion();
 int *alloc (int rAdr, int n);
 void alloc_new_block(Ro *rp);     /* inlining of alloc */
@@ -173,12 +172,6 @@ void deallocateRegionsUntil(int rAdr);
  *----------------------------------------------------------------*/
 #ifdef PROFILING
 
-/* remember to change these in Tools/ProfileData.h as well !!!!!!!!!!!!!! */
-
-#define MAX_REGIONS_TO_PROFILE 200000    /* maximal number of region variables in 
-                                           region-annotated lambda term (the source) */
-#define MAX_ALLOCATION_POINTS 20000      /* maximal number of allocation points in the 
-					   region annotated lambda term. */
 /* 
 Here is the type of region descriptors for finite regions when
 profiling is enabled (see item (a)(ii) at the beginning of the file):
@@ -199,11 +192,14 @@ object descriptor, containing the information that is needed
 in order to traverse objects in regions and identify allocation
 points in the source program. A {\em program point} is an integer
 which identifies the point in the source program where a value
-is created - the user turn on a flag in the compiler to make
+is created - the user turns on a flag in the compiler to make
 it print programs annotated with their program points.
 
 Every object is stored taking up a multiple of words (not bytes).
-This applies irrespective of whether profiling is turned or or not.
+This applies irrespective of whether profiling is turned on or not.
+
+CompLamb.sml (search after storePrgPointProfiling) depends on the 
+position of atId in an object descriptor; ME 1998-09-09
 */
 
 typedef struct objectDesc {
@@ -244,8 +240,6 @@ extern unsigned int callsOfDeallocateRegionInf,
                     callsOfSbrk,
                     maxNoOfPages,
                     noOfPages,
-                    maxNoOfInstances,
-                    noOfInstances,
                     allocNowInf,
                     maxAllocInf,
                     allocNowFin,
@@ -266,15 +260,6 @@ extern unsigned int callsOfDeallocateRegionInf,
 extern Ro * topRegion;
 extern FiniteRegionDesc * topFiniteRegion;
 
-/*
-extern int profTab[MAX_REGIONS_TO_PROFILE][6];
-#define NoOfPages 0
-#define MaxNoOfPages 1
-#define NoOfInstances 2
-#define MaxNoOfInstances 3
-#define AllocNow 4
-#define MaxAlloc 5
-*/
 
 /* Profiling functions. */
 int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId);

@@ -723,15 +723,35 @@ struct
 
   (* Toplevel regions and arrow effect *)
 
-  val (toplevel_region_withtype_top, initCone) = freshRhoWithTy(TOP_RT,push emptyCone)
-  val (toplevel_region_withtype_word, initCone) = freshRhoWithTy(WORD_RT,initCone)
-  val (toplevel_region_withtype_bot, initCone) = freshRhoWithTy(BOT_RT,initCone)
-  val (toplevel_region_withtype_string, initCone) = freshRhoWithTy(STRING_RT,initCone)
-  val (toplevel_region_withtype_real, initCone) = freshRhoWithTy(REAL_RT,initCone)
-  val (toplevel_arreff, initCone) = freshEps(initCone)
+  local
+    
+    (* Atomic effects put(r) and get(r) are memorized for each r (see
+     * the definitions of mkPut and mkGet). For the word region (r2),
+     * we initially set the memorized node to the empty effect, which
+     * will then be returned by mkPut and mkGet when called with
+     * r2. Thus, no atomic effects on the form put(r2) or get(r2) will
+     * appear in effects, I conjecture! ME 1998-09-03 *)
+    
+      fun freshRhoWithWordTy(cone:cone as (n, c)): effect * cone =
+	let val key = freshInt()
+            val node =G.mk_node(RHO{key = ref key, level = ref n, 
+				    put = SOME empty, get = SOME empty, instance = ref NONE, 
+				    pix = ref ~1, ty = WORD_RT})
+        in (node, add(node, n, key, cone))
+	end
+  in
+    
+    val (toplevel_region_withtype_top, initCone) = freshRhoWithTy(TOP_RT,push emptyCone)
+    val (toplevel_region_withtype_word, initCone) = freshRhoWithWordTy(initCone)
+    val (toplevel_region_withtype_bot, initCone) = freshRhoWithTy(BOT_RT,initCone)
+    val (toplevel_region_withtype_string, initCone) = freshRhoWithTy(STRING_RT,initCone)
+    val (toplevel_region_withtype_real, initCone) = freshRhoWithTy(REAL_RT,initCone)
+    val (toplevel_arreff, initCone) = freshEps(initCone)
+
+  end
 
   val _ =
-    let val toplevel_rhos = [toplevel_region_withtype_top, toplevel_region_withtype_word,
+    let val toplevel_rhos = [toplevel_region_withtype_top, (*toplevel_region_withtype_word, ME 1998-09-03*)
 			     toplevel_region_withtype_bot, toplevel_region_withtype_string,
 			     toplevel_region_withtype_real]
         val puts = map mkPut toplevel_rhos

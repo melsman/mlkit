@@ -65,7 +65,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 strategy_name = "Prof", (* single word *)
 				 comment = "Region profiling enabled. A profile datafile is not exported. \
 				  \ Profiling every 500000 microsec.",
-				 exec_opt = "-microsec 500000 -noDatafile -noStat",
+				 exec_opt = "-microsec 500000 -noDatafile",
 				 old_dir = old_dir()}
 
       fun acceptance_strategy_HPUX_C () = 
@@ -82,7 +82,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 strategy_name = "Prof", (* single word *)
 				 comment = "Region profiling enabled. A profile datafile is not exported. \
 				  \ Profiling every 4 second.",
-				 exec_opt = "-sec 4 -noDatafile -noStat",
+				 exec_opt = "-sec 4 -noDatafile",
 				 old_dir = old_dir()}
 
       fun acceptance_strategy_SUN_OS4_C () = 
@@ -99,7 +99,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 strategy_name = "Prof", (* single word *)
 				 comment = "Region profiling enabled. A profile datafile is not exported. \
 				  \ Profiling every 30 second.",
-				 exec_opt = "-sec 30 -noDatafile -noStat",
+				 exec_opt = "-sec 30 -noDatafile",
 				 old_dir = old_dir()}
     in
       fun acceptance_strategies () =   (*USER*)

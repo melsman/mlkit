@@ -17,7 +17,6 @@
 int regionNo=0;               /* Region used when object profiling. */
 int regionNo2=0;              /* Region used when printing a region. */
 int match=0;
-int makeRegionInstanceP = 0;  /* if one then make region instance profiling. */
 int printRegion = 0;          /* if one then print region. */
 int printProfile = 0;         /* if one then print profile. */
 int interact = 0;             /* if one then print profile. */
@@ -169,12 +168,11 @@ static void interactive(void) {
   while (button != 'e') {
     printf("\n\nInteractive mode.\n\n\n");
     printf("      (1)   Profile all regions with respect to size.\n");
-/*    printf("      (2)   Profile all regions with respect to number of instances.\n");*/
-    printf("      (3)   Profile all objects in a region.\n");
-    printf("      (4)   Print region regionNo on stdout.\n");
-    printf("      (5)   Print all profiling data on stdout.\n");
-    printf("      (6)   Print some statistics on stdout.\n");
-    printf("      (7)   Profile stack with respect to size.\n");
+    printf("      (2)   Profile all objects in a region.\n");
+    printf("      (3)   Print region regionNo on stdout.\n");
+    printf("      (4)   Print all profiling data on stdout.\n");
+    printf("      (5)   Print some statistics on stdout.\n");
+    printf("      (6)   Profile stack with respect to size.\n");
     printf("      (e)   Exit.\n");
     printf("\n\nType switch: ");
     scanf("%1s", &button);
@@ -190,15 +188,6 @@ static void interactive(void) {
       printf("\n Profiling of all regions now finished. \n");
       break;
     case '2':
-      printf("\n Type name of output file: ");
-      scanf("%s", rpiName);
-      printf("\n Type name to put on top page: ");
-      scanf("%s", name);
-      printf("\n Now profiling all regions to file: %s using name %s.\n", rpiName, name);
-      MakeRegionInstanceProfile();
-      printf("\n Profiling of all region instances now finished. \n");
-      break;
-    case '3':
       printf("\n Type region to profile: ");
       scanf("%i", &regionNo);
       if (regionNo != 0) {
@@ -212,18 +201,18 @@ static void interactive(void) {
       } else
 	printf("\n No valid region number typed: %d\n", regionNo);
       break;
-    case '4':
+    case '3':
       printf("Type region to print: ");
       scanf("%i", &regionNo);
       PrintRegion(regionNo);
       break;
-    case '5':
+    case '4':
       PrintProfile();
       break;
-    case '6':
+    case '5':
       PrintSomeStat();
       break;
-    case '7':
+    case '6':
       printf("\n Type name of output file: ");
       scanf("%s", stackName);
       printf("\n Type name to put on top page: ");
@@ -352,19 +341,7 @@ static void checkArgs(int argc, char *argv[]) {
       printProfile = 1;
       match = 1;
     } 
-      
-    if (strcmp((char *)argv[0],"-instance")==0) {
-      if ((argc-1)>0 && (*(argv+1))[0] != '-') {
-	--argc;
-	++argv;
-	strcpy(rpiName, (char *)argv[0]);     
-      } else
-	strcat(rpiName, dotEnd);
-      printf("Region instance profiling to output file %s.\n", rpiName);
-      match = 1;
-      makeRegionInstanceP = 1;
-    } 
-    
+          
     if (strcmp((char *)argv[0], "-interact")==0) {
       printf("Interact\n");
       match = 1;
@@ -557,8 +534,6 @@ main(int argc, char *argv[]) {
     MakeObjectProfile(regionNo);
   if (printProfile)
     PrintProfile();
-  if (makeRegionInstanceP)
-    MakeRegionInstanceProfile();
   if (printRegion) 
     PrintRegion(regionNo2);
   if (printSomeStat)

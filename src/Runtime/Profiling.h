@@ -5,31 +5,19 @@
 #ifndef PROF
 #define PROF
 
-/*----------------------------------------------------------------*
- * Include files                                                  *
- * Compiling: cc -Aa -c Profiling.c                               *
- *----------------------------------------------------------------*/
-
-#include "Flags.h"
-
 #ifdef PROFILING
-/*----------------------------------------------------------------*
- *        Declarations for the profiling tool                     *
- *----------------------------------------------------------------*/
+#include "Flags.h"
 
 #define BYTES_ALLOC_TO_PROFILING 1024
 
 typedef struct objectList {
   int atId;                /* Allocation point identifier. */
   int size;                /* Size of object in bytes. */
-  int numberOfInstances;   /* Number of instances of an object at an allocation point. */
   struct objectList *nObj; /* Pointer to next object. */
 } ObjectList;
-#define sizeObjectList (sizeof(ObjectList)/4)
 
 typedef struct regionList {
   int regionId;                /* id of region. */
-  int numberOfInstances;       /* number of instances of the region(variable) */
   int used;                    /* number of used words in the region.         */
   int waste;                   /* number of not used words in the region.     */
   int noObj;                   /* number of objects with different program points. */
@@ -37,7 +25,6 @@ typedef struct regionList {
   ObjectList *fObj;            /* Pointer to first object. */
   struct regionList * nRegion; /* Pointer to next region. */
 } RegionList;
-#define sizeRegionList (sizeof(RegionList)/4)
 
 typedef struct tickList {
   RegionList * fRegion;    /* Pointer to first region. */
@@ -46,24 +33,56 @@ typedef struct tickList {
   unsigned int time;       /* Number of 1/CLOCKS_PER_SEC seconds after start (excl. profiling.) */
   struct tickList * nTick; /* Pointer to data for the next tick. */
 } TickList;
-#define sizeTickList (sizeof(TickList)/4)
 
 
-/* Entries in hash table for region ids */
+/* --------------------------------------------------
+ * The following two type definitions are for 
+ * holding objects for internal fast lookup 
+ * during a profile tick; see function profileTick().
+ * -------------------------------------------------- */
+
+typedef struct regionListHashList {
+  int regionId;
+  struct regionList * rl;              /* entry */
+  struct regionListHashList * next;    /* next hashed element */
+} RegionListHashList;
+
+typedef struct objectListHashList {
+  int atId;
+  struct objectList * ol;              /* entry */
+  struct objectListHashList * next;    /* next hashed element */  
+} ObjectListHashList;
+
+#define REGION_LIST_HASH_TABLE_SIZE 3881
+#define OBJECT_LIST_HASH_TABLE_SIZE 3881
+
+/* ---------------------------------------------------
+ * A global profiling table is used to collect
+ * information during execution (independently of
+ * profiling ticks). The information is stored in
+ * a map with regionIds as domain; the table is
+ * hashed to make its size independent of the actual
+ * regionIds.
+ * --------------------------------------------------- */
+
 typedef struct profTabList {
   int regionId;
   int noOfPages;
   int maxNoOfPages;
-  int noOfInstances;
-  int maxNoOfInstances;
   int allocNow;
   int maxAlloc;
   struct profTabList * next;
 } ProfTabList;
 
-#define profHashTabSize 3881
-/*extern ProfTabList * profHashTab[];*/
+/* size of hash table */
+/*
+#define PROF_HASH_TABLE_SIZE 3881
+#define profHashTabIndex(regionId) ((regionId) % PROF_HASH_TABLE_SIZE)
+*/
+#define PROF_HASH_TABLE_SIZE 4096
+#define profHashTabIndex(regionId) ((regionId) & (PROF_HASH_TABLE_SIZE-1))
 
+extern ProfTabList * profHashTab[];
 
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
@@ -78,6 +97,9 @@ void resetProfiler();
 void updateMaxProfStack();
 void queueMark();  /* does nothing */
 void queueMarkProf();  /* tell the time next time there is a profile tick */
+char *allocMemProfiling(int i);
+ProfTabList* profTabListInsertAndInitialize(ProfTabList* p, int regionId);
+
 
 #endif /*PROFILING*/
 

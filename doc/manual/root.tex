@@ -16,6 +16,8 @@ Peter Sestoft \and Peter Bertelsen}
 
 \begin{document}
 
+% Do not include the page in comments below; it will cause the document to be aligned on odd pages, which is not
+% good for printing.
 %\setcounter{page}{0}
 %\thispagestyle{empty}
 %\begin{center}{\bf
@@ -61,7 +63,7 @@ $\alpha$ tree & A tree and its subtrees reside in one region.
                 1 plus the number of free variables of the function.
                 (Free region variables also count as variables.)\cr
 \boxml{fun $f$ $\ldots$} & Mutually recursive region-polymorphic functions
-               share the same closure, which is region-allocated, untagged
+               share the same closure, which is region-allocated, untagged,
                and whose size (in words) is the number of variables
                that occur free in the recursive declaration.\cr}
 \hrule
@@ -1010,8 +1012,10 @@ are collections of SML source files. To compile a single SML source
 file or a project, you need an executable version of the Kit; let us
 assume it is available on your system as a UNIX program called {\tt
   kit}.\footnote{The {\tt readme} file in the distribution tells you
-  how to install the Kit.}  We shall postpone the discussion of how to
-compile projects to Chapter~\ref{modules_and_projects.chap}.
+  how to install the Kit.} Compiling a project is very similar to
+compiling a single SML source file, however, we shall postpone the in-depth
+discussion of how to compile projects to
+Chapter~\ref{modules_and_projects.chap}.
 
 \subsection{Compiling an SML Source File}
 As a concrete example, we show how some of the region-annotated programs in
@@ -1764,7 +1768,7 @@ The list that escapes to top level is stored in the global region {\tt
 region {\tt r19}.
 \section{Region Type Schemes}
 \label{regtych.sec}
-A \index{type scheme!region polymorphic}{\em region-polymorphic 
+A \index{type scheme!region-polymorphic}{\em region-polymorphic 
 type scheme} takes the form
 $$\sigma::=\lsigma$$
 where $\alpha_1,\ldots,\alpha_n$ are type variables,
@@ -1946,9 +1950,15 @@ cells), $r$ ($n/2$ cells). Continuing this way, at the rightmost merge
 of two lists of length at most one, approximately $4n$ list cells are
 live.  Then a series of final merges occur.  Code that uses these
 ideas is listed in Figure~\ref{msort.fig}.\index{cp@{\tt
-    cp}}\index{msort@{\tt msort}}\index{merge sort}\footnote{Project
-  {\tt kitdemo/msort.pm}, file {\tt kitdemo/msort.sml}. To learn how
-  to compile projects, see Chapter~\ref{modules_and_projects.chap}.}
+    cp}}\index{msort@{\tt msort}}\index{merge sort}\index{projects!compiling}\index{projects!running}\footnote{Project
+  {\tt kitdemo/msort.pm}, file {\tt kitdemo/msort.sml}. To compile the
+  project, enter the \boxml{Project} sub-menu (from within the
+  \boxml{kitdemo} directory) and choose {\tt Set project file name}.
+  Then type \boxml{"msort.pm"} (including the quotes) followed by
+  return. Finally, choose {\tt Compile and link project}. The Kit places an
+  executable file \boxml{run} in the
+  \boxml{kitdemo} directory. For an in-depth description of how to
+  compile and run projects, see Chapter~\ref{modules_and_projects.chap}.}
 \begin{figure}[t]
 \hrule\medskip
 \begin{verbatim}
@@ -2248,7 +2258,7 @@ variable in question, yielding something like
                      end
                   end
 \end{verbatim}
-\section{Summary}
+\section{Shortening Lifetime}
 Informally, region inference forces lifetime to be at least as long as
 scope. However, region inference will introduce a {\tt letregion}
 binding of $\rho$ around an expression containing a free occurrence of
@@ -2256,7 +2266,9 @@ $\rho$ if $\rho$ occurs free neither in the type of the expression nor
 in the region type scheme and place of any variable in scope at the
 expression.
 
-Useful \index{program transformation}program transformations to shorten \index{lifetime|)}lifetimes include:
+Useful \index{program transformation}program transformations to
+shorten \index{lifetime|)}\index{lifetime!shortening}lifetimes
+include:
 \begin{enumerate}
 \item Inwards let floating: \index{let floating}transform
 $$\boxml{let val $\id_1$ = $\exp_1$ val $\id_2$ = $\exp_2$ in $\exp$ end}$$
@@ -2328,7 +2340,7 @@ extremely valuable device for predicting space leaks. The region-annotated versi
 Figure~\ref{escape_mulexp.fig}. During compilation of {\tt g}, the Kit issues the
 following warning, provided inlining performed by the optimiser is
 disabled:\footnote{This disabling is done by setting the {\tt
-    Maximum inline size}, found in the {\tt Control/Optimiser} sub-menu, to 0.}
+    Maximum inline size}, found in the {\tt Control/Optimiser} sub-menu, to {\tt 0}.}
 \begin{figure}
 \hrule
 \begin{verbatim}
@@ -2679,7 +2691,7 @@ the reference is an {\em own variable} \index{variable!own}of the function.)\foo
 Provided that inlining by the optimiser is restricted to inline only
 those functions that are applied once,\footnote{To restrict the
   optimiser accordingly, set the menu entry {\tt Control/Compiler/Maximum
-    inline size} to 0.} this example compiles into
+    inline size} to {\tt 0}.} this example compiles into
 \begin{verbatim}
    let val r = let val v40271 = nil in ref at r1 v40271 end ; 
        fun memo_id at r1 [] (x)= 
@@ -3905,6 +3917,7 @@ and then previewed using the command \boxml{ghostview region.ps}~.}
 \end{figure}
 
 \section{Example: Scanning Text Files}
+\label{scan.sec}
 In this section, we present a program that can 
 \index{scan@{\tt scan}}scan a sequence of Standard ML source
 files so as to compute what percentage of the source files is made
@@ -4098,17 +4111,17 @@ input by first reading one line and then extracting the name.
 \chapter{Higher-Order Functions}
 \label{hof.sec}
 %
-\section{Lambda-Abstraction ({\tt fn})}
+\section{Lambda Abstractions ({\tt fn})}
 A {\em lambda abstraction} \index{lambda abstraction}\index{function!higher-order}in Standard ML is an expression of the
 form 
 $$\boxml{fn {\it pat} => {\it exp}}$$
 where {\it pat} is a pattern and {\it exp} an expression.
-Lambda expressions denote functions. We refer to the {\it exp} as the
+Lambda abstractions denote functions. We refer to the {\it exp} as the
 {\em body} of the function; variable occurrences in {\it pat} are
 binding occurrences; informally, the variables that occur
 in {\it pat} are said to be {\em lambda-bound} with scope {\it exp}.\index{variable!lambda-bound} 
 
-Lambda-abstractions are represented by closures, both in the language
+Lambda abstractions are represented by closures, both in the language
 definition and in the Kit. In the Kit, a closure for a lambda abstraction
 consists of a code pointer plus one word for each free variable of the
 lambda abstraction. Closures are not tagged. 
@@ -4119,19 +4132,24 @@ they live in infinite regions, just like all other boxed values.
 
 Every occurrence of {\tt fn} \index{fn@{\tt fn}}in the program is considered 
 an allocation point; the region-annotated version of the lambda abstraction is
-$$\boxml{fn at $\rho$ {\it pat} => {\it exp}}$$
-Standard ML allows  functions to be declared using {\tt val} rather than {\tt fun}, e.g., 
+$$\boxml{fn $\at\,\rho$ {\it pat} => {\it exp}}$$
+Standard ML allows  functions to be declared using {\tt val} rather than {\tt fun}, for example, 
 \begin{verbatim}
        val h = g o f
 \end{verbatim}
-Whereas functions declared with \index{fun@{\tt fun}}{\tt fun} automatically become region polymorphic,
-functions declared with \index{val@{\tt val}}{\tt val} do not in general become \index{region polymorphism}
-region-polymorphic.\footnote{The reason for this
-is that the expression on the right-hand side of the value declaration might have an effect (e.g, 
-print something) before returning the function. It would not be correct to suspend this effect by
-introducing formal region parameters.} However, in the special case where the right-hand side of
-the value declaration is a \index{lambda abstraction}lambda abstraction, the Kit automatically converts the declaration
-into a {\tt fun} declaration, thereby making the function region polymorphic after all.
+declares the value identifier {\tt h} to be the composition of {\tt g}
+and {\tt f}.  Whereas functions declared with \index{fun@{\tt
+    fun}}{\tt fun} automatically become region-polymorphic, functions
+declared with \index{val@{\tt val}}{\tt val} do not in general become
+\index{region polymorphism} region-polymorphic.\footnote{The reason
+  for this is that the expression on the right-hand side of the value
+  declaration might have an effect (e.g, print something) before
+  returning the function.  It would not be correct to suspend this
+  effect by introducing formal region parameters.} However, in the
+special case where the right-hand side of the value declaration is a
+\index{lambda abstraction}lambda abstraction, the Kit automatically
+converts the declaration into a {\tt fun} declaration, thereby making
+the function region-polymorphic after all.
 
 ML allows declarations of the form\index{fun@{\tt fun}}
 $$\boxml{fun $f$ $\atpat_1\,\atpat_2 \cdots \atpat_n$ = $\exp$}$$
@@ -4139,24 +4157,23 @@ as a shorthand for
 $$\boxml{fun $f$ $\atpat_1$ => fn $\atpat_2$ => $\cdots$ fn $\atpat_n$ => $\exp$}$$
 where $\atpat$ ranges over atomic patterns.
 We say that functions declared using this abbreviation are \index{function!Curried}{\em Curried}. 
+
 \section{Region-Annotated Function Types}
 \label{functiontypes.sec}
 The general form of a region-annotated \index{function type!region-annotated}\index{type!region-annotated}function type is
-$$\mu_1\ar{\epsilon.\rea}\mu_2$$
-where $\mu_1$ is the region-annotated type and place of the argument
-and $\mu_2$ is the region-annotated type and place of the result. A region-annotated
-function type with place takes the form 
-$$(\mu_1\ar{\epsilon.\rea}\mu_2, \rho)$$
-where $\rho$ is the region containing the closure.
+$$(\tau_1\ar{\epsilon.\rea}\tau_2, \rho)$$
+where $\tau_1$ is the
+region-annotated type of the argument, $\tau_2$ is the
+region-annotated type of the result, and $\rho$ is the region
+containing the closure for the function.
 As mentioned in Section~\ref{listtypes.sec}, the unusual looking object
 $\epsilon.\rea$ is called an \index{arrow effect}{\em arrow effect}. Its first component
-is an \index{effect variable} effect variable, whose purpose will be explained shortly.
+is an \index{effect variable}effect variable, whose purpose will be explained shortly.
 The second component is called the \index{effect!latent}{\em latent effect}, and describes
 the effect of evaluating the body of the function. 
 
 The following example illustrates why latent effects are crucial for
-knowing the lifetimes of closures.\footnote{Project: \boxml{kitdemo/lambda.pm},
-file \boxml{kitdemo/lambda.sml}.} Consider
+knowing the lifetimes of closures.\footnote{Program \boxml{kitdemo/lambda.sml}.} Consider
 \begin{verbatim}
        val n = let val f = let val xs = [1,2]
                            in fn ys => length xs + length ys
@@ -4164,41 +4181,36 @@ file \boxml{kitdemo/lambda.sml}.} Consider
                in f [7]
                end
 \end{verbatim}
-Note that {\tt xs} has to be kept alive for as long as the
-function {\tt fn ys => $\cdots$}~ may be called, for this function
+Notice that {\tt xs} has to be kept alive for as long as the
+function \boxml{(fn ys => $\cdots$)} may be called, for this function
 will access {\tt xs}, when called.
-The region-annotated version appears in Figure~\ref{lambda1.fig}.  (To
+The region-annotated version of the example appears in Figure~\ref{lambda1.fig}.\footnote{To
 see the output programs discussed in this section, enable the flag
-\texttt{print drop regions expression} and look under the heading
-{\tt Report: AFTER DROP REGIONS}.)
+\texttt{print drop regions expression}.}
 \begin{figure}
-\hrule
+\hrule \medskip
 \begin{verbatim}
-
-   let val n = 
-       letregion r7:1, r9:INF, r10:1, r11:INF, r12:INF 
-       in let val f = 
-              let val xs = 
-                  let val v9260 = 
-                      (1, 
-                       let val v9261 = (2, nil at r11) at r12
-                       in  :: at r11 v9261
-                       end 
-                      ) at r12
-                  in  :: at r11 v9260
+let val n = 
+     letregion r7:1, r9:1, r10:INF 
+     in let val f = 
+             let val xs = 
+                  let val v40299 = 
+                       (1, 
+                        let val v40300 = (2, nil) at r10 
+                        in :: v40300 
+                        end 
+                       ) at r10
+                  in  :: v40299
                   end 
-              in   fn at r7 ys => 
-                   letregion r16:1 in length[] xs end + 
-                   letregion r18:1 in length[] ys end
-              end 
-          in  f 
-              let val v9257 = (7, nil at r9) at r10
-              in  :: at r9 v9257
-              end 
-          end  
-       end
-   in  {|n: (_,r2)|}
-   end 
+             in fn at r7 ys => 
+                 letregion r17:1 in length[] xs end (*r17:1*) + 
+                 letregion r20:1 in length[] ys end (*r20:1*)
+             end 
+        in  f let val v40294 = (7, nil) at r9 in :: v40294 end 
+        end  
+     end (*r7:1, r9:1, r10:INF*)
+in  {|n: _|}
+end 
 \end{verbatim}
 \caption{Region-annotated program illustrating that the lifetime of
 a closure is at least as long as the lifetime of the values that evaluation
@@ -4207,92 +4219,93 @@ of the function body will require.}
 \hrule
 \label{lambda1.fig}
 \end{figure}
-We see that {\tt xs} is put in {\tt r11} and {\tt r12}, that the
+We see that {\tt xs} is put in {\tt r10}, that the
 function closure for \boxml{(fn ys => $\cdots$)} is put in {\tt r7}
-and indeed, {\tt r7}, {\tt r11} and {\tt r12} all have the
+and indeed, {\tt r7} and {\tt r10} have the
 same lifetime. To understand how the region inference system figured that out, 
 let us consider the effect and the 
 region-annotated type of particular sub-expressions. Looking at the lambda
 abstraction, it must have a functional type of the form 
-$(\mu\ar{\epsilon.\rea}\mu', {\tt r7})$ where $\rea$ is the
+$(\tau\ar{\epsilon.\rea}\tau', {\tt r7})$ where $\rea$ is the
 effect
-$$\{\Get(\boxml{r1}), \Get(\boxml{r2}), \Get(\boxml{r11}), 
-    \Get(\boxml{r12}), \Get(\boxml{r9}),
-    \Get(\boxml{r10}), \Put(\boxml{r2})\}$$
-Note that \boxml{r11} and \boxml{r12} occur free in the type of the
+$$\{\Get(\boxml{r1}), \Get(\boxml{r10}), \Get(\boxml{r9})\}$$
+Notice that \boxml{r10} occurs free in the type of the
 lambda abstraction. But, as pointed out in Section~\ref{effects.sec},
 the criterion
-for putting ~~{\tt letregion $\rho$ in $\ldots$ end}~~ around an expression $e$
-is that $\rho$ occurs free neither in the region-annotated type and place of $e$ nor
+for putting a {\tt letregion} binding of $\rho$ around an expression $e$
+is that $\rho$ occurs free neither in the region-annotated type of $e$ nor
 in the region-annotated type scheme and place of any variable in the domain of the
 type environment.\index{region!de-allocation} The smallest sub-expression
-of the program for which {\tt r11} and {\tt r12} does not occur free in
-the type and place of the expression is the right-hand side 
+of the program for which {\tt r10} does not occur free in
+the region-annotated type  of the expression is the right-hand side 
 of the {\tt val} binding of {\tt n}, for that expression
-simply has region-annotated type and place $\boxml{(int,r2)}$.
+simply has region-annotated type $\boxml{int}$.
 And at that point, the only region variables that occur free in
 the type environment are global region variables.
-Hence the placement of the letregion-binding of {\tt r11} and
-{\tt r12}.
+Hence the placement of the {\tt letregion} binding of {\tt r10}.
 
 \section{Arrow Effects}
 In a first-order language, effect variables might not be particularly important.
 But in a higher-order language like ML, effect variables are useful for tracking
-dependencies between functions. The following example illustrates the point:\footnote{Project: \boxml{kitdemo/lambda.pm}, files
-\boxml{kitdemo/lambda1.sml} and \boxml{kitdemo/lambda2.sml}.}
+dependencies between functions. The following example illustrates the point:\footnote{Program \boxml{kitdemo/apply.sml}.}
 \begin{verbatim}
        fun apply f x = f x
-       val y = apply (fn n => n+1) 5
-       val z = apply (fn m => m) 9
+       val y = apply (fn n => n + 1.0) 5.0
+       val z = apply (fn m => m) 6
 \end{verbatim}
 Here is the region type scheme of {\tt apply}:
 \begin{tabbing}
-\qquad$\forall\alpha_1\alpha_2\rho_1\rho_2\rho_3\rho_4\epsilon_1\epsilon_2\epsilon_3.$\=$((\alpha_1,\rho_1)
-        \ar{\epsilon_1.\emptyset}(\alpha_2,\rho_2),\rho_3)\ar{\epsilon_2.\{\Put(\rho_4)\}}$\\
-            \>$((\alpha_1,\rho_1)\ar{\epsilon_3.\{\Get(\rho_3), \epsilon_1\}}(\alpha_2,\rho_2),\rho_4)$
+\qquad$\forall\alpha_4\alpha_2\rho_7\rho_8\rho_9\rho_{10}\epsilon_{11}\epsilon_{12}\epsilon_{13}.$\=$((\alpha_2,\rho_{10})
+        \ar{\epsilon_{11}.\emptyset}(\alpha_4,\rho_9),\rho_8)\ar{\epsilon_{12}.\{\Put(\rho_7)\}}$\\
+            \>$((\alpha_2,\rho_{10})\ar{\epsilon_{13}.\{\Get(\rho_8), \epsilon_{11}\}}(\alpha_4,\rho_9),\rho_7)$
 \end{tabbing}
-The latent effect associated with $\epsilon_2$ shows that when {\tt apply} is applied to a function,
-it may create (in fact: will create) a function closure in $\rho_4$.  The latent effect associated with
-$\epsilon_1$ is empty, since the declaration of {\tt apply} does not tell us anything about what effect
-the formal parameter {\tt f} must have. Crucially,  however, $\epsilon_1$ is included as an atomic effect
-in the latent effect associated with $\epsilon_3$: whenever the body of {\tt apply f} is evaluated, the
+The latent effect associated with $\epsilon_{12}$ shows that when {\tt apply} is applied to a function,
+it may create (in fact: will create) a function closure in $\rho_7$.  The latent effect associated with
+$\epsilon_{11}$ is empty, because the declaration of {\tt apply} does not tell us anything about what effect
+its formal parameter {\tt f} must have. Crucially, however, $\epsilon_{11}$ is included as an atomic effect
+in the latent effect associated with $\epsilon_{13}$; whenever the body of {\tt apply f} is evaluated, the
 body of {\tt f} may be (in fact: will be) evaluated.
 
-The polymorphism in effects makes it possible to distinguish between the latent effects of different
-actual arguments to {\tt apply}. For example, the functions {\tt fn n => n+1} and {\tt fn m => m}
-have different latent effects. Let us take {\tt fn n => n+1} as example. It has function type and place
+The polymorphism in effects makes it possible to distinguish between
+the latent effects of different actual arguments to {\tt apply}. For
+example, the functions {\tt (fn n => n + 1.0)} and {\tt (fn m => m)}
+have different latent effects. Let us take the function {\tt (fn n =>
+  n + 1.0)} as example. It has region-annotated function type
 \begin{equation}
 \label{suc.lab}
-((\boxml{int},\rho_2)\ar{\epsilon_5.\{\Get(\rho_2),\Put(\rho_2)\}}(\boxml{int}, \rho_2), \rho_5)
+((\boxml{real},\rho_{18})\ar{\epsilon_{14}.\{\Get(\rho_{18}),\Put(\rho_5)\}}(\boxml{real}, \rho_5), \rho_{17})
 \end{equation}
-Here we have assumed that integers always live in $\rho_2$, while $\epsilon_5$ and $\rho_5$ were
-chosen arbitrarily. The region inference algorithm discovers that (\ref{suc.lab}) is an instance
-of $((\alpha_1,\rho_1)
-        \ar{\epsilon_1.\emptyset}(\alpha_2,\rho_2),\rho_3)$ from the type scheme for {\tt apply} 
-under the instantiating substitution
+Here, the effect variable $\epsilon_{14}$ and the region variables
+$\rho_{18}$ and $\rho_5$ were chosen arbitrarily. (Actually, the region
+variable $\rho_5$ denotes the global region for reals.) The region
+inference algorithm discovers that (\ref{suc.lab}) can be derived from the argument type
+$$((\alpha_2,\rho_{10})\ar{\epsilon_{11}.\emptyset}(\alpha_4,\rho_9),\rho_8)$$
+of the type
+scheme for {\tt apply} by the instantiating substitution
 \begin{tabbing}
-$S =($\=$\{\alpha_1\mapsto\boxml{int},\alpha_2\mapsto\boxml{int}\},\{
-       \rho_1\mapsto\rho_2,\rho_2\mapsto\rho_2,\rho_3\mapsto\rho_5\},$\\
+$S =($\=$\{\alpha_2\mapsto\boxml{real},\alpha_4\mapsto\boxml{real}\},\{
+       \rho_{10}\mapsto\rho_{18},\rho_9\mapsto\rho_5,\rho_8\mapsto\rho_{17}\},$\\
 \>$\{
-       \epsilon_1\mapsto\epsilon_5.\{\Get(\rho_2),\Put(\rho_2)\})$
+       \epsilon_{11}\mapsto\epsilon_{14}.\{\Get(\rho_{18}),\Put(\rho_5)\})$
 \end{tabbing}
-Formally, a \index{substitution}{\em substitution} is a triple $(\St,\Sr,\Se)$,
-where $\St$ is a map from type variables to types, $\Sr$ is a finite map from region variables
-to region variables and $\Se$ is a map from effect variables to arrow effects.
-Although we shall not define what it means to apply a  substitution to a
-type in this document, 
-let us explain why substitutions map effect variables to arrow effects. 
-One alternative, one might consider, is to let substitutions map effect variables to effect
-variables. But then substitutions would not be able to 
-account for the idea that
-effects can ``grow'', when instantiated. In the {\tt apply} example, for instance, the
-empty effect associated with $\epsilon_1$ has to grow to $\{\Get(\rho_2),\Put(\rho_2)\}$ at the
-concrete application of {\tt apply} (otherwise, as it is easy to demonstrate, 
-the region inference system would become unsound). 
+Formally, a \index{substitution}{\em substitution\/} is a triple
+$(\St,\Sr,\Se)$, where $\St$ is a finite map from type variables to
+region-annotated types, $\Sr$ is a finite map from region variables to
+region variables, and $\Se$ is a finite map from effect variables to
+arrow effects.  We shall not define here what it means to apply a
+substitution to a type, but let us explain why substitutions map
+effect variables to arrow effects.  One alternative, one might
+consider, is to let substitutions map effect variables to effect
+variables. But then substitutions would not be able to account for the
+idea that effects can grow, when instantiated. In the {\tt apply}
+example, for instance, the empty effect associated with $\epsilon_{11}$
+has to grow to $\{\Get(\rho_{18}),\Put(\rho_5)\}$ at the concrete
+application of {\tt apply}. Otherwise, as it is easy to demonstrate,
+the region inference system would become unsound.
 
 Another alternative would be to let substitutions
-map effect variables to effects. But that would not work well together with the idea of
-using substitutions to express ``growth'' of effects either. For example, applying the
+map effect variables to effects. But nor that would work well together with the idea of
+using substitutions to express growth of effects. For example, applying the
 map $\{\epsilon\mapsto\{\Get(\rho_0),\Put(\rho_2)\}\}$ to the effect $\{\Get(\rho_9),\epsilon\}$,
 say, 
 would presumably yield the effect $\{\Get(\rho_9),\Get(\rho_0),\Put(\rho_2)\}$ in which the fact
@@ -4302,241 +4315,203 @@ $\{\epsilon\mapsto\epsilon.\{\Get(\rho_2),\Put(\rho)\}\}$ to
 $\{\Get(\rho_9),\epsilon\}$ yields $\{\Get(\rho_9),\epsilon,\Get(\rho_2),\Put(\rho)\}$.
 
 We can now give a complete definition of atomic effects. 
-An \index{effect!atomic, definition}{\em atomic effect} is either an effect
+An \index{effect!atomic, definition}{\em atomic effect\/} is either an effect
 variable or a term of the form $\Get(\rho)$ or $\Put(\rho)$, where $\rho$ as usual ranges over region
-variables. An \index{effect!definition}{\em effect} is a finite set of atomic effects.
+variables. An \index{effect!definition}{\em effect\/} is a finite set of atomic effects.
 
 One can get the Kit to print region-annotated \index{type!region
   annotated}\index{region type scheme!printing of}types of all binding
 occurrences of value variables.  Also, one can choose to have arrow
 effects included in the printout: Enable the flags~~\texttt{print
   types}~~and~~\texttt{print effects}~~in the \texttt{Layout} menu.
-Although this gives very verbose output, it is instructive to look at
-such a term just once, to see how arrow effects are
-instantiated. We show the full output for the {\tt apply} example in
-Figure~\ref{lam2.fig}. In reading the output it is useful to know that
-the Kit represents effects and arrow effects as graphs, the nodes of
-which are region variables, effect variables $\Put$, $\Get$ or
-\boxml{U} (for ``union''; \boxml{U} by itself means the empty set). 
-Region variables are leaf nodes. A $\Put$
-or $\Get$ node has emanating from it precisely one edge; it leads to
-the region variable in question.  An effect variable node (written
-{\tt e} followed by a sequence number) is always the handle of an
-arrow effect; there are edges from the effect variable to the atomic
-effects of that arrow effect, either directly, or via union nodes or
-other effect variable nodes.  For instance, \texttt{e14(U)} in the
-figure denotes an effect variable with an edge to an empty union node.
-When a term containing arrow effects is printed, shared nodes that
-have already been printed are marked with a \boxml{@}; their children
-are not printed again.  For instance, in the figure, the second
-occurence of \texttt{r2} is printed as \boxml{@r2}.  The binding
-occurrence of {\tt apply} has been printed with its region type
-scheme. Each non-binding occurrence of { \tt apply} has been printed
-with four square-bracketed lists: The first list is the actual region
-arguments; the following three are ``instantiation lists'' that show
-the range of the substitution by which the bound variables of the type
-scheme was instantiated, in the same order as the bound variables
-occurred.  For example, in the second use of {\tt apply}, \boxml{r8}
-was instantiated to {\tt r17}.
+Although enabling these flags gives very verbose output, it is
+instructive to look at such a term just once, to see how arrow effects
+are instantiated. We show the full output for the {\tt apply} example
+in Figure~\ref{apply.fig}. 
 
 \begin{figure}
-\hrule
+\hrule \medskip
 \begin{verbatim} 
-
-       fun apply 
-           :all 
-               'a34,'a32,r7,r8,r9,r10,e11,e12,e13.
-               (((('a32,r10)-e11->('a34,r9)),r8)
-                -e12(put(r7))->
-                ((('a32,r10)-e13(U(U,get(r8),e11))->('a34,r9)),r7)
-               ) 
-           at r1 
-           [r7:1] 
-           (f)= 
-           fn e13 at r7 x:('a32,r10) => f x
-
-       val y:(int,r2) = 
-           letregion r9:1, r10:1 
-           in  letregion r11:1 
-               in apply
-                   [r9] 
-                   [int,int] 
-                   [r9,r10,r2,r2] 
-                   [e7(U(get(r2),get(r1),put(@r2))),
-                    e12(put(r9)),
-                    e8(e7(U(get(r2),get(r1),put(@r2))),get(r10))
-                   ]
-                  at r11 
-                  (fn e7 at r10 n:(int,r2) => n + 1) 
-               end
-               5 
-           end
-       val z:(int,r2) = 
-           letregion r16:1, r17:1 
-           in  letregion r18:1 
-               in apply
-                   [r16] 
-                   [int,int] 
-                   [r16,r17,r2,r2] 
-                   [e14(U),e19(put(r16)),e15(e14(U),get(r17))]
-                  at r18 
-                  (fn e14 at r17 m:(int,r2) => m) 
-               end
-               9 
-           end
+ fun apply 
+     :all 
+         'a4,'a2,r7,r8,r9,r10,e11,e12,e13.
+          (('a2,r10)-e11->('a4,r9),r8)
+          -e12(put(r7))->
+          (('a2,r10)-e13(U(U,get(r8),e11))->('a4,r9),r7) 
+     at r1 
+     [r7:1] 
+     [r8:0, r9:0, r10:0] 
+     (f)= 
+     fn e13 at r7 x:('a2,r10) => f x; 
+ val y:(real,r5) = 
+     letregion r16:1, r17:1, r18:1 
+     in  letregion r19:1 
+         in apply
+             [r16] [real,real] [r16,r17,r5,r18] 
+             [e14(get(r1),get(r18),put(r5)),
+              e20(put(r16)),
+              e15(e14(get(r1),get(r18),put(r5)),get(r17))]
+            at r19 
+            (fn e14 at r17 n:(real,r18) => 
+             letregion r22:1 in (n + 1.0at r22) at r5 end
+            ) 
+         end (*r19:1*) 
+         5.0at r18 
+     end (*r16:1, r17:1, r18:1*); 
+ val z:int = 
+     letregion r25:1, r26:1 
+     in  letregion r27:1 
+         in apply
+             [r25] [int,int] [r25,r26,r2,r2] 
+             [e23,e28(put(r25)),e24(e23,get(r26))]
+            at r27 
+            (fn e23 at r26 m:int => m) 
+         end (*r27:1*) 
+         6 
+     end (*r25:1, r26:1*)
 \end{verbatim}
 \caption{The instantiation of arrow effects keeps different applications of
-  the same function (here {\tt apply}) apart. (Project
-  \boxml{kitdemo/lambda.pm}, files: \boxml{kitdemo/lambda1.sml} and
-  \boxml{lambda2.sml}.)}
-%       fun apply at r1: 
-%         all 
-%           'a290,'a288,r7,r8,r9,r10,e11,e12,e13.
-%           (((('a288,r10)-e11->('a290,r9)),r8)
-%                          -e12(put(r7))->
-%            ((('a288,r10)-e13(U(U,get(r8),e11))->('a290,r9)),r7)
-%           )
-%           []
-%           (f) = 
-%           fn e13 at r7 x:('a288,r10) => f x
-%       val y:(int,r2) = 
-%           letregion r9:1, r10:1 
-%           in  letregion r11:1 
-%               in apply(
-%                   [int,int], 
-%                   [r9,r10,r2,r2], 
-%                   [e7(U(get(r2),get(r1),put(@r2))),
-%                    e12(put(r9)),
-%                    e8(e7(U(get(r2),get(r1),put(@r2))),get(r10))
-%                   ]
-%                  ) at r11 
-%                  (fn e7 at r10 n:(int,r2) => n + 1) 
-%               end (*r11:1*) 
-%               5 
-%           end (*r9:1, r10:1*); 
-%       val z:(int,r2) = 
-%           letregion r16:1, r17:1 
-%           in  letregion r18:1 
-%               in apply(
-%                   [int,int], 
-%                   [r16,r17,r2,r2], 
-%                   [e14(U),e19(put(r16)),e15(e14(U),get(r17))]
-%                  ) at r18 
-%                  (fn e14 at r17 m:(int,r2) => m) 
-%               end (*r18:1*) 
-%               9 
-%           end (*r16:1, r17:1*)
-\medskip
-\hrule
-\label{lam2.fig}
+  the same function (here {\tt apply}) apart. The output
+  was obtained by compiling the program \boxml{kitdemo/apply.sml} with
+  {\tt Control/Optimiser/Maximum inline size} menu entry set to {\tt 0} and with the flags \boxml{print types} and
+  \boxml{print effects} enabled.}  \medskip \hrule
+\label{apply.fig}
 \end{figure}
-\section{Region-Polymorphic Recursion and Higher-Order Functions}
-Unlike identifiers bound by {\tt fun}, lambda-bound function identifiers
-are never region-polymorphic. So in an expression of the form
-$$\boxml{(fn f => $\cdots$ f $\cdots$ f $\cdots$)}$$
-all the uses of $\boxml{f}$ use the same regions. Indeed, since \boxml{f}
-occurs free in the type environment while region inference analyses the body of the lambda abstraction,
-none of the regions which appear in the type of \boxml{f} will be de-allocated inside the body
-of the lambda abstraction. Also, such a region
-must be bound outside the lambda abstraction, so
-any attempt to 
-reset such a region inside the body of the abstraction
-will cause the storage mode analysis to complain (by Rule (B1) of Section~\ref{sma.sec}).
 
-Therefore, when a function $f$ is passed as argument to another function, $g$,
-$$g(f)$$
-first regions are allocated for the use of $f$, then $g$ is called and finally
-the regions are de-allocated (provided they are not global regions). 
-Whether the {\tt letregion} construct thus introduced encloses the call site
-immediately
+In reading the output, it is useful to know
+that the Kit represents effects and arrow effects as graphs, the nodes
+of which are region variables, effect variables, $\Put$, $\Get$, or
+\boxml{U} (for ``union''; \boxml{U} by itself means the empty set).
+Region variables are leaf nodes. A $\Put$ or $\Get$ node has emanating
+from it precisely one edge; it leads to the region variable in
+question.  An effect variable node (written {\tt e} followed by a
+sequence number) is always the handle of an arrow effect; there are
+edges from the effect variable to the atomic effects of that arrow
+effect, either directly, or via union nodes or other effect variable
+nodes.  For instance, \boxml{e13(U(U,get(r8),e11))} in the figure
+denotes an effect variable with an edge to a union node that has edges
+to an empty union node, a $\Get$ node, and an effect variable node.
+
+When a term containing arrow effects is printed, shared nodes that
+have already been printed are marked with a \boxml{@}; their children
+are not printed again. 
+%For instance, in the figure, the second
+%occurence of \texttt{r2} is printed as \boxml{@r2}.  
+In the figure, the binding occurrence of {\tt apply} has been printed
+with its region type scheme. Each non-binding occurrence of {\tt
+  apply} has been printed with four square-bracketed lists. The first
+list is the actual region arguments; the following three are
+instantiation lists that show the range of the substitution by
+which the bound variables of the type scheme was instantiated, in the
+same order as the bound variables occurred.  For example, in the
+second use of {\tt apply}, \boxml{r8} was instantiated to {\tt r26}.
+
+\section{Region Polymorphism and Higher-Order Functions}
+Unlike identifiers bound by {\tt fun}, lambda-bound function
+identifiers are never region-polymorphic. So in an expression of the
+form
+$$\boxml{(fn f => $\cdots$ f $\cdots$ f $\cdots$)}$$
+all the uses of $\boxml{f}$ use the same regions. Indeed, because \boxml{f} occurs
+free in the type environment while region inference analyses the body
+of the lambda abstraction, none of the regions that appear in the type
+of \boxml{f} will be de-allocated inside the body of the lambda
+abstraction. Also, such a region must be bound outside the lambda
+abstraction, so any attempt to reset such a region inside the body of
+the abstraction will cause the storage mode analysis to complain (by
+Rule (B1) of Section~\ref{sma.sec}).
+
+Therefore, when a function $f$ is passed as argument to another
+function $g$, as in the expression \boxml{$g$($f$)}, first regions are
+allocated for the use of $f$, then $g$ is called, and finally, the
+regions are de-allocated (provided they are not global regions).
+Whether the {\tt letregion} construct thus introduced encloses the
+call site immediately, as in
 $$\boxml{letregion $\rho_1,\ldots,\rho_n$ in $g$($f$) end}$$
-or further out
-$$\boxml{letregion $\rho_1,\ldots,\rho_n$ in $\ldots$ $g$($f$) $\ldots$  end}$$
-depends on the type and effect of the expression \boxml{$g$($f$)} in the usual way:
-regions can be de-allocated when they   occur free neither in the type
-of the expression nor in the type environment.
+or further out, as in
+$$\boxml{letregion $\rho_1,\ldots,\rho_n$ in $\ldots$ $g$($f$)
+  $\ldots$ end}$$
+depends on the type and effect of the expression
+\boxml{$g$($f$)} in the usual way: regions can be de-allocated when
+they occur free neither in the region-annotated type of the expression
+nor in the type environment.
 
 \section{Examples: {\tt map} and {\tt foldl}}
-Consider\footnote{Project: \boxml{kitdemo/lambda.pm},
-files \boxml{kitdemo/lambda3.sml} and \boxml{kitdemo/lambda4.sml}.}
+Consider the program\footnote{Program \boxml{kitdemo/map.sml}.}
 \begin{verbatim}
      fun map f [] = []
        | map f (x::xs) = f(x) :: map f xs
     
      val x = map (fn x => x+1) [7,11]
 \end{verbatim}
-The above formulation of {\tt map} is not the most efficient one in the Kit, 
-since it will create one closure for each element in the list, due
-to currying.\footnote{When {\tt map} and
-the application of {\tt map} appear in the same compilation unit, 
-the Kit will automatically specialise {\tt map}
-to a recursive function which does not have this defect. 
-(This it the result of a general optimisation of curried, closed functions
-that have a constant argument.)
-The output we present in this section was obtained
-by putting {\tt map} in a compilation unit of its own.} However it serves to
-illustrate the point made in the previous section about allocating regions in 
-connection with higher-order functions. The region-annotated version is seen
-in Figure~\ref{lam3.fig}.
+This formulation of {\tt map} is not the most efficient one in the
+Kit, because it will create one closure for each element in the list,
+due to currying.\footnote{When {\tt map} and the application of {\tt
+    map} appear in the same compilation unit, the Kit will
+  automatically specialise {\tt map} to a recursive function that does
+  not have this defect. This specialisation is the result of a general
+  optimisation of curried functions that are invariant in their first
+  argument. The output we present in this section was obtained by
+  setting the menu entry {\tt Control/Optimiser/Maximum specialise
+    size} to {\tt 0}.} However it serves to illustrate the point made
+in the previous section about allocating regions in connection with
+higher-order functions. The region-annotated version is listed in
+Figure~\ref{map.fig}.
 \begin{figure}
-\hrule
+\hrule \medskip
 \begin{verbatim}
-
-       fun map at r1 [r7:1, r8:0, r9:0] (var932)= 
-           fn at r7 var933 => 
-           (case var933 
-            of nil => nil at r8
-            |  :: => 
-               let val v10434 = decon_:: var933; 
-                   val x = #0 v10434; 
-                   val xs = #1 v10434; 
-                   val v10439 = 
-                       (var932 x, 
-                        letregion r21:1 
-                        in  letregion r22:1 
-                            in map[r21,r8,r9] at r22 var932 
-                            end
-                            xs 
-                        end
-                       ) at r9
-               in  :: at r8 v10439
-               end 
-           ) (*case*) 
-
-       val x = 
-           letregion r9:1, r10:INF, r11:INF, r12:1 
-           in  letregion r13:1 
-               in map[r9,r1,r1] at r13 (fn at r12 x => x + 1) 
-               end
-               let val v10465 = 
-                       (7, 
-                        let val v10466 = (11, nil at r10) at r11
-                        in  :: at r10 v10466
-                        end 
-                       ) at r11
-               in  :: at r10 v10465
-               end  
-           end
+ fun map at r1 [r7:1, r8:0] (var256)= 
+      fn at r7 var257 => 
+      (case var257 
+         of nil => nil
+         |  _ => 
+            let val xs = #1 decon_:: var257; 
+                val x = #0 decon_:: var257; 
+                val v20315 = 
+                    (var256 x, 
+                     letregion r20:1 
+                     in  letregion r21:1 
+                         in map[r20,r8] at r21 var256 
+                         end (*r21:1*) 
+                         xs 
+                     end (*r20:1*)
+                    ) at r8
+            in  :: v20315
+            end 
+      ) (*case*) ; 
+ val x = 
+     letregion r25:1, r26:INF, r27:1 
+     in  letregion r28:1 
+         in map[r25,r1] at r28 (fn at r27 x => x + 1) 
+         end (*r28:1*) 
+         let val v20320 = 
+                 (7, 
+                  let val v20321 = (11, nil) at r26 
+                  in :: v20321 
+                  end 
+                 ) at r26
+         in  :: v20320
+         end  
+     end (*r25:1, r26:INF, r27:1*)
 \end{verbatim}
 \caption{Although this version of {\tt map} creates a closure for
   each list element, the region-polymorphic recursion (of {\tt map})
   ensures that that closure is put in a region local to {\tt map}.
-  Thus these closures do not pile up in {\tt r12}, the region of the
+  Thus, these closures do not pile up in {\tt r27}, the region of the
   initial argument.} 
 \medskip \hrule
-\label{lam3.fig}
+\label{map.fig}
 \end{figure}
-We see that the regions that appear free in the type and place of the successor
-function (i.e., \boxml{r2} and \boxml{r12}) must be allocated prior 
-to the call of {\tt map} and that they stay
-alive throughout the evaluation of the body of {\tt map}. Note, however, that
+We see that the region that appear free in the region-annotated type of the successor
+function (i.e., \boxml{r27}) is allocated prior 
+to the call of {\tt map} and that it stays
+alive throughout the evaluation of the body of {\tt map}. Notice, however, that
 the closures that are created when {\tt map} is applied do not pile up in
-{\tt r12}, the region of the successor function. Instead, they are put
-in local regions bound to {\tt r22}, one closure in each region. 
+{\tt r27}, the region of the successor function. Instead, they are put
+in local regions bound to {\tt r20}, one closure in each region. 
 Also, if we had given some
-more complicated argument to {\tt map}, the body of that function could have
+more complicated argument to {\tt map}, the body of that function could include
 {\tt letregion} expressions. For each list element, regions would then be
-allocated, used and then de-allocated before proceeding to the next list element.
+allocated, used, and then de-allocated before proceeding to the next list element.
 
 So it might appear that higher-order functions are nothing to worry about when
 programming with regions. That is not so, however. The limitation that lambda-bound
@@ -4547,12 +4522,12 @@ functions are never region-polymorphic can lead to space leaks. Here is an examp
 
        val x = foldl (fn (x,acc) => 10*acc+x) 0 [7,2];
 \end{verbatim}
-Since {\tt f} is lambda-bound, all the pairs created by the expression \boxml{(x,acc)}
+Because {\tt f} is lambda-bound, all the pairs created by the expression \boxml{(x,acc)}
 will pile up in the same region. The storage mode analysis will infer storage mode {\tt attop}
-for the allocation of the pair, by rule (B1) of Section~\ref{sma.sec}: since {\tt foldl} is
+for the allocation of the pair, by rule (B1) of Section~\ref{sma.sec}; because {\tt foldl} is
 curried, 
-there are several lambdas between the formal region parameter of {\tt foldl} which indicates
-where the pair should be put, and the allocation point of the pair.
+there are several lambdas between the formal region parameter of {\tt foldl} that indicates
+where the pair should be put and the allocation point of the pair.
 
 It does not help to uncurry {\tt foldl} and turn {\tt foldl} into a region endomorphism: 
 \begin{verbatim}
@@ -4563,11 +4538,11 @@ It does not help to uncurry {\tt foldl} and turn {\tt foldl} into a region endom
 \end{verbatim}
 The storage mode analysis will still give {\tt attop} for
 the allocation of the pair \boxml{(x,acc)}, for
-the region of the pair is free in the type of \boxml{f},
+the region of the pair is free in the region-annotated type of \boxml{f},
 which is locally live at that point.
 
-The solution is to require that {\tt f} be curried, to avoid the creation of the pair altogether, i.e, going to higher order
-rather than lower:
+The solution is to require that {\tt f} be curried, to avoid the creation of the pair altogether, that is, going to higher order
+rather than lower:\footnote{Program \boxml{kitdemo/fold2.sml}.}
 \begin{verbatim}
        fun foldl f b xs = 
          let fun loop(p as ([], b))= p
@@ -4576,23 +4551,21 @@ rather than lower:
              #2(loop(xs,b))
          end
 \end{verbatim}
-The region-annotated version appears in Figure~\ref{foldl.fig}
-(page~\pageref{foldl.fig}).
+The region-annotated version of this program appears in Figure~\ref{fold2.fig} on page~\pageref{fold2.fig}.
 
-\chapter{The function call}
+\chapter{The Function Call}
 Standard ML allows function applications of the form
 $$\exp_1 \exp_2$$
 where $\exp_1$ is the operator and $\exp_2$ is the operand.
 The syntax for  function application is overloaded, in that it is used
 for  three different purposes in ML:
 \begin{enumerate}
-\item application of built-in operations such as \boxml{+}, \boxml{=}, \boxml{:=};
-\item application of a value constructor (including {\tt ref}) or an exception constructor;
-\item application of user-defined functions, i.e., functions that
-are introduced by {\tt fn} or {\tt fun};
+\item applications of built-in operations such as \boxml{+}, \boxml{=}, and \boxml{:=};
+\item applications of unary value constructors (including {\tt ref}) and unary exception constructors;
+\item applications of user-defined functions, that is, functions introduced by {\tt fn} or {\tt fun}.
 \end{enumerate}
-This chapter is about the last kind of function application; in this chapter,
-we use the term function application to stand for application of user-defined functions
+This chapter is about the last kind of function applications; in the following,
+we use the term function application to stand for applications of user-defined functions
 only.
 
 Function applications are ubiquitous in Standard ML programs; in particular, iteration
@@ -4602,57 +4575,59 @@ good performance.
 
 The Kit partitions function calls into four kinds, which are implemented in different ways.
 At best, a function call is simply realised by a jump in the target code. 
-
 The resource conscious programmer will want to know the special cases; for example,
 when doing an iterative computation, it is important to know whether the space usage
 is going to be independent of the number of iterations. 
 
-In this section we enumerate the cases recognized by the Kit and show how one can
-check whether specific function calls in the code turn out the way one intended.
-
 The Kit performs a backwards flow analysis, called \index{call conversion}{\em call conversion},
-to determine which function calls are tail calls and, more generally, which function calls fall
-into the special cases listed below. We say that expressions produced
+to determine what function calls are tail calls and, more generally, what function calls fall
+into the four special cases. We say that expressions produced
 by this analysis are \index{function call!call-explicit}{\em
   call-explicit}.\label{call-explicit}
-
 One can inspect call-explicit programs by enabling the flag\index{print call-explicit expression@{\tt print call-explicit expression}} 
 $$\boxml{print call-explicit expression}$$
-in the menu~~ \texttt{Printing of intermediate forms}.
+in the menu~~ \texttt{Printing of intermediate forms}, and thus check whether specific function calls in the code turn out the way one intended.
 Call-explicit expressions are produced after regions have been dropped
 (page~\pageref{bother-to-distinguish-get-n-put}) but before generation of KAM code.
 
 We shall first give a brief description of the parameter passing mechanism in general
 and then discuss the different kinds of function calls provided, working our way from 
 the most specialised (and most efficient) cases towards the default  cases.
+
 \section{Parameter Passing}
-There is one (and so far only one) \index{register}register which is used for passing arguments
+There is one (and so far only one) \index{register}register that is used for passing arguments
 to functions. It is called \index{standardArg@{\tt standardArg}}{\tt stardardArg}. In addition, region-polymorphic functions
 use another fixed register, 
 called \index{standardArg1@{\tt standardArg1}}{\tt standardArg1}\footnote{Admittedly, not terribly good nomenclature.},
-which points to the record of region parameters which the caller has allocated prior to the call.
+which points to the record of region parameters that the caller has allocated prior to the call.
+
 \section{Tail Calls}
 \label{tailcall.sec}
 A call which is the last action of a function is 
 referred to as a {\em tail call}. After region inference, the Kit performs a 
 tail call analysis (in one backwards scan through the program). It is significant that
-the tail call analysis happens after region inference: 
+the tail call analysis happens after region inference;
 as we saw in Section~\ref{length.sec}, a function call that
 looks like a tail call in the 
 source program may end up as a non-tail call in the
 region-annotated program, because the function  has to return 
-in order to free memory.
+so as to free memory.
+
 \section{Simple Jump ({\tt jmp})}
 \label{simplejump.sec}
-In this section we shall consider conditions under which one can
-implement a function call as a simple \index{jump}\index{jmp@{\tt jmp}}\index{region polymorphism}jump. A call of a region-polymorphic
-function takes the form \boxml{$f$ [$\rho_1$, $\ldots$, $\rho_n$] at $\rho_0$ $\exp$} where $\rho_0$ is the region which holds the region vector
-containing the actual region parameters $\rho_1$, $\ldots$, $\rho_n$. 
-During \index{K-normalisation}K-normalisation, the Kit tries to bring the creation of $\rho_0$ close to the point of
-the call. Therefore, an important case to consider is a call of the form
+In this section, we consider conditions under which the Kit implements
+a function call as a simple \index{jump}\index{jmp@{\tt
+    jmp}}\index{region polymorphism}jump. A call of a
+region-polymorphic function takes the form $$\boxml{$f$ [$\rho_1$,
+  $\ldots$, $\rho_n$] $\at\,\rho_0$ $\exp$}$$ where $\rho_0$ is the region
+that holds the region vector containing the actual region parameters
+$\rho_1$, $\ldots$, $\rho_n$.  During
+\index{K-normalisation}K-normalisation, the Kit tries to bring the
+creation of $\rho_0$ close to the point of the call. Therefore, an
+important case to consider is a call of the form
 \begin{equation}
 \label{ntcall}
-\boxml{letregion $\rho_0$ in $f$ [$\rho_1$, $\ldots$, $\rho_n$] at $\rho_0$ $\exp$ end}\quad (n\geq0)
+\boxml{letregion $\rho_0$ in $f$ [$\rho_1$, $\ldots$, $\rho_n$] $\at\,\rho_0$ $\exp$ end}\quad (n\geq0)
 \end{equation}
 where $f$ is the name of a region-polymorphic function.
 
@@ -4674,7 +4649,7 @@ if the following conditions are met:
                        the actual region parameters 
                        $\rho_1$, $\ldots$, $\rho_n$ are a prefix
                        of the formal region parameters of $g$, 
-                       i.e., the list of formal region parameters of $g$
+                       that is, the list of formal region parameters of $g$
                        is \boxml{[}$\rho_1$, $\ldots$, $\rho_n$, 
                        $\rho_{n+1}$, $\ldots$, $\rho_{n+k}$\boxml{]}, 
                        for some
@@ -4686,50 +4661,50 @@ if the following conditions are met:
                   \end{enumerate}
        \end{enumerate}
 \end{enumerate}
-The start address of $f$ is known during compilation (since
-$f$ is region polymorphic). Thus such a function call
-is as efficient as an assembly language {\tt goto} to a constant
+The start address of $f$ is known during compilation (because
+$f$ is region-polymorphic). Thus, such a function call
+is as efficient as an assembly language jump to a constant
 label.
 
 To understand the above requirements, 
-note that if the region $\rho_0$ really has to be created (be
+notice that if the region $\rho_0$ really has to be created (be
 it on the stack or as an infinite region) then the call $f$ cannot
 be treated as a tail call, for $f$ has to return to de-allocate
 $\rho_0$. Now (\ref{cond2a}) is one way of ensuring
 that there is no need to allocate $\rho_0$. A different way
-is given by (\ref{cond2b}). The idea is to re-use the region vector
+is given by (\ref{cond2b}). The idea is to reuse the region vector
 of the function $g$ in which the call of $f$ occurs (a common special case
 is that $g$ is $f$). Condition (\ref{cond2ba}) ensures that the
 actual region parameters of $f$ coincide with (a prefix of) the formal
-parameters of $g$. Finally, (\ref{cond2bb}) is necessary in order to
+parameters of $g$. Finally, (\ref{cond2bb}) is necessary so as to
 ensure that the region vector of $g$ really is available when $f$
 is called.
 
 To understand (\ref{cond2bb}) in more detail, consider the example
 \begin{verbatim}
    fun g[r](x) = 
-     h[r1] (fn y => letregion r2 in f[r] at r2 y end),
+     h[r1] (fn y => letregion r2 in f[r] at r2 y end)
 \end{verbatim}
 which one might think of as sugar for 
 \begin{verbatim}
    val rec g[r] = fn x => 
-     h[r1] (fn y => letregion r2 in f[r]at r2 y end).
+     h[r1] (fn y => letregion r2 in f[r] at r2 y end)
 \end{verbatim}
 Here the call to \boxml{f} will not be implemented by a {\tt jmp}, for
 there is a \boxml{fn} between the start of the body of \boxml{g} and
 the call of \boxml{f}.  Indeed, we must not implement the call of {\tt
 f} by a {\tt jmp}, for in the call \boxml{f[r] at r2},  
-a region vector containing \boxml{r} has to be constructed, since,
-at the point of the call, \boxml{r}, is available only from the closure
-of \boxml{fn y => letregion r2 in f[r]at r2 y end}.
+a region vector containing \boxml{r} has to be constructed, because,
+at the point of the call, \boxml{r} is available only from the closure
+of \boxml{(fn y => letregion r2 in f[r] at r2 y end)}.
 
 
-Note that (\ref{ntcall}) requires 
-that the {\tt letregion} binds only one region variable (the region used for
-the region record). The way to avoid that {\tt letregion} binds more than one region variable 
+Notice that (\ref{ntcall}) requires 
+that the {\tt letregion} around the call binds only one region variable (the region used for
+the region record). The way to avoid that the {\tt letregion} binds more than one region variable 
 is to turn the calling function into a region endomorphism, when possible.
 
-The following is an example of how one obtains simple jumps:\footnote{Project: \boxml{kitdemo/tail.pm}, file: \boxml{kitdemo/tail2.sml}.}
+The following is an example of how one obtains simple jumps:\footnote{Program \boxml{kitdemo/tail.sml}.}
 \begin{verbatim}
        local
          fun f'(p as (0,b)) = p
@@ -4739,28 +4714,27 @@ The following is an example of how one obtains simple jumps:\footnote{Project: \
        end;
 \end{verbatim}
 The  call-explicit version of {\tt f'} appears in 
-Figure~\ref{tail2.fig}. 
+Figure~\ref{tail.fig}. 
 Another example of a {\tt jmp} tail call 
 will be shown in Section~\ref{foldl.sec}.
 
 \begin{figure}
-\hrule
+\hrule \medskip
 \begin{verbatim}
-
-     fun f' attop r1 [r7:inf] (var1024)= 
-         (case #0 var1024 
-          of 0 => var1024
-          |  _ => 
-            let val n = #0 var1024; val b = #1 var1024
-            in  jmp f' (n - 1, n * b) sat r7
-            end 
-         ) (*case*) ; 
+    fun f' attop r1 [r7:inf] (var512)= 
+        (case #0 var512 
+           of 0 => var512
+           |  _ => 
+              let val b = #1 var512; val n = #0 var512
+              in  jmp f' (n - 1, n * b) sat r7
+              end 
+        ) (*case*) ; 
 \end{verbatim}
 \caption{An example where a function call 
          turns into a simple jump.}
 \medskip
 \hrule
-\label{tail2.fig}
+\label{tail.fig}
 \end{figure}
 
 \section{Non-Tail Call of Region-Polymorphic Function \index{funcall@{\tt funcall}}({\tt funcall})}
@@ -4776,47 +4750,47 @@ $\rho_0$ will always be finite and be on the stack.
 Due to this allocation, the call cannot be a tail call. The
 mnemonic used for a non-tail call of a region-polymorphic function
 is {\tt funcall}. Thus (\ref{ntcall}) is simplified to 
-$$\boxml{letregion $\rho_0$ in funcall $f$ [$\rho_1$, $\ldots$, $\rho_n$] at $\rho_0$ $\exp$ end}.$$
+$$\boxml{letregion $\rho_0$ in funcall $f$ [$\rho_1$, $\ldots$, $\rho_n$] $\at\,\rho_0$ $\exp$ end}.$$
 
 
-Now let us turn to calls of region-polymorphic functions which do not fit the
-pattern (\ref{ntcall}). One special case is:
-$$\boxml{letregion $\rho_0,\rho_1,\ldots\rho_k$ in $f$ [] at $\rho_0$ $\exp$ end}
+Now, let us turn to calls of region-polymorphic functions that do not fit the
+pattern (\ref{ntcall}). One special case is
+$$\boxml{letregion $\rho_0,\rho_1,\ldots,\rho_k$ in $f$ [] $\at\,\rho_0$ $\exp$ end}
 $$
 where  $k>0$. Here $\rho_0$ is not needed; the Kit therefore replaces
 the expression by 
-$$\boxml{letregion $\rho_1,\ldots\rho_k$ in funcall $f$  $\exp$ end}
+$$\boxml{letregion $\rho_1,\ldots,\rho_k$ in funcall $f$  $\exp$ end}
 $$
 (For reasons of presentation, we have assumed that the
 \texttt{letregion}-bound region variables have been rearranged, if
 necessary, to bring $\rho_0$ to the front.)
 
 Every remaining case of an application of a region-polymorphic function
-       $$\boxml{$f$ [$\rho_1$, $\ldots$, $\rho_n$] at $\rho_0$ $\exp$}$$
+       $$\boxml{$f$ [$\rho_1$, $\ldots$, $\rho_n$] $\at\,\rho_0$ $\exp$}$$
 is replaced by 
 %{\tt jmp $f$ $\exp$}, 
 %if the call is a tail call, and by
-       $$\boxml{$($funcall $f$ [$\rho_1$, $\ldots$, $\rho_n$] at $\rho_0)$ $\exp$}$$
+       $$\boxml{$($funcall $f$ [$\rho_1$, $\ldots$, $\rho_n$] $\at\,\rho_0)$ $\exp$}$$
 %otherwise.
 
-This completes all possible cases of applications of 
+This case completes all possible cases of applications of 
 region-polymorphic functions. We now turn to function applications
 where the operator is not the name of a region-polymorphic function.
 
 \section{Tail Call of Unknown Function ({\tt fnjmp})}
-Consider the case:\index{fnjmp@{\tt fnjmp}}
+Consider the case\index{fnjmp@{\tt fnjmp}}
 $$\exp_1\,\exp_2$$
 where (a) the call is a tail call and (b) $\exp_1$ is not the name of a region-polymorphic function.
 
 Here $\exp_1$ will be evaluated to a closure, pointed to by a standard 
-register, \index{standardClos@{\tt standardClos}}\index{register}
+register called \index{standardClos@{\tt standardClos}}\index{register}
 {\tt standardClos}. Then $\exp_2$ will be evaluated and the result put
 in the standard register \index{standardArg@{\tt standardArg}}{\tt standardArg}.
 The first word in the closure always contains the address of
 the code of the function. This address is fetched into a register and a jump to
-the address is made. Since the call is a tail call, it induces no allocation, neither
+the address is made. Because the call is a tail call, it induces no allocation, neither
 on the stack nor in regions. It is thus as efficient as an
-indirect {\tt goto} in assembly language.
+indirect jump in assembly language.
 
 %To avoid that $\exp_2$ puts values
 %in fresh regions (which would make the call a non-tail call) one
@@ -4825,83 +4799,86 @@ indirect {\tt goto} in assembly language.
 The mnemonic used in call-explicit expressions for this special case is
 $$\boxml{fnjmp $\exp_1$ $\exp_2$}$$
 
-\section{Non-Tail call of Unknown Function ({\tt fncall})}
+\section{Non-Tail Call of Unknown Function ({\tt fncall})}
 Consider the case
 $$\exp_1\,\exp_2$$
 where (a) the call is not a tail call and (b) $\exp_1$ is not the name of a region-polymorphic function.
 
-This is implemented as follows: first $\exp_1$ is evaluated and the result, a  pointer to a closure, 
+Applications of this form are implemented as follows. First $\exp_1$ is evaluated and the result, a  pointer to a closure, 
 is stored in \boxml{standardClos}.
 Then $\exp_2$ is evaluated and stored in $\boxml{standardArg}$. Then live registers and a return address
-are pushed onto the stack and a jump is made to the code address which is stored in the first word of the closure
+are pushed onto the stack and a jump is made to the code address that is stored in the first word of the closure
 pointed to by {\tt standardClos}. Upon return, registers are restored from the stack.
 
 The mnemonic used in call-explicit expressions for this special case is
 $$\boxml{fncall $\exp_1$ $\exp_2$}$$
+
 \section{Example: Function Composition}
-The prelude defines function composition as follows:
+The Basis Library declares function composition as follows\footnote{Program \boxml{kitdemo/compose.sml}.}
 \begin{verbatim}
        fun (f o g) x = f(g x)
 \end{verbatim}
-The resulting call-explicit expression produced by the Kit is\footnote{Project:
-\boxml{kitdemo/compose.pm}, file \boxml{kitdemo/compose.sml}.}
+The resulting call-explicit expression produced by the Kit is
 \begin{verbatim}
-      fun o attop r1[r7:2] (var1026) = 
-          fn attop r7 x => 
-             let val f = #0 var1026; val g = #1 var1026
-             in  fnjmp f (fncall g x)
-             end 
+       fun o attop r1 [r7:3] (v40378)= 
+           let val g = #1 v40378; val f = #0 v40378
+           in  fn attop r7 x => fnjmp f (fncall g x)
+           end 
 \end{verbatim}
-Note that \boxml{f o g} first creates a closure in \boxml{r7}
+Notice that \boxml{f o g} first creates a closure in \boxml{r7}
 and then returns. When called, the created function first performs
 a non-tail call of \boxml{g} and then a tail call to \boxml{f}.\index{o@{\tt o}}
 
 \section{Example: {\tt foldl}  Revisited}
 \label{foldl.sec}
-Consider
+Consider the following declaration of folding over lists:\footnote{Program \boxml{kitdemo/fold1.sml}.}
 \begin{verbatim}
        fun foldl f b xs = 
          case xs of 
            [] => b
          | x::xs' => foldl f (f x b) xs'
 \end{verbatim}
-Note that the recursive call of \index{foldl@{\tt foldl}}{\tt foldl} is a call of a known function, but not a tail
-call: {\tt foldl} returns a closure, which is subsequently
-applied to the value of {\tt (f x b)}. This too returns a closure
+The recursive call of \index{foldl@{\tt foldl}}{\tt foldl} is a call of a known function, but not a tail
+call; {\tt foldl} returns a closure, which is subsequently
+applied to the value of {\tt (f x b)}. This too returns a closure,
 which in turn is applied to {\tt xs'}. 
-The resulting call-explicit expression is\footnote{Project:
-\boxml{kitdemo/fold.pm}, file \boxml{kitdemo/fold1.sml}.}
-
+The resulting call-explicit expression is shown in Figure~\ref{fold1.fig}.
+\begin{figure}
+\hrule \medskip
 \begin{verbatim}
 fun foldl attop r1 [r7:4, r8:4] (f)= 
-    fn attop r7 b => 
-       fn attop r8 xs => 
-          (case xs 
-           of nil => b
-           |  :: => 
-             let val v11876 = decon_:: xs; 
-                 val x = #0 v11876; 
-                 val xs' = #1 v11876
-             in  letregion r22:4 
-                 in fncall 
+     fn attop r7 b => 
+      fn attop r8 xs => 
+      (case xs 
+         of nil => b
+         |  _ => 
+            let val xs' = #1 decon_:: xs; 
+                val x = #0 decon_:: xs
+            in  letregion r22:4 
+                in fncall 
                     letregion r24:4 
                     in fncall 
-                       letregion r25:2 
-                       in funcall foldl[atbot r24,atbot r22] atbot r25 f 
-                       end
-                       (fncall (fncall f x) b) 
-                    end
+                        letregion r25:2 
+                        in funcall foldl
+                            [atbot r24, atbot r22] atbot r25 
+                            f 
+                        end (*r25:2*) 
+                        (fncall fncall f x b) 
+                    end (*r24:4*) 
                     xs' 
-                 end
-             end 
-          ) (*case*) 
+                end (*r22:4*)
+            end 
+      ) (*case*) 
 \end{verbatim}
-Note that upon each iteration, fresh regions for holding
+\caption{The straightforward implementation of {\tt foldl} uses space linear in the length of the list. (Program {\tt kitdemo/fold1.sml}.)}
+\medskip \hrule \label{fold1.fig}
+\end{figure}
+Notice that upon each iteration, fresh regions for holding
 two closures are being allocated for the duration of the
-recursive call. Thus space usage is linear in the length 
+recursive call. Thus, space usage is linear in the length 
 of the list (4 words for each list cell, to be precise).
 
-An efficient version of {\tt foldl} is written thus:
+An efficient version of {\tt foldl} is written thus:\footnote{Program \boxml{kitdemo/fold2.sml}.}
 \begin{verbatim}
        fun foldl f b xs = 
          let fun loop(p as ([], b))= p
@@ -4910,60 +4887,54 @@ An efficient version of {\tt foldl} is written thus:
              #2(loop(xs,b))
          end
 \end{verbatim}
-It is compiled into the  call-explicit expression in Figure~\ref{foldl.fig}.\footnote{Project:
-\boxml{kitdemo/fold.pm}, file \boxml{kitdemo/fold2.sml}.}
+It is compiled into the  call-explicit expression in Figure~\ref{fold2.fig}.
 \begin{figure}
-\hrule
+\hrule \medskip
 \begin{verbatim}
-
 fun foldl attop r1 [r7:3, r8:3] (f)= 
-    fn attop r7 b => 
-       fn attop r8 xs => 
-          letregion r20:1 
-          in let fun loop atbot r20 [r21:inf] (var1074)= 
-                     (case #0 var1074 
-                      of nil => var1074
-                      |  :: => 
-                         let val v11919 = #0 var1074; 
-                             val v11921 = decon_:: v11919; 
-                             val b = #1 var1074; 
-                             val x = #0 v11921; 
-                             val xs = #1 v11921
-  (* note jmp *)         in  jmp loop (xs, 
-                                       fncall (fncall f x) b
-                                      ) sat r21
-                         end 
-                     ) (*case*) 
-             in  letregion r28:inf 
-                 in let val v11926 = 
-                          letregion r29:1 
-                          in funcall loop[atbot r28] atbot r29
-                                     (xs, b) atbot r28 
-                          end
-                    in  #1 v11926
-                    end  
-                 end
-             end  
-          end
- 
+     fn attop r7 b => 
+      fn attop r8 xs => 
+      letregion r19:2 
+      in let fun loop atbot r19 [r20:inf] (var514)= 
+                 (case #0 var514 
+                    of nil => var514
+                    |  _ => 
+                       let val b = #1 var514; 
+                           val xs = #1 decon_:: #0 var514; 
+                           val x = #0 decon_:: #0 var514
+                       in  jmp loop (xs, 
+                                     fncall fncall f x b
+                                    ) sat r20
+                       end 
+                 ) (*case*) 
+         in  letregion r27:inf 
+             in let val v40485 = 
+                        letregion r28:1 
+                        in funcall loop[atbot r27] atbot r28 
+                                   (xs, b) atbot r27 
+                        end (*r28:1*)
+                in  #1 v40485
+                end  
+             end (*r27:inf*)
+         end  
+      end (*r19:2*)
 \end{verbatim}
-\caption{The result of compiling {\tt foldl} is an iterative function which avoids
-argument pairs piling up in one region.}
-\medskip
-\hrule
-\label{foldl.fig}
+\caption{The result of compiling the efficient version of {\tt foldl} ({\tt kitdemo/fold2.sml}) is an 
+  iterative function that avoids argument pairs piling up in one
+  region.}  \medskip \hrule
+\label{fold2.fig}
 \end{figure}
-There are two reasons why this is much better: the loop is implemented as a jump and,
-more importantly, there
-is no new allocation in each iteration, except, of course,  for
-the allocation which {\tt f} might make.\footnote{We repeat
-that because {\tt f} is a formal function parameter, all the
-allocations made by the calls to {\tt f} (one call for each element of the list)
-are put in the same regions. If the list is very long or the values produced large,
-it may be a good idea to copy the final result to separate regions.}
+There are two reasons why this version of {\tt foldl} is much better
+than the straightforward version. First, the loop is implemented as a
+jump and, more importantly, there is no new allocation in each
+iteration, except, of course, for the allocation that {\tt f} might
+make.\footnote{All the allocations made by the calls to {\tt f} (one
+  call for each element of the list) are put in the same regions. If
+  the list is very long or the values produced large, it may be a good
+  idea to copy the final result to separate regions.}
 
-As an exercise, consider the following variant of {\tt foldl} which assumes that
-{\tt f} takes a pair as an argument:
+As an exercise, consider the following variant of {\tt foldl}, which assumes that
+{\tt f} takes a pair as an argument:\footnote{Program \boxml{kitdemo/fold3.sml}.}
 \begin{verbatim}
        fun foldl' f b xs = 
          let fun loop(p as ([], b))= p
@@ -4973,30 +4944,30 @@ As an exercise, consider the following variant of {\tt foldl} which assumes that
          end
 \end{verbatim}
 Interestingly, this program contains a potential space leak. Can you
-detect it? If not, the Kit will tell you when you compile the program.\footnote{Project:
-\boxml{kitdemo/fold.pm}, file \boxml{kitdemo/fold3.sml}.}
+detect it? If not, the Kit will tell you when you compile the program.
 
 
 \chapter{Modules and Projects}
 \label{modules_and_projects.chap}
-In Section \ref{tryit.sec} we described how software projects with
-multiple source files are compiled in the Kit. In this chapter we
-describe how to program in the large, with the Kit, using Standard ML
-Modules and the possibility of organizing source files into project
-files. The Kit fully supports Standard ML Modules, and it has a
-sophisticated system for avoiding unnecessary recompilation. In the
-following section we describe the notion of projects. We then turn to
-show how to program with structures, signatures and functors, in the
-Kit, and we explain how these module constructs are compiled.
+In Section \ref{tryit.sec}, we described how to compile and run single
+file programs. In this chapter, we describe how to program in the
+large, with the Kit, using Standard ML Modules and the possibility of
+organising source files into project files. The Kit fully supports
+Standard ML Modules, and it has a sophisticated system for avoiding
+unnecessary recompilation. In the following section, we describe the
+notion of projects. We then turn to show how to program 
+with structures, signatures, and functors. To enable the programmer
+to write efficient programs using the Modules language, we
+shall also explain how the Kit compiles Modules language constructs.
 
 
 \section{Projects \label{projects.sec}}
-A project file has extension {\tt .pm}, and in it you can mention a
+A project file has extension {\tt .pm}, and in it, one can mention a
 sequence of projects to import and a sequence of source files. Both
 project files and source files may be mentioned using either absolute
 or relative paths (relative paths are relative to the location of the
-project file). Until now, we have seen many examples of project files
-with no imports (see e.g., Section~\ref{tryit.sec} for such an
+project file). Until now, we have seen a few examples of project files
+with no imports (see e.g., Section~\ref{polyrec.sec} for such an
 example). Later, in Section~\ref{functors.sec}, we shall see an
 example of a project that imports other projects; the Kit enforces the
 restriction that projects may not be cyclic. Project files may contain
@@ -5010,7 +4981,7 @@ mentioned earlier in the project file and on other imported projects.
 The meaning of an entire project is the meaning of the top-level
 declaration that would arise by first expanding all imported projects
 and then concatenating all the source files listed in the project
-file, in the order they are listed, except that each project is 
+file, in the order they are listed, except that, each project is 
 only executed the first time it is imported. 
 
 The Kit has a system for managing compilation and recompilation of
@@ -5023,29 +4994,29 @@ Thus, the separate compilation system is a way of avoiding recompiling
 parts of a (possibly) long sequence of declarations, while ensuring
 that the result is always the same as if one had recompiled the entire
 program.  As an example, consider the project file for the text
-scanning example:\footnote{Project: \boxml{kitdemo/scan.pm}.}
+scanning example of Section~\ref{scan.sec}:\footnote{Project \boxml{kitdemo/scan.pm}.}
 \begin{verbatim}
-prelude.sml
-lib.sml
-scan.sml
+  lib.sml
+  scan.sml
 \end{verbatim}
 
 \noindent 
-The source files for the project are {\tt prelude.sml}, {\tt lib.sml},
-and {\tt scan.sml}, which are all located in the directory where the
-project file {\tt scan.ps} is located. Whereas both of the source
-files {\tt lib.sml} and {\tt scan.sml} depend on the source file {\tt
-prelude.sml}, the source file {\tt scan.sml} also depends on {\tt
-lib.sml}.
+The source files for the project are {\tt lib.sml} and and {\tt
+  scan.sml}, which are both located in the directory where the project
+file {\tt scan.pm} is located. Whereas each of the source files {\tt
+  lib.sml} and {\tt scan.sml} depends on the Basis Library, the source
+file {\tt scan.sml} also depends on {\tt lib.sml}.
 
 The {\tt Project} sub-menu provides the user with operations for
 setting a project file name and for reading and compiling the project
-file (see Section \ref{tryit.sec}). The system detects automatically
-(from file modification dates) if a source file is modified.  After a
-project has been successfully compiled and linked, it can be executed
-by running the command\index{run@{\tt run}}
+file.
+
+The system detects automatically---from file modification dates---if a
+source file is modified.  After a project has been successfully
+compiled and linked, it can be executed by running the
+command\index{run@{\tt run}}
 \begin{verbatim}
-run
+  run
 \end{verbatim}
 in the working directory.  
 
@@ -5079,7 +5050,7 @@ file {\tt scan.sml} was compiled have changed, and if so, recompiles
 {\tt lib.sml} or extending its set of declared identifiers does not
 trigger recompilation of {\tt scan.sml}.  However, more information is
 needed to compile a source file than the ML type schemes for its free
-variables. Thus, it might be the case that a source file must be
+variables. Thus, it might be the case that a source file is
 recompiled even though the ML type assumptions for free variables have
 not changed. For instance, the region type scheme for a free variable
 might have changed, even though the underlying ML type scheme has not.
@@ -5096,28 +5067,28 @@ functions may also trigger recompilation.
 \section{Structures}
 The support for Modules together with the possibility of dividing top-level
 declarations into source files provide a mechanism for
-programming in the large. In the Kit, structures only exist at compile
+programming in the large. In the Kit, structures exist only at compile
 time, thus, the memory conscious programmer need not worry where
 structures go at runtime.
 
-Consider the project {\tt set.pm},\footnote{Project:
-  \boxml{kitdemo/set.pm}.} which mentions the source files {\tt
-  prelude.sml}, {\tt poly\_set.sml}, and {\tt int\_set.sml}. The source
+Consider the project {\tt set.pm},\footnote{Project
+  \boxml{kitdemo/set.pm}.} which mentions the source files {\tt poly\_set.sml} and {\tt int\_set.sml}. The source
   file {\tt poly\_set.sml} contains the following top-level
   declaration:
 \begin{verbatim}
 structure PolySet = 
   struct
     type 'a set = 'a list
+    val empty = []
     fun singleton x = [x]
-    fun mem(x,[]) = false
-      | mem(x,y::ys) = x=y orelse mem(x,ys)
+    fun mem x l = 
+      let fun mem' [] = false
+            | mem' (y::ys) = x=y orelse mem' ys 
+      in mem' l
+      end
     fun union(s1,[]) = s1
       | union(s1,x::s2) = if mem(x,s1) then union(s1,s2)
                           else x::union(s1,s2)  
-    fun inter(s1,[]) = []
-      | inter(s1,x::s2) = if mem(x,s1) then x::inter(s1,s2)
-                          else inter(s1,s2)
   end
 \end{verbatim}
 
@@ -5139,17 +5110,17 @@ the signature declaration
 signature INT_SET =
   sig
     type 'a set
+    val empty : int set
     val singleton : int -> int set
     val mem : int * int set -> bool
     val union : int set * int set -> int set
   end
 \end{verbatim}
 
-\noindent
 Signatures are used in two contexts; for specifying arguments to
 functors and for providing restricted views of structures using
 transparent and opaque signature constraints. We defer the discussion
-of the former use of signatures to Section \ref{functors.sec}.
+of the former use of signatures to Section~\ref{functors.sec}.
 
 Transparent signature constraints may both restrict components from a
 structure and make polymorphic components less polymorphic. Moreover,
@@ -5188,91 +5159,129 @@ compiling these structure declarations are memorised, so that the
 generated code can be reused upon modification of source files if the
 assumptions do not change.
 
-Consider the project {\tt functor\_set.pm}:\footnote{Project:
-  \boxml{kitdemo/functor\_set.pm}.}
+Consider the following project:\footnote{Project
+  \boxml{kitdemo/Set.pm}.}
 \begin{verbatim}
-import utils/utils.pm
-in
-   functor_set.sml
-   app_set.sml
-end
-\end{verbatim}
-The project imports the sub-project {\tt utils.pm}\footnote{Project:
-\boxml{kitdemo/utils/utils.pm}.}, which provides a structure {\tt
-ListUtils} containing the function {\tt pr\_list} with type scheme
-{\tt ('a -> string) -> 'a list -> string}. The source file {\tt
-functor\_set.sml} is listed in Figure~\ref{functor_set.fig}. It
-declares the functor {\tt Set}, which takes as arguments the element
-type for the set and an ordering function on elements.
-\begin{figure}
-\hrule \medskip
-\begin{verbatim}
-functor Set(type elem  (* total order *)
-            val lt : elem * elem -> bool
-            val pr : elem -> string) =
-  struct
-    type set = elem list
-    fun singleton (x:elem) = [x]
-    fun mem(x,[]) = false
-      | mem(x,y::ys) = if lt(y,x) then mem(x,ys)
-                       else (not o lt)(x,y)
-    fun union(s1,s2) = 
-      let fun uni([], s, acc) = rev acc @ s
-            | uni(s, [], acc) = rev acc @ s
-            | uni(s1 as x::xs, s2 as y::ys, acc) = 
-                uni(if lt(x,y) then (xs, s2, x::acc)
-                    else if lt(y,x) then (s1, ys, y::acc)
-                    else (xs, ys, y::acc))
-      in uni(s1, s2, []) 
-      end
-    val pr = ListUtils.pr_list pr
+  import utils/utils.pm
+  in SET.sml Set.sml SetApp.sml
   end
 \end{verbatim}
-\caption{\label{functor_set.fig} The source file {\tt functor\_set.sml}.}
-\medskip \hrule
+The project imports the sub-project {\tt utils.pm},\footnote{Project
+\boxml{kitdemo/utils/utils.pm}.} which provides a structure {\tt
+ListUtils} containing the function {\tt pr\_list} with type scheme
+{\tt ('a -> string) -> 'a list -> string}. The source file {\tt
+Set.sml} is listed in Figure~\ref{Set.fig}. It
+declares the functor {\tt Set}, which takes as arguments the element
+type for the set, an ordering function on elements, and a function for providing a string representation of elements.
+\begin{figure}[ht]
+\hrule \medskip
+\begin{verbatim}
+functor Set (eqtype elem (*total order*)
+             val lt : elem * elem -> bool
+             val pr : elem -> string) 
+     : SET where type elem = elem =
+  struct
+    type elem = elem
+    type set = elem list
+    val empty : set = []
+    fun singleton e = [e]
+    fun mem x l =
+      let fun mem' [] = false
+            | mem' (y::ys) = if lt(y,x) then mem' ys
+                             else not(lt(x,y))
+      in mem' l
+      end
+    fun union(s1,s2) =
+      let fun U (t as ([], [], acc)) = t
+            | U ([], y::ys, acc) = U([], ys, y::acc)
+            | U (x::xs, [], acc) = U(xs, [], x::acc)
+            | U (s1 as x::xs, s2 as y::ys, acc) =
+                U(if lt(x,y) then (xs, s2, x::acc)
+                  else if lt(y,x) then (s1, ys, y::acc)
+                  else (xs, ys, y::acc))
+      in rev(#3(U(s1, s2, [])))
+      end
+    val pr = fn s => ListUtils.pr_list pr s
+  end
+\end{verbatim}
+\caption{The source file \boxml{kitdemo/Set.sml}.}
+\medskip \hrule \label{Set.fig} 
 \end{figure}
 
-The source file {\tt app\_set.sml} is listed in
-Figure~\ref{app_set.fig}. It constructs a structure {\tt IntSet} by
+The source file {\tt SetApp.sml} is listed in
+Figure~\ref{SetApp.fig}. It constructs a structure {\tt IntSet} by
 applying the functor {\tt Set} to appropriate arguments including an
 ordering operation on integers and an operation for giving the string
 representation of an integer. The {\tt IntSet} structure is used for
-constructing a set \verb+{5,6}+, which the program prints using the
-builtin {\tt print} function.
-\begin{figure}
+constructing a set \verb+{2,5}+, which the program prints using the
+built-in {\tt print} function.
+\begin{figure}[ht]
 \hrule \medskip
 \begin{verbatim}
 structure IntSet = Set(type elem = int
                        val lt = op <
-                       val pr = Int.toString)
-local open IntSet
-in val a = singleton 5
-   val b = singleton 6
-   val c = union(union(a,b),b)
-   val _ = print(pr c)
-end
+                       fun pr a = Int.toString a)
+open IntSet
+val _ = print (pr (union(singleton 2, singleton 5)))
 \end{verbatim}
-\caption{\label{app_set.fig} The source file {\tt app\_set.sml}.}
-\medskip \hrule
+\caption{The source file \boxml{kitdemo/SetApp.sml}.}
+\medskip \hrule \label{SetApp.fig} 
 \end{figure}
 
 The body of the {\tt Set} functor is instantiated to form the code for
 the {\tt IntSet} structure. The result of instantiating the {\tt Set}
-functor is first translated into a {\sl Lambda\/} program and then
-translated into a {\sl MulExp\/} program. The {\sl MulExp\/} program
-for the instantiated functor body is shown in
+functor is first translated into a $\Lam$ program and then
+translated into a $\MulExp$ program. The $\MulExp$ call-explicit code for the {\tt mem} function is shown in
 Figure~\ref{set_inst_mulexp.fig}.
-\begin{figure}
+\begin{figure}[ht]
 \hrule \medskip
 \begin{verbatim}
- MEMO: fill in...
+fun mem attop r1t$ [r11t$:4] (x)= 
+  fn attop r11t$ l => 
+  letregion r15t$:4 
+  in let fun mem' atbot r15t$ [] (var550)= 
+           (case var550 
+              of nil => false
+              |  _ => 
+                 let val ys = #1 decon_:: var550; 
+                     val y = #0 decon_:: var550
+                 in  (case letregion r20t$:0, r22t$:2 
+                           in funcall lt[] (y, x) atbot r22t$ 
+                           end (*r20t$:0, r22t$:2*)
+                        of true => jmp mem' ys
+                        |  _ => 
+                           jmp not 
+                             letregion r27t$:0, r29t$:2 
+                             in funcall lt[] (x, y) atbot r29t$ 
+                             end (*r27t$:0, r29t$:2*)
+                     ) (*case*) 
+                 end 
+           ) (*case*) 
+     in  funcall mem'[] l
+     end  
+  end (*r15t$:4*); 
 \end{verbatim}
-\caption{\label{set_inst_mulexp.fig} The {\sl MulExp\/} program
-resulting from instantiating the {\tt Set} functor.}
-\medskip \hrule
+\caption{The $\MulExp$ call-explicit code for the {\tt mem} function resulting 
+from instantiating the {\tt Set} functor.}
+\medskip \hrule \label{set_inst_mulexp.fig} 
 \end{figure}
 
-
+Notice that the code for the {\tt mem}~function refers to compiled
+code for the {\tt lt}~function; the Kit does not currently
+propagate enough information accross module boundaries that the use of
+the {\tt lt}~function is reduced to a built-in comparison on
+integers. Instead, for simplicity, the Kit compiles the argument to
+the {\tt Set}~functor in the source file \boxml{SetApp.sml} into
+separate code:
+\begin{verbatim}
+   let fun lt attop r1t$ [] (v41970)= #0 v41970 < #1 v41970; 
+       fun pr attop r1t$ [r10s$:inf] (a)= jmp toString a
+   in  {|pr: (_,r1t$), lt: (_,r1t$)|}
+   end 
+\end{verbatim}
+Here, the \boxml{toString} function stems from the \boxml{Int}
+structure of the Basis Library and the primitive operation~\boxml{<} provides a built-in comparison
+on integers.
 
 \part{System Reference}
 %
@@ -5326,7 +5335,7 @@ lambda program annotated with program points.
   
 During compilation, it is also possible to generate a \emph{region flow
   graph}\index{region flow graph} which shows how
-regions may be passed around at runtime when region polymorphic functions
+regions may be passed around at runtime when region-polymorphic functions
 are applied. The region flow graph is very handy when profiling larger
 programs when one wants to find out why a formal region variable has been
 instantiated to a certain \texttt{letregion}-bound region variable.
@@ -5471,7 +5480,7 @@ instantiated to {\tt letregion}-bound region variable \texttt{r2797} when
 function \texttt{driver} is called. Formal region variable \texttt{r1545}
 is then instantiated to region variable \texttt{r2468} when calling
 function \texttt{toString}.\footnote{Region flow graphs are local to each
-  program in a project. Calling a non local region polymorphic function
+  program in a project. Calling a non local region-polymorphic function
   will then introduce an edge in the region flow graph, but we do not know
   in which module the called function is located. It may be necessary to
   look in several log files to find the path from a formal region variable
