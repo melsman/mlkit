@@ -1,4 +1,4 @@
-(*$MUL_EXP: REGION_EXP*)
+
 signature MUL_EXP =
   sig
 

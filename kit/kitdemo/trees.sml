@@ -6,7 +6,6 @@
      | preord (Br(x,t1,t2),xs) = 
          x::preord(t1,preord(t2,xs))
 
-
    (* building a balanced binary tree
       from a list: *)
 
@@ -19,6 +18,6 @@
 
    (* preord o balpre is the identity: *)
 
-   val it = say(implode(preord(balpre(explode 
+   val it = print(implode(preord(balpre(explode 
        "Greetings from the Kit\n"),[])));
        

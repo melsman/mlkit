@@ -117,7 +117,6 @@ signature REGION_EXP =
 
     val normPgm: (place, 'b)LambdaPgm * (unit -> int) -> unit
 
-    val warn_puts: 'a -> 'b -> unit
     val countletregions: 'a -> unit
 
 

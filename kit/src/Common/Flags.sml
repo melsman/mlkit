@@ -71,7 +71,7 @@ functor Flags (structure Crash : CRASH
     val print_regions = ref true
     val print_word_regions = ref false
     val print_types  = ref false
-    val warn_on_escaping_rhos = ref false
+    val warn_on_escaping_puts = ref false
     val all_multiplicities_infinite = ref false   
     (* attop/atbot inference *)
 
@@ -167,10 +167,8 @@ functor Flags (structure Crash : CRASH
 			    ^ (case reports of [_] => "" | _ => "s")
 		            ^ " printed on log file\n")
 		  else ();
-		  let val report =
-		        (Report.flatten
-			 o map (fn report => Report.decorate ("*** warning: ", report))
-			 o rev) reports
+		  let val reports = rev reports
+		      val report = Report.//(Report.line " *** Warnings ***", Report.flatten reports)
 		  in Report.print' report (!log)
 		  end))
     end (*local*)
@@ -315,12 +313,13 @@ structure Directory : sig
 			val is_on               : string -> bool 
 			val turn_on             : string -> unit
 			val turn_off            : string -> unit
-			val lookup_flag_entry   : string -> bool ref
 			val add_string_entry    : string * string ref -> unit
-			val get_string_entry    : string -> string
-			val lookup_string_entry : string -> string ref
 			val add_int_entry       : string * int ref -> unit
 			val add_bool_entry      : string * bool ref -> unit
+			val get_string_entry    : string -> string
+			val lookup_string_entry : string -> string ref
+			val lookup_flag_entry   : string -> bool ref
+			val lookup_int_entry    : string -> int ref
 			val readScript          : string -> unit
 			val show_script_entries : unit -> unit
 		      end =
@@ -352,10 +351,14 @@ struct
     end
 
   (* Toggles and check for boolean flags. *)
+  fun lookup_entry subdir key =
+        (#2 o List.first (fn (key':string,_) => key=key') o !) subdir
+	handle List.First _ => die ("lookup_entry " ^ key)
 
-  fun lookup_flag_entry key =
-        (#2 o List.first (fn (key':string,_) => key=key') o ! o #booleans) dir
-	handle List.First _ => die ("lookup_flag_entry " ^ key)
+  fun lookup_flag_entry key = lookup_entry (#booleans dir) key
+  fun lookup_string_entry key = lookup_entry (#strings dir) key
+  fun lookup_int_entry key = lookup_entry (#integers dir) key
+  val get_string_entry = ! o lookup_string_entry
   val is_on = ! o lookup_flag_entry
   fun turn_on (key: string) : unit = lookup_flag_entry key := true
   fun turn_off (key: string) : unit = lookup_flag_entry key := false
@@ -371,11 +374,7 @@ struct
     fun add_bool_entry(key,r) = #booleans dir := add_entry(!(#booleans dir),key,r)
   end
 
-  (* Functions for retrieving a string value. *)
-  fun lookup_string_entry key =
-        (#2 o List.first (fn (key' : string, _) => key=key') o ! o #strings) dir
-	    handle List.First _ => die ("lookup_string_entry " ^ key)
-  val get_string_entry = ! o lookup_string_entry
+
 
   (* Read and interpret script and update directory according to 
    * parse result. *)
@@ -479,7 +478,7 @@ struct
      ("region_profiling", region_profiling),
      ("generate_lambda_code_with_program_points", gen_lambda_with_pp),
      ("generate_vcg_graph", gen_vcg_graph),
-     ("warn_on_escaping_puts", warn_on_escaping_rhos),
+     ("warn_on_escaping_puts", warn_on_escaping_puts),
      ("chat", chat),
      ("eliminate_polymorphic_equality", eliminate_polymorphic_equality),
      ("print_types", print_types),
@@ -511,6 +510,7 @@ structure Menu: sig
                     val add_flag: string * string * bool ref -> unit
                     val add_flag_to_menu: string list* string * string * bool ref -> unit
                     val add_string_to_menu: string list* string * string * string ref -> unit
+		    val add_int_to_menu: string list* string * string * int ref -> unit
                     val interact: unit -> unit
                   end =
 struct
@@ -570,9 +570,26 @@ struct
 	 | _ => (help () ; read_string r ())
        end)
 
+  fun read_int r () =
+    (outLine "<number> or up (u): >";
+     let val s = TextIO.inputLine std_in
+       val (_, l) = List.splitFirst(fn ch => ch <> " ")(explode s)
+	 handle List.First _ => ([],[])
+     in case l 
+	  of [] => (help(); read_int r ())
+	   | "q" :: "u" :: "i" :: "t" :: _  => ()
+	   | "u" :: _  => ()
+	   | _ => case IntParse.parse (implode l) of
+	    OK(i,_) => r:= i | _ => (help(); read_int r ())
+     end)
+
   fun mk_string_action(r: string ref, text) =
-          {text = text, attr = VALUE (fn () => "(" ^ String.string(!r) ^ ")"),
-	   below = ACTION (read_string r)};
+    {text = text, attr = VALUE (fn () => "(" ^ String.string(!r) ^ ")"),
+     below = ACTION (read_string r)};
+
+  fun mk_int_action(r: int ref, text) =
+    {text = text, attr = VALUE(fn _ => Int.string(!r)),
+     below = ACTION (read_int r)};
 
 
   fun add_flag (key: string, menu_txt: string, flag: bool ref) =
@@ -591,69 +608,60 @@ struct
           | _ => die "add_flag.menu not DISPLAY."
         );
 
+  fun add_path(path : string list, add_menu: menu -> menu, menu : menu) : menu =
+    case path 
+      of [] => add_menu menu
+       | (txt::path') =>
+	let fun extend [] : item list = [mk_header txt (add_path(path',add_menu,NOMENU))] (* insert new header *)
+	      | extend ((item as {text,attr,below})::items) =
+	       if text=txt then {text=text,attr=attr,below=add_path(path',add_menu,below)} :: items
+	       else item :: extend items 
+	in case menu 
+	     of DISPLAY l => DISPLAY (extend l)
+	      | BUTTON{r, text1, below1, text2, below2} =>
+	       if text1=txt then
+		 BUTTON{r=r, text1=text1, below1=add_path(path',add_menu, below1),text2=text2,below2=below2}
+	       else if text2=txt then
+		 BUTTON{r=r, text1=text1, below1=below1,text2=text2,below2=add_path(path',add_menu,below2)}
+	       else die "add_path.menu is BUTTON."
+	      | NOMENU => DISPLAY (extend [])
+	      | _ => die "add_path.menu not DISPLAY, BUTTON, or NOMENU." 
+	end
 
   fun add_flag_to_menu(path : string list, key: string, menu_text: string, flag: bool ref): unit =
     let 
-      fun add_flag (menu_text: string, flag: bool ref) menu =
+      fun add_flag menu =
          case menu of 
            DISPLAY l=> DISPLAY(l @ [mk_toggle(menu_text, flag)])
          | NOMENU => DISPLAY[mk_toggle(menu_text,flag)]
          | _ => die "add_flag_to_menu.menu not DISPLAY or NOMENU."
-
-      fun add_flag_path(path : string list) menu : menu =
-        case path 
-	  of [] => add_flag (menu_text, flag) menu
-	   | (txt::path') =>
-	    let fun extend [] : item list = [mk_header txt (add_flag_path(path') NOMENU)] (* insert new header *)
-		  | extend ((item as {text,attr,below})::items) =
-	                if text=txt then {text=text,attr=attr,below=add_flag_path(path') below} :: items
-			else item :: extend items 
-	    in case menu 
-		 of DISPLAY l => DISPLAY (extend l)
-		  | BUTTON{r, text1, below1, text2, below2} =>
-		   if text1=txt then
-                     BUTTON{r=r, text1=text1, below1=add_flag_path(path') below1,text2=text2,below2=below2}
-		   else if text2=txt then
-                     BUTTON{r=r, text1=text1, below1=below1,text2=text2,below2=add_flag_path(path') below2}
-		   else die "add_flag_to_menu.BUTTON."
-		  | NOMENU => DISPLAY (extend [])
-		  | _ => die "add_flag_to_menu.menu not DISPLAY, BUTTON or NOMENU." 
-	    end
     in
       Directory.add_bool_entry(key,flag);
-      menu:= add_flag_path(path)(!menu)
+      menu:= add_path(path,add_flag,!menu)
     end
 
   fun add_string_to_menu(path : string list, key: string, menu_text: string, str: string ref): unit =
     let 
-      fun add_string(menu_text: string, str: string ref) menu =
+      fun add_string menu =
          case menu of 
            DISPLAY l=> DISPLAY(l @ [mk_string_action(str,menu_text)])
          | NOMENU => DISPLAY[mk_string_action(str,menu_text)]
          | _ => die "add_string_to_menu.menu not DISPLAY or NOMENU."
-
-      fun add_string_path(path : string list) menu : menu =
-        case path 
-	  of [] => add_string (menu_text, str) menu
-	   | (txt::path') =>
-	    let fun extend [] : item list = [mk_header txt (add_string_path(path') NOMENU)] (* insert new header *)
-		  | extend ((item as {text,attr,below})::items) =
-	                if text=txt then {text=text,attr=attr,below=add_string_path(path') below} :: items
-			else item :: extend items 
-	    in case menu 
-		 of DISPLAY l => DISPLAY (extend l)
-		  | BUTTON{r, text1, below1, text2, below2} =>
-		   if text1=txt then
-                     BUTTON{r=r, text1=text1, below1=add_string_path(path') below1,text2=text2,below2=below2}
-		   else if text2=txt then
-                     BUTTON{r=r, text1=text1, below1=below1,text2=text2,below2=add_string_path(path') below2}
-		   else die "add_string_to_menu.BUTTON."
-		  | NOMENU => DISPLAY (extend []) 
-		  | _ => die "add_string_to_menu.menu not DISPLAY, BUTTON or NOMENU."
-	    end
     in
       Directory.add_string_entry(key,str);
-      menu:= add_string_path(path)(!menu)
+      menu:= add_path(path,add_string,!menu)
+    end
+
+  fun add_int_to_menu(path : string list, key: string, menu_text: string, integer: int ref): unit =
+    let 
+      fun add_int menu =
+         case menu of 
+           DISPLAY l=> DISPLAY(l @ [mk_int_action(integer,menu_text)])
+         | NOMENU => DISPLAY[mk_int_action(integer,menu_text)]
+         | _ => die "add_int_to_menu.menu not DISPLAY or NOMENU."
+    in
+      Directory.add_int_entry(key,integer);
+      menu:= add_path(path,add_int,!menu)
     end
 
                     (******************)
@@ -853,24 +861,6 @@ struct
                mk_button(r, text1,  NOMENU, text2  , NOMENU);
   fun mk_action (text, f: unit -> unit) = 
                {text = text, attr = VALUE(fn _ => ""), below = ACTION f}
-
-  fun mk_int_action(r: int ref, text) =
-              let fun read_int() =
-                   (outLine "<number> or up (u): >";
-                    let val s = TextIO.inputLine std_in
-                        val (_, l) = List.splitFirst(fn ch => ch <> " ")(explode s)
-			      handle List.First _ => ([],[])
-                    in case l of 
-                          [] => (help(); read_int())
-                        | "q" :: "u" :: "i" :: "t" :: _  => ()
-                        | "u" :: _  => ()
-                        | _ => case IntParse.parse (implode l) of
-                                    OK(i,_) => r:= i | _ => (help(); read_int())
-                    end)
-              in
-               {text = text, attr = VALUE(fn _ => Int.string(!r)),
-                below = ACTION read_int}
-              end;
   
   fun read_int_list r () =
     (outLine "<type an int list, e.g. [4,3]> or up (u): >";
@@ -990,7 +980,8 @@ struct
 	     below = ACTION Directory.show_script_entries}]
 	   @ multiplicity_inference_items
 	   @ storage_mode_analysis_items
-	   @ [mk_string_action (c_libs, "link with library")]))
+	   @ [mk_toggle ("warn on escaping put effects", warn_on_escaping_puts),
+	      mk_string_action (c_libs, "link with library")]))
   end (*local*)
 
 
@@ -1235,11 +1226,13 @@ val lookup_flag_entry = Directory.lookup_flag_entry
 val add_string_entry = Directory.add_string_entry
 val get_string_entry = Directory.get_string_entry
 val lookup_string_entry = Directory.lookup_string_entry
+val lookup_int_entry = Directory.lookup_int_entry
 val read_script = Directory.readScript
 val show_script_entries = Directory.show_script_entries
 val add_flag = Menu.add_flag   
 val add_flag_to_menu = Menu.add_flag_to_menu
 val add_string_to_menu = Menu.add_string_to_menu
+val add_int_to_menu = Menu.add_int_to_menu
 val interact = Menu.interact
 
 end; (* functor Flags *)  

@@ -43,10 +43,9 @@ functor OptLambda(structure Lvars: LVARS
     * Some Optimisation Constants
     * ----------------------------------------------------------------- *)
 
-    val max_inline_size_fn = 20         (* max size of non-recursive function defs. to be inlined. *)
-    val max_inline_size_fix = 200       (* max size of recursive function defs. to be specialised. *) 
-    val max_optimise = 20               (* maximal number of times the entire term is traversed. *)
-
+    val max_inline_size = ref 20            (* max size of non-recursive function defs. to be inlined. *)
+    val max_specialize_size = ref 200       (* max size of recursive function defs. to be specialised. *) 
+    val max_optimise = 20                   (* maximal number of times the entire term is traversed. *)
 
     
    (* -----------------------------------------------------------------
@@ -55,17 +54,17 @@ functor OptLambda(structure Lvars: LVARS
 
     val path = ["Control", "Optimiser"]
     val add_entry = fn (s, s', r) => Flags.add_flag_to_menu (path, s, s', r) 
-    val statistics_after_optimisation =
-          Flags.lookup_flag_entry "statistics_after_optimisation"
+    val statistics_after_optimisation = Flags.lookup_flag_entry "statistics_after_optimisation"
     val specialize_recursive_functions = ref true
     val entries = [("minimize_fixs", "minimize fix's", ref true),
 		   ("fix_conversion", "fix conversion", ref true),
 		   ("contract", "contract", ref true),
-		   ("specialize_recursive_functions",
-		    "  specialize recursive functions",
-		    specialize_recursive_functions),
+		   ("specialize_recursive_functions", "  specialize recursive functions", specialize_recursive_functions),
 		   ("elim_explicit_records", "eliminate explicit records", ref true)]
     val _ = map add_entry entries
+    val _ = Flags.add_int_to_menu(path,"max_specialise_size", "Maximum specialise size", max_specialize_size)
+    val _ = Flags.add_int_to_menu(path,"max_inline_size", "Maximum inline size", max_inline_size)
+
     val is_on = Flags.is_on
 
 
@@ -549,12 +548,12 @@ functor OptLambda(structure Lvars: LVARS
 
       fun is_small_closed_fn lamb =
 	case lamb 
-	  of FN _ => small_lamb max_inline_size_fn lamb andalso closed lamb 
+	  of FN _ => small_lamb (!max_inline_size) lamb andalso closed lamb 
 	   | _ => false
 
       fun is_small_fn lamb =
 	case lamb 
-	  of FN _ => small_lamb max_inline_size_fn lamb
+	  of FN _ => small_lamb (!max_inline_size) lamb
 	   | _ => false
 
       fun is_fn (FN _) = true
@@ -807,7 +806,7 @@ functor OptLambda(structure Lvars: LVARS
 		   val env' = case functions
 				of [function as {lvar,tyvars,Type,bind}] => 
 				  let val cv = if !specialize_recursive_functions andalso specializable function then 
-				                  CFIX{Type=Type,bind=bind,large=not(small_lamb max_inline_size_fix bind)} 
+				                  CFIX{Type=Type,bind=bind,large=not(small_lamb (!max_specialize_size) bind)} 
 					       else CUNKNOWN
 				  in updateEnv [lvar] [(tyvars,cv)] env
 				  end
