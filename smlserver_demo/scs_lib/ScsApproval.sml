@@ -2,8 +2,36 @@ signature SCS_APPROVAL =
   sig
     type on_what_table = string
     type on_which_id = int
-      
-   (* [log (on_what_table,on_which_id)] returns HTML for the log of
+    type approval_record = {
+      approval_id   : int,
+      on_what_table : string,
+      on_which_id   : int,
+      user_id       : int,
+      decision      : bool, 
+      note_text     : string,
+      created_on    : Date.date }
+
+    val help_link : unit -> string
+
+    (* [getAllApprovals (on_what_table,on_which_id)] returns a list of all 
+	approval rows from DB if they exist;
+        otherwise returns NONE *)
+    val getAllApprovals : on_what_table * on_which_id -> 
+                            (approval_record list) option
+
+    (* [getAllApprovalsFromDbErr ((on_what_table,on_which_id), errs)] fetches 
+       all approval rows from DB given a (on_what_table,on_which_id) pair. 
+       Fails if the DB call and an error
+       message is appended to errs *)
+    val getAllApprovalsFromDbErr : 
+      (on_what_table * on_which_id) * ScsFormVar.errs ->
+        (approval_record list) * ScsFormVar.errs
+
+    val has_approved_p : int -> (approval_record list) -> bool 
+
+    val has_all_approved_p : (int list) -> approval_record list -> bool
+
+    (* [log (on_what_table,on_which_id)] returns HTML for the log of
        all approvals/declines for a particular object in the
        database. Returns NONE if no one exists. *)
     val log : on_what_table * on_which_id -> quot option
@@ -13,6 +41,72 @@ structure ScsApproval :> SCS_APPROVAL =
   struct
     type on_what_table = string
     type on_which_id = int
+    type approval_record = {
+      approval_id   : int,
+      on_what_table : string,
+      on_which_id   : int,
+      user_id       : int,
+      decision      : bool, 
+      note_text     : string,
+      created_on    : Date.date }
+
+    fun help_link () = "help_url"
+
+    fun getAllApprovals (on_what_table,on_which_id) = 
+      let
+        val approvals_sql = `
+ 	  select *
+	    from scs_approvals
+	   where on_what_table = ^( Db.qqq on_what_table )
+	     and on_which_id = ^(Int.toString on_which_id )`
+        fun f g = {
+          approval_id   = (valOf o Int.fromString o g) "approval_id",
+	  on_what_table = g "on_what_table",
+	  on_which_id   = (valOf o Int.fromString o g) "on_which_id",
+	  user_id       = (valOf o Int.fromString o g) "user_id",
+	  decision      = (valOf o Db.toBool o g) "decision",
+	  note_text     = g "note_text",
+	  created_on    = (valOf o Db.toDate o g) "created_on"
+        }
+      in
+        SOME (Db.list f approvals_sql)
+        handle _ => NONE
+      end
+
+
+    fun getAllApprovalsFromDbErr ((on_what_table,on_which_id), errs) =
+      let 
+	val err_msg = ScsDict.s' [
+        (ScsLang.da, `Godkendelserne findes 
+	              desv&aelig;rre ikke i databasen. Dette er 
+		      en fejl, s&aring; henvend dig venligst hos 
+	     	      ^(help_link()).`),
+        (ScsLang.en, `The approvals does not exist in the 
+	    	      database. This is an error, please 
+		      contact ^(help_link()).`)]
+      in
+	case getAllApprovals(on_what_table,on_which_id) of
+	    SOME approvals => (approvals,errs)
+	  | NONE           => ([], ScsFormVar.addErr( err_msg, errs) )
+      end
+
+    fun has_approved_p 
+      (user_id:int) (approvals:(approval_record list)) =
+      let
+	fun f (app_record:approval_record) = 
+	  (#user_id app_record) = user_id andalso
+	  (#decision app_record) = true
+      in
+	List.exists f approvals
+      end
+
+    fun has_all_approved_p 
+      (user_ids:(int list)) (approvals:(approval_record list)) =
+      let
+        fun f (user_id,acc) = acc andalso has_approved_p user_id approvals
+      in 
+        List.foldr f true user_ids
+      end
 
     fun log (on_what_table,on_which_id) =
       let
