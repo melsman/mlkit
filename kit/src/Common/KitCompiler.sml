@@ -835,7 +835,8 @@ functor KitCompiler() : sig include MANAGER
 (*$K: KitCompiler*)
 structure K = KitCompiler()
 open K
-fun i a = (Flags.lookup_string_entry "path_to_kit_script"
+fun i a = (System.cd "/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/src/" ;
+	   Flags.lookup_string_entry "path_to_kit_script"
 	   := "../bin/ML_to_HPPA_on_HPUX/kit.script" ;
 	   (*this path means that you must be in the src/ directory,
 	    which is where you will be, if you want Make.again{} etc.
