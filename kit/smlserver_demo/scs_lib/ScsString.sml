@@ -24,6 +24,10 @@ signature SCS_STRING =
     (* [valOf strOpt] if strOpt is SOME str then returns str otherwise
        the empty string *)
     val valOf     : string option -> string
+
+    (* [ml_search_pattern pat] returns a pattern with % added at each
+        space *)
+    val mk_search_pattern : string -> string
   end
 
 structure ScsString =
@@ -44,4 +48,11 @@ structure ScsString =
 
     fun valOf (SOME s) = s
       | valOf NONE = ""
+
+    fun mk_search_pattern pat =
+      if pat = "" then 
+	"%" 
+      else 
+	"%"^(String.concatWith "%" (String.tokens Char.isSpace pat))^"%"
+
   end
