@@ -11,20 +11,6 @@ TO BE FIXED BY: (MT|ME|FAXE)
 =============================== BUGS ===============================
 
 
-ERROR: bug in rp2ps?
-SYMPTOM: naar jeg proever 
-
-      ../bin/rp2ps -region -name life -sampleMax 1000 -eps 150 mm
-
-produceres der en PostScript fil, som kun viser et delvist billede.
-Derimod virker -sampleMax 500 fint!
-
-TESTFILE: ~tofte/issmkit/kit/kitdemo/badprofile.rp.  (omdoeb den til profile.rp)
-PRIORITY: HIGH
-REPORTED BY: MT, Aug 26, 1998
-TO BE FIXED BY: FAXE?
-
-
 =============================== WAIT ===============================
 
 So as to make printing of profile graphs use less ink, modify rp2ps
