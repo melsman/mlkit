@@ -1,5 +1,8 @@
 ML Kit NEWS file
 
+ * mael 2002-04-06: Manual improved -- the pdf-version of the manual
+   now uses Type 1 fonts, exclusively.
+
  * mael 2001-12-16: Posix bug-fixes. Runtime system clean-up. 
    Change of prim-function for interfacing with C. It is easier 
    now to interface with C functions that take regions as 
@@ -9,7 +12,7 @@ ML Kit NEWS file
  * mael 2001-12-13: Ported Posix structure from MLton. Calls to C
    are in many cases simpler now because auto-conversion is 
    extended to work with a larger set of types, including 
-   strings (CharArrays).
+   strings (and CharArrays).
 
  * mael 2001-11-25: Assembler in-lining of sub/update/size 
    operations on bytetables (CharArray, Word8Array, CharVector, 
@@ -74,10 +77,6 @@ ML Kit NEWS file
    (DropRegions.sml). The option has no effect on finite regions;
    and region parameters may still happen to be instantiated to either
    finite or infinite regions (the top-level ones).
-
-   collapsed no fresh region
-   variables are generated during the spreading phase of region
-   inference. (mael 2001-11-20: 
 
  * mael 2001-09-30: Added regular expression support (structure RegExp) 
    to the basis library. The implementation is based on an 

@@ -50,19 +50,20 @@ ExclusiveOS: Linux
 ExcludeArch: sparc alpha
 
 %description 
+
 The ML Kit (henceforth refered to as the Kit) is a compiler for the
-programming language Standard ML. The Kit covers all of Standard ML,
-as defined in the 1997 edition of the Definition of Standard ML and
-supports most of the Standard ML Basis Library. The Kit uses a region
-based memory management scheme in which allocation and de-allocation
-primitives are added to the program at compile time. The Kit also
-makes it possible to combine the region based memory management scheme
-with traditional reference tracing garbage collection. Two versions of
-the the ML Kit is available, one that generates efficient native code
-for the x86 architecture and one that generates portable bytecode that
-can be interpreted by an abstract machine. The largest program
-compiled with the Kit is the Kit itself (around 80.000 lines of SML,
-plus the Basis Library).
+programming language Standard ML. The Kit covers all of Standard
+ML, as defined in the 1997 edition of the Definition of Standard ML
+and supports most of the Standard ML Basis Library. The Kit uses a
+region based memory management scheme in which allocation and
+deallocation primitives are added to the program at compile time. The
+Kit also makes it possible to combine the region based memory
+management scheme with traditional pointer tracing garbage
+collection. Two versions of the the Kit are available, one that
+generates efficient native code for the x86 architecture and one that
+generates portable bytecode to be interpreted by an abstract
+machine. The ML Kit has successfully compiled itself, around 80.000
+lines of Standard ML, plus the Basis Library.
 
 %prep
 %setup
