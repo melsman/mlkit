@@ -3,12 +3,12 @@
 # with SMLserver and Postgresql support
 #---------------------------------------
 
-set port 8080
 set user yourlogin
-set webdir /home/${user}/web
+set port 8080
 set pg_passwd XXXX
-set nssml_so ../../smlserver/bin/nssml.so
 
+set webdir /home/${user}/web
+set nssml_so ../../smlserver/bin/nssml.so
 set home /usr/share/aolserver
 
 set host [ns_info hostname]

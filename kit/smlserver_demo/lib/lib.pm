@@ -9,6 +9,7 @@
     NS_MAIL.sml
     NS_INFO.sml
     NsInfo.sml
+    NS_DB_HANDLE.sml
     NS_DB.sml
     DbFunctor.sml
   in
