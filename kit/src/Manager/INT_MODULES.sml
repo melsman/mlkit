@@ -1,4 +1,3 @@
-(*$INT_MODULES*)
 
 signature INT_MODULES =
   sig

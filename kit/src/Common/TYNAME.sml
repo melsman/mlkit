@@ -33,7 +33,6 @@ signature TYNAME =
     val freshTyName  : {tycon : tycon, arity : int, equality : bool} -> TyName
     val pr_TyName : TyName -> string
 
-    val < : TyName * TyName -> bool
     val eq : TyName * TyName -> bool
 
     val arity    : TyName -> int
@@ -72,9 +71,8 @@ signature TYNAME =
     type StringTree
     val layout : TyName -> StringTree
 
-    structure Order : ORDERING
-    structure Map : ORDER_FINMAP
+    structure Map : MONO_FINMAP (* ORDER_FINMAP *) 
     structure Set : KIT_MONO_SET
-    sharing type TyName = Set.elt = Map.dom = Order.T
+    sharing type TyName = Set.elt = Map.dom
     sharing type StringTree = Set.StringTree = Map.StringTree
   end

@@ -1,4 +1,3 @@
-(*$KIT_MONO_SET *)
 
 (* Modified version of the MONO_SET signature given in the Edinburgh
    library. *)

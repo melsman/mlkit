@@ -36,12 +36,13 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
     fun path_to_runtime_suspension () = !(Flags.lookup_string_entry "path_to_runtime")
     fun path_to_runtime_prof_suspension () = !(Flags.lookup_string_entry "path_to_runtime_prof")
     val test_env_directory = Flags.lookup_string_entry "test_env_directory"
-    val kit_version = Flags.lookup_string_entry "kit_version"
     val _ = Flags.add_flag_to_menu
               (["Test environment"],
 	       "quicker_acceptance_test", "quicker acceptance test", ref true)
     val quicker_acceptance_test = Flags.lookup_flag_entry "quicker_acceptance_test"
     fun leave_out_if_quicker xs = if !quicker_acceptance_test then [] else xs
+
+    fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
 
     (*-------------------------------------------*)
     (* Variables controlling the ACCEPTANCE test *)
@@ -106,14 +107,17 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 old_dir = SOME (OS.Path.concat(!test_env_directory,
 								"Output_C_on_SUN_OS4/Acceptance/Prof/"))}
     in
-      fun acceptance_strategies () = (*USER*)
-	    (case !kit_version of
-	       "ML_to_C_on_HPUX" => [acceptance_strategy_HPUX_C ()]
-		 @ leave_out_if_quicker [acceptance_strategy_HPUX_C_prof ()]
-	     | "ML_to_C_on_SUN_OS4" => [acceptance_strategy_SUN_OS4_C ()]
-	     | "ML_to_HPPA_on_HPUX" => [acceptance_strategy_HPUX_HPPA ()]
+      fun acceptance_strategies () =   (*USER*)
+	let val backend = Flags.get_string_entry "kit_backend"
+	    val (arch, os) = arch_os()
+	in case (arch, os, backend)
+	     of ("HPPA", "HPUX", "C") => [acceptance_strategy_HPUX_C ()]
+	       @ leave_out_if_quicker [acceptance_strategy_HPUX_C_prof ()]
+	      | ("HPPA", "HPUX", "native") => [acceptance_strategy_HPUX_HPPA ()]
 		 @ leave_out_if_quicker [acceptance_strategy_HPUX_HPPA_prof ()]
-	     | _ => [])
+	      | ("SUN", "OS4", "C") => [acceptance_strategy_SUN_OS4_C ()]
+	      | _ => []
+	end
     end (*local*)
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
@@ -202,12 +206,15 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				  comment = "Lists are boxed. Values are Tagged. Equality elimination is disabled."}
     in
       fun performance_strategies () = (*--USER--*)
-	    (case !kit_version of
-	       "ML_to_C_on_HPUX" => [performance_strategy_HPUX ()]
-	     | "ML_to_C_on_SUN_OS4" => [performance_strategy_SUN_OS4 ()]
-	     | "ML_to_HPPA_on_HPUX" => [performance_strategy_HPUX () 
+	let val backend = Flags.get_string_entry "kit_backend"
+	    val (arch, os) = arch_os()
+	in case (arch, os, backend)
+	     of ("HPPA", "HPUX", "C") => [performance_strategy_HPUX ()]
+	      | ("HPPA", "HPUX", "native") => [performance_strategy_HPUX () 
 					(*tic98_Box_Tag(), tic98_Box_Untag(), tic98_Unbox_Untag()*)]
-	     | _ => [])
+	      | ("SUN", "OS4", "C") => [performance_strategy_SUN_OS4 ()]
+	      | _ => []
+	end
     end (*local*)
 
     (* Test programs, located in directory Sources, can be added to this list. *) 

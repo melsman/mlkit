@@ -2025,7 +2025,7 @@ the 12 lines above are very similar to the code below
     and compileDec env (topLevel, dec): (CE.CEnv * (LambdaExp -> LambdaExp)) =
       case dec
         of VALdec(_, tyvars, valbind) =>
-             compileValbind env (topLevel, valbind)
+	   compileValbind env (topLevel, valbind)
 
          | UNRES_FUNdec _ =>
              die "compileDec(UNRES_FUN)"
@@ -2167,7 +2167,9 @@ the 12 lines above are very similar to the code below
 	of SOME(TypeInfo.TYENV_INFO TyEnv) =>
 	  TE.Fold (fn (tycon, tystr) => fn env' => 
 		   if VE.is_empty (TyStr.to_VE tystr) then
-		     let val tns = (TyName.Set.list o TyName.Set.map compileTyName) (TyStr.tynames tystr)
+		     let val tns = TyStr.tynames tystr
+			 val tns = TyName.Set.map compileTyName tns
+		         val tns = TyName.Set.list tns
 		     in CE.declare_tycon(tycon,(tns,CE.emptyCEnv),env')
 		     end
 		   else die "compileTypbind: expecting VE to be empty") CE.emptyCEnv TyEnv

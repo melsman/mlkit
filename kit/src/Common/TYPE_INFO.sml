@@ -1,20 +1,22 @@
 (*TypeInfo is part of the ElabInfo.  See ELAB_INFO for an
  overview of the different kinds of info.*)
 
-(*$TYPE_INFO*)
 signature TYPE_INFO =
   sig
+    structure TyName : TYNAME
+    type TyName = TyName.TyName
+
     type longid
     type Type
     type TyVar
     type TyEnv
     type Env
     type realisation
+    type opaq_env
     type strid 
     eqtype tycon 
     type id
     type Basis
-    type TyName
 
     (*
      * Note that we record tyvars and types (and not typeschemes as 
@@ -94,14 +96,25 @@ signature TYPE_INFO =
       | INCLUDE_INFO of strid list * tycon list
 	                (* Attached to INCLUDEspec; the lists contains those
 			 * strids and tycons being specified by the spec. *)
-      | FUNCTOR_APP_INFO of realisation * Env
+      | FUNCTOR_APP_INFO of {rea_inst : realisation, rea_gen : realisation, Env : Env}
                         (* Attached to functor applications; The env is the
-			 * elaboration result of the functor application. *)
-      | FUNBIND_INFO of {argE: Env, elabB: Basis, T: TyName list, resE: Env, rea_opt: realisation option}
-                        (* Attached to functor bindings; the arg env is the environment
-			 * resulting from elaborating the sigexp in a functor 
-			 * binding. All other info is there to make it possible to re-build an 
-			 * elaborated functor body structure expression from the source. *)
+			 * elaboration result of the functor application; the 
+			 * rea_inst realisation instantiates formal type names with 
+			 * actual types and the rea_gen realisation maps generative 
+			 * names of the functor into fresh names. *)
+      | FUNBIND_INFO of {argE: Env, elabB: Basis, T: TyName.Set.Set, resE: Env, opaq_env_opt: opaq_env option}
+                        (* Attached to functor bindings; argE is the
+			 * environment resulting from elaborating the
+			 * sigexp in a functor binding; elabB is the
+			 * basis for elaborating the functor body; T
+			 * is the set of type names generated during
+			 * elaboration of the functor body; resE is
+			 * the environment resulting from elaborating
+			 * the functor body; rea_opt is used for
+			 * opacity elimination. Part of the info is
+			 * there to make it possible to re-build an
+			 * elaborated functor body structure
+			 * expression from the source. *)
       | TRANS_CONSTRAINT_INFO of Env
 	                (* Attached to transparent signature constraints *)
       | OPAQUE_CONSTRAINT_INFO of Env * realisation

@@ -71,19 +71,19 @@ functor TyName(
 
     val id = Name.key o name
 
-    val op < = (fn (tn1,tn2) => id tn1 < id tn2) 
-
     val op eq = (fn (tn1,tn2) => id tn1 = id tn2)  
 
-    fun pr_TyName (tn: TyName) : string =
-      let val str = TyCon.pr_TyCon (tycon tn)
-      in if !Flags.DEBUG_TYPES then
-	   let val eq = if equality tn then "E " else ""
-	       val id = Int.string (Name.key (name tn))
-	   in str ^ "(" ^ eq ^ id ^ ")"
-	   end
-	 else str (* ^ (Int.string (Name.key (name tn))) *)
-      end
+    local val print_type_name_stamps = Flags.lookup_flag_entry "print_type_name_stamps"
+    in fun pr_TyName (tn: TyName) : string =
+         let val str = TyCon.pr_TyCon (tycon tn)
+	 in if !print_type_name_stamps then
+	      let val eq = if equality tn then "E " else ""
+		  val id = Int.string (Name.key (name tn))
+	      in str ^ "(" ^ eq ^ id ^ ")"
+	      end
+	    else str
+	 end
+    end
 
     val tyName_BOOL = freshTyName{tycon=TyCon.tycon_BOOL, arity=0, equality=true}
     val tyName_INT  = freshTyName{tycon=TyCon.tycon_INT, arity=0, equality=true}
@@ -98,18 +98,14 @@ functor TyName(
     val tyName_EXN = freshTyName{tycon=TyCon.tycon_EXN, arity=0, equality=false}
     val _ = Rank.reset()
 
-    structure Order : ORDERING =
-      struct
-	type T = TyName
-	fun lt t1 t2 = t1 < t2
-      end
-    
-    structure Map : ORDER_FINMAP = OrderFinMap(structure Order = Order
-					       structure PP = PrettyPrint
-					       structure Report = Report)
+    structure Map : MONO_FINMAP = EqFinMap(structure Report = Report
+					   structure PP = PrettyPrint
+					   type dom = TyName
+					   val eq = eq)
 
-    structure Set : KIT_MONO_SET = OrderSet(structure Order = Order
-					    structure PP = PrettyPrint)
+    structure Set : KIT_MONO_SET = EqSetList(structure PP = PrettyPrint
+					     type elt = TyName
+					     val eq = eq)
 
     type StringTree = PrettyPrint.StringTree
     val layout = PrettyPrint.LEAF o pr_TyName

@@ -2,8 +2,6 @@
  Context, Definition 1997, fig. 10, p. 16.  And explicit
  tyvars, and constructor_map*)
 
-(*$ENVIRONMENTS : TYNAME*)
-
 signature ENVIRONMENTS = 
   sig
     (*types provided by this module:*)
@@ -278,11 +276,18 @@ signature ENVIRONMENTS =
 	val from_T_and_theta     : TyName.Set.Set * TypeFcn -> realisation
 
 	val restrict             : TyName.Set.Set -> realisation -> realisation
+	val restrict_from        : TyName.Set.Set -> realisation -> realisation
+	val inverse              : realisation -> realisation option
 
 	(* enrich(phi0,(phi,T)) : phi(t) = phi0(t), for each t in T *)
 	val enrich               : realisation * (realisation * TyName.Set.Set) -> bool
 
 	val match                : realisation * realisation -> unit
+
+
+	val dom                  : realisation -> TyName.Set.Set      (* not quite the Supp.. *)
+	val eq                   : realisation * realisation -> bool  (* may return false even though 
+								       * the realisations are equal *)
 
 	(*renaming T = a realisation that maps each tyname in T
 	 to a fresh tyname:*)

@@ -1,7 +1,5 @@
 (* The pretty-printer *)
 
-(*$PrettyPrint: CRASH REPORT PRETTYPRINT FLAGS*)
-
 functor PrettyPrint(structure Report: REPORT
                     structure Crash: CRASH
                     structure Flags: FLAGS

@@ -1,5 +1,3 @@
-(*$OrderSet : PRETTYPRINT KIT_MONO_SET *)
-
 (* Finite sets using balanced AVL trees *)
 
 (* LOG: 

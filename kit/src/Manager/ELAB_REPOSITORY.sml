@@ -1,14 +1,14 @@
-(*$ELAB_REPOSITORY: TYNAME*)
 
 signature ELAB_REPOSITORY =
   sig
 
     structure TyName : TYNAME
 
-    type funid and InfixBasis and ElabBasis and realisation and name and longstrid
+    type funid and InfixBasis and ElabBasis and opaq_env and name and longstrid
     type prjid = string
 
     val empty_infix_basis : InfixBasis
+    val empty_opaq_env : opaq_env
 
     val clear : unit -> unit
     val delete_entries : prjid * funid -> unit
@@ -23,16 +23,16 @@ signature ELAB_REPOSITORY =
 	   * entry. *)
 
     val lookup_elab : (prjid * funid) -> 
-      (int * (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
-	      InfixBasis * ElabBasis * realisation)) option
+      (int * (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
+	      InfixBasis * ElabBasis * opaq_env)) option
 
     val add_elab : (prjid * funid) * 
-      (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
-       InfixBasis * ElabBasis * realisation) -> unit
+      (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
+       InfixBasis * ElabBasis * opaq_env) -> unit
 
     val owr_elab : (prjid * funid) * int * 
-      (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
-       InfixBasis * ElabBasis * realisation) -> unit
+      (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
+       InfixBasis * ElabBasis * opaq_env) -> unit
 
     val recover : unit -> unit
 

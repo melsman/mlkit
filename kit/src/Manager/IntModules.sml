@@ -33,7 +33,9 @@ functor IntModules(structure Name : NAME
 
 		   structure OpacityElim : OPACITY_ELIM
 		     sharing type OpacityElim.topdec = ParseElab.topdec
-		         and type OpacityElim.realisation = Environments.realisation
+		         and type OpacityElim.opaq_env = ElabInfo.TypeInfo.opaq_env
+			 and OpacityElim.TyName = ElabInfo.TypeInfo.TyName = Environments.TyName
+		         and type OpacityElim.OpacityEnv.realisation = Environments.realisation
 
 		   structure CompileBasis : COMPILE_BASIS
 		     sharing type CompileBasis.CompileBasis = ManagerObjects.CompileBasis 
@@ -63,6 +65,8 @@ functor IntModules(structure Name : NAME
 		   structure Crash : CRASH
 		   structure Report : REPORT
 		     sharing type Report.Report = ParseElab.Report
+	           structure PP : PRETTYPRINT
+		     sharing type PP.StringTree = Environments.StringTree
 		   structure Flags: FLAGS
 		   ) : INT_MODULES =
   struct
@@ -90,7 +94,11 @@ functor IntModules(structure Name : NAME
     fun print_error_report report = Report.print' report (!Flags.log)
 
     fun log (s:string) : unit = TextIO.output (!Flags.log, s)
+    fun pr_st (t:PP.StringTree) = PP.outputTree (print, t, !Flags.colwidth)
     fun chat s = if !Flags.chat then log s else ()
+    fun pr_tynames [] = ""
+      | pr_tynames [t] = TyName.pr_TyName t
+      | pr_tynames (t::ts) = TyName.pr_TyName t ^ ", " ^ pr_tynames ts
 
     type IntBasis = ManagerObjects.IntBasis
      and topdec = TopdecGrammar.topdec
@@ -124,7 +132,8 @@ functor IntModules(structure Name : NAME
      * Compile a sequence of structure declarations
      * ---------------------------------------------------- *)
 
-    fun compile_strdecs(intB, strdecs, unitname_opt) =
+    fun compile_strdecs(intB, [], unitname_opt) = (CE.emptyCEnv, CompileBasis.empty, ModCode.empty)
+      | compile_strdecs(intB, strdecs, unitname_opt) =
       let val (_,ce,cb) = IntBasis.un intB
 	  val unitname = case unitname_opt
 			   of SOME unitname => unitname
@@ -254,12 +263,16 @@ functor IntModules(structure Name : NAME
 	      val ce' = CE.constrain(ce,E)
 	  in (ce', cb, mc)
 	  end
-	| OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) => die "OPAQUE_CONSTRAINTstrexp.not impl"
+	| OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) => 
+	   die "OPAQUE_CONSTRAINTstrexp.should be eliminated at this stage"
 	| APPstrexp(i, funid, strexp) => 
 	  let val (phi,Eres) = case to_TypeInfo i
-				 of SOME (ElabInfo.TypeInfo.FUNCTOR_APP_INFO phiEres) => phiEres
+				 of SOME (ElabInfo.TypeInfo.FUNCTOR_APP_INFO {rea_inst,rea_gen,Env}) => 
+				   (Environments.Realisation.oo(rea_inst,rea_gen), Env)
 				  | _ => die "int_strexp.APPstrexp.no (phi,E) info"
+	      val _ = chat "[ interpreting functor argument begin...]"
 	      val (ce, cb, mc) = int_strexp(intB, strexp)
+	      val _ = chat "[ interpreting functor argument end...]"
 	      val (prjid,funstamp,strid,E,body_blaster,intB0) = IntFunEnv.lookup ((#1 o IntBasis.un) intB) funid
 	      val E' = Environments.Realisation.on_Env phi E
 	      val _ = chat " [contraining argument begin...]\n" 
@@ -292,7 +305,9 @@ functor IntModules(structure Name : NAME
 	  in case reuse_code ()
 	       of SOME(ce',cb',mc') => (ce', CompileBasis.plus(cb,cb'), ModCode.seq(mc,mc'))
 		| NONE => 
-		 let val strexp0 = body_blaster()
+		 let val _ = chat " [recreating functor body begin...]"
+		     val strexp0 = body_blaster()
+		     val _ = chat " [recreating functor body end...]"
 		     val (intB', longstrids) = 
 		       let
 			   val _ = chat " [finding free identifiers begin...]\n"
@@ -319,7 +334,9 @@ functor IntModules(structure Name : NAME
 		      * unnecessary recompilation - but for now it'll do. -
 		      * Martin *)
 		     val _ = Name.bucket := []
+		     val _ = chat " [interpreting functor body begin...]"
 		     val (ce',cb',mc') = int_strexp(intB', strexp0')
+		     val _ = chat " [interpreting functor body end...]"
 		     val N' = !Name.bucket
 		     val _ = Name.bucket := []
 		       
@@ -423,7 +440,7 @@ functor IntModules(structure Name : NAME
 
     fun generate_body_builder(prjid : prjid, funid, strid_arg,
 			      {infB: InfixBasis, elabB: ElabBasis, T: TyName list, 
-			       resE: ElabEnv, rea: realisation}, strexp : strexp) : unit -> strexp =
+			       resE: ElabEnv, opaq_env: OpacityElim.opaq_env}, strexp : strexp) : unit -> strexp =
 
       if !keep_functor_bodies_in_memory then fn () => strexp
 
@@ -462,7 +479,7 @@ functor IntModules(structure Name : NAME
 
 	     (let
 
-	       (* To do the matching to the old result, we temprely store the contents of
+	       (* To do the matching to the old result, we temporarily store the contents of
 		* the Name-bucket. We then use the Name-bucket to find generated names during
 		* re-elaboration. *)
 	     
@@ -476,9 +493,7 @@ functor IntModules(structure Name : NAME
 		   of ParseElab.FAILURE (report,error_codes) => (print_error_report report;
 								 die "generate_body_builder.ParseElab.FAILURE")
 		    | ParseElab.SUCCESS {elabB=elabB',topdec,...} =>
-		     let val names_elab = !Name.bucket
-		         val _ = Name.bucket := names_old  (* re-install old names *)
-
+		     let 
 			   (* We now extract the result environment out of the result basis
 			    * by looking up `funid' in the structure environment. *)
 			 val resE' = case ElabBasis.lookup_strid elabB' ((StrId.mk_StrId o FunId.pr_FunId) funid)
@@ -486,7 +501,24 @@ functor IntModules(structure Name : NAME
 					| NONE => die ("generate_body_builder.the builder has been applied - \
 					               \but I cannot find `funid' in resulting structure env.")
 
-			(* Now, do matching *)
+			 val topdec = derived_form_repair(df,strid_arg,topdec)
+					     
+			 (* Do opacity elimination again. *)
+			 fun opacity_elimination a = OpacityElim.opacity_elimination a
+			 val _ = chat " [opacity elimination begin...]\n"
+			 val (topdec, opaq_env') = opacity_elimination(opaq_env, topdec)
+			 val _ = chat " [opacity elimination end...]\n"
+			 val resE' = Environments.Realisation.on_Env (OpacityElim.OpacityEnv.rea_of opaq_env') resE'
+
+			 val names_elab = !Name.bucket
+			 val _ = Name.bucket := names_old  (* re-install old names *)
+						       
+						       
+			 (* MEMO : the type name set T does not
+			  * include type names generated during
+			  * opacity elimination. *)
+
+			 (* Now, do matching *)
 			 val _ = (List.apply (Name.mark_gen o TyName.name) T;
 				  List.apply Name.mark_gen names_elab;
 				  ElabEnv.match(resE', resE);
@@ -495,16 +527,12 @@ functor IntModules(structure Name : NAME
 
 			 (* Check that match succeeded and result environment is correct. *)
 			 val _ = if ElabEnv.eq(resE,resE') then ()
-				 else die ("generate_body_builder.the builder has been applied - \
-				  \but the result environments are not equal (after matching.)")
-
-			 val topdec = derived_form_repair(df,strid_arg,topdec)
-					     
-			 (* Finally, do opacity elimination again. *)
-			 fun opacity_elimination a = OpacityElim.opacity_elimination a
-			 val _ = chat " [opacity elimination begin...]\n"
-			 val (topdec, _) = opacity_elimination(rea, topdec)
-			 val _ = chat " [opacity elimination end...]\n"
+				 else (print "Check on environments failed\n";
+				       print "\nresE = \n"; pr_st (ElabEnv.layout resE);
+				       print "\nresE' = \n"; pr_st (ElabEnv.layout resE');
+				       print ("\nT = {" ^ pr_tynames T ^ "}\n"); 
+				       die ("generate_body_builder.the builder has been applied - \
+					\but the result environments are not equal (after matching.)"))
 					      
 			 val strexp = extract_strexp_from_topdec(funid,topdec)
 		     in strexp
@@ -522,19 +550,15 @@ functor IntModules(structure Name : NAME
 
     fun int_funbind (prjid: prjid, intB: IntBasis, FUNBIND(i, funid, strid, sigexp, strexp, funbind_opt)) : IntFunEnv =
       let val {funids,longtycons,longstrids,longvids,...} = FreeIds.fid_strexp' strid strexp
-(*	  val longstrids = List.dropAll (fn longstrid => 
-					 case StrId.explode_longstrid longstrid
-					   of ([],strid') => strid = strid'
-					    | (strid'::_,_) => strid = strid') longstrids *)
 	  val intB0 = IntBasis.restrict(intB, {funids=funids,longstrids=longstrids,longvids=longvids,longtycons=longtycons})
 	  val funstamp = FunStamp.new funid
 	  val (E, body_builder_info) =
 	    case to_TypeInfo i
-	      of SOME (ElabInfo.TypeInfo.FUNBIND_INFO {argE,elabB,T,resE,rea_opt=SOME rea}) => 
+	      of SOME (ElabInfo.TypeInfo.FUNBIND_INFO {argE,elabB,T,resE,opaq_env_opt=SOME opaq_env}) => 
 		let val infB = case (ElabInfo.ParseInfo.to_DFInfo o ElabInfo.to_ParseInfo) i
 				 of SOME (ElabInfo.ParseInfo.DFInfo.INFIX_BASIS infB) => infB
 				  | _ => die "int_funbind.no infix basis info" 
-		in (argE, {infB=infB,elabB=elabB,T=T,resE=resE,rea=rea})
+		in (argE, {infB=infB,elabB=elabB,T=TyName.Set.list T,resE=resE,opaq_env=opaq_env})
 		end
 	       | _ => die "int_funbind.no type info"
 	  val body_builder = generate_body_builder(prjid, funid, strid, body_builder_info, strexp)

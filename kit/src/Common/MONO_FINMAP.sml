@@ -1,6 +1,5 @@
 (* Finite maps with explicit domain type *)
 
-(*$MONO_FINMAP *)
 signature MONO_FINMAP =
   sig
     type dom

@@ -307,13 +307,13 @@ functor Compile(structure Excon : EXCON
 
     fun type_check_lambda (a,b) =
       if Flags.is_on "type_check_lambda" then
-	(chat "\nType checking lambda term begin...\n";
+	(chat "\nType checking lambda term begin ...\n";
 	 Timing.timing_begin();
 	 let 
 	   val env' = Timing.timing_end_res ("Check lam.",(LambdaStatSem.type_check {env = a,  letrec_polymorphism_only = false,
                   pgm =  b}))
 	 in
-	   chat "\nType checking lambda term end...\n";
+	   chat "\nType checking lambda term end ...\n";
 	   env'
 	 end)
       else LambdaStatSem.empty
@@ -325,12 +325,12 @@ functor Compile(structure Excon : EXCON
 
     fun elim_eq_lambda (env,lamb) =
       if Flags.is_on "eliminate_polymorphic_equality" then
-	(chat "\nEliminating polymorphic equality begin...\n";
+	(chat "\nEliminating polymorphic equality begin ...\n";
 	 Timing.timing_begin();
 	 let val (lamb', env') = 
 	   Timing.timing_end_res ("Elim. eq.", EliminateEq.elim_eq (env, lamb))
 	 in
-	   chat "\nEliminating polymorphic equality end...\n";
+	   chat "\nEliminating polymorphic equality end ...\n";
 	   if !Flags.DEBUG_COMPILER then 
 	     (display("Lambda Program After Elimination of Pol. Eq.", 
 		      layoutLambdaPgm lamb');
@@ -366,12 +366,12 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     fun spread(cone,rse, lamb_opt)=
-        (chat "\nSpreading regions and effects (NEW)...";
+        (chat "\nSpreading regions and effects ...";
          Timing.timing_begin();
          (*Profile.reset();
          Profile.profileOn();*)
          let val (cone,rse_con,spread_lamb) = SpreadExp.spreadPgm(cone,rse, lamb_opt)
-         in Timing.timing_end("Spread exp. (NEW)");
+         in Timing.timing_end("Spread exp.");
             (*Profile.profileOff();
             TextIO.output(!Flags.log, "\n PROFILING OF S\n\n");
             Profile.report(!Flags.log);*)
@@ -385,7 +385,7 @@ functor Compile(structure Excon : EXCON
 
 
     (* ---------------------------------------------------------------------- *)
-    (*   Do the region inference on the spread optimised lambda code  (NEW)   *)
+    (*   Do the region inference on the spread optimised lambda code          *)
     (* ---------------------------------------------------------------------- *)
 
     fun inferRegions(cone,rse, rse_con,  spread_lamb as RegionExp.PGM 
@@ -394,7 +394,7 @@ functor Compile(structure Excon : EXCON
                          export_basis=export_basis  (* list of region variables and arrow effects *)
                         }) = 
     let
-        val _ = (chat "\nInferring regions and effects ...(NEW)";
+        val _ = (chat "\nInferring regions and effects ...";
 		 Timing.timing_begin()
                  (*;Profile.reset()
                  ;Profile.profileOn()*))
@@ -419,7 +419,7 @@ functor Compile(structure Excon : EXCON
 (*	val _ = print "\n*** Unified toplevel regions and effects ***\n" *)
 	val new_layer = []
 
-        val _ = Timing.timing_end("Reg. Inf. (NEW)")
+        val _ = Timing.timing_end("Reg. Inf.")
      (*   val _ = (Profile.profileOff();
                 TextIO.output(!Flags.log, "\n PROFILING OF R\n\n");
                 Profile.report(!Flags.log));
@@ -457,25 +457,25 @@ functor Compile(structure Excon : EXCON
       if !Flags.DEBUG_COMPILER then
         (say "Resulting region-static environment:\n";
 	 sayenv(rse');
-	 display("\nReport: After Region Inference (NEW)", layoutRegionPgm pgm'))
+	 display("\nReport: After Region Inference", layoutRegionPgm pgm'))
       else ();
       (cone,rse',pgm')       (* rse' contains rse_con *)
     end
 
     (* ---------------------------------------------------------------------- *)
-    (*   Multiplicity Inference                                       (NEW)   *)
+    (*   Multiplicity Inference                                               *)
     (* ---------------------------------------------------------------------- *)
 
     fun mulInf(program_after_R:(Effect.place,unit)RegionExp.LambdaPgm, Psi, cone, mulenv) =
     let
 
-        val _ = (chat "\nInferring multiplicities ...(NEW)";
+        val _ = (chat "\nInferring multiplicities ...";
                 Timing.timing_begin()
                 (*;Profile.reset()
                 ;Profile.profileOn()*) )
         val (pgm', mulenv',Psi') = MulInf.mulInf(program_after_R,Psi,cone,mulenv)
 
-        val _ = Timing.timing_end("Multiplicity Inference (NEW)")
+        val _ = Timing.timing_end("Multiplicity Inference")
 
 (*        val _ = ( Profile.profileOff()(*;
                 TextIO.output(!Flags.log, "\n PROFILING OF MulInf\n\n");
@@ -483,7 +483,7 @@ functor Compile(structure Excon : EXCON
 *)
     in 
         if !Flags.DEBUG_COMPILER 
-            then (display("\nReport: After Multiplicity Inference (NEW), the program is:\n",
+            then (display("\nReport: After Multiplicity Inference, the program is:\n",
                    	    MulInf.layoutLambdaPgm pgm'))
             else ();
 
@@ -493,7 +493,7 @@ functor Compile(structure Excon : EXCON
 
 
     (* ---------------------------------------------------------------------- *)
-    (*  Spread Expression, Region Inference and Multiplicity Inference (NEW)  *)
+    (*  Spread Expression, Region Inference and Multiplicity Inference        *)
     (* We now connect the three phases above. No cone is needed in the        *)
     (* compiler (dynamic) basis. Instead, a cone is built from the initial    *)
     (* rse, and lives throughout all three phases. All generated, free nodes  *)
@@ -510,16 +510,16 @@ functor Compile(structure Excon : EXCON
 
 
     (* ---------------------------------------------------------------------- *)
-    (*   Perform K-normalisation                                       (NEW)  *)
+    (*   Perform K-normalisation                                              *)
     (* ---------------------------------------------------------------------- *)
 
     local open MulInf
     in fun k_norm(pgm: (place,place*mul,qmularefset ref)LambdaPgm_psi) 
 	: (place,place*mul,qmularefset ref)LambdaPgm_psi =
-	(chat "\nK-normalisation (NEW)...\n";
+	(chat "\nK-normalisation ...\n";
          Timing.timing_begin();
          let val pgm' = MulInf.k_normPgm pgm
-	 in Timing.timing_end("K-norm (NEW)");
+	 in Timing.timing_end("K-norm");
 (*KILL 29/03/1997 19:29. tho.:
 	    if Flags.is_on "print_K_normal_forms" 
                orelse !Flags.DEBUG_COMPILER then 
@@ -531,7 +531,7 @@ functor Compile(structure Excon : EXCON
     end	
 
     (* ---------------------------------------------------------------------- *)
-    (*   Do attop/atbot analysis                                       (NEW)  *)
+    (*   Do attop/atbot analysis                                              *)
     (* ---------------------------------------------------------------------- *)
 
     local open AtInf
@@ -550,17 +550,17 @@ functor Compile(structure Excon : EXCON
 
 
     (* ---------------------------------------------------------------------- *)
-    (*   Do drop regions                                               (NEW)  *)
+    (*   Do drop regions                                                      *)
     (* ---------------------------------------------------------------------- *)
   
     local open DropRegions
     in
       val drop_regions : env*(place at,place*mul,unit)LambdaPgm -> (place at,place*mul,unit)LambdaPgm * env =
 	fn (env, pgm) =>
-	(chat "\nDrop Regions (NEW)...\n";
+	(chat "\nDrop Regions ...\n";
          Timing.timing_begin();
          let val (pgm',env') = drop_regions(env, pgm)
-	 in Timing.timing_end("DROP (NEW)");
+	 in Timing.timing_end("Drop");
 	    if Flags.is_on "print_drop_regions_expression" orelse !Flags.DEBUG_COMPILER then 
 	      display("\nReport: AFTER DROP REGIONS:", AtInf.layout_pgm_brief pgm')
 	    else ();
@@ -577,12 +577,12 @@ functor Compile(structure Excon : EXCON
    in
       fun phys_size_inf (env: env, pgm:(place at,place*mul,unit)LambdaPgm) 
 	: ((place*pp)at,place*phsize,unit)LambdaPgm * env =
-	(chat "\nPhysical Size Inference (NEW)...\n";
+	(chat "\nPhysical Size Inference ...\n";
          Timing.timing_begin();
          let val (pgm',env') = psi(pp_counter, env, pgm)
-	 in Timing.timing_end("PSI (NEW)");
+	 in Timing.timing_end("PSI");
 	    if !print_physical_size_inference_expression orelse !Flags.DEBUG_COMPILER then 
-	      display("\nReport: AFTER PHYSICAL SIZE INFERENCE (NEW):", layout_pgm pgm')
+	      display("\nReport: AFTER PHYSICAL SIZE INFERENCE:", layout_pgm pgm')
 	    else ();
 	    (pgm',env')
 	 end)
@@ -608,32 +608,32 @@ functor Compile(structure Excon : EXCON
 
 
     (* ---------------------------------------------------------------------- *)
-    (*   Do application conversion                                     (NEW)  *)
+    (*   Do application conversion                                            *)
     (* ---------------------------------------------------------------------- *)
   
     local open PhysSizeInf
     in
       fun appConvert (pgm:((place*pp)at,place*phsize,unit)LambdaPgm): 
                           ((place*pp)at,place*phsize,unit)LambdaPgm =
-	(chat "\nApplication Conversion (NEW)...\n";
+	(chat "\nApplication Conversion ...\n";
          Timing.timing_begin();
          let val pgm' = PhysSizeInf.appConvert(pgm)
-	 in Timing.timing_end("App Conv (NEW)");
+	 in Timing.timing_end("App Conv");
 	    if !print_call_explicit_expression orelse !Flags.DEBUG_COMPILER then 
-	      display("\nReport: AFTER APPLICATION CONVERSION (NEW):", layout_pgm pgm')
+	      display("\nReport: AFTER APPLICATION CONVERSION:", layout_pgm pgm')
 	    else ();
 	    pgm'
 	 end)
     end
 
     (* ---------------------------------------------------------------------- *)
-    (*   Compile region annotated code to KAM code (NEW)                      *)
+    (*   Compile region annotated code to KAM code                            *)
     (* ---------------------------------------------------------------------- *)
     fun comp_lamb(l2kam_ce, pgm) = 
-      let val _ = chat "\nCompiling region annotated lambda language (NEW)..."
+      let val _ = chat "\nCompiling region annotated lambda language ..."
 	  val _ = Timing.timing_begin()
 	  val (linkinfo, code, l2kam_ce') = CompLamb.comp_lamb(l2kam_ce, pgm)
-	  val _ = Timing.timing_end("Com. Lam. (NEW)")
+	  val _ = Timing.timing_end("Com. Lam.")
       in (linkinfo, code, l2kam_ce')
       end
 
@@ -674,7 +674,7 @@ functor Compile(structure Excon : EXCON
                   let
 	            val outStreamVCG = TextIO.openOut vcg_file
 		  in
-		    (chat "\nGenerate VCG region flow graph for profiling...";
+		    (chat "\nGenerate VCG region flow graph for profiling ...";
 		     RegionFlowGraphProfiling.export_graph outStreamVCG;
 		     TextIO.closeOut(outStreamVCG))
 		  end

@@ -179,6 +179,11 @@ signature BASICS =
 	  and type ModuleEnvironments.Env = Environments.Env
 	  and type ModuleEnvironments.Sig = ModuleStatObject.Sig
 
+    structure OpacityEnv : OPACITY_ENV
+      sharing OpacityEnv.TyName = TyName
+	  and type OpacityEnv.funid = FunId.funid
+	  and type OpacityEnv.StringTree = Tools.PrettyPrint.StringTree
+
     structure AllInfo : ALL_INFO
       sharing type AllInfo.TypeInfo.Type = StatObject.Type
 	  and type AllInfo.TypeInfo.TyVar = StatObject.TyVar
@@ -189,7 +194,7 @@ signature BASICS =
 	  and type AllInfo.TypeInfo.strid = StrId.strid
 	  and type AllInfo.TypeInfo.tycon = TyCon.tycon
 	  and type AllInfo.TypeInfo.id = Ident.id
-	  and type AllInfo.TypeInfo.TyName = StatObject.TyName
+	  and AllInfo.TypeInfo.TyName = StatObject.TyName
 	  and type AllInfo.TypeInfo.Basis = ModuleEnvironments.Basis
 	  and type AllInfo.ErrorInfo.Type = StatObject.Type
 	  and type AllInfo.ErrorInfo.TypeScheme = StatObject.TypeScheme
@@ -362,6 +367,11 @@ functor Basics(structure Tools: TOOLS): BASICS =
 			 structure Crash             = Tools.Crash
 			)
 
+    structure OpacityEnv = OpacityEnv(structure FunId = FunId
+				      structure Crash = Tools.Crash					
+				      structure PP = Tools.PrettyPrint
+				      structure Report = Tools.Report
+				      structure Environments = Environments)
     structure AllInfo =
       struct
 	structure SourceInfo = SourceInfo
@@ -380,13 +390,15 @@ functor Basics(structure Tools: TOOLS): BASICS =
 	   structure Report = Tools.Report
 	   structure PrettyPrint = Tools.PrettyPrint)
 	structure TypeInfo = TypeInfo
-	  (structure Ident = Ident
+	  (structure Crash = Tools.Crash
+	   structure Ident = Ident
 	   structure ModuleEnvironments = ModuleEnvironments
 	   structure StrId = StrId
 	   structure TyCon = TyCon
 	   structure StatObject=StatObject
 	   structure Environments=Environments
-	   structure PP = Tools.PrettyPrint)
+	   structure PP = Tools.PrettyPrint
+	   structure OpacityEnv = OpacityEnv)
 	structure OverloadingInfo = OverloadingInfo
 	  (structure StatObject = StatObject
 	   structure PrettyPrint = Tools.PrettyPrint)
@@ -524,9 +536,9 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
       structure ElabRepository = ElabRepository(structure Name = Basics.Name
 						structure InfixBasis = TopdecParsing.InfixBasis
 						structure TyName = Basics.TyName
+						structure OpacityEnv = Basics.OpacityEnv
 						type funid = Basics.FunId.funid
 						type ElabBasis = Basics.ModuleEnvironments.Basis
-						type realisation = Basics.Environments.realisation
 						type longstrid = Basics.StrId.longstrid
 						structure Crash =  Tools.Crash
 						structure FinMap = Tools.FinMap)

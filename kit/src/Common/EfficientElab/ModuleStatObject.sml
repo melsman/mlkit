@@ -1,6 +1,3 @@
-(*$ModuleStatObject: STRID SIGID FUNID TYCON TYNAME NAME STATOBJECT
-	ENVIRONMENTS FINMAP PRETTYPRINT REPORT FLAGS CRASH
-	MODULE_STATOBJECT*)
 
 functor ModuleStatObject(structure StrId  : STRID
 			 structure SigId  : SIGID
@@ -21,7 +18,6 @@ functor ModuleStatObject(structure StrId  : STRID
 			       and type Environments.Type       = StatObject.Type
 			       and type Environments.TyVar      = StatObject.TyVar
 			       and type Environments.TypeScheme = StatObject.TypeScheme
-(*			       and type Environments.tycon      = TyName.tycon *)
 			       and type Environments.strid      = StrId.strid
 			       and type Environments.realisation = StatObject.realisation
 			       and type Environments.ExplicitTyVar = StatObject.ExplicitTyVar
@@ -329,7 +325,7 @@ functor ModuleStatObject(structure StrId  : STRID
        * a realisation, phi, mapping abstract type names of the opaque
        * env into type functions, such that phi(E_o) = E_t. *)
 
-      fun match' (Sig, E') : Env * Env * realisation =
+      fun match' (Sig, E') : Env * TyName.Set.Set * Env * realisation =
 	let val (Sig as SIGMA{T,E}) = rename_Sig Sig
 
 	    val phi = sigMatchRea (Sig,E')  (* sigMatchRea will raise No_match,
@@ -338,7 +334,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	in
 	  check_enrichment (E',E'') ;       (* check_enrichment will raise No_match,
 					     * if E' does not enrich E''*)
-	  (E'',E,phi)
+	  (E'',T,E,phi)
 	end
 
       (* assumption: NO tynames in Sig1 and Sig2 may be marked generative. *)
@@ -420,7 +416,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	    end
 
       (*take care, match_via will raise No_match if there is no match*)
-      fun match_via (FUNSIG {T=T, E=E, T'E'=Sig' as SIGMA {T=T',E=E'}}, E0) : Sig * realisation =
+      fun match_via (FUNSIG {T=T, E=E, T'E'=Sig' as SIGMA {T=T',E=E'}}, E0) : Sig * realisation * realisation =
 	    let val phi = sigMatchRea(SIGMA{T=T,E=E}, E0)
 	                    (*sigMatchRea will raise No_match,
 			     if no realisation can be found*)
@@ -434,9 +430,9 @@ functor ModuleStatObject(structure StrId  : STRID
 		    SIGMA{T=Realisation.on_TyName_set rea T,  (* is very picky on type name rebinding in functor *)
 			  E=Realisation.on_Env rea E}         (* signatures. - Martin *)
 	      in
-		(Sigma_on (phi', Sig'), phi')      (* The elaborator must maintain the invariant that *)
-	      end                                  (* (Supp(phi') U Yield(phi')) \cap (T of Sig') = 0 *)
-	    end                                    (* -- I believe it does -- Martin *)
+		(Sigma_on (phi', Sig'), phi, phi_rename)      (* The elaborator must maintain the invariant that *)
+	      end                                             (* (Supp(phi') U Yield(phi')) \cap (T of Sig') = 0 *)
+	    end                                               (* -- I believe it does -- Martin *)
 
       local
 	fun rename_FunSig (FUNSIG{T,E,T'E'}) =

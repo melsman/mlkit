@@ -282,11 +282,11 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
           let val l = FinMap.Fold (op ::) nil m
 
 	  fun layoutPair (tycon, tystr) =
-	        PP.NODE {start=TyCon.pr_TyCon tycon ^ " ",
-			 finish="", indent=3, children=[layoutTystr tystr],
+	        PP.NODE {start=TyCon.pr_TyCon tycon ^ ":",
+			 finish="", indent=0, children=[layoutTystr tystr],
 			 childsep=PP.NOSEP}
 	  in
-	    PP.NODE {start="", finish="", indent=0,
+	    PP.NODE {start="type ", finish="", indent=0,
 		     children=map layoutPair l, childsep=PP.RIGHT " "}
 	  end
 
@@ -1458,6 +1458,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       val singleton                = Realisation.singleton
       val from_T_and_theta         = Realisation.from_T_and_theta
       val restrict                 = Realisation.restrict
+      val restrict_from            = Realisation.restrict_from
+      val inverse                  = Realisation.inverse
 
       fun on_VarEnv (phi : realisation) (VE : VarEnv) =
 	    VE.map (fn LONGVARpriv sigma =>
@@ -1483,7 +1485,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       and on_StrEnv phi (SE : StrEnv) =
 	    if is_Id phi then SE else SE.map (on_Env phi) SE
 
-      (*renaming T = a realisation that maps each tyname in T to a fresh tyname*)
+      val renaming = Realisation.renaming       (*renaming T = a realisation that maps each tyname in T to a fresh tyname*)
+      val renaming' = Realisation.renaming'
+
+(*
       fun renaming' (T : TyName.Set.Set) : TyName.Set.Set * realisation  =
 	let
 	  val new_tynames : (TyName * TyName) list =
@@ -1523,8 +1528,11 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	end
 
       fun renaming (T: TyName.Set.Set) : realisation = #2 (renaming' T)
+*)
       val match = Realisation.match
       val enrich = Realisation.enrich
+      val dom = Realisation.dom
+      val eq = Realisation.eq
       val layout = Realisation.layout
 
     end (*Realisation*)

@@ -1,4 +1,4 @@
-(*$BasicIO: BASIC_IO*)
+
 functor BasicIO(): BASIC_IO =
   struct
     val WIDTH = 75

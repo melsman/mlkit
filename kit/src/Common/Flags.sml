@@ -45,6 +45,7 @@ functor Flags (structure Crash : CRASH
     val DEBUG_STATOBJECTS  = ref false
     val DEBUG_TYPES        = ref false
     val DEBUG_TYVARS       = ref false
+    val print_type_name_stamps = ref false
 
    (*Compiler debug options: *)
     val DEBUG_COMPILER          = ref false
@@ -104,13 +105,12 @@ functor Flags (structure Crash : CRASH
 
     val path_to_runtime = ref "You_did_not_set_path_to_runtime"
     val path_to_runtime_prof = ref "You_did_not_set_path_to_runtime_prof"
-    val c_compiler = ref "cc -Aa" (*or maybe "gcc -ansi"*)
-    val c_libs = ref "-lm" (*include math lib when compiling target code from the kit*)
+    val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
+    val c_libs = ref "-lM" (*include math lib when compiling target code from the kit*)
 
     (* The following three are only used by TestEnv: *)
-    val kit_version = ref "You_did_not_set_kit_version" (*e.g. "ML_to_HPPA_on_HPUX"*)
-    val test_env_directory = ref "You_did_not_set_kit_source_directory"
-    val kit_architecture = ref "You_did_not_set_kit_architecture"
+    val kit_backend = ref "C" (*either "C" or "native"*)
+    val test_env_directory = ref "You_did_not_set_kit_env_directory"
 
     val colwidth               = ref 80
 
@@ -442,19 +442,16 @@ struct
   (* Adding initial entries. *)
   val _ = List.apply add_string_entry
         [("path_to_runtime", path_to_runtime), 
-	   (*e.g. "MLKitv2.0/bin/" ^ kit_version ^ "/runtime.o"*)
 	 ("path_to_runtime_prof", path_to_runtime_prof),
-	   (*e.g. "MLKitv2.0/bin/" ^ kit_version ^ "/runtime_prof.o"*)
 	 ("c_compiler", c_compiler),  (*e.g. "cc -Aa" or "gcc -ansi"*)
 	 ("c_libs", c_libs),  (*e.g. "-lm"*)
 	 ("target_file_extension", target_file_extension),  (*e.g. ".c" or ".s"*)
 	 ("path_to_kit_script", ref "you-did-not-set-path-to-kit-script"), 
-	   (*e.g. "MLKitv2.0/bin/" ^ kit_version ^ "/kit.script"*)
 
 	 (*the following are only used by TestEnv:*)
-	 ("kit_version", kit_version), (*e.g. "ML_to_HPPA_on_HPUX"*)
-	 ("test_env_directory", test_env_directory),  (*e.g. "MLKitv2.0/TestEnv/"*)
-	 ("kit_architecture", kit_architecture)   (*e.g., "HPUX"*)]
+	 ("kit_backend", kit_backend), (*either "C" or "native"*)
+	 ("test_env_directory", test_env_directory)]  (*e.g. "MLKitv2.0/TestEnv/"*)
+
 
   val _ = List.apply add_int_entry
         [("colwidth", colwidth)]
@@ -483,6 +480,7 @@ struct
      ("print_types", print_types),
      ("print_regions", print_regions),
      ("print_effects", print_effects), 
+     ("print_type_name_stamps", print_type_name_stamps), 
      ("all_multiplicities_infinite", all_multiplicities_infinite), 
      ("optimiser", optimiser),
      ("raggedRight", raggedRight),
@@ -544,21 +542,21 @@ struct
   (*read_string r () = read a string from std_in.  If the input is some
    string in quotes, read_string assigns it to the ref r (and sets the global
    (whooa!) ref u_or_q_from_read_string is to false), and returns.  If the
-   input is u or q, read_string does not update r, sets
+   input is `u' or `quit', read_string does not update r, sets
    u_or_q_from_read_string to false, and returns.  For other inputs
    read_string gives an error message and lets the user try again.*)
 
   val u_or_q_from_read_string = ref false
   fun read_string r () =
       (u_or_q_from_read_string := false ;
-       outLine "<string in double quotes> or up (u): >" ;
+       outLine "<string in double quotes>, Up (u), or Quit (quit): >" ;
        let val s = TextIO.inputLine std_in
 	   val (_, l) = List.splitFirst (fn ch => ch <> " ") (explode s)
 	         handle List.First _ => ([],[])
        in
 	 case l of 
 	   [] => (help () ; read_string r ())
-	 | "q" :: _  => u_or_q_from_read_string := true
+	 | "q" :: "u" :: "i" :: "t" :: _  => u_or_q_from_read_string := true
 	 | "u" :: _  => u_or_q_from_read_string := true
 	 | "\"" (*"*) :: _  => 
            (case StringParse.parse (implode l) of 
@@ -682,7 +680,7 @@ struct
                    
      in
        loop(0,lines);
-       outLine "\nToggle line (t <number>), Activate line (a <number>), Up (u), or Quit(q): "
+       outLine "\nToggle line (t <number>), Activate line (a <number>), Up (u), or Quit (quit): "
     end;
   
   fun blanks n =
@@ -707,7 +705,7 @@ struct
                off (>>>)           |      on >>>      |
              - - - - - - - - - -   ====================
      
-         Toggle (t), Activate chosen (a), Up (u), or Quit (q)
+         Toggle (t), Activate chosen (a), Up (u), or Quit (quit)
        *)
   
         fun mk_odd n: int = if n mod 2 = 0 then n+1 else n
@@ -742,8 +740,8 @@ struct
        outLine ("\t" ^ l12 ^ "  " ^ l22);
        outLine ("\t" ^ l13 ^ "  " ^ l23);
        outLine ("\t" ^ l14 ^ "  " ^ l24);
-       outLine( "\n\nToggle (t)" ^ (if descend_is_possible then ", Activate chosen (a), Up (u), or Quit (q)"
-                                else ", Up (u), or Quit (q)"))
+       outLine( "\n\nToggle (t)" ^ (if descend_is_possible then ", Activate chosen (a), Up (u), or Quit (quit)"
+                                else ", Up (u), or Quit (quit)"))
     end;
        
   
@@ -806,7 +804,7 @@ struct
 	       handle List.First _ => ([],[])
      in case l of
           [] => HELP
-        | "q" :: _ => QUIT
+        | "q" :: "u" :: "i" :: "t" :: _ => QUIT
         | "u" :: _ => UP
         | "a" :: l' => (case IntParse.parse (implode l') of
                          OK(i, _) => ACTIVATE i
@@ -826,7 +824,7 @@ struct
 	           handle List.First _ => ([],[])
 	 in case l of
 	   [] => HELP
-	 | "q" :: _ => QUIT
+	 | "q" :: "u" :: "i" :: "t" :: _ => QUIT
 	 | "u" :: _ => UP
 	 | "a" :: l' => ACTIVATE_BOT
 	 | "t" :: l' => TOGGLE_BOT
@@ -858,7 +856,7 @@ struct
 			      handle List.First _ => ([],[])
                     in case l of 
                           [] => (help(); read_int())
-                        | "q" :: _  => ()
+                        | "q" :: "u" :: "i" :: "t" :: _  => ()
                         | "u" :: _  => ()
                         | _ => case IntParse.parse (implode l) of
                                     OK(i,_) => r:= i | _ => (help(); read_int())
@@ -879,7 +877,7 @@ struct
        case explode s
 	 of [] => (help(); read_int_list r ())
 	  | "u" :: _  => ()
-	  | "q" :: _  => ()
+	  | "q" :: "u" :: "i" :: "t" :: _  => ()
 	  | "["::_ => (case parseIntList s
 			      handle ListParse.Sep _ => die "parseIntList" of
 			 OK(l',_) => (r := l')
@@ -900,7 +898,7 @@ struct
        case (explode s)
 	 of [] => (help(); read_int_pair_list r ())
 	  | "u" :: _  => ()
-	  | "q" :: _  => ()
+	  | "q" :: "u" :: "i" :: "t" :: _  => ()
 	  | "["::_ => (case parseIntPairList s
 			      handle ListParse.Sep _ => die "parseIntList" of
 			 OK(l',_) => (r := l')
@@ -956,7 +954,8 @@ struct
 
     val layout_item : item = mk_header "Layout"
           (DISPLAY
-	   [mk_toggle ("print types ", print_types),
+	   [mk_toggle ("print types", print_types),
+	    mk_toggle ("print type name stamps and attributes", print_type_name_stamps),
 	    mk_toggle ("print effects", print_effects),
 	    mk_toggle ("print regions ", print_regions),
 	    mk_toggle ("print in K-Normal Form", print_K_normal_forms),

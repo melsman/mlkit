@@ -23,8 +23,11 @@ functor KitCompiler() : sig include MANAGER
     structure Execution = Execution(structure Elaboration = Elaboration)
 
     structure OpacityElim = OpacityElim(structure Crash = Tools.Crash
+					structure PP = Tools.PrettyPrint
 					structure ElabInfo = AllInfo.ElabInfo
 					structure Environments = Basics.Environments
+					structure ModuleEnvironments = Basics.ModuleEnvironments
+					structure OpacityEnv = Basics.OpacityEnv
 					structure StatObject = Basics.StatObject
 					structure TopdecGrammar = Elaboration.PostElabTopdecGrammar)
 
@@ -92,6 +95,7 @@ functor KitCompiler() : sig include MANAGER
 		 structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
 		 structure Crash = Tools.Crash
 		 structure Report = Tools.Report
+		 structure PP = Tools.PrettyPrint
 		 structure Flags = Tools.Flags)
 
     structure Manager =
@@ -138,48 +142,52 @@ structure K = struct
     val kitsrc_path = OS.FileSys.getDir()   (* assumes we are in kit/src/ directory *)
     val kitbin_path = OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../bin"))
     val kitbinkit_path = OS.Path.joinDirFile{dir=kitbin_path, file="kit"}
-    val kitbinkitimage_path = OS.Path.joinDirFile{dir=kitbin_path, file="kit.hppa-hpux9"}
 
     fun set_paths() = 
       (Flags.lookup_string_entry "path_to_runtime" := 
-       OS.Path.concat(kitsrc_path, "Runtime/Version17/runtimeHPUX.o");
+       OS.Path.concat(kitsrc_path, "Runtime/Version17/runtimeSystem.o");
        Flags.lookup_string_entry "path_to_runtime_prof" := 
-       OS.Path.concat(kitsrc_path, "Runtime/Version17/runtimeHPUXProf.o");
+       OS.Path.concat(kitsrc_path, "Runtime/Version17/runtimeSystemProf.o");
        Flags.lookup_string_entry "test_env_directory" := 
        (OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../TestEnv"))))
 
     val date = Date.fmt "%B %d, %Y" (Date.fromTimeLocal (Time.now()))
-    val version = "2.1"
-    val greetings = "ML Kit with Regions, Version " ^ version ^ ", " ^ date ^ "\n"
+    val version = "2.2"
+    val greetings = "ML Kit with Regions, Version " ^ version ^ ", " ^ date ^ "\n" ^
+                    "Using the " ^ Flags.get_string_entry "kit_backend" ^ " backend\n"
 
-    val _ = Flags.lookup_string_entry "kit_architecture" := "HPUX"
-    val _ = Flags.lookup_string_entry "kit_version" := "ML_to_HPPA_on_HPUX"
-
+    fun kit scriptfile = (print greetings;
+			  set_paths();
+			  Flags.read_script scriptfile;
+			  Flags.interact())
   in
-    fun kit() = (print greetings;
-		 set_paths();
-		 Flags.read_script "kit.script";
-		 Flags.interact())
-
     fun build_basislib() =
-      (OS.FileSys.chDir "../basislib";
+      (print "\n ** Building basis library **\n\n";
+       OS.FileSys.chDir "../basislib";
        set_paths();
        build "basislib.pm";
        OS.FileSys.chDir "../src")
+      handle exn => (OS.FileSys.chDir "../src"; raise exn)
 
     fun install() =
-      let val os = TextIO.openOut kitbinkit_path
+      let val _ = print "\n ** Installing compiler executable **\n\n"
+	  val kitbinkitimage_path = OS.Path.joinDirFile{dir=kitbin_path, file="kit.hppa-hpux9"}
+	  val os = TextIO.openOut kitbinkit_path
 	  val _ = (TextIO.output(os, "sml110 @SMLload=" ^ kitbinkitimage_path); TextIO.closeOut os)
 	  val _ = OS.Process.system("chmod a+x " ^ kitbinkit_path)
 	    handle _ => (print("\n***Installation not fully succeeded; `chmod a+x " ^ kitbinkit_path ^ "' failed***\n");
 			 OS.Process.success)
-	  fun kitexe (_, []) = (kit(); OS.Process.success)
-	    | kitexe _ = (print "usage: kit\n"; OS.Process.failure) 
+	  fun kitexe (_, []) = (kit "kit.script"; OS.Process.success)
+	    | kitexe (_, ["-script", scriptfile]) = (kit scriptfile; OS.Process.success)
+	    | kitexe _ = (print "usage: kit [-script scriptfile]\n"; OS.Process.failure) 
       in SMLofNJ.exportFn(kitbinkit_path,kitexe)
       end
+    val kit = fn () => kit "kit.script"
   end
 
   val cd = OS.FileSys.chDir
   val pwd = OS.FileSys.getDir
 
 end (*structure K*)
+
+
