@@ -68,7 +68,13 @@ functor Kam(structure Labels : ADDRESS_LABELS
 18/09-2000, Niels *)
 
     datatype KamInst = 
-        BlockAlloc of int
+        Alloc of int
+      | AllocIfInf of int
+      | AllocSatInf of int
+      | AllocSatIfInf of int
+      | AllocAtbot of int
+
+      | BlockAlloc of int
       | BlockAllocIfInf of int
       | BlockAllocSatInf of int
       | Block of int
@@ -84,6 +90,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | SelectStack of int
       | SelectEnv of int
       | Select of int
+      | Store of int
 
       | StackAddrInfBit of int
       | StackAddr of int
@@ -117,6 +124,10 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | EndregionInf
       | ResetRegion
       | MaybeResetRegion
+      | ResetRegionIfInf
+
+      | FetchGlobal of label
+      | StoreGlobal of label
 
       | Comment of string
       | Nop
@@ -181,7 +192,13 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
     fun pp_inst (inst,acc) : string list =
       case inst of
-        BlockAlloc(n) => "BlockAlloc(" :: (pp_i n) :: ")" :: acc
+        Alloc(n) => "Alloc(" :: (pp_i n) :: ")" :: acc
+      | AllocIfInf(n)  => "AllocIfInf(" :: (pp_i n) :: ")" :: acc
+      | AllocSatInf(n) => "AllocSatInf(" :: (pp_i n) :: ")" :: acc
+      | AllocSatIfInf(n) => "AllocSatIfInf(" :: (pp_i n) :: ")" :: acc
+      | AllocAtbot(n) => "AllocAtbot(" :: (pp_i n) :: ")" :: acc
+
+      | BlockAlloc(n) => "BlockAlloc(" :: (pp_i n) :: ")" :: acc
       | BlockAllocIfInf(n)  => "BlockAllocIfInf(" :: (pp_i n) :: ")" :: acc
       | BlockAllocSatInf(n) => "BlockAllocSatInf(" :: (pp_i n) :: ")" :: acc
       | Block(n) => "Block(" :: (pp_i n) :: ")" :: acc
@@ -198,6 +215,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | SelectStack(off) => "SelectStack(" :: (pp_i off) :: ")" :: acc
       | SelectEnv(off) => "SelectEnv(" :: (pp_i off) :: ")" :: acc
       | Select(off) => "Select(" :: (pp_i off) :: ")" :: acc
+      | Store(off) => "Store(" :: (pp_i off) :: ")" :: acc
 
       | StackAddrInfBit(off) => "StackAddrInfBit(" :: (pp_i off) :: ")" :: acc
       | StackAddr(off) => "StackAddr(" :: (pp_i off) :: ")" :: acc
@@ -231,6 +249,10 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | EndregionInf => "EndregionInf" :: acc
       | ResetRegion => "ResetRegion" :: acc
       | MaybeResetRegion => "MaybeResetRegion" :: acc
+      | ResetRegionIfInf => "ResetRegionIfInf" :: acc
+
+      | FetchGlobal(lab) => "FetchGlobal(" :: (pp_lab lab) :: ")" :: acc
+      | StoreGlobal(lab) => "StoreGlobal(" :: (pp_lab lab) :: ")" :: acc
 
       | Comment(s) => "Comment[" :: s :: "]" :: acc
       | Nop => "Nop" :: acc

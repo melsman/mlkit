@@ -129,6 +129,11 @@ Kam/AddressLabels.sml
    Backend/X86/INSTS_X86.sml
    Backend/X86/InstsX86.sml
 
+(* 18/09-2000, Niels *)
+   Backend/KAM/KAM.sml
+   Backend/KAM/Kam.sml
+   Backend/KAM/CodeGenKAM.sml  
+
 #elif defined(KIT_TARGET_DUMMY)
 #else
 
