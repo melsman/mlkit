@@ -25,10 +25,11 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
     val rp       = Gen 2   (* Return link.   *)
     val mrp      = Gen 31  (* (Milicode) return link. *)
 
-    val tmp_reg0 = Gen 19 (*15*)
-    val tmp_reg1 = Gen 20 (*16*)
-    val tmp_reg2 = Gen 21 (*17*)
-    val tmp_reg3 = Gen 22 (*18*)
+    val tmp_gr1  = Gen 1
+    val tmp_reg0 = Gen 19 
+    val tmp_reg1 = Gen 20 
+(*    val tmp_reg2 = Gen 21 *)
+(*    val tmp_reg3 = Gen 22 *)
 
     val arg0     = Gen 26  (* Argument and return registers *)
     val arg1     = Gen 25  (* for C function calls. *)
@@ -82,9 +83,9 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       fun reg_to_lv(Gen i) = Vector.sub(map_reg_to_lvs,i)
 	| reg_to_lv _ = die "reg_to_lv: reg is not a general register (Gen)"
 
-      val reg_args = map Gen [3,5,6] 
+      val reg_args = map Gen [3,4,5,6,7,8,9,10] 
       val reg_args_as_lvs = map reg_to_lv reg_args
-      val reg_res = map Gen [7] 
+      val reg_res = map Gen [10,9,8,7,6,5,4,3] 
       val reg_res_as_lvs = map reg_to_lv reg_res
 
       val reg_args_ccall = map Gen [26,25,24,23]
@@ -92,11 +93,18 @@ functor HpPaRISC(structure Labels : ADDRESS_LABELS
       val reg_res_ccall = map Gen [28] 
       val reg_res_ccall_as_lvs = map reg_to_lv reg_res_ccall
 
-      val callee_save_regs = map Gen []
-      val callee_save_regs_as_lvs = map reg_to_lv callee_save_regs
+      val callee_save_regs_mlkit = map Gen []
+      val callee_save_regs_mlkit_as_lvs = map reg_to_lv callee_save_regs_mlkit
 
-      val caller_save_regs = map Gen [3,5,6,7,8,9,10,23,24,25,26,28]
-      val caller_save_regs_as_lvs = map reg_to_lv caller_save_regs
+      val caller_save_regs_mlkit = map Gen [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,21,22,23,24,25,26,28,29]
+      val caller_save_regs_mlkit_as_lvs = map reg_to_lv caller_save_regs_mlkit
+
+      val callee_save_regs_ccall = map Gen []
+      val callee_save_regs_ccall_as_lvs = map reg_to_lv callee_save_regs_ccall
+
+      (* tmp_reg0, tmp_reg1, mrp and rp should not be in this list as they are never live across a C call *)
+      val caller_save_regs_ccall = map Gen [21,22,23,24,25,26,28,29]
+      val caller_save_regs_ccall_as_lvs = map reg_to_lv caller_save_regs_ccall
     end
 
     (*----------------------------------------------------------*)
