@@ -1,7 +1,12 @@
-The ML Kit copyright/license file                    December 12, 2003
+The ML Kit copyright/license file                    June 10, 2004
+
+    The files in the directories kit/src/Runtime/ and kit/basislib/
+    are distributed under the MIT license; see the files MIT_LICENSE
+    within these two directories. All other files are distributed
+    under the GNU GENERAL PUBLIC LICENSE (GPL) - see below.
 
      ------------------------------------------------------------
-      Copyright (c) 1998-2002 by Copenhagen University, Edinburgh
+      Copyright (c) 1998-2004 by Copenhagen University, Edinburgh
       University, and the IT University of Copenhagen
      ------------------------------------------------------------
 
