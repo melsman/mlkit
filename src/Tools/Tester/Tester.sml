@@ -183,28 +183,28 @@ structure Tester : TESTER =
 					      fn () => opt TestFile.GC,
 					      compile_command_gc,
 					      TestReport.add_gc_line,
-					      " -silent_gc ")
+					      " ")
 	fun maybe_trywithgcprof() = maybe_trywith(file,
 						  ".outgcp",
 						  ".out.ok",
 						  fn () => opt TestFile.GC andalso opt TestFile.Profiling,
 						  compile_command_gc_prof,
 						  TestReport.add_gc_profile_line,
-						  " -silent_gc ")
+						  " ")
 	fun maybe_trywithtags() = maybe_trywith(file,
 						".outtags",
 						".out.ok",
 						fn () => opt TestFile.Tags,
 						compile_command_gc,
 						TestReport.add_tags_line,
-						" -disable_gc -silent_gc ")
+						" -disable_gc ")
 	fun maybe_trywithtagsprof() = maybe_trywith(file,
 						    ".outtagsp",
 						    ".out.ok",
 						    fn () => opt TestFile.Tags andalso opt TestFile.Profiling,
 						    compile_command_gc_prof,
 						    TestReport.add_tags_profile_line,
-						    " -disable_gc -silent_gc ")
+						    " -disable_gc ")
       in
 	msg' (" executing command `" ^ compile_command ^ "'");
         if OS.Process.system compile_command = OS.Process.success then

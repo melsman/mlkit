@@ -591,7 +591,7 @@ struct
 	 | _ => die "move_aty_into_reg_ap: ATY cannot be used to allocate memory"
 
     fun store_pp_prof (obj_ptr:reg, pp:LS.pp, C) =
-      if false (*region_profiling() *) then 
+      if region_profiling() then 
 	if pp < 2 then die ("store_pp_prof.pp (" ^ Int.toString pp ^ ") is less than two.")	  
 	else I.movl(I(int_to_string pp), D("-8", obj_ptr)) :: C
       else C
@@ -1709,7 +1709,7 @@ struct
 			      val reg_offset = offset + BI.objectDescSizeP + BI.finiteRegionDescSizeP
 			    in
 			      base_plus_offset(esp,WORDS(size_ff-reg_offset-1),tmp_reg1,
-			       compile_c_call_prim("allocRegionFiniteProfiling",
+			       compile_c_call_prim("allocRegionFiniteProfilingMaybeUnTag",
 						   [SS.PHREG_ATY tmp_reg1,
 						    key place,
 						    mkIntAty i], NONE,
@@ -1717,7 +1717,7 @@ struct
 			    end
 			   | LineStmt.INF => 
 			    base_plus_offset(esp,WORDS(size_ff-offset-1),tmp_reg1,
-		              compile_c_call_prim("allocRegionInfiniteProfiling",
+		              compile_c_call_prim("allocRegionInfiniteProfilingMaybeUnTag",
 						  [SS.PHREG_ATY tmp_reg1, 
 						   key place], NONE,
 						  size_ff,tmp_reg0(*not used*),C))
@@ -2426,6 +2426,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    fun maybe_push_region_id (region_id,C) = 
 	      if region_profiling() then I.pushl(I (int_to_string region_id)) :: C
 	      else C
+	    (* Notice, that regionId is not tagged because compile_c_call is not used *)
+            (* Therefore, we do not use the MaybeUnTag-version. 2001-05-11, Niels     *)
 	    val c_name = if region_profiling() then "allocRegionInfiniteProfiling"
 			 else "allocateRegion"
 	    fun pop_args C =
@@ -2481,6 +2483,12 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    I.dot_globl (NameLab "code") ::
 	    I.lab (NameLab "code") ::
 
+            (* Initialize profiling *)
+            init_prof(
+
+	    (* Initialize stack_bot_gc. *)
+	    init_stack_bot_gc(
+
 	    (* Put data labels on the stack; they are part of the root-set. *)
 	    store_exported_data_for_gc (dat_labs,
 
@@ -2493,12 +2501,6 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
 	    (* Push top-level handler on stack *)
 	    push_top_level_handler(
-
-	    (* Initialize stack_bot_gc. *)
-	    init_stack_bot_gc(
-
-            (* Initialize profiling *)
-            init_prof(
             
 	    (* Code that jump to progunits. *)
 	    comment ("JUMP CODE TO PROGRAM UNITS",

@@ -1,5 +1,5 @@
 (* This file is auto-generated with Tools/GenOpcodes; it is *)
-(* based on the file /home/mael/mlkit/kit/src/Compiler/Backend/KAM/KamInsts.spec *)
+(* based on the file /home/nh/ITU/MLKit/mlkit/kit/src/Compiler/Backend/KAM/KamInsts.spec *)
 signature OPCODES_KAM = 
   sig
     val ALLOC_N : int 
