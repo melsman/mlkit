@@ -25,8 +25,12 @@ signature SCS_STRING =
     val canonical : string -> string
 
     (* [shorten text len] returns the string text shortended to
-       maximum lenght len. *)
+       maximum lenght len appended with "...". *)
     val shorten : string -> int -> string
+
+    (* [keepFirst text len] returns the string text shortended to
+       maximum lenght len *)
+    val keepFirst : string -> int -> string
 
     (* [trim str] returns the trimmed str, that is, str will all
         prefix and postfix spaces removed. *)
@@ -129,8 +133,10 @@ structure ScsString =
 
     fun canonical s = String.concatWith " " (String.tokens Char.isSpace s)
 
-    fun shorten text length = 
-      String.substring( text, 0, Int.min(length, String.size text) ) ^ "..."
+    fun keepFirst text length = 
+      String.substring( text, 0, Int.min(length, String.size text) ) 
+
+    fun shorten text length = keepFirst text length ^ "..."
 
     fun maybe str1 str2 = if str1 = "" then "" else str2
 
