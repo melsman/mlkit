@@ -598,7 +598,8 @@ structure ScsPerson :> SCS_PERSON =
     end
 
     (* Supporting links to pictures from external pages. *)
-    fun may_see_portrait_adm_p user_id = ScsRole.has_one_p user_id [ScsRole.PhdAdm,ScsRole.StudAdm,ScsRole.UcsEduInfo]
+    fun may_see_portrait_adm_p user_id = ScsRole.has_one_p user_id [ScsRole.PhdAdm,ScsRole.StudAdm,
+								    ScsRole.UcsEduInfo,ScsRole.PortraitAdm]
     local 
       fun returnEmpty pic_type = 
 	case pic_type of 
@@ -1176,23 +1177,27 @@ structure ScsPerson :> SCS_PERSON =
 
     val portrait_adm_help =
 
-      `<h2>Portrætadministration</h2>
+      `<h2>Status</h2>
+
+      <b>todo:</b>Vi har styr på håndtering af billeder for ansatte
+      samt synlighed for både ansatte og studerende. Vi mangler stadig
+      at finde en fornuftig løsning for studerende<p>
+
+      <h2>Portrætadministration</h2>
 
       Der findes både et <i>officielt</i> og et <i>ikke officielt</i>
       billede. Det officielle billede tages ved studiestart eller ved
-      ansættelse og administreres af ansatte på ITU der har fået
-      tildelt rollen <b>PictureAdm</b> i UCS. <p>
+      ansættelse og administreres af ansatte på ITU, der har fået
+      tildelt rollen <b>PortraitAdm</b> i UCS. <p>
 
       Det ikke officielle billede uploades af brugerne selv.<p>
 
       Udover registrering af to billeder registreres <i>synlighed</i>
       af billedet, dvs. hvorvidt en bruger ønsker at billedet skal
-      vises på Intranettet og Internettet eller om det skal være
-      skjult for alle pånær enkelte med adminstratorrettigheder i
-      UCS.<p>
+      vises på Internettet eller om det skal være skjult.<p>
 
       Det officielle billede gemmes i henholdsvis den størrelse og
-      kvalitet som det der uploades samt en thumbnail. Den oprindelige
+      kvalitet, som det der uploades, samt en thumbnail. Den oprindelige
       størrelse og kvalitet bevares, således at administrationen selv
       bestemmer kvaliteten. Nogle af de officielle billeder anvendes
       f.eks. i aviser og andre steder, hvor der kræves en vis
@@ -1218,8 +1223,11 @@ structure ScsPerson :> SCS_PERSON =
       ansatte. Ansatte skriver under på hvorvidt deres billede må
       vises offentligt i forbindelse med deres ansættelseskontrakt.
 
-      <li>Intern Service vedligeholder de officielle billeder for både
-      ansatte og studerende.
+      <li>Intern Service vedligeholder de officielle billeder for
+      ansatte.
+
+      <li><b>todo:</b> Det udestår stadig hvorvidt de studerenes
+      billeder skal skabes i UCS - måske de selv skal uploade dem.
 
       <li>Brugerne uploader selv de ikke officielle billeder.
 
@@ -1227,7 +1235,7 @@ structure ScsPerson :> SCS_PERSON =
 
       <h3>Administrationssiden</h3>
 
-      Brugere med rollen <b>PictureAdm</b> kan tilgå
+      Brugere med rollen <b>PortraitAdm</b> kan tilgå
       administrationssiden via deres egen hovedside. Linket
       "Portrætadministration" til siden findes i kassen "Site
       administration".<p>
@@ -1252,6 +1260,23 @@ structure ScsPerson :> SCS_PERSON =
       Ved at klikke på info-knappen til højre for "Gem" ses hvilke
       registreringer der er sket på dette felt.<p>
 
+      Der findes pt. to definitioner af synlighed på ITU:
+
+      <ol>
+
+      <li>I UCS er synlighed defineret ved, at hvis der er angivet et
+      "nej", så vises billedet hverken på Internettet eller
+      Intranettet.
+
+      <li>I billedarkivet i Intern Service vises alle billeder for
+      både studerende og ansatte på Intranettet og kun på Internettet
+      hvis der er svaret "ja" til synlighed.
+
+      </ol>
+
+      <b>TO-DO</b> Vi må finde ud af hvad der skal gælde!
+
+      <a name="regler_for_visning_af_billede.sec"></a>
       <h3>Visning af et billede</h3>
 
       Når et billede vises anvendes følgende prioriteter:
@@ -1264,27 +1289,29 @@ structure ScsPerson :> SCS_PERSON =
 
       <h3>Link til billede fra ekstern side</h3>
 
-Systemet anvender det ikke officielle billede hvis det findes, ellers
-anvendes det officielle billede. Hvis der ikke er givet tilladelse til
-at vise et billede eller der ikke findes noget officielt billede, så
-vises et standard anonymt billede. \newline
+      Det er muligt at linke til billeder fra eksterne sider. Et link
+      består af typen af billeder man ønsker (enten et thumbnail eller
+      det store billede) samt en unik identifikation på personen. Der
+      er pt. implementeret en unik identifikation, nemlig et internt
+      løbenummer <code>person_id</code>. Men det vil også være muligt
+      at implmentere andre unikke identifikatorer, f.eks. email.<p>
 
+      Du kan aflæse linket i boksen med titlen "Ekstern link til
+      billede":<p>
 
-  
-  
-\item Rollen \picadm{} kan uploade officielle og ikke officielle
-  billeder på alle registrerede brugere.
-  
-\item Rollen \alle{} kan uploade ikke officielle billeder af sig selv,
-  som anvendes på nettet. 
-  
-\item Rollen \picadm{} kan gøre et ikke officielt billede til det
-  officielle billede.
-  
-\item Rollen \picadm{} kan for alle brugere markere om de ønsker at
-  billedet anvendes på Internettet eller ikke. Brugerne kan ikke selv
-  angive dette, da det kræver en underskrift.
+      <img src="/scs/person/images/ext_link.png"><p>
 
+      Linket sikrer, at et billede kun vises, hvis det er tilladt,
+      dvs. kombinationen af login som kigger på billedet og billedets
+      ejers synlighed checkes. Derudover vælges et billede efter
+      reglerne <a
+      href="#regler_for_visning_af_billede.sec">ovenfor</a>.
+
+      <h3>Adgangskort</h3>
+  
+      Adgangskort laves i SysAdm via en ACCESS database. <b>Todo:</b>
+      vi skal her undersøge om det er muligt at hente en url ind som
+      billede eller om det kan hentes fra en hjemmeside?.
 
       `
   end
