@@ -6,7 +6,6 @@ val _ = Page.return "Server Information" `
 <tr><th>Home Path</th>          <td> ^(Ns.Info.homePath()) </td></tr>
 <tr><th>Hostname</th>           <td> ^(Ns.Info.hostname()) </td></tr>
 <tr><th>Pid</th>                <td> ^(Int.toString (Ns.Info.pid())) </td></tr>
-<tr><th>Server Version</th>     <td> ^(Ns.Info.serverVersion()) </td></tr>
 <tr><th>Uptime (seconds)</th>   <td> ^(Int.toString (Ns.Info.uptime())) </td></tr>
 <tr><th>Pageroot</th>           <td> ^(Ns.Info.pageRoot()) </td></tr>
 </table>

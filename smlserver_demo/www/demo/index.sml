@@ -10,7 +10,7 @@ val examples =
    ("Dictionary Cache","cache.sml", ["cache_add.sml","cache_lookup.sml"]),
    ("Currency service", "currency_cache.html", ["currency_cache.sml"]),
    ("Send an email", "mail_form.sml", ["mail.sml"]),
-   ("Employee search (DB)", "employee/index.sml", ["search.sml","update.sml"]),
+   ("Employee search (DB)", "employee/index.sml", ["employee/search.sml","employee/update.sml"]),
    ("Best Wines (DB)", "rating/index.sml", ["rating/rating.sql", "rating/add0.sml", 
 						"rating/add.sml", "rating/wine.sml"]),
    ("Link database (DB)", "link/index.sml", ["link/add_form.sml", "link/add.sml", 
@@ -25,7 +25,7 @@ val examples =
    ("SMLserver images", "images/index.html", []),
    ("This index page", "index.sml", [])]
 
-fun src_link n s = `<a href="^s.txt">^(Int.toString n)</a>`
+fun src_link n s = `<a href="return_file.sml?path=^(Ns.encodeUrl ("demo/" ^ s))">^(Int.toString n)</a>`
 
 fun sources n nil = ``
   | sources n [s] = src_link n s
