@@ -165,7 +165,8 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				   ,
                                      ("scan_rev1", None),
 				     ("scan_rev2", None)
-*)
+*),
+				     ("vpprob", None)
 				     ]
 
     (*--------------------------------------------*)
