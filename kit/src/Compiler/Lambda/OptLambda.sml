@@ -2128,8 +2128,12 @@ functor OptLambda(structure Lvars: LVARS
 		LvarMap.pu Lvars.pu (optionGen(pairGen(int,LambdaExp.pu_TypeScheme)))
 	in 
 	    convert (fn ((a,b,c),(d,e,f)) => (a,b,c,d,e,f), fn (a,b,c,d,e,f) => ((a,b,c),(d,e,f)))
-	    (pairGen0(tup3Gen0(pu_iee,pu_let_env,pu_unbox_fix_env),
-		      tup3Gen0(pu_uce,pu_contract_env,pu_contract_env)))
+	    (pairGen0(tup3Gen0(comment "OptLambda.iee.pu" pu_iee,
+			       comment "OptLambda.let_env.pu" pu_let_env,
+			       comment "OptLambda.unbox_fix_env.pu" pu_unbox_fix_env),
+		      tup3Gen0(comment "OptLambda.uce.pu" pu_uce,
+			       comment "OptLambda.contract_env.pu" pu_contract_env,
+			       comment "OptLambda.contract_env2..pu" pu_contract_env)))
 	end
 
   end

@@ -913,7 +913,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		(TyName.Set.union (VE.tynames VE) (TE.tynames TE))
       val layout = layoutSE
 
-      val pu = pu_StrEnv
+      val pu = Pickle.comment "Environments.SE.pu" pu_StrEnv
     end (*SE*)
 
 
@@ -1390,7 +1390,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       and matchSE (SE,SE0) = SE.Fold (fn (strid,E) => fn () => (case SE.lookup SE0 strid 
 								  of SOME E0 => match (E,E0)
 								   | NONE => ())) () SE
-      val pu = pu_Env
+      val pu = Pickle.comment "Environments.E.pu" pu_Env
     end (*E*)
 
 
@@ -1565,7 +1565,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	end (*let*) handle BoundTwice VE => VE
       end (*local exception BoundTwice*)
 
-      val pu = pu_Context
+      val pu = Pickle.comment "Environments.C.pu" pu_Context
     end (*C*)
   
   

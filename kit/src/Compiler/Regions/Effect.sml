@@ -284,7 +284,7 @@ struct
       end
 
   fun mkUnion(l : effect list) =
-      let 
+      let (* val _ = case l of nil => print ("Effect.mkUnion: empty list!!!\n") | _ => () *)
           val new = G.mk_node(UNION{represents=NONE})
       in
           app (fn n => G.mk_edge(new, G.find n)) l;

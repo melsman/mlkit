@@ -1267,10 +1267,13 @@ struct
 (*		   val _ = pr_effects "rhos_get" rhos_get     
 		   val _ = pr_effects "rhos_put" rhos_put
 *)
-  		   val phi0 = E.mkUnion (map E.mkGet rhos_get
-  					 @ map E.mkPut rhos_put)
+		   val _ = 
+		       case map E.mkGet rhos_get @ map E.mkPut rhos_put of
+			   nil => ()
+			 | rhos_gets_puts => 
+			       (*insert effects on the arrow in mu*)
+			       E.edge (eps0, E.mkUnion rhos_gets_puts)
   	       in
-  		 E.edge (eps0, phi0) ; (*insert effect phi0 on the arrow in mu*)
   		 let (* val _ = pr_mu "cf2" mu *)
 		     val (B, sigma, msg_opt) = generalize_all (B, 0, tyvars, #1 mu)
 		   handle X => (print ("generalize_all failed\n"); raise X)

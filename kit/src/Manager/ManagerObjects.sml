@@ -679,6 +679,9 @@ functor ManagerObjects(structure Execution : EXECUTION
 
     datatype Basis = BASIS of InfixBasis * ElabBasis * opaq_env * IntBasis
 
+    type longids = {funids:funid list, sigids:sigid list, longstrids: longstrid list,
+		    longvids: longid list, longtycons: longtycon list}
+
     structure Basis =
       struct
 	val empty = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.empty, OpacityElim.OpacityEnv.empty, IntBasis.empty)
@@ -710,6 +713,33 @@ functor ManagerObjects(structure Execution : EXECUTION
 
 	fun agree(longstrids, BASIS(_,elabB1,rea1,tintB1), (BASIS(_,elabB2,rea2,tintB2), dom_rea)) =
 	  ModuleEnvironments.B.agree(longstrids,elabB1,elabB2) andalso IntBasis.agree(longstrids,tintB1,tintB2)
+
+	fun restrict(BASIS(infB,eB,oe,iB),ids: longids) =
+	    let val _ = chat "[restricting elaboration basis begin...]"
+		val eB' = ModuleEnvironments.B.restrict(eB,ids)
+		val _ = chat "[restricting elaboration basis end...]"
+		    
+		val _ = chat "[restricting interpretation basis begin...]"
+		val iB' = IntBasis.restrict(iB,ids)
+		val _ = chat "[restricting interpretation basis end...]"
+		    
+		val _ = chat "[finding tynames in elaboration basis begin...]"
+		val tynames_eB' = ModuleEnvironments.B.tynames eB'
+		val _ = chat "[finding tynames in elaboration basis end...]"
+		    
+		val _ = chat "[restricting opacity env begin...]"
+		val oe' = OpacityElim.OpacityEnv.restrict(oe,(#funids ids,tynames_eB'))
+		val _ = chat "[restricting opacity env end...]"
+	    in (BASIS(infB,eB',oe',iB'),tynames_eB')
+	    end
+
+	fun domain(BASIS(_,eB,_,_)) : longids = ModuleEnvironments.B.domain eB 
+
+	fun closure (B': Basis, B: Basis) : Basis = 
+	    (* closure_B'(B) : the closure of B w.r.t. B' *)
+	    let val dom = domain B
+	    in #1 (restrict(plus(B',B),dom))
+	    end
 	  
 	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
 	  PP.NODE{start="BASIS(", finish = ")",indent=1,childsep=PP.RIGHT ", ",
@@ -724,9 +754,12 @@ functor ManagerObjects(structure Execution : EXECUTION
 
 	val pu =
 	    let open Pickle
-	    in convert (BASIS, fn BASIS a => a)
-		(tup4Gen0(InfixBasis.pu, ModuleEnvironments.B.pu, 
-			  OpacityElim.OpacityEnv.pu, IntBasis.pu))
+	    in comment "MO.Basis"
+		(convert (BASIS, fn BASIS a => a)
+		 (tup4Gen0(InfixBasis.pu, 
+			   comment "ModuleEnvironments.B.pu" ModuleEnvironments.B.pu, 
+			   comment "OpacityEnv.pu" OpacityElim.OpacityEnv.pu, 
+			   IntBasis.pu)))
 	    end
       end
 
@@ -875,8 +908,8 @@ functor ManagerObjects(structure Execution : EXECUTION
 	    let open Pickle
 	    in convert (fn ((a1,a2,a3,a4),(a5,a6,a7)) => (a1,a2,a3,a4,a5,a6,a7),
 			fn (a1,a2,a3,a4,a5,a6,a7) => ((a1,a2,a3,a4),(a5,a6,a7)))
-		(pairGen(tup4Gen(FunStamp.pu,Environments.E.pu,IntBasis.pu,listGen StrId.pu_longstrid),
-			 tup3Gen(listGen Name.pu,ModCode.pu,IntBasis.pu)))
+		(pairGen0(tup4Gen0(FunStamp.pu,Environments.E.pu,IntBasis.pu,listGen StrId.pu_longstrid),
+			  tup3Gen0(listGen Name.pu,ModCode.pu,IntBasis.pu)))
 	    end
 	val pu_intRep : intRep Pickle.pu = 
 	    RM.pu ElabRep.pu_dom (Pickle.listGen pu_int_entry)

@@ -102,6 +102,10 @@ signature MANAGER_OBJECTS =
       end
 
     type CEnv and CompileBasis and longtycon and longid and longstrid
+
+    type longids = {funids:funid list, sigids:sigid list, longstrids: longstrid list,
+		    longvids: longid list, longtycons: longtycon list}
+
     structure IntBasis :
       sig
 	val mk : IntFunEnv * IntSigEnv * CEnv * CompileBasis -> IntBasis
@@ -115,8 +119,7 @@ signature MANAGER_OBJECTS =
 	val enrich : IntBasis * IntBasis -> bool
 
 	val initial : unit -> IntBasis
-	val restrict : IntBasis * {funids:funid list, sigids:sigid list, longstrids: longstrid list,
-				   longvids: longid list, longtycons: longtycon list} -> IntBasis
+	val restrict : IntBasis * longids -> IntBasis
 	val pu : IntBasis Pickle.pu
       end
 
@@ -132,6 +135,12 @@ signature MANAGER_OBJECTS =
 
 	val agree   : longstrid list * Basis * (Basis * TyName.Set.Set) -> bool
 	val enrich  : Basis * (Basis * TyName.Set.Set) -> bool
+	val restrict: Basis * longids -> Basis * TyName.Set.Set
+	    (* The tyname set is the set of free type names in
+	     * the elaboration basis of the result *)
+
+	val closure : Basis * Basis -> Basis
+	(* closure(B',B) : the closure of B w.r.t. B' - also written closure_B'(B) *)
 
 	val initial : unit -> Basis
 

@@ -158,7 +158,7 @@ functor TyName(
 		 equality=e, unboxed=u}
 	    fun from ({tycon=t, name=n, arity=a, rank=r,
 		       equality=e, unboxed=u} : TyName) = ((t,n,a),r,e,u)	    
-	in newHash (Name.key o #name)
+	in newHash id
 	    (convert (to,from)
 	     (tup4Gen0(tup3Gen0(TyCon.pu,Name.pu,int),
 		       refOneGen int,bool,refOneGen bool)))

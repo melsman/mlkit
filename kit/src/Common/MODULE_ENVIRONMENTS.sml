@@ -30,6 +30,8 @@ signature MODULE_ENVIRONMENTS =
     type Report
     (*The report functions below are used for top-level printout*)
 
+    type longids = {funids:funid list, sigids:sigid list, longstrids: longstrid list,
+		    longvids: longid list, longtycons: longtycon list}
 
                        (*G, signature environments*)
 
@@ -114,10 +116,10 @@ signature MODULE_ENVIRONMENTS =
 	           (*for compilation manager*)
 	val enrich           : Basis * Basis -> bool
 	val agree            : longstrid list * Basis * Basis -> bool
-	val restrict         : Basis * {longvids : longid list, longtycons : longtycon list,
-					longstrids : longstrid list, funids : funid list,
-					sigids : sigid list} -> Basis
+	val restrict         : Basis * longids -> Basis
 	val match            : Basis * Basis -> unit
+
+	val domain           : Basis -> longids
 
 	val pu               : Basis Pickle.pu
       end

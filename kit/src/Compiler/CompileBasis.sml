@@ -69,6 +69,7 @@ functor CompileBasis(structure CompBasis : COMP_BASIS
     fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)
 
     val pu =
-	Pickle.pairGen(CompBasis.pu, ClosExp.pu)
+	Pickle.pairGen(CompBasis.pu, 
+		       Pickle.comment "ClosExp.pu" ClosExp.pu)
 
   end

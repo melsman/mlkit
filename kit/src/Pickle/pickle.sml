@@ -2,11 +2,21 @@
  * Copyright, Martin Elsman 2003-01-07 
  *)
 
-structure Pickle : PICKLE = (* was :> *)
+structure Pickle :> PICKLE = (* was : *)
   struct
     val sharing_p = true
+    val linear_refs_p = true
     val debug_p = false
-
+    val comments_p = false
+	
+    infix ==
+    fun a == b : bool = false
+(*
+	let val a_i:int = Unsafe.cast a
+	    val b_i:int = Unsafe.cast b
+	in a_i = b_i
+	end
+*)
     structure S = Stream
     structure H = Polyhash
     structure Dyn = EqHashDyn
@@ -16,7 +26,7 @@ structure Pickle : PICKLE = (* was :> *)
 		  ; raise Fail s
 		 end
 
-    val maxDepth = 50
+    val maxDepth = 12
     val maxLength = 500
 
     local
@@ -139,13 +149,15 @@ structure Pickle : PICKLE = (* was :> *)
 			      in case H.peek pe d of                (*  - otherwise there are problems *)
 				  SOME _ => res                     (*    with cycles.                 *)
 				| NONE =>
-				      let val (c,h) = H.peekSameHash pe d
+				      let (*
+					  val (c,h) = H.peekSameHash pe d
 					  val maxBucket = 10
 					  val _ = if c > maxBucket then print ("** Bucket > " ^ Int.toString maxBucket 
 									       ^ " (c=" ^ Int.toString c ^ ",h=" 
 									       ^ Int.toString h ^") **: " ^ typ ^ "\n"
 									       ^ "** Value = " ^ pp v ^ "\n")
 						  else ()
+					  *)
 				      in H.insert pe (d,loc) 
 				       ; res
 				      end
@@ -219,11 +231,21 @@ structure Pickle : PICKLE = (* was :> *)
 				 let val p = hashAddSmallNoCount hash_pair (#hasher pu1 a p)
 				 in hashComb (#hasher pu2 b) p
 				 end)),
-	     eq = fn ((a1,a2),(b1,b2)) => #eq pu1 (a1,b1) andalso #eq pu2 (a2,b2),
+	     eq = fn (p1 as (a1,a2),p2 as (b1,b2)) => p1==p2 orelse #eq pu1 (a1,b1) andalso #eq pu2 (a2,b2),
 	     typ = "P(" ^ #typ pu1 ^ "," ^ #typ pu2 ^ ")"}
 	end
 
     fun pairGen pu = shareGen(pairGen0 pu)
+
+    fun reportBucket s (pe,d,typ) : unit = 
+	if true then () else
+	let val (c,h) = H.peekSameHash pe d
+	    val maxBucket = 10
+	in if c > maxBucket then print ("** " ^ s ^ ".Bucket > " ^ Int.toString maxBucket 
+					^ " (c=" ^ Int.toString c ^ ",h=" 
+					^ Int.toString h ^") **: " ^ typ ^ "\n")
+	   else ()
+	end
 
     fun refEqGen (eq: 'a ref * 'a ref -> bool) (v_dummy:'a) (pu:'a pu) : 'a ref pu =
       debug "refEqGen"
@@ -242,7 +264,8 @@ structure Pickle : PICKLE = (* was :> *)
 			      in (s,pe)
 			      end
 			| NONE =>
-			      let val s = S.outcw(REF_DEF,s)
+			      let val _ = reportBucket "RefEqGen" (pe,d,typ)
+				  val s = S.outcw(REF_DEF,s)
 				  val loc = S.getLoc s
 			      in H.insert pe (d,loc)
 				  ; #pickler pu v (s, pe)
@@ -289,7 +312,8 @@ structure Pickle : PICKLE = (* was :> *)
 			      in (s,pe)
 			      end
 			| NONE =>
-			      let val s = S.outcw(REF_DEF,s)
+			      let val _ = reportBucket "Ref0EqGen" (pe,d,typ)
+				  val s = S.outcw(REF_DEF,s)
 				  val loc = S.getLoc s
 			      in H.insert pe (d,loc)
 			       ; #pickler pu v (s, pe)
@@ -323,7 +347,7 @@ structure Pickle : PICKLE = (* was :> *)
 	ref0EqGen (fn (ref a,ref b) => #eq pu (a,b)) pu 
 
     fun refOneGen (pu:'a pu) : 'a ref pu =    (* Only works when sharing is enabled! *)
-      if not sharing_p then ref0Gen pu
+      if not sharing_p orelse not linear_refs_p then ref0Gen pu
       else
       let val hash_ref = newHashCount()
 	  fun href (ref a) = hashComb (fn p => hashAddSmall hash_ref (#hasher pu a p))
@@ -353,6 +377,7 @@ structure Pickle : PICKLE = (* was :> *)
 	      in #unpickler(getPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and eq(a1:'a,a2:'a) : bool =
+		a1 == a2 orelse
 		let val n = toInt a1
 		in n = toInt a2 andalso #eq (getPUPI n) (a1,a2)
 		end
@@ -403,6 +428,7 @@ structure Pickle : PICKLE = (* was :> *)
 	      in #unpickler(aGetPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and aEq(a1:'a,a2:'a) : bool =
+		a1==a2 orelse
 		let val n = aToInt a1
 		in n = aToInt a2 andalso #eq (aGetPUPI n) (a1,a2)
 		end
@@ -434,6 +460,7 @@ structure Pickle : PICKLE = (* was :> *)
 	      in #unpickler(bGetPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and bEq(b1:'b,b2:'b) : bool =
+		b1==b2 orelse
 		let val n = bToInt b1
 		in n = bToInt b2 andalso #eq (bGetPUPI n) (b1,b2)
 		end
@@ -495,6 +522,7 @@ structure Pickle : PICKLE = (* was :> *)
 	      in #unpickler(aGetPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and aEq(a1:'a,a2:'a) : bool =
+		a1==a2 orelse
 		let val n = aToInt a1
 		in n = aToInt a2 andalso #eq (aGetPUPI n) (a1,a2)
 		end
@@ -526,6 +554,7 @@ structure Pickle : PICKLE = (* was :> *)
 	      in #unpickler(bGetPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and bEq(b1:'b,b2:'b) : bool =
+		b1==b2 orelse
 		let val n = bToInt b1
 		in n = bToInt b2 andalso #eq (bGetPUPI n) (b1,b2)
 		end
@@ -557,6 +586,7 @@ structure Pickle : PICKLE = (* was :> *)
 	      in #unpickler(cGetPUPI (Word32.toInt w)) (s,upe)
 	      end
 	    and cEq(c1:'c,c2:'c) : bool =
+		c1==c2 orelse
 		let val n = cToInt c1
 		in n = cToInt c2 andalso #eq (cGetPUPI n) (c1,c2)
 		end
@@ -842,10 +872,15 @@ structure Pickle : PICKLE = (* was :> *)
 	end
 
     fun comment s (pu:'a pu) : 'a pu =
+	if not comments_p then pu
+	else
 	{pickler = (fn a => fn spe => 
-		    let val _ = print ("\n[Begin pickling: " ^ s ^ "]\n") 
+		    let val pos = (S.getLoc o #1) spe
+			val _ = print ("\n[Begin pickling: " ^ s ^ " - pos=" ^ (Int.toString o Word.toInt) pos ^ "]\n") 
 			val spe = #pickler pu a spe
-			val _ = print ("\n[End pickling  : " ^ s ^ "]\n") 
+			val pos' = (S.getLoc o #1) spe
+			val _ = print ("\n[End pickling  : " ^ s ^ " - pos=" ^ (Int.toString o Word.toInt) pos' ^ ", diff=" ^
+				       Int.toString(Word.toInt pos' - Word.toInt pos) ^ "]\n") 
 		    in spe
 		    end),
 	 unpickler = #unpickler pu,

@@ -516,21 +516,80 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	   List.app Name.mk_rigid names_int)
 	 | NONE => (List.app Name.mk_rigid names_int) (*bad luck*)
 
+    local (* Pickling *)
+	fun sizeToStr sz = 
+	    if sz < 10000 then Int.toString sz ^ " bytes"
+	    else if sz < 10000000 then Int.toString (sz div 1024) ^ "Kb (" ^ Int.toString sz ^ " bytes)" 
+		 else Int.toString ((sz div 1024) div 1024) ^ "Mb (" ^ Int.toString sz ^ " bytes)"
+		     
+	type timer = (string * Timer.cpu_timer * Timer.real_timer)
+	    
+	fun timerStart (s:string) : timer =
+	    (s,Timer.startCPUTimer(),Timer.startRealTimer())
+	    
+	fun timerReport ((s,cputimer,realtimer):timer) : unit = 
+	    let fun showTimerResult (s,{usr,gc,sys},real) =
+		print ("\nTiming " ^ s ^ ":" 
+		       ^ "\n  usr  = " ^ Time.toString usr 
+		       ^ "\n  gc   = " ^ Time.toString gc
+		       ^ "\n  sys  = " ^ Time.toString sys
+		       ^ "\n  real = " ^ Time.toString real
+		       ^ "\n")
+	    in showTimerResult (s, Timer.checkCPUTimer cputimer, 
+				Timer.checkRealTimer realtimer)	    
+	    end handle _ => print "\ntimerReport.Uncaught exception\n"
+    in
+	fun exportRep() : unit =       (* PICKLING *)
+	    let open Pickle
+		val os : outstream = empty()
+		val _ = print "\n [Begin pickling...]\n"
+		val r = MO.Repository.getRepository()
+		val timer = timerStart "pickling"
+		val os : outstream = pickler MO.Repository.pu r os
+		val _ = timerReport timer
+		val _ = print "\n [Converting to string...]\n"
+		val s = toString os
+		val _ = print ("\n [End pickling (sz = " ^ sizeToStr (size s) ^ ")]\n")
+		val _ = print "\n [Begin unpickling...]\n"
+		val timer = timerStart "unpickling"
+		val (r2,_) = unpickler MO.Repository.pu (fromString s)
+		val _ = timerReport timer
+		val _ = MO.Repository.setRepository r2
+	    in ()
+	    end
+
+	fun doPickleB s (B:Basis) : unit =
+	    if false then () else
+		let open Pickle
+		    val os : outstream = empty()
+		    val _ = print ("\n [Begin pickling result basis for " ^ s ^ "...]\n")
+		    val timer = timerStart "Pickler"
+		    val os : outstream = pickler Basis.pu B os
+		    val _ = timerReport timer
+		    val _ = print "\n [Converting to string...]\n"
+		    val s = toString os
+		    val _ = print ("\n [End pickling (sz = " ^ sizeToStr (size s) ^ ")]\n")
+		    val _ = print "\n [Begin unpickling...]\n"
+		    val timer = timerStart "Unpickler"
+		    val (B': Basis,_) = unpickler Basis.pu (fromString s)
+		    val _ = timerReport timer
+		    val _ = print "\n [Begin printing...]\n"
+                    val _ = pr_st (MO.Basis.layout B')
+		in ()
+		end
+    end (* Pickling *)
+
     (* --------------------------------
      * Parse, elaborate and interpret
      * (may raise PARSE_ELAB_ERROR)
      * -------------------------------- *)
 
     fun fid_topdec a = FreeIds.fid_topdec a
-    fun ElabBasis_restrict a = ElabBasis.restrict a
-    fun IntBasis_restrict a = IntBasis.restrict a
-    fun OpacityElim_restrict a = OpacityElim.OpacityEnv.restrict a
     fun opacity_elimination a = OpacityElim.opacity_elimination a
 
     fun parse_elab_interp (fi:bool,absprjid:absprjid,B, funid, punit, funstamp_now) : Basis * modcode =
       let val _ = Timing.reset_timings()
 	 val _ = Timing.new_file punit
-	 val (infB, elabB, opaq_env, topIntB) = Basis.un B
 	 val unitname = (filename_to_unitname o MO.funid_to_filename) funid
 	 val log_cleanup = log_init unitname
 	 val _ = Name.bucket := []
@@ -542,6 +601,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	     in (punit', fn () => (OS.FileSys.remove punit' handle _ => ()))
 	     end
 	   else (punit, fn () => ())
+	 val (infB, elabB, opaq_env, topIntB) = Basis.un B
 	 val res = ParseElab.parse_elab {absprjid=absprjid,infB=infB,elabB=elabB, file=punit} 
       in (case res
 	    of ParseElab.FAILURE (report, error_codes) => (print_error_report report; 
@@ -551,28 +611,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      let 
 		val _ = maybedelete()
 		val _ = chat "[finding free identifiers begin...]"
-		val freelongids as {longvids,longtycons,longstrids,funids,sigids} = fid_topdec topdec
+		val freelongids as {longstrids,...} = fid_topdec topdec
 		val _ = chat "[finding free identifiers end...]"
 
-		(* val _ = debug_free_ids ids *)
-		val _ = chat "[restricting elaboration basis begin...]"
-		val elabB_im = ElabBasis_restrict(elabB,freelongids)
-		val _ = chat "[restricting elaboration basis end...]"
-		(* val _ = debug_basis "Import" Bimp *)
-		  
-		val _ = chat "[restricting interpretation basis begin...]"
-		val intB_im = IntBasis_restrict(topIntB, {funids=funids,sigids=sigids,longstrids=longstrids,
-							  longtycons=longtycons,longvids=longvids})
-		val _ = chat "[restricting interpretation basis end...]"
-		  
-		val _ = chat "[finding tynames in elaboration basis begin...]"
-		val tynames_elabB_im = ElabBasis.tynames elabB_im
-		val _ = chat "[finding tynames in elaboration basis end...]"
-		  
-		val _ = chat "[restricting opacity env begin...]"
-		val opaq_env_im = OpacityElim_restrict(opaq_env,(funids,tynames_elabB_im))
-		val _ = chat "[restricting opacity env end...]"
-		  
+		val (B_im,tynames_elabB_im) = Basis.restrict(B,freelongids)
+		val (infB_im,elabB_im,opaq_env_im,intB_im) = Basis.un B_im
+
 		val _ = chat "[opacity elimination begin...]"
 		val (topdec', opaq_env') = opacity_elimination(opaq_env_im, topdec)
 		val _ = chat "[opacity elimination end...]"
@@ -595,7 +639,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		  
 		val _ = Repository.delete_entries (absprjid,funid)
 		  
-		val _ = Repository.add_elab ((absprjid,funid), (infB, elabB_im, longstrids, 
+		val _ = Repository.add_elab ((absprjid,funid), (infB_im, elabB_im, longstrids, 
 								(opaq_env_im,tynames_elabB_im), 
 								names_elab, infB', elabB', opaq_env'))
 		val modc = ModCode.emit (absprjid,modc)  (* When module code is inserted in repository,
@@ -606,6 +650,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		val _ = Repository.add_int' ((absprjid,funid),(funstamp_now,elabE',tintB_im,
 							       longstrids,names_int,modc,tintB'))
 		val B' = Basis.mk(infB',elabB',opaq_env',tintB')
+
+		(* Testing ; mael 2004-03-02 *)
+(*
+		val B'' = Basis.closure (B,B')
+		val _ = doPickleB unitname B''
+*)
 	      in print_result_report report;
 		log_cleanup();
 		(B',modc)
@@ -712,31 +762,17 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 | EMPTYbody => (rev acc, NONE)
 	 | _ => (rev acc, SOME body)
 	           (*collect_units(body,uids @ acc) *)
-
+	    
     (* Build a single unit; the bool is a `clean' flag; it is true if
      * all entries of the project so far have been reused.  The
      * (string*Time.time)list provides modification times for each of
      * the source files mentioned in the project. *)
 
-    fun build_unitid(fi, absprjid, B, unitid, clean, modtimes) 
+    fun build_unitid(fi, absprjid, B, unitid:string, clean, modtimes) 
       : Basis * modcode * bool * (string * Time.time) list =  
       let val _ = maybe_create_pmdir()
 	  val (B', modc, clean, modtime) = build_punit (absprjid, B, unitid, fi, clean)
-	  val _ =
-	      if true then () else
-	      let open Pickle
-		  val os : outstream = empty()
-		  val _ = print "\n [Begin pickling...]\n"
-		  val os : outstream = pickler Basis.pu B' os
-		  val _ = print "\n [Converting to string...]\n"
-		  val s = toString os
-		  val _ = print ("\n [End pickling (sz = " ^ Int.toString (size s) ^ ")]\n")
-		  val _ = print "\n [Begin unpickling...]\n"
-		  val (B'': Basis,_) = unpickler Basis.pu (fromString s)
-		  val _ = print "\n [Begin printing...]\n"
-		  val _ = pr_st (MO.Basis.layout B'')
-	      in ()
-	      end
+(*	  val _ = doPickleB unitid B' *)
       in (B', modc, clean, (unitid,modtime)::modtimes)
       end
 
@@ -1010,23 +1046,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 end handle E => (cd_old(); raise E)
       end 
 
-    fun exportRep() : unit =       (* PICKLING *)
-	let open Pickle
-	    val os : outstream = empty()
-	    val _ = print "\n [Begin pickling...]\n"
-	    val r = MO.Repository.getRepository()
-	    val os : outstream = pickler MO.Repository.pu r os
-	    val _ = print "\n [Converting to string...]\n"
-	    val s = toString os
-	    val _ = print ("\n [End pickling (sz = " ^ Int.toString (size s) ^ ")]\n")
-	    val _ = print "\n [Begin unpickling...]\n"
-	    val (r2,_) = unpickler MO.Repository.pu (fromString s)
-	    val _ = MO.Repository.setRepository r2
-	in ()
-	end
-
-
-
     (* -----------------------------------------
      * build longprjid  builds a project
      * ----------------------------------------- *)
@@ -1035,7 +1054,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       let val absprjid = mk_absprjid_from_path longprjid_s
           val _ = Repository.recover()
 	  val emitted_files = EqSet.fromList (Repository.emitted_files())
-	  val _ = let val {modc, clean, extobjs, ...} = build_project{cycleset=[], pmap=[], absprjid=absprjid, modc=ModCode.empty}
+	  val _ = let val {modc, clean, extobjs, ...} = 
+	                build_project{cycleset=[], pmap=[], 
+				      absprjid=absprjid, modc=ModCode.empty}
 
 		  (* MEMO: If clean is true then I do not need to rebuild binary. *)
 
