@@ -150,7 +150,7 @@ structure ScsString =
 	if pat = "" then 
 	  "%" 
 	else 
-	  "%"^(String.concatWith "%" (map lower (String.tokens Char.isSpace pat)))^"%"
+	  "%"^(String.concatWith "%" (String.tokens Char.isSpace pat)) ^ "%"
 
     fun quoteString str = Quot.toString `"^str"`
 
