@@ -1,4 +1,11 @@
--- $Id$
+/* ======================================================================
+   test suites for scs_math, scs_random packages
+
+   $Id$
+
+   History: 
+   151102 Kennie Nybo Pontoppidan <kennie@it-c.dk> created test suites
+====================================================================== */
 
 set serveroutput on
 
@@ -90,7 +97,7 @@ begin
       i integer;
     begin
       for i in 1..10000 loop
-	insert into tmp(random) values( scs_random.rand_max(100000000000) );
+	insert into tmp2(random) values( scs_random.rand_max(100000000000) );
       end loop;
     end;' );
 

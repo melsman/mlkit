@@ -239,6 +239,22 @@ end scs_user;
 show errors
 
 
+
+--------------
+-- Triggers --
+--------------
+create or replace trigger scs_user_imports_in_up_tr
+before insert or update on scs_user_imports
+for each row
+begin
+  :new.norm_name := scs_person.norm_name(:new.first_names,:new.last_name);
+  :new.email := lower(:new.email);
+end;
+/
+show errors
+
+
+
 /* ======================================================================
    package bodies start here
 ====================================================================== */

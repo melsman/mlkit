@@ -1,5 +1,5 @@
 /* ======================================================================
-   test suite for scs_user package
+   test suite for scs package
 
    $Id$
 
@@ -26,3 +26,13 @@ begin
 end;
 /
 show errors
+
+@test/scs-math-test.sql;
+@test/scs-locales-test.sql;
+@test/scs-enumerations-test.sql;
+@test/scs-parties-test.sql;
+@test/scs-persons-test.sql;
+@test/scs-users-test.sql;
+@test/scs-groups-test.sql;
+@test/scs-roles-test.sql;
+

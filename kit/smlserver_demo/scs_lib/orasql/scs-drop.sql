@@ -1,6 +1,3 @@
-drop package scs;
-drop sequence scs_object_id_seq;
-
 @scs-math-drop.sql;
 @scs-random-drop.sql;
 @scs-dict-drop.sql;
@@ -13,5 +10,9 @@ drop sequence scs_object_id_seq;
 @scs-locales-drop.sql
 @scs-logs-drop.sql
 @scs-test-drop.sql;
+
+
+drop package scs;
+drop sequence scs_object_id_seq;
 
 select table_name from user_tables order by table_name;

@@ -25,6 +25,7 @@ declare
   invalid_uid	integer;
 
   v_screen_name	varchar2(100);
+  v_email	varchar2(100);
 
   v_deleted_p1	char(1);
   v_deleted_p2	char(1);
@@ -93,12 +94,14 @@ begin
   select count(*) into counter3_b from scs_parties;
   select count(*) into counter4_b from scs_user_preferences;
   uid1 := scs.new_obj_id;
+  v_email := 'nh@it.edu' || to_char(uid1);
+  v_screen_name := 'niels' || uid1;
   uid1 := scs_user.new( 
     user_id => uid1,
     password => scs_user.gen_passwd( 8 ),
     salt => scs_random.rand_string(30),
-    screen_name => 'niels' || uid1,
-    email => 'nh@it.edu' || uid1,
+    screen_name => v_screen_name,
+    email => v_email,
     first_names => 'Niels', 
     last_name => 'Hallenberg', 
     security_id => uid,
@@ -144,7 +147,7 @@ begin
       uid := scs_user.new(
         password => scs_user.gen_passwd( 8 ),
         salt => scs_random.rand_string(30),
-        email => ''nh@it.edu' || to_char(uid1) || ''',
+        email => ''' || v_email || ''',
         first_names => ''Niels'', 
         last_name => ''Hallenberg'', 
         security_id => ''141148-NH 1'',
@@ -152,15 +155,15 @@ begin
     end;', 'f' );
 
   -- illegal values: a screen_name is supplied that exists in the table scs_users
-  scs_test.testExn( 'new', 4, '
+  scs_test.testExn( 'new', 5, '
     declare
       uid	integer;
     begin
       uid := scs_user.new(
         password => scs_user.gen_passwd( 8 ),
         salt => scs_random.rand_string(30),
-        screen_name => ''niels'',
-        email => ''nh@it.edu'',
+        screen_name => ''' || v_screen_name || ''',
+        email => scs_random.rand_string(30),
         first_names => ''Niels'', 
         last_name => ''Hallenberg'', 
         security_id => ''141148-NH 1'',
