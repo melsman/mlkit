@@ -310,12 +310,12 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	   ScsLang.English => `^s
 	     <blockquote>
 	     A name may contain the letters from the alphabet including: <b>'</b>, <b>\</b>,<b>-</b>,<b>æ</b>,
-	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b> and space.
+	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>,<b>ä</b>,<b>é</b> and space.
 	     </blockquote>`
 	 | ScsLang.Danish => `^s
 	     <blockquote>
 	     Et navn må indeholde bogstaver fra alfabetet samt disse tegn: <b>'</b>, <b>\</b>,<b>-</b>,<b>æ</b>,
-	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b> og mellemrum.
+	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>,<b>ä</b>,<b>é</b> og mellemrum.
 	     </blockquote>`)
       fun msgAddr s = 
 	(case ScsLogin.user_lang of
@@ -323,13 +323,13 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     <blockquote>
 	     An address may contain digits, letters from the alphabet including:
 	     <b>'</b>, <b>\\ </b>, <b>-</b>, <b>.</b>, <b>:</b> og <b>;</b> og <b>,</b>,
-	     <b>æ</b>,<b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>
+	     <b>æ</b>,<b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>
 	     </blockquote>`
 	 | ScsLang.Danish => `^s
 	     <blockquote>
 	     En adresse må indeholde tal, bogstaver fra alfabetet samt disse tegn: 
 	     <b>'</b>, <b>\\ </b>, <b>-</b>, <b>.</b>, <b>:</b> og <b>;</b> og <b>,</b>,
-	     <b>æ</b>,<b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>
+	     <b>æ</b>,<b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>
 	     </blockquote>`)
       fun msgLogin s = 
 	(case ScsLogin.user_lang of
@@ -624,8 +624,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
     in
       val getEmailErr = getErr' (%"email") msgEmail
 	(fn email => regExpMatch "[^@\t ]+@[^@.\t ]+(\\.[^@.\n ]+)+" (trim email)) 
-      val getNameErr = getErr' (%"name") msgName (regExpMatch "[a-zA-ZAÆØÅaæøå '\\-]+")
-      val getAddrErr = getErr' (%"address") msgAddr (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
+      val getNameErr = getErr' (%"name") msgName (regExpMatch "[a-zA-ZAÆØÅaæøåüäé '\\-]+")
+      val getAddrErr = getErr' (%"address") msgAddr (regExpMatch "[a-zA-Z0-9ÆØÅæøåü '\\-.:;,]+")
       val getLoginErr = getErr' (%"login") msgLogin 
 	(fn login =>
 	 regExpMatch "[a-z][a-z0-9\\-]+" login andalso 
