@@ -102,6 +102,7 @@ clean:
 	cd Tools/Tester; $(MAKE) clean
 	cd Tools/Rp2ps; $(MAKE) clean
 	cd Tools/GenOpcodes; $(MAKE) clean
+	cd Tools/Benchmark; $(MAKE) clean
 	cd Compiler; $(CLEAN)
 	cd Compiler/Backend; $(CLEAN)
 	cd Compiler/Backend/Dummy; $(CLEAN)
