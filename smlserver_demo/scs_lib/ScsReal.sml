@@ -20,10 +20,18 @@ signature SCS_REAL =
 
 structure ScsReal :> SCS_REAL =
   struct
-    fun toString ScsLang.da dec r = 
-      String.map (fn c => if c = #"." then #"," else if c = #"," then #"." else c)
-      (Real.fmt (StringCvt.FIX(SOME dec)) r)
-    | toString ScsLang.en dec r = Real.fmt (StringCvt.FIX(SOME dec)) r
+    fun toString lang dec r = 
+      let
+        (* Apply 0.5-rounding *)
+	val q = Math.pow(10.0,Real.fromInt dec)
+	val r' = Real.fromInt (Real.floor(r*q+0.5)) / q
+      in
+	case lang of
+	  ScsLang.da =>
+	    String.map (fn c => if c = #"." then #"," else if c = #"," then #"." else c)
+	    (Real.fmt (StringCvt.FIX(SOME dec)) r')
+	  | ScsLang.en => Real.fmt (StringCvt.FIX(SOME dec)) r'
+      end
 
     local
       fun fromString' s =

@@ -58,6 +58,7 @@ testmatc.sml        ccl
 excon.sml
 dangle4.sml                   gc gengc prof
 ftv.sml
+elabDecBug.sml      
 
 (* Tests of some benchmark programs *)
 
