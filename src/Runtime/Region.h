@@ -173,10 +173,11 @@ void deallocateRegionsUntil(int rAdr);
  *----------------------------------------------------------------*/
 #ifdef PROFILING
 
+/* remember to change these in Tools/ProfileData.h as well !!!!!!!!!!!!!! */
 
-#define MAX_REGIONS_TO_PROFILE 2000000    /* maximal number of region variables in 
+#define MAX_REGIONS_TO_PROFILE 200000    /* maximal number of region variables in 
                                            region-annotated lambda term (the source) */
-#define MAX_ALLOCATION_POINTS 200000      /* maximal number of allocation points in the 
+#define MAX_ALLOCATION_POINTS 20000      /* maximal number of allocation points in the 
 					   region annotated lambda term. */
 /* 
 Here is the type of region descriptors for finite regions when
