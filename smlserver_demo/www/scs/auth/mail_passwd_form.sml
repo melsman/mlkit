@@ -6,7 +6,7 @@ val _ = ScsPage.returnPg "IT-C.net Obtain Password"
    <form action="/scs/auth/mail_passwd.sml" method=post>
    <table>
     <tr><td><b>Email</b></td>
-    <td><input type=text name=email size=10>@it-c.dk</td>
+    <td><input type=text name=email size=20></td>
     </tr>
     <tr><td colspan=2 align=center><input type=submit value="Get Password"></td>
     </tr>

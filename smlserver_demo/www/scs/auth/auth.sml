@@ -11,11 +11,9 @@ fun reject msg  =
    Ns.exit())
 
 val login =
-  case FV.wrapOpt FV.getStringErr "auth_login" 
+  case FV.wrapOpt FV.getEmailErr "auth_login" 
     of NONE => reject (`Du skal indtaste en email.<p> (eng. You must type in an email)`)
      | SOME e => e
-
-val login = login ^"@it-c.dk"
 
 val passwd =
   case FV.wrapOpt FV.getStringErr "auth_password" 
