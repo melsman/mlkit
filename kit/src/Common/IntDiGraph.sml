@@ -394,7 +394,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
     fun addEdge (n1 : node) (n2 : node) (info : edgeInfo) =
       case (!n1) of 
 	GRAPHNODE {out, ...} => 
-	  if (EdList.member n2 (getNodes(out))) = false then
+	  if (ListUtils.member n2 (getNodes(out))) = false then
 	      (out := (n2,info) :: (!out);
 	       setOutEdges n1 ((!(getOutEdges n1))+1);
 	       setInEdges n2 ((!(getInEdges n2))+1))
@@ -404,7 +404,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
     fun addEdgeWithUpdate (n1 : node) (n2 : node) (info : edgeInfo) =
       case (!n1) of 
 	GRAPHNODE {out, ...} => 
-	  if (EdList.member n2 (getNodes(out))) = false then
+	  if (ListUtils.member n2 (getNodes(out))) = false then
 	      (out := (n2,info) :: (!out);
 	       setOutEdges n1 ((!(getOutEdges n1))+1);
 	       setInEdges n2 ((!(getInEdges n2))+1))
@@ -447,7 +447,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 	fun pred (n1 : node, acc : node list) =
 	  case (!n1) of
 	    GRAPHNODE {out, ...} => 
-	      if EdList.member n (getNodes out) then
+	      if ListUtils.member n (getNodes out) then
 		n1 :: acc
 	      else
 		acc
@@ -463,9 +463,8 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 	fun reachable' (n as ref (GRAPHNODE {out, ...}), acc) =
 	  if !(getVisited n) = false then
 	    (setVisited n true;
-	     EdList.foldR (fn node => 
-			 (fn acc => 
-			  reachable' (node, acc))) (n::acc) (getNodes out))
+	     List.foldr (fn (node,acc) => 
+			  reachable' (node, acc)) (n::acc) (getNodes out))
 	  else
 	    acc
 
@@ -531,7 +530,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 		      end)
 	  (!(getOutSet node))
 
-	fun layout node acc =
+	fun layout (node, acc) =
 	  if !(getVisited node) = false then
 	    (setVisited node true;
 	     (PP.NODE{start = layoutInfo (!(getInfoNode node)),
@@ -546,7 +545,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 	PP.NODE{start="[Starting layout of graph...",
 		finish = "...Finishing layout of graph]",
 		indent = 0,
-		children = List.rev (EdList.foldL layout [] rootNodes),
+		children = List.rev (List.foldl layout [] rootNodes),
 		childsep = PP.NOSEP}
       end
 
@@ -729,15 +728,15 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
 	    val _ = setDfsNo n low
 	    val _ = setVisited n true;
 	    val _ = pushNode n;
-	    val low = (EdList.foldL	    
-		       (fn n' => (fn l => 
+	    val low = (List.foldl
+		       (fn (n',l) =>
 				  if !(getVisited n') then       (* n' processed before. *)
 				    (if !(getDfsNo n') <> 0 then (* is n' in this scc.   *)
 				       Int.min (!(getDfsNo n'), l)
 				     else
 				       l)
 				  else
-				    Int.min (processNode n', l))) low (getNodes((getOutSet n))))
+				    Int.min (processNode n', l)) low (getNodes((getOutSet n))))
 	  in
 	    (if !(getDfsNo n) = low then (* n is root in a scc *)
 	       (newSCC();
@@ -782,11 +781,11 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
 	      ()
 	  end
       in
-	(EdList.foldL (fn nodes => (fn sccNo =>
+	(List.foldl (fn (nodes,sccNo) =>
 				  (SccDiGraph.addNode (SccDiGraph.mkNode (sccNo, nodes)) sccGraph;
 				   List.app (fn node => setSccNo node sccNo) nodes;
 				   sccNo+1)
-				  )) 1 sccs;
+				  ) 1 sccs;
 	 List.app (fn nodes =>
 		     List.app (fn node1 =>
 				 List.app (fn node2 => mkEdge node1 node2) (getNodes((getOutSet node1)))) nodes) sccs);
@@ -796,8 +795,8 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
     fun layoutSccNo sccNo = "sccNo " ^ (Int.toString sccNo) 
     fun layoutComponent layoutId (sccNo, scc) =
       "[" ^ (layoutSccNo sccNo) ^ ": " ^
-      (EdList.foldR (fn node => (fn str =>
-			       (layoutId (getNodeId node)) ^ "," ^ str)) "]" scc)
+      (List.foldr (fn (node,str) => (layoutId (getNodeId node)) ^ "," ^ str) 
+                  "]" scc)
 
     fun layoutEdge NO_EDGE_INFO = ""
 
@@ -816,9 +815,8 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
 	  if curSccNode = sccNode2 then
 	    (List.rev (curSccNode::path))::paths
 	  else
-	    EdList.foldL (fn sccNode =>
-			(fn paths =>
-			 findPath sccNode sccNode2 (curSccNode::path) paths)) 
+	    List.foldl (fn (sccNode,paths) =>
+			 findPath sccNode sccNode2 (curSccNode::path) paths)
 	    paths (SccDiGraph.getNodes(SccDiGraph.getOutSet curSccNode))
       in
 	findPath sccNode1 sccNode2 [] []

@@ -209,20 +209,20 @@ functor DropRegions(structure Name : NAME
       | filter (IGNORE::xs) = filter xs
       | filter (x::xs) = x::filter xs
 
-   (* maybe_add_rho regvar_env rho acc   conses rho onto acc if
+   (* maybe_add_rho regvar_env (rho, acc)   conses rho onto acc if
       rho is marked as DROPIT in regvar_env: *)
 
-   fun maybe_add_rho regvar_env rho acc = 
+   fun maybe_add_rho regvar_env (rho, acc) = 
       case FinMapEq.lookup Eff.eq_effect regvar_env rho
         of SOME DROPIT => rho :: acc
       | _ =>  acc
 
-   fun maybe_add regvar_env atp acc =
+   fun maybe_add regvar_env (atp, acc) =
      case atp of
        IGNORE => acc
-     | ATTOP rho => maybe_add_rho regvar_env rho acc
-     | ATBOT rho => maybe_add_rho regvar_env rho acc
-     | SAT rho => maybe_add_rho regvar_env rho acc
+     | ATTOP rho => maybe_add_rho regvar_env (rho, acc)
+     | ATBOT rho => maybe_add_rho regvar_env (rho, acc)
+     | SAT rho => maybe_add_rho regvar_env (rho, acc)
 
    (* -----------------------------------------------------------------
     * Dropping regions
@@ -256,7 +256,7 @@ functor DropRegions(structure Name : NAME
 	    end
 
 	fun drop_sw (SWITCH(tr,sel,opt)) acc =
-	  let val (sel', acc) = EdList.foldR (fn (a,tr) => fn (trs, acc) =>
+	  let val (sel', acc) = List.foldr (fn ((a,tr), (trs, acc)) =>
                                             let val (tr', acc) = drop env tr acc
                                             in ((a, tr') :: trs, acc)
                                             end) ([] , acc) sel
@@ -277,17 +277,17 @@ functor DropRegions(structure Name : NAME
 	      if RType.unboxed t then (check_atp_w atp "INTEGER"; 
 				       (INTEGER (n, t, IGNORE), acc))
 	      else (check_atp_t atp "INTEGER_BOXED"; 
-		    (INTEGER(n,t,S atp), maybe_add regvar_env atp acc))
+		    (INTEGER(n,t,S atp), maybe_add regvar_env (atp, acc)))
 	     | WORD (w, t, atp) => 
 	      if RType.unboxed t then (check_atp_w atp "WORD"; 
 				       (WORD (w, t, IGNORE), acc))
 	      else (check_atp_t atp "WORD_BOXED"; 
-		    (WORD(w,t,S atp), maybe_add regvar_env atp acc))
+		    (WORD(w,t,S atp), maybe_add regvar_env (atp, acc)))
 	     | STRING (s, atp) => (check_atp_s  atp "STRING";
-                                   (STRING(s,S atp), maybe_add regvar_env atp acc))
-	     | REAL (s, atp) => (check_atp_t atp "REAL"; (REAL(s,S atp), maybe_add regvar_env atp acc))
+                                   (STRING(s,S atp), maybe_add regvar_env (atp, acc)))
+	     | REAL (s, atp) => (check_atp_t atp "REAL"; (REAL(s,S atp), maybe_add regvar_env (atp, acc)))
 	     | UB_RECORD trips => 
-                           let val (trips', acc) = EdList.foldR (fn tr => fn (trs,acc) =>
+                           let val (trips', acc) = List.foldr (fn (tr, (trs,acc)) =>
                                                     let val (tr', acc)= drop env tr acc
                                                     in (tr'::trs, acc)
                                                     end) ([], acc) trips
@@ -298,7 +298,7 @@ functor DropRegions(structure Name : NAME
                             let val (body', acc) = drop env body acc
                             in
                               (FN{pat=pat,body=body',free=free,alloc=S atp},
-                               maybe_add regvar_env atp acc)
+                               maybe_add regvar_env (atp, acc))
                             end)
 	     | LETREGION{B,rhos=ref rhos,body} =>
 	      let fun drop_rhos [] = []
@@ -315,7 +315,7 @@ functor DropRegions(structure Name : NAME
 	      in (LETREGION{B=B,rhos=ref rhos',body=body'}, acc)
 	      end
 	     | LET{k_let,pat,bind,scope} =>
-	      let val env' = (EdList.foldL(fn (lvar,_,_,_,_,_,_) => fn acc => 
+	      let val env' = (List.foldl(fn ((lvar,_,_,_,_,_,_),acc) =>
 					add(lvar,NOTFIXBOUND,acc)) lvar_env pat,
                               regvar_env)
                   val (scope', acc) = drop env' scope acc
@@ -325,7 +325,7 @@ functor DropRegions(structure Name : NAME
 	      end
 	     | FIX{free,shared_clos=atp,functions,scope} =>
 	      let val _ = check_atp_t atp "FIX_CLOS"
-                  val acc = maybe_add regvar_env atp acc
+                  val acc = maybe_add regvar_env (atp, acc)
 		  type tr = lvar * bool list * (place * mul) list * (place*mul) list * regenv 
 		  fun tr_function {lvar,occ,tyvars,rhos,epss,
                                    Type,rhos_formals=ref formals,bound_but_never_written_into,
@@ -338,8 +338,8 @@ functor DropRegions(structure Name : NAME
                            variable in the type scheme of the function. Every region variable
                            is mapped to KEEP or DROPIT *)
 
-                        val regvar_env': regenv =  EdList.foldL
-                                              (fn (((rho,_),b:bool)) => fn regenv => 
+                        val regvar_env': regenv =  List.foldl
+                                              (fn ((((rho,_),b:bool)), regenv) =>
                                                  add_regenv(rho, if b then KEEP else DROPIT, regenv))
                                               regvar_env
                                               (ListPair.zip(formals, bool_list)
@@ -347,7 +347,7 @@ functor DropRegions(structure Name : NAME
 		    in (lvar, bool_list, formals', drop_formals',  regvar_env')
 		    end
 		  val trs : tr list = map tr_function functions
-		  val lvar_env' = EdList.foldL (fn (lvar,bool_list,_,_,_) => fn env => 
+		  val lvar_env' = List.foldl (fn ((lvar,bool_list,_,_,_), env) =>
                                               add(lvar,FIXBOUND bool_list,env)) lvar_env trs
 
 		  fun new_functions [] [] acc = ([], acc)
@@ -387,7 +387,7 @@ functor DropRegions(structure Name : NAME
 		 of SOME (FIXBOUND bool_list) =>
 		   let
 		       val actuals' = filter_bl(bool_list,actuals)
-                       val acc = EdList.foldL (maybe_add regvar_env) acc actuals'
+                       val acc = List.foldl (maybe_add regvar_env) acc actuals'
                        val (tr2', acc) = drop env tr2 acc
 		       val actuals' = map S actuals'
 		   in (APP(ck,sr,TR(VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,fix_bound=fix_bound,
@@ -407,7 +407,7 @@ functor DropRegions(structure Name : NAME
                    (APP(ck,sr,tr1',tr2'), acc)
                  end
 	     | EXCEPTION(excon,b,mu,atp,tr) =>
-                 let val acc = maybe_add regvar_env atp acc
+                 let val acc = maybe_add regvar_env (atp, acc)
                      val (tr', acc) =  drop env tr acc
                  in check_atp_t atp "EXCEPTION"; 
                     (EXCEPTION(excon,b,mu,S atp, tr'), acc)
@@ -442,14 +442,14 @@ functor DropRegions(structure Name : NAME
                  end
 	     | CON0 {con, il, aux_regions, alloc} => 
 		 let val aux_regions' = filter(map drop_atplace aux_regions)
-                     val acc = EdList.foldL (maybe_add regvar_env) acc (alloc::aux_regions')
+                     val acc = List.foldl (maybe_add regvar_env) acc (alloc::aux_regions')
 		 in (CON0{con=con,il=il,
                           aux_regions=map S aux_regions',
                           alloc=S(drop_atplace alloc)}, acc)
 		 end
 	     | CON1 ({con, il, alloc}, tr) => 
                  let val (tr', acc) = drop env tr acc
-                     val acc = maybe_add regvar_env alloc acc
+                     val acc = maybe_add regvar_env (alloc, acc)
                  in
                    (CON1({con=con,il=il,
                           alloc=S(drop_atplace alloc)},tr'),
@@ -462,7 +462,7 @@ functor DropRegions(structure Name : NAME
 	     | EXCON (excon, opt) => 
                  let val (tr_opt', acc) = 
                    case opt of
-                     SOME (alloc,tr) => let val acc = maybe_add regvar_env alloc acc
+                     SOME (alloc,tr) => let val acc = maybe_add regvar_env (alloc, acc)
                                             val (tr', acc) = drop env tr acc
                                         in (SOME(S(drop_atplace alloc), tr'), acc)
                                         end
@@ -475,8 +475,8 @@ functor DropRegions(structure Name : NAME
                                      in (DEEXCON(excon, tr'), acc)
                                      end
 	     | RECORD (alloc, trs) => 
-                  let val acc = maybe_add regvar_env (drop_atplace alloc) acc
-                    val (trs', acc) = EdList.foldR (fn tr => fn (trs, acc) =>
+                  let val acc = maybe_add regvar_env (drop_atplace alloc, acc)
+                    val (trs', acc) = List.foldr (fn (tr, (trs, acc)) =>
                                                   let val (tr', acc) = drop env tr acc
                                                   in (tr'::trs, acc)
                                                   end)
@@ -493,13 +493,13 @@ functor DropRegions(structure Name : NAME
                   in (DEREF tr', acc)
                   end
 	     | REF (alloc,tr) => 
-                  let val acc = maybe_add regvar_env alloc acc
+                  let val acc = maybe_add regvar_env (alloc, acc)
                     val (tr', acc)= drop env tr acc
                   in
                     (REF(S(drop_atplace alloc),tr'), acc)
                   end
 	     | ASSIGN (alloc,tr1,tr2) => 
-                  let val acc = maybe_add regvar_env alloc acc
+                  let val acc = maybe_add regvar_env (alloc, acc)
                       val (tr1', acc) = drop env tr1 acc
                       val (tr2', acc) = drop env tr2 acc
                   in (ASSIGN(S(drop_atplace alloc), tr1', tr2'),
@@ -510,7 +510,7 @@ functor DropRegions(structure Name : NAME
 		 in (DROP (tr'), acc) 
 		 end
 	     | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => 
-                 let val acc = maybe_add regvar_env alloc acc
+                 let val acc = maybe_add regvar_env (alloc, acc)
                      val (tr1', acc) = drop env tr1 acc
                      val (tr2', acc) = drop env tr2 acc
                  in
@@ -520,8 +520,8 @@ functor DropRegions(structure Name : NAME
                  end
 	     | CCALL ({name, mu_result, rhos_for_result}, trs) =>
 		 let
-                   val acc = EdList.foldL (maybe_add regvar_env) acc (map #1 rhos_for_result)
-                   val (trs', acc) = EdList.foldR (fn tr => fn (trs, acc) =>
+                   val acc = List.foldl (maybe_add regvar_env) acc (map #1 rhos_for_result)
+                   val (trs', acc) = List.foldr (fn (tr, (trs, acc)) =>
                                                  let val (tr', acc) = drop env tr acc
                                                  in (tr'::trs, acc)
                                                  end)
@@ -541,9 +541,9 @@ functor DropRegions(structure Name : NAME
 		 end
 	     | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => 
                  let 
-                   val acc = maybe_add regvar_env alloc acc
+                   val acc = maybe_add regvar_env (alloc, acc)
                    val regions_for_resetting' = map drop_atplace regions_for_resetting
-                   val acc = EdList.foldL (maybe_add regvar_env) acc regions_for_resetting'
+                   val acc = List.foldl (maybe_add regvar_env) acc regions_for_resetting'
                    val (tr', acc) = drop env tr acc
 		   val regions_for_resetting' =
 		     if region_inference() then regions_for_resetting'
@@ -555,7 +555,7 @@ functor DropRegions(structure Name : NAME
                  end
 	     | FRAME{declared_lvars,declared_excons} =>
 		 let val lvars = map #lvar declared_lvars
-		   val lvar_env' = EdList.foldL (fn lv => fn env' =>
+		   val lvar_env' = List.foldl (fn (lv, env') =>
 					  (case lookup lvar_env lv
 					     of SOME bool_list => add(lv,bool_list,env')
 					      | NONE => die "drop.FRAME.lv not in env")) empty lvars
@@ -585,7 +585,7 @@ functor DropRegions(structure Name : NAME
                     | _ => die "non-empty list of regions to be dropped at top-level"
 	  val env' = ! export_env
 	  val _ = export_env := empty
-	  val export_rhos' = EdList.foldL (fn rho => fn places =>
+	  val export_rhos' = List.foldl (fn (rho, places) =>
 					 if word_or_bot_region rho then places 
 					 else rho::places) [] export_rhos
       in (PGM{expression=expression',

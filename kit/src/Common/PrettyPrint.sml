@@ -355,7 +355,7 @@ functor PrettyPrint(structure Report: REPORT
              
     (* result with newlines  *)
     and flatten (LINES( string_list)) : string =
-      EdList.stringSep "" "" "\n" (fn x => x) string_list
+      ListUtils.stringSep "" "" "\n" (fn x => x) string_list
       | flatten _ = Crash.impossible "PrettyPrint.flatten"
 
    (* The string constants below are used for outputting long strings of blanks

@@ -20,8 +20,6 @@ functor EliminateEq (structure Name : NAME
   : ELIMINATE_EQ =
   struct
 
-    structure EdList = Edlib.List
-
     structure TyNameMap = TyName.Map
     structure LvarMap = Lvars.Map
 
@@ -73,14 +71,14 @@ functor EliminateEq (structure Name : NAME
 	(TyNameMap.composemap f tynamemap, tyvarmap,lvarmap)
 
       fun restrict'((tnmap,_,lvmap),{lvars,tynames}) =
-	let val tnmap' = EdList.foldL (fn tn => fn acc =>
+	let val tnmap' = List.foldl (fn (tn,acc) =>
 				     case TyNameMap.lookup tnmap tn  (* do not scream if it *)
 				       of SOME res => TyNameMap.add(tn,res,acc)     (* is not here... *)
 					| NONE => acc) TyNameMap.empty tynames
 	    val lvars' = TyNameMap.Fold (fn ((_,POLYLVAR lv), lvars) => lv :: lvars
 	                                 | ((_,FAIL s), lvars) => lvars 
 	                                 | _ => die "restrict.not POLYLVAR") [] tnmap'
-	    val lvmap' = EdList.foldL (fn lv => fn acc =>
+	    val lvmap' = List.foldl (fn (lv,acc) =>
 				     case LvarMap.lookup lvmap lv
 				       of SOME res => LvarMap.add(lv,res,acc)
 					| NONE => die ("restrict.lv: " ^ Lvars.pr_lvar lv ^ " not in map"))
@@ -773,7 +771,7 @@ handle x =>
 	    end
 	 | FRAME{declared_lvars,...} =>
 	    let val lvars = map #lvar declared_lvars
-	        val _ = env_frame := (EdList.foldL (fn lv => fn acc => 
+	        val _ = env_frame := (List.foldl (fn (lv,acc) =>
 						  case lookup_lvar env lv
 						    of SOME tvs => add_lvar(lv,tvs,acc)
 						     | NONE => acc) empty lvars)

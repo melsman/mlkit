@@ -372,7 +372,7 @@ struct
       {key=key,
        text = text, 
        attr = VALUE 
-       (fn _ => (Edlib.List.stringSep "[" "]" ", "
+       (fn _ => (ListUtils.stringSep "[" "]" ", "
 		 (fn i => (Int.toString i))
 		 (!r))),
        below = ACTION (read_int_list r)};
@@ -381,7 +381,7 @@ struct
       {key=key,
        text = text, 
        attr = VALUE 
-       (fn _ => (Edlib.List.stringSep "[" "]" ", "
+       (fn _ => (ListUtils.stringSep "[" "]" ", "
 		 (fn (i1, i2) => 
 		  "(" ^ Int.toString i1 ^ "," ^ Int.toString i2 ^ ")")
 		 (!r))),
@@ -459,6 +459,6 @@ struct
 
   and show_path nil = ()
     | show_path (l : string list) = 
-        outLine(Edlib.List.stringSep "\t" "" "/" (fn s => s) (rev l));
+        outLine(ListUtils.stringSep "\t" "" "/" (fn s => s) (rev l));
 
 end (*functor Menu*)
