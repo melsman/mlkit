@@ -27,9 +27,11 @@ signature SCS_DATE =
     val add_days         : Date.date -> int -> Date.date
 
     (* PrettyPrinting *)
+    val wrapOpt : ('a -> string) -> 'a option -> string
     val ppIso : Date.date -> string
     val ppDk  : Date.date -> string
-    val ppLongDk : Date.date -> string
+    val ppLongDk  : Date.date -> string
+    val ppLongEng : Date.date -> string
     val pp    : Date.date -> string
     val ppDb  : Date.date option -> string
   end
@@ -113,6 +115,11 @@ structure ScsDate :> SCS_DATE =
 
 
     (* Pretty Printing *)
+    fun wrapOpt f dOpt =
+      case dOpt of
+	NONE => ""
+      | SOME d => f d 
+
     val ppIso = Date.fmt "%Y-%m-%d"
     val ppDk  = Date.fmt "%d/%m-%Y"
 
@@ -131,7 +138,24 @@ structure ScsDate :> SCS_DATE =
       | Date.Nov => "november"
       | Date.Dec => "december"
 
-    fun ppLongDk d = (*(Date.fmt "%d. " d)*) (Int.toString (Date.day d)) ^ ". " ^(ppMthDk d) ^ " " ^ (Date.fmt "%Y" d)
+    fun ppMthEng d =
+      case Date.month d of
+	Date.Jan => "January"
+      | Date.Feb => "February"
+      | Date.Mar => "Marts"
+      | Date.Apr => "April"
+      | Date.May => "May"
+      | Date.Jun => "June"
+      | Date.Jul => "July"
+      | Date.Aug => "August"
+      | Date.Sep => "September"
+      | Date.Oct => "October"
+      | Date.Nov => "November"
+      | Date.Dec => "December"
+
+    fun ppLongDk d = (Int.toString (Date.day d)) ^ ". " ^(ppMthDk d) ^ " " ^ (Date.fmt "%Y" d)
+
+    fun ppLongEng d = (Int.toString (Date.day d)) ^ " " ^(ppMthEng d) ^ " " ^ (Date.fmt "%Y" d)
       
     fun pp s = 
       case ScsLogin.user_lang of
