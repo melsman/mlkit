@@ -4,6 +4,9 @@ File NEWS_SMLSERVER                                September 22, 2001
      (module /sml/FormVar.sml)
      Added two utility packages: /sml/SmlsDate and /sml/SmlsList
 
+     Fixed authentication example. It now works on both PostgreSQL
+     and Oracle.
+
  * nh 2001-09-17: Added support for cookies, caching. Added
      authentication example with simple filtering.
 

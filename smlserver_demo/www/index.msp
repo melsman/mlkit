@@ -44,8 +44,7 @@ in
 	         ("Currency Service", "currency.html"),
    		 ("Cookies", "cookie.sml"),
                  ("Form variables", "formvar.sml"),
-                 ("Authentication (Password Protected Page)", "auth/admin/admin.sml"),
-                 ("Authentication (Open Page)", "auth/www/www.sml"),
+                 ("Authentication", "auth_example.sml"),
                  ("This index page", "index.msp")]
 end
 ?>

@@ -1,14 +1,14 @@
 val target = 
   case FormVar.wrapOpt FormVar.getStringErr "target" of
     SOME t => t
-  | NONE => Ns.Conn.location() ^ "/auth/admin/admin.sml" (* Default target url *)
+  | NONE => Ns.Conn.location() ^ "/auth/admin/show_cookies.sml" (* Default target url *)
 
-val _ = Ns.return `
+val _ = Ns.return (`
 <html>
 <head>
 <title>SMLserver Authentication</title>
 </head>
-<body>
+<body bgcolor=white>
 <form action=auth.sml method=post>
   <table>
    <input type=hidden name=target value="^target">
@@ -22,5 +22,8 @@ val _ = Ns.return `
     </tr>
   </table>
 </form>
+
+Back to the <a href="/auth_example.sml">authentication example page</a>.<p>
+
 </body>
-</html>`
+</html>`)

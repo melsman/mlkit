@@ -7,9 +7,8 @@ create table auth_user (
   name varchar(100) not null
 );
 
-insert into auth_user (user_id, password, login, name) values (1, 'Martin', 'mail', 'Martin Elsman');
+insert into auth_user (user_id, password, login, name) values (1, 'Martin', 'mael', 'Martin Elsman');
 insert into auth_user (user_id, password, login, name) values (2, 'Niels', 'nh', 'Niels Hallenberg');
-
 
 commit;
 
