@@ -32,13 +32,13 @@ structure ScsDb :> SCS_DB =
 						    ScsPage.returnPg "Databasefejl" emsg)) sql;())
 
     fun panicOneRow (f:(string->string)->'a) (sql:quot) : 'a  = 
-      case Db.list (f,sql) of
+      case Db.list f sql of
 	[] => ScsError.panic `ScsDb.panicOneRow: No rows`
       | [r] => r
       | _ => ScsError.panic `ScsDb.panicOneRow: More than one row`
 
     fun panicZeroOrOneRow (f:(string->string)->'a) (sql:quot) : 'a option = 
-      case Db.list (f,sql) of
+      case Db.list f sql of
 	[] => NONE
       | [r] => SOME r
       | _ => ScsError.panic `ScsDb.panicOneRow: More than one row`
@@ -48,7 +48,7 @@ structure ScsDb :> SCS_DB =
                  where ^table.^column_id=^(Db.qq' id)`
 
     fun oneRowErrPg' (f,sql,emsg) =
-      Db.oneRow' (f,sql) handle _ => (ScsPage.returnPg "" emsg;Ns.exit())
+      Db.oneRow' f sql handle _ => (ScsPage.returnPg "" emsg;Ns.exit())
 
     fun oneFieldErrPg (sql,emsg) =
       Db.oneField sql handle _ => (ScsPage.returnPg "" emsg;Ns.exit())

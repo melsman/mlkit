@@ -1,14 +1,21 @@
 infix 1 seq
-fun e1 seq e2 = e2;
-fun check b = if b then "OK" else "WRONG"
-fun check' f = (if f () then "OK" else "WRONG") handle _ => "EXN"
-fun tst0 s s' = (s ^ "    \t" ^ s' ^ "\n")
-fun tst  s b = tst0 s (check  b)
-fun tst' s f = tst0 s (check' f)
 
-fun tstOk s f = tst0 s ((f () seq "OK") handle Fail s => "WRONG - " ^s | _ => "WRONG")
-fun tstBool s f = tst0 s ((if f () then "OK" else "WRONG - false") handle Fail s => "WRONG - " ^s | _ => "WRONG")
-fun tstFail s f = tst0 s ((f () seq "WRONG") handle Fail s => "OK - " ^ s | _ => "WRONG")
+local
+  val errs = ref 0
+  fun add_err () = (errs := !errs + 1; "WRONG")
+  fun add_err' s = (errs := !errs + 1; "WRONG - " ^ s)
+in
+  fun pp_errs() = 
+    if !errs = 0 then 
+      "<b>There were no errors.</b>" 
+    else
+      "<b>There were " ^ (Int.toString (!errs)) ^ " error(s).</b>"
+  fun e1 seq e2 = e2;
+  fun tst0 s s' = (s ^ "    \t" ^ s' ^ "\n")
+  fun tstOk s f = tst0 s ((f () seq "OK") handle Fail s => add_err' s | _ => add_err())
+  fun tstBool s f = tst0 s ((if f () then "OK" else add_err' "false") handle Fail s => add_err' s | _ => add_err())
+  fun tstFail s f = tst0 s ((f () seq add_err()) handle Fail s => "OK - " ^ s | _ => add_err())
+end
 
 fun ppTestRes [] = ""
   | ppTestRes (x::xs) = x ^ "<br>\n" ^ (ppTestRes xs)
@@ -101,33 +108,33 @@ end
 (*** Testing dmlTrans ***)
 val dmlTransTest =
   let
-    fun db_testL () = Db.list (fn g => g "id", `select id from db_test order by id`)
+    fun db_testL () = Db.list (fn g => g "id") `select id from db_test order by id`
   in
-    [tstOk "dmlTransA1" (fn () =>Db.dml `create table db_test ( id int primary key )`),
+    [tstOk "dmlTransA1" (fn () => Db.dml `create table db_test ( id int primary key )`),
      (* Unique Constraint Violated on key id *)
      tstFail "dmlTransA2" (fn () => Db.dmlTrans (fn db => 
-						 (Db.dmlDb (db,`insert into db_test (id) values ('3')`);
-						  Db.dmlDb (db,`insert into db_test (id) values ('4')`);
-						  Db.dmlDb (db,`insert into db_test (id) values ('4')`)))),
-     tst "dmlTransA3" (db_testL() = []),
+						 (Db.dmlDb db `insert into db_test (id) values ('3')`;
+						  Db.dmlDb db `insert into db_test (id) values ('4')`;
+						  Db.dmlDb db `insert into db_test (id) values ('4')`))),
+     tstBool "dmlTransA3" (fn () => db_testL() = []),
      (* Ok transaction *)
      tstOk "dmlTransA4" (fn () => Db.dmlTrans (fn db => 
-					       (Db.dmlDb (db,`insert into db_test (id) values ('3')`);
-						Db.dmlDb (db,`insert into db_test (id) values ('4')`);
-						Db.dmlDb (db,`insert into db_test (id) values ('5')`)))),
-     tst "dmlTransA5" (db_testL() = ["3","4","5"]),
+					       (Db.dmlDb db `insert into db_test (id) values ('3')`;
+						Db.dmlDb db `insert into db_test (id) values ('4')`;
+						Db.dmlDb db `insert into db_test (id) values ('5')`))),
+     tstBool "dmlTransA5" (fn () => db_testL() = ["3","4","5"]),
      (* Syntax Error - and the previous content is maintained *)
      tstFail "dmlTransA6" (fn () => Db.dmlTrans (fn db => 
-						 (Db.dmlDb (db,`delete from db_test`);
-						  Db.dmlDb (db,`inserte into db_test (id) values ('4')`);
-						  Db.dmlDb (db,`insert into db_test (id) values ('4')`)))),
-     tst "dmlTransA7" (db_testL() = ["3","4","5"])]
+						 (Db.dmlDb db `delete from db_test`;
+						  Db.dmlDb db `inserte into db_test (id) values ('4')`;
+						  Db.dmlDb db `insert into db_test (id) values ('4')`))),
+     tstBool "dmlTransA7" (fn () => db_testL() = ["3","4","5"])]
   end
 
 (*** Testing panicDmlTrans ***)
 val panicDmlTransTest =
   let
-    fun db_testL () = Db.list (fn g => g "id", `select id from db_test order by id`)
+    fun db_testL () = Db.list (fn g => g "id") `select id from db_test order by id`
     val f_count = ref 0
     fun f_panic _ = (f_count := !f_count + 1; true)
     val panicDml = Db.panicDmlTrans f_panic
@@ -135,23 +142,23 @@ val panicDmlTransTest =
     [tstOk "panicDmlTransA1" (fn () => Db.dml `delete from db_test`),
      (* Unique Constraint Violated on key id *)
      tstBool "panicDmlTransA2" (fn () => panicDml (fn db => 
-						   (Db.dmlDb (db,`insert into db_test (id) values ('3')`);
-						    Db.dmlDb (db,`insert into db_test (id) values ('4')`);
-						    Db.dmlDb (db,`insert into db_test (id) values ('4')`);
+						   (Db.dmlDb db `insert into db_test (id) values ('3')`;
+						    Db.dmlDb db `insert into db_test (id) values ('4')`;
+						    Db.dmlDb db `insert into db_test (id) values ('4')`;
 						    false)) andalso !f_count = 1),
      tstBool "panicDmlTransA3" (fn () => db_testL() = []),
      (* Ok transaction *)
      tstBool "panicDmlTransA4" (fn () => panicDml (fn db => 
-						   (Db.dmlDb (db,`insert into db_test (id) values ('3')`);
-						    Db.dmlDb (db,`insert into db_test (id) values ('4')`);
-						    Db.dmlDb (db,`insert into db_test (id) values ('5')`);
+						   (Db.dmlDb db `insert into db_test (id) values ('3')`;
+						    Db.dmlDb db `insert into db_test (id) values ('4')`;
+						    Db.dmlDb db `insert into db_test (id) values ('5')`;
 						    true)) andalso !f_count = 1),
      tstBool "panicDmlTransA5" (fn () => db_testL() = ["3","4","5"]),
      (* Syntax Error - and the previous content is maintained *)
      tstBool "panicDmlTransA6" (fn () => panicDml (fn db => 
-						   (Db.dmlDb (db,`delete from db_test`);
-						    Db.dmlDb (db,`inserte into db_test (id) values ('4')`);
-						    Db.dmlDb (db,`insert into db_test (id) values ('4')`);
+						   (Db.dmlDb db `delete from db_test`;
+						    Db.dmlDb db `inserte into db_test (id) values ('4')`;
+						    Db.dmlDb db `insert into db_test (id) values ('4')`;
 						    false)) andalso !f_count = 2),
      tstBool "panicDmlTransA7" (fn () => db_testL() = ["3","4","5"])]
   end
@@ -162,23 +169,23 @@ val foldTest =
    tstOk "insert" (fn () => Db.dml `insert into db_test values ('3')`),
    tstOk "insert" (fn () => Db.dml `insert into db_test values ('4')`),
    tstOk "insert" (fn () => Db.dml `insert into db_test values ('5')`),
-   tst "foldA1" (Quot.==(Db.fold (fn (g,acc) => acc ^^ ` ^(g "id")`,``,`select id from db_test order by id`),
-			 ` 3 4 5`)),
+   tstBool "foldA1" (fn () => Quot.==(Db.fold (fn (g,acc) => acc ^^ ` ^(g "id")`) `` `select id from db_test order by id`,
+				      ` 3 4 5`)),
    (* Syntax Error *)
-   tstFail "foldA2" (fn () => Quot.==(Db.fold (fn (g,acc) => acc ^^ ` ^(g "id")`,``,
-					       `selecte id from db_test order by id`),
+   tstFail "foldA2" (fn () => Quot.==(Db.fold (fn (g,acc) => acc ^^ ` ^(g "id")`) `` 
+					       `selecte id from db_test order by id`,
 				      ` 3 4 5`)),
    (* Empty Result *)
-   tstBool "foldA3" (fn () => Quot.==(Db.fold (fn (g,acc) => acc ^^ ` ^(g "id")`,``,
-					     `select id from db_test where id > 40 order by id`),``))]
+   tstBool "foldA3" (fn () => Quot.==(Db.fold (fn (g,acc) => acc ^^ ` ^(g "id")`) ``
+					     `select id from db_test where id > 40 order by id`, ``))]
 
 (*** Testing list ***)
 val listTest = 
-  [tstBool "listA1" (fn () => Db.list (fn g => g "id",`select id from db_test order by id`) = ["3","4","5"]),
+  [tstBool "listA1" (fn () => Db.list (fn g => g "id") `select id from db_test order by id` = ["3","4","5"]),
    (* Syntax Error *)
-   tstFail "listA2" (fn () => Db.list (fn g => g "id",`selecte id from db_test order by id`) = ["3","4","5"]),
+   tstFail "listA2" (fn () => Db.list (fn g => g "id") `selecte id from db_test order by id` = ["3","4","5"]),
    (* Empty Result *)
-   tstBool "listA3" (fn () => Db.list (fn g => g "id",`select id from db_test where id > 40 order by id`) = [])]
+   tstBool "listA3" (fn () => Db.list (fn g => g "id") `select id from db_test where id > 40 order by id` = [])]
 
 (*** Testing app ***)
 val appTest = 
@@ -186,12 +193,12 @@ let
   val f_count = ref 0
   fun f g = f_count := !f_count + Option.valOf(Int.fromString (g "id"))
 in
-  [tstBool "appA1" (fn () => (Db.app (f,`select id from db_test order by id`);
+  [tstBool "appA1" (fn () => (Db.app f `select id from db_test order by id`;
 			      !f_count = 12)),
    (* Syntax Error *)
-   tstFail "appA2" (fn () => Db.app (f,`selecte id from db_test order by id`)),
+   tstFail "appA2" (fn () => Db.app f `selecte id from db_test order by id`),
    (* Empty Result *)
-   tstBool "appA3" (fn () => (Db.list (f,`select id from db_test where id > 40 order by id`);
+   tstBool "appA3" (fn () => (Db.list f `select id from db_test where id > 40 order by id`;
 			      !f_count = 12))]
 end
 
@@ -238,15 +245,16 @@ val oneRowTest =
 (*** Testing oneRowDb' ***)
 val oneRow'Test =
   [(* One row, one field *)
-   tstBool "oneRow'A1" (fn () => Db.oneRow' (fn g => g "id", `select id from db_test where id = '3'`) = "3"),
+   tstBool "oneRow'A1" (fn () => Db.oneRow' (fn g => g "id") `select id from db_test where id = '3'` = "3"),
    (* Zero rows *)
-   tstFail "oneRow'A2" (fn () => Db.oneRow' (fn g => g "id", `select id from db_test where id > '33'`)),
+   tstFail "oneRow'A2" (fn () => Db.oneRow' (fn g => g "id") `select id from db_test where id > '33'`),
    (* Fail on two rows *)
-   tstFail "oneRow'A3" (fn () => Db.oneRow' (fn g => g "id", `select id from db_test where id > '3'`)),
+   tstFail "oneRow'A3" (fn () => Db.oneRow' (fn g => g "id") `select id from db_test where id > '3'`),
    (* Fail on zero fields - syntax error *)
-   tstFail "oneRow'A4" (fn () => Db.oneRow' (fn g => g "id", `select from db_test where id > '3'`)),
+   tstFail "oneRow'A4" (fn () => Db.oneRow' (fn g => g "id") `select from db_test where id > '3'`),
    (* One row, two fields *)
-   tstBool "oneRow'A5" (fn () => Db.oneRow' (fn g => (g "id", g "idd"), `select id, id+id as idd from db_test where id = '3'`) = ("3","6"))]
+   tstBool "oneRow'A5" (fn () => Db.oneRow' (fn g => (g "id", g "idd")) 
+			`select id, id+id as idd from db_test where id = '3'` = ("3","6"))]
 
 (*** Testing zeroOrOneRowDb ***)
 val zeroOrOneRowTest =
@@ -264,15 +272,15 @@ val zeroOrOneRowTest =
 (*** Testing zeroOrOneRowDb' ***)
 val zeroOrOneRow'Test =
   [(* One row *)
-   tstBool "zeroOrOneRow'A1" (fn () => Db.zeroOrOneRow' (fn g => g "id",`select id from db_test where id = '3'`) = SOME "3"),
+   tstBool "zeroOrOneRow'A1" (fn () => Db.zeroOrOneRow' (fn g => g "id") `select id from db_test where id = '3'` = SOME "3"),
    (* Zero rows *)
-   tstBool "zeroOrOneRow'A2" (fn () => Db.zeroOrOneRow' (fn g => g "id",`select id from db_test where id > '33'`) = NONE),
+   tstBool "zeroOrOneRow'A2" (fn () => Db.zeroOrOneRow' (fn g => g "id") `select id from db_test where id > '33'` = NONE),
    (* Fail on two rows *)
-   tstFail "zeroOrOneRow'A3" (fn () => Db.zeroOrOneRow' (fn g => g "id",`select id from db_test where id > '3'`)),
+   tstFail "zeroOrOneRow'A3" (fn () => Db.zeroOrOneRow' (fn g => g "id") `select id from db_test where id > '3'`),
    (* Fail on zero fields - syntax error *)
-   tstFail "zeroOrOneRow'A4" (fn () => Db.zeroOrOneRow' (fn g => g "id",`select from db_test where id > '3'`)),
+   tstFail "zeroOrOneRow'A4" (fn () => Db.zeroOrOneRow' (fn g => g "id") `select from db_test where id > '3'`),
    (* One row, two fields *)
-   tstBool "zeroOrOneRow'A5" (fn () => Db.zeroOrOneRow' (fn g => (g "id",g "idd"),`select id, id+id as idd from db_test where id = '3'`) 
+   tstBool "zeroOrOneRow'A5" (fn () => Db.zeroOrOneRow' (fn g => (g "id",g "idd")) `select id, id+id as idd from db_test where id = '3'` 
 			      = SOME ("3","6"))]
 
 (*** Testing existsOneRowDb ***)
@@ -289,7 +297,7 @@ val existsOneRowTest =
 (*** Testing sequences ***)
 val seqTest =
   let
-    fun db_testL () = Db.list (fn g => g "id", `select id from db_test order by id`)
+    fun db_testL () = Db.list (fn g => g "id") `select id from db_test order by id`
   in
     [tstOk "create sequence" (fn () => Db.dml `create sequence t`),
      tstOk "drop table" (fn () => Db.dml `drop table db_test`),
@@ -348,6 +356,8 @@ val _ = Page.return "Testing the Database Interface (signature NS_DB)" `
 
 The script sends a series of SQL statements to the database;
 the result is shown below.<p>
+
+^(pp_errs())<p>
 
 <b>Notice:</b> If you are using MySQL, errors in
 the sections testing <i>sequences</i>, <i>panicDmlTrans</i>, and

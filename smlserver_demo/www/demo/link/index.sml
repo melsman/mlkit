@@ -32,7 +32,7 @@ val loginout =
        <a href=../auth_logout.sml>logout</a>.`
     end
       
-val list = Db.fold (layoutRow, ``, query)
+val list = Db.fold layoutRow `` query
 
 val _ =
   Page.return "Web-sites that use SMLserver"

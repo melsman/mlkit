@@ -11,9 +11,9 @@ val end_date = ScsFormVar.wrapOpt ScsFormVar.getDateErr "end_date"
 val column_names = ScsFormVar.getStrings "column_names"
 val _ = ScsFormVar.anyErrors errs
 
-val columns_in_table = Db.list (fn g => g "column_name", `select column_name 
+val columns_in_table = Db.list (fn g => g "column_name") `select column_name 
                                                      from user_tab_columns 
-                                                    where table_name='^(table_name)'`)
+                                                    where table_name='^(table_name)'`
 
 val columns_not_reported = 
   case column_names of

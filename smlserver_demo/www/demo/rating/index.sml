@@ -29,7 +29,7 @@
    (`<table width=95% bgcolor="#dddddd" border=1>
      <tr><th>Wine<th>Average Score (out of 6)
          <th>Ratings<th>&nbsp;` ^^
-    Db.fold (formatRow, ``, query) ^^
+    (Db.fold formatRow `` query) ^^
     `</table>
      <form action=add.sml>
      <h2>Rate new wine - type its name and year</h2>

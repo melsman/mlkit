@@ -65,7 +65,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	handle X => (putHandle db; raise X)
       end
       
-    fun dmlDb (db : db, q: quot) : unit =
+    fun dmlDb (db : db) (q: quot) : unit =
       let
 	val status = prim("@Ns_DbDML", (#2 db, quotToString q))
       in
@@ -78,33 +78,33 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       let 
 	val db = getHandle()
       in 
-	(dmlDb (db,q) before putHandle db)
+	(dmlDb db q before putHandle db)
 	handle X => (putHandle db; raise X)
       end
 
     fun maybeDml (q: quot) : unit = ((dml q; ()) handle X => ())
 
     fun panicDmlDb (db:db) (f_panic: quot -> 'a) (q: quot) : unit =
-      (dmlDb (db,q); () handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
+      (dmlDb db q; () handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
 
     fun panicDml (f_panic: quot -> 'a) (q: quot) : unit =
       ((dml q; ()) handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
 
-    fun dmlTransDb (db : db, f : db -> 'a) : 'a =
+    fun dmlTransDb (db : db) (f : db -> 'a) : 'a =
       let
-	val _ = dmlDb (db,DbBasic.beginTrans)
+	val _ = dmlDb db DbBasic.beginTrans
 	val res = f db;
       in
-	dmlDb (db,DbBasic.endTrans);
+	dmlDb db DbBasic.endTrans;
 	res
-      end handle X => (dmlDb (db,DbBasic.rollback); raise X)
+      end handle X => (dmlDb db DbBasic.rollback; raise X)
 
     fun dmlTrans (f: db -> 'a) : 'a =
       let 
 	val db = getHandle()
       in
 	let
-	  val res = dmlTransDb (db,f)
+	  val res = dmlTransDb db f
 	in 
 	  putHandle db;
 	  res
@@ -112,14 +112,14 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       end
 
     fun panicDmlTransDb (db:db) (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
-      dmlTransDb (db,f) handle X => (f_panic(`^(General.exnMessage X)`))
+      dmlTransDb db f handle X => (f_panic(`^(General.exnMessage X)`))
 
     fun panicDmlTrans (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
       dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
 
-    fun getCol (s,n) = Set.getOpt(s,n,"##")
+    fun getCol s n = Set.getOpt(s,n,"##")
 
-    val getColOpt = Set.get
+    fun getColOpt s n = Set.get(s,n)
 
     fun selectDb (db: db, q: quot) : Set.set =
       let 
@@ -139,7 +139,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun getRowDb (db : db, s : Set.set) : status =
       prim("@Ns_DbGetRow", (#2 db, s))
 
-    fun foldDb (db:db, f:(string->string)*'a->'a, acc:'a, sql:quot) : 'a =
+    fun foldDb (db:db) (f:(string->string)*'a->'a) (acc:'a) (sql:quot) : 'a =
       let val s : Set.set = selectDb(db, sql)
 	fun g n = Set.getOpt(s, n, "##")
 	fun loop (acc:'a) : 'a =
@@ -148,10 +148,10 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       in loop acc
       end
 
-    fun fold (f:(string->string)*'a->'a, acc:'a, sql:quot) : 'a =
-      wrapDb (fn db => foldDb (db,f,acc,sql))
+    fun fold (f:(string->string)*'a->'a) (acc:'a) (sql:quot) : 'a =
+      wrapDb (fn db => foldDb db f acc sql)
 
-    fun foldSetDb (db:db, f:Set.set*'a->'a, acc:'a, sql:quot) : 'a =
+    fun foldSetDb (db:db) (f:Set.set*'a->'a) (acc:'a) (sql:quot) : 'a =
       let val s : Set.set = selectDb(db, sql)
 	fun loop (acc:'a) : 'a =
 	  if (getRowDb(db,s) <> NsBasics.END_DATA) then loop (f(s,acc))
@@ -159,10 +159,11 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       in loop acc
       end
 
-    fun foldSet (f:Set.set*'a -> 'a, acc:'a, sql:quot) : 'a =
-      wrapDb (fn db => foldSetDb (db,f,acc,sql))
+    fun foldSet (f:Set.set*'a -> 'a) (acc:'a) (sql:quot) : 'a =
 
-    fun appDb (db:db, f:(string->string)->'a, sql:quot) : unit =
+      wrapDb (fn db => foldSetDb db f acc sql)
+
+    fun appDb (db:db) (f:(string->string)->'a) (sql:quot) : unit =
       let val s : Set.set = selectDb(db, sql)
 	fun g n = Set.getOpt(s, n, "##")
 	fun loop () : unit =
@@ -171,10 +172,10 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       in loop ()
       end
 
-    fun app (f:(string->string)->'a,sql:quot) : unit =
-      wrapDb (fn db => appDb (db,f,sql))
+    fun app (f:(string->string)->'a) (sql:quot) : unit =
+      wrapDb (fn db => appDb db f sql)
 
-    fun listDb (db:db, f:(string->string)->'a, sql: quot) : 'a list = 
+    fun listDb (db:db) (f:(string->string)->'a) (sql: quot) : 'a list = 
       let 
 	val s : Set.set = selectDb(db, sql)
 	fun g n = Set.getOpt(s, n, "##")
@@ -185,9 +186,10 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	loop ()
       end
 
-    fun list (f:(string->string)->'a, sql:quot) : 'a list = wrapDb (fn db => listDb(db,f,sql))
+    fun list (f:(string->string)->'a) (sql:quot) : 'a list = 
+      wrapDb (fn db => listDb db f sql)
 
-    fun oneFieldDb(db,sql) : string =
+    fun oneFieldDb db sql : string =
       let 
 	val s : Set.set = selectDb(db, sql)
 	val res =
@@ -205,9 +207,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       end
 
     fun oneField (sql : quot) : string = 
-      wrapDb (fn db => oneFieldDb(db,sql))
+      wrapDb (fn db => oneFieldDb db sql)
 
-    fun zeroOrOneFieldDb(db,sql) : string option =
+    fun zeroOrOneFieldDb db sql : string option =
       let 
 	val s : Set.set = selectDb(db, sql)
       in
@@ -226,9 +228,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       end
 
     fun zeroOrOneField (sql : quot) : string option =
-      wrapDb (fn db => zeroOrOneFieldDb(db,sql))
+      wrapDb (fn db => zeroOrOneFieldDb db sql)
 
-    fun oneRowDb(db,sql) : string list =
+    fun oneRowDb db sql  : string list =
       let 
 	val s : Set.set = selectDb(db, sql)
 	val res =
@@ -242,9 +244,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       end
 
     fun oneRow sql : string list =
-      wrapDb (fn db => oneRowDb(db,sql))
+      wrapDb (fn db => oneRowDb db sql)
 
-    fun oneRowDb'(db,f:(string->string)->'a,sql:quot) : 'a =
+    fun oneRowDb' db (f:(string->string)->'a) (sql:quot) : 'a =
       let 
 	val s : Set.set = selectDb(db, sql)
 	fun g n = Set.getOpt(s, n, "##")
@@ -258,10 +260,10 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	else raise Fail "oneRowDb'.more that one row"
       end
 
-    fun oneRow' (f:(string->string)->'a, sql:quot) : 'a = 
-      wrapDb (fn db => oneRowDb'(db,f,sql))
+    fun oneRow' (f:(string->string)->'a) (sql:quot) : 'a = 
+      wrapDb (fn db => oneRowDb' db f sql)
 
-    fun zeroOrOneRowDb(db,sql) : string list option =
+    fun zeroOrOneRowDb db sql : string list option =
       let 
 	val s : Set.set = selectDb(db, sql)
       in
@@ -277,9 +279,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       end
 
     fun zeroOrOneRow sql : string list option =
-      wrapDb (fn db => zeroOrOneRowDb(db,sql))
+      wrapDb (fn db => zeroOrOneRowDb db sql)
 
-    fun zeroOrOneRowDb'(db,f,sql) : 'a option =
+    fun zeroOrOneRowDb' db f sql : 'a option =
       let 
 	val s : Set.set = selectDb(db, sql)
 	fun g n = Set.getOpt(s, n, "##")
@@ -295,17 +297,17 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	else NONE (* Ok, no rows *)
       end
 
-    fun zeroOrOneRow' (f:(string->string)->'a, sql:quot) : 'a option = 
-      wrapDb (fn db => zeroOrOneRowDb'(db,f,sql))
+    fun zeroOrOneRow' (f:(string->string)->'a) (sql:quot) : 'a option = 
+      wrapDb (fn db => zeroOrOneRowDb' db f sql)
 
-    fun existsOneRowDb(db,sql) : bool =
+    fun existsOneRowDb db sql : bool =
       let val s : Set.set = selectDb(db, sql)
       in 
 	if getRowDb(db,s) <> NsBasics.END_DATA then true else false
       end
 
     fun existsOneRow sql : bool =
-      wrapDb (fn db => existsOneRowDb(db,sql))
+      wrapDb (fn db => existsOneRowDb db sql)
 
     fun qq s =
       let 
@@ -360,25 +362,25 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun valueList vs = String.concatWith "," (List.map qq' vs)
     fun setList vs = String.concatWith "," (List.map (fn (n,v) => n ^ "=" ^ qq' v) vs)
 
-    fun seqNextvalDb (db,seqName:string) : int = 
-      let val s = oneFieldDb (db,`select ^(seqNextvalExp seqName) ^fromDual`)
+    fun seqNextvalDb db (seqName:string) : int = 
+      let val s = oneFieldDb db `select ^(seqNextvalExp seqName) ^fromDual`
       in case Int.fromString s of
 	SOME i => i
       | NONE => raise Fail "Db.seqNextval.nextval not an integer"	
       end
 
     fun seqNextval (seqName:string) : int = 
-      wrapDb (fn db => seqNextvalDb(db,seqName))
+      wrapDb (fn db => seqNextvalDb db seqName)
 
-    fun seqCurrvalDb (db,seqName:string) : int = 
-      let val s = oneFieldDb (db,`select ^(seqCurrvalExp seqName) ^fromDual`)
+    fun seqCurrvalDb db (seqName:string) : int = 
+      let val s = oneFieldDb db `select ^(seqCurrvalExp seqName) ^fromDual`
       in case Int.fromString s of
 	SOME i => i
       | NONE => raise Fail "Db.seqCurrval.nextval not an integer"	
       end
 
     fun seqCurrval (seqName:string) : int = 
-      wrapDb (fn db => seqCurrvalDb(db,seqName))
+      wrapDb (fn db => seqCurrvalDb db seqName)
   end
 
 structure NsDbBasicOra : NS_DB_BASIC =
