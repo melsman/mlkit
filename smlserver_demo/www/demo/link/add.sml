@@ -1,10 +1,10 @@
 structure FV = FormVar
 
-val _ = 
-  if Login.person_id = Login.default_id then 
-    (Ns.returnRedirect "/demo/auth_form.sml";
-     Ns.exit())
-  else ()
+val person_id = 
+  case Auth.verifyPerson()
+    of SOME p => p
+     | NONE => (Ns.returnRedirect Auth.loginPage
+		; Ns.exit())
 
 val url  = FV.wrapFail FV.getUrlErr ("url", "URL")
 val text = FV.wrapFail FV.getStringErr ("text", "Text")
@@ -12,7 +12,7 @@ val text = FV.wrapFail FV.getStringErr ("text", "Text")
 val insert = 
   `insert into link (link_id, person_id, url, text)
    values (^(Db.seqNextvalExp "link_seq"),
-	   ^(Int.toString Login.person_id),
+	   ^(Int.toString person_id),
 	   ^(Db.qq' url),
 	   ^(Db.qq' text))`
 
