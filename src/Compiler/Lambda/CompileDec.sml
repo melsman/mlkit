@@ -236,19 +236,22 @@ functor CompileDec(structure Con: CON
      * ---------------------------------------------- *)
 
    structure TV : sig val reset : unit -> unit
-		      val lookup : TyVar -> TLE.tyvar
+		      val lookup : string -> TyVar -> TLE.tyvar
 		  end =
       struct
 	val env : (TyVar, TLE.tyvar) FinMapEq.map ref = ref FinMapEq.empty
 	val look = FinMapEq.lookup TyVar.eq
 	val add = FinMapEq.add TyVar.eq
-	fun lookup tv =
-	  case look (!env) tv
-	    of Some tv' => tv'
-	     | None => let val tv' = if TyVar.equality tv then TLE.fresh_eqtyvar()
-				     else TLE.fresh_tyvar ()
-		       in env := add(tv,tv',!env); tv'
-		       end
+	fun lookup s tv =
+	      (case look (!env) tv of
+		 Some tv' => tv'
+	       | None => let val tv' = if TyVar.equality tv then TLE.fresh_eqtyvar()
+				       else TLE.fresh_tyvar ()
+			 in env := add(tv,tv',!env); tv'
+			 end)
+		 handle ? => (output (std_out, "  [TV.lookup " ^ s ^ "]  ") ;
+			      raise ?)
+
 	fun reset() = env := FinMapEq.empty
       end
 
@@ -359,7 +362,7 @@ functor CompileDec(structure Con: CON
                     None => 
                       (case Type.to_TyVar typ of
                          None => die "compileType(1)"
-                       | Some tyvar => TYVARtype(TV.lookup tyvar))
+                       | Some tyvar => TYVARtype(TV.lookup "compileType" tyvar))
                   | Some funtype => 
                       let val (ty1,ty2) = NoSome "compileType(2)" 
                                         (Type.un_FunType funtype)
@@ -391,12 +394,12 @@ functor CompileDec(structure Con: CON
 
       fun compileTypeScheme (tyvars : TyVar list, Type : StatObject.Type)
                   : (TLE.tyvar list * TLE.Type)  =
-          let val tvs' = map TV.lookup tyvars
+          let val tvs' = map (TV.lookup "compileTypeScheme") tyvars
 	      val tau' = compileType Type
 	  in (tvs', tau')
 	  end
 
-      fun compileTyVar tyvar : TLE.tyvar = TV.lookup tyvar
+      fun compileTyVar tyvar : TLE.tyvar = TV.lookup "compileTyVar" tyvar
 
 
     (* ---------------------------------------------------------------------- *)
@@ -492,7 +495,7 @@ functor CompileDec(structure Con: CON
 			  in raise H tyvars
 			  end) [] VE) handle H tyvars => tyvars
 	  end
-	val tyvars' = map TV.lookup tyvars
+	val tyvars' = map (TV.lookup "compile'TyStr'") tyvars
 	val cbs : (id * Type) list = 
 	  VE.CEFold (fn (con, typescheme) => fn cbs =>
 		      let val (_, tau) = TypeScheme.to_TyVars_and_Type typescheme
@@ -1312,7 +1315,7 @@ functor CompileDec(structure Con: CON
 					    * by this (single) pattern. *)
 	val f = fn scope =>
 	  let val exp' = compileExp env exp
-	      val tyvars' = map TV.lookup tyvars
+	      val tyvars' = map (TV.lookup "compileBinding") tyvars
 	      val tau' = compileType Type
 	      val exp'' = compileDecTree (CE.declareLvar(root,map TYVARtype tyvars',env))
 		          (decTree, fn _ => scope, raiseBind, true) 
