@@ -480,6 +480,7 @@ functor MlbProject () : MLB_PROJECT =
 	fun dep (mlbfile : string) : unit =
 	    (dep_bdec_file emptyA mlbfile; ())
 
+	fun map2 f ss = map (fn (x,y) => (f x, f y)) ss
 
 	(* Support for finding the source files of a basis file *)
 	fun srcs_bdec_file mlbs mlbfile_rel =
@@ -488,43 +489,43 @@ functor MlbProject () : MLB_PROJECT =
 	       else let val {cd_old,file=mlbfile} = change_dir mlbfile_rel
 		    in 
 			let val bdec = parse mlbfile
-			    val (ss, mlbs) = srcs_bdec mlbs bdec
-			    val ss = map (dirMod (OS.Path.dir mlbfile_rel)) ss
+			    val (ss, mlbs) = srcs_bdec mlbfile mlbs bdec
+			    val ss = map2 (dirMod (OS.Path.dir mlbfile_rel)) ss
 			in cd_old()
 			    ; (ss,mlbfile_abs::mlbs)
 			end handle X => (cd_old(); raise X)
 		    end 
 	    end
 
-	and srcs_bdec mlbs bdec =
+	and srcs_bdec mlbfile mlbs bdec =
 	    case bdec of 
 		SEQbdec (bdec1,bdec2) =>
-		    let val (ss1,mlbs) = srcs_bdec mlbs bdec1
-			val (ss2,mlbs) = srcs_bdec mlbs bdec2
+		    let val (ss1,mlbs) = srcs_bdec mlbfile mlbs bdec1
+			val (ss2,mlbs) = srcs_bdec mlbfile mlbs bdec2
 		    in (ss1@ss2,mlbs)
 		    end
 	      | EMPTYbdec => (nil,mlbs)
 	      | LOCALbdec (bdec1,bdec2) =>
-		    let val (ss1,mlbs) = srcs_bdec mlbs bdec1
-			val (ss2,mlbs) = srcs_bdec mlbs bdec2
+		    let val (ss1,mlbs) = srcs_bdec mlbfile mlbs bdec1
+			val (ss2,mlbs) = srcs_bdec mlbfile mlbs bdec2
 		    in (ss1@ss2,mlbs)
 		    end
-	      | BASISbdec (bid,bexp) => srcs_bexp mlbs bexp
+	      | BASISbdec (bid,bexp) => srcs_bexp mlbfile mlbs bexp
 	      | OPENbdec _ => (nil,mlbs)
-	      | SMLFILEbdec smlfile => ([smlfile],mlbs)
+	      | SMLFILEbdec smlfile => ([(smlfile,mlbfile)],mlbs)
 	      | MLBFILEbdec mlbfile => srcs_bdec_file mlbs mlbfile
 		    
-	and srcs_bexp mlbs bexp =
+	and srcs_bexp mlbfile mlbs bexp =
 	    case bexp of
-		BASbexp bdec => srcs_bdec mlbs bdec
+		BASbexp bdec => srcs_bdec mlbfile mlbs bdec
 	      | LETbexp (bdec,bexp) =>
-		    let val (ss1,mlbs) = srcs_bdec mlbs bdec
-			val (ss2,mlbs) = srcs_bexp mlbs bexp
+		    let val (ss1,mlbs) = srcs_bdec mlbfile mlbs bdec
+			val (ss2,mlbs) = srcs_bexp mlbfile mlbs bexp
 		    in (ss1@ss2,mlbs)
 		    end
 	      | LONGBIDbexp _ => (nil,mlbs)
 	
-	fun sources (mlbfile : string) : string list =
+	fun sources (mlbfile : string) : (string * string) list =
 	    #1 (srcs_bdec_file nil mlbfile)
     
     end
