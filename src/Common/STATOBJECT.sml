@@ -29,6 +29,13 @@ signature STATOBJECT =
     type scon
     type strid
 
+    exception Ungeneralised_but_generalisable of TyVar
+
+    (*`raise Ungeneralised_but_generalisable tyvar' means that tyvar could
+     have been generalised if the value polymorphism restriction did not
+     apply.  This should give a type error `Provide type annotation for id'
+     where id is the identifier containing tyvar in its type.  See
+     ElabDec.elab_dec (VALdec ...).*)
 
 
     (*Level: for an explanation of type inference using `let levels'
@@ -134,9 +141,11 @@ signature STATOBJECT =
 	val Word                    : Type
 	val of_scon                 : scon -> Type
 
-	(*Return a list of those type variables of tau which are allowed to
-	 be quantified and a list of those type variables which escape as a
-	 consequence of the value restriction.*)
+	(*close imp tau = a list of those type variables of tau which are
+	 allowed to be quantified and a list of those type variables which
+	 escape as a consequence of the value restriction.  May raise
+	 Ungeneralised_but_generalisable tyvar when imp is false.*)
+
 	val close                   : bool -> Type -> TyVar list * TyVar list
 	val unify                   : Type * Type -> Substitution Option
 	val instantiate_arbitrarily : TyVar -> unit
@@ -171,14 +180,16 @@ signature STATOBJECT =
 	val generalises_TypeScheme  : TypeScheme * TypeScheme -> bool
 	val generalises_Type        : TypeScheme * Type -> bool
 
-	(* close(sigma): generalise generic type 
-	 * variables in sigma except overload 
-	 * tyvars; used by Environments. *)
+	(*close imp sigma = generalise generic type variables in sigma except
+	  overload tyvars; used by Environment.  May raise
+	  Ungeneralised_but_generalisable tyvar when imp is false.*)
+
 	val close                   : bool -> TypeScheme -> TypeScheme
 
-	(* close_overload(tau): generalise generic type 
-	 * variables also overload tyvars. *)
-	val close_overload          : Type -> TypeScheme
+	(*close_overload tau = generalise generic type variables also
+	 overloaded tyvars.*)
+
+	val close_overload : Type -> TypeScheme
 
 	(*violates_equality T sigma = false, iff, assuming the tynames in
 	 T admit equality, sigma admits equality, i.e., violates_equality

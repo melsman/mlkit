@@ -426,6 +426,10 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
 		 19/12/1996 14:17. tho.*)
 
         fun close isExpansive tau = Type.close (not isExpansive) (S on tau)
+	      handle StatObject.Ungeneralised_but_generalisable tyvar => ([],[])
+		(*A little hacky arbitrarily returning ([],[]), but the user
+		 will get an elaboration error anyway in elab_dec (VALdec
+		 ...), if Ungeneralised_but_generalisable is raised I think.*)
 
         fun do_valbind (vb : OG.valbind) : OG.valbind =
           case vb of
@@ -866,19 +870,22 @@ old*)
                val (S, VE, out_valbind) =
                      elab_valbind (C.plus_U (C, U), valbind)
                val _ = Level.pop()
-               val VE' = C.close (S onC C, valbind, VE)
+               val (VE', out_i) =
+		     (C.close (S onC C, valbind, VE),
+		      (case ListHacks.intersect (ExplicitTyVars, C.to_U C) of
+			 [] => okConv i
+		       | explicittyvars => errorConv
+			   (i, ErrorInfo.TYVARS_SCOPED_TWICE
+			        (map TyVar.from_ExplicitTyVar explicittyvars))))
+		     handle C.Ungeneralised_but_generalisable tyvar =>
+		     (VE,
+		      errorConv (i, ErrorInfo.UNGENERALISABLE_TYVARS
+				      (VE.ids_with_tyvar_in_type_scheme tyvar VE)))
+				   
                val out_valbind = generalise_type_info_valbind
 		                   (S onC C, S, out_valbind)
-		 (*generalise type info recorded in PLAINvalbind and
+	         (*generalise type info recorded in PLAINvalbind and
 		  patterns of value bindings*)
-               val out_i =
-		     (case ListHacks.intersect
-		             (ExplicitTyVars, C.to_U C) of
-		        [] => okConv i
-		      | explicittyvars => errorConv
-			  (i, ErrorInfo.TYVARS_SCOPED_TWICE
-			        (map TyVar.from_ExplicitTyVar
-				   explicittyvars)))
 
 	     (*The side condition ``U n tyvars VE' = {}'' is enforced partly
 	      by disallowing unification of free explicit tyvars (giving the
@@ -1328,7 +1335,7 @@ old*)
               
           in
             if not(isEmptyTyVarList(tyvarsNotInTyVarList)) then
-              (TE.plus (TE.singleton(tycon, tystr), TE),
+              (TE,
                OG.TYPBIND(errorConv(i, 
                       ErrorInfo.TYVARS_NOT_IN_TYVARSEQ 
                             (map TyVar.from_ExplicitTyVar tyvarsNotInTyVarList)),
@@ -1340,7 +1347,7 @@ old*)
                             ExplicitTyVars, tycon, out_ty, out_typbind_opt))
               else
                 if not(isEmptyTyVarList(tyvarsRepeated)) then
-                  (TE.plus (TE.singleton(tycon, tystr), TE),
+                  (TE,
                    OG.TYPBIND(repeatedIdsError(i,
                                 map ErrorInfo.TYVAR_RID tyvarsRepeated),
                               ExplicitTyVars, tycon, out_ty, out_typbind_opt))

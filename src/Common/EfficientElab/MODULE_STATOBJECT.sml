@@ -55,8 +55,6 @@ signature MODULE_STATOBJECT =
 	val from_T_and_E           : TyName.Set.Set * Env -> Sig
 	val tynames                : Sig -> TyName.Set.Set
 	val tyvars                 : Sig -> TyVar list
-	val tyvars'                : Sig -> (id * TyVar list) list
-	(*tyvars': see comment for E.tyvars' (in ENVIRONMENTS)*)
 	val bogus                  : Sig
 	val layout                 : Sig -> StringTree
 
@@ -86,8 +84,6 @@ signature MODULE_STATOBJECT =
 	val to_T_and_E_and_Sigma   : FunSig -> TyName.Set.Set * Env * Sig
 	val tynames                : FunSig -> TyName.Set.Set
 	val tyvars                 : FunSig -> TyVar list
-	val tyvars'                : FunSig -> (id * TyVar list) list
-	(*tyvars': see comment for E.tyvars' (in ENVIRONMENTS)*)
 	val layout                 : FunSig -> StringTree
 
 	(*If Sigma'= match (Phi, E) succeeds, then E matches the

@@ -56,7 +56,6 @@ signature MODULE_ENVIRONMENTS =
 	val lookup           : FunEnv -> funid -> FunSig Option
 	val tynames          : FunEnv -> TyName.Set.Set
 	val tyvars           : FunEnv -> TyVar list
-	val tyvars'          : FunEnv -> (id * TyVar list) list
 	val dom              : FunEnv -> funid EqSet.Set
 	val layout           : FunEnv -> StringTree
 	val report           : (funid * FunSig -> Report) * FunEnv -> Report
@@ -73,8 +72,6 @@ signature MODULE_ENVIRONMENTS =
 	val plus             : Basis * Basis   -> Basis
 	val on               : realisation -> Basis -> Basis
 	val tyvars           : Basis -> TyVar list
-	val tyvars'          : Basis -> (id * TyVar list) list
-	  (*tyvars': see comment for E.tyvars' (in ENVIRONMENTS)*)
 	val tynames          : Basis -> TyName.Set.Set
 	val to_C             : Basis -> Context
 	val layout           : Basis -> StringTree

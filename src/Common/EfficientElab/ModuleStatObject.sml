@@ -275,7 +275,6 @@ functor ModuleStatObject(structure StrId  : STRID
       fun from_T_and_E (T,E) = SIGMA {T=T, E=E}
       val to_E = #2 o to_T_and_E
       val tyvars = E.tyvars o to_E
-      val tyvars' = E.tyvars' o to_E
       fun tynames (SIGMA {T, E}) = TyName.Set.difference (E.tynames E) T
       fun instance (SIGMA {T, E}) : Env =
 	    Realisation.on_Env (Realisation.renaming T) E
@@ -386,11 +385,6 @@ functor ModuleStatObject(structure StrId  : STRID
 	    let val (_, E, Sig) = to_T_and_E_and_Sigma Phi
 	    in
 	      TyVar.unionTyVarSet (E.tyvars E, Sigma.tyvars Sig)
-	    end
-      fun tyvars' Phi = 
-	    let val (_, E, Sig) = to_T_and_E_and_Sigma Phi
-	    in
-	      E.tyvars' E @ Sigma.tyvars' Sig
 	    end
       fun on (phi, funsig' as FUNSIG {T, E, T'E'}) : FunSig =
 	    if Realisation.is_Id phi then funsig' else

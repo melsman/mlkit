@@ -202,8 +202,6 @@ functor ElabTopdec
     fun tynames_G G = G.tynames G
     fun tynames_F F = F.tynames F
     fun tyvars_Type tau = Type.tyvars tau
-    fun tyvars_E' E = E.tyvars' E
-    fun tyvars_F' F = F.tyvars' F
 
       (*the following three types are for the signature:*)
     type PreElabTopdec  = IG.topdec
@@ -1349,34 +1347,12 @@ functor ElabTopdec
 
     and elab_topdec (B : Basis, topdec : IG.topdec)
           : (Basis * OG.topdec) =
-      let
-	fun deal_with_free_tyvars(i, []) = okConv i
-	  | deal_with_free_tyvars(i, criminals : (Ident.id * TyVar list) list) = 
-	  let val tyvars = List.foldL (General.curry op @ o #2) [] criminals
-	  in case List.all (is_Some o TyVar.to_ExplicitTyVar) tyvars 
-	       of [] => (List.apply Type.instantiate_arbitrarily tyvars ;
-			 Flags.warnings :=
-			 ("Free type variables are not allowed at top-level;\n\
-			  \see `The Definition of Standard ML (Revised)', section G.8.\n\
-			  \I substituted int for them in the type for "
-			  ^ pp_list (quote o Ident.pr_id o #1) criminals
-			  ^ ".\n")
-			 :: !Flags.warnings ;
-			 okConv i)
-		| unguarded_tyvars : TyVar list =>
-		 errorConv (i, ErrorInfo.UNGUARDED_TYVARS unguarded_tyvars)
-	               (* one could extend the error info to also contain
-			* the criminal id's *)
-
-	  end
-      in
-	case topdec 
+	(case topdec 
 	  of IG.STRtopdec (i, strdec, topdec_opt) =>                                      (* 87 *)
 	    let val (_, E, out_strdec) = elab_strdec(B, strdec)
 	        val (B', out_topdec_opt) = elab_topdec_opt(B B_plus_E E, topdec_opt)
 		val B'' = (B.from_E E) B_plus_B B'
-		val out_i = deal_with_free_tyvars(i, tyvars_E' E)
-	    in (B'', OG.STRtopdec(out_i, out_strdec, out_topdec_opt))
+	    in (B'', OG.STRtopdec (okConv i, out_strdec, out_topdec_opt))
 	    end
 	   | IG.SIGtopdec (i, sigdec, topdec_opt) =>                                      (* 88 *)
 	    let val (G, out_sigdec) = elab_sigdec(B, sigdec)
@@ -1387,11 +1363,10 @@ functor ElabTopdec
 	   | IG.FUNtopdec (i, fundec, topdec_opt) =>                                      (* 89 *)
 	    let val (F, out_fundec) = elab_fundec(B, fundec)
 	        val (B', out_topdec_opt) = elab_topdec_opt(B B_plus_F F, topdec_opt)
-		val B'' = (B.from_F F) B_plus_B B'                     (* Actually, it holds that *)
-		val out_i = deal_with_free_tyvars(i, tyvars_F' F)      (* tynames F \ (T of B) = {} *)
-	    in (B'', OG.FUNtopdec(out_i, out_fundec, out_topdec_opt))
-	    end
-      end (*let*)
+		val B'' = (B.from_F F) B_plus_B B' (* Actually, it holds that
+						    tynames F \ (T of B) = {}*)
+	    in (B'', OG.FUNtopdec (okConv i, out_fundec, out_topdec_opt))
+	    end)
 
     and elab_topdec_opt (B : Basis, topdec_opt : IG.topdec Option) : (Basis * OG.topdec Option) =
       case topdec_opt

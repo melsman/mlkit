@@ -39,6 +39,7 @@ signature ERROR_INFO =
       | NOTCONSTYPE of Type
       | QUALIFIED_ID of longid
       | UNGUARDED_TYVARS of TyVar list
+      | UNGENERALISABLE_TYVARS of id list
       | WRONG_ARITY of {expected: int, actual: int}
       | FLEX_REC_NOT_RESOLVED 
       | REPEATED_IDS of RepeatedId list
