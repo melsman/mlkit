@@ -30,7 +30,7 @@ create table scs_text_lang(
   lang_id integer
     constraint scs_text_lang_lang_id_nn not null
     constraint scs_text_lang_lang_id_fk references scs_lang( lang_id ), 
-  text varchar2(1000),
+  text varchar2(4000),
   constraint scs_text_un unique( text_id, lang_id )
 );
 

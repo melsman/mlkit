@@ -23,6 +23,8 @@ signature SCS_DATE =
     val dateOk : day * mth * year -> bool
     val preceedingDays : day * mth * year -> int
     val currDateInPeriod : Date.date * Date.date -> bool
+    val half_year        : Date.date -> Date.date * Date.date
+    val add_days         : Date.date -> int -> Date.date
 
     (* PrettyPrinting *)
     val ppIso : Date.date -> string
@@ -169,6 +171,23 @@ structure ScsDate :> SCS_DATE =
 	  false
 	else
 	  true
+      end
+
+    fun add_days d n =
+      Date.fromTimeLocal (Time.+ (Time.fromSeconds(n * 24 * 3600),Date.toTime d))
+      handle _ => raise ScsDate ("add_days: can't add " ^ (Int.toString n) ^ " days to the date " ^ (ppIso d))
+
+    fun half_year d =
+      let
+	val year = Date.year d
+	val p_first = genDate(1,1,year)
+	val p_mid = genDate(30,6,year)
+	val p_end = genDate(31,12,year)
+      in
+	case Date.compare (d,p_mid) of
+	  LESS => (p_first,p_mid)
+	| EQUAL => (p_first,p_mid)
+	| GREATER => (add_days p_mid 1,p_end)
       end
   end
 

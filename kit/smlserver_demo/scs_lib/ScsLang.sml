@@ -50,7 +50,8 @@ structure ScsLang :> SCS_LANG =
 
     fun all_for_sel_box lang =
       (Db.list (fn g => (g "text",g "value")) 
-       `select scs_text.getText(scs_lang.language_name_tid,^(Db.qqq (toString lang))) as text, scs_lang.language
+       `select scs_text.getText(scs_lang.language_name_tid,^(Db.qqq (toString lang))) as text, 
+               scs_lang.language as value
           from scs_lang
          order by text`)
       handle _ => []

@@ -56,7 +56,7 @@ structure ScsLogin :> SCS_LOGIN =
     (* ==================================================== *)
     fun auth_filter protected_pages =
       let
-	val target = Ns.Conn.location()^Ns.Conn.url()
+	val target = (*Ns.Conn.location()^*)Ns.Conn.url()
 	fun reject () =
 	  let
 	    val query_data = case Ns.Conn.getQuery() of
@@ -70,7 +70,7 @@ structure ScsLogin :> SCS_LOGIN =
         (* Reject the user to login if he accesses a protected page
            and does not hold one of the role-privileges. *)
 	fun verifyUserFilter (p,roles) =
-	  if (RegExp.match o RegExp.fromString) (Ns.Conn.location()^p) target then
+	  if (RegExp.match o RegExp.fromString) ((*Ns.Conn.location()^*)p) target then
 	    (* Access to the protected page p: he must hold atleast one of the roles *)
 	    if ScsRole.has_one_p user_id roles then
 	      ()
