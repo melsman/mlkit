@@ -149,6 +149,22 @@ functor CallConv(structure Lvars : LVARS
 	  (sty'::sty_list,lv_phreg'::lv_phreg_list,ph_regs')
 	end
 
+      (* for use with multiple arguments ; on the x86, we store the arguments on the stack in
+       * reverse order!! *)
+      fun resolve_stys_args([],acc,ph_regs) = ([],acc,ph_regs)
+	| resolve_stys_args(stys,acc,[]) = 
+	let val stys = if BI.down_growing_stack then rev stys else stys
+	in (map assign_stack stys,acc,[])
+	end
+	| resolve_stys_args(sty::stys,acc,ph_reg::ph_regs) =
+	let
+	  val (sty_list,lv_phreg_list,ph_regs') = resolve_stys_args(stys,acc,ph_regs)
+	  val (sty',lv_phreg') = assign_phreg(sty,ph_reg)
+	in
+	  (sty'::sty_list,lv_phreg'::lv_phreg_list,ph_regs')
+	end
+
+
       fun resolve_sty_opt(SOME sty,acc,[]) = (SOME(assign_stack sty),acc,[])
 	| resolve_sty_opt(SOME sty,acc,phreg::phregs) = 
 	let
@@ -211,7 +227,8 @@ functor CallConv(structure Lvars : LVARS
 	  val _ = reset_offset()
 	  val (clos_sty_opt,lv_phreg_args,phregs) = resolve_sty_opt(clos,[],BI.args_phreg)
 	  val (reg_vec_sty_opt,lv_phreg_args,phregs) = resolve_sty_opt(reg_vec,lv_phreg_args,phregs)
-	  val (args_stys,lv_phreg_args,phregs) = resolve_stys(args,lv_phreg_args,phregs)
+	  val (args_stys,lv_phreg_args,phregs) = resolve_stys_args(args,lv_phreg_args,phregs)  (*MEMO:won't work for multiple 
+												*free vars as args*)
 	  val (free_stys,lv_phreg_args,phregs) = resolve_stys(free,lv_phreg_args,phregs)
 	  val (reg_args_stys,lv_phreg_args,_) = resolve_stys(reg_args,lv_phreg_args,phregs)
 
