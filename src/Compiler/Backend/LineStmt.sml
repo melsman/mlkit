@@ -201,10 +201,12 @@ struct
 
     fun pr_bv([]) = ""
       | pr_bv([mark]) = die "pr_bv:Bit Vector with only one element"
-      | pr_bv([mark,size]) = die "pr_bv:Bit Vector with only two elements"
-      | pr_bv(mark::size::bvs) = 
+      | pr_bv([mark,offsetToReturn]) = die "pr_bv:Bit Vector with only two elements"
+      | pr_bv([mark,offsetToReturn,size]) = die "pr_bv:Bit Vector with only three elements"
+      | pr_bv(mark::offsetToReturn::size::bvs) = 
       (foldl (fn (w,C) => (Word32.fmt StringCvt.BIN w) ^ ":" ^  C) "" bvs) ^ 
-      (Word32.fmt StringCvt.DEC size) ^ ":" ^ (Word32.fmt StringCvt.DEC mark)
+      (Word32.fmt StringCvt.DEC size) ^ ":" ^ (Word32.fmt StringCvt.DEC offsetToReturn) ^ ":" ^
+      (Word32.fmt StringCvt.DEC mark)
 
     fun layout_switch pr_aty layout_lss pr_const (SWITCH(aty_arg,sels,default)) =
       let

@@ -2,7 +2,7 @@ let
   infix -
   infix  3  := o
   fun !(x: 'a ref): 'a = prim ("!", "!", x) 
-  fun print (s:string) : unit = prim("printString", "printString", s)
+  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
 
   fun printNum (i:int) : unit = prim("printNum", "printNum", i)
   val r = ref 42

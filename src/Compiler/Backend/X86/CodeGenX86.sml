@@ -2,7 +2,7 @@
 
 functor CodeGenX86(structure BackendInfo : BACKEND_INFO
 		   structure InstsX86 : INSTS_X86
-		     sharing type InstsX86.label = BackendInfo.label
+		     sharing type InstsX86.label = BackendInfo.label 
 		   structure JumpTables : JUMP_TABLES
 		   structure Con : CON
 		   structure Excon : EXCON
@@ -114,6 +114,7 @@ struct
     val exn_ptr_lab = NameLab "exn_ptr"
     val exn_counter_lab = NameLab "exnameCounter"
     val time_to_gc_lab = NameLab "time_to_gc"     (* Declared in GC.c *)
+    val data_lab_ptr_lab = NameLab "data_lab_ptr" (* Declared in GC.c *)
     val stack_bot_gc_lab = NameLab "stack_bot_gc" (* Declared in GC.c *)
     val gc_stub_lab = NameLab "__gc_stub"
     val global_region_labs = [BI.toplevel_region_withtype_top_lab,
@@ -293,7 +294,7 @@ struct
     fun gen_data_lab lab = add_static_data [I.dot_data,
 					    I.dot_align 4,
 					    I.lab (DatLab lab),
-					    I.dot_long "0"]
+					    I.dot_long (int_to_string BI.ml_unit)]  (* was "0" but use ml_unit instead for GC 2001-01-09, Niels *)
 
     (* Can be used to update the stack or a record when the argument is an ATY *)
     (* base_reg[offset] = src_aty *)
@@ -435,22 +436,24 @@ struct
 
     (* reg_map is a register map describing live registers at entry to the function       *)
     (* The stub requires reg_map to reside in tmp_reg1 and the return address in tmp_reg0 *)
-    fun do_gc(reg_map: Word32.word,C) =
-      if !do_garbage_collection then C (*2001-01-04, Niels*)
-(*	let
+    fun do_gc(reg_map: Word32.word,size_ccf,size_rcf,C) =
+      if !do_garbage_collection then 
+	let
 	  val l = new_local_lab "return_from_gc_stub"
 	  val reg_map_immed = "0X" ^ Word32.fmt StringCvt.HEX reg_map
 	  val size_ff = 0 (*dummy*)
 	in
 	  load_label_addr(time_to_gc_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff, (* tmp_reg1 = &gc_flag *)
 	  I.movl(D("0",tmp_reg1),R tmp_reg1) ::                       (* tmp_reg1 = gc_flag  *)
-	  I.cmpl(I "0", R tmp_reg1) ::
+	  I.cmpl(I "1", R tmp_reg1) ::
 	  I.jne l ::
 	  I.movl(I reg_map_immed, R tmp_reg1) ::                    (* tmp_reg1 = reg_map  *)
 	  load_label_addr(l,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff, (* tmp_reg0 = return address *)
+  I.pushl(I (int_to_string size_ccf)) ::
+  I.pushl(I (int_to_string size_rcf)) ::
 	  I.jmp(L gc_stub_lab) ::
 	  I.lab l :: C))
-	end*)
+	end
       else C
 
     (*********************)
@@ -899,21 +902,52 @@ struct
          C')
        end
 
-    (* Tagging? 09/01/1999, Niels *)
-     fun bin_op_w8_kill_tmp01 inst (x,y,d,size_ff,C) =
+     fun addw8_kill_tmp01 (x,y,d,size_ff,C) =
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
        in x_C(y_C(
 	  copy(y_reg, tmp_reg1,
           copy(x_reg, d_reg,
-          inst(R tmp_reg1, R d_reg) ::
-          I.andl(I "0XFF", R d_reg) :: C'))))
+          I.addl(R tmp_reg1, R d_reg) ::
+	  (if !BI.tag_integers then
+             I.decl (R d_reg) :: I.andl(I "0X1FF", R d_reg) :: C'
+	   else
+	     I.andl(I "0XFF", R d_reg) :: C')))))
        end
 
-     fun addw8_kill_tmp01 a = bin_op_w8_kill_tmp01 I.addl a
-     fun subw8_kill_tmp01 a = bin_op_w8_kill_tmp01 I.subl a
-     fun mulw8_kill_tmp01 a = bin_op_w8_kill_tmp01 I.imull a
+     fun subw8_kill_tmp01 (x,y,d,size_ff,C) =
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+       in x_C(y_C(
+	  copy(y_reg, tmp_reg1,
+          copy(x_reg, d_reg,
+          I.subl(R tmp_reg1, R d_reg) ::
+	  (if !BI.tag_integers then
+	     I.incl (R d_reg) :: I.andl(I "0X1FF", R d_reg) :: C'
+	   else
+	     I.andl(I "0XFF", R d_reg) :: C')))))
+       end
+
+     fun mulw8_kill_tmp01 (x,y,d,size_ff,C) =
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+       in 
+         x_C(y_C(
+	 copy(y_reg, tmp_reg1,
+         copy(x_reg, d_reg,
+	 if !BI.tag_integers then (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
+           I.sarl(I "1", R d_reg) ::
+	   I.subl(I "1", R tmp_reg1) ::
+	   I.imull(R tmp_reg1, R d_reg) ::
+	   I.addl(I "1", R d_reg) :: 
+           I.andl(I "0X1FF", R d_reg) :: C'
+	 else
+           I.imull(R tmp_reg1, R d_reg) ::
+           I.andl(I "0XFF", R d_reg) :: C'))))
+       end
 
      fun bin_op_kill_tmp01 inst (x,y,d,size_ff,C) =
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
@@ -930,8 +964,17 @@ struct
 
      fun ori_kill_tmp01 a = bin_op_kill_tmp01 I.orl a   (* A[x|y] = A[x] | A[y]  tagging *)
 
-     (* Shouldn't we set the tag bit if tagging integers? 09/01/1999, Niels *)
-     fun xori_kill_tmp01 a = bin_op_kill_tmp01 I.xorl a   (* A[x&|y] = A[x] &| A[y]  tagging *)
+     fun xori_kill_tmp01 (x,y,d,size_ff,C) =
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+       in
+	 x_C(y_C(
+	 copy(y_reg, tmp_reg1,
+	 copy(x_reg, d_reg,
+         I.xorl(R tmp_reg1, R d_reg) :: 
+         maybe_tag_words(I.orl(I "1", R d_reg), C')))))
+       end
 
      fun shift_op_kill_tmp01 inst (x,y,d,size_ff,C) =  (*tmp_reg0 = %ecx*)
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
@@ -943,16 +986,63 @@ struct
           inst(R cl, R d_reg) :: C'))))
        end
 
-     (* Tagging? 09/01/1999, Niels *)
-     fun shift_lefti_kill_tmp01 a = shift_op_kill_tmp01 I.sall a
+     fun shift_lefti_kill_tmp01 (x,y,d,size_ff,C) =  (*tmp_reg0 = %ecx*)
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
+	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+       in 
+	 if !BI.tag_integers then   (* 1 + ((x - 1) << (y >> 1)) *)
+	   x_C(y_C(
+	   copy(y_reg, ecx,
+           copy(x_reg, d_reg,
+	   I.decl (R d_reg) ::           (* x - 1  *)
+	   I.sarl (I "1", R ecx) ::      (* y >> 1 *)
+	   I.sall (R cl, R d_reg) ::     (*   <<   *)
+	   I.incl (R d_reg) :: C'))))    (* 1 +    *)
+	 else
+	   x_C(y_C(         
+	  copy(y_reg, ecx,
+	  copy(x_reg, d_reg,
+          I.sall(R cl, R d_reg) :: C'))))
+       end
 
-     (* Tagging? 09/01/1999, Niels *)
-     fun shift_right_signedi_kill_tmp01 a = shift_op_kill_tmp01 I.sarl a
+     fun shift_right_signedi_kill_tmp01 (x,y,d,size_ff,C) =  (*tmp_reg0 = %ecx*)
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
+	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+       in 
+	 if !BI.tag_integers then (* 1 | ((x) >> (y >> 1)) *)
+	   x_C(y_C(         
+ 	   copy(y_reg, ecx,
+	   copy(x_reg, d_reg,
+	   I.sarl (I "1", R ecx) ::         (* y >> 1 *)
+           I.sarl (R cl,R d_reg) ::         (* x >>   *)
+	   I.orl (I "1", R d_reg) :: C')))) (* 1 |    *)
+	 else
+	   x_C(y_C(         
+ 	   copy(y_reg, ecx,
+	   copy(x_reg, d_reg,
+           I.sarl(R cl, R d_reg) :: C'))))
+       end
 
-     (* Tagging? 09/01/1999, Niels *)
-     fun shift_right_unsignedi_kill_tmp01 a = shift_op_kill_tmp01 I.shrl a
-       
-
+     fun shift_right_unsignedi_kill_tmp01 (x,y,d,size_ff,C) =  (*tmp_reg0 = %ecx*)
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
+	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+       in 
+	 if !BI.tag_integers then (* 1 | ((unsigned long)(x) >> (y >> 1)) *)
+	   x_C(y_C(         
+ 	   copy(y_reg, ecx,
+	   copy(x_reg, d_reg,
+	   I.sarl (I "1", R ecx) ::         (* y >> 1                *)
+           I.shrl (R cl,R d_reg) ::         (* (unsigned long)x >>   *)
+	   I.orl (I "1", R d_reg) :: C')))) (* 1 |                   *)
+	 else
+	   x_C(y_C(         
+ 	   copy(y_reg, ecx,
+	   copy(x_reg, d_reg,
+           I.shrl(R cl, R d_reg) :: C'))))
+       end
 		
       fun subw_kill_tmp01(x,y,d,size_ff,C) =
 	let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
@@ -1300,6 +1390,9 @@ struct
 		    val size_rcf = length spilled_res
 		    val size_ccf = length spilled_args
 		    val size_cc = size_rcf+size_ccf+1
+(*val _ = if size_cc > 1 then die ("\nfncall: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^  
+				 (Int.toString size_rcf) ^ ".") else () (* debug 2001-01-08, Niels *)*)
+
 		    val return_lab = new_local_lab "return_from_app"
 		    fun flush_args C =
 		      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
@@ -1341,6 +1434,11 @@ struct
 		    val (spilled_args,spilled_res,return_lab_offset) = 
 		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
 		    val size_rcf = List.length spilled_res
+val size_ccf = length spilled_args (* 2001-01-08, Niels debug *)
+val size_cc = size_rcf+size_ccf+1  (* 2001-01-08, Niels debug *)
+(*val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^ 
+				 (Int.toString size_rcf) ^ ".") else () (* 2001-01-08, Niels debug *)*)
+
 		    val return_lab = new_local_lab "return_from_app"
 		    fun flush_args C =
 		      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C (spilled_args)
@@ -1486,10 +1584,12 @@ struct
 		    CG_lss(default,size_ff,size_ccf,
                     I.lab lab_exit :: C))
 		  end
+	       | LS.SWITCH_C(LS.SWITCH(opr_aty,[],default)) => CG_lss(default,size_ff,size_ccf,C)
 	       | LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)) => 
 		  let (* NOTE: selectors in sels are tagged in ClosExp but the operand is tagged here! *)
 		    val con_kind = case sels 
-				     of [] => LS.ENUM 1 (*necessary to compile non-optimized programs (OptLambda off) *)
+				     of [] => die ("CG_ls: SWITCH_C sels is empty: " ^ (pr_ls ls))
+				     (*of [] => LS.ENUM 1*) (*necessary to compile non-optimized programs (OptLambda off) *)
 				      | ((con,con_kind),_)::rest => con_kind
  		    val sels' = map (fn ((con,con_kind),sel_insts) => 
 				     case con_kind 
@@ -1501,7 +1601,7 @@ struct
 		      in move_aty_into_reg(src_aty,tmp_reg0,size_ff, 
 		         copy(tmp_reg0, tmp_reg1, (* operand is in tmp_reg1, see SWITCH_I *)
 		         I.andl(I "3", R tmp_reg1) ::
-                         I.cmpl(I "3", R tmp_reg1) ::   (* nullify copy if tr = 3; in that case we *)
+                         I.cmpl(I "3", R tmp_reg1) ::   (* do copy if tr = 3; in that case we      *)
                          I.jne cont_lab ::              (* are dealing with a nullary constructor, *)
                          copy(tmp_reg0, tmp_reg1,       (* and all bits are used. *)
                          I.lab cont_lab :: C)))
@@ -1603,6 +1703,9 @@ struct
 
 	val size_ff = CallConv.get_frame_size cc
 	val size_ccf = CallConv.get_ccf_size cc
+	val size_rcf = CallConv.get_rcf_size cc
+(*val _ = if size_ccf + size_rcf > 0 then die ("\ndo_gc: size_ccf: " ^ (Int.toString size_ccf) ^ " and size_rcf: " ^ 
+					       (Int.toString size_rcf) ^ ".") else () (* 2001-01-08, Niels debug *)*)
 	val C = base_plus_offset(esp,WORDS(size_ff+size_ccf),esp,
 				 I.popl (R tmp_reg1) ::
 				 I.jmp (R tmp_reg1) :: [])
@@ -1614,8 +1717,9 @@ struct
    *)
       in
 	gen_fn(lab,
-	       do_gc(reg_map,base_plus_offset(esp,WORDS(~size_ff),esp,
-	       CG_lss(lss,size_ff,size_ccf,C))))
+	       do_gc(reg_map,size_ccf,size_rcf,
+		     base_plus_offset(esp,WORDS(~size_ff),esp,
+				      CG_lss(lss,size_ff,size_ccf,C))))
       end
 
     fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' I.FUN (lab,cc,lss)
@@ -1654,7 +1758,7 @@ struct
     (* ------------------------------------------------------------------------------ *)
     (*              Generate Link Code for Incremental Compilation                    *)
     (* ------------------------------------------------------------------------------ *)
-    fun generate_link_code (linkinfos:label list) : I.AsmPrg = 
+    fun generate_link_code (linkinfos:label list, exports: label list * label list) : I.AsmPrg = 
       let	
 	val _ = reset_static_data()
 	val _ = reset_label_counter()
@@ -1662,6 +1766,9 @@ struct
  	val lab_exit = NameLab "__lab_exit"
         val next_prog_unit = Labels.new_named "next_prog_unit"
 	val progunit_labs = map MLFunLab linkinfos
+	val dat_labs = map DatLab (#2 exports) (* Also in the root set 2001-01-09, Niels *)
+val _ = print ("There are " ^ (Int.toString (List.length dat_labs)) ^ " data labels in the root set. ")
+val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
 	fun slot_for_datlab(l,C) =
 	  I.dot_globl (DatLab l) ::
@@ -1684,6 +1791,12 @@ struct
 	      load_indexed(arg_reg,arg_reg,WORDS (offset+1), (* Fetch pointer to exception string *)
 	      compile_c_call_prim("uncaught_exception",[SS.PHREG_ATY arg_reg],NONE,0,tmp_reg1,C)))
 	  end
+
+	fun store_exported_data_for_gc (labs,C) =
+	  foldr (fn (l,acc) => I.pushl(LA l) :: acc) 
+	  (I.pushl (I (int_to_string (List.length labs))) ::
+	   I.movl(R esp, L data_lab_ptr_lab) :: C) labs
+
 
 	fun raise_insts C = (* expects exception value on stack!! *)
 	  let
@@ -1837,6 +1950,7 @@ struct
 		foldr (fn (r, C) => I.pushl(R r) :: C) C all_regs
 	      fun pop_all_regs C = 
 		foldl (fn (r, C) => I.popl(R r) :: C) C all_regs
+	      fun pop_size_ccf_rcf C = base_plus_offset(esp,WORDS(2),esp,C) (* they are pushed in do_gc *)
 	      val size_ff = 0 (*dummy*)
 	    in
 	      I.dot_text ::
@@ -1845,8 +1959,9 @@ struct
 	      push_all_regs (* The return lab and ecx are also preserved *)
 	      (copy(esp,tmp_reg0,
 		    compile_c_call_prim("gc",[SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1],NONE,size_ff,eax,
-					pop_all_regs (* The return lab and tmp_reg0 are also popped again *)
-					(I.jmp(R tmp_reg0) :: C))))
+					pop_all_regs( (* The return lab and tmp_reg0 are also popped again *)
+					pop_size_ccf_rcf(
+					(I.jmp(R tmp_reg0) :: C))))))
 	    end
 	  else C
 
@@ -1860,6 +1975,7 @@ struct
 		   comment ("JUMP TO NEXT PROGRAM UNIT",
 		   I.jmp(L l) :: 
 		   I.dot_long "0XFFFFFFFF" :: (* Marks, no more frames on stack. Used to calculate rootset. *)
+		   I.dot_long "0XFFFFFFFF" :: (* An arbitrary offsetToReturn *)
 		   I.dot_long "0XFFFFFFFF" :: (* An arbitrary function number. *)
                    I.lab next_lab :: C)))
 		 end) C progunit_labs
@@ -1908,6 +2024,9 @@ struct
 	    I.dot_globl (NameLab "code") ::
 	    I.lab (NameLab "code") ::
 
+	    (* Put data labels on the stack; they are part of the root-set. *)
+	    store_exported_data_for_gc (dat_labs,
+
 	    (* Allocate global regions and push them on stack *)
 	    comment ("Allocate global regions and push them on the stack",
 	    allocate_global_regions(global_region_labs,
@@ -1933,9 +2052,9 @@ struct
 	    generate_jump_code_progunits(progunit_labs,
 
             (* Exit instructions *)
-	    compile_c_call_prim("terminateML", [SS.INTEGER_ATY res], NONE,0,eax,
+	    compile_c_call_prim("terminateML", [SS.INTEGER_ATY res], NONE,0,eax, (* instead of res we might use the result from the last function call, 2001-01-08, Niels *)
 	    (*I.leave :: *)
-	    I.ret :: C))))))))
+	    I.ret :: C)))))))))
 	  end
 
 	val init_link_code = (main_insts o raise_insts o 

@@ -169,7 +169,7 @@ val test9 =
 	    SOME(takel (fn _ => b) getc src, src)
 	fun dup 0 s = s
 	  | dup n s = dup (n-1) (s^s);
-	val longstring = dup 13 "abcDEFGHI"
+	val longstring = dup 11 "abcDEFGHI" (* was dup 13, but doesn't work for unoptimized programs 2001-01-27, Niels *)
     in 
 	scanString (getstring true) longstring = SOME longstring 
 	andalso scanString (getstring false) longstring = SOME ""

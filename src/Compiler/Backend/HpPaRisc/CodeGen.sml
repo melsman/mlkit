@@ -320,7 +320,7 @@ struct
       add_static_data [DOT_DATA,
 		       DOT_ALIGN 4,
 		       LABEL(DatLab lab),
-		       DOT_WORD "0"]
+		       DOT_WORD (int_to_string BI.ml_unit)] (* was "0", but use ML-unit for GC 2001-01-09, Niels *)
 
     (* Can be used to update the stack or a record when the argument is an ATY *)
     (* base_reg[offset] = src_aty *)
@@ -1793,7 +1793,7 @@ struct
     (* ------------------------------------------------------------------------------ *)
     (*              Generate Link Code for Incremental Compilation                    *)
     (* ------------------------------------------------------------------------------ *)
-    fun generate_link_code (linkinfos:label list) =
+    fun generate_link_code (linkinfos:label list,exports: label list * label list) =
       let	
 	val _ = reset_static_data()
 	val _ = reset_label_counter()
@@ -1802,6 +1802,7 @@ struct
 	val lab_exit = NameLab "__lab_exit"
 	val next_prog_unit = Labels.new_named "next_prog_unit"
 	val progunit_labs = map MLFunLab linkinfos
+	val dat_labs = map DatLab (#2 exports) (* Also in the root set. 2001-01-09, Niels *)
 
 	fun slot_for_datlab(l,C) =
 	  DOT_DATA ::

@@ -82,16 +82,17 @@ fun build_x86 () =
   in 
     disable "garbage_collection";
     disable "delete_target_files";
-    enable "unbox_function_arguments";
-(*    enable "print_types"; *)
 
-(*    enable "garbage_collection";
-    enable "tag_values";
-    enable "tag_integers";
-    disable "unbox_datatypes";*)
+    disable "optimiser";
+    disable "unbox_function_arguments";
+    disable "use_flow_variables"; 
 
-    (*enable "print_clos_conv_program";*)
-    KitX86.build_basislib();
+    disable "print_call_explicit_expression";
+    disable "print_clos_conv_program";
+    disable "print_calc_offset_program";
+    disable "print_simplified_program";
+
+(*    KitX86.build_basislib();*)
     enable "auto_import_basislib" ;
     KitX86.install() 
   end;

@@ -37,8 +37,8 @@ functor ExecutionDummy(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
     type target = unit
 
     val code_label_of_linkinfo : linkinfo -> label = fn _ => Labels.new()
-    val imports_of_linkinfo : linkinfo -> label list = fn _ => nil
-    val exports_of_linkinfo : linkinfo -> label list = fn _ => nil
+    val imports_of_linkinfo : linkinfo -> (label list * label list) = fn _ => (nil,nil)
+    val exports_of_linkinfo : linkinfo -> (label list * label list) = fn _ => (nil,nil)
     val unsafe_linkinfo : linkinfo -> bool = fn _ => false
 
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo

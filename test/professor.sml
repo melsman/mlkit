@@ -61,7 +61,7 @@ fun pr s = print s
 fun die s = (pr ("Professor_game - DIE with message: " ^ s);
 	     raise Die)
 
-fun log s = print "Professor_game - LOG with message: " ^ s ^ "\n"
+fun log s = print ("Professor_game - LOG with message: " ^ s ^ "\n")
 
 val debug_flag = false
 fun debug s = if debug_flag then log s

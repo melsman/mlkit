@@ -6,9 +6,9 @@ let
   infix  3  := o
   infix  0  before
 
-  fun print (s:string) : unit = prim("printString", "printString", s)
+  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
   
-  fun (s : string) ^ (s' : string) : string = prim ("concatString", "concatStringProfiling", (s, s'))
+  fun (s : string) ^ (s' : string) : string = prim ("concatStringML", "concatStringProfilingML", (s, s'))
 
   val _ = print ("Hej" ^ " " ^ "Igen" ^ "\n")
 in

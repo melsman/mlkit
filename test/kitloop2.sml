@@ -5,11 +5,11 @@
 
 val x =
 let 
-  val N = 500
-  val I = 1000
+  val N = 200
+  val I = 1000 
 
   type int_pair = int * int
-  val maxint = 2000
+  val maxint = 375 (* was 2000 but doesn't work for unoptimized programs 2001-01-27, Niels*)
   val zero = (0,0)
   fun is_zero(0,0) = true
     | is_zero _ = false

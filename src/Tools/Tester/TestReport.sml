@@ -19,6 +19,14 @@ signature TEST_REPORT =
 
     val add_profile_line : string * bool -> unit   (* `name' and `ok' *)
 
+    val add_gc_line : string * bool -> unit   (* `name' and `ok' *)
+
+    val add_gc_profile_line : string * bool -> unit   (* `name' and `ok' *)
+
+    val add_tags_line : string * bool -> unit (* `name' and `ok' *)
+
+    val add_tags_profile_line : string * bool -> unit (* `name' and `ok' *)
+
     val add_log_line : string -> unit
   end
 
@@ -34,15 +42,25 @@ structure TestReport : TEST_REPORT =
     val runtime_lines : runtime_line list ref = ref nil
     val runtime_bare_lines : (string * bool) list ref = ref nil
     val profile_lines : (string * bool) list ref = ref nil
+    val gc_lines : (string * bool) list ref = ref nil
+    val gc_prof_lines : (string * bool) list ref = ref nil
+    val tags_lines : (string * bool) list ref = ref nil
+    val tags_prof_lines : (string * bool) list ref = ref nil
     val log_lines : string list ref = ref nil
 
     fun reset () = (runtime_lines := nil; runtime_bare_lines := nil; 
 		    compout_lines := nil; comptime_lines := nil; 
-		    profile_lines := nil; log_lines := nil)
+		    profile_lines := nil; log_lines := nil;
+		    gc_lines := nil; gc_prof_lines := nil;
+		    tags_lines := nil; tags_prof_lines := nil)
       
     fun add_runtime_line l = runtime_lines := l :: !runtime_lines
     fun add_runtime_bare_line l = runtime_bare_lines := l :: !runtime_bare_lines
     fun add_profile_line l = profile_lines := l :: !profile_lines
+    fun add_gc_line l = gc_lines := l :: !gc_lines
+    fun add_gc_profile_line l = gc_prof_lines := l :: !gc_prof_lines
+    fun add_tags_line l = tags_lines := l :: !tags_lines
+    fun add_tags_profile_line l = tags_prof_lines := l :: !tags_prof_lines
     fun add_comptime_line l = comptime_lines := l :: !comptime_lines
     fun add_compout_line l = compout_lines := l :: !compout_lines
     fun add_log_line l = log_lines := l :: !log_lines
@@ -140,7 +158,7 @@ structure TestReport : TEST_REPORT =
 
 	  fun header() =
 	    (outln "\\documentclass[10pt]{article}";
-	     outln "\\usepackage{fullpage}";
+	     outln "\\usepackage{a4wide}";
 	     outln "\\textwidth 170mm";
 	     outln "\\title{ML Kit Test Report}";
 	     outln "\\author{Author: The ML Kit Tester}";
@@ -250,51 +268,121 @@ structure TestReport : TEST_REPORT =
 	      app (outln o line) l;
 	      endenv "tabular"
 	    end
-
-	  fun exe_output_section [] = ()
-	    | exe_output_section (l:(string * bool) list) =
-	    let 
-	        val header = "\\hline Source & Ok \\\\ \\hline"
+	  
+	  local
+	    val header = "\\hline Source & Ok \\\\ \\hline"
+	    fun line (name, ok) = (verb name ^ " & " ^ pr_ok ok ^ "\\\\ \\hline")
+	    fun table [] = ()
+	      | table l = (beginenv' ("tabular","{|l|c|}");
+			   outln header;
+			   app (outln o line) l;
+			   endenv "tabular")
+	  in
+	    fun exe_output_section [] = ()
+	      | exe_output_section (l:(string * bool) list) =
+	      let 
+(*	        val header = "\\hline Source & Ok \\\\ \\hline"
 		fun line (name, ok) = (verb name ^ " & " ^ pr_ok ok ^ "\\\\ \\hline")
 		fun table [] = ()
 		  | table l = (beginenv' ("tabular","{|l|c|}");
 			       outln header;
 			       app (outln o line) l;
-			       endenv "tabular")
+			       endenv "tabular") 20/04/1999, Niels *)
 		val (l1,l2,l3) = split_lines l
-	    in 
-	      section "Comparison of Output from Executables";
-	      outln "This section shows if the output from execution equals the expected output.";
-	      outln "Entries for executables that are measured in Section ``Measurements of Executables''";
-	      outln "(if one such section exists) are not shown here.";
-	      outln "";
-	      outln "\\vspace{4mm}";
-	      table l1;
-	      table l2;
-	      table l3
-	    end
+	      in 
+		section "Comparison of Output from Executables";
+		outln "This section shows if the output from execution equals the expected output.";
+		outln "Entries for executables that are measured in Section ``Measurements of Executables''";
+		outln "(if one such section exists) are not shown here.";
+		outln "";
+		outln "\\vspace{4mm}";
+		table l1;
+		table l2;
+		table l3
+	      end
 
-	  fun profile_section [] = ()
-	    | profile_section (l:(string * bool) list) =
-	    let 
-	        val header = "\\hline Source & Ok \\\\ \\hline"
+	    fun profile_section [] = ()
+	      | profile_section (l:(string * bool) list) =
+	      let 
+(*	        val header = "\\hline Source & Ok \\\\ \\hline"
 		fun line (name, ok) = (verb name ^ " & " ^ pr_ok ok ^ "\\\\ \\hline")
 		fun table [] = ()
 		  | table l = (beginenv' ("tabular","{|l|c|}");
 			       outln header;
 			       app (outln o line) l;
-			       endenv "tabular")
+			       endenv "tabular") 20/04/1999, Niels*)
 		val (l1,l2,l3) = split_lines l
-	    in 
-	      section "Profiling";
-	      outln "This section shows tests of the compiler with profiling enabled.";
-	      outln "See Section ``Log File'' for details of errors.";
-	      outln "";
-	      outln "\\vspace{4mm}";
-	      table l1;
-	      table l2;
-	      table l3
-	    end
+	      in 
+		section "Profiling";
+		outln "This section shows tests of the compiler with profiling enabled.";
+		outln "See Section ``Log File'' for details of errors.";
+		outln "";
+		outln "\\vspace{4mm}";
+		table l1;
+		table l2;
+		table l3
+	      end
+
+	    fun gc_section [] = ()
+	      | gc_section (l:(string * bool) list) =
+	      let
+		val (l1,l2,l3) = split_lines l
+	      in
+		section "Garbage Collection";
+		outln "This section shows tests of the compile with garbage collection enabled.";
+		outln "See Section ``Log File'' for details of errors.";
+		outln "";
+		outln "\\vspace{4mm}";
+		table l1;
+		table l2;
+		table l3
+	      end
+
+	    fun gc_prof_section [] = ()
+	      | gc_prof_section (l:(string * bool) list) =
+	      let
+		val (l1,l2,l3) = split_lines l
+	      in
+		section "Garbage Collection and Profiling";
+		outln "This section shows tests of the compile with garbage collection and profiling enabled.";
+		outln "See Section ``Log File'' for details of errors.";
+		outln "";
+		outln "\\vspace{4mm}";
+		table l1;
+		table l2;
+		table l3
+	      end
+
+	    fun tags_section [] = ()
+	      | tags_section (l:(string * bool) list) =
+	      let
+		val (l1,l2,l3) = split_lines l
+	      in
+		section "Tagging";
+		outln "This section shows tests of the compile with tagging enabled (garbage collection disabled).";
+		outln "See Section ``Log File'' for details of errors.";
+		outln "";
+		outln "\\vspace{4mm}";
+		table l1;
+		table l2;
+		table l3
+	      end
+
+	    fun tags_prof_section [] = ()
+	      | tags_prof_section (l:(string * bool) list) =
+	      let
+		val (l1,l2,l3) = split_lines l
+	      in
+		section "Tagging and Profiling";
+		outln "This section shows tests of the compile with tagging and profiling enabled (garbage collection disabled).";
+		outln "See Section ``Log File'' for details of errors.";
+		outln "";
+		outln "\\vspace{4mm}";
+		table l1;
+		table l2;
+		table l3
+	      end
+	  end
  
 	  fun testfile_section() =
 	    (section "Test File";
@@ -311,17 +399,22 @@ structure TestReport : TEST_REPORT =
 	     app outln lines;
 	     endenv "verbatim")
 
-      in header(); 
-	 abstract(); 
-	 compout_section(rev(!compout_lines));
-	 comptime_section(rev(!comptime_lines));
-	 execution_section(rev(!runtime_lines));
-	 exe_output_section(rev(!runtime_bare_lines));
-	 profile_section(rev(!profile_lines));
-	 testfile_section();
-	 logsection (rev(!log_lines)); 
-	 endenv "document"; 
-	 TextIO.closeOut os; 
-	 latex texfile
+      in
+	header(); 
+	abstract(); 
+	compout_section(rev(!compout_lines));
+	comptime_section(rev(!comptime_lines));
+	execution_section(rev(!runtime_lines));
+	exe_output_section(rev(!runtime_bare_lines));
+	profile_section(rev(!profile_lines));
+	tags_section(rev(!tags_lines));
+	tags_prof_section(rev(!tags_prof_lines));
+	gc_section(rev(!gc_lines));
+	gc_prof_section(rev(!gc_prof_lines));
+	testfile_section();
+	logsection (rev(!log_lines)); 
+	endenv "document"; 
+	TextIO.closeOut os; 
+	latex texfile
       end
   end

@@ -285,8 +285,11 @@ not used anymore 2000-10-17, Niels *)
 	  let 
 	    val _ = pr_debug_linking "[Link time dead code elimination begin...]\n"
 	    val table = labelTable.mk()
-	    fun require labs : unit = List.app (fn lab => labelTable.insert(table,lab)) labs
-	    fun required labs : bool = foldl (fn (lab,acc) => acc orelse labelTable.look(table,lab)) false labs
+	    fun require (f_labs,d_labs) : unit = (List.app (fn lab => labelTable.insert(table,lab)) f_labs;
+						  List.app (fn lab => labelTable.insert(table,lab)) d_labs) (* 2001-01-09, Niels *)
+	    fun required (f_labs,d_labs) : bool = 
+	      foldl (fn (lab,acc) => acc orelse labelTable.look(table,lab))
+	      (foldl (fn (lab,acc) => acc orelse labelTable.look(table,lab)) false f_labs) d_labs  (* 2001-01-09, Niels *)
 	    fun reduce [] = []
 	      | reduce (obj::rest) = 
 	      let val rest' = reduce rest
@@ -337,10 +340,13 @@ not used anymore 2000-10-17, Niels *)
 	    val linkinfos = map #2 tfiles_with_linkinfos
 	    val target_files = map #1 tfiles_with_linkinfos
 	    val labs = map Execution.code_label_of_linkinfo linkinfos
+	    val exports = 
+	      List.foldr (fn ((fs,ds),(acc_f,acc_d)) =>  (fs@acc_f, ds@acc_d)) ([],[]) 
+	      (map Execution.exports_of_linkinfo linkinfos)  (* 2001-01-09, Niels *)
 	    val extobjs = elim_dupl (extobjs,[])
 	  in case Execution.generate_link_code
 	       of SOME generate_link_code =>
-		 let val target_link = generate_link_code labs
+		 let val target_link = generate_link_code (labs, exports)
 		   val linkfile = pmdir() ^ "link_objects"
 		   val linkfile_s = append_ext linkfile
 		   val linkfile_o = append_o linkfile

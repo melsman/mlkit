@@ -244,10 +244,15 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		 end handle _ => (print "Error: I could not open file `KITtimings' for writing.\n"; 
 				  OS.Process.failure))
 		| loop ("-nobasislib"::rest, script) = (Flags.auto_import_basislib := false; loop (rest, script))
+		| loop ("-nooptimiser"::rest, script) = (Flags.turn_off "optimiser"; loop (rest, script))
 		| loop ("-reportfilesig"::rest, script) = (Flags.turn_on "report_file_sig"; loop (rest, script))
 		| loop ("-logtofiles"::rest, script) = (Flags.turn_on "log_to_file"; loop (rest, script))
 		| loop ("-prof"::rest, script) = (Flags.turn_on "region_profiling"; loop (rest, script))
-		| loop ("-gc"::rest, script) = (Flags.turn_on "garbage_collection"; loop (rest, script))
+		| loop ("-gc"::rest, script) = (Flags.turn_on "garbage_collection";
+						Flags.turn_on "tag_integers";
+						Flags.turn_on "tag_values";
+						Flags.turn_on "unbox_datatypes";
+						loop (rest, script))
 		| loop ("-delay_assembly"::rest, script) = (Flags.turn_on "delay_assembly"; loop (rest, script))
 		| loop ("-chat"::rest, script) = (Flags.chat := true; loop (rest, script))
 		| loop ("-nodso" ::rest, script) = (Flags.turn_off "delay_slot_optimization"; loop(rest, script))

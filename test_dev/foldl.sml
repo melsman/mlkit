@@ -1,5 +1,5 @@
 let
-  fun print (s:string):unit = prim ("printString","printString",s)
+  fun print (s:string):unit = prim ("printStringML","printStringML",s)
   fun print_num (n:int):unit = prim ("printNum","printNum",n)
 
   infix ::

@@ -139,16 +139,16 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
 			     structure Crash = Crash
 			     structure Report = Report)
 
-  structure CConst = CConst(structure Flags = Flags
-			    structure Crash = Crash
-			    structure TyName = TyName)
+  structure RegConst = RegConst(structure Flags = Flags
+				structure Crash = Crash
+				structure TyName = TyName)
 
    structure RType = RType(structure Flags = Flags
 			   structure Crash = Crash
 			   structure E = Effect
 			   structure DiGraph = DiGraph
 			   structure L = LambdaExp
-			   structure CConst = CConst
+			   structure RegConst = RegConst
 			   structure FinMap = FinMap
 			   structure TyName = TyName
 			   structure PP = PP)
@@ -207,8 +207,7 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
        structure Crash = Crash
        structure PP = PP
        structure Flags=Flags
-       structure Report = Report
-       structure CConst = CConst)
+       structure Report = Report)
 
 
    structure RegInf= RegInf(
@@ -408,7 +407,7 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
 					structure Flags = Flags
 					structure Crash = Crash
 					structure PP = PP
-					structure CConst = CConst)
+					structure RegConst = RegConst)
 
     structure CompBasis =
       CompBasis(structure CompilerEnv = CompilerEnv

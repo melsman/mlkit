@@ -7,12 +7,14 @@ consists of a file name path (with extension sml, sig, or pm) followed
 by a list of tokens. The following tokens are supported:
 
  nobasislib     ; do not import basis library
+ nooptimiser    ; disable lambda optimiser
  ccl            ; compare compiler logs
  tx             ; time executable
  tc             ; time compiler
  ecte           ; expect compile time error
  prof           ; also compile and compare runtime output with 
                   profiling enabled
+ gc             ; also activate garbage collection
 
 Test files may contain Standard ML like comments.
 
@@ -34,55 +36,55 @@ layout.sml
 
 (* Tests of some benchmark programs *)
 
-kitfib35.sml            tx            nobasislib
-kitdangle.sml           tx            nobasislib
-kitdangle3.sml          tx            nobasislib
-kitreynolds2.sml        tx
-kitreynolds3.sml        tx
-kitloop2.sml            tx   
-kittmergesort.sml       tx tc 
-kitqsort.sml            tx tc
-kitmandelbrot.sml       tx tc 
-kitlife35u.sml          tx tc
-klife_eq.sml            tx tc 
-kitkbjul9.sml           tx tc
-kkb_eq.sml              tx tc
-kkb36c.sml              tx tc 
-kitsimple.sml           tx tc 
-fft.sml                 tx tc 
-msort.pm                tx tc 
-tststrcmp.sml                 
-FuhMishra.pm            tx tc 
+kitfib35.sml            tx    gc         nobasislib
+kitdangle.sml           tx    gc         nobasislib
+kitdangle3.sml          tx    gc         nobasislib
+kitreynolds2.sml        tx    gc
+kitreynolds3.sml        tx    gc
+kitloop2.sml            tx    gc
+kittmergesort.sml       tx tc gc
+kitqsort.sml            tx tc gc
+kitmandelbrot.sml       tx tc gc
+kitlife35u.sml          tx tc gc
+klife_eq.sml            tx tc gc
+kitkbjul9.sml           tx tc gc
+kkb_eq.sml              tx tc gc
+kkb36c.sml              tx tc gc
+kitsimple.sml           tx tc gc
+fft.sml                 tx tc gc
+msort.pm                tx tc gc
+tststrcmp.sml                 gc
+FuhMishra.pm            tx tc gc
 
 (* Tests of dynamic semantics and the Basis Library *)
 
-testdyn1.sml               tc 
-check_arrays.sml              
-array.sml                     
-general.sml                   
-int.sml                       
-list.sml                      
-listpair.sml                  
-string.sml                    
-stringcvt.sml                 
-textio.sml                    
-vector.sml                    
-word8vector.sml               
-word8array.sml                
-bytechar.sml                  
-time.sml                      
-math.sml                         (* ok, but not quite the 
+testdyn1.sml               tc gc
+check_arrays.sml              gc
+array.sml                     gc
+general.sml                   gc
+int.sml                       gc
+list.sml                      gc
+listpair.sml                  gc
+string.sml                    gc
+stringcvt.sml                 gc
+textio.sml                    gc
+vector.sml                    gc
+word8vector.sml               gc
+word8array.sml                gc
+bytechar.sml                  gc
+time.sml                      gc
+math.sml                      gc  (* ok, but not quite the 
                                          semantics of the basis 
                                          library specification *)
-listsort.sml                  
-date.sml                      
-timer.sml                     
-unixpath.sml                  
-cmdline.sml                   
-filesys.sml                       (* See test/README *)
-real.sml                      
-word.sml                      
-word8.sml                         (* the C backend does not
+listsort.sml                  gc
+date.sml                      gc
+timer.sml                     gc
+unixpath.sml                  gc
+cmdline.sml                   gc
+filesys.sml                   gc   (* See test/README *)
+real.sml                      gc
+word.sml                      gc
+word8.sml                     gc	   (* the C backend does not
 	                                 implement overflow on
 	                                 arithmetic operations. *) 
 

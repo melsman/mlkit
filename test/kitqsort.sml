@@ -105,6 +105,6 @@ fun app f [] = ()
     | isSorted (x::(xr as (y::yr))) = (x <= y) andalso (isSorted xr)
 
 in
-  if isSorted (quickSort(randomList 100000)) then say("Ok!\n")
+  if isSorted (quickSort(randomList 10000)) then say("Ok!\n")
   else say("Oops...\n") 
 end
