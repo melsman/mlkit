@@ -1,3 +1,4 @@
+-- $ID$
 -- This code is a modified version of the acs-groups-test module found
 -- in openACS (www.openacs.org): files acs-groups-test.sql
 
@@ -31,6 +32,9 @@ end print_scs_grp_party_index;
 show errors
 
 declare
+  grp_id	integer;
+  grp_name	integer;
+
   A      integer;
   B      integer;
   C      integer;
@@ -65,6 +69,11 @@ begin
   F := scs_group.new(grp_name => 'F', email => 'F', modifying_user => scs_user.system);
   G := scs_group.new(grp_name => 'G', email => 'G', modifying_user => scs_user.system);
   scs_test.printl(']');
+
+  -- testing get functions
+  scs_test.printl('[Testing get functions]');
+  scs_test.testBool( 'getId', 1, A = scs_group.getID('A') );
+  scs_test.testBool( 'name', 1, 'A' = scs_group.name(A) );
 
   -- Create the test members.
   scs_test.print('[Create users...');
@@ -335,6 +344,7 @@ begin
   scs_group.delete(C);
   scs_group.delete(B);
   scs_group.delete(A);
+
 end;
 /
 show errors

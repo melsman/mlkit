@@ -940,6 +940,10 @@ is
     grp_id in scs_groups.grp_id%TYPE
   ) return varchar2;
 
+  function getID (
+    name in scs_groups.grp_name%TYPE
+  ) return scs_groups.grp_id%TYPE;
+
   function member_p (
     party_id in scs_parties.party_id%TYPE,
     grp_id   in scs_groups.grp_id%TYPE,
@@ -1023,6 +1027,20 @@ is
     scs_party.delete(scs_group.delete.grp_id);
   end delete;
 
+  function getID (
+    name in scs_groups.grp_name%TYPE
+  ) return scs_groups.grp_id%TYPE
+  is
+    grp_id scs_groups.grp_id%TYPE;
+  begin
+    select grp_id 
+    into getID.grp_id
+    from scs_groups
+    where grp_name = getID.name;
+
+    return grp_id;
+  end getID;
+
   function name (
     grp_id in scs_groups.grp_id%TYPE
   ) return varchar2
@@ -1036,6 +1054,7 @@ is
 
     return v_grp_name;
   end name;
+
 
   function member_p (
     party_id in scs_parties.party_id%TYPE,
