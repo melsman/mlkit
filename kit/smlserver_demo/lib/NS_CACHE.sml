@@ -22,7 +22,7 @@ signature NS_CACHE =
     (* Memoization *)
     val memoize  : ('a,'b) cache -> ('a -> 'b) -> 'a -> 'b
 
-    (* Build cache types out of pre defined cache types *)
+    (* Build cache types out of predefined cache types *)
     val Pair   : 'a Type -> 'b Type -> ('a*'b) Type
     val Option : 'a Type -> 'a option Type
     val List   : 'a Type -> 'a list Type
@@ -32,7 +32,7 @@ signature NS_CACHE =
     val pp_type  : 'a Type -> string
     val pp_cache : ('a,'b) cache -> string
 
-    (* Pre defined cache types *)
+    (* Predefined cache types *)
     val Int    : int Type
     val Real   : real Type
     val Bool   : bool Type
@@ -49,16 +49,16 @@ signature NS_CACHE =
        approximately t seconds after the last use.
 
      * TimeOut t : elements are emitted from the cache after
-       approximately t seconds after they were inserted.
+       approximately t seconds after they are inserted.
 
      * Size n : the cache has a maximum size of n bytes. Elements are
        emitted as needed in order to store new elements. The size n
-       may not be too small, a minimum size of 1 Kb seems to work fine
-       for small caches; however it may also be much larger.
+       should not be too small, a minimum size of 1 Kb seems to work fine
+       for small caches; larger cache sizes are also supported.
 
     [('a,'b) cache] abstract type of cache. A cache is a mapping from
     keys of type 'a to elements of type 'b. Only values of type 'a
-    Type and 'b Type can be used as keys and elements
+    Type and 'b Type can be used as keys and elements, respectively.
 
     ['a Type] abstract type of either a key or element that can be
     used in a cache.
@@ -72,7 +72,7 @@ signature NS_CACHE =
       * If no cache exists with name cn, then a new cache is created.
 
       * If a cache c exists with name cn, then there are two
-        possibilities to consider:
+        possibilities:
 
           1) If c is a mapping from aType to bType, then c is
              returned.
@@ -88,10 +88,11 @@ signature NS_CACHE =
      in AOLserver (i.e., we append typing information to the name you
      provide in order to maintain type safety). The function get
      raises exception Fail in case the constructed cache name is too
-     large for AOLserver.
+     large for AOLserver. This issue is solved in future (version 4)
+     releases of AOLserver.
 
-    [lookup c k] returns value associated with key k in cache c;
-    returns NONE if key is not in cache.
+    [lookup c k] returns the value associated with the key k in cache
+    c; returns NONE if k is not in the cache.
 
     [insert (c,k,v)] associates a key k with a value v in the cache c;
     overwrites existing entry in cache if k is present, in which case
