@@ -18,6 +18,7 @@ local
   ../scs_lib/ScsDate.sml
   ../scs_lib/SCS_PAGE.sml
   ../scs_lib/ScsLogin.sml
+  ../scs_lib/ScsWidget.sml
   ../scs_lib/ScsPage.sml
   ../scs_lib/ScsList.sml
   ../scs_lib/ScsDict.sml
