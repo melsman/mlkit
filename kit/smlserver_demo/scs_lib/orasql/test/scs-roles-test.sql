@@ -24,13 +24,13 @@ begin
   -- testing new
   textid1 := scs_text.new;
   roleid1 := scs_role.new( abbreviation => 'BOFH', role_description_tid => textid1 );
-  select count (*) into counter1 from scs_roles;
+  select count (*) into counter1 from scs_roles where abbreviation = 'BOFH';
   scs_test.testBool( 'new', 1, counter1 = 1 );  
 
   objid1 := scs.new_obj_id;
   roleid2 := scs_role.new( objid1, 'dba', textid1 );
-  select count (*) into counter1 from scs_roles;
-  scs_test.testBool( 'new', 2, roleid2 = objid1 and counter1 = 2 );
+  select count (*) into counter1 from scs_roles where abbreviation = 'dba';
+  scs_test.testBool( 'new', 2, roleid2 = objid1 and counter1 = 1 );
 
   -- testing abbrev_to_roleid
   scs_test.testBool('abbrev_to_roleid',1,scs_role.abbrev_to_roleid('BOFH') = roleid1);
@@ -46,11 +46,11 @@ begin
   partyid0 := 0;
   partyid1 := 1;
   scs_role.add( partyid0, roleid1 );
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid0 and role_id = roleid1;
   scs_test.testBool('add using roleid', 1, counter1 = 1 );
 
   scs_role.add( partyid0, roleid1 );
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid0 and role_id = roleid1;
   scs_test.testBool('add using roleid', 2, counter1 = 1 );
 
   scs_test.testExn('add using roleid',3,'
@@ -70,32 +70,32 @@ begin
   scs_test.testBool('has_p using roleid', 4, scs_role.has_p(party_id => 42424242, role_id => roleid1) = 'f'); 
 	
   -- testing remove using role_id
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid1;
   scs_test.testBool('remove using role_id',1, counter1 = 1);
 
   scs_role.remove(party_id => partyid0, role_id => roleid1);
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid0 and role_id = roleid1;
   scs_test.testBool('remove using role_id',2, counter1 = 0);
 
   scs_role.remove(party_id => partyid0, role_id => roleid1);
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid0 and role_id = roleid1;
   scs_test.testBool('remove using role_id',3, counter1 = 0);
 
   scs_role.remove(party_id => 42424242, role_id => roleid1);  -- party does not exists
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = 42424242 and role_id = roleid1;
   scs_test.testBool('remove using role_id',4, counter1 = 0);
 
   scs_role.remove(party_id => partyid0, role_id => 42424242);  -- role_id does not exists
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid0 and role_id = 42424242;
   scs_test.testBool('remove using role_id',5, counter1 = 0);
 
   -- testing add again using abbreviations instead of roleid's
   scs_role.add(partyid0, 'BOFH');
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid0;
   scs_test.testBool('add using abbrev', 1, counter1 = 1 );
 
   scs_role.add(partyid0, 'BOFH');
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid0;
   scs_test.testBool('add using abbrev', 2, counter1 = 1 );
 
   scs_test.testExn('add using abbrev',3,'
@@ -115,23 +115,23 @@ begin
   scs_test.testBool( 'has_p using abbrev', 4, scs_role.has_p( party_id => 42424242, role_abbrev => 'BOFH' ) = 'f' ); 
 
   -- testing remove using role_abbrev
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid0;
   scs_test.testBool('remove using role_abbrev',1, counter1 = 1);
 
   scs_role.remove(party_id => partyid0, role_abbrev => 'BOFH');
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid0;
   scs_test.testBool('remove using role_abbrev',2, counter1 = 0);
 
   scs_role.remove(party_id => partyid0, role_abbrev => 'BOFH');
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid0;
   scs_test.testBool('remove using role_abbrev',3, counter1 = 0);
 
   scs_role.remove(party_id => 42424242, role_abbrev => 'BOFH');  -- party does not exists
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = 42424242;
   scs_test.testBool('remove using role_abbrev',4, counter1 = 0);
 
   scs_role.remove(party_id => partyid0, role_abbrev => '42424242');  -- role_abbrev does not exists
-  select count (*) into counter1 from scs_role_rels;
+  select count (*) into counter1 from scs_role_rels where party_id = partyid0;
   scs_test.testBool('remove using role_abbrev',5, counter1 = 0);
 
   -- testing destroy
