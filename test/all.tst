@@ -43,6 +43,7 @@ layout.sml
 anoq_Exception.sml
 danwang.pm                    tc
 testmatc.sml        ccl
+dangle4.sml                   gc prof
 
 (* Tests of some benchmark programs *)
 
