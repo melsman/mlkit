@@ -12,15 +12,39 @@ structure SMLserver :> SMLSERVER =
 	fun log s = log' (Notice, s)
     end
 
-    (* exit(): By raising Interrupt, the web-server is not killed as it
-     * would be if we call OS.Process.exit. Also, handlers can
-     * protect the freeing of resources such as file descriptors
-     * and database handles. Moreover, region pages are freed as 
-     * they should be. *)
-    fun exit() = raise Interrupt  
-    (* Notice that if the server sees an uncaught exception then
-     no response has been send to the client, which means that the
-     server should send an error page. *)
+    (* exit(): execute registered ``at exit'' functions and halt
+     * the evaluation. The byte code backend translates the
+     * OS.Process.terminate function into a HALT instruction,
+     * which takes care of freeing region pages. The functions 
+     * atExit and exitUnreg may be used, for instance, to close 
+     * database connections in case of errors. 
+     *)
+
+    structure Exit =
+	struct
+	    type exitId = int
+	    local 
+		fun terminate () = OS.Process.terminate OS.Process.success
+		val tasks : (int * (unit -> unit)) list ref = ref nil
+		val c : int ref = ref 0
+	    in
+		fun atExit f : exitId =
+		    let val i = !c
+		    in   c := i + 1 
+			; tasks := (i,f) :: !tasks
+			; i
+		    end
+		fun exitUnreg (eid: exitId) : unit =
+		    let fun loop ((x as (e,_))::xs) = if e = eid then xs else x :: loop xs
+			  | loop nil = nil
+		    in tasks := loop (!tasks)
+		    end
+		fun exit() =
+		    (  List.app (fn (_,f) => f()) (!tasks)
+		     ; terminate())
+	    end
+	end
+    open Exit
 
     fun isNull(s : string) : bool = prim("nssml_isNullString", s)
 
@@ -482,6 +506,8 @@ structure SMLserver :> SMLSERVER =
 	val String = {name="S",to_string=(fn s => s),from_string=(fn s => s)}
       end
 
+    structure Form : SMLSERVER_FORM = Unsafe.Form
+
     structure Info : SMLSERVER_INFO =
 	struct
 	    fun hostname() : string =
@@ -548,10 +574,12 @@ structure SMLserver :> SMLSERVER =
 
     (* Creating the three supported database interfaces *)
     structure DbOra = 
-	SMLserverDbFunctor(structure DbBasic = SMLserverDbBasicOra)
+	SMLserverDbFunctor(structure DbBasic = SMLserverDbBasicOra
+			   structure Exit = Exit)
 
     structure DbPg = 
-	SMLserverDbFunctor(structure DbBasic = SMLserverDbBasicPG)
+	SMLserverDbFunctor(structure DbBasic = SMLserverDbBasicPG
+			   structure Exit = Exit)
 
     structure DbMySQL : SMLSERVER_DB = 
       (* We redefine the stucture here because we need a db-handle to
@@ -559,7 +587,9 @@ structure SMLserver :> SMLSERVER =
       struct
 	local
 	  structure Db = 
-	      SMLserverDbFunctor(structure DbBasic = SMLserverDbBasicMySQL)
+	      SMLserverDbFunctor(structure DbBasic = SMLserverDbBasicMySQL
+				 structure Exit = Exit)
+	      
 	in
 	  open Db
 	  (* seqNextval assumes a table simulating the sequence with one auto-increment field:
@@ -587,3 +617,4 @@ structure SMLserver :> SMLSERVER =
       end 
   end
 
+structure Form = SMLserver.Form

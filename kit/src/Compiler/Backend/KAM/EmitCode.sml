@@ -75,6 +75,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | StackAddrInfBit(off,s) => (out_opcode STACK_ADDR_INF_BIT; out_int off)
       | StackAddr(off,s) => (out_opcode STACK_ADDR; out_int off)
       | EnvToAcc => out_opcode ENV_TO_ACC
+      | Halt => out_opcode HALT
 
       |	ImmedInt(0) => (out_opcode IMMED_INT0)
       |	ImmedInt(1) => (out_opcode IMMED_INT1)

@@ -5,7 +5,13 @@ signature HTTP =
 	val returnHtml  : html -> response
 	val returnHtml' : SMLserver.Cookie.cookiedata list 
                           -> html -> response
+	val respondExit : response -> 'a
     end
+
+(* 
+ [respondExit r] sends a response to the client and exits; this
+ function never returns.
+*)
 
 signature HTTP_EXTRA =
     sig

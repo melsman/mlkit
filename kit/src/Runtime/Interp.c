@@ -974,7 +974,9 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       }
       Instruct(HALT): { 
 	debug(printf("HALT; acc = %d\n", acc));
-	return acc;     /* the accumulator is the result of the entire computation */
+	// deallocate regions on the stack except top-level regions
+	deallocateRegionsUntil((Region)sp0, topRegionCell);
+	return acc;     // the accumulator is the result of the entire computation
       }
 
     raise_exception:
@@ -987,7 +989,7 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       Instruct(PUSH_EXN_PTR): {
 	debug(printf("PUSH_EXN_PTR\n"));
 	pushDef((unsigned long)exnPtr);
-	exnPtr = sp - 1;                    /* there is no stack-macro to do this! */
+	exnPtr = sp - 1;                    // there is no stack-macro to do this!
 	Next;
       }
       

@@ -871,7 +871,9 @@ struct
 		  | "table_size"           => PrimTableSize
 
 		  | "__is_null"            => PrimIsNull
- 
+
+		  | "terminateML"          => Halt
+
 		  | _ => die ("PRIM(" ^ name ^ ") not implemented")
 	  in
 	    if BI.is_prim name then 

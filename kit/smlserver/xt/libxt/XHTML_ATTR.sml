@@ -18,7 +18,7 @@ signature XHTML_ATTR =
 	     'e,na,'e2, 'f,na,'f2, 'g,na,'g2, 'h,na,'h2) attr0
 
 	(* Concatenation of attributes *)
-	val ## : ('a1,'a2, 'b1,'b2, 'c,'c1,'c2, 'd,'d1,'d2, 
+	val % : ('a1,'a2, 'b1,'b2, 'c,'c1,'c2, 'd,'d1,'d2, 
 	      'e,'e1,'e2, 'f,'f1,'f2, 'g,'g1,'g2, 'h,'h1,'h2) attr0 *
 	    ('a2,'a3, 'b2,'b3, 'c,'c2,'c3, 'd,'d2,'d3, 
 	      'e,'e2,'e3, 'f,'f2,'f3, 'g,'g2,'g3, 'h,'h2,'h3) attr0 ->

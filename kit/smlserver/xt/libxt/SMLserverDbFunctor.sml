@@ -12,7 +12,16 @@ signature SMLSERVER_DB_BASIC =
     val timestampType : string
   end
 
-functor SMLserverDbFunctor (structure DbBasic : SMLSERVER_DB_BASIC) : SMLSERVER_DB =
+signature SMLSERVER_EXIT =
+  sig
+    type exitId
+    val atExit        : (unit -> unit) -> exitId
+    val exitUnreg     : exitId -> unit 
+  end
+
+functor SMLserverDbFunctor (structure DbBasic : SMLSERVER_DB_BASIC
+			    structure Exit : SMLSERVER_EXIT) 
+    : SMLSERVER_DB =
   struct
     type ns_db = int
     type set = NsSet.set
@@ -24,7 +33,7 @@ functor SMLserverDbFunctor (structure DbBasic : SMLSERVER_DB_BASIC) : SMLSERVER_
     structure Pool =
       struct
 	type pool = string
-	type db = pool * ns_db
+	type db = pool * ns_db * Exit.exitId
 	local
 	  val pools : pool list ref = ref [] 
 	in
@@ -44,15 +53,23 @@ functor SMLserverDbFunctor (structure DbBasic : SMLSERVER_DB_BASIC) : SMLSERVER_
 	    end
 	end
 
+	fun poolPutHandle0 (h : ns_db) : unit =
+	  prim("@Ns_DbPoolPutHandle", h)
+
 	fun poolGetHandle (pool : pool) : db =
 	  let
 	    val h : ns_db = prim("@Ns_DbPoolGetHandle", pool)
 	  in
-	    if h = 0 then raise Fail "poolGetHandle:Can't allocate handle" else (pool,h)
+	    if h = 0 then raise Fail "poolGetHandle:Can't allocate handle" 
+	    else 
+		let val exitId = Exit.atExit (fn() => poolPutHandle0 h)
+		in (pool,h,exitId)
+		end
 	  end
 
 	fun poolPutHandle (db : db) : unit =
-	  prim("@Ns_DbPoolPutHandle", #2 db)
+	  (  Exit.exitUnreg (#3 db)
+           ; poolPutHandle0(#2 db))
       end
 
     type pool = Pool.pool

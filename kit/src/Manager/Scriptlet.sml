@@ -69,14 +69,14 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		     readComment is xs (case TextIO.lookahead is of
 					    SOME #")" => (TextIO.input1 is; level - 1)
 					  | SOME _ => level
-					  | NONE => error "nonclosed comment")
+					  | NONE => raise Fail "nonclosed comment")
 	       | SOME #"(" =>
 		     readComment is xs (case TextIO.lookahead is of
 					    SOME #"*" => (TextIO.input1 is; level + 1)
 					  | SOME _ => level
-					  | NONE => error "nonclosed comment")
+					  | NONE => raise Fail "nonclosed comment")
 	       | SOME _ => readComment is xs level
-	       | NONE => error "nonclosed comment"
+	       | NONE => raise Fail "nonclosed comment"
 		     
 	fun isId token : bool = 
 	    CharVector.foldli (fn (i,c,b) => 
@@ -95,14 +95,14 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 	fun parseId s tokens : string * string list =
 	    case tokens of
 		t::ts => if isId t then (t,ts)
-			 else error ("failed to parse " ^ s ^ " identifier")
-	      | _ => error ("failed to parse " ^ s ^ " identifier")
+			 else raise Fail ("failed to parse " ^ s ^ " identifier")
+	      | _ => raise Fail ("failed to parse " ^ s ^ " identifier")
 
 	fun parseToken s tokens =
 	    case tokens of
 		x :: xs => if s = x then xs
-			   else error ("expecting `" ^ s ^ "'")
-	      | _ => error ("expecting `" ^ s ^ "'")
+			   else raise Fail ("expecting `" ^ s ^ "'")
+	      | _ => raise Fail ("expecting `" ^ s ^ "'")
 
 	fun parseType (ts,acc) =
 	    let
@@ -143,7 +143,7 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 
 	fun parseArgs (is : TextIO.instream) : result =
 	    case readTokens is nil of
-		NONE => error "not able to read all tokens before SCRIPTLET signature"
+		NONE => raise Fail "not able to read all tokens before SCRIPTLET signature"
 	      | SOME ts =>
 		    let (* val _ = printss ts *)
 			val ts = parseToken "functor" ts
@@ -164,7 +164,8 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 	    let val is = TextIO.openIn f
 	    in parseArgs is before TextIO.closeIn is
 		handle X => (TextIO.closeIn is; raise X)
-	    end
+	    end handle Fail s => error ("while parsing argument to scriptlet in file: " ^ f ^ ".\n" 
+					^ s)
 
 	(* Generation of abstract form interfaces *)
 
@@ -177,22 +178,22 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		  | parse (x::xs) = (case parse xs of
 					 SOME t => SOME(ARGtype(x,t))
 				       | NONE => NONE)
-		  | parse _ = error "expecting type"
+		  | parse _ = raise Fail "expecting type"
 	    in parse (rev tx)
 	    end
 	
-	fun stripObj (t:Type) : Type option =
+	fun stripFormVar (t:Type) : Type option =
 	    case t of
-		ARGtype ("Obj.obj",t) => SOME t
+		ARGtype ("Form.var",t) => SOME t
 	      | _ => NONE
 
-	fun parseTypeStripObj (t:string) : Type =
+	fun parseTypeStripFormVar (t:string) : Type =
 	    case parseType t of
 		SOME t => 
-		    (case stripObj t of
+		    (case stripFormVar t of
 			 SOME t => t
-		       | NONE => error "expecting value specification of type 'a Obj.obj")
-	      | NONE => error "expecting type in value specification"
+		       | NONE => raise Fail "expecting value specification of type 'a Form.var")
+	      | NONE => raise Fail "expecting type in value specification"
 
 	fun prType (BASEtype s) = s
 	  | prType (ARGtype (s,t)) = prType t ^ " " ^ s
@@ -201,7 +202,7 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 	  | typeToString (BASEtype "string") = "(fn x => x)"
 	  | typeToString (BASEtype "bool") = "Bool.toString"
 	  | typeToString (ARGtype("list",t)) = "ERROR: ARGtypes not yet supported"
-	  | typeToString t = error ("unsupported type: " ^ prType t)
+	  | typeToString t = raise Fail ("unsupported type: " ^ prType t)
 
 (*
 	fun stripString s s2 =
@@ -216,9 +217,9 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 	    end
 
 	fun stripFormtype typ =
-	    case stripString " Obj.obj" typ of
+	    case stripString " Form.var" typ of
 		SOME typ => typ
-	      | NONE => error "expecting value specification of type 'a Obj.obj"
+	      | NONE => error "expecting value specification of type 'a Form.var"
 
 	fun typToString "int" = "Int.toString"
 	  | typToString "string" = ""
@@ -258,7 +259,7 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		fun maybe_out_recordargs fields ty =
 		    if fields = nil then outl ty
 		    else (  outs "{"
-			  ; appl (fn ({name,typ},b) => outs (name ^ ":" ^ prType (parseTypeStripObj typ)
+			  ; appl (fn ({name,typ},b) => outs (name ^ ":" ^ prType (parseTypeStripFormVar typ)
 							     ^ (if b then "" else ", "))) fields
 			  ; outl "}"
 			  ; outi 10 ("-> " ^ ty)
@@ -269,16 +270,16 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		     ; outi 3 "sig"
 		     ; app (fn {name,...} => outi 4 ("type " ^ name)) fields
 		     ; app (fn {name,typ} => outi 4 ("val " ^ name ^ " : (" ^ name ^ "," 
-						     ^ prType (parseTypeStripObj typ) ^ ") fname")) fields
+						     ^ prType (parseTypeStripFormVar typ) ^ ") fname")) fields
 		     ; outs (ind 4)
 	   (*form*)  ; outs "val form : ("
 		     ; app (fn {name,...} => outs (name ^ "->")) fields
-		     ; outl "nil,'a,'p,block flow) form"
-		     ; outi 10 "-> (nil,nil,'a,formclosed,'p,block flow) elt"
+		     ; outl "nil,'a,'p,block flow,'u) form"
+		     ; outi 10 "-> (nil,nil,'a,formclosed,'p,block flow,('a1,'a2)coreattrs) elt"
 		     ; outs (ind 4)
            (*link*)  ; outs "val link : "
-		     ; maybe_out_recordargs fields "('x,'y,ina,'f,'p,inline flow) elt"
-		     ; outi 10 "-> ('x,'y,aclosed,'f,'p,inline flow) elt"
+		     ; maybe_out_recordargs fields "('x,'y,ina,'f,'p,inline flow,'u) elt"
+		     ; outi 10 "-> ('x,'y,aclosed,'f,'p,inline flow,('a1,'a2)coreattrs) elt"
 		     ; outs (ind 4)
        (*redirect*)  ; outs "val redirect : "
 		     ; maybe_out_recordargs fields "SMLserver.Cookie.cookiedata list"
@@ -288,8 +289,8 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		fun out_header_struct () = 
 		    (  outl "structure Scripts :> SCRIPTS ="
 		     ; outi 1 "struct"
-		     ; outi 2 "open XHtml"
-		     ; outi 2 "structure Http = Http"
+		     ; outi 2 "open XHtmlHidden__"
+		     ; outi 2 "structure Http = HttpHidden__"
 		     ; outi 2 "fun form_ t s = Unsafe.form {action=s,method=\"post\"} t"
 		     ; outi 2 "fun listArgs_ preStr name toString l ="
 		     ; outi 4 "let fun loop ([x],acc) = [preStr, name, \"=\", Unsafe.urlencode(toString x)] @ acc"
@@ -301,7 +302,7 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		     ; outnl())
 
 		fun outline p {name,typ} =
-		    let val typ = parseTypeStripObj typ
+		    let val typ = parseTypeStripFormVar typ
 		    in case typ of
 			BASEtype _ => 
 			    outi 7 ("\"" ^ p ^ name ^ "=\", Unsafe.urlencode(" 
@@ -314,7 +315,7 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 				    ^ "\" " ^ typeToString t ^ " (case " ^ name 
 				    ^ "' of NONE => nil | SOME n => [n]) @ [")
 		      | _ => error "unsupported ARGtype"
-		    end
+		    end handle Fail s => error s
 
 		fun out_link s fields =
 		    if fields = nil then 
@@ -393,39 +394,41 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		 end
 
 	fun genFormInterface (file:string) a =
-	    if writeIfDifferent {file=file,content=genFormIface a} then
-		print ("[wrote type safe XHTML form interface: " ^ file ^ "]\n")
-	    else 
-		print ("[reusing type safe XHTML form interface: " ^ file ^ "]\n")
+	    (if writeIfDifferent {file=file,content=genFormIface a} then
+		 print ("[wrote type safe XHTML form interface: " ^ file ^ "]\n")
+	     else 
+		 print ("[reusing type safe XHTML form interface: " ^ file ^ "]\n"))
+		 handle Fail s => 
+		     error ("while parsing argument to scriptlet in file: " ^ file ^ ".\n" ^ s)
 
 	fun genScriptletInstance {name,fields} : string = 
 	    let 
+		val error = fn s => error ("while parsing argument to scriptlet: " ^ name ^ ".\n" ^ s)
 		fun objFromBaseType bt =
 		    case bt of
-			"int" => "Obj.fromInt'"
-		      | "string" => "Obj.fromString'"
-		      | "bool" => "Obj.fromBool'"
-		      | _ => error ("unsupported base type: " ^ bt)
+			"int" => "SMLserver.Unsafe.Form.fromInt"
+		      | "string" => "SMLserver.Unsafe.Form.fromString"
+		      | "bool" => "SMLserver.Unsafe.Form.fromBool"
+		      | _ => error ("Unsupported base type: " ^ bt)
 		fun mk_field {name,typ} = 
-		    case parseTypeStripObj typ of
+		    case parseTypeStripFormVar typ of
 			BASEtype bt =>
 			    ("    val " ^ name ^ " = case SMLserver.Unsafe.formvar \"" ^ name ^ "\" of\n\
 			     \        SOME s => " ^ objFromBaseType bt ^ " s\n\
-			     \      | NONE => (SMLserver.Unsafe.write \"Missing form variable '" ^ name ^ "'\";\n\
-			     \                 SMLserver.exit())\n")
+			     \      | NONE => SMLserver.Unsafe.Form.missing()\n")
 		      | ARGtype ("list",BASEtype bt) => 
-			    ("    val " ^ name ^ " = Obj.fromList' (" ^ objFromBaseType bt ^ ")\n\
+			    ("    val " ^ name ^ " = SMLserver.Unsafe.Form.fromList (" ^ objFromBaseType bt ^ ")\n\
 			     \        (SMLserver.Unsafe.formvarAll \"" ^ name ^ "\")\n")
 		      | ARGtype ("option",BASEtype bt) => 
-			    ("    val " ^ name ^ " = Obj.fromOption' (" ^ objFromBaseType bt ^ ")\n\
+			    ("    val " ^ name ^ " = SMLserver.Unsafe.Form.fromOption (" ^ objFromBaseType bt ^ ")\n\
 			     \        (SMLserver.Unsafe.formvar \"" ^ name ^ "\")\n")
-		      | typ => error ("unsupported type: " ^ prType typ)
+		      | typ => error ("Unsupported type: " ^ prType typ)
 	    in
 		concat (["structure X = ", name, " (\n",
 			 "  struct\n"] @ map mk_field fields @
 			["  end)\n",
 			 "val _ = SMLserver.Unsafe.write (Scripts.Http.Unsafe.toString X.response)\n"])
-	    end
+	    end handle Fail s => error ("while parsing argument to scriptlet: " ^ name ^ "\n" ^ s)
 
 	fun genScriptletInstantiations (ss: script list) : string list =
 	    map (fn s as {name,...} =>

@@ -64,5 +64,7 @@ structure SMLserverUnsafe : SMLSERVER_UNSAFE =
 
     fun scheduleWeekly (f:string) {day:int,hour:int,minute:int} : unit =
       prim("nssml_scheduleWeekly", (f,day,hour,minute))	
+
+    structure Form = SMLserverFormUnsafe
   end
     

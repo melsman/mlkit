@@ -701,7 +701,15 @@ interpLoadExtend(Interp* interp, char* file)
 static unsigned long init_code[INIT_CODE_SIZE] = {
   RETURN,0,1
 };
-  
+
+
+// We don't actually deallocate the global regions, because in
+// SMLserver, the global regions are restored to an initial state so
+// that the result of executing library code can be reused for future
+// requests. When used for non-SMLserver purposes, the memory for the
+// entire process is collected by the OS, thus it is ok not to
+// deallocate the global regions in this case.
+ 
 #define EXIT_CODE_SIZE 2
 static unsigned long exit_code[EXIT_CODE_SIZE] = {
   //  ENDREGION_INF,               // deallocate the four global regions

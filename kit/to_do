@@ -1,6 +1,9 @@
 Possible things to do
 ---------------------
 
+mael 2003-04-16: Impossible: Environments.ExplicitTyVar_lookup occurs
+for free type variables in type abbreviations.
+
 mael 2003-03-05: better pretty-printing of type variables. In
 particular, types with more than 20 (or so) type variables in them are
 not nicely pretty-printed in error messages and signatures (e.g., '}

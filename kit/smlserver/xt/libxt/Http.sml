@@ -1,5 +1,6 @@
-structure Http : HTTP_EXTRA =
+structure HttpHidden__ : HTTP_EXTRA =
     struct
+	structure XHtml = XHtmlHidden__
 	type html = XHtml.html
 	type response = string
 	fun returnHtml h =
@@ -17,6 +18,10 @@ structure Http : HTTP_EXTRA =
 	     \MIME-Version: 1.0\n\
 	     \Content-Type: text/html\n" ^ setCookies cookies ^ "\n" ^
 	     XHtml.Unsafe.toString h)
+
+	fun respondExit (r:response) =
+	    (  SMLserver.Unsafe.write r
+	     ; SMLserver.exit())
 
 	structure Unsafe =
 	    struct
