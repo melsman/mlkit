@@ -27,6 +27,7 @@ signature SCS_DATE =
     val preceedingDays : day * mth * year -> int
     val currDateInPeriod : Date.date * Date.date -> bool
     val half_year        : Date.date -> Date.date * Date.date
+    val semester         : Date.date -> Date.date * Date.date
     val add_days         : Date.date -> int -> Date.date
 
     (* PrettyPrinting *)
@@ -278,6 +279,20 @@ structure ScsDate :> SCS_DATE =
 	| EQUAL => (p_first,p_mid)
 	| GREATER => (add_days p_mid 1,p_end)
       end
+
+    fun semester d =
+      let
+	val year = Date.year d
+	val p_first = genDate(1,2,year)
+	val p_mid = genDate(31,7,year)
+	val p_end = genDate(31,1,year+1)
+      in
+	case Date.compare (d,p_mid) of
+	  LESS => (p_first,p_mid)
+	| EQUAL => (p_first,p_mid)
+	| GREATER => (add_days p_mid 1,p_end)
+      end
+
   end
 
 

@@ -121,32 +121,34 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val anyErrors : errs -> unit
     val isErrors  : errs -> bool
 
-    val getIntErr      : int formvar_fn
-    val getNatErr      : int formvar_fn
-    val getRealErr     : real formvar_fn
-    val getStringErr   : string formvar_fn
-    val getStringLenErr: int -> string formvar_fn
-    val getIntRangeErr : int -> int -> int formvar_fn
-    val getEmailErr    : string formvar_fn 
-    val getNameErr     : string formvar_fn 
-    val getAddrErr     : string formvar_fn
-    val getLoginErr    : string formvar_fn
-    val getPhoneErr    : string formvar_fn
-    val getHtmlErr     : string formvar_fn
-    val getUrlErr      : string formvar_fn
-    val getCprErr      : string formvar_fn
-    val getEnumErr     : string list -> string formvar_fn
-    val getYesNoErr    : string formvar_fn
-    val getDateErr     : Date.date formvar_fn
-    val getDbTimestampErr : Date.date formvar_fn
-    val getTimestampErr: Date.date formvar_fn
-    val getPeriodErr   : (Date.date * Date.date) formvar_fn
+    val getIntErr              : int formvar_fn
+    val getNatErr              : int formvar_fn
+    val getRealErr             : real formvar_fn
+    val getStringErr           : string formvar_fn
+    val getStringLenErr        : int -> string formvar_fn
+    val getNonEmptyStringErr   : string formvar_fn
+    val getNonEmptyStringLenErr: int -> string formvar_fn
+    val getIntRangeErr         : int -> int -> int formvar_fn
+    val getEmailErr            : string formvar_fn 
+    val getNameErr             : string formvar_fn 
+    val getAddrErr             : string formvar_fn
+    val getLoginErr            : string formvar_fn
+    val getPhoneErr            : string formvar_fn
+    val getHtmlErr             : string formvar_fn
+    val getUrlErr              : string formvar_fn
+    val getCprErr              : string formvar_fn
+    val getEnumErr             : string list -> string formvar_fn
+    val getYesNoErr            : string formvar_fn
+    val getDateErr             : Date.date formvar_fn
+    val getDbTimestampErr      : Date.date formvar_fn
+    val getTimestampErr        : Date.date formvar_fn
+    val getPeriodErr           : (Date.date * Date.date) formvar_fn
     val getStartdateEndtimeErr : (Date.date * Date.date) formvar_fn
-    val getDateIso     : string formvar_fn
-    val getTableName   : string formvar_fn
-    val getLangErr     : ScsLang.lang formvar_fn
-    val getRegExpErr   : RegExp.regexp formvar_fn
-    val getRoleIdErr   : string * errs -> int * errs
+    val getDateIso             : string formvar_fn
+    val getTableName           : string formvar_fn
+    val getLangErr             : ScsLang.lang formvar_fn
+    val getRegExpErr           : RegExp.regexp formvar_fn
+    val getRoleIdErr           : string * errs -> int * errs
 
     val wrapQQ  : string formvar_fn -> (string * string) formvar_fn
     val wrapOpt : 'a formvar_fn -> (string -> 'a option)
@@ -383,6 +385,18 @@ structure ScsFormVar :> SCS_FORM_VAR =
 
     local
       val getErr' = getErr "" trim
+      fun msgString s =
+	(case ScsLogin.user_lang of
+	   ScsLang.en => `^s
+	     You must type a string`
+	| ScsLang.da => `^s
+	     Du skal indtaste en tegnstreng.`)
+      fun msgLenString l s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.en => `^s
+	     The string must be on no more that ^(Int.toString l) characters.`
+	| ScsLang.da => `^s
+	     Strengen må ikke være på mere end ^(Int.toString l) tegn`)
       fun msgEmail s = 
 	(case ScsLogin.user_lang of
 	   ScsLang.en => `^s
@@ -752,6 +766,14 @@ structure ScsFormVar :> SCS_FORM_VAR =
       fun chkRegExp v = (RegExp.fromString v; true) handle _ => false
       fun chkLang v = (ScsLang.fromString v; true) handle _ => false
     in
+      val getNonEmptyStringErr = 
+	getErr' (ScsDict.s [(ScsLang.en,`string`),(ScsLang.da,`tekststreng`)]) msgString
+	(fn str => trim str <> "")
+
+      fun getNonEmptyStringLenErr l = 
+	getErr' (ScsDict.s [(ScsLang.en,`string`),(ScsLang.da,`tekststreng`)]) (msgLenString l)
+	(fn str => let val str' = trim str in str' <> "" andalso (size str') <= l end)
+
       val getEmailErr = getErr' (ScsDict.s [(ScsLang.en,`email`),(ScsLang.da,`email`)]) msgEmail
 	(fn email => regExpMatch "[^@\t ]+@[^@.\t ]+(\\.[^@.\n ]+)+" (trim email)) 
       val getNameErr = getErr' (ScsDict.s [(ScsLang.en,`name`),(ScsLang.da,`navn`)]) 
