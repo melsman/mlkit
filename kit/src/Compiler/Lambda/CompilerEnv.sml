@@ -27,6 +27,7 @@ functor CompilerEnv(structure Ident: IDENT
 			           = FinMapEq.StringTree = TyName.StringTree = Environments.StringTree
 	            structure Flags : FLAGS
 		    structure Crash: CRASH
+		    structure Report : REPORT
 		   ): COMPILER_ENV =
   struct
 
@@ -79,15 +80,32 @@ functor CompilerEnv(structure Ident: IDENT
 				   into a PRIM_APP(n, ...) in the lambda
 				   language. *)
 
-    datatype CEnv = CENV of {StrEnv:StrEnv, VarEnv:VarEnv, TyEnv:TyEnv}
-    and StrEnv    = STRENV of (strid,CEnv) FinMap.map
-    and VarEnv    = VARENV of (id,result) FinMap.map
-    and TyEnv     = TYENV of (tycon,TyName list * CEnv) FinMap.map
+    type spath = int list
 
-    val emptyStrEnv    = STRENV FinMap.empty
-    and emptyVarEnv    = VARENV FinMap.empty
-    and emptyTyEnv     = TYENV FinMap.empty
-    val emptyCEnv      = CENV {StrEnv=emptyStrEnv, VarEnv=emptyVarEnv, TyEnv=emptyTyEnv}
+    fun spath_lt (_ : spath, nil : spath) = false
+      | spath_lt (nil,_) = true
+      | spath_lt (x::xs,y::ys) = x < y orelse (x=y andalso spath_lt(xs,ys))
+
+    structure LvarEnv = 
+	OrderFinMap(structure Order = struct
+					  type T = spath
+					  fun lt (a:T) b = spath_lt(a,b)
+				      end
+		    structure PP = PP
+		    structure Report = Report)
+
+    type LvarEnv = lvar LvarEnv.map
+    type VarEnv = (id,result) FinMap.map
+    datatype CEnv = CENV of {StrEnv:StrEnv, VarEnv:VarEnv, TyEnv:TyEnv, LvarEnv:LvarEnv}
+    and StrEnv  = STRENV of (strid,CEnv) FinMap.map
+    and TyEnv   = TYENV of (tycon,TyName list * CEnv) FinMap.map
+	
+    val emptyStrEnv   : StrEnv = STRENV FinMap.empty
+    and emptyVarEnv   : VarEnv = FinMap.empty
+    and emptyTyEnv    : TyEnv  = TYENV FinMap.empty
+    and emptyLvarEnv  : LvarEnv = LvarEnv.empty
+    val emptyCEnv = CENV {StrEnv=emptyStrEnv, VarEnv=emptyVarEnv, 
+			  TyEnv=emptyTyEnv, LvarEnv=emptyLvarEnv}
 
     fun initMap a = foldl (fn ((v,r), m) => FinMap.add(v,r,m)) FinMap.empty a
     val initialStrEnv = emptyStrEnv
@@ -117,103 +135,116 @@ functor CompilerEnv(structure Ident: IDENT
       in ARROWtype([TYVARtype tyvar_antiquote],[t])
       end
 
-    val initialVarEnv = 
-      VARENV(initMap [(Ident.id_PRIM, PRIM),
-		      (Ident.id_ABS, ABS),
-		      (Ident.id_NEG, NEG),
-		      (Ident.id_PLUS, PLUS),
-		      (Ident.id_MINUS, MINUS),
-		      (Ident.id_MUL, MUL),
-		      (Ident.id_DIV, DIV),
-		      (Ident.id_MOD, MOD),
-		      (Ident.id_LESS, LESS),
-		      (Ident.id_GREATER, GREATER),
-		      (Ident.id_LESSEQ, LESSEQ),
-		      (Ident.id_GREATEREQ, GREATEREQ),
-                      (Ident.resetRegions, RESET_REGIONS),
-                      (Ident.forceResetting, FORCE_RESET_REGIONS),
-		      (Ident.id_REF, REF),
-		      (Ident.id_TRUE, CON(Con.con_TRUE,[],boolType,[])),
-		      (Ident.id_FALSE, CON(Con.con_FALSE,[],boolType,[])),
-		      (Ident.id_NIL, CON(Con.con_NIL,[tyvar_nil],nilType,
-					 [LambdaExp.TYVARtype tyvar_nil])),
-		      (Ident.id_CONS, CON(Con.con_CONS,[tyvar_cons],consType,
-					  [LambdaExp.TYVARtype tyvar_cons])),
-		      (Ident.id_QUOTE, CON(Con.con_QUOTE,[tyvar_quote],quoteType,
-					   [LambdaExp.TYVARtype tyvar_quote])),
-		      (Ident.id_ANTIQUOTE, CON(Con.con_ANTIQUOTE,[tyvar_antiquote],antiquoteType,
-					       [LambdaExp.TYVARtype tyvar_antiquote])),		      
-		      (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
-		      (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
-		      (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType)),
-		      (Ident.id_Overflow, EXCON(Excon.ex_OVERFLOW, exnType)),
-		      (Ident.id_Interrupt, EXCON(Excon.ex_INTERRUPT, exnType))
-		      ])
-
+    val initialVarEnv : VarEnv = 
+      initMap [(Ident.id_PRIM, PRIM),
+	       (Ident.id_ABS, ABS),
+	       (Ident.id_NEG, NEG),
+	       (Ident.id_PLUS, PLUS),
+	       (Ident.id_MINUS, MINUS),
+	       (Ident.id_MUL, MUL),
+	       (Ident.id_DIV, DIV),
+	       (Ident.id_MOD, MOD),
+	       (Ident.id_LESS, LESS),
+	       (Ident.id_GREATER, GREATER),
+	       (Ident.id_LESSEQ, LESSEQ),
+	       (Ident.id_GREATEREQ, GREATEREQ),
+	       (Ident.resetRegions, RESET_REGIONS),
+	       (Ident.forceResetting, FORCE_RESET_REGIONS),
+	       (Ident.id_REF, REF),
+	       (Ident.id_TRUE, CON(Con.con_TRUE,[],boolType,[])),
+	       (Ident.id_FALSE, CON(Con.con_FALSE,[],boolType,[])),
+	       (Ident.id_NIL, CON(Con.con_NIL,[tyvar_nil],nilType,
+				  [LambdaExp.TYVARtype tyvar_nil])),
+	       (Ident.id_CONS, CON(Con.con_CONS,[tyvar_cons],consType,
+				   [LambdaExp.TYVARtype tyvar_cons])),
+	       (Ident.id_QUOTE, CON(Con.con_QUOTE,[tyvar_quote],quoteType,
+				    [LambdaExp.TYVARtype tyvar_quote])),
+	       (Ident.id_ANTIQUOTE, CON(Con.con_ANTIQUOTE,[tyvar_antiquote],antiquoteType,
+					[LambdaExp.TYVARtype tyvar_antiquote])),		      
+	       (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
+	       (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
+	       (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType)),
+	       (Ident.id_Overflow, EXCON(Excon.ex_OVERFLOW, exnType)),
+	       (Ident.id_Interrupt, EXCON(Excon.ex_INTERRUPT, exnType))
+	       ]
     local 
       open TyCon TyName
-      fun initialTyEnv() = 	
-	TYENV(initMap [(tycon_INT31, ([tyName_INT31], emptyCEnv)),
-		       (tycon_INT32, ([tyName_INT32], emptyCEnv)),
-		       (tycon_INT, ([tyName_IntDefault()], emptyCEnv)),
-		       (tycon_WORD8, ([tyName_WORD8], emptyCEnv)),
-		       (tycon_WORD31, ([tyName_WORD31], emptyCEnv)),
-		       (tycon_WORD32, ([tyName_WORD32], emptyCEnv)),
-		       (tycon_WORD, ([tyName_WordDefault()], emptyCEnv)),
-		       (tycon_REAL, ([tyName_REAL], emptyCEnv)),
-		       (tycon_STRING, ([tyName_STRING], emptyCEnv)),
-		       (tycon_ARRAY, ([tyName_ARRAY], emptyCEnv)),
-		       (tycon_VECTOR, ([tyName_VECTOR], emptyCEnv)),
-		       (tycon_CHARARRAY, ([tyName_CHARARRAY], emptyCEnv)),
-		       (tycon_FOREIGNPTR, ([tyName_FOREIGNPTR], emptyCEnv)),
-		       (tycon_CHAR, ([tyName_WORD8], emptyCEnv)),
-		       (tycon_EXN, ([tyName_EXN], emptyCEnv)),
-		       (tycon_REF, ([tyName_REF], emptyCEnv)),
-		       (tycon_BOOL, ([tyName_BOOL], emptyCEnv)),
-		       (tycon_LIST, ([tyName_LIST], emptyCEnv)),
-		       (tycon_FRAG, ([tyName_FRAG], emptyCEnv)),
-(*		       (tycon_WORD_TABLE, ([tyName_WORD_TABLE], emptyCEnv)), *)
-		       (tycon_UNIT, ([], emptyCEnv))
-		       ])
+      fun initialTyEnv() : TyEnv = 	
+	  TYENV (initMap [(tycon_INT31, ([tyName_INT31], emptyCEnv)),
+			  (tycon_INT32, ([tyName_INT32], emptyCEnv)),
+			  (tycon_INT, ([tyName_IntDefault()], emptyCEnv)),
+			  (tycon_WORD8, ([tyName_WORD8], emptyCEnv)),
+			  (tycon_WORD31, ([tyName_WORD31], emptyCEnv)),
+			  (tycon_WORD32, ([tyName_WORD32], emptyCEnv)),
+			  (tycon_WORD, ([tyName_WordDefault()], emptyCEnv)),
+			  (tycon_REAL, ([tyName_REAL], emptyCEnv)),
+			  (tycon_STRING, ([tyName_STRING], emptyCEnv)),
+			  (tycon_ARRAY, ([tyName_ARRAY], emptyCEnv)),
+			  (tycon_VECTOR, ([tyName_VECTOR], emptyCEnv)),
+			  (tycon_CHARARRAY, ([tyName_CHARARRAY], emptyCEnv)),
+			  (tycon_FOREIGNPTR, ([tyName_FOREIGNPTR], emptyCEnv)),
+			  (tycon_CHAR, ([tyName_WORD8], emptyCEnv)),
+			  (tycon_EXN, ([tyName_EXN], emptyCEnv)),
+			  (tycon_REF, ([tyName_REF], emptyCEnv)),
+			  (tycon_BOOL, ([tyName_BOOL], emptyCEnv)),
+			  (tycon_LIST, ([tyName_LIST], emptyCEnv)),
+			  (tycon_FRAG, ([tyName_FRAG], emptyCEnv)),
+			  (*		       (tycon_WORD_TABLE, ([tyName_WORD_TABLE], emptyCEnv)), *)
+			  (tycon_UNIT, ([], emptyCEnv))
+			  ])
     in
       fun initialCEnv() = CENV{StrEnv=initialStrEnv,
 			       VarEnv=initialVarEnv,
-			       TyEnv=initialTyEnv()}
+			       TyEnv=initialTyEnv(),
+			       LvarEnv=emptyLvarEnv}
 
     end (*local*)
 
-    fun declareVar(id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=VARENV m,TyEnv}) =
+    fun declareLvarDecon (spath:spath,lv: lvar, CENV{StrEnv,VarEnv,TyEnv,LvarEnv}) : CEnv =
+	CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TyEnv,
+	     LvarEnv=LvarEnv.add(spath,lv,LvarEnv)}
+	
+    fun lookupLvarDecon (CENV{LvarEnv,...}) (spath:spath) : lvar option =
+	LvarEnv.lookup LvarEnv spath
+
+    fun declareVar(id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=m,TyEnv,LvarEnv}) =
       let val il0 = map LambdaExp.TYVARtype tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
-	      VarEnv=VARENV (FinMap.add(id, LVAR (lv,tyvars,tau,il0), m))}
+	      VarEnv=FinMap.add(id, LVAR (lv,tyvars,tau,il0), m),
+	      LvarEnv=LvarEnv}
       end
 
-    fun declareCon(id, (con,tyvars,tau), CENV{StrEnv,VarEnv=VARENV m,TyEnv}) =
+    fun declareCon(id, (con,tyvars,tau), CENV{StrEnv,VarEnv=m,TyEnv,LvarEnv}) =
       let val il0 = map LambdaExp.TYVARtype tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
-	      VarEnv=VARENV(FinMap.add(id,CON (con,tyvars,tau,il0), m))}
+	      VarEnv=FinMap.add(id,CON (con,tyvars,tau,il0), m),
+	      LvarEnv=LvarEnv}
       end
 
-    fun declareExcon(id, excon, CENV{StrEnv,VarEnv=VARENV map,TyEnv}) =
-      CENV{StrEnv=StrEnv,VarEnv=VARENV(FinMap.add(id,EXCON excon,map)),TyEnv=TyEnv}
+    fun declareExcon(id, excon, CENV{StrEnv,VarEnv=map,TyEnv,LvarEnv}) =
+      CENV{StrEnv=StrEnv,VarEnv=FinMap.add(id,EXCON excon,map),TyEnv=TyEnv,
+	   LvarEnv=LvarEnv}
 
-    fun declare_strid(strid, env, CENV{StrEnv=STRENV m,VarEnv,TyEnv}) =
-      CENV{StrEnv=STRENV(FinMap.add(strid,env,m)),VarEnv=VarEnv,TyEnv=TyEnv}
+    fun declare_strid(strid, env, CENV{StrEnv=STRENV m,VarEnv,TyEnv,LvarEnv}) =
+      CENV{StrEnv=STRENV (FinMap.add(strid,env,m)),VarEnv=VarEnv,TyEnv=TyEnv,
+	   LvarEnv=LvarEnv}
 
-    fun declare_tycon(tycon, a, CENV{StrEnv,VarEnv,TyEnv=TYENV m}) =
-      CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TYENV(FinMap.add(tycon,a,m))}
+    fun declare_tycon(tycon, a, CENV{StrEnv,VarEnv,TyEnv=TYENV m,LvarEnv}) =
+      CENV{StrEnv=StrEnv,VarEnv=VarEnv,TyEnv=TYENV(FinMap.add(tycon,a,m)),LvarEnv=LvarEnv}
 
-    fun plus (CENV{StrEnv,VarEnv,TyEnv}, CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv'}) =
+    fun plus (CENV{StrEnv,VarEnv,TyEnv,LvarEnv}, 
+	      CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv',LvarEnv=LvarEnv'}) =
       CENV{StrEnv=plusStrEnv(StrEnv,StrEnv'),
 	   VarEnv=plusVarEnv(VarEnv,VarEnv'),
-	   TyEnv=plusTyEnv(TyEnv,TyEnv')}
+	   TyEnv=plusTyEnv(TyEnv,TyEnv'),
+	   LvarEnv=LvarEnv.plus(LvarEnv,LvarEnv')}
 
-    and plusStrEnv    (STRENV m1,STRENV m2)       = STRENV (FinMap.plus(m1,m2))
-    and plusVarEnv    (VARENV m1,VARENV m2)       = VARENV (FinMap.plus(m1,m2))
-    and plusTyEnv     (TYENV m1,TYENV m2)         = TYENV (FinMap.plus(m1,m2))
+    and plusStrEnv (STRENV m1, STRENV m2) : StrEnv = STRENV(FinMap.plus(m1,m2))
+    and plusVarEnv (m1: VarEnv, m2: VarEnv) : VarEnv = FinMap.plus(m1,m2)
+    and plusTyEnv  (TYENV m1,  TYENV m2)  : TyEnv  = TYENV(FinMap.plus(m1,m2))
 
     exception LOOKUP_ID
-    fun lookupId (CENV{VarEnv=VARENV m,...}) id =
+    fun lookupId (CENV{VarEnv=m,...}) id =
       case FinMap.lookup m id
 	of SOME res => res
 	 | NONE => raise LOOKUP_ID
@@ -272,7 +303,7 @@ functor CompilerEnv(structure Ident: IDENT
       | tynames_result (_, tns) = tns
 
     fun varsOfCEnv (vars_result : result * 'a list -> 'a list) ce : 'a list =
-      let fun vars_ce (CENV{VarEnv=VARENV m,StrEnv,...}, vars) =
+      let fun vars_ce (CENV{VarEnv=m,StrEnv,...}, vars) =
 	    FinMap.fold vars_result (vars_se (StrEnv,vars)) m
 	  and vars_se (STRENV m, vars) = FinMap.fold vars_ce vars m
       in vars_ce (ce, [])
@@ -285,7 +316,7 @@ functor CompilerEnv(structure Ident: IDENT
     fun tynamesOfCEnv ce : TyName list =
       let fun tynames_TEentry((tns,ce),acc) = tynames_E(ce,tns@acc) 
           and tynames_TE(TYENV m, acc) = FinMap.fold tynames_TEentry acc m 
-          and tynames_E(CENV{VarEnv=VARENV ve, StrEnv, TyEnv, ...}, acc) =
+          and tynames_E(CENV{VarEnv=ve, StrEnv, TyEnv, ...}, acc) =
 	    let val acc = tynames_SE (StrEnv,acc)
 	        val acc = tynames_TE (TyEnv,acc)
 	    in FinMap.fold tynames_result acc ve
@@ -306,25 +337,26 @@ functor CompilerEnv(structure Ident: IDENT
 	    in FinMap.add(id,res,acc)
 	    end) FinMap.empty dom
 
-   fun restrictVarEnv(VARENV m, ids) = 
-     VARENV(restrictFinMap(fn _ => "restrictCEnv.id not in env", m, ids))
+   fun restrictVarEnv(m: VarEnv, ids) : VarEnv = 
+     restrictFinMap(fn _ => "restrictCEnv.id not in env", m, ids)
 
-   fun restrictTyEnv(TYENV m, tycons) =
-     TYENV(restrictFinMap(fn tc => ("restrictCEnv.tycon " ^ TyCon.pr_TyCon tc ^ " not in env"), m, tycons))
+   fun restrictTyEnv(TYENV m, tycons) : TyEnv =
+       TYENV (restrictFinMap(fn tc => ("restrictCEnv.tycon " ^ TyCon.pr_TyCon tc ^ " not in env"), m, tycons))
 
-   fun restrictStrEnv(STRENV m, strid_restrs) =
-     STRENV(foldl (fn ((strid,restr:Environments.restricter), acc) =>
-		   let val res = case FinMap.lookup m strid
-				   of SOME res => restrictCEnv(res,restr)
-				    | NONE => die "restrictStrEnv.strid not in env"
-		   in FinMap.add(strid,res,acc)
-		   end) FinMap.empty strid_restrs)
+   fun restrictStrEnv(STRENV m, strid_restrs) : StrEnv =
+       STRENV (foldl (fn ((strid,restr:Environments.restricter), acc) =>
+		      let val res = case FinMap.lookup m strid of 
+			  SOME res => restrictCEnv(res,restr)
+			| NONE => die "restrictStrEnv.strid not in env"
+		      in FinMap.add(strid,res,acc)
+		      end) FinMap.empty strid_restrs)
 
    and restrictCEnv(ce,Environments.Whole) = ce
-     | restrictCEnv(CENV{StrEnv,VarEnv,TyEnv}, Environments.Restr{strids,vids,tycons}) =
+     | restrictCEnv(CENV{StrEnv,VarEnv,TyEnv,LvarEnv}, Environments.Restr{strids,vids,tycons}) =
      CENV{StrEnv=restrictStrEnv(StrEnv,strids),
 	  VarEnv=restrictVarEnv(VarEnv,vids),
-	  TyEnv=restrictTyEnv(TyEnv,tycons)}
+	  TyEnv=restrictTyEnv(TyEnv,tycons),
+	  LvarEnv=emptyLvarEnv}
 
    val restrictCEnv = fn (ce, longids) => restrictCEnv(ce, Environments.create_restricter longids)
      
@@ -369,7 +401,7 @@ functor CompilerEnv(structure Ident: IDENT
        | eq_res (PRIM,PRIM) = true
        | eq_res _ = false
        
-     fun enrichVarEnv(VARENV env1,VARENV env2) =
+     fun enrichVarEnv(env1: VarEnv, env2: VarEnv) : bool =
        FinMap.Fold (fn ((id2,res2),b) => b andalso
 		    case FinMap.lookup env1 id2
 		      of SOME res1 => eq_res(res1,res2)
@@ -377,18 +409,20 @@ functor CompilerEnv(structure Ident: IDENT
 
      fun eq_tynames(res1,res2) = TyName.Set.eq (TyName.Set.fromList res1) (TyName.Set.fromList res2)
        
-     fun enrichTyEnv(TYENV m1,TYENV m2) =
+     fun enrichTyEnv(TYENV m1, TYENV m2) : bool =
        FinMap.Fold (fn ((id2,(res2,ce2)),b) => b andalso
 		    case FinMap.lookup m1 id2
 		      of SOME (res1,ce1) => eq_tynames(res1,res2) andalso eqCEnv(ce1,ce2)
 		       | NONE => false) true m2
        
-     and enrichCEnv(CENV{StrEnv,VarEnv,TyEnv},
-		    CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv'}) =
+     and enrichCEnv(CENV{StrEnv,VarEnv,TyEnv,LvarEnv},
+		    CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv',
+			 LvarEnv=LvarEnv'}) =
        debug("StrEnv", enrichStrEnv(StrEnv,StrEnv')) andalso 
        debug("VarEnv", enrichVarEnv(VarEnv,VarEnv')) andalso
-       debug("TyEnv", enrichTyEnv(TyEnv,TyEnv'))
-
+       debug("TyEnv", enrichTyEnv(TyEnv,TyEnv')) andalso
+       LvarEnv.isEmpty LvarEnv andalso LvarEnv.isEmpty LvarEnv'
+       
      and eqCEnv(ce1,ce2) = enrichCEnv(ce1,ce2) andalso enrichCEnv(ce2,ce1)
 
      and enrichStrEnv(STRENV se1, STRENV se2) =
@@ -413,7 +447,7 @@ functor CompilerEnv(structure Ident: IDENT
        | matchRes (EXCON (excon,_), EXCON (excon0,_)) = Excon.match(excon,excon0)
        | matchRes _ = ()
 
-     fun matchVarEnv(VARENV env, VARENV env0) =
+     fun matchVarEnv(env: VarEnv, env0: VarEnv) =
        FinMap.Fold(fn ((id,res),_) =>
 		   case FinMap.lookup env0 id
 		     of SOME res0 => matchRes(res,res0)
@@ -441,7 +475,9 @@ functor CompilerEnv(structure Ident: IDENT
    fun set_compileTypeScheme c = compileTypeScheme_knot := (SOME c)
 
    fun constrain (ce: CEnv, elabE : ElabEnv) =
-     let open Environments
+     let
+	 open Environments
+
          val compileTypeScheme = case compileTypeScheme_knot 
 				   of ref (SOME compileTypeScheme) => compileTypeScheme
 				    | ref NONE => die "compileTypeScheme_knot not set" 
@@ -506,33 +542,35 @@ functor CompilerEnv(structure Ident: IDENT
 		   | _ => die "constr_ran.EXCON.longvar or longexcon expected")
 	      | _ => die "constr_ran.expecting LVAR, CON or EXCON"
 
-         fun constr_ce(CENV{StrEnv, VarEnv, TyEnv}, elabE) =
+         fun constr_ce(CENV{StrEnv, VarEnv, TyEnv, LvarEnv}, elabE) =
 	   let val (elabSE, elabTE, elabVE) = E.un elabE
 	   in CENV{StrEnv=constr_se(StrEnv,elabSE), VarEnv=constr_ve(VarEnv,elabVE),
-		   TyEnv=constr_te(TyEnv,elabTE)}
+		   TyEnv=constr_te(TyEnv,elabTE),
+		   LvarEnv=emptyLvarEnv}
 	   end
 
 	 and constr_se(STRENV se, elabSE) =
-	   STRENV(SE.Fold (fn (strid, elabE) => fn se' =>
-			   case FinMap.lookup se strid
-			     of SOME ce => let val ce' = constr_ce(ce,elabE)
-					   in FinMap.add(strid,ce',se')
-					   end
-			      | NONE => die "constr_se") FinMap.empty elabSE)
+	     STRENV(SE.Fold (fn (strid, elabE) => fn se' =>
+			     case FinMap.lookup se strid
+				 of SOME ce => let val ce' = constr_ce(ce,elabE)
+					       in FinMap.add(strid,ce',se')
+					       end
+			       | NONE => die "constr_se") FinMap.empty elabSE)
 		  
-	 and constr_ve(VARENV ve, elabVE) =
-	   VARENV(VE.Fold (fn (id, elabRan) => fn ve' =>
-			   case FinMap.lookup ve id
-			     of SOME transRan => let val transRan' = constr_ran(transRan, elabRan)
-						 in FinMap.add(id,transRan', ve')
-						 end
-			      | NONE => die "constr_ve") FinMap.empty elabVE)
+	 and constr_ve(ve, elabVE) =
+	   VE.Fold (fn (id, elabRan) => fn ve' =>
+		    case FinMap.lookup ve id
+		      of SOME transRan => let val transRan' = constr_ran(transRan, elabRan)
+					  in FinMap.add(id,transRan', ve')
+					  end
+		       | NONE => die "constr_ve") FinMap.empty elabVE
 
 	 and constr_te(TYENV te, elabTE) =
-	   TYENV(TE.Fold(fn (tycon, _) => fn te' =>
-			 case FinMap.lookup te tycon
-			   of SOME tynames => FinMap.add(tycon,tynames,te')
-			    | NONE => die "constr_te") FinMap.empty elabTE) 
+	     TYENV(TE.Fold(fn (tycon, _) => fn te' =>
+			   case FinMap.lookup te tycon
+			       of SOME tynames => FinMap.add(tycon,tynames,te')
+			     | NONE => die "constr_te") FinMap.empty elabTE)
+		   
 (*	 val _ = print "\n[Constraining ...\n" *)
 	 val res = constr_ce(ce, elabE)
 (*	 val _ = print " Done]\n" *)
@@ -549,12 +587,20 @@ functor CompilerEnv(structure Ident: IDENT
 
    type StringTree = FinMap.StringTree
 
-    fun layoutCEnv (CENV{StrEnv,VarEnv,TyEnv}) =
+   fun layout_spath (l:spath) = PP.HNODE{start="{",finish="}",childsep=PP.RIGHT",",
+					 children=map (fn i => PP.LEAF(Int.toString i)) l}
+
+    fun layoutCEnv (CENV{StrEnv,VarEnv,TyEnv, LvarEnv}) =
       PP.NODE{start="CENV(",finish=")",indent=2,
 	      children=[layoutStrEnv StrEnv,
 			layoutVarEnv VarEnv,
-			layoutTyEnv TyEnv],
+			layoutTyEnv TyEnv,
+			layoutLvarEnv LvarEnv],
 	      childsep=PP.RIGHT ","}
+
+    and layoutLvar lv = PP.LEAF (Lvars.pr_lvar lv)
+    and layoutLvarEnv e = LvarEnv.layoutMap {start="LvarEnv = ",finish="",eq=" -> ", sep = ", "}
+	layout_spath layoutLvar e
 
     and layoutStrEnv (STRENV m) =
       PP.NODE{start="StrEnv = ",finish="",indent=2,
@@ -563,7 +609,7 @@ functor CompilerEnv(structure Ident: IDENT
 			 (layoutCEnv) m],
 	      childsep=PP.RIGHT ","}
 
-    and layoutVarEnv (VARENV m) =
+    and layoutVarEnv (m : VarEnv) =
       PP.NODE{start="VarEnv = ",finish="",indent=2,
 	      children= [FinMap.layoutMap {start="{", eq=" -> ", sep=", ", finish="}"}
 			               (PP.layoutAtom Ident.pr_id)

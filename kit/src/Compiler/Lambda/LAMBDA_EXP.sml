@@ -61,7 +61,7 @@ signature LAMBDA_EXP =
 
     datatype 'Type prim =                             (* The primitives are always fully applied ! *)
         CONprim of {con : con, instances : 'Type list}
-      | DECONprim of {con : con, instances : 'Type list}
+      | DECONprim of {con : con, instances : 'Type list, lvar: lvar}
       | EXCONprim of excon
       | DEEXCONprim of excon
       | RECORDprim 
@@ -108,8 +108,8 @@ signature LAMBDA_EXP =
       | SWITCH_I of {switch: Int32.int Switch, precision: int}
       | SWITCH_W of {switch: Word32.word Switch, precision: int}
       | SWITCH_S of string Switch
-      | SWITCH_C of con Switch
-      | SWITCH_E of excon Switch
+      | SWITCH_C of (con*lvar option) Switch
+      | SWITCH_E of (excon*lvar option) Switch
       | PRIM     of Type prim * LambdaExp list
       | FRAME    of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
                      declared_excons: (excon * Type option) list}
@@ -138,4 +138,7 @@ signature LAMBDA_EXP =
     val layoutTypeScheme : tyvar list * Type -> StringTree
     val layoutTypeList : TypeList -> StringTree
     val layoutPrim     : ('Type -> StringTree) -> 'Type prim -> StringTree
+
+    (* Generate ML code *)
+    val barify : LambdaPgm -> StringTree
   end

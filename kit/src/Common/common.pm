@@ -50,8 +50,8 @@ in
   TOP_LEVEL_REPORT.sml
   ../Manager/ELAB_REPOSITORY.sml
   ELABTOPDEC.sml
-  ../Compiler/Kam/UNION_FIND_POLY.sml
-  ../Compiler/Kam/STACK.sml
+  UNION_FIND_POLY.sml
+  STACK.sml
   DIGRAPH.sml
   QUASI_ENV.sml
 
@@ -128,8 +128,8 @@ TopLevelReport.sml
 EfficientElab/ElabTopdec.sml
 
 IntDiGraph.sml
-../Compiler/Kam/UnionFindPoly.sml
-../Compiler/Kam/Stack.sml
+UnionFindPoly.sml
+Stack.sml
 DiGraph.sml
 Heap.sml
 HashTable.sml

@@ -18,9 +18,13 @@ CompileBasis__dummy.sml
 CompileBasis.sml
 
 CompBasis.sml
-
 COMPILE.sml
 Compile.sml
+
+Backend/Barry/COMP_BASIS_BARRY.sml
+Backend/Barry/CompBasisBarry.sml
+Backend/Barry/CompileBasisBarry.sml
+Backend/Barry/CompileBarry.sml
 
 Lambda/LAMBDA_EXP.sml
 Lambda/LambdaExp.sml

@@ -17,4 +17,4 @@ mlkit.pdf: root.dvi Makefile
 	rm -f root.ps
 
 clean:
-	rm -rf *~ auto *.ind *.log *.idx *.aux *.dvi *.toc *.info *.ilg *.blg .xvpics *.bbl *.out
+	rm -rf *~ auto *.ind *.log *.idx *.aux *.dvi *.toc *.info *.ilg *.blg .xvpics *.bbl *.out .\#*

@@ -280,7 +280,7 @@ handle x =>
 	   | (tau :: taus) => let val v = VAR {lvar=p, instances=[]}
 				  fun sel k = PRIM(SELECTprim n, [PRIM(SELECTprim k, [v])])
 				  val e = APP (gen tau, PRIM(RECORDprim, [sel 0, sel 1]))
-			      in SWITCH_C (SWITCH (e, [(Con.con_TRUE, gen_switch (n+1) p taus)], 
+			      in SWITCH_C (SWITCH (e, [((Con.con_TRUE,NONE), gen_switch (n+1) p taus)], 
 						   SOME lamb_false))
 			      end)
       in gen tau
@@ -334,14 +334,13 @@ handle x =>
 		   scope=e} 
 
 	fun mk_sw c e = SWITCH_C(SWITCH(lamb_var p1,[(c, e)], SOME lamb_false))
-	fun mk_nullary_sw c = mk_sw c lamb_true 
-	fun mk_unary_sw c tau =
+	fun mk_nullary_sw c = mk_sw (c,NONE) lamb_true 
+	fun mk_unary_sw c tau p0' =
 	  let 
-	    val p0' = Lvars.newLvar()
 	    val p1' = Lvars.newLvar()
 	    fun mk_decon p' p e = 
 	      monolet {lvar=p', Type=tau, 
-		       bind=PRIM(DECONprim {con=c, instances=map TYVARtype tyvars}, [lamb_var p]),
+		       bind=PRIM(DECONprim {con=c, instances=map TYVARtype tyvars,lvar=p'}, [lamb_var p]),
 		       scope=e}
 	    val lamb_eq_fn_tau = gen_type_eq env' tau
 	    val lamb_true_case =
@@ -349,14 +348,17 @@ handle x =>
 	      (mk_decon p1' p1
 	       (APP(lamb_eq_fn_tau, PRIM(RECORDprim, [lamb_var p0', lamb_var p1']))))
 
-	  in mk_sw c lamb_true_case
+	  in mk_sw (c,SOME p1') lamb_true_case
 	  end
 
 	fun mk_cases [] = []
 	  | mk_cases ((c, typeopt)::rest) =
 	  let val p = case typeopt
-			of NONE => (c, mk_nullary_sw c)
-			 | SOME tau => (c, mk_unary_sw c tau) 
+			of NONE => ((c,NONE), mk_nullary_sw c)
+			 | SOME tau => 
+			    let val lv = Lvars.newLvar()
+			    in ((c,SOME lv), mk_unary_sw c tau lv) 
+			    end
 	  in p :: mk_cases rest
 	  end
 	val big_sw = SWITCH_C(SWITCH(lamb_var p0, mk_cases cbs, NONE))
@@ -566,10 +568,10 @@ handle x =>
    fun bind_loop() =
      FN {pat = [(lvar_j, intDefaultType())], body =
 	 SWITCH_C (SWITCH (PRIM (LESS_INTprim(), [var_j, INTEGER' 0]),
-	   [(Con.con_TRUE, lamb_true)],
+	   [((Con.con_TRUE,NONE), lamb_true)],
 	   SOME (SWITCH_C (SWITCH
 		  ((APP (var_eq_alpha, PRIM (RECORDprim, [sub var_table1, sub var_table2]))),
-		   [(Con.con_TRUE, APP (var_loop, PRIM (MINUS_INTprim(), [var_j, INTEGER' 1])))],
+		   [((Con.con_TRUE,NONE), APP (var_loop, PRIM (MINUS_INTprim(), [var_j, INTEGER' 1])))],
 		   SOME lamb_false)))))}
 
    fun function_loop() = {lvar = lvar_loop,
@@ -590,7 +592,7 @@ handle x =>
 					(PRIM (EQUALprim {instance = RECORDtype [intDefaultType(), 
 										 intDefaultType()]},
 					       [var_n1, var_n2]),
-					 [(Con.con_TRUE,
+					 [((Con.con_TRUE,NONE),
 					   APP (var_loop, PRIM (MINUS_INTprim(), [var_n2, INTEGER' 1])))],
 					 SOME lamb_false))}))}}}}
      

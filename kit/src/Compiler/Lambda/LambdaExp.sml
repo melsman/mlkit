@@ -86,7 +86,7 @@ functor LambdaExp(structure Lvars: LVARS
 
     datatype 'Type prim =                             (* The primitives are always fully applied ! *)
         CONprim of {con : con, instances : 'Type list}
-      | DECONprim of {con : con, instances : 'Type list}
+      | DECONprim of {con : con, instances : 'Type list, lvar:lvar}
       | EXCONprim of excon
       | DEEXCONprim of excon
       | RECORDprim 
@@ -133,8 +133,8 @@ functor LambdaExp(structure Lvars: LVARS
       | SWITCH_I of {switch: Int32.int Switch, precision: int}
       | SWITCH_W of {switch: Word32.word Switch, precision: int}
       | SWITCH_S of string Switch
-      | SWITCH_C of con Switch
-      | SWITCH_E of excon Switch
+      | SWITCH_C of (con*lvar option) Switch
+      | SWITCH_E of (excon*lvar option) Switch
       | PRIM     of Type prim * LambdaExp list
       | FRAME    of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
                      declared_excons: (excon * Type option) list}
@@ -375,34 +375,92 @@ functor LambdaExp(structure Lvars: LVARS
    (* prettyprinting. *)
    type StringTree = PP.StringTree
 
+   val barify_p = ref false
+
+   fun member eq c nil = false
+     | member eq c (y::ys) = eq(c,y) orelse member eq c ys
+
+   fun strip_ s =
+       if String.size s > 0 then
+	   if CharVector.sub(s,0) = #"_" orelse CharVector.sub(s,0) = #"'" then
+	       let fun do_strip (#"_"::rest) = do_strip rest
+		     | do_strip (#"'"::rest) = do_strip rest
+		     | do_strip rest = rest
+	       in implode(do_strip (explode s))
+	       end
+	   else s
+       else s
+
+   fun is_symb (c : char):bool =
+       case c of
+	   #"!" => true | #"%" => true | #"&" => true | #"$" => true | #"#" => true 
+	 | #"+" => true | #"-" => true | #"/" => true | #":" => true | #"<" => true 
+	 | #"=" => true | #">" => true | #"?" => true | #"@" => true | #"\\" => true
+	 | #"~" => true | #"`" => true | #"^" => true | #"|" => true | #"*" => true
+	 | _ => false
+
+   fun unsymb (s:string) : string =
+     let fun do_unsymb nil = nil
+	   | do_unsymb (c::cs) = if is_symb c then do_unsymb cs 
+				 else c :: do_unsymb cs
+     in
+       if String.size s < 1 then s
+       else if is_symb (CharVector.sub(s,0)) then implode(#"v" :: do_unsymb (explode s))
+	    else s
+     end
+
+   fun pr_lvar lv = if !barify_p then unsymb(Lvars.pr_lvar' lv)
+		    else Lvars.pr_lvar lv
+
+   fun pr_excon ex = 
+       if !barify_p then 
+	   if member Excon.eq ex [Excon.ex_DIV,Excon.ex_MATCH,Excon.ex_OVERFLOW,Excon.ex_INTERRUPT] 
+	       then Excon.pr_excon ex
+	   else unsymb(Excon.pr_excon' ex)
+       else Excon.pr_excon ex
+
+   fun pr_con c = 
+       if !barify_p then 
+	   if Con.eq(c,Con.con_CONS) then "op ::"
+	   else if member Con.eq c [Con.con_NIL,Con.con_FALSE,Con.con_TRUE] 
+		    then Con.pr_con c 
+		else unsymb(Con.pr_con' c)
+       else Con.pr_con c
+
     fun layoutPrim layoutType prim = 
      case prim of
         CONprim{con,instances} => 
-          if !Flags.print_types then
-   		  PP.NODE{start= Con.pr_con con, finish="", 
-		  indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
-          else PP.LEAF (Con.pr_con con)
-      | DECONprim{con,instances} => 
-          if !Flags.print_types then
-		  PP.NODE{start= "decon(" ^ Con.pr_con con,finish=")", 
-		  indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
-          else 
-		  PP.NODE{start= "decon(" ^ Con.pr_con con,finish=")", 
-		  indent=2,children=[],childsep=PP.NOSEP}
+	    let val con_s = pr_con con
+	    in
+		if !Flags.print_types then
+		    PP.NODE{start= con_s, finish="", 
+			    indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
+		else PP.LEAF con_s
+	    end
+      | DECONprim{con,instances,lvar} =>
+	      if !barify_p then PP.LEAF (pr_lvar lvar) else
+	      if !Flags.print_types then
+		  PP.NODE{start= "decon(" ^ pr_con con,finish=")", 
+			  indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
+	      else 
+		  PP.NODE{start= "decon(" ^ pr_con con,finish=")", 
+			  indent=2,children=[],childsep=PP.NOSEP}
       | EXCONprim excon => 
-	  PP.LEAF(Excon.pr_excon excon)
+	  PP.LEAF(pr_excon excon)
       | DEEXCONprim excon => 
-	  PP.LEAF("deexcon" ^ Excon.pr_excon excon)
+	  PP.LEAF("deexcon" ^ pr_excon excon)
       | RECORDprim => PP.LEAF("record")
       | SELECTprim i => PP.LEAF("select(" ^ Int.toString i ^ ")")
       | UB_RECORDprim => PP.LEAF("ubrecord") 
       | DROPprim => PP.LEAF("DROP")
       | CCALLprim{name="__neg_int31",...} => PP.LEAF("~" )
-      | CCALLprim{name="__neg_int32",...} => PP.LEAF("~" )
+      | CCALLprim{name="__neg_int32ub",...} => PP.LEAF("~" )
       | CCALLprim{name="__neg_real",...} => PP.LEAF("~" )
       | CCALLprim{name="__abs_int31",...} => PP.LEAF("abs" )
-      | CCALLprim{name="__abs_int32",...} => PP.LEAF("abs" )
+      | CCALLprim{name="__abs_int32ub",...} => PP.LEAF("abs" )
       | CCALLprim{name="__abs_real",...} => PP.LEAF("abs" )
+      | CCALLprim{name="floorFloat",...} => PP.LEAF("floor" )
+      | CCALLprim{name="realInt",...} => PP.LEAF("real" )
       | DEREFprim {instance} => 
           if !Flags.print_types then
 	     PP.NODE{start="!(",finish=")",indent=2,
@@ -467,7 +525,9 @@ functor LambdaExp(structure Lvars: LVARS
           if !Flags.print_types then
 	      PP.NODE {start="ccall (" ^ name ^ " ", finish=")", indent=2,
 		       children=map layoutType instances, childsep=PP.LEFT ", "}
-          else PP.LEAF ("ccall " ^ name)
+          else 
+	      if !barify_p then PP.LEAF ("Prim." ^ strip_ name)
+	      else PP.LEAF ("ccall " ^ name)
       | RESET_REGIONSprim {instance} => 
           if !Flags.print_types then
 	      PP.NODE{start="resetRegions(", finish=")",indent=2,
@@ -482,30 +542,23 @@ functor LambdaExp(structure Lvars: LVARS
     fun layoutSwitch layoutLambdaExp show_const (SWITCH(lamb,rules,wildcardOpt)) =
       let
 	fun child(x,lamb) =
-	  PP.NODE{start="",finish="",indent=0,
-		  children=[PP.LEAF (show_const x),
-			    layoutLambdaExp(lamb,0)],
-		  childsep=PP.LEFT " => "}
-      in
-	PP.NODE{start="(case ",finish=")",indent=3,
-		children=[layoutLambdaExp(lamb,0),
-			  PP.NODE{start="",finish="",indent=0,
-				  children=(map child rules) @ 
-				  (case wildcardOpt of 
-				     NONE => []
-				   | SOME lamb => 
-				       [PP.NODE{start="",finish="",indent=0,
-						children=[PP.LEAF "_",
-							  layoutLambdaExp(lamb,0)],
-						childsep=PP.LEFT " => "}]),
-				     childsep=PP.LEFT " | "}],
-		childsep = PP.RIGHT " of "} 
+	  PP.NODE{start=x ^ " => ",finish="",indent=2,childsep=PP.NOSEP,
+		  children=[layoutLambdaExp(lamb,0)]}
+	val head = PP.HNODE{start="(case ",finish="",childsep=PP.NOSEP,
+			    children=[layoutLambdaExp(lamb,0)]}
+	val rules = map (fn (x,e) => (show_const x,e)) rules
+	val rules = (case wildcardOpt of 
+			 SOME e => rules @ [("_", e)]
+		       | NONE => rules)
+	val children = PP.NODE{start="",finish="",indent=3,childsep=PP.LEFT " | ",
+			       children=map child rules}
+      in	  
+	  PP.NODE{start="",finish=")",indent=0,childsep=PP.RIGHT " of ",
+		  children=[head,children]}
       end
-
 
    fun parenthesise(st: PP.StringTree): PP.StringTree=
      PP.NODE{start = "(", finish= ")", indent=1, children = [st], childsep = PP.NOSEP}
-
 
    fun layoutTyvarseq tyvars =
       case tyvars
@@ -544,7 +597,8 @@ functor LambdaExp(structure Lvars: LVARS
 			     children=map layoutType taus,
 			     childsep=PP.LEFT", "})
 
-    and layoutTypes taus = PP.NODE {start="<", finish=">", childsep=PP.LEFT ", ", indent=0,
+    and layoutTypes [tau] = layoutType tau
+      | layoutTypes taus = PP.NODE {start="<", finish=">", childsep=PP.LEFT ", ", indent=0,
 				    children = map layoutType taus}
 
     and layoutTypeList tl =
@@ -561,7 +615,7 @@ functor LambdaExp(structure Lvars: LVARS
     and layoutFrame str {declared_lvars, declared_excons} =
       let
 	fun lvar_child({lvar,tyvars,Type}) =
-	  PP.NODE{start=Lvars.pr_lvar lvar ^ ": ", finish="", indent=3,
+	  PP.NODE{start=pr_lvar lvar ^ ": ", finish="", indent=3,
 		  children=[layoutTypeScheme(tyvars,Type)],
 		  childsep=PP.NOSEP
 		  }
@@ -573,7 +627,7 @@ functor LambdaExp(structure Lvars: LVARS
 	      NONE => ( "", PP.LEAF "")
 	    | SOME tau => (" of ", layoutType tau)
 	  in
-	    PP.NODE{start=Excon.pr_excon excon  ^ connect, finish="", indent=3,
+	    PP.NODE{start=pr_excon excon  ^ connect, finish="", indent=3,
 		    children=[type_tree],
 		    childsep=PP.NOSEP
 		             }	  
@@ -603,11 +657,11 @@ functor LambdaExp(structure Lvars: LVARS
      if !Flags.print_types 
        then
          let val sigma_t = layoutTypeScheme(alphas, tau)
-             val start:string = Lvars.pr_lvar lvar ^ " :" 
+             val start:string = pr_lvar lvar ^ " :" 
          in PP.NODE{start = start, finish = "", indent = String.size start +1,
                     childsep = PP.NOSEP, children = [sigma_t]}
          end
-     else PP.LEAF(Lvars.pr_lvar lvar)
+     else PP.LEAF(pr_lvar lvar)
 
    fun layPatLet [] = PP.LEAF("_")   (* wild card *)
      | layPatLet [one as (lvar,tyvars,tau)] = 
@@ -622,7 +676,7 @@ functor LambdaExp(structure Lvars: LVARS
 	val layoutcb =
 	  map (fn (con,tauopt) =>
 	       PP.NODE{start="",finish="",indent=0, childsep=PP.LEFT " of ",
-		       children=PP.LEAF (Con.pr_con con) :: layoutTypeOpt tauopt})
+		       children=PP.LEAF (pr_con con) :: layoutTypeOpt tauopt})
 				     
 	fun layoutdb (tyvars,tyname,cb) =
 	  let
@@ -663,11 +717,11 @@ functor LambdaExp(structure Lvars: LVARS
     and layoutLambdaExp(lamb,context:int): StringTree =
       case lamb of 
         VAR {lvar=lv,instances=taus} => 
-          if !Flags.print_types then 
-            PP.NODE{start=Lvars.pr_lvar lv ^ ":(", finish=")",indent=0,
-                    children=map layoutType taus,
-                    childsep=PP.RIGHT ","}
-          else PP.LEAF(Lvars.pr_lvar lv)
+	    if !Flags.print_types then 
+		PP.NODE{start=pr_lvar lv ^ ":(", finish=")",indent=0,
+			children=map layoutType taus,
+			childsep=PP.RIGHT ","}
+            else PP.LEAF(pr_lvar lv)
       | INTEGER (i,tau) => 
           if !Flags.print_types then 
             PP.NODE{start=Int32.toString i ^ ":", finish=" ",indent=0,
@@ -684,21 +738,23 @@ functor LambdaExp(structure Lvars: LVARS
       | STRING s => PP.LEAF(quote s)
       | REAL r => PP.LEAF(r)
       | FN {pat,body} => 
-	  PP.NODE{start="(fn ",finish=")", indent=1,
+	  PP.NODE{start="(fn ",finish=")", indent=4,
 		  children=[layoutFnPat pat,
 			    layoutLambdaExp(body,0)], 
-		  childsep=PP.RIGHT "=> "
+		  childsep=PP.RIGHT " => "
 		  }
-      | LET {pat,bind,scope} => layout_let_fix_and_exception lamb
-      | FIX{functions, scope} =>
+      | LET _ => layout_let_fix_and_exception lamb
+      | FIX _ => layout_let_fix_and_exception lamb
+      | EXCEPTION _ => layout_let_fix_and_exception lamb
+(*
 	  let
 	    fun layoutFunction {lvar, tyvars, Type, bind} =
               if !Flags.print_types then
-                PP.NODE{start=Lvars.pr_lvar lvar ^ ": " , finish="", indent=3,
+                PP.NODE{start=pr_lvar lvar ^ ": " , finish="", indent=3,
                         children=[layoutTypeScheme(tyvars,Type),
                                   layoutLambdaExp(bind,0)], childsep=PP.RIGHT " = "}
               else
-                PP.NODE{start=Lvars.pr_lvar lvar ^ " = ", finish="", indent=3,
+                PP.NODE{start=pr_lvar lvar ^ " = ", finish="", indent=3,
                         children=[layoutLambdaExp(bind,0)], childsep=PP.NOSEP}
 	  in
 	    PP.NODE{start="fix ", finish=" end ", indent=4,
@@ -710,6 +766,7 @@ functor LambdaExp(structure Lvars: LVARS
 			      layoutLambdaExp(scope,0)]
 		    }
 	  end
+*)
       | APP(lamb1, lamb2) =>
 	  PP.NODE{start= if context>13 then "(" else "", 
                   finish=if context>13 then ")" else "", 
@@ -717,25 +774,29 @@ functor LambdaExp(structure Lvars: LVARS
                   indent=1,
 		  children=[layoutLambdaExp(lamb1,13), layoutLambdaExp(lamb2,14)]
 		  }
+(*
       | EXCEPTION(excon,NONE,lamb) =>
-	  PP.NODE{start="exception " ^ Excon.pr_excon excon ^ " in",finish="",
+	  PP.NODE{start="exception " ^ pr_excon excon ^ " in",finish="",
 		  indent=0, children=[layoutLambdaExp(lamb,0)],
 		  childsep=PP.NOSEP}
       | EXCEPTION(excon,SOME tau,lamb) =>
 	  PP.NODE{start="",finish="", indent=0,
-		  children=[PP.NODE{start="exception  " ^ Excon.pr_excon excon ^ ": ",
+		  children=[PP.NODE{start="exception  " ^ pr_excon excon ^ " of ",
 				    finish="",indent=0,
 				    children=[layoutType tau],
 				    childsep=PP.NOSEP},
 			    layoutLambdaExp(lamb,0)], 
 		  childsep=PP.RIGHT " in "
 		  }
-      | RAISE(lamb,typelist) =>
-	  PP.NODE{start=if context>=13 then "raise(" else "raise",
-                  finish=if context>=13 then ")" else "", 
+*)
+      | RAISE(lamb,typelist) =>	  
+	  PP.NODE{start="raise ",
+                  finish="", 
                   indent=6,
-		  children=[layoutLambdaExp(lamb,12),
-			    layoutTypeList typelist], childsep=PP.RIGHT ","
+		  children=[layoutLambdaExp(lamb,0)] @ (if !Flags.print_types 
+							    then [layoutTypeList typelist]
+							else []), 
+		  childsep=PP.RIGHT ","
 		  }
 
       | HANDLE(lamb1, lamb2) =>
@@ -752,9 +813,17 @@ functor LambdaExp(structure Lvars: LVARS
       | SWITCH_S sw => 
 	  layoutSwitch layoutLambdaExp (fn x => x) sw
       | SWITCH_C sw => 
-	  layoutSwitch layoutLambdaExp Con.pr_con sw
+	  let fun pr_c (c,NONE) = pr_con c
+		| pr_c (c,SOME lv) = if !barify_p then pr_con c ^ " " ^ pr_lvar lv
+				     else pr_con c
+	  in layoutSwitch layoutLambdaExp pr_c sw
+	  end
       | SWITCH_E sw => 
-	  layoutSwitch layoutLambdaExp Excon.pr_excon sw
+	  let fun pr_exc (e,NONE) = pr_excon e
+		| pr_exc (e,SOME lv) = if !barify_p then pr_excon e ^ " " ^ pr_lvar lv
+				       else pr_excon e
+	  in layoutSwitch layoutLambdaExp pr_exc sw
+	  end
       | PRIM(prim,lambs) =>
          (case (prim,lambs) of
            (RECORDprim,_) =>
@@ -762,109 +831,154 @@ functor LambdaExp(structure Lvars: LVARS
                      children=(map (fn e => layoutLambdaExp(e,0))  lambs),
                      childsep=PP.RIGHT ","}
          | (UB_RECORDprim,_) =>
-             PP.NODE{start="<",finish=">",indent=1,
-                     children=(map (fn e => layoutLambdaExp(e,0)) lambs),
-                     childsep=PP.RIGHT ","}
+	      let val (s,f) = if !barify_p then ("(",")") else ("","")
+	      in PP.NODE{start=s,finish=f,indent=1,
+			 children=(map (fn e => layoutLambdaExp(e,0)) lambs),
+			 childsep=PP.RIGHT ","}
+	      end
          | (SELECTprim i, [lamb]) => 
-             PP.NODE{start="#" ^ Int.toString i ^ "(",finish=")",indent=1,
-                     children=[layoutLambdaExp(lamb,0)],
-                     childsep=PP.NOSEP}
+	      let val i = if !barify_p then i+1 else i
+	      in
+		  PP.NODE{start="#" ^ Int.toString i ^ "(",finish=")",indent=1,
+			  children=[layoutLambdaExp(lamb,0)],
+			  childsep=PP.NOSEP}
+	      end
          | (DEREFprim{instance},[lamb]) =>
              PP.NODE{start="!(",finish=")",indent=2,
                      children=[layoutLambdaExp(lamb,0)],
                      childsep=PP.NOSEP}
+	 | (DECONprim{con,instances,lvar},[lamb]) =>
+	      if !barify_p then PP.LEAF (pr_lvar lvar) else
+	      if !Flags.print_types then
+		  PP.NODE{start= "decon(" ^ pr_con con,finish=")", 
+			  indent=2,children=map layoutType instances @ [layoutLambdaExp(lamb,0)],
+			  childsep=PP.RIGHT","}
+	      else 
+		  PP.NODE{start= "decon(" ^ pr_con con ^ ",",finish=")", 
+			  indent=2,children=[layoutLambdaExp(lamb,0)],childsep=PP.NOSEP}
          | (REFprim{instance},[lamb]) =>
              PP.NODE{start="ref(",finish=")",indent=2,
                      children=[layoutLambdaExp(lamb,0)],
                      childsep=PP.NOSEP}
+	 | (EXCONprim excon, []) => PP.LEAF(pr_excon excon)
+	 | (CONprim{con,instances}, []) => 
+	     if !Flags.print_types then
+		 PP.NODE{start= pr_con con, finish="", 
+			 indent=2,children=map layoutType instances,childsep=PP.RIGHT","}
+	     else PP.LEAF (pr_con con)
          | (DROPprim,[lamb]) => layoutLambdaExp(lamb,context)
          | (ASSIGNprim{instance},_) => layout_infix context 3 " := "lambs
          | (CCALLprim{name="__mul_real", ...}, [_,_]) => layout_infix context 7 " * " lambs
          | (CCALLprim{name="__mul_int31", ...}, [_,_]) =>  layout_infix context 7 " * " lambs
-         | (CCALLprim{name="__mul_int32", ...}, [_,_]) =>  layout_infix context 7 " * " lambs
+         | (CCALLprim{name="__mul_int32ub", ...}, [_,_]) =>  layout_infix context 7 " * " lambs
          | (CCALLprim{name="__plus_real", ...}, [_,_]) => layout_infix context 6 " + " lambs
          | (CCALLprim{name="__plus_int31", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
-         | (CCALLprim{name="__plus_int32", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
+         | (CCALLprim{name="__plus_int32ub", ...}, [_,_]) =>  layout_infix context 6 " + " lambs
          | (CCALLprim{name="__minus_real", ...}, [_,_]) => layout_infix context 6 " - " lambs
          | (CCALLprim{name="__minus_int31", ...}, [_,_]) =>  layout_infix context 6 " - "lambs
-         | (CCALLprim{name="__minus_int32", ...}, [_,_]) =>  layout_infix context 6 " - "lambs
+         | (CCALLprim{name="__minus_int32ub", ...}, [_,_]) =>  layout_infix context 6 " - "lambs
+
+         | (CCALLprim{name="divFloat", ...}, [_,_]) =>  layout_infix context 7 " / "lambs
+
          | (EQUALprim{instance},[_,_]) => layout_infix context 4 " = "lambs
 
          | (CCALLprim{name="__less_word31", ...}, [_,_]) => layout_infix context 4 " < "lambs
-         | (CCALLprim{name="__less_word32", ...}, [_,_]) => layout_infix context 4 " < "lambs
+         | (CCALLprim{name="__less_word32ub", ...}, [_,_]) => layout_infix context 4 " < "lambs
          | (CCALLprim{name="__less_int31", ...}, [_,_]) => layout_infix context 4 " < "lambs
-         | (CCALLprim{name="__less_int32", ...}, [_,_]) => layout_infix context 4 " < "lambs
+         | (CCALLprim{name="__less_int32ub", ...}, [_,_]) => layout_infix context 4 " < "lambs
          | (CCALLprim{name="__less_real", ...}, [_,_]) => layout_infix context 4 " < "lambs
          | (CCALLprim{name="__less_string", ...}, [_,_]) => layout_infix context 4 " < "lambs
 
          | (CCALLprim{name="__greater_word31", ...}, [_,_]) => layout_infix context 4 " > "lambs
-         | (CCALLprim{name="__greater_word32", ...}, [_,_]) => layout_infix context 4 " > "lambs
+         | (CCALLprim{name="__greater_word32ub", ...}, [_,_]) => layout_infix context 4 " > "lambs
          | (CCALLprim{name="__greater_int31", ...}, [_,_]) => layout_infix context 4 " > "lambs
-         | (CCALLprim{name="__greater_int32", ...}, [_,_]) => layout_infix context 4 " > "lambs
+         | (CCALLprim{name="__greater_int32ub", ...}, [_,_]) => layout_infix context 4 " > "lambs
          | (CCALLprim{name="__greater_real", ...}, [_,_]) => layout_infix context 4 " > "lambs
          | (CCALLprim{name="__greater_string", ...}, [_,_]) => layout_infix context 4 " > "lambs
 
          | (CCALLprim{name="__lesseq_word31", ...}, [_,_]) => layout_infix context 4 " <= "lambs
-         | (CCALLprim{name="__lesseq_word32", ...}, [_,_]) => layout_infix context 4 " <= "lambs
+         | (CCALLprim{name="__lesseq_word32ub", ...}, [_,_]) => layout_infix context 4 " <= "lambs
          | (CCALLprim{name="__lesseq_int31", ...}, [_,_]) => layout_infix context 4 " <= "lambs
-         | (CCALLprim{name="__lesseq_int32", ...}, [_,_]) => layout_infix context 4 " <= "lambs
+         | (CCALLprim{name="__lesseq_int32ub", ...}, [_,_]) => layout_infix context 4 " <= "lambs
          | (CCALLprim{name="__lesseq_real", ...}, [_,_]) => layout_infix context 4 " <= "lambs
          | (CCALLprim{name="__lesseq_string", ...}, [_,_]) => layout_infix context 4 " <= "lambs
 
          | (CCALLprim{name="__greatereq_word31", ...}, [_,_]) => layout_infix context 4 " >= "lambs
-         | (CCALLprim{name="__greatereq_word32", ...}, [_,_]) => layout_infix context 4 " >= "lambs
+         | (CCALLprim{name="__greatereq_word32ub", ...}, [_,_]) => layout_infix context 4 " >= "lambs
          | (CCALLprim{name="__greatereq_int31", ...}, [_,_]) => layout_infix context 4 " >= "lambs
-         | (CCALLprim{name="__greatereq_int32", ...}, [_,_]) => layout_infix context 4 " >= "lambs
+         | (CCALLprim{name="__greatereq_int32ub", ...}, [_,_]) => layout_infix context 4 " >= "lambs
          | (CCALLprim{name="__greatereq_real", ...}, [_,_]) => layout_infix context 4 " >= "lambs
          | (CCALLprim{name="__greatereq_string", ...}, [_,_]) => layout_infix context 4 " >= "lambs
 
          | _ => 
-  	  PP.NODE{start="PRIM(",finish=")",indent=3,
-		  children=[layoutPrim layoutType prim,
-			    PP.NODE{start="[",finish="]",indent=1,
-				    children=map(fn x => layoutLambdaExp(x,0)) lambs,
-				    childsep=PP.RIGHT ","}],
-		  childsep=PP.RIGHT ", "}
+	     if !barify_p then 
+		 let fun layoutArgs [lamb] = layoutLambdaExp(lamb,context)
+		       | layoutArgs lambs =
+		     PP.HNODE {start="(",finish=")",childsep=PP.RIGHT",",
+			       children=map (fn x => layoutLambdaExp(x,0)) lambs}
+		     val (s,f) = if context > 13 then ("(",")") else ("","")
+		 in
+		     PP.HNODE{start=s,finish=f,childsep=PP.RIGHT " ", 
+			      children=[layoutPrim layoutType prim,
+					layoutArgs lambs]}
+		 end
+	     else
+		 PP.NODE{start="PRIM(",finish=")",indent=3,
+			 children=[layoutPrim layoutType prim,
+				   PP.NODE{start="[",finish="]",indent=1,
+					   children=map(fn x => layoutLambdaExp(x,0)) lambs,
+					   childsep=PP.RIGHT ","}],
+			 childsep=PP.RIGHT ", "}
         )
-      | FRAME fr => layoutFrame "FRAME" fr
+      | FRAME fr => 
+	      if !barify_p then 
+		  let val {declared_lvars,declared_excons} = fr
+		      val lvs = map (fn l => PP.LEAF ("val " ^ pr_lvar(#lvar l) ^ " = " ^ 
+						      pr_lvar(#lvar l))) declared_lvars
+		      val exs = map (fn l => PP.LEAF ("exception " ^ pr_excon (#1 l) ^ " = " ^
+						      pr_excon (#1 l))) declared_excons
+			  
+		  in PP.NODE {start="",finish="",childsep = PP.RIGHT " ",
+			      indent=0,children=lvs@exs}
+		  end
+	      else layoutFrame "FRAME" fr
 
     and layout_let_fix_and_exception lexp = 
           let 
-            val inInfo = ref ""
             fun layout_rec lexp = 
                   case lexp of 
                     LET{pat, bind, scope} =>
                         let
-                          val (binds, body) = layout_rec scope
-                          val _ = inInfo := "(* let *)"
+                          val (binds, body, frame) = layout_rec scope
                         in
-                           (mk_valbind(pat,bind)::binds, body)
+                           (mk_valbind(pat,bind)::binds, body, frame)
                         end
                   | FIX({functions,scope}) =>
                         let
-                          val (binds', body) = layout_rec scope
-                          val _ = inInfo := "(* fix *)"
+                          val (binds', body, frame) = layout_rec scope
                         in
-                          (mk_mutual_binding (rev functions):: binds', body)
+                          (mk_mutual_binding (rev functions):: binds', body, frame)
                         end
                   | EXCEPTION(excon, ty_opt, scope) =>
                         let 
-                          val (binds', body) = layout_rec scope
-                          val _ = inInfo := "(* exn *)"
+                          val (binds', body, frame) = layout_rec scope
                         in
-                           (mk_excon_binding(excon, ty_opt)::binds', body)
+                           (mk_excon_binding(excon, ty_opt)::binds', body, frame)
                         end
-                  | _ => ([],layoutLambdaExp(lexp,0))
+		  | FRAME _ => ([],layoutLambdaExp(lexp,0),true)
+                  | _ => ([],layoutLambdaExp(lexp,0),false)
 
-           val (l, body) = layout_rec lexp
-           val bindings =  PP.NODE{start = "", finish = "", childsep = PP.RIGHT "; ", 
-                                indent = 0, children = l}
+           val (l, body, frame:bool) = layout_rec lexp
+           val bindings =  PP.NODE{start = "", finish = "", childsep = PP.RIGHT " ", 
+				   indent = 0, children = l}
+	   val start = 
+	       if frame andalso !barify_p then "local " else "let "
           in
-            PP.NODE{start= "let ",
-                    finish=" end " (* ^ (!inInfo) *),   (*martin*)
+            PP.NODE{start=start,
+                    finish=" end ",
                     indent=4,
                     children=[bindings,body],
-                    childsep=PP.LEFT (" in " (* ^ (!inInfo) *) )} (*martin*)
+                    childsep=PP.LEFT " in "}
           end
 
       and mk_valbind(pat, e) = 
@@ -875,14 +989,14 @@ functor LambdaExp(structure Lvars: LVARS
                  indent=4,  children=[child1, layoutLambdaExp(e,0)] }
         end
       and mk_excon_binding(excon, ty_opt) = 
-            (* exception EXCON : mu  (* exn value or name at RHO *) or
-               excpetion EXCON : mu 
+            (* exception EXCON    (* exn value or name at RHO *) or
+               excpetion EXCON of tau 
             *)
          (case ty_opt of
-            NONE =>  PP.NODE{start = "exception ",finish="",childsep=PP.RIGHT " : ",
-                 indent=4,  children=[PP.LEAF(Excon.pr_excon excon)] }
-          | SOME ty => PP.NODE{start = "exception ",finish="",childsep=PP.RIGHT " ",
-                 indent=4,  children=[PP.LEAF(Excon.pr_excon excon), PP.LEAF ":", layoutType ty]}
+            NONE =>  PP.LEAF ("exception " ^ pr_excon excon)
+          | SOME ty => PP.NODE{start = "exception ",
+			       finish="", childsep=PP.RIGHT " of ", indent=10,  
+			       children=[PP.LEAF(pr_excon excon), layoutType ty]}
         )
       and  mk_mutual_binding(functions) = 
         let fun mk_fix({lvar,tyvars,Type, bind as (FN{pat, body, ...})})
@@ -905,21 +1019,28 @@ functor LambdaExp(structure Lvars: LVARS
               *)
               (no-1,
                    let
-                     val sigma_t = layoutTypeScheme(tyvars,Type)
-                     val t1 = let val s: string = Lvars.pr_lvar lvar ^ 
-                                 (if !Flags.print_types then ":" else "")
-                              in  PP.NODE{start = s, finish = "", indent = String.size s +1,
-                                          childsep = PP.NOSEP, children = [sigma_t]}
-                              end
-                     val formals = PP.HNODE{start="(", finish = ") =", childsep = PP.RIGHT ", ", 
-                                                  children = map (fn (lvar,_) => PP.LEAF(Lvars.pr_lvar lvar))
-                                                                 pat}
-                     val keyword = if no = 1 then "fun " else "and "
-                     val body_t = PP.NODE{start = "", finish ="", indent = 4, childsep = PP.NOSEP,
+		     val keyword = if no = 1 then "fun" else "and"
+                     val t1 = 
+			 if !Flags.print_types then
+			     let val sigma_t = layoutTypeScheme(tyvars,Type) 
+				 val s = pr_lvar lvar
+			     in
+				 PP.NODE{start = s ^ ":", finish = "", indent = String.size s +1,
+					 childsep = PP.NOSEP, children = [sigma_t]}
+			     end
+			 else PP.LEAF (pr_lvar lvar)
+                     val formals_t = 
+			 case pat of
+			     [(lvar,_)] => PP.LEAF (pr_lvar lvar ^ " = ")
+			   | _ => PP.HNODE{start="(", finish = ") = ", childsep = PP.RIGHT ", ", 
+					   children = map (fn (lvar,_) => PP.LEAF(pr_lvar lvar)) pat}
+                     val head_t = PP.HNODE{start="", finish ="", childsep = PP.RIGHT " ",
+					   children = [PP.LEAF keyword,t1,formals_t]}
+                     val body_t = PP.NODE{start = "", finish ="", indent = 2, childsep = PP.NOSEP,
                                           children = [layoutLambdaExp(body, 0)]}
                     in
-                      PP.NODE{start = keyword , finish = "", indent = 4, childsep = PP.NOSEP, 
-                              children = [t1, formals, body_t]}
+                      PP.NODE{start = "", finish = "", indent = 0, childsep = PP.NOSEP, 
+                              children = [head_t, body_t]}
                     end
                   :: rest_of_mutual_binding)
             | mk_fix _ _ = die "mk_fix: rhs of fix does not begin with lambda"
@@ -929,30 +1050,102 @@ functor LambdaExp(structure Lvars: LVARS
                 children = #2(foldl (uncurry mk_fix) (length functions,[]) functions)}
        end
 
-
-
     and layoutFnPat atpats =
-	PP.NODE {start="<", finish=">", indent=0, children=map layoutFnAtPat atpats,
-		 childsep=PP.RIGHT ","}
-
+	if !barify_p then
+	    case atpats of
+		[atpat] => layoutFnAtPat atpat
+	      | _ => PP.NODE {start="<", finish=">", indent=0, children=map layoutFnAtPat atpats,
+			      childsep=PP.RIGHT ","}
+	else
+	    PP.NODE {start="<", finish=">", indent=0, children=map layoutFnAtPat atpats,
+		     childsep=PP.RIGHT ","}
+(*
     and layoutLetPat atpats =
 	PP.NODE {start="<", finish=">", indent=0, children=map layoutLetAtPat atpats,
 		 childsep=PP.RIGHT ","}
-
+*)
     and layoutFnAtPat (lvar, Type) =
-      if !Flags.print_types then
-        PP.NODE {start=Lvars.pr_lvar lvar ^ ":", finish="", indent=0,
-                 children=[layoutType Type], childsep=PP.NOSEP}
-      else
-        PP.LEAF(Lvars.pr_lvar lvar)
-
+	if !barify_p then
+	    (* print type if record *)
+	    (case Type of
+		 RECORDtype _ =>
+		     PP.HNODE{start=pr_lvar lvar ^ " : ",finish="",childsep=PP.NOSEP,
+			      children=[layoutType Type]}
+	       | _ => PP.LEAF (pr_lvar lvar))
+	else
+	    if !Flags.print_types then
+		PP.NODE {start=pr_lvar lvar ^ ":", finish="", indent=0,
+			 children=[layoutType Type], childsep=PP.NOSEP}
+	    else PP.LEAF(pr_lvar lvar)
+(*
     and layoutLetAtPat (lvar, tyvars, Type) =
       if !Flags.print_types then
-        PP.NODE {start=Lvars.pr_lvar lvar ^ ":", finish="", indent=0,
+        PP.NODE {start=pr_lvar lvar ^ ":", finish="", indent=0,
 	         children=[layoutTypeScheme(tyvars,Type)], childsep=PP.NOSEP}
       else
-        PP.LEAF(Lvars.pr_lvar lvar)
-
+        PP.LEAF(pr_lvar lvar)
+*)
     val layoutLambdaPgm = layoutPgm
     val layoutLambdaExp = fn e => layoutLambdaExp(e,0)
+
+(*
+    local
+	fun pp_con out c = out (pr_con c)
+	fun pp_tv out tv = (out:string->unit) (pr_tyvar tv)
+	fun pp_tn out tn = (out:string->unit) (TyName.pr_TyName tn)
+
+	fun pp_ty (out:string->unit) (ty:Type) : unit =
+	    let fun pp (ARROWtype([ty1],[ty2])) = (pp ty1; out " -> "; pp ty2)
+		  | pp (TYVARtype tv) = pp_tv out tv
+		  | pp (CONStype(nil,tn)) = pp_tn out tn
+		  | pp (CONStype(tys,tn)) = (out "(" ; pp_tys out "," tys ; out ")" ; pp_tn out tn)
+		  | pp (RECORDtype tys) = (out "(" ; pp_tys out "*" tys ; out ")")
+		  | pp _ = die "pp_ty"
+	    in pp ty
+	    end
+	and pp_tys out sep nil = ()
+	  | pp_tys out sep [ty] = pp_ty out ty
+	  | pp_tys out sep (ty::tys) = (pp_ty out ty ; out sep ; pp_tys out sep tys)
+
+	fun pp_tyopt out NONE = ()
+	  | pp_tyopt out (SOME ty) = (out " of "; pp_ty out ty)
+
+	fun pp_d out nil = ()
+	  | pp_d out (d::ds) =
+	    let fun pp_tvs nil = ()
+		  | pp_tvs l = 
+		  let fun pp nil = ()
+			| pp (tv::tvs) = (pp_tv out tv; out ","; pp tvs)
+		  in out "(" ; pp l ; out ")"
+		  end
+		fun pp_cs nil = ()
+		  | pp_cs [(c,tyopt)] = (pp_con out c ; pp_tyopt out tyopt)
+		  | pp_cs ((c,tyopt)::cs) = (pp_con out c ; pp_tyopt out tyopt ; out " | "; pp_cs cs)
+		fun pp h (tvs,tn,cs) = 
+		    (out h; pp_tvs tvs; pp_tn out tn; out " = "; pp_cs cs)
+	    in pp "datatype " d
+		; app (pp "and ") ds
+	    end
+    
+	fun pp_ds out (DATBINDS l) =
+	    let fun pp_ds' nil = ()
+		  | pp_ds' (x::xs) = (pp_d out x ; pp_ds' xs)
+	    in pp_ds' l
+	    end
+    
+	fun pp_LambdaExp out e = ()
+    in
+	fun pp_LambdaPgm {file:string, pgm=PGM(datbinds,e)} : unit =
+	    let val os = TextIO.openOut file
+		fun out s = TextIO.output(os, s)
+	    in  pp_ds out datbinds;
+		pp_LambdaExp out e
+	    end
+    end
+*)
+
+    fun barify a = 
+	(barify_p := true; 
+	 layoutPgm a before barify_p := false)
+	
   end;

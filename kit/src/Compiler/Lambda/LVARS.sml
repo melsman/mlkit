@@ -14,6 +14,7 @@ signature LVARS =
     val new_named_lvar : string -> lvar
 
     val pr_lvar : lvar -> string
+    val pr_lvar' : lvar -> string       (* with key *)
 
     val leq : lvar * lvar -> bool
     val lt : lvar * lvar -> bool

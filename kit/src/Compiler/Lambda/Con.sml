@@ -19,6 +19,7 @@ functor Con(structure Name : NAME
     fun mk_con (s: string) : con = {str=s,name=Name.new()}
 
     fun pr_con ({str,...}: con) : string = str
+    fun pr_con' ({str,name}: con) : string = str ^ "_" ^ Int.toString (Name.key name)
 
     fun name ({name,...}: con) : name = name
 

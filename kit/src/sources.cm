@@ -3,6 +3,7 @@ Group
 functor KitX86
 functor KitDummy
 functor KitKAM
+functor KitBarry
 
 is
 
@@ -29,6 +30,8 @@ Compiler/EXECUTION.sml
 Compiler/Backend/X86/ExecutionX86.sml
 Compiler/Backend/Dummy/Execution__dummy.sml
 Compiler/Backend/KAM/ExecutionKAM.sml
+Compiler/Backend/Barry/ExecutionBarry.sml
+Compiler/Backend/Barry/BuildCompileBarry.sml
 
 Compiler/BuildCompile.sml
 Compiler/Backend/NativeCompile.sml
@@ -36,3 +39,4 @@ Common/KitCompiler.sml
 Common/KitX86.sml
 Common/KitDummy.sml
 Common/KitKam.sml
+Common/KitBarry.sml

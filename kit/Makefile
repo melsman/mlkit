@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-KITVERSION=4.1.1
+KITVERSION=4.1.2
 ARCH-OS=x86-linux
 #ARCH-OS=x86-bsd
 INSTDIR=/usr/share/mlkit
@@ -12,6 +12,8 @@ RPMDIR=/usr/src/rpm
 # Some commands
 MKDIR=mkdir -p
 INSTALL=cp -p
+
+CLEAN=rm -rf PM CM *~ .\#*
 
 mlkit:
 	$(MKDIR) bin
@@ -25,32 +27,36 @@ smlserver:
 	$(MKDIR) bin
 	cd src; $(MAKE) smlserver
 
+barry:
+	$(MKDIR) bin
+	cd src; $(MAKE) barry
+
 clean:
-	rm -rf *~ bin PM run
+	$(CLEAN) bin run
 	cd basislib; $(MAKE) clean
 	cd doc/manual; $(MAKE) clean
-	cd kitlib; rm -rf PM run *~
-	cd ml-yacc-lib; rm -rf PM *~
-	cd kitdemo; rm -rf PM run *~ */PM */*~
+	cd kitlib; $(CLEAN) run
+	cd ml-yacc-lib; $(CLEAN)
+	cd kitdemo; $(CLEAN) run */PM */*~
 	cd test; $(MAKE) clean
-	cd test_dev; rm -rf PM run *~ *.out *.log
-	cd smlserver_demo; rm -rf *~ sources.pm nsd.mael.tcl PM
-	cd smlserver_demo/lib; rm -rf *~ PM 
-	cd smlserver_demo/demo; rm -rf *~ PM 
-	cd smlserver_demo/demo/rating; rm -rf *~ PM 
-	cd smlserver_demo/demo/employee; rm -rf *~ PM 
-	cd smlserver_demo/demo/link; rm -rf *~ PM 
-	cd smlserver_demo/demo_lib; rm -rf *~ PM 
-	cd smlserver_demo/demo_lib/orasql; rm -rf *~ PM 
-	cd smlserver_demo/demo_lib/pgsql; rm -rf *~ PM 
-	cd smlserver_demo/scs_lib; rm -rf *~ PM 
-	cd smlserver_demo/scs_lib/pgsql; rm -rf *~ PM
+	cd test_dev; $(CLEAN) run *.out *.log
+	cd smlserver_demo; $(CLEAN) sources.pm nsd.mael.tcl
+	cd smlserver_demo/lib; $(CLEAN)
+	cd smlserver_demo/demo; $(CLEAN) 
+	cd smlserver_demo/demo/rating; $(CLEAN) 
+	cd smlserver_demo/demo/employee; $(CLEAN) 
+	cd smlserver_demo/demo/link; $(CLEAN) 
+	cd smlserver_demo/demo_lib; $(CLEAN) 
+	cd smlserver_demo/demo_lib/orasql; $(CLEAN) 
+	cd smlserver_demo/demo_lib/pgsql; $(CLEAN) 
+	cd smlserver_demo/scs_lib; $(CLEAN) 
+	cd smlserver_demo/scs_lib/pgsql; $(CLEAN)
 	cd smlserver_demo/log; rm -f server.log access* nspid*
-	cd smlserver_demo/www; rm -rf *~ PM
-	cd smlserver_demo/www/demo; rm -rf *~ PM
-	cd smlserver_demo/www/demo/rating; rm -rf *~ PM
-	cd smlserver_demo/www/demo/link; rm -rf *~ PM
-	cd smlserver_demo/www/demo/employee; rm -rf *~ PM
+	cd smlserver_demo/www; $(CLEAN)
+	cd smlserver_demo/www/demo; $(CLEAN)
+	cd smlserver_demo/www/demo/rating; $(CLEAN)
+	cd smlserver_demo/www/demo/link; $(CLEAN)
+	cd smlserver_demo/www/demo/employee; $(CLEAN)
 	cd src; $(MAKE) clean
 
 tgz_export:
@@ -63,6 +69,7 @@ tgz:
 	cd ..; rm -rf mlkit-$(KITVERSION) mlkit-$(KITVERSION).tgz
 	cd ..; cp -d -f -p -R kit mlkit-$(KITVERSION)
 	cd ../mlkit-$(KITVERSION); $(MAKE) clean
+	cd ../mlkit-$(KITVERSION); rm -rf test_dev
 	cd ../mlkit-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS */*/*/*/*/*/CVS
 	cd ../mlkit-$(KITVERSION); rm -rf .cvsignore */.cvsignore */*/.cvsignore \
            */*/*/.cvsignore */*/*/*/.cvsignore */*/*/*/*/.cvsignore \
@@ -74,7 +81,11 @@ tgz_smlserver:
 	cd ..; rm -rf smlserver-$(KITVERSION) smlserver-$(KITVERSION).tgz
 	cd ..; cp -d -f -p -R kit smlserver-$(KITVERSION)
 	cd ../smlserver-$(KITVERSION); $(MAKE) clean
+	cd ../smlserver-$(KITVERSION); rm -rf test_dev
 	cd ../smlserver-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS */*/*/*/*/*/CVS
+	cd ../smlserver-$(KITVERSION); rm -rf .cvsignore */.cvsignore */*/.cvsignore \
+           */*/*/.cvsignore */*/*/*/.cvsignore */*/*/*/*/.cvsignore \
+           */*/*/*/*/*/.cvsignore
 	cd ..; tar czf smlserver-$(KITVERSION).tgz smlserver-$(KITVERSION)
 	cd ..; rm -rf smlserver-$(KITVERSION)
 
