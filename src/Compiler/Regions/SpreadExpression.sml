@@ -117,8 +117,6 @@ struct
 		    Report.line s))
     | warn _ = ()
 
-  val concat = List.foldR (General.curry (op @)) []
-
 
   (* operations which are imported from other modules (for profiling) *)
 
@@ -869,124 +867,32 @@ good *)
                            E'.Mus mus, phi))
         end
 
-(*`CCALLprim {name, ...} es' is like an application of a variable `name' to
- `es', only `name' does not have a region type scheme in the environment & it
- can take multiple arguments.  How, then, do we obtain a region type scheme
- for `name'?  The code for `name' is not available to make region inference
- on so we use its ML type scheme.  So we spread (freshMu) the ML type scheme.
- As `name' is a function, its ML type scheme has an arrow & we must decide
- what arrow effect to put there.  We assume `name' gets from every region in
- the argument type & puts in every region in the result type.  Except that we
- assume there are no effects on regions that are associated with tyvars.
- (The polymorphic c function with region type scheme "All 'a'r'rr.('a,'r) ->
- (('a,'r)*('a,'r), 'rr)" does not really get or put on 'r (but it puts on
- 'rr).)  So it is a little troublesome to find the get & put regions.  Also,
- we must ensure that it is always the same region variable that is paired
- with a specific tyvar.  (In the example above, if we just spread the
- underlying ML type scheme we would get different region variables on the
- occurences of 'a: "All 'a'r1'r2'r3'rr.('a,'r1) -> (('a,'r2)*('a,'r3), 'rr)".
- See?)  See also the chapter `Calling C Functions' in the documentation.*)
+    (*`CCALLprim {name, ...} es' is like an application of a variable `name'
+     to `es', only `name' does not have a region type scheme in the
+     environment & it can take multiple arguments.  How, then, do we obtain a
+     region type scheme for `name'?  The code for `name' is not available to
+     make region inference on so we use its ML type scheme.  So we spread
+     (freshMu) the ML type scheme.  As `name' is a function, its ML type
+     scheme has an arrow & we must decide what arrow effect to put there.  We
+     assume `name' gets from every region in the argument type & puts in
+     every region in the result type.  Except that we assume there are no
+     effects on regions that are associated with tyvars.  (The polymorphic c
+     function with region type scheme "All 'a'r'rr.('a,'r) ->
+     (('a,'r)*('a,'r), 'rr)" does not really get or put on 'r (but it puts on
+     'rr).)  So it is a little troublesome to find the get & put regions.
+     Also, we must ensure that it is always the same region variable that is
+     paired with a specific tyvar.  (In the example above, if we just spread
+     the underlying ML type scheme we would get different region variables on
+     the occurences of 'a: "All 'a'r1'r2'r3'rr.('a,'r1) ->
+     (('a,'r2)*('a,'r3), 'rr)".  See?)  See also the chapter `Calling C
+     Functions' in the documentation.*)
 
     | E.PRIM (E.CCALLprim {name, instances, tyvars, Type}, es) => 
-	let
-	  (*unify_rhos_on_same_tyvars mu = for each pair of occurences of
-	   (tyvar, rho1) & (tyvar, rho2), unify rho1 & rho2.  To do this, an
-	   environment ttr maps a tyvar that has been seen before to the rho
-	   it was seen with.*)
-	  fun unify_rhos_on_same_tyvars mu B = #2 (unify_rhos_on_same_tyvars0 mu
-	        (FinMap.empty : (tyvar, place) FinMap.map, B : cone))
-	  and unify_rhos_on_same_tyvars0 (tau, rho) (ttr, B) =
-	        (case tau of
-		   R.TYVAR tyvar =>
-		     (case FinMap.lookup ttr tyvar of
-			Some rho' => (ttr, Eff.unifyRho (rho, rho') B)
-		      | None =>      (FinMap.add (tyvar, rho, ttr), B))
-		 | R.CONSTYPE (tyname, mus, _, _) =>
-		     unify_rhos_on_same_tyvars00 mus (ttr, B)
-		 | R.RECORD mus => unify_rhos_on_same_tyvars00 mus (ttr, B)
-		 | R.FUN (mus1, _, mus2) =>
-		     unify_rhos_on_same_tyvars00 mus1
-		     (unify_rhos_on_same_tyvars00 mus2 (ttr, B)))
-	  and unify_rhos_on_same_tyvars00 mus (ttr, B) =
-	        List.foldL unify_rhos_on_same_tyvars0 (ttr, B) mus
-
-	  (*c_function_effects mus = the `rhos_for_result' to be annotated on
-	   a ccall; see comment in MUL_EXP.*)
-	       
-	  fun c_function_effects mu : (R.place * int Option) list =
-	        c_function_effects1 no mu
-	  and c_function_effects1 in_list (tau, rho) =
-	        (case tau of
-		   R.TYVAR tyvar => []
-		 | R.CONSTYPE (tyname, mus, rhos, epss) =>
-		     if TyName.eq (tyname, TyName.tyName_LIST) then
-		       (case (mus, rhos) of
-			  ([mu1], [rho1]) =>
-			    (*rho is for cons cells & rho1 is for auxiliary pairs*)
-			    [(rho, None), (rho1, None)] @ c_function_effects1 yes mu1
-			| _ => die "c_function_effects1: strange list type")
-		     else [(rho, in_list (size_of_tyname tyname))]
-		 | R.RECORD [] => [(rho, Some 0)] (*unit is not allocated*)
-		 | R.RECORD mus =>
-		     (rho, in_list (Some (CConst.size_of_record mus)))
-		     :: concat (map (c_function_effects1 in_list) mus)
-		     (*it is assumed that concat does not concat the lists in
-		      opposite order, i.e., that concat [[1,2], [3], [4]] is
-		      [1,2,3,4] and not [4,3,1,2]*)
-		 | R.FUN (mus, eps0, mus') => die "c_function_effects1 (R.FUN ...)")
-          and yes i_opt = None (*i.e., `yes, we are below a list constructor'*)
-          and no i_opt = i_opt (*i.e., `no, we are not below a list constructor'*)
-	  and size_of_tyname tyname =
-	        if TyName.eq (tyname, TyName.tyName_REAL)
-		then Some (CConst.size_of_real ())
-		else if TyName.eq (tyname, TyName.tyName_STRING) then None
-	        else if CConst.unboxed_tyname tyname then Some 0
-		else die ("S (CCALL ...): \nI am sorry, but c functions returning "
-			  ^ TyName.pr_TyName tyname
-			  ^ " are not supported yet.\n")
-
-	  fun frv_except_tyvar_rhos mus =
-	        Eff.remove_duplicates (frv_except_tyvar_rhos0 mus)
-	  and frv_except_tyvar_rhos0 mus =
-	        concat (map frv_except_tyvar_rhos1 mus)
-	  and frv_except_tyvar_rhos1 (tau, rho) =
-	        (case tau of
-		   R.TYVAR tyvar => []
-		 | R.CONSTYPE (tyname, mus, rhos, epss) =>
-		     rho :: epss @ rhos @ frv_except_tyvar_rhos0 mus
-		 | R.RECORD mus =>
-		     rho :: frv_except_tyvar_rhos0 mus
-		 | R.FUN (mus, eps0, mus') => die "frv_except_tyvar_rhos1")
-
-
-	  (*TODO 14/11/1997 19:07. tho.: her er lidt tvivl om retract level &
-	   Eff.push & Eff.pop B freshMu: hvad med det rho, der bliver sat
-	   yderst på typen? det, der er ``til at gemme c-funktionen i''.*)
-
-	  fun sigma_for_c_function (tyvars, Type) B =
-	        let val (mu, B) = freshMu (Type, B)
-		    val B = unify_rhos_on_same_tyvars mu B
-		in
-		  (case mu of
-		     (R.FUN (mus1, eps0, mus2), rho) =>
-		       let val rhos_get = frv_except_tyvar_rhos mus1
-			   val rhos_put = frv_except_tyvar_rhos mus2
-			   val phi0 = Eff.mkUnion (map Eff.mkGet rhos_get
-						 @ map Eff.mkPut rhos_put)
-		       in
-			 Eff.edge (eps0, phi0) ; (*insert effect phi0 on the arrow in mu*)
-			 let val (B, sigma, msg_opt) = R.generalize_all (B, 0 (*TODO 14/11/1997 19:47. tho.*),
-									 tyvars, #1 mu)
-			 in (sigma, B)
-			 end
-		       end
-		   | _ => die "sigma_for_c_function")
-		end
-
-	  val B = pushIfNotTopLevel (toplevel, B) (* for retract *)
-	  val (sigma, B) = sigma_for_c_function (tyvars, Type) B
-	  (*much of the rest is analogous to the case for (APP (VAR ..., ...))*)
-	  val (B, tau, il) = newInstance (B, sigma, instances)
+	let val B = pushIfNotTopLevel (toplevel, B) (* for retract *)
+	    val (mu, B) = freshMu (Type, B)
+	    val (sigma, B) = R.sigma_for_c_function tyvars mu B
+	    (*much of the rest is analogous to the case for (APP (VAR ..., ...))*)
+	    val (B, tau, il) = newInstance (B, sigma, instances)
 	in
 	  (case tau of
 	     R.FUN (mus_a, eps_phi0, [mu_r]) =>
@@ -1000,7 +906,7 @@ good *)
 		       end) (B, [], [], []) es
 		 val B = unify_mus (mus_a, mus_es) B
 		 val e' = E'.CCALL ({name = name, mu_result = mu_r,
-				     rhos_for_result = c_function_effects mu_r}, trs')
+				     rhos_for_result = R.c_function_effects mu_r}, trs')
 	       in
 		 retract (B, E'.TR (e', E'.Mus [mu_r], Eff.mkUnion (eps_phi0 :: phis)))
 	       end

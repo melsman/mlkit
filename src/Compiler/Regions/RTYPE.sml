@@ -66,6 +66,20 @@ sig
      nonetheless. *)
   val matchSchemes: sigma * sigma -> il * cone -> il * cone
 (*                    'a * 'b list * 'b list -> 'a * 'b list * 'b list *)
+
+  (*the following two functions are only used when spreading ccalls (in
+   SpreadExpression---see also the comment there):
+
+   sigma_for_c_function tyvars mu B = a region type scheme corresponding to
+   the ML type scheme that was freshMu'ed to get mu and has bound tyvars
+   `tyvars'.
+
+   c_function_effects mu = the `rhos_for_result' to be annotated on a ccall
+   with return type-and-place mu; see comment in MUL_EXP.*)
+
+  val sigma_for_c_function : tyvar list -> (Type * place) -> cone -> sigma * cone
+  val c_function_effects : (Type * place) -> (place * int Option) list
+
   type StringTree
   (* the boolean in the following functions should be true iff on want to 
      omit region information *)

@@ -1,4 +1,5 @@
-(*$RType: CRASH PRETTYPRINT FLAGS DIGRAPH EFFECT LAMBDA_EXP TYNAME RTYPE*)
+(*$RType: CRASH PRETTYPRINT FLAGS DIGRAPH EFFECT LAMBDA_EXP TYNAME RTYPE
+        FINMAP C_CONST*)
 
 functor RType(structure Flags : FLAGS
               structure Crash : CRASH
@@ -6,7 +7,10 @@ functor RType(structure Flags : FLAGS
               structure DiGraph : DIGRAPH
               structure L: LAMBDA_EXP
               structure TyName: TYNAME
-                sharing type L.TyName = TyName.TyName
+                sharing type L.TyName = TyName.TyName 
+	      structure CConst : C_CONST
+			sharing TyName = CConst.TyName
+	      structure FinMap : FINMAP
               structure PP : PRETTYPRINT
                 sharing type PP.StringTree = E.StringTree
 
@@ -23,6 +27,8 @@ struct
 
   fun noSome (Some v) s = v
     | noSome None s = die s
+
+  val concat = List.foldR (General.curry (op @)) []
 
   infix footnote
   fun x footnote y = x
@@ -1046,6 +1052,108 @@ struct
   val realType: Type = CONSTYPE(TyName.tyName_REAL,[],[],[])  
   val stringType: Type = CONSTYPE(TyName.tyName_STRING,[],[],[])  
   val unitType: Type = RECORD[]
+
+
+  (*the following two functions are only used when spreading ccalls (in
+   SpreadExpression---see also the comment there):
+
+   sigma_for_c_function tyvars mu B = a region type scheme corresponding to
+   the ML type scheme that was freshMu'ed to get mu and has bound tyvars
+   `tyvars'.
+
+   c_function_effects mu = the `rhos_for_result' to be annotated on a ccall
+   with return type-and-place mu; see comment in MUL_EXP.*)
+
+
+  (*unify_rhos_on_same_tyvars mu = for each pair of occurences of
+   (tyvar, rho1) & (tyvar, rho2), unify rho1 & rho2.  To do this, an
+   environment ttr maps a tyvar that has been seen before to the rho
+   it was seen with.*)
+
+  fun unify_rhos_on_same_tyvars mu B = #2 (unify_rhos_on_same_tyvars0 mu
+        (FinMap.empty : (tyvar, place) FinMap.map, B : cone))
+  and unify_rhos_on_same_tyvars0 (tau, rho) (ttr, B) =
+        (case tau of
+  	   TYVAR tyvar =>
+  	     (case FinMap.lookup ttr tyvar of
+  		Some rho' => (ttr, E.unifyRho (rho, rho') B)
+  	      | None =>      (FinMap.add (tyvar, rho, ttr), B))
+  	 | CONSTYPE (tyname, mus, _, _) =>
+  	     unify_rhos_on_same_tyvars00 mus (ttr, B)
+  	 | RECORD mus => unify_rhos_on_same_tyvars00 mus (ttr, B)
+  	 | FUN (mus1, _, mus2) =>
+  	     unify_rhos_on_same_tyvars00 mus1
+  	     (unify_rhos_on_same_tyvars00 mus2 (ttr, B)))
+  and unify_rhos_on_same_tyvars00 mus (ttr, B) =
+        List.foldL unify_rhos_on_same_tyvars0 (ttr, B) mus
+  
+  (*c_function_effects mus = the `rhos_for_result' to be annotated on
+   a ccall; see comment in MUL_EXP.*)
+       
+  fun c_function_effects mu : (place * int Option) list =
+        c_function_effects1 no mu
+  and c_function_effects1 in_list (tau, rho) =
+        (case tau of
+  	   TYVAR tyvar => []
+  	 | CONSTYPE (tyname, mus, rhos, epss) =>
+  	     if TyName.eq (tyname, TyName.tyName_LIST) then
+  	       (case (mus, rhos) of
+  		  ([mu1], [rho1]) =>
+  		    (*rho is for cons cells & rho1 is for auxiliary pairs*)
+  		    [(rho, None), (rho1, None)] @ c_function_effects1 yes mu1
+  		| _ => die "c_function_effects1: strange list type")
+  	     else [(rho, in_list (size_of_tyname tyname))]
+  	 | RECORD [] => [(rho, Some 0)] (*unit is not allocated*)
+  	 | RECORD mus =>
+  	     (rho, in_list (Some (CConst.size_of_record mus)))
+  	     :: concat (map (c_function_effects1 in_list) mus)
+  	     (*it is assumed that concat does not concat the lists in
+  	      opposite order, i.e., that concat [[1,2], [3], [4]] is
+  	      [1,2,3,4] and not [4,3,1,2]*)
+  	 | FUN (mus, eps0, mus') => die "c_function_effects1 (FUN ...)")
+  and yes i_opt = None (*i.e., `yes, we are below a list constructor'*)
+  and no i_opt = i_opt (*i.e., `no, we are not below a list constructor'*)
+  and size_of_tyname tyname =
+        if TyName.eq (tyname, TyName.tyName_REAL)
+  	then Some (CConst.size_of_real ())
+  	else if TyName.eq (tyname, TyName.tyName_STRING) then None
+        else if CConst.unboxed_tyname tyname then Some 0
+  	else die ("S (CCALL ...): \nI am sorry, but c functions returning "
+  		  ^ TyName.pr_TyName tyname
+  		  ^ " are not supported yet.\n")
+  
+  fun frv_except_tyvar_rhos mus =
+        E.remove_duplicates (frv_except_tyvar_rhos0 mus)
+  and frv_except_tyvar_rhos0 mus =
+        concat (map frv_except_tyvar_rhos1 mus)
+  and frv_except_tyvar_rhos1 (tau, rho) =
+        (case tau of
+  	   TYVAR tyvar => []
+  	 | CONSTYPE (tyname, mus, rhos, epss) =>
+  	     rho :: epss @ rhos @ frv_except_tyvar_rhos0 mus
+  	 | RECORD mus =>
+  	     rho :: frv_except_tyvar_rhos0 mus
+  	 | FUN (mus, eps0, mus') => die "frv_except_tyvar_rhos1")
+  
+  fun sigma_for_c_function tyvars mu B =
+        let val B = unify_rhos_on_same_tyvars mu B
+  	in
+  	  (case mu of
+  	     (FUN (mus1, eps0, mus2), rho) =>
+  	       let val rhos_get = frv_except_tyvar_rhos mus1
+  		   val rhos_put = frv_except_tyvar_rhos mus2
+  		   val phi0 = E.mkUnion (map E.mkGet rhos_get
+  					 @ map E.mkPut rhos_put)
+  	       in
+  		 E.edge (eps0, phi0) ; (*insert effect phi0 on the arrow in mu*)
+  		 let val (B, sigma, msg_opt) = generalize_all (B, 0, tyvars, #1 mu)
+  		 in (sigma, B)
+  		 end
+  	       end
+  	   | _ => die "sigma_for_c_function")
+	end
+
+
 end; (* RType ends here *)
 
 (*$TestRType: Crash PrettyPrint Flags DiGraph Effect Lvars LambdaExp TyName 
