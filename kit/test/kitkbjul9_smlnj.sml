@@ -12,9 +12,10 @@
 
 *)
 
-local
-fun eq_integer (x: int, y: int): bool = (x = y)
-fun eq_string  (x: string, y: string): bool = (x = y)
+fun forceResetting _ = ()
+fun resetRegions _ = ()
+fun eq_integer (x: int, y: int): bool = (x=y)
+fun eq_string  (x: string, y: string): bool = (x=y)
 
 (* 
 signature KB =
@@ -714,12 +715,12 @@ fun kb_complete  complete_rules (* the terms in the complete_rules are global *)
     end
 
 
-fun doit() = kb_complete  [] (* terms in list global *) (Geom_rules())
+fun run() = kb_complete  [] (* terms in list global *) (Geom_rules())
 fun testit _ = ()
 
 (*
   end (* Main *)
 *)
-in
-val _ = (doit(); doit(); doit());
-end
+
+fun doit() = (run(); run(); run())
+      
