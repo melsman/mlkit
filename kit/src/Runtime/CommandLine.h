@@ -31,6 +31,7 @@ the first commandline argument for the application is -arg1 because
  *----------------------------------------*/
 extern int disable_gc;
 extern int verbose_gc;
+extern int report_gc;
 extern double heap_to_live_ratio;
 
 /*----------------------------------------*

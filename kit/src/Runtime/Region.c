@@ -333,11 +333,13 @@ size_free_list()
  *  Put a region administrationsstructure on the stack. The address is  *
  *  in roAddr.                                                          *
  *----------------------------------------------------------------------*/
-Region allocateRegion(Region r
+static inline Region 
+allocateRegion0(Region r
 #ifdef KAM
-		    , Region* topRegionCell
+		, Region* topRegionCell
 #endif
-		    ) { 
+		) 
+{ 
   Klump *rp;
   
   debug(printf("[allocateRegion..."));  
@@ -374,43 +376,61 @@ Region allocateRegion(Region r
   
   TOP_REGION = r;
 
-  r = (Ro *)setInfiniteBit((int)r);
-
   debug(printf("]\n"));
 
   return r;
 }  
 
+Region
+allocateRegion(Region r
+#ifdef KAM
+	       , Region* topRegionCell
+#endif
+		    ) 
+{
+  r = allocateRegion0(r
+#ifdef KAM
+		      , topRegionCell
+#endif
+		      );
+  r = (Region)setInfiniteBit((int)r);
+  return r;
+}
+
 #ifdef ENABLE_GC
 Region 
 allocatePairRegion(Region r)
 {
-  r = allocateRegion(r);
-  set_pairregion(clearStatusBits(r));
+  r = allocateRegion0(r);
+  set_pairregion(r);
+  r = (Region)setInfiniteBit((int)r);
   return r;
 }
 
 Region 
 allocateArrayRegion(Region r)
 {
-  r = allocateRegion(r);
-  set_arrayregion(clearStatusBits(r));
+  r = allocateRegion0(r);
+  set_arrayregion(r);
+  r = (Region)setInfiniteBit((int)r);
   return r;
 }
 
 Region 
 allocateRefRegion(Region r)
 {
-  r = allocateRegion(r);
-  set_refregion(clearStatusBits(r));
+  r = allocateRegion0(r);
+  set_refregion(r);
+  r = (Region)setInfiniteBit((int)r);
   return r;
 }
 
 Region 
 allocateTripleRegion(Region r)
 {
-  r = allocateRegion(r);
-  set_tripleregion(clearStatusBits(r));
+  r = allocateRegion0(r);
+  set_tripleregion(r);
+  r = (Region)setInfiniteBit((int)r);
   return r;
 }
 #endif /*ENABLE_GC*/

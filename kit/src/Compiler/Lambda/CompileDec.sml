@@ -2462,22 +2462,21 @@ the 12 lines above are very similar to the code below
 					      handle _ => die "compile_match: nth"))
 	val (functions, lexp) =
 	      compile_decdag  compile_no (obj,tau_argument) raise_something tau_return_opt env decdag
+
+	val _ = 
+	    if not warn_on_inexhaustiveness orelse exhaustive (reachable decdag) then () 
+	    else Flags.warn (report_SourceInfo info // line "Match not exhaustive.")
+
+	val _ =
+	    List.app (fn i (*number of rhs which is redundant*) =>
+		      (case (List.nth (matches, i) handle _ => die "compile_match: 2nd nth") of
+			   MATCH (_, MRULE (info, _, _), _) => 
+			       Flags.warn (report_SourceInfo info
+					   // line "That rule is redundant.")))
+	    (redundant_rules (map #2 rules))
       in
-	(*KILL 21/12/1997 18:44. tho.:
-	 pr "\n\ncompileMatch: decdag is:\n";
-	 pr_decdag decdag;
-	 *)
-	if not warn_on_inexhaustiveness orelse exhaustive (reachable decdag) then () else
-	  Flags.warn
-	  (report_SourceInfo info // line "Match not exhaustive.") ;
-        List.app (fn i (*number of rhs which is redundant*) =>
-		    (case (List.nth (matches, i) handle _ => die "compile_match: 2nd nth") of
-		       MATCH (_, MRULE (info, _, _), _) => 
-			 Flags.warn (report_SourceInfo info
-				     // line "That rule is redundant.")))
-	  (redundant_rules (map #2 rules)) ;
-	FN {pat = [(lvar_switch, tau_argument)],
-	    body = FIX {functions = functions, scope = lexp}}
+	  FN {pat = [(lvar_switch, tau_argument)],
+	      body = FIX {functions = functions, scope = lexp}}
       end
 
 
