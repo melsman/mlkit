@@ -1,4 +1,14 @@
--- $ID$
+/* ======================================================================
+   test suite for scs-group packages
+
+   $ID$
+
+   History: 
+   271102 Kennie Nybo Pontoppidan <kennie@it-c.dk> 
+	  code review, rewrote testsuite, added test cases and comments
+   161002 Niels Hallenberg <nh@it.edu> created test suite
+====================================================================== */
+
 -- This code is a modified version of the acs-groups-test module found
 -- in openACS (www.openacs.org): files acs-groups-test.sql
 

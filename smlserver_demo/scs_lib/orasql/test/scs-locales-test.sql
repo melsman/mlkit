@@ -1,5 +1,11 @@
--- $Id$
+/* ======================================================================
+   test suite for scs_text package
 
+   $Id$
+
+   History: 
+   151102 Kennie Nybo Pontoppidan created test suite
+====================================================================== */
 
 set serveroutput on
 

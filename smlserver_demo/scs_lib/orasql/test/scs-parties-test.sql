@@ -1,4 +1,12 @@
--- $Id$
+/* ======================================================================
+   test suite for scs_parties package
+
+   $Id$
+
+   History: 
+   151102 Kennie Nybo Pontoppidan created test suite
+====================================================================== */
+
 
 declare
   pid1 integer;
@@ -22,14 +30,14 @@ begin
   scs_test.printl( 'testing procedure new:' );
   select count(*) into counter1_b from scs_parties;
   pid1 := scs.new_obj_id;
-  pid1 := scs_party.new( party_id => pid1, email=> 'test'|| to_char(pid1) ||'@it-c.dk' );
+  pid1 := scs_party.new( party_id => pid1, email=> 'test' || pid1 ||'@it-c.dk' );
   select count(*) into counter1_a from scs_parties;
   scs_test.testBool( 'new', 1, counter1_a = counter1_b +1 );
   scs_test.testExn( 'new', 2, '
   declare 
     pid integer;
   begin
-    pid := scs_party.new( email=> ''test1@it-c.dk'' );
+    pid := scs_party.new( email=> ''test' || pid1 ||'@it-c.dk'' );
   end;', 'f' );
 
   scs_test.printl( 'testing procedure destroy:' );

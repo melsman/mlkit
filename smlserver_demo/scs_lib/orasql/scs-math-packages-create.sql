@@ -42,8 +42,6 @@ show errors
 
    Random number/ string generator package
 
-   NB! (knp): 
-
    Author:    Unknown
    Original:  http://www.orafaq.org/scripts/sql/random.txt
    Taken from: http://orafaq.cs.rmit.edu.au/scripts/plsql/random.txt

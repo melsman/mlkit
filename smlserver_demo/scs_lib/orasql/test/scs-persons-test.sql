@@ -1,4 +1,11 @@
--- $id$
+/* ======================================================================
+   test suite for scs_person, scs_person_rel packages
+
+   $Id$
+
+   History: 
+   191102 Kennie Nybo Pontoppidan created test suite
+====================================================================== */
 
 set serveroutput on
 
