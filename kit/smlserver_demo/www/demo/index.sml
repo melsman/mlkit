@@ -1,5 +1,5 @@
 val examples =
-  [("Time-of-day", "time_of_day.sml", []),
+  [("Time of day", "time_of_day.sml", []),
    ("Count up and down", "counter.sml", []),
    ("Temperature conversion", "temp.html", ["temp.sml"]),
    ("Dynamic recipe", "recipe.html", ["recipe.sml"]),

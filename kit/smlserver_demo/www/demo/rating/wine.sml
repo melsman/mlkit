@@ -10,14 +10,14 @@
   val lines = Db.fold 
     (fn (g,r) =>
      let val rating = 
-	   case Int.fromString (g"rating") of
+	   case Int.fromString (g "rating") of
 	     SOME i => i
 	   | NONE => raise Fail "Rating not integer"
      in 
        `<tr><th> ^(RatingUtil.bottleImgs rating)
-        <td> ^(g"comments")
-        <td> ^(RatingUtil.mailto (g"email") (g"fullname"))`
-     end ^^ r) nil query
+        <td> ^(g "comments")
+        <td> ^(RatingUtil.mailto (g "email") (g "fullname"))`
+     end ^^ r) `` query
 
   val body =
     `<table width=95% bgcolor="#dddddd" border=1>

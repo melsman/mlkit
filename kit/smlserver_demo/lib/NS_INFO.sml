@@ -13,11 +13,11 @@ signature NS_INFO = sig
 end
 
 (*
- [configFile()] return the location of the configuration 
+ [configFile()] returns the location of the configuration 
  file.
 
  [configGetValue{sectionName,key}] returns SOME s, if s is 
- the string associated with the section name, key pair in 
+ the string associated with the (sectionName, key) pair in 
  the configuration file. Returns NONE, otherwise. Case 
  insensitive on sectionName, key.
 
