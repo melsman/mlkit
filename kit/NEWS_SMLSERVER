@@ -1,5 +1,8 @@
-File NEWS_SMLSERVER                                September 22, 2001
+File NEWS_SMLSERVER                                  October 9, 2001
 
+ * mael 2001-10-09: Added support for threaded simultaneous responses
+   of requests. Serving a request is no longer blocked by the serving
+   of other requests.
 
  * nh 2001-10-05: Added multilingual support in FormVar module. 
 
