@@ -31,8 +31,6 @@ functor PhysSizeInf(structure Name : NAME
                       ) : PHYS_SIZE_INF =
   struct
 
-    structure EdList = Edlib.List
-
     structure LvarMap = Lvars.Map
 
     open MulExp
@@ -427,7 +425,8 @@ functor PhysSizeInf(structure Name : NAME
     fun eval_psi_graph () : unit =
       let
 	(* val _ = log "eval_psi_graph" *)
-	val max_list = EdList.foldL' phsize_max 
+	fun max_list [] = die "eval_psi_graph"
+	  | max_list (i::is) = List.foldl (fn (i,b)=>phsize_max i b) i is
 	val layout_info = layout_phsize o !
 	  
 	val sccs  = DiGraph.scc layout_info (!psi_graph)
@@ -526,13 +525,13 @@ functor PhysSizeInf(structure Name : NAME
 					       else die "psi_tr.LETREGION.mul not in {0,1}")
 	   rhos; psi_tr env body)
 	 | LET{k_let,pat,bind,scope} => 
-	  let val env' = EdList.foldL(fn pat => fn acc => 
+	  let val env' = List.foldl(fn (pat,acc) =>
 				    add_env(#1 pat,NOTFIXBOUND,acc)) env pat
 	  in psi_tr env bind; psi_tr env' scope
 	  end
          | FIX{free=ref (SOME fvs),shared_clos,functions,scope} =>
-	  let val env' = EdList.foldL 
-	                 (fn {lvar,rhos_formals,...} => fn env =>
+	  let val env' = List.foldl
+	                 (fn ({lvar,rhos_formals,...},env) =>
 			  let val formals = map (fn (place,mul) => 
 						 (case mul
 						    of Mul.NUM 0 => psi_declare place
@@ -653,7 +652,7 @@ debug*)
 	     List.app (psi_tr env) trs)
 	 | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => psi_tr env tr
 	 | FRAME{declared_lvars, ...} =>
-	  let val env' = EdList.foldR (fn {lvar,...} => fn frame_env =>
+	  let val env' = List.foldr (fn ({lvar,...},frame_env) =>
 				     case lookup_env env lvar
 				       of SOME res => add_env (lvar, res, frame_env)
 					| NONE => die "psi_tr.FRAME.lv not in env")

@@ -406,7 +406,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    end
 
 	  and TypeList_eq0 eq_significant (tys1,tys2) =
-	    EdList.foldL (fn (ty1,ty2) => fn b => b andalso 
+	    List.foldl (fn ((ty1,ty2),b) => b andalso 
 			Type_eq0 eq_significant (ty1,ty2))
 	    true (BasisCompat.ListPair.zipEq (tys1,tys2))
 	    handle BasisCompat.ListPair.UnequalLengths => false
@@ -495,7 +495,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			     val labels = map Lab.pr_Lab (SortedFinMap.domSORTED m)
 			     fun colon_between (lab, ty) = lab ^ ": " ^ ty
 			   in
-			     EdList.stringSep "{" "}" ", " colon_between
+			     ListUtils.stringSep "{" "}" ", " colon_between
 			     (ListPair.zip (labels,field_types))
 			   end
 		    end
@@ -524,7 +524,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			  concat [pretty_string_as_opt names 4 (ty,ty'), " ",
 				  TyName_string_as_opt (tyname, tyname'_opt)]
 			 | _ =>
-			  concat [EdList.stringSep "(" ") " ", "
+			  concat [ListUtils.stringSep "(" ") " ", "
 				  (pretty_string_as_opt names 1)
 				  (ListPair.zip (tys,tys'_opt)), 
 				  " ",
@@ -562,7 +562,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		   (nil, _) => "unit"	(* Hard-wired *)
 		 | ([x], [x']) => "{1: " ^ pretty_string_as_opt  names 1 (x,x') ^ "}"
 		 | _ => parenthesize (3, precedence,
-				      EdList.stringSep "" "" " * "
+				      ListUtils.stringSep "" "" " * "
 				      (pretty_string_as_opt names 4) 
 				      (ListPair.zip(fields, fields'))))
 	      end
@@ -1066,7 +1066,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			 unify_with_overloaded_tyvar tynames (Substitution.on (S, tau))
 			| Nonoverloaded => Substitution.Id
 	  in
-	    if EdList.member tv restricted_tyvars then raise Unify "unify_with_tyvar.2"
+	    if ListUtils.member tv restricted_tyvars then raise Unify "unify_with_tyvar.2"
 	    else tv := TY_LINK tau
 	  end
 	  | unify_with_tyvar _ = die "unify_with_tyvar"
@@ -1101,7 +1101,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		  | (true , true) => ()
 		  | ( _   ,  _  ) => raise Unify "unifyExplicit.2";
 
-		   if EdList.member tv' restricted_tyvars then raise Unify "unifyExplicit.3"
+		   if ListUtils.member tv' restricted_tyvars then raise Unify "unifyExplicit.3"
 		   else if TyVar.is_overloaded tv' then raise Unify "unifyExplicit.4"
 		   else if !level' < !level then 
 
@@ -1140,8 +1140,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		let val rank = Rank.min(r,r')
 		in rank_ref := rank ;
 		   rank_ref' := rank ;
-		   if EdList.member tv restricted_tyvars then
-		     if EdList.member tv' restricted_tyvars then raise Unify "unifyTyVar"
+		   if ListUtils.member tv restricted_tyvars then
+		     if ListUtils.member tv' restricted_tyvars then raise Unify "unifyTyVar"
 		     else (level := Int.min (!level, !level') ;
 			   unify_with_tyvar(tv',ty))
 		   else
@@ -1155,7 +1155,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    else
 	      (decr_level_Type (!level) ty' ;
 	       decr_rank_Type (tv,!rank) ty' ;        (* the tv is for the error reporting *)
-	       if occurs_tv_in_Type (tv, ty') orelse EdList.member tv restricted_tyvars 
+	       if occurs_tv_in_Type (tv, ty') orelse ListUtils.member tv restricted_tyvars 
 		 then raise Unify "unifyTyVar.2"
 	       else unify_with_tyvar(tv, ty'))
 
@@ -1530,7 +1530,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    of [] => {vars="", body=Type.pretty_string names tau}
 	     | [tyvar] => {vars=TyVar.pretty_string names tyvar,
 			   body=Type.pretty_string names tau}
-	     | tyvars => {vars=EdList.stringSep "(" ")" ", " (TyVar.pretty_string names) tyvars,
+	     | tyvars => {vars=ListUtils.stringSep "(" ")" ", " (TyVar.pretty_string names) tyvars,
 			  body=Type.pretty_string names tau}
 	      
 	fun pretty_string' names theta = #body (pretty_string names theta)

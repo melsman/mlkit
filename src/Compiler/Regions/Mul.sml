@@ -165,7 +165,7 @@ struct
 			    | NONE => false) true mularefmap2 
 
   fun restrict_mularefmap(mularefmap,effectvars) =
-    EdList.foldL(fn effectvar => fn acc =>
+    List.foldl(fn (effectvar,acc) =>
 	       case GlobalEffVarEnv.lookup mularefmap effectvar
 		 of SOME res => GlobalEffVarEnv.add(effectvar,res,acc)
 		  | NONE => die "restrict_mularefmap") GlobalEffVarEnv.empty effectvars 
@@ -722,7 +722,7 @@ struct
 
 
   fun reify(mularefs) = 
-      EdList.foldL (fn (r as ref(eps,mulef)) => fn acc =>
+      List.foldl (fn ((r as ref(eps,mulef)),acc) =>
           GlobalEffVarEnv.add((*Eff.key_of_eps_or_rho*) eps, r, acc)) 
             GlobalEffVarEnv.empty
             mularefs
@@ -767,7 +767,7 @@ struct
   fun apply_regionsubst_mulef(S, psi) =
       let val unsorted: mulef ref = ref []
           val psi'_list = 
-	    (EdList.foldR (fn (ae,mul) => fn l => 
+	    (List.foldr (fn ((ae,mul),l) =>
 			 if Eff.is_put ae then 
 			   let val rho = rho_of ae
 			   in if !(Eff.get_visited(rho)) then (* generic *)
@@ -849,7 +849,7 @@ struct
     | checkPsi ((ae1,m1)::(ae2,m2)::rest) =
          not(Eff.eq_effect(ae1,ae2)) andalso checkPsi((ae2,m2)::rest)
 
-  fun checkPsi Psi = EdList.forAll (not o cyclic) Psi
+  fun checkPsi Psi = List.al (not o cyclic) Psi
 *)
 
   fun makeqmularefset (rhos,epses, Psi:imp_mularefmap, place, cone):qmularefset = 
@@ -995,7 +995,7 @@ struct
                  end
 (*
   fun eq_epss(epses1,epses2): bool = 
-      EdList.forAll Eff.eq_effect (ListPair.zip(epses1,epses2))
+      List.all Eff.eq_effect (ListPair.zip(epses1,epses2))
 
   fun makeinf_arroweffect(eps, phi) = (eps, map (fn x => (x, INF)) phi) (* phi must be sorted! *)
 *)
@@ -1017,7 +1017,7 @@ struct
   fun makezero_arroweffect(eps, phi) = (eps, makezero_muleffect phi)
 
   fun makezero_Phi(Phi: arroweffect list) : imp_mularefmap =
-    EdList.foldL (fn (eps,phi) => fn Psi => 
+    List.foldl (fn ((eps,phi), Psi) => 
                EffVarEnv.add(eps, ref(makezero_arroweffect(eps,phi)), Psi))
             (QM_EffVarEnv.mk 1000 GlobalEffVarEnv.empty)
             Phi
@@ -1087,7 +1087,7 @@ struct
       in loop(phi,dep)
       end
 (*
-       EdList.foldL (fn eps => fn dep => 
+       List.foldl (fn (eps,dep) =>
                     if Eff.is_arrow_effect (Eff.find eps)
                        then add_dependency(dep, eps, shared)
                     else dep

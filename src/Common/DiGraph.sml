@@ -123,10 +123,12 @@ functor DiGraph(structure UF : UNION_FIND_POLY
             (n',GRAPHNODE{info,...}) => (n',info)
 
     fun union_graph (info_combine: 'info * 'info -> 'info) (* returns canonical node *)
-                    (g : 'info graph) : 'info node =
-      find(EdList.foldL' 
-           (fn n => fn n' => union info_combine (find n, find n'))
-           g)
+                    (g as (n::g'): 'info graph) : 'info node =
+      find(List.foldl
+           (fn (n,n') => union info_combine (find n, find n'))
+	   n
+           g')
+      | union_graph info_combine [] = die "union_graph"
 
     fun get_info (n : 'info node) : 'info =
       (* n canonical *)

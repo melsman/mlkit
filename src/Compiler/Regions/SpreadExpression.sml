@@ -63,6 +63,8 @@ struct
 
   structure EdList = Edlib.List
 
+  fun uncurry f (a,b) = f a b
+
   structure E = E
   structure E' = E'
   structure RegionStatEnv = RSE 
@@ -198,8 +200,8 @@ struct
 	    of SOME mu => R.frv_mu mu
 	     | NONE => die "gc_no_dangling_pointers.rhos_sigma"
 	val (lvs,exs) = LB.freevars (blvs,e)
-	val rhos = foldl (fn (lv, acc) => rhos_sigma lv @ acc) nil lvs
-	val rhos = foldl (fn (ex, acc) => rhos_sigma' ex @ acc) rhos exs
+	val rhos = List.foldl (fn (lv, acc) => rhos_sigma lv @ acc) nil lvs
+	val rhos = List.foldl (fn (ex, acc) => rhos_sigma' ex @ acc) rhos exs
 	val rhos_not = R.frv_mu (R.FUN(mus1,eps,mus2),rho)
 	val rhos = Eff.setminus(Eff.remove_duplicates rhos, rhos_not)
 	fun drop_rho_p (r:place) =
@@ -212,7 +214,7 @@ struct
 	  handle _ => die "gc_no_dangling_pointers.rhos"
 	val rhos = List.filter (not o drop_rho_p) rhos
 (*
-	val B = foldl (fn (r,B) => Eff.lower (Eff.level B) r B) B rhos
+	val B = List.foldl (fn (r,B) => Eff.lower (Eff.level B) r B) B rhos
 *)	  
 	val phi = mkUnion (map Eff.mkGet rhos)
 	val (eps2,B) = freshEps B
@@ -291,7 +293,8 @@ struct
 
   fun Below(B, mus) =
     let val free_rhos_and_epss = ann_mus mus []
-        val B' = EdList.foldL  ((*Eff.*)lower(Eff.level B - 1)) B free_rhos_and_epss
+        val B' = List.foldl (uncurry ((*Eff.*)lower(Eff.level B - 1))) 
+			    B free_rhos_and_epss
     in 
         (*Eff.*)popAndClean(B')
     end
@@ -301,13 +304,14 @@ struct
   fun retract (B, t as E'.TR(e, E'.Mus mus, phi), cont) =
     if false (*preserve_tail_calls()*) andalso cont = TAIL then   (* (Eff.restrain B, t, TAIL) *)
       let val free_rhos_and_epss = ann_mus mus []
-          val B = EdList.foldL (lower(Eff.level B - 1)) B free_rhos_and_epss
+          val B = List.foldl (uncurry (lower(Eff.level B - 1)))
+			     B free_rhos_and_epss
 (*	  val _ = app (fn effect =>
 		       let val effect = if Eff.is_get effect orelse Eff.is_put effect then Eff.rho_of effect
 					else effect
 		       in Eff.unify_with_toplevel_effect effect
 		       end) (Eff.topLayer B) *)
-	  val B = foldl (fn (eff,B) => lower 1 eff B) B (Eff.topLayer B)
+	  val B = List.foldl (fn (eff,B) => lower 1 eff B) B (Eff.topLayer B)
 (*
 	  val phi' = mkUnion([])
 	  val (discharged_phi,_) = observeDelta(Eff.level B - 1, Eff.Lf[phi],phi')
@@ -318,7 +322,7 @@ struct
 		       in Eff.unify_with_toplevel_effect effect
 		       end) discharged_phi
 *)
-          val B = foldl (fn (eff,B) => lower 1 eff B) B discharged_phi
+          val B = List.foldl (fn (eff,B) => lower 1 eff B) B discharged_phi
 *)
 (*	  val B = Eff.restrain B *)
       in (#2 (pop B), t, TAIL)
@@ -430,10 +434,11 @@ struct
       val (B,t0 as E'.TR(e', E'.Mus mus_0, phi_0),_) = spread(B,e0,false,NOTAIL)
       val mu_0 as (_,object_rho) = 
           case mus_0 of [mu_0] => mu_0 | _ => die "S. ill-typed object of switch"
-      val B = EdList.foldL (fn mu => unify_mu(get_exn_mu mu,mu_0)) B excon_mus
+      val B = List.foldl (uncurry (fn mu => unify_mu(get_exn_mu mu,mu_0)))
+			 B excon_mus
 
       val (B, new_choices, contAcc) = 
-	EdList.foldR (fn (c, e) => fn (B, ts, contAcc) => 
+	List.foldr (fn ((c, e), (B, ts, contAcc)) => 
 		    let val (B, t, cont) = spread(B,e,toplevel,cont)
 		    in (B, t:: ts, meetSwitch cont contAcc)
 		    end) (B,[],NOTAIL) choices
@@ -450,9 +455,10 @@ struct
       val (B,metatype) = 
           (case EdList.first (fn E'.TR(_,E'.Mus mus,_) => true | _ => false) new_choices of
             E'.TR(_,E'.Mus mus1,_) => 
-                (EdList.foldL (fn E'.TR(_,E'.Mus mus,_) => unify_mus(mus,mus1)
-                             | E'.TR(_, _, _) => (fn B=>B)) B
-                           (case new_last of NONE => new_choices | SOME t' => t'::new_choices),
+                (List.foldl (fn (E'.TR(_,E'.Mus mus,_),B) => unify_mus(mus,mus1)B
+                              | (E'.TR(_, _, _),B) => B) 
+			    B
+                            (case new_last of NONE => new_choices | SOME t' => t'::new_choices),
                  E'.Mus mus1)
 	  | _ => die "spreadSwitch" 
           )handle EdList.First _ => 
@@ -563,7 +569,7 @@ struct
            UB_RECORD[2, 3, 4,5]
         *)
            
-        let val (B, triples, mus, phis) = EdList.foldL(fn exp => fn (B, triples', mus, phis) =>
+        let val (B, triples, mus, phis) = List.foldl(fn (exp, (B, triples', mus, phis)) =>
               let val (B,trip as E'.TR(e',E'.Mus mus1,phi), _) = S(B, exp, false, NOTAIL)
               in case mus1 of
                    [mu] => (B, trip::triples', mu :: mus, phi::phis)
@@ -579,7 +585,7 @@ struct
     | E.FN{pat: (E.lvar * E.Type) list, body: E.LambdaExp} =>
         let 
           val (mus, B) = freshTypesWithPlaces (B, map #2 pat)
-          val rse' = EdList.foldL (fn (lvar, mu as (tau,rho))=> fn rse =>
+          val rse' = List.foldl (fn ((lvar, mu as (tau,rho)), rse) =>
                          (*RSE.*)declareLvar(lvar, (false,false,R.type_to_scheme tau, rho,NONE,NONE), rse)) rse
                          (ListPair.zip(map #1 pat, mus))
           val (B,t1 as E'.TR(e1',E'.Mus mu_list1, phi1), _) = spreadExp(B,rse',body,false,TAIL)
@@ -765,7 +771,8 @@ good *)
                  (* lower all the region and effect variables of mus21 to have level 2 (not 0),
                     so that they cannot be generalised ever. Level 2, because it is generated 
     	            in this program unit, unless unified with another lower-level rho. *)
-                 val B = EdList.foldL ((*Eff.*)lower 2) B (ann_mus mus21 [])
+                 val B = List.foldl (uncurry ((*Eff.*)lower 2)) 
+				    B (ann_mus mus21 [])
              in
                retract(B, E'.TR( E'.HANDLE(t1,t2), E'.Mus mus22, phi), 
 		       NOTAIL) 
@@ -954,7 +961,7 @@ good *)
 		  NOTAIL)
         end 
     | E.PRIM(E.RECORDprim,args) =>
-        let val (B, trips) = EdList.foldR (fn arg => fn (B, trips) =>
+        let val (B, trips) = List.foldr (fn (arg, (B, trips)) =>
                     let val (B, trip, _) = S(B,arg, false, NOTAIL)
                     in (B, trip::trips)
                     end) (B,[]) args
@@ -1052,7 +1059,7 @@ good *)
 	     R.FUN (mus_a, eps_phi0, [mu_r]) =>
 	       let
 		 val (B, trs', mus_es, phis) =
-		       EdList.foldR (fn e => fn (B, trs', mus_es, phis) =>
+		       List.foldr (fn (e, (B, trs', mus_es, phis)) =>
                        let val (B, tr' as E'.TR (_, E'.Mus mus', phi), _) = S (B, e, false, NOTAIL)
 		       in (case mus' of
 			     [mu'] => (B, tr' :: trs', mu' :: mus_es, phi :: phis)
@@ -1117,7 +1124,7 @@ good *)
 
     | E.FRAME{declared_lvars, declared_excons} =>
         let 
-          val new_declared_lvars' = EdList.foldR( fn lvar => fn acc => 
+          val new_declared_lvars' = List.foldr( fn (lvar, acc) =>
                  let val (compound,create_region_record,sigma,p,_,_) = 
 		       noSome ((*RSE.*)lookupLvar rse lvar) "declared lvar of frame not in scope"
                  in {lvar=lvar, compound=compound, create_region_record=create_region_record,
@@ -1125,7 +1132,7 @@ good *)
                  end) [](map #lvar declared_lvars)
 	  val new_declared_lvars = 
 	    map (fn {lvar,sigma,place,...} => {lvar=lvar,sigma=sigma,place=place}) new_declared_lvars'
-          val new_declared_excons = EdList.foldR( fn excon => fn acc => 
+          val new_declared_excons = List.foldr( fn (excon, acc) =>
                  (excon,(*RSE.*)lookupExcon rse excon)::acc) [](map #1 declared_excons)              
         in
           (B,E'.TR(E'.FRAME{declared_lvars = new_declared_lvars, declared_excons = new_declared_excons},

@@ -20,8 +20,6 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 		   ) : INFIXING =
   struct
 
-    structure EdList = Edlib.List
-
     fun impossible s = Crash.impossible ("Infixing." ^ s)
     open GrammarUtils.TopdecGrammar
     open GrammarUtils.TopdecGrammar.DecGrammar
@@ -356,7 +354,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
           in
             case rhsList of
               [(atpats,exp,ty_opt)] => 
-                if EdList.forAll certainMatch_atpat atpats
+                if List.all certainMatch_atpat atpats
                   then
                     let
                         val exp' =
@@ -366,7 +364,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                                                     exp, ty)
                              | NONE => exp
 
-                        fun curry atpat exp =
+                        fun curry (atpat, exp) =
                           let val info_exp = get_info_exp exp
                               val info_atpat = get_info_atpat atpat
                               val info_fn = GrammarUtils.span_info(info_atpat, info_exp)
@@ -375,7 +373,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                                   MATCH(info_fn,
                                         MRULE(info_fn,ATPATpat(info_atpat,atpat),exp),NONE))
                           end
-                        val rhs = EdList.foldR curry exp' atpats
+                        val rhs = List.foldr curry exp' atpats
                     in
                       PLAINvalbind
                       (info_fvalbind, GrammarUtils.patOfIdent info_fvalbind 
@@ -479,7 +477,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                           end
                      | NONE => impossible "fvalbindToValbind(innerApp)"
 
-                fun curry (id, i_id) exp =
+                fun curry ((id, i_id), exp) =
                   (*The handling of the sourcinfo is not ideal, here.
 		   The abstraction and other syntax nodes get the same source
 		   info as the body*)
@@ -495,7 +493,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                   end
 
                 val curriedFn =
-                  EdList.foldL curry innerApp (rev vars)
+                  List.foldl curry innerApp (rev vars)
               in
                 PLAINvalbind
 		  (info, GrammarUtils.patOfIdent info 

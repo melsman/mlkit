@@ -312,7 +312,7 @@ functor ElabTopdec
     (* We first collect a list of tyname lists which must be identified. *)
 
     fun collect_TE (flexible : TyName -> bool, path : strid list, TEs, acc) : TyName list list =
-      let val tcmap = EdList.foldL (fn TE => fn acc => TE.Fold(fn (tycon, tystr) => fn acc =>
+      let val tcmap = List.foldl (fn (TE,acc) => TE.Fold(fn (tycon, tystr) => fn acc =>
 							     update(tycon,tystr,acc)) acc TE) FinMap.empty TEs
 
 	  (* Eliminate entries with less than two component, check
@@ -344,7 +344,7 @@ functor ElabTopdec
       end
 
     fun collect_E (flexible, path, Es, acc) : TyName list list =
-      let val (SEs, TEs) = EdList.foldL(fn E => fn (SEs, TEs) =>
+      let val (SEs, TEs) = List.foldl(fn (E, (SEs, TEs)) =>
 				      let val (SE,TE,VE) = E.un E
 				      in (SE::SEs,TE::TEs)
 				      end) ([],[]) Es
@@ -353,7 +353,7 @@ functor ElabTopdec
       end
 
     and collect_SE (flexible, path, SEs, acc) : TyName list list =
-      let val smap = EdList.foldL (fn SE => fn acc => SE.Fold(fn (strid, E) => fn acc =>
+      let val smap = List.foldl (fn (SE,acc) => SE.Fold(fn (strid, E) => fn acc =>
 							    update(strid,E,acc)) acc SE) FinMap.empty SEs
       in
 	    FinMap.Fold(fn ((strid, []), acc) => acc  	  (* Eliminate entries with *)
@@ -374,7 +374,7 @@ functor ElabTopdec
       in case split(Ts,[],[])
 	   of (no, []) => collapse(no, T::Ts')
 	    | (no, yes) => 
-	     let val Tnew = EdList.foldL(fn T => fn T' => TyName.Set.union T T') T yes
+	     let val Tnew = List.foldl(fn (T,T') => TyName.Set.union T T') T yes
 	     in collapse(Tnew::no, Ts')
 	     end
       end
@@ -867,12 +867,12 @@ functor ElabTopdec
 	  let val (T, E, out_sigexp) = elab_sigexp' (B, sigexp)
 	      val (SE,TE,_) = E.un E
 	      val strids = EqSet.list (SE.dom SE)
-	      val (errors, ids) = EdList.foldL (fn strid => fn (errors,ids) =>
+	      val (errors, ids) = List.foldl (fn (strid, (errors,ids)) =>
 					      (case add_ids_strid(ids,strid)
 						 of (true, ids) => (ErrorInfo.STRID_RID strid :: errors, ids)
 						  | (false, ids) => (errors, ids))) ([], ids) strids 
 	      val tycons = EqSet.list (TE.dom TE)
-	      val (errors, ids) = EdList.foldL (fn tycon => fn (errors,ids) =>
+	      val (errors, ids) = List.foldl (fn (tycon, (errors,ids)) =>
 					      (case add_ids_tycon(ids,tycon)
 						 of (true, ids) => (ErrorInfo.TYCON_RID tycon :: errors, ids)
 						  | (false, ids) => (errors, ids))) (errors, ids) tycons
@@ -901,9 +901,9 @@ functor ElabTopdec
 	  let
 	    val (T0, E, out_spec, ids) = elab_spec (B, spec, ids)
 	    val (T, out_longtycon_withinfo_s, error) =
-	           EdList.foldR
-		   (fn IG.WITH_INFO (i, longtycon_i) =>
-		    fn (T', out_longtycon_withinfo_s, error) =>
+	           List.foldr
+		   (fn (IG.WITH_INFO (i, longtycon_i),
+			(T', out_longtycon_withinfo_s, error)) =>
 		     let val (T'', out_i, error) =
 		           case lookup_longtycon E longtycon_i
 			     of SOME tystr_i =>
@@ -940,7 +940,7 @@ functor ElabTopdec
 		   val arity = TyName.arity t0
 		   val T0' = EdList.dropAll (fn t => List.exists (fn t' => TyName.eq(t,t')) T') T0  
 		 in 
-		   if EdList.forAll (fn t => TyName.arity t = arity) T' then
+		   if List.all (fn t => TyName.arity t = arity) T' then
 		     let val phi = Realisation.from_T_and_tyname (TyName.Set.fromList T', t0)
 		     in (T0', Realisation.on_Env phi E,
 			 OG.SHARING_TYPEspec (okConv i, out_spec, out_longtycon_withinfo_s), ids)
@@ -954,9 +954,9 @@ functor ElabTopdec
       | IG.SHARINGspec (i, spec, longstrid_withinfo_s) =>
 	  let val (T0, E, out_spec, ids) = elab_spec (B, spec, ids)
 	      val (Es, out_longstrid_withinfo_s) =
-		     EdList.foldR
-		     (fn IG.WITH_INFO (i, longstrid) =>
-		      (fn (Es, out_longstrid_withinfo_s) =>
+		     List.foldr
+		     (fn (IG.WITH_INFO (i, longstrid),
+		          (Es, out_longstrid_withinfo_s)) =>
 
 		       (case lookup_longstrid' E longstrid of
 			  SOME E_i => (E_i::Es,
@@ -964,7 +964,7 @@ functor ElabTopdec
 				       ::out_longstrid_withinfo_s)
 			| NONE => (Es, OG.WITH_INFO
 				         (errorConv (i, ErrorInfo.LOOKUP_LONGSTRID longstrid),
-					  longstrid)::out_longstrid_withinfo_s))))
+					  longstrid)::out_longstrid_withinfo_s)))
 		        ([],[]) longstrid_withinfo_s
 	      val T0_set = TyName.Set.fromList T0
 	      fun member t = TyName.Set.member t T0_set
