@@ -696,6 +696,11 @@ handle x =>
 	    in
 	      LET {pat=[(lvar,tvs,tau')], bind=bind', scope=scope'} 
 	    end
+	 | LET {pat=nil,bind,scope} =>
+	    let val bind' = t env bind
+	      val scope' = t env scope
+	    in LET {pat=nil, bind=bind', scope=scope'} 
+	    end
 	 | LET _ => die "t.LET.not single" 
 
 	 | FIX {functions,scope} =>

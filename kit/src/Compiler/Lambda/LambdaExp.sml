@@ -81,6 +81,7 @@ functor LambdaExp(structure Lvars: LVARS
       | RECORDprim 
       | SELECTprim of int        
       | UB_RECORDprim                                 (* Unboxed record. *)
+      | DROPprim
       | NEG_INTprim 
       | NEG_REALprim
       | ABS_INTprim
@@ -224,6 +225,7 @@ functor LambdaExp(structure Lvars: LVARS
 	  | RECORDprim => true
 	  | SELECTprim _ => true       
 	  | UB_RECORDprim => true
+	  | DROPprim => true
 	  | NEG_INTprim => false
 	  | NEG_REALprim => true
 	  | ABS_INTprim => false
@@ -309,6 +311,7 @@ functor LambdaExp(structure Lvars: LVARS
       | RECORDprim => PP.LEAF("record")
       | SELECTprim i => PP.LEAF("select(" ^ Int.toString i ^ ")")
       | UB_RECORDprim => PP.LEAF("ubrecord") 
+      | DROPprim => PP.LEAF("DROP")
       | NEG_INTprim => PP.LEAF("~" )
       | NEG_REALprim => PP.LEAF("~")
       | ABS_INTprim => PP.LEAF("abs")
@@ -499,7 +502,7 @@ functor LambdaExp(structure Lvars: LVARS
          end
      else PP.LEAF(Lvars.pr_lvar lvar)
 
-   fun layPatLet [] = PP.LEAF("()")
+   fun layPatLet [] = PP.LEAF("_")   (* wild card *)
      | layPatLet [one as (lvar,tyvars,tau)] = 
            layVarSigma(lvar,tyvars,tau)
      | layPatLet pat = PP.HNODE{start = "(", finish = ")", childsep = PP.RIGHT",", 
@@ -653,6 +656,7 @@ functor LambdaExp(structure Lvars: LVARS
              PP.NODE{start="ref(",finish=")",indent=2,
                      children=[layoutLambdaExp(lamb,0)],
                      childsep=PP.NOSEP}
+         | (DROPprim,[lamb]) => layoutLambdaExp(lamb,context)
          | (ASSIGNprim{instance},_) => layout_infix context 3 " := "lambs
          | (MUL_REALprim, [_,_]) => layout_infix context 7 " * " lambs
          | (MUL_INTprim, [_,_]) =>  layout_infix context 7 " * " lambs

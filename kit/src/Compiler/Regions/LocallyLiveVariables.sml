@@ -176,9 +176,9 @@ struct
   local open MulExp
   in
 
-    fun cp_triv_exp (VAR{lvar,il,plain_arreffs,alloc = NONE,rhos_actuals = ref [] ,other}) =
+    fun cp_triv_exp (VAR{lvar,il,plain_arreffs,fix_bound=false,rhos_actuals = ref [] ,other}) =
              VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
-                 alloc = NONE,
+                 fix_bound=false,
                  rhos_actuals= ref [],
                  other = other}
       | cp_triv_exp (VAR{lvar, ...}) = die
@@ -304,7 +304,7 @@ struct
 	    localFree)
   	end
 
-      | APP(ck,sr,tr1 as TR(VAR{lvar = f,il,plain_arreffs,alloc = SOME rho, 
+      | APP(ck,sr,tr1 as TR(VAR{lvar = f,il,plain_arreffs,fix_bound=true, 
                                 rhos_actuals, other},meta,phi,psi),
                   tr2) =>  (* equation 23 and 24 in popl 96 paper *)
         let 
@@ -313,7 +313,7 @@ struct
             val liveset_fx = norm_liveset(union_llv(live_tr2,add_lvar(liveset, f)))  (* see equation 24 *)
         in
           (APP(ck,sr,TR(VAR{lvar=f,il=il,plain_arreffs=plain_arreffs,
-                                      alloc = SOME(rho,liveset_fx), (* see (24) *)
+                                      fix_bound=true, (* see (24) *)
                                       rhos_actuals = ref (map (fn rho_act => 
                                              (* see (23) *) (rho_act,liveset)) (!rhos_actuals)),
                                       other = other}, meta,phi,psi),
@@ -321,7 +321,7 @@ struct
            add_lvar(freeInTriv' tr2, f))
         end
 
-      | APP(ck,sr,tr1 as TR(VAR{lvar = f,il,plain_arreffs,alloc = NONE,
+      | APP(ck,sr,tr1 as TR(VAR{lvar = f,il,plain_arreffs,fix_bound=false,
                                 rhos_actuals = ref [], other},meta,phi,psi),
                   tr2) =>  (* equation missing in popl paper! *)
         let
@@ -334,7 +334,7 @@ struct
             union_llv(free_tr1,free_tr2))
         end
 
-      | APP(ck,sr,tr1 as TR(VAR{lvar, il, plain_arreffs,alloc= NONE, rhos_actuals,other}, meta,phi,psi),tr2) =>
+      | APP(ck,sr,tr1 as TR(VAR{lvar, il, plain_arreffs,fix_bound=false, rhos_actuals,other}, meta,phi,psi),tr2) =>
            (* non-empty list of actual regions: has to be primitive lvar *)
           (case Lvars.primitive lvar of
              SOME _ => let 
@@ -342,7 +342,7 @@ struct
                          val (tr2',live_tr2) = llv(tr2, liveset)
                        in
                            (APP(ck,sr,TR(VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
-                                      alloc = NONE,
+                                      fix_bound=false,
                                       rhos_actuals = ref (map (fn rho_act => 
                                              (* see (23) *) (rho_act,liveset)) (!rhos_actuals)),
                                       other = other}, meta,phi,psi),
@@ -483,6 +483,11 @@ struct
          in 
              (ASSIGN((rho,norm_liveset(liveset)), tr1',tr2'),
               union_llv(free_tr1,free_tr2))
+         end
+      | DROP(tr1) =>
+         let val (tr1', free_in_tr1) = llv(tr1,liveset) (* it might be ok to 
+                                      replace "liveset" by "empty_liveset" *)
+         in (DROP tr1', free_in_tr1)
          end
       | EQUAL({mu_of_arg1,mu_of_arg2,alloc = rho}, tr1, tr2) => (* tr1 and tr2 trivial *)
          let

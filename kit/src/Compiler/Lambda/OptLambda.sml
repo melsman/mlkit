@@ -273,7 +273,8 @@ functor OptLambda(structure Lvars: LVARS
 	  | RECORDprim         => ()
 	  | SELECTprim _       => ()
 	  | EQUALprim _        => ()
-          | EQUAL_INTprim       => ()
+          | EQUAL_INTprim      => ()
+	  | DROPprim           => ()            
 	  | LESS_INTprim       => ()
 	  | LESS_REALprim      => ()
 	  | GREATER_INTprim    => ()
@@ -589,6 +590,15 @@ functor OptLambda(structure Lvars: LVARS
        * Reduce
        * ----------------------------------------------------------------- *)
 
+      fun is_boolean con = 
+	Con.eq(Con.con_TRUE, con) orelse Con.eq(Con.con_FALSE, con)
+	
+      fun is_unboxed_value lamb =
+	case lamb
+	  of INTEGER _ => true
+	   | PRIM(CONprim {con,...},nil) => is_boolean con
+	   | _ => false
+
       fun reduce (env, (fail as (lamb,cv))) =
 	case lamb
 	  of VAR{lvar,instances} =>
@@ -615,15 +625,20 @@ functor OptLambda(structure Lvars: LVARS
 			   in if Lvars.eq(lvar,lvar') then (lamb'', CVAR lamb'') 
 			      else (tick "reduce - inline-var"; (lamb'', CVAR lamb'')) (*reduce (env, (lamb'', CVAR lamb''))*)
 			   end
-		     | CCONST (lamb' as INTEGER _) => (decr_use lvar; tick "reduce - inline-int"; (lamb', cv))
-		     | CCONST lamb' => if Lvars.one_use lvar then (decr_use lvar; tick "reduce - inline-const"; (lamb', cv))
-				       else (lamb, CVAR lamb)
+		     | CCONST lamb' => 
+			   if is_unboxed_value lamb' then 
+			     (decr_use lvar; tick "reduce - inline-unboxed-value"; (lamb', cv))
+			   else if Lvars.one_use lvar then 
+			     (decr_use lvar; tick "reduce - inline-const"; (lamb', cv))
+			   else (lamb, CVAR lamb)
 		     | CUNKNOWN => (lamb, CVAR lamb)
 		     | _ => let val S = mk_subst (fn () => "reduce3") (tyvars,instances)
 			    in (lamb, on_cv S cv)
 			    end)
 		| NONE => ((*output(!Flags.log, "none\n");*) (lamb, CVAR lamb)))
 	   | INTEGER _ => (lamb, CCONST lamb)
+	   | PRIM(CONprim {con,...},[]) => if is_boolean con then (lamb, CCONST lamb)
+					   else fail
 	   | STRING _ => (lamb, CCONST lamb)
 	   | REAL _ => (lamb, CCONST lamb) 
 	   | LET{pat=(pat as [(lvar,tyvars,tau)]),bind,scope} =>
@@ -638,14 +653,17 @@ functor OptLambda(structure Lvars: LVARS
 	       in if Lvars.zero_use lvar then
 		    if safe_lamb bind then 
 		      (decr_uses bind; tick "reduce - dead-let"; reduce (env, (scope, cv)))
-		    else case scope
+		    else (*case scope
 			   of PRIM(RECORDprim,[]) => fail
 			    | _ => if eq_tau(tau,unit_Type) then fail
 				   else let val pat'=[(Lvars.new_named_lvar "_not_used",[],unit_Type)]
 					    val bind' = LET{pat=pat,bind=bind,scope=PRIM(RECORDprim, [])}
 					    val e = LET{pat=pat',bind=bind',scope=scope}
 					in tick "reduce - dead-type"; (e,cv)
-					end
+					end*)
+		      let val e = LET{pat=nil,bind=PRIM(DROPprim,[bind]),scope=scope}
+		      in tick "reduce - wild"; (e,cv)
+		      end
 		  else case scope
 			 of VAR{lvar=lvar',instances} =>
 			   if Lvars.eq(lvar,lvar') then   (* no need for decr_uses *)
@@ -653,12 +671,23 @@ functor OptLambda(structure Lvars: LVARS
 			     in tick "reduce - let-var"; reduce (env, (on_LambdaExp S bind, cv))
 			     end
 			   else fail
+			   | PRIM(CONprim {con,instances}, [VAR{lvar=lvar',instances=nil}]) => 
+			     if Lvars.eq(lvar,lvar') 
+			       andalso Con.eq(Con.con_CONS, con) then   (* no need for decr_uses *)
+			       let val e = PRIM(CONprim {con=con,instances=instances}, [bind])
+			       in tick "reduce - let-var-cons"; reduce (env, (e, cv))
+			       end
+			     else fail
 			  | SWITCH_I sw => do_sw SWITCH_I sw
 			  | SWITCH_S sw => do_sw SWITCH_S sw
 			  | SWITCH_C sw => do_sw SWITCH_C sw
 			  | SWITCH_E sw => do_sw SWITCH_E sw
 			  | _ => fail
 	       end
+	   | LET{pat=nil,bind,scope} =>
+	       if safe_lamb bind then 
+		 (decr_uses bind; tick "reduce - dead-let"; reduce (env, (scope, cv)))
+	       else fail
 	  | PRIM(SELECTprim n,[lamb]) =>
 	       let fun do_select () =
 		      case cv 
@@ -774,12 +803,19 @@ functor OptLambda(structure Lvars: LVARS
 	       let val (bind', cv) = contr (env, bind)
 		   val cv' = if (*is_small_closed_fn*) is_small_fn bind' then CFN{lexp=bind',large=false}
 			     else if is_fn bind' then CFN{lexp=bind',large=true}
-                                  else (case bind' of VAR _ => CVAR bind' 
-                                        | _ => cv)
+                             else if is_unboxed_value bind' then CCONST bind'
+			     else (case bind' 
+				     of VAR _ => CVAR bind' 
+				      | _ => cv)
 		   val env' = LvarMap.add(lvar,(tyvars,cv'),env)
 		   val (scope',cv_scope) = contr (env', scope)
 		   val cv_scope' = remove lvar cv_scope
 	       in reduce (env, (LET{pat=pat,bind=bind',scope=scope'}, cv_scope'))
+	       end
+	      | LET{pat=nil,bind,scope} =>  (* wild card *)
+	       let val (bind', cv) = contr (env, bind)
+		   val (scope',cv_scope) = contr (env, scope)
+	       in reduce (env, (LET{pat=nil,bind=bind',scope=scope'}, cv_scope))
 	       end
 	      | PRIM(RECORDprim, lambs) =>
 	       let val lamb_cv = map (fn e => contr (env,e)) lambs
@@ -1159,6 +1195,7 @@ functor OptLambda(structure Lvars: LVARS
                             in LET{pat=pat',bind=bind',scope=scope'}
                             end
                           )
+		  | nil => LET{pat=pat,bind=f env bind, scope=f env scope}
 		  | _ => die "functionalise_let. non-trivial patterns unimplemented.") 
 	  | FIX{functions,scope} =>
 		 let val functions' = map (fn {lvar,tyvars,Type,bind} => 

@@ -212,6 +212,7 @@ struct
     fun resolve_aty_def(SS.STACK_ATY offset,t:reg,size_ff,C) = 
 	 (t,store_indexed(esp,WORDS(size_ff-offset-1),t,C))       (*was ~size_ff+offset*)
       | resolve_aty_def(SS.PHREG_ATY phreg,t:reg,size_ff,C)  = (phreg,C)
+      | resolve_aty_def(SS.UNIT_ATY,t:reg,size_ff,C)  = (t,C)
       | resolve_aty_def _ = die "resolve_aty_def: ATY cannot be defined"
 
     (* Make sure that the aty ends up in register dst_reg *)
@@ -235,7 +236,8 @@ struct
       case dst_aty 
 	of SS.PHREG_ATY dst_reg => copy(src_reg,dst_reg,C)
 	 | SS.STACK_ATY offset => store_indexed(esp,WORDS(size_ff-offset-1),src_reg,C)    (*was ~size_ff+offset*) 
-	 | _ => die "move_reg_into_aty: ATY not recognized"
+	 | SS.UNIT_ATY => C (* wild card definition - do nothing *)
+ 	 | _ => die "move_reg_into_aty: ATY not recognized"
 
     (* dst_aty = src_aty *)
     fun move_aty_to_aty(SS.PHREG_ATY src_reg,dst_aty,size_ff,C) = move_reg_into_aty(src_reg,dst_aty,size_ff,C)
@@ -1706,7 +1708,7 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 	       | LS.PRIM{name,args,res} => 
 		  comment_fn (fn () => "PRIM: " ^ pr_ls ls,
 		  (* Note that the prim names are defined in BackendInfo! *)
-		  (case (name,args,res) 
+		  (case (name,args,case res of nil => [SS.UNIT_ATY] | _ => res) 
 		     of ("__equal_int",[x,y],[d]) => cmpi_kill_tmp01(I.je,x,y,d,size_ff,C)
 		      | ("__minus_int",[x,y],[d]) => subi_kill_tmp01(x,y,d,size_ff,C)
 		      | ("__plus_int",[x,y],[d]) => addi_kill_tmp01(x,y,d,size_ff,C)

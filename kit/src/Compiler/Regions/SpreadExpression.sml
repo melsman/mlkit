@@ -256,7 +256,6 @@ struct
     end
     | retract(B, t) = (B,t)
 
-
   val count_RegEffClos = ref 0 (* for statistics (toplas submission) *)
 
   (* The `level' parameter is used to separate those type, region
@@ -392,20 +391,11 @@ struct
               val (B, tau, il_1) = newInstance(B,sigma,instances)
               val il_r = ref (il_1, fn p => p)
               val _ = save_il(instances_opt, il_r)
+	      val fix_bound = compound andalso create_region_record
+	      val phi = if fix_bound then Eff.mkGet place0 else Eff.empty
             in
-              if compound andalso create_region_record then
-                     let val (rho',B) = (*Eff.*)freshRhoWithTy(Eff.TOP_RT, B)
-                         val phi =(*Eff.*)mkUnion([(*Eff.*)mkGet place0,
-                                               (*Eff.*)mkPut rho'] (*@  deleted - cf. final submission to Information and Computation
-                                               map (*Eff*).mkGet (#2 (R.un_il il_1))*))
-                          
-                     in 
-                        (B,E'.TR(E'.VAR{lvar = lvar, alloc = SOME rho', il_r = il_r}, 
-                                 E'.Mus [(tau,rho')], phi))
-                     end 
-              else
-                  (B,E'.TR(E'.VAR{lvar = lvar, alloc = NONE, il_r = il_r}, 
-                           E'.Mus [(tau,place0)], Eff.empty))
+		(B,E'.TR(E'.VAR{lvar = lvar, fix_bound=fix_bound, il_r = il_r}, 
+			 E'.Mus [(tau,place0)], phi))
             end
          | NONE => die "spreadExp: free lvar"
        )
@@ -483,6 +473,15 @@ struct
                     (*Eff.*)mkUnion([eps_phi0, (*Eff.*)mkGet rho_0, phi1,phi2])))
             else retract(B, E'.TR(E'.APP(t1,t2), E'.Mus mus1, 
                     (*Eff.*)mkUnion([eps_phi0, (*Eff.*)mkGet rho_0, phi1,phi2])))
+        end
+
+   | E.LET{pat=nil, bind = e1_ML, scope = e2_ML} =>   (* wild card *)
+        let
+           val (B, t1 as E'.TR(e1, E'.Mus mus, phi1)) = S(B, e1_ML, false)
+           val (B, t2 as E'.TR(e2, meta2, phi2)) = S(B, e2_ML, toplevel)
+        in
+          (B, E'.TR(E'.LET{pat = nil,
+			   bind = t1, scope = t2}, meta2, (*Eff.*)mkUnion([phi1,phi2])))
         end
 
    | E.LET{pat, bind = e1_ML, scope = e2_ML} =>
@@ -673,6 +672,9 @@ good *)
         (Note: in multiplicity inference, the put effect should not be counted: it does not
         generate a new ref object and hence does not require allocation of more space.
 
+	Moreover, the put effect causes the region to be passed to := at runtime; it seems more
+	natural to leave out the put effect.
+
 *)
         let
           val B = pushIfNotTopLevel(toplevel,B); (* for retract *)
@@ -682,12 +684,27 @@ good *)
              ([(R.CONSTYPE(ref_tyname, [mu1],[],[]),rho1)], [mu2]) =>
                let val B = unify_mu(mu1,mu2)B
                    val (rho3, B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
-                   val phi = (*Eff.*)mkUnion([(*Eff.*)mkPut rho1, (*Eff.*)mkGet rho1, (*Eff.*)mkPut rho3,phi1, phi2])
+                   val phi = (*Eff.*)mkUnion([(*Eff.*)(*mkPut rho1,mael*) (*Eff.*)mkGet rho1, (*Eff.*)mkPut rho3,phi1, phi2])
                in
                   retract(B, E'.TR(E'.ASSIGN(rho3,t1,t2), E'.Mus [(R.unitType, rho3)], phi))
                end
            | _ => die "S: ill-typed assignment"
         end
+
+
+    | E.PRIM(E.DROPprim, [e1]) =>   (* to do wild cards properly *)
+(*
+                           e1' : [mu], phi1    
+                       ----------------------
+                        drop e1' : [],  phi1
+*)
+        let
+          val B = pushIfNotTopLevel(toplevel,B); (* for retract *)
+          val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1)) = S(B,e1, false)
+	in
+	  retract(B, E'.TR(E'.DROP t1, E'.Mus [], phi1))
+	end
+	  
 
 
     (* -----------------------------------------------------------------------

@@ -1339,6 +1339,10 @@ in
       | simple_atpat (PARatpat (_, pat)) = simple_pat pat
       | simple_atpat _ = NONE
 
+    fun is_wild_pat (ATPATpat (_, WILDCARDatpat _)) = true
+      | is_wild_pat (TYPEDpat (_, pat, _)) = is_wild_pat pat
+      | is_wild_pat _ = false
+
   end(*local*)
 
 
@@ -2194,6 +2198,12 @@ the 12 lines above are very similar to the code below
 
     and compile_binding env (topLevel, pat, exp, (tyvars, Type))
         : CE.CEnv * (LambdaExp -> LambdaExp) =
+      if is_wild_pat pat then
+	let val bind = compileExp env exp
+	    val f = fn scope => LET {pat = nil,	bind = PRIM(DROPprim,[bind]), scope = scope}
+	in (CE.emptyCEnv, f)
+	end
+      else
       (case simple_pat pat
 	 of SOME vid => 
 	   let val lvar = Lvars.new_named_lvar (Ident.pr_id vid)

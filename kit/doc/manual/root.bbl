@@ -1,16 +1,63 @@
 \begin{thebibliography}{MTHM97}
 
+\bibitem[BTV96]{btv96}
+Lars Birkedal, Mads Tofte, and Magnus Vejlstrup.
+\newblock From region inference to von {Neumann} machines via region
+  representation inference.
+\newblock In {\em Proceedings of the 23rd ACM SIGPLAN-SIGACT Symposium on
+  Principles of Programming Languages}, pages 171--183. ACM Press, January
+  1996.
+
+\bibitem[EH95]{elshal95}
+Martin Elsman and Niels Hallenberg.
+\newblock An optimizing backend for the {ML Kit} using a stack of regions.
+\newblock Student Project 95-7-8, Department of Computer Science, University of
+  Copenhagen (DIKU), July 5 1995.
+
+\bibitem[Els98]{ElsmanTIC98}
+Martin Elsman.
+\newblock Polymorphic equality---no tags required.
+\newblock In {\em Second International Workshop on Types in Compilation}, March
+  1998.
+
+\bibitem[Els99a]{ElsmanThesis}
+Martin Elsman.
+\newblock {\em Program Modules, Separate Compilation, and Intermodule
+  Optimisation}.
+\newblock PhD thesis, Department of Computer Science, University of Copenhagen,
+  January 1999.
+
+\bibitem[Els99b]{ElsmanICFP99}
+Martin Elsman.
+\newblock Static interpretation of modules.
+\newblock In {\em Proceedings of the Fourth ACM SIGPLAN International
+  Conference on Functional Programming}, September 1999.
+
 \bibitem[GA96]{appel96}
 Lal George and Andrew Appel.
 \newblock Iterated register allocation.
 \newblock {\em ACM Transactions on Programming Languages and Systems},
   18(3):300--324, May 1996.
 
+\bibitem[Hal96]{H96}
+Niels Hallenberg.
+\newblock A {R}egion {P}rofiler for a {S}tandard {ML} compiler based on
+  {R}egion {I}nference.
+\newblock Student Project 96-5-7, Department of Computer Science, University of
+  Copenhagen (DIKU), June 14 1996.
+
 \bibitem[Hal99]{hallenberg99}
 Niels Hallenberg.
 \newblock Combining garbage collection and region inference in the {ML Kit}.
 \newblock Master's thesis, Department of Computer Science, University of
   Copenhagen, 1999.
+
+\bibitem[KO96]{KochHojfeld96}
+Martin Koch and Tommy~H{\o}jfeld Olesen.
+\newblock Compiling a higher-order call-by-value functional programming
+  language to a {RISC} using a stack of regions.
+\newblock Master's thesis, Department of Computer Science, University of
+  Copenhagen, October 1996.
 
 \bibitem[MTHM97]{mthm97}
 Robin Milner, Mads Tofte, Robert Harper, and David MacQueen.
@@ -28,5 +75,18 @@ Mads Tofte and Lars Birkedal.
 \newblock A region inference algorithm.
 \newblock {\em Transactions on Programming Languages and Systems (TOPLAS)},
   20(4):734--767, July 1998.
+
+\bibitem[TT94]{total94}
+Mads Tofte and Jean-Pierre Talpin.
+\newblock Implementing the call-by-value lambda-calculus using a stack of
+  regions.
+\newblock In {\em Proceedings of the 21st ACM SIGPLAN-SIGACT Symposium on
+  Principles of Programming Languages}, pages 188--201. ACM Press, January
+  1994.
+
+\bibitem[TT97]{total97}
+Mads Tofte and Jean-Pierre Talpin.
+\newblock Region-based memory management.
+\newblock {\em Information and Computation}, 132(2):109--176, 1997.
 
 \end{thebibliography}

@@ -71,7 +71,7 @@ functor Flags (structure Crash : CRASH
 
     (* Printing of intermediate forms *)
     val print_opt_lambda_expression = ref false
-    val print_attop_atbot_expression = ref false
+    val print_storage_mode_expression = ref false
     val print_drop_regions_expression = ref false
     val print_drop_regions_expression_with_storage_modes = ref false
     val print_physical_size_inference_expression = ref false
@@ -85,7 +85,7 @@ functor Flags (structure Crash : CRASH
     (* Flags for region profiling. *)
     val region_profiling = ref false
     val show_region_flow_graph = ref false
-    val print_all_program_points = ref true
+    val print_all_program_points = ref false
     val program_points = (ref []): int list ref
     val region_paths = (ref[]): (int*int) list ref
 
@@ -728,34 +728,34 @@ fun add_bool_action_entry e =
   (*1. Printing of intermediate forms*)
 
 local
-  fun add (l, s, r, desc) = add_bool_entry {long=l, short=NONE, menu=["Printing of intermediate forms",s],
-					    item=r, neg=false, desc=desc}
+  fun add (l, sh, s, r, desc) = add_bool_entry {long=l, short=sh, menu=["Printing of intermediate forms",s],
+						item=r, neg=false, desc=desc}
 in
   val _ = app add
   [
-   ("print_opt_lambda_expression", "print optimised lambda expression", print_opt_lambda_expression,
+   ("print_opt_lambda_expression", SOME "Pole", "print optimised lambda expression", print_opt_lambda_expression,
     "Print Lambda Expression after optimisation."),
-   ("print_attop_atbot_expression", "print atbot expression", print_attop_atbot_expression,
+   ("print_storage_mode_expression", SOME "Psme", "print storage mode expression", print_storage_mode_expression,
     "Print Region Expression after storage mode analysis"),
-   ("print_drop_regions_expression", "print drop regions expression", print_drop_regions_expression,
+   ("print_drop_regions_expression", SOME "Pdre", "print drop regions expression", print_drop_regions_expression,
     "Print Region Expression after dropping word regions and\n\
      \regions arguments with only get-effects."),
-   ("print_drop_regions_expression_with_storage_modes", "print drop regions expression with storage modes", 
+   ("print_drop_regions_expression_with_storage_modes", SOME "Pdresm", "print drop regions expression with storage modes", 
     print_drop_regions_expression_with_storage_modes,
     "Print Region Expression after dropping word regions and\n\
      \regions arguments with only get-effects. Also print\n\
      \atbot and attop annotations resulting from storage mode\n\
      \analysis."),
-   ("print_physical_size_inference_expression", "print physical size inference expression", 
+   ("print_physical_size_inference_expression", SOME "Ppse", "print physical size inference expression", 
     print_physical_size_inference_expression,
     "Print Region Expression after physical size inference."),
-   ("print_call_explicit_expression", "print call-explicit expression", print_call_explicit_expression,
+   ("print_call_explicit_expression", SOME "Pcee", "print call-explicit expression", print_call_explicit_expression,
     "Print Region Expression with call annotations."),
-   ("print_normalized_program", "print normalized expression", ref false,
+   ("print_normalized_program", NONE, "print normalized expression", ref false,
     "Print Region Expression after K-normalisation."),
-   ("print_clos_conv_program", "print closure converted expression", ref false,
+   ("print_clos_conv_program", SOME "Pccp", "print closure converted expression", ref false,
     "Print Region Expression after closure conversion."),
-   ("print_lift_conv_program", "print lifted expression for the KAM", ref false,
+   ("print_lift_conv_program", SOME "Plcp", "print lifted expression for the KAM", ref false,
     "Print Region Expression after lifting. Used for the\n\
      \compilation into byte code (KAM).")
     ]
@@ -764,39 +764,39 @@ end
   (*2. Layout*)
 
 local
-  fun add neg (l, s, r, desc) = add_bool_entry {long=l, short=NONE, menu=["Layout",s],
-						item=r, neg=neg, desc=desc}
+  fun add neg (l, sh, s, r, desc) = add_bool_entry {long=l, short=sh, menu=["Layout",s],
+						    item=r, neg=neg, desc=desc}
 in
   val _ = app (add false)
     [
-     ("print_types", "print types", print_types,
+     ("print_types", SOME "Ptypes", "print types", print_types,
       "Print types when printing intermediate forms. For Lambda\n\
        \Expressions, ordinary ML types are printed, whereas for\n\
        \Region Expressions, region types are printed."),
-      ("print_effects", "print effects", print_effects,
+      ("print_effects", SOME "Peffects", "print effects", print_effects,
        "Print effects in region types.")
       ]
   val _ = add true
-      ("print_regions", "print regions ", print_regions,
+      ("print_regions", SOME "Pregions", "print regions ", print_regions,
        "Print region variables in types and expressions.")
   val _ = app (add false)
        [
-       ("print_K_normal_forms", "print K-Normal Forms", print_K_normal_forms,
+       ("print_K_normal_forms", NONE, "print K-Normal Forms", print_K_normal_forms,
 	"Print Region Expressions in K-Normal Form. Applicable,\n\
 	 \only after storage mode analysis has been applied."),
-       ("print_type_name_stamps", "print type name stamps and attributes", print_type_name_stamps,
+       ("print_type_name_stamps", SOME "Ptypestamps", "print type name stamps and attributes", print_type_name_stamps,
 	"Print type name stamps and their attributes in types\n\
 	 \and expressions."),
-       ("print_word_regions", "print word regions ", print_word_regions,
+       ("print_word_regions", SOME "Pwordregions", "print word regions ", print_word_regions,
 	"Also print word regions that have been dropped.")
 	]
   val _ = add true
-	("raggedRight", "ragged right margin in pretty-printing", raggedRight,
+	("raggedRight", NONE, "ragged right margin in pretty-printing", raggedRight,
 	"Use ragged right margin in pretty-printing of\n\
 	 \expressions and types.")
 end
 
-val _ = add_int_entry {long="colwidth",short=NONE, menu=["Layout", "text width in pretty-printing"], 
+val _ = add_int_entry {long="colwidth",short=SOME "Pwidth", menu=["Layout", "text width in pretty-printing"], 
 		       item=colwidth,
 		       desc="Column width used when pretty printing intermediate code."}
 
@@ -978,16 +978,14 @@ in
      \produces a profile file run.rp, which can then be read\n\
      \by the profiling tool rp2ps that comes with the ML Kit to\n\
      \produce profiling graphs of various forms."),
-   ("show_region_flow_graph", NONE, "show region flow graph and generate .vcg file", show_region_flow_graph,
-    "Show a region flow graph for the program and generate a\n\
-     \.vcg-file, which can be viewed using the xvcg.")
-    ]
-val _ = add true
-   ("print_all_program_points", NONE, "print all program points", print_all_program_points,
-    "Print all program points when printing physical size\n\
-     \inference expressions. Use the menu item\n\
-     \``print program points'' to print only some program\n\
-     \points.")
+    ("show_region_flow_graph", NONE, "show region flow graph and generate .vcg file", show_region_flow_graph,
+     "Show a region flow graph for the program and generate a\n\
+      \.vcg-file, which can be viewed using the xvcg."),
+     ("print_all_program_points", SOME "Ppp", "print all program points", print_all_program_points,
+      "Print all program points when printing physical size\n\
+       \inference expressions. Use the menu item\n\
+       \``print program points'' to print only some program\n\
+       \points.")]
 end
 
 val _ = Menu.add_int_list_to_menu ("", ["Profiling", "print program points"], program_points)

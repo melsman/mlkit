@@ -61,6 +61,7 @@ signature LVARS =
     val lesseq_float_lvar : lvar
     val greatereq_float_lvar : lvar
 
+    val wild_card : lvar (* used in LineStmt/SubstAndSimplify *)
 
     (* For pattern-mathing, we declare a datatype for
      * compiler-supported primitives and a function 

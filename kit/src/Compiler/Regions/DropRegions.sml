@@ -168,14 +168,14 @@ functor DropRegions(structure Name : NAME
     * Environment for Region Variables
     * ----------------------------------------------------------------- *)
 
-    datatype regenv_res = DROP | KEEP
+    datatype regenv_res = DROPIT | KEEP
     type place = RType.place
     type regenv = (place, regenv_res) FinMapEq.map
     val empty_regenv = FinMapEq.empty : regenv
     fun add_regenv (rho, res, regenv) = FinMapEq.add Eff.eq_effect (rho, res, regenv)
 
     type StringTree = PP.StringTree
-    fun layout_regenv_res DROP = PP.LEAF "drop"
+    fun layout_regenv_res DROPIT = PP.LEAF "drop"
       | layout_regenv_res KEEP = PP.LEAF "keep"
     val layout_regenv = FinMapEq.layoutMap 
            {start="Environment for region variables in DropRegions:(",finish=")",
@@ -205,11 +205,11 @@ functor DropRegions(structure Name : NAME
       | filter (x::xs) = x::filter xs
 
    (* maybe_add_rho regvar_env rho acc   conses rho onto acc if
-      rho is marked as DROP in regvar_env: *)
+      rho is marked as DROPIT in regvar_env: *)
 
    fun maybe_add_rho regvar_env rho acc = 
       case FinMapEq.lookup Eff.eq_effect regvar_env rho
-        of SOME DROP => rho :: acc
+        of SOME DROPIT => rho :: acc
       | _ =>  acc
 
    fun maybe_add regvar_env atp acc =
@@ -246,7 +246,7 @@ functor DropRegions(structure Name : NAME
 
 	val (e', acc) =
 	 (case e
-	    of VAR {alloc=NONE,rhos_actuals=ref[],...} => (e, acc)       (* fix-bound and prim lvars are dealt with below *)
+	    of VAR {fix_bound=false,rhos_actuals=ref[],...} => (e, acc)       (* fix-bound and prim lvars are dealt with below *)
 	     | VAR _ => die "drop.should be fix-bound"
 	     | INTEGER (n, atp) => (check_atp_w atp "INTEGER"; (INTEGER (n, IGNORE), acc))
 	     | STRING (s, atp) => (check_atp_s  atp "STRING";
@@ -298,11 +298,11 @@ functor DropRegions(structure Name : NAME
 
                         (* regvars_env' extends regvar with one binding for each bound region
                            variable in the type scheme of the function. Every region variable
-                           is mapped to KEEP or DROP *)
+                           is mapped to KEEP or DROPIT *)
 
                         val regvar_env': regenv =  List.foldL
                                               (fn (((rho,_),b:bool)) => fn regenv => 
-                                                 add_regenv(rho, if b then KEEP else DROP, regenv))
+                                                 add_regenv(rho, if b then KEEP else DROPIT, regenv))
                                               regvar_env
                                               (ListPair.zip(formals, bool_list)
                                                handle _ => die "FIX: formals and bool list have different lengths")
@@ -342,25 +342,21 @@ functor DropRegions(structure Name : NAME
 		  val (scope',acc) = drop (lvar_env', regvar_env) scope acc
 	      in (FIX{free=free,shared_clos=atp,functions=functions',scope=scope'}, acc)
 	      end
-	     | APP(ck,sr,tr1 as TR(VAR{lvar,il,plain_arreffs, alloc, 
+	     | APP(ck,sr,tr1 as TR(VAR{lvar,il,plain_arreffs, fix_bound, 
                                        rhos_actuals=ref actuals, other},metaType,
                                    ateffs,mulef), tr2) =>
 	      (case lookup lvar_env lvar
 		 of SOME (FIXBOUND bool_list) =>
-		   let val acc = case alloc of 
-                                 SOME atp => (check_atp_t atp ("RHO_VECTOR." ^ Lvars.pr_lvar lvar) ;
-                                              maybe_add regvar_env atp acc)
-                                             
-                               | NONE => acc
+		   let
 		       val actuals' = filter_bl(bool_list,actuals)
                        val acc = List.foldL (maybe_add regvar_env) acc actuals'
                        val (tr2', acc) = drop env tr2 acc
-		   in (APP(ck,sr,TR(VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,alloc=alloc,
+		   in (APP(ck,sr,TR(VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,fix_bound=fix_bound,
 				 rhos_actuals=ref actuals',other=other},metaType,ateffs,mulef), 
                           tr2'), acc)
 		   end
-	          | _ => (case (alloc, actuals)
-			       of (NONE, []) => 
+	          | _ => (case (fix_bound, actuals)
+			       of (false, []) => 
                                  let val (tr2', acc) = drop env tr2 acc
                                  in (APP(ck,sr,tr1,tr2'), acc)
                                  end
@@ -466,6 +462,10 @@ functor DropRegions(structure Name : NAME
                   in (ASSIGN(drop_atplace alloc, tr1', tr2'),
                       acc)
                   end
+	     | DROP tr => 
+                 let val (tr', acc) = drop env tr acc 
+		 in (DROP (tr'), acc) 
+		 end
 	     | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => 
                  let val acc = maybe_add regvar_env alloc acc
                      val (tr1', acc) = drop env tr1 acc

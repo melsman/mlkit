@@ -609,9 +609,9 @@ functor Compile(structure Excon : EXCON
          (* chatting and timing done in AtInf*)
 	 let val pgm' = sma pgm
 	 in 
-	    if Flags.is_on "print_attop_atbot_expression" 
+	    if Flags.is_on "print_storage_mode_expression" 
                orelse !Flags.DEBUG_COMPILER then 
-	          display("\nReport: ATTOP/ATBOT:", layout_pgm pgm')
+	          display("\nReport: Storage Mode Expression:", layout_pgm pgm')
 	    else ();
 	    pgm'
 	 end

@@ -47,7 +47,7 @@ signature REGION_EXP =
 
     and ('a,'b)trip = TR of ('a,'b)LambdaExp * metaType * effect
     and ('a,'b)LambdaExp =
-        VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, alloc: 'a option}
+        VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, fix_bound: bool}
       | INTEGER  of int	* 'a		
       | STRING   of string * 'a
       | REAL     of string * 'a
@@ -89,6 +89,7 @@ signature REGION_EXP =
       | DEREF    of ('a,'b)trip
       | REF      of 'a * ('a,'b)trip
       | ASSIGN   of 'a * ('a,'b)trip * ('a,'b)trip
+      | DROP     of ('a,'b)trip  (* to do wild cards properly; drops the type *)
       | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b)trip * ('a,'b)trip
       | CCALL    of {name : string,
 		     mu_result : Type * place, (*mu of result from c function*)

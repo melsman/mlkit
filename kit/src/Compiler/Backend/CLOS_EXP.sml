@@ -86,6 +86,7 @@ signature CLOS_EXP =
     | DEREF           of ClosExp
     | REF             of sma * ClosExp
     | ASSIGN          of sma * ClosExp * ClosExp
+    | DROP            of ClosExp
     | RESET_REGIONS   of {force: bool, 
 			  regions_for_resetting: sma list}
     | CCALL           of {name: string,  
