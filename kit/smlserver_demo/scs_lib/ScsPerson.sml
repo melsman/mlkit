@@ -3,13 +3,17 @@ signature SCS_PERSON =
     datatype sex = Female | Male
 
     type person_record = {
-      person_id         : int,
-      first_names 	: string,
-      last_name		: string,
-      name 		: string,
-      email		: string,
-      url		: string,
-      cpr               : string
+      person_id           : int,
+      first_names 	  : string,
+      last_name		  : string,
+      name 		  : string,
+      email		  : string,
+      url		  : string,
+      cpr                 : string,
+      upload_folder_id    : int option, (* folder containing portraits *)
+      upload_folder_name  : string option,
+      upload_folder_path  : string option,
+      may_show_portrait_p : bool
     }
 
     type profile_record = 
@@ -24,6 +28,21 @@ signature SCS_PERSON =
 	last_modified  : Date.date,
 	modifying_user : int,
 	deleted_p      : bool}
+
+    datatype portrait_type = original | thumb_fixed_height | thumb_fixed_width
+    type portrait_record =
+      { file_id           : int,
+        party_id          : int,
+	portrait_type_vid : int,
+        portrait_type_val : portrait_type,
+	width             : int,
+	height            : int,
+	bytes             : int,
+	official_p        : bool }
+
+    val portrait_type_from_DB : string -> portrait_type option
+    val portrait_type_to_DB   : portrait_type -> string
+    val getPortraits : int -> portrait_record list
 
     (* [getPerson user_id] fetches a person from the database *)
     val getPerson : int -> person_record option
@@ -123,13 +142,17 @@ structure ScsPerson :> SCS_PERSON =
     datatype sex = Female | Male
 
     type person_record = {
-      person_id         : int,
-      first_names 	: string,
-      last_name		: string,
-      name 		: string,
-      email		: string,
-      url		: string,
-      cpr		: string
+      person_id           : int,
+      first_names 	  : string,
+      last_name		  : string,
+      name 		  : string,
+      email		  : string,
+      url		  : string,
+      cpr                 : string,
+      upload_folder_id    : int option, (* folder containing portraits *)
+      upload_folder_name  : string option,
+      upload_folder_path  : string option,
+      may_show_portrait_p : bool
     }
 
     type profile_record = 
@@ -145,6 +168,51 @@ structure ScsPerson :> SCS_PERSON =
 	modifying_user : int,
 	deleted_p      : bool}
 
+    datatype portrait_type = original | thumb_fixed_height | thumb_fixed_width
+    type portrait_record =
+      { file_id           : int,
+        party_id          : int,
+	portrait_type_vid : int,
+        portrait_type_val : portrait_type,
+	width             : int,
+	height            : int,
+	bytes             : int,
+	official_p        : bool }
+
+    fun portrait_type_from_DB "orig" = SOME original
+      | portrait_type_from_DB "thumb_fixed_height" = SOME thumb_fixed_height
+      | portrait_type_from_DB "thumb_fixed_width" = SOME thumb_fixed_width
+      | portrait_type_from_DB "" = NONE
+      | portrait_type_from_DB s = ScsError.panic `ScsPerson.protrait_type_from_DB: can't convert ^s`
+    fun portrait_type_to_DB original = "orig"
+      | portrait_type_to_DB thumb_fixed_height = "thumb_fixed_height"
+      | portrait_type_to_DB thumb_fixed_width = "thumb_fixed_width"
+
+    local
+      fun f g = {file_id = (ScsError.valOf o Int.fromString) (g "file_id"),
+		 party_id = (ScsError.valOf o Int.fromString) (g "party_id"), 
+		 portrait_type_vid = (ScsError.valOf o Int.fromString) (g "portrait_type_vid"), 
+		 portrait_type_val = (ScsError.valOf o portrait_type_from_DB) (g "portrait_type_val"),
+		 width = (ScsError.valOf o Int.fromString) (g "width"),
+		 height = (ScsError.valOf o Int.fromString) (g "height"),
+                 bytes = (ScsError.valOf o Int.fromString) (g "bytes"),
+		 official_p = (ScsError.valOf o Db.toBool) (g "official_p")}
+      fun portraitSQL from_wh = 
+	` select p.file_id,
+                 p.party_id,
+                 p.portrait_type_vid,
+                 scs_enumeration.getVal(p.portrait_type_vid) as portrait_type_val,
+                 p.width,
+                 p.height,
+                 p.bytes,
+                 p.official_p
+	   ` ^^ from_wh
+    in
+      fun getPortraits user_id =
+	ScsError.wrapPanic (Db.list f) (portraitSQL ` from scs_portraits p
+                                                     where party_id = '^(Int.toString user_id)' `)
+    end
+
     local
       fun f g = {person_id = (ScsError.valOf o Int.fromString) (g "person_id"),
 		 first_names = g "first_names",
@@ -152,18 +220,35 @@ structure ScsPerson :> SCS_PERSON =
 		 name = g "name",
 		 email = g "email",
 		 url = g "url",
-		 cpr = g "cpr"}
+		 cpr = g "cpr",
+                 upload_folder_id = Int.fromString (g "upload_folder_id"),
+		 upload_folder_name = 
+  		   if String.size (g "upload_folder_name") = 0 then 
+		     NONE 
+		   else
+		     SOME (g "upload_folder_name"),
+		 upload_folder_path = 
+  		   if String.size (g "upload_folder_path") = 0 then 
+		     NONE 
+		   else
+		     SOME (g "upload_folder_path"),
+		 may_show_portrait_p = (ScsError.valOf o Db.toBool) (g "may_show_portrait_p")}
       fun personSQL from_wh =
 	` select p.person_id, p.first_names, p.last_name, 
 		 scs_person.name(p.person_id) as name, 
-		 scs_party.email(p.person_id) as email,
-		 scs_party.url(p.person_id) as url,
-		 p.security_id as cpr
+		 party.email as email,
+		 party.url as url,
+		 p.security_id as cpr,
+                 party.upload_folder_id,
+                 party.upload_folder_name,
+                 party.upload_folder_path,
+                 party.may_show_portrait_p
             ` ^^ from_wh
     in
       fun getPerson user_id = 
-	SOME( Db.oneRow' f (personSQL ` from scs_persons p
-                                       where person_id = '^(Int.toString user_id)'`))
+	SOME( Db.oneRow' f (personSQL ` from scs_persons p, scs_parties party
+                                       where person_id = '^(Int.toString user_id)'
+                                         and person_id = party_id`))
 	handle _ => NONE
       fun getPersonErr (user_id,errs) =
 	case getPerson user_id of
@@ -176,18 +261,20 @@ structure ScsPerson :> SCS_PERSON =
 	    end
 	| p => (p,errs)
       fun getPersonByExtSource on_what_table on_which_id =
-	SOME( Db.oneRow' f (personSQL ` from scs_persons p, scs_person_rels r
+	SOME( Db.oneRow' f (personSQL ` from scs_persons p, scs_person_rels r, scs_parties party
                                        where r.on_what_table = ^(Db.qqq on_what_table)
                                          and r.on_which_id = '^(Int.toString on_which_id)'
-                                         and r.person_id = p.person_id`))
+                                         and r.person_id = p.person_id
+                                         and p.person_id = party.party_id`))
 	handle _ => NONE
       fun searchPerson pat keep_del_p =
 	Db.list f (personSQL 
-		   ` from scs_persons p
+		   ` from scs_persons p, scs_parties party
                     where (lower(scs_person.name(p.person_id)) like ^(Db.qqq pat)
                        or lower(scs_party.email(p.person_id)) like ^(Db.qqq pat)
 		       or p.security_id like ^(Db.qqq pat))
-                      and p.deleted_p in (^(if keep_del_p then "'t','f'" else "'f'"))`)
+                      and p.deleted_p in (^(if keep_del_p then "'t','f'" else "'f'"))
+                      and p.person_id = party.party_id`)
 	handle _ => []
     end
 

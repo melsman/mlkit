@@ -47,7 +47,11 @@ val new_user_form =
       name 		= "",
       email		= "",
       url		= "",
-      cpr		= ""
+      cpr		= "",
+      upload_folder_id  = NONE,
+      upload_folder_name = NONE,
+      upload_folder_path = NONE,
+      may_show_portrait_p = false
     }
   in
     UcsWidget.layoutComponentGrp (
