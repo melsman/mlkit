@@ -74,6 +74,7 @@ signature SCS_PERSON =
     val empty_portrait_thumbnail_en_filename : string
     val empty_portrait_large_da_filename     : string
     val empty_portrait_large_en_filename     : string
+    val empty_portrait_urls                  : string list
     val empty_portrait_thumbnail             : unit -> portrait_record
     val empty_portrait_large                 : unit -> portrait_record
 
@@ -499,6 +500,12 @@ structure ScsPerson :> SCS_PERSON =
     val empty_portrait_thumbnail_en_filename = "empty_portrait_thumbnail_en.jpg"
     val empty_portrait_large_da_filename = "empty_portrait_large_da.jpg"
     val empty_portrait_large_en_filename = "empty_portrait_large_en.jpg"
+    val empty_portrait_urls = 
+      List.map (fn f => download_dir ^ "/" ^ f) 
+      [empty_portrait_thumbnail_da_filename,
+       empty_portrait_thumbnail_en_filename,
+       empty_portrait_large_da_filename,
+       empty_portrait_large_en_filename]
     fun empty_portrait_thumbnail () : portrait_record = 
       let
 	val (filename,url,bytes) =
