@@ -143,7 +143,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	             List.apply (fn s => output(!Flags.log, "*** warning: " ^ s)) (rev ss)))
 
     fun print_error_report report = Report.print' report (!Flags.log)
-    fun print_result_report report = (Report.print' report (!Flags.log);
+    fun print_result_report report = (Report.print' report ((*std_out*)!Flags.log);
 				      report_warnings())
 
     (* ---------------------------------------
