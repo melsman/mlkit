@@ -4,7 +4,7 @@ KITVERSION=4.0.0
 ARCH-OS=x86-linux
 INSTDIR=/usr/share/mlkit
 INSTDIR_KAM=/usr/share/mlkit_kam
-INSTDIR_WEB=/usr/share/smlserver
+INSTDIR_SMLSERVER=/usr/share/smlserver
 
 # Some commands
 MKDIR=mkdir -p
@@ -107,28 +107,28 @@ bootstrap:
 	$(INSTALL) test/Makefile_bootstrap $(INSTDIR)/Makefile
 
 install_smlserver:
-	rm -rf $(INSTDIR_WEB)
-	$(MKDIR) $(INSTDIR_WEB)
-	$(MKDIR) $(INSTDIR_WEB)/bin
-	$(MKDIR) $(INSTDIR_WEB)/doc
-	$(INSTALL) bin/mlkit_web.$(ARCH-OS) $(INSTDIR_WEB)/bin
-	$(INSTALL) src/SMLserver/nssml.so $(INSTDIR_WEB)/bin
-	$(INSTALL) copyright $(INSTDIR_WEB)
-	$(INSTALL) README $(INSTDIR_WEB)
-	$(INSTALL) README_SMLSERVER $(INSTDIR_WEB)
-	$(INSTALL) NEWS_SMLSERVER $(INSTDIR_WEB)
-	$(INSTALL) -R smlserver_demo $(INSTDIR_WEB)/smlserver_demo 
-	$(INSTALL) -R basislib $(INSTDIR_WEB)/basislib
-	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_WEB)/doc
-	chown -R `whoami`.`whoami` $(INSTDIR_WEB)
-	chmod -R ug+rw $(INSTDIR_WEB)
-	chmod -R o+r $(INSTDIR_WEB)
+	rm -rf $(INSTDIR_SMLSERVER)
+	$(MKDIR) $(INSTDIR_SMLSERVER)
+	$(MKDIR) $(INSTDIR_SMLSERVER)/bin
+	$(MKDIR) $(INSTDIR_SMLSERVER)/doc
+	$(INSTALL) bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER)/bin
+	$(INSTALL) src/SMLserver/nssml.so $(INSTDIR_SMLSERVER)/bin
+	$(INSTALL) copyright $(INSTDIR_SMLSERVER)
+	$(INSTALL) README $(INSTDIR_SMLSERVER)
+	$(INSTALL) README_SMLSERVER $(INSTDIR_SMLSERVER)
+	$(INSTALL) NEWS_SMLSERVER $(INSTDIR_SMLSERVER)
+	$(INSTALL) -R smlserver_demo $(INSTDIR_SMLSERVER)/smlserver_demo 
+	$(INSTALL) -R basislib $(INSTDIR_SMLSERVER)/basislib
+	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
+	chown -R `whoami`.`whoami` $(INSTDIR_SMLSERVER)
+	chmod -R ug+rw $(INSTDIR_SMLSERVER)
+	chmod -R o+r $(INSTDIR_SMLSERVER)
 #
 # The following is also done in the %post section in the rpm file, 
 # because the --prefix option to rpm can change the installation 
 # directory! 
 #
-	echo '#!/bin/sh' > $(INSTDIR_WEB)/bin/mlkit_web
-	echo -e '$(INSTDIR_WEB)/bin/mlkit_web.$(ARCH-OS) $(INSTDIR_WEB) $$*' >> $(INSTDIR_WEB)/bin/mlkit_web
-	chmod a+x $(INSTDIR_WEB)/bin/mlkit_web
+	echo '#!/bin/sh' > $(INSTDIR_SMLSERVER)/bin/smlserverc
+	echo -e '$(INSTDIR_SMLSERVER)/bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER) $$*' >> $(INSTDIR_SMLSERVER)/bin/smlserverc
+	chmod a+x $(INSTDIR_SMLSERVER)/bin/smlserverc
 
