@@ -487,7 +487,7 @@ struct
                         B, rse, pat'_list) =
                  let  
                       val sigma = R.type_to_scheme tau_1
-                      val _ = log_sigma(R.insert_alphas(alphas, sigma),lvar)
+(*                      val _ = log_sigma(R.insert_alphas(alphas, sigma),lvar)*)
                       val rse = (*RSE.*)declareLvar(lvar,
                                  (false,false,R.insert_alphas(alphas, sigma), 
                                   rho_1, None, None),rse)
@@ -1109,7 +1109,7 @@ good *)
                       val _ = warn(lvar,msg_opt)
                     val (_,B) = (*Eff.*)pop B (* back to retract level *)
                     
-                    val _  = log_sigma(R.insert_alphas(tyvars, sigma1), lvar)
+(*                    val _  = log_sigma(R.insert_alphas(tyvars, sigma1), lvar)*)
                     val (B, l) = spreadRhss(B)(rest)
                   in  
                     (B, (t1,tau1,sigma1)::l)
