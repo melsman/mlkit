@@ -74,7 +74,6 @@ signature LAMBDA_EXP =
       | LNprim
       | SIZEprim
       | CHRprim
-      | ORDprim
       | EXPLODEprim
       | IMPLODEprim
       | DEREFprim of {instance: 'Type}

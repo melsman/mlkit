@@ -86,7 +86,6 @@ functor LambdaExp(structure Lvars: LVARS
       | LNprim
       | SIZEprim
       | CHRprim
-      | ORDprim
       | EXPLODEprim
       | IMPLODEprim
       | DEREFprim of {instance: 'Type}
@@ -267,7 +266,6 @@ functor LambdaExp(structure Lvars: LVARS
       | LNprim => PP.LEAF("ln")
       | SIZEprim => PP.LEAF("size")
       | CHRprim => PP.LEAF("chr")
-      | ORDprim => PP.LEAF("ord")
       | EXPLODEprim => PP.LEAF("explode")
       | IMPLODEprim => PP.LEAF("implode")
       | DEREFprim {instance} => 

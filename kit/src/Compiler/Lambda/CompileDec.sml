@@ -583,7 +583,6 @@ functor CompileDec(structure Con: CON
 	   | 8 => LNprim
 	   | 9 => SIZEprim
 	   | 10 => CHRprim
-	   | 11 => ORDprim
 	   | 12 => EXPLODEprim
 	   | 13 => IMPLODEprim
 	   | 14 => DIV_REALprim
@@ -966,46 +965,42 @@ functor CompileDec(structure Con: CON
 		      (* <> (NOTEQUALprim) is declared in the prelude as an
 		       * ordinary variable (not a primitive), so it does
 		       * not show up here *)
-		  | ORDprim => (case args of
-				  [exp] => compileExp env exp
-				| _ => die "compileExp(APPexp(PRIM... ORDprim...))")
 		  | CCALLprim _ => 
-		      let
-			fun extractString exp =
-			  let
-			    val atexp = (case exp of
-					   ATEXPexp(_,atexp) => atexp
-					 | _ => die "CCALL.exp not atexp")
-			    val scon = (case atexp of
-					  SCONatexp(_,scon) => scon
-					| IDENTatexp(_,_) => die "CCALL atexp is an identifier"
-					| RECORDatexp(_,_) => die "CCALL atexp is a record"
-					| LETatexp(_,_,_) => die "CCALL atexp is a let"
-					| PARatexp(_,_) => die "CCALL atexp is a par")
-			  in 
-			    (case scon of
-			       SCon.STRING s => s
-			     | _ => die "CCALL.scon not string")
-			  end 
-			
-			val (s, args) = 
+		      let val (s, args) = 
 			  (case args of
-			     [] => die "No function name in CCALLprim"
-			   | [s] => die "Only one function name in CCALLprim. \
-                                         \Remember also function name for profiling."
-			   | s::s_prof::xs =>
-			       (extractString
-				  (if !region_profiling then s_prof else s), xs))
-			val args' = map (compileExp env) args
-			val instance' =
-			  case ElabInfo.to_TypeInfo info 
-			    of Some(TypeInfo.VAR_INFO{instances=[instanceRes, instanceArg]}) => 
-			      (* We use the result type of prim
-			       * SpreadExp generates reg. vars.
-			       * from the result type. *)
-			      compileType instanceRes
-			     | _ => die "compileExp(APPexp(PRIM..): wrong type info"
-		      in TLE.PRIM(CCALLprim (s, {instance=instance'}), args')
+			     [] => die "You forgot the function name in a prim declaration."
+			   | [e1] => die ("Remember to give two function names in the \
+			                  \ declaration of a prim.\n\
+					  \Maybe you forgot the profiling function name.")
+			   | e1 :: e2 :: es =>
+			       ((case (if !region_profiling then e2 else e1) of
+				   ATEXPexp (_, SCONatexp (_, SCon.STRING s)) => s
+				 | _ => die "Function name in a prim declaration has wrong form"), es))
+		      in
+			(case s of
+			   "id" => (*type conversions that result in no code to run at
+				    run-time are declared as prim "id"'s; for instance,
+				    ord is defined:
+
+				      fun ord (c:char) : int = prim (31, ("id", "id", c))*)
+			     (case args of
+				[exp] => compileExp env exp
+			      | _ => die "compileExp(APPexp(PRIM... (CCALLprim \"id\"...)))")
+			 | _ => (*unrecognised ccall-prim: this must really be a c call;
+				 it is hoped the run-time system defines a function
+				 called s:*)
+			     let val args' = map (compileExp env) args
+				 val instance' =
+				       (case ElabInfo.to_TypeInfo info of
+					  Some (TypeInfo.VAR_INFO{instances=[instanceRes,instanceArg]}) => 
+					    (* We use the result type of prim
+					     * SpreadExp generates reg. vars.
+					     * from the result type. *)
+					    compileType instanceRes
+					| _ => die "compileExp(APPexp(PRIM..): wrong type info")
+			     in					     
+			       TLE.PRIM (CCALLprim (s, {instance=instance'}), args')
+			     end)
 		      end
 		  | _ => let val args' = map (compileExp env) args
 			 in TLE.PRIM(prim, args')
