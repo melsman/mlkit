@@ -104,7 +104,7 @@ structure ScsLogin :> SCS_LOGIN =
       let
 	val target = Ns.Conn.url()
       in
-	Html.genUrl "/scs/auth/auth_form.sml"
+	Html.genUrl "scs/auth/auth_form.sml"
 	[("target", Html.genUrl target
 	  (case Ns.Conn.getQuery() of
 	     NONE => []
@@ -183,7 +183,7 @@ structure ScsLogin :> SCS_LOGIN =
     local
       fun reject msg =
 	let
-	  val target_url = target_url msg
+	  val target_url = "/" ^ target_url msg
 	in
 	  (Ns.write 
 `HTTP/1.0 302 Found
