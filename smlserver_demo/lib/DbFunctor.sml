@@ -55,6 +55,17 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun panicDmlDb (db:db) (f_panic: quot -> 'a) (q: quot) : unit =
       (dmlDb (db,q); () handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
 
+    fun dmlTransDb (db : db, f : db -> 'a) : 'a =
+      let
+	val _ = dmlDb (db,DbBasic.beginTrans)
+	val res = f db;
+      in
+	dmlDb (db,DbBasic.endTrans);
+	res
+      end handle X => (dmlDb (db,DbBasic.roolback); raise X)
+    fun panicDmlTransDb (db:db) (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
+      dmlTransDb (db,f) handle X => (f_panic(`^(General.exnMessage X)`))
+
     fun getHandle () : db = poolGetHandle(Pool.getPool())
     fun putHandle db : unit = (poolPutHandle db; Pool.putPool (#1 db))
       
@@ -68,6 +79,19 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       ((dml q; ()) handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
     fun errorDml (f_error: unit -> 'a) (q: quot) : unit =
       ((dml q; ()) handle X => (f_error(); ()))
+    fun dmlTrans (f: db -> 'a) : 'a =
+      let 
+	val db = getHandle()
+      in
+	let
+	  val res = dmlTransDb (db,f)
+	in 
+	  putHandle db;
+	  res
+	end handle X => (putHandle db; raise X)
+      end
+    fun panicDmlTrans (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
+      dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
 
     fun select (db: db, q: quot) : Set.set =
       prim("nssml_DbSelect", "nssml_DbSelect", (#2 db, quotToString q))
@@ -228,11 +252,19 @@ structure NsDbBasicOra : NS_DB_BASIC =
   struct
     fun seqNextvalExp seq_name = seq_name ^ ".nextval"
     val fromDual = "from dual"
+    val sysdateExp = "sysdate"
+    val beginTrans = `begin transaction`
+    val endTrans = `commit`
+    val roolback = `end transaction`
   end
 
 structure NsDbBasicPG : NS_DB_BASIC =
   struct
     fun seqNextvalExp seq_name = "nextval('" ^ seq_name ^ "')"
     val fromDual = ""
+    val sysdateExp = "now()"
+    val beginTrans = `begin`
+    val endTrans = `commit`
+    val roolback = `roolback`
   end
 

@@ -2,6 +2,10 @@ signature NS_DB_BASIC =
   sig
     val seqNextvalExp : string -> string
     val fromDual      : string
+    val sysdateExp    : string
+    val beginTrans    : quot
+    val endTrans      : quot
+    val roolback      : quot
   end
 
 signature NS_POOL =
@@ -41,7 +45,9 @@ signature NS_DB =
     type quot = string frag list 
 
     val dmlDb           : db * quot -> status
+    val dmlTransDb      : db * (db -> 'a) -> 'a
     val panicDmlDb      : db -> (quot -> 'a) -> quot -> unit
+    val panicDmlTransDb : db -> (quot -> 'a) -> (db -> 'a) -> 'a
     val select          : db * quot -> set
     val getRow          : db * set -> status
     val foldDb          : db * ((string->string)*'a->'a) * 'a * quot -> 'a
@@ -52,9 +58,11 @@ signature NS_DB =
     val zeroOrOneRowDb  : db * quot -> string list option
 
     val dml           : quot -> status
+    val dmlTrans      : (db -> 'a) -> 'a
     val maybeDml      : quot -> unit
     val panicDml      : (quot -> 'a) -> quot -> unit
     val errorDml      : (unit -> 'a) -> quot -> unit
+    val panicDmlTrans : (quot -> 'a) -> (db -> 'a) -> 'a
 
     val fold          : ((string->string)*'a->'a) * 'a * quot -> 'a
     val list          : ((string->string)->'a) * quot -> 'a list
@@ -68,6 +76,7 @@ signature NS_DB =
 
     val seqNextvalExp : string -> string  (*construct new-sequence expression*)
     val seqNextval    : string -> int     (*obtain new sequence number from database*)
+    val sysdateExp    : string            (*construct sysdate expression*)
 
     val qq  : string -> string  (* replace each quote (') with quote-quote ('') *)
     val qq' : string -> string  (* as qq, but encapsulated in quotes ('...') *)
@@ -76,4 +85,6 @@ signature NS_DB =
 
     val valueList     : string list -> string
     val setList       : (string*string) list -> string
+
+    val wrapDb : (db -> 'a) -> 'a
   end

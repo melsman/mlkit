@@ -28,6 +28,7 @@ signature SCS_DATE =
     val ppIso : Date.date -> string
     val ppDk  : Date.date -> string
     val pp    : Date.date -> string
+    val ppDb  : Date.date option -> string
   end
 
 structure ScsDate :> SCS_DATE =
@@ -116,6 +117,11 @@ structure ScsDate :> SCS_DATE =
       case ScsLogin.user_lang of
 	ScsLang.Danish => ppDk s
       | ScsLang.English => ppIso s
+
+    fun ppDb s =
+      case s
+	of SOME d => pp d
+      | _ => ""
 
     fun dateOk (d,m,y) =
       m >= 1 andalso m <= 12 andalso d >= 1 andalso d <= daysInMonth y m

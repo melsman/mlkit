@@ -24,7 +24,6 @@ val user_id =
     NONE => "0"
   | SOME user_id => user_id
 
-val _ = Ns.log(Ns.Notice, "auth.sml: " ^ target ^ " and user id = " ^ user_id)
 val _ = Ns.write
 `HTTP/1.0 302 Found
 Location: ^target
