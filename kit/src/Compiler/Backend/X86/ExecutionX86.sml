@@ -82,6 +82,9 @@ functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
     structure CompileBasis = BuildCompile.CompileBasis
     structure CompilerEnv = BuildCompile.CompilerEnv
 
+    structure JumpTables = JumpTables(structure BI = BackendInfo
+				      structure Crash = Crash)
+
     structure CodeGen = CodeGenX86(structure BackendInfo = BackendInfo
 				   structure InstsX86 = InstsX86
 				   structure Con = Con
@@ -89,6 +92,7 @@ functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
 				   structure Lvars = Lvars
 				   structure Lvarset = Lvarset
 				   structure Labels = Labels
+				   structure JumpTables = JumpTables
 				   structure CallConv = BuildCompile.CallConv
 				   structure LineStmt = BuildCompile.LineStmt
 				   structure SubstAndSimplify = BuildCompile.SubstAndSimplify

@@ -176,17 +176,14 @@ structure K = struct
     val kitbin_path = OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../bin"))
     val kitbinkit_path = OS.Path.joinDirFile{dir=kitbin_path, file="kit"}
 
-    val enable_lam_backend_flag = Flags.lookup_flag_entry "enable_lambda_backend"
-    val region_profiling = Flags.lookup_flag_entry "region_profiling"
-    val gc_flag          = Flags.lookup_flag_entry "garbage_collection"
     fun set_paths() = 
       (Flags.lookup_string_entry "path_to_runtime" := 
-       (if !enable_lam_backend_flag then
+       (if Flags.is_on "enable_lambda_backend" then
 	  OS.Path.concat(kitsrc_path, "RuntimeWithGC/runtimeSystem.o")
 	else
 	  OS.Path.concat(kitsrc_path, "Runtime/runtimeSystem.o"));
        Flags.lookup_string_entry "path_to_runtime_prof" := 
-       (if !enable_lam_backend_flag then 
+       (if Flags.is_on "enable_lambda_backend" then 
 	  OS.Path.concat(kitsrc_path, "RuntimeWithGC/runtimeSystemProf.o")
 	else
 	  OS.Path.concat(kitsrc_path, "Runtime/runtimeSystemProf.o"));
@@ -236,13 +233,13 @@ structure K = struct
 		    loop (rest, script)
 		  end handle _ => (print "Error: I could not open file `KITtimings' for writing.\n"; exit()))
 	      | loop ("-nobasislib"::rest, script) = (Flags.auto_import_basislib := false; loop (rest, script))
-	      | loop ("-reportfilesig"::rest, script) = (Flags.lookup_flag_entry "report_file_sig" := true; loop (rest, script))
-	      | loop ("-logtofiles"::rest, script) = (Flags.lookup_flag_entry "log_to_file" := true; loop (rest, script))
-	      | loop ("-prof"::rest, script) = (Flags.lookup_flag_entry "region_profiling" := true; loop (rest, script))
-	      | loop ("-gc"::rest, script) = (Flags.lookup_flag_entry "garbage_collection" := true; loop (rest, script))
-	      | loop ("-delay_assembly"::rest, script) = (Flags.lookup_flag_entry "delay_assembly" := true; loop (rest, script))
+	      | loop ("-reportfilesig"::rest, script) = (Flags.turn_on "report_file_sig"; loop (rest, script))
+	      | loop ("-logtofiles"::rest, script) = (Flags.turn_on "log_to_file"; loop (rest, script))
+	      | loop ("-prof"::rest, script) = (Flags.turn_on "region_profiling"; loop (rest, script))
+	      | loop ("-gc"::rest, script) = (Flags.turn_on "garbage_collection"; loop (rest, script))
+	      | loop ("-delay_assembly"::rest, script) = (Flags.turn_on "delay_assembly"; loop (rest, script))
 	      | loop ("-chat"::rest, script) = (Flags.chat := true; loop (rest, script))
-	      | loop ("-nodso" ::rest, script) = (Flags.lookup_flag_entry "delay_slot_optimization" := false; loop(rest, script))
+	      | loop ("-nodso" ::rest, script) = (Flags.turn_off "delay_slot_optimization"; loop(rest, script))
 	      | loop ("-version"::rest, script) = loop (rest, script) (*skip*)
 	      | loop ("-help"::rest,script) = (print usage; loop(rest, script))
 	      | loop (rest,script) = (Flags.read_script script; go rest)

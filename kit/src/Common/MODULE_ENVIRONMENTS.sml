@@ -20,12 +20,12 @@ signature MODULE_ENVIRONMENTS =
     type realisation
     eqtype id
     type longid
-    type strid
+    eqtype strid
     type tycon = TyName.tycon
     type longstrid
     type longtycon
-    type sigid
-    type funid
+    eqtype sigid
+    eqtype funid
     type StringTree = TyName.Set.StringTree
     type Report
     (*The report functions below are used for top-level printout*)

@@ -28,7 +28,8 @@ functor CalcOffset(structure PhysSizeInf : PHYS_SIZE_INF
                       structure Flags : FLAGS
 		      structure Report : REPORT
 		        sharing type Report.Report = Flags.Report
-		      structure Crash : CRASH) : CALC_OFFSET =
+		      structure Crash : CRASH
+			) : CALC_OFFSET =
 struct
 
   type place = Effect.place
@@ -143,19 +144,40 @@ struct
     fun assign_offset_atom(LS.VAR lv,LVmap,PHmap) = lookup_lv(LVmap,lv)  
       | assign_offset_atom(LS.PHREG phreg,LVmap,PHmap) = lookup_lv(PHmap,phreg)
       | assign_offset_atom _ = die "assign_offset_atom: not a VAR or PHREG."
+      
+  (* On the x86, the stack grows towards negative infinity, thus, the
+     address of the first consecutive word of a multi-word object in a
+     function stack-frame is calculated differently than when the
+     stack grows towards positive infinity (which is the case on the
+     HP). For the x86, we add (obj_size-1) to the calculated offset in
+     letregion binders and handles, which are the only constructs that
+     contribute with multi-word objects on the stack. The computed
+     offset (offset+obj_size-1) is eventually subtracted from
+     (sp+size_ff). *)
 
     fun assign_binders(binders,offset) =
       let
-	fun assign_binder(((place,phsize as PhysSizeInf.INF),_),offset) = (((place,phsize),offset),offset++BI.size_of_reg_desc())
+	fun assign_binder(((place,phsize as PhysSizeInf.INF),_),offset) = 
+	  let val obj_size = BI.size_of_reg_desc()
+	      val ann_offset = if BI.down_growing_stack then offset+obj_size-1
+			       else offset
+	  in (((place,phsize),ann_offset),offset++obj_size)
+	  end
 	  | assign_binder(((place,phsize as PhysSizeInf.WORDS i),_),offset) = 
-	  if LS.is_region_real place then
-	    let
-	      val offset' = double_align_offset offset
-	    in
-	      (((place,phsize),offset'),offset'++(i)) (* Double Align finite regions with runtime type REAL *) (*+2 necessary for tagging hack 11/01/1999, Niels hmm we must correct PSI such that this isn't necessary, function psi_tr *)
+	  if LS.is_region_real place andalso BI.double_alignment_required then
+	    let val offset' = double_align_offset offset
+	    in (((place,phsize),offset'),offset'++i)   (* Double Align finite regions with runtime type REAL; 
+							* +2 necessary for tagging hack 11/01/1999, Niels hmm 
+							* we must correct PSI such that this isn't necessary, 
+							* function psi_tr *)
 	    end
 	  else
-	    (((place,phsize),offset),offset++(i+1)) (* +1 necessary for tagging hack 11/01/1999, Niels we should correct this in PSI. function psi_tr *)
+	    let val obj_size = i+1    (* +1 necessary for tagging hack 11/01/1999, 
+				       * Niels, we should correct this in PSI, function psi_tr *)
+	        val ann_offset = if BI.down_growing_stack then offset+obj_size-1 (*offset+(1-obj_size)*)
+				 else offset
+	    in (((place,phsize),ann_offset),offset++obj_size) 
+	    end
       in
 	foldr (fn (binder,(acc,offset)) => 
 	       let
@@ -210,13 +232,18 @@ struct
       in
 	LS.SCOPE{pat=pat',scope=CO_lss(scope,LVmap',PHmap',offset',[])} :: CO_lss(lss,LVmap,PHmap,offset,acc)
       end
-      | CO_lss(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_lv,bv),...}::lss,LVmap,PHmap,offset,acc) = 
+      | CO_lss(LS.HANDLE{default,handl=(handl,handl_lv),
+			 handl_return=(handl_return,handl_return_lv,bv),...}::lss,LVmap,PHmap,offset,acc) = 
       let
-	val (handl',size_handl) = (CO_lss(handl,LVmap,PHmap,offset++(BI.size_of_handle()),[]),0)
-	val (default',size_default) = (CO_lss(default,LVmap,PHmap,offset++(BI.size_of_handle()),[]),0)
+	val obj_size = BI.size_of_handle()
+	val ann_offset = if BI.down_growing_stack then offset+obj_size-1 (*offset+(1-obj_size)*)
+			 else offset
+	val handl' = CO_lss(handl,LVmap,PHmap,offset++obj_size,[])
+	val default' = CO_lss(default,LVmap,PHmap,offset++obj_size,[])
 	val handl_return' = CO_lss(handl_return,LVmap,PHmap,offset(*++(BI.size_of_handle())*),[])
       in
-	LS.HANDLE{default=default',handl=(handl',handl_lv),handl_return=(handl_return',handl_return_lv,bv),offset=offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
+	LS.HANDLE{default=default',handl=(handl',handl_lv),
+		  handl_return=(handl_return',handl_return_lv,bv),offset=ann_offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
       end
       | CO_lss(LS.RAISE a::lss,LVmap,PHmap,offset,acc) = LS.RAISE a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.SWITCH_I sw::lss,LVmap,PHmap,offset,acc) = CO_sw(CO_lss,LS.SWITCH_I,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
@@ -236,11 +263,8 @@ struct
 	val _ = reset_max_offset()
 	val size_cc = CallConv.get_cc_size cc
 	(* If size_cc is odd then the frame is _not_ double aligned *)
-	val _ = 
-	  if size_cc mod 2 = 0 then
-	    set_frame_db_alignment true
-	  else
-	    set_frame_db_alignment false
+	val _ = if size_cc mod 2 = 0 then set_frame_db_alignment true
+		else set_frame_db_alignment false
 	val LVmap_args = LvarFinMap.fromList (CallConv.get_spilled_args_with_offsets cc)
 	val LVmap_res = LvarFinMap.addList (CallConv.get_spilled_res_with_offsets cc) LVmap_args
 	val lss_co = CO_lss(lss,LVmap_res,LvarFinMap.empty,BI.init_frame_offset,[])

@@ -8,9 +8,10 @@ signature BUILD_COMPILE =
     structure CompilerEnv : COMPILER_ENV
     structure CompileBasis: COMPILE_BASIS
     structure Compile: COMPILE
-    structure CallConv : CALL_CONV
+(*    structure CallConv : CALL_CONV
     structure LineStmt : LINE_STMT
     structure SubstAndSimplify : SUBST_AND_SIMPLIFY
+*)
   end  
 
 functor BuildCompile (structure Name : NAME

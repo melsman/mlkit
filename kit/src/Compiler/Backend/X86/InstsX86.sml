@@ -5,8 +5,10 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
   struct
 
     fun die s = Crash.impossible("X86Inst." ^ s)
-    
-    type reg = int
+
+    datatype reg = eax | ebx | ecx | edx | esi | edi | ebp | esp 
+                 | ah | cl
+
     type freg = int
 
     type label = Labels.label
@@ -25,44 +27,74 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | eq_lab _ = false
 
     datatype ea = 
-        R of reg   (* register *)
-      | I of int   (* immediate *)
-      | L of lab
-      | D of int * reg     (* displaced *)
+        R of reg       (* register *)
+      | L of lab       (* label *)
+      | LA of lab      (* label address *)
+      | I of string    (* immediate *)
+      | D of int * reg (* displaced *)
 
     fun eq_ea (R r, R r') = r=r'
       | eq_ea (I i, I i') = i=i'
       | eq_ea (L l, L l') = eq_lab(l,l')
+      | eq_ea (LA l, LA l') = eq_lab(l,l')
       | eq_ea (D p,D p') = p=p'
       | eq_ea _ = false
       
     datatype inst =               (* general instructions *)
         movl of ea * ea
       | pushl of ea
+      | popl of ea
       | addl of ea * ea
       | subl of ea * ea
+      | negl of ea
+      | imull of ea * ea
+      | notl of ea
       | orl of ea * ea
+      | xorl of ea * ea
       | andl of ea * ea
+      | andb of ea * ea
       | sarl of ea * ea
-      | shrl of ea * ea  (* unsigned *)    
+      | shrl of ea * ea   (* unsigned *)    
       | sall of ea * ea
       | cmpl of ea * ea
+      | btl of ea * ea
+      | btrl of ea * ea   (* bit test and reset; sets carry flag *)
 
-      | jmp of lab     (* jump instructions *)
+      | fstpl of ea       (* store float and pop float stack *)
+      | fldl of ea        (* push float onto the float stack *) 
+      | fldz              (* push 0.0 onto the float stack *)
+      | faddp             (* add st(0) to st(1) and pop *)
+      | fsubp             (* subtract st(0) from st(1) and pop *)
+      | fmulp             (* multiply st(0) to st(1) and pop *)
+      | fdivp             (* divide st(1) with st(0) and pop *) 
+      | fcompp            (* compare st(0) and st(1) and pop twice *)
+      | fabs              (* st(0) = abs(st(0)) *)
+      | fchs              (* st(0) = neg(st(0)) *)
+      | fnstsw            (* store float status word *)
+
+      | jmp of ea         (* jump instructions *)
       | jl of lab
       | jg of lab
       | jle of lab        
       | jge of lab
       | je of lab         (* = jz *)
       | jne of lab        (* = jnz *)
+      | jc of lab         (* jump on carry *)
+      | jnc of lab        (* jump on non-carry *)
 
-      | call of lab    (* C function calls and returns *)
+      | call of lab       (* C function calls and returns *)
       | ret
       | leave
 
       | dot_align of int        (* pseudo instructions *)
       | dot_globl of lab
       | dot_text
+      | dot_data
+      | dot_byte of string
+      | dot_long of string
+      | dot_double of string
+      | dot_string of string
+      | dot_size of lab * int
       | dot_section of string
       | lab of lab
       | comment of string
@@ -73,71 +105,106 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 
     type AsmPrg = {top_decls: top_decl list,
 		   init_code: inst list,
-		   exit_code: inst list,
 		   static_data: inst list}
 
-    val eax : reg = 0        (* General purpose registers *)
-    val ebx : reg = 1
-    val ecx : reg = 2
-    val edx : reg = 3
-    val esi : reg = 4
-    val edi : reg = 5
-    val ebp : reg = 6
-    val esp : reg = 7
+    fun pr_reg eax = "%eax"
+      | pr_reg ebx = "%ebx"
+      | pr_reg ecx = "%ecx"
+      | pr_reg edx = "%edx"
+      | pr_reg esi = "%esi"
+      | pr_reg edi = "%edi"
+      | pr_reg ebp = "%ebp"
+      | pr_reg esp = "%esp"
+      | pr_reg ah = "%ah"
+      | pr_reg cl = "%cl"
 
-    fun pr_reg 0 = "%eax"
-      | pr_reg 1 = "%ebx"
-      | pr_reg 2 = "%ecx"
-      | pr_reg 3 = "%edx"
-      | pr_reg 4 = "%esi"
-      | pr_reg 5 = "%edi"
-      | pr_reg 6 = "%ebp"
-      | pr_reg 7 = "%esp"
-      | pr_reg _ = die "pr_phreg. no such register"
+    fun remove_ctrl s = "Lab" ^ String.implode (List.filter Char.isAlphaNum (String.explode s))
 
-    fun pr_lab (DatLab l) = Labels.pr_label l
-      | pr_lab (LocalLab l) = Labels.pr_label l
+    fun pr_lab (DatLab l) = remove_ctrl(Labels.pr_label l)
+      | pr_lab (LocalLab l) = "." ^ remove_ctrl(Labels.pr_label l)
       | pr_lab (NameLab s) = s
-      | pr_lab (MLFunLab l) = Labels.pr_label l 
+      | pr_lab (MLFunLab l) = "fun_" ^ remove_ctrl(Labels.pr_label l)
+
+    (* Convert ~n to -n *)
+    fun int_to_string i = if i >= 0 then Int.toString i
+			  else "-" ^ Int.toString (~i)
 
     fun pr_ea (R r) = pr_reg r
-      | pr_ea (I i) = "$" ^ Int.toString i
       | pr_ea (L l) = pr_lab l
-      | pr_ea (D(i,r)) = if i=0 then pr_reg r
-			 else Int.toString i ^ "(" ^ pr_reg r ^ ")"
+      | pr_ea (LA l) = "$" ^ pr_lab l
+      | pr_ea (I s) = "$" ^ s
+      | pr_ea (D(i,r)) = if i=0 then "(" ^ pr_reg r ^ ")"
+			 else int_to_string i ^ "(" ^ pr_reg r ^ ")"
 
     fun emit_insts (os, insts: inst list): unit = 
-      let fun emit s = TextIO.output(os, s ^ "\n")
+      let fun emit s = TextIO.output(os, s)
+	  fun emit_bin (s, (ea1, ea2)) = (emit "\t"; emit s; emit " "; 
+					  emit(pr_ea ea1); emit ","; 
+					  emit(pr_ea ea2); emit "\n")
+	  fun emit_unary(s, ea) = (emit "\t"; emit s; emit " "; emit(pr_ea ea); emit "\n")
+	  fun emit_nullary s = (emit "\t"; emit s; emit "\n")
+	  fun emit_jump(s,l) = (emit "\t"; emit s; emit " "; emit(pr_lab l); emit "\n")
 	  fun emit_inst i =  
 	    case i
-	      of movl (ea1, ea2) => emit("\tmovl " ^ pr_ea ea1 ^ "," ^ pr_ea ea2)
-	       | pushl ea => emit("\tpushl " ^ pr_ea ea)
-	       | addl (ea1,ea2) => emit("\taddl " ^ pr_ea ea1 ^ "," ^ pr_ea ea2)
-	       | subl (ea1,ea2) => emit("\tsubl " ^ pr_ea ea1 ^ "," ^ pr_ea ea2)
-	       | orl (ea1, ea2) => emit("\torl " ^ pr_ea ea1 ^ "," ^ pr_ea ea2)
-	       | andl (ea1, ea2) => emit("\tandl " ^ pr_ea ea1 ^ "," ^ pr_ea ea2)
-	       | sarl (ea1, ea2) => emit("\tsarl " ^ pr_ea ea1 ^ "," ^ pr_ea ea2)
-	       | shrl (ea1, ea2) => emit("\tshrl " ^ pr_ea ea1 ^ "," ^ pr_ea ea2)    
-	       | sall (ea1, ea2) => emit("\tsall " ^ pr_ea ea1 ^ "," ^ pr_ea ea2)
-	       | cmpl (ea1, ea2) => emit("\tcmpl " ^ pr_ea ea1 ^ "," ^ pr_ea ea2)
+	      of movl a => emit_bin ("movl", a)
+	       | pushl ea => emit_unary ("pushl", ea)
+	       | popl ea => emit_unary ("popl", ea)
+	       | addl a => emit_bin("addl", a)
+	       | subl a => emit_bin("subl", a)
+	       | negl ea => emit_unary("negl", ea)
+	       | imull a => emit_bin("imull", a)
+	       | notl ea => emit_unary("notl", ea)
+	       | orl a => emit_bin("orl", a)
+	       | xorl a => emit_bin("xorl", a)
+	       | andl a => emit_bin("andl", a)
+	       | andb a => emit_bin("andb", a)
+	       | sarl a => emit_bin("sarl", a)
+	       | shrl a => emit_bin("shrl", a)
+	       | sall a => emit_bin("sall", a)
+	       | cmpl a => emit_bin("cmpl", a)
+	       | btl a => emit_bin("btl", a)
+	       | btrl a => emit_bin("btrl", a)
 
-	       | jmp l => emit ("\tjmp " ^ pr_lab l)
-	       | jl l => emit ("\tjl " ^ pr_lab l)
-	       | jg l => emit ("\tjg " ^ pr_lab l)
-	       | jle l => emit ("\tjle " ^ pr_lab l)
-	       | jge l => emit ("\tjge " ^ pr_lab l)
-	       | je l => emit ("\tje " ^ pr_lab l)
-	       | jne l => emit ("\tjne " ^ pr_lab l)
+	       | fstpl ea => emit_unary("fstpl", ea)
+	       | fldl ea => emit_unary("fldl", ea)
+	       | fldz => emit_nullary "fldz"
+	       | faddp => emit_nullary "faddp"
+	       | fsubp => emit_nullary "fsubp"
+	       | fmulp => emit_nullary "fmulp"
+	       | fdivp => emit_nullary "fdivp"
+	       | fcompp=> emit_nullary "fcompp"
+	       | fabs => emit_nullary "fabs"
+	       | fchs => emit_nullary "fchs"
+	       | fnstsw => emit_nullary "fnstsw"
 
-	       | call l => emit("\tcall " ^ pr_lab l)
-	       | ret => emit ("\tret")
-	       | leave => emit ("\tleave")
-	       | dot_align i => emit(".align " ^ Int.toString i)
-	       | dot_globl l => emit(".globl " ^ pr_lab l)
-	       | dot_text => emit(".text")
-	       | dot_section s => emit(".section " ^ s)
-	       | lab l => emit(pr_lab l ^ ":")
-	       | comment s => emit ("; " ^ s) 
+	       | jmp (L l) => emit_jump("jmp", l)
+	       | jmp ea => (emit "\tjmp *"; emit(pr_ea ea); emit "\n")  
+	       | jl l => emit_jump("jl", l)
+	       | jg l => emit_jump("jg", l)
+	       | jle l => emit_jump("jle", l)
+	       | jge l => emit_jump("jge", l)
+	       | je l => emit_jump("je", l)
+	       | jne l => emit_jump("jne", l)
+	       | jc l => emit_jump("jc", l)
+	       | jnc l => emit_jump("jnc", l)
+
+	       | call l => emit_jump("call", l)
+	       | ret => emit "\tret\n"
+	       | leave => emit "\tleave\n"
+
+	       | dot_align i => (emit "\t.align "; emit(Int.toString i); emit "\n")
+	       | dot_globl l => (emit ".globl "; emit(pr_lab l); emit "\n")
+	       | dot_text => emit ".text\n"
+	       | dot_data => emit ".data\n"
+	       | dot_byte s => (emit "\t.byte "; emit s; emit "\n")
+	       | dot_long s => (emit "\t.long "; emit s; emit "\n")
+	       | dot_double s => (emit "\t.double "; emit s; emit "\n")
+	       | dot_string s => (emit "\t.string \""; emit s; emit "\"\n")
+	       | dot_size (l, i) => (emit "\t.size "; emit(pr_lab l); emit ","; 
+				     emit(Int.toString i); emit "\n")
+	       | dot_section s => (emit ".section "; emit s; emit "\n")
+	       | lab l => (emit(pr_lab l); emit":\n")
+	       | comment s => (emit " # "; emit s; emit " \n") 
       in app emit_inst insts
       end
 
@@ -154,10 +221,10 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
     local
       structure LvarFinMap = Lvars.Map
 
-      val regs = [0,1,2,3,4,5,6,7]
-      val reg_lvs = map (fn i => Lvars.new_named_lvar ("ph"^Int.toString i)) regs
+      val regs = [eax,ebx,ecx,edx,esi,edi,ebp,esp]
+      val reg_lvs as [eax_lv,ebx_lv,ecx_lv,edx_lv,esi_lv,edi_lv,ebp_lv,esp_lv] =
+	map (fn r => Lvars.new_named_lvar (pr_reg r)) regs
       val map_lvs_to_reg = LvarFinMap.fromList(ListPair.zip(reg_lvs,regs))
-      val map_reg_to_lvs = Vector.fromList reg_lvs
     in
       val all_regs_as_lvs = reg_lvs 
 
@@ -168,43 +235,50 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 
       fun lv_to_reg lv = 
 	(case LvarFinMap.lookup map_lvs_to_reg lv of
-	   NONE => die "lv_to_phreg: lv not a register"
+	   NONE => die "lv_to_reg: lv not a register"
 	 | SOME i => i)
 
-      fun reg_to_lv(i) = Vector.sub(map_reg_to_lvs,i)
+      fun reg_to_lv r = 
+	case r 
+	  of eax => eax_lv | ebx => ebx_lv | ecx => ecx_lv | edx => edx_lv
+	   | esi => esi_lv | edi => edi_lv | ebp => ebp_lv | esp => esp_lv
+	   | ah => die "reg_to_lv: ah not available for register allocation"
+	   | cl => die "reg_to_lv: cl not available for register allocation"
 
-      val reg_args = [0,1,2]
+      val reg_args = [eax,ebx,edi]
       val reg_args_as_lvs = map reg_to_lv reg_args
-      val reg_res = [2,1,0] 
+      val reg_res = [edi,ebx,eax] 
       val reg_res_as_lvs = map reg_to_lv reg_res
 
       val reg_args_ccall = []
       val reg_args_ccall_as_lvs = map reg_to_lv reg_args_ccall
-      val reg_res_ccall = [1] 
+      val reg_res_ccall = [eax] 
       val reg_res_ccall_as_lvs = map reg_to_lv reg_res_ccall
 
       val callee_save_regs_mlkit = []
       val callee_save_regs_mlkit_as_lvs = map reg_to_lv callee_save_regs_mlkit
 
-      val caller_save_regs_mlkit = [0,1,2,3,4,5,6]
+      val caller_save_regs_mlkit = [eax,ebx,edi,edx,esi]
       val caller_save_regs_mlkit_as_lvs = map reg_to_lv caller_save_regs_mlkit
 
       val callee_save_regs_ccall = []
       val callee_save_regs_ccall_as_lvs = map reg_to_lv callee_save_regs_ccall
 
-      val caller_save_regs_ccall = [0,1,2,3,4,5,6]
+      (* tmp_reg0 and tmp_reg1 should not be in this list as they are never live across a C call *)
+      val caller_save_regs_ccall = [eax,ebx,edi,edx,esi]
       val caller_save_regs_ccall_as_lvs = map reg_to_lv caller_save_regs_ccall
     end
 
+    val tmp_reg0 = ecx
+    val tmp_reg1 = ebp
+
     fun emit ({top_decls: top_decl list,
 	       init_code: inst list,
-	       exit_code: inst list,
 	       static_data: inst list}, filename) =
       let val os : TextIO.outstream = TextIO.openOut filename
       in (emit_insts (os, init_code);
 	  app (emit_topdecl os) top_decls;
 	  emit_insts (os, static_data);
-	  emit_insts (os, exit_code);
 	  TextIO.closeOut os) handle E => (TextIO.closeOut os; raise E)
       end
     type StringTree = PP.StringTree

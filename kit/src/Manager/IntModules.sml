@@ -354,6 +354,7 @@ functor IntModules(structure Name : NAME
 		 let val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^ 
 				   " (from project " ^ ModuleEnvironments.absprjid_to_string absprjid ^ ") begin]\n")
 (*		     val _ = out_functor_application (FunId.pr_FunId funid)  (* for statistics *) *)
+
 		     val _ = chat "[recreating functor body begin...]"
 		     val strexp0 = body_blaster()
 		     val _ = chat "[recreating functor body end...]"
