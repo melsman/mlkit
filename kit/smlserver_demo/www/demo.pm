@@ -18,6 +18,7 @@ in
      demo/cache_v2.sml
      demo/cache_add_v2.sml
      demo/cache_lookup_v2.sml
+     demo/cache_fib_v2.sml
      demo/cookie.sml
      demo/cookie_set.sml
      demo/cookie_delete.sml

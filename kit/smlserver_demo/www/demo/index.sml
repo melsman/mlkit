@@ -8,6 +8,7 @@ val examples =
    ("Server information", "server.sml", []),
    ("Regular Expressions", "regexp.sml", []),
    ("Dictionary Cache","cache.sml", ["cache_add.sml","cache_lookup.sml"]),
+   ("Dictionary Cache V2","cache_v2.sml", ["cache_add_v2.sml","cache_lookup_v2.sml","cache_fib_v2.sml"]),
    ("Currency service", "currency_cache.html", ["currency_cache.sml"]),
    ("Currency exchange", "exchange.sml", []),
    ("Send an email", "mail_form.sml", ["mail.sml"]),
