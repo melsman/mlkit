@@ -534,7 +534,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     </blockquote>`
 	 | ScsLang.da => `^s
 	     <blockquote>
-	     Et login må indeholde bogstaver fra alfabetet og tal - det første tegn må 
+	     Et login må indeholde <b>små</b> bogstaver fra alfabetet og tal - det 
+	     første tegn må 
 	     ikke være et tal. Specialtegn såsom <b>æ</b>,<b>ø</b>,<b>å</b>,<b>;</b>,
 	     <b>^^</b>,<b>%</b> er ikke tilladt.
 	     Derudover skal et login være på mindst tre tegn og højst 10 tegn.
