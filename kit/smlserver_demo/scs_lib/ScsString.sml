@@ -52,10 +52,13 @@ structure ScsString =
       | valOf NONE = ""
 
     fun mk_search_pattern pat =
-      if pat = "" then 
-	"%" 
-      else 
-	"%"^(String.concatWith "%" (String.tokens Char.isSpace pat))^"%"
+      if pat = "%" then
+	pat
+      else
+	if pat = "" then 
+	  "%" 
+	else 
+	  "%"^(String.concatWith "%" (String.tokens Char.isSpace pat))^"%"
 
     fun quoteString str = Quot.toString `"^str"`
   end

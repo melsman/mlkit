@@ -35,6 +35,17 @@ as
     language	in scs_lang.language%TYPE default null
   );
 
+  /* -------------
+     function dict
+     -------------
+     Return text_da if language is 'da'; Otherwise return text_en 
+  */
+  function dict (
+    language	in scs_lang.language%TYPE,
+    text_da     in varchar,
+    text_en     in varchar
+  ) return varchar;
+
   /* -------------------
      function updateText
      -------------------
@@ -157,6 +168,20 @@ as
     when NO_DATA_FOUND then -- just in case language was illegal: do nothing
       return;
   end destroy;
+
+  function dict (
+    language	in scs_lang.language%TYPE,
+    text_da     in varchar,
+    text_en     in varchar
+  ) return varchar
+  is
+  begin
+    if dict.language = 'da' then
+      return text_da;
+    else
+      return text_en;
+    end if;
+  end dict;
 
   procedure updateTextProc(
     text_id in scs_texts.text_id%TYPE,
