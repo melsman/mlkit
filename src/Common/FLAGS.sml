@@ -20,8 +20,6 @@ signature FLAGS =
      the end of the compilation of a program.  The printing is done in
      Manager which also resets the warnings.*)
 
-      
-
     type state
     val get_state           : unit -> state
     val reset_state         : state -> unit    
@@ -79,32 +77,26 @@ signature FLAGS =
 
     (*Region inference debug options*)
 
-    val print_effects: bool ref
+    val print_effects : bool ref
     val print_types : bool ref
-    val print_regions: bool ref
+    val print_regions : bool ref
 
     (* Lambda->KAM compile debug options *)
 
     (* State *)
-    val source_directory :     string ref
-    val target_directory :     string ref
-    val log_directory :        string ref
-    val target_file_extension: string ref (*21/03/1997, Niels*)
-    val link_filename:        string ref
-    val log:                  TextIO.outstream ref
-    val colwidth:             int ref
-    val indent_ccode:         bool ref
+    val target_file_extension : string ref
+    val log : TextIO.outstream ref
+    val colwidth : int ref
+    val indent_ccode : bool ref
 
     (*Project Manager.  These ref's are necessary because Flags.interact
      depends on, e.g., Manager.build_project but module Flags cannot depend on
      module Manager because Manager depends on Flags.  Perhaps interact
      should be in Manager instead of in Flags?*)
 
-    val build_project_ref: (unit -> unit)ref
-    val read_project_ref : (string -> unit)ref
-    val show_project_ref : (unit -> unit)ref
-    val comp_ref: (string -> unit)ref
-    val test_ref: (unit -> unit)ref
+    val build_project_ref : (string -> unit)ref
+    val comp_ref : (string -> unit)ref
+    val test_ref : (unit -> unit)ref
 
     (* Program Points. *)
     val print_all_program_points : bool ref    (* if true then print all program points,

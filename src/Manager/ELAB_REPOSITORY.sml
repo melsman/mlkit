@@ -6,13 +6,14 @@ signature ELAB_REPOSITORY =
     structure TyName : TYNAME
 
     type funid and InfixBasis and ElabBasis and realisation and name
+    type prjid = string
 
     val empty_infix_basis : InfixBasis
 
     val clear : unit -> unit
-    val delete_entries : funid -> unit
+    val delete_entries : prjid * funid -> unit
 
-	  (* Repository lookup's return the first entry for a funid
+	  (* Repository lookup's return the first entry for a (prjid,funid)
 	   * which is reusable (i.e. where all export (ty-)names are
 	   * marked generative.) In particular, this means that an
 	   * entry which has been added, cannot be returned by a
@@ -21,14 +22,14 @@ signature ELAB_REPOSITORY =
 	   * overwrite functions for owerwriting a particular
 	   * entry. *)
 
-    val lookup_elab : funid -> (int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
-				       InfixBasis * ElabBasis * realisation)) option
+    val lookup_elab : (prjid * funid) -> (int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
+						 InfixBasis * ElabBasis * realisation)) option
 
-    val add_elab : funid * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
-			    InfixBasis * ElabBasis * realisation) -> unit
+    val add_elab : (prjid * funid) * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
+				      InfixBasis * ElabBasis * realisation) -> unit
 
-    val owr_elab : funid * int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
-				  InfixBasis * ElabBasis * realisation) -> unit
+    val owr_elab : (prjid * funid) * int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
+					    InfixBasis * ElabBasis * realisation) -> unit
 
     val recover : unit -> unit
 

@@ -93,11 +93,7 @@ functor Flags (structure Crash : CRASH
 
     val chat                    = ref true
 
-    val source_directory  = ref "You_did_not_set_source_directory"
-    val target_directory = ref "You_did_not_set_target_directory"
-    val log_directory = ref "You_did_not_set_log_directory"
-    val log_to_file = ref true ;
-    val link_filename       = ref "link"
+    val log_to_file = ref true
     val target_file_extension = ref ".s" (*or ".c", with the C back end*)
 
     (*The following four have to do with the compilation of the C or the
@@ -110,15 +106,10 @@ functor Flags (structure Crash : CRASH
     val c_compiler = ref "cc -Aa" (*or maybe "gcc -ansi"*)
     val c_libs = ref "-lm" (*include math lib when compiling target code from the kit*)
 
-    val path_to_kit_script = ref "You_did_not_set_path_to_kit_script"
-           (*used in this module and in TestEnv*)
+    val path_to_kit_script = ref "kit.script"    (*used in this module and in TestEnv*)
       
-    (*the following five are only used by TestEnv:*)
+    (* The following three are only used by TestEnv: *)
     val kit_version = ref "You_did_not_set_kit_version" (*e.g. "ML_to_HPPA_on_HPUX"*)
-    val kit_source_directory = ref "You_did_not_set_kit_source_directory"
-          (*path to source of this compiler.  For instance,
-	   Common/Flags.sml is in kit_source_directory*)
-    val path_to_consult_file = ref "You_did_not_set_path_to_consult_file"
     val test_env_directory = ref "You_did_not_set_kit_source_directory"
     val kit_architecture = ref "You_did_not_set_kit_architecture"
 
@@ -132,10 +123,8 @@ functor Flags (structure Crash : CRASH
 
     fun dummy _ : unit = output (std_out,
 				 "uninitialised function reference in Flags")
-    val project_file_name = ref "dummy"
-    val build_project_ref: (unit -> unit)ref = ref dummy
-    val show_project_ref: (unit -> unit)ref  = ref dummy
-    val read_project_ref: (string -> unit)ref  = ref dummy
+    val project_file_name = ref "sources.pm"
+    val build_project_ref: (string -> unit)ref = ref dummy
     val comp_ref: (string -> unit)ref  = ref dummy
     val test_ref: (unit -> unit)ref  = ref dummy
     val current_source_file = ref "dummy"
@@ -450,10 +439,7 @@ struct
 
   (* Adding initial entries. *)
   val _ = List.apply add_string_entry
-        [("source_directory", source_directory),  (*e.g. "MLKitv2.0/KitDemo/"*)
-	 ("target_directory", target_directory), 
-	 ("log_directory", log_directory),  (*for .log files*)
-	 ("path_to_runtime", path_to_runtime), 
+        [("path_to_runtime", path_to_runtime), 
 	   (*e.g. "MLKitv2.0/bin/" ^ kit_version ^ "/runtime.o"*)
 	 ("path_to_runtime_prof", path_to_runtime_prof),
 	   (*e.g. "MLKitv2.0/bin/" ^ kit_version ^ "/runtime_prof.o"*)
@@ -462,12 +448,9 @@ struct
 	 ("target_file_extension", target_file_extension),  (*e.g. ".c" or ".s"*)
 	 ("path_to_kit_script", path_to_kit_script),
 	   (*e.g. "MLKitv2.0/bin/" ^ kit_version ^ "/kit.script"*)
-	 ("link_filename", link_filename),  (*e.g. "link"*)
 
 	 (*the following are only used by TestEnv:*)
 	 ("kit_version", kit_version), (*e.g. "ML_to_HPPA_on_HPUX"*)
-	 ("kit_source_directory", kit_source_directory),
-	 ("path_to_consult_file", path_to_consult_file),
 	 ("test_env_directory", test_env_directory),  (*e.g. "MLKitv2.0/TestEnv/"*)
 	 ("kit_architecture", kit_architecture)   (*e.g., "HPUX"*)]
 
@@ -950,12 +933,8 @@ struct
           mk_header "Project"
 	  (DISPLAY
 	   [mk_string_action (project_file_name, "Set project file name"),
-	    {text = "(Re)read project file", attr = noop_attr, 
-	     below = ACTION (fn () => !read_project_ref (!project_file_name))},
-	    {text = "Show project status", attr = noop_attr, 
-	     below = ACTION (fn () => !show_project_ref())},
 	    {text = "Compile and link project", attr = noop_attr, 
-	     below = ACTION (fn () => !build_project_ref())}])
+	     below = ACTION (fn () => !build_project_ref(!project_file_name))}])
 
   (*1. Printing of intermediate forms*)
 
@@ -1010,10 +989,9 @@ struct
 
   val file_item : item = mk_header "File"
         (DISPLAY
-	 [mk_string_action (source_directory, "Source directory"),
-	  mk_string_action (target_directory, "Target directory"),
-	  mk_toggle ("Log to file", log_to_file),
-	  mk_string_action (log_directory, "Log directory"),
+	 [mk_toggle ("Log to file", log_to_file),
+	  mk_string_action (path_to_runtime, "Runtime system (no profiling)"),
+	  mk_string_action (path_to_runtime_prof, "Runtime system (profiling)"),
 	  mk_string_action (path_to_kit_script, "Set script file name"),
 	  {text = "Read the script", attr = VALUE (fn _ => ""), 
 	   below = ACTION Directory.readScript}])

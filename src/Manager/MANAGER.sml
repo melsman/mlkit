@@ -1,4 +1,3 @@
-(*$MANAGER: ERROR_CODE*)
 
 signature MANAGER =
   sig
@@ -7,13 +6,7 @@ signature MANAGER =
 
     exception PARSE_ELAB_ERROR of ErrorCode.ErrorCode list
     
-    val show : unit -> unit                   (* show()  shows the program state *)
-
-    val read : string -> unit                 (* read(name)  (re)reads consult file 
-					       * `name' into program state. Repository is
-					       * is not reset; use reset for this. *)
-
-    val build : unit -> unit                  (* build the project. 
+    val build : string -> unit                (* build the project. 
 					       * May raise PARSE_ELAB_ERROR. *)
 
     val comp : string -> unit   (* comp s  compiles (!Flags.source_directory ^ s ^ ".sml")
@@ -27,6 +20,9 @@ signature MANAGER =
 
     val interact : unit -> unit               (* Menu-system to control flags *)
     val read_script : unit -> unit            (* Read script file *)
+
+    val kit : unit -> unit              (* Read the script file `kit.script' in the
+					 * current directory. Then run interact(). *)
 
     val reset : unit -> unit                  (* Resets the system *)
     val commit : unit -> unit

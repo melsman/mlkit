@@ -118,49 +118,49 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
     fun acceptance_suite_files () =
-          [("kitfib12",NONE),
-	   ("kitdangle",NONE)] (*--USER--*)
+          [("kitfib12.sml",NONE),
+	   ("kitdangle.sml",NONE)] (*--USER--*)
 
     fun acceptance_suite_projects () =
-          [("kitreynolds2_fast",NONE),
-	   ("kitreynolds3_fast",NONE),
-	   ("kitloop2",NONE), 
-	   ("kittmergesort",NONE), 
-	   ("kitqsort36c",NONE),
-	   ("kitmandelbrot_fast",NONE)]
+          [("kitreynolds2_fast.pm",NONE),
+	   ("kitreynolds3_fast.pm",NONE),
+	   ("kitloop2.pm",NONE), 
+	   ("kittmergesort.pm",NONE), 
+	   ("kitqsort36c.pm",NONE),
+	   ("kitmandelbrot_fast.pm",NONE)]
 	@ leave_out_if_quicker
-	  [("kitlife35u",NONE)]
-	@ [("klife_eq_fast",NONE),
-	   ("kitkbjul9_fast",NONE)]
+	  [("kitlife35u.pm",NONE)]
+	@ [("klife_eq_fast.pm",NONE),
+	   ("kitkbjul9_fast.pm",NONE)]
         @ leave_out_if_quicker
-	  [("kkb_eq",NONE),
-	   ("kitknuth_bendix36c",NONE)]
-	@ [("kitsimple",NONE),
-	   ("tststrcmp",NONE),
-	   ("FuhMishra",NONE),
-	   ("life",NONE)]
+	  [("kkb_eq.pm",NONE),
+	   ("kitknuth_bendix36c.pm",NONE)]
+	@ [("kitsimple.pm",NONE),
+	   ("tststrcmp.pm",NONE),
+	   ("FuhMishra.pm",NONE),
+	   ("life.pm",NONE)]
 	@ leave_out_if_quicker
-	  [("compose",NONE),
-	   ("minilist",NONE),
-	   ("sma",NONE),
-	   ("fromto",NONE)]
-	@ [("nlength10000",NONE),
-	   ("scan",SOME "../Sources/scanfiles"),
-	   ("effect", NONE)]
+	  [("compose.pm",NONE),
+	   ("minilist.pm",NONE),
+	   ("sma.pm",NONE),
+	   ("fromto.pm",NONE)]
+	@ [("nlength10000.pm",NONE),
+	   ("scan.pm",SOME "../Sources/scanfiles"),
+	   ("effect.pm", NONE)]
 	@ leave_out_if_quicker
-	  [("exceptions",NONE),
-	   ("hello",NONE),
-	   ("proj",NONE),
-	   ("tail",NONE),
-	   ("refs",NONE),
-	   ("trees",NONE),
-	   ("fold",NONE)]
-	@ [("testdyn1",NONE),
-	   ("testdyn2",SOME "../Sources/input_to_testdyn2")]
+	  [("exceptions.pm",NONE),
+	   ("hello.pm",NONE),
+	   ("proj.pm",NONE),
+	   ("tail.pm",NONE),
+	   ("refs.pm",NONE),
+	   ("trees.pm",NONE),
+	   ("fold.pm",NONE)]
+	@ [("testdyn1.pm",NONE),
+	   ("testdyn2.pm",SOME "../Sources/input_to_testdyn2")]
 	@ leave_out_if_quicker
-	  [("scan_rev1", NONE),
-	   ("scan_rev2", NONE),
-	   ("fft", NONE)]
+	  [("scan_rev1.pm", NONE),
+	   ("scan_rev2.pm", NONE),
+	   ("fft.pm", NONE)]
 
     (*--------------------------------------------*)
     (* Variables controlling the PERFORMANCE test *)
@@ -193,26 +193,26 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
     val performance_suite_files =
-          [("kitfib35",NONE),
-	   ("kitdangle",NONE),
-	   ("kitdangle3",NONE)] (*--USER--*)
+          [("kitfib35.sml",NONE),
+	   ("kitdangle.sml",NONE),
+	   ("kitdangle3.sml",NONE)] (*--USER--*)
 
     val performance_suite_projects =
-          [("kitreynolds2",NONE),
-	   ("kitreynolds3",NONE),
-	   ("kitloop2",NONE),
-	   ("kittmergesort",NONE),
-	   ("kitqsort36c",NONE),
-	   ("kitmandelbrot",NONE),
-	   ("kitlife35u",NONE),
-	   ("klife_eq",NONE), 
-	   ("kitkbjul9",NONE),
-	   ("kkb_eq",NONE),
-	   ("kitknuth_bendix36c",NONE),
-	   ("kitsimple",NONE),
-	   ("fft",NONE),
+          [("kitreynolds2.pm",NONE),
+	   ("kitreynolds3.pm",NONE),
+	   ("kitloop2.pm",NONE),
+	   ("kittmergesort.pm",NONE),
+	   ("kitqsort36c.pm",NONE),
+	   ("kitmandelbrot.pm",NONE),
+	   ("kitlife35u.pm",NONE),
+	   ("klife_eq.pm",NONE), 
+	   ("kitkbjul9.pm",NONE),
+	   ("kkb_eq.pm",NONE),
+	   ("kitknuth_bendix36c.pm",NONE),
+	   ("kitsimple.pm",NONE),
+	   ("fft.pm",NONE),
 	   
-	   ("msort", NONE)]
+	   ("msort.pm", NONE)]
 
   end (*functor TestInfo*)
 
