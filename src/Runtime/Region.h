@@ -55,6 +55,24 @@ words in all.
 The Danish word 'klump' means 'chunk', in this case:  'region page'.
 */
 
+// Unomment the following line to enable region page statistics (for SMLserver)
+//#define REGION_PAGE_STAT 1
+#ifdef REGION_PAGE_STAT
+typedef struct regionPageMapHashList {
+  unsigned int n;                               /* reuse number */
+  unsigned int addr;                            /* address of region page */
+  struct regionPageMapHashList * next; /* next hashed element */
+} RegionPageMapHashList;
+
+typedef RegionPageMapHashList* RegionPageMap;
+
+/* Size of region page map hash table in entries -- (2^n-1) */
+#define REGION_PAGE_MAP_HASH_TABLE_SIZE 511
+#define hashRegionPageIndex(addr) ((addr) % REGION_PAGE_MAP_HASH_TABLE_SIZE)
+RegionPageMap* regionPageMapNew(void);
+extern RegionPageMap* rpMap;
+#endif /* REGION_PAGE_STAT */
+
 #define ALLOCATABLE_WORDS_IN_REGION_PAGE 254
 /*Number of words that can be allocated in each regionpage.*/
 /*If you change this, remember also to change src/Compiler/Kam/CConst.sml

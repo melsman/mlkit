@@ -1,3 +1,4 @@
+nssml_LogRegionPageStat
 Ns_ConnReturnFile
 Ns_ConnReturnHtml
 Ns_Log

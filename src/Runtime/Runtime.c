@@ -237,6 +237,10 @@ main(int argc, char *argv[])
 
   parseCmdLineArgs(argc, argv);   /* also initializes ml-access to args */
 
+#ifdef REGION_PAGE_STAT
+rpMap = regionPageMapNew();
+#endif /* REGION_PAGE_STAT */
+
 #ifdef PROFILING
   resetProfiler();
 #endif

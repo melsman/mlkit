@@ -12,6 +12,38 @@
 #include "../Runtime/Exception.h"
 #include "../Runtime/Tagging.h"
 
+#ifdef REGION_PAGE_STAT
+int
+nssml_LogRegionPageStat(void)
+{
+  int i;
+  char str[100];
+  RegionPageMapHashList* p;
+  Ns_Log(Notice, "nssml_LogRegionPageStat - begin");
+
+  for ( i = 0 ; i < REGION_PAGE_MAP_HASH_TABLE_SIZE ; i++ ) 
+    {
+      p = rpMap[i];
+      while ( p )
+	{ 
+	  if (p->n != 0) 
+	    {
+	      sprintf(str, "%d,", p->n);
+	      Ns_Log(Notice, str);
+	    }
+	  p = p->next;
+	}
+    }
+  Ns_Log(Notice, "nssml_LogRegionPageStat - end");
+}
+#else
+int
+nssml_LogRegionPageStat(void)
+{
+  Ns_Log(Notice, "nssml_LogRegionPageStat - disabled");
+}
+#endif /* REGION_PAGE_STAT */
+
 // ML: set * string -> string ptr_option
 String
 nssml_SetGet(Region rAddr, Ns_Set* set, String key) 
