@@ -126,6 +126,26 @@ RegionPageMap* rpMap = NULL;
 #define REGION_PAGE_MAP_INCR(rp) 
 #endif /* REGION_PAGE_STAT */
 
+#if defined(SIMPLE_MEMPROF) && defined(ENABLE_GC)
+int stack_min = 0; // updated by mutator - stack grows downwards
+int lobjs_max_used = 0;
+int rp_max_used = 0;
+int rp_really_used = 0;
+
+inline static void rp_max_check()
+{
+  if ( rp_really_used > rp_max_used )
+    rp_max_used = rp_really_used;
+  return;
+}
+
+inline static void lobjs_max_check()
+{
+  if ( lobjs_current > lobjs_max_used )
+    lobjs_max_used = (int)lobjs_current;
+  return;
+}
+#endif
 
 /*----------------------------------------------------------------*
  * Global declarations                                            *
@@ -330,6 +350,10 @@ Region allocateRegion(Region r
 
   #ifdef ENABLE_GC
   rp_used++;
+  #ifdef SIMPLE_MEMPROF
+  rp_really_used++;
+  rp_max_check();
+  #endif
   #endif /* ENABLE_GC */
 
   rp = freelist;
@@ -369,6 +393,10 @@ Region allocatePairRegion(Region r)
   if ( freelist == NULL ) callSbrk();
 
   rp_used++;
+  #ifdef SIMPLE_MEMPROF
+  rp_really_used++;
+  rp_max_check();
+  #endif
 
   rp = freelist;
   freelist = freelist->n;
@@ -396,21 +424,19 @@ Region allocatePairRegion(Region r)
 #endif /*ENABLE_GC*/
 
 /*----------------------------------------------------------------------*
- * NEW NEW NEW NEW NEW                                                  *
- * We may not change sp!                                                *
- *deallocateRegionNew:                                                  *
+ *deallocateRegion:                                                     *
  *  Pops the top region of the stack, and insert the regionpages in the *
  *  free list. There have to be atleast one region on the stack.        *
  *  When profiling we also use this function.                           *
  *----------------------------------------------------------------------*/
-void deallocateRegionNew(
+void deallocateRegion(
 #ifdef KAM
-			 Region* topRegionCell
+		      Region* topRegionCell
 #endif
-			 ) { 
+		     ) { 
   int i;
 
-  debug(printf("[deallocateRegionNew... top region: %x\n", TOP_REGION));
+  debug(printf("[deallocateRegion... top region: %x\n", TOP_REGION));
 
 #ifdef PROFILING
   callsOfDeallocateRegionInf++;
@@ -421,11 +447,14 @@ void deallocateRegionNew(
   allocNowInf -= TOP_REGION->allocNow;
   allocProfNowInf -= TOP_REGION->allocProfNow;
   profTabDecrNoOfPages(TOP_REGION->regionId, i);
-  profTabDecrAllocNow(TOP_REGION->regionId, TOP_REGION->allocNow, "deallocateRegionNew");
+  profTabDecrAllocNow(TOP_REGION->regionId, TOP_REGION->allocNow, "deallocateRegion");
 #endif
 
   #ifdef ENABLE_GC
   rp_used--;
+  #ifdef SIMPLE_MEMPROF
+  rp_really_used -= NoOfPagesInRegion(TOP_REGION);
+  #endif
   #endif /* ENABLE_GC */
 
   // free large objects
@@ -546,7 +575,7 @@ void callSbrk() {
   return;
 }
 
-#ifdef ENABLE_GC
+#ifdef ENABLE_GC_OLD
 void callSbrkArg(int no_of_region_pages) { 
   Klump *np, *old_free_list;
   char *sb;
@@ -600,7 +629,7 @@ void callSbrkArg(int no_of_region_pages) {
 
   return;
 }
-#endif /* ENABLE_GC */
+#endif /* ENABLE_GC_OLD */
 
 /*----------------------------------------------------------------------*
  *alloc_new_block:                                                      *
@@ -617,19 +646,23 @@ void alloc_new_block(Ro *r) {
 #endif
 
   #ifdef ENABLE_GC
+  #ifdef SIMPLE_MEMPROF
+  rp_really_used++;
+  rp_max_check();
+  #endif
   rp_to_space++;
   rp_used++;
   if ( (!disable_gc) && (!time_to_gc) ) 
     {
       // the treshold suggests when we can garbage collect without allocating 
       // more memory.
-      double treshold = (double)rp_total - (((double)rp_total) / heap_to_live_ratio);
-      if ( (double)rp_used > treshold )
+      //      double treshold = (double)rp_total - (((double)rp_total) / heap_to_live_ratio);
+      if ( rp_used > rp_gc_treshold )
 	{
 	  // calculate correct value for rp_used; the current value may exceed the correct
 	  // value due to conservative computation in resetRegion, deallocRegion...
 	  rp_used = rp_total - size_free_list();
-	  if ( (double)rp_used > treshold )
+	  if ( rp_used > rp_gc_treshold )
 	    {
 	      time_to_gc = 1;
 	    }
@@ -638,21 +671,13 @@ void alloc_new_block(Ro *r) {
   #endif /* ENABLE_GC */
 
   FREELIST_MUTEX_LOCK;
-  if (freelist==NULL) callSbrk(); 
+  if ( freelist == NULL ) callSbrk(); 
   np = freelist;
   freelist = freelist->n;
 
-#ifdef ENABLE_GC
-  if ( is_tospace_bit(np->n) )
-    die ("alloc_new_block: tospace bit set in free list\n");
-#endif
-
-  REGION_PAGE_MAP_INCR(np); /* Niels - update frequency hashtable */
+  REGION_PAGE_MAP_INCR(np); /* update frequency hashtable */
 
   FREELIST_MUTEX_UNLOCK;
-
-  if (!is_rp_aligned((unsigned int)np))
-    die("alloc_new_block: region page is not properly aligned.");
 
 #ifdef ENABLE_GC
   if ( doing_gc )
@@ -733,7 +758,6 @@ int *alloc (Region r, int n) {
   if ( n > ALLOCATABLE_WORDS_IN_REGION_PAGE )   // notice: n is in words
     {
       Lobjs* lobjs;
-      //      lobjs = (Lobjs*)malloc(4*(n+1));
       lobjs = alloc_lobjs(n);
       lobjs->next = set_lobj_bit(r->lobjs);
       r->lobjs = lobjs;
@@ -748,8 +772,10 @@ int *alloc (Region r, int n) {
 	{
 	  time_to_gc = 1;
 	}
-#endif	  
-      /* Niels - log that a large object has been allocated */
+#endif
+#if defined(SIMPLE_MEMPROF) && defined(ENABLE_GC)
+      lobjs_max_check();
+#endif
       return &(lobjs->value);
     }
 
@@ -814,15 +840,20 @@ resetRegion(Region rAdr)
 
   /* There is always at least one page in a region. */
   if ( (clear_pairregion(r->fp))->n ) { /* There are more than one page in the region. */
+
+    #ifdef ENABLE_GC
+    rp_used--;              // at least one page is freed; see comment in alloc_new_block
+                            //   concerning conservative computation.
+    #ifdef SIMPLE_MEMPROF
+    rp_really_used -= NoOfPagesInRegion(r) - 1;
+    #endif
+    #endif /* ENABLE_GC */  
+
     FREELIST_MUTEX_LOCK;
     (((Klump *)r->b)-1)->n = freelist;
     freelist = (clear_pairregion(r->fp))->n;
     FREELIST_MUTEX_UNLOCK;
     (clear_pairregion(r->fp))->n = NULL;
-
-    #ifdef ENABLE_GC
-    rp_used--;              // at least one page is freed; see comment in alloc_new_block
-    #endif /* ENABLE_GC */  //   concerning conservative computation.
   }
 
   r->a = (int *)(&(clear_pairregion(r->fp))->i);   /* beginning of klump in first page */
@@ -892,11 +923,11 @@ deallocateRegionsUntil(Region r
   while (r <= TOP_REGION) 
     { 
       /*printf("r: %0x, top region %0x\n",r,TOP_REGION);*/
-      deallocateRegionNew(
+      deallocateRegion(
 #ifdef KAM
-			  topRegionCell
+		       topRegionCell
 #endif
-			  );
+		      );
     }
 
   debug(printf("]\n"));
@@ -930,7 +961,7 @@ deallocateRegionsUntil_X86(Region r)
   while (r >= TOP_REGION) 
     {
       /*printf("r: %0x, top region %0x\n",r,TOP_REGION);*/
-      deallocateRegionNew();
+      deallocateRegion();
     }
 
   debug(printf("]\n"));
@@ -985,6 +1016,10 @@ allocRegionInfiniteProfiling(Region r, unsigned int regionId) {
 
   #ifdef ENABLE_GC
   rp_used++;
+  #ifdef SIMPLE_MEMPROF
+  rp_really_used++;
+  rp_max_check();
+  #endif
   #endif /* ENABLE_GC */
 
   rp = freelist;

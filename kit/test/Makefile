@@ -1,7 +1,7 @@
 all: test_kam test_mlkit
 
 tp:
-	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-gc -no_tag_free_pairs_gc: -mlkit:-gc: -o tp.html tp.tst)' | tcsh -s
+	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-gc -tag_pairs: -mlkit:-gc: -o tp.html tp.tst)' | tcsh -s
 
 dangle:
 	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-no_dangle -scratch -dangling_pointers_statistics: -mlkit -mlkit:-gc: -o dangle.html dangle.tst)' | tcsh -s

@@ -266,11 +266,11 @@ extern Ro * topRegion;
  *----------------------------------------------------------------*/
 #ifdef KAM
 Region allocateRegion(Region roAddr, Region* topRegionCell);
-void deallocateRegionNew(Region* topRegionCell);
+void deallocateRegion(Region* topRegionCell);
 void deallocateRegionsUntil(Region rAdr, Region* topRegionCell);
 #else
 Region allocateRegion(Region roAddr);
-void deallocateRegionNew();
+void deallocateRegion();
 void deallocateRegionsUntil(Region rAddr);
 void deallocateRegionsUntil_X86(Region rAddr);
 #endif
@@ -278,8 +278,11 @@ void deallocateRegionsUntil_X86(Region rAddr);
 int *alloc (Region rAddr, int n);
 void callSbrk();
 
-#ifdef ENABLE_GC
+#ifdef ENABLE_GC_OLD
 void callSbrkArg(int no_of_region_pages);
+#endif
+
+#ifdef ENABLE_GC
 Region allocatePairRegion(Region roAddr);
 #ifdef PROFILING
 Region allocPairRegionInfiniteProfiling(Region r, unsigned int regionId);

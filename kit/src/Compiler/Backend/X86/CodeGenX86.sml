@@ -87,7 +87,12 @@ struct
   val jump_tables = true
   val comments_in_asmcode = Flags.lookup_flag_entry "comments_in_x86_asmcode"
   val gc_p = Flags.is_on0 "garbage_collection"
-  val tag_free_pairs_gc_p = Flags.is_on0 "tag_free_pairs_gc"
+  val tag_pairs_p = Flags.is_on0 "tag_pairs"
+
+  (* Simple memory profiling - remember to enable the flag 
+   * SIMPLE_MEMPROF in Runtime/Flags.h when you change this flag. *)
+  fun simple_memprof_p () = false 
+  val stack_min = NameLab "stack_min"
 
   (**********************************
    * Some code generation utilities *
@@ -190,20 +195,20 @@ struct
 			  else I.movl(R r1, R r2) :: C
 
     (* Can be used to load from the stack or from a record *)     
-    (* dst = base[x]                                       *)
-    fun load_indexed(dst_reg:reg,base_reg:reg,offset:Offset,C) =
-	I.movl(D(offset_bytes offset,base_reg), R dst_reg) :: C
+    (* d = b[n]                                            *)
+    fun load_indexed(d:ea,b:reg,n:Offset,C) =
+	I.movl(D(offset_bytes n,b), d) :: C
 
     (* Can be used to update the stack or store in a record *)
-    (* base[x] = src                                        *)
-    fun store_indexed(base_reg:reg,offset:Offset,src_reg:reg,C) =
-	I.movl(R src_reg,D(offset_bytes offset,base_reg)) :: C
+    (* b[n] = s                                             *)
+    fun store_indexed(b:reg,n:Offset,s:ea,C) =
+	I.movl(s,D(offset_bytes n,b)) :: C
 
     (* Calculate an address given a base and an offset *)
     (* dst = base + x                                  *)
-    fun base_plus_offset(base_reg:reg,offset:Offset,dst_reg:reg,C) =
-	if dst_reg = base_reg andalso isZeroOffset offset then C
-	else I.leal(D(offset_bytes offset, base_reg), R dst_reg) :: C
+    fun base_plus_offset(b:reg,n:Offset,d:reg,C) =
+	if d = b andalso isZeroOffset n then C
+	else I.leal(D(offset_bytes n, b), R d) :: C
 
     fun mkIntAty i = SS.INTEGER_ATY {value=Int32.fromInt i, 
 				     precision=if BI.tag_values() then 31 else 32}
@@ -233,18 +238,16 @@ struct
     fun store_immed(w:Word32.word,r:reg,offset:Offset,C) = 
       I.movl(I (wordToStr w), D(offset_bytes offset,r)) :: C      
 
-    (* Load a constant *)
-    (* dst = x         *)
-    fun load_immed(x,dst_reg:reg,C) = 
-      if x = 0 then I.xorl(R dst_reg, R dst_reg) :: C
-      else I.movl(I (intToStr x), R dst_reg) :: C
+    fun move_immed(0,R d,C) = I.xorl(R d, R d) :: C
+      | move_immed(x,d:ea,C) = I.movl(I (intToStr x), d) :: C
 
-    fun loadNum(x,dst_reg:reg,C) = 
-      if x = "0" orelse x = "0X0" then I.xorl(R dst_reg, R dst_reg) :: C
-      else I.movl(I x, R dst_reg) :: C
+    fun move_num(x,ea:ea,C) = 
+      if (x = "0" orelse x = "0X0") andalso (case ea of R _ => true | _ => false) 
+	  then I.xorl(ea, ea) :: C
+      else I.movl(I x, ea) :: C
 
-    fun loadNumBoxed(x,dst_reg:reg,C) = 
-      if not(BI.tag_values()) then die "loadNumBoxed.boxed integers/words necessary only when tagging is enabled"
+    fun move_num_boxed(x,ea:ea,C) = 
+      if not(BI.tag_values()) then die "move_num_boxed.boxed integers/words necessary only when tagging is enabled"
       else 
 	let val num_lab = new_num_lab()
 	  val _ = add_static_data [I.dot_data,
@@ -252,7 +255,7 @@ struct
 				   I.lab num_lab,
 				   I.dot_long(BI.pr_tag_w(BI.tag_word_boxed(true))),
 				   I.dot_long x]
-	in I.movl(LA num_lab, R dst_reg) :: C
+	in I.movl(LA num_lab, ea) :: C
 	end
 
     (* returns true if boxed representation is used for 
@@ -263,10 +266,19 @@ struct
 
     (* Find a register for aty and generate code to store into the aty *)
     fun resolve_aty_def(SS.STACK_ATY offset,t:reg,size_ff,C) = 
-	 (t,store_indexed(esp,WORDS(size_ff-offset-1),t,C))       (*was ~size_ff+offset*)
+	 (t,store_indexed(esp,WORDS(size_ff-offset-1),R t,C))       (*was ~size_ff+offset*)
       | resolve_aty_def(SS.PHREG_ATY phreg,t:reg,size_ff,C)  = (phreg,C)
       | resolve_aty_def(SS.UNIT_ATY,t:reg,size_ff,C)  = (t,C)
       | resolve_aty_def _ = die "resolve_aty_def: ATY cannot be defined"
+
+    fun move_num_generic (precision, num, ea, C) =
+	if boxedNum precision then move_num_boxed(num, ea, C)
+	else move_num(num, ea, C)
+
+    fun move_unit(ea,C) =
+	if BI.tag_values() then 
+	    move_immed(Int32.fromInt BI.ml_unit,ea,C) (* gc needs value! *)
+	else C
 
     (* Make sure that the aty ends up in register dst_reg *)
     fun move_aty_into_reg(aty,dst_reg,size_ff,C) =
@@ -276,32 +288,26 @@ struct
 	 | SS.REG_F_ATY offset =>
 	  base_plus_offset(esp,WORDS(size_ff-offset-1),dst_reg,C)
 	 | SS.STACK_ATY offset => 
-	  load_indexed(dst_reg,esp,WORDS(size_ff-offset-1),C)
+	  load_indexed(R dst_reg,esp,WORDS(size_ff-offset-1),C)
 	 | SS.DROPPED_RVAR_ATY => C
 	 | SS.PHREG_ATY phreg => copy(phreg,dst_reg,C)
-	 | SS.INTEGER_ATY i => 
-	  if boxedNum (#precision i) then loadNumBoxed(fmtInt i, dst_reg, C)
-	  else loadNum(fmtInt i, dst_reg, C)
-	 | SS.WORD_ATY w => 
-	  if boxedNum (#precision w) then loadNumBoxed(fmtWord w, dst_reg, C)
-	  else loadNum(fmtWord w, dst_reg, C)
-	 | SS.UNIT_ATY => 
-	    if BI.tag_values() then 
-	      load_immed(Int32.fromInt BI.ml_unit,dst_reg,C) (* gc needs value! *)
-	    else C
+	 | SS.INTEGER_ATY i => move_num_generic (#precision i, fmtInt i, R dst_reg, C)
+	 | SS.WORD_ATY w => move_num_generic (#precision w, fmtWord w, R dst_reg, C)
+	 | SS.UNIT_ATY => move_unit (R dst_reg, C)
 	 | SS.FLOW_VAR_ATY _ => die "move_aty_into_reg: FLOW_VAR_ATY cannot be moved"
 
     (* dst_aty = src_reg *)
     fun move_reg_into_aty(src_reg:reg,dst_aty,size_ff,C) =
       case dst_aty 
 	of SS.PHREG_ATY dst_reg => copy(src_reg,dst_reg,C)
-	 | SS.STACK_ATY offset => store_indexed(esp,WORDS(size_ff-offset-1),src_reg,C)    (*was ~size_ff+offset*) 
+	 | SS.STACK_ATY offset => store_indexed(esp,WORDS(size_ff-offset-1),R src_reg,C)    (*was ~size_ff+offset*) 
 	 | SS.UNIT_ATY => C (* wild card definition - do nothing *)
  	 | _ => die "move_reg_into_aty: ATY not recognized"
 
     (* dst_aty = src_aty *)
     fun move_aty_to_aty(SS.PHREG_ATY src_reg,dst_aty,size_ff,C) = move_reg_into_aty(src_reg,dst_aty,size_ff,C)
       | move_aty_to_aty(src_aty,SS.PHREG_ATY dst_reg,size_ff,C) = move_aty_into_reg(src_aty,dst_reg,size_ff,C)
+      | move_aty_to_aty(src_aty,SS.UNIT_ATY,size_ff,C) = C
       | move_aty_to_aty(src_aty,dst_aty,size_ff,C) = 
       let val (reg_for_result,C') = resolve_aty_def(dst_aty,tmp_reg1,size_ff,C)
       in move_aty_into_reg(src_aty,reg_for_result,size_ff,C')
@@ -309,33 +315,42 @@ struct
 
     (* dst_aty = src_aty[offset] *)
     fun move_index_aty_to_aty(SS.PHREG_ATY src_reg,SS.PHREG_ATY dst_reg,offset:Offset,t:reg,size_ff,C) = 
-          load_indexed(dst_reg,src_reg,offset,C)
+          load_indexed(R dst_reg,src_reg,offset,C)
       | move_index_aty_to_aty(SS.PHREG_ATY src_reg,dst_aty,offset:Offset,t:reg,size_ff,C) = 
-	  load_indexed(t,src_reg,offset,
+	  load_indexed(R t,src_reg,offset,
 	  move_reg_into_aty(t,dst_aty,size_ff,C))
       | move_index_aty_to_aty(src_aty,dst_aty,offset,t:reg,size_ff,C) = (* can be optimised!! *)
 	  move_aty_into_reg(src_aty,t,size_ff,
-	  load_indexed(t,t,offset,
+	  load_indexed(R t,t,offset,
 	  move_reg_into_aty(t,dst_aty,size_ff,C)))
 		   
     (* dst_aty = &lab *)
     fun load_label_addr(lab,dst_aty,t:reg,size_ff,C) = 
-      let val (reg_for_result,C') = resolve_aty_def(dst_aty,t,size_ff,C)
-      in I.movl(LA lab, R reg_for_result) :: C'
-      end
+	case dst_aty of
+	    SS.PHREG_ATY d => I.movl(LA lab, R d) :: C
+	  | SS.STACK_ATY offset => store_indexed(esp, WORDS(size_ff-offset-1), LA lab, C)
+	  | _ => die "load_label_addr.wrong ATY"
 
     (* dst_aty = lab[0] *)
     fun load_from_label(lab,dst_aty,t:reg,size_ff,C) =
-      let val (reg_for_result,C') = resolve_aty_def(dst_aty,t,size_ff,C)
-      in I.movl(L lab, R reg_for_result) :: C'
-      end
+	case dst_aty of
+	    SS.PHREG_ATY d => I.movl(L lab, R d) :: C
+	  | SS.STACK_ATY offset => 
+		I.movl(L lab, R t) :: 
+		store_indexed(esp, WORDS(size_ff-offset-1), R t, C)
+	  | SS.UNIT_ATY => C
+	  | _ => die "load_from_label.wrong ATY" 
 
     (* lab[0] = src_aty *)
-    fun store_in_label(SS.PHREG_ATY src_reg,label,tmp1:reg,size_ff,C) =
-      I.movl(R src_reg, L label) :: C
-      | store_in_label(src_aty,label,tmp1:reg,size_ff,C) =
-      move_aty_into_reg(src_aty,tmp1,size_ff,
-			I.movl(R tmp1, L label) :: C)
+    fun store_in_label(src_aty,lab,tmp1:reg,size_ff,C) =
+	case src_aty of
+	    SS.PHREG_ATY s => I.movl(R s, L lab) :: C
+	  | SS.INTEGER_ATY i => move_num_generic (#precision i, fmtInt i, L lab, C)
+	  | SS.WORD_ATY w => move_num_generic (#precision w, fmtWord w, L lab, C)
+	  | SS.UNIT_ATY => move_unit(L lab, C)
+(*	  | SS.STACK_ATY offset => load_indexed(L lab, esp, WORDS(size_ff-offset-1), C) *)
+	  | _ => move_aty_into_reg(src_aty,tmp1,size_ff,
+		 I.movl(R tmp1, L lab) :: C)
 
     (* Generate a string label *)
     fun gen_string_lab str =
@@ -365,33 +380,50 @@ struct
 					    I.lab (DatLab lab),
 					    I.dot_long (int_to_string BI.ml_unit)]  (* was "0" but use ml_unit instead for GC 2001-01-09, Niels *)
 
+    fun store_aty_indexed(b:reg,n:Offset,aty,t:reg,size_ff,C) =	
+	let fun ea() = D(offset_bytes n,b)
+	in
+	    case aty of 
+		SS.PHREG_ATY s => I.movl(R s,ea()) :: C
+	      | SS.INTEGER_ATY i => move_num_generic (#precision i, fmtInt i, ea(), C)
+	      | SS.WORD_ATY w => move_num_generic (#precision w, fmtWord w, ea(), C)
+	      | SS.UNIT_ATY => move_unit(ea(),C)
+	      | _ => move_aty_into_reg(aty,t,size_ff,
+		      store_indexed(b,n,R t,C))
+	end
+
+
     (* Can be used to update the stack or a record when the argument is an ATY *)
     (* base_reg[offset] = src_aty *)
+    fun store_aty_in_reg_record(aty,t:reg,b,n:Offset,size_ff,C) =
+	store_aty_indexed(b:reg,n:Offset,aty,t:reg,size_ff,C)
+(*
     fun store_aty_in_reg_record(SS.PHREG_ATY src_reg,t:reg,base_reg,offset:Offset,size_ff,C) =
-          store_indexed(base_reg,offset,src_reg,C)
+          store_indexed(base_reg,offset,R src_reg,C)
       | store_aty_in_reg_record(src_aty,t:reg,base_reg,offset:Offset,size_ff,C) =
 	  move_aty_into_reg(src_aty,t,size_ff,
-	  store_indexed(base_reg,offset,t,C))
+	  store_indexed(base_reg,offset,R t,C))
+*)
 
     (* Can be used to load from the stack or a record when destination is an ATY *)
     (* dst_aty = base_reg[offset] *)
     fun load_aty_from_reg_record(SS.PHREG_ATY dst_reg,t:reg,base_reg,offset:Offset,size_ff,C) =
-          load_indexed(dst_reg,base_reg,offset,C)
+          load_indexed(R dst_reg,base_reg,offset,C)
       | load_aty_from_reg_record(dst_aty,t:reg,base_reg,offset:Offset,size_ff,C) =
-	  load_indexed(t,base_reg,offset,
+	  load_indexed(R t,base_reg,offset,
 	  move_reg_into_aty(t,dst_aty,size_ff,C))
 
     (* base_aty[offset] = src_aty *)
     fun store_aty_in_aty_record(src_aty,base_aty,offset:Offset,t1:reg,t2:reg,size_ff,C) =
       case (src_aty,base_aty) 
-	of (SS.PHREG_ATY src_reg,SS.PHREG_ATY base_reg) => store_indexed(base_reg,offset,src_reg,C)
+	of (SS.PHREG_ATY src_reg,SS.PHREG_ATY base_reg) => store_indexed(base_reg,offset,R src_reg,C)
 	 | (SS.PHREG_ATY src_reg,base_aty) => move_aty_into_reg(base_aty,t2,size_ff,  (* can be optimised *)
-					      store_indexed(t2,offset,src_reg,C))
+					      store_indexed(t2,offset,R src_reg,C))
 	 | (src_aty,SS.PHREG_ATY base_reg) => move_aty_into_reg(src_aty,t1,size_ff,
-					      store_indexed(base_reg,offset,t1,C))
+					      store_indexed(base_reg,offset,R t1,C))
 	 | (src_aty,base_aty) => move_aty_into_reg(src_aty,t1,size_ff, (* can be optimised *)
 				 move_aty_into_reg(base_aty,t2,size_ff,
-				 store_indexed(t2,offset,t1,C)))
+				 store_indexed(t2,offset,R t1,C)))
 	
     (* push(aty), i.e., esp-=4; esp[0] = aty (different than on hp) *)
     (* size_ff is for esp before esp is moved. *)
@@ -440,9 +472,6 @@ struct
     (* Pop float from float stack *)
     fun pop_store_float_reg(base_reg,t:reg,C) =
       if BI.tag_values() then 
-(*	load_immed(Word32.toLargeIntX(BI.tag_real false),t,
-	I.movl(R t,D("0",base_reg)) ::
-*)
         store_immed(BI.tag_real false, base_reg, WORDS 0,
 	I.fstpl (D("8",base_reg)) :: C)
       else 
@@ -456,7 +485,7 @@ struct
      * bit - mael 2002-10-14 *)
 
     fun pair_region_special (place:Effect.place) : bool =
-	BI.tag_values() andalso tag_free_pairs_gc_p()
+	BI.tag_values() andalso not(tag_pairs_p())
 	andalso (case Effect.get_place_ty place
 		 of SOME Effect.PAIR_RT => true | _ => false)
 			   
@@ -606,9 +635,11 @@ struct
 	  val reg_map_immed = "0X" ^ Word32.fmt StringCvt.HEX reg_map
 	  val size_ff = 0 (*dummy*)
 	in
+(*
 	  load_label_addr(time_to_gc_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff, (* tmp_reg1 = &gc_flag *)
 	  I.movl(D("0",tmp_reg1),R tmp_reg1) ::                       (* tmp_reg1 = gc_flag  *)
-	  I.cmpl(I "1", R tmp_reg1) ::
+*)
+	  I.cmpl(I "1", L time_to_gc_lab) ::
 	  I.jne l ::
 	  I.movl(I reg_map_immed, R tmp_reg1) ::                    (* tmp_reg1 = reg_map  *)
 	  load_label_addr(l,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff, (* tmp_reg0 = return address *)
@@ -616,7 +647,7 @@ struct
   I.pushl(I (int_to_string size_rcf)) ::
   I.pushl(I (int_to_string size_spilled_region_args)) ::
 	  I.jmp(L gc_stub_lab) ::
-	  I.lab l :: C))
+	  I.lab l :: C)
 	end
       else C
 
@@ -649,7 +680,7 @@ struct
       in 
 	copy(t,tmp_reg1,
 	I.pushl(LA l) ::
-	load_immed(Int32.fromInt n, tmp_reg0, 
+	move_immed(Int32.fromInt n, R tmp_reg0, 
 	I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
         I.lab l ::
         post_prof
@@ -677,7 +708,7 @@ struct
       in 
 	copy(t,tmp_reg1,
 	I.pushl(LA l) ::
-	load_immed(Int32.fromInt n, tmp_reg0, 
+	move_immed(Int32.fromInt n, R tmp_reg0, 
 	I.jmp(L(NameLab "__allocate")) :: (* assumes args in tmp_reg1 and tmp_reg0; result in tmp_reg1 *)
         I.lab l ::
         post (t,C)))
@@ -702,7 +733,7 @@ struct
 	of SS.REG_I_ATY offset => base_plus_offset(esp,BYTES(size_ff*4-offset*4-4(*+BI.inf_bit*)),dst_reg,
 						   set_inf_bit(dst_reg,C))
 	 | SS.REG_F_ATY offset => base_plus_offset(esp,WORDS(size_ff-offset-1),dst_reg,C)
-	 | SS.STACK_ATY offset => load_indexed(dst_reg,esp,WORDS(size_ff-offset-1),C)
+	 | SS.STACK_ATY offset => load_indexed(R dst_reg,esp,WORDS(size_ff-offset-1),C)
 	 | SS.PHREG_ATY phreg  => copy(phreg,dst_reg, C)
 	 | _ => die "move_aty_into_reg_ap: ATY cannot be used to allocate memory"
 
@@ -863,39 +894,39 @@ struct
 	 | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
 	 | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
 	 | LS.IGNORE => die "store_sm_in_record: IGNORE not implemented."
-	 | LS.ATTOP_LI(SS.PHREG_ATY phreg,pp) => store_indexed(base_reg,offset,phreg,C)
+	 | LS.ATTOP_LI(SS.PHREG_ATY phreg,pp) => store_indexed(base_reg,offset,R phreg,C)
 	 | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
-				  store_indexed(base_reg,offset,tmp,C))
-	 | LS.ATTOP_LF(SS.PHREG_ATY phreg,pp) => store_indexed(base_reg,offset,phreg,C)
+				  store_indexed(base_reg,offset,R tmp,C))
+	 | LS.ATTOP_LF(SS.PHREG_ATY phreg,pp) => store_indexed(base_reg,offset,R phreg,C)
 	 | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
-				  store_indexed(base_reg,offset,tmp,C))
+				  store_indexed(base_reg,offset,R tmp,C))
 	 | LS.ATTOP_FI(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
 				  clear_atbot_bit(tmp,
-				  store_indexed(base_reg,offset,tmp,C)))
+				  store_indexed(base_reg,offset,R tmp,C)))
 	 | LS.ATTOP_FF(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
 				  clear_atbot_bit(tmp,                   (* The region may be infinite *)
-				  store_indexed(base_reg,offset,tmp,C))) (* so we clear the atbot bit *)
+				  store_indexed(base_reg,offset,R tmp,C))) (* so we clear the atbot bit *)
 	 | LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp) => 
 	  base_plus_offset(esp,BYTES(size_ff*4-offset_reg_i*4-4(*+BI.inf_bit+BI.atbot_bit*)),tmp,
 	  set_inf_bit_and_atbot_bit(tmp,
-	  store_indexed(base_reg,offset,tmp,C)))
+	  store_indexed(base_reg,offset,R tmp,C)))
 	 | LS.ATBOT_LI(aty,pp) => 
 	  move_aty_into_reg_ap(aty,tmp,size_ff,
 	  set_atbot_bit(tmp,
-	  store_indexed(base_reg,offset,tmp,C)))
+	  store_indexed(base_reg,offset,R tmp,C)))
 	 | LS.ATBOT_LF(SS.PHREG_ATY phreg,pp) => 
-	  store_indexed(base_reg,offset,phreg,C) (* The region is finite so no atbot bit is necessary *)
+	  store_indexed(base_reg,offset,R phreg,C) (* The region is finite so no atbot bit is necessary *)
 	 | LS.ATBOT_LF(aty,pp) => 
 	  move_aty_into_reg_ap(aty,tmp,size_ff,
-	  store_indexed(base_reg,offset,tmp,C))
+	  store_indexed(base_reg,offset,R tmp,C))
 	 | LS.SAT_FI(SS.PHREG_ATY phreg,pp) => 
-	  store_indexed(base_reg,offset,phreg,C) (* The storage bit is already recorded in phreg *)
+	  store_indexed(base_reg,offset,R phreg,C) (* The storage bit is already recorded in phreg *)
 	 | LS.SAT_FI(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
-		                store_indexed(base_reg,offset,tmp,C))
+		                store_indexed(base_reg,offset,R tmp,C))
 	 | LS.SAT_FF(SS.PHREG_ATY phreg,pp) => 
-	  store_indexed(base_reg,offset,phreg,C) (* The storage bit is already recorded in phreg *)
+	  store_indexed(base_reg,offset,R phreg,C) (* The storage bit is already recorded in phreg *)
 	 | LS.SAT_FF(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
-			        store_indexed(base_reg,offset,tmp,C))
+			        store_indexed(base_reg,offset,R tmp,C))
 
     fun force_reset_aux_region_kill_tmp0(sma,t:reg,size_ff,C) = 
       let fun do_reset(aty,pp) = move_aty_into_reg_ap(aty,t,size_ff,
@@ -1159,16 +1190,12 @@ struct
 	  let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	    val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
 	  in x_C(
-	     load_indexed(tmp_reg0,x_reg,WORDS 1,
+	     load_indexed(R tmp_reg0,x_reg,WORDS 1,
 	     I.negl(R tmp_reg0) ::
              jump_overflow (
              move_aty_into_reg(b,d_reg,size_ff,
-             store_indexed(d_reg,WORDS 1, tmp_reg0,                                       (* store negated value *)
-	     store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))
-(*
-             load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg0,     (* mk tag *)
-	     store_indexed(d_reg, WORDS 0, tmp_reg0, C')))))))                            (* store tag *)
-*)
+             store_indexed(d_reg,WORDS 1, R tmp_reg0,                        (* store negated value *)
+	     store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))   (* store tag *)
 	  end
 
      fun abs_int_kill_tmp0 {tag} (x,d,size_ff,C) =
@@ -1193,19 +1220,15 @@ struct
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff, C)
        in
 	 x_C(
-	 load_indexed(tmp_reg0,x_reg,WORDS 1,
+	 load_indexed(R tmp_reg0,x_reg,WORDS 1,
 	 I.cmpl(I "0", R tmp_reg0) ::
          I.jge cont_lab ::
          I.negl (R tmp_reg0) ::  
          jump_overflow (
          I.lab cont_lab :: 
          move_aty_into_reg(b,d_reg,size_ff,
-         store_indexed(d_reg, WORDS 1, tmp_reg0,                                      (* store negated value *)
-         store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))
-(*
-         load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg0,     (* mk tag *)
-         store_indexed(d_reg, WORDS 0, tmp_reg0, C')))))))                            (* store tag *)
-*)
+         store_indexed(d_reg, WORDS 1, R tmp_reg0,                       (* store negated value *)
+         store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))   (* store tag *)
        end
 
      fun word32ub_to_int32ub(x,d,size_ff,C) =
@@ -1227,7 +1250,7 @@ struct
        let
 	   val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-	   fun maybe_unbox C = if boxedarg then load_indexed(d_reg,x_reg,WORDS 1,C)
+	   fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
 			       else copy(x_reg,d_reg,C)
        in x_C(
           maybe_unbox(
@@ -1243,7 +1266,7 @@ struct
        let
 	   val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-	   fun maybe_unbox C = if boxedarg then load_indexed(d_reg,x_reg,WORDS 1,C)
+	   fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
 			       else copy(x_reg,d_reg,C)
 	   fun check_ovf C =
 	     if ovf then 
@@ -1266,7 +1289,7 @@ struct
        let
 	   val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-	   fun maybe_unbox C = if boxedarg then load_indexed(d_reg,x_reg,WORDS 1,C)
+	   fun maybe_unbox C = if boxedarg then load_indexed(R d_reg,x_reg,WORDS 1,C)
 			       else copy(x_reg,d_reg,C)
        in x_C(
           maybe_unbox(
@@ -1374,18 +1397,14 @@ struct
 	     fun check_ovf C = if ovf then jump_overflow C else C
 	 in
 	   x_C(
-	   load_indexed(tmp_reg0,x_reg,WORDS 1,
+	   load_indexed(R tmp_reg0,x_reg,WORDS 1,
 	   y_C(
-	   load_indexed(tmp_reg1,y_reg,WORDS 1,
+	   load_indexed(R tmp_reg1,y_reg,WORDS 1,
 	   inst(R tmp_reg0, R tmp_reg1) ::
            check_ovf (
 	   move_aty_into_reg(r,d_reg,size_ff,
-	   store_indexed(d_reg,WORDS 1,tmp_reg1,
-           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))))
-(*
-	   load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg1,
-	   store_indexed(d_reg,WORDS 0, tmp_reg1,C')))))))))
-*)
+	   store_indexed(d_reg,WORDS 1,R tmp_reg1,
+           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))))  (* store tag *)
 	 end
 
      fun addw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enabled; Word32.sml *)
@@ -1422,12 +1441,8 @@ struct
 	   move_aty_into_reg(x,tmp_reg0,size_ff,
 	   I.sarl(I "1", R tmp_reg0) :: 
 	   move_aty_into_reg(b,d_reg,size_ff,
-	   store_indexed(d_reg,WORDS 1,tmp_reg0,
-           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))
-(*
-	   load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg0,
-	   store_indexed(d_reg,WORDS 0,tmp_reg0, C')))))
-*)
+	   store_indexed(d_reg,WORDS 1, R tmp_reg0,
+           store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))   (* store tag *)
 	 end	 
        else die "num31_to_num32b.tagging_disabled"
 
@@ -1443,15 +1458,11 @@ struct
 	       else C
 	 in 
 	   x_C (
-           load_indexed(tmp_reg0,x_reg,WORDS 1,
+           load_indexed(R tmp_reg0,x_reg,WORDS 1,
 	   check_ovf (
 	   move_aty_into_reg(b,d_reg,size_ff,
-	   store_indexed(d_reg, WORDS 1, tmp_reg0, 
-	   store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))
-(*
-	   load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg0,
-	   store_indexed(d_reg, WORDS 0, tmp_reg0, C')))))))
-*)
+	   store_indexed(d_reg, WORDS 1, R tmp_reg0, 
+	   store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C'))))))  (* store tag *)
 	 end
 
      fun shift_w32boxed__ inst (r,x,y,d,size_ff,C) = 
@@ -1463,18 +1474,14 @@ struct
 	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
        in
 	 x_C(
-	 load_indexed(tmp_reg1,x_reg,WORDS 1,
+	 load_indexed(R tmp_reg1,x_reg,WORDS 1,
          y_C(
          copy(y_reg,ecx,                        (* tmp_reg0 = ecx, see InstsX86.sml *)
 	 I.sarl (I "1", R ecx) ::               (* untag y: y >> 1 *)
          inst(R cl, R tmp_reg1) ::
 	 move_aty_into_reg(r,d_reg,size_ff,
-         store_indexed(d_reg,WORDS 1,tmp_reg1,
-	 store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))))
-(*
-         load_immed(Word32.toLargeIntX (BI.tag_word_boxed false),tmp_reg1,
-	 store_indexed(d_reg,WORDS 0, tmp_reg1, C'))))))))
-*)
+         store_indexed(d_reg,WORDS 1, R tmp_reg1,
+	 store_immed(BI.tag_word_boxed false, d_reg, WORDS 0, C')))))))   (* store tag *)
        end
 
      fun shift_leftw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32.sml *)
@@ -1602,7 +1609,7 @@ struct
 	    move_aty_into_reg(x,tmp_reg0,size_ff,               (* tmp_reg0 (%ecx) = x *)
 	    I.sarl (I "1", R tmp_reg0) ::                       (* untag x: tmp_reg0 >> 1 *)
 	    I.movb(R cl, D("4", tmp_reg1)) ::                   (* *(tmp_reg1+4) = %cl *)
-	    load_immed(Int32.fromInt BI.ml_unit,d_reg,  (* d = () *)
+	    move_immed(Int32.fromInt BI.ml_unit, R d_reg,  (* d = () *)
             C'))))
 	 end
        else
@@ -1670,7 +1677,7 @@ struct
 		F(move_aty_into_reg(i,tmp_reg0,size_ff,
                   I.sarl (I "1", R tmp_reg0) ::
                   I.movl(R x_reg, DD("4", t_reg, tmp_reg0, "4")) :: 
-                  load_immed(Int32.fromInt BI.ml_unit,d_reg,
+                  move_immed(Int32.fromInt BI.ml_unit, R d_reg,
                   C')))
 	       | SOME _ => die "word_update0_1"
 	       | NONE => 
@@ -1681,7 +1688,7 @@ struct
 		 I.addl(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
 		 move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 = x *)
 		 I.movl(R tmp_reg0, D("4", tmp_reg1)) ::          (* *(tmp_reg1+4) = tmp_reg0 *)
-		 load_immed(Int32.fromInt BI.ml_unit,d_reg,       (* d = () *)
+		 move_immed(Int32.fromInt BI.ml_unit, R d_reg,    (* d = () *)
 	 	 C')))))
 	 end
        else
@@ -1768,23 +1775,25 @@ struct
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+2,size_ff,
                  	 store_immed(BI.tag_clos(false,num_elems+1,n_skip), reg_for_result, WORDS 0,
 (*
-       		         load_immed(Word32.toLargeIntX(BI.tag_clos(false,num_elems+1,n_skip)),tmp_reg0,
-			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
-*)
 			 load_label_addr(MLFunLab label,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,
-			 store_indexed(reg_for_result,WORDS 1,tmp_reg0,
+			 store_indexed(reg_for_result,WORDS 1,R tmp_reg0,
+*)
+			 store_indexed(reg_for_result,WORDS 1, LA (MLFunLab label),
 			 #2(foldr (fn (aty,(offset,C)) => 
 				   (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
 								     WORDS offset,size_ff, C))) 
-			    (num_elems+1,C') (LS.smash_free elems))))))
+			    (num_elems+1,C') (LS.smash_free elems)))))
 		       else
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
+(*
 			 load_label_addr(MLFunLab label,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff,
-			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
+			 store_indexed(reg_for_result,WORDS 0,R tmp_reg0,
+*)
+			 store_indexed(reg_for_result,WORDS 0, LA (MLFunLab label),
 			 #2(foldr (fn (aty,(offset,C)) => 
 				   (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
 								     WORDS offset,size_ff, C))) 
-			    (num_elems,C') (LS.smash_free elems)))))
+			    (num_elems,C') (LS.smash_free elems))))
 		     end
 		    | LS.REGVEC_RECORD{elems,alloc} =>
 		     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
@@ -1793,10 +1802,6 @@ struct
 		       if BI.tag_values() then
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
 	                 store_immed(BI.tag_regvec(false,num_elems), reg_for_result, WORDS 0,
-(*
-       		         load_immed(Word32.toLargeIntX(BI.tag_regvec(false,num_elems)),tmp_reg0,
-			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
-*)
 			 #2(foldr (fn (sma,(offset,C)) => 
 				   (offset-1,store_sm_in_record(sma,tmp_reg0,reg_for_result,
 								WORDS offset,size_ff, C))) 
@@ -1816,10 +1821,6 @@ struct
 		       if BI.tag_values() then
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
 	                 store_immed(BI.tag_sclos(false,num_elems,n_skip), reg_for_result, WORDS 0,
-(*
-       		         load_immed(Word32.toLargeIntX(BI.tag_sclos(false,num_elems,n_skip)),tmp_reg0,
-			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
-*)
 			 #2(foldr (fn (aty,(offset,C)) => 
 				  (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
 								    WORDS offset,size_ff, C))) 
@@ -1865,7 +1866,7 @@ struct
 			             die "cannot untag other tuples than pairs"
 				 else ()
 		     in
-		       if BI.tag_values() andalso maybeuntag andalso tag_free_pairs_gc_p() then
+		       if BI.tag_values() andalso maybeuntag andalso not(tag_pairs_p()) then
 			   (* function alloc_pair_ap_kill_tmp01 takes care of storing the 
 			    * tag when the pair is stored in a finite region *)
 			 alloc_pair_ap_kill_tmp01 (alloc,reg_for_result,size_ff,
@@ -1873,10 +1874,6 @@ struct
 		       else if BI.tag_values() then
   		         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
 	                 store_immed(tag, reg_for_result, WORDS 0,
-(*
-       		         load_immed(Word32.toLargeIntX tag,tmp_reg0,
- 			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
-*)
 			 store_elems num_elems))
 		       else
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
@@ -1898,7 +1895,7 @@ struct
 				else i
 			      val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 			    in
-			      load_immed(Int32.fromInt tag,reg_for_result,C')
+			      move_immed(Int32.fromInt tag, R reg_for_result,C')
 			    end
 			| LS.UNBOXED i => 
 			    let
@@ -1909,7 +1906,7 @@ struct
 				       maybe_reset_aux_region_kill_tmp0(alloc,tmp_reg1,size_ff,C)) 
 				C aux_regions
 			    in
-			      reset_regions(load_immed(Int32.fromInt tag,reg_for_result,C'))
+			      reset_regions(move_immed(Int32.fromInt tag, R reg_for_result,C'))
 			    end
 			| LS.BOXED i => 
 			    let 
@@ -1994,7 +1991,7 @@ struct
 		     in
 		       store_aty_in_aty_record(aty2,aty1,WORDS offset,tmp_reg1,tmp_reg0,size_ff,
                        if BI.tag_values() then
-			 load_immed(Int32.fromInt BI.ml_unit,reg_for_result,C')
+			 move_immed(Int32.fromInt BI.ml_unit, R reg_for_result,C')
                        else C')
 		     end
 		    | LS.PASS_PTR_TO_MEM(alloc,i) =>
@@ -2003,7 +2000,7 @@ struct
 		     in
 			 (* HACK: When tagging is enabled, only pairs take up 3 words
 			  * (of those type of objects that can be returned from a C function) *)
-			 if BI.tag_values() andalso tag_free_pairs_gc_p() andalso i = 3 then
+			 if BI.tag_values() andalso not(tag_pairs_p()) andalso i = 3 then
 			     alloc_pair_ap_kill_tmp01 (alloc,reg_for_result,size_ff,C')
 			 else
 			     alloc_ap_kill_tmp01(alloc,reg_for_result,i,size_ff,C')
@@ -2110,8 +2107,8 @@ struct
 		  (* After the arguments are pushed onto the stack, we copy them down to 
 		   * the current ``| ccf | ff |'', which is now dead. *)
 		    fun copy_down 0 C = C
-		      | copy_down n C = load_indexed(tmp_reg1, esp, WORDS (n-1),
-					 store_indexed(esp, WORDS (size_ff+size_ccf+n-1), tmp_reg1, 
+		      | copy_down n C = load_indexed(R tmp_reg1, esp, WORDS (n-1),
+					 store_indexed(esp, WORDS (size_ff+size_ccf+n-1), R tmp_reg1, 
 					  copy_down (n-1) C))
 		    fun jmp C = I.jmp(L(MLFunLab opr)) :: rem_dead_code C
 		  in 
@@ -2147,10 +2144,6 @@ struct
 		      if pair_region_special place then 
 			let val tag = BI.tag_record (false,2)
 			in store_immed(tag, esp, WORDS(size_ff-offset-1), C)
-(*
-			    load_immed(Word32.toLargeIntX tag,tmp_reg1,
-			    store_indexed(esp,WORDS(size_ff-offset-1),tmp_reg1,C))
-*)
 			end
 		      else C
 
@@ -2206,12 +2199,12 @@ struct
 			    compile_c_call_prim("deallocRegionFiniteProfiling",[],NONE,
 						size_ff,tmp_reg0(*not used*),C)
 			   | LineStmt.INF => 
-			    compile_c_call_prim("deallocateRegionNew",[],NONE,size_ff,tmp_reg0(*not used*),C)
+			    compile_c_call_prim("deallocateRegion",[],NONE,size_ff,tmp_reg0(*not used*),C)
 		      else
 			case phsize
 			  of LineStmt.WORDS i => C
 			   | LineStmt.INF => 
-			    compile_c_call_prim("deallocateRegionNew",[],NONE,size_ff,tmp_reg0(*not used*),C)
+			    compile_c_call_prim("deallocateRegion",[],NONE,size_ff,tmp_reg0(*not used*),C)
 		  in
 		    foldr alloc_region_prim 
 		    (CG_lss(body,size_ff,size_ccf,
@@ -2236,22 +2229,22 @@ struct
 		    fun store_handl_return_lab C =
 		      comment ("STORE HANDL RETURN LAB: sp[offset] = handl_return_lab",
 		      I.movl(LA handl_return_lab, R tmp_reg1) ::    
-		      store_indexed(esp,WORDS(size_ff-offset-1),tmp_reg1,C))
+		      store_indexed(esp,WORDS(size_ff-offset-1), R tmp_reg1,C))
 		    fun store_exn_ptr C =
 		      comment ("STORE EXN PTR: sp[offset+2] = exnPtr",
 		      I.movl(L exn_ptr_lab, R tmp_reg1) :: 
-	              store_indexed(esp,WORDS(size_ff-offset-1+2),tmp_reg1,
+	              store_indexed(esp,WORDS(size_ff-offset-1+2), R tmp_reg1,
 		      comment ("CALC NEW expPtr: expPtr = sp-size_ff+offset+size_of_handle",
 		      base_plus_offset(esp,WORDS(size_ff-offset-1(*-BI.size_of_handle()*)),tmp_reg1,        (*hmmm *)
 	              I.movl(R tmp_reg1, L exn_ptr_lab) :: C))))
 		    fun store_sp C =
 		      comment ("STORE SP: sp[offset+3] = sp",
-		      store_indexed(esp,WORDS(size_ff-offset-1+3),esp,C))
+		      store_indexed(esp,WORDS(size_ff-offset-1+3), R esp,C))
 		    fun default_code C = comment ("HANDLER DEFAULT CODE",
 		      CG_lss(default,size_ff,size_ccf,C))
 		    fun restore_exp_ptr C =
 		      comment ("RESTORE EXN PTR: exnPtr = sp[offset+2]",
-		      load_indexed(tmp_reg1,esp,WORDS(size_ff-offset-1+2),
+		      load_indexed(R tmp_reg1,esp,WORDS(size_ff-offset-1+2),
 	              I.movl(R tmp_reg1, L exn_ptr_lab) ::
 	              I.jmp(L handl_join_lab) ::C))
 		    fun handl_return_code C =
@@ -2601,6 +2594,17 @@ struct
 	 foldr (fn (ls,C) => CG_ls(ls,C)) C lss
        end
 
+     fun do_simple_memprof C =
+	 if simple_memprof_p() andalso gc_p() then
+	     let val labCont = new_local_lab "cont"
+	     in  I.cmpl(R esp, L stack_min) ::
+		 I.jl labCont ::   
+		 I.movl(R esp, L stack_min) ::
+		 I.lab labCont ::
+		 C
+	     end
+	 else C
+
      fun do_prof C =
        if region_profiling() then
 	 let val labStack = new_local_lab "profStack"
@@ -2610,7 +2614,7 @@ struct
 	   val timeToProfLab = NameLab "timeToProfile"
 	 in I.movl(L maxStackLab, R tmp_reg0) ::     (* The stack grows downwards!! *)
 	   I.cmpl(R esp, R tmp_reg0) ::
-	   I.jl labCont ::                                                    (* if ( *maxStack > esp ) {     *)
+	   I.jl labCont ::                                                    (* if ( esp < *maxStack ) {     *)
 	   I.movl(R esp, L maxStackLab) ::                                    (*    *maxStack = esp ;         *)
 	   I.movl(L (NameLab "regionDescUseProfInf"), R tmp_reg0) ::          (*    maxProfStack =            *)
 	   I.addl(L (NameLab "regionDescUseProfFin"), R tmp_reg0) ::          (*       regionDescUseProfInf   *)
@@ -2654,8 +2658,9 @@ struct
 	gen_fn(lab,
 	       do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args,
 		base_plus_offset(esp,WORDS(~size_ff),esp,
+		 do_simple_memprof(
                  do_prof(
-		  CG_lss(lss,size_ff,size_ccf,C)))))
+		  CG_lss(lss,size_ff,size_ccf,C))))))
       end
 
     fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' I.FUN (lab,cc,lss)
@@ -2743,8 +2748,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    val offset = if BI.tag_values() then 1 else 0
 	  in
 	      I.lab (NameLab "TopLevelHandlerLab") ::
-	      load_indexed(arg_reg,arg_reg,WORDS offset, 
-	      load_indexed(arg_reg,arg_reg,WORDS (offset+1), (* Fetch pointer to exception string *)
+	      load_indexed(R arg_reg,arg_reg,WORDS offset, 
+	      load_indexed(R arg_reg,arg_reg,WORDS (offset+1), (* Fetch pointer to exception string *)
 	      compile_c_call_prim("uncaught_exception",[SS.PHREG_ATY arg_reg],NONE,0,tmp_reg1,C)))
 	  end
 
@@ -3029,7 +3034,11 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 
 	fun init_stack_bot_gc C = 
 	  if gc_p() then  (* stack_bot_gc[0] = esp *)
-	    I.movl(R esp, L stack_bot_gc_lab) :: C
+	      let val C = if simple_memprof_p() then I.movl(R esp, L stack_min) :: C
+			  else C
+	      in
+		  I.movl(R esp, L stack_bot_gc_lab) :: C
+	      end
 	  else C
 
 	fun init_prof C = 
