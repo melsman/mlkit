@@ -212,7 +212,8 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	val greetings = "ML Kit with Regions, Version " ^ version ^ ", " ^ date ^ "\n" ^
 	                "Using the " ^ arch_os() ^ " backend\n"
 	val usage = "mlkit [-script | -timings | -nobasislib | -reportfilesig | -logtofiles " ^
-	            "| -prof | -gc | -delay_assembly | -chat | -nodso | -version | -help] file"
+	            "| -prof | -gc | -delay_assembly | -chat | -nodso | -noopt | -opt_box_funargs " ^
+		    "| -version | -help] file"
 	local 
 	  datatype source = SML of string | PM of string
 	  fun determine_source (s:string) : source option = 
@@ -250,6 +251,8 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 		| loop ("-delay_assembly"::rest, script) = (Flags.turn_on "delay_assembly"; loop (rest, script))
 		| loop ("-chat"::rest, script) = (Flags.chat := true; loop (rest, script))
 		| loop ("-nodso" ::rest, script) = (Flags.turn_off "delay_slot_optimization"; loop(rest, script))
+		| loop ("-noopt" ::rest, script) = (Flags.turn_off "optimiser"; loop(rest, script))
+		| loop ("-opt_box_funargs" ::rest, script) = (Flags.turn_off "unbox_function_arguments"; loop(rest, script))
 		| loop ("-version"::rest, script) = loop (rest, script) (*skip*)
 		| loop ("-help"::rest,script) = (print usage; loop(rest, script))
 		| loop (rest,script) = (Flags.read_script script; go rest)
