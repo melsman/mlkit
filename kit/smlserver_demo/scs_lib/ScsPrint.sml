@@ -249,8 +249,11 @@ structure ScsPrint :> SCS_PRINT =
       fun returnAsPDF doc_type sources =
 	let
 	  val pdf = genPDF doc_type sources
+val _ = ScsError.log "before"
+val tmp = 	  Ns.returnFile ( pdf )	  
+val _ = ScsError.log "after"
 	in
-	  Ns.returnFile ( pdf )	  
+tmp
         end
 
     end (* of local block *)
