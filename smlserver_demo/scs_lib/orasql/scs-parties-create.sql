@@ -1,3 +1,5 @@
+-- $Id$
+
 -- This code i a down-sized and modified version of the party module found
 -- in openACS (www.openacs.org): file community-core-create.sql.
 
@@ -107,11 +109,18 @@ as
     party_id in scs_parties.party_id%TYPE
   )
   is
+    v_deleted_p		char(1);
   begin
-    update scs_parties
-       set deleted_p = 't',
-           email = party_id || '-' || email
-     where scs_parties.party_id = scs_party.destroy.party_id;
+    select deleted_p into v_deleted_p
+    from scs_parties
+    where scs_parties.party_id = scs_party.destroy.party_id;
+
+    if( v_deleted_p = 'f' ) then
+      update scs_parties
+         set deleted_p = 't',
+             email = to_char(party_id) || '-' || email
+       where scs_parties.party_id = scs_party.destroy.party_id;
+    end if;
   end destroy;
 
   function email (

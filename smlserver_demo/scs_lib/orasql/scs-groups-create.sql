@@ -1,3 +1,5 @@
+-- $Id$
+
 -- This code i a down-sized and modified version of the party module
 -- found in openACS (www.openacs.org): files groups-create.sql and
 -- groups-body-create.sql
