@@ -30,7 +30,7 @@ structure ScsPrint :> SCS_PRINT =
     val allDocTypes = [LaTeX]
     fun ppAllDocTypes() = List.map docTypeToString allDocTypes 
 
-    val allPrinters = List.map (fn p => (p,p)) ["p152","p152d","p177","p177d","p177t","p233","p233d","p233t"]
+    val allPrinters = List.map (fn p => (p,p)) ["p151","p151d","p152","p152d","p177","p177d","p177t","p233","p233d","p233t"]
 
     (* Generate file which can be printed and previewed. *)
     (* Files are stored in the scs_print_dir directory.  *)
