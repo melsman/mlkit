@@ -168,6 +168,11 @@ functor Compile(structure Excon : EXCON
     (*  Printing utilities                                                    *)
     (* ---------------------------------------------------------------------- *)
 
+    fun out_layer (stl:PP.StringTree list) =
+      PP.outputTree((fn s => output(std_out, s)), 
+         PP.NODE{start = "[", finish = "]", childsep = PP.RIGHT ",", indent = 1, 
+                 children = stl}, !Flags.colwidth)
+
     fun pr0 st log = (Report.print' (PP.reportStringTree st) log; 
                       NonStandard.flush_out log)
     fun pr st = pr0 st (!Flags.log)
@@ -399,13 +404,20 @@ functor Compile(structure Excon : EXCON
                    (fn s => (output(!Flags.log, s); flush_out(!Flags.log)))
                    (cone,rse_with_con, spread_lamb_exp)
         val new_layer = Effect.topLayer cone (* to get back to level of "cone" *)
-
+(*
+        val _ = print "new_layer before lowering:\n"
+        val _ = out_layer(Effect.layoutEtas new_layer)
+*)
 	val toplevel = Effect.level Effect.initCone
 	val cone = List.foldL (fn effect => fn cone =>
 			       Effect.lower toplevel effect cone) cone new_layer
 
-(*	val _ = print "\n*** Unifying toplevel regions and effects ***\n" *)
+(*        val _ = print "new_layer after lowering:\n"
+        val _ = out_layer(Effect.layoutEtas new_layer)
+	val _ = print "\n*** Unifying toplevel regions and effects ***\n" 
+*)
         val cone = Effect.unify_with_toplevel_rhos_eps(cone,new_layer)
+(*	val _ = print "\n*** Unified toplevel regions and effects ***\n" *)
 	val new_layer = []
 
         val _ = Timing.timing_end("Reg. Inf. (NEW)")
