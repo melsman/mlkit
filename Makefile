@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-KITVERSION=4.0.0
+KITVERSION=4.1.0
 ARCH-OS=x86-linux
 INSTDIR=/usr/share/mlkit
 INSTDIR_KAM=/usr/share/mlkit_kam
@@ -24,7 +24,7 @@ smlserver:
 
 clean:
 	rm -rf *~ bin PM run
-	cd basislib; rm -rf PM run *~
+	cd basislib; $(MAKE) clean
 	cd kitlib; rm -rf PM run *~
 	cd ml-yacc-lib; rm -rf PM *~
 	cd kitdemo; rm -rf PM run *~ */PM */*~

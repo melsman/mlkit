@@ -166,6 +166,15 @@ struct
 		      LS.CCALL{name=name,args=args,rhos_for_result=rhos_for_result,res=res}::
 		      resolve_args(assign_list_res,rest))
 	end
+	| CC_ls(LS.CCALL_AUTO{name,args,res},rest) = 
+	let
+	  val ({args,res},assign_list_args,assign_list_res) = 
+	    CallConv.resolve_ccall_auto RI.args_phreg_ccall RI.res_phreg_ccall LS.PHREG {args=args,res=res}
+	in
+	  resolve_res(assign_list_args,
+		      LS.CCALL_AUTO{name=name,args=args,res=res}::
+		      resolve_args(assign_list_res,rest))
+	end
 	| CC_ls (ls,rest) = ls::rest
 	
       and CC_lss(lss) = List.foldr (fn (ls,acc) => CC_ls(ls,acc)) [] lss
@@ -238,6 +247,7 @@ struct
 	   | LS.RESET_REGIONS a => LS.RESET_REGIONS a
 	   | LS.PRIM a => LS.PRIM a
 	   | LS.CCALL a => LS.CCALL a
+	   | LS.CCALL_AUTO a => LS.CCALL_AUTO a
 	    
       and ra_assign_lss lss = List.foldr (fn (ls,acc) => ra_assign_ls ls :: acc) [] lss
 	
@@ -916,6 +926,7 @@ struct
 	  val _ = 
 	    case ls of
 	      LS.CCALL _ => lvarset_app (set_lrs_status c_call) lvars_to_flush
+	    | LS.CCALL_AUTO _ => lvarset_app (set_lrs_status c_call) lvars_to_flush
 	    | _ => lvarset_app (set_lrs_status ml_call) lvars_to_flush
 	  val L = Lvarset.union(L,def)  (* We insert edges between def'ed variables *)
 	  val _ = lvarset_app (fn d => lvarset_app (fn u => AddEdge(d,u)) L) def 
@@ -1009,6 +1020,7 @@ struct
 	   | LS.SWITCH_C sw => ig_sw (ig_lss, sw, L)
 	   | LS.SWITCH_E sw => ig_sw (ig_lss, sw, L)
 	   | LS.CCALL _ => do_non_tail_call(L,ls)
+	   | LS.CCALL_AUTO _ => do_non_tail_call(L,ls)
 	   | LS.ASSIGN {pat=LS.VAR lv1, bind=LS.ATOM(LS.VAR lv2)} => do_move(L,lv1,lv2)
 	   | LS.ASSIGN {pat=LS.VAR lv1, bind=LS.ATOM(LS.PHREG lv2)} => do_move(L,lv1,lv2)
 	   | LS.ASSIGN {pat=LS.PHREG lv1, bind=LS.ATOM(LS.VAR lv2)} => do_move(L,lv1,lv2)

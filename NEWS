@@ -1,4 +1,9 @@
-ML Kit NEWS file                                       November, 2001
+ML Kit NEWS file
+
+ * mael 2001-12-13: Ported Posix structure from MLton. Calls to C
+   are in many cases simpler now because auto-conversion is 
+   extended to work with a larger set of types, including 
+   strings (CharArrays).
 
  * mael 2001-11-25: Assembler in-lining of sub/update/size 
    operations on bytetables (CharArray, Word8Array, CharVector, 

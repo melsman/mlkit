@@ -105,11 +105,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	fun path_to_runtime () = 
 	  let fun file () = (if !region_profiling then 
-			       if gc_p() then "runtimeSystemGCProf.o"
-			       else "runtimeSystemProf.o"
-			     else if gc_p() then "runtimeSystemGC.o"
-				  else if tag_values() then "runtimeSystemTag.o"
-				       else"runtimeSystem.o")
+			       if gc_p() then "runtimeSystemGCProf.a"
+			       else "runtimeSystemProf.a"
+			     else if gc_p() then "runtimeSystemGC.a"
+				  else if tag_values() then "runtimeSystemTag.a"
+				       else"runtimeSystem.a")
 	  in OS.Path.concat(OS.Path.concat(!Flags.install_dir, "bin"), file())
 	  end
 

@@ -165,6 +165,7 @@ functor CompilerEnv(structure Ident: IDENT
 		       (tycon_ARRAY, ([tyName_ARRAY], emptyCEnv)),
 		       (tycon_VECTOR, ([tyName_VECTOR], emptyCEnv)),
 		       (tycon_CHARARRAY, ([tyName_CHARARRAY], emptyCEnv)),
+		       (tycon_FOREIGNPTR, ([tyName_FOREIGNPTR], emptyCEnv)),
 		       (tycon_CHAR, ([tyName_WORD8], emptyCEnv)),
 		       (tycon_EXN, ([tyName_EXN], emptyCEnv)),
 		       (tycon_REF, ([tyName_REF], emptyCEnv)),
@@ -301,15 +302,15 @@ functor CompilerEnv(structure Ident: IDENT
      foldl (fn (id, acc) =>
 	    let val res = case FinMap.lookup env id
 			    of SOME res => res
-			     | NONE => die error_str
+			     | NONE => die (error_str id)
 	    in FinMap.add(id,res,acc)
 	    end) FinMap.empty dom
 
    fun restrictVarEnv(VARENV m, ids) = 
-     VARENV(restrictFinMap("restrictCEnv.id not in env", m, ids))
+     VARENV(restrictFinMap(fn _ => "restrictCEnv.id not in env", m, ids))
 
    fun restrictTyEnv(TYENV m, tycons) =
-     TYENV(restrictFinMap("restrictCEnv.tycon not in env", m, tycons))
+     TYENV(restrictFinMap(fn tc => ("restrictCEnv.tycon " ^ TyCon.pr_TyCon tc ^ " not in env"), m, tycons))
 
    fun restrictStrEnv(STRENV m, strid_restrs) =
      STRENV(foldl (fn ((strid,restr:Environments.restricter), acc) =>

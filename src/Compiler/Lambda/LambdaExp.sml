@@ -68,6 +68,7 @@ functor LambdaExp(structure Lvars: LVARS
     val word32Type = CONStype([], TyName.tyName_WORD32)
     fun wordDefaultType() = CONStype([], TyName.tyName_WordDefault())
     val boolType = CONStype([], TyName.tyName_BOOL)
+    val foreignptrType = CONStype([], TyName.tyName_FOREIGNPTR)
     val exnType = CONStype([], TyName.tyName_EXN)
     val realType = CONStype([], TyName.tyName_REAL)
     val stringType = CONStype([], TyName.tyName_STRING)

@@ -30,6 +30,7 @@ signature TYCON =
     val tycon_ARRAY  : tycon
     val tycon_VECTOR : tycon
     val tycon_CHARARRAY : tycon
+    val tycon_FOREIGNPTR : tycon
     val tycon_UNIT   : tycon
 
     val pr_TyCon : tycon -> string

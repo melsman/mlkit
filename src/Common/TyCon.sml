@@ -48,6 +48,7 @@ functor TyCon(structure StrId: STRID
     val tycon_ARRAY  = TYCON "array"
     val tycon_VECTOR = TYCON "vector"
     val tycon_CHARARRAY = TYCON "chararray"
+    val tycon_FOREIGNPTR = TYCON "foreignptr"
     val tycon_INSTREAM = TYCON "instream"
     val tycon_OUTSTREAM = TYCON "outstream"
     val tycon_UNIT   = TYCON "unit"

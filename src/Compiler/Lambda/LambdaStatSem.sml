@@ -189,6 +189,7 @@ end
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
 			       (tyName_FRAG, [Con.con_QUOTE, Con.con_ANTIQUOTE]),
 			       (tyName_CHARARRAY, []),
+			       (tyName_FOREIGNPTR, []),
 			       (tyName_ARRAY, []),
 			       (tyName_VECTOR, []),
 			       (tyName_REF, [(*Con.con_REF*)]),
@@ -613,7 +614,7 @@ end
 			       of ([ta], [tr]) => 
 				 let open LambdaExp
 				     val unboxed_types = [boolType, unitType, int31Type, word31Type, 
-							  intDefaultType(), wordDefaultType()]
+							  intDefaultType(), wordDefaultType(), foreignptrType]
 				     fun ok t = List.exists (fn t' => LambdaBasics.eq_Type(t,t')) unboxed_types
 				 in if ok ta andalso ok tr then ()
 				    else die "c function `id' is used to cast to or from a boxed type; \

@@ -293,6 +293,10 @@ struct
 	  LS.PRIM{name=name,args=atoms_to_atys args,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.CCALL{name,args,rhos_for_result,res}::lss) = 
 	  LS.CCALL{name=name,args=atoms_to_atys args,rhos_for_result=atoms_to_atys rhos_for_result,res=atoms_to_atys res} :: SS_lss(lss,ATYmap,RHOmap)
+	  | SS_lss'(LS.CCALL_AUTO{name,args,res}::lss) = 
+	  LS.CCALL_AUTO{name=name,args=map (fn (a,ft) => (atom_to_aty' a,ft)) args,
+			res=case res of (a,ft) => (atom_to_aty' a,ft)} :: 
+	  SS_lss(lss,ATYmap,RHOmap)
       in
 	SS_lss' lss
       end

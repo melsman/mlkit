@@ -1274,6 +1274,13 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
 	Next;
       }
 
+      Instruct(PRIM_IS_NULL): {
+	debug(printf("PRIM_IS_NULL\n"));
+	if ( acc == 0 ) acc = mlTRUE;
+	else acc = mlFALSE;
+	Next;
+      }
+
 #ifdef LAB_THREADED
     lbl_EVENT:
     lbl_DOT_LABEL:
