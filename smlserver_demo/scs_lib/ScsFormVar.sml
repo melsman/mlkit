@@ -150,6 +150,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getMthErr              : int formvar_fn
     val getYearErr             : int formvar_fn
     val getDateErr             : Date.date formvar_fn
+    val getWeekdayErr          : Date.weekday formvar_fn
     val getDbTimestampErr      : Date.date formvar_fn
     val getTimestampErr        : Date.date formvar_fn
     val getPeriodErr           : (Date.date * Date.date) formvar_fn
@@ -405,6 +406,9 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	 [(ScsLang.en,`string or it is too short - min. %0 characters`),
 	  (ScsLang.da,`tekststreng eller den er for kort - minimum %0 tegn`)] [Int.toString l])
 	(fn v => if size v = 0 orelse size v < l then NONE else SOME v)
+
+      val getWeekdayErr = getErrWithOverflow Date.Mon [(ScsLang.da,`Ugedag`),(ScsLang.en,`Day of Week`)] (fn str => ScsDate.weekday_from_DB str)
+
 
     end
 
@@ -1122,6 +1126,7 @@ case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 
       val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate [(ScsLang.en,`date`),(ScsLang.da,`dato`)] 
                          msgDate chkDate
+
       val getDbTimestampErr = getErr (ScsDate.genTimestamp(1,1,1,0,0,0)) 
 	convDbTimestamp [(ScsLang.da,`dato og tidspunt`),(ScsLang.en,`time and date`)]
 	msgDbTimestamp chkDbTimestamp

@@ -206,6 +206,7 @@ signature SCS_WIDGET =
     (* [pickDateMthView (min_date_opt, max_date_opt, show_date, fn_action)] *)
     val pickDateMthView : Date.date option * Date.date option * Date.date * (Date.date * string -> string) -> string
 
+
   end
 
 structure ScsWidget :> SCS_WIDGET =
@@ -571,4 +572,5 @@ structure ScsWidget :> SCS_WIDGET =
 	 </table>`)
       end
 
-  end
+
+  end (* of structure *)

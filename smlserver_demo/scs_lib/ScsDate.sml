@@ -1,6 +1,7 @@
 signature SCS_DATE =
   sig
     exception ScsDate of string
+    val all_weekdays : Date.weekday list
 
     type day = int
     type mth = int
@@ -91,11 +92,20 @@ signature SCS_DATE =
     val ppTimestamp : Date.date -> string
     val ppTimestampDb : Date.date option -> string
 
+    val weekday_from_DB : string -> Date.weekday option
+    val weekday_to_DB   : Date.weekday -> string
+
     (* Widgets *)
+
   end
 
 structure ScsDate :> SCS_DATE =
   struct
+    val all_weekdays = [
+      Date.Mon, Date.Tue, Date.Wed, Date.Thu, Date.Fri, Date.Sat, Date.Sun 
+    ]
+
+
     exception ScsDate of string
     type day = int
     type mth = int
@@ -521,6 +531,24 @@ structure ScsDate :> SCS_DATE =
       else
 	genDate(Int.min(Date.day d,daysInMonth (Date.year d) (mthFromName(Date.month d) + 1)),
 		mthFromName(Date.month d) + 1,Date.year d)
-  end
+
+    fun weekday_from_DB "Mon" = SOME Date.Mon
+      | weekday_from_DB "Tue" = SOME Date.Tue
+      | weekday_from_DB "Wed" = SOME Date.Wed
+      | weekday_from_DB "Thu" = SOME Date.Thu
+      | weekday_from_DB "Fri" = SOME Date.Fri
+      | weekday_from_DB "Sat" = SOME Date.Sat
+      | weekday_from_DB "Sun" = SOME Date.Sun
+      | weekday_from_DB s     = NONE
+
+    fun weekday_to_DB Date.Mon = "Mon"
+      | weekday_to_DB Date.Tue = "Tue"
+      | weekday_to_DB Date.Wed = "Wed"
+      | weekday_to_DB Date.Thu = "Thu"
+      | weekday_to_DB Date.Fri = "Fri"
+      | weekday_to_DB Date.Sat = "Sat"
+      | weekday_to_DB Date.Sun = "Sun"
+
+  end (* of structure *)
 
 
