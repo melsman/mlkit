@@ -660,12 +660,12 @@ type result = UserDeclarations.lexresult
 	exception LexerError (* raised if illegal leaf action tried *)
 end
 
-fun makeLexer yyinput = 
-let 
+fun makeLexer yyinput =
+let	val yygone0=1
 	val yyb = ref "\n" 		(* buffer *)
 	val yybl = ref 1		(*buffer length *)
 	val yybufpos = ref 1		(* location of next character to use *)
-	val yygone = ref 1		(* position in file of beginning of buffer *)
+	val yygone = ref yygone0	(* position in file of beginning of buffer *)
 	val yydone = ref false		(* eof found yet? *)
 	val yybegin = ref 1		(*Current 'start state' for lexer *)
 
