@@ -216,7 +216,7 @@ system with rpm's installed:
 
   5. Restart AOLserver.
 
-  6. Install data models
+  6. Install data models for demonstration programs
 
         # cd demo_lib/pgsql
         # psql
