@@ -1,5 +1,5 @@
 (* This file is auto-generated with Tools/GenOpcodes on *)
-(* Fri Oct 13 18:16:59 2000 *)
+(* Mon Oct 16 14:40:29 2000 *)
 signature OPCODES_KAM = 
   sig
     val ALLOC_N : int 
@@ -23,7 +23,7 @@ signature OPCODES_KAM =
     val SELECT_ENV_N : int 
     val SELECT_N : int 
     val STORE_N : int 
-    val STACK_ADDR_INF_BIT_N : int 
+    val STACK_ADDR_INF_BIT : int 
     val STACK_ADDR : int 
     val ENV_TO_ACC : int 
     val IMMED_INT : int 
@@ -39,6 +39,7 @@ signature OPCODES_KAM =
     val APPLY_FUN_JMP : int 
     val APPLY_FUN_JMP_NO_CLOS : int 
     val RETURN : int 
+    val RETURN_NO_CLOS : int 
     val C_CALL : int 
     val LABEL : int 
     val JMP_REL : int 

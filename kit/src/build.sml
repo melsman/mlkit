@@ -93,11 +93,15 @@ fun build_kam () =
   let
     fun enable s = KitKAM.Flags.lookup_flag_entry s := true
     fun disable s =  KitKAM.Flags.lookup_flag_entry s := false
+    val opts = ["statistics_after_optimisation","minimize_fixs","fix_conversion",
+		(*"contract",*) "specialize_recursive_functions", "eliminate_explicit_records",
+		"unbox_function_arguments"]
   in 
       disable "garbage_collection";
       disable "delete_target_files";
       disable "auto_import_basislib";
       disable "unbox_function_arguments";
+(*      List.app disable opts;*)
       enable "delay_assembly";
       enable "print_KAM_program";
       enable "print_lift_conv_program";
@@ -105,7 +109,7 @@ fun build_kam () =
       KitKAM.Flags.target_file_extension := ".uo"
 
 (*   ;  KitKAM.build_basislib() *)
-     ; KitKAM.comp "../test/switch.sml"
+     ; KitKAM.comp "../test/f2.sml"
 (*      ; KitKAM.install() *)
   end;
 
