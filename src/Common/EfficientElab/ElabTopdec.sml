@@ -4,9 +4,9 @@
 (*************************************************************)
 
 (*$ElabTopdec: TOPDEC_GRAMMAR ELABDEC ENVIRONMENTS STATOBJECT
-	MODULE_STATOBJECT MODULE_ENVIRONMENTS STRID SIGID
-	PARSE_INFO ELAB_INFO BASIC_IO PRETTYPRINT REPORT CRASH
-	FLAGS FINMAP ELABTOPDEC*)
+	MODULE_STATOBJECT MODULE_ENVIRONMENTS STRID SIGID NAME
+	ELAB_REPOSITORY PARSE_INFO ELAB_INFO PRETTYPRINT CRASH FLAGS
+	FINMAP ELABTOPDEC*)
 
 functor ElabTopdec
   (structure PrettyPrint : PRETTYPRINT
@@ -92,6 +92,14 @@ functor ElabTopdec
      sharing type ModuleEnvironments.sigid = IG.sigid
      sharing type ModuleEnvironments.funid = IG.funid
 
+   structure Name : NAME
+     sharing type Name.name = StatObject.TyName.name
+
+   structure ElabRep : ELAB_REPOSITORY
+     sharing type ElabRep.name = Name.name
+         and type ElabRep.ElabBasis = ModuleEnvironments.Basis
+	 and type ElabRep.funid = IG.funid
+
    structure ElabDec : ELABDEC
      sharing type ElabDec.PreElabDec = IG.dec
      sharing type ElabDec.PostElabDec = OG.dec
@@ -102,8 +110,6 @@ functor ElabTopdec
      sharing type ElabDec.Type = StatObject.Type
 
    structure FinMap : FINMAP
-   structure Report : REPORT
-     sharing type Report.Report = PrettyPrint.Report
    structure Flags : FLAGS
    structure Crash : CRASH
      ) : ELABTOPDEC  =
@@ -345,6 +351,23 @@ functor ElabTopdec
 	    traverse tyname_rigid [] (List.foldL insert_E trie0 Es)
     end (*local*)
 
+    (* ------------------------------------------------
+     * Match object in repository (for recompilation)
+     * ------------------------------------------------ *)
+
+    fun match_and_update_repository (funid,T',E') : unit =
+      let val N' = map TyName.name (TyName.Set.list T')
+	  val B' = B.plus_E(B.empty,E')
+	  val obj = (ElabRep.empty_infix_basis,B.empty,N',ElabRep.empty_infix_basis,B')
+      in case ElabRep.lookup_elab funid
+	   of Some (index,(_,_,N,_,B)) =>  (*names in N already marked gen. since the object is returned by lookup. *)
+	     let val _:{} = List.apply Name.mark_gen N'
+	         val _:{} = B.match(B',B)
+		 val _:{} = List.apply Name.unmark_gen N'
+	     in ElabRep.owr_elab(funid,index,obj)
+	     end
+	    | None => ElabRep.add_elab(funid,obj)
+      end
 
     fun map_Some_on_2nd (x,y) = (x,Some y)
       
@@ -403,13 +426,14 @@ functor ElabTopdec
 	    case B.lookup_funid B funid of
 	       Some Phi =>                                     (* the realisation that we annotate *)
 		(let val (T'E', rea) = Phi.match_via(Phi,E)    (* need also account for generative *)
-		     val (_,E') = Sigma.to_T_and_E T'E'        (* names in the functor body.       *)
-		     val out_i = typeConv(i,TypeInfo.FUNCTOR_APP_INFO rea)
+		     val (T',E') = Sigma.to_T_and_E T'E'        (* names in the functor body.       *)
+		     val out_i = typeConv(i,TypeInfo.FUNCTOR_APP_INFO (rea,E'))
 (*
 		     val _ = print ("**Applying " ^ OG.FunId.pr_FunId funid ^ "\n")
 		     val _ = (print "**Functor argument E = \n"; pr_Env E; print "\n")
 		     val _ = (print "**Functor result E = \n"; pr_Env E'; print "\n")
 *)
+		     val _:{} = match_and_update_repository (funid,T',E')
 		 in (E', OG.APPstrexp (out_i, funid, out_strexp)) 
 		 end handle No_match reason =>                       (* We bind the argument names in error_result *)
 		   let	                                             (* so that the argument signature returned is *)
@@ -534,8 +558,10 @@ functor ElabTopdec
        | IG.WHERE_TYPEsigexp (i, sigexp, explicittyvars, longtycon, ty) =>  
 	   let
 	     val (E, out_sigexp) = elab_sigexp' (B, sigexp)
+	     val _ = Level.push()
 	     val alphas = map TyVar.from_ExplicitTyVar explicittyvars
 	     val (tau, out_ty) = ElabDec.elab_ty (B.to_C B, ty)
+	     val _ = Level.pop()
 	     fun return (E_result, out_i) =
 	           (E_result, OG.WHERE_TYPEsigexp
 		                (out_i, out_sigexp, explicittyvars, longtycon, out_ty))
@@ -1140,79 +1166,56 @@ functor ElabTopdec
     and elab_topdec (B : Basis, topdec : IG.topdec)
           : (Basis * OG.topdec) =
       let
-	(*Rules 87-89 are quite alike and elab_topdec0 implements all
-	 three of them.  The difference is the kind of topdec (strdec,
-	 sigdec or fundec) and the kind of environment (E, G or F).  The
-	 only other difference is that there should be no tyvars check
-	 on a sigdec; this difference I ignore, i.e., a sigdec is
-	 checked.  Is that a problem?
-
-	 I'm sorry about this gigantic let, I couldn't get it to
-	 typecheck when elab_topdec and elab_topdec0 were declared with
-	 an `and' in between.*)
-
-	fun elab_topdec0
-	     (B : Basis)
-	     (i : IG.info, X : 'X, topdec_opt : IG.topdec Option)
-	     (*'X is an IG.strdec, IG.fundec, or IG.sigdec*)
-	     (elab_X : Basis * 'X -> 'EGF * 'out_X)
-	     (*'out_X is like 'X, except it is `OG.' instead of `IG.', and
-	      'EGF is an E, F, or G*)
-	     (B_cplus_EGF : Basis * 'EGF -> Basis)
-	     (EGF_tynames : 'EGF -> TyName.Set.Set)
-	     (B_from_T_and_EGF : TyName.Set.Set * 'EGF -> Basis)
-	     (Xtopdec : OG.info * 'out_X * OG.topdec Option -> OG.topdec)
-	     (*Xtopdec is OG.STRtopdec, OG.SIGtopdec or OG.FUNtopdec*)
-	     : Basis * OG.topdec =
-	  let
-	    val (EGF, out_X) = elab_X (B, X)
-	    val (B', out_topdec_opt) =
-	          elab_X_opt (B_cplus_EGF(B,EGF), topdec_opt)
-		    elab_topdec B.empty
-	    val B'' = B.plus (B_from_T_and_EGF (EGF_tynames EGF, EGF), B')
-	  in
-	    (*TODO: it may not be that smart to run through the whole
-	     basis with tyvarsB every time a new topdec is added, as I do here:
-	     04/12/1996 14:29. tho.*)
-	    (case B.tyvars' B'' of
-	       [] => (B'', Xtopdec (okConv i, out_X, out_topdec_opt))
-	     | criminals : (IG.DecGrammar.Ident.id * TyVar list) list =>
-		 let val tyvars = List.foldL (General.curry op @ o #2) [] criminals
-		 in
-		   (case List.all (is_Some o TyVar.to_ExplicitTyVar) tyvars of
-		      [] =>
-			(List.apply
-		         Type.instantiate_arbitrarily tyvars ;
+	fun deal_with_free_tyvars(i, []) = okConv i
+	  | deal_with_free_tyvars(i, criminals : (IG.DecGrammar.Ident.id * TyVar list) list) = 
+	  let val tyvars = List.foldL (General.curry op @ o #2) [] criminals
+	  in case List.all (is_Some o TyVar.to_ExplicitTyVar) tyvars 
+	       of [] => (List.apply Type.instantiate_arbitrarily tyvars ;
 			 Flags.warnings :=
-			   ("Free type variables are not allowed at top-level;\n\
-			    \see `The Definition of Standard ML (Revised)', section G.8.\n\
-			    \I substituted int for them in the type for "
-			    ^ pp_list (quote o IG.DecGrammar.Ident.pr_id o #1) criminals
-			    ^ ".\n")
-			   :: !Flags.warnings ;
-			 (B'', Xtopdec (okConv i, out_X, out_topdec_opt)))
-		    | unguarded_tyvars : TyVar list =>
-			(B.bogus,
-			 Xtopdec (errorConv
-				    (i, ErrorInfo.UNGUARDED_TYVARS unguarded_tyvars),
-				    (*one could extend the error info to also contain
-				     the criminal id's?*)
-				  out_X, out_topdec_opt)))
-		 end)
+			 ("Free type variables are not allowed at top-level;\n\
+			  \see `The Definition of Standard ML (Revised)', section G.8.\n\
+			  \I substituted int for them in the type for "
+			  ^ pp_list (quote o IG.DecGrammar.Ident.pr_id o #1) criminals
+			  ^ ".\n")
+			 :: !Flags.warnings ;
+			 okConv i)
+		| unguarded_tyvars : TyVar list =>
+		 errorConv (i, ErrorInfo.UNGUARDED_TYVARS unguarded_tyvars)
+	               (* one could extend the error info to also contain
+			* the criminal id's *)
+
 	  end
       in
-	(case topdec of
-	   IG.STRtopdec strdec_etc =>
-	     elab_topdec0 B strdec_etc elab_strdec B.cplus_E
-	       E.tynames B.from_T_and_E OG.STRtopdec
-	 | IG.SIGtopdec sigdec_etc =>
-	     elab_topdec0 B sigdec_etc elab_sigdec B.cplus_G
-	       G.tynames B.from_T_and_G OG.SIGtopdec
-	 | IG.FUNtopdec fundec_etc =>
-	     elab_topdec0 B fundec_etc elab_fundec B.cplus_F
-	       F.tynames B.from_T_and_F OG.FUNtopdec)
+	case topdec 
+	  of IG.STRtopdec (i, strdec, topdec_opt) =>                                      (* 87 *)
+	    let val (E, out_strdec) = elab_strdec(B, strdec)
+	        val (B', out_topdec_opt) = elab_topdec_opt(B.cplus_E(B,E), topdec_opt)
+		val B'' = B.plus(B.from_T_and_E(E.tynames E, E), B')
+		val out_i = deal_with_free_tyvars(i, E.tyvars' E)
+	    in (B'', OG.STRtopdec(out_i, out_strdec, out_topdec_opt))
+	    end
+	   | IG.SIGtopdec (i, sigdec, topdec_opt) =>                                      (* 88 *)
+	    let val (G, out_sigdec) = elab_sigdec(B, sigdec)
+	        val (B', out_topdec_opt) = elab_topdec_opt(B.cplus_G(B,G), topdec_opt)
+		val B'' = B.plus(B.from_T_and_G(G.tynames G, G), B')
+	    in (B'', OG.SIGtopdec(okConv i, out_sigdec, out_topdec_opt))
+	    end
+	   | IG.FUNtopdec (i, fundec, topdec_opt) =>                                      (* 89 *)
+	    let val (F, out_fundec) = elab_fundec(B, fundec)
+	        val (B', out_topdec_opt) = elab_topdec_opt(B.cplus_F(B,F), topdec_opt)
+		val B'' = B.plus(B.from_T_and_F(F.tynames F, F), B')   (* Actually, it holds that *)
+		val out_i = deal_with_free_tyvars(i, F.tyvars' F)      (* tynames F \ (T of B) = {} *)
+	    in (B'', OG.FUNtopdec(out_i, out_fundec, out_topdec_opt))
+	    end
       end (*let*)
-  
+
+    and elab_topdec_opt (B : Basis, topdec_opt : IG.topdec Option) : (Basis * OG.topdec Option) =
+      case topdec_opt
+	of Some topdec => let val (B', out_topdec) = elab_topdec(B, topdec)
+			  in (B', Some out_topdec)
+			  end
+	 | None => (B.empty, None)
+ 
     (********
     Printing functions
     ********)
