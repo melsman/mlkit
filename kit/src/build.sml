@@ -5,6 +5,7 @@ in val cd = OS.FileSys.chDir
    fun cdsrc() = cd srcdir; 
    val pwd = OS.FileSys.getDir
    fun mk() = (cdsrc(); CM.make())
+   fun get_src_dir() = srcdir
 end;
 
 local
@@ -35,6 +36,23 @@ local
      if OS.Process.system ("echo 'CM.make();' | sml") = OS.Process.success then () 
      else die "build_kittester: ``echo 'CM.make();' | sml'' failed";
      cdsrc())
+
+  fun build_kitgen_opcodes() =
+    (print "\n ** Building kitgen_opcodes, a program for generating source files for opcodes and \n";
+     print " ** built in C primitives **\n\n";
+     cd "Tools/GenOpcodes";
+     if OS.Process.system ("echo 'CM.make();' | sml") = OS.Process.success then () 
+     else die "build_kitgen_opcodes: ``echo 'CM.make();' | sml'' failed";
+     cdsrc())
+
+  fun gen_opcodes() =
+    (print "\n ** Building source files for opcodes and built in C primitives ** \n\n";
+     cd "../bin";
+     if OS.Process.system ("kitgen_opcodes " ^ (get_src_dir())) = OS.Process.success then 
+       ()
+     else 
+       die "gen_opcodes failed";
+     cdsrc())
       
   fun build_kit() = 
     (print "\n ** Building the ML Kit compiler **\n\n";
@@ -44,6 +62,8 @@ in
   val _ = 
 	((* build_runtime("RuntimePaML");
 	 build_runtime("Runtime"); *)
+	 build_kitgen_opcodes();
+	 gen_opcodes();
 	 build_runtime("RuntimeWithGC");
 (*
 	 build_rp2ps();
@@ -52,30 +72,41 @@ in
 	 build_kit())
 end ;
 
-(*
+
 (* This is only temporary; 09/02/1999, Niels *)
-val _ = 
+fun build_x86 () = 
   let
     fun enable s = KitX86.Flags.lookup_flag_entry s := true
     fun disable s =  KitX86.Flags.lookup_flag_entry s := false
   in 
       disable "garbage_collection";
       disable "delete_target_files";
+      disable "unbox_function_arguments";
+      enable "print_clos_conv_program";
       KitX86.build_basislib()
 (*      ; KitX86.install() *)
   end;
-*)
+
 
 (* This is only temporary; 09/02/1999, Niels *)
-val _ = 
+fun build_kam () =
   let
     fun enable s = KitKAM.Flags.lookup_flag_entry s := true
     fun disable s =  KitKAM.Flags.lookup_flag_entry s := false
   in 
       disable "garbage_collection";
       disable "delete_target_files";
+      disable "auto_import_basislib";
+      disable "unbox_function_arguments";
+      enable "delay_assembly";
       enable "print_KAM_program";
       enable "print_lift_conv_program";
-      KitKAM.build_basislib()
+      enable "chat";
+      KitKAM.Flags.target_file_extension := ".uo"
+
+(*   ;  KitKAM.build_basislib() *)
+     ; KitKAM.comp "../test/hello.sml"
 (*      ; KitKAM.install() *)
   end;
+
+val _ = build_kam()

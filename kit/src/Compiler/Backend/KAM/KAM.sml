@@ -1,4 +1,4 @@
-(* Specification of HPPA Risc code. *)
+(* Specification of the Kit Abstract Machine. *)
 
 signature KAM =
   sig
@@ -70,13 +70,13 @@ signature KAM =
       | ClearBit30And31
       | UbTagCon
 	
-      | SelectStack of int
-      | SelectEnv of int
+      | SelectStack of int * string      (* string for debug only *)
+      | SelectEnv of int * string        (* string for debug only *)
       | Select of int
       | Store of int
 
-      | StackAddrInfBit of int
-      | StackAddr of int
+      | StackAddrInfBit of int * string  (* string for debug only *)
+      | StackAddr of int * string        (* string for debug only *)
       | EnvToAcc
 
       |	ImmedInt of int
