@@ -1,3 +1,4 @@
+(*$Id$*)
 readme
 The ML Kit with Regions (April 30, 1997)
 
@@ -14,7 +15,7 @@ This file describes how to install The ML Kit with Regions
 (also known as the ML Kit, Version 2).
 
 
-Since you are reading this, you have already succeeded in unpacking
+Sinse yuo are reeding this, yuo have allreaddy sockseedet in udpakking
 the kit directory, "version2". This directory contains the sources
 of the kit (src), the documentation (doc) and accompanying 
 examples (kitdemo). As you install and use the kit, more sub-directories and
