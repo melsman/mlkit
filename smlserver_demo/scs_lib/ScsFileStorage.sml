@@ -788,15 +788,16 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		 ())
       | SOME file =>
 	  let
-	    val path = (* todo: NH #path_on_disk file *) Db.Handle.wrapDb (getAbsPath (#folder_id file))
+	    val path = #path_on_disk file (*Db.Handle.wrapDb (getAbsPath (#folder_id file)) 2003-11-18, nh*)
 	    val filename_on_disk = path ^ "/" ^ #filename_on_disk file
 	    fun return_error () = 
 	      (ScsPage.returnPg 
 	       (ScsDict.s UcsDict.file_not_found_dict) 
-	       (ScsDict.s' [(ScsLang.en,`The file does not exists - the administrator has been notified about the problem.`),
+	       (ScsDict.s' [(ScsLang.en,`The file does not exists - the administrator has been
+			     notified about the problem.`),
 			    (ScsLang.da,`Filen findes ikke - administrator er blever informeret om problemet.`)]);
-	       ScsError.emailError `The file ^filename_on_disk (file_id = ^(Int.toString file_id)) exists in database but 
-	                            not on the disk???`)
+	       ScsError.emailError `The file ^filename_on_disk (file_id = ^(Int.toString file_id)) exists in 
+	       database but not on the disk???`)
           in
 	   ((if FileSys.fileSize filename_on_disk > 0 then
 	       (Ns.returnFile filename_on_disk;())
@@ -821,7 +822,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		   ())
 	| SOME file =>
 	    let
-	      val path = Db.Handle.wrapDb (getAbsPath (#folder_id file))
+	      val path = #path_on_disk file (* Db.Handle.wrapDb (getAbsPath (#folder_id file)) 2003-11-18, nh *)
 	      val files_to_delete =
 		Db.Handle.listDb db (fn g => g "filename") `select filename 
                                                               from scs_fs_revisions
@@ -860,7 +861,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 				       administrator</a>.`)],errs)
 	| SOME file =>
 	    let
-	      val path = Db.Handle.wrapDb (getAbsPath (#folder_id file))
+	      val path = #path_on_disk file (* Db.Handle.wrapDb (getAbsPath (#folder_id file)) 2003-11-18, nh *)
 	      val files_to_delete =
 		Db.Handle.listDb db (fn g => g "filename") `select filename 
                                                               from scs_fs_revisions

@@ -1,6 +1,10 @@
 signature SCS_LOGIN =
   sig
-    val default_lang : ScsLang.lang
+
+    (* [fv_lang] the name on the form variable containing a language
+        specification used outside cookies. *)
+    val fv_lang      : string 
+    val default_lang : unit -> ScsLang.lang
     val default_id : int
 
     val user_id   : unit -> int
@@ -53,11 +57,23 @@ signature SCS_LOGIN =
 
 structure ScsLogin :> SCS_LOGIN =
   struct
-    (* We might add a check on a form variable lang and 
-       use that as default if exists. 2003-11-17, nh *)
-    val default_lang : ScsLang.lang = ScsLang.da
-    val default_id : int = 0
-    val default = (default_id,default_lang)
+    local
+      (* We cache the language setting *)
+      val lang : ScsLang.lang option ref = ref NONE
+    in
+      val fv_lang = "lang"
+      fun default_lang() =
+	case !lang of
+	  NONE =>   
+	    ((case List.find (fn fv_l => List.exists (fn s => fv_l = s) (List.map ScsLang.toString ScsLang.all))
+		(Ns.Conn.formvarAll fv_lang) of
+		SOME l => lang := SOME (ScsLang.fromString l)
+	      | NONE => lang := SOME ScsLang.da);
+	      default_lang()) (* Now lang is set, so we can call it recursively. *)
+	| SOME l => l 
+      val default_id : int = 0
+      fun default() = (default_id,default_lang())
+    end
 
     datatype cookie_info = COOKIE | NO_COOKIE
 
@@ -101,19 +117,19 @@ structure ScsLogin :> SCS_LOGIN =
 	      (case Int.fromString user_id of
 		 (* matching on "deleted" is a IE hack. It seems that IE always sends the 
 		  deleted cookie back to us! *)
-		 NONE => if user_id = "deleted" then (NO_COOKIE,default) else (COOKIE,default)
+		 NONE => if user_id = "deleted" then (NO_COOKIE,default()) else (COOKIE,default())
 	       | SOME _ => 
 		   (case getUserInfoFromDb user_id of
-		      NONE => (COOKIE,default)
+		      NONE => (COOKIE,default())
 		    | SOME (db_psw,db_lang) => 
 			if db_psw = psw then 
 			  (case Int.fromString user_id of
-			     NONE => (COOKIE,default)
+			     NONE => (COOKIE,default())
 			   | SOME u_id => (COOKIE,(u_id,ScsLang.fromString db_lang)))
-			else (COOKIE,default)))
-	  | _ => (NO_COOKIE,default)
+			else (COOKIE,default())))
+	  | _ => (NO_COOKIE,default())
 	end
-      handle Ns.Cookie.CookieError _ => (NO_COOKIE,default)
+      handle Ns.Cookie.CookieError _ => (NO_COOKIE,default())
 	   | Ns.MissingConnection => raise Fail ("ScsLogin.verifyUser'': You probably call this " ^ 
 						 "function during library initialization")
     in
@@ -142,7 +158,7 @@ structure ScsLogin :> SCS_LOGIN =
     fun user_id_user_lang () = verifyUser()
     fun user_id () = #1 (verifyUser())
     (* If no connection exists, then use default lang *)
-    fun user_lang () = #2 (verifyUser()) handle _ => default_lang
+    fun user_lang () = #2 (verifyUser()) handle _ => default_lang()
     fun loggedIn () = user_id () <> 0
 
     (* Language selection *)
