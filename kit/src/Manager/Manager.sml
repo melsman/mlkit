@@ -224,11 +224,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	val _ = if has_ext(absprjid_s, "pm") then ()
 		else error ("Your project file " ^ quot absprjid_s ^ " does not have extension `pm'")
 
-	fun is_whitesp #"\n" = true
-	  | is_whitesp #" " = true
-	  | is_whitesp #"\t" = true
-	  | is_whitesp _ = false
-
 	fun is_symbol #":" = true
 	  | is_symbol #"[" = true
 	  | is_symbol #"]" = true
@@ -239,12 +234,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  else NONE
 	  | lex_symbol nil = NONE
 
-	fun lex_whitesp (all as c::rest) = if is_whitesp c then lex_whitesp rest
+	fun lex_whitesp (all as c::rest) = if Char.isSpace c then lex_whitesp rest
 					   else all 
 	  | lex_whitesp [] = []
 
 	fun lex_string (c::rest, acc) = if is_symbol c then (implode(rev acc), c::rest)
-					else if is_whitesp c then (implode(rev acc), rest)
+					else if Char.isSpace c then (implode(rev acc), rest)
 					     else lex_string (rest, c::acc)
 	  | lex_string ([], acc) = (implode(rev acc), [])
 
