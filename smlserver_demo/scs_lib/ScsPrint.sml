@@ -1,6 +1,6 @@
 signature SCS_PRINT =
   sig
-    datatype doc_type = LaTeX
+      datatype doc_type = LaTeX
     val docTypeToString      : doc_type -> string
     val docTypeFromString    : string -> doc_type
     val allDocTypes          : doc_type list
@@ -8,16 +8,25 @@ signature SCS_PRINT =
 
     val allPrinters   : (string * string) list
 
+    (* [returnAsPDF doc_type sources] returns the documents as a single pdf 
+       file *)
+    val returnAsPDF : doc_type -> quot list -> Ns.Conn.status
+
     (* Widgets *)
     val choosePrinter : string -> quot * quot
 
-    val printForm     : string -> string -> string -> string -> doc_type -> quot list -> quot
+    val printForm     : string -> string -> string -> string -> doc_type 
+      -> quot list -> quot
 
     (* Actual Printing *)
-    (* bug: must also have an target_url so that you can get from the print-response page back to the origin *)
-    val printDoc      : string -> string -> string -> string -> doc_type -> quot -> string -> Ns.status
+    (* bug: must also have an target_url so that you can get from the 
+            print-response page back to the origin *)
+    val printDoc      : string -> string -> string -> string -> doc_type 
+      -> quot -> string -> Ns.status
 
-    val printDocs     : (string * string * string * string * doc_type * quot) list -> string -> Ns.status
+    val printDocs     : 
+      (string * string * string * string * doc_type * quot) list -> string 
+      -> Ns.status
 
   end
 
@@ -28,12 +37,14 @@ structure ScsPrint :> SCS_PRINT =
     fun docTypeFromString doc_type =
       case doc_type of
 	"LaTeX" => LaTeX
-      | _ => ScsError.panic `ScsPrint.docTypeFromString.doc_type ^doc_type not supported.`
+      | _ => ScsError.panic 
+        `ScsPrint.docTypeFromString.doc_type ^doc_type not supported.`
     val allDocTypes = [LaTeX]
     fun ppAllDocTypes() = List.map docTypeToString allDocTypes 
 
     val allPrinters = List.map (fn p => (p,p)) 
       ["p151","p151d","p152","p152d","p177","p177d","p177t","p233","p233d","p233t", "p125", "p125a"]
+
 
     (* Generate file which can be printed and previewed. *)
     (* Files are stored in the scs_print_dir directory.  *)
@@ -194,21 +205,38 @@ structure ScsPrint :> SCS_PRINT =
       (* Should find printers for the user logged in *)
       fun choosePrinter n = (`Choose printer`, ScsWidget.select allPrinters n)
 
+
       fun printForm category note on_what_table on_what_id doc_type sources =
-	ScsWidget.formBox "/scs/print/scs-print.sml" 
-	[("submit", "Print"),("submit","Update Source")] 
-	(`You may change the source below and then either print the 
-	 changed document or update the preview link.<p>` ^^ 
-	 `<a href="^(genPDF doc_type sources)">preview</a><br>` ^^
-	 (Html.inhidden "doc_type" (docTypeToString doc_type)) ^^
-	 (Html.inhidden "category" category) ^^
-	 (Html.inhidden "on_what_table" on_what_table) ^^
-	 (Html.inhidden "on_what_id" on_what_id) ^^
-	 (Html.inhidden "note" note) ^^
-(*
-	 (ScsWidget.largeTa "source" source) ^^
-*)
- `<p>` ^^
-	 (ScsWidget.oneLine (choosePrinter "printer")))
-      end
-  end
+	let
+	  val timer = Timer.startRealTimer()
+	  val pdf = genPDF doc_type sources
+	  val note_text = (Time.toString o Timer.checkRealTimer) timer
+	in
+	  ScsWidget.formBox "/scs/print/scs-print.sml" 
+	  [("submit", "Print"),("submit","Update Source")] 
+	  (`You may change the source below and then either print the 
+	   changed document or update the preview link.<p>` ^^ 
+	   `<a href="^(pdf)">preview</a><br>` ^^
+	   (Html.inhidden "doc_type" (docTypeToString doc_type)) ^^
+	   (Html.inhidden "category" category) ^^
+	   (Html.inhidden "on_what_table" on_what_table) ^^
+	   (Html.inhidden "on_what_id" on_what_id) ^^
+	   (Html.inhidden "note" note) ^^
+  (*
+	   (ScsWidget.largeTa "source" source) ^^
+  *)
+   `<p>` ^^
+   `<p>^note_text sek</p>` ^^
+	   (ScsWidget.oneLine (choosePrinter "printer")))
+	end
+
+      fun returnAsPDF doc_type sources =
+	let
+	  val pdf = genPDF doc_type sources
+	in
+	  Ns.returnFile pdf
+        end
+
+    end (* of local block *)
+
+  end (* of structure ScsPrint *)
