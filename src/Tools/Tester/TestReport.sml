@@ -21,7 +21,11 @@ signature TEST_REPORT =
 
     val add_gc_line : string * bool -> unit   (* `name' and `ok' *)
 
+    val add_gengc_line : string * bool -> unit   (* `name' and `ok' *)
+
     val add_gc_profile_line : string * bool -> unit   (* `name' and `ok' *)
+
+    val add_gengc_profile_line : string * bool -> unit   (* `name' and `ok' *)
 
     val add_tags_line : string * bool -> unit (* `name' and `ok' *)
 
@@ -44,7 +48,9 @@ structure TestReport : TEST_REPORT =
     val runtime_bare_lines : (string * bool) list ref = ref nil
     val profile_lines : (string * bool) list ref = ref nil
     val gc_lines : (string * bool) list ref = ref nil
+    val gengc_lines : (string * bool) list ref = ref nil
     val gc_prof_lines : (string * bool) list ref = ref nil
+    val gengc_prof_lines : (string * bool) list ref = ref nil
     val tags_lines : (string * bool) list ref = ref nil
     val tags_prof_lines : (string * bool) list ref = ref nil
     val log_lines : string list ref = ref nil
@@ -53,13 +59,16 @@ structure TestReport : TEST_REPORT =
 		    compout_lines := nil; comptime_lines := nil; 
 		    profile_lines := nil; log_lines := nil;
 		    gc_lines := nil; gc_prof_lines := nil;
+		    gengc_lines := nil; gengc_prof_lines := nil;
 		    tags_lines := nil; tags_prof_lines := nil)
       
     fun add_runtime_line l = runtime_lines := l :: !runtime_lines
     fun add_runtime_bare_line l = runtime_bare_lines := l :: !runtime_bare_lines
     fun add_profile_line l = profile_lines := l :: !profile_lines
     fun add_gc_line l = gc_lines := l :: !gc_lines
+    fun add_gengc_line l = gengc_lines := l :: !gengc_lines
     fun add_gc_profile_line l = gc_prof_lines := l :: !gc_prof_lines
+    fun add_gengc_profile_line l = gengc_prof_lines := l :: !gengc_prof_lines
     fun add_tags_line l = tags_lines := l :: !tags_lines
     fun add_tags_profile_line l = tags_prof_lines := l :: !tags_prof_lines
     fun add_comptime_line l = comptime_lines := l :: !comptime_lines
@@ -373,6 +382,36 @@ structure TestReport : TEST_REPORT =
 		table l3
 	      end
 
+	    fun gengc_section [] = ()
+	      | gengc_section (l:(string * bool) list) =
+	      let
+		val (l1,l2,l3) = split_lines l
+	      in
+		section "Generational Garbage Collection";
+		outln "This section shows tests of the compile with generational garbage collection enabled.";
+		outln "See Section ``Log File'' for details of errors.";
+		outln "";
+		outln "\\vspace{4mm}";
+		table l1;
+		table l2;
+		table l3
+	      end
+
+	    fun gengc_prof_section [] = ()
+	      | gengc_prof_section (l:(string * bool) list) =
+	      let
+		val (l1,l2,l3) = split_lines l
+	      in
+		section "Generational Garbage Collection and Profiling";
+		outln "This section shows tests of the compile with generational garbage collection and profiling enabled.";
+		outln "See Section ``Log File'' for details of errors.";
+		outln "";
+		outln "\\vspace{4mm}";
+		table l1;
+		table l2;
+		table l3
+	      end
+
 	    fun tags_section [] = ()
 	      | tags_section (l:(string * bool) list) =
 	      let
@@ -431,6 +470,8 @@ structure TestReport : TEST_REPORT =
 	tags_prof_section(rev(!tags_prof_lines));
 	gc_section(rev(!gc_lines));
 	gc_prof_section(rev(!gc_prof_lines));
+	gengc_section(rev(!gc_lines));
+	gengc_prof_section(rev(!gc_prof_lines));
 	testfile_section();
 	logsection (rev(!log_lines)); 
 	endenv "document"; 

@@ -15,6 +15,7 @@ by a list of tokens. The following tokens are supported:
  prof           ; also compile and compare runtime output with 
                   profiling enabled
  gc             ; also activate garbage collection
+ gengc          ; also activate generational collection
  ue             ; expect uncaught exception
 
 Test files may contain Standard ML like comments.
@@ -55,76 +56,76 @@ anoq_Exception.sml
 danwang.pm                    tc
 testmatc.sml        ccl
 excon.sml
-dangle4.sml                   gc prof
+dangle4.sml                   gc gengc prof
 ftv.sml
 
 (* Tests of some benchmark programs *)
 
-kitfib35.sml            tx    gc prof   nobasislib
-kitdangle.sml           tx       prof   nobasislib
-kitdangle3.sml          tx       prof   nobasislib
-kitreynolds2.sml        tx    gc prof
-kitreynolds3.sml        tx    gc prof
-kitloop2.sml            tx    gc prof
-kittmergesort.sml       tx tc gc prof
-kitqsort.sml            tx tc gc prof
-kitmandelbrot.sml       tx tc gc prof
-kitlife35u.sml          tx tc gc prof
-klife_eq.sml            tx tc gc prof
-kitkbjul9.sml           tx tc gc prof
-kkb_eq.sml              tx tc gc prof
-kkb36c.sml              tx tc gc prof
-kitsimple.sml           tx tc gc prof
-fft.sml                 tx tc gc prof
-vliw.sml                tx tc gc prof
-lexgen.sml              tx tc gc prof
-mlyacc.pm               tx tc gc prof
-logic.pm                tx tc gc prof
-barnes-hut.pm           tx tc gc prof
-nucleic.pm              tx tc gc prof
-ray.pm                  tx tc gc prof
-ratio-regions.sml       tx tc gc prof
-kitmolgard.sml          tx tc gc prof
-msort.pm                tx tc gc prof
-tststrcmp.sml                 gc prof
-FuhMishra.pm            tx tc gc prof
+kitfib35.sml            tx    gc gengc prof   nobasislib
+kitdangle.sml           tx             prof   nobasislib
+kitdangle3.sml          tx             prof   nobasislib
+kitreynolds2.sml        tx    gc gengc prof
+kitreynolds3.sml        tx    gc gengc prof
+kitloop2.sml            tx    gc gengc prof
+kittmergesort.sml       tx tc gc gengc prof
+kitqsort.sml            tx tc gc gengc prof
+kitmandelbrot.sml       tx tc gc gengc prof
+kitlife35u.sml          tx tc gc gengc prof
+klife_eq.sml            tx tc gc gengc prof
+kitkbjul9.sml           tx tc gc gengc prof
+kkb_eq.sml              tx tc gc gengc prof
+kkb36c.sml              tx tc gc gengc prof
+kitsimple.sml           tx tc gc gengc prof
+fft.sml                 tx tc gc gengc prof
+vliw.sml                tx tc gc gengc prof
+lexgen.sml              tx tc gc gengc prof
+mlyacc.pm               tx tc gc gengc prof
+logic.pm                tx tc gc gengc prof
+barnes-hut.pm           tx tc gc gengc prof
+nucleic.pm              tx tc gc gengc prof
+ray.pm                  tx tc gc gengc prof
+ratio-regions.sml       tx tc gc gengc prof
+kitmolgard.sml          tx tc gc gengc prof
+msort.pm                tx tc gc gengc prof
+tststrcmp.sml                 gc gengc prof
+FuhMishra.pm            tx tc gc gengc prof
 
 (* Tests of dynamic semantics and the Basis Library *)
 
-testdyn1.sml               tc gc prof
-check_arrays.sml              gc prof
-array.sml                     gc prof
-array2.sml                    gc prof
-general.sml                   gc prof
-int.sml                       gc prof
-int_2.sml                     gc prof
-int31.sml                     gc prof
-int31_2.sml                   gc prof 
-int32.sml                     gc prof
-int32_2.sml                   gc prof
-list.sml                      gc prof
-listpair.sml                  gc prof
-string.sml                    gc prof
-stringcvt.sml                 gc prof
-textio.sml                    gc prof
-vector.sml                    gc prof
-word8vector.sml               gc prof
-word8array.sml                gc prof
-bytechar.sml                  gc prof
-time.sml                      gc prof
-math.sml                      gc prof    (* ok, but not quite the 
-                                            semantics of the basis 
-                                            library specification *)
-listsort.sml                  gc prof
-date.sml                      gc prof
-timer.sml                     gc prof
-unixpath.sml                  gc prof
-cmdline.sml                   gc prof
-filesys.sml                   gc prof    (* See test/README *)
-real.sml                      gc prof
-word.sml                      gc prof
-word8.sml                     gc prof
-word31.sml                    gc prof
-word32.sml                    gc prof
-regexp1.sml                   gc prof
-regexp2.sml                   gc prof
+testdyn1.sml               tc gc gengc prof
+check_arrays.sml              gc gengc prof
+array.sml                     gc gengc prof
+array2.sml                    gc gengc prof
+general.sml                   gc gengc prof
+int.sml                       gc gengc prof
+int_2.sml                     gc gengc prof
+int31.sml                     gc gengc prof
+int31_2.sml                   gc gengc prof 
+int32.sml                     gc gengc prof
+int32_2.sml                   gc gengc prof
+list.sml                      gc gengc prof
+listpair.sml                  gc gengc prof
+string.sml                    gc gengc prof
+stringcvt.sml                 gc gengc prof
+textio.sml                    gc gengc prof
+vector.sml                    gc gengc prof
+word8vector.sml               gc gengc prof
+word8array.sml                gc gengc prof
+bytechar.sml                  gc gengc prof
+time.sml                      gc gengc prof
+math.sml                      gc gengc prof    (* ok, but not quite the 
+                                                  semantics of the basis 
+                                                  library specification *)
+listsort.sml                  gc gengc prof
+date.sml                      gc gengc prof
+timer.sml                     gc gengc prof
+unixpath.sml                  gc gengc prof
+cmdline.sml                   gc gengc prof
+filesys.sml                   gc gengc prof    (* See test/README *)
+real.sml                      gc gengc prof
+word.sml                      gc gengc prof
+word8.sml                     gc gengc prof
+word31.sml                    gc gengc prof
+word32.sml                    gc gengc prof
+regexp1.sml                   gc gengc prof
+regexp2.sml                   gc gengc prof

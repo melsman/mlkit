@@ -788,6 +788,7 @@ val _ = add_bool_entry {long="tag_pairs", short=NONE, item=ref false,
 
 local
   val gc = ref false
+  val gengc = ref false
   fun off() = (gc := false; 
 	       preserve_tail_calls := false;
 	       dangling_pointers := true;
@@ -796,6 +797,10 @@ local
 	      preserve_tail_calls := true;	      
 	      dangling_pointers := false;
 	      tag_values := true) 
+  fun off_gengc() = (off(); (* We also turn gc off *)
+		     gengc := false)
+  fun on_gengc() = (on(); (* Gen GC needs gc to be turned on as well *)
+		    gengc := true) 
 in
   val _ = add_bool_action_entry
     {long="garbage_collection", menu=["Control", "garbage collection"], 
@@ -811,6 +816,12 @@ in
       \long as the closure. Moreover, enabling garbage\n\
       \collection implicitly enables the preservation of tail\n\
       \calls (see the option ``preserve_tail_calls''.)"}
+  val _ = add_bool_action_entry
+    {long="generational_garbage_collection", menu=["Control", "generational garbage collection"], 
+     item=gengc, on=on_gengc, off=off_gengc, short=SOME "gengc",
+     desc="Enable generational garbage collection. Same as option\n\
+          \garbage collection except that two generations are used\n\
+          \for each region."}
 end
 
 local

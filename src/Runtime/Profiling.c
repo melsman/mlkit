@@ -360,16 +360,16 @@ AllocatedSpaceInARegion(Ro *rp)
   return;
 }
 
-/* Prints all pages in the region. */
-void 
-PrintRegion(Region r)
-{ 
+/* Prints all pages in the generation */
+void
+PrintGen(Gen *gen)
+{
   int i;
-  Klump *p;
-  if ( r )
+  Rp *p;
+  if ( gen )
     {
-      fprintf(stderr,"\nAddress of Ro %0x, First free word %0x, Border of region %0x\n     ",r,r->a,r->b);
-      for ( p = clear_rtype(r->fp) , i = 1 ; p ; p = p->n , i++ ) 
+      fprintf(stderr,"\n  Address of Gen %0x, First free word %0x, Border of region %0x\n     ",gen,gen->a,gen->b);
+      for ( p = clear_fp(gen->fp) , i = 1 ; p ; p = p->n , i++ ) 
 	{
 	  fprintf(stderr,"-->Page%2d:%d",i,p);
 	  if (i%3 == 0)
@@ -377,6 +377,18 @@ PrintRegion(Region r)
 	}
       fprintf(stderr,"\n");
     }
+}
+
+/* Prints all pages in the region. */
+void 
+PrintRegion(Region r)
+{ 
+  fprintf(stderr,"\nAddress of Ro %0x\n     ",r);
+
+  PrintGen(&(r->g0));
+#ifdef ENABLE_GEN_GC
+  PrintGen(&(r->g1));
+#endif /* ENABLE_GEN_GC */
 }
 
 void 
@@ -484,7 +496,7 @@ printProfTab()
 void 
 Statistics()
 { 
-  Klump *ptr;
+  Rp *ptr;
   int i,ii;
   double Mb = 1024.0*1024.0;
 
@@ -615,12 +627,13 @@ pp_finite_region (FiniteRegionDesc *frd)
  * region on screen.                                *
  *--------------------------------------------------*/
 void 
-pp_infinite_region (Region r) 
+pp_infinite_region_gen (Gen *gen) 
 {
   ObjectDesc *fObj;
-  Klump *rp;
-  r = clearStatusBits(r);
-  for( rp = clear_rtype(r->fp) ; rp ; rp = rp->n ) 
+  Rp *rp;
+
+  fprintf(stderr,"Generation %d at address %x\n", generation(*gen),gen);
+  for( rp = clear_fp(gen->fp) ; rp ; rp = rp->n ) 
     {
       fObj = (ObjectDesc *) (((int *)rp)+HEADER_WORDS_IN_REGION_PAGE);
       while ( ((int *)fObj < ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
@@ -633,6 +646,20 @@ pp_infinite_region (Region r)
   return;
 }
 
+void 
+pp_infinite_region (Region r) 
+{
+  r = clearStatusBits(r);
+
+  fprintf(stderr,"Region %d\n", r->regionId);
+  pp_infinite_region_gen(&(r->g0));
+#ifdef ENABLE_GEN_GC
+  pp_infinite_region_gen(&(r->g1));  
+#endif /* ENABLE_GEN_GC */
+
+  return;
+}
+
 /*---------------------------------------------------*
  * This function prints the contents of all infinite *
  * regions on screen.                                *
@@ -640,24 +667,11 @@ pp_infinite_region (Region r)
 void 
 pp_infinite_regions() 
 {
-  ObjectDesc *fObj;
-  Klump *rp;
   Region r;
 
   for ( r = TOP_REGION ; r ; r = r->p ) 
-    {
-      fprintf(stderr,"Region %d\n", r->regionId);
-      for( rp = clear_rtype(r->fp) ; rp ; rp = rp->n) 
-	{
-	  fObj = (ObjectDesc *) (((int *)rp)+HEADER_WORDS_IN_REGION_PAGE);
-	  while ( ((int *)fObj < ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
-		  && (fObj->atId!=notPP) ) 
-	    {
-	      fprintf(stderr,"ObjAtId %d, Size: %d\n", fObj->atId, fObj->size);
-	      fObj=(ObjectDesc *)(((int*)fObj)+((fObj->size)+sizeObjectDesc)); /* Find next object. */
-	    }
-	}
-    }
+    pp_infinite_region(r);
+  
   return;
 }
 
@@ -767,6 +781,77 @@ AlarmHandler()
 /*-------------------------------------------------------------------*
  * ProfileTick: Update the tick list by traversing all regions.      *
  *-------------------------------------------------------------------*/
+
+static inline void 
+profileObj(ObjectDesc *fObj, ObjectList *newObj, RegionList *newRegion,
+	   int *infiniteObjectUse, int *infiniteObjectDescUse) 
+{
+  if ( lookupObjectListTable(fObj->atId) == NULL ) 
+    {
+      // Allocate new object
+      newObj = (ObjectList *)allocMemProfiling_xx(sizeof(ObjectList));
+      newObj->atId = fObj->atId;
+      newObj->size = fObj->size;
+      newObj->nObj = newRegion->fObj;
+      newRegion->fObj = newObj;
+      newRegion->used += fObj->size;
+      newRegion->noObj++;
+      insertObjectListTable(fObj->atId, newObj);
+    } 
+  else 
+    {
+      newObj = lookupObjectListTable(fObj->atId);
+      newObj->size += fObj->size;
+      newRegion->used += fObj->size;
+    }
+  *infiniteObjectUse += fObj->size;
+  *infiniteObjectDescUse += sizeObjectDesc;
+}
+
+static inline void 
+profileGen(Gen *gen, ObjectList *newObj, RegionList *newRegion, 
+	   int *infiniteObjectUse, int *infiniteObjectDescUse,
+	   int *infiniteRegionWaste)
+{
+  ObjectDesc *fObj;
+  Rp *crp;                       /* Pointer to a region page. */
+
+  /* Traverse objects in generation gen, except the last region page, 
+   * which is traversed independently; crp always points at the 
+   * beginning of a regionpage(=nPtr|dummy|data). */
+  for( crp = clear_fp(gen->fp) ; crp->n ; crp = crp->n ) 
+    {
+      fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE); // crp is a Rp
+      // notPP = 0 means no object allocated
+      while ( ((int *)fObj < ((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+	      && (fObj->atId!=notPP) ) 
+	{
+	  profileObj(fObj,newObj,newRegion,infiniteObjectUse,infiniteObjectDescUse);
+	  fObj=(ObjectDesc *)(((int*)fObj)+((fObj->size)+sizeObjectDesc)); // Find next object
+	}
+      newRegion->waste += 
+	(int)((((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((int *)fObj));
+      *infiniteRegionWaste += 
+	(int)((((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((int *)fObj));
+      /* No more objects in current region page. */
+    }
+  /* Now we need to traverse the last region page, now pointed 
+   * to by crp (crp is a Rp) */
+  fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE);
+
+  while ( (int *)fObj < gen->a ) 
+    {
+      profileObj(fObj,newObj,newRegion,infiniteObjectUse,infiniteObjectDescUse);
+      fObj=(ObjectDesc *)(((int*)fObj)+((fObj->size)+sizeObjectDesc)); /* Find next object. */
+    }
+  newRegion->waste += 
+    (int)((((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((int *)fObj));
+  *infiniteRegionWaste += 
+    (int)((((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((int *)fObj));
+      
+  /* No more objects in the last region page. */
+}
+
 void 
 profileTick(int *stackTop) 
 {
@@ -777,7 +862,7 @@ profileTick(int *stackTop)
   ObjectList *newObj, *tempObj;
   RegionList *newRegion;
   Ro *rd;                        /* Used as pointer to infinite region. */
-  Klump *crp;                    /* Pointer to a region page. */
+  Rp *crp;                       /* Pointer to a region page. */
 
   int finiteRegionDescUse;       /* Words used on finite region descriptors. */
   int finiteObjectDescUse;       /* Words used on object descriptors in finite regions. */
@@ -840,13 +925,13 @@ profileTick(int *stackTop)
       fprintf(stderr,"The time is: %d\n", cpuTimeAcc);
       tellTime = 0;
     }
-  newTick->nTick   = NULL; /* to be erased 2001-05-13, Niels */
-  newTick->fRegion = NULL; /* to be erased 2001-05-13, Niels */
-  if (firstTick == NULL)   /* to be erased 2001-05-13, Niels */
-    firstTick = newTick;   /* to be erased 2001-05-13, Niels */
-  else                         /* to be erased 2001-05-13, Niels */
-    lastTick->nTick = newTick; /* to be erased 2001-05-13, Niels */
-  lastTick = newTick;          /* to be erased 2001-05-13, Niels */
+  newTick->nTick   = NULL; 
+  newTick->fRegion = NULL; 
+  if (firstTick == NULL)   
+    firstTick = newTick;   
+  else                         
+    lastTick->nTick = newTick; 
+  lastTick = newTick;          
 
   /* Initialize hash table for regions. */
   initializeRegionListTable();
@@ -1001,74 +1086,13 @@ profileTick(int *stackTop)
       /* Traverse objects in current region, except the last region page, 
        * which is traversed independently; crp always points at the 
        * beginning of a regionpage(=nPtr|dummy|data). */
+      profileGen(&(rd->g0),newObj,newRegion,&infiniteObjectUse,
+		 &infiniteObjectDescUse,&infiniteRegionWaste);
 
-      for( crp = clear_rtype(rd->fp) ; crp->n ; crp = crp->n ) 
-	{
-	  fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE); // crp is a Klump
-	  // notPP = 0 means no object allocated
-
-	  while ( ((int *)fObj < ((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
-		  && (fObj->atId!=notPP) ) 
-	    {
-	      if ( lookupObjectListTable(fObj->atId) == NULL ) 
-		{
-		  // Allocate new object
-		  newObj = (ObjectList *)allocMemProfiling_xx(sizeof(ObjectList));
-		  newObj->atId = fObj->atId;
-		  newObj->size = fObj->size;
-		  newObj->nObj = newRegion->fObj;
-		  newRegion->fObj = newObj;
-		  newRegion->used += fObj->size;
-		  newRegion->noObj++;
-		  insertObjectListTable(fObj->atId, newObj);
-		} 
-	      else 
-		{
-		  newObj = lookupObjectListTable(fObj->atId);
-		  newObj->size += fObj->size;
-		  newRegion->used += fObj->size;
-		}
-	      infiniteObjectUse += fObj->size;
-	      infiniteObjectDescUse += sizeObjectDesc;
-	      fObj=(ObjectDesc *)(((int*)fObj)+((fObj->size)+sizeObjectDesc)); // Find next object
-	    }
-	  newRegion->waste += (int)((((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((int *)fObj));
-	  infiniteRegionWaste += (int)((((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((int *)fObj));
-	  /* No more objects in current region page. */
-	}
-      
-      /* Now we need to traverse the last region page, now pointed 
-       * to by crp (crp is a Klump) */
-      fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE);
-
-      while ( (int *)fObj < rd->a ) 
-	{
-	  if ( lookupObjectListTable(fObj->atId) == NULL ) 
-	    {
-	      // Allocate new object
-	      newObj = (ObjectList *)allocMemProfiling_xx(sizeof(ObjectList));
-	      newObj->atId = fObj->atId;
-	      newObj->size = fObj->size;
-	      newObj->nObj = newRegion->fObj;
-	      newRegion->fObj = newObj;
-	      newRegion->used += fObj->size;
-	      newRegion->noObj++;
-	      insertObjectListTable(fObj->atId, newObj);
-	    } 
-	  else 
-	    {
-	      newObj = lookupObjectListTable(fObj->atId);
-	      newObj->size += fObj->size;
-	      newRegion->used += fObj->size;
-	    }
-	  infiniteObjectUse += fObj->size;
-	  infiniteObjectDescUse += sizeObjectDesc;
-	  fObj=(ObjectDesc *)(((int*)fObj)+((fObj->size)+sizeObjectDesc)); /* Find next object. */
-	}
-      newRegion->waste += (int)((((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((int *)fObj));
-      infiniteRegionWaste += (int)((((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE)-((int *)fObj));
-      
-      /* No more objects in the last region page. */
+      #ifdef ENABLE_GEN_GC
+      profileGen(&(rd->g1),newObj,newRegion,&infiniteObjectUse,
+		 &infiniteObjectDescUse,&infiniteRegionWaste);
+      #endif /* ENABLE_GEN_GC */
     }
   
   lastCpuTime = (unsigned int)clock();
@@ -1279,6 +1303,44 @@ outputProfilePost(void)
   putw(noOfTickInFile, logFile_xx);
   fclose(logFile_xx);
   debug(printf("]")); 
+  return;
+}
+
+/* Traverse generation and calculate number of allocated bytes and
+   bytes used for profiling information */
+void calcAllocInGen(Gen *gen,int *alloc, int *allocProf)
+{
+  ObjectDesc *fObj;
+  Rp *crp;                       /* Pointer to a region page. */
+
+  /* Traverse objects in generation gen, except the last region page, 
+   * which is traversed independently; crp always points at the 
+   * beginning of a regionpage(=nPtr|dummy|data). */
+  for( crp = clear_fp(gen->fp) ; crp->n ; crp = crp->n ) 
+    {
+      fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE); // crp is a Rp
+      // notPP = 0 means no object allocated
+
+      while ( ((int *)fObj < ((int *)crp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+	      && (fObj->atId!=notPP) ) 
+	{
+	  *alloc += fObj->size;
+	  *allocProf += sizeObjectDesc;
+	  fObj=(ObjectDesc *)(((int*)fObj)+((fObj->size)+sizeObjectDesc)); // Find next object
+	}
+      /* No more objects in current region page. */
+    }
+  
+  /* Now we need to traverse the last region page, now pointed 
+   * to by crp (crp is a Rp) */
+  fObj = (ObjectDesc *) (((int *)crp)+HEADER_WORDS_IN_REGION_PAGE);
+  while ( (int *)fObj < gen->a ) 
+    {
+      *alloc += fObj->size;
+      *allocProf += sizeObjectDesc;
+      fObj=(ObjectDesc *)(((int*)fObj)+((fObj->size)+sizeObjectDesc)); /* Find next object. */
+    }
+  /* No more objects in the last region page. */
   return;
 }
 

@@ -42,6 +42,12 @@ local
     []
     K.build_basislib
 
+  fun comp_RI_GenGC() =
+    enable_disable 
+    ["generational_garbage_collection", "garbage_collection"] 
+    []
+    K.build_basislib
+
   fun comp_RI_GC_TP() =
     enable_disable 
     ["garbage_collection", "tag_pairs"] 
@@ -60,6 +66,12 @@ local
   fun comp_RI_GC_PROF() = 
     enable_disable 
     ["region_profiling", "garbage_collection"]
+    []
+    K.build_basislib
+
+  fun comp_RI_GenGC_PROF() = 
+    enable_disable 
+    ["region_profiling", "generational_garbage_collection", "garbage_collection"]
     []
     K.build_basislib
 
@@ -91,10 +103,12 @@ in
 
 (*  val _ = comp_contractregions() *)
 
+  val _ = comp_RI_GenGC()
+  val _ = comp_RI_GenGC_PROF()
   val _ = comp_RI()
+  val _ = comp_RI_PROF()
   val _ = comp_RI_GC()
   val _ = comp_RI_GC_PROF()
-  val _ = comp_RI_PROF()
 
   val _ = K.install()
 

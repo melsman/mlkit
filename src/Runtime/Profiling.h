@@ -7,6 +7,7 @@
 
 #ifdef PROFILING
 #include "Flags.h"
+#include "Region.h"
 
 #define BYTES_ALLOC_TO_PROFILING 1024
 
@@ -109,6 +110,7 @@ ProfTabList* profTabListInsertAndInitialize(ProfTabList* p, int regionId);
 void outputProfilePre(void);
 void outputProfileTick(TickList *tick);
 void outputProfilePost(void);
+void calcAllocInGen(Gen *gen, int *alloc, int *allocProf);
 
 extern int noTimer;
 extern int profType;

@@ -70,6 +70,7 @@ functor ManagerObjects(structure Execution : EXECUTION
     type target = Execution.target
 
     val gc_p = Flags.is_on0 "garbage_collection"
+    val gengc_p = Flags.is_on0 "generational_garbage_collection"
 
     (* ----------------------------------------------------
      * Determine where to put target files
@@ -85,13 +86,16 @@ functor ManagerObjects(structure Execution : EXECUTION
 	if !Flags.SMLserver then "PM/"
 	else
 	if recompile_basislib() then "PM/SCRATCH/"   (* avoid overwriting other files *)
-	else case (gc_p(), region_profiling(), tag_pairs_p())
-	       of (true,   true,               false) => "PM/RI_GC_PROF/"
-		| (true,   false,              false) => "PM/RI_GC/"
-		| (true,   true,               true)  => "PM/RI_GC_TP_PROF/"
-		| (true,   false,              true)  => "PM/RI_GC_TP/"
-		| (false,  true,               _)     => "PM/RI_PROF/"
-		| (false,  false,              _)     => "PM/RI/"
+	else case (gengc_p(),gc_p(), region_profiling(), tag_pairs_p())
+	       of (false, true,   true,               false) => "PM/RI_GC_PROF/"
+		| (false, true,   false,              false) => "PM/RI_GC/"
+		| (false, true,   true,               true)  => "PM/RI_GC_TP_PROF/"
+		| (false, true,   false,              true)  => "PM/RI_GC_TP/"
+                | (true,  true,   true,              false)  => "PM/RI_GEN_GC_PROF/"
+   	        | (true,  true,   false,             false)  => "PM/RI_GEN_GC/"
+                | (true,  _,      _,                 _    )  => die "Illegal combination of generational garbagecollection and tagged pairs"
+		| (false, false,  true,               _)     => "PM/RI_PROF/"
+		| (false, false,  false,              _)     => "PM/RI/"
     end
 
     type linkinfo = Execution.linkinfo
@@ -109,11 +113,13 @@ functor ManagerObjects(structure Execution : EXECUTION
 
 	fun path_to_runtime () = 
 	  let fun file () = 
-	      if !region_profiling andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a" else
-	      if !region_profiling andalso gc_p()                       then "runtimeSystemGCProf.a"   else
-	      if !region_profiling                                      then "runtimeSystemProf.a"     else
-              if                           gc_p() andalso tag_pairs_p() then "runtimeSystemGCTP.a"     else
-              if                           gc_p()                       then "runtimeSystemGC.a"       else
+	      if !region_profiling andalso gc_p() andalso tag_pairs_p() then "runtimeSystemGCTPProf.a"  else
+	      if !region_profiling andalso gc_p() andalso gengc_p()     then "runtimeSystemGenGCProf.a" else
+	      if !region_profiling andalso gc_p()                       then "runtimeSystemGCProf.a"    else
+	      if !region_profiling                                      then "runtimeSystemProf.a"      else
+              if                           gc_p() andalso tag_pairs_p() then "runtimeSystemGCTP.a"      else
+              if                           gc_p() andalso gengc_p()     then "runtimeSystemGenGC.a"     else
+              if                           gc_p()                       then "runtimeSystemGC.a"        else
               if tag_values()                     andalso tag_pairs_p() then 
 		  die "no runtime system supports tagging of values with tagging of pairs"             else
               if tag_values()                                           then "runtimeSystemTag.a"      else
