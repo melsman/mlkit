@@ -80,10 +80,11 @@ signature SCS_PERSON =
          * adm_p is true. *)
     val mayReturnPortrait_p : int -> int -> bool -> bool
 
-      (* [genPortraitHtml thumb large] returns HTML for showing a
-          portrait as a thumbnail and when clicked opens a larger
-          portrait. *)
-    val genPortraitHtml : portrait_record -> portrait_record -> string
+      (* [genPortraitHtml thumb_opt large_opt default] returns HTML
+          for showing a portrait as a thumbnail and when clicked opens
+          a larger portrait. If either thumb_opt or large_opt is NONE,
+          then default is returned. *)
+    val genPortraitHtml : portrait_record option -> portrait_record option -> string -> string
 
     (* [portraitAsHtml (user_id,per:person_record,official_p,adm_p)]
        returns HTML for a portrait. user_id is the logged in user. per
@@ -112,9 +113,21 @@ signature SCS_PERSON =
     (* [thumb_height] is the height of a thumbnail. *)
     val thumb_height : int
 
-    (* [uploadPortraitPriv (user_id, per)] returns the priviledge that
-        user_id has on uploading pictures to person per. *)
-    val uploadPortraitPriv : int * person_record -> ScsFileStorage.priv
+    (* [uploadPortraitPriv (user_id, official_p, per)] returns the
+        priviledge that user_id has on uploading pictures (either
+        officials og non officials) to person per. *)
+    val uploadPortraitPriv : int * bool * person_record -> ScsFileStorage.priv
+
+    (* [portrait_req_info] is a dictionary with info about pictures
+        and the requirements *)
+    val portrait_req_info : ScsDict.dict
+
+    (* [editPicForm person_id target official_p thumb_opt large_opt]
+        returns HTML for editing pictures thumb_opt and
+        large_opt. Target is either user or adm and it controls the
+        page to which we redirect. *)
+    val editPicForm : int -> string -> bool -> 
+      portrait_record option -> portrait_record option -> string
 
     (* [getOrCreateUploadFolderId db prj] returns an id on the folder
         in the file storage area where uploaded portraits to this person
@@ -181,6 +194,10 @@ signature SCS_PERSON =
        be used as a person_id. The database is not checked. See also
        ScsFormVar.sml *)
     val getPersonIdErr : string * ScsFormVar.errs -> int * ScsFormVar.errs
+
+   (* [getOfficialpErr fv errs] checks that fv is a bool. The database
+       is not checked. See also ScsFormVar.sml *)
+    val getOfficialpErr : string * ScsFormVar.errs -> bool * ScsFormVar.errs
 
     (* [splitCpr cpr] if cpr is on the form xxxxxxyyyy then the pair
        (xxxxxx,yyyy) is returned. *)
@@ -388,29 +405,31 @@ structure ScsPerson :> SCS_PERSON =
 	  adm_p
       | NONE => false (* No picture so do not return it. *)
 
-    fun genPortraitHtml (thumb:portrait_record) (large:portrait_record) = Quot.toString
+    fun genPortraitHtml (thumb_opt:portrait_record option) (large_opt:portrait_record option) default = 
+      case (thumb_opt,large_opt) of
+	(SOME thumb,SOME large) => 
+	  Quot.toString
 	  `<a href="^(#url large)">
-	  <img src="^(#url thumb)" width="^(Int.toString (#width thumb))" 
-           height="^(Int.toString (#height thumb))" 
-	  align="right" alt="^(#person_name thumb)"></a>`
+	   <img src="^(#url thumb)" width="^(Int.toString (#width thumb))" 
+	   height="^(Int.toString (#height thumb))" 
+	   align="right" alt="^(#person_name thumb)"></a>`
+      | _ => default
+
     fun portraitAsHtml (user_id,per:person_record,official_p,adm_p) =
       let
-	val default_html = genPortraitHtml empty_portrait_thumbnail empty_portrait_large
+	val default_html = genPortraitHtml (SOME empty_portrait_thumbnail) (SOME empty_portrait_large) ""
 	val use_default_p =
 	  #may_show_portrait_p per = false andalso
 	  user_id <> #person_id per andalso not adm_p
 	val portraits = getPortraits (#person_id per)
-	val official_html =
-	  case (getPicture thumb_fixed_height true portraits,getPicture original true portraits) of
-	     (SOME thumb,SOME large) => genPortraitHtml thumb large
-	   | _ => default_html
+	val official_html = genPortraitHtml
+	  (getPicture thumb_fixed_height true portraits) (getPicture original true portraits) default_html
 	val non_official_html = 
 	  if official_p then
 	    official_html
 	  else
-	    case (getPicture thumb_fixed_height false portraits,getPicture original false portraits) of
-	      (SOME thumb,SOME large) => genPortraitHtml thumb large
-	    | _ => official_html
+	    genPortraitHtml (getPicture thumb_fixed_height false portraits)
+	    (getPicture original false portraits) official_html
       in
 	if use_default_p then
 	  default_html
@@ -418,11 +437,98 @@ structure ScsPerson :> SCS_PERSON =
 	  non_official_html
       end	
 
-    fun uploadPortraitPriv (user_id, per:person_record) =
-      if ScsRole.has_p user_id ScsRole.PortraitAdm then ScsFileStorage.admin 
-      else if #person_id per = user_id then ScsFileStorage.read_add_delete
-	   else if #may_show_portrait_p per then ScsFileStorage.read
-		else ScsFileStorage.no_priv
+    (* Priv rules:
+         PortraitAdm = admin
+         Person may edit non official picture and read official picture 
+         Other persons may read both official and non official pictures
+         if may_show_portrait_p is true *)
+    fun uploadPortraitPriv (user_id, official_p, per:person_record) =
+      if ScsRole.has_one_p user_id [ScsRole.PortraitAdm,ScsRole.SiteAdm] then ScsFileStorage.admin 
+      else if #person_id per = user_id andalso not official_p then ScsFileStorage.read_add_delete
+	   else if #person_id per = user_id then ScsFileStorage.read
+		else if #may_show_portrait_p per then ScsFileStorage.read
+		     else ScsFileStorage.no_priv
+
+    val portrait_req_info = 
+      [(ScsLang.da,`Du kan uploade et billede af dig selv som skal opfylde 
+	følgende:
+	<ul>
+	<li> Maximal fil-størrelse er 300Kb.
+	<li> Være af type <b>png</b>, <b>jpg</b> eller <b>gif</b>.
+	<li> Forholdet mellem højde og bredde skal være mellem 1 og 2, 
+	dvs. det må ikke være et panoramabillede.
+	</ul>`),
+       (ScsLang.en,`You may upload a picture of your self. The picture must 
+	fulfill the following requirements:
+	<ul>
+	<li> Maximal file size is 300Kb.
+	<li> The file type must be one of the following: <b>png</b>, 
+	<b>jpg</b> or  <b>gif</b>.
+	<li> The proportion between height and width must be between 1 and 2, 
+	that is, it may not be a panorama picture.
+	</ul>`)]
+
+    fun editPicForm person_id target official_p
+      (thumb_opt : portrait_record option) (large_opt : portrait_record option) =
+      let
+	val pic_exists_p = Option.isSome thumb_opt andalso Option.isSome large_opt
+	val current_picture_html = genPortraitHtml thumb_opt large_opt ""
+	val fv_target = Quot.toString `<input type=hidden name="target" value="^target">`
+        val fv_official_p = Quot.toString `<input type=hidden name="official_p" 
+	  value="^(Db.fromBool official_p)">`
+	val upload_form = ` ^(current_picture_html)
+	  <form enctype=multipart/form-data method=post action="/scs/person/upload_portrait.sml">
+	  <input type=hidden name="person_id" value="^(Int.toString person_id)">
+	  ^fv_target
+	  ^fv_official_p
+	  <input type=file size="20" name="upload_filename">
+	  ^(UcsPage.mk_submit("submit",ScsDict.s [(ScsLang.da,`Gem fil`),
+						  (ScsLang.en,`Upload file`)],NONE))
+	  </form>`
+
+	val rotate_form =
+	  if pic_exists_p then
+	    `<form action="/scs/person/upload_portrait.sml">
+	    <input type=hidden name="mode" value="rotate"> 
+  	    ^fv_target
+   	    ^fv_official_p
+	    <input type=hidden name="person_id" value="^(Int.toString person_id)">
+	    ^(ScsDict.s [(ScsLang.da,`roter billede til venstre`),
+			 (ScsLang.en,`rotate picture to the left`)])
+	    <input type=radio name="direction" 
+	    value="^(ScsPicture.directionToString ScsPicture.left)"><br>
+	    ^(ScsDict.s [(ScsLang.da,`roter billede til højre`),
+			 (ScsLang.en,`rotate picture to the right`)])
+	    <input type=radio name="direction" 
+	    value="^(ScsPicture.directionToString ScsPicture.right)"><br>
+	    ^(UcsPage.mk_submit("submit",ScsDict.s [(ScsLang.da,`Roter`),
+						    (ScsLang.en,`Rotate`)],NONE))
+	    </form>
+	    ^(ScsDict.s [(ScsLang.da,`Bemærk, at billedkvaliteten forringes en anelse ved 
+			  rotation, så du skal ikke gøre dette mere end 1 eller 2 gange.`),
+			 (ScsLang.en,`Notice, the picture quality reduces slightly by a 
+			  rotation, so you should only do this once or twice.`)])`
+	  else
+	    ``
+
+        val delete_form = 
+	  if pic_exists_p then
+	    `<p>^(ScsDict.s [(ScsLang.da,`Slet billede.`),
+			     (ScsLang.en,`Delete picture.`)])
+	    <form action="/scs/person/upload_portrait.sml">
+	    <input type=hidden name="mode" value="delete"> 
+	    ^fv_target
+	    ^fv_official_p
+	    <input type=hidden name="person_id" value="^(Int.toString person_id)">
+	    ^(UcsPage.mk_submit("submit",ScsDict.s [(ScsLang.da,`Slet billede`),
+						    (ScsLang.en,`Delete picture`)],NONE))
+	    </form>
+	    `
+	  else
+	    ``
+      in
+	Quot.toString (upload_form ^^ `<p>` ^^ rotate_form ^^ delete_form)
+      end
 
     (* getOrCreateUploadFolderId: check folder_id in scs_parties and
        create a folder if none exists. The folder path is calculated
@@ -647,6 +753,8 @@ structure ScsPerson :> SCS_PERSON =
 
    (* Check for form variables *)
     fun getPersonIdErr (fv,errs) = ScsFormVar.getIntErr(fv,"Person id",errs)
+
+    fun getOfficialpErr (fv,errs) = ScsFormVar.getBoolErr(fv,"Official_p",errs)
 
     fun splitCpr cpr = (String.substring (cpr,0,6),String.substring (cpr,6,4))
 

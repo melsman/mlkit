@@ -645,16 +645,18 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     </blockquote>`)
       fun msgLang s = msgEnum (ScsLang.all_as_text (ScsLogin.user_lang())) s
 
-      fun msgBool s = ( case ScsLogin.user_lang() of
-	   ScsLang.en => `^s
-	     <blockquote>
-	     This is not a <b>boolean</b> value
-	     </blockquote>`
-	| ScsLang.da => `^s
-	     Dette er ikke en <b>sand/falsk</b> værdi.
-	     </blockquote>`
-      )
-
+      fun msgBool s = `^s`
+(*	if ScsString.trim s <> "" then
+	  ( case ScsLogin.user_lang() of
+	      ScsLang.en => `^s
+		<blockquote>
+		This is not a <b>boolean</b> value
+		</blockquote>`
+	    | ScsLang.da => `^s
+		Dette er ikke en <b>sand/falsk</b> værdi.
+		</blockquote>` )
+	else
+	  ``*)
 
       fun convCpr cpr =
 	case String.explode (trim cpr) of
