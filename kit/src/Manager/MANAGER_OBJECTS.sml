@@ -1,8 +1,10 @@
-(*$MANAGER_OBJECTS *)
+(*$MANAGER_OBJECTS: TYNAME *)
 
 signature MANAGER_OBJECTS =
   sig
     type modcode and target and linkinfo and StringTree
+
+    structure TyName : TYNAME
 
     structure SystemTools :
       sig
@@ -59,20 +61,16 @@ signature MANAGER_OBJECTS =
 	val layout : IntBasis -> StringTree
       end
 
-    type Basis and InfixBasis and ElabBasis and sigid
+    type Basis and InfixBasis and ElabBasis and realisation and sigid
     structure Basis :
       sig
 	val initial : Basis
 	val empty : Basis
-	val mk : InfixBasis * ElabBasis * IntBasis -> Basis
-	val un : Basis -> InfixBasis * ElabBasis * IntBasis
+	val mk : InfixBasis * ElabBasis * realisation * IntBasis -> Basis
+	val un : Basis -> InfixBasis * ElabBasis * realisation * IntBasis
 	val plus : Basis * Basis -> Basis
-	val eq : Basis * Basis -> bool
-	val restrict : Basis * {ids : id list, tycons : tycon list,
-				strids : strid list, funids : funid list,
-				sigids : sigid list} -> Basis
-	val enrich : Basis * Basis -> bool
-	val match : Basis * Basis -> Basis
+(*	val eq : Basis * Basis -> bool *)
+	val enrich : Basis * (Basis * TyName.Set.Set) -> bool
 	val layout : Basis -> StringTree
       end
 
@@ -96,13 +94,16 @@ signature MANAGER_OBJECTS =
 	   * the functor application/ unit. This is used when checking
 	   * if reuse is allowed. *)
 
-	val lookup_elab : funid -> (int * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis)) Option
+	val lookup_elab : funid -> (int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
+					   InfixBasis * ElabBasis * realisation)) Option
 	val lookup_int : funid -> (int * (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis)) Option
 
-	val add_elab : funid * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) -> unit
+	val add_elab : funid * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
+				InfixBasis * ElabBasis * realisation) -> unit
 	val add_int : funid * (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) -> unit
 
-	val owr_elab : funid * int * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) -> unit
+	val owr_elab : funid * int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
+				      InfixBasis * ElabBasis * realisation) -> unit
 	val owr_int : funid * int * (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) -> unit
 
 	val emitted_files : unit -> string list   (* returns the emitted files mentioned in the repository; *)

@@ -6,6 +6,9 @@ functor ParseElab(structure Parse: PARSE
 
 		  structure ElabTopdec: ELABTOPDEC
 		    sharing type ElabTopdec.PreElabTopdec = Parse.topdec
+
+ 	          structure ModuleEnvironments : MODULE_ENVIRONMENTS
+		    sharing type ElabTopdec.StaticBasis = ModuleEnvironments.Basis
 			  
 		  structure PreElabTopdecGrammar: TOPDEC_GRAMMAR
 		    sharing type PreElabTopdecGrammar.topdec
@@ -121,19 +124,13 @@ functor ParseElab(structure Parse: PARSE
 
     end (*local*)
 
+    val empty_success = SUCCESS{report=Report.null, infB=InfixBasis.emptyB,
+				elabB=ModuleEnvironments.B.empty, topdec=PostElabTopdecGrammar.empty_topdec}
+
     fun parse_elab {infB: InfixBasis, elabB: ElabBasis, file : string} : Result =
           (case parse (*may raise Parse*) (infB, file)
 	     of (infB, Some topdec) => elab (infB, elabB, topdec)
-	      | (infB, None) => FAILURE (Report.line "empty file"))
-	     (* TODO 26/03/1997 23:10. tho.:  an empty file oughtn't
-	      * be an error, just an empty topdec:
-	      *
-	      *  STRtopdec (PP defaultPos defaultPos,
-	      *             EMPTYstrdec(PP defaultPos defaultPos), None)
-	      *
-	      * but I don't know what position info to insert
-	      * (the "PP defaultPos"'es).
-	      *)
+	      | (infB, None) => empty_success)
 	     handle Parse report => FAILURE report
 
-  end;
+  end

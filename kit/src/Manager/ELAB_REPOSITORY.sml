@@ -1,9 +1,11 @@
-(*$ELAB_REPOSITORY*)
+(*$ELAB_REPOSITORY: TYNAME*)
 
 signature ELAB_REPOSITORY =
   sig
 
-    type funid and InfixBasis and ElabBasis and name
+    structure TyName : TYNAME
+
+    type funid and InfixBasis and ElabBasis and realisation and name
 
     val empty_infix_basis : InfixBasis
 
@@ -19,11 +21,14 @@ signature ELAB_REPOSITORY =
 	   * overwrite functions for owerwriting a particular
 	   * entry. *)
 
-    val lookup_elab : funid -> (int * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis)) Option
+    val lookup_elab : funid -> (int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
+				       InfixBasis * ElabBasis * realisation)) Option
 
-    val add_elab : funid * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) -> unit
+    val add_elab : funid * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
+			    InfixBasis * ElabBasis * realisation) -> unit
 
-    val owr_elab : funid * int * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) -> unit
+    val owr_elab : funid * int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
+				  InfixBasis * ElabBasis * realisation) -> unit
 
     val recover : unit -> unit
 

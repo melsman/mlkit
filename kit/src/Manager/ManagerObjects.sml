@@ -1,6 +1,6 @@
 (*$ManagerObjects: MODULE_ENVIRONMENTS TOPDEC_GRAMMAR COMPILER_ENV
                    COMPILE_BASIS COMPILE INFIX_BASIS ELAB_REPOSITORY
-                   FINMAP NAME FLAGS CRASH MANAGER_OBJECTS *)
+                   FINMAP NAME FLAGS CRASH MANAGER_OBJECTS OPACITY_ELIM*)
 
 (* COMPILER_ENV is the lambda env mapping structure and value 
  * identifiers to lambda env's and lvars *)
@@ -12,6 +12,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       structure TopdecGrammar : TOPDEC_GRAMMAR   (*needed for type strexp*)
 			 sharing type TopdecGrammar.funid = ModuleEnvironments.funid
 			     and type TopdecGrammar.id = ModuleEnvironments.id
+		       structure OpacityElim : OPACITY_ELIM
+			 sharing OpacityElim.TyName = ModuleEnvironments.TyName
+			     and type OpacityElim.realisation = ModuleEnvironments.realisation
+			     and type OpacityElim.topdec = TopdecGrammar.topdec
 		       structure CompilerEnv : COMPILER_ENV
 			 sharing type CompilerEnv.id = ModuleEnvironments.id
 			     and type CompilerEnv.strid = ModuleEnvironments.strid
@@ -28,11 +32,13 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			 sharing type ElabRep.funid = TopdecGrammar.funid 
 			     and type ElabRep.InfixBasis = InfixBasis.Basis
 			     and type ElabRep.ElabBasis = ModuleEnvironments.Basis
+			     and type ElabRep.realisation = OpacityElim.realisation
+			     and ElabRep.TyName = ModuleEnvironments.TyName
 		       structure FinMap : FINMAP
 		       structure PP : PRETTYPRINT
 			 sharing type PP.StringTree = CompilerEnv.StringTree 
 			   = CompileBasis.StringTree = ModuleEnvironments.StringTree
-			   = FinMap.StringTree = InfixBasis.StringTree
+			   = FinMap.StringTree = InfixBasis.StringTree = OpacityElim.StringTree
 		       structure Name : NAME
 			 sharing type Name.name = ModuleEnvironments.TyName.name = ElabRep.name
 		       structure Flags : FLAGS
@@ -326,22 +332,17 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type InfixBasis = InfixBasis.Basis
     type sigid = ModuleEnvironments.sigid
     type tycon = ModuleEnvironments.tycon
-    datatype Basis = BASIS of InfixBasis * ElabBasis * IntBasis
+    type realisation = OpacityElim.realisation
+    datatype Basis = BASIS of InfixBasis * ElabBasis * realisation * IntBasis
     structure Basis =
       struct
-	val empty = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.empty, IntBasis.empty)
-	val initial = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.initial, IntBasis.initial)
+	val empty = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.empty, OpacityElim.empty, IntBasis.empty)
+	val initial = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.initial, OpacityElim.initial, IntBasis.initial)
 	fun mk b = BASIS b
 	fun un (BASIS b) = b
-	fun plus (BASIS (infb,elabb,intb), BASIS (infb',elabb',intb')) =
+	fun plus (BASIS (infb,elabb,rea,intb), BASIS (infb',elabb',rea',intb')) =
 	  BASIS (InfixBasis.compose(infb,infb'), ModuleEnvironments.B.plus (elabb, elabb'),
-		 IntBasis.plus(intb, intb'))
-
-	fun restrict (BASIS (infB,elabB,intB), ids) = 
-	  let val elabB' = ModuleEnvironments.B.restrict (elabB,ids)
-	      val intB' = IntBasis.restrict(intB,(#funids ids, #strids ids, #ids ids, #tycons ids))
-	  in BASIS (infB, elabB',intB') (*don't restrict infB*)
-	  end
+		 OpacityElim.plus(rea,rea'), IntBasis.plus(intb, intb'))
 
 	val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
 	fun log s = output(std_out,s)			
@@ -350,29 +351,25 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	    (if b then log("\n" ^ s ^ ": enrich succeeded.")
 	     else log("\n" ^ s ^ ": enrich failed."); b)
 	  else b
-	fun enrich (BASIS (infB1,elabB1,intB1), BASIS (infB2,elabB2,intB2)) = 
+	fun enrich (BASIS (infB1,elabB1,rea1,intB1), (BASIS (infB2,elabB2,rea2,intB2), dom_rea)) = 
 	  debug("InfixBasis", InfixBasis.eq(infB1,infB2)) andalso 
 	  debug("ElabBasis", ModuleEnvironments.B.enrich (elabB1,elabB2)) andalso
+	  debug("OpacityRealisation", OpacityElim.enrich (rea1,(rea2,dom_rea))) andalso
 	  debug("IntBasis", IntBasis.enrich(intB1,intB2))
+(*
 	fun eq(B,B') = enrich(B,B') andalso enrich(B',B)
-
-	fun match(BASIS(infB1,elabB1,intB1), BASIS(infB2,elabB2,intB2)) : Basis =
-	  let val _ = ModuleEnvironments.B.match(elabB1,elabB2)
-	      val intB1' = IntBasis.match(intB1,intB2)
-	  in BASIS(infB1, elabB1, intB1')
-	  end 
-
-	fun layout (BASIS(infB,elabB,intB)) : StringTree =
+*)
+	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
 	  PP.NODE{start="BASIS(", finish = ")",indent=1,childsep=PP.RIGHT ", ",
 		  children=[InfixBasis.layoutBasis infB, ModuleEnvironments.B.layout elabB,
-			    IntBasis.layout intB]}
+			    OpacityElim.layout rea, IntBasis.layout intB]}
       end
 
 
     type name = Name.name
     structure Repository =
       struct
-	type elabRep = (funid, (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) list) FinMap.map ref
+(*	type elabRep = (funid, (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) list) FinMap.map ref *)
 	type intRep = (funid, (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) list) FinMap.map ref
 	val intRep : intRep = ref FinMap.empty
 	fun clear() = (ElabRep.clear();
