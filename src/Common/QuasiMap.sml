@@ -57,8 +57,8 @@ functor QuasiMap(structure IntStringFinMap : MONO_FINMAP where type dom = int * 
 	val (consistent, rigid) = (* Property: rigid => consistent *)
 	  M.Fold(fn((i,(d,_)),(c,r)) => (c andalso key d = i, r andalso rigid d)) (true,true) imap
 	val imap = if consistent then imap
-		   else (print "\nQuasiMap: ensure_consistent_imap.not consistent\n"
-			 ; M.fold(fn((d,e),im) => M.add(key d,(d,e),im)) M.empty imap)
+		   else ((*print "\nQuasiMap: ensure_consistent_imap.not consistent\n"
+			 ; *) M.fold(fn((d,e),im) => M.add(key d,(d,e),im)) M.empty imap)
       in {rigid=rigid,imap=imap}
       end
     
