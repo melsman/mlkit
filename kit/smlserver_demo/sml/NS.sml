@@ -36,6 +36,11 @@ signature NS =
 	 * you must not call Set.free on the result of this function. *)
 	val getQuery : unit -> set option
 
+	(* The function 'formvar' returns the query data associated with
+	 * the connection and the argument key; the function returns NONE
+	 * if no query data is present for the argument key. *)
+	val formvar : string -> string option
+
 	(* The function 'headers' returns, as a set, the headers 
 	 * associated with the connection. *)
 	val headers : unit -> set 
@@ -176,13 +181,6 @@ signature NS =
     (* Write a redirection HTTP response. *)
     val returnRedirect : string -> status
 
-    (* Return HTML frag list to browser, including HTTP headers; used
-     * with quotation support. *)
-    val returnQuot : string frag list -> status
-
-    (* Write frag list to browser; used with quotation support. *)
-    val writeQuot : string frag list -> status  
-      
     (* Guess the Mime type based on the filename extension. 
      * Case is ignored. The return value is of the form: "text/html". *)
     val getMimeType : string -> string
@@ -205,10 +203,25 @@ signature NS =
      * arguments that were passed as URL query data following a `?'. *)
     val decodeUrl : string -> string
 
-    (* send email *)
-    val sendmail : {to: string list, cc: string list, bcc: string list,
-		    from: string, subject: string, body: string,
-		    extra_headers: string list} -> unit 
-    val mail : {to: string, from: string, subject: string, body: string} -> unit
+    structure Quot :
+      sig
+	(* Return HTML frag list to browser, including HTTP headers; used
+	 * with quotation support. *)
+	val return : string frag list -> status
 
+	(* Write frag list to browser; used with quotation support. *)
+	val write : string frag list -> status  
+      
+	val flatten : string frag list -> string
+      end
+
+    structure Mail : 
+      sig
+	val sendmail : {to: string list, cc: string list, bcc: string list,
+			from: string, subject: string, body: string,
+			extra_headers: string list} -> unit 
+	val send : {to: string, from: string, subject: string, body: string} -> unit
+      end
+
+    val exit : unit -> 'a
   end

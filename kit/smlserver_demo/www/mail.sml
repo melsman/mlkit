@@ -13,10 +13,10 @@ val from = formVar "from"
 val subject = formVar "subject"
 val body = formVar "body"
 
-val _ = Ns.mail {to=to, from=from,subject=subject,body=body}
+val _ = Ns.Mail.send {to=to, from=from,subject=subject,body=body}
 
 val _ =
-Ns.returnQuot `
+Ns.Quot.return `
 <html>
 <body bgcolor=lightgreen>
 <h2>Email has been sent</h2>

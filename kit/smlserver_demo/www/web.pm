@@ -5,6 +5,7 @@ local
   ../sml/Msp.sml
 in
  [
+   recipe.sml
    hej.sml
    yellow.sml
    hello.sml
