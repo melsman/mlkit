@@ -129,7 +129,7 @@ structure ScsDate :> SCS_DATE =
       | Date.Nov => "november"
       | Date.Dec => "december"
 
-    fun ppLongDk d = (Date.fmt "%d. " d) ^ (ppMthDk d) ^ " " ^ (Date.fmt "%Y" d)
+    fun ppLongDk d = (*(Date.fmt "%d. " d)*) (Int.toString (Date.day d)) ^ ". " ^(ppMthDk d) ^ " " ^ (Date.fmt "%Y" d)
       
     fun pp s = 
       case ScsLogin.user_lang of
