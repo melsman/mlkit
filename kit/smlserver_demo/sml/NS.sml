@@ -114,21 +114,77 @@ signature NS =
 	val url : unit -> string
       end
 
+    structure Cookie :
+      sig
+	exception CookieError of string
+	type cookiedata = 
+	  {name   : string, 
+	   value  : string, 
+	   expiry : Date.date option, 
+	   domain : string option, 
+	   path   : string option, 
+	   secure : bool}
+
+      (* [allCookies] is a list [(n1,v1), (n2,v2), ..., (nm,vm)] of all 
+         the name=value pairs of defined cookies. *)
+	val allCookies     : (string * string) list
+
+      (* [getCookie cn] returns SOME(value) where value is the 
+         cn=value string for the cookie cn, if any; otherwise 
+	 returns NONE. *)
+	val getCookie      : string -> (string * string) option
+
+      (* [getCookieValue cn] returns SOME(v) where v is the 
+         value associated with the cookie cn, if any; 
+	 otherwise returns NONE. *)
+	val getCookieValue : string -> string option
+
+      (* [setCookie { name, value, expiry, domain, path, secure }]
+         returns a string which (when transmitted to a browser as 
+	 part of the HTTP response header) sets a cookie with the 
+	 given name, value, expiry date, domain, path, and 
+	 security. *)
+	val setCookie    : cookiedata -> string
+
+      (* [setCookies ckds] returns a string which (when transmitted 
+         to a browser as part of the HTTP response header) sets the 
+         specified cookies. *)
+	val setCookies   : cookiedata list -> string
+
+      (* [deleteCookie { name, path }] returns a string which (when
+         transmitted to a browser as part of the HTTP response header)
+         deletes the specified cookie by setting its expiry to some time in
+	 the past. *)
+	val deleteCookie : { name : string, path : string option } -> string
+      end
+
     structure Cache :
       sig
 	type cache
+
+	(* Create a cache, given a cache name and a 
+	 * timeout value in seconds. *)
+        val createTm : string * int -> cache
+
+	(* Create a cache, given a cache name and a 
+	 * maximum cache size in bytes. *)
+	val createSz : string * int -> cache  
 	  
 	(* Find a cache, given a cache name. Returns 
 	 * NONE if cache does not exist. *)
         val find : string -> cache option
 
-	(* Create a cache, given a cache name and a 
-	 * timeout value in seconds. *)
-        val create : string * int -> cache
+	(* findTm (cn,t) : As find, except that the cache 
+           with name cn is created if it does not already
+           exist. If the cache is created then t is used 
+           as timeout value in seconds. *)
+	val findTm : string * int -> cache
 
-	(* Create a cache, given a cache name and a 
-	 * maximum cache size in bytes. *)
-	val createSz : string * int -> cache  
+	(* findSz (cn,s) : As find, except that the cache 
+           with name cn is created if it does not already
+           exist. If the cache is created then s is used 
+           as size in bytes. *)
+        val findSz : string * int -> cache
 
 	(* Deletes all entries in cache. *)
 	val flush : cache -> unit
@@ -145,6 +201,28 @@ signature NS =
 	 * returns NONE if key does not exist in 
 	 * cache. *)
 	val get : cache * string -> string option
+
+	(* cacheForAwhile (f,cn,t): given a function f 
+           that maps a string to a string, a cache name cn
+           and a timeout value in seconds t, a new function
+           f' is returned. f' is equal to f except that the
+           results are cached and only recalculated when the
+           cached results are older than the timeout value.
+           This can for instance be used to cache fetched
+           HTML pages from the Internet. The timestamp is
+           not renewed when items are accessed. This is not
+           what you get with createTm, and is therefore
+	   simulated explicitly (i.e., this is a little 
+           slower than cacheWhileUsed). *)
+        val cacheForAwhile : 
+          (string -> string) * string * int -> string -> string
+
+	 (* cacheWhileUsed (f,cn,t): as casheForAwhile, except
+            that the timestamp is renewed at each access. An item
+            is removed from the cache if t seconds have passed after
+            the last access. This is what you get with createTm. *)
+        val cacheWhileUsed : 
+          (string -> string) * string * int -> string -> string
       end
 
     structure Info :
@@ -165,14 +243,12 @@ signature NS =
 	 * exactly, but the key will be matched case-
 	 * insensitively. *)
 	val configGetValue :
-	  {sectionName: string, key: string} 
-	  -> string option
+	  {sectionName: string, key: string} -> string option
 
 	(* The case-sensitive counterpart of 
 	 * configGetValue. *)
 	val configGetValueExact : 
-	  {sectionName: string, key: string} 
-	  -> string option
+	  {sectionName: string, key: string} -> string option
 
 	(* Return the name of the error log. *)
 	val errorLog : unit -> string

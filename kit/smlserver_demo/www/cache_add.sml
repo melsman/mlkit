@@ -1,8 +1,5 @@
 
-val cache = 
-  case Ns.Cache.find "people"
-    of SOME c => c
-     | NONE => Ns.Cache.create ("people", 20)
+val cache = Ns.Cache.findTm ("people", 20)
 
 val b = (* b true if new value is added to *)
   case (Ns.Conn.formvar "login", Ns.Conn.formvar "passwd")

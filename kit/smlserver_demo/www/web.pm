@@ -15,6 +15,8 @@ local
   ../sml/Msp.sml
   ../sml/FormVar.sml
   ../sml/RatingUtil.sml
+
+  auth/auth_verify_user_filter.sml
 in
  [
   rating/index.sml
@@ -57,5 +59,16 @@ in
   cs_const.sml
 
   ug.sml
+  currency.sml
+  currency_cache.sml
+  regexp.sml
+  cookie.sml
+  cookie_set.sml
+  cookie_delete.sml
+
+  auth/auth.sml
+  auth/auth_form.sml
+  auth/admin/admin.sml
+  auth/www/www.sml
  ]
 end

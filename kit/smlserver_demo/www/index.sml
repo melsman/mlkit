@@ -1,0 +1,1 @@
+val _ = Ns.returnRedirect "index.msp"

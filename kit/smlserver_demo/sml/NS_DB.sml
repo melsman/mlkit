@@ -42,12 +42,14 @@ signature NS_DB =
     val getRow          : db * set -> status
     val foldDb          : db * ((string->string)*'a->'a) * 'a * string -> 'a
     val oneFieldDb      : db * string -> string
+    val zeroOrOneFieldDb: db * string -> string option
     val oneRowDb        : db * string -> string list
     val zeroOrOneRowDb  : db * string -> string list option
 
     val dml           : string -> status
     val fold          : ((string->string)*'a->'a) * 'a * string -> 'a
     val oneField      : string -> string
+    val zeroOrOneField: string -> string option
     val oneRow        : string -> string list
     val zeroOrOneRow  : string -> string list option
 

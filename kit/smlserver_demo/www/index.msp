@@ -40,6 +40,11 @@ in
 		 ("Send an Email", "mail_form.sml"),
                  ("Character Support", "cs.html"),
                  ("User Group Example", "ug.sml"),
+	         ("The RegExp Structure", "regexp.sml"),
+	         ("Currency Service", "currency.html"),
+   		 ("Cookies", "cookie.sml"),
+                 ("Authentication (Password Protected Page)", "auth/admin/admin.sml"),
+                 ("Authentication (Open Page)", "auth/www/www.sml"),
                  ("This index page", "index.msp")]
 end
 ?>

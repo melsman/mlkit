@@ -2,10 +2,15 @@ val _ = Ns.Quot.return `
 <html>
   <body bgcolor=white>
   <h1>Caching Demonstration</h1>
+  This service demonstrates the caching interface in SMLserver.<p>
+  You add login and passwords to the cache. They will live in the cache
+  in approximately 20 seconds.<p> You can lookup a login as long as it is in the cache.<p>
+
   <h2>Lookup Entry</h2>
     <form action=cache_lookup.sml>
       <b>Login:</b> <input type=text name=login>
     </form>
+  <hr>
   <h2>Add Entry</h2>
     <form action=cache_add.sml>
     <table><tr>
