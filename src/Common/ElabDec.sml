@@ -146,12 +146,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     fun repeatedIdsError (i : ParseInfo, rids: ErrorInfo.RepeatedId list)
           : ElabInfo = errorConv (i, ErrorInfo.REPEATED_IDS rids)
 
-    val idset_'true'_'nil'_etc =
-          EqSet.fromList [Ident.id_TRUE, Ident.id_FALSE, Ident.id_NIL,
-			  Ident.id_CONS, Ident.id_REF]
-    fun is_'true'_'nil'_etc id = EqSet.member id idset_'true'_'nil'_etc
-    fun is_'it' id = id = Ident.id_IT
-
     (*infixes*)
     val on = Substitution.on     infixr on
     val onC = C.on     infixr onC
@@ -1147,7 +1141,8 @@ old*)
             val intdom = EqSet.intersect (VE.dom VE) (VE.dom VE')
           in 
             if EqSet.isEmpty intdom then
-	      (case List.all is_'true'_'nil'_etc (EqSet.list (VE.dom VE)) of
+	      (case List.all IG.is_'true'_'nil'_etc
+		      (EqSet.list (VE.dom VE)) of
 		 [] =>
 		   (S3 oo S2 oo S1 oo S0, 
 		    VE.plus ((S3 oo S2 oo S1 oo S0) onVE VE, VE'),
@@ -1543,9 +1538,9 @@ old*)
     and out_i_for_conbind con constructor_map i = 
           if constructor_map.in_dom con constructor_map
 	  then repeatedIdsError (i, [ErrorInfo.CON_RID con])
-	  else if is_'true'_'nil'_etc con
+	  else if IG.is_'true'_'nil'_etc con
 	       then errorConv (i, ErrorInfo.REBINDING_TRUE_NIL_ETC [con])
-	       else if is_'it' con
+	       else if IG.is_'it' con
 		    then errorConv (i, ErrorInfo.REBINDING_IT)
 		    else okConv i
 
@@ -1621,9 +1616,9 @@ old*)
     and out_i_for_exbind excon VE_rest i tau_opt =
           if EqSet.member excon (VE.dom VE_rest)
 	  then repeatedIdsError (i, [ErrorInfo.EXCON_RID excon])
-	  else if is_'true'_'nil'_etc excon
+	  else if IG.is_'true'_'nil'_etc excon
 	       then errorConv (i, ErrorInfo.REBINDING_TRUE_NIL_ETC [excon])
-	       else if is_'it' excon
+	       else if IG.is_'it' excon
 		    then errorConv (i, ErrorInfo.REBINDING_IT)
 		    else addTypeInfo_EXBIND (okConv i, tau_opt)
 
@@ -1799,7 +1794,7 @@ old*)
             in
               (Substitution.Id,
                (VE.empty, rho),
-               OG.DOTDOTDOT(preOverloadingConv(i,       
+               OG.DOTDOTDOT(preOverloadingConv(i,
                    OverloadingInfo.UNRESOLVED (Type.from_RecType rho))))
             end
 
@@ -2095,7 +2090,7 @@ debug*)
           
 (**** Overloading resolution ****)  
 
-fun resolve_dec (S : Substitution, dec : OG.dec): OG.dec =
+fun resolve_overloading (S : Substitution, dec : OG.dec): OG.dec =
 
     (* resolves overloading in dec, by applying S on every recorded
        overloaded type variable --- if repeated application of S 
@@ -2107,185 +2102,198 @@ fun resolve_dec (S : Substitution, dec : OG.dec): OG.dec =
 let
   open OG 
 
-  exception NotResolved
+  local
+  val tau_to_overloadinginfo_alist =
+        [(Type.Int,    OverloadingInfo.RESOLVED_INT),
+	 (Type.Real,   OverloadingInfo.RESOLVED_REAL),
+	 (Type.String, OverloadingInfo.RESOLVED_STRING),
+	 (Type.Char,   OverloadingInfo.RESOLVED_CHAR),
+	 (Type.Word,   OverloadingInfo.RESOLVED_WORD)]
 
-  fun res (typ : Type) : OverloadingInfo.OverloadingInfo =
-    let 
-      val typ' = (S on typ)
-    in
-      if !Flags.DEBUG_ELABDEC then
-        (pr("res: tv is: ", Type.layout typ);
-         pr("res:  S on tv yields type: ", Type.layout typ'))
-      else ();
-        
-      (case Type.to_TyVar typ' of
-	 None => 
-	   if Type.eq (typ', Type.Int) then
-	     OverloadingInfo.RESOLVED_INT
-	   else if Type.eq (typ', Type.Real) then
-	          OverloadingInfo.RESOLVED_REAL
-		else (if !Flags.DEBUG_ELABDEC then 
-			output(std_out,"res: None\n")
-		      else () ; 
-		      raise NotResolved)
+  (*tau_to_overloadinginfo raises List.First _*)
+  fun tau_to_overloadinginfo tau  =
+        #2 (List.first (fn (tau', oi) => Type.eq (tau, tau'))
+	      tau_to_overloadinginfo_alist)
 
-       | Some tv' =>
-	   if Type.eq  (typ',typ) then 
-	     (if !Flags.DEBUG_ELABDEC then
-		output (std_out, "res: Some tv\n")
-	      else () ; 
-	      raise NotResolved)
-	   else 
-	     res typ')    (* Repeat application of S *)
-    end
-            
+  in
+  (*resolve_tau gives OverloadingInfo.RESOLVED_INT when overloading couldn't be
+   resolved.  According to the definition (p. 72), int is the default type
+   except for /, but / is not overloaded in this compiler; / always has type
+   real * real -> real, as there is only one kind of real.
+   25/06/1997 10:30. tho.*)
+
+  fun resolve_tau (typ : Type) : OverloadingInfo.OverloadingInfo =
+        let val typ' = S on typ
+	in
+	  if !Flags.DEBUG_ELABDEC then
+	    (pr("res: tv is: ", Type.layout typ);
+	     pr("res:  S on tv yields type: ", Type.layout typ'))
+	  else ();
+	  (case Type.to_TyVar typ' of
+	     None => (tau_to_overloadinginfo typ'
+		      handle List.First _ => OverloadingInfo.RESOLVED_INT)
+		 (*TODO 25/06/1997 10:11. tho.
+		  can raise List.First _ occur?  I'd rather do an impossible
+		  here:  If typ' is not a tyvar, it must be one of int, real,
+		  string, char, & word; everything else would be a type
+		  error.  Well, perhaps it can occur then, namely when there
+		  is a type error (they do occur), and since type errors
+		  should not make the compiler crash, it is probably best to
+		  not do an impossible.  The only thing to do is then to
+		  return RESOLVED_INT, as unresolved overloading should not
+		  result in an error message.*)
+	   | Some tv' =>
+	       if Type.eq  (typ',typ)
+	       then (if !Flags.DEBUG_ELABDEC
+		     then output (std_out, "res: Some tv\n") else () ; 
+		     OverloadingInfo.RESOLVED_INT)
+	       else resolve_tau typ')    (* Repeat application of S *)
+	end
+  end (*local*)
+
   datatype flexresResult = FLEX_RESOLVED | FLEX_NOTRESOLVED
   fun flexrecres(typ : Type) : flexresResult =
-    let
-      fun loop typ = 
         let
-          val typ' = S on typ
-        in
-          if !Flags.DEBUG_FLEXRECORDS then 
-            (pr("flexrecres: typ = ", Type.layout typ);
-             pr("flexrecres: typ' = ", Type.layout typ'))
-          else 
-            ();
-
-          if Type.eq (typ',typ) then typ
-          else loop typ'
-        end
-    in
-      if Type.existsRecVarsType (loop typ) then FLEX_NOTRESOLVED
-      else FLEX_RESOLVED
-    end
+	  fun loop typ = 
+	        let val typ' = S on typ
+		in
+		  if !Flags.DEBUG_FLEXRECORDS then 
+		    (pr("flexrecres: typ = ", Type.layout typ);
+		     pr("flexrecres: typ' = ", Type.layout typ'))
+		  else ();
+		  if Type.eq (typ',typ) then typ else loop typ'
+		end
+	in
+	  if Type.existsRecVarsType (loop typ) then FLEX_NOTRESOLVED
+	  else FLEX_RESOLVED
+	end
 
   local
     open TypeInfo 
-  in
-    fun on_repeated (S,tau) =
-      let 
-        val _ = 
-          if !Flags.DEBUG_ELABDEC then 
-            pr("on_repeated: tau = ", Type.layout tau)
-          else ()
-        val tau' = S on tau
-      in if Type.eq (tau',tau) then tau' else on_repeated(S,tau')
-      end
-    fun on_repeated_TypeScheme (S,sigma) =
+    infix on_repeated on_repeated_TypeScheme on_TypeInfo
+
+    fun S on_repeated tau =
+          (if !Flags.DEBUG_ELABDEC then
+	     pr ("on_repeated: tau = ", Type.layout tau) else ();
+	   let val tau' = S on tau
+	   in if Type.eq (tau',tau) then tau' else S on_repeated tau'
+	   end)
+
+    fun S on_repeated_TypeScheme sigma =
       let val sigma' = Substitution.onScheme (S,sigma)
       in
         if TypeScheme.eq (sigma',sigma) then sigma' 
-        else on_repeated_TypeScheme(S,sigma')
+        else S on_repeated_TypeScheme sigma'
       end
-    infix on_repeated on_repeated_TypeScheme
-    fun resTypeInfo ElabInfo =
+
+    fun S on_TypeInfo (LAB_INFO {index,Type,tyvars}) =
+            LAB_INFO {index=index,Type=S on_repeated Type,tyvars=tyvars}
+      | S on_TypeInfo (RECORD_ATPAT_INFO {Type}) = 
+	    RECORD_ATPAT_INFO {Type=S on_repeated Type}
+      | S on_TypeInfo (VAR_INFO {instances}) = 
+	    VAR_INFO {instances=map (fn tau => S on_repeated tau) instances}
+      | S on_TypeInfo (VAR_PAT_INFO {tyvars,Type}) =
+	    VAR_PAT_INFO {tyvars=tyvars,Type=S on_repeated Type}
+      | S on_TypeInfo (CON_INFO {numCons,index,tyvars,Type,longid,instances}) = 
+	    CON_INFO {numCons=numCons,index=index,tyvars=tyvars,
+		      Type=S on_repeated Type,longid=longid,
+		      instances= map (fn tau => S on_repeated tau) instances}
+      | S on_TypeInfo (EXCON_INFO {Type,longid}) = 
+	    EXCON_INFO {Type=S on_repeated Type,longid=longid}
+      | S on_TypeInfo (EXBIND_INFO {TypeOpt=None}) = EXBIND_INFO {TypeOpt=None}
+      | S on_TypeInfo (EXBIND_INFO {TypeOpt=Some Type}) = 
+	    EXBIND_INFO {TypeOpt=Some (S on_repeated Type)}   
+      | S on_TypeInfo (DATBIND_INFO {TE}) = DATBIND_INFO {TE=TE}  (*MEMO...*)
+      | S on_TypeInfo (EXP_INFO {Type}) = 
+	    EXP_INFO {Type=S on_repeated Type}
+      | S on_TypeInfo (MATCH_INFO {Type}) = 
+	    MATCH_INFO {Type=S on_repeated Type}
+      | S on_TypeInfo (PLAINvalbind_INFO {tyvars,escaping,Type}) =
+	    PLAINvalbind_INFO {tyvars=tyvars, escaping=escaping,
+			       Type=S on_repeated Type}
+  in
+    fun resolve_i ElabInfo =
           (case ElabInfo.to_TypeInfo ElabInfo of
 	     Some typeinfo =>
-	       ElabInfo.plus_TypeInfo ElabInfo
-	         (case typeinfo of
-		    LAB_INFO{index,Type,tyvars} => 
-		      LAB_INFO{index=index,Type=S on_repeated Type,tyvars=tyvars}
-		  | RECORD_ATPAT_INFO{Type} => 
-		      RECORD_ATPAT_INFO{Type=S on_repeated Type}
-		  | VAR_INFO {instances} => 
-		      VAR_INFO{instances=map (fn tau => S on_repeated tau) instances}
-		  | VAR_PAT_INFO {tyvars,Type} =>
-		      VAR_PAT_INFO{tyvars=tyvars,Type=S on_repeated Type}
-		  | CON_INFO{numCons,index,tyvars,Type,longid,instances} => 
-		      CON_INFO{numCons=numCons,index=index,tyvars=tyvars,
-			       Type=S on_repeated Type,longid=longid,
-			       instances= map (fn tau => S on_repeated tau) instances}
-		  | EXCON_INFO{Type,longid} => 
-		      EXCON_INFO{Type=S on_repeated Type,longid=longid}
-		  | EXBIND_INFO{TypeOpt=None} => typeinfo
-		  | EXBIND_INFO{TypeOpt=Some Type} => 
-		      EXBIND_INFO{TypeOpt=Some (S on_repeated Type)}   
-		  | DATBIND_INFO{TE} => typeinfo  (*MEMO...*)
-		  | EXP_INFO{Type} => 
-		      EXP_INFO{Type= S on_repeated Type}
-		  | MATCH_INFO{Type} => 
-		      MATCH_INFO{Type = S on_repeated Type}
-		  | PLAINvalbind_INFO{tyvars,escaping,Type} =>
-		      PLAINvalbind_INFO{tyvars=tyvars, escaping=escaping,
-					Type= S on_repeated Type})
+	       ElabInfo.plus_TypeInfo ElabInfo (S on_TypeInfo typeinfo)
 	   | None => ElabInfo)
 
-  end
+  end (*local open TypeInfo ...*)
+
+  (*resolve_X X: apply resolve_i to all info fields i in X and resolve_tau to
+   all overloadinginfos on id's in X, and also do something about flex
+   records.*)
 
   fun resolve_atexp (atexp : atexp) : atexp =
       case atexp of
           SCONatexp _ => atexp
         | IDENTatexp(i, op_opt) =>
-              (case (ElabInfo.to_OverloadingInfo i) of 
-                   None => IDENTatexp(resTypeInfo i, op_opt)
+              (case ElabInfo.to_OverloadingInfo i of 
+                   None => IDENTatexp (resolve_i i, op_opt)
                  | Some (OverloadingInfo.UNRESOLVED typ) =>
-                       (IDENTatexp (ElabInfo.plus_OverloadingInfo i (res typ), op_opt)
-                       handle NotResolved =>
-                           IDENTatexp (ElabInfo.plus_ErrorInfo i ErrorInfo.NOTRESOLVED,
-				       op_opt))
-                 | Some _ => impossible "resolve_atexp"
-              )
-        | RECORDatexp(i, None) => RECORDatexp(resTypeInfo i,None)
+		     IDENTatexp
+		       (ElabInfo.plus_OverloadingInfo i (resolve_tau typ), 
+			op_opt)
+                 | Some _ => impossible "resolve_atexp")
+        | RECORDatexp(i, None) => RECORDatexp(resolve_i i,None)
         | RECORDatexp(i, Some exprow) =>
-              RECORDatexp(resTypeInfo i, Some (resolve_exprow exprow))
+              RECORDatexp(resolve_i i, Some (resolve_exprow exprow))
         | LETatexp(i, dec, exp) =>
-              LETatexp(resTypeInfo i, resolve_dec dec, resolve_exp exp)
+              LETatexp(resolve_i i, resolve_dec dec, resolve_exp exp)
         | PARatexp(i, exp) =>
-              PARatexp(resTypeInfo i, resolve_exp exp)
+              PARatexp(resolve_i i, resolve_exp exp)
               
   and resolve_exprow (exprow: exprow) : exprow =
       case exprow of 
           EXPROW(i, l, exp, None) =>
-              EXPROW(resTypeInfo i, l, resolve_exp exp, None)
+              EXPROW(resolve_i i, l, resolve_exp exp, None)
         | EXPROW(i, l, exp, Some exprow) =>
-              EXPROW(resTypeInfo i, l, resolve_exp exp, Some (resolve_exprow exprow))
+              EXPROW(resolve_i i, l, resolve_exp exp, Some (resolve_exprow exprow))
               
   and resolve_exp (exp: exp) : exp =
       case exp of
           ATEXPexp(i, atexp) => 
-              ATEXPexp(resTypeInfo i, resolve_atexp atexp)
+              ATEXPexp(resolve_i i, resolve_atexp atexp)
         | APPexp(i, exp, atexp) => 
-              APPexp(resTypeInfo i, resolve_exp exp, resolve_atexp atexp)
+              APPexp(resolve_i i, resolve_exp exp, resolve_atexp atexp)
         | TYPEDexp(i, exp, ty) =>
-              TYPEDexp(resTypeInfo i, resolve_exp exp, ty)
+              TYPEDexp(resolve_i i, resolve_exp exp, ty)
         | HANDLEexp(i, exp, match) =>
-              HANDLEexp(resTypeInfo i, resolve_exp exp, resolve_match match)
+              HANDLEexp(resolve_i i, resolve_exp exp, resolve_match match)
         | RAISEexp(i, exp) => 
-              RAISEexp(resTypeInfo i, resolve_exp exp)
+              RAISEexp(resolve_i i, resolve_exp exp)
         | FNexp(i, match) =>
-              FNexp(resTypeInfo i, resolve_match match)
+              FNexp(resolve_i i, resolve_match match)
         | UNRES_INFIXexp _ =>
               impossible "resolve_exp(UNRES_INFIX)"
 
   and resolve_match (match: match) : match =
       case match of 
           MATCH(i, mrule, None) => 
-              MATCH(resTypeInfo i, resolve_mrule mrule, None)
+              MATCH(resolve_i i, resolve_mrule mrule, None)
         | MATCH(i, mrule, Some match) =>
-              MATCH(resTypeInfo i, resolve_mrule mrule, Some (resolve_match match))
+              MATCH(resolve_i i, resolve_mrule mrule, Some (resolve_match match))
 
   and resolve_mrule (MRULE(i, pat, exp) : mrule) : mrule =
-      MRULE(resTypeInfo i, resolve_pat pat, resolve_exp exp)
+      MRULE(resolve_i i, resolve_pat pat, resolve_exp exp)
       
   and resolve_dec (dec : dec) : dec =
         (case dec of 
 	   VALdec(i, tyvars, valbind) =>
-	     VALdec(resTypeInfo i, tyvars, resolve_valbind valbind)
-	 | UNRES_FUNdec _ =>
-	     impossible "resolve_dec(UNRES_FUNdec)"
+	     VALdec(resolve_i i, tyvars, resolve_valbind valbind)
+	 | UNRES_FUNdec _ => impossible "resolve_dec(UNRES_FUNdec)"
 	 | TYPEdec _ => dec
-	 | DATATYPEdec(i,datbind) => DATATYPEdec(resTypeInfo i,datbind)
+	 | DATATYPEdec(i,datbind) => DATATYPEdec(resolve_i i,datbind)
 	 | DATATYPE_REPLICATIONdec(i, tycon, longtycon) => 
-	     DATATYPE_REPLICATIONdec(resTypeInfo i, tycon, longtycon)
+	     DATATYPE_REPLICATIONdec(resolve_i i, tycon, longtycon)
 	 | ABSTYPEdec(i, datbind, dec) =>
-	     ABSTYPEdec(resTypeInfo i, datbind, resolve_dec dec)
-	 | EXCEPTIONdec(i,exbind) => EXCEPTIONdec(resTypeInfo i, exbind)
+	     ABSTYPEdec(resolve_i i, datbind, resolve_dec dec)
+	 | EXCEPTIONdec(i,exbind) => EXCEPTIONdec(resolve_i i, exbind)
 	 | LOCALdec(i, dec1, dec2) =>
-	     LOCALdec(resTypeInfo i, resolve_dec dec1, resolve_dec dec2)
+	     LOCALdec(resolve_i i, resolve_dec dec1, resolve_dec dec2)
 	 | OPENdec _ => dec
 	 | SEQdec(i, dec1, dec2) =>
-	     SEQdec(resTypeInfo i, resolve_dec dec1, resolve_dec dec2)
+	     SEQdec(resolve_i i, resolve_dec dec1, resolve_dec dec2)
 	 | INFIXdec _ => dec
 	 | INFIXRdec _ => dec
 	 | NONFIXdec _ => dec
@@ -2305,11 +2313,11 @@ let
     case atpat of
       WILDCARDatpat _ => atpat
     | SCONatpat _ => atpat
-    | LONGIDatpat(i,x) => LONGIDatpat(resTypeInfo i,x)
-    | RECORDatpat(i, None) => RECORDatpat(resTypeInfo i,None)
+    | LONGIDatpat(i,x) => LONGIDatpat(resolve_i i,x)
+    | RECORDatpat(i, None) => RECORDatpat(resolve_i i,None)
     | RECORDatpat(i, Some patrow) =>
         let
-          val i' = resTypeInfo i 
+          val i' = resolve_i i 
           val patrow' = resolve_patrow patrow
         in
           case ElabInfo.to_TypeInfo i' of
@@ -2324,7 +2332,7 @@ let
                                       "no typeinfo")
         end
     | PARatpat(i, pat) =>
-        PARatpat(resTypeInfo i, resolve_pat pat)
+        PARatpat(resolve_i i, resolve_pat pat)
 
   and resolve_patrow (patrow : patrow): patrow  =
     case patrow of
@@ -2341,27 +2349,27 @@ let
 		       i ErrorInfo.FLEX_REC_NOT_RESOLVED))
          | Some _ => impossible "resolve_patrow")
     | PATROW(i, lab, pat, None) => 
-        PATROW(resTypeInfo i, lab, resolve_pat pat, None)
+        PATROW(resolve_i i, lab, resolve_pat pat, None)
     | PATROW(i, lab, pat, Some patrow) =>
-        PATROW(resTypeInfo i, lab, resolve_pat pat, Some (resolve_patrow patrow))
+        PATROW(resolve_i i, lab, resolve_pat pat, Some (resolve_patrow patrow))
 
   and resolve_pat (pat : pat) : pat =
     case pat of
       ATPATpat(i, atpat) =>
-        ATPATpat(resTypeInfo i, resolve_atpat atpat)
+        ATPATpat(resolve_i i, resolve_atpat atpat)
     | CONSpat(i, longidopt, atpat) =>
-        CONSpat(resTypeInfo i, longidopt, resolve_atpat atpat)
+        CONSpat(resolve_i i, longidopt, resolve_atpat atpat)
     | TYPEDpat(i, pat, ty) =>
-        TYPEDpat(resTypeInfo i, resolve_pat pat, ty)
+        TYPEDpat(resolve_i i, resolve_pat pat, ty)
     | LAYEREDpat(i, idopt, tyopt, pat) =>
-        LAYEREDpat(resTypeInfo i, idopt, tyopt, resolve_pat pat)
+        LAYEREDpat(resolve_i i, idopt, tyopt, resolve_pat pat)
     | UNRES_INFIXpat _ =>
         impossible "resolve_pat(UNRES_INFIX)"
 
 
 in
   resolve_dec dec
-end (* let *)
+end (*fun resolve_overloading (ugly)*)
 
     (****** Elaborate a declaration and resolve overloading ******)
 
@@ -2370,7 +2378,7 @@ end (* let *)
       fn (C, dec) =>
         let
           val (S, E, out_dec) = elab_dec(C, dec)
-          val dec' = resolve_dec(S, out_dec)
+          val dec' = resolve_overloading (S, out_dec)
         in
           (E, dec')
         end
