@@ -1,12 +1,9 @@
-val user_id = ScsLogin.auth_roles [ScsRole.SiteAdm]
-
-val d = ScsDict.d ScsLang.en "scs/admin/user" "imp_row.sml"
-val dl = ScsDict.dl ScsLang.en "scs/admin/user" "imp_row.sml"
+val user_id = ScsLogin.auth_roles [ScsRole.SiteAdm, ScsRole.ScsPersonAdm]
 
 val (person_id,errs) = 
-  ScsFormVar.wrapMaybe_nh 0 ScsFormVar.getIntErr("person_id",d"Person id",ScsFormVar.emptyErr)
-val (user_imp_id,errs) = ScsFormVar.getIntErr("user_imp_id",d"User import id",errs)
-val _ = ScsFormVar.anyErrors
+  ScsFormVar.wrapMaybe_nh 0 ScsFormVar.getIntErr("person_id","Person Id",ScsFormVar.emptyErr)
+val (user_imp_id,errs) = ScsUserImp.getUserImpIdErr("user_imp_id",errs)
+val _ = ScsFormVar.anyErrors errs
 
 val _ =
   if person_id = 0 then
