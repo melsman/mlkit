@@ -27,6 +27,8 @@ Compiler/EXECUTION.sml
   Compiler/Backend/X86/ExecutionX86.sml
 #elif defined(KIT_TARGET_DUMMY)
   Compiler/Backend/Dummy/Execution__dummy.sml
+#elif defined(KIT_TARGET_PAML)
+  Compiler/Backend/PaML/ExecutionPaML.sml
 #else
   Compiler/Backend/HpPaRisc/ExecutionHPPA.sml
 #endif

@@ -68,25 +68,36 @@ let
        | ("SPARC", "Solaris") => true
        | _ => false
 
+  fun warn_cross (s:string) : string option =
+    (print "Do you really want to generate code for a platform\n\
+            \different from the platform you are now working\n\
+            \on? (type yes or no) ";
+     (case (upper (read_string ""))
+	of "YES" => SOME s
+         | _ => NONE))
+
+  fun check_cross s =
+    case s
+      of "C" => if available_with_C_backend() then SOME s
+		else warn_cross s
+       | "X86" => if #1(arch_os()) = "X86" then SOME s else warn_cross s
+       | "HPPA" => if #1(arch_os()) = "HPPA" then SOME s else warn_cross s
+       | "PAML" => warn_cross s 
+       | "DUMMY" => warn_cross s
+       | _ => NONE
+
   fun resolve_backend () =
-    let val _ = print "\nDo you want to use the C backend, the native backend, or the dummy backend?\n\
-	               \The native backend is available only for the HPPA-HPUX\n\
-                       \system and the X86-Linux system (type C, native, or dummy): "
-    in case explode (upper (read_string ""))
-	 of #"C" :: _ => 
-	   if available_with_C_backend() then (* set a symbol for the compilation manager *)
-	     CM.SymVal.define("KIT_TARGET_C", 1)  
-	   else die "the Kit does not work with your system"
-	  | #"N" :: #"A" :: #"T" :: #"I" :: #"V" :: #"E" :: _ =>
-	     (case arch_os()
-		of ("HPPA", "HPUX") => (CM.SymVal.define("KIT_TARGET_HPPA", 1))
-		 | ("X86", "Linux") => (CM.SymVal.define("KIT_TARGET_X86", 1))
-		 | _ => (error "the native backend is available only \
-                                \for the HPPA-HPUX system and the X86-Linux system"; 
-			 resolve_backend()))
-          | #"D" :: #"U" :: #"M" :: #"M" :: #"Y" :: _ => CM.SymVal.define("KIT_TARGET_DUMMY", 1)
- 	  | _ => (error "you must type C, native, or dummy"; 
-		  resolve_backend())
+    let val _ = print "\nWhich platform do you want to use as target? (type\n\
+                       \HPPA, X86, C, or PaML):"
+    in 
+      case check_cross (upper (read_string ""))
+	of SOME "C" => (* set a symbol for the compilation manager CM *)
+	  CM.SymVal.define("KIT_TARGET_C", 1)  
+         | SOME "HPPA" => CM.SymVal.define("KIT_TARGET_HPPA", 1)
+	 | SOME "X86" => CM.SymVal.define("KIT_TARGET_X86", 1)
+	 | SOME "PAML" => CM.SymVal.define("KIT_TARGET_PAML", 1)
+	 | SOME "DUMMY" => CM.SymVal.define("KIT_TARGET_DUMMY", 1)
+	 | _ => (error "try again..."; resolve_backend())
     end
 
   fun build_runtime(runtime_path) =
