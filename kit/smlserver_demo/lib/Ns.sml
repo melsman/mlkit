@@ -10,8 +10,17 @@ structure Ns :> NS =
       prim("@Ns_Log", (ls, s))
 
     type conn = int
-    fun getConn () : conn = 
+    fun getConn0 () : conn = 
       prim("@Ns_TclGetConn", (0:int))
+
+    exception MissingConnection
+    fun getConn() : conn =
+      let val c = getConn0()
+      in if c = 0 then 
+	  (log (Notice, "Ns.getConn: missing connection");
+	   raise MissingConnection)
+	 else c
+      end
 
     fun isNull(s : string) : bool = prim("nssml_isNullString", s)
 
@@ -89,6 +98,8 @@ structure Ns :> NS =
 
 	fun url () : string =
 	  prim("nssml_ConnUrl", getConn())
+
+	fun hasConnection() = getConn0() <> 0
 
 	fun write s = puts s
       end
@@ -236,7 +247,10 @@ structure Ns :> NS =
 	end
       end
 
-    structure Info : NS_INFO = NsInfo
+    structure Info : NS_INFO = NsInfo(struct
+                                        type conn = int
+                                        val getConn = getConn
+                                      end)
 
     type quot = Quot.quot
     fun return (q : quot) : status =

@@ -1,6 +1,8 @@
 
-structure NsInfo : NS_INFO =
+functor NsInfo (type conn = int
+		val getConn : unit -> conn) : NS_INFO =
   struct
+
     fun isNull(s : string) : bool = prim("nssml_isNullString", s)
     fun configFile() : string =
       prim("nssml_InfoConfigFile", ())
@@ -35,6 +37,6 @@ structure NsInfo : NS_INFO =
       prim("Ns_InfoUptime", ())
       
     fun pageRoot() : string =
-      prim("nssml_PageRoot", ())
+      prim("nssml_PageRoot", (getConn()))
 
   end

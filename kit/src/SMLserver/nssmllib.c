@@ -96,11 +96,11 @@ nssml_SetSize(Ns_Set* set)
 }
 
 
-// ML: unit -> string
+// ML: conn -> string
 String
-nssml_PageRoot(Region rAddr) 
+nssml_PageRoot(Region rAddr, Ns_Conn *c) 
 {
-  char* s_c = Ns_PageRoot(Ns_ConnServer(Ns_TclGetConn(NULL)));
+  char* s_c = Ns_PageRoot(Ns_ConnServer(c));
   return convertStringToML(rAddr, s_c);
 }
 
