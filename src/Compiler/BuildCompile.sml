@@ -527,6 +527,7 @@ functor BuildCompile (structure Name : NAME
 				  structure Excon = Excon
 				  structure Lvars = Lvars
 				  structure Effect = Effect
+				  structure Lvarset = Lvarset
 				  structure Labels = Labels
 				  structure CallConv = CallConv
 				  structure LineStmt = LineStmt
