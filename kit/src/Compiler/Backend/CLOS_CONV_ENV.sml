@@ -66,6 +66,8 @@ signature CLOS_CONV_ENV =
     val labelsEnv : (label list * label list -> access_type -> label list * label list) 
       -> env -> label list * label list
 
+    val pu : env Pickle.pu
+
     type StringTree
     val layoutEnv : env -> StringTree
     val pr_access_type : access_type -> string

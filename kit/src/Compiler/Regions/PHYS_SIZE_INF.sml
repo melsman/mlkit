@@ -40,5 +40,6 @@ signature PHYS_SIZE_INF =
         val layout_pgm  : ((place*pp)at, place*phsize, unit)LambdaPgm -> StringTree
 
 	val pu_env      : env Pickle.pu
+	val pu_phsize   : phsize Pickle.pu
   end      
 

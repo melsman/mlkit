@@ -20,6 +20,8 @@ functor Excon(structure Name : NAME
     fun pr_excon ({str,...}: excon) : string = str
     fun pr_excon' ({str,name}: excon) : string = str ^ "_" ^ Int.toString (Name.key name)
 
+    val pr_excon = pr_excon'  (* MEMO; mael 2004-03-03 *)
+
     fun name ({name,...}: excon) : name = name
 
     val op < = fn (excon1,excon2) => (Name.key (name excon1) < Name.key (name excon2))
@@ -34,14 +36,15 @@ functor Excon(structure Name : NAME
     val ex_INTERRUPT : excon  = mk_excon "Interrupt"
 
     val pu = 
-	Pickle.register [ex_DIV, ex_MATCH, ex_BIND, 
-			 ex_OVERFLOW, ex_INTERRUPT]
-	let open Pickle
-	    fun to (s,n) : excon = {str=s,name=n}
-	    fun from ({str=s,name=n} : excon) = (s,n)
-	in newHash (Name.key o #name)
-	    (convert (to,from) (pairGen0(string,Name.pu)))
-	end
+	Pickle.hashConsEq eq
+	(Pickle.register [ex_DIV, ex_MATCH, ex_BIND, 
+			  ex_OVERFLOW, ex_INTERRUPT]
+	 let open Pickle
+	     fun to (s,n) : excon = {str=s,name=n}
+	     fun from ({str=s,name=n} : excon) = (s,n)
+	 in newHash (Name.key o #name)
+	     (convert (to,from) (pairGen0(string,Name.pu)))
+	 end)
 	
     structure QD : QUASI_DOM =
       struct

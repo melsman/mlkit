@@ -148,21 +148,22 @@ functor TyName(
 	else #unboxed tn := true
 
     val pu = 
-	Pickle.register 
-	[tyName_BOOL,tyName_INT31,tyName_INT32,tyName_WORD8,tyName_WORD31,
-	 tyName_WORD32,tyName_REAL,tyName_STRING,tyName_CHAR,tyName_LIST,tyName_FRAG,
-	 tyName_REF,tyName_ARRAY,tyName_VECTOR,tyName_CHARARRAY,tyName_FOREIGNPTR,tyName_EXN]
-	let open Pickle
-	    fun to ((t,n,a),r,e,u) : TyName = 
-		{tycon=t, name=n, arity=a, rank=r,
-		 equality=e, unboxed=u}
-	    fun from ({tycon=t, name=n, arity=a, rank=r,
-		       equality=e, unboxed=u} : TyName) = ((t,n,a),r,e,u)	    
-	in newHash id
-	    (convert (to,from)
-	     (tup4Gen0(tup3Gen0(TyCon.pu,Name.pu,int),
-		       refOneGen int,bool,refOneGen bool)))
-	end
+	Pickle.hashConsEq eq
+	(Pickle.register 
+	 [tyName_BOOL,tyName_INT31,tyName_INT32,tyName_WORD8,tyName_WORD31,
+	  tyName_WORD32,tyName_REAL,tyName_STRING,tyName_CHAR,tyName_LIST,tyName_FRAG,
+	  tyName_REF,tyName_ARRAY,tyName_VECTOR,tyName_CHARARRAY,tyName_FOREIGNPTR,tyName_EXN]
+	 let open Pickle
+	     fun to ((t,n,a),r,e,u) : TyName = 
+		 {tycon=t, name=n, arity=a, rank=r,
+		  equality=e, unboxed=u}
+	     fun from ({tycon=t, name=n, arity=a, rank=r,
+			equality=e, unboxed=u} : TyName) = ((t,n,a),r,e,u)	    
+	 in newHash id
+	     (convert (to,from)
+	      (tup4Gen0(tup3Gen0(TyCon.pu,Name.pu,int),
+			refOneGen int,bool,refOneGen bool)))
+	 end)
 
     structure QD : QUASI_DOM =
       struct
