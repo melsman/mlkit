@@ -42,6 +42,7 @@ signature MANAGER_OBJECTS =
 	 * by the uo-files in mc2 with the prefix consisting of the uo-files 
 	 * in mc1 removed. *)
 	val deleteUlfile : absprjid -> unit
+	val pu : modcode Pickle.pu
       end
 
     type filename (*= string*)

@@ -563,26 +563,36 @@ struct
                     handle exn =>
                         (say "  eval_phis called from MulInf (transitive closure of all effects) "; raise exn)
             val _ = if test then say "  making the arrow effect set Phi..." else ()
-            val Phi = map (fn eps => (eps, Eff.represents eps)) 
-                          (Eff.toplevel_arreff :: (List.filter Eff.is_arrow_effect effects))
-            val _ = if test then say "  made Phi, now constructing the map Psi..." else ()
-            val Psi = makezero_Phi Phi
-                      (* Psi records multiplicities for effect variables that are
-                         bound locally within the program unit or are exported from
-                         the program unit. Psi is a quasi-map (i.e., partly imperative)*)
-            val dep = mk_init_dependency_map Psi
+
+            val Psi = 
+		(* Psi records multiplicities for effect variables that are
+		 * bound locally within the program unit or are exported from
+		 * the program unit. Psi is a quasi-map (i.e., partly imperative)*)
+		let val Phi = map (fn eps => (eps, Eff.represents eps)) 
+                          ( (*Eff.toplevel_arreff :: ;mael 2004-03-31*) (List.filter Eff.is_arrow_effect effects))
+		    val _ = if test then say "  made Phi, now constructing the map Psi..." else ()
+		in makezero_Phi Phi
+		end
+
+            val _ = if test then (say "  Psi0 = "; outtree(Mul.layout_mularefmap Psi0)) 
+		    else ()
+            val _ = if test then (say "  Psi = "; outtree(Mul.layout_imp_mularefmap Psi)) 
+		    else ()
+            val _ = if test then say "\n  made Psi, now adding local and external Psi"
+                    else ()
+            val Psi_combined = combine(Psi0, Psi)
+	    val _ = if test then (say "  Psi_combined = ";
+				  outtree(Mul.layout_imp_mularefmap Psi_combined))
+		    else ()
+
+	    val _ = if test then say "\n  now making initial multiplicity expression" else ()
+            val dep = mk_init_dependency_map Psi_combined
                       (* dep is purely local to this program unit; no global
                          dependencies between semantic objects are required,
                          as we assume that all top-level multiplicities are infinite;
 			 Yes, but we need to add top-level effectvars anyway, for
 			 lookup_dep not to fail! 12/01/97-Martin *)
-            val _ = if test then say "  Psi = " else ()
-            val _ = if test then outtree(Mul.layout_imp_mularefmap Psi) else ()
-            val _ = if test then say "\n  made Psi, now making initial multiplicity expression" else ()
             val (tr_psi, dep) = mk_initial_mulexp(mulenv,tr, dep)
-            val _ = if test then say "\n  made multiplicity expression, now adding local and external Psi"
-                    else ()
-            val Psi_combined = combine(Psi0, Psi)
             val _ = if test then say "\n  now starting multiplicity inference proper (i.e., calling mulinf)..." else ()
             val tr' = mulinf(Psi_combined, dep, c, tr_psi) footnote
               (if test then say "\n  inserting multiplicities in term..." else ();
@@ -627,8 +637,14 @@ struct
 			export_basis = export_basis,       (* unchanged *)
 			export_Psi = export_Psi_list}
 
+	    val _ = case export_rhos of nil => () | _ => 
+		print ("** MulInf: export_rhos non-empty\n")
+
+	    val _ = case export_Psi_list of nil => () | _ => 
+		print ("** MulInf: export_Psi_list non-empty\n")
+
 	in
-          if test
+          if false
           then
             if test_knorm(pgm') then ()
             else (TextIO.output(TextIO.stdOut, "\n ********   knorm test failed **********\n"))

@@ -242,12 +242,15 @@ functor MlbProject () : MLB_PROJECT =
 	    in TextIO.closeIn is; s
 	    end
 
+	fun fromFile' (filename:string) : string option =
+	    SOME(fromFile filename) handle _ => NONE
+
 	fun parse (mlbfile: string) : bdec =
 	    if not (has_ext(mlbfile, "mlb")) then 
 		error ("The basis file " ^ quot mlbfile ^ " does not have extension 'mlb'")	    
 	    else
 		let val ss = (lex o (drop_comments mlbfile) o explode o fromFile) mlbfile
-		    val _ = print_ss ss
+		    (* val _ = print_ss ss *)
 		in  case parse_bdec_opt mlbfile ss of
 		    SOME (bdec,nil) => bdec
 		  | SOME (bdec,ss) => parse_error1 mlbfile ("misformed basis declaration", ss)
@@ -273,7 +276,7 @@ functor MlbProject () : MLB_PROJECT =
 			      | NONE => NONE
 		    in lookD d (Bid.explode longbid)
 		    end
-		fun plus (D(L1,M1),D(L2,M2)) = D(L2 @ L1, M1 @ M2)
+		fun plus (D(L1,M1),D(L2,M2)) = D(L1 @ L2, M1 @ M2)
 
 		fun getL (D(L,_)) : L = L
 		fun singleBidEntry e = D(nil,[e])
@@ -281,41 +284,74 @@ functor MlbProject () : MLB_PROJECT =
 		val empty = D(nil,nil)
 	    end
 
-	type D = DepEnv.D
+	val older = Time.<
+
+	fun writeDep file s =
+	    (let val os = TextIO.openOut file       (* what about general paths *)
+	     in (  TextIO.output(os,s)
+		 ; TextIO.closeOut os
+		 (* ; print ("File " ^ file ^ " updated\n") *)
+                ) handle ? => (TextIO.closeOut os; raise ?)
+	     end handle _ => error("Failed to write dependencies to file " ^ quot file))
+
+	fun mlbFileIsOlder modTimeMlbFile file : bool =
+	    older (modTimeMlbFile, OS.FileSys.modTime file) handle _ => false
+
+	fun maybeWriteDep smlfile modTimeMlbFile D : unit =
+	    let val file = "PM/" ^ smlfile ^ ".d"
+	    in if mlbFileIsOlder modTimeMlbFile file then ()         (* Don't write .d-file if the current .d-file *)
+	       else                                                  (*  is newer than the mlb-file! *) 
+		   let val L = DepEnv.getL D
+		       val s = concat (map (fn s => s ^ " ") L)
+		   in case fromFile' file of
+		       SOME s' => if s = s' then ()                  (* Don't write .d-file if its content already *)
+				  else writeDep file s               (*  specifies the correct dependencies. *)
+		     | NONE => writeDep file s
+		   end
+	    end
 	    
 	val op + = DepEnv.plus
+	type D = DepEnv.D
+	type A = {modTimeMlbFile: Time.time option, mlbfiles: (string * D) list}
+	val emptyA = {modTimeMlbFile=NONE,mlbfiles=nil}
+	fun lookupA {modTimeMlbFile, mlbfiles} mlbfile : D option =
+	    let fun look nil = NONE
+		  | look ((x,D)::xs) = if mlbfile = x then SOME D
+				       else look xs
+	    in look mlbfiles
+	    end
 
-	fun dep_bexp (D:D) bexp : D =
+	fun dep_bexp (D:D) (A:A) bexp : D * A =
 	    case bexp of
-	        BASbexp bdec => dep_bdec D bdec
+	        BASbexp bdec => dep_bdec D A bdec
 	      | LETbexp (bdec,bexp) =>
-		    let val D1 = dep_bdec D bdec
-			val D2 = dep_bexp (D+D1) bexp
-		    in D2
+		    let val (D1,A) = dep_bdec D A bdec
+			val (D2,A) = dep_bexp (D+D1) A bexp
+		    in (D2,A)
 		    end
 	      | LONGBIDbexp longbid =>
 		    (case DepEnv.lookup D longbid of
-			 SOME D => D
+			 SOME D => (D,A)
 		       | NONE => error ("The long basis identifier " 
 					^ Bid.pp_longbid longbid 
 					^ " is undefined"))
 
-	and dep_bdec (D:D) bdec : D =
+	and dep_bdec (D:D) (A:A) bdec : D * A =
 	    case bdec of
 		SEQbdec (bdec1,bdec2) =>
-		    let val D1 = dep_bdec D bdec1
-			val D2 = dep_bdec (D + D1) bdec2
-		    in (D1 + D2)
+		    let val (D1,A) = dep_bdec D A bdec1
+			val (D2,A) = dep_bdec (D + D1) A bdec2
+		    in (D1 + D2, A)
 		    end
-	      | EMPTYbdec => DepEnv.empty
+	      | EMPTYbdec => (DepEnv.empty,A)
 	      | LOCALbdec (bdec1,bdec2) =>
-		    let val D1 = dep_bdec D bdec1
-			val D2 = dep_bdec (D + D1) bdec2
-		    in D2
+		    let val (D1,A) = dep_bdec D A bdec1
+			val (D2,A) = dep_bdec (D + D1) A bdec2
+		    in (D2,A)
 		    end
 	      | BASISbdec (bid, bexp) =>
-		    let val D' = dep_bexp D bexp
-		    in DepEnv.singleBidEntry (bid,D')
+		    let val (D',A) = dep_bexp D A bexp
+		    in (DepEnv.singleBidEntry (bid,D'), A)
 		    end
 	      | OPENbdec longbids =>
 		    let val D' = 
@@ -325,25 +361,33 @@ functor MlbProject () : MLB_PROJECT =
 				 | NONE => error ("The long basis identifier " 
 						  ^ Bid.pp_longbid longbid 
 						  ^ " is undefined")) DepEnv.empty longbids
-		    in D'
+		    in (D',A)
 		    end
 	      | SMLFILEbdec smlfile =>
- 		    (let val file = "PM/" ^ smlfile ^ ".d"
-			 val os = TextIO.openOut file       (* what about general paths *)
- 		     in (  app (fn u => TextIO.output(os,u^" ")) (DepEnv.getL D)
- 			 ; TextIO.closeOut os
- 			 ; DepEnv.singleFile smlfile
- 			 ) handle ? => (TextIO.closeOut os; raise ?)
- 		     end handle _ => error("Failed to write to file " ^ quot smlfile))
-	      | MLBFILEbdec mlbfile => dep_bdec_file mlbfile
+		    (case #modTimeMlbFile A of
+			 SOME t => (  maybeWriteDep smlfile t D
+				    ; (DepEnv.singleFile smlfile, A))
+		       | NONE => error "No modification time available for the basis file")
+	      | MLBFILEbdec mlbfile => dep_bdec_file A mlbfile
 
-	and dep_bdec_file mlbfile : D =
-	    let val bdec = parse mlbfile
-	    in dep_bdec DepEnv.empty bdec
-	    end
+	and dep_bdec_file (A:A) mlbfile : D * A =
+	    case lookupA A mlbfile of
+		SOME D => (D,A)
+	      | NONE =>
+		    let val bdec = parse mlbfile
+			val modTimeMlbFileTmp = #modTimeMlbFile A
+			val modTimeMlbFile = OS.FileSys.modTime mlbfile
+			    handle _ => error ("Failed to read the modification time of the basis file " ^
+					       mlbfile)
+			val A = {modTimeMlbFile=SOME(OS.FileSys.modTime mlbfile),
+				 mlbfiles= #mlbfiles A}
+			val (D,A) = dep_bdec DepEnv.empty A bdec
+		    in (D, {modTimeMlbFile = modTimeMlbFileTmp,
+			    mlbfiles=(mlbfile,D) :: #mlbfiles A})
+		    end
 
 	fun dep (mlbfile : string) : unit =
-	    (dep_bdec_file mlbfile; ())
+	    (dep_bdec_file emptyA mlbfile; ())
 
 
 	(* Support for finding the source files of a basis file *)

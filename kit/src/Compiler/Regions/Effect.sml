@@ -783,14 +783,16 @@ struct
 			    toplevel_arreff]
   end
 
-  val _ =
+  val toplevel_puts_and_gets =
     let val toplevel_rhos = [toplevel_region_withtype_top, (*toplevel_region_withtype_word, ME 1998-09-03*)
 			     toplevel_region_withtype_bot, toplevel_region_withtype_string,
 			     toplevel_region_withtype_pair, toplevel_region_withtype_array,
 			     toplevel_region_withtype_ref, toplevel_region_withtype_triple]
         val puts = map mkPut toplevel_rhos
         val gets = map mkGet toplevel_rhos
-    in app (fn to => edge(find toplevel_arreff,find to)) (puts@gets)
+	val puts_and_gets = puts@gets
+    in app (fn to => edge(find toplevel_arreff,find to)) puts_and_gets
+	; puts_and_gets
     end
 
   (* Optimization: For regions of type word we reuse the top-level
@@ -841,7 +843,7 @@ struct
 		       (fn e => 
 			case get_level_and_key e of 
 			    SOME (_,ref i) => if i <> 0 then i else die "pu_node"
-			  | NONE => 0) toplevel_effects o G.pu_node maybeNewHashInfo PUT))
+			  | NONE => 0) (toplevel_effects@toplevel_puts_and_gets) o G.pu_node maybeNewHashInfo PUT))
 
   val pu_nodes : einfo Pickle.pu -> einfo G.node list Pickle.pu
       = Pickle.cache (Pickle.nameGen "Effect.nodes" o Pickle.listGen o pu_node)

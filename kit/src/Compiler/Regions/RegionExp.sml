@@ -134,7 +134,7 @@ struct
   fun cons_if_there(NONE, l) = l
     | cons_if_there(SOME x, l) = x::l 
 
-  (* mkPhiTr(tr) traverses tr and collects the allow effects
+  (* mkPhiTr(tr) traverses tr and collects the arrow effects
      that are bound locally in tr (in FIX and LETREGION). 
      It also collects all effect nodes that decorate subexpressions.
    *)

@@ -774,13 +774,18 @@ structure Pickle :> PICKLE = (* was : *)
     fun fromStringHashCons ((_,_,hce) : instream) (s : string) : instream  =
 	(S.openIn s, UnpickleEnv.empty(), hce)
 
+    val ptest = false
     fun toString ((os,pe):outstream) : string = 
 	let val res = S.toString os
-	    val l = PickleEnv.bucketSizes pe
-	    val l = ListSort.sort (fn a => fn b => a > b) l
-	    val _ = print ("Buckets: " ^ Int.toString (length l) ^ "\n")
-	    val l = List.take(l,10) handle _ => l
-	    val _ = app (fn i => print ("  " ^ Int.toString i)) l
+	    val _ = if not ptest then () else
+		    let
+			val l = PickleEnv.bucketSizes pe
+			val l = ListSort.sort (fn a => fn b => a > b) l
+			val _ = print ("Buckets: " ^ Int.toString (length l) ^ "\n")
+			val l = List.take(l,10) handle _ => l
+			val _ = app (fn i => print ("  " ^ Int.toString i)) l
+		    in ()
+		    end
 	in res
 	end
 	
