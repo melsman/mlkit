@@ -24,7 +24,7 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 		  structure Crash = Crash
 		  val down_growing_stack : bool = false         (* false for KAM *)
 		  val double_alignment_required : bool = true   (* true for KAM?? *)
-		  val extra_prims = ["__mul_int", "mul_word8__", "mul_word__", "__get_conn"])
+		  val extra_prims = ["__mul_int", "mul_word8__", "mul_word__"])
 
     structure Kam = Kam (structure Labels = Labels
 			 structure PP = PP

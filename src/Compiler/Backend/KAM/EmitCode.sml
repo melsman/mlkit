@@ -146,7 +146,6 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 
       (* primitives *)
 
-      | PrimGetConn => out_opcode PRIM_GET_CONN
       | PrimEquali => out_opcode PRIM_EQUAL_I
       | PrimSubi => out_opcode PRIM_SUB_I
       | PrimAddi => out_opcode PRIM_ADD_I
