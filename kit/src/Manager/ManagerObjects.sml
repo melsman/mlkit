@@ -117,7 +117,9 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	fun assemble (file_s, file_o) =
           (Shell.execute_command (!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s);
-	   delete_file file_s)
+	   if !(Flags.lookup_flag_entry "delete_target_files")
+             then  delete_file file_s 
+           else ())
 
 	  (*e.g., "cc -Aa -c -o link.o link.s"
 
