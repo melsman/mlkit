@@ -80,6 +80,7 @@ let
 								   * the operating system is HPUX. *)
 	     (case arch_os()
 		of ("HPPA", "HPUX") => (CM.SymVal.define("KIT_TARGET_HPPA", 1))
+		 | ("X86", "Linux") => (CM.SymVal.define("KIT_TARGET_X86", 1))
 		 | _ => (error "the native backend is only available for the HPPA-HPUX system"; 
 			 resolve_backend()))
  	  | _ => (error "you must type C or native"; 
@@ -138,6 +139,8 @@ end ;
 (* This is only temporary; 09/02/1999, Niels *)
 val _ = 
   let
+    fun enable s = K.Flags.lookup_flag_entry s := true
+    fun disable s =  K.Flags.lookup_flag_entry s := false
     fun error s = (print "\n ** Error : "; print s; print " **\n")
     val upper = implode o map Char.toUpper o explode
     (* Read characters until a newline is found. *)
@@ -150,50 +153,35 @@ val _ =
 	else
 	  read_string (s^ch)
       end
-    fun maybe_enable_lambda_backend() =
+    fun choose_backend() =
       let 
-	val _ = print "\nDo you want to use the new backend?\n\
+	fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
+	val (arch,os) = arch_os()
+
+	val _ = print("\nDo you want to use the new backend?\n\
 	              \If you say yes then your previous selection is overruled.\n\
-                      \Target system is HP PA-RISC (type yes or no): "
+                      \Target system is " ^ arch ^ "-" ^ os ^ " (type yes or no): ")
+	val profflags = ["region_profiling", "print_program_points",
+			 "print_call_explicit_expression", "log_to_file"]
       in 
 	case explode (upper (read_string ""))
 	  of #"Y" :: #"E" :: #"S" :: _ => 
-	    (K.Flags.lookup_flag_entry "enable_lambda_backend" := true;
-	     K.Flags.lookup_flag_entry "garbage_collection" := false;
- 	     K.Flags.lookup_flag_entry "delete_target_files" := false)
+	    (enable "enable_lambda_backend";
+	     disable "garbage_collection";
+ 	     disable "delete_target_files";
+	     K.build_basislib();
+	     K.install())
 	   | #"N" :: #"O" :: _ => 
-	    (K.Flags.lookup_flag_entry "enable_lambda_backend" := false;
-	     K.Flags.lookup_flag_entry "garbage_collection" := false)
+	    (disable "enable_lambda_backend";
+	     disable "garbage_collection";
+	     K.build_basislib();
+	     app enable profflags;
+	     K.build_basislib();
+	     app disable profflags;
+	     K.install())
 	   | _ => (error "you must type yes or no"; 
-		   maybe_enable_lambda_backend())
+		   choose_backend())
       end
   in
-    maybe_enable_lambda_backend()
+    choose_backend()
   end;
-
-val _ = 
-  let fun enable s = K.Flags.lookup_flag_entry s := true
-      fun disable s =  K.Flags.lookup_flag_entry s := false
-      val profflags = ["region_profiling", "print_program_points",
-		       "print_call_explicit_expression", "log_to_file"]
-  in
-    K.build_basislib();
-(*
-    if !(K.Flags.lookup_flag_entry "enable_lambda_backend") then  (* This is only temporary; 09/02/1999, Niels *)
-      (enable "garbage_collection";
-       K.build_basislib();
-       disable "garbage_collection")
-    else
-      ();
-*)
-    if not (!(K.Flags.lookup_flag_entry "enable_lambda_backend")) then  (* This is only temporary; 09/02/1999, Niels *)
-      (app enable profflags;
-       K.build_basislib();
-       app disable profflags)
-    else
-      ()
-  end
-
-val _ = K.install();
-
-

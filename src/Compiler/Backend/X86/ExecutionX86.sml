@@ -1,14 +1,4 @@
 
-signature EXECUTION =
-  sig
-    structure CompilerEnv: COMPILER_ENV
-    structure CompileBasis: COMPILE_BASIS
-    structure Compile: COMPILE
-      sharing type Compile.CompileBasis = CompileBasis.CompileBasis
-      sharing type Compile.CEnv = CompilerEnv.CEnv
-  end;
-
-
 functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
 		  structure FreeIds : FREE_IDS
 		  structure Basics : BASICS
@@ -106,5 +96,52 @@ functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
 				   structure Flags = Tools.Flags
 				   structure Report = Tools.Report
 				   structure Crash = Tools.Crash)
+
+    type CompileBasis = CompileBasis.CompileBasis
+    type CEnv = CompilerEnv.CEnv
+    type strdec = TopdecGrammar.strdec
+    datatype target = OLDtarget of Compile.target
+                    | NEWtarget of CodeGen.AsmPrg
+    type linkinfo = Compile.linkinfo
+    type label = Compile.label
+    val code_label_of_linkinfo : linkinfo -> label = Compile.code_label_of_linkinfo
+    val imports_of_linkinfo : linkinfo -> label list = Compile.imports_of_linkinfo
+    val exports_of_linkinfo : linkinfo -> label list = Compile.exports_of_linkinfo
+    val unsafe_linkinfo : linkinfo -> bool = Compile.unsafe_linkinfo
+
+    datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
+                 | CEnvOnlyRes of CEnv
+
+    val enable_lambda_backend = Flags.lookup_flag_entry "enable_lambda_backend"
+
+    fun compile a =
+      case Compile.compile a
+	of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
+	 | Compile.CodeRes(ce,cb,target,linkinfo,target_new) => 
+	  if !enable_lambda_backend then
+	    let 
+	      val {main_lab, code, imports, exports, safe} = target_new
+	      val _ = Tools.Timing.timing_begin()
+	      val asm_prg = Tools.Timing.timing_end_res("CG",CodeGen.CG target_new)
+	      val linkinfo = Compile.mk_linkinfo {code_label=main_lab,
+						  imports=(#1 imports) @ (#2 imports), (* Merge MLFunLab and DatLab *)
+						  exports=(#1 exports) @ (#2 exports), (* Merge MLFunLab and DatLab *)
+						  unsafe=not(safe)}
+	    in 
+	      CodeRes(ce,cb,NEWtarget asm_prg,linkinfo)
+	    end
+	  else 
+	    CodeRes(ce,cb,OLDtarget target,linkinfo)
+
+    fun generate_link_code (labs : label list) : target =
+      if !enable_lambda_backend then 
+	NEWtarget(CodeGen.generate_link_code labs)
+      else 
+	OLDtarget(Compile.generate_link_code labs)
+
+    fun emit {target:target, filename:string} : unit =
+      case target
+	of OLDtarget t => Compile.emit {target=t, filename=filename}
+	 | NEWtarget t => CodeGen.emit (t, filename)
 
   end;

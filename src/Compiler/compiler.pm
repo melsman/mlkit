@@ -49,6 +49,22 @@ C/C_CODE.sml
 COMPILE_BASIS.sml
 COMPILE.sml
 
+Backend/CLOS_CONV_ENV.sml
+Backend/CALL_CONV.sml
+Backend/CLOS_EXP.sml
+Backend/LINE_STMT.sml
+Backend/BACKEND_INFO.sml
+Backend/REG_ALLOC.sml
+Backend/FETCH_AND_FLUSH.sml
+Backend/CALC_OFFSET.sml
+Backend/SUBST_AND_SIMPLIFY.sml
+Backend/CODE_GEN.sml
+Backend/JUMP_TABLES.sml
+
+Backend/HpPaRisc/HPPA_RESOLVE_JUMPS.sml
+Backend/HpPaRisc/HP_PA_DELAY_SLOT_OPTIMIZATION.sml
+Backend/HpPaRisc/HP_PA_RISC.sml
+EXECUTION.sml
 
 CConst.sml                         (* then all the functors *)
 
@@ -123,6 +139,22 @@ C/CKAMBackend.sml
 
 #endif
 *)
+
+Backend/ClosConvEnv.sml
+Backend/CallConv.sml
+Backend/ClosExp.sml
+Backend/LineStmt.sml
+Backend/RegAlloc.sml
+Backend/FetchAndFlush.sml
+Backend/CalcOffset.sml
+Backend/SubstAndSimplify.sml
+Backend/JumpTables.sml
+
+Backend/HpPaRisc/BackendInfo.sml
+Backend/HpPaRisc/HppaResolveJumps.sml
+Backend/HpPaRisc/HpPaDelaySlotOptimization.sml
+Backend/HpPaRisc/CodeGen.sml
+Backend/HpPaRisc/HpPaRisc.sml
 
 CompileBasis.sml
 Compile.sml

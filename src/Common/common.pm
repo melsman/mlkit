@@ -41,6 +41,7 @@ in
   SORTED_FINMAP.sml
   SortedFinMap.sml
   IntFinMapPT.sml
+  WordFinMapPT.sml
 (*  IntFinMap.sml *)
   OrderFinMap.sml
   ../Manager/NAME.sml

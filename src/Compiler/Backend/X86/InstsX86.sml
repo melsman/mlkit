@@ -10,12 +10,31 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
     type freg = int
 
     type label = Labels.label
+    datatype lab = 
+        DatLab of label      (* For data to propagate across program units *)
+      | LocalLab of label    (* Local label inside a block *)
+      | NameLab of string    (* For ml strings, jumps to runtime system,
+			        jumps to millicode, code label, finish 
+			        label, etc. *)
+      | MLFunLab of label    (* Labels on ML Functions *)
+
+    fun eq_lab (DatLab label1, DatLab label2) = Labels.eq(label1,label2)
+      | eq_lab (LocalLab label1, LocalLab label2) = Labels.eq(label1,label2)
+      | eq_lab (NameLab s1, NameLab s2) = s1 = s2
+      | eq_lab (MLFunLab label1, MLFunLab label2) = Labels.eq(label1,label2)
+      | eq_lab _ = false
 
     datatype ea = 
         R of reg   (* register *)
       | I of int   (* immediate *)
-      | L of label
+      | L of lab
       | D of int * reg     (* displaced *)
+
+    fun eq_ea (R r, R r') = r=r'
+      | eq_ea (I i, I i') = i=i'
+      | eq_ea (L l, L l') = eq_lab(l,l')
+      | eq_ea (D p,D p') = p=p'
+      | eq_ea _ = false
       
     datatype inst =               (* general instructions *)
         movl of ea * ea
@@ -29,23 +48,24 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | sall of ea * ea
       | cmpl of ea * ea
 
-      | jmp of label     (* jump instructions *)
-      | jl of label
-      | jg of label
-      | jle of label        
-      | jge of label
-      | je of label         (* = jz *)
-      | jne of label        (* = jnz *)
+      | jmp of lab     (* jump instructions *)
+      | jl of lab
+      | jg of lab
+      | jle of lab        
+      | jge of lab
+      | je of lab         (* = jz *)
+      | jne of lab        (* = jnz *)
 
-      | call of label    (* C function calls and returns *)
+      | call of lab    (* C function calls and returns *)
       | ret
       | leave
 
       | dot_align of int        (* pseudo instructions *)
-      | dot_globl of label
+      | dot_globl of lab
       | dot_text
       | dot_section of string
-      | lab of label
+      | lab of lab
+      | comment of string
 
     datatype top_decl =
         FUN of label * inst list
@@ -75,9 +95,14 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | pr_reg 7 = "%esp"
       | pr_reg _ = die "pr_phreg. no such register"
 
+    fun pr_lab (DatLab l) = Labels.pr_label l
+      | pr_lab (LocalLab l) = Labels.pr_label l
+      | pr_lab (NameLab s) = s
+      | pr_lab (MLFunLab l) = Labels.pr_label l 
+
     fun pr_ea (R r) = pr_reg r
       | pr_ea (I i) = "$" ^ Int.toString i
-      | pr_ea (L l) = Labels.pr_label l
+      | pr_ea (L l) = pr_lab l
       | pr_ea (D(i,r)) = if i=0 then pr_reg r
 			 else Int.toString i ^ "(" ^ pr_reg r ^ ")"
 
@@ -96,29 +121,30 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	       | sall (ea1, ea2) => emit("\tsall " ^ pr_ea ea1 ^ "," ^ pr_ea ea2)
 	       | cmpl (ea1, ea2) => emit("\tcmpl " ^ pr_ea ea1 ^ "," ^ pr_ea ea2)
 
-	       | jmp l => emit ("\tjmp " ^ Labels.pr_label l)
-	       | jl l => emit ("\tjl " ^ Labels.pr_label l)
-	       | jg l => emit ("\tjg " ^ Labels.pr_label l)
-	       | jle l => emit ("\tjle " ^ Labels.pr_label l)
-	       | jge l => emit ("\tjge " ^ Labels.pr_label l)
-	       | je l => emit ("\tje " ^ Labels.pr_label l)
-	       | jne l => emit ("\tjne " ^ Labels.pr_label l)
+	       | jmp l => emit ("\tjmp " ^ pr_lab l)
+	       | jl l => emit ("\tjl " ^ pr_lab l)
+	       | jg l => emit ("\tjg " ^ pr_lab l)
+	       | jle l => emit ("\tjle " ^ pr_lab l)
+	       | jge l => emit ("\tjge " ^ pr_lab l)
+	       | je l => emit ("\tje " ^ pr_lab l)
+	       | jne l => emit ("\tjne " ^ pr_lab l)
 
-	       | call l => emit("\tcall " ^ Labels.pr_label l)
+	       | call l => emit("\tcall " ^ pr_lab l)
 	       | ret => emit ("\tret")
 	       | leave => emit ("\tleave")
 	       | dot_align i => emit(".align " ^ Int.toString i)
-	       | dot_globl l => emit(".globl " ^ Labels.pr_label l)
+	       | dot_globl l => emit(".globl " ^ pr_lab l)
 	       | dot_text => emit(".text")
 	       | dot_section s => emit(".section " ^ s)
-	       | lab l => emit(Labels.pr_label l ^ ":")
+	       | lab l => emit(pr_lab l ^ ":")
+	       | comment s => emit ("; " ^ s) 
       in app emit_inst insts
       end
 
     fun emit_topdecl os t =
       case t
-	of FUN (l, insts) => emit_insts(os, lab l::insts)
-	 | FN (l, insts) =>  emit_insts(os, lab l::insts)
+	of FUN (l, insts) => emit_insts(os, lab (MLFunLab l)::insts)
+	 | FN (l, insts) =>  emit_insts(os, lab (MLFunLab l)::insts)
 
     (*-----------------------------------------------------------*)
     (* Converting Between General Registers and Precolored Lvars *)
@@ -133,6 +159,8 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       val map_lvs_to_reg = LvarFinMap.fromList(ListPair.zip(reg_lvs,regs))
       val map_reg_to_lvs = Vector.fromList reg_lvs
     in
+      val all_regs_as_lvs = reg_lvs 
+
       fun is_reg lv = 
 	(case LvarFinMap.lookup map_lvs_to_reg lv of
 	   SOME reg => true
@@ -145,9 +173,9 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 
       fun reg_to_lv(i) = Vector.sub(map_reg_to_lvs,i)
 
-      val reg_args = [1,2]
+      val reg_args = [0,1,2]
       val reg_args_as_lvs = map reg_to_lv reg_args
-      val reg_res = [2,1] 
+      val reg_res = [2,1,0] 
       val reg_res_as_lvs = map reg_to_lv reg_res
 
       val reg_args_ccall = []
@@ -155,29 +183,30 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       val reg_res_ccall = [1] 
       val reg_res_ccall_as_lvs = map reg_to_lv reg_res_ccall
 
-      val callee_save_regs_mlkit = [5,6,7]
-      val callee_save_regs_as_lvs = map reg_to_lv callee_save_regs_mlkit
+      val callee_save_regs_mlkit = []
+      val callee_save_regs_mlkit_as_lvs = map reg_to_lv callee_save_regs_mlkit
 
-      val caller_save_regs_mlkit = [1,2,3,4]
-      val caller_save_regs_as_lvs = map reg_to_lv caller_save_regs_mlkit
+      val caller_save_regs_mlkit = [0,1,2,3,4,5,6]
+      val caller_save_regs_mlkit_as_lvs = map reg_to_lv caller_save_regs_mlkit
 
-      val callee_save_regs_ccall = [5,6,7]
-      val callee_save_regs_as_lvs = map reg_to_lv callee_save_regs_ccall
+      val callee_save_regs_ccall = []
+      val callee_save_regs_ccall_as_lvs = map reg_to_lv callee_save_regs_ccall
 
-      val caller_save_regs_ccall = [1,2,3,4]
-      val caller_save_regs_as_lvs = map reg_to_lv caller_save_regs_ccall
+      val caller_save_regs_ccall = [0,1,2,3,4,5,6]
+      val caller_save_regs_ccall_as_lvs = map reg_to_lv caller_save_regs_ccall
     end
 
-    fun emit (os : TextIO.outstream,
-	      {top_decls: top_decl list,
+    fun emit ({top_decls: top_decl list,
 	       init_code: inst list,
 	       exit_code: inst list,
-	       static_data: inst list}) =
-      (emit_insts (os, init_code);
-       app (emit_topdecl os) top_decls;
-       emit_insts (os, static_data);
-       emit_insts (os, exit_code))
-
+	       static_data: inst list}, filename) =
+      let val os : TextIO.outstream = TextIO.openOut filename
+      in (emit_insts (os, init_code);
+	  app (emit_topdecl os) top_decls;
+	  emit_insts (os, static_data);
+	  emit_insts (os, exit_code);
+	  TextIO.closeOut os) handle E => (TextIO.closeOut os; raise E)
+      end
     type StringTree = PP.StringTree
     fun layout _ = PP.LEAF "not implemented"
   end

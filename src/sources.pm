@@ -18,7 +18,7 @@ in
     Manager/Manager.sml
     
     Common/Elaboration.sml
-    Common/Execution.sml
+    Compiler/Backend/HpPaRisc/ExecutionHPPA.sml
     Common/SMLofNJOnKit.sml   (* hack *)
     Common/KitCompiler.sml
     Common/KitOnKit.sml       (* running the Kit *)

@@ -5,11 +5,23 @@ signature INSTS_X86 =
     type freg
 
     type label
+    datatype lab = 
+        DatLab of label      (* For data to propagate across program units *)
+      | LocalLab of label    (* Local label inside a block *)
+      | NameLab of string    (* For ml strings, jumps to runtime system,
+			        jumps to millicode, code label, finish 
+			        label, etc. *)
+      | MLFunLab of label    (* Labels on ML Functions *)
+
+    val eq_lab : lab * lab -> bool
 
     datatype ea = R of reg   (* register *)
                 | I of int   (* immediate *)
-                | L of label
+                | L of lab
                 | D of int * reg   (* displaced *)
+
+    val pr_ea : ea -> string
+    val eq_ea : ea * ea -> bool
 
     datatype inst =                 (* general instructions *)
       movl of ea * ea
@@ -23,23 +35,24 @@ signature INSTS_X86 =
     | sall of ea * ea
     | cmpl of ea * ea
 
-    | jmp of label     (* jump instructions *)
-    | jl of label
-    | jg of label
-    | jle of label        
-    | jge of label
-    | je of label         (* = jz *)
-    | jne of label        (* = jnz *)
+    | jmp of lab     (* jump instructions *)
+    | jl of lab
+    | jg of lab
+    | jle of lab        
+    | jge of lab
+    | je of lab         (* = jz *)
+    | jne of lab        (* = jnz *)
 
-    | call of label    (* C function calls and returns *)
+    | call of lab    (* C function calls and returns *)
     | ret
     | leave
 
     | dot_align of int        (* pseudo instructions *)
-    | dot_globl of label
+    | dot_globl of lab
     | dot_text
     | dot_section of string
-    | lab of label
+    | lab of lab
+    | comment of string
 
     datatype top_decl =
         FUN of label * inst list
@@ -60,9 +73,10 @@ signature INSTS_X86 =
     val ebp : reg
     val esp : reg
 
-    val emit : TextIO.outstream * AsmPrg -> unit   (* may raise IO *)
+    val emit : AsmPrg * string -> unit   (* may raise IO *)
 
     val pr_reg : reg -> string
+    val pr_lab : lab -> string
 
     (*-----------------------------------------------------------*)
     (* Converting Between General Registers and Precolored Lvars *)
@@ -71,6 +85,7 @@ signature INSTS_X86 =
     type lvar
     val is_reg                  : lvar -> bool
     val lv_to_reg               : lvar -> reg
+    val all_regs_as_lvs         : lvar list
     val reg_args_as_lvs         : lvar list
     val reg_res_as_lvs          : lvar list
     val reg_args_ccall_as_lvs   : lvar list
