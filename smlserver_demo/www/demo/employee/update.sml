@@ -13,4 +13,5 @@
     (Db.dml update;
      Ns.returnRedirect ("search.sml?email=" 
 			 ^ Ns.encodeUrl email))
-    handle _ => Page.return "Employee Database" `Update failed`
+    handle _ => 
+      Page.return "Employee Database" `Update failed`
