@@ -179,6 +179,20 @@ struct
   and pr_access_type = 
     fn acc_ty => PP.flatten1(layout_access_type acc_ty)
 
+
+  (* ----------------------------------------------------------------------------
+   * Dead code elimination; during code generation we eliminate code that is non-
+   * reachable by eliminating code from the continuation---down to a label---when 
+   * a jump or a return is generated.
+   * ---------------------------------------------------------------------------- *)
+
+  fun dead_code_elim continuation =
+    case continuation
+      of Label _ :: _ => continuation
+       | DotLabel _ :: _ => continuation
+       | _ :: rest => dead_code_elim rest
+       | nil => continuation
+
   (***********************)
   (* Code Generation     *)
   (***********************)
@@ -212,7 +226,7 @@ struct
       fun comment(str,C) = Comment str :: C
       fun new_label str = Labels.new_named str
       fun label(lab,C) = Label lab :: C
-      fun jmp(lab,C) = JmpRel lab :: C
+      fun jmp(lab,C) = JmpRel lab :: dead_code_elim C
     in
       fun linear_search(sels,
 			default,
@@ -300,7 +314,8 @@ struct
       | CG_ce(ClosExp.SELECT(i,ce),env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Select(i)::acc)
       | CG_ce(ClosExp.FNJMP{opr,args,clos=NONE,free=[]},env,sp,cc,acc) = 
       CG_ce(opr,env,sp,cc,
-	    Push :: (comp_ces(args,env,sp+1,cc, ApplyFnJmp(List.length args, sp) :: acc)))
+	    Push :: (comp_ces(args,env,sp+1,cc, ApplyFnJmp(List.length args, sp) :: 
+			      dead_code_elim acc)))
       | CG_ce(ClosExp.FNJMP{opr,args,clos,free},env,sp,cc,acc) = die "FNJMP: either clos or free are non empty."
       | CG_ce(ClosExp.FNCALL{opr,args,clos=NONE,free=[]},env,sp,cc,acc) = 
       let
@@ -314,12 +329,14 @@ struct
       | CG_ce(ClosExp.FNCALL{opr,args,clos,free},env,sp,cc,acc) = die "FNCALL: either clos or free are non empty."      
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=NONE,free=[]},env,sp,cc,acc) =
       comp_ces(args,env,sp,cc,
-	       ApplyFunJmpNoClos(opr,List.length args,sp - (List.length reg_args)) :: acc)
+	       ApplyFunJmpNoClos(opr,List.length args,sp - (List.length reg_args)) :: 
+	       dead_code_elim acc)
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=SOME clos_ce,free=[]},env,sp,cc,acc) =
       CG_ce(clos_ce,env,sp,cc,
 	    Push ::
 	    comp_ces(args,env,sp+1,cc,
-		     ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: acc))
+		     ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: 
+		     dead_code_elim acc))
       | CG_ce(ClosExp.JMP{opr,args,reg_vec,reg_args,clos,free},env,sp,cc,acc) = die "JMP either reg_vec or free are non empty."
       | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos=NONE,free=[]},env,sp,cc,acc) =
       let
@@ -545,7 +562,8 @@ and code is actually generated when passing arguments in region polymorphic func
 			       List.length all_args) :: acc)
 	      end
 	  end
-      | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = Comment "FRAME not implemented" :: acc
+      | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = 
+	  Comment "FRAME - this is a nop" :: acc
 
     and force_reset_aux_region(sma,env,sp,cc,acc) = 
       let
@@ -628,6 +646,7 @@ and code is actually generated when passing arguments in region polymorphic func
       fun mk_fun f_fun (lab,cc,ce) =
 	(* Region arguments start at offset 0 *)
 	(* cc.res contains one pseudo lvar for each value returned, see LiftTrip in ClosExp *)
+	(* I don't know what a ``pseudo lvar'' is?? ME 2000-11-04 *)
 	let
 	  val decomp_cc = CallConv.decompose_cc cc
 	  fun add_lvar (lv,(offset,env)) = (offset+1,declareLvar(lv,STACK(offset),env))
