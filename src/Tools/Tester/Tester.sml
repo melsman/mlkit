@@ -51,10 +51,10 @@ structure Tester : TESTER =
 	val {dir, file} = OS.Path.splitDirFile filepath
 	val _ = if dir="" then () else OS.FileSys.chDir dir
 	val compile_command_base = kitexe ^ " --log_to_file " ^ 
-	  (if opt TestFile.NoBasisLib then "-no_basislib " else "") ^
-          (if opt TestFile.NoOptimiser then "--no_optimiser " else "") ^
-	  (if opt TestFile.TimeCompiler then "--timings " else "") ^
-          (if opt TestFile.CompareCompilerLogs then "--report_file_sig " else "")
+	  (if opt "nobasislib" then "-no_basislib " else "") ^
+          (if opt "nooptimiser" then "--no_optimiser " else "") ^
+	  (if opt "tc" (*Time Compiler*) then "--timings " else "") ^
+          (if opt "ccl" (*Compare Compiler Logs*) then "--report_file_sig " else "")
 
 	val compile_command = compile_command_base ^ file	  
 	val compile_command_prof = compile_command_base ^ "-prof " ^ file
@@ -63,14 +63,14 @@ structure Tester : TESTER =
 
 	fun maybe_compare_complogs success =
 	  let fun success_as_expected() =
-	        if opt TestFile.ExpectCompileTimeError then 
+	        if opt "ecte" (*Expect Compile Time Error*) then 
 		  if success then (msgErr "unexpected compile time success"; false)
 		  else (msgOk "expected compile time failure"; true)
 		else 
 		  if success then (msgOk "expected compile time success"; true)
 		  else (msgErr "unexpected compile time failure"; false)
 	  in
-	    if opt TestFile.CompareCompilerLogs then
+	    if opt "ccl" (*Compare Compiler Logs*) then
 	      let val match = if equal_to_okfile (file ^ ".log") then (msgOk "log equal to log.ok"; true)
 			      else (msgErr "log not equal to log.ok"; false)
 	      in TestReport.add_compout_line {name=filepath, match=SOME match,
@@ -82,7 +82,7 @@ structure Tester : TESTER =
 	  end
 
 	fun maybe_report_comptimes() =
-	  if opt TestFile.TimeCompiler then
+	  if opt "tc" (*Time Compiler*) then
 	    let val entries = CompilerTimings.from_file "KITtimings"
 	    in TestReport.add_comptime_line {name=filepath, entries=entries}
 	    end handle CompilerTimings.ReadTimingsError s => (msgErr s; ())
@@ -97,7 +97,7 @@ structure Tester : TESTER =
 		  (msgOk "out equal to out.ok"; true)
 		else (msgErr "out not equal to out.ok"; false)
 	    in 
-	      if opt TestFile.TimeExecutable then
+	      if opt "tx" (*Time Executable*) then
 		let val _ = msg' ("    executing target program: " ^ exe_file)
 	 	    val {count,size,rss,data,stk,exe,real,user,sys} =
 		      MemUsage.memUsage {cmd=exe_file,args=nil,out_file=file ^ ".out"}
@@ -119,8 +119,8 @@ structure Tester : TESTER =
 	      else
 		let val res = OS.Process.system (exe_file ^ " > " ^ file ^ ".out")
 		in 
-		  if (not(opt TestFile.UncaughtException) andalso res = OS.Process.success) 
-		    orelse (opt TestFile.UncaughtException andalso res <> OS.Process.success) then
+		  if (not(opt "ue" (*Uncaught Exception*) ) andalso res = OS.Process.success) 
+		    orelse (opt "ue" (*Uncaught Exception*) andalso res <> OS.Process.success) then
 		      TestReport.add_runtime_bare_line(filepath,test_output())
 		  else (msgErr (exe_file ^ " failure");
 			TestReport.add_runtime_bare_line(filepath,false))
@@ -142,8 +142,8 @@ structure Tester : TESTER =
 		 if OS.Process.system ("mv run " ^ exe_file) = OS.Process.success then
 		   let val res = OS.Process.system (exe_file ^ " " ^ exe_cmd_args ^ " > " ^ file^out_file)
 		   in
-		     if (not(opt TestFile.UncaughtException) andalso res = OS.Process.success)
-		       orelse (opt TestFile.UncaughtException andalso res <> OS.Process.success) then
+		     if (not(opt "ue" (*Uncaught Exception*) ) andalso res = OS.Process.success)
+		       orelse (opt "ue" (*Uncaught Exception*) andalso res <> OS.Process.success) then
 		       add_line_testreport (filepath,test_output())
 		     else (msgErr "run failure";
 			   add_line_testreport (filepath,false))
@@ -158,7 +158,7 @@ structure Tester : TESTER =
 	fun maybe_trywithprof() = maybe_trywith(file,
 						".outp",
 						".out.ok",
-						fn () => opt TestFile.Profiling,
+						fn () => opt "prof" (*Profiling*),
 						compile_command_prof,
 						TestReport.add_profile_line, 
 						"")
@@ -189,28 +189,28 @@ structure Tester : TESTER =
 	fun maybe_trywithgc() = maybe_trywith(file,
 					      ".outgc",
 					      ".out.ok",
-					      fn () => opt TestFile.GC,
+					      fn () => opt "gc",
 					      compile_command_gc,
 					      TestReport.add_gc_line,
 					      " ")
 	fun maybe_trywithgcprof() = maybe_trywith(file,
 						  ".outgcp",
 						  ".out.ok",
-						  fn () => opt TestFile.GC andalso opt TestFile.Profiling,
+						  fn () => opt "gc" andalso opt "prof",
 						  compile_command_gc_prof,
 						  TestReport.add_gc_profile_line,
 						  " -realtime -microsec 1000 ")
 	fun maybe_trywithtags() = maybe_trywith(file,
 						".outtags",
 						".out.ok",
-						fn () => opt TestFile.Tags,
+						fn () => opt "tags",
 						compile_command_gc,
 						TestReport.add_tags_line,
 						" -disable_gc ")
 	fun maybe_trywithtagsprof() = maybe_trywith(file,
 						    ".outtagsp",
 						    ".out.ok",
-						    fn () => opt TestFile.Tags andalso opt TestFile.Profiling,
+						    fn () => opt "tags" andalso opt "prof",
 						    compile_command_gc_prof,
 						    TestReport.add_tags_profile_line,
 						    " -disable_gc ")

@@ -2,17 +2,21 @@
 structure Benchmark = 
   struct
     type report = MemUsage.report
-    fun process compile p : string * (string * string * report) option =
-      case compile p
+    fun process compile (memusage:bool) (p:string,opts:string list) : string * (string * string * report) option =
+      case compile p opts
 	of SOME (s,t) =>
 	  let 
 	    val out = t ^ ".out.txt"
 	    val png = t ^ ".png"
 	    val res = SOME (out, png, MemUsage.memUsage {cmd="./" ^ t,args=nil,out_file=out})
 	      handle _ => NONE
-	    val memusage = "memusage -t -T --title=" ^ t ^ " -p " ^ png ^ " ./" ^ t
-	  in if OS.Process.system memusage = OS.Process.success then (s, res)
-	     else (s, NONE)
+	  in 
+	    if memusage then
+	      let val cmd = "memusage -t -T --title=" ^ t ^ " -p " ^ png ^ " ./" ^ t
+	      in if OS.Process.system cmd = OS.Process.success then (s, res)
+		 else (s, NONE)
+	      end
+	    else (s, res)
 	  end
 	 | NONE => (p,NONE)
 
@@ -32,7 +36,7 @@ structure Benchmark =
     fun ppMem n = TD (if n > 10000 then Int.toString(n div 1000) ^ "M"
 		      else Int.toString n ^ "K")
       
-    fun BenchTable opts (h,l) =
+    fun BenchTable opts (h,l,memusage) =
       let
 	fun pp p opt v = 
 	  if List.exists (fn opt' => opt=opt') opts then p v
@@ -50,9 +54,9 @@ structure Benchmark =
 	     ^ pp ppTime "user" user 
 	     ^ pp ppTime "sys"  sys 
 	     ^ TD(tagAttr "A" ("HREF=" ^ outfile) "output")
-	     ^ TD(tagAttr "A" ("HREF=" ^ png) "graph"))
+	     ^ (if memusage then TD(tagAttr "A" ("HREF=" ^ png) "graph") else ""))
 	  | BenchLine (p, NONE) = 
-	  let val sz = Int.toString(3 + length opts)
+	  let val sz = Int.toString(length opts + (if memusage then 3 else 2))
 	  in TR(TD(tagAttr "A" ("HREF=" ^ p) p) ^ tagAttr "TD" ("COLSPAN=" ^ sz) " - ")
 	  end
 	val BenchHeader =
@@ -65,7 +69,7 @@ structure Benchmark =
 	     ^ pp TH "real" "Real" 
 	     ^ pp TH "user" "User" 
 	     ^ pp TH "sys"  "Sys" 
-	     ^ TH "Output" ^ TH "Graph")
+	     ^ TH "Output" ^ (if memusage then TH "Graph" else ""))
       in
 	H2 h ^ TABLE (concat (BenchHeader :: map BenchLine l)) ^ "<P>"
       end
@@ -73,13 +77,35 @@ structure Benchmark =
     fun BenchPage p =
       HTML(BODY(H1 "KitBench Report" ^ p ^ "<HR>" ^ I "The KitBench Tool"))
 
-    datatype compiler = MLKIT | MLKITGC | SMLNJ
+    fun readFlags ss =
+      let
+	fun concatWith d (nil) = ""
+	  | concatWith d [s] = s
+	  | concatWith d (s::ss) = s ^ d ^ concatWith d ss
+	fun readFls (ss,acc) =
+	  case ss
+	    of ":"::ss => SOME (concatWith " " (rev acc),ss)
+	     | s::ss => readFls(ss,s::acc)
+	     | _ => NONE
+      in
+	case ss
+	  of ":"::ss => readFls (ss,nil)
+	   | _ => NONE
+      end
+    datatype compiler = MLKIT of string | SMLNJ | MLTON of string
+
     fun getCompileArgs (nil, comps, out) = NONE
       | getCompileArgs (s::ss , comps, out) = 
       case s
-	of "-mlkit"   => getCompileArgs (ss, MLKIT::comps, out)
-	 | "-mlkitgc" => getCompileArgs (ss, MLKITGC::comps, out)
+	of "-mlkit"   => 
+	  (case readFlags ss
+	     of SOME (flags,ss) => getCompileArgs (ss, MLKIT flags::comps, out)
+	      | NONE => getCompileArgs (ss, MLKIT "" ::comps, out))
 	 | "-smlnj"   => getCompileArgs (ss, SMLNJ::comps, out)
+	 | "-mlton"   => 
+	     (case readFlags ss
+		of SOME (flags,ss) => getCompileArgs (ss, MLTON flags::comps, out)
+		 | NONE => getCompileArgs (ss, MLTON "" :: comps, out))
 	 | "-o" => 
 	  (case ss
 	     of (f::ss) => getCompileArgs (ss, comps, SOME f)
@@ -87,49 +113,80 @@ structure Benchmark =
 	 | _ => SOME (s::ss, rev comps, out)
 
     fun getNameComp c =
-      case  c 
-	of MLKIT =>   ("ML Kit", CompileMLKIT.compile)
-	 | MLKITGC => ("ML Kit GC", CompileMLKITGC.compile)
-	 | SMLNJ =>   ("SML/NJ", CompileSMLNJ.compile)
+      let fun with_flags "" s = s
+	    | with_flags flags s = s ^ " [" ^ flags ^ "]"
+      in
+	case  c 
+	  of MLKIT flags =>   {head=with_flags flags "ML Kit", 
+			       compile=CompileMLKIT.compile, memusage=true, flags=flags}
+	   | SMLNJ       =>   {head="SML/NJ", compile=CompileSMLNJ.compile, memusage=false, flags=""}
+	   | MLTON flags =>   {head=with_flags flags "MLTON", 
+			       compile=CompileMLTON.compile, memusage=false, flags=flags}
+      end
 
     fun sourceFiles nil = nil
       | sourceFiles (input::inputs) =
       case OS.Path.ext input
 	of NONE => raise Fail ("Missing extension on file " ^ input)
-	 | SOME "sml" => input :: sourceFiles inputs
-	 | SOME "pm" => input :: sourceFiles inputs 
+	 | SOME "sml" => (input,nil) :: sourceFiles inputs
+	 | SOME "pm" => (input,nil) :: sourceFiles inputs 
 	 | SOME "tst" => (case TestFile.parse input
 			    of NONE => raise Fail "Parse Error"
 			     | SOME (_,l) => 
-			      let val ps = map (fn TestFile.SML(s,_) => s
-			                         | TestFile.PM (s,_) => s) l
+			      let val ps = map (fn TestFile.SML p => p
+			                         | TestFile.PM p => p) l
 			      in ps @ sourceFiles inputs
 			      end)
 	 | SOME ext => raise Fail ("Unknown extension " ^ ext)
 
     fun main1 kitdir inputs c =
-      let val (h,compile) = getNameComp c
+      let val {head,compile,memusage,flags} = getNameComp c
 	  val _ = print ("Parsing test-files\n")
 	  val ps = sourceFiles inputs
-	  val l = map (process (compile kitdir)) ps
-      in BenchTable ["rss", "size", "data", "stk", "exe", "real", "user", "sys"] (h,l)
+	  val l = map (process (compile kitdir flags) memusage) ps
+      in BenchTable ["rss", "size", "data", "stk", "exe", "real", "user", "sys"] (head,l,memusage)
+      end
+
+    fun tokenize nil = nil
+      | tokenize (s::ss) = 
+      let  (* `:' should appear as separate items *)
+	fun token #":" = true
+	  | token _ = false
+	fun tok (nil, nil, toks) = rev toks
+	  | tok (nil, acc, toks) = rev (implode(rev acc)::toks)
+	  | tok (c::cs, acc, toks) =
+	  if token c then tok(cs,nil,str c :: implode(rev acc) :: toks)
+	  else tok(cs,c::acc,toks)	  
+      in tok (explode s, nil, nil) @ tokenize ss
       end
 
     fun main kitdir (progname, args) =
+      let 
+	  val _ = print "Args: ["
+	  val _ = app (fn s => print (s ^ ",")) args
+	  val _ = print "]\n"
+	  val args = tokenize args
+	  val _ = print "Args: ["
+	  val _ = app (fn s => print (s ^ ",")) args
+	  val _ = print "]\n"
+      in
       case getCompileArgs (args, nil, NONE)
 	of NONE => 
 	  (  print "USAGE: kitbench [OPTION]... FILE...\n"
 	   ; print "OPTIONS:\n"
-	   ; print "  -smlnj           Run SML/NJ on each test.\n"
-	   ; print "  -mlkit           Run MLKIT on each test with region\n"
-	   ; print "                   inference enabled.\n"
-	   ; print "  -mlkitgc         Run MLKIT on each test with region\n"
-	   ; print "                   inference and garbage collection enabled.\n"
-	   ; print "  -o file          Write output to file ``file''."
+	   ; print "  -smlnj                 Run SML/NJ on each test.\n"
+	   ; print "  -mlton[:FLAG...FLAG:]  Run MLTON on each test.\n"
+	   ; print "  -mlkit[:FLAG...FLAG:]  Run MLKIT on each test.\n"
+	   ; print "  -o file                Write output to file ``file''.\n"
+           ; print "FLAG options to -mlton and -mlkit are passed to\n"
+	   ; print "  the compiler.\n"
 	   ; print "FILES:\n"
-	   ; print "  file.sml         Standard ML source file."
-	   ; print "  file.pm          Project file."
-	   ; print "  file.tst         Test file."
+	   ; print "  file.sml         Standard ML source file.\n"
+	   ; print "  file.pm          Project file.\n"
+	   ; print "  file.tst         Test file.\n"
+	   ; print "\n"
+	   ; print "EXAMPLE:\n"
+	   ; print "  kitbench -mlkit:-dangle -scratch: -smlnj kkb36c.sml.\n"
 	   ; OS.Process.failure)
 	 | SOME (inputs, cs, out) =>
 	  let val ts = map (main1 kitdir inputs) cs 
@@ -145,7 +202,7 @@ structure Benchmark =
 	      withFile out (fn os => TextIO.output(os, BenchPage(concat ts)))
 	    ; OS.Process.success
 	  end
-
+      end
     fun install() =
       let val _ = print "\n ** Installing KitBench, a tool for benchmarking SML compilers **\n\n"
 	  val srcPath = OS.FileSys.getDir()   (* assumes we are in kit/src/Tools/KitBench directory *)
