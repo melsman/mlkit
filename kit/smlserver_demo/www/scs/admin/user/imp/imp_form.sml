@@ -8,13 +8,15 @@ fun imp_users_source (source:ScsUserImp.external_source) =
   (source,
    ScsError.wrapPanic
    (Db.list (fn g => (g "user_imp_id", g "first_names", g "last_name",
-		      g "security_id", g "email", Db.toDate (g "last_auto_import_try"),
-		      Db.toDate (g "last_modified"), g "exact_match_id")))
-       `select scs_user_imports.*,
+		      g "security_id", g "email", Db.toTimestamp (g "last_auto_import_try"),
+		      Db.toTimestamp (g "last_modified"), g "exact_match_id")))
+       `select scs_user_imports.user_imp_id,first_names,last_name,
+               security_id,email,^(Db.toTimestampExp "last_auto_import_try") as last_auto_import_try,
+               ^(Db.toTimestampExp "last_modified") as last_modified,
                scs_user.imp_exact_match(user_imp_id) as exact_match_id
           from scs_user_imports
          where scs_user_imports.on_what_table = ^(Db.qqq (#db_name source))
-         order by exact_match_id,last_modified`)
+         order by exact_match_id,user_imp_id`)
 
 val imp_users = List.map imp_users_source (List.map ScsUserImp.getSource ScsUserImp.all_sources)
 
@@ -24,6 +26,7 @@ fun layout_user (user_imp_id,first_names,last_name,
   `<td><b>^first_names ^last_name</b></td>
    <td>^security_id</td>
    <td>^email</td>
+   <td>^(ScsDate.wrapOpt ScsDate.ppTimestamp last_modified)</td>
    <td>^(ScsDate.wrapOpt ScsDate.pp last_auto_import_try)</td>
    <td align="center">^(ScsUserImp.exactMatchLink user_imp_id exact_match_id)</td>
    <td align="center">^(ScsUserImp.delLink user_imp_id)</td>
@@ -46,6 +49,7 @@ fun gen_table (source:ScsUserImp.external_source) [] =
       header=`<th>^(ScsUserImp.nameField())</th>
               <th>^(ScsUserImp.securityIdField())</th>
               <th>^(ScsUserImp.emailField())</th>
+              <th>^(ScsUserImp.lastModifiedField())</th>
               <th>^(ScsUserImp.lastImportField())</th>
               <th>^(ScsUserImp.exactMatchField())</th>
               <th>^(ScsUserImp.deleteField())</th>

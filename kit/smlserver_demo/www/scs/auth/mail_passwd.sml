@@ -1,6 +1,4 @@
-val email = ScsFormVar.wrapFail ScsFormVar.getLoginErr ("email","Email")
-
-val email = email^"@it-c.dk"
+val email = ScsFormVar.wrapFail ScsFormVar.getEmailErr ("email","Email")
 
 val emsg = [(ScsLang.en,`You typed an email that is either not in our database or your account has not been activated - 
 			 please click your browsers back button and try again or contact the %0  if you believe
