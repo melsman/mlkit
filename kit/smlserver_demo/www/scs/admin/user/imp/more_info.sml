@@ -30,17 +30,17 @@ val (first_names,last_name,norm_name,
 val create_new_component =
   UcsWidget.oneColumnText
   [ScsDict.sl'
-   [(ScsLang.en,`You may <a href="%0">create</a> %1 as a new person.`),
-    (ScsLang.da,`Du kan <a href="%0">oprette</a> %1 som en ny person.`)] 
-   [UcsPage.confirmCreateUrl (Html.genUrl "imp_row.sml" [("user_imp_id",Int.toString user_imp_id)]),
+   [(ScsLang.en,`You may <a ^(UcsPage.confirmCreateOnClick()) href="%0">create</a> %1 as a new person.`),
+    (ScsLang.da,`Du kan <a ^(UcsPage.confirmCreateOnClick()) href="%0">oprette</a> %1 som en ny person.`)] 
+   [Html.genUrl "imp_row.sml" [("user_imp_id",Int.toString user_imp_id)],
     Quot.toString `^first_names ^last_name`]]
 
 val delete_component =
   UcsWidget.oneColumnText
   [ScsDict.sl'
-   [(ScsLang.en,`You may <a href="%0">delete</a> %1 from the import table.`),
-    (ScsLang.da,`Du kan <a href="%0">slette</a> %1 fra importtabellen.`)] 
-   [UcsPage.confirmDelUrl (Html.genUrl "del_imp_row.sml" [("user_imp_id",Int.toString user_imp_id)]),
+   [(ScsLang.en,`You may <a ^(UcsPage.confirmDelOnClick()) href="%0">delete</a> %1 from the import table.`),
+    (ScsLang.da,`Du kan <a ^(UcsPage.confirmDelOnClick()) href="%0">slette</a> %1 fra importtabellen.`)] 
+   [Html.genUrl "del_imp_row.sml" [("user_imp_id",Int.toString user_imp_id)],
     Quot.toString `^first_names ^last_name`]]
 
 val user_imp_info =
