@@ -215,47 +215,51 @@ struct
 					children=[layout_ce ce]}
       | layout_ce(FNJMP{opr,args,clos,free}) = 
           let
-	    val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_ce args}
-	    val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_ce_opt clos]}
-	    val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_ce free}
+	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
+	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt clos]}
+	    val t3 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce free}
 	  in
-	    HNODE{start=flatten1(layout_ce opr) ^ "_fnjmp ",
-		  finish="", childsep=RIGHT " ",
-		  children=[t1,t2,t3]}
+	    NODE{start=flatten1(layout_ce opr) ^ "_fnjmp ",
+		 finish="", childsep=RIGHT " ",
+		 indent=3,
+		 children=[t1,t2,t3]}
 	  end
       | layout_ce(FNCALL{opr,args,clos,free}) = 
           let
-	    val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_ce args}
-	    val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_ce_opt clos]}
-	    val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_ce free}
+	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
+	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt clos]}
+	    val t3 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce free}
 	  in
-	    HNODE{start=flatten1(layout_ce opr) ^ "_fncall ",
-		  finish="", childsep=RIGHT " ",
-		  children=[t1,t2,t3]}
+	    NODE{start=flatten1(layout_ce opr) ^ "_fncall ",
+		 finish="", childsep=RIGHT " ",
+		 indent=3,
+		 children=[t1,t2,t3]}
 	  end
       | layout_ce(JMP{opr,args,reg_vec,reg_args,clos,free}) = 
           let
-	    val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_ce args}
-	    val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_ce_opt reg_vec]}
-	    val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_ce reg_args}
-	    val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_ce_opt clos]}
-	    val t5 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_ce free}
+	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
+	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt reg_vec]}
+	    val t3 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce reg_args}
+	    val t4 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt clos]}
+	    val t5 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce free}
 	  in
-	    HNODE{start=Labels.pr_label opr ^ "_funjmp",
-		  finish="", childsep=RIGHT " ",
-		  children=[t1,t2,t3,t4,t5]}
+	    NODE{start=Labels.pr_label opr ^ "_funjmp",
+		 finish="", childsep=RIGHT " ",
+		 indent=3,
+		 children=[t1,t2,t3,t4,t5]}
 	  end
       | layout_ce(FUNCALL{opr,args,reg_vec,reg_args,clos,free}) = 
           let
-	    val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_ce args}
-	    val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_ce_opt reg_vec]}
-	    val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_ce reg_args}
-	    val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_ce_opt clos]}
-	    val t5 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_ce free}
+	    val t1 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce args}
+	    val t2 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt reg_vec]}
+	    val t3 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce reg_args}
+	    val t4 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=[layout_ce_opt clos]}
+	    val t5 = NODE{start="<",finish=">",indent=3,childsep=RIGHT ",",children=map layout_ce free}
 	  in
-	    HNODE{start=Labels.pr_label opr ^ "_funcall",
-		  finish="", childsep=RIGHT " ",
-		  children=[t1,t2,t3,t4,t5]}
+	    NODE{start=Labels.pr_label opr ^ "_funcall",
+		 finish="", childsep=RIGHT " ",
+		 indent=3,
+		 children=[t1,t2,t3,t4,t5]}
 	  end
       | layout_ce(LETREGION{rhos=[],body}) = layout_ce body
       | layout_ce(LETREGION{rhos,body}) =

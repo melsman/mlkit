@@ -60,10 +60,12 @@ local
     fun chkfail s f r =
 	tst0 s ((f r; "WRONG") 
 			handle Overflow => "OK" | _ => "WRONG")
+
 in
 val test4a = tst "test4a" (map ceil args  
 			   = [0, 99, ~5, 2, ~1, 2, ~1, 3, ~2, 1000002, ~1000001]);
 val test4b = chkminmax "test4b" ceil [rminInt-0.9] [rmaxInt-0.1];
+
 val test4c = map (chkfail "test4c" ceil) [rminInt-1.0, rmaxInt+0.1];
 
 val test5a = check(map floor args 

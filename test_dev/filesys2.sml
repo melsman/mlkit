@@ -13,3 +13,4 @@ fun tst' s f = tst0 s (f () handle _ => "EXN");
 val _ = tst' "test8b" (fn _ => fullPath ());
 
 val _ = print "end\n"
+

@@ -487,12 +487,22 @@ struct
       (* sp[offset] = label for handl_return code.                      *)
       (* Note that we call deallocate_regions_until to the address above the exception handler, *)
       (* when an exception is raised.  *)
-      let
+      (* We must store the environment for the surrounding function in the handle to be restored when *)
+      (* returning from the handle function. Just some thoughts. 2000-12-10, Niels *)
+(* original, 22.18 2000-12-10, Niels     let
 	val return_lbl = Labels.new_named "return_handle"
       in
 	CG_ce(ce2,env,sp,cc, PushLbl return_lbl :: Push :: PushExnPtr ::	 
 	      CG_ce(ce1,env,sp+3,cc, PopExnPtr :: Pop(2) :: Label return_lbl :: acc))
+      end*)
+
+      let
+	val return_lbl = Labels.new_named "return_handle"
+      in
+	CG_ce(ce2,env,sp,cc, PushLbl return_lbl :: EnvPush :: Push :: PushExnPtr ::	 
+	      CG_ce(ce1,env,sp+4,cc, PopExnPtr :: Pop(3) :: Label return_lbl :: acc))
       end
+
       | CG_ce(ClosExp.SWITCH_I (ClosExp.SWITCH(ce,sels,default)),env,sp,cc,acc) = 
       CG_ce(ce,env,sp,cc, 
             binary_search(sels,
