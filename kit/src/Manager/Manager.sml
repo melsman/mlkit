@@ -58,11 +58,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     val region_profiling = Flags.lookup_flag_entry "region_profiling"
 
-    val formtyping = 
+    val extendedtyping = 
 	(Flags.add_bool_entry 
-	 {long="formtyping", short=SOME "ftyp", neg=false, 
+	 {long="extended_typing", short=SOME "xt", neg=false, 
 	  item=ref false,
-	  menu=["Control", "form typing (SMLserver)"],
+	  menu=["Control", "extended typing (SMLserver)"],
 	  desc="When this flag is enabled, SMLserver requires\n\
 	   \scripts to be functor SCRIPTLET's, which are\n\
 	   \automatically instantiated by SMLserver in a\n\
@@ -73,7 +73,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	   \constructed and written to the file scripts.gen.sml\n\
 	   \prior to the actual type checking and compilation\n\
 	   \of the project."}
-	  ; Flags.is_on0 "formtyping")	      
+	  ; Flags.is_on0 "extended_typing")	      
 	  
     val run_file = ref "run"
     val _ = Flags.add_string_entry 
@@ -898,7 +898,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	
     (* Called only for SMLserver *)
     fun smlserver_preprocess prj = 
-	if not(formtyping()) then prj
+	if not(extendedtyping()) then prj
 	else
 	    case Project.getParbody prj of
 		NONE => prj

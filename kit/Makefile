@@ -16,6 +16,7 @@ INSTALL=cp -p
 
 CLEAN=rm -rf PM CM *~ .\#*
 
+.PHONY: smlserver
 mlkit:
 	$(MKDIR) bin
 	cd src; $(MAKE)
