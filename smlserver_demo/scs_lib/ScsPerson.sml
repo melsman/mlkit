@@ -32,6 +32,10 @@ signature SCS_PERSON =
        (xxxxxx,yyyy) is returned. *)
     val splitCpr      : string -> (string*string)
 
+    (* [ppCpr cpr]  if cpr is on the form xxxxxxyyyy then the string
+       xxxxxx-yyyy is returned; otherwise the argument is returned. *)
+    val ppCpr : string -> string
+
     (* [makeCprPublic cpr] if cpr in on the form aaaaaabbbb then the
        revised cpr aaaaaaXXXX is returned *)
     val makeCprPublic : string -> string
@@ -72,6 +76,14 @@ structure ScsPerson :> SCS_PERSON =
     fun getPersonIdErr (fv,errs) = ScsFormVar.getIntErr(fv,"Person id",errs)
 
     fun splitCpr cpr = (String.substring (cpr,0,6),String.substring (cpr,6,4))
+
+    fun ppCpr cpr =
+      let 
+	val (x,y) = splitCpr cpr
+      in
+	x ^ "-" ^ y
+      end
+    handle _ => cpr
 
     fun makeCprPublic cpr =
       let
