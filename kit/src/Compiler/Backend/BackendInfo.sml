@@ -19,10 +19,6 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     (******************************)
     (* Runtime System Information *)
     (******************************)
-    val pOff  = 0 (* Offset for previous region pointer (p) in a region descriptor. *)
-    val aOff  = 1 (* Offset for allocation pointer (a) in a region descriptor. *)
-    val bOff  = 2 (* Offset for border pointer (b) in a region descriptor. *)
-    val fpOff = 3 (* Offset for first region page pointer (fp) in a region descriptor. *)
 
     val regionPageTotalSize = RegConst.ALLOCATABLE_WORDS_IN_REGION_PAGE + RegConst.HEADER_WORDS_IN_REGION_PAGE
     val regionPageHeaderSize = RegConst.HEADER_WORDS_IN_REGION_PAGE
@@ -102,8 +98,14 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val size_of_record = RegConst.size_of_record
     fun size_of_handle()   = 4
 
-    fun size_of_reg_desc() = if region_profiling() then 7 
-			     else 4
+    local
+      val region_large_objects = false  (* upon change, also change src/RuntimeWithGC/Makefile *)
+      fun maybe_add (x:int) = if region_large_objects then x + 1
+			      else x
+    in
+      fun size_of_reg_desc() = maybe_add(if region_profiling() then 7 
+					 else 4)
+    end
 
     val finiteRegionDescSizeP = 2 (* Number of words in a finite region descriptor when profiling is used. *)
     val objectDescSizeP = 2       (* Number of words in an object descriptor when profiling is used. *)
