@@ -8,6 +8,9 @@ create table scs_enumerations(
 );
 
 create table scs_enum_values(
+  val_id integer
+    constraint scs_enum_values_val_id_nn not null
+    constraint scs_enum_values_val_id_pk primary key,
   enum_id integer
     constraint scs_enum_values_enum_id_nn not null,
   constraint scs_enum_values_enum_id_fk foreign key(enum_id) references scs_enumerations(enum_id),
