@@ -9,8 +9,8 @@ signature SCS_DB =
 
          - if a record does not exists, then the exception Fail is
            propagated *)
-    val dbClickDmlDb  : string -> string -> string -> string -> quot -> Db.Handle.db -> unit
-    val dbClickDml    : string -> string -> string -> string -> quot -> unit
+    val dbClickDmlDb  : string -> string -> string -> quot -> Db.Handle.db -> unit
+    val dbClickDml    : string -> string -> string -> quot -> unit
 
     val dbClickDml_old    : string -> string -> string -> string -> quot -> unit
     val dbClickDmlDb_old  : Db.Handle.db -> string -> string -> string -> string -> quot -> unit
@@ -40,15 +40,15 @@ signature SCS_DB =
 
 structure ScsDb :> SCS_DB =
   struct
-    fun dbClickDmlDb table_name id_column_name generated_id return_url insert_sql db =
+    fun dbClickDmlDb table_name id_column_name generated_id insert_sql db =
       Db.Handle.dmlDb db insert_sql
       handle Fail s =>
 	(if Db.existsOneRow `select 1 as num from ^table_name where ^id_column_name = '^(Db.qq generated_id)'` 
 	   then () (* it's a double click *)
 	 else raise (Fail s))
 
-    fun dbClickDml table_name id_column_name generated_id return_url insert_sql =
-      Db.Handle.wrapDb (dbClickDmlDb table_name id_column_name generated_id return_url insert_sql)
+    fun dbClickDml table_name id_column_name generated_id insert_sql =
+      Db.Handle.wrapDb (dbClickDmlDb table_name id_column_name generated_id insert_sql)
 
     fun dbClickDml_old table_name id_column_name generated_id return_url insert_sql =
       (Db.dml insert_sql;
