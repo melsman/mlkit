@@ -39,6 +39,8 @@ local
     ../sml/Ns.sml  
     ../sml/Db.sml
   end
+  ../sml/SmlsDate.sml
+  ../sml/SmlsList.sml
   ../sml/MSP.sml
   ../sml/Msp.sml
   ../sml/FormVar.sml
@@ -96,6 +98,7 @@ in
 
   formvar.sml
   formvar_chk.sml
+  url_desc.sml
 
   auth/auth.sml
   auth/auth_form.sml

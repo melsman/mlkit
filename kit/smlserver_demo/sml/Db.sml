@@ -1,5 +1,6 @@
 
 (* For The Oracle User *)
+
 structure Db : NS_DB = Ns.DbOra
 val _ = Db.Pool.initPoolsL ["ora_main","ora_sub"]
 
