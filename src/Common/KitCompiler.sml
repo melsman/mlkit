@@ -212,7 +212,7 @@ structure K = struct
     val date = Date.fmt "%B %d, %Y" (Date.fromTimeLocal (Time.now()))
     val version = "3.2"
     val greetings = "ML Kit with Regions, Version " ^ version ^ ", " ^ date ^ "\n" ^
-                    "Using the " ^ arch_os() ^ " " ^ Flags.get_string_entry "kit_backend" ^ " backend\n"
+                    "Using the " ^ arch_os() ^ " backend\n"
     val usage = "kit [-script | -timings | -nobasislib | -reportfilesig | -logtofiles " ^
                 "| -prof | -gc | -delay_assembly | -chat | -nodso | -version | -help] file"
     local 

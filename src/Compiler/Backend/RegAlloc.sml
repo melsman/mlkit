@@ -778,7 +778,10 @@ struct
     in pop_loop (!selectStack)
     end
 
-  fun MakeInitial lss =
+  (* args_on_stack_lvs is the set of those lvars that are passed to
+   * the function on the stack! *)
+
+  fun MakeInitial (args_on_stack_lvs, lss) =
     let 
       fun add_use lv = 
 	let 
@@ -832,21 +835,27 @@ struct
     in app mk lss
     end
 
-  fun Build lss =
+  (* args_on_stack_lvs is the set of those lvars that are passed to
+   * the function on the stack! These we do not introduce as nodes in
+   * the IG because they are not to be colored. *)
+
+  fun Build (args_on_stack_lvs, lss) =
     let 
       fun set_lrs_status(new_s,lv) = 
 	case nTableLookup (key lv)
 	  of SOME {lrs = (lrs as ref old_s),...} => lrs := merge_lrs(old_s,new_s)
-	   | NONE => () (*mael die "set_lrs_status - nTableLookup failed" *)
+	   | NONE => die "set_lrs_status - nTableLookup failed"
       fun lvarset_app f lvs = (Lvarset.mapset f lvs; ())
       fun def_use_var_ls ls =
 	let val (def,use) = LS.def_use_var_ls ls
-	in (Lvarset.lvarsetof def, Lvarset.lvarsetof use)
+	in (Lvarset.lvarsetof def, Lvarset.difference(Lvarset.lvarsetof use, args_on_stack_lvs))
 	end
+      fun use_var_ls ls = Lvarset.difference(Lvarset.lvarsetof(LS.use_var_ls ls), args_on_stack_lvs)
+
       fun ig_sw (ig_lss, LS.SWITCH (a, sel, def), L) =
 	let val Ls = map (fn (_, lss) => ig_lss(lss, L)) sel 
 	    val L = foldl Lvarset.union (ig_lss(def,L)) Ls
-	in Lvarset.union (L, lvarset_atom a)
+	in Lvarset.union (L, Lvarset.difference(lvarset_atom a, args_on_stack_lvs))
 	end
       fun do_non_tail_call (L, ls) =
 	let 
@@ -864,7 +873,7 @@ struct
       fun do_tail_call (L, ls) =
 	let val (def, use) = def_use_var_ls ls  (* def=flv(res) *)
 	    val _ = lvarset_app (fn d => lvarset_app (fn u => AddEdge(d,u)) def) def (* We insert edges between def'ed variables *)
-	    val L = Lvarset.lvarsetof(LS.use_var_ls ls)
+	    val L = use_var_ls ls
 	in L
 	end
       fun do_record(L,ls) = (* We must insert edges between def and use! *)
@@ -877,6 +886,14 @@ struct
 	  L
 	end
       fun do_move(L,lv1,lv2) = (* lv1 <-- lv2 *)
+	if Lvarset.member(lv1, args_on_stack_lvs) then
+	  if Lvarset.member(lv2, args_on_stack_lvs) then
+	    L
+	  else Lvarset.add(L,lv2)
+	else if Lvarset.member(lv2, args_on_stack_lvs) then
+	  (lvarset_app (fn l => AddEdge(l,lv1)) L;
+	   Lvarset.delete(L,lv1))
+        else
 	let 
 	  val _ = inc_moves()
 	  val move : move = {lv1=lv1, lv2=lv2, movelist=ref worklistMoves_enum}
@@ -1017,7 +1034,7 @@ struct
 	()
   end
     
-  fun ra_body (fun_name,lss) =
+  fun ra_body (fun_name, args_on_stack_lvs, lss) =
     let fun repeat() =
       (if not(isEmpty_simplifyWorklist()) then Simplify()
 	      else if not(isEmpty_worklistMoves()) then Coalesce()
@@ -1038,8 +1055,8 @@ struct
 	  | assign(LS.FV lv) = FV_STY lv 
 	
 	val _ = (raReset(); 
-		 MakeInitial lss;
-		 Build lss; 
+		 MakeInitial (args_on_stack_lvs, lss);
+		 Build (args_on_stack_lvs, lss); 
 		 export_ig ("/net/skuld/vol/topps/disk02/MLKIT-afterVersion1/niels/.trash/" ^ fun_name ^ ".vcg");
 		 MakeWorklist(); 
 		 repeat(); 
@@ -1050,11 +1067,18 @@ struct
     end
   
   fun ra_top_decl f =
-    let val f = CC_top_decl f 
-    in fast_pr (LineStmt.layout_line_prg LineStmt.pr_sty (fn _ => "") pr_atom false [f]); 
+    let 
+      val f = CC_top_decl f 
+
+      fun process (lab,cc,lss) =
+	let val args_on_stack_lvs = Lvarset.lvarsetof(CallConv.get_spilled_args cc)
+	in (lab, cc, ra_body (Labels.pr_label lab, args_on_stack_lvs, lss))
+	end
+
+    in (* fast_pr (LineStmt.layout_line_prg LineStmt.pr_sty (fn _ => "") pr_atom false [f]);  *)
       case f
-	of LS.FUN(lab,cc,lss) => LS.FUN(lab,cc,ra_body (Labels.pr_label lab, lss))
-	 | LS.FN(lab,cc,lss) => LS.FN(lab,cc,ra_body (Labels.pr_label lab, lss))
+	of LS.FUN f => LS.FUN(process f) 
+	 | LS.FN f => LS.FN(process f)
     end
 
   fun ra_prg funcs = 

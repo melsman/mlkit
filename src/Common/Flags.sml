@@ -85,6 +85,7 @@ functor Flags (structure Crash : CRASH
     val fix_conversion = ref true
     val contract = ref true
     val specialize_recursive_functions = ref true
+    val unbox_function_arguments = ref false
     val eliminate_explicit_records = ref true
     val maximum_inline_size = ref 20            
     val maximum_specialise_size = ref 200
@@ -129,8 +130,6 @@ functor Flags (structure Crash : CRASH
 
     val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
     val c_libs = ref "-lm" (*include math lib when compiling target code from the kit*)
-
-    val kit_backend = ref "C" (*either "C" or "native"*)
 
     val colwidth               = ref 80
 
@@ -552,8 +551,7 @@ struct
 	 ("c_compiler", c_compiler),  (*e.g. "cc -Aa" or "gcc -ansi"*)
 	 ("c_libs", c_libs),  (*e.g. "-lm"*)
 	 ("target_file_extension", target_file_extension),  (*e.g. ".c" or ".s"*)
-	 ("path_to_kit_script", ref "you-did-not-set-path-to-kit-script"), 
-	 ("kit_backend", kit_backend)] (*either "C" or "native"*)
+	 ("path_to_kit_script", ref "you-did-not-set-path-to-kit-script")] (*either "C" or "native"*)
 
   val _ = NewList.app add_int_entry
         [("colwidth", colwidth),
@@ -571,6 +569,7 @@ struct
      ("fix_conversion", fix_conversion),
      ("contract", contract),
      ("specialize_recursive_functions",specialize_recursive_functions),
+     ("unbox_function_arguments",unbox_function_arguments),
      ("eliminate_explicit_records", eliminate_explicit_records),
      ("print_opt_lambda_expression", print_opt_lambda_expression),
      ("print_attop_atbot_expression", print_attop_atbot_expression),
@@ -1074,6 +1073,7 @@ struct
 	mk_toggle ("fix conversion", fix_conversion), 
 	mk_toggle ("contract", contract), 
 	mk_toggle ("specialize recursive functions", specialize_recursive_functions), 
+	mk_toggle ("unbox function arguments", unbox_function_arguments), 
 	mk_toggle ("eliminate explicit records", eliminate_explicit_records),
 	mk_int_action (maximum_inline_size, "maximum inline size"),
 	mk_int_action (maximum_specialise_size, "maximum specialise size")

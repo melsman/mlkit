@@ -1591,7 +1591,8 @@ val (body',dep) = mk_deptr(EE',body, dep)
           (case mu of
              RegionExp.Mus[(ty,place)] =>
                [(lvar, ref ([]:R.il ref list), [], ref([]:effect list), ty, place, dummy_'c)]
-           | _ => die "mk_pat: metatype not (tau,rho)")
+           | _ => die ("mk_pat: metatype not (tau,rho). Lvar is " ^ Lvar.pr_lvar lvar ^ ". Metatype is " ^
+		       PP.flatten1 (RegionExp.layMeta mu)))
       end
 
       fun atomic(TR(VAR _, _, _, _)) = true
@@ -1671,6 +1672,12 @@ val (body',dep) = mk_deptr(EE',body, dep)
                             bind = kne bind (fn x => x)}) functions
          in k(e_to_t(FIX{free=free, shared_clos=shared_clos, functions = functions', scope=scope'}))
          end)
+
+       | APP(ck,sr,opr as (TR(VAR{alloc = SOME rho,...},_,_,_)), (*mael: unboxed region-polymorphic call *)
+	     t2 as TR((UB_RECORD trs), mu2, phi2, psir2)) => 
+	     (print "Here we are!!\n";
+	      many_sub trs (fn trs' => e_to_t(APP(ck,sr,opr, TR(UB_RECORD trs' , mu2, phi2, psir2)))))
+
        | APP(ck,sr,opr as (TR(VAR{alloc = SOME rho,...},_,_,_)), t2) =>   (* region-polymorphic call *)
                one_sub t2 (fn atomic2 => e_to_t(APP(ck,sr,opr, atomic2)))
        | APP(ck,sr,opr as TR(VAR{alloc = NONE, ... },_,_,_), 

@@ -114,9 +114,8 @@ local
      CM.make())
 in
   val _ = print "\n\n ** ML Kit with Regions installation ** \n\n";  
-  val backend = resolve_backend()
   val _ = 
-    case backend
+    case resolve_backend()
       of "PAML" =>
 	(build_runtime("RuntimePaML");
 	 build_kit())
