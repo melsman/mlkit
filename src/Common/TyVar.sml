@@ -8,6 +8,7 @@ functor TyVar(structure Crash: CRASH): TYVAR =
     val mk_TyVar = TYVAR
     fun pr_tyvar(TYVAR str) = str
 
+(*KILL 23/06/1997 15:33. tho.:
     local
       fun snd(TYVAR str) =
 	StringListOps.nth 1 str
@@ -15,4 +16,8 @@ functor TyVar(structure Crash: CRASH): TYVAR =
     in
       fun isEquality tv = (snd tv = "'")
     end
+*)
+    fun isEquality (TYVAR s) = (case explode s of
+				  "'" :: "'" :: ss => true
+				| _ => false)
   end;

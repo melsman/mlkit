@@ -79,8 +79,12 @@ functor ErrorInfo(structure StatObject : STATOBJECT
       | TYVARS_NOT_IN_TYVARSEQ of TyVar list
       | DATATYPES_ESCAPE_SCOPE of TyName list
       | TYVARS_SCOPED_TWICE of TyVar list
+      | REBINDING_TRUE_NIL_ETC of id list
+      | REBINDING_IT
 
      (* General module errors: *)
+      | SPECIFYING_TRUE_NIL_ETC of id list
+      | SPECIFYING_IT
       | LOOKUP_SIGID of sigid
       | LOOKUP_LONGSTRID of longstrid
       | LOOKUP_FUNID of funid
@@ -224,6 +228,18 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 		^ maybe_plural_s tyvars
 		^ pp_list TyVar.string tyvars
 		^ " is bigger than this val declaration.")
+
+      | report (REBINDING_TRUE_NIL_ETC ids) =
+	  line ("You may not rebind `true', `false', `nil', `::', or `ref'.")
+
+      | report REBINDING_IT =
+	  line ("You may not rebind `it' as a constructor.")
+
+      | report (SPECIFYING_TRUE_NIL_ETC ids) =
+	  line ("You may not specify `true', `false', `nil', `::', or `ref'.")
+
+      | report SPECIFYING_IT =
+	  line ("You may not specify `it' as a constructor.")
 
       | report (LOOKUP_SIGID sigid) =
 	  line ("unbound signature identifier " ^ SigId.pr_SigId sigid ^ ".")
