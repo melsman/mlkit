@@ -757,6 +757,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  | joinTE (TE :: rest) = TE.plus (TE, joinTE rest)
 
 	val TE_int = te (TyCon.tycon_INT, TyName.tyName_INT)
+	val TE_char = te (TyCon.tycon_CHAR, TyName.tyName_CHAR)
+	val TE_word = te (TyCon.tycon_WORD, TyName.tyName_WORD)
 	val TE_real = te (TyCon.tycon_REAL, TyName.tyName_REAL)
 	val TE_string = te (TyCon.tycon_STRING, TyName.tyName_STRING)
 	val TE_exn = te (TyCon.tycon_EXN, TyName.tyName_EXN)
@@ -966,8 +968,9 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 				      TyStr.from_theta_and_VE (theta_unit, VE_unit))
 	end
 
-	val TE_initial = joinTE [TE_unit, TE_int, TE_real, TE_string,
-				 TE_exn, TE_ref, TE_bool, TE_list]
+	val TE_initial = joinTE [TE_unit, TE_int, TE_real,
+				 TE_word, TE_char, 
+				 TE_string, TE_exn, TE_ref, TE_bool, TE_list]
 	local 
 	  fun mk_sigma() = (*construct the type scheme: forall 'a.'a->unit*)
 	    let val _ = Level.push()

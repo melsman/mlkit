@@ -145,6 +145,8 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 	val initial_tyname_env = 
 	  initMapeq TyName.eq [(tyName_BOOL, [Con.con_TRUE, Con.con_FALSE]),
 			       (tyName_INT, []),
+			       (tyName_CHAR, []),
+			       (tyName_WORD, []),
 			       (tyName_REAL, []),
 			       (tyName_STRING, []),
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
