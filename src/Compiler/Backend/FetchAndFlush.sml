@@ -275,7 +275,7 @@ struct
 	  | insert_fetch(lv::lvs,acc) = LS.FETCH(LS.VAR lv,())::insert_fetch(lvs,acc)
       in
 	(ls :: insert_fetch(Lvarset.members lvars_to_fetch,acc),
-	 lvset_add(lvars_used,use))
+	 Lvarset.lvarsetof use (*lvset_add(lvars_used,use)04/01/1999, Niels*))
       end
 
     fun IF_lss(lss,F_set) =
