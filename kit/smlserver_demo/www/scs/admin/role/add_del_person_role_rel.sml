@@ -1,4 +1,4 @@
-val user_id = ScsLogin.auth_roles ["SiteAdm"]
+val user_id = ScsLogin.auth_roles [ScsRole.SiteAdm]
 
 val (person_id,errs) = ScsPerson.getPersonIdErr("person_id",ScsFormVar.emptyErr)
 val (role_id,errs) = ScsFormVar.getRoleIdErr("role_id",errs)
