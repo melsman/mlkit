@@ -113,6 +113,15 @@ as
     person_id in scs_persons.person_id%TYPE
   ) return scs_persons.security_id%TYPE;
 
+  /* -------------------
+     function cpr_to_sex
+     -------------------
+
+     returns sex given a cpr-no (which is probably the security_id)
+  */
+  function cpr_to_sex (
+    cpr in scs_persons.security_id%TYPE
+  ) return varchar;
 
   /* ------------------
      function norm_name
@@ -433,6 +442,19 @@ as
       return null;
   end security_id;
 
+  function cpr_to_sex (
+    cpr in scs_persons.security_id%TYPE
+  ) return varchar
+  is
+    v_sex varchar(6);
+  begin
+    if mod(substr(cpr,10,1),2) = '0' then
+      v_sex := 'female';
+    else 
+      v_sex := 'male';
+    end if;
+    return v_sex;
+  end cpr_to_sex;
 
   function norm_name(
     first_names in scs_persons.first_names%TYPE,

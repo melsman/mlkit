@@ -25,7 +25,12 @@ signature SCS_DATE =
     val dateOk : day * mth * year -> bool
     val timeOk : hour * min * sec -> bool
     val preceedingDays : day * mth * year -> int
+    val dateInPeriod     : Date.date * Date.date * Date.date -> bool
     val currDateInPeriod : Date.date * Date.date -> bool
+    val yearsInPeriod          : Date.date * Date.date -> int list
+    val firstMthInYearInPeriod : int * Date.date * Date.date -> int
+    val lastMthInYearInPeriod  : int * Date.date * Date.date -> int
+    val allMthsInYearInPeriod  : int * Date.date * Date.date -> int list
     val half_year        : Date.date -> Date.date * Date.date
     val semester         : Date.date -> Date.date * Date.date
     val add_days         : Date.date -> int -> Date.date
@@ -262,21 +267,63 @@ structure ScsDate :> SCS_DATE =
 	days
       end
 
-    fun currDateInPeriod (start_date, end_date) =
-      let
-	val curr_date = now_local()
-      in
-	if Date.compare(curr_date,start_date) = General.LESS orelse 
-	  Date.compare(end_date,curr_date) = General.LESS then
+    fun dateInPeriod (d,start_date,end_date) =
+      if Date.compare(d,start_date) = General.LESS orelse 
+	  Date.compare(end_date,d) = General.LESS then
 	  false
 	else
 	  true
+
+    fun currDateInPeriod (start_date, end_date) =
+      dateInPeriod(now_local(),start_date,end_date)
+
+    (* Return all years in a period *)
+    fun yearsInPeriod (start_date,end_date) =
+      let
+	fun loop (y,acc) =
+	  if y > Date.year start_date then
+	    loop(y-1,y::acc)
+	  else
+	    y::acc
+      in
+	loop (Date.year end_date,[])
+      end
+
+    (* Return first month the the year in the period *)
+    fun firstMthInYearInPeriod (year,start_date,end_date) =
+      if year = Date.year start_date then
+	mthFromName (Date.month start_date)
+      else
+	mthFromName Date.Jan
+
+    (* Return last month the the year in the period *)
+    fun lastMthInYearInPeriod (year,start_date,end_date) =
+      if year = Date.year end_date then
+	mthFromName (Date.month end_date)
+      else
+	mthFromName Date.Dec
+
+    (* Return list with all months in a year in the period *)
+    fun allMthsInYearInPeriod (year,start_date,end_date) =
+      let
+	val first_mth = firstMthInYearInPeriod(year,start_date,end_date)
+	val last_mth = lastMthInYearInPeriod(year,start_date,end_date)
+	fun loop (y,acc) =
+	  if y > first_mth then
+	    loop(y-1,y::acc)
+	  else
+	    y::acc
+      in
+	loop(last_mth,[])
       end
 
     fun add_days d n =
-      Date.fromTimeLocal (Time.+ (Time.fromSeconds(n * 24 * 3600),Date.toTime d))
-      handle _ => raise ScsDate ("add_days: can't add " ^ (Int.toString n) ^ 
-				 " days to the date " ^ (ppIso d))
+      (if n < 0 then
+	 Date.fromTimeLocal(Time.- (Date.toTime d, Time.fromSeconds(Int.abs n * 24 * 3600)))
+       else
+	 Date.fromTimeLocal (Time.+ (Time.fromSeconds(n * 24 * 3600),Date.toTime d)))
+	 handle _ => raise ScsDate ("add_days: can't add " ^ (Int.toString n) ^ 
+				    " days to the date " ^ (ppIso d))
 
     fun half_year d =
       let
