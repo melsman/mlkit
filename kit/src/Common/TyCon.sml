@@ -58,4 +58,10 @@ functor TyCon(structure StrId: STRID
 	 | nil => Crash.impossible "TyCon.mk_LongTyCon"
 
     fun (TYCON str1) < (TYCON str2) = AsciiOrdString.lt str1 str2
+
+    val strings_'true'_'nil'_etc = ["true", "false", "nil", "::", "ref"]
+    fun is_'true'_'nil'_etc tycon =
+          List.member (pr_TyCon tycon) strings_'true'_'nil'_etc
+    fun is_'it' (TYCON "it") = true
+      | is_'it' (TYCON s) = false
   end;

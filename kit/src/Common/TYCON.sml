@@ -29,4 +29,10 @@ signature TYCON =
 
     val < : tycon * tycon -> bool		(* Needed to order
 						   top-level printout. *)
+
+    (*is_'true'_'nil'_'it'_etc are used to enforce some syntactic
+     restrictions (Definition, §2.9 & §3.5).*)
+
+    val is_'true'_'nil'_etc : tycon -> bool
+    val is_'it' : tycon -> bool
   end;
