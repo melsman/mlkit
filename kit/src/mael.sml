@@ -150,7 +150,7 @@ val _ =
 
        K.Flags.lookup_int_entry "maximum_inline_size" := 0;
 
-       K.comp "/home/user_28/mael/mlkit/kit/test/hello.sml";
+       K.comp "../test/hello.sml";
        
        ()
        (* K.build_basislib();
