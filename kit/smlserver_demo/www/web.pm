@@ -1,6 +1,7 @@
 local
   local
     ../sml/NsBasics.sml
+    ../sml/NS_SET.sml
     ../sml/NsSet.sml
     ../sml/NsInfo.sml
     ../sml/NS_DB.sml

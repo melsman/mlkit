@@ -28,6 +28,7 @@ val _ = returnPage "Apple Pie Recipe"
   `To make an Apple pie for ^(pr_num "person" persons), you 
    need the following ingredients:
    <ul> 
+    <img align=right src=applepie.jpg>
     <li> ^(pr_num "cup" (persons / 16.0)) butter
     <li> ^(pr_num "cup" (persons / 4.0)) sugar
     <li> ^(pr_num "egg" (persons / 4.0))

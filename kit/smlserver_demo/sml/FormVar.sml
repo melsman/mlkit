@@ -1,35 +1,37 @@
-signature FORMVAR =
-  sig
-    val getNat      : string -> int option
-    val getInt      : string -> int option
-    val getReal     : string -> real option
-    val getNum      : string -> real option
-    val getString   : string -> string option
-    val getIntRange : int -> int -> string -> int option
+  signature FORMVAR =
+    sig
+      val getNat      : string -> int option
+      val getInt      : string -> int option
+      val getReal     : string -> real option
+      val getNum      : string -> real option
+      val getString   : string -> string option
+      val getIntRange : int -> int -> string -> int option
 
-    val getNatOrFail    : string -> int
-    val getIntOrFail    : string -> int
-    val getRealOrFail   : string -> real
-    val getNumOrFail    : string -> real
-    val getStringOrFail : string -> string
-    val getIntRangeOrFail : int -> int -> string -> int
-  end
+      val getNatOrFail    : string -> int
+      val getIntOrFail    : string -> int
+      val getRealOrFail   : string -> real
+      val getNumOrFail    : string -> real
+      val getStringOrFail : string -> string
+      val getIntRangeOrFail : int -> int -> string -> int
+
+      val returnError : string -> 'a
+    end
   
 structure FormVar : FORMVAR =
   struct
-    fun returnError (s:string) (err:string) = Ns.Quot.return
-      `<html>
-         <head><title>Form Variable Error</title></head>
+    fun returnError (err:string) : 'a = 
+      (Ns.Quot.return
+       `<html>
+         <head><title>Form Error</title></head>
          <body bgcolor=white>
-            <h2>Error processing form variable ^s</h2>
-            ^err
+            <h2>Error processing form data</h2>
+            ^err <hr> <i>Served by SMLserver</i>
          </body>
-       </html>`
+        </html>`;
+       Ns.exit())
 
     fun wrapFail (f : string->'a) (s:string): 'a =
-      f s handle Fail err => (  returnError s err
-			      ; Ns.exit()
-			      )
+      f s handle Fail err => returnError err
 
     fun wrapOption (f : string->'a) (s:string): 'a option =
       SOME (f s) handle Fail err => NONE
