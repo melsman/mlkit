@@ -2,6 +2,9 @@
 \usepackage[dvips]{graphics}
 \usepackage{makeidx}
 \usepackage{theorem}
+\usepackage{times}
+\renewcommand{\ttdefault}{cmtt}
+\usepackage{alltt}
 \makeindex
 \input{genericmac}
 \input{mac}
@@ -211,7 +214,7 @@ ML Kit Version~3 with
   While most de-allocations can be efficiently performed by region
   de-allocation, there are some uses of memory for which life time
   prediction is difficult. In these cases pointer tracing garbage
-  collection does a good job in colaboration with region memory
+  collection does a good job in collaboration with region memory
   management \cite{hallenberg99}.
 \item An x86 native backend. The 
   \index{backend!native}%
@@ -249,7 +252,7 @@ web site:
 \end{tabbing}
 
 \begin{flushright}
-February, 2001\\[1cm]
+March, 2001\\[1cm]
 Mads Tofte, Lars Birkedal, Martin Elsman,\\
 Niels Hallenberg, Tommy H\o jfeld Olesen,\\
 Peter Sestoft, Peter Bertelsen
@@ -621,22 +624,21 @@ The computation of the next generation involves a considerable amount
 of list computation.  Chris Reade has expressed the key part of the
 computation as shown in Figure~\ref{xavier.fig}.
 \begin{figure}
-\hrule
+\hrule \medskip
 \begin{verbatim}
-
-let val living = alive gen
-    fun isalive x = member eq_int_pair_curry living x
-    fun liveneighbours x = length(filter isalive (neighbours x))
-    fun twoorthree n = n=2 orelse n=3
-    val survivors = filter (twoorthree o liveneighbours) living
-    val newnbrlist = collect 
-                      (fn z => filter (fn x => not(isalive x)) 
-                                      (neighbours z)
-                      ) living
-    val newborn = occurs3 newnbrlist
-in 
-   mkgen (survivors @ newborn) 
-end
+  let val living = alive gen
+      fun isalive x = member eq_int_pair_curry living x
+      fun liveneighbours x = length(filter isalive (neighbours x))
+      fun twoorthree n = n=2 orelse n=3
+      val survivors = filter (twoorthree o liveneighbours) living
+      val newnbrlist = 
+        collect (fn z => filter (fn x => not(isalive x)) 
+                         (neighbours z)
+                ) living
+      val newborn = occurs3 newnbrlist
+  in 
+     mkgen (survivors @ newborn) 
+  end
 \end{verbatim}
 \caption{An excerpt of a (modified version of) 
 Chris Reade's Game of Life program.}
@@ -674,7 +676,7 @@ been created, reset the region of the old region and copy the contents
 of the new region into the old region. This effect is achieved by
 organising the main loop of the program as follows:
 \begin{verbatim}
-  local 
+   local 
 (*1*) fun nthgen'(p as(0,g)) = p 
 (*2*)   | nthgen'(p as(i,g)) = 
 (*3*)       nthgen' (i-1, let val g' = nextgen  g
@@ -682,9 +684,9 @@ organising the main loop of the program as follows:
 (*5*)                         resetRegions g;
 (*6*)                         copy g'
 (*7*)                     end)
-  in 
+   in 
 (*8*) fun iter n = #2(nthgen'(n,gun()))
-  end
+   end
 \end{verbatim}
 Here \boxml{nthgen'} 
 \index{nthgen@\texttt{nthgen}}%
@@ -875,8 +877,8 @@ in this document as follows:
    \includegraphics{life80.ps}
    \end{center}
    \caption{A region profile of two hundred 
-     generations of the ``Game of Life'', showing region sizes as a
-     function of time (80 snapshots).}
+     generations of the ``Game of Life'', showing region 
+     sizes as a function of time (80 snapshots).}
    \label{lifeprof80.fig}
    \end{figure}
 \end{verbatim}
@@ -1182,14 +1184,14 @@ a rudimentary menu-driven dialogue, see Figure~\ref{dialogue.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
-        0       Printing of intermediate forms  >>>
-        1       Layout........................  >>>
-        2       Control.......................  >>>
-        3       File..........................  >>>
-        4       Profiling.....................  >>>
-        5       Debug.........................  >>>
-        6       Compile file or project.......  >>>
-        7       Compile it again.............. ("sources.pm") >>>
+      0      Printing of intermediate forms  >>>
+      1      Layout........................  >>>
+      2      Control.......................  >>>
+      3      File..........................  >>>
+      4      Profiling.....................  >>>
+      5      Debug.........................  >>>
+      6      Compile file or project.......  >>>
+      7      Compile it again.............. ("sources.pm") >>>
 
 Select (<number>), Help (h <number>), Up (u), or Quit (quit): 
 
@@ -1215,13 +1217,12 @@ Section~\ref{proj.ex}.
 
 Printing of the region-annotated types can now be enabled by selecting
 \boxml{Layout} from the main menu, and then \texttt{print types}.
-Thereafter, go back to the top-most menu and choose \texttt{Compile it
-  again} to compile the source file {\tt projection.sml} again. This
-time, the Kit outputs the $\MulExp$ program shown in
-Section~\ref{reganntypes.sec}. If the formatting appears too wide for
-your screen, you can enter another value for the pretty-printing width
-by selecting \texttt{text width in pretty-printing} in the
-\texttt{Layout} menu.
+Thereafter, choose \texttt{Compile it again} from the main menu to
+compile the source file {\tt projection.sml} again. This time, the Kit
+outputs the $\MulExp$ program shown in Section~\ref{reganntypes.sec}.
+If the formatting appears too wide for your screen, you can enter
+another value for the pretty-printing width by selecting \texttt{text
+  width in pretty-printing} in the \texttt{Layout} menu.
 
 Next, you can try the example in Section~\ref{effects.sec}; select
 \texttt{Compile file or project} from the top-most menu and enter
@@ -3371,7 +3372,7 @@ memory longer than needed.
 \label{exceptions.sec}\index{exception}
 %---------------------------------------------------------
 
-\section{Exception Constructors}
+\section{Exception Names and Constructors}
 Standard ML
 \index{exception}%
 \index{exception constructor}%
@@ -4842,8 +4843,8 @@ demonstrate, the region inference system would become unsound.
 Another alternative would be to let substitutions map effect variables
 to effects. But nor that would work well together with the idea of
 using substitutions to express growth of effects. For example,
-applying the map $\{\epsilon\mapsto\{\Get(\rho_0),\Put(\rho_2)\}\}$ to
-the effect $\{\Get(\rho_9),\epsilon\}$, say, would presumably yield
+when applying the map $\{\epsilon\mapsto\{\Get(\rho_0),\Put(\rho_2)\}\}$ to
+the effect $\{\Get(\rho_9),\epsilon\}$, say, we would presumably yield
 the effect $\{\Get(\rho_9),\Get(\rho_0),\Put(\rho_2)\}$ in which the
 fact that the original effect had to be at least as large as whatever
 $\epsilon$ stands for, is lost.  Instead, we define substitution so
@@ -5608,7 +5609,7 @@ located. Whereas each of the source files {\tt lib.sml} and {\tt
   scan.sml} also depends on {\tt lib.sml}.
 
 
-Compiling a project is easy; simply select the entry {\tt Compile file
+Compiling a project is easy; select the entry {\tt Compile file
   or project} from the main menu and type in the path to the {\tt .pm}
 file for the project you want to compile. When the project is first
 compiled, the Kit detects automatically when a source file has been
@@ -5748,9 +5749,9 @@ declarations
 \noindent
 located in the source file {\tt kitdemo/IntSet.sml}. No code is
 generated for the structure declarations. Instead, the compiler
-memorises that if you refer to {\tt IntSet1.mem}, for instance, then
-it is actually {\tt PolySet.mem} that is applied with type instance
-{\tt int}.
+memorises that if you refer to the long identifier {\tt IntSet1.mem},
+for instance, then it is actually {\tt PolySet.mem} that is applied
+with type instance {\tt int}.
 
 As for the second declaration, opaque signature constraints are
 eliminated at compile time (after elaboration) and transformed into
@@ -5784,14 +5785,15 @@ Consider the following project:\footnote{Project
    in SET.sml Set.sml SetApp.sml
    end
 \end{verbatim}
-The project imports the sub-project {\tt utils.pm},\footnote{Project
-  \boxml{kitdemo/utils/utils.pm}.} which provides a structure {\tt
-  ListUtils} containing the function {\tt pr\_list} with type scheme
-{\tt ('a -> string) -> 'a list -> string}. The source file {\tt
-  Set.sml} is listed in Figure~\ref{Set.fig}. It declares the functor
-{\tt Set}, which takes as arguments the element type for the set, an
-ordering function on elements, and a function for providing a string
-representation of elements.
+The project imports the sub-project {\tt utils.pm} from the {\tt util}
+directory.\footnote{Project \boxml{kitdemo/utils/utils.pm}.} This
+project provides a structure {\tt ListUtils} that contains the
+function {\tt pr\_list} with type scheme {\tt ('a -> string) -> 'a
+  list -> string}. The content of the file {\tt Set.sml} is listed in
+Figure~\ref{Set.fig}. It declares the functor {\tt Set}, which takes
+as arguments the element type for the set, an ordering function on
+elements, and a function for providing a string representation of
+elements.
 \begin{figure}[ht]
 \hrule \medskip
 \begin{verbatim}
@@ -7073,7 +7075,7 @@ A script file is comprised by a sequence of
 Here is a script file that enables the boolean entry {\tt print drop
   regions expression} (located in the {\tt Printing of intermediate
   forms} sub-menu) and sets the integer entry {\tt maximum inline
-  size} (located in the {\tt Control/Optimiser} sub-menu) to {\tt
+  size} (located in the sub-menu {\tt Control/Optimiser}) to {\tt
   0}:\footnote{Script file {\tt kitdemo/ex.script}.}
 \begin{verbatim}
    val print_drop_regions_expression : bool = true 
