@@ -26,7 +26,7 @@ signature SCS_PRIORITY =
     val newPriorityRelTrans : string * int * string * int -> Db.Handle.db 
       -> int
 
-    val delPriorityRelTrans : string * int * string -> Db.Handle.db -> unit
+    val delPriorityRelTrans : string*int*string*int -> Db.Handle.db -> unit
   end
 
 
@@ -125,13 +125,14 @@ structure ScsPriority :> SCS_PRIORITY =
 	end (* of newPriorityRelTrans *)
 
       fun delPriorityRelTrans (on_what_parent_table, on_which_parent_id, 
-			       on_what_child_table) db = 
+			       on_what_child_table, on_which_child_id) db = 
 	let
 	  val del_prio_sql = `
 	    delete from scs_priority_rels
 	     where on_what_parent_table = ^(Db.qqq on_what_parent_table)
 	        and on_which_parent_id   = ^(Int.toString on_which_parent_id)
 	        and on_what_child_table  = ^(Db.qqq on_what_child_table)
+		and on_which_child_id	 = ^(Int.toString on_which_child_id)
 	  `
 	in      
 	  Db.Handle.dmlDb db del_prio_sql
