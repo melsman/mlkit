@@ -1,32 +1,20 @@
-functor BackendInfoX86(structure Labels : ADDRESS_LABELS
-		       structure Lvars : LVARS
-		       structure Lvarset: LVARSET
-		       sharing type Lvarset.lvar = Lvars.lvar
-		       structure InstsX86 : INSTS_X86
-		       sharing type InstsX86.lvar = Lvars.lvar
-		       structure PP : PRETTYPRINT
-		       structure Flags : FLAGS
-		       structure Report : REPORT
-		       sharing type Report.Report = Flags.Report
-		       structure Crash : CRASH) : BACKEND_INFO =
+functor BackendInfo(structure Labels : ADDRESS_LABELS
+		    structure PP : PRETTYPRINT
+		    structure Flags : FLAGS
+		    structure Report : REPORT
+		    sharing type Report.Report = Flags.Report
+		    structure Crash : CRASH
+		    val down_growing_stack : bool
+		    val double_alignment_required : bool) : BACKEND_INFO =
   struct
-
-    structure I = InstsX86
-
-    fun die s  = Crash.impossible ("BackendInfoX86." ^ s)
+    fun die s  = Crash.impossible ("BackendInfo." ^ s)
 
     type label = Labels.label
-    type lvar = Lvars.lvar
-    type reg = I.reg
-    type lvarset = Lvarset.lvarset
     type offset = int
 
     val init_clos_offset = 1     (* First offset in FN closure is 1 and code pointer is at offset 0 *) 
     val init_sclos_offset = 0	 (* First offset in shared closure is 0 *)                             
     val init_regvec_offset = 0	 (* First offset in region vector is 0 *)                              
-
-    (* From here downto Physical Registers is a direct copy of the
-     * code in HpPaRisc/BackendInfo.sml; ME 1999-03-02 *)
 
     (******************************)
     (* Runtime System Information *)
@@ -124,33 +112,6 @@ functor BackendInfoX86(structure Labels : ADDRESS_LABELS
     val toplevel_region_withtype_string_lab = Labels.new_named("reg_string")
     val toplevel_region_withtype_real_lab   = Labels.new_named("reg_real")
 
-    (* Physical Registers *) 
-    val all_regs = I.all_regs_as_lvs
-    fun is_reg lv = I.is_reg lv
-    fun lv_to_reg lv = I.lv_to_reg lv
-    val args_phreg = I.reg_args_as_lvs
-    val res_phreg = I.reg_res_as_lvs
-    val args_phreg_ccall = I.reg_args_ccall_as_lvs
-    val res_phreg_ccall = I.reg_res_ccall_as_lvs
-    val callee_save_phregs   = I.callee_save_regs_mlkit_as_lvs
-    val callee_save_phregset = Lvarset.lvarsetof callee_save_phregs
-    fun is_callee_save phreg = Lvarset.member(phreg,callee_save_phregset)
-    val caller_save_phregs = I.caller_save_regs_mlkit_as_lvs
-    val caller_save_phregset = Lvarset.lvarsetof caller_save_phregs
-    fun is_caller_save phreg = Lvarset.member(phreg,caller_save_phregset)
-    fun pr_reg phreg = I.pr_reg phreg
-    fun reg_eq(reg1,reg2) = reg1 = reg2
-
-    val callee_save_ccall_phregs   = I.callee_save_regs_ccall_as_lvs
-    val callee_save_ccall_phregset = Lvarset.lvarsetof callee_save_ccall_phregs
-    fun is_callee_save_ccall phreg = Lvarset.member(phreg,callee_save_ccall_phregset)
-
-    val caller_save_ccall_phregs   = I.caller_save_regs_ccall_as_lvs
-    val caller_save_ccall_phregset = Lvarset.lvarsetof caller_save_ccall_phregs
-    fun is_caller_save_ccall phreg = Lvarset.member(phreg,caller_save_ccall_phregset)
-
-    (* The rest of the code is copied from HpPaRisc/BackendInfo.sml; ME 1999-03-02 *)
-
     val init_frame_offset = 0
 
     (* Jump Tables *)
@@ -196,10 +157,6 @@ functor BackendInfoX86(structure Labels : ADDRESS_LABELS
 
     fun is_prim name = member name prims
 
-    val down_growing_stack : bool = true         (* true for x86 code generation *)
-    val double_alignment_required : bool = false (* false for x86 code generation *)
-
-    (* For the KAM machine *)
-    val env_lvar = Lvars.new_named_lvar("env")
-    val notused_lvar = Lvars.new_named_lvar("notused")
+    val down_growing_stack = down_growing_stack
+    val double_alignment_required = double_alignment_required
   end

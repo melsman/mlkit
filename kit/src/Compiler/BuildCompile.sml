@@ -8,80 +8,32 @@ signature BUILD_COMPILE =
     structure CompilerEnv : COMPILER_ENV
     structure CompileBasis: COMPILE_BASIS
     structure Compile: COMPILE
-(*    structure CallConv : CALL_CONV
+    structure CallConv : CALL_CONV
     structure LineStmt : LINE_STMT
     structure SubstAndSimplify : SUBST_AND_SIMPLIFY
-*)
   end  
 
-functor BuildCompile (structure Name : NAME
-		      structure Lvars : LVARS
-			sharing type Lvars.name = Name.name
-		      structure Lvarset : LVARSET
-			sharing type Lvars.lvar = Lvarset.lvar
-		      structure Labels : ADDRESS_LABELS
-			sharing type Labels.name = Name.name
-		      structure Con : CON
-			sharing type Con.name = Name.name
-		      structure Excon : EXCON
-			sharing type Excon.name = Name.name
-		      structure TopdecGrammar: TOPDEC_GRAMMAR
-		      structure ElabInfo : ELAB_INFO
-			sharing type ElabInfo.ElabInfo = TopdecGrammar.info
-			sharing type ElabInfo.TypeInfo.longid = TopdecGrammar.DecGrammar.longid
-			sharing type ElabInfo.TypeInfo.strid = TopdecGrammar.strid
-			sharing type ElabInfo.TypeInfo.tycon = TopdecGrammar.tycon
-			sharing type ElabInfo.TypeInfo.id = TopdecGrammar.id
-		      structure StatObject: STATOBJECT
-			sharing type StatObject.Type = ElabInfo.TypeInfo.Type
-			sharing type StatObject.TyVar = ElabInfo.TypeInfo.TyVar
-			sharing type StatObject.TyName.name = Name.name
-		      structure Environments : ENVIRONMENTS
-			sharing Environments.TyName = StatObject.TyName
-			sharing type Environments.TyEnv = ElabInfo.TypeInfo.TyEnv
-			sharing type Environments.Type = StatObject.Type
-			sharing type Environments.TypeFcn = StatObject.TypeFcn
-		   	sharing type Environments.tycon = TopdecGrammar.tycon
-			sharing type Environments.TypeScheme = StatObject.TypeScheme
-			sharing type Environments.TyVar = StatObject.TyVar
-			sharing type Environments.id = TopdecGrammar.id
-			sharing type Environments.longid = TopdecGrammar.DecGrammar.longid
-			sharing type Environments.longtycon = TopdecGrammar.longtycon
-			sharing type Environments.longstrid = TopdecGrammar.longstrid
-			sharing type Environments.strid = TopdecGrammar.strid
-			sharing type Environments.Env = ElabInfo.TypeInfo.Env
-		      structure FinMap: FINMAP
-		      structure FinMapEq : FINMAPEQ 
-		      structure BasicIO: BASIC_IO
-		      structure Report: REPORT
-		      structure Flags: FLAGS
-		        sharing type Report.Report = Flags.Report
-		      structure IntFinMap : MONO_FINMAP where type dom = int
-		      structure WordFinMap : MONO_FINMAP where type dom = word
-		      structure BackendInfo : BACKEND_INFO
-			sharing type BackendInfo.label = Labels.label
-			sharing type BackendInfo.lvar = Lvars.lvar
-                        sharing type BackendInfo.lvarset = Lvarset.lvarset
-		      structure PP: PRETTYPRINT
-			sharing type PP.StringTree = FinMapEq.StringTree
-			sharing type PP.StringTree = FinMap.StringTree 
-			sharing type PP.StringTree = TopdecGrammar.StringTree
-			sharing type PP.StringTree = ElabInfo.StringTree 
-			sharing type PP.StringTree = StatObject.StringTree
-			sharing type PP.StringTree = IntFinMap.StringTree
-                        sharing type PP.StringTree = WordFinMap.StringTree
-                        sharing type PP.StringTree = Lvars.Map.StringTree
-                        sharing type PP.StringTree = Excon.Map.StringTree
-                        sharing type PP.StringTree = Con.Map.StringTree
-			
-			sharing type PP.Report = Report.Report
-				  = ElabInfo.ParseInfo.SourceInfo.Report
-		      structure Crash: CRASH
-		      structure Timing: TIMING
-                  )  (* : BUILD_COMPILE *) = 
+functor BuildCompile (structure BackendInfo : BACKEND_INFO
+		      structure RegisterInfo : REGISTER_INFO
+		      include EXECUTION_ARGS 
+			where type Labels.label = BackendInfo.label
+			where type Lvars.lvar = RegisterInfo.lvar
+                        where type Lvarset.lvarset = RegisterInfo.lvarset) : BUILD_COMPILE =
   struct
 
-    structure TyName = StatObject.TyName
+    structure Basics = Elaboration.Basics
+    structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
+    structure Tools = Basics.Tools
+    structure PP = Tools.PrettyPrint
+    structure Crash = Tools.Crash
+    structure Flags = Tools.Flags
+    structure FinMap = Tools.FinMap
+    structure FinMapEq = Tools.FinMapEq
+    structure Name = Basics.Name
+    structure Report = Tools.Report
+    structure IntFinMap = Tools.IntFinMap
+
+    structure TyName = Basics.TyName
     structure DecGrammar = TopdecGrammar.DecGrammar
     structure SCon = DecGrammar.SCon
     structure Lab = DecGrammar.Lab
@@ -206,8 +158,7 @@ functor BuildCompile (structure Name : NAME
            structure TyName = TyName
            structure Crash = Crash
 	   structure Flags = Flags
-           structure PP = PP
-          )
+           structure PP = PP)
 
   structure SpreadExpression =  SpreadExpression(
        structure Con = Con
@@ -225,8 +176,7 @@ functor BuildCompile (structure Name : NAME
        structure PP = PP
        structure Flags=Flags
        structure Report = Report
-       structure CConst = CConst
-	 )
+       structure CConst = CConst)
 
 
    structure RegInf= RegInf(
@@ -250,8 +200,7 @@ functor BuildCompile (structure Name : NAME
                     fun lt(a: T) b = Effect.lt_eps_or_rho(a,b)
                   end
                   structure PP =PP
-                  structure Report = Report
-                 )
+                  structure Report = Report)
 
 
    structure HashTable = HashTable(structure PP = PP)
@@ -276,8 +225,7 @@ functor BuildCompile (structure Name : NAME
       structure RSE = RegionStatEnv
       structure PP = PP
       structure UF = UnionFindPoly
-      structure QM_EffVarEnv = QM_EffVarEnv
-      )
+      structure QM_EffVarEnv = QM_EffVarEnv)
 
    structure MulExp = MulExp(
       structure Flags = Flags
@@ -293,8 +241,7 @@ functor BuildCompile (structure Name : NAME
       structure PP = PP
       structure Lvar = Lvars
       structure Lam = LambdaExp
-      structure RSE = RegionStatEnv
-      )      
+      structure RSE = RegionStatEnv)      
 
    structure MulInf = MulInf(
       structure Lvar = Lvars
@@ -316,7 +263,7 @@ functor BuildCompile (structure Name : NAME
 		  structure StrId = StrId
                   structure Con = Con
                   structure Excon = Excon
-		  structure Environments = Environments
+		  structure Environments = Basics.Environments
 		  structure LambdaBasics = LambdaBasics
                   structure TyCon = TyCon
                   structure TyVar = TyVar
@@ -327,8 +274,7 @@ functor BuildCompile (structure Name : NAME
 		  structure FinMapEq = FinMapEq
                   structure PP = PP
 		  structure Flags = Flags
-                  structure Crash = Crash
-                 )
+                  structure Crash = Crash)
 
     structure LvarDiGraphScc = 
       DiGraphScc(structure InfoDiGraph = 
@@ -353,14 +299,13 @@ functor BuildCompile (structure Name : NAME
 		structure LvarDiGraphScc = LvarDiGraphScc
 		structure LambdaBasics = LambdaBasics
 		structure FinMap = FinMap
-		structure BasicIO = BasicIO
+		structure BasicIO = Tools.BasicIO
 		structure Con = Con
 		structure Excon = Excon
 		structure TyName = TyName
 		structure Flags = Flags
 		structure Crash = Crash
-		structure PP = PP
-		  )
+		structure PP = PP)
  
     structure RegFlow = RegFlow(
                 structure Lvars = Lvars
@@ -400,7 +345,7 @@ functor BuildCompile (structure Name : NAME
                             structure Flags = Flags
 			    structure Crash = Crash
 			    structure Report = Report
-                            structure Timing = Timing)
+                            structure Timing = Tools.Timing)
 
 
     structure DropRegions = DropRegions(structure MulExp = MulExp
@@ -433,8 +378,7 @@ functor BuildCompile (structure Name : NAME
 					structure Flags = Flags
 					structure Crash = Crash
 					structure PP = PP
-					structure CConst = CConst
-					  )
+					structure CConst = CConst)
 
     structure RegionFlowGraphProfiling =
       RegionFlowGraphProfiling(structure Effect = Effect
@@ -458,6 +402,7 @@ functor BuildCompile (structure Name : NAME
 					structure Crash = Crash)
 
     structure CallConv = CallConv(structure Lvars = Lvars
+				  structure RI = RegisterInfo
 				  structure BI = BackendInfo
 				  structure PP = PP
 				  structure Flags = Flags
@@ -492,6 +437,7 @@ functor BuildCompile (structure Name : NAME
 				  structure Labels = Labels
 				  structure CallConv = CallConv
 				  structure ClosExp = ClosExp
+				  structure RI = RegisterInfo
 				  structure BI = BackendInfo
 				  structure Lvarset = Lvarset
 				  structure PP = PP
@@ -508,7 +454,7 @@ functor BuildCompile (structure Name : NAME
 				  structure Labels = Labels
 				  structure CallConv = CallConv
 				  structure LineStmt = LineStmt
-				  structure BI = BackendInfo
+				  structure RI = RegisterInfo
 				  structure PP = PP
 				  structure Flags = Flags
 				  structure Report = Report
@@ -523,7 +469,7 @@ functor BuildCompile (structure Name : NAME
 					    structure CallConv = CallConv
 					    structure LineStmt = LineStmt
 					    structure RegAlloc = RegAlloc
-					    structure BI = BackendInfo
+					    structure RI = RegisterInfo
 					    structure Lvarset = Lvarset
 					    structure PP = PP
 					    structure Flags = Flags
@@ -556,7 +502,7 @@ functor BuildCompile (structure Name : NAME
 						  structure CallConv = CallConv
 						  structure LineStmt = LineStmt
 						  structure CalcOffset = CalcOffset
-						  structure BI = BackendInfo
+						  structure RI = RegisterInfo
 						  structure PP = PP
 						  structure Flags = Flags
 						  structure Report = Report
@@ -594,21 +540,19 @@ functor BuildCompile (structure Name : NAME
                         structure TyVar = TyVar
                         structure Grammar = DecGrammar
 			structure TopdecGrammar = TopdecGrammar
-                        structure StatObject = StatObject
-			structure Environments = Environments
+                        structure StatObject = Basics.StatObject
+			structure Environments = Basics.Environments
                         structure Lvars = Lvars
                         structure LambdaExp = LambdaExp
                         structure LambdaBasics = LambdaBasics
                         structure CompilerEnv = CompilerEnv
-			structure ElabInfo = ElabInfo
+			structure ElabInfo = Basics.AllInfo.ElabInfo
                         structure FinMap = FinMap
                         structure FinMapEq = FinMapEq
                         structure PrettyPrint = PP
                         structure Report = Report
                         structure Flags = Flags
-                        structure Crash = Crash
-                      )
-
+                        structure Crash = Crash)
 
     structure Compile =
       Compile(structure RegionExp = RegionExp
@@ -644,5 +588,5 @@ functor BuildCompile (structure Name : NAME
 	      structure Flags = Flags
 	      structure PP = PP
 	      structure Crash = Crash
-	      structure Timing = Timing)
+	      structure Timing = Tools.Timing)
   end

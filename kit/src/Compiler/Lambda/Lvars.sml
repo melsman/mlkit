@@ -121,6 +121,10 @@ functor Lvars(structure Name : NAME
 			     structure Report = Report
 			     structure QD = QD)
 
+    (* For the KAM machine *)
+    val env_lvar = new_named_lvar("env")
+    val notused_lvar = new_named_lvar("notused")
+
   end;
 
 

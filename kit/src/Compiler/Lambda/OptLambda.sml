@@ -1344,13 +1344,15 @@ functor OptLambda(structure Lvars: LVARS
      fun pr_env e =
        PP.outputTree (print, layout_unbox_fix_env e, 200)
      fun unbox_fix_args (env:unbox_fix_env) lamb : LambdaExp * unbox_fix_env =
-       let val _ = print "Import unbox_fix_env:\n"
-	 val _ = pr_env env
+       let (* val _ = print "Import unbox_fix_env:\n"
+	 val _ = pr_env env *)
 	   val _ = frame_unbox_fix_env := LvarMap.empty
 	   val lamb = trans env lamb
+(*
 	   val _ = print "\nExport unbox_fix_env:\n"
 	   val _ = pr_env (!frame_unbox_fix_env)
 	   val _ = print "\n"
+*)
        in (lamb, !frame_unbox_fix_env)
        end
    end

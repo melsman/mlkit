@@ -2,17 +2,13 @@
 
 functor CodeGenX86(structure BackendInfo : BACKEND_INFO
 		   structure InstsX86 : INSTS_X86
-		     sharing type InstsX86.reg = BackendInfo.reg
 		     sharing type InstsX86.label = BackendInfo.label
-		     sharing type InstsX86.lvar = BackendInfo.lvar
 		   structure JumpTables : JUMP_TABLES
 		   structure Con : CON
 		   structure Excon : EXCON
 		   structure Lvars : LVARS
-		     sharing type Lvars.lvar = BackendInfo.lvar
 		   structure Lvarset : LVARSET
 		     sharing type Lvarset.lvar = Lvars.lvar
-		     sharing type Lvarset.lvarset = BackendInfo.lvarset
 		   structure Labels : ADDRESS_LABELS
 		     sharing type Labels.label = BackendInfo.label
 		   structure CallConv: CALL_CONV
@@ -24,10 +20,9 @@ functor CodeGenX86(structure BackendInfo : BACKEND_INFO
 		   sharing type CallConv.cc = LineStmt.cc
 	           structure SubstAndSimplify: SUBST_AND_SIMPLIFY
                     where type ('a,'b,'c) LinePrg = ('a,'b,'c) LineStmt.LinePrg
-		   sharing type SubstAndSimplify.lvar = LineStmt.lvar 
+		   sharing type SubstAndSimplify.lvar = LineStmt.lvar = InstsX86.lvar 
                    sharing type SubstAndSimplify.place = LineStmt.place
-                   (*sharing type SubstAndSimplify.LinePrg = LineStmt.LinePrg*)
-                   sharing type SubstAndSimplify.reg = BackendInfo.reg
+                   sharing type SubstAndSimplify.reg = InstsX86.reg
                    sharing type SubstAndSimplify.label = Labels.label
 	           structure PP : PRETTYPRINT
 		   sharing type PP.StringTree = LineStmt.StringTree
@@ -38,6 +33,7 @@ functor CodeGenX86(structure BackendInfo : BACKEND_INFO
 struct
 
   structure I = InstsX86
+  structure RI = I.RI (* RegisterInfo *)
   structure BI = BackendInfo
   structure SS = SubstAndSimplify
   structure LS = LineStmt
@@ -54,8 +50,8 @@ struct
 
   val tmp_reg0 = I.tmp_reg0
   val tmp_reg1 = I.tmp_reg1
-  val caller_save_regs_ccall = map I.lv_to_reg I.caller_save_regs_ccall_as_lvs
-  val all_regs = map I.lv_to_reg I.all_regs_as_lvs
+  val caller_save_regs_ccall = map RI.lv_to_reg RI.caller_save_ccall_phregs (*caller_save_regs_ccall_as_lvs*)
+  val all_regs = map RI.lv_to_reg (*RI.all_regs_as_lvs*) RI.all_regs
 
   (***********)
   (* Logging *)
@@ -149,7 +145,7 @@ struct
 
     (* giving numbers to registers---for garbage collection *)
     fun lv_to_reg_no lv = 
-      case I.lv_to_reg lv
+      case RI.lv_to_reg lv
 	of eax => 0 | ebx => 1 | ecx => 2 | edx => 3
 	 | esi => 4 | edi => 5 | ebp => 6 | esp => 7
 	 | ah => die "lv_to_reg_no: ah"
@@ -1416,7 +1412,7 @@ struct
 	              I.movl(R tmp_reg1, L exn_ptr_lab) ::
 	              I.jmp(L handl_join_lab) ::C))
 		    fun handl_return_code C =
-		      let val res_reg = I.lv_to_reg(CallConv.handl_return_phreg())
+		      let val res_reg = RI.lv_to_reg(CallConv.handl_return_phreg())
 		      in comment ("HANDL RETURN CODE: handl_return_aty = res_phreg",
 			 gen_bv(bv,
 		         I.lab handl_return_lab ::
@@ -1683,7 +1679,7 @@ struct
 	fun toplevel_handler C =
  	  let
 	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg()
-	    val (clos_reg,arg_reg) = (I.lv_to_reg clos_lv,I.lv_to_reg arg_lv)
+	    val (clos_reg,arg_reg) = (RI.lv_to_reg clos_lv, RI.lv_to_reg arg_lv)
 	    val offset = if !BI.tag_values then 1 else 0
 	  in
 	      I.lab (NameLab "TopLevelHandlerLab") ::
@@ -1695,7 +1691,7 @@ struct
 	fun raise_insts C = (* expects exception value on stack!! *)
 	  let
 	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg()
-	    val (clos_reg,arg_reg) = (I.lv_to_reg clos_lv,I.lv_to_reg arg_lv)
+	    val (clos_reg,arg_reg) = (RI.lv_to_reg clos_lv, RI.lv_to_reg arg_lv)
 	    val offset_codeptr = if !BI.tag_values then "4" else "0"
 	  in
 	    I.dot_globl(NameLab "raise_exn") ::

@@ -14,7 +14,8 @@ functor LineStmt(structure PhysSizeInf : PHYS_SIZE_INF
                    sharing type CallConv.cc = ClosExp.cc
 		   sharing type ClosExp.phsize = PhysSizeInf.phsize
 	         structure BI : BACKEND_INFO
-                   sharing type BI.lvar = Lvars.lvar
+	         structure RI : REGISTER_INFO
+                   sharing type RI.lvar = Lvars.lvar
 		 structure Lvarset: LVARSET
 		   sharing type Lvarset.lvar = Lvars.lvar
 		 structure PP : PRETTYPRINT
@@ -860,7 +861,7 @@ struct
   (***************************************************)
   (* Def and Use sets for LineStmt RETURN ONLY lvars *)
   (***************************************************)
-  fun filter_out_phregs lvs = List.filter (fn lvar => not (BI.is_reg lvar)) lvs
+  fun filter_out_phregs lvs = List.filter (fn lvar => not (RI.is_reg lvar)) lvs
 
   fun get_lvar_atom(atom,acc) = filter_out_phregs (get_var_atom(atom,acc))
   fun get_lvar_atoms(atoms,acc) = filter_out_phregs (get_var_atoms(atoms,acc))

@@ -1,7 +1,7 @@
 
-functor CompileBasis(
-		     structure TyName : TYNAME
-		     structure PP: PRETTYPRINT): COMPILE_BASIS =
+functor CompileBasisDummy(structure TyName : TYNAME
+		          structure PP: PRETTYPRINT) 
+  : COMPILE_BASIS =
   struct
 
     type lvar = unit
@@ -16,33 +16,40 @@ functor CompileBasis(
     type mularefmap = unit
     type drop_env = unit
     type psi_env = unit
-    type l2kam_ce = unit
     type clos_env = unit
-    type CompileBasis = {TCEnv : TCEnv, (* lambda type check environment *)
-			 EqEnv : EqEnv, (* elimination of polymorphic equality environment *)
-			 OEnv: OEnv, 
-			 rse: rse, 
-			 mulenv: mulenv,
-			 mularefmap: mularefmap,
-			 drop_env: drop_env,
-			 psi_env: psi_env, 
-			 l2kam_ce: l2kam_ce,
-			 clos_env: clos_env}
+    type CompileBasis = unit
+(*
+      {TCEnv : TCEnv, (* lambda type check environment *)
+       EqEnv : EqEnv, (* elimination of polymorphic equality environment *)
+       OEnv: OEnv, 
+       rse: rse, 
+       mulenv: mulenv,
+       mularefmap: mularefmap,
+       drop_env: drop_env,
+       psi_env: psi_env, 
+       l2kam_ce: l2kam_ce,
+       clos_env: clos_env}
+*)
+
+    fun mk_CompileBasis _ = ()
+    fun de_CompileBasis () = {TCEnv=(), EqEnv=(), OEnv=(),
+			     rse=(), mulenv=(), mularefmap=(), drop_env=(),
+			     psi_env=(), clos_env=()}
 
 
-    fun mk_CompileBasis a = a
-    fun de_CompileBasis a = a
-
-    val empty = {TCEnv=(),
-		 EqEnv=(),
-		 OEnv=(),
-		 rse=(),
-		 mulenv=(),
-		 mularefmap=(),
-		 drop_env=(),
-		 psi_env=(),
-		 l2kam_ce=(),
-		 clos_env=()}
+    val empty = ()
+(*
+      {TCEnv=(),
+       EqEnv=(),
+       OEnv=(),
+       rse=(),
+       mulenv=(),
+       mularefmap=(),
+       drop_env=(),
+       psi_env=(),
+       l2kam_ce=(),
+       clos_env=()}
+*)
 
     val initial = empty
 

@@ -1,22 +1,22 @@
 
-functor CompilerEnv(structure Ident: IDENT
-		    structure TyCon : TYCON
-		    structure TyName : TYNAME
-		    structure StrId : STRID
-		    structure Flags : FLAGS
-		      sharing type Ident.strid = StrId.strid = TyCon.strid
-		    structure Environments : ENVIRONMENTS
-		      sharing type Environments.strid = StrId.strid
-		      sharing type Environments.id = Ident.id
-		      sharing type Environments.longid = Ident.longid
-		      sharing type Environments.tycon = TyCon.tycon
-		      sharing type Environments.longtycon = TyCon.longtycon
-		      sharing type Environments.longstrid = StrId.longstrid
-		    structure PP: PRETTYPRINT
-		      sharing type PP.StringTree 
-			           = TyName.StringTree = Environments.StringTree
-		    structure Crash: CRASH
-		   ): COMPILER_ENV =
+functor CompilerEnvDummy(structure Ident: IDENT
+		         structure TyCon : TYCON
+		         structure TyName : TYNAME
+			 structure StrId : STRID
+			 structure Flags : FLAGS
+			   sharing type Ident.strid = StrId.strid = TyCon.strid
+			 structure Environments : ENVIRONMENTS
+			   sharing type Environments.strid = StrId.strid
+			   sharing type Environments.id = Ident.id
+			   sharing type Environments.longid = Ident.longid
+			   sharing type Environments.tycon = TyCon.tycon
+			   sharing type Environments.longtycon = TyCon.longtycon
+			   sharing type Environments.longstrid = StrId.longstrid
+			 structure PP: PRETTYPRINT
+			   sharing type PP.StringTree 
+					= TyName.StringTree = Environments.StringTree
+			 structure Crash: CRASH
+			): COMPILER_ENV =
   struct
 
     fun die s = Crash.impossible ("CompilerEnv."^s)

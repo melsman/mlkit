@@ -1,6 +1,7 @@
 functor CallConv(structure Lvars : LVARS
                  structure BI : BACKEND_INFO
-                   sharing type BI.lvar = Lvars.lvar
+                 structure RI : REGISTER_INFO
+                   sharing type RI.lvar = Lvars.lvar
 		 structure PP : PRETTYPRINT
 		 structure Flags : FLAGS
                  structure Report : REPORT
@@ -209,23 +210,23 @@ functor CallConv(structure Lvars : LVARS
       fun resolve_ccall(phreg_to_alpha: lvar  -> 'a)
 	{args: 'a list, rhos_for_result: 'a list, res: 'a list} =
 	let
-	  val (rhos_for_result',assign_list_args,phregs) = resolve_list phreg_to_alpha (rhos_for_result,[],BI.args_phreg_ccall)
+	  val (rhos_for_result',assign_list_args,phregs) = resolve_list phreg_to_alpha (rhos_for_result,[],RI.args_phreg_ccall)
 	  val (args',assign_list_args,_) = resolve_list phreg_to_alpha (args,assign_list_args,phregs)
 
-	  val (res',assign_list_res,_) = resolve_list phreg_to_alpha (res,[],BI.res_phreg_ccall)
+	  val (res',assign_list_res,_) = resolve_list phreg_to_alpha (res,[],RI.res_phreg_ccall)
 	in
 	  ({args=args',rhos_for_result=rhos_for_result',res=res'},assign_list_args,assign_list_res)
 	end
       fun resolve_app (phreg_to_alpha: lvar -> 'a)
 	{clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} =
 	let
-	  val (clos',assign_list_args,phregs) = resolve_opt phreg_to_alpha (clos,[],BI.args_phreg)
+	  val (clos',assign_list_args,phregs) = resolve_opt phreg_to_alpha (clos,[],RI.args_phreg)
 	  val (reg_vec',assign_list_args,phregs) = resolve_opt phreg_to_alpha (reg_vec,assign_list_args,phregs)
 	  val (args',assign_list_args,phregs) = resolve_list phreg_to_alpha (args,assign_list_args,phregs)
 	  val (free',assign_list_args,phregs) = resolve_list phreg_to_alpha (free,assign_list_args,phregs)
 	  val (reg_args',assign_list_args,phregs) = resolve_list phreg_to_alpha (reg_args,assign_list_args,phregs)
 
-	  val (res',assign_list_res,_) = resolve_list phreg_to_alpha (res,[],BI.res_phreg)
+	  val (res',assign_list_res,_) = resolve_list phreg_to_alpha (res,[],RI.res_phreg)
 	in
 	  ({clos = clos',
 	    free = free',
@@ -238,7 +239,7 @@ functor CallConv(structure Lvars : LVARS
       fun resolve_cc {clos,free,args,reg_vec,reg_args,res,frame_size} =
 	let
 	  val _ = reset_offset()
-	  val (clos_sty_opt,lv_phreg_args,phregs) = resolve_sty_opt(clos,[],BI.args_phreg)
+	  val (clos_sty_opt,lv_phreg_args,phregs) = resolve_sty_opt(clos,[],RI.args_phreg)
 	  val (reg_vec_sty_opt,lv_phreg_args,phregs) = resolve_sty_opt(reg_vec,lv_phreg_args,phregs)
 	  val (args_stys,lv_phreg_args,phregs) = resolve_stys_args(args,lv_phreg_args,phregs)  (*MEMO:won't work for multiple 
 												*free vars as args*)
@@ -246,7 +247,7 @@ functor CallConv(structure Lvars : LVARS
 	  val (reg_args_stys,lv_phreg_args,_) = resolve_stys(reg_args,lv_phreg_args,phregs)
 
 	  val _ = get_next_offset() (* The next offset is for the return address *)
-	  val (res_stys,lv_phreg_res,_) = resolve_stys(res,[],BI.res_phreg)
+	  val (res_stys,lv_phreg_res,_) = resolve_stys(res,[],RI.res_phreg)
 	in
 	  ({clos=clos_sty_opt,
 	    free=free_stys,
@@ -277,9 +278,9 @@ functor CallConv(structure Lvars : LVARS
 	    | append_to_list_opt(SOME e,l) = e::l
 	  fun calc_offset([],offset,l) = (offset,List.rev l)
 	    | calc_offset(a::aa,offset,l) = calc_offset(aa,offset+1,(a,offset)::l)
-	  val res' = List.drop(res,List.length BI.res_phreg) handle General.Subscript => []
+	  val res' = List.drop(res,List.length RI.res_phreg) handle General.Subscript => []
 	  val args_list = append_to_list_opt(clos,append_to_list_opt(reg_vec,args@free@reg_args))
-	  val args' = List.drop(args_list,List.length BI.args_phreg) handle General.Subscript => []
+	  val args' = List.drop(args_list,List.length RI.args_phreg) handle General.Subscript => []
 	  val (o_res,aty_res) = calc_offset(res',0,[])
 	  val return_lab_offset = o_res
 	  val (_,aty_args) = calc_offset(args',o_res+1,[])
@@ -293,12 +294,12 @@ functor CallConv(structure Lvars : LVARS
 
     (* The Call Convention supports one return register for handle functions *)
     fun handl_return_phreg() = 
-      case BI.res_phreg of
+      case RI.res_phreg of
 	phreg::rest => phreg
       | _ => die "handl_return_phreg needs at least one machine register for the result"
 
     fun handl_arg_phreg() =
-      case BI.args_phreg of
+      case RI.args_phreg of
 	phreg1::phreg2::rest => (phreg1,phreg2)
       | _ => die "handl function needs at least two machine registers for arguments"
 	

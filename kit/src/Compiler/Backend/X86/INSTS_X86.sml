@@ -1,5 +1,7 @@
 signature INSTS_X86 =
   sig
+
+    type lvar
     
     datatype reg = eax | ebx | ecx | edx | esi | edi | ebp | esp 
                  | ah (* for float conditionals *)
@@ -106,8 +108,14 @@ signature INSTS_X86 =
 
     val emit : AsmPrg * string -> unit   (* may raise IO *)
 
-    val pr_reg : reg -> string
     val pr_lab : lab -> string
+
+    structure RI : REGISTER_INFO 
+      where type reg = reg
+      where type lvar = lvar
+
+(*
+    val pr_reg : reg -> string
 
     (*-----------------------------------------------------------*)
     (* Converting Between General Registers and Precolored Lvars *)
@@ -125,6 +133,7 @@ signature INSTS_X86 =
     val caller_save_regs_mlkit_as_lvs : lvar list
     val callee_save_regs_ccall_as_lvs : lvar list
     val caller_save_regs_ccall_as_lvs : lvar list
+*)
 
     type StringTree
     val layout : AsmPrg -> StringTree
