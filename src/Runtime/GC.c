@@ -758,8 +758,9 @@ points_into_tospace (unsigned int x)
   // now either large object or in region
   // get the tospace bit
   rp = get_rp_header(p);
-  if (is_lobj_bit(rp->n))  // ToDo: GenGC remove
-      die(" we got a large object code below does not work for large objects"); // ToDo: GenGC remove 
+  if (is_lobj_bit(rp->n))
+    return 0;
+  //      die(" we got a large object code below does not work for large objects"); // ToDo: GenGC remove 
   ret = is_tospace_bit(rp->n);
 #ifdef ENABLE_GEN_GC
   // In minor_gc x may point into to-space (a forward pointer) even
