@@ -633,6 +633,10 @@ functor DiGraph(structure UF : UNION_FIND_POLY
          PP.NODE{start = "[", finish = "]", indent = 1, childsep = PP.RIGHT ",",
                  children = map (layout_node_with_outset layout_info) g}
         
+    (* layout_nodes_deep layoutinfo g:
+       g need not be a subgraph, i.e., it need not be closed 
+       under successors *)
+
     fun layout_nodes_deep (layout_info: 'info -> StringTree) 
                      (g: 'info graph) : StringTree =
       let

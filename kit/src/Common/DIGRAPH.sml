@@ -146,6 +146,7 @@ signature DIGRAPH =
        * of scc and union_graph).
        *)
 
+(* DO NOT USE; mads
     val remove_cycles : '_info graph -> unit
       (*
          remove_cycles g: g is supposed to be a graph, with nodes listed
@@ -154,6 +155,7 @@ signature DIGRAPH =
          makes sure that for every pair (n1, n2) of nodes there is at most
          one edge from n1 to n2.
       *)
+*)
 
     val quotient: ('_info -> StringTree) -> ('_info * '_info -> '_info) -> 
                   '_info graph -> '_info graph
@@ -202,9 +204,30 @@ signature DIGRAPH =
      *)
 
 
+    (* layout_node layout_leaf node   gives a pretty-printed version
+       of node. No side-effects. *)
+
     val layout_node : ('info -> StringTree) -> 'info node -> StringTree
+
+
+
+    (* layout_graph layout_leaf g   gives a pretty-printed version
+       of every node in (the list) g, each node shown with its immediate
+       successors. No side-effects.  *)
+
     val layout_graph : ('info -> StringTree) -> 'info graph -> StringTree
+
+    (* layout_nodes: same as layout_graph *)
+
     val layout_nodes : ('info -> StringTree) -> 'info node list -> StringTree
+
+    (* layout_nodes_deep layout_info l :
+       lays out all the nodes in l, each node with all its successors.
+       Shared nodes are printed with an "@" symbol. 
+       Sets and clears visited field of nodes.
+    *)
+
     val layout_nodes_deep : ('info -> StringTree) -> 'info node list -> StringTree
 
   end;
+
