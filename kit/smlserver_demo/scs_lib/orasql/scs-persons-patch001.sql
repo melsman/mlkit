@@ -16,8 +16,12 @@ create table scs_profiles (
     constraint scs_profiles_party_id_pk primary key
     constraint scs_profiles_party_id_fk
       references scs_parties(party_id),
-  profile varchar(4000),
-  keywords varchar(4000),
+  profile_tid integer
+    constraint scs_profiles_profile_fk 
+      references scs_texts(text_id),
+  keywords_tid integer
+    constraint scs_profiles_keywords_fk 
+      references scs_texts(text_id),
   -- edit_no used to prevent unsyncronised updates
   edit_no integer default 0
     constraint ucs_profiles_edit_no_nn not null,

@@ -28,6 +28,9 @@ signature SCS_LANG =
        stored in the database. Raises ScsLang if the str is not
        recognized. *)
     val fromString : string -> lang
+
+    (* [ppLang out_lang l] pretty prints language l in language out_lang. *)
+    val ppLang : lang -> lang -> string
   end
 
 structure ScsLang :> SCS_LANG =
@@ -61,4 +64,14 @@ structure ScsLang :> SCS_LANG =
          order by text`)
       handle _ => []
 
+    fun ppLang out_lang l =
+      case l of 
+	da => 
+	  (case out_lang of 
+	     da => "dansk"
+	     | en => "Danish")
+      | en => 
+         (case out_lang of
+	    da => "engelsk"
+	  | en => "English")
   end
