@@ -10,7 +10,7 @@ infixr 5 ::
 infix  6 + - ^
 infix  7 div mod / * 
 
-exception Ord and Chr and Div and Mod and Quot and Floor and Sqrt and
+exception Chr and Div and Mod and Quot and Floor and Sqrt and
       Exp and Ln and Io of string
 
 
@@ -21,17 +21,17 @@ exception Ord and Chr and Div and Mod and Quot and Floor and Sqrt and
 fun op = (x: ''a, y: ''a): bool =           prim(0, (x, y))
 fun (x: 'a ref) := (y: 'a): unit =          prim(17, (x, y)) 
 fun !(x: 'a ref): 'a =                      prim(18, x) 
+fun ord (c:char): int =                     prim(11, c)
 
 
 (* ======================
  * IMPORTED PRIMITIVES
  * ====================== *)
 
-fun ord (c:string): int =                   prim(31, ("ordString", "ordString", c, Ord))
-fun chr (i:int): string =                   prim(31, ("chrString", "chrStringProfiling", i, Chr))
+fun chr (i:int): char =                     prim(31, ("chrChar", "chrChar", i, Chr))
 fun size (s:string): int =                  prim(31, ("sizeString", "sizeString", s))
-fun explode (str: string): string list =    prim(31, ("explodeString", "explodeStringProfiling", str))
-fun implode (strs: string list): string =   prim(31, ("implodeString", "implodeStringProfiling", strs))
+fun explode (str: string): char list =      prim(31, ("explodeString", "explodeStringProfiling", str))
+fun implode (chars: char list): string =    prim(31, ("implodeChars", "implodeCharsProfiling", chars))
 fun op ^ (s1:string, s2:string): string =   prim(31, ("concatString", "concatStringProfiling", s1, s2)) 
 fun (x: int) div (y: int): int =            prim(31, ("divInt", "divInt", x, y, Div))
 fun (x: int) mod (y: int): int =            prim(31, ("modInt", "modInt", x, y, Mod)) 
