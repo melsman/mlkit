@@ -137,7 +137,8 @@ create or replace view scs_users_active as
   select *
     from scs_users
    where deleted_p = 'f'
-     and user_id <> 0;
+     and user_id <> 0
+     and password is not null;
 
 
 

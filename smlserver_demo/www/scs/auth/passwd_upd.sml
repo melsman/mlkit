@@ -32,7 +32,9 @@ val _ = ScsDb.panicDml `update scs_users
                          where scs_users.user_id = ^(Int.toString ScsLogin.user_id)`
 
 (* Set cookies with new password *)
-val _ = Ns.write
+val _ = ScsLogin.set_user_pw_cookie ScsLogin.user_id new_passwd (ScsConfig.scs_site_index_page())
+
+(*val _ = Ns.write
 `HTTP/1.0 302 Found
 Location: ^(ScsConfig.scs_site_index_page())
 MIME-Version: 1.0
@@ -44,4 +46,4 @@ MIME-Version: 1.0
 		      domain=NONE,path=SOME "/",secure=false})
 
 
-You should not be seeing this!`
+You should not be seeing this!`*)

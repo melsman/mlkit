@@ -31,6 +31,11 @@ signature SCS_LOGIN =
     (* [auth_filter_accept_no_login urls_and_roless] same as
        auth_filter except that it is ok, that the user is not logged
        at all if not accessing one of the pages in the urls list. *)
+
+    val set_user_pw_cookie : int -> string -> string -> Ns.status
+    (* [set_user_pw_cookie user_id passwd redirect] sets two new
+       cookies with user_id and password. Redirects to url redirect.*)
+
   end
 
 structure ScsLogin :> SCS_LOGIN =
@@ -158,6 +163,21 @@ structure ScsLogin :> SCS_LOGIN =
     val auth_filter = auth_filter' true
     val auth_filter_accept_no_login = auth_filter' false
     end
+
+    fun set_user_pw_cookie user_id passwd redirect =
+Ns.write
+`HTTP/1.0 302 Found
+Location: ^redirect
+MIME-Version: 1.0
+^(Ns.Cookie.deleteCookie{name="auth_user_id",path=SOME "/"})
+^(Ns.Cookie.setCookie{name="auth_user_id", value=Int.toString user_id,expiry=NONE,
+		      domain=NONE,path=SOME "/",secure=false})
+^(Ns.Cookie.deleteCookie{name="auth_password",path=SOME "/"})
+^(Ns.Cookie.setCookie{name="auth_password", value=passwd,expiry=NONE,
+		      domain=NONE,path=SOME "/",secure=false})
+
+
+You should not be seeing this!`
   end
 
 

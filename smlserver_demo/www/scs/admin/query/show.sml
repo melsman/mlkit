@@ -1,3 +1,5 @@
+val user_id = ScsLogin.auth_roles [ScsRole.StudAdm]
+
 val query = ScsFormVar.wrapOpt ScsFormVar.getStringErr "query"
 val id = ScsFormVar.wrapOpt ScsFormVar.getNatErr "id"
 val submit = ScsFormVar.wrapOpt (ScsFormVar.getEnumErr ["Do Query","Add","Update"]) "submit"
