@@ -6,7 +6,7 @@ signature SCS_PRINT =
     val allDocTypes          : doc_type list
     val ppAllDocTypes        : unit -> string list
 
-    val allPrinters   : string list
+    val allPrinters   : (string * string) list
 
     (* Widgets *)
     val choosePrinter : string -> quot * quot
@@ -27,7 +27,7 @@ structure ScsPrint :> SCS_PRINT =
     val allDocTypes = [LaTeX]
     fun ppAllDocTypes() = List.map docTypeToString allDocTypes 
 
-    val allPrinters = ["p152","p177","p177d","p177t","p233","p233d","p233t"]
+    val allPrinters = List.map (fn p => (p,p)) ["p152","p177","p177d","p177t","p233","p233d","p233t"]
 
     (* Generate file which can be printed and previewed. *)
     (* Files are stored in the scs_print_dir directory.  *)
@@ -115,7 +115,7 @@ structure ScsPrint :> SCS_PRINT =
 	    end
 
       (* Should find printers for the user logged in *)
-      fun choosePrinter n = (`Choose printer`, ScsWidget.select (List.map (fn p => (p,p)) allPrinters) n)
+      fun choosePrinter n = (`Choose printer`, ScsWidget.select allPrinters n)
 
       fun printForm category note on_what_table on_what_id doc_type source =
 	ScsWidget.formBox "/scs/print/scs-print.sml" 
