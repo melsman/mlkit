@@ -8,7 +8,10 @@ mltoncompare:
 	echo '(unlimit stacksize; ../bin/kitbench -mlton -mlkit:-maximum_inline_size 50: -o small3.html small.tst)' | tcsh -s	
 
 gcregions:
-	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkit:-gc: -mlkit:-no_dangle -scratch: -mlkit:-tag_values -scratch: -smlnj -mlton -o gcregions.html gcregions.tst)' | tcsh -s
+	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkit:-gc: -mlkit:-no_dangle -scratch: -mlkit:-tag_values -scratch: -smlnj -o gcregions.html gcregions.tst)' | tcsh -s
+
+gcregions2:
+	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkit:-gc: -mlkit:-gc -no_ri -scratch: -mlkit:-tag_values -scratch: -smlnj -o gcregions.html gcregions.tst)' | tcsh -s
 
 gcregions4:
 	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-gc: -o gcregions4.html gcregions.tst)' | tcsh -s
