@@ -54,7 +54,6 @@ val new_user_form =
 	  UcsWidget.FORMBOX{
 	    action="new_user.sml",
 	    form_attr = [],
-	    form_attr = [],
 	    buts = [("submit", ScsDict.s UcsDict.create_dict,NONE)],
 	    header = (Html.export_hiddens [
 	    ] ),
