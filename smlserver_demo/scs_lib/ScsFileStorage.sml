@@ -329,41 +329,15 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
       end
 
     fun getAbsPath db folder_id =
-      ScsConfig.scs_file_storage_root() ^ "/" ^ 
-      ScsError.valOf (getRootLabelByFolderId(db,folder_id)) ^ "/" ^ 
-      getPath (db,folder_id)
-
-(* test only begin *)
-    local
-    fun getPath folder_id = 
       let
-	val arcs = 
-	  ScsError.wrapPanic
-	  (Db.list (fn g => g "label"))
-	  ` select label
-	      from scs_fs_folders
-           connect by folder_id = prior parent_id
-             start with folder_id = '^(Int.toString folder_id)'`
+	val root = ScsConfig.scs_file_storage_root()
+val _ = ScsError.log "******getting root label by folder id******"
+	val root_label = ScsError.valOf (getRootLabelByFolderId(db,folder_id))
+val _ = ScsError.log "******getPath ******"
+	val path = getPath (db,folder_id)
       in
-	String.concatWith "/" (List.rev arcs)
+	root ^ "/" ^ root_label ^ "/" ^ path
       end
-    fun getRootLabelByFolderId folder_id =
-      case
-	ScsError.wrapPanic
-	Db.zeroOrOneField
-	  `select scs_file_storage.getRootLabelByFolderId('^(Int.toString folder_id)') as root_label
-             from dual` of r => r
-
-    in
-      fun getAbsPath_test folder_id =
-      ScsConfig.scs_file_storage_root() ^ "/" ^ 
-      ScsError.valOf (getRootLabelByFolderId folder_id) ^ "/" ^ 
-      getPath folder_id
-      end
-(* test only end *)
-
-
-
     local
       fun f g = 
 	let
@@ -816,7 +790,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		 ())
       | SOME file =>
 	  let
-	    val path = (*Db.Handle.wrapDb*) getAbsPath_test (#folder_id file)
+	    val path = Db.Handle.wrapDb getAbsPath (#folder_id file)
 	    val filename_on_disk = path ^ "/" ^ #filename_on_disk file
 	    fun return_error () = 
 	      (ScsPage.returnPg 
