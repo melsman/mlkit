@@ -195,14 +195,26 @@ system with rpm's installed:
 TO DO
 -----
 
-Currently SMLserver supports only one thread, but this limitation is
-soon to change...
+  * Currently SMLserver supports only one thread, but this limitation
+    is soon to change...
+
+  * Functor applications and functor declarations are not allowed in
+    leaf-files in projects. That is, for a project file (.pm-file):
+  
+	local
+	 a.sml b.sml
+	in
+	 [c.sml d.sml]
+	end
+
+    the files a.sml and b.sml may contain functor applications and
+    functor declarations whereas the files c.sml and d.sml may not.
 
 
 REFERENCES  
 ----------
   
 [1] A system for running ML Server Pages using the Apache Web-server
-was first implemented by Peter Sestoft. For more information about
-this work, consult http://www.dina.kvl.dk/~sestoft/msp
+CGI support was first implemented by Peter Sestoft. For information
+about this work, consult http://www.dina.kvl.dk/~sestoft/msp
 

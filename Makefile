@@ -3,7 +3,8 @@ SHELL=/bin/sh
 KITVERSION=3.4.0
 ARCH-OS=x86-linux
 INSTDIR=/usr/local/mlkit
-INSTDIR_KAM=/usr/local/mlkit-kam-$(KITVERSION)
+INSTDIR_KAM=/usr/local/mlkit_kam
+INSTDIR_WEB=/usr/local/smlserver
 
 # Some commands
 MKDIR=mkdir -p
@@ -15,11 +16,8 @@ mlkit:
 mlkit_kam:
 	cd src; $(MAKE) mlkit_kam
 
-mlkit_web:
-	cd src; $(MAKE) mlkit_web
-
-mlkit_hppa:
-	cd src; $(MAKE) mlkit_hppa
+smlserver:
+	cd src; $(MAKE) smlserver
 
 clean:
 	rm -rf *~ bin PM run
@@ -48,6 +46,14 @@ tgz:
 	cd ..; tar czf mlkit-$(KITVERSION).tgz mlkit-$(KITVERSION)
 	cd ..; rm -rf mlkit-$(KITVERSION)
 
+tgz_smlserver:
+	cd ..; rm -rf smlserver-$(KITVERSION) smlserver-$(KITVERSION).tgz
+	cd ..; cp -d -f -p -R kit smlserver-$(KITVERSION)
+	cd ../smlserver-$(KITVERSION); $(MAKE) clean
+	cd ../smlserver-$(KITVERSION); rm -rf CVS */CVS */*/CVS */*/*/CVS */*/*/*/CVS */*/*/*/*/CVS */*/*/*/*/*/CVS
+	cd ..; tar czf smlserver-$(KITVERSION).tgz smlserver-$(KITVERSION)
+	cd ..; rm -rf smlserver-$(KITVERSION)
+
 install:
 	rm -rf $(INSTDIR)
 	$(MKDIR) $(INSTDIR)
@@ -74,3 +80,30 @@ install:
 	echo '#!/bin/sh' > $(INSTDIR)/bin/mlkit
 	echo -e '$(INSTDIR)/bin/mlkit.$(ARCH-OS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
 	chmod a+x $(INSTDIR)/bin/mlkit
+
+install_smlserver:
+	rm -rf $(INSTDIR_WEB)
+	$(MKDIR) $(INSTDIR_WEB)
+	$(MKDIR) $(INSTDIR_WEB)/bin
+	$(MKDIR) $(INSTDIR_WEB)/doc
+	$(INSTALL) bin/runtimeSystemKamNsSml.o $(INSTDIR_WEB)/bin
+	$(INSTALL) bin/mlkit_web.$(ARCH-OS) $(INSTDIR_WEB)/bin
+	$(INSTALL) src/SMLserver/nssml.so $(INSTDIR_WEB)/bin
+	$(INSTALL) copyright $(INSTDIR_WEB)
+	$(INSTALL) README $(INSTDIR_WEB)
+	$(INSTALL) README_SMLSERVER $(INSTDIR_WEB)
+	$(INSTALL) -R smlserver_demo $(INSTDIR_WEB)/smlserver_demo 
+	$(INSTALL) -R basislib $(INSTDIR_WEB)/basislib
+	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_WEB)/doc
+	chown -R root.root $(INSTDIR_WEB)
+	chmod -R ug+rw $(INSTDIR_WEB)
+	chmod -R o+r $(INSTDIR_WEB)
+#
+# The following is also done in the %post section in the rpm file, 
+# because the --prefix option to rpm can change the installation 
+# directory! 
+#
+	echo '#!/bin/sh' > $(INSTDIR_WEB)/bin/mlkit_web
+	echo -e '$(INSTDIR_WEB)/bin/mlkit_web.$(ARCH-OS) $(INSTDIR_WEB) $$*' >> $(INSTDIR_WEB)/bin/mlkit_web
+	chmod a+x $(INSTDIR_WEB)/bin/mlkit_web
+
