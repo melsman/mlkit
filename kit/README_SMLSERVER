@@ -1,4 +1,6 @@
-This is file README for SMLserver                   July 5, 2001
+This is file README_SMLSERVER                        July 13, 2001
+
+     SMLserver home page: http://www.it.edu/research/smlserver
 
 INTRODUCTION
 ------------
@@ -47,23 +49,22 @@ To use SMLserver you need the following:
     information about setting up a database with Postgresql for the
     purpose of using it with SMLserver is given below.
 
-  * ML Kit source distribution. The ML Kit source distribution
-    contains the SMLserver implementation.
+  * SMLserver. Binary RPMs, source RPMs, and tgz-packages are
+    available from the SMLserver home page; see the top of this 
+    file. 
 
 
-INSTALLING USING RPM'S
-----------------------
+BUILDING SMLSERVER FROM THE TGZ-PACKAGE
+---------------------------------------
 
-See the file doc/smlserver.html for details.
+The remainder of this file applies only if you are not installing
+SMLserver using RPMs. To install SMLserver using RPMs, consult the
+SMLserver home page; see the top of this file.
 
-
-BUILDING THE SMLSERVER MODULE AND THE BYTECODE COMPILER
--------------------------------------------------------
-
-We shall assume that AOLserver is already installed; see above. To
-build the SMLserver module nssml.so, which contains the bytecode
-interpreter for interpreting compiled sml-files and msp-scripts,
-download the ML Kit source distribution from the ML Kit web-site.
+We shall assume that AOLserver is already installed. To build the
+SMLserver module nssml.so, which contains the bytecode interpreter for
+interpreting compiled sml-files and msp-scripts, download the ML Kit
+source distribution from the ML Kit web-site.
 
 After untaring the source distribution, make sure that the file
 mlkit/kit/src/SMLserver/Makefile contains the correct information
@@ -86,7 +87,7 @@ CONFIGURING AOLSERVER
 ---------------------
 
 To configure AOLserver to load the SMLserver module
-kit/src/SMLserver/nssml.so at statup time, first copy the nssml.so
+kit/src/SMLserver/nssml.so at startup time, first copy the nssml.so
 file to the place where AOLserver looks for modules. You must now edit
 your nsd.tcl-file -- the file given to the AOLserver executable `nsd'
 at startup. First, add the entry

@@ -48,7 +48,7 @@ exception ParamMissing of string
 exception NotInt of string * string
 
 fun formvar s =
-  case Ns.Conn.getQuery(Ns.getConn())
+  case Ns.Conn.getQuery()
     of SOME formvars => Ns.Set.get(formvars, s)
      | NONE => NONE
 

@@ -16,9 +16,6 @@ signature NS =
 
     val log : LogSeverity * string -> unit
 
-    type conn
-    val getConn : unit -> conn  (* get the current connection - a C structure *)
-      
     eqtype status
     val OK : status
     val ERROR : status
@@ -28,32 +25,90 @@ signature NS =
 
     structure Conn :
       sig
-	val returnHtml : conn * int * string -> status
+	val returnHtml : int * string -> status
 
-	val returnRedirect : conn * string -> status
+	val returnRedirect : string -> status
 
-	(* The Ns_ConnGetQuery function constructs and returns an
-	   Ns_Set structure representing the query data associated
-	   with the connection. It reads the POST content or the query
-	   string. The POST content takes precedence over the query
-	   string.
+	(* The 'getQuery' function constructs and returns a set 
+	 * representing the query data associated with the connection. 
+	 * It reads the POST content or the query string. The POST 
+	 * content takes precedence over the query string. Note that 
+	 * you must not call Set.free on the result of this function. *)
+	val getQuery : unit -> set option
 
-           Note that you must not call Ns_SetFree on the result of
-	   this function. *)
+	(* The function 'headers' returns, as a set, the headers 
+	 * associated with the connection. *)
+	val headers : unit -> set 
 
-	val getQuery : conn -> set option
+	(* Returns the server hostname associated with the connection. *)
+	val host : unit -> string 
+
+	(* The 'location' function returns the HTTP location associated 
+	 * with the connection. For example: http://www.avalon.com:81.
+	 * Multiple communications drivers can be loaded into a single 
+	 * server. This means a server may have more than one location. 
+	 * For example, if the nsssl module is loaded and bound to port 
+	 * 8000 and the nssock module is loaded and bound to port 9000, 
+	 * the server would have the following two locations:
+	 *      http://www.avalon.com:9000
+	 *      https://www.avalon.com:8000
+	 * For this reason it is important to use the location function 
+	 * to determine the driver location at run time. *)
+	val location : unit -> string 
+
+	(* The 'peer' function returns the name of the peer associated 
+	 * with the connection. The peer address is determined by the 
+	 * communications driver in use by the connection. Typically,
+	 * it is a dotted IP address, for example, 199.221.53.205, 
+	 * but this is not guaranteed. *)
+	val peer : unit -> string 
+
+	(* The function 'peerPort' returns the port from which the peer 
+	 * is connected. *)
+	val peerPort : unit -> int
+
+	(* The 'port' function returns the server port number associated 
+	 * with the connection. *)
+	val port : unit -> int
+
+	(* The function 'redirect' performs an internal redirect, i.e., 
+	 * make it appear that the user requested a different URL and 
+	 * then run that request. This doesn't require an additional 
+	 * thread. *)
+	val redirect : string -> status
+
+	(* The `server' function returns the name of the server 
+	 * associated with the connection. *)
+	val server : unit -> string
       end
 
     structure Set :
       sig
+	(* get the first value associated with a key, if present *)
 	val get : set * string -> string option
 	val getOpt : set * string * string -> string
-	val put : set * string * string -> unit (* Add a field to an Ns_Set *)
-	val free : set -> unit                  (* Free memory used by an Ns_Set *)
-	val create : string -> set              (* Create a new Ns_Set *)
-	val size : set -> int                   (* Return the current size of an Ns_Set *)
-	val unique : set * string -> bool       (* Check if a key in an Ns_Set is unique, 
-						 * case sensitive *)
+
+	(* Return the current size of a set *)
+	val size : set -> int
+
+	(* Check if a key in a set is unique, case sensitive *)
+	val unique : set * string -> bool       
+
+	(* Return the key name of a field *)
+	val key : set * int -> string option    
+
+	(* Return the value of a field *)
+	val value : set * int -> string option
+
+	(* Return the list representation of a set *)
+	val list : set -> (string * string) list
+
+	(* Return the elements that satisfy the property *)
+	val filter : (string * string -> bool) -> set -> (string * string) list
+
+	(* Fold over a set *)
+	val foldl : ((string * string) * 'a -> 'a) -> 'a -> set -> 'a
+	val foldr : ((string * string) * 'a -> 'a) -> 'a -> set -> 'a
       end
 
     type db
@@ -69,16 +124,91 @@ signature NS =
 	val foldDb : db * ((string->string)*'a->'a) * 'a * string -> 'a
 	val fold : ((string->string)*'a->'a) * 'a * string -> 'a
       end
-	
-    val return : string -> status               (* Return html string to browser,
-						 * including HTTP headers. *)
-    val write : string -> status                (* Write string to browser. *)
-    val returnHeaders : unit -> unit            (* Write HTTP headers to browser. *)
-    val returnRedirect : string -> status       (* Write a redirection HTTP response. *)
+(*
+    structure Cache :
+      sig
+	val create : {cachename: string, size: int option, timeout: int option} -> unit
+	val flush  : {cachename: string, key: string} -> unit
+	val set    : {cachename: string, key: string, value: string} -> unit
+	val get    : {cachename: string, key: string} -> string option
+        val eval   : {cachename: string, key: string} -> (unit -> string) -> string
+	val names  : {cachename: string} -> string list
+      end
+*)
+    structure Info :
+      sig
+	(* Return full path name of the configuration file in use. *)
+	val configFile : unit -> string           
 
-    val returnQuot : string frag list -> status (* Return HTML frag list to browser,
-						 * including HTTP headers. *)
-    val writeQuot : string frag list -> status  (* Write frag list to browser. *) 
+	(* Return the name of the error log. *)
+	val errorLog : unit -> string
+
+	(* Return directory where the AOLserver is installed. *)
+	val homePath : unit -> string
+
+	(* Return the hostname that AOLserver thinks it's running 
+	 * on, as specified in the configuration file. *)
+	val hostname : unit -> string
+
+	(* Return pid of AOLserver. *)
+	val pid : unit -> int
+
+	(* Return AOLserver version string. *)
+	val serverVersion : unit -> string
+
+	(* Return how long, in seconds, AOLserver has been running. *)
+	val uptime : unit -> int
+
+	(* Return path name of the AOLserver pages directory 
+	 * for a server. *)
+	val pageRoot : unit -> string
+      end
+	
+    (* Return html string to browser, including HTTP headers. *)    
+    val return : string -> status    
+           
+    (* Write string to browser. *)
+    val write : string -> status
+
+    (* Write HTTP headers to browser. *)
+    val returnHeaders : unit -> unit
+
+    (* Write a redirection HTTP response. *)
+    val returnRedirect : string -> status
+
+    (* Return HTML frag list to browser, including HTTP headers; used
+     * with quotation support. *)
+    val returnQuot : string frag list -> status
+
+    (* Write frag list to browser; used with quotation support. *)
+    val writeQuot : string frag list -> status  
       
-    val pageRoot : unit -> string
+    (* Guess the Mime type based on the filename extension. 
+     * Case is ignored. The return value is of the form: "text/html". *)
+    val getMimeType : string -> string
+
+    (* Converts a numeric IP address into a host name. If no name 
+     * can be found, NONE is returned. Because the response time 
+     * of the Domain Name Service can be slow, this function may 
+     * significantly delay the response to a client. *)
+    val getHostByAddr : string -> string option 
+
+    (* Returns an encoded version of the argument as URL query 
+     * data. All characters except the alphanumerics are encoded 
+     * as specified in RFC1738, Uniform Resource Locators. This 
+     * function can be used to append arguments to a URL as query 
+     * data following a `?'. *)
+    val encodeUrl : string -> string
+
+    (* Decodes data that were encoded as URL query data. The decoded 
+     * data is returned. This function can be used to decode 
+     * arguments that were passed as URL query data following a `?'. *)
+    val decodeUrl : string -> string
+
+    (* send email *)
+    val sendmail : {to: string list, cc: string list, bcc: string list,
+		    from: string, subject: string, body: string,
+		    extra_headers: string list} -> unit 
+    val mail : {to: string, from: string, subject: string, body: string} -> unit
+
   end

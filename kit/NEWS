@@ -1,5 +1,7 @@
 ML Kit NEWS file                                         July 5, 2001
 
+           **** ML Kit version 3.9.1 is released ****
+
  * mael 2001-07-05: Bug fix: valrec may now overwrite identifier
    status. Bug reported by Johnny Andersen.
 

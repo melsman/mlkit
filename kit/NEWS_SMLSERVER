@@ -1,0 +1,40 @@
+File NEWS_SMLSERVER                                   July 13, 2001
+
+           **** SMLserver version 3.9.1 is released ****
+
+ * mael 2001-07-12: Space bug fixed. Each time a request was 
+   served, a new stack was allocated but never freed; the
+   implementation now recycles allocated stacks.
+
+ * mael 2001-07-12: Functionality for sending email (Ns.sendmail/
+   Ns.mail) added to Ns structure.
+
+ * mael 2001-07-12: Support for accessing request headers and 
+   information about server setup added to Ns structure.
+
+ * mael 2001-07-05: Bug fix: valrec may now overwrite identifier
+   status. Bug reported by Johnny Andersen.
+
+ * mael 2001-07-05: Quotation support. The datatype 
+      datatype 'a frag = QUOTE of string | ANTIQUOTE of 'a
+   is available in the top-level environment. Moreover, the character
+   ` cease to be allowed in symbolic identifiers. Values of the 'a
+   frag datatype may be constructed using the quotation/antiquotation
+   syntax:
+        val s = "world" 
+        val a : string frag list = `hello ^s - goodbye`
+   Quotation support makes for a nice way of embedding HTML and SQL 
+   in your web-applications.
+
+ * mael 2001-07-05: An uncaught exception now causes the program to
+   return -1 to the shell (instead of 0). Suggestion by Stephen Weeks.
+
+ * mael 2001-07-05: Bug fix: The function OS.FileSys.tmpName now
+   returns a file name for a file in /tmp/ (instead of in /etc/). Bug
+   reported by Stephen Weeks.
+
+ * mael & nh: bytecode backend added as an alternative to the x86
+   native backend; primarily, the bytecode backend is added for 
+   portability and for use with the SMLserver project, which adds 
+   Standard ML language support to AOLserver -- a webserver from 
+   America Online.

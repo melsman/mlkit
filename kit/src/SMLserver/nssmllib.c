@@ -125,6 +125,28 @@ nssml_SetSize(Ns_Set* set)
 {
   return (Ns_SetSize(set));
 }
+
+// ML: set * int -> string ptr_option
+StringDesc*
+nssml_SetKey(int rAddr, Ns_Set* set, int i)
+{
+  char* res_c = Ns_SetKey(set,i);
+  if ( res_c == NULL ) {
+    return (StringDesc*)NULL;
+  }
+  return convertStringToML(rAddr, res_c);
+}
+
+// ML: set * int -> string ptr_option
+StringDesc*
+nssml_SetValue(int rAddr, Ns_Set* set, int i)
+{
+  char* res_c = Ns_SetValue(set,i);
+  if ( res_c == NULL ) {
+    return (StringDesc*)NULL;
+  }
+  return convertStringToML(rAddr, res_c);
+}
   
 int
 nssml_ConnPuts(Ns_Conn* c, StringDesc* s)
@@ -158,7 +180,7 @@ StringDesc *
 nssml_PageRoot(int rAddr) 
 {
   char* s_c = Ns_PageRoot(Ns_ConnServer(Ns_TclGetConn(NULL)));
-  return (convertStringToML(rAddr, s_c));
+  return convertStringToML(rAddr, s_c);
 }
 
 // ML: conn * string -> status
@@ -233,3 +255,163 @@ nssml_DbGetRow(Ns_DbHandle *db, Ns_Set* s)
 {
   return (Ns_DbGetRow(db, s));
 }
+
+// ML: conn -> string
+StringDesc*
+nssml_ConnHost(int rAddr, Ns_Conn *c)
+{
+  return convertStringToML(rAddr, Ns_ConnHost(c));
+}
+
+// ML: conn -> string ptr_option
+StringDesc*
+nssml_ConnLocation(int rAddr, Ns_Conn *c)
+{
+  char* s = Ns_ConnLocation(c);
+  if ( s == NULL ) return NULL;
+  return convertStringToML(rAddr, s);
+}
+
+// ML: conn -> string
+StringDesc*
+nssml_ConnPeer(int rAddr, Ns_Conn *c)
+{
+  return convertStringToML(rAddr, Ns_ConnPeer(c));
+}
+
+// ML: conn * string -> status
+int
+nssml_ConnRedirect(Ns_Conn *c, StringDesc* url)
+{
+  char* url_c;
+  int sz;
+  int res;
+  sz = sizeStringDefine(url) + 1;
+  url_c = (char*)Ns_Malloc(sz);
+  convertStringToC(url, url_c, sz, (int)&exn_OVERFLOW);
+  res = Ns_ConnRedirect(c, url_c);
+  Ns_Free(url_c);
+  return res;  
+}
+
+// ML: conn -> string
+StringDesc*
+nssml_ConnServer(int rAddr, Ns_Conn *c)
+{
+  return convertStringToML(rAddr, Ns_ConnServer(c));
+}
+
+// ML: unit -> string
+StringDesc*
+nssml_InfoConfigFile(int rAddr)
+{
+  return convertStringToML(rAddr, Ns_InfoConfigFile());
+}
+
+// ML: unit -> string
+StringDesc*
+nssml_InfoErrorLog(int rAddr)
+{
+  return convertStringToML(rAddr, Ns_InfoErrorLog());
+}
+
+// ML: unit -> string
+StringDesc*
+nssml_InfoHomePath(int rAddr)
+{
+  return convertStringToML(rAddr, Ns_InfoHomePath());
+}
+
+// ML: unit -> string
+StringDesc*
+nssml_InfoHostname(int rAddr)
+{
+  return convertStringToML(rAddr, Ns_InfoHostname());
+}
+
+// ML: unit -> string
+StringDesc*
+nssml_InfoServerVersion(int rAddr)
+{
+  return convertStringToML(rAddr, Ns_InfoServerVersion());
+}
+
+// ML: string -> string
+StringDesc*
+nssml_GetMimeType(int rAddr, StringDesc* s)
+{
+  int sz;
+  char* s_c;
+  char* res_c;
+  //  Ns_Log(Notice, "nssml_GetMimeType entering");
+  sz = sizeStringDefine(s) + 1;
+  //  Ns_Log(Notice, "nssml_GetMimeType sz=%d", sz);
+  s_c = (char*)Ns_Malloc(sz);
+  //  Ns_Log(Notice, "nssml_GetMimeType after malloc");
+  convertStringToC(s, s_c, sz, (int)&exn_OVERFLOW);
+  //  Ns_Log(Notice, "nssml_GetMimeType after convertStringToC");
+  res_c = Ns_GetMimeType(s_c);
+  //  Ns_Log(Notice, "nssml_GetMimeType after Ns_GetMimeType");
+  Ns_Free(s_c);
+  //  Ns_Log(Notice, "nssml_GetMimeType after Ns_Free");
+  if ( res_c == NULL ) {
+    Ns_Log(Warning, "nssml_GetMimeType problem - returning empty string");
+    res_c = "";
+  }
+  s = convertStringToML(rAddr, res_c);
+  //  Ns_Log(Notice, "nssml_GetMimeType after convertStringToML");
+  return s;
+}
+
+// ML: string -> string ptr_option
+StringDesc*
+nssml_GetHostByAddr(int rAddr, StringDesc *s)
+{
+  int sz;
+  char* s_c;
+  Ns_DString ds;
+  sz = sizeStringDefine(s) + 1;
+  s_c = (char*)Ns_Malloc(sz);
+  convertStringToC(s, s_c, sz, (int)&exn_OVERFLOW);
+  Ns_DStringInit(&ds);
+  if ( Ns_GetHostByAddr(&ds, s_c) == NS_FALSE ) {
+    Ns_DStringFree(&ds);
+    return (StringDesc*)NULL;
+  }
+  s = convertStringToML(rAddr, Ns_DStringValue(&ds));
+  Ns_DStringFree(&ds);
+  return s;
+}
+
+// ML: string -> string
+StringDesc*
+nssml_EncodeUrl(int rAddr, StringDesc* s)
+{
+  int sz;
+  char* s_c;
+  Ns_DString ds;
+  sz = sizeStringDefine(s) + 1;
+  s_c = (char*)Ns_Malloc(sz);
+  convertStringToC(s, s_c, sz, (int)&exn_OVERFLOW);
+  Ns_DStringInit(&ds);
+  s = convertStringToML(rAddr, Ns_EncodeUrl(&ds, s_c));
+  Ns_DStringFree(&ds);
+  return s;
+}
+
+// ML: string -> string
+StringDesc*
+nssml_DecodeUrl(int rAddr, StringDesc* s)
+{
+  int sz;
+  char* s_c;
+  Ns_DString ds;
+  sz = sizeStringDefine(s) + 1;
+  s_c = (char*)Ns_Malloc(sz);
+  convertStringToC(s, s_c, sz, (int)&exn_OVERFLOW);
+  Ns_DStringInit(&ds);
+  s = convertStringToML(rAddr, Ns_DecodeUrl(&ds, s_c));
+  Ns_DStringFree(&ds);
+  return s;
+}
+
