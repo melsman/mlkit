@@ -46,19 +46,3 @@ select scs_enumerations.enum_id, scs_enumerations.name,
    and scs_enum_values.text_id = scs_texts.text_id
    and scs_texts.text_id = scs_text_lang.text_id
    and scs_text_lang.lang_id = scs_lang.lang_id;
-
---------------
--- TRIGGERS --
---------------
-
--- The trigger makes sure that the affiliated scs-texts are deleted
--- when we delete an enumeration.
-create or replace trigger scs_enum_values_before_del_tr
-before delete on scs_enum_values
-for each row
-declare
-begin
-  scs_text.destroy(:old.text_id);
-end scs_enum_values_before_del_tr;
-/
-show errors;

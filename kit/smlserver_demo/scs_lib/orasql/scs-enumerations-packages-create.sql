@@ -7,6 +7,7 @@
    package scs_enumeration
 
    History:
+   310103 Niels Hallenberg <nh@it-c.dk> moved trigger into this file
    281102 Kennie Nybo Pontoppidan <kennie@it-c.dk> added comments
    261102 Kennie Nybo Pontoppidan <kennie@it-c.dk> code review
    111002 Kennie Nybo Pontoppidan <kennie@it-c.dk> created package
@@ -613,3 +614,19 @@ as
 end scs_enumeration;
 /
 show errors
+
+--------------
+-- TRIGGERS --
+--------------
+
+-- The trigger makes sure that the affiliated scs-texts are deleted
+-- when we delete an enumeration.
+create or replace trigger scs_enum_values_before_del_tr
+before delete on scs_enum_values
+for each row
+declare
+begin
+  scs_text.destroy(:old.text_id);
+end scs_enum_values_before_del_tr;
+/
+show errors;
