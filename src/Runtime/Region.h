@@ -215,27 +215,27 @@ typedef Ro* Region;
 //
 //     000    (hex 0x0)   ordinary tagged values
 //     001    (hex 0x1)   pairs
-//     010    (hex 0x2)   reals
+//     010    (hex 0x2)   arrays   (value is tagged, but the region type 
+//                                  is needed by generational collector)
 //     011    (hex 0x3)   refs
-//     111    (hex 0x7)   arrays (value is tagged, but the region type 
-//                                is needed by generational collector)
+//     111    (hex 0x7)   triples
 
 #ifdef ENABLE_GC
 #define RTYPE_PAIR          0x1
-#define RTYPE_REAL          0x2
+#define RTYPE_ARRAY         0x2
 #define RTYPE_REF           0x3
-#define RTYPE_ARRAY         0x7
+#define RTYPE_TRIPLE        0x7
 #define rtype(rd)           ((unsigned int)((rd)->fp) & 0x07)
 #define clear_rtype(fp)     ((Klump*)((unsigned int)(fp) & 0xFFFFFFF8))
 #define is_pairregion(rd)   (rtype(rd) == RTYPE_PAIR)
-#define is_realregion(rd)   (rtype(rd) == RTYPE_REAL)
-#define is_refregion(rd)    (rtype(rd) == RTYPE_REF)
 #define is_arrayregion(rd)  (rtype(rd) == RTYPE_ARRAY)
+#define is_refregion(rd)    (rtype(rd) == RTYPE_REF)
+#define is_tripleregion(rd) (rtype(rd) == RTYPE_TRIPLE)
 #define set_rtype(rd,rt)    ((rd)->fp = (Klump*)(((unsigned int)((rd)->fp)) | (rt)))
 #define set_pairregion(rd)  (set_rtype((rd),RTYPE_PAIR))
-#define set_realregion(rd)  (set_rtype((rd),RTYPE_REAL))
-#define set_refregion(rd)   (set_rtype((rd),RTYPE_REF))
 #define set_arrayregion(rd) (set_rtype((rd),RTYPE_ARRAY))
+#define set_refregion(rd)   (set_rtype((rd),RTYPE_REF))
+#define set_tripleregion(rd) (set_rtype((rd),RTYPE_TRIPLE))
 #else
 #define clear_rtype(fp)     (fp)
 #endif /*ENABLE_GC*/
@@ -318,9 +318,18 @@ void callSbrkArg(int no_of_region_pages);
 
 #ifdef ENABLE_GC
 Region allocatePairRegion(Region roAddr);
+Region allocateArrayRegion(Region roAddr);
+Region allocateRefRegion(Region roAddr);
+Region allocateTripleRegion(Region roAddr);
 #ifdef PROFILING
 Region allocPairRegionInfiniteProfiling(Region r, unsigned int regionId);
 Region allocPairRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId);
+Region allocArrayRegionInfiniteProfiling(Region r, unsigned int regionId);
+Region allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId);
+Region allocRefRegionInfiniteProfiling(Region r, unsigned int regionId);
+Region allocRefRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId);
+Region allocTripleRegionInfiniteProfiling(Region r, unsigned int regionId);
+Region allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId);
 #endif /* PROFILING */
 #endif /* ENABLE_GC */
 

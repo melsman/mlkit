@@ -365,7 +365,8 @@ size_lobj (unsigned int tag)
  * Find allocated bytes in from space; for measurements
  * ----------------------------------------------------- */
 
-// Assumes that region does not contain untagged pairs
+// Assumes that region does not contain untagged pairs or 
+// untagged refs
 static int 
 allocated_bytes_in_region(Region r) 
 {
@@ -441,7 +442,7 @@ allocated_bytes_in_region(Region r)
 }
 
 static int
-allocated_bytes_in_pairregion(Ro* r)
+allocated_bytes_in_pairrefregion(Ro* r)
 {
   Klump* rp;
   int n = 0;
@@ -449,6 +450,21 @@ allocated_bytes_in_pairregion(Ro* r)
     {
       if ( clear_tospace_bit(rp->n) )
 	n += 4 * ALLOCATABLE_WORDS_IN_REGION_PAGE;  // not last page
+      else
+	n += 4 * ((r->a) - (rp->i));  // last page
+    }
+  return n;
+}
+
+allocated_bytes_in_tripleregion(Ro* r)
+{
+  Klump* rp;
+  int n = 0;
+  for ( rp = clear_rtype(r->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
+    {
+      if ( clear_tospace_bit(rp->n) )
+	// Take care of alignment
+	n += 4 * 3 * (ALLOCATABLE_WORDS_IN_REGION_PAGE / 3);  // not last page
       else
 	n += 4 * ((r->a) - (rp->i));  // last page
     }
@@ -464,8 +480,12 @@ allocated_bytes_in_regions(void)
     {
       switch (rtype(r)) {
       case RTYPE_PAIR:
-	n += allocated_bytes_in_pairregion(r);
+      case RTYPE_REF:
+	n += allocated_bytes_in_pairrefregion(r);
 	break;
+      case RTYPE_TRIPLE:
+	n += allocated_bytes_in_tripleregion(r);
+	break;	
       default:
 	n += allocated_bytes_in_region(r);
       }
@@ -500,7 +520,7 @@ allocated_bytes_in_lobjs(void)
 // Returns the size including the descriptor; the 
 // object must contain a descriptor at offset 0.
 // This function is never used to determine the 
-// size of an untagged pair.
+// size of an untagged pair or an untagged ref.
 inline static int 
 get_size_obj(unsigned int *obj_ptr) 
 {
@@ -562,6 +582,46 @@ acopy_pair(Ro *r, unsigned int *obj_ptr)
 #endif
   *(new_obj_ptr+1) = *(obj_ptr+1);
   *(new_obj_ptr+2) = *(obj_ptr+2);
+  return new_obj_ptr;
+}
+
+inline unsigned int *
+acopy_ref(Ro *r, unsigned int *obj_ptr) 
+{
+  unsigned int *new_obj_ptr;
+
+#ifdef PROFILING
+  int pPoint;
+  pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
+#endif /*PROFILING*/
+
+#ifdef PROFILING
+  new_obj_ptr = allocProfiling(r,1,pPoint) - 1;
+#else
+  new_obj_ptr = alloc(r,1) - 1;
+#endif
+  *(new_obj_ptr+1) = *(obj_ptr+1);
+  return new_obj_ptr;
+}
+
+inline unsigned int *
+acopy_triple(Ro *r, unsigned int *obj_ptr) 
+{
+  unsigned int *new_obj_ptr;
+
+#ifdef PROFILING
+  int pPoint;
+  pPoint = (((ObjectDesc *)(obj_ptr+1))-1)->atId;
+#endif /*PROFILING*/
+
+#ifdef PROFILING
+  new_obj_ptr = allocProfiling(r,3,pPoint) - 1;
+#else
+  new_obj_ptr = alloc(r,3) - 1;
+#endif
+  *(new_obj_ptr+1) = *(obj_ptr+1);
+  *(new_obj_ptr+2) = *(obj_ptr+2);
+  *(new_obj_ptr+3) = *(obj_ptr+3);
   return new_obj_ptr;
 }
 
@@ -642,6 +702,26 @@ evacuate(unsigned int obj)
 	  return *(obj_ptr+1);
 	}
       new_obj_ptr = acopy_pair(r, obj_ptr);
+      *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
+      break;
+    }
+  case RTYPE_REF:
+    {
+      if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
+	{
+	  return *(obj_ptr+1);
+	}
+      new_obj_ptr = acopy_ref(r, obj_ptr);
+      *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
+      break;
+    }
+  case RTYPE_TRIPLE:
+    {
+      if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
+	{
+	  return *(obj_ptr+1);
+	}
+      new_obj_ptr = acopy_triple(r, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
     }
@@ -768,6 +848,56 @@ do_scan_stack()
 	      if ((((int *)s+1) != r->a) && 
 		  ((((int *)s+1) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
 		   || (*((int *)s+1) == notPP)))
+		// MEMO: For RTYPE_PAIR and RTYPE_REF, checking the content of *(s+1) against notPP (0) should not
+		// be necessary because of alignment properties! mael 2003-05-15
+		{
+		  s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE - 1;
+		}
+	    }
+	  break;
+	}
+      case RTYPE_REF:
+	{
+	  while ( ((int *)s+1) != r->a ) 
+	    {
+	      rp = get_rp_header(s);
+#if PROFILING
+	      s += sizeObjectDesc;
+#endif
+	      *(s+1) = evacuate(*(s+1));
+	      s += 1;
+	      
+	      /* If at end of region page or the region page is full, go 
+	       * to next region page. */
+	      if ((((int *)s+1) != r->a) && 
+		  ((((int *)s+1) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+		   || (*((int *)s+1) == notPP)))
+		{
+		  s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE - 1;
+		}
+	    }
+	  break;
+	}
+      case RTYPE_TRIPLE:
+	{
+	  while ( ((int *)s+1) != r->a ) 
+	    {
+	      rp = get_rp_header(s);
+#if PROFILING
+	      s += sizeObjectDesc;
+#endif
+	      *(s+1) = evacuate(*(s+1));
+	      *(s+2) = evacuate(*(s+2));
+	      *(s+3) = evacuate(*(s+3));
+	      s += 3;
+	      
+	      /* If at end of region page or the region page is full, go 
+	       * to next region page. */
+	      if ((((int *)s+1) != r->a) && 
+		  ((((int *)s+1) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+		   || (*((int *)s+1) == notPP)))
+		// MEMO: For RTYPE_PAIR and RTYPE_REF, checking the content of *(s+1) against notPP (0) should not
+		// be necessary because of alignment properties! It is necessary for triples! mael 2003-05-15
 		{
 		  s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE - 1;
 		}

@@ -382,10 +382,35 @@ Region allocateRegion(Region r
 }  
 
 #ifdef ENABLE_GC
-Region allocatePairRegion(Region r)
+Region 
+allocatePairRegion(Region r)
 {
   r = allocateRegion(r);
   set_pairregion(clearStatusBits(r));
+  return r;
+}
+
+Region 
+allocateArrayRegion(Region r)
+{
+  r = allocateRegion(r);
+  set_arrayregion(clearStatusBits(r));
+  return r;
+}
+
+Region 
+allocateRefRegion(Region r)
+{
+  r = allocateRegion(r);
+  set_refregion(clearStatusBits(r));
+  return r;
+}
+
+Region 
+allocateTripleRegion(Region r)
+{
+  r = allocateRegion(r);
+  set_tripleregion(clearStatusBits(r));
   return r;
 }
 #endif /*ENABLE_GC*/
@@ -451,35 +476,8 @@ void deallocateRegion(
 
   free_lobjs(TOP_REGION->lobjs);
 
-  /*
-  if ( TOP_REGION->lobjs )
-    {
-      Lobjs* lobjs = TOP_REGION->lobjs;
-      while ( lobjs ) 
-	{
-	  Lobjs* lobjsTmp;
-#ifdef ENABLE_GC
-	  unsigned int tag;
-	  #ifdef PROFILING
-	  tag = *((&(lobjs->value)) + sizeObjectDesc);
-	  #else
-	  tag = lobjs->value;
-	  #endif	  
-	  lobjs_current -= size_lobj(tag);
-#endif	  
-	  lobjsTmp = clear_lobj_bit(lobjs->next);
-#ifdef ENABLE_GC
-	  free(lobjs->orig);
-#else
-	  free(lobjs);
-#endif
-	  lobjs = lobjsTmp;
-	}
-    }
-  */
-
   /* Insert the region pages in the freelist; there is always 
-   * at-least one page in a region. */
+   * at least one page in a region. */
 
   FREELIST_MUTEX_LOCK;
   (((Klump *)TOP_REGION->b)-1)->n = freelist;
@@ -750,7 +748,7 @@ int *alloc (Region r, int n) {
 #endif
 
   // see if the size of requested memory exceeds 
-  // the size of a region page */
+  // the size of a region page
 
   if ( n > ALLOCATABLE_WORDS_IN_REGION_PAGE )   // notice: n is in words
     {
@@ -1041,10 +1039,58 @@ allocPairRegionInfiniteProfiling(Region r, unsigned int regionId)
 }
 
 Region
+allocArrayRegionInfiniteProfiling(Region r, unsigned int regionId) 
+{
+  r = allocRegionInfiniteProfiling(r, regionId);
+  set_arrayregion(clearStatusBits(r));
+  return r;
+}
+
+Region
+allocRefRegionInfiniteProfiling(Region r, unsigned int regionId) 
+{
+  r = allocRegionInfiniteProfiling(r, regionId);
+  set_refregion(clearStatusBits(r));
+  return r;
+}
+
+Region
+allocTripleRegionInfiniteProfiling(Region r, unsigned int regionId) 
+{
+  r = allocRegionInfiniteProfiling(r, regionId);
+  set_tripleregion(clearStatusBits(r));
+  return r;
+}
+
+Region
 allocPairRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId) 
 { 
   r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
   set_pairregion(clearStatusBits(r));
+  return r;
+}
+
+Region
+allocArrayRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId) 
+{ 
+  r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
+  set_arrayregion(clearStatusBits(r));
+  return r;
+}
+
+Region
+allocRefRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId) 
+{ 
+  r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
+  set_refregion(clearStatusBits(r));
+  return r;
+}
+
+Region
+allocTripleRegionInfiniteProfilingMaybeUnTag(Region r, unsigned int regionId) 
+{ 
+  r = allocRegionInfiniteProfiling(r, convertIntToC(regionId));
+  set_tripleregion(clearStatusBits(r));
   return r;
 }
 #endif /*ENABLE_GC*/ 

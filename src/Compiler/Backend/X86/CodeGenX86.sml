@@ -480,10 +480,13 @@ struct
      * regions containing pairs; these C functions then take care of setting the appropriate 
      * bit - mael 2002-10-14 *)
 
-    fun pair_region_special (place:Effect.place) : bool =
+    fun values_in_region_untagged (place:Effect.place) : bool =
 	BI.tag_values() andalso not(tag_pairs_p())
-	andalso (case Effect.get_place_ty place
-		 of SOME Effect.PAIR_RT => true | _ => false)
+	andalso (case Effect.get_place_ty place of 
+		     SOME Effect.PAIR_RT => true 
+		   | SOME Effect.REF_RT => true
+		   | SOME Effect.TRIPLE_RT => true
+		   | _ => false)
 			   
 
     (***********************)
@@ -687,8 +690,8 @@ struct
      * then the following function is used for allocating pairs in 
      * infinite regions. *)
 
-    fun alloc_pair_kill_tmp01(t:reg,size_ff,pp:LS.pp,C) =
-      let val n0 = 2 (* size of untagged pair *)
+    fun alloc_untagged_value_kill_tmp01(t:reg,size_alloc,size_ff,pp:LS.pp,C) =
+      let val n0 = size_alloc (* size of untagged pair, e.g. *)
 	  val n = if region_profiling() then n0 + BI.objectDescSizeP 
 		  else n0
 	  val l = new_local_lab "return_from_alloc"
@@ -793,37 +796,37 @@ struct
 	     I.lab finite_lab :: C)))
 	  end
 
-    fun alloc_pair_ap_kill_tmp01 (sma, dst_reg:reg, size_ff, C) =
+    fun alloc_untagged_value_ap_kill_tmp01 (sma, dst_reg:reg, size_alloc, size_ff, C) =
       case sma 
-	of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.1"
-	 | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.2"
-	 | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.3"
-	 | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.4"
-	 | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.5"
-	 | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.6"
-	 | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.7"
-	 | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_pair_ap_kill_tmp01.8"
-	 | LS.IGNORE => die "alloc_pair_ap_kill_tmp01.9"
+	of LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.1"
+	 | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.2"
+	 | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.3"
+	 | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.4"
+	 | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.5"
+	 | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.6"
+	 | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.7"
+	 | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => die "alloc_untagged_value_ap_kill_tmp01.8"
+	 | LS.IGNORE => die "alloc_untagged_value_ap_kill_tmp01.9"
 	 | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
-                                   alloc_pair_kill_tmp01(dst_reg,size_ff,pp,C))
+                                   alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,C))
 	 | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
                                    store_pp_prof(dst_reg,pp, C))
 	 | LS.ATBOT_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,    (* atbot bit not set; its a finite region *)
 				   store_pp_prof(dst_reg,pp, C))
 	 | LS.ATTOP_FI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,
-                                   alloc_pair_kill_tmp01(dst_reg,size_ff,pp,C))
+                                   alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,C))
 	 | LS.ATTOP_FF(aty,pp) => 
 	  let val cont_lab = new_local_lab "cont"
 	  in move_aty_into_reg_ap(aty,dst_reg,size_ff,
 	     I.btl(I "0", R dst_reg) :: (* inf bit set? *)
 	     I.jnc cont_lab ::
-	     alloc_pair_kill_tmp01(dst_reg,size_ff,pp,
+	     alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,
 	     I.lab cont_lab :: C))
 	  end
 	 | LS.ATBOT_LI(aty,pp) => 
 	  move_aty_into_reg_ap(aty,dst_reg,size_ff,
 	  reset_region(dst_reg,tmp_reg0,size_ff,     (* dst_reg is preserved for alloc *)
-	  alloc_pair_kill_tmp01(dst_reg,size_ff,pp,C)))
+	  alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,C)))
 	 | LS.SAT_FI(aty,pp) => 
 	  let val default_lab = new_local_lab "no_reset"
 	  in move_aty_into_reg_ap(aty,dst_reg,size_ff,
@@ -831,7 +834,7 @@ struct
              I.jnc default_lab ::
 	     reset_region(dst_reg,tmp_reg0,size_ff,
              I.lab default_lab ::         (* dst_reg is preverved over the call *)
-	     alloc_pair_kill_tmp01(dst_reg,size_ff,pp,C)))
+	     alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,C)))
 	  end
 	 | LS.SAT_FF(aty,pp) => 
 	  let val finite_lab = new_local_lab "no_alloc"
@@ -844,7 +847,7 @@ struct
              I.jnc attop_lab ::
 	     reset_region(dst_reg,tmp_reg0,size_ff,  (* dst_reg is preserved over the call *)
              I.lab attop_lab ::  
-	     alloc_pair_kill_tmp01(dst_reg,size_ff,pp,
+	     alloc_untagged_value_kill_tmp01(dst_reg,size_alloc,size_ff,pp,
 	     I.lab cont_lab :: C)))
 	  end
 
@@ -1832,12 +1835,12 @@ struct
 		     move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
 		    | LS.RECORD{elems,alloc,tag,maybeuntag} =>
 		  
-			     (* Explanation of how we deal with untagged pairs in the presence
+			     (* Explanation of how we deal with untagged pairs and triples in the presence
 			      * of garbage collection and tagging of values in general 
 			      * - mael 2002-10-14: 
 			      *
-			      * Only pairs that are stored in infinite regions are untagged 
-			      * - that is, pairs stored in finite regions on the stack
+			      * Only pairs and triples that are stored in infinite regions are untagged 
+			      * - that is, pairs and triples stored in finite regions on the stack
 			      * are tagged. Thus, we must be careful to deal
 			      * correctly with regions passed to functions at runtime; if a
 			      * formal region variable has 'finite' multiplicity, the region
@@ -1845,9 +1848,9 @@ struct
 			      * this case, the exact layout of the pair is not determined 
 			      * until runtime. 
 			      *
-			      * To deal with the above mentioned problem, we use the function
-			      * alloc_pair_ap_kill_tmp01, which takes care of storing the tag
-			      * in case the region is finite and returns a pointer to the 
+			      * When finite regions of type pair is allocated on the stack, a
+			      * pair-tag is installed in the stack-slot for the region. The 
+			      * function alloc_untagged_value_ap_kill_tmp01 returns a pointer to the 
 			      * object, or a pointer to the word before the object in case the
 			      * object represents an untagged pair in an infinite region. *)
 		     let 
@@ -1858,14 +1861,12 @@ struct
 				       (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
 									 WORDS offset,size_ff, C))) 
 				(last_offset,C') elems)
-			 val _ = if maybeuntag andalso num_elems <> 2 then
-			             die "cannot untag other tuples than pairs"
+			 val _ = if maybeuntag andalso num_elems <> 2 andalso num_elems <> 3 then
+			             die "cannot untag other tuples than pairs and triples"
 				 else ()
 		     in
 		       if BI.tag_values() andalso maybeuntag andalso not(tag_pairs_p()) then
-			   (* function alloc_pair_ap_kill_tmp01 takes care of storing the 
-			    * tag when the pair is stored in a finite region *)
-			 alloc_pair_ap_kill_tmp01 (alloc,reg_for_result,size_ff,
+			 alloc_untagged_value_ap_kill_tmp01 (alloc,reg_for_result,num_elems,size_ff,
 			 store_elems num_elems)
 		       else if BI.tag_values() then
   		         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
@@ -1966,7 +1967,7 @@ struct
 		     let val offset = if BI.tag_values() then 1 else 0
 		         val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 			 fun maybe_tag_value C =
-			   if BI.tag_values() then
+			   if BI.tag_values() andalso tag_pairs_p() then  (* a better name than tag_pairs_p would be great; mael 2003-05-15 *)
 			     I.movl(I (int_to_string(Word32.toInt(BI.tag_ref(false)))), 
 				    D("0", reg_for_result)) :: C
 			   else C
@@ -1999,7 +2000,7 @@ struct
 			 (* Hack eliminated: We now pass a boolean which is true for allocations 
 			  * of tag-free values. mael 2003-05-13 *)
 			 if BI.tag_values() andalso not(tag_pairs_p()) andalso untagged_value then
-			     alloc_pair_ap_kill_tmp01 (alloc,reg_for_result,size_ff,C')
+			     alloc_untagged_value_ap_kill_tmp01 (alloc,reg_for_result,i-1,size_ff,C')
 			 else
 			     alloc_ap_kill_tmp01(alloc,reg_for_result,i,size_ff,C')
 		     end
@@ -2138,11 +2139,16 @@ struct
 		  let 
 		    fun key place = mkIntAty (Effect.key_of_eps_or_rho place)
 
-		    fun maybe_store_pairtag (place,offset,C) =
-		      if pair_region_special place then 
-			let val tag = BI.tag_record (false,2)
-			in store_immed(tag, esp, WORDS(size_ff-offset-1), C)
-			end
+		    fun maybe_store_tag (place,offset,C) =
+		      if values_in_region_untagged place then 
+			   let val tag = 
+			       case Effect.get_place_ty place of
+				   SOME Effect.PAIR_RT => BI.tag_record (false,2)
+				 | SOME Effect.REF_RT => BI.tag_ref(false)
+				 | SOME Effect.TRIPLE_RT => BI.tag_record (false,3)
+				 | _ => die "maybe_store_tag"				   
+			   in store_immed(tag, esp, WORDS(size_ff-offset-1), C)
+			   end
 		      else C
 
 		    fun alloc_region_prim(((place,phsize),offset),C) =
@@ -2163,12 +2169,17 @@ struct
 						    key place,
 						    mkIntAty i], NONE,
 						   size_ff,tmp_reg0(*not used*), 
-                                maybe_store_pairtag (place,offset,C)))
+                                maybe_store_tag (place,offset,C)))
 			    end
 			   | LineStmt.INF =>
-			    let val name = if pair_region_special(place)
-					       then "allocPairRegionInfiniteProfilingMaybeUnTag"
-					   else "allocRegionInfiniteProfilingMaybeUnTag"
+			    let val name = 
+				if values_in_region_untagged place then 
+				    case Effect.get_place_ty place of
+					SOME Effect.PAIR_RT => "allocPairRegionInfiniteProfilingMaybeUnTag"
+				      | SOME Effect.REF_RT => "allocRefRegionInfiniteProfilingMaybeUnTag"
+				      | SOME Effect.TRIPLE_RT => "allocTripleRegionInfiniteProfilingMaybeUnTag"
+				      | _ => die "alloc_region_prim.name"
+				else "allocRegionInfiniteProfilingMaybeUnTag"
 			    in
 			    base_plus_offset(esp,WORDS(size_ff-offset-1),tmp_reg1,
 		              compile_c_call_prim(name,
@@ -2180,10 +2191,16 @@ struct
 		        case phsize
 			  of LineStmt.WORDS 0 => C
 			   | LineStmt.WORDS i => 
-			      maybe_store_pairtag (place,offset,C)  (* finite region; no code generated *)
+			      maybe_store_tag (place,offset,C)  (* finite region; no code generated *)
 			   | LineStmt.INF => 
-			      let val name = if pair_region_special(place) then "allocatePairRegion"
-					     else "allocateRegion"
+			      let val name = 
+				  if values_in_region_untagged place then 
+				      case Effect.get_place_ty place of
+					  SOME Effect.PAIR_RT => "allocatePairRegion"
+					| SOME Effect.REF_RT => "allocateRefRegion"
+					| SOME Effect.TRIPLE_RT => "allocateTripleRegion"
+					| _ => die "alloc_region_prim.name2"
+				  else "allocateRegion"
 			      in
 				  base_plus_offset(esp,WORDS(size_ff-offset-1),tmp_reg1,
 				    compile_c_call_prim(name,[SS.PHREG_ATY tmp_reg1],NONE,
@@ -2987,9 +3004,18 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    (* Notice, that regionId is not tagged because compile_c_call is not used *)
             (* Therefore, we do not use the MaybeUnTag-version. 2001-05-11, Niels     *)
 	    fun c_name rho = 
-		if pair_region_special(rho) then
-		    if region_profiling() then "allocPairRegionInfiniteProfiling"
-		    else "allocatePairRegion"
+		if values_in_region_untagged rho then
+		    case Effect.get_place_ty rho of
+			SOME Effect.PAIR_RT =>
+			    if region_profiling() then "allocPairRegionInfiniteProfiling"
+			    else "allocatePairRegion"
+		      | SOME Effect.REF_RT =>
+			    if region_profiling() then "allocRefRegionInfiniteProfiling"
+			    else "allocateRefRegion"
+		      | SOME Effect.TRIPLE_RT =>
+			    if region_profiling() then "allocTripleRegionInfiniteProfiling"
+			    else "allocateTripleRegion"
+		      | _ => die "allocate_global_regions.c_name"
 		else 
 		    if region_profiling() then "allocRegionInfiniteProfiling"
 		    else "allocateRegion"

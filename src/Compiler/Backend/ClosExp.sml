@@ -2089,17 +2089,20 @@ struct
 		 val ces_and_ses = List.foldr (fn (tr,b) => ccTrip tr env lab cur_rv::b) [] trs
 		 val (sma,se_a) = convert_alloc(alloc,env)
 		 val (smas,ces,ses) = unify_smas_ces_and_ses([(sma,se_a)],ces_and_ses)
-		 fun pairregion rho = 
-		     case Effect.get_place_ty rho
-		     of SOME Effect.PAIR_RT => 
-			 if length trs = 2 then true
-			 else die "RECORD.wrong number of elements in pair region"
-		   | _ => false
+		 fun pair_or_triple_region rho = 
+		     case Effect.get_place_ty rho of 
+			 SOME Effect.PAIR_RT => 
+			     if length trs = 2 then true
+			     else die "RECORD.wrong number of elements in pair region"
+		       | SOME Effect.TRIPLE_RT => 
+			     if length trs = 3 then true
+			     else die "RECORD.wrong number of elements in triple region"				 
+		       | _ => false
 		 val maybeuntag =
 		     case alloc
-		       of AtInf.ATTOP (rho,_) => pairregion rho
-		        | AtInf.ATBOT (rho,_) => pairregion rho
-			| AtInf.SAT (rho,_) => pairregion rho
+		       of AtInf.ATTOP (rho,_) => pair_or_triple_region rho
+		        | AtInf.ATBOT (rho,_) => pair_or_triple_region rho
+			| AtInf.SAT (rho,_) => pair_or_triple_region rho
 			| _ => false
 	       in
 		 (insert_ses(RECORD{elems=ces,
