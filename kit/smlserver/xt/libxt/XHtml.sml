@@ -25,9 +25,10 @@ structure XHtmlHidden__ : XHTML_EXTRA =
 	type dl = unit
 	type td = unit
 	type tr = unit
-	type 'a flow = unit
-	type block = unit
-	type inline = unit
+	type ('b,'i) flow = unit
+	 and block = unit
+	 and inline = unit
+         and NOT = unit
 
 	fun htmlencode s : string =
           let fun enc #"<" = "&lt;"
@@ -53,9 +54,9 @@ structure XHtmlHidden__ : XHTML_EXTRA =
 	  | seq of elem * elem
 
 	type ('x,'y,'a,'f,'p,'k) elt = elem
-	type ('x,'y,'a,'f,'p) inl2inl = elem -> elem
-	type ('x,'y,'a,'f,'p) inl2inlpre = elem -> elem
-	type ('x,'y,'a,'f,'p) inl2blk = elem -> elem
+	type ('x,'y,'a,'f,'p,'b) inl2inl = elem -> elem
+	type ('x,'y,'a,'f,'p,'b) inl2inlpre = elem -> elem
+	type ('x,'y,'a,'f,'p,'i) inl2blk = elem -> elem
 
 	type body = elem
 
