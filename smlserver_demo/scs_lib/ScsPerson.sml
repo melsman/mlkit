@@ -14,8 +14,12 @@ signature SCS_PERSON =
 
     type profile_record = 
       { party_id       : int,
-        profile        : string,
-	keywords       : string,
+        profile_tid    : int,
+        profile_da     : string,
+        profile_en     : string,
+	keywords_tid   : int,
+	keywords_da    : string,
+	keywords_en    : string,
 	edit_no        : int,
 	last_modified  : Date.date,
 	modifying_user : int,
@@ -130,8 +134,12 @@ structure ScsPerson :> SCS_PERSON =
 
     type profile_record = 
       { party_id       : int,
-        profile        : string,
-	keywords       : string,
+        profile_tid    : int,
+        profile_da     : string,
+        profile_en     : string,
+	keywords_tid   : int,
+	keywords_da    : string,
+	keywords_en    : string,
 	edit_no        : int,
 	last_modified  : Date.date,
 	modifying_user : int,
@@ -185,16 +193,28 @@ structure ScsPerson :> SCS_PERSON =
 
     local
       fun f g = {party_id = (ScsError.valOf o Int.fromString) (g "party_id"),
-		 profile = g "profile",
-		 keywords = g "keywords",
+		 profile_tid = (ScsError.valOf o Int.fromString) (g "profile_tid"),
+		 profile_da = g "profile_da",
+		 profile_en = g "profile_en",
+		 keywords_tid = (ScsError.valOf o Int.fromString) (g "keywords_tid"),
+		 keywords_da = g "keywords_da",
+		 keywords_en = g "keywords_en",
 		 edit_no = (ScsError.valOf o Int.fromString) (g "edit_no"),
 		 last_modified = (ScsError.valOf o Db.toDate) (g "last_modified"),
 		 modifying_user = (ScsError.valOf o Int.fromString) (g "modifying_user"),
 		 deleted_p = (ScsError.valOf o Db.toBool) (g "deleted_p")}
       fun profileSQL from_wh =
 	` select p.party_id, 
-                 p.profile, 
-                 p.keywords, 
+                 p.profile_tid, 
+		 scs_text.getText(p.profile_tid,'^(ScsLang.toString ScsLang.da)') 
+		   as profile_da,
+		 scs_text.getText(p.profile_tid,'^(ScsLang.toString ScsLang.en)') 
+		   as profile_en,
+                 p.keywords_tid, 
+		 scs_text.getText(p.keywords_tid,'^(ScsLang.toString ScsLang.da)') 
+		   as keywords_da,
+		 scs_text.getText(p.keywords_tid,'^(ScsLang.toString ScsLang.en)') 
+		   as keywords_en,
                  p.edit_no, 
                  p.last_modified, 
                  p.modifying_user, 
@@ -202,7 +222,7 @@ structure ScsPerson :> SCS_PERSON =
             ` ^^ from_wh
     in
       fun getProfile user_id =
-	SOME(Db.oneRow' f (profileSQL ` from scs_profiles p
+	SOME(Db.oneRow' f (profileSQL ` from scs_profiles_w p
 			               where p.party_id = '^(Int.toString user_id)'`))
 	handle _ => 
 	  (* Profile does not exits - so try to insert empty profile *)
@@ -215,22 +235,39 @@ structure ScsPerson :> SCS_PERSON =
 		let
 		  (* We set the creating user to be the not logged in user - pretty much arbitrarily *)
                   (* The current user may not be logged in. (e.g., if he comes from Find Person)     *)
-		  val empty_profile =
-		    {party_id = user_id,
-		     profile = "",
-		     keywords = "",
-		     edit_no = 0,
-		     last_modified = ScsDate.now_local(),
-		     modifying_user = 0,
-		     deleted_p = false}
-		  val ins_sql = `insert into scs_profiles 
-                                   (party_id,profile,keywords,edit_no,last_modified,modifying_user)
-                                 values
-                                   ('^(Int.toString user_id)',null,null,0,sysdate,
-				    '^(Int.toString ScsLogin.default_id)')` 
+		  fun new db =
+		    let
+		      val profile_tid = Db.Handle.oneFieldDb db `select scs.new_obj_id from dual`
+		      val _ = Db.Handle.execSpDb db  
+			[`scs_text.updateTextProc(text_id => ^profile_tid,language => 'da',text => '')`,
+			  `scs_text.updateTextProc(text_id => ^profile_tid,language => 'en',text => '')`]
+		      val keywords_tid = Db.Handle.oneFieldDb db `select scs.new_obj_id from dual`
+		      val _ = Db.Handle.execSpDb db  
+			[`scs_text.updateTextProc(text_id => ^keywords_tid,language => 'da',text => '')`,
+			  `scs_text.updateTextProc(text_id => ^keywords_tid,language => 'en',text => '')`]
+		      val empty_profile =
+			{party_id = user_id,
+			 profile_tid = (ScsError.valOf o Int.fromString) profile_tid,
+			 profile_da = "",
+			 profile_en = "",
+			 keywords_tid = (ScsError.valOf o Int.fromString) keywords_tid,
+			 keywords_da = "",
+			 keywords_en = "",
+			 edit_no = 0,
+			 last_modified = ScsDate.now_local(),
+			 modifying_user = 0,
+			 deleted_p = false}
+		      val ins_sql = `insert into scs_profiles 
+			(party_id,profile_tid,keywords_tid,edit_no,last_modified,modifying_user)
+			values
+			('^(Int.toString user_id)','^(profile_tid)','^(keywords_tid)',
+			 '0',sysdate,'^(Int.toString ScsLogin.default_id)')` 
+		      val _ =Db.Handle.dmlDb db ins_sql
+		    in
+		      SOME empty_profile
+		    end
 		in
-		  (Db.dml ins_sql;
-		   SOME empty_profile)
+		  Db.Handle.dmlTrans new
 		  handle _ => (Ns.log(Ns.Warning, "Could not create profile for user_id " ^ 
 				      Int.toString user_id);
 			       NONE)
