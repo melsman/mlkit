@@ -12,6 +12,7 @@ eqhashdyn2.sml
 stream.sig
 stream.sml
 PACK_REAL.sml
+PackRealLittleSMLNJ.sml
 PackRealBigSMLNJ.sml
 pickle.sig
 pickle.sml
