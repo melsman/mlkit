@@ -26,6 +26,7 @@ val examples =
    ("Database testing (DB)", "db_test.sml", []),
    ("SMLserver images", "images/index.html", []),
    ("Trap","trap.txt", []),
+   ("Upload", "upload/upload_form.sml",[]),
    ("This index page", "index.sml", [])]
 
 fun src_link n s = `<a href="return_file.sml?path=^(Ns.encodeUrl ("demo/" ^ s))">^(Int.toString n)</a>`

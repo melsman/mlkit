@@ -36,6 +36,11 @@ structure Ns :> NS =
    fun buildUrl action hvs =
      action ^ "?" ^ (String.concatWith "&" (List.map (fn (n,v) => n ^ "=" ^ encodeUrl v) hvs))
 
+   structure Info : NS_INFO = NsInfo(struct
+				       type conn = int
+				       val getConn = getConn
+				     end)
+
     structure Conn =
       struct
 	type status = status
@@ -48,11 +53,306 @@ structure Ns :> NS =
 	fun return s = returnHtml(200,s)
 	fun returnRedirect(s: string) : status =
 	  prim("@Ns_ConnReturnRedirect", (getConn(),s))
-	fun getQuery() : set option =
-	  let val s : set = prim("@Ns_ConnGetQuery", getConn())
-	  in if s = 0 then NONE
-	     else SOME s
-	  end
+
+	fun url () : string =
+	  prim("nssml_ConnUrl", getConn())
+
+	fun method () : string =
+	  prim("nssml_ConnMethod", getConn())
+
+	fun contentLength () : int =
+	  prim("@nssml_ConnContentLength", getConn())
+
+	fun headers() : set =
+	  prim("@Ns_ConnHeaders", getConn())
+
+	fun server() : string =
+	  prim("nssml_ConnServer", getConn())
+
+	(* ML implementation of Multipart/form-data *)
+	local
+	  val (form_data : set option option ref) = ref NONE
+	  datatype FV =
+	    large_fv of {fv_name : Substring.substring,
+			 filename : Substring.substring,
+                         filesize : int,
+			 content : Substring.substring,
+			 content_types : (Substring.substring * Substring.substring) list}
+	  | small_fv of {fv_name : Substring.substring,
+			 content : Substring.substring,
+			 content_types : (Substring.substring * Substring.substring) list}
+	  val multiform_data : FV list ref = ref []
+
+	  fun ppFV fv =
+	    case fv of
+	      large_fv {fv_name,filename,filesize,content,content_types} => 
+		"fv_name: " ^ (Substring.string fv_name) ^ 
+		"\n filename: " ^ (Substring.string filename) ^ 
+		"\n filesize: " ^ (Int.toString filesize) ^
+		"\n content: " ^ (Substring.string content) ^ 
+		"\n content types: " ^ (List.foldl (fn ((t1,t2),acc) => acc ^ 
+						    (Substring.string t1) ^ ":" ^ 
+						    (Substring.string t2) ^ "\n") "" content_types)
+	    | small_fv {fv_name,content,content_types} =>
+		"fv_name: " ^ (Substring.string fv_name) ^ 
+		"\n content: " ^ (Substring.string content) ^
+		"\n content types: " ^ (List.foldl (fn ((t1,t2),acc) => acc ^ 
+						    (Substring.string t1) ^ ":" ^ 
+						    (Substring.string t2) ^ "\n") "" content_types)
+
+          (* Local utility functions *)
+	  fun lower' NONE = ""
+	    | lower' (SOME s) = CharVector.fromList (List.map Char.toLower (explode s))
+
+	  fun getQuery'() : set option =
+	    (* Equals Tcl command: ns_conn form *)
+	    let 
+	      val s : set = prim("@Ns_ConnGetQuery", getConn())
+	    in if s = 0 then NONE
+	       else SOME s
+	    end
+
+	  fun connCopy () : string =
+	    let
+	      val maxsize = 
+		(case (Info.configGetValueExact {sectionName="ns/server/"^server(),
+						 key="MaxContentLength"}) of
+		   NONE => Option.valOf Int.maxInt
+		 | SOME v => (Option.valOf o Int.fromString) v)
+		   handle _ => Option.valOf Int.maxInt
+	      (* val _ = log (Notice, "Max content length: " ^ Int.toString maxsize) *)
+	    in
+	      if contentLength() > maxsize then 
+		"" (* empty string if content size is too large *)
+	      else
+		let
+		  val s : string = prim("nssml_ConnCopy", getConn())
+		in
+		  if isNull s then "" else s (* empty string if no content *)
+		end
+	    end
+
+	  fun skipNewline substr =
+	    let
+	      val substr = 
+		if Substring.first substr = SOME #"\r" then Substring.slice (substr,1,NONE) else substr
+	      val substr =
+		if Substring.first substr = SOME #"\n" then Substring.slice (substr,1,NONE) else substr
+	    in
+	      substr
+	    end
+
+	  fun skipEndNewline sus =
+	    let
+	      fun last sus = SOME (Substring.sub(sus,Substring.size sus - 1))
+		handle _ => NONE
+	      val sus =
+		if last sus = SOME #"\n" then Substring.slice (sus,0,SOME (Substring.size sus - 1)) else sus
+	      val sus =
+		if last sus = SOME #"\r" then Substring.slice (sus,0,SOME (Substring.size sus - 1)) else sus
+	    in
+	      sus
+	    end
+
+	  fun triml sus = Substring.dropl Char.isSpace sus
+
+	  (* Returns (true,rest) or (false,orig_rest) *)
+	  fun match case_sensitive_p pattern orig_rest =
+	    let
+	      fun m c1 c2 = if case_sensitive_p then c1 = c2 else Char.toLower c1 = Char.toLower c2
+	      fun match' pattern rest =
+		case pattern of
+		  [] => (true,rest)
+		| p::ps => 
+		    (case Substring.getc rest of
+		       NONE => (false,orig_rest)
+		     | SOME(c,rest) => 
+			 if m c p then
+			   match' ps rest
+			 else
+			   (false,orig_rest))
+	    in
+	      match' (String.explode pattern) orig_rest
+	    end
+
+	  (* Content-Type: text/plain *)
+	  fun parseContentTypes (content,acc) =
+	    let
+	      val (content_type,after_content_type) = Substring.position "\n" content
+	      val (content_type,content_type_value) = Substring.position ":" content_type
+	    in
+	      if Substring.size content_type_value = 0 then 
+	        (* no : and therefore no contenttype *)
+		(acc,content)
+	      else
+		let
+		  val content_type_value = Substring.slice(content_type_value,1,NONE)
+		  val content_type_value = triml content_type_value
+		  val content_type_value = #1(Substring.splitl (fn c => c <> #"\r" andalso 
+								c <> #"\n") content_type_value)
+		in
+		  ((content_type,content_type_value)::acc, 
+		   skipNewline after_content_type)
+		end
+	    end
+
+	  fun parseNextBoundary boundary content =
+	    let
+	      (* Search for next boundary *)
+	      val (_,next_boundary) = Substring.position boundary content
+
+	      val next_field = Substring.slice(next_boundary,String.size boundary,NONE)
+	      val next_field = skipNewline next_field
+
+	      val (disp,after_disp) = Substring.position "\n" next_field
+	      val after_disp = skipNewline after_disp
+
+	      (* Fetch the disposition line and field name *)
+	      val eat_disposition =
+		case match false "Content-Disposition: form-data;" disp of
+		  (true,rest) => rest
+		| _ => raise Fail "Ns.eat_disposition: can't find disposition"
+	      val eat_disposition = triml eat_disposition
+
+	      val (fv_name,fv_filename) = Substring.position ";" eat_disposition
+	      val fv_name = 
+		case match false "name=\"" fv_name of
+                  (true,rest) => rest
+		  | _ => raise Fail "Ns.parseNextBoundary: can't find fv_name"
+              val fv_name = skipEndNewline fv_name
+	      val fv_name = Substring.dropl (fn ch => ch = #"\"") fv_name
+	      val fv_name = Substring.dropr (fn ch => ch = #"\"") fv_name
+
+	      val filename_opt =
+		case match false "; filename=\"" fv_filename of
+                  (true,rest) =>
+   	             let
+		       val fv_filename = skipEndNewline rest
+		       val fv_filename = Substring.dropl (fn ch => ch = #"\"") fv_filename
+		       val fv_filename = Substring.dropr (fn ch => ch = #"\"") fv_filename
+		     in
+		       SOME fv_filename
+		     end
+		| _ => NONE
+
+	      val after_disp = skipNewline after_disp
+	      val after_disp = triml after_disp
+
+	      (* See if there are extra content information *)
+	      val (content_types,after_content_types) = parseContentTypes (after_disp,[])
+
+	      (* Parse value *)
+             val before_eat_value = skipNewline after_content_types
+             val (value_incl_end_newline,after_value) = Substring.position boundary before_eat_value
+             val value_excl_end_newline = skipEndNewline value_incl_end_newline
+	    in 
+	      case filename_opt of
+		NONE => SOME (small_fv{fv_name = fv_name,
+				       content = value_excl_end_newline,
+				       content_types = content_types},after_value)
+	      | SOME filename => SOME (large_fv {fv_name = fv_name,
+						 filename = filename,
+                                                 filesize = Substring.size value_excl_end_newline,
+						 content = value_excl_end_newline,
+						 content_types = content_types},after_value)
+	    end
+	  handle Fail _ => NONE
+
+	  (* Parsing multipart/form-data: we have large and small chunks of data *)
+	  (* File Format: Content-Disposition: form-data; name="clientfile"; filename="to_do.txt" *)
+	  (* Ordinary FV: Content-Disposition: form-data; name="description" *)
+	  fun parseContent (content,contentType) =
+	    let
+	      (* Fetch boudary out of contentTypeHeader *)
+	      val boundary =
+		case RegExp.extract (RegExp.fromString ".*[bB][oO][uU][Nn][Dd][Aa][Rr][Yy]=(.*)") contentType of
+		  SOME [pat] => pat
+		| _ => raise Fail ("Ns.Conn.parseContent: can't get boundary out of contentType: " ^ 
+				   contentType)
+	      val boundary = "--" ^ boundary
+	      val content = Substring.all content
+	      fun loop content =
+		case parseNextBoundary boundary content of
+		  NONE => []
+		| SOME (fv,rest) => fv :: loop rest
+	    in 
+	      (loop content,boundary)
+	    end
+	  handle Fail _ => ([],"boundary")
+	in
+	  fun getQuery () =
+	    case !form_data of 
+	      (* Form data has already been calculated *)
+	      SOME data => data
+	    | NONE =>
+		let 
+		  val content_type = NsSet.iget (headers(),"content-type")
+		in
+		  if method() = "POST" andalso
+		    RegExp.match (RegExp.fromString ".*multipart/form-data.*") (lower' content_type)
+		    then
+		      let
+			val content = connCopy()
+			val (fvs,boundary) = parseContent(content,valOf content_type)
+			val _ = multiform_data := fvs
+		      in
+			case fvs of
+			  [] => NONE
+			  | fvs => 
+			    let
+			      (* Create Tcl set for form variables *)
+			      val form = NsSet.create boundary (* todo: where is this set freed ? *)
+			      fun storeContentType fv_name (key,value) = 
+				NsSet.put(form,
+					  Substring.string fv_name ^ "." ^ 
+					  lower' (SOME (Substring.string key)),
+					  Substring.string value)
+			      fun storeFV fv =
+				case fv of
+				  large_fv {fv_name,filename,filesize,content,content_types} =>
+				    (NsSet.put (form, Substring.string fv_name,Substring.string filename);
+				     NsSet.put (form, Substring.string fv_name ^ ".filesize", Int.toString filesize);
+				     List.app (storeContentType fv_name) content_types)
+				| small_fv {fv_name,content,content_types} =>
+				    (NsSet.put(form,Substring.string fv_name,Substring.string content);
+				     List.app (storeContentType fv_name) content_types)
+			      val _ = List.app storeFV fvs
+			    in
+			      (form_data := SOME (SOME form);
+			       getQuery())
+			    end
+		      end
+		  else
+		    (form_data := SOME (getQuery'());
+		     getQuery())
+		end
+	      handle _ => NONE
+	  fun storeMultiformData (fv,filename) =
+	    let
+	      val _ = getQuery() (* Make sure that formvariables have been read *)
+	      val os = BinIO.openOut filename
+	      fun r exn = (BinIO.closeOut os; raise exn)
+	      fun storeFV [] = r (Fail ("Ns.storeMultiformData. FV " ^ fv ^ " does not exists"))
+		| storeFV (x::xs) =
+		case x of
+		  large_fv{fv_name,filename,content,...} =>
+		    if Substring.string fv_name = fv then 
+		      BinIO.output (os,Substring.string content) 
+		    else 
+		      storeFV xs
+		| small_fv{fv_name,...} =>
+   	            if Substring.string fv_name = fv then 
+		      r (Fail ("Ns.storeMultiformData. FV " ^ fv ^ " does not contain a file"))
+		    else 
+		      storeFV xs
+	    in
+	      storeFV (!multiform_data);
+	      BinIO.closeOut os
+	    end
+	  handle _ => raise Fail ("Ns.storeMultiformData. can't open filename: " ^ filename)
+
+	end
+
 	fun formvar s = case getQuery()
 			  of SOME set => Set.get(set,s)
 			   | NONE => NONE
@@ -60,8 +360,6 @@ structure Ns :> NS =
 	  case getQuery()
 	    of SOME set => Set.getAll(set,s)
 	  | NONE => []
-	fun headers() : set =
-	  prim("@Ns_ConnHeaders", getConn())
 
 	fun host() : string =
 	  prim("nssml_ConnHost", getConn())
@@ -84,9 +382,6 @@ structure Ns :> NS =
 	fun redirect(url: string) : status =
 	  prim("@Ns_ConnRedirect", (getConn(),url))
 
-	fun server() : string =
-	  prim("nssml_ConnServer", getConn())
-
 	fun puts(s: string) : status =
 	  prim("@Ns_ConnPuts", (getConn(), s))
 
@@ -96,12 +391,10 @@ structure Ns :> NS =
 	fun setRequiredHeaders(contentType: string, contentLength: int) : unit =
 	  prim("@Ns_ConnSetRequiredHeaders", (getConn(), contentType, contentLength))
 
-	fun url () : string =
-	  prim("nssml_ConnUrl", getConn())
-
 	fun hasConnection() = getConn0() <> 0
 
 	fun write s = puts s
+
       end
 
     structure Cookie =
@@ -515,11 +808,6 @@ structure Ns :> NS =
 	val String = {name="S",to_string=(fn s => s),from_string=(fn s => s)}
       end
 
-    structure Info : NS_INFO = NsInfo(struct
-                                        type conn = int
-                                        val getConn = getConn
-                                      end)
-
     type quot = Quot.quot
     fun return (q : quot) : status =
       Conn.returnHtml(200, Quot.toString q)
@@ -657,3 +945,145 @@ structure Ns :> NS =
       end 
   end
 
+(* Stuff not used when implementing multipart/formdata, Niels *)
+
+(*
+
+
+(*			 val tmp_file = upload_dir ^ "/" ^ (uniqueFile upload_dir 10)
+val _ = debug("tmpfile: " ^ tmp_file)
+			 val status = connCopyToFile tmp_file
+val _ = debug("connCopyToFile status: " ^ ppStatus status)
+                         val _ = parseContent(tmp_file,valOf content_type)*)
+
+
+(*		         val _ = FileSys.remove tmp_file*)
+
+*)
+
+	 (*   if you delete this, the remember to remove nssml_ConnCopy in 
+	    nssmllib.c and BuildInCFunctions*)
+
+(*
+fun match getc case_sensitive_p pattern orig_rest =
+  let
+    fun m c1 c2 = if case_sensitive_p then c1 = c2 else Char.lower c1 = Char.lower c2
+    fun match' pattern rest =
+      let
+	val (x,rest) = getc 1 rest
+      in  
+	case pattern of
+	  [] => (true,rest)
+	| p::ps => 
+	    if m x p then
+	      match' ps rest
+	    else
+	      (false,orig_rest)
+      end
+  in
+    match' (String.explode pattern) orig_rest
+  end
+
+val (disp_p,rest) = match getc true "Content-Disposition: form-data; "
+val (name,                
+
+	  fun connCopyToFile (filename : string) : status =
+	    prim("@nssml_ConnCopyToFile", (getConn(),filename))
+
+
+(*	  fun parseContent (tmp_file,contentType) =
+	    let
+	      val fid = TextIO.openIn tmp_file
+	      val content = TextIO.inputAll fid
+val _ = debug content*)
+	      (* Fetch boudary out of contentTypeHeader *)
+(*	(*      val boundary =
+		case RegExp.extract (RegExp.fromString ".*[bB][oO][uU][Nn][Dd][Aa][Rr][Yy]=(.*)") contentType of
+		  SOME [pat] => pat
+		| _ => raise Fail ("Ns.Conn.parseContent: can't get boundary out of contentType: " ^ 
+				   contentType)
+	      val boundary = "--" ^ boundary
+
+	      val _ = debug ("parseContent.boundary = " ^ boundary)*)
+
+*)
+
+(*			  val eat_filename = 
+			    case match true "filename=\"" eat_filename of
+   			      (true,rest) => rest
+			    | _ => raise Fail "eat_filename: can't find filename"
+                          val _ = debug false ("Eat filename (after eat filename=\"): " ^ (Substring.string eat_filename))
+			  val (fv_filename,eat_fv_filename) = Substring.position "\"" eat_filename
+			  val _ = debug false ("Fv name: " ^ (Substring.string fv_filename))
+			  val eat_fv_filename = 
+			    case match false "\"" eat_fv_filename of
+			      (true,rest) => rest
+			    | _ => raise Fail "Ns.eat_fv_name: can't find last \" in fv_name"*)
+
+
+(*		  val eat_name =
+		    case match true "name=\"" eat_disposition of
+                      (true,rest) => rest
+		    | _ => raise Fail "Ns.eat_disposition: can't find name in disposition"
+                  val _ = debug false ("After eat name: " ^ (Substring.string eat_name))
+		  val (fv_name,eat_fv_name) = Substring.position "\"" eat_name
+		  val _ = debug false ("Fv name: " ^ (Substring.string fv_name))
+		  val eat_fv_name = 
+		    case match false "\"" eat_fv_name of
+		      (true,rest) => rest
+		    | _ => raise Fail "Ns.eat_fv_name: can't find last \" in fv_name"*)
+
+	  (* Eat a field like fieldname="value" returning value without the two "s *)
+	  (* Raise Fail if string is not on that form *)
+(*	  fun eatField fieldname content = (*todo: problem with " at start, end and middle of field value 
+try read to \n first and then process line - same as in parseContentTypes*)
+	    let
+	      val eat_fieldname =
+		case match true (fieldname ^ "=\"") content of
+  	          (true,rest) => rest
+		| _ => raise Fail ("Ns.eatField: can't find name in " ^ fieldname)
+	      val eat_fieldname = Substring.dropl (fn ch => ch = #"\"") eat_fieldname
+	      val (value,eat_value) = Substring.position "\"" eat_fieldname
+	      val rest = 
+		case match false "\"" eat_value of
+  		  (true,rest) => rest
+		| _ => raise Fail ("Ns.eatField: can't find last \" in value" ^ fieldname)
+(*	      val rest = Substring.dropl (fn ch => ch = #"\"") rest*)
+	    in
+	      (value,rest)
+	    end*)
+
+	      (* Fetch the disposition line and field name *)
+(*	      val eat_disposition =
+		case match true "Content-Disposition: form-data;" next_field of
+		  (true,rest) => rest
+		| _ => raise Fail "Ns.eat_disposition: can't find disposition"
+	      val eat_disposition = triml eat_disposition
+
+	      val (fv_name,eat_fv_name) = eatField "name" eat_disposition
+
+	      (* Maybe there is a third field (filename) *)
+	      val (filename_opt,eat_fv_filename) =
+		case Substring.first eat_fv_name of
+		  SOME #";" => 
+		    let
+		      val eat_filename = Substring.slice (eat_fv_name,1,NONE)
+		      val eat_filename = triml eat_filename
+		      val (fv_filename,eat_fv_filename) = eatField "filename" eat_filename
+		    in
+		      (SOME fv_filename,eat_fv_filename)
+		    end
+		| _ => (NONE,eat_fv_name)*)
+(*
+	  fun uniqueFile dir c =
+	    if c > 10 then raise raise Fail (Quot.toString `Ns.uniqueFile ^dir : can't create unique file`)
+	    else
+	      let val is = Random.rangelist (97,122) (8, Random.newgen())
+		val f = "file" ^ implode (map Char.chr is)
+	      in 
+		if FileSys.access(dir ^ "/" ^ f,[]) then uniqueFile dir (c+1)
+		else f
+	      end
+	    handle OS.SysErr s => raise Fail (Quot.toString `Ns.uniqueFile: dir= ^dir.`)
+
+*)

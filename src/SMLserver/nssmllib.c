@@ -56,6 +56,18 @@ nssml_SetGet(Region rAddr, Ns_Set* set, String key)
   return convertStringToML(rAddr, res_c);
 }
 
+// ML: set * string -> string ptr_option
+String
+nssml_SetIGet(Region rAddr, Ns_Set* set, String key) 
+{
+  char* res_c = Ns_SetIGet(set, &(key->data));
+  if ( res_c == NULL ) 
+    {
+      return (String)NULL;
+    }
+  return convertStringToML(rAddr, res_c);
+}
+
 // ML: string ptr_option -> bool
 int
 nssml_isNullString(String s) 
@@ -253,6 +265,20 @@ nssml_ConnUrl(Region rAddr, Ns_Conn* conn)
   return convertStringToML(rAddr, conn->request->url);
 }
 
+// ML: conn -> string
+String
+nssml_ConnMethod(Region rAddr, Ns_Conn* conn)
+{
+  return convertStringToML(rAddr, conn->request->method);
+}
+
+// ML: conn -> int
+int
+nssml_ConnContentLength(Ns_Conn* conn)
+{
+  return conn->contentLength;
+}
+
 // ML: string -> string ptr_option
 String
 nssml_FetchUrl(Region rAddr, String url)
@@ -342,4 +368,41 @@ nssml_CacheGet(Region rAddr, Ns_Cache* cache, String key)
   Ns_CacheUnlock(cache);
   return NULL;
 }
+
+// ML: conn -> string
+String
+nssml_ConnCopy(Region rAddr, Ns_Conn* conn)
+{
+  Ns_DString ds;
+  String res;
+  Ns_DStringInit(&ds);
+  if (Ns_ConnCopyToDString(conn, conn->contentLength, &ds) != NS_OK)
+    {
+      Ns_DStringFree(&ds);
+      return NULL;
+    }
+  /* convertStringToML does not work because it tests on \0 */
+  /* we therefore use the version called convertBinStringToML */
+  res = convertBinStringToML(rAddr, conn->contentLength, Ns_DStringValue(&ds));
+  Ns_DStringFree(&ds);
+  return res;
+}
+
+// ML: conn * string -> status
+int
+nssml_ConnCopyToFile(Ns_Conn* conn, String filename)
+{
+  int status;
+  FILE *fp;
+
+  Ns_Log(Notice, "nssml_ConnCopyToFile - filename: %s", filename);
+  if ((fp = fopen(filename, "w")) == NULL) 
+    {  Ns_Log(Notice, "nssml_ConnCopyToFile - can't open filename: %s", filename);
+      return NS_ERROR;
+    }
+  status = Ns_ConnCopyToFile(conn, conn->contentLength, fp);
+  fclose(fp);
+  return status;
+}
+
 

@@ -1,4 +1,4 @@
-structure NsSet : NS_SET =
+structure NsSet (*: NS_SET*) =
   struct
     type set = int
 
@@ -6,6 +6,11 @@ structure NsSet : NS_SET =
 
     fun get (s :set, key: string): string option =
       let val res : string = prim("nssml_SetGet", (s,key))
+      in if isNull res then NONE
+	 else SOME res
+      end
+    fun iget (s :set, key: string): string option =
+      let val res : string = prim("nssml_SetIGet", (s,key))
       in if isNull res then NONE
 	 else SOME res
       end

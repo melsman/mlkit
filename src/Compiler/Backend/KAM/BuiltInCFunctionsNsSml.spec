@@ -5,6 +5,7 @@ Ns_Log
 Ns_TclGetConn
 Ns_ConnGetQuery
 nssml_SetGet
+nssml_SetIGet
 Ns_SetPut
 nssml_isNullString
 Ns_SetFree
@@ -48,6 +49,10 @@ nssml_DecodeUrl
 nssml_configGetValue
 nssml_configGetValueExact
 nssml_ConnUrl
+nssml_ConnMethod
+nssml_ConnContentLength
+nssml_ConnCopy
+nssml_ConnCopyToFile
 nssml_FetchUrl
 
 Ns_CacheFind

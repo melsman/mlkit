@@ -51,7 +51,7 @@ structure ScsError :> SCS_ERROR =
       in
 	(logError emsg;
 	 emailError emsg;
-	 case ScsLogin.user_lang of
+	 case ScsLogin.user_lang() of
 	   ScsLang.en =>
 	     ScsPage.returnPg "System Error" `
 	     It seems that the system can't complete your request.<p>

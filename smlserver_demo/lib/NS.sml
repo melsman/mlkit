@@ -18,6 +18,7 @@ signature NS = sig
   val OK       : status
   val ERROR    : status
   val END_DATA : status
+  val ppStatus : status -> string
 
   (* various functions *)
   type quot = Quot.quot

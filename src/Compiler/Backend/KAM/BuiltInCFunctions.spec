@@ -62,6 +62,7 @@ openOutStream
 openAppendStream
 flushStream
 outputStream
+outputBinStream
 inputStream
 input1Stream
 lookaheadStream

@@ -171,7 +171,7 @@ structure ScsDate :> SCS_DATE =
       | Date.Dec => "December"
 
     fun ppMth d =
-      case ScsLogin.user_lang of
+      case ScsLogin.user_lang() of
 	ScsLang.da => ppMthDk d
       | ScsLang.en => ppMthEng d
 
@@ -196,7 +196,7 @@ structure ScsDate :> SCS_DATE =
       | Date.Sun => "Sunday"
 
     fun ppDay d = 
-      case ScsLogin.user_lang of
+      case ScsLogin.user_lang() of
 	ScsLang.da => ppDayDk d
       | ScsLang.en => ppDayEng d
 
@@ -204,7 +204,7 @@ structure ScsDate :> SCS_DATE =
       let
 	fun pad2 i = (if i < 10 then "0" else "") ^ (Int.toString i)
       in
-	case ScsLogin.user_lang of
+	case ScsLogin.user_lang() of
 	  ScsLang.da => (pad2 (Date.hour d)) ^ "." ^ (pad2 (Date.minute d))
 	| ScsLang.en => (pad2 (Date.hour d)) ^ ":" ^ (pad2 (Date.minute d))
       end
@@ -214,7 +214,7 @@ structure ScsDate :> SCS_DATE =
     fun ppLongEng d = (Int.toString (Date.day d)) ^ " " ^(ppMthEng d) ^ " " ^ (Date.fmt "%Y" d)
       
     fun pp s = 
-      case ScsLogin.user_lang of
+      case ScsLogin.user_lang() of
 	ScsLang.da => ppDk s
       | ScsLang.en => ppIso s
 

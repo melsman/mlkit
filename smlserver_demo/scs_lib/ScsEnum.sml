@@ -117,7 +117,7 @@ structure ScsEnum :> SCS_ENUM =
       val getEnumerationErr =
 	let
 	  fun msgEnum s =
-	    (case ScsLogin.user_lang of
+	    (case ScsLogin.user_lang() of
 	       ScsLang.en => `^s
 		 You must choose an enumeration.`
 	     | ScsLang.da => `^s
@@ -195,16 +195,16 @@ structure ScsEnum :> SCS_ENUM =
       let
 	val all_values = allValues enum_name
         fun msgEnum s =
-  	  (case ScsLogin.user_lang of
+  	  (case ScsLogin.user_lang() of
 	     ScsLang.en => `^s
 	       You must choose among the following enumerations:
 	       <blockquote>
-	       ^(String.concatWith "," (List.map (fn enum => valName enum ScsLogin.user_lang) all_values))
+	       ^(String.concatWith "," (List.map (fn enum => valName enum (ScsLogin.user_lang())) all_values))
 	       </blockquote>`
 	   | ScsLang.da => `^s
 	       Du skal indtaste en af de følgende værdier:
 	       <blockquote>
-	       ^(String.concatWith "," (List.map (fn enum => valName enum ScsLogin.user_lang) all_values))
+	       ^(String.concatWith "," (List.map (fn enum => valName enum (ScsLogin.user_lang())) all_values))
 	       </blockquote>`)
         fun chkEnum v =
           case Int.fromString v of

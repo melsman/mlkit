@@ -254,7 +254,7 @@ structure ScsDict :> SCS_DICT =
            where s.lang='^(ScsLang.toString source_lang)' 
              and s.module_file_phrase = ^(Db.qqq module_file_phrase)
              and s.phrase_id = t.phrase_id 
-             and t.lang = '^(ScsLang.toString ScsLogin.user_lang)'` of
+             and t.lang = '^(ScsLang.toString (ScsLogin.user_lang()))'` of
 	       SOME target_phrase => (Db.dml `update scs_dict_sources
                                                  set last_read_date = sysdate
                                                where module_file_phrase = ^(Db.qqq module_file_phrase)
@@ -300,11 +300,11 @@ structure ScsDict :> SCS_DICT =
       let
 	val can_phrase = ScsString.canonical phrase
         val module_file_phrase = module ^ "-" ^ file_name ^ "-" ^ can_phrase 
-	val cn = cacheName(source_lang,ScsLogin.user_lang)
+	val cn = cacheName(source_lang,ScsLogin.user_lang())
       in
 	case Ns.Cache.lookup cn module_file_phrase of
 	  NONE => let
-		    val v = lookup source_lang module file_name can_phrase module_file_phrase ScsLogin.user_lang
+		    val v = lookup source_lang module file_name can_phrase module_file_phrase (ScsLogin.user_lang())
 		  in
 		    Ns.Cache.insert (cn,module_file_phrase,v);
 		    v
@@ -354,7 +354,7 @@ structure ScsDict :> SCS_DICT =
             NONE => phrase (* We return the first phrase in the list if user-preferred language does not exists *)
           | SOME xs => #2(xs)
 
-    fun s' dict = getQuot dict ScsLogin.user_lang
+    fun s' dict = getQuot dict (ScsLogin.user_lang())
 
     fun getString dict lang = Quot.toString ( getQuot dict lang )
 

@@ -67,6 +67,10 @@ in
      demo/link/add_form.sml
      demo/link/add.sml
      demo/link/delete.sml
+
+     demo/upload/upload_form.sml
+     demo/upload/upload.sml
+     demo/upload/return_file.sml
      ]
   end
 end

@@ -515,3 +515,17 @@ REG_POLY_FUN_HDR(sml_getenv, Region rAddr, String var, int exn)  /* SML Basis */
     }
   return REG_POLY_CALL(convertStringToML, rAddr, res);
 }
+
+int 
+outputBinStream(FILE *os, String s, int exn) 
+{ int strsize;
+
+  strsize = sizeStringDefine(s); 
+  os = (FILE *)untag_scalar(os);
+  if ( fwrite(&(s->data), 1, strsize, os) != strsize )
+    {
+      fflush(os);
+      raise_exn(exn);
+    }
+  return mlUNIT;
+}

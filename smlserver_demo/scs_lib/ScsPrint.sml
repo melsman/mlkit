@@ -90,7 +90,7 @@ structure ScsPrint :> SCS_PRINT =
 		  Db.Handle.dmlDb db `insert into scs_print_log (batch_id,print_id,user_id,category,clob_id,print_cmd,
 				                          target_file,doc_type,note,deleted_p,
 							  on_what_table, on_what_id, time_stamp)
-			       values (^(Db.valueList [batch_id,print_id,Int.toString ScsLogin.user_id,
+			       values (^(Db.valueList [batch_id,print_id,Int.toString (ScsLogin.user_id()),
 				                       category,clob_id,cmd,target_f,
 						       docTypeToString doc_type,note,"f",
 						       on_what_table,on_what_id]),
@@ -100,7 +100,7 @@ structure ScsPrint :> SCS_PRINT =
 	      if Process.system cmd = Process.success
 		then (ScsDb.panicDmlTrans ins_log;
 		      ScsPage.returnPg (%"Document Printed")
-		      (case ScsLogin.user_lang of
+		      (case ScsLogin.user_lang() of
 			 ScsLang.en => `The document is now sent to printer ^printer.<p>
 
                            The document has been filed. If there were any problems
@@ -138,7 +138,7 @@ structure ScsPrint :> SCS_PRINT =
 		  Db.Handle.dmlDb db `insert into scs_print_log (batch_id,print_id,user_id,category,clob_id,print_cmd,
 				  	                  target_file,doc_type,note,deleted_p,
 							  on_what_table, on_what_id, time_stamp)
-			       values (^(Db.valueList [batch_id,print_id,Int.toString ScsLogin.user_id,
+			       values (^(Db.valueList [batch_id,print_id,Int.toString (ScsLogin.user_id()),
 				 		       category,clob_id,cmd,target_f,
 						       docTypeToString doc_type,note,"f",
 						       on_what_table,on_what_id]),

@@ -190,9 +190,12 @@ structure FormVar :> FORM_VAR =
 	  handle X => f_panic(`^("\n") ^fv : ^(General.exnMessage X)`))
 
     local
+
+      fun getFormVar fv = Ns.Conn.formvarAll fv
+
       fun getErrWithOverflow (empty_val:'a) (ty:string) (chk_fn:string->'a option) =
 	fn (fv:string,emsg:string,errs:errs) =>
-	(case Ns.Conn.formvarAll fv of
+	(case getFormVar (*Ns.Conn.formvarAll*) fv of
 	   [] => (empty_val,addErr(errNoFormVar(emsg,ty),errs))
 	 | [""] => (empty_val,addErr(errNoFormVar(emsg,ty),errs))
 	 | [v] =>
