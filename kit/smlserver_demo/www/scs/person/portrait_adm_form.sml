@@ -132,4 +132,4 @@ val (body,nb) =
    [UcsPage.ucs_nb(),
     ScsPerson.portrait_adm_nb name_opt])
 
-val _ = UcsPvt.returnPgCache false (UcsPvt.service_name user_id) (UcsPvt.leftList()) UcsPvt.rightList nb body
+val _ = UcsPvt.returnPgCache (UcsPvt.service_name user_id) (UcsPvt.leftList()) UcsPvt.rightList nb body
