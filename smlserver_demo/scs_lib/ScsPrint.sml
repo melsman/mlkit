@@ -75,7 +75,7 @@ structure ScsPrint :> SCS_PRINT =
 	    let
 	      val tmpfile = ScsFile.uniqueFile (path_preview())
 	      val _ = ScsFile.save source (texfile tmpfile)
-	      val cmd = Quot.toString `cd ^(path_preview()); /usr/local/teTeX/bin/i686-pc-linux-gnu/pdflatex ^(texfile tmpfile)`
+	      val cmd = Quot.toString `cd ^(path_preview()); ^(ScsConfig.scs_pdflatex()) ^(texfile tmpfile)`
 	    in
 	      if Process.system cmd = Process.success then
 		tmpfile
@@ -99,7 +99,7 @@ structure ScsPrint :> SCS_PRINT =
 		\end{document}`
 	      val tmpfile = ScsFile.uniqueFile (path_preview())
 	      val _ = ScsFile.save gluetex (texfile tmpfile)
-	      val cmd = Quot.toString( `cd ^(path_preview()); /usr/local/teTeX/bin/i686-pc-linux-gnu/pdflatex ^(texfile tmpfile); ` ^^ 
+	      val cmd = Quot.toString( `cd ^(path_preview()); ^(ScsConfig.scs_pdflatex()) ^(texfile tmpfile); ` ^^ 
 	        foldl (fn (tmp_file,acc) => acc^^`rm -f ^tmp_file`) `` pdf_files )
 	    in
 	      if Process.system cmd = Process.success
