@@ -20,7 +20,7 @@ functor Excon(structure Name : NAME
     fun pr_excon ({str,...}: excon) : string = str
     fun pr_excon' ({str,name}: excon) : string = str ^ "_" ^ Int.toString (Name.key name)
 
-    val pr_excon = pr_excon'  (* MEMO; mael 2004-03-03 *)
+(*    val pr_excon = pr_excon'  (* MEMO; mael 2004-03-03 *) *)
 
     fun name ({name,...}: excon) : name = name
 
