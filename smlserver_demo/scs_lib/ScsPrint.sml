@@ -39,7 +39,7 @@ structure ScsPrint :> SCS_PRINT =
 	  in if FileSys.access(f,[]) then tmpnam(c+1)
 	     else f
 	  end
-      val basedir = "/web/ucs/www/"
+      val basedir = "/web/ucs_prod/www/"
       val scs_print_dir = "scs_print/"
       fun texfile f = basedir ^ scs_print_dir ^ f ^ ".tex"
       fun psfile f = basedir ^ scs_print_dir ^ f ^ ".ps"
