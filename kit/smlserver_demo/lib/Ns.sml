@@ -313,5 +313,38 @@ structure Ns :> NS =
     structure DbPg = DbFunctor(structure DbBasic = NsDbBasicPG
 			       structure Set = Set
 			       structure Info = Info)
+    structure DbMySQL : NS_DB = 
+      (* We redefine the stucture here because we need a db-handle to
+         simulate sequences in MySQL *)
+      struct
+	local
+	  structure Db = DbFunctor(structure DbBasic = NsDbBasicMySQL
+				   structure Set = Set
+				   structure Info = Info)
+	in
+	  open Db
+	  (* seqNextval assumes a table simulating the sequence with one auto-increment field:
+              create table seqName (
+                seqId integer primary key auto_increment
+              ); *)
+	  fun seqNextval (seqName:string) : int = 
+	    let 
+	      val _ = Db.dml `insert into ^seqName (seqId) values (null)`
+	      val s = Db.oneField `select max(seqId) from ^seqName`
+	    in case Int.fromString s of
+	      SOME i => i
+	    | NONE => raise Fail "Db.seqNextval.nextval not an integer (MySQL)"	
+	    end
+	  handle _ => raise Fail "Db.seqNextval.nextval database error (MySQL)"	
+
+	  fun seqCurrval (seqName:string) : int = 
+	    let val s = oneField `select max(seqId) from ^seqName`
+	    in case Int.fromString s of
+	      SOME i => i
+	    | NONE => raise Fail "Db.seqCurrval.nextval not an integer (MySQL)"	
+	    end
+	  handle _ => raise Fail "Db.seqCurrval.nextval database error (MySQL)"	
+	end
+      end
   end
 

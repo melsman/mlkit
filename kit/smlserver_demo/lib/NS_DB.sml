@@ -1,7 +1,7 @@
 signature NS_DB_BASIC =
   sig
-    val seqNextvalExp : string -> string
-    val seqCurrvalExp : string -> string
+    val seqNextvalExp : string -> string  (*construct new-sequence expression*)
+    val seqCurrvalExp : string -> string  (*construct last-used sequence expression*)
     val fromDual      : string
     val sysdateExp    : string
     val beginTrans    : quot

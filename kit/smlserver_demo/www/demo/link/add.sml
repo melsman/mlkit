@@ -18,4 +18,4 @@ val insert =
 
 val _ = Db.dml insert
 
-val _ = Ns.returnRedirect "/link/index.sml"
+val _ = Ns.returnRedirect "index.sml"

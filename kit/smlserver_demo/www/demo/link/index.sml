@@ -8,7 +8,7 @@ val query =
 fun delete g =
   if valOf (Int.fromString (g"person_id")) 
     = Login.person_id then 
-    ` (<a href=/link/delete.sml?link_id=^(g"link_id")>delete</a>)` 
+    ` (<a href=delete.sml?link_id=^(g"link_id")>delete</a>)` 
   else ``
 
 fun layoutRow (g, acc) =
@@ -21,5 +21,5 @@ val list = Db.fold (layoutRow, ``, query)
 val _ =
   Page.return "Web-sites that use SMLserver"
   (`<ul>` ^^ list ^^
-   `<p><li><a href=/link/add_form.sml>Add Web-site</a>
+   `<p><li><a href=add_form.sml>Add Web-site</a>
     </ul>`)

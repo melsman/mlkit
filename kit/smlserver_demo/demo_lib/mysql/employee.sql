@@ -1,10 +1,13 @@
+-- Load datamodel:
+--   mysql dbname -u dbuser < employee.mysql
+
   drop table if exists employee;
 
   create table employee (
     email          varchar(200) primary key not null,
     name           varchar(200) not null,
     passwd         varchar(200) not null,
-    note           varchar(250),
+    note           text,
     last_modified  date   
   );
 

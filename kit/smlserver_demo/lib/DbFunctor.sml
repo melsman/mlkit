@@ -273,7 +273,6 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	SOME i => i
       | NONE => raise Fail "Db.seqNextval.nextval not an integer"	
       end
-
     fun seqCurrval (seqName:string) : int = 
       let val s = oneField `select ^(seqCurrvalExp seqName) ^fromDual`
       in case Int.fromString s of
@@ -304,6 +303,18 @@ structure NsDbBasicPG : NS_DB_BASIC =
     val beginTrans = `begin`
     val endTrans = `commit`
     val roolback = `roolback`
-    fun fromDate d = Date.fmt "%Y-%m-%d %H:%M:%S" d  (* This functions has to been tested on PostgreSQL, 2001-12-02, nh*)
+    fun fromDate d = Date.fmt "%Y-%m-%d %H:%M:%S" d
+  end
+
+structure NsDbBasicMySQL : NS_DB_BASIC =
+  struct
+    fun seqNextvalExp seq_name = "null"
+    fun seqCurrvalExp seq_name = raise Fail "seqCurrvalExp not supported on MySQL"
+    val fromDual = ""
+    val sysdateExp = "now()"
+    val beginTrans = `transactions not supported on MySQL`
+    val endTrans = `transactions not supported on MySQL`
+    val roolback = `transactions not supported on MySQL`
+    fun fromDate d = Date.fmt "%Y-%m-%d %H:%M:%S" d  (* type DATETIME in MySQL *)
   end
 
