@@ -74,7 +74,19 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
     local
       val region_profiling = Flags.lookup_flag_entry "region_profiling"
-    in fun pmdir() = if !region_profiling then "PM/Prof/" else "PM/NoProf/"
+      val gc_flag          = Flags.lookup_flag_entry "garbage_collection"
+    in 
+      fun pmdir() = 
+	if !region_profiling then 
+	  if !gc_flag then
+	    "PM/GCProf/" 
+	  else 
+	    "PM/Prof/"
+	else
+	  if !gc_flag then
+	    "PM/GC/" 
+	  else 
+	    "PM/NoProf/"
     end
 
    (* -----------------------------------------------------------------
@@ -125,9 +137,18 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	(*linking*)
 	val region_profiling = Flags.lookup_flag_entry "region_profiling"
+	val gc_flag          = Flags.lookup_flag_entry "garbage_collection"
 	fun path_to_runtime () = ! (Flags.lookup_string_entry
-				    (if !region_profiling then "path_to_runtime_prof"
-				     else "path_to_runtime"))
+				    (if !region_profiling then 
+				       if !gc_flag then
+					 "path_to_runtime_gc_prof"
+				       else
+					 "path_to_runtime_prof"
+				     else 
+				       if !gc_flag then
+					 "path_to_runtime_gc"
+				       else
+					 "path_to_runtime"))
 
 
 	(* -----------------------------
@@ -168,13 +189,13 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	fun assemble (file_s, file_o) =
           (if !(Flags.lookup_flag_entry "delay_assembly")
-           then add_to_commandfile(!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s)
-           else (Shell.execute_command (!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s);
-         	 if !(Flags.lookup_flag_entry "delete_target_files")
-                 then  delete_file file_s 
-                 else ()
-                )
-           )
+           then 
+	     add_to_commandfile(!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s)
+           else 
+	     (Shell.execute_command (!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s);
+	      if !(Flags.lookup_flag_entry "delete_target_files")
+		then  delete_file file_s 
+	      else ()))
 
 	  (*e.g., "cc -Aa -c -o link.o link.s"
 
@@ -273,15 +294,19 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	 * ------------------------------------------------------------- *)
 
 	fun link_files_with_runtime_system files run =
-          let val files = map (fn s => s ^ " ") files
+          let 
+	    val files = map (fn s => s ^ " ") files
+	    val shell_cmd = (!c_compiler ^ " -o " ^ run ^ " " ^ concat files ^ path_to_runtime () ^ " " ^ !c_libs)
 	  in
-	    (Shell.execute_command
-	     (!c_compiler ^ " -o " ^ run ^ " " ^ concat files
-	      ^ path_to_runtime () ^ " " ^ !c_libs)
-              (*see comment at `assemble' above*);
-             close_commandfile(); (*mads*)
-	     TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n"))
-	  end handle Shell.Execute s => die ("link_files_with_runtime_system:\n" ^ s)
+	    (if !(Flags.lookup_flag_entry "delay_assembly") then
+	       (add_to_commandfile shell_cmd;
+		TextIO.output (TextIO.stdOut, "[wrote compile file:\tcompile\n"))
+	     else
+	       (Shell.execute_command shell_cmd;
+	       TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n")));
+	    close_commandfile()
+	  end 
+	handle Shell.Execute s => die ("link_files_with_runtime_system:\n" ^ s)
 
 	fun member f [] = false
 	  | member f ( s :: ss ) = f = s orelse member f ss

@@ -87,10 +87,10 @@ struct
     | PASS_PTR_TO_MEM of sma * int
     | PASS_PTR_TO_RHO of sma
     | UB_RECORD       of ClosExp list
-    | CLOS_RECORD     of {label: label, elems: ClosExp list, alloc: sma}
+    | CLOS_RECORD     of {label: label, elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
     | REGVEC_RECORD   of {elems: sma list, alloc: sma}
-    | SCLOS_RECORD    of {elems: ClosExp list, alloc: sma}
-    | RECORD          of {elems: ClosExp list, alloc: sma}
+    | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
+    | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word}
     | SELECT          of int * ClosExp
     | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option, free: ClosExp list}
     | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option, free: ClosExp list}
@@ -191,23 +191,23 @@ struct
 					      finish=">",
 					      childsep=RIGHT ",",
 					      children=map layout_ce ces}
-      | layout_ce(CLOS_RECORD{label,elems,alloc}) = HNODE{start="[",
-							  finish="]clos " ^ (flatten1(pr_sma alloc)),
-							  childsep=RIGHT ",",
-							  children=LEAF(Labels.pr_label label)::
-							  map layout_ce elems}
+      | layout_ce(CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc}) = HNODE{start="[",
+									    finish="]clos " ^ (flatten1(pr_sma alloc)),
+									    childsep=RIGHT ",",
+									    children=LEAF(Labels.pr_label label)::
+									    map layout_ce (rhos@excons@lvs)}
       | layout_ce(REGVEC_RECORD{elems,alloc}) = HNODE{start="[",
 						      finish="]regvec " ^ (flatten1(pr_sma alloc)),
 						      childsep=RIGHT ",",
 						      children=map (fn sma => pr_sma sma) elems}
-      | layout_ce(SCLOS_RECORD{elems,alloc}) = HNODE{start="[",
-						     finish="]sclos " ^ (flatten1(pr_sma alloc)),
-						     childsep=RIGHT ",",
-						     children= map layout_ce elems}
-      | layout_ce(RECORD{elems,alloc}) = HNODE{start="[",
-					       finish="] " ^ (flatten1(pr_sma alloc)),
-					       childsep=RIGHT ",",
-					       children= map layout_ce elems}
+      | layout_ce(SCLOS_RECORD{elems=(lvs,excons,rhos),alloc}) = HNODE{start="[",
+								       finish="]sclos " ^ (flatten1(pr_sma alloc)),
+								       childsep=RIGHT ",",
+								       children= map layout_ce (rhos@excons@lvs)}
+      | layout_ce(RECORD{elems,alloc,tag}) = HNODE{start="[",
+						   finish="] " ^ (flatten1(pr_sma alloc)),
+						   childsep=RIGHT ",",
+						   children= map layout_ce elems}
       | layout_ce(SELECT(i,ce)) = HNODE{start="#" ^ Int.toString i ^ "(",
 					finish=")",
 					childsep=NOSEP,
@@ -1070,6 +1070,16 @@ struct
 	(smas,ces,ses_smas@ses)
       end
 
+    fun unify_smas_ces_and_ses_free (smas_and_ses,(lvs_ces_ses,excons_ces_ses,rhos_ces_ses)) =
+      let
+	val (smas,ses_smas,se_map) = unify_sma_se smas_and_ses SEMap.empty
+	val (rhos_ces,rhos_ses,se_map) = unify_ce_se rhos_ces_ses se_map
+	val (excons_ces,excons_ses,se_map) = unify_ce_se excons_ces_ses se_map
+	val (lvs_ces,lvs_ses,_) = unify_ce_se lvs_ces_ses se_map
+      in
+	(smas,(lvs_ces,excons_ces,rhos_ces),ses_smas@rhos_ses@excons_ses@lvs_ses)
+      end
+
     fun insert_se(ce,NONE_SE) = ce
       | insert_se(ce,SELECT_SE (lv1,i,lv2)) =
           LET{pat=[lv1],
@@ -1079,8 +1089,6 @@ struct
 	  LET{pat=[lv],
 	      bind=FETCH lab,
 	      scope=ce}
-
-(*    fun insert_ses(ce,ses) = List.foldr (fn (se,ce) => insert_se(ce,se)) ce ses Now we use unboxed records 03/12/1998, Niels *)
 
     fun insert_ses(ce,ses) = 
       let
@@ -1095,7 +1103,6 @@ struct
 		    bind=UB_RECORD ces,
 		    scope=ce})
       end
-
 
     (* ----------------------------------------- *)
     (*    Utility Functions on Environments      *)
@@ -1211,8 +1218,20 @@ struct
       | mult("l",PhysSizeInf.WORDS n) = CE.LF
       | mult _ = die "mult: Wrong binding or phsize"
 
+    fun maybe_box_con (c as (CE.UB_NULLARY i)) = 
+      if !BI.unbox_datatypes then 
+	c
+      else 
+	CE.B_NULLARY i
+    | maybe_box_con (c as (CE.UB_UNARY i)) = 
+	if !BI.unbox_datatypes then 
+	  c
+	else 
+	  CE.B_UNARY i
+    | maybe_box_con c = c
+
     fun lookup_con env con = 
-      (case CE.lookupCon env con of
+      (case maybe_box_con(CE.lookupCon env con) of
 	 CE.ENUM i    => ENUM i
        | CE.UB_NULLARY i => UNBOXED i
        | CE.UB_UNARY i => UNBOXED i
@@ -1273,11 +1292,12 @@ struct
 	(remove lvs,rhos,excons)
       end
 
-    (* Determine the free variables for an ordinary or shared closure. *)
-    (* org_env is the lexical environment in which this function is    *)
-    (* declared --- used to look up the region sizes for the free      *)
-    (* variables bound to letrec functions. new_env is used as base    *)
-    (* when building the new environment.                              *)
+    (* Determine the free variables for an ordinary or shared closure.   *)
+    (* org_env is the lexical environment in which this function is      *)
+    (* declared --- used to look up the region sizes for the free        *)
+    (* variables bound to letrec functions. new_env is used as base      *)
+    (* when building the new environment.                                *)
+    (* Region variables are FIRST in the closure; necessary for tagging. *)
     fun build_clos_env org_env new_env lv_clos base_offset (free_lv,free_excon,free_rho) =
       let 
 	(* When computing offsets we do not increase the offset counter when meeting *)
@@ -1296,10 +1316,15 @@ struct
 	fun add_free_rho (place,(env,i)) = 
 	  (CE.declareRhoKind(place,CE.lookupRhoKind org_env place,
 			     CE.declareRho(place,CE.SELECT(lv_clos,i),env)),i+1)
-	val (env',_)  = 
+(*	val (env',_)  = 
 	  List.foldl add_free_rho 
 	  (List.foldl add_free_excon 
-	   (List.foldl add_free_lv (new_env, base_offset) free_lv) free_excon) free_rho
+	   (List.foldl add_free_lv (new_env, base_offset) free_lv) free_excon) free_rho 08/01/1999, Niels*)
+
+	val (env',_)  = 
+	  List.foldl add_free_lv 
+	  (List.foldl add_free_excon 
+	   (List.foldl add_free_rho (new_env, base_offset) free_rho) free_excon) free_lv
       in
 	env'
       end
@@ -1311,7 +1336,7 @@ struct
 	val excons_and_ses = List.map (fn excon => lookup_excon env excon) free_excon 
 	val rhos_and_ses = List.map (fn place => lookup_rho env place) free_rho
       in
-	lvs_and_ses @ excons_and_ses @ rhos_and_ses
+	(lvs_and_ses,excons_and_ses,rhos_and_ses)
       end
 
     (* drop_rho rho: replace rho by a global region with the same runtime type; *)
@@ -1442,7 +1467,7 @@ struct
 
 		 val _ = add_new_fn(new_lab, cc, insert_se(ccTrip body env_with_args new_lab NONE))
 		 val (sma,se_sma) = convert_alloc(alloc,env)
-		 val (smas,ces,ses) = unify_smas_ces_and_ses([(sma,se_sma)],ces_and_ses)
+		 val (smas,ces,ses) = unify_smas_ces_and_ses_free([(sma,se_sma)],ces_and_ses)
 	       in
 		 (insert_ses(CLOS_RECORD{label=new_lab, elems=ces, alloc=one_in_list(smas)},ses),NONE_SE)
 	       end
@@ -1506,7 +1531,7 @@ struct
 			   (map (fn (place,_) => (place,CE.DROPPED_RVAR(drop_rho place))) drops)
 		     val env_with_rho_drop_kind =
 		           (env_with_rho_drop plus_decl_with CE.declareRhoKind)
-			   (map (fn(place,phsize) => (place,mult("f",phsize))) drops) (* new 23/11/1998, Niels*)
+			   (map (fn(place,phsize) => (place,mult("f",phsize))) drops) 
 
 		     val env_with_args =
 		           (env_with_rho_drop_kind plus_decl_with CE.declareLvar)
@@ -1527,7 +1552,7 @@ struct
 		 else
 		   let
 		     val (sma,se_a) = convert_alloc(alloc,env)
-		     val (smas,ces,ses) = unify_smas_ces_and_ses([(sma,se_a)],ces_and_ses)
+		     val (smas,ces,ses) = unify_smas_ces_and_ses_free([(sma,se_a)],ces_and_ses)
 		   in
 		     (insert_ses(LET{pat=[lv_sclos],
 				     bind= SCLOS_RECORD{elems=ces,alloc=one_in_list(smas)},
@@ -1717,10 +1742,12 @@ struct
 					  bind=STRING (Excon.pr_excon excon),
 					  scope=LET{pat=[lv3],
 						    bind=RECORD{elems=[VAR lv1,VAR lv2],
-								alloc=sma},
+								alloc=sma,
+								tag=BI.tag_exname false},
 						    scope=LET{pat=[lv4],
 							      bind=RECORD{elems=[VAR lv3],
-									  alloc=sma},
+									  alloc=sma,
+									  tag=BI.tag_excon0 false},
 							      scope=insert_se (ccTrip scope env' lab cur_rv)}}},
 				      se_a)},NONE_SE)
 	       end
@@ -1740,7 +1767,8 @@ struct
 				bind=STRING (Excon.pr_excon excon),
 				scope=insert_se(LET{pat=[lv3],
 						    bind=RECORD{elems=[VAR lv1,VAR lv2],
-								alloc=sma},
+								alloc=sma,
+								tag=BI.tag_exname false},
 						    scope=insert_se (ccTrip scope env' lab cur_rv)},se_a)}},NONE_SE)
 	       end
 	   | MulExp.RAISE tr => 
@@ -1753,8 +1781,9 @@ struct
 						insert_se(ccTrip tr2 env lab cur_rv)),NONE_SE)
 	   | MulExp.SWITCH_I(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
+		 fun compile_match i = if !BI.tag_integers then 2*i+1 else i
 		 val (selections,opt) = 
-		   compile_sels_and_default selections opt (fn m=>m) (fn tr => ccTrip tr env lab cur_rv)
+		   compile_sels_and_default selections opt compile_match (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
 	       in
 		 (insert_se(SWITCH_I(SWITCH(ce,selections,opt)),se),NONE_SE)
@@ -1784,7 +1813,7 @@ struct
 	   | MulExp.SWITCH_C(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
 		 fun tag con = 
-		   (case CE.lookupCon env con of
+		   (case maybe_box_con(CE.lookupCon env con) of
 		      CE.ENUM i => 
 			if !BI.tag_values orelse (* hack to treat booleans tagged *)
 			  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then
@@ -1793,8 +1822,8 @@ struct
 			  (con,ENUM i)
 		    | CE.UB_NULLARY i => (con,UNBOXED(4*i+3))
 		    | CE.UB_UNARY i => (con,UNBOXED i)
-		    | CE.B_NULLARY i => (con,BOXED(8*i + BI.value_tag_con0))
-		    | CE.B_UNARY i => (con, BOXED(8*i + BI.value_tag_con1)))
+		    | CE.B_NULLARY i => (con,BOXED(Word32.toInt (BI.tag_con0(false,i))))
+		    | CE.B_UNARY i => (con,BOXED(Word32.toInt (BI.tag_con1(false,i)))))
 
 		 val (selections,opt) =
 		   compile_sels_and_default selections opt tag 
@@ -1806,7 +1835,9 @@ struct
 	   | MulExp.SWITCH_E(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
 		 val (selections,opt) =
-		   compile_sels_and_default selections opt (fn m=>(lookup_excon env m,CE.lookupExconArity env m)) (fn tr => ccTrip tr env lab cur_rv)
+		   compile_sels_and_default selections opt 
+		   (fn m=>(lookup_excon env m,CE.lookupExconArity env m)) 
+		   (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
 		 fun compile_seq_switch(ce,[],default) = default
 		   | compile_seq_switch(ce,(((ce_e,se_e),arity),ce')::rest,default) =
@@ -1883,10 +1914,11 @@ struct
 		 val (ce_excon,se_excon) = lookup_excon env excon
 		 val (ce_arg,se_arg) = ccTrip tr env lab cur_rv
 		 val (sma,se_a) = convert_alloc(alloc,env)
-		 val (smas,ces,ses) = unify_smas_ces_and_ses ([(sma,se_a)],[(ce_excon,se_arg),(ce_arg,se_excon)])
+		 val (smas,ces,ses) = unify_smas_ces_and_ses ([(sma,se_a)],[(ce_excon,se_excon),(ce_arg,se_arg)]) (* swapped se_arg and se_excon 09/01/1999, Niels *)
 	       in
 		 (insert_ses(RECORD{elems=ces,
-				    alloc=one_in_list(smas)},ses),NONE_SE)
+				    alloc=one_in_list(smas),
+				    tag=BI.tag_excon1 false},ses),NONE_SE)
 	       end
 	   | MulExp.DEEXCON(excon,tr) =>
 	       let
@@ -1901,7 +1933,8 @@ struct
 		 val (smas,ces,ses) = unify_smas_ces_and_ses([(sma,se_a)],ces_and_ses)
 	       in
 		 (insert_ses(RECORD{elems=ces,
-				    alloc=one_in_list(smas)},ses),NONE_SE)
+				    alloc=one_in_list(smas),
+				    tag=BI.tag_record(false,length ces)},ses),NONE_SE)
 	       end
 	   | MulExp.SELECT(i,tr) => 
 	       let
@@ -1995,7 +2028,10 @@ struct
 		 val smas = comp_region_args_sma (zip(smas',i_opts))       
 		 val maybe_return_unit =
 		   (case mu_result of
-		      (RType.RECORD [], _) => (fn ce => LET{pat=[fresh_lvar("ccall")],bind=ce,scope=RECORD{elems=[],alloc=IGNORE}})
+		      (RType.RECORD [], _) => (fn ce => LET{pat=[fresh_lvar("ccall")],bind=ce,
+							    scope=RECORD{elems=[],
+									 alloc=IGNORE,
+									 tag=BI.tag_ignore}})
 		    | _ => (fn ce => ce))
 		 val fresh_lvs = map (fn _ => fresh_lvar "sma") smas
 		 fun maybe_insert_smas([],[],ce) = ce

@@ -176,11 +176,26 @@ structure K = struct
     val kitbin_path = OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../bin"))
     val kitbinkit_path = OS.Path.joinDirFile{dir=kitbin_path, file="kit"}
 
+    val enable_lam_backend_flag = Flags.lookup_flag_entry "enable_lambda_backend"
+    val region_profiling = Flags.lookup_flag_entry "region_profiling"
+    val gc_flag          = Flags.lookup_flag_entry "garbage_collection"
     fun set_paths() = 
       (Flags.lookup_string_entry "path_to_runtime" := 
-       OS.Path.concat(kitsrc_path, "Runtime/runtimeSystem.o");
+       (if !enable_lam_backend_flag then
+	  OS.Path.concat(kitsrc_path, "RuntimeWithGC/runtimeSystem.o")
+	else
+	  OS.Path.concat(kitsrc_path, "Runtime/runtimeSystem.o"));
        Flags.lookup_string_entry "path_to_runtime_prof" := 
-       OS.Path.concat(kitsrc_path, "Runtime/runtimeSystemProf.o");
+       (if !enable_lam_backend_flag then 
+	  OS.Path.concat(kitsrc_path, "RuntimeWithGC/runtimeSystemProf.o")
+	else
+	  OS.Path.concat(kitsrc_path, "Runtime/runtimeSystemProf.o"));
+
+       Flags.lookup_string_entry "path_to_runtime_gc" := 
+       OS.Path.concat(kitsrc_path, "RuntimeWithGC/runtimeSystemGC.o");
+       Flags.lookup_string_entry "path_to_runtime_gc_prof" := 
+       OS.Path.concat(kitsrc_path, "RuntimeWithGC/runtimeSystemGCProf.o");
+
        Flags.basislib_project := 
        (OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../basislib/basislib.pm"))))
 
@@ -223,6 +238,8 @@ structure K = struct
 	      | loop ("-reportfilesig"::rest, script) = (Flags.lookup_flag_entry "report_file_sig" := true; loop (rest, script))
 	      | loop ("-logtofiles"::rest, script) = (Flags.lookup_flag_entry "log_to_file" := true; loop (rest, script))
 	      | loop ("-prof"::rest, script) = (Flags.lookup_flag_entry "region_profiling" := true; loop (rest, script))
+	      | loop ("-gc"::rest, script) = (Flags.lookup_flag_entry "garbage_collection" := true; loop (rest, script))
+	      | loop ("-delay_assembly"::rest, script) = (Flags.lookup_flag_entry "delay_assembly" := true; loop (rest, script))
 	      | loop ("-version"::rest, script) = loop (rest, script) (*skip*)
 	      | loop (rest,script) = (Flags.read_script script; go rest)
 	in print greetings;
@@ -253,7 +270,7 @@ structure K = struct
 	      of ("X86", "Linux") => (Flags.lookup_string_entry "c_libs" := "-lm";
 				      "kit.x86-linux")
 	       | ("HPPA", "HPUX") => (Flags.lookup_string_entry "c_libs" := "-lM";
-				      "kit.hppa-hpux9")
+				      "kit.hppa-hpux")
 	       | ("SPARC", "Solaris") => (Flags.lookup_string_entry "c_libs" := "-lm";
 					  "kit.sparc-solaris")
 	       | ("SUN", "OS4") => die "install: Configuration unknown"

@@ -200,10 +200,13 @@ struct
 	  | SS_se(LS.STORE(atom,label)) = LS.STORE(atom_to_aty' atom,label)
 	  | SS_se(LS.STRING str) = LS.STRING str
 	  | SS_se(LS.REAL str) = LS.REAL str
-	  | SS_se(LS.CLOS_RECORD{label,elems,alloc}) = LS.CLOS_RECORD{label=label,elems=atoms_to_atys elems,alloc= sma_to_sma' alloc}
+	  | SS_se(LS.CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc}) = LS.CLOS_RECORD{label=label,
+											elems=(atoms_to_atys lvs,atoms_to_atys excons,atoms_to_atys rhos),
+											alloc= sma_to_sma' alloc}
 	  | SS_se(LS.REGVEC_RECORD{elems,alloc}) = LS.REGVEC_RECORD{elems=smas_to_smas elems,alloc=sma_to_sma' alloc}
-	  | SS_se(LS.SCLOS_RECORD{elems,alloc}) = LS.SCLOS_RECORD{elems=atoms_to_atys elems,alloc = sma_to_sma' alloc}
-	  | SS_se(LS.RECORD{elems,alloc}) = LS.RECORD{elems=atoms_to_atys elems,alloc=sma_to_sma' alloc}
+	  | SS_se(LS.SCLOS_RECORD{elems=(lvs,excons,rhos),alloc}) = LS.SCLOS_RECORD{elems=(atoms_to_atys lvs,atoms_to_atys excons,atoms_to_atys rhos),
+										    alloc = sma_to_sma' alloc}
+	  | SS_se(LS.RECORD{elems,alloc,tag}) = LS.RECORD{elems=atoms_to_atys elems,alloc=sma_to_sma' alloc,tag=tag}
 	  | SS_se(LS.SELECT(i,atom)) = LS.SELECT(i,atom_to_aty' atom)
 	  | SS_se(LS.CON0{con,con_kind,aux_regions,alloc}) = LS.CON0{con=con,con_kind=con_kind,aux_regions=smas_to_smas aux_regions,alloc=sma_to_sma' alloc}
 	  | SS_se(LS.CON1{con,con_kind,alloc,arg}) = LS.CON1{con=con,con_kind=con_kind,alloc=sma_to_sma' alloc,arg=atom_to_aty' arg}

@@ -121,8 +121,10 @@ functor Flags (structure Crash : CRASH
      your ml program all the way to an executable by using a
      C compiler.)  These ref's are used in Manager/Manager.sml.*)
 
-    val path_to_runtime = ref "You_did_not_set_path_to_runtime"
-    val path_to_runtime_prof = ref "You_did_not_set_path_to_runtime_prof"
+    val path_to_runtime         = ref "You_did_not_set_path_to_runtime"
+    val path_to_runtime_prof    = ref "You_did_not_set_path_to_runtime_prof"
+    val path_to_runtime_gc      = ref "You_did_not_set_path_to_runtime_gc"
+    val path_to_runtime_gc_prof = ref "You_did_not_set_path_to_runtime_gc_prof"
 
     val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
     val c_libs = ref "-lm" (*include math lib when compiling target code from the kit*)
@@ -544,6 +546,8 @@ struct
   val _ = NewList.app add_string_entry
         [("path_to_runtime", path_to_runtime), 
 	 ("path_to_runtime_prof", path_to_runtime_prof),
+	 ("path_to_runtime_gc", path_to_runtime_gc),
+	 ("path_to_runtime_gc_prof", path_to_runtime_gc_prof),
 	 ("c_compiler", c_compiler),  (*e.g. "cc -Aa" or "gcc -ansi"*)
 	 ("c_libs", c_libs),  (*e.g. "-lm"*)
 	 ("target_file_extension", target_file_extension),  (*e.g. ".c" or ".s"*)
@@ -595,6 +599,7 @@ struct
      ("all_multiplicities_infinite", all_multiplicities_infinite), 
      ("log_to_file", log_to_file),  (*true => generate a .log file*)
      ("garbage_collection", garbage_collection),
+     ("auto_import_basislib", auto_import_basislib),
      ("perform_register_allocation", perform_register_allocation),
      ("enable_lambda_backend", enable_lambda_backend),
      ("DEBUG_COMPILER", DEBUG_COMPILER)]
@@ -1083,6 +1088,7 @@ struct
           (DISPLAY
 	   ([mk_toggle ("chat", chat),
              mk_toggle ("delay_assembly", delay_assembly),
+	     mk_toggle ("auto_import_basislib", auto_import_basislib),
 	    optimiser_item,
 	    {text = "print entire menu", attr = noop_attr,
 	     below = ACTION (!show_full_menu_r)},
@@ -1104,6 +1110,8 @@ struct
                 mk_toggle ("Delete target files", delete_target_files),
 		mk_string_action (path_to_runtime, "Runtime system (no profiling)"),
 		mk_string_action (path_to_runtime_prof, "Runtime system (profiling)"),
+		mk_string_action (path_to_runtime_gc, "Runtime system (garbage collection enabled)"),
+		mk_string_action (path_to_runtime_gc_prof, "Runtime system (garbage collection and profiling enabled)"),
 		{text = "Read a script file", attr = noop_attr, 
 		 below = ACTION (fn () => (read_string script () ;
 					   if !u_or_q_from_read_string then () 

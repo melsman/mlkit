@@ -1,10 +1,9 @@
 (* Specification of HPPA Risc code. *)
 
-functor HpPaRisc(structure Labels : ADDRESS_LABELS
+functor HpPaRISC(structure Labels : ADDRESS_LABELS
 		 structure Lvars : LVARS
 		 structure PP : PRETTYPRINT
-		 structure Crash : CRASH
-		     ):HP_PA_RISC =
+		 structure Crash : CRASH):HP_PA_RISC =
   struct
 
     (***********)
@@ -59,11 +58,12 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
       structure LvarFinMap = Lvars.Map
 
       val regs = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
-      val reg_gens = map Gen regs
+      val all_regs = map Gen regs
       val reg_lvs = map (fn i => Lvars.new_named_lvar ("ph"^Int.toString i)) regs
-      val map_lvs_to_reg = LvarFinMap.fromList(ListPair.zip(reg_lvs,reg_gens))
+      val map_lvs_to_reg = LvarFinMap.fromList(ListPair.zip(reg_lvs,all_regs))
       val map_reg_to_lvs = Vector.fromList reg_lvs
     in
+      val all_regs = all_regs
       fun is_reg lv = 
 	(case LvarFinMap.lookup map_lvs_to_reg lv of
 	   SOME reg => true
@@ -73,6 +73,11 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
 	(case LvarFinMap.lookup map_lvs_to_reg lv of
 	   NONE => die "lv_to_phreg: lv not a register"
 	 | SOME i => i)
+
+      fun lv_to_reg_no lv =
+	(case lv_to_reg lv of
+	   Gen i => i
+	 | _ => die "lv_to_reg_no: lv is not a register")
 
       fun reg_to_lv(Gen i) = Vector.sub(map_reg_to_lvs,i)
 	| reg_to_lv _ = die "reg_to_lv: reg is not a general register (Gen)"

@@ -214,6 +214,19 @@ functor Compile(structure Excon : EXCON
       Flags.lookup_flag_entry "print_call_explicit_expression"
     val print_program_points = Flags.lookup_flag_entry "print_program_points"
 
+    val gc_flag              = Flags.lookup_flag_entry "garbage_collection"
+    val tag_values_flag      = Flags.lookup_flag_entry "tag_values"
+    val tag_integers_flag    = Flags.lookup_flag_entry "tag_integers"
+    val unbox_datatypes_flag = Flags.lookup_flag_entry "unbox_datatypes"
+    fun set_tag_flags() =
+      if !gc_flag  then
+	(tag_values_flag := true;
+	 tag_integers_flag := true;
+	 unbox_datatypes_flag := false)
+      else
+	(tag_values_flag := false;
+	 tag_integers_flag := false;
+	 unbox_datatypes_flag := true)
 
     (* ---------------------------------------------------------------------- *)
     (*  Printing utilities                                                    *)
@@ -720,30 +733,42 @@ functor Compile(structure Excon : EXCON
       {main_lab: label, code:(StoreTypeCO,offset,AtySS) LinePrg,
        imports: label list * label list, exports: label list * label list, safe:bool}  =
       let
-	val all_clos_exp = ClosExp.cc (clos_env, pgm)
+	val _ = Timing.timing_begin()
+	val all_clos_exp = Timing.timing_end_res("ClosConv",ClosExp.cc (clos_env, pgm))
 	val clos_env' = #env all_clos_exp
-	val all_line_stmt = LineStmt.L {main_lab= #main_lab all_clos_exp,
-					code= #code all_clos_exp,
-					imports= #imports all_clos_exp,
-					exports= #exports all_clos_exp}
+
+
+	val _ = Timing.timing_begin()
+	val all_line_stmt = 
+	  Timing.timing_end_res("LineStmt",LineStmt.L {main_lab= #main_lab all_clos_exp,
+						       code= #code all_clos_exp,
+						       imports= #imports all_clos_exp,
+						       exports= #exports all_clos_exp})
+
+	val _ = Timing.timing_begin()
 	val all_reg_alloc = 
-	  if Flags.is_on "perform_register_allocation" then RegAlloc.ra all_line_stmt
-	  else RegAlloc.ra_dummy all_line_stmt
-	val all_fetch_flush = FetchAndFlush.IFF all_reg_alloc
-	val all_calc_offset = CalcOffset.CO all_fetch_flush
+	  Timing.timing_end_res("RegAlloc",
+				if Flags.is_on "perform_register_allocation" then 
+				  RegAlloc.ra all_line_stmt
+				else 
+				  RegAlloc.ra_dummy all_line_stmt)
+
+	val _ = Timing.timing_begin()
+	val all_fetch_flush = Timing.timing_end_res("FetchFlush",FetchAndFlush.IFF all_reg_alloc)
+
+	val _ = Timing.timing_begin()
+	val all_calc_offset = Timing.timing_end_res("CalcOffset",CalcOffset.CO all_fetch_flush)
+
+	val _ = Timing.timing_begin()
 	val all_calc_offset_with_bv = 
-	  if Flags.is_on "garbage_collection" then
-	    CalcOffset.CBV all_calc_offset
-	  else
-	    all_calc_offset
-	val all_subst_and_simplify = SubstAndSimplify.SS all_calc_offset_with_bv
-(*
-	val all_risc_prg = CodeGen.CG all_subst_and_simplify
-	val link_prg = CodeGen.generate_link_code [#main_lab all_clos_exp]
-	val path = "/net/frej/vol/topps/disk02/MLKIT-afterVersion1/niels/GC/Working/kit/testprogs/"
-	val _ = CodeGen.emit(all_risc_prg, path ^ "hppa_file.s")
-	val _ = CodeGen.emit(link_prg, path ^ "link_file.s")
-*)
+	  Timing.timing_end_res("CBV",
+				if !gc_flag then
+				  CalcOffset.CBV all_calc_offset
+				else
+				  all_calc_offset)
+
+	val _ = Timing.timing_begin()
+	val all_subst_and_simplify = Timing.timing_end_res("SS", SubstAndSimplify.SS all_calc_offset_with_bv)
       in
 	(clos_env',
 	 {main_lab = #main_lab all_subst_and_simplify,
@@ -844,6 +869,9 @@ functor Compile(structure Excon : EXCON
 
     fun compile(CEnv, Basis, strdecs, vcg_file) : res =
       let
+
+	(* Make sure that tag flags are set appropriately. *)
+	val _ = set_tag_flags()
 
 	(* There is only space in the basis for one lambdastat-env.
 	 * If we want more checks, we should insert more components

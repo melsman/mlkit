@@ -50,10 +50,10 @@ signature LINE_STMT =
     | STORE           of 'aty * label
     | STRING          of string
     | REAL            of string
-    | CLOS_RECORD     of {label: label, elems: 'aty list, alloc: 'aty sma}
+    | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
     | REGVEC_RECORD   of {elems: 'aty sma list, alloc: 'aty sma}
-    | SCLOS_RECORD    of {elems: 'aty list, alloc: 'aty sma}
-    | RECORD          of {elems: 'aty list, alloc: 'aty sma}
+    | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
+    | RECORD          of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word}
     | SELECT          of int * 'aty
     | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}
@@ -110,6 +110,8 @@ signature LINE_STMT =
     | FN of label * cc * ('sty,'offset,'aty) LineStmt list
   
     type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) TopDecl list
+
+    val smash_free : 'aty list*'aty list*'aty list -> 'aty list
 
     val L : {main_lab:label,code:ClosPrg,imports:label list * label list,exports:label list * label list} -> 
             {main_lab:label,code:(lvar,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
