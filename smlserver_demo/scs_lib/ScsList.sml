@@ -36,7 +36,7 @@ signature SCS_LIST =
 
     (* [member fn_eq (x,y)] returns true when x is an element of the
         set y *)
-    val member: ('a * 'a -> bool) -> 'a * 'a list -> bool
+    val member: ('a * 'b -> bool) -> 'a * 'b list -> bool
 
     (* [subset fn_eq (x,y)] returns true when every element of the set
         x is a member of the set y *)
@@ -54,7 +54,7 @@ signature SCS_LIST =
 
    (* [difference fn_eq (x,y)] returns the difference, that is, 
        the elements of the set x that do not belong to the set y *)
-    val difference : ('a * 'a -> bool) -> 'a list * 'a list -> 'a list
+    val difference : ('a * 'b -> bool) -> 'a list * 'b list -> 'a list
 
    (* [power fn_eq x] returns the power set of x. 
       For instance, if x is the set [1,2], then power x should be 
