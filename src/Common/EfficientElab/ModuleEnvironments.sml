@@ -231,7 +231,7 @@ functor ModuleEnvironments(
 
               (*Enrichment relation for compilation manager*)
 
-      val enrich_Env = E.enrich
+      fun enrich_Env a = E.enrich a
 
       fun enrich_SigEnv(SIGENV G1,SIGENV G2) = 
 	FinMap.Fold (fn ((sigid2,Sig2), b) => b andalso

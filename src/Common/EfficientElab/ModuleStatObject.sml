@@ -1,4 +1,4 @@
-(*$ModuleStatObject: STRID SIGID FUNID TYCON TYNAME STATOBJECT
+(*$ModuleStatObject: STRID SIGID FUNID TYCON TYNAME NAME STATOBJECT
 	ENVIRONMENTS FINMAP PRETTYPRINT REPORT FLAGS CRASH
 	MODULE_STATOBJECT*)
 
@@ -6,7 +6,8 @@ functor ModuleStatObject(structure StrId  : STRID
 			 structure SigId  : SIGID
 			 structure FunId  : FUNID
 			 structure TyName : TYNAME
-
+			 structure Name   : NAME
+			   sharing type Name.name = TyName.name
 			 structure TyCon : TYCON
 			   sharing type TyCon.strid = StrId.strid
 			       and type TyCon.tycon = TyName.tycon
@@ -70,6 +71,11 @@ functor ModuleStatObject(structure StrId  : STRID
     type strid             = StrId.strid
     type longstrid         = StrId.longstrid
     type longtycon         = TyCon.longtycon
+
+    fun E_eq a = E.eq a         (* for profiling *)
+    fun E_match a = E.match a
+    fun mark_names T = List.apply (Name.mark_gen o TyName.name) T
+    fun unmark_names T = List.apply (Name.unmark_gen o TyName.name) T
 
       
     (*Plan of this code: first two functions that are used for matching
@@ -340,20 +346,36 @@ functor ModuleStatObject(structure StrId  : STRID
 	  (E'',E,phi)
 	end
 
-
+(*old
       fun eq_Env(E1,E2) = (check_enrichment(E1,E2);
 			   check_enrichment(E2,E1);
 			   true) handle _ => false
-
       fun eq (Sig1,Sig2) =
-	let val Sig1 as SIGMA{T=T1,E=E1} = rename_Sig Sig1
+        let val Sig1 as SIGMA{T=T1,E=E1} = rename_Sig Sig1
 	    val Sig2 as SIGMA{T=T2,E=E2} = rename_Sig Sig2
 	    val phi1 = sigMatchRea (Sig2,E1)
 	    val phi2 = sigMatchRea (Sig1,E2)
-	in eq_Env(Realisation.on_Env phi1 E2, E1) andalso
-	   eq_Env(Realisation.on_Env phi2 E1, E2)
+	in E_eq(Realisation.on_Env phi1 E2, E1) andalso
+	   E_eq(Realisation.on_Env phi2 E1, E2)
 	end handle _ => false
+old*)
 
+      (* assumption: NO tynames in Sig1 and Sig2 may be marked generative. *)
+      fun eq (SIGMA{T=T1,E=E1}, Sig2 as SIGMA{T,...}) =
+	if TyName.Set.size T1 <> TyName.Set.size T then false
+	else (* First rename bound names of Sig2 and then match E2 against E1 and
+	      * then check for equality of E1 and E2. *)
+	  let val SIGMA{T=T2,E=E2} = rename_Sig Sig2
+	      val T1 = TyName.Set.list T1
+	      val T2 = TyName.Set.list T2
+	      val _ = mark_names T1
+	      val _ = mark_names T2
+	      val _ = E_match(E2,E1)
+	      val _ = unmark_names T1
+	      val _ = unmark_names T2
+	  in E_eq(E1,E2)
+	  end
+		  
       fun layout (SIGMA {T, E}) =
 	    if !Flags.DEBUG_STATOBJECTS then
 	      let val Ttree = PP.NODE {start="(", finish=")", indent=1,
@@ -434,24 +456,52 @@ functor ModuleStatObject(structure StrId  : STRID
 		(Sigma_on (phi', Sig'), phi')      (* The elaborator must maintain the invariant that *)
 	      end                                  (* (Supp(phi') U Yield(phi')) \cap (T of Sig') = 0 *)
 	    end                                    (* -- I believe it does -- Martin *)
+(*old
+      local
+	fun rename_FunSig (FUNSIG{T,E,T'E'}) =
+	  let val phi = Realisation.renaming T
+	  in FUNSIG{T=Realisation.on_TyName_set phi T,
+		    E=Realisation.on_Env phi E,
+		    T'E'=Sigma.rename_Sig (Sigma.on(phi,T'E'))}
+	  end
+      in
+	fun eq(funsig1, funsig2) =
+	  let val FUNSIG{T=T1,E=E1,T'E'=Sig1'} = rename_FunSig funsig1
+	      val FUNSIG{T=T2,E=E2,T'E'=Sig2'} = rename_FunSig funsig2
+	      val Sig1 = SIGMA{T=T1,E=E1}
+	      val Sig2 = SIGMA{T=T2,E=E2}
+	      val phi = sigMatchRea(Sig1, E2)
+	  in Sigma.eq(Sig1,Sig2) andalso
+	    Sigma.eq(Sigma.on(phi,Sig1'),Sig2')
+	  end handle _ => false 
+      end
+old*)
 
-      fun rename_FunSig (FUNSIG{T,E,T'E'}) =
-	let val phi = Realisation.renaming T
-	in FUNSIG{T=Realisation.on_TyName_set phi T,
-		  E=Realisation.on_Env phi E,
-		  T'E'=Sigma.rename_Sig (Sigma.on(phi,T'E'))}
-	end
+      local
+	fun rename_FunSig (FUNSIG{T,E,T'E'}) =
+	  let val phi = Realisation.renaming T
+	  in FUNSIG{T=Realisation.on_TyName_set phi T,
+		    E=Realisation.on_Env phi E,
+		    T'E'=Sigma.on(phi,T'E')}
+	  end
+      in
+	fun eq(FUNSIG{T=T1,E=E1,T'E'=Sig1'}, funsig2 as FUNSIG{T,...}) =
+	  if TyName.Set.size T1 <> TyName.Set.size T then false
+	  else 
+	    let val FUNSIG{T=T2,E=E2,T'E'=Sig2'} = rename_FunSig funsig2
+	        val T1 = TyName.Set.list T1
+		val T2 = TyName.Set.list T2
+		val _ = mark_names T1
+		val _ = mark_names T2
+		val _ = E_match(E2,E1)
+		val _ = unmark_names T1
+		val _ = unmark_names T2
+	  in E_eq(E1,E2) andalso Sigma.eq(Sig1',Sig2')
+	  end
+      end
 
-      fun eq(funsig1, funsig2) =
-	let val FUNSIG{T=T1,E=E1,T'E'=Sig1'} = rename_FunSig funsig1
-	    val FUNSIG{T=T2,E=E2,T'E'=Sig2'} = rename_FunSig funsig2
-	    val Sig1 = SIGMA{T=T1,E=E1}
-	    val Sig2 = SIGMA{T=T2,E=E2}
-	    val phi = sigMatchRea(Sig1, E2)
-	in Sigma.eq(Sig1,Sig2) andalso
-	  Sigma.eq(Sigma.on(phi,Sig1'),Sig2')
-	end handle _ => false 
-       
+
+
       fun layout (FUNSIG{T, E, T'E'}) =
 	    let
 	      val argsig = PP.NODE {start="(", finish="", indent=1,

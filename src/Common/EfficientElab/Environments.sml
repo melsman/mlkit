@@ -392,6 +392,9 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    FinMap.fold
 	      (fn (range, a) => f (range_private_to_range range) a)
 	        start map
+
+      fun size (VARENV v1) : int = FinMap.fold (fn (_, a) => a + 1) 0 v1
+
       fun FoldPRIVATE (f : id * range_private -> 'a -> 'a)
       		      (start : 'a) (VARENV map) : 'a =
 		        FinMap.Fold (General.uncurry f) start map
@@ -450,6 +453,22 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		       end)
 		         FinMap.empty ids)
 
+      (* Matching *)
+      local
+	fun match_scheme a = StatObject.TypeScheme.match a
+	fun match_type a = StatObject.Type.match a
+
+	fun match_range (LONGVAR sigma1, LONGVAR sigma2) = match_scheme (sigma1, sigma2)
+	  | match_range (LONGCON sigma1, LONGCON sigma2) = match_scheme (sigma1, sigma2)
+	  | match_range (LONGEXCON tau1, LONGEXCON tau2) = match_type (tau1, tau2)
+	  | match_range _ = ()
+      in
+	fun match (VE,VE0) = Fold (fn (id,r) => fn () =>
+				   (case lookup VE0 id 
+				      of Some r0 => match_range (r,r0)
+				       | None => ())) () VE
+      end
+
       fun report (f, VARENV m) =
 	    FinMap.reportMapSORTED (Ident.<)
 	      (fn (id, range_private) =>
@@ -473,8 +492,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun tynames_in_range (LONGVAR sigma) = TypeScheme.tynames sigma
 	| tynames_in_range (LONGCON sigma) = TypeScheme.tynames sigma
 	| tynames_in_range (LONGEXCON tau) = Type.tynames tau
-      val tynames =
-	    fold (TyName.Set.union o tynames_in_range) TyName.Set.empty
+
+      val tynames = fold (TyName.Set.union o tynames_in_range) TyName.Set.empty
 
       fun ids_with_tyvar_in_type_scheme VE tyvar =
 	    Fold (fn (id, range) => fn ids =>
@@ -503,6 +522,15 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun tynames (TYSTR {theta, VE}) =
 	    TyName.Set.union (TypeFcn.tynames theta) (VE.tynames VE)
       val layout = layoutTystr
+
+      (* Matching *)
+      local 
+	fun match_theta a = TypeFcn.match a
+      in
+	fun match (TYSTR{theta,VE}, TYSTR{theta=theta0,VE=VE0}) =
+	  (match_theta(theta,theta0);
+	   VE.match(VE,VE0))
+      end
     end (*TyStr*)
 
 
@@ -524,6 +552,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    : 'a = FinMap.Fold (General.uncurry f) start map
       fun apply (f : (tycon * TyStr -> unit)) (TYENV map) : unit = 
 	    List.apply f (FinMap.list map)
+      fun size (TYENV v1) : int = FinMap.fold (fn (_, a) => a + 1) 0 v1
 
       (*equality_maximising_realisation TE = a realisation that maps all
        tynames in TE that have been found to respect equality to fresh
@@ -599,6 +628,12 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
       val tynames = fold (TyName.Set.union o TyStr.tynames) TyName.Set.empty
 
+      (* Matching *)
+      fun match (TE,TE0) = Fold (fn (tycon, TyStr) => fn () =>
+				 (case lookup TE0 tycon 
+				    of Some TyStr0 => TyStr.match(TyStr,TyStr0)
+				     | None => ())) () TE
+
       (*For the TE: report TyStrs with empty ConEnv as
 
 	  type (tvs) ty
@@ -669,6 +704,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun map (f : Env -> Env) (STRENV map) =
 	    STRENV (FinMap.composemap f map)
       fun report (f, STRENV m) = FinMap.reportMapSORTED (StrId.<) f m
+
+      fun size (STRENV v1) : int = FinMap.fold (fn (_, a) => a + 1) 0 v1
 
       (*since SE.tyvars and E.tyvars are mutually recursive, E.tyvars is defined
        in structure SE rather than structure E.  Similarly with tynames:*)
@@ -1026,12 +1063,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		       Some TyStr1 => TyStr.eq (TyStr1,TyStr2)
 		     | None => false) true TE2
 
-      fun equal_TyEnv(TE1,TE2) =
-	let val sorter = TyCon.<
-	    val dom1 = ListSort.sort sorter (EqSet.list (TE.dom TE1))
-	    val dom2 = ListSort.sort sorter (EqSet.list (TE.dom TE2))
-	in dom1 = dom2 andalso enrich_TyEnv (TE1,TE2)
-	end
+      fun equal_TyEnv(TE1,TE2) = TE.size TE1 = TE.size TE2 andalso enrich_TyEnv (TE1,TE2)
 
       fun enrich_VarEnv(VE1,VE2) =
 	    VE.Fold (fn (id2,r2) => fn b => b andalso
@@ -1039,12 +1071,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 			     Some r1 => equal_VarEnvRan(r1,r2)
 			   | None => false)) true VE2
 
-      fun equal_VarEnv(VE1,VE2) =
-	let val sorter = Ident.<
-	    val dom1 = ListSort.sort sorter (EqSet.list (VE.dom VE1))
-	    val dom2 = ListSort.sort sorter (EqSet.list (VE.dom VE2))
-	in dom1 = dom2 andalso enrich_VarEnv(VE1,VE2)
-	end
+      fun equal_VarEnv(VE1,VE2) = VE.size VE1 = VE.size VE2 andalso enrich_VarEnv(VE1,VE2)
 
       fun equal_Env(E1,E2) =
 	let val (SE1,TE1,VE1) = un E1
@@ -1055,16 +1082,11 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	end
 
       and enrich_StrEnv(SE1,SE2) = SE.Fold (fn (strid2,S2) => fn b => b andalso
-					     case SE.lookup SE1 strid2 of
-					       Some S1 => equal_Env(S1,S2)
-					     | None => false) true SE2
+					    case SE.lookup SE1 strid2 
+					      of Some S1 => equal_Env(S1,S2)
+					       | None => false) true SE2
 
-      and equal_StrEnv(SE1,SE2) =
-	let val sorter = StrId.<
-	    val dom1 = ListSort.sort sorter (EqSet.list (SE.dom SE1))
-	    val dom2 = ListSort.sort sorter (EqSet.list (SE.dom SE2))
-	in dom1 = dom2 andalso enrich_StrEnv (SE1,SE2)
-	end
+      and equal_StrEnv(SE1,SE2) = SE.size SE1 = SE.size SE2 andalso enrich_StrEnv (SE1,SE2)
 
       fun enrich_Env(E1,E2) =
 	let val (SE1,TE1,VE1) = un E1
@@ -1101,38 +1123,18 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
       (* Matching *)
 
-	fun match_VE_range (VE.LONGVAR sigma1, VE.LONGVAR sigma2) =
-	      StatObject.TypeScheme.match (sigma1, sigma2)
-	  | match_VE_range (VE.LONGCON sigma1, VE.LONGCON sigma2) =
-	      StatObject.TypeScheme.match (sigma1, sigma2)
-	  | match_VE_range (VE.LONGEXCON tau1, VE.LONGEXCON tau2) =
-	      StatObject.Type.match (tau1, tau2)
-	  | match_VE_range _ = ()
+      fun match (E,E0) =
+	let val (SE, TE, VE)  = un E
+	    val (SE0,TE0,VE0) = un E0
+	in
+	  matchSE (SE, SE0) ; 
+	  TE.match (TE, TE0) ;
+	  VE.match (VE, VE0)
+	end
 
-	fun matchVE (VE,VE0) = VE.Fold (fn (id,r) => fn () =>
-					   (case VE.lookup VE0 id of
-					      Some r0 => match_VE_range (r,r0)
-					    | None => ())) () VE
-
-	fun matchTE (TE,TE0) = TE.Fold (fn (tycon, TyStr) => fn () =>
-					   (case TE.lookup TE0 tycon of
-					      Some TyStr0 => ()
-					    (*C.match_TyStr(TyStr,TyStr0) *) (* MEMO *)
-					    | None => ())) () TE
-
-	fun match (E,E0) =
-	      let val (SE, TE, VE)  = un E
-		  val (SE0,TE0,VE0) = un E0
-	      in
-		matchSE (SE, SE0) ; 
-		matchTE (TE, TE0) ;
-		matchVE (VE, VE0)
-	      end
-
-	and matchSE (SE,SE0) = SE.Fold (fn (strid,E) => fn () =>
-					   (case SE.lookup SE0 strid of
-					      Some E0 => match (E,E0)
-					    | None => ())) () SE
+      and matchSE (SE,SE0) = SE.Fold (fn (strid,E) => fn () => (case SE.lookup SE0 strid 
+								  of Some E0 => match (E,E0)
+								   | None => ())) () SE
     end (*E*)
 
 

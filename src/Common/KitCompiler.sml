@@ -367,6 +367,7 @@ functor Basics(structure Tools: TOOLS): BASICS =
 		       structure FunId        = FunId
 		       structure TyCon        = TyCon
 		       structure TyName       = TyName
+		       structure Name         = Name
 		       structure StatObject   = StatObject
 		       structure Environments = Environments
 		       structure FinMap       = Tools.FinMap
