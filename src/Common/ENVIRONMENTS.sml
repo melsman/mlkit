@@ -186,17 +186,14 @@ signature ENVIRONMENTS =
 
     structure C :   (* No T-component *)
       sig
-(*	val from_T_and_E         : TyName.Set.Set * Env -> Context  *)
 	val plus_VE              : Context * VarEnv   -> Context
 	val plus_U               : Context * ExplicitTyVar list -> Context
 	val plus_E               : Context * Env      -> Context
 	val plus_TE              : Context * TyEnv    -> Context
-(*	val plus_TE              : Context * TyEnv    -> Context    (* does not add to T component *)  *)
 	val plus_VE_and_TE      : Context * (VarEnv * TyEnv) -> Context
 	val to_U                 : Context -> ExplicitTyVar list
 	val to_U'                : Context -> ExplicitTyVarEnv
 	val ExplicitTyVarEnv_lookup : ExplicitTyVarEnv -> ExplicitTyVar -> level
-(*	val to_T                 : Context -> TyName.Set.Set  *)
 	val from_E               : Env -> Context
 	val on                   : Substitution * Context  -> Context
 
@@ -227,6 +224,8 @@ signature ENVIRONMENTS =
               (*dom_pat (C, pat) = the list of id's bound by pat---i.e.,
 	       only variables and not constructors appearing in pat;
 	       therefore C is needed to get the identifier status of id's.*)
+
+	val layout : Context -> StringTree
       end (*C*)
 
 

@@ -1217,6 +1217,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    in
 	      dom_pat' pat
 	    end
+
+      val layout = E.layout o to_E
       end (*local*)
 
 

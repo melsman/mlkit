@@ -176,6 +176,8 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     fun pr (msg : string, t : PP.StringTree) : unit =
           Report.print (Report.decorate (msg, PP.reportStringTree t))
 
+    fun pr_st st = PP.outputTree(print,st,100)
+
     fun debug_pr_msg (msg: string): unit =
           if !Flags.DEBUG_ELABDEC then output(std_out,msg) else ()
 
@@ -583,7 +585,16 @@ old*)
 
                (* Variable *)                                   
               Some(VE.LONGVAR sigma) =>
-                 let val (instance, instances) = TypeScheme.instance'' sigma
+                 let val (instance, instances) = (TypeScheme.instance'' sigma)
+		   handle TypeScheme.InstanceError s =>
+		     (print ("InstanceError." ^ s ^ "\n");
+		      print ("Elab_atexp.longvid = " ^ Ident.pr_longid longid ^ "\n");
+		      print ("with type scheme : \n");
+		      (pr_st o TypeScheme.layout)sigma;
+		      print "The Context is: \n";
+		      (pr_st o C.layout)C;
+		      raise TypeScheme.InstanceError (s^ "[elab_atexp.longvid]"))
+		      
 		   (*if Type.overloaded_tyvars instances yields [], then there
 		    are no overloaded tyvars in the type.  If there is exactly
 		    one overloaded tyvar, longid may be a primitive
@@ -607,7 +618,16 @@ old*)
               (* Constructor *)
             | Some(VE.LONGCON sigma) =>
                 let
-                  val (tau,instances) = TypeScheme.instance'' sigma
+                  val (tau,instances) = (TypeScheme.instance'' sigma)
+		   handle TypeScheme.InstanceError s =>
+		     (print ("InstanceError." ^ s ^ "\n");
+		      print ("Elab_atexp.longcon = " ^ Ident.pr_longid longid ^ "\n");
+		      print ("with type scheme : \n");
+		      (pr_st o TypeScheme.layout)sigma;
+		      print "The Context is: \n";
+		      (pr_st o C.layout)C;
+		      raise TypeScheme.InstanceError (s^ "[elab_atexp.longcon]"))
+
                 in
                   (Substitution.Id, tau,
 		   OG.IDENTatexp(addTypeInfo_CON(okConv i, C,
@@ -750,14 +770,15 @@ old*)
 
            (* Typed expression *)                               (*rule 9*)
          | IG.TYPEDexp(i, exp, ty) =>
-             let
-               val (S1, tau, out_exp) = elab_exp(C, exp)
-               val (tau', out_ty) = elab_ty(S1 onC C, ty)
-               val (S2, i') = UnifyWithTexts("type of expression",tau,"disagrees with your type constraint", tau', i)
-               val tau'' = S2 on tau'
-             in
-               (S2 oo S1, tau'', OG.TYPEDexp(addTypeInfo_EXP(i',tau''), out_exp, out_ty))
-             end
+             let val (S1, tau, out_exp) = elab_exp(C, exp)
+	     in case elab_ty(S1 onC C, ty)
+		  of (Some tau', out_ty) =>
+		    let val (S2, i') = UnifyWithTexts("type of expression",tau,"disagrees with your type constraint", tau', i)
+		        val tau'' = S2 on tau'
+		    in (S2 oo S1, tau'', OG.TYPEDexp(addTypeInfo_EXP(i',tau''), out_exp, out_ty))
+		    end
+		   | (None, out_ty) => (S1, tau, OG.TYPEDexp(okConv i, out_exp, out_ty))
+	     end
 
            (* Handle exception *)                               (*rule 10*)
          | IG.HANDLEexp(i, exp, match) =>
@@ -1325,43 +1346,42 @@ old*)
         IG.TYPBIND(i, ExplicitTyVars, tycon, ty, typbind_opt) =>
           let
             val _ = Level.push()
-            val TyVars =
-              map TyVar.from_ExplicitTyVar ExplicitTyVars
+            val TyVars = map TyVar.from_ExplicitTyVar ExplicitTyVars
             val tyvarsRepeated = getRepeatedElements TyVar.eq  TyVars
             val tyvarsNotInTyVarList =
-              List.all 
-                (fn tv => not (List.member tv ExplicitTyVars)) 
-                (IG.getExplicitTyVarsTy ty)
-            val (tau, out_ty) = elab_ty(C, ty)
+              List.all (fn tv => not (List.member tv ExplicitTyVars)) 
+	      (IG.getExplicitTyVarsTy ty)
 
-            val _ = Level.pop()
-            val typeFcn = TypeFcn.from_TyVars_and_Type (TyVars, tau)
-            val tystr = TyStr.from_theta_and_VE(typeFcn, VE.empty)
-
-            val (TE, out_typbind_opt) = elab_typbind_opt(C, typbind_opt)
-              
-          in
-            if not(isEmptyTyVarList(tyvarsNotInTyVarList)) then
-              (TE,
-               OG.TYPBIND(errorConv(i, 
-                      ErrorInfo.TYVARS_NOT_IN_TYVARSEQ 
-                            (map TyVar.from_ExplicitTyVar tyvarsNotInTyVarList)),
-                          ExplicitTyVars, tycon, out_ty, out_typbind_opt))
-            else
-              if (EqSet.member tycon (TE.dom TE)) then 
-                (TE.plus (TE.singleton(tycon, tystr), TE),
-                 OG.TYPBIND(repeatedIdsError(i, [ErrorInfo.TYCON_RID tycon]),
-                            ExplicitTyVars, tycon, out_ty, out_typbind_opt))
-              else
-                if not(isEmptyTyVarList(tyvarsRepeated)) then
-                  (TE,
-                   OG.TYPBIND(repeatedIdsError(i,
-                                map ErrorInfo.TYVAR_RID tyvarsRepeated),
-                              ExplicitTyVars, tycon, out_ty, out_typbind_opt))
-                else
-                  (TE.plus (TE.singleton(tycon, tystr), TE),
-                   OG.TYPBIND(okConv i, ExplicitTyVars, tycon, out_ty, out_typbind_opt))
-          end
+	  in case elab_ty(C, ty)
+	       of (Some tau, out_ty) =>
+		 let val _ = Level.pop()
+		     val typeFcn = TypeFcn.from_TyVars_and_Type (TyVars, tau)
+		     val tystr = TyStr.from_theta_and_VE(typeFcn, VE.empty)
+		     val (TE, out_typbind_opt) = elab_typbind_opt(C, typbind_opt)
+		 in
+		   if not(isEmptyTyVarList(tyvarsNotInTyVarList)) then
+		     (TE, OG.TYPBIND(errorConv(i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ 
+					       (map TyVar.from_ExplicitTyVar tyvarsNotInTyVarList)),
+				     ExplicitTyVars, tycon, out_ty, out_typbind_opt))
+		   else
+		     if (EqSet.member tycon (TE.dom TE)) then 
+		       (TE.plus (TE.singleton(tycon, tystr), TE),
+			OG.TYPBIND(repeatedIdsError(i, [ErrorInfo.TYCON_RID tycon]),
+				   ExplicitTyVars, tycon, out_ty, out_typbind_opt))
+		     else
+		       if not(isEmptyTyVarList(tyvarsRepeated)) then
+			 (TE, OG.TYPBIND(repeatedIdsError(i, map ErrorInfo.TYVAR_RID tyvarsRepeated),
+					 ExplicitTyVars, tycon, out_ty, out_typbind_opt))
+		       else
+			 (TE.plus (TE.singleton(tycon, tystr), TE),
+			  OG.TYPBIND(okConv i, ExplicitTyVars, tycon, out_ty, out_typbind_opt))
+		 end
+		| (None, out_ty) =>
+		 let val _ = Level.pop()
+		     val (TE, out_typbind_opt) = elab_typbind_opt(C, typbind_opt)
+		 in (TE, OG.TYPBIND(okConv i, ExplicitTyVars, tycon, out_ty, out_typbind_opt))
+		 end
+	  end
 
     and elab_typbind_opt (C : Context, typbind_opt : IG.typbind Option)
       : (TyEnv * OG.typbind Option) =
@@ -1480,54 +1500,45 @@ old*)
 
         (* Constructor binding *)                               (*rule 29*)
         IG.CONBIND(i, IG.OP_OPT(con, withOp), Some ty, conbind_opt) =>
-          let
-            val (tau', out_ty) = elab_ty (C, ty)
-            val arrow = TypeScheme.from_Type
-	                  (Type.mk_Arrow (tau', tau))
-            val (constructor_map, out_conbind_opt) =
-	          elab_conbind_opt (C, tau, conbind_opt)
-          in
-	    (constructor_map.add con arrow constructor_map,
-	     OG.CONBIND (out_i_for_conbind con constructor_map i,
-			 OG.OP_OPT (con, withOp),
-			 Some out_ty,
-			 out_conbind_opt))
-          end
+	  let val (constructor_map, out_conbind_opt) = elab_conbind_opt (C, tau, conbind_opt)
+	      fun result out_ty = OG.CONBIND (out_i_for_conbind con constructor_map i,
+					      OG.OP_OPT (con, withOp),
+					      Some out_ty, out_conbind_opt)
+	  in case elab_ty (C, ty)
+	       of (Some tau', out_ty) =>
+		 let val arrow = TypeScheme.from_Type (Type.mk_Arrow (tau', tau))
+		 in (constructor_map.add con arrow constructor_map, result out_ty)
+		 end
+		| (None, out_ty) => (constructor_map, result out_ty)
+	  end
 
       | IG.CONBIND(i, IG.OP_OPT(con, withOp), None, conbind_opt) =>
-          let val (constructor_map, out_conbind_opt) =
-	            elab_conbind_opt (C, tau, conbind_opt)
+          let val (constructor_map, out_conbind_opt) = elab_conbind_opt (C, tau, conbind_opt)
           in
-	    (constructor_map.add
-	       con (TypeScheme.from_Type tau) constructor_map,
+	    (constructor_map.add con (TypeScheme.from_Type tau) constructor_map,
 	     OG.CONBIND (out_i_for_conbind con constructor_map i, 
 			 OG.OP_OPT(con, withOp), None, out_conbind_opt))
           end
 
     and out_i_for_conbind con constructor_map i = 
-          if constructor_map.in_dom con constructor_map
-	  then repeatedIdsError (i, [ErrorInfo.CON_RID con])
-	  else if IG.is_'true'_'nil'_etc con
-	       then errorConv (i, ErrorInfo.REBINDING_TRUE_NIL_ETC [con])
-	       else if IG.is_'it' con
-		    then errorConv (i, ErrorInfo.REBINDING_IT)
-		    else okConv i
+          if constructor_map.in_dom con constructor_map then 
+	    repeatedIdsError (i, [ErrorInfo.CON_RID con])
+	  else if IG.is_'true'_'nil'_etc con then 
+	    errorConv (i, ErrorInfo.REBINDING_TRUE_NIL_ETC [con])
+	  else if IG.is_'it' con then errorConv (i, ErrorInfo.REBINDING_IT)
+	  else okConv i
 
-    and elab_conbind_opt (C : Context,
-			  tau : Type,
-			  conbind_opt : IG.conbind Option)
+    and elab_conbind_opt (C : Context, tau : Type, conbind_opt : IG.conbind Option)
       : (constructor_map * OG.conbind Option) =
 
-      case conbind_opt of
+      case conbind_opt 
 
-        Some conbind =>
-          let
-            val (constructor_map, out_conbind) = elab_conbind (C, tau, conbind)
-          in
-            (constructor_map, Some out_conbind)
+	of Some conbind =>
+          let val (constructor_map, out_conbind) = elab_conbind (C, tau, conbind)
+          in (constructor_map, Some out_conbind)
           end
 
-      | None => (constructor_map.empty, None)
+	 | None => (constructor_map.empty, None)
 
     (****** exception bindings *****)
 
@@ -1538,16 +1549,19 @@ old*)
 
         (* Exception binding *)                                 (*rule 30*)
         IG.EXBIND(i, IG.OP_OPT(excon, withOp), Some ty, rest) =>
-          let
-            val (tau, out_ty) = elab_ty (C, ty)
-            val exnTy = Type.mk_Arrow (tau, Type.Exn)
-            val VE_this = VE.singleton_excon (excon, exnTy)
-            val (VE_rest, out_rest) = elab_exbind_opt (C, rest)
-          in 
-	    (VE.plus  (VE_this, VE_rest),
-	     OG.EXBIND (out_i_for_exbind excon VE_rest i (Some tau), 
-		        OG.OP_OPT(excon, withOp), Some out_ty, out_rest))
-          end
+	  let val (VE_rest, out_rest) = elab_exbind_opt (C, rest)
+	  in case elab_ty (C, ty)
+	       of (Some tau, out_ty) =>
+		 let val exnTy = Type.mk_Arrow (tau, Type.Exn)
+	  	     val VE_this = VE.singleton_excon (excon, exnTy)
+		 in 
+		   (VE.plus  (VE_this, VE_rest),
+		    OG.EXBIND (out_i_for_exbind excon VE_rest i (Some tau), 
+			       OG.OP_OPT(excon, withOp), Some out_ty, out_rest))
+		 end
+		| (None, out_ty) => 
+		 (VE_rest, OG.EXBIND(okConv i, OG.OP_OPT(excon, withOp), Some out_ty, out_rest))
+	  end
 
       | IG.EXBIND(i, IG.OP_OPT(excon, withOp), None, rest) =>
           let
@@ -1628,8 +1642,16 @@ old*)
 			       Some _ => true
 			     | None => false)
 
-                      val (tau,instances) = TypeScheme.instance'' sigma
-                      
+                      val (tau,instances) = (TypeScheme.instance'' sigma)
+			handle TypeScheme.InstanceError s =>
+			  (print ("InstanceError." ^ s ^ "\n");
+			   print ("Elab_atpat.longcon = " ^ Ident.pr_longid longid ^ "\n");
+			   print ("with type scheme : \n");
+			   (pr_st o TypeScheme.layout)sigma;
+			   print "The Context is: \n";
+			   (pr_st o C.layout)C;
+			   raise TypeScheme.InstanceError (s^ "[elab_atpat.longcon]"))
+
                       val (tau', i') =
                         if isConsType tau then
                           (tau, okConv i)
@@ -1815,7 +1837,16 @@ old*)
                   let
                     val new = Type.fresh_normal ()
                     val arrow = Type.mk_Arrow(tau', new) 
-                    val (tau1,instances) = TypeScheme.instance'' sigma
+                    val (tau1,instances) = (TypeScheme.instance'' sigma)
+		      handle TypeScheme.InstanceError s =>
+			(print ("InstanceError." ^ s ^ "\n");
+			 print ("Elab_pat.longcon = " ^ Ident.pr_longid longid ^ "\n");
+			 print ("with type scheme : \n");
+			 (pr_st o TypeScheme.layout)sigma;
+			 print "The Context is: \n";
+			 (pr_st o C.layout)C;
+			 raise TypeScheme.InstanceError (s^ "[elab_pat.longcon]"))
+
                     val (S1, i') = UnifyWithTexts("argument to long value constructor \
 		                                  \in pattern suggests constructor type",
 		                                  arrow, 
@@ -1849,25 +1880,6 @@ old*)
                     )
                   end
 
-(***KEVIN's idea for expressions as patterns:
-
-              | Some(VE.LONGVAR sigma) =>
-                  let
-                    val new = Type.fresh_normal ()
-                    val arrow = Type.mk_Arrow(new, tau')
-                    val tau = TypeScheme.instance sigma
-                    val (S1, i') = Unify(arrow,tau,i)
-                  in
-                    (S1 oo S,
-                    (S1 onVE VE, S1 on new),
-                     OG.CONSpat(i', OG.OP_OPT(longid, withOp),
-                                    out_atpat
-                               )
-                    )
-                  end
-
-***)
-
               | _ => (* Mark the error. *)
                   (Substitution.bogus,
                    (VE, Type_bogus ()),
@@ -1880,16 +1892,16 @@ old*)
 
           (* Typed pattern *)                                   (*rule 42*)
         | IG.TYPEDpat(i, pat, ty) =>
-            let
-              val (S, (VE,tau), out_pat) = elab_pat(C, pat)
-              val (tau', out_ty) = elab_ty(C, ty)
-              val (S', i') = UnifyWithTexts("pattern has type", tau, "which conflicts\
-                       \ with your type constraint", tau', i)
-              val S'' = S' oo S
-            in
-              (S'',
-               (S'' onVE VE, S'' on tau), OG.TYPEDpat(i', out_pat, out_ty))
-            end
+            let val (S, (VE,tau), out_pat) = elab_pat(C, pat)
+	    in case elab_ty(C, ty)
+		 of (Some tau', out_ty) =>
+		   let val (S', i') = UnifyWithTexts("pattern has type", tau, "which conflicts \
+		                                     \with your type constraint", tau', i)
+		       val S'' = S' oo S
+		   in (S'', (S'' onVE VE, S'' on tau), OG.TYPEDpat(i', out_pat, out_ty))
+		   end
+                  | (None, out_ty) => (S, (VE, tau), OG.TYPEDpat(okConv i, out_pat, out_ty))
+	    end
 
           (* Layered pattern *)                                 (*rule 43*)
         | IG.LAYEREDpat(i, IG.OP_OPT(id, withOp), None, pat) =>
@@ -1913,139 +1925,145 @@ old*)
             end
 
         | IG.LAYEREDpat(i, IG.OP_OPT(id, withOp), Some ty, pat) =>
-            let
-              val (S, (VE1, tau), out_pat) = elab_pat(C, pat)
-              val (tau', out_ty) = elab_ty(C, ty)
-              val (S', i') = UnifyWithTexts("pattern has type", tau, 
-                              "which conflicts with your constraint", tau', i)
-              val i' = addTypeInfo_VAR_PAT(i', tau') (*added, mads*)
-              val S'' = S' oo S
-              val VE2 = VE.singleton_var (id, TypeScheme.from_Type tau)
-              val intdom = EqSet.intersect (VE.dom VE1) (VE.dom VE2)
-              val VE3 = VE.plus (VE1, VE2)
-            in
-              if EqSet.isEmpty intdom then
-                (S'',
-                 (S'' onVE VE3, S'' on tau),
-                 OG.LAYEREDpat(i', OG.OP_OPT(id, withOp), Some out_ty, out_pat)
-                 )
-              else
-                (S'', 
-                 (S'' onVE VE3, S'' on tau),
-                 OG.LAYEREDpat(repeatedIdsError(i, map ErrorInfo.ID_RID (EqSet.list intdom)),
-                               OG.OP_OPT(id, withOp), Some out_ty, out_pat)
-                 )
-            end
+            let val (S, (VE1, tau), out_pat) = elab_pat(C, pat)
+	    in case elab_ty(C, ty)
+		 of (Some tau', out_ty) =>
+		   let val (S', i') = UnifyWithTexts("pattern has type", tau, 
+						     "which conflicts with your constraint", tau', i)
+		       val i' = addTypeInfo_VAR_PAT(i', tau') (*added, mads*)
+		       val S'' = S' oo S
+		       val VE2 = VE.singleton_var (id, TypeScheme.from_Type tau)
+		       val intdom = EqSet.intersect (VE.dom VE1) (VE.dom VE2)
+		       val VE3 = VE.plus (VE1, VE2)
+		   in
+		     if EqSet.isEmpty intdom then
+		       (S'',
+			(S'' onVE VE3, S'' on tau),
+			OG.LAYEREDpat(i', OG.OP_OPT(id, withOp), Some out_ty, out_pat)
+			)
+		     else
+		       (S'', 
+			(S'' onVE VE3, S'' on tau),
+			OG.LAYEREDpat(repeatedIdsError(i, map ErrorInfo.ID_RID (EqSet.list intdom)),
+				      OG.OP_OPT(id, withOp), Some out_ty, out_pat)
+			)
+		   end
+		  | (None, out_ty) => 
+		   (S, (VE1, tau), OG.LAYEREDpat(okConv i, OG.OP_OPT(id, withOp), Some out_ty, out_pat))
+	    end
 
         | IG.UNRES_INFIXpat _ =>
             impossible "elab_pat(UNRES_INFIX)"
 
     (****** types  ******)
 
-    and elab_ty (C : Context, ty : IG.ty) : (Type * OG.ty) =
+		(* elab_ty returns `None' if an error occurred when elborating the
+		 * type expression. The reason we do things this way is that
+		 * errors are dealt with in two different ways depending on the
+		 * construct the type expression is part of. *)
+
+
+    and elab_ty (C : Context, ty : IG.ty) : (Type Option * OG.ty) =
 
         case ty of
 
           (* Explicit type variable *)                          (*rule 44*)
           IG.TYVARty(i, ExplicitTyVar) =>
-            (Type.from_TyVar' 
-               (C.ExplicitTyVarEnv_lookup (C.to_U' C) ExplicitTyVar)
-               (TyVar.from_ExplicitTyVar ExplicitTyVar),
-             OG.TYVARty(okConv i, ExplicitTyVar))
+	    let val ty_opt = Some (Type.from_TyVar' 
+				   (C.ExplicitTyVarEnv_lookup (C.to_U' C) ExplicitTyVar)
+				   (TyVar.from_ExplicitTyVar ExplicitTyVar))
+	    in (ty_opt, OG.TYVARty(okConv i, ExplicitTyVar))
+	    end
 
           (* Record type *)                                     (*rule 45*)
-        | IG.RECORDty(i, None) =>
-            (Type.Unit, OG.RECORDty (okConv i, None))
+        | IG.RECORDty(i, None) =>  (Some Type.Unit, OG.RECORDty (okConv i, None))
 
           (* Record type *)
-        | IG.RECORDty(i, Some tyrow) =>
-            let
-              val (rho, out_tyrow) = elab_tyrow(C, tyrow)
-            in
-              (Type.from_RecType rho,
-               OG.RECORDty(okConv i, Some out_tyrow))
-            end
+        | IG.RECORDty(i, Some tyrow) =>  (* The error has already been reported. *)
+	   (case elab_tyrow(C, tyrow)
+	      of (Some rho, out_tyrow) => (Some (Type.from_RecType rho), OG.RECORDty(okConv i, Some out_tyrow))
+	       | (None, out_tyrow) => (None, OG.RECORDty(okConv i, Some out_tyrow)))
+
 
         (* Constructed type *)                                  (*rule 46*)
         | IG.CONty(i, ty_list, longtycon) =>
             let
-              val res_list    = map (fn ty => elab_ty (C, ty)) ty_list
-              val tau_list    = map #1 res_list
+              val res_list = map (fn ty => elab_ty (C, ty)) ty_list
+              val tau_opt_list = map #1 res_list
               val out_ty_list = map #2 res_list
+	      fun unopt_list ([],a) = Some (rev a)
+		| unopt_list (None::rest,a) = None
+		| unopt_list (Some tau::rest, a) = unopt_list (rest, tau::a)
             in
-              (case C.lookup_longtycon C longtycon of
-		 Some tystr =>
-		   let
-		     val (typeFcn, _) = TyStr.to_theta_and_VE tystr
-		     val expectedArity = TypeFcn.arity typeFcn
-		     val actualArity = List.size tau_list
-		     val _ = debug_pr_msg "elab_ty(CONty)"
-		   in
-		     if expectedArity = actualArity then
-		       (TypeFcn.apply (typeFcn, tau_list),
-			OG.CONty (okConv i, out_ty_list, longtycon))
-		     else
-		       (Type_bogus (),
-			OG.CONty (errorConv (i, ErrorInfo.WRONG_ARITY
+	      case unopt_list (tau_opt_list, [])
+		of Some tau_list =>
+		  (case C.lookup_longtycon C longtycon of
+		     Some tystr =>
+		       let
+			 val (typeFcn, _) = TyStr.to_theta_and_VE tystr
+			 val expectedArity = TypeFcn.arity typeFcn
+			 val actualArity = List.size tau_list
+			 val _ = debug_pr_msg "elab_ty(CONty)"
+		       in
+			 if expectedArity = actualArity then
+			   (Some(TypeFcn.apply (typeFcn, tau_list)),
+			    OG.CONty (okConv i, out_ty_list, longtycon))
+			   handle TypeScheme.InstanceError s => 
+			     (print ("InstanceError." ^ s ^"\n");
+			      print ("elab_ty.CONty.longtycon = " ^ IG.TyCon.pr_LongTyCon longtycon ^ "\n");
+			      print ("Arity(theta) = " ^ Int.string expectedArity ^ "\n");
+			      raise TypeScheme.InstanceError (s ^ "[elab_ty]"))
+			     
+			 else
+			   (None,
+			    OG.CONty (errorConv (i, ErrorInfo.WRONG_ARITY
 					         {expected=expectedArity,
 						  actual=actualArity}),
-			          out_ty_list, longtycon))
-		   end
-	       | None =>
-		   (Type_bogus (),
-		    OG.CONty(lookupTyConError(i, longtycon),
-			     out_ty_list, longtycon)))
+				      out_ty_list, longtycon))
+		       end
+		   | None => (None, OG.CONty(lookupTyConError(i, longtycon), out_ty_list, longtycon)))
+		 | None => (None, OG.CONty(okConv i, out_ty_list, longtycon))  
             end
 
           (* Function type *)                                   (*rule 47*)
         | IG.FNty(i, ty, ty') =>
-            let
-              val (tau , out_ty ) = elab_ty(C, ty )
-              val (tau', out_ty') = elab_ty(C, ty')
-            in
-              (Type.mk_Arrow (tau, tau'),
-               OG.FNty(okConv i, out_ty, out_ty'))
-            end
+            (case (elab_ty(C, ty ), elab_ty(C, ty'))
+	       of ((Some tau, out_ty), (Some tau', out_ty')) =>
+		 (Some (Type.mk_Arrow (tau, tau')), OG.FNty(okConv i, out_ty, out_ty'))
+		| ((_, out_ty), (_, out_ty')) => (None, OG.FNty(okConv i, out_ty, out_ty')))
 
           (* Parenthesised type *)                              (*rule 48*)
         | IG.PARty(i, ty) =>
-            let
-              val (tau, out_ty) = elab_ty(C, ty)
+            let val (tau_opt, out_ty) = elab_ty(C, ty)
             in
-              (tau, OG.PARty(okConv i, out_ty))
+              (tau_opt, OG.PARty(okConv i, out_ty))
             end
 
     (****** type rows ******)
 
-    and elab_tyrow (C : Context, tyrow : IG.tyrow)
-      : (RecType * OG.tyrow) =
+    and elab_tyrow (C : Context, IG.TYROW(i, lab, ty, tyrow_opt)) : (RecType Option * OG.tyrow) =
+      case (elab_ty(C, ty), elab_tyrow_opt(C, tyrow_opt))
+	of ((Some tau, out_ty), (Some rho', out_tyrow_opt)) => 
+	  let
+	    val (rho, i') = 
+	      if (List.member lab (Type.RecType.sorted_labs rho')) then
+		(rho', repeatedIdsError(i, [ErrorInfo.LAB_RID lab]))
+	      else (Type.RecType.add_field (lab,tau) rho', okConv i)
+	  in (Some rho, OG.TYROW(i', lab, out_ty, out_tyrow_opt))
+	  end
 
-        case tyrow of
+	 | ((None, out_ty), (Some rho', out_tyrow_opt)) =>
+	  (Some rho', OG.TYROW(okConv i, lab, out_ty, out_tyrow_opt))
 
-          (* Type row *)                                        (*rule 49*) 
-          IG.TYROW(i, lab, ty, None) =>
-            let
-              val (tau, out_ty) = elab_ty(C, ty)
-              val rho = Type.RecType.add_field (lab,tau) Type.RecType.empty
-            in
-              (rho, OG.TYROW(okConv i, lab, out_ty, None))
-            end
-
-          (* Type row *)
-        | IG.TYROW(i, lab, ty, Some tyrow) =>
-            let
-              val (tau, out_ty) = elab_ty(C, ty)
-              val (rho, out_tyrow) = elab_tyrow(C, tyrow)
-            in
-              if (List.member lab (Type.RecType.sorted_labs rho)) then
-                (rho,
-                 OG.TYROW(repeatedIdsError(i, [ErrorInfo.LAB_RID lab]),
-                          lab, out_ty, Some out_tyrow))
-              else
-                (Type.RecType.add_field (lab,tau) rho,
-                 OG.TYROW(okConv i, lab, out_ty, Some out_tyrow))
-            end
+	 | ((_, out_ty), (_, out_tyrow_opt)) => 
+	  (None, OG.TYROW(okConv i, lab, out_ty, out_tyrow_opt))
           
+      and elab_tyrow_opt(C, None) = (Some Type.RecType.empty, None)
+	| elab_tyrow_opt(C, Some tyrow) =
+	case elab_tyrow(C, tyrow)
+	  of (Some rho, out_tyrow) => (Some rho, Some out_tyrow)
+	   | (None, out_tyrow) => (None, Some out_tyrow)
+
 (**** Overloading resolution ****)  
 
 fun resolve_overloading (S : Substitution, dec : OG.dec): OG.dec =
