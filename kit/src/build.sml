@@ -7,29 +7,20 @@ in val cd = OS.FileSys.chDir
    fun mk() = (cdsrc(); CM.make())
 end;
 
-val _ =
-let
-
-  fun error s = (print "\n ** Error : "; print s; print " **\n")
+local
 
   exception Die
-  fun die s = (error s;
-	       cdsrc();
-	       print " ** Installation procedure terminated ** \n";
-	       raise Die)
+  fun die s = (print " **  DIE: Installation procedure terminated.  ** \n";
+	       cdsrc(); raise Die)
 
   (* Read characters until a newline is found. *)
   fun read_string s =
-    let
-      val ch = TextIO.inputN(TextIO.stdIn, 1)
-    in
-      if ch = "\n" then
-        s
-      else
-        read_string (s^ch)
+    let val ch = TextIO.inputN(TextIO.stdIn, 1)
+    in if ch = "\n" then s
+       else read_string (s^ch)
     end;
 
-  (* If we can't open the .config file then assume it is non existing. *)
+  (* If we can't open the .config file then assume it is non-existing. *)
   (* Assume we are in the source directory.                            *)
   fun load_config_file(file_name) =
     let
@@ -61,47 +52,43 @@ let
     
   fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
   
-  fun available_with_C_backend() =
+  fun available_with_C_backend () : bool =
     case arch_os()
       of ("X86", "Linux") => true
        | ("HPPA", "HPUX") => true
        | ("SPARC", "Solaris") => true
        | _ => false
 
-  fun warn_cross (s:string) : string option =
-    (print "Do you really want to generate code for a platform\n\
-            \different from the platform you are now working\n\
-            \on? (type yes or no) ";
-     (case (upper (read_string ""))
-	of "YES" => SOME s
-         | _ => NONE))
-
-  fun check_cross s =
-    case s
-      of "C" => if available_with_C_backend() then SOME s
-		else warn_cross s
-       | "X86" => if #1(arch_os()) = "X86" then SOME s else warn_cross s
-       | "HPPA" => if #1(arch_os()) = "HPPA" then SOME s else warn_cross s
-       | "PAML" => warn_cross s 
-       | "DUMMY" => warn_cross s
-       | _ => NONE
-
-  fun resolve_backend () =
-    let val _ = print "\nWhich platform do you want to use as target? (type\n\
-                       \HPPA, X86, C, or PaML):"
+  fun no_cross () : string =
+    (print ("\n **  ERROR: Cross compilation is possible only from the  **\n" ^
+	    " **  x86 platform to the Palm platform or with the       **\n" ^
+	    " **  DUMMY platform. Try again...                        **\n");
+     resolve_backend())
+    
+  and resolve_backend () =
+    let val _ = print "\nWhich platform do you want to use as target?\n(type \
+                       \C, HPPA, HPPAOLD, X86, PaML, or DUMMY): "
+      val s = upper (read_string "")  
     in 
-      case check_cross (upper (read_string ""))
-	of SOME "C" => (* set a symbol for the compilation manager CM *)
-	  CM.SymVal.define("KIT_TARGET_C", 1)  
-         | SOME "HPPA" => CM.SymVal.define("KIT_TARGET_HPPA", 1)
-	 | SOME "X86" => CM.SymVal.define("KIT_TARGET_X86", 1)
-	 | SOME "PAML" => CM.SymVal.define("KIT_TARGET_PAML", 1)
-	 | SOME "DUMMY" => CM.SymVal.define("KIT_TARGET_DUMMY", 1)
-	 | _ => (error "try again..."; resolve_backend())
+      case s           (* set a symbol for the compilation manager CM *)
+	of "C" => if available_with_C_backend() then (CM.SymVal.define("KIT_TARGET_C", 1); s)
+		  else (print ("\n **  ERROR: The ML Kit does not compile to C on the  **\n" ^
+			       " **  platform you are running on.                    **\n");
+			resolve_backend())
+         | "HPPA" => if #1(arch_os()) = "HPPA" then (CM.SymVal.define("KIT_TARGET_HPPA", 1); s)
+		     else no_cross()
+         | "HPPAOLD" => if #1(arch_os()) = "HPPA" then (CM.SymVal.define("KIT_TARGET_HPPA", 1); s)
+			else no_cross()
+	 | "X86" => if #1(arch_os()) = "X86" then (CM.SymVal.define("KIT_TARGET_X86", 1); s)
+		    else no_cross()
+	 | "PAML" => if #1(arch_os()) = "X86" then (CM.SymVal.define("KIT_TARGET_PAML", 1); s)
+		     else no_cross()
+	 | "DUMMY" => (CM.SymVal.define("KIT_TARGET_DUMMY", 1); s)
+	 | _ => (print "\n  ** ERROR: Platform not known! Try again...  **\n"; resolve_backend())
     end
 
   fun build_runtime(runtime_path) =
-      (print "\n ** Building runtime system **\n\n";
+      (print "\n **  Building runtime system  **\n\n";
        cd runtime_path;
        if (load_config_file("../.config") <> arch_os()) then
 	 (if OS.Process.system ("gmake clean") = OS.Process.success then ()
@@ -139,14 +126,20 @@ let
     (print "\n ** Building the ML Kit compiler **\n\n";
      CM.make())
 in
-  print "\n\n ** ML Kit with Regions installation ** \n\n";  
-  resolve_backend();
-  build_runtime("Runtime");
-  build_runtime("RuntimeWithGC");
-  build_rp2ps();
-  build_kittester();
-  save_config_file();
-  build_kit()
+  val _ = print "\n\n ** ML Kit with Regions installation ** \n\n";  
+  val backend = resolve_backend()
+  val _ = 
+    case backend
+      of "PAML" =>
+	(build_runtime("RuntimePaML");
+	 build_kit())
+       | _ => 
+	(build_runtime("Runtime");
+	 build_runtime("RuntimeWithGC");
+	 build_rp2ps();
+	 build_kittester();
+	 save_config_file();
+	 build_kit())
 end ;
 
 (* This is only temporary; 09/02/1999, Niels *)
@@ -154,47 +147,24 @@ val _ =
   let
     fun enable s = K.Flags.lookup_flag_entry s := true
     fun disable s =  K.Flags.lookup_flag_entry s := false
-    fun error s = (print "\n ** Error : "; print s; print " **\n")
-    val upper = implode o map Char.toUpper o explode
-    (* Read characters until a newline is found. *)
-    fun read_string s =
-      let
-	val ch = TextIO.inputN(TextIO.stdIn, 1)
-      in
-	if ch = "\n" then
-	  s
-	else
-	  read_string (s^ch)
-      end
-    fun choose_backend() =
-      let 
-	fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
-	val (arch,os) = arch_os()
-
-	val _ = print("\nDo you want to use the new backend?\n\
-	              \If you say yes then your previous selection is overruled.\n\
-                      \Target system is " ^ arch ^ "-" ^ os ^ " (type yes or no): ")
-	val profflags = ["region_profiling", "print_program_points",
-			 "print_call_explicit_expression", "log_to_file"]
-      in 
-	case explode (upper (read_string ""))
-	  of #"Y" :: #"E" :: #"S" :: _ => 
-	    (enable "enable_lambda_backend";
-	     disable "garbage_collection";
- 	     disable "delete_target_files";
-	     K.build_basislib();
-	     K.install())
-	   | #"N" :: #"O" :: _ => 
-	    (disable "enable_lambda_backend";
-	     disable "garbage_collection";
-	     K.build_basislib();
-	     app enable profflags;
-	     K.build_basislib();
-	     app disable profflags;
-	     K.install())
-	   | _ => (error "you must type yes or no"; 
-		   choose_backend())
-      end
-  in
-    choose_backend()
+    val profflags = ["region_profiling", "print_program_points",
+		     "print_call_explicit_expression", "log_to_file"]
+    fun treat_as_old "HPPAOLD" = true
+      | treat_as_old "C" = true
+      | treat_as_old _ = false
+  in 
+    if treat_as_old backend then
+      (disable "enable_lambda_backend";
+       disable "garbage_collection";
+       K.build_basislib();
+       app enable profflags;
+       K.build_basislib();
+       app disable profflags;
+       K.install())
+    else 
+      (enable "enable_lambda_backend";
+       disable "garbage_collection";
+       disable "delete_target_files";
+       K.build_basislib();
+       K.install())
   end;
