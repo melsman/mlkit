@@ -1,4 +1,5 @@
 local
+  ../sml/Quot.sml
   local
     ../sml/NsBasics.sml
     ../sml/NS_SET.sml
@@ -65,6 +66,9 @@ in
   cookie.sml
   cookie_set.sml
   cookie_delete.sml
+
+  formvar.sml
+  formvar_chk.sml
 
   auth/auth.sml
   auth/auth_form.sml

@@ -39,6 +39,10 @@ structure Ns :> NS =
 	fun formvar s = case getQuery()
 			  of SOME set => Set.get(set,s)
 			   | NONE => NONE
+	fun formvarAll s = 
+	  case getQuery()
+	    of SOME set => Set.getAll(set,s)
+	  | NONE => []
 	fun headers() : set =
 	  prim("Ns_ConnHeaders", "Ns_ConnHeaders", getConn())
 
@@ -220,19 +224,15 @@ structure Ns :> NS =
 
     structure Info : NS_INFO = NsInfo
 
-    type quot = string frag list
-    fun quotToString (q : quot) : string =
-      concat(map (fn QUOTE s => s | ANTIQUOTE s => s) q)
-    val op ^^ : quot * quot -> quot = op @
-
+    type quot = Quot.quot
     fun return (q : quot) : status =
-      Conn.returnHtml(200, quotToString q)
+      Conn.returnHtml(200, Quot.toString q)
 
     fun returnRedirect(s : string) : status =
       Conn.returnRedirect s      
 
     fun write (q : quot) : status = 
-      Conn.puts (quotToString q)
+      Conn.puts (Quot.toString q)
 
     fun returnHeaders () : unit =
       Conn.setRequiredHeaders("text/html", 0)
@@ -307,5 +307,3 @@ structure Ns :> NS =
 			       structure Info = Info)
   end
 
-infixr 5 ^^
-val op ^^ = Ns.^^

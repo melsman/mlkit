@@ -2,17 +2,17 @@ fun redirect() =
   (Ns.returnRedirect "http://localhost:8005/auth/auth_form.sml"; Ns.exit())
 
 val target =
-  case FormVar.getString "target" of
+  case FormVar.wrapOpt FormVar.getStringErr "target" of
     NONE => redirect()
   | SOME t => t
 
 val al =
-  case FormVar.getString "auth_login" of
+  case FormVar.wrapOpt FormVar.getStringErr "auth_login" of
     NONE => redirect()
   | SOME al => al
 
 val ap =
-  case FormVar.getString "auth_password" of
+  case FormVar.wrapOpt FormVar.getStringErr "auth_password" of
     NONE => redirect()
   | SOME ap => ap
 

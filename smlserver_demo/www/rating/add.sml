@@ -2,7 +2,7 @@
    * or (2) form variables name and year are present *)
 
   val (wid, name, year) =
-    case FormVar.getNat "wid" of 
+    case FormVar.wrapOpt FormVar.getNatErr "wid" of 
       SOME wid =>   (* get name and year *)
 	let val wid = Int.toString wid
 	    val query = 
@@ -13,9 +13,9 @@
 	| _ => raise Fail "add.sml"       
 	end
     | NONE => 
-	let val name = FormVar.getStringOrFail "name" 
+	let val name = FormVar.wrapFail FormVar.getStringErr ("name","name of wine")
 	    val year = 
-	      FormVar.getIntRangeOrFail 0 3000 "year"
+	      FormVar.wrapFail (FormVar.getIntRangeErr 0 3000) ("year", "year of wine")
 	    val year = Int.toString year
 	    val query = 
 	      `select wid from wine 

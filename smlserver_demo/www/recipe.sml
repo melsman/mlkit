@@ -2,7 +2,7 @@ fun returnPage title body =
   (Ns.return `<html>
 	      <head><title>^title</title></head>
 	      <body bgcolor=white><h2>^title</h2>
-		 ^(Ns.quotToString body)
+		 ^(Quot.toString body)
                  <hr> <i>Served by SMLserver</i>
 	      </body>
 	      </html>`;
@@ -13,7 +13,7 @@ fun error s = returnPage ("Error: " ^ s)
    you; use your browser's back-button to back-up 
    and enter a number in the form.`
 
-val persons = case FormVar.getNat "persons"
+val persons = case FormVar.wrapOpt FormVar.getNatErr "persons"
 		of SOME n => real n
 		 | NONE => error "You must type a number"
 

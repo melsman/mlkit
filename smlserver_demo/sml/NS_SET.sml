@@ -5,6 +5,9 @@ signature NS_SET =
     (* get the first value associated with key, if present *)
     val get : set * string -> string option
     val getOpt : set * string * string -> string
+      
+    (* get all values associated with key, if present *)
+    val getAll : set * string -> string list
 
     (* Return the current size of a set *)
     val size : set -> int
