@@ -1,8 +1,5 @@
 -- $Id$
 
--- this sequences is used by the function scs.new_obj_id
--- to create unique ids throughout the database
-create sequence scs_object_id_seq start with 50000;
 
 
 ------------------------------------

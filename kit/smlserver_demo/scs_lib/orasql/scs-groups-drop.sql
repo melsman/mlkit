@@ -17,4 +17,3 @@ drop table scs_grp_composition_rels;
 drop table scs_groups;
 drop table scs_grp_types;
 
-drop function scs_grp_contains_p;

@@ -4,6 +4,8 @@
    package scs_test
 
    History:
+   041202 Kennie Nybo Pontoppidan <kennie@it-c.dk> added truncation in print 
+						   functions
    141102 Kennie Nybo Pontoppidan <kennie@it-c.dk> Added comments
    171002 Niels Hallenberg <nh@it.edu> Created package
 ====================================================================== */
@@ -13,6 +15,8 @@ as
      procedure print
      ---------------
      prints a string on the screen (no new line)
+
+     don't print if the buffer is bigger than 255 characters
   */
   procedure print (
     s varchar2
@@ -22,6 +26,8 @@ as
      procedure printl
      ----------------
      prints a string on the screen (with new line)
+
+     truncates if the string is bigger than 255 characters
   */
   procedure printl (
     s varchar2
@@ -102,12 +108,21 @@ show errors
 ====================================================================== */
 create or replace package body scs_test
 as
+  function cut( s varchar2, max_length integer ) return varchar2
+  is
+  begin
+    return substr( s, 1, scs_math.min(max_length,length(s)) );
+  end cut;
+
   procedure print (
     s varchar2
   )
   is
   begin
     dbms_output.put( s );
+  exception 
+    when others then
+      return ;
   end print;
 
   procedure printl (
@@ -115,7 +130,7 @@ as
   )
   is
   begin
-    dbms_output.put_line( s );
+    dbms_output.put_line( cut( s, 255) );
   end printl;
 
   procedure testBool(
@@ -154,7 +169,8 @@ as
       printl( 'ok: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLCODE || ']');
     when others then
       if all_exns = 'f' then
-        printl( 'error: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLERRM || ']');
+        printl( 'error: ' || testname || ' testcase ' || 
+		to_char(testcase) || '[' || SQLERRM || ']' );
       else
         printl( 'ok: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLCODE || ']');
       end if;

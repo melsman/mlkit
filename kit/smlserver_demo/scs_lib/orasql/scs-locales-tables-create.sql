@@ -66,6 +66,8 @@ comment on table scs_locales is ' An SCS locale is identified by a
   code mime_charset is IANA charset name nls_charset is Oracle charset
   name ';
 
+-- need to create package now, functions are needed below
+@scs-locales-packages-create;
 
 /* 
 ======================================================================

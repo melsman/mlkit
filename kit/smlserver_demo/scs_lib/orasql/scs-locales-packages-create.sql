@@ -54,8 +54,11 @@ as
      function getText
      -------------------
      returns the text in language 'language' for text_id.
-     Throws a ScsDbExn exception if 'language' is illegal 
-     or if no text exists in language 'language'
+     
+     Throws a ScsDbExn exception if 
+        'language' is illegal 
+     or 
+        no text exists in language 'language'
   */  
   function getText(
     text_id in scs_texts.text_id%TYPE,
