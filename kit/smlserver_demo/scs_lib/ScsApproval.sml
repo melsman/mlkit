@@ -110,10 +110,15 @@ structure ScsApproval :> SCS_APPROVAL =
             where on_what_table = ^(Db.qqq on_what_table)
               and on_which_id = ^(Int.toString on_which_id)
             order by created_on_t desc`
-	val approve_dict = [(ScsLang.da,`Godkendt af %0`),(ScsLang.en,`Approved by %0`)]
+
+(* KNP 230403
+	val approve_dict = []
+[(ScsLang.da,`Godkendt af %0`),(ScsLang.en,`Approved by %0`)]
+*)
 	val decline_dict = [(ScsLang.da,`Afvist af %0`),(ScsLang.en,`Declined by %0`)]
 	fun decision_text decision_p name =
-	  (if decision_p = "t" then ScsDict.sl approve_dict else ScsDict.sl decline_dict) [name]
+	  if decision_p = "t" then (*ScsDict.sl approve_dict*) ""
+          else ScsDict.sl decline_dict [name]
 	val xs = 
 	  ScsError.wrapPanic
 	  (Db.list (fn g =>
