@@ -714,8 +714,9 @@ old*)
 	     None => die "CompileExp resolve 1"
 	   | Some (OverloadingInfo.RESOLVED_INT) => 0
 	   | Some (OverloadingInfo.RESOLVED_REAL) => 1
-	   | Some (OverloadingInfo.UNRESOLVED _) => 
-	       die "CompileExp resolve unresolved")
+	   | Some (OverloadingInfo.UNRESOLVED _) => die "resolve: unresolved"
+	   | Some _ => die "resolve: OverloadingInfo.RESOLVED_CHAR etc. \
+	                   \ not implemented  25/06/1997 10:52. tho.")
 
     local 
       (* No of arguments for applied occurrences of overloaded variable 

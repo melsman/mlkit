@@ -95,4 +95,133 @@ You may not rebind `true', `false', `nil', `::', or `ref'.
 
 cute.
 *)
+(*
+signature s = sig
+		exception it of bool
+	      end
+
+gives
+
+                  exception it of bool
+                            ^^^^^^^^^^
+You may not specify `it' as a constructor.
+*)
+(*
+signature s = sig
+		exception it of bool
+		exception it of bool
+	      end
+
+	    gives
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 110, column 16:
+                  exception it of bool
+                  ^^^^^^^^^^^^^^^^^^^^
+                  exception it of bool
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Repeated identifier it.
+
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 110, column 26:
+                  exception it of bool
+                            ^^^^^^^^^^
+You may not specify `it' as a constructor.
+
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 111, column 26:
+                  exception it of bool
+                            ^^^^^^^^^^
+You may not specify `it' as a constructor.
+
+
+*)
+(*
+signature s = sig
+		val t : bool
+		datatype it (*legal*) = true | FALSE
+	      end
+
+gives
+
+                  datatype it (*legal*) = true | FALSE
+                                          ^^^^^^^^^^^^
+You may not specify `true', `false', `nil', `::', or `ref'.
+*)
+(*
+signature s = sig
+		val t : bool
+		datatype it (*legal*) = true | it
+	      end
+	    
+
+gives
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 153, column 40:
+                  datatype it (*legal*) = true | it
+                                          ^^^^^^^^^
+You may not specify `true', `false', `nil', `::', or `ref'.
+
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 153, column 47:
+                  datatype it (*legal*) = true | it
+                                                 ^^
+You may not specify `it' as a constructor.
+*)
+(*
+signature s = sig
+		val t : bool
+		val true : bool
+	      end
+
+	    gives
+
+                  val true : bool
+                      ^^^^^^^^^^^
+You may not specify `true', `false', `nil', `::', or `ref'.
+*)
+(*
+signature s = sig
+		type t
+		val :: : t
+	      end
+
+	   gives
+
+                  val :: : t
+                      ^^^^^^
+You may not specify `true', `false', `nil', `::', or `ref'.
+*)
+(*
+signature s = sig
+		type ref
+		type t
+		val ref : t
+	      end
+
+gives
+
+                  val ref : t
+                      ^^^^^^^
+You may not specify `true', `false', `nil', `::', or `ref'.
+*)
+(*
+signature s = sig
+		exception false
+		type t
+		val nil : t
+	      end
+
+gives
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 208, column 26:
+                  exception false
+                            ^^^^^
+You may not specify `true', `false', `nil', `::', or `ref'.
+
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 210, column 20:
+                  val nil : t
+                      ^^^^^^^
+You may not specify `true', `false', `nil', `::', or `ref'.
+*)
 
