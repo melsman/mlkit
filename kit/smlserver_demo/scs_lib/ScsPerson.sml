@@ -10,6 +10,10 @@ signature SCS_PERSON =
        identified by user_id. Returns "" if no email exists. *)
     val email : int -> string
 
+    (* [nameToHtml name email] returns HTML for a name linking to
+        email *)
+    val nameToHtml : string * string -> string
+
     (* [search_form target_url hvs] generates a standard HTML search
        form. The user enter a search expression (e.g., name, security
        id) and either
@@ -68,6 +72,9 @@ structure ScsPerson :> SCS_PERSON =
       Db.oneField `select scs_party.email(^(Int.toString user_id))
                      from dual`
       handle Fail _ => ""
+
+    fun nameToHtml (name,email) = Quot.toString
+      `<a href="mailto:^(email)">^(name)</a>`
 
     fun search_form target_url hvs =
       ScsWidget.formBox "/scs/person/person_search.sml" 
