@@ -19,7 +19,6 @@ val this_url = Html.genUrl "/scs/admin/role/edit_role.sml" [
 
 val body = 
   let
-    val first : UcsAdm.role_rel_record  = (hd role_rels)
     fun fn_row bgcolor (role_rel:UcsAdm.role_rel_record) =
       let
         val name = UcsWidget.valOfString (#name_opt role_rel)

@@ -68,8 +68,14 @@ email: ^(ScsPersonData.email(ScsLogin.user_id()))
 	val title = case ScsLogin.user_lang() of
 	    ScsLang.en => "System Error"
 	  | ScsLang.da => "Systemfejl"
+	val fvs  = map (fn (n,v)=> `
+	  name=^n, value=^v`) (
+	    case Ns.Conn.getQuery() of 
+	      NONE => []
+	    | SOME s => Ns.Set.list s
+ 	  )
       in
-	(logError emsg;
+	(logError (emsg ^^ (foldl op^^ `` fvs));
 	 emailError emsg;
 	 ScsPage.returnPg title msg;
 	 Ns.exit())
