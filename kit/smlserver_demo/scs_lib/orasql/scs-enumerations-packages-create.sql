@@ -671,7 +671,7 @@ as
     language    in scs_lang.language%TYPE
   ) return varchar2
   is
-    v_text varchar2(200);
+    v_text varchar2(4000);
   begin
     select scs_text.getText(getTID(vidToText.val_id),vidToText.language)
       into v_text

@@ -145,6 +145,143 @@ structure Html :> HTML =
 	    | encode c    = String.str c
       in Quot.translate encode q end
 
-  end
+    fun convertTags (text:string) =
+      let
+	val ltList = [#"<"]
+	val newline = #"\n"
+	val space = #" "
+	val star = #"*"
+        fun parseTag (text,stack:(char list),remove_p) = 
+          let
+            val replaceLT = (rev(ltList @ ((tl o rev) stack))) 
+            val removeLT = (rev(((tl o rev) stack))) 
+	  in 
+            case (Substring.getc text) of
+	      SOME(c,rest) => ( case (Char.toLower c) of
+		  #"b"  => ( case (Substring.getc rest) of
+  	              SOME(c1,rest1) => ( case (Char.toLower c1) of
+		          #">"  => ( rest1, removeLT )
+		        | #"r"  => ( case (Substring.getc rest1) of
+			      SOME(c2,rest2) => ( case c2 of
+			        #">"  => ( rest2, if remove_p then removeLT else newline::removeLT )
+			        | other => ( rest2, other::c1::c::replaceLT )
+			      )
+			      | NONE => ( rest1, c1::c::replaceLT )
+                          )
+		        | other => ( rest1, other::c::replaceLT )
+                      )
+ 		    | NONE => ( rest, c::replaceLT )
+                  )
+		| #"e"  => ( case (Substring.getc rest) of
+  	              SOME(c1,rest1) => ( case (Char.toLower c1) of
+		        #"m"  => ( case (Substring.getc rest1) of
+			  SOME(c2,rest2) => ( case c2 of
+			    #">"  => ( rest2, removeLT )
+			  | other => ( rest2, other::c1::c::replaceLT )
+			  )
+			| NONE => ( rest1, c1::c::replaceLT )
+                        )
+		      | other => ( rest1, other::c::replaceLT )
+                      )
+ 		    | NONE => ( rest, c::replaceLT )
+                  )
+		| #"i"  => ( case (Substring.getc rest) of
+  	              SOME(c1,rest1) => ( case c1 of
+		        #">"  => ( rest1, removeLT )
+		      | other => ( rest1, other::c::replaceLT )
+                      )
+ 		    | NONE => ( rest, c::replaceLT )
+		  )
+		| #"l"  => ( case (Substring.getc rest) of
+  	              SOME(c1,rest1) => ( case (Char.toLower c1) of
+		        #"i"  => ( case (Substring.getc rest1) of
+			  SOME(c2,rest2) => ( case c2 of
+			    #">"  => ( rest2, if remove_p then removeLT else space::star::space::space::newline::removeLT )
+			  | other => ( rest2, other::c1::c::replaceLT )
+			  )
+			| NONE => ( rest1, c1::c::replaceLT )
+                        )
+		      | other => ( rest1, other::c::replaceLT )
+                      )
+ 		    | NONE => ( rest, c::replaceLT )
+                  )
+		| #"o"  => ( case (Substring.getc rest) of
+  	              SOME(c1,rest1) => ( case (Char.toLower c1) of
+		        #"l"  => ( case (Substring.getc rest1) of
+			  SOME(c2,rest2) => ( case c2 of
+			    #">"  => ( rest2, removeLT )
+			  | other => ( rest2, other::c1::c::replaceLT )
+			  )
+			| NONE => ( rest1, c1::c::replaceLT )
+                        )
+		      | other => ( rest1, other::c::replaceLT )
+                      )
+ 		    | NONE => ( rest, c::replaceLT )
+                  )
+		| #"p"  => ( case (Substring.getc rest) of
+  	              SOME(c1,rest1) => ( case c1 of
+		        #">"  => ( rest1, newline::removeLT )
+		      | other => ( rest1, other::c::replaceLT )
+                      )
+ 		    | NONE => ( rest, c::replaceLT )
+		  )
+		| #"t"  =>  ( case (Substring.getc rest) of
+  	              SOME(c1,rest1) => ( case (Char.toLower c1) of
+		        #"t"  => ( case (Substring.getc rest1) of
+			  SOME(c2,rest2) => ( case c2 of
+			    #">"  => ( rest2, removeLT )
+			  | other => ( rest2, other::c1::c::replaceLT )
+			  )
+			| NONE => ( rest1, c1::c::replaceLT )
+                        )
+		      | other => ( rest1, other::c::replaceLT )
+                      )
+ 		    | NONE => ( rest, c::replaceLT )
+                  )
+		| #"u"  =>  ( case (Substring.getc rest) of
+  	              SOME(c1,rest1) => ( case (Char.toLower c1) of
+		        #"l"  => ( case (Substring.getc rest1) of
+			  SOME(c2,rest2) => ( case c2 of
+			    #">"  => ( rest2, removeLT )
+			  | other => ( rest2, other::c1::c::replaceLT )
+			  )
+			| NONE => ( rest1, c1::c::replaceLT )
+                        )
+		      | other => ( rest1, other::c::replaceLT )
+                      )
+ 		    | NONE => ( rest, c::replaceLT )
+                  )
+                | other => ( rest, c::replaceLT )
+              )
+              | NONE => ( text, replaceLT )
+          end
+
+        fun parseHTML (substr) (acc:(char list)) = case (Substring.getc substr) of
+            SOME(c,rest) => (case c of
+		#"<" => ( case (Substring.first rest) of
+                    SOME c1 => 
+		      let 
+                        val (rest1, stack) = 
+			  if c1 = #"/" then 
+                            let val (c1,rest1)= (valOf o Substring.getc) rest 
+			    in  parseTag (rest1,[c],true) end
+			else 
+			  parseTag (rest,[c],false)
+                      in 			
+			parseHTML rest1 (stack@acc)
+		      end
+
+                  | NONE => parseHTML rest ( (rev ltList) @ acc )
+                )
+	      | other => parseHTML rest ( other::acc )
+
+            )
+	  | NONE => implode (rev acc) 
+      in
+        parseHTML (Substring.all text) []
+      end
+
+
+  end (* of structure *)
 
 

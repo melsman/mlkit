@@ -121,6 +121,9 @@ signature HTML =
     (* HTML encoding  *)
     val urlencode  : string -> string
     val htmlencode : quot -> quot
+
+    (* HTML converter *)
+    val convertTags : string -> string
 end
 
 (* 
@@ -327,4 +330,17 @@ end
    [htmlencode s] returns the html-encoding of s.  That is, < and >
    are replaced by &lt; and &gt; respectively, and & is replaced by 
    &amp;
+
+
+   [convertTags text] returns a string where the tags
+	  <b>, </b>, <br>, </br>, <em>, </em>, <i>, </i>, <li>, </li>, 
+	  <ol>, </ol>, <p>, </p>, <tt>, </tt>, <ul>, </ul>
+	are converted as follows
+
+	  <b>, </b>, <em>, </em>, <i>, </i>, <tt>, </tt>,
+	  </br>, </p>, </li>, </ul>, </ol>		 -> ""
+	  <br>, <p>		  			 -> "\n"
+	  <li>, 					 -> "\n  * "
+	  <ol>, <ul>					 -> ""
+
 *)
