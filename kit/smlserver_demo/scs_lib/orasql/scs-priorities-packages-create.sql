@@ -187,8 +187,8 @@ as
   begin
     select on_what_parent_table, on_which_parent_id, 
 	   on_what_child_table, priority 
-      into priority1, on_what_parent_table1, on_which_parent_id1, 
-	   on_what_child_table1 
+      into on_what_parent_table1, on_which_parent_id1, 
+	   on_what_child_table1, priority1 
       from scs_priority_rels
      where rel_id = increasePriority.rel_id;
 
@@ -226,8 +226,8 @@ as
   begin
     select on_what_parent_table, on_which_parent_id, 
 	   on_what_child_table, priority 
-      into priority1, on_what_parent_table1, on_which_parent_id1, 
-	   on_what_child_table1 
+      into on_what_parent_table1, on_which_parent_id1, 
+	   on_what_child_table1, priority1
       from scs_priority_rels
      where rel_id = decreasePriority.rel_id;
 

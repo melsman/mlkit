@@ -29,7 +29,7 @@ structure ScsData :> SCS_DATA =
 
     local 
       fun gToTemplate g field_name fromString_fn = 
-        ScsError.valOf (fromString_fn (g field_name))
+        ScsError.valOf' "ScsData.gToTemplate" (fromString_fn (g field_name))
     in
       fun gToInt g field_name = gToTemplate g field_name Int.fromString
       fun gToReal g field_name = gToTemplate g field_name Real.fromString
