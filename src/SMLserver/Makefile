@@ -1,7 +1,8 @@
 #
 # The home of AOLserver
 #
-NSHOME ?= /home/mael/aol32-src/root/aolserver
+#NSHOME ?= /home/mael/aol32-src/root/aolserver
+NSHOME ?= /usr/local/aolserver
 
 #
 # Module name
