@@ -1,9 +1,6 @@
-(*ErrorInfo is part of the ElabInfo.  See ELAB_INFO for an
- overview of the different kinds of info.*)
-
-(*$ERROR_INFO*)
-
-signature ERROR_INFO =
+(*$ERROR_INFO: ERROR_CODE*)
+signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_INFO for an
+				* overview of the different kinds of info.*)
   sig
     type TyName
     type TyVar
@@ -81,4 +78,7 @@ signature ERROR_INFO =
 
     type Report
     val report : ErrorInfo -> Report
+
+    structure ErrorCode : ERROR_CODE      (* Support for error testing and handling. *)
+      sharing type ErrorCode.ErrorInfo = ErrorInfo
   end;
