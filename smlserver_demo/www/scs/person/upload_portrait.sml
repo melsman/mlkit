@@ -2,7 +2,7 @@ val user_id = ScsLogin.auth()
 
 val (mode,errs) = (* Default mode is upload *)
   ScsFormVar.wrapMaybe_nh "upload" 
-  (ScsFormVar.getEnumErr ["upload","rotate"]) ("mode","mode",ScsFormVar.emptyErr)
+  (ScsFormVar.getEnumErr ["upload","rotate","delete"]) ("mode","mode",ScsFormVar.emptyErr)
 val (person_id,errs) = ScsPerson.getPersonIdErr("person_id",errs)
 val _ = ScsFormVar.anyErrors errs
 
@@ -10,6 +10,18 @@ val (per_opt,errs) = ScsPerson.getPersonErr (person_id,ScsFormVar.emptyErr)
 val _ = ScsFormVar.anyErrors errs
 val per = ScsError.valOf per_opt (* We now know for sure, that there is a person *)
 val priv = ScsPerson.uploadPortraitPriv (user_id,per)
+
+fun delPortrait db (p:ScsPerson.portrait_record option) =
+  case p of
+    NONE => ()
+  | SOME p => ScsPerson.delPortrait db p
+      
+fun delPortraitFS db priv (p:ScsPerson.portrait_record option) = 
+  (* Suppress all errors, e.g., priviledges, file not found *)
+  case p of
+    NONE => ()
+  | SOME p => 
+      (ScsFileStorage.delFileErr db ScsPerson.upload_root_label (priv,#file_id p,ScsFormVar.emptyErr);())
 
 fun getFormat filename =
   let
@@ -25,7 +37,9 @@ val files_to_delete_on_error = ref []
 fun addFileToDeleteOnError f = files_to_delete_on_error := f :: (!files_to_delete_on_error)
 
 val _ =
-  if ScsList.contains priv [ScsFileStorage.read,ScsFileStorage.no_priv] then
+  (* Access control *)
+  if ScsList.contains priv [ScsFileStorage.no_priv,ScsFileStorage.read] orelse
+    (mode = "delete" andalso priv = ScsFileStorage.read_add) then
     ScsFormVar.anyErrors
     (ScsFormVar.addErr(ScsDict.s' [(ScsLang.da,`Du har ikke rettigheder til at rette billede for
 				    ^(#name per).`),
@@ -33,7 +47,28 @@ val _ =
 		       ScsFormVar.emptyErr)) (* Return if no priviledges to upload pictures. *)
   else
     case mode of
-      "rotate" => 
+      "delete" => 
+	let
+	  (* Look for pictures to delete. *)
+	  val portraits = ScsPerson.getPortraits person_id
+	  val pic_thumb_opt = ScsPerson.getPicture ScsPerson.thumb_fixed_height false portraits
+	  val pic_orig_opt = ScsPerson.getPicture ScsPerson.original false portraits
+
+	  fun delete db =
+	    let
+	      (* Delete pictures from scs_portraits *)
+	      val _ = delPortrait db pic_thumb_opt
+	      val _ = delPortrait db pic_orig_opt
+	      (* Delete pictures from FS - suppress errors *)
+	      val _ = delPortraitFS db priv pic_thumb_opt
+	      val _ = delPortraitFS db priv pic_orig_opt
+	    in
+	      ()
+	    end
+	in
+	  ScsError.wrapPanic Db.Handle.dmlTrans delete
+	end
+    | "rotate" => 
 	let
 	  val (direction_opt,errs) = ScsPicture.getDirectionErr("direction",ScsFormVar.emptyErr)
 	  val _ = ScsFormVar.anyErrors errs
@@ -149,16 +184,6 @@ val _ =
 	    let
 	      val folder_id = ScsPerson.getOrCreateUploadFolderId(db,per)
 		
-	      fun delPortrait (p:ScsPerson.portrait_record option) =
-		case p of
-		  NONE => ()
-		| SOME p => ScsPerson.delPortrait db p
-		    
-	      fun delPortraitFS (p:ScsPerson.portrait_record option) = 
-		case p of
-		  NONE => ()
-		| SOME p => ScsFileStorage.delFile db ScsPerson.upload_root_label (priv,#file_id p)
-		    
 	      (* Save uploaded picture in temporary directory. *)
 	      val unique_id = ScsDb.newObjIdDb db
 	      val filename = (Int.toString unique_id) ^ "-" ^ filename
@@ -199,8 +224,8 @@ val _ =
 	      (* Now we have the two pictures, so we move on inserting them into FS *)
 	      (* Delete old pictures from scs_portraits *)
 	      val old_portraits = ScsPerson.getPortraits person_id
-	      val _ = delPortrait (ScsPerson.getPicture ScsPerson.thumb_fixed_height false old_portraits)
-	      val _ = delPortrait (ScsPerson.getPicture ScsPerson.original false old_portraits)
+	      val _ = delPortrait db (ScsPerson.getPicture ScsPerson.thumb_fixed_height false old_portraits)
+	      val _ = delPortrait db (ScsPerson.getPicture ScsPerson.original false old_portraits)
 
 	      (* Upload original picture *)
 	      val (file_id,phys_file_fs_orig,errs) = 
@@ -247,9 +272,9 @@ val _ =
 	      val _ = ScsPerson.insPortrait db thumb_pic
 
 	      (* No error has happened, so we continue cleaning up *)
-	      (* Delete old pictures from FS if they exists - both DB and file system *)
-	      val _ = delPortraitFS (ScsPerson.getPicture ScsPerson.thumb_fixed_height false old_portraits)
-	      val _ = delPortraitFS (ScsPerson.getPicture ScsPerson.original false old_portraits)
+	      (* Delete old pictures from FS if they exists - both DB and file system - suppress errors *)
+	      val _ = delPortraitFS db priv (ScsPerson.getPicture ScsPerson.thumb_fixed_height false old_portraits)
+	      val _ = delPortraitFS db priv (ScsPerson.getPicture ScsPerson.original false old_portraits)
 	    in
 	      [orig_filename_tmp,orig_tmp,thumb_tmp] (* Tmp-files to delete when no errors happen. *)
 	    end
