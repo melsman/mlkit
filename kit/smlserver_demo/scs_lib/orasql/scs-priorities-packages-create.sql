@@ -40,6 +40,14 @@ as
     rel_id2	in scs_priority_rels.rel_id%TYPE
   ) ;
 
+  procedure increasePriority(
+    rel_id	in scs_priority_rels.rel_id%TYPE
+  ) ;
+
+  procedure decreasePriority(
+    rel_id	in scs_priority_rels.rel_id%TYPE
+  ) ;
+
 end scs_priority;
 /
 show errors
@@ -136,8 +144,8 @@ as
     -- NB (knp) this is the nice way to do it: 
     --   update scs_priority_rels
     --   set priority = 
-    --     case when rel_id = swapPriorities.rel_id1 then swapPriorities.ordering2
-    --          when rel_id = swapPriorities.rel_id2 then swapPriorities.ordering1
+    --     case when rel_id = swapPriorities.rel_id1 then swapPriorities.priority2
+    --          when rel_id = swapPriorities.rel_id2 then swapPriorities.priority1
     --     end 
     --   where rel_id in (rel_id1, rel_id2);
     --
@@ -164,6 +172,84 @@ as
         scs.ScsDbExn, 'scs_priority.swapPriorities: rel_ids ' || rel_id1 || 
 		      ',' || rel_id2 || 'must belong to same the enumeration');
   end swapPriorities;
+
+
+  procedure increasePriority(
+    rel_id	in scs_priority_rels.rel_id%TYPE
+  )
+  is
+    priority1			integer;
+    on_what_parent_table1	varchar2(100);
+    on_which_parent_id1		integer;
+    on_what_child_table1	varchar2(100);
+    priority2			integer;
+    rel_id2			integer;
+  begin
+    select on_what_parent_table, on_which_parent_id, 
+	   on_what_child_table, priority 
+      into priority1, on_what_parent_table1, on_which_parent_id1, 
+	   on_what_child_table1 
+      from scs_priority_rels
+     where rel_id = increasePriority.rel_id;
+
+    select max(priority) into priority2
+      from scs_priority_rels
+     where on_what_parent_table = on_what_parent_table1
+       and on_which_parent_id = on_which_parent_id1
+       and on_what_child_table = on_what_child_table1
+       and priority < priority1;
+
+    select rel_id into rel_id2
+      from scs_priority_rels
+     where priority = priority2
+       and on_what_parent_table = on_what_parent_table1
+       and on_which_parent_id = on_which_parent_id1
+       and on_what_child_table = on_what_child_table1;
+
+    swapPriorities(rel_id, rel_id2);
+
+  exception
+    when NO_DATA_FOUND then return ;
+  end increasePriority;
+
+
+  procedure decreasePriority(
+    rel_id	in scs_priority_rels.rel_id%TYPE
+  )
+  is
+    priority1			integer;
+    on_what_parent_table1	varchar2(100);
+    on_which_parent_id1		integer;
+    on_what_child_table1	varchar2(100);
+    priority2			integer;
+    rel_id2			integer;
+  begin
+    select on_what_parent_table, on_which_parent_id, 
+	   on_what_child_table, priority 
+      into priority1, on_what_parent_table1, on_which_parent_id1, 
+	   on_what_child_table1 
+      from scs_priority_rels
+     where rel_id = decreasePriority.rel_id;
+
+    select min(priority) into priority2
+      from scs_priority_rels
+     where on_what_parent_table = on_what_parent_table1
+       and on_which_parent_id = on_which_parent_id1
+       and on_what_child_table = on_what_child_table1
+       and priority > priority1;
+
+    select rel_id into rel_id2
+      from scs_priority_rels
+     where priority = priority2
+       and on_what_parent_table = on_what_parent_table1
+       and on_which_parent_id = on_which_parent_id1
+       and on_what_child_table = on_what_child_table1;
+
+    swapPriorities(rel_id, rel_id2);
+
+  exception
+    when NO_DATA_FOUND then return ;
+  end decreasePriority;
 
 end scs_priority;
 /
