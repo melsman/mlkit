@@ -1,4 +1,7 @@
-ML Kit NEWS file                                       October, 2001
+ML Kit NEWS file                                       November, 2001
+
+ * mael 2001-11-20: Better reporting of garbage collection statistics
+   and fragmentation (runtime flag -verbose_gc, when gc is enabled).
 
  * mael 2001-11-15: Unboxing of datatypes. Previously, only a certain
    set of predefined types were implemented unboxed. Now, enumerations
@@ -38,9 +41,15 @@ ML Kit NEWS file                                       October, 2001
 
  * mael 2001-10-14: It is now possible to disable region inference in
    the ML Kit by specifying the flag no_region_inference (or no_ri) on
-   the command line. The flag has the effect that no fresh region
+   the command line. The flag has the effect that all infinite regions
+   are collapsed with the top-level infinite regions
+   (DropRegions.sml). The option has no effect on finite regions;
+   and region parameters may still happen to be instantiated to either
+   finite or infinite regions (the top-level ones).
+
+   collapsed no fresh region
    variables are generated during the spreading phase of region
-   inference.
+   inference. (mael 2001-11-20: 
 
  * mael 2001-09-30: Added regular expression support (structure RegExp) 
    to the basis library. The implementation is based on an 
