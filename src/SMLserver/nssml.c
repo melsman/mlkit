@@ -29,9 +29,7 @@ nssml_fileModTime(char* file)
   if ( stat(file, &buf) != 0 )
     return (time_t)-1;
   return buf.st_mtime;
-}  
-    
-  
+}    
 
 /*
  * The Ns_ModuleVersion exported integer is used to verify
@@ -47,7 +45,6 @@ static Ns_OpProc nssml_handleSmlFile;
  */
 
 typedef struct {
-  Ns_Mutex lock;
   Interp* interp;
   char* hServer;
   char* prjid;
@@ -100,6 +97,19 @@ typedef struct {
 
 Ns_Mutex stackPoolMutex;
 Ns_Mutex freelistMutex;
+Ns_Mutex codeCacheMutex;
+
+void
+codeCacheMutexLock()
+{
+  Ns_LockMutex(&codeCacheMutex);
+}
+
+void
+codeCacheMutexUnlock()
+{
+  Ns_UnlockMutex(&codeCacheMutex);
+}
 
 int
 Ns_ModuleInit(char *hServer, char *hModule)
@@ -107,15 +117,15 @@ Ns_ModuleInit(char *hServer, char *hModule)
   InterpContext* ctx;
   char* configPath;
 
-  // initialize stackPool Mutex and freelist Mutex
+  // initialize stackPool Mutex, freelist Mutex, and codeCache Mutex
   Ns_InitializeMutex(&stackPoolMutex);
   Ns_InitializeMutex(&freelistMutex);
+  Ns_InitializeMutex(&codeCacheMutex);
 
   /*
    * Create and initalize the interpreter context.
    */
   ctx = (InterpContext*)Ns_Malloc(sizeof(InterpContext));
-  //  Ns_InitializeMutex(&ctx->lock);
   ctx->interp = interpNew();
   ctx->hServer = hServer;
   configPath = Ns_ConfigGetPath(hServer, hModule, NULL);   // Fetch the name of the project (prjid)
@@ -225,11 +235,6 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
     }
 
   /*
-   * Protect the running of this code from simultaneous requests
-   */
-  //  Ns_LockMutex(&ctx->lock);
-
-  /*
    * (Re)load interpreter if timeStamps do not match
    */
  
@@ -241,7 +246,7 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
       int count = 0;
 
       interpClear(ctx->interp);      /* free all code elements present in the
-				      * interpreter... */
+				      * interpreter, including code cache entries... */
 
       is = fopen(ctx->ulFileName, "r");
       if ( is == NULL ) 
@@ -250,9 +255,6 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
 	  Ns_ConnReturnNotice(conn, 200, "The web service is temporarily out of service",
 			      "Please come back later!");
 	  Ns_Log(Error, "nssml: Failed to open file %s for reading", &ctx->ulFileName);
-
-	  // Release the lock
-	  // Ns_UnlockMutex(&ctx->lock);
 	  return NS_OK;
 	}
     
@@ -294,8 +296,5 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
   }
   Ns_DStringFree(&ds);
 
-  //  Ns_UnlockMutex(&ctx->lock);     // Release the lock
-
-  // Ns_Log(Notice, "Finishing interpretation of file %s", uo);
   return NS_OK; 
 }

@@ -1,5 +1,9 @@
 File NEWS_SMLSERVER
 
+ * mael 2002-03-19: Added possibility for caching loaded leaf-bytecode
+   files (flag CODE_CACHE in LoadKAM.h). This feature improves on the
+   number of requests that can be served per second. Default: enabled.
+
            **** SMLserver version 4.1.0 is released ****
 
  * mael 2002-01-29: Cleaned up documentation and demonstration
