@@ -129,7 +129,7 @@ structure ScsPrint :> SCS_PRINT =
 		(Date.fmt "%m"  (ScsDate.now_local())) ^ "/" ^ (StringCvt.padLeft #"0" 4 batch_id)
 	      val _ = ScsFile.mkDir (journal_base ^ journal_dir)
 	      val target_f = journal_dir ^ "/" ^ tmpfile ^ ".pdf"
-	      val cmd = Quot.toString `cd ^(path_preview()); latex ^(texfile tmpfile); latex ^(texfile tmpfile); dvips -o ^(psfile tmpfile) ^(dvifile tmpfile); lpr -P^printer ^(psfile tmpfile); ps2pdf ^(psfile tmpfile) ^(pdffile tmpfile); mv ^(pdffile tmpfile) ^(journal_base ^ target_f)`
+	      val cmd = Quot.toString `cd ^(path_preview()); latex ^(texfile tmpfile); latex ^(texfile tmpfile); dvips -o ^(psfile tmpfile) ^(dvifile tmpfile);  ps2pdf ^(psfile tmpfile) ^(pdffile tmpfile); mv ^(pdffile tmpfile) ^(journal_base ^ target_f)`
 	      fun ins_log db =
 		let
 		  val clob_id = DbClob.insert_fn source db
