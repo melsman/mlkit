@@ -166,12 +166,13 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 
       local
 
-	(* Directories *)
+	(* Directories and files *)
 
 	val kitsrc_path = OS.FileSys.getDir()   (* assumes we are in kit/src/ directory *)
 	val _ = Flags.install_dir := OS.Path.mkCanonical(OS.Path.concat(kitsrc_path, ".."))
 	val kitbin_path = OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../bin"))
 	val kitbinkit_path = OS.Path.joinDirFile{dir=kitbin_path, file="kit"}
+	val basislib_file = "basislib.pm"
 
 	fun set_paths install_dir =
 	  let 
@@ -182,7 +183,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	    Flags.install_dir := install_dir;
 	    
 	    Flags.basislib_project := 
-	    (OS.Path.mkCanonical (OS.Path.concat(install_dir, "basislib/basislib.pm")))
+	    (OS.Path.mkCanonical (OS.Path.concat(install_dir, "basislib/" ^ basislib_file)))
 	  end
 
 	val date = Date.fmt "%b %d, %Y" (Date.fromTimeLocal (Time.now()))
@@ -270,7 +271,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	      print "\n ** Building basis library **\n\n";
 	      OS.FileSys.chDir "../basislib";
 	      set_paths (OS.Path.mkCanonical(OS.Path.concat(OS.FileSys.getDir(),"..")));
-	      Manager.comp "basislib.pm";
+	      Manager.comp basislib_file;
 	      postjob()) handle exn => (postjob(); raise exn)
 	  end
 

@@ -237,6 +237,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     
     val pu_Types : TypeDesc Pickle.pu -> Type list Pickle.pu =
 	Pickle.cache (fn pu_td => Pickle.listGen (pu_Type pu_td))
+
+    fun swap (x,y) = (y,x)
 	
     val (pu_TypeDesc, pu_RecType) =
 	let open Pickle
@@ -257,8 +259,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		con1 RECTYPE (fn RECTYPE a => a | _ => die "pu_TypeDesc.RECTYPE")
 		pu_RecType
 	    fun TypeDescCONSTYPE (pu_TypeDesc,pu_RecType) =
-		con1 CONSTYPE (fn CONSTYPE a => a | _ => die "pu_TypeDesc.CONSTYPE")
-		(pairGen0(pu_Types pu_TypeDesc, TyName.pu))
+		con1 (CONSTYPE o swap) (fn CONSTYPE a => swap a | _ => die "pu_TypeDesc.CONSTYPE")
+		(pairGen0(TyName.pu,pu_Types pu_TypeDesc))
 
 	    fun RecTypeNILrec (a,b) = con0 NILrec b
 

@@ -217,8 +217,8 @@ functor CompBasis(structure Con : CON
 		= ((tce,eqe,oe,rse),(me,mm,de,pe))
 	    open Pickle
 	in convert (to,from)
-	    (pairGen0(tup4Gen0(LambdaStatSem.pu,
-			       EliminateEq.pu,
+	    (pairGen0(tup4Gen0(comment "LambdaStatSem.pu" LambdaStatSem.pu,
+			       comment "EliminateEq.pu" EliminateEq.pu,
 			       OptLambda.pu,
 			       comment "RegionStatEnv" RegionStatEnv.pu),
 		      tup4Gen0(comment "Mul.efenv" Mul.pu_efenv, 

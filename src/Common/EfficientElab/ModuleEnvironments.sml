@@ -94,7 +94,8 @@ functor ModuleEnvironments(
     type Report            = Report.Report
     type StringTree        = PP.StringTree
 
-    
+    type longids = {longvids : longid list, longtycons : longtycon list, longstrids : longstrid list,
+		    funids : funid list, sigids : sigid list}
 
     (*G, signature environments*)
 
@@ -292,7 +293,7 @@ functor ModuleEnvironments(
 	(* MEMO: use operations on F and G instead *)
       fun restrictB (BASIS {F=FUNENV F,G=SIGENV G,E},
 		     {longvids : longid list, longtycons : longtycon list, longstrids : longstrid list,
-		      funids : funid list, sigids : sigid list}) =
+		      funids : funid list, sigids : sigid list}:longids) =
 	let val F' = foldl
 	               (fn (funid, Fnew) =>
 			let val FunSig = (case FinMap.lookup F funid of
@@ -312,6 +313,18 @@ functor ModuleEnvironments(
 	end
       val enrich = enrichB
       val restrict = restrictB
+
+      fun domain(BASIS{F=FUNENV F,G=SIGENV G,E}) : longids =
+	  let val (SE,TE,VE) = E.un E
+	      val strids = EqSet.list (SE.dom SE)
+	      val longstrids = map StrId.longStrIdOfStrId strids
+	      val vids = EqSet.list (VE.dom VE)
+	      val longvids = map Ident.idToLongId vids
+	      val tycons = EqSet.list (TE.dom TE)
+	      val longtycons = map (fn t => TyCon.implode_LongTyCon([],t)) tycons
+	  in {longvids=longvids,longtycons=longtycons,longstrids=longstrids,
+	      funids=EqSet.list(FinMap.dom F), sigids=EqSet.list(FinMap.dom G)}
+	  end
 
       (* Structure agreement *)
       fun agree([],_,_) = true
