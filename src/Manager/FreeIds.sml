@@ -1,5 +1,5 @@
 (*$FreeIds : DEC_GRAMMAR TOPDEC_GRAMMAR CRASH PRETTYPRINT
-    FREE_IDS ELAB_INFO OrderSet*)
+    FREE_IDS ELAB_INFO*)
 
 functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 		 structure ElabInfo : ELAB_INFO
@@ -16,104 +16,92 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
     open TopdecGrammar
     open TopdecGrammar.DecGrammar
 
-    type id = Ident.id
-
-    structure IdSet = OrderSet(structure Order = 
-				 struct type T = Ident.id
-				        fun lt x y = Ident.< (x,y)
-				 end
-                               structure PP = PP)
-
-    structure TyConSet = OrderSet(structure Order = 
-				    struct type T = TyCon.tycon
-				           fun lt x y = TyCon.< (x,y)
-				    end
-                                  structure PP = PP)
- 
-    structure StrIdSet = OrderSet(structure Order = 
-				    struct type T = StrId.strid
-				           fun lt x y = StrId.< (x,y)
-				    end
-                                  structure PP = PP)
-
-    structure FunIdSet = OrderSet(structure Order = 
-			   	    struct type T = FunId.funid
-				           fun lt x y = FunId.< (x,y)
-				    end
-                                  structure PP = PP)
-
-    structure SigIdSet = OrderSet(structure Order = 
-			 	    struct type T = SigId.sigid
-				           fun lt x y = SigId.< (x,y)
-				    end
-                                  structure PP = PP)
+    type id    = Ident.id
+    type tycon = TyCon.tycon
+    type strid = StrId.strid
+    type funid = FunId.funid
+    type sigid = SigId.sigid
 
 
-    (* The way this works is by passing sets of those identifiers
+    (* The way this works is by passing lists of those identifiers
      * being declared downwards in the syntax tree, and before an
-     * identifier is added to a bucket it is checked if it is in a
-     * `declared set'. -- Martin *)
+     * identifier is added to a bucket (holding free identifiers) it
+     * is checked if it is in a `declared set'. -- Martin *)
 
 
-    type ids = {vids: IdSet.Set,
-		tycons: TyConSet.Set,
-		strids: StrIdSet.Set,
-		funids: FunIdSet.Set,
-		sigids: SigIdSet.Set}
+    type ids = {vids: id list, tycons: tycon list, strids: strid list, 
+                funids: funid list, sigids: sigid list}
 
-    val empty_ids = {vids=IdSet.empty, tycons=TyConSet.empty,
-		     strids=StrIdSet.empty, funids=FunIdSet.empty, sigids=SigIdSet.empty}
+    val empty_ids : ids = {vids=[], tycons=[], strids=[], funids=[], sigids=[]}
 
     infix ++
     fun {vids,tycons,strids,funids,sigids} ++
         {vids=vids',tycons=tycons',strids=strids',funids=funids',sigids=sigids'} =
-	{vids=IdSet.union vids vids',
-	 tycons=TyConSet.union tycons tycons',
-	 strids=StrIdSet.union strids strids',
-	 funids=FunIdSet.union funids funids',
-	 sigids=SigIdSet.union sigids sigids'}
+	{vids=vids' @ vids, tycons=tycons' @ tycons, strids=strids' @ strids,
+	 funids=funids' @ funids, sigids=sigids' @ sigids}
 
-    val vids_of_ids:     ids -> id list     = IdSet.list o #vids
-    val tycons_of_ids:   ids -> tycon list  = TyConSet.list o #tycons
-    val strids_of_ids:   ids -> strid list  = StrIdSet.list o #strids
-    val funids_of_ids:   ids -> funid list  = FunIdSet.list o #funids
-    val sigids_of_ids:   ids -> sigid list  = SigIdSet.list o #sigids
+    val vids_of_ids:     ids -> id list     = #vids
+    val tycons_of_ids:   ids -> tycon list  = #tycons
+    val strids_of_ids:   ids -> strid list  = #strids
+    val funids_of_ids:   ids -> funid list  = #funids
+    val sigids_of_ids:   ids -> sigid list  = #sigids
 
     (* -------------------------------------
-     * Sets of ids
+     * Lists of ids
      * ------------------------------------- *)
     fun add_vid (id:id,{vids,tycons,strids,funids,sigids}:ids) =
-      {vids=IdSet.insert id vids,tycons=tycons,strids=strids,funids=funids,sigids=sigids}
+      {vids=id::vids,tycons=tycons,strids=strids,funids=funids,sigids=sigids}
 
     fun add_tycon (tycon:tycon,{vids,tycons,strids,funids,sigids}:ids) =
-      {vids=vids,tycons=TyConSet.insert tycon tycons,strids=strids,funids=funids,sigids=sigids}
+      {vids=vids,tycons=tycon::tycons,strids=strids,funids=funids,sigids=sigids}
 
     fun add_strid (strid:strid,{vids,tycons,strids,funids,sigids}:ids) =
-      {vids=vids,tycons=tycons,strids=StrIdSet.insert strid strids,funids=funids,sigids=sigids}
+      {vids=vids,tycons=tycons,strids=strid::strids,funids=funids,sigids=sigids}
 
     fun add_funid (funid:funid,{vids,tycons,strids,funids,sigids}:ids) =
-      {vids=vids,tycons=tycons,strids=strids,funids=FunIdSet.insert funid funids,sigids=sigids}
+      {vids=vids,tycons=tycons,strids=strids,funids=funid::funids,sigids=sigids}
 
     fun add_sigid (sigid:sigid,{vids,tycons,strids,funids,sigids}:ids) =
-      {vids=vids,tycons=tycons,strids=strids,funids=funids,sigids=SigIdSet.insert sigid sigids}
+      {vids=vids,tycons=tycons,strids=strids,funids=funids,sigids=sigid::sigids}
 
     (* -------------------------------------
-     * Bucket for free ids
+     * Buckets for free ids
      * ------------------------------------- *)
-    val free = ref empty_ids
-    fun mk_free_vid (id:id) = free := add_vid(id,!free)
-    fun mk_free_tycon (tycon:tycon) = free := add_tycon(tycon,!free)
-    fun mk_free_strid (strid:strid) = free := add_strid(strid,!free)
-    fun mk_free_funid (funid:funid) = free := add_funid(funid,!free)
-    fun mk_free_sigid (sigid:sigid) = free := add_sigid(sigid,!free)
+
+    fun mem(y,[]) = false
+      | mem(y,x::xs) = y=x orelse mem(y,xs)
+
+    local    
+      val bucket_vids = ref ([] : id list)
+      val bucket_tycons = ref ([] : tycon list)
+      val bucket_strids = ref ([] : strid list)
+      val bucket_funids = ref ([] : funid list)
+      val bucket_sigids = ref ([] : sigid list)
+
+      fun mk_free bucket x = if mem(x,!bucket) then ()
+                             else bucket := x::(!bucket)
+    in
+      fun mk_free_vid (id:id) = mk_free bucket_vids id
+      fun mk_free_tycon (tycon:tycon) = mk_free bucket_tycons tycon
+      fun mk_free_strid (strid:strid) = mk_free bucket_strids strid
+      fun mk_free_funid (funid:funid) = mk_free bucket_funids funid
+      fun mk_free_sigid (sigid:sigid) = mk_free bucket_sigids sigid
+
+      fun reset_buckets() = (bucket_vids := []; bucket_tycons := [];
+                             bucket_strids := []; bucket_funids := []; bucket_sigids := [])
+      fun get_free_ids() : ids = {vids= !bucket_vids, tycons= !bucket_tycons, strids= !bucket_strids,
+				  funids= !bucket_funids, sigids= !bucket_sigids}
+    end
 
     (* -------------------------------------
      * Functions to apply on uses of ids
      * ------------------------------------- *)
+
     fun use_id({vids,...}:ids,id:id): unit =
-      if IdSet.member id vids then () else mk_free_vid id
+      if mem(id,vids) then () else mk_free_vid id
+
     fun use_strid({strids,...}:ids,strid:strid): unit =
-      if StrIdSet.member strid strids then () else mk_free_strid strid
+      if mem(strid,strids) then () else mk_free_strid strid
 
     fun use_longid(bound_ids:ids,longid:longid): unit =
       case Ident.decompose longid
@@ -121,30 +109,35 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 	 | (strid::_,_) => use_strid(bound_ids,strid) 
 
     fun use_tycon({tycons,...}:ids,tycon:tycon): unit =
-      if TyConSet.member tycon tycons then () else mk_free_tycon tycon
+      if mem(tycon,tycons) then () else mk_free_tycon tycon
+
     fun use_longtycon(bound_ids:ids,longtycon:longtycon) : unit =
       case TyCon.explode_LongTyCon longtycon
 	of ([],tycon) => use_tycon(bound_ids,tycon)
 	 | (strid::_,_) => use_strid(bound_ids,strid) 
+
     fun use_longstrid(bound_ids:ids,longstrid:longstrid) : unit =
       case StrId.explode_longstrid longstrid
 	of ([],strid) => use_strid(bound_ids,strid) 
 	 | (strid::_,_) => use_strid(bound_ids,strid) 
+
     fun use_funid({funids,...}:ids,funid:funid): unit =
-      if FunIdSet.member funid funids then () else mk_free_funid funid
+      if mem(funid,funids) then () else mk_free_funid funid
+
     fun use_sigid({sigids,...}:ids,sigid:sigid): unit =
-      if SigIdSet.member sigid sigids then () else mk_free_sigid sigid
+      if mem(sigid,sigids) then () else mk_free_sigid sigid
 
 
     (* Get type info from info-nodes; we could do better here, since
      * we force applications of realisations without using the
      * annotated type info. *)
 
-    fun to_TypeInfo i =
-      case ElabInfo.to_TypeInfo i
-	of Some ti => Some(ElabInfo.TypeInfo.normalise ti)
-	 | None => None 
-
+    local fun normalise ti = ElabInfo.TypeInfo.normalise ti
+    in fun to_TypeInfo i =
+         case ElabInfo.to_TypeInfo i
+	   of Some ti => Some(normalise ti)
+	    | None => None 
+    end
 
     (* --------------------------------------
      * We carry around a persistent set of
@@ -155,7 +148,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
      * CORE
      *)
 
-    and free_atexp I =
+    fun free_atexp I =
       fn SCONatexp _ => ()
        | IDENTatexp(_, OP_OPT(longid,_)) => use_longid(I,longid)
        | RECORDatexp(_,exprow_opt) => free_exprow_opt I exprow_opt
@@ -194,9 +187,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
        | DATATYPEdec(_,datbind) => free_datbind I datbind
        | DATATYPE_REPLICATIONdec(_,tycon,longtycon) => (use_longtycon(I,longtycon); add_tycon(tycon,empty_ids))
        | ABSTYPEdec(_,datbind,dec) => 
-         let fun Abs ({tycons,...}:ids) =
-	        {tycons=tycons, vids=IdSet.empty, strids=StrIdSet.empty,
-		 funids=FunIdSet.empty, sigids=SigIdSet.empty}
+         let fun Abs ({tycons,...}:ids) = {tycons=tycons, vids=[], strids=[], funids=[], sigids=[]}
 	     val I1 = free_datbind I datbind
 	     val I2 = free_dec (I ++ I1) dec
 	 in Abs(I1) ++ I2                          (* Only tycons of I1 survives. -- Martin *)
@@ -453,10 +444,10 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
      *)
 
     fun free_ids_any (free_any:ids->'a->'b) (any:'a) : ids =
-      let val _ = free := empty_ids
+      let val _ = reset_buckets()
 	  val _ = free_any empty_ids any
-	  val free_ids = !free
-	  val _ = free := empty_ids
+	  val free_ids = get_free_ids()
+	  val _ = reset_buckets()
       in free_ids
       end
 
@@ -470,11 +461,14 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
      *)
 
     type StringTree = PP.StringTree
-    val layout_vids = IdSet.layoutSet {start="vids=[",finish="]",sep=","} (PP.LEAF o Ident.pr_id)
-    and layout_tycons = TyConSet.layoutSet {start="tycons=[",finish="]",sep=","} (PP.LEAF o TyCon.pr_TyCon)
-    and layout_strids = StrIdSet.layoutSet {start="strids=[",finish="]",sep=","} (PP.LEAF o StrId.pr_StrId)
-    and layout_funids = FunIdSet.layoutSet {start="funids=[",finish="]",sep=","} (PP.LEAF o FunId.pr_FunId)
-    and layout_sigids = SigIdSet.layoutSet {start="sigids=[",finish="]",sep=","} (PP.LEAF o SigId.pr_SigId)
+    fun layout_list s layout_elem l =
+        PP.NODE{start=s ^ "=[",finish="]",indent=0,childsep=PP.RIGHT ",",children=map layout_elem l}
+
+    val layout_vids = layout_list "vids" (PP.LEAF o Ident.pr_id)
+    and layout_tycons = layout_list "tycons" (PP.LEAF o TyCon.pr_TyCon)
+    and layout_strids = layout_list "strids" (PP.LEAF o StrId.pr_StrId)
+    and layout_funids = layout_list "funids" (PP.LEAF o FunId.pr_FunId)
+    and layout_sigids = layout_list "sigids" (PP.LEAF o SigId.pr_SigId)
 
     fun layout_ids ({vids,tycons,strids,funids,sigids}:ids) =
       PP.NODE{start="{|", finish="|}", indent=2,childsep=PP.RIGHT ", ",
