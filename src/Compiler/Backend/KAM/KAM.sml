@@ -49,7 +49,13 @@ signature KAM =
 (*    val revCond : cond -> cond 18/09-2000, Niels *)
  
     datatype KamInst = 
-        BlockAlloc of int
+        Alloc of int
+      | AllocIfInf of int
+      | AllocSatInf of int
+      | AllocSatIfInf of int
+      | AllocAtbot of int
+      
+      | BlockAlloc of int
       | BlockAllocIfInf of int
       | BlockAllocSatInf of int
       | Block of int
@@ -65,6 +71,7 @@ signature KAM =
       | SelectStack of int
       | SelectEnv of int
       | Select of int
+      | Store of int
 
       | StackAddrInfBit of int
       | StackAddr of int
@@ -98,6 +105,10 @@ signature KAM =
       | EndregionInf
       | ResetRegion
       | MaybeResetRegion
+      | ResetRegionIfInf
+
+      | FetchGlobal of label
+      | StoreGlobal of label
 
       | Comment of string
       | Nop

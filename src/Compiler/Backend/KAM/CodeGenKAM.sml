@@ -210,12 +210,12 @@ struct
     fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp) :: acc
       | CG_ce(ClosExp.RVAR place,env,sp,cc,acc)         = access_rho(place,env,sp) :: acc
       | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = die "DROPPED_RVAR not implemented"
-      | CG_ce(ClosExp.FETCH lab,env,sp,cc,acc)          = die "FETCH not implemented"
-      | CG_ce(ClosExp.STORE(ce,lab),env,sp,cc,acc)      = die "STORE not implemented"
+      | CG_ce(ClosExp.FETCH lab,env,sp,cc,acc)          = FetchGlobal lab :: acc
+      | CG_ce(ClosExp.STORE(ce,lab),env,sp,cc,acc)      = CG_ce(ce,env,sp,cc, StoreGlobal lab :: acc)
       | CG_ce(ClosExp.INTEGER i,env,sp,cc,acc)          = ImmedInt i :: acc
       | CG_ce(ClosExp.STRING s,env,sp,cc,acc)           = ImmedString s :: acc
       | CG_ce(ClosExp.REAL s,env,sp,cc,acc)             = ImmedReal s :: acc
-      | CG_ce(ClosExp.PASS_PTR_TO_MEM(sma,i),env,sp,cc,acc) = die "PASS_PTR_TO_MEM not implemented"
+      | CG_ce(ClosExp.PASS_PTR_TO_MEM(sma,i),env,sp,cc,acc) = alloc(sma,i,env,sp,cc,acc)
       | CG_ce(ClosExp.PASS_PTR_TO_RHO sma,env,sp,cc,acc) = set_sm(sma,env,sp,cc,acc)
       | CG_ce(ClosExp.UB_RECORD ces,env,sp,cc,acc) = comp_ces(ces,env,sp,cc,acc)
       (* Layout of closure [label,rho1,...,rhon,excon1,...exconm,lv1,...,lvo], see build_clos_env in ClosExp *)
@@ -358,7 +358,7 @@ struct
 		   val tag = Word32.toInt(BI.tag_con1(false,i))
 		 in
 		   CG_ce(arg,env,sp,cc,Push :: ImmedInt tag :: 
-			 alloc_block(alloc,2,env,sp+2,cc,acc))
+			 alloc_block(alloc,2,env,sp+1,cc,acc))
 		 end
 	  | _ => die "CG_ce: CON1.con not unary in env.")
       | CG_ce(ClosExp.DECON{con,con_kind,con_exp},env,sp,cc,acc) =
@@ -367,12 +367,105 @@ struct
 	     | ClosExp.UNBOXED _ => CG_ce(con_exp,env,sp,cc,ClearBit30And31 :: acc)
 	     | ClosExp.BOXED _ => CG_ce(con_exp,env,sp,cc, Select(1) :: acc)
 	     | _ => die "CG_ce: DECON used with con_kind ENUM")
-      | CG_ce(ClosExp.DEREF ce,env,sp,cc,acc) = die "DEREF not implemented"
-      | CG_ce(ClosExp.REF(sma,ce),env,sp,cc,acc) = die "REF not implemented"
-      | CG_ce(ClosExp.ASSIGN(sma,ce1,ce2),env,sp,cc,acc) = die "ASSIGN not implemented"
-      | CG_ce(ClosExp.RESET_REGIONS{force,regions_for_resetting},env,sp,cc,acc) = die "RESET_REGIONS not implemented"
+      | CG_ce(ClosExp.DEREF ce,env,sp,cc,acc) = CG_ce(ce,env,sp,cc, Select(0) :: acc)
+      | CG_ce(ClosExp.REF(sma,ce),env,sp,cc,acc) = CG_ce(ce,env,sp,cc,alloc_block(sma,1,env,sp,cc,acc))
+      | CG_ce(ClosExp.ASSIGN(sma,ce1,ce2),env,sp,cc,acc) = CG_ce(ce1,env,sp,cc,Push :: CG_ce(ce2,env,sp+1,cc,Store(0) :: acc))
+      | CG_ce(ClosExp.RESET_REGIONS{force=false,regions_for_resetting},env,sp,cc,acc) =
+	  foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,env,sp,cc,C)) acc regions_for_resetting
+      | CG_ce(ClosExp.RESET_REGIONS{force=true,regions_for_resetting},env,sp,cc,acc) =
+	  foldr (fn (alloc,C) => force_reset_aux_region(alloc,env,sp,cc,C)) acc regions_for_resetting
       | CG_ce(ClosExp.CCALL{name,rhos_for_result,args},env,sp,cc,acc) = die "CCALL not implemented"
+(* from LineStmt	  if BI.is_prim name then PRIM{name=name,args=ces_to_atoms rhos_for_result @ ces_to_atoms args,
+				       res=map VAR lvars_res}::acc
+	  else CCALL{name=name,args=ces_to_atoms args,
+		     rhos_for_result=ces_to_atoms rhos_for_result,
+		     res=map VAR lvars_res}::acc*)
+(* from CodeGen.sml
+	   | LS.PRIM{name,args,res=[SS.FLOW_VAR_ATY(lv,lab_t,lab_f)]} => 
+		  COMMENT (pr_ls ls) ::
+		  let
+		    val (lab_t,lab_f) = (LocalLab lab_t,LocalLab lab_f)
+		  in
+		    (case (name,args) of
+		       ("__equal_int",[x,y]) => cmpi_and_jmp(EQUAL,x,y,lab_t,lab_f,size_ff,C)
+		     | ("__less_int",[x,y]) => cmpi_and_jmp(LESSTHAN,x,y,lab_t,lab_f,size_ff,C)
+		     | ("__lesseq_int",[x,y]) => cmpi_and_jmp(LESSEQUAL,x,y,lab_t,lab_f,size_ff,C)
+		     | ("__greater_int",[x,y]) => cmpi_and_jmp(GREATERTHAN,x,y,lab_t,lab_f,size_ff,C)
+		     | ("__greatereq_int",[x,y]) => cmpi_and_jmp(GREATEREQUAL,x,y,lab_t,lab_f,size_ff,C)
+		     | _ => die "CG_ls: Unknown PRIM used on Flow Variable")
+		  end
+	   | LS.PRIM{name,args,res} => 
+		  COMMENT (pr_ls ls) :: 
+		  (* Note that the prim names are defined in BackendInfo! *)
+		  (case (name,args,res) 
+		     of ("__equal_int",[x,y],[d])            => cmpi(EQUAL,x,y,d,size_ff,C)
+		      | ("__minus_int",[x,y],[d])            => subi(x,y,d,size_ff,C)
+		      | ("__plus_int",[x,y],[d])             => addi(x,y,d,size_ff,C)
+		      | ("__neg_int",[x],[d])                => negi(x,d,size_ff,C)
+		      | ("__abs_int",[x],[d])                => absi(x,d,size_ff,C)
+		      | ("__less_int",[x,y],[d])             => cmpi(LESSTHAN,x,y,d,size_ff,C)
+		      | ("__lesseq_int",[x,y],[d])           => cmpi(LESSEQUAL,x,y,d,size_ff,C)
+		      | ("__greater_int",[x,y],[d])          => cmpi(GREATERTHAN,x,y,d,size_ff,C)
+		      | ("__greatereq_int",[x,y],[d])        => cmpi(GREATEREQUAL,x,y,d,size_ff,C)
+		      | ("__plus_float",[b,x,y],[d])         => addf(x,y,b,d,size_ff,C)
+		      | ("__minus_float",[b,x,y],[d])        => subf(x,y,b,d,size_ff,C)
+		      | ("__mul_float",[b,x,y],[d])          => mulf(x,y,b,d,size_ff,C)
+		      | ("__neg_float",[b,x],[d])            => negf(b,x,d,size_ff,C)
+		      | ("__abs_float",[b,x],[d])            => absf(b,x,d,size_ff,C)
+		      | ("__less_float",[x,y],[d])           => cmpf(LESSTHAN,x,y,d,size_ff,C)
+		      | ("__lesseq_float",[x,y],[d])         => cmpf(LESSEQUAL,x,y,d,size_ff,C)
+		      | ("__greater_float",[x,y],[d])        => cmpf(GREATERTHAN,x,y,d,size_ff,C)
+		      | ("__greatereq_float",[x,y],[d])      => cmpf(GREATEREQUAL,x,y,d,size_ff,C)
+		       
+		      | ("less_word__",[x,y],[d])            => cmpi(LESSTHAN_UNSIGNED,x,y,d,size_ff,C)
+		      | ("greater_word__",[x,y],[d])         => cmpi(GREATERTHAN_UNSIGNED,x,y,d,size_ff,C)
+		      | ("lesseq_word__",[x,y],[d])          => cmpi(LESSEQUAL_UNSIGNED,x,y,d,size_ff,C)
+		      | ("greatereq_word__",[x,y],[d])       => cmpi(GREATEREQUAL_UNSIGNED,x,y,d,size_ff,C)
+		       
+		      | ("plus_word8__",[x,y],[d])           => addw8(x,y,d,size_ff,C)
+		      | ("minus_word8__",[x,y],[d])          => subw8(x,y,d,size_ff,C)
+		       
+		      | ("and__",[x,y],[d])                  => andi(x,y,d,size_ff,C)
+		      | ("or__",[x,y],[d])                   => ori(x,y,d,size_ff,C)
+		      | ("xor__",[x,y],[d])                  => xori(x,y,d,size_ff,C)
+		      | ("shift_left__",[x,y],[d])           => shift_lefti(x,y,d,size_ff,C)
+		      | ("shift_right_signed__",[x,y],[d])   => shift_right_signedi(x,y,d,size_ff,C)
+		      | ("shift_right_unsigned__",[x,y],[d]) => shift_right_unsignedi(x,y,d,size_ff,C)
+		       
+		      | ("plus_word__",[x,y],[d])            => addw(x,y,d,size_ff,C)
+		      | ("minus_word__",[x,y],[d])           => subw(x,y,d,size_ff,C)
+		       
+		      | ("__fresh_exname",[],[aty]) =>
+		       load_label_addr_kill_gen1(exn_counter_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff,
+		       LDW{d="0",s=Space 0,b=tmp_reg1,t=mrp} ::
+		       move_reg_into_aty_kill_gen1(mrp,aty,size_ff,
+		       ADDI {cond=NEVER, i="1", r=mrp, t=mrp} ::
+		       STW {r=mrp, d="0", s=Space 0, b=tmp_reg1} :: C))
+		      | _ => die ("PRIM(" ^ name ^ ") not implemented"))
+
+	   | LS.CCALL{name,args,rhos_for_result,res} => 
+		  COMMENT (pr_ls ls) :: 
+		  (case (name, rhos_for_result@args, res)
+		     of ("__mul_int", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => muli(x,y,d,C) 
+		      | ("mul_word__", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => mulw(x,y,d,C)
+		      | ("mul_word8__", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => mulw8(x,y,d,C)
+		      | ("__div_float",[b,x,y],[d]) => divf(x,y,b,d,size_ff,C)
+	              | (_,all_args,[]) => compile_c_call_prim(name,all_args,NONE,size_ff,tmp_reg1,C)
+		      | (_,all_args,[res_aty]) => compile_c_call_prim(name,all_args,SOME res_aty,size_ff,tmp_reg1,C)
+		      | _ => die "CCall with more than one result variable"))
+*)
       | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = die "FRAME not implemented"
+
+    and force_reset_aux_region(sma,env,sp,cc,acc) = 
+      let
+	fun comp_ce(ce,acc) = CG_ce(ce,env,sp,cc,acc)
+      in
+	case sma 
+	  of ClosExp.ATBOT_LI(ce,pp) => comp_ce(ce, ResetRegion :: acc)
+	| ClosExp.SAT_FI(ce,pp) => comp_ce(ce, ResetRegion :: acc)
+	| ClosExp.SAT_FF(ce,pp) => comp_ce(ce, ResetRegionIfInf :: acc)
+	| _ => acc
+      end
 
     and maybe_reset_aux_region(sma,env,sp,cc,acc) = 
       let
@@ -415,6 +508,22 @@ struct
 	| ClosExp.ATBOT_LI(ce,pp) => comp_ce(ce,BlockAllocAtbot(n) :: acc)
 	| ClosExp.ATBOT_LF(ce,pp) => comp_ce(ce,acc)
 	| ClosExp.IGNORE => die "CodeGenKAM.alloc_block: sma = Ignore"
+      end
+
+    and alloc(sma,n,env,sp,cc,acc) =
+      let
+	fun comp_ce(ce,acc) = CG_ce(ce,env,sp,cc,acc)
+      in
+	case sma of
+	  ClosExp.ATTOP_LI(ce,pp) => comp_ce(ce,Alloc(n) :: acc)
+	| ClosExp.ATTOP_LF(ce,pp) => comp_ce(ce,acc)
+	| ClosExp.ATTOP_FF(ce,pp) => comp_ce(ce,AllocIfInf(n) :: acc)
+	| ClosExp.ATTOP_FI(ce,pp) => comp_ce(ce,Alloc(n) :: acc)
+	| ClosExp.SAT_FI(ce,pp)   => comp_ce(ce,AllocSatInf(n) :: acc)
+	| ClosExp.SAT_FF(ce,pp)   => comp_ce(ce,AllocSatIfInf(n) :: acc)
+	| ClosExp.ATBOT_LI(ce,pp) => comp_ce(ce,AllocAtbot(n) :: acc)
+	| ClosExp.ATBOT_LF(ce,pp) => comp_ce(ce,acc)
+	| ClosExp.IGNORE => die "CodeGenKAM.alloc: sma = Ignore"
       end
 
     and comp_ces_to_block ([],n,env,sp,cc,alloc,acc) = alloc_block(alloc,n,env,sp,cc,acc)
