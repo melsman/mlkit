@@ -28,6 +28,8 @@ functor EliminateEq (structure Name : NAME
     open LambdaExp
 
     fun die s = Crash.impossible ("EliminateEq." ^ s)
+    fun log s = (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
+
 
     (* ------------------------------------------------------------
      * The Environment
@@ -75,6 +77,7 @@ functor EliminateEq (structure Name : NAME
 				       of SOME res => TyNameMap.add(tn,res,acc)     (* is not here... *)
 					| NONE => acc) TyNameMap.empty tynames
 	    val lvars' = TyNameMap.Fold (fn ((_,POLYLVAR lv), lvars) => lv :: lvars
+	                                 | ((_,FAIL s), lvars) => lvars 
 	                                 | _ => die "restrict.not POLYLVAR") [] tnmap'
 	    val lvmap' = List.foldL (fn lv => fn acc =>
 				     case LvarMap.lookup lvmap lv
@@ -212,9 +215,9 @@ handle x =>
      * of two values of a given type. 
      * --------------------------------------------------------------- *)
 
-    exception DONT_SUPPORT_EQ  (* When generating functions for checking
-				* equality of datatypes, this exception
-				* may be raised. *)
+    exception DONT_SUPPORT_EQ of string (* When generating functions for checking
+					 * equality of datatypes, this exception
+					 * may be raised. *)
     fun mk_prim_eq tau =
       let val p = Lvars.newLvar()
       in FN {pat = [(p, RECORDtype [tau, tau])],
@@ -241,6 +244,8 @@ handle x =>
 	   | (CONStype (taus,tn)) =>
 	      let fun apply e [] = e
 		    | apply e (tau::taus) = apply (APP(e, gen tau)) taus
+		fun dont_support() = 
+		  raise DONT_SUPPORT_EQ (TyName.pr_TyName tn)
 	      in
 		if is_eq_prim_tn tn then mk_prim_eq tau
 		else case lookup_tyname env tn
@@ -248,12 +253,12 @@ handle x =>
 			 apply (VAR {lvar = lv, instances = taus}) taus
 			| SOME (MONOLVAR (lv, tyvars)) =>
 			    if map (fn TYVARtype tv => tv
-		                     | _ => raise DONT_SUPPORT_EQ) taus = tyvars then
+		                     | _ => dont_support()) taus = tyvars then
 			      apply (lamb_var lv) taus
-			    else raise DONT_SUPPORT_EQ
+			    else dont_support()
 			| SOME (FAIL str) => (* die ("gen_type_eq -- Equality not supported for " ^ 
 						  TyName.pr_TyName tn ^ ".") ME 1998-11-17 *)
-			      raise DONT_SUPPORT_EQ
+			      raise DONT_SUPPORT_EQ str
 			| NONE => die ("gen_type_eq. type name " ^ TyName.pr_TyName tn ^ 
 				       " not in env.")
 	      end
@@ -409,14 +414,14 @@ handle x =>
 	of [] => (fn lexp => lexp, empty)
 	 | (dbs :: dbss') =>
 	  let 
-	    fun fail_env [] env = env  (* do not support equality if exn is raised *)
-	      | fail_env ((_,tn,_)::dbs) env = 
-	      let val env' = if TyName.equality tn then add_tyname (tn, FAIL "eq. not supported by compiler", env)
+	    fun fail_env [] env s = env  (* do not support equality if exn is raised *)
+	      | fail_env ((_,tn,_)::dbs) env s = 
+	      let val env' = if TyName.equality tn then add_tyname (tn, FAIL s, env)
 			     else env
-	      in fail_env dbs env'
+	      in fail_env dbs env' s
 	      end
 	    val (f, env) = ((gen_datatype_eq_dbs env0 dbs)
-			    handle DONT_SUPPORT_EQ => (fn lexp => lexp, fail_env dbs empty))
+			    handle DONT_SUPPORT_EQ s => (fn lexp => lexp, fail_env dbs empty s))
 	    val (f', env') = gen_datatype_eq (plus(env0,env)) dbss'
 	  in 
 	    (f o f', plus(env, env'))
@@ -761,6 +766,10 @@ handle x =>
 							 * datatypes in frame. For in-lining, we
 							 * better introduce them in each module. *)
       in (PGM (datbinds, (f' o f) lexp''), env_export)
-      end
-      
+      end handle e as DONT_SUPPORT_EQ s => 
+	(log ("\n ** Equality not supported for datatype " ^ s ^ "\n");
+	 log (" ** Rewrite the program to use an explicit equality function\n");
+	 log (" ** for this particular datatype.\n\n");
+	 raise e)
+	 
   end

@@ -28,6 +28,7 @@ pat.sml             ccl
 llv.sml
 weeks.sml
 weeks2.sml          ccl       ecte
+weeks3.sml          ccl       ecte
 typerr.sml          ccl       ecte
 freedatatype.sml    ccl       ecte
 freedatatype2.sml   ccl       ecte

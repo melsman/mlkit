@@ -630,50 +630,6 @@ functor Compile(structure Excon : EXCON
     type phsize = PhysSizeInf.phsize
     type pp = PhysSizeInf.pp
     type ('a, 'b, 'c) LambdaPgm = ('a, 'b, 'c) PhysSizeInf.LambdaPgm
-      
-(*
-    (* ---------------------------------------------------------------------- *)
-    (*   New Lambda Backend                                                   *)
-    (* ---------------------------------------------------------------------- *)
-
-    type label = SubstAndSimplify.label
-    type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) SubstAndSimplify.LinePrg 
-    type offset = SubstAndSimplify.offset
-    type StoreTypeCO = SubstAndSimplify.StoreTypeCO
-    type AtySS = SubstAndSimplify.Aty
-
-    (* the boolean `safe' is true if the fragment has no side-effects;
-     * for dead code elimination. *)
-    fun lambda_backend (clos_env: ClosExp.env, app_conv_psi_pgm, safe: bool) 
-      : ClosExp.env * {main_lab: label, 
-		       code: (StoreTypeCO,offset,AtySS) LinePrg,
-		       imports: label list * label list, 
-		       exports: label list * label list, 
-		       safe:bool}  =
-      let
-	val {main_lab,code,imports,exports,env=clos_env1} = 
-	  Timing.timing "ClosConv" ClosExp.cc (clos_env, app_conv_psi_pgm)
-	val all_line_stmt = Timing.timing "LineStmt" LineStmt.L {main_lab=main_lab,
-								 code=code,imports=imports,
-								 exports=exports}
-	val all_reg_alloc = Timing.timing "RegAlloc"
-	  (if Flags.is_on "perform_register_allocation" then RegAlloc.ra
-	   else RegAlloc.ra_dummy) all_line_stmt
-
-	val all_fetch_flush = Timing.timing "FetchFlush" FetchAndFlush.IFF all_reg_alloc
-	val all_calc_offset = Timing.timing "CalcOffset" CalcOffset.CO all_fetch_flush
-
-	val all_calc_offset_with_bv = 
-	  if !gc_flag then Timing.timing "CBV" CalcOffset.CBV all_calc_offset
-	  else all_calc_offset
-
-	val {main_lab, code, imports, exports, ...} = 
-	  Timing.timing "SS" SubstAndSimplify.SS all_calc_offset_with_bv
-      in (clos_env1,
-	 {main_lab=main_lab, code=code, imports=imports, exports=exports,
-	  safe=safe})
-      end
-*)
 
     (************************************************************************)
     (* This is the main function; It invokes all the passes of the back end *)
@@ -684,11 +640,6 @@ functor Compile(structure Excon : EXCON
 
     fun compile(CEnv, Basis, strdecs, vcg_file) : res =
       let
-
-(*
-	(* Make sure that tag flags are set appropriately. *)
-	val _ = set_tag_flags()
-*)
 
 	(* There is only space in the basis for one lambdastat-env.
 	 * If we want more checks, we should insert more components
