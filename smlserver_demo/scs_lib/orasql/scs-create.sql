@@ -2,6 +2,10 @@ create sequence scs_object_id_seq start with 10;
 
 create or replace package scs
 as
+
+  -- Notice, this is also hard-coded in scs-test-create!
+  ScsDbExn constant integer := -20000;
+
   function new_obj_id (
     obj_id in integer default null
   ) return integer;

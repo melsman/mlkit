@@ -46,6 +46,7 @@ in
      tstBool "poolA6" (fn () => Db.Handle.Pool.pp() = pp)]
 end
 *)
+
 (*** Testing dml ***)
 val dmlTest =
   [tstOk "dmlA1" (fn () =>Db.dml `create table db_test ( id int primary key )`),

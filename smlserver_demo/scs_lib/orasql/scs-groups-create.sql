@@ -233,7 +233,7 @@ begin
    where default_grp_type = 't';
 
   if v_num_default_grp_type <> 1 then
-    raise_application_error(-20000,'wrong number of default group types');
+    raise_application_error(scs.ScsDbExn,'wrong number of default group types');
   end if;
 end scs_grp_types_def_grp_type_tr;
 /
@@ -667,7 +667,7 @@ as
       scs_log.error('scs_grp_member_rel.check_index',
                     'Row missing from scs_grp_member_map: ' ||
                     'grp_id = ' || check_index.grp_id || '(' || scs_group.name(check_index.grp_id) || '), ' ||
-                    'member_id = ' || check_index.member_id || '(' || party.email(check_index.member_id) || '), ' ||
+                    'member_id = ' || check_index.member_id || '(' || scs_party.email(check_index.member_id) || '), ' ||
                     'container_id = ' || check_index.container_id || '(' || scs_group.name(container_id) || ').');
     end if;
 
@@ -950,6 +950,7 @@ is
     grp_id in scs_groups.grp_id%TYPE
   ) return char;
 
+  function check_representation_all return char;
 end scs_group;
 /
 show errors
@@ -970,10 +971,11 @@ is
     v_join_policy scs_groups.join_policy%TYPE;
     v_grp_type_id scs_grp_types.grp_type_id%TYPE;
   begin
-    v_grp_id := party.new(party_id => grp_id, 
-                          email => email,
-                          url => url,
-                          modifying_user => modifying_user);
+    v_grp_id := scs_party.new(party_id => grp_id, 
+                              party_type => 'scs_groups',
+                              email => email,
+                              url => url,
+                              modifying_user => modifying_user);
     v_join_policy := join_policy;
 
     -- if group type wasn't specified, select the default.    
@@ -1018,7 +1020,7 @@ is
     delete from scs_groups
      where grp_id = scs_group.delete.grp_id;
 
-    party.delete(scs_group.delete.grp_id);
+    scs_party.delete(scs_group.delete.grp_id);
   end delete;
 
   function name (
@@ -1101,6 +1103,29 @@ is
     return result;
   end;
 
+  function check_representation_all
+  return char
+  is
+    v_res char(1);
+  begin
+    v_res := 't';
+    for g in (select * 
+                from scs_groups) loop
+      if scs_group.check_representation(g.grp_id) = 'f' then
+        v_res := 'f';
+        scs_log.error('scs_group.check_representation_all',
+                      'Group ' || g.grp_name || ' (' || g.grp_id || ') failed.');
+      end if;
+    end loop;
+  
+    return v_res;
+  end check_representation_all;
+
 end scs_group;
 /
 show errors
+
+
+
+
+

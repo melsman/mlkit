@@ -18,6 +18,7 @@ in
      demo/cookie_set.sml
      demo/cookie_delete.sml
      demo/db_test.sml
+     demo/db_clob_test.sml (* Testing Oracle Clob's 2002-09-17, nh *)
      demo/index.sml
      demo/rating/index.sml
      demo/rating/add.sml

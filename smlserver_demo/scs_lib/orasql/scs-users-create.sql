@@ -141,8 +141,8 @@ as
     v_user_id scs_users.user_id%TYPE;
   begin
     v_user_id := 
-      person.new(user_id, email, url, first_names, last_name, 
-                 security_id, sysdate, modifying_user, 'f');
+      scs_person.new(user_id, email, url, first_names, last_name, 
+                     security_id, sysdate, modifying_user, 'f');
 
     insert into scs_users
       (user_id, password, salt, screen_name, priv_name, priv_email, email_verified_p, email_bouncing_p, 
@@ -201,7 +201,7 @@ as
            screen_name = user_id || '-' || screen_name
      where user_id = scs_user.delete.user_id;
 
-    person.delete(user_id);
+    scs_person.delete(user_id);
   end delete;
 
   function system
