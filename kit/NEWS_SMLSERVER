@@ -1,17 +1,18 @@
 File NEWS_SMLSERVER                                September 22, 2001
 
+ * mael 2001-09-30: Changed the name of the SMLserver compiler from
+   mlkit_web to smlserverc.
+
  * nh 2001-09-23: Added dictionary support for multilingual language
-      support. Additional modules SmlsDict, SmlsLogin and SmlsLang.
+   support. Additional modules SmlsDict, SmlsLogin, and SmlsLang.
 
  * nh 2001-09-21: Added support for checking form variables
-     (module /sml/FormVar.sml)
-     Added two utility packages: /sml/SmlsDate and /sml/SmlsList
-
-     Fixed authentication example. It now works on both PostgreSQL
-     and Oracle.
+   (module /sml/FormVar.sml). Added two utility packages: 
+   /sml/SmlsDate and /sml/SmlsList. Fixed authentication example. It 
+   now works on both PostgreSQL and Oracle.
 
  * nh 2001-09-17: Added support for cookies, caching. Added
-     authentication example with simple filtering.
+   authentication example with simple filtering.
 
  * mael 2001-07-22: Primitives for accessing the AOLserver
    configuration file added to the Ns structure. Also added primitive 
@@ -29,9 +30,7 @@ File NEWS_SMLSERVER                                September 22, 2001
    can thus be used to terminate an SMLserver web-page without
    generating a warning.
 
- * mael 2001-07-19: Added Interrupt exception to front end; it is
-   now possible to handle an Interrupt exception raised by pressing
-   Control-C.
+ * mael 2001-07-19: Added Interrupt exception to front end.
 
            **** SMLserver version 3.9.1 is released ****
 

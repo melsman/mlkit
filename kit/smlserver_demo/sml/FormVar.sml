@@ -3,18 +3,19 @@ signature FORMVAR =
     (* Checking form variables are very important but also 
        tedious, because the same kind of code is written 
        in almost every file. This module overcomes the 
-       problem by defining several functions which can be used
-       to test the form variables used throughout the system.
+       tedious part by defining several functions that can 
+       be used to test form variables throughout a large
+       system.
 
        The idea is that you define a list of form types, 
        corresponding to the values used in forms. For instance, 
-       you may have an email type representing all the 
+       you may have an email type representing all possible
        email-values. For every form type, you define a
        function getFormtype, that takes three arguments, 
          (1) the name of the form-variable holding the value, 
-         (2) the name of the field in the form; the user may be
-             presented an errorpage with more than one error
-             and it is important that the error message 
+         (2) the name of the field in the form; the user may 
+	     be presented an errorpage with more than one 
+	     error and it is important that the error message 
 	     refer to a given field in the form
          (3) an error container of type errs used to hold 
 	     the error messages sent back to the user.
@@ -23,10 +24,10 @@ signature FORMVAR =
        are named getFormtypeErr.
 
        When you have checked all the form values, you can 
-       call the function any_errors, which will return an 
-       error-page if any errors happended and otherwise 
-       do nothing. If an error-page is returned, then
-       the process.is terminated.
+       call the function any_errors, which returns an 
+       error-page if any errors occurred and otherwise 
+       proceeds with the remainder of the script. If an 
+       error-page is returned, then the script is terminated.
 
        If you do not want an error page returned to the user
        then use one of the wrapper functions:
@@ -86,6 +87,10 @@ structure FormVar :> FORMVAR =
     type quot = string frag list
     type errs = quot list
     type 'a formvar_fn = string * string * errs -> 'a * errs
+
+    val RegExpMatch   = RegExp.match   o RegExp.fromString
+    val RegExpExtract = RegExp.extract o RegExp.fromString
+      
     exception FormVar of string
 
     val emptyErr : errs = []
@@ -377,31 +382,33 @@ structure FormVar :> FORMVAR =
 	  fun dateOk (d,m,y) = SmlsDate.dateOk(Option.valOf (Int.fromString d),
 					       Option.valOf (Int.fromString m),Option.valOf (Int.fromString y))
 	in
-	  (case RegExp.regExp "^([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)$" v of
-	     SOME [_,yyyy,mm,dd] => dateOk(dd,mm,yyyy)
-	     | NONE => (case RegExp.regExp "^([0-9][0-9][0-9][0-9])([0-9][0-9]?)([0-9][0-9]?)$" v of
-			  SOME [_,yyyy,mm,dd] => dateOk(dd,mm,yyyy)
-			| _ => false))
+	  (case RegExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
+	     SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)
+	   | _ => (case RegExpExtract "([0-9][0-9][0-9][0-9])([0-9][0-9]?)([0-9][0-9]?)" v of
+		     SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)
+		   | _ => false))
 	end
       handle _ => false
     in
-      val getEmailErr = getErr' "email" msgEmail 
-	(fn email =>
+      val getEmailErr = getErr' "email" msgEmail
+	(fn email =>  (* hmmm - I don't like this definition; what about 
+		       * new-lines and other escaped chars? mael 2001-09-30 *)
 	 let
 	   val bad_letters = "[^ @!\"#¤%&/()=?´`|¨~'*;:,æøåÅØÆ§½]"
 	 in
-	   RegExp.regExpBool ("^" ^ bad_letters ^ "+@" ^ bad_letters ^ "+\\." ^ bad_letters ^"+$") email
+	   RegExpMatch (bad_letters ^ "+@" ^ bad_letters ^ "+\\." ^ bad_letters ^ "+") email
 	 end)
-      val getNameErr = getErr' "name" msgName (RegExp.regExpBool "^[a-zA-ZAÆØÅaæøå '\\-]+$")
-      val getAddrErr = getErr' "address" msgAddr (RegExp.regExpBool "^[a-zA-Z0-9ÆØÅæøå '\\-\\.:;,]+$")
+      val getNameErr = getErr' "name" msgName (RegExpMatch "[a-zA-ZAÆØÅaæøå '\\-]+")
+      val getAddrErr = getErr' "address" msgAddr (RegExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
       val getLoginErr = getErr' "login" msgLogin 
 	(fn login =>
-	 RegExp.regExpBool "^[a-z]([a-z0-9\\-]+)$" login andalso 
+	 RegExpMatch "[a-z][a-z0-9\\-]+" login andalso 
 	 String.size login >= 3 andalso String.size login <= 10)
-      val getPhoneErr = getErr' "phone number" msgPhone (RegExp.regExpBool "^[a-zA-Z0-9ÆØÅæøå '\\-\\.:;,]+$")
+      val getPhoneErr = getErr' "phone number" msgPhone (RegExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
       (* getHtml : not implemented yet *)
       val getHtmlErr = getErr' "HTML text" msgHTML (fn html => html <> "")
-      val getUrlErr =  getErr' "URL" msgURL (RegExp.regExpBool "^http:[0-9]*//([-0-9a-zA-Z/\\\\\\._]+)$")
+      val getUrlErr =  getErr' "URL" msgURL (RegExpMatch "http:[0-9]*//[0-9a-zA-Z/\\-\\\\._]+")  (* what is the 
+												  * [0-9]* for? *)
       val getCprErr = getErr' "cpr number" msgCpr chkCpr
       val getEnumErr = fn enums => getErr' "enumeration" (msgEnum enums) (chkEnum enums)
       val getDateIso = getErr' "date" msgDateIso chkDateIso

@@ -58,7 +58,9 @@ structure SmlsLogin :> SMLS_LOGIN =
       in
 	(* we tell SMLserver to verify that the user is logged in before
            serving any of the login_pages *)
-	if List.foldl (fn (p,acc) => RegExp.regExpBool (Ns.Conn.location()^p) target orelse acc) false login_pages then
+	if List.foldl (fn (p,acc) => acc orelse 
+		       (RegExp.match o RegExp.fromString) (Ns.Conn.location()^p) target) 
+	  false login_pages then
 	  verifyUserFilter ()
 	else ()
       end
