@@ -90,40 +90,51 @@ structure ScsFormVar :> SCS_FORM_VAR =
 
     val RegExpMatch   = RegExp.match   o RegExp.fromString
     val RegExpExtract = RegExp.extract o RegExp.fromString
+
+    val % = ScsDict.d ScsLang.English
       
     exception FormVar of string
 
     val emptyErr : errs = []
 
     fun addErr (emsg:quot,errs:errs) = emsg :: errs
-    fun genErrMsg (f_msg:string,msg:quot) : quot = `Error in field ^f_msg. ` ^^ msg
-    fun errNoFormVar(f_msg:string,ty:string) : quot = `Error in field ^f_msg. You must provide a <b>^ty</b>.`
+    fun genErrMsg (f_msg:string,msg:quot) : quot = `^(%"Error in field") ^f_msg. ` ^^ msg
+    fun errNoFormVar(f_msg:string,ty:string) : quot = `^(%"Error in field") ^f_msg. ^(%"You must provide a") <b>^ty</b>.`
     fun errTypeMismatch(f_msg:string,ty:string,v:string) : quot = 
-      `Error in field ^f_msg. You must provide a <b>^ty</b> - <i>^v</i> is not a ^ty.`
+      `^(%"Error in field") ^f_msg. ^(%"You must provide a") <b>^ty</b> - <i>^v</i> ^(%"is not a") ^ty.`
     fun errTooLarge(f_msg:string,ty:string,v:string) : quot =
-      `Error in field ^f_msg. The provided ^ty (<i>^v</i>) is too large.`
+      `^(%"Error in field") ^f_msg. ^(%"The provided") ^ty (<i>^v</i>) ^(%"is too large").`
     fun errTooMany(f_msg:string) : quot =
-      `Error in field ^f_msg. More than one dataitem is provided.`
+      `^(%"Error in field") ^f_msg. ^(%"More than one dataitem is provided").`
 
-    fun genErrorPg (errs: errs): quot =
-      `<html>
-      <head><title>Form Error</title></head>
-      <body bgcolor=white>
-      We had a problem processing your entry:
+    fun returnErrorPg (errs: errs) : Ns.status = ScsPage.returnPg (%"Form Error") 
+      (case ScsLogin.user_lang of
+	 ScsLang.English => `
+	   We had a problem processing your entry:
 
-      <ul>` ^^
-      Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^
-      `</ul>
+	   <ul>` ^^
+	   Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^
+	   `</ul>
 
-      Please back up using your browser, correct it, and resubmit your entry<p>
-
-      Thank you.
-      <hr> <i>Served by SMLserver</i>
-      </body>
-      </html>`
+	   Please back up using your browser, correct it, and resubmit your entry<p>
+	   
+	   Thank you.`
+	 | ScsLang.Danish => 
+	   let
+	     val (problem_string, please_correct) = if List.length errs = 1 then
+	       ("en fejl","fejlen") else ("nogle fejl","fejlene")
+	   in
+	     `Vi har fundet ^problem_string i dine indtastede data:
+	       <ul>` ^^
+	     Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^
+	     `</ul>
+	     Vær venlig at klikke på "tilbage"-knappen i din browser, og ret
+	     ^please_correct. Derefter kan du indsende dine oplysninger igen<p>
+	     På forhånd tak.`
+	   end)
 
     fun anyErrors ([]:errs) = ()
-      | anyErrors (errs) = (Ns.return (genErrorPg errs); Ns.exit())
+      | anyErrors (errs) = (returnErrorPg errs; Ns.exit())
 
     fun wrapOpt (f : 'a formvar_fn) : string -> 'a option =
       fn fv => 
@@ -141,7 +152,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
       fn (fv:string,emsg:string) =>
       case f (fv,emsg,[]) of
 	(v,[]) => v
-       | (_,errs) => (Ns.return(genErrorPg errs); Ns.exit())
+       | (_,errs) => (returnErrorPg errs; Ns.exit())
 
     fun wrapPanic (f_panic: string * string -> 'a) (f : 'a formvar_fn) : string -> 'a =
       fn fv =>
@@ -162,7 +173,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		handle Overflow => (empty_val, addErr(errTooLarge(emsg,ty,v),errs))
 	 | _ => (empty_val, addErr(errTooMany emsg,errs)))
     in
-      val getIntErr = getErrWithOverflow 0 "number"
+      val getIntErr = getErrWithOverflow 0 (%"number")
 	(fn v => let val l = explode v
 		 in 
 		   case l
@@ -174,7 +185,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		       else NONE
 		   | nil => NONE
 		 end)
-      val getNatErr = getErrWithOverflow 0 "positive number" 
+      val getNatErr = getErrWithOverflow 0 (%"positive number")
 	(fn v => let val l = explode v
 		 in 
 		   case l
@@ -187,7 +198,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		   | nil => NONE
 		 end)
 	  
-      val getRealErr = getErrWithOverflow 0.0 "real"
+      val getRealErr = getErrWithOverflow 0.0 (%"real")
 	(fn v => let val l = explode v
 		 in
 		   case l
@@ -200,7 +211,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		   | nil => NONE
 		 end)
 
-      val getStringErr = getErrWithOverflow "" "string" (fn v => if size v = 0 then NONE else SOME v)
+      val getStringErr = getErrWithOverflow "" (%"string") (fn v => if size v = 0 then NONE else SOME v)
     end
 
     fun getIntRangeErr a b (args as (fv:string,emsg:string,errs:errs)) =
@@ -210,8 +221,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	if List.length errs = List.length errs' then
 	  if a <= i andalso i <= b 
 	    then (i,errs)
-	  else (0,addErr(genErrMsg(emsg,`The integer <i>^(Int.toString i)</i> is not within the valid
-				   range [^(Int.toString a),...,^(Int.toString b)].`),errs))
+	  else (0,addErr(genErrMsg(emsg,`^(%"The integer") <i>^(Int.toString i)</i> (%"is not within the valid range")
+				   [^(Int.toString a),...,^(Int.toString b)].`),errs))
 	else
 	  (0,errs')
       end
@@ -221,103 +232,175 @@ structure ScsFormVar :> SCS_FORM_VAR =
       fun getErr (empty_val:'a) (conv_val:string->'a) (ty:string) (add_fn:string->quot) (chk_fn:string->bool) =
 	fn (fv:string,emsg:string,errs:errs) =>
 	case Ns.Conn.formvarAll fv of
-	  []  => (empty_val,addErr(genErrMsg(emsg,add_fn ("You must provide an <b>"^ty^"</b>.")),errs))
-	| [""]  => (empty_val,addErr(genErrMsg(emsg,add_fn ("You must provide an <b>"^ty^"</b>.")),errs))
+	  []  => (empty_val,addErr(genErrMsg(emsg,add_fn ((%"You must provide a")^" <b>"^ty^"</b>.")),errs))
+	| [""]  => (empty_val,addErr(genErrMsg(emsg,add_fn ((%"You must provide a")^" <b>"^ty^"</b>.")),errs))
 	| [v] => 
 	    if chk_fn v then
 	      (conv_val v,errs)
 	    else
-	      (empty_val, addErr(genErrMsg(emsg,add_fn ("You must provide an valid <b>"^ty^"</b> - <i>" ^ 
-							v ^ "</i> is not one")),
+	      (empty_val, addErr(genErrMsg(emsg,add_fn ((%"You must provide an valid")^" <b>"^ty^"</b> - <i>" ^ 
+							v ^ "</i> "^(%"is not one"))),
 				 errs))
 	| _ => (empty_val, addErr(errTooMany emsg,errs))
       val getErr' = getErr "" trim
-      fun msgEmail s = `^s
-	<blockquote>A few examples of valid emails:
-	<ul>
-	<li>login@it-c.dk
-	<li>user@supernet.com
-	<li>FirstLastname@very.big.company.com\n
-	</ul></blockquote>`
-      fun msgName s = `^s
-	<blockquote>
-	A name may contain the letters from the alphabet including: <b>'</b>, <b>\</b>,<b>-</b>,<b>æ</b>,
-	<b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b> and space.
-	</blockquote>`
-      fun msgAddr s = `^s
-	<blockquote>
-	An address may contain digits, letters from the alphabet including:
-	<b>'</b>, <b>\\ </b>, <b>-</b>, <b>.</b>, <b>:</b> og <b>;</b> og <b>,</b>,
-	<b>æ</b>,<b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>
-	</blockquote>`
-      fun msgLogin s = `^s
-	<blockquote>
-	A login may contain lowercase letters from the alphabet and digits - the first
-	character must not be a digit. Special characters 
-	like <b>æ</b>,<b>ø</b>,<b>å</b>,<b>;</b>,<b>^^</b>,<b>%</b> are not alowed. 
-	A login must be no more than 10 characters and at least three characters.
-	</blockquote>`
-      fun msgPhone s = `^s
-	<blockquote>
-	A telephone numer may contain numbers and letters from the alphabet 
-	including <b>-</b>, <b>,</b> and <b>.</b>.
-	</blockquote>`
-      fun msgHTML s = `^s
-	<blockquote>
-	You may use the following HTML tags in your text: Not implemented yet.
-	</blokcquote>`
-      fun msgURL s = `^s
-	<blockquote>
-	<a href="/url_desc.sml">URL (Uniform Resource Locator)</a> - 
-	we only support the <code>http://</code> type (e.g., <code>http://www.it.edu</code>).
-	</blockquote>`
-      fun msgCpr s = `^s
-	<blockquote>
-	If you hold a Danish CPR-number, then the format is:
-	<code>DDMMYYYY-TTTT</code>, where <code>TTTT</code> are four numbers, for instance
-	<code>291270-1234</code>. <p>
+      fun msgEmail s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     <blockquote>A few examples of valid emails:
+	     <ul>
+	     <li>login@it-c.dk
+	     <li>user@supernet.com
+	     <li>FirstLastname@very.big.company.com\n
+	     </ul></blockquote>`
+	| ScsLang.Danish => `^s
+	     <blockquote>Her er nogle eksempler på emails:
+	     <ul>
+	     <li>login@it-c.dk
+	     <li>user@supernet.com
+	     <li>FirstLastname@very.big.company.com
+	     </ul></blockquote>`)
+      fun msgName s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     <blockquote>
+	     A name may contain the letters from the alphabet including: <b>'</b>, <b>\</b>,<b>-</b>,<b>æ</b>,
+	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b> and space.
+	     </blockquote>`
+	 | ScsLang.Danish => `^s
+	     <blockquote>
+	     Et navn må indeholde bogstaver fra alfabetet samt disse tegn: <b>'</b>, <b>\</b>,<b>-</b>,<b>æ</b>,
+	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b> og mellemrum.
+	     </blockquote>`)
+      fun msgAddr s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     <blockquote>
+	     An address may contain digits, letters from the alphabet including:
+	     <b>'</b>, <b>\\ </b>, <b>-</b>, <b>.</b>, <b>:</b> og <b>;</b> og <b>,</b>,
+	     <b>æ</b>,<b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>
+	     </blockquote>`
+	 | ScsLang.Danish => `^s
+	     <blockquote>
+	     En adresse må indeholde tal, bogstaver fra alfabetet samt disse tegn: 
+	     <b>'</b>, <b>\\ </b>, <b>-</b>, <b>.</b>, <b>:</b> og <b>;</b> og <b>,</b>,
+	     <b>æ</b>,<b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>
+	     </blockquote>`)
+      fun msgLogin s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     <blockquote>
+	     A login may contain lowercase letters from the alphabet and digits - the first
+	     character must not be a digit. Special characters 
+	     like <b>æ</b>,<b>ø</b>,<b>å</b>,<b>;</b>,<b>^^</b>,<b>%</b> are not alowed. 
+	     A login must be no more than 10 characters and at least three characters.
+	     </blockquote>`
+	 | ScsLang.Danish => `^s
+	     <blockquote>
+	     Et login må indeholde bogstaver fra alfabetet og tal - det første tegn må 
+	     ikke være et tal. Specialtegn såsom <b>æ</b>,<b>ø</b>,<b>å</b>,<b>;</b>,
+	     <b>^^</b>,<b>%</b> er ikke tilladt.
+	     Derudover skal et login være på mindst tre tegn og højst 10 tegn.
+	     </blockquote>`)
+      fun msgPhone s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     <blockquote>
+	     A telephone numer may contain numbers and letters from the alphabet 
+	     including <b>-</b>, <b>,</b> and <b>.</b>.
+	     </blockquote>`
+	 | ScsLang.Danish => `^s
+	     <blockquote>
+	     Et telefonnummer må indeholde tal og bogstaver fra alfabetet
+	     samt <b>-</b>, <b>,</b> and <b>.</b>.
+	     </blockquote>`)
+      fun msgHTML s = 	
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     <blockquote>
+	     You may use the following HTML tags in your text: Not implemented yet.
+	     </blokcquote>`
+	 | ScsLang.Danish => `^s
+	     <blockquote>
+	     Det er tilladt at anvende følgende HTML tags i din tekst: Desværre ikke implementeret.
+	     </blokcquote>`)
+      fun msgURL s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     <blockquote>
+	     <a href="/url_desc.sml">URL (Uniform Resource Locator)</a> - 
+	     we only support the <code>http://</code> type (e.g., <code>http://www.it.edu</code>).
+	     </blockquote>`
+	 | ScsLang.Danish => `^s
+	     <blockquote>
+	     <a href="/url_desc.sml">URL (Uniform Resource Locator)</a> - 
+	     vi supporterer kun <code>http://</code> type (f.eks. <code>http://www.it-c.dk</code>).
+	     </blockquote>`)
+      fun msgCpr s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     <blockquote>
+	     If you hold a Danish CPR-number, then the format is:
+	     <code>DDMMYYYY-TTTT</code>, where <code>TTTT</code> are four numbers, for instance
+	     <code>291270-1234</code>. <p>
 	  
-	We also perform a <a
-	href="http://www.cpr.dk/modulus11_beregn.htm">modulus 11
-	check (text is in Danish)</a>.<p>
+	     We also perform a <a
+	     href="http://www.cpr.dk/modulus11_beregn.htm">modulus 11
+	     check (text is in Danish)</a>.<p>
 
-	If you do not hold a Danish CPR-nummer, then write day,
-	month and year of you birthday in the order given above
-	(e.g., <code>DDMMYY</code>). Thereafter write the two first
-	letters in your (first) firstname and the first letter in
-	your (last) surname. In the last field write 2 if you are a
-	female and 1 if your are a male. <p>
+	     If you do not hold a Danish CPR-nummer, then write day,
+	     month and year of you birthday in the order given above
+	     (e.g., <code>DDMMYY</code>). Thereafter write the two first
+	     letters in your (first) firstname and the first letter in
+	     your (last) surname. In the last field write 2 if you are a
+	     female and 1 if your are a male. <p>
 
-	A male, with no Danish CPR-number named Claes Anders Fredrik
-	Moren, born August 31, 1975 writes: <b>310875-CLM1</b>.
+	     A male, with no Danish CPR-number named Claes Anders Fredrik
+	     Moren, born August 31, 1975 writes: <b>310875-CLM1</b>.
+	     
+	     </blockquote>`
+	 | ScsLang.Danish => `^s
+	     <blockquote>
+	     Hvis du har et dansk CPR-nummer, så er formatet:
+	     DDMMYYYY-TTTT, hvor TTTT er fire tal, eksempelvis
+	     291270-1234. <p>
 
-	</blockquote>`
-          (*<blockquote>
-	  Hvis du har et dansk CPR-nummer, så er formatet:
-	  DDMMYYYY-TTTT, hvor TTTT er fire tal, eksempelvis
-	  291270-1234. <p>Derudover udføres <a href=\"http://www.cpr.dk/modulus11_beregn.htm\">modulus 11 check</a>.
-	  <p>
-	  Hvis du ikke har et dansk CPR-nummer, skrives dato,
-	  måned og år for din fødselsdag i den angivne
-	  rækkefølge i de seks felter før stregen. I de
-	  første 3 felter efter stregen skrives de to første
-	  bogstaver i dit (første) fornavn efterfulgt af det
-	  første bogstav i dit (sidste) efternavn. I den
-	  sidste rubrik angives dit køn med 1 for mand og 2
-	  for kvinde.  <p> En mand, uden dansk CPR-nummer,
-	  ved navn Claes Anders Fredrik Moren, født den
-	  31. august 1975, skal skrive: <b>310875-CLM1</b>.
-	  </blockquote>*)
-      fun msgEnum enums s = `^s
-	You must choose among the following enumerations:
-	<blockquote>
-	^(String.concatWith "," enums)
-	</blockquote>`
-      fun msgDateIso s = `^s
-	<blockquote>
-	You must type a <b>date</b> in the ISO format <code>YYYY-MM-DD</code> (e.g., 2001-10-25).
-	</blockquote>`
+	     Derudover udføres 
+	     <a href="http://www.cpr.dk/modulus11_beregn.htm">modulus 11 check</a>.<p>
 
+	     Hvis du ikke har et dansk CPR-nummer, skrives dato,
+	     måned og år for din fødselsdag i den angivne
+	     rækkefølge i de seks felter før stregen. I de
+	     første 3 felter efter stregen skrives de to første
+	     bogstaver i dit (første) fornavn efterfulgt af det
+	     første bogstav i dit (sidste) efternavn. I den
+	     sidste rubrik angives dit køn med 1 for mand og 2
+	     for kvinde.  <p> 
+
+	     En mand, uden dansk CPR-nummer,
+	     ved navn Claes Anders Fredrik Moren, født den
+	     31. august 1975, skal skrive: <b>310875-CLM1</b>.
+	     </blockquote>`)
+      fun msgEnum enums s =
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     You must choose among the following enumerations:
+	     <blockquote>
+	     ^(String.concatWith "," enums)
+	     </blockquote>`
+	| ScsLang.Danish => `^s
+	     Du skal indtaste en af de følgende værdier:
+	     <blockquote>
+	     ^(String.concatWith "," enums)
+	     </blockquote>`)
+      fun msgDateIso s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     <blockquote>
+	     You must type a <b>date</b> in the ISO format <code>YYYY-MM-DD</code> (e.g., 2001-10-25).
+	     </blockquote>`
+	| ScsLang.Danish => `^s
+	     Du skal indtaste en <b>dato</b> i ISO formatet, dvs. <code>YYYY-MM-DD</code> (f.eks. 2001-10-25).
+	     </blockquote>`)
       fun chkCpr cpr =
 	let
 	  fun mk_yyyymmdd (d1,d2,m1,m2,y1,y2) =
@@ -390,26 +473,20 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	end
       handle _ => false
     in
-      val getEmailErr = getErr' "email" msgEmail
-	(fn email =>  (* hmmm - I don't like this definition; what about 
-		       * new-lines and other escaped chars? mael 2001-09-30 *)
-	 let
-	   val bad_letters = "[^ @!\"#¤%&/()=?´`|¨~'*;:,æøåÅØÆ§½]"
-	 in
-	   RegExpMatch (bad_letters ^ "+@" ^ bad_letters ^ "+\\." ^ bad_letters ^ "+") email
-	 end)
-      val getNameErr = getErr' "name" msgName (RegExpMatch "[a-zA-ZAÆØÅaæøå '\\-]+")
-      val getAddrErr = getErr' "address" msgAddr (RegExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
-      val getLoginErr = getErr' "login" msgLogin 
+      val getEmailErr = getErr' (%"email") msgEmail
+	(fn email => RegExpMatch "^[^@\t ]+@[^@.\t]+(\\.[^@.\n ]+)+$" email)
+      val getNameErr = getErr' (%"name") msgName (RegExpMatch "[a-zA-ZAÆØÅaæøå '\\-]+")
+      val getAddrErr = getErr' (%"address") msgAddr (RegExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
+      val getLoginErr = getErr' (%"login") msgLogin 
 	(fn login =>
 	 RegExpMatch "[a-z][a-z0-9\\-]+" login andalso 
 	 String.size login >= 3 andalso String.size login <= 10)
-      val getPhoneErr = getErr' "phone number" msgPhone (RegExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
+      val getPhoneErr = getErr' (%"phone number") msgPhone (RegExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
       (* getHtml : not implemented yet *)
-      val getHtmlErr = getErr' "HTML text" msgHTML (fn html => html <> "")
-      val getUrlErr =  getErr' "URL" msgURL (RegExpMatch "http://[0-9a-zA-Z/\\-\\\\._]+(:[0-9]+)?")
-      val getCprErr = getErr' "cpr number" msgCpr chkCpr
-      val getEnumErr = fn enums => getErr' "enumeration" (msgEnum enums) (chkEnum enums)
-      val getDateIso = getErr' "date" msgDateIso chkDateIso
+      val getHtmlErr = getErr' (%"HTML text") msgHTML (fn html => html <> "")
+      val getUrlErr =  getErr' (%"URL") msgURL (RegExpMatch "http://[0-9a-zA-Z/\\-\\\\._]+(:[0-9]+)?")
+      val getCprErr = getErr' (%"cpr number") msgCpr chkCpr
+      val getEnumErr = fn enums => getErr' (%"enumeration") (msgEnum enums) (chkEnum enums)
+      val getDateIso = getErr' (%"date") msgDateIso chkDateIso
     end
   end

@@ -1,5 +1,8 @@
 File NEWS_SMLSERVER                                September 22, 2001
 
+
+ * nh 2001-10-05: Added multilingual support in FormVar module. 
+
  * mael 2001-09-30: Changed the name of the SMLserver compiler from
    mlkit_web to smlserverc.
 

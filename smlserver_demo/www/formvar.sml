@@ -1,10 +1,4 @@
-val _ = Ns.return `
-<html>
-<head>
-<title>Checking Form Variables</title>
-</head>
-<body bgcolor=white>
-<h2>Checking Form Variables</h2><p>
+val _ = ScsPage.returnPg "Checking Form Variables" `
 <form method=post action=formvar_chk.sml>
 Type an integer: <input type=text name=int><p>
 Type a positive integer: <input type=text name=nat><p>
@@ -25,9 +19,4 @@ Choose sex: <select name=sex>
 Type in a date <input type=text name=date><p>
 
 <input type=submit value="Submit Entry">
-</form>
-<hr>
-<a href="http://www.smlserver.org/">SMLserver Home Page</a> 
-(<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-09-20
-</body>
-</html>`
+</form>`

@@ -1,13 +1,4 @@
-val _ = Ns.return `
-<html>
-<head>
-<title>
-Authentication
-</title>
-</head>
-<body bgcolor=white>
-<h2>Authentication</h2>
-
+val _ = ScsPage.returnPg "Authentication" `
 This example uses the database to store user id and passwords. You
 must load the datamodel (file <code>/www/auth.sql</code>) into either
 Oracle or PostgreSQL.<p>
@@ -46,11 +37,6 @@ password protected pages (e.g., <a href="server.sml">server.sml</a> or
        (Int.toString ScsLogin.user_id) ^ " (<a href=\"auth_logout.sml\">logout</a>) "
      else "You are not logged in").<p>
 
-Back to the <a href="index.sml">example</a> page<p>
-
-<hr>
-<a href="http://www.smlserver.org/">SMLserver Home Page</a> (<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-07-29
-</body>
-</html>`
+Back to the <a href="index.sml">example</a> page<p>`
 
   

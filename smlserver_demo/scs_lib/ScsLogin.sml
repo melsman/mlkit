@@ -46,7 +46,7 @@ structure ScsLogin :> SCS_LOGIN =
     (* ============================================= *)
     (* Below, we check for password protected pages. *)
     (* ============================================= *)
-    val login_pages = ["/show_cookies.sml*", "/email*"]
+    val login_pages = ["/show_cookies.sml.*", "/email.*"]
 
     val _ =
       let

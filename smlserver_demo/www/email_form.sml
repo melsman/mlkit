@@ -13,16 +13,8 @@ fun genForm () = `
 </form>`
 
 val _ = case ScsLogin.user_lang of
-  ScsLang.English => Ns.return 
-    (`<html>
-     <head>
-     <title>Mail Me</title>
-     </head>
-     <body bgcolor=white>
-
-     <h1>Mail Me</h1>
-
-     With <a href="http://www.smlserver.com">SMLserver</a> you can mail from
+  ScsLang.English => ScsPage.returnPg "Mail Me"
+    (`With <a href="http://www.smlserver.com">SMLserver</a> you can mail from
      within your SML-scripts. You use the SMLserver function
      <code>send</code>. You can, for instance, make a web-services that
      sends emails til you or others. In the simplest form, the function takes 
@@ -43,25 +35,9 @@ val _ = case ScsLogin.user_lang of
      and we are pleased to receive your comments, ideas, bug reports etc.<p>
 
        ` ^^ (genForm()) ^^ `
-
-       Back to the <a href="../auth_example.sml">authentication example</a> page<p>
-       <hr>
-       <a href="http://www.smlserver.org/">SMLserver Home Page</a> 
-       (<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-09-23
-       
-       </body>
-       </html>`)
-  |  ScsLang.Danish => Ns.return 
-       (`
-	<html>
-	<head>
-	<title>Send Mig Mail</title>
-	</head>
-	<body bgcolor=white>
-
-	<h1>Send Mig Mail</h1>
-
-	Med <a href="http://www.smlserver.com">SMLserver</a> kan du sende
+       Back to the <a href="../auth_example.sml">authentication example</a> page<p>`)
+  |  ScsLang.Danish => ScsPage.returnPg "Send Mig Mail"
+       (`Med <a href="http://www.smlserver.com">SMLserver</a> kan du sende
 	emails fra dine SML-programmer ved brug af SMLservers indbyggede
 	<code>send</code> kommando. Du kan således lave web-services som
 	sender emails til dig eller andre. På sin simple form tager funktionen
@@ -83,10 +59,4 @@ val _ = case ScsLogin.user_lang of
 
 	` ^^ (genForm()) ^^ `
 	
-	Link til <a href="../auth_example.sml">eksempelsiden</a> med validering.<p>
-	<hr>
-	<a href="http://www.smlserver.org/">SMLserver Home Page</a> 
-	(<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-09-23
-	
-	</body>
-	</html>`)
+	Link til <a href="../auth_example.sml">eksempelsiden</a> med validering.<p>`)

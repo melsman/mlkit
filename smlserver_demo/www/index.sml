@@ -1,4 +1,4 @@
-val _ = Ns.return (ScsPage.returnPg "SMLserver Examples" (`
+val _ = ScsPage.returnPg "SMLserver Examples" (`
   See the <a href=http://www.smlserver.org>SMLserver Home Page</a> for
   SMLserver news and updates.<p>
 
@@ -47,6 +47,6 @@ Most of the <b>*.msp</b> examples are taken from the <a
 href="http://ellemose.dina.kvl.dk/~sestoft/msp/index.sml">ML Server
 Pages (MSP) homepage</a>. The first MSP implementation used <a
 href="http://www.dina.kvl.dk/~sestoft/mosml.html">Moscow ML</a>.
-`))
+`)
 
 
