@@ -536,7 +536,6 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 	   | LNprim => type_prim' [tyName_REAL,tyName_EXN] tyName_REAL "LNprim"
 	   | SIZEprim => type_prim' [tyName_STRING] tyName_INT "SIZEprim"
 	   | CHRprim => type_prim' [tyName_INT,tyName_EXN] tyName_STRING "CHRprim"
-	   | ORDprim => type_prim' [tyName_STRING,tyName_EXN] tyName_INT "ORDprim"
 	   | EXPLODEprim =>
 	       (case lexps
 		  of [lexp] =>

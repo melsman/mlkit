@@ -21,7 +21,8 @@ exception Chr and Quot and Floor and Sqrt and
 fun op = (x: ''a, y: ''a): bool =           prim(0, (x, y))
 fun (x: 'a ref) := (y: 'a): unit =          prim(17, (x, y)) 
 fun !(x: 'a ref): 'a =                      prim(18, x) 
-fun ord (c:char): int =                     prim(11, c)
+fun ord (c : char) : int =                  prim (31, ("id", "id", c))
+
 
 
 (* ======================
@@ -41,7 +42,7 @@ fun exp(x: real): real =                    prim(31, ("expFloat", "expFloat", x,
 fun ln(x: real): real =                     prim(31, ("lnFloat", "lnFloat", x, Ln)) 
 fun sin(x: real): real =                    prim(31, ("sinFloat", "sinFloat", x)) 
 fun cos(x: real): real =                    prim(31, ("cosFloat", "cosFloat", x)) 
-fun arctan(x: real): real =                 prim(31, ("arctanFloat", "arctanFloat", x)) 
+fun atan(x: real): real =                   prim(31, ("atanFloat", "atanFloat", x)) 
 
 
 abstype instream = INS of int                 (* Streams ala the old Def. *)
