@@ -644,126 +644,117 @@ old*)
       (* Used to make the lookupPrim function well-typed, bit of a hack *)
 
     fun lookupPrim i =
-      case i of
-        ~18 => GREATEREQ_REALprim
-      | ~17 => GREATEREQ_INTprim
-      | ~16 => LESSEQ_REALprim
-      | ~15 => LESSEQ_INTprim
-      | ~14 => GREATER_REALprim
-      | ~13 => GREATER_INTprim
-      | ~12 => LESS_REALprim
-      | ~11 => LESS_INTprim
-      | ~10 => MUL_REALprim
-      | ~9 => MUL_INTprim
-      | ~8 => MINUS_REALprim
-      | ~7 => MINUS_INTprim
-      | ~6 => PLUS_REALprim
-      | ~5 => PLUS_INTprim
-      | ~4 => NEG_REALprim
-      | ~3 => NEG_INTprim
-      | ~2 => ABS_REALprim
-      | ~1 => ABS_INTprim
-      | 0 => EQUALprim dummyType
-      | 1 => FLOORprim
-      | 2 => REALprim
-      | 3 => SQRTprim
-      | 4 => SINprim
-      | 5 => COSprim
-      | 6 => ARCTANprim
-      | 7 => EXPprim
-      | 8 => LNprim
-      | 9 => SIZEprim
-      | 10 => CHRprim
-      | 11 => ORDprim
-      | 12 => EXPLODEprim
-      | 13 => IMPLODEprim
-      | 14 => DIV_REALprim
-      | 15 => DIV_INTprim
-      | 16 => MODprim
-      | 17 => ASSIGNprim dummyType
-      | 18 => DEREFprim dummyType
-      | 19 => OPEN_INprim
-      | 20 => OPEN_OUTprim
-      | 21 => INPUTprim
-      | 22 => LOOKAHEADprim
-      | 23 => CLOSE_INprim
-      | 24 => END_OF_STREAMprim
-      | 25 => OUTPUTprim
-      | 26 => CLOSE_OUTprim
-      | 27 => USEprim
-      | 28 => FLUSH_OUTprim
-      | 29 => STD_INprim
-      | 30 => STD_OUTprim
-      | 31 => CCALLprim ("dummyString", dummyType)
-      | _ => die ("lookupPrim: i = "  ^ Int.string i)
+          (case i of
+	     0 => EQUALprim dummyType
+	   | 1 => FLOORprim
+	   | 2 => REALprim
+	   | 3 => SQRTprim
+	   | 4 => SINprim
+	   | 5 => COSprim
+	   | 6 => ARCTANprim
+	   | 7 => EXPprim
+	   | 8 => LNprim
+	   | 9 => SIZEprim
+	   | 10 => CHRprim
+	   | 11 => ORDprim
+	   | 12 => EXPLODEprim
+	   | 13 => IMPLODEprim
+	   | 14 => DIV_REALprim
+	   | 15 => DIV_INTprim
+	   | 16 => MODprim
+	   | 17 => ASSIGNprim dummyType
+	   | 18 => DEREFprim dummyType
+	   | 19 => OPEN_INprim
+	   | 20 => OPEN_OUTprim
+	   | 21 => INPUTprim
+	   | 22 => LOOKAHEADprim
+	   | 23 => CLOSE_INprim
+	   | 24 => END_OF_STREAMprim
+	   | 25 => OUTPUTprim
+	   | 26 => CLOSE_OUTprim
+	   | 27 => USEprim
+	   | 28 => FLUSH_OUTprim
+	   | 29 => STD_INprim
+	   | 30 => STD_OUTprim
+	   | 31 => CCALLprim ("dummyString", dummyType)
+	   | _ => die ("lookupPrim " ^ Int.string i))
 
-    (* No of arguments for primitives Xprim *)
-    val argIsEmpty = [29,30]
-    val argIsPair = [0,1,3,7,8,10,11,17,19,20,21]
-    val argIsTriple = [14,15,16,25,27]
 
     (* ---------------------------------------------------------------------- *)
     (*         Primitives for overloaded arithmetic operators                 *)
     (* ---------------------------------------------------------------------- *)
 
-    (* resolve (i) returns 0 if the resolved type is int
-       and 1 if the resolved type is real; crashes otherwise *)
-
-    fun resolve i =
-          (case ElabInfo.to_OverloadingInfo i of
-	     None => die "CompileExp resolve 1"
-	   | Some (OverloadingInfo.RESOLVED_INT) => 0
-	   | Some (OverloadingInfo.RESOLVED_REAL) => 1
-	   | Some (OverloadingInfo.UNRESOLVED _) => die "resolve: unresolved"
-	   | Some _ => die "resolve: OverloadingInfo.RESOLVED_CHAR etc. \
-	                   \ not implemented  25/06/1997 10:52. tho.")
-
     local 
-      (* No of arguments for applied occurrences of overloaded variable 
-       * (not in Xprim). E.g., in ``abs x'' there is a single argument
-       *)
-      val argIsSingle = [1,3] (* abs and neg *)
-      val argIsPair   = [5,7,9,11,13,15,17] (* plus, minus, mul, less, *)
-                                            (* greater, lesseq, greatereq  *)
+      fun int_or_real info (int, real) =
+	    (case NoSome "int_or_real" (ElabInfo.to_OverloadingInfo info) of
+	       OverloadingInfo.RESOLVED_INT => int
+	     | OverloadingInfo.RESOLVED_REAL => real
+	     | OverloadingInfo.RESOLVED_WORD => int
+	     | OverloadingInfo.RESOLVED_CHAR => int
+	     | OverloadingInfo.RESOLVED_STRING => die "int_or_real: string"
+	     | OverloadingInfo.UNRESOLVED _ => die "int_or_real: unresolved")
+      fun string_or_int_or_real info (int, real, string) =
+	    (case NoSome "string_or_int_or_real" (ElabInfo.to_OverloadingInfo info) of
+	       OverloadingInfo.RESOLVED_INT => int
+	     | OverloadingInfo.RESOLVED_REAL => real
+	     | OverloadingInfo.RESOLVED_WORD => int
+	     | OverloadingInfo.RESOLVED_CHAR => int
+	     | OverloadingInfo.RESOLVED_STRING => string
+	     | OverloadingInfo.UNRESOLVED _ => die "string_or_int_or_real: unresolved")
+      fun unoverload i CE.ABS = int_or_real i (ABS_INTprim, ABS_REALprim)
+	| unoverload i CE.NEG = int_or_real i (NEG_INTprim, NEG_REALprim)
+	| unoverload i CE.PLUS = int_or_real i (PLUS_INTprim, PLUS_REALprim)
+	| unoverload i CE.MINUS = int_or_real i (MINUS_INTprim, MINUS_REALprim)
+	| unoverload i CE.MUL = int_or_real i (MUL_INTprim, MUL_REALprim)
+	| unoverload i CE.LESS =
+	    string_or_int_or_real i
+	      (LESS_INTprim, LESS_REALprim, LESS_STRINGprim)
+	| unoverload i CE.GREATER=
+	    string_or_int_or_real i
+	      (GREATER_INTprim, GREATER_REALprim, GREATER_STRINGprim)
+	| unoverload i CE.LESSEQ =
+	    string_or_int_or_real i
+	      (LESSEQ_INTprim, LESSEQ_REALprim, LESSEQ_STRINGprim)
+	| unoverload i CE.GREATEREQ =
+	    string_or_int_or_real i
+	      (GREATEREQ_INTprim, GREATEREQ_REALprim, GREATEREQ_STRINGprim)
+	| unoverload i _ = die "unoverload"
     in
-      fun make_prim info no compilerAtexp compilerExp (arg: Grammar.atexp) =
-        let 
-          val t = resolve info
-        in
-          if List.member no argIsSingle then
-            (compilerAtexp arg) bindS (fn arg' =>
-            unitS(PRIM(lookupPrim(~(t+no)),[arg'])))
-          else (* argIsPair *)
-              case arg of 
-                RECORDatexp(_,
-                            Some(EXPROW(_,_,exp1,
-                                        Some(EXPROW(_,_,exp2,None))))) =>
-                (compilerExp exp1) bindS (fn exp1' =>
-                (compilerExp exp2) bindS (fn exp2' =>
-                unitS(PRIM(lookupPrim(~(t+no)),[exp1',exp2']))))
-              | _ => die "make_prim"
-        end
-      
-      fun make_prim_fn info no =  
-        let 
-          val t = resolve info
-          val ty = if t = 0 then CONStype([],TyName.tyName_INT)
-                            else CONStype([],TyName.tyName_REAL)
-          val lv1 = Lvars.newLvar()
-        in
-          if List.member no argIsSingle then
-              FN{pat=[(lv1,ty)],
-                 body=PRIM(lookupPrim(~(t+no)),[VAR{lvar=lv1,instances=[]}])}
+      fun overloaded_prim info result (*e.g., CE.ABS*)
+	    compilerAtexp compilerExp (arg: Grammar.atexp) takes_one_argument =
+	    if takes_one_argument then
+	      (compilerAtexp arg) bindS (fn arg' =>
+	      unitS (PRIM (unoverload info result, [arg'])))
+	    else
+	      (case arg of 
+		 RECORDatexp(_,
+			     Some(EXPROW(_,_,exp1,
+					 Some(EXPROW(_,_,exp2,None))))) =>
+		 (compilerExp exp1) bindS (fn exp1' =>
+                 (compilerExp exp2) bindS (fn exp2' =>
+                 unitS (PRIM (unoverload info result,
+			      [exp1',exp2']))))
+	       | _ => die "overloaded_prim")
 
-          else (* argIsPair *) 
-              FN{pat=[(lv1,RECORDtype[ty,ty])],
-                 body=PRIM(lookupPrim(~(t+no)),[PRIM(SELECTprim 0,
-                                                     [VAR{lvar=lv1,instances=[]}]),
-                                                PRIM(SELECTprim 1,
-                                                     [VAR{lvar=lv1,instances=[]}])])}
-        end
-
-    end (* local *)
+      fun overloaded_prim_fn info result (*e.g., CE.ABS*) takes_one_argument =
+	    let val ty = int_or_real info (CONStype ([], TyName.tyName_INT),
+					   CONStype ([], TyName.tyName_REAL))
+	        val lvar1 = Lvars.newLvar ()
+	    in
+	      unitS (
+	      if takes_one_argument then
+		FN {pat=[(lvar1, ty)],
+		    body=PRIM (unoverload info result,
+			       [VAR {lvar=lvar1, instances=[]}])}
+	      else (*takes two arguments*)
+		FN {pat=[(lvar1, RECORDtype [ty, ty])],
+		    body=PRIM (unoverload info result,
+			       [PRIM (SELECTprim 0,
+				      [VAR {lvar=lvar1, instances=[]}]),
+				PRIM (SELECTprim 1,
+				      [VAR {lvar=lvar1, instances=[]}])])})
+	    end
+    end (*local*)
 
    (* ---------------------------------------------------------------------- *)
    (*           Decomposition of applications of prim                        *)
@@ -823,15 +814,15 @@ old*)
 		 (fn instances' =>
 		  unitS(VAR {lvar=lv,instances=instances'}))
 	       end
-	      | CE.ABS => unitS(make_prim_fn info 1)
-	      | CE.NEG => unitS(make_prim_fn info 3)
-	      | CE.PLUS => unitS(make_prim_fn info 5)
-	      | CE.MINUS => unitS(make_prim_fn info 7)
-	      | CE.MUL => unitS(make_prim_fn info 9)
-	      | CE.LESS => unitS(make_prim_fn info 11)
-	      | CE.GREATER => unitS(make_prim_fn info 13)
-	      | CE.LESSEQ => unitS(make_prim_fn info 15)
-	      | CE.GREATEREQ => unitS(make_prim_fn info 17)
+	      | CE.ABS =>       overloaded_prim_fn info CE.ABS       true 
+	      | CE.NEG =>       overloaded_prim_fn info CE.NEG       true 
+	      | CE.PLUS =>      overloaded_prim_fn info CE.PLUS      false
+	      | CE.MINUS =>     overloaded_prim_fn info CE.MINUS     false
+	      | CE.MUL =>       overloaded_prim_fn info CE.MUL       false
+	      | CE.LESS =>      overloaded_prim_fn info CE.LESS      false
+	      | CE.GREATER =>   overloaded_prim_fn info CE.GREATER   false
+	      | CE.LESSEQ =>    overloaded_prim_fn info CE.LESSEQ    false
+	      | CE.GREATEREQ => overloaded_prim_fn info CE.GREATEREQ false
 	      | CE.CON(con,it) =>
 	       let
 		 val (functional,Type,instances) =
@@ -982,15 +973,15 @@ old*)
 		       (fn tau' =>
 			unitS(PRIM(FORCE_RESET_REGIONSprim{instance = tau'}, [arg'])))
 		      | _ => die "compileExp(APPexp..): wrong type info"))
-	      | CE.ABS => make_prim info 1 (compileAtexp env) (compileExp env) arg
-	      | CE.NEG => make_prim info 3 (compileAtexp env) (compileExp env) arg
-	      | CE.PLUS => make_prim info 5 (compileAtexp env) (compileExp env) arg
-	      | CE.MINUS => make_prim info 7 (compileAtexp env) (compileExp env) arg
-	      | CE.MUL => make_prim info 9 (compileAtexp env) (compileExp env) arg
-	      | CE.LESS => make_prim info 11(compileAtexp env)  (compileExp env) arg
-	      | CE.GREATER => make_prim info 13(compileAtexp env)  (compileExp env) arg
-	      | CE.LESSEQ => make_prim info 15(compileAtexp env)  (compileExp env) arg
-	      | CE.GREATEREQ => make_prim info 17(compileAtexp env)  (compileExp env) arg
+	      | CE.ABS =>       overloaded_prim info CE.ABS       (compileAtexp env) (compileExp env) arg true 
+	      | CE.NEG =>       overloaded_prim info CE.NEG       (compileAtexp env) (compileExp env) arg true 
+	      | CE.PLUS =>      overloaded_prim info CE.PLUS      (compileAtexp env) (compileExp env) arg false
+	      | CE.MINUS =>     overloaded_prim info CE.MINUS     (compileAtexp env) (compileExp env) arg false
+	      | CE.MUL =>       overloaded_prim info CE.MUL       (compileAtexp env) (compileExp env) arg false
+	      | CE.LESS =>      overloaded_prim info CE.LESS      (compileAtexp env) (compileExp env) arg false
+	      | CE.GREATER =>   overloaded_prim info CE.GREATER   (compileAtexp env) (compileExp env) arg false
+	      | CE.LESSEQ =>    overloaded_prim info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false
+	      | CE.GREATEREQ => overloaded_prim info CE.GREATEREQ (compileAtexp env) (compileExp env) arg false
 	      | CE.PRIM =>   
                              (* Application of `prim'. We must now disassemble the 
                               * argument to get the prim number and the arguments 
