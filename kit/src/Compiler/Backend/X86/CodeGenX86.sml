@@ -438,7 +438,7 @@ struct
 
     (* reg_map is a register map describing live registers at entry to the function       *)
     (* The stub requires reg_map to reside in tmp_reg1 and the return address in tmp_reg0 *)
-    fun do_gc(reg_map: Word32.word,size_ccf,size_rcf,C) =
+    fun do_gc(reg_map: Word32.word,size_ccf,size_rcf,size_spilled_region_args,C) =
       if gc_p() then 
 	let
 	  val l = new_local_lab "return_from_gc_stub"
@@ -453,6 +453,7 @@ struct
 	  load_label_addr(l,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff, (* tmp_reg0 = return address *)
   I.pushl(I (int_to_string size_ccf)) ::
   I.pushl(I (int_to_string size_rcf)) ::
+  I.pushl(I (int_to_string size_spilled_region_args)) ::
 	  I.jmp(L gc_stub_lab) ::
 	  I.lab l :: C))
 	end
@@ -978,6 +979,65 @@ struct
          maybe_tag_words(I.orl(I "1", R d_reg), C')))))
        end
 
+     fun bin_op_w32boxed__ inst (r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+       in
+	 x_C(
+	 load_indexed(tmp_reg0,x_reg,WORDS 1,
+         y_C(
+         load_indexed(tmp_reg1,y_reg,WORDS 1,
+         inst(R tmp_reg0, R tmp_reg1) ::
+	 move_aty_into_reg(r,d_reg,size_ff,
+         store_indexed(d_reg,WORDS 1,tmp_reg1,
+         load_immed(IMMED(Word32.toInt (BI.tag_word_boxed false)),tmp_reg1,
+	 store_indexed(d_reg,WORDS 0, tmp_reg1,C'))))))))
+       end
+
+     fun addw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       bin_op_w32boxed__ I.addl (r,x,y,d,size_ff,C)
+
+     fun subw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       bin_op_w32boxed__ I.subl (r,y,x,d,size_ff,C) (* x and y swapped, see spec for subl *)
+
+     fun mulw32boxed(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       bin_op_w32boxed__ I.imull (r,x,y,d,size_ff,C)
+
+     fun orw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       bin_op_w32boxed__ I.orl (r,x,y,d,size_ff,C)
+
+     fun andw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       bin_op_w32boxed__ I.andl (r,x,y,d,size_ff,C)
+
+     fun xorw32boxed__ (r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       bin_op_w32boxed__ I.xorl (r,x,y,d,size_ff,C)
+
+     fun shift_w32boxed__ inst (r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
+	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
+       in
+	 x_C(
+	 load_indexed(tmp_reg1,x_reg,WORDS 1,
+         y_C(
+         load_indexed(ecx,y_reg,WORDS 1,  (* tmp_reg0 = ecx, see InstsX86.sml *)
+         inst(R cl, R tmp_reg1) ::
+	 move_aty_into_reg(r,d_reg,size_ff,
+         store_indexed(d_reg,WORDS 1,tmp_reg1,
+         load_immed(IMMED(Word32.toInt (BI.tag_word_boxed false)),tmp_reg1,
+	 store_indexed(d_reg,WORDS 0, tmp_reg1, C'))))))))
+       end
+
+     fun shift_leftw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       shift_w32boxed__ I.sall (r,x,y,d,size_ff,C)
+
+     fun shift_right_signedw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       shift_w32boxed__ I.sarl (r,x,y,d,size_ff,C)
+
+     fun shift_right_unsignedw32boxed__(r,x,y,d,size_ff,C) = (* Only used when tagging is enablen; Word32Boxed.sml *)
+       shift_w32boxed__ I.shrl (r,x,y,d,size_ff,C)
+
      fun shift_op_kill_tmp01 inst (x,y,d,size_ff,C) =  (*tmp_reg0 = %ecx*)
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
@@ -1003,9 +1063,9 @@ struct
 	   I.incl (R d_reg) :: C'))))    (* 1 +    *)
 	 else
 	   x_C(y_C(         
-	  copy(y_reg, ecx,
-	  copy(x_reg, d_reg,
-          I.sall(R cl, R d_reg) :: C'))))
+	   copy(y_reg, ecx,
+           copy(x_reg, d_reg,
+           I.sall(R cl, R d_reg) :: C'))))
        end
 
      fun toIntw32boxed__ (x,d,size_ff,C) =
@@ -1763,7 +1823,16 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 			 | ("mul_word8__", [x, y], [d]) => mulw8_kill_tmp01(x,y,d,size_ff,C)
 			 | ("__div_float", [b,x,y],[d]) => divf_kill_tmp01(x,y,b,d,size_ff,C)
 			 | ("fromIntw32boxed__",[r,x],[d]) => fromIntw32boxed__ (r,x,d,size_ff,C)
-			  
+			 | ("orw32boxed__",[r,x,y],[d]) => orw32boxed__(r,x,y,d,size_ff,C)
+			 | ("andw32boxed__",[r,x,y],[d]) => andw32boxed__(r,x,y,d,size_ff,C)
+			 | ("xorw32boxed__",[r,x,y],[d]) => xorw32boxed__(r,x,y,d,size_ff,C)
+			 | ("shift_leftw32boxed__",[r,x,y],[d]) => shift_leftw32boxed__(r,x,y,d,size_ff,C)
+			 | ("shift_right_signedw32boxed__",[r,x,y],[d]) => shift_right_signedw32boxed__(r,x,y,d,size_ff,C)
+			 | ("shift_right_unsignedw32boxed__",[r,x,y],[d]) => shift_right_unsignedw32boxed__(r,x,y,d,size_ff,C)
+			 | ("plus_w32boxed__",[r,x,y],[d]) => addw32boxed(r,x,y,d,size_ff,C)
+			 | ("minus_w32boxed__",[r,x,y],[d]) => subw32boxed(r,x,y,d,size_ff,C)
+			 | ("mul_w32boxed__",[r,x,y],[d]) => mulw32boxed(r,x,y,d,size_ff,C)
+
 			 | (_,all_args,[]) => compile_c_call_prim(name, all_args, NONE, size_ff, tmp_reg1, C)
 			 | (_,all_args, [res_aty]) => compile_c_call_prim(name, all_args, SOME res_aty, size_ff, tmp_reg1, C)
 			 | _ => die "CCall with more than one result variable")))
@@ -1786,7 +1855,8 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
 	val C = base_plus_offset(esp,WORDS(size_ff+size_ccf),esp,
 				 I.popl (R tmp_reg1) ::
 				 I.jmp (R tmp_reg1) :: [])
-	val reg_args = map lv_to_reg_no (CallConv.get_register_args cc)
+	val size_spilled_region_args = List.length (CallConv.get_spilled_region_args cc)
+	val reg_args = map lv_to_reg_no (CallConv.get_register_args_excluding_region_args cc)
 	val reg_map = foldl (fn (reg_no,w) => set_bit(reg_no,w)) w0 reg_args
    (*
 	val _ = app (fn reg_no => print ("reg_no " ^ Int.toString reg_no ^ " is an argument\n")) reg_args
@@ -1794,7 +1864,7 @@ val _ = if size_cc > 1 then die ("\nfuncall: size_ccf: " ^ (Int.toString size_cc
    *)
       in
 	gen_fn(lab,
-	       do_gc(reg_map,size_ccf,size_rcf,
+	       do_gc(reg_map,size_ccf,size_rcf,size_spilled_region_args,
 		     base_plus_offset(esp,WORDS(~size_ff),esp,
 				      CG_lss(lss,size_ff,size_ccf,C))))
       end
@@ -2030,7 +2100,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 		foldr (fn (r, C) => I.pushl(R r) :: C) C all_regs
 	      fun pop_all_regs C = 
 		foldl (fn (r, C) => I.popl(R r) :: C) C all_regs
-	      fun pop_size_ccf_rcf C = base_plus_offset(esp,WORDS(2),esp,C) (* they are pushed in do_gc *)
+	      fun pop_size_ccf_rcf_reg_args C = base_plus_offset(esp,WORDS(3),esp,C) (* they are pushed in do_gc *)
 	      val size_ff = 0 (*dummy*)
 	    in
 	      I.dot_text ::
@@ -2040,7 +2110,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	      (copy(esp,tmp_reg0,
 		    compile_c_call_prim("gc",[SS.PHREG_ATY tmp_reg0,SS.PHREG_ATY tmp_reg1],NONE,size_ff,eax,
 					pop_all_regs( (* The return lab and tmp_reg0 are also popped again *)
-					pop_size_ccf_rcf(
+					pop_size_ccf_rcf_reg_args(
 					(I.jmp(R tmp_reg0) :: C))))))
 	    end
 	  else C

@@ -14,10 +14,10 @@ local
 *)
 in
   val _ = (enable "unbox_function_arguments" ;
-(*	   
+
 	   enable "garbage_collection";
 	   K.build_basislib();
-*)
+
 	   disable "garbage_collection";
 	   K.build_basislib();
 	   K.install()

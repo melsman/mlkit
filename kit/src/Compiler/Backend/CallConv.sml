@@ -275,6 +275,9 @@ functor CallConv(structure Lvars : LVARS
 	   lv_phreg_res)
 	end
 
+      fun get_spilled_region_args {clos,args,reg_vec,reg_args,res,frame_size} =
+	map #1 (get_spilled_stys(reg_args,[]))
+
       fun get_spilled_args {clos,args,reg_vec,reg_args,res,frame_size} =
 	map #1 (get_spilled_sty_opt(clos,get_spilled_stys(args,get_spilled_sty_opt(reg_vec,get_spilled_stys(reg_args,[])))))
 
@@ -306,6 +309,9 @@ functor CallConv(structure Lvars : LVARS
 
     fun get_register_args {clos,args,reg_vec,reg_args,res,frame_size} =
       filter_out_stack_opt(clos,filter_out_stack(args,filter_out_stack_opt(reg_vec,filter_out_stack(reg_args,[]))))
+
+    fun get_register_args_excluding_region_args {clos,args,reg_vec,reg_args,res,frame_size} =
+      filter_out_stack_opt(clos,filter_out_stack(args,filter_out_stack_opt(reg_vec,[])))
 
     (* The Call Convention supports one return register for handle functions *)
     fun handl_return_phreg res_phreg = 

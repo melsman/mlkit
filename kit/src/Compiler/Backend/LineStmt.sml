@@ -708,6 +708,8 @@ struct
   (*****************************************)
   (* Get Machine Registers from a LineStmt *)
   (*****************************************)
+  fun filter_out_phregs lvs = List.filter (fn lvar => not (RI.is_reg lvar)) lvs
+
   fun get_phreg_atom(PHREG phreg,acc) = phreg::acc
     | get_phreg_atom(_,acc) = acc
 
@@ -791,30 +793,21 @@ struct
 
   fun get_var_smas(smas,acc) = foldr (fn (sma,acc) => get_var_sma(sma,acc)) acc smas
 
+  fun get_var_sma_ignore(ATTOP_LI(atom,pp),acc) = acc
+    | get_var_sma_ignore(ATTOP_LF(atom,pp),acc) = acc
+    | get_var_sma_ignore(ATTOP_FI(atom,pp),acc) = acc
+    | get_var_sma_ignore(ATTOP_FF(atom,pp),acc) = acc
+    | get_var_sma_ignore(ATBOT_LI(atom,pp),acc) = acc
+    | get_var_sma_ignore(ATBOT_LF(atom,pp),acc) = acc
+    | get_var_sma_ignore(SAT_FI(atom,pp),acc)   = acc
+    | get_var_sma_ignore(SAT_FF(atom,pp),acc)   = acc
+    | get_var_sma_ignore(IGNORE,acc)            = acc
+
+  fun get_var_smas_ignore(smas,acc) = acc
+
+  fun smash_free_ignore (lvs,excons,rhos) = excons@lvs
+
   fun def_var_se (se: Atom SimpleExp,acc:lvar list) = acc
-
-  fun use_var_se(ATOM atom,acc) = get_var_atom(atom,acc)
-    | use_var_se(LOAD lab,acc) = acc
-    | use_var_se(STORE(atom,lab),acc) = get_var_atom(atom,acc)
-    | use_var_se(STRING str,acc) = acc
-    | use_var_se(REAL str,acc) = acc
-    | use_var_se(CLOS_RECORD{label,elems,alloc},acc) = get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
-    | use_var_se(REGVEC_RECORD{elems,alloc},acc) = get_var_sma(alloc, get_var_smas(elems,acc))
-    | use_var_se(SCLOS_RECORD{elems,alloc},acc) = get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
-    | use_var_se(RECORD{elems,alloc,tag},acc) = get_var_sma(alloc, get_var_atoms(elems,acc))
-    | use_var_se(SELECT(i,atom),acc) = get_var_atom(atom,acc)
-    | use_var_se(CON0{con,con_kind,aux_regions,alloc},acc) = get_var_sma(alloc, get_var_smas(aux_regions,acc))
-    | use_var_se(CON1{con,con_kind,alloc,arg},acc) = get_var_sma(alloc,get_var_atom(arg,acc))
-    | use_var_se(DECON{con,con_kind,con_aty},acc) = get_var_atom(con_aty,acc)
-    | use_var_se(DEREF atom,acc) = get_var_atom(atom,acc)
-    | use_var_se(REF(sma,atom),acc) = get_var_sma(sma,get_var_atom(atom,acc))
-    | use_var_se(ASSIGNREF(sma,atom1,atom2),acc) = get_var_sma(sma,get_var_atom(atom1,get_var_atom(atom2,acc)))
-    | use_var_se(PASS_PTR_TO_MEM(sma,i),acc) = get_var_sma(sma,acc)
-    | use_var_se(PASS_PTR_TO_RHO sma,acc) = get_var_sma(sma,acc)
-
-  fun use_var_on_fun{opr,args,reg_vec,reg_args,clos,res,bv} = (* Operand is always a label *)
-    get_var_atoms(args,get_var_atom_opt(reg_vec,
-					get_var_atoms(reg_args,get_var_atom_opt(clos,[]))))
 
   fun def_var_on_fun{opr,args,reg_vec,reg_args,clos,res,bv} = get_var_atoms(res,[])
 
@@ -822,19 +815,6 @@ struct
     get_var_atoms(args,get_var_atom_opt(clos,get_var_atom(opr,[])))
 
   fun def_var_on_fn{opr,args,clos,res,bv} = get_var_atoms(res,[])
-
-  fun use_var_ls(ASSIGN{pat,bind}) = use_var_se(bind,[])
-    | use_var_ls(FLUSH(atom,_)) = get_var_atom(atom,[])
-    | use_var_ls(FETCH(atom,_)) = []
-    | use_var_ls(FNJMP cc) = use_var_on_fn cc
-    | use_var_ls(FNCALL cc) = use_var_on_fn cc
-    | use_var_ls(JMP cc) = use_var_on_fun cc
-    | use_var_ls(FUNCALL cc) = use_var_on_fun cc
-    | use_var_ls(RAISE{arg,defined_atys}) = get_var_atom(arg,[])
-    | use_var_ls(RESET_REGIONS{force,regions_for_resetting}) = get_var_smas(regions_for_resetting,[])
-    | use_var_ls(PRIM{name,args,res}) = get_var_atoms(args,[])
-    | use_var_ls(CCALL{name,args,rhos_for_result,res}) = get_var_atoms(args,get_var_atoms(rhos_for_result,[]))
-    | use_var_ls _ = die "use_var_ls: statement contains statements itself."
 
   fun def_var_ls(ASSIGN{pat,bind}) = get_var_atom(pat,[]) 
     | def_var_ls(FLUSH(atom,_)) = []
@@ -849,13 +829,93 @@ struct
     | def_var_ls(CCALL{res,...}) = get_var_atoms(res,[])
     | def_var_ls _ = die "def_var_ls: statement contains statements itself."
 
-  fun def_use_var_ls ls = (def_var_ls ls,use_var_ls ls)
+  (* In CalcOffset.sml, where we calculate bit vectors for GC, lvars bound to *)
+  (* regions are _not_ part of the live set. However, in register allocation  *)
+  (* for instance, they are part of the live set. The use-functions handle    *)
+  (* both cases using a flag called ignore_rvars. If on, the use functions    *)
+  (* omit lvars bound to regions. If the flag is off, the lvars bound to      *)
+  (* regions are included. An lvar bound to a region is identified            *)
+  (* syntactically by (1) in a sma, (2) in a closure or (3) as an argument to *)
+  (* a FIX-bound function. 2001-03-11, Niels                                  *)
+  local
+    fun get_var_sma' ignore_rvars =
+      if ignore_rvars then get_var_sma_ignore else get_var_sma
+    fun get_var_smas' ignore_rvars = 
+      if ignore_rvars then get_var_smas_ignore else get_var_smas
+    fun smash_free' ignore_rvars = 
+      if ignore_rvars then smash_free_ignore else smash_free
+
+    fun use_var_se' get_var_sma get_var_smas smash_free arg =
+      case arg of 
+	(ATOM atom,acc) => get_var_atom(atom,acc)
+      | (LOAD lab,acc) => acc
+      | (STORE(atom,lab),acc) => get_var_atom(atom,acc)
+      | (STRING str,acc) => acc
+      | (REAL str,acc) => acc
+      | (CLOS_RECORD{label,elems,alloc},acc) => get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
+      | (REGVEC_RECORD{elems,alloc},acc) => get_var_sma(alloc, get_var_smas(elems,acc))
+      | (SCLOS_RECORD{elems,alloc},acc) => get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
+      | (RECORD{elems,alloc,tag},acc) => get_var_sma(alloc, get_var_atoms(elems,acc))
+      | (SELECT(i,atom),acc) => get_var_atom(atom,acc)
+      | (CON0{con,con_kind,aux_regions,alloc},acc) => get_var_sma(alloc, get_var_smas(aux_regions,acc))
+      | (CON1{con,con_kind,alloc,arg},acc) => get_var_sma(alloc,get_var_atom(arg,acc))
+      | (DECON{con,con_kind,con_aty},acc) => get_var_atom(con_aty,acc)
+      | (DEREF atom,acc) => get_var_atom(atom,acc)
+      | (REF(sma,atom),acc) => get_var_sma(sma,get_var_atom(atom,acc))
+      | (ASSIGNREF(sma,atom1,atom2),acc) => get_var_sma(sma,get_var_atom(atom1,get_var_atom(atom2,acc)))
+      | (PASS_PTR_TO_MEM(sma,i),acc) => get_var_sma(sma,acc)
+      | (PASS_PTR_TO_RHO sma,acc) => get_var_sma(sma,acc)
+
+    fun use_var_on_fun' ignore_rvars {opr,args,reg_vec,reg_args,clos,res,bv} = (* Operand is always a label *)
+      if ignore_rvars then
+	get_var_atoms(args,get_var_atom_opt(reg_vec,get_var_atom_opt(clos,[])))
+      else
+	get_var_atoms(args,get_var_atom_opt(reg_vec,
+					    get_var_atoms(reg_args,get_var_atom_opt(clos,[]))))
+	    
+    fun use_var_ls' ignore_rvars ls =
+      let
+	fun use_var_on_fun arg = use_var_on_fun' ignore_rvars arg
+	fun get_var_smas arg = get_var_smas' ignore_rvars arg
+	fun get_var_sma arg = get_var_sma' ignore_rvars arg
+	fun smash_free arg = smash_free' ignore_rvars arg
+	fun use_var_se arg = use_var_se' get_var_sma get_var_smas smash_free arg
+      in
+	case ls of
+	  (ASSIGN{pat,bind}) => use_var_se(bind,[])
+	| (FLUSH(atom,_)) => get_var_atom(atom,[])
+	| (FETCH(atom,_)) => []
+	| (FNJMP cc) => use_var_on_fn cc
+	| (FNCALL cc) => use_var_on_fn cc
+	| (JMP cc) => use_var_on_fun cc
+	| (FUNCALL cc) => use_var_on_fun cc
+	| (RAISE{arg,defined_atys}) => get_var_atom(arg,[])
+	| (RESET_REGIONS{force,regions_for_resetting}) => get_var_smas(regions_for_resetting,[])
+	| (PRIM{name,args,res}) => get_var_atoms(args,[])
+	| (CCALL{name,args,rhos_for_result,res}) => get_var_atoms(args,get_var_atoms(rhos_for_result,[]))
+	|  _ => die "use_var_ls: statement contains statements itself."
+      end
+
+    fun def_use_var_ls' ignore_rvars ls = (def_var_ls ls,use_var_ls' ignore_rvars ls)
+  in
+    fun get_var_sma arg = get_var_sma' false arg
+    fun get_var_smas arg = get_var_smas' false arg
+    fun use_var_se arg = use_var_se' get_var_sma get_var_smas (smash_free' false) arg
+    fun use_var_on_fun arg = use_var_on_fun' false arg
+    fun use_var_ls arg = use_var_ls' false arg
+    fun def_use_var_ls arg = def_use_var_ls' false arg
+
+    fun get_var_sma_cbv arg = get_var_sma' true arg
+    fun get_var_smas_cbv arg = get_var_smas' true arg
+    fun use_var_se_cbv arg = use_var_se' get_var_sma_cbv get_var_smas_cbv (smash_free' true) arg
+    fun use_var_on_fun_cbv arg = use_var_on_fun' true arg
+    fun use_var_ls_cbv arg = use_var_ls' true arg
+    fun def_use_var_ls_cbv arg = (def_var_ls arg, use_var_ls' true arg)
+  end
 
   (***************************************************)
   (* Def and Use sets for LineStmt RETURN ONLY lvars *)
   (***************************************************)
-  fun filter_out_phregs lvs = List.filter (fn lvar => not (RI.is_reg lvar)) lvs
-
   fun get_lvar_atom(atom,acc) = filter_out_phregs (get_var_atom(atom,acc))
   fun get_lvar_atoms(atoms,acc) = filter_out_phregs (get_var_atoms(atoms,acc))
   fun get_lvar_atom_opt(atom_opt,acc) = filter_out_phregs (get_var_atom_opt(atom_opt,acc))
