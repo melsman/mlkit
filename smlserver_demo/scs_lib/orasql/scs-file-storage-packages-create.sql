@@ -113,11 +113,11 @@ as
      then getPath returns then path foo/bar/.
 
      Return null on error.
-  */
+  
   function getPath (
     folder_id in scs_fs_folders.folder_id%TYPE
   ) return varchar;
-
+*/
 end scs_file_storage;
 /
 show errors
@@ -419,11 +419,14 @@ as
     res varchar(1000);
   begin
     res := '';
-    for r in (select *
-                from scs_fs_folders
-             connect by folder_id = prior parent_id
-               start with folder_id = getPath.folder_id
-               where folder_id <> getPath.folder_id) /* Do not include the folder it self */
+    for r in (
+      -- Do not include the folder it self 
+      select *
+        from scs_fs_folders
+       where folder_id <> getPath.folder_id
+     connect by folder_id = prior parent_id
+       start with folder_id = getPath.folder_id
+    )	       
     loop
       res := r.label || '/' || res;
     end loop;
