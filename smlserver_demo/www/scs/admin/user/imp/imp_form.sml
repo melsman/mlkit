@@ -35,9 +35,9 @@ fun gen_table (source:ScsUserImp.external_source) [] =
   | gen_table source persons =
   let
     val del_all_link = 
-      ScsDict.sl [(ScsLang.en,`You may <a href="%0">delete</a> all rows from this external source.`),
-		  (ScsLang.da,`Du kan <a href="%0">slette</a> alle rækker denne ekterne kilde.`)]
-      [UcsPage.confirmDelUrl (Html.genUrl "del_all_section.sml" [("source",#db_name source)])]
+      ScsDict.sl [(ScsLang.en,`You may <a ^(UcsPage.confirmDelOnClick()) href="%0">delete</a> all rows from this external source.`),
+		  (ScsLang.da,`Du kan <a ^(UcsPage.confirmDelOnClick()) href="%0">slette</a> alle rækker denne ekterne kilde.`)]
+      [Html.genUrl "del_all_section.sml" [("source",#db_name source)]]
   in
     `^del_all_link
     ` ^^ 

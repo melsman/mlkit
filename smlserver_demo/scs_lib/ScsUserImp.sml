@@ -367,9 +367,8 @@ structure ScsUserImp :> SCS_USER_IMP =
 	                     [ScsPerson.name person_id]
       in
 	Quot.toString
-          `<a href="^(UcsPage.confirmUrl (msg,
-		      Html.genUrl "imp_row.sml" [("user_imp_id",Int.toString user_imp_id),
-						 ("person_id",Int.toString person_id)]))">import</a>`
+          `<a ^(UcsPage.confirmOnClick msg) href="^(Html.genUrl "imp_row.sml" [("user_imp_id",Int.toString user_imp_id),
+                                                               		       ("person_id",Int.toString person_id)])">import</a>`
       end
 
     local
@@ -506,8 +505,8 @@ structure ScsUserImp :> SCS_USER_IMP =
 	"" => "&nbsp;"
       | user_imp_id => 
 	  Quot.toString
-	  `<a href="^(UcsPage.confirmDelUrl 
-	    (Html.genUrl "del_imp_row.sml" [("user_imp_id",user_imp_id)]))">^(UcsPage.icon_remove())</a>`
+	  `<a  ^(UcsPage.confirmDelOnClick())  href="^(Html.genUrl "del_imp_row.sml" 
+                                                         [("user_imp_id",user_imp_id)])">^(UcsPage.icon_remove())</a>`
 
     fun moreInfoLink user_imp_id =
       case user_imp_id of
