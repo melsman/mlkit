@@ -1033,6 +1033,28 @@ struct
 					     * largest integer is odd! mael 2001-04-29 *)
        end
 
+     fun word32_to_int31 {boxedarg,ovf} (x,d,size_ff,C) =
+       let
+	   val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
+	   fun maybe_unbox C = if boxedarg then load_indexed(d_reg,x_reg,WORDS 1,C)
+			       else copy(x_reg,d_reg,C)
+	   fun check_ovf C =
+	     if ovf then 
+	       I.btl(I "30", R d_reg) :: 
+	       I.jc (NameLab "__raise_overflow") ::
+	       C
+	     else C	     
+       in x_C(
+          maybe_unbox(
+          check_ovf(
+	  I.imull(I "2", R d_reg) ::
+	  jump_overflow (
+          I.addl(I "1", R d_reg) :: C'))))   (* No need to check for overflow after adding 1; the
+					      * intermediate result is even (after multiplying 
+					      * with 2) so adding one cannot give Overflow because the
+					      * largest integer is odd! mael 2001-04-29 *)
+       end
 
      fun word32_to_word31 {boxedarg} (x,d,size_ff,C) =
        let
@@ -1044,26 +1066,6 @@ struct
           maybe_unbox(
 	  I.sall(I "1", R d_reg) ::
           I.addl(I "1", R d_reg) :: C'))
-       end
-
-     fun word32_to_int31 {boxedarg,ovf} (x,d,size_ff,C) =
-       let
-	   val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
-	   val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff, C)
-	   fun maybe_unbox C = if boxedarg then load_indexed(d_reg,x_reg,WORDS 1,C)
-			       else copy(x_reg,d_reg,C)
-	   fun check_ovf (ovf, C) = 
-	     if ovf then 
-	       I.btl(I "31", R d_reg) :: 
-	       I.jc (NameLab "__raise_overflow") ::
-	       C
-	     else C
-       in x_C(
-          maybe_unbox(
-          check_ovf (true,               (* Nomatter ovf, raise Overflow if source *)        
-	  I.sall(I "1", R d_reg) ::      (*    does not fit in target! *)
-          I.addl(I "1", R d_reg) :: 
-          check_ovf (ovf, C'))))         (* if ovf andalso result < 0, raise Overflow *)
        end
 
      fun bin_float_op_kill_tmp01 finst (x,y,b,d,size_ff,C) =
