@@ -13,6 +13,7 @@ by a list of tokens. The following tokens are supported:
  ecte           ; expect compile time error
  prof           ; also compile and compare runtime output with 
                   profiling enabled
+ gc             ; also activate garbage collection
 
 Test files may contain Standard ML like comments.
 

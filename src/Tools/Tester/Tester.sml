@@ -190,7 +190,7 @@ structure Tester : TESTER =
 						  fn () => opt TestFile.GC andalso opt TestFile.Profiling,
 						  compile_command_gc_prof,
 						  TestReport.add_gc_profile_line,
-						  " ")
+						  " -realtime -microsec 100 ")
 	fun maybe_trywithtags() = maybe_trywith(file,
 						".outtags",
 						".out.ok",
