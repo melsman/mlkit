@@ -84,6 +84,10 @@ structure ScsPrint :> SCS_PRINT =
 		  `ScsPrint.genPDF: Can't execute system command: ^cmd`
 	    end
 
+      (* KNP 2003-07-01: tested ok for length sources = 500.
+         Be aware that Linux has a limitation on the number of open files 
+	 allowed. The genPDF function could be modified to generate PDFs of 
+	 the 500 documents each, and then glue the superdocs together. *)
       fun genPDF doc_type sources = 
 	case doc_type of
 	  LaTeX =>
@@ -94,8 +98,9 @@ structure ScsPrint :> SCS_PRINT =
 		\usepackage[final]{pdfpages}
 		\begin{document}
 		` ^^ 
-		foldl (fn (tmpFile,acc) => acc ^^ `\includepdf[pages=-]
-		  {^tmpFile.pdf}`) `` pdf_files ^^ `
+		foldl (fn (tmpFile,acc) => acc ^^ 
+		  `\includepdf[pages=-]{^tmpFile.pdf}
+	 	  `) `` pdf_files ^^ `
 		\end{document}`
 	      val tmpfile = ScsFile.uniqueFile (path_preview())
 	      val _ = ScsFile.save gluetex (texfile tmpfile)
