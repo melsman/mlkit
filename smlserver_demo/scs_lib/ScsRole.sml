@@ -147,6 +147,7 @@ structure ScsRole :> SCS_ROLE =
     fun has_one_or_empty_p uid [] = true
       | has_one_or_empty_p uid xs = has_one_p uid xs
 
+
   end
 
 
