@@ -1,10 +1,10 @@
-(*$TEST_ENV*)
+
 signature TEST_ENV =
 sig
   val test : unit -> unit
 end
 
-(*$TestEnv: TEST_ENV TEST_INFO FLAGS MANAGER BASICS TIMING*)
+
 functor TestEnv(structure TestInfo: TEST_INFO
 		structure Flags: FLAGS
 		structure Manager: MANAGER
@@ -27,9 +27,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (*********************************************************************************)
 
     val test_env_directory = Flags.lookup_string_entry "test_env_directory"               (* Should _not_ be changed. *)
-    val kit_source_directory = Flags.lookup_string_entry "kit_source_directory"           (* Should _not_ be changed. *)
     val kit_version = Flags.lookup_string_entry "kit_version"                             (* Should _not_ be changed. *)
-    val path_to_consult_file = Flags.lookup_string_entry "path_to_consult_file"           (* Should _not_ be changed. *)
     fun source_directory () = !test_env_directory ^ "Sources/"                            (* Should _not_ be changed. *)
     fun bin_directory () = !test_env_directory ^ "bin/"                                   (* Should _not_ be changed. *)
     fun kit_script_directory () = !test_env_directory ^ "KitScripts/"                     (* Should _not_ be changed. *)
@@ -52,12 +50,10 @@ functor TestEnv(structure TestInfo: TEST_INFO
     val _ = Flags.add_string_to_menu (["Test environment"], "test_log",
 				      "Test-log file name", ref "You_did_not_set_test_log")
     val _ = map (fn (x,y,r) => Flags.add_flag_to_menu (["Test environment"],x,y,r)) 
-      [("size_of_ml_kit_test", "ML Kit size test", ref false),
-       ("acceptance_test", "acceptance test", ref true),
+      [("acceptance_test", "acceptance test", ref true),
        ("performance_test", "performance test", ref false)]
 
     val test_log_string = Flags.lookup_string_entry "test_log"
-    val size_of_ml_kit_test_flag = Flags.lookup_flag_entry "size_of_ml_kit_test"
     val acceptance_test_flag = Flags.lookup_flag_entry "acceptance_test"
     val performance_test_flag = Flags.lookup_flag_entry "performance_test"
 
@@ -70,8 +66,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
     fun shorten_string s n =
       if String.size s > n then
 	"..." ^ (String.truncL (n-3) s)
-      else
-	s
+      else s
 
     local
       fun shorten_filename' filename =
@@ -255,47 +250,11 @@ functor TestEnv(structure TestInfo: TEST_INFO
       end
     handle IO.Io {name=s,...} => raise Crash_test ("Error in memtime: " ^ s)
 
-    (* Get the Unix environment add return the value of one env. variable. *)
+    (* Get the Unix environment and return the value of one env. variable. *)
     fun get_env_var env_name = 
       case OS.Process.getEnv env_name
 	of SOME s => s 
 	 | NONE => "Environment name " ^ env_name ^ " does not exist."
-(*old
-      let
-	val env = SML_NJ.Unsafe.CInterface.environ ()
-
-	fun split_string s =
-	  let
-	    val string_list = ((map str) o explode) s
-	  
-	    (* side = 0 means add to left side and vice versa. *)
-	    fun split_list [] side (ls, rs) = (ls, rs)
-	      | split_list (x::xs) side (ls, rs) =
-    	          if x = "=" andalso side = 0 then (* First "=" reached. *)
-		    split_list xs 1 (ls, rs)
-		  else
-		    if side = 0 then
-		      split_list xs 0 (ls ^ x, rs)
-		    else
-		      split_list xs 1 (ls, rs ^ x)
-	  in
-	    split_list string_list 0 ("","")
-	  end
-	handle _ => raise Crash_test ("Error in getting the environment: " ^ env_name)
-		  
-	val env_list = List.map (fn str => split_string str) env
-	  
-	fun find_env env_name [] = "Environment name " ^ env_name ^ " does not exist."
-	  | find_env env_name ((n,v)::xs) = 
-	  if env_name = n then
-	    v
-	  else
-	    find_env env_name xs
-      in
-	find_env env_name env_list
-      end
-    handle _ => raise Crash_test "Error in get unix environment."
-old*)
     
     (* Delete file filename if it exists. *)
     (* Otherwise do nothing.              *)
@@ -405,20 +364,6 @@ old*)
       end
     handle _ => (error_log_report ("Error in read_file: " ^ filename);
 		 (0, []))
-
-    (* Given an ML_CONSULT file, the function returns the *)
-    (* total number of lines of ML code in the files      *)
-    fun count_lines_of_ml_code ml_consult_filename =
-      let
-	val (no_of_files, files) = read_file ml_consult_filename
-	val file_list = List.map (fn file => (file, (#1(read_file (!kit_source_directory ^ file))))) files
-	val files_sorted = ListSort.sort (fn (str1,n1) => (fn (str2,n2) => n1 > n2)) file_list
-	val no_of_lines_total = List.foldL (fn (file_name, no_of_lines_in_file) => 
-					    (fn no_of_lines_total => no_of_lines_in_file + no_of_lines_total)) 0 files_sorted
-      in
-	files_sorted @ [("Number of files: " ^ (Int.string no_of_files), no_of_lines_total)]
-      end
-    handle _ => raise Crash_test ("Error in count_lines_of_ml_code: " ^ ml_consult_filename)
 
     (****************************************************)
     (* LaTeX and other layout functions                 *)
@@ -744,9 +689,8 @@ old*)
      * file to run_project. *)
 
     fun evalProjects project_name =
-      (Manager.read project_name;
-       Manager.build();
-       OS.FileSys.rename{old=target_directory() ^ "run", new=target_directory() ^ "run_project"})
+      (Manager.build project_name;
+       OS.FileSys.rename{old="run", new="run_project"})
       handle OS.SysErr _ => raise Crash_test "evalProjects. Problem with renaming of run file."
 
     fun gen_input_str NONE = ""
@@ -754,37 +698,6 @@ old*)
 
     fun gen_input_str_memtime NONE = ""
       | gen_input_str_memtime (SOME input_str) = " " ^ input_str ^ " "
-
-    (****************************************************)
-    (* Functions used by the Size Of ML-Kit test.       *)
-    (****************************************************)
-
-    fun size_of_ml_kit_test () =
-      let
-	val _ = add_lines_test_report
-	          ["\\newpage",
-		   "\\section{Size of The ML-Kit}",
-		   "This section show the size of each source file in ",
-		   "The ML Kit which is located in ML consultfile: ",
-		   "\\begin{quote}",
-		   !path_to_consult_file ^ ".",
-		   "\\end{quote}"]
-		 
-	val _ = ok_log_report (new_line ^ "*************Now starting Size Of ML-Kit test.***************")
-	    
-	val size_of_files = count_lines_of_ml_code (!path_to_consult_file)
-	  
-	val size_table = mk_table 2 [(["Source file"],LEFT), (["Number of lines in file"], RIGHT)]
-
-	val _ = List.apply (fn (file, no_of_lines) => insert_row size_table [file, Int.string no_of_lines]) size_of_files
-
-	val _ = log_table size_table
-	val _ = latex_table size_table
-      in
-	()
-      end
-    handle _ => (error_log_report "Error in size_of_ml_kit_test. Continue with next test.";
-		 ())
 
     (****************************************************)
     (* Functions used by the ACCEPTANCE test.           *)
@@ -829,16 +742,16 @@ old*)
 
 	   fun acceptance_test_file (filename,input_to_file) =
 	     let
+	       val filepath = source_directory() ^ filename
+	       val unitname = OS.Path.base filename
 	       val _ = reset()
-	       val _ = Flags.log_directory    := new_compile_strategy_dir
-	       val input_filename = source_directory () ^ filename ^ ".sml"
-	       val _ = ok_log_report ("Compiling ML source file: " ^ new_line ^ (shorten_filename input_filename) ^ ".")
-	       val _ = Manager.comp filename
+	       val _ = ok_log_report ("Compiling ML source file: " ^ filename ^ ".")
+	       val _ = Manager.comp filepath
 		       handle X => (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
 	       val _ = ok_log_report ("Compiled " ^ filename ^ new_line)
 
-	       val exe_file = filename ^ ".exe"		
-	       val new_out_datafile = new_compile_strategy_dir ^ filename ^ ".out"
+	       val exe_file = unitname ^ ".exe"		
+	       val new_out_datafile = new_compile_strategy_dir ^ unitname ^ ".out"
 	       val shell_command = (exe_file ^ " " ^ exec_opt ^ 
 				    (gen_input_str input_to_file) ^
 				    " > " ^ new_out_datafile)
@@ -846,7 +759,7 @@ old*)
 				      (shorten_filename new_out_datafile) ^ ".")
 	       val _ = execute_shell_command shell_command (* If error it will raise Crash_test. *)
 		
-	       val old_out_datafile = old_version_dir ^ filename ^ ".out"
+	       val old_out_datafile = old_version_dir ^ unitname ^ ".out"
 	       val table_entry_name = filename
 	       val _ = 
 		 case old_dir of
@@ -866,23 +779,22 @@ old*)
 
 	   fun acceptance_test_project (project_name,input_to_project) =
 	     let
+	       val _ = change_directory (source_directory())
 	       val _ = reset()
-	       val input_project_name = source_directory () ^ project_name
 
-	       val _ = Flags.log_directory    := new_compile_strategy_dir
-	       val _ = ok_log_report ("Compiling ML project: " ^ new_line ^ (input_project_name) ^ ".")
+	       val _ = ok_log_report ("Compiling project " ^ project_name ^ ".")
 	       val _ = evalProjects project_name handle X => 
 		 (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
 		
-	       val new_out_datafile = new_compile_strategy_dir ^ project_name ^ ".out"
+	       val new_out_datafile = new_compile_strategy_dir ^ OS.Path.base project_name ^ ".out"
 	       val shell_command = ("run_project " ^ exec_opt ^ 
 				    (gen_input_str input_to_project) ^
 				    " > " ^ new_out_datafile)
 	       val _ = ok_log_report ("Executing target program: " ^ new_line ^ "run_project " ^ exec_opt ^ 
-				      " > " ^ (shorten_filename new_out_datafile) ^ ".")
+				      " > " ^ shorten_filename new_out_datafile ^ ".")
 	       val _ = execute_shell_command shell_command (* If error it will raise Crash_test. *)
 		
-	       val old_out_datafile = old_version_dir ^ project_name ^ ".out"
+	       val old_out_datafile = old_version_dir ^ OS.Path.base project_name ^ ".out"
 	       val table_entry_name = project_name
 	       val _ = 
 		 case old_dir of
@@ -897,15 +809,13 @@ old*)
 	       ()
 	     end
 	   handle Crash_test s => (error_log_report ("Error in acceptance_test_project: " ^ new_line ^ s ^
-						     new_line ^ "Continue with next file.");
+						     new_line ^ "Continuing with next file.");
 				   insert_row acceptance_table_projects [project_name, s ^ " Projectname: " ^ project_name])
 
 
 	   val script_name = kit_script_directory () ^ kit_script
 	   val _ = read_script script_name
 
-	   val _ = Flags.source_directory := source_directory ()
-	   val _ = Flags.target_directory := target_directory ()
 	   val _ = change_directory (target_directory ())
 
            (* Acceptance test on files. *)
@@ -1004,13 +914,14 @@ old*)
 
 	   fun performance_test_file (filename,input_to_file) =
 	     let
+	       val filepath = source_directory () ^ filename
+	       val unitname = OS.Path.base filename
 	       val _ = reset()
-	       val input_filename = source_directory () ^ filename ^ ".sml"
-	       val log_filename = new_compile_strategy_dir ^ filename ^ ".log" 
+(*	       val log_filename = new_compile_strategy_dir ^ filename ^ ".log" *)
 	                     (*source_directory () ^ filename ^ ".log"16/09/1996, Niels*)
-	       val _ = ok_log_report ("Compiling ML source file: " ^ new_line ^ (shorten_filename input_filename) ^ ".")
+	       val _ = ok_log_report ("Compiling ML source file: " ^ filename ^ ".")
 
-	       val _ = (Manager.comp filename;
+	       val _ = (Manager.comp filepath;
 			timings := (!timings) @ (Timing.get_timings())) 
 		                  (* We only get timings, if the compilation has completed. *)
                        handle IO.Io {name=msg,...} => (raise Crash_test("Error: Compile Error:" ^ msg))
@@ -1018,8 +929,8 @@ old*)
 		         (raise Crash_test "Error: Compile Error")
 		     
 	       val _ = ok_log_report ("Compiled " ^ filename ^ new_line)
-	       val exe_file = filename ^ ".exe"		
-	       val new_out_datafile = new_compile_strategy_dir ^ filename ^ ".out"
+	       val exe_file = unitname ^ ".exe"		
+	       val new_out_datafile = new_compile_strategy_dir ^ unitname ^ ".out"
 	       val (max_mem_size: string, max_res_size: string,
 		    real : string, user : string, sys  : string) =
 		 let
@@ -1046,11 +957,10 @@ old*)
 
 	   fun performance_test_project (project_name,input_to_project) =
 	     let
+	       val _ = change_directory (source_directory())
 	       val _ = reset()
-	       val input_project_name = source_directory () ^ project_name
 
-	       val _ = Flags.log_directory    := new_compile_strategy_dir
-	       val _ = ok_log_report ("Compiling ML project: " ^ new_line ^ (input_project_name) ^ ".")
+	       val _ = ok_log_report ("Compiling ML project " ^ project_name ^ ".")
 	       val _ = 
 		 let
 		   val _ = evalProjects project_name
@@ -1061,8 +971,7 @@ old*)
 	       handle X => (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
 		
 	       val exe_file =  "run_project"
-(*	       val _ = mv "run_project" out_file *)
-	       val new_out_datafile = new_compile_strategy_dir ^ project_name ^ ".out"
+	       val new_out_datafile = new_compile_strategy_dir ^ OS.Path.base project_name ^ ".out"
 	       val (max_mem_size: string, max_res_size: string,
 		    real : string, user : string, sys  : string) =
 		 let
@@ -1127,8 +1036,6 @@ old*)
 	   val script_name = kit_script_directory () ^ kit_script
 	   val _ = read_script script_name
 
-	   val _ = Flags.source_directory := source_directory ()
-	   val _ = Flags.target_directory := target_directory ()
 	   val _ = change_directory (target_directory ())
 
 	   (* Performance test on files. *)
@@ -1251,11 +1158,6 @@ old*)
 	    val _ = dir_test ()
 
 	    val _ = add_lines_test_report []
-
-	    val _ = if !size_of_ml_kit_test_flag then
-                      size_of_ml_kit_test ()
-		    else
-		      ()
 
 	    val _ = if !acceptance_test_flag then
                       acceptance_test ()

@@ -47,13 +47,14 @@ signature MODULE_ENVIRONMENTS =
 
 
                        (*F, functor environments*)
+    type prjid = string
 
     structure F :
       sig
 	val empty            : FunEnv
-	val singleton        : funid  * FunSig -> FunEnv
+	val singleton        : funid  * (prjid * FunSig) -> FunEnv
 	val plus             : FunEnv * FunEnv -> FunEnv
-	val lookup           : FunEnv -> funid -> FunSig option
+	val lookup           : FunEnv -> funid -> (prjid * FunSig) option
 	val tynames          : FunEnv -> TyName.Set.Set
 	val tyvars           : FunEnv -> TyVar list
 	val tyvars'          : FunEnv -> (id * TyVar list) list
@@ -96,7 +97,7 @@ signature MODULE_ENVIRONMENTS =
 	val from_F           : FunEnv -> Basis
 	val to_F             : Basis -> FunEnv
 	val plus_F           : Basis  * FunEnv -> Basis
-	val lookup_funid     : Basis -> funid -> FunSig option
+	val lookup_funid     : Basis -> funid -> (prjid * FunSig) option
 
 	           (*for compilation manager*)
 	val enrich           : Basis * Basis -> bool

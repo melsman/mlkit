@@ -49,7 +49,6 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     structure FunId = TopdecGrammar.FunId
     structure TyName = ModuleEnvironments.TyName
     type StringTree = PP.StringTree
-    type filepath = string
     type filename = string
     type target = Compile.target
 
@@ -82,16 +81,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	(*logging*)
 	val log_to_file = Flags.lookup_flag_entry "log_to_file"
-	val log_directory = Flags.lookup_string_entry "log_directory"
-	fun path_to_log_file file = !log_directory ^ file ^ ".log"
 
 	(*targets*)
-	val target_directory = Flags.lookup_string_entry "target_directory"
 	val target_file_extension = Flags.lookup_string_entry "target_file_extension"
-	fun path_to_target_file file = !target_directory ^ file ^ !target_file_extension
 
 	(*linking*)
-	val link_filename = Flags.lookup_string_entry "link_filename"
 	val region_profiling = Flags.lookup_flag_entry "region_profiling"
 	fun path_to_runtime () = ! (Flags.lookup_string_entry
 				    (if !region_profiling then "path_to_runtime_prof"
@@ -137,7 +131,9 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	 * ----------------------------------------------- *)
 
 	fun emit (target, target_filename) =
-	  let val target_filename_s = append_ext target_filename
+	  let val target_filename = "PM/" ^ target_filename
+	      val target_filename = OS.Path.mkAbsolute(target_filename, OS.FileSys.getDir())
+              val target_filename_s = append_ext target_filename
 	      val target_filename_o = append_o target_filename
 	      val _ = Compile.emit {target=target,filename=target_filename_s}
 	      val _ = assemble (target_filename_s, target_filename_o)
@@ -169,12 +165,12 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	fun link ((target_files,linkinfos), run) : unit =
 	  let val target_link = Compile.generate_link_code linkinfos
-	      val linkfile = !target_directory ^ !link_filename
+	      val linkfile = "PM/link_objects"
 	      val linkfile_s = append_ext linkfile
 	      val linkfile_o = append_o linkfile
 	      val _ = Compile.emit {target=target_link, filename=linkfile_s}
 	      val _ = assemble (linkfile_s, linkfile_o)
-	  in link_files_with_runtime_system (linkfile_o :: target_files) (!target_directory ^ run);
+	  in link_files_with_runtime_system (linkfile_o :: target_files) run;
 	     delete_file linkfile_o
 	  end
 	
@@ -182,7 +178,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
     datatype modcode = EMPTY_MODC 
                      | SEQ_MODC of modcode * modcode 
-                     | EMITTED_MODC of filepath * linkinfo
+                     | EMITTED_MODC of filename * linkinfo
                      | NOTEMITTED_MODC of target * linkinfo * filename
 
     structure ModCode =
@@ -191,18 +187,27 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	val seq = SEQ_MODC
         val mk_modcode = NOTEMITTED_MODC
 
-	fun emit EMPTY_MODC = EMPTY_MODC
-	  | emit (SEQ_MODC(modc1,modc2)) = SEQ_MODC(emit modc1, emit modc2)
-	  | emit (EMITTED_MODC(fp,li)) = EMITTED_MODC(fp,li)
-	  | emit (NOTEMITTED_MODC(target,linkinfo,filename)) = 
-	     EMITTED_MODC(SystemTools.emit(target,!SystemTools.target_directory ^ filename),linkinfo)
-                           (*puts ".o" on filepath*)
-	fun mk_exe (modc, run) =
+	fun exist EMPTY_MODC = true
+	  | exist (SEQ_MODC(mc1,mc2)) = exist mc1 andalso exist mc2
+	  | exist (NOTEMITTED_MODC _) = true
+	  | exist (EMITTED_MODC(file,_)) = OS.FileSys.access (file,[]) handle _ => false
+
+	fun emit(prjid, modc) =
+	  let fun em EMPTY_MODC = EMPTY_MODC
+		| em (SEQ_MODC(modc1,modc2)) = SEQ_MODC(em modc1, em modc2)
+		| em (EMITTED_MODC(fp,li)) = EMITTED_MODC(fp,li)
+		| em (NOTEMITTED_MODC(target,linkinfo,filename)) = 
+	              EMITTED_MODC(SystemTools.emit(target, OS.Path.base prjid ^ "-" ^ filename),linkinfo)
+                           (*puts ".o" on filename*)
+	  in em modc
+	  end
+
+	fun mk_exe (prjid, modc, run) =
 	  let fun get (EMPTY_MODC, acc) = acc
 		| get (SEQ_MODC(modc1,modc2), acc) = get(modc1,get(modc2,acc))
 		| get (EMITTED_MODC(tfile,li),(tfiles,lis)) = (tfile::tfiles,li::lis)
 		| get (NOTEMITTED_MODC(target,li,filename),(tfiles,lis)) =
-	         (SystemTools.emit(target,filename) :: tfiles, li::lis)
+	         (SystemTools.emit(target, OS.Path.base prjid ^ "-" ^ filename) :: tfiles, li::lis)
 	  in SystemTools.link(get(modc,([],[])), run)
 	  end
 
@@ -223,6 +228,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  | delete_files _ = ()
       end
 
+
     (* 
      * Modification times of files
      *)
@@ -240,10 +246,12 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	val counter = ref 0
 	fun new (funid: funid) : funstamp =
 	  FUNSTAMP_GEN (funid, (counter := !counter + 1; !counter))
-	fun from_filemodtime (filepath: filepath) : funstamp option =
-	  SOME(FUNSTAMP_MODTIME (funid_from_filename filepath, OS.FileSys.modTime filepath))
+	fun from_filemodtime (filename: filename) : funstamp option =
+	  SOME(FUNSTAMP_MODTIME (funid_from_filename filename, OS.FileSys.modTime filename))
 	  handle _ => NONE
 	val eq : funstamp * funstamp -> bool = op =
+	fun modTime (FUNSTAMP_MODTIME(_,t)) = SOME t
+	  | modTime _ = NONE
 	fun pr (FUNSTAMP_MODTIME (funid,time)) = FunId.pr_FunId funid ^ "##" ^ Time.toString time
 	  | pr (FUNSTAMP_GEN (funid,i)) = FunId.pr_FunId funid ^ "#" ^ Int.string i
       end
@@ -253,7 +261,9 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type CompileBasis = CompileBasis.CompileBasis
     type strexp = TopdecGrammar.strexp
     type strid = ModuleEnvironments.strid
-    datatype IntFunEnv = IFE of (funid, funstamp * strid * ElabEnv * (unit -> strexp) * IntBasis) FinMap.map
+    type prjid = ModuleEnvironments.prjid
+
+    datatype IntFunEnv = IFE of (funid, prjid * funstamp * strid * ElabEnv * (unit -> strexp) * IntBasis) FinMap.map
          and IntBasis = IB of IntFunEnv * CEnv * CompileBasis
 
     (* The closure is to represent a structure expression in a compact way *)
@@ -276,10 +286,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun enrich(IFE ife0, IFE ife) : bool = (* using funstamps; enrichment for free variables is checked *)
 	  FinMap.Fold(fn ((funid, obj), b) => b andalso         (* when the functor is being declared!! *)
 		      case FinMap.lookup ife0 funid
-			of SOME obj0 => FunStamp.eq(#1 obj,#1 obj0)
+			of SOME obj0 => FunStamp.eq(#2 obj,#2 obj0) andalso #1 obj = #1 obj0
 			 | NONE => false) true ife
 	fun layout (IFE ife) = FinMap.layoutMap{start="IntFunEnv = [", eq="->",sep=", ", finish="]"}
-	  (PP.LEAF o FunId.pr_FunId) (PP.LEAF o FunStamp.pr o #1) ife
+	  (PP.LEAF o FunId.pr_FunId) (PP.LEAF o FunStamp.pr o #2) ife
       end
 
     type id = ModuleEnvironments.id
@@ -376,52 +386,54 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type name = Name.name
     structure Repository =
       struct
-	type intRep = (funid, (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) list) FinMap.map ref
+	type intRep = (prjid * funid, (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) list) FinMap.map ref
 	val intRep : intRep = ref FinMap.empty
 	fun clear() = (ElabRep.clear();
 		       List.apply (List.apply (ModCode.delete_files o #5)) (FinMap.range (!intRep));  
 		       intRep := FinMap.empty)
-	fun delete_rep rep funid = case FinMap.remove (funid, !rep)
+	fun delete_rep rep prjid_and_funid = case FinMap.remove (prjid_and_funid, !rep)
 				     of Edlib.General.OK res => rep := res
 				      | _ => ()
-	fun delete_entries funid = (ElabRep.delete_entries funid; 
-				    delete_rep intRep funid)
-	fun lookup_rep rep exportnames_from_entry funid =
+	fun delete_entries prjid_and_funid = (ElabRep.delete_entries prjid_and_funid; 
+					      delete_rep intRep prjid_and_funid)
+	fun lookup_rep rep exportnames_from_entry prjid_and_funid =
 	  let val all_gen = List.foldR (fn n => fn b => b andalso
 					Name.is_gen n) true
 	      fun find ([], n) = NONE
 		| find (entry::entries, n) = 
 		if (all_gen o exportnames_from_entry) entry then SOME(n,entry)
 		else find(entries,n+1)
-	  in case FinMap.lookup (!rep) funid
+	  in case FinMap.lookup (!rep) prjid_and_funid
 	       of SOME entries => find(entries, 0)
 		| NONE => NONE
 	  end
-	fun add_rep rep (funid,entry) : unit =
+
+	fun add_rep rep (prjid_and_funid,entry) : unit =
 	  rep := let val r = !rep 
-		 in case FinMap.lookup r funid
-		      of SOME res => FinMap.add(funid,res @ [entry],r)
-		       | NONE => FinMap.add(funid,[entry],r)
+		 in case FinMap.lookup r prjid_and_funid
+		      of SOME res => FinMap.add(prjid_and_funid,res @ [entry],r)
+		       | NONE => FinMap.add(prjid_and_funid,[entry],r)
 		 end
-	fun owr_rep rep (funid,n,entry) : unit =
+
+	fun owr_rep rep (prjid_and_funid,n,entry) : unit =
 	  rep := let val r = !rep
 	             fun owr(0,entry::res,entry') = entry'::res
 		       | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
 		       | owr _ = die "owr_rep.owr"
-		 in case FinMap.lookup r funid
-		      of SOME res => FinMap.add(funid,owr(n,res,entry),r)
+		 in case FinMap.lookup r prjid_and_funid
+		      of SOME res => FinMap.add(prjid_and_funid,owr(n,res,entry),r)
 		       | NONE => die "owr_rep.NONE"
 		 end
 	val lookup_int = lookup_rep intRep #4
 
-	fun add_int (funid,entry) = 
+	fun add_int (prjid_and_funid,entry) = 
 	  if ModCode.all_emitted (#5 entry) then  (* just make sure... *)
-	    add_rep intRep (funid, entry)
+	    add_rep intRep (prjid_and_funid, entry)
 	  else die "add_int"
 
-	fun owr_int (funid,n,entry) =
+	fun owr_int (prjid_and_funid,n,entry) =
 	  if ModCode.all_emitted (#5 entry) then  (* just make sure... *)
-	    owr_rep intRep (funid,n,entry)
+	    owr_rep intRep (prjid_and_funid,n,entry)
 	  else die "owr_int"
 
 	fun recover_intrep() =

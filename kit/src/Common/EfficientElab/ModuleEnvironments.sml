@@ -32,10 +32,8 @@ functor ModuleEnvironments(
 		and type ModuleStatObject.realisation = StatObject.realisation
 		and type ModuleStatObject.TyVar = StatObject.TyVar
 
-
 	  structure PP : PRETTYPRINT
 	    sharing type ModuleStatObject.StringTree = PP.StringTree
-(*	        and type Environments.StringTree = PP.StringTree *)
 
 	  structure Report: REPORT
 	  structure Flags : FLAGS
@@ -142,7 +140,10 @@ functor ModuleEnvironments(
 
     (*F, functor environments*)
 
-    datatype FunEnv = FUNENV of (funid, FunSig) FinMap.map
+    type prjid = string
+
+    datatype FunEnv = FUNENV of (funid, prjid*FunSig) FinMap.map
+    type prjid = string
 
     structure F = struct
       val empty = FUNENV FinMap.empty
@@ -151,21 +152,21 @@ functor ModuleEnvironments(
       fun lookup (FUNENV F) = FinMap.lookup F
       fun tynames (FUNENV F) =
 	    FinMap.fold
-	      (fn (FunSig,T) =>
+	      (fn ((_,FunSig),T) =>
 	       TyName.Set.union T (Phi.tynames FunSig))
 		TyName.Set.empty  F
       fun tyvars (FUNENV F) =
 	    FinMap.fold
-	      (fn (Phi, tyvars) => TyVar.unionTyVarSet (Phi.tyvars Phi, tyvars))
+	      (fn ((_,Phi), tyvars) => TyVar.unionTyVarSet (Phi.tyvars Phi, tyvars))
 	        [] F
       fun tyvars' (FUNENV F) =
 	    FinMap.fold
-	      (fn (Phi, criminals) => Phi.tyvars' Phi @ criminals) [] F
+	      (fn ((_,Phi), criminals) => Phi.tyvars' Phi @ criminals) [] F
       fun dom (FUNENV F) = FinMap.dom F
       fun layout (FUNENV m) =
 	    let val l = FinMap.Fold op :: nil m
 	    fun format_id funid = concat ["functor ", FunId.pr_FunId funid, " : "]
-	    fun layoutPair (funid, FunSig) = 
+	    fun layoutPair (funid, (_,FunSig)) = 
 	          PP.NODE {start=format_id funid, finish="", indent=3,
 			   children=[Phi.layout FunSig],
 			   childsep=PP.NOSEP}
@@ -177,7 +178,9 @@ functor ModuleEnvironments(
 			   children=map layoutPair l, childsep=PP.RIGHT " "}
 	    end
       fun report (report_funid_Phi : funid * FunSig -> Report, FUNENV m) =
-	    FinMap.reportMapSORTED (FunId.<) report_funid_Phi m
+	let fun report_funid_Phi' (funid,(_,FunSig)) = report_funid_Phi(funid,FunSig)
+	in FinMap.reportMapSORTED (FunId.<) report_funid_Phi' m
+	end
     end (*F*)
 
 
@@ -244,9 +247,9 @@ functor ModuleEnvironments(
 			| NONE => false) true G2
 
       fun enrich_FunEnv(FUNENV F1,FUNENV F2) =
-	FinMap.Fold (fn ((funid2,FunSig2),b) => b andalso
+	FinMap.Fold (fn ((funid2,(prjid2,FunSig2)),b) => b andalso
 		     case FinMap.lookup F1 funid2 
-		       of SOME FunSig1 => Phi.eq(FunSig1,FunSig2)
+		       of SOME (prjid1,FunSig1) => prjid1 = prjid2 andalso Phi.eq(FunSig1,FunSig2)
 			| NONE => false) true F2
 
 

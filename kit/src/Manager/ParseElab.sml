@@ -55,6 +55,8 @@ functor ParseElab(structure Parse: PARSE
     type Report = Report.Report
     type topdec = PostElabTopdecGrammar.topdec
 
+    type prjid = ModuleEnvironments.prjid
+
     fun log s = TextIO.output(!Flags.log, s)
     fun chat s = if !Flags.chat then log s else ()
 
@@ -77,13 +79,13 @@ functor ParseElab(structure Parse: PARSE
         SUCCESS of {report: Report, infB: InfixBasis, elabB: ElabBasis, topdec: topdec}
       | FAILURE of Report * ErrorCode.ErrorCode list
 
-    fun elab (infB, elabB, topdec) : Result =
+    fun elab (prjid : prjid, infB, elabB, topdec) : Result =
           let val debugParse =
 	            if !Flags.DEBUG_PARSING then
 		      PP.reportStringTree(PreElabTopdecGrammar.layoutTopdec topdec)
 		      // PP.reportStringTree(InfixBasis.layoutBasis infB)
 		    else Report.null
-	      val (elabB', topdec') = ElabTopdec.elab_topdec (elabB, topdec)
+	      val (elabB', topdec') = ElabTopdec.elab_topdec (prjid, elabB, topdec)
 	  in
 	    (case ErrorTraverse.traverse topdec' of
 	       ErrorTraverse.SUCCESS =>
@@ -145,13 +147,13 @@ functor ParseElab(structure Parse: PARSE
     val empty_success = SUCCESS{report=Report.null, infB=InfixBasis.emptyB,
 				elabB=ModuleEnvironments.B.empty, topdec=PostElabTopdecGrammar.empty_topdec}
 
-    fun parse_elab {infB: InfixBasis, elabB: ElabBasis, file : string} : Result =
+    fun parse_elab {infB: InfixBasis, elabB: ElabBasis, prjid: prjid, file : string} : Result =
       let val _ = chat "[parsing begin...]\n"
 	  val parse_res = parse (infB, file)  (*may raise Parse*) 
 	  val _ = chat "[parsing end...]\n"
 	  val _ = chat "[elaboration begin...]\n"
 	  val elab_res = case parse_res 
-			   of (infB, SOME topdec) => elab (infB, elabB, topdec)
+			   of (infB, SOME topdec) => elab (prjid, infB, elabB, topdec)
 			    | (infB, NONE) => empty_success
 	  val _ = chat "[elaboration end...]\n"
       in elab_res

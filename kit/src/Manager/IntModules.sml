@@ -1,7 +1,3 @@
-(*$IntModules: NAME MANAGER_OBJECTS COMPILER_ENV ELAB_INFO LEX_BASICS
-               ENVIRONMENTS MODULE_ENVIRONMENTS PARSE_ELAB
-               OPACITY_ELIM COMPILE_BASIS COMPILE TOPDEC_GRAMMAR
-               FREE_IDS CRASH REPORT FLAGS INT_MODULES*)
 
 functor IntModules(structure Name : NAME
 
@@ -100,6 +96,8 @@ functor IntModules(structure Name : NAME
      and CEnv = CE.CEnv
      and IntFunEnv = ManagerObjects.IntFunEnv
 
+    type prjid = ModuleEnvironments.prjid
+
     open TopdecGrammar (*declares StrId*)
 
     fun to_TypeInfo i =
@@ -128,7 +126,7 @@ functor IntModules(structure Name : NAME
 	  val unitname = case unitname_opt
 			   of SOME unitname => unitname
 			    | NONE => fresh_unitname()
-	  val vcg_filename = !Flags.target_directory ^ unitname ^ ".vcg"
+	  val vcg_filename = "PM/" ^ unitname ^ ".vcg"
       in case Compile.compile(ce,cb,strdecs,vcg_filename)
 	   of Compile.CodeRes(ce',cb',target,linkinfo) =>
 	     (ce',cb', ModCode.mk_modcode(target,linkinfo,unitname))
@@ -259,7 +257,7 @@ functor IntModules(structure Name : NAME
 				 of SOME (ElabInfo.TypeInfo.FUNCTOR_APP_INFO phiEres) => phiEres
 				  | _ => die "int_strexp.APPstrexp.no (phi,E) info"
 	      val (ce, cb, mc) = int_strexp(intB, strexp)
-	      val (funstamp,strid,E,body_blaster,intB0) = IntFunEnv.lookup ((#1 o IntBasis.un) intB) funid
+	      val (prjid,funstamp,strid,E,body_blaster,intB0) = IntFunEnv.lookup ((#1 o IntBasis.un) intB) funid
 	      val E' = Environments.Realisation.on_Env phi E
 	      val _ = chat " [contraining argument begin...]\n" 
 	      val ce = CE.constrain(ce,E')
@@ -270,19 +268,20 @@ functor IntModules(structure Name : NAME
 	      (* We now check if there is code in the repository
 	       * we can reuse. *)
 	      fun reuse_code () =
-		case Repository.lookup_int funid
+		case Repository.lookup_int (prjid,funid)
 		  of SOME(_,(funstamp',Eres',intB',N',mc',intB'')) =>
 		    if FunStamp.eq(funstamp,funstamp') andalso
 		       IntBasis.enrich(IntBasis.plus(intB0,intB1),intB') andalso
-		       ElabEnv.eq(Eres,Eres') then 
-		      let val _ = print ("  [reusing instance code for functor " ^ FunId.pr_FunId funid ^ "]\n")
+		       ElabEnv.eq(Eres,Eres') andalso ModCode.exist mc' then 
+		      let val _ = print ("[reusing instance code for functor " ^ FunId.pr_FunId funid ^ "]\n")
 			  val (_,ce',cb') = IntBasis.un intB''
 			  val _ = List.apply Name.unmark_gen N'   (* unmark names - they where *)
 		      in SOME(ce',cb',mc')                        (* marked in the repository. *)
 		      end
 		    else NONE
 		   | NONE => 
-                       (print("  [compiling body of functor " ^ FunId.pr_FunId funid ^ " (begin)]\n");
+                       (print("[compiling body of functor " ^ FunId.pr_FunId funid ^ 
+			      " (from project " ^ prjid ^ ") begin]\n");
                         NONE )
 
 	  in case reuse_code ()
@@ -327,24 +326,24 @@ functor IntModules(structure Name : NAME
 		      * repository we can match against. We also store the
 		      * entry in the repository and we emit the generated code,
 		      * since all names now have become rigid. *)
-		     val mc' = case Repository.lookup_int funid
+		     val mc' = case Repository.lookup_int (prjid,funid)
 			       of SOME(entry_no, (_,_,_,N2,_,intB2)) => (* names in N2 are already marked generative, since *)
-				 (List.apply Name.mark_gen N';        (* N2 is returned by lookup_int *)
+				 (List.apply Name.mark_gen N';          (* N2 is returned by lookup_int *)
 				  IntBasis.match(intB'', intB2);
 				  List.apply Name.unmark_gen N';
-				  let val mc' = ModCode.emit mc'
-				  in Repository.owr_int(funid,entry_no,(funstamp,Eres,intB',N',mc',intB''));
+				  let val mc' = ModCode.emit (prjid, mc')
+				  in Repository.owr_int((prjid,funid),entry_no,(funstamp,Eres,intB',N',mc',intB''));
 				     mc'
 				  end)
-				| NONE => let val mc' = ModCode.emit mc'
-					  in Repository.add_int(funid,(funstamp,Eres,intB',N',mc',intB''));
+				| NONE => let val mc' = ModCode.emit (prjid, mc')
+					  in Repository.add_int((prjid,funid),(funstamp,Eres,intB',N',mc',intB''));
 					     mc'
 					  end
 		     val mc'' = ModCode.seq(mc,mc')
                      infix footnote
                      fun op footnote(x,y)= x
-		 in (ce', cb'', ModCode.emit mc'')     (* we also emit code for arg.. see comment above *)
-                    footnote print("  [compiling body of functor " ^ FunId.pr_FunId funid ^ " (end)]\n")
+		 in (ce', cb'', ModCode.emit (prjid, mc''))     (* we also emit code for arg.. see comment above *)
+                    footnote print("[compiling body of functor " ^ FunId.pr_FunId funid ^ " end]\n")
 		 end
 	  end
 
@@ -417,7 +416,7 @@ functor IntModules(structure Name : NAME
 
     val keep_functor_bodies_in_memory = ref false
 
-    fun generate_body_builder(funid, strid_arg,
+    fun generate_body_builder(prjid : prjid, funid, strid_arg,
 			      {infB: InfixBasis, elabB: ElabBasis, T: TyName list, 
 			       resE: ElabEnv, rea: realisation}, strexp : strexp) : unit -> strexp =
 
@@ -439,7 +438,8 @@ functor IntModules(structure Name : NAME
 		 else (elabB, NotDerivedForm)
 
 	       val funid_string = FunId.pr_FunId funid
-	       val filename = !Flags.target_directory ^ funid_string ^ ".bdy"
+	       val filename = "PM/" ^ OS.Path.base prjid ^ "-" ^ funid_string ^ ".bdy"
+	       val filename = OS.Path.mkAbsolute(filename,OS.FileSys.getDir())
 	       type pos = ElabInfo.ParseInfo.SourceInfo.pos
 	       fun info_to_positions (i : ElabInfo.ElabInfo) : pos * pos =
 		 (ElabInfo.ParseInfo.SourceInfo.to_positions o 
@@ -465,7 +465,7 @@ functor IntModules(structure Name : NAME
 	         val _ = Name.bucket := []
 		   
 		 (* Re-elaboration *)
-	         val res = ParseElab.parse_elab {infB=infB,elabB=elabB, file=filename} 
+	         val res = ParseElab.parse_elab {infB=infB, elabB=elabB, prjid=prjid, file=filename} 
 
 	      in case res
 		   of ParseElab.FAILURE (report,error_codes) => (print_error_report report;
@@ -515,7 +515,7 @@ functor IntModules(structure Name : NAME
 
 
 
-    fun int_funbind (intB: IntBasis, FUNBIND(i, funid, strid, sigexp, strexp, funbind_opt)) : IntFunEnv =
+    fun int_funbind (prjid: prjid, intB: IntBasis, FUNBIND(i, funid, strid, sigexp, strexp, funbind_opt)) : IntFunEnv =
       let val ids_strexp = FreeIds.free_ids_strexp strexp
 	  val strids = List.dropAll (fn strid' => strid = strid') (FreeIds.strids_of_ids ids_strexp)
 	  val ids = FreeIds.vids_of_ids ids_strexp
@@ -532,54 +532,54 @@ functor IntModules(structure Name : NAME
 		in (argE, {infB=infB,elabB=elabB,T=T,resE=resE,rea=rea})
 		end
 	       | _ => die "int_funbind.no type info"
-	  val body_builder = generate_body_builder(funid, strid, body_builder_info, strexp)
-	  val fe = IntFunEnv.add(funid,(funstamp,strid,E,body_builder,intB0),IntFunEnv.empty)
+	  val body_builder = generate_body_builder(prjid, funid, strid, body_builder_info, strexp)
+	  val fe = IntFunEnv.add(funid,(prjid,funstamp,strid,E,body_builder,intB0),IntFunEnv.empty)
       in case funbind_opt
 	   of SOME funbind => 
-	     let val fe' = int_funbind(intB, funbind)
+	     let val fe' = int_funbind(prjid, intB, funbind)
 	     in IntFunEnv.plus(fe,fe')
 	     end
 	    | NONE => fe
       end
 
-    fun int_topdec (intB: IntBasis, topdec: topdec) : IntBasis * modcode =   (* can effect repository *)
+    fun int_topdec (prjid: prjid, intB: IntBasis, topdec: topdec) : IntBasis * modcode =   (* can effect repository *)
       case topdec
 	of STRtopdec(i,strdec,topdec_opt) =>
 	  let val (ce,cb,modc1) = comp_int_strdec(intB,strdec,NONE)
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,ce,cb)
 	  in case topdec_opt
 	       of SOME topdec2 =>
-		 let val (intB2,modc2) = int_topdec(IntBasis.plus(intB,intB1),topdec2)
+		 let val (intB2,modc2) = int_topdec(prjid,IntBasis.plus(intB,intB1),topdec2)
 		 in (IntBasis.plus(intB1,intB2), ModCode.seq(modc1,modc2))
 		 end
 		| NONE => (intB1,modc1)
 	  end
 	 | SIGtopdec _ => die "int_topdec.SIGtopdec.should be eliminated by push_topdec"
 	 | FUNtopdec(i,FUNCTORfundec (i', funbind),topdec_opt) => 
-	  let val fe = int_funbind(intB, funbind)
+	  let val fe = int_funbind(prjid, intB, funbind)
 	      val intB1 = IntBasis.mk(fe,CE.emptyCEnv, CompileBasis.empty)
 	  in case topdec_opt
 	       of SOME topdec2 =>
-		 let val (intB2,modc2) = int_topdec(IntBasis.plus(intB,intB1),topdec2)
+		 let val (intB2,modc2) = int_topdec(prjid,IntBasis.plus(intB,intB1),topdec2)
 		 in (IntBasis.plus(intB1,intB2), modc2)
 		 end
 		| NONE => (intB1,ModCode.empty)
 	  end
 
-    fun interp(intB,topdec, unitname) =
+    fun interp(prjid,intB,topdec, unitname) =
       case push_topdec topdec
 	of (SOME strdec, topdec_opt) => 
 	  let val (ce1,cb1,mc1) = comp_int_strdec(intB,strdec, SOME unitname)
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,ce1,cb1)
 	  in case topdec_opt
 	       of SOME topdec => 
-		 let val (intB2, mc2) = int_topdec(IntBasis.plus(intB,intB1), topdec)
+		 let val (intB2, mc2) = int_topdec(prjid,IntBasis.plus(intB,intB1), topdec)
 		 in (IntBasis.plus(intB1,intB2), ModCode.seq(mc1,mc2))
 		 end
 		| NONE => (intB1, mc1)
 	  end 
 	 | (NONE, NONE) => (IntBasis.empty, ModCode.empty)
-	 | (NONE, SOME topdec) => int_topdec(intB,topdec)
+	 | (NONE, SOME topdec) => int_topdec(prjid,intB,topdec)
 
     fun reset() = (Compile.reset(); reset_unitname_counter())
     val commit = Compile.commit
