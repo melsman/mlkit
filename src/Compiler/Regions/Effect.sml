@@ -73,9 +73,13 @@ struct
       if rt1 = rt2 then rt1
       else if rt1 = BOT_RT then rt2
       else if rt2 = BOT_RT then rt1
-      else if rt1 = WORD_RT orelse rt2 = WORD_RT 
+      else 
+	die ("Trying to unify runtype " ^ show_runType rt1 ^ " with runtype " ^ show_runType rt2)
+(*
+      if rt1 = WORD_RT orelse rt2 = WORD_RT 
            then die "cannot unify word runtype region with other region"
       else TOP_RT (* mael: shouldn't this be "die"? *)
+*)
 
   type key = int ref (* for printing and sorting of nodes *)
   fun show_key(ref i) = Int.toString i
