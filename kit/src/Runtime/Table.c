@@ -49,7 +49,7 @@ word_table0 (int rAddr, int n)
     int i;
     for ( i = 0, p = &(res->data) ; i < n ; i++, p++ )
       {
-	*p = 0;
+	*p = 1;     // scalar value
       }
   }
   #endif
@@ -95,34 +95,3 @@ table_size (Table *t)
   return convertIntToML(get_table_size(t->size));
 }
 */
-
-#ifdef ENABLE_GC
-// copy_table(rAddr,t): copy the table t into a new table 
-// allocated in region rAddr.
-Table *
-#ifdef PROFILING
-copy_tableProf(int rAddr, Table *t, int pPoint)
-#else
-copy_table(int rAddr, Table *t)
-#endif 
-{
-  int sz, *p1, *p2, i;
-  Table* res;
-
-  sz = get_table_size(t->size);
-  #ifdef PROFILING
-  res = (Table*)allocProfiling(rAddr, sz+1, pPoint);
-  #else
-  res = (Table*)alloc(rAddr, sz+1);
-  #endif
-  res->size = val_tag_table(sz);
-  p1 = &(t->data);
-  p2 = &(res->data);
-  for ( i = 0 ; i < sz ; i ++ )
-    {
-      *p2++ = *p1++;
-    }
-  return res;      
-}
-
-#endif /*ENABLE_GC*/

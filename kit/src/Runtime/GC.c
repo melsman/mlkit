@@ -83,7 +83,9 @@ Klump *from_space_begin, *from_space_end;
 /*******************/
 /* PRETTY PRINTING */
 /*******************/
-static void pw(char *s,unsigned int tag) {
+static void 
+pw(char *s,unsigned int tag) 
+{
   int idx;
   
   printf("%s(%x) is ",s,tag);
@@ -98,7 +100,9 @@ static void pw(char *s,unsigned int tag) {
   return;
 }
 
-static void print(unsigned int *value) {
+static void 
+print(unsigned int *value) 
+{
   char str[50];
   unsigned int val;
 
@@ -132,7 +136,9 @@ static void print(unsigned int *value) {
 }
 
 /*#define copy_words(from,to,w) (memcpy((to),(from),4*(w)))*/
-inline static void copy_words(unsigned int *from,unsigned int *to,int num) {
+inline static void 
+copy_words(unsigned int *from,unsigned int *to,int num) 
+{
   int i;
   for (i=0;i<num;i++) 
     *(to+i) = *(from+i);
@@ -147,34 +153,48 @@ unsigned int **scan_stack = NULL;
 int size_scan_stack;
 int scan_sp;
 
-inline static void init_scan_stack() {
-  if (scan_stack == NULL) {
-    scan_stack = (unsigned int **) realloc((void *)scan_stack, INIT_STACK_SIZE_W*4);
-    if (scan_stack == NULL)
-      die("GC.init_scan_stack: Unable to allocate scan_stack");
-    size_scan_stack = INIT_STACK_SIZE_W;
-  }
+inline static void 
+init_scan_stack() 
+{
+  if (scan_stack == NULL) 
+    {
+      scan_stack = (unsigned int **) realloc((void *)scan_stack, INIT_STACK_SIZE_W*4);
+      if (scan_stack == NULL)
+	{
+	  die("GC.init_scan_stack: Unable to allocate scan_stack");
+	}
+      size_scan_stack = INIT_STACK_SIZE_W;
+    }
   scan_sp = 0;
   return;
 }
 
 #define is_scan_stack_empty() (scan_sp == 0)
 
-inline static void push_scan_stack(unsigned int *ptr) {
+inline static void 
+push_scan_stack(unsigned int *ptr) 
+{
   scan_stack[scan_sp] = ptr;
   scan_sp++;
-  if (scan_sp >= size_scan_stack) {
-    size_scan_stack *= 2;
-    scan_stack = (unsigned int **) realloc((void *)scan_stack, size_scan_stack*4);
-    if (scan_stack == NULL)
-      die("GC.push_scan_stack: Unable to increase scan_stack");
-  }
+  if ( scan_sp >= size_scan_stack ) 
+    {
+      size_scan_stack *= 2;
+      scan_stack = (unsigned int **) realloc((void *)scan_stack, size_scan_stack*4);
+      if (scan_stack == NULL)
+	{
+	  die("GC.push_scan_stack: Unable to increase scan_stack");
+	}
+    }
   return;
 }
 
-inline static unsigned int *pop_scan_stack() {
-  if (scan_sp < 1) 
-    die("GC.pop_scan_stack: scan_sp below stack bot.");
+inline static unsigned int *
+pop_scan_stack() 
+{
+  if ( scan_sp < 1 ) 
+    {
+      die("GC.pop_scan_stack: scan_sp below stack bot.");
+    }
   scan_sp--;
   return scan_stack[scan_sp];
 }
@@ -188,13 +208,18 @@ int size_scan_container;
 int container_alloc;
 int container_scan;
 
-inline static void init_scan_container() {
-  if (scan_container == NULL) {
-    scan_container = (unsigned int **) realloc((void *)scan_container, INIT_CONTAINER_SIZE_W*4);
-    if (scan_container == NULL)
-      die("GC.init_scan_container: Unable to allocate scan_container");
-    size_scan_container = INIT_CONTAINER_SIZE_W;
-  }
+inline static void 
+init_scan_container() 
+{
+  if (scan_container == NULL) 
+    {
+      scan_container = (unsigned int **) realloc((void *)scan_container, INIT_CONTAINER_SIZE_W*4);
+      if (scan_container == NULL)
+	{
+	  die("GC.init_scan_container: Unable to allocate scan_container");
+	}
+      size_scan_container = INIT_CONTAINER_SIZE_W;
+    }
   container_alloc = 0;
   container_scan = 0;
   return;
@@ -211,19 +236,26 @@ inline static void check_scan_container(unsigned int *ptr) {
 }
 */
 
-inline static void push_scan_container(unsigned int *ptr) {
+inline static void 
+push_scan_container(unsigned int *ptr) 
+{
   scan_container[container_alloc] = ptr;
   container_alloc++;
-  if (container_alloc >= size_scan_container) {
-    size_scan_container *= 2;
-    scan_container = (unsigned int **) realloc((void *)scan_container, size_scan_container*4);
-    if (scan_container == NULL)
-      die("GC.push_scan_container: Unable to increase scan_container");
-  }
+  if (container_alloc >= size_scan_container) 
+    {
+      size_scan_container *= 2;
+      scan_container = (unsigned int **) realloc((void *)scan_container, size_scan_container*4);
+      if (scan_container == NULL)
+	{
+	  die("GC.push_scan_container: Unable to increase scan_container");
+	}
+    }
   return;
 }
 
-inline static unsigned int *pop_scan_container() {
+inline static unsigned int *
+pop_scan_container() 
+{
   unsigned int *v;
   //if (container_scan >= container_alloc) 
   //  die("GC.pop_scan_container: container_scan higher than container_alloc.");
@@ -232,10 +264,14 @@ inline static unsigned int *pop_scan_container() {
   return v;
 }
 
-inline static void clear_scan_container() {
+inline static void 
+clear_scan_container() 
+{
   int i;
-  for (i=0; i<container_alloc; i++)
-    *scan_container[i] = clear_tag_const(*scan_container[i]);
+  for ( i = 0; i < container_alloc ; i ++ )
+    {
+      *scan_container[i] = clear_tag_const(*scan_container[i]);
+    }
 }
 
 /* We mark all region pages such that we can distinguish them from to-space */
@@ -285,7 +321,7 @@ static void mk_from_space() {
 #define is_constant(x)              ((x) & 0x20)         /* Bit 6 is the constant bit */
 #define is_forward_ptr(x)           (((x) & 0x03) == 0)  /* Bit 0 and 1 must be zero */
 #define clear_forward_ptr(x)        (x)
-#define tag_forward_ptr(x)          (x)
+#define tag_forward_ptr(x)          ((unsigned int)(x))
 
 // Region pages are of size 1Kb and aligned
 #define get_rp_header(x)            ((Klump *)(((unsigned int)(x)) & 0xFFFFFC00))  
@@ -324,7 +360,7 @@ static void check_ptr_to_forward(unsigned int *obj_ptr) {
 unsigned int 
 size_lobj (unsigned int tag)
 {
-  switch ( val_tag_kind_const(tag) ) {
+  switch ( tag_kind(tag) ) {
   case TAG_STRING: {
     unsigned int sz_bytes;
     sz_bytes = get_string_size(tag) + 5;              // 1 for zero-termination, 4 for size field
@@ -342,7 +378,8 @@ size_lobj (unsigned int tag)
  * Find allocated bytes in from space; for measurements
  * ----------------------------------------------------- */
 
-static int allocated_bytes_in_region(Ro *rd) 
+static int 
+allocated_bytes_in_region(Ro *rd) 
 {
   unsigned int * scan_ptr;
   Klump*rp;
@@ -358,8 +395,7 @@ static int allocated_bytes_in_region(Ro *rd)
 #endif
     switch (val_tag_kind_const(scan_ptr)) {
     case TAG_STRING: {
-      /* Do Not GC the content of a string but adjust 
-       * scan_ptr to after the string */
+      // adjust scan_ptr to after the string
       int sizeWords;
       StringDesc* str = (StringDesc *)scan_ptr;
       sizeWords = get_string_size(str->size) + 5;  // 1 for zero-termination and 4 for size field
@@ -419,7 +455,9 @@ static int allocated_bytes_in_region(Ro *rd)
   return allocated_bytes;
 }
 
-static int allocated_bytes_in_regions(void) {
+static int 
+allocated_bytes_in_regions(void) 
+{
   int n = 0;
   Ro* rp;
   for ( rp = TOP_REGION; rp != NULL; rp = rp->p )
@@ -432,36 +470,34 @@ static int allocated_bytes_in_regions(void) {
 /********************/
 /* OBJECT FUNCTIONS */
 /********************/
-/* Returns the size including the descriptor. */
-inline static int get_size_obj(unsigned int *obj_ptr) {
-  int size;
-
-  /* The object must contain a descriptor at offset 0 */
+// Returns the size including the descriptor; the 
+// object must contain a descriptor at offset 0
+inline static int 
+get_size_obj(unsigned int *obj_ptr) 
+{
   switch (val_tag_kind_const(obj_ptr)) {
-  case TAG_RECORD: {
-    size = get_record_size(*obj_ptr)+1;
-    break;
-  }
+  case TAG_RECORD: return get_record_size(*obj_ptr) + 1;
+  case TAG_CON0:   return 1;
   case TAG_CON1:
-  case TAG_REF: {
-    size = 2;
-    break;
+  case TAG_REF:    return 2;
+  case TAG_TABLE:  return get_table_size(*obj_ptr) + 1;
+  case TAG_STRING: 
+    {
+      int size = get_string_size(*obj_ptr) + 5;   // 1 for zero-termination, 4 for tag
+      return size%4 ? 1 + (size/4) : size/4;      // alignment
+    }
+  default: 
+    {
+      pw("Tag: ", *obj_ptr);
+      print(obj_ptr);
+      die("GC.get_size_obj: can't recognize tag");
+    }
   }
-  case TAG_CON0: {
-    size = 1;
-    break;
-  }
-  default: {
-    pw("Tag: ", *obj_ptr);
-    print(obj_ptr);
-    die("GC.get_size_obj: can't recognize tag");
-    break;
-  }
-  }
-  return size;
 }
 
-inline  unsigned int *copy_val(unsigned int *obj_ptr,Ro *rd) {
+inline  unsigned int *
+copy_val(unsigned int *obj_ptr, Ro *rd) 
+{
   int size;
   unsigned int *new_obj_ptr;
 
@@ -471,85 +507,73 @@ inline  unsigned int *copy_val(unsigned int *obj_ptr,Ro *rd) {
   oSize  = (((ObjectDesc *)(obj_ptr))-1)->size;
 #endif /*PROFILING*/
 
-  /* The object must contain a descriptor at offset 0 */
-  switch (val_tag_kind_const(obj_ptr)) {
-  case TAG_STRING: {
-    #ifdef PROFILING
-      new_obj_ptr = (unsigned int*)copy_stringProf((int)rd,(StringDesc *)obj_ptr, pPoint);
-    #else
-      new_obj_ptr = (unsigned int*)copy_string((int)rd,(StringDesc *)obj_ptr);
-    #endif
-    *obj_ptr = tag_forward_ptr((unsigned int)new_obj_ptr); /* Install Forward Pointer */
-    break;
-  }
-  case TAG_TABLE: {
-    #ifdef PROFILING
-      new_obj_ptr = (unsigned int*)copy_tableProf((int)rd,(Table *)obj_ptr, pPoint);
-    #else
-      new_obj_ptr = (unsigned int*)copy_table((int)rd,(Table *)obj_ptr);
-    #endif
-    *obj_ptr = tag_forward_ptr((unsigned int)new_obj_ptr); /* Install Forward Pointer */
-    break;
-  }
-  default: {
-    size = get_size_obj(obj_ptr);         /* size includes descriptor. */
-    #ifdef PROFILING
-      new_obj_ptr = allocProfiling((int)rd,size, pPoint);
-    #else
-      new_obj_ptr = alloc((int)rd,size);
-    #endif
-    copy_words(obj_ptr,new_obj_ptr,size);
-    *obj_ptr = tag_forward_ptr((unsigned int)new_obj_ptr);  /* Install Forward Pointer */
-    break;
-  }
-  }
+  size = get_size_obj(obj_ptr);              // size includes descriptor
+#ifdef PROFILING
+  new_obj_ptr = allocProfiling((int)rd,size,pPoint);
+#else
+  new_obj_ptr = alloc((int)rd,size);
+#endif
+  copy_words(obj_ptr,new_obj_ptr,size);
+  *obj_ptr = tag_forward_ptr(new_obj_ptr);   // install forward pointer
   return new_obj_ptr;
 }
 
-/* We get a pointer to an old object (obj_ptr) and return a pointer to */
-/* a new object (new_obj_ptr) and installs a forward pointer in the    */
-/* old object.                                                         */
-inline static unsigned int *copy_obj(unsigned int *obj_ptr) {
+// copy_obj takes a pointer to an old object (obj_ptr) and returns a 
+// pointer to a new object (new_obj_ptr); a forward pointer is
+// installed in the old object.
+inline static unsigned int *
+copy_obj(unsigned int *obj_ptr) 
+{
   Klump *rp;
   Ro *rd;
   unsigned int *new_obj_ptr;
 
-  /* Get Region Page and Region Descriptor */
-  rp = get_rp_header(obj_ptr);
-  rd = rp->k.r;
+  rp = get_rp_header(obj_ptr);           // get region page 
+  rd = rp->k.r;                          // get region descriptor
   new_obj_ptr = copy_val(obj_ptr,rd);
-  if (is_status_NONE(rd)) {
+  if ( is_status_NONE(rd) ) 
+    {
 #ifdef PROFILING 
-    push_scan_stack(new_obj_ptr - sizeObjectDesc);
+      push_scan_stack(new_obj_ptr - sizeObjectDesc);
 #else
-    push_scan_stack(new_obj_ptr);
+      push_scan_stack(new_obj_ptr);
 #endif
-    set_status_SOME(rd);
-  }
+      set_status_SOME(rd);
+    }
   return new_obj_ptr;
 }
 
-inline static unsigned int gc_obj(unsigned int obj) {
+static unsigned int 
+gc_obj(unsigned int obj) 
+{
   unsigned int *obj_ptr;
   if (is_scalar(obj)) return obj;
 
-  /* obj is a pointer */
+  // object is a pointer
   obj_ptr = (unsigned int *)obj;
-  if (is_forward_ptr(*obj_ptr)) /* The value has already been copied */
+  if ( is_forward_ptr(*obj_ptr) )        // object is already copied
     return clear_forward_ptr(*obj_ptr);             
 
-  /* At this time, the object must contain a descriptor. is_forward_ptr must go first! */
-  if (is_constant(*obj_ptr)) return obj; /* A constant (e.g., string) is not moved */
+  // object contains a descriptor
+  if (is_constant(*obj_ptr)) return obj; // constants in data space are not copied
 
-  if ( is_stack_allocated(obj_ptr) || is_large_obj(*obj_ptr) ) 
+  if ( is_stack_allocated(obj_ptr) )
     { 
-      /* Stack allocated objects and large objects are not moved. 
-       * Notice: obj=obj_ptr, but the C-type is different! */
-      *obj_ptr = set_tag_const(*obj_ptr); /* Set const bit temporarily */
+      // stack allocated objects and large objects are not copied
+      // notice: obj=obj_ptr, but the C-type is different!
+      *obj_ptr = set_tag_const(*obj_ptr); // set const bit temporarily
       push_scan_container(obj_ptr);
       return obj;
     }
-
+  if ( is_large_obj(*obj_ptr) ) 
+    { 
+      // printf ("large object %d\n", obj);
+      // stack allocated objects and large objects are not copied
+      // notice: obj=obj_ptr, but the C-type is different!
+      *obj_ptr = set_tag_const(*obj_ptr); // set const bit temporarily
+      push_scan_container(obj_ptr);
+      return obj;
+    }
   return (unsigned int)(copy_obj(obj_ptr));  // object is unvisited
 }
 
@@ -594,7 +618,7 @@ scan_value(unsigned int* scan_ptr)
       }
     return scan_ptr;
   }
-  case TAG_CON0: {     /* Is a constant */
+  case TAG_CON0: {     // constant
     scan_ptr++;
     return scan_ptr;
   }
@@ -618,19 +642,21 @@ scan_value(unsigned int* scan_ptr)
   }
 }  
 
-static void do_scan_stack() {
+static void 
+do_scan_stack() 
+{
   unsigned int *scan_ptr;
   Klump *rp;
   Ro *rd;
 
-  /* Run Through The Scan Stack and the Container */
+  // Run through scan stack and container
   while (!((is_scan_stack_empty()) && (is_scan_container_empty()))) {
 
-    /* Run Through The Container - FINITE REGIONS and LARGE OBJECTS */
-    while (!(is_scan_container_empty())) {
-      scan_ptr = pop_scan_container();
-      scan_ptr = scan_value(scan_ptr);
-    }
+    // Run through container - FINITE REGIONS and LARGE OBJECTS
+    while (!(is_scan_container_empty())) 
+      {
+	scan_ptr = scan_value(pop_scan_container());
+      }
 
     while (!(is_scan_stack_empty())) {
       scan_ptr = pop_scan_stack();
@@ -661,7 +687,9 @@ static void do_scan_stack() {
 #define predSPDef(sp,n) ((sp)=(sp)+(n))
 #define succSPDef(sp) (sp--)
  
-void gc(unsigned int **sp, unsigned int reg_map) {
+void 
+gc(unsigned int **sp, unsigned int reg_map) 
+{
   extern Klump* freelist;
   extern int rp_to_space;
   unsigned int **sp_ptr;
@@ -709,8 +737,8 @@ void gc(unsigned int **sp, unsigned int reg_map) {
 
   rp_to_space = 0;
 
-  /* Initialize the scan stack (for Infinite Regions) and the 
-   * container (for Finite Regions and large objects) */
+  // Initialize the scan stack (for Infinite Regions) and the
+  // container (for Finite Regions and large objects)
   init_scan_stack();
   init_scan_container();
 
@@ -729,14 +757,14 @@ void gc(unsigned int **sp, unsigned int reg_map) {
 
   /* Do spilled arguments and results to current function */
   sp_ptr = sp;
-  sp_ptr = sp_ptr + NUM_REGS; /* Points at size_spilled_region_args. */
+  sp_ptr = sp_ptr + NUM_REGS;   // points at size_spilled_region_args
 
   size_spilled_region_args = *((int *)sp_ptr);
-  predSPDef(sp_ptr,1); /* sp_ptr points at size_rcf */
+  predSPDef(sp_ptr,1);          // sp_ptr points at size_rcf
   size_rcf = *((int *)sp_ptr);
-  predSPDef(sp_ptr,1); /* sp_ptr points at size_ccf */
+  predSPDef(sp_ptr,1);          // sp_ptr points at size_ccf
   size_ccf = *((int *)sp_ptr);
-  predSPDef(sp_ptr,1); /* sp_ptr points at last arg. to current function. */
+  predSPDef(sp_ptr,1);          // sp_ptr points at last arg. to current function
 
   /* All arguments to current function are live - except for region arguments. */
   for (offset=0;offset<size_ccf;offset++) {
@@ -831,8 +859,8 @@ void gc(unsigned int **sp, unsigned int reg_map) {
 
   rp_used = rp_to_space;
   ratio = (((double)rp_total)/(double)rp_used);
-  to_allocate = heap_to_live_ratio*((double)rp_used)-((double)rp_total);
   if ( ratio < heap_to_live_ratio ) {
+    to_allocate = heap_to_live_ratio*((double)rp_used) - ((double)rp_total);
     callSbrkArg(((int)(to_allocate))+REGION_PAGE_BAG_SIZE);
   }
 

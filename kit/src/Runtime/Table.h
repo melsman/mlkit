@@ -9,11 +9,11 @@ typedef struct table {
 } Table;
 
 // word_sub0(t,i): extract element i from table t; no bounds check
-int word_sub0 (Table* t, int i);
+// int word_sub0 (Table* t, int i);
 
 // word_update0(tablep,i,x): update element i in table t 
 // with element x; no bounds check
-void word_update0 (Table* t, int i, int x);
+// void word_update0 (Table* t, int i, int x);
 
 // word_table0(rAddr, n): return a pointer to a table 
 // with n elements allocated in the region indicated by rAddr
@@ -36,17 +36,8 @@ Table* word_table_init (int rAddr, int n, int x);
 // function is needed by the polymorphic equality function 
 // on vectors (EliminateEq.sml). Also used for bounds 
 // checking.
-int table_size (Table * t);
 
-// copy_table(rAddr,t): copy the table t into a new table 
-// allocated in region rAddr.
-#ifdef ENABLE_GC
-#ifdef PROFILING
-Table *copy_tableProf(int rAddr, Table *t, int pPoint);
-#else
-Table *copy_table(int rAddr, Table *t);
-#endif 
-#endif 
+// int table_size (Table * t);
 
 #endif /*__TABLE_H*/
 

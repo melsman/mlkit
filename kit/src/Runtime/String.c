@@ -23,9 +23,9 @@ allocString(int rAddr, int size)
 #endif
 {
   StringDesc * sd;
-  int szAlloc;                // size of string in words + size field
+  int szAlloc;                // size of string in words + tag
   int size0 = size + 1;       // size with space for '\0'
-  szAlloc = 1 + ((size0 % 4) ? (size0 / 4)+1 : (size0 / 4));
+  szAlloc = 1 + ((size0 % 4) ? (size0 / 4)+1 : (size0 / 4));  // 1 is for the tag
 #ifdef PROFILING
   sd = (StringDesc *) allocProfiling(rAddr, szAlloc, pPoint);
 #else
@@ -467,35 +467,3 @@ printNum(int n)
   printf("Num: %d\n",convertIntToC(n));
   return;
 }
-
-#ifdef ENABLE_GC
-// copy_string(rAddr,s): copy the string s into a new string 
-// allocated in region rAddr.
-StringDesc *
-#ifdef PROFILING
-copy_stringProf(int rAddr, StringDesc *s, int pPoint)
-#else
-copy_string(int rAddr, StringDesc *s)
-#endif 
-{
-  int sz, i;
-  char *p1, *p2;
-  StringDesc *res;
-
-  sz = get_string_size(s->size);
-  #ifdef PROFILING
-  res = allocStringProfiling(rAddr, sz, pPoint);
-  #else
-  res = allocString(rAddr, sz);
-  #endif
-  p1 = &(s->data);
-  p2 = &(res->data);
-  for ( i = 0 ; i < sz ; i ++ )
-    {
-      *p2++ = *p1++;
-    }
-  *p2 = '\0';
-  return res;      
-}
-
-#endif /*ENABLE_GC*/

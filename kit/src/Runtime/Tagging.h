@@ -7,6 +7,7 @@
 #include "Flags.h"
 #include "Region.h"
 
+#define tag_kind(x)                 ((x) & 0x1F)         /* Least 5 significant bits    */
 #define val_tag(x)                  (*(int *)x)
 #define val_tag_kind(x)             ((*(int *)x) & 0x1F) /* Least 5 significant bits    */
 #define is_const(x)                 (((int *)x) & 0x20)  /* Bit 6 is the constant bit   */
@@ -30,12 +31,17 @@
 #define TAG_TABLE        0x07
 #define TAG_TABLE_CONST  0x27
 
+// size field in table is the size in words (excluding tag), size
+// field in string is the size in bytes (excluding tag)
+
+#define is_string(x)        (tag_kind(x) == TAG_STRING) 
+#define is_table(x)         (tag_kind(x) == TAG_TABLE) 
 #ifdef PROFILING
-#define is_large_string(x)  (((x)&TAG_STRING) && (((x)>>6) > (4*ALLOCATABLE_WORDS_IN_REGION_PAGE-8)))
-#define is_large_table(x)   (((x)&TAG_TABLE) && (((x)>>6) > (ALLOCATABLE_WORDS_IN_REGION_PAGE-8)))
+#define is_large_string(x)  (is_string(x) && (((x)>>6) > (4*ALLOCATABLE_WORDS_IN_REGION_PAGE-12)))
+#define is_large_table(x)   (is_table(x) && (((x)>>6) > (ALLOCATABLE_WORDS_IN_REGION_PAGE-3)))
 #else
-#define is_large_string(x)  (((x)&TAG_STRING) && (((x)>>6) > (4*ALLOCATABLE_WORDS_IN_REGION_PAGE)))
-#define is_large_table(x)   (((x)&TAG_TABLE) && (((x)>>6) > ALLOCATABLE_WORDS_IN_REGION_PAGE))
+#define is_large_string(x)  (is_string(x) && (((x)>>6) > (4*ALLOCATABLE_WORDS_IN_REGION_PAGE-4)))
+#define is_large_table(x)   (is_table(x) && (((x)>>6) > ALLOCATABLE_WORDS_IN_REGION_PAGE-1))
 #endif
 #define is_large_obj(x)     (is_large_string(x) || is_large_table(x))
 
