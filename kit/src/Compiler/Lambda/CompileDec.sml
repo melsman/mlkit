@@ -1416,50 +1416,73 @@ end; (*match compiler local*)
 
 
     local 
-      fun int_or_real info (int, real) =
-	    (case NoSome "int_or_real" (ElabInfo.to_OverloadingInfo info) of
-	       OverloadingInfo.RESOLVED_INT => int
-	     | OverloadingInfo.RESOLVED_REAL => real
-	     | OverloadingInfo.RESOLVED_WORD8 => int
-	     | OverloadingInfo.RESOLVED_WORD => int
-	     | OverloadingInfo.RESOLVED_CHAR => int
-	     | OverloadingInfo.RESOLVED_STRING => die "int_or_real: string"
-	     | _ => die "int_or_real: unresolved")
-      fun string_or_int_or_real info (int, real, string) =
-	    (case NoSome "string_or_int_or_real" (ElabInfo.to_OverloadingInfo info) of
-	       OverloadingInfo.RESOLVED_INT => int
-	     | OverloadingInfo.RESOLVED_REAL => real
-	     | OverloadingInfo.RESOLVED_WORD8 => int
-	     | OverloadingInfo.RESOLVED_WORD => int
-	     | OverloadingInfo.RESOLVED_CHAR => int
-	     | OverloadingInfo.RESOLVED_STRING => string
-	     | _ => die "string_or_int_or_real: unresolved")
 
-      fun div_etc_ccall name =
-	    CCALLprim {name = name, instances = [], tyvars = [],
-		       Type = ARROWtype ([intType, intType, exnType], [intType])}
-      fun string_ccall name =
-	    CCALLprim {name = name, instances = [], tyvars = [],
-		       Type = ARROWtype ([stringType, stringType], [boolType])}
+      fun int_or_real info (int, real) =
+	case NoSome "int_or_real" (ElabInfo.to_OverloadingInfo info) 
+	  of OverloadingInfo.RESOLVED_INT => int
+	   | OverloadingInfo.RESOLVED_REAL => real
+	   | OverloadingInfo.RESOLVED_WORD8 => die "int_or_real: word8"
+	   | OverloadingInfo.RESOLVED_WORD => die "int_or_real: word"
+	   | OverloadingInfo.RESOLVED_CHAR => die "int_or_real: char"
+	   | OverloadingInfo.RESOLVED_STRING => die "int_or_real: string"
+	   | _ => die "int_or_word_or_real: unresolved"
+	
+      fun int_or_word_or_real info (int, word, real) =
+	case NoSome "int_or_word_or_real" (ElabInfo.to_OverloadingInfo info) 
+	  of OverloadingInfo.RESOLVED_INT => int
+	   | OverloadingInfo.RESOLVED_REAL => real
+	   | OverloadingInfo.RESOLVED_WORD8 => int
+	   | OverloadingInfo.RESOLVED_WORD => word
+	   | OverloadingInfo.RESOLVED_CHAR => int
+	   | OverloadingInfo.RESOLVED_STRING => die "int_or_word_or_real: string"
+	   | _ => die "int_or_word_or_real: unresolved"
+
+      fun string_or_int_or_real info (string, int, real) =
+	case NoSome "string_or_int_or_real" (ElabInfo.to_OverloadingInfo info) 
+	  of OverloadingInfo.RESOLVED_INT => int
+	   | OverloadingInfo.RESOLVED_REAL => real
+	   | OverloadingInfo.RESOLVED_WORD8 => int
+	   | OverloadingInfo.RESOLVED_WORD => int
+	   | OverloadingInfo.RESOLVED_CHAR => int
+	   | OverloadingInfo.RESOLVED_STRING => string
+	   | _ => die "string_or_int_or_real: unresolved"
+
+      fun ccall name argtypes restype =
+	CCALLprim {name = name, instances = [], tyvars = [],
+		   Type = ARROWtype (argtypes, [restype])}
+	
+      fun binary_int_ccall name = ccall name [intType, intType] intType
+      fun binary_int_ccall' name = ccall name [intType, intType, exnType] intType
+      fun unary_int_ccall name = ccall name [intType] intType
+
+      val plus_word = binary_int_ccall "plus_word__"
+      val minus_word = binary_int_ccall "minus_word__"
+      val mul_word = binary_int_ccall "mul_word__"
+      val div_word = binary_int_ccall "div_word__"
+      val mod_word = binary_int_ccall "mod_word__"
+      val neg_word = unary_int_ccall "neg_word__"
+
+      fun string_cmp_ccall name = ccall name [stringType, stringType] boolType
+
       fun unoverload i CE.ABS = int_or_real i (ABS_INTprim, ABS_REALprim)
-	| unoverload i CE.NEG = int_or_real i (NEG_INTprim, NEG_REALprim)
-	| unoverload i CE.PLUS = int_or_real i (PLUS_INTprim, PLUS_REALprim)
-	| unoverload i CE.MINUS = int_or_real i (MINUS_INTprim, MINUS_REALprim)
-	| unoverload i CE.MUL = int_or_real i (MUL_INTprim, MUL_REALprim)
-	| unoverload i CE.DIV = div_etc_ccall "divInt"
-	| unoverload i CE.MOD = div_etc_ccall "modInt"
+	| unoverload i CE.NEG = int_or_word_or_real i (NEG_INTprim, NEG_INTprim, NEG_REALprim)
+	| unoverload i CE.PLUS = int_or_word_or_real i (PLUS_INTprim, PLUS_INTprim, PLUS_REALprim)
+	| unoverload i CE.MINUS = int_or_word_or_real i (MINUS_INTprim, MINUS_INTprim, MINUS_REALprim)
+	| unoverload i CE.MUL = int_or_word_or_real i (MUL_INTprim, MUL_INTprim, MUL_REALprim)
+	| unoverload i CE.DIV = binary_int_ccall' "divInt"
+	| unoverload i CE.MOD = binary_int_ccall' "modInt"
 	| unoverload i CE.LESS =
 	    string_or_int_or_real i
-	      (LESS_INTprim, LESS_REALprim, string_ccall "lessString")
+	      (string_cmp_ccall "lessString", LESS_INTprim, LESS_REALprim)
 	| unoverload i CE.GREATER=
 	    string_or_int_or_real i
-	      (GREATER_INTprim, GREATER_REALprim, string_ccall "greaterString")
+	      (string_cmp_ccall "greaterString", GREATER_INTprim, GREATER_REALprim)
 	| unoverload i CE.LESSEQ =
 	    string_or_int_or_real i
-	      (LESSEQ_INTprim, LESSEQ_REALprim, string_ccall "lesseqString")
+	      (string_cmp_ccall "lesseqString", LESSEQ_INTprim, LESSEQ_REALprim)
 	| unoverload i CE.GREATEREQ =
 	    string_or_int_or_real i
-	      (GREATEREQ_INTprim, GREATEREQ_REALprim, string_ccall "greatereqString")
+	      (string_cmp_ccall "greatereqString", GREATEREQ_INTprim, GREATEREQ_REALprim)
 	| unoverload i _ = die "unoverload"
     in
       fun overloaded_prim info result (*e.g., CE.ABS*)
@@ -1482,8 +1505,9 @@ end; (*match compiler local*)
 
       fun overloaded_prim_fn info result (*e.g., CE.ABS*)
 	    takes_one_argument exn_args =
-	    let val ty = int_or_real info (CONStype ([], TyName.tyName_INT),
-					   CONStype ([], TyName.tyName_REAL))
+	    let val ty = int_or_word_or_real info (CONStype ([], TyName.tyName_INT),
+						   CONStype ([], TyName.tyName_INT),
+						   CONStype ([], TyName.tyName_REAL))
 	        val lvar1 = Lvars.newLvar ()
 	    in
 	      if takes_one_argument then
@@ -1500,9 +1524,9 @@ end; (*match compiler local*)
 			       @ exn_args)}
 	    end
       fun overloaded_prim_fn' info result = (*e.g., CE.LESS, ... *)
-	    let val ty = CONStype ([], string_or_int_or_real info (TyName.tyName_INT,
-								   TyName.tyName_REAL,
-								   TyName.tyName_STRING))
+	    let val ty = CONStype ([], string_or_int_or_real info (TyName.tyName_STRING, 
+								   TyName.tyName_INT,
+								   TyName.tyName_REAL))
 	        val lvar1 = Lvars.newLvar ()
 	    in (*takes two arguments*)
 	      FN {pat=[(lvar1, RECORDtype [ty, ty])],

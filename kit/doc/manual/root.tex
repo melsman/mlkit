@@ -5233,6 +5233,7 @@ $$\begin{array}{lcll}
                 & \verb+|+   & & \mbox{empty} \\
   {\it body}  & \verb+::=+ & {\it path}{\tt .sml} ~{\it body} & \mbox{source} \\
                 & \verb+|+   & {\it path}{\tt .sig} ~{\it body} & \mbox{source} \\
+                & \verb+|+   & {\tt local}~{\it body}~{\tt in}~{\it body}~{\tt end}~{\it body} & \mbox{local} \\
                 & \verb+|+   & & \mbox{empty} \\
   {\it pm}      & \verb+::=+ & {\tt import} ~{\it imports}~ {\tt in} ~ {\it body}~ {\tt end} & \mbox{with import} \\
                 & \verb+|+   & {\it body} & \mbox{basic} 
@@ -5259,18 +5260,23 @@ see an example of a project that imports object files. Project files
 may contain Standard ML style
 \index{project file!comment in}%
 \index{comment!in project file}%
-comments. 
+comments. The declared identifiers of a project is the union of the
+identifiers being declared by a source file of the project, excluding
+source files that are included using {\tt local}. As an example of
+the use of {\tt local} to limit what identifiers are declared by a
+project, consult the project file {\tt kit/basislib/basislib.pm}.
 
 Every source file must contain a Standard ML top-level declaration;
 the scope of the declaration is all the subsequent source files
-mentioned in the project file and all other projects that import
-this project file. Thus, a source file may depend on source files
-mentioned earlier in the project file and on other imported projects.
-The meaning of an entire project is the meaning of the top-level
+mentioned in the project file and all other projects that import this
+project file. Thus, a source file may depend on source files mentioned
+earlier in the project file and on other imported projects.  The
+meaning of an entire project is the meaning of the top-level
 declaration that would arise by first expanding all imported projects
-and then concatenating all the source files listed in the project
-file, in the order they are listed, except that each project is 
-executed only the first time it is imported. 
+and then concatenating all the source files listed in the project file
+(with appropriate renaming of declared identifiers of source files that are
+included using {\tt local}), in the order they are listed, except that
+each project is executed only the first time it is imported.
 
 The Kit has a system for managing compilation and recompilation of
 projects.  The system guarantees that the result of first modifying

@@ -155,9 +155,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     type extobj = string   (* externally compiled objects; .o-files *)
     type prjid = string
     type unitid = string
-    datatype body = SEQbody of body list
-                  | LOCALbody of body * body
-                  | UNITbody of unitid 
+    datatype body = EMPTYbody
+                  | LOCALbody of body * body * body
+                  | UNITbody of unitid * body
     type prj = {imports : prjid list, extobjs: extobj list, body : body}
 
 
@@ -216,8 +216,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		    case ss
 		      of "end" :: ss => 
 			(case parse_body_opt ss
-			   of SOME(body',ss) => SOME(SEQbody[LOCALbody(body1,body2),body'], ss)
-			    | NONE => SOME(LOCALbody(body1,body2), ss))
+			   of SOME(body',ss) => SOME(LOCALbody(body1,body2,body'), ss)
+			    | NONE => SOME(LOCALbody(body1,body2,EMPTYbody), ss))
 		       | _ => parse_error1 ("I expect an `end'.) ", ss)
 
 		  fun parse_rest(body1,ss) =
@@ -225,17 +225,17 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      of "in" :: ss => 
 			(case parse_body_opt ss
 			   of SOME(body2,ss) => parse_rest'(body1,body2,ss)
-			    | NONE => parse_rest'(body1,SEQbody[],ss))
+			    | NONE => parse_rest'(body1,EMPTYbody,ss))
 		       | _ => parse_error1( "I expect an `in'", ss)
 	      in case parse_body_opt ss
 		   of SOME(body1,ss) => parse_rest(body1,ss)
-		    | NONE => parse_rest(SEQbody[],ss)
+		    | NONE => parse_rest(EMPTYbody,ss)
 	      end
 	     | s :: ss => 
 	      if has_ext(s,"sml") orelse has_ext(s,"sig") then 
 		case parse_body_opt ss
-		  of SOME (body', ss) => SOME(SEQbody[UNITbody s, body'], ss)
-		   | NONE => SOME(UNITbody s, ss)
+		  of SOME (body', ss) => SOME(UNITbody(s,body'), ss)
+		   | NONE => SOME(UNITbody(s,EMPTYbody), ss)
 	      else NONE
 		
         fun parse_prj (ss : string list) : prj =
@@ -244,7 +244,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		  of [] => {imports=prjids,extobjs=objs,body=body}
 		   | _ => parse_error1( "I expect end of file", ss)
 	  in case ss
-	       of [] => {imports=[],extobjs=[],body=SEQbody[]}
+	       of [] => {imports=[],extobjs=[],body=EMPTYbody}
 		| "import" :: ss =>
 		 let fun parse_rest'(prjids_objs,body,ss) =
 		       case ss
@@ -255,7 +255,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			 of "in" :: ss =>
 			   (case parse_body_opt ss
 			      of SOME(body, ss) => parse_rest'(prjids_objs,body,ss)
-			       | NONE => parse_rest'(prjids_objs,SEQbody[],ss))
+			       | NONE => parse_rest'(prjids_objs,EMPTYbody,ss))
 			  | _ => parse_error1( "I expect an `in'", ss)
 		 in case parse_prjids_opt ss
 		      of SOME(prjids_objs,ss) => parse_rest(prjids_objs,ss)
@@ -318,14 +318,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	     end
 	  fun check_body (U, body) =
 	    case body
-	      of SEQbody[] => U
-	       | SEQbody(body::rest) => check_body(check_body(U,body),SEQbody rest)
-	       | LOCALbody(body1,body2) => check_body(check_body(U,body1), body2)
-	       | UNITbody longunitid => 
+	      of EMPTYbody => U
+	       | LOCALbody(body1,body2,body3) => check_body(check_body(check_body(U,body1), body2), body3)
+	       | UNITbody (longunitid, body') => 
 		let val unitid = OS.Path.file longunitid
 		in if member unitid U then 
                       error ("The program unit " ^ quot unitid ^ " is included twice in project " ^ quot prjid0)
-		   else unitid::U
+		   else check_body(unitid::U, body')
 		end
       in check_body([], body); check_imports([], imports); List.app check_extobj extobjs
       end
@@ -514,28 +513,77 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      end handle OS.SysErr _ => error ("I cannot access directory " ^ quot dir)
       end
 
-    fun build_body (prjid, B:TopBasis, Bacc, body, clean, modtimes) 
-      : TopBasis * Basis * modcode * bool * (string * Time.time) list =  
-      (* The bool is a `clean' flag; it is true if all entries 
-       * of the project so far have been reused. *)
-      (* The (string * Time.time) list provides modification times for
-       * each of the source files mentioned in the project. *)
+    fun collect_units(body,acc) =
       case body
-	of SEQbody [] => (B, Bacc, ModCode.empty, clean, modtimes)
-	 | SEQbody (body :: bodys) => 
-	  let val (B1, B1acc, modc1, clean, modtimes) = build_body (prjid, B, Bacc, body, clean, modtimes)
-	      val (B2, B2acc, modc2, clean, modtimes) = build_body (prjid, B1, B1acc, SEQbody bodys, clean, modtimes)
-	  in (B2, B2acc, ModCode.seq(modc1, modc2), clean, modtimes)
+	of UNITbody(s,body) => collect_units(body,s::acc)
+	 | LOCALbody _ => (rev acc, SOME body)
+	 | EMPTYbody => (rev acc, NONE)
+
+    (* Build a single unit; the bool is a `clean' flag; it is true if
+     * all entries of the project so far have been reused.  The
+     * (string*Time.time)list provides modification times for each of
+     * the source files mentioned in the project. *)
+
+    fun build_unitid(prjid, B, unitid, clean, modtimes) 
+      : Basis * modcode * bool * (string * Time.time) list =  
+      let val {cd_old, file=unitid} = change_dir unitid
+      in let val _ = maybe_create_PM_dir()
+	     val (B', modc, clean, modtime) = build_punit (prjid, B, unitid, clean)
+	 in cd_old(); (B', modc, clean, (unitid,modtime)::modtimes)
+	 end handle E => (cd_old(); raise E)
+      end
+
+    (* Build a sequence of units *)
+    fun build_unitids(prjid, B, Bacc, unitids, clean, modtimes)
+      : Basis * modcode * bool * (string * Time.time) list =  
+      case unitids
+	of [] => (Bacc, ModCode.empty, clean, modtimes)
+	 | [unitid] => 
+	  let val (B', modc, clean, modtimes) = build_unitid(prjid, B, unitid, clean, modtimes)
+	  in (Basis_plus(Bacc, B'), modc, clean, modtimes)
 	  end
-	 | LOCALbody _ => error "local not implemented"
-	 | UNITbody unitid => 
-	  let val {cd_old, file=unitid} = change_dir unitid
-	  in let val _ = maybe_create_PM_dir()
-	         val (B', modc', clean, modtime) = build_punit (prjid, B, unitid, clean)
-	     in cd_old(); (Basis_plus'(B,B'), Basis_plus(Bacc,B'), modc', clean, (unitid,modtime)::modtimes)
-	     end handle E => (cd_old(); raise E)
+	 | unitid::unitids => 
+	  let val (B1, modc1, clean, modtimes) = build_unitid(prjid, B, unitid, clean, modtimes)
+	      val (B2, modc2, clean, modtimes) = build_unitids(prjid, Basis_plus'(B, B1), Basis_plus(Bacc,B1), 
+							       unitids, clean, modtimes)
+	  in (B2, ModCode.seq(modc1, modc2), clean, modtimes)
 	  end
-	
+	  
+    local val emptyInfB = #1 (Basis.un Basis.empty)
+          val emptyCEnv = #2 (IntBasis.un IntBasis.empty)
+    in 
+      fun drop_toplevel B = 
+	let val (_, _, phi, intB)  = Basis.un B	  
+	    val (_, _, cb) = IntBasis.un intB
+	    val intB' = IntBasis.mk(ManagerObjects.IntFunEnv.empty, emptyCEnv, cb)
+	in Basis.mk(emptyInfB, ElabBasis.empty, phi, intB')
+	end
+    end
+
+    fun build_body (prjid, B:TopBasis, body, clean, modtimes) 
+      : Basis * modcode * bool * (string * Time.time) list =  
+      case body
+	of EMPTYbody => (Basis.empty, ModCode.empty, clean, modtimes)
+	 | LOCALbody (body1,body2,body3) => 
+	  let val (B1, modc1, clean, modtimes) = build_body(prjid, B, body1, clean, modtimes)
+              val (B2, modc2, clean, modtimes) = build_body(prjid, Basis_plus'(B,B1), body2, clean, modtimes)
+	      val B1' = drop_toplevel B1
+	      val B' = Basis_plus(B1',B2)
+	      val modc' = ModCode.seq(modc1,modc2)
+	  in case body3
+	       of EMPTYbody => (B', modc', clean, modtimes)
+		| _ => let val (B3, modc3, clean, modtimes) = build_body(prjid, Basis_plus'(B,B'), body3, clean, modtimes)
+		       in (Basis_plus(B',B3), ModCode.seq(modc',modc3), clean, modtimes)
+		       end
+	  end 
+	 | UNITbody(unitid,body) => 
+	  (case collect_units(body, [unitid])
+	     of (unitids, NONE) => build_unitids(prjid, B, Basis.empty, unitids, clean, modtimes)
+	      | (unitids, SOME body) => 
+	       let val (B1, modc1, clean, modtimes) = build_unitids(prjid, B, Basis.empty, unitids, clean, modtimes)
+		   val (B2, modc2, clean, modtimes) = build_body(prjid, Basis_plus'(B,B1), body, clean, modtimes)
+	       in (Basis_plus(B1,B2), ModCode.seq(modc1,modc2), clean, modtimes)
+	       end)
 
       (* Write a dummy file for the project into the `PM/Prof' or `PM/NoProf' directory. The date of this dummy
        * file tells when the project was last modified. *)
@@ -656,7 +704,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 				in older (OS.FileSys.modTime prjid'_date, OS.FileSys.modTime prjid_date_file) handle _ => false
 				end) clean imports
 
-	     val (_, B', modc', clean, modtimes) = build_body (prjid, B, Basis.empty, body, clean, [])
+	     val (B', modc', clean, modtimes) = build_body (prjid, B, body, clean, [])
 	 in 
 	    if clean then () else (maybe_create_PM_dir();
 				   output_date_file prjid_date_file);
@@ -700,7 +748,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      in (res_modc, Basis.plus'(Basis.initial(),res_basis), extobjs)
 	      end
 	    else (ModCode.empty, Basis.initial(), [])
-	  val (_, _, modc_file, _, _) = build_body(prjid, basis_basislib, Basis.empty, UNITbody filepath, false, [])
+	  val (_, modc_file, _, _) = build_body(prjid, basis_basislib, UNITbody(filepath,EMPTYbody), false, [])
 	  val modc = ModCode.seq(modc_basislib, modc_file)
       in  
 	ModCode.mk_exe(prjid, modc, extobjs_basislib, "run")
