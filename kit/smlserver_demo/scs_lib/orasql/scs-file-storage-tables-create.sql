@@ -24,6 +24,7 @@ create table scs_fs_types (
     constraint scs_fs_types_type_max_files_nn not null,
   max_revisions integer
     constraint scs_fs_types_type_max_rev_nn not null,
+  -- max filesize is in kb!
   max_filesize integer
     constraint scs_fs_types_type_max_fsz_nn not null
 );

@@ -13,6 +13,10 @@ signature SCS_FILE_STORAGE =
     | admin           (* same as read_add_delete except that there 
                          are no restrictions on filesize etc. *)
 
+    (* [mayDelFile_p priv] returns true if priv gives the privileges
+        to delete a file *)
+    val mayDelFile_p : priv -> bool
+
     (* [getOrCreateFolderId (db,root_label,folder)] returns folder_id
        on folder named folder in the file storage instance named
        root_label. If no folder exists, then a row in the table
@@ -26,17 +30,17 @@ signature SCS_FILE_STORAGE =
 		      file_ext            : string,
 		      file_icon           : string}
 
-    type fs_type = {type_id       : int,
-		    name          : string,
-		    max_files     : int,
-		    max_revisions : int,
-		    max_filesize  : int,
-		    mime_types    : mime_type list} 
+    type fs_type = {type_id             : int,
+		    name                : string,
+		    max_files           : int,
+		    max_revisions       : int,
+		    max_filesize_bytes  : int,
+		    mime_types          : mime_type list} 
 
     (* [getFsType root_label] Return the file storage type for the
         instance represented by root_label. Returns NONE if no
         instance exists.*)
-    val getFsType : Db.Handle.db * string -> fs_type option
+    val getFsType : Db.Handle.db * root_label -> fs_type option
 
     (* [uploadFolderForm
         (folder_id,action,priv,hidden_fvs,fv_mode,fv_filename,fv_desc,fn_return_file,fn_del_file)]
@@ -51,22 +55,28 @@ signature SCS_FILE_STORAGE =
       folder_id * string * priv * (string * string) list * string * string * string * 
       (int -> string -> string) * (int -> string) -> (int * quot)
 
+    (* [uploadFile (db,user_id,folder_id,priv,fv_file,description)]
+        uploads file represented by form variable fv_file with the
+        given description. The file is uploaded to folder folder_id by
+        user_id. Privileges are checked (priv) *)
     val uploadFile : Db.Handle.db * int * int * priv * string * string -> ScsFormVar.errs
 
-   (* [returnFile file_id] returns the file file_id if exists;
-       otherwise returns an error page to the user. *)
+    (* [returnFile file_id] returns the file file_id if exists;
+        otherwise returns an error page to the user. *)
     val returnFile : int -> unit
 
     (* Modes for managing files *)
     val upload_mode_add    : string
     val upload_mode_delete : string
 
+    (* [getFileIdErr (fv,errs)] checks that fv is an integer (i.e., a
+        file_id) *)
     val getFileIdErr : string * ScsFormVar.errs -> int * ScsFormVar.errs
 
-   (* [del_file db (priv,file_id)] deletes the file file_id physically
-       from the file storage, that is, removes the file from disk and
-       delete rows in database *)
-    val del_file : Db.Handle.db -> priv * int -> unit
+    (* [delFile db (priv,file_id)] deletes the file file_id physically
+        from the file storage, that is, removes the file from disk and
+        delete rows in database *)
+    val delFile : Db.Handle.db -> priv * int -> unit
   end
 
 structure ScsFileStorage :> SCS_FILE_STORAGE =
@@ -284,12 +294,12 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	end
     end
 	
-    type fs_type = {type_id       : int,
-		    name          : string,
-		    max_files     : int,
-		    max_revisions : int,
-		    max_filesize  : int,
-		    mime_types    : mime_type list}
+    type fs_type = {type_id             : int,
+		    name                : string,
+		    max_files           : int,
+		    max_revisions       : int,
+		    max_filesize_bytes  : int,
+		    mime_types          : mime_type list}
 
     fun getFsType (db, root_label) =
       let
@@ -301,7 +311,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		   name = g "name",
 		   max_files = (ScsError.valOf o Int.fromString) (g "max_files"),
 		   max_revisions = (ScsError.valOf o Int.fromString) (g "max_revisions"),
-		   max_filesize = (ScsError.valOf o Int.fromString) (g "max_filesize"),
+		   max_filesize_bytes = 1024 * (ScsError.valOf o Int.fromString) (g "max_filesize"),
 		   mime_types = 
 		   Db.fold
 		   (fn (g,acc) => {mime_type_id = (ScsError.valOf o Int.fromString) (g "id"),
@@ -330,7 +340,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 
     fun uploadFolderForm (folder_id,action,priv,hidden_fvs,fv_mode,fv_filename,fv_desc,fn_return_file,fn_del_file) = 
       let
-	val upload_info_dict = [(ScsLang.en,`You must choose a file on you local machine and type in a description 
+	val upload_info_dict = [(ScsLang.en,`You must choose a file on your local machine and type in a description 
 				 for that file.`),
 				(ScsLang.da,`Du skal vælge en fil på din lokale maskine og indtaste en beskrivelse af filen.`)]
 	val (pre_header,pre_footer) =
@@ -425,8 +435,8 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	`select scs_fs_mime_types.id
            from scs_fs_mime_types
           where lower(scs_fs_mime_types.file_extension) = lower(^(Db.qqq file_ext))` of
-	  NONE => (0,ScsFormVar.addErr(ScsDict.sl' [(ScsLang.en,`The file extension %0 is not supported`),
-						    (ScsLang.da,`Filendelsen %0 er ikke supporteret`)]
+	  NONE => (0,ScsFormVar.addErr(ScsDict.sl' [(ScsLang.en,`The file extension <b>%0</b> is not supported`),
+						    (ScsLang.da,`Filendelsen <b>%0</b> er ikke supporteret`)]
 				       [file_ext], errs))
 	| SOME id => (ScsError.valOf (Int.fromString id),errs)
 
@@ -449,7 +459,8 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
       getPath (db,folder_id)
 
     fun mime_type_allowed_p ({mime_types,...}: fs_type, file_ext') =
-      List.exists (fn {mime_type_id,mime_type,file_ext,file_icon} => file_ext = file_ext') mime_types
+      List.exists (fn {mime_type_id,mime_type,file_ext,file_icon} => 
+		   ScsString.lower file_ext = ScsString.lower file_ext') mime_types
 
     fun mkPhysFile (file_id,rev_id,file_base,file_ext) =
       Int.toString file_id ^ "-" ^ 
@@ -486,12 +497,12 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 					       fil i dette katalog.`)],errs)
 	      else if priv = read_add orelse priv = read_add_delete then
 		(* check constants in fs_type *)
-		(if filesize > #max_filesize fs_type then
+		(if filesize > #max_filesize_bytes fs_type then
 		   ScsFormVar.addErr(ScsDict.sl' [(ScsLang.en,`The file you are storing is too large. The maximum size
 						   is %0 and your file has size %1`),
 						  (ScsLang.da,`Filen du er ved at gemme er for stor. Den maksimale
 						   filstørrelse er %0 men din fil har størrelse %1.`)]
-				     [ScsFile.ppFilesize (#max_filesize fs_type), 
+				     [ScsFile.ppFilesize (#max_filesize_bytes fs_type), 
 				      ScsFile.ppFilesize filesize],errs)
 		 else if not (mime_type_allowed_p (fs_type,fileextension)) then
 		   ScsFormVar.addErr (ScsDict.sl' [(ScsLang.en,`The file has extension %0, however, you may only store
@@ -616,7 +627,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
     fun getFileIdErr(fv,errs) = 
       ScsFormVar.getNatErr(fv,ScsDict.s [(ScsLang.da,`Nummer på fil`),(ScsLang.en,`File number`)],errs)
 
-    fun del_file db (priv,file_id) =
+    fun delFile db (priv,file_id) =
       if mayDelFile_p priv then
 	case getFileByFileId file_id of
 	  NONE => (ScsPage.returnPg (ScsDict.s [(ScsLang.en,`File not found`),
