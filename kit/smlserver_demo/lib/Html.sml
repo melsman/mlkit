@@ -108,6 +108,7 @@ structure Html :> HTML =
     fun export_url_vars [] = ``
       | export_url_vars hvs = `?` ^^ (Quot.concatWith "&" (List.map (fn (n,v) => `^(n)=^(Ns.encodeUrl v)`) hvs))
     fun genUrl u hvs = Quot.toString (`^u` ^^ (export_url_vars hvs))
+    fun genUrla u hvs a = Quot.toString (`^u` ^^ (export_url_vars hvs) ^^ `^a`)
 
     (* HTML frames and framesets *)
     fun frameset attr quot = `<FRAMESET ^attr` ^^ quot ^^ `</FRAMESET>`
