@@ -71,6 +71,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC) : NS_DB =
       struct
 	structure Pool = Pool
 	type db = Pool.db
+	type set = NsSet.set
 
 	fun getHandle () : db = Pool.poolGetHandle(Pool.getPool())
 

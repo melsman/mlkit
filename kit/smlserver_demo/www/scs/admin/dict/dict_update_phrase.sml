@@ -31,8 +31,8 @@ val _ =
 	  ScsDb.errorDml (%% `Phrase can't be updated`) 
 	  `update scs_dict_target 
               set ^(Db.setList [("phrase",target_phrase)]) 
-	   where target_id = ^(Db.qq' target_id)
-             and phrase_id = ^(Db.qq' phrase_id)`
+	   where target_id = ^(Db.qqq target_id)
+             and phrase_id = ^(Db.qqq phrase_id)`
 	end
     end
 

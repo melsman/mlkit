@@ -51,7 +51,7 @@ structure ScsAudit :> SCS_AUDIT =
       (quot * (string,string) Splaymap.dict * int) =
       let
 	(* Loop through each column key and value in the selection *)
-	fun g n = Db.getCol s n (* delete_p does not exist for the main table *)
+	fun g n = Ns.Set.getOpt(s,n,"##") (* delete_p does not exist for the main table *)
 	fun show_user () = g "modifying_user_name" ^ "(" ^ (g "last_modifying_user") ^ ")"
 	val trail_columns = trail_columns columns_not_reported audit_count
       in
