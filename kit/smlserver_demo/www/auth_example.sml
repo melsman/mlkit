@@ -9,8 +9,8 @@ Authentication
 <h2>Authentication</h2>
 
 This example uses the database to store user id and passwords. You
-must either load the datamodel (file <code>/www/auth/auth.sql</code>)
-into Oracle or PostgreSQL.<p>
+must load the datamodel (file <code>/www/auth.sql</code>) into either
+Oracle or PostgreSQL.<p>
 
 You are currently using the following pools:
 <b>^(Db.Pool.pp())</b>. If this is not what you expect, then check the
@@ -36,10 +36,15 @@ At the command prompt you write:
 </pre>
 </blockquote>
 
+You may view one of the password protected pages <a
+href="show_cookies.sml">Show Cookies</a> or <a
+href="email_form.sml">Send Me a Mail</a> or one of the non
+password protected pages (e.g., <a href="server.sml">server.sml</a> or
+<a href="guess.sml">Guess a Number</a>).<p>
 
-
-You may view the <a href="auth/admin/show_cookies.sml">password
-protected</a> page or the <a href="auth/www/www.sml">open</a> page.<p>
+<b>^(if SmlsLogin.loggedIn() then "You are currently logged in with user_id " ^ 
+       (Int.toString SmlsLogin.user_id) ^ " (<a href=\"auth_logout.sml\">logout</a>) "
+     else "You are not logged in").<p>
 
 Back to the <a href="index.msp">example</a> page<p>
 

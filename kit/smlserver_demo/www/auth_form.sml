@@ -1,7 +1,7 @@
 val target = 
   case FormVar.wrapOpt FormVar.getStringErr "target" of
     SOME t => t
-  | NONE => Ns.Conn.location() ^ "/auth/admin/show_cookies.sml" (* Default target url *)
+  | NONE => Ns.Conn.location() ^ "/auth_example.sml" (* Default target url *)
 
 val _ = Ns.return (`
 <html>
@@ -9,7 +9,7 @@ val _ = Ns.return (`
 <title>SMLserver Authentication</title>
 </head>
 <body bgcolor=white>
-<form action=auth.sml method=post>
+<form action="/auth.sml" method=post>
   <table>
    <input type=hidden name=target value="^target">
     <tr><td><b>Login</b></td>

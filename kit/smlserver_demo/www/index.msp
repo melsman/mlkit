@@ -45,6 +45,7 @@ in
    		 ("Cookies", "cookie.sml"),
                  ("Form variables", "formvar.sml"),
                  ("Authentication", "auth_example.sml"),
+	         ("Email Example (password protected, see the <a href=\"auth_example.sml\">authentication</a> example)","email_form.sml"),
                  ("This index page", "index.msp")]
 end
 ?>

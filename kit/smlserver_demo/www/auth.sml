@@ -2,7 +2,7 @@ val _ = Ns.log (Ns.Notice,"Entering auth.sml")
 
 fun redirect() = 
   (Ns.log (Ns.Notice,"Redirecting from auth");
-   Ns.returnRedirect "http://localhost:8005/auth/auth_form.sml"; Ns.exit())
+   Ns.returnRedirect (Ns.Conn.location() ^ "/auth_form.sml"); Ns.exit())
 
 val target =
   case FormVar.wrapOpt FormVar.getStringErr "target" of
@@ -29,12 +29,12 @@ val _ = Ns.write
 `HTTP/1.0 302 Found
 Location: ^target
 MIME-Version: 1.0
-^(Ns.Cookie.deleteCookie{name="auth_user_id",path=SOME "/auth"})
+^(Ns.Cookie.deleteCookie{name="auth_user_id",path=SOME "/"})
 ^(Ns.Cookie.setCookie{name="auth_user_id", value=user_id,expiry=NONE,
-		      domain=NONE,path=SOME "/auth",secure=false})
-^(Ns.Cookie.deleteCookie{name="auth_password",path=SOME "/auth"})
+		      domain=NONE,path=SOME "/",secure=false})
+^(Ns.Cookie.deleteCookie{name="auth_password",path=SOME "/"})
 ^(Ns.Cookie.setCookie{name="auth_password", value=ap,expiry=NONE,
-		      domain=NONE,path=SOME "/auth",secure=false})
+		      domain=NONE,path=SOME "/",secure=false})
 
 
 You should not be seeing this!`

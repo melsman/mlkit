@@ -1,5 +1,8 @@
 File NEWS_SMLSERVER                                September 22, 2001
 
+ * nh 2001-09-23: Added dictionary support for multilingual language
+      support. Additional modules SmlsDict, SmlsLogin and SmlsLang.
+
  * nh 2001-09-21: Added support for checking form variables
      (module /sml/FormVar.sml)
      Added two utility packages: /sml/SmlsDate and /sml/SmlsList

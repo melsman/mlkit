@@ -40,14 +40,17 @@ local
     ../sml/Ns.sml  
     ../sml/Db.sml
   end
+  ../sml/SmlsLang.sml
+  ../sml/SmlsLogin.sml
   ../sml/SmlsDate.sml
   ../sml/SmlsList.sml
+  ../sml/SmlsDict.sml
   ../sml/MSP.sml
   ../sml/Msp.sml
   ../sml/FormVar.sml
   ../sml/RatingUtil.sml
 
-  auth/auth_verify_user_filter.sml
+
 in
  [
   rating/index.sml
@@ -102,10 +105,12 @@ in
   url_desc.sml
 
   auth_example.sml
-  auth/auth.sml
-  auth/auth_form.sml
-  auth/auth_logout.sml
-  auth/admin/show_cookies.sml
-  auth/www/www.sml
+  auth.sml
+  auth_form.sml
+  auth_logout.sml
+  show_cookies.sml
+
+  email_form.sml
+  email_sent.sml
  ]
 end
