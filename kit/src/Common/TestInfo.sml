@@ -112,23 +112,27 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
     end (*local*)
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
-    val acceptance_suite_files = [("kitfib35",None),
-				  ("kitreynolds2",None),
-				  ("kitreynolds3",None), 
+    val acceptance_suite_files = [
+				  ("kitfib35",None),
 				  ("kitdangle",None),
-				  ("kitdangle3",None),
-				  ("kitloop2",None), 
-				  ("kittmergesort",None), 
-				  ("kitqsort36c",None), (*new 31/03/1997 15:28. tho.*)
-				  ("kitmandelbrot",None),
-				  ("kitlife35u",None), (*new 31/03/1997 15:28. tho.*) 
-				  ("klife_eq",None),
-				  ("kitkbjul9",None), 
-				  ("kkb_eq",None), 
-				  ("kitknuth_bendix36c",None), (*new 31/03/1997 15:28. tho.*) 
-				  ("kitsimple",None)] (*--USER--*)
+				  ("kitdangle3",None)] (*--USER--*)
 
-    val acceptance_suite_projects = [("FuhMishra",None),
+    val acceptance_suite_projects = [
+				     ("kitreynolds2",None),
+				     ("kitreynolds3",None), 
+				     ("kitloop2",None), 
+				     ("kittmergesort",None), 
+				     ("kitqsort36c",None), (*new 31/03/1997 15:28. tho.*)
+				     ("kitmandelbrot",None),
+				     ("kitlife35u",None), (*new 31/03/1997 15:28. tho.*) 
+				     ("klife_eq",None),
+				     ("kitkbjul9",None), 
+				     ("kkb_eq",None), 
+				     ("kitknuth_bendix36c",None), (*new 31/03/1997 15:28. tho.*) 
+				     ("kitsimple",None),
+
+				     ("tststrcmp",None),
+				     ("FuhMishra",None),
 				     ("life",None),
 				     ("compose",None),
 				     ("minilist",None),
@@ -179,23 +183,28 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
     end (*local*)
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
-    val performance_suite_files = [("kitfib35",None),
-				   ("kitreynolds2",None),
-				   ("kitreynolds3",None),
+    val performance_suite_files = [
+				   ("kitfib35",None),
 				   ("kitdangle",None),
-				   ("kitdangle3",None),
-				   ("kitloop2",None),
-				   ("kittmergesort",None),
-				   ("kitqsort36c",None), (*new 31/03/1997 15:28. tho.*)
-				   ("kitmandelbrot",None),
-				   ("kitlife35u",None), (*new 31/03/1997 15:28. tho.*) 
-				   ("klife_eq",None), 
-				   ("kitkbjul9",None),
-				   ("kkb_eq",None),
-				   ("kitknuth_bendix36c",None), (*new 31/03/1997 15:28. tho.*)
-				   ("kitsimple",None)] (*--USER--*)
+				   ("kitdangle3",None)
+				   ] (*--USER--*)
 
-    val performance_suite_projects = [("msort", None)]
+    val performance_suite_projects = [
+				      ("kitreynolds2",None),
+				      ("kitreynolds3",None),
+				      ("kitloop2",None),
+				      ("kittmergesort",None),
+				      ("kitqsort36c",None), (*new 31/03/1997 15:28. tho.*)
+				      ("kitmandelbrot",None),
+				      ("kitlife35u",None), (*new 31/03/1997 15:28. tho.*) 
+				      ("klife_eq",None), 
+				      ("kitkbjul9",None),
+				      ("kkb_eq",None),
+				      ("kitknuth_bendix36c",None), (*new 31/03/1997 15:28. tho.*)
+				      ("kitsimple",None),
+				      
+				      ("msort", None) 
+				      ]
 
   end (*functor TestInfo*)
 

@@ -106,46 +106,42 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 	       "ML_to_C_on_HPUX" => [acceptance_strategy_HPUX_C (),
 				     acceptance_strategy_HPUX_C_prof ()]
 	     | "ML_to_C_on_SUN_OS4" => [acceptance_strategy_SUN_OS4_C ()]
-	     | "ML_to_HPPA_on_HPUX" => [acceptance_strategy_HPUX_HPPA ()]
+	     | "ML_to_HPPA_on_HPUX" => [acceptance_strategy_HPUX_HPPA ()
+(*TODO 11/07/1997 14:11. tho.:
+					, acceptance_strategy_HPUX_HPPA_prof ()
+*)
+					]
 	     | _ => [])
     end (*local*)
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
     val acceptance_suite_files = [
-(*KILL 20/06/1997 19:45. tho.:
 				  ("kitfib35",None),
-*)
-				  ("kitreynolds2",None),
-				  ("kitreynolds3",None), 
 				  ("kitdangle",None),
-				  ("kitdangle3",None),
-				  ("kitloop2",None), 
-				  ("kittmergesort",None), 
-				  ("kitqsort36c",None), (*new 31/03/1997 15:28. tho.*)
-				  ("kitmandelbrot",None),
-				  ("kitlife35u",None), (*new 31/03/1997 15:28. tho.*) 
-(*KILL 20/06/1997 19:44. tho.:
-				  ("klife_eq",None),
-				  ("kitkbjul9",None), 
-*)
-				  ("kkb_eq",None), 
-				  ("kitknuth_bendix36c",None) (*new 31/03/1997 15:28. tho.*) 
-(*KILL 20/06/1997 19:44. tho.:
-				  , ("kitsimple",None)
-*)
-				  ] (*--USER--*)
+				  ("kitdangle3",None)] (*--USER--*)
 
     val acceptance_suite_projects = [
+				     ("kitreynolds2",None),
+				     ("kitreynolds3",None), 
+				     ("kitloop2",None), 
+				     ("kittmergesort",None), 
+				     ("kitqsort36c",None), (*new 31/03/1997 15:28. tho.*)
+				     ("kitmandelbrot",None),
+				     ("kitlife35u",None), (*new 31/03/1997 15:28. tho.*) 
+				     ("klife_eq",None),
+				     ("kitkbjul9",None), 
+				     ("kkb_eq",None), 
+				     ("kitknuth_bendix36c",None), (*new 31/03/1997 15:28. tho.*) 
+				     ("kitsimple",None),
+
 				     ("tststrcmp",None),
 				     ("FuhMishra",None),
 				     ("life",None),
 				     ("compose",None),
 				     ("minilist",None),
-(*KILL 20/06/1997 19:45. tho.:
 				     ("sma",None),
 				     ("fromto",None),
 				     ("nlength10000",None),
-*)
 				     ("scan",Some "../Sources/scanfiles"),
 				     ("effect", None),
 				     ("exceptions",None),
@@ -156,12 +152,9 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				     ("trees",None),
 				     ("fold",None),
 				     ("testdyn1",None),
-				     ("testdyn2",Some "../Sources/input_to_testdyn2")
-(*KILL 20/06/1997 19:45. tho.:
-				     , ("scan_rev1", None),
-				     ("scan_rev2", None)
-*)
-				     ]
+				     ("testdyn2",Some "../Sources/input_to_testdyn2"),
+				     ("scan_rev1", None),
+				     ("scan_rev2", None)]
 
     (*--------------------------------------------*)
     (* Variables controlling the PERFORMANCE test *)
@@ -188,39 +181,32 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 	    (case !kit_version of
 	       "ML_to_C_on_HPUX" => [performance_strategy_HPUX ()]
 	     | "ML_to_C_on_SUN_OS4" => [performance_strategy_SUN_OS4 ()]
-	     | "ML_to_HPPA_on_HPUX" => [
-(*KILL 20/06/1997 19:46. tho.:
-					performance_strategy_HPUX ()
-*)
-					]
+	     | "ML_to_HPPA_on_HPUX" => [performance_strategy_HPUX ()]
 	     | _ => [])
     end (*local*)
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
     val performance_suite_files = [
-(*KILL 20/06/1997 19:47. tho.:
 				   ("kitfib35",None),
-				   ("kitreynolds2",None),
-				   ("kitreynolds3",None),
 				   ("kitdangle",None),
-				   ("kitdangle3",None),
-				   ("kitloop2",None),
-				   ("kittmergesort",None),
-				   ("kitqsort36c",None), (*new 31/03/1997 15:28. tho.*)
-				   ("kitmandelbrot",None),
-				   ("kitlife35u",None), (*new 31/03/1997 15:28. tho.*) 
-				   ("klife_eq",None), 
-				   ("kitkbjul9",None),
-				   ("kkb_eq",None),
-				   ("kitknuth_bendix36c",None), (*new 31/03/1997 15:28. tho.*)
-				   ("kitsimple",None)
-*)
+				   ("kitdangle3",None)
 				   ] (*--USER--*)
 
     val performance_suite_projects = [
-(*KILL 20/06/1997 19:47. tho.:
-				      ("msort", None)
-*)
+				      ("kitreynolds2",None),
+				      ("kitreynolds3",None),
+				      ("kitloop2",None),
+				      ("kittmergesort",None),
+				      ("kitqsort36c",None), (*new 31/03/1997 15:28. tho.*)
+				      ("kitmandelbrot",None),
+				      ("kitlife35u",None), (*new 31/03/1997 15:28. tho.*) 
+				      ("klife_eq",None), 
+				      ("kitkbjul9",None),
+				      ("kkb_eq",None),
+				      ("kitknuth_bendix36c",None), (*new 31/03/1997 15:28. tho.*)
+				      ("kitsimple",None),
+				      
+				      ("msort", None) 
 				      ]
 
   end (*functor TestInfo*)
