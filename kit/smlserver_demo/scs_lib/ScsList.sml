@@ -26,12 +26,41 @@ signature SCS_LIST =
          corresponds to an element e_opt = SOME e in xs. *)
     val valOf : 'a option list -> 'a list
 
-   (* [contains x xs] retruns true if atleast one x exists in xs;
-       otherwise returns false. *)
+    (* [contains x xs] retruns true if atleast one x exists in xs;
+        otherwise returns false. *)
     val contains : ''a -> ''a list -> bool
 
-    val union : (''a * ''a -> bool) -> ''a list * ''a list -> ''a list
-  end
+
+    (* A few functions taken from:
+       http://aleph0.clarku.edu/~djoyce/cs170/mlexample3.html *)
+
+    (* [member fn_eq (x,y)] returns true when x is an element of the
+        set y *)
+    val member: ('a * 'a -> bool) -> 'a * 'a list -> bool
+
+    (* [subset fn_eq (x,y)] returns true when every element of the set
+        x is a member of the set y *)
+    val subset : ('a * 'a -> bool) -> 'a list * 'a list -> bool
+
+    (* [equal fn_eq (x,y)] returns true when x and y are the same set *)
+    val equal : ('a * 'a -> bool) -> 'a list * 'a list -> bool
+
+    (* [union fn_eq (x,y)] returns the union of the two sets x and y *)
+    val union : ('a * 'a -> bool) -> 'a list * 'a list -> 'a list
+
+    (* [intersection fn_eq (x,y)] returns the intersection of the two
+        sets *)
+    val intersection : ('a * 'a -> bool) -> 'a list * 'a list -> 'a list
+
+   (* [difference fn_eq (x,y)] returns the difference, that is, 
+       the elements of the set x that do not belong to the set y *)
+    val difference : ('a * 'a -> bool) -> 'a list * 'a list -> 'a list
+
+   (* [power fn_eq x] returns the power set of x. 
+      For instance, if x is the set [1,2], then power x should be 
+      the set of sets [[], [1], [2], [1,2]] *)
+    val power : ('a * 'a -> bool) -> 'a list -> 'a list list
+ end
 
 structure ScsList :> SCS_LIST =
   struct
@@ -114,11 +143,11 @@ structure ScsList :> SCS_LIST =
    (* power. power(x) should give the power set of x. 
       For instance, if x is the set [1,2], then power(x) should be 
       the set of sets [[], [1], [2], [1,2]] *)
-(*   local
+   local
      fun insert fn_eq (a,[]) = []
-       | insert fn_eq (a,b::y) = union fn_eq ([a],b):: insert fn_eq (a,y)
+       | insert fn_eq (a,b::y) = union fn_eq ([a],b) :: insert fn_eq (a,y)
    in
      fun power fn_eq ([]) = [[]]
-       | power fn_eq (a::y) = union fn_eq (power fn_eq y,insert fn_eq (a,power fn_eq y))
-   end*)
+       | power fn_eq (a::y) = union (equal fn_eq) (power fn_eq y,insert fn_eq (a,power fn_eq y))
+   end
   end
