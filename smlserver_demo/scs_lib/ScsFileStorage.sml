@@ -43,7 +43,8 @@ signature SCS_FILE_STORAGE =
     val getFsType : Db.Handle.db * root_label -> fs_type option
 
     (* [uploadFolderForm
-        (folder_id,action,priv,hidden_fvs,fv_mode,fv_filename,fv_desc,fn_return_file,fn_del_file,upload_info_dict)]
+        (root_label,folder_id,action,priv,hidden_fvs,fv_mode,fv_filename,
+	 fv_desc,fn_return_file,fn_del_file,upload_info_dict)]
         returns an upload form for adding, reading and deleting files
         in the folder represented by folder_id. The first result
         element is the number of files in the folder. The function
@@ -53,7 +54,7 @@ signature SCS_FILE_STORAGE =
         to call when deleting the file. The argument upload_info_dict
 	contains a help message placed at right og the upload-button.*)
     val uploadFolderForm : 
-      folder_id * string * priv * (string * string) list * string * string * string * 
+      root_label * folder_id * string * priv * (string * string) list * string * string * string * 
       (int -> string -> string -> string) * (int -> string) * ScsDict.dict -> (int * quot)
 
     (* [uploadFile (db,user_id,folder_id,priv,fv_file,description)]
@@ -62,9 +63,12 @@ signature SCS_FILE_STORAGE =
         user_id. Privileges are checked (priv) *)
     val uploadFile : Db.Handle.db * int * int * priv * string * string -> ScsFormVar.errs
 
-    (* [returnFile file_id] returns the file file_id if exists;
-        otherwise returns an error page to the user. *)
-    val returnFile : int -> unit
+    (* [returnFile root_label file_id] returns the file file_id if
+        exists in the given root_label; otherwise returns an error
+        page to the user. The root_label increase security so that it
+        is required that file_id are actually in the instance named
+        root_label. *)
+    val returnFile : root_label -> int -> unit
 
     (* Modes for managing files *)
     val upload_mode_add    : string
@@ -74,10 +78,10 @@ signature SCS_FILE_STORAGE =
         file_id) *)
     val getFileIdErr : string * ScsFormVar.errs -> int * ScsFormVar.errs
 
-    (* [delFile db (priv,file_id)] deletes the file file_id physically
+    (* [delFile db root_label (priv,file_id)] deletes the file file_id physically
         from the file storage, that is, removes the file from disk and
         delete rows in database *)
-    val delFile : Db.Handle.db -> priv * int -> unit
+    val delFile : Db.Handle.db -> root_label -> priv * int -> unit
 
    (* [getNumFilesInFolderId folder_id] returns the number of files in
        folder - not counting subdirectories *)
@@ -258,7 +262,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 			      mime_type = g "mime_type",
 			      file_ext = g "file_extension",
 			      file_icon = g "file_icon"}}
-      fun genSql wh =
+      fun genSql root_label wh =
 	(* Get latest revision of each file *)
 	`select scs_fs_revisions.revision_id,
 	        scs_fs_files.file_id,
@@ -276,8 +280,11 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
            from scs_fs_mime_types,
 		scs_fs_folders,
 		scs_fs_files,
-		scs_fs_revisions
+		scs_fs_revisions,
+		scs_fs_instances
           where scs_fs_folders.folder_id = scs_fs_files.folder_id
+            and scs_fs_folders.instance_id = scs_fs_instances.instance_id
+            and scs_fs_instances.label = ^(Db.qqq root_label)
             and scs_fs_files.file_id = scs_fs_revisions.file_id
             and scs_fs_revisions.revision_id = scs_file_storage.getMaxRevisionId(scs_fs_files.file_id)
             and scs_fs_mime_types.id = scs_fs_files.mime_type_id
@@ -285,15 +292,15 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 
 
     in
-      fun getFilesInFolderId folder_id : file_type list =
+      fun getFilesInFolderId root_label folder_id : file_type list =
 	let
-	  val sql = genSql ` and scs_fs_folders.folder_id = '^(Int.toString folder_id)'`
+	  val sql = genSql root_label ` and scs_fs_folders.folder_id = '^(Int.toString folder_id)'`
 	in
 	  ScsError.wrapPanic (Db.list f) sql
 	end
-      fun getFileByFileId file_id : file_type option =
+      fun getFileByFileId root_label file_id : file_type option =
 	let
-	  val sql = genSql ` and scs_fs_files.file_id = '^(Int.toString file_id)'`
+	  val sql = genSql root_label ` and scs_fs_files.file_id = '^(Int.toString file_id)'`
 	in
 	  Db.zeroOrOneRow' f sql
 	end
@@ -351,7 +358,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	Quot.toString `<img width="16" height="16" border="0" src="^img">`
       end
 
-    fun uploadFolderForm (folder_id,action,priv,hidden_fvs,fv_mode,fv_filename,fv_desc,
+    fun uploadFolderForm (root_label,folder_id,action,priv,hidden_fvs,fv_mode,fv_filename,fv_desc,
 			  fn_return_file,fn_del_file,upload_info_dict) = 
       let
 	fun upload_fn_row bgcolor ({file_id,folder_id,revision_id,filename,description,filename_on_disk,
@@ -373,7 +380,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		     "&nbsp;")</td>
              </tr>`
 	  end
-	val files = getFilesInFolderId folder_id
+	val files = getFilesInFolderId root_label folder_id
 	val (pre_header,pre_footer) =
 	  if ScsList.contains priv [read_add,read_add_delete,admin] then
 	    (`<form enctype=multipart/form-data method=post action="^(action)"> ` ^^
@@ -624,8 +631,8 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	  end
       end
 
-    fun returnFile file_id =
-      case getFileByFileId file_id of
+    fun returnFile root_label file_id =
+      case getFileByFileId root_label file_id of
 	NONE => (ScsPage.returnPg (ScsDict.s UcsDict.file_not_found_dict)
 		 (ScsDict.s' [(ScsLang.en,`The file does not exists - please try again or 
 			       <a href="mailto:^(ScsConfig.scs_site_adm_email())">contact the administrator</a>.`),
@@ -655,9 +662,9 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
     fun getFileIdErr(fv,errs) = 
       ScsFormVar.getNatErr(fv,ScsDict.s [(ScsLang.da,`Nummer på fil`),(ScsLang.en,`File number`)],errs)
 
-    fun delFile db (priv,file_id) =
+    fun delFile db root_label (priv,file_id) =
       if mayDelFile_p priv then
-	case getFileByFileId file_id of
+	case getFileByFileId root_label file_id of
 	  NONE => (ScsPage.returnPg (ScsDict.s [(ScsLang.en,`File not found`),
 						(ScsLang.da,`Fil findes ikke`)])
 		   (ScsDict.s' [(ScsLang.en,`The file does not exists - please try again or 

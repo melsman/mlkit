@@ -396,7 +396,7 @@ nssml_ConnCopyToFile(Ns_Conn* conn, String filename)
   FILE *fp;
 
   Ns_Log(Notice, "nssml_ConnCopyToFile - filename: %s", filename);
-  if ((fp = fopen(filename, "w")) == NULL) 
+  if ((fp = fopen(&(filename->data), "w")) == NULL) 
     {  Ns_Log(Notice, "nssml_ConnCopyToFile - can't open filename: %s", filename);
       return NS_ERROR;
     }
