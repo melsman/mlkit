@@ -265,6 +265,9 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
 	  // Ns_Log(Notice, "nssml: Loading %s", buff);
 	  count++;
 	}
+
+      // close the ul-file
+      fclose(is);
       ctx->timeStamp = t;
       Ns_Log(Notice, "nssml: (Re)loaded %d uo-files", count);
     }
