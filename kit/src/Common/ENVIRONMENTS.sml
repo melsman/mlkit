@@ -177,6 +177,12 @@ signature ENVIRONMENTS =
 	val tyvars'              : Env -> (id * TyVar list) list
 	val tynames              : Env -> TyName.Set.Set
 	val layout               : Env -> StringTree
+
+	(* Support for recompilation *)
+	val restrict             : Env * (id list * tycon list * strid list) -> Env
+	val match                : Env * Env -> unit
+	val enrich               : Env * Env -> bool   (* strong enrichment *)
+	val eq                   : Env * Env -> bool
       end (*E*)
 
 

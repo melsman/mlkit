@@ -1,12 +1,14 @@
-(*$Manager: MANAGER_OBJECTS NAME MODULE_ENVIRONMENTS PARSE_ELAB CRASH
-            REPORT PRETTYPRINT FLAGS INT_MODULES FREE_IDS MANAGER
-            TIMING*)
+(*$Manager: MANAGER_OBJECTS NAME ENVIRONMENTS MODULE_ENVIRONMENTS
+            PARSE_ELAB CRASH REPORT PRETTYPRINT FLAGS INT_MODULES
+            FREE_IDS MANAGER TIMING*)
 
 functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		structure Name : NAME
 		  sharing type Name.name = ManagerObjects.name
 		structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		  sharing type ModuleEnvironments.Basis = ManagerObjects.ElabBasis
+		structure Environments : ENVIRONMENTS
+		  sharing type Environments.Env = ManagerObjects.ElabEnv = ModuleEnvironments.Env
 		structure ParseElab : PARSE_ELAB
 		  sharing type ParseElab.InfixBasis = ManagerObjects.InfixBasis
 		      and type ParseElab.ElabBasis = ManagerObjects.ElabBasis
@@ -202,7 +204,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun match_int(names_int, intB, funid) =
       case Repository.lookup_int funid
-	of Some(_,(_,_,names_int',_,intB')) =>     (* names_int' are already marked generative - lookup *)
+	of Some(_,(_,_,_,names_int',_,intB')) =>     (* names_int' are already marked generative - lookup *)
 	  (List.apply Name.mark_gen names_int;     (* returned the entry. The invariant is that every *)
 	   IntBasis.match(intB, intB');            (* name in the bucket is generative. *)
 	   List.apply Name.unmark_gen names_int)
@@ -222,7 +224,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      val log_cleanup = log_init filename
 	      val _ = Name.bucket := []
 	      val _ = reset_warnings ()
-	  in (case ParseElab.parse_elab {infB=infB,elabB=elabB, file=source_filepath} 
+	      (* val _ = print "\n[parsing and elaborating ...\n" *)
+	      val res = ParseElab.parse_elab {infB=infB,elabB=elabB, file=source_filepath} 
+	      (* val _ = print " done]\n" *)
+	  in (case res
 		of ParseElab.FAILURE report => (print_error_report report; raise PARSE_ELAB_ERROR)
 		 | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
 		  let val names_elab = !Name.bucket
@@ -238,7 +243,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      val elabB_im = ElabBasis.restrict(elabB,freeids)
 		      (* val _ = debug_basis "Import" Bimp *)
 
-		      val intB_im = IntBasis.restrict(intB, (funids,strids,ids))
+		      (* val _ = print "\n[restricting interpretation basis ...\n" *)
+		      val intB_im = IntBasis.restrict(intB, (funids,strids,ids,tycons))
+		      (* val _ = print " done]\n" *)
 
 		      val _ = Name.bucket := []
 		      val (intB', modc) = IntModules.interp(intB_im, topdec, filename)
@@ -256,7 +263,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      val _ = Repository.add_elab (funid, (infB, elabB_im, names_elab, infB', elabB'))
 		      val modc = ModCode.emit modc  (* When module code is inserted in repository,
 						     * names become rigid, so we emit the module code. *)
-		      val _ = Repository.add_int (funid, (funstamp_now, intB_im, names_int, modc, intB'))
+		      val elabE' = ElabBasis.to_E elabB'
+		      val _ = Repository.add_int (funid, (funstamp_now, elabE', intB_im, names_int, modc, intB'))
 		      val B' = Basis.mk(infB',elabB',intB')
 		  in print_result_report report;
 		    log_cleanup();
@@ -274,9 +282,19 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  exception CAN'T_REUSE
       in (case (Repository.lookup_elab funid, Repository.lookup_int funid)
 	    of (Some(_,(infB, elabB,names_elab,infB',elabB')), 
-		Some(_,(funstamp,intB,names_int,modc,intB'))) =>
+		Some(_,(funstamp,elabE,intB,names_int,modc,intB'))) =>
 	      let val B_im = Basis.mk(infB,elabB,intB)
-	      in if FunStamp.eq(funstamp,funstamp_now) andalso Basis.enrich(B, B_im) then 
+	      in if FunStamp.eq(funstamp,funstamp_now) andalso
+		     let (* val _ = print "\n[checking enrichment ...\n" *)
+		         val res = Basis.enrich(B, B_im)
+			 (* val _ = print " done]\n" *)
+		     in res
+		     end andalso
+		     let (* val _ = print "\n[checking environment equality ...\n" *)
+		         val res = Environments.E.eq(ElabBasis.to_E elabB', elabE)
+			 (* val _ = print " done]\n" *)
+		     in res
+		     end then 
 		    let val _ = print ("[reusing code for: \t" ^ filepath ^ "]\n")
 		        val B_ex = Basis.mk(infB',elabB',intB')
 		    in List.apply Name.unmark_gen names_elab;    (* unmark names - they where *)
@@ -299,7 +317,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	of [] => ModCode.empty
 	 | (punit::project') => 
 	  let val (B', modc) = build_unit(B, punit)
+	      (* val _ = print "\n[adding result to basis ...\n" *)
 	      val B'' = Basis.plus(B,B')
+	      (* val _ = print " done]\n" *)
 	      val modc' = build_proj(B'', project')
 	  in ModCode.seq(modc,modc')
 	  end

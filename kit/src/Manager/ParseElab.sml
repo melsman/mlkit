@@ -87,29 +87,27 @@ functor ParseElab(structure Parse: PARSE
        topdec after topdec_opt.  Linear in the number of nested topdecs in
        the first argument.*)
       open PreElabTopdecGrammar
-      fun append_topdec (STRtopdec (info, strdec, None)) topdec_opt =
-	    STRtopdec (info, strdec, topdec_opt)
-	| append_topdec (STRtopdec (info, strdec, Some topdec_between)) topdec_opt =
-	    STRtopdec (info, strdec, Some (append_topdec topdec_between topdec_opt))
-	| append_topdec (SIGtopdec (info, sigdec, None)) topdec_opt =
-	    SIGtopdec (info, sigdec, topdec_opt)
-	| append_topdec (SIGtopdec (info, sigdec, Some topdec_between)) topdec_opt =
-	    SIGtopdec (info, sigdec, Some (append_topdec topdec_between topdec_opt))
-	| append_topdec (FUNtopdec (info, fundec, None)) topdec_opt = 
-	    FUNtopdec (info, fundec, topdec_opt)
-	| append_topdec (FUNtopdec (info, fundec, Some topdec_between)) topdec_opt = 
-	    FUNtopdec (info, fundec, Some (append_topdec topdec_between topdec_opt))
+      fun append_topdecs [] = None
+	| append_topdecs (topdec::topdecs) =
+	Some(case topdec
+	       of STRtopdec (i, strdec, None) => STRtopdec(i, strdec, append_topdecs topdecs)
+		| STRtopdec (i, strdec, Some topdec') => STRtopdec(i, strdec, append_topdecs (topdec'::topdecs))
+		| SIGtopdec (i, sigdec, None) => SIGtopdec(i, sigdec, append_topdecs topdecs)
+		| SIGtopdec (i, sigdec, Some topdec') => SIGtopdec(i, sigdec, append_topdecs (topdec'::topdecs))
+		| FUNtopdec (i, fundec, None) => FUNtopdec(i, fundec, append_topdecs topdecs)
+		| FUNtopdec (i, fundec, Some topdec') => FUNtopdec(i, fundec, append_topdecs (topdec'::topdecs)))
 
-      fun parse0 (infB, state, topdecs) =
-	    (case Parse.parse (infB, state) of
-	       Parse.SUCCESS (infB', topdec, state') =>
-		 parse0 (InfixBasis.compose (infB, infB'),
-			 state', topdec :: topdecs)
-	     | Parse.ERROR report => raise Parse report
-	     (*Parse ought to not return an ERROR but instead simply raise
-	      an exception, such that this checking for ERROR and raising here
-	      could be avoided.  26/03/1997 22:38. tho.*)
-	     | Parse.LEGAL_EOF => (infB, topdecs))
+      fun parse0 (infB, state) =
+	case Parse.parse (infB, state) 
+	  of Parse.SUCCESS (infB', topdec, state') =>
+	    let val (infB'', topdecs) = parse0(InfixBasis.compose (infB, infB'), state')
+	    in (InfixBasis.compose(infB', infB''), topdec::topdecs)
+	    end
+	   | Parse.ERROR report => raise Parse report
+	   (* Parse ought to not return an ERROR but instead simply raise
+	    * an exception, such that this checking for ERROR and raising here
+	    * could be avoided.  26/03/1997 22:38. tho.*)
+	   | Parse.LEGAL_EOF => (InfixBasis.emptyB, [])
     in
       (*parse may raise Parse*)
 
@@ -117,14 +115,10 @@ functor ParseElab(structure Parse: PARSE
 	    : InfixBasis * PreElabTopdecGrammar.topdec Option =
 	    let val state = Parse.begin (Parse.sourceFromFile file_name
 					 (*may raise Io s*))
-	        val (infB, topdecs) = parse0 (infB, state, [])
-	    in
-	      (infB,
-	       List.foldL
-	         (fn topdec => fn topdec_opt =>
-		  Some (append_topdec topdec topdec_opt))
-		     None topdecs)
+	        val (infB', topdecs) = parse0 (infB, state)
+	    in (infB', append_topdecs topdecs)
 	    end handle Io s => raise Parse (Report.line s)
+
     end (*local*)
 
     fun parse_elab {infB: InfixBasis, elabB: ElabBasis, file : string} : Result =

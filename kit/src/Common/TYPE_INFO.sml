@@ -67,9 +67,9 @@ signature TYPE_INFO =
       | EXBIND_INFO of {TypeOpt: Type Option}
 	                (* Attached to EXBIND
 			 * None if nullary exception constructor *)
-      | DATBIND_INFO of {TE: TyEnv}
-	                (* ATTACHED to DATBIND
-			 * The type environment associated with this datatype binding *)
+      | TYENV_INFO of TyEnv
+	                (* Attached to DATATYPEdec, TYPEdec, DATATYPE_REPLICATIONdec and ABSTYPEdec
+			 * The type environment associated with the declaration *)
       | EXP_INFO of {Type: Type} 
 	                (* Attached to all exp's *)
       | MATCH_INFO of {Type: Type}
@@ -84,8 +84,9 @@ signature TYPE_INFO =
       | INCLUDE_INFO of strid list * tycon list
 	                (* Attached to INCLUDEspec; the lists contains those
 			 * strids and tycons being specified by the spec. *)
-      | FUNCTOR_APP_INFO of realisation
-                        (* Attached to functor applications *)
+      | FUNCTOR_APP_INFO of realisation * Env
+                        (* Attached to functor applications; The env is the
+			 * elaboration result of the functor application. *)
       | FUNBIND_INFO of Env
                         (* Attached to functor bindings; the env is the environment
 			 * resulting from elaborating the sigexp in a functor 

@@ -8,6 +8,7 @@ signature COMPILER_ENV =
     type CEnv
     type id				(* Identifiers. *)
     type longid                         (* Long identifiers *)
+    type tycon                          (* Type constructors *)
     type con                            (* Unqualified value constructors. *)
     type excon				(* Unqualified exception constructors.*)
     type Type				(* Lambda Type *)
@@ -63,8 +64,10 @@ signature COMPILER_ENV =
     val declareCon: (id * (con * tyvar list * Type * instance_transformer) * CEnv) -> CEnv
     val declareExcon: (id * (excon * Type) * CEnv) -> CEnv
     val declare_strid: strid * CEnv * CEnv -> CEnv
-
-    val plus: CEnv * CEnv -> CEnv
+    val declare_tycon: tycon * TyName list * CEnv -> CEnv      (* tycons can only be declared - never looked up!
+								* The entry is only used to get all tynames 
+								* occuring free in the environment. *)
+    val plus: CEnv * CEnv -> CEnv         
 
     datatype result = 
         LVAR of lvar * tyvar list * Type * Type list
@@ -113,7 +116,7 @@ signature COMPILER_ENV =
     val consOfCEnv: CEnv -> con list
       (* Return the list of cons which the declared ids in CEnv are mapped to *)
 
-    val restrictCEnv : CEnv * strid list * id list -> CEnv
+    val restrictCEnv : CEnv * strid list * id list * tycon list -> CEnv
     val enrichCEnv : CEnv * CEnv -> bool
 
     val match : CEnv * CEnv -> unit

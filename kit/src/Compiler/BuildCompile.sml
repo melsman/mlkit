@@ -43,6 +43,7 @@ functor BuildCompile (structure TyName : TYNAME
 			    and type Environments.id = TopdecGrammar.id
 			    and type Environments.strid = TopdecGrammar.strid
 			    and type Environments.Env = ElabInfo.TypeInfo.Env
+			    and Environments.TyName = TyName
 		      structure FinMap: FINMAP
 		      structure FinMapEq : FINMAPEQ 
 		      structure BasicIO: BASIC_IO
@@ -53,7 +54,7 @@ functor BuildCompile (structure TyName : TYNAME
 				     = FinMapEq.StringTree
 				     = TopdecGrammar.StringTree
 				     = ElabInfo.StringTree
-				     = PP.StringTree
+				     = PP.StringTree = TyName.StringTree
 			    and type PP.Report = Report.Report
 		      structure Crash: CRASH
 		      structure Timing: TIMING
@@ -107,6 +108,15 @@ functor BuildCompile (structure TyName : TYNAME
                 structure Flags = Flags
                )
 
+    structure LambdaBasics = 
+      LambdaBasics(structure Lvars = Lvars
+		   structure TyName = TyName
+		   structure TLE = LambdaExp
+		   structure FinMap = FinMap
+		   structure FinMapEq = FinMapEq
+		   structure Crash = Crash
+		   structure Flags = Flags)
+
     structure LambdaStatSem =
       LambdaStatSem(structure Lvars = Lvars
 		    structure Con = Con
@@ -116,6 +126,7 @@ functor BuildCompile (structure TyName : TYNAME
 		    structure FinMapEq = FinMapEq
 		    structure NatSet = NatSet(structure PP = PP)
 		    structure LambdaExp = LambdaExp
+		    structure LambdaBasics = LambdaBasics
 		    structure Crash = Crash
 		    structure PP = PP
 		    structure Flags = Flags)
@@ -304,15 +315,6 @@ functor BuildCompile (structure TyName : TYNAME
 				      structure Flags = Flags
 				      structure Timing = Timing
 				      structure Crash = Crash)
-
-    structure LambdaBasics = 
-      LambdaBasics(structure Lvars = Lvars
-		   structure TyName = TyName
-		   structure TLE = LambdaExp
-		   structure FinMap = FinMap
-		   structure FinMapEq = FinMapEq
-		   structure Crash = Crash
-		   structure Flags = Flags)
 
     structure CompilerEnv =
       CompilerEnv(structure Ident = Ident

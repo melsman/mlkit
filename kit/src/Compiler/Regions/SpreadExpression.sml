@@ -439,7 +439,7 @@ struct
                 case e1_ML of E.VAR{lvar, ...} =>
                        (case (*RSE.*)lookupLvar rse lvar of
                           Some(compound, _,_,_,_,_) => not(compound)
-                        | _ => die "E.APP(E.VAR ...)")
+                        | _ => die ("E.APP(E.VAR ...): Lvar " ^ Lvars.pr_lvar lvar ^ " not in RSE."))
                 | _ => false
          
             val B = if simple_application then B else pushIfNotTopLevel(toplevel,B)

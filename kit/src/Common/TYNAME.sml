@@ -33,6 +33,7 @@ signature TYNAME =
     val tyName_BOOL    : TyName
     val tyName_INT     : TyName
     val tyName_WORD    : TyName
+    val tyName_WORD8   : TyName
     val tyName_REAL    : TyName
     val tyName_STRING  : TyName
     val tyName_CHAR    : TyName

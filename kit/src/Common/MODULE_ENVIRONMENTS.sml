@@ -40,7 +40,6 @@ signature MODULE_ENVIRONMENTS =
 	val plus             : SigEnv * SigEnv -> SigEnv
 	val lookup           : SigEnv -> sigid -> Sig Option
 	val tynames          : SigEnv -> TyName.Set.Set
-	val tyvars           : SigEnv -> TyVar list
 	val dom              : SigEnv -> sigid EqSet.Set
 	val layout           : SigEnv -> StringTree
 	val report           : (sigid * Sig -> Report) * SigEnv -> Report
@@ -57,6 +56,7 @@ signature MODULE_ENVIRONMENTS =
 	val lookup           : FunEnv -> funid -> FunSig Option
 	val tynames          : FunEnv -> TyName.Set.Set
 	val tyvars           : FunEnv -> TyVar list
+	val tyvars'          : FunEnv -> (id * TyVar list) list
 	val dom              : FunEnv -> funid EqSet.Set
 	val layout           : FunEnv -> StringTree
 	val report           : (funid * FunSig -> Report) * FunEnv -> Report

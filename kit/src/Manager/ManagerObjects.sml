@@ -1,6 +1,6 @@
 (*$ManagerObjects: MODULE_ENVIRONMENTS TOPDEC_GRAMMAR COMPILER_ENV
-                   COMPILE_BASIS COMPILE INFIX_BASIS FINMAP NAME FLAGS CRASH
-                   MANAGER_OBJECTS *)
+                   COMPILE_BASIS COMPILE INFIX_BASIS ELAB_REPOSITORY
+                   FINMAP NAME FLAGS CRASH MANAGER_OBJECTS *)
 
 (* COMPILER_ENV is the lambda env mapping structure and value 
  * identifiers to lambda env's and lvars *)
@@ -15,6 +15,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       structure CompilerEnv : COMPILER_ENV
 			 sharing type CompilerEnv.id = ModuleEnvironments.id
 			     and type CompilerEnv.strid = ModuleEnvironments.strid
+			     and type CompilerEnv.tycon = ModuleEnvironments.tycon
 		       structure CompileBasis : COMPILE_BASIS
 			 sharing type CompileBasis.lvar = CompilerEnv.lvar
 			     and type CompileBasis.TyName = ModuleEnvironments.TyName
@@ -23,13 +24,17 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			     and type CompileBasis.excon = CompilerEnv.excon
 		       structure Compile : COMPILE
 		       structure InfixBasis: INFIX_BASIS
+		       structure ElabRep : ELAB_REPOSITORY
+			 sharing type ElabRep.funid = TopdecGrammar.funid 
+			     and type ElabRep.InfixBasis = InfixBasis.Basis
+			     and type ElabRep.ElabBasis = ModuleEnvironments.Basis
 		       structure FinMap : FINMAP
 		       structure PP : PRETTYPRINT
 			 sharing type PP.StringTree = CompilerEnv.StringTree 
 			   = CompileBasis.StringTree = ModuleEnvironments.StringTree
 			   = FinMap.StringTree = InfixBasis.StringTree
 		       structure Name : NAME
-			 sharing type Name.name = ModuleEnvironments.TyName.name
+			 sharing type Name.name = ModuleEnvironments.TyName.name = ElabRep.name
 		       structure Flags : FLAGS
 		       structure Crash : CRASH) : MANAGER_OBJECTS =
   struct
@@ -287,9 +292,9 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	val initial = IB (IntFunEnv.initial, CompilerEnv.initialCEnv, CompileBasis.initial)
 	fun plus (IB(ife1,ce1,cb1), IB(ife2,ce2,cb2)) =
 	  IB(IntFunEnv.plus(ife1,ife2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus(cb1,cb2))
-	fun restrict (IB (ife,ce,cb), (funids, strids, ids)) : IntBasis =
+	fun restrict (IB (ife,ce,cb), (funids, strids, ids, tycons)) : IntBasis =
 	  let val ife' = IntFunEnv.restrict(ife,funids)
-	      val ce' = CompilerEnv.restrictCEnv(ce,strids,ids)
+	      val ce' = CompilerEnv.restrictCEnv(ce,strids,ids,tycons)
 	      val lvars = CompilerEnv.lvarsOfCEnv ce'
 	      val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce')
 	      val tynames = [TyName.tyName_EXN,     (* exn is used explicitly in CompileDec *)
@@ -334,8 +339,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	fun restrict (BASIS (infB,elabB,intB), ids) = 
 	  let val elabB' = ModuleEnvironments.B.restrict (elabB,ids)
-	      val intB' = IntBasis.restrict(intB,(#funids ids, #strids ids, #ids ids))
-	  in BASIS (infB, elabB',intB') (*don't restrict iBas*)
+	      val intB' = IntBasis.restrict(intB,(#funids ids, #strids ids, #ids ids, #tycons ids))
+	  in BASIS (infB, elabB',intB') (*don't restrict infB*)
 	  end
 
 	val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
@@ -368,20 +373,15 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     structure Repository =
       struct
 	type elabRep = (funid, (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) list) FinMap.map ref
-	type intRep = (funid, (funstamp * IntBasis * name list * modcode * IntBasis) list) FinMap.map ref
-	val elabRep : elabRep = ref FinMap.empty
+	type intRep = (funid, (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) list) FinMap.map ref
 	val intRep : intRep = ref FinMap.empty
-	fun clear() = (elabRep := FinMap.empty; 
-		       List.apply (List.apply (ModCode.delete_files o #4)) (FinMap.range (!intRep));  
+	fun clear() = (ElabRep.clear();
+		       List.apply (List.apply (ModCode.delete_files o #5)) (FinMap.range (!intRep));  
 		       intRep := FinMap.empty)
 	fun delete_rep rep funid = case FinMap.remove (funid, !rep)
 				     of OK res => rep := res
 				      | _ => ()
-	fun delete_entries funid = (delete_rep elabRep funid; 
-(*				    (case FinMap.lookup (!intRep) funid
-				       of Some res => List.apply (ModCode.delete_files o #4) res
-					| None => ()); 
-*)
+	fun delete_entries funid = (ElabRep.delete_entries funid; 
 				    delete_rep intRep funid)
 	fun lookup_rep rep exportnames_from_entry funid =
 	  let val all_gen = List.foldR (fn n => fn b => b andalso
@@ -409,39 +409,33 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		      of Some res => FinMap.add(funid,owr(n,res,entry),r)
 		       | None => die "owr_rep.None"
 		 end
-	val lookup_elab = lookup_rep elabRep #3 
-	val lookup_int = lookup_rep intRep #3
-	val add_elab = add_rep elabRep
+	val lookup_int = lookup_rep intRep #4
 
 	fun add_int (funid,entry) = 
-	  if ModCode.all_emitted (#4 entry) then  (* just make sure... *)
+	  if ModCode.all_emitted (#5 entry) then  (* just make sure... *)
 	    add_rep intRep (funid, entry)
 	  else die "add_int"
 
-	val owr_elab = owr_rep elabRep
-
 	fun owr_int (funid,n,entry) =
-	  if ModCode.all_emitted (#4 entry) then  (* just make sure... *)
+	  if ModCode.all_emitted (#5 entry) then  (* just make sure... *)
 	    owr_rep intRep (funid,n,entry)
 	  else die "owr_int"
 
-	fun recover_elabrep() =
-	  List.apply 
-	  (List.apply (fn entry => List.apply Name.mark_gen (#3 entry)))
-	  (FinMap.range (!elabRep))
 	fun recover_intrep() =
 	  List.apply 
-	  (List.apply (fn entry => List.apply Name.mark_gen (#3 entry)))
+	  (List.apply (fn entry => List.apply Name.mark_gen (#4 entry)))
 	  (FinMap.range (!intRep))
 
 	fun emitted_files() =
 	  let fun files_entries ([],acc) = acc
-		| files_entries ((_,_,_,mc,_)::entries,acc) = 
+		| files_entries ((_,_,_,_,mc,_)::entries,acc) = 
 		    files_entries(entries,ModCode.emitted_files(mc,acc))
 	  in FinMap.fold files_entries [] (!intRep)
 	  end
-	  
-	fun recover() = (recover_elabrep(); recover_intrep())
+	val lookup_elab = ElabRep.lookup_elab
+	val add_elab = ElabRep.add_elab
+	val owr_elab = ElabRep.owr_elab
+	fun recover() = (ElabRep.recover(); recover_intrep())
       end
     
   end
