@@ -20,7 +20,7 @@ signature SCS_ERROR =
         or mailed. This is no a panic error. *)
     val wrapOpt   : ('a -> 'b) -> 'a -> 'b option
 
-    (* [wrapMsg title msg f a] similar to wrapPanic except that msg is
+    (* [wrapMsg msg f a] similar to wrapPanic except that msg is
        shown to the user and no error is logged or emailed. This is 
        not a panic error.*)
     val wrapMsg   : quot -> ('a -> 'b) -> 'a -> 'b

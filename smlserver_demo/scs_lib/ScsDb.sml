@@ -31,7 +31,7 @@ signature SCS_DB =
 
     (* [wrapUpd msg f a] applies f a and if an error is raised then
         expects that it's because it was an unsyncronised update. We
-        return a page explaining the problem and showing how updated
+        return a page explaining the problem and showing who updated
         the record. The script is thereafter terminated. *)
     val wrapUpd : quot -> ('a -> 'b) -> 'a -> 'b
 

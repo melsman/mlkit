@@ -35,6 +35,8 @@ create sequence scs_object_id_seq start with 50000;
 @scs-groups-packages-create.sql;
 @scs-groups-initialdata-create.sql;
 
+@scs-approvals-tables-create;
+@scs-approvals-packages-create;
 
 
 
