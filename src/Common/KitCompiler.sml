@@ -214,7 +214,7 @@ structure K = struct
 
     fun arch_os() = SMLofNJ.SysInfo.getHostArch() ^ "-" ^ SMLofNJ.SysInfo.getOSName()
     val date = Date.fmt "%B %d, %Y" (Date.fromTimeLocal (Time.now()))
-    val version = "3.1"
+    val version = "3.2"
     val greetings = "ML Kit with Regions, Version " ^ version ^ ", " ^ date ^ "\n" ^
                     "Using the " ^ arch_os() ^ " " ^ Flags.get_string_entry "kit_backend" ^ " backend\n"
     val usage = "kit [-script | -timings | -nobasislib | -reportfilesig | -logtofiles " ^
