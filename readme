@@ -1,33 +1,28 @@
-(*$Id$*)
-readme
-The ML Kit with Regions (April 30, 1997)
-
+The ML Kit with Regions version 2.1                March 12, 1998
 
 
                            INSTALLING
 
-                      The ML Kit with Regions 
+                    The ML Kit with Regions 
 
    http://www.diku.dk/research-groups/topps/activities/kit2/index.html
 
 
-This file describes how to install The ML Kit with Regions 
-(also known as the ML Kit, Version 2).
+This file describes how to install The ML Kit with Regions version 2.1.
 
-
-Since you are reading this, you have already succeeded in unpacking
-the kit directory, "version2". This directory contains the sources
-of the kit (src), the documentation (doc) and accompanying 
-examples (kitdemo). As you install and use the kit, more sub-directories and
-files will be created in version2. If you want to rename the directory
-from version2 to something else or move it somewhere else, now is the
-time to do so, before you are asked to supply absolute path names. From now
-on, let PV2 denote the absolute path on your machine to your 
-kit directory (e.g., /home/thor1/tofte/version2/ )
+Because you are reading this, you have already succeeded in unpacking
+the kit directory, "kit". This directory contains the sources of the
+kit (src), the documentation (doc) and accompanying examples
+(kitdemo). As you install and use the kit, more sub-directories and
+files will be created in the directory "kit". If you want to rename
+the directory from "kit" to something else or move it somewhere
+else, now is the time to do so. From now on, let KITDIR denote the
+absolute path on your machine to your kit directory (e.g.,
+/home/thor1/tofte/kit)
 
 1. Build the runtime system
 -- ------------------------
-Place yourself in PV2 and type
+Place yourself in KITDIR and type
 
   cd src/Runtime/Version17/
 
@@ -35,7 +30,7 @@ On HPUX:
 
   make runtimeHPUX  
 
-On Sun OS/4:
+On Sun OS/4: (* NOT SUPPORTED AT THE MOMENT *)
 
   make runtimeSUN_OS4
 
@@ -52,10 +47,9 @@ use may depend on the architecture.
 
 2. Build rp2ps
 -- -----------
-
-"rp2ps" converts output from a program compiled with region
-profiling enabled to a profile graph in postscript, i.e., it
-converts an .rp file to a .ps file. From PV2 do
+The tool "rp2ps" converts output from a program compiled with region
+profiling enabled to a profile graph in postscript, that is, it
+converts an .rp file to a .ps file. From KITDIR do
 
    cd src/Runtime/Version17/Rp2ps/
 
@@ -68,94 +62,82 @@ On SUN_OS4
   make rp2psSUN_OS4
 
 
-3. Building the ML Kit with Regions compiler 
+3. Building the ML Kit with Regions compiler     (* ASSUMES HPUX *) 
 -- -----------------------------------------
-
-To compile the sources for the ML Kit with Regions, you need Standard ML of
-New Jersey (SML/NJ) Version 93 (and no other) with the Edinburgh Standard
-ML Library loaded.  You MUST use the SML/NJ-specific version of the
-Edinburgh Library (since the portable version is not complete).  The ML Kit
-Web site at the top of this file contains links to both SML/NJ and the
-Edinburgh Library.
-
-The executable Kit will take up around 8Mb of disc space. Building it
+To compile the sources for the ML Kit with Regions, you need Standard
+ML of New Jersey (SML/NJ) version 110.0.3 (and no other). The ML Kit
+Web site at the top of this file contains links to SML/NJ.  The
+executable Kit will take up around 8Mb of disc space. Building it
 typically takes half an hour or so and is best done on a machine with
 at least 64Mb of RAM.
 
-Assuming that your executable version of SML/NJ v93 with the
-SML/NJ-specific version of the Edinburgh Library loaded is
-"sml-edlib" and you are in PV2, type
+Assuming that you have "sml-cm" (SML/NJ with the compilation manager
+loaded) available on your system and that you are in the directory
+KITDIR, type
 
   cd src/
-  sml-edlib
+  sml-cm
 
 Within SML/NJ type 
 
-  use"build.sml";
+  CM.make();
 
-and answer the questions.  When typing the path for your kit directory
-(i.e., PV2), remember to terminate the path with a slash (/).
+and the compilation manager will build the Kit. Once the Kit has been
+built, you can install the Kit by writing
+
+  K.install();
+
+within SML/NJ. An executable version of the Kit is now available as
+
+  KITDIR/bin/kit
 
 Check whether things are properly configured by compiling a
-small example: Start the executable kit, and type 0 followed by
-carriage return (to enter the Project menu); type 0 (and
-carriage return); type "hello" (including the quotes and
-carriage return); then compile the example by typing 1, then 2,
-then 3.  When the Kit has compiled and linked "hello", exit by
-typing q; and the executable can be run.  It is called "run" and
-is in the same directory as the executable kit.
+small example: Start the executable kit from within the directory 
+
+  KITDIR/kitdemo
+
+and type 0 followed by carriage return (to enter the Project menu);
+type 0 (and carriage return); type "hello.pm" (including the quotes
+and carriage return); then compile the example by typing 1. When the
+Kit has compiled and linked the project "hello.pm", exit by typing q;
+and the executable "run", which is now located in the "kitdemo/"
+directory, can be run.
+
+As explained in "Programming with Regions in the ML Kit"
+(doc/diku97-12.a4.ps.gz), every user can have her own kit script
+containing personal preferences (flags to control optimizations, how
+programs should be pretty-printed, etc.) The kit does not force you to
+have a script file; the Kit will work fine with the default
+settings. A sample kit script file "kit.script" is located in the
+"kitdemo" directory.
+
+If you want to modify the Kit, you should consider using K.kit() (from
+within SML/NJ) instead of using K.install(); see the source file
+KITDIR/src/Common/KitCompiler.sml for more information.
+
 
 3(a) If you do not have HPUX or Sun OS/4
 ----------------------------------------
-
-"build.sml" will only work for HPUX and Sun OS/4; if you have another
-system, you will have to do manually what build.sml otherwise does.
-There are two reasons the Kit needs to know the system: First, the
-test environment (TestEnv), which is used by people who want to 
-modify the Kit, performs system calls which are operating system dependent. 
-Second, the Kit calls the C compiler to assemble (or compile)
-and link the HP PA-RISC (or ANSI C) code files it generates, and this
-is done differently on HPUX and Sun OS/4.  More specifically, the two
+The Kit calls the C compiler to assemble (or compile) and link the HP
+PA-RISC (or ANSI C) code files it generates, and this is done
+differently on HPUX and Sun OS/4.  More specifically, the two
 references "c_compiler" and "c_libs" are initialised differently for
-HPUX and Sun OS/4.  So if you do not need TestEnv and can figure out
-what to set "c_compiler" and "c_libs" to, you might well be able to
-run the Kit on other systems (try "-lm" for "c_libs" and "gcc -ansi"
-or "cc -Aa" for "c_compiler").  To see exactly where the Kit is
-architecture dependent, search on `kit_architecture' in file "build.sml"
-and execute the shell command from PV2
-
-     grep kit_architecture `cat src/ML_CONSULT_HPPA`
-
-Make your changes in "build.sml" or build the Kit first. This creates
-a so-called kit script.  As explained in "Programming with
-Regions in the ML Kit" (doc/diku97-12.a4.ps.gz), every user has his or
-her own kit script which contains personal preferences (where target
-files should be put, how programs should be pretty-printed etc.)
-
-The program "build.sml" creates a default kit script
-called "kit.script" in the same place as it puts the executable kit
-(e.g., bin/ML_TO_C_on_HPUX/kit.script)
-Modify the two sections under the headers (* File *) and (* Script
-entries for ... architecture *) of this file to contain the paths,
-extensions and unix command names used on your system.
-
-
+HPUX and Sun OS/4.  You might well be able to run the Kit on other
+systems (try "-lm" for "c_libs" and "gcc -ansi" or "cc -Aa" for
+"c_compiler").
 
 
 4. VCG
 -- ---
-
 The VCG tool which is used to show region flow graphs can be found at
 
     http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html
 
 
-
-Comments and bug reports: please see the www site:
+5. Comments and bug reports
+-- ------------------------
+Please see the www site:
 
    http://www.diku.dk/research-groups/topps/activities/kit2/index.html
-
-
-
 
 

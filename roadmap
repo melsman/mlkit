@@ -1,6 +1,4 @@
-roadmap
-The ML Kit with Regions (April 30, 1997)
-
+The ML Kit with Regions                         March 12, 1998
 
 
                            DIRECTORIES IN
@@ -10,7 +8,6 @@ The ML Kit with Regions (April 30, 1997)
    http://www.diku.dk/research-groups/topps/activities/kit2/index.html
 
 
-
 Directory structure
 -------------------
 
@@ -18,8 +15,9 @@ Directory structure
   src/		sources for the kit and some utilities
   doc/		documentation
   TestEnv/	for testing the kit
-  kitdemo/      example input for the kit (i.e. sml source files
+  kitdemo/      example input for the kit (i.e., sml source files
                 and project files)
+  basislib/     basis library (still incomplete)
   readme	read it
   roadmap	this file
   copyright	copyright notices
@@ -28,44 +26,22 @@ Directory structure
 bin/ in detail
 --------------
 
-If you have built a kit (using file "build.sml" as described in
-file "readme") that generates ANSI C code on HPUX, say,
-directory "bin/" will look like this:
+If you have built and installed the Kit (as described in file
+"readme") this directory will contain an executable file "kit" (i.e.,
+a script for launching SML/NJ with a kit-image.)
 
-  bin/ML_to_C_on_HPUX/kit.script
-                      kit*
-                      runtime.o ->
-                      runtime_prof.o -> 
-                      ...
+When the file "kit" is the executed, it will try to read in a kit
+script file "kit.script" in the current directory. Entries that are
+not present in the script file will have a default value.
 
-File "kit" is the executable.  When executed, it will read in
-the kit script file "kit.script" which sets all the flags and
-global variables the kit depends on.  For instance, the
-"kit.script" above will set the target directory of the kit to
-"bin/ML_to_C_on_HPUX/".  Therefore ANSI C code (.c) files will
-be put in that directory together with .log files and the
-resulting executable "run".  
-
-Most of the settings in the kit script can be interactively set
-otherwise in the kit.  You can also edit the default kit script
-or make your own to read in interactively.
-
-Files "runtime.o" and "runtime_prof.o" are symbolic links (also
-created automatically) to the runtime system.  ("runtime_prof.o"
-is for profiling.)  In this example, the system is HPUX, so
-"runtime.o" will be a symbolic link to
-
-    "src/Runtime/Version17/runtimeHPUX.o".
-
-There are also other symbolic links to relevant things.
+Most of the settings that you can set in a kit script file can also be
+set interactively.
 
 
 src/ in detail
 --------------
 
-  src/build.sml		"use file" to build a new kit
-      ML_CONSULT_C	list of source files for kit producing ANSI C code
-      ML_CONSULT_HPPA	list of source files for kit producing HP PA-RISC code
+  src/sources.cm	list of source files for the kit
       Common/           source files
       Manager/
       Parsing/
@@ -74,15 +50,6 @@ src/ in detail
 	       C/	files specific to ANSI C kit
 		...
       Runtime/		C source files and executables for runtime system
-
-File "build.sml" should be use'd in Standard ML of New Jersey to
-build a kit.  See file "readme".
-
-Files "ML_CONSULT_C" and "ML_CONSULT_HPPA" are used (by file
-"build.sml") when building the kit.  The only difference between
-them is that the former contains some file names of the form
-"Compiler/C/...sml", while the latter contains some of the form
-"Compiler/Hppa/...sml".
 
 
 src/Runtime/Version17/ in detail
@@ -97,7 +64,7 @@ src/Runtime/Version17/ in detail
                         runtime_prof_sun_os4.o
                         Rp2Ps/ ...
 
-See the file "Makefile:
+See the file "Makefile".
 
 
 src/Runtime/Version17/Rp2Ps/ in detail
@@ -107,11 +74,11 @@ src/Runtime/Version17/Rp2Ps/ in detail
                                  ...
                               Makefile
                               rp2psHPUX*
-                              rp2psSUN_OS4*
+                              rp2psSUN_OS4* 
 
-"rp2ps" converts output from a program compiled with region
-profiling enabled to a profile graph in postscript, i.e., it
-converts an .rp file to a .ps file.  See the file "Makefile:
+The tool "rp2ps" converts output from a program compiled with region
+profiling enabled to a profile graph in postscript, that is, it
+converts an .rp file to a .ps file.  See the file "Makefile".
 
 
 TestEnv/ in detail
