@@ -247,7 +247,7 @@ functor AtInf(structure Lvars: LVARS
                         Eff.toplevel_region_withtype_word,
                         Eff.toplevel_region_withtype_bot    ,
                         Eff.toplevel_region_withtype_string ,
-                        Eff.toplevel_region_withtype_real   ,
+                        Eff.toplevel_region_withtype_pair   ,
                         Eff.toplevel_arreff]
 
 

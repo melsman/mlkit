@@ -68,9 +68,9 @@ struct
     fun runtype (CONSTYPE(tn, _, _, _)) =  
       if TyName.unboxed tn then E.WORD_RT
       else if eq(tn, tyName_STRING) orelse eq(tn, tyName_CHARARRAY) then E.STRING_RT
-      else if eq(tn, tyName_REAL) then E.REAL_RT
       else E.TOP_RT
     | runtype (TYVAR _) = E.BOT_RT
+    | runtype (RECORD[_,_]) = E.PAIR_RT
     | runtype (RECORD[]) = E.WORD_RT    (* unit is also unboxed *)
     | runtype _ = E.TOP_RT
   end

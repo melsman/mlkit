@@ -115,7 +115,7 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val toplevel_region_withtype_top_lab    = Labels.reg_top_lab
     val toplevel_region_withtype_bot_lab    = Labels.reg_bot_lab
     val toplevel_region_withtype_string_lab = Labels.reg_string_lab
-    val toplevel_region_withtype_real_lab   = Labels.reg_real_lab
+    val toplevel_region_withtype_pair_lab   = Labels.reg_pair_lab
 
     val exn_DIV_lab       = Labels.exn_DIV_lab       (* Global exceptions are globally allocated. *)
     val exn_MATCH_lab     = Labels.exn_MATCH_lab

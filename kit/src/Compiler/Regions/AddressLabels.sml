@@ -26,7 +26,7 @@ functor AddressLabels(structure Name : NAME) : ADDRESS_LABELS =
     val reg_top_lab = (Name.reg_top, "reg_top")                   (* label 0 *)
     val reg_bot_lab = (Name.reg_bot, "reg_bot")                   (* label 1 *)
     val reg_string_lab = (Name.reg_string, "reg_string")          (* label 2 *)
-    val reg_real_lab = (Name.reg_real, "reg_real")                (* label 3 *)
+    val reg_pair_lab = (Name.reg_pair, "reg_pair")                (* label 3 *)
 
     val exn_DIV_lab = (Name.exn_DIV, "exn_DIV")                   (* label 4 *)
     val exn_MATCH_lab = (Name.exn_MATCH, "exn_MATCH")             (* label 5 *)

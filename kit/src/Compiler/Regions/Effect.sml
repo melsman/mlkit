@@ -26,13 +26,13 @@ struct
       ("print_rho_types", "print runtime types of region variables", print_rho_types,
        "Print region types of region variables in types and\n\
 	\intermediate forms. Possible region types are:\n\
-	\    w   type of regions containing only word values; these\n\
-	\        regions are dropped from the program because word\n\
-	\        values are represented unboxed.\n\
-	\    r   type of regions containing only reals.\n\
-	\    s   type of regions containing only strings.\n\
-	\    t   type of regions not containing word values, reals,\n\
-	\        or strings.")]
+	\    w  Type of regions containing only word values; these\n\
+	\       regions are dropped from the program because word\n\
+	\       values are represented unboxed.\n\
+	\    p  Type of regions containing pairs.\n\
+	\    s  Type of regions containing only strings.\n\
+	\    t  Type of regions containing other than the above\n\
+        \       kinds of values.")]
 
   type StringTree = PP.StringTree
   infix footnote
@@ -50,11 +50,11 @@ struct
   fun noSome(NONE, s) = die s
     | noSome(SOME v, _) = v
 
-  datatype runType = WORD_RT | STRING_RT | REAL_RT | TOP_RT | BOT_RT
+  datatype runType = WORD_RT | STRING_RT | PAIR_RT | TOP_RT | BOT_RT
 
   fun ord_runType WORD_RT = 0
     | ord_runType STRING_RT = 1
-    | ord_runType REAL_RT = 2
+    | ord_runType PAIR_RT = 2
     | ord_runType TOP_RT = 3
     | ord_runType BOT_RT = 4
 
@@ -64,7 +64,7 @@ struct
   fun show_runType tau =
       case tau of 
            WORD_RT => "w"
-         | REAL_RT => "r"
+         | PAIR_RT => "p"
          | STRING_RT => "s"
          | TOP_RT => "t"
          | BOT_RT => "b"
@@ -772,7 +772,7 @@ struct
     val (toplevel_region_withtype_word, initCone) = freshRhoWithWordTy(initCone)
     val (toplevel_region_withtype_bot, initCone) = freshRhoWithTy(BOT_RT,initCone)
     val (toplevel_region_withtype_string, initCone) = freshRhoWithTy(STRING_RT,initCone)
-    val (toplevel_region_withtype_real, initCone) = freshRhoWithTy(REAL_RT,initCone)
+    val (toplevel_region_withtype_pair, initCone) = freshRhoWithTy(PAIR_RT,initCone)
     val (toplevel_arreff, initCone) = freshEps(initCone)
 
   end
@@ -780,7 +780,7 @@ struct
   val _ =
     let val toplevel_rhos = [toplevel_region_withtype_top, (*toplevel_region_withtype_word, ME 1998-09-03*)
 			     toplevel_region_withtype_bot, toplevel_region_withtype_string,
-			     toplevel_region_withtype_real]
+			     toplevel_region_withtype_pair]
         val puts = map mkPut toplevel_rhos
         val gets = map mkGet toplevel_rhos
     in app (fn to => edge(find toplevel_arreff,find to)) (puts@gets)
@@ -799,7 +799,7 @@ struct
 	   of TOP_RT => (toplevel_region_withtype_top,cone)
 	    | BOT_RT => freshRhoWithTy p (* toplevel_region_withtype_bot *)
 	    | STRING_RT => (toplevel_region_withtype_string,cone)
-	    | REAL_RT => (toplevel_region_withtype_real,cone)
+	    | PAIR_RT => (toplevel_region_withtype_pair,cone)
 	    | WORD_RT => die "maybeFreshRhoWithTy.not possible"
 
   val freshRhoWithTy = fn (WORD_RT,cone) => (toplevel_region_withtype_word, cone)
@@ -1528,7 +1528,7 @@ tracing *)
 	     | SOME TOP_RT =>    union_with(toplevel_region_withtype_top)
 	     | SOME BOT_RT =>    union_with(toplevel_region_withtype_bot)
 	     | SOME STRING_RT => union_with(toplevel_region_withtype_string)
-	     | SOME REAL_RT =>   union_with(toplevel_region_withtype_real)    
+	     | SOME PAIR_RT =>   union_with(toplevel_region_withtype_pair)    
 	     | NONE => die "unify_with_toplevel_effect.no runtype info"
 	else die "unify_with_toplevel_effect.not rho or eps"
     end    

@@ -63,7 +63,7 @@ signature BACKEND_INFO =
     val toplevel_region_withtype_top_lab    : label
     val toplevel_region_withtype_bot_lab    : label
     val toplevel_region_withtype_string_lab : label
-    val toplevel_region_withtype_real_lab   : label
+    val toplevel_region_withtype_pair_lab   : label
 
     (* Jump Tables *)
     val minCodeInBinSearch : int

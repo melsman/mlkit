@@ -87,7 +87,7 @@ functor RegionStatEnv(structure Name : NAME
 		     TyNameMap.add(TyName.tyName_WORD8, (0,[],0),
 		     TyNameMap.add(TyName.tyName_WORD31, (0,[],0),
 		     TyNameMap.add(TyName.tyName_WORD32, (0,[],0),
-		     TyNameMap.add(TyName.tyName_LIST, (1,[E.TOP_RT],0),
+		     TyNameMap.add(TyName.tyName_LIST, (1,[E.PAIR_RT],0),
 				   (* the auxiliary region is for a pair; hence TOP_RT *)
 		     TyNameMap.add(TyName.tyName_FRAG, (1,[E.STRING_RT],0),
 				   (* the auxiliary region is for a string; hence STRING_RT *)
@@ -105,7 +105,7 @@ functor RegionStatEnv(structure Name : NAME
 	let val alpha = L.fresh_tyvar()
 	    val alpha_ty = R.TYVAR alpha
 	    val (rho,c) = E.freshRho c                     (* bot-region for tyvar *)
-	    val (rho',c) = E.freshRhoWithTy(E.TOP_RT, c)   (* aux region for pairs *)
+	    val (rho',c) = E.freshRhoWithTy(E.PAIR_RT, c)  (* aux region for pairs *)
 	    val (c,nil_sigma,_) = R.generalize_all (c, lev0, [alpha], mkListType((alpha_ty,rho), rho'))
 	in (c, nil_sigma)
 	end
@@ -114,7 +114,7 @@ functor RegionStatEnv(structure Name : NAME
 	let val alpha = L.fresh_tyvar()
 	    val alpha_ty = R.TYVAR alpha
 	    val (rho,c) = E.freshRho c                     (* bot-region for tyvar *)
-	    val (rho',c) = E.freshRhoWithTy(E.TOP_RT, c)   (* aux region for pairs *)
+	    val (rho',c) = E.freshRhoWithTy(E.PAIR_RT, c)  (* aux region for pairs *)
 	    val (rho'',c) = E.freshRhoWithTy(rt_list, c)   (* region for result list *)
 	    val alpha_rho_list = (mkListType((alpha_ty,rho), rho'), rho'')
 	    val (arreff, c) = E.freshEps c

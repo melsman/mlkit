@@ -126,7 +126,7 @@ struct
     val global_region_labs = 
       [(Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_top, BI.toplevel_region_withtype_top_lab),
        (Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_string, BI.toplevel_region_withtype_string_lab),
-       (Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_real, BI.toplevel_region_withtype_real_lab)]
+       (Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_pair, BI.toplevel_region_withtype_pair_lab)]
 
     (* Labels Local To This Compilation Unit *)
     fun new_local_lab name = LocalLab (Labels.new_named name)

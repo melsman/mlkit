@@ -193,7 +193,7 @@ struct
 	     Effect.toplevel_region_withtype_bot,
 	     Effect.toplevel_region_withtype_word,
 	     Effect.toplevel_region_withtype_string,
-	     Effect.toplevel_region_withtype_real] @ 
+	     Effect.toplevel_region_withtype_pair] @ 
 	    RType.ferv_sigma(RType.type_to_scheme ty0) 
 	  val effects = Effect.setminus(effects, effects_not)
 
