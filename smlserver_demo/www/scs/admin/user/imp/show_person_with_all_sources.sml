@@ -28,7 +28,7 @@ fun gen_rows (name, sql) =
    ScsError.wrapPanic
    (Db.list (fn g => (g "name", g "email", g "security_id", g "on_what_table", g "on_which_id"))) sql)
 
-fun layout_row (name, email, security_id, on_what_table, on_which_id) =
+fun layout_row bgcolor (name, email, security_id, on_what_table, on_which_id) =
   let
     val del_rel_link = 
       if on_what_table <> "" andalso on_which_id <> "" then
@@ -39,10 +39,12 @@ fun layout_row (name, email, security_id, on_what_table, on_which_id) =
       else
 	`&nbsp;`
   in
-    `<td><b>^name</b></td>
+    `<tr bgcolor="^bgcolor">
+     <td><b>^name</b></td>
      <td>^email</td>
      <td>^security_id</td>
-     <td align="center">` ^^ del_rel_link ^^ `</td>`
+     <td align="center">` ^^ del_rel_link ^^ `</td>
+     </tr>`
   end
 
 fun gen_table (name,rows) =

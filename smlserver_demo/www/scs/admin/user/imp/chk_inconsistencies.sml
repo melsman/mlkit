@@ -32,12 +32,14 @@ local
         and party1.deleted_p = 'f'
         and party2.deleted_p = 'f'`
 
-  fun layout_row (p1_name, p1_email, p2_name, p2_email, security_id) =
-    `<td><b>^p1_name</b></td>
+  fun layout_row bgcolor (p1_name, p1_email, p2_name, p2_email, security_id) =
+    `<tr bgcolor="^bgcolor">
+     <td><b>^p1_name</b></td>
      <td>^p1_email</td>
      <td><b>^p2_name</b></td>
      <td>^p2_email</td>
-     <td>^security_id</td>`
+     <td>^security_id</td>
+     </tr>`
   
   val title =
     ScsDict.s [(ScsLang.en,`Persons with equal security ids`),
@@ -79,10 +81,12 @@ local
 		      g "p_email",
 		      g "p_security_id"))) sql)
 
-  fun layout_row (person_id, on_what_table, on_which_id, 
-		  e_name, e_email, e_security_id,
-		  p_name, p_email, p_security_id) =
-    `<td>^on_what_table.^on_which_id</td>
+  fun layout_row bgcolor
+    (person_id, on_what_table, on_which_id, 
+     e_name, e_email, e_security_id,
+     p_name, p_email, p_security_id) =
+    `<tr bgcolor="^bgcolor">
+     <td>^on_what_table.^on_which_id</td>
      <td>^e_name</td>
      <td>^e_email</td>
      <td>^e_security_id</td>
@@ -90,7 +94,8 @@ local
      <td>^p_email</td>
      <td><a href="^(Html.genUrl "show_person_with_all_sources.sml" 
 		                             [("person_id",person_id)])">
-					     ^p_security_id</a></td>`
+					     ^p_security_id</a></td>
+     </tr>`
   
   fun all_empty rowss = List.all (fn (_,xs) => xs = []) rowss
 

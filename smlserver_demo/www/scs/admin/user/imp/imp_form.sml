@@ -20,17 +20,20 @@ fun imp_users_source (source:ScsUserImp.external_source) =
 
 val imp_users = List.map imp_users_source (List.map ScsUserImp.getSource ScsUserImp.all_sources)
 
-fun layout_user (user_imp_id,first_names,last_name,
-		 security_id,email,last_auto_import_try,
-		 last_modified,exact_match_id) =
-  `<td><b>^first_names ^last_name</b></td>
+fun layout_user bgcolor
+  (user_imp_id,first_names,last_name,
+   security_id,email,last_auto_import_try,
+   last_modified,exact_match_id) =
+  `<tr bgcolor="^bgcolor">
+   <td><b>^first_names ^last_name</b></td>
    <td>^security_id</td>
    <td>^email</td>
    <td>^(ScsDate.wrapOpt ScsDate.ppTimestamp last_modified)</td>
    <td>^(ScsDate.wrapOpt ScsDate.pp last_auto_import_try)</td>
    <td align="center">^(ScsUserImp.exactMatchLink user_imp_id exact_match_id)</td>
    <td align="center">^(ScsUserImp.delLink user_imp_id)</td>
-   <td align="center">^(ScsUserImp.moreInfoLink user_imp_id)</td>`
+   <td align="center">^(ScsUserImp.moreInfoLink user_imp_id)</td>
+   </tr>`
 
 fun gen_table (source:ScsUserImp.external_source) [] = 
   ScsDict.s' [(ScsLang.en,`There are no persons to import in this group.`),
