@@ -124,7 +124,6 @@ functor ElabTopdec
     fun is_Some None = false
       | is_Some (Some x) = true
     val StringTree_to_string = PrettyPrint.flatten1
-    fun quote s = "`" ^ s ^ "'"
     fun pp_list pp_x [] = ""
       | pp_list pp_x [x] = pp_x x
       | pp_list pp_x [x,x'] = pp_x x ^ " and " ^ pp_x x'
@@ -1352,7 +1351,8 @@ functor ElabTopdec
 	    let val (_, E, out_strdec) = elab_strdec(B, strdec)
 	        val (B', out_topdec_opt) = elab_topdec_opt(B B_plus_E E, topdec_opt)
 		val B'' = (B.from_E E) B_plus_B B'
-	    in (B'', OG.STRtopdec (okConv i, out_strdec, out_topdec_opt))
+		val out_i = unguarded_tyvars (i, E.tyvars E)
+	    in (B'', OG.STRtopdec (out_i, out_strdec, out_topdec_opt))
 	    end
 	   | IG.SIGtopdec (i, sigdec, topdec_opt) =>                                      (* 88 *)
 	    let val (G, out_sigdec) = elab_sigdec(B, sigdec)
@@ -1365,6 +1365,7 @@ functor ElabTopdec
 	        val (B', out_topdec_opt) = elab_topdec_opt(B B_plus_F F, topdec_opt)
 		val B'' = (B.from_F F) B_plus_B B' (* Actually, it holds that
 						    tynames F \ (T of B) = {}*)
+		val out_i = unguarded_tyvars (i, F.tyvars F)
 	    in (B'', OG.FUNtopdec (okConv i, out_fundec, out_topdec_opt))
 	    end)
 
@@ -1375,6 +1376,12 @@ functor ElabTopdec
 			  end
 	 | None => (B.empty, None)
  
+    and unguarded_tyvars (i, tyvars) =
+          (case List.all (is_Some o TyVar.to_ExplicitTyVar) tyvars of
+	     [] => okConv i
+	   | tyvars => errorConv (i, ErrorInfo.UNGUARDED_TYVARS tyvars))
+
+
     (********
     Printing functions
     ********)
