@@ -44,8 +44,10 @@ structure ScsLogin :> SCS_LOGIN =
     val default_id : int = 0
     val default = (default_id,default_lang)
 
+    datatype cookie_info = COOKIE | NO_COOKIE
+
     (* auth_verify_user; return user_id if happy, 0 otherwise *)
-    fun verifyUser () =
+    fun verifyUser' () =
       let
 	val auth_user_id = Ns.Cookie.getCookieValue "auth_user_id"
 	val auth_password = Ns.Cookie.getCookieValue "auth_password"
@@ -56,19 +58,21 @@ structure ScsLogin :> SCS_LOGIN =
                                      from scs_users
                                     where user_id = ^(Db.qqq user_id)
                                       and deleted_p = 'f'` of
-               NONE => default
+               NONE => (COOKIE,default)
 	     | SOME [db_psw,db_lang] => 
 		 if db_psw = psw then 
 		   (case Int.fromString user_id of
-		      NONE => default
-		    | SOME u_id => (u_id,ScsLang.fromString db_lang))
-		 else default
+		      NONE => (COOKIE,default)
+		    | SOME u_id => (COOKIE,(u_id,ScsLang.fromString db_lang)))
+		 else (COOKIE,default)
 	     | SOME _ => raise Fail "ScsLogin.auth_verify_user")
-	| _ => default
+	| _ => (NO_COOKIE,default)
       end
-    handle Ns.Cookie.CookieError _ => default
-	 | Ns.MissingConnection => default
+    handle Ns.Cookie.CookieError _ => (NO_COOKIE,default)
+	 | Ns.MissingConnection => (NO_COOKIE,default)
       
+    fun verifyUser () = #2(verifyUser'())
+
     (* We look for login-cookies on every request *)
     (* If you don't want that, then apply a filter similar to the one below. *)
     val (user_id,user_lang) = verifyUser()
@@ -105,13 +109,17 @@ You should not be seeing this!`;
     in
       fun auth () =
       let
-	val (user_id,user_lang) = verifyUser()
+	val (cookie,(user_id,user_lang)) = verifyUser'()
+	val msg = 
+	  case cookie of
+	    NO_COOKIE => ``
+	    | COOKIE => `<b>Fejl ved login:</b> Er du ny bruger eller har du glemt password 
+ 	                 så klik <a href="mail_passwd_form.sml">Glemt password?</a>.<br><br>
+                         <b>Error on login:</b> If you are a new user or you forgot password then 
+		         click <a href="mail_passwd_form.sml">Forgot password?</a>.`
       in	
 	if user_id = 0 then
-          (reject (``(*`Du skal indtaste email og password for at få adgang til systemet. ` ^^
-		   `Hvis du allerede har indtastet en email og password, så må du prøve igen.<p>` ^^
-		   `(eng. You must type in an email and password to get access to the web-site. ` ^^
-                   `If you have already typed in an email and password, then you must try again.)<p>`*));
+          (reject (msg);
 	   default_id)
         else
           user_id
@@ -160,10 +168,10 @@ You should not be seeing this!`;
            holds one of the roles in the roles list before serving any
            of the protected_pages *)
 	if force_login andalso not loggedIn then
-	  reject (``(*`Du skal indtaste email og password for at få adgang til systemet. ` ^^
-		  `Hvis du allerede har indtastet en email og password, så må du prøve igen.<p>` ^^
-		  `(eng. You must type in an email and password to get access to the web-site. ` ^^
-                  `If you have already typed in an email and password, then you must try again.)<p>`*))
+	  reject (`<b>Fejl ved login:</b> Er du ny bruger eller har du glemt password 
+		   så klik <a href="mail_passwd_form.sml">Glemt password?</a>.<br><br>
+                   <b>Error on login:</b> If you are a new user or you forgot password then 
+		   click <a href="mail_passwd_form.sml">Forgot password?</a>.`)
 	else
 	  List.app verifyUserFilter protected_pages
       end
