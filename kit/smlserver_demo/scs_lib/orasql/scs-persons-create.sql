@@ -34,6 +34,14 @@ create table scs_person_rels (
   constraint scs_person_rels_pk primary key (on_what_table,on_which_id)
 );
 
+-----------
+-- Views --
+-----------
+create or replace view scs_persons_active as
+select * 
+  from scs_persons
+ where deleted_p = 'f';
+
 ----------------------------------------
 -- Package scs_person_rel Description --
 ----------------------------------------
