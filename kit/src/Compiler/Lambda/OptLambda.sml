@@ -1066,7 +1066,9 @@ functor OptLambda(structure Lvars: LVARS
 	end
    in
      fun do_minimize_fixs lamb = 
-       let fun min_fixs (FIX fs) = map_lamb min_fixs (FIX (minimize_fix fs))
+       let fun maybe_FIX {functions=nil,scope} = scope
+	     | maybe_FIX f = FIX f
+	   fun min_fixs (FIX fs) = map_lamb min_fixs (maybe_FIX (minimize_fix fs))
 	     | min_fixs lamb = map_lamb min_fixs lamb
        in if !minimize_fixs then min_fixs lamb
 	  else lamb
@@ -1248,6 +1250,32 @@ functor OptLambda(structure Lvars: LVARS
 
      val frame_unbox_fix_env = ref (LvarMap.empty : unbox_fix_env)
 
+     (* hoist bindings  `lvi = #i lv'  out of body 
+      * for 0 < i < sz *) 
+     fun hoist_lvars(body,lv,sz) =
+       let 
+	 fun lookup (x:int) nil = NONE
+	   | lookup x ((b,v)::xs) = if x = b then SOME v else lookup x xs
+
+	 fun hoist (body, acc: (int * lvar) list) : LambdaExp * (int * lvar) list =
+	   case body
+	     of LET{pat,bind,scope} =>
+	       (case (pat, bind)
+		  of ([(lv1,nil,pt)], PRIM(SELECTprim n, [VAR{lvar,instances=nil}])) =>
+		    if Lvars.eq(lvar,lv) then hoist(scope,(n,lv1)::acc)
+		    else (body, acc)
+		   | _ => (body, acc))
+	      | _ => (body, acc)
+	 val (body, lvar_map) = hoist (body, nil)
+	 
+	 val vector = Vector.tabulate 
+	   (sz, fn i => case lookup i lvar_map
+			  of SOME lv => lv
+			   | NONE => Lvars.new_named_lvar (Lvars.pr_lvar lv ^ "-" 
+							   ^ Int.toString i))
+       in (body, vector)
+       end 
+
      fun trans (env:unbox_fix_env) lamb =
        case lamb 
 	 of FIX {functions, scope} => 
@@ -1273,8 +1301,7 @@ functor OptLambda(structure Lvars: LVARS
 		     | SOME (UNBOXED_ARGS (_, Type' as ARROWtype(argTypes,_))) =>
 		      let (* create argument env *)
 			val sz = length argTypes
-			val vector = Vector.tabulate 
-			  (sz, fn i => Lvars.new_named_lvar (Lvars.pr_lvar lv ^ "-" ^ Int.toString i))
+			val (body, vector) = hoist_lvars(body,lv,sz) 
 			val env' = LvarMap.add(lv, ARG_VARS vector, env)
 			val body' = trans env' body
 			val (i, argpat) = (Listfoldr (fn (argType, (i, argpat)) => 
