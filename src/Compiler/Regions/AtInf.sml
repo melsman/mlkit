@@ -19,7 +19,7 @@ functor AtInf(structure Lvars: LVARS
 	      structure Flags: FLAGS
 	      structure Crash: CRASH
 	      structure Report: REPORT
-	      sharing type Report.Report = Flags.Report
+	      sharing type Report.Report = Flags.Report = PP.Report
               structure Timing: TIMING
       	        sharing type Eff.place = MulExp.place = MulExp.effect 
                         = LLV.place = RegFlow.place = RegFlow.effect  
@@ -38,6 +38,7 @@ functor AtInf(structure Lvars: LVARS
 ) : AT_INF =
   struct
 
+    structure NewList = List
     structure List = Edlib.List
     structure Int = Edlib.Int
     
@@ -118,30 +119,38 @@ functor AtInf(structure Lvars: LVARS
 
   (* error reporting for resetRegions: *)
 
-  fun lay_pair(t1,t2)= 
-      PP.NODE{start="(",finish = ")", indent= 1, 
-              childsep = PP.RIGHT",", children = [t1,t2]}
-
-  fun lay_sigma_p(sigma,p) =
-    let val a = !Flags.print_types
-        val b = !Flags.print_regions
-        val c = !Flags.print_effects     
-    in 
+  local
+    fun lay_pair(t1,p)=
+      let fun lay (t1,p) = PP.NODE{start="(",finish = ")", indent= 1, 
+				   childsep = PP.RIGHT",", children = 
+				   [t1,PP.LEAF (show_place p)]}
+      in if !Flags.print_word_regions then lay (t1,p)
+	 else case Eff.get_place_ty p
+		of SOME Eff.WORD_RT => t1
+		 | _ => lay (t1,p)
+      end
+  in
+    fun lay_sigma_p(sigma,p) =
+      let val a = !Flags.print_types
+          val b = !Flags.print_regions
+	  val c = !Flags.print_effects     
+      in 
         Flags.print_types:= true;
         Flags.print_regions:=true;
         Flags.print_effects := true;
-        lay_pair(RType.mk_lay_sigma false sigma, PP.LEAF (show_place p))
+        lay_pair(RType.mk_lay_sigma false sigma, p)
           footnote(Flags.print_types:= a;
                    Flags.print_regions:= b;
                    Flags.print_effects := c)
-    end
+      end
+  end  
 
   fun lay_header(force,lvar,(tau,p)) = 
   if force
      then
         PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
           children = [PP.LEAF "You have requested resetting the regions that appear free ",
-                      PP.LEAF ("in the type scheme and place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
+                      PP.LEAF ("in the region type scheme of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
                       lay_sigma_p(RType.type_to_scheme tau,p),
                       PP.LEAF "I have done as you requested, but I cannot guarantee that it is safe.",
                       PP.LEAF "Here are my objections (one for each region variable concerned):"]}                 
@@ -149,13 +158,18 @@ functor AtInf(structure Lvars: LVARS
   else 
         PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
           children = [PP.LEAF "You have suggested resetting the regions that appear free ",
-                      PP.LEAF ("in the type scheme and place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
+                      PP.LEAF ("in the region type scheme of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
                       lay_sigma_p(RType.type_to_scheme tau,p)]}                 
 
 
   fun lay_set (rhos: place list) = 
-    PP.HNODE{start ="{", finish = "}", childsep = PP.RIGHT",",
-             children = map Eff.layout_effect rhos}
+    let val rhos = if !Flags.print_word_regions then rhos
+		   else NewList.filter (fn rho => case Eff.get_place_ty rho
+						    of SOME Eff.WORD_RT => false
+						     | _ => true) rhos
+    in PP.HNODE{start ="{", finish = "}", childsep = PP.RIGHT",",
+		children = map Eff.layout_effect rhos}
+    end
 
   fun indent (t:StringTree) = 
     PP.NODE{start ="     ",finish = "", indent = 5, childsep = PP.NOSEP, children = [t]}
@@ -613,10 +627,13 @@ functor AtInf(structure Lvars: LVARS
                                    in
                                       case conflicts' of 
                                         [] => ()
+                                      | _ => warn (PP.reportStringTree(lay_report(force,lvar,mu,conflicts')));
+(*ME 1998-08-30
                                       | _ => (dump(lay_report(force,lvar,mu,conflicts'));
                                               warn (Report.// (Report.line "Warnings concerning resetting of regions \
 							            \printed earlier in this file!",
 							       Report.line "(Search on \"You have\")")));
+*)
                                       RESET_REGIONS({force=force,alloc=ATTOP p,regions_for_resetting = place_at_list}, 
                                                        (* the place_at_list may contain word regions *)
                                                     sma_trip sme tr)
