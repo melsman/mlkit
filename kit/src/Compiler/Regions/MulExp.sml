@@ -108,7 +108,7 @@ struct
                      alloc: 'a option, rhos_actuals: 'a list ref, other: 'c}
       | INTEGER  of int	* 'a		
       | STRING   of string * 'a
-      | REAL     of real * 'a
+      | REAL     of string * 'a
       | UB_RECORD of ('a,'b,'c) trip list (* unboxed records *)
 
       | FN       of {pat : (lvar * (Type*place)) list, 
@@ -736,7 +736,6 @@ struct
 		  of PLUS_INT => layBin(" + ", n, t1, t2, NONE)
 		   | MINUS_INT => layBin(" - ", n, t1, t2, NONE)
 		   | MUL_INT => layBin(" * ", n, t1, t2, NONE) 
-		   | DIV_INT => layBin(" div ", n, t1, t2, NONE)
 		   | LESS_INT => layBin(" < ", n, t1, t2, NONE) 
 		   | LESSEQ_INT => layBin(" <= ", n, t1, t2, NONE) 
 		   | GREATER_INT => layBin(" > ", n, t1, t2, NONE)
@@ -780,7 +779,7 @@ struct
 
         | INTEGER(i, a) => LEAF(Int.string i ^^ layout_alloc a)
         | STRING(s, a) => LEAF(String.string s ^^ layout_alloc a)
-        | REAL(r, a) => LEAF(Real.toString r ^^ layout_alloc a)
+        | REAL(r, a) => LEAF(r ^^ layout_alloc a)
         | UB_RECORD(args) =>
             PP.NODE{start = "<", finish = ">" , indent = 1, childsep = PP.RIGHT", ", 
                     children = map (fn trip => layTrip(trip,0)) args}
@@ -1737,7 +1736,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
             Lvar.eq(lvar1,lvar2)
       | (INTEGER(i,_), INTEGER(i',_)) => i=i'
       | (STRING(s,_), STRING(s',_)) => s=s'
-      | (REAL(r,_), REAL(r',_)) => Real.==(r,r')
+      | (REAL(r,_), REAL(r',_)) => (r = r') (* reals are represented as strings for the precision to be preserved *)
       | (UB_RECORD ts1, UB_RECORD ts2) =>
            eq_list eq (ts1,ts2)
       | (FN{pat = pat1, body = body1, ...}, FN{pat = pat2, body = body2, ...}) =>

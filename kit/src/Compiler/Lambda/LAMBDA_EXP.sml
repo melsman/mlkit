@@ -1,4 +1,4 @@
-(*$LAMBDA_EXP*)
+
 signature LAMBDA_EXP =
   sig
 
@@ -101,7 +101,7 @@ signature LAMBDA_EXP =
         VAR      of {lvar: lvar, instances : Type list}
       | INTEGER  of int			
       | STRING   of string
-      | REAL     of real
+      | REAL     of string
       | FN       of {pat : (lvar * Type) list, body : LambdaExp}
       | LET      of {pat : (lvar * tyvar list * Type) list,
 		     bind : LambdaExp,

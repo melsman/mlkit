@@ -1,6 +1,5 @@
 (* Lambda variables *)
 
-(*$LVARS*)
 signature LVARS =
   sig
 
@@ -67,7 +66,7 @@ signature LVARS =
      * compiler-supported primitives and a function 
      * primitive: lvar -> primitive option *)
 
-    datatype primitive = PLUS_INT | MINUS_INT | MUL_INT | DIV_INT | NEG_INT | ABS_INT
+    datatype primitive = PLUS_INT | MINUS_INT | MUL_INT | NEG_INT | ABS_INT
                        | LESS_INT | LESSEQ_INT | GREATER_INT | GREATEREQ_INT
                        | PLUS_FLOAT | MINUS_FLOAT | MUL_FLOAT | DIV_FLOAT | NEG_FLOAT | ABS_FLOAT
                        | LESS_FLOAT | LESSEQ_FLOAT | GREATER_FLOAT | GREATEREQ_FLOAT

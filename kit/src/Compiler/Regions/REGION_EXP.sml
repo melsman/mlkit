@@ -1,4 +1,4 @@
-(*$REGION_EXP*)
+
 signature REGION_EXP =
   sig
 
@@ -50,7 +50,7 @@ signature REGION_EXP =
         VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, alloc: 'a option}
       | INTEGER  of int	* 'a		
       | STRING   of string * 'a
-      | REAL     of real * 'a
+      | REAL     of string * 'a
       | UB_RECORD of ('a,'b) trip list (* unboxed records *)
       | FN       of {pat : (lvar * (Type*place)) list, 
                      body : ('a,'b)trip,

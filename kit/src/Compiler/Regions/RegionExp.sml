@@ -1,4 +1,4 @@
-(*$RegionExp: CON EXCON EFFECT RTYPE TYNAME CRASH PRETTYPRINT LVARS LAMBDA_EXP REGION_EXP FLAGS*)
+
 functor RegionExp(
   structure Flags: FLAGS
   structure Con: CON
@@ -63,7 +63,7 @@ struct
         VAR      of {lvar: lvar, il_r : (il * (il * cone -> il * cone)) ref, alloc: 'a option}
       | INTEGER  of int * 'a            
       | STRING   of string * 'a
-      | REAL     of real * 'a
+      | REAL     of string * 'a
       | UB_RECORD of ('a,'b) trip list 
       | FN       of {pat : (lvar * (Type*place)) list, 
                      body : ('a,'b)trip,
@@ -374,7 +374,7 @@ old*)
           
         | INTEGER(i, a) => LEAF(Int.string i ^^ layout_alloc a)
         | STRING(s, a) => LEAF(String.string s ^^ layout_alloc a)
-        | REAL(r, a) => LEAF(Real.toString r ^^ layout_alloc a)
+        | REAL(r, a) => LEAF(r ^^ layout_alloc a)
         | UB_RECORD(args) =>
             PP.NODE{start = "<", finish = ">" , indent = 1, childsep = PP.RIGHT", ", 
                     children = map (fn trip => layTrip(trip,0)) args}
