@@ -1,0 +1,10 @@
+Testing SMLserver traps
+-----------------------
+
+Accessing this file will start the execution of the sys/trap.sml
+script. The trap.sml script will print a message in the server.log
+file and then return the trap.txt file to your browser. You better
+check the server.log file to see that the script trap.sml is actually
+executed.
+
+This trapping mechanism is setup in the sys/init.sml file.

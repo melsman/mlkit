@@ -104,7 +104,7 @@ signature SCS_DICT =
 
     (* [cacheName (source,target)] returns the name of the case used to
        store translations from source language to target language *)
-    val cacheName  : ScsLang.lang * ScsLang.lang -> string
+    val cacheName  : ScsLang.lang * ScsLang.lang -> (string,string) Ns.Cache.cache
 
     (* [cacheFlush (source,target)] flushes the cache used to 
        store translations from source language to target language *)
@@ -237,36 +237,31 @@ structure ScsDict :> SCS_DICT =
                                              ^(Db.qqq file_name),^(Db.qqq module_file_phrase),sysdate)`;
 			canonical_source_phrase)
 
-    fun cacheName (source_lang,target_lang) = "scs_dict"^ScsLang.toString source_lang ^ ScsLang.toString target_lang
+    fun cacheName (source_lang,target_lang) = 
+      Ns.Cache.get(Ns.Cache.String,
+		   Ns.Cache.String,
+		   "scs_dict"^ScsLang.toString source_lang ^ ScsLang.toString target_lang,
+		   Ns.Cache.TimeOut 7200)
+
     fun cacheFlush (source_lang,target_lang) = 
-      case Ns.Cache.find (cacheName (source_lang,target_lang)) of
-	NONE => ()
-      | SOME c => Ns.Cache.flush c
+      Ns.Cache.flush (cacheName (source_lang,target_lang))
 
     fun d source_lang module file_name phrase =
       let
 	val can_phrase = canonical phrase
         val module_file_phrase = module ^ "-" ^ file_name ^ "-" ^ can_phrase 
 	val cn = cacheName(source_lang,ScsLogin.user_lang)
-	val t = 7200
       in
-	case Ns.Cache.find cn of
-	  NONE => let 
+	case Ns.Cache.lookup cn module_file_phrase of
+	  NONE => let
 		    val v = lookup source_lang module file_name can_phrase module_file_phrase ScsLogin.user_lang
 		  in
-		    (Ns.Cache.set (Ns.Cache.createTm(cn,t),module_file_phrase,v);
-		     v) 
+		    Ns.Cache.insert (cn,module_file_phrase,v);
+		    v
 		  end
-	| SOME c => (case Ns.Cache.get (c,module_file_phrase) of 
-		       NONE => let 
-				 val v = lookup source_lang module file_name can_phrase 
-                                           module_file_phrase ScsLogin.user_lang
-			       in 
-				 (Ns.Cache.set (c,module_file_phrase,v);
-				  v) 
-			       end 
-		     | SOME v => v)
+	| SOME v => v
       end
+
     fun d' source_lang module file_name = Quot.fromString o (d source_lang module file_name) o Quot.toString
 
     fun dl source_lang module file_name args =

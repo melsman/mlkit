@@ -3,6 +3,7 @@
     NsBasics.sml
     NS_SET.sml
     NsSet.sml
+    NS_STRING_CACHE.sml
     NS_CACHE.sml
     NS_CONN.sml
     NS_COOKIE.sml

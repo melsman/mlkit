@@ -1,3 +1,5 @@
+  structure C = Ns.Cache
+
   val getReal = FormVar.wrapFail FormVar.getRealErr
   val getString = FormVar.wrapFail FormVar.getStringErr
 
@@ -23,24 +25,23 @@
   val pattern = RegExp.fromString 
     (".+" ^ s ^ t ^ ".+<td>([0-9]+).([0-9]+)</td>.+")
 
-  val fetch = Ns.Cache.cacheForAwhile
+  val cache = C.get (C.String,C.Option C.Real,"currency",C.TimeOut (5*60))
+
+  val fetch = C.memoize cache 
     (fn url => case Ns.fetchUrl url 
-                 of NONE => "" 
+                 of NONE => NONE
                   | SOME pg => 
                    (case RegExp.extract pattern pg 
-                      of SOME [r1,r2] => r1 ^ "." ^ r2
-                       | _ => ""), 
-     "currency", 5*60)
+                      of SOME [r1,r2] => Real.fromString (r1 ^ "." ^ r2)
+                       | _ => NONE))
 
   val _ =
     case fetch url of
-      "" => errPage ()
-    | rate_str =>
-	let val rate = Option.valOf (Real.fromString rate_str)
-	in Page.return 
+      NONE => errPage ()
+    | SOME rate =>
+	Page.return 
 	  ("Currency Exchange Service, " ^ getdate()) 
 	  `^(Real.toString a) ^s gives ^(round (a*rate)) ^t.<p>
 	  The exchange rate is obtained by fetching<p>
 	  <a href="^url">^url</a><p>
 	  New <a href="currency_cache.html">Calculation</a>`
-	end

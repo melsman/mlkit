@@ -1,6 +1,12 @@
 File NEWS_SMLSERVER
 
- * nh 2002-10-31: Ns Cache version 2 - Typed caching and memoization
+ * nh 2003-01-07: Updated NS_CACHE.sml signature such that it matches
+   the PADL paper. Re-implemented the Triple constructor, so that
+   result type is 'a*'b*'c instead of (('a*'b)*'c).
+   Updated smlserver book with new cache interface.
+
+ * nh 2002-10-31: Ns Cache version 2 - Typed caching and
+   memoization. Inserted in the NS.sml signature
 
  * mael 2002-10-31: Execution caching of library initialization.
 

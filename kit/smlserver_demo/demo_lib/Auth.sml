@@ -71,8 +71,9 @@ structure Auth : AUTH =
 	            where person_id = ^p`
 	      of SOME pw => pw
 	       | NONE => ""
+	  val cache = Ns.Cache.get (Ns.Cache.String, Ns.Cache.String,"auth", Ns.Cache.WhileUsed 600)
 	  fun g p = 
-	    case Ns.Cache.cacheWhileUsed (f, "auth", 600) p
+	    case Ns.Cache.memoize cache f p
 	      of "" => NONE
 	       | pw => SOME pw
       in verifyPerson0 g

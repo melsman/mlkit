@@ -74,7 +74,7 @@ structure ScsPrint :> SCS_PRINT =
 	    let
 	      val print_id = Int.toString (Db.seqNextval "scs_print_id_seq")
 	      val batch_id = Int.toString (Db.seqNextval "scs_print_batch_id_seq")
-	      val tmpfile = ScsFile.uniqueFile (path_preview()) ^ "-" ^ print_id
+	      val tmpfile = print_id ^ "-" ^ (ScsFile.uniqueFile (path_preview()))
 	      val _ = ScsFile.save source (texfile tmpfile)
 	      val journal_base = (getInfo "scs_print_journal") ^ "/"
 	      val journal_dir = (Date.fmt "%Y"  (ScsDate.now_local())) ^ "/" ^ 

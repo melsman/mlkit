@@ -6,18 +6,18 @@ fun fib 0 = 1
   | fib n = n + fib (n-1)
 
 val cache = 
-  NsCacheV2.get ("fib",
-		 NsCacheV2.WhileUsed 20,
-		 NsCacheV2.Int, 
-		 NsCacheV2.Int)
+  Ns.Cache.get (Ns.Cache.Int, 
+		Ns.Cache.Int,
+		"fib",
+		Ns.Cache.WhileUsed 20)
 
 (* Memorisation *)
 fun fib_m 0 = 1 
   | fib_m 1 = 1
   | fib_m n = n + fib' (n-1)
-and fib' n = (NsCacheV2.memoize cache fib_m) n
+and fib' n = (Ns.Cache.memoize cache fib_m) n
 
-val _ = Page.return "Caching Demonstration - Memorisation - V2 " `
+val _ = Page.return "Caching Demonstration - Memorisation" `
 
   Result of fib ^(Int.toString n) is ^(Int.toString (fib n)).<p>
 
@@ -25,7 +25,7 @@ val _ = Page.return "Caching Demonstration - Memorisation - V2 " `
 
   Pretty printing the cache: 
   <pre>
-  ^(NsCacheV2.pp_cache cache)
+  ^(Ns.Cache.pp_cache cache)
   </pre><p>
 
-  Go back to <a href=cache_v2.sml>Cache Demo Home Page</a>.`
+  Go back to <a href=cache.sml>Cache Demo Home Page</a>.`
