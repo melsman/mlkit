@@ -3,12 +3,10 @@ val user_id = ScsLogin.auth_roles [ScsRole.SiteAdm]
 val (person_id,errs) = ScsPerson.getPersonIdErr("person_id",ScsFormVar.emptyErr)
 val _ = ScsFormVar.anyErrors errs
 
-val d = ScsDict.d ScsLang.en "scs/admin/role" "edit_person_role_rel.sml"
-val dl = ScsDict.dl ScsLang.en "scs/admin/role" "edit_person_role_rel.sml"
-
 val name = ScsPerson.name person_id
 
-val title = dl [name] "Edit roles for %0"
+val title = ScsDict.sl [(ScsLang.en,`Edit roles for %0`),
+			(ScsLang.da,`Ret roller for %0`)] [name]
 
 val chosen_roles = Db.list (fn g => (g"role_id", g "abbreviation")) 
                               `select scs_roles.role_id, scs_roles.abbreviation
@@ -32,7 +30,8 @@ val footer =
                  <input type=hidden name="mode" value="add">
                  <input type=hidden name="person_id" value="^(Int.toString person_id)">
            	 <td>` ^^ (ScsWidget.select not_chosen_roles "role_id") ^^ `</td>
-	         <td><input type=submit name=submit value=^(d"Add")></td>
+	         <td><input type=submit name=submit value=^(ScsDict.s [(ScsLang.en,`Add`),
+								       (ScsLang.da,`Tilføj`)])></td>
                  </form>
                  </tr>`
 
@@ -47,7 +46,7 @@ val role_table =
 	    <td><a href="^(Html.genUrl "add_del_person_role_rel.sml" 
                             [("person_id",Int.toString person_id),
                              ("role_id",role_id),
-                             ("mode","del")])">^(d"del")</a></td>`)
+                             ("mode","del")])">^(ScsDict.s [(ScsLang.en,`del`),(ScsLang.da,`slet`)])</a></td>`)
         chosen_roles)
 
 val _ = UcsPage.returnPg title

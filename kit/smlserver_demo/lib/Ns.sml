@@ -882,7 +882,7 @@ structure Ns :> NS =
       in if isNull res then NONE else SOME res
       end
 
-    fun exit() = raise Interrupt  
+    fun exit() = (raise Interrupt)  
     (* By raising Interrupt, the web-server is not killed as it
      * would be if we call OS.Process.exit. Also, handlers can
      * protect the freeing of resources such as file descriptors

@@ -123,7 +123,8 @@ structure ScsLogin :> SCS_LOGIN =
     (* If you don't want that, then apply a filter similar to the one below. *)
     fun user_id_user_lang () = verifyUser()
     fun user_id () = #1 (verifyUser())
-    fun user_lang () = #2 (verifyUser())
+    (* If no connection exists, then use default lang *)
+    fun user_lang () = #2 (verifyUser()) handle _ => default_lang
     fun loggedIn () = user_id () <> 0
 
     (* Language selection *)
@@ -136,6 +137,7 @@ structure ScsLogin :> SCS_LOGIN =
       fun reject msg =
 	let
   	  val target = Ns.Conn.url()
+
 	  val target_url = Html.genUrl "/scs/auth/auth_form.sml"
             [("target", Html.genUrl target
    	       (case Ns.Conn.getQuery() of
