@@ -1,28 +1,28 @@
 /*----------------------------------------------------------------*
  *                        Regions                                 *
  *----------------------------------------------------------------*/
-#include <Common.h>
-#include <System/SysAll.h>
-#include <UI/UIAll.h>
+#include <PalmTypes.h>
+#include <System/SystemPublic.h>
+#include <UI/UIPublic.h>
 #include "ri_sim.h"
 #include "Region.h"
 
 /*----------------------------------------------------------------*
  * Global declarations                                            *
  *----------------------------------------------------------------*/
-ULong bytes_alloc = 0;
+UInt32 bytes_alloc = 0;
 Regionpage* freelist;
 Regiondesc* topRegion;
-static UInt heapNo = 0; // 0 is dynamic, 1 is storage.
-static Word cardNo = 0; // Always card number 0.
-static UInt heapId = 0; // Set in function set_card_info.
+static UInt16 heapNo = 0; // 0 is dynamic, 1 is storage.
+static UInt16 cardNo = 0; // Always card number 0.
+static UInt16 heapId = 0; // Set in function set_card_info.
 
-void panic(CharPtr errorStr) { 
+void panic(Char* errorStr) { 
   FrmCustomAlert(alertID_panic,errorStr,"","");
   //exit(-1); //How do we exit the application, NH
 }
 
-void panicN(CharPtr errorStr, ULong n) { 
+void panicN(Char* errorStr, UInt32 n) { 
   char tmp_text[100];
   StrPrintF(tmp_text, "[%lu] ", n);
   StrCat(tmp_text,errorStr);
@@ -31,7 +31,7 @@ void panicN(CharPtr errorStr, ULong n) {
 }
 
 Regionpage *mem_ptr_new() {
-  ULong free, max;
+  UInt32 free, max;
   Err err;
   Regionpage *rp;
 
@@ -54,7 +54,7 @@ Regionpage *mem_ptr_new() {
 
 void alloc_regionpages() {
   Regionpage *np;
-  ULong m = NUM_REG_PAGES_ALLOC_BY_SBRK;
+  UInt32 m = NUM_REG_PAGES_ALLOC_BY_SBRK;
 
   freelist = mem_ptr_new();
   m--;
@@ -69,10 +69,10 @@ void alloc_regionpages() {
   np->n = NULL;
 }
 
-ULong *alloc_region(Regiondesc *rdAddr) { 
+UInt32 *alloc_region(Regiondesc *rdAddr) { 
   Regionpage *rp;
   
-  rdAddr = (Regiondesc *) clearStatusBits((ULong)rdAddr);
+  rdAddr = (Regiondesc *) clearStatusBits((UInt32)rdAddr);
 
   if (freelist==NULL) alloc_regionpages();
 
@@ -81,22 +81,22 @@ ULong *alloc_region(Regiondesc *rdAddr) {
 
   rp->n = NULL;
 
-  rdAddr->a = (ULong *)(&(rp->i)); /* We allocate from k.i in the page. */ 
-  rdAddr->b = (ULong *)(rp+1);     /* The border is after this page. */
+  rdAddr->a = (UInt32 *)(&(rp->i)); /* We allocate from k.i in the page. */ 
+  rdAddr->b = (UInt32 *)(rp+1);     /* The border is after this page. */
   rdAddr->p = topRegion;	   /* Push this region onto the region stack. */
   rdAddr->fp = rp;                 /* Update pointer to the first page. */
   topRegion = rdAddr;
 
   /* We have to set the infinitebit. */
-  rdAddr = (Regiondesc *) setInfiniteBit((ULong)rdAddr);
+  rdAddr = (Regiondesc *) setInfiniteBit((UInt32)rdAddr);
 
-  return (ULong *)rdAddr;
+  return (UInt32 *)rdAddr;
 }  
 
-ULong *dealloc_region() { 
-  ULong *sp;
+UInt32 *dealloc_region() { 
+  UInt32 *sp;
 
-  sp = (ULong *) topRegion;   /* topRegion points at the bottom of the region 
+  sp = (UInt32 *) topRegion;   /* topRegion points at the bottom of the region 
 			       * descriptor on the stack. */
 
   /* Insert the region pages in the freelist; there is always 
@@ -128,14 +128,14 @@ void get_regionpage_from_freelist(Regiondesc* rd) {
   else
     rd->fp = rp;                         /* Update pointer to the first page. */
 
-  rd->a = (ULong *)(&(rp->i));           /* Updates the allocation pointer. */
-  rd->b = (ULong *)(rp+1);               /* Updates the border pointer. */
+  rd->a = (UInt32 *)(&(rp->i));           /* Updates the allocation pointer. */
+  rd->b = (UInt32 *)(rp+1);               /* Updates the border pointer. */
 }
 
-ULong *alloc (ULong rdAddr, int n) { 
-  ULong *t1;
-  ULong *t2;
-  ULong *t3;
+UInt32 *alloc (UInt32 rdAddr, int n) { 
+  UInt32 *t1;
+  UInt32 *t2;
+  UInt32 *t3;
   Regiondesc *rd;
 
   rd = (Regiondesc *) clearStatusBits(rdAddr);
@@ -161,7 +161,7 @@ ULong *alloc (ULong rdAddr, int n) {
  *  the region administration structure is updated. The statusbits are  *
  *  not changed.                                                        *
  *----------------------------------------------------------------------*/
-ULong reset_region(ULong rdAddr) { 
+UInt32 reset_region(UInt32 rdAddr) { 
   Regiondesc *rd;
 
   rd = (Regiondesc *) clearStatusBits(rdAddr);
@@ -173,8 +173,8 @@ ULong reset_region(ULong rdAddr) {
     (rd->fp)->n = NULL;
   }
 
-  rd->a = (ULong *)(&(rd->fp)->i); /* beginning of klump in first page */
-  rd->b = (ULong *)((rd->fp)+1);   /* end of klump in first page */
+  rd->a = (UInt32 *)(&(rd->fp)->i); /* beginning of klump in first page */
+  rd->b = (UInt32 *)((rd->fp)+1);   /* end of klump in first page */
 
   return rdAddr;                   /* We preserve rdAddr and the status bits. */
 }
@@ -185,7 +185,7 @@ ULong reset_region(ULong rdAddr) {
  *  descriptor. It deallocates all regions that are placed over sp.        *
  *  The function does not return or alter anything.                        *
  *-------------------------------------------------------------------------*/
-void dealloc_regions_until(ULong rdAddr) { 
+void dealloc_regions_until(UInt32 rdAddr) { 
   Regiondesc *rd;
 
   rd = (Regiondesc *) clearStatusBits(rdAddr);
