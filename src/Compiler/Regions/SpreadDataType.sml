@@ -1,5 +1,5 @@
 (*$SpreadDatatype: SPREAD_DATATYPE CON EXCON LAMBDA_EXP RTYPE FINMAP
-     REGION_EXP EFFECT REGION_STAT_ENV PRETTYPRINT LVARS TYNAME CRASH
+     REGION_EXP EFFECT REGION_STAT_ENV PRETTYPRINT LVARS TYNAME FLAGS CRASH
      *)
 
 (*
@@ -43,6 +43,7 @@ functor SpreadDatatype(
         and type RSE.excon = E.excon 
   sharing type TyName.TyName = E.TyName = E'.TyName = 
            RSE.TyName = R.tyname
+  structure Flags : FLAGS
   structure Crash: CRASH
   structure PP: PRETTYPRINT
     sharing type PP.StringTree = FinMap.StringTree = E.StringTree = RSE.StringTree = R.StringTree
@@ -412,7 +413,7 @@ struct
               ((tyname,db') :: tdb_list, cone) 
           end (* spread_single_datbind *)
 
-      fun msg(s) = (*mads*) output(std_out, s^"\n")
+      fun msg(s) = if !Flags.chat then (*mads*) output(std_out, s^"\n") else ()
       val _ = msg "Computing new datatype bindings..."
       val (target_datbind,cone) = List.foldL (spread_single_datbind) ([],cone) datbind
       val _ = msg "Computing new constructor env..."
