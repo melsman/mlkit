@@ -131,11 +131,17 @@ end ;
 val _ = K.Flags.lookup_flag_entry "delete_target_files" := false;
 *)
 
-val _ = (K.Flags.lookup_flag_entry "region_profiling" := false;
-	 K.build_basislib();
-	 K.Flags.lookup_flag_entry "region_profiling" := true;
-	 K.build_basislib();
-	 K.Flags.lookup_flag_entry "region_profiling" := false)
+val _ = 
+  let fun enable s = K.Flags.lookup_flag_entry s := true
+      fun disable s =  K.Flags.lookup_flag_entry s := false
+      val profflags = ["region_profiling", "print_program_points",
+		       "print_call_explicit_expression", "log_to_file"]
+  in
+    K.build_basislib();
+    app enable profflags;
+    K.build_basislib();
+    app disable profflags
+  end
 
 val _ = K.install();
 

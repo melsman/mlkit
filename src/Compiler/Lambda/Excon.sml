@@ -22,7 +22,6 @@ functor Excon(structure Name : NAME) : EXCON =
 
     (* Predefined exception constructors *)
     val ex_DIV   : excon  = mk_excon "Div"
-    val ex_MOD   : excon  = mk_excon "Mod"
     val ex_MATCH : excon  = mk_excon "Match"
     val ex_BIND  : excon  = mk_excon "Bind"
     val ex_OVERFLOW  : excon  = mk_excon "Overflow"

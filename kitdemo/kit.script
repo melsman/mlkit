@@ -13,9 +13,12 @@
  *   comments are enclosed in (* and *) and can be nested.
  * ----------------------------------------------------------- *)
 
-val region_profiling : bool = false
 val print_physical_size_inference_expression : bool = false
 val print_types : bool = false
 val report_file_sig : bool = false
 val warn_on_escaping_puts : bool = true
 val colwidth : int = 60
+val log_to_file : bool = false
+val print_call_explicit_expression : bool = true
+val region_profiling : bool = false
+val print_program_points : bool = false

@@ -132,7 +132,7 @@ int floorFloat(int f)
   return convertIntToML(i);
 
 raise_floor:
-    raise_exn((int)&Overflow_val);
+    raise_exn((int)&exn_OVERFLOW);
     return;
 }
 
@@ -161,7 +161,7 @@ int roundFloat(int f)
   return convertIntToML(i);
 
 raise_round:
-    raise_exn((int)&Overflow_val);
+    raise_exn((int)&exn_OVERFLOW);
     return;
 }
 
@@ -172,7 +172,7 @@ int truncFloat(int f)
 
   r = get_d(f);
   if ((r >= (((double)Max_Int) + 1.0)) || (r <= (((double)Min_Int)-1.0))) { 
-    raise_exn((int)&Overflow_val);
+    raise_exn((int)&exn_OVERFLOW);
     return;
   }
   return convertIntToML((int)r);
@@ -198,7 +198,7 @@ int ceilFloat(int f)
   return convertIntToML(i);
 
 raise_ceil:
-    raise_exn((int)&Overflow_val);
+    raise_exn((int)&exn_OVERFLOW);
     return;
 }
 

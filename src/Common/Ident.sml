@@ -66,7 +66,6 @@ functor Ident(structure StrId: STRID
     (* other identifiers in the initial basis *)
 
     val id_Div = ID "Div"
-    val id_Mod = ID "Mod"
     val id_Match = ID "Match"
     val id_Bind = ID "Bind"
     val id_Overflow = ID "Overflow"

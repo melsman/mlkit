@@ -390,84 +390,81 @@ void Statistics()
   double Mb = 1024.0*1024.0;
 
   if (showStat) {
-    fprintf(stderr,"\n*************Region statistics***************\n\n");
+    fprintf(stderr,"\n*************Region statistics***************\n");
 
     if (printProfileTab) printProfTab();
 
-    fprintf(stderr,"\nSBRK.\n");
-    fprintf(stderr,"\n  Number of calls to sbrk                     : %10d\n",callsOfSbrk);
-    fprintf(stderr,  "  Number of bytes allocated in each SBRK call : %10d\n", BYTES_ALLOC_BY_SBRK);
-    fprintf(stderr,  "  Total number of bytes allocated by SBRK     : %10d (%3.1fMb)\n", BYTES_ALLOC_BY_SBRK*callsOfSbrk,
+    /*    fprintf(stderr,"  Size of finite region descriptor: %d bytes\n",sizeof(FiniteRegionDesc)); */
+    fprintf(stderr,"\nMALLOC\n");
+    fprintf(stderr,"  Number of calls to malloc: %d\n",callsOfSbrk);
+    fprintf(stderr,"  Alloc. in each malloc call: %d bytes\n", BYTES_ALLOC_BY_SBRK);
+    fprintf(stderr,"  Total allocation by malloc: %d bytes (%.1fMb)\n", BYTES_ALLOC_BY_SBRK*callsOfSbrk,
 	    (BYTES_ALLOC_BY_SBRK*callsOfSbrk)/Mb );
     
-    fprintf(stderr,"\nREGIONPAGES.\n");
-    fprintf(stderr,"\n  Size of one page                           : %10d bytes\n",ALLOCATABLE_WORDS_IN_REGION_PAGE*4);
-    fprintf(stderr,  "  Max. no. of simultaneously allocated pages : %10d\n",maxNoOfPages);
-    fprintf(stderr,  "  Number of allocated pages now              : %10d\n",noOfPages);
-    
-    fprintf(stderr,"\nINFINITE REGIONS.\n");
-    fprintf(stderr,"\n  Size of infinite reg. desc. (incl. prof info) : %10d bytes\n",sizeRo*4);
-    fprintf(stderr,  "  Size of infinite reg. desc. (excl. prof info) : %10d bytes\n",(sizeRo-sizeRoProf)*4);
-    fprintf(stderr,  "  Number of calls to allocateRegionInf          : %10d\n",callsOfAllocateRegionInf);
-    fprintf(stderr,  "  Number of calls to deallocateRegionInf        : %10d\n",callsOfDeallocateRegionInf);
-    
-    fprintf(stderr,"\nFINITE REGIONS.\n");
-    
-    fprintf(stderr,"\n  Size of finite region descriptor       : %10d bytes\n",sizeof(FiniteRegionDesc));
-    fprintf(stderr,  "  Number of calls to allocateRegionFin   : %10d\n",callsOfAllocateRegionFin);
-    fprintf(stderr,  "  Number of calls to deallocateRegionFin : %10d\n",callsOfDeallocateRegionFin);
-    
-    fprintf(stderr,"\n  Number of calls to alloc                  : %10d\n",callsOfAlloc);
-    fprintf(stderr,  "  Number of calls to resetRegion            : %10d\n",callsOfResetRegion);
-    fprintf(stderr,  "  Number of calls to deallocateRegionsUntil : %10d\n",callsOfDeallocateRegionsUntil);
-    
-    fprintf(stderr,"\n  Live data in infinite regions : %10d bytes (%4.1fMb)\n", allocNowInf*4, (allocNowInf*4)/Mb);
-    fprintf(stderr,"  Live data in finite regions   : %10d bytes (%4.1fMb)\n", allocNowFin*4, (allocNowFin*4)/Mb);
-    fprintf(stderr,"  ---------------------------------------------------------\n");
-    fprintf(stderr,"  Total live data               : %10d bytes (%4.1fMb)\n",
-	    (allocNowInf+allocNowFin)*4,((allocNowInf+allocNowFin)*4)/Mb);
-
-    fprintf(stderr,"\n  Maximum space used for region pages      : %10d bytes (%4.1fMb)\n", 
+    fprintf(stderr,"\nREGION PAGES\n");
+    fprintf(stderr,"  Size of one page: %d bytes\n",ALLOCATABLE_WORDS_IN_REGION_PAGE*4);
+    fprintf(stderr,"  Max number of allocated pages: %d\n",maxNoOfPages);
+    fprintf(stderr,"  Number of allocated pages now: %d\n",noOfPages);
+    fprintf(stderr,"  Max space for region pages: %d bytes (%.1fMb)\n", 
 	    maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*4, (maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*4)/Mb);
-    fprintf(stderr,"  Maximum space used on data in region pages : %10d bytes (%4.1fMb)\n", maxAllocInf*4,(maxAllocInf*4)/Mb);
-    fprintf(stderr,"      Space in regions at that time used on profiling : %10d bytes (%4.1fMb)\n", maxAllocProfInf*4,
+    
+    fprintf(stderr,"\nINFINITE REGIONS\n");
+    /*    fprintf(stderr,"  Size of infinite reg. desc. (incl. prof info): %d bytes\n",sizeRo*4); */
+    fprintf(stderr,"  Size of infinite region descriptor: %d bytes\n",(sizeRo-sizeRoProf)*4);
+    fprintf(stderr,"  Number of calls to allocateRegionInf: %d\n",callsOfAllocateRegionInf);
+    fprintf(stderr,"  Number of calls to deallocateRegionInf: %d\n",callsOfDeallocateRegionInf);    
+    fprintf(stderr,"  Number of calls to alloc: %d\n",callsOfAlloc);
+    fprintf(stderr,"  Number of calls to resetRegion: %d\n",callsOfResetRegion);
+    fprintf(stderr,"  Number of calls to deallocateRegionsUntil: %d\n",callsOfDeallocateRegionsUntil);
+
+    fprintf(stderr,"\nALLOCATION\n");    
+    /*
+    fprintf(stderr,"  Alloc. space in infinite regions: %d bytes (%.1fMb)\n", allocNowInf*4, (allocNowInf*4)/Mb);
+    fprintf(stderr,"  Alloc. space in finite regions: %d bytes (%.1fMb)\n", allocNowFin*4, (allocNowFin*4)/Mb);
+    fprintf(stderr,"  Alloc. space in regions: %d bytes (%.1fMb)\n", (allocNowInf+allocNowFin)*4,((allocNowInf+allocNowFin)*4)/Mb);
+    */
+    fprintf(stderr,"  Max alloc. space in pages: %d bytes (%.1fMb)\n", maxAllocInf*4,(maxAllocInf*4)/Mb);
+    /*
+    fprintf(stderr,  "      Space in regions at that time used on profiling: %d bytes (%4.1fMb)\n", maxAllocProfInf*4,
 	    (maxAllocProfInf*4)/Mb);
     fprintf(stderr,"  -------------------------------------------------------------------------------\n");
-    fprintf(stderr,"  Maximum allocated space in region pages             : %10d bytes (%4.1fMb)\n", 
+    */
+    fprintf(stderr,"    incl. prof. info: %d bytes (%.1fMb)\n", 
 	    (maxAllocProfInf+maxAllocInf)*4, ((maxAllocProfInf+maxAllocInf)*4)/Mb);
-    fprintf(stderr,"\n  Memory utilisation for infinite regions (%10d/%10d) : %2.0f%%\n",
+    fprintf(stderr,"  Infinite regions utilisation (%d/%d): %2.0f%%\n",
 	    (maxAllocProfInf+maxAllocInf)*4,
 	    (maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*4),
 	    ((maxAllocProfInf+maxAllocInf)*4.0)/(maxNoOfPages*ALLOCATABLE_WORDS_IN_REGION_PAGE*4.0)*100.0);
-    
-    fprintf(stderr,"\n  Maximum space used on the stack for infinite region descriptors   : %10d bytes (%4.1fMb)\n", 
+
+    fprintf(stderr,"\nSTACK\n");    
+    fprintf(stderr,"  Number of calls to allocateRegionFin: %d\n",callsOfAllocateRegionFin);
+    fprintf(stderr,"  Number of calls to deallocateRegionFin: %d\n",callsOfDeallocateRegionFin);
+    fprintf(stderr,"  Max space for finite regions: %d bytes (%.1fMb)\n", maxAllocFin*4,
+	    (maxAllocFin*4)/Mb);
+    fprintf(stderr,"  Max space for region descs: %d bytes (%.1fMb)\n", 
 	    maxRegionDescUseInf*4, (maxRegionDescUseInf*4)/Mb);
-    fprintf(stderr,"      Additional space used on profiling information at that time   : %10d bytes (%4.1fMb)\n", 
+    fprintf(stderr,"  Max size of stack: %d bytes (%.1fMb)\n",
+	   ((int)maxStack)-((int)stackBot)-(maxProfStack*4), (((int)maxStack)-((int)stackBot)-(maxProfStack*4))/Mb);
+    fprintf(stderr,"    incl. prof. info: %d bytes (%.1fMb)\n", 
+	    ((int)maxStack)-((int)stackBot), (((int)maxStack)-((int)stackBot))/Mb);
+    fprintf(stderr,"    in profile tick: %d bytes (%.1fMb)\n", 
+	    ((int)maxStackP)-((int)stackBot), (((int)maxStackP)-((int)stackBot))/Mb);
+    /*
+    fprintf(stderr,  "      Space used on prof. info. at that time: %d bytes (%.1fMb)\n", 
 	    maxRegionDescUseProfInf*4, (maxRegionDescUseProfInf*4)/Mb);
     fprintf(stderr,"  ---------------------------------------------------------------------------------------------\n");
-    fprintf(stderr,"  Maximum space used on infinite region descriptors on the stack    : %10d bytes (%4.1fMb)\n", 
+    fprintf(stderr,"  Max space used on infinite region descs on stack: %d bytes (%4.1fMb)\n", 
 	    (maxRegionDescUseInf+maxRegionDescUseProfInf)*4,((maxRegionDescUseInf+maxRegionDescUseProfInf)*4)/Mb);
-    
-    fprintf(stderr,"\n  Maximum space used on the stack for finite regions              : %10d bytes (%4.1fMb)\n", maxAllocFin*4,
-	    (maxAllocFin*4)/Mb);
-    fprintf(stderr,"      Additional space used on profiling information at that time : %10d bytes (%4.1fMb)\n", 
+    fprintf(stderr,"      Space used on profiling information at that time: %d bytes (%4.1fMb)\n", 
 	    (maxAllocProfFin+maxRegionDescUseProfFin)*4, ((maxAllocProfFin+maxRegionDescUseProfFin)*4)/Mb);
     fprintf(stderr,"  -------------------------------------------------------------------------------------------\n");
-    fprintf(stderr,"  Maximum space used on finite regions on the stack               : %10d bytes (%4.1fMb)\n", 
+    fprintf(stderr,"  Max space used on finite regions on stack: %d bytes (%4.1fMb)\n", 
 	    (maxAllocFin+maxAllocProfFin+maxRegionDescUseProfFin)*4,((maxAllocFin+maxAllocProfFin+maxRegionDescUseProfFin)*4)/Mb);
-    
-    fprintf(stderr,"\n  Max. size of stack when program was executed        : %10d bytes (%4.1fMb)\n", 
-	    ((int)maxStack)-((int)stackBot), (((int)maxStack)-((int)stackBot))/Mb);
-    fprintf(stderr,"    Space used on profiling information at that time  : %10d bytes (%4.1fMb)\n", 
+    fprintf(stderr,"    Space used on profiling information at that time: %d bytes (%4.1fMb)\n", 
 	    maxProfStack*4, (maxProfStack*4)/Mb);
     fprintf(stderr,"  -------------------------------------------------------------------------------\n");
-    fprintf(stderr,"  Max. stack use excl. profiling information          : %10d bytes (%4.1fMb)\n",
-	   ((int)maxStack)-((int)stackBot)-(maxProfStack*4), (((int)maxStack)-((int)stackBot)-(maxProfStack*4))/Mb);
-    
-    fprintf(stderr,"\n  Max. size of stack in a profile tick                : %10d bytes (%4.1fMb)\n", 
-	    ((int)maxStackP)-((int)stackBot), (((int)maxStackP)-((int)stackBot))/Mb);
-
-    fprintf(stderr,"\n*********End of region statistics*********\n\n\n");
+	    */
+    fprintf(stderr,"\n*********End of region statistics*********\n");
   }
   return;
 }

@@ -401,8 +401,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
     fun add_line_test_report line =
       test_report := (line :: (!test_report))
 
-    fun add_lines_test_report lines =
-      List.map (fn line => add_line_test_report line) lines
+    fun add_lines_test_report lines : unit =
+      List.apply (fn line => add_line_test_report line) lines
 
     fun add_error_test_report header error_msg =
       add_lines_test_report 
@@ -684,8 +684,9 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (* Functions used to compile the ML source programs *)
     (****************************************************)
 
-    fun reset() = (Manager.reset();
+(*    fun reset() = (Manager.reset();
 		   Basics.Ident.reset())
+ME 1998-09-23*)
 
     (* This function compiles a project and leaves a file "run" in the target directory. *)
     (* This file can then be executed.                                                   *)
@@ -748,7 +749,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	     let
 	       val filepath = OS.Path.joinDirFile{dir=source_directory(), file=filename}
 	       val unitname = OS.Path.base filename
-	       val _ = reset()
+(*	       val _ = reset()
+ME 1998-09-23*)
 	       val _ = ok_log_report ("Compiling ML source file: " ^ filename ^ ".")
 	       val _ = Manager.comp filepath
 		       handle X => (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
@@ -786,8 +788,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	   fun acceptance_test_project (project_name,input_to_project) =
 	     let
 	       val _ = change_directory (source_directory())
-	       val _ = reset()
-
+(*	       val _ = reset()
+ME 1998-09-23*)
 	       val _ = ok_log_report ("Compiling project " ^ project_name ^ ".")
 	       val _ = evalProject project_name handle X => 
 		 (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
@@ -926,7 +928,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	     let
 	       val filepath = OS.Path.joinDirFile{dir=source_directory(), file= filename}
 	       val unitname = OS.Path.base filename
-	       val _ = reset()
+(*	       val _ = reset()
+ME 1998-09-23*)
 (*	       val log_filename = new_compile_strategy_dir ^ filename ^ ".log" *)
 	                     (*source_directory () ^ filename ^ ".log"16/09/1996, Niels*)
 	       val _ = ok_log_report ("Compiling ML source file: " ^ filename ^ ".")
@@ -970,8 +973,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	   fun performance_test_project (project_name,input_to_project) =
 	     let
 	       val _ = change_directory (source_directory())
-	       val _ = reset()
-
+(*	       val _ = reset()
+ME 1998-09-23*)
 	       val _ = ok_log_report ("Compiling ML project " ^ project_name ^ ".")
 	       val _ = 
 		 let
@@ -1159,7 +1162,6 @@ old*)
 	in
 	  (Flags.auto_import_basislib := false;
 	   dir_test ();
-	   add_lines_test_report [];
 	   maybe acceptance_test_flag acceptance_test;
 	   maybe performance_test_flag performance_test;
 	   export_test_report();

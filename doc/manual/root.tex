@@ -1,4 +1,4 @@
-\documentclass[12pt]{book}
+ \documentclass[12pt]{book}
 \usepackage[dvips]{graphics}
 \usepackage{makeidx}
 \usepackage{theorem}
@@ -635,7 +635,7 @@ and the target of this copy must be the regions of {\tt g}, because
 \boxml{nthgen'} is a region endomorphism (see
 Figure~\ref{doublecopy.fig}).  All in all, we have achieved that at
 most two generations are live at the same time (a fact that can be
-checked by inspecting the region annotated code, if one feels
+checked by inspecting the region-annotated code, if one feels
 passionately about it).\footnote{The source file for the life program
   is \boxml{kitdemo/life.sml}\index{life@{\tt life}}. Running programs
   is described in Section~\ref{tryit.sec}. When run with n=10000 on
@@ -837,7 +837,7 @@ These regions are referred to as
 \index{runtime stack}%
 runtime stack.  An infinite region is represented as a linked list of
 fixed-size 
-\index{region page}%
+\index{region pages}%
 pages.  The runtime system maintains a free list of such pages. An
 infinite region is represented by a 
 \index{region descriptor}%
@@ -1210,19 +1210,27 @@ There are several things to notice from this example.
 \label{reganntypes.sec}
 ML type inference infers a type for every expression in the program.
 Region inference extends this idea by inferring for each expression a
-\index{type!region-annotated}{\em region-annotated type}. The
-region-annotated type of an expression is the ML type of the
-expression decorated with extra region information.  In a
-region-annotated type, every type constructor that represents boxed
-values (e.g., pairs and strings) is paired with a region variable,
-indicating where the value is to be put at runtime. Type constructors
-that represents unboxed values (e.g., integers and booleans) are
-paired with the region variable $\rhoword$, which denotes a
-non-existing global region.\index{$\rhoword$}\index{boxing}\index{value!boxed}\index{value!unboxed} As an
-abbreviation, we shall often omit the region variable $\rhoword$ from
-region-annotated types; and so shall the Kit.
+\index{type with place}%
+\index{region-annotated type}%
+{\em (region-annotated) type with place}. We use 
+\index{\mu}%
+$\mu$ to range over types with places
+$$\mu::=(\tau,\rho)$$
+where $\tau$ is a {\em region-annotated type},
+which again can contain other region-annotated types with places. The
+region-annotated type with place of an expression is the ML type of
+the expression decorated with extra region information; every type
+constructor that represents boxed values (e.g., pairs and strings) is
+paired with a region variable, indicating where the value is to be put
+at runtime. Type constructors that represents unboxed values (e.g.,
+integers and booleans) are paired with the region variable $\rhoword$,
+which denotes a non-existing global
+region.\index{$\rhoword$}\index{boxing}\index{value!boxed}\index{value!unboxed}
+As an abbreviation, we shall often omit the region variable $\rhoword$
+from region-annotated types and from region-annotated types with
+places; and so shall the Kit.
 
-The following are examples of region-annotated types
+Here are some examples of region-annotated types with places:
 \begin{description}
 \item[\fbox{$\boxml{unit}$}] The type of 0-tuples.  Integers,
   booleans, and 0-tuples are represented \index{boxing}unboxed at
@@ -1236,12 +1244,7 @@ The following are examples of region-annotated types
   region $\rho_1$.
 \end{description}
 
-%A pair of a region-annotated type and a region variable is called a
-%``(region-annotated) type and place''.  We use $\mu$ to range over
-%types and places\index{type and place}
-%$$\mu::=(\tau,\rho)$$
-
-One can get the Kit to print the region-annotated types it infers
+One can get the Kit to print the region-annotated types with places that it infers
 for binding occurrences of variables. 
 The above example then becomes
 \begin{verbatim}
@@ -1313,7 +1316,7 @@ But how does the Kit know that it is safe to de-allocate {\tt r7}
 where the \index{letregion@{\tt letregion}}{\tt letregion} ends?\index{region!de-allocation}
 
 The answer lies in the fact that the Kit infers for every expression
-not just a region-annotated type, but also a so-called \index{effect}{\em effect}. 
+not just a region-annotated type with place, but also a so-called \index{effect}{\em effect}. 
 An effect is a finite set of \index{effect!atomic}
 atomic effects. Two forms of atomic
 effect are \index{put@{$\Put$}}$\Put(\rho)$ and \index{get@{$\Get$}}$\Get(\rho)$, where $\rho$ as usual ranges
@@ -1332,7 +1335,7 @@ and finds that it has region-annotated type $\boxml{int}$ and effect
 $\{\Put(\boxml{r7}), \Get(\boxml{r7})\}$.
 
 Whenever a region variable occurs free in the effect of an expression but occurs
-free neither in the region-annotated type of the expression nor in the type of any
+free neither in the region-annotated type with place of the expression nor in the type of any
 program variable that occurs free in the expression then that region variable denotes
 a region that is used only locally within the expression.  
 That this is true is of course far from trivial, but it
@@ -1342,7 +1345,7 @@ algorithm wraps a \index{letregion@{\tt letregion}}{\tt letregion} binding of th
 around that expression.
 
 In our example, there are no free variables in $e_0$; moreover, $\boxml{r7}$
-occurs in the effect of $e_0$ but not in the region-annotated type of $e_0$. Thus,
+occurs in the effect of $e_0$ but not in the region-annotated type with place of $e_0$. Thus,
 the region inference algorithm inserts a {\tt letregion} binding of $\boxml{r7}$
 around $e_0$.
 
@@ -1408,7 +1411,7 @@ all 32 bits are available.
 \section{Reals}
 The 
 \index{initial basis}%
-initial basis provides the following operations on reals:
+initial basis provides the following top-level operations on reals:
 \index{{\tt =}}\index{{\tt <>}}\index{{\tt <}}\index{{\tt >}}\index{{\tt <=}}\index{{\tt >=}}\index{{\tt +}}\index{{\tt -}}\index{{\tt *}}\index{{\tt /}}\index{\verb+~+}\index{abs@{\tt abs}}\index{real@{\tt real}}\index{trunc@{\tt trunc}}\index{floor@{\tt floor}}\index{ceil@{\tt ceil}}\index{round@{\tt round}}
 \begin{verbatim}
 infix  4 < > <= >= 
@@ -1471,7 +1474,7 @@ region pages. Characters of a string takes up only 8 bits of
 memory each.
 
 Calls of {\tt ord}, {\tt chr}, {\tt str}, and {\tt size} take constant
-time and space.  Calls of {\tt explode}, {\tt implode}, {tt concat},
+time and space.  Calls of {\tt explode}, {\tt implode}, {\tt concat},
 {\tt substring}, and \verb+^+ take time and space proportional to the
 sum of the size of their input and their output.
 
@@ -1637,9 +1640,9 @@ example, Figure~\ref{listregions.fig} shows how the list
 \boxml{["a","b","c"]} is laid out in memory.
 
 In general, the region-annotated type of a list takes the form
-$$(\tau,[\rho])\boxml{list}$$
-where $\tau$ is the region-annotated
-type of the members of the list and where $\rho$ is the region where
+$$(\mu,[\rho])\boxml{list}$$
+where $\mu$ is the region-annotated
+type with place of the members of the list and where $\rho$ is the region where
 the auxiliary pairs of the list are stored.  For example, the region-annotated type
 $$((\boxml{string},\rho_1),[\rho_2])\boxml{list}$$
 classifies lists
@@ -1651,7 +1654,7 @@ The reason is that the physical representation of lists treats the constructors
 as unboxed in the sense described in Section~\ref{ublists.sec}.
 
 Very importantly, not all lists need to live in the same regions.
-Formally, {\tt nil} and {\tt ::} have the following region-annotated types:
+Formally, {\tt nil} and {\tt ::} have the following region-annotated type schemes:
 \begin{eqnarray*}
 \boxml{nil} & \mapsto & \forall\alpha\rho_1\rho_2.((\alpha,\rho_1),[\rho_2])\boxml{list}\\
 \boxml{::}  & \mapsto & \forall\alpha\rho_1\rho_2\epsilon.((\alpha,\rho_1)\ast((\alpha,\rho_1),[\rho_2])\boxml{list},\rho_2)
@@ -1844,35 +1847,36 @@ the two lists generated by this program are distinct.
 The list that escapes to top level is stored in the global region {\tt
   r1}, whereas the list that does not escape is stored in the local
 region {\tt r19}.
-\section{Region Type Schemes}
+\section{Region-Annotated Type Schemes}
 \label{regtych.sec}
 A 
-\index{type scheme!region-polymorphic}%
-{\em region-polymorphic type scheme} takes the form
+\index{type scheme!region-annotated}%
+\index{region-annotated type scheme}%
+{\em (region-annotated) type scheme\/} takes the form
 $$\sigma::=\lsigma$$
 where $\alpha_1,\ldots,\alpha_n$ are type variables,
 $\rho_1,\ldots,\rho_k$ are region variables,
-$\epsilon_1,\ldots,\epsilon_m$ are effect variables,
-and $\tau$ is a region-annotated type.\index{effect variable!bound}
+$\epsilon_1,\ldots,\epsilon_m$ are 
+\index{effect variable!bound}%
+effect variables, and $\tau$ is a region-annotated type.
 
 The types of \boxml{nil} and \boxml{::} in Section~\ref{listtypes.sec} are examples of 
 \index{region polymorphism}%
-region-polymorphic type schemes. 
+region-annotated type schemes. 
 
 There is a close connection between, on the one hand, the formal and
 actual 
 \index{region parameter}%
-region parameters found in $\RegExp$
-(and $\MulExp$) programs, and, on the other hand, the 
-\index{region type scheme}%
-region type schemes that the region inference algorithm
-assigns to recursively declared functions. The formal region
+region parameters found in $\RegExp$ (and $\MulExp$) programs, and, on
+the other hand, the region-annotated type schemes that the region inference
+algorithm assigns to recursively declared functions. The formal region
 parameters of a function stem from the bound region variables of the
-region type scheme of that function.  The actual region parameters which
-annotate a call of the function are the region variables to which the bound
-region variables are instantiated at that particular application.
+region-annotated type scheme of that function.  The actual region parameters
+which annotate a call of the function are the region variables to
+which the bound region variables are instantiated at that particular
+application.
 
-For example, the region type scheme of {\tt fromto} from Figure~\ref{fromto.fig} is
+For example, the region-annotated type scheme of {\tt fromto} from Figure~\ref{fromto.fig} is
 $$\forall\rho_7\rho_8\epsilon.(\boxml{int} \ast \boxml{int},\rho_8)\ar{\epsilon.\{
 \Get(\rho_8),\Put(\rho_7)\}} (\boxml{int},[\rho_7])\boxml{list}$$
 At the last call of {\tt fromto} in Figure~\ref{fromto.fig},
@@ -1899,28 +1903,29 @@ which is called
 trouble to distinguish between $\Put$ and \index{get@{$\Get$}}$\Get$
 effects\label{bother-to-distinguish-get-n-put}.
 
-\index{region type scheme and place}%
+\index{type scheme with place!region-annotated}%
+\index{region-annotated type scheme with place}%
 Region-polymorphic functions also have to be allocated somewhere.
 Therefore, the region information associated with a region-polymorphic
-function is a {\em region type scheme and place}, that is, a pair
+function is a {\em (region-annotated) type scheme with place}, that is, a pair
 $(\sigma,\rho)$.  Indeed, every binding of a variable to a boxed value
 (whether the binding is done by {\tt fun}, {\tt let}, or {\tt fn})
-associates a region type scheme and place with the binding occurrence.
+associates a region-annotated type scheme with place to the binding occurrence.
 (In the case of {\tt let}, the type scheme will have no quantified
 region and effect variables, however, and in the case of {\tt fn}, the
 type scheme will have no quantified variables at all.)  In the
-following, when we refer to ``the region type (scheme) and place'' of
-some variable, we mean the region type (scheme) and place that is
+following, when we refer to ``the region-annotated type (scheme) with place'' of
+some variable, we mean the region-annotated type (scheme) with place that is
 associated with the binding occurrence of the variable. The region
 type scheme should be clearly distinguished from instances of the type
 scheme, which decorate non-binding occurrences of the variable.
 
-The region type scheme and place of a variable bound to an unboxed
+The region-annotated type scheme with place of a variable bound to an unboxed
 value is always on the form $(\sigma,\rhoword)$, where $\sigma$ is the
-region type scheme associated with the variable and where $\rhoword$ denotes
+region-annotated type scheme associated with the variable and where $\rhoword$ denotes
 a non-existent global region (see Section~\ref{reganntypes.sec}). In
-the following, we shall often abbreviate the region type scheme and
-place of a variable bound to an unboxed value by its region type
+the following, we shall often abbreviate the region-annotated type scheme with
+place of a variable bound to an unboxed value by its region-annotated type
 scheme.
 
 \section{Endomorphisms and Exomorphisms}
@@ -1928,7 +1933,7 @@ The {\tt fromto} function from Section~\ref{regtych.sec} has the property that
 it can put its result in regions that are separate from the regions where its
 argument lies. This is not surprising, if one looks at the declaration of the
 function; it creates a brand new list that does not share with the argument
-$(a,b)$, except for the integers $a$ and $b$, which may end up in the list.
+{\tt (a,b)}, except for the integers {\tt a} and {\tt b}, which may end up in the list.
 The freshness of the generated list is also evident from the region type scheme
 of the function; different region variables are used for the argument and the result.
 
@@ -1946,7 +1951,7 @@ Thus, \boxml{ys} and \boxml{xs @ ys} must be in the same regions. However, the a
  \boxml{xs} and \boxml{ys} need not be in the same regions, although
 the elements of \boxml{xs} and \boxml{ys} clearly must be in the same regions,
 because they end up in the same list. These properties of append are summarised
-in the inferred region type scheme:
+in the inferred region-annotated type scheme:
 \begin{eqnarray*}
 &&\forall\alpha\rho_1\rho_2\rho_2'\rho_4\epsilon.
    ( ((\alpha,\rho_1),[\rho_2])\boxml{list} \ast
@@ -1955,7 +1960,7 @@ in the inferred region type scheme:
 \end{eqnarray*}
 When one writes a  function it is a good idea to consider
 whether one wants the function  to create values in fresh regions or
-whether one wants it to add value to existing regions. 
+whether one wants it to add values to existing regions. 
 Adding to existing
 regions can of course make these regions too large and long-lived,
 because the entire region will be alive for as long as one of the values
@@ -1998,7 +2003,7 @@ function can be forced to act as an endomorphism by the calling
 context. As an example, consider the expression
 $$\boxml{if true then cp1 l else l}$$
 Because the two branches of the conditional are required to have the same region-annotated
-type, \boxml{l} and \boxml{cp1 l} are forced to be in the same regions.
+type with place, \boxml{l} and \boxml{cp1 l} are forced to be in the same regions.
 %
 \section{Polymorphic Recursion}
 %
@@ -2170,7 +2175,7 @@ Although region inference is based on types and effects, it is also
 to some extent syntax dependent: two programs can easily be equivalent
 in their input-output behaviour and yet result in very different memory
 behaviour. In this chapter, we discuss how to write 
-\index{declaration!of value}%
+\index{declaration!value}%
 declarations so as to obtain good results with region inference. The
 region inference rules that underlie the ML Kit with Regions are
 related to the scope rules of ML, so we start by a (very informal)
@@ -2265,10 +2270,10 @@ The ground rule of region inference
 is that as long as a value variable is in scope, the value bound to it
 at runtime will remain allocated. More precisely:
 \begin{quote}
-       Ground Rule: The region rules forbid transforming an expression
-       $\exp$ into \boxml{letregion $\rho$ in $\exp$ end} if $\exp$ is
-       in the scope of an identifier that has $\rho$ free in its region type
-       scheme and place.
+  Ground Rule: The region rules forbid transforming an expression
+  $\exp$ into \boxml{letregion $\rho$ in $\exp$ end} if $\exp$ is in
+  the scope of an identifier that has $\rho$ free in its
+  region-annoated type scheme with place.
 \end{quote}
 For an example, consider
 \begin{verbatim}
@@ -2345,9 +2350,9 @@ exomorphic,
 there will be no sharing between {\tt rest} and the other lists. The region variable that denotes the region that holds the 
 the auxiliary pairs of {\tt rest} appears in the effect of the
 (revised) {\tt let} expression. However, this region variable does not occur free in the
-region type scheme and place of any value variable in scope at that point, not
-even in the region type scheme and place of {\tt sieve}, which only has the region that
-contains {\tt sieve} itself free in its region type scheme and place. 
+region-annotated type scheme with place of any value variable in scope at that point, not
+even in the region-annotated type scheme with place of {\tt sieve}, which only has the region that
+contains {\tt sieve} itself free in its region-annotated type scheme with place. 
 Consequently, region inference  wraps
 the {\tt let} expression by a {\tt letregion} binding of the region
 variable in question:
@@ -2394,7 +2399,7 @@ the reader will see it employed several times in what follows.
 more memory than one would expect, typically because of memory not
 being re-cycled as early as it should (or not at all).
 
-If a region-polymorphic function with region type scheme $\sigma$
+If a region-polymorphic function with region-annotated type scheme $\sigma$
 has a put effect on a region variable 
 that is not amongst the bound region variables of $\sigma$, then
 one quite possibly has a space leak; every application of the
@@ -2424,11 +2429,11 @@ the result type of {\tt f},
 so the writing is a side-effect at the implementation level,
 even though there are no references in the program.
 
-The region type scheme inferred for \boxml{f} is
+The region-annotated type scheme inferred for \boxml{f} is
 $$\forall\epsilon.\boxml{int} \ar{\epsilon.\{\Put(\mathtt{r5})\}} \boxml{int}$$
 where the region-annotated type of \boxml{x} is
 $$(\boxml{int},[\boxml{r5}])\boxml{list}$$
-Here we see that $\boxml{r5}$ is free in the region type scheme and appears with a put effect.
+Here we see that $\boxml{r5}$ is free in the region-annotated type scheme and appears with a put effect.
 
 \section{Warnings About Space Leaks}
 The Kit issues a warning each time it meets a 
@@ -2441,7 +2446,7 @@ Figure~\ref{escape_mulexp.fig}. During compilation of {\tt g}, the Kit issues th
 following warning:\footnote{To provoke the warning, one has to disable
 inlining in the {\Lam} optimiser; this is done by setting the {\tt
     Maximum inline size}, found in the 
-	{\tt Control/Optimiser} sub-menu, to {\tt 0}.\index{optimiser}}
+        {\tt Control/Optimiser} sub-menu, to {\tt 0}.\index{optimiser}}
 \begin{figure}
 \hrule
 \begin{verbatim}
@@ -2675,13 +2680,13 @@ of a region-annotated reference type is:
 $$(\mu\,\REF,\rho)$$
 Informally, a reference $r$ has this type
 if it is the address of a word in the region denoted by $\rho$ and,
-moreover, $\mu$ is the region-annotated type and place of the contents of that word. 
+moreover, $\mu$ is the region-annotated type with place of the contents of that word. 
 For example, assume
 $\rho$ is bound to some region name, say \boxml{r35}; then the evaluation
 of the declaration ~\boxml{val x = ref $\at\,\rho$ 3}~ results in the environment
 $\{\boxml{x}\mapsto r\}$, where $r$ is the address of a word with
 contents 3 residing in region \boxml{r35}, see Figure~\ref{refs.fig}.
-The type of \boxml{x} is {\tt ((int,$\rhoword$) ref, $\rho$)}  which, as usual,
+The type of \boxml{x} is {\tt ((int,$\rhoword$) ref, $\rho$)},  which, as usual,
 we shorten to \boxml{(int ref, $\rho$)}.
 
 \begin{figure}
@@ -2707,7 +2712,7 @@ but it could equally well be infinite.}
 
 
 References are treated like all other values by region inference.
-The region-annotated types given to the three built-in operations
+The region-annotated type schemes given to the three built-in operations
 are:
 \medskip
 
@@ -2719,7 +2724,7 @@ ref & \forall\alpha\rho_1\rho_2\epsilon.(\alpha,\rho_1) \ar{\epsilon.\{\Put(\rho
 \medskip
 
 \noindent
-Although the region type scheme for \verb+:=+ has in it a put effect
+Although the type scheme for \verb+:=+ has in it a put effect
 on the region holding the reference, assignment does not actually
 allocate any values in this region. Instead, it manipulates an already
 existing value in the region. Assigning a value $v$ to a reference $r$
@@ -2729,7 +2734,7 @@ The advantage of the chosen scheme for handling references is that
 reference creation, dereferencing, and assignment all are constant-time
 operations. The disadvantage is that if two values may be
 assigned to the same reference, then they are forced to be in the same regions (cf. the
-region type schemes given above). 
+region-annotated type schemes given above). 
 
 If we compile the example from Section~\ref{refbasics.sec}, we get the 
 program shown in Figure~\ref{otherrefs.fig}.\footnote{Program \boxml{kitdemo/refs3.sml}.}
@@ -2774,8 +2779,8 @@ and whose contents is first 3, then 6.  The region denoted
 by {\tt r8} contains a single boolean.
 Also notice that the word containing 5 is
 designated {\tt r7}, 
-because the {\tt then} and {\tt else} branches must give the same
-region-annotated type. Finally, notice that all 
+because the {\tt then} and {\tt else} branches must be given the same
+region-annotated type with place. Finally, notice that all 
 references will be reclaimed automatically
 at the end of the {\tt letregion} constructs 
 that bind \boxml{r7} and \boxml{r8}.
@@ -2854,7 +2859,7 @@ and the Kit warns us that there is a possible space leak (Chapter~\ref{spaceleak
  *** Warnings ***
 memo_id  has a type scheme with escaping put effects 
 on region(s): 
- r1, which is also free in the type scheme and places of :  
+ r1, which is also free in the type schemes with places of :  
   less_int minus_int := ! r Div Mod Match Bind
 \end{verbatim}
 
@@ -2893,7 +2898,7 @@ use information about the use of the data type.
 
 Spreading
 determines  (a) a so-called \index{arity}arity of every type name
-that the data type declaration introduces and (b) a region type scheme for
+that the data type declaration introduces and (b) a region-annotated type scheme for
 every value constructor introduced by the data type declaration. 
 
 In the Definition of Standard ML every type name has an attribute, 
@@ -3134,7 +3139,7 @@ We therefore make the following recommendations:
       it is the creation of many different constructed exception values
       that can lead to space leaks. Nullary
       constructors may be raised 
-	  without incurring memory costs.
+          without incurring memory costs.
 \end{enumerate}
 
 \section{Raising Exceptions}
@@ -3521,14 +3526,14 @@ Now there are the following cases:
       use {\tt attop} (see Figure~\ref{b1.fig})\index{attop@{\tt attop}};
 \item[B2]{\it $\rho$ is bound by a {\tt letregion} expression inside the
       smallest enclosing function:} use {\tt atbot} if no locally live
-      variable at the allocation point has $\rho$ free in its region 
-      type scheme and place (Section~\ref{regtych.sec}), and use {\tt attop} otherwise 
+      variable at the allocation point has $\rho$ free in its region-annotated
+      type scheme with place (Section~\ref{regtych.sec}), and use {\tt attop} otherwise 
       (see Figure~\ref{b2.fig})\index{letregion@{\tt letregion}};
     \item[B3 (first attempt)]{\it $\rho$ is a formal parameter of a
         region-polymorphic function whose right-hand side is the
         smallest enclosing lambda abstraction:} use \index{sat@{\tt
           sat}}{\tt sat}, if no locally live variable at the
-      allocation point has $\rho$ free in its region type scheme and place, and
+      allocation point has $\rho$ free in its region-annotated type scheme with place, and
       use {\tt attop} otherwise (see Figure~\ref{b3.fig}).
 \end{description}
 \begin{figure}
@@ -3564,7 +3569,7 @@ by rule~B1.\index{function!Curried}}
 \end{tabbing}
 \end{center}
 \caption{The situation considered in B2. If no locally live variable
-  $l$ has $\rho$ occurring in its region type scheme and place, replace
+  $l$ has $\rho$ occurring in its region-annotated type scheme with place, replace
   $\at\,\rho$ by $\atbot\,\rho$, otherwise by $\attop\,\rho$.}
 \medskip
 \hrule
@@ -3581,7 +3586,7 @@ by rule~B1.\index{function!Curried}}
 \end{tabbing}
 \end{center}
 \caption{The situation considered in B3. If no locally live variable
-  $l$ has in its region type scheme and place a region variable that may be
+  $l$ has in its region-annotated type scheme with place a region variable that may be
   aliased with $\rho$, replace $\at\,\rho$ by $\sat\,\rho$, otherwise
   by $\attop\,\rho$.}  
 \medskip
@@ -3598,7 +3603,7 @@ variable needs when used. The lifetime of the region bound to
 $\rho$ is given by the {\tt letregion} expression, which is in the same function
 as the allocation point. Thus,  
 if no locally live variable at the allocation point
-has $\rho$ free in its region type scheme and place,
+has $\rho$ free in its region-annotated type scheme with place,
 then $\rho$ really does not contain any
 live value at that allocation point.
 
@@ -3607,7 +3612,7 @@ in this case there is a complication:
 $\rho$ is only a formal parameter so it may
 be instantiated to different regions; 
 in particular it may be instantiated to 
-a region variable that does occur free in the region type scheme and place of a
+a region variable that does occur free in the region-annotated type scheme with place of a
 locally live variable at the allocation point. If that happens, 
 rule (B3), as stated, is not sound!
 
@@ -3646,7 +3651,7 @@ including $\rho$ itself. The rule that replaces (B3) is:
       whose right-hand side is the smallest enclosing lambda abstraction:}
       use {\tt sat}, if, for every variable $l$ that is locally live 
       at the allocation point and for every region variable $\rho'$
-      that occurs free in the region type scheme and place of $l$, it
+      that occurs free in the region-annotated type scheme with place of $l$, it
       is the case that $\langle\rho\rangle\cap\langle\rho'\rangle =\emptyset$;
       use {\tt attop} otherwise.
 \end{description}
@@ -3656,8 +3661,8 @@ including $\rho$ itself. The rule that replaces (B3) is:
 and the allocation point (\ref{allocpoint})
 does not occur inside any function abstraction.
 As in (B2), use {\tt atbot} if no locally live
-variable at the allocation point has $\rho$ free in its region 
-type scheme and place, and use {\tt attop} otherwise.
+variable at the allocation point has $\rho$ free in its region-annotated
+type scheme with place, and use {\tt attop} otherwise.
 
 
 \section{Example: Computing the Length of a List}
@@ -3918,7 +3923,7 @@ and {\tt forceResetting} to other ML systems, simply declare
 before compiling the program developed using the Kit.
 
 Let $\rho$ be a region variable that occurs free in the
-region type scheme and place of {\it vid}.  Let $m$ be the storage mode
+region-annotated type scheme with place of {\it vid}.  Let $m$ be the storage mode
 determined for $\rho$ at a program point according to the rules of the
 previous section.  Whether resetting of {\it vid} at that program point
 actually takes place at runtime, depends on $m$ and on whether
@@ -4010,7 +4015,7 @@ Unfortunately, the storage mode analysis complains:
  *** Warnings ***
 resetRegions(xs): 
    You have suggested resetting the regions that appear free 
-   in the region type scheme and place of 'xs', i.e., in
+   in the type scheme with place of 'xs', i.e., in
    (int, [r58]) list
    (1)                                                    
         'r58': there is a conflict with the locally
@@ -4093,7 +4098,8 @@ upper triangle contains sorted elements.
 The program was compiled with
 profiling enabled and then run with the command
 \boxml{run -microsec 100000}. The picture \index{region.ps@{\tt region.ps}}(\boxml{region.ps}) 
-was generated by the \index{sampleMax@{\tt sampleMax}}
+was generated by the 
+\index{sampleMax@{\tt -sampleMax} option}%
 \index{eps file}%
 \index{rp2ps@{\tt rp2ps}}%
 command \boxml{rp2ps -region -sampleMax 1000 -eps 137 mm}
@@ -4140,20 +4146,18 @@ at every call of {\tt next}, the ``input buffer region'' will be
 reset.
 
 The other important loop in the program is {\tt driver}, a function that
-repeatedly reads a function name from a given input stream, opens the file
+repeatedly reads a file name from a given input stream, opens the file
 with that name, and calls {\tt scan} to process the file. Once again, we
 want to keep at most one file name in memory at a time, so we would like
 the region containing the file name to be reset upon each iteration.
-As it turns out, our {\tt readWord} will always store the string it
-creates at the top of the region in question. The reason is that
-it calls {\tt implode}, which is declared in and exported from 
-the Standard Library. It is {\tt implode} that always stores {\tt attop}, by
-rule B3 and the fact that formal region parameters of exported functions
-are connected to global regions in the region flow graph. 
-Thus, the two occurrences of $\resetr$ are necessary. In general,
-when splitting a program unit into two, one may have 
-to insert explicit $\resetr$ into the second unit, when operations from the
-first unit are called. 
+As it turns out, {\tt readWord} will always try to store the string it
+creates at the bottom of the region in question. 
+
+In general however, when splitting a program unit into two, one may have to
+insert explicit $\resetr$ into the second unit, when operations from
+the first unit are called. This extra resetting may be necessary
+because formal region parameters of exported functions are connected
+to global regions in the region flow graph (cf., rule B3).
 
 \pagebreak
 \hrule
@@ -4199,10 +4203,10 @@ local
     end
   
   fun report_file(filename, n, inside) = 
-      writeln (filename ^ ": size = " ^ Int.toString n
-               ^ " comments: " ^ Int.toString inside ^ " ("
-               ^ (Int.toString(percent(inside, n)) 
-                  handle _ => "") ^ "%)");
+    writeln(concat[filename, ": size = ", Int.toString n,
+                   " comments: ", Int.toString inside, " (",
+                   (Int.toString(percent(inside, n)) 
+                    handle _ => "-"), "%)"])
 
   (* scan_file(filename) scans through the file named filename 
      returning either SOME(size_in_bytes, size_of_comments)
@@ -4220,13 +4224,13 @@ local
            TextIO.closeIn is;
            NONE)
    end handle IO.Io {name,...}  => 
-          (writeln(name ^ " failed."); NONE)
+        (writeln(name^" failed."); NONE)
   
   fun report_totals(n,inside) = 
-       writeln ("\n\nTotal sizes: " ^ Int.toString n
-                ^ " comments: " ^ Int.toString inside
-                ^ " (" ^ (Int.toString (percent(inside,n)) 
-                          handle _ => "") ^ "%)")
+    writeln(concat["\nTotal sizes: ", Int.toString n,
+                   " comments: ", Int.toString inside,
+                   " (", (Int.toString(percent(inside,n)) 
+                          handle _ => "-"), "%)"])
 
   (* main(is) reads a sequence of filenames from is,
      one file name pr line (leading spaces are skipped;
@@ -4239,12 +4243,11 @@ local
     fun driver(p as(NONE,n,inside)) = 
            (report_totals(n, inside); p)
       | driver(p as (SOME filename,n:int,inside:int)) =
-          driver(case scan_file filename of
-                   SOME(n',inside') =>
-                   (resetRegions p;
-                    (readWord(is), n+n',inside+inside'))
-                | NONE => (resetRegions p;
-                           (readWord(is),n,inside)))
+          driver(case scan_file filename 
+                   of SOME(n',inside') =>
+                     (readWord(is), n+n',inside+inside')
+                    | NONE =>
+                     (readWord(is),n,inside))
   in
     driver(readWord(is),0,0);
     ()
@@ -4270,7 +4273,6 @@ Parsing/LexUtils.sml: size = 7643 comments: 717 (9%)
 Parsing/MyBase.sml: size = 33933 comments: 11140 (32%)
 Parsing/PARSE.sml: size = 1078 comments: 572 (53%)
 Parsing/Parse.sml: size = 7040 comments: 870 (12%)
-
 
 Total sizes: 106071 comments: 26455 (24%)
 \end{verbatim}
@@ -4326,8 +4328,9 @@ Standard ML allows  functions to be declared using {\tt val} rather than {\tt fu
        val h = g o f
 \end{verbatim}
 declares the value identifier {\tt h} to be the composition of {\tt g}
-and {\tt f}.  Whereas functions declared with \index{fun@{\tt
-    fun}}{\tt fun} automatically become region-polymorphic, functions
+and {\tt f}.  Whereas functions declared with 
+\index{fun@{\tt fun}}%
+{\tt fun} automatically become region-polymorphic, functions
 declared with \index{val@{\tt val}}{\tt val} do not in general become
 \index{region polymorphism}%
 region-polymorphic.\footnote{The reason for this is that the
@@ -4341,7 +4344,8 @@ lambda abstraction, the Kit automatically converts the declaration
 into a {\tt fun} declaration, thereby making the function
 region-polymorphic after all.
 
-ML allows declarations of the form\index{fun@{\tt fun}}
+ML allows declarations of the form
+\index{fun@{\tt fun}}%
 $$\boxml{fun $f$ $\atpat_1\,\atpat_2 \cdots \atpat_n$ = $\exp$}$$
 as a shorthand for 
 $$\boxml{fun $f$ $\atpat_1$ => fn $\atpat_2$ => $\cdots$ fn $\atpat_n$ => $\exp$}$$
@@ -4351,12 +4355,13 @@ Functions declared using this abbreviation are said to be \index{function!Currie
 \section{Region-Annotated Function Types}
 \label{functiontypes.sec}
 The general form of a region-annotated 
-\index{function type!region-annotated}\index{type!region-annotated}%
+\index{function type!region-annotated}%
+\index{type!region-annotated}%
 function type is
 $$(\mu_1\ar{\epsilon.\rea}\mu_2, \rho)$$
 where $\mu_1$ is the
-type and place of the argument, $\mu_2$ is the
-type and place of the result, and $\rho$ is the region
+type with place of the argument, $\mu_2$ is the
+type with place of the result, and $\rho$ is the region
 containing the closure for the function.
 As mentioned in Section~\ref{listtypes.sec}, the unusual looking object
 $\epsilon.\rea$ is called an 
@@ -4420,7 +4425,7 @@ function closure for \boxml{(fn ys => $\cdots$)} is put in {\tt r7}
 and indeed, {\tt r7} and {\tt r10} have the
 same lifetime. To understand how the region inference system figured that out, 
 let us consider the effect and the 
-region-annotated type of particular sub-expressions. Looking at the lambda
+region-annotated types of particular sub-expressions. Looking at the lambda
 abstraction, it must have a functional type of the form 
 $(\tau\ar{\epsilon.\rea}\tau', {\tt r7})$ where $\rea$ is the
 effect
@@ -4429,13 +4434,13 @@ Notice that \boxml{r10} occurs free in the type of the
 lambda abstraction. But, as pointed out in Section~\ref{effects.sec},
 the criterion
 for putting a {\tt letregion} binding of $\rho$ around an expression $e$
-is that $\rho$ occurs free neither in the region-annotated type of $e$ nor
-in the region-annotated type scheme and place of any variable in the domain of the
+is that $\rho$ occurs free neither in the type with place of $e$ nor
+in the type scheme with place of any variable in the domain of the
 type environment.\index{region!de-allocation} The smallest sub-expression
 of the program for which {\tt r10} does not occur free in
-the region-annotated type  of the expression is the right-hand side 
+the type with place of the expression is the right-hand side 
 of the {\tt val} binding of {\tt n}, for that expression
-simply has region-annotated type $\boxml{int}$.
+simply has type with place $\boxml{int}$.
 And at that point, the only region variables that occur free in
 the type environment are global region variables.
 Hence the placement of the {\tt letregion} binding of {\tt r10}.
@@ -4449,7 +4454,7 @@ dependencies between functions. The following example illustrates the point:\foo
        val y = apply (fn n => n + 1.0) 5.0
        val z = apply (fn m => m) 6
 \end{verbatim}
-Here is the region type scheme of {\tt apply}:
+Here is the region-annotated type scheme of {\tt apply}:
 \begin{tabbing}
 \qquad$\forall\alpha_4\alpha_2\rho_7\rho_8\rho_9\rho_{10}\epsilon_{11}\epsilon_{12}\epsilon_{13}.$\=$((\alpha_2,\rho_{10})
         \ar{\epsilon_{11}.\emptyset}(\alpha_4,\rho_9),\rho_8)\ar{\epsilon_{12}.\{\Put(\rho_7)\}}$\\
@@ -4466,7 +4471,7 @@ The polymorphism in effects makes it possible to distinguish between
 the latent effects of different actual arguments to {\tt apply}. For
 example, the functions {\tt (fn n => n + 1.0)} and {\tt (fn m => m)}
 have different latent effects. Let us take the function {\tt (fn n =>
-  n + 1.0)} as an example. It has region-annotated function type
+  n + 1.0)} as an example. It has region-annotated type with place
 \begin{equation}
 \label{suc.lab}
 ((\boxml{real},\rho_{18})\ar{\epsilon_{14}.\{\Get(\rho_{18}),\Put(\rho_5)\}}(\boxml{real}, \rho_5), \rho_{17})
@@ -4517,9 +4522,9 @@ variable or a term of the form $\Get(\rho)$ or $\Put(\rho)$, where $\rho$ as usu
 variables. An \index{effect!definition}{\em effect\/} is a finite set of atomic effects.
 
 One can get the Kit to print region-annotated 
-\index{type!region  annotated}%
-\index{region type scheme!printing of}%
-types of all binding occurrences of value variables.  Also, one can 
+\index{type!region-annotated}%
+\index{region-annotated type scheme!printing of}%
+type schemes with places of all binding occurrences of value variables.  Also, one can 
 choose to have arrow effects included in the printout by enabling 
 the flags~~\texttt{print types}~~and~~\texttt{print effects}~~in the 
 \texttt{Layout} menu. Although enabling these flags gives very 
@@ -4596,7 +4601,7 @@ are not printed again.
 %For instance, in the figure, the second
 %occurence of \texttt{r2} is printed as \boxml{@r2}.  
 In the figure, the binding occurrence of {\tt apply} has been printed
-with its region type scheme. Each non-binding occurrence of {\tt
+with its region-annotated type scheme. Each non-binding occurrence of {\tt
   apply} has been printed with four square-bracketed lists. The first
 list is the actual region arguments; the following three are
 instantiation lists that show the range of the substitution by
@@ -4630,7 +4635,7 @@ $$\boxml{letregion $\rho_1,\ldots,\rho_n$ in $\ldots$ $g$($f$)
   $\ldots$ end}$$
 depends on the type and effect of the expression
 \boxml{$g$($f$)} in the usual way: regions can be de-allocated when
-they occur free neither in the region-annotated type of the expression
+they occur free neither in the type with place of the expression
 nor in the type environment.
 
 \section{Examples: {\tt map} and {\tt foldl}}
@@ -4699,7 +4704,7 @@ Figure~\ref{map.fig}.
 \medskip \hrule
 \label{map.fig}
 \end{figure}
-We see that the region that appears free in the region-annotated type of the successor
+We see that the region that appears free in the type with place of the successor
 function (i.e., \boxml{r27}) is allocated prior 
 to the call of {\tt map} and that it stays
 alive throughout the evaluation of the body of {\tt map}. Notice, however, that
@@ -5171,23 +5176,54 @@ shall also explain how the Kit compiles Modules language constructs.
 
 
 \section{Projects \label{projects.sec}}
-A \index{project}\index{project file}{\em project file} is a file which lists the SML source files
+A 
+\index{project}\index{project file}%
+{\em project file\/} is a file that lists the SML source files
 that make up a project. A project file can also 
-\index{importing a project}{\em import} other
-project files, so one can organise projects in a hierarchical manner.
-The Kit enforces the restriction that projects may not be cyclic.
+\index{importing a project}%
+{\em import\/} other project files, so one can organise projects in a
+hierarchical manner.  The Kit enforces the restriction that projects
+may not be cyclic.
 
-Project files have file extension \index{{\tt .pm}@pm}{\tt .pm}. In a project file, one
-can refer to other project files and source files using  absolute
-or relative \index{path!absolute}\index{path!relative}paths. 
-Relative paths are relative to the location of the
-project file. Until now, we have seen a few examples of project files
-with no imports (see Section~\ref{polyrec.sec} for such an
-example). In Section~\ref{functors.sec}, we present an
-example of a project that imports other projects.  
-
-Project files may contain Standard ML 
-style \index{project file!comment in}\index{comment!in project file}comments.
+Project files have file extension \index{{\tt .pm}@pm}{\tt .pm}. The 
+\index{project file!grammar}%
+grammar for project files ({\it pm}) is given in Figure~\ref{pm_grammar.fig}.
+\begin{figure}
+\hrule\medskip
+$$\begin{array}{lcll}
+  {\it imports} & \verb+::=+ & {\it path}{\tt .o} ~\langle~{\tt :} {\it path}{\tt .o}~\rangle ~ 
+                                  {\it imports} & \mbox{external object} \\
+                & \verb+|+   & {\it path}{\tt .pm} ~ {\it imports} & \mbox{project} \\
+                & \verb+|+   & & \mbox{empty} \\
+  {\it body}  & \verb+::=+ & {\it path}{\tt .sml} ~{\it body} & \mbox{source} \\
+                & \verb+|+   & {\it path}{\tt .sig} ~{\it body} & \mbox{source} \\
+                & \verb+|+   & & \mbox{empty} \\
+  {\it pm}      & \verb+::=+ & {\tt import} ~{\it imports}~ {\tt in} ~ {\it body}~ {\tt end} & \mbox{with import} \\
+                & \verb+|+   & {\it body} & \mbox{basic} 
+  \end{array}$$
+\caption{Grammar for project files, i.e., files with extension {\tt .pm}. 
+  Optional phrases are included in angle brackets
+  $\langle\cdots\rangle$. For some file extension {\tt .}{\it ext}, {\it
+    path}{\tt .}{\it ext\/} denotes either an absolute path or a relative path
+  (relative to the directory in which the project file is located) to
+  a file on the underlying file system.}
+\label{pm_grammar.fig}
+\medskip \hrule
+\end{figure}
+In a project file, one can import source files, other project files,
+and object files, using absolute or relative
+\index{path!absolute}\index{path!relative}paths.  Relative paths are
+relative to the location of the project file.  Until now, we have seen
+a few examples of project files with no imports (see
+Section~\ref{polyrec.sec} for such an example). In
+Section~\ref{functors.sec}, we present an example of a project that
+imports other projects. Object files are {\tt .o} files stemming from
+compiling C code; in Section~\ref{comp_and_link_with_C.sec}, we shall
+see an example of a project that imports object files. Project files
+may contain Standard ML style
+\index{project file!comment in}%
+\index{comment!in project file}%
+comments. 
 
 Every source file must contain a Standard ML top-level declaration;
 the scope of the declaration is all the subsequent source files
@@ -5198,14 +5234,14 @@ The meaning of an entire project is the meaning of the top-level
 declaration that would arise by first expanding all imported projects
 and then concatenating all the source files listed in the project
 file, in the order they are listed, except that each project is 
-only executed the first time it is imported. 
+executed only the first time it is imported. 
 
 The Kit has a system for managing compilation and recompilation of
 projects.  The system guarantees that the result of first modifying
 one or more source files of a project and then using the separate
 compilation system to rebuild the project is the same as if all source
 files were
-recompiled.\index{recompilation}\index{project}
+recompiled.\index{recompilation}\index{projects}
 \index{source file}%
 Thus, the separate compilation system is a way of avoiding recompiling
 parts of a (possibly) long sequence of declarations, while ensuring
@@ -5213,8 +5249,8 @@ that the result is always the same as if one had compiled the entire
 program from scratch.  As an example, consider the project file (\boxml{kitdemo/scan.pm}) for the text
 scanning example of Section~\ref{scan.sec}. It contains the following two lines:
 \begin{verbatim}
-  lib.sml
-  scan.sml
+ lib.sml
+ scan.sml
 \end{verbatim}
 
 \noindent 
@@ -5226,24 +5262,19 @@ file {\tt scan.sml} also depends on {\tt lib.sml}.
 
 The {\tt Project} sub-menu provides the user with operations for
 setting a project file name and for reading and compiling the project
-file.
-
-The Kit automatically detects  when a source file
-has been modified. (It uses file modification dates of the operating
-system for this purpose.) 
-
-After a project has been successfully
-compiled and linked, it can be executed by running the
-command\index{run@{\tt run}}
+file.  The Kit automatically detects when a source file has been
+modified. (It uses file modification dates of the operating system for
+this purpose.)  After a project has been successfully compiled and
+linked, it can be executed by running the command\index{run@{\tt run}}
 \begin{verbatim}
-  run
+ run
 \end{verbatim}
 in the working directory.  
 
 The Kit compiles each source file of a project one at a time, in the
 order mentioned in the project file. A source file is compiled under
-a given set of assumptions, which provides, for instance, region type
-schemes for free variables of the source file. Also, compilation of a
+a given set of assumptions, which provides, for instance, region-annotated type
+schemes with places for free variables of the source file. Also, compilation of a
 source file gives rise to exported information about declared
 identifiers. Exported information may occur in assumptions for source
 files mentioned later in the project file.
@@ -5272,28 +5303,28 @@ trigger recompilation of {\tt scan.sml}.
 
 Some of the information a source file depends on is the ML type
 schemes of its free variables. It also depends on, for example, 
-the region type schemes of its free variables. 
+the region-annotated type schemes with places of its free variables. 
 Thus it can happen that a source file is
 recompiled even though the ML type assumptions for free variables have
-not changed. For instance, the region type scheme for a free variable
+not changed. For instance, the region-annotated type scheme with place for a free variable
 may have changed, even though the underlying ML type scheme has not.
 
-As an example, consider what happens if modify the function {\tt readWord} in the
-source file {\tt lib.sml} so that it puts its result in a global region. This
+As an example, consider what happens if we modify the function {\tt readWord} in the
+source file {\tt lib.sml} so that it puts its result in a global region. This modification
 will trigger recompilation of the source file {\tt scan.sml}, because
 the assumptions under which it was previously compiled have
-changed. Besides changes in region type schemes, changes in
+changed. Besides changes in region-annotated type schemes with places, changes in
 multiplicities and in physical sizes of formal region variables of
 functions may also trigger recompilation.
 
 
 \section{Structures}
-The support for Modules together with the possibility of dividing top-level
-declarations into source files provide a mechanism for
-programming in the large. In the Kit, structures exist only at compile
-time. 
-Thus the one need not worry where
-structures live at runtime.\index{structure declaration}
+The support for Modules together with the possibility of dividing
+top-level declarations into different source files provide a mechanism
+for programming in the large. In the Kit, structures exist only at
+compile time.  Thus one need not worry where
+\index{structure declaration}%
+structures live at runtime.
 
 We illustrate the compile-time nature of structures with the following
 example. Consider the project {\tt set.pm},\footnote{Project
@@ -5301,58 +5332,62 @@ example. Consider the project {\tt set.pm},\footnote{Project
   file {\tt poly\_set.sml} contains the following top-level
   declaration:
 \begin{verbatim}
-structure PolySet = 
-  struct
-    type 'a set = 'a list
-    val empty = []
-    fun singleton x = [x]
-    fun mem x l = 
-      let fun mem' [] = false
-            | mem' (y::ys) = x=y orelse mem' ys 
-      in mem' l
-      end
-    fun union(s1,[]) = s1
-      | union(s1,x::s2) = if mem(x,s1) then union(s1,s2)
-                          else x::union(s1,s2)  
-  end
+ structure PolySet = 
+   struct
+     type 'a set = 'a list
+     val empty = []
+     fun singleton x = [x]
+     fun mem x l = 
+       let fun mem' [] = false
+             | mem' (y::ys) = x=y orelse mem' ys 
+       in mem' l
+       end
+     fun union(s1,[]) = s1
+       | union(s1,x::s2) = if mem(x,s1) then union(s1,s2)
+                           else x::union(s1,s2)  
+   end
 \end{verbatim}
 
 \noindent
 The code generated by the Kit for the {\tt IntSet} structure is
 exactly as if the declarations were written outside of a structure.
 As a consequence, when you refer to a component of a structure using
-qualified identifiers (e.g., {\tt IntSet.mem}) no code is generated
+qualified identifiers (e.g., {\tt IntSet.mem}), no code is generated
 for fetching the component from the structure. Moreover, when opening
 a structure, using the {\tt open} declaration, no code is generated
 for rebinding the identifiers that become visible.
 
 \section{Signatures}
-Signature \index{signature declaration}declarations also exist at compile
+\index{signature declaration}%
+Signature declarations also exist at compile
 time only in the Kit. In particular, a signature declaration does not
 result in code. The source file {\tt
 int\_set.sml} in the project {\tt set.pm}, discussed earlier, contains
 the signature declaration
 \begin{verbatim}
-signature INT_SET =
-  sig
-    type 'a set
-    val empty : int set
-    val singleton : int -> int set
-    val mem : int * int set -> bool
-    val union : int set * int set -> int set
-  end
+ signature INT_SET =
+   sig
+     type 'a set
+     val empty : int set
+     val singleton : int -> int set
+     val mem : int * int set -> bool
+     val union : int set * int set -> int set
+   end
 \end{verbatim}
 
 Signatures are used in two contexts; for specifying arguments to
 functors and for providing restricted views of structures using
-transparent and opaque signature constraints. We defer the discussion
+\index{signature constraint!transparent}%
+transparent and 
+\index{signature constraint!opaque}%
+opaque signature constraints. We defer the discussion
 of the former use of signatures to Section~\ref{functors.sec}.
 
 Transparent signature constraints may both restrict components from a
 structure and make polymorphic components less polymorphic. Moreover,
 opaque signature constraints may also make type components of
 structures abstract. Consider the structure 
-declarations\index{signature constraint!transparent}\index{signature constraint!opaque}
+declarations
 \begin{verbatim}
 structure IntSet1 : INT_SET = PolySet
 structure IntSet2 :> INT_SET = PolySet
@@ -5369,12 +5404,13 @@ eliminated at compile time (after elaboration) and transformed into
 transparent signature constraints.
 
 \section{Functors \label{functors.sec}}
+\index{functor}
 Functors map structures to structures. The Kit
 specialises a functor every time it is applied.
 Thus, types that are
 abstract for the programmer (inside a functor body) become 
 visible to the compiler.
-Region type schemes and other information about identifiers in the
+Region-annotated type schemes and other information about identifiers in the
 actual functor argument
 are available when the Kit compiles the functor body.
 
@@ -5394,9 +5430,9 @@ assumptions do not change.
 Consider the following project:\footnote{Project
   \boxml{kitdemo/Set.pm}.}
 \begin{verbatim}
-  import utils/utils.pm
-  in SET.sml Set.sml SetApp.sml
-  end
+ import utils/utils.pm
+ in SET.sml Set.sml SetApp.sml
+ end
 \end{verbatim}
 The project imports the sub-project {\tt utils.pm},\footnote{Project
 \boxml{kitdemo/utils/utils.pm}.} which provides a structure {\tt
@@ -5408,33 +5444,33 @@ type for the set, an ordering function on elements, and a function for providing
 \begin{figure}[ht]
 \hrule \medskip
 \begin{verbatim}
-functor Set (eqtype elem (*total order*)
-             val lt : elem * elem -> bool
-             val pr : elem -> string) 
-     : SET where type elem = elem =
-  struct
-    type elem = elem
-    type set = elem list
-    val empty : set = []
-    fun singleton e = [e]
-    fun mem x l =
-      let fun mem' [] = false
-            | mem' (y::ys) = if lt(y,x) then mem' ys
-                             else not(lt(x,y))
-      in mem' l
-      end
-    fun union(s1,s2) =
-      let fun U (t as ([], [], acc)) = t
-            | U ([], y::ys, acc) = U([], ys, y::acc)
-            | U (x::xs, [], acc) = U(xs, [], x::acc)
-            | U (s1 as x::xs, s2 as y::ys, acc) =
-                U(if lt(x,y) then (xs, s2, x::acc)
-                  else if lt(y,x) then (s1, ys, y::acc)
-                  else (xs, ys, y::acc))
-      in rev(#3(U(s1, s2, [])))
-      end
-    val pr = fn s => ListUtils.pr_list pr s
-  end
+ functor Set (eqtype elem (*total order*)
+              val lt : elem * elem -> bool
+              val pr : elem -> string) 
+      : SET where type elem = elem =
+   struct
+     type elem = elem
+     type set = elem list
+     val empty : set = []
+     fun singleton e = [e]
+     fun mem x l =
+       let fun mem' [] = false
+             | mem' (y::ys) = if lt(y,x) then mem' ys
+                              else not(lt(x,y))
+       in mem' l
+       end
+     fun union(s1,s2) =
+       let fun U (t as ([], [], acc)) = t
+             | U ([], y::ys, acc) = U([], ys, y::acc)
+             | U (x::xs, [], acc) = U(xs, [], x::acc)
+             | U (s1 as x::xs, s2 as y::ys, acc) =
+                 U(if lt(x,y) then (xs, s2, x::acc)
+                   else if lt(y,x) then (s1, ys, y::acc)
+                   else (xs, ys, y::acc))
+       in rev(#3(U(s1, s2, [])))
+       end
+     val pr = fn s => ListUtils.pr_list pr s
+   end
 \end{verbatim}
 \caption{The source file \boxml{kitdemo/Set.sml}.}
 \medskip \hrule \label{Set.fig} 
@@ -5450,11 +5486,11 @@ built-in {\tt print} function.
 \begin{figure}[ht]
 \hrule \medskip
 \begin{verbatim}
-structure IntSet = Set(type elem = int
-                       val lt = op <
-                       fun pr a = Int.toString a)
-open IntSet
-val _ = print (pr (union(singleton 2, singleton 5)))
+ structure IntSet = Set(type elem = int
+                        val lt = op <
+                        fun pr a = Int.toString a)
+ open IntSet
+ val _ = print (pr (union(singleton 2, singleton 5)))
 \end{verbatim}
 \caption{The source file \boxml{kitdemo/SetApp.sml}.}
 \medskip \hrule \label{SetApp.fig} 
@@ -5468,30 +5504,30 @@ Figure~\ref{set_inst_mulexp.fig}.
 \begin{figure}[ht]
 \hrule \medskip
 \begin{verbatim}
-fun mem attop r1t$ [r11t$:4] (x)= 
-  fn attop r11t$ l => 
-  letregion r15t$:4 
-  in let fun mem' atbot r15t$ [] (var550)= 
-           (case var550 
-              of nil => false
-              |  _ => 
-                 let val ys = #1 decon_:: var550; 
-                     val y = #0 decon_:: var550
-                 in  (case letregion r20t$:0, r22t$:2 
-                           in funcall lt[] (y, x) atbot r22t$ 
-                           end (*r20t$:0, r22t$:2*)
-                        of true => jmp mem' ys
-                        |  _ => 
-                           jmp not 
-                             letregion r27t$:0, r29t$:2 
-                             in funcall lt[] (x, y) atbot r29t$ 
-                             end (*r27t$:0, r29t$:2*)
-                     ) (*case*) 
-                 end 
-           ) (*case*) 
-     in  funcall mem'[] l
-     end  
-  end (*r15t$:4*); 
+ fun mem attop r1 [r11:4] (x)= 
+   fn attop r11 l => 
+   letregion r15:4 
+   in let fun mem' atbot r15 [] (var508)= 
+            (case var508 
+               of nil => false
+                |  _ => 
+                  let val ys = #1 decon_:: var508; 
+                      val y = #0 decon_:: var508
+                  in  (case letregion r20:0, r22:2 
+                            in funcall lt[] (y, x) atbot r22 
+                            end (*r20:0, r22:2*)
+                         of true => jmp mem' ys
+                         |  _ => 
+                            jmp not 
+                              letregion r27:0, r29:2 
+                              in funcall lt[] (x, y) atbot r29 
+                              end (*r27:0, r29:2*)
+                      ) (*case*) 
+                  end 
+            ) (*case*) 
+      in  funcall mem'[] l
+      end  
+   end (*r15:4*); 
 \end{verbatim}
 \caption{The $\MulExp$ call-explicit code for the {\tt mem} function resulting 
 from instantiating the {\tt Set} functor.}
@@ -5506,10 +5542,10 @@ integers. Instead, for simplicity, the Kit compiles the argument to
 the {\tt Set}~functor in the source file \boxml{SetApp.sml} into
 separate code:
 \begin{verbatim}
-   let fun lt attop r1t$ [] (v41970)= #0 v41970 < #1 v41970; 
-       fun pr attop r1t$ [r10s$:inf] (a)= jmp toString a
-   in  {|pr: (_,r1t$), lt: (_,r1t$)|}
-   end 
+ let fun lt attop r1 [] (v40355)= #0 v40355 < #1 v40355; 
+     fun pr attop r1 [r10:inf] (a)= jmp toString a
+ in  {|pr: (_,r1), lt: (_,r1)|}
+ end 
 \end{verbatim}
 Here, the \boxml{toString} function stems from the \boxml{Int}
 structure of the Basis Library and the primitive operation~\boxml{<} provides a built-in comparison
@@ -5520,610 +5556,587 @@ on integers.
 \chapter{Using the Profiler}
 %
 \label{useOfProf.sec}
-We have already seen several examples of the use of the region profiler. We
+We have already seen several examples of the use of the profiler. We
 shall now explain in more detail how to profile programs. For example, we shall see
 how one can find out precisely what allocation points in the program
-contribute to a particular region.
+contribute to allocation in a particular region.
 
-The region profiler consists of several tools which can be used to analyse
-the dynamic memory behaviour of the target program. First of all, there are
-the \emph{profiles}\index{profiles} which are graphs showing the dynamic
-memory usage of the executed program. There are three different types of graphs:
+The profiler consists of several tools that can be used to analyse the
+dynamic memory behaviour of a program. First of all, the profiler lets
+you create graphs of the dynamic memory usage of the program. Three
+different kinds of graphs may be created:
 \begin{itemize}
-\item A \emph{region profile} is a graph\index{region profile} which gives
-  a ``global'' view of the memory usage by showing the total number of
-  words allocated in regions and on the stack as a function of time. In the
-  graph, regions that arise from the same
-\begin{center}
-\texttt{letregion} $\rho$ \texttt{in} $e$ \texttt{end}
-\end{center}
-expression are collected into one coloured band, labelled $\rho$. The
-region variables that label bands are always global or letregion-bound,
-never formal region parameters.
-
-\item An \emph{object profile} is a graph\index{object profile} which gives
-  a ``local'' view of a single region, as a function of time. The
-  graph shows the objects allocated into a chosen region, with one coloured
-  band for each allocation point in the region-annotated lambda
-  program\footnote{Every occurrence of an ``\texttt{at}'' in the
-    region-annotated lambda program is an allocation point.}.  Each
-  allocation point is annotated with a \emph{program point}\index{program
-    point} which is a unique number identifying the
-  allocation.\footnote{Program points are unique local to a project, e.g.\ 
-    with a project containing two source files, 
-    the program points in the region-annotated lambda
-    programs for the two files will be distinct.}
-
+\item A 
+  \index{region profile}%
+  \index{profile!region}%
+  {\em region profile\/} is a graph that gives a global view of the
+  memory usage by showing the total number of bytes allocated in
+  regions and on the stack as a function of time. In the graph,
+  regions that arise from the same
+  \begin{center}
+    \texttt{letregion} $\rho$ \texttt{in} $e$ \texttt{end}
+  \end{center}
+  expression are collected into one coloured band, labelled $\rho$. The
+  region variables that label bands are always global or {\tt letregion}-bound,
+  never formal region parameters.
+\item An 
+  \index{object profile}%
+  \index{profile!object}%
+  {\em object profile\/} is a graph that, for a particular region,
+  shows the objects allocated in the region, with one coloured band
+  for each allocation point in the region-annotated
+  program\footnote{Every occurrence of an $\at$ in the
+    region-annotated program is an allocation point.}. Each allocation
+  point is annotated with a
+  \index{program point}%
+  {\em program point}, which is a unique number that identifies the
+  allocation.\footnote{Program points are unique. In particular, for a
+    project with two program units, the program points in the
+    region-annotated programs for the two units will be distinct.}  To
+  inspect region-annotated programs with program points, enable the
+  flag {\tt print program points} found in the {\tt Layout} sub-menu
+  in addition to the flag {\tt print call-explicit expression}, say,
+  from the {\tt Printing of intermediate forms}
+  sub-menu.\footnote{Program points are annotated during physical size
+    inference.}
   
-  If you have an object profile showing that program point 42
-  (written \texttt{pp42}) contributes with a lot of allocations you
-  can search for \texttt{pp42} in the region-annotated lambda
-  program.
-\item A \emph{stack profile} is a graph
+  If you have an object profile showing that program point
+  \texttt{pp42}, say, contributes with allocation, you can search for
+  \texttt{pp42} in the region-annotated program and thus find the
+  construct that caused the allocation.
+\item A 
   \index{stack profile}%
-  which shows the stack memory usage, as a function of time.
+  \index{profile!stack}%
+  {\em stack profile\/} is a graph that shows the stack memory usage,
+  as a function of time.
 \end{itemize}
-
-The Kit can give you a region-annotated
-lambda program annotated with program points.
   
-During compilation, it is also possible to generate a \emph{region flow
-  graph}
+In addition to the possibility of generating programs with program
+points, it is also possible, during compilation, to generate a
 \index{region flow graph}%
-which shows how regions may be passed around at runtime when
-region-polymorphic functions are applied. The region flow graph is
-very handy when profiling larger programs when one wants to find out
-why a formal region variable has been instantiated to a certain
-\texttt{letregion}-bound region variable.
+{\em region flow graph}, which shows how regions may be passed around
+at runtime when region-polymorphic functions are applied. The region
+flow graph comes in handy when profiling large programs and when one wants
+to find out why a formal region variable is instantiated to a
+certain {\tt letregion}-bound region variable.
 
-An example should clarify this. Suppose the region profile shows that
-\texttt{r5} grows very big. Further, suppose an object profile of
-\texttt{r5} shows that program point \texttt{pp345} is responsible.
-Searching for \texttt{pp345} in the region-annotated program, you may find
-that the allocation at \texttt{pp345} is into some other region variable,
-\texttt{r34}, say. Here \texttt{r34} will be a formal region parameter of a
-region-polymorphic function which at runtime has been instantiated to
+The following example clarifies the use of a region flow graph.
+Suppose the region profile shows that \texttt{r5} is responsible for
+most of the memory usage.  Further, suppose an object profile of
+\texttt{r5} shows that program point \texttt{pp345} is responsible for
+most of the allocation.  Searching for \texttt{pp345} in the
+region-annotated program, you may find that the allocation at
+\texttt{pp345} is into some other region variable, \texttt{r34}, say.
+Here \texttt{r34} will be a formal region parameter of a
+region-polymorphic function that at runtime has been instantiated to
 \texttt{r5} by one or more calls of region-polymorphic functions.
-
-You can now use the region flow graph to find the ``cascade'' of region
+You can now use the region flow graph to find the cascade of region
 polymorphic applications that ends up instantiating \texttt{r34} to
 \texttt{r5}.
 
-Profiling is sketched in Figure~\ref{profStrategy.fig}.
-
-\newcommand{\picbox}[1]{\framebox(5,3){\scriptsize{\parbox{22mm}{\begin{center}
-        #1 \end{center}}}}}
-\newcommand{\vectorr}[1]{\vector(1,0){1}
-  \makebox(-1,1)[t]{\scriptsize{#1}}}
-
-\setlength{\unitlength}{0.5cm}
-\begin{figure}[ht]
-\hrule
+The profiling process is sketched in Figure~\ref{profStrategy.fig}.
+\setlength{\unitlength}{6mm}
+\newcommand{\picbox}[1]{\framebox(7,4){\parbox{38mm}{\begin{center}
+        #1 \end{center}}}}
+\begin{figure}
+\hrule \medskip
 \begin{center}
-\begin{picture}(29,8)
-\put(0,4){\picbox{Choose \\ Compile-Time \\ Profiling \\ Strategy}}
-\put(6,4){\picbox{Compile ML Source Program with Kit compiler}}
-\put(12,4){\picbox{Choose Target \\ Profiling Strategy}}
-\put(18,4){\picbox{Execute Target Program \\ (\texttt{run} $\ldots$)}}
-\put(24,4){\picbox{Generate \\ Profiles \\ with the graph \\ generator \texttt{rp2ps}}}
-%\put(5,5.5){\vectorr{}}
-%\put(11,5.5){\vectorr{}}
-%\put(17,5.5){\vectorr{}}
-%\put(23,5.5){\vectorr{}}
-\put(8,4){\vector(-1,-1){2}}
-\put(2.5,0){\dashbox{0.3}(6.0,2){\scriptsize{\parbox{40mm}{\begin{center}Region-
-        Annotated \\ Lambda Program\end{center}}}}}
-\put(9,4){\vector(1,-1){2}}
-\put(9,0){\dashbox{0.3}(4,2){\scriptsize{\parbox{22mm}{\begin{center}Region
-      \\ Flow \\ Graph\end{center}}}}}
-\put(20.5,4){\vector(0,-1){2}}
-\put(18.5,0){\dashbox{0.3}(4,2){\scriptsize{\parbox{22mm}{\begin{center}Profile
-      \\ Datafile\end{center}}}}}
-\put(26.5,4){\vector(0,-1){2}}
-\put(22,2){\vector(1,1){2}}
-\put(24.5,0){\dashbox{0.3}(4,2){\scriptsize{\parbox{22mm}{\begin{center}Profile
-      \\ Graphs\end{center}}}}}
-\put(1,1.5){\scriptsize \texttt{.log}\index{log@\texttt{.log}}}
-\put(13,1.5){\scriptsize \texttt{.log}\index{log@\texttt{.log}}}
-\put(13,1){\scriptsize \texttt{.vcg}\index{vcg@\texttt{.vcg}}}
-\put(17.3,1.5){\scriptsize \texttt{.rp}\index{rp@\texttt{.rp}}}
-\put(23.3,1.5){\scriptsize \texttt{.ps}\index{ps@\texttt{.ps}}}
+\begin{picture}(18,17)
+\put(2,0){\picbox{Generate profile \\ with {\tt rp2ps}}}
+\put(2,6){\picbox{Choose runtime \\ profiling strategy \\ and execute}}
+\put(2,12){\picbox{Choose compile-time \\ profiling strategy \\ and compile}}
+\put(11,0){\dashbox{.5}(7,4){\parbox{38mm}{\begin{center}
+        Region profile, object profile, or stack profile \end{center}}}}
+\put(11,6){\dashbox{.5}(5,3){\parbox{20mm}{\begin{center} data file {\tt profile.rp} \end{center}}}}
+\put(11,11){\dashbox{.5}(7,2){\parbox{38mm}{\begin{center}
+        Region flow graph \end{center}}}}
+\put(11,15){\dashbox{.5}(7,2){\parbox{38mm}{\begin{center}
+        Program annotated with program points \end{center}}}}
+\put(9,15){\vector(2,1){2}}
+\put(9,13){\vector(2,-1){2}}
+\put(9,8){\vector(2,0){2}}
+\put(9,2){\vector(2,0){2}}
+\put(9,8){\vector(2,0){2}}
+\put(5.4,12){\vector(0,-1){2}}
+\put(5.6,12){\vector(0,-1){2}}
+\put(3.9,4){\vector(0,1){2}}
+\put(4.1,4){\vector(0,1){2}}
+\put(6.9,6){\vector(0,-1){2}}
+\put(7.1,6){\vector(0,-1){2}}
+\put(11,7){\vector(-2,-3){2}}
+\put(0.9,1.9){\line(0,1){12.2}}
+\put(1.1,2.1){\line(0,1){11.8}}
+\put(1.1,2.1){\line(1,0){0.9}}
+\put(0.9,1.9){\line(1,0){1.1}}
+\put(0.9,14.1){\vector(1,0){1.1}}
+\put(1.1,13.9){\vector(1,0){0.9}}
 \end{picture}
-\caption{Overview of the ML Kit profiler. Dotted boxes
-        represent output from the profiler. The file containing the output
-        is also shown, e.g. a profile goes into a \texttt{.ps} file.}
+\caption{Overview of the profile process. The process sometimes requires the programmer 
+  to refine the runtime profiling strategy, or even the compile-time
+  profiling strategy. Dotted boxes represent output from the compiler,
+  from executing the program, and from using the tool {\tt rp2ps},
+  which generates PostScript graphs from the exported data file.}
 \label{profStrategy.fig}
 \end{center}
+\medskip
 \hrule
 \end{figure}
 
-We will now show an example on how to profile a concrete program
-containing a space leak and then show how the profiler can be used to
-fix it. After that, we explain in more detail how to specify the profiling
-strategies and how the profiles are generated.
+%\renewcommand{\picbox}[1]{\framebox(5,3){\scriptsize{\parbox{22mm}{\begin{center}
+%        #1 \end{center}}}}}
+%\newcommand{\vectorr}[1]{\vector(1,0){1}
+%  \makebox(-1,1)[t]{\scriptsize{#1}}}
+%\setlength{\unitlength}{0.5cm}
+%\begin{figure}[ht]
+%\hrule
+%\begin{center}
+%\begin{picture}(29,8)
+%\put(0,4){\picbox{Choose \\ Compile-Time \\ Profiling \\ Strategy}}
+%\put(6,4){\picbox{Compile ML Source Program with Kit compiler}}
+%\put(12,4){\picbox{Choose Target \\ Profiling Strategy}}
+%\put(18,4){\picbox{Execute Target Program \\ (\texttt{run} $\ldots$)}}
+%\put(24,4){\picbox{Generate \\ Profiles \\ with the graph \\ generator \texttt{rp2ps}}}
+%\put(8,4){\vector(-1,-1){2}}
+%\put(2.5,0){\dashbox{0.3}(6.0,2){\scriptsize{\parbox{40mm}{\begin{center}Region-
+%        Annotated \\ Lambda Program\end{center}}}}}
+%\put(9,4){\vector(1,-1){2}}
+%\put(9,0){\dashbox{0.3}(4,2){\scriptsize{\parbox{22mm}{\begin{center}Region
+%      \\ Flow \\ Graph\end{center}}}}}
+%\put(20.5,4){\vector(0,-1){2}}
+%\put(18.5,0){\dashbox{0.3}(4,2){\scriptsize{\parbox{22mm}{\begin{center}Profile
+%      \\ Datafile\end{center}}}}}
+%\put(26.5,4){\vector(0,-1){2}}
+%\put(22,2){\vector(1,1){2}}
+%\put(24.5,0){\dashbox{0.3}(4,2){\scriptsize{\parbox{22mm}{\begin{center}Profile
+%      \\ Graphs\end{center}}}}}
+%\put(1,1.5){\scriptsize \texttt{.log}\index{log@\texttt{.log}}}
+%\put(13,1.5){\scriptsize \texttt{.log}\index{log@\texttt{.log}}}
+%\put(13,1){\scriptsize \texttt{.vcg}\index{vcg@\texttt{.vcg}}}
+%\put(17.3,1.5){\scriptsize \texttt{.rp}\index{rp@\texttt{.rp}}}
+%\put(23.3,1.5){\scriptsize \texttt{.ps}\index{ps@\texttt{.ps}}}
+%\end{picture}
+%\caption{Overview of the ML Kit profiler. Dotted boxes
+%        represent output from the profiler. The file containing the output
+%        is also shown, e.g. a profile goes into a \texttt{.ps} file.}
+%\label{profStrategy.fig}
+%\end{center}
+%\hrule
+%\end{figure}
+
+We will now show an example on how to profile a concrete program that
+contains a space leak and then show how the profiler can be used to
+improve the program. We then explain in more detail how to specify the
+profiling strategies and how the profiles are generated.
 
 %-------------------------------------------------
-\section{Profiling project \texttt{scan\_rev1}}
+\section{Example: Scanning Text Files Again}
 %-------------------------------------------------
 
-In this section, we concentrate on the general principles of profiling. We
-use the revised scan project (project \texttt{/kitdemo/scan\_rev1.pm}) as
-an example. Instead of asking for an input file to scan (as project
-\texttt{scan.pm} does) the program scans the same file
-(\texttt{../../kitdemo/life.sml}) 11 times.
+In this section, we concentrate on the general principles of
+profiling. As an example, we investigate a revised version of the {\tt
+  kitdemo/scan.pm} project (see Section~\ref{scan.sec}). Instead of
+asking for a list of input files to scan (as project \texttt{scan.pm}
+does), the revised version of the scan project asks for only one input
+file, which it then scans
+\index{scan_rev1.pm@{\tt scan\_rev1.pm}}%
+50~times.\footnote{Project {\tt kitdemo/scan\_rev1.pm}.}
 
 The first thing to do is to get an overview of the memory usage of the
-program. The region profile gives you that\index{scan_rev1@\texttt{scan\_rev1}}. See Figure
-\ref{scan_rev1_1.fig}.
-
-\begin{figure}[htb]
+program. A region profile of the program gives you just that. See
+Figure~\ref{scan_rev1_1.fig}.
+\begin{figure}
 \begin{center}
-  \scalebox{1.3}{\includegraphics*[0,0][198,132]{scan_rev1_1.eps}}
-  \caption{It is obvious that memory is accumulated in the two top
-    bands. The global region \texttt{r1} and region \texttt{r2797}
-    hold the largets amount of memory. The graph has been generated
-    by executing \texttt{run -microsec 10000} on the HPUX (with the C
-    backend) and then typing \texttt{rp2ps -sampleMax 1200
-      -region}.}\label{scan_rev1_1.fig}
+  \includegraphics{scan_rev1_1.ps}
 \end{center}
+\caption{Memory is accumulated in the top two
+  bands. The global regions \texttt{r1} and \texttt{r89717} hold the
+  largets amount of memory. The graph was generated by first
+  compiling the {\tt kitdemo/scan\_rev1.pm} project with profiling
+  enabled. Then by executing \texttt{echo life.sml | run -microsec 10000} and finally by
+  typing \texttt{rp2ps -region -name scan\_rev1}.}
+\label{scan_rev1_1.fig}
 \end{figure}
-%\noindent
+
 The graph shows that region \texttt{r1} holds the largest amount of memory,
-but it does not get bigger over time. Region \texttt{r2797}, however,
-accumulates more memory for each time it scans the life
-program.
-%\footnote{It may not be possible for you to get the exact
-%  same region variable names if you try the example.
-%  Changes in the ML Kit setup may influence which region variables
-%  are generated. }
+but also that it does not increase over time. Region \texttt{r89717}, however,
+accumulates more memory for each time it scans the file {\tt life.sml}.
 
-To see what happens in region \texttt{r2797}, we make an object profile of
+To see what happens in region \texttt{r89717}, we make an object profile of
 that region, see Figure \ref{scan_rev1_2.fig}.
-
-\begin{figure}[htb]
+\begin{figure}
 \begin{center}
-  \scalebox{1.3}{\includegraphics*[0,0][198,132]{scan_rev1_2.eps}}
-  \caption{There seems to be a space leak at program point
-    \texttt{pp33}. The graph has been generated by typing \texttt{rp2ps
-      -sampleMax 1200 -object 2797}.}\label{scan_rev1_2.fig}
+  \includegraphics{scan_rev1_2.ps}
 \end{center}
+\caption{There seems to be a space leak at program point
+  \texttt{pp6155}. The graph was generated by typing \texttt{rp2ps
+    -object 89717}.}
+\label{scan_rev1_2.fig}
 \end{figure}
-%\noindent
-The object profile shows that program point \texttt{pp33} produces a lot
-of allocations which are first freed when the program stops. We now
-search for \texttt{pp33} in file \texttt{prelude.log} and find:
-
-%\begin{footnotesize}
+The object profile shows that program point \texttt{pp6155}
+continually allocates memory that is first freed when the program
+stops. We now search for \texttt{pp6155} in the log files of the basis
+library, that is, we execute the UNIX command
 \begin{verbatim}
-fun implode attop r1 pp32 [r110:inf] (strs)= 
-    ccall(implodeStringProfiling,  attop r110 pp33, strs); 
+ fgrep pp6155 *.log
 \end{verbatim}
-%\end{footnotesize}                                
-\noindent
-Formal region variable \texttt{r110} is instantiated with {\tt letregion}-bound
-region variable \texttt{r2797} in a call to function \texttt{implode}. We
-now search for \texttt{r2797} in file \texttt{scan\_rev1.log} and find the
-following fragment of the region flow graph.
-\begin{eqnarray}
-\texttt{toString}&&\texttt{[r1545:inf]} \nonumber\\
-& &\texttt{--r1545 attop-->  LETREGION[r2395:inf];} \nonumber \\
-& &\texttt{ --r1545 attop-->   driver[r2468:inf]} \nonumber \\
-& &\texttt{--r2468 attop--> LETREGION[r2797:inf];} \label{path01.ref}
-\end{eqnarray}
-\noindent
-This is read as follows: the formal region variable \texttt{r2468} is
-instantiated to {\tt letregion}-bound region variable \texttt{r2797} when
-function \texttt{driver} is called. Formal region variable \texttt{r1545}
-is then instantiated to region variable \texttt{r2468} when calling
-function \texttt{toString}.\footnote{Region flow graphs are local to each
-  program in a project. Calling a non local region-polymorphic function
-  will then introduce an edge in the region flow graph, but we do not know
-  in which module the called function is located. It may be necessary to
-  look in several log files to find the path from a formal region variable
-  to an actual.}
-Searching after \texttt{r1545} in file \texttt{lib.log} shows that
-\texttt{toString} calls function \texttt{implode} which is found in file
-\texttt{prelude.log}.\footnote{We use \texttt{...} to indicate that we have
-  deleted text.}
-
-%\begin{footnotesize}
+from the directory {\tt kit/basislib}, and find that {\tt pp6155}
+appears in the file {\tt General.sml.log}, which contains the following
+fragment:
 \begin{verbatim}
-fun toString attop r1 pp200 [r1545:inf] (n)= 
-    letregion r1542:inf, r1543:inf, r1544:inf, r1547:1 
-    in implode[sat r1545 pp208] atbot r1547 pp207 
-...
+ fun implode attop r1 pp6154 [r45074:inf] (chars)= 
+   ccall(implodeCharsProfiling,  sat r45074 pp6155, chars);
 \end{verbatim}
-%\end{footnotesize}
-\noindent
-We see that region \texttt{r2797} is passed with storage mode attop
-(\ref{path01.ref}, above) to formal region variable \texttt{r2468} when
-function \texttt{driver} is called for the first time. Region \texttt{r2797}
-contains the result string which is printed after scanning the file. This
-can be seen from the lambda program in file \texttt{scan\_rev1.log}.
-Searching after allocation points allocating into region \texttt{r2468}
-gives among others the following fragments: \texttt{": size = "attop r2468}
-and \texttt{" comments: "attop r2468}.
+So the space leak is caused by function {\tt implode} being called
+with region {\tt r89717} instantiated for the formal region variable
+{\tt r45074}.
 
-The result string is not needed after a file has been scanned and the
-result string printed, so the memory holding the result string can be
-de-allocated. The {\attop} storage mode explains why the region holding the
-result string is not deallocated between scans. So, why is the storage mode
-attop? To answer this we have to see where \texttt{driver} is called the
-first time, which is in function \texttt{do\_it}:
-
-%\begin{footnotesize}
+We now search for \texttt{r89717} in file \texttt{scan\_rev1.sml.log} and
+find the following fragment of the region flow graph:
 \begin{verbatim}
-fun main(is: instream):unit =
-let 
-  fun driver(None,n,inside) = 
-        report_totals(n, inside)
-    | driver(Some filename,n:int,inside:int) =
-        case scan_file filename of
-          Some(n,inside) => report_totals(n,inside)
-        | None => ()
-
-  val filename = "../../kitdemo/life.sml"
-  fun do_it 0 = driver(Some filename, 0, 0)
-    | do_it n = (driver(Some filename, 0, 0); do_it (n-1))
-in
-  do_it 10;
-  ()
-end
+ toString[r75249:inf] --r75249 attop--> LETREGION[r89717:inf]
+ readWord[r89487:inf] --r89487 atbot--> [*r89717*]
 \end{verbatim}
-%\end{footnotesize}
-\noindent
-The following fragment of the corresponding lambda program (file
-\texttt{scan\_rev1.log}) shows that the file name \texttt{"life.sml"} is
-also put into region \texttt{r2797} which, of course, has to stay allocated
-between the scans:
+The fragment is read as follows. The formal region variable {\tt
+  r75249} is instantiated to the {\tt letregion}-bound region variable
+{\tt r89717} in a call to {\tt toString}. Moreover, also the formal
+region variable {\tt r89487} (of function {\tt readWord}) is
+instantiated to {\tt r89717}. (The asterisks ({\tt *}) denote that the
+node has been displayed before.)
 
-%\begin{footnotesize}
+Region flow graphs are local to each program in a project. A call to a
+non-local region-polymorphic function introduces an edge in the region
+flow graph, but the graph says nothing about in which module the
+called function is located. Thus, it may be necessary to look in
+several log files to find the path from a formal region variable to an
+actual region variable. By inspecting the call-explicit programs found
+in {\tt basislib/Int.sml.log} and {\tt kitdemo/lib.sml.log} one finds
+that both {\tt toString} and {\tt readWord} eventually call {\tt
+  implode}. However, {\tt readWord} is called only initially, thus, we
+conclude that the space leak is caused by function {\tt toString}
+(from the {\tt Int} structure) being called with region {\tt r89717}
+instantiated for the formal region variable {\tt r75249}. Indeed, by
+inspecting the calls to {\tt toString} in the call-explicit program
+found in {\tt scan\_rev1.sml.log}, we see that {\tt toString} is called
+with actual region {\tt r89717}. 
+
+The {\tt concat} function from the initial basis catenates a list of
+strings. But all the strings in the argument list to {\tt concat} are
+required to be in the same region. Thus, whenever a file is reported
+(see Figure~\ref{report_file.fig}), strings created by the {\tt
+  Int.toString} function are put in the region that also holds the
+file name for the report (which is read using the function {\tt
+  readWord}); and this region is non-local to the {\tt do\_it}
+function, which implements the main loop of the program.
+\begin{figure}
+\hrule \medskip
 \begin{verbatim}
-...
-letregion r2797:inf 
-in let val filename = "../../kitdemo/life.sml"attop r2797 pp501
-   in  letregion r2798:3 
-     in let fun do_it atbot r2798 pp502 [] (var70)= 
-...
-\end{verbatim}                                
-%\end{footnotesize}
-\noindent
-The reason that the file name and the other strings mentioned above must
-stay in the same region is that they are all made part of the same list of
-strings, namely the argument to \texttt{implode} in \texttt{report\_totals}.
+  fun report_file(filename, n, inside) = 
+    writeln(concat[filename, ": size = ", Int.toString n, 
+                   " comments: ", Int.toString inside, " (",
+                   (Int.toString(percent(inside, n)) 
+                    handle _ => "-"), "%)"])
 
-The region \texttt{r2797} contains both local and non-local data to the
-driver function which is why the region cannot be reset in the driver
-function.  A general solution to this problem is to delay the creation of
-the file name, so that the file name is created at each call to
-\texttt{driver}. The newly created file name will then be put into a region local
-to the application point to \texttt{driver}. The revision is found in
-project \texttt{kitdemo/scan\_rev2.pm}:\index{scan_rev2@\texttt{scan\_rev2.pm}}
-
-%\begin{footnotesize}
-\begin{verbatim}
-fun filename() = "../../kitdemo/life.sml"
-fun do_it 0 = driver(Some (filename()), 0, 0)
-  | do_it n = (driver(Some (filename()), 0, 0); do_it (n-1))
+  fun scan_file (filename: string) : (int*int)option=
+   let val is  = TextIO.openIn filename 
+   in let val (n,inside)  = scan is
+      in TextIO.closeIn is; 
+         report_file(filename, n, inside);
+         SOME(n,inside)
+      end handle NotBalanced => 
+          (writeln(filename ^ ": not balanced");
+           TextIO.closeIn is;
+           NONE)
+   end handle IO.Io {name,...} => 
+       (writeln(name^" failed."); NONE)
+  
+  fun main():unit =
+    case readWord(TextIO.stdIn)
+      of SOME filename =>
+        let fun do_it 0 = ()
+              | do_it n = (scan_file filename; do_it (n-1))
+        in do_it 50
+        end
+       | NONE => ()
 \end{verbatim}
-%\end{footnotesize}
-\noindent
-Figure \ref{scan_rev2_1.fig} shows a region profile of the
-\texttt{scan\_rev2} project.
+\caption{Fragments of {\tt scan\_rev1.sml}. All the strings in the 
+  argument list to {\tt concat} are put in the same region.}
+\label{report_file.fig}
+\medskip \hrule
+\end{figure}
 
-\begin{figure}[htb]
-\hrule
-\medskip
-
+One way of solving the space leak is to make a copy of {\tt filename}
+at the call to {\tt report\_file} in function {\tt scan\_file}:
+\begin{verbatim}
+  fun scan_file (filename: string) : (int*int)option=
+   let val is  = TextIO.openIn filename 
+   in let val (n,inside)  = scan is
+      in TextIO.closeIn is; 
+         report_file(filename^"", n, inside);
+         SOME(n,inside)
+      end handle NotBalanced => 
+          (writeln(filename ^ ": not balanced");
+           TextIO.closeIn is;
+           NONE)
+   end handle IO.Io {name,...} => 
+       (writeln(name^" failed."); NONE)
+\end{verbatim}
+Project 
+\index{scan_rev2@\texttt{scan\_rev2.pm}}%
+{\tt kitdemo/scan\_rev2.pm} implements the modification.
+Figure~\ref{scan_rev2_1.fig} shows a region profile of the
+\texttt{scan\_rev2.pm} project.
+\begin{figure}
 \begin{center}
-  \scalebox{1.3}{\includegraphics*[0,0][198,132]{scan_rev2_1.eps}}
+\includegraphics{scan_rev2_1.ps}
 \end{center}
-  \caption{There is no space leak: no matter how many times we scan the
-    file, the project will use the same number of words. The graph has been
-    generated by executing \texttt{run -microsec 10000} and \texttt{rp2ps
-      -sampleMax 1200 -region}.}\label{scan_rev2_1.fig}
-\medskip
-
-\hrule
+\caption{There is no space leak: no matter how many times we scan the
+  file, the project will use the same number of words. The graph was
+  generated by executing \texttt{echo life.sml | run -microsec 10000} and \texttt{rp2ps
+    -region}.}
+\label{scan_rev2_1.fig}
 \end{figure}
-%\noindent
-To see the effect of the modifications above consider the following lambda
-fragment (found in file \texttt{scan\_rev2.log}):
-
-%\begin{footnotesize}
-\begin{verbatim}
-fun do_it atbot r2797 pp501 [] (var142)= 
-  (case var142 
-     of 0 => 
-        letregion r2799:inf, r2800:2, r2801:3, r2803:1 
-        in driver[atbot r2799 pp506] atbot r2803 pp505 
-           (Some atbot r2800 pp503 "../../kitdemo/life.sml"
-                                        attop r2799 pp502, 
-            0, 
-            0
-           ) atbot r2801 pp504 
-        end (*r2799:inf, r2800:2, r2801:3, r2803:1*)
-\end{verbatim}                                
-%\end{footnotesize}
-\noindent
-The copy of the file name is put into region \texttt{r2799} which is
-deallocated after the call to \texttt{driver}.
 
 %----------------------------------------
 \section{Compile-Time Profiling Strategy}
 %----------------------------------------
 
-We will now show some examples on how the profiling tools can be used. As
-shown in Figure \ref{profStrategy.fig} we have to choose a 
-\index{profile strategy!compile-time@compile-time}%
-\emph{Compile-Time Profiling Strategy}. The Compile-Time Profiling
-Strategy directs how the region-annotated lambda code with program
-points and the region flow graph are generated.
+Before compiling a program for the purpose of profiling, one must decide on a
+\index{profile strategy!compile-time}%
+{\em compile-time profiling strategy}, see
+Figure~\ref{profStrategy.fig}.  The compile-time profiling strategy
+directs the embedding of profiling instructions in the generated code
+and instructs the compiler whether to report a region flow graph.
 
-The Compile-Time Profiling Strategy is set up in the Profiling
-sub-menu
-\index{Profiling sub-menu}%
-in the ML Kit menu.\footnote{The \texttt{Instruction Count
-    Profiling}
-  \index{Instruction Count Profiling@\texttt{Instruction Count Profiling}}%
-  option is only available in the HP-UX backend and has nothing to do
-  with region profiling. It simply counts the number of executed
-  instructions in the target program excluding runtime calls and the
-  link file. It should only be used when region profiling is not
-  enabled. If the number of instructions executed gets too large, the
-  Overflow exception is raised.}
+The compile-time profiling strategy is set up in the 
+\index{Profiling@{\tt Profiling} sub-menu}%
+{\tt Profiling} sub-menu:\footnote{The 
+  \index{instruction count profiling@\texttt{instruction count profiling}}%
+  \texttt{instruction count profiling} option is available only with the
+  native backend and has nothing to do with region profiling; it simply
+  counts the number of executed instructions in the target program
+  excluding runtime calls and instructions in the link file. It should be used
+  only when region profiling is disabled. If the number of instructions
+  executed gets too large, the {\tt Overflow} exception is raised.}
 
 %\begin{quote}
 %\begin{footnotesize}
 \begin{verbatim}
-Profiling
+ Profiling
 
-0       region profiling............................ off >>>
-1       generate lambda program with program points. off
-2       generate region flow graph (.vcg file)...... off
-3       paths between two nodes in region flow graph [] >>>
-4       Instruction Count Profiling................. off
+ 0      region profiling............................. off >>>
+ 1      show region flow graph and generate .vcg file off
+ 2      paths between two nodes in region flow graph. [] >>>
+ 3      instruction count profiling.................. off
 \end{verbatim}
 %\end{footnotesize}
 %\end{quote}
 \noindent
-Region profiling is enabled by choosing the first item:
-\index{region profiling@\texttt{region profiling}}%
-\mbox{\texttt{region profiling}}.
+Region profiling is enabled by toggling the item
+\index{region profiling@{\tt region profiling}}%
+\mbox{{\tt region profiling}}. If you want the Kit to report
+region-annotated programs with program points, you should enable
+either 
+\index{print physical size inference expression@{\tt print physical size inference expression}}%
+{\tt print physical size inference expression} or
+\index{print call-explicit expression@{\tt print call-explicit expression}}%
+{\tt print call-explicit expression} from the {\tt Printing of
+  intermediate forms} sub-menu together with the item 
+\index{print program points@{\tt print program points}}%
+{\tt print program points} from the {\tt Layout} sub-menu.
 
-If you want the region-annotated lambda code with program points,
-toggle the second menu item:
-\index{generate lambda program with program points@\texttt{generate lambda program with pro\-gram points}}%
-\texttt{generate lambda program with program points}.  The lambda
-program is written on the log.
-
-To generate a region flow graph, choose 
-\index{generate region flow graph (.vcg file)@\texttt{generate region flow graph (.vcg file)}}%
-\texttt{generate region flow graph (.vcg file)}. The region flow graph
-will be written on the log in text layout which may be hard to read.
-A more readable graph is exported to the working directory in file
-\emph{f}\texttt{.vcg} where \emph{f}\texttt{.sml} is the source
-program.  The file \emph{f}\texttt{.vcg} contains the region flow
-graph in a format that can be read by the
+To make the compiler report a region flow graph, enable
+\index{show region flow graph and generate .vcg file@{\tt show region flow graph and generate .vcg file}}%
+{\tt show region flow graph and generate .vcg file}. The region flow
+graph is reported both in text layout and in a {\tt .vcg} file, which,
+when interpreted by the 
 \index{VCG tool}%
-VCG tool (Visualization of Compiler Graphs\footnote{The VCG tool can
-  be obtained from
+VCG tool, provides a graphical version of the graph.\footnote{The VCG
+  tool (Visualization of Compiler Graphs) can be obtained from
   \[\texttt{http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html}.\]
-  We use version 1.30 found in file \texttt{vcg.1.30.r3.17.tar}.}).
+  We use version 1.30, which can be found in file
+  \texttt{vcg.1.30.r3.17.tar}.}
 
-As a running example we use the project \texttt{life.pm} in the \texttt{kitdemo}
-directory. The project contains one file: \texttt{life.sml}. We toggle the
-first three options on (above, 0-2) and compile the project from inside
-the \texttt{Project} sub-menu. 
+As a running example, we use the 
+\index{life@{life}}%
+{\tt life} program.\footnote{Program {\tt kitdemo/life.sml}.}  We
+enable the {\tt region profiling} option and the {\tt show region flow
+  graph and generate .vcg file} option from the {\tt Profiling}
+sub-menu together with the options {\tt print call-explicit
+  expression} and {\tt print program points} from the sub-menus {\tt
+  Printing of intermediate forms} and {\tt Layout}, respectively.
 
-The ML Kit now generates several files of which we have \texttt{life.log}
-(containing, among other things, the lambda program with program points and the
-region flow graph in text layout), \texttt{life.vcg} (the region flow graph
-ready to use with the VCG tool) and the executable \texttt{run}.
+By enabling the option {\tt Log to file} from the {\tt File} sub-menu
+and by compiling the program using the {\tt Compile an sml file} entry in
+the main-menu, the Kit now generates several files of which we have
+{\tt life.log} (containing, among other things, the call-explicit
+region-annotated program with program points and the region flow graph
+in text layout), {\tt life.vcg} (the region flow graph to be
+displayed with the VCG tool) and the executable file {\tt run}.
 
 %-------------------------------------------------
-\subsubsection{Lambda program with program points}
+\section{The Log File}
 %-------------------------------------------------
-In the log file (\texttt{life.log}) you find the lambda program by searching for
-\texttt{LAMBDA CODE WITH PROGRAM POINTS}:
-%\begin{footnotesize}
+In the file {\tt life.log} you find the call-explicit region-annotated
+program with program points and the region flow graph in text layout
+for the {\tt life.sml} source file.  The region flow graph is found by
+searching for \texttt{REGION FLOW GRAPH FOR PROFILING}. The graph
+contains the following fragment:\label{reg_flow_graph.ex}
 \begin{verbatim}
-Report: LAMBDA CODE WITH PROGRAM POINTS:: 
-   let exception Div : (exn,r1) 
-                  (* exn value or name attop r1 pp2 *);
-...
+ cp_list[r314:inf]
+    --r314 sat-->   [*r314*] ;
+    --r314 atbot-->   LETREGION[r1539:inf];
+    --r314 sat-->   nthgen'[r944:inf]   
+                   --r944 sat-->   [*r944*] ;
+                   --r944 atbot-->   LETREGION[r1588:inf];
 \end{verbatim}
-%\end{footnotesize}
-\noindent
-In the first line we have an allocation with storage mode
-\texttt{attop} into region \texttt{r1}. The allocation point has
-program point 2 (\texttt{pp2}).
-
-%----------------------------------------------------------
-\subsubsection{Region flow graphs \label{regFlowGraph.sec}}
-%----------------------------------------------------------
-The region flow graph is found by searching after \texttt{REGION FLOW GRAPH
-  FOR PROFILING}:\label{reg_flow_graph.ex}
-%\begin{footnotesize}
-\begin{verbatim}
-Report: REGION FLOW GRAPH FOR PROFILING:: 
-   Begin layout of region flow graph and SCC-graph.
-...
-       cp_list[r314:inf]
-          --r314 sat-->   [*r314*] ;
-          --r314 atbot-->   LETREGION[r1539:inf];
-          --r314 sat-->   nthgen'[r944:inf]   
-                         --r944 sat-->   [*r944*] ;
-                         --r944 atbot-->   LETREGION[r1588:inf];
-...
-\end{verbatim}
-%\end{footnotesize}
-\noindent
 The region flow graph is almost equivalent to the graph used by the
-storage mode analysis (p.~\pageref{region flow graph}) where region
-variables are nodes and an edge between two nodes $\rho$ and $\rho'$
-is inserted if $\rho$ is a formal region parameter of a function $f$
-which is applied to actual region parameter $\rho'$. This implies that
-\texttt{letregion}-bound region variables are always leaf nodes.
+storage mode analysis (see page~\pageref{region flow graph}). In the
+graph, region variables are nodes and there is edge between two nodes
+$\rho$ and $\rho'$ if $\rho$ is a formal region parameter of a
+function that is applied to actual region parameter $\rho'$. It
+follows that \texttt{letregion}-bound region variables are always leaf
+nodes.
 
 Nodes in the graph are written in square brackets, where for example
-\texttt{cp\_list[r314:inf]} means that \texttt{r314} is a formal region
-parameter in function \texttt{cp\_list}. An asterisk inside a square
-bracket means that the node has been written earlier. Only the node
-identifier (i.e. the region variable) will then be printed. The size of the
-region is printed after the region variable: we use \texttt{inf} for an
-infinite region and \texttt{:}\emph{size} for a finite region where
-\emph{size} is the region size in words.
+\texttt{cp\_list[r314:inf]} means that \texttt{r314} is a formal
+region parameter of function \texttt{cp\_list}. An asterisk inside a
+square bracket means that the node has been written earlier. Only the
+node identifier (i.e., the region variable) will then be printed. The
+size of the region is printed after the region variable; we use {\tt
+  inf} for infinite regions and {\em size} for finite regions of size
+{\em size} words.
 
-Edges are written with the \emph{from node} identifier inside the
-edge. The edge points to the \emph{to node}. The text
-\texttt{cp\_list[r314:inf]  --r314 sat-->   [*r314*] ;} is read: there
-is an edge from node \texttt{r314} to node \texttt{r314}, and node
-\texttt{r314} has been written earlier. We have a cycle, so
-\texttt{cp\_list} must call itself recursively; if you look in file
-\texttt{life.sml} you will find something like:
-
-%\begin{footnotesize}
+Edges are written with the {\em from node\/} identifier annotated on
+them. The edge points to the \emph{to node}. The fragment
 \begin{verbatim}
-fun cp_list[] = []
-  | cp_list((x,y)::rest) = 
-        let val l = cp_list rest
-        in (x,y):: l
-        end.
+ cp_list[r314:inf] --r314 sat--> [*r314*] ;
 \end{verbatim}
-%\end{footnotesize}
-\noindent
-It is important to look inside the edge for the from node. Consider for
-example:
-%\begin{footnotesize}
+is read: there is an edge from node \texttt{r314} to node
+\texttt{r314} and node \texttt{r314} has been written earlier. From
+the cycle in the graph, one can conclude that \texttt{cp\_list} calls
+itself recursively; if you look in file {\tt life.sml}, you will
+find something like
 \begin{verbatim}
-...
- LETREGION[r3621:2];   --r3480 atbot-->   LETREGION[r3627:2];
-...
+ fun cp_list[] = []
+   | cp_list((x,y)::rest) = 
+     let val l = cp_list rest
+     in (x,y):: l
+     end.
 \end{verbatim}
-%\end{footnotesize}  
-\noindent
-We do not have an edge from the \texttt{letregion}-bound region variable
-(\texttt{r3621}) to the other \texttt{letregion}-bound variable (\texttt{r3627}).
 
-%-----------------------------------------------------
-\subsubsection{The strongly connected components graph}
-%-----------------------------------------------------
+% I don't understand the scenario below; can it happen? (ME 1998-09-27)
+%
+%\noindent
+%It is important to look inside the edge for the from node. Consider for
+%example:
+%%\begin{footnotesize}
+%\begin{verbatim}
+%...
+% LETREGION[r3621:2];   --r3480 atbot-->   LETREGION[r3627:2];
+%...
+%\end{verbatim}
+%%\end{footnotesize}  
+%\noindent
+%We do not have an edge from the \texttt{letregion}-bound region variable
+%(\texttt{r3621}) to the other \texttt{letregion}-bound variable (\texttt{r3627}).
+
 The region flow graph can get very complicated to read because we may have
-mutually recursive functions giving a bunch of edges and cycles.  If the
-graphs get too complicated you may find help in the \emph{strongly
-  connected component}
+mutually recursive functions, which give many edges and cycles.  If the
+graphs get too complicated, you may find help in the 
 \index{strongly connected component}%
-(scc) version of the graph.
+{\em strongly connected component\/} (scc) version of the graph.  The
+scc graph is found by searching for \texttt{[sccNo} in the log file.
+Each scc is identified by a unique {\em scc number}. The region
+variables contained in each scc is annotated on the scc-node.
 
-The scc graph is found by searching for \texttt{[sccNo} in the log
-file. Each scc is identified by a unique \emph{scc number}. The region
-variables contained in each scc is written as info on the scc-node.
-
-Consider for example:
-%\begin{footnotesize}
+Consider, for example, the following fragment of the scc version of
+the region flow graph for the {\tt life} program:
 \begin{verbatim}
-[sccNo 206: r1181,]   --sccNo 206-->   [sccNo 205: r1486,];
+ [sccNo 206: r1181,]   --sccNo 206-->   [sccNo 205: r1486,];
 \end{verbatim}
-%\end{footnotesize}
-\noindent
-We have a scc node (id 206) containing region variable \texttt{r1181} and
-an edge to scc node (id 205) containing region variable
-\texttt{r1486}.
+Here, we have a scc node (id 206) containing region variable
+\texttt{r1181} and an edge to scc node (id 205) containing region
+variable \texttt{r1486}.
 
 %--------------------------------------------------------
-\subsubsection{Region flow paths\label{regFlowPath.sec}}
+\section{Region Flow Paths\label{regFlowPath.sec}}
 %--------------------------------------------------------
 If you are interested in the possible paths
 \index{region flow path}%
-from one region variable to another, the ML Kit can find them for you.
+from one region variable to another, the Kit can find them for you.
+Assume that you have an object profile for some region variable $\rho$
+showing that a certain allocation point is responsible for the
+allocations and that the region variable written at the allocation
+point is not $\rho$, but some other region variable $\rho'$. In this
+case, $\rho'$ must be a formal region variable of some
+region-polymorphic function; it is now interesting to find out how
+$\rho'$ has been instantiated to $\rho$.
 
-This often happens when you have an object profile (for example of
-region $\rho_1$) showing that a certain allocation point is
-responsible for the allocations of interest but the region they are
-allocated in is not the same as the one written at the allocation
-point, say $\rho_2$, in the region-annotated lambda program.
-
-The region written at the allocation point ($\rho_2$) must then be a formal
-region variable and it is now interesting to find out how $\rho_2$ has been
-instantiated to $\rho_1$.
-
-You can specify the from and to nodes that you want the paths for in the
-fourth menu item 
-\index{paths between two nodes in region flow graph@\texttt{paths between two nodes in region flow graph}}%
-(\texttt{paths between two nodes in region flow graph}) in the
-Profiling sub-menu:
-
-\begin{footnotesize}
+You can specify the from and to nodes that you want the paths for in
+the menu item
+\index{paths between two nodes in region flow graph@{\tt paths between two nodes in region flow graph}}%
+{\tt paths between two nodes in region flow graph} in the {\tt Profiling}
+sub-menu:
 \begin{verbatim}
-Profiling
+ Profiling
 
-0       region profiling............................ off >>>
-1       generate lambda program with program points. off
-2       generate region flow graph (.vcg file)...... off
-3       paths between two nodes in region flow graph [] >>>
-4       Instruction Count Profiling................. off
+ 0       region profiling............................. off >>>
+ 1       show region flow graph and generate .vcg file off
+ 2       paths between two nodes in region flow graph. [] >>>
+ 3       instruction count profiling.................. off 
 
-Toggle line (t <number>), Activate line (a <number>), Up (u), or Quit(q): 
+ Toggle line (t <number>), Activate line (a <number>), Up (u), 
+ or Quit (quit): 
 
->3
-<type an int pair list of region variables,
-e.g. [(formal reg. var. at pp.,\texttt{letregion}-bound reg. var.)]> or up (u): >
-[(314,1588)]
+ >2
+ <type an int pair list of region variables,
+ e.g. [(formal reg. var. at pp.,letregion bound reg. var.)]> 
+ or up (u): >
 \end{verbatim}
-\end{footnotesize}
-\noindent
-You may type in a list of integer pairs, i.e. you can specify several
-pairs of nodes that you want the paths for.
+
+At this point, you can type in a list of integer pairs, that is, you
+can specify several pairs of nodes that you want the paths for.
 
 Compiling the source program again gives a new log file where you can
-search for \texttt{[Starting layout of paths...}:\footnote{Because region
-  variables may change when re-compiling a source program in a project it
-  may be necessary to start all over by starting the Kit again and compile
-  the whole project again to make sure that the regions you have specified
-  will match the regions in a region flow graph of a previous compilation.}
-
-%\begin{footnotesize}
+search for \texttt{Starting layout of paths}:\footnote{Because region
+  variables may change when re-compiling a source file, it may be
+  necessary to start all over by starting the Kit again and compile
+  the project again to make sure that the regions you have specified
+  will match the regions in a region flow graph of a previous
+  compilation.}
 \begin{verbatim}
 [Starting layout of paths...
     [Start path: [sccNo 59: r314,]--->
                  [sccNo 58: r944,]--->[sccNo 57: r1588,]]
 ...Finishing layout of paths]
 \end{verbatim}
-%\end{footnotesize}
-\noindent
 If you look at the region flow graph on
-page~\pageref{reg_flow_graph.ex} you see that the only path from
+page~\pageref{reg_flow_graph.ex}, you see that the only path from
 region \texttt{r314} to region \texttt{r1588} goes through function
-\texttt{nthgen'}, i.e. \texttt{nthgen'} calls \texttt{cp\_list}. If
+\texttt{nthgen'}, that is, \texttt{nthgen'} calls \texttt{cp\_list}. If
 you look in the file \texttt{life.sml} you may notice that
 \texttt{nthgen'} actually calls a function \texttt{copy} and not
 \texttt{cp\_list}. The function \texttt{copy} is declared as
-
-%\begin{footnotesize}
 \begin{verbatim}
-copy (GEN l) = GEN(cp_list l)
+ fun copy (GEN l) = GEN(cp_list l)
 \end{verbatim}
-%\end{footnotesize}
-\noindent
-If you see in the lambda program (file \texttt{life.log}) you may notice
-that \texttt{cp\_list} has been inlined instead of \texttt{copy} by the
-optimizer.
+If you look at the call-explicit region-annotated program in file
+\texttt{life.log}, you may notice that the function \texttt{copy} has
+been in-lined by the optimiser.
 
 %---------------------------------
-\subsubsection{Using the VCG tool}
+\section{Using the VCG Tool}
 %---------------------------------
 
-The VCG tool
+The 
 \index{VCG tool}%
-can be used to visualize the exported graphs (file
-\emph{source}\texttt{.vcg}). We assume that you have installed the
-tool and it is started by typing \texttt{xvcg} at the command prompt.
-We use file \texttt{life.vcg} as the running example. Typing
-\mbox{\texttt{xvcg life.vcg}} at the command prompt gives the window
-shown in Figure \ref{vcg1.fig}.
-
-\begin{figure}[htb]
+VCG tool can be used to visualise region flow graphs exported in {\tt
+  .vcg} files. We assume that the tool is installed and that it can be
+started by typing \texttt{xvcg} at the command prompt.  We use file
+\texttt{life.vcg} as the running example. Typing \mbox{\texttt{xvcg
+    life.vcg}} at the command prompt gives the window shown in
+Figure~\ref{vcg1.fig}.
+\begin{figure}
 \begin{center}
   \scalebox{0.5}{\includegraphics*[0,0][293,327]{vcg1.eps}}
   \caption{The VCG graph contains two nodes. The
@@ -6133,291 +6146,235 @@ shown in Figure \ref{vcg1.fig}.
 \end{center}
 \end{figure}
 
-The two graphs are exported \emph{folded}. To unfold a graph choose
-\textbf{Unfold Subgraph} from the pull-down menu inside the
-\texttt{xvcg} window. The pull-down menu is activated by pressing one
-of the mouse buttons. After activating \textbf{Unfold Subgraph} you
-have to pick the node representing the graph to unfold. This is done
-by clicking on the node with the left mouse button. Pressing the right
-mouse button will then unfold the chosen graph. Figure \ref{vcg2.fig}
+The two graphs are exported \emph{folded}, meaning that they are
+represented in the window as one node each. To unfold a graph choose
+{\tt Unfold Subgraph} from the pull-down menu inside the {\tt xvcg}
+window. The pull-down menu is activated by pressing one of the mouse
+buttons. After activating {\tt Unfold Subgraph}, choose with the left mouse button the node
+representing the graph that you want to unfold. Then press the right
+mouse button to unfold the chosen graph. Figure~\ref{vcg2.fig}
 shows a small fraction of the unfolded region flow graph.
-
-\begin{figure}[htb]
+\begin{figure}
 \begin{center}
   \scalebox{0.8}{\includegraphics*[0,0][459,164]{vcg2.eps}}
-  \caption{The figure shows a small fragment of
-          the region flow graph.}\label{vcg2.fig}
 \end{center}
+\caption{A small fragment of the region flow graph.}
+\label{vcg2.fig}
 \end{figure}
-%\noindent
+
 The graph is read in the same way as the text-based version in the log
-file. It can be printed out, scaled etc. from the pull-down
-menu. The graph is folded again by choosing \textbf{Fold Subgraph} and clicking
-on one of the nodes. All nodes in the graph then turn black, and clicking
-on the right mouse button folds the graph.
+file. It can be printed out, scaled, and so on from the pull-down
+menu. The graph is folded again by choosing {\tt Fold Subgraph} and
+clicking on one of the nodes. All nodes in the graph then turn black;
+clicking on the right mouse button then folds the graph.
 
 Region flow paths are also exported together with the region flow
-graph. Each path is numbered, and can be viewed by the \textbf{Expose/Hide
+graph. Each path is numbered and can be viewed by the {\tt Expose/Hide
   edges} facility in the VCG pull-down menu, see Figure \ref{vcg3.fig}.
-\begin{figure}[htb]
+\begin{figure}
 \begin{center}
   \scalebox{0.5}{\includegraphics*[0,0][556,117]{vcg3.eps}}
-  \caption{After choosing the
-    \textbf{Expose/Hide edges} facility you get this window. The window
-    shows that there are two \emph{edge classes} in the graph; one for the
-    region flow graph and one for the path from node \texttt{r474} to node
-    \texttt{r1748}. If you have generated the path from section
-    \ref{regFlowPath.sec} you have the option
-    \texttt{Path2(r314,r1588)}.}\label{vcg3.fig}
 \end{center}
+\caption{After choosing the
+  {\tt Expose/Hide edges} facility you get this window. The window
+  shows that there are two classes of edges in the graph; one for the
+  region flow graph and one for the path from node \texttt{r474} to node
+  \texttt{r1748}. If you have generated the path from Section~\ref{regFlowPath.sec}, the option
+  \texttt{Path2(r314,r1588)} is present.}
+\label{vcg3.fig}
 \end{figure}
-%\noindent
+
 Each path is numbered because there can be several paths between the same
-two nodes. Clicking on the edge class ``Graph'' will hide the edges in the
+two nodes. Clicking on the {\tt Graph} edge class will hide the edges in the
 region flow graph so that edges in the generated path are the only edges
 shown, see Figure \ref{vcg4.fig}.
-\begin{figure}[htb]
+\begin{figure}
 \begin{center}
   \scalebox{0.8}{\includegraphics*[0,0][460,186]{vcg4.eps}}
-  \caption{The Figure shows the path between
-          node \texttt{r474} and \texttt{r1748}. If you look on page
-          \pageref{reg_flow_graph.ex} you may notice that it is the same
-          path as in the log file; the numbers have changed however,
-          because they where generated in two different
-          compilations.}\label{vcg4.fig}
 \end{center}
+\caption{The figure shows the path between
+  node \texttt{r474} and \texttt{r1748}. If you look on
+  page~\pageref{reg_flow_graph.ex}, you may notice that it is the same
+  path as in the log file; the numbers have changed however, because
+  they where generated in two different compilations.}
+\label{vcg4.fig}
 \end{figure}
 
 %----------------------------------
-\section{Target Profiling Strategy}
+\section{Runtime Profiling Strategy}
 %----------------------------------
-When the source program has been compiled and linked you have an
-executable, \texttt{run}. Typing \texttt{run} at the command prompt will
+When the source program has been compiled and linked, you have an
+executable file, \texttt{run}. Typing \texttt{run} at the command prompt will
 execute the program with a predefined 
-\index{profile strategy!target@target}%
-Target Profiling Strategy.  The profiling strategy is printed on the
-first four lines of output:
-
-%\begin{footnotesize}
+\index{profile strategy!runtime}%
+runtime profiling strategy, which is displayed when the program is
+run:
 \begin{verbatim}
-Profiling is turned on with options:
-     profile timer (unix virtual timer) is turned on.
-     a profile tick occurs every 1th second.
-     profiling data is written on file profile.rp.
+ ---------------------Profiling-Enabled---------------------
+  The profile timer (unix virtual timer) is turned on.
+  A profile tick occurs every 1th second.
+  Profiling data is exported to file profile.rp.
+ -----------------------------------------------------------
 \end{verbatim}
-%\end{footnotesize}
-\noindent
 You can change the 
 \index{profile strategy!option@options}%
 profiling strategy by passing command line arguments directly to the
-executable.  The second line says that a virtual timer is used. There
-are three possible timers, but in general it may be system dependent.
-On the HP-UX operating system you have the following
-timers:\footnote{A complete description can be found in the manual
-  page for \texttt{getitimer}.}
+executable.  The second line says that a virtual timer is used. In general, what timers are available
+  is very much system dependent. Under the HP-UX operating system, there
+are three possible timers, each of which can be enabled using one of
+the following options:\footnote{A complete description can be
+    found in the manual page for \texttt{getitimer}.}
 \begin{description}
-\item[REAL\index{timer!real}] which is real time.
-\item[VIRTUAL\index{timer!virtual}] which is the process virtual time. It runs only when the
-  process is executing.
-\item[PROF\index{timer!prof}] which is the process virtual time together with the time used
-  in the operating system on behalf of the process.
+\item[{\tt -realtime}:\index{realtime@\texttt{-realtime} option}\index{timer!real}] 
+  Real time.
+\item[{\tt -virtualtime}:\index{virtualtime@\texttt{-virtualtime} option}\index{timer!virtual}] 
+  The execution time for the process.
+\item[{\tt -profiletime}:\index{profiletime@\texttt{-profiletime} option}\index{timer!prof}] 
+  The execution time for the process together with the time used in the operating system on behalf of the process.
 \end{description}
-\noindent
-You specify the timer to use by passing
-\texttt{-realtime}\index{realtime@\texttt{-realtime} option},
-\texttt{-virtualtime}\index{virtualtime@\texttt{-virtualtime} option} or 
-\texttt{-profiletime}\index{profiletime@\texttt{-profiletime} option} to the executable.
 
 The third line says that a 
 \index{profile tick}%
-\emph{profile tick} occurs every 1 second.  A profile tick is when the
-program stops normal execution, and memory is traversed to collect
+{\em profile tick\/} occurs every 1 second.  A profile tick is when
+the program stops normal execution, and memory is traversed to collect
 profile data. The more often a profile tick occurs the more detailed
-you profile. The 
+you profile (and the slower the program will run). The
 \index{time slot}%
-\emph{time slot} (the time between to succeeding profile ticks) to use
-is specified by the \texttt{-sec n}\index{sec@\texttt{-sec} option}
-and \texttt{-microsec n}\index{microsec@\texttt{-microsec} option}
-options. A time slot of half a second is specified by
-\texttt{-microsec 500000} and not by \texttt{-sec 0.5}.\footnote{The
-  lowest possible time slot to use is system dependent. It is also
-  system dependent how long time that passes before the time wraps.
-  This will not in practice happen on a HP-UX but it will happen after
-  about 40 minutes on SUN OS4.}
+{\em time slot\/} (i.e., the time between to succeeding profile ticks) to use
+is specified by the 
+\index{sec@\texttt{-sec} option}%
+\texttt{-sec n} and 
+\index{microsec@\texttt{-microsec} option}%
+\texttt{-microsec n} options. A time slot of half a second is
+specified by \texttt{-microsec 500000} and not by \texttt{-sec
+  0.5}.\footnote{The lowest possible time slot to use is system
+  dependent. It is also system dependent how long time passes
+  before the time wraps.  Wrapping will in practice not happen on a HP-UX system,
+  but it will happen after about 40 minutes on a SUN OS4 system.}
 
-The fourth line tells you that the collected profile data is exported to
-file \texttt{profile.rp}. This can be changed by the 
-\texttt{-file outFileName}\index{file@\texttt{-file} option} option.
+The fourth line says that the collected profile data is exported to
+the file \texttt{profile.rp}. This file can be changed by the 
+\index{file@\texttt{-file} option}%
+\texttt{-file name} option.
 
-There are several other command line arguments which can be seen by the
-\texttt{-h} or \texttt{-help}\index{help@\texttt{-help} option} options.
+There are several other command line arguments; these options can be
+seen by using the \texttt{-h} or 
+\index{help@{\tt -help} option}%
+\texttt{-help} options.
 
 %----------------------------------
-\section{Executing \texttt{run}}
+\section{Regions Statistics}
 %----------------------------------
-After executing \texttt{run} some 
+If the executable file {\tt run} is executed with the option {\tt -showStat} then
 \index{region statistics}%
-\emph{region statistics} are printed on stdout. The region statistics
-are collected independently of the Target Profiling Strategy above and
-are exact values for the program.
-
-\begin{scriptsize}
+{\em region statistics\/} is printed just before the program
+terminates. Region statistics includes information about the use of
+regions and it does not depend on the specifics of the runtime
+profiling strategy; in fact, region statistics includes only exact,
+non-sampled values for the program. Assuming that {\tt run} is the
+executable file generated by compiling the program {\tt life} with
+profiling enabled, executing {\tt run -showStat} yields---just before
+the program terminates---the region statistics shown in
+Figure~\ref{region_statistics.fig}.
+\begin{figure}
+\hrule \medskip
 \begin{verbatim}
-*************Region statistics***************
+  MALLOC
+    Number of calls to malloc: 2
+    Alloc. in each malloc call: 24240 bytes
+    Total allocation by malloc: 48480 bytes (0.0Mb)
 
+  REGION PAGES
+    Size of one page: 800 bytes
+    Max number of allocated pages: 53
+    Number of allocated pages now: 4
+    Max space for region pages: 42400 bytes (0.0Mb)
 
-SBRK.
-  Number of calls to sbrk                     :          3
-  Number of bytes allocated in each SBRK call :      24240
-  Total number of bytes allocated by SBRK     :      72720 (0.1Mb)
+  INFINITE REGIONS
+    Size of infinite region descriptor: 16 bytes
+    Number of calls to allocateRegionInf: 95764
+    Number of calls to deallocateRegionInf: 95761
+    Number of calls to alloc: 858873
+    Number of calls to resetRegion: 123378
+    Number of calls to deallocateRegionsUntil: 0
 
-REGIONPAGES.
-  Size of one page              :        800 bytes
+  ALLOCATION
+    Max alloc. space in pages: 18056 bytes (0.0Mb)
+      incl. prof. info: 36240 bytes (0.0Mb)
+    Infinite regions utilisation (36240/42400): 85%
 
-  Max. no. of simultaneously allocated pages :         78
-  Number of allocated pages now              :          3
-
-REGIONS.
-  Size of infinite region descriptor (incl. profiling information) :         28 bytes
-  Size of infinite region descriptor (excl. profiling information) :         16 bytes
-
-  Size of finite region descriptor   :          8 bytes
-
-  Number of calls to allocateRegionInf   :     157771
-  Number of calls to deallocateRegionInf :     157768
-
-  Number of calls to allocateRegionFin   :    3457870
-  Number of calls to deallocateRegionFin :    3457870
-
-  Number of calls to alloc                  :    1446811
-  Number of calls to resetRegion            :     139776
-  Number of calls to deallocateRegionsUntil :          0
-
-  Max. no. of co-existing regions (finite plus infinite) :        242
-  Number of regions now                                  :          3
-
-  Live data in infinite regions :         84 bytes ( 0.0Mb)
-  Live data in finite regions   :          0 bytes ( 0.0Mb)
-  ---------------------------------------------------------
-  Total live data               :         84 bytes ( 0.0Mb)
-
-  Maximum space used for region pages                 :      62400 bytes ( 0.1Mb)
-  Maximum space used on data in region pages          :      27488 bytes ( 0.0Mb)
-      Space in regions at that time used on profiling :      27576 bytes ( 0.0Mb)
-  -------------------------------------------------------------------------------
-  Maximum allocated space in region pages             :      55064 bytes ( 0.1Mb)
-
-  Memory utilisation for infinite regions (     55064/     62400) : 88%
-
-  Maximum space used on the stack for infinite region descriptors   :        400 bytes ( 0.0Mb)
-      Additional space used on profiling information at that time   :        300 bytes ( 0.0Mb)
-  ---------------------------------------------------------------------------------------------
-  Maximum space used on infinite region descriptors on the stack    :        700 bytes ( 0.0Mb)
-
-  Maximum space used on the stack for finite regions              :       6604 bytes ( 0.0Mb)
-      Additional space used on profiling information at that time :       3584 bytes ( 0.0Mb)
-  -------------------------------------------------------------------------------------------
-  Maximum space used on finite regions on the stack               :      10188 bytes ( 0.0Mb)
-
-  Max. size of stack when program was executed        :      11256 bytes ( 0.0Mb)
-    Space used on profiling information at that time  :       3800 bytes ( 0.0Mb)
-  -------------------------------------------------------------------------------
-  Max. stack use excl. profiling information          :       7456 bytes ( 0.0Mb)
-
-  Max. size of stack in a profile tick                :       5596 bytes ( 0.0Mb)
-
-*********End of region statistics*********
+  STACK
+    Number of calls to allocateRegionFin: 3164508
+    Number of calls to deallocateRegionFin: 3164508
+    Max space for finite regions: 6608 bytes (0.0Mb)
+    Max space for region descs: 256 bytes (0.0Mb)
+    Max size of stack: 7412 bytes (0.0Mb)
+      incl. prof. info: 11244 bytes (0.0Mb)
+      in profile tick: 4524 bytes (0.0Mb)
 \end{verbatim}
-\end{scriptsize}
+\caption{Region statistics for the {\tt life} program.}
+\label{region_statistics.fig}
+\medskip\hrule
+\end{figure}
+
 \noindent
-The {\tt SBRK} part above shows how memory is allocated from the operating
-system.
+The {\tt MALLOC} part of Figure~\ref{region_statistics.fig} shows how
+memory is allocated from the operating system.
 
-Each region consists of several 
+Each infinite region form a linked list of one or more
 \index{region pages}% 
-\emph{region pages} whose size is found in the {\tt REGIONPAGES} part.
-The value
-%\begin{center}
-\begin{footnotesize}
+{\em region pages\/} whose size is found in the {\tt REGION PAGES}
+part. The value
 \begin{verbatim}
-Max. no. of simultaneously allocated pages      :       78
+  Max number of allocated pages: 53
 \end{verbatim}
-\end{footnotesize}
-%\end{center}
-\noindent 
 multiplied by
-%\begin{center}
-\begin{footnotesize}
 \begin{verbatim}
-Size of one page          :        800 bytes
+  Size of one page: 800 bytes
 \end{verbatim}
-\end{footnotesize}
-%\end{center}
-\noindent 
-gives the maximal memory use in infinite regions (62400 bytes).
+gives 
+\begin{verbatim}
+  Max space for region pages: 42400 bytes (0.0Mb)
+\end{verbatim}
 
-In the {\tt REGIONS} part, we see the number of calls to finite and
-infinite region operations, respectively. The target program has allocated
-157771 infinite regions and deallocated 157768; hence three global regions were
-alive when the program finished; i.e. global regions are not
-necessarily deallocated explicitly before the program terminates.
-
-No finite regions are alive (3457870 allocations and deallocations).  We
-have allocated 1446811 objects in infinite regions. It has been possible to
-reset an infinite region 139776 times. The {\tt deallocateRegionsUntil}
-operation is only used when raising exceptions, i.e. no exceptions have
-been raised.
+In the {\tt INFINITE REGIONS} part, we see the number of calls to
+infinite region operations such as {\tt allocateRegionInf} and {\tt
+  alloc}. The program has allocated 95764 infinite regions and
+deallocated 95761; the three global regions are not deallocated
+before the region statistics is printed and the program terminates.
+The program has allocated 858873 objects in infinite regions. It has
+been possible to reset an infinite region 123378 times. The {\tt
+  deallocateRegionsUntil} operation is called whenever an exception is
+raised, thus, we see that no exceptions were raised by the program.
 
 Because objects allocated in infinite regions are not split across
-different region pages it is not always possible to fill out all
-region pages. The value
-
-\begin{center}
-\begin{footnotesize}
+different region pages (except strings), it is not always possible to
+fill out a region page entirely. In the {\tt ALLOCATION} part, the value
 \begin{verbatim}
-Memory utilisation for infinite regions (     55064/     62400) : 88%
+  Infinite regions utilisation (36240/42400): 85%
 \end{verbatim}
-\end{footnotesize}
-\end{center}
+shows memory utilisation for infinite regions at the moment where the
+program had allocated the largest amount of memory in infinite
+regions.
 
-\noindent
-shows memory utilisation at the moment where the program had allocated the
-largest amount of memory. The size of objects in finite regions allocated
-on the stack is shown together with the overhead produced by the profiler.
-The values
-
-\begin{center}
-\begin{footnotesize}
+In the {\tt STACK} part, we see that the program has allocated and
+deallocated the same number of finite regions. We also see that the
+space used for finite regions is 6608 bytes and that the total use of
+stack space is 7412 bytes (excluding space used to hold profiling
+information). The stack size values
 \begin{verbatim}
-Max. size of stack when program was executed     :   11256 bytes ( 0.0Mb)
+    incl. prof. info: 11244 bytes (0.0Mb)
+    in profile tick: 4524 bytes (0.0Mb)
 \end{verbatim}
-\end{footnotesize}
-\end{center}
+can be used to see if it is necessary to profile with a smaller time
+slot, which will often lower the difference between the two values.
 
-\noindent
-and
-
-\begin{center}
-\begin{footnotesize}
-\begin{verbatim}
-Max. size of stack in a profile tick             :    5596 bytes ( 0.0Mb)
-\end{verbatim}
-\end{footnotesize}
-\end{center}
-
-\noindent
-can be used to see if it is necessary to profile more detailed.  If
-the difference between the two figures is large you can profile with a
-smaller time slot.
-
-After execution of the target program we have a profile data file named
-{\tt profile.rp}.
 
 %--------------------------------------------
-\section{Processing the profile data file}
+\section{Processing the Profile Data File}
 %--------------------------------------------
 The profile datafile \texttt{profile.rp} can be processed by the 
-\index{rp2ps@\texttt{rp2ps} options|(}%
+\index{rp2ps@{\tt rp2ps} options|(}%
 graph generator \texttt{rp2ps} (read: RegionProfile2PostScript) found
 in the \texttt{bin} directory for the ML Kit version you
 use.\footnote{The \texttt{rp2ps} program is based on a profiler by
@@ -6425,7 +6382,9 @@ use.\footnote{The \texttt{rp2ps} program is based on a profiler by
 generator is controlled by command line options.
 
 A region profile is produced by the
-\texttt{-region}\index{region@\texttt{-region} option} switch. Typing
+\texttt{-region}
+\index{region@{\tt -region} option}%
+switch. Typing
 the UNIX command ~~\boxml{rp2ps -region}~~ produces a PostScript file in
 file \texttt{region.ps}. The file \texttt{profile.rp} is used as 
 \index{profile data file}%
@@ -6480,7 +6439,7 @@ Figure \ref{prof_eks2.fig}.
 %\noindent
 We see that allocation point \texttt{pp64} is responsible for the largest
 amount of allocations in the program. The allocation point may be found by
-searching after program point \texttt{pp64} in the region-annotated
+searching for program point \texttt{pp64} in the region-annotated
 lambda program.
 
 A stack profile (Figure \ref{prof_eks3.fig}) shows memory usage in
@@ -6496,7 +6455,7 @@ option\index{stack@\texttt{-stack} option} to \texttt{rp2ps}.
 %\noindent
 
 %-------------------------------------------------------
-\section{More complicated graphs with \texttt{rp2ps}}
+\section{More Advanced Graphs with \texttt{rp2ps}}
 %-------------------------------------------------------
 This section gives a fast overview of the more advanced options which can
 be passed to \texttt{rp2ps}. First of all, it is possible to name the
@@ -6506,7 +6465,8 @@ x-axis with the \texttt{-comment}\index{comment@\texttt{-comment} option} option
 The profile data file may contain an large number of \emph{samples}
 (the data collected by a profile tick is called a sample). By default,
 \texttt{rp2ps} only uses 64 samples. This may be changed with the
-\texttt{-sampleMax}\index{sampleMax@\texttt{-sampleMax} option} option. The following two algorithms are used to sort
+\index{sampleMax@{\tt -sampleMax} option}%
+\texttt{-sampleMax} option. The following two algorithms are used to sort
 out samples:
 \begin{quote}
 \begin{description}
@@ -6545,10 +6505,11 @@ rp2ps -region -sampleMax 50 -name life.sml
 %\noindent
 The graph generator recognize several options not shown above. They are
 printed on stdout when typing \texttt{rp2ps -h}.
-\index{rp2ps@\texttt{rp2ps} options|)}%
+\index{rp2ps@{\tt rp2ps} options|)}%
 
+%==============================================
 \chapter{Interacting with the Kit}
-
+%==============================================
 \label{controlkit.sec}
 \label{startup.sec}
 Starting the Kit was described in Section~\ref{tryit.sec}.  To
@@ -6568,10 +6529,10 @@ for menu entries in the Kit.
 
 
 
-%
+%------------------------------------------------
 \section{Printing of Intermediate Forms}
 \label{printing_intermediate_forms.sec}
-%
+%------------------------------------------------
 The menu 
 \index{Printing of intermediate forms@{\tt Printing of intermediate forms}}%
 \texttt{Printing of intermediate forms} controls what intermediate
@@ -6672,8 +6633,8 @@ The flags
 \index{print effects@{\tt print effects}}%
 \texttt{print effects}, and
 \index{print regions@{\tt print regions}}%
-\texttt{print regions} control the printing of types and places,
-effects and region allocation points (e.g., $\at\,\rho$).
+\texttt{print regions} control the printing of region-annotated types,
+effects, and region allocation points (e.g., $\at\,\rho$).
 All eight combinations of these three flags are possible, but if
 \index{print effects@{\tt print effects}}%
 {\tt print effects} is turned on it is best also to turn the two
@@ -6727,59 +6688,7 @@ Enabling \texttt{print in K-Normal Form}\index{print in K-Normal Form@{\tt print
     K-Normal Form}}\index{K-normalisation} causes  expressions to be output
 in K-Normal Form instead of the simplified form in which they are
 normally presented.
-%
-\section{Creating your own Script File}
-\label{scriptmodify.sec}
-%
-If you have built the Kit yourself on an HP or a SUN using
-the distribution accessible from our web site, the Kit has
-already produced a script file for you and you do not have
-to modify it to get started. If somebody else has built
-the Kit locally, they should be able to refer you to a script file which you
-can take as a starting point; the only things you will
-have to change in the script will be the constants
-listed in Section~\ref{paths.sec}. Likewise, if
-you have downloaded an executable Kit from the Kit web site,
-you will have received with it a script file for the architecture
-in question and you only have to modify the constants listed
-in Section~\ref{paths.sec}.
-If you are porting the Kit to a completely 
-different platform, you need to take the script constants 
-listed in Section~\ref{cflags.sec} into account too.
-\subsection{Script constants concerning paths}
-\label{paths.sec}
-Under the header \boxml{(*  File *)} in the script file you should
-find the following constants\index{paths}
-\begin{description}
-\item[{\tt log\_to\_file}] True if log information should be written
-to a file rather than onto the screen.
-\item[{\tt path\_to\_kit\_script}] The full file name of 
-your script file.\index{path to kit script@{\tt path\_to\_kit\_script}}
-\item[{\tt path\_to\_runtime}] The full file name of the non-profiling
-runtime system of the Kit.\index{path to runtime system@{{\tt path\_to\_runtime}}}
-\item[{\tt path\_to\_runtime\_prof}] The full file name of the profiling
-runtime system of the Kit.\index{runtime system}\index{runtime system!path to@}
-\index{path to runtime system@{{\tt path\_to\_runtime\_prof}}}
-\end{description}
-\subsection{Platform-dependent Settings}
-\label{cflags.sec}
-The string constant {\tt target\_file\_extension} is set to
-\boxml{".c"} if you generate C target code and to \boxml{".s"}
-if you generate HP target code.\index{target file extension@{\tt target\_file\_extension}}
-\index{kit architecture@{\tt kit\_architecture}}
-\index{C compiler@{\tt c\_compiler}}
-\index{C!libraries}
-\index{c libs@{\tt c\_libs}}
 
-The following settings
-\begin{verbatim}
-val kit_architecture : string = "HPUX"
-val c_compiler : string = "cc -Aa"
-val c_libs : string = "-lm"
-\end{verbatim}
-may all have to be changed, depending on your platform and
-the C-compiler you use.  See the {\tt readme} and {\tt roadmap} files 
-in the distribution.
 
 \chapter{Calling C Functions}
 \label{ccall.sec}
@@ -7233,8 +7142,8 @@ The following four macros are provided in the {\tt src/Runtime/List.h}
 header file:
 \index{isNIL@\texttt{isNIL}}%
 \index{isCONS@\texttt{isCONS}}%
-\index{hd@\texttt{hd}}%
-\index{tl@\texttt{tl}}%
+\index{hd@{\tt hd}}%
+\index{tl@{\tt tl}}%
 \begin{verbatim}
  #define isNIL(x)
  #define isCONS(x)
@@ -7390,16 +7299,12 @@ macros and functions presented earlier in this chapter:
 \index{allocRealProf@\texttt{allocRealProf}}%
 \index{allocRecordMLProf@\texttt{allocRecordMLProf}}%
 \index{convertStringToMLProfiling@\texttt{convertStringToMLProfiling}}%
-\index{makeNILProf@\texttt{makeNILProf}}%
-\index{makeCONSProf@\texttt{makeCONSProf}}%
 \begin{verbatim}
  #define allocRealProf(realRho, realPtr, pPoint)
  #define allocRecordMLProf(rhoRec, ssize, recAddr, pPoint)
  StringDesc *convertStringToMLProfiling(int rhoString, 
                                         char *cStr, 
                                         int pPoint);
- #define makeNILProf(rAddr, ptr, pPoint)
- #define makeCONSProf(rAddr, pair, ptr, pPoint)
 \end{verbatim}
 
 Here is the profiling version of the C function
@@ -7488,7 +7393,7 @@ file {\tt Tagging.h} by the macro definition
 
 Now, for the Kit to make correct, that is safe, decisions about when
 to de-allocate regions, the endomorphic properties of a C function
-must be expressed in the region type scheme for value identifiers
+must be expressed in the region-annotated type scheme for value identifiers
 to which the C function is bound. The programmer can tell the Kit
 about region endomorphic behaviour of a C function by using type
 variables.  For example, here is an ML declaration that binds a value
@@ -7501,17 +7406,18 @@ identifier {\tt second} to the C function
  fun second(pair : 'a * 'b) : 'b =
    prim("select_second", "select_second", pair)
 \end{verbatim}
-The Kit associates the following region type scheme to the value
+The Kit associates the following region-annotated type scheme to the value
 identifier {\tt second}:
 $$\forall \alpha_1\alpha_2\rho_1\rho_2\rho_3\epsilon.((\alpha_1,
 \rho_1) * (\alpha_2, \rho_2), \rho_3) \ar{\epsilon.\{\Get(\rho_3)\}} (\alpha_2,
 \rho_2)$$
-Notice that the region type scheme expresses the region endomorphic
+Notice that the region-annotated type scheme expresses the region endomorphic
 behaviour of the C function.
 
  
 %=======================================================
 \section{Compiling and Linking}
+\label{comp_and_link_with_C.sec}
 %=======================================================
 To use a set of C functions in the ML code, one must first compile the
 C functions into an object file. (Remember to include appropriate
@@ -7594,7 +7500,7 @@ project.
 %--------------------------------------
 \section{Examples\label{Cexamples.sec}}
 %--------------------------------------
-\index{C!examples}%
+\index{C examples}%
 \index{my_lib.c@\texttt{my\_lib.c}}%
 \index{my_lib.sml@\texttt{my\_lib.sml}}%
 Several example C functions are located in the file
@@ -7725,10 +7631,14 @@ The most important development since Version 2 is the
 ability to compile Modules and the discipline of separate 
 compilation. A distinguished feature of the way modules are
 compiled is that module constructs do not give rise to 
-{\em any} code, so there is no runtime overhead in using modules.
+{\em any} code, so there is no runtime overhead in using modules. See
+Chapter~\ref{modules_and_projects.chap}.
 \section{Standard Basis Library}
 The ML Kit now contains (a large portion of) the Standard Basis
-Library, based on the Moscow ML version of the Library.
+Library, based on the Moscow ML version of the Library. To
+see exactly what parts of the Standard Basis Library are supported, consult the
+project file {\tt basislib.pm} located in the directory {\tt
+  kit/basislib}. 
 \section{More Efficient Representation of Lists}
 \index{list} List constructors are now represented unboxed, that is,
 the least significant bits of a list value is used to distinguish
@@ -7736,18 +7646,6 @@ between \boxml{nil} and a pointer to a pair (\boxml{::}) holding the
 head and the tail of the list. Thus, a list takes up only one region
 (for the auxiliary pairs) plus any regions for the elements of the
 list. Consult Chapter~\ref{lists.sec} for details.
-
-\section{Modules}
-This version of the Kit implements Standard ML Modules and a system
-for separate compilation that allows for region information to
-propagate across Modules boundaries, see
-Chapter~\ref{modules_and_projects.chap}.
-
-\section{The Basis Library}
-The Kit implements large parts of the Standard ML Basis Library. To
-see exactly what parts of the Basis Library are supported, consult the
-project file {\tt basislib.pm} located in the directory {\tt
-  kit/basislib}. 
 
 \bibliographystyle{alpha}
 \bibliography{tofte}

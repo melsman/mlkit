@@ -264,7 +264,7 @@ old*)
 
     val excon_env0 = ExconMap.fromList 
       (map (fn excon => (excon, (R.exnType,E.toplevel_region_withtype_top)))
-       [Excon.ex_DIV, Excon.ex_MOD, Excon.ex_MATCH,
+       [Excon.ex_DIV, Excon.ex_MATCH,
 	Excon.ex_BIND, Excon.ex_OVERFLOW])
 
     val initial: regionStatEnv ={tyname_env = tyname_env0,

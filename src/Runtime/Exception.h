@@ -15,10 +15,10 @@ typedef void (*SignalHandler)(void);
 typedef void (*SignalHandler)(int);
 #endif
 
-extern int *Overflow_val;                 /* Exception raised for all primitive operations which
+extern int *exn_OVERFLOW;                 /* Exception raised for all primitive operations which
 					     can generate an overflow. */
 
-extern int *Interrupt_val;                /* Exception for user interrupt (Ctrl-C). */
+extern int *exn_INTERRUPT;                /* Exception for user interrupt (Ctrl-C). */
 
 void raise_exn(int exn);
 

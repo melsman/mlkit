@@ -1,4 +1,4 @@
-VERSION 3
+                             VERSION 3
 
 
 ERROR:
@@ -10,6 +10,7 @@ TO BE FIXED BY: (MT|MAEL|FAXE)
 
 
 BUGS:
+~~~~~
 
 ERROR: bug in rp2ps?
 SYMPTOM: naar jeg proever 
@@ -26,9 +27,8 @@ TO BE FIXED BY: FAXE?
 
 
 
-WAIT
-
-Order the items in the Printing of intermediate forms menu.
+WAIT:
+~~~~~
 
 What should the effect of the flag `print_regions' be? I guess that if
 print_regions is disabled then pretty printing of MulExp should look
@@ -39,16 +39,6 @@ the manager to find out that the code for the basis library can be
 reused. The problem is that the result basis for the basis library
 project is reconstructed, from the result bases for the individual
 sources of the library, every time the project is reused.
-
-It seems that kam variables are local to each target unit; currently,
-however, we allocate a global store (in data space) for these
-variables and this store grows, infinitely, when the project is
-recompiled. Instead, we can associate spilled registers to DataLabel's
-(KAM terminology). DataLabel's are already supported by
-KbpToHpPa. Only a few changes seem necessary (e.g., space is currently
-allocated (statically) for each store into the slot.) We also need to
-modify register allocation, such that spilled variables are associated
-with DataLabel's.
 
 Variables that occur free in a program unit are associated with
 labelled slots in the data segment of the final executable; thus,
@@ -100,8 +90,8 @@ currently, the user must do the resetting in the C function. Is there
 a reason?
 
 
-DONE
-
+DONE:
+~~~~~
 
 
 ERROR:
@@ -123,6 +113,12 @@ the tests should be the same on different machines. Moreover, the
 output should be the same even if profiling is enabled (profiling
 messages should be directed to stdErr).]
 
+[(ME 1998-09-26): Remove the problematic value space (valspace). It
+seems that kam variables are local to each target unit; currently,
+however, we allocate a global store (in data space) for these
+variables and this store grows, infinitely, when the project is
+recompiled. Instead, we can associate spilled registers to local slots
+in each compilation unit.]
 
 
 

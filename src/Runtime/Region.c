@@ -98,7 +98,7 @@ static int NoOfPagesInRegion(Ro *rp) {
  * callSbrk: Updates the freelist with new region pages.                   *
  * alloc: Allocates n words in a region.                                   *
  * resetRegion: Resets a region by freeing all pages except one            *
- * deallocateRegionsUntil: Alle regions over a thresehold are deallocated. *
+ * deallocateRegionsUntil: All regions above a threshold are deallocated.  *
  *-------------------------------------------------------------------------*/
 
 /*----------------------------------------------------------------------*

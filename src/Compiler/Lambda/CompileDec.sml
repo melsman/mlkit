@@ -1598,7 +1598,7 @@ end; (*match compiler local*)
 	   | CE.DIV =>       overloaded_prim_fn info CE.DIV       false
 		  [PRIM (EXCONprim Excon.ex_DIV, [])]
 	   | CE.MOD =>       overloaded_prim_fn info CE.MOD       false
-		  [PRIM (EXCONprim Excon.ex_MOD, [])]
+		  [PRIM (EXCONprim Excon.ex_DIV, [])]
 	   | CE.LESS =>      overloaded_prim_fn' info CE.LESS
 	   | CE.GREATER =>   overloaded_prim_fn' info CE.GREATER
 	   | CE.LESSEQ =>    overloaded_prim_fn' info CE.LESSEQ
@@ -1775,7 +1775,7 @@ end; (*match compiler local*)
 	    | CE.DIV =>       overloaded_prim info CE.DIV       (compileAtexp env) (compileExp env) arg false
 		[PRIM (EXCONprim Excon.ex_DIV, [])]
 	    | CE.MOD =>       overloaded_prim info CE.MOD       (compileAtexp env) (compileExp env) arg false 
-		[PRIM (EXCONprim Excon.ex_MOD, [])]
+		[PRIM (EXCONprim Excon.ex_DIV, [])]
 	    | CE.LESS =>      overloaded_prim info CE.LESS      (compileAtexp env) (compileExp env) arg false []
 	    | CE.GREATER =>   overloaded_prim info CE.GREATER   (compileAtexp env) (compileExp env) arg false []
 	    | CE.LESSEQ =>    overloaded_prim info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false []

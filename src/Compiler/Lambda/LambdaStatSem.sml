@@ -188,7 +188,6 @@ old*)
 	  
 	val initial_excon_env =
 	  initMapeq Excon.eq [(Excon.ex_DIV, NONE : Type option),
-			      (Excon.ex_MOD, NONE),
 			      (Excon.ex_MATCH, NONE),
 			      (Excon.ex_BIND, NONE),
 			      (Excon.ex_OVERFLOW, NONE)]

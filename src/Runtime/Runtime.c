@@ -115,7 +115,7 @@ void sig_handler_int(void)
 {
 /*  printf("INTERRUPT\n"); */
   signal(SIGINT, (SignalHandler)sig_handler_int);    /* setup handler again */
-  raise_exn((int)&Interrupt_val);
+  raise_exn((int)&exn_INTERRUPT);
   return; /* never comes here */
 }
 
@@ -123,7 +123,7 @@ void sig_handler_fpe(void)
 {
 /*  printf("OVERFLOW\n"); */
   signal(SIGFPE, (SignalHandler)sig_handler_fpe);    /* setup handler again */
-  raise_exn((int)&Overflow_val);
+  raise_exn((int)&exn_OVERFLOW);
   return; /* never comes here */
 }
 
