@@ -250,10 +250,25 @@ structure ScsEnum :> SCS_ENUM =
                                     and scs_enumerations.enum_id = scs_enum_values.enum_id
                                     and scs_enum_values.active_p = 't'`
 
-    fun valName val_id lang =
-      Db.oneField `select scs_text.getText(ev.text_id,^(Db.qqq (ScsLang.toString lang))) as text
-                     from scs_enum_values ev
-                    where ev.val_id = '^(Int.toString val_id)'`
+    (* We cache the result for 24 hours. (Enumerations almost never change)
+       Cache def: (val_id,lang) -> string
+    *)
+    local
+      val valname_cache_def = 
+	Ns.Cache.get(Ns.Cache.Pair Ns.Cache.Int Ns.Cache.String,
+		     Ns.Cache.String,
+		     "ScsEnumValNameCache",
+		     Ns.Cache.WhileUsed (24*60*60))
+
+      fun valName' (val_id, lang) =
+	Db.oneField `select scs_text.getText(ev.text_id,^(Db.qqq lang)) as text
+		       from scs_enum_values ev
+		      where ev.val_id = '^(Int.toString val_id)'`
+      val valName_cache = Ns.Cache.memoize valname_cache_def valName'
+    in
+      fun valName val_id lang = valName_cache (val_id, ScsLang.toString lang)
+    end
+
 
     fun getVal val_id =
       ScsError.wrapOpt 
