@@ -1,20 +1,26 @@
 File NEWS_SMLSERVER
 
+ * mael 2003-02-24: Initialized work on extended typing in SMLserver,
+   featuring static guarantees that (1) generated XHTML 1.0 validates
+   and (2) forms and links are used consistently with corresponding
+   target scripts. See kit/smlserver/xt/ for examples. Use the
+   smlserverc compiler flag -xt (or --extended_typing) to enable.
+
  * nh 2003-01-08: Added hModule to the interpreter context in
    nssml.c. This makes it easier to access parameters in the
    configuration file. Used to access the trap-file in function
    nssml_trapProc.
 
  * nh 2003-01-08: Fixed bug with cache name in Ns.Cache. Cache names
-   can have a max size of 32 characters i AOLserver versions
+   can have a maximum size of 32 characters i AOLserver versions
    3.X. After version 4, cache names can be of arbitrary size.
 
  * nh 2003-01-07: Updated NS_CACHE.sml signature such that it matches
-   the PADL paper. Re-implemented the Triple constructor, so that
+   the PADL paper. Reimplemented the Triple constructor, so that the
    result type is 'a*'b*'c instead of (('a*'b)*'c).
-   Updated smlserver book with new cache interface.
+   Updated SMLserver book with new cache interface.
 
- * nh 2002-10-31: Ns Cache version 2 - Typed caching and
+ * nh 2002-10-31: Ns.Cache version 2 - Typed caching and
    memoization. Inserted in the NS.sml signature
 
  * mael 2002-10-31: Execution caching of library initialization.
