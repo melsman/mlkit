@@ -58,6 +58,18 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type filename = string
     type target = Compile.target
 
+    (* ----------------------------------------------------
+     * Determine where to put target files; if profiling is
+     * enabled then we put target files into the PM/Prof/
+     * directory; otherwise, we put target files into the
+     * PM/NoProf/ directory.
+     * ---------------------------------------------------- *)
+
+    local
+      val region_profiling = Flags.lookup_flag_entry "region_profiling"
+    in fun pmdir() = if !region_profiling then "PM/Prof/" else "PM/NoProf/"
+    end
+
    (* -----------------------------------------------------------------
     * Execute shell command and return the result code.
     * ----------------------------------------------------------------- *)
@@ -139,7 +151,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	 * ----------------------------------------------- *)
 
 	fun emit (target, target_filename) =
-	  let val target_filename = "PM/" ^ target_filename
+	  let val target_filename = pmdir() ^ target_filename
 	      val target_filename = OS.Path.mkAbsolute(target_filename, OS.FileSys.getDir())
               val target_filename_s = append_ext target_filename
 	      val target_filename_o = append_o target_filename
@@ -165,20 +177,26 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	     TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n"))
 	  end handle Shell.Execute s => die ("link_files_with_runtime_system:\n" ^ s)
 
+	fun member f [] = false
+	  | member f ( s :: ss ) = f = s orelse member f ss
+
+	fun elim_dupl ( [] , acc )  = acc
+	  | elim_dupl ( f :: fs , acc ) = elim_dupl ( fs, if member f acc then acc else f :: acc )
 
 	(* --------------------------------------------------------------
 	 * link (target_files,linkinfos): Produce a link file "link.s". 
 	 * Then link the entire project and produce an executable "run".
 	 * -------------------------------------------------------------- *)
 
-	fun link ((target_files,linkinfos), run) : unit =
-	  let val target_link = Compile.generate_link_code linkinfos
-	      val linkfile = "PM/link_objects"
+	fun link ((target_files,linkinfos), extobjs, run) : unit =
+	  let val extobjs = elim_dupl (extobjs,[])
+	      val target_link = Compile.generate_link_code linkinfos
+	      val linkfile = pmdir() ^ "link_objects"
 	      val linkfile_s = append_ext linkfile
 	      val linkfile_o = append_o linkfile
 	      val _ = Compile.emit {target=target_link, filename=linkfile_s}
 	      val _ = assemble (linkfile_s, linkfile_o)
-	  in link_files_with_runtime_system (linkfile_o :: target_files) run;
+	  in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
 	     delete_file linkfile_o
 	  end
 	
@@ -210,13 +228,13 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  in em modc
 	  end
 
-	fun mk_exe (prjid, modc, run) =
+	fun mk_exe (prjid, modc, extobjs, run) =
 	  let fun get (EMPTY_MODC, acc) = acc
 		| get (SEQ_MODC(modc1,modc2), acc) = get(modc1,get(modc2,acc))
 		| get (EMITTED_MODC(tfile,li),(tfiles,lis)) = (tfile::tfiles,li::lis)
 		| get (NOTEMITTED_MODC(target,li,filename),(tfiles,lis)) =
 	         (SystemTools.emit(target, OS.Path.base prjid ^ "-" ^ filename) :: tfiles, li::lis)
-	  in SystemTools.link(get(modc,([],[])), run)
+	  in SystemTools.link(get(modc,([],[])), extobjs, run)
 	  end
 
 	fun all_emitted modc : bool =
@@ -449,13 +467,16 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type name = Name.name
     structure Repository =
       struct
-	type intRep = (prjid * funid, (funstamp * ElabEnv * IntBasis * longstrid list * 
-				       name list * modcode * IntBasis) list) FinMap.map ref
+	type intRep = ((prjid * funid) * bool, (funstamp * ElabEnv * IntBasis * longstrid list * 
+						name list * modcode * IntBasis) list) FinMap.map ref
+	  (* the bool is true if profiling is enabled *)
+	val region_profiling : bool ref = Flags.lookup_flag_entry "region_profiling"
+
 	val intRep : intRep = ref FinMap.empty
 	fun clear() = (ElabRep.clear();
 		       List.apply (List.apply (ModCode.delete_files o #6)) (FinMap.range (!intRep));  
 		       intRep := FinMap.empty)
-	fun delete_rep rep prjid_and_funid = case FinMap.remove (prjid_and_funid, !rep)
+	fun delete_rep rep prjid_and_funid = case FinMap.remove ((prjid_and_funid, !region_profiling), !rep)
 				     of Edlib.General.OK res => rep := res
 				      | _ => ()
 	fun delete_entries prjid_and_funid = (ElabRep.delete_entries prjid_and_funid; 
@@ -467,25 +488,27 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		| find (entry::entries, n) = 
 		if (all_gen o exportnames_from_entry) entry then SOME(n,entry)
 		else find(entries,n+1)
-	  in case FinMap.lookup (!rep) prjid_and_funid
+	  in case FinMap.lookup (!rep) (prjid_and_funid, !region_profiling)
 	       of SOME entries => find(entries, 0)
 		| NONE => NONE
 	  end
 
 	fun add_rep rep (prjid_and_funid,entry) : unit =
 	  rep := let val r = !rep 
-		 in case FinMap.lookup r prjid_and_funid
-		      of SOME res => FinMap.add(prjid_and_funid,res @ [entry],r)
-		       | NONE => FinMap.add(prjid_and_funid,[entry],r)
+		     val i = (prjid_and_funid, !region_profiling)
+		 in case FinMap.lookup r i
+		      of SOME res => FinMap.add(i,res @ [entry],r)
+		       | NONE => FinMap.add(i,[entry],r)
 		 end
 
 	fun owr_rep rep (prjid_and_funid,n,entry) : unit =
 	  rep := let val r = !rep
+		     val i = (prjid_and_funid, !region_profiling)
 	             fun owr(0,entry::res,entry') = entry'::res
 		       | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
 		       | owr _ = die "owr_rep.owr"
-		 in case FinMap.lookup r prjid_and_funid
-		      of SOME res => FinMap.add(prjid_and_funid,owr(n,res,entry),r)
+		 in case FinMap.lookup r i
+		      of SOME res => FinMap.add(i,owr(n,res,entry),r)
 		       | NONE => die "owr_rep.NONE"
 		 end
 	val lookup_int = lookup_rep intRep #5

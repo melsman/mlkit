@@ -1,9 +1,10 @@
 val _ = SMLofNJ.Internals.GC.messages false;
 
 local val srcdir = OS.FileSys.getDir()
-in fun cdsrc() = OS.FileSys.chDir srcdir; 
-   val cd = OS.FileSys.chDir
+in val cd = OS.FileSys.chDir
+   fun cdsrc() = cd srcdir; 
    val pwd = OS.FileSys.getDir
+   fun mk() = (cdsrc(); CM.make())
 end;
 
 val _ =
@@ -65,18 +66,14 @@ let
       else die "build_runtime: gmake failed"
     end
 
-
   fun build_rp2ps() =
-    let val _ = print "\n ** Building profiling tool rp2ps **\n\n"
-        val ext = case arch_os()
-		    of ("HPPA", "HPUX") => "HPUX"
-		     | _ => die "build_rp2ps"
-    in cd "Runtime/Version17/Rp2ps";
-      if OS.Process.system ("gmake rp2ps" ^ ext) = OS.Process.success then cdsrc()
-      else die "build_rp2ps: gmake failed"
-    end
+    (print "\n ** Building profiling tool rp2ps **\n\n";
+     cd "Runtime/Version17/Rp2ps";
+     if OS.Process.system ("gmake") = OS.Process.success then cdsrc() 
+     else die "build_rp2ps: gmake failed";
+     if OS.Process.system "cp Runtime/Version17/Rp2ps/rp2ps ../bin/rp2ps" = OS.Process.success then ()
+     else die "build_rp2ps: failed to install rp2ps")
       
-
   fun build_kit() = 
     (print "\n ** Building the ML Kit compiler **\n\n";
      CM.make())
@@ -93,7 +90,12 @@ end ;
 val _ = K.Flags.lookup_flag_entry "delete_target_files" := false;
 *)
 
-val _ = K.build_basislib()
+
+val _ = (K.Flags.lookup_flag_entry "region_profiling" := false;
+	 K.build_basislib();
+	 K.Flags.lookup_flag_entry "region_profiling" := true;
+	 K.build_basislib();
+	 K.Flags.lookup_flag_entry "region_profiling" := false)
 
 val _ = K.install();
 

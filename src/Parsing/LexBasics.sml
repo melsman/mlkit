@@ -1,4 +1,4 @@
-(*$LexBasics: BASIC_IO REPORT PRETTYPRINT FLAGS CRASH LEX_BASICS*)
+
 functor LexBasics(structure BasicIO: BASIC_IO
 		  structure Report: REPORT
 		  structure PP: PRETTYPRINT
@@ -125,9 +125,9 @@ functor LexBasics(structure BasicIO: BASIC_IO
 	val stream = BasicIO.open_in file	(* Io raised here gets dealt
 						   with in any calling
 						   context properly. *)
-
+(*ME 1998-08-17
 	val _ = BasicIO.println("[reading source file:\t" ^ file ^ "]")
-
+*)
 	fun read() =
 	  let
 	    val text = BasicIO.input(stream, BUFFER_SIZE)

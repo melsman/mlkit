@@ -1,8 +1,5 @@
 (* Global flags *)
 
-(*$FLAGS *)
-
-
 signature FLAGS =
   sig
 
@@ -97,6 +94,9 @@ signature FLAGS =
     val build_project_ref : (string -> unit)ref
     val comp_ref : (string -> unit)ref
     val test_ref : (unit -> unit)ref
+
+    val auto_import_basislib : bool ref
+    val basislib_project : string ref           (* absolute path to basislib.pm *)
 
     (* Program Points. *)
     val print_all_program_points : bool ref    (* if true then print all program points,

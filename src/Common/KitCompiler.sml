@@ -148,11 +148,13 @@ structure K = struct
        OS.Path.concat(kitsrc_path, "Runtime/Version17/runtimeSystem.o");
        Flags.lookup_string_entry "path_to_runtime_prof" := 
        OS.Path.concat(kitsrc_path, "Runtime/Version17/runtimeSystemProf.o");
+       Flags.basislib_project := 
+       (OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../basislib/basislib.pm")));
        Flags.lookup_string_entry "test_env_directory" := 
        (OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../TestEnv"))))
 
     val date = Date.fmt "%B %d, %Y" (Date.fromTimeLocal (Time.now()))
-    val version = "2.2"
+    val version = "3"
     val greetings = "ML Kit with Regions, Version " ^ version ^ ", " ^ date ^ "\n" ^
                     "Using the " ^ Flags.get_string_entry "kit_backend" ^ " backend\n"
 
@@ -162,12 +164,15 @@ structure K = struct
 			  Flags.interact())
   in
     fun build_basislib() =
-      (print "\n ** Building basis library **\n\n";
-       OS.FileSys.chDir "../basislib";
-       set_paths();
-       build "basislib.pm";
-       OS.FileSys.chDir "../src")
-      handle exn => (OS.FileSys.chDir "../src"; raise exn)
+      let val memo = !Flags.auto_import_basislib
+	  fun postjob() = (OS.FileSys.chDir "../src"; Flags.auto_import_basislib := memo) 
+      in (Flags.auto_import_basislib := false;
+	  print "\n ** Building basis library **\n\n";
+	  OS.FileSys.chDir "../basislib";
+	  set_paths();
+	  build "basislib.pm";
+	  postjob()) handle exn => (postjob(); raise exn)
+      end
 
     fun install() =
       let val _ = print "\n ** Installing compiler executable **\n\n"

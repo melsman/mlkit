@@ -129,6 +129,18 @@ functor IntModules(structure Name : NAME
 
 
     (* ----------------------------------------------------
+     * Determine where to put target files; if profiling is
+     * enabled then we put target files into the PM/Prof/
+     * directory; otherwise, we put target files into the
+     * PM/NoProf/ directory.
+     * ---------------------------------------------------- *)
+
+    local
+      val region_profiling = Flags.lookup_flag_entry "region_profiling"
+    in fun pmdir() = if !region_profiling then "PM/Prof/" else "PM/NoProf/"
+    end
+
+    (* ----------------------------------------------------
      * Compile a sequence of structure declarations
      * ---------------------------------------------------- *)
 
@@ -138,7 +150,7 @@ functor IntModules(structure Name : NAME
 	  val unitname = case unitname_opt
 			   of SOME unitname => unitname
 			    | NONE => fresh_unitname()
-	  val vcg_filename = "PM/" ^ unitname ^ ".vcg"
+	  val vcg_filename = pmdir() ^ unitname ^ ".vcg"
       in case Compile.compile(ce,cb,strdecs,vcg_filename)
 	   of Compile.CodeRes(ce',cb',target,linkinfo) =>
 	     (ce',cb', ModCode.mk_modcode(target,linkinfo,unitname))
@@ -460,7 +472,7 @@ functor IntModules(structure Name : NAME
 		 else (elabB, NotDerivedForm)
 
 	       val funid_string = FunId.pr_FunId funid
-	       val filename = "PM/" ^ OS.Path.base prjid ^ "-" ^ funid_string ^ ".bdy"
+	       val filename = pmdir() ^ OS.Path.base prjid ^ "-" ^ funid_string ^ ".bdy"
 	       val filename = OS.Path.mkAbsolute(filename,OS.FileSys.getDir())
 	       type pos = ElabInfo.ParseInfo.SourceInfo.pos
 	       fun info_to_positions (i : ElabInfo.ElabInfo) : pos * pos =
