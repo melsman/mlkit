@@ -39,8 +39,9 @@ local
     []
     K.build_basislib
 in
-
+(*
 val _ = (enable "print_types"; enable "print_rho_types")
+*)
 (*
            disable "import_basislib";
 	   enable "print_types";
