@@ -328,7 +328,8 @@ as
     select count(scs_fs_files.file_id)
       into n
       from scs_fs_files
-     where scs_fs_files.folder_id = getNumFilesInFolderId.folder_id;
+     where scs_fs_files.folder_id = getNumFilesInFolderId.folder_id
+       and scs_fs_files.deleted_p = 'f';
  
    return n;
 
