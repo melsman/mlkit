@@ -30,6 +30,9 @@
 #define NSSML_FILENOTFOUND (-1)
 #define NSSML_ULFILENOTFOUND (-2)
 
+#define NSSML_SCRIPT_HASHTABLE_SZ (1023)  
+                  /* power of two minus one */
+
 static char *extendedtyping = NULL;
 
 time_t
@@ -187,7 +190,7 @@ rpMap = regionPageMapNew();
   
   ctx->timeStamp = (time_t)-1; 
 
-  ctx->scripts = emptyHashTable(3);
+  ctx->scripts = emptyHashTable(NSSML_SCRIPT_HASHTABLE_SZ);
 
   // hack to implement filtering - see below
   globalInterpContext = ctx;
@@ -300,12 +303,6 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
   time_t t;
   char *errorStr = NULL;
 
-  /* Check that sml-file exists */
-  
-  //  if ( Ns_UrlIsFile(ctx->hServer, url) != 1 ) {
-  //    return NSSML_FILENOTFOUND;
-  //  }
-
   /*
    * Test to see if the ul-file exists
    */
@@ -332,15 +329,18 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
       char buff[NSSML_PATH_MAX];
       int count = 0;
 
-      // TO DO: somehow wait for all executions to finish!
+      // MEMO: somehow wait for all executions to finish!
+      // Ns_Log(Notice, "nssml: (re)loading interpreter");
 
       // free all code elements present in the
       // interpreter, including code cache entries...
       interpClear(ctx->interp);
 
       // clear the heap cache
+      // Ns_Log(Notice, "nssml: clearing heap cache");
       clearHeapCache();
 
+      // Ns_Log(Notice, "nssml: opening ul-file %s", ctx->ulFileName);
       is = fopen(ctx->ulFileName, "r");
       if ( is == NULL ) 
 	{
@@ -363,8 +363,9 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
 	}
 
       // clear the script-name hash table
+      // Ns_Log(Notice, "nssml: clearing script-name hash table");
       freeHashTable(ctx->scripts);
-      ctx->scripts = emptyHashTable(3);
+      ctx->scripts = emptyHashTable(NSSML_SCRIPT_HASHTABLE_SZ);
 
       if ( ! strcmp(buff,"scripts:") )
 	{
@@ -409,11 +410,11 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
 	  ObjectListHashTable* ol;
 	  if ( (ol = ctx->scripts->array[i]) == 0 )
 	    continue;
-	  Ns_Log(Notice, "nssml: array[%d]:", i);
-	  for ( ; ol ; ol = ol->next )
-	    {
-	      Ns_Log(Notice, "nssml:   %s: %s", ol->key, (char *)(ol->value));
-	    }
+	  // Ns_Log(Notice, "nssml: array[%d]:", i);
+	  // for ( ; ol ; ol = ol->next )
+	  //  {
+	  //    Ns_Log(Notice, "nssml:   %s: %s", ol->key, (char *)(ol->value));
+	  //  }
 	}
       return NSSML_FILENOTFOUND;
     }
