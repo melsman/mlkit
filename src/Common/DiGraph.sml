@@ -66,19 +66,16 @@ functor DiGraph(structure UF : UNION_FIND_POLY
                                 out = []})
       
     fun mk_edge (n1: 'info node, n2 : 'info node) : unit =
-      (* n1, n2 canonical *)
-      case UF.get_info n1 of
+      case UF.find_info n1 of
         GRAPHNODE{info,out,visited, df_num} =>
           UF.set_info n1 (GRAPHNODE{info=info,out=n2::out,visited=visited,df_num=df_num})
 
     fun add_edges (n1: 'info node, l : 'info node list) : unit =
-      (* n1 canonical *)
-      case UF.get_info n1 of
+      case UF.find_info n1 of
         GRAPHNODE{info,out,visited, df_num} =>
           UF.set_info n1 (GRAPHNODE{info=info,out=l @ out,visited=visited,df_num=df_num})
 
     fun eq_nodes (n1: 'info node, n2 : 'info node) : bool =
-      (* n1 and n2 canonical *)
       UF.eq_Elements (n1,n2)
 
     fun union (info_combine : 'info * 'info -> 'info) 
@@ -114,40 +111,29 @@ functor DiGraph(structure UF : UNION_FIND_POLY
     
     fun find (n : 'info node) : 'info node = UF.find n
 
-    fun find_info (n: 'info node): 'info = (*n not necessarily canonical*)
+    fun find_info (n: 'info node): 'info =
          case UF.find_info(n)  of
             GRAPHNODE{info,...} => info
           
-    fun find_rep_and_info(n: 'info node) : 'info node * 'info  = (*n not necessarily canonical*)
-         case UF.find_rep_and_info(n) of
+    fun find_rep_and_info(n: 'info node) : 'info node * 'info  =
+         case UF.find_rep_and_info n of
             (n',GRAPHNODE{info,...}) => (n',info)
 
     fun union_graph (info_combine: 'info * 'info -> 'info) (* returns canonical node *)
                     (g as (n::g'): 'info graph) : 'info node =
-      find(List.foldl
-           (fn (n,n') => union info_combine (find n, find n'))
-	   n
-           g')
+      find(List.foldl (union info_combine) n g')
       | union_graph info_combine [] = die "union_graph"
 
-    fun get_info (n : 'info node) : 'info =
-      (* n canonical *)
-      case UF.get_info n of
-        GRAPHNODE{info,...} => info
-
     fun set_info (n : 'info node) (info' : 'info) :  unit =
-      (* n canonical *)
-      case UF.get_info n of
+      case UF.find_info n of
         GRAPHNODE{info,out,visited,df_num} => 
           UF.set_info n (GRAPHNODE{info=info',out=out,visited = visited, df_num = df_num})
 
     fun out_of_node (n : 'info node) : 'info graph =
-      (* n canonical *)
-      case UF.get_info n of GRAPHNODE{out,...} => out
+      case UF.find_info n of GRAPHNODE{out,...} => out
 
     fun set_out_of_node(n: 'info node) (newout: 'info graph) = 
-      (* n canonical *)
-      case UF.get_info n of
+      case UF.find_info n of
         GRAPHNODE{info,out,visited,df_num} =>
           UF.set_info n (GRAPHNODE{info = info, out = newout, visited=visited, df_num=df_num})
 
@@ -155,45 +141,34 @@ functor DiGraph(structure UF : UNION_FIND_POLY
     (*   Selectors and Predicates on Attributes                               *)
     (* ---------------------------------------------------------------------- *)
 
-    fun get_visited(n: 'info node) : bool ref =
-      (* n canonical *)
-      case UF.get_info n of
-        GRAPHNODE{visited, ...} => visited
-
     fun find_visited(n: 'info node) : bool ref =  (* n not necessarily cononical *)
       case UF.find_info n of
         GRAPHNODE{visited, ...} => visited
 
     fun set_visited(n: 'info node)(b: bool): unit =
-      case UF.get_info n of
+      case UF.find_info n of
         GRAPHNODE{visited, ...} => visited:=b
 
     fun node_is_visited (n: 'info node) = 
       case UF.find_info(n) of
         GRAPHNODE{visited as ref b, ...} => b
 
-
-
-    fun get_dfnumber(n: 'info node) : int ref =
-      (* n canonical *)
-      case UF.get_info n of
+    fun find_dfnumber(n: 'info node) : int ref =
+      case UF.find_info n of
         GRAPHNODE{df_num, ...} => df_num
 
     fun set_dfnumber(n: 'info node)(i: int): unit =
-      case UF.get_info n of
+      case UF.find_info n of
         GRAPHNODE{df_num, ...} => df_num:=i
 
+    fun visit g = List.app (fn node => set_visited node true) g
 
-    fun visit g = List.app (fn node=> set_visited (find node) true) g
-
-    fun visit_canonical g = List.app (fn node=> set_visited node true) g
+    fun visit_canonical g = List.app (fn node => set_visited node true) g
    
-    fun unvisit g = List.app (fn node=> set_visited (find node) false) g
+    fun unvisit g = List.app (fn node => set_visited node false) g
    
-    fun unvisit_canonical g = List.app (fn node=> set_visited node false) g
-
     (* reset_df_num g: set the depth-first number of every node in the list g to 0 *)
-    fun reset_df_num g = List.app (fn node=> set_dfnumber (find node) 0) g
+    fun reset_df_num g = List.app (fn node => set_dfnumber node 0) g
 
     fun union_without_edge_duplication 
               (info_combine : '_info * '_info -> '_info) 
@@ -205,11 +180,11 @@ functor DiGraph(structure UF : UNION_FIND_POLY
           | onto((n: '_info node) :: rest, acc) =
               onto(rest, 
                    let val n = find n 
-                       val r = get_visited n
+                       val r = find_visited n
                    in if !r then acc 
                       else (r:= true; 
                             visited_nodes:= n:: !visited_nodes;
-                            if visit_children(get_info n)
+                            if visit_children(find_info n)
                               then onto(out_of_node n, acc)
                             else n:: acc)
                    end)
@@ -240,8 +215,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
     (* ---------------------------------------------------------------------- *)
 
     fun layout_node layout_info n : StringTree =
-      (* n canonical *)
-      case UF.get_info n of
+      case UF.find_info n of
         GRAPHNODE{info,...} => layout_info info
 
     fun layout_node_with_outset layout_info n : StringTree =
@@ -250,17 +224,13 @@ functor DiGraph(structure UF : UNION_FIND_POLY
        *       produces a string tree representing the info of n plus edges
        *       to immediate successors of n
        *)
-      let val n = find n
-      in
         case out_of_node n of
           [] => (* leaf *) layout_node layout_info n
         | ns =>
               PP.NODE{start = "", finish = "", childsep = PP.NOSEP, indent = 0,
                       children = [layout_node layout_info n,
                                   PP.NODE{start = "(", finish = ")", indent = 2, childsep = PP.RIGHT",",
-                                          children = map (layout_node layout_info o find) ns}]}
-      end
-
+                                          children = map (layout_node layout_info) ns}]}
 
     (* Pickler *)
     val pu_boolref = Pickle.refOneGen Pickle.bool
@@ -305,7 +275,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
     fun visit_all (n: 'info node) : unit =
       (* mark all nodes reachable from n as visited *)
       let val n = find n 
-          val r = get_visited n
+          val r = find_visited n
       in if !r then ()
          else (r:= true; visit_all' (out_of_node n))
       end
@@ -316,7 +286,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
     fun unvisit_all (n: 'info node) : unit =
       (* mark all nodes reachable from n as visited *)
       let val n = find n 
-          val r = get_visited n
+          val r = find_visited n
       in if !r then (r:= false; unvisit_all' (out_of_node n))
          else ()
       end
@@ -339,7 +309,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
         fun search (n: 'info node, ns : 'info node list) : 'info node list =
           let 
             val n = find n
-            val r = get_visited n
+            val r = find_visited n
           in
             if !r then ns 
             else (r := true;
@@ -387,7 +357,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
         and search (n: 'info node, ns : 'info node list) : 'info node list =
           let 
             val n = find n
-            val r = get_visited n
+            val r = find_visited n
           in
             if !r then ns 
             else (r := true;
@@ -472,18 +442,18 @@ functor DiGraph(structure UF : UNION_FIND_POLY
             val n = find n
             (*val _ = trace ("lowlink : " ^ (pp(layout_node layout_info n)))*)
           in
-            (get_visited n) := true;
-            (get_dfnumber n) := !count;
+            (find_visited n) := true;
+            (find_dfnumber n) := !count;
             inc count;
             push(stack,n);
             let
-              val low = !(get_dfnumber n)
+              val low = !(find_dfnumber n)
               val low = 
                 min_list (low,(map (fn w => 
                                       let val w = find w 
                                       in
-                                        if !(get_visited w) then
-                                          min'(low,!(get_dfnumber w))
+                                        if !(find_visited w) then
+                                          min'(low,!(find_dfnumber w))
                                         else
                                           lowlink w
                                       end
@@ -494,7 +464,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
                 let
                   val x = pop stack
                   (*val _ = trace "pop"*)
-                in (get_dfnumber x := 0;
+                in (find_dfnumber x := 0;
                     scc_list := (x:: hd (!scc_list)) :: tl (!scc_list);
                     if eq_nodes(x,n) then ()
                     else loop ())
@@ -502,7 +472,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
             in
               (*trace ("lowlink -- body, n : " ^ (pp(layout_node layout_info n))
                      ^ " low : " ^ Int.toString low);*)
-              if low = !(get_dfnumber n) then (* a new scc starts *)
+              if low = !(find_dfnumber n) then (* a new scc starts *)
                 (scc_list := [] :: !scc_list;
                  loop())
               else
@@ -516,7 +486,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
         List.app (fn n =>
                     let val n = find n 
                     in
-                      if !(get_visited n) then
+                      if !(find_visited n) then
                         ()
                       else 
                         (lowlink(n); ())
@@ -539,7 +509,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
         fun search (n: 'info node) : unit = 
           let 
             val n = find n
-            val r = get_visited n
+            val r = find_visited n
           in
             if !r then
               ()
@@ -548,7 +518,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
                 val ns = out_of_node n
               in
                 r := true;
-                f (get_info n, map (fn n' => (search n'; get_info (find n'))) ns)
+                f (find_info n, map (fn n' => (search n'; find_info n')) ns)
               end
           end
       in
@@ -574,7 +544,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
               [] => []
             | (x::xs') =>
               let val n = find x
-                  val r = get_visited n
+                  val r = find_visited n
               in
                   if !r then do_children xs'
                   else (r:= true;
@@ -584,13 +554,13 @@ functor DiGraph(structure UF : UNION_FIND_POLY
           let 
               val children = out_of_node x
           in  
-              List.app (fn n => get_visited (find n):= false) children;
-              get_visited x := true;
+              List.app (fn n => find_visited n := false) children;
+              find_visited x := true;
               set_out_of_node x (do_children children)
           end
       in
             List.app do_node g;
-            unvisit_canonical g
+            unvisit g
       end;
 
       
@@ -613,7 +583,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
       let val n2 = find n2
           fun accum([], added_acc, append_acc) = (added_acc,append_acc)
             | accum(n::ns, added_acc, append_acc) = 
-               if !(get_visited n) then accum(ns,added_acc,append_acc)
+               if !(find_visited n) then accum(ns,added_acc,append_acc)
                else ((*visit_all n;  to ensure that children are not added again *)
                      accum(ns, n::added_acc, n:: append_acc))
           val (added_children_of_n2, total_children_of_n2) = 
@@ -641,7 +611,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
         	       in 
                 	 case bound_to_free child of
 	                   SOME n' =>
-        	              if !(get_visited n') then accum(ns,(added_acc,append_acc))
+        	              if !(find_visited n') then accum(ns,(added_acc,append_acc))
                 	      else accum(ns, (n'::added_acc, n':: append_acc))
 	                 | NONE => (* UNION node, proceed to children *)
         	              accum(ns,
@@ -674,7 +644,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
     fun layout_nodes_deep (layout_info: 'info -> StringTree) 
                      (g: 'info graph) : StringTree =
       let
-	val debug = true
+	val debug = false
 	fun maybe_under layout n =
 	    if debug then [PP.NODE{start="(", finish = ")", indent = 1, 
 				   childsep = PP.RIGHT ",",
@@ -682,11 +652,11 @@ functor DiGraph(structure UF : UNION_FIND_POLY
 	    else nil
         fun layout(n: 'info node): StringTree =
           let val n = find n
-          in if !(get_visited n) then (* detected sharing; print node with "@" prefixed *)
+          in if !(find_visited n) then (* detected sharing; print node with "@" prefixed *)
                 PP.NODE{start = "@", finish = "", indent = 1, childsep = PP.NOSEP,
                         children = layout_node layout_info n :: maybe_under layout n}
              else
-               ((get_visited n):= true;
+               ((find_visited n):= true;
                 case (out_of_node n) of
                   [] => layout_node layout_info n
                 | _ => 

@@ -459,7 +459,7 @@ functor PhysSizeInf(structure Name : NAME
     fun psi_add_place_size (place,size') =
       case psi_lookup place 
 	of SOME n => 
-	  (case DiGraph.get_info n 
+	  (case DiGraph.find_info n 
 	     of (r as ref size) => r := phsize_max size size')
 	 | NONE => ()
 	     
@@ -479,7 +479,7 @@ functor PhysSizeInf(structure Name : NAME
 
     fun phsize_place place : phsize =
       case psi_lookup place 
-	of SOME n => !(DiGraph.get_info (DiGraph.find n))
+	of SOME n => !(DiGraph.find_info n)
 	 | NONE => INF
 
 

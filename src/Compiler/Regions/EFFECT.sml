@@ -18,7 +18,7 @@ sig
   val setkey: (unit -> int) -> effect -> unit
   val empty: effect
   val find: effect -> effect
-  val eq_effect: effect * effect -> bool (* nodes not necessarily canonical *)
+  val eq_effect: effect * effect -> bool
 
   val pu_effect  : effect Pickle.pu
   val pu_effects : effect list Pickle.pu
