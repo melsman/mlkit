@@ -500,7 +500,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	val errs = ScsFormVar.emptyErr
 	val (filename,errs) = getFilenameErr(fv_file,errs)
 	(* Only keep filename (i.e., throw away directory) *)
-	val filename = Path.file filename
+	val filename = (ScsPathMac.file o ScsPathWin.file o ScsPathUnix.file) filename
 	val fileextension = 
 	  case Path.ext filename of
 	    NONE => ""
