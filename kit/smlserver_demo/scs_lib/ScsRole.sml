@@ -21,6 +21,6 @@ structure ScsRole :> SCS_ROLE =
       Db.oneField `select scs_role.has_p(^(Int.toString uid),^(Db.qqq role))
                      from dual` = "t"
 
-    fun has_one_p uid roles =
-      List.foldl (fn (r,acc) => has_p uid r orelse acc) false roles
+    fun has_one_p uid [] = false
+      | has_one_p uid x::xs = has_p uid x orelse (has_one_p uid xs)
   end
