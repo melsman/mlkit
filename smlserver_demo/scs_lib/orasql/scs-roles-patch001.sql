@@ -33,3 +33,4 @@ alter table scs_role_rels modify (
 alter table scs_role_rels 
   add ( primary key(rel_id) );
 
+@scs-roles-packages-create

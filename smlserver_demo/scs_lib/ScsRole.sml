@@ -8,6 +8,7 @@ signature SCS_ROLE =
     datatype role = 
       SiteAdm
     | StudAdm
+    | SysAdm
     | OaAdm
     | UcsPbSupervisorAdm  (* Created in ucs-pb-supervisor-lists-initialdata-create.sql *)
     | UcsPbProjectAdm     (* Created in ucs-pb-initialdata-create.sql *)
@@ -58,6 +59,7 @@ structure ScsRole :> SCS_ROLE =
     datatype role = 
       SiteAdm
     | StudAdm
+    | SysAdm
     | OaAdm
     | UcsPbSupervisorAdm
     | UcsPbProjectAdm
@@ -77,6 +79,7 @@ structure ScsRole :> SCS_ROLE =
     fun fromString str = 
       case str of
         "SiteAdm"           => SiteAdm
+      | "SysAdm"	    => SysAdm
       | "StudAdm"	    => StudAdm
       | "UcsPbVejlederAdm"  => UcsPbSupervisorAdm
       | "UcsPbProjectAdm"   => UcsPbProjectAdm
@@ -100,6 +103,7 @@ structure ScsRole :> SCS_ROLE =
       case role of
         SiteAdm => "SiteAdm"
       | StudAdm => "StudAdm"
+      | SysAdm	=> "SysAdm"
       | OaAdm   => "OaAdm"
       | UcsPbSupervisorAdm => "UcsPbVejlederAdm"
       | UcsPbProjectAdm => "UcsPbProjectAdm"
