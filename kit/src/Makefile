@@ -24,6 +24,10 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
  Compiler/Backend/KAM/BuiltInCFunctionsNsSml.spec \
  Compiler/Backend/KAM/KamInsts.spec
 
+# Whether request profiling is enabled 
+#REQUEST_PROFILING=
+REQUEST_PROFILING=true
+
 mlkit: basics rp2ps tester kitbench
 	cd Runtime; $(MAKE) runtimeSystem.a
 	cd Runtime; $(MAKE) runtimeSystemProf.a
@@ -53,7 +57,7 @@ mlkit_kam: basics tester kitbench
 smlserver: basics
 	cd Runtime; $(MAKE) runtimeSystemKamNsSml.o
 	cd Runtime; $(MAKE) runtimeSystemKamApSml.o
-	cd SMLserver; $(MAKE)
+	cd SMLserver; $(MAKE) REQUEST_PROFILING=$(REQUEST_PROFILING)
 	echo 'use "build_web.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/smlserverc.$(ARCH-OS)
 	rm -f $(BINDIR)/smlserverc
