@@ -180,7 +180,7 @@ void releaseHeap(Heap *h)
   restoreHeap(h);
 
   HEAP_POOL_MUTEX_LOCK;
-  if ( heapPoolIndex <= MAX_HEAP_POOL_SZ ) 
+  if ( heapPoolIndex < MAX_HEAP_POOL_SZ ) 
     {
       heapPool[heapPoolIndex++] = h;
       HEAP_POOL_MUTEX_UNLOCK;
