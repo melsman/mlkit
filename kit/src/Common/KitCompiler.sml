@@ -178,6 +178,7 @@ signature BASICS =
 	  and type AllInfo.TypeInfo.tycon = TyCon.tycon
 	  and type AllInfo.TypeInfo.id = Ident.id
 	  and type AllInfo.ErrorInfo.Type = StatObject.Type
+	  and type AllInfo.ErrorInfo.TypeScheme = StatObject.TypeScheme
 	  and type AllInfo.ErrorInfo.TyVar = StatObject.TyVar
 	  and type AllInfo.ErrorInfo.TyName = TyName.TyName
 	  and type AllInfo.ErrorInfo.TypeFcn = StatObject.TypeFcn
