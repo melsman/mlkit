@@ -8729,7 +8729,7 @@ x86 native backend. The options are slightly different for the version
 of the ML Kit compiler that uses the bytecode backend.
 
 \begin{verbatim}
-ML Kit version 3.9.0, Jun 12, 2001 [X86 Backend]
+ML Kit version 3.9.1, Jul 06, 2001 [X86 Backend]
 
 Usage: mlkit [OPTION]... [file.sml | file.sig | file.pm]
 
@@ -9018,6 +9018,17 @@ Options:
 --print_word_regions, -Pwordregions                       (off)
      Also print word regions that have been dropped.
 
+--quotation, -quot                                        (off)
+     Enable support for quotations and anti-quotations.
+     When enabled, the datatype
+        datatype 'a frag = QUOTE of string
+                         | ANTIQUOTE 'a
+     is available in the initial environment. Moreover,
+     values of this datatype may be constructed using
+     the quotation/antiquotation syntax:
+        val s = "world" 
+        val a : string frag list = `hello ^s - goodbye`
+
 --raggedRight                                              (on)
      Use ragged right margin in pretty-printing of
      expressions and types.
@@ -9088,6 +9099,8 @@ Options:
 
 --width N, -w N                                           (100)
      Column width used when pretty printing intermediate code.
+
+
 \end{verbatim}
 
 \newpage

@@ -212,10 +212,14 @@ signature ENVIRONMENTS =
 
 	val close                : Context * valbind * VarEnv -> TyVar list * VarEnv
 
-	val dom_pat              : Context * pat -> id list
+	val dom_pat              : Context * pat * bool -> id list
               (*dom_pat (C, pat) = the list of id's bound by pat---i.e.,
 	       only variables and not constructors appearing in pat;
-	       therefore C is needed to get the identifier status of id's.*)
+	       therefore C is needed to get the identifier status of id's. In valrec
+	       bindings, the constructor and exception constructor status may be
+	       overwritten. If the boolean is true, identifiers with constructor status are
+	       also included in the result.
+	       *)
 
 	val layout : Context -> StringTree
       end (*C*)

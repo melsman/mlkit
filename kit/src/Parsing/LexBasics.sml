@@ -358,12 +358,6 @@ functor LexBasics(structure BasicIO: BASIC_IO
 
     val FIELD_WIDTH = 18
 
-    fun pad str = if size str mod 18 <> 0 then pad(str ^ " ") else str
-
-    fun thinking x = () (*BasicIO.print(pad(x ^ " "))*)
-    fun shifting x = () (*BasicIO.print(pad("S." ^ x ^ " "))*)
-    fun reducing x = () (*BasicIO.print(pad("R." ^ x ^ " "))*)
-
     exception LEXICAL_ERROR of pos * string
 			(* Used to signal lexical errors to the parser. *)
   end;

@@ -26,6 +26,7 @@ signature TYCON =
     and tycon_REF    : tycon
     and tycon_BOOL   : tycon
     and tycon_LIST   : tycon
+    and tycon_FRAG   : tycon
     and tycon_WORD_TABLE : tycon
     and tycon_UNIT   : tycon
 

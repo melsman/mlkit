@@ -47,25 +47,30 @@ fun vec2list vec = Vector.foldr op:: [] vec
 exception ParamMissing of string
 exception NotInt of string * string
 
+fun formvar s =
+  case Ns.Conn.getQuery(Ns.getConn())
+    of SOME formvars => Ns.Set.get(formvars, s)
+     | NONE => NONE
+
 fun % fnm = 
-    case Mosmlcgi.cgi_field_string fnm of 
+    case formvar fnm of 
 	NONE   => raise ParamMissing "fnm"
       | SOME v => v
 
-fun %? fnm = Option.isSome(Mosmlcgi.cgi_field_string fnm)
+fun %? fnm = Option.isSome(formvar fnm)
 
 fun %# fnm =
-    case Mosmlcgi.cgi_field_string fnm of 
+    case formvar fnm of 
 	NONE   => raise ParamMissing fnm
       | SOME v => (case Int.fromString v of
 		       NONE   => raise NotInt(fnm, v)
 		     | SOME i => i)
 		
-fun %%(fnm, dflt)  = Option.getOpt(Mosmlcgi.cgi_field_string fnm, dflt)
+fun %%(fnm, dflt)  = Option.getOpt(formvar fnm, dflt)
 
 fun %%#(fnm, dflt) = 
     Option.getOpt(Option.mapPartial Int.fromString
-		  (Mosmlcgi.cgi_field_string fnm), dflt)
+		  (formvar fnm), dflt)
 
 (* HTML generic marks *)
 

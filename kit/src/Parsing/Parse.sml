@@ -66,6 +66,7 @@ functor Parse (structure TopdecGrammar : TOPDEC_GRAMMAR
       TopdecLex(structure Tokens = TopdecLrVals.Tokens
                 structure LexBasics = LexBasics
                 structure LexUtils = LexUtils
+		structure Flags = Flags
                )
 
     structure TopdecParser =

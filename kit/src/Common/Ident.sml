@@ -48,6 +48,9 @@ functor Ident(structure StrId: STRID
     and id_PRIM = ID "prim"
     and id_IT = ID "it"
 
+    and id_QUOTE = ID "QUOTE"
+    and id_ANTIQUOTE = ID "ANTIQUOTE"
+
     (* Identifiers for predefined overloaded variables *)
     val id_ABS = ID "abs"
     val id_NEG = ID "~"

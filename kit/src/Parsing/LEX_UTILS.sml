@@ -23,18 +23,23 @@ signature LEX_UTILS =
     val asReal: string -> string option
 
     val initArg: SourceReader -> LexArgument
-    val clearString: LexArgument -> LexArgument
-    val newComment: LexArgument -> LexArgument
+    val clearString: LexArgument -> unit
+    val newComment: LexArgument -> unit
 
-    val addChars: string -> LexArgument -> LexArgument
-    val addControlChar: string -> LexArgument -> LexArgument
-    val addAsciiChar: (pos * string) -> LexArgument -> LexArgument
-    val addUnicodeChar: (pos * string) -> LexArgument -> LexArgument
+    val addChars: string -> LexArgument -> unit
+    val addControlChar: string -> LexArgument -> unit
+    val addAsciiChar: (pos * string) -> LexArgument -> unit
+    val addUnicodeChar: (pos * string) -> LexArgument -> unit
 
     val asString: LexArgument -> string
 
     val identifier: string * pos * pos -> (svalue, pos) token
 
-    val incComment: LexArgument -> LexArgument
-    val decComment: LexArgument -> int * LexArgument
+    val incComment: LexArgument -> unit
+    val decComment: LexArgument -> int
+
+    val parStackTop : LexArgument -> int ref
+    val parStackPush : int ref -> LexArgument -> unit
+    val parStackPop : LexArgument -> unit
+    val parStackIsEmpty : LexArgument -> bool
   end;

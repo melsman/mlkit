@@ -98,7 +98,9 @@ functor ClosConvEnv(structure Lvars : LVARS
       [(Con.con_FALSE, ENUM 0),         (* first nullary constructor *)
        (Con.con_TRUE, ENUM 1),          (* second nullary constructor *)
        (Con.con_NIL, UB_NULLARY 0),     (* first nullary constructor *)
-       (Con.con_CONS, UB_UNARY 0)]      (* first unary constructor *)
+       (Con.con_CONS, UB_UNARY 0),      (* first unary constructor *)
+       (Con.con_QUOTE, B_UNARY 0),      (* first unary constructor *)
+       (Con.con_ANTIQUOTE, B_UNARY 1)]  (* second unary constructor *)
     val initialVarEnv : VarEnv = LvarFinMap.empty
     val initialExconEnv: ExconEnv = ExconFinMap.fromList
       [(Excon.ex_DIV, (LABEL(BI.exn_DIV_lab),NULLARY_EXCON)),

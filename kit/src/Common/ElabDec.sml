@@ -320,7 +320,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     fun dom_vb(C: Context, vb: IG.valbind): id list =
       case vb
         of IG.PLAINvalbind(_, pat, _, vb_opt) =>
-             C.dom_pat (C, pat)
+             C.dom_pat (C, pat, true)
 	     @ (case vb_opt of
 		  SOME vb => dom_vb (C, vb)
 		| NONE => nil)

@@ -39,6 +39,9 @@ functor Con(structure Name : NAME
     val con_NIL   : con  = mk_con "nil"
     val con_CONS  : con  = mk_con "::"
 
+    val con_QUOTE : con  = mk_con "QUOTE"
+    val con_ANTIQUOTE : con  = mk_con "ANTIQUOTE"
+
     structure QD : QUASI_DOM =
       struct
 	type dom = con

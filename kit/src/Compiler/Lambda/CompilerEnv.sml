@@ -103,6 +103,20 @@ functor CompilerEnv(structure Ident: IDENT
       in ARROWtype([RECORDtype [TYVARtype tyvar_cons, t]],[t])
       end
 
+    val tyvar_quote = LambdaExp.fresh_eqtyvar()
+    val quoteType = 
+      let open LambdaExp
+	  val t = CONStype([TYVARtype tyvar_quote], TyName.tyName_FRAG)
+      in ARROWtype([CONStype([],TyName.tyName_STRING)],[t])
+      end
+
+    val tyvar_antiquote = LambdaExp.fresh_eqtyvar()
+    val antiquoteType = 
+      let open LambdaExp
+	  val t = CONStype([TYVARtype tyvar_antiquote], TyName.tyName_FRAG)
+      in ARROWtype([TYVARtype tyvar_antiquote],[t])
+      end
+
     val initialVarEnv = 
       VARENV(initMap [(Ident.id_PRIM, PRIM),
 		      (Ident.id_ABS, ABS),
@@ -125,6 +139,10 @@ functor CompilerEnv(structure Ident: IDENT
 					 [LambdaExp.TYVARtype tyvar_nil])),
 		      (Ident.id_CONS, CON(Con.con_CONS,[tyvar_cons],consType,
 					  [LambdaExp.TYVARtype tyvar_cons])),
+		      (Ident.id_QUOTE, CON(Con.con_QUOTE,[tyvar_quote],quoteType,
+					   [LambdaExp.TYVARtype tyvar_quote])),
+		      (Ident.id_ANTIQUOTE, CON(Con.con_ANTIQUOTE,[tyvar_antiquote],antiquoteType,
+					       [LambdaExp.TYVARtype tyvar_antiquote])),		      
 		      (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
 		      (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
 		      (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType)),
@@ -148,6 +166,7 @@ functor CompilerEnv(structure Ident: IDENT
 		       (tycon_REF, ([tyName_REF], emptyCEnv)),
 		       (tycon_BOOL, ([tyName_BOOL], emptyCEnv)),
 		       (tycon_LIST, ([tyName_LIST], emptyCEnv)),
+		       (tycon_FRAG, ([tyName_FRAG], emptyCEnv)),
 		       (tycon_WORD_TABLE, ([tyName_WORD_TABLE], emptyCEnv)),
 		       (tycon_UNIT, ([], emptyCEnv))
 		       ])
@@ -229,20 +248,6 @@ functor CompilerEnv(structure Ident: IDENT
  
     fun lvars_result (LVAR (lv,_,_,_), lvs) = lv :: lvs
       | lvars_result (_, lvs) = lvs
-(*
-    fun primlvars_result (result, lvs) =
-      case result
-	of ABS => Lvars.absint_lvar :: Lvars.absfloat_lvar :: lvs
-	 | NEG => Lvars.negint_lvar :: Lvars.negfloat_lvar :: lvs
-	 | PLUS => Lvars.plus_int_lvar :: Lvars.plus_float_lvar :: lvs
-	 | MINUS => Lvars.minus_int_lvar :: Lvars.minus_float_lvar :: lvs
-	 | MUL => Lvars.mul_int_lvar :: Lvars.mul_float_lvar :: lvs
-	 | LESS => Lvars.less_int_lvar :: Lvars.less_float_lvar :: lvs
-	 | GREATER => Lvars.greater_int_lvar :: Lvars.greater_float_lvar :: lvs
-	 | LESSEQ => Lvars.lesseq_int_lvar :: Lvars.lesseq_float_lvar :: lvs
-	 | GREATEREQ => Lvars.greatereq_int_lvar :: Lvars.greatereq_float_lvar :: lvs
-	 | _ => lvs
-*)
     fun cons_result (CON (c,_,_,_), cs) = c :: cs
       | cons_result (_, cs) = cs
     fun excons_result (EXCON (c,_), cs) = c :: cs
@@ -271,9 +276,7 @@ functor CompilerEnv(structure Ident: IDENT
     val lvarsOfCEnv = varsOfCEnv lvars_result
     val consOfCEnv = varsOfCEnv cons_result
     val exconsOfCEnv = varsOfCEnv excons_result
-(*
-    val primlvarsOfCEnv = varsOfCEnv primlvars_result 
-*)
+
     fun tynamesOfCEnv ce : TyName list =
       let fun tynames_TEentry((tns,ce),acc) = tynames_E(ce,tns@acc) 
           and tynames_TE(TYENV m, acc) = FinMap.fold tynames_TEentry acc m 

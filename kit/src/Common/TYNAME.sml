@@ -68,6 +68,7 @@ signature TYNAME =
     val tyName_STRING  : TyName
     val tyName_CHAR    : TyName
     val tyName_LIST    : TyName
+    val tyName_FRAG    : TyName
     val tyName_WORD_TABLE : TyName
     val tyName_REF     : TyName
     val tyName_EXN     : TyName

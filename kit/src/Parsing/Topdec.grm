@@ -144,6 +144,7 @@ type arg = unit
 	| HEXINTEGER of Int32.int option | DIGIT of int 
 	| WORD of Word32.word option
 	| REAL of string option | STRING of string
+	| BEGINQ | ENDQ of string | OBJL of string | AQID of string
         | ID of string | TYVAR of string 
 
 (* Junk: *)
@@ -272,6 +273,10 @@ type arg = unit
         | ExpComma_seq0                 of exp list
         | ExpComma_seq1                 of exp list
         | ExpComma_seq2                 of exp list
+
+	| Quote                         of exp list         (* for quotations *)
+	| OtList                        of exp list         (* for quotations *)
+
         | PatComma_seq0                 of pat list
         | PatComma_seq1                 of pat list
         | PatComma_seq2                 of pat list
@@ -892,6 +897,18 @@ AtExp:
 				    Dec, sequenceExp ExpSemicolon_seq2) )
         | LBRACKET ExpComma_seq0 RBRACKET
                         ( list_atexp (PP LBRACKETleft RBRACKETright) ExpComma_seq0 )
+
+        | AQID                    (IDENTatexp (PP AQIDleft AQIDright,
+					       OP_OPT (mk_LongId [AQID], false)))
+        | Quote                   ( list_atexp (PP Quoteleft Quoteright) Quote )
+
+Quote   : BEGINQ ENDQ             ([exp_quote (PP BEGINQleft ENDQright) ENDQ])
+        | BEGINQ OtList ENDQ      (OtList @ [exp_quote (PP ENDQleft ENDQright) ENDQ])
+
+OtList  : OBJL AtExp              ([exp_quote (PP OBJLleft OBJLright) OBJL, 
+				   exp_antiquote (PP AtExpleft AtExpright) AtExp])
+        | OBJL AtExp OtList       (exp_quote (PP OBJLleft OBJLright) OBJL :: 
+				   exp_antiquote (PP AtExpleft AtExpright) AtExp :: OtList)
 
 AtExp_seq1:
           AtExp AtExp_seq1

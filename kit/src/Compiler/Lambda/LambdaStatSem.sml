@@ -157,11 +157,24 @@ end
 						  CONStype([TYVARtype tyvar], tyName_LIST)]],
 				       [CONStype([TYVARtype tyvar], tyName_LIST)]))
 	      end
+	    val typescheme_QUOTE =
+	      let val tyvar = fresh_tyvar()
+	      in close_Type (ARROWtype([CONStype([],tyName_STRING)],
+				       [CONStype([TYVARtype tyvar], tyName_FRAG)]))
+	      end
+	    val typescheme_ANTIQUOTE =
+	      let val tyvar = fresh_tyvar()
+	      in close_Type (ARROWtype([TYVARtype tyvar],
+				       [CONStype([TYVARtype tyvar], tyName_FRAG)]))
+	      end
+	      
 	  in
 	    ConMap.fromList [ (Con.con_TRUE, typescheme_TRUE),
 			      (Con.con_FALSE, typescheme_FALSE),
 			      (Con.con_NIL, typescheme_NIL),
-			      (Con.con_CONS, typescheme_CONS)]
+			      (Con.con_CONS, typescheme_CONS),
+			      (Con.con_QUOTE, typescheme_QUOTE),
+			      (Con.con_ANTIQUOTE, typescheme_ANTIQUOTE)]
 	  end
 
 	val initial_tyname_env = 
@@ -174,6 +187,7 @@ end
 			       (tyName_REAL, []),
 			       (tyName_STRING, []),
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
+			       (tyName_FRAG, [Con.con_QUOTE, Con.con_ANTIQUOTE]),
 			       (tyName_WORD_TABLE, []),
 			       (tyName_REF, [(*Con.con_REF*)]),
 			       (tyName_EXN, [])]

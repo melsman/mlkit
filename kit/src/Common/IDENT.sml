@@ -34,6 +34,9 @@ signature IDENT =
     val id_PRIM: id
     val id_IT: id
 
+    val id_QUOTE : id
+    val id_ANTIQUOTE : id
+
     (* Identifiers needed for initial environment - because of overloading *)
     val id_ABS: id
     val id_NEG: id

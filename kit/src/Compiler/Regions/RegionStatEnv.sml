@@ -89,8 +89,10 @@ functor RegionStatEnv(structure Name : NAME
 		     TyNameMap.add(TyName.tyName_WORD32, (0,[],0),
 		     TyNameMap.add(TyName.tyName_LIST, (1,[E.TOP_RT],0),
 				   (* the auxiliary region is for a pair; hence TOP_RT *)
+		     TyNameMap.add(TyName.tyName_FRAG, (1,[E.STRING_RT],0),
+				   (* the auxiliary region is for a string; hence STRING_RT *)
 		     TyNameMap.add(TyName.tyName_WORD_TABLE, (1,[],0),
-		     TyNameMap.empty)))))))))))))
+		     TyNameMap.empty))))))))))))))
 
     local
 
@@ -122,6 +124,37 @@ functor RegionStatEnv(structure Name : NAME
 	in (c, cons_sigma)
 	end
 
+      fun mkFragConsTy mu1 ae (mu,rho,rho0) =
+	R.FUN([mu1],ae,[(R.CONSTYPE(TyName.tyName_FRAG, [mu], [rho], []), rho0)])
+
+      fun mk_quote_sigma c lev0 =
+	let val alpha = L.fresh_tyvar()
+	    val alpha_ty = R.TYVAR alpha
+	    val (rho1,c) = E.freshRhoWithTy(E.STRING_RT, c)  (* region for auxiliary strings *)
+	    val (rho2,c) = E.freshRhoWithTy(E.TOP_RT, c)     (* region for result frag *)
+	    val (rho3,c) = E.freshRho c                      (* bot-region for tyvar *)
+	    val (arreff, c) = E.freshEps c
+	    val _ = E.edge(arreff, E.mkPut rho2)
+	    val quote_ty = mkFragConsTy (R.CONSTYPE(TyName.tyName_STRING,[],[],[]),rho1)
+	      arreff ((alpha_ty,rho3),rho1,rho2)
+	    val (c,quote_sigma,_) = R.generalize_all (c, lev0, [alpha], quote_ty)
+	in (c, quote_sigma)
+	end
+
+      fun mk_antiquote_sigma c lev0 =
+	let val alpha = L.fresh_tyvar()
+	    val alpha_ty = R.TYVAR alpha
+	    val (rho1,c) = E.freshRhoWithTy(E.STRING_RT, c)  (* region for auxiliary strings *)
+	    val (rho2,c) = E.freshRhoWithTy(E.TOP_RT, c)     (* region for result frag *)
+	    val (rho3,c) = E.freshRho c                      (* bot-region for tyvar *)
+	    val (arreff, c) = E.freshEps c
+	    val _ = E.edge(arreff, E.mkPut rho2)
+	    val antiquote_ty = mkFragConsTy (alpha_ty,rho3)
+	      arreff ((alpha_ty,rho3),rho1,rho2)
+	    val (c,antiquote_sigma,_) = R.generalize_all (c, lev0, [alpha], antiquote_ty)
+	in (c, antiquote_sigma)
+	end
+
       fun mk_bool_sigma c lev0 =
 	let val (c,bool_sigma,_) =  
 	       R.generalize_all (c, lev0, [], (R.CONSTYPE(TyName.tyName_BOOL,[],[],[])))
@@ -136,13 +169,16 @@ functor RegionStatEnv(structure Name : NAME
       val (c, cons_sigma) = mk_cons_sigma c lev0 E.TOP_RT            (* boxed version *)
       val (c, cons_sigma_unboxed) = mk_cons_sigma c lev0 E.WORD_RT   (* unboxed version *)
       val (c, bool_sigma) = mk_bool_sigma c lev0
-
+      val (c, quote_sigma) = mk_quote_sigma c lev0
+      val (c, antiquote_sigma) = mk_antiquote_sigma c lev0
     in
       val cons_sigma_unboxed = cons_sigma_unboxed
       val conenv0 = ConMap.fromList [(Con.con_TRUE, bool_sigma),
 				     (Con.con_FALSE, bool_sigma),
 				     (Con.con_NIL, nil_sigma),
-				     (Con.con_CONS, cons_sigma)]
+				     (Con.con_CONS, cons_sigma),
+				     (Con.con_QUOTE, quote_sigma),
+				     (Con.con_ANTIQUOTE, antiquote_sigma)]
     end
 
 (*
