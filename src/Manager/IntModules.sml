@@ -69,6 +69,7 @@ functor IntModules(structure Name : NAME
 		     sharing type Report.Report = ParseElab.Report
 	           structure PP : PRETTYPRINT
 		     sharing type PP.StringTree = Environments.StringTree = ModuleEnvironments.StringTree
+		       = ManagerObjects.StringTree
 		   structure Flags: FLAGS
                    sharing type ModuleEnvironments.absprjid = ManagerObjects.absprjid  = ParseElab.absprjid
 		   ) : INT_MODULES =
@@ -116,6 +117,9 @@ functor IntModules(structure Name : NAME
 
     fun print_basis B =
       PP.outputTree(print,ModuleEnvironments.B.layout B, 100)
+
+    fun print_intbasis ib =
+      PP.outputTree(print,IntBasis.layout ib, 100)
 
     (* For statistics *)
     fun out_functor_application s =
@@ -625,6 +629,10 @@ functor IntModules(structure Name : NAME
 	       | _ => die "int_funbind.no type info"
 	  val body_builder = generate_body_builder(absprjid, funid, strid, body_builder_info, strexp)
 	  val fe = IntFunEnv.add(funid,(absprjid,funstamp,strid,E,body_builder,intB0),IntFunEnv.empty)
+(*
+	  val _ = print ("Closure interpretation basis for " ^ FunId.pr_FunId funid ^ " :\n")
+	  val _ = print_intbasis intB0
+*)
       in case funbind_opt
 	   of SOME funbind => 
 	     let val fe' = int_funbind(absprjid, intB, funbind)

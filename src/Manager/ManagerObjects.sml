@@ -402,6 +402,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			 | NONE => false) true ife
 	fun layout (IFE ife) = FinMap.layoutMap{start="IntFunEnv = [", eq="->",sep=", ", finish="]"}
 	  (PP.LEAF o FunId.pr_FunId) (PP.LEAF o FunStamp.pr o #2) ife
+	fun fold f i (IFE ife) = FinMap.Fold f i ife
       end
 
 
@@ -475,7 +476,19 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		val cons = CompilerEnv.consOfCEnv ce'
 		val excons = CompilerEnv.exconsOfCEnv ce'
 		val cb' = CompileBasis.restrict(cb,(lvars,tynames,cons,excons))
-	    in IB (ife',ise',ce',cb')
+		  
+	    (* because of the delayed interpretation of functors, we
+	     * need also add the compiler bases for each of the functor 
+	     * identifiers to the resulting interpretation basis; see 
+	     * the example test/fxp_err.sml for an example where not 
+	     * adding theses compiler bases causes the compiler to 
+	     * crash. *)
+		val cb'' = IntFunEnv.fold (fn ((_,functorClos),cb) => 
+					   let val IB ib = #6 functorClos
+					   in CompileBasis.plus(cb,#4 ib)
+					   end) cb' ife'
+
+	    in IB (ife',ise',ce',cb'')
 	    end
 
 	fun match(IB(ife1,ise1,ce1,cb1),IB(ife2,ise2,ce2,cb2)) =

@@ -29,6 +29,7 @@ valrecpat1.sml
 valrecpat2.sml
 valrecpat3.sml
 valrecpat4.sml
+unbox.sml
 rank.sml            ccl       ecte    nobasislib
 pat.sml             ccl     
 llv.sml
@@ -45,6 +46,7 @@ opaque.sml          ccl
 opaque2.sml                        ue nobasislib
 functor.sml         ccl
 functor2.sml        ccl
+functor3.sml
 constraint.sml
 lex.sml                               nobasislib
 layout.sml

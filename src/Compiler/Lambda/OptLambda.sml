@@ -1377,20 +1377,20 @@ functor OptLambda(structure Lvars: LVARS
      fun trans (env:unbox_fix_env) lamb =
        case lamb 
 	 of FIX {functions, scope} => 
-	   let 
-	     fun add_env ({lvar,tyvars,Type,bind=FN{pat=[(lv,pt)],body}}, env : unbox_fix_env) : unbox_fix_env =
+	  (let 
+	     fun add_env r ({lvar,tyvars,Type,bind=FN{pat=[(lv,pt)],body}}, env : unbox_fix_env) : unbox_fix_env =
 	       let fun normal () = LvarMap.add (lvar, NORMAL_ARGS, env)
 	       in (* interesting only if the function takes a tuple of arguments *)
 		 case Type
 		   of ARROWtype([RECORDtype nil],res) => normal()
 		    | ARROWtype([rt as RECORDtype ts],res) =>
 		     if !Flags.optimiser andalso !unbox_function_arguments andalso unboxable lv body then
-		       LvarMap.add(lvar,UNBOXED_ARGS (tyvars,ARROWtype(ts,res)),env)
+		       LvarMap.add(lvar,UNBOXED_ARGS (if r then nil else tyvars,ARROWtype(ts,res)),env)
 		     else 
 		       normal()
 		    | _ => normal()
 	       end
-	       | add_env _ = die "unbox_fix_args.f.add_env"	       
+	       | add_env _ _ = die "unbox_fix_args.f.add_env"	       
 	     fun trans_function env {lvar,tyvars,Type,bind=FN{pat=[(lv,pt)],body}} =
 	       let fun mk_fun Type argpat body = {lvar=lvar,tyvars=tyvars,Type=Type, 
 						  bind=FN{pat=argpat, body=body}}
@@ -1413,12 +1413,16 @@ functor OptLambda(structure Lvars: LVARS
 		     | _ => die "unbox_fix_args.trans.trans_function"
 	       end
 	       | trans_function _ _ = die "unbox_fix_args.f.do_fun"
-	     val env' = Listfoldl add_env env functions
-	     val functions = map (trans_function env') functions
-	     val scope = trans env' scope
+	     val env_fix = Listfoldl (add_env true) env functions
+	     val env_scope = Listfoldl (add_env false) env functions
+	     val functions = map (trans_function env_fix) functions
+	     val scope = trans env_scope scope
 	   in
 	     FIX{functions=functions,scope=scope}
-	   end
+	   end handle X => 
+	     (print "Problem during processing of ";
+	      app (fn {lvar,...} => print (Lvars.pr_lvar lvar ^ " ")) functions;
+	      print "\n"; raise X))
 	  | PRIM(SELECTprim i, [VAR{lvar,instances}]) => 
 	   (case lookup env lvar
 	      of SOME (ARG_VARS vector) =>
@@ -1447,7 +1451,8 @@ functor OptLambda(structure Lvars: LVARS
 			 | VAR{lvar,instances=nil} => mk_app lvar sz
 			 | _ => 
 			    let val lv_tmp = Lvars.newLvar()
-			      val S = mk_subst (fn () => "OptLambda.trans.app") (tyvars, instances)
+			      fun errFun () = "OptLambda.trans.app.lvar = " ^ Lvars.pr_lvar lvar
+			      val S = mk_subst errFun (tyvars, instances)
 			      val Type = on_Type S (RECORDtype argTypes)
 			    in LET{pat=[(lv_tmp, nil, Type)], bind=trans env arg,
 				   scope=mk_app lv_tmp sz}
