@@ -66,12 +66,13 @@ show errors
 @scs-locales-create.sql;
 @scs-enumerations-create.sql;
 @scs-parties-create.sql;
-@scs-roles-create.sql;
 @scs-persons-create.sql;
 @scs-users-create.sql;
 @scs-groups-create.sql;
+@scs-roles-create.sql;
+@scs-default-users-create.sql;
 @scs-dict-create.sql;
 
 select table_name from user_tables; -- debugging information
-set serveroutput on; -- used by test files
+set serveroutput on
 
