@@ -8,4 +8,5 @@ Group is
 COMPILE.sml
 CompileSMLNJ.sml
 CompileMLKIT.sml
+CompileMLTON.sml
 Benchmark.sml

@@ -25,7 +25,7 @@ structure CompileSMLNJ : COMPILE =
       end handle _ => NONE
 *)
 
-    fun compile kitdir src =
+    fun compile kitdir compileflags src opts =
       let 
 	  val heap2execDir = kitdir ^ "/src/heap2exec/"
 	  val heap2exec = heap2execDir ^ "heap2exec " ^ heap2execDir ^ "run.x86-linux"

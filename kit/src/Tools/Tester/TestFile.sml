@@ -1,7 +1,9 @@
 
 signature TESTFILE =
   sig
-    
+
+    type opt = string
+(*
     datatype opt = 
       NoBasisLib 
     | NoOptimiser 
@@ -13,19 +15,20 @@ signature TESTFILE =
     | GC
     | Tags
     | UncaughtException
-      
+*)      
     datatype entry = PM of string * opt list
-    | SML of string * opt list
+                   | SML of string * opt list
       
     val parse : string -> (string * entry list) option     (* returns NONE if parse error occurs *)
       (* the string holds the entire test file *)
   end
 
 
-
 structure TestFile : TESTFILE =
   struct
-    
+
+    type opt = string
+(*
     datatype opt = 
       NoBasisLib 
     | NoOptimiser
@@ -37,9 +40,9 @@ structure TestFile : TESTFILE =
     | GC
     | Tags
     | UncaughtException
-      
+*)      
     datatype entry = PM of string * opt list
-    | SML of string * opt list
+                   | SML of string * opt list
       
     exception ParseFile of string
     fun drop_comments (l: char list) : char list =
@@ -70,8 +73,13 @@ structure TestFile : TESTFILE =
   
     fun parse (s : string) : (string * entry list) option =
       let 
+	(* an option is a sequence of characters not including white space or punktuation *)
+	fun contains c s = CharVector.foldl (fn (e,b) => b orelse c = e) false s
+	  
 	fun read_opt [] = (NONE,[])
-	  | read_opt (all as s::rest) =
+	  | read_opt (all as s::rest) = if contains #"." s then (NONE,all)
+					else (SOME s, rest)
+(*
 	  case s
 	    of "nobasislib" => (SOME NoBasisLib, rest)
 	     | "nooptimiser" => (SOME NoOptimiser, rest)
@@ -84,6 +92,7 @@ structure TestFile : TESTFILE =
 	     | "tags" => (SOME Tags, rest)
 	     | "ue" => (SOME UncaughtException, rest)
 	     | _ => (NONE, all)
+*)
 	fun read_opts (l, acc) =
 	  case read_opt l
 	    of (SOME opt, rest) => read_opts(rest,opt::acc)
