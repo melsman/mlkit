@@ -40,3 +40,7 @@ nssml_GetMimeType
 nssml_GetHostByAddr
 nssml_EncodeUrl
 nssml_DecodeUrl
+
+nssml_configGetValue
+nssml_configGetValueExact
+nssml_ConnUrl

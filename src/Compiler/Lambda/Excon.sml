@@ -30,6 +30,7 @@ functor Excon(structure Name : NAME
     val ex_MATCH : excon  = mk_excon "Match"
     val ex_BIND  : excon  = mk_excon "Bind"
     val ex_OVERFLOW  : excon  = mk_excon "Overflow"
+    val ex_INTERRUPT : excon  = mk_excon "Interrupt"
 
     structure QD : QUASI_DOM =
       struct

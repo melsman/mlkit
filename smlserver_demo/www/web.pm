@@ -3,13 +3,16 @@ local
   ../sml/Ns.sml  
   ../sml/MSP.sml
   ../sml/Msp.sml
+  ../sml/FormVar.sml
 in
  [
-   recipe.sml
-   hej.sml
-   yellow.sml
-   hello.sml
-   show.sml
+  counter.sml
+  temp.sml
+  recipe.sml
+  hej.sml
+  yellow.sml
+  hello.sml
+  show.sml
   h1.sml
   hello.msp
   calendar.msp

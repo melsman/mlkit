@@ -70,6 +70,7 @@ functor Ident(structure StrId: STRID
     val id_Match = ID "Match"
     val id_Bind = ID "Bind"
     val id_Overflow = ID "Overflow"
+    val id_Interrupt = ID "Interrupt"
 
     (* misc: *)
 

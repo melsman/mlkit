@@ -1142,6 +1142,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  val BindVE      = VE.singleton (Ident.id_Bind, LONGEXCONpriv Type.Exn)
 	  val MatchVE     = VE.singleton (Ident.id_Match, LONGEXCONpriv Type.Exn)
 	  val OverflowVE  = VE.singleton (Ident.id_Overflow, LONGEXCONpriv Type.Exn)
+	  val InterruptVE = VE.singleton (Ident.id_Interrupt, LONGEXCONpriv Type.Exn)
 
 	  fun joinVE [] = VE.empty
 	    | joinVE (VE :: rest) = VE.plus (VE, joinVE rest)
@@ -1207,7 +1208,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	   absVE, negVE, divVE, modVE, plusVE, minusVE, mulVE,
 	   lessVE, greaterVE, lesseqVE, greatereqVE,
 	   resetRegionsVE, forceResettingVE, DivVE, 
-	   BindVE, MatchVE, OverflowVE]
+	   BindVE, MatchVE, OverflowVE, InterruptVE]
 	val fragVE = VE.close fragVE
 	fun VE_initial() = joinVE(if quotation() then fragVE :: VEs else VEs)
       in

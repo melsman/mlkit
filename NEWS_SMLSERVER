@@ -1,4 +1,24 @@
-File NEWS_SMLSERVER                                   July 13, 2001
+File NEWS_SMLSERVER                                   July 22, 2001
+
+ * mael 2001-07-22: Primitives for accessing the AOLserver
+   configuration file added to the Ns structure. Also added primitive 
+   for getting the url associated with a request.
+
+           **** SMLserver version 3.9.2 is released ****
+
+ * mael 2001-07-19: Proper handling of uncaught exceptions. To avoid
+   that AOLserver is killed when an SMLserver web-page evaluates to an
+   uncaught exception, the interpreter no longer uses the exit system
+   call to terminate execution when an uncaught exception appears. 
+   Instead, the interpreter returns a status code of -1 (or -2 if the
+   uncaught exception is Interrupt). In case the interpreter returns
+   -1, a warning is written to the server log. The Interrupt exception
+   can thus be used to terminate an SMLserver web-page without
+   generating a warning.
+
+ * mael 2001-07-19: Added Interrupt exception to front end; it is
+   now possible to handle an Interrupt exception raised by pressing
+   Control-C.
 
            **** SMLserver version 3.9.1 is released ****
 

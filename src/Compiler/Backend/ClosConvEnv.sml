@@ -106,7 +106,8 @@ functor ClosConvEnv(structure Lvars : LVARS
       [(Excon.ex_DIV, (LABEL(BI.exn_DIV_lab),NULLARY_EXCON)),
        (Excon.ex_MATCH, (LABEL(BI.exn_MATCH_lab),NULLARY_EXCON)),
        (Excon.ex_BIND, (LABEL(BI.exn_BIND_lab),NULLARY_EXCON)),
-       (Excon.ex_OVERFLOW, (LABEL(BI.exn_OVERFLOW_lab),NULLARY_EXCON))]
+       (Excon.ex_OVERFLOW, (LABEL(BI.exn_OVERFLOW_lab),NULLARY_EXCON)),
+       (Excon.ex_INTERRUPT, (LABEL(BI.exn_INTERRUPT_lab),NULLARY_EXCON))]
     val initialRhoEnv : RhoEnv = RegvarFinMap.fromList
       [(Effect.toplevel_region_withtype_top,LABEL(BI.toplevel_region_withtype_top_lab)),
        (Effect.toplevel_region_withtype_bot,   (* arbitrary binding, but some binding

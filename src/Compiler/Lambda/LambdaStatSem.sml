@@ -198,7 +198,8 @@ end
 	  ExconMap.fromList  [(Excon.ex_DIV, NONE : Type option),
 			      (Excon.ex_MATCH, NONE),
 			      (Excon.ex_BIND, NONE),
-			      (Excon.ex_OVERFLOW, NONE)]
+			      (Excon.ex_OVERFLOW, NONE),
+			      (Excon.ex_INTERRUPT, NONE)]
 
 	val ftv_initial =
 	  ConMap.fold (fn (sigma,set) => NatSet.union (ftv_TypeScheme sigma) set)

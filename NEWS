@@ -1,5 +1,9 @@
 ML Kit NEWS file                                         July 5, 2001
 
+ * mael 2001-07-19: Added Interrupt exception to front end; it is
+   now possible to handle an Interrupt exception raised by pressing
+   Control-C.
+
            **** ML Kit version 3.9.1 is released ****
 
  * mael 2001-07-05: Bug fix: valrec may now overwrite identifier

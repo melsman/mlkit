@@ -85,6 +85,10 @@ signature NS =
 	(* The `server' function returns the name of the server 
 	 * associated with the connection. *)
 	val server : unit -> string
+
+	(* Return the url (relativ to server-root) associated with 
+	 * the request. *)
+	val url : unit -> string
       end
 
     structure Set :
@@ -145,6 +149,21 @@ signature NS =
 	(* Return full path name of the configuration file in use. *)
 	val configFile : unit -> string           
 
+	(* Return the value for the given key in the section named 
+	 * sectionName. If either the section does not exist or the 
+	 * key does not exist in the section, the function returns 
+	 * NONE. If multiple keys of the same name are in the named
+	 * section (for example, the multiple Load lines of the 
+	 * Modules section), this function returns only the first 
+	 * matching entry. The section names must match exactly, but 
+	 * the key will be matched case-insensitively. *)
+	val configGetValue : ({sectionName: string, key: string} 
+			      -> string option)
+
+	(* The case-sensitive counterpart of configGetValue. *)
+	val configGetValueExact : ({sectionName: string, key: string} 
+				   -> string option)
+
 	(* Return the name of the error log. *)
 	val errorLog : unit -> string
 
@@ -155,7 +174,7 @@ signature NS =
 	 * on, as specified in the configuration file. *)
 	val hostname : unit -> string
 
-	(* Return pid of AOLserver. *)
+	(* Return pid (process id) of AOLserver. *)
 	val pid : unit -> int
 
 	(* Return AOLserver version string. *)

@@ -252,7 +252,11 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
   nssml_smlFileToUoFile(url,uo,ctx->prjid);
   // Ns_Log(Notice, "Starting interpreter on file %s", uo);
   res = interpLoadRun(ctx->interp, uo);
-  // Ns_Log(Notice, "Interpreter returned %d", res);
+  if ( res == -1 ) {    /* exception other than Interrupt raised */
+    Ns_Log(Warning, "%s raised %s", url, ctx->interp->error);
+  }
+  free(ctx->interp->error);      // free the malloced string 
+  ctx->interp->error = NULL;     // - and nullify field
   Ns_DStringFree(&ds);
 
   // Release the lock
