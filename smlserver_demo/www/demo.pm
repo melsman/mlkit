@@ -29,11 +29,17 @@ in
   auth_logout.sml
   auth.sml
 
+  demo/regexp.sml
+  demo/cache.sml
+  demo/cache_add.sml
+  demo/cache_lookup.sml
+
   demo/index.sml
   demo/rating/index.sml
   demo/rating/add.sml
   demo/rating/add0.sml
   demo/rating/wine.sml
+  demo/employee/index.sml
   demo/employee/update.sml
   demo/employee/search.sml
   demo/time_of_day.sml

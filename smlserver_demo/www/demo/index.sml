@@ -8,7 +8,7 @@ val examples =
    ("Server information", "server.sml", []),
    ("Currency service", "currency_cache.html", ["currency_cache.sml"]),
    ("Send an email", "mail_form.sml", ["mail.sml"]),
-(*   ("Employee search", "employee/index.html"), *)
+   ("Employee search", "employee/index.sml", ["search.sml","update.sml"]),
    ("Best Wines web-site", "rating/index.sml", ["rating/rating.sql", "rating/add0.sml", 
 						"rating/add.sml", "rating/wine.sml"]),
    ("SMLserver link database (password protected)", "link/index.sml", ["link/add_form.sml", "link/add.sml", 
@@ -18,6 +18,8 @@ val examples =
    ("Multiplication table", "mul.msp", []),
    ("Generating calendars", "calendar.msp", []),
    ("A demo of various MSP styles", "test.msp", []),
+   ("Regular Expressions", "regexp.sml",[]),
+   ("Simple Dictionary (Caching)","cache.sml",["cache_add.sml","cache_lookup.sml"]),
    ("SMLserver images", "images/index.html", []),
    ("This index page", "index.sml", [])]
 

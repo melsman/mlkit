@@ -13,4 +13,4 @@
     if Db.dml update = Ns.OK then 
       Ns.returnRedirect ("search.sml?email=" 
 			 ^ Ns.encodeUrl email)
-    else Ns.return `Update failed`
+    else Page.return "Employee Database" `Update failed`

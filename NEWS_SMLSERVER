@@ -1,5 +1,7 @@
 File NEWS_SMLSERVER                                  October 9, 2001
 
+ * nh 2001-12-29: Added support for MySQL
+
  * mael 2001-10-09: Added support for threaded simultaneous responses
    of requests. Serving a request is no longer blocked by the serving
    of other requests.
@@ -76,3 +78,10 @@ File NEWS_SMLSERVER                                  October 9, 2001
    portability and for use with the SMLserver project, which adds 
    Standard ML language support to AOLserver -- a webserver from 
    America Online.
+
+
+
+
+
+
+
