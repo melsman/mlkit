@@ -1,0 +1,11 @@
+Group is
+
+../Tester/INFO.sml
+../Tester/LinuxInfo.sml
+../Tester/MemUsage.sml
+
+../Tester/TestFile.sml
+COMPILE.sml
+CompileSMLNJ.sml
+CompileMLKIT.sml
+Benchmark.sml

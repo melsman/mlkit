@@ -9,3 +9,6 @@ CompilerTimings.sml
 TestReport.sml
 (* MemTime.sml*)
 Tester.sml
+COMPILE.sml
+CompileSMLNJ.sml
+CompileMLKIT.sml
