@@ -8,7 +8,7 @@ functor ElabRepository(structure Name : NAME
 		       eqtype funid
 		       type ElabBasis
 		       type longstrid
-                       eqtype prjid
+                       eqtype absprjid
 		       structure Crash : CRASH) : ELAB_REPOSITORY =
   struct
 
@@ -28,43 +28,43 @@ functor ElabRepository(structure Name : NAME
     val empty_infix_basis : InfixBasis = InfixBasis.emptyB
     val empty_opaq_env : opaq_env = OpacityEnv.empty
 
-    type prjid = prjid (* was string; mads *)
-    type elabRep = ((prjid * funid) * bool, (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
-					     InfixBasis * ElabBasis * opaq_env) list) FinMap.map ref
+    type absprjid = absprjid
+    type elabRep = ((absprjid * funid) * bool, (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
+						InfixBasis * ElabBasis * opaq_env) list) FinMap.map ref
       (* the bool is true if profiling is enabled *)
 
     val elabRep : elabRep = ref FinMap.empty
 
     fun clear() = elabRep := FinMap.empty
 
-    fun delete_rep rep prjid_and_funid = case FinMap.remove ((prjid_and_funid, !region_profiling), !rep)
-					   of SOME res => rep := res
-					    | _ => ()
-    fun delete_entries prjid_and_funid = delete_rep elabRep prjid_and_funid
+    fun delete_rep rep absprjid_and_funid = case FinMap.remove ((absprjid_and_funid, !region_profiling), !rep)
+					      of SOME res => rep := res
+					       | _ => ()
+    fun delete_entries absprjid_and_funid = delete_rep elabRep absprjid_and_funid
 
-    fun lookup_rep rep exportnames_from_entry prjid_and_funid =
+    fun lookup_rep rep exportnames_from_entry absprjid_and_funid =
       let val all_gen = foldr (fn (n, b) => b andalso
 			       Name.is_gen n) true
 	  fun find ([], n) = NONE
 	    | find (entry::entries, n) = 
 	    if (all_gen o exportnames_from_entry) entry then SOME(n,entry)
 	    else find(entries,n+1)
-      in case FinMap.lookup (!rep) (prjid_and_funid, !region_profiling)
+      in case FinMap.lookup (!rep) (absprjid_and_funid, !region_profiling)
 	   of SOME entries => find(entries, 0)
 	    | NONE => NONE
       end
 
-    fun add_rep rep (prjid_and_funid,entry) : unit =
+    fun add_rep rep (absprjid_and_funid,entry) : unit =
       rep := let val r = !rep 
-                 val i = (prjid_and_funid, !region_profiling)
+                 val i = (absprjid_and_funid, !region_profiling)
 	     in case FinMap.lookup r i
 		  of SOME res => FinMap.add(i,res @ [entry],r)
 		   | NONE => FinMap.add(i,[entry],r)
 	     end
 
-    fun owr_rep rep (prjid_and_funid,n,entry) : unit =
+    fun owr_rep rep (absprjid_and_funid,n,entry) : unit =
       rep := let val r = !rep
-                 val i = (prjid_and_funid, !region_profiling)
+                 val i = (absprjid_and_funid, !region_profiling)
 		 fun owr(0,entry::res,entry') = entry'::res
 		   | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
 		   | owr _ = die "owr_rep.owr"

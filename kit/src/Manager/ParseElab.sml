@@ -6,7 +6,7 @@ functor ParseElab(structure Parse: PARSE
 
  	          structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		    sharing type ElabTopdec.StaticBasis = ModuleEnvironments.Basis
-                    sharing type ElabTopdec.prjid = ModuleEnvironments.prjid			  
+                    sharing type ElabTopdec.absprjid = ModuleEnvironments.absprjid			  
 		  structure PreElabTopdecGrammar: TOPDEC_GRAMMAR
 		    sharing type PreElabTopdecGrammar.topdec
 				      = ElabTopdec.PreElabTopdec
@@ -52,7 +52,7 @@ functor ParseElab(structure Parse: PARSE
     type Report = Report.Report
     type topdec = PostElabTopdecGrammar.topdec
 
-    type prjid = ModuleEnvironments.prjid
+    type absprjid = ModuleEnvironments.absprjid
 
     fun log s = TextIO.output(!Flags.log, s)
     fun chat s = if !Flags.chat then log s else ()
@@ -76,13 +76,13 @@ functor ParseElab(structure Parse: PARSE
         SUCCESS of {report: Report, infB: InfixBasis, elabB: ElabBasis, topdec: topdec}
       | FAILURE of Report * ErrorCode.ErrorCode list
 
-    fun elab (prjid : prjid, infB, elabB, topdec) : Result =
+    fun elab (absprjid : absprjid, infB, elabB, topdec) : Result =
           let val debugParse =
 	            if !Flags.DEBUG_PARSING then
 		      PP.reportStringTree(PreElabTopdecGrammar.layoutTopdec topdec)
 		      // PP.reportStringTree(InfixBasis.layoutBasis infB)
 		    else Report.null
-	      val (elabB', topdec') = ElabTopdec.elab_topdec (prjid, elabB, topdec)
+	      val (elabB', topdec') = ElabTopdec.elab_topdec (absprjid, elabB, topdec)
 	  in
 	    (case ErrorTraverse.traverse topdec' of
 	       ErrorTraverse.SUCCESS =>
@@ -144,7 +144,7 @@ functor ParseElab(structure Parse: PARSE
     val empty_success = SUCCESS{report=Report.null, infB=InfixBasis.emptyB,
 				elabB=ModuleEnvironments.B.empty, topdec=PostElabTopdecGrammar.empty_topdec}
 
-    fun parse_elab {infB: InfixBasis, elabB: ElabBasis, prjid: prjid, file : string} : Result =
+    fun parse_elab {infB: InfixBasis, elabB: ElabBasis, absprjid: absprjid, file : string} : Result =
       let val _ = chat "[parsing begin...]\n"
 	  val _ = Timing.timing_begin()
 	  val parse_res = (parse (infB, file)  (*may raise Parse*) 
@@ -154,7 +154,7 @@ functor ParseElab(structure Parse: PARSE
 	  val _ = chat "[elaboration begin...]\n"
 	  val _ = Timing.timing_begin()
 	  val elab_res = case parse_res 
-			   of (infB, SOME topdec) => (elab (prjid, infB, elabB, topdec) 
+			   of (infB, SOME topdec) => (elab (absprjid, infB, elabB, topdec) 
 						      handle E => (Timing.timing_end "Elab" ; raise E))
 			    | (infB, NONE) => empty_success
 	  val _ = Timing.timing_end "Elab" 

@@ -47,16 +47,17 @@ signature MODULE_ENVIRONMENTS =
 
 
                        (*F, functor environments*)
-    eqtype prjid (* = string *)
-    val prjid_to_string: prjid -> string
-    val mk_prjid: string -> prjid
+
+    eqtype absprjid  (* absolute project identifier *)
+    val absprjid_to_string: absprjid -> string
+    val mk_absprjid: string -> absprjid
 
     structure F :
       sig
 	val empty            : FunEnv
-	val singleton        : funid  * (prjid * FunSig) -> FunEnv
+	val singleton        : funid  * (absprjid * FunSig) -> FunEnv
 	val plus             : FunEnv * FunEnv -> FunEnv
-	val lookup           : FunEnv -> funid -> (prjid * FunSig) option
+	val lookup           : FunEnv -> funid -> (absprjid * FunSig) option
 	val tynames          : FunEnv -> TyName.Set.Set
 	val tyvars           : FunEnv -> TyVar list
 	val tyvars'          : FunEnv -> (id * TyVar list) list
@@ -99,7 +100,7 @@ signature MODULE_ENVIRONMENTS =
 	val from_F           : FunEnv -> Basis
 	val to_F             : Basis -> FunEnv
 	val plus_F           : Basis  * FunEnv -> Basis
-	val lookup_funid     : Basis -> funid -> (prjid * FunSig) option
+	val lookup_funid     : Basis -> funid -> (absprjid * FunSig) option
 
 	           (*for compilation manager*)
 	val enrich           : Basis * Basis -> bool

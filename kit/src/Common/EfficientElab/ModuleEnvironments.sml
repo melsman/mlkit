@@ -141,12 +141,11 @@ functor ModuleEnvironments(
 
     (*F, functor environments*)
 
-    type prjid = string
+    type absprjid = string
 
-    datatype FunEnv = FUNENV of (funid, prjid*FunSig) FinMap.map
-    type prjid = string
-    fun prjid_to_string(prjid) = prjid
-    fun mk_prjid x = x 
+    datatype FunEnv = FUNENV of (funid, absprjid*FunSig) FinMap.map
+    fun absprjid_to_string(absprjid) = absprjid
+    fun mk_absprjid x = x 
 
     structure F = struct
       val empty = FUNENV FinMap.empty
@@ -187,7 +186,7 @@ functor ModuleEnvironments(
 
       fun on rea (F as FUNENV m) = 
 	if Realisation.is_Id rea then F
-	else FUNENV (FinMap.composemap (fn (prjid, Phi) => (prjid, Phi.on (rea, Phi))) m)
+	else FUNENV (FinMap.composemap (fn (absprjid, Phi) => (absprjid, Phi.on (rea, Phi))) m)
 
     end (*F*)
 
@@ -253,9 +252,9 @@ functor ModuleEnvironments(
 			| NONE => false) true G2
 
       fun enrich_FunEnv(FUNENV F1,FUNENV F2) =
-	FinMap.Fold (fn ((funid2,(prjid2,FunSig2)),b) => b andalso
+	FinMap.Fold (fn ((funid2,(absprjid2,FunSig2)),b) => b andalso
 		     case FinMap.lookup F1 funid2 
-		       of SOME (prjid1,FunSig1) => prjid1 = prjid2 andalso Phi.eq(FunSig1,FunSig2)
+		       of SOME (absprjid1,FunSig1) => absprjid1 = absprjid2 andalso Phi.eq(FunSig1,FunSig2)
 			| NONE => false) true F2
 
 
@@ -267,9 +266,7 @@ functor ModuleEnvironments(
 
               (*Restriction relation for compilation manager*)
 
-
-      (*TODO 27/01/1997 22:53. tho.  brug operationerne på F og G
-       i s. f. at pille direkte ved deres repræsentation:*)
+	(* MEMO: use operations on F and G instead *)
       fun restrictB (BASIS {F=FUNENV F,G=SIGENV G,E},
 		     {longvids : longid list, longtycons : longtycon list, longstrids : longstrid list,
 		      funids : funid list, sigids : sigid list}) =

@@ -1,4 +1,3 @@
-(*$PARSE_ELAB: ERROR_CODE*)
 
 signature PARSE_ELAB =
   sig
@@ -6,13 +5,13 @@ signature PARSE_ELAB =
 
     type Report and InfixBasis and ElabBasis and topdec
 
-    type prjid (* = string*)
+    type absprjid (* absolute project identifier *)
 
     datatype Result = SUCCESS of {report: Report, infB: InfixBasis, 
 				  elabB: ElabBasis, topdec: topdec}
 		    | FAILURE of Report * ErrorCode.ErrorCode list
 
     val parse_elab : {infB: InfixBasis, elabB: ElabBasis, 
-		      prjid: prjid, file: string} -> Result
+		      absprjid: absprjid, file: string} -> Result
 
   end
