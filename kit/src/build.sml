@@ -82,7 +82,8 @@ fun build_x86 () =
   in 
     disable "garbage_collection";
     disable "delete_target_files";
-    disable "unbox_function_arguments";
+    enable "unbox_function_arguments";
+(*    enable "print_types"; *)
 
 (*    enable "garbage_collection";
     enable "tag_values";
@@ -136,5 +137,5 @@ fun build_kam () =
     KitKAM.install() 
   end;
 
-val _ = build_kam()
-(*val _ = build_x86()*)
+(*val _ = build_kam() *)
+val _ = build_x86()
