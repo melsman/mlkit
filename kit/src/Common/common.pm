@@ -1,5 +1,6 @@
 import 
   ../Edlib/edlib.pm
+  ../Pickle/pickle.pm
 in
   BasisCompat.sml
   ListUtils.sml

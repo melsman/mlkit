@@ -1,7 +1,7 @@
 import 
   ../Edlib/edlib.pm
   ../Common/common.pm
-
+  ../Pickle/pickle.pm
 in
 
 Lambda/CON.sml

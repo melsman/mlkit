@@ -2,7 +2,7 @@
  * Copyright, Martin Elsman 2003-01-07 
  *)
 
-structure Pickle :> PICKLE =
+structure Pickle : PICKLE = (* was :> *)
   struct
     val sharing_p = true
     val debug_p = false
