@@ -10,6 +10,12 @@ functor TyName(
    structure Crash                  : CRASH
 	      ) : TYNAME =
   struct
+      
+    val print_type_name_stamps = Flags.add_bool_entry
+	{long="print_type_name_stamps", short=SOME "Ptypestamps", item=ref false, neg=false,
+	 menu=["Layout", "print type name stamps"], desc=
+	 "Print type name stamps and their attributes in types\n\
+	  \and expressions."}
 
     fun die s = Crash.impossible ("TyName." ^ s)
     val tag_values = Flags.is_on0 "tag_values"
@@ -107,8 +113,6 @@ functor TyName(
 
     fun tyName_IntDefault() = if tag_values() then tyName_INT31 else tyName_INT32
     fun tyName_WordDefault() = if tag_values() then tyName_WORD31 else tyName_WORD32
-
-    val print_type_name_stamps = Flags.is_on0 "print_type_name_stamps"
 
     fun pr_TyName (tn: TyName) : string =
       let val str = TyCon.pr_TyCon (tycon tn)

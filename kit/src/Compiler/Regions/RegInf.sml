@@ -36,6 +36,7 @@ struct
   type rse  = RSE.regionStatEnv
 
   val dangling_pointers = Flags.is_on0 "dangling_pointers"
+  val print_regions = Flags.is_on0 "print_regions"
 
   fun footnote(x,y) = x
   infix footnote
@@ -117,7 +118,7 @@ struct
 
   fun inferEffects(device: string-> unit) =
   let
-    val layoutExp = Exp.layoutLambdaExp(if !Flags.print_regions 
+    val layoutExp = Exp.layoutLambdaExp(if print_regions() 
                                         then (fn rho => SOME(PrettyPrint.LEAF("at " 
                                               ^ PrettyPrint.flatten1(Effect.layout_effect rho))))
                                         else (fn rho => NONE))

@@ -53,9 +53,20 @@ functor AtInf(structure Lvars: LVARS
   (* (AtInference) is called                                                *)
   (* -----------------------------------------------------------------------*)
 
-  val print_K_normal_forms = ref false
-  val debug_which_at = ref false
-  val all_attop      = ref false
+  val print_regions = Flags.is_on0 "print_regions"
+  val print_word_regions = Flags.is_on0 "print_word_regions"
+  val print_effects = Flags.is_on0 "print_effects"
+
+  val debug_which_at = Flags.add_bool_entry 
+      {long="debug_which_at", short=NONE, menu=["Debug","debug which at (storage mode analysis)"],
+       item=ref false, neg=false, desc=
+       "Debug storage mode analysis."}
+
+  val disable_atbot_analysis = Flags.add_bool_entry
+      {long="disable_atbot_analysis", short=NONE, menu=["Control","all storage modes attop (for POPL 96)"],
+       item=ref false, neg=false, desc=
+       "Disable storage mode analysis. That is, turn all\n\
+	\allocation directives into attop."}
 
   (***********************)
   (* Storage modes       *)
@@ -90,7 +101,7 @@ functor AtInf(structure Lvars: LVARS
                        \ mode analysis to happen before dropping of regions."
 
   fun debug0(rho, how_bound) =
-	      if !debug_which_at then 
+	      if debug_which_at() then 
 		  log ("\nwhich_at: " ^ show_place rho ^ how_bound)
 	      else ()
 
@@ -98,13 +109,13 @@ functor AtInf(structure Lvars: LVARS
     PP.flatten1(LLV.layout_liveset liveset)
 
   fun debug1(rho_related, liveset) =
-     if !debug_which_at then 
+     if debug_which_at() then 
 	  (log ("locally live variables: " ^ show_live_vars liveset);
 	   log ("<rho>     = {" ^ show_places rho_related ^ "}"))
      else ()
 
   fun debug2 atbot_or_sat  =
-	      (if !debug_which_at then 
+	      (if debug_which_at() then 
 		   log (case atbot_or_sat of
 			    ATBOT _     => "ATBOT"
 			  | SAT _ => "SAT" 
@@ -121,7 +132,7 @@ functor AtInf(structure Lvars: LVARS
       let fun lay (t1,p) = PP.NODE{start="(",finish = ")", indent= 1, 
 				   childsep = PP.RIGHT",", children = 
 				   [t1,PP.LEAF (show_place p)]}
-      in if !Flags.print_word_regions then lay (t1,p)
+      in if print_word_regions() then lay (t1,p)
 	 else case Eff.get_place_ty p
 		of SOME Eff.WORD_RT => t1
 		 | _ => lay (t1,p)
@@ -129,16 +140,20 @@ functor AtInf(structure Lvars: LVARS
   in
     fun lay_sigma_p(sigma,p) =
       let val a = !Flags.print_types
-          val b = !Flags.print_regions
-	  val c = !Flags.print_effects     
+(*
+          val b = print_regions()
+	  val c = print_effects()
+*)
       in 
         Flags.print_types:= true;
+(*
         Flags.print_regions:=true;
         Flags.print_effects := true;
+*)
         lay_pair(RType.mk_lay_sigma false sigma, p)
-          footnote(Flags.print_types:= a;
+          footnote(Flags.print_types:= a (* ;
                    Flags.print_regions:= b;
-                   Flags.print_effects := c)
+                   Flags.print_effects := c *))
       end
   end  
 
@@ -160,7 +175,7 @@ functor AtInf(structure Lvars: LVARS
 
 
   fun lay_set (rhos: place list) = 
-    let val rhos = if !Flags.print_word_regions then rhos
+    let val rhos = if print_word_regions() then rhos
 		   else List.filter (fn rho => case Eff.get_place_ty rho
 						of SOME Eff.WORD_RT => false
 						 | _ => true) rhos
@@ -422,7 +437,7 @@ functor AtInf(structure Lvars: LVARS
      case Eff.get_place_ty rho of
        SOME Eff.WORD_RT => (NONE, ATTOP rho)
      | _ => 
-      (if !all_attop then 
+      (if disable_atbot_analysis() then 
   	      (SOME(ALL_ATTOP rho), ATTOP rho)
        else 
         (case SME.retrieve_regvar_env(rho,RE) of
@@ -689,9 +704,7 @@ functor AtInf(structure Lvars: LVARS
 
     fun sma(pgm: (place,    place*mul, qmularefset ref)LambdaPgm):
                  (place at, place*mul, unit)LambdaPgm =
-        (debug_which_at := (Flags.is_on "debug_which_at");
-         all_attop := (Flags.is_on "disable_atbot_analysis");
-         chat "Building region flow graph ...";
+        (chat "Building region flow graph ...";
          Timing.timing_begin();
          RegFlow.mk_graph(pgm) handle _ => die "call of RegFlow.mk_graph failed";
          Timing.timing_end("RegFlow");
@@ -748,14 +761,14 @@ functor AtInf(structure Lvars: LVARS
     fun ignore _ = NONE
 
     fun layout_trip_brief(tr : (place at, place*mul, unit)trip): StringTree =
-      if !Flags.print_regions then
+      if print_regions() then
          MulExp.layoutLambdaTrip 
              (layout_at' Eff.layout_effect)(layout_at'' Eff.layout_effect) (SOME o layout_placeXmul) layout_unit tr
       else
          MulExp.layoutLambdaTrip ignore ignore ignore layout_unit tr
 
     fun layout_exp_brief(e : (place at, place*mul, unit)LambdaExp): StringTree =
-      if !Flags.print_regions then
+      if print_regions() then
           MulExp.layoutLambdaExp (layout_at' Eff.layout_effect)(layout_at'' Eff.layout_effect) (SOME o layout_placeXmul) layout_unit e
       else
           MulExp.layoutLambdaExp ignore ignore ignore layout_unit e

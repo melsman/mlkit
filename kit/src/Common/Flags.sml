@@ -34,7 +34,6 @@ functor Flags (structure Crash : CRASH
     val raggedRight = raggedRight
 
     (* Debugging Flags *)
-    val print_type_name_stamps  = ref false
     val DEBUG_COMPILER          = ref false
     val chat                    = ref false
 
@@ -44,20 +43,12 @@ functor Flags (structure Crash : CRASH
     val eliminate_polymorphic_equality = ref true
 
    (* Region inference *)
-    val print_effects = ref false
-    val print_regions = ref true
-    val print_word_regions = ref false
     val print_types  = ref false
-    val warn_on_escaping_puts = ref false
-    val all_multiplicities_infinite = ref false   
     val region_inference = ref true
 
     (* Printing of intermediate forms *)
     val print_opt_lambda_expression = ref false
 
-    val disable_atbot_analysis = ref false
-    val print_K_normal_forms = ref false
-    val debug_which_at = ref false
     val enhanced_atbot_analysis = ref false
 
     (* Flags for region profiling. *)
@@ -735,24 +726,8 @@ in
      ("print_types", SOME "Ptypes", "print types", print_types,
       "Print types when printing intermediate forms. For Lambda\n\
        \Expressions, ordinary ML types are printed, whereas for\n\
-       \Region Expressions, region types are printed."),
-      ("print_effects", SOME "Peffects", "print effects", print_effects,
-       "Print effects in region types.")
+       \Region Expressions, region types are printed.")
       ]
-  val _ = add true
-      ("print_regions", SOME "Pregions", "print regions ", print_regions,
-       "Print region variables in types and expressions.")
-  val _ = app (add false)
-       [
-       ("print_K_normal_forms", NONE, "print K-Normal Forms", print_K_normal_forms,
-	"Print Region Expressions in K-Normal Form. Applicable,\n\
-	 \only after storage mode analysis has been applied."),
-       ("print_type_name_stamps", SOME "Ptypestamps", "print type name stamps and attributes", print_type_name_stamps,
-	"Print type name stamps and their attributes in types\n\
-	 \and expressions."),
-       ("print_word_regions", SOME "Pwordregions", "print word regions ", print_word_regions,
-	"Also print word regions that have been dropped.")
-	]
   val _ = add true
 	("raggedRight", NONE, "ragged right margin in pretty-printing", raggedRight,
 	"Use ragged right margin in pretty-printing of\n\
@@ -842,6 +817,7 @@ local
 in
   val _ = app (add false)
   [
+(*
    ("all_multiplicities_infinite", NONE, "all multiplicities infinite (for POPL 96)", 
     all_multiplicities_infinite,
     "Use only infinite regions. That is, store all values in\n\
@@ -849,13 +825,7 @@ in
      \in the heap. With this flag disabled, all regions that\n\
      \can be inferred that values are allocated in them at\n\
      \most once are allocated on the stack."),
-   ("disable_atbot_analysis", NONE, "all storage modes attop (for POPL 96)", disable_atbot_analysis,
-    "Disable storage mode analysis. That is, turn all\n\
-     \allocation directives into attop."),
-   ("warn_on_escaping_puts", NONE, "warn on escaping put effects", warn_on_escaping_puts,
-    "Enable the compiler to issue a warning whenever a \n\
-     \region type scheme contains a put effect on a region\n\
-     \that is not quantified."),
+*)
     ("report_file_sig", SOME "sig", "report signatures", ref false,
      "Report signatures for each file read."),
     ("quotation", SOME "quot", "quotation support", ref false,
@@ -983,9 +953,7 @@ in
    ("chat", SOME "verbose", "chat", chat,
     "Print a message for each compilation step in the compiler."),
    ("debug_compiler", SOME "debug", "debug compiler", DEBUG_COMPILER,
-    "Print intermediate forms of a program during compilation."),
-   ("debug_which_at", NONE, "debug which_at (storage mode analysis)", debug_which_at,
-    "Debug storage mode analysis.")
+    "Print intermediate forms of a program during compilation.")
    ]
 end
 

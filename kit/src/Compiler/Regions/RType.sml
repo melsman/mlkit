@@ -17,6 +17,14 @@ struct
 
   structure EdList = Edlib.List
 
+  val print_word_regions = Flags.add_bool_entry
+      {long="print_word_regions", short=SOME "Pwordregions", item=ref false, neg=false,
+       menu=["Layout", "print word regions"], desc=
+       "Also print word regions that have been dropped."}
+
+  val print_regions = Flags.is_on0 "print_regions"
+  val print_effects = Flags.is_on0 "print_effects"
+
   fun uncurry f (a,b) = f a b
 
   fun say s= TextIO.output(TextIO.stdOut, s ^ "\n");
@@ -239,7 +247,7 @@ struct
   fun mk_layout omit_region_info =
   let
      fun layout_arrow_rec arreff = 
-              if !Flags.print_effects
+              if print_effects()
               then Node{start = "-", finish = "->", 
                    indent = 2, childsep = PP.NOSEP,
                          children = [lay_node arreff]} 
@@ -266,7 +274,7 @@ struct
 		      | NONE => leaf (TyName.pr_TyName tyname)
               else
                 let val mu_tree =  layout_tuple' (lay_mu_rec true) mu_list
- 	  	    val place_list = if !Flags.print_word_regions then place_list
+ 	  	    val place_list = if print_word_regions() then place_list
 				     else discard_word_rhos place_list
                     val rho_tree = layout_list' lay_node place_list
                     val effect_tree = layout_list' lay_node arreff_list
@@ -284,7 +292,7 @@ struct
 			  children = map (lay_mu_rec true) mu_list}
 
     and lay_mu_rec parenthesise (tau,rho)= 
-      if omit_region_info orelse (not(!Flags.print_word_regions) 
+      if omit_region_info orelse (not(print_word_regions()) 
 				  andalso isWordRegion rho) then
 	lay_tau_rec parenthesise tau
       else layout_pair (lay_tau_rec false tau, lay_node rho)
@@ -407,12 +415,12 @@ struct
          ([],[],[]) => if !Flags.print_types then lay_ty(tau) else PP.LEAF ""
        | _ => 
           let val children = 
-	          if !Flags.print_effects then 
+	          if print_effects() then 
                     (*print regions and effect and -perhaps- types: *)
 		    (if !Flags.print_types then map layout_tyvar alphas
 		     else [])  @  rho_trees  @  map lay_node_short epsilons
 		  else (if !Flags.print_types then map layout_tyvar alphas
-			else [])  @  (if !Flags.print_regions then  rho_trees
+			else [])  @  (if print_regions() then  rho_trees
 				      else [])
 	    
   	      val binders = PP.HNODE{start="",finish="",childsep=PP.RIGHT ",",
@@ -425,8 +433,8 @@ struct
                     children = [binders,lay_ty tau]}
              else (case children
 		     of [] => PP.LEAF ""
-		      | _ => if !Flags.print_regions orelse 
-                                !Flags.print_effects
+		      | _ => if print_regions() orelse 
+                                print_effects()
                                then Node{start = "[", finish = "]", 
                                          indent = 1, childsep = PP.NOSEP, 
 					 children = [binders]}
