@@ -138,10 +138,8 @@ functor CompileDec(structure Con: CON
 
     datatype lookup_info = NORMAL of ElabInfo.ElabInfo | OTHER of string
     fun lookup_error(kind: string, CE, longid, info:lookup_info) =
-            let fun say s = ((*TextIO.output(TextIO.stdOut, s );*)
-                             TextIO.output(!Flags.log, s);
-                             TextIO.flushOut(!Flags.log))
-                fun sayst(st) = PrettyPrint.outputTree(say, st, !Flags.colwidth)
+            let fun say s = print s 
+	        fun sayst(st) = PrettyPrint.outputTree(say, st, !Flags.colwidth)
                 fun say_compilerenv() = sayst(CE.layoutCEnv CE)
                 fun say_info(NORMAL i) = sayst(ElabInfo.layout i)
                   | say_info(OTHER  s) = say s
@@ -311,10 +309,6 @@ functor CompileDec(structure Con: CON
                  CE.emptyCEnv
                  (ListPair.zip(xs,ys))
 
-    fun mk_env' declare (xs,ys,zs) =
-      foldr (fn ((x,y,z), env) => declare(x,y,z,env))
-      CE.emptyCEnv (zip3(xs,ys,zs))
-
     fun pr_list (pr: 'a -> string) (l : 'a list) : string =
       let fun pr_l [] = ""
 	    | pr_l (a::b::rest) = pr a ^ "," ^ pr_l (b::rest)
@@ -397,7 +391,11 @@ functor CompileDec(structure Con: CON
           let val tvs' = map (TV.lookup "compileTypeScheme") tyvars
 	      val tau' = compileType Type
 	  in (tvs', tau')
-	  end
+	  end handle ? => (print ("type scheme is all[" ^ 
+				  concat (map (fn tv => TyVar.string' (fn ty => ("inst=" ^ 
+										 Type.string ty)) tv ^ 
+					       ", ") tyvars) ^ 
+				  "]." ^ Type.string Type ^ "\n"); raise ?)
 
       fun compileTyVar tyvar : TLE.tyvar = TV.lookup "compileTyVar" tyvar
 
@@ -452,10 +450,6 @@ functor CompileDec(structure Con: CON
 			  in raise H tyvars
 			  end) [] VE) handle H tyvars => tyvars
 	  end
-(*
-	val _ = print "compileTyStr: tyvars =\n"
-	val _ = pr_st (PrettyPrint.layout_list TyVar.layout tyvars) 
-*)
 	val tyvars' = map (TV.lookup "compile'TyStr'") tyvars
 	val cbs : (id * Type) list = 
 	  VE.CEFold (fn (con, typescheme) => fn cbs =>
@@ -463,12 +457,7 @@ functor CompileDec(structure Con: CON
 			  val tau' = compileType tau
 		      in (con, tau') :: cbs
 		      end) [] VE 
-(*
-	val _ = print "compileTyStr: VE = \n"
-	val _ = pr_st (VE.layout VE)
-*)
 	val (env, cons_TypeOpts) =
-(*	  foldl (compile_and_normalize_cb tyvars') (CE.emptyCEnv,[]) (rev cbs) *)
 	  foldl (compile_cb tyvars') (CE.emptyCEnv,[]) (rev cbs)
       in
 	(env, tyvars', cons_TypeOpts)
@@ -727,8 +716,6 @@ Report: Opt:
   type declarations_to_be_made = declaration_to_be_made list
   type rhs = int
   type rhs' = declarations_to_be_made * rhs
-  (*TODO 03/12/1997 19:36. tho.   kommenter rhs-typen.
-   kommenter forskelle & ligheder med sestofts artikel.*)
 
   val string_from_rhs = Int.toString
   fun string_from_rhs' (_, rhs) = string_from_rhs rhs
@@ -906,18 +893,13 @@ Det finder du nok aldrig ud af.*)
 	   ATPATpat (info, atpat) => match_atpat (atpat, path, termd, ctx, work, rhs, rules)
 	 | CONSpat (info, longid_op_opt, atpat) =>
 	     (case to_TypeInfo info of
-		SOME (TypeInfo.CON_INFO {numCons   : int,
-					 index     : int,
-					 instances : TypeInfo.Type list,
-					 tyvars    : TyVar list,
-					 Type      : TypeInfo.Type,
-					 longid    : longid}) => 
+		SOME (TypeInfo.CON_INFO {numCons:int, longid:longid, ...}) => 
 		  match_con (Con {longid=longid, span=span_from_int numCons,
 				  info=info,
 		                  (*because it appears in a CONSpat:*)nullary=false})
 		    [(0, ATPATpat (DecGrammar.bogus_info, atpat))]
 		      (path, termd, ctx, work, rhs, rules)
-	      | SOME (TypeInfo.EXCON_INFO {Type, longid}) =>
+	      | SOME (TypeInfo.EXCON_INFO {longid, ...}) =>
 		  match_con (Excon {longid=longid,
 				    (*because it appears in a CONSpat:*)nullary=false})
 		    [(0, ATPATpat (DecGrammar.bogus_info, atpat))]
@@ -941,15 +923,11 @@ Det finder du nok aldrig ud af.*)
 		  (*it is a variable, not a nullary constructor*)
 		  succeed (augment (ctx, termd), work, rhs, rules)
 	      | SOME (TypeInfo.CON_INFO {numCons   : int,
-					 index     : int,
-					 instances : TypeInfo.Type list,
-					 tyvars    : TyVar list,
-					 Type      : TypeInfo.Type,
-					 longid    : longid}) => 
+					 longid    : longid, ...}) => 
 		  match_con (Con {longid=longid, span=span_from_int numCons, info=info,
 		                  (*because it appears in a LONGIDatpat:*)nullary=true})
 		    [] (path, termd, ctx, work, rhs, rules)
-	      | SOME (TypeInfo.EXCON_INFO {Type, longid}) =>
+	      | SOME (TypeInfo.EXCON_INFO {longid, ...}) =>
 		  match_con (Excon {longid=longid,
 				    (*because it appears in a LONGIDatpat:*)nullary=true})
 		    [] (path, termd, ctx, work, rhs, rules)
@@ -1021,7 +999,7 @@ Det finder du nok aldrig ud af.*)
   fun compile_path env obj Obj = obj
     | compile_path env obj (Access (0, Con {info, ...}, path)) =
 	(case to_TypeInfo info of
-	   SOME (TypeInfo.CON_INFO {tyvars, Type, longid, instances, ...}) =>
+	   SOME (TypeInfo.CON_INFO {longid, instances, ...}) =>
 	     (case lookupLongid env longid (NORMAL info) of
 		CE.CON (con, tyvars, _, il) =>  (* because the con occurs in the pattern, we 
 						 * have {instances'/tyvars}il = instances'. *)
@@ -1297,7 +1275,7 @@ in
 				    info=info,
 				    (*because it appears in a CONSpat:*)nullary=false})
 		      [(0, ATPATpat (DecGrammar.bogus_info, atpat))] (path)
-		| SOME (TypeInfo.EXCON_INFO {Type, longid}) =>
+		| SOME (TypeInfo.EXCON_INFO {longid, ...}) =>
 		    declared_by_application (Excon {longid=longid,
 				      (*because it appears in a CONSpat:*)nullary=false})
 		      [(0, ATPATpat (DecGrammar.bogus_info, atpat))] (path)
@@ -1313,13 +1291,13 @@ in
 	   | SCONatpat (info, scon) => []
 	   | LONGIDatpat (info, OP_OPT (longid, _)) =>
 	       (case to_TypeInfo info of
-		  SOME (TypeInfo.VAR_PAT_INFO {tyvars, Type}) =>
+		  SOME (TypeInfo.VAR_PAT_INFO _) =>
 		    (*it is a variable, not a nullary constructor*)
 		    [declarations_to_be_made_for_id (Ident.decompose0 longid) info path]
 		| SOME (TypeInfo.CON_INFO _) =>
 		    (*because it appears in a LONGIDatpat, the constructor is nullary,
 		     & thus has no arguments:*) [] 
-		| SOME (TypeInfo.EXCON_INFO {Type, longid}) => []
+		| SOME (TypeInfo.EXCON_INFO _) => []
 		| _ => die "declared_by_atpat (LONGIDatpat ...)")
 	   | RECORDatpat (info, patrow_opt) =>
 	       let val patrows = (case patrow_opt of
@@ -1638,46 +1616,33 @@ end; (*match compiler local*)
 	   | CE.GREATEREQ => overloaded_prim_fn' info CE.GREATEREQ
 	   | CE.CON(con,tyvars,tau0,il) => (*See COMPILER_ENV*)
 	       let
-		 fun is_Arrow_tau (ARROWtype _) = true
-		   | is_Arrow_tau _ = false
-		 fun dom_tau (ARROWtype([tau],_)) = tau
-		   | dom_tau _ = die "dom_tau: wrong ARROWtype"
-		 val (functional,tau0,instances) =
+		 val instances = 
 		   case to_TypeInfo info 
-		     of SOME (TypeInfo.CON_INFO{Type,instances,...}) =>
-		       (Type.is_Arrow Type, compileType Type, instances)
-		      | SOME (TypeInfo.VAR_INFO{instances}) =>            (* Value constructor constrained *)
-		       (is_Arrow_tau tau0, tau0, instances)               (* to a value variable. *)
+		     of SOME (TypeInfo.CON_INFO{instances,...}) => instances
+		      | SOME (TypeInfo.VAR_INFO{instances}) => instances
 		      | _ => die "compileAtexp(CON..): no type info"
-	       in if functional then
-		    let val lv = Lvars.newLvar()
-		        val tau' = dom_tau tau0 (* compileType (domType Type) *)
-			val instances' = map compileType instances
-			val S = mk_subst (fn () => "CompileDec.CON(arg)") (tyvars, instances')
-			val il' = on_il(S,il)
-		    in FN{pat=[(lv,tau')],
-			  body=PRIM(CONprim{con=con, instances=il'},
-				    [VAR{lvar=lv,instances=[]}])}
-		    end
-		  else
-		    let val instances' = map compileType instances
-		        val S = mk_subst (fn () => "CompileDec.CON(noarg)") (tyvars, instances')
-			val il' = on_il(S,il)
-		    in PRIM(CONprim {con=con, instances=il'},[])
-		    end
+		 val instances' = map compileType instances
+		 val S = mk_subst (fn () => "CompileDec.CON") (tyvars, instances')
+		 val tau0 = on_Type S tau0
+		 val il' = on_il(S,il)
+	       in case tau0
+		    of ARROWtype ([tau'],_) =>
+		      let val lv = Lvars.newLvar()
+		      in FN{pat=[(lv,tau')],
+			    body=PRIM(CONprim{con=con, instances=il'},
+				      [VAR{lvar=lv,instances=[]}])}
+		      end
+		     | CONStype _ => PRIM(CONprim {con=con, instances=il'},[])
+		     | _ => die "CE.CON.tau0 malformed"
 	       end
 	   | CE.REF =>
-	       let val (Type,instances) =
+	       let val instance =
 		     case to_TypeInfo info 
-		       of SOME (TypeInfo.CON_INFO{Type,instances,...}) => (Type,instances)
-			| _ => die "compileAtexp(REF..): no type info"
+		       of SOME (TypeInfo.CON_INFO{instances=[instance],...}) => instance
+			| _ => die "compileAtexp(REF..): wrong type info"
 		   val lv = Lvars.newLvar()
-		   val instance = case instances 
-				    of [x] => x 
-				     | _ => die "compileAtexp(REF..): wrong ref instance"
-		   val tau' = compileType (domType Type)
 		   val instance' = compileType instance
-	       in FN{pat=[(lv,tau')],
+	       in FN{pat=[(lv,instance')],
 		     body=PRIM(REFprim {instance=instance'},
 			       [VAR{lvar=lv,instances=[]}])}
 	       end
@@ -1771,9 +1736,12 @@ end; (*match compiler local*)
 				       of SOME(TypeInfo.VAR_INFO{instances}) =>
 					 map compileType instances
 					| _ => die "compileExp(APPexp..): wrong type info"
-		    val S = mk_subst (fn () => ("CompileDec.APPexp.LVAR("
-						   ^ Lvars.pr_lvar lv ^ ")"))
-		              (tyvars,instances')
+		    val S = (mk_subst (fn () => ("CompileDec.APPexp.LVAR("
+						 ^ Lvars.pr_lvar lv ^ ")"))
+			     (tyvars,instances')) handle ex =>
+		      (lookup_error("lvar", env, longid, NORMAL info); 
+		       raise ex)
+			      
 		    val il' = on_il(S, il)
 		in if Lvars.pr_lvar lv = "="  (* specialise equality on integers *)
                       andalso case instances' of 
@@ -2087,22 +2055,15 @@ the 12 lines above are very similar to the code below
       binding, together with a second layer of several distinct recursive
       valbinds. *)
 
-    and compileValbind env (topLevel, valbind)
-        : (CE.CEnv * (LambdaExp -> LambdaExp)) =
+    and compileValbind env (topLevel, valbind) : CE.CEnv * (LambdaExp -> LambdaExp) =
       let
-        fun flattenRecValbind vb: 
-                       (pat * exp * (TyVar list * StatObject.Type)) list =
-          case vb of 
-            PLAINvalbind(i, pat, exp, vbOpt) =>
-              (case to_TypeInfo i of 
-                 SOME (TypeInfo.PLAINvalbind_INFO{Type,tyvars,...}) => 
-                   (pat, exp,(tyvars,Type)) :: 
-                   (case vbOpt of SOME vb => flattenRecValbind vb
-                                | NONE    => nil)
-
-               | _ => die "flattenRecValbind: no type info")
-
-          | RECvalbind(_, vb) =>  flattenRecValbind vb
+        fun flattenRecValbind vb: (pat * exp) list =
+          case vb 
+	    of PLAINvalbind(_, pat, exp, vbOpt) => 
+	      (pat,exp) :: (case vbOpt 
+			      of SOME vb => flattenRecValbind vb
+			       | NONE => nil)
+	     | RECvalbind(_, vb) => flattenRecValbind vb
       in
         case valbind
           of PLAINvalbind(i, pat, exp, NONE) =>
@@ -2121,8 +2082,8 @@ the 12 lines above are very similar to the code below
 		   | _ => die "compileValbind: no type info")
 
            | RECvalbind(_, vb) =>
-               let val triples = flattenRecValbind vb
-               in compileREC env (unzip3 triples)
+               let val pairs = flattenRecValbind vb
+               in compileREC env (ListPair.unzip pairs)
                end
       end
 
@@ -2289,38 +2250,39 @@ the 12 lines above are very similar to the code below
       bracketted??), and the RHS's must all be lambdas. Type constraints
       are allowed, though. Returns the rec env only, plus `fn scope -> lexp'. *)
 
-    and compileREC env (pats, exps, sigmas): (CE.CEnv * (LambdaExp -> LambdaExp)) =
+    and compileREC env (pats, exps): CE.CEnv * (LambdaExp -> LambdaExp) =
       let
-        fun varOfPat(TYPEDpat(_, pat, _)) = varOfPat pat
-          | varOfPat(ATPATpat(_, LONGIDatpat(_, OP_OPT(longid, _)))) =
+	fun mk_env ids_lvars_sigmas = 
+	  foldr(fn ((id,lv,(tvs,tau)), env) => CE.declareVar(id,(lv,tvs,tau),env)) 
+	  CE.emptyCEnv ids_lvars_sigmas
+
+	fun id_sigma(TYPEDpat(_, pat, _)) = id_sigma pat
+          | id_sigma(ATPATpat(_, LONGIDatpat(info, OP_OPT(longid, _)))) =
               (case Ident.decompose longid
-                 of (nil, id) => id
-                  | _ => die("compileREC.varOfPat(long: "
-			     ^ Ident.pr_longid longid ^ ")"))
-          | varOfPat _ = die "compileREC.varOfPat"
+                 of (nil, id) => 
+		   let val sigma = case to_TypeInfo info 
+				     of SOME(TypeInfo.VAR_PAT_INFO{tyvars,Type}) => compileTypeScheme(tyvars,Type)
+				      | SOME _ => die "compileREC.id_sigma.wrong type info"
+				      | NONE => die "compileREC.no type info"
+		   in (id, sigma)
+		   end
+                  | _ => die("compileREC.id_sigma(long: " ^ Ident.pr_longid longid ^ ")"))
+          | id_sigma _ = die "compileREC.id_sigma"
 
-        val ids = map varOfPat pats
-        val lvars_with_dummies = 
-	  map (fn id => (Lvars.new_named_lvar(Ident.pr_id id),[],TYVARtype (fresh_tyvar()))) ids
-	val lvars = map #1 lvars_with_dummies
-        val recEnv: CE.CEnv =  mk_env CE.declareVar (ids,lvars_with_dummies)
+	val ids_sigmas = map id_sigma pats
+	val ids_lvars_sigmas = map (fn (id, sigma) => (id, Lvars.new_named_lvar(Ident.pr_id id), sigma)) ids_sigmas
+	val ids_lvars_types = map (fn (id,lv,(_,tau)) => (id,lv,([],tau))) ids_lvars_sigmas
+	val recEnv: CE.CEnv = mk_env ids_lvars_types
+	val scopeEnv: CE.CEnv = mk_env ids_lvars_sigmas
 
-	fun mk_scope_env lvars sigmas' = 
-	  mk_env (fn (id,(lvar,(tyvars,Type)),ce) => CE.declareVar(id,(lvar,tyvars,Type),ce))
-	  (ids, ListPair.zip(lvars,sigmas'))
+	val binds = map (compileExp (env plus recEnv)) exps
+	val functions = 
+	  (map (fn ((_,lvar,(tyvars,Type)),bind) => {lvar=lvar, tyvars=tyvars, Type=Type, bind=bind})
+	   (ListPair.zip (ids_lvars_sigmas,binds)))
+	  handle ListPair.Zip => die "compileREC.functions.Zip"
 
-        fun mk_bindings lvars sigmas' binds =
-          map (fn (lvar,(tyvars,Type),bind) => {lvar = lvar, tyvars=tyvars,
-						Type=Type, bind=bind})
-          (zip3(lvars,sigmas',binds))
-
-	val lexps = map (compileExp (env plus recEnv)) exps
-	val sigmas' = map compileTypeScheme sigmas
-	  handle ? => (print ("lvars = " ^ pr_list Lvars.pr_lvar lvars ^ "\n"); raise ?)
-	val env' = mk_scope_env lvars sigmas'
-	val functions = mk_bindings lvars sigmas' lexps
 	val f' = fn scope => FIX {functions=functions, scope=scope}
-      in (env', f')
+      in (scopeEnv, f')
       end                                                            
 
   (* -----------------------------------------------------

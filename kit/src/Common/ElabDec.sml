@@ -87,10 +87,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 	fun minus(set1, set2) =
 	  List.filter (fn x => not(member x set2)) set1
 
-	fun eqSet(set1, set2) =
-	  case (minus(set1, set2), minus(set2, set1))
-	    of (nil, nil) => true
-	     | _ => false
       end
 
     fun impossible s = Crash.impossible ("ElabDec." ^ s)
@@ -141,7 +137,8 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     type ParseInfo  = ParseInfo.ParseInfo
     type ElabInfo = ElabInfo.ElabInfo
     type TyName = TyName.TyName
-	   
+
+
     (*info*)
 
     (*okConv ParseInfo = the ParseInfo converted to ElabInfo with
@@ -230,7 +227,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     local open ElabInfo.TypeInfo
     in
      (* MEMO: no duplication checks here (or anywhere else!) *)
-      fun addTypeInfo_CON (ElabInfo, C, isArrow, tau, instances, longid) =
+      fun addTypeInfo_CON (ElabInfo, C, instances, longid) =
             let
 	      val (_, con) = Ident.decompose longid
 	      val cons = C.lookup_fellow_constructors C longid
@@ -238,7 +235,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 	      ElabInfo.plus_TypeInfo ElabInfo
 	        (CON_INFO {numCons=length cons,
 			   index=where' cons con,instances=instances,
-			   tyvars=[],Type=tau,longid=longid})
+			   longid=longid})
 	    end
 
       fun addTypeInfo_EXCON (ElabInfo, tau, longid : Ident.longid) =
@@ -250,8 +247,8 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
       fun addTypeInfo_EXBIND (ElabInfo, typeOpt) = (*martin*)
 	    ElabInfo.plus_TypeInfo ElabInfo (EXBIND_INFO {TypeOpt=typeOpt})
 
-      fun addTypeInfo_LAB (ElabInfo, index, tau) =
-            ElabInfo.plus_TypeInfo ElabInfo (LAB_INFO {index=index, Type=tau, tyvars=[]})
+      fun addTypeInfo_LAB (ElabInfo, index) =
+            ElabInfo.plus_TypeInfo ElabInfo (LAB_INFO {index=index})
 
       fun addTypeInfo_RECORD_ATPAT (ElabInfo, Type) =
             ElabInfo.plus_TypeInfo ElabInfo (RECORD_ATPAT_INFO {Type=Type})
@@ -289,11 +286,11 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
       case Type.unify (tau, tau')
         of Type.UnifyOk => (Substitution.Id, okConv i)  (* substitutions are dummies *)
          | Type.UnifyFail =>
-             (Substitution.bogus,
+             (Substitution.Id,
               errorConv(i, ErrorInfo.UNIFICATION(tau, tau'))
              )
          | Type.UnifyRankError(tv,tn) => 
-             (Substitution.bogus,
+             (Substitution.Id,
               errorConv(i, ErrorInfo.UNIFICATION_RANK(tau, tau', tv, tn))
              )
 
@@ -301,11 +298,11 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
       case Type.unify(tau, tau')
         of Type.UnifyOk => (Substitution.Id, okConv i)
          | Type.UnifyFail =>
-             (Substitution.bogus,
+             (Substitution.Id,
               errorConv(i, ErrorInfo.UNIFICATION_TEXT(text,tau,text', tau'))
              )
          | Type.UnifyRankError(tv,tn) =>
-             (Substitution.bogus,
+             (Substitution.Id,
               errorConv(i, ErrorInfo.UNIFICATION_RANK(tau, tau', tv, tn))
              )
 
@@ -343,41 +340,18 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
       | initial_TE (IG.DATBIND(_, explicittyvars, tycon, _, SOME datbind)) =
           TE.plus (TE.init explicittyvars tycon, initial_TE datbind)
 
-   (*addLabelInfo: given a RecType and a PATROW, populate the info fields
-    with LAB_INFO giving types for each label. This is needed by the
-    compiler.  The index of each label (also needed by the compiler) is here
-    set to 666 --- during overloading resolvations the indexes are corrected.
-    The label info must be added _during_ elaboration (it cannot simply be
-    done when overloading is resolved) --- consider a patrow in a val pat =
-    exp; here the info is needed in pat to generalise the types recorded.
-    The reason that the correct indexes are recorded later is that only when
-    the type is resolved (so that record variables have been turned into
-    record types without record variables) do we know the correct index:
-    consider fn {2 = x, ...} => x; here we do not know the index of 2 until
-    we have found out what ... stands for (e.g., if it stands for { 1 = _ }
-    the index of 2 should be 1 but if it stands for { 3 = _ } the index of 2
-    should be 0).
-    Thus addLabelIndexInfo below is used during resolvation to record correct
-    indices.*)
 
-    fun addLabelInfo(recType, patrow) =
-      let
-        val lab_tau_s = Type.RecType.to_list recType
-        fun f (OG.PATROW (i, lab, pat, patrow_opt)) =
-	      OG.PATROW ((case ElabInfo.to_ErrorInfo i of
-			    (*in the clauses below, if something is wrong, I assume
-			     it is because there was a type error, and simply refrain
-			     from annotating LAB_INFO:*)
-			    NONE =>
-			      (case List.find (fn (lab', tau) => lab = lab') lab_tau_s 
-				 of SOME (lab', tau) => addTypeInfo_LAB (i, 666, tau)
-				  | NONE => i)
-			  | SOME _ => i),
-	                 lab, pat, map_opt f patrow_opt)
-          | f (OG.DOTDOTDOT i) = OG.DOTDOTDOT i
-      in
-        f patrow
-      end
+    (* addLabelIndexInfo: given a Type and a PATROW, populate the info
+     * fields with the index of each label (needed by the
+     * compiler). The index info is recoreded during overloading
+     * resolvation.  The reason that the correct indexes are recorded
+     * later is that only when the type is resolved (so that record
+     * variables have been turned into record types without record
+     * variables) do we know the correct index: consider fn {2 = x,
+     * ...} => x; here we do not know the index of 2 until we have
+     * found out what ... stands for (e.g., if it stands for { 1 = _ }
+     * the index of 2 should be 1 but if it stands for { 3 = _ } the
+     * index of 2 should be 0). *)
 
     fun addLabelIndexInfo(Type,patrow) =
       let
@@ -386,175 +360,91 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
         val labtys = Type.RecType.to_list recType
         val sortedLabs = map (#1) labtys
         fun f(OG.PATROW(i, lab, pat, patrow_opt)) =
-          (case ElabInfo.to_ErrorInfo i of
-            NONE => 
-              (case ElabInfo.to_TypeInfo i of
-                 SOME typeinfo =>
-                   (case typeinfo of
-                      TypeInfo.LAB_INFO{index,tyvars,Type} => 
-                        let
-                          val index = where' sortedLabs lab
-                        in
-                          OG.PATROW (ElabInfo.plus_TypeInfo i 
-				     (TypeInfo.LAB_INFO {index=index,
-							 Type=Type,tyvars=tyvars}),
-				     lab, pat, map_opt f patrow_opt)
-                        end
-                    | _ => 
-                        impossible "addLabelIndexInfo: unexpected typeinfo")
-               | NONE => 
-                   impossible "addLabelIndexInfo: no typeinfo")
-          | SOME _ => OG.PATROW(i, lab, pat, patrow_opt))
-             
+          (case ElabInfo.to_ErrorInfo i 
+	     of NONE => 
+	       let val index = where' sortedLabs lab
+	       in OG.PATROW (ElabInfo.plus_TypeInfo i (TypeInfo.LAB_INFO {index=index}),
+			     lab, pat, map_opt f patrow_opt)
+	       end
+	      | SOME _ => OG.PATROW(i, lab, pat, patrow_opt)
+	       )
           | f(OG.DOTDOTDOT i) = OG.DOTDOTDOT i
       in
         f patrow
       end
- 
 
-    (* 
-     * generalise_type_info_valbind(C,S,valbind): apply the substitution S and then 
-     * generalise all the type info recorded in PLAINvalbind and the left hand 
-     * side patterns of the value binding. Note that we record tyvars and types (and
-     * not typeschemes as one could imagine); this is not accidental: we don't 
-     * want to risk that the bound type variables are renamed (by alpha-conversion) ---
-     * the compiler is a bit picky on the exact type information, so alpha-conversion
-     * is not allowed here!
-     * 
-     * It _is_ necessary to traverse and generalise type information, I think,
-     * (instead of just using the generalised types for the variables bound in 
-     * the variable environment for the value binding): consider 
-     *  datatype ('a, 'b) t = C of 'a;
-     *  val C x = C (fn y => y) 
-     * Here, the type scheme for x is FORALL['a].'a->'a, but the type for the
-     * exp (and C x) is ('a->'a,'b) t, so the bound type variables of the type for 
-     * (C x) cannot be obtained from the bound type variables of the type scheme for 
-     * x (in particular, one cannot simply quantify those type variables occuring in
-     * the type for (C x) which do not occur in the type scheme for x (here 'b)
-     * due to imperative type variables and since those type variables could occur
-     * in the context).
-     *
-     * -- Lars
-     *)
 
-    fun generalise_type_info_valbind (C : Context, S : Substitution,
-                                      valbind: OG.valbind) : OG.valbind =
+    (* Insert type information in valbind; the generic_tyvars are
+     * those tyvars that were generalised when VE was closed (by
+     * C.close). ME 1998-11-18 *)
+   
+    fun insert_type_info_in_valbind (generic_tyvars : TyVar list, 
+				     VE : VarEnv, 
+				     valbind: OG.valbind) : OG.valbind =
       let 
-	fun harmless_con (C : Context) (longid : Ident.longid) =
-	      (case C.lookup_longid C longid of
-		 SOME (VE.LONGVAR _) => false
-	       | SOME (VE.LONGCON _) => #2 (Ident.decompose longid) <> Ident.id_REF
-	       | SOME (VE.LONGEXCON _) => true  
-	       | NONE => true)
-		(*why `true' and not `false' or `impossible ...'?  see my diary
-		 19/12/1996 14:17. tho.*)
-
-        fun close isExpansive tau = Type.close (not isExpansive) (S on tau)
+	fun lookup_id id = VE.lookup VE id
 
         fun do_valbind (vb : OG.valbind) : OG.valbind =
-          case vb of
-            OG.PLAINvalbind(i, pat, exp, vb_opt) =>
-              OG.PLAINvalbind
-              (case ElabInfo.to_TypeInfo i of
-                 SOME (TypeInfo.PLAINvalbind_INFO{Type,tyvars=[]}) =>
-                   let val generalisable_tyvars = 
-                             close (OG.expansive (harmless_con C) exp) Type
-                   in 
-                     ElabInfo.plus_TypeInfo i 
-                     (TypeInfo.PLAINvalbind_INFO{Type=Type,
-                                                 tyvars=generalisable_tyvars})
-                   end
-               | _ => i (* impossible "ElabDec.do_valbind: wrong type info"*),
-               do_pat (close (OG.expansive (harmless_con C) exp)) pat,
-               exp,
-               case vb_opt of NONE => NONE | SOME vb => SOME (do_valbind vb))
+          case vb 
+	    of OG.PLAINvalbind(i, pat, exp, vb_opt) =>
+	      let val i' = case ElabInfo.to_TypeInfo i 
+			     of SOME (TypeInfo.PLAINvalbind_INFO{tyvars=[],Type}) =>
+			       ElabInfo.plus_TypeInfo i 
+			       (TypeInfo.PLAINvalbind_INFO{tyvars=generic_tyvars, Type=Type})
+			      | _ => impossible "ElabDec.do_valbind: wrong type info"
+		  val vb_opt' = case vb_opt
+				  of SOME vb => SOME(do_valbind vb)
+				   | NONE => NONE
+	      in OG.PLAINvalbind(i', do_pat pat, exp, vb_opt')
+	      end
+	     | OG.RECvalbind(i, vb) => OG.RECvalbind(i,do_valbind vb)
 
-          | OG.RECvalbind(i, vb) => OG.RECvalbind(i,do_valbind vb)
+        and do_pat pat =
+          case pat 
+	    of OG.ATPATpat(i, atpat) => OG.ATPATpat(i,do_atpat atpat)
+	     | OG.CONSpat(i, longid_op, atpat) => OG.CONSpat(i, longid_op, do_atpat atpat)
+	     | OG.TYPEDpat(i, pat, ty) => OG.TYPEDpat(i, do_pat pat, ty)
+	     | OG.LAYEREDpat(i, id_op as OG.OP_OPT(id, withOp),ty_opt, pat) =>
+	      let val i' =
+		    case VE.lookup VE id
+		      of SOME(VE.LONGVAR sigma) => 
+			let val (tyvars, Type) = TypeScheme.to_TyVars_and_Type sigma
+			in ElabInfo.plus_TypeInfo i (TypeInfo.VAR_PAT_INFO{tyvars=tyvars,Type=Type})
+			end
+		       | _ => i
+	      in OG.LAYEREDpat(i', id_op, ty_opt, do_pat pat)
+	      end
 
-        and do_pat close_tau pat =
-          case pat of 
-            OG.ATPATpat(i, atpat) => OG.ATPATpat(i,do_atpat close_tau atpat)
+	     | OG.UNRES_INFIXpat _ => impossible "do_pat(UNRES_INFIX)"
 
-          | OG.CONSpat(i, longid_op as OG.OP_OPT(longid,withOp), atpat) =>
-	      (case ElabInfo.to_TypeInfo i 
-		 of SOME(TypeInfo.CON_INFO{numCons,index,Type,longid,instances,...}) =>
-		   (* generalise type of constructor and recurse *)
-		   OG.CONSpat(ElabInfo.plus_TypeInfo i
-			      (TypeInfo.CON_INFO{numCons=numCons,
-						 index=index,
-						 Type=Type,
-						 tyvars=close_tau Type,
-						 instances=instances,
-						 longid=longid}),
-			      longid_op,
-			      do_atpat close_tau atpat)
-		  | _ => pat) (* no generalisation: exceptions do not have type schemes *)
+        and do_atpat atpat =
+          case atpat 
+	    of OG.WILDCARDatpat _ => atpat
+	     | OG.SCONatpat _ => atpat
+	     | OG.LONGIDatpat(i, longid_op as OG.OP_OPT(longid,withOp)) =>
+	      let val i' = 
+		    case Ident.decompose longid
+		      of ([],id) => 
+			(case VE.lookup VE id
+			   of SOME(VE.LONGVAR sigma) => 
+			     let val (tyvars, Type) = TypeScheme.to_TyVars_and_Type sigma
+			     in ElabInfo.plus_TypeInfo i (TypeInfo.VAR_PAT_INFO{tyvars=tyvars,Type=Type})
+			     end
+			    | _ => i)
+		       | _ => i
+	      in OG.LONGIDatpat(i', longid_op)
+	      end
+	     | OG.RECORDatpat(i, patrowOpt) => OG.RECORDatpat (i, map_opt do_patrow patrowOpt)
+	     | OG.PARatpat(i, pat) => OG.PARatpat(i, do_pat pat)
 
-          | OG.TYPEDpat(i, pat, ty) => OG.TYPEDpat(i, do_pat close_tau pat, ty)
-
-          | OG.LAYEREDpat(i, id as OG.OP_OPT(id', withOp),ty_opt, pat) =>
-              OG.LAYEREDpat
-              (case ElabInfo.to_TypeInfo i of
-                 SOME(TypeInfo.VAR_PAT_INFO{tyvars,Type}) =>
-                   ElabInfo.plus_TypeInfo i 
-                   (TypeInfo.VAR_PAT_INFO{tyvars=close_tau Type,Type=Type})
-               | _ => impossible "do_pat (LAYERED): wrong type info",
-                   id,
-                   ty_opt,
-                   do_pat close_tau pat)
-
-          | OG.UNRES_INFIXpat _ => impossible "do_pat(UNRES_INFIX)"
-
-        and do_atpat close_tau atpat =
-          case atpat of
-            OG.WILDCARDatpat _ => atpat
-
-          | OG.SCONatpat _ => atpat
-
-          | OG.LONGIDatpat(i, longid_op as OG.OP_OPT(longid,withOp)) =>
-              (case ElabInfo.to_TypeInfo i 
-		 of SOME(TypeInfo.CON_INFO{numCons,index,Type,longid,instances,...}) =>
-                   let val i' = ElabInfo.plus_TypeInfo i
-		                (TypeInfo.CON_INFO{numCons=numCons,
-						   index=index,
-						   Type=Type,
-						   tyvars=close_tau Type,
-						   instances=instances,
-						   longid=longid})
-		   in OG.LONGIDatpat(i', longid_op)
-		   end
-		  | SOME(TypeInfo.VAR_PAT_INFO{tyvars,Type}) => 
-                   let val i' = ElabInfo.plus_TypeInfo i 
-		                (TypeInfo.VAR_PAT_INFO{tyvars=close_tau Type,Type=Type})
-		   in OG.LONGIDatpat(i', longid_op)
-		   end
-		  | _ => atpat) 
-
-          | OG.RECORDatpat(i, patrowOpt) =>
-	      OG.RECORDatpat (i, map_opt (do_patrow close_tau) patrowOpt)
-
-          | OG.PARatpat(i, pat) => OG.PARatpat(i,do_pat close_tau pat)
-
-        and do_patrow close_tau patrow = 
-          case patrow of 
-            OG.DOTDOTDOT _ => patrow
-          | OG.PATROW(i, l, pat, patrowOpt) =>
-              OG.PATROW
-              ((case ElabInfo.to_TypeInfo i of
-		  SOME(TypeInfo.LAB_INFO{index, Type,...}) =>
-		    ElabInfo.plus_TypeInfo i 
-		    (TypeInfo.LAB_INFO{index=index,Type=Type,
-				       tyvars=close_tau Type})
-		| _ =>
-		    (*it is possible that there is no LAB_INFO: there may
-		     have been a "type" error, so instead of doing an `impossible',
-		     I return the info unchanged:*) i),
-		  l,
-		  do_pat close_tau pat, map_opt (do_patrow close_tau) patrowOpt)
+        and do_patrow patrow = 
+          case patrow 
+	    of OG.DOTDOTDOT _ => patrow
+	     | OG.PATROW(i, l, pat, patrowOpt) => OG.PATROW(i, l, do_pat pat, map_opt do_patrow patrowOpt)
       in
         do_valbind valbind
       end
-
+      
     
     (********************************************************)
     (*      Elaboration (type checking)                     *)
@@ -589,15 +479,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
                (* Variable *)                                   
               SOME(VE.LONGVAR sigma) =>
-                 let val (instance, instances) = (TypeScheme.instance'' sigma)
-		   handle TypeScheme.InstanceError s =>
-		     (print ("InstanceError." ^ s ^ "\n");
-		      print ("Elab_atexp.longvid = " ^ Ident.pr_longid longid ^ "\n");
-		      print ("with type scheme : \n");
-		      (pr_st o TypeScheme.layout)sigma;
-		      print "The Context is: \n";
-		      (pr_st o C.layout)C;
-		      raise TypeScheme.InstanceError (s^ "[elab_atexp.longvid]"))
+                 let val (instance, instances) = TypeScheme.instance' sigma
 		      
 		   (*if Type.overloaded_tyvars instances yields [], then there
 		    are no overloaded tyvars in the type.  If there is exactly
@@ -621,27 +503,12 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
               (* Constructor *)
             | SOME(VE.LONGCON sigma) =>
-                let
-                  val (tau,instances) = (TypeScheme.instance'' sigma)
-		   handle TypeScheme.InstanceError s =>
-		     (print ("InstanceError." ^ s ^ "\n");
-		      print ("Elab_atexp.longcon = " ^ Ident.pr_longid longid ^ "\n");
-		      print ("with type scheme : \n");
-		      (pr_st o TypeScheme.layout)sigma;
-		      print "The Context is: \n";
-		      (pr_st o C.layout)C;
-		      raise TypeScheme.InstanceError (s^ "[elab_atexp.longcon]"))
-
+                let val (tau,instances) = (TypeScheme.instance' sigma)
                 in
                   (Substitution.Id, tau,
-		   OG.IDENTatexp(addTypeInfo_CON(okConv i, C,
-						 Type.is_Arrow tau,
-						 tau,
-						 instances,
-						 longid
-                                                  ),
-                                   OG.OP_OPT(longid, withOp)
-				   )
+		   OG.IDENTatexp(addTypeInfo_CON(okConv i, C, instances, longid),
+				 OG.OP_OPT(longid, withOp)
+				 )
                   )
                 end
 
@@ -656,7 +523,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
              (* Not found in current context *)
            | NONE =>
-               (Substitution.bogus, Type_bogus (),
+               (Substitution.Id, Type_bogus (),
 		OG.IDENTatexp(lookupIdError (i, longid),
 			      OG.OP_OPT(Ident.bogus, withOp)
 			      )
@@ -881,18 +748,26 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 		       ListHacks.minus (Environments.unguarded_valbind valbind, C.to_U C))
                val _ = Level.push ()
                val (S, VE, out_valbind) =
-                     elab_valbind (C.plus_U (C, U), valbind)
-               val _ = Level.pop()
-	       val (VE', _) = C.close (S onC C, valbind, VE)
+                     elab_valbind (C.plus_U (C, U), valbind)    (* plus_U creates levels for the explicit tyvars in U *)
+		     handle E => (Level.pop(); raise E)
+               val _ = Level.pop() 
+
+	       val (generic_tyvars, VE') = C.close (S onC C, valbind, VE)
+
+(*for debugging
+	       fun pr_id id = 
+		 case C.lookup_longid (C.plus_VE(C,VE')) (Ident.mk_LongId [id])
+		   of SOME(VE.LONGVAR sigma) => print (id ^ ": " ^ TypeScheme.string sigma ^ "\n")
+		    | _ => ()
+*)
+
                val out_i = case ListHacks.intersect (ExplicitTyVars, C.to_U C) 
 			     of [] => okConv i
 			      | explicittyvars => errorConv
 			       (i, ErrorInfo.TYVARS_SCOPED_TWICE
 				    (map TyVar.from_ExplicitTyVar explicittyvars))
 
-               val out_valbind = generalise_type_info_valbind (S onC C, S, out_valbind)
-	         (*generalise type info recorded in PLAINvalbind and
-		  patterns of value bindings*)
+               val out_valbind = insert_type_info_in_valbind (generic_tyvars, VE', out_valbind)
 
 	     (*The side condition ``U n tyvars VE' = {}'' is enforced partly
 	      by disallowing unification of free explicit tyvars (giving the
@@ -960,7 +835,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 		       (addTypeInfo_TYENV (okConv i, TE), tycon, longtycon))
 		  end
 	      | NONE =>
-		  (Substitution.bogus,[],
+		  (Substitution.Id,[],
 		   E.bogus,
 		   OG.DATATYPE_REPLICATIONdec
 		     (lookupTyConError (i,longtycon), tycon, longtycon)))
@@ -1083,6 +958,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
           let
             val (S0, (VE,tau), out_pat) = elab_pat(C, pat)
             val (S1, tau1, out_exp) = elab_exp(S0 onC C, exp)
+
             val (S2, i') = UnifyWithTexts("type of left-hand side pattern",(S1 oo S0) on tau,
                                           "type of right-hand side expression", tau1, i)
 
@@ -1148,10 +1024,10 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 			   val (_, tau2) = TypeScheme.to_TyVars_and_Type sigma2
 		       in (case Type.unify(tau1, tau2) of
 			     Type.UnifyOk => (Substitution.Id, i)   (* substitutions are dummies *)
-			   | Type.UnifyFail => (Substitution.bogus,
+			   | Type.UnifyFail => (Substitution.Id,
 						ElabInfo.plus_ErrorInfo i
 						(ErrorInfo.UNIFICATION(tau1, tau2)))
-			   | Type.UnifyRankError(tv,tn) => (Substitution.bogus,
+			   | Type.UnifyRankError(tv,tn) => (Substitution.Id,
 							    ElabInfo.plus_ErrorInfo i
 							    (ErrorInfo.UNIFICATION(tau1, tau2))))
 		       end
@@ -1289,11 +1165,13 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                                    tags for the rec identifiers will be
                                    untouched (I hope, since we might assign
                                    them further on). *)
+
             val (S, VE', valbind') =
                   elab_valbind (C.plus_VE (C, VE), valbind)
 
                                 (* Post-pass, to patch up the rec identifiers
                                    and plant unification error tags: *)
+
             val (S', valbind'') =
                   traverseRecValbind (S onVE VE, VE', valbind')
 
@@ -1320,13 +1198,15 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
         IG.TYPBIND(i, ExplicitTyVars, tycon, ty, typbind_opt) =>
           let
             val _ = Level.push()
-            val TyVars = map TyVar.from_ExplicitTyVar ExplicitTyVars
-            val tyvarsRepeated = getRepeatedElements TyVar.eq  TyVars
+
+	    val (TyVars,C') = C.plus_U'(C, ExplicitTyVars)
+
+            val tyvarsRepeated = getRepeatedElements (op =) ExplicitTyVars
             val tyvarsNotInTyVarList =
               List.filter (fn tv => not (ListHacks.member tv ExplicitTyVars)) 
 	      (IG.getExplicitTyVarsTy ty)
 
-	  in case elab_ty(C, ty)
+	  in case elab_ty(C', ty)
 	       of (SOME tau, out_ty) =>
 		 let val _ = Level.pop()
 		     val typeFcn = TypeFcn.from_TyVars_and_Type (TyVars, tau)
@@ -1343,12 +1223,14 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 			OG.TYPBIND(repeatedIdsError(i, [ErrorInfo.TYCON_RID tycon]),
 				   ExplicitTyVars, tycon, out_ty, out_typbind_opt))
 		     else
-		       if not(isEmptyTyVarList(tyvarsRepeated)) then
-			 (TE, OG.TYPBIND(repeatedIdsError(i, map ErrorInfo.TYVAR_RID tyvarsRepeated),
-					 ExplicitTyVars, tycon, out_ty, out_typbind_opt))
-		       else
-			 (TE.plus (TE.singleton(tycon, tystr), TE),
-			  OG.TYPBIND(okConv i, ExplicitTyVars, tycon, out_ty, out_typbind_opt))
+		       case tyvarsRepeated
+			 of [] =>
+			   (TE.plus (TE.singleton(tycon, tystr), TE),
+			    OG.TYPBIND(okConv i, ExplicitTyVars, tycon, out_ty, out_typbind_opt))
+			  | _ => 
+			   (TE, OG.TYPBIND(repeatedIdsError(i, map ErrorInfo.TYVAR_RID 
+							    (map TyVar.from_ExplicitTyVar tyvarsRepeated)),
+					   ExplicitTyVars, tycon, out_ty, out_typbind_opt))
 		 end
 		| (NONE, out_ty) =>
 		 let val _ = Level.pop()
@@ -1383,8 +1265,10 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
         IG.DATBIND(i, ExplicitTyVars, tycon, conbind, datbind_opt) =>
           let
             val _ = Level.push()
-            val TyVars = map TyVar.from_ExplicitTyVar ExplicitTyVars
-            val tyvarsRepeated = getRepeatedElements TyVar.eq  TyVars
+
+	    val (TyVars, C') = C.plus_U'(C, ExplicitTyVars)
+
+            val tyvarsRepeated = getRepeatedElements (op =) ExplicitTyVars
             val tyvarsNotInTyVarList =
               List.filter 
                 (fn tv => not (ListHacks.member tv ExplicitTyVars))
@@ -1406,7 +1290,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
               Type.from_ConsType (Type.mk_ConsType (tau_list, tyname))
 
             val (constructor_map : constructor_map,
-		 out_conbind) = elab_conbind (C, tau, conbind)
+		 out_conbind) = elab_conbind (C', tau, conbind)
             val _ = Level.pop()
 	    val VE = constructor_map.to_VE constructor_map
 
@@ -1426,7 +1310,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 				  tyvarsNotInTyVarList))
 		  else
 		    let val repeated_ids_errorinfos =
-		      map ErrorInfo.TYVAR_RID tyvarsRepeated
+		      map ErrorInfo.TYVAR_RID (map TyVar.from_ExplicitTyVar tyvarsRepeated)
 		      @ map ErrorInfo.ID_RID
 		          (EqSet.list (EqSet.intersect (VE.dom VE') (VE.dom VE)))
 		      @ (if EqSet.member tycon (TE.dom TE')
@@ -1625,16 +1509,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 			       SOME _ => true
 			     | NONE => false)
 
-                      val (tau,instances) = (TypeScheme.instance'' sigma)
-			handle TypeScheme.InstanceError s =>
-			  (print ("InstanceError." ^ s ^ "\n");
-			   print ("Elab_atpat.longcon = " ^ Ident.pr_longid longid ^ "\n");
-			   print ("with type scheme : \n");
-			   (pr_st o TypeScheme.layout)sigma;
-			   print "The Context is: \n";
-			   (pr_st o C.layout)C;
-			   raise TypeScheme.InstanceError (s^ "[elab_atpat.longcon]"))
-
+                      val (tau,instances) = (TypeScheme.instance' sigma)
                       val (tau', i') =
                         if isConsType tau then
                           (tau, okConv i)
@@ -1645,8 +1520,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                     in
                       (Substitution.Id,
                        (VE.empty, tau'),
-		       OG.LONGIDatpat(addTypeInfo_CON(i', C, Type.is_Arrow tau', 
-						      tau',instances,longid),
+		       OG.LONGIDatpat(addTypeInfo_CON(i', C, instances, longid),
 				      OG.OP_OPT(longid, withOp)))
                     end
 
@@ -1680,7 +1554,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                              )
 
                          | (_, _) =>
-                             (Substitution.bogus,
+                             (Substitution.Id,
                               (VE.bogus, Type_bogus ()),
                               OG.LONGIDatpat(
                                 errorConv(i, ErrorInfo.QUALIFIED_ID longid),
@@ -1704,7 +1578,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                (VE,Type.from_RecType rho),
                 OG.RECORDatpat(addTypeInfo_RECORD_ATPAT(okConv i, 
                                                         Type.from_RecType rho),
-		               SOME(addLabelInfo(rho, out_patrow)))) 
+		               SOME(out_patrow))) 
             end
 
           (* Parenthesised pattern *)                           (*rule 37*)
@@ -1741,18 +1615,18 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                     (VE.plus (VE, VE'), Type.RecType.add_field (lab, tau) rho
                      ), OG.PATROW(okConv i, lab, out_pat, SOME out_patrow))
                | (true, true) => 
-                   (Substitution.bogus,
+                   (Substitution.Id,
                     (VE', rho),
                     OG.PATROW(repeatedIdsError(i,[ErrorInfo.LAB_RID lab]),
                               lab, out_pat, SOME out_patrow))
                | (false, false) =>
-                   (Substitution.bogus,
+                   (Substitution.Id,
                     (VE', Type.RecType.add_field (lab, tau) rho),
                     OG.PATROW(repeatedIdsError(i, 
                                   map ErrorInfo.ID_RID (EqSet.list intdom)),
                               lab, out_pat, SOME out_patrow))
                | (false, true) => 
-                   (Substitution.bogus,
+                   (Substitution.Id,
                     (VE', rho),
                     OG.PATROW(repeatedIdsError(i, 
                                (map ErrorInfo.ID_RID (EqSet.list intdom)) @
@@ -1818,16 +1692,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                   let
                     val new = Type.fresh_normal ()
                     val arrow = Type.mk_Arrow(tau', new) 
-                    val (tau1,instances) = (TypeScheme.instance'' sigma)
-		      handle TypeScheme.InstanceError s =>
-			(print ("InstanceError." ^ s ^ "\n");
-			 print ("Elab_pat.longcon = " ^ Ident.pr_longid longid ^ "\n");
-			 print ("with type scheme : \n");
-			 (pr_st o TypeScheme.layout)sigma;
-			 print "The Context is: \n";
-			 (pr_st o C.layout)C;
-			 raise TypeScheme.InstanceError (s^ "[elab_pat.longcon]"))
-
+                    val (tau1,instances) = (TypeScheme.instance' sigma)
                     val (S1, i') = UnifyWithTexts("argument to long value constructor \
 		                                  \in pattern suggests constructor type",
 		                                  arrow, 
@@ -1835,12 +1700,10 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                     val tau2 = S1 on new
                   in
                     (S1 oo S, (S1 onVE VE, tau2),
-                     OG.CONSpat(addTypeInfo_CON(i', C, true,
-                                                (S1 on arrow),instances,
-                                                longid),
+                     OG.CONSpat(addTypeInfo_CON(i', C, instances, longid),
                                 OG.OP_OPT(longid, withOp),
                                 out_atpat
-                               )
+				)
                     )
                   end
 
@@ -1862,7 +1725,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                   end
 
               | _ => (* Mark the error. *)
-                  (Substitution.bogus,
+                  (Substitution.Id,
                    (VE, Type_bogus ()),
                    OG.CONSpat(lookupIdError(i, longid),
                               OG.OP_OPT(Ident.bogus, withOp),
@@ -1950,9 +1813,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
           (* Explicit type variable *)                          (*rule 44*)
           IG.TYVARty(i, ExplicitTyVar) =>
-	    let val ty_opt = SOME (Type.from_TyVar' 
-				   (C.ExplicitTyVarEnv_lookup (C.to_U' C) ExplicitTyVar)
-				   (TyVar.from_ExplicitTyVar ExplicitTyVar))
+	    let val ty_opt = SOME (C.ExplicitTyVar_lookup C ExplicitTyVar)
 	    in (ty_opt, OG.TYVARty(okConv i, ExplicitTyVar))
 	    end
 
@@ -1989,12 +1850,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 			 if expectedArity = actualArity then
 			   (SOME(TypeFcn.apply (typeFcn, tau_list)),
 			    OG.CONty (okConv i, out_ty_list, longtycon))
-			   handle TypeScheme.InstanceError s => 
-			     (print ("InstanceError." ^ s ^"\n");
-			      print ("elab_ty.CONty.longtycon = " ^ IG.TyCon.pr_LongTyCon longtycon ^ "\n");
-			      print ("Arity(theta) = " ^ Int.toString expectedArity ^ "\n");
-			      raise TypeScheme.InstanceError (s ^ "[elab_ty]"))
-			     
 			 else
 			   (NONE,
 			    OG.CONty (errorConv (i, ErrorInfo.WRONG_ARITY
@@ -2143,47 +1998,31 @@ let
 
   local
     open TypeInfo 
-    infix on_repeated on_repeated_TypeScheme on_TypeInfo
+    infixr on_TypeInfo
 
-    fun S on_repeated tau =
-          (if !Flags.DEBUG_ELABDEC then
-	     pr ("on_repeated: tau = ", Type.layout tau) else ();
-	   let val tau' = S on tau
-	   in if Type.eq (tau',tau) then tau' else S on_repeated tau'
-	   end)
-
-    fun S on_repeated_TypeScheme sigma =
-      let val sigma' = Substitution.onScheme (S,sigma)
-      in
-        if TypeScheme.eq (sigma',sigma) then sigma' 
-        else S on_repeated_TypeScheme sigma'
-      end
-
-    fun S on_TypeInfo (LAB_INFO {index,Type,tyvars}) =
-            LAB_INFO {index=index,Type=S on_repeated Type,tyvars=tyvars}
+    fun S on_TypeInfo (LAB_INFO {index}) = LAB_INFO {index=index}
       | S on_TypeInfo (RECORD_ATPAT_INFO {Type}) = 
-	    RECORD_ATPAT_INFO {Type=S on_repeated Type}
+	    RECORD_ATPAT_INFO {Type=S on Type}
       | S on_TypeInfo (VAR_INFO {instances}) = 
-	    VAR_INFO {instances=map (fn tau => S on_repeated tau) instances}
+	    VAR_INFO {instances=map (fn tau => S on tau) instances}
       | S on_TypeInfo (VAR_PAT_INFO {tyvars,Type}) =
-	    VAR_PAT_INFO {tyvars=tyvars,Type=S on_repeated Type}
-      | S on_TypeInfo (CON_INFO {numCons,index,tyvars,Type,longid,instances}) = 
-	    CON_INFO {numCons=numCons,index=index,tyvars=tyvars,
-		      Type=S on_repeated Type,longid=longid,
-		      instances= map (fn tau => S on_repeated tau) instances}
+	    VAR_PAT_INFO {tyvars=tyvars,Type=S on Type}
+      | S on_TypeInfo (CON_INFO {numCons,index,longid,instances}) = 
+	    CON_INFO {numCons=numCons,index=index,longid=longid,
+		      instances= map (fn tau => S on tau) instances}
       | S on_TypeInfo (EXCON_INFO {Type,longid}) = 
-	    EXCON_INFO {Type=S on_repeated Type,longid=longid}
+	    EXCON_INFO {Type=S on Type,longid=longid}
       | S on_TypeInfo (EXBIND_INFO {TypeOpt=NONE}) = EXBIND_INFO {TypeOpt=NONE}
       | S on_TypeInfo (EXBIND_INFO {TypeOpt=SOME Type}) = 
-	    EXBIND_INFO {TypeOpt=SOME (S on_repeated Type)}   
+	    EXBIND_INFO {TypeOpt=SOME (S on Type)}   
       | S on_TypeInfo (TYENV_INFO TE) = TYENV_INFO TE                  (*no free tyvars here*)
       | S on_TypeInfo (ABSTYPE_INFO (TE,rea)) = ABSTYPE_INFO (TE,rea)  (*no free tyvars here*)
       | S on_TypeInfo (EXP_INFO {Type}) = 
-	    EXP_INFO {Type=S on_repeated Type}
+	    EXP_INFO {Type=S on Type}
       | S on_TypeInfo (MATCH_INFO {Type}) = 
-	    MATCH_INFO {Type=S on_repeated Type}
+	    MATCH_INFO {Type=S on Type}
       | S on_TypeInfo (PLAINvalbind_INFO {tyvars,Type}) =
-	    PLAINvalbind_INFO {tyvars=tyvars, Type=S on_repeated Type}
+	    PLAINvalbind_INFO {tyvars=tyvars, Type=S on Type}
       | S on_TypeInfo (OPEN_INFO i) = OPEN_INFO i  (*only identifiers*)
       | S on_TypeInfo (INCLUDE_INFO i) = INCLUDE_INFO i  (*only identifiers*)
       | S on_TypeInfo (FUNCTOR_APP_INFO rea) = 
@@ -2346,7 +2185,7 @@ let
                    let val i0 = ElabInfo.from_ParseInfo(ElabInfo.to_ParseInfo i)
                        fun wild ty = ATPATpat(i0, WILDCARDatpat(ElabInfo.plus_TypeInfo i0 (TypeInfo.VAR_PAT_INFO{tyvars=[], Type= ty})))
                        val labs_and_types = Type.RecType.to_list rho
-                       fun f ((lab,ty), acc) = SOME(PATROW(ElabInfo.plus_TypeInfo i0 (TypeInfo.LAB_INFO{index=0, tyvars = [], Type = ty}),lab, wild ty, acc))
+                       fun f ((lab,ty), acc) = SOME(PATROW(ElabInfo.plus_TypeInfo i0 (TypeInfo.LAB_INFO{index=0}),lab, wild ty, acc))
                    in case foldr f NONE labs_and_types of
                         SOME patrow' => patrow'
                       | NONE => raise DDD_IS_EMPTY (* caller of resolve_patrow should replace SOME(...) by NONE *)

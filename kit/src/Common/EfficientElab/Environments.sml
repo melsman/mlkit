@@ -262,7 +262,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	 and TyEnv = TYENV of (tycon, TyStr) FinMap.map
 	 and TyStr = TYSTR of {theta : TypeFcn, VE : VarEnv}
 	 and VarEnv = VARENV of (id, range_private) FinMap.map
-	 and ExplicitTyVarEnv = EXPLICITTYVARENV of (ExplicitTyVar,level) FinMap.map
+	 and ExplicitTyVarEnv = EXPLICITTYVARENV of (ExplicitTyVar,Type) FinMap.map
 
     fun layoutSE (STRENV m) = 
       FinMap.layoutMap {start="", finish="",sep=", ", eq=" : "} 
@@ -605,7 +605,6 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
     (*Type structures*)
 
     structure TyStr = struct
-      val bogus = TYSTR {theta=TypeFcn.bogus, VE=VE.empty}
       fun from_theta_and_VE (theta : TypeFcn, VE : VarEnv) : TyStr =
 	    TYSTR {theta = theta, VE = VE}
       fun to_theta_and_VE (TYSTR {theta, VE}) : TypeFcn * VarEnv = (theta, VE)
@@ -1249,23 +1248,23 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
     structure C = struct
       (*ExplicitTyVarEnv*) 
       val U_empty = EXPLICITTYVARENV FinMap.empty
-      fun plus_U (CONTEXT {U = EXPLICITTYVARENV U,E},
-		  ExplicitTyVars : ExplicitTyVar list) : Context =
-	    let val U' = foldl
-			   (fn (ExplicitTyVar, m) => 
-				 FinMap.add (ExplicitTyVar,
-					     Level.current (),m))
-			     FinMap.empty ExplicitTyVars
+      fun plus_U' (CONTEXT {U = EXPLICITTYVARENV U,E},
+		   ExplicitTyVars : ExplicitTyVar list) : TyVar list * Context =
+	    let val (l,U) = foldr (fn (ExplicitTyVar, (l,m)) => 
+				   let val tv = TyVar.from_ExplicitTyVar ExplicitTyVar
+				       val ty = Type.from_TyVar tv
+				   in (tv::l, FinMap.add (ExplicitTyVar, ty, m))
+				   end) ([], U) ExplicitTyVars
 	    in
-	      CONTEXT {U=EXPLICITTYVARENV (FinMap.plus (U,U')), E=E}
+	      (l, CONTEXT {U=EXPLICITTYVARENV U, E=E})
 	    end
+      fun plus_U a = #2 (plus_U' a)
       fun to_U (CONTEXT {U=EXPLICITTYVARENV m, E}) : ExplicitTyVar list =
 	    EqSet.list(FinMap.dom m)
-      fun to_U' (CONTEXT {U,E}) : ExplicitTyVarEnv = U 
-      fun ExplicitTyVarEnv_lookup (EXPLICITTYVARENV m) ExplicitTyVar =
+      fun ExplicitTyVar_lookup (CONTEXT{U=EXPLICITTYVARENV m,E}) ExplicitTyVar =
 	    (case FinMap.lookup m ExplicitTyVar of
-	       NONE => Level.GENERIC
-	     | SOME l => l)
+	       NONE => impossible "ExplicitTyVar_lookup" (*Level.GENERIC*)
+	     | SOME Type => Type)
       fun to_E (CONTEXT {U, E}) = E
       fun plus_E (CONTEXT {U, E}, E') = CONTEXT {U=U, E=E.plus (E, E')}
       fun plus_TE(C,TE) = plus_E(C,E.from_TE TE)
@@ -1336,8 +1335,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	       returns VE unmodified.*)
       in
 
-      fun close (C : Context, valbind : valbind, VE : VarEnv)
-	    : VarEnv * TyVar list =
+	(* The returned tyvar list is a list of those tyvars that
+	 * occur bound in the returned variable environment. *)
+
+      fun close (C : Context, valbind : valbind, VE : VarEnv) : TyVar list * VarEnv =
 	let
 	  val CONTEXT {E=ENV{SE=SE, VE=VARENV ve_map, ...}, 
 		       U=EXPLICITTYVARENV U} = C
@@ -1354,12 +1355,11 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	      fun makemap pat exp = 
 		let
 		  fun harmless_con longid =
-			(case lookup_longid C longid of
-			   SOME(VE.LONGVAR _) => false
-			 | SOME(VE.LONGCON _) =>
-			     #2 (Ident.decompose longid) <> Ident.id_REF
-			 | SOME(VE.LONGEXCON _) => true
-			 | NONE => true)
+		    case lookup_longid C longid 
+		      of SOME(VE.LONGVAR _) => false
+		       | SOME(VE.LONGCON _) => #2 (Ident.decompose longid) <> Ident.id_REF
+		       | SOME(VE.LONGEXCON _) => true
+		       | NONE => true
 		  (*why `true' and not `false' or `impossible ...'?  see my diary
 		   19/12/1996 14:17. tho.*)
 		  val b = DecGrammar.expansive harmless_con exp
@@ -1370,62 +1370,51 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		         (dom_pat (C,pat))
 		end  
 	    in
-	      (case valbind of
-		 PLAINvalbind (_, pat, exp, NONE) => makemap pat exp
-	       | PLAINvalbind (_, pat, exp, SOME valbind) =>
-		   let val m1 = makemap pat exp
-		       val m2 = isExpansiveId valbind
-		   in
-		     FinMap.mergeMap 
-		       (fn (b1, b2) => raise BoundTwice VE)
-		         m1 m2
-		   end
-	       | RECvalbind (i, valbind) => isExpansiveId valbind)
+	      case valbind 
+		of PLAINvalbind (_, pat, exp, NONE) => makemap pat exp
+		 | PLAINvalbind (_, pat, exp, SOME valbind) =>
+		  let val m1 = makemap pat exp
+		      val m2 = isExpansiveId valbind
+		  in FinMap.mergeMap (fn (b1, b2) => raise BoundTwice VE) m1 m2
+		  end
+		 | RECvalbind (i, valbind) => isExpansiveId valbind
 	    end
-
+	  
 	  val isExpansiveId_map = isExpansiveId valbind
 
 	  (* isVar is true iff id is a variable in dom VE *)		     
-	  fun remake isVar id sigma =
+	  fun remake isVar id (sigma : TypeScheme) : TyVar list * TypeScheme =
 	    let val isExp = 
-		(case FinMap.lookup isExpansiveId_map id of 
-		   NONE => false
-		 | SOME b => 
-		     (if !Flags.DEBUG_ELABDEC then
-			 TextIO.output (TextIO.stdOut, Ident.pr_id id ^ "'s exp is " 
-				 ^ (if not b then "NOT " else "") ^ "expansive\n")
-		      else () ;
-		      b))
-  	    in
-	      TypeScheme.close_and_return_escaping_tyvars
-	          (not (isExp andalso isVar)) sigma
+	          case FinMap.lookup isExpansiveId_map id 
+		    of NONE => false
+		     | SOME b => b
+		val sigma = TypeScheme.close (not (isExp andalso isVar)) sigma
+		val (tvs,_) = TypeScheme.to_TyVars_and_Type sigma
+  	    in (tvs, sigma)
 	    end 
 
 	  val VARENV m = VE
-	  val (m, escaping_tyvars) =
-	  FinMap.Fold
-	     (fn ((id, range), (m', escaping_tyvars)) =>
-	      (case range of
-		 LONGVARpriv sigma =>
-		   (case remake true id sigma of (sigma', escaping_tyvars') =>
-		      (FinMap.add (id, LONGVARpriv sigma', m'),
-		       escaping_tyvars' @ escaping_tyvars))
-	       | LONGCONpriv (sigma, cons) =>
-		   (case remake false id sigma of (sigma', escaping_tyvars') =>
-		      (FinMap.add (id, LONGCONpriv (sigma', cons), m'),
-		       escaping_tyvars' @ escaping_tyvars))
-	       | LONGEXCONpriv tau => 
-		      (FinMap.add (id, LONGEXCONpriv tau, m'),
-		       escaping_tyvars)))
-	         (FinMap.empty, []) m
+	  val (bound_tyvars, m) = FinMap.Fold
+	     (fn ((id, range), (bound_tyvars, m)) =>
+	      case range 
+		of LONGVARpriv sigma =>
+		  let val (tvs,sigma) = remake true id sigma
+		      val bound_tyvars = StatObject.TyVar.unionTyVarSet(tvs,bound_tyvars)
+		  in (bound_tyvars, FinMap.add (id, LONGVARpriv sigma, m))
+		  end
+		 | LONGCONpriv (sigma, cons) =>
+		  let val (tvs,sigma) = remake false id sigma 
+		      val bound_tyvars = StatObject.TyVar.unionTyVarSet(tvs,bound_tyvars)
+		  in (bound_tyvars, FinMap.add (id, LONGCONpriv (sigma, cons), m))
+		  end
+		 | LONGEXCONpriv tau => ([], FinMap.add (id, LONGEXCONpriv tau, m)))
+	     ([], FinMap.empty) m
 	in
-	  (VARENV m, escaping_tyvars)
-	end (*let*) handle BoundTwice VE => (VE, [])
+	  (bound_tyvars, VARENV m)
+	end (*let*) handle BoundTwice VE => ([], VE)
       end (*local exception BoundTwice*)
     end (*C*)
   
-
-
   
     (*constructor_map --- see comment in signature*)
       

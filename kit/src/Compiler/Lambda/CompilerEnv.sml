@@ -51,6 +51,11 @@ functor CompilerEnv(structure Ident: IDENT
 	      children=[layout_abs tvs,LambdaExp.layoutType tau]}
     and layout_abs tvs = PP.NODE{start="all(",finish=").",indent=0, childsep=PP.RIGHT ",", 
 				 children=map (PP.LEAF o LambdaExp.pr_tyvar)tvs}
+
+    fun pr_scheme sigma = PP.flatten1 (layout_scheme sigma)
+
+    fun pr_il il = "il"
+
     fun pr_st st = 
       (PP.outputTree (print, st, !Flags.colwidth);
        print "\n")
@@ -89,8 +94,14 @@ functor CompilerEnv(structure Ident: IDENT
 
     val boolType = LambdaExp.boolType
     val exnType = LambdaExp.exnType
-    val tyvar_list = LambdaExp.fresh_eqtyvar()
-    val listType = LambdaExp.CONStype([LambdaExp.TYVARtype tyvar_list], TyName.tyName_LIST)
+    val tyvar_nil = LambdaExp.fresh_eqtyvar()
+    val nilType = LambdaExp.CONStype([LambdaExp.TYVARtype tyvar_nil], TyName.tyName_LIST)
+    val tyvar_cons = LambdaExp.fresh_eqtyvar()
+    val consType = 
+      let open LambdaExp
+	  val t = CONStype([TYVARtype tyvar_cons], TyName.tyName_LIST)
+      in ARROWtype([RECORDtype [TYVARtype tyvar_cons, t]],[t])
+      end
 
     val initialVarEnv = 
       VARENV(initMap [(Ident.id_PRIM, PRIM),
@@ -110,10 +121,10 @@ functor CompilerEnv(structure Ident: IDENT
 		      (Ident.id_REF, REF),
 		      (Ident.id_TRUE, CON(Con.con_TRUE,[],boolType,[])),
 		      (Ident.id_FALSE, CON(Con.con_FALSE,[],boolType,[])),
-		      (Ident.id_NIL, CON(Con.con_NIL,[tyvar_list],listType,
-					 [LambdaExp.TYVARtype tyvar_list])),
-		      (Ident.id_CONS, CON(Con.con_CONS,[tyvar_list],listType,
-					  [LambdaExp.TYVARtype tyvar_list])),
+		      (Ident.id_NIL, CON(Con.con_NIL,[tyvar_nil],nilType,
+					 [LambdaExp.TYVARtype tyvar_nil])),
+		      (Ident.id_CONS, CON(Con.con_CONS,[tyvar_cons],consType,
+					  [LambdaExp.TYVARtype tyvar_cons])),
 		      (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
 		      (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
 		      (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType)),
@@ -541,8 +552,10 @@ functor CompilerEnv(structure Ident: IDENT
       PP.NODE{start="VarEnv = ",finish="",indent=2,
 	      children= [FinMap.layoutMap {start="{", eq=" -> ", sep=", ", finish="}"}
 			               (PP.layoutAtom Ident.pr_id)
-				       (PP.layoutAtom ((fn f => fn e => f e ^ " withtynames " ^ pp_tynames(tynames_result(e,[])))
-					(fn LVAR (lv,_,_,_) => "LVAR(" ^ Lvars.pr_lvar lv ^ ")"
+				       (PP.layoutAtom
+					(fn LVAR (lv,tyvars,Type,il) => ("LVAR(" ^ Lvars.pr_lvar lv ^ ", " ^ 
+					                                 pr_scheme (tyvars,Type) ^ ", " ^ 
+									 pr_il il ^ ")")
                                           | RESET_REGIONS => Ident.pr_id Ident.resetRegions
                                           | FORCE_RESET_REGIONS => Ident.pr_id Ident.forceResetting
 					  | PRIM => "PRIM"
@@ -559,7 +572,7 @@ functor CompilerEnv(structure Ident: IDENT
 					  | GREATEREQ => "GREATEREQ"
 					  | REF => "REF" 
 					  | CON(con,_,_,_) => "CON(" ^ Con.pr_con con ^ ")"
-					  | EXCON (excon,_) => "EXCON(" ^ Excon.pr_excon excon ^ ")")))
+					  | EXCON (excon,_) => "EXCON(" ^ Excon.pr_excon excon ^ ")"))
 				       m],
 	      childsep=PP.NOSEP}
 

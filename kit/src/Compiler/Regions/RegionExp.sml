@@ -21,6 +21,8 @@ struct
 
     fun die s  = Crash.impossible ("RegionExp." ^ s)
 
+    fun quote s = "\"" ^ String.toString s ^ "\""
+
     type lvar = Lvar.lvar
     type con = Con.con
     type excon = Excon.excon
@@ -379,7 +381,7 @@ old*)
             lay_il(Lvar.pr_lvar lvar, " at" ^^ layout_alloc a, #1(! il_r))
           
         | INTEGER(i, a) => LEAF(Int.toString i ^^ layout_alloc a)
-        | STRING(s, a) => LEAF(String.toString s ^^ layout_alloc a)
+        | STRING(s, a) => LEAF(quote s ^^ layout_alloc a)
         | REAL(r, a) => LEAF(r ^^ layout_alloc a)
         | UB_RECORD(args) =>
             PP.NODE{start = "<", finish = ">" , indent = 1, childsep = PP.RIGHT", ", 

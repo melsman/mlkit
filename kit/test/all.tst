@@ -17,15 +17,21 @@ by a list of tokens. The following tokens are supported:
 Test files may contain Standard ML like comments.
 *)
 
-(* Tests of static semantics *)
+(* Tests of static semantics; it would be great with some more
+ * systematic testing here! *)
 
+pat.sml             ccl     
+llv.sml
 typerr.sml          ccl       ecte
 opaque.sml          ccl
+opaque2.sml                           nobasislib
 functor.sml         ccl
+constraint.sml
+lex.sml                               nobasislib
+layout.sml
 
 (* Tests of some benchmark programs *)
 
-life.sml                tx tc prof
 kitfib35.sml            tx            nobasislib
 kitdangle.sml           tx            nobasislib
 kitdangle3.sml          tx            nobasislib
@@ -36,7 +42,7 @@ kittmergesort.sml       tx tc prof
 kitqsort.sml            tx tc
 kitmandelbrot.sml       tx tc prof
 kitlife35u.sml          tx tc
-klife_eq.sml            tx tc
+klife_eq.sml            tx tc prof
 kitkbjul9.sml           tx tc
 kkb_eq.sml              tx tc
 kkb36c.sml              tx tc prof
@@ -72,10 +78,7 @@ timer.sml                     prof
 unixpath.sml                  prof
 cmdline.sml                   prof
 filesys.sml                   prof
-real.sml                      prof   (* ok for non-profiled 
-                                        version; missing functions 
-                                        for profiling; Real.round 
-                                        is broken. *)
+real.sml                      prof   (* Real.round is broken. *)
 word.sml                      prof
 word8.sml                     prof
 

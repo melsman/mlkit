@@ -21,7 +21,7 @@ struct
 
   fun pr_scon(INTEGER i) = Int.toString i
    |  pr_scon(WORD i) = Int.toString i
-   |  pr_scon(STRING s) = String.toString s
+   |  pr_scon(STRING s) = "\"" ^ String.toString s ^ "\""
    |  pr_scon(CHAR i) = "#\"" ^ str(chr i) ^ "\""
    |  pr_scon(REAL r) = r
 
