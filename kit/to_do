@@ -11,11 +11,11 @@ TO BE FIXED BY: (MT|MAEL|FAXE)
 
 WAIT
 
-Allow only entries in schript-files that do not alter
-calling-conventions, runtime representations, and so on. Profiling can
-be dealt with by introducing more bindings in repositories; such extra
-bindings in repositories make it possible to toggle profiling without
-recompiling everything.
+Make recompilation dependent on a notion of `compiler configuration'
+(list of entry-flag pairs); in this way, we can ensure that linking
+will always succeed even if the compiler configuration changes. A
+configuration should include entries such as ("tag_values", BOOL
+false), and so on.
 
 Currently, we do not treat multiple declarations of the same functor
 identifier in the same project. We can allow this; but we cannot allow
