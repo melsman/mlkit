@@ -73,6 +73,10 @@ signature OPCODES_KAM =
     val PRIM_DIV_F : int 
     val PRIM_NEG_F : int 
     val PRIM_ABS_F : int 
+    val PRIM_LESS_THAN_F : int 
+    val PRIM_LESS_EQUAL_F : int 
+    val PRIM_GREATER_THAN_F : int 
+    val PRIM_GREATER_EQUAL_F : int 
     val PRIM_LESS_THAN : int 
     val PRIM_LESS_EQUAL : int 
     val PRIM_GREATER_THAN : int 

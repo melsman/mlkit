@@ -140,9 +140,9 @@ struct
     case RegvarFinMap.lookup RhoEnv place of
       SOME access_type => access_type
     | NONE  => die ("lookupRho(" ^ (PP.flatten1(Effect.layout_effect place)) ^ ")")
-
+(*
   fun lookupRhoOpt ({RhoEnv,...} : env) place = RegvarFinMap.lookup RhoEnv place
-
+*)
   (* --------------------------------------------------------------------- *)
   (*                          Pretty Printing                              *)
   (* --------------------------------------------------------------------- *)
@@ -446,33 +446,30 @@ and code is actually generated when passing arguments in region polymorphic func
       end
       | CG_ce(ClosExp.SWITCH_E sw,env,sp,cc,acc) = die "SWITCH_E is unfolded in ClosExp"
       | CG_ce(ClosExp.CON0{con,con_kind,aux_regions,alloc},env,sp,cc,acc) =
-      (case con_kind of
-	 ClosExp.ENUM i => 
-	   let 
-	     val tag = 
-	       if !BI.tag_values orelse (*hack to treat booleans tagged*)
-		 Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then 
-		 2*i+1 
-	       else i
-	   in
-	     ImmedInt tag :: acc 
-	   end
-       | ClosExp.UNBOXED i => 
-	   let
-	     val tag = 4*i+3 
-	     fun reset_regions C =
-	       foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,env,sp,cc,C)) C aux_regions
-	   in
-	     reset_regions(ImmedInt tag :: acc)
-	   end
-       | ClosExp.BOXED i => 
-	   let 
-	     val tag = Word32.toInt(BI.tag_con0(false,i))
-	     fun reset_regions C =
-	       List.foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,env,sp,cc,C)) C aux_regions
-	   in  
-	     reset_regions(ImmedInt tag :: Push :: alloc_block(alloc,1,env,sp+1,cc,acc))
-	   end)
+      let 
+	fun reset_regions C =
+	  foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,env,sp,cc,C)) C aux_regions
+      in
+	case con_kind of
+	  ClosExp.ENUM i => 
+	    let 
+	      val tag = 
+		if !BI.tag_values orelse (*hack to treat booleans tagged*)
+		  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then 
+		  2*i+1 
+		else i
+	    in
+	      ImmedInt tag :: acc 
+	    end
+	| ClosExp.UNBOXED i => 
+	    let val tag = 4*i+3 
+	    in reset_regions(ImmedInt tag :: acc)
+	    end
+	| ClosExp.BOXED i => 
+	    let val tag = Word32.toInt(BI.tag_con0(false,i))
+	    in reset_regions(ImmedInt tag :: Push :: alloc_block(alloc,1,env,sp+1,cc,acc))
+	    end
+      end
       | CG_ce(ClosExp.CON1{con,con_kind,alloc,arg},env,sp,cc,acc) =
 	 (case con_kind of
 	    ClosExp.UNBOXED 0 => CG_ce(arg,env,sp,cc,acc)
@@ -485,7 +482,7 @@ and code is actually generated when passing arguments in region polymorphic func
 		 let
 		   val tag = Word32.toInt(BI.tag_con1(false,i))
 		 in
-		   ImmedInt tag :: Push :: CG_ce(arg,env,sp,cc,Push ::
+		   ImmedInt tag :: Push :: CG_ce(arg,env,sp+1,cc,Push ::         (*mael fix: sp -> sp+1 *)
 						 alloc_block(alloc,2,env,sp+2,cc,acc))
 		 end
 	  | _ => die "CG_ce: CON1.con not unary in env.")
@@ -523,10 +520,10 @@ and code is actually generated when passing arguments in region polymorphic func
 	       | "__div_float"            => PrimDivf
 	       | "__neg_float"            => PrimNegf
 	       | "__abs_float"            => PrimAbsf
-	       | "__less_float"           => PrimLessThan
-	       | "__lesseq_float"         => PrimLessEqual
-	       | "__greater_float"        => PrimGreaterThan
-	       | "__greatereq_float"      => PrimGreaterEqual
+	       | "__less_float"           => PrimLessThanFloat
+	       | "__lesseq_float"         => PrimLessEqualFloat
+	       | "__greater_float"        => PrimGreaterThanFloat
+	       | "__greatereq_float"      => PrimGreaterEqualFloat
 		       
 	       | "less_word__"            => PrimLessThanUnsigned
 	       | "greater_word__"         => PrimGreaterThanUnsigned
@@ -660,9 +657,11 @@ and code is actually generated when passing arguments in region polymorphic func
 	  fun add_lvar (lv,(offset,env)) = (offset+1,declareLvar(lv,STACK(offset),env))
 	  fun add_clos_opt (NONE,env) = (env, Return)
 	    | add_clos_opt (SOME clos_lv, env) = (declareLvar(clos_lv,ENV_REG,env), Return)
+(*
 	  val _ = print "Regvars formals:\n"
 	  val _ = app (fn lv => print (Lvars.pr_lvar lv ^ ", ")) (#reg_args(decomp_cc))
 	  val _ = print "\n"
+*)
           val (offset,env) = List.foldl add_lvar (0,initialEnv) (#reg_args(decomp_cc))
 	  val (offset,env) = List.foldl add_lvar (offset,env) (#args(decomp_cc))
 	  val (env,return_inst) = add_clos_opt(#clos(decomp_cc),env)

@@ -12,6 +12,7 @@ exnName
 printReal
 printString
 printNum
+printList
 implodeChars
 implodeString
 concatString

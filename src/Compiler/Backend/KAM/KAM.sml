@@ -134,6 +134,11 @@ signature KAM =
       | PrimNegf
       | PrimAbsf
 
+      | PrimLessThanFloat
+      | PrimLessEqualFloat
+      | PrimGreaterThanFloat
+      | PrimGreaterEqualFloat
+
       | PrimLessThan
       | PrimLessEqual
       | PrimGreaterThan
