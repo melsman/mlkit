@@ -19,10 +19,10 @@ val _ = Db.dml ins
     (Page.return "Already member"
      `The email address ^email is already in the
      database - you may have the system 
-     <a href="auth_send.sml?email=^email">send your
-     password by email</a>.`
+     <a href="auth_send.sml?email=^(Ns.encodeUrl 
+     email)">send your password by email</a>.`
      ; Ns.exit())
 
 val _ = Ns.returnRedirect 
-  ("auth_send.sml?email=" ^ email)
+  ("auth_send.sml?email=" ^ Ns.encodeUrl email)
   

@@ -1,9 +1,10 @@
 val _ = Page.return "Obtain Password by Email"
-`You may obtain your password by email by entering 
- your email address below and press the ^`^`Email me 
- my Password'' button.
+`Submit your <b>email address</b> below.
  <form method=post action=auth_send.sml>
- Email address:
- <input type=text name=email><p>
- <input type=submit value="Email me my Password">
+ <table>
+ <tr><td><b>Email address</b>
+     <td><input type=text name=email><p>
+ <tr><td align=center colspan=2>
+     <input type=submit value="Send me my Password">
+ </table>
  </form>`
