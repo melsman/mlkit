@@ -12,13 +12,48 @@ val content = `
   gennemføres for at det centrale personregister (matrikel) er
   opdateret.<p>
 
-  Vi har tre eksterne kilder: 
+  <h3>Arbejdsopgaver</h3>
+
+  <b>Det er pt. medarbejdere i udviklergruppen for mit.ITU, der har
+  ansvaret for at matriklen vedligeholdes.</b> Opgaverne er:
+
+  <ol>
+
+  <li>Mindst en gang ugenlig, at åbne siden <a
+  href="/scs/admin/user/imp/imp_form.sml">Centralt Person Register</a>
+  og manuelt håndtere de poster, som ikke automatisk indlæses i
+  registret, se vejledning nedenfor.
+
+  <li>Mindst en gang om året gennemgå <a
+  href="/scs/admin/user/imp/chk_inconsistencies.sml">integriteten</a>
+  i matriklen sammen med personaleafdelingen. Fejl skal rettes i
+  matriklen, i eksterne kilder eller begge steder.
+
+  <li>Det kan ske, at den samme person oprettes to gange i
+  matriklen. I de tilfælde må vi manuelt overføre information fra den
+  ene person til den anden og slette den der ikke skal benyttes.
+
+  <li>Det kan ske, at to personer blandes sammen i matriklen. I de
+  tilfælde må vi manuelt oprette den person som mangler og adskille
+  deres information.
+  
+  </ol>
+
+  <h3>Vejledning</h3>
+
+  Vi har fire eksterne kilder: 
 
   <ul>
     <li> Login fra IT-afdelingen
+
     <li> Personoplysninger på studerende fra HSAS
-    <li> Personoplysninger på personer der er tilknyttet IT-C
+
+    <li> Personoplysninger på personer der er tilknyttet ITU
     (personfortegnelsen)
+
+    <li> Personoplysninger på personer, som har accepteret deres
+    studieplads (optagelsesdatabasen).
+
   </ul>
 
   Vi gemmer kun simpel information om hver person i det centrale
@@ -27,8 +62,8 @@ val content = `
   de enkelte personoplysninger kommer fra. En enkelt person i det
   centrale personregister kan stamme fra mere end en ekstern kilde. En
   ansat vil eksempelvis stamme fra personfortegnelsen samt login fra
-  IT-afdeligen. En ansat der også er studerende vil stamme fra alle
-  tre eksterne kilder.<p>
+  IT-afdeligen. En ansat der også er studerende på en uddannelse kan
+  stamme fra alle fire eksterne kilder.<p>
 
   Data fra de eksterne kilder overføres til det centrale
   personregister en gang i døgnet. Vi har opstillet nogle regler, som
@@ -40,12 +75,12 @@ val content = `
 
   <ol> 
 
-  <li> der er et eksakt match i personfortegnelsen, dvs. enten at 1)
-  posten har tidligere været indlæst eller 2) at der findes en person
-  med samme email og normaliseret navn eller 3) at der findes en
-  person med samme cpr-nummer. Hvis en person har navnet "Hans Peter
-  Matiesen", så er det normaliserede navn "hansmatiesen", dvs. det
-  første fornavn samt efternavn sammensat med små bogstaver.
+  <li> der er et eksakt match i matriklen, dvs. enten at 1) posten har
+  tidligere været indlæst eller 2) at der findes en person med samme
+  email og normaliseret navn eller 3) at der findes en person med
+  samme cpr-nummer. Hvis en person har navnet "Hans Peter Matiesen",
+  så er det normaliserede navn "hansmatiesen", dvs. det første fornavn
+  samt efternavn sammensat med små bogstaver.
 
   <li> hvis der ikke er et eksakt match, så oprettes personen på ny
   såfremt, at der ikke allerede findes en person med et tilsvarende
@@ -57,7 +92,7 @@ val content = `
   indsætte de personer, der kræver manuel stillingtagen.<p>
 
   Skærmbilledet <a href="imp_form.sml">Centralt Person Register</a>
-  viser hvilke poster i de tre eksterne kilder, som ikke er blevet
+  viser hvilke poster i de fire eksterne kilder, som ikke er blevet
   indlæst. Ved at klikke på linket <b>automatisk indlæsning</b> vil
   systemet forsøge at indlæse posterne efter de regler der er
   beskrevet ovenfor.<p>
@@ -65,19 +100,25 @@ val content = `
   For hver post der ikke er indlæst kan vi ud over data på personen
   (navn, cpr og email) se hvornår posten sidst er forsøgt indlæst
   <b>Sidste Import</b> samt om der findes et <b>eksakt match</b> i det
-  centrale personregister. Der findes et eksakt match såfremt at
-  systemet kan finde en og kun en person i det centrale
-  personregister, som matcher udfra de opstillede regler beskrevet
-  ovenfor. Hvis dette er tilfældet vil posten blive indlæst næste gang
-  man klikker <b>automatisk indlæsning</b> eller klikker på linket
-  <b>import</b>, som vil stå i kolonnen <b>Eksakt Match</b>.<p>
+  centrale personregister. Der findes et eksakt match hvis systemet
+  kan finde en og kun en person i det centrale personregister, som
+  matcher udfra de opstillede regler beskrevet ovenfor. Hvis dette er
+  tilfældet vil posten blive indlæst næste gang man klikker
+  <b>automatisk indlæsning</b> eller klikker på linket <b>import</b>,
+  som vil stå i kolonnen <b>Eksakt Match</b>.<p>
 
   Såfremt posten ikke kan indlæses automatisk kan vi vælge at se mere
   information om posten (kolonne <b>Mere Info</b>). På skærmbilledet
   <b>Mere Info</b> kan vi vælge 1) at slette posten (således at den
   ikke vil blive en del af det centrale personregister), eller 2) at
   oprette personen som ny eller 3) at indlæse personen som en der
-  allerede eksisterer med samme normaliseret navn.
+  allerede eksisterer med samme normaliseret navn.<p>
+
+  Bemærk, at den samme person kan optræde flere gange i
+  optagelsesdatabasen. Vi tillader derfor at den samme person i
+  matriklen kan referere til flere poster i den samme eksterne
+  kilde. Dette vil kun være et tilfælde for optagelsesdatabasen, hvor
+  en studerende der f.eks. skifter linie vil optræde flere gange.<p>
 
   <h2>Check for Inkonsistente Data</h2>
 
