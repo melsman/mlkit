@@ -1,3 +1,4 @@
+
 (*build.sml*)
 
 (* This file builds an ML Kit from a consult file and exports an image into
@@ -18,9 +19,14 @@
 
 (* use of kit: kitversion [-script name] [-tempfile name] [-dir name]*)
 
-open Make;
 
-val release = "2.0"
+(* Building the ML Kit. *)
+(*CM.make (); (*"K";*)*)
+
+
+fun say s = TextIO.output(TextIO.stdOut, s)
+
+val release = "3.0(beta)"
 val header_with_release = 
          "\n\n\n\n               The ML Kit with Regions, release: " 
        ^ release ^ "\n\n\n"
@@ -34,41 +40,41 @@ val (export_file, kit_name, path_to_kit_script, kit_version) =
 let
   (* Functions to generate script file. *)
   fun init_script_file out_stream =
-    (output (out_stream, "(* ------------------------------------------------------------------------\n");
-     output (out_stream, " * ML Kit script file.                                                     \n");
-     output (out_stream, " *                                                                         \n");
-     output (out_stream, " *                                                                         \n");
-     output (out_stream, " * syntax:                                                                 \n");
-     output (out_stream, " *                                                                         \n");
-     output (out_stream, " *   DEC::= val ID : TYPE  = CONST REST                                    \n");
-     output (out_stream, " *   REST::= ;                                                             \n");
-     output (out_stream, " *       |  DEC                                                            \n");
-     output (out_stream, " *   ID  ::= sequence_of_letters_underbars_and_primes                      \n");
-     output (out_stream, " *   TYPE::= int | string | bool                                           \n");
-     output (out_stream, " *   CONST::= ml_integer_constant | ml_string_constant | ml_bool_constant  \n");
-     output (out_stream, " *                                                                         \n");
-     output (out_stream, " *   blanks, tabs and newlines are separators;                             \n");
-     output (out_stream, " *   comments are enclosed in (* and *) and can be nested.                 \n");
-     output (out_stream, " * ------------------------------------------------------------------------- *)\n\n\n"))
+    (TextIO.output (out_stream, "(* ------------------------------------------------------------------------\n");
+     TextIO.output (out_stream, " * ML Kit script file.                                                     \n");
+     TextIO.output (out_stream, " *                                                                         \n");
+     TextIO.output (out_stream, " *                                                                         \n");
+     TextIO.output (out_stream, " * syntax:                                                                 \n");
+     TextIO.output (out_stream, " *                                                                         \n");
+     TextIO.output (out_stream, " *   DEC::= val ID : TYPE  = CONST REST                                    \n");
+     TextIO.output (out_stream, " *   REST::= ;                                                             \n");
+     TextIO.output (out_stream, " *       |  DEC                                                            \n");
+     TextIO.output (out_stream, " *   ID  ::= sequence_of_letters_underbars_and_primes                      \n");
+     TextIO.output (out_stream, " *   TYPE::= int | string | bool                                           \n");
+     TextIO.output (out_stream, " *   CONST::= ml_integer_constant | ml_string_constant | ml_bool_constant  \n");
+     TextIO.output (out_stream, " *                                                                         \n");
+     TextIO.output (out_stream, " *   blanks, tabs and newlines are separators;                             \n");
+     TextIO.output (out_stream, " *   comments are enclosed in (* and *) and can be nested.                 \n");
+     TextIO.output (out_stream, " * ------------------------------------------------------------------------- *)\n\n\n"))
 
-  fun end_script_file out_stream = output(out_stream, "\n\n;\n\n")
+  fun end_script_file out_stream = TextIO.output(out_stream, "\n\n;\n\n")
     
   fun insert_comment_script_file out_stream comment =
-    output (out_stream, ("\n(* " ^ comment ^ " *)\n"))
+    TextIO.output (out_stream, ("\n(* " ^ comment ^ " *)\n"))
 
   fun insert_string_flag out_stream name_of_flag value =
-    output (out_stream, ("val " ^ name_of_flag ^ " : string = \"" ^ value ^ "\"\n"))
+    TextIO.output (out_stream, ("val " ^ name_of_flag ^ " : string = \"" ^ value ^ "\"\n"))
 
-  fun insert_bool_flag out_stream name_of_flag true  = output (out_stream, ("val " ^ name_of_flag ^ " : bool = true\n"))
-    | insert_bool_flag out_stream name_of_flag false = output (out_stream, ("val " ^ name_of_flag ^ " : bool = false\n"))
+  fun insert_bool_flag out_stream name_of_flag true  = TextIO.output (out_stream, ("val " ^ name_of_flag ^ " : bool = true\n"))
+    | insert_bool_flag out_stream name_of_flag false = TextIO.output (out_stream, ("val " ^ name_of_flag ^ " : bool = false\n"))
 
   fun insert_int_flag out_stream name_of_flag value =
-    output (out_stream, ("val " ^ name_of_flag ^ " : int = " ^ Int.string value ^ "\n"))
+    TextIO.output (out_stream, ("val " ^ name_of_flag ^ " : int = " ^ Int.toString value ^ "\n"))
 
   (* Read characters until a newline is found. *)
   fun read_string s =
     let
-      val ch = input(std_in, 1)
+      val ch = TextIO.inputN(TextIO.stdIn, 1)
     in
       if ch = "\n" then
         s
@@ -76,17 +82,23 @@ let
         read_string (s^ch)
     end;
 
-  val upper = implode o map String.upper o explode
+  val upper = implode o map Char.toUpper o explode
   fun user_types_y () = upper (read_string "") = "Y"
   fun wait_for_return () = (read_string ""; ())
     
   (* Create directory d, with specified acces rights. *)
   val access_rights = 505
-  fun create_dir d = SML_NJ.Unsafe.SysIO.mkdir (d,access_rights)
+  fun create_dir d = OS.FileSys.mkDir (d(*,access_rights*))
     
   (* Create a symbolic link: dest --> src *)
+  exception LN
+  fun unixln_s(src, dest) = 
+    if OS.Process.system("ln -s " ^ src ^ " " ^ dest) = OS.Process.success then ()
+    else raise LN
+
   fun mk_sym_link src dest =
-    SML_NJ.Unsafe.SysIO.symlink (src,dest)
+    (*SML_NJ.Unsafe.SysIO.symlink (src,dest)*)
+    unixln_s(src,dest)
     handle _ =>
       (print ("\nCould not create the symbolic link\n\n\
                \   \"" ^ dest ^ "\".\n\n\
@@ -95,7 +107,8 @@ let
        
 
   (* Return true if file or directory d exists. *)
-  fun exists_file d = SML_NJ.Unsafe.SysIO.access (d,[])
+  fun exists_file d = (*SML_NJ.Unsafe.SysIO.access (d,[])*)
+                      OS.FileSys.isDir d handle _ => false
 
   (* Find a temp file to use when building the ML Kit. *)
   fun gen_tmp_file name =
@@ -104,8 +117,13 @@ let
     else
       name
 
-  fun exit () = (print "exiting...\n";
+  exception EXIT
+  fun exit () = (TextIO.output(TextIO.stdOut,
+                "\n*** Aborting installation; please restart SML session. ***\n");
+                raise EXIT)
+(* (print "exiting...\n";
 		 SML_NJ.Unsafe.CInterface.exit 0)
+*)
 
   (*-------------------------------------------*)
   (* Initialize version, name and script file. *)
@@ -135,11 +153,13 @@ let
 
   (* Do we know the backend. *)
   val backend = 
-    case explode consult_file_version
-      of "C" :: rest => "C"
-       | "H"::"P"::"P"::"A"::rest => "HPPA"
+   (case explode consult_file_version
+      of #"C" :: rest => "C"
+       | #"H" :: #"P" :: #"P"::  #"A" :: rest => "HPPA"
        | _ => (print ("I do not know backend " ^ consult_file_version ^ "\n");
 	       exit ())
+   )
+
 
   (* Which architecture to use. *)  
   val _ = print "\nDo you want the Kit to run on SUN_OS4 or HPUX? "
@@ -178,7 +198,8 @@ let
 
   fun gen_script () =
     let
-      val out_stream = open_out (path_to_kit_script)
+      val out_stream = TextIO.openOut (path_to_kit_script)
+                       handle _ => (say("cannot open: "^ path_to_kit_script); exit())
     in
       init_script_file out_stream;
 
@@ -228,10 +249,12 @@ let
       insert_comment_script_file out_stream "File";
 
       insert_comment_script_file out_stream "remember to end directories with a /";
-      insert_string_flag out_stream "source_directory" src_directory;
+(*      insert_string_flag out_stream "source_directory" src_directory;
       insert_string_flag out_stream "target_directory" target_directory;
+*)
       insert_bool_flag out_stream "log_to_file" true;
-      insert_string_flag out_stream "log_directory" log_directory;
+(*      insert_string_flag out_stream "log_directory" log_directory;
+*)
       insert_string_flag out_stream "path_to_kit_script" path_to_kit_script;
       insert_string_flag out_stream "path_to_runtime" path_to_runtime;
       insert_string_flag out_stream "path_to_runtime_prof" path_to_runtime_prof;
@@ -248,15 +271,15 @@ let
       insert_comment_script_file out_stream "The following eight are used in TestEnv only.";
 
       insert_string_flag out_stream "test_log" "std_out";
-      insert_bool_flag out_stream "size_of_ml_kit_test" false;
+(*      insert_bool_flag out_stream "size_of_ml_kit_test" false;*)
       insert_bool_flag out_stream "acceptance_test" true;
       insert_bool_flag out_stream "quicker_acceptance_test" true;
       insert_bool_flag out_stream "performance_test" false;
 
-      insert_string_flag out_stream "kit_source_directory" kit_source_directory;
+(*      insert_string_flag out_stream "kit_source_directory" kit_source_directory;*)
       insert_string_flag out_stream "test_env_directory" test_env_directory;
       insert_string_flag out_stream "kit_version" kit_version;
-      insert_string_flag out_stream "path_to_consult_file" path_to_consult_file;
+(*      insert_string_flag out_stream "path_to_consult_file" path_to_consult_file;*)
 
 
       insert_comment_script_file out_stream "Debug Kit";
@@ -306,10 +329,10 @@ let
 	 insert_string_flag out_stream "c_compiler" "gcc -ansi";
 	 insert_string_flag out_stream "c_libs" "-lm");
 
-      insert_string_flag out_stream "link_filename" "link";
+(*      insert_string_flag out_stream "link_filename" "link";*)
 
       end_script_file out_stream;
-      close_out out_stream
+      TextIO.closeOut out_stream
     end
 in
   print ("\n\n    Name of ML Kit........: " ^ kit_version);
@@ -372,15 +395,13 @@ in
   wait_for_return ();
   print "\n\n\n\n\n";
 
-  setTempfile temp_file;
-  loadFrom consult_file;
-  SML_NJ.Print.signatures := 0;
-  SML_NJ.Control.Runtime.softmax := 70000000; 
+  (*setTempfile temp_file;*)
+ (* loadFrom consult_file;*)
+  (*SML_NJ.Print.signatures := 0;*)
+  (*SML_NJ.Control.Runtime.softmax := 70000000; *)
   (export_file, kit_name, path_to_kit_script, kit_version)
 end;
 
-(* Building the ML Kit. *)
-make "K";
 
 print "\n\nFinished building kit; now exporting it.\n\n";
 
@@ -389,45 +410,44 @@ fun how_to header = header ^ kit_name ^ " [-script s] [-dir d]\n\n\
          \  and d is the directory you want to use as working directory\n\n"
 
 fun process_args ("-script" :: s :: rest) = 
-                  (Flags.lookup_string_entry "path_to_kit_script" := s; 
+                  (K.Flags.lookup_string_entry "path_to_kit_script" := s; 
                    process_args rest)
 (*       | process_args ("-tempfile" :: s :: rest) = 
                   (setTempfile s; process_args rest)*)
-       | process_args ("-dir" :: s :: rest) = (System.cd s; process_args rest)
+       | process_args ("-dir" :: s :: rest) = (OS.FileSys.chDir s; process_args rest)
        | process_args [] = print (how_to "\nalso allowed: ")
        | process_args (bad::other) = 
                   print (how_to("\nArgument '"^bad^ 
                                 "' not recognized; try "))
 
-fun fn_to_export (argv, environ) =
+fun fn_to_export (_,args) =
       (print (header_with_release) ;
-       Flags.lookup_string_entry "path_to_kit_script" := path_to_kit_script ;
-       (case argv of
-	    _ (*the name of the executable*) :: args => process_args args
-	| _ => print (how_to "use: "));
+       K.Flags.lookup_string_entry "path_to_kit_script" := path_to_kit_script ;
+       process_args args;
        print ("Script file is " ^ 
-              Flags.get_string_entry "path_to_kit_script" ^ "\n\
+              K.Flags.get_string_entry "path_to_kit_script" ^ "\n\
         	\Reading script file.\n") ;
-       read_script () ;
+       K.Flags.read_script (path_to_kit_script) ;
        print ("\n\nVersion " 
-              ^ Flags.get_string_entry "kit_version" ^ ".\n\n") ;
-       interact ()) ;
+              ^ K.Flags.get_string_entry "kit_version" ^ ".\n\n") ;
+       K.interact ();
+       OS.Process.success) ;
       
 print ("\n\nAfterwards, the new kit can be started by typing\n\n\
  \     ../bin/" ^ kit_version ^ "/kit\n\n") ;
 
 fun exportWithSML_NJ() =
-if exportML export_file then 
+if SMLofNJ.exportML export_file then 
   (print header_with_release;
-   Flags.lookup_string_entry "path_to_kit_script" := path_to_kit_script ;
-   (case SML_NJ.argv () of
+   K.Flags.lookup_string_entry "path_to_kit_script" := path_to_kit_script ;
+   (case SMLofNJ.getAllArgs () of
 	_ :: args => process_args args
       | _ => print (how_to "\nalso allowed: ")) ;
-   print ("Script file is " ^ Flags.get_string_entry "path_to_kit_script" ^ "\n\
+   print ("Script file is " ^ K.Flags.get_string_entry "path_to_kit_script" ^ "\n\
           \Reading script file.\n") ;
-   read_script () ; (* moved to after processing args - Martin *)
-   print ("Version " ^ Flags.get_string_entry "kit_version" ^ ".\n") ;
-   interact ())
+   K.Flags.read_script (path_to_kit_script) ; (* moved to after processing args - Martin *)
+   print ("Version " ^ K.Flags.get_string_entry "kit_version" ^ ".\n") ;
+   K.interact ())
 
    (* It would be nicer for a kit-developer if path_to_kit_script was
     * a global ref and not (re-)generated by Flags everytime one
@@ -437,9 +457,9 @@ else
   print ("\n\n\nFinished exporting.  Type ctrl-D to exit sml/nj.\n\
    \Start the new kit by typing \"../bin/" ^ kit_version ^ "/kit\".\n");
 
-(*
-exportFn (export_file ^ "_standalone", fn_to_export) : unit;
-*)
+
+SMLofNJ.exportFn (export_file (*^ "_standalone"*), fn_to_export) : unit;
+
 
 (******************************************************************
 * The line below may be used instead of the line above if one instead 
@@ -447,7 +467,7 @@ exportFn (export_file ^ "_standalone", fn_to_export) : unit;
 *   programming). :
 *
 ******************************************************************)
-exportWithSML_NJ();
+(*exportWithSML_NJ();*)
 
 
 
