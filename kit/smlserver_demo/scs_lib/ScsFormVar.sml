@@ -432,14 +432,14 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	   ScsLang.en => `^s
 	     <blockquote>A few examples of valid emails:
 	     <ul>
-	     <li>login@it-c.dk
+	     <li>login@itu.dk
 	     <li>user@supernet.com
 	     <li>FirstLastname@very.big.company.com\n
 	     </ul></blockquote>`
 	| ScsLang.da => `^s
 	     <blockquote>Her er nogle eksempler på emails:
 	     <ul>
-	     <li>login@it-c.dk
+	     <li>login@itu.dk
 	     <li>user@supernet.com
 	     <li>FirstLastname@very.big.company.com
 	     </ul></blockquote>`)
