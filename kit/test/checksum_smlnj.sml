@@ -43,4 +43,4 @@ structure Main =
 	 end
    end
 
-val _ = Main.doit()
+fun doit() = Main.doit()
