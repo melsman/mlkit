@@ -6,7 +6,7 @@
   type 'a ref = 'a ref
 
 
-  fun print (s:string) : unit = prim("printString", "printString", s)
+  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
 
   datatype int_list = C of int * int_list
                     | N

@@ -7,14 +7,14 @@
 
   fun op = (x: ''a, y: ''a): bool = prim ("=", "=", (x, y))
 
-  fun print (s:string) : unit = prim("printString", "printString", s)
+  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
   fun printNum (n:int):unit = prim("printNum","printNum",n)
 
 val x = 
  let
    exception E
-   val z = (if (2=2) then (raise E) else print "E not raised\n")
-     handle E => print "E raised\n"
+   val z = (if (2=2) then (raise E) else print "E not raised, error\n")
+     handle E => print "E raised, ok\n"
 (*
    exception F of int
    val y = (if (2=2) then (raise F 3) else print "F not raised\n")

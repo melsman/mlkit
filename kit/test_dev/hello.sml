@@ -1,5 +1,5 @@
 let
-fun print (s:string) : unit = prim("printString", "printString", s)
+fun print (s:string) : unit = prim("printStringML", "printStringML", s)
 in
  print "It works!"
 end

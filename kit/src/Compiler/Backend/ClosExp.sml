@@ -1825,7 +1825,7 @@ struct
 		     LET{pat=[lv_s],
 			 bind=STRING s,
 			 scope=LET{pat=[lv_sw],
-				   bind=CCALL{name="equalString",args=[ce,VAR lv_s],rhos_for_result=[]},
+				   bind=CCALL{name="equalStringML",args=[ce,VAR lv_s],rhos_for_result=[]},
 				   scope=SWITCH_I(SWITCH(VAR lv_sw,[(BI.ml_true,ce')],
 							 compile_seq_switch(ce,rest,default)))}}
 		   end
@@ -2008,14 +2008,14 @@ struct
 			if TyName.eq(tn,TyName.tyName_INT) orelse TyName.eq(tn,TyName.tyName_BOOL) orelse TyName.eq(tn,TyName.tyName_REF) then
 			  CCALL{name=BI.EQUAL_INT,args=[ce1,ce2],rhos_for_result=[]}
 			else if TyName.eq(tn,TyName.tyName_STRING) then
-			  CCALL{name="equalString",args=[ce1,ce2],rhos_for_result=[]}
+			  CCALL{name="equalStringML",args=[ce1,ce2],rhos_for_result=[]}
 			     else if TyName.eq(tn,TyName.tyName_WORD_TABLE) then
 			       die "`=' on word_tables! EliminateEq should have dealt with this"
 				  (*TODO 11/02/1998 13:47. tho.  You can delete these two
 				   die's when EliminateEq has been changed.*)
-				  else CCALL{name="equalPoly",args=[ce1,ce2],rhos_for_result=[]}
+				  else CCALL{name="equalPolyML",args=[ce1,ce2],rhos_for_result=[]}
 		    | RType.RECORD [] => CCALL{name=BI.EQUAL_INT,args=[ce1,ce2],rhos_for_result=[]} 
-		    | _ => CCALL{name="equalPoly",args=[ce1,ce2],rhos_for_result=[]})
+		    | _ => CCALL{name="equalPolyML",args=[ce1,ce2],rhos_for_result=[]})
 	       in
 		 (insert_ses(ce,ses),NONE_SE)
 	       end
@@ -2512,7 +2512,7 @@ struct
 		 val ce = liftTrip tr env lab
 		 fun compile_seq_switch(ce,[],default) = default
 		   | compile_seq_switch(ce,(s,ce')::rest,default) =
-		   SWITCH_I(SWITCH(CCALL{name="equalString",args=[ce,STRING s],rhos_for_result=[]},
+		   SWITCH_I(SWITCH(CCALL{name="equalStringML",args=[ce,STRING s],rhos_for_result=[]},
 				   [(BI.ml_true,ce')],
 				   compile_seq_switch(ce,rest,default)))
 		 val lv_str = fresh_lvar("sw_str")
@@ -2624,14 +2624,14 @@ struct
 			TyName.eq(tn,TyName.tyName_REF) then
 			CCALL{name=BI.EQUAL_INT,args=[ce1,ce2],rhos_for_result=[]}
 		      else if TyName.eq(tn,TyName.tyName_STRING) then
-			CCALL{name="equalString",args=[ce1,ce2],rhos_for_result=[]}
+			CCALL{name="equalStringML",args=[ce1,ce2],rhos_for_result=[]}
 			   else if TyName.eq(tn,TyName.tyName_WORD_TABLE) then
 			     die "`=' on word_tables! EliminateEq should have dealt with this"
 				(*TODO 11/02/1998 13:47. tho.  You can delete these two
 				 die's when EliminateEq has been changed.*)
-				else CCALL{name="equalPoly",args=[ce1,ce2],rhos_for_result=[]}
+				else CCALL{name="equalPolyML",args=[ce1,ce2],rhos_for_result=[]}
 		  | RType.RECORD [] => CCALL{name=BI.EQUAL_INT,args=[ce1,ce2],rhos_for_result=[]} 
-		  | _ => CCALL{name="equalPoly",args=[ce1,ce2],rhos_for_result=[]})
+		  | _ => CCALL{name="equalPolyML",args=[ce1,ce2],rhos_for_result=[]})
 	       end
 	   | MulExp.CCALL({name = "id", mu_result, rhos_for_result}, trs) =>
 	       (case trs of

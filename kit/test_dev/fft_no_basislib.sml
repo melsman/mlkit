@@ -19,7 +19,7 @@ infix  0  before
 
   fun a <> b = not (a = b)
 
-  fun print (s:string) : unit = prim("printString", "printString", s)
+  fun print (s:string) : unit = prim("printStringML", "printStringML", s)
   fun printReal (r:real) : unit = prim("printReal", "printReal", r)
     fun real (x : int) : real = prim ("realInt", "realInt", x)
     fun floor (x : real) : int = prim ("floorFloat", "floorFloat", x)    (* may raise Overflow *)
@@ -28,11 +28,11 @@ infix  0  before
 
   val op mod : (int * int) -> int = op mod 
 fun (a:real) / (b:real) : real = prim ("divFloat", "divFloat", (a,b))
-fun implode (chars : char list) : string = prim ("implodeChars", "implodeCharsProfiling", chars)
-fun concat (ss : string list) : string = prim ("implodeString", "implodeStringProfiling", ss)
-fun (s : string) ^ (s' : string) : string = prim ("concatString", "concatStringProfiling", (s, s'))
+fun implode (chars : char list) : string = prim ("implodeCharsML", "implodeCharsProfilingML", chars)
+fun concat (ss : string list) : string = prim ("implodeStringML", "implodeStringProfilingML", ss)
+fun (s : string) ^ (s' : string) : string = prim ("concatStringML", "concatStringProfilingML", (s, s'))
 fun str (c : char) : string = implode [c]
-fun size (s:string): int = prim ("sizeString", "sizeString", s)
+fun size (s:string): int = prim ("sizeStringML", "sizeStringML", s)
 
   local
     fun append [] ys = ys

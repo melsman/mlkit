@@ -436,21 +436,21 @@ struct
     (* reg_map is a register map describing live registers at entry to the function       *)
     (* The stub requires reg_map to reside in tmp_reg1 and the return address in tmp_reg0 *)
     fun do_gc(reg_map: Word32.word,C) =
-      if !do_garbage_collection then
-	let
+      if !do_garbage_collection then C (*2001-01-04, Niels*)
+(*	let
 	  val l = new_local_lab "return_from_gc_stub"
 	  val reg_map_immed = "0X" ^ Word32.fmt StringCvt.HEX reg_map
 	  val size_ff = 0 (*dummy*)
 	in
 	  load_label_addr(time_to_gc_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff, (* tmp_reg1 = &gc_flag *)
 	  I.movl(D("0",tmp_reg1),R tmp_reg1) ::                       (* tmp_reg1 = gc_flag  *)
-	  I.cmpl(R tmp_reg1, I "0") ::
+	  I.cmpl(I "0", R tmp_reg1) ::
 	  I.jne l ::
 	  I.movl(I reg_map_immed, R tmp_reg1) ::                    (* tmp_reg1 = reg_map  *)
 	  load_label_addr(l,SS.PHREG_ATY tmp_reg0,tmp_reg0,size_ff, (* tmp_reg0 = return address *)
 	  I.jmp(L gc_stub_lab) ::
 	  I.lab l :: C))
-	end
+	end*)
       else C
 
     (*********************)
@@ -1698,6 +1698,7 @@ struct
 	    I.movl(L exn_ptr_lab, R tmp_reg1) ::
 	    compile_c_call_prim("deallocateRegionsUntil_X86",[SS.PHREG_ATY tmp_reg1],NONE,0,tmp_reg1,
 
+
 	    comment ("RESTORE EXN PTR",
 	    I.movl(L exn_ptr_lab, R tmp_reg1) ::
             I.movl(D("8",tmp_reg1), R tmp_reg0) ::
@@ -1713,6 +1714,7 @@ struct
 	    comment ("JUMP TO HANDLE FUNCTION",
 	    I.movl(D("4", tmp_reg1), R clos_reg) ::         (* Fetch Closure into Closure Argument Register *)
 	    I.movl(D(offset_codeptr,clos_reg), R tmp_reg0) ::
+
 	    I.jmp (R tmp_reg0) :: C))))))
 	  end
 
@@ -1873,15 +1875,19 @@ struct
 		 I.movl(R eax, L (DatLab lab)) :: C) C region_labs
 
 	fun push_top_level_handler C =
-	  let fun code_ptr_offset C = if !BI.tag_values then I.addl(I "4", R tmp_reg1) :: C 
-				      else C
+	  let 
+	    fun gen_clos C = 
+	      if !BI.tag_values then 
+		copy(esp, tmp_reg1,
+		I.addl(I "-4", R tmp_reg1) ::
+		I.movl(R tmp_reg1, D("4", esp)) :: C)
+	      else
+		I.movl(R esp, D("4", esp)) :: C		  
 	  in
             comment ("PUSH TOP-LEVEL HANDLER ON STACK",
 	    I.subl(I "16", R esp) ::
-	    I.movl(LA (NameLab "TopLevelHandlerLab"), R tmp_reg1) ::
-	    code_ptr_offset(
-            I.movl(R tmp_reg1, D("0", esp)) ::
-	    I.movl(R esp, D("4", esp)) ::
+	    I.movl(LA (NameLab "TopLevelHandlerLab"), D("0", esp)) ::
+	    gen_clos (	    
 	    I.movl(L exn_ptr_lab, R tmp_reg1) ::
             I.movl(R tmp_reg1, D("8", esp)) ::
 	    I.movl(R esp, D("12", esp)) ::
@@ -1927,7 +1933,7 @@ struct
 	    generate_jump_code_progunits(progunit_labs,
 
             (* Exit instructions *)
-	    compile_c_call_prim("terminate", [SS.INTEGER_ATY res], NONE,0,eax,
+	    compile_c_call_prim("terminateML", [SS.INTEGER_ATY res], NONE,0,eax,
 	    (*I.leave :: *)
 	    I.ret :: C))))))))
 	  end

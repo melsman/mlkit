@@ -133,7 +133,8 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 	  val shell_cmd = !(Flags.lookup_string_entry "c_compiler") ^ " -o " ^ run ^ " " ^ 
 	    concat files ^ path_to_runtime() ^ " " ^ !(Flags.lookup_string_entry "c_libs")
       in execute_command shell_cmd;
-	TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n")
+	TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n" ^
+		       "[used link: " ^ shell_cmd ^ "]\n" (*to be removed, 2001-01-04, Niels*))
       end 
 
   end;

@@ -9,9 +9,9 @@ local
 infix  6  +
 infixr 5  ::
 
-fun printNum(i:int):unit = prim ("printNum","printNum",i)
+fun printNum(i:int):unit = prim ("printNumML","printNumML",i)
 
-fun print (x:string):unit = prim("printString","printString",x)
+fun print (x:string):unit = prim("printStringML","printStringML",x)
 fun append [] ys = ys
   | append (x::xs) ys = x :: append xs ys
   

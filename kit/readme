@@ -25,7 +25,7 @@ time to do so.
 ---------------
 
 To install the ML Kit, you need Standard ML of New Jersey version
-110.0.3 (later versions won't work). The ML Kit Web site at the top of
+110.0.6 (later versions won't work). The ML Kit Web site at the top of
 this file has links to SML/NJ.  The executable Kit will take up around
 8Mb of disc space. Building it typically takes half an hour or so and
 is best done on a machine with at least 64Mb of RAM. You also need to

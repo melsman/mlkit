@@ -22,14 +22,14 @@ infix  0  before
     exception Chr
     exception Fail of string 
 
-fun implode (chars : char list) : string = prim ("implodeChars", "implodeCharsProfiling", chars)
-fun concat (ss : string list) : string = prim ("implodeString", "implodeStringProfiling", ss)
-fun (s : string) ^ (s' : string) : string = prim ("concatString", "concatStringProfiling", (s, s'))
+fun implode (chars : char list) : string = prim ("implodeCharsML", "implodeCharsProfilingML", chars)
+fun concat (ss : string list) : string = prim ("implodeStringML", "implodeStringProfilingML", ss)
+fun (s : string) ^ (s' : string) : string = prim ("concatStringML", "concatStringProfilingML", (s, s'))
 fun str (c : char) : string = implode [c]
-fun size (s:string): int = prim ("sizeString", "sizeString", s)
-fun chr (i : int) : char = prim ("chrChar", "chrChar", (i, Chr))
+fun size (s:string): int = prim ("sizeStringML", "sizeStringML", s)
+fun chr (i : int) : char = prim ("chrCharML", "chrCharML", (i, Chr))
 fun ord (c : char) : int = prim ("id", "id", c)
-fun print (x:string):unit = prim("printString","printString",x)
+fun print (x:string):unit = prim("printStringML","printStringML",x)
       fun append [] ys = ys
 	| append (x::xs) ys = x :: append xs ys
       fun xs @ ys = append xs ys
