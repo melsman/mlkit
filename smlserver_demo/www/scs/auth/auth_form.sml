@@ -49,7 +49,7 @@ val _ = ScsPage.returnPg ("ITU.net Authentication")
     </tr>
    </table>
    </form>
-   ^(UcsPage.icon_forward) <a href="mail_passwd_form.sml">Få password</a><br>
-   ^(UcsPage.icon_forward) (Eng. <a href="mail_passwd_form.sml">Get password</a>)<p>`) ^^ 
+   ^(UcsPage.icon_forward()) <a href="mail_passwd_form.sml">Få password</a><br>
+   ^(UcsPage.icon_forward()) (Eng. <a href="mail_passwd_form.sml">Get password</a>)<p>`) ^^ 
    `</center><p></blockquote>`)))
 
