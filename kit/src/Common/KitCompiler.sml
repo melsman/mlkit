@@ -842,7 +842,7 @@ fun i a = (System.cd "/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/src/" 
 	   Flags.interact ()) ;
 fun ib a = (System.cd "/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/src/" ;
 	   Flags.lookup_string_entry "path_to_kit_script"
-	   := "../bin/ML_to_HPPA_on_HPUX/basislib.script" ;
+	   := "../bin/basislib.script" ;
 	   (*this path means that you must be in the src/ directory,
 	    which is where you will be, if you want Make.again{} etc.
 	    to work.  20/06/1997 13:32. tho.*)
