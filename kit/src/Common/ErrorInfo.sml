@@ -73,7 +73,6 @@ functor ErrorInfo(structure StatObject : STATOBJECT
       | QUALIFIED_ID of longid
       | UNGUARDED_TYVARS of TyVar list
       | WRONG_ARITY of {expected: int, actual: int}
-      | NOTRESOLVED
       | FLEX_REC_NOT_RESOLVED 
       | REPEATED_IDS of RepeatedId list
       | TYVARS_NOT_IN_TYVARSEQ of TyVar list
@@ -200,9 +199,6 @@ functor ErrorInfo(structure StatObject : STATOBJECT
       | report (WRONG_ARITY{expected, actual}) =
 	  line ("Wrong arity (expected " ^ Int.string expected
 		^ ", actual " ^ Int.string actual ^ ").")
-
-      | report (NOTRESOLVED) =
-	  line "Overloading not resolved."
 
       | report (FLEX_REC_NOT_RESOLVED) =
 	  line "Overloading not resolved in record containing the\
