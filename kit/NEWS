@@ -1,5 +1,7 @@
 ML Kit NEWS file
 
+       **** ML Kit version 4.1.3 is released (internally) ****
+
  * mael 2002-11-08: Implemented uncurrying of functions. This
    optimization has an important impact on execution times of compiled
    programs. The optimization is safe-for space w.r.t. the region-based
@@ -9,6 +11,8 @@ ML Kit NEWS file
  * mael 2002-11-05: Improved pattern-match compilation. The generated
    code now shares (in most cases) the extraction of values from the
    root node in a match.
+
+       **** ML Kit version 4.1.2 is released (internally) ****
 
  * mael 2002-10-28: Started work on Barry - a Standard ML barifier
    (e.g., simplifier). Barry eliminates modules, pattern matching,
