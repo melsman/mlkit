@@ -559,6 +559,8 @@ as
   exception
     when no_data_found then
       return; /* We silently ignore that the import row does not exist. */
+    when others then
+      return; /* We silently ignore errors, f.ex. update of email that exists already. */
   end imp_row_into_user;
 
   procedure imp_row (
