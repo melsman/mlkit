@@ -218,7 +218,7 @@ static void restoreHeap(Heap *h)
   h->status = HSTAT_CLEAN;
 }
 
-void initializeHeap(Heap *h, int *sp, int *exnPtr)
+void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt)
 {
   Ro *r0, *r2, *r3; 
 
@@ -231,6 +231,7 @@ void initializeHeap(Heap *h, int *sp, int *exnPtr)
   
   h->sp = sp;
   h->exnPtr = exnPtr;
+  h->exnCnt = exnCnt;
 
   //  printf("r0 = %x, r2 = %x, r3=%x, h=%x, ds=%x\n", r0,r2,r3,h,h->ds);
 

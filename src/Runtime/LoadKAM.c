@@ -25,6 +25,7 @@
  * ----------------------------------------------------- */
 
 #if ( THREADS && CODE_CACHE )
+extern void logMsg(char* msg);
 
 static unsigned int 
 hashString(const char *str)
@@ -682,7 +683,7 @@ interpLoadExtend(Interp* interp, char* file)
 #define GLOBAL_EXCON(X, NAME) { \
   debug(printf("Allocating global excon (%d) at sp=%x\n", (X), sp)); \
   selectStackDef(0) = (unsigned long)(sp + 1); \
-  selectStackDef(1) = exname_counter++; \
+  selectStackDef(1) = exnCnt++; \
   selectStackDef(2) = (unsigned long)convertStringToML((Region)*(ds + 2), (NAME)); \
   *(ds + (X)) = (unsigned long)sp; \
   offsetSP(3); \
@@ -746,7 +747,7 @@ int
 interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr) 
 {
   unsigned long *ds, *sp, *exnPtr, *sp0;
-  unsigned long exname_counter = 0;
+  unsigned long exnCnt = 0;
   Heap* h;
   int res;
   LongList* p;
@@ -806,35 +807,36 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
 
       // start interpretation by interpreting the init_code
       res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
-		       exname_counter,(bytecode_t)init_code);
+		       &exnCnt,(bytecode_t)init_code);
   
       if ( res >= 0 && extra_code )
 	{
-	  initializeHeap(h,(int*)sp0,(int*)exnPtr);
+	  initializeHeap(h,(int*)sp0,(int*)exnPtr, exnCnt);
 	}
       else 
 	{
-	  // memo: log error
+#ifdef THREADS
+	  logMsg("Exception raised during execution of library code");
+#endif
 	  deleteHeap(h);
 	  return res;
 	}
     }
   
-  // no exception raised by code so far
-
-  // perhaps jump to the extra bytecode
+  // no exception raised by code so far; perhaps jump to the extra bytecode
   if ( extra_code ) {
 
     // fetch heap data
     (int*)sp = h->sp;
     (int*)ds = h->ds;
     (int*)exnPtr = h->exnPtr;
+    exnCnt = h->exnCnt;
     topRegion = h->r3copy->r;
 
     touchHeap(h);
 
     res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
-		     exname_counter,(bytecode_t)extra_code);
+		     &exnCnt,(bytecode_t)extra_code);
 
     releaseHeap(h);
   }    

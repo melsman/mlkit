@@ -1,6 +1,6 @@
 File NEWS_SMLSERVER
 
- * nh 2002-10-31: Ns Cache version 2 - Typed caching and memorisation
+ * nh 2002-10-31: Ns Cache version 2 - Typed caching and memoization
 
  * mael 2002-10-31: Execution caching of library initialization.
 
