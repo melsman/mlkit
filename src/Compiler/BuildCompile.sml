@@ -498,6 +498,7 @@ functor BuildCompile (structure TyName : TYNAME
     structure CompileBasis =
       CompileBasis(structure CompilerEnv = CompilerEnv
 		   structure Con = Con
+		   structure Lvars = Lvars
 		   structure Excon = Excon
 		   structure TyName = TyName
 		   structure LambdaStatSem = LambdaStatSem
