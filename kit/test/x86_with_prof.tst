@@ -69,7 +69,7 @@ barnes-hut.pm           tx tc gc prof
 nucleic.pm              tx tc gc prof
 ray.pm                  tx tc gc prof
 ratio-regions.sml       tx tc gc prof
-kitmolgard.sml          tx tc gc (*prof*)
+kitmolgard.sml          tx tc gc prof
 msort.pm                tx tc gc prof
 tststrcmp.sml                 gc prof
 FuhMishra.pm            tx tc gc prof
