@@ -94,7 +94,7 @@ rm -rf $RPM_BUILD_ROOT
 /usr/share/smlserver/copyright
 
 # ML Kit Executables
-/usr/share/smlserver/bin/mlkit_web.x86-linux
+/usr/share/smlserver/bin/smlserverc.x86-linux
 
 # Module for AOLserver (includes runtime system)
 /usr/share/smlserver/bin/nssml.so
@@ -106,11 +106,11 @@ rm -rf $RPM_BUILD_ROOT
 /usr/share/smlserver/basislib
 
 %post
-echo '#!/bin/sh' > ${RPM_INSTALL_PREFIX}/bin/mlkit_web
-echo ''${RPM_INSTALL_PREFIX}/bin/mlkit_web.x86-linux ${RPM_INSTALL_PREFIX}' $*' >> ${RPM_INSTALL_PREFIX}/bin/mlkit_web
-chmod a+x ${RPM_INSTALL_PREFIX}/bin/mlkit_web
-ln -sf ${RPM_INSTALL_PREFIX}/bin/mlkit_web /usr/bin/mlkit_web
+echo '#!/bin/sh' > ${RPM_INSTALL_PREFIX}/bin/smlserverc
+echo ''${RPM_INSTALL_PREFIX}/bin/smlserverc.x86-linux ${RPM_INSTALL_PREFIX}' $*' >> ${RPM_INSTALL_PREFIX}/bin/smlserverc
+chmod a+x ${RPM_INSTALL_PREFIX}/bin/smlserverc
+ln -sf ${RPM_INSTALL_PREFIX}/bin/smlserverc /usr/bin/smlserverc
 
 %preun
-rm -f ${RPM_INSTALL_PREFIX}/bin/mlkit_web
+rm -f ${RPM_INSTALL_PREFIX}/bin/smlserverc
 

@@ -47,11 +47,11 @@ smlserver: basics
 	cd RuntimeWithGC; $(MAKE) runtimeSystemKamNsSml.o
 	cd SMLserver; $(MAKE)
 	echo 'use "build_web.sml";' | sml
-	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_web.$(ARCH-OS)
-	rm -f $(BINDIR)/mlkit_web
-	cd ..; echo '#!/bin/sh' > bin/mlkit_web
-	cd ..; echo `pwd`/bin/mlkit_web.$(ARCH-OS) `pwd` \$$* >> bin/mlkit_web
-	chmod a+x $(BINDIR)/mlkit_web
+	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/smlserverc.$(ARCH-OS)
+	rm -f $(BINDIR)/smlserverc
+	cd ..; echo '#!/bin/sh' > bin/smlserverc
+	cd ..; echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
+	chmod a+x $(BINDIR)/smlserverc
 
 basics: genopcodes rp2ps tester heap2exec
 
