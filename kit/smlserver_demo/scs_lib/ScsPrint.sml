@@ -159,7 +159,7 @@ val _ = ScsError.log "bruger LaTeX'"
 		(Date.fmt "%m"  (ScsDate.now_local())) ^ "/" ^ (StringCvt.padLeft #"0" 4 batch_id)
 	      val _ = ScsFile.mkDir (journal_base ^ journal_dir)
 	      val target_f = journal_dir ^ "/" ^ tmpfile ^ ".pdf"
-	      val cmd = Quot.toString `cd ^(path_preview()); latex ^(texfile tmpfile); latex ^(texfile tmpfile); dvips -o ^(psfile tmpfile) ^(dvifile tmpfile); lpr -P^printer ^(psfile tmpfile); ps2pdf ^(psfile tmpfile) ^(pdffile tmpfile); mv ^(pdffile tmpfile) ^(journal_base ^ target_f)`
+	      val cmd = Quot.toString `cd ^(path_preview()); ^(ScsConfig.scs_latex()) ^(texfile tmpfile); ^(ScsConfig.scs_latex()) ^(texfile tmpfile); ^(ScsConfig.scs_dvips()) -o ^(psfile tmpfile) ^(dvifile tmpfile); lpr -P^printer ^(psfile tmpfile); ^(ScsConfig.scs_ps2pdf()) ^(psfile tmpfile) ^(pdffile tmpfile); mv ^(pdffile tmpfile) ^(journal_base ^ target_f)`
 	      fun ins_log db =
 		let
 		  val clob_id = DbClob.insert_fn source db
@@ -197,7 +197,7 @@ val _ = ScsError.log "bruger LaTeX'"
 
       fun printDoc' batch_id category note on_what_table on_what_id doc_type source printer =
 	case doc_type of
-	  LaTeX =>
+	  LaTeX' =>
 	    let
 	      val print_id = Int.toString (Db.seqNextval "scs_print_id_seq")
 	      val tmpfile = print_id ^ "-" ^ (ScsFile.uniqueFile (path_preview()))
