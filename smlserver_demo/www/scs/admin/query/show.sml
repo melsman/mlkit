@@ -69,22 +69,21 @@ fun f (s:Ns.Set.set,acc) =
     val ls = List.rev (Ns.Set.list s)
   in
     case acc of
-      NONE => SOME ( Quot.concatWith ";" (List.map (Quot.fromString o #1) ls) ^^ `^("\n")` ^^ 
-		    (Quot.concatWith ";" (List.map (Quot.fromString o #2) ls)), 1)
-    | SOME (acc,n) => SOME (acc ^^ 
-			    `^("\n")` ^^
-			    (Quot.concatWith ";" (List.map (Quot.fromString o #2) ls)),n+1)
+      NONE => SOME ((Quot.concatWith ";" (List.map (Quot.fromString o #2) ls) ^^ `^("\n")`) :: 
+		    [Quot.concatWith ";" (List.map (Quot.fromString o #1) ls) ^^ `^("\n")`], 1)
+    | SOME (acc,n) => SOME (((Quot.concatWith ";" (List.map (Quot.fromString o #2) ls)) ^^ `^("\n")`) ::
+			    acc,n+1)
   end
     
 val res = 
   if query = "" then 
-    `No query specified`
+    [`No query specified`]
   else
     (case Db.foldSet f NONE `^query` of
-       NONE => `No rows returned`
-     | SOME (res,n) => `There are ^(Int.toString n) rows<p>.` ^^ res)
-       handle Fail e => `Database error: returned error:<p>
-	 <pre>^e</pre>`
+       NONE => [`No rows returned`]
+     | SOME (res,n) => `There are ^(Int.toString n) rows<p>.` :: (List.rev res))
+       handle Fail e => [`Database error: returned error:<p>
+	 <pre>^e</pre>`]
 
 val upd_add_but = if id = "" then ("submit","Add") else ("submit","Update")
 
@@ -99,5 +98,5 @@ val _ = ScsPage.returnPg "Query" (`Evaluate queries directly in the database<p>
 `
 <hr>
 <pre>
-` ^^ res ^^ `
+` ^^ (Quot.concat res) ^^ `
 </pre>`)
