@@ -68,6 +68,26 @@ functor Compile(structure Excon : EXCON
 		  sharing type PhysSizeInf.LambdaPgm = MulExp.LambdaPgm
 		  sharing type PhysSizeInf.mul = MulExp.mul
 
+		structure ClosExp : CLOS_EXP
+		  sharing type ClosExp.place = PhysSizeInf.place
+                  sharing type ClosExp.pp = PhysSizeInf.pp
+                  sharing type ClosExp.phsize = PhysSizeInf.phsize
+                  sharing type ClosExp.at = AtInf.at
+                  sharing type ClosExp.LambdaPgm = PhysSizeInf.LambdaPgm
+
+	        structure LineStmt : LINE_STMT
+		  sharing type LineStmt.place = PhysSizeInf.place
+                  sharing type LineStmt.pp = PhysSizeInf.pp
+                  sharing type LineStmt.phsize = PhysSizeInf.phsize
+                  sharing type LineStmt.ClosPrg = ClosExp.ClosPrg
+                  sharing type LineStmt.label = ClosExp.label
+
+	        structure RegAlloc : REG_ALLOC
+		  sharing type RegAlloc.place = LineStmt.place
+                  sharing type RegAlloc.phsize = LineStmt.phsize
+                  sharing type RegAlloc.LinePrg = LineStmt.LinePrg
+                  sharing type RegAlloc.label = LineStmt.label
+
 		structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING
 		  sharing type RegionFlowGraphProfiling.place = PhysSizeInf.place
 		  sharing type RegionFlowGraphProfiling.at = AtInf.at
@@ -105,6 +125,7 @@ functor Compile(structure Excon : EXCON
                   sharing type CompileBasis.l2kam_ce = CompLamb.env 
 	       	  sharing type CompileBasis.mulenv = MulInf.efenv
                   sharing type CompileBasis.mularefmap = MulInf.mularefmap
+                  sharing type CompileBasis.clos_env = ClosExp.env
 
                 structure Report: REPORT
 		structure Flags: FLAGS
@@ -648,6 +669,25 @@ functor Compile(structure Excon : EXCON
     end
 
     (* ---------------------------------------------------------------------- *)
+    (*   New Lambda Backend                                                   *)
+    (* ---------------------------------------------------------------------- *)
+    fun new_lambda_backend(clos_env,pgm) =
+      let
+	val all_clos_exp = ClosExp.cc (clos_env, pgm)
+	val all_line_stmt = LineStmt.L {main_lab= #main_lab(all_clos_exp),
+					code= #code(all_clos_exp),
+					imports= #imports(all_clos_exp),
+					exports= #exports(all_clos_exp)}
+	val all_reg_alloc = 
+	  if Flags.is_on "perform register allocation" then
+	    RegAlloc.ra all_line_stmt
+	  else
+	    RegAlloc.ra_dummy all_line_stmt
+      in
+	#env(all_clos_exp)
+      end
+
+    (* ---------------------------------------------------------------------- *)
     (*   Compile region annotated code to KAM code                            *)
     (* ---------------------------------------------------------------------- *)
     fun comp_lamb(l2kam_ce, pgm) = 
@@ -664,7 +704,7 @@ functor Compile(structure Excon : EXCON
      * =================================== *)
 
     type target = KAMBackend.target
-    fun comp_with_new_backend(rse, Psi, mulenv, drop_env, psi_env, l2kam_ce, lamb_opt, vcg_file) =
+    fun comp_with_new_backend(rse, Psi, mulenv, drop_env, psi_env, l2kam_ce, clos_env, lamb_opt, vcg_file) =
       let
 	val unsafe = not(LambdaExp.safeLambdaPgm lamb_opt)
 	val (mul_pgm, rse1, mulenv1, Psi1) = SpreadRegMul(rse, Psi, mulenv, lamb_opt)
@@ -677,7 +717,8 @@ functor Compile(structure Excon : EXCON
         val app_conv_psi_pgm = appConvert psi_pgm
 	val _ = RegionFlowGraphProfiling.reset_graph ()
 	val {code_label,l2kam_ce1, code, exports, imports} = comp_lamb(l2kam_ce, app_conv_psi_pgm) 
-
+	  
+	val clos_env1 = new_lambda_backend(clos_env,app_conv_psi_pgm)
 (*
 	(* Generate lambda code file with program points *)
 	val old_setting = !print_program_points
@@ -707,7 +748,7 @@ functor Compile(structure Excon : EXCON
 	val target = KAMBackend.generate_target_code code
 	val linkinfo = {code_label=code_label,imports=imports,exports=exports,unsafe=unsafe}
       in
-	(rse1, Psi1, mulenv1, drop_env1, psi_env1, l2kam_ce1, target, linkinfo)
+	(rse1, Psi1, mulenv1, drop_env1, psi_env1, l2kam_ce1, clos_env1, target, linkinfo)
       end
 
 
@@ -726,7 +767,7 @@ functor Compile(structure Excon : EXCON
 	 * in bases. For now, we do type checking after optlambda, only. *)
 
         val _ = RegionExp.printcount:=1;
-	val {TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap,drop_env,psi_env,l2kam_ce} =
+	val {TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap,drop_env,psi_env,l2kam_ce,clos_env} =
 	  CompileBasis.de_CompileBasis Basis
 
         val (lamb,CEnv1, declared_lvars, declared_excons) = ast2lambda(CEnv, strdecs)
@@ -738,11 +779,11 @@ functor Compile(structure Excon : EXCON
           then (chat "Empty lambda program; skipping code generation.";
                 CEnvOnlyRes CEnv1)
 	else
-	  let val (rse1, mularefmap1, mulenv1, drop_env1, psi_env1, l2kam_ce1, target, linkinfo) = 
-	       comp_with_new_backend(rse, mularefmap, mulenv, drop_env, psi_env, l2kam_ce, lamb_opt, vcg_file)
+	  let val (rse1, mularefmap1, mulenv1, drop_env1, psi_env1, l2kam_ce1, clos_env1, target, linkinfo) = 
+	       comp_with_new_backend(rse, mularefmap, mulenv, drop_env, psi_env, l2kam_ce, clos_env, lamb_opt, vcg_file)
 	      val Basis' = CompileBasis.mk_CompileBasis {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
 							 rse=rse1,mulenv=mulenv1,mularefmap=mularefmap1,
-							 drop_env=drop_env1,psi_env=psi_env1,l2kam_ce=l2kam_ce1}
+							 drop_env=drop_env1,psi_env=psi_env1,l2kam_ce=l2kam_ce1,clos_env=clos_env1}
 	  in CodeRes (CEnv1, Basis', target, linkinfo)
 	  end
       end

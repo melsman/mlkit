@@ -107,6 +107,9 @@ functor Flags (structure Crash : CRASH
     val program_points = (ref []): int list ref
     val region_paths = (ref[]): (int*int) list ref
 
+    (* Flags for Lambda Backend *)
+    val perform_reg_alloc = ref false
+
     val chat                    = ref false
     val delay_assembly          = ref false   
     val log_to_file = ref false
@@ -591,6 +594,7 @@ struct
      ("all_multiplicities_infinite", all_multiplicities_infinite), 
      ("log_to_file", log_to_file),  (*true => generate a .log file*)
      ("garbage_collection", garbage_collection),
+     ("perform register allocation", perform_reg_alloc),
      ("DEBUG_COMPILER", DEBUG_COMPILER)]
 
 end (* Directory *)
@@ -1067,6 +1071,9 @@ struct
 	mk_int_action (maximum_inline_size, "maximum inline size"),
 	mk_int_action (maximum_specialise_size, "maximum specialise size")
 	])
+    val lambda_backend : item = mk_header "Lambda Backend"
+      (DISPLAY
+       [mk_toggle ("perform register allocation", perform_reg_alloc)])
   in
     val control_item : item = mk_header "Control"
           (DISPLAY
@@ -1079,6 +1086,7 @@ struct
 	     below = ACTION Directory.show_script_entries}]
 	   @ multiplicity_inference_items
 	   @ storage_mode_analysis_items
+	   @ [lambda_backend]
 	   @ [mk_toggle ("warn on escaping put effects", warn_on_escaping_puts),
 	      mk_string_action (c_libs, "link with library")]))
   end (*local*)

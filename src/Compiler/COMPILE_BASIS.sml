@@ -16,6 +16,7 @@ signature COMPILE_BASIS =
     type drop_env       (* lvar(fix) -> bool list *) 
     type psi_env        (* lvar -> phsize list  minimal actual ph. sizes for FIX bound lvars *)
     type l2kam_ce       (* lambda to kam environment *)
+    type clos_env       (* Closure Conversion Enviroment *)
 
     val empty : CompileBasis
     val initial : CompileBasis
@@ -28,10 +29,10 @@ signature COMPILE_BASIS =
     val restrict : CompileBasis * (lvar list * lvar list * TyName list * con list * excon list) -> CompileBasis
 
     val mk_CompileBasis: {TCEnv:TCEnv,EqEnv:EqEnv,OEnv:OEnv,rse:rse,mulenv:mulenv,mularefmap:mularefmap,
-			  drop_env:drop_env,psi_env:psi_env,l2kam_ce:l2kam_ce} -> CompileBasis
+			  drop_env:drop_env,psi_env:psi_env,l2kam_ce:l2kam_ce,clos_env:clos_env} -> CompileBasis
 
     val de_CompileBasis: CompileBasis -> {TCEnv:TCEnv,EqEnv:EqEnv,OEnv:OEnv,rse:rse,mulenv:mulenv,
-					  mularefmap:mularefmap,drop_env:drop_env,psi_env:psi_env,l2kam_ce:l2kam_ce}
+					  mularefmap:mularefmap,drop_env:drop_env,psi_env:psi_env,l2kam_ce:l2kam_ce,clos_env:clos_env}
 
     type StringTree
     val layout_CompileBasis: CompileBasis -> StringTree
