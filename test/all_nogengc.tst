@@ -135,3 +135,8 @@ regexp1.sml                   gc prof
 regexp2.sml                   gc prof
 pickle.pm                     gc prof
 packreal.sml                  gc prof
+patricia.sml                  gc prof
+stream.pm                     gc prof
+natset.sml                    gc prof
+fns.sml                       gc prof
+datatypes.sml                 gc prof

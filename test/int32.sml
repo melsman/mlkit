@@ -52,9 +52,9 @@ val test0n0 = tst "test0n0" ((~12:int) + 25 = (13:int))
 val test0n1 = tst "test0n1" ((~12:int) - 13 = (~25:int))
 val test0n2 = tst "test0n2" ((1222:int) * 10 = (12220:int))
 
-val test0p0 = tst "test0p0" (case 34:int32 of 34 => true | _ => false)
-val test0p1 = tst "test0p1" (case 34:int32 of 32 => false | _ => true)
-val test0p2 = tst "test0p2" (case ~34:int32 of ~34 => true | _ => false)
+val test0p0 = tst "test0p0" (case 34:Int32.int of 34 => true | _ => false)
+val test0p1 = tst "test0p1" (case 34:Int32.int of 32 => false | _ => true)
+val test0p2 = tst "test0p2" (case ~34:Int32.int of ~34 => true | _ => false)
 
 val test1a = divmod "test1a" (10, 3, 3, 1);
 val test1b = divmod "test1b" (~10, 3, ~4, 2);
