@@ -410,13 +410,17 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
-	     A name may contain the letters from the alphabet including: <b>'</b>, <b>\</b>,<b>-</b>,<b>æ</b>,
-	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>,<b>ä</b>,<b>é</b>,<b>á</b> and space.
+	     A name may contain the letters from the alphabet including: <b>'</b>, <b>\</b>,
+	     <b>-</b>,<b>æ</b>,
+	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>,<b>ä</b>,<b>é</b>,
+	     <b>á</b>,<b>ö</b> and space.
 	     </blockquote>`
 	 | ScsLang.da => `^s
 	     <blockquote>
-	     Et navn må indeholde bogstaver fra alfabetet samt disse tegn: <b>'</b>, <b>\</b>,<b>-</b>,<b>æ</b>,
-	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>,<b>ä</b>,<b>é</b>,<b>á</b> og mellemrum.
+	     Et navn må indeholde bogstaver fra alfabetet samt disse tegn: <b>'</b>, <b>\</b>,
+	     <b>-</b>,<b>æ</b>,
+	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>,<b>ä</b>,<b>é</b>,
+	     <b>á</b>, <b>ö</b> og mellemrum.
 	     </blockquote>`)
       fun msgAddr s = 
 	(case ScsLogin.user_lang() of
@@ -789,10 +793,10 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	(fn email => regExpMatch "[^@\t ]+@[^@.\t ]+(\\.[^@.\n ]+)+" (trim email)) 
 
       val getNameErr = getErr' [(ScsLang.en,`name`),(ScsLang.da,`navn`)] 
-                         msgName (regExpMatch "[a-zA-ZAÆØÅaæøåüäéá '\\-]+")
+                         msgName (regExpMatch "[a-zA-ZAÆØÅaæøåüäéáö '\\-]+")
 
       val getAddrErr = getErr' [(ScsLang.en, `address`),(ScsLang.da, `adresse`)]
-                         msgAddr (regExpMatch "[a-zA-Z0-9ÆØÅæøåüá '\\-.:;,]+")
+                         msgAddr (regExpMatch "[a-zA-Z0-9ÆØÅæøåüáö '\\-.:;,]+")
 
       val getLoginErr = getErr' [(ScsLang.en, `login`),(ScsLang.da,`login`)] msgLogin 
 	(fn login =>
