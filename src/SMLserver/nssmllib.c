@@ -169,6 +169,14 @@ nssml_InfoServerVersion(Region rAddr)
   return convertStringToML(rAddr, Ns_InfoServerVersion());
 }
 
+// ML: string * string -> status
+int
+nssml_returnFile(Ns_Conn* conn, String mimetype, String file)
+{
+  int status = 200;
+  return Ns_ConnReturnFile(conn, status, &(mimetype->data), &(file->data));
+}
+
 // ML: string -> string
 String
 nssml_GetMimeType(Region rAddr, String s)

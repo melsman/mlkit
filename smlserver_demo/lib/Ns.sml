@@ -253,8 +253,14 @@ structure Ns :> NS =
        Conn.flushHeaders(200);
        ())
 
+    fun returnFileMime (mimetype:string) (file:string) : status =
+      prim("nssml_returnFile", (getConn(),mimetype,file))
+
     fun getMimeType(s: string) : string =
       prim("nssml_GetMimeType", s)
+
+    fun returnFile (file:string):status =
+      returnFileMime (getMimeType file) file
 
     fun getHostByAddr(s: string) : string option =
       let val res : string = prim("nssml_GetHostByAddr", s)

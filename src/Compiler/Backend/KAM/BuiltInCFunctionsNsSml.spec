@@ -60,3 +60,5 @@ nssml_registerTrap
 nssml_scheduleScript
 nssml_scheduleDaily
 nssml_scheduleWeekly
+
+nssml_returnFile
