@@ -1,9 +1,9 @@
 signature SCS_REAL =
   sig
 
-    (* [toString lang r] returns the string representation of real r
-       in language lang *)
-    val toString : ScsLang.lang -> real -> string
+    (* [toString lang dec r] returns the string representation of real r
+       in language lang. The argument dec is the number of decimal places. *)
+    val toString : ScsLang.lang -> int -> real -> string
 
     (* [fromString lang r] try to convert a string representation r of
        a real written in language lang to a real *)
@@ -20,10 +20,10 @@ signature SCS_REAL =
 
 structure ScsReal :> SCS_REAL =
   struct
-    fun toString ScsLang.da r = 
+    fun toString ScsLang.da dec r = 
       String.map (fn c => if c = #"." then #"," else if c = #"," then #"." else c)
-      (Real.fmt (StringCvt.FIX(SOME 2)) r)
-    | toString ScsLang.en r = Real.fmt (StringCvt.FIX(SOME 2)) r
+      (Real.fmt (StringCvt.FIX(SOME dec)) r)
+    | toString ScsLang.en dec r = Real.fmt (StringCvt.FIX(SOME dec)) r
 
     local
       fun fromString' s =

@@ -78,7 +78,7 @@ structure ScsFile :> SCS_FILE =
 
     fun ppFilesize size_in_bytes =
       let
-	val ppReal = ScsReal.toString (ScsLogin.user_lang())
+	val ppReal = ScsReal.toString (ScsLogin.user_lang()) 1
 	val b = Real.fromInt size_in_bytes
       in
 	if b < 1024.0 then

@@ -43,17 +43,18 @@ signature SCS_FILE_STORAGE =
     val getFsType : Db.Handle.db * root_label -> fs_type option
 
     (* [uploadFolderForm
-        (folder_id,action,priv,hidden_fvs,fv_mode,fv_filename,fv_desc,fn_return_file,fn_del_file)]
+        (folder_id,action,priv,hidden_fvs,fv_mode,fv_filename,fv_desc,fn_return_file,fn_del_file,upload_info_dict)]
         returns an upload form for adding, reading and deleting files
         in the folder represented by folder_id. The first result
         element is the number of files in the folder. The function
         fn_return_file takes a file_id and filename as argument and
         builds the url used to return the file. The function
         fn_del_file takes a file_id as argument and generates the url
-        to call when deleting the file. *)
+        to call when deleting the file. The argument upload_info_dict
+	contains a help message placed at right og the upload-button.*)
     val uploadFolderForm : 
       folder_id * string * priv * (string * string) list * string * string * string * 
-      (int -> string -> string) * (int -> string) -> (int * quot)
+      (int -> string -> string) * (int -> string) * ScsDict.dict -> (int * quot)
 
     (* [uploadFile (db,user_id,folder_id,priv,fv_file,description)]
         uploads file represented by form variable fv_file with the
@@ -78,9 +79,9 @@ signature SCS_FILE_STORAGE =
         delete rows in database *)
     val delFile : Db.Handle.db -> priv * int -> unit
 
-   (* [numFilesInFolder folder_id] returns the number of files in
+   (* [getNumFilesInFolderId folder_id] returns the number of files in
        folder - not counting subdirectories *)
-    val numFilesInFolder : folder_id -> int
+    val getNumFilesInFolderId : Db.Handle.db -> folder_id -> int
   end
 
 structure ScsFileStorage :> SCS_FILE_STORAGE =
@@ -128,14 +129,14 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	  `select scs_file_storage.getRootLabelByFolderId('^(Int.toString folder_id)')
              from dual` of r => r
 
-    fun getNumFilesInFolderId (db,folder_id) =
+    fun getNumFilesInFolderId db folder_id =
       case
 	ScsError.wrapPanic
 	(Db.Handle.zeroOrOneFieldDb db)
 	  `select scs_file_storage.getNumFilesInFolderId('^(Int.toString folder_id)')
              from dual` of 
-	     NONE => NONE
-	   | SOME n => Int.fromString n
+	     NONE => 0
+	   | SOME n => (ScsError.valOf o Int.fromString) n
 	       
     fun getRootFolderId (db,root_label,folder_name) =
       case 
@@ -298,13 +299,13 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	end
     end
 
-    fun numFilesInFolder folder_id =
+(*    fun numFilesInFolder folder_id =
       (ScsError.valOf o Int.fromString)
       (ScsError.wrapPanic
        Db.oneField `select count(file_id) 
                       from scs_fs_files
                      where folder_id = '^(Int.toString folder_id)'
-                       and deleted_p = 'f'`)
+                       and deleted_p = 'f'`)2003-07-04, nh*)
 	
     type fs_type = {type_id             : int,
 		    name                : string,
@@ -351,20 +352,16 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
       end
 
     fun uploadFolderForm (folder_id,action,priv,hidden_fvs,fv_mode,fv_filename,fv_desc,
-			  fn_return_file,fn_del_file) = 
+			  fn_return_file,fn_del_file,upload_info_dict) = 
       let
-	val upload_info_dict = [(ScsLang.en,`You must choose a file on your local machine 
-                                 and type in a description for that file.`),
-				(ScsLang.da,`Du skal vælge en fil på din lokale maskine og 
-                                 indtaste en beskrivelse af filen.`)]
 	fun upload_fn_row bgcolor ({file_id,folder_id,revision_id,filename,description,filename_on_disk,
 				    filesize,last_modified,last_modifying_user,mime_type}:file_type) = 
 	  let
 	    val confirm_del_dict = [(ScsLang.en,`Delete the file ^filename?`),
-				    (ScsLang.en,`Slet filen ^filename?`)]
+				    (ScsLang.da,`Slet filen ^filename?`)]
 	  in
 	    `<tr bgcolor="^bgcolor">
-	     <td>^(mkFileIcon mime_type) ^(fn_return_file file_id filename)</td>
+	     <td>^(fn_return_file file_id (mkFileIcon mime_type ^ " " ^ filename))</td>
 	     <td>^description</td>
 	     <td align="right">^(ScsFile.ppFilesize filesize)</td>
              <td>^(ScsDate.pp last_modified)</td>
@@ -447,6 +444,8 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
            NONE => NONE
          | SOME rv => Int.fromString rv
 
+    (* getMimeTypeErr never fails - we just return */* mime type if
+       file_ext is empty or unknown. *)
     fun getMimeTypeErr (file_ext,errs) =
       case
 	ScsError.wrapPanic
@@ -454,9 +453,11 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	`select scs_fs_mime_types.id
            from scs_fs_mime_types
           where lower(scs_fs_mime_types.file_extension) = lower(^(Db.qqq file_ext))` of
-	  NONE => (0,ScsFormVar.addErr(ScsDict.sl' [(ScsLang.en,`The file extension <b>%0</b> is not supported`),
-						    (ScsLang.da,`Filendelsen <b>%0</b> er ikke supporteret`)]
-				       [file_ext], errs))
+	  NONE => (ScsError.wrapPanic
+	          (ScsError.valOf o Int.fromString o Db.oneField) 
+		  `select scs_fs_mime_types.id
+                     from scs_fs_mime_types
+                    where scs_fs_mime_types.mime_type = '*/*'`,errs)
 	| SOME id => (ScsError.valOf (Int.fromString id),errs)
 
     fun getPath (db,folder_id) = 
@@ -524,13 +525,11 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 				     [ScsFile.ppFilesize (#max_filesize_bytes fs_type), 
 				      ScsFile.ppFilesize filesize],errs)
 		 else if not (mime_type_allowed_p (fs_type,fileextension)) then
-		   ScsFormVar.addErr (ScsDict.sl' [(ScsLang.en,`The file has extension %0, however, you may only store
-                                                    files with extension: %1`),
-						   (ScsLang.da,`Filen har endelsen %0, men du kan kun gemme filer med 
-						    endelserne: %1`)]
+		   ScsFormVar.addErr (ScsDict.sl' [(ScsLang.en,`The filetype %0 is not supported. You can upload files of type %1.`),
+						   (ScsLang.da,`Filtypen %0 er ikke understøttet. Du kan kun gemme filer af typen: %1.`)]
 				      ["<b>"^fileextension^"</b>",
 				       "<b>" ^ 
-				       (String.concatWith "</b>,<b>" (List.map #file_ext (#mime_types fs_type))) ^ 
+				       (String.concatWith "</b>,<b> " (List.map #file_ext (#mime_types fs_type))) ^ 
 					"</b>"], errs)
 		 else errs)
 	      else errs (* priv = admin may do anything *)
@@ -562,7 +561,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		  NONE => 
                     (* We are storing a new file *)
 		    let
-		      val num_files_in_folder = ScsError.valOf (getNumFilesInFolderId(db,folder_id))
+		      val num_files_in_folder = getNumFilesInFolderId db folder_id
 		    in
 		      if #max_files fs_type <= num_files_in_folder andalso priv <> admin then
 			ScsFormVar.addErr(ScsDict.sl' [(ScsLang.en,`You can't store file because there is already %0 
@@ -627,8 +626,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 
     fun returnFile file_id =
       case getFileByFileId file_id of
-	NONE => (ScsPage.returnPg (ScsDict.s [(ScsLang.en,`File not found`),
-					      (ScsLang.da,`Fil findes ikke`)])
+	NONE => (ScsPage.returnPg (ScsDict.s UcsDict.file_not_found_dict)
 		 (ScsDict.s' [(ScsLang.en,`The file does not exists - please try again or 
 			       <a href="mailto:^(ScsConfig.scs_site_adm_email())">contact the administrator</a>.`),
 			      (ScsLang.da,`Filen findes ikke - du kan prøve igen eller 
@@ -638,9 +636,20 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	  let
 	    val path = Db.Handle.wrapDb getAbsPath (#folder_id file)
 	    val filename_on_disk = path ^ "/" ^ #filename_on_disk file
-	    val _ = Ns.returnFile filename_on_disk
-	  in
-	   ()
+	    fun return_error () = 
+	      (ScsPage.returnPg 
+	       (ScsDict.s UcsDict.file_not_found_dict) 
+	       (ScsDict.s' [(ScsLang.en,`The file does not exists - the administrator has been notified about the problem.`),
+			    (ScsLang.da,`Filen findes ikke - administrator er blever informeret om problemet.`)]);
+	       ScsError.emailError `The file ^filename_on_disk (file_id = ^(Int.toString file_id)) exists in database but 
+	                            not on the disk???`)
+          in
+	   ((if FileSys.fileSize filename_on_disk > 0 then
+	       (Ns.returnFile filename_on_disk;())
+	     else 
+	       return_error())
+	    handle _ => return_error();
+	      ())
 	  end
 
     fun getFileIdErr(fv,errs) = 
