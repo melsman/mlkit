@@ -1,6 +1,7 @@
 import ../libxt/libxt.pm
 in
  local ../demolib/page.sml
+       ../demolib/data0.sml
  in
     [
      index.sml
@@ -17,6 +18,7 @@ in
      toppings.sml
      toppings2.sml
      countreload.sml
+     data.sml
      ]
  end
 end
