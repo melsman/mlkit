@@ -1,5 +1,3 @@
-(*$FreeIds : DEC_GRAMMAR TOPDEC_GRAMMAR CRASH PRETTYPRINT
-    FREE_IDS ELAB_INFO*)
 
 functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 		 structure ElabInfo : ELAB_INFO
@@ -24,13 +22,14 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
     type strid = StrId.strid
     type funid = FunId.funid
     type sigid = SigId.sigid
-
+    type longid = Ident.longid
+    type longtycon = TyCon.longtycon
+    type longstrid = StrId.longstrid
 
     (* The way this works is by passing lists of those identifiers
      * being declared downwards in the syntax tree, and before an
      * identifier is added to a bucket (holding free identifiers) it
      * is checked if it is in a `declared set'. -- Martin *)
-
 
     type ids = {vids: id list, tycons: tycon list, strids: strid list, 
                 funids: funid list, sigids: sigid list}
@@ -38,20 +37,15 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
     val empty_ids : ids = {vids=[], tycons=[], strids=[], funids=[], sigids=[]}
 
     infix ++
-    fun {vids,tycons,strids,funids,sigids} ++
-        {vids=vids',tycons=tycons',strids=strids',funids=funids',sigids=sigids'} =
-	{vids=vids' @ vids, tycons=tycons' @ tycons, strids=strids' @ strids,
-	 funids=funids' @ funids, sigids=sigids' @ sigids}
-
-    val vids_of_ids:     ids -> id list     = #vids
-    val tycons_of_ids:   ids -> tycon list  = #tycons
-    val strids_of_ids:   ids -> strid list  = #strids
-    val funids_of_ids:   ids -> funid list  = #funids
-    val sigids_of_ids:   ids -> sigid list  = #sigids
+    fun ({vids,tycons,strids,funids,sigids} ++
+	 {vids=vids',tycons=tycons',strids=strids',funids=funids',sigids=sigids'}) =
+      {vids=vids' @ vids, tycons=tycons' @ tycons, strids=strids' @ strids,
+       funids=funids' @ funids, sigids=sigids' @ sigids}
 
     (* -------------------------------------
      * Lists of ids
      * ------------------------------------- *)
+
     fun add_vid (id:id,{vids,tycons,strids,funids,sigids}:ids) =
       {vids=id::vids,tycons=tycons,strids=strids,funids=funids,sigids=sigids}
 
@@ -71,58 +65,54 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
      * Buckets for free ids
      * ------------------------------------- *)
 
+    type longids = {funids: funid list, sigids: sigid list,
+		    longstrids: longstrid list, longtycons: longtycon list,
+		    longvids: longid list}
+
     fun mem(y,[]) = false
       | mem(y,x::xs) = y=x orelse mem(y,xs)
 
     local    
-      val bucket_vids = ref ([] : id list)
-      val bucket_tycons = ref ([] : tycon list)
-      val bucket_strids = ref ([] : strid list)
+      val bucket_longvids = ref ([] : longid list)
+      val bucket_longtycons = ref ([] : longtycon list)
+      val bucket_longstrids = ref ([] : longstrid list)
       val bucket_funids = ref ([] : funid list)
       val bucket_sigids = ref ([] : sigid list)
 
       fun mk_free bucket x = if mem(x,!bucket) then ()
                              else bucket := x::(!bucket)
     in
-      fun mk_free_vid (id:id) = mk_free bucket_vids id
-      fun mk_free_tycon (tycon:tycon) = mk_free bucket_tycons tycon
-      fun mk_free_strid (strid:strid) = mk_free bucket_strids strid
+      fun mk_free_longvid (longvid:longid) = mk_free bucket_longvids longvid
+      fun mk_free_longtycon (longtycon:longtycon) = mk_free bucket_longtycons longtycon
+      fun mk_free_longstrid (longstrid:longstrid) = mk_free bucket_longstrids longstrid
       fun mk_free_funid (funid:funid) = mk_free bucket_funids funid
       fun mk_free_sigid (sigid:sigid) = mk_free bucket_sigids sigid
 
-      fun reset_buckets() = (bucket_vids := []; bucket_tycons := [];
-                             bucket_strids := []; bucket_funids := []; bucket_sigids := [])
-      fun get_free_ids() : ids = {vids= !bucket_vids, tycons= !bucket_tycons, strids= !bucket_strids,
-				  funids= !bucket_funids, sigids= !bucket_sigids}
+      fun reset_buckets() = (bucket_longvids := []; bucket_longtycons := [];
+                             bucket_longstrids := []; bucket_funids := []; bucket_sigids := [])
+      fun get_free_longids() : longids = 
+	{longvids= !bucket_longvids, longtycons= !bucket_longtycons, 
+	 longstrids= !bucket_longstrids, funids= !bucket_funids, sigids= !bucket_sigids}
     end
 
     (* -------------------------------------
      * Functions to apply on uses of ids
      * ------------------------------------- *)
 
-    fun use_id({vids,...}:ids,id:id): unit =
-      if mem(id,vids) then () else mk_free_vid id
+    fun use_longvid({vids,strids,...}:ids,longvid:longid): unit =
+      case Ident.decompose longvid
+	of ([], vid) => if mem(vid,vids) then () else mk_free_longvid longvid
+	 | (strid::_,_) => if mem(strid,strids) then () else mk_free_longvid longvid
 
-    fun use_strid({strids,...}:ids,strid:strid): unit =
-      if mem(strid,strids) then () else mk_free_strid strid
-
-    fun use_longid(bound_ids:ids,longid:longid): unit =
-      case Ident.decompose longid
-	of ([],id) => use_id(bound_ids,id)
-	 | (strid::_,_) => use_strid(bound_ids,strid) 
-
-    fun use_tycon({tycons,...}:ids,tycon:tycon): unit =
-      if mem(tycon,tycons) then () else mk_free_tycon tycon
-
-    fun use_longtycon(bound_ids:ids,longtycon:longtycon) : unit =
-      case TyCon.explode_LongTyCon longtycon
-	of ([],tycon) => use_tycon(bound_ids,tycon)
-	 | (strid::_,_) => use_strid(bound_ids,strid) 
-
-    fun use_longstrid(bound_ids:ids,longstrid:longstrid) : unit =
+    fun use_longstrid({strids,...}:ids,longstrid:longstrid): unit =
       case StrId.explode_longstrid longstrid
-	of ([],strid) => use_strid(bound_ids,strid) 
-	 | (strid::_,_) => use_strid(bound_ids,strid) 
+	of ([],strid) => if mem(strid,strids) then () else mk_free_longstrid longstrid
+	 | (strid::_,_) => if mem(strid,strids) then () else mk_free_longstrid longstrid
+
+    fun use_longtycon({tycons,strids,...}:ids,longtycon:longtycon): unit =
+      case TyCon.explode_LongTyCon longtycon
+	of ([], tycon) => if mem(tycon,tycons) then () else mk_free_longtycon longtycon
+	 | (strid::_,_) => if mem(strid,strids) then () else mk_free_longtycon longtycon
 
     fun use_funid({funids,...}:ids,funid:funid): unit =
       if mem(funid,funids) then () else mk_free_funid funid
@@ -131,7 +121,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
       if mem(sigid,sigids) then () else mk_free_sigid sigid
 
 
-    (* Get type info from info-nodes; we could do better here, since
+    (* Get type info from info-nodes; we could do better here, because
      * we force applications of realisations without using the
      * annotated type info. *)
 
@@ -153,7 +143,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 
     fun free_atexp I =
       fn SCONatexp _ => ()
-       | IDENTatexp(_, OP_OPT(longid,_)) => use_longid(I,longid)
+       | IDENTatexp(_, OP_OPT(longvid,_)) => use_longvid(I,longvid)
        | RECORDatexp(_,exprow_opt) => free_exprow_opt I exprow_opt
        | LETatexp(_,dec,exp) => let val I' = free_dec I dec
 				in free_exp (I ++ I') exp
@@ -208,7 +198,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 					     | _ => die "OPENdec - no decl. info"
 	      val decl_strids = List.foldL (fn strid => fn ids => add_strid(strid,ids))
 	      val decl_tycons = List.foldL (fn tycon => fn ids => add_tycon(tycon,ids))
-	      val decl_ids = List.foldL (fn id => fn ids => add_vid(id,ids))
+	      val decl_ids = List.foldL (fn vid => fn ids => add_vid(vid,ids))
 	  in use_longstrids_with_info(I,longstrids_with_info);
 	     decl_strids (decl_tycons (decl_ids empty_ids ids) tycons) strids
 	  end
@@ -263,22 +253,22 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
     and free_exbind I =
       fn EXBIND(_,OP_OPT(excon,_),ty_opt,exbind_opt) =>
       (free_ty_opt I ty_opt; add_vid(excon,empty_ids) ++ free_exbind_opt I exbind_opt)
-       | EXEQUAL(_,OP_OPT(excon,_),OP_OPT(longid,_),exbind_opt) =>
-      (use_longid(I,longid); add_vid(excon,empty_ids) ++ free_exbind_opt I exbind_opt)
+       | EXEQUAL(_,OP_OPT(excon,_),OP_OPT(longvid,_),exbind_opt) =>
+      (use_longvid(I,longvid); add_vid(excon,empty_ids) ++ free_exbind_opt I exbind_opt)
     and free_exbind_opt I NONE = empty_ids
       | free_exbind_opt I (SOME exbind) = free_exbind I exbind
 
     and free_atpat I =
       fn WILDCARDatpat _ => empty_ids
        | SCONatpat _ => empty_ids
-       | LONGIDatpat(info,OP_OPT(longid,_)) => 
+       | LONGIDatpat(info,OP_OPT(longvid,_)) => 
           (case to_TypeInfo info
 	     of SOME (ElabInfo.TypeInfo.VAR_PAT_INFO _) =>
-	       (case Ident.decompose longid
-		  of ([],id) => add_vid(id, empty_ids)
+	       (case Ident.decompose longvid
+		  of ([],vid) => add_vid(vid, empty_ids)
 		   | _ => die "free_atpat.longid in pattern.") 
-              | SOME (ElabInfo.TypeInfo.CON_INFO _) => (use_longid(I,longid); empty_ids)
-	      | SOME (ElabInfo.TypeInfo.EXCON_INFO _) => (use_longid(I,longid); empty_ids)
+              | SOME (ElabInfo.TypeInfo.CON_INFO _) => (use_longvid(I,longvid); empty_ids)
+	      | SOME (ElabInfo.TypeInfo.EXCON_INFO _) => (use_longvid(I,longvid); empty_ids)
 	      | _ => die "free_atpat.no type info")  
        | RECORDatpat(_,patrow_opt) => free_patrow_opt I patrow_opt
        | PARatpat(_,pat) => free_pat I pat
@@ -291,9 +281,9 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 
     and free_pat I =
       fn ATPATpat(_,atpat) => free_atpat I atpat
-       | CONSpat(_,OP_OPT(longid,_),atpat) => (use_longid(I,longid); free_atpat I atpat)
+       | CONSpat(_,OP_OPT(longvid,_),atpat) => (use_longvid(I,longvid); free_atpat I atpat)
        | TYPEDpat(_,pat,ty) => (free_ty I ty; free_pat I pat)
-       | LAYEREDpat(_,OP_OPT(id,_),ty_opt,pat) => (free_ty_opt I ty_opt; add_vid(id,empty_ids) ++ free_pat I pat)
+       | LAYEREDpat(_,OP_OPT(vid,_),ty_opt,pat) => (free_ty_opt I ty_opt; add_vid(vid,empty_ids) ++ free_pat I pat)
        | UNRES_INFIXpat _ => die "free.UNRES_INFIXpat"
 
     and free_ty I =
@@ -446,17 +436,17 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
      * MAIN FUNCTIONS
      *)
 
-    fun free_ids_any (free_any:ids->'a->'b) (any:'a) : ids =
+    fun free_ids_any (free_any:ids->'a->'b) (any:'a) : longids =
       let val _ = reset_buckets()
 	  val _ = free_any empty_ids any
-	  val free_ids = get_free_ids()
+	  val free_longids = get_free_longids()
 	  val _ = reset_buckets()
-      in free_ids
+      in free_longids
       end
 
-    val free_ids = free_ids_any free_topdec
-    val free_ids_dec = free_ids_any free_dec
-    val free_ids_strexp = free_ids_any free_strexp
+    val fid_topdec = free_ids_any free_topdec
+    val fid_dec = free_ids_any free_dec
+    val fid_strexp = free_ids_any free_strexp
 
 
     (* 
@@ -467,17 +457,17 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
     fun layout_list s layout_elem l =
         PP.NODE{start=s ^ "=[",finish="]",indent=0,childsep=PP.RIGHT ",",children=map layout_elem l}
 
-    val layout_vids = layout_list "vids" (PP.LEAF o Ident.pr_id)
-    and layout_tycons = layout_list "tycons" (PP.LEAF o TyCon.pr_TyCon)
-    and layout_strids = layout_list "strids" (PP.LEAF o StrId.pr_StrId)
+    val layout_longvids = layout_list "longvids" (PP.LEAF o Ident.pr_longid)
+    and layout_longtycons = layout_list "longtycons" (PP.LEAF o TyCon.pr_LongTyCon)
+    and layout_longstrids = layout_list "longstrids" (PP.LEAF o StrId.pr_LongStrId)
     and layout_funids = layout_list "funids" (PP.LEAF o FunId.pr_FunId)
     and layout_sigids = layout_list "sigids" (PP.LEAF o SigId.pr_SigId)
 
-    fun layout_ids ({vids,tycons,strids,funids,sigids}:ids) =
+    fun layout_longids ({longvids,longtycons,longstrids,funids,sigids}:longids) =
       PP.NODE{start="{|", finish="|}", indent=2,childsep=PP.RIGHT ", ",
-	      children=[layout_vids vids,
-			layout_tycons tycons,
-			layout_strids strids,
+	      children=[layout_longvids longvids,
+			layout_longtycons longtycons,
+			layout_longstrids longstrids,
 			layout_funids funids,
 			layout_sigids sigids]}
   end
