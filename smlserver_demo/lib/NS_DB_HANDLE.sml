@@ -2,6 +2,8 @@ signature NS_DB_HANDLE =
   sig
     (* Database handles *)
     type db
+    type set
+
     val getHandle       : unit -> db
     val putHandle       : db -> unit
     val wrapDb          : (db -> 'a) -> 'a
@@ -20,7 +22,7 @@ signature NS_DB_HANDLE =
     (* Queries *)
     val foldDb          : db -> ((string->string)*'a->'a)  
                           -> 'a -> quot -> 'a
-    val foldSetDb       : db -> (NsSet.set*'a->'a) -> 'a 
+    val foldSetDb       : db -> (set*'a->'a) -> 'a 
                           -> quot -> 'a
     val appDb           : db -> ((string->string)->'a) 
                           -> quot -> unit

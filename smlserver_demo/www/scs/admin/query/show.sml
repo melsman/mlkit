@@ -16,8 +16,8 @@ val _ =
     in
       (Db.dml `insert into scs_query 
                  (id,query,arity,category,name,description,create_date,create_user)
-                values (^(Db.qq' q_id),^(Db.qq' query),'^(Int.toString arity)',^(Db.qq' category),
-                        ^(Db.qq' name),^(Db.qq' desc),sysdate,'^(Int.toString ScsLogin.user_id)')`;
+                values (^(Db.qqq q_id),^(Db.qqq query),'^(Int.toString arity)',^(Db.qqq category),
+                        ^(Db.qqq name),^(Db.qqq desc),sysdate,'^(Int.toString ScsLogin.user_id)')`;
        Ns.returnRedirect ("show.sml?id="^q_id);
        Ns.exit())
     end
@@ -37,7 +37,7 @@ val _ =
       (Db.dml `update scs_query 
                   set ^(Db.setList [("query",query),("arity",arity),("category",category),
 				    ("name",name),("description",desc)])
-                where id = ^(Db.qq' q_id)`;
+                where id = ^(Db.qqq q_id)`;
        Ns.returnRedirect ("show.sml?id="^q_id);
        Ns.exit())
     end
@@ -52,14 +52,14 @@ val (cat,name,id,desc,query,arity) =
 				   g "description", g "query", g "arity"),
 			  `select category, name, description, query, arity
 			     from scs_query
-			    where scs_query.id = ^(Db.qq' (Int.toString id))`, 
+			    where scs_query.id = ^(Db.qqq (Int.toString id))`, 
 			    `Query does not exist in database`)
   | (SOME q, SOME id) => 
       ScsDb.oneRowErrPg' (fn g => (g "category", g "name", Int.toString id, 
 				   g "description", q, "0"),
 			  `select category, name, description
 			     from scs_query
-			    where scs_query.id = ^(Db.qq' (Int.toString id))`, 
+			    where scs_query.id = ^(Db.qqq (Int.toString id))`, 
 			    `Query does not exist in database`)
 
 fun f (s:Ns.Set.set,acc) = 

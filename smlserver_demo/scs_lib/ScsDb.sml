@@ -2,7 +2,7 @@ signature SCS_DB =
   sig
     val dbClickDml    : string -> string -> string -> string -> quot -> unit
     val panicDml      : quot -> unit
-    val panicDmlTrans : (Db.db -> 'a) -> 'a
+    val panicDmlTrans : (Db.Handle.db -> 'a) -> 'a
     val errorDml      : quot -> quot -> unit
     val toggleP       : string -> string -> string -> string -> unit
 
@@ -27,7 +27,7 @@ structure ScsDb :> SCS_DB =
 				       ^^ insert_sql ^^ `^(General.exnMessage X)`))
 
     fun panicDml f = Db.panicDml ScsError.panic f
-    fun panicDmlTrans f = Db.panicDmlTrans ScsError.panic f
+    fun panicDmlTrans f = Db.Handle.panicDmlTrans ScsError.panic f
     fun errorDml emsg sql = (Db.panicDml (fn _ => (Ns.log (Ns.Notice, "hej");
 						    ScsPage.returnPg "Databasefejl" emsg)) sql;())
 
@@ -45,7 +45,7 @@ structure ScsDb :> SCS_DB =
 
     fun toggleP table column_id column id =
       panicDml `update ^table set ^column=(case when ^column = 't' then 'f' else 't' end)
-                 where ^table.^column_id=^(Db.qq' id)`
+                 where ^table.^column_id=^(Db.qqq id)`
 
     fun oneRowErrPg' (f,sql,emsg) =
       Db.oneRow' f sql handle _ => (ScsPage.returnPg "" emsg;Ns.exit())

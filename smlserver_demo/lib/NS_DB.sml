@@ -1,6 +1,7 @@
 signature NS_DB =
   sig
     structure Handle : NS_DB_HANDLE
+    type set = Handle.set
 
     (* Data manipulation language *)
     val dml           : quot -> unit
@@ -10,8 +11,7 @@ signature NS_DB =
     (* Queries *)
     val fold          : ((string->string)*'a->'a) -> 'a 
                         -> quot -> 'a
-    val foldSet       : (NsSet.set*'a->'a) -> 'a -> quot
-                        -> 'a
+    val foldSet       : (set*'a->'a) -> 'a -> quot -> 'a
     val app           : ((string->string)->'a) -> quot 
                         -> unit
     val list          : ((string->string)->'a) -> quot 
@@ -56,13 +56,6 @@ signature NS_DB =
  [panicDml f sql] executes sql and returns the value unit. On 
  error the function f is applied to an error string. The 
  function always returns unit.
-
- [getCol s key] returns the value affiliated with key in set
- s. Returns "##" if key is not in the set s.
-
- [getColOpt s key] returns the value SOME v where v is 
- associated with key in set s. NONE is returned if key is not 
- in the set s.
 
  [fold f b sql] executes SQL statement sql and folds over the 
  result set. b is the base and f is the fold function; the 

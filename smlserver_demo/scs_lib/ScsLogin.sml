@@ -27,7 +27,7 @@ structure ScsLogin :> SCS_LOGIN =
 	case (auth_user_id,auth_password) of
 	  (SOME user_id, SOME psw) =>
 	    (case Db.zeroOrOneRow `select password,lang from auth_user 
- 	                              where user_id = ^(Db.qq' user_id)` 
+ 	                              where user_id = ^(Db.qqq user_id)` 
 	       of NONE => default
 	     | SOME [db_psw,db_lang] => 
 		 if db_psw = psw then 
