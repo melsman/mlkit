@@ -1,72 +1,13 @@
-signature DB_BASIC =
-  sig
-    val seq_nextval_exp : string -> string
-  end
 
-structure DbBasicOra : DB_BASIC =
-  struct
-    fun seq_nextval_exp seq_name = seq_name ^ ".nextval"
-  end
-
-structure DbBasicPG : DB_BASIC =
-  struct
-    fun seq_nextval_exp seq_name = "nextval('" ^ seq_name ^ "')"
-  end
-
-signature POOL =
-  sig
-    type pool = string
-    exception DbPoolError of string
-      
-    (* Pools are initially read from the nsd.tcl configuration file with          *)
-    (*   initPools(sectionName, key), e.g., initPools("ns/server/nh/db", "Pools") *)
-    (* where the initfile contains: ns_section "ns/server/nh/db"                  *)
-    (*                              ns_param Pools main,sub                       *)
-    (* Raises exception DbPoolError, if there are no pools specified              *)
-    val initPools  : string * string -> unit
-    val initPoolsL : string list -> unit
-    val putPool    : pool -> unit
-    val getPool    : unit -> pool
-    val toList     : unit -> pool list
-    val pp         : unit -> string
-  end 
-
-signature DB =
-  sig
-    include DB_BASIC
-
-    structure Pool : POOL
-
-    type status
-    type set
-    type ns_db
-    type pool = Pool.pool
-    type db = pool * ns_db
-
-    val init : string * string -> unit
-    val poolGetHandle : pool -> db
-    val poolPutHandle : db -> unit
-    val getHandle : unit -> db
-    val putHandle : db -> unit
-    val dmlDb : db * string -> status
-    val dml : string -> status
-    val select : db * string -> set
-    val getRow : db * set -> status
-    val foldDb : db * ((string->string)*'a->'a) * 'a * string -> 'a
-    val fold : ((string->string)*'a->'a) * 'a * string -> 'a
-    val qq : string -> string
-  end
-
-functor DbFunctor (structure DbBasic : DB_BASIC
+functor DbFunctor (structure DbBasic : NS_DB_BASIC
 		   structure Set : NS_SET
-		   structure Info : NS_INFO) : DB =
+		   structure Info : NS_INFO) : NS_DB =
   struct
     type ns_db = int
     type set = Set.set
-    type status = int        (* see nsthread.h *)
-    val OK = 0 and ERROR = ~1 and END_DATA = 4
+    type status = NsBasics.status
 
-    structure Pool : POOL =
+    structure Pool : NS_POOL =
       struct
 	type pool = string
 	exception DbPoolError of string
@@ -126,16 +67,56 @@ functor DbFunctor (structure DbBasic : DB_BASIC
       let val s : Set.set = select(db, sql)
 	fun g n = Set.getOpt(s, n, "##")
 	fun loop (acc:'a) : 'a =
-	  if (getRow(db,s) <> END_DATA) then loop (f(g,acc))
+	  if (getRow(db,s) <> NsBasics.END_DATA) then loop (f(g,acc))
 	  else acc
       in loop acc
       end
 
-    fun fold (f:(string->string)*'a->'a, acc:'a, sql:string) : 'a =
+    fun wrapDb f =
       let val db = getHandle()
-      in (foldDb (db,f,acc,sql) before putHandle db)
+      in (f db before putHandle db)
 	handle X => (putHandle db; raise X)
       end
+      
+    fun fold (f:(string->string)*'a->'a, acc:'a, sql:string) : 'a =
+      wrapDb (fn db => foldDb (db,f,acc,sql))
+
+    fun oneFieldDb(db,sql) : string =
+      let val s : Set.set = select(db, sql)
+      in 
+	if getRow(db,s) <> NsBasics.END_DATA then
+	  if Set.size s = 1 then 
+	    case Set.value(s,0) of
+	      SOME s => s
+	    | NONE => raise Fail "Db.oneFieldDb.no value in set"
+	  else raise Fail "Db.oneFieldDb.size of set not one"
+	else raise Fail "Db.oneFieldDb.no rows"
+      end
+
+    fun oneField (sql : string) : string = 
+      wrapDb (fn db => oneFieldDb(db,sql))
+
+    fun oneRowDb(db,sql) : string list =
+      let val s : Set.set = select(db, sql)
+      in 
+	if getRow(db,s) <> NsBasics.END_DATA then
+	  Set.foldr (fn ((k,v), a) => v :: a) nil s
+	else raise Fail "Db.oneRowDb.no rows"
+      end
+
+    fun oneRow sql : string list =
+      wrapDb (fn db => oneRowDb(db,sql))
+
+    fun zeroOrOneRowDb(db,sql) : string list option =
+      let val s : Set.set = select(db, sql)
+      in 
+	if getRow(db,s) <> NsBasics.END_DATA then
+	  SOME(Set.foldr (fn ((k,v), a) => v :: a) nil s)
+	else NONE
+      end
+
+    fun zeroOrOneRow sql : string list option =
+      wrapDb (fn db => zeroOrOneRowDb(db,sql))
 
     fun qq s =
       let 
@@ -144,4 +125,26 @@ functor DbFunctor (structure DbBasic : DB_BASIC
       in
 	implode(qq_s'(explode s))
       end
+
+    fun qq' s = concat ["'", qq s, "'"]
+
+    fun seqNextval (seqName:string) : int = 
+      let val s = oneField ("select " ^ seqNextvalExp seqName ^ " " ^ fromDual)
+      in case Int.fromString s of
+	SOME i => i
+      | NONE => raise Fail "Db.seqNextval.nextval not an integer"	
+      end
   end
+
+structure NsDbBasicOra : NS_DB_BASIC =
+  struct
+    fun seqNextvalExp seq_name = seq_name ^ ".nextval"
+    val fromDual = "from dual"
+  end
+
+structure NsDbBasicPG : NS_DB_BASIC =
+  struct
+    fun seqNextvalExp seq_name = "nextval('" ^ seq_name ^ "')"
+    val fromDual = ""
+  end
+

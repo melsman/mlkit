@@ -1,72 +1,124 @@
 signature FORMVAR =
   sig
-    val getNat : string -> int option
-    val getInt : string -> int option
-    val getReal : string -> real option
-    val getNum : string -> real option
+    val getNat    : string -> int option
+    val getInt    : string -> int option
+    val getReal   : string -> real option
+    val getNum    : string -> real option
     val getString : string -> string option
+
+    val getNatOrFail    : string -> int
+    val getIntOrFail    : string -> int
+    val getRealOrFail   : string -> real
+    val getNumOrFail    : string -> real
+    val getStringOrFail : string -> string
   end
   
 structure FormVar : FORMVAR =
   struct
-    fun getNat (s : string) : int option =
-      case Ns.Conn.formvar s
-	of NONE => NONE
-	 | SOME s => 
+    fun returnError (s:string) (err:string) = Ns.Quot.return
+      `<html>
+         <head><title>Form Variable Error</title></head>
+         <body bgcolor=white>
+            <h2>Error processing form variable ^s</h2>
+            ^err
+         </body>
+       </html>`
+
+    fun wrapFail (f : string->'a) (s:string): 'a =
+      f s handle Fail err => (  returnError s err
+			      ; Ns.exit()
+			      )
+
+    fun wrapOption (f : string->'a) (s:string): 'a option =
+      SOME (f s) handle Fail err => NONE
+      
+    fun fail s = raise Fail s
+
+    fun noFormVar s       = fail ("No form variable '" ^ s ^ "'") 
+    fun emptyFormVar s    = fail ("Empty form variable '" ^ s ^ "'")       
+    fun typeMismatch ty s = fail ("Form variable '" ^ s ^ "' should be " ^ ty)
+    fun tooLarge ty s     = fail (ty ^ " in form variable '" ^ s ^ "' is too large")
+
+    fun getNat0 (fv : string) : int =
+      case Ns.Conn.formvar fv of 
+	NONE => noFormVar fv
+      | SOME s => 
 	  let val l = explode s
 	  in case l
 	       of c::_ => 
 		 if Char.isDigit c then
 		   ((case Int.scan StringCvt.DEC List.getItem l
-		       of SOME (n, nil) => SOME n
-			| _ => NONE) handle Overflow => NONE)
-		 else NONE
-	        | nil => NONE
+		       of SOME (n, nil) => n
+			| _ => typeMismatch "a positive integer" fv) 
+		       handle Overflow => tooLarge "Positive integer" fv)
+		 else typeMismatch "a positive integer" fv
+	        | nil => emptyFormVar fv
 	  end
-    fun getInt (s: string) : int option =
-      case Ns.Conn.formvar s
-	of NONE => NONE
-	 | SOME s => 
+    fun getInt0 (fv: string) : int =
+      case Ns.Conn.formvar fv of 
+	NONE => noFormVar fv
+      | SOME s => 
 	  let val l = explode s
 	  in case l
 	       of c::_ => 
 		 if Char.isDigit c orelse c = #"-" orelse c = #"~" then
 		   ((case Int.scan StringCvt.DEC List.getItem l
-		       of SOME (n, nil) => SOME n
-			| _ => NONE) handle Overflow => NONE)
-		 else NONE
-	        | nil => NONE
+		       of SOME (n, nil) => n
+			| _ => typeMismatch "an integer" fv) 
+		       handle Overflow => tooLarge "Integer" fv)
+		 else typeMismatch "an integer" fv
+	        | nil => emptyFormVar fv
 	  end
-    fun getReal (s: string) : real option =
-      case Ns.Conn.formvar s
-	of NONE => NONE
-	 | SOME s => 
+    fun getReal0 (fv: string) : real =
+      case Ns.Conn.formvar fv of 
+	NONE => noFormVar fv
+      | SOME s => 
 	  let val l = explode s
 	  in case l
 	       of c::_ => 
 		 if Char.isDigit c orelse c = #"-" orelse c = #"~" then
 		   ((case Real.scan List.getItem l
-		       of SOME (n, nil) => SOME n
-			| _ => NONE) handle Overflow => NONE)
-		 else NONE
-	        | nil => NONE
+		       of SOME (n, nil) => n
+			| _ => typeMismatch "a real" fv) 
+		       handle Overflow => tooLarge "Real" fv)
+		 else typeMismatch "a real" fv
+	        | nil => emptyFormVar fv
 	  end
-    fun getNum (s: string) : real option =
-      case Ns.Conn.formvar s
-	of NONE => NONE
-	 | SOME s => 
+    fun getNum0 (fv: string) : real =
+      case Ns.Conn.formvar fv of 
+	NONE => noFormVar fv
+      | SOME s => 
 	  let val l = explode s
 	  in case l
 	       of c::_ => 
 		 if Char.isDigit c orelse c = #"-" orelse c = #"~" then
 		   ((case Real.scan List.getItem l
-		       of SOME (n, nil) => SOME n
+		       of SOME (n, nil) => n
 			| _ => 
 			 (case Int.scan StringCvt.DEC List.getItem l
-			    of SOME (n, nil) => SOME(real n)
-			     | _ => NONE)) handle Overflow => NONE)
-		 else NONE
-	        | nil => NONE
+			    of SOME (n, nil) => real n
+			     | _ => typeMismatch "a numeral" fv)) 
+		       handle Overflow => tooLarge "Numeral" fv)
+		 else typeMismatch "a numeral" fv
+	        | nil => emptyFormVar fv
 	  end
-    fun getString (s: string) : string option = Ns.Conn.formvar s
+    fun getString0 (fv: string) : string = 
+      case Ns.Conn.formvar fv of
+	SOME s => if size s = 0 then emptyFormVar fv 
+		  else s
+      | NONE => noFormVar fv
+
+    val getNat    = wrapOption getNat0
+    val getInt    = wrapOption getInt0
+    val getReal   = wrapOption getReal0
+    val getNum    = wrapOption getNum0
+    val getString = wrapOption getString0
+
+    val getNatOrFail    = wrapFail getNat0
+    val getIntOrFail    = wrapFail getInt0
+    val getRealOrFail   = wrapFail getReal0
+    val getNumOrFail    = wrapFail getNum0
+    val getStringOrFail = wrapFail getString0
   end
+
+

@@ -1,6 +1,6 @@
 signature NS_SET =
   sig
-    type set = int
+    type set
 
     (* get the first value associated with a key, if present *)
     val get : set * string -> string option
