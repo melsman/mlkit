@@ -8,7 +8,6 @@ signature NS_INFO = sig
   val homePath            : unit -> string
   val hostname            : unit -> string
   val pid                 : unit -> int
-  val serverVersion       : unit -> string
   val uptime              : unit -> int
   val pageRoot            : unit -> string
 end
@@ -33,8 +32,6 @@ end
  [hostname()] returns the host name of the machine.
 
  [pid()] returns the process id of the server process.
-
- [serverVersion()] returns the version of the web-server.
 
  [uptime()] returns the number of seconds the server process 
  has been running.

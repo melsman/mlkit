@@ -38,6 +38,7 @@ in
      demo/currency_cache.sml
      demo/formvar.sml
      demo/formvar_chk.sml
+     demo/return_file.sml
      demo/auth_form.sml
      demo/auth_logout.sml
      demo/auth.sml

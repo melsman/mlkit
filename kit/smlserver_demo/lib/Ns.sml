@@ -31,6 +31,9 @@ structure Ns :> NS =
       struct
 	type status = status
 	type set = set
+	fun returnFile(status: int, mt: string, f: string) : status =
+	  prim("@Ns_ConnReturnFile", (getConn(),status,mt,f))
+
 	fun returnHtml(status: int, s: string) : status =
 	  prim("@Ns_ConnReturnHtml", (getConn(),status,s,size s))
 	fun return s = returnHtml(200,s)

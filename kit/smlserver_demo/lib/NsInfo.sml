@@ -31,9 +31,6 @@ structure NsInfo : NS_INFO =
     fun pid() : int =
       prim("Ns_InfoPid", ())
 
-    fun serverVersion() : string =
-      prim("nssml_InfoServerVersion", ())
-
     fun uptime() : int =
       prim("Ns_InfoUptime", ())
       

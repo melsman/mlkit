@@ -1,3 +1,4 @@
+Ns_ConnReturnFile
 Ns_ConnReturnHtml
 Ns_Log
 Ns_TclGetConn

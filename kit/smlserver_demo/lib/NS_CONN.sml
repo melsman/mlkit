@@ -3,6 +3,7 @@ signature NS_CONN = sig
   type set
   val returnHtml     : int * string -> status
   val return         : string -> status
+  val returnFile     : int * string * string -> status
   val write          : string -> status
   val returnRedirect : string -> status
   val getQuery       : unit -> set option
@@ -31,6 +32,10 @@ end
  [return s] sends HTML string s with status code 200 to 
  client, including HTTP headers. Returns Ns.OK on success 
  and Ns.ERROR on failure.
+
+ [returnFile (sc,mt,f)] sends file f with status code sc to 
+ client, including HTTP headers. The mime type is mt. 
+ Returns Ns.OK on success and Ns.ERROR on failure.
 
  [write s] sends string s to client, excluding HTTP headers. 
  Returns Ns.OK on success and Ns.ERROR on failure.
