@@ -104,7 +104,7 @@ structure ScsAudit :> SCS_AUDIT =
    	         to_char(^audit_table_name.last_modified,'Mon DD, YYYY HH12:MI AM') as last_modified,
                  auth_user.name as modifying_user_name
             from ^audit_table_name, auth_user
-           where auth_user.user_id = ^audit_table_name.last_modifying_user
+           where auth_user.user_id(+) = ^audit_table_name.last_modifying_user
              and ` ^^ wh_audit ^^ `
            order by ^audit_table_name.last_modified asc`
 
@@ -119,7 +119,7 @@ structure ScsAudit :> SCS_AUDIT =
                  to_char(^table_name.last_modified,'Mon DD, YYYY HH12:MI AM') as last_modified,
                  auth_user.name as modifying_user_name
             from ^table_name, auth_user
-           where auth_user.user_id = ^table_name.last_modifying_user
+           where auth_user.user_id(+) = ^table_name.last_modifying_user
              and ` ^^ wh_main ^^ `
            order by ^table_name.last_modified asc`
 
@@ -162,7 +162,7 @@ structure ScsAudit :> SCS_AUDIT =
 			     val id_vals = List.map (fn id => (id,g id)) id_columns
 			     val vals = List.map #2 id_vals
 			     val in_link=String.concatWith "&" 
-			       (List.map (fn (id,v) => ids^"="^id^"&id_"^id^"="^v) id_vals)
+			       (List.map (fn (id,v) => (*ids^*)"id="^id^"&id_"^id^"="^v) id_vals)
 
 			   in
 			     ScsPage.write (`<h4><a href="audit_row.sml?table_name=^(table_name)&^(in_link)">Key (^ids)=(^(String.concatWith ", " vals))</a></h4>` ^^ 
