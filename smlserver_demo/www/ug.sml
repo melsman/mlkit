@@ -27,7 +27,7 @@ in
       `</ul>
   
       <p>
-      Back to the <a href="index.msp">example</a> page<p>
+      Back to the <a href="index.sml">example</a> page<p>
       <hr>
       <a href="http://www.smlserver.org/">SMLserver Home Page</a> (<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-07-29
 
@@ -47,7 +47,7 @@ handle _ (*Db.Pool.DbPoolError err*) =>
       You should check your configuration file: ^(Ns.Info.configFile())<p>
   
       <p>
-      Back to the <a href="index.msp">example</a> page<p>
+      Back to the <a href="index.sml">example</a> page<p>
       <hr>
       <a href="http://www.smlserver.org/">SMLserver Home Page</a> (<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-07-29
 
