@@ -138,7 +138,9 @@ structure Benchmark =
       end
 
     fun BenchPage p =
-      HTML(BODY(H1 "KitBench Report" ^ p ^ "<HR>" ^ I "The KitBench Tool"))
+	let val dat = Date.toString(Date.fromTimeLocal (Time.now()))
+	in HTML(BODY(H1 ("KitBench Report - " ^ dat) ^ p ^ "<HR>" ^ I "The KitBench Tool"))
+	end
 
     fun readFlags ss =
       let
