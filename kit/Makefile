@@ -30,8 +30,15 @@ clean:
 	cd kitdemo; rm -rf PM run *~ */PM */*~
 	cd test; $(MAKE) clean
 	cd test_dev; rm -rf PM run *~ *.out *.log
-	cd smlserver_demo; rm -rf *~
-	cd smlserver_demo/sml; rm -rf *~ PM 
+	cd smlserver_demo; rm -rf *~ sources.pm nsd.mael.tcl PM
+	cd smlserver_demo/lib; rm -rf *~ PM 
+	cd smlserver_demo/demo; rm -rf *~ PM 
+	cd smlserver_demo/demo/rating; rm -rf *~ PM 
+	cd smlserver_demo/demo/employee; rm -rf *~ PM 
+	cd smlserver_demo/demo/link; rm -rf *~ PM 
+	cd smlserver_demo/demo_lib; rm -rf *~ PM 
+	cd smlserver_demo/scs_lib; rm -rf *~ PM 
+	cd smlserver_demo/log; rm -f server.log access* nspid*
 	cd smlserver_demo/www; rm -rf *~ PM
 	cd src; $(MAKE) clean
 

@@ -42,8 +42,8 @@ Version: 4.1.0
 Release: 1
 Copyright: GPL
 Group: Development/Languages
-Source: http://www.it.edu/research/mlkit/download/smlserver-4.1.0.tgz
-URL: http://www.it.edu/research/mlkit
+Source: http://www.smlserver.org/dist/smlserver-4.1.0.tgz
+URL: http://www.smlserver.org
 Vendor: IT University of Copenhagen
 Packager: Martin Elsman (mael@dina.kvl.dk)
 Prefix: /usr/share/smlserver
