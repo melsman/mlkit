@@ -22,8 +22,8 @@
 	      ("year", "year of wine")
 	    val year = Int.toString year
 	    val query = `select wid from wine 
-	                 where name = ^(Db.qq' name)
-		           and year = ^(Db.qq' year)`
+	                 where name = ^(Db.qqq name)
+		           and year = ^(Db.qqq year)`
 	in 
 	  case Db.zeroOrOneRow query of
 	    SOME [wid] => (wid, name, year)
@@ -33,8 +33,8 @@
 		  val _ = Db.dml
 		    `insert into wine (wid, name, year)
 		     values (^wid, 
-			     ^(Db.qq' name), 
-			     ^(Db.qq' year))`
+			     ^(Db.qqq name), 
+			     ^(Db.qqq year))`
 	      in (wid, name, year)
 	      end
 	end

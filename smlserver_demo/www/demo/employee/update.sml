@@ -5,9 +5,9 @@
   val note   = getString ("note", "note")
 
   val update = `update employee
-                set note = ^(Db.qq' note)
-                where email = ^(Db.qq' email)
-                  and passwd = ^(Db.qq' passwd)`
+                set note = ^(Db.qqq note)
+                where email = ^(Db.qqq email)
+                  and passwd = ^(Db.qqq passwd)`
 
   val _ = 
     (Db.dml update;

@@ -10,5 +10,5 @@
 
   val _ = Ns.Conn.return 
     (case FormVar.wrapOpt FormVar.getIntErr "temp_c"
-       of NONE => "Go back and enter an interger!"
+       of NONE => "Go back and enter an integer!"
 	| SOME i => calculate i)

@@ -13,8 +13,8 @@ val insert =
   `insert into link (link_id, person_id, url, text)
    values (^(Db.seqNextvalExp "link_seq"),
 	   ^(Int.toString person_id),
-	   ^(Db.qq' url),
-	   ^(Db.qq' text))`
+	   ^(Db.qqq url),
+	   ^(Db.qqq text))`
 
 val _ = Db.dml insert
 

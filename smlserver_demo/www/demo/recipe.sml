@@ -1,7 +1,7 @@
   fun error s = 
     (Page.return ("Error: " ^ s)
-     `An error occured while generating a recipe for 
-      you; use your browser's back-button to back-up 
+     `An error occurred while generating a recipe for 
+      you; use your browser's back-button to backup 
       and enter a number in the form.`
      ; Ns.exit())
 
