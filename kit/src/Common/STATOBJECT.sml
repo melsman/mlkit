@@ -56,6 +56,7 @@ signature STATOBJECT =
 	   to the types indicated by `bla'.*)
 	val from_ExplicitTyVar      : ExplicitTyVar -> TyVar
 	val is_overloaded           : TyVar -> bool
+	val resolve_overloaded      : TyVar -> TyName.Set.Set
 	val string                  : TyVar -> string
 	val string'                 : (Type -> string) -> TyVar -> string
 	val pretty_string           : TVNames -> TyVar -> string

@@ -1897,17 +1897,29 @@ let
 	
   fun tau_to_overloadinginfo tau  =
     case List.find (fn (tau', oi) => Type.eq (tau, tau')) tau_to_overloadinginfo_alist
-      of SOME res => SOME(#2 res)
-       | NONE => NONE
+      of SOME res => #2 res
+       | NONE => OverloadingInfo.resolvedIntDefault()   (* can happen only if type error *)
 
-  fun resolve_tau (default_type, default : OverloadingInfo.OverloadingInfo) tau 
-    : OverloadingInfo.OverloadingInfo =
+  fun resolve_tv (tv : TyVar) : Type =
+    let val ts = StatObject.TyVar.resolve_overloaded tv
+      open TyName
+    in 
+      if Set.member tyName_INT32 ts then
+	  if Set.member tyName_INT31 ts then
+	    Type.IntDefault()
+	  else Type.Int32
+      else 
+	if Set.member tyName_WORD32 ts then
+	  if Set.member tyName_WORD31 ts then
+	    Type.WordDefault()
+	  else Type.Word32
+	else Crash.impossible "resolve_tv.hmm; maybe insert cases for string, etc"
+    end
+
+  fun resolve_tau tau : OverloadingInfo.OverloadingInfo =
         let val tau' = S on tau
-	in
-	  (case Type.to_TyVar tau' of
-	     NONE => (case tau_to_overloadinginfo tau'
-			of SOME res => res
-			 | NONE => default) 
+	in case Type.to_TyVar tau' 
+	     of NONE => tau_to_overloadinginfo tau'
 		 (*TODO 25/06/1997 10:11. tho.
 		  I'd rather do an impossible here: If tau' is not a
 		  tyvar, it must be one of {int31, int32, real, string, 
@@ -1919,30 +1931,30 @@ let
 		  best to not do an impossible.  The only thing to do
 		  is then to return `default', as unresolved
 		  overloading should not result in an error message. *)
-	   | SOME tv' =>
+	      | SOME tv' =>
 	       if Type.eq (tau', tau)
 	       then (*tau' is a tyvar, so the overloading is as yet
 		     unresolved, & according to the Definition of SML '97, it
 		     must be resolved to a default type.  And now someone has remembered
 		     to put this resolve into work by unifying the tyvar with
 		     the default type:*)
-		    ((case Type.unify (default_type, tau') of
-			Type.UnifyOk => ()
-		      | _ => () (*impossible "resolve_tau: unify" *) ) ;
-		     default)
-	       else (*repeat application of S:*) resolve_tau (default_type, default) tau')
+		 let val t = resolve_tv tv'
+		   val _ = Type.unify (t, tau')
+		 in tau_to_overloadinginfo tau'
+		 end
+	       else (*repeat application of S:*) resolve_tau tau'
 	end
   in
 
-  (*resolve_tyvar gives `default' overloading info when overloading couldn't be
-   resolved.  According to the definition (p. 72), int is the default type
-   except for /, but / is not overloaded in this compiler; / always has type
-   real * real -> real, as there is only one kind of real.
-   25/06/1997 10:30. tho.*)
+  (*resolve_tyvar gives `default' overloading info when overloading
+   couldn't be resolved.  According to the definition (p. 72), int is
+   the default type except for /, but / is not overloaded in this
+   compiler; / always has type real * real -> real, as there is only
+   one kind of real.  25/06/1997 10:30. tho. Another exception is when
+   the choice is between word8, word31, and word32! mael 2001-05-15 *)
 
-    fun resolve_tyvar (default_type, default: OverloadingInfo.OverloadingInfo) 
-      : TyVar -> OverloadingInfo.OverloadingInfo =
-      (resolve_tau (default_type,default)) o Type.from_TyVar
+    fun resolve_tyvar (tv : TyVar) : OverloadingInfo.OverloadingInfo =
+      (resolve_tau o Type.from_TyVar) tv
 
   end (*local*)
 
@@ -2011,27 +2023,14 @@ let
 	    (case ElabInfo.to_OverloadingInfo i 
 	       of NONE => SCONatexp(resolve_i i, scon)
 		| SOME (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
-		 let val (defaultType, defaultOverloadingInfo) =
-		   case scon
-		     of SCon.INTEGER _ => (Type.IntDefault(), OverloadingInfo.resolvedIntDefault())
-		      | SCon.WORD _ => (Type.WordDefault(), OverloadingInfo.resolvedWordDefault())
-		      | _ => Crash.impossible "ElabDec.resolve_atexp.scon"
-		 in
-		   SCONatexp (ElabInfo.plus_OverloadingInfo i 
-			      (resolve_tyvar (defaultType,
-					      defaultOverloadingInfo) 
-			       tyvar), 
-			       scon)
-		 end
+		 SCONatexp (ElabInfo.plus_OverloadingInfo i (resolve_tyvar tyvar), 
+			    scon)
 		| SOME _ => impossible "resolve_atexp.SCON")
         | IDENTatexp(i, op_opt) =>
               (case ElabInfo.to_OverloadingInfo i of 
                    NONE => IDENTatexp (resolve_i i, op_opt)
                  | SOME (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
-		     IDENTatexp (ElabInfo.plus_OverloadingInfo i 
-				 (resolve_tyvar (Type.IntDefault(), 
-						 OverloadingInfo.resolvedIntDefault()) 
-				  tyvar), 
+		     IDENTatexp (ElabInfo.plus_OverloadingInfo i (resolve_tyvar tyvar), 
 				 op_opt)
                  | SOME _ => impossible "resolve_atexp")
         | RECORDatexp(i, NONE) => RECORDatexp(resolve_i i,NONE)
@@ -2108,18 +2107,8 @@ let
 	(case ElabInfo.to_OverloadingInfo i 
 	   of NONE => SCONatpat(resolve_i i, scon)
 	    | SOME (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
-	     let val (defaultType, defaultOverloadingInfo) =
-	       case scon
-		 of SCon.INTEGER _ => (Type.IntDefault(), OverloadingInfo.resolvedIntDefault())
-		  | SCon.WORD _ => (Type.WordDefault(), OverloadingInfo.resolvedWordDefault())
-		  | _ => Crash.impossible "ElabDec.resolve_atpat.scon"
-	     in
-	       SCONatpat (ElabInfo.plus_OverloadingInfo i 
-			  (resolve_tyvar (defaultType, 
-					  defaultOverloadingInfo) 
-			   tyvar), 
-			  scon)
-	     end
+	     SCONatpat (ElabInfo.plus_OverloadingInfo i (resolve_tyvar tyvar), 
+			scon)
 	    | SOME _ => impossible "resolve_atpat.SCON")
     | LONGIDatpat(i,x) => LONGIDatpat(resolve_i i,x)
     | RECORDatpat(i, NONE) => RECORDatpat(resolve_i i,NONE)
