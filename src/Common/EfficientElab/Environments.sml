@@ -254,8 +254,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
     (*the types Context, Env, StrEnv, TyEnv, TyStr, and VarEnv, and
      some layout and report functions for them.*)
 
-    datatype Context = CONTEXT of {T : TyName.Set.Set, 
-				   U : ExplicitTyVarEnv,
+    datatype Context = CONTEXT of {U : ExplicitTyVarEnv,
 				   E : Env}
 	 and Env = ENV of {SE : StrEnv, TE : TyEnv, VE : VarEnv}
 	 and StrEnv = STRENV of (strid, Env) FinMap.map
@@ -1136,7 +1135,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
     structure C = struct
       (*ExplicitTyVarEnv*) 
       val U_empty = EXPLICITTYVARENV FinMap.empty
-      fun plus_U (CONTEXT {T,U = EXPLICITTYVARENV U,E},
+      fun plus_U (CONTEXT {U = EXPLICITTYVARENV U,E},
 		  ExplicitTyVars : ExplicitTyVar list) : Context =
 	    let val U' = List.foldL
 			   (fn ExplicitTyVar => fn m => 
@@ -1144,30 +1143,23 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 					     Level.current (),m))
 			     FinMap.empty ExplicitTyVars
 	    in
-	      CONTEXT {T=T, U=EXPLICITTYVARENV (FinMap.plus (U,U')), E=E}
+	      CONTEXT {U=EXPLICITTYVARENV (FinMap.plus (U,U')), E=E}
 	    end
-      fun to_U (CONTEXT {T, U=EXPLICITTYVARENV m, E}) : ExplicitTyVar list =
+      fun to_U (CONTEXT {U=EXPLICITTYVARENV m, E}) : ExplicitTyVar list =
 	    EqSet.list(FinMap.dom m)
-      fun to_U' (CONTEXT {T,U,E}) : ExplicitTyVarEnv = U 
+      fun to_U' (CONTEXT {U,E}) : ExplicitTyVarEnv = U 
       fun ExplicitTyVarEnv_lookup (EXPLICITTYVARENV m) ExplicitTyVar =
 	    (case FinMap.lookup m ExplicitTyVar of
 	       None => Level.GENERIC
 	     | Some l => l)
-      fun from_T_and_E (T, E) = CONTEXT {T=T, U=U_empty, E=E}
-      fun to_E (CONTEXT {T, U, E}) = E
-      fun cplus_E (CONTEXT {T, U, E}, E') =
-	    CONTEXT {T=TyName.Set.union T (E.tynames E'),
-		     U=U, E=E.plus (E, E')}
-      fun plus_E (CONTEXT {T, U, E}, E') = CONTEXT {T=T, U=U, E=E.plus (E, E')}
-      fun cplus_TE (C, TE) = cplus_E (C, E.from_TE TE)
+      fun to_E (CONTEXT {U, E}) = E
+      fun plus_E (CONTEXT {U, E}, E') = CONTEXT {U=U, E=E.plus (E, E')}
       fun plus_TE(C,TE) = plus_E(C,E.from_TE TE)
-      fun cplus_VE_and_TE (C, (VE, TE)) = cplus_E (C, E.from_VE_and_TE (VE,TE))
-      fun plus_VE (CONTEXT {T, U, E as ENV {SE, TE, VE}}, VE') =
-	    CONTEXT {T=T, U=U,
-		     E=ENV {SE=SE, TE=TE, VE=VE.plus (VE, VE')}}
-      fun to_T (CONTEXT {T,U,E}) = T
-      fun from_E E = CONTEXT {T=TyName.Set.empty, U=U_empty, E=E}
-      fun on (S : Substitution, C as CONTEXT {T, U, E}) = C
+      fun plus_VE_and_TE (C, (VE, TE)) = plus_E (C, E.from_VE_and_TE (VE,TE))
+      fun plus_VE (CONTEXT {U, E as ENV {SE, TE, VE}}, VE') =
+	    CONTEXT {U=U, E=ENV {SE=SE, TE=TE, VE=VE.plus (VE, VE')}}
+      fun from_E E = CONTEXT {U=U_empty, E=E}
+      fun on (S : Substitution, C as CONTEXT {U, E}) = C
       (* was:      CONTEXT {T = T, U = U, E = onE(S, E)} *)
 	(*TODO 26/01/1997 21:57. tho.:  er det ^ ok?*)
 
@@ -1229,7 +1221,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun close (C : Context, valbind : valbind, VE : VarEnv) : VarEnv =
 	let
 	  val CONTEXT {E=ENV{SE=SE, VE=VARENV ve_map, ...}, 
-		       U=EXPLICITTYVARENV U, ...} = C
+		       U=EXPLICITTYVARENV U} = C
 
 	  open DecGrammar 
 
@@ -1260,8 +1252,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		end  
 	    in
 	      (case valbind of
-		 PLAINvalbind (_, pat, exp, None) =>
-		   makemap pat exp
+		 PLAINvalbind (_, pat, exp, None) => makemap pat exp
 	       | PLAINvalbind (_, pat, exp, Some valbind) =>
 		   let val m1 = makemap pat exp
 		       val m2 = isExpansiveId valbind
@@ -1270,8 +1261,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		       (fn (b1, b2) => raise BoundTwice VE)
 		         m1 m2
 		   end
-	       | RECvalbind (i, valbind) =>
-		   isExpansiveId valbind)
+	       | RECvalbind (i, valbind) => isExpansiveId valbind)
 	    end
 
 	  val isExpansiveId_map = isExpansiveId valbind
@@ -1296,12 +1286,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  val VARENV m = VE
 	in
 	  VARENV (FinMap.ComposeMap
-		    (fn (id, LONGVARpriv sigma) =>
-		           LONGVARpriv (remake true id sigma)
-		      | (id, LONGCONpriv(sigma, cons)) =>
-			   LONGCONpriv (remake false id sigma, cons)
-		      | (id, LONGEXCONpriv tau) => LONGEXCONpriv tau)
-		        m)
+		  (fn (id, LONGVARpriv sigma) => LONGVARpriv (remake true id sigma)
+		    | (id, LONGCONpriv(sigma, cons)) => LONGCONpriv (remake false id sigma, cons)
+		    | (id, LONGEXCONpriv tau) => LONGEXCONpriv tau)
+		  m)
 	end handle BoundTwice VE => VE
       end
     end (*C*)
@@ -1418,7 +1406,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
     end (*Realisation*)
 
-    (*ABS and ABS'*)
+    (* ABS *)
     local
       open Realisation
       infix oo
@@ -1430,24 +1418,24 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 						 equality=false}
 	    val phi = singleton(tyname_abs, TypeFcn.from_TyName tyname)
 	    val phi_inv = singleton(tyname, TypeFcn.from_TyName tyname_abs) 
-	in (phi, phi_inv)
+	in (tyname_abs, phi, phi_inv)
 	end
 	
       fun abstract (TE: TyEnv) =
-	TE.fold (fn tystr => fn (phi, phi_inv) =>
-		 let val (phi', phi_inv') = abstract_tystr tystr
-		 in (phi oo phi', phi_inv oo phi_inv')
-		 end) (Id,Id) TE
+	TE.fold (fn tystr => fn (T,phi, phi_inv) =>
+		 let val (t,phi', phi_inv') = abstract_tystr tystr
+		 in (t::T,phi oo phi', phi_inv oo phi_inv')
+		 end) ([],Id,Id) TE
 
       fun strip (TE : TyEnv) : TyEnv =
 	TE.map (fn (TYSTR {theta, ...}) => TYSTR {theta = theta, VE = VE.empty}) TE
     in
-      fun ABS (TE : TyEnv, E : Env) : Env * realisation =
+      fun ABS (TE : TyEnv, E : Env) : TyName list * Env * realisation =
 	    let val TE' = strip TE
-	        val (phi, phi_inv) = abstract TE'
+	        val (T, phi, phi_inv) = abstract TE'
 		val E' = E.plus (E.from_TE TE', E)
 		val E' = on_Env phi_inv E'
-	    in (E', phi)
+	    in (T, E', phi)    (* The T is the new generated tynames *)
 	    end
     end (*local*)
 
