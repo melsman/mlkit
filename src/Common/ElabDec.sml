@@ -83,6 +83,10 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     fun map_opt f (Some x) = Some (f x)
       | map_opt f None = None
     val concat = List.foldL (General.curry (op @)) []
+    (*uniq [1,2,1,3] = [2,1,3]*)
+    fun uniq [] = []
+      | uniq (x::xs) = if List.exists (fn x' => x=x') xs then uniq xs
+		       else x::uniq xs
 
     (*import from StatObject:*)
     structure Level        = StatObject.Level
@@ -876,9 +880,11 @@ old*)
 			       (i, ErrorInfo.TYVARS_SCOPED_TWICE
 				    (map TyVar.from_ExplicitTyVar explicittyvars)))
 		      | escaping_tyvars => 
-			  errorConv (i, ErrorInfo.UNGENERALISABLE_TYVARS
-				          (concat (map (VE.ids_with_tyvar_in_type_scheme VE)
-					   escaping_tyvars))))
+			  errorConv (i,
+			    (ErrorInfo.UNGENERALISABLE_TYVARS
+			     o uniq o concat
+			     o map (VE.ids_with_tyvar_in_type_scheme VE))
+			    escaping_tyvars))
 				   
                val out_valbind = generalise_type_info_valbind
 		                   (S onC C, S, out_valbind)
