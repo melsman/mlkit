@@ -52,7 +52,7 @@ functor CompileBasis(structure Con : CON
   struct
 
     fun log s = TextIO.output(TextIO.stdOut,s)
-
+    fun say s = log s
     val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
 
     type lvar = LambdaStatSem.lvar
@@ -209,7 +209,12 @@ functor CompileBasis(structure Con : CON
 	  val tynames = TyName.tyName_LIST :: 
               TyName.tyName_BOOL ::
 	      TyName.tyName_WORD_TABLE :: tynames     (* for elim eq *) 
-	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
+	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames}) handle x =>
+               (say "CompileBasis.restrict: ElimiateEq.restrict failed\n";
+                say "Then equality environment is:\n";
+                PP.outputTree(say,  EliminateEq.layout_env EqEnv, 70);
+                say "(end of equality environment)\n";
+                raise x) 
 	  val lvars = lvars_eq @ lvars
 	  val lvars_with_prims = Lvars.less_int_lvar :: Lvars.minus_int_lvar ::
 	                         lvars_eq @ lvars_with_prims

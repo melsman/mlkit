@@ -5,7 +5,7 @@ signature ELAB_REPOSITORY =
     structure TyName : TYNAME
 
     type funid and InfixBasis and ElabBasis and opaq_env and name and longstrid
-    type prjid = string
+    type prjid (* = string *)
 
     val empty_infix_basis : InfixBasis
     val empty_opaq_env : opaq_env

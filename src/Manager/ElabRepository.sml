@@ -8,6 +8,7 @@ functor ElabRepository(structure Name : NAME
 		       eqtype funid
 		       type ElabBasis
 		       type longstrid
+                       eqtype prjid
 		       structure Crash : CRASH) : ELAB_REPOSITORY =
   struct
 
@@ -27,7 +28,7 @@ functor ElabRepository(structure Name : NAME
     val empty_infix_basis : InfixBasis = InfixBasis.emptyB
     val empty_opaq_env : opaq_env = OpacityEnv.empty
 
-    type prjid = string
+    type prjid = prjid (* was string; mads *)
     type elabRep = ((prjid * funid) * bool, (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
 					     InfixBasis * ElabBasis * opaq_env) list) FinMap.map ref
       (* the bool is true if profiling is enabled *)

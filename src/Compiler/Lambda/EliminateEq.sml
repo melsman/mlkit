@@ -69,7 +69,7 @@ functor EliminateEq (structure Name : NAME
       fun env_map (f:result->result) (tynamemap,tyvarmap,lvarmap) =
 	(TyNameMap.composemap f tynamemap, tyvarmap,lvarmap)
 
-      fun restrict((tnmap,_,lvmap),{lvars,tynames}) =
+      fun restrict'((tnmap,_,lvmap),{lvars,tynames}) =
 	let val tnmap' = List.foldL (fn tn => fn acc =>
 				     case TyNameMap.lookup tnmap tn  (* do not scream if it *)
 				       of SOME res => TyNameMap.add(tn,res,acc)     (* is not here... *)
@@ -82,7 +82,7 @@ functor EliminateEq (structure Name : NAME
 					| NONE => die ("restrict.lv: " ^ Lvars.pr_lvar lv ^ " not in map"))
 	                 LvarMap.empty lvars
 	in (lvars', (tnmap',TyVarMap.empty,lvmap'))
-	end
+	end  
 
       fun eq_tnres (POLYLVAR lv1,POLYLVAR lv2) = Lvars.eq(lv1,lv2)
 	| eq_tnres (MONOLVAR _,_) = die "eq_tnres.MONOLVAR"
@@ -146,6 +146,7 @@ functor EliminateEq (structure Name : NAME
 		   children=[layout_tynamemap tynamemap, layout_tyvarmap tyvarmap,
 			     layout_lvarmap lvarmap]}
       end
+      fun say s = TextIO.output(TextIO.stdOut, s)  
     in
       type env = env
       val empty : env = empty
@@ -161,7 +162,13 @@ functor EliminateEq (structure Name : NAME
       val env_map : (result->result) -> env -> env = env_map (* only used at top-level *)
       val enrich : env * env -> bool = enrich
       val match : env * env -> env = match
-      val restrict : env * {lvars:lvar list,tynames:TyName list} -> lvar list * env = restrict
+      fun restrict(e: env, {lvars:lvar list,tynames:TyName list}): lvar list * env = restrict'(e,{lvars=lvars,tynames=tynames})
+handle x => 
+               (say "ElimiateEq.restrict failed\n";
+                say "The equality environment is:\n";
+                PP.outputTree(say,  layout_env e, 70);
+                say "(end of equality environment)\n";
+                raise x) 
       type StringTree = PP.StringTree
       val layout_env : env -> StringTree = layout_env
     end
