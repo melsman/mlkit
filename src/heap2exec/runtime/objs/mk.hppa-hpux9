@@ -1,0 +1,27 @@
+# mk.hppa-hpux
+#
+
+SHELL	= /bin/sh
+
+# 
+# A version of the HPUX C compiler has a nasty bug.
+#
+CC =		cc -Aa -D__STDC__ 
+CPP =		/lib/cpp.ansi
+
+CFLAGS =	-O
+
+AS =		/bin/as
+RANLIB =	ar ts
+
+XOBJS =
+XLIBS =
+LD_LIBS =	-lmalloc
+BASE_DEFS =     
+DEFS =		$(BASE_DEFS) -DHOST_HPPA -DTARGET_HPPA -DOPSYS_HPUX9 -DCALLEESAVE=3 -DOPSYS_UNIX -DASSERT_ON -DINDIRECT_CFUNC
+TARGET =	HPPA
+VERSION	=	v-hppa-hpux9
+RUNTIME =	run.hppa-hpux9
+
+all:
+	(make CHECK_HEAP=check-heap.o RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CPP="$(CPP)" CFLAGS="$(CFLAGS)" AS="$(AS)" RANLIB="$(RANLIB)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))

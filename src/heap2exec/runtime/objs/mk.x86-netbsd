@@ -1,0 +1,28 @@
+# mk.x86-netbsd
+#
+# makefile for "Net BSD", which is a BSD 4.4 clone.
+#
+
+SHELL =		/bin/sh
+
+MAKE =		gmake
+
+ARFLAGS =	Trcv
+CC =		gcc -ansi
+CFLAGS =	-O2
+CPP =		gcc -x c -E -P -ansi
+#CPP =		/usr/bin/cpp -P
+
+XOBJS =
+XLIBS =	
+LD_LIBS =
+BASE_DEFS =	
+DEFS		= $(BASE_DEFS) -DHOST_X86 -DTARGET_X86 -DOPSYS_UNIX -DOPSYS_NETBSD -DVREGS -DCALLEESAVE=3
+TARGET =	X86
+VERSION =	v-x86-netbsd
+RUNTIME =	run.x86-netbsd
+
+all:
+	($(MAKE) RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" MAKE="$(MAKE)" CC="$(CC)" CFLAGS="$(CFLAGS)" CPP="$(CPP)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))
+
+

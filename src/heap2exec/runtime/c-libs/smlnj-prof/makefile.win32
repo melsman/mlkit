@@ -1,0 +1,67 @@
+#
+# the makefile for the profile support library
+# win32 specific
+
+SHELL =		
+
+INC_DIR =	..\..\include
+CLIB_DIR =	..\.
+
+INCLUDES =	/I$(INC_DIR) /I$(CLIB_DIR) /I..\..\objs
+GC_INCLUDES =	$(INCLUDES) /I..\..\gc
+
+MAKEFILE =	makefile.win32
+MAKE =		nmake /F$(MAKEFILE)
+AR =		lib
+ARFLAGS =	
+RANLIB =	lib
+
+LIBRARY =	libsmlnj-prof.lib
+
+VERSION =	v-dummy
+
+OBJS =		smlnj-prof-lib.obj \
+		getpquantum.obj \
+		setpref.obj \
+		setptimer.obj
+
+$(LIBRARY)	: $(VERSION) $(OBJS)
+	del /F /Q $(LIBRARY)
+	$(AR) $(ARFLAGS) /out:$(LIBRARY) $(OBJS)
+	$(RANLIB) /out:$(LIBRARY)
+
+$(VERSION) :
+	($(MAKE) MAKE="$(MAKE)" clean)
+	echo "$(VERSION)" > $(VERSION)
+
+smlnj-prof-lib.obj: smlnj-prof-lib.c \
+		$(INC_DIR)\ml-base.h \
+		$(INC_DIR)\c-library.h \
+		cfun-proto-list.h cfun-list.h
+		$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c smlnj-prof-lib.c
+
+getpquantum.obj: getpquantum.c \
+		cfun-proto-list.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h \
+		$(INC_DIR)\profile.h
+		$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c getpquantum.c
+
+setpref.obj: setpref.c \
+		cfun-proto-list.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h \
+		$(INC_DIR)\ml-objects.h $(INC_DIR)\ml-globals.h \
+		$(CLIB_DIR)\ml-c.h \
+		$(INC_DIR)\profile.h
+		$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c setpref.c
+
+setptimer.obj: setptimer.c \
+		cfun-proto-list.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h \
+		$(INC_DIR)\ml-objects.h \
+		$(CLIB_DIR)\ml-c.h \
+		$(INC_DIR)\profile.h
+		$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c setptimer.c
+
+clean :
+	del /F /Q v-* *.obj *.pdb $(LIBRARY)
+

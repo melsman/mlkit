@@ -1,0 +1,55 @@
+# win32 specific, only mem-vmem currently supported.
+#
+## The makefile for the memory management library.  This gets recursively
+## invoked with the OBJS variable set to the appropriate value.
+#
+
+MAKE =		nmake
+AR =		lib
+ARFLAGS =	
+RANLIB =	lib
+
+VERSION =	v-dummy
+
+LIB =		libmem.lib
+
+MMAP_OBJS =	mem-mmap.obj
+
+MACH_OBJS =	mem-mach.obj
+
+BRK_OBJS =	mem-brk.obj malloc.obj
+
+SIMPLE_OBJS = 	mem-win32.obj
+
+$(LIB) :	$(VERSION) $(OBJS)
+	$(AR) $(ARFLAGS) /out:$(LIB) $(OBJS)
+	$(RANLIB) /out:$(LIB)
+
+$(VERSION) :
+	$(MAKE) MAKE="$(MAKE)" clean
+	echo "$(VERSION)" > $(VERSION)
+
+mem-mmap.obj mem-mach.obj mem-brk.obj mem-win32.obj:	mem-common.ins
+
+DEPENDENTS = ..\include\ml-base.h ..\include\ml-unixdep.h ..\include\bibop.h
+
+mem-mmap.obj : mem-mmap.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c mem-mmap.c
+
+mem-mach.obj : mem-mach.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c mem-mach.c
+
+mem-brk.obj : mem-brk.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c mem-brk.c
+
+malloc.obj : malloc.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c malloc.c
+
+mem-win32.obj : mem-win32.c \
+		mem-common.ins \
+		..\include\ml-base.h ..\include\ml-osdep.h ..\include\memory.h
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c mem-win32.c
+
+clean :
+	del /F /Q v-* *.obj *.pdb $(LIB)
+

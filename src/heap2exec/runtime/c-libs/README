@@ -1,0 +1,34 @@
+This is the root directory of the ML callable C library source.  
+Versions of SML/NJ up to 106, used a single monolithic library
+of C functions that were callable from ML, with a single table
+of C function bindings.  This meant that to add a C function,
+required changing the run-time system source.  In the new scheme,
+the runtime system supports an extensible set of libraries that
+are configured at build time.  Note, however, that since the run-
+time system and ML heap images are separate files, one can extend
+the run-time system with additional libraries and then use existing
+ML heap images with the extended run-time system.  See the file
+HOWTO-ADD-C-CODE in the notes directory for more details.
+
+The decentralization of the libraries represents a first step in
+an ongoing process to make the ML/C interface easier to extend.
+There will be continue to be changes in the way that these
+libraries are organized and supported.  Here is a tentative list
+of anticipated changes:
+
+  1) as we move towards the new SML basis, the libraries will be
+     reorganized and redefined to reflect the new semantics.
+
+  2) support for non UNIX systems (Windows NT, Windows 95, OS/2,
+     and MacOS), will result in different versions of libraries
+     for different systems.
+
+  3) the generation of library interfaces will be automated.  We plan
+     an extension to SML that we will feed into a preprocessor to
+     generate both the ML code that binds the C functions, and the
+     C function prototype declarations and library tables (the stuff
+     that is in "*/cfun-list.h" and "*/*-lib.c").
+
+  4) support for dynamic loading of C libraries on machines that have
+     dynamic linking.
+

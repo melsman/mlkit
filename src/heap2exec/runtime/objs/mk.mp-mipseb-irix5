@@ -1,0 +1,33 @@
+# mk.mp-mipseb-irix5
+#
+# Makefile for multiprocessor version on SGI (Irix 5.x).
+#
+
+SHELL =		/bin/sh
+
+AS =		/bin/as -nocpp -mips2
+CC =		cc -xansi -D__STDC__
+CPP =		/usr/lib/acpp
+CFLAGS =	-O
+
+ROOT_DIR =	..
+MP_DIR =	$(ROOT_DIR)/mp
+CLIB_DIR =	$(ROOT_DIR)/c-libs
+
+#XOBJS =	xmonitor.o
+#LD_LIBS =	-lX11_s -lmalloc
+#BASE_DEFS =	-DHEAP_MONITOR
+XOBJS =	
+XLIBS =		$(MP_DIR)/libmp.a
+XCLIBS =	$(CLIB_DIR)/smlnj-mp/libsmlnj-mp.a
+GC_LIB =	libmp-gc.a
+LD_LIBS =	-lmalloc
+BASE_DEFS =
+MP_DEFS =	-DMP_SUPPORT -DMP_GCPOLL -DSOFT_POLL
+DEFS =		$(BASE_DEFS) $(MP_DEFS) -DHOST_MIPS -DTARGET_MIPS -DOPSYS_UNIX -DOPSYS_IRIX5 -DCALLEESAVE=3
+TARGET =	MIPS
+VERSION	=	v-mp-mipseb-irix5
+RUNTIME	=	run.mp-mipseb-irix5
+
+all:
+	(make RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CPP="$(CPP)" CFLAGS="$(CFLAGS)" AS="$(AS)" RANLIB="ar ts" TARGET=$(TARGET) LIBMP_OBJS="'OBJS=\$$\$$(SGI_OBJS)'" DEFS="$(DEFS)" GC_LIB="$(GC_LIB)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" XCLIBS="$(XCLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))
