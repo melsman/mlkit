@@ -82,23 +82,49 @@ functor DropRegions(structure MulExp : MUL_EXP
     end
 
 
-    fun drop_places(places, arreffs) =         (*************************)
-      let                                      (* a rho is marked if it *)
-	                              	       (* should NOT be dropped *)
-	fun visit_put_rhos [] = ()             (*************************)
-	  | visit_put_rhos (arreff::arreffs) =
-	  let fun visit_eval_effect effect = if Eff.is_put effect then visit(Eff.rho_of effect) else ()
-	      val _ = List.apply visit_eval_effect (Eff.represents arreff)
-	  in visit_put_rhos arreffs
-	  end
-	fun unvisit_word_bot_rhos [] = ()
-	  | unvisit_word_bot_rhos (rho::rhos) =
-	  (if word_or_bot_region rho then unvisit rho
-	   else (); unvisit_word_bot_rhos rhos)
-	val _ = visit_put_rhos arreffs
+    (* drop_places(places, _) returns a list of booleans of the same length
+       as places. The i'th boolean is true iff the i'th place should be kept
+       after dropping. A region variable rho should be kept iff it has ever had
+       a put effect on it. Earlier (in Version 2), the criterion was that
+       rho should be kept, if there was a put(rho) effect amongst the arrow effects
+       of the type of the function under consideration; but this is too weak, it turns
+       out: there may be no put(rho) effect in the function type and yet be a put(rho)
+       effect because rho is used as an actual argument to a region-polymorphic function
+       which, however, is not called! An example is
+
+	fun foldStateList f start = List.foldR (General.curry f) start numStateList
+
+       where foldR and curry are defined (somewhat unusually) by
+
+             fun curry(f: 'a*'b->'c)(x:'a)(y:'b):'c = f(x,y)
+             fun foldR(f: 'b -> 'a -> 'a)(acc:'a)(l:'b list): 'a = acc
+
+       Here curry f has a region parameter, rho, say for the region of the pair (x,y).
+       In foldStateList the application (curry f) introduces an actual region, rho',
+       corresponding to this pair, so rho' must not be dropped.
+       However, foldR never calls its argument function, so foldStateList has no
+       put on the rho'. Thus Version 2 would drop rho', leading to a compile time error
+       (namely that rho' was never bound). The current version looks for a the hash-consed
+       Put-node inside rho' and finds the put node that originated from the application
+       of curry. Thus the present version will not drop rho'.
+
+    *)
+
+
+    fun drop_places(places, _ (*arreffs*) ) =         
+      let   (*************************)
+            (* a rho is marked if it *)
+            (* should NOT be dropped *)
+            (*************************)
+        fun visit_put_rhos (places) = List.foldL Eff.acc_rho [] places
+	fun unvisit_word_bot_rhos rhos = 
+              List.apply (fn rho => if word_or_bot_region rho then unvisit rho else ()) rhos
+	val l = visit_put_rhos places
 	val _ = unvisit_word_bot_rhos places
 	val bl = map is_visited places
-      in reset_bucket(); bl
+      in (*reset_bucket();*)
+         List.apply (fn rho=>Eff.get_visited rho:=false) l;
+         bl
       end
 
 

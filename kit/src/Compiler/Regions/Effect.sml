@@ -126,6 +126,19 @@ struct
        RHO _ => true
     | _ => false
 
+  (* acc_rho effect acc conses effect onto acc iff
+     acc is a RHO node which has a put effect on it.
+     When effect is consed onto acc, its visited field is set.
+     (Such a region should not be dropped - see DropRegions.drop_places *)
+
+  fun acc_rho effect (acc: effect list): effect list =
+  let val effect = G.find effect
+  in
+    case (G.find_info effect, G.get_visited effect) of
+      (RHO{put = Some _, ...}, r as ref false) => (r:= true; effect::acc)
+    | _ => acc
+  end
+
   fun is_put effect =           (* effect node not necessarily canonical *)
      case G.find_info effect of
        PUT => true
