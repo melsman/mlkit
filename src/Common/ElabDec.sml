@@ -2086,10 +2086,18 @@ let
 		  result in an error message.*)
 	   | Some tv' =>
 	       if Type.eq (tau', tau)
-	       then (if !Flags.DEBUG_ELABDEC
-		     then output (std_out, "res: Some tv\n") else () ; 
+	       then (*tau' is a tyvar, so the overloading is as yet
+		     unresolved, & according to the Definition of SML '97, it
+		     must be resolved to int.  And now someone has remembered
+		     to put this resolve into work by unifying the tyvar with
+		     int:*)
+		    (if !Flags.DEBUG_ELABDEC
+		     then output (std_out, "res: Some tv\n") else () ;
+		     (case Type.unify (Type.Int, tau') of
+			Some S => ()
+		      | None => impossible "resolve_tau: unify") ;
 		     OverloadingInfo.RESOLVED_INT)
-	       else resolve_tau tau')    (* Repeat application of S *)
+	       else (*repeat application of S:*) resolve_tau tau')
 	end
   in
 
