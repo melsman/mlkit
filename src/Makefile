@@ -49,6 +49,7 @@ mlkit_kam: basics
 
 smlserver: basics
 	cd Runtime; $(MAKE) runtimeSystemKamNsSml.o
+	cd Runtime; $(MAKE) runtimeSystemKamApSml.o
 	cd SMLserver; $(MAKE)
 	echo 'use "build_web.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/smlserverc.$(ARCH-OS)

@@ -160,11 +160,12 @@ structure GenOpcodes : GEN_OPCODES =
       end
 
 
-    fun write_functor_cfuncs spec_file spec_file_nssml functor_file =
+    fun write_functor_cfuncs (spec_file,spec_file_nssml,spec_file_apsml) functor_file =
       let
 	val tmp_file = OS.FileSys.tmpName ()
 	val spec_insts = gen_spec_insts spec_file
 	val spec_insts_nssml = gen_spec_insts spec_file_nssml
+	val spec_insts_apsml = gen_spec_insts spec_file_apsml
 	val out_stream = TextIO.openOut(tmp_file)
 	fun out s = TextIO.output(out_stream, s)
 
@@ -192,12 +193,14 @@ structure GenOpcodes : GEN_OPCODES =
 	out "  sig\n";
 	out "    val name_to_built_in_C_function_index : string -> int\n";
 	out "    val name_to_built_in_C_function_index_nssml : string -> int\n";
+	out "    val name_to_built_in_C_function_index_apsml : string -> int\n";
 	out "  end\n\n";
 
 	out "functor BuiltInCFunctionsKAM () : BUILT_IN_C_FUNCTIONS_KAM = \n";
 	out "  struct\n";
 	out_fun "name_to_built_in_C_function_index" spec_insts;
 	out_fun "name_to_built_in_C_function_index_nssml" (spec_insts @ spec_insts_nssml);
+	out_fun "name_to_built_in_C_function_index_apsml" (spec_insts @ spec_insts_apsml);
 	out "  end\n";
 	TextIO.closeOut(out_stream);
 	copy_if_different tmp_file functor_file
@@ -250,12 +253,18 @@ structure GenOpcodes : GEN_OPCODES =
 	    val functor_file_cfuncs = mk_path "Compiler/Backend/KAM/BuiltInCFunctionsKAM.sml"
 	    val C_file_cfuncs = mk_path "Runtime/Prims.c"
 	    val C_file_cfuncs_nssml = mk_path "Runtime/PrimsNsSml.c"
-	    val _ = (write_functor_cfuncs spec_file_cfuncs spec_file_cfuncs_nssml functor_file_cfuncs;
+
+	    val spec_file_cfuncs_apsml = mk_path "Compiler/Backend/KAM/BuiltInCFunctionsApSml.spec"
+	    val C_file_cfuncs_apsml = mk_path "Runtime/PrimsApSml.c"
+
+	    val _ = (write_functor_cfuncs (spec_file_cfuncs,spec_file_cfuncs_nssml,
+					   spec_file_cfuncs_apsml) functor_file_cfuncs;
 		     write_built_in_c_funcs_C [spec_file_cfuncs] C_file_cfuncs;
 		     
-		     (* version of the C file that support nssml functionality used by
-		      * SMLserver *)
-		     write_built_in_c_funcs_C [spec_file_cfuncs, spec_file_cfuncs_nssml] C_file_cfuncs_nssml)
+		     (* version of the C file that support nssml and
+		        apsml functionality used by * SMLserver *)
+		     write_built_in_c_funcs_C [spec_file_cfuncs, spec_file_cfuncs_nssml] C_file_cfuncs_nssml;
+		     write_built_in_c_funcs_C [spec_file_cfuncs, spec_file_cfuncs_apsml] C_file_cfuncs_apsml)
       in
 	     OS.Process.success
       end handle _ => OS.Process.failure

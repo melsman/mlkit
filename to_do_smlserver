@@ -1,6 +1,16 @@
 Possible things to do
 ---------------------
 
+  2002-10-21, Niels: 
+   In NS_CACHE.sml, function cacheForAwhile:
+
+   We may consider a more advanced version with a function type of
+   (string,'a) -> string, that is 
+
+     val cacheForAwhile : (string*'a -> string) * (string*'a) * int -> (string * 'a) -> string
+
+   This would have been useful in ScsDist
+
   2001-10-05, Niels: warn on match in exhaustive
 
   2001-10-03, Niels:

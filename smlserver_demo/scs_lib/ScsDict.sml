@@ -10,9 +10,9 @@ signature SCS_DICT =
        web-site. 
 
        The dictionary is stored in the database (file 
-       ScsDict.sql). If the database is not accessible,
+       scs-dict-create.sql). If the database is not accessible,
        or the user has no preferences (e.g., may not be
-       logged in), then a default language is choosen. 
+       logged in), then a default language is chosen. 
 
        The language support is divided in small texts and 
        larger texts. For larger texts, you will probably 
@@ -49,24 +49,44 @@ signature SCS_DICT =
        stored with words separated by one space; new 
        lines etc. has been removed.
      *)
-    val d  : ScsLang.lang -> string -> string
-    val d' : ScsLang.lang -> quot -> quot
 
-     (* [d1 source_lang phrase arg] translates the phrase written in
-        source_lang into the language preferred by the logged in
-        user. Then replaces any %0 pattern surrounded with white space
-        with arg. *)
-    val d1 : ScsLang.lang -> string -> string -> string
-    val d1': ScsLang.lang -> quot -> string -> quot
+     (* [d source_lang module file_name phrase] translates the
+        phrase written in source_lang into the language preferred by
+        the logged in user. *)
+    val d  : ScsLang.lang -> string -> string -> string -> string
+    val d' : ScsLang.lang -> string -> string -> quot -> quot
 
-    val d2 : ScsLang.lang -> string -> string -> string -> string
-    val d2': ScsLang.lang -> quot -> string -> string -> quot
+     (* [d1 source_lang module file_name arg phrase] translates the
+        phrase written in source_lang into the language preferred by
+        the logged in user. Then replaces any %0 pattern surrounded
+        with white space with arg. It uses the translations recorded
+        for the module/file_name only. *)
+    val d1 : ScsLang.lang -> string -> string -> string -> string -> string
+    val d1': ScsLang.lang -> string -> string -> string -> quot -> quot
 
-    val d3 : ScsLang.lang -> string -> string -> string -> string -> string
-    val d3': ScsLang.lang -> quot -> string -> string -> string -> quot
+     (* [d2 source_lang module file_name arg0 arg1 phrase] translates
+        the phrase written in source_lang into the language preferred
+        by the logged in user. Then replaces any %0 pattern surrounded
+        with white space with arg0 and %1 pattern with arg1. It uses
+        the translations recorded for the module/file_name only. *)
+    val d2 : ScsLang.lang -> string -> string -> string -> string -> string -> string
+    val d2': ScsLang.lang -> string -> string -> string -> string -> quot -> quot
 
-    val dl : ScsLang.lang -> string -> string list -> string
-    val dl': ScsLang.lang -> quot -> string list -> quot
+     (* [d3 source_lang module file_name arg0 arg1 arg2 phrase] translates
+        the phrase written in source_lang into the language preferred
+        by the logged in user. Then replaces any %0,%1,%2 pattern surrounded
+        with white space with arg0,arg1,arg2. It uses
+        the translations recorded for the module/file_name only. *)
+    val d3 : ScsLang.lang -> string -> string -> string -> string -> string -> string -> string
+    val d3': ScsLang.lang -> string -> string -> string -> string -> string -> quot -> quot
+
+     (* [dl source_lang module file_name args phrase] translates the
+        phrase written in source_lang into the language preferred by
+        the logged in user. Then replaces any %n pattern surrounded
+        with white space with the n'th arg in the list args. It uses the 
+	translations recorded for the module/file_name only. *)
+    val dl : ScsLang.lang -> string -> string -> string list -> string -> string
+    val dl': ScsLang.lang -> string -> string -> string list -> quot -> quot
 
     val cacheName  : ScsLang.lang * ScsLang.lang -> string
     val cacheFlush : ScsLang.lang * ScsLang.lang -> unit
@@ -76,8 +96,10 @@ structure ScsDict :> SCS_DICT =
   struct 
     fun canonical s = String.concatWith " " (String.tokens Char.isSpace s)
 
- fun subst (s,arg,pattern) =
-      String.concatWith " " (List.map (fn frag => if frag = pattern then arg else frag) (String.tokens Char.isSpace s))
+    fun subst (s,arg,pattern) =
+      String.concatWith " " 
+        (List.map (fn frag => if frag = pattern then arg else frag) 
+	 (String.tokens Char.isSpace s))
 
       fun foldVec (f: (int * 'a) -> int * 'a) (b: 'a) (v: CharVector.vector) : 'a =
 	let
@@ -130,24 +152,32 @@ structure ScsDict :> SCS_DICT =
     (* Looks up the source string s in the db. Returns the original
        string s, if no one is found in the db and also inserts the
        missing row in the db (i.e., a query into the db can show which
-       texts needs to be translated.) *)
-    fun lookup target_lang source_lang source_text =
-      if target_lang = source_lang then source_text 
+       texts needs to be translated.) 
+       The database is updated with the date for the last access.*)
+    fun lookup source_lang module file_name canonical_source_phrase module_file_phrase target_lang =
+      if target_lang = source_lang then canonical_source_phrase 
       else
 	case Db.zeroOrOneField `
-          select t.phrase from scs_dict_source s, scs_dict_target t
+	  select t.phrase 
+            from scs_dict_sources s, scs_dict_targets t
            where s.lang='^(ScsLang.toString source_lang)' 
-             and s.phrase = '^(Db.qq (canonical source_text))'
+             and s.module_file_phrase = ^(Db.qqq module_file_phrase)
              and s.phrase_id = t.phrase_id 
              and t.lang = '^(ScsLang.toString ScsLogin.user_lang)'` of
-	       SOME target_phrase => target_phrase
-	     | NONE => ((* Make sure that it is defined in the source table *)
-			Db.maybeDml `insert into scs_dict_source (phrase_id,lang,phrase,script,entry_date)
-			values (^(Db.seqNextvalExp "scs_dict_phrase_seq"),
-				'^(ScsLang.toString source_lang)', '^(canonical source_text)',
-				'^(Ns.Conn.url())',sysdate)`;
-			source_text)
-		 handle Ns.MissingConnection => (Ns.log (Ns.Notice,"ScsDict.insert: Missing Connection");source_text)
+	       SOME target_phrase => (Db.dml `update scs_dict_sources
+                                                 set last_read_date = sysdate
+                                               where module_file_phrase = ^(Db.qqq module_file_phrase)
+                                                 and lang = '^(ScsLang.toString source_lang)'`;
+                                      target_phrase)
+	     | NONE => ((* Make sure that it is defined in the source table 
+                           Important to use maybeDml as it may fail if we are
+                           translating to more than one language. *)
+			Db.maybeDml `insert into scs_dict_sources 
+                                       (phrase_id,lang,phrase,module,file_name,module_file_phrase,create_date)
+                                     values (scs.new_obj_id,'^(ScsLang.toString source_lang)', 
+					     ^(Db.qqq canonical_source_phrase),^(Db.qqq module),
+                                             ^(Db.qqq file_name),^(Db.qqq module_file_phrase),sysdate)`;
+			canonical_source_phrase)
 
     fun cacheName (source_lang,target_lang) = "scs_dict"^ScsLang.toString source_lang ^ ScsLang.toString target_lang
     fun cacheFlush (source_lang,target_lang) = 
@@ -155,71 +185,53 @@ structure ScsDict :> SCS_DICT =
 	NONE => ()
       | SOME c => Ns.Cache.flush c
 
-    val d = fn source_lang => 
-      Ns.Cache.cacheWhileUsed 
-        (lookup ScsLogin.user_lang source_lang,cacheName(source_lang,ScsLogin.user_lang),7200)
+    fun d source_lang module file_name phrase =
+      let
+	val can_phrase = canonical phrase
+        val module_file_phrase = module ^ "-" ^ file_name ^ "-" ^ can_phrase 
+	val cn = cacheName(source_lang,ScsLogin.user_lang)
+	val t = 7200
+      in
+	case Ns.Cache.find cn of
+	  NONE => let 
+		    val v = lookup source_lang module file_name can_phrase module_file_phrase ScsLogin.user_lang
+		  in
+		    (Ns.Cache.set (Ns.Cache.createTm(cn,t),module_file_phrase,v);
+		     v) 
+		  end
+	| SOME c => (case Ns.Cache.get (c,module_file_phrase) of 
+		       NONE => let 
+				 val v = lookup source_lang module file_name can_phrase module_file_phrase ScsLogin.user_lang
+			       in 
+				 (Ns.Cache.set (c,module_file_phrase,v);
+				  v) 
+			       end 
+		     | SOME v => v)
+      end
+    fun d' source_lang module file_name = Quot.fromString o (d source_lang module file_name) o Quot.toString
 
-    val d' = fn source_lang => Quot.fromString o (d source_lang) o Quot.toString
-
-    val dl = fn source_lang =>
+    fun dl source_lang module file_name args =
       let
-	val dict = d source_lang
+	val dict = d source_lang module file_name
       in
-	fn source => fn args => subst' (dict source) (Array.fromList (List.map (fn s => (String.size s,s)) args))
+	fn phrase => subst' (dict phrase) (Array.fromList (List.map (fn s => (String.size s,s)) args))
       end
-    val d1 = fn source_lang =>
+    fun dl' source_lang module file_name args =
       let
-	val dict = d source_lang
+	val dict = d source_lang module file_name
       in
-	fn source => fn arg => subst' (dict source) (Array.fromList [(String.size arg,arg)])
-      end
-    val d2 = fn source_lang =>
-      let
-	val dict = d source_lang
-      in
-	fn source => fn arg1 => fn arg2 => subst' (dict source) (Array.fromList[(String.size arg1,arg1),
-										(String.size arg2,arg2)])
-      end
-    val d3 = fn source_lang =>
-      let
-	val dict = d source_lang
-      in
-	fn source => fn arg1 => fn arg2 => fn arg3 => subst' (dict source) (Array.fromList[(String.size arg1,arg1),
-											   (String.size arg2,arg2),
-											   (String.size arg3,arg3)])
+	fn phrase => Quot.fromString (subst' (dict (Quot.toString phrase))
+				      (Array.fromList (List.map (fn s => (String.size s,s)) args)))
       end
 
-    val dl' = fn source_lang =>
-      let
-	val dict = d source_lang
-      in
-	fn source => fn args => Quot.fromString (subst' (dict (Quot.toString source))
-						(Array.fromList (List.map (fn s => (String.size s,s)) args)))
-      end
-    val d1' = fn source_lang =>
-      let
-	val dict = d source_lang
-      in
-	fn source => fn arg => Quot.fromString (subst' (dict (Quot.toString source))
-						(Array.fromList [(String.size arg,arg)]))
-      end
-    val d2' = fn source_lang =>
-      let
-	val dict = d source_lang
-      in
-	fn source => fn arg1 => fn arg2 => Quot.fromString (subst' (dict (Quot.toString source))
-							    (Array.fromList [(String.size arg1,arg1),
-									     (String.size arg2,arg2)]))
-      end
-    val d3' = fn source_lang =>
-      let
-	val dict = d source_lang
-      in
-	fn source => fn arg1 => fn arg2 => fn arg3 => Quot.fromString (subst' (dict (Quot.toString source))
-								       (Array.fromList [(String.size arg1,arg1),
-											(String.size arg2,arg2),
-											(String.size arg3,arg3)]))
-      end
+    fun d1 source_lang module file_name arg = dl source_lang module file_name [arg]
+    fun d1' source_lang module file_name arg = dl' source_lang module file_name [arg]
+
+    fun d2 source_lang module file_name arg0 arg1 = dl source_lang module file_name [arg0,arg1]
+    fun d2' source_lang module file_name arg0 arg1 = dl' source_lang module file_name [arg0,arg1]
+
+    fun d3 source_lang module file_name arg0 arg1 arg2 = dl source_lang module file_name [arg0,arg1,arg2]
+    fun d3' source_lang module file_name arg0 arg1 arg2 = dl' source_lang module file_name [arg0,arg1,arg2]
   end
 
 

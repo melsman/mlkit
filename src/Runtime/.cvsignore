@@ -1,2 +1,2 @@
-kam KamInsts.h KamInsts.c jumptbl.h Prims.c PrimsNsSml.c
+kam KamInsts.h KamInsts.c jumptbl.h Prims.c PrimsNsSml.c PrimsApSml.c
 

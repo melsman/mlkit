@@ -69,6 +69,8 @@ signature FLAGS =
 					     is enabled.
 					  *)
 
+    val WEBserver : string ref            (* May be Apache or AOLserver *)
+
     val log : TextIO.outstream ref
     val colwidth : int ref
 

@@ -1,5 +1,3 @@
-/* NOT UPDATED 10/01/1999, Niels */
-
 /***************************************************************/
 /* This module implements some converter functions between the */
 /* representation of values in ML and C.                       */

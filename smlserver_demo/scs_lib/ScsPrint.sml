@@ -35,7 +35,7 @@ structure ScsPrint :> SCS_PRINT =
     (* Generate file which can be printed and previewed. *)
     (* Files are stored in the scs_print_dir directory.  *)
     local
-      val % = ScsDict.d ScsLang.English
+      val % = ScsDict.d ScsLang.en "scs_lib" "ScsPrint.sml"
       fun getInfo key =
 	ScsError.valOf (Ns.Info.configGetValueExact 
 			{sectionName="ns/server/"^Ns.Conn.server()^"/SCS",key=key})
@@ -100,14 +100,14 @@ structure ScsPrint :> SCS_PRINT =
 		then (ScsDb.panicDmlTrans ins_log;
 		      ScsPage.returnPg (%"Document Printed")
 		      (case ScsLogin.user_lang of
-			 ScsLang.English => `The document is now sent to printer ^printer.<p>
+			 ScsLang.en => `The document is now sent to printer ^printer.<p>
 
                            The document has been filed. If there were any problems
                            printing the document then please 
                            <a href="toggle_deleted.sml?print_id=^(Ns.encodeUrl print_id)&target_url=^(
                            Ns.encodeUrl ("show_doc.sml?print_id="^print_id))">de-file</a> the
                            document. You will be returned to the print-screen again.`
-                       | ScsLang.Danish => `Dokumentet er nu sendt til printer ^printer.<p>
+                       | ScsLang.da => `Dokumentet er nu sendt til printer ^printer.<p>
                            
                            Dokumentet er journaliseret. Hvis der er problemer med udskriften, så skal
                            du <a href="toggle_deleted.sml?print_id=^(Ns.encodeUrl print_id)&target_url=^(

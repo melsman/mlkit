@@ -236,11 +236,40 @@ show errors
  Initial data for languages and locales
 ======================================================================
 */
-insert into scs_lang (lang_id, language) values (scs_object_id_seq.nextval, 'en');
-insert into scs_lang (lang_id, language) values (scs_object_id_seq.nextval, 'da');
 
--- NB! (knp): remember to put language_name_tid here for en, da
+declare 
+  lang_id_en integer;
+  lang_id_da integer;
+  tid integer;
+begin
+  select scs_object_id_seq.nextval
+    into lang_id_en
+    from dual;
+  insert into scs_lang (lang_id, language) values (lang_id_en,'en');
 
+  select scs_object_id_seq.nextval
+    into lang_id_da
+    from dual;
+  insert into scs_lang (lang_id, language) values (lang_id_da,'da');
+
+  tid := scs_text.updateText(language => 'da',
+                             text => 'Engelsk',
+                             language2 => 'en',
+                             text2 => 'English');
+  update scs_lang
+     set language_name_tid = tid
+   where scs_lang.lang_id = lang_id_en;
+
+  tid := scs_text.updateText(language => 'da',
+                             text => 'Dansk',
+                             language2 => 'en',
+                             text2 => 'Danish');
+  update scs_lang
+     set language_name_tid = tid
+   where scs_lang.lang_id = lang_id_da;
+end;
+/
+show errors
 
 /* these languages are not used at IT-c
 insert into scs_lang (lang_id, language) values (scs_object_id_seq.nextval, 'no');
@@ -317,7 +346,7 @@ values
    'JAPANESE', 'JAPAN', 'JA16SJIS', 'Shift_JIS', 't');
 */
 
-commit;
+
 
 
 

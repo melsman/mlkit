@@ -1,5 +1,5 @@
-val % = ScsDict.d ScsLang.English
-val %% = ScsDict.d' ScsLang.English
+val % = ScsDict.d ScsLang.en "scs" "admin/dict/dict_update_phrase.sml"
+val %% = ScsDict.d' ScsLang.en "scs" "admin/dict/dict_update_phrase.sml"
 
 val phrase_id          = ScsFormVar.wrapFail (ScsFormVar.wrapIntAsString ScsFormVar.getIntErr) ("phrase_id", %"phrase identifier")
 val (target_lang,errs) = ScsFormVar.getLangErr ("target_lang", %"target language", ScsFormVar.emptyErr)

@@ -9,12 +9,12 @@ signature SCS_LOGIN =
     val verifyUser : unit -> int * ScsLang.lang
     val loggedIn   : bool
 
-    val auth_filter : string list -> unit
+    val auth_filter : (string * ScsRole.role list) list -> unit
   end
 
 structure ScsLogin :> SCS_LOGIN =
   struct
-    val default_lang : ScsLang.lang = ScsLang.Danish
+    val default_lang : ScsLang.lang = ScsLang.da
     val default_id : int = 0
     val default = (default_id,default_lang)
 
@@ -26,9 +26,11 @@ structure ScsLogin :> SCS_LOGIN =
       in
 	case (auth_user_id,auth_password) of
 	  (SOME user_id, SOME psw) =>
-	    (case Db.zeroOrOneRow `select password,lang from auth_user 
- 	                              where user_id = ^(Db.qqq user_id)` 
-	       of NONE => default
+	    (case Db.zeroOrOneRow `select password,scs_user.language_pref(user_id) as lang
+                                     from scs_users
+                                    where user_id = ^(Db.qqq user_id)
+                                      and deleted_p = 'f'` of
+               NONE => default
 	     | SOME [db_psw,db_lang] => 
 		 if db_psw = psw then 
 		   (case Int.fromString user_id of
@@ -46,27 +48,42 @@ structure ScsLogin :> SCS_LOGIN =
     val (user_id,user_lang) = verifyUser()
     val loggedIn = user_id <> 0
 
-    (* ============================================= *)
-    (* Below, we check for password protected pages. *)
-    (* ============================================= *)
+    (* ==================================================== *)
+    (* Below, we check for password protected pages.        *)
+    (* To each page we specify which roles that             *)
+    (* may see the page.                                    *)
+    (* protected_pages = [("page.sml",["role","role"]),...] *)
+    (* ==================================================== *)
     fun auth_filter protected_pages =
       let
 	val target = Ns.Conn.location()^Ns.Conn.url()
-        val query_data = case Ns.Conn.getQuery() of
-	  NONE => ""
-	| SOME s => Quot.toString (Html.export_url_vars (Ns.Set.list s))
-	fun verifyUserFilter () =
-	  if loggedIn then ()
-	  else (Ns.returnRedirect (Ns.Conn.location()^"/auth_form.sml?target=" ^ 
-				   Ns.encodeUrl (target^query_data)); Ns.exit())
+	fun reject () =
+	  let
+	    val query_data = case Ns.Conn.getQuery() of
+	      NONE => ""
+	    | SOME s => Quot.toString (Html.export_url_vars (Ns.Set.list s))
+	  in
+	    (Ns.returnRedirect (Ns.Conn.location()^"/scs/auth/auth_form.sml?target=" ^ 
+				Ns.encodeUrl (target^query_data)); 
+	     Ns.exit())
+	  end
+        (* Reject the user to login if he accesses a protected page
+           and does not hold one of the role-privileges. *)
+	fun verifyUserFilter (p,roles) =
+	  if (RegExp.match o RegExp.fromString) (Ns.Conn.location()^p) target then
+	    (* Access to the protected page p: he must hold atleast one of the roles *)
+	    if ScsRole.has_one_p user_id roles then
+	      ()
+	    else
+	      reject()
+	  else
+	    (* Access is not to the protected page p *)
+	    ()
       in
-	(* we tell SMLserver to verify that the user is logged in before
-           serving any of the protected_pages *)
-	if List.foldl (fn (p,acc) => acc orelse 
-		       (RegExp.match o RegExp.fromString) (Ns.Conn.location()^p) target) 
-	  false protected_pages then
-	  verifyUserFilter ()
-	else ()
+	(* we tell SMLserver to verify that the user is logged in and
+           holds one of the roles in the roles list before serving any
+           of the protected_pages *)
+	List.app verifyUserFilter protected_pages
       end
   end
 
