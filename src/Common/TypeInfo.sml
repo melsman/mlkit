@@ -41,12 +41,11 @@ functor TypeInfo (structure Crash: CRASH
     val layoutTyEnv = Environments.E.layout o Environments.E.from_TE
 
     datatype TypeInfo =
-      LAB_INFO of {index: int, tyvars: TyVar list, Type: Type}
+      LAB_INFO of {index: int}
     | RECORD_ATPAT_INFO of {Type : Type}
     | VAR_INFO of {instances: Type list}
     | VAR_PAT_INFO of {tyvars: TyVar list, Type: Type}
-    | CON_INFO of {numCons: int, index: int, instances: Type list,
-		   tyvars: TyVar list, Type: Type,longid:longid}
+    | CON_INFO of {numCons: int, index: int, instances: Type list, longid:longid}
     | EXCON_INFO of {Type:Type,longid:longid}
     | EXBIND_INFO of {TypeOpt : Type option}
     | TYENV_INFO of TyEnv
@@ -70,15 +69,13 @@ functor TypeInfo (structure Crash: CRASH
 	  fun phi_on_phi' phi' = StatObject.Realisation.oo(phi,phi')
 	  fun phi_on_T T = StatObject.Realisation.on_TyName_set phi T
       in case ti 
-	   of LAB_INFO {index, tyvars, Type} => LAB_INFO {index=index,tyvars=tyvars,
-							  Type=phi_on_Type Type}
+	   of LAB_INFO _ => ti
 	    | RECORD_ATPAT_INFO{Type} => RECORD_ATPAT_INFO{Type=phi_on_Type Type}
 	    | VAR_INFO {instances} => VAR_INFO {instances = map phi_on_Type instances}
 	    | VAR_PAT_INFO {tyvars,Type} => VAR_PAT_INFO{tyvars=tyvars,Type=phi_on_Type Type}
-	    | CON_INFO {numCons, index, instances, tyvars, Type,longid} =>
+	    | CON_INFO {numCons, index, instances, longid} =>
 	     CON_INFO {numCons=numCons,index=index,
 		       instances=map phi_on_Type instances,
-		       tyvars=tyvars,Type=phi_on_Type Type,
 		       longid=longid}
 	    | EXCON_INFO {Type,longid} => EXCON_INFO {Type=phi_on_Type Type, longid=longid}
 	    | EXBIND_INFO {TypeOpt} => EXBIND_INFO {TypeOpt = map_opt phi_on_Type TypeOpt}
@@ -88,8 +85,8 @@ functor TypeInfo (structure Crash: CRASH
 	    | MATCH_INFO {Type} => MATCH_INFO{Type=phi_on_Type Type}
 	    | PLAINvalbind_INFO {tyvars, Type} =>
 	     PLAINvalbind_INFO {tyvars=tyvars, Type=phi_on_Type Type}
-	    | OPEN_INFO i => OPEN_INFO i
-	    | INCLUDE_INFO i => INCLUDE_INFO i
+	    | OPEN_INFO _ => ti
+	    | INCLUDE_INFO _ => ti
 	    | FUNCTOR_APP_INFO {rea_inst,rea_gen,Env} => 
 	     FUNCTOR_APP_INFO {rea_inst=phi_on_phi' rea_inst, rea_gen=phi_on_phi' rea_gen, Env=phi_on_E Env}
             | FUNBIND_INFO {argE,elabBref,T,resE,opaq_env_opt} => die "on_TypeInfo': FUNBIND_INFO"
@@ -120,12 +117,8 @@ functor TypeInfo (structure Crash: CRASH
 
     fun layout info =
       case info
-	of LAB_INFO{index,tyvars,Type} => 
-	  PP.NODE{start="LAB_INFO(", finish=")",indent=2,
-		  children=[PP.LEAF (Int.toString index),
-			    layout_tyvars tyvars,
-			    layoutType Type],
-		  childsep = PP.RIGHT ","}
+	of LAB_INFO{index} => 
+	  PP.LEAF ("LAB_INFO{index=" ^ Int.toString index ^ "}")
 
          | RECORD_ATPAT_INFO {Type} =>
 	     PP.NODE{start="RECORD_ATPAT_INFO(",finish=")",indent=2,
@@ -140,18 +133,10 @@ functor TypeInfo (structure Crash: CRASH
 		     children=[layout_tyvars tyvars,
 			       layoutType Type],
 		     childsep=PP.RIGHT ","}
-	 | CON_INFO{numCons, index, tyvars,Type,longid,instances} =>
+	 | CON_INFO{numCons, index, longid, instances} =>
 	     PP.NODE{start="CON_INFO(",  finish=")", indent=2,
 		     children=[PP.LEAF("numCons: " ^ Int.toString numCons),
 			       PP.LEAF("index: " ^ Int.toString index),
-			       PP.NODE{start="tyvars: ",finish="",
-				       indent=4,
-				       children=[layout_tyvars tyvars],
-				       childsep = PP.NOSEP},
-			       PP.NODE{start="Type: ",finish="",
-				       indent=4,
-				       children=[layoutType Type],
-				       childsep = PP.NOSEP},
 			       PP.NODE{start="instances: ",finish="",
 				       indent=4,
 				       children=map layoutType instances,

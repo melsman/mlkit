@@ -288,5 +288,6 @@ struct
     end
 end
 
+(*
 structure DoTest = TestHeap()
-
+*)

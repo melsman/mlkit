@@ -10,6 +10,8 @@ functor LambdaExp(structure Lvars: LVARS
 
     fun uncurry f (x,y) = f x y
 
+    fun quote s = "\"" ^ String.toString s ^ "\""
+
     type lvar = Lvars.lvar
     type con = Con.con
     type excon = Excon.excon
@@ -557,7 +559,7 @@ functor LambdaExp(structure Lvars: LVARS
                     childsep=PP.RIGHT ","}
           else PP.LEAF(Lvars.pr_lvar lv)
       | INTEGER i => PP.LEAF(Int.toString i)
-      | STRING s => PP.LEAF(String.toString s)
+      | STRING s => PP.LEAF(quote s)
       | REAL r => PP.LEAF(r)
       | FN {pat,body} => 
 	  PP.NODE{start="(fn ",finish=")", indent=1,

@@ -11,7 +11,6 @@ signature ENVIRONMENTS =
     type StrEnv
     type Env
     type Context
-    type ExplicitTyVarEnv
     type constructor_map
 
     (*types from other modules:*)
@@ -87,7 +86,6 @@ signature ENVIRONMENTS =
 
     structure TyStr :
       sig
-	val bogus                : TyStr
 	val from_theta_and_VE    : TypeFcn * VarEnv -> TyStr
 	val to_theta_and_VE      : TyStr -> TypeFcn * VarEnv
 	val to_theta             : TyStr -> TypeFcn
@@ -187,12 +185,12 @@ signature ENVIRONMENTS =
       sig
 	val plus_VE              : Context * VarEnv   -> Context
 	val plus_U               : Context * ExplicitTyVar list -> Context
+	val plus_U'              : Context * ExplicitTyVar list -> TyVar list * Context
 	val plus_E               : Context * Env      -> Context
 	val plus_TE              : Context * TyEnv    -> Context
-	val plus_VE_and_TE      : Context * (VarEnv * TyEnv) -> Context
+	val plus_VE_and_TE       : Context * (VarEnv * TyEnv) -> Context
 	val to_U                 : Context -> ExplicitTyVar list
-	val to_U'                : Context -> ExplicitTyVarEnv
-	val ExplicitTyVarEnv_lookup : ExplicitTyVarEnv -> ExplicitTyVar -> level
+	val ExplicitTyVar_lookup : Context -> ExplicitTyVar -> Type
 	val from_E               : Env -> Context
 	val on                   : Substitution * Context  -> Context
 
@@ -209,15 +207,10 @@ signature ENVIRONMENTS =
 
 	val lookup_fellow_constructors : Context -> longid -> id list
 
-	(*C.clos is the function Clos defined p. 20, only used in rule 15,
-	 i.e., in ElabDec.elab_dec (C, VALdec ...).  Aside from returning a
-	 closed VE, C.close will return a list of tyvars that were not
-	 generalised but could have been generalised if there were no value
-	 polymorphism restriction.  If there are any such tyvars, we give a
-	 type error `Provide type annotation for <ids>' where <ids> are the
-	 identifiers containing one of the tyvars in their type.*)
+	(* C.close is the function Clos defined p. 20, only used in
+	 * rule 15, i.e., in ElabDec.elab_dec (C, VALdec ...). *)
 
-	val close                : Context * valbind * VarEnv -> VarEnv * TyVar list
+	val close                : Context * valbind * VarEnv -> TyVar list * VarEnv
 
 	val dom_pat              : Context * pat -> id list
               (*dom_pat (C, pat) = the list of id's bound by pat---i.e.,

@@ -55,11 +55,13 @@ Currently, we do not treat multiple declarations of the same functor
 identifier in the same project. We can allow this; but we cannot allow
 a functor identifier to be declared more than once in a source file.
 
-Allow ``inlining'' of functors. Syntax:
+Allow in-lining of functors and pre-processing through
+ML-Yacc and ML-Lex. Syntax:
+
      bdy ::= inline funidseq                     functor inlining
           |  local bdy in bdy end                local
 	  |  bdy bdy |  _                        sequential
-          |  file.sml | file.sig | file.fun      source file
+          |  file.sml | file.sig                 source file
           |  file.o                              precompiled object
           |  file.grm                            yacc source file
           |  file.lex                            lex source file
@@ -136,7 +138,7 @@ TO BE FIXED BY: ME
 FIXED BY: ME and MT
 COMMENT: realisations were not meant to be applied to type schemes for
 overloaded functions. However, Elsmans implementation of opacity
-elimination applies realisations to a bases annotated in the ast
+elimination applies realisations to bases annotated in the ast
 during elaboration.
 
 -------------------------------------------------------------------
@@ -196,6 +198,14 @@ patterns (file CompileDec.sml).
 
 --------------------------------------------------------------------
 
-[(ME 1998-10-21): Allow ``local'' source files in projects.  DONE]
+[(ME 1998-10-21): Allow `local' source files in projects.  DONE]
 
 --------------------------------------------------------------------
+
+[(ME 1998-11-17): String.toString(s) does not surround s with
+quotation marks, as String.string from the Edinburgh Library does. So,
+we need to surround strings with quotation marks in prettyprinting,
+and so on.  DONE]
+
+--------------------------------------------------------------------
+

@@ -9,6 +9,8 @@ functor Flags (structure Crash : CRASH
     structure List = Edlib.List
 
     fun outLine (s) = print(s ^ "\n")
+
+    fun quote s = "\"" ^ String.toString s ^ "\""
 	
     fun die s = Crash.impossible ("Flags." ^ s)
 
@@ -488,10 +490,10 @@ struct
   in
     fun readScript script_file : unit = 
       if OS.FileSys.access (script_file, []) then
-	    (print ("Reading script file " ^ String.toString script_file ^ "\n");
+	    (print ("Reading script file " ^ quote script_file ^ "\n");
 	     interpret (ParseScript.parseScript script_file) 
 	     handle _ => print ("Error while reading script file\n"))
-      else print ("No script file " ^ String.toString script_file ^ " present\n")
+      else print ("No script file " ^ quote script_file ^ " present\n")
   end
 
   (* Write all possible entries which can be changed from *)
@@ -677,7 +679,7 @@ struct
      end)
 
   fun mk_string_action(r: string ref, text) =
-    {text = text, attr = VALUE (fn () => "(" ^ String.toString(!r) ^ ")"),
+    {text = text, attr = VALUE (fn () => "(" ^ quote(!r) ^ ")"),
      below = ACTION (read_string r)};
 
   fun mk_int_action(r: int ref, text) =
@@ -1092,7 +1094,7 @@ struct
 		 below = ACTION (fn () => (read_string script () ;
 					   if !u_or_q_from_read_string then () 
 					   else Directory.readScript (!script)))},
-		{text = "Read it again", attr = VALUE(fn _ => "(" ^ String.toString (!script) ^ ")"),
+		{text = "Read it again", attr = VALUE(fn _ => "(" ^ quote (!script) ^ ")"),
 		 below = ACTION (fn _ => (Directory.readScript (!script)))}]
     end
 
@@ -1178,7 +1180,7 @@ struct
 				     comp_current_source_file ()))}
     val compile_it_again_item : item =
           {text = "Compile it again",
-	   attr = VALUE (fn () => "(" ^ String.toString (!current_source_file) ^ ")"),
+	   attr = VALUE (fn () => "(" ^ quote (!current_source_file) ^ ")"),
 	   below = ACTION comp_current_source_file}
   end (*local*)
 

@@ -20,11 +20,9 @@ functor LocallyLiveVariables(
       sharing type MulInf.LambdaExp = MulExp.LambdaExp
       sharing type MulInf.qmularefset = MulExp.qmularefset
       sharing type MulInf.mul = MulExp.mul
-    ): LOCALLY_LIVE_VARIABLES = 
+    ) : LOCALLY_LIVE_VARIABLES = 
 
 struct
-
-  structure List = Edlib.List
 
   structure PP = PrettyPrint
   type lvar = Lvars.lvar
@@ -83,7 +81,7 @@ struct
    fun union(lvarset1,lvarset2) = Lvarset.union(lvarset1,lvarset2)
    val empty = Lvarset.empty
    fun difference(lvarset, lvars) = 
-            List.foldL (fn lvar => fn set => 
+            foldl (fn (lvar, set) => 
                 Lvarset.delete(set,lvar)) lvarset lvars
    fun add(lvarset, lvar) = Lvarset.add(lvarset, lvar)
    fun delete(lvarset, lvar) = Lvarset.delete(lvarset,lvar)
@@ -125,18 +123,18 @@ struct
       (xs'', es)
     end
 
-  fun union_excons [] es' = es'
-    | union_excons es []   = es
-    | union_excons es es' = 
-            List.foldL (fn excon => fn res => 
+  fun union_excons ([], es') = es'
+    | union_excons (es, [])   = es
+    | union_excons (es, es') = 
+            foldl (fn (excon, res) => 
 		       if List.exists (fn excon' => Excon.eq(excon,excon')) es' then res 
 		       else excon :: res) es' es
 
-  fun union_llv((xs, es), (xs',es')) = (union(xs,xs'), union_excons es es')
+  fun union_llv((xs, es), (xs',es')) = (union(xs,xs'), union_excons(es,es'))
 
   fun union_many(l : liveset list): liveset = 
       (union_list(map #1 l),
-       List.foldR union_excons [] (map #2 l))
+       foldr union_excons [] (map #2 l))
 
   fun add_lvar ((lvars, excons), lvar) = 
       (add(lvars, lvar), excons)
@@ -151,7 +149,7 @@ struct
       (difference(lvars, lvars'), excons)
 
   fun delete_excon ((lvars, excons), excon) = 
-      (lvars, List.all(fn excon' => not(Excon.eq(excon',excon))) excons)
+      (lvars, List.filter(fn excon' => not(Excon.eq(excon',excon))) excons)
 
   fun findExcon pred (_,excons) = 
            let fun loop[] = NONE
@@ -163,7 +161,7 @@ struct
            end
 
   val union_llvs =
-      List.foldL (fn liveset => fn res => union_llv(liveset, res)) empty_liveset 
+      foldl (fn (liveset, res) => union_llv(liveset, res)) empty_liveset 
 
   (*******************************************)
   (* annotating programs with livesets       *)
@@ -542,7 +540,6 @@ struct
          PGM{expression = tr', export_datbinds=export_datbinds,import_vars= import_vars,
              export_vars= export_vars,export_basis= export_basis,export_Psi = export_Psi}
       end
-
 
   end (* local open MulExp *)
 end; (*LocallyLiveVariables*)

@@ -321,16 +321,14 @@ functor IntModules(structure Name : NAME
 		      in SOME(ce',cb',mc')                        (* marked in the repository. *)
 		      end
 		    else NONE
-		   | NONE => 
-                       (print("[compiling body of functor " ^ FunId.pr_FunId funid ^ 
-			      " (from project " ^ prjid ^ ") begin]\n");
-			if FunId.pr_FunId funid = "Infixing" then profRegInf.b := true else ();
-                        NONE )
+		   | NONE => NONE
 
 	  in case reuse_code ()
 	       of SOME(ce',cb',mc') => (ce', CompileBasis.plus(cb,cb'), ModCode.seq(mc,mc'))
 		| NONE => 
-		 let val _ = chat "[recreating functor body begin...]"
+		 let val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^ 
+				   " (from project " ^ prjid ^ ") begin]\n")
+		     val _ = chat "[recreating functor body begin...]"
 		     val strexp0 = body_blaster()
 		     val _ = chat "[recreating functor body end...]"
 		     val (intB', longstrids) = 

@@ -14,7 +14,6 @@ functor ElabTopdec
    sharing type IG.tycon = ElabInfo.TypeInfo.tycon
    structure OG : TOPDEC_GRAMMAR
    sharing type OG.tycon = IG.tycon 
-(*   sharing type OG.tycon = OG.DecGrammar.tycon = OG.DecGrammar.TyCon.tycon *)
 
    structure Environments : ENVIRONMENTS
    structure ModuleStatObject: MODULE_STATOBJECT
@@ -53,8 +52,6 @@ functor ElabTopdec
    sharing type ElabInfo.ErrorInfo.funid = IG.funid
    sharing type ElabInfo.ErrorInfo.longtycon = IG.longtycon
    sharing type IG.StringTree = PrettyPrint.StringTree
-
-(*   sharing type IG.tycon = IG.DecGrammar.tycon = IG.DecGrammar.TyCon.tycon *)
 
    sharing type OG.funid = IG.funid
    sharing type OG.strid = IG.strid
@@ -247,9 +244,7 @@ functor ElabTopdec
 	    List.all (fn x => (occurences x ys) > 1) ys
 	  end
 
-    fun memberTyVarList x xs =
-          List.exists (fn y => TyVar.eq (x,y)) xs
-    fun isEmptyTyVarList xs = case xs of nil => true | _ => false
+    fun member x xs = List.exists (fn y => x=y) xs
 
 
     (*Sigma_match: We rename flexible names in error_result so
@@ -679,12 +674,12 @@ functor ElabTopdec
 	   let
 	     val (T, E, out_sigexp) = elab_sigexp' (B, sigexp)
 	     val _ = Level.push()
-	     val alphas = map TyVar.from_ExplicitTyVar explicittyvars
+	     val (alphas, C) = C.plus_U'(B.to_C B,explicittyvars)
 	     fun return (T, E_result, out_i, out_ty) =
 	       (T, E_result, OG.WHERE_TYPEsigexp
 		(out_i, out_sigexp, explicittyvars, longtycon, out_ty))
 	     fun fail (error_info, out_ty) = return (T, E, errorConv (i, error_info), out_ty)
-	   in case ElabDec.elab_ty (B.to_C B, ty)
+	   in case ElabDec.elab_ty (C, ty)
 		of (SOME tau, out_ty) =>
 		  let val _ = Level.pop()
 		  in case lookup_longtycon E longtycon 
@@ -970,8 +965,9 @@ functor ElabTopdec
 				         (errorConv (i, ErrorInfo.LOOKUP_LONGSTRID longstrid),
 					  longstrid)::out_longstrid_withinfo_s))))
 		        ([],[]) longstrid_withinfo_s
-	      fun member T t = TyName.Set.member t (TyName.Set.fromList T)
-	  in let val (T', phi) = share (member T0, Es)
+	      val T0_set = TyName.Set.fromList T0
+	      fun member t = TyName.Set.member t T0_set
+	  in let val (T', phi) = share (member, Es)
 	         val T0' = List.dropAll (fn t => List.exists (fn t' => TyName.eq(t,t')) T') T0 
 	     in
 	       (T0', Realisation.on_Env phi E,
@@ -993,6 +989,8 @@ functor ElabTopdec
       case valdesc 
 	of IG.VALDESC (i, id, ty, valdesc_opt) =>
 	  let val (error, ids) = add_ids_vid(ids,id)
+	      val explicittyvars = EqSet.list (Environments.ExplicitTyVarsTy ty)
+	      val C' = C.plus_U(C, explicittyvars)
 	      val out_i = 
 		if error then
 		  repeatedIdsError (i, [ErrorInfo.ID_RID id])
@@ -1000,7 +998,7 @@ functor ElabTopdec
 		  errorConv (i, ErrorInfo.SPECIFYING_TRUE_NIL_ETC [id])
 	        else okConv i
 	  in
-	    case (ElabDec.elab_ty (C, ty), elab_X_opt'' (C, valdesc_opt, ids) elab_valdesc VE.empty)
+	    case (ElabDec.elab_ty (C', ty), elab_X_opt'' (C, valdesc_opt, ids) elab_valdesc VE.empty)
 	      of ((SOME tau, out_ty), (VE, out_valdesc_opt, ids)) =>
 		(VE.plus (VE.singleton_var (id, TypeScheme.from_Type tau), VE),
 		 OG.VALDESC (out_i, id, out_ty, out_valdesc_opt), ids)
@@ -1019,7 +1017,7 @@ functor ElabTopdec
 	 IG.TYPDESC (i, explicittyvars, tycon, typdesc_opt) =>
 	   let
 	     val tyvars = map TyVar.from_ExplicitTyVar explicittyvars
-	     val tyvars_repeated = repeaters TyVar.eq tyvars
+	     val tyvars_repeated = repeaters (op =) explicittyvars
 	     val arity = List.size explicittyvars
 	     val t = TyName.freshTyName {tycon=tycon, arity=arity, equality=equality}
 	     val theta = TypeFcn.from_TyName t
@@ -1031,11 +1029,11 @@ functor ElabTopdec
 		  | SOME typdesc' => let val (T,TE,out_typdesc,ids) = elab_typdesc equality (C, typdesc', ids)
 				     in (T,TE, SOME out_typdesc, ids)
 				     end
-	     val out_i = if error then
-			    repeatedIdsError (i, [ErrorInfo.TYCON_RID tycon])
-			 else if not (isEmptyTyVarList tyvars_repeated) then
-			    repeatedIdsError (i, map ErrorInfo.TYVAR_RID tyvars_repeated)
-			 else okConv i
+	     val out_i = if error then repeatedIdsError (i, [ErrorInfo.TYCON_RID tycon])
+			 else case tyvars_repeated
+				of [] => okConv i
+				 | _ => repeatedIdsError (i, map ErrorInfo.TYVAR_RID 
+							  (map TyVar.from_ExplicitTyVar tyvars_repeated))
 	   in
 	     (t::T, TE.plus (TE.singleton (tycon, tystr), TE),
 	      OG.TYPDESC (out_i, explicittyvars, tycon, out_typdesc_opt), ids)
@@ -1052,25 +1050,24 @@ functor ElabTopdec
 	    let
 	      val _ = Level.push()
 
-	      val tyvars = map TyVar.from_ExplicitTyVar explicittyvars
+	      val (tyvars, C') = C.plus_U'(C, explicittyvars)
+
 	      val (theta, _) = TyStr.to_theta_and_VE
 		                 (noSome (lookup_tycon C tycon) "datdesc(1)")
 	      val t = noSome (TypeFcn.to_TyName theta) "datdesc(2)"
 	      val taus = map Type.from_TyVar tyvars
 	      val tau = Type.from_ConsType (Type.mk_ConsType (taus, t))
-	      val (constructor_map, out_condesc, ids) = elab_condesc (C, tau, condesc, ids)
+	      val (constructor_map, out_condesc, ids) = elab_condesc (C', tau, condesc, ids)
 	      val VE = constructor_map.to_VE constructor_map
 		    
 	      (*The following lists must be made before closing VE,
 	       as explicit tyvars are turned into ordinary tyvars when
 	       closed.*)
 
-	      val tyvars_repeated = repeaters TyVar.eq tyvars
+	      val tyvars_repeated = repeaters (op =) explicittyvars
 	      val tyvars_not_bound =
-		    List.all 
-		      (fn tyvar => not (memberTyVarList tyvar tyvars)) 
-		         (map TyVar.from_ExplicitTyVar 
-			        (IG.getExplicitTyVarsCondesc condesc))
+		List.all (fn tyvar => not (member tyvar explicittyvars)) 
+		(IG.getExplicitTyVarsCondesc condesc)
 
 	      val _ = Level.pop()
 	      val VE_closed = VE.close VE
@@ -1082,7 +1079,7 @@ functor ElabTopdec
 		                                       elab_datdesc (VE.empty, TE.empty)
 	    in
 	      (case (if error then [ErrorInfo.TYCON_RID tycon] else [])
-		    @ map ErrorInfo.TYVAR_RID tyvars_repeated 
+		    @ map ErrorInfo.TYVAR_RID (map TyVar.from_ExplicitTyVar tyvars_repeated)
 		 of [] =>
 		   (case tyvars_not_bound 
 		      of [] => 
@@ -1097,9 +1094,8 @@ functor ElabTopdec
 					    out_datdesc_opt), ids )
 		       | _ => 
 			( (VE', TE') ,
-			 OG.DATDESC (errorConv
-				     (i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ
-				      tyvars_not_bound),
+			 OG.DATDESC (errorConv(i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ
+					       (map TyVar.from_ExplicitTyVar tyvars_not_bound)),
 				     explicittyvars, tycon, out_condesc,
 				     out_datdesc_opt), ids ))
 		  | repeated_ids_errorinfos => 

@@ -27,13 +27,10 @@ signature TYPE_INFO =
      *)
 
     datatype TypeInfo =
-	LAB_INFO of {index: int, tyvars: TyVar list, Type : Type }
+	LAB_INFO of {index: int}
 			(* Attached to PATROW. Gives the alphabetic
 			   index (0..n-1) for the record label. 
-			   The Type field is the type of the pattern
-			   corresponding to the label, tyvars are the bound 
-                           type variables; there will only be bound tyvars
-			   when attached to a pattern in a valbind. *)
+			 *)
 
       | RECORD_ATPAT_INFO of {Type : Type}
 	                (* Attachec to RECORDatpat during elaboration,
@@ -54,17 +51,12 @@ signature TYPE_INFO =
 			   to the variable, tyvars are the bound type variables;
 			   there will only be bound tyvars when attached to a pattern
 			   in a valbind. *)
-      | CON_INFO of {numCons: int, index: int, instances: Type list,
-		     tyvars : TyVar list, Type: Type,longid:longid}
+      | CON_INFO of {numCons: int, index: int, instances: Type list,longid:longid}
 			(* Attached to IDENTatexp, LONGIDatpat, CONSpat.
 			   numCons is the number of constructors for this type.
 			   instances is the list of types wich have been
 			   chosen to instantiate the generic tyars at this 
 			   occurrence of the constructor.
-			   Type is the type of the occurrence of the constructor,
-			   tyvars are the bound type variables; 
-			   there will only be bound tyvars when 
-			   attached to a pattern in a valbind
 			 *)
       | EXCON_INFO of {Type: Type,longid:longid}
 			(* Attached to IDENTatexp, LONGIDatpat, CONSpat.

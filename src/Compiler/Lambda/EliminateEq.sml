@@ -244,8 +244,9 @@ functor EliminateEq (structure Name : NAME
 		                     | _ => raise DONT_SUPPORT_EQ) taus = tyvars then
 			      apply (lamb_var lv) taus
 			    else raise DONT_SUPPORT_EQ
-			| SOME (FAIL str) => die ("gen_type_eq -- Equality not supported for " ^ 
-						  TyName.pr_TyName tn ^ ".")
+			| SOME (FAIL str) => (* die ("gen_type_eq -- Equality not supported for " ^ 
+						  TyName.pr_TyName tn ^ ".") ME 1998-11-17 *)
+			      raise DONT_SUPPORT_EQ
 			| NONE => die ("gen_type_eq. type name " ^ TyName.pr_TyName tn ^ 
 				       " not in env.")
 	      end

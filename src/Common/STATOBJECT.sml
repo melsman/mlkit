@@ -55,9 +55,9 @@ signature STATOBJECT =
 	  (*fresh_overloaded bla = get a socalled overloaded tyvar that is overloaded
 	   to the types indicated by `bla'.*)
 	val from_ExplicitTyVar      : ExplicitTyVar -> TyVar
-	val to_ExplicitTyVar        : TyVar -> ExplicitTyVar option
 	val is_overloaded           : TyVar -> bool
 	val string                  : TyVar -> string
+	val string'                 : (Type -> string) -> TyVar -> string
 	val pretty_string           : TVNames -> TyVar -> string
 	val layout                  : TyVar -> StringTree
 
@@ -81,8 +81,6 @@ signature STATOBJECT =
 	val pretty_string_as_ty     : TVNames -> (Type*Type) -> string
 	val layout                  : Type -> StringTree
 	val from_TyVar              : TyVar -> Type
-	val from_TyVar'             : level -> TyVar -> Type
-	      (*used to elaborate explicit tyvar's*)
 	val to_TyVar                : Type -> TyVar option
 
 	(*record types*)
@@ -125,20 +123,14 @@ signature STATOBJECT =
 	val is_Arrow                : Type -> bool
 	val mk_Ref                  : Type -> Type
 
-	(*special constants*)
-	val Int                     : Type
+	val Int                     : Type   (* special constants *)
 	val Real                    : Type
-	val Bool                    : Type   (*needed for initial TE and VE*)
+	val Bool                    : Type   (* needed for initial TE and VE *)
 	val String                  : Type
 	val Char                    : Type
 	val Word8                   : Type
 	val Word                    : Type
 	val of_scon                 : scon -> {type_scon: Type, overloading : TyVar option}
-
-	(*close imp tau = a list of those type variables of tau which are
-	 allowed to be quantified.*)
-
-	val close                   : bool -> Type -> TyVar list
 
 	datatype unify_result = UnifyOk (* of Substitution *)
                               | UnifyFail 
@@ -146,12 +138,13 @@ signature STATOBJECT =
 
 	val unify                   : Type * Type -> unify_result
 	val instantiate_arbitrarily : TyVar -> unit
-             (*instantiate_arbitrarily tyvar = instantiate tyvar
-	      to some arbitrary type (int).  used by ElabTopdec.elab_topdec
-	      when tyvar is free in a topdec.*)
 
-	(*for compilation manager:*)
-	val match : Type * Type -> unit
+	(* instantiate_arbitrarily tyvar; instantiate tyvar to some
+	 * arbitrary type (int). Used by ElabTopdec.elab_topdec when
+	 * tyvar is free in a topdec.*)
+
+	val match : Type * Type -> unit   (* for compilation manager *)
+
       end (*Type*)
 
 
@@ -159,7 +152,7 @@ signature STATOBJECT =
     structure TypeScheme :
       sig
 	val eq                      : TypeScheme * TypeScheme -> bool
-	val to_TyVars_and_Type      : TypeScheme -> TyVar list * Type
+	val to_TyVars_and_Type      : TypeScheme -> TyVar list * Type      (* for the compiler *)
 	(*Make a type into a typescheme with no bound variables:*)
 	val from_Type               : Type -> TypeScheme
 	val tyvars                  : TypeScheme -> TyVar list
@@ -168,29 +161,24 @@ signature STATOBJECT =
 	val pretty_string           : TVNames -> TypeScheme -> string
 	val layout                  : TypeScheme -> StringTree
 
-	(*Get an instance of a TypeScheme; instance'' also gives
-	 the list of types which the generic type variables of the type
-	 scheme have been instantiated to.*)
+	(* Get an instance of a TypeScheme; instance' also gives
+	 * the list of types to which the generic type variables of the type
+	 * scheme have been instantiated to.*)
 
-	exception InstanceError of string
 	val instance                : TypeScheme -> Type
-	val instance''              : TypeScheme -> Type * Type list  
+	val instance'               : TypeScheme -> Type * Type list  
 	val generalises_TypeScheme  : TypeScheme * TypeScheme -> bool
 	val generalises_Type        : TypeScheme * Type -> bool
 
-	(*close imp sigma = generalise generic type variables in sigma
-	  except overload tyvars; used by Environment.
-	  close_and_return_escaping_tyvars is similar, except it also
-	  returns a list of tyvars that were not generalised but could
-	  have been generalised if there were no value polymorphism
-	  restriction.  See ElabDec.elab_dec (VALdec ...)*)
+	(* close imp sigma = generalise generic type variables in
+	 * sigma except overload tyvars; used by Environment. The bool
+	 * should be true for generalisation proper and false if the
+	 * type scheme stems from a valbind that is expansive. *)
 
-	val close                   : bool -> TypeScheme -> TypeScheme
-	val close_and_return_escaping_tyvars
-	                            : bool -> TypeScheme -> TypeScheme * TyVar list
+	val close : bool -> TypeScheme -> TypeScheme
 
-	(*close_overload tau = generalise generic type variables also
-	 overloaded tyvars.*)
+	(* close_overload tau = generalise generic type variables also
+	 * overloaded tyvars. *)
 
 	val close_overload : Type -> TypeScheme
 
@@ -214,7 +202,6 @@ signature STATOBJECT =
     structure Substitution :
       sig
 	val Id                      : Substitution
-	val bogus                   : Substitution
 	val oo                      : Substitution * Substitution -> Substitution
 	val on                      : Substitution * Type  -> Type
 	val onScheme                : Substitution * TypeScheme -> TypeScheme
@@ -233,7 +220,6 @@ signature STATOBJECT =
 	val from_TyName             : TyName  -> TypeFcn
 	val to_TyName               : TypeFcn -> TyName option
 	val is_TyName               : TypeFcn -> bool
-	val bogus                   : TypeFcn
 	val tynames                 : TypeFcn -> TyName.Set.Set
 
 	(*pretty_string returns two strings. This is because

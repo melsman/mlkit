@@ -1,0 +1,13 @@
+
+
+********** pat.sml *************
+
+> val f : 'a->'a
+  val hd : 'a->'a * 'a
+  val s : string
+  val tail : ('a->'a * 'a) list
+ *** Warnings ***
+pat.sml, line 2, column 4:
+  val (f, hd::tail) = (fn x => x, [fn y => (y,y)])
+      ^^^^^^^^^^^^^
+Pattern not exhaustive.
