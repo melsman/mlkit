@@ -1,3 +1,17 @@
+-- $Id$
+
+/* ======================================================================
+   package scs_file_storage
+
+   provides functionaily for a databased file system 
+
+   History:
+   2004-04-15 Kennie Nybo Pontoppidan <kennie@itu.dk>:
+     getPath now works in 9i
+   2003-11-XX Niels Hallenberg <nh@it.edu> created package
+======================================================================*/
+
+
 create or replace package scs_file_storage
 as
 
@@ -113,11 +127,11 @@ as
      then getPath returns then path foo/bar/.
 
      Return null on error.
-  
+  */  
   function getPath (
     folder_id in scs_fs_folders.folder_id%TYPE
   ) return varchar;
-*/
+
 end scs_file_storage;
 /
 show errors
