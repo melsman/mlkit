@@ -187,6 +187,10 @@ signature SCS_DICT =
     *)
     val getString : dict -> ScsLang.lang -> string
 
+    (* [concat dict1 dict2] returns a dict where the quotations in each 
+	language are concatenated
+	NB Only support for Danish and English *)
+    val concat : dict -> dict -> dict
   end
 
 structure ScsDict :> SCS_DICT =
@@ -383,6 +387,20 @@ structure ScsDict :> SCS_DICT =
     fun dictWithArgsToDict dict args =
       List.map (fn (lang,phrase) => (lang, subst (Quot.toString phrase) args)) dict
 
+    fun concat dict1 dict2 = 
+      let
+        val q1_en = getQuot dict1 ScsLang.en 
+		    handle _ => ``
+	val q1_da = getQuot dict1 ScsLang.da 
+		    handle _ => ``
+        val q2_en = getQuot dict2 ScsLang.en 
+		    handle _ => ``
+	val q2_da = getQuot dict2 ScsLang.da 
+		    handle _ => ``
+
+      in
+        [(ScsLang.da, q1_da ^^ q2_da), (ScsLang.en, q1_en ^^ q2_en)]
+      end
 
   end
 
