@@ -8,17 +8,11 @@ signature PICKLE =
 	
     type 'a pickler   = 'a -> outstream -> outstream
     type 'a unpickler = instream -> 'a * instream
-    type 'a hasher = 'a -> int -> word    (* int: hash depth *)  (* delete *)
-    val hashCombine : (int -> word) * (int -> word) -> int -> word  (* delete *)
 
-    type 'a eq = 'a * 'a -> bool (* delete *)
-
-    type 'a pu = 'a pickler * 'a unpickler * 'a hasher * 'a eq  (* make abstract *)
+    type 'a pu
 
     val pickler   : 'a pu -> 'a pickler
     val unpickler : 'a pu -> 'a unpickler
-
-    val hasher    : 'a pu -> 'a hasher  (* delete *)
 
     val word      : word pu
     val word32    : Word32.word pu
@@ -64,10 +58,10 @@ signature PICKLE =
 
     val register   : 'a list -> 'a pu -> 'a pu
 
-    (* [register vs pu] returns a pickler-unpickler with the property
-     that a pickled value equal to a value in vs is equal to the
-     value in vs when unpickled.
-     *)
+    val registerEq : ('a*'a->bool) -> ('a->int) 
+                     -> 'a list -> 'a pu -> 'a pu
+
+    val debug      : string -> 'a pu -> 'a pu
   end
 
 (*
@@ -139,5 +133,9 @@ signature PICKLE =
  [get is] reads a word from the instream is.
 
  [out (w,os)] writes a word to the outstream os.
+
+ [register vs pu] returns a pickler-unpickler with the property
+ that a pickled value equal to a value in vs is equal to the
+ value in vs when unpickled.
 *)
 

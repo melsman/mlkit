@@ -75,4 +75,6 @@ signature REGION_STAT_ENV =
 
     type StringTree
     val layout: regionStatEnv -> StringTree
+
+    val pu : regionStatEnv Pickle.pu
   end;

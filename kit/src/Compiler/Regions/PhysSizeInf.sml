@@ -842,6 +842,33 @@ functor PhysSizeInf(structure Name : NAME
       (SOME o layout_placeXphsize) layout_unit
 
     fun layout_pgm(PGM{expression,...}) = layout_trip expression
+
+    val pu_phsize = 
+	let open Pickle
+	    fun toInt INF = 0
+	      | toInt (WORDS _) = 1
+	    val fun_INF = con0 INF
+	    fun fun_WORDS _ = con1 WORDS (fn WORDS a => a | _ => die "pu_phsize") int
+	in dataGen(toInt,[fun_INF, fun_WORDS])
+	end
+
+    val pu_range_env = 
+	let open Pickle
+	    fun toInt (FORMAL_REGVARS _) = 0
+	      | toInt (FORMAL_SIZES _) = 1
+	      | toInt NOTFIXBOUND = 2
+	    fun fun_FORMAL_REGVARS _ =
+		con1 FORMAL_REGVARS (fn FORMAL_REGVARS a => a | _ => die "pu_range_env.FORMAL_REGVARS") 
+		Effect.pu_effects
+	    fun fun_FORMAL_SIZES _ =
+		con1 FORMAL_SIZES (fn FORMAL_SIZES a => a | _ => die "pu_range_env.FORMAL_SIZES") 
+		(listGen pu_phsize)		
+	    val fun_NOTFIXBOUND = con0 NOTFIXBOUND
+	in dataGen(toInt,[fun_FORMAL_REGVARS, fun_FORMAL_SIZES, fun_NOTFIXBOUND])
+	end
+
+    val pu_env = LvarMap.pu Lvars.pu pu_range_env
+
 (*
     fun layout_vars(lvars,excons,places) =
           let val t1 = PP.HNODE{start = "lvars:", finish = "end of lvars;", 

@@ -209,16 +209,17 @@ functor CompBasis(structure Con : CON
     fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)
 
     val pu =
-	let fun to (tce,eqe,oe) = 
-	    {TCEnv=tce, EqEnv=eqe,
-	     OEnv=oe, rse=RegionStatEnv.empty,
-	     mulenv=Mul.empty_efenv, mularefmap=Mul.empty_mularefmap,
-	     drop_env=DropRegions.empty, psi_env=PhysSizeInf.empty}
+	let fun to ((tce,eqe,oe,rse),(me,mm,de,pe)) = 
+	    {TCEnv=tce, EqEnv=eqe, OEnv=oe, rse=rse,
+	     mulenv=me, mularefmap=mm, drop_env=de, psi_env=pe}
 	    fun from {TCEnv=tce, EqEnv=eqe, OEnv=oe, rse,
 		      mulenv=me, mularefmap=mm, drop_env=de, psi_env=pe}
-		= (tce,eqe,oe)
+		= ((tce,eqe,oe,rse),(me,mm,de,pe))
 	    open Pickle
 	in convert (to,from)
-	    (tup3Gen(LambdaStatSem.pu,EliminateEq.pu,OptLambda.pu))
+	    (pairGen(tup4Gen(LambdaStatSem.pu,EliminateEq.pu,
+			     OptLambda.pu,RegionStatEnv.pu),
+		     tup4Gen(Mul.pu_efenv,Mul.pu_mularefmap,
+			     DropRegions.pu_env,PhysSizeInf.pu_env)))
 	end
   end

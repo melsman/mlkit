@@ -459,7 +459,7 @@ functor Compile(structure Excon : EXCON
 		 foldl (fn ({lvar,compound,create_region_record,sigma, place}, rse) =>
 			     SpreadExp.RegionStatEnv.declareLvar(lvar,(compound, 
 							   create_region_record, !sigma, place, 
-							   SOME(ref[]) (* reset occurrences *), NONE
+							   NONE (*SOME(ref[])*) (* reset occurrences *), NONE
 							 ), rse)) rse_con declared_lvars
 	       in
 		 foldl (fn ((excon, SOME(Type, place)), rse) => SpreadExp.RegionStatEnv.declareExcon(excon,(Type,place),rse)

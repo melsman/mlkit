@@ -22,5 +22,7 @@ signature DROP_REGIONS =
 
 	type StringTree
 	val layout_env : env -> StringTree
+
+	val pu_env : env Pickle.pu
   end
 
