@@ -48,6 +48,18 @@ as
     rel_id	in scs_priority_rels.rel_id%TYPE
   ) ;
 
+  /* ------------------------
+     function getPriority
+     ------------------------
+     calculates the true priority of the priority_rel 
+     (when a row with priority = 1 is deleted in scs_priority_rels, the row
+      with priority = 2 is really the first priority )
+
+     never fails
+  */  
+  function getPriority(
+    rel_id	in scs_priority_rels.rel_id%TYPE
+  ) return integer;
 end scs_priority;
 /
 show errors
@@ -250,6 +262,41 @@ as
   exception
     when NO_DATA_FOUND then return ;
   end decreasePriority;
+
+  function getPriority(
+    rel_id	in scs_priority_rels.rel_id%TYPE
+  ) return integer
+  is
+    priority			integer;
+    on_what_parent_table	varchar2(100);
+    on_which_parent_id		integer;
+    on_what_child_table		varchar2(100);
+    priority_count		integer;
+  begin
+    select on_what_parent_table,
+	   on_which_parent_id,
+	   on_what_child_table,
+	   priority
+      into getPriority.on_what_parent_table,
+	   getPriority.on_which_parent_id,
+	   getPriority.on_what_child_table,
+	   getPriority.priority
+      from scs_priority_rels
+     where rel_id = getPriority.rel_id;
+
+   select count(*) 
+     into getPriority.priority_count
+     from scs_priority_rels
+    where on_what_parent_table = getPriority.on_what_parent_table
+      and on_which_parent_id   = getPriority.on_which_parent_id
+      and on_what_child_table  = getPriority.on_what_child_table
+      and priority <= getPriority.priority;
+  
+    return getPriority.priority_count;
+
+  exception
+    when NO_DATA_FOUND then return null;
+  end getPriority;
 
 end scs_priority;
 /
