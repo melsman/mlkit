@@ -132,7 +132,7 @@ functor CompileDec(structure Con: CON
 
     datatype lookup_info = NORMAL of ElabInfo.ElabInfo | OTHER of string
     fun lookup_error(kind: string, CE, longid, info:lookup_info) =
-            let fun say s = (output(std_out, s );
+            let fun say s = ((*output(std_out, s );*)
                              output(!Flags.log, s);
                              NonStandard.flush_out(!Flags.log))
                 fun sayst(st) = PrettyPrint.outputTree(say, st, !Flags.colwidth)
@@ -257,16 +257,21 @@ functor CompileDec(structure Con: CON
     (*           Extract type info from syntactic objects                     *)
     (* ---------------------------------------------------------------------- *)
 
+   fun to_TypeInfo i =
+     case ElabInfo.to_TypeInfo i
+       of Some ti => Some(TypeInfo.normalise ti)
+	| None => None 
+
     local 
       open TypeInfo
     in
       fun type_of_exp (exp: Grammar.exp) : StatObject.Type =
-        case ElabInfo.to_TypeInfo (get_info_exp exp) of 
+        case to_TypeInfo (get_info_exp exp) of 
           Some(EXP_INFO{Type}) => Type
         | _ => die "type_of_exp"
 
       fun type_of_match (match: Grammar.match) : StatObject.Type =
-        case ElabInfo.to_TypeInfo (get_info_match match) of 
+        case to_TypeInfo (get_info_match match) of 
           Some(MATCH_INFO{Type}) => Type
         | _ => die "type_of_match"
     end      
@@ -750,7 +755,7 @@ functor CompileDec(structure Con: CON
 	  (case lookupLongid env longid (NORMAL info)
 	     of CE.LVAR (lv,tyvars,_,il) =>   (*see COMPILER_ENV*) 
 	      (let val instances =
-		     case ElabInfo.to_TypeInfo info 
+		     case to_TypeInfo info 
 		       of Some(TypeInfo.VAR_INFO{instances}) => instances
 			| _ => die ("compileAtexp(LVAR..): no type info for "
 				    ^ Ident.pr_longid longid)
@@ -776,7 +781,7 @@ functor CompileDec(structure Con: CON
 	      | CE.CON(con,tyvars,_,il,it) => (*See COMPILER_ENV*)
 	       let
 		 val (functional,Type,instances) =
-		   case ElabInfo.to_TypeInfo info 
+		   case to_TypeInfo info 
 		     of Some (TypeInfo.CON_INFO{Type,instances,...}) =>
 		       (Type.is_Arrow Type, Type, instances)
 		      | _ => die "compileAtexp(CON..): no type info"
@@ -801,7 +806,7 @@ functor CompileDec(structure Con: CON
 	       end
 	      | CE.REF =>
 	       let val (Type,instances) =
-		     case ElabInfo.to_TypeInfo info 
+		     case to_TypeInfo info 
 		       of Some (TypeInfo.CON_INFO{Type,instances,...}) => (Type,instances)
 			| _ => die "compileAtexp(REF..): no type info"
 		   val lv = Lvars.newLvar()
@@ -817,7 +822,7 @@ functor CompileDec(structure Con: CON
 	      | CE.EXCON (excon,_) =>
 	       let
 		 val (functional,Type) =
-		   case ElabInfo.to_TypeInfo info of 
+		   case to_TypeInfo info of 
 		     Some (TypeInfo.EXCON_INFO{Type,...}) => 
 		       (Type.is_Arrow Type,Type)
 		   | _ => die "compileAtexp(EXCON..): no type info"
@@ -896,7 +901,7 @@ functor CompileDec(structure Con: CON
 	   (case lookupLongid env longid (NORMAL info) of
 	      CE.LVAR (lv,tyvars,_,il) =>        (* Not a primitive... *)
 		let val arg' = compileAtexp env arg
-		    val instances' = case ElabInfo.to_TypeInfo info 
+		    val instances' = case to_TypeInfo info 
 				       of Some(TypeInfo.VAR_INFO{instances}) =>
 					 map compileType instances
 					| _ => die "compileExp(APPexp..): wrong type info"
@@ -907,7 +912,7 @@ functor CompileDec(structure Con: CON
 
 	    | CE.RESET_REGIONS =>
 		let val arg' = compileAtexp env arg
-		    val tau' = case ElabInfo.to_TypeInfo info 
+		    val tau' = case to_TypeInfo info 
 				 of Some(TypeInfo.VAR_INFO{instances = [tau]}) =>
 				   compileType tau
 				  | _ => die "compileExp(APPexp..): wrong type info"
@@ -916,7 +921,7 @@ functor CompileDec(structure Con: CON
 
 	    | CE.FORCE_RESET_REGIONS =>
 		let val arg' = compileAtexp env arg
-		    val tau' = case ElabInfo.to_TypeInfo info 
+		    val tau' = case to_TypeInfo info 
 				 of Some(TypeInfo.VAR_INFO{instances = [tau]}) =>
 				   compileType tau
 				  | _ => die "compileExp(APPexp..): wrong type info"
@@ -946,7 +951,7 @@ functor CompileDec(structure Con: CON
 		 fun f prim =
 		   let val args' = map (compileExp env) args
 		       val instance' =
-			 case ElabInfo.to_TypeInfo info 
+			 case to_TypeInfo info 
 			   of Some(TypeInfo.VAR_INFO{instances=[instanceRes,instance]}) => 
 			     (* This code depends on the order of the
 			      * instances recorded during elaboration.
@@ -991,7 +996,7 @@ functor CompileDec(structure Con: CON
 				 called s:*)
 			     let val args' = map (compileExp env) args
 				 val instance' =
-				       (case ElabInfo.to_TypeInfo info of
+				       (case to_TypeInfo info of
 					  Some (TypeInfo.VAR_INFO{instances=[instanceRes,instanceArg]}) => 
 					    (* We use the result type of prim
 					     * SpreadExp generates reg. vars.
@@ -1170,7 +1175,7 @@ functor CompileDec(structure Con: CON
                        (pat * exp * (TyVar list * StatObject.Type)) list =
           case vb of 
             PLAINvalbind(i, pat, exp, vbOpt) =>
-              (case ElabInfo.to_TypeInfo i of 
+              (case to_TypeInfo i of 
                  Some (TypeInfo.PLAINvalbind_INFO{Type,tyvars,...}) => 
                    (pat, exp,(tyvars,Type)) :: 
                    (case vbOpt of Some vb => flattenRecValbind vb
@@ -1182,13 +1187,13 @@ functor CompileDec(structure Con: CON
       in
         case valbind
           of PLAINvalbind(i, pat, exp, None) =>
-            (case ElabInfo.to_TypeInfo i
+            (case to_TypeInfo i
 	       of Some (TypeInfo.PLAINvalbind_INFO{tyvars,Type,...}) => 
 		 compileBinding env (topLevel, pat, exp,(tyvars,Type))
 		| _ => die "compileValbind: no type info")
 
            | PLAINvalbind(i, pat, exp, Some vb) =>
-               (case ElabInfo.to_TypeInfo i
+               (case to_TypeInfo i
 		  of Some (TypeInfo.PLAINvalbind_INFO{tyvars,Type,...}) =>
 		    let val (env1, f1) = compileBinding env (topLevel, pat, exp,(tyvars,Type))
 		        val (envRest, f2) = compileValbind env (topLevel,vb)
@@ -1212,7 +1217,7 @@ functor CompileDec(structure Con: CON
         * same datbind. *)
                           (* VE        TE *) 
     and compileDatbind i : CE.CEnv * CE.CEnv * datbind_list =
-      case ElabInfo.to_TypeInfo i 
+      case to_TypeInfo i 
 	of Some(TypeInfo.TYENV_INFO TyEnv) => 
 	  TE.Fold (fn (tycon,tystr) => fn (env_ve, env_te, dats) => 
 	       if VE.is_empty (TyStr.to_VE tystr) then die "compileDatbind"
@@ -1226,7 +1231,7 @@ functor CompileDec(structure Con: CON
 	 | _ => die "No TyEnv type info for compiling datbind"
 
     and compileDatrepl i : CE.CEnv =
-      case ElabInfo.to_TypeInfo i 
+      case to_TypeInfo i 
 	of Some(TypeInfo.TYENV_INFO TyEnv) =>
 	  (* A datatype replication may or may not introduce an empty VE component. *)
 	  TE.Fold (fn (tycon, tystr) => fn env' => 
@@ -1247,7 +1252,7 @@ functor CompileDec(structure Con: CON
     and compileExbind (env:CE.CEnv) exbind : (CE.CEnv * (LambdaExp -> LambdaExp)) =
       case exbind
         of EXBIND(i, OP_OPT(excon, _), _, rest) =>
-             let val tyOpt = case ElabInfo.to_TypeInfo i 
+             let val tyOpt = case to_TypeInfo i 
 			       of Some(TypeInfo.EXBIND_INFO {TypeOpt}) => TypeOpt 
 				| _ => die "No typeOpt info for compiling exbind" 
 		 val (env1, f1) = compileNewExn env excon tyOpt
@@ -1489,6 +1494,7 @@ functor CompileDec(structure Con: CON
       case tree
         of LAB_DECOMPOSE{bind, parent, lab, child, info} =>
           let 
+	    val info = TypeInfo.normalise info
             fun whichLab info: int =
               case info of
                 TypeInfo.LAB_INFO{index,...} =>  index 
@@ -1507,7 +1513,8 @@ functor CompileDec(structure Con: CON
 	      exp')
           end
          | CON_DECOMPOSE{bind, parent, child,info} =>
-	  let val (sigma, longcon, instances) =
+	  let val info = TypeInfo.normalise info
+	      val (sigma, longcon, instances) =
                  case info 
 		   of TypeInfo.CON_INFO{tyvars,Type,longid,instances,...} => 
 		    ((tyvars,Type),longid,instances)
@@ -1559,6 +1566,7 @@ functor CompileDec(structure Con: CON
 
          | EXCON_DECOMPOSE{bind, parent, child,info} =>
              let
+	       val info = TypeInfo.normalise info
                val (Type,longexcon) =
                  case info 
 		   of TypeInfo.EXCON_INFO{Type,longid} => (Type,longid)
@@ -1631,7 +1639,7 @@ functor CompileDec(structure Con: CON
 	 | LONGSTRIDstrexp(info,longstrid) => (lookup_longstrid ce longstrid, fn x => x)
 	 | TRANSPARENT_CONSTRAINTstrexp(info, strexp, _) =>
 	  let val (ce1,f) = comp_strexp(ce,strexp)
-	      val E = case ElabInfo.to_TypeInfo info
+	      val E = case to_TypeInfo info
 			of Some (ElabInfo.TypeInfo.TRANS_CONSTRAINT_INFO E) => E
 			 | _ => die "comp_strexp.TRANSPARENT_CONSTRAINTstrexp.no env info"
 	      val ce2 = CE.constrain(ce1,E)

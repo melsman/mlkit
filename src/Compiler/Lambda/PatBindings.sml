@@ -62,9 +62,14 @@ functor PatBindings (structure Lab : LAB
       fun unzip3 triples = unzip3'(rev triples, nil, nil, nil)
     end
 
+   fun to_TypeInfo i =
+     case ElabInfo.to_TypeInfo i
+       of Some ti => Some(ElabInfo.TypeInfo.normalise ti)
+	| None => None 
+
     exception GetArity
     fun get_arity i =
-      case ElabInfo.to_TypeInfo i of
+      case to_TypeInfo i of
         Some (TypeInfo.VAR_PAT_INFO {tyvars,...}) => List.size tyvars
       | _ => raise GetArity (*Crash.impossible "PatBindings.get_arity"*)
 
@@ -75,7 +80,7 @@ functor PatBindings (structure Lab : LAB
              atpatBindings compileTypeScheme (root, atpat)
 
         | CONSpat(i, OP_OPT(longid,_), atpat) =>
-	     (case ElabInfo.to_TypeInfo i
+	     (case to_TypeInfo i
 		of Some (info as TypeInfo.CON_INFO _) =>
 		  let
 		    val childLv = Lvars.newLvar()
@@ -98,7 +103,7 @@ functor PatBindings (structure Lab : LAB
         | LAYEREDpat(i, OP_OPT(id, _), _, pat) =>
            (let
 	      val (tyvars, Type) = 
-		case ElabInfo.to_TypeInfo i
+		case to_TypeInfo i
 		  of Some (TypeInfo.VAR_PAT_INFO {tyvars,Type}) =>
 		    compileTypeScheme(tyvars,Type)
 		   | _ => Crash.impossible "PatBindings.LAYEREDpat" 
@@ -126,7 +131,7 @@ functor PatBindings (structure Lab : LAB
 
          | LONGIDatpat(i, OP_OPT(longid, _)) =>
              (NILbtree, 
-	      case ElabInfo.to_TypeInfo i
+	      case to_TypeInfo i
 		of Some (TypeInfo.VAR_PAT_INFO {tyvars,Type}) =>
 		  let val (tyvars',Type') = compileTypeScheme(tyvars,Type)
 		  in case Ident.decompose longid
@@ -149,7 +154,7 @@ functor PatBindings (structure Lab : LAB
                                            for labels... *)
                            let
                              val ti =
-                               case ElabInfo.to_TypeInfo i
+                               case to_TypeInfo i
                                  of Some ti => ti
                                   | None =>
                                       Crash.impossible
