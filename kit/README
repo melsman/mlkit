@@ -50,8 +50,8 @@ number, y is called the minor release number.
 
 The ML Kit compiler is distributed under the GNU Public License. See
 the file copyright for details. The runtime system (kit/src/Runtime/)
-and libraries (kit/basislib/) can also be obtained from the authors
-under the more liberal MIT License.
+and libraries (kit/basislib/) is distributed nder the more liberal
+MIT License.
 
 3. Installation
 ---------------
@@ -78,13 +78,12 @@ Documentation for the ML Kit is located in the `doc' directory.
 
 5. Support for Other Platforms and How You Can Help
 ---------------------------------------------------
-
 Currently, only the Linux/x86 platform and the FreeBSD/x86 platform
 (see below) are supported. We hope to port the bytecode interpreter to
 run on other platforms as well. If you want to help port the runtime
 system to other platforms, please let us know; the runtime system and
-bytecode interpreter is written in C (see the src/RuntimeWithGC/
-directory in the source distribution.)
+bytecode interpreter is written in C (see the src/Runtime/ directory
+in the source distribution.)
 
 For the native x86 backend, the Kit calls the gcc compiler to assemble
 and link the x86 code files it generates. The native backend for the

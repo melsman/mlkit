@@ -1,8 +1,16 @@
 ML Kit NEWS file
 
+           **** ML Kit version 4.1.4 is released ****
+
+ * mael 2004-06-09: Work initiated on pickling (serializing) compiler
+   bases to disk so as to obtain a more flexible recompilation system
+   that does not require users to compile all program code whenever
+   the ML Kit interactive menu system is launched.
+
  * mael 2003-05-14: Added three new distinct region types to allow 
    for generational garbage collection of regions with untagged 
-   pairs, untagged triples, and untagged references.
+   pairs, untagged triples, and untagged references. Generational
+   garbage collection with regions is not yet fully implemented.
 
  * mael 2003-05-13: Reals now only take up three words (instead of
    four) when tagging is enabled.

@@ -1,5 +1,7 @@
 File NEWS_SMLSERVER
 
+           **** SMLserver version 4.1.4 is released ****
+
  * mael 2004-05-18: Finished work on "extended typing" in SMLserver,
    featuring static guarantees that (1) generated XHTML is valid XHTML
    1.0 and (2) forms and links are used consistently with corresponding
