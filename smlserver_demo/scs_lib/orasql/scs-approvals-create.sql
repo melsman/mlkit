@@ -1,12 +1,3 @@
-create table scs_approval_status(
-  approval_status_id integer
-    constraint scs_as_approval_status_id_nn not null
-    constraint scs_as_approval_status_id_pk primary key,
-  status_text_id integer
-    constraint scs_as_status_text_id_nn not null,
-  constraint scs_as_status_text_id_fk foreign key (status_text_id) references scs_texts(text_id)
-);
-
 create table scs_approvals(
   approval_id integer
     constraint scs_approvals_approval_id_nn not null

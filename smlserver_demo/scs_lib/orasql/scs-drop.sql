@@ -16,7 +16,7 @@ drop sequence scs_object_id_seq;
 @scs-roles-drop.sql
 @scs-parties-drop.sql
 @scs-locales-drop.sql
-@scs-enumerations.sql
+@scs-enumerations-drop.sql
 @scs-texts-drop.sql
 @scs-logs-drop.sql
 
