@@ -1174,7 +1174,7 @@ the 12 lines above are very similar to the code below
          | OPENdec(i,longstrids_withinfos) =>
 	     let val longstrids = map (fn WITH_INFO(_,longstrid) => longstrid) longstrids_withinfos
 	         val envs = map (lookup_longstrid env) longstrids
-		 val env' = List.foldL (fn env => fn env' => env plus env') CE.emptyCEnv envs
+		 val env' = List.foldL (fn env => fn env' => env' plus env) CE.emptyCEnv envs
 	     in (env', fn x => x)
 	     end
  
