@@ -28,7 +28,7 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
 #REQUEST_PROFILING=
 REQUEST_PROFILING=true
 
-mlkit: basics rp2ps tester kitbench
+mlkit: basics rp2ps tester mlbmake kitbench
 	cd Runtime; $(MAKE) runtimeSystem.a
 	cd Runtime; $(MAKE) runtimeSystemProf.a
 	cd Runtime; $(MAKE) runtimeSystemGC.a
@@ -89,6 +89,9 @@ rp2ps:
 tester:
 	cd Tools/Tester; $(MAKE)
 
+mlbmake:
+	cd Tools/MlbMake; $(MAKE)
+
 kitbench:
 	cd Tools/Benchmark; $(MAKE)
 
@@ -108,6 +111,7 @@ clean:
 	cd Runtime; $(MAKE) clean
 	cd Tools/Tester; $(MAKE) clean
 	cd Tools/Rp2ps; $(MAKE) clean
+	cd Tools/MlbMake; $(MAKE) clean
 	cd Tools/GenOpcodes; $(MAKE) clean
 	cd Tools/Benchmark; $(MAKE) clean
 	cd Compiler; $(CLEAN)
