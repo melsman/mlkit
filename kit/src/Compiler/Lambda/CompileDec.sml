@@ -890,7 +890,9 @@ functor CompileDec(structure Con: CON
 		    val il' = CE.on_il(S, il)
 		in if Lvars.pr_lvar lv = "="  (* specialise equality on integers *)
                       andalso case instances' of 
-                                [CONStype([], tyname)] => TyName.eq(tyname, TyName.tyName_INT)
+                                [CONStype([], tyname)] => 
+                                  TyName.eq(tyname, TyName.tyName_INT)
+                                  orelse TyName.eq(tyname, TyName.tyName_CHAR)
                               | _ => false
                    then PRIM(EQUAL_INTprim, case arg' of
                                           PRIM(RECORDprim,l ) => l
@@ -959,7 +961,9 @@ functor CompileDec(structure Con: CON
                         (* Specialice EQUALprim to EQUAL_INTprim, when possible *)
                         val prim' = case (isequal,instance') of
                                       (true,CONStype([], tyname)) =>
-                                        if TyName.eq(tyname,TyName.tyName_INT) then EQUAL_INTprim 
+                                        if TyName.eq(tyname,TyName.tyName_INT) orelse
+                                          TyName.eq(tyname,TyName.tyName_CHAR)
+                                          then EQUAL_INTprim 
                                         else prim {instance=instance'}
                                     | _ => prim {instance=instance'}
 		     in TLE.PRIM (prim', args')

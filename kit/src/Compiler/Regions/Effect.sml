@@ -73,7 +73,8 @@ struct
 
 
   (* info in nodes of effect graphs *)
-  datatype einfo = EPS of {key: key, level:  level, 
+  datatype einfo = EPS of {key: key, 
+                           level:  level, 
                            represents: einfo G.node list Option, 
                            instance : einfo G.node Option ref,
                            pix: int ref}
@@ -89,7 +90,7 @@ struct
   
   fun layout_einfo(einfo) = case einfo of
         EPS{key,level,...} => PP.LEAF("e"^ show_key key 
-                            (* ^ "(" ^ show_level level ^ ")" *)   )
+                             ^ (if !print_rho_levels then "(" ^ show_level level ^ ")" else ""))
       | PUT   => PP.LEAF "put"
       | GET   => PP.LEAF "get"
       | UNION _=> PP.LEAF "U"

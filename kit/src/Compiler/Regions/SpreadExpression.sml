@@ -695,15 +695,17 @@ good *)
     | E.PRIM(E.GREATEREQ_INTprim,[e1,e2]) => S_built_in(B, Lvars.greatereq_int_lvar, [e1,e2])
     | E.PRIM(E.EQUAL_INTprim,[e1_ML: E.LambdaExp,e2_ML: E.LambdaExp]) => 
         let
+          val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
 	    val (B,t1 as E'.TR(e1, E'.Mus [mu1 as (_,rho_1)],phi1)) = S(B,e1_ML, false)
 	    val (B,t2 as E'.TR(e2, E'.Mus [mu2 as (_,rho_2)],phi2)) = S(B,e2_ML, false)
             val (rho,B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
             val mus = [(R.boolType,rho)]
         in
+          retract
             (B, E'.TR(E'.EQUAL({mu_of_arg1=mu1, mu_of_arg2 = mu2, alloc = rho},
                                t1, t2),
                       E'.Mus mus,
-                    (*Eff.*)mkUnion([mkGet rho_1, mkGet rho_2, mkPut rho])))
+                    (*Eff.*)mkUnion([phi1,phi2,mkGet rho_1, mkGet rho_2, mkPut rho])))
         end
 
     (* REAL OPERATIONS *)
@@ -1100,7 +1102,7 @@ good *)
             fun spreadRhss(B)[] = (B,[]) 
               | spreadRhss(B)((lvar,tyvars,sigma_hat,bind)::rest) =
                   let 
-                    val _ = output(std_out, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")
+                    (*val _ = output(std_out, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")*)
                     val B = (*Eff.*)push(B)
                       val (B, t1 as E'.TR(_, E'.Mus [(tau1, rho1)], phi1)) = spreadExp(B, rse1, bind,false)
                       val B = (*Eff.*)unifyRho(rho1,rho) B          

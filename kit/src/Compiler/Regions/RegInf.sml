@@ -263,7 +263,7 @@ struct
               let
                     fun Rrec(B3,sigma_3hat,previous_functions_ok:bool) =
                       let
-                        val _ = sayLn("fix:entering Rrec " ^ Lvar.pr_lvar f (*^ ":" ^ show_sigma sigma_3hat*))
+                        (*val _ = sayLn("fix:entering Rrec " ^ Lvar.pr_lvar f (*^ ":" ^ show_sigma sigma_3hat*))*)
                        (* val _ = sayCone B3*)
                        (* val _ = sayLn("before rename , sigma is " ^ show_sigma (sigma_3hat))*)
                         val sigma3_hat_save = alpha_rename(sigma_3hat,B3) (* for checking 
