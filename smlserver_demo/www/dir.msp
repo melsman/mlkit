@@ -1,7 +1,0 @@
-<html>
-<body bgcolor=white>
-
-<h2>Directory is <?MSP=OS.FileSys.getDir()?> </h2>
-
-</body>
-</html>
