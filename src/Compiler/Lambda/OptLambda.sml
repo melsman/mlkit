@@ -277,19 +277,7 @@ functor OptLambda(structure Lvars: LVARS
 	  | DEEXCONprim _      => ()
 	  | RECORDprim         => ()
 	  | SELECTprim _       => ()
-(*KILL 12/11/1997 15:45. tho.:
-	  | REALprim           => ()
-	  | SINprim            => ()
-	  | COSprim            => ()
-	  | ARCTANprim         => ()
-	  | SIZEprim           => ()
-	  | EXPLODEprim        => ()
-	  | IMPLODEprim        => ()
-*)
 	  | EQUALprim _        => ()
-(*KILL 12/11/1997 15:46. tho.:
-	  | NOTEQUALprim _     => ()
-*)
           | EQUAL_INTprim       => ()
 	  | LESS_INTprim       => ()
 	  | LESS_REALprim      => ()
@@ -299,10 +287,6 @@ functor OptLambda(structure Lvars: LVARS
 	  | LESSEQ_REALprim    => ()
 	  | GREATEREQ_INTprim  => ()
 	  | GREATEREQ_REALprim => ()
-(*KILL 12/11/1997 15:46. tho.:
-	  | STD_INprim         => ()
-	  | STD_OUTprim        => ()
-*)
 	       (* likewise for other primitives that do not perform side effects
 		* and cannot raise exceptions *)
 	  | _ => raise NotSafe 
@@ -572,7 +556,14 @@ functor OptLambda(structure Lvars: LVARS
 	  of FN _ => small_lamb max_inline_size_fn lamb andalso closed lamb 
 	   | _ => false
 
+      fun is_small_fn lamb =
+	case lamb 
+	  of FN _ => small_lamb max_inline_size_fn lamb
+	   | _ => false
+
       fun is_fn (FN _) = true
+	| is_fn (LET{pat,bind,scope}) = is_fn bind andalso is_fn scope
+	| is_fn (FIX{functions,scope}) = is_fn scope
 	| is_fn _ = false
 
 
@@ -704,6 +695,14 @@ functor OptLambda(structure Lvars: LVARS
 			   else fail
 			  | _ => fail
 	       end 
+(*mael
+	  | APP(LET{pat,bind,scope=FN{pat=pat',body}},arg) =>
+	       let val pat' = fn_to_let_pat pat'
+	       in tick "appletfn-fn"; 
+		 reduce (env, (LET{pat=pat,bind=bind,
+				   scope=LET{pat=pat',bind=arg,scope=body}}, CUNKNOWN))
+	       end 
+*)
 	  | APP(FN{pat,body=scope},bind) => 
 	       let val pat' = fn_to_let_pat pat
 	       in tick "appfn-let"; reduce (env, (LET{pat=pat',bind=bind,scope=scope}, CUNKNOWN))
@@ -722,6 +721,17 @@ functor OptLambda(structure Lvars: LVARS
 	      if Lvars.eq(lvar,lv_f) then
 		(tick "reduce - app-fix"; (FIX{functions=functions,scope=APP(f,e)}, CUNKNOWN))
 	      else fail
+	  | APP(exp1, exp2) =>
+		let exception NoBetaReduction
+		    fun seekFN (LET{pat,bind,scope}, f) = seekFN(scope, f o (fn sc => LET{pat=pat,bind=bind,scope=sc}))
+	              | seekFN (FIX{functions,scope}, f) = seekFN(scope, f o (fn sc => FIX{functions=functions,scope=sc}))
+		      | seekFN (FN{pat,body}, f) = {pat=pat,body=body,f=f}
+		      | seekFN _ = raise NoBetaReduction
+		in let val {pat, body, f} = seekFN (exp1, fn x => x)
+		       val res = f (LET{pat=fn_to_let_pat pat, bind=exp2, scope=body})
+		   in tick "appletfn-fn"; reduce (env, (res, CUNKNOWN))
+		   end handle NoBetaReduction => fail
+		end
 	  | SWITCH_I switch => reduce_switch (reduce, env, fail, switch)
 	  | SWITCH_S switch => reduce_switch (reduce, env, fail, switch)
 	  | SWITCH_C switch => reduce_switch (reduce, env, fail, switch)
@@ -767,7 +777,7 @@ functor OptLambda(structure Lvars: LVARS
 	       end
 	      | LET{pat=(pat as [(lvar,tyvars,tau)]),bind,scope} =>
 	       let val (bind', cv) = contr (env, bind)
-		   val cv' = if is_small_closed_fn bind' then CFN{lexp=bind',large=false}
+		   val cv' = if (*is_small_closed_fn*) is_small_fn bind' then CFN{lexp=bind',large=false}
 			     else if is_fn bind' then CFN{lexp=bind',large=true}
                                   else (case bind' of VAR _ => CVAR bind' 
                                         | _ => cv)
