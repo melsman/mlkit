@@ -1,13 +1,17 @@
 
 functor LambdaBasics (structure Lvars : LVARS 
+		      structure Excon : EXCON
 		      structure TyName : TYNAME
 		      structure TLE : LAMBDA_EXP
 			sharing type TLE.lvar = Lvars.lvar
 			sharing type TLE.TyName = TyName.TyName
+			sharing type TLE.excon = Excon.excon
 		      structure Crash : CRASH
 		      structure FinMap : FINMAP
 		      structure FinMapEq : FINMAPEQ
-		      structure Flags : FLAGS) : LAMBDA_BASICS =
+		      structure Flags : FLAGS
+		      structure PP : PRETTYPRINT
+			sharing type PP.StringTree = TLE.StringTree) : LAMBDA_BASICS =
   struct
 
     open TLE
@@ -218,6 +222,62 @@ functor LambdaBasics (structure Lvars : LVARS
 	 | PRIM(prim, lambs) => app f lambs
 	 | FRAME _ => ()
 
+
+    (* -----------------------------------------------------------------
+     * Computation of free lambda variables and free exception
+     * constructors; we set a mark on a lambda variable when it is
+     * collected, so that it is collected only once.
+     * ----------------------------------------------------------------- *)
+
+    fun freevars e : lvar list * excon list = 
+      let val excons_seen : excon list ref = ref nil
+	  val excon_bucket : excon list ref = ref nil
+	  val lvar_bucket : lvar list ref = ref nil
+	  fun insert_lv lv = if !(Lvars.is_inserted lv) then ()
+			     else (Lvars.is_inserted lv := true; 
+				   lvar_bucket := lv :: !lvar_bucket)
+	  fun insert_excon ex = if List.exists (fn ex1 => Excon.eq(ex,ex1)) (!excons_seen) then ()
+				else (excon_bucket := ex :: !excon_bucket;
+				      excons_seen := ex :: !excons_seen)
+	  fun clean e : unit =
+	    case e
+	      of VAR {lvar,...} => Lvars.is_inserted lvar := false
+	       | _ => app_lamb clean e
+
+	  fun fv e : unit =
+	    case e
+	      of VAR {lvar,...} => insert_lv lvar
+	       | FN{pat,body} => (app (fn (lv,_) => Lvars.is_inserted lv := true) pat;
+				  fv body;
+				  app (fn (lv,_) => Lvars.is_inserted lv := false) pat)
+	       | LET{pat,bind,scope} => (fv bind; 
+					 app (fn (lv,_,_) => Lvars.is_inserted lv := true) pat;
+					 fv scope;
+					 app (fn (lv,_,_) => Lvars.is_inserted lv := false) pat)
+	       | FIX{functions,scope} => (app (fn {lvar,...} => Lvars.is_inserted lvar := true) functions;
+					  app (fv o #bind) functions; fv scope;
+					  app (fn {lvar,...} => Lvars.is_inserted lvar := false) functions)
+	       | EXCEPTION(excon,ty_opt,scope) => 
+		(excons_seen := excon :: !excons_seen; 
+		 fv scope;
+		 excons_seen := List.filter (fn ex => not(Excon.eq(ex,excon))) (!excons_seen))
+	       | PRIM(EXCONprim excon, lambs) => (insert_excon excon; app fv lambs)
+(*	       | PRIM(DEEXCONprim excon, lambs) => (insert_excon excon; app fv lambs) *)
+	       | _ => app_lamb fv e
+	  val _ = clean e
+	  val _ = fv e
+	  val lvs = !lvar_bucket before (app (fn lv => Lvars.is_inserted lv := false) (!lvar_bucket); 
+					 lvar_bucket := nil)
+	  val exs = !excon_bucket before excon_bucket := nil
+(*
+	  val _ = print ("Free lvars " ^ PP.flatten1 (PP.layout_list (PP.LEAF o Lvars.pr_lvar) lvs) ^ "\n")
+	  val _ = print ("Free excons " ^ PP.flatten1 (PP.layout_list (PP.LEAF o Excon.pr_excon) exs) ^ " in\n")
+	  val _ = PP.outputTree (print, layoutLambdaExp e, 100)
+	  val _ = print "\n"
+*)
+      in
+	(lvs, exs)
+      end
 
 
     (* --------- *)

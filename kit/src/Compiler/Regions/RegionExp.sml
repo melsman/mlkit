@@ -70,7 +70,8 @@ struct
       | UB_RECORD of ('a,'b) trip list 
       | FN       of {pat : (lvar * (Type*place)) list, 
                      body : ('a,'b)trip,
-                     alloc: 'a}
+                     alloc: 'a,
+		     free: (lvar list * excon list) option} (*region inference without dangling pointers*)
       | LETREGION_B of {B: effect list ref, discharged_phi: effect list ref, body: ('a,'b)trip}
       | LET      of {pat : (lvar * tyvar list * Type * place) list,
                      bind : ('a,'b)trip,
@@ -434,7 +435,7 @@ old*)
         | SELECT(i, trip) =>
              PP.NODE{start = "#"^Int.toString i ^ " ", finish = "", indent = 4, childsep = PP.NOSEP,
                      children = [layTrip(trip,3)]}
-        | FN{pat, body, alloc}=> layLam((pat,body,alloc), n, "")
+        | FN{pat, body, alloc, free}=> layLam((pat,body,alloc), n, "")
         | APP(TR(VAR{lvar, il_r, fix_bound=true},_,_), t2) =>
            let
                   (*        f il (exp) 
@@ -558,7 +559,7 @@ old*)
       and layTrip(TR(e,Mus mus,rea),n) = 
         let val t1 = 
                 case (e, mus) of
-                  (FN{pat, body, alloc}, [(R.FUN(_,eps,_),_)])=> 
+                  (FN{pat, body, alloc, free}, [(R.FUN(_,eps,_),_)])=> 
                     layLam((pat,body,alloc), n, 
                            PP.flatten1(Eff.layout_effect eps) ^ " ")
                 | _ => layExp(e,n)

@@ -1426,7 +1426,7 @@ struct
             let val (ts', dep) = mk_deps(EE, ts, dep)
             in (UB_RECORD ts', dep)
             end
-        | RegionExp.FN{pat,body,alloc} =>
+        | RegionExp.FN{pat,body,alloc,free} =>
             let val EE' = foldl (fn ((lvar,_), EE) => Mul.declare(EE,lvar,ref(Mul.empty_qmularefset)))
                           EE pat
 val (body',dep) = mk_deptr(EE',body, dep)

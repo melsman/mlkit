@@ -1,4 +1,4 @@
-(*$LAMBDA_BASICS: *)
+
 signature LAMBDA_BASICS =
   sig
 
@@ -36,4 +36,5 @@ signature LAMBDA_BASICS =
 
     val match_sigma : (tyvar list * Type) * Type -> subst
 
+    val freevars : LambdaExp -> lvar list * excon list
   end

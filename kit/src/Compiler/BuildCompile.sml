@@ -84,7 +84,9 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
 
     structure LambdaBasics = 
       LambdaBasics(structure Lvars = Lvars
+		   structure Excon = Excon		     
 		   structure TyName = TyName
+		   structure PP = PP
 		   structure TLE = LambdaExp
 		   structure FinMap = FinMap
 		   structure FinMapEq = FinMapEq
@@ -195,6 +197,7 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
        structure Con = Con
        structure ExCon = Excon
        structure E = LambdaExp
+       structure LB = LambdaBasics
        structure E'= RegionExp
        structure Eff = Effect
        structure R= RType

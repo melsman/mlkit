@@ -55,7 +55,8 @@ signature REGION_EXP =
       | UB_RECORD of ('a,'b) trip list (* unboxed records *)
       | FN       of {pat : (lvar * (Type*place)) list, 
                      body : ('a,'b)trip,
-                     alloc: 'a}
+                     alloc: 'a,
+		     free: (lvar list * excon list) option}  (*region inference without dangling pointers*)
       | LETREGION_B of {B: effect list ref, discharged_phi: effect list ref, body: ('a,'b)trip}
       | LET      of {pat : (lvar * tyvar list * Type * place) list,
 		     bind : ('a,'b)trip,

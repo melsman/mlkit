@@ -14,6 +14,10 @@ functor SpreadExpression(
   structure Con: CON
   structure ExCon: EXCON
   structure E: LAMBDA_EXP
+  structure LB : LAMBDA_BASICS
+    sharing type LB.lvar = E.lvar
+    sharing type LB.LambdaExp = E.LambdaExp
+    sharing type LB.excon = E.excon
   structure E': REGION_EXP
     sharing type E.con = E'.con = Con.con
     sharing type E.TyName = E'.TyName 
@@ -57,6 +61,7 @@ functor SpreadExpression(
 ): SPREAD_EXPRESSION =
 struct
 
+  structure NewList = List
   structure List = Edlib.List
 
   structure E = E
@@ -168,6 +173,50 @@ struct
   fun plus(rse,rse') = RSE.plus(rse,rse')
 
   (* end of imported functions *)
+
+
+  (* functionality to avoid dangling pointers when garbage collection
+   * is enabled; see page 50 of Tofte & Talpin, A Theory of Stack
+   * Allocation in Polymorphically Typed Languages. 1993. Technical
+   * Report. *)
+
+  val tag_integers = Flags.is_on0 "tag_integers"
+(*
+  fun gc_no_dangling_pointers(rse,blvs,e,B,mus1,mus2,eps,rho) =
+    if not(tag_integers()) then B
+    else 
+      let 
+	fun rhos_sigma lv : place list = 
+	  case lookupLvar rse lv
+	    of SOME(_,_,sigma,p,_,_) => [p] @ R.frv_sigma sigma
+	     | NONE => die "gc_no_dangling_pointers.rhos_sigma"
+	fun rhos_sigma' ex : place list = 
+	  case lookupExcon rse ex
+	    of SOME mu => R.frv_mu mu
+	     | NONE => die "gc_no_dangling_pointers.rhos_sigma"
+	val (lvs,exs) = LB.freevars (blvs,e)
+	val rhos = foldl (fn (lv, acc) => rhos_sigma lv @ acc) nil lvs
+	val rhos = foldl (fn (ex, acc) => rhos_sigma' ex @ acc) rhos exs
+	val rhos_not = R.frv_mu (R.FUN(mus1,eps,mus2),rho)
+	val rhos = Eff.setminus(Eff.remove_duplicates rhos, rhos_not)
+	fun drop_rho_p (r:place) =
+	  Eff.eq_effect(r, Eff.toplevel_region_withtype_top)
+	  orelse Eff.eq_effect(r, Eff.toplevel_region_withtype_bot)
+	  orelse Eff.eq_effect(r, Eff.toplevel_region_withtype_string)
+	  orelse Eff.eq_effect(r, Eff.toplevel_region_withtype_real)
+	  
+	val rhos = (NewList.filter (not o Eff.is_wordsize o valOf o Eff.get_place_ty) rhos)
+	  handle _ => die "gc_no_dangling_pointers.rhos"
+	val rhos = NewList.filter (not o drop_rho_p) rhos
+(*
+	val B = foldl (fn (r,B) => Eff.lower (Eff.level B) r B) B rhos
+*)	  
+	val phi = mkUnion (map Eff.mkGet rhos)
+	val (eps2,B) = freshEps B
+	val _ = edge (eps2,phi)
+      in Eff.unifyEps (eps,eps2) B
+      end
+*)
 
   fun crash_resetting force = 
       let val fcn = if force then "forceResetting" else "resetRegions"
@@ -379,7 +428,7 @@ struct
       val e' = E'.SWITCH(t0,ListPair.zip(map #1 choices, new_choices), new_last)
     in
       retract(B,E'.TR(con(e'), metatype,phi))
-    end handle _ => die "spreadSwitch: cannot spread (uncaught exception)"
+    end handle X => die ("spreadSwitch: cannot spread; exception " ^ exnName X ^ " raised")
 
    fun S(B,e,toplevel:bool): cone * (place,unit)E'.trip = 
       (case e of
@@ -483,9 +532,13 @@ struct
           val (B,t1 as E'.TR(e1',E'.Mus mu_list1, phi1)) = spreadExp(B,rse',body,false)
           val (eps, B) = (*Eff.*)freshEps B
           val _ = (*Eff.*)edge(eps, phi1)
+
           val (rho, B) = (*Eff.*)freshRhoWithTy(Eff.TOP_RT, B)
+
+	  val free = if tag_integers() then SOME(LB.freevars e)  (*region inference without dangling pointers*)
+		     else NONE
         in
-          (B, E'.TR(E'.FN{pat = ListPair.zip(map #1 pat, mus), body = t1, alloc = rho},
+          (B, E'.TR(E'.FN{pat = ListPair.zip(map #1 pat, mus), body = t1, alloc = rho, free=free},
                     E'.Mus [(R.FUN(mus,eps,mu_list1), rho)], (*Eff.*)mkPut(rho)))
         end
     | E.APP(e1_ML: E.LambdaExp, e2_ML: E.LambdaExp) => 
@@ -627,7 +680,7 @@ good *)
         end
 
     | E.RAISE(e1: E.LambdaExp, description) =>
-        let 
+       (let 
           val (description',B) = 
                 case description of
                   E.Types (taus : E.Type list) => 
@@ -639,7 +692,7 @@ good *)
           val (B, t2 as E'.TR(e2', E'.Mus mus2, phi2)) = S(B,e1,false)
         in
             (B,E'.TR(E'.RAISE(t2),description', phi2))
-        end
+        end handle X => (print ("RAISE FAILED\n"); raise X))
 
     | E.HANDLE(e1,e2) =>
         let 
@@ -737,56 +790,6 @@ good *)
 	in
 	  retract(B, E'.TR(E'.DROP t1, E'.Mus [], phi1))
 	end
-	  
-(*
-
-    (* -----------------------------------------------------------------------
-     * Compiler supported primitives; For all these primitives the backend
-     * knows of the exceptions that the primitives can raise, hence we
-     * do not explicitly pass exception constructors. Note that the types
-     * in rse and other environments following spread-expression, must use
-     * the same convention. For now, we explicitly filter out exception
-     * constructors in primitives. Later we could adjust CompileDec, etc.
-     * ----------------------------------------------------------------------- *)
-
-    (* INTEGER OPERATIONS *)
-
-    | E.PRIM(E.PLUS_INTprim,e1::e2::_)    => S_built_in(B, Lvars.plus_int_lvar, [e1,e2])
-    | E.PRIM(E.MINUS_INTprim,e1::e2::_)   => S_built_in(B, Lvars.minus_int_lvar, [e1,e2])
-    | E.PRIM(E.MUL_INTprim,e1::e2::_)     => S_built_in(B, Lvars.mul_int_lvar, [e1,e2])
-    | E.PRIM(E.NEG_INTprim,e1::_)         => S_built_in(B, Lvars.negint_lvar, [e1])
-    | E.PRIM(E.ABS_INTprim,e1::_)         => S_built_in(B, Lvars.absint_lvar, [e1])
-    | E.PRIM(E.LESS_INTprim,[e1,e2])      => S_built_in(B, Lvars.less_int_lvar, [e1,e2])
-    | E.PRIM(E.LESSEQ_INTprim,[e1,e2])    => S_built_in(B, Lvars.lesseq_int_lvar, [e1,e2])
-    | E.PRIM(E.GREATER_INTprim,[e1,e2])   => S_built_in(B, Lvars.greater_int_lvar, [e1,e2])
-    | E.PRIM(E.GREATEREQ_INTprim,[e1,e2]) => S_built_in(B, Lvars.greatereq_int_lvar, [e1,e2])
-    | E.PRIM(E.EQUAL_INTprim,[e1_ML: E.LambdaExp,e2_ML: E.LambdaExp]) => 
-        let
-          val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
-	    val (B,t1 as E'.TR(e1, E'.Mus [mu1 as (_,rho_1)],phi1)) = S(B,e1_ML, false)
-	    val (B,t2 as E'.TR(e2, E'.Mus [mu2 as (_,rho_2)],phi2)) = S(B,e2_ML, false)
-            val (rho,B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
-            val mus = [(R.boolType,rho)]
-        in
-          retract
-            (B, E'.TR(E'.EQUAL({mu_of_arg1=mu1, mu_of_arg2 = mu2, alloc = rho},
-                               t1, t2),
-                      E'.Mus mus,
-                    (*Eff.*)mkUnion([phi1,phi2,mkGet rho_1, mkGet rho_2, mkPut rho])))
-        end
-
-    (* REAL OPERATIONS *)
-
-    | E.PRIM(E.PLUS_REALprim,e1::e2::_)   => S_built_in(B, Lvars.plus_float_lvar, [e1,e2])
-    | E.PRIM(E.MINUS_REALprim,e1::e2::_)  => S_built_in(B, Lvars.minus_float_lvar, [e1,e2])
-    | E.PRIM(E.MUL_REALprim,e1::e2::_)    => S_built_in(B, Lvars.mul_float_lvar, [e1,e2])
-    | E.PRIM(E.NEG_REALprim,e1::_)        => S_built_in(B, Lvars.negfloat_lvar, [e1])
-    | E.PRIM(E.ABS_REALprim,e1::_)        => S_built_in(B, Lvars.absfloat_lvar, [e1])
-    | E.PRIM(E.LESS_REALprim,[e1,e2])     => S_built_in(B, Lvars.less_float_lvar, [e1,e2])
-    | E.PRIM(E.LESSEQ_REALprim,[e1,e2])   => S_built_in(B, Lvars.lesseq_float_lvar, [e1,e2])
-    | E.PRIM(E.GREATER_REALprim,[e1,e2])  => S_built_in(B, Lvars.greater_float_lvar, [e1,e2])
-    | E.PRIM(E.GREATEREQ_REALprim,[e1,e2]) => S_built_in(B, Lvars.greatereq_float_lvar, [e1,e2])
-*)
 
     | E.SWITCH_I {switch: Int32.int E.Switch, precision} => 
 	(spreadSwitch B S (fn sw => E'.SWITCH_I{switch=sw,precision=precision}) [] (switch,toplevel))
@@ -958,15 +961,20 @@ good *)
      Functions' in the documentation.*)
 
     | E.PRIM (E.CCALLprim {name, instances, tyvars, Type}, es) => 
-	let val B = pushIfNotTopLevel (toplevel, B) (* for retract *)
+       (let val B = pushIfNotTopLevel (toplevel, B) (* for retract *)
 	    val (B, sigma) =
 	      let val B = push B   (* for sigma *)
 		  val (mu, B) = freshMu (Type, B)
+		    handle X => (print "CCALL-1.1\n"; raise X)
 		  val (sigma, B) = R.sigma_for_c_function tyvars mu B
-	      in (#2(pop B), sigma)  (* for sigma *)  
-	      end 
+		    handle X => (print "CCALL-1.2\n"; raise X)
+		  val B = #2(pop B)
+		    handle X => (print "CCALL-1.3\n"; raise X)
+	      in (B, sigma)  (* for sigma *)  
+	      end handle X => (print "CCALL-1\n"; raise X)
 	    (*much of the rest is analogous to the case for (APP (VAR ..., ...))*)
 	    val (B, tau, _) = newInstance (B, sigma, instances)
+	      handle X => (print "CCALL-2\n"; raise X)
 	in
 	  (case tau of
 	     R.FUN (mus_a, eps_phi0, [mu_r]) =>
@@ -979,13 +987,16 @@ good *)
 			   | _ => die "S: CCALL argument had not precisely one mu")
 		       end) (B, [], [], []) es
 		 val B = unify_mus (mus_a, mus_es) B
+		   handle X => (print "CCALL-3\n"; raise X)
+		 val rhos_for_result = R.c_function_effects mu_r
+		   handle X => (print "CCALL-4\n"; raise X)
 		 val e' = E'.CCALL ({name = name, mu_result = mu_r,
-				     rhos_for_result = R.c_function_effects mu_r}, trs')
+				     rhos_for_result = rhos_for_result}, trs')
 	       in
 		 retract (B, E'.TR (e', E'.Mus [mu_r], Eff.mkUnion (eps_phi0 :: phis)))
 	       end
 	   | _ => die "CCALL: tau not function type")
-	end
+	end handle X => (print ("CCALL FAILED\n"); raise X))
 
     | E.PRIM(E.RESET_REGIONSprim{instance = _}, [e0 as (E.VAR _)] ) =>
           (*              
