@@ -49,7 +49,7 @@ as
   ) ;
 
   /* ------------------------
-     function getPriority
+     function getTruePriority
      ------------------------
      calculates the true priority of the priority_rel 
      (when a row with priority = 1 is deleted in scs_priority_rels, the row
@@ -57,7 +57,7 @@ as
 
      never fails
   */  
-  function getPriority(
+  function getTruePriority(
     rel_id	in scs_priority_rels.rel_id%TYPE
   ) return integer;
 end scs_priority;
@@ -263,7 +263,7 @@ as
     when NO_DATA_FOUND then return ;
   end decreasePriority;
 
-  function getPriority(
+  function getTruePriority(
     rel_id	in scs_priority_rels.rel_id%TYPE
   ) return integer
   is
@@ -277,26 +277,26 @@ as
 	   on_which_parent_id,
 	   on_what_child_table,
 	   priority
-      into getPriority.on_what_parent_table,
-	   getPriority.on_which_parent_id,
-	   getPriority.on_what_child_table,
-	   getPriority.priority
+      into getTruePriority.on_what_parent_table,
+	   getTruePriority.on_which_parent_id,
+	   getTruePriority.on_what_child_table,
+	   getTruePriority.priority
       from scs_priority_rels
-     where rel_id = getPriority.rel_id;
+     where rel_id = getTruePriority.rel_id;
 
    select count(*) 
-     into getPriority.priority_count
+     into getTruePriority.priority_count
      from scs_priority_rels
-    where on_what_parent_table = getPriority.on_what_parent_table
-      and on_which_parent_id   = getPriority.on_which_parent_id
-      and on_what_child_table  = getPriority.on_what_child_table
-      and priority <= getPriority.priority;
+    where on_what_parent_table = getTruePriority.on_what_parent_table
+      and on_which_parent_id   = getTruePriority.on_which_parent_id
+      and on_what_child_table  = getTruePriority.on_what_child_table
+      and priority <= getTruePriority.priority;
   
-    return getPriority.priority_count;
+    return getTruePriority.priority_count;
 
   exception
     when NO_DATA_FOUND then return null;
-  end getPriority;
+  end getTruePriority;
 
 end scs_priority;
 /

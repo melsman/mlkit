@@ -9,7 +9,8 @@ signature SCS_PRIORITY =
       on_which_parent_id   : int,
       on_what_child_table  : string,
       on_which_child_id	   : int,
-      priority		   : int
+      priority		   : int,
+      true_priority	   : int
     }
 
     datatype mode = 
@@ -50,7 +51,8 @@ structure ScsPriority :> SCS_PRIORITY =
       on_which_parent_id   : int,
       on_what_child_table  : string,
       on_which_child_id	   : int,
-      priority		   : int
+      priority		   : int,
+      true_priority	   : int    
     }
 
     datatype mode = 
@@ -79,11 +81,13 @@ structure ScsPriority :> SCS_PRIORITY =
 	  on_which_parent_id   = ScsData.gToInt g "on_which_parent_id",
 	  on_what_child_table  = g "on_what_child_table",
 	  on_which_child_id    = ScsData.gToInt g "on_which_child_id",
-	  priority	       = ScsData.gToInt g "priority"
+	  priority	       = ScsData.gToInt g "priority",
+	  true_priority	       = ScsData.gToInt g "true_priority"
 	}
 	val pre_prio_sql = `
 	  select rel_id, on_what_parent_table, on_which_parent_id,
-		 on_what_child_table, on_which_child_id, priority
+		 on_what_child_table, on_which_child_id, priority,
+		 scs_priority.getTruePriority( rel_id ) true_priority
 	    from scs_priority_rels
 	`
     in
