@@ -165,28 +165,10 @@ structure K = struct
       end
   end
 
+  val cd = OS.FileSys.chDir
+  val pwd = OS.FileSys.getDir
+  fun ib a = (cd "/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/basislib/" ;
+	      kit {})
+  fun src a = cd "/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/src/"
 
-
-(*
-  fun i a = ((*OS..chDir "/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/src/" ;*)
-	     Flags.lookup_string_entry "path_to_kit_script"
-	     := "../bin/ML_to_HPPA_on_HPUX/kit.script" ;
-	     (*this path means that you must be in the src/ directory,
-	      which is where you will be, if you want Make.again{} etc.
-	      to work.  20/06/1997 13:32. tho.*)
-	     print ("Script file is " ^ Flags.get_string_entry "path_to_kit_script" ^ "\n\
-	      \Reading script file.\n") ;
-	     Flags.read_script () ;
-	     Flags.interact ()) ;
-  fun ib a = ((*System.cd "/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/src/" ;*)
-	     Flags.lookup_string_entry "path_to_kit_script"
-	     := "../bin/basislib.script" ;
-	     (*this path means that you must be in the src/ directory,
-	      which is where you will be, if you want Make.again{} etc.
-	      to work.  20/06/1997 13:32. tho.*)
-	     print ("Script file is " ^ Flags.get_string_entry "path_to_kit_script" ^ "\n\
-	      \Reading script file.\n") ;
-	     Flags.read_script () ;
-	     Flags.interact ()) ;
-*)
 end (*structure K*)
