@@ -14,6 +14,9 @@ signature SCS_ERROR =
 
     val errorMsg   : quot -> 'a
 
+    (* [logFormVars ()] logs all formvars *)
+    val logFormVars : unit -> quot
+
     (* [valOfMsg msg v_opt] returns the msg to the user and no error
         is logged if v_opt is NONE; otherwise returns the value v
         where SOME v = v_opt *)
@@ -58,6 +61,20 @@ structure ScsError :> SCS_ERROR =
       subject="ScsPanic",body=Quot.toString emsg
     }
 
+    fun logFormVars () = 
+      let
+	val fvs  = map (fn (n,v)=> `
+	  name=^n, value=^v`) (
+	    case Ns.Conn.getQuery() of 
+	      NONE => []
+	    | SOME s => Ns.Set.list s
+ 	  )
+      in
+	logError (foldl op^^ `` fvs); 
+	(foldl op^^ `` fvs)
+      end
+
+
     fun panic' msg emsg = 
       let
 	val emsg = `script: ^(Ns.Conn.location())^(Ns.Conn.url()).
@@ -67,19 +84,10 @@ email: ^(ScsPersonData.email(ScsLogin.user_id()))
 	val title = case ScsLogin.user_lang() of
 	    ScsLang.en => "System Error"
 	  | ScsLang.da => "Systemfejl"
-val _ = logError `scserror 1`
-	val fvs  = map (fn (n,v)=> `
-	  name=^n, value=^v`) (
-	    case Ns.Conn.getQuery() of 
-	      NONE => []
-	    | SOME s => Ns.Set.list s
- 	  )
-val _ = logError `scserror 2`
-	val logmsg = emsg ^^ (foldl op^^ `` fvs)
-val _ = logError (`scserror 3` ^^ logmsg)
       in
-	(logError logmsg;
-	 emailError logmsg;
+	(logError emsg;
+	 logFormVars ();
+	 emailError (emsg ^^ (logFormVars ()));
 	 ScsPage.returnPg title msg;
 	 Ns.exit())
       end

@@ -532,7 +532,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	   ScsLang.en => `^s
 	     <blockquote>
 	     If you hold a Danish CPR-number, then the format is:
-	     <code>DDMMYYYY-TTTT</code>, where <code>TTTT</code> are four numbers, for instance
+	     <code>DDMMYY-TTTT</code>, where <code>TTTT</code> are four numbers, for instance
 	     <code>291270-1234</code>. <p>
 	  
 	     We also perform a <a
@@ -553,7 +553,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	 | ScsLang.da => `^s
 	     <blockquote>
 	     Hvis du har et dansk CPR-nummer, så er formatet:
-	     DDMMYYYY-TTTT, hvor TTTT er fire tal, eksempelvis
+	     DDMMYY-TTTT, hvor TTTT er fire tal, eksempelvis
 	     291270-1234. <p>
 
 	     Derudover udføres 
