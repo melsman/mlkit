@@ -24,6 +24,8 @@ signature SCS_ROLE =
     | UcsTrTimeRecordAdm  (* Created in ucs-tr-initialdata-create.sql *)
     | UcsObOptagAdm  	  (* Created in ucs-ob-initialdata-create.sql *)
     | UcsCbCourseAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
+    | UcsPrRucAdm	  (* Created in ucs-pr-patch005.sql.sql *)
+    | UcsPrEbussAdm	  (* Created in ucs-pr-patch005.sql.sql *)
     | Other of string
 
     (* [fromString str] returns the corresponding role which is either
@@ -76,52 +78,58 @@ structure ScsRole :> SCS_ROLE =
     | UcsTrTimeRecordAdm
     | UcsObOptagAdm  	  
     | UcsCbCourseAdm
+    | UcsPrRucAdm	  
+    | UcsPrEbussAdm	  
     | Other of string
 
     fun fromString str = 
       case str of
-        "SiteAdm"           => SiteAdm
-      | "SysAdm"	    => SysAdm
-      | "StudAdm"	    => StudAdm
-      | "UcsPbVejlederAdm"  => UcsPbSupervisorAdm
-      | "UcsPbProjectAdm"   => UcsPbProjectAdm
-      | "OaAdm"		    => OaAdm
-      | "UcsEbEventEditor"  => UcsEbEventEditor
-      | "ScsPersonAdm"	    => ScsPersonAdm
-      | "UcsEduInfo"	    => UcsEduInfo
-      | "PhdAdm"	    => PhdAdm
-      | "PortraitAdm"	    => PortraitAdm
-      | "UcsPrPersonaleAdm" => UcsPrPersonaleAdm
-      | "UcsPrAdm"	    => UcsPrAdm		
-      | "UcsPrITAdm"	    => UcsPrITAdm	
-      | "UcsPrInternAdm"    => UcsPrInternAdm    
+        "SiteAdm"            => SiteAdm
+      | "SysAdm"	     => SysAdm
+      | "StudAdm"	     => StudAdm
+      | "UcsPbVejlederAdm"   => UcsPbSupervisorAdm
+      | "UcsPbProjectAdm"    => UcsPbProjectAdm
+      | "OaAdm"		     => OaAdm
+      | "UcsEbEventEditor"   => UcsEbEventEditor
+      | "ScsPersonAdm"	     => ScsPersonAdm
+      | "UcsEduInfo"	     => UcsEduInfo
+      | "PhdAdm"	     => PhdAdm
+      | "PortraitAdm"	     => PortraitAdm
+      | "UcsPrPersonaleAdm"  => UcsPrPersonaleAdm
+      | "UcsPrAdm"	     => UcsPrAdm		
+      | "UcsPrITAdm"	     => UcsPrITAdm	
+      | "UcsPrInternAdm"     => UcsPrInternAdm    
       | "UcsTrTimeRecordAdm" => UcsTrTimeRecordAdm
-      | "UcsObOptagAdm"     => UcsObOptagAdm 
-      | "UcsCbCourseAdm"    => UcsCbCourseAdm
+      | "UcsObOptagAdm"      => UcsObOptagAdm 
+      | "UcsCbCourseAdm"     => UcsCbCourseAdm
+      | "UcsPrRucAdm"	     => UcsPrRucAdm  
+      | "UcsPrEbussAdm"	     => UcsPrEbussAdm
       | s => Other s
  
     (* [toString role] returns the string representation of the role
        as stored in the database. *)
     fun toString (role:role) =
       case role of
-        SiteAdm => "SiteAdm"
-      | StudAdm => "StudAdm"
-      | SysAdm	=> "SysAdm"
-      | OaAdm   => "OaAdm"
+        SiteAdm            => "SiteAdm"
+      | StudAdm		   => "StudAdm"
+      | SysAdm		   => "SysAdm"
+      | OaAdm		   => "OaAdm"
       | UcsPbSupervisorAdm => "UcsPbVejlederAdm"
-      | UcsPbProjectAdm => "UcsPbProjectAdm"
-      | UcsEbEventEditor => "UcsEbEventEditor"
-      | ScsPersonAdm => "ScsPersonAdm"
-      | UcsEduInfo => "UcsEduInfo"
-      | PhdAdm => "PhdAdm"
-      | PortraitAdm => "PortraitAdm"
-      | UcsPrPersonaleAdm => "UcsPrPersonaleAdm"
-      | UcsPrAdm	    => "UcsPrAdm"		
-      | UcsPrITAdm	    => "UcsPrITAdm"	
-      | UcsPrInternAdm    => "UcsPrInternAdm"    
+      | UcsPbProjectAdm	   => "UcsPbProjectAdm"
+      | UcsEbEventEditor   => "UcsEbEventEditor"
+      | ScsPersonAdm	   => "ScsPersonAdm"
+      | UcsEduInfo	   => "UcsEduInfo"
+      | PhdAdm		   => "PhdAdm"
+      | PortraitAdm	   => "PortraitAdm"
+      | UcsPrPersonaleAdm  => "UcsPrPersonaleAdm"
+      | UcsPrAdm	   => "UcsPrAdm"		
+      | UcsPrITAdm	   => "UcsPrITAdm"	
+      | UcsPrInternAdm     => "UcsPrInternAdm"    
       | UcsTrTimeRecordAdm => "UcsTrTimeRecordAdm"
       | UcsObOptagAdm	   => "UcsObOptagAdm"
       | UcsCbCourseAdm	   => "UcsCbCourseAdm"
+      | UcsPrRucAdm	   => "UcsPrRucAdm"  
+      | UcsPrEbussAdm	   => "UcsPrEbussAdm"
       | Other s => s
 	  
     (* We cache the result for 5 minutes.
