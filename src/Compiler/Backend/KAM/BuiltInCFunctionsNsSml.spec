@@ -44,3 +44,11 @@ nssml_DecodeUrl
 nssml_configGetValue
 nssml_configGetValueExact
 nssml_ConnUrl
+nssml_FetchUrl
+
+nssml_CacheFind
+nssml_CacheCreate
+nssml_CacheCreateSz
+Ns_CacheFlush
+nssml_CacheSet
+nssml_CacheGet

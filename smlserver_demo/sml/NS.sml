@@ -133,17 +133,41 @@ signature NS =
 	val foldDb : db * ((string->string)*'a->'a) * 'a * string -> 'a
 	val fold : ((string->string)*'a->'a) * 'a * string -> 'a
       end
-(*
+
     structure Cache :
       sig
-	val create : {cachename: string, size: int option, timeout: int option} -> unit
-	val flush  : {cachename: string, key: string} -> unit
-	val set    : {cachename: string, key: string, value: string} -> unit
-	val get    : {cachename: string, key: string} -> string option
-        val eval   : {cachename: string, key: string} -> (unit -> string) -> string
-	val names  : {cachename: string} -> string list
-      end
+	type cache
+	  
+	(* Find a cache, given a cache name. Returns NONE if
+	 * cache does not exist. *)
+        val find : string -> cache option
+
+	(* Create a cache, given a cache name and a timeout value 
+         * in seconds. *)
+        val create : string * int -> cache
+
+	(* Create a cache, given a cache name and a maximum cache
+	 * size in bytes. *)
+	val createSz : string * int -> cache  
+
+	(* Deletes all entries in cache. *)
+	val flush : cache -> unit
+
+	(* Associate a key with a value in the cache; Overwrites existing
+	 * entry in cache if entry is present, in which case the function
+	 * returns `false'. If no previous entry for the key is present in 
+	 * the cache, the function returns `true'. *)
+	val set : cache * string * string -> bool
+
+	(* Returns value associated with key in cache; returns NONE if 
+	 * key does not exist in cache. *)
+	val get : cache * string -> string option
+(*
+        val eval   : cache * string -> (unit -> string) -> string
+	val keys  : cache -> string list
 *)
+      end
+
     structure Info :
       sig
 	(* Return full path name of the configuration file in use. *)
@@ -241,6 +265,13 @@ signature NS =
 			extra_headers: string list} -> unit 
 	val send : {to: string, from: string, subject: string, body: string} -> unit
       end
+
+    (* Fetch a remote URL; connects AOLserver to another HTTP 
+     * Web server and requests the specified URL. The URL must 
+     * be fully qualified. Currently, the function cannot handle 
+     * redirects or requests for any protocol except HTTP. Returns 
+     * NONE if no page is found. *)
+    val fetchUrl : string -> string option
 
     val exit : unit -> 'a
   end

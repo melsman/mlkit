@@ -156,6 +156,31 @@ structure Ns :> NS =
 	  end
       end
 
+    structure Cache =
+      struct
+	type cache = int
+	fun find (n : string) : cache option =
+	  let val res : int = prim("nssml_CacheFind", "nssml_CacheFind", n)
+	  in if res = 0 then NONE
+	     else SOME res
+	  end
+	fun create(n : string, t: int) : cache =
+	  prim("nssml_CacheCreate", "nssml_CacheCreate", (n,t))
+	fun createSz(n : string, sz: int) : cache =  (* sz is in bytes *)
+	  prim("nssml_CacheCreateSz", "nssml_CacheCreateSz", (n,sz))
+	fun flush(c:cache) : unit =
+	  prim("Ns_CacheFlush", "Ns_CacheFlush", c)
+	fun set(c:cache, k:string, v:string) : bool =
+	  let val res : int = prim("nssml_CacheSet", "nssml_CacheSet", (c,k,v))
+	  in res = 1
+	  end
+	fun get(c:cache, k:string) : string option =
+	  let val res : string = prim("nssml_CacheGet", "nssml_CacheGet", (c,k))
+	  in if isNull res then NONE
+	     else SOME res
+	  end
+      end
+
     structure Info =
       struct
 	fun configFile() : string =
@@ -270,6 +295,11 @@ structure Ns :> NS =
 	fun send {to: string, from: string, subject: string, body: string} : unit =
 	  sendmail {to=[to],from=from,cc=nil,bcc=nil,subject=subject,
 		    extra_headers=nil,body=body}
+      end
+
+    fun fetchUrl (url : string) : string option =
+      let val res:string = prim("nssml_FetchUrl", "nssml_FetchUrl", url)
+      in if isNull res then NONE else SOME res
       end
 
     fun exit() = raise Interrupt  

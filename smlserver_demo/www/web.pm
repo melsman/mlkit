@@ -6,6 +6,10 @@ local
   ../sml/FormVar.sml
 in
  [
+  time_of_day.sml
+  cache.sml
+  cache_lookup.sml
+  cache_add.sml
   guess.sml
   counter.sml
   temp.sml
