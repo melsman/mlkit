@@ -18,6 +18,7 @@ structure Tester : TESTER =
 
     fun equal_to_okfile s = files_equal(s,s^".ok")
 
+
     local
       val error_counter = ref 0
     in
@@ -91,18 +92,27 @@ structure Tester : TESTER =
 	  else ()
 
 	val exe_file = "./runexe"
-	fun rename_and_run() =
+	fun rename_and_run(suffix, out_file, outok_file) =
 	  if OS.Process.system ("mv run " ^ exe_file) = OS.Process.success then
 	    let 
+              val file_label = filepath ^suffix
+   	      fun test_output () =
+  	        if files_equal (file^out_file, file^outok_file) then
+		  (msgOk (out_file ^ " equal to " ^ outok_file); true)
+	        else (msgErr (out_file ^ " not equal to " ^ outok_file); false)
+(*
 	      fun test_output () =
-		if equal_to_okfile (file ^ ".out") then
-		  (msgOk "out equal to out.ok"; true)
-		else (msgErr "out not equal to out.ok"; false)
+                if compare then 
+   		  if equal_to_okfile (file ^ ".out") then
+		    (msgOk "out equal to out.ok"; true)
+		  else (msgErr "out not equal to out.ok"; false)
+                else (msgOk "out not compared to .ok file"; true)
+*)
 	    in 
 	      if opt "tx" (*Time Executable*) then
 		let val _ = msg' ("    executing target program: " ^ exe_file)
 	 	    val {count,size,rss,data,stk,exe,real,user,sys} =
-		      MemUsage.memUsage {cmd=exe_file,args=nil,out_file=file ^ ".out"}
+		      MemUsage.memUsage {cmd=exe_file,args=nil,out_file=file ^ out_file (*".out"*)}
 		    val ok = test_output()
 		    val exesize = size_of_file exe_file
 		    val exesize_stripped = 
@@ -110,22 +120,22 @@ structure Tester : TESTER =
 			size_of_file exe_file
 		      else (msgOk ("the command `strip " ^ exe_file ^ "' failed"); "N/A")
 		in
-		  TestReport.add_runtime_line{name=filepath,ok=ok,exesize=exesize, 
+		  TestReport.add_runtime_line{name=file_label,ok=ok,exesize=exesize, 
 					      exesize_stripped=exesize_stripped, 
 					      size=size,data=data,
 					      rss=rss,stk=stk,exe=exe,
 					      real=real,user=user,sys=sys}
 
 		end handle Fail s => (msgErr (exe_file ^ " failure: " ^ s); 
-				      TestReport.add_runtime_bare_line(filepath,false))
+				      TestReport.add_runtime_bare_line(file_label,false))
 	      else
-		let val res = OS.Process.system (exe_file ^ " > " ^ file ^ ".out")
+		let val res = OS.Process.system (exe_file ^ " > " ^ file ^ out_file (*".out"*))
 		in 
 		  if (not(opt "ue" (*Uncaught Exception*) ) andalso res = OS.Process.success) 
 		    orelse (opt "ue" (*Uncaught Exception*) andalso res <> OS.Process.success) then
-		      TestReport.add_runtime_bare_line(filepath,test_output())
+		      TestReport.add_runtime_bare_line(file_label,test_output())
 		  else (msgErr (exe_file ^ " failure");
-			TestReport.add_runtime_bare_line(filepath,false))
+			TestReport.add_runtime_bare_line(file_label,false))
 		end
 	    end
 	  else (msgErr "rename (mv) failure";
@@ -235,14 +245,24 @@ structure Tester : TESTER =
         if OS.Process.system compile_command = OS.Process.success then
 	  (maybe_compare_complogs true; 
 	   maybe_report_comptimes();
-	   rename_and_run();
+	   rename_and_run(" ri ",".out",".out.ok");
 	   maybe_trywithprof();
 	   maybe_trywithgengc();
 	   maybe_trywithgengcprof();
-	   maybe_trywithgc();
-	   maybe_trywithgcprof();
+           maybe_trywithgc();  
+(*mads	GC tested with possibility for timing:
+           if opt "gc" then
+              (msg' (" executing command `" ^ compile_command_gc ^ "'");
+               if OS.Process.system compile_command_gc = OS.Process.success then
+                 rename_and_run(" ri and gc ", ".outgc", ".out.ok")
+               else ()
+              )
+           else 
+           ();
+mads *)	   maybe_trywithgcprof();
 	   maybe_trywithtags();
-	   maybe_trywithtagsprof())
+	   maybe_trywithtagsprof()
+          )
 	else
 	  maybe_compare_complogs false;
 	recover()
