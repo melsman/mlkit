@@ -20,8 +20,8 @@ signature HP_PA_RISC =
     val tmp_gr1  : reg
     val tmp_reg0 : reg
     val tmp_reg1 : reg
-(*    val tmp_reg2 : reg*)
-(*    val tmp_reg3 : reg*)
+    val tmp_reg2 : reg (* Used in inline_alloc only *)
+    val tmp_reg3 : reg (* Used in inline_alloc only *)
 
     val arg0     : reg  (* Argument and return registers *)
     val arg1     : reg  (* for C function calls. *)

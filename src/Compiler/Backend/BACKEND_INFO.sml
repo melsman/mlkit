@@ -12,6 +12,16 @@ signature BACKEND_INFO =
     val init_sclos_offset  : offset     (* First offset in shared closure is 0 *)
     val init_regvec_offset : offset     (* First offset in region vector is 0 *)                              
 
+    (* Runtime System Information *)
+    val pOff  : int (* Offset for previous region pointer (p) in a region descriptor. *)
+    val aOff  : int (* Offset for allocation pointer (a) in a region descriptor. *)
+    val bOff  : int (* Offset for border pointer (b) in a region descriptor. *)
+    val fpOff : int (* Offset for first region page pointer (fp) in a region descriptor. *)
+
+    val regionPageTotalSize  : int (* Number of words in a region page including header. *)
+    val regionPageHeaderSize : int (* Number of words in a region page header. *)
+
+    (* Tagging *)
     val ml_true  : int (* The representation of true *)
     val ml_false : int (* The representation of false *)
     val ml_unit  : int (* The representation of unit *)
