@@ -52,6 +52,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	exception Execute of string
 	fun execute_command command : unit =
 	  let val error_code = SML_NJ.system command
+	            handle SML_NJ.Unsafe.CInterface.SystemCall s =>
+		      raise Execute ("Exception SML_NJ.Unsafe.CInterface.SystemCall \""
+				     ^ s ^ "\"\nwhen executing shell command:\n"
+			             ^ command)
 	  in if error_code <> 0 then
 	        raise Execute ("Error code " ^ Int.string error_code ^
 			       " when executing shell command:\n"
@@ -218,6 +222,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     fun mtime (s: string) : time = 
       let val fname = SML_NJ.Unsafe.SysIO.PATH s 
       in SML_NJ.Unsafe.SysIO.mtime fname
+	    handle _ => die ("mtime \"" ^ s
+			     ^ "\": SML_NJ.Unsafe.SysIO.mtime raised exception")
       end
 
     type funid = FunId.funid
@@ -234,7 +240,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun new (funid: funid) : funstamp =
 	  FUNSTAMP_GEN (funid, (counter := !counter + 1; !counter))
 	fun from_filemodtime (filepath: filepath) :funstamp =
-	  FUNSTAMP_MODTIME (funid_from_filename filepath (*well*), mtime filepath)			
+	  FUNSTAMP_MODTIME (funid_from_filename filepath (*well*), mtime filepath)
 	val eq : funstamp * funstamp -> bool = op =
 	fun pr (FUNSTAMP_MODTIME (funid,time)) = FunId.pr_FunId funid ^ "##" ^ time_to_string time
 	  | pr (FUNSTAMP_GEN (funid,i)) = FunId.pr_FunId funid ^ "#" ^ Int.string i
