@@ -8,11 +8,13 @@ signature SCS_LOGIN =
 
     val verifyUser : unit -> int * ScsLang.lang
     val loggedIn   : bool
+
+    val auth_filter : string list -> unit
   end
 
 structure ScsLogin :> SCS_LOGIN =
   struct
-    val default_lang : ScsLang.lang = ScsLang.English
+    val default_lang : ScsLang.lang = ScsLang.Danish
     val default_id : int = 0
     val default = (default_id,default_lang)
 
@@ -46,9 +48,7 @@ structure ScsLogin :> SCS_LOGIN =
     (* ============================================= *)
     (* Below, we check for password protected pages. *)
     (* ============================================= *)
-    val login_pages = ["/show_cookies.sml.*", "/email.*"]
-
-    val _ =
+    fun auth_filter protected_pages =
       let
 	val target = Ns.Conn.location()^Ns.Conn.url()
 	fun verifyUserFilter () =
@@ -57,10 +57,10 @@ structure ScsLogin :> SCS_LOGIN =
 				   Ns.encodeUrl target); Ns.exit())
       in
 	(* we tell SMLserver to verify that the user is logged in before
-           serving any of the login_pages *)
+           serving any of the protected_pages *)
 	if List.foldl (fn (p,acc) => acc orelse 
 		       (RegExp.match o RegExp.fromString) (Ns.Conn.location()^p) target) 
-	  false login_pages then
+	  false protected_pages then
 	  verifyUserFilter ()
 	else ()
       end

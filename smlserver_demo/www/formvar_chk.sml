@@ -68,42 +68,19 @@ val date  = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getDateIso "date")
 *)
 
 (* The Panic wrapper *)
-(*
-fun genPanicPg (fv:string,emsg:string) =
-  (* This is a phony panic-function. You
-     should mail the system administrator
-     or simply log the error in the database *)
-  (Ns.return `
-   <html>
-   <head><title>Panic Error</title></head>
-   <body bgcolor=white>
-   <h2>System Failure.</h2>
-
-   The form variable <b>^fv</b> raised the following system
-   failure 
-   <blockquote>
-   ^emsg
-   </blockquote>
-
-   The system administrator has beed notified and 
-   the error is logged.<p>
-   <hr> <i>Served by SMLserver</i>
-   </body>
-   </html>`;
-   Ns.exit())
-val i     = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getIntErr "int"
-val n     = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getNatErr "nat"
-val r     = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getRealErr "real"
-val str   = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getStringErr "str"
-val range = ScsFormVar.wrapPanic genPanicPg (ScsFormVar.getIntRangeErr 2 10) "range"
-val email = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getEmailErr "email"
-val name  = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getNameErr "name"
-val login = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getLoginErr "login"
-val phone = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getPhoneErr "phone"
-val url   = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getUrlErr "url"
-val cpr   = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getCprErr "cpr"
-val sex   = ScsFormVar.wrapPanic genPanicPg (ScsFormVar.getEnumErr ["Female","Male","Unknown"]) "sex"
-val date  = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getDateIso "date"
+(*val i     = ScsFormVar.wrapPanic ScsError.panic ScsFormVar.getIntErr "int"
+val n     = ScsFormVar.wrapPanic ScsError.panic ScsFormVar.getNatErr "nat"
+val r     = ScsFormVar.wrapPanic ScsError.panic ScsFormVar.getRealErr "real"
+val str   = ScsFormVar.wrapPanic ScsError.panic ScsFormVar.getStringErr "str"
+val range = ScsFormVar.wrapPanic ScsError.panic (ScsFormVar.getIntRangeErr 2 10) "range"
+val email = ScsFormVar.wrapPanic ScsError.panic ScsFormVar.getEmailErr "email"
+val name  = ScsFormVar.wrapPanic ScsError.panic ScsFormVar.getNameErr "name"
+val login = ScsFormVar.wrapPanic ScsError.panic ScsFormVar.getLoginErr "login"
+val phone = ScsFormVar.wrapPanic ScsError.panic ScsFormVar.getPhoneErr "phone"
+val url   = ScsFormVar.wrapPanic ScsError.panic ScsFormVar.getUrlErr "url"
+val cpr   = ScsFormVar.wrapPanic ScsError.panic ScsFormVar.getCprErr "cpr"
+val sex   = ScsFormVar.wrapPanic ScsError.panic (ScsFormVar.getEnumErr ["Female","Male","Unknown"]) "sex"
+val date  = ScsFormVar.wrapPanic ScsError.panic ScsFormVar.getDateIso "date"
 *)
 
 val _ = ScsPage.returnPg "Result of Checking Form Variables" `

@@ -39,8 +39,8 @@ structure Html :> HTML =
     fun pre quot = `<PRE>` ^^ quot ^^ `</PRE>`
 
     (* HTML anchors and hyperlinks *)
-    fun ahref (link,name) = `<A HREF="^link">^name</A>`
-    fun ahrefa link attr name = `<A HREF="^link" ^attr>^name</A>`
+    fun ahref link name = `<A HREF="` ^^ link ^^ `">` ^^ name ^^ `</A>`
+    fun ahrefa link attr name = `<A HREF="` ^^ link ^^ `" ` ^^ attr ^^ `>` ^^ name ^^ `</A>`
     fun aname name quot = `<A NAME="^name">` ^^ quot ^^ `</A>`
 
     (* HTML text formats and style *)
@@ -90,7 +90,7 @@ structure Html :> HTML =
     fun forma action attr quot = `<FORM ACTION="^action" ^attr>` ^^ quot ^^ `</FORM>`
     fun input typ = `<INPUT TYPE="^typ">`
     fun inputa typ attr = `<INPUT TYPE="^typ" ^attr>`
-    fun intext name attr = `<INPUT TYPE=TEXT NAME="^name" ^attr>`
+    fun intext name attr = `<INPUT TYPE=TEXT NAME="^name" ` ^^ attr ^^ `>`
     fun inpassword name attr = `<INPUT TYPE=PASSWORD NAME="^name" ^attr>`
     fun incheckbox {name, value} attr = `<INPUT TYPE=CHECKBOX VALUE="^value" NAME="^name" ^attr>`
     fun inradio {name, value} attr = `<INPUT TYPE=RADIO VALUE="^value" NAME="^name" ^attr>`

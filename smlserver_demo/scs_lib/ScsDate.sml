@@ -7,7 +7,7 @@ signature SCS_DATE =
     type year = int
     type hour = int
     type sec = int
-      
+
     val mthToName : mth -> Date.month
     val mthFromName : Date.month -> mth
 
@@ -22,9 +22,12 @@ signature SCS_DATE =
     val daysInMonth : year -> mth -> int
     val dateOk : day * mth * year -> bool
     val preceedingDays : day * mth * year -> int
+    val currDateInPeriod : Date.date * Date.date -> bool
 
     (* PrettyPrinting *)
     val ppIso : Date.date -> string
+    val ppDk  : Date.date -> string
+    val pp    : Date.date -> string
   end
 
 structure ScsDate :> SCS_DATE =
@@ -107,6 +110,12 @@ structure ScsDate :> SCS_DATE =
 
     (* Pretty Printing *)
     val ppIso = Date.fmt "%Y-%m-%d"
+    val ppDk  = Date.fmt "%d/%m-%Y"
+      
+    fun pp s = 
+      case ScsLogin.user_lang of
+	ScsLang.Danish => ppDk s
+      | ScsLang.English => ppIso s
 
     fun dateOk (d,m,y) =
       m >= 1 andalso m <= 12 andalso d >= 1 andalso d <= daysInMonth y m
@@ -125,6 +134,17 @@ structure ScsDate :> SCS_DATE =
 	val days = 365 * y + preceedingLeaps y
       in
 	days
+      end
+
+    fun currDateInPeriod (start_date, end_date) =
+      let
+	val curr_date = now_local()
+      in
+	if Date.compare(curr_date,start_date) = General.LESS orelse 
+	  Date.compare(end_date,curr_date) = General.LESS then
+	  false
+	else
+	  true
       end
   end
 

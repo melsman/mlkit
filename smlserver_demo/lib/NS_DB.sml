@@ -41,6 +41,7 @@ signature NS_DB =
     type quot = string frag list 
 
     val dmlDb           : db * quot -> status
+    val panicDmlDb      : db -> (quot -> 'a) -> quot -> unit
     val select          : db * quot -> set
     val getRow          : db * set -> status
     val foldDb          : db * ((string->string)*'a->'a) * 'a * quot -> 'a
@@ -52,14 +53,17 @@ signature NS_DB =
 
     val dml           : quot -> status
     val maybeDml      : quot -> unit
-    val panicDml      : (string * string -> 'a) -> quot -> unit
+    val panicDml      : (quot -> 'a) -> quot -> unit
+    val errorDml      : (unit -> 'a) -> quot -> unit
 
     val fold          : ((string->string)*'a->'a) * 'a * quot -> 'a
     val list          : ((string->string)->'a) * quot -> 'a list
     val oneField      : quot -> string
     val zeroOrOneField: quot -> string option
     val oneRow        : quot -> string list
+    val oneRow'       : ((string->string)->'a) * quot -> 'a
     val zeroOrOneRow  : quot -> string list option
+    val zeroOrOneRow' : ((string->string)->'a) * quot -> 'a option
     val existsOneRow  : quot -> bool
 
     val seqNextvalExp : string -> string  (*construct new-sequence expression*)
@@ -67,4 +71,9 @@ signature NS_DB =
 
     val qq  : string -> string  (* replace each quote (') with quote-quote ('') *)
     val qq' : string -> string  (* as qq, but encapsulated in quotes ('...') *)
+
+    val toDate : string -> Date.date option
+
+    val valueList     : string list -> string
+    val setList       : (string*string) list -> string
   end
