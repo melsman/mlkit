@@ -2,6 +2,7 @@ SHELL=/bin/sh
 
 KITVERSION=4.1.1
 ARCH-OS=x86-linux
+#ARCH-OS=x86-bsd
 INSTDIR=/usr/share/mlkit
 INSTDIR_KAM=/usr/share/mlkit_kam
 INSTDIR_SMLSERVER=/usr/share/smlserver
@@ -131,7 +132,7 @@ bootstrap:
 	cd $(INSTDIR)/test; echo -e 'hardlinkA' >> hardlinkA
 	cd $(INSTDIR)/test; ln -f hardlinkA hardlinkB
 	$(INSTALL) -a src $(INSTDIR)/src
-	cd $(INSTDIR)/src; make clean
+	cd $(INSTDIR)/src; $(MAKE) clean
 	$(INSTALL) bin/kittester.$(ARCH-OS) $(INSTDIR)/bin
 	echo -e 'sml @SMLload=$(INSTDIR)/bin/kittester.$(ARCH-OS) $$*' >> $(INSTDIR)/bin/kittester
 	chmod a+x $(INSTDIR)/bin/kittester

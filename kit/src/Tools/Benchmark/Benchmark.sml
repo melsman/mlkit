@@ -178,7 +178,7 @@ structure Benchmark =
     fun getNameComp c =
       let val head = pr_compiler c
       in case  c 
-	   of MLKIT flags => {head=head, compile=CompileMLKIT.compile, memusage=true, flags=flags}
+	   of MLKIT flags => {head=head, compile=CompileMLKIT.compile, memusage=(*true*)false, flags=flags}
 	    | SMLNJ       => {head=head, compile=CompileSMLNJ.compile, memusage=false, flags=""}
 	    | SMLNJ_110_40=> raise Fail "Not implemented" (* {head=head, compile=CompileSMLNJ_110_40.compile, memusage=false, flags=""} *)
 	    | MLTON flags => {head=head, compile=CompileMLTON.compile, memusage=false, flags=flags}
@@ -316,6 +316,12 @@ structure Benchmark =
 	    ; OS.Process.success
 	  end
       end
+    fun arch_os() = 
+      case SMLofNJ.SysInfo.getHostArch() ^ "-" ^ SMLofNJ.SysInfo.getOSName()
+	of "X86-Linux" => "x86-linux"
+         | "HPPA-HPUX" => "hppa-hpux"
+	 | "X86-BSD" => "x86-bsd"
+	 | s => s
     fun install() =
       let val _ = print "\n ** Installing KitBench, a tool for benchmarking SML compilers **\n\n"
 	  val srcPath = OS.FileSys.getDir()   (* assumes we are in kit/src/Tools/KitBench directory *)
@@ -324,7 +330,7 @@ structure Benchmark =
 	  val kitbenchPath = OS.Path.joinDirFile{dir=binPath, file="kitbench"}
 
 	  val kitbenchPathImage = OS.Path.joinDirFile{dir=binPath, 
-						      file="kitbench.x86-linux"}
+						      file="kitbench." ^ arch_os()}
 	  val os = TextIO.openOut kitbenchPath
 	  val _ = (TextIO.output(os, "sml @SMLload=" ^ kitbenchPathImage ^ " $*"); 
 		   TextIO.closeOut os)

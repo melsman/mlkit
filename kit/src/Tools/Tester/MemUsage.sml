@@ -43,7 +43,7 @@ structure MemUsage : MEM_USAGE =
       let 
 	val pid_s = (Int.toString o Word32.toInt o Posix.Process.pidToWord) pid
 	  
-	val delay = Time.fromMilliseconds 10
+	val delay = Time.fromMilliseconds 50
 	fun sleep() = OS.IO.poll(nil,SOME delay) 
 
 	fun loop acc = case (sleep(); Info.getInfo pid_s)

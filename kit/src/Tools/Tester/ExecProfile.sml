@@ -33,6 +33,7 @@ structure ExecProfile : EXEC_PROFILE =
 	    case arch_os()
 	      of ("X86", "Linux") => "execprofile.x86-linux"
 	       | ("HPPA", "HPUX") => "execprofile.hppa-hpux"
+	       | ("X86", "BSD") => "execprofile.x86-bsd"
 	       | ("SPARC", "Solaris") => "execprofile.sparc-solaris"
 	       | ("SUN", "OS4") => "unknown"
 	       | _ => "unknown"

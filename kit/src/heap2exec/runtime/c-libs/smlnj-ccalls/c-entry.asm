@@ -69,7 +69,7 @@ ENDM
 #endif
 
 #if defined(TARGET_X86)
-#if defined(OPSYS_LINUX)
+#if defined(OPSYS_LINUX) || defined(OPSYS_FREEBSD)
 CSYM(grabPC):
 /*->*/	call	grabPCaux		/* put pc in %eax */
 	subl	$CALL_BIAS,%eax		/* adjust pc to point at "->" */

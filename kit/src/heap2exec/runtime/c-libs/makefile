@@ -6,7 +6,6 @@
 
 CC =		cc
 CFLAGS =	-O
-MAKE =		make
 AR =		ar
 ARFLAGS =	rcv
 RANLIB =	ranlib

@@ -3,7 +3,6 @@
 # invoked with the OBJS variable set to the appropriate value.
 #
 
-MAKE =		make
 AR =		ar
 ARFLAGS =	rcv
 RANLIB =	ranlib

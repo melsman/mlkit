@@ -4,7 +4,6 @@
 #
 
 SHELL =		/bin/sh
-MAKE =		make
 CC =		cc
 CPP =		/lib/cpp
 LD_LIBS =

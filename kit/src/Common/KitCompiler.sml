@@ -257,6 +257,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	  case SMLofNJ.SysInfo.getHostArch() ^ "-" ^ SMLofNJ.SysInfo.getOSName()
 	    of "X86-Linux" => "x86-linux"
 	     | "HPPA-HPUX" => "hppa-hpux"
+	     | "X86-BSD" => "x86-bsd"
 	     | s => s
 	fun die s = Crash.impossible ("KitCompiler." ^ s)
       in
