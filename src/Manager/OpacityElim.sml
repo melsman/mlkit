@@ -37,6 +37,7 @@ functor OpacityElim(structure Crash : CRASH
 
     fun die s = Crash.impossible ("OpacityElim." ^ s)
     fun pr_st st = PP.outputTree (print, st, 100)
+    fun pr_rea s rea = (print ("\n" ^ s ^ " = "); pr_st (Realisation.layout rea); print "\n")
 
     type realisation = Environments.realisation
     type opaq_env = OpacityEnv.opaq_env
@@ -205,7 +206,7 @@ functor OpacityElim(structure Crash : CRASH
 	   let val i' = on_info(rea,i)
 	   in (DATATYPE_REPLICATIONdec(i',tycon,longtycon), Id)
 	   end
-	   | ABSTYPEdec(i,datbind,dec) =>   (* MEMO: We should translate abstype here to a local datatype *)
+	   | ABSTYPEdec(i,datbind,dec) =>   (* We translate abstype to a local datatype *)
 	   let val (dec',rea') = elim_dec(rea,dec)
 	       val i' = on_info(rea,i)
 	       val dummyinfo = i
@@ -339,7 +340,20 @@ functor OpacityElim(structure Crash : CRASH
 	 | LONGSTRIDstrexp(i, longstrid) => (LONGSTRIDstrexp(on_info(rea_of oenv,i), longstrid), Id)
 	 | TRANSPARENT_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	  let val (strexp', rea') = elim_strexp(oenv, strexp)
-	  in (TRANSPARENT_CONSTRAINTstrexp(on_info((rea_of oenv) oo rea',i),strexp',sigexp), rea')
+	      val i' = on_info(rea', i)
+	      val i'' = on_info(rea_of oenv, i')
+(*
+	      fun pr_env E = pr_st(Environments.E.layout E)
+	      fun pr_env_in_info s i =
+		case normalise_opt_type_info(ElabInfo.to_TypeInfo i)
+		  of SOME(TypeInfo.TRANS_CONSTRAINT_INFO E) => (print (s ^ "\n"); pr_env E)
+		   | _ => die "pr_env_in_info.no info"
+	      val _ = pr_env_in_info "Transparent constraint; original E = " i
+	      val _ = pr_env_in_info "Transparent constraint; rea'(E) = " i'
+	      val _ = pr_env_in_info "Transparent constraint; oenv(rea'(E)) = " i''
+*)
+(*	      val i' = on_info((rea_of oenv) oo rea',i)*)
+	  in (TRANSPARENT_CONSTRAINTstrexp(i'',strexp',sigexp), rea')
 	  end
 	 | OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	  let val (strexp', rea') = elim_strexp(oenv, strexp)
@@ -347,12 +361,11 @@ functor OpacityElim(structure Crash : CRASH
 				of SOME(TypeInfo.OPAQUE_CONSTRAINT_INFO (E,rea'')) => (E,rea'')
 				 | _ => die "elim_strexp.OPAQUE_CONSTRAINT.no info"
 	      val rea''' = rea' oo rea''
-(*ME 1998-07-27
+(*
 	      val _ = print "\n Opaque Constraint.\n"
-	      fun pr s rea = (print ("\n" ^ s ^ " = "); pr_st (Realisation.layout rea); print "\n")
-	      val _ = pr "rea'" rea'
-	      val _ = pr "rea''" rea''
-	      val _ = pr "rea'''" rea'''
+	      val _ = pr_rea "rea'" rea'
+	      val _ = pr_rea "rea''" rea''
+	      val _ = pr_rea "rea'''" rea'''
 *)
 	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.TRANS_CONSTRAINT_INFO E)  
 	  in (TRANSPARENT_CONSTRAINTstrexp(i',strexp',sigexp), rea''')
@@ -360,26 +373,39 @@ functor OpacityElim(structure Crash : CRASH
 	 | APPstrexp(i, funid, strexp) => 
 	  let val (strexp', rea_strexp) = elim_strexp(oenv, strexp)
 	      val rea_0 = rea_of oenv
-	      val (T, rea_funid) = 
+	      val (T, rea_funid) =                         
 		case OpacityEnv.lookup_funid oenv funid
-		  of SOME(T,rea_funid) => (T, rea_funid)
+		  of SOME(T,rea_funid) => (T, rea_funid)  (* functor body realisation; the T is the 
+							   * set of generative names in the functor 
+							   * body (after opacity elimination) *) 
 		   | NONE => die "elim_strexp.APPstrexp: lookup funid"
-	      val (rea_i, rea_g, E) = 
+	      val (rea_i, rea_g, E) =  
 		case ElabInfo.to_TypeInfo i
-		  of SOME(TypeInfo.FUNCTOR_APP_INFO{rea_inst,rea_gen,Env}) => (rea_inst, rea_gen, Env)
+		  of SOME(TypeInfo.FUNCTOR_APP_INFO{rea_inst,rea_gen,Env}) => 
+		    (rea_inst, rea_gen, Env)   (* instance realisation and generativity 
+						* realisation; the E is the resulting 
+						* environment of the application. *)
 		   | _ => die "elim_strexp.APPstrexp: no info"
-	      val rea_g_ = 
-		case Realisation_inverse (Realisation_restrict (Realisation_dom rea_funid) rea_g)
-		  of SOME rea_g_ => rea_g_
+	      val dom_rea_funid = Realisation_dom rea_funid
+	      val rea_g_ =                                 
+		case Realisation_inverse (Realisation_restrict dom_rea_funid rea_g)
+		  of SOME rea_g_ => rea_g_  (* inverse generativity realisation; notice that
+					     * it could be that part of the generative names 
+					     * have been resolved by the functor body realisation! *) 
 		   | NONE => die "elim_strexp.APPstrexp: cannot find inverse"
-	      val rea_g1 = Realisation_restrict_from (Realisation_dom rea_funid) rea_g 
+	      val rea_g1 = Realisation_restrict_from (Realisation_dom rea_funid) rea_g
+		                            (* the realisation for the generative names
+					     * that are not resolved by the functor body 
+					     * realisation. *)
 	      val rea_g2 = Realisation_renaming (TyName_Set_difference T (Realisation_dom rea_g1))
-	      val rea_i' = rea_strexp oo rea_0 oo rea_i
+		                            (* a realisation for those generative names 
+					     * that become visible. *)
+	      val rea_i' = rea_strexp oo rea_0 oo rea_i  (* new functor instance realisation *)
 	      val rea_g' = rea_g1 oo rea_g2
-	      val rea' = rea_g2 oo rea_funid oo rea_g_ oo rea_0 oo rea_strexp
+	      val rea' = rea_g2 oo rea_i' oo rea_funid oo rea_g_ oo rea_0 oo rea_strexp
 	      val E' = on_Env rea' E
 	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNCTOR_APP_INFO{rea_inst=rea_i',rea_gen=rea_g',Env=E'})
-(*ME 1998-07-27
+(*
 	      val _ = print "\nOpacity Elimination of functor application.\n"
 	      fun pr s rea = (print ("\n" ^ s ^ " = "); pr_st (Realisation.layout rea); print "\n")
 	      val _ = pr "rea_0" rea_0
