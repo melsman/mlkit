@@ -81,6 +81,7 @@ check_arrays.sml              gc prof
 array.sml                     gc prof
 general.sml                   gc prof
 int.sml                       gc prof
+int_2.sml                     gc prof
 int31.sml                     gc prof
 int31_2.sml                   gc prof 
 int32.sml                     gc prof

@@ -348,4 +348,40 @@ val test22 =
     check'(fn _ => range (0, 1200) (scanFmt StringCvt.HEX));
 val _ = pr_ln "test22" test22
 end
+
+local open Word32
+  fun tagging () = Int.precision = SOME 31
+in
+
+  val test23a = tst "test23a" ((Word32.toInt 0wxFFFFFFFF seq false)
+			       handle Overflow => true)
+
+  val test23b = tst "test23b" 
+    (if tagging() then
+       ((Word32.toIntX 0wxFFFFFFFF seq false)
+	handle Overflow => true)
+     else Word32.toIntX 0wxFFFFFFFF = ~1)
+
+
+  val test23c = tst "test23c" 
+    (if tagging() then
+       (Word32.toIntX 0wx7FFFFFFF = ~1)
+     else 
+       (SOME(Word32.toIntX 0wx7FFFFFFF) = Int.maxInt))
+
+  val test23d = tst "test23d" 
+    (if tagging() then
+       ((Word32.toIntX 0wx80000000 seq false)
+	handle Overflow => true)
+     else 
+       (SOME(Word32.toIntX 0wx80000000) = Int.minInt))
+
+  val test23e = tst "test23e" (Word32.toIntX 0wx3FFFFFFF = 1073741823)
+
+  val test23f = tst "test23f" 
+    (if tagging() then
+       Word32.toIntX 0wx40000000 = ~1073741824
+     else 
+       Word32.toIntX 0wx40000000 = (Int.+(1073741823, 1)))
+end
 end;
