@@ -54,6 +54,9 @@ functor DecisionTree(structure Lab: LAB
     
     open DecisionList Lvars
 
+
+
+
     type id = Ident.id
     type longid = Ident.longid
     type pat = Grammar.pat
@@ -63,6 +66,9 @@ functor DecisionTree(structure Lab: LAB
     type TyVar = TypeInfo.TyVar
     type tyvar = CompilerEnv.tyvar
     type LType = CompilerEnv.Type
+
+
+
 
     datatype DecisionTree =
         LAB_DECOMPOSE of {bind: lvar,
@@ -206,7 +212,8 @@ functor DecisionTree(structure Lab: LAB
 	   | FAIL => PP.LEAF "FAIL"
       end
 
-    and layoutDecompositions tree: StringTree list =
+    and layoutDecompositions tree: StringTree list = (* This is where nested binding bindings 
+                                                      are flattened, for pretty-printing purposes *)
       case tree
 	of LAB_DECOMPOSE{bind, parent, lab, child, info=_} =>
 	     PP.LEAF(implode [pr_lvar bind,
@@ -248,8 +255,9 @@ functor DecisionTree(structure Lab: LAB
 
     fun N_to_M(n, m) = if n > m then nil else n :: N_to_M(n+1, m)
 
+(*mads
     val sort: RuleNum list -> RuleNum list = ListSort.sort(General.curry op <)
-
+mads*)
    (* Convenient union and intersection notation. *)
 
     infix /\ \/
@@ -262,9 +270,11 @@ functor DecisionTree(structure Lab: LAB
        decisions is a heuristic one. We punt here. *)
 
     local
-      fun firstOfSet'(x, set) =
+      fun firstOfSet'(x, set) = x
+(*mads
 	if EqSet.isEmpty set then x
 	else Int.min x (firstOfSet'(EqSet.select set))
+mads*)
     in
       fun firstOfSet set =
 	firstOfSet'(EqSet.select set)
@@ -306,8 +316,15 @@ functor DecisionTree(structure Lab: LAB
     fun decOrdered(dec1, dec2) =
       firstConstructorRule dec1 <= firstConstructorRule dec2
 
+(*mads
     val sortDecs =
       ListSort.sort(fn (_, d1) => fn (_, d2) => decOrdered(d1, d2))
+old *)
+
+    fun sortDecs decs =
+      map (fn (_, p) => p) (
+      ListSort.sort(fn (key1,p1) => fn (key2, p2) => key1<=key2)
+      (map (fn p as (_,d) => (firstConstructorRule d, p)) decs) )
 
    (* buildPath: takes an lvar and a list of labels (with associated type info
       so we can enumerate them), and creates intermediate
@@ -459,6 +476,50 @@ functor DecisionTree(structure Lab: LAB
 	end
     end
 
+              (* cleanUp cleans up a constructor switch in the case where it
+                 has a wildcard which goes to the same rule as other rules
+                 in the switch *)
+
+
+    fun cleanUp(CON_SWITCH{arg,selections,wildcard = wc as (Some(END{ruleNum = r,...}))}) =
+          let fun f ((id,rng as (i,END{ruleNum = r', ...})), acc) =
+                    if r=r' then acc
+                    else FinMap.add(id, rng, acc)
+                | f ((id,rng),acc) = FinMap.add(id, rng, acc)
+
+          in CON_SWITCH{arg=arg,
+                        selections = FinMap.Fold f FinMap.empty selections,
+                        wildcard=wc}
+          end
+      | cleanUp other_decision = other_decision
+
+
+                   (* finalDecision liveRules decision 
+                      returns ONE r, if all selections in decision
+                      can only choose rule r.
+                   *)
+    fun finalDecision (liveRules: RuleNum EqSet.Set) 
+                        (DECISION{select = CON_SELECT m, ...}): EqSetList.inter_size =
+          let
+            fun f((id,(_,SUB_DECISION{rules,decisions=subdecs})), acc) = 
+                 (case acc of 
+                    EqSetList.MANY _ => acc
+                  | EqSetList.ONE r => 
+                      (case EqSetList.smallInter(liveRules, rules) of
+                         EqSetList.NONE => acc
+                       | EqSetList.ONE r' => if r=r' then acc 
+                                             else EqSetList.MANY(r, r')
+                       | (x as (EqSetList.MANY(r'',_)))=> 
+                             (if null subdecs andalso r=r'' then acc
+                              else EqSetList.MANY(r, r'')))
+                  | EqSetList.NONE => EqSetList.smallInter(liveRules, rules)
+                 )
+          in   
+             FinMap.Fold f EqSetList.NONE m 
+          end
+      | finalDecision _ _ = EqSetList.MANY(0,0)
+          
+
    (* decisionTree': takes a list of pairs of lvars and decisions; from
       the appropriate lvar, we generate a series of bindings to run down
       the path in the decision, and then perform the selection. *)
@@ -480,6 +541,9 @@ functor DecisionTree(structure Lab: LAB
 	     )
 
 	 | (here, (dec as DECISION{path, select, defaults})) :: decs =>
+           (case finalDecision liveRules dec of
+              EqSetList.ONE rule => bindIdentifiers compileTypeScheme (root, pats, rule)
+            | _ => 
 	     let
 			(* includeIt: only hang on to those constructors which
 			   have rules which are live. `includeIt' determines
@@ -488,7 +552,11 @@ functor DecisionTree(structure Lab: LAB
 			   regarding wildcards and so on. *)
 
 	       fun includeIt(SUB_DECISION{rules, ...}) =
-		 not(EqSet.isEmpty(rules /\ liveRules))
+                 case EqSetList.smallInter(rules,liveRules) of
+                   EqSetList.NONE => false
+                 | _ => true
+
+(*		 not(EqSet.isEmpty(rules /\ liveRules)) *)
 
 	       val includeIt =
 		 if !Flags.DEBUG_DECISIONTREE then
@@ -541,7 +609,9 @@ functor DecisionTree(structure Lab: LAB
 		 let
 			(* Live rules for the next stage of the decision
 			   tree: *)
-		   val subLiveRules = liveRules /\ (rules \/ defaults)
+		   val subLiveRules = (*mads liveRules /\ (rules \/ defaults)*)
+                          (liveRules /\ rules) \/ 
+                          (liveRules /\ defaults)
 		 in
 		   case decisions
 		     of nil =>
@@ -662,10 +732,10 @@ functor DecisionTree(structure Lab: LAB
 					   supply a wildcard. *)
 				 Some(theWildcard())
 		      in
-			unlabF(CON_SWITCH{arg=unlabLvar,
-					  selections=selections,
-					  wildcard=wildcard
-			  		 }
+			unlabF(cleanUp(CON_SWITCH{arg=unlabLvar,
+                                                  selections=selections,
+                                                  wildcard=wildcard
+                                                  })
 			      )
 		      end
 
@@ -695,6 +765,7 @@ functor DecisionTree(structure Lab: LAB
 			}
 		      ))
 	     end
+           ) (* case finalDecision *)
 
     fun decisionTree{compileTypeScheme: TyVar list * SType -> tyvar list * LType, 
 		     pats: pat list, root: lvar, decisions: Decision list}
