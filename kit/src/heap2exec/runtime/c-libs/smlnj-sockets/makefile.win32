@@ -1,0 +1,58 @@
+#
+# the makefile for the Socket library (Win32)
+#
+
+SHELL =
+
+INC_DIR =	..\..\include
+CLIB_DIR =	..\.
+MACH_DIR =      ..\..\mach-dep
+
+INCLUDES =	/I$(INC_DIR) /I$(CLIB_DIR) /I..\..\objs
+
+MAKEFILE = 	makefile.win32
+MAKE =		nmake /F$(MAKEFILE)
+AR =		lib
+ARFLAGS =	
+RANLIB =	lib
+
+LIBRARY =	libsmlnj-sock.lib
+
+VERSION =	v-dummy
+
+
+OBJS =		smlnj-sock-lib.obj \
+		win32-socket.obj
+
+$(LIBRARY)	: $(VERSION) $(OBJS)
+	del /F /Q $(LIBRARY)
+	$(AR) $(ARFLAGS) /out:$(LIBRARY) $(OBJS)
+	$(RANLIB) /out:$(LIBRARY)
+
+$(VERSION) :
+	($(MAKE) MAKE="$(MAKE)" clean)
+	echo "$(VERSION)" > $(VERSION)
+
+DEPENDENTS = 	sockets-osdep.h cfun-proto-list.h cfun-list.h $(INC_DIR)\c-library.h
+
+$(OBJS) : $(INC_DIR)/ml-base.h $(INC_DIR)/ml-values.h \
+          $(CLIB_DIR)/ml-c.h sockets-osdep.h sock-util.h cfun-proto-list.h cfun-list.h
+
+
+smlnj-sock-lib.obj: smlnj-sock-lib.c $(DEPENDENTS) $(INC_DIR)\ml-base.h
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c smlnj-sock-lib.c
+
+win32-socket.obj: win32-socket.c $(DEPENDENTS) $(INC_DIR)\ml-base.h
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c win32-socket.c
+
+#win32-io.obj: win32-io.c $(MACH_DIR)\win32-fault.h $(DEPENDENTS) \
+#	 $(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h
+#	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c win32-io.c
+#
+#poll.obj: poll.c $(MACH_DIR)\win32-fault.h $(DEPENDENTS) \
+#	 $(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h
+#	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c poll.c
+clean:
+	del /F /Q v-* *.obj *.pdb $(LIBRARY)
+
+

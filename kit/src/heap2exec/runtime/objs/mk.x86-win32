@@ -1,0 +1,30 @@
+# mk.x86-win32
+#
+
+SHELL =
+
+#
+# Added /I option to nmake to fix Win2000 problem with del (in make clean) (dbm).
+# 
+
+MAKEFILE = 	makefile.win32
+MAKE =		nmake /I /F$(MAKEFILE)
+CC =		cl
+CFLAGS =	/Zi
+CPP =		cl /E /EP
+XOBJS =
+XLIBS = 
+XCLIBS = ..\c-libs\smlnj-ccalls\libsmlnj-ccalls.lib
+#
+# Uncomment kernel32.lib if you define HACKED_STANDALONE
+#
+LD_LIBS = wsock32.lib  # kernel32.lib
+XDEFS =
+BASE_DEFS =
+DEFS		= $(XDEFS) $(BASE_DEFS) /DHOST_X86 /DTARGET_X86 /DOPSYS_WIN32 /DVREGS /DCALLEESAVE=3 /DINDIRECT_CFUNC /DC_CALLS
+TARGET =	X86
+VERSION =	v-x86-win32
+RUNTIME =	run.x86-win32.exe
+
+all:
+	($(MAKE) MAKE="$(MAKE)" RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CFLAGS="$(CFLAGS)" CPP="$(CPP)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" XCLIBS="$(XCLIBS)" $(RUNTIME))

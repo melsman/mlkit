@@ -1,0 +1,25 @@
+# mk.rs6000-aix
+#
+
+SHELL 		= /bin/sh
+
+# note: the vendor cpp isn't expanding nested macro applications correctly.
+#CC =            cc
+#CFLAGS =        -O2
+#CPP =           /lib/cpp
+
+CC =            gcc -ansi
+CFLAGS =        -O2
+CPP =           gcc -x c -E -P -ansi
+
+XOBJS =
+XLIBS =	
+LD_LIBS =
+BASE_DEFS =	
+DEFS =		$(BASE_DEFS) -DHOST_RS6000 -DTARGET_RS6000 -DOPSYS_UNIX -DOPSYS_AIX -DCALLEESAVE=3 -DSOFT_POLL -DUNBOXEDFLOAT=1
+TARGET =	RS6000
+VERSION	=	v-rs6000-aix-poll
+RUNTIME =	run-poll.rs6000-aix
+
+all:
+	(make RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CPP="$(CPP)" CFLAGS="$(CFLAGS)" AS="$(AS)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))

@@ -1,0 +1,23 @@
+# mk.ppc-mklinux
+#
+# PowerPC with MkLinux
+
+SHELL 		= /bin/sh
+
+MAKE =		make
+CC =		gcc -ansi
+CFLAGS =	-g
+#CFLAGS =	-O2
+CPP =		gcc -x c -E -P -ansi
+
+XOBJS =
+XLIBS =	
+LD_LIBS =
+BASE_DEFS =	-DASSERT_ON -DSIGNAL_DEBUG
+DEFS =		$(BASE_DEFS) -DHOST_PPC -DTARGET_PPC -DOPSYS_UNIX -DOPSYS_MKLINUX -D_POSIX_SOURCE -D_BSD_SOURCE -DCALLEESAVE=3
+TARGET =	PPC
+VERSION	=	v-ppc-mklinux
+RUNTIME =	run.ppc-mklinux
+
+all:
+	(make RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CPP="$(CPP)" CFLAGS="$(CFLAGS)" AS="$(AS)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))

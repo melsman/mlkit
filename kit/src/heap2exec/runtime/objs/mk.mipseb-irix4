@@ -1,0 +1,20 @@
+# mk.mipseb-irix
+#
+
+SHELL	= /bin/sh
+
+CC		= cc -xansi -D__STDC__
+CPP		= /usr/lib/acpp
+CFLAGS =	-O
+XOBJS =
+XLIBS =
+# the -lsun is needed for the sockets support
+LD_LIBS =	-lmalloc -lsun
+BASE_DEFS =
+DEFS =		$(BASE_DEFS) -DHOST_MIPS -DTARGET_MIPS -DOPSYS_UNIX -DOPSYS_IRIX4 -DCALLEESAVE=3 -DUNBOXEDFLOAT=1
+TARGET =	MIPS
+VERSION	=	v-mipseb-irix
+RUNTIME =	run.mipseb-irix
+
+all:
+	(make RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CPP="$(CPP)" CFLAGS="$(CFLAGS)" AS="as -nocpp" RANLIB="ar ts" TARGET=$(TARGET) CHECK_HEAP="$(CHECK_HEAP)" DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))

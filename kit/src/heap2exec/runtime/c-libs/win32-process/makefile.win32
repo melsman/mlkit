@@ -1,0 +1,46 @@
+#
+# the makefile for the Win32 process library
+#
+
+SHELL =
+
+INC_DIR =	..\..\include
+CLIB_DIR =	..\
+
+INCLUDES =	/I$(INC_DIR) /I$(CLIB_DIR) /I..\..\objs
+
+MAKEFILE = 	makefile.win32
+MAKE =		nmake /F$(MAKEFILE)
+AR =		lib
+ARFLAGS =	
+RANLIB =	lib
+
+LIBRARY =	libwin32-process.lib
+
+VERSION =	v-dummy
+
+OBJS =		win32-process-lib.obj \
+		win32-process.obj
+
+$(LIBRARY)	: $(VERSION) $(OBJS)
+	del /F /Q $(LIBRARY)
+	$(AR) $(ARFLAGS) /out:$(LIBRARY) $(OBJS)
+	$(RANLIB) /out:$(LIBRARY)
+
+$(VERSION) :
+	($(MAKE) MAKE="$(MAKE)" clean)
+	echo "$(VERSION)" > $(VERSION)
+
+DEPENDENTS = $(CLIB_DIR)\ml-c.h cfun-proto-list.h cfun-list.h $(INC_DIR)\c-library.h
+
+win32-process-lib.obj: win32-process-lib.c $(DEPENDENTS)
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c win32-process-lib.c
+
+win32-process.obj: win32-process.c $(DEPENDENTS) \
+	 $(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c win32-process.c
+
+clean:
+	del /F /Q v-* *.obj *.pdb $(LIBRARY)
+
+

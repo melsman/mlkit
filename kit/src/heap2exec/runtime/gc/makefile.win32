@@ -1,0 +1,204 @@
+#
+# the makefile for the garbage collector and heap I/O library
+# win32 specific
+
+MAKEFILE = 	makefile.win32
+MAKE =		nmake /F$(MAKEFILE)
+AR =		lib
+ARFLAGS =	
+RANLIB =	lib
+
+LIB =		libgc.lib
+MP_LIB =	libmp-gc.lib
+
+GC_OBJS =	init-gc.obj call-gc.obj minor-gc.obj major-gc.obj flip.obj gc-util.obj \
+		big-objects.obj ml-objects.obj obj-info.obj build-literals.obj $(CHECK_HEAP)
+
+HEAP_IO_OBJS =	import-heap.obj export-heap.obj \
+		blast-in.obj blast-out.obj blast-gc.obj \
+		heap-in-util.obj heap-out-util.obj \
+		writer.obj mem-writer.obj \
+		addr-hash.obj c-globals-tbl.obj
+
+MP_GC_OBJS =	mp-gc.obj
+
+OBJS =		$(GC_OBJS) $(HEAP_IO_OBJS)
+MP_OBJS =	$(OBJS) $(MP_GC_OBJS)
+
+VERSION =	v-dummy
+
+OBJS_DIR =	..\objs
+INC_DIR =	..\include
+INCLUDES =	-I$(OBJS_DIR) -I$(INC_DIR)
+
+
+$(LIB) :	$(VERSION) $(OBJS)
+	del /F /Q $(LIB)
+	$(AR) $(ARFLAGS) /out:$(LIB) $(OBJS)
+	$(RANLIB) /out:$(LIB)
+
+$(MP_LIB) :	$(VERSION) $(MP_OBJS)
+	del /F /Q $(MP_LIB)
+	$(AR) $(ARFLAGS) /out:$(MP_LIB) $(MP_OBJS)
+	$(RANLIB) /out:$(MP_LIB)
+
+$(VERSION) :
+	($(MAKE) MAKE="$(MAKE)" clean)
+	echo "$(VERSION)" > $(VERSION)
+
+#
+# GC objects
+#
+init-gc.obj:	init-gc.c \
+		$(OBJS_DIR)\ml-sizes.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-limits.h \
+		$(INC_DIR)\ml-state.h $(INC_DIR)\ml-values.h  $(INC_DIR)\cntr.h \
+		$(INC_DIR)\bibop.h $(INC_DIR)\memory.h $(INC_DIR)\ml-mp.h \
+		heap.h arena-id.h heap-monitor.h \
+		$(INC_DIR)\stats-data.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) init-gc.c
+
+call-gc.obj:	call-gc.c \
+		$(OBJS_DIR)\ml-sizes.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-limits.h \
+		$(INC_DIR)\ml-state.h $(INC_DIR)\ml-values.h  $(INC_DIR)\cntr.h \
+		$(INC_DIR)\bibop.h $(INC_DIR)\memory.h $(INC_DIR)\ml-mp.h \
+		heap.h arena-id.h heap-monitor.h \
+		$(INC_DIR)\stats-data.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) call-gc.c
+
+minor-gc.obj:	minor-gc.c \
+		$(OBJS_DIR)\ml-sizes.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-state.h \
+		$(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h $(INC_DIR)\tags.h \
+		$(INC_DIR)\bibop.h $(INC_DIR)\ml-globals.h \
+		card-map.h heap.h arena-id.h copy-loop.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) minor-gc.c
+
+major-gc.obj:	major-gc.c \
+		$(OBJS_DIR)\ml-sizes.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-limits.h \
+		$(INC_DIR)\ml-state.h $(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h \
+		$(INC_DIR)\bibop.h $(INC_DIR)\tags.h $(INC_DIR)\ml-globals.h \
+		card-map.h heap.h arena-id.h copy-loop.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) major-gc.c
+
+flip.obj:		flip.c \
+		$(OBJS_DIR)\ml-sizes.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-limits.h \
+		$(INC_DIR)\bibop.h $(INC_DIR)\ml-state.h \
+		heap.h arena-id.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) flip.c
+
+gc-util.obj:	gc-util.c \
+		$(OBJS_DIR)\ml-sizes.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-limits.h \
+		$(INC_DIR)\ml-values.h $(INC_DIR)\bibop.h $(INC_DIR)\memory.h \
+		card-map.h heap.h arena-id.h heap-monitor.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) gc-util.c
+
+big-objects.obj:	big-objects.c \
+		$(OBJS_DIR)\ml-sizes.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\memory.h $(INC_DIR)\bibop.h \
+		heap.h arena-id.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) big-objects.c
+
+ml-objects.obj:	ml-objects.c \
+		$(OBJS_DIR)\ml-sizes.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-objects.h $(INC_DIR)\ml-limits.h \
+		$(INC_DIR)\bibop.h $(INC_DIR)\tags.h \
+		heap.h arena-id.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) ml-objects.c
+
+build-literals.obj: \
+		build-literals.c \
+		$(OBJS_DIR)\ml-sizes.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-objects.h $(INC_DIR)\tags.h \
+		heap.h arena-id.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) build-literals.c
+
+obj-info.obj:	obj-info.c \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\gc.h \
+		$(INC_DIR)\bibop.h \
+		heap.h arena-id.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) obj-info.c
+
+xmonitor.obj:	xmonitor.c \
+		$(OBJS_DIR)\ml-sizes.h $(INC_DIR)\ml-base.h \
+		$(INC_DIR)\bibop.h \
+		heap.h arena-id.h \
+		xmonitor.h heap-monitor.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) xmonitor.c
+
+check-heap.obj:	check-heap.c \
+		$(OBJS_DIR)\ml-sizes.h $(INC_DIR)\ml-base.h \
+		$(INC_DIR)\bibop.h \
+		card-map.h heap.h arena-id.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) check-heap.c
+
+gc-stats.obj:	gc-stats.c \
+		$(OBJS_DIR)\ml-sizes.h $(INC_DIR)\ml-base.h \
+		gc-stats.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) gc-stats.c
+
+mp-gc.obj:	mp-gc.c \
+		$(OBJS_DIR)\ml-sizes.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-limits.h \
+		$(INC_DIR)\ml-state.h $(INC_DIR)\ml-values.h  $(INC_DIR)\cntr.h \
+		$(INC_DIR)\bibop.h $(INC_DIR)\memory.h $(INC_DIR)\ml-mp.h \
+		heap.h arena-id.h heap-monitor.h \
+		$(INC_DIR)\stats-data.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) mp-gc.c
+
+
+#
+# Heap I/O objects
+#
+c-globals-tbl.obj: c-globals-tbl.c \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\c-globals-tbl.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) c-globals-tbl.c
+
+import-heap.obj:	import-heap.c \
+		$(OBJS_DIR)\ml-sizes.h $(OBJS_DIR)\reg-mask.h \
+		$(INC_DIR)\ml-base.h $(INC_DIR)\ml-limits.h \
+		$(INC_DIR)\ml-state.h $(INC_DIR)\c-globals-tbl.h \
+		$(INC_DIR)\cache-flush.h \
+		card-map.h arena-id.h heap.h writer.h \
+		ml-heap-image.h addr-hash.h heap-input.h
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) import-heap.c
+
+DEPENDENTS = $(OBJS_DIR)\ml-sizes.h $(INC_DIR)\ml-base.h $(INC_DIR)\ml-limits.h \
+		$(INC_DIR)\ml-state.h $(INC_DIR)\c-globals-tbl.h \
+		arena-id.h heap.h writer.h \
+		ml-heap-image.h addr-hash.h heap-input.h
+
+export-heap.obj: export-heap.c $(DEPENDENTS)
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) export-heap.c
+
+blast-in.obj: blast-in.c $(DEPENDENTS)
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) blast-in.c
+
+blast-out.obj: blast-out.c $(DEPENDENTS)
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) blast-out.c
+
+blast-gc.obj: blast-gc.c $(DEPENDENTS)
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) blast-gc.c
+
+heap-in-util.obj: heap-in-util.c $(DEPENDENTS)
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) heap-in-util.c
+
+heap-out-util.obj: heap-out-util.c $(DEPENDENTS)
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) heap-out-util.c
+
+writer.obj: writer.c $(DEPENDENTS)
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) writer.c
+
+mem-writer.obj: mem-writer.c $(DEPENDENTS)
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) mem-writer.c
+
+addr-hash.obj: addr-hash.c $(DEPENDENTS)
+	$(CC) /c $(CFLAGS) $(DEFS) $(INCLUDES) addr-hash.c
+
+clean :
+	del /Q /F v-* *.obj *.pdb $(LIB) $(MP_LIB)
+

@@ -1,0 +1,25 @@
+# mk.mipseb-irix5
+#
+
+SHELL	= /bin/sh
+
+CC =		cc -xansi -D__STDC__
+CPP =		/usr/lib/acpp
+CFLAGS =	-O
+AS =		/bin/as -nocpp
+RANLIB =	ar ts
+
+#XOBJS =	xmonitor.o
+#LD_LIBS =	-lX11_s -lmalloc
+#BASE_DEFS =	-DHEAP_MONITOR
+XOBJS =
+XLIBS =
+LD_LIBS =	-lmalloc
+BASE_DEFS =
+DEFS =		$(BASE_DEFS) -DHOST_MIPS -DTARGET_MIPS -DOPSYS_UNIX -DOPSYS_IRIX5 -DCALLEESAVE=3
+TARGET =	MIPS
+VERSION	=	v-mipseb-irix5
+RUNTIME =	run.mipseb-irix5
+
+all:
+	(make RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CPP="$(CPP)" CFLAGS="$(CFLAGS)" AS="$(AS)" RANLIB="$(RANLIB)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))
