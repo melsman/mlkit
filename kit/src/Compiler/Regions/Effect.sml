@@ -26,6 +26,7 @@ struct
   fun x footnote y = x
   fun die s = Crash.impossible("Effect." ^ s)
   fun log_tree(tr: StringTree) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), tr, !Flags.colwidth)
+  fun say i = TextIO.output(TextIO.stdOut, i)
   fun say_etas(trl: StringTree list) = 
          PP.outputTree(fn s => TextIO.output(TextIO.stdOut, s), 
                        PP.NODE{start = "[", finish= "]", indent=1, 
@@ -785,7 +786,6 @@ struct
                  sort(drop(k, xs)))
         end
     
-    fun say i = TextIO.output(TextIO.stdOut, i)
     val l = sort(!ConeLayer.trace)
     fun report[] = []
       | report(x::rest) = 
@@ -948,12 +948,13 @@ tracing *)
           footnote app (fn node => G.get_visited node:= false) l2
      end
   
+  fun say_eps eps = PP.outputTree(say, layout_effect_deep eps, !Flags.colwidth)
+
   (* update_areff(eps) assumes that the increments recorded for eps have
      level no greater than the level of eps *)
 
   fun update_areff(eps) = 
-   ((*say ("update_areff: eps = ");
-    PP.outputTree(say, layout_effect_deep eps, !Flags.colwidth); *)
+   ((*say ("update_areff: eps = "); say_eps eps; *)
     if is_arrow_effect eps
     then 
       case Increments.lookup (!globalIncs) eps of
@@ -1658,7 +1659,10 @@ tracing *)
               | UNION{represents = SOME l} => l
               | PUT => [n]
               | GET => []
-              | _ => die "bottom_up_eval: unexpected node(1)"
+              | _ => (say "bottom_up_eval: unexpected node(1): "  ;
+                      say_eps n;
+                      []
+                     )
             else
               (r:= true;
                case G.get_info n of
@@ -1693,13 +1697,20 @@ tracing *)
       end
 
 
+  fun say s = TextIO.output(TextIO.stdOut, s^"\n")
+
    (* eval_phis(phis): all members of phis must be EPS nodes; 
       we now first contract all cycles, then
       do a bottom-up evaluation of the graph *)
 
   fun eval_phis (phis: effect list) : unit =
-      (G.remove_cycles(G.subgraph phis);
-       bottom_up_eval(G.nodes(G.subgraph phis)))
+      let val     _ = G.remove_cycles(G.subgraph phis)
+          val nodes = G.nodes(G.subgraph phis)
+      in bottom_up_eval nodes handle exn =>
+          (say "\neval_phis failed; nodes = ";
+           say_etas (layoutEtas nodes);
+           raise exn)
+      end
 
   fun represents(eps) =
     case G.get_info(G.find eps) of
@@ -1737,7 +1748,6 @@ structure Effect = Effect(structure G = DiGraph
 open Effect;
 
 fun pp(t) = PP.flatten1 t
-fun say s = TextIO.output(TextIO.stdOut, s^"\n")
 fun etest(label,expected,found) =
  say(label ^ (if expected = found then " OK" else " ****** NOT OK *******" ^
 "\n expected: " ^ expected ^ 

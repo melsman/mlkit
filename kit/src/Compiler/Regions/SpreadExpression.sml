@@ -563,6 +563,7 @@ good *)
 
     | E.EXCEPTION(excon, ty_opt: E.Type option, e2: E.LambdaExp) =>  
         let
+            val B = pushIfNotTopLevel(toplevel,B); (* for pop in retract *)
             val (ty,nullary) = 
               case ty_opt of
                 SOME ty1 => (E.ARROWtype([ty1], [exn_ty]),false)
@@ -571,7 +572,14 @@ good *)
             (* lower all the region and effect variables of mu to have level 2 (not 0),
                so that they cannot be generalised ever. Level 2, because it is generated 
 	       in this program unit, unless unified with another lower-level rho. *)
+          (*
             val B = List.foldL ((*Eff.*)lower 2) B (ann_mus [mu] [])
+          *)
+          (*NO! Lower only rho! (Otherwise region variables that are associated
+           with type variables and have runtime type BOT become global.) *)
+
+            val B = lower 2 rho B
+
             (* if exception constructor is unary: unify place of exception
                constructor  and place of its result type. Note: I think 
                we could have chosen not to identify these two regions *)
@@ -582,7 +590,7 @@ good *)
             val rse' = (*RSE.*)declareExcon(excon, mu, rse)
             val (B, t2 as E'.TR(e2', meta2, phi2)) = spreadExp(B,rse',e2, toplevel)
         in
-            (B, E'.TR(E'.EXCEPTION(excon, nullary, mu, rho, t2), meta2, 
+            retract(B, E'.TR(E'.EXCEPTION(excon, nullary, mu, rho, t2), meta2, 
                       (*Eff.*)mkUnion([(*Eff.*)mkPut rho,phi2])))
         end
 
@@ -777,7 +785,7 @@ good *)
     | E.PRIM(E.EXCONprim excon, []) =>
         let 
           val mu = noSome ((*RSE.*)lookupExcon rse excon) ".S: nullary exception constructor not in RSE"
-          (* No effect since unary constructors are simply looked up in the
+          (* No effect since nullary constructors are simply looked up in the
              environment, as in the Definition, rule 106
           *)
         in
