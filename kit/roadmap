@@ -1,0 +1,188 @@
+roadmap
+The ML Kit with Regions (April 30, 1997)
+
+
+
+                           DIRECTORIES IN
+
+                      The ML Kit with Regions 
+
+   http://www.diku.dk/research-groups/topps/activities/kit2/index.html
+
+
+
+Directory structure
+-------------------
+
+  bin/		executable kits, compiled programs, and related things
+  src/		sources for the kit and some utilities
+  doc/		documentation
+  TestEnv/	for testing the kit
+  kitdemo/      example input for the kit (i.e. sml source files
+                and project files)
+  readme	read it
+  roadmap	this file
+  copyright	copyright notices
+
+
+bin/ in detail
+--------------
+
+If you have built a kit (using file "build.sml" as described in
+file "readme") that generates ANSI C code on HPUX, say,
+directory "bin/" will look like this:
+
+  bin/ML_to_C_on_HPUX/kit.script
+                      kit*
+                      runtime.o ->
+                      runtime_prof.o -> 
+                      ...
+
+File "kit" is the executable.  When executed, it will read in
+the kit script file "kit.script" which sets all the flags and
+global variables the kit depends on.  For instance, the
+"kit.script" above will set the target directory of the kit to
+"bin/ML_to_C_on_HPUX/".  Therefore ANSI C code (.c) files will
+be put in that directory together with .log files and the
+resulting executable "run".  
+
+Most of the settings in the kit script can be interactively set
+otherwise in the kit.  You can also edit the default kit script
+or make your own to read in interactively.
+
+Files "runtime.o" and "runtime_prof.o" are symbolic links (also
+created automatically) to the runtime system.  ("runtime_prof.o"
+is for profiling.)  In this example, the system is HPUX, so
+"runtime.o" will be a symbolic link to
+
+    "src/Runtime/Version17/runtimeHPUX.o".
+
+There are also other symbolic links to relevant things.
+
+
+src/ in detail
+--------------
+
+  src/build.sml		"use file" to build a new kit
+      ML_CONSULT_C	list of source files for kit producing ANSI C code
+      ML_CONSULT_HPPA	list of source files for kit producing HP PA-RISC code
+      Common/           source files
+      Manager/
+      Parsing/
+      Compiler/ ...
+               Hppa/	files specific to HP PA-RISC kit
+	       C/	files specific to ANSI C kit
+		...
+      Runtime/		C source files and executables for runtime system
+
+File "build.sml" should be use'd in Standard ML of New Jersey to
+build a kit.  See file "readme".
+
+Files "ML_CONSULT_C" and "ML_CONSULT_HPPA" are used (by file
+"build.sml") when building the kit.  The only difference between
+them is that the former contains some file names of the form
+"Compiler/C/...sml", while the latter contains some of the form
+"Compiler/Hppa/...sml".
+
+
+src/Runtime/Version17/ in detail
+--------------------------------
+
+  src/Runtime/Version17/Runtime.c
+                            ...
+                        Makefile
+                        runtime_hpux.o
+                        runtime_prof_hpux.o
+                        runtime_sun_os4.o
+                        runtime_prof_sun_os4.o
+                        Rp2Ps/ ...
+
+See the file "Makefile:
+
+
+src/Runtime/Version17/Rp2Ps/ in detail
+--------------------------------------
+
+  src/Runtime/Version17/Rp2Ps/Rp2ps.c
+                                 ...
+                              Makefile
+                              rp2psHPUX*
+                              rp2psSUN_OS4*
+
+"rp2ps" converts output from a program compiled with region
+profiling enabled to a profile graph in postscript, i.e., it
+converts an .rp file to a .ps file.  See the file "Makefile:
+
+
+TestEnv/ in detail
+------------------
+
+The ``test environment'' will make ``acceptance'' and
+``performance'' tests.  If you do not intend to change the kit
+source, you do not need the acceptance test: It tests whether a
+given set of sml ``test programs'' compiled with the kit
+generate the same output when run as they did with an earlier
+version of the kit.  
+   The performance test measures how long it takes the kit (and
+different phases of it) to compile the test programs.  It also
+measures the run-time and memory consumption of the code
+generated for the test programs.
+
+  TestEnv/ML_to_C_on_HPUX/AcceptanceTest/ ... 
+                          PerformanceTest/ ...
+                          test_reportML_to_C_on_HPUX.tex
+                          test_reportML_to_C_on_HPUX.dvi
+          ML_to_HPPA_on_HPUX/  ...
+          ML_to_C_on_SUN_OS4/  ...
+          Sources/
+	  KitScripts/no_prof.script	kit scripts used for tests
+		     prof.script
+	  bin/memtime_hpux*		executables used for performance test
+              memtime_sun_os4*
+          Output_C_on_HPUX/
+          Output_C_on_SUN_OS4/
+          Output_HPPA_on_HPUX/
+
+
+The directories of the form "ML_to_X_on_Y/..." contain the
+result of the tests.  The test environment generates a test
+report in file "test_reportML_to_C_on_HPUX.tex" which it tex's,
+resulting in file "test_reportML_to_C_on_HPUX.dvi".  It does not
+automatically call xdvi to show that file.
+
+Directory "Sources/" contains sml test programs used in the
+tests.  Directory "KitScripts/" contains kit scripts used in the
+tests.  For instance, file "KitScripts/no_prof.script" contains
+the ``kit script declaration'' 
+
+   val region_profiling : bool = false
+
+You can customise the test environment by editing the ML Kit
+source file "src/Common/TestInfo.sml".
+
+The directories of the form "Output_X_on_Y" contain output files
+from the programs in TestEnv/Sources executed on the three
+versions of the ML Kit. If you use TestInfo as it is, the
+acceptance test will compare output from the programs executed
+on your machine against output from the programs in these
+directories.
+
+
+
+File types
+----------
+
+.sml		sml source files.
+.c		C code generated by the ANSI C version of the kit
+.s		HP PA-RISC code generated by the HP PA-RISC version of the kit
+.o		.c or .s files compiled using cc or gcc
+.script		a ``kit script'' file sets references used globally in the kit
+.log		"file.log" is a log from the compilation of "file.sml".
+.vcg		a region flow graph in a text representation
+		you need a particular program to view it.  See the file "readme".
+.rp		output from program compiled with region profiling turned on. 
+		run it through "rp2ps" to get a postscript file.
+
+.c, .s, .vcg, and .log files are put in the target directory
+(which as a default is "bin/ML_to_X_on_Y/").
+
