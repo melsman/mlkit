@@ -357,6 +357,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	else let val Sig as SIGMA{T,E} = rename_Sig Sig
                  val phi = sigMatchRea(Sig,E1)
 	     in TyName.Set.eq T1 (Realisation.on_TyName_set phi T)
+		 andalso E.eq(Realisation.on_Env phi E, E1)
 	     end handle _ => false
 (*
       (* assumption: NO tynames in Sig1 and Sig2 may be marked generative. *)
@@ -488,6 +489,7 @@ functor ModuleStatObject(structure StrId  : STRID
 		   val Sig2 = SIGMA{T=T2,E=E2}
 		   val phi = sigMatchRea(Sig2,E1)
 	       in TyName.Set.eq T1 (Realisation.on_TyName_set phi T2)
+		   andalso E.eq(Realisation.on_Env phi E2,E1)
 		   andalso Sigma.eq(Sigma.on(phi,Sig2'),Sig1')
 	       end handle _ => false
 (*
