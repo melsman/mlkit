@@ -148,6 +148,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getEnumErr             : string list -> string formvar_fn
     val getYesNoErr            : string formvar_fn
     val getMthErr              : int formvar_fn
+    val getWeekErr              : int formvar_fn
     val getYearErr             : int formvar_fn
     val getDateErr             : Date.date formvar_fn
     val getWeekdayErr          : Date.weekday formvar_fn
@@ -695,10 +696,19 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
-	     The month be between 1 and 12
+	     The month must be between 1 and 12
 	     </blockquote>`
 	| ScsLang.da => `^s
 	     Måned skal være i intervallet 1 til 12.
+	     </blockquote>`)
+      fun msgWeek s = 
+	(case ScsLogin.user_lang() of
+	   ScsLang.en => `^s
+	     <blockquote>
+	     The week must be between 1 and 53
+	     </blockquote>`
+	| ScsLang.da => `^s
+	     Uge skal være i intervallet 1 til 53.
 	     </blockquote>`)
 
       fun msgYear s = 
@@ -1012,6 +1022,19 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	    end
 	| _ => false
 
+      fun chkWeek v =
+	case regExpExtract "([0-9][0-9]?)" v of
+	  SOME [m] => 
+	    let
+	      val m = ScsError.valOf (Int.fromString m)
+	    in
+	      if m >= 1 andalso m <= 53 then
+		true
+	      else
+		false
+	    end
+	| _ => false
+
       fun chkYear v =
 	case regExpExtract "([0-9][0-9][0-9][0-9])" v of
 	  SOME [y] => if (ScsError.valOf o Int.fromString) y > 1900 then true else false
@@ -1122,6 +1145,8 @@ case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
       val getDateIso = getErr' [(ScsLang.en,`date`),(ScsLang.da,`dato`)] msgDateIso chkDateIso
 
       val getMthErr = getErr 1 (ScsError.valOf o Int.fromString) [(ScsLang.da,`måned`),(ScsLang.en,`month`)] msgMth chkMth
+      val getWeekErr = getErr 1 (ScsError.valOf o Int.fromString) [(ScsLang.da,`uge`),(ScsLang.en,`week`)] msgWeek chkWeek
+
       val getYearErr = getErr 1 (ScsError.valOf o Int.fromString) [(ScsLang.da,`år`),(ScsLang.en,`year`)] msgYear chkYear
 
       val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate [(ScsLang.en,`date`),(ScsLang.da,`dato`)] 
