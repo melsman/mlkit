@@ -69,21 +69,23 @@ let
        | _ => false
 
   fun resolve_backend () =
-    let val _ = print "\nDo you want to use the C backend or the native backend?\n\
-	               \The native backend is only available under the HPPA-HPUX\n\
-                       \system (type C or native): "
+    let val _ = print "\nDo you want to use the C backend, the native backend, or the dummy backend?\n\
+	               \The native backend is available only for the HPPA-HPUX\n\
+                       \system and the X86-Linux system (type C, native, or dummy): "
     in case explode (upper (read_string ""))
 	 of #"C" :: _ => 
-	   if available_with_C_backend() then CM.SymVal.define("KIT_TARGET_C", 1)  (* set a symbol for the compilation manager *)
+	   if available_with_C_backend() then (* set a symbol for the compilation manager *)
+	     CM.SymVal.define("KIT_TARGET_C", 1)  
 	   else die "the Kit does not work with your system"
-	  | #"N" :: #"A" :: #"T" :: #"I" :: #"V" :: #"E" :: _ =>  (* check that the architecture is HP PA-RISC and that
-								   * the operating system is HPUX. *)
+	  | #"N" :: #"A" :: #"T" :: #"I" :: #"V" :: #"E" :: _ =>
 	     (case arch_os()
 		of ("HPPA", "HPUX") => (CM.SymVal.define("KIT_TARGET_HPPA", 1))
 		 | ("X86", "Linux") => (CM.SymVal.define("KIT_TARGET_X86", 1))
-		 | _ => (error "the native backend is only available for the HPPA-HPUX system"; 
+		 | _ => (error "the native backend is available only \
+                                \for the HPPA-HPUX system and the X86-Linux system"; 
 			 resolve_backend()))
- 	  | _ => (error "you must type C or native"; 
+          | #"D" :: #"U" :: #"M" :: #"M" :: #"Y" :: _ => CM.SymVal.define("KIT_TARGET_DUMMY", 1)
+ 	  | _ => (error "you must type C, native, or dummy"; 
 		  resolve_backend())
     end
 

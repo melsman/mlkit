@@ -100,9 +100,9 @@ structure Tester : TESTER =
 		    val ok = test_output()
 		    val exesize = size_of_file exe_file
 		    val exesize_stripped = 
-		      if OS.Process.system ("gstrip " ^ exe_file) = OS.Process.success then
+		      if OS.Process.system ("strip " ^ exe_file) = OS.Process.success then
 			size_of_file exe_file
-		      else (msgErr ("the command `gstrip " ^ exe_file ^ "' failed"); "err")
+		      else (msgErr ("the command `strip " ^ exe_file ^ "' failed"); "err")
 		in
 		  TestReport.add_runtime_line{name=filepath,ok=ok,exesize=exesize, 
 					      exesize_stripped=exesize_stripped, 

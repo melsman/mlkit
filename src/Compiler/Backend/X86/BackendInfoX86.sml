@@ -196,4 +196,7 @@ functor BackendInfoX86(structure Labels : ADDRESS_LABELS
 
     fun is_prim name = member name prims
 
+    val down_growing_stack : bool = true         (* true for x86 code generation *)
+    val double_alignment_required : bool = false (* false for x86 code generation *)
+
   end

@@ -128,11 +128,13 @@ signature BACKEND_INFO =
     val GREATEREQ_FLOAT : string
 
     (* is_prim(n) returns true if name is not implemented by a C call,
-     * but rather in machine code; primmitives do not destroy all
+     * but rather in machine code; primitives do not destroy all
      * caller save registers, as C calls do. *)
       
     val is_prim : string -> bool   
 
+    val down_growing_stack : bool         (* true for x86 code generation *)
+    val double_alignment_required : bool  (* false for x86 code generation *)
   end
 
 

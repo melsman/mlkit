@@ -109,7 +109,7 @@ functor Flags (structure Crash : CRASH
 
     (* Flags for Lambda Backend *)
     val perform_register_allocation = ref true
-    val enable_lambda_backend = ref false
+    val enable_lambda_backend = ref true
 
     val chat                    = ref false
     val delay_assembly          = ref false   
@@ -1234,7 +1234,7 @@ struct
   fun interact () = interact0 ()
         handle Quit => ()
 	     | Crash.CRASH => (outLine "*** CRASH raised *" ; interact ()) 
-	     | IO.Io _ => (outLine ("*** IO.Io raised *"); interact ())
+	     | e as IO.Io _ => (outLine ("*** IO.Io raised: " ^ exnMessage e); (*interact ()*) raise e)
 	     | Overflow => (outLine "*** Overflow raised *"; interact ())
 	     | e => (outLine ("*** Uncaught exception " ^ General.exnName e ^ " ***");
 		     outLine ("Exn message: " ^ General.exnMessage e);

@@ -25,6 +25,8 @@ Common/Elaboration.sml
 Compiler/EXECUTION.sml
 #if defined(KIT_TARGET_X86)
   Compiler/Backend/X86/ExecutionX86.sml
+#elif defined(KIT_TARGET_DUMMY)
+  Compiler/Backend/Dummy/Execution__dummy.sml
 #else
   Compiler/Backend/HpPaRisc/ExecutionHPPA.sml
 #endif
