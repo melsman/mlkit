@@ -95,7 +95,6 @@ signature FLAGS =
     val build_ref: (unit -> unit)ref
     val load_ref : (string -> unit)ref
     val touch_ref : (string -> unit)ref
-    val touch_all_ref : (unit -> unit)ref
     val show_ref : (unit -> unit)ref
     val comp_ref: (string -> unit)ref
     val test_ref: (unit -> unit)ref
