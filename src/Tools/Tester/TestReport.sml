@@ -140,7 +140,7 @@ structure TestReport : TEST_REPORT =
 
 	  fun header() =
 	    (outln "\\documentclass[10pt]{article}";
-	     outln "\\usepackage{a4wide}";
+	     outln "\\usepackage{fullpage}";
 	     outln "\\textwidth 170mm";
 	     outln "\\title{ML Kit Test Report}";
 	     outln "\\author{Author: The ML Kit Tester}";

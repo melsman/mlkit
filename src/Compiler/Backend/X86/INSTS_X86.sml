@@ -25,7 +25,7 @@ signature INSTS_X86 =
                 | L of lab   (* label *)
                 | LA of lab  (* label address *)
                 | I of string   (* immediate *)
-                | D of int * reg   (* displaced *)
+                | D of string * reg   (* displaced *)
 
     val pr_ea : ea -> string
     val eq_ea : ea * ea -> bool
@@ -33,6 +33,7 @@ signature INSTS_X86 =
     datatype inst =                 (* general instructions *)
       movl of ea * ea
     | pushl of ea
+    | leal of ea * ea
     | popl of ea
     | addl of ea * ea
     | subl of ea * ea
@@ -71,6 +72,11 @@ signature INSTS_X86 =
     | jne of lab        (* = jnz *)
     | jc of lab         (* jump on carry *)
     | jnc of lab        (* jump on non-carry *)
+    | ja of lab         (* jump if above---unsigned *)
+    | jb of lab         (* jump if below---unsigned *)
+    | jae of lab        (* jump if above or equal---unsigned *)
+    | jbe of lab        (* jump if below or equal---unsigned *)
+    | jo of lab         (* jump on overflow *)
 
     | call of lab       (* C function calls and returns *)
     | ret
@@ -85,7 +91,6 @@ signature INSTS_X86 =
     | dot_double of string
     | dot_string of string
     | dot_size of lab * int
-    | dot_section of string
     | lab of lab
     | comment of string
 

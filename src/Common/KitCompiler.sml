@@ -196,10 +196,11 @@ structure K = struct
        Flags.basislib_project := 
        (OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../basislib/basislib.pm"))))
 
+    fun arch_os() = SMLofNJ.SysInfo.getHostArch() ^ "-" ^ SMLofNJ.SysInfo.getOSName()
     val date = Date.fmt "%B %d, %Y" (Date.fromTimeLocal (Time.now()))
-    val version = "3"
+    val version = "3.1"
     val greetings = "ML Kit with Regions, Version " ^ version ^ ", " ^ date ^ "\n" ^
-                    "Using the " ^ Flags.get_string_entry "kit_backend" ^ " backend\n"
+                    "Using the " ^ arch_os() ^ " " ^ Flags.get_string_entry "kit_backend" ^ " backend\n"
     val usage = "kit [-script | -timings | -nobasislib | -reportfilesig | -logtofiles " ^
                 "| -prof | -gc | -delay_assembly | -chat | -nodso | -version | -help] file"
     local 
@@ -265,16 +266,15 @@ structure K = struct
 
     fun install() =
       let val _ = print "\n ** Installing compiler executable **\n\n"
-          fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
 	  fun kit_image() =
 	    case arch_os()
-	      of ("X86", "Linux") => (Flags.lookup_string_entry "c_libs" := "-lm";
+	      of "X86-Linux" => (Flags.lookup_string_entry "c_libs" := "-lm";
 				      "kit.x86-linux")
-	       | ("HPPA", "HPUX") => (Flags.lookup_string_entry "c_libs" := "-lM";
+	       | "HPPA-HPUX" => (Flags.lookup_string_entry "c_libs" := "-lM";
 				      "kit.hppa-hpux")
-	       | ("SPARC", "Solaris") => (Flags.lookup_string_entry "c_libs" := "-lm";
+	       | "SPARC-Solaris" => (Flags.lookup_string_entry "c_libs" := "-lm";
 					  "kit.sparc-solaris")
-	       | ("SUN", "OS4") => die "install: Configuration unknown"
+	       | "SUN-OS4" => die "install: Configuration unknown"
 	       | _ => die "install: Configuration unknown"
 	  val kitbinkitimage_path = OS.Path.joinDirFile{dir=kitbin_path, file=kit_image()}
 	  val os = TextIO.openOut kitbinkit_path

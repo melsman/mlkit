@@ -917,6 +917,7 @@ struct
 	     val L' = ig_lss(handl, ig_lss(default, L))
 	     val handl_return_lvar = one_in_list (LS.get_var_atom (handl_return_lv,nil))
 	     val _ = lvarset_app (fn lv => set_lrs_status(ml_call,lv)) (Lvarset.delete(L',handl_return_lvar))
+	     val _ = lvarset_app (fn l => AddEdge(l,handl_return_lvar)) L'  (* ME 1999-08-14 *)
 	   in
 	     L'
 	   end

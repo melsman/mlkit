@@ -27,11 +27,11 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | eq_lab _ = false
 
     datatype ea = 
-        R of reg       (* register *)
-      | L of lab       (* label *)
-      | LA of lab      (* label address *)
-      | I of string    (* immediate *)
-      | D of int * reg (* displaced *)
+        R of reg          (* register *)
+      | L of lab          (* label *)
+      | LA of lab         (* label address *)
+      | I of string       (* immediate *)
+      | D of string * reg (* displaced *)
 
     fun eq_ea (R r, R r') = r=r'
       | eq_ea (I i, I i') = i=i'
@@ -42,6 +42,7 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       
     datatype inst =               (* general instructions *)
         movl of ea * ea
+      | leal of ea * ea
       | pushl of ea
       | popl of ea
       | addl of ea * ea
@@ -81,6 +82,11 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | jne of lab        (* = jnz *)
       | jc of lab         (* jump on carry *)
       | jnc of lab        (* jump on non-carry *)
+      | ja of lab         (* jump if above---unsigned *)
+      | jb of lab         (* jump if below---unsigned *)
+      | jae of lab        (* jump if above or equal---unsigned *)
+      | jbe of lab        (* jump if below or equal---unsigned *)
+      | jo of lab         (* jump on overflow *)
 
       | call of lab       (* C function calls and returns *)
       | ret
@@ -95,7 +101,6 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | dot_double of string
       | dot_string of string
       | dot_size of lab * int
-      | dot_section of string
       | lab of lab
       | comment of string
 
@@ -133,8 +138,8 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | pr_ea (L l) = pr_lab l
       | pr_ea (LA l) = "$" ^ pr_lab l
       | pr_ea (I s) = "$" ^ s
-      | pr_ea (D(i,r)) = if i=0 then "(" ^ pr_reg r ^ ")"
-			 else int_to_string i ^ "(" ^ pr_reg r ^ ")"
+      | pr_ea (D(d,r)) = if d="0" then "(" ^ pr_reg r ^ ")"
+			 else d ^ "(" ^ pr_reg r ^ ")"
 
     fun emit_insts (os, insts: inst list): unit = 
       let fun emit s = TextIO.output(os, s)
@@ -147,6 +152,7 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	  fun emit_inst i =  
 	    case i
 	      of movl a => emit_bin ("movl", a)
+	       | leal a => emit_bin ("leal", a)
 	       | pushl ea => emit_unary ("pushl", ea)
 	       | popl ea => emit_unary ("popl", ea)
 	       | addl a => emit_bin("addl", a)
@@ -187,6 +193,11 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	       | jne l => emit_jump("jne", l)
 	       | jc l => emit_jump("jc", l)
 	       | jnc l => emit_jump("jnc", l)
+	       | ja l => emit_jump("ja", l)
+	       | jb l => emit_jump("jb", l)
+	       | jae l => emit_jump("jae", l)
+	       | jbe l => emit_jump("jbe", l)
+               | jo l => emit_jump("jo", l)
 
 	       | call l => emit_jump("call", l)
 	       | ret => emit "\tret\n"
@@ -202,7 +213,6 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	       | dot_string s => (emit "\t.string \""; emit s; emit "\"\n")
 	       | dot_size (l, i) => (emit "\t.size "; emit(pr_lab l); emit ","; 
 				     emit(Int.toString i); emit "\n")
-	       | dot_section s => (emit ".section "; emit s; emit "\n")
 	       | lab l => (emit(pr_lab l); emit":\n")
 	       | comment s => (emit " # "; emit s; emit " \n") 
       in app emit_inst insts

@@ -52,9 +52,15 @@ structure MemTime : MEM_TIME =
 	fun std () = 	      
 	  let val shell_command = program ^ " > " ^ outputfile
 	      val _ = (msg "executing target program: "; msg shell_command)
+(*	      val cpu_timer = Timer.startCPUTimer() *)
+	      val real_timer = Timer.startRealTimer()
 	      val _ = execute_shell_command shell_command
+(*              val {usr, sys, gc} = Timer.checkCPUTimer cpu_timer*)
+              val real = Timer.checkRealTimer real_timer
 	  in {max_mem_size = "--", max_res_size = "--", 
-	      real = "--", user = "--", sys = "--"}
+	      real = Time.toString real, user = "--", sys = "--"}
+	    (* cpu_timer does not measure time spent in child processes, hence it
+	     does not work for system calls, which are forked. *)
 	  end
 
       in case arch_os()
