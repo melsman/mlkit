@@ -694,7 +694,7 @@ struct
 	       val dec1T = layoutDec dec1
 	       val dec2T = layoutDec dec2
 	     in
-	       NODE{start="", finish="", indent=0,
+	       NODE{start="(", finish=")", indent=0,
 		       children=[dec1T, dec2T],
 		       childsep=RIGHT "; "
 		      }
@@ -725,7 +725,7 @@ struct
 		    }
 
 	 | EMPTYdec _ =>
-	     LEAF "")
+	     LEAF "(emptydec)")
 
     and layout_datatype_replication (i, tycon, longtycon) =
           LEAF ("datatype " ^ TyCon.pr_TyCon tycon ^ " = "

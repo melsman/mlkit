@@ -267,7 +267,7 @@ functor TopdecGrammar(structure FunId: FUNID
 	     LEAF ""
 
 	 | SEQstrdec(_, strdec, strdec') =>
-	     NODE{start="", finish="", indent=0,
+	     NODE{start="(", finish=")", indent=0,
 		     children=[layoutStrdec strdec, layoutStrdec strdec'],
 		     childsep=RIGHT "; "
 		    }

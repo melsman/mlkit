@@ -1,8 +1,15 @@
 
+
 val _ = (SMLofNJ.Internals.GC.messages false;
 	 print "\n ** Building the ML Kit compiler [X86 Backend] **\n\n";
 	 CM.make());
 
+(*
+val _ = (SMLofNJ.Internals.GC.messages false;
+	 print "\n ** Building the ML Kit compiler with SML-NJ profiling enabled [X86 Backend] **\n\n";
+         Compiler.Profile.setProfMode true;
+	 CM.make());
+*)
 structure K = KitX86()
 
 local
@@ -109,9 +116,10 @@ in
 *)
 
   val _ = comp_RI()
+
   val _ = comp_RI_PROF()
   val _ = comp_RI_GC()
-  val _ = comp_RI_GC_PROF()
+  val _ = comp_RI_GC_PROF()  
 
   val _ = K.install()
 

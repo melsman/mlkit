@@ -305,9 +305,14 @@ functor ElabTopdec
 
     exception Share of ErrorInfo.ErrorInfo
 
-    fun update(a,b,m) = case FinMap.lookup m a
+    fun update(a,b,m) = (case FinMap.lookup m a
 				  of SOME bs => FinMap.add(a,b::bs,m)
 				   | NONE => FinMap.add(a,[b],m)
+                        ) (*handle Crash.CRASH  => 
+                            (TextIO.output(TextIO.stdOut, "ElabTopdec.update\n");
+                             raise Crash.CRASH
+                            )
+                          *)
 
     (* We first collect a list of tyname lists which must be identified. *)
 
@@ -622,13 +627,41 @@ functor ElabTopdec
 
 	(* Sequential declaration *)                        (*rule 60*)
       | IG.SEQstrdec (i, strdec1, strdec2) =>
-	  let
+(*	  let
 	    val (T1, E1, out_strdec1) = elab_strdec (B, strdec1)
 	    val (T2, E2, out_strdec2) = elab_strdec (B B_plus_E E1, strdec2)
 	  in
 	    (T1 @ T2, E1 E_plus_E E2,
 	     OG.SEQstrdec (okConv i, out_strdec1, out_strdec2))
-	  end)
+	  end
+*)
+          let
+            val (T1, E1, Bres, out_strdec1) = elab_strdecs(B,strdec)
+          in
+            (T1,E1,out_strdec1)
+          end
+       )
+
+    and elab_strdecs(B, strdec) = (* fast elaboration when SEQ associates to the left *)
+      (case strdec of
+         IG.SEQstrdec (i, strdec1, strdec2) =>
+	  let
+	    val (T1, E1, B1res, out_strdec1) = elab_strdecs (B, strdec1)
+                   (* B1res = B B_plus_E E1 *)
+	    val (T2, E2, out_strdec2) = elab_strdec (B1res, strdec2)
+	  in
+	    (T1 @ T2, E1 E_plus_E E2,
+             B1res B_plus_E E2,
+	     OG.SEQstrdec (okConv i, out_strdec1, out_strdec2))
+	  end
+       | strdec1 => 
+          let
+            val (T1, E1, out_strdec1) = elab_strdec(B,strdec1)
+          in
+            (T1, E1, B B_plus_E E1, out_strdec1)
+          end
+      )
+         
 
     (**********************************************)
     (* Structure Bindings - Definition v3 page 38 *)
@@ -1294,9 +1327,13 @@ functor ElabTopdec
 
     and elab_topdec (absprjid : absprjid, B : Basis, topdec : IG.topdec)    (* we check for free tyvars later *)
           : (Basis * OG.topdec) =
-      case topdec 
-	of IG.STRtopdec (i, strdec, topdec_opt) =>                                      (* 87 *)
-	  let val (_, E, out_strdec) = elab_strdec(B, strdec)
+      case topdec of
+	    IG.STRtopdec (i, strdec, SOME _) =>                                      (* 87 *)
+	  let val (Bs, out_topdec) = elab_topdec_seq(absprjid, B, topdec) 
+	  in (List.foldl (fn(x,acc) => acc B_plus_B x) B.empty Bs, out_topdec)
+	  end
+	 |  IG.STRtopdec (i, strdec, topdec_opt) =>                                      (* 87 *)
+	  let val (_, E, out_strdec) = elab_strdec(B, strdec) 
 	      val (B', out_topdec_opt) = elab_topdec_opt(absprjid, B B_plus_E E, topdec_opt)
 	      val B'' = (B.from_E E) B_plus_B B'
 	  in (B'', OG.STRtopdec(okConv i, out_strdec, out_topdec_opt))
@@ -1320,6 +1357,28 @@ functor ElabTopdec
 			  in (B', SOME out_topdec)
 			  end
 	 | NONE => (B.empty, NONE)
+
+    and elab_topdec_seq(absprjid, B, topdec): 
+        (Basis list  * OG.topdec) =  (* fast elaboration that exploits that topdecs associate to the right *)
+      (case topdec of
+	 IG.STRtopdec (i, strdec1, SOME topdec2) =>                                      (* 87 *)
+           let
+             val (_, E1,  out_strdec1) = elab_strdec(B, strdec1) 
+             val B1 = B.from_E E1 
+             val (Bs2, out_strdec2) = elab_topdec_seq(absprjid, B B_plus_B B1, topdec2)
+           in
+              (B1:: Bs2,
+               OG.STRtopdec(okConv i, out_strdec1, SOME out_strdec2)
+              )
+           end
+       | topdec1 =>
+           let
+             val (B1, out_strdec1) = elab_topdec(absprjid, B, topdec1)
+           in
+             ([B1], out_strdec1)
+           end
+      )
+
 
     (* Check for free type variables: Free type variables are not
      * allowed in the basis resulting from elaborating a top-level
@@ -1361,3 +1420,5 @@ functor ElabTopdec
 
     val layoutStaticBasis = B.layout
   end;
+
+
