@@ -6,7 +6,7 @@ functor Name(structure Crash : CRASH) : NAME =
 
     (* Support for a base in a name (compilation unit) *)
     local
-	val baseCurrent : string ref = ref "Compiler-Initial"
+	val baseCurrent : string ref = ref "CompilerInitial"
     in
 	fun baseSet s = baseCurrent := s
 	fun baseGet () = !baseCurrent
