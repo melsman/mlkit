@@ -1,7 +1,5 @@
 (* Lambda variables *)
 
-(*$Lvars: NAME LVARS*)
-
 functor Lvars(structure Name : NAME) : LVARS =
   struct
 
@@ -97,43 +95,6 @@ functor Lvars(structure Name : NAME) : LVARS =
     val greatereq_float_lvar: lvar = new_prim("greatereq_float", GREATEREQ_FLOAT)
 
     fun primitive ({prim,...}: lvar) : primitive option = prim
-
-
-    (* ------------------------------------ 
-     * Non-compiler-supported primitives;
-     *    these should be replaced by
-     *    appropriate ccalls, later.
-     * ------------------------------------ *)
-
-    val floor_lvar: lvar = new_named_lvar "floor"       (* real operations *)
-    val real_lvar: lvar = new_named_lvar "real"
-    val sqrt_lvar: lvar = new_named_lvar "sqrt"
-    val sin_lvar: lvar = new_named_lvar "sin"
-    val cos_lvar: lvar = new_named_lvar "cos"
-    val arctan_lvar: lvar = new_named_lvar "arctan"
-    val exp_lvar: lvar = new_named_lvar "exp"
-    val ln_lvar: lvar = new_named_lvar "ln"
- 
-    val open_in_lvar: lvar = new_named_lvar "open_in"           (* streams *)
-    val open_out_lvar: lvar = new_named_lvar "open_out"
-    val input_lvar: lvar = new_named_lvar "input"
-    val lookahead_lvar: lvar = new_named_lvar "lookahead"
-    val close_in_lvar: lvar = new_named_lvar "close_in"
-    val end_of_stream_lvar: lvar = new_named_lvar "end_of_stream"
-    val output_lvar: lvar = new_named_lvar "output_lvar"
-    val close_out_lvar: lvar = new_named_lvar "close_out"
-    val flush_out_lvar: lvar = new_named_lvar "flush_out"
-
-    val chr_lvar: lvar = new_named_lvar "chr"                  (* strings *)
-    val ord_lvar: lvar = new_named_lvar "ord"
-    val size_lvar: lvar = new_named_lvar "size"
-    val explode_lvar: lvar = new_named_lvar "explode"
-    val implode_lvar: lvar = new_named_lvar "implode"
-
-    val mod_int_lvar: lvar = new_named_lvar "mod"         (* others *)
-    val use_lvar: lvar = new_named_lvar "use"
-    val lvar_STD_IN: lvar = new_named_lvar "std_in"     (* the `commit' function is called below, *)
-    val lvar_STD_OUT: lvar = new_named_lvar "std_out"   (* when all initial lvars are built... *)
 
     fun is_free ({free,...} : lvar) = free
     fun is_inserted ({inserted,...} : lvar) = inserted

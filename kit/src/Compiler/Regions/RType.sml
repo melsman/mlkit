@@ -57,22 +57,24 @@ struct
   withtype mu = Type*place
 
   type runType = E.runType
-  val unboxed_tynames = [TyName.tyName_INT,     (* NB: unit is also unboxed *)
-         TyName.tyName_BOOL]
-
 
   (* details of runtype are exploited in SpreadDataType.infer_arity_ty *)
 
-  fun runtype (CONSTYPE(tyname, [], [], [])) =  
-       if  List.exists (fn tn => TyName.eq(tn,tyname)) unboxed_tynames then E.WORD_RT
-       else if TyName.eq(tyname,TyName.tyName_STRING)
-	orelse TyName.eq(tyname, TyName.tyName_BYTE_TABLE)
-	orelse TyName.eq(tyname, TyName.tyName_WORD_TABLE) then E.STRING_RT
-       else if TyName.eq(tyname,TyName.tyName_REAL) then E.REAL_RT
-       else E.TOP_RT
+  local open TyName
+        val unbox_datatypes = Flags.lookup_flag_entry "unbox_datatypes"
+        fun tyname_unboxed tn =                                     (* NB: unit is also unboxed *)
+	  eq(tn, tyName_INT) orelse eq(tn, tyName_BOOL) orelse
+	  (!unbox_datatypes andalso eq(tn, tyName_LIST))
+  in
+    fun runtype (CONSTYPE(tn, _, _, _)) =  
+      if tyname_unboxed tn then E.WORD_RT
+      else if eq(tn, tyName_STRING) orelse eq(tn, tyName_WORD_TABLE) then E.STRING_RT
+      else if eq(tn, tyName_REAL) then E.REAL_RT
+      else E.TOP_RT
     | runtype (TYVAR _) = E.BOT_RT
     | runtype (RECORD[]) = E.WORD_RT 
     | runtype _ = E.TOP_RT
+  end
 
   fun ann_ty ty (acc : effect list) = 
        case ty of 
@@ -1120,7 +1122,6 @@ struct
         if TyName.eq (tyname, TyName.tyName_REAL)
   	then SOME (CConst.size_of_real ())
   	else if TyName.eq (tyname, TyName.tyName_STRING)
-	 orelse TyName.eq (tyname, TyName.tyName_BYTE_TABLE)  
 	 orelse TyName.eq (tyname, TyName.tyName_WORD_TABLE) then NONE
         else if CConst.unboxed_tyname tyname then SOME 0
   	else die ("S (CCALL ...): \nI am sorry, but c functions returning "

@@ -1,5 +1,3 @@
-(*$EliminateEq: LVARS CON TYNAME LAMBDA_EXP CRASH FLAGS PRETTYPRINT ORDER_FINMAP
-                ELIMINATE_EQ MONO_FINMAP *)
 
 functor EliminateEq (structure Lvars : LVARS
 		     structure Con : CON
@@ -423,20 +421,6 @@ functor EliminateEq (structure Lvars : LVARS
      * basic type names and are treated directly in gen_type_eq.
      * ------------------------------------------------------------ *)
 
-(*KILL 13/02/1998 15:46. tho.:
-    fun gen_datatype_builtin_eq () =
-      let 
-	val tn_list = TyName.tyName_LIST
-	val tv = fresh_tyvar()
-	val tau_tv = TYVARtype tv
-	val cbs = [(Con.con_CONS, SOME (RECORDtype [tau_tv, CONStype([tau_tv], tn_list)])),
-		   (Con.con_NIL, NONE)]
-	val dbss = [[([tv], tn_list,cbs)]]
-      in	gen_datatype_eq empty dbss
-      end
-*)
-
-
     fun gen_datatype_builtin_eq () =
       let 
 	val tn_list = TyName.tyName_LIST
@@ -446,13 +430,12 @@ functor EliminateEq (structure Lvars : LVARS
 		   (Con.con_NIL, NONE)]
 	val dbss = [[([tv], tn_list,cbs)]]
 	val (f, e) = gen_datatype_eq empty dbss
-	val (f',  e')  = gen_datatype_for_table TyName.tyName_BYTE_TABLE
-	val (f'', e'') = gen_datatype_for_table TyName.tyName_WORD_TABLE
+	val (f', e') = gen_datatype_for_table ()
       in 
-	(f o f' o f'', plus (plus (e, e'), e''))
+	(f o f', plus (e, e'))
       end
 
-    and gen_datatype_for_table tyname (*either byte_table or word_table*) =
+    and gen_datatype_for_table () =
  
 (*the word_table equality function written in sml (7 lines):
   
@@ -486,10 +469,8 @@ functor EliminateEq (structure Lvars : LVARS
   LambdaExp?  Good luck reading it.)*)
 
  let
+   val tyname = TyName.tyName_WORD_TABLE
    val s = TyName.pr_TyName tyname
-   val it_is_word = not (TyName.eq (TyName.tyName_BYTE_TABLE, tyname))
-                    andalso (TyName.eq (TyName.tyName_WORD_TABLE, tyname)
-			     orelse die "gen_datatype_for_table: neither byte nor word")
    val alpha = fresh_tyvar {}
    val tau_alpha = TYVARtype alpha
    val tau_tyname = CONStype ([tau_alpha], tyname)
@@ -527,7 +508,7 @@ functor EliminateEq (structure Lvars : LVARS
    fun sub var_tableX =
 	 let val alpha' = fresh_tyvar {}
 	     val tau_alpha' = TYVARtype alpha'
-	 in PRIM (CCALLprim {name = if it_is_word then "word_sub0" else "byte_sub0",
+	 in PRIM (CCALLprim {name = "word_sub0",
 			     (*alpha' is instantiated to alpha (from above):*)
 			     tyvars = [alpha'], instances = [TYVARtype alpha],
 			     Type = ARROWtype ([CONStype ([tau_alpha'], tyname), intType],

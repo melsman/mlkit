@@ -1,5 +1,3 @@
-(*$RegionStatEnv: REGION_STAT_ENV RTYPE EFFECT LVARS CON EXCON TYNAME
-                  CRASH PRETTYPRINT LAMBDA_EXP MONO_FINMAP FLAGS*)
 
 functor RegionStatEnv(structure R: RTYPE
 		      structure E: EFFECT
@@ -88,37 +86,78 @@ functor RegionStatEnv(structure R: RTYPE
 		     TyNameMap.add(TyName.tyName_WORD, (0,[],0), 
 		     TyNameMap.add(TyName.tyName_LIST, (1,[E.TOP_RT],0),
 				   (* the auxiliary region is for a pair; hence TOP_RT *)
-		     TyNameMap.add(TyName.tyName_BYTE_TABLE, (1,[],0),
 		     TyNameMap.add(TyName.tyName_WORD_TABLE, (1,[],0),
-		     TyNameMap.empty)))))))))))
+		     TyNameMap.empty))))))))))
 
     local
-	val c = E.initCone
-	val lev0 = E.level c
-	val c = E.push c
-	fun mkListType(mu,rho) = R.CONSTYPE(TyName.tyName_LIST, [mu], [rho], [])
 
-	val (c,bool_sigma,_) =  R.generalize_all (c, lev0, [],
+      fun mkListType(mu,rho) = R.CONSTYPE(TyName.tyName_LIST, [mu], [rho], [])
+
+      fun mk_nil_sigma c lev0 =
+	let val alpha = L.fresh_tyvar()
+	    val alpha_ty = R.TYVAR alpha
+	    val (rho,c) = E.freshRho c                     (* bot-region for tyvar *)
+	    val (rho',c) = E.freshRhoWithTy(E.TOP_RT, c)   (* aux region for pairs *)
+	    val (c,nil_sigma,_) = R.generalize_all (c, lev0, [alpha], mkListType((alpha_ty,rho), rho'))
+	in (c, nil_sigma)
+	end
+
+      fun mk_cons_sigma c lev0 rt_list =
+	let val alpha = L.fresh_tyvar()
+	    val alpha_ty = R.TYVAR alpha
+	    val (rho,c) = E.freshRho c                     (* bot-region for tyvar *)
+	    val (rho',c) = E.freshRhoWithTy(E.TOP_RT, c)   (* aux region for pairs *)
+	    val (rho'',c) = E.freshRhoWithTy(rt_list, c)   (* region for result list *)
+	    val alpha_rho_list = (mkListType((alpha_ty,rho), rho'), rho'')
+	    val (arreff, c) = E.freshEps c
+	    val _ = E.edge(arreff, E.mkPut rho'')
+
+	    val cons_mu = R.FUN([(R.RECORD[(alpha_ty,rho),alpha_rho_list], rho')],
+				arreff, 
+				[alpha_rho_list])
+	    val (c,cons_sigma,_) = R.generalize_all (c, lev0, [alpha], cons_mu)
+	in (c, cons_sigma)
+	end
+
+      fun mk_bool_sigma c lev0 =
+	let val (c,bool_sigma,_) =  
+	       R.generalize_all (c, lev0, [], (R.CONSTYPE(TyName.tyName_BOOL,[],[],[])))
+	in (c, bool_sigma)
+	end
+
+      val c = E.initCone
+      val lev0 = E.level c
+      val c = E.push c
+
+      val (c, nil_sigma) = mk_nil_sigma c lev0
+      val (c, cons_sigma) = mk_cons_sigma c lev0 E.TOP_RT            (* boxed version *)
+      val (c, cons_sigma_unboxed) = mk_cons_sigma c lev0 E.WORD_RT   (* unboxed version *)
+      val (c, bool_sigma) = mk_bool_sigma c lev0
+
+(*old
+        val (c,bool_sigma,_) =  R.generalize_all (c, lev0, [],
 			  (R.CONSTYPE(TyName.tyName_BOOL,[],[],[])))
+
 	val alpha = L.fresh_tyvar()
 	val alpha_ty = R.TYVAR alpha
 	val (rho,c) = E.freshRho c
-	val (rho',c) = E.freshRhoWithTy(E.TOP_RT, c)
+	val (rho',c) = E.freshRhoWithTy(E.TOP_RT, c)   (* aux region for pairs *)
 	val (c,nil_sigma,_) = 
 	       R.generalize_all (c, lev0,[alpha], mkListType((alpha_ty,rho), rho'))
+
 	val (rho'',c) = E.freshRhoWithTy(E.TOP_RT, c)
 	val alpha_rho_list = (mkListType((alpha_ty,rho), rho'), rho'')
 	val (arreff, c) = E.freshEps c
-     
-	val _ = E.edge(arreff, E.mkPut rho'')
+     	val _ = E.edge(arreff, E.mkPut rho'')
 
-
-	val cons_mu = R.FUN([(R.RECORD[(alpha_ty,rho),alpha_rho_list],
-							rho')],
-				       arreff,
-				       [alpha_rho_list])
+	val cons_mu = R.FUN([(R.RECORD[(alpha_ty,rho),alpha_rho_list], rho')],
+			    arreff,
+			    [alpha_rho_list])
 	val (c,cons_sigma,_) = R.generalize_all (c, lev0, [alpha], cons_mu)
+old*)
+
     in
+      val cons_sigma_unboxed = cons_sigma_unboxed
       val conenv0 = ConMap.fromList [(Con.con_TRUE, bool_sigma),
 				     (Con.con_FALSE, bool_sigma),
 				     (Con.con_NIL, nil_sigma),
@@ -173,54 +212,25 @@ functor RegionStatEnv(structure R: RTYPE
       val Int = L.intType
       val Real = L.realType
       val Bool = L.boolType
-      val String = L.stringType
-      val Exn = L.exnType
       val Unit = L.unitType
-      val StringList = L.CONStype([String], TyName.tyName_LIST)
-      val Instream = L.intType
-      val Outstream = L.intType
 
       val int2bool = cl([Int],Bool)
-      val int2string = cl([Int],String)
       val int2int = cl([Int],Int)
-      val int2unit = cl([Int], Unit)
       val int2real = cl([Int], Real)
-      val intXexn2int = cl( [Int, Exn], Int)
-      val intXexn2string = cl([Int,Exn], String)
       val intXint2int = cl([Int,Int],Int)
       val intXint2bool = cl([Int,Int],Bool)
-      val intXint2string = cl([Int,Int],String)
-      val intXintXexn2int = cl([Int,Int,Exn],Int)
-      val intXstringXexn2unit = cl ([Int,String,Exn],Unit)
       val real2int = cl([Real],Int)
       val real2real = cl([Real],Real)
-      val realXexn2int = cl([Real,Exn],Int)
-      val realXexn2real = cl([Real,Exn],Real)
       val realXreal2bool = cl([Real,Real],Bool)
       val realXreal2real = cl([Real,Real],Real)
-      val realXrealXexn2real = cl([Real,Real,Exn],Real)
-      val string2int = cl ([String], Int)
-      val string2stringList = cl([String], StringList)
-      val string2unit = cl([String], Unit)
-      val stringXexn2int = cl([String,Exn], Int)
-      val stringList2string = cl([StringList], String)
-      val stringXexn2instream = cl([String,Exn], Instream)
-      val stringXexn2outstream = cl([String,Exn], Outstream)
-      val instreamXint2string = cl([Instream,Int], String)
-      val instream2string = cl([Instream], String)
-      val instream2unit = cl([Instream], Unit)
-      val instream2bool = cl([Instream], Bool)
-      val outstreamXstringXexn2unit = cl([Outstream,String,Exn], Unit)
-      val outstream2unit = cl([Outstream], Unit)
 
-      val lvars_and_sigmas_functions = let open Lvar in [
-
-	(* Compiler-supported primitives; see SpreadExpression *)
+      val lvars_and_sigmas_functions = 
+	let open Lvar 
+	in [             (* Compiler-supported primitives; see SpreadExpression *)
 
 	  (plus_int_lvar, intXint2int),                  (* integer operations *)
 	  (minus_int_lvar, intXint2int),
 	  (mul_int_lvar, intXint2int),
-	  (div_int_lvar, intXint2int),
 	  (negint_lvar, int2int),
 	  (absint_lvar, int2int),
 	  (less_int_lvar, intXint2bool),
@@ -231,44 +241,12 @@ functor RegionStatEnv(structure R: RTYPE
 	  (plus_float_lvar, realXreal2real),             (* real operations *)
 	  (minus_float_lvar, realXreal2real),
 	  (mul_float_lvar, realXreal2real),
-	  (div_float_lvar, realXreal2real),
 	  (negfloat_lvar, real2real),
 	  (absfloat_lvar, real2real),
 	  (less_float_lvar, realXreal2bool),
 	  (greater_float_lvar, realXreal2bool),
 	  (lesseq_float_lvar, realXreal2bool),
-	  (greatereq_float_lvar, realXreal2bool),
-
-	(* Non-compiler-supported primitives; Later these should be ommitted. *)
-
-	  (floor_lvar, realXexn2int),                    (* real operations *)
-	  (real_lvar, int2real),
-	  (sqrt_lvar, realXexn2real),
-	  (sin_lvar, real2real),
-	  (cos_lvar, real2real),
-	  (arctan_lvar, real2real),
-	  (exp_lvar, realXexn2real),
-	  (ln_lvar, realXexn2real),
-
-	  (open_in_lvar, stringXexn2instream),           (* streams *)
-	  (open_out_lvar, stringXexn2outstream),
-	  (input_lvar,instreamXint2string),
-	  (lookahead_lvar, instream2string),
-	  (close_in_lvar, instream2unit),
-	  (end_of_stream_lvar, instream2bool),
-	  (output_lvar, outstreamXstringXexn2unit),
-	  (close_out_lvar, outstream2unit),
-	  (flush_out_lvar, outstream2unit),
-
-	  (chr_lvar, intXexn2string),                   (* strings *)
-	  (ord_lvar, stringXexn2int),
-	  (size_lvar, string2int),
-	  (explode_lvar, string2stringList),
-	  (implode_lvar, stringList2string),        
-
-	  (mod_int_lvar, intXintXexn2int),              (* others *)
-	  (use_lvar, string2unit)
-
+	  (greatereq_float_lvar, realXreal2bool)
 	 ]
        end (* open Lvar *)
 
@@ -327,7 +305,20 @@ functor RegionStatEnv(structure R: RTYPE
 
 
     fun lookupTyName(rse : regionStatEnv as {tyname_env,...}) = TyNameMap.lookup tyname_env
-    fun lookupCon(rse : regionStatEnv as {con_env,...}) = ConMap.lookup con_env
+
+      (* To deal with togling of representation of lists we check here in the
+       * lookupCon function if unboxing of datatypes is enabled:
+       *)
+
+    local val unbox_datatypes = Flags.lookup_flag_entry "unbox_datatypes"
+    in
+      fun lookupCon(rse : regionStatEnv as {con_env,...}) con =
+	if Con.eq(con,Con.con_CONS) then
+	  if !unbox_datatypes then SOME cons_sigma_unboxed
+	  else ConMap.lookup con_env con
+	else ConMap.lookup con_env con
+    end
+
     fun lookupExcon(rse : regionStatEnv as {excon_env,...}) = ExconMap.lookup excon_env
     fun lookupLvar(rse  : regionStatEnv as {lvar_env,...}) = LvarMap.lookup lvar_env
 

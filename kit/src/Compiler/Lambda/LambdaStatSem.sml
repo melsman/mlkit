@@ -1,6 +1,3 @@
-(*$LambdaStatSem: CRASH LAMBDA_EXP LAMBDA_BASICS EXCON CON TYNAME
-                  LVARS FINMAP FINMAPEQ PRETTYPRINT FLAGS
-                  LAMBDA_STAT_SEM KIT_MONO_SET*)
 
 functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		      structure LambdaBasics : LAMBDA_BASICS
@@ -176,12 +173,13 @@ end
 	val initial_tyname_env = 
 	  initMapeq TyName.eq [(tyName_BOOL, [Con.con_TRUE, Con.con_FALSE]),
 			       (tyName_INT, []),
+(*old
 			       (tyName_CHAR, []),
 			       (tyName_WORD, []),
+old*)
 			       (tyName_REAL, []),
 			       (tyName_STRING, []),
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
-			       (tyName_BYTE_TABLE, []),
 			       (tyName_WORD_TABLE, []),
 			       (tyName_REF, [(*Con.con_REF*)]),
 			       (tyName_EXN, [])]
