@@ -248,6 +248,7 @@ let
   val runtime_directory =  kit_source_directory ^ "Runtime/Version17/"
 
   val src_directory = ml_kit_dir ^ "kitdemo/"
+        ^ (case user_opt of Some "hojfeld" => "hojfeld/" | _ => "")
   val test_env_directory = ml_kit_dir^"TestEnv/"
   val target_directory = ml_kit_dir^"bin/"^kit_version^"/" 
   val log_directory = ml_kit_dir^"bin/"^kit_version^"/"
@@ -318,7 +319,9 @@ let
       insert_comment_script_file out_stream "remember to end directories with a /";
       insert_string_flag out_stream "source_directory" src_directory;
       insert_string_flag out_stream "target_directory" target_directory;
-      insert_bool_flag out_stream "log_to_file" true;
+      insert_bool_flag out_stream "log_to_file" (case user_opt of
+						   Some "hojfeld" => false
+						 | _ => true);
       insert_string_flag out_stream "log_directory" log_directory;
       insert_string_flag out_stream "path_to_kit_script" path_to_kit_script;
       insert_string_flag out_stream "path_to_runtime" path_to_runtime;
@@ -414,7 +417,7 @@ in
   print ("\n    Architecture..........: " ^ kit_architecture);
   print ("\n    Using tempfile........: " ^ temp_file);
    
-  if exists_file (export_dir) then () else create_dir export_dir;
+  if exists_file (export_dir) then () else create_dir export_dir
 (*KILL 30/03/1997 00:58. tho.:  scary to a user
      print ("\n\n Directory: " ^ export_dir ^ " does not exists.");
      print ("\n Create directory (y/n): ");
@@ -591,6 +594,7 @@ fun cp s = c ("Parsing/" ^ s);
 fun cc s = c ("Common/" ^ s);
 fun ck s = c ("Compiler/" ^ s);
 fun a s = if s="" then Make.again() else (t s; Make.again());
+fun ajour s = (use (changes_file_name ()); a "");
 val p = "ParseSML_" ;
 val pp = "ParseSIG_" ;
 val ppp = "LexSML_" ;
