@@ -1,9 +1,0 @@
-<?MSP
-open Msp
-val insert = "insert into friends (name, email, phone) \
-            \ values ('" ^ % "name" ^ "', '" ^ % "email" ^ "', '" ^ % "phone" ^"')"
-
-val _ = Ns.Db.dml insert
-val _ = Ns.returnRedirect "friends.msp"
-
-?>
