@@ -16,18 +16,16 @@ signature SCS_APPROVAL =
     val help_link : unit -> string
 
     (* [getAllApprovals (on_what_table,on_which_id)] returns a list of all 
-	approval rows from DB if they exist;
-        otherwise returns NONE *)
-    val getAllApprovals : on_what_table * on_which_id -> 
-                            (approval_record list) option
+	approval rows from DB if they exist.*)
+    val getAllApprovals : on_what_table * on_which_id -> approval_record list
 
     (* [getAllApprovalsFromDbErr ((on_what_table,on_which_id), errs)] fetches 
        all approval rows from DB given a (on_what_table,on_which_id) pair. 
        Fails if the DB call and an error
        message is appended to errs *)
-    val getAllApprovalsFromDbErr : 
+(*    val getAllApprovalsFromDbErr : 
       (on_what_table * on_which_id) * ScsFormVar.errs ->
-        (approval_record list) * ScsFormVar.errs
+        (approval_record list) * ScsFormVar.errs 2003-04-07, nh *)
 
     (* [is_approved_p (on_what_table,on_which_id,user_id) approvals] 
        returns true if user_id has approved on_what_table,on_which_id
@@ -81,11 +79,11 @@ structure ScsApproval :> SCS_APPROVAL =
           modifying_user = (valOf o Int.fromString o g) "modifying_user"
         }
       in
-        SOME (Db.list f approvals_sql)
-        handle _ => NONE
+	ScsError.wrapPanic 
+        (Db.list f) approvals_sql
       end
 
-
+(*
     fun getAllApprovalsFromDbErr ((on_what_table,on_which_id), errs) =
       let 
 	val err_msg = ScsDict.s' [
@@ -101,7 +99,7 @@ structure ScsApproval :> SCS_APPROVAL =
 	    SOME approvals => (approvals,errs)
 	  | NONE           => ([], ScsFormVar.addErr( err_msg, errs) )
       end
-
+2003-04-07, nh *)
     fun is_approved_p ((on_what_table:string),(on_which_id:int),(user_id:int)) 
       (approvals:(approval_record list)) =
       let
