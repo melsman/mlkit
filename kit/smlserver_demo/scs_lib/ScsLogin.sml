@@ -51,10 +51,13 @@ structure ScsLogin :> SCS_LOGIN =
     fun auth_filter protected_pages =
       let
 	val target = Ns.Conn.location()^Ns.Conn.url()
+        val query_data = case Ns.Conn.getQuery() of
+	  NONE => ""
+	| SOME s => Quot.toString (Html.export_url_vars (Ns.Set.list s))
 	fun verifyUserFilter () =
 	  if loggedIn then ()
 	  else (Ns.returnRedirect (Ns.Conn.location()^"/auth_form.sml?target=" ^ 
-				   Ns.encodeUrl target); Ns.exit())
+				   Ns.encodeUrl (target^query_data)); Ns.exit())
       in
 	(* we tell SMLserver to verify that the user is logged in before
            serving any of the protected_pages *)

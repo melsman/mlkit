@@ -23,7 +23,8 @@ needed. Some tables are very large.</b><p>
 
 <p>
 
-<li>When do you want to audit back to: (Leave blank to start at the begining of the table's history.)<br>
+<li>When do you want to audit back to (e.g., 29/12-2002.
+Leave blank to start at the begining of the table's history.)<br>
 ` ^^ (ScsWidget.intextDate NONE "start_date") ^^ `
 
 <p>
