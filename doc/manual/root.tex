@@ -623,9 +623,11 @@ checked by inspecting the region annotated code, if one feels
 passionately about it).\footnote{The source file for the life program
   is \boxml{kitdemo/life.sml}\index{life@{\tt life}}. Running programs
   is described in Section~\ref{tryit.sec}. When run with n=10000 on
-  the HP PA-RISC, the memory consumption quickly reaches 180Kb and
+  the HP PA-RISC, the memory consumption (resident memory, measured
+  using {\tt top}) quickly reaches 180Kb and
   stays there for the remaining generations.}
-\begin{figure}[t]
+
+\begin{figure}
 \hrule
 \begin{center}
 \begin{picture}(70,40)(0,0)
@@ -685,6 +687,7 @@ of unpredictable interruptions might not be terribly important for the
 purpose of the game of Life, but if we were writing control software
 for the ABS brakes of a car, having control over all costs, including
 memory management, would be crucial!
+
 \begin{figure}
 \begin{center}
 \includegraphics{life80.ps}
@@ -696,32 +699,91 @@ region sizes as a function of time (80 snapshots).}
 \end{figure}
 
 
-Region profiles 
-for two hundred generations of {\tt life} starting from the configuration
-shown earlier appear in Figures~\ref{lifeprof1000.fig} 
-and \ref{lifeprof80.fig}.
+Region profiles for two hundred generations of {\tt life} starting from the configuration
+shown earlier appear in Figures~\ref{lifeprof80.fig} and \ref{lifeprof200.fig}.
 The highest amount of memory used for regions during the computation is
-29.000 bytes. Figure~\ref{lifeprof1000.fig}, which has data collected from 1000 snapshots
-of the computation, clearly shows that most of the 29.000 bytes are reclaimed between
+29.000 bytes. Figure~\ref{lifeprof200.fig}, which has data collected from 200 snapshots
+of the computation, clearly shows that most of the 26,060 bytes are reclaimed between
 every two generations of the game. It turns out that the game essentially stabilises
 with a small number of live positions on the board after roughly 150 generations.
 This stabilisation is clearly reflected in the region profile.
 
 \begin{figure}
 \begin{center}
-\includegraphics{life1000.ps}
+\includegraphics{life200.ps}
 \end{center}
 \caption{Region profile of two hundred 
 generations of the ``Game of Life'', showing
-region sizes as a function of time (1000 snapshots).}
-\label{lifeprof1000.fig}
+region sizes as a function of time (200 snapshots).}
+\label{lifeprof200.fig}
 \end{figure}
 
-Figure~\ref{lifeprof1000.fig} is from the same computation, but it only includes
+Figure~\ref{lifeprof200.fig} is from the same computation, but it only includes
 data from 80 snapshots. This figure makes it easier to see that the largest
-regions are \boxml{r1588} and \boxml{r1121}. To find out what these regions contain,
-however, one needs to master the methods described in Part~\ref{understanding.sec}.
+regions are \boxml{r94625} and \boxml{r94243}. To find out what these regions contain,
+however, one needs to know about the methods described in Part~\ref{understanding.sec}.
 
+\subsection{Try it!}
+This section tells you how to repeat the profiling experiment shown above. 
+
+Compile the SML program \boxml{kitdemo/life.sml} as follows. (Start from
+ the \boxml{kit} directory.)
+\begin{verbatim}
+       cd kitdemo
+       ../bin/kit
+\end{verbatim}
+Select \boxml{Profiling} from the Kit menu (type 5, then carriage return).
+Toggle \boxml{region profiling} (type 0, then carriage return). Go up one
+level (type \boxml{u}, then carriage return). Select \boxml{Compile an sml file}.
+Type \boxml{"life.sml"} (including the quotes, then return). After the Kit has compiled
+\boxml{life.sml}, type \boxml{quit}. The executable life program
+is \boxml{kitdemo/run}.
+
+Next, you run \boxml{run}, as follows:
+\begin{verbatim}
+       run -microsec 10000
+\end{verbatim}
+This will make a profiling snapshot every 10,000 microsecods (i.e., every 
+ten milliseconds). If you are satisfied with less fine-grained information,
+choose a larger number; it will speed up execution. If you just type
+\begin{verbatim}
+       run 
+\end{verbatim}
+there will be one snapshop per second.
+
+Finally, you create a Postscript file and view it as follows:
+\begin{verbatim}
+       ../bin/rp2ps -region -name life -sampleMax 80 
+       ghostview -seascape region.ps
+\end{verbatim}
+The option \boxml{-sampleMax $n$} instructs \boxml{rp2ps} that
+to show at most $n$ snapshots (evenly distributed
+over the duration of the computation).
+
+\section{Including a Profile in a LaTex Document}
+Figure~\ref{lifeprof80.fig} was produced by first\index{LaTeX document!including figure in}
+executing the command
+\index{-eps@{\tt -eps}}
+\index{-sampleMax@{\tt -sampleMax}}
+\index{-region@{\tt -region}}
+\begin{verbatim}
+ ../bin/rp2ps -region -name life -sampleMax 80 -eps 150 mm
+\end{verbatim}
+The option \boxml{-eps 150 mm} has the effect that \boxml{region.ps}
+becomes an encapsulated PostScript file.\index{region.ps@{\tt region.ps}}
+The resulting \boxml{region.ps} was renamed \boxml{life80.ps}
+and included in this document as follows:
+\begin{verbatim}
+\begin{figure}
+\begin{center}
+\includegraphics{life80.ps}
+\end{center}
+\caption{A region profile of two hundred 
+generations of the ``Game of Life'', showing
+region sizes as a function of time (80 snapshots).}
+\label{lifeprof80.fig}
+\end{figure}
+\end{verbatim}
 
 \chapter{Making Regions Concrete}
 In this chapter, we give a brief overview of how the abstract
@@ -7273,6 +7335,14 @@ the argument string, \texttt{secondElem\_ml}, while the string in the
 returned pair is still alive. A safe version of \texttt{change\_elem} is
 found in \texttt{my\_lib.c}.
 \end{example}
+
+\chapter{Changes from Version 2}
+\index{changes}
+\section{More Efficient Representation of Lists}
+\index{list}
+Lists are now represented with just one region for the spine of the list
+plus any regions for the elements of the list. Thus \boxml{::} is no
+longer applied to a pair.
 
 \index{live variable analysis|see{variable}}
 \index{KAM|see{Kit Abstract Machine}}
