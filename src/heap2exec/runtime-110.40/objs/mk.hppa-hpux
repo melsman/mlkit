@@ -1,0 +1,30 @@
+# mk.hppa-hpux
+#
+
+SHELL	= /bin/sh
+
+# 
+# A version of the HPUX C compiler has a nasty bug. The bug is triggered
+# very quickly by executing, System.Unsafe.blastWrite 1;  in ML.
+# If the above works, then this bug may have been fixed.
+#
+CC =		cc -Aa -N -D__STDC__ 
+#CC  =		gcc -ansi -D__STDC__
+CPP =		/lib/cpp.ansi
+
+CFLAGS =	-O
+
+AS =		/usr/ccs/bin/as 
+RANLIB =	ar ts
+
+XOBJS =
+XLIBS =
+LD_LIBS =	-lmalloc
+BASE_DEFS =     
+DEFS =		$(BASE_DEFS) -DHOST_HPPA -DTARGET_HPPA -DOPSYS_HPUX -DOPSYS_UNIX -DASSERT_ON -DINDIRECT_CFUNC
+TARGET =	HPPA
+VERSION	=	v-hppa-hpux
+RUNTIME =	run.hppa-hpux
+
+all:
+	(make  RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CPP="$(CPP)" CFLAGS="$(CFLAGS)" AS="$(AS)" RANLIB="$(RANLIB)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))

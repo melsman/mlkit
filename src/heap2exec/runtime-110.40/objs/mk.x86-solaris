@@ -1,0 +1,29 @@
+# mk.x86-solaris
+# 90% mk.sparc-solaris, 10% mk.x86-linux
+# AS _MUST_ be gas. Sun's Solaris x86 /usr/ccs/bin/as doesn't cut it,
+# due to its bizarre input syntax.
+# CPP _MUST_ include -ansi if gcc -E is used, to prevent "$" from
+# being considered part of identifers.
+
+SHELL		= /bin/sh
+
+MAKE =		/usr/ccs/bin/make
+AS =		gas
+AR =		/usr/ccs/bin/ar
+GCC =		gcc
+CC =		$(GCC)
+CFLAGS =	-O2
+CPP =		$(GCC) -x c -E -P -ansi
+RANLIB =	$(AR) ts
+
+XOBJS =
+XLIBS =
+LD_LIBS =	-lsocket -lnsl
+BASE_DEFS =	-D__STDC__=0
+DEFS =		$(BASE_DEFS) -DHOST_X86 -DTARGET_X86 -DOPSYS_UNIX -DOPSYS_SOLARIS
+TARGET =	X86
+VERSION =	v-x86-solaris
+RUNTIME =	run.x86-solaris
+
+all:
+	($(MAKE) RUNTIME="$(RUNTIME)" MAKE="$(MAKE)" VERSION="$(VERSION)" CC="$(CC)" CFLAGS="$(CFLAGS)" CPP="$(CPP)" AS="$(AS)" AR="$(AR)" RANLIB="$(RANLIB)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))

@@ -1,0 +1,23 @@
+# mk.ppc-darwin
+#
+# COPYRIGHT (c) 2001 Bell Labs, Lucent Technologies.
+#
+
+SHELL =		/bin/sh
+
+MAKE =		make
+CC =		cc -ansi
+CFLAGS =	-O2
+CPP =           /usr/libexec/gcc/darwin/ppc/default/cpp
+XOBJS =
+XLIBS =	
+LD_LIBS =
+XDEFS =
+BASE_DEFS =
+DEFS		= $(XDEFS) $(BASE_DEFS) -DHOST_PPC -DTARGET_PPC -DOPSYS_UNIX -DOPSYS_DARWIN
+TARGET =	PPC
+VERSION =	v-ppc-darwin
+RUNTIME =	run.ppc-darwin
+
+all:
+	($(MAKE) RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CFLAGS="$(CFLAGS)" CPP="$(CPP)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))
