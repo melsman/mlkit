@@ -230,8 +230,8 @@ struct
     (******************************************************)
     fun ra_main {main_lab:label,
 		 code=line_prg: (lvar,unit,Atom) LinePrg,
-		 imports:label list,
-		 exports:label list} ra_prg =
+		 imports:label list * label list,
+		 exports:label list * label list} ra_prg =
       let
 	val _ = chat "[Register allocation..."
 	val line_prg_ra = ra_prg line_prg

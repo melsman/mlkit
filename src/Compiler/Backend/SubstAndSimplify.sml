@@ -267,8 +267,8 @@ struct
   in
     fun SS {main_lab:label,
 	    code=co_prg: (StoreTypeCO,offset,AtomCO) LinePrg,
-	    imports:label list,
-	    exports:label list} =
+	    imports:label list * label list,
+	    exports:label list * label list} =
       let
 	val _ = chat "[Substitution and Simplification..."
 	val line_prg_ss = foldr (fn (func,acc) => SS_top_decl func :: acc) [] co_prg
@@ -281,6 +281,8 @@ struct
       in
 	{main_lab=main_lab,code=line_prg_ss: (StoreTypeCO,offset,Aty) LinePrg,imports=imports,exports=exports}
       end
+    fun pr_sty sty = CalcOffset.pr_sty sty
+    fun pr_offset offset = CalcOffset.pr_offset offset
   end
 
 end;

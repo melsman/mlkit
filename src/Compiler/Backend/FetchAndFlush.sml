@@ -354,8 +354,8 @@ struct
   in
     fun IFF {main_lab:label,
 	     code=ra_prg: (StoreTypeRA,unit,Atom) LinePrg,
-	     imports:label list,
-	     exports:label list} =
+	     imports:label list * label list,
+	     exports:label list * label list} =
       let
 	val _ = chat "[Insert Fetch and Flush..."
 	val line_prg_iff = foldr (fn (func,acc) => IFF_top_decl func :: acc) [] ra_prg

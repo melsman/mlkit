@@ -26,10 +26,10 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
     val rp       = Gen 2   (* Return link.   *)
     val mrp      = Gen 31  (* (Milicode) return link. *)
 
-    val tmp_reg0 = Gen 19
-    val tmp_reg1 = Gen 20
-    val tmp_reg2 = Gen 21
-(*    val tmp_reg3 = Gen 22*)
+    val tmp_reg0 = Gen 19 (*15*)
+    val tmp_reg1 = Gen 20 (*16*)
+    val tmp_reg2 = Gen 21 (*17*)
+    val tmp_reg3 = Gen 22 (*18*)
 
     val arg0     = Gen 26  (* Argument and return registers *)
     val arg1     = Gen 25  (* for C function calls. *)
@@ -271,6 +271,9 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
       fun out_list str_list = out (concat str_list)
     end
 
+    fun remove_ctrl s = "Lab" ^ String.implode (List.filter Char.isAlphaNum (String.explode s))
+    fun remove_ctrl' s = String.implode (List.filter Char.isPrint (String.explode s))
+
     fun pp_i i = Int.toString i
     fun pp_reg(Gen i,acc) = "%r"::(pp_i i)::acc
       | pp_reg(Float i,acc) = "%fr"::(pp_i i)::acc
@@ -279,15 +282,15 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
 
     fun pr_reg reg = concat(pp_reg(reg,[]))
 
-    fun pp_lab (DatLab l) = "DatLab" ^ Labels.pr_label l
-      | pp_lab (LocalLab l) = "L$" ^ Labels.pr_label l ^ Int.toString (Labels.key l) (* L$ is not allowed in HP's as *)
+    fun pp_lab (DatLab l) = remove_ctrl(Labels.pr_label l)
+      | pp_lab (LocalLab l) = "L$" ^ remove_ctrl(Labels.pr_label l) (* L$ is not allowed in HP's as but we use gas *)
       | pp_lab (NameLab s) = s
-      | pp_lab (MLFunLab l) = Labels.pr_label l
+      | pp_lab (MLFunLab l) = remove_ctrl(Labels.pr_label l)
 
-    fun pp_lab' (DatLab l,acc)   = "DatLab" :: (Labels.pr_label l) :: acc
-      | pp_lab' (LocalLab l,acc) = "L$" :: (Labels.pr_label l) :: (Int.toString (Labels.key l)) :: acc (* L$ is not allowed in HP's as *)
+    fun pp_lab' (DatLab l,acc)   = remove_ctrl(Labels.pr_label l) :: acc
+      | pp_lab' (LocalLab l,acc) = "L$" :: remove_ctrl(Labels.pr_label l) :: acc (* L$ is not allowed in HP's as but we use gas *)
       | pp_lab' (NameLab s,acc)  = s :: acc
-      | pp_lab' (MLFunLab l,acc) = Labels.pr_label l :: acc
+      | pp_lab' (MLFunLab l,acc) = remove_ctrl(Labels.pr_label l) :: acc
 
     fun pp_cond NEVER = ""
       | pp_cond ALWAYS = ",TR"
@@ -415,7 +418,7 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
 	   (indent::"VSHD"::(pp_cond cond)::indent::(pp_reg (r1,", "::(pp_reg (r2,", "::(pp_reg (t,acc)))))))
 
       | LABEL lab => pp_lab' (lab,acc)
-      | COMMENT s => (indent::indent::indent::indent::"; "::s::acc)
+      | COMMENT s => (indent::indent::indent::indent::"; ":: remove_ctrl' s::acc)
       | NOT_IMPL s => (indent::indent::indent::";NOT IMPLEMENTED "::s::acc)
       | DOT_ALIGN i => (indent::".ALIGN "::(Int.toString i)::acc)
       | DOT_BLOCKZ i=> (indent::".BLOCKZ "::(Int.toString i)::acc)
@@ -474,12 +477,11 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
 	   TextIO.output(os,"\n;}\n"))
       in
 	(set_out_stream os;
-	 TextIO.output(os,"; Start of HPPA Code");
 	 out_risc_insts init_code;
 	 List.app pp_top_decl top_decls;
 	 out_risc_insts exit_code;
 	 out_risc_insts static_data;
-	 TextIO.output(os,"\n; End of HPPA Code\n");
+	 TextIO.output(os,"\n\n");
 	 reset_output_stream())
       end
 

@@ -26,8 +26,8 @@ signature COMPILE =
     type ('sty, 'offset, 'aty) LinePrg
     type target_new = {main_lab: label,
 		       code: (StoreTypeCO,offset,AtySS) LinePrg,
-		       imports: label list,
-		       exports: label list,
+		       imports: label list * label list,
+		       exports: label list * label list,
 		       safe: bool}     (* true if the fragment has no side-effects;
 					* for dead code elimination. *)
 

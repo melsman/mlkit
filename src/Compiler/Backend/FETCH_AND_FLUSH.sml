@@ -25,8 +25,8 @@ signature FETCH_AND_FLUSH =
       | FLUSHED_CALLEE_STY of lvar
       | FLUSHED_CALLER_STY of lvar * lvar
 
-    val IFF : {main_lab:label,code:(StoreTypeRA,unit,Atom) LinePrg,imports:label list,exports:label list} ->
-              {main_lab:label,code:(StoreType,unit,Atom) LinePrg,imports:label list,exports:label list}
+    val IFF : {main_lab:label,code:(StoreTypeRA,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
+              {main_lab:label,code:(StoreType,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
 
     val pr_sty    : StoreType -> string
     val pr_atom   : Atom -> string

@@ -11,8 +11,8 @@ signature CODE_GEN =
 
     val CG : {main_lab:label,
 	      code:(StoreTypeCO,offset,AtySS) LinePrg,
-	      imports:label list,
-	      exports:label list,
+	      imports:label list * label list,
+	      exports:label list * label list,
 	      safe:bool} -> AsmPrg
 
 

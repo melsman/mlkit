@@ -68,7 +68,8 @@ struct
   (* Add Dynamic Flags                                            *)
   (****************************************************************)
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("print_HP-PARISC_program", "print HP-PARISC program", ref false)]
+    [("print_HP-PARISC_program", "print HP-PARISC program", ref false),
+     ("debug_codeGen","DEBUG CODE_GEN",ref false)]
 
   (********************************)
   (* CG on Top Level Declarations *)
@@ -254,23 +255,26 @@ struct
 	val (reg_for_result,C') = resolve_aty_def(dst_aty,tmp_reg1,size_ff,C)
       in
 	ADDIL{i="L'" ^ pp_lab lab ^ "-$global$",r=dp} ::
+(*	LDW{d="R'" ^ pp_lab lab ^ "-$global$",b=Gen 1,t=reg_for_result,s=Space 0} :: C'*)
 	LDO{d="R'" ^ pp_lab lab ^ "-$global$",b=Gen 1,t=reg_for_result} :: 
 	LDW{d="0",s=Space 0,b=reg_for_result,t=reg_for_result} :: C'
       end
 
     (* lab[0] = src_aty *)
     (* Kills Gen 1      *)
-    fun store_in_label(SS.PHREG_ATY src_reg,label,size_ff,C) =
+    fun store_in_label(SS.PHREG_ATY src_reg,label,tmp_reg:reg,size_ff,C) =
       ADDIL{i="L'" ^ pp_lab label ^ "-$global$",r=dp} ::
+(*      STW{r=src_reg,d="R'" ^ pp_lab label ^ "-$global$",b=Gen 1,s=Space 0} :: C*)
       LDO{d="R'" ^ pp_lab label ^ "-$global$",b=Gen 1,t=tmp_reg1} :: 
       STW{r=src_reg,d="0",s=Space 0,b=tmp_reg1} :: C
-      | store_in_label(src_aty,label,size_ff,C) =
-      move_aty_into_reg(src_aty,tmp_reg2,size_ff,
+      | store_in_label(src_aty,label,tmp_reg:reg,size_ff,C) =
+      move_aty_into_reg(src_aty,tmp_reg,size_ff,
 			ADDIL{i="L'" ^ pp_lab label ^ "-$global$",r=dp} ::
+(*			STW{r=tmp_reg,d="R'" ^ pp_lab label ^ "-$global$",s=Space 0,b=Gen 1} :: C)*)
 			LDO{d="R'" ^ pp_lab label ^ "-$global$",b=Gen 1,t=tmp_reg1} :: 
 			STW{r=tmp_reg2,d="0",s=Space 0,b=tmp_reg1} :: C)
 
-      (* Generate a string label *)
+(* Generate a string label *)
     fun gen_string_lab str =
       let
 	val string_lab = new_string_lab()
@@ -284,6 +288,13 @@ struct
       in
 	string_lab
       end
+
+    (* Generate a Data label *)
+    fun gen_data_lab lab =
+      add_static_data [DOT_DATA,
+		       DOT_ALIGN 4,
+		       LABEL(DatLab lab),
+		       DOT_WORD "0"]
 
     (* Can be used to update the stack or a record when the argument is an ATY *)
     (* base_reg[offset] = src_aty *)
@@ -315,21 +326,34 @@ struct
 			move_aty_into_reg(base_aty,tmp_reg2,size_ff,
 					  store_indexed(tmp_reg2,offset,tmp_reg1,C)))
 
+    (* push(aty), i.e., sp[0] = aty ; sp+=4 *)
+    (* size_ff is for sp before sp is moved. *)
+    fun push_aty(SS.PHREG_ATY aty_reg,tmp_reg:reg,size_ff,C) = STWM{r=aty_reg,d="4",s=Space 0,b=sp} :: C
+      | push_aty(aty,tmp_reg:reg,size_ff,C) = move_aty_into_reg(aty,tmp_reg,size_ff,
+								STWM{r=tmp_reg,d="4",s=Space 0,b=sp} :: C)
+	 
+    (* pop(aty), i.e., sp-=4; aty=sp[0] *)
+    (* size_ff is for sp after pop *)
+    fun pop_aty(SS.PHREG_ATY aty_reg,tmp_reg:reg,size_ff,C) = LDWM{d="-4",s=Space 0,b=sp,t=aty_reg} :: C
+      | pop_aty(aty,tmp_reg:reg,size_ff,C) =
+      LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg} ::
+      move_reg_into_aty(tmp_reg,aty,size_ff,C)
+  
     (***********************)
     (* Calling C Functions *)
     (***********************)
     (* Kills tmp_reg1 and tmp_reg2 *)
     fun align_stack C = (* MEGA HACK *)
-      COPY {r=sp, t=tmp_reg1} ::
-      load_immed(IMMED 60,tmp_reg2,
-		 ANDCM{cond=NEVER,r1=tmp_reg2,r2=sp,t=tmp_reg2} ::
-		 ADD{cond=NEVER,r1=tmp_reg2,r2=sp,t=sp} ::
-		 STWM {r=tmp_reg1,d="1028",s=Space 0,b=sp} :: C)
+      COPY {r=sp, t=tmp_reg0} ::
+      load_immed(IMMED 60,tmp_reg3,
+		 ANDCM{cond=NEVER,r1=tmp_reg3,r2=sp,t=tmp_reg3} ::
+		 ADD{cond=NEVER,r1=tmp_reg3,r2=sp,t=sp} ::
+		 STWM {r=tmp_reg0,d="1028",s=Space 0,b=sp} :: C)
 
     (* Kills no registers. *)      
     fun restore_stack C = LDW {d="-1028",s=Space 0,b=sp,t=sp} :: C
 
-    fun compile_c_call_prim(name: string, args: SS.Aty list,opt_ret: SS.Aty option,size_ff: int,C) =
+    fun compile_c_call_prim(name: string,args: SS.Aty list,opt_ret: SS.Aty option,size_ff:int,tmp_reg:reg,C) =
       let
 	val _ = add_lib_function name
 	val (convert: bool,name: string) =
@@ -365,11 +389,11 @@ struct
 
 	fun fetch_args_ext([],_,C) = C
 	  | fetch_args_ext(r::rs,offset,C) = 
-	  move_aty_into_reg(r,tmp_reg1,size_ff,
-			    convert_int_to_c(tmp_reg1,
-					     STW{r=tmp_reg1,d="-" ^ Int.toString offset,s=Space 0,b=sp} :: fetch_args_ext(rs,offset+4,C)))
+	  move_aty_into_reg(r,tmp_reg,size_ff,
+			    convert_int_to_c(tmp_reg,
+					     STW{r=tmp_reg,d="-" ^ Int.toString offset,s=Space 0,b=sp} :: fetch_args_ext(rs,offset+4,C)))
 
-	fun fetch_args([],_,C) = align_stack C
+	fun fetch_args([],_,C) = C
 	  | fetch_args(r::rs,ar::ars,C) = 
 	  move_aty_into_reg(r,ar,size_ff,
 			    convert_int_to_c(ar,
@@ -382,146 +406,158 @@ struct
 	  | store_ret(NONE,C) = C
       in
 	fetch_args(args,[arg0, arg1, arg2, arg3],
-		   META_BL{n=false,target=NameLab name,rpLink=rp,callStr=call_str} ::
-		   restore_stack(store_ret(opt_ret,C)))
+		   align_stack(META_BL{n=false,target=NameLab name,rpLink=rp,callStr=call_str} ::
+			       restore_stack(store_ret(opt_ret,C))))
       end
 
     (*********************)
     (* Allocation Points *)
     (*********************)
 
-    (* Status Bits Are Not Cleared *)
-    fun reset_region(t:reg,size_ff,C) = compile_c_call_prim("resetRegion",[SS.PHREG_ATY t],NONE,size_ff,C)
+    (* Status Bits Are Not Cleared          *)
+    (* We preserve the value in register t, *)
+    (* t may be used in a call to alloc     *)
+    fun reset_region(t:reg,size_ff,C) = compile_c_call_prim("resetRegion",[SS.PHREG_ATY t],SOME(SS.PHREG_ATY t),size_ff,tmp_reg0(*not used*),C)
 
     (* Status Bits Are Not Cleared *)
-    fun alloc(t:reg,n:int,size_ff,C) = compile_c_call_prim("alloc",[SS.PHREG_ATY t,SS.INTEGER_ATY n],SOME(SS.PHREG_ATY t),size_ff,C)
+    fun alloc(t:reg,n:int,size_ff,C) = compile_c_call_prim("alloc",[SS.PHREG_ATY t,SS.INTEGER_ATY n],SOME(SS.PHREG_ATY t),size_ff,tmp_reg0(*not used*),C)
 
     fun clear_status_bits(t,C) = DEPI{cond=NEVER,i="0",p="31",len="2",t=t}::C
+    fun set_atbot_bit(dst_reg:reg,C) = DEPI{cond=NEVER,i="1",p="30",len="1",t=dst_reg} :: C
+    fun clear_atbot_bit(dst_reg:reg,C) = DEPI{cond=NEVER,i="0",p="30",len="1",t=dst_reg} :: C
+    fun set_inf_bit(dst_reg:reg,C) = DEPI{cond=NEVER,i="1",p="31",len="1",t=dst_reg} :: C
 
     (* move_aty_into_reg_ap differs from move_aty_into_reg in the case where aty is a phreg! *)
     (* We must always make a copy of phreg because we may overwrite status bits in phreg.    *) 
-    fun move_aty_into_reg_ap(SS.REG_I_ATY offset,dst_reg,size_ff,C) = base_plus_offset(sp,BYTES(~size_ff*4+offset*4+BI.inf_bit),dst_reg,C)
-      | move_aty_into_reg_ap(SS.REG_F_ATY offset,dst_reg,size_ff,C) = base_plus_offset(sp,WORDS(~size_ff+offset),dst_reg,C)
-      | move_aty_into_reg_ap(SS.STACK_ATY offset,dst_reg,size_ff,C) = load_indexed(dst_reg,sp,WORDS(~size_ff+offset),C)
-      | move_aty_into_reg_ap(SS.PHREG_ATY phreg,dst_reg,size_ff,C)  = COPY {r=phreg,t=dst_reg} :: C
-      | move_aty_into_reg_ap _ = die "move_aty_into_reg_ap: ATY cannot be used to allocate memory"
+    fun move_aty_into_reg_ap(aty,dst_reg,size_ff,C) =
+      (case aty of
+	 SS.REG_I_ATY offset =>  base_plus_offset(sp,BYTES(~size_ff*4+offset*4(*+BI.inf_bit*)),dst_reg,
+						  set_inf_bit(dst_reg,C))
+       | SS.REG_F_ATY offset => base_plus_offset(sp,WORDS(~size_ff+offset),dst_reg,C)
+       | SS.STACK_ATY offset => load_indexed(dst_reg,sp,WORDS(~size_ff+offset),C)
+       | SS.PHREG_ATY phreg  => COPY {r=phreg,t=dst_reg} :: C
+       | _ => die "move_aty_into_reg_ap: ATY cannot be used to allocate memory")
 
-    fun alloc_ap(LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,n,size_ff,C) = C
-      | alloc_ap(LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,n,size_ff,C) = C
-      | alloc_ap(LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,n,size_ff,C) = C
-      | alloc_ap(LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,n,size_ff,C) = C
-      | alloc_ap(LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,n,size_ff,C) = C
-      | alloc_ap(LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,n,size_ff,C) = C
-      | alloc_ap(LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,n,size_ff,C) = C
-      | alloc_ap(LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,n,size_ff,C) = C
-      | alloc_ap(LS.IGNORE,dst_reg:reg,n,size_ff,C) = C
-
-      | alloc_ap(LS.ATTOP_LI(aty,pp),dst_reg:reg,n,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,alloc(dst_reg,n,size_ff,C))
-      | alloc_ap(LS.ATTOP_LF(aty,pp),dst_reg:reg,n,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C) (* status bits are not set *)
-      | alloc_ap(LS.ATTOP_FI(aty,pp),dst_reg:reg,n,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,alloc(dst_reg,n,size_ff,C))
-      | alloc_ap(LS.ATTOP_FF(aty,pp),dst_reg:reg,n,size_ff,C) = 
-      let
-	val default_lab = new_local_lab "no_alloc"
-      in
-	move_aty_into_reg_ap(aty,dst_reg,size_ff,
-			     META_IF_BIT{r=dst_reg,bitNo=31,target=default_lab} ::
-			     alloc(dst_reg,n,size_ff,LABEL default_lab :: C))
-      end
-      | alloc_ap(LS.ATBOT_LI(aty,pp),dst_reg:reg,n,size_ff,C) = 
-      move_aty_into_reg_ap(aty,dst_reg,size_ff,
-			   reset_region(dst_reg,size_ff,
-					alloc(dst_reg,n,size_ff,C)))
-      | alloc_ap(LS.ATBOT_LF(aty,pp),dst_reg:reg,n,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C) (* status bits are not set *)
-      | alloc_ap(LS.SAT_FI(aty,pp),dst_reg:reg,n,size_ff,C) = 
-      let
-	val default_lab = new_local_lab "no_reset"
-      in
-	move_aty_into_reg_ap(aty,dst_reg,size_ff,
-			     META_IF_BIT{r=dst_reg,bitNo=30,target=default_lab} ::
-			     reset_region(dst_reg,size_ff,LABEL default_lab :: 
-					  alloc(dst_reg,n,size_ff,C)))
-      end
-      | alloc_ap(LS.SAT_FF(aty,pp),dst_reg:reg,n,size_ff,C) = 
-      let
-	val finite_lab = new_local_lab "no_alloc"
-	val attop_lab = new_local_lab "no_reset"
-      in
-	move_aty_into_reg_ap(aty,dst_reg,size_ff,
-			     META_IF_BIT{r=dst_reg,bitNo=31,target=finite_lab} ::
-			     META_IF_BIT{r=dst_reg,bitNo=30,target=attop_lab} ::
-			     reset_region(dst_reg,size_ff,LABEL attop_lab :: 
-					  alloc(dst_reg,n,size_ff,LABEL finite_lab :: C)))
-      end
-
-    fun set_atbot_bit(dst_reg:reg,C) = DEPI{cond=NEVER, i="1", p="30", len="1", t=dst_reg} :: C
-    fun clear_atbot_bit(dst_reg:reg,C) = DEPI{cond=NEVER, i="0", p="30", len="1", t=dst_reg} :: C
+    fun alloc_ap(sma,dst_reg:reg,n,size_ff,C) =
+      (case sma of
+	 LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => C
+       | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => C
+       | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => C
+       | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => C
+       | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => C
+       | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => C
+       | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp) => C
+       | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp) => C
+       | LS.IGNORE => C
+       | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,alloc(dst_reg,n,size_ff,C))
+       | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+       | LS.ATTOP_FI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,alloc(dst_reg,n,size_ff,C))
+       | LS.ATTOP_FF(aty,pp) => 
+	   let
+	     val default_lab = new_local_lab "no_alloc"
+	   in
+	     move_aty_into_reg_ap(aty,dst_reg,size_ff,
+				  META_IF_BIT{r=dst_reg,bitNo=31,target=default_lab} :: (* inf bit set? *)
+				  alloc(dst_reg,n,size_ff,LABEL default_lab :: C))
+	   end
+       | LS.ATBOT_LI(aty,pp) => 
+	   move_aty_into_reg_ap(aty,dst_reg,size_ff,
+				reset_region(dst_reg,size_ff, (* dst_reg is preserved for alloc *)
+					     alloc(dst_reg,n,size_ff,C)))
+       | LS.ATBOT_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C) (* atbot bit not set; its a finite region *)
+       | LS.SAT_FI(aty,pp) => 
+	   let
+	     val default_lab = new_local_lab "no_reset"
+	   in
+	     move_aty_into_reg_ap(aty,dst_reg,size_ff,
+				  META_IF_BIT{r=dst_reg,bitNo=30,target=default_lab} :: (* atbot bit set? *)
+				  reset_region(dst_reg,size_ff,LABEL default_lab ::  (* dst_reg is preverved over the call *)
+					       alloc(dst_reg,n,size_ff,C)))
+	   end
+       | LS.SAT_FF(aty,pp) => 
+	   let
+	     val finite_lab = new_local_lab "no_alloc"
+	     val attop_lab = new_local_lab "no_reset"
+	   in
+	     move_aty_into_reg_ap(aty,dst_reg,size_ff,
+				  META_IF_BIT{r=dst_reg,bitNo=31,target=finite_lab} :: (* inf bit set? *)
+				  META_IF_BIT{r=dst_reg,bitNo=30,target=attop_lab} ::  (* atbot bit set? *)
+				  reset_region(dst_reg,size_ff,LABEL attop_lab ::  (* dst_reg is preserved over the call *)
+					       alloc(dst_reg,n,size_ff,LABEL finite_lab :: C)))
+	   end)
 
     (* Set Atbot bits on region variables *)
-    fun prefix_sm(LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | prefix_sm(LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | prefix_sm(LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | prefix_sm(LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | prefix_sm(LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | prefix_sm(LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | prefix_sm(LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C)   = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | prefix_sm(LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C)   = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | prefix_sm(LS.IGNORE,dst_reg:reg,size_ff,C)                           = die "store_sm_in_record: IGNORE not implemented."
-      | prefix_sm(LS.ATTOP_LI(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-      | prefix_sm(LS.ATTOP_LF(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-      | prefix_sm(LS.ATTOP_FI(aty,pp),dst_reg:reg,size_ff,C) = 
-      move_aty_into_reg_ap(aty,dst_reg,size_ff,
-			   clear_atbot_bit(dst_reg,C))
-      | prefix_sm(LS.ATTOP_FF(aty,pp),dst_reg:reg,size_ff,C) = 
-      move_aty_into_reg_ap(aty,dst_reg,size_ff,
-			   clear_atbot_bit(dst_reg,C))
-      | prefix_sm(LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp),dst_reg:reg,size_ff,C) = 
-      base_plus_offset(sp,BYTES(~size_ff*4+offset_reg_i*4+BI.inf_bit+BI.atbot_bit),dst_reg,C)
-      | prefix_sm(LS.ATBOT_LI(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,set_atbot_bit(dst_reg,C))
-      | prefix_sm(LS.ATBOT_LF(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-      | prefix_sm(LS.SAT_FI(aty,pp),dst_reg:reg,size_ff,C)   = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-      | prefix_sm(LS.SAT_FF(aty,pp),dst_reg:reg,size_ff,C)   = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+    fun prefix_sm(sma,dst_reg:reg,size_ff,C) = 
+      (case sma of
+	 LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
+       | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
+       | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
+       | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
+       | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
+       | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
+       | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp)   => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
+       | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp)   => die "prefix_sm: DROPPED_RVAR_ATY not implemented."
+       | LS.IGNORE                           => die "prefix_sm: IGNORE not implemented."
+       | LS.ATTOP_LI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+       | LS.ATTOP_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+       | LS.ATTOP_FI(aty,pp) => 
+	   move_aty_into_reg_ap(aty,dst_reg,size_ff,
+				clear_atbot_bit(dst_reg,C))
+       | LS.ATTOP_FF(aty,pp) => 
+	   move_aty_into_reg_ap(aty,dst_reg,size_ff, 
+				clear_atbot_bit(dst_reg,C)) (* It is necessary to clear atbot bit because the region may be infinite *)
+       | LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp) => 
+	   base_plus_offset(sp,BYTES(~size_ff*4+offset_reg_i*4(*+BI.inf_bit+BI.atbot_bit*)),dst_reg,
+			    set_inf_bit(dst_reg,
+					set_atbot_bit(dst_reg,C)))
+       | LS.ATBOT_LI(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,set_atbot_bit(dst_reg,C))
+       | LS.ATBOT_LF(aty,pp) => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+       | LS.SAT_FI(aty,pp)   => move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+       | LS.SAT_FF(aty,pp)   => move_aty_into_reg_ap(aty,dst_reg,size_ff,C))
 
     (* Used to build a region vector *)
-    fun store_sm_in_record(LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp),tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | store_sm_in_record(LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp),tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | store_sm_in_record(LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp),tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | store_sm_in_record(LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp),tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | store_sm_in_record(LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp),tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | store_sm_in_record(LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp),tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | store_sm_in_record(LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp),tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | store_sm_in_record(LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp),tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
-      | store_sm_in_record(LS.IGNORE,tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: IGNORE not implemented."
-      | store_sm_in_record(LS.ATTOP_LI(SS.PHREG_ATY phreg,pp),tmp:reg,base_reg,offset,size_ff,C) = store_indexed(base_reg,offset,phreg,C)
-      | store_sm_in_record(LS.ATTOP_LI(aty,pp),tmp:reg,base_reg,offset,size_ff,C) = 
-      move_aty_into_reg_ap(aty,tmp,size_ff,
-			   store_indexed(base_reg,offset,tmp,C))
-      | store_sm_in_record(LS.ATTOP_LF(SS.PHREG_ATY phreg,pp),tmp:reg,base_reg,offset,size_ff,C) = store_indexed(base_reg,offset,phreg,C)
-      | store_sm_in_record(LS.ATTOP_LF(aty,pp),tmp:reg,base_reg,offset,size_ff,C) = 
-      move_aty_into_reg_ap(aty,tmp,size_ff,
-			   store_indexed(base_reg,offset,tmp,C))
-      | store_sm_in_record(LS.ATTOP_FI(aty,pp),tmp:reg,base_reg,offset,size_ff,C) = 
-      move_aty_into_reg_ap(aty,tmp,size_ff,
-			   clear_atbot_bit(tmp,
-					   store_indexed(base_reg,offset,tmp,C)))
-      | store_sm_in_record(LS.ATTOP_FF(aty,pp),tmp:reg,base_reg,offset,size_ff,C) = 
-      move_aty_into_reg_ap(aty,tmp,size_ff,
-			   clear_atbot_bit(tmp,
-					   store_indexed(base_reg,offset,tmp,C)))
-      | store_sm_in_record(LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp),tmp:reg,base_reg,offset,size_ff,C) = 
-      base_plus_offset(sp,BYTES(~size_ff*4+offset_reg_i*4+BI.inf_bit+BI.atbot_bit),tmp,
-		       store_indexed(base_reg,offset,tmp,C))
-      | store_sm_in_record(LS.ATBOT_LI(aty,pp),tmp:reg,base_reg,offset,size_ff,C) = 
-      move_aty_into_reg_ap(aty,tmp,size_ff,set_atbot_bit(tmp,
-							 store_indexed(base_reg,offset,tmp,C)))
-      | store_sm_in_record(LS.ATBOT_LF(SS.PHREG_ATY phreg,pp),tmp:reg,base_reg,offset,size_ff,C) = store_indexed(base_reg,offset,phreg,C)
-      | store_sm_in_record(LS.ATBOT_LF(aty,pp),tmp:reg,base_reg,offset,size_ff,C) = 
-      move_aty_into_reg_ap(aty,tmp,size_ff,store_indexed(base_reg,offset,tmp,C))
-      | store_sm_in_record(LS.SAT_FI(SS.PHREG_ATY phreg,pp),tmp:reg,base_reg,offset,size_ff,C) = store_indexed(base_reg,offset,phreg,C)
-      | store_sm_in_record(LS.SAT_FI(aty,pp),tmp:reg,base_reg,offset,size_ff,C) =
-      move_aty_into_reg_ap(aty,tmp,size_ff,store_indexed(base_reg,offset,tmp,C))
-      | store_sm_in_record(LS.SAT_FF(SS.PHREG_ATY phreg,pp),tmp:reg,base_reg,offset,size_ff,C) = store_indexed(base_reg,offset,phreg,C)
-      | store_sm_in_record(LS.SAT_FF(aty,pp),tmp:reg,base_reg,offset,size_ff,C) =
-      move_aty_into_reg_ap(aty,tmp,size_ff,store_indexed(base_reg,offset,tmp,C))
+    fun store_sm_in_record(sma,tmp:reg,base_reg,offset,size_ff,C) = 
+      (case sma of
+	 LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+       | LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+       | LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+       | LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+       | LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+       | LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp) => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+       | LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp)   => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+       | LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp)   => die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+       | LS.IGNORE                           => die "store_sm_in_record: IGNORE not implemented."
+       | LS.ATTOP_LI(SS.PHREG_ATY phreg,pp)  => store_indexed(base_reg,offset,phreg,C)
+       | LS.ATTOP_LI(aty,pp)                 => move_aty_into_reg_ap(aty,tmp,size_ff,
+								     store_indexed(base_reg,offset,tmp,C))
+       | LS.ATTOP_LF(SS.PHREG_ATY phreg,pp)  => store_indexed(base_reg,offset,phreg,C)
+       | LS.ATTOP_LF(aty,pp)                 => move_aty_into_reg_ap(aty,tmp,size_ff,
+								     store_indexed(base_reg,offset,tmp,C))
+       | LS.ATTOP_FI(aty,pp)                 => move_aty_into_reg_ap(aty,tmp,size_ff,
+								     clear_atbot_bit(tmp,
+										     store_indexed(base_reg,offset,tmp,C)))
+       | LS.ATTOP_FF(aty,pp)                 => move_aty_into_reg_ap(aty,tmp,size_ff,
+								     clear_atbot_bit(tmp, (* The region may be infinite so we clear the atbot bit *)
+										     store_indexed(base_reg,offset,tmp,C)))
+       | LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp) => 
+	   base_plus_offset(sp,BYTES(~size_ff*4+offset_reg_i*4(*+BI.inf_bit+BI.atbot_bit*)),tmp,
+			    set_inf_bit(tmp,
+					set_atbot_bit(tmp,
+						      store_indexed(base_reg,offset,tmp,C))))
+       | LS.ATBOT_LI(aty,pp) => 
+	   move_aty_into_reg_ap(aty,tmp,size_ff,
+				set_atbot_bit(tmp,
+					      store_indexed(base_reg,offset,tmp,C)))
+       | LS.ATBOT_LF(SS.PHREG_ATY phreg,pp) => store_indexed(base_reg,offset,phreg,C) (* The region is finite so no atbot bit is necessary *)
+       | LS.ATBOT_LF(aty,pp) => 
+	   move_aty_into_reg_ap(aty,tmp,size_ff,
+				store_indexed(base_reg,offset,tmp,C))
+       | LS.SAT_FI(SS.PHREG_ATY phreg,pp) => store_indexed(base_reg,offset,phreg,C) (* The storage bit is already recorded in phreg *)
+       | LS.SAT_FI(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
+						   store_indexed(base_reg,offset,tmp,C))
+       | LS.SAT_FF(SS.PHREG_ATY phreg,pp) => store_indexed(base_reg,offset,phreg,C) (* The storage bit is already recorded in phreg *)
+       | LS.SAT_FF(aty,pp) => move_aty_into_reg_ap(aty,tmp,size_ff,
+						   store_indexed(base_reg,offset,tmp,C)))
 
 (*      fun maybe_reset_region(LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = C
 	| maybe_reset_region(LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = C
@@ -558,27 +594,44 @@ struct
 	| maybe_reset_region(LS.ATTOP_FF(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
         | maybe_reset_region(LS.ATBOT_LF(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C) (* status bits are not set *)*)
 
-      fun maybe_reset_aux_region(LS.ATBOT_LI(aty,pp),tmp_reg:reg,size_ff,C) = 
-	move_aty_into_reg_ap(aty,tmp_reg,size_ff,
-					       reset_region(tmp_reg,size_ff,C))
-	| maybe_reset_aux_region(LS.SAT_FI(aty,pp),tmp_reg:reg,size_ff,C) = 
-	let
-	  val default_lab = new_local_lab "no_reset"
-	in
-	  move_aty_into_reg_ap(aty,tmp_reg,size_ff,
-			       META_IF_BIT{r=tmp_reg,bitNo=30,target=default_lab} ::
-			       reset_region(tmp_reg,size_ff,LABEL default_lab :: C))
-	end
-	| maybe_reset_aux_region(LS.SAT_FF(aty,pp),dst_reg:reg,size_ff,C) = 
-	let
-	  val default_lab = new_local_lab "no_reset"
-	in
-	  move_aty_into_reg_ap(aty,dst_reg,size_ff,
-			       META_IF_BIT{r=dst_reg,bitNo=31,target=default_lab} ::
-			       META_IF_BIT{r=dst_reg,bitNo=30,target=default_lab} ::
-			       reset_region(dst_reg,size_ff,LABEL default_lab :: C))
-	end
-	| maybe_reset_aux_region(_,dst_reg:reg,size_ff,C) = C
+      fun force_reset_aux_region(sma,tmp_reg:reg,size_ff,C) = 
+	(case sma of
+	   LS.ATBOT_LI(aty,pp) => move_aty_into_reg_ap(aty,tmp_reg,size_ff,
+						       reset_region(tmp_reg,size_ff,C))
+	 | LS.SAT_FI(aty,pp) => move_aty_into_reg_ap(aty,tmp_reg,size_ff, (* We do not check the storage mode *)
+						     reset_region(tmp_reg,size_ff,C))
+	 | LS.SAT_FF(aty,pp) => 
+	     let
+	       val default_lab = new_local_lab "no_reset"
+	     in
+	       move_aty_into_reg_ap(aty,tmp_reg,size_ff, (* We check the inf bit but not the storage mode *)
+				    META_IF_BIT{r=tmp_reg,bitNo=31,target=default_lab} :: (* Is region infinite? *)
+				    reset_region(tmp_reg,size_ff,LABEL default_lab :: C))
+	     end
+	| _ => C)
+
+      fun maybe_reset_aux_region(sma,tmp_reg:reg,size_ff,C) = 
+	(case sma of
+	   LS.ATBOT_LI(aty,pp) => move_aty_into_reg_ap(aty,tmp_reg,size_ff,
+						       reset_region(tmp_reg,size_ff,C))
+	 | LS.SAT_FI(aty,pp) => 
+	     let
+	       val default_lab = new_local_lab "no_reset"
+	     in
+	       move_aty_into_reg_ap(aty,tmp_reg,size_ff,
+				    META_IF_BIT{r=tmp_reg,bitNo=30,target=default_lab} :: (* Is storage mode atbot? *)
+				    reset_region(tmp_reg,size_ff,LABEL default_lab :: C))
+	     end
+	| LS.SAT_FF(aty,pp) => 
+	     let
+	       val default_lab = new_local_lab "no_reset"
+	     in
+	       move_aty_into_reg_ap(aty,tmp_reg,size_ff,
+				    META_IF_BIT{r=tmp_reg,bitNo=31,target=default_lab} :: (* Is region infinite? *)
+				    META_IF_BIT{r=tmp_reg,bitNo=30,target=default_lab} :: (* Is atbot bit set? *)
+				    reset_region(tmp_reg,size_ff,LABEL default_lab :: C))
+	     end
+	| _ => C)
 
       (* Compile Switch Statements *)
       local
@@ -658,358 +711,427 @@ struct
     (*******************)
     (* Code Generation *)
     (*******************)
-    fun CG_lss(lss,size_ff,size_cc,C) =
+
+    (* printing an assignment *)
+    fun debug_assign(str,C) =
+      if Flags.is_on "debug_codeGen" then
       let
+	val string_lab = gen_string_lab (str ^ "\n")
+      in
+	COMMENT "Start of Debug Assignment" ::
+	load_label_addr(string_lab,SS.PHREG_ATY arg0,0,
+			compile_c_call_prim("printString",[SS.PHREG_ATY arg0],NONE,0,tmp_reg0 (*not used*),
+					    COMMENT "End of Debug Assignment" :: C))
+      end
+      else C
+
+    fun CG_lss(lss,size_ff,size_cc,size_rcf,size_ccf,C) =
+      let
+	fun pr_ls ls = LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls
 	fun not_impl(s,C) = COMMENT s :: C
-	fun CG_ls(LS.ASSIGN{pat,bind},C) = 
-	  (case bind of
-	     LS.ATOM src_aty => move_aty_to_aty(src_aty,pat,size_ff,C)
-	   | LS.LOAD label => load_from_label(DatLab label,pat,size_ff,C)
-	   | LS.STORE(src_aty,label) => store_in_label(src_aty,DatLab label,size_ff,C)
-	   | LS.STRING str =>
-	       let
-		 val string_lab = gen_string_lab str
-	       in
-		 load_label_addr(string_lab,pat,size_ff,C)
-	       end
-	   | LS.REAL str => 
-	       let
-		 val float_lab = new_float_lab()
-		 val _ = 
-		   if !BI.tag_values then 
-		     add_static_data [DOT_DATA,
-				      DOT_ALIGN 8,
-				      LABEL float_lab,
-				      DOT_WORD (Int.toString BI.value_tag_real),
-				      DOT_WORD "0", (* dummy *)
-				      DOT_DOUBLE str]
-		   else
-		     add_static_data [DOT_DATA,
-				      DOT_ALIGN 8,
-				      LABEL float_lab,
-				      DOT_DOUBLE str]
-	       in
-		 load_label_addr(float_lab,pat,size_ff,C)
-	       end
-	   | LS.CLOS_RECORD{label,elems,alloc} => 
-	       let
-		 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-		 val num_elems = List.length elems
-	       in
-		 alloc_ap(alloc,reg_for_result,List.length elems + 1,size_ff,
-			  load_label_addr(MLFunLab label,SS.PHREG_ATY tmp_reg2,size_ff,
-					  store_indexed(reg_for_result,WORDS 0,tmp_reg2,
-							#2(foldr (fn (aty,(offset,C)) => 
-								  (offset-1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
-			(*niels; num_elems-1 should be num_elems *)									    C))) (num_elems-1,C') elems))))
-	       end
-	   | LS.REGVEC_RECORD{elems,alloc} =>
-	       let
-		 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-		 val num_elems = List.length elems
-	       in
-		 alloc_ap(alloc,reg_for_result,List.length elems,size_ff,
-			  #2(foldr (fn (sma,(offset,C)) => (offset-1,store_sm_in_record(sma,tmp_reg2,reg_for_result,WORDS offset,size_ff,
-											C))) (num_elems-1,C') elems))
-	       end
-	   | LS.SCLOS_RECORD{elems,alloc} => 
-	       let
-		 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-		 val num_elems = List.length elems
-	       in
-		 alloc_ap(alloc,reg_for_result,List.length elems,size_ff,
-			    #2(foldr (fn (aty,(offset,C)) => (offset-1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
-											       C))) (num_elems-1,C') elems))
-	       end
-	   | LS.RECORD{elems,alloc} =>
-	       let
-		 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-		 val num_elems = List.length elems
-	       in
-		 alloc_ap(alloc,reg_for_result,List.length elems,size_ff,
-			    #2(foldr (fn (aty,(offset,C)) => (offset-1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
-											       C))) (num_elems-1,C') elems))
-	       end
-	   | LS.SELECT(i,aty) => move_index_aty_to_aty(aty,pat,WORDS i,size_ff,C)
-	   | LS.CON0{con,con_kind,aux_regions,alloc} =>
-	       (case con_kind of
-		  LS.ENUM i => 
-		    let 
-		      val tag = 
-			if !BI.tag_values orelse (*hack to treat booleans tagged*)
-			  Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then 
-			  2*i+1 
-			else i
-		      val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-		    in
-		      load_immed(IMMED tag,reg_for_result,C')
-		    end
-		| LS.UNBOXED i => 
+	fun CG_ls(ls,C) = 
+	  (case ls of
+	     LS.ASSIGN{pat,bind} =>
+	       debug_assign(pr_ls ls,
+	       COMMENT (pr_ls ls) :: 
+	       (case bind of
+		  LS.ATOM src_aty => move_aty_to_aty(src_aty,pat,size_ff,C)
+		| LS.LOAD label => load_from_label(DatLab label,pat,size_ff,C)
+		| LS.STORE(src_aty,label) => 
+		    (gen_data_lab label;
+		     store_in_label(src_aty,DatLab label,tmp_reg1,size_ff,C))
+		| LS.STRING str =>
 		    let
-		      val tag = 4*i+3 
-		      val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+		      val string_lab = gen_string_lab str
 		    in
-		      load_immed(IMMED tag,reg_for_result,
-				 foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,tmp_reg2,size_ff,C)) C' aux_regions)
+		      load_label_addr(string_lab,pat,size_ff,C)
 		    end
-		| LS.BOXED i => 
-		    let 
-		      val tag = 8*i + BI.value_tag_con0 
+		| LS.REAL str => 
+		    let
+		      val float_lab = new_float_lab()
+		      val _ = 
+			if !BI.tag_values then 
+			  add_static_data [DOT_DATA,
+					   DOT_ALIGN 8,
+					   LABEL float_lab,
+					   DOT_WORD (Int.toString BI.value_tag_real),
+					   DOT_WORD "0", (* dummy *)
+					   DOT_DOUBLE str]
+			else
+			  add_static_data [DOT_DATA,
+					   DOT_ALIGN 8,
+					   LABEL float_lab,
+					   DOT_DOUBLE str]
+		    in
+		      load_label_addr(float_lab,pat,size_ff,C)
+		    end
+		| LS.CLOS_RECORD{label,elems,alloc} => 
+		    let
 		      val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-		    in  
-		      List.foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,tmp_reg2,size_ff,C))
-		       (alloc_ap(alloc,reg_for_result,1,size_ff,
-				 load_immed(IMMED tag,tmp_reg2,
-					    store_indexed(reg_for_result,WORDS 0,tmp_reg2,C')))) aux_regions
-		    end)
-	   | LS.CON1{con,con_kind,alloc,arg} => 
-	     (case con_kind of
-		LS.UNBOXED 0 => move_aty_to_aty(arg,pat,size_ff,C) 
-	      | LS.UNBOXED i => 
+		      val num_elems = List.length elems
+		    in
+		      alloc_ap(alloc,reg_for_result,List.length elems + 1,size_ff,
+			       load_label_addr(MLFunLab label,SS.PHREG_ATY tmp_reg2,size_ff,
+					       store_indexed(reg_for_result,WORDS 0,tmp_reg2,
+							     #2(foldr (fn (aty,(offset,C)) => 
+								       (offset-1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
+													 C))) (num_elems,C') elems))))
+		    end
+		| LS.REGVEC_RECORD{elems,alloc} =>
+		    let
+		      val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+		      val num_elems = List.length elems
+		    in
+		      alloc_ap(alloc,reg_for_result,List.length elems,size_ff,
+			       #2(foldr (fn (sma,(offset,C)) => (offset-1,store_sm_in_record(sma,tmp_reg2,reg_for_result,WORDS offset,size_ff,
+											     C))) (num_elems-1,C') elems))
+		    end
+		| LS.SCLOS_RECORD{elems,alloc} => 
+		    let
+		      val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+		      val num_elems = List.length elems
+		    in
+		      alloc_ap(alloc,reg_for_result,List.length elems,size_ff,
+			       #2(foldr (fn (aty,(offset,C)) => (offset-1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
+												  C))) (num_elems-1,C') elems))
+		    end
+		| LS.RECORD{elems=[],alloc} => move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
+		| LS.RECORD{elems,alloc} =>
+		    let
+		      val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+		      val num_elems = List.length elems
+		    in
+		      alloc_ap(alloc,reg_for_result,List.length elems,size_ff,
+			       #2(foldr (fn (aty,(offset,C)) => (offset-1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
+												  C))) (num_elems-1,C') elems))
+		    end
+		| LS.SELECT(i,aty) => move_index_aty_to_aty(aty,pat,WORDS i,size_ff,C)
+		| LS.CON0{con,con_kind,aux_regions,alloc} =>
+		    (case con_kind of
+		       LS.ENUM i => 
+			 let 
+			   val tag = 
+			     if !BI.tag_values orelse (*hack to treat booleans tagged*)
+			       Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE) then 
+			       2*i+1 
+			     else i
+			   val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+			 in
+			   load_immed(IMMED tag,reg_for_result,C')
+			 end
+		     | LS.UNBOXED i => 
+			 let
+			   val tag = 4*i+3 
+			   val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+			   fun reset_regions C =
+			     foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,tmp_reg2,size_ff,C)) C aux_regions
+			 in
+			   reset_regions(load_immed(IMMED tag,reg_for_result,C'))
+			 end
+		     | LS.BOXED i => 
+			 let 
+			   val tag = 8*i + BI.value_tag_con0 
+			   val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+			   fun reset_regions C =
+			     List.foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,tmp_reg2,size_ff,C)) C aux_regions
+			 in  
+			   reset_regions(alloc_ap(alloc,reg_for_result,1,size_ff,
+						  load_immed(IMMED tag,tmp_reg2,
+							     store_indexed(reg_for_result,WORDS 0,tmp_reg2,C'))))
+			 end)
+		| LS.CON1{con,con_kind,alloc,arg} => 
+		       (case con_kind of
+			  LS.UNBOXED 0 => move_aty_to_aty(arg,pat,size_ff,C) 
+			| LS.UNBOXED i => 
+			    let
+			      val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+			    in
+			      (case i of
+				 1 => move_aty_into_reg(arg,reg_for_result,size_ff,
+							DEPI{cond=NEVER, i="1", p="31", len="1", t=reg_for_result} :: C')
+			       | 2 => move_aty_into_reg(arg,reg_for_result,size_ff,
+							DEPI{cond=NEVER, i="1", p="30", len="1", t=reg_for_result} :: C')
+			       | _ => die "CG_ls: UNBOXED CON1 with i > 2")
+			    end
+			| LS.BOXED i => 
+			    let
+			      val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+			      val tag = 8*i + BI.value_tag_con1
+			    in
+			      alloc_ap(alloc,reg_for_result,2,size_ff,
+				       load_immed(IMMED tag,tmp_reg2,
+						  store_indexed(reg_for_result,WORDS 0,tmp_reg2,
+								store_aty_in_reg_record(arg,tmp_reg2,reg_for_result,WORDS 1,size_ff,C'))))
+			    end
+			| _ => die "CON1.con not unary in env.")
+		| LS.DECON{con,con_kind,con_aty} =>
+			  (case con_kind of
+			     LS.UNBOXED 0 => move_aty_to_aty(con_aty,pat,size_ff,C)
+			   | LS.UNBOXED _ => 
+			       let
+				 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+			       in
+				 move_aty_into_reg(con_aty,reg_for_result,size_ff,
+						   DEPI{cond=NEVER, i="0", p="31", len="2", t=reg_for_result} :: C')
+			       end
+			   | LS.BOXED _ => move_index_aty_to_aty(con_aty,pat,WORDS 1,size_ff,C)
+			   | _ => die "CG_ls: DECON used with con_kind ENUM")
+		| LS.DEREF aty =>
+			     let
+			       val offset = if !BI.tag_values then 1 else 0
+			     in
+			       move_index_aty_to_aty(aty,pat,WORDS offset,size_ff,C)
+			     end
+		| LS.REF(alloc,aty) =>
+			     let
+			       val offset = if !BI.tag_values then 1 else 0
+			       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+			       fun maybe_tag_value C =
+				 if !BI.tag_values then
+				   load_immed(IMMED BI.value_tag_ref,tmp_reg2,
+					      store_indexed(reg_for_result,WORDS 0,tmp_reg2,C))
+				 else C
+			     in
+			       alloc_ap(alloc,reg_for_result,BI.size_of_ref(),size_ff,
+					store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
+								maybe_tag_value C'))
+			     end
+		| LS.ASSIGNREF(alloc,aty1,aty2) =>
+			     let 
+			       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+			       val offset = if !BI.tag_values then 1 else 0
+			     in
+			       store_aty_in_aty_record(aty2,aty1,WORDS offset,tmp_reg1,tmp_reg2,size_ff,
+						       load_immed(IMMED BI.ml_unit,reg_for_result,C'))
+			     end
+		| LS.PASS_PTR_TO_MEM(alloc,i) =>
+			     let
+			       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+			     in
+			       alloc_ap(alloc,reg_for_result,i,size_ff,C')
+			     end
+		| LS.PASS_PTR_TO_RHO(alloc) =>
+			     let
+			       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+			     in 
+			       prefix_sm(alloc,reg_for_result,size_ff,C')
+			     end))
+	   | LS.FLUSH(aty,offset) => COMMENT (pr_ls ls) :: store_aty_in_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)
+	   | LS.FETCH(aty,offset) => COMMENT (pr_ls ls) :: load_aty_from_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)
+	   | LS.FNJMP(cc as{opr,args,clos,free,res}) =>
+	       COMMENT (pr_ls ls) :: 
+	       let
+		 val (spilled_args,_,_) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=[],reg_vec=NONE,res=res}
+	       in
+		 if List.length spilled_args > 0 then
+		     CG_ls(LS.FNCALL cc,C)
+		 else
+		     case opr of  (* We fetch the add from the closure and opr points at the closure *)
+		       SS.PHREG_ATY opr_reg => 
+			 LDW{d="0",s=Space 0,b=opr_reg,t=tmp_reg1} ::                (* Fetch code label from closure *)
+			 base_plus_offset(sp,WORDS(~size_ff-size_ccf),sp,            (* return label is now at top of stack *)
+					  META_BV{n=false,x=Gen 0,b=tmp_reg1} :: C)  (* Is C dead code? *)
+		     | _ => move_aty_into_reg(opr,tmp_reg1,size_ff,
+					      LDW{d="0",s=Space 0,b=tmp_reg1,t=tmp_reg1} ::             (* Fetch code label from closure *)
+					      base_plus_offset(sp,WORDS(~size_ff-size_ccf),sp,          (* return label is now at top of stack *)
+							       META_BV{n=false,x=Gen 0,b=tmp_reg1}::C)) (* Is C dead code? *)
+	       end
+	   | LS.FNCALL{opr,args,clos,free,res} =>
+	       COMMENT (pr_ls ls) :: 
 		  let
-		    val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+		    val (spilled_args,spilled_res,return_lab_offset) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=[],reg_vec=NONE,res=res}
+		    val return_lab = new_local_lab "return_from_app"
+		    fun flush_args C =
+		      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
+		    fun fetch_res C =
+		      foldr (fn ((aty,offset),C) => pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res) (* We pop in reverse order such that size_ff+offset works *)
+		    fun jmp C = 
+		      case opr of  (* We fetch the add from the closure and opr points at the closure *)
+			SS.PHREG_ATY opr_reg => LDW{d="0",s=Space 0,b=opr_reg,t=tmp_reg1} :: META_BV{n=false,x=Gen 0,b=tmp_reg1} :: C
+		      | _ => move_aty_into_reg(opr,tmp_reg1,size_ff+size_cc,  (* sp is now pointing after the call convention, i.e., size_ff+size_cc *)
+					       LDW{d="0",s=Space 0,b=tmp_reg1,t=tmp_reg1} ::
+					       META_BV{n=false,x=Gen 0,b=tmp_reg1}::C)
 		  in
-		    (case i of
-		       1 => move_aty_into_reg(arg,reg_for_result,size_ff,
-					      DEPI{cond=NEVER, i="1", p="31", len="1", t=reg_for_result} :: C')
-		     | 2 => move_aty_into_reg(arg,reg_for_result,size_ff,
-					      DEPI{cond=NEVER, i="1", p="30", len="1", t=reg_for_result} :: C')
-		     | _ => die "CG_ls: UNBOXED CON1 with i > 2")
+		    load_label_addr(return_lab,SS.PHREG_ATY tmp_reg1,size_ff,                 (* Fetch return label address *)
+				    base_plus_offset(sp,WORDS(size_rcf),sp,                   (* Move sp after rcf *)
+						     STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} :: (* Push Return Label *)
+						     flush_args(jmp(LABEL return_lab :: fetch_res C))))
 		  end
-	      | LS.BOXED i => 
+	   | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,free,res}) => 
+		  COMMENT (pr_ls ls) :: 
 		  let
-		    val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-		    val tag = 8*i + BI.value_tag_con1
+		    val (spilled_args,_,_) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
+		    fun jmp C = META_B{n=false,target=MLFunLab opr} :: C (* Is C dead code? *)
 		  in
-		    alloc_ap(alloc,reg_for_result,2,size_ff,
-			     load_immed(IMMED tag,tmp_reg2,
-					store_indexed(reg_for_result,WORDS 0,tmp_reg2,
-						      store_aty_in_reg_record(arg,tmp_reg2,reg_for_result,WORDS 1,size_ff,C'))))
+		    if List.length spilled_args > 0 then
+		      CG_ls(LS.FUNCALL cc,C)
+		    else
+		      base_plus_offset(sp,WORDS(~size_ff-size_ccf),sp,
+				       jmp C)
 		  end
-	      | _ => die "CON1.con not unary in env.")
-	   | LS.DECON{con,con_kind,con_aty} =>
-		(case con_kind of
-		   LS.UNBOXED 0 => move_aty_to_aty(con_aty,pat,size_ff,C)
-		 | LS.UNBOXED _ => 
-		     let
-		       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-		     in
-		       move_aty_into_reg(con_aty,reg_for_result,size_ff,
-					 DEPI{cond=NEVER, i="0", p="31", len="2", t=reg_for_result} :: C')
-		     end
-		 | LS.BOXED _ => move_index_aty_to_aty(con_aty,pat,WORDS 1,size_ff,C)
-		 | _ => die "CG_ls: DECON used with con_kind ENUM")
-	   | LS.DEREF aty =>
-	       let
-		 val offset = if !BI.tag_values then 1 else 0
-	       in
-		 move_index_aty_to_aty(aty,pat,WORDS offset,size_ff,C)
-	       end
-	   | LS.REF(alloc,aty) =>
-	       let
-		 val offset = if !BI.tag_values then 1 else 0
-		 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-		 fun maybe_tag_value C =
-		   if !BI.tag_values then
-		     load_immed(IMMED BI.value_tag_ref,tmp_reg2,
-				store_indexed(reg_for_result,WORDS 0,tmp_reg2,C))
-		   else C
-	       in
-		 alloc_ap(alloc,reg_for_result,BI.size_of_ref(),size_ff,
-			  store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
-						  maybe_tag_value C'))
-	       end
-	   | LS.ASSIGNREF(alloc,aty1,aty2) =>
-	       let 
-		 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-		 val offset = if !BI.tag_values then 1 else 0
-	       in
-		 store_aty_in_aty_record(aty2,aty1,WORDS offset,tmp_reg1,tmp_reg2,size_ff,
-					 load_immed(IMMED BI.ml_unit,reg_for_result,C'))
-	       end
-	   | LS.PASS_PTR_TO_MEM(alloc,i) =>
-	       let
-		 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-	       in
-		 alloc_ap(alloc,reg_for_result,i,size_ff,C')
-	       end
-	   | LS.PASS_PTR_TO_RHO(alloc) =>
-	     let
-	       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
-	     in 
-	       prefix_sm(alloc,reg_for_result,size_ff,C')
-	     end)
-	  | CG_ls(LS.FLUSH(aty,offset),C) = store_aty_in_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)
-	  | CG_ls(LS.FETCH(aty,offset),C) = load_aty_from_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)
-	  | CG_ls(LS.FNJMP{opr,args,clos,free,res},C) = CG_ls(LS.FNCALL{opr=opr,args=args,clos=clos,free=free,res=res},C)
-	  | CG_ls(LS.FNCALL{opr,args,clos,free,res},C) =
-	     let
-	       val (spilled_args,spilled_res,return_lab_offset) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=[],reg_vec=NONE,res=res}
-	       val return_lab = new_local_lab "return_from_app"
-	       fun flush_args C =
-		 foldr (fn ((aty,offset),C) => store_aty_in_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)) C spilled_args
-	       fun fetch_res C =
-		 foldr (fn ((aty,offset),C) => load_aty_from_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)) C spilled_res
-	       fun jmp C = 
-		 case opr of
-		   SS.PHREG_ATY opr_reg => META_BV{n=false,x=Gen 0,b=opr_reg}::C
-		 | _ => move_aty_into_reg(opr,tmp_reg1,size_ff,
-					  META_BV{n=false,x=Gen 0,b=tmp_reg1}::C)
-	     in
-	       load_label_addr(return_lab,SS.PHREG_ATY tmp_reg1,size_ff,
-			       store_indexed(sp,WORDS return_lab_offset,tmp_reg1,
-					     flush_args(jmp(LABEL return_lab :: fetch_res C))))
-	     end
-	  | CG_ls(LS.JMP a,C) = CG_ls(LS.FUNCALL a,C) (* Tail call not implemented yet. *)
-	  | CG_ls(LS.FUNCALL{opr,args,reg_vec,reg_args,clos,free,res},C) =
-	     let
-	       val (spilled_args,spilled_res,return_lab_offset) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
-	       val return_lab = new_local_lab "return_from_app"
-	       fun flush_args C =
-		 foldr (fn ((aty,offset),C) => store_aty_in_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)) C spilled_args
-	       fun fetch_res C =
-		 foldr (fn ((aty,offset),C) => load_aty_from_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)) C spilled_res
-	       fun jmp C = META_B{n=false,target=MLFunLab opr} :: C
-	     in
-	       load_label_addr(return_lab,SS.PHREG_ATY tmp_reg1,size_ff,
-			       store_indexed(sp,WORDS return_lab_offset,tmp_reg1,
-					     flush_args(jmp(LABEL return_lab :: fetch_res C))))
-	     end
-	  | CG_ls(LS.LETREGION{rhos,body},C) = 
-	     let
-	       fun alloc_region_prim((_,offset),C) = 
-		 base_plus_offset(sp,WORDS(~size_ff+offset),arg1,
-				  compile_c_call_prim("allocateRegion",[SS.PHREG_ATY arg1],NONE,size_ff,C))
-	       fun dealloc_region_prim C =
-		 compile_c_call_prim("deallocateRegionNew",[],NONE,size_ff,C)
-	       fun remove_finite_rhos([]) = []
-		 | remove_finite_rhos(((place,LineStmt.WORDS i),offset)::rest) = remove_finite_rhos rest
-		 | remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
-	       val rhos_to_allocate = remove_finite_rhos rhos
-	     in
-	       foldr alloc_region_prim 
-	       (CG_lss(body,size_ff,size_cc,
-		       foldl (fn (_,C) => dealloc_region_prim C) C rhos_to_allocate)) rhos_to_allocate
-	     end
-	  | CG_ls(LS.SCOPE{pat,scope},C) = CG_lss(scope,size_ff,size_cc,C)
-	  | CG_ls(LS.HANDLE{default,handl,handl_return,offset},C) = not_impl("HANDLE",C)
-	  | CG_ls(LS.RAISE{arg,defined_atys},C) = not_impl("RAISE",C)
-	  | CG_ls(LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY opr_reg,sels,default)),C) = 
-	     linear_search(sels,
-			   default,
-			   fn (i,C) => load_immed(IMMED i,tmp_reg2,C),
-			   fn (lab,C) => META_IF{cond=EQUAL,r1=opr_reg,r2=tmp_reg2,target=lab} :: C,
-			   fn (lss,C) => CG_lss (lss,size_ff,size_cc,C),
-			   C)
-	  | CG_ls(LS.SWITCH_I(LS.SWITCH(opr_aty,sels,default)),C) =
-	     move_aty_into_reg(opr_aty,tmp_reg1,size_ff,
-			       linear_search(sels,
-					     default,
-					     fn (i,C) => load_immed(IMMED i,tmp_reg2,C),
-					     fn (lab,C) => META_IF{cond=EQUAL,r1=tmp_reg1,r2=tmp_reg2,target=lab} :: C,
-					     fn (lss,C) => CG_lss (lss,size_ff,size_cc,C),
-					     C))
-	  | CG_ls(LS.SWITCH_S sw,C) = die "SWITCH_S is unfolded in ClosExp"
-	  | CG_ls(LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)),C) = 
-	     let (* NOTE: selectors in sels are tagged in ClosExp but the operand is untagged here! *)
-	       val con_kind = 
-		 (case sels of
-		    [] => die "CG_ls: SWITCH_C sels is empty"
-		  | ((con,con_kind),_)::rest => con_kind)
-	       val sels' = map (fn ((con,con_kind),sel_insts) => 
-				case con_kind of
-				  LS.ENUM i => (i,sel_insts)
-				| LS.UNBOXED i => (i,sel_insts)
-				| LS.BOXED i => (i,sel_insts)) sels
-	       fun UbTagCon(src_aty,C) =
-		 move_aty_into_reg(src_aty,tmp_reg0,size_ff, 
-				   COPY{r=tmp_reg0, t=tmp_reg1} :: (* operand is in tmp_reg1, see SWITCH_I *)
-				   DEPI{cond=NEVER, i="0", p="29", len="30", t=tmp_reg1} ::
-				   ADDI{cond=NOTEQUAL, i="-3", r=tmp_reg1, t=Gen 1} ::      (* nullify copy if tr = 3 *)
-				   COPY{r=tmp_reg0, t=tmp_reg1} :: C)
-				   
-	     in
-	       (case con_kind of
-		  LS.ENUM _ => CG_ls(LS.SWITCH_I(LS.SWITCH(opr_aty,sels',default)),C)
-		| LS.UNBOXED _ => UbTagCon(opr_aty,
-					   CG_ls(LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY tmp_reg1,sels',default)),C))
-		| LS.BOXED _ => move_index_aty_to_aty(opr_aty,SS.PHREG_ATY tmp_reg1,WORDS 0,size_ff,
-						      CG_ls(LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY tmp_reg1,sels',default)),C)))
-	     end
-	  | CG_ls(LS.SWITCH_E sw,C) = die "SWITCH_E is unfolded in ClosExp"
-	  | CG_ls(LS.RESET_REGIONS{force=false,regions_for_resetting},C) = 
-	     foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,tmp_reg1,size_ff,C)) C regions_for_resetting
-	  | CG_ls(LS.RESET_REGIONS{force=true,regions_for_resetting},C) = not_impl("CG_ls: force regions not implemented",C)
-	  | CG_ls(LS.CCALL{name,args,rhos_for_result,res},C) = 
-	     (* Note that the prim names are defined in BackendInfo! *)
-	     (case (name,args@rhos_for_result,res) of
-		("__equal_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])      => cmpi(EQUAL,x,y,d,C)
-	      | ("__minus_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])      => SUBO{cond=NEVER,r1=x,r2=y,t=d} :: maybe_tag_integers(LDO{d="1",b=d,t=d},C)
-	      | ("__plus_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])       => ADDO{cond=NEVER,r1=x,r2=y,t=d} :: maybe_tag_integers(LDO {d="-1",b=d,t=d},C)
-	      | ("__mul_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])        => muli(x,y,d,C)
-	      | ("__neg_int",[SS.PHREG_ATY x],[SS.PHREG_ATY d])                       => negi(x,d,C)
-	      | ("__abs_int",[SS.PHREG_ATY x],[SS.PHREG_ATY d])                       => absi(x,d,C)
-	      | ("__less_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])       => cmpi(LESSTHAN,x,y,d,C)
-	      | ("__lesseq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])     => cmpi(LESSEQUAL,x,y,d,C)
-	      | ("__greater_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])    => cmpi(GREATERTHAN,x,y,d,C)
-	      | ("__greatereq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])  => cmpi(GREATEREQUAL,x,y,d,C)
-	      | _ => 
-		  (case res of
-		     [] => compile_c_call_prim(name,args@rhos_for_result,NONE,size_ff,C)
-		   | [res_aty] => compile_c_call_prim(name,args@rhos_for_result,SOME res_aty,size_ff,C)
-		   | _ => die "CCall with more than one result variable"))
+	   | LS.FUNCALL{opr,args,reg_vec,reg_args,clos,free,res} =>
+		  COMMENT (pr_ls ls) :: 
+		  let
+		    val (spilled_args,spilled_res,return_lab_offset) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
+		    val return_lab = new_local_lab "return_from_app"
+		    fun flush_args C =
+		      foldr (fn ((aty,offset),C) => push_aty(aty,tmp_reg1,size_ff+offset,C)) C spilled_args
+		    fun fetch_res C =
+		      foldr (fn ((aty,offset),C) => pop_aty(aty,tmp_reg1,size_ff+offset,C)) C (rev spilled_res) (* We pop in reverse order such that size_ff+offset works *)
+		    fun jmp C = META_B{n=false,target=MLFunLab opr} :: C
+		  in
+		    load_label_addr(return_lab,SS.PHREG_ATY tmp_reg1,size_ff,                 (* Fetch return label address *)
+				    base_plus_offset(sp,WORDS(size_rcf),sp,                   (* Move sp after rcf *)
+						     STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} :: (* Push Return Label *)
+						     flush_args(jmp(LABEL return_lab :: fetch_res C))))
+		  end
+	   | LS.LETREGION{rhos,body} =>
+		  COMMENT "letregion" :: 
+		  let
+		    fun alloc_region_prim((_,offset),C) = 
+		      base_plus_offset(sp,WORDS(~size_ff+offset),tmp_reg1,
+				       compile_c_call_prim("allocateRegion",[SS.PHREG_ATY tmp_reg1],NONE,size_ff,tmp_reg0(*not used*),C))
+		    fun dealloc_region_prim C = 
+		      compile_c_call_prim("deallocateRegionNew",[],NONE,size_ff,tmp_reg0(*not used*),C)
+		    fun remove_finite_rhos([]) = []
+		      | remove_finite_rhos(((place,LineStmt.WORDS i),offset)::rest) = remove_finite_rhos rest
+		      | remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
+		    val rhos_to_allocate = remove_finite_rhos rhos
+		  in
+		    foldr alloc_region_prim 
+		    (CG_lss(body,size_ff,size_cc,size_rcf,size_ccf,
+			    foldl (fn (_,C) => dealloc_region_prim C) C rhos_to_allocate)) rhos_to_allocate
+		  end
+	   | LS.SCOPE{pat,scope} => CG_lss(scope,size_ff,size_cc,size_rcf,size_ccf,C)
+	   | LS.HANDLE{default,handl,handl_return,offset} => not_impl("HANDLE",C)
+	   | LS.RAISE{arg,defined_atys} => not_impl("RAISE",C)
+	   | LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY opr_reg,sels,default)) => 
+		  linear_search(sels,
+				default,
+				fn (i,C) => load_immed(IMMED i,tmp_reg2,C),
+				fn (lab,C) => META_IF{cond=EQUAL,r1=opr_reg,r2=tmp_reg2,target=lab} :: C,
+				fn (lss,C) => CG_lss (lss,size_ff,size_cc,size_rcf,size_ccf,C),
+				C)
+	   | LS.SWITCH_I(LS.SWITCH(opr_aty,sels,default)) =>
+		  move_aty_into_reg(opr_aty,tmp_reg1,size_ff,
+				    linear_search(sels,
+						  default,
+						  fn (i,C) => load_immed(IMMED i,tmp_reg2,C),
+						  fn (lab,C) => META_IF{cond=EQUAL,r1=tmp_reg1,r2=tmp_reg2,target=lab} :: C,
+						  fn (lss,C) => CG_lss (lss,size_ff,size_cc,size_rcf,size_ccf,C),
+						  C))
+	   | LS.SWITCH_S sw => die "SWITCH_S is unfolded in ClosExp"
+	   | LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)) => 
+		  let (* NOTE: selectors in sels are tagged in ClosExp but the operand is untagged here! *)
+		    val con_kind = 
+		      (case sels of
+			 [] => die "CG_ls: SWITCH_C sels is empty"
+		       | ((con,con_kind),_)::rest => con_kind)
+		    val sels' = map (fn ((con,con_kind),sel_insts) => 
+				     case con_kind of
+				       LS.ENUM i => (i,sel_insts)
+				     | LS.UNBOXED i => (i,sel_insts)
+				     | LS.BOXED i => (i,sel_insts)) sels
+		    fun UbTagCon(src_aty,C) =
+		      move_aty_into_reg(src_aty,tmp_reg0,size_ff, 
+					COPY{r=tmp_reg0, t=tmp_reg1} :: (* operand is in tmp_reg1, see SWITCH_I *)
+					DEPI{cond=NEVER, i="0", p="29", len="30", t=tmp_reg1} ::
+					ADDI{cond=NOTEQUAL, i="-3", r=tmp_reg1, t=Gen 1} ::      (* nullify copy if tr = 3 *)
+					COPY{r=tmp_reg0, t=tmp_reg1} :: C)
+		  in
+		    (case con_kind of
+		       LS.ENUM _ => CG_ls(LS.SWITCH_I(LS.SWITCH(opr_aty,sels',default)),C)
+		     | LS.UNBOXED _ => UbTagCon(opr_aty,
+						CG_ls(LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY tmp_reg1,sels',default)),C))
+		     | LS.BOXED _ => move_index_aty_to_aty(opr_aty,SS.PHREG_ATY tmp_reg1,WORDS 0,size_ff,
+							   CG_ls(LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY tmp_reg1,sels',default)),C)))
+		  end
+	   | LS.SWITCH_E sw => die "SWITCH_E is unfolded in ClosExp"
+	   | LS.RESET_REGIONS{force=false,regions_for_resetting} =>
+		  COMMENT (pr_ls ls) :: 
+		  foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,tmp_reg1,size_ff,C)) C regions_for_resetting
+	   | LS.RESET_REGIONS{force=true,regions_for_resetting} =>
+		  COMMENT (pr_ls ls) :: 
+		  foldr (fn (alloc,C) => force_reset_aux_region(alloc,tmp_reg1,size_ff,C)) C regions_for_resetting
+	   | LS.CCALL{name,args,rhos_for_result,res} => 
+		  COMMENT (pr_ls ls) :: 
+		  (* Note that the prim names are defined in BackendInfo! *)
+		  (case (name,args@rhos_for_result,res) of
+		     ("__equal_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])      => cmpi(EQUAL,x,y,d,C)
+		   | ("__minus_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])      => SUBO{cond=NEVER,r1=x,r2=y,t=d} :: maybe_tag_integers(LDO{d="1",b=d,t=d},C)
+		   | ("__plus_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])       => ADDO{cond=NEVER,r1=x,r2=y,t=d} :: maybe_tag_integers(LDO {d="-1",b=d,t=d},C)
+		   | ("__mul_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])        => muli(x,y,d,C)
+		   | ("__neg_int",[SS.PHREG_ATY x],[SS.PHREG_ATY d])                       => negi(x,d,C)
+		   | ("__abs_int",[SS.PHREG_ATY x],[SS.PHREG_ATY d])                       => absi(x,d,C)
+		   | ("__less_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])       => cmpi(LESSTHAN,x,y,d,C)
+		   | ("__lesseq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])     => cmpi(LESSEQUAL,x,y,d,C)
+		   | ("__greater_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])    => cmpi(GREATERTHAN,x,y,d,C)
+		   | ("__greatereq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])  => cmpi(GREATEREQUAL,x,y,d,C)
+		   | _ => 
+		       (case res of
+			  [] => compile_c_call_prim(name,args@rhos_for_result,NONE,size_ff,tmp_reg1,C)
+			| [res_aty] => compile_c_call_prim(name,args@rhos_for_result,SOME res_aty,size_ff,tmp_reg1,C)
+			| _ => die "CCall with more than one result variable")))
       in
 	foldr (fn (ls,C) => CG_ls(ls,C)) C lss
       end
 
-    fun CG_top_decl(LS.FUN(lab,cc,lss)) = 
+    (* printing a label *)
+    fun debug_label(lab,C) = 
+      if Flags.is_on "debug_codeGen" then
+      let
+	val lab_str = pp_lab lab ^ "\n"
+	val string_lab = gen_string_lab lab_str
+      in
+	COMMENT "Start of debug label" ::
+	load_label_addr(string_lab,SS.PHREG_ATY arg0,0,
+			compile_c_call_prim("printString",[SS.PHREG_ATY arg0],NONE,0,tmp_reg0(*not used*),
+					    COMMENT "End of Debug Label" :: C))
+      end
+      else C
+
+    fun CG_top_decl' gen_fn (lab,cc,lss) = 
       let
 	val size_ff = CallConv.get_frame_size cc
+	val size_ccf = CallConv.get_ccf_size cc
+	val size_rcf = CallConv.get_rcf_size cc
 	val size_cc = CallConv.get_cc_size cc
-	val C = base_plus_offset(sp,WORDS(~size_ff-size_cc),sp,
-				 load_indexed(tmp_reg1,sp,WORDS(CallConv.get_rcf_size cc),
-								META_BV{n=false,x=Gen 0,b=tmp_reg1}::[]))
+	val C = base_plus_offset(sp,WORDS(~size_ff-size_ccf),sp,
+				 LDWM{d="-4",s=Space 0,b=sp,t=tmp_reg1} ::
+				 META_BV{n=false,x=Gen 0,b=tmp_reg1}::[])
       in
-	FUN(lab,
-	    LABEL(MLFunLab lab) ::
-	    base_plus_offset(sp,WORDS(size_ff+size_cc),sp,
-			     CG_lss(lss,size_ff,size_cc,C)))
+	gen_fn(lab,
+	       LABEL(MLFunLab lab) ::
+	       debug_label (MLFunLab lab,
+			    base_plus_offset(sp,WORDS(size_ff),sp,
+					     CG_lss(lss,size_ff,size_cc,size_rcf,size_ccf,C))))
       end
-      | CG_top_decl(LS.FN(lab,cc,lss)) = 
-      let
-	val size_ff = CallConv.get_frame_size cc
-	val size_cc = CallConv.get_cc_size cc
-	val C = base_plus_offset(sp,WORDS(~size_ff-size_cc),sp,
-				 load_indexed(tmp_reg1,sp,WORDS(CallConv.get_rcf_size cc),
-								META_BV{n=false,x=Gen 0,b=tmp_reg1}::[]))
-      in
-	FN(lab,
-	   LABEL(MLFunLab lab) ::
-	   base_plus_offset(sp,WORDS(size_ff+size_cc),sp,
-			    CG_lss(lss,size_ff,size_cc,C)))
-      end
+
+    fun CG_top_decl(LS.FUN(lab,cc,lss)) = CG_top_decl' FUN (lab,cc,lss)
+      | CG_top_decl(LS.FN(lab,cc,lss)) = CG_top_decl' FN (lab,cc,lss)
 
     (*********************************************************)
     (* Init, Static Data and Exit Code for this program unit *)
     (*********************************************************)
     fun static_data() = DOT_DATA :: get_static_data([DOT_IMPORT (NameLab "$global$", "DATA"),
-						     COMMENT "****End of staticData****",
 						     DOT_END])
-    fun init_hppa_code() = COMMENT "**** Begin HPPA code**** " :: DOT_CODE :: []
-    fun exit_hppa_code () = get_lib_functions(COMMENT "****End of HPPA code**** " :: [])
+    fun init_hppa_code() = DOT_CODE :: []
+    fun exit_hppa_code () = get_lib_functions([])
   in
     fun CG {main_lab:label,
 	    code=ss_prg: (StoreTypeCO,offset,AtySS) LinePrg,
-	    imports:label list,
-	    exports:label list,
+	    imports:label list * label list,
+	    exports:label list * label list,
 	    safe:bool} =
       let
 	val _ = chat "[Code Generation..."
 	val _ = reset_static_data()
 	val _ = reset_label_counter()
 	val _ = reset_lib_functions()
-	val _ = add_static_data (map (fn lab => DOT_IMPORT(MLFunLab lab, "CODE")) imports) (* should differentiate between datLabs and MLFunLabs *)
-	val _ = add_static_data (map (fn lab => DOT_EXPORT(MLFunLab lab, "CODE")) (main_lab::exports)) (* should differentiate between datLabs and MLFunLabs *)
+	val _ = add_static_data (map (fn lab => DOT_IMPORT(MLFunLab lab, "CODE")) (#1 imports))
+	val _ = add_static_data (map (fn lab => DOT_IMPORT(DatLab lab, "DATA")) (#2 imports))
+	val _ = add_static_data (map (fn lab => DOT_EXPORT(MLFunLab lab, "CODE")) (main_lab::(#1 exports))) 
+	val _ = add_static_data (map (fn lab => DOT_EXPORT(DatLab lab, "CODE")) (#2 exports)) 
 	val hp_parisc_prg = HppaResolveJumps.RJ{top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
 						init_code = init_hppa_code(),
 						exit_code = exit_hppa_code(),
@@ -1036,9 +1158,9 @@ struct
 	val global_region_labs = [BI.toplevel_region_withtype_top_lab,
 				  BI.toplevel_region_withtype_string_lab,
 				  BI.toplevel_region_withtype_real_lab]
-	val lab_exit = Labels.new_named "lab_exit"
+	val lab_exit = NameLab "__lab_exit"
 	val next_prog_unit = Labels.new_named "next_prog_unit"
-	val progunit_labs = linkinfos
+	val progunit_labs = map MLFunLab linkinfos
 
 	val (progunit_labs, first_progunit_lab) =
 	  case progunit_labs @ [lab_exit] of
@@ -1057,7 +1179,6 @@ struct
 	  slots_for_datlabs(global_region_labs,
 			    add_progunits(linkinfos,
 					  DOT_EXPORT (NameLab "code", "ENTRY,PRIV_LEV=3") ::
-					  DOT_IMPORT (NameLab "terminate", "CODE") ::
 					  DOT_DATA ::
 					  DOT_IMPORT (NameLab "$global$", "DATA") ::
 
@@ -1068,12 +1189,11 @@ struct
 					  DOT_WORD "0" :: (* only temporary *)
 					  DOT_EXPORT(NameLab "exn_OVERFLOW","DATA") :: (* only temporary *)
 
-					  COMMENT "**** End of Link Code ****" ::
 					  DOT_END :: []))
 	val _  = add_static_data static_data
 
 	fun push_addresses_progunits(progunit_labs,C) = 
-	  foldr (fn (l,C) => load_label_addr(MLFunLab l,SS.PHREG_ATY tmp_reg1,0,
+	  foldr (fn (l,C) => load_label_addr(l,SS.PHREG_ATY tmp_reg1,0,
 					     STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} :: C)) C progunit_labs
 
 	val _ = add_lib_function "allocateRegion"
@@ -1082,10 +1202,9 @@ struct
 		 COPY{r=sp, t=arg0} ::
 		 LDO {d=(Int.toString(BI.size_of_reg_desc()*4)),b=sp,t=sp} ::
 		 align_stack(META_BL{n=false,target=NameLab "allocateRegion",rpLink=rp,callStr="ARGW0=GR, RTNVAL=GR"} ::
-			     restore_stack(store_in_label(SS.PHREG_ATY ret0,DatLab lab,0,C)))) C region_labs
+			     restore_stack(store_in_label(SS.PHREG_ATY ret0,DatLab lab,tmp_reg1,0,C)))) C region_labs
 
 	fun init_insts C =
-	  COMMENT "**** Init Link Code ****" ::
 	  DOT_CODE ::
 	  LABEL (NameLab "code") ::
 	  DOT_PROC ::
@@ -1105,7 +1224,7 @@ struct
          STW{r=tmp_reg1,d="0",s=Space 0,b=sp} ::
 
 	  (* Jump to first program unit. *)
-	  META_B {n=false, target=MLFunLab first_progunit_lab} :: C)))
+	  META_B {n=false, target=first_progunit_lab} :: C)))
 	  
 	fun nextlab_insts C =
 	  let val res = if !BI.tag_values then 1 (* 2 * 0 + 1 *)
@@ -1118,9 +1237,9 @@ struct
 	    META_BV{n=false,x=Gen 0,b=tmp_reg0} ::            (* now jump to next program unit *)
 	    
 	    LABEL(NameLab "raise_exn") ::(* only temporary *)
-	    LABEL(NameLab(Labels.pr_label lab_exit)) ::
+	    LABEL(lab_exit) ::
 	    COMMENT "**** Link Exit code ****" ::
-	    compile_c_call_prim("terminate", [SS.INTEGER_ATY res], NONE,0,
+	    compile_c_call_prim("terminate", [SS.INTEGER_ATY res], NONE,0,tmp_reg0(*not used*),
 				DOT_EXIT :: 
 				DOT_PROCEND :: C)
 	  end

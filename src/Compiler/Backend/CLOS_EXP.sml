@@ -126,8 +126,8 @@ signature CLOS_EXP =
     val cc : env * ((place*pp) at, place*phsize, unit)LambdaPgm -> {main_lab:label,
 								    code:ClosPrg,
 								    env:env,
-								    imports:label list,
-								    exports:label list}
+								    imports:label list * label list,
+								    exports:label list * label list}
 
 
     type StringTree
