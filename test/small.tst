@@ -1,14 +1,14 @@
 
 (* Benchmark file *)
 
-kitfib35.sml
+kitfib35.sml           mlton
 lexgen.sml
 professor2.sml
 mlyacc.pm
 kitmolgard.sml
 kittmergesort.sml
-kitlife35u.sml
-kkb36c.sml
+kitlife35u.sml         mlton
+kkb36c.sml             mlton
 vliw.sml
 logic.pm
 tak.sml
@@ -23,10 +23,10 @@ tsp.sml
 peek.sml
 mpuz.sml
 DLXSimulator.sml
-md5.sml                       (* Uses Pack32Little *)
-(*checksum.sml                  (* Uses Pack32Little *) *)
-smith-normal-form.sml         (* Uses IntInf *)
-matrix-multiply.sml
+(* md5.sml                  out-of-memory without GC *)
+(* checksum.sml *)
+(* smith-normal-form.sml    out-of-memory without GC *)
+(* matrix-multiply.sml      out-of-memory without GC *)
 ratio-regions.sml
 (*
 barnes-hut.pm

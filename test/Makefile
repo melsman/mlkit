@@ -1,7 +1,7 @@
 all: smallbench test_mlkit test_kam
 
 smallbench:
-	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkitgc -smlnj -o small.html small.tst)' | tcsh -s
+	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkit:-gc: -smlnj -mlton -o small.html small.tst)' | tcsh -s
 
 test_mlkit:
 	../bin/kittester ../bin/mlkit all.tst
