@@ -878,14 +878,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		    let (* Parse scriptlets *)
 			fun valspecToField (n,t) = {name=n,typ=t}
 			val formIfaceFile = "scripts.gen.sml"
-			val _ = print "Parsing arguments of scriptlet functors.\n"
+			val _ = print "[parsing arguments of scriptlet functors]\n"
 			val formIfaces = map Scriptlet.parseArgsFile unitids
 			val formIfaces = 
 			    map (fn {funid,strid,valspecs} => 
 				 {name=funid,fields=map valspecToField valspecs})
 			    formIfaces
-		    in    print ("Writing type safe interface to forms, file: " ^ formIfaceFile ^ "\n")
-			; Scriptlet.genFile formIfaceFile formIfaces
+		    in	  Scriptlet.genScriptletInstantiations formIfaces
+			; Scriptlet.genFormInterface formIfaceFile formIfaces
 			; Project.prependUnit (formIfaceFile,prj)
 		    end
 
