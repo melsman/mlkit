@@ -93,9 +93,8 @@ end ;
 val _ = K.Flags.lookup_flag_entry "delete_target_files" := false;
 *)
 
-(*
 val _ = K.build_basislib()
 
 val _ = K.install();
-*)
+
 
