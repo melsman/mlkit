@@ -567,7 +567,18 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
 
           (* special constants *)                               (*rule 1*)
           IG.SCONatexp(i, scon) =>
-            (Substitution.Id, Type.of_scon scon, OG.SCONatexp (okConv i, scon))
+	    (* Some special constants are overloaded; thus, we must
+	     * record some overloading info in the case a special constant
+	     * can denote one of a set of type names. 
+	     *)
+	    let val {type_scon, overloading} = Type.of_scon scon
+	        val i_out =
+		  case overloading
+		    of NONE => okConv i
+		     | SOME tv => preOverloadingConv (i, OverloadingInfo.UNRESOLVED_IDENT tv)
+	    in (Substitution.Id, type_scon, OG.SCONatexp (i_out, scon))
+	    end
+            
 
           (* identifiers - variables or constructors *)         (*rule 2*)
         | IG.IDENTatexp(i, IG.OP_OPT(longid, withOp)) =>
@@ -1619,9 +1630,17 @@ old*)
 
           (* Special constant *)                                (*rule 33*)
         | IG.SCONatpat(i,scon) =>
-            (Substitution.Id,
-             (VE.empty, Type.of_scon scon),
-              OG.SCONatpat(okConv i,scon))
+	    (* Some special constants are overloaded; thus, we must
+	     * record some overloading info in the case a special constant
+	     * can denote one of a set of type names. 
+	     *)
+	    let val {type_scon, overloading} = Type.of_scon scon
+	        val i_out =
+		  case overloading
+		    of NONE => okConv i
+		     | SOME tv => preOverloadingConv (i, OverloadingInfo.UNRESOLVED_IDENT tv)
+	    in (Substitution.Id, (VE.empty, type_scon), OG.SCONatpat (i_out, scon))
+	    end
 
           (* Long identifier *)                                 (*rule 34*)
         | IG.LONGIDatpat(i, IG.OP_OPT(longid, withOp)) =>
@@ -2073,14 +2092,16 @@ let
 	 (Type.Real,   OverloadingInfo.RESOLVED_REAL),
 	 (Type.String, OverloadingInfo.RESOLVED_STRING),
 	 (Type.Char,   OverloadingInfo.RESOLVED_CHAR),
+	 (Type.Word8,  OverloadingInfo.RESOLVED_WORD8),
 	 (Type.Word,   OverloadingInfo.RESOLVED_WORD)]
-
+	
   (*tau_to_overloadinginfo raises List.First _*)
   fun tau_to_overloadinginfo tau  =
         #2 (List.first (fn (tau', oi) => Type.eq (tau, tau'))
 	      tau_to_overloadinginfo_alist)
 
-  fun resolve_tau tau : OverloadingInfo.OverloadingInfo =
+  fun resolve_tau (default_type, default : OverloadingInfo.OverloadingInfo) tau 
+    : OverloadingInfo.OverloadingInfo =
         let val tau' = S on tau
 	in
 	  if !Flags.DEBUG_ELABDEC then
@@ -2089,7 +2110,7 @@ let
 	  else ();
 	  (case Type.to_TyVar tau' of
 	     NONE => (tau_to_overloadinginfo tau'
-		      handle List.First _ => OverloadingInfo.RESOLVED_INT)
+		      handle List.First _ => default)
 		 (*TODO 25/06/1997 10:11. tho.
 		  can raise List.First _ occur?  I'd rather do an impossible
 		  here:  If tau' is not a tyvar, it must be one of int, real,
@@ -2098,33 +2119,35 @@ let
 		  is a type error (they do occur), and since type errors
 		  should not make the compiler crash, it is probably best to
 		  not do an impossible.  The only thing to do is then to
-		  return RESOLVED_INT, as unresolved overloading should not
+		  return `default', as unresolved overloading should not
 		  result in an error message.*)
 	   | SOME tv' =>
 	       if Type.eq (tau', tau)
 	       then (*tau' is a tyvar, so the overloading is as yet
 		     unresolved, & according to the Definition of SML '97, it
-		     must be resolved to int.  And now someone has remembered
+		     must be resolved to a default type.  And now someone has remembered
 		     to put this resolve into work by unifying the tyvar with
-		     int:*)
+		     the default type:*)
 		    (if !Flags.DEBUG_ELABDEC
 		     then TextIO.output (TextIO.stdOut, "res: SOME tv\n") else () ;
-		     (case Type.unify (Type.Int, tau') of
+		     (case Type.unify (default_type, tau') of
 			Type.UnifyOk => ()
-		      | _ => impossible "resolve_tau: unify") ;
-		     OverloadingInfo.RESOLVED_INT)
-	       else (*repeat application of S:*) resolve_tau tau')
+		      | _ => () (*impossible "resolve_tau: unify" *) ) ;
+		     default)
+	       else (*repeat application of S:*) resolve_tau (default_type, default) tau')
 	end
   in
 
-  (*resolve_tyvar gives OverloadingInfo.RESOLVED_INT when overloading couldn't be
+  (*resolve_tyvar gives `default' overloading info when overloading couldn't be
    resolved.  According to the definition (p. 72), int is the default type
    except for /, but / is not overloaded in this compiler; / always has type
    real * real -> real, as there is only one kind of real.
    25/06/1997 10:30. tho.*)
 
-  val resolve_tyvar : TyVar -> OverloadingInfo.OverloadingInfo =
-        resolve_tau o Type.from_TyVar
+    fun resolve_tyvar (default_type, default: OverloadingInfo.OverloadingInfo) 
+      : TyVar -> OverloadingInfo.OverloadingInfo =
+      (resolve_tau (default_type,default)) o Type.from_TyVar
+
   end (*local*)
 
   datatype flexresResult = FLEX_RESOLVED | FLEX_NOTRESOLVED
@@ -2214,13 +2237,19 @@ let
 
   fun resolve_atexp (atexp : atexp) : atexp =
       case atexp of
-          SCONatexp _ => atexp
+          SCONatexp(i,scon) =>
+	    (case ElabInfo.to_OverloadingInfo i 
+	       of NONE => SCONatexp(resolve_i i, scon)
+		| SOME (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
+		 SCONatexp (ElabInfo.plus_OverloadingInfo i (resolve_tyvar (Type.Word, OverloadingInfo.RESOLVED_WORD) tyvar), 
+			    scon)
+                 | SOME _ => impossible "resolve_atexp.SCON")
         | IDENTatexp(i, op_opt) =>
               (case ElabInfo.to_OverloadingInfo i of 
                    NONE => IDENTatexp (resolve_i i, op_opt)
                  | SOME (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
 		     IDENTatexp
-		       (ElabInfo.plus_OverloadingInfo i (resolve_tyvar tyvar), 
+		       (ElabInfo.plus_OverloadingInfo i (resolve_tyvar (Type.Int, OverloadingInfo.RESOLVED_INT) tyvar), 
 			op_opt)
                  | SOME _ => impossible "resolve_atexp")
         | RECORDatexp(i, NONE) => RECORDatexp(resolve_i i,NONE)
@@ -2300,7 +2329,14 @@ let
   and resolve_atpat (atpat : atpat) : atpat =
     case atpat of
       WILDCARDatpat _ => atpat
-    | SCONatpat _ => atpat
+    | SCONatpat(i,scon) =>
+	(case ElabInfo.to_OverloadingInfo i 
+	   of NONE => SCONatpat(resolve_i i, scon)
+	    | SOME (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
+	     SCONatpat (ElabInfo.plus_OverloadingInfo i (resolve_tyvar (Type.Word, OverloadingInfo.RESOLVED_WORD) tyvar), 
+			scon)
+	    | SOME _ => impossible "resolve_atpat.SCON")
+
     | LONGIDatpat(i,x) => LONGIDatpat(resolve_i i,x)
     | RECORDatpat(i, NONE) => RECORDatpat(resolve_i i,NONE)
     | RECORDatpat(i, SOME patrow) =>

@@ -1,4 +1,4 @@
-(*$TYNAME : ORDER_FINMAP KIT_MONO_SET*)
+(* Type names - Definition (Rev) page 15 *)
 
 signature TYNAME =
   sig 
@@ -65,7 +65,6 @@ signature TYNAME =
     val tyName_STRING  : TyName
     val tyName_CHAR    : TyName
     val tyName_LIST    : TyName
-    val tyName_BYTE_TABLE : TyName
     val tyName_WORD_TABLE : TyName
     val tyName_REF     : TyName
     val tyName_EXN     : TyName

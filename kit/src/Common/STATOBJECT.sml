@@ -2,8 +2,6 @@
  TypeScheme, theta in TypeFcn, Definition 1997, fig. 10, p. 16;
  phi in realisation, §5.2, p. 29.  Also Level and Substitution.*)
 
-(*$STATOBJECT : TYNAME*)
-
 signature STATOBJECT =
   sig 
     (*types provided by this module:*)
@@ -133,8 +131,9 @@ signature STATOBJECT =
 	val Bool                    : Type   (*needed for initial TE and VE*)
 	val String                  : Type
 	val Char                    : Type
+	val Word8                   : Type
 	val Word                    : Type
-	val of_scon                 : scon -> Type
+	val of_scon                 : scon -> {type_scon: Type, overloading : TyVar option}
 
 	(*close imp tau = a list of those type variables of tau which are
 	 allowed to be quantified.*)

@@ -1,9 +1,5 @@
 (* Overloading information *)
 
-(*$OverloadingInfo: 
-	STATOBJECT PRETTYPRINT OVERLOADING_INFO
-*)
-
 functor OverloadingInfo (structure StatObject : STATOBJECT
 			 structure PrettyPrint : PRETTYPRINT
 			   ) : OVERLOADING_INFO =
@@ -19,6 +15,7 @@ functor OverloadingInfo (structure StatObject : STATOBJECT
     | RESOLVED_REAL		
     | RESOLVED_STRING
     | RESOLVED_CHAR
+    | RESOLVED_WORD8
     | RESOLVED_WORD
 
     fun string (UNRESOLVED_IDENT tyvars) = "UNRESOLVED_IDENT"
@@ -27,6 +24,9 @@ functor OverloadingInfo (structure StatObject : STATOBJECT
       | string RESOLVED_REAL =   "RESOLVED_REAL"
       | string RESOLVED_STRING = "RESOLVED_STRING"
       | string RESOLVED_CHAR =   "RESOLVED_CHAR"
+      | string RESOLVED_WORD8 =   "RESOLVED_WORD8"
       | string RESOLVED_WORD =   "RESOLVED_WORD"
+
     val layout = PrettyPrint.LEAF o string
+
   end;

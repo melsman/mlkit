@@ -1,6 +1,5 @@
-(* type constructors - Definition v3 page 4 *)
+(* type constructors - Definition (Rev) page 4 *)
 
-(*$TYCON*)
 signature TYCON =
   sig
     eqtype strid
@@ -23,7 +22,6 @@ signature TYCON =
     and tycon_REF    : tycon
     and tycon_BOOL   : tycon
     and tycon_LIST   : tycon
-    and tycon_BYTE_TABLE : tycon
     and tycon_WORD_TABLE : tycon
     and tycon_UNIT   : tycon
 
