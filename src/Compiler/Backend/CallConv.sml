@@ -110,7 +110,8 @@ functor CallConv(structure Lvars : LVARS
     fun get_ccf_size{clos,args,reg_vec,reg_args,res,frame_size} =
       List.length(filter_out_phreg_opt clos) +
       List.length(filter_out_phreg args) +
-      List.length(filter_out_phreg_opt reg_vec)
+      List.length(filter_out_phreg_opt reg_vec) +
+      List.length(filter_out_phreg reg_args)           (*line inserted; ME 2001-02-23 *)
 
     fun get_cc_size cc =
       get_rcf_size cc +
@@ -165,17 +166,31 @@ functor CallConv(structure Lvars : LVARS
 
       (* for use with multiple arguments ; on the x86, we store the arguments on the stack in
        * reverse order!! *)
-      fun resolve_stys_args([],acc,ph_regs) = ([],acc,ph_regs)
-	| resolve_stys_args(stys,acc,[]) = 
-	let val stys = if BI.down_growing_stack then rev stys else stys
-	in (map assign_stack stys,acc,[])
-	end
-	| resolve_stys_args(sty::stys,acc,ph_reg::ph_regs) =
+      fun resolve_stys_args([],[],acc,ph_regs) = ([],[],acc,ph_regs)
+	| resolve_stys_args(args_stys,reg_args_stys,acc,[]) =      (* no more phregs *)
+	if BI.down_growing_stack then
+	  let val reg_args = map assign_stack (rev reg_args_stys)
+	      val args = map assign_stack (rev args_stys)
+	  in (args, reg_args, acc, [])
+	  end
+	else 
+	  let val args = map assign_stack args_stys
+	      val reg_args = map assign_stack reg_args_stys
+	  in (args, reg_args, acc, [])
+	  end
+	| resolve_stys_args(asty::astys,rastys,acc,ph_reg::ph_regs) =
 	let
-	  val (sty_list,lv_phreg_list,ph_regs') = resolve_stys_args(stys,acc,ph_regs)
-	  val (sty',lv_phreg') = assign_phreg(sty,ph_reg)
+	  val (astys',rastys',lv_phreg_list,ph_regs') = resolve_stys_args(astys,rastys,acc,ph_regs)
+	  val (asty',lv_phreg') = assign_phreg(asty,ph_reg)
 	in
-	  (sty'::sty_list,lv_phreg'::lv_phreg_list,ph_regs')
+	  (asty'::astys',rastys',lv_phreg'::lv_phreg_list,ph_regs')
+	end
+	| resolve_stys_args([],rasty::rastys,acc,ph_reg::ph_regs) =
+	let
+	  val (_,rastys',lv_phreg_list,ph_regs') = resolve_stys_args([],rastys,acc,ph_regs)
+	  val (rasty',lv_phreg') = assign_phreg(rasty,ph_reg)
+	in
+	  ([],rasty'::rastys',lv_phreg'::lv_phreg_list,ph_regs')
 	end
 
 
@@ -217,6 +232,7 @@ functor CallConv(structure Lvars : LVARS
 	in
 	  ({args=args',rhos_for_result=rhos_for_result',res=res'},assign_list_args,assign_list_res)
 	end
+
       fun resolve_app args_phreg res_phreg (phreg_to_alpha: lvar -> 'a)
 	{clos: 'a option, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} =
 	let
@@ -239,11 +255,15 @@ functor CallConv(structure Lvars : LVARS
 	  val _ = reset_offset()
 	  val (clos_sty_opt,lv_phreg_args,phregs) = resolve_sty_opt(clos,[],args_phreg)
 	  val (reg_vec_sty_opt,lv_phreg_args,phregs) = resolve_sty_opt(reg_vec,lv_phreg_args,phregs)
+(*
 	  val (args_stys,lv_phreg_args,phregs) = resolve_stys_args(args,lv_phreg_args,phregs)
-	  val (reg_args_stys,lv_phreg_args,_) = resolve_stys(reg_args,lv_phreg_args,phregs)
+	  val (reg_args_stys,lv_phreg_args,_) = resolve_stys_args(reg_args,lv_phreg_args,phregs)  (*ME 2001-02-24*)
+*)
+	  val (args_stys,reg_args_stys,lv_phreg_args,phregs) = 
+	    resolve_stys_args(args,reg_args,lv_phreg_args,phregs)
 
 	  val _ = get_next_offset() (* The next offset is for the return address *)
-	  val (res_stys,lv_phreg_res,_) = resolve_stys(res,[],res_phreg)
+	  val (res_stys,lv_phreg_res,_) = resolve_stys(res,[],res_phreg)    (*memo: is this right on the x86?*)
 	in
 	  ({clos=clos_sty_opt,
 	    args=args_stys,
