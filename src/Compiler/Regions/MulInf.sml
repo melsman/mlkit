@@ -187,7 +187,14 @@ struct
                    val almost_new_psi = Mul.maxef(psi,psi_eps)
                    (* eps.almost_new_psi is not necessarily acyclic; so normalise it: *)
                    val (_,new_psi) = Mul.un_mularef(Mul.nf(Mul.makearef(eps,almost_new_psi)))
-  		 val _ = Mul.doSubst(eps, Mul.diffef(new_psi,psi_eps), dep)
+  		 val _ = Mul.doSubst(eps, Mul.diffef(new_psi,psi_eps), dep) handle X =>
+                         (say "\nMulInf(FN) fails:\n";
+                          say "eps = \n" ; outtree(Eff.layout_effect eps);
+                          say "\npsi =\n" ; outtree(Mul.layout_mulef psi);
+                          say "\npsi_eps =\n"; outtree(Mul.layout_mulef psi_eps);
+                          say "\nalmost_new_psi=\n";  outtree(Mul.layout_mulef almost_new_psi);
+                          say "\nnew_psi=\n"; outtree(Mul.layout_mulef new_psi);
+                          say "\n"; raise X)
   		in
   		    psi_r:= Mul.put alloc
   		end
