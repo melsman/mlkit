@@ -127,9 +127,13 @@ struct
     fun insert_fetch_callee([],lss) = lss
       | insert_fetch_callee(phreg::phregs,lss) = (inc_fetch(); insert_fetch_callee(phregs,LS.FETCH(LS.PHREG phreg,())::lss))
 
-    fun remove_finite_rhos([]) = []
-      | remove_finite_rhos(((place,LS.WORDS i),offset)::rest) = remove_finite_rhos rest
-      | remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
+    fun only_finite_rhos nil = true
+      | only_finite_rhos (((_,LS.WORDS _),_)::rest) = only_finite_rhos rest
+      | only_finite_rhos _ = false
+
+    fun only_null_rhos nil = true
+      | only_null_rhos (((_,LS.WORDS 0),_)::rest) = only_null_rhos rest
+      | only_null_rhos _ = false
 
     (***************************************)
     (* Calculate Set of Variables to Flush *)
@@ -180,8 +184,8 @@ struct
        | LS.FUNCALL cc => do_non_tail_call(ls,L_set,F_set,C_set)
        | LS.JMP cc => do_tail_call(ls,L_set,F_set,C_set) 
        | LS.LETREGION{rhos,body} => 
-	   if List.null rhos orelse ( not(region_profiling()) 
-				      andalso List.null (remove_finite_rhos rhos) ) then
+	   if only_null_rhos rhos 
+	     orelse ( not(region_profiling()) andalso only_finite_rhos rhos ) then
 	     F_lss(body,L_set,F_set,C_set)
 	   else
 	     let
@@ -369,8 +373,8 @@ struct
 	  let
 	    val (acc,U_set_acc) = IF_lss'(lss,U_set)
 	    val ccalls_in_and_out : bool =
-	      List.null rhos orelse ( not(region_profiling()) 
-				      andalso List.null (remove_finite_rhos rhos) )
+	      only_null_rhos rhos orelse ( not(region_profiling()) 
+					  andalso only_finite_rhos rhos )
 	    val lv_fetch2 = 
 	      if ccalls_in_and_out then	Lvarset.empty
 	      else Lvarset.intersection(C_set,U_set_acc)
