@@ -110,13 +110,18 @@ signature SCS_DICT =
        store translations from source language to target language *)
     val cacheFlush : ScsLang.lang * ScsLang.lang -> unit
 
+    (* [dict] type describing one phrase in many languages *)
+    type dict = (ScsLang.lang * quot) list
+
+    (* [getDictFromDb id val_id_p] returns a ScsDict.dict representing the 
+       tid in the table scs_texts. If val_id_p is true then the tid is
+       looked up first *)
+    val getDictFromDb : int -> bool -> dict
+
     (*******************************************************)
     (* The functions below works on a list of translations *)
     (* passed explicitly to each function (type dict).     *)
     (*******************************************************)
-
-    (* [dict] type describing one phrase in many languages *)
-    type dict = (ScsLang.lang * quot) list
 
     (* [ScsDict] exception raised on error *)
     exception ScsDict of string
@@ -260,6 +265,23 @@ structure ScsDict :> SCS_DICT =
 
     fun cacheFlush (source_lang,target_lang) = 
       Ns.Cache.flush (cacheName (source_lang,target_lang))
+
+    fun getDictFromDb id val_id_p = 
+      let
+        val id_str = if val_id_p then 
+            Quot.toString `scs_enumeration.getTID(^(Int.toString id))` 
+          else Int.toString id
+        val text_list_opt = Db.zeroOrOneRow `
+          select scs_text.getText(^id_str, '^(ScsLang.toString ScsLang.da)'),
+                 scs_text.getText(^id_str, '^(ScsLang.toString ScsLang.en)')
+            from dual`
+        fun f (x::y::[]) = [(ScsLang.da, Quot.fromString x),
+			    (ScsLang.da, Quot.fromString y)]
+          | f xs         = raise Option
+      in
+	f (valOf text_list_opt)
+        handle Option => [(ScsLang.da, `Databasefejl i ScsDict.getDictFromDb`)]
+      end
 
     fun d source_lang module file_name phrase =
       let

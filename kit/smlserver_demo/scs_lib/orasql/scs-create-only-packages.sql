@@ -23,6 +23,8 @@
 @scs-roles-packages-create.sql;
 @scs-groups-packages-create.sql;
 
+@fbw.sql
+@fast_md5.sql
 
 
 
