@@ -120,10 +120,10 @@ ELABTOPDEC.sml
 EfficientElab/ElabTopdec.sml
 
 IntDiGraph.sml
-../Compiler/Kam/UNION_FIND_POLY.sml
-../Compiler/Kam/UnionFindPoly.sml
-../Compiler/Kam/STACK.sml
-../Compiler/Kam/Stack.sml
+UNION_FIND_POLY.sml
+UnionFindPoly.sml
+STACK.sml
+Stack.sml
 DIGRAPH.sml
 DiGraph.sml
 Heap.sml

@@ -368,7 +368,7 @@ functor LambdaBasics (structure Lvars : LVARS
       fun on_prim ren prim =
 	case prim
 	  of CONprim {con,instances} => CONprim {con=con, instances=map (on_tau ren) instances}
-	   | DECONprim {con,instances} => DECONprim {con=con, instances=map (on_tau ren) instances}
+	   | DECONprim {con,instances,lvar} => DECONprim {con=con, instances=map (on_tau ren) instances,lvar=on_lv ren lvar}
 	   | DEREFprim {instance} => DEREFprim {instance=on_tau ren instance}
 	   | REFprim {instance} => REFprim {instance=on_tau ren instance}
 	   | ASSIGNprim {instance} => ASSIGNprim {instance=on_tau ren instance}
@@ -488,7 +488,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	| on_prim S (prim: Type prim) : Type prim =         (* renamings; mael *)
 	case prim 
 	  of CONprim {con, instances} => CONprim {con=con, instances=on_Types S instances}
-	   | DECONprim {con, instances} => DECONprim {con=con,instances=on_Types S instances}
+	   | DECONprim {con, instances,lvar} => DECONprim {con=con,instances=on_Types S instances,lvar=lvar}
 	   | DEREFprim {instance} => DEREFprim{instance=on_Type S instance}
 	   | REFprim {instance} => REFprim{instance=on_Type S instance}
 	   | ASSIGNprim {instance} => ASSIGNprim{instance=on_Type S instance}

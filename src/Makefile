@@ -7,6 +7,7 @@ SHELL=/bin/sh
 # Some commands
 MKDIR=mkdir -p
 INSTALL=cp -p
+CLEAN=rm -rf PM CM *~ .\#*
 
 BINDIR=../bin
 
@@ -23,7 +24,7 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
  Compiler/Backend/KAM/BuiltInCFunctionsNsSml.spec \
  Compiler/Backend/KAM/KamInsts.spec
 
-mlkit: basics
+mlkit: basics rp2ps tester kitbench
 	cd Runtime; $(MAKE) runtimeSystem.a
 	cd Runtime; $(MAKE) runtimeSystemProf.a
 	cd Runtime; $(MAKE) runtimeSystemGC.a
@@ -38,7 +39,7 @@ mlkit: basics
 	cd ..; echo `pwd`/bin/mlkit.$(ARCH-OS) `pwd` \$$* >> bin/mlkit
 	chmod a+x $(BINDIR)/mlkit
 
-mlkit_kam: basics
+mlkit_kam: basics tester kitbench
 	cd Runtime; $(MAKE) kam
 	echo 'use "build_kam.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_kam.$(ARCH-OS)
@@ -58,7 +59,15 @@ smlserver: basics
 	cd ..; echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
 	chmod a+x $(BINDIR)/smlserverc
 
-basics: genopcodes rp2ps tester heap2exec kitbench
+barry: basics
+	echo 'use "build_barry.sml";' | sml
+	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/barry.$(ARCH-OS)
+	rm -f $(BINDIR)/barry
+	cd ..; echo '#!/bin/sh' > bin/barry
+	cd ..; echo `pwd`/bin/barry.$(ARCH-OS) `pwd` \$$* >> bin/barry
+	chmod a+x $(BINDIR)/barry
+
+basics: genopcodes heap2exec
 
 genopcodes: $(GENOPCODES_TARGETS)
 
@@ -81,30 +90,32 @@ heap2exec: heap2exec/heap2exec
 	cd heap2exec; $(MAKE)
 
 clean:
-	rm -rf run PM CM *~ $(GENOPCODES_TARGETS)
-	cd Common; rm -rf PM CM *~
-	cd Common/EfficientElab; rm -rf PM CM *~
-	cd Compiler; rm -rf PM CM *~
-	cd Parsing; rm -rf PM CM *~
-	cd Manager; rm -rf PM CM *~
-	cd Edlib; rm -rf PM CM *~
+	$(CLEAN) run $(GENOPCODES_TARGETS)
+	cd Common; $(CLEAN)
+	cd Common/EfficientElab; $(CLEAN)
+	cd Compiler; $(CLEAN)
+	cd Parsing; $(CLEAN)
+	cd Manager; $(CLEAN)
+	cd Edlib; $(CLEAN)
 	cd heap2exec; $(MAKE) clean
 	cd Runtime; $(MAKE) clean
 	cd Tools/Tester; $(MAKE) clean
 	cd Tools/Rp2ps; $(MAKE) clean
 	cd Tools/GenOpcodes; $(MAKE) clean
-	cd Compiler; rm -rf PM CM *~
-	cd Compiler/Backend; rm -rf PM CM *~
-	cd Compiler/Backend/Dummy; rm -rf PM CM *~
-	cd Compiler/Backend/HpPaRisc; rm -rf PM CM *~
-	cd Compiler/Backend/X86; rm -rf PM CM *~
-	cd Compiler/Regions; rm -rf PM CM *~
-	cd Compiler/C; rm -rf PM CM *~
-	cd Compiler/Hppa; rm -rf PM CM *~
-	cd Compiler/Kam; rm -rf PM CM *~
-	cd Compiler/Cfg; rm -rf PM CM *~
-	cd Compiler/Lambda; rm -rf PM CM *~
-	cd SMLserver; rm -f nssml.so *.o *~
+	cd Compiler; $(CLEAN)
+	cd Compiler/Backend; $(CLEAN)
+	cd Compiler/Backend/Dummy; $(CLEAN)
+	cd Compiler/Backend/HpPaRisc; $(CLEAN)
+	cd Compiler/Backend/X86; $(CLEAN)
+	cd Compiler/Backend/KAM; $(CLEAN)
+	cd Compiler/Backend/Barry; $(CLEAN)
+	cd Compiler/Regions; $(CLEAN)
+	cd Compiler/C; $(CLEAN)
+	cd Compiler/Hppa; $(CLEAN)
+	cd Compiler/Kam; $(CLEAN)
+	cd Compiler/Cfg; $(CLEAN)
+	cd Compiler/Lambda; $(CLEAN)
+	cd SMLserver; $(CLEAN) nssml.so *.o
 
 grm:
 	cd Parsing; ml-lex Topdec.lex; ml-yacc Topdec.grm

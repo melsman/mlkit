@@ -304,11 +304,11 @@ functor OptLambda(structure Lvars: LVARS
 	    | EXCEPTION(excon,_,lamb) => c b (excon::x) lamb
 	    | SWITCH_C(SWITCH(e,l,opt)) => 
 	     (  c b x e 
-	      ; app (fn (con,e) => (check_con con ; c b x e)) l
+	      ; app (fn ((con,_),e) => (check_con con ; c b x e)) l   (*MEMO*)
 	      ; appOpt (c b x) opt)
 	    | SWITCH_E(SWITCH(e,l,opt)) => 
 	     (  c b x e 
-	      ; app (fn (ex,e) => (check_excon ex x ; c b x e)) l
+	      ; app (fn ((ex,_),e) => (check_excon ex x ; c b x e)) l
 	      ; appOpt (c b x) opt)
 	    | FRAME _ => die "closed" 
 	    | _ => app_lamb (c b x) e
@@ -897,7 +897,7 @@ functor OptLambda(structure Lvars: LVARS
 	       let val res = contr_switch (contr, reduce, env, SWITCH_E, switch)
 		   val SWITCH(_,sel,_) = switch
 		   fun mklive [] = ()
-		     | mklive ((excon,_)::rest) = (mk_live_excon excon; mklive rest)
+		     | mklive (((excon,_),_)::rest) = (mk_live_excon excon; mklive rest)
 	       in mklive sel; res
 	       end
 	      | FRAME{declared_excons,declared_lvars} => 
@@ -1385,8 +1385,8 @@ functor OptLambda(structure Lvars: LVARS
 	 val vector = Vector.tabulate 
 	   (sz, fn i => case lookup i lvar_map
 			  of SOME lv => lv
-			   | NONE => Lvars.new_named_lvar (Lvars.pr_lvar lv ^ "-" 
-							   ^ Int.toString i))
+			   | NONE => Lvars.newLvar()) (*Lvars.new_named_lvar (Lvars.pr_lvar lv ^ "_" 
+							   ^ Int.toString i)) *)
        in (body, vector)
        end 
 

@@ -472,6 +472,12 @@ struct
       retract(B,E'.TR(con(e'), metatype,phi), contAcc)
     end handle X => die ("spreadSwitch: cannot spread; exception " ^ exnName X ^ " raised")
 
+    fun spreadSwitch' (B:cone) spread con excon_mus
+                 (E.SWITCH(e0: E.LambdaExp,
+                           choices: (('c * 'ignore) * E.LambdaExp) list,
+                           last: E.LambdaExp option),toplevel,cont): cone * (place,unit)E'.trip * cont =
+      spreadSwitch B spread con excon_mus (E.SWITCH(e0, map (fn ((c,_),e) => (c,e)) choices, last),toplevel,cont)
+
    fun S(B,e,toplevel:bool,cont:cont): cone * (place,unit)E'.trip * cont = 
       (case e of
       E.VAR{lvar, instances : E.Type list} =>
@@ -854,10 +860,10 @@ good *)
 	(spreadSwitch B S (fn sw => E'.SWITCH_W{switch=sw,precision=precision}) [] (switch,toplevel,cont))
 
     | E.SWITCH_S(stringsw: string E.Switch) => (spreadSwitch B S E'.SWITCH_S [] (stringsw,toplevel,cont))
-    | E.SWITCH_C(consw: E.con E.Switch) => (spreadSwitch B S E'.SWITCH_C [] (consw,toplevel,cont))
-    | E.SWITCH_E(exconsw: E.excon E.Switch as
-                 E.SWITCH(_,choices,_))=>(spreadSwitch B S E'.SWITCH_E
-                                          (map (fn (excon,_) => noSome ((*RSE.*)lookupExcon rse excon) 
+    | E.SWITCH_C(consw: (E.con*E.lvar option) E.Switch) => (spreadSwitch' B S E'.SWITCH_C [] (consw,toplevel,cont))
+    | E.SWITCH_E(exconsw: (E.excon*E.lvar option) E.Switch as
+                 E.SWITCH(_,choices,_))=>(spreadSwitch' B S E'.SWITCH_E
+                                          (map (fn ((excon,_),_) => noSome ((*RSE.*)lookupExcon rse excon) 
                                                 "spreadExceptionSwitch: excon not in rse") 
                                            choices) (exconsw, toplevel, cont))
 
@@ -887,7 +893,7 @@ good *)
                  (*Eff.*)mkUnion([phi1,(*Eff.*)mkPut(#2(mu2))])),
 	   NOTAIL)
         end 
-    | E.PRIM(E.DECONprim{con, instances}, [arg]) =>
+    | E.PRIM(E.DECONprim{con, instances,...}, [arg]) =>
         let 
           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
           val sigma = noSome ((*RSE.*)lookupCon rse con) "S (DECONprim): constructor not in RSE"

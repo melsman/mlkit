@@ -305,7 +305,8 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
 		  structure FinMapEq = FinMapEq
                   structure PP = PP
 		  structure Flags = Flags
-                  structure Crash = Crash)
+                  structure Crash = Crash
+		  structure Report = Report)
 
     structure LvarDiGraphScc = 
       DiGraphScc(structure InfoDiGraph = 

@@ -186,7 +186,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	  end
 
 	val date = Date.fmt "%b %d, %Y" (Date.fromTimeLocal (Time.now()))
-	val version = "4.1.1"
+	val version = "4.1.2"
 
 	fun print_greetings() =
 	  if !Flags.SMLserver then

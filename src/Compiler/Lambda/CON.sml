@@ -12,6 +12,7 @@ signature CON =
 
     val mk_con : string  -> con
     val pr_con : con -> string
+    val pr_con' : con -> string  (* prints key *)
 
     val < : con * con -> bool
     val eq : con * con -> bool

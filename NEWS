@@ -1,5 +1,17 @@
 ML Kit NEWS file
 
+ * mael 2002-10-28: Started work on Barry - a Standard ML barifier
+   (e.g., simplifier). Barry eliminates moodules, pattern matching,
+   complex derived forms, resolves infix resolution, and performs a
+   series of optimisations. Barry is basically the frontend of the ML
+   Kit with a pretty printer, which outputs intermediate language
+   constructs in the ML Kit (LambdaExp expressions) as Standard ML
+   code. To build Barry, simply type ``make barry'' in the kit/
+   directory.
+
+ * mael 2002-10-25: Support for untagged representation of pairs when
+   garbage collection is enabled.
+
  * mael 2002-09-20: Fixed bug caused by Timing.checkRealTimer raising
    exception Time on some systems when -timing flag is used.
 

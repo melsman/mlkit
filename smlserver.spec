@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------
-# RPM Spec File for the ML Kit SMLserver Version 4.1.1
+# RPM Spec File for the ML Kit SMLserver Version 4.1.2
 # ---------------------------------------------------------------------
 #
 # Here is a short description of how to build an RPM File for the ML
@@ -38,11 +38,11 @@
 
 Summary: Standard ML Support for AOLserver
 Name: smlserver
-Version: 4.1.1
+Version: 4.1.2
 Release: 1
 Copyright: GPL
 Group: Development/Languages
-Source: http://www.smlserver.org/dist/smlserver-4.1.1.tgz
+Source: http://www.smlserver.org/dist/smlserver-4.1.2.tgz
 URL: http://www.smlserver.org
 Vendor: IT University of Copenhagen
 Packager: Martin Elsman (mael@dina.kvl.dk)

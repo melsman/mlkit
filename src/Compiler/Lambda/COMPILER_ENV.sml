@@ -51,6 +51,10 @@ signature COMPILER_ENV =
     val declare_tycon: tycon * (TyName list * CEnv) * CEnv -> CEnv  (* a tycon is mapped to an environment 
 								     * holding bindings for value 
 								     * constructors. *)
+    type spath = int list
+    val declareLvarDecon : spath * lvar * CEnv -> CEnv
+    val lookupLvarDecon : CEnv -> spath -> lvar option
+
     val plus: CEnv * CEnv -> CEnv         
 
     datatype result = 

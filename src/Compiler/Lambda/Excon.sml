@@ -18,6 +18,7 @@ functor Excon(structure Name : NAME
 
     fun mk_excon (s: string) : excon = {str=s,name=Name.new()}
     fun pr_excon ({str,...}: excon) : string = str
+    fun pr_excon' ({str,name}: excon) : string = str ^ "_" ^ Int.toString (Name.key name)
 
     fun name ({name,...}: excon) : name = name
 

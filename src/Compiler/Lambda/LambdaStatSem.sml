@@ -495,7 +495,7 @@ end
 		      end
 		     | _ => die "CONprim.Unary constructor does not have arrow type")
 		| _ => die "CONprim.Wrong number of args")
-	   | DECONprim{con,instances} => 
+	   | DECONprim{con,instances,...} => 
 	       (case lexps
 		  of [lexp] => (case mk_instance(lookup_con env con, instances)
 				  of ARROWtype([t1],[t2]) =>
@@ -752,12 +752,12 @@ end
 	   end
 	 | SWITCH_S sw => type_switch (type_lexp env) (fn (s:string) => tyName_STRING) sw  
 	 | SWITCH_C sw => type_switch (type_lexp env) 
-		   (fn (con:con) => case lookup_con env con
+		   (fn (con:con,_) => case lookup_con env con
 				      of (_, CONStype(_,tyname)) => tyname
 				       | (_, ARROWtype(_,[CONStype(_,tyname)])) => tyname
 				       | _ => die "SWITCH_C.Wrong con type") sw  
 	 | SWITCH_E sw => type_switch (type_lexp env) 
-		   (fn (excon:excon) => (lookup_excon env excon; tyName_EXN)) sw
+		   (fn (excon:excon,_) => (lookup_excon env excon; tyName_EXN)) sw
 	 | PRIM (prim, lexps) => Types (type_prim env prim lexps)
 	 | FRAME {declared_lvars, declared_excons} =>
 		   let 

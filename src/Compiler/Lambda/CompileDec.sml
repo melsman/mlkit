@@ -755,6 +755,15 @@ Report: Opt:
      points out v, i.e., the first element in the path is the "innermost"
      part of the path.*)
     
+
+  type spath = int list
+  fun to_spath p : spath = 
+      let fun pa (Obj,acc) = acc
+	    | pa (Access(i,c,p),acc) = pa (p,i::con_ord c::acc)
+      in pa(p,nil)
+      end
+
+
   fun string_from_path (Access (i, con, path)) =
 	"Access ("
 	^ Int.toString i ^ ", "
@@ -781,6 +790,12 @@ Report: Opt:
 
   val string_from_rhs = Int.toString
   fun string_from_rhs' (_, rhs) = string_from_rhs rhs
+
+  fun path_to_cpath p =
+      let fun to_cp (Obj,acc) = acc
+	    | to_cp (Access(i,c,p),acc) = to_cp (p, i :: con_ord c :: acc)
+      in to_cp (p,nil)
+      end
 
   structure conset : KIT_MONO_SET = OrderSet
     (structure Order : ORDERING = struct
@@ -817,6 +832,11 @@ Report: Opt:
 
   datatype matchresult = Yes | No | Maybe
 
+  fun maybefy (Con {longid,...}) m = 
+      if Ident.id_REF = #2(Ident.decompose longid) then m 
+      else Maybe
+    | maybefy _ m = m
+
   fun staticmatch (con : con, termd : termd) : matchresult =
 	(case termd of
 	   Pos (pcon, _) => (case con_cmp (con, pcon) 
@@ -826,7 +846,7 @@ Report: Opt:
 					   | _ => No))
 	 | Neg negset  => if negset.member con negset then No
 			  else if span_eq_int (span con) (negset.size negset + 1)
-			       then Yes
+			       then maybefy con Yes
 			       else Maybe)
 
   datatype kind = Success of rhs' | IfEq of path * con * node option * node option
@@ -1063,17 +1083,20 @@ Det finder du nok aldrig ud af.*)
   fun pr_il il = pr_list pr_tau il
 
   fun compile_path env obj Obj = obj
-    | compile_path env obj (Access (0, Con {info, ...}, path)) =
+    | compile_path env obj (path0 as Access (0, Con {info, ...}, path)) =
 	(case to_TypeInfo info of
 	   SOME (TypeInfo.CON_INFO {longid, instances, ...}) =>
 	     (case lookupLongid env longid (NORMAL info) of
 		CE.CON (con, tyvars, _, il) =>  (* because the con occurs in the pattern, we 
 						 * have {instances'/tyvars}il = instances'. *)
 		  let 
-		      val instances' = map compileType instances 
-		      val il' = instances'
+		      val spath = to_spath path
+		      val lv = case CE.lookupLvarDecon env spath of
+			            SOME lv => lv
+				  | NONE => die "lookupLvarDecon"
+		      val il' = map compileType instances 
 		  in
-		    PRIM (DECONprim {con=con, instances=il'},
+		    PRIM (DECONprim {con=con, instances=il',lvar=lv},
 			  [compile_path env obj path])
 		  end
 
@@ -1123,6 +1146,7 @@ Det finder du nok aldrig ud af.*)
 	in mk_declarations_to_be_made declarations_to_be_made lexp obj env 
 	end
 
+  (* MEMO: Here we should share code for identical subpaths - mael 2002-10-27 *)
   and mk_declarations_to_be_made declarations_to_be_made lexp obj env
 	: LambdaExp =
 	foldl  (*again, foldr could also have been used*)
@@ -1145,8 +1169,14 @@ in
 		  then switchify0 ((con, edge1) :: cases, edge2)
 		  else s
 	      | switchify0 s = s 
-	in
-	  switchify0 ([(con0, edge1)], edge2)
+	    val (cases, otherwise) = switchify0 ([(con0, edge1)], edge2)
+	in  case con0 of 
+	      Con {span,info,...} =>
+		  if span_eq_int span (length cases) then
+		      (* no need for the otherwise branch *)
+		      (cases, NONE)
+		  else (cases, SOME otherwise)
+	      | _ => (cases, SOME otherwise)
 	end
 
   fun compile_node compile_no obj raise_something tau_return_opt env
@@ -1158,24 +1188,32 @@ in
 	     let
 	       val (cases, otherwise) = switchify (path, con, edge1, edge2)
 	       fun switch (switch_x : 'x Switch -> LambdaExp,
-			   compile_x : con -> 'x) : function list * LambdaExp =
+			   compile_x : con * CE.CEnv -> 'x * CE.CEnv) : function list * LambdaExp =
 		     (case
 		        foldl (fn ((x, edge), (functions, cases_compiled)) =>
-				    (case compile_edge compile_no obj raise_something
-				            tau_return_opt env edge
-				     of (functions', lexp') =>
+			       let val (x',env') = compile_x (x,env)
+			       in case compile_edge compile_no obj raise_something
+				            tau_return_opt env' edge
+				    of (functions', lexp') =>
 				       (functions' @ functions,
-					(compile_x x, lexp') :: cases_compiled)))
+					(x', lexp') :: cases_compiled)
+			       end)
 			  ([], []) cases
 		      of (functions, cases_compiled) =>
-		     (case compile_edge compile_no obj raise_something
-			     tau_return_opt env otherwise
-		      of (functions'', lexp_otherwise) =>
-			(functions'' @ functions,
-			 switch_x (SWITCH
-				   (compile_path env obj path,
-				    cases_compiled,
-				    SOME (lexp_otherwise))))))
+		     (case otherwise of
+			  SOME otherwise =>
+			      ((* print ("going into otherwise branch\n"); *)
+			       case compile_edge compile_no obj raise_something
+				   tau_return_opt env otherwise
+				   (* before print ("exiting otherwise branch\n") *)
+				 of (functions'', lexp_otherwise) =>
+				     (functions'' @ functions,
+				      switch_x (SWITCH
+						(compile_path env obj path,
+						 cases_compiled,
+						 SOME (lexp_otherwise)))))
+			| NONE => (functions,
+				   switch_x (SWITCH (compile_path env obj path, cases_compiled,NONE)))))
 
 	       fun precision (t: Type) : int =
 		 let val tn = case t
@@ -1190,28 +1228,35 @@ in
 	       (case con of
 		  Con _ => switch
 		    (SWITCH_C,
-		     fn Con {longid, ...} => lookupLongcon env longid (OTHER "compile_node, Con")
+		     fn (Con {longid, nullary, ...},e) => 
+		     if nullary then ((lookupLongcon env longid (OTHER "compile_node, Con, nullary"), NONE), e)
+		     else 
+			 let val lv' = Lvars.newLvar()
+			     val spath = to_spath path
+			 in ((lookupLongcon env longid (OTHER "compile_node, Con"), SOME lv'),
+			     CE.declareLvarDecon (spath, lv', e))
+			 end
 		      | _ => die "compile_node: fn Con =>")
 		| Scon (SCon.INTEGER _, tau) => switch
 		    (fn sw => SWITCH_I{switch=sw,precision=precision tau}, 
-		     fn Scon (SCon.INTEGER i,_) => i
+		     fn (Scon (SCon.INTEGER i,_),e) => (i,e)
 		      | _ => die "compile_node: fn Scon (SCon.INTEGER i) =>")
 		| Scon (SCon.CHAR _, tau) => switch
 		    (fn sw => SWITCH_W {switch=sw, precision=precision tau}, 
-		     fn Scon (SCon.CHAR i,_) => Word32.fromInt i
+		     fn (Scon (SCon.CHAR i,_),e) => (Word32.fromInt i,e)
 		      | _ => die "compile_node: fn Scon (SCon.CHAR i) =>")
 		| Scon (SCon.WORD _, tau) => switch
 		    (fn sw => SWITCH_W{switch=sw, precision=precision tau}, 
-		     fn Scon (SCon.WORD w,_) => w
+		     fn (Scon (SCon.WORD w,_),e) => (w,e)
 		      | _ => die "compile_node: fn Scon (SCon.WORD w) =>")
 		| Scon (SCon.STRING _,_) => switch
 		    (SWITCH_S, 
-		     fn Scon (SCon.STRING s,_) => s
+		     fn (Scon (SCon.STRING s,_),e) => (s,e)
 		      | _ => die "compile_node: fn Scon (SCon.STRING s) =>")
 		| Scon (SCon.REAL _,_) => die "compile_node: real"
 		| Excon _ => switch
 		    (SWITCH_E,
-		     fn Excon {longid, ...} => #1 (lookupLongexcon env longid (OTHER "compile_node, Excon"))
+		     fn (Excon {longid, ...},e) => ((#1 (lookupLongexcon env longid (OTHER "compile_node, Excon")), NONE),e)
 		      | _ => die "compile_node: fn Excon {longid, ...} =>")
 		| Tuple _ => die "compile_node: Tuple")
 	     end

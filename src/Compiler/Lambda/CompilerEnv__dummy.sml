@@ -35,7 +35,7 @@ functor CompilerEnvDummy(structure Ident: IDENT
     type tycon = TyCon.tycon
     type longtycon = TyCon.longtycon
     type TyName = TyName.TyName
-
+    type cpath = int list
 
     datatype result = LVAR of lvar * tyvar list * Type * Type list
                     | CON of con * tyvar list * Type * Type list
@@ -60,6 +60,9 @@ functor CompilerEnvDummy(structure Ident: IDENT
     val emptyCEnv      = ()
     fun initialCEnv _ = ()
 
+    type spath = int list
+    fun declareLvarDecon _ = ()
+    fun lookupLvarDecon _ _ = NONE
     fun declareVar(id, (lv, tyvars, tau), ()) = ()
 
     fun declareCon(id, (con,tyvars,tau), ()) = ()
