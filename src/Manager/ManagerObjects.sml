@@ -33,7 +33,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			 sharing type ElabRep.opaq_env = OpacityElim.opaq_env
 			 sharing type ElabRep.longstrid = ModuleEnvironments.longstrid
 			 sharing ElabRep.TyName = ModuleEnvironments.TyName
-                         sharing type ElabRep.prjid = ModuleEnvironments.prjid  
+                         sharing type ElabRep.absprjid = ModuleEnvironments.absprjid  
 		       structure FinMap : FINMAP
 		       structure PP : PRETTYPRINT
 			 sharing type PP.StringTree = Execution.CompilerEnv.StringTree 
@@ -68,7 +68,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     fun mk_filename x = x
     fun filename_to_string x  = x
 
-    type prjid = ModuleEnvironments.prjid
+    type absprjid = ModuleEnvironments.absprjid
 (*    type target = Compile.target*)
 
     type target = Execution.target
@@ -366,22 +366,22 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  | exist (NOTEMITTED_MODC _) = true
 	  | exist (EMITTED_MODC(file,_)) = OS.FileSys.access (file,[]) handle _ => false
 
-	fun emit(prjid: prjid, modc) =
+	fun emit(absprjid: absprjid, modc) =
 	  let fun em EMPTY_MODC = EMPTY_MODC
 		| em (SEQ_MODC(modc1,modc2)) = SEQ_MODC(em modc1, em modc2)
 		| em (EMITTED_MODC(fp,li)) = EMITTED_MODC(fp,li)
 		| em (NOTEMITTED_MODC(target,linkinfo,filename)) = 
-	              EMITTED_MODC(SystemTools.emit(target, OS.Path.base(OS.Path.file(ModuleEnvironments.prjid_to_string prjid)) ^ "-" ^ filename),linkinfo)
+	              EMITTED_MODC(SystemTools.emit(target, OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid)) ^ "-" ^ filename),linkinfo)
                            (*puts ".o" on filename*)
 	  in em modc
 	  end
 
-	fun mk_exe (prjid: prjid, modc, extobjs, run) =
+	fun mk_exe (absprjid: absprjid, modc, extobjs, run) =
 	  let fun get (EMPTY_MODC, acc) = acc
 		| get (SEQ_MODC(modc1,modc2), acc) = get(modc1,get(modc2,acc))
 		| get (EMITTED_MODC p, acc) = p::acc
 		| get (NOTEMITTED_MODC(target,li,filename), acc) =
-	             (SystemTools.emit(target, OS.Path.base(OS.Path.file(ModuleEnvironments.prjid_to_string prjid)) ^ "-" ^ filename),li)::acc
+	             (SystemTools.emit(target, OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid)) ^ "-" ^ filename),li)::acc
 	  in SystemTools.link(get(modc,[]), extobjs, run)
 	  end
 
@@ -436,12 +436,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
     type strexp = TopdecGrammar.strexp
     type strid = ModuleEnvironments.strid
-    type prjid = ModuleEnvironments.prjid
 
     type sigid = ModuleEnvironments.sigid
 
     datatype IntSigEnv = ISE of (sigid, TyName.Set.Set) FinMap.map
-    datatype IntFunEnv = IFE of (funid, prjid * funstamp * strid * ElabEnv * (unit -> strexp) * IntBasis) FinMap.map
+    datatype IntFunEnv = IFE of (funid, absprjid * funstamp * strid * ElabEnv * (unit -> strexp) * IntBasis) FinMap.map
          and IntBasis = IB of IntFunEnv * IntSigEnv * CEnv * CompileBasis
 
     (* The closure is to represent a structure expression in a compact way *)
@@ -658,10 +657,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	type int_entry' = funstamp * ElabEnv * IntBasis * longstrid list * name list * 
 	  modcode * IntBasis
 
-	type intRep = ((prjid * funid) * bool, int_entry list) FinMap.map ref
+	type intRep = ((absprjid * funid) * bool, int_entry list) FinMap.map ref
 	  (* the bool is true if profiling is enabled *)
 
-	type intRep' = ((prjid * funid) * bool, int_entry' list) FinMap.map ref
+	type intRep' = ((absprjid * funid) * bool, int_entry' list) FinMap.map ref
 	  (* the bool is true if profiling is enabled *)
 
 	val region_profiling : bool ref = Flags.lookup_flag_entry "region_profiling"
@@ -673,34 +672,34 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       List.app (List.app (ModCode.delete_files o #6)) (FinMap.range (!intRep'));  
 		       intRep := FinMap.empty;
 		       intRep' := FinMap.empty)
-	fun delete_rep rep prjid_and_funid = case FinMap.remove ((prjid_and_funid, !region_profiling), !rep)
+	fun delete_rep rep absprjid_and_funid = case FinMap.remove ((absprjid_and_funid, !region_profiling), !rep)
 					       of SOME res => rep := res
 						| _ => ()
-	fun delete_entries prjid_and_funid = (ElabRep.delete_entries prjid_and_funid; 
-					      delete_rep intRep prjid_and_funid;
-					      delete_rep intRep' prjid_and_funid)
-	fun lookup_rep rep exportnames_from_entry prjid_and_funid =
+	fun delete_entries absprjid_and_funid = (ElabRep.delete_entries absprjid_and_funid; 
+						 delete_rep intRep absprjid_and_funid;
+						 delete_rep intRep' absprjid_and_funid)
+	fun lookup_rep rep exportnames_from_entry absprjid_and_funid =
 	  let val all_gen = foldl (fn (n, b) => b andalso Name.is_gen n) true
 	      fun find ([], n) = NONE
 		| find (entry::entries, n) = 
 		if (all_gen o exportnames_from_entry) entry then SOME(n,entry)
 		else find(entries,n+1)
-	  in case FinMap.lookup (!rep) (prjid_and_funid, !region_profiling)
+	  in case FinMap.lookup (!rep) (absprjid_and_funid, !region_profiling)
 	       of SOME entries => find(entries, 0)
 		| NONE => NONE
 	  end
 
-	fun add_rep rep (prjid_and_funid,entry) : unit =
+	fun add_rep rep (absprjid_and_funid,entry) : unit =
 	  rep := let val r = !rep 
-		     val i = (prjid_and_funid, !region_profiling)
+		     val i = (absprjid_and_funid, !region_profiling)
 		 in case FinMap.lookup r i
 		      of SOME res => FinMap.add(i,res @ [entry],r)
 		       | NONE => FinMap.add(i,[entry],r)
 		 end
 
-	fun owr_rep rep (prjid_and_funid,n,entry) : unit =
+	fun owr_rep rep (absprjid_and_funid,n,entry) : unit =
 	  rep := let val r = !rep
-		     val i = (prjid_and_funid, !region_profiling)
+		     val i = (absprjid_and_funid, !region_profiling)
 	             fun owr(0,entry::res,entry') = entry'::res
 		       | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
 		       | owr _ = die "owr_rep.owr"
@@ -711,19 +710,19 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	val lookup_int = lookup_rep intRep #5
 	val lookup_int' = lookup_rep intRep' #5
 
-	fun add_int (prjid_and_funid,entry) = 
+	fun add_int (absprjid_and_funid,entry) = 
 	  if ModCode.all_emitted (#6 entry) then  (* just make sure... *)
-	    add_rep intRep (prjid_and_funid, entry)
+	    add_rep intRep (absprjid_and_funid, entry)
 	  else die "add_int"
 
-	fun add_int' (prjid_and_funid,entry) = 
+	fun add_int' (absprjid_and_funid,entry) = 
 	  if ModCode.all_emitted (#6 entry) then  (* just make sure... *)
-	    add_rep intRep' (prjid_and_funid, entry)
+	    add_rep intRep' (absprjid_and_funid, entry)
 	  else die "add_int'"
 
-	fun owr_int (prjid_and_funid,n,entry) =
+	fun owr_int (absprjid_and_funid,n,entry) =
 	  if ModCode.all_emitted (#6 entry) then  (* just make sure... *)
-	    owr_rep intRep (prjid_and_funid,n,entry)
+	    owr_rep intRep (absprjid_and_funid,n,entry)
 	  else die "owr_int"
 
 	fun recover_intrep ir =

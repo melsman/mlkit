@@ -25,7 +25,7 @@ functor ElabTopdec
    structure Flags : FLAGS
    structure Crash : CRASH
 
-   sharing type ElabRep.prjid = ModuleEnvironments.prjid
+   sharing type ElabRep.absprjid = ModuleEnvironments.absprjid
    sharing ElabInfo.ParseInfo = ParseInfo
    sharing ElabInfo.TypeInfo.TyName = StatObject.TyName
    sharing Environments.TyName = StatObject.TyName
@@ -166,7 +166,7 @@ functor ElabTopdec
     type Basis             = ModuleEnvironments.Basis
     type FunEnv            = ModuleEnvironments.FunEnv
     type SigEnv            = ModuleEnvironments.SigEnv
-    type prjid             = ModuleEnvironments.prjid
+    type absprjid          = ModuleEnvironments.absprjid
     structure G            = ModuleEnvironments.G
     structure F            = ModuleEnvironments.F
     structure B            = ModuleEnvironments.B
@@ -412,21 +412,21 @@ functor ElabTopdec
      * Match object in repository (for recompilation)
      * ------------------------------------------------ *)
 
-    fun match_and_update_repository (prjid_and_funid,T',E') : unit =
+    fun match_and_update_repository (absprjid_and_funid,T',E') : unit =
       let val N' = map TyName.name (TyName.Set.list T')
 	  val B' = B.from_E E'
 	  val obj = (ElabRep.empty_infix_basis,B.empty,[],(ElabRep.empty_opaq_env, TyName.Set.empty), 
 		     N',ElabRep.empty_infix_basis,B', ElabRep.empty_opaq_env)
-      in case ElabRep.lookup_elab prjid_and_funid
+      in case ElabRep.lookup_elab absprjid_and_funid
 	   of SOME (index,(_,_,_,_,N,_,B,_)) =>  (* Names in N already marked generative, 
 						  * because the object is returned by lookup. *)
 	     (List.apply Name.mark_gen N';
 	      B.match(B',B);
 	      List.apply Name.unmark_gen N';
 	      List.apply Name.mk_rigid N';
-	      ElabRep.owr_elab(prjid_and_funid,index,obj))
+	      ElabRep.owr_elab(absprjid_and_funid,index,obj))
 
-	    | NONE => ElabRep.add_elab(prjid_and_funid,obj)
+	    | NONE => ElabRep.add_elab(absprjid_and_funid,obj)
       end
 
     (* --------------------------------------------
@@ -471,8 +471,8 @@ functor ElabTopdec
     fun map_Some_on_2nd' (x,y,z) = (x,SOME y,z)
     fun map_Some_on_3nd (x,z,y) = (x,z,SOME y)
       
-    fun elab_X_opt (prjid, Y, SOME X) elab_X empty_Z = map_Some_on_2nd (elab_X (prjid, Y, X))
-      | elab_X_opt (prjid, Y, NONE) elab_X empty_Z = (empty_Z, NONE)
+    fun elab_X_opt (absprjid, Y, SOME X) elab_X empty_Z = map_Some_on_2nd (elab_X (absprjid, Y, X))
+      | elab_X_opt (absprjid, Y, NONE) elab_X empty_Z = (empty_Z, NONE)
 
     fun elab_X_opt' (Y, SOME X) elab_X empty_Z empty_W = map_Some_on_3nd (elab_X (Y, X))
       | elab_X_opt' (Y, NONE) elab_X empty_Z empty_W = (empty_Z, empty_W, NONE)
@@ -540,7 +540,7 @@ functor ElabTopdec
 	    val (T, E, out_strexp) = elab_strexp (B, strexp)
 	  in
 	    case lookup_funid B funid of
-	       SOME (prjid, Phi) =>                                          (* rea_inst is for argument instanti-  *)
+	       SOME (absprjid, Phi) =>                                       (* rea_inst is for argument instanti-  *)
 		(let val (T'E', rea_inst, rea_gen) = Phi_match_via(Phi,E)    (* ation; rea_gen accounts for genera- *)
 		     val (T',E') = Sigma_to_T_and_E T'E'                     (* tive names in the functor body.     *)
 		     val out_i = typeConv(i,TypeInfo.FUNCTOR_APP_INFO {rea_inst=rea_inst,rea_gen=rea_gen,Env=E'})
@@ -549,7 +549,7 @@ functor ElabTopdec
 		     val _ = (print "**Functor argument E = \n"; pr_Env E; print "\n")
 		     val _ = (print "**Functor result E = \n"; pr_Env E'; print "\n")
 *)
-		     val _:{} = match_and_update_repository ((prjid,funid),T',E')
+		     val _:{} = match_and_update_repository ((absprjid,funid),T',E')
 		 in (T @ (TyName.Set.list T'), E', OG.APPstrexp (out_i, funid, out_strexp)) 
 		 end handle No_match reason =>                       (* We bind the argument names in error_result *)
 		   let	                                             (* so that the argument signature returned is *)
@@ -1236,12 +1236,12 @@ functor ElabTopdec
     (* Functor Declarations - Definition v3 pages 42-43 *)
     (****************************************************)
 
-    and elab_fundec (prjid : prjid, B : Basis, fundec : IG.fundec)
+    and elab_fundec (absprjid : absprjid, B : Basis, fundec : IG.fundec)
       : (FunEnv * OG.fundec) =
 	                                                    (*rule 85*)
       (case fundec of
 	 IG.FUNCTORfundec (i, funbind) =>
-	   let val (F, out_funbind) = elab_funbind (prjid, B, funbind)
+	   let val (F, out_funbind) = elab_funbind (absprjid, B, funbind)
 	   in
 	     (F, OG.FUNCTORfundec(okConv i, out_funbind))
 	   end)
@@ -1250,7 +1250,7 @@ functor ElabTopdec
     (* Functor Bindings - Definition v3 page 43 *)
     (********************************************)
 
-    and elab_funbind (prjid : prjid, B : Basis, funbind : IG.funbind)
+    and elab_funbind (absprjid : absprjid, B : Basis, funbind : IG.funbind)
       : (FunEnv * OG.funbind) =
 	                                                    (*rule 86*)
       (case funbind of
@@ -1267,13 +1267,13 @@ functor ElabTopdec
 	    val (T'', E', out_strexp) = elab_strexp(B', strexp)
 	    val T' = TyName.Set.intersect (tynames_E E') (TyName.Set.fromList T'')
 	    val T'E' = Sigma.from_T_and_E (T',E')
-	    val (F, out_funbind_opt) = elab_X_opt (prjid, B, funbind_opt) elab_funbind F.empty
+	    val (F, out_funbind_opt) = elab_X_opt (absprjid, B, funbind_opt) elab_funbind F.empty
 	    val out_i = if EqSet.member funid (F.dom F)
 			then repeatedIdsError (i, [ErrorInfo.FUNID_RID funid])
 			else ElabInfo.plus_TypeInfo (okConv i) 
 			  (TypeInfo.FUNBIND_INFO {argE=E,elabBref=ref B',T=TyName.Set.fromList T'',resE=E',opaq_env_opt=NONE})
 	  in
-	    (F.singleton (funid, (prjid,Phi.from_T_and_E_and_Sigma (T, E, T'E'))) F_plus_F F,
+	    (F.singleton (funid, (absprjid,Phi.from_T_and_E_and_Sigma (T, E, T'E'))) F_plus_F F,
 	     OG.FUNBIND (out_i, funid, strid, out_sigexp, out_strexp,
 			 out_funbind_opt))
 	  end)
@@ -1283,31 +1283,31 @@ functor ElabTopdec
     (* Top-level Declarations - Definition 1997, rules 87-89    *)
     (************************************************************)
 
-    and elab_topdec (prjid : prjid, B : Basis, topdec : IG.topdec)    (* we check for free tyvars later *)
+    and elab_topdec (absprjid : absprjid, B : Basis, topdec : IG.topdec)    (* we check for free tyvars later *)
           : (Basis * OG.topdec) =
       case topdec 
 	of IG.STRtopdec (i, strdec, topdec_opt) =>                                      (* 87 *)
 	  let val (_, E, out_strdec) = elab_strdec(B, strdec)
-	      val (B', out_topdec_opt) = elab_topdec_opt(prjid, B B_plus_E E, topdec_opt)
+	      val (B', out_topdec_opt) = elab_topdec_opt(absprjid, B B_plus_E E, topdec_opt)
 	      val B'' = (B.from_E E) B_plus_B B'
 	  in (B'', OG.STRtopdec(okConv i, out_strdec, out_topdec_opt))
 	  end
 	 | IG.SIGtopdec (i, sigdec, topdec_opt) =>                                      (* 88 *)
 	  let val (G, out_sigdec) = elab_sigdec(B, sigdec)
-	      val (B', out_topdec_opt) = elab_topdec_opt(prjid, B B_plus_G G, topdec_opt)
+	      val (B', out_topdec_opt) = elab_topdec_opt(absprjid, B B_plus_G G, topdec_opt)
 	      val B'' = (B.from_G G) B_plus_B B'
 	  in (B'', OG.SIGtopdec(okConv i, out_sigdec, out_topdec_opt))
 	  end
 	 | IG.FUNtopdec (i, fundec, topdec_opt) =>                                      (* 89 *)
-	  let val (F, out_fundec) = elab_fundec(prjid, B, fundec)
-	      val (B', out_topdec_opt) = elab_topdec_opt(prjid, B B_plus_F F, topdec_opt)
+	  let val (F, out_fundec) = elab_fundec(absprjid, B, fundec)
+	      val (B', out_topdec_opt) = elab_topdec_opt(absprjid, B B_plus_F F, topdec_opt)
 	      val B'' = (B.from_F F) B_plus_B B'
 	  in (B'', OG.FUNtopdec(okConv i, out_fundec, out_topdec_opt))
 	  end
 
-    and elab_topdec_opt (prjid : prjid, B : Basis, topdec_opt : IG.topdec option) : (Basis * OG.topdec option) =
+    and elab_topdec_opt (absprjid : absprjid, B : Basis, topdec_opt : IG.topdec option) : (Basis * OG.topdec option) =
       case topdec_opt
-	of SOME topdec => let val (B', out_topdec) = elab_topdec(prjid, B, topdec)
+	of SOME topdec => let val (B', out_topdec) = elab_topdec(absprjid, B, topdec)
 			  in (B', SOME out_topdec)
 			  end
 	 | NONE => (B.empty, NONE)
@@ -1328,8 +1328,8 @@ functor ElabTopdec
     | OG.SIGtopdec(_,sigdec,topdecopt) => OG.SIGtopdec(i,sigdec,topdecopt)
     | OG.FUNtopdec(_,fundec,topdecopt) => OG.FUNtopdec(i,fundec,topdecopt)
 
-    fun elab_topdec' (prjid : prjid, B : Basis, topdec) =
-      let val res as (B',topdec') = elab_topdec(prjid,B,topdec)
+    fun elab_topdec' (absprjid : absprjid, B : Basis, topdec) =
+      let val res as (B',topdec') = elab_topdec(absprjid,B,topdec)
       in case tyvars_B' B'
 	   of [] => res
 	    | tyvars => let val i = IG.info_on_topdec topdec 

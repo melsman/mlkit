@@ -5,32 +5,32 @@ signature ELAB_REPOSITORY =
     structure TyName : TYNAME
 
     type funid and InfixBasis and ElabBasis and opaq_env and name and longstrid
-    type prjid (* = string *)
+    type absprjid
 
     val empty_infix_basis : InfixBasis
     val empty_opaq_env : opaq_env
 
     val clear : unit -> unit
-    val delete_entries : prjid * funid -> unit
+    val delete_entries : absprjid * funid -> unit
 
-	  (* Repository lookup's return the first entry for a (prjid,funid)
-	   * which is reusable (i.e. where all export (ty-)names are
+	  (* Repository lookup's return the first entry for a (absprjid,funid)
+	   * that is reusable (i.e. where all export (ty-)names are
 	   * marked generative.) In particular, this means that an
-	   * entry which has been added, cannot be returned by a
+	   * entry that has been added, cannot be returned by a
 	   * lookup, prior to executing `recover().' The integer
 	   * provided by the lookup functions can be given to the
 	   * overwrite functions for owerwriting a particular
 	   * entry. *)
 
-    val lookup_elab : (prjid * funid) -> 
+    val lookup_elab : (absprjid * funid) -> 
       (int * (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
 	      InfixBasis * ElabBasis * opaq_env)) option
 
-    val add_elab : (prjid * funid) * 
+    val add_elab : (absprjid * funid) * 
       (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
        InfixBasis * ElabBasis * opaq_env) -> unit
 
-    val owr_elab : (prjid * funid) * int * 
+    val owr_elab : (absprjid * funid) * int * 
       (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
        InfixBasis * ElabBasis * opaq_env) -> unit
 

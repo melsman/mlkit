@@ -32,8 +32,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		structure PP : PRETTYPRINT
 		  sharing type PP.StringTree = FreeIds.StringTree = ManagerObjects.StringTree = OpacityElim.OpacityEnv.StringTree
                 structure Flags : FLAGS
-                sharing type ModuleEnvironments.prjid = ManagerObjects.prjid =
-                             IntModules.prjid  = ParseElab.prjid) : MANAGER =
+		  sharing type ModuleEnvironments.absprjid = ManagerObjects.absprjid = 
+		    IntModules.absprjid = ParseElab.absprjid
+		    
+		    ) : MANAGER =
   struct
 
     structure Basis = ManagerObjects.Basis
@@ -47,7 +49,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun testout(s: string):unit = TextIO.output(TextIO.stdOut, s)
     fun testouttree(t:PP.StringTree) = PP.outputTree(testout,t,80)
 
-    type prjid = ModuleEnvironments.prjid
+    type absprjid = ModuleEnvironments.absprjid
+    type prjid = string
+    type longprjid = string
+
 
     fun die s = Crash.impossible ("Manager." ^ s)
 
@@ -78,6 +83,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun filename_to_unitname (f:filename) : string = ManagerObjects.filename_to_string f
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
+
+    fun mk_absolute p = OS.Path.mkAbsolute(p,OS.FileSys.getDir())
 
 
     (* ----------------------------------------------------
@@ -119,13 +126,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * Some parsing functions
      * ---------------------------------------- *)
 
-    fun drop_comments (prjid:prjid) (l: char list) : char list =
+    fun drop_comments (absprjid:absprjid) (l: char list) : char list =
       let fun loop(n, #"(" :: #"*" :: rest ) = loop(n+1, rest)
 	    | loop(n, #"*" :: #")" :: rest ) = loop(n-1, if n=1 then #" "::rest else rest)
 	    | loop(0, ch ::rest) = ch :: loop (0,rest)
 	    | loop(0, []) = []
 	    | loop(n, ch ::rest) = loop(n,rest)
-	    | loop(n, []) = error ("Unclosed comment in project " ^quot(ModuleEnvironments.prjid_to_string prjid))
+	    | loop(n, []) = error ("Unclosed comment in project " ^quot(ModuleEnvironments.absprjid_to_string absprjid))
       in loop(0,l)
       end
 	
@@ -142,39 +149,32 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun print_result_report report = (Report.print' report (!Flags.log);
 				      Flags.report_warnings ())
 
-(*
-    (* ---------------------------------------
-     * Reset and commit
-     * --------------------------------------- *)
-	
-    fun reset() = (IntModules.reset(); Repository.clear(); Flags.reset_warnings())
-    fun commit() = IntModules.commit()
-*)
-
     (* ----------
      * Projects
      * ---------- *)
 
+    fun mk_absprjid_from_path s = ModuleEnvironments.mk_absprjid(mk_absolute s)
     type extobj = string   (* externally compiled objects; .o-files *)
-(*    type prjid = ModuleEnvironments.prjid *)
     type unitid = string
     datatype body = EMPTYbody
                   | LOCALbody of body * body * body
                   | UNITbody of unitid * body
-    type prj = {imports : prjid list, extobjs: extobj list, body : body}
+    type prj = {imports : absprjid list, extobjs: extobj list, body : body}
 
     fun layout_body (b: body): PP.StringTree = 
+      case layout_body' b of
+	nil => PP.LEAF ""
+      | l => PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ", children = l}
+    and layout_body' (b: body) : PP.StringTree list =
       case b of
-        EMPTYbody => PP.LEAF "(empty body)"
-      | LOCALbody(b1,b2,b3) => PP.NODE{start = "begin body ", finish = " end body", indent = 2, childsep = PP.RIGHT"%",
-                                      children = map layout_body [b1,b2,b3]}
-      | UNITbody(uid, b) => PP.NODE{start = "unit ", finish = " end unit", indent = 5, childsep = PP.RIGHT" in ",
-                                      children = [PP.LEAF uid, layout_body b]}
-                  
+	EMPTYbody => []
+      | LOCALbody(b1,b2,b3) => PP.NODE{start = "local ", finish = " end", indent = 2, childsep = PP.LEFT " in ",
+				       children = map layout_body [b1,b2]}:: layout_body' b3
+      | UNITbody(uid,b') => PP.LEAF uid :: layout_body' b'
 
     fun layout_prj{imports, extobjs, body} = 
       let val t1 = PP.NODE{start="imports= ", finish = ";", indent=1, childsep = PP.RIGHT " ",
-                           children = map (PP.LEAF o ModuleEnvironments.prjid_to_string) imports}
+                           children = map (PP.LEAF o ModuleEnvironments.absprjid_to_string) imports}
           val t2 = PP.NODE{start="extobjs= ", finish = ";", indent=1, childsep = PP.RIGHT " ",
                            children = map PP.LEAF extobjs}
           val t3 = PP.NODE{start="body= ", finish = ";", indent=1, childsep = PP.RIGHT " ",
@@ -191,24 +191,24 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       in TextIO.closeIn is; s
       end
     
-    fun parse_project (prjid : prjid) : prj =
+    fun parse_project (absprjid : absprjid) : prj =  (* This function requires the current directory to
+						      * be the directory that holds the project to be parsed;
+						      * otherwise, incorrect absolute paths are made. *)
       let
- 
-        val prjid_s = ModuleEnvironments.prjid_to_string prjid
+         val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
 
-        fun parse_error s' = error ("while parsing project: " ^ quot prjid_s ^ " : " ^ s')
+        fun parse_error s' = error ("while parsing project: " ^ quot absprjid_s ^ " : " ^ s')
         fun parse_error1(s', rest: string list) = 
           case rest of 
-            [] => error ("while parsing project: " ^ quot prjid_s ^ " : " ^ s' ^ "(reached end of file)")
-          | s::_ => error ("while parsing project: " ^ quot prjid_s ^ " : " ^ s' ^ "(reached `" ^ s ^ "')")
+            [] => error ("while parsing project: " ^ quot absprjid_s ^ " : " ^ s' ^ "(reached end of file)")
+          | s::_ => error ("while parsing project: " ^ quot absprjid_s ^ " : " ^ s' ^ "(reached `" ^ s ^ "')")
              
+	fun has_ext(s: string,ext) = case OS.Path.ext s
+				       of SOME ext' => ext = ext'
+					| NONE => false
 
-	fun has_ext(s: string,ext) = case OS.Path.ext( s)
-			       of SOME ext' => ext = ext'
-				| NONE => false
-
-	val _ = if has_ext(ModuleEnvironments.prjid_to_string prjid, "pm") then ()
-		else error ("Your project file " ^ quot(ModuleEnvironments.prjid_to_string prjid) ^ " does not have extension `pm'")
+	val _ = if has_ext(absprjid_s, "pm") then ()
+		else error ("Your project file " ^ quot absprjid_s ^ " does not have extension `pm'")
 
 	fun is_whitesp #"\n" = true
 	  | is_whitesp #" " = true
@@ -271,45 +271,45 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      else NONE 
 		
         fun parse_prj (ss : string list) : prj =
-	  let fun parse_end({prjids,objs}, body, ss) =
+	  let fun parse_end({absprjids,objs}, body, ss) =
 	        case ss
-		  of [] => {imports=prjids,extobjs=objs,body=body}
-		   | _ => parse_error1( "I expect end of file", ss)
+		  of [] => {imports=absprjids,extobjs=objs,body=body}
+		   | _ => parse_error1("I expect end of file", ss)
 	  in case ss
 	       of [] => {imports=[],extobjs=[],body=EMPTYbody}
 		| "import" :: ss =>
-		 let fun parse_rest'(prjids_objs,body,ss) =
+		 let fun parse_rest'(absprjids_objs,body,ss) =
 		       case ss
-			 of "end" :: ss => parse_end(prjids_objs,body,ss)
+			 of "end" :: ss => parse_end(absprjids_objs,body,ss)
 			  | _ => parse_error1( "I expect an `end'", ss)
-		     fun parse_rest(prjids_objs, ss) =
+		     fun parse_rest(absprjids_objs, ss) =
 		       case ss
 			 of "in" :: ss =>
 			   (case parse_body_opt ss
-			      of SOME(body, ss) => parse_rest'(prjids_objs,body,ss)
-			       | NONE => parse_rest'(prjids_objs,EMPTYbody,ss))
+			      of SOME(body, ss) => parse_rest'(absprjids_objs,body,ss)
+			       | NONE => parse_rest'(absprjids_objs,EMPTYbody,ss))
 			  | _ => parse_error1( "I expect an `in'", ss)
-		 in case parse_prjids_opt ss
-		      of SOME(prjids_objs,ss) => parse_rest(prjids_objs,ss)
-		       | NONE => parse_rest({prjids=[],objs=[]},ss)
+		 in case parse_absprjids_opt ss
+		      of SOME(absprjids_objs,ss) => parse_rest(absprjids_objs,ss)
+		       | NONE => parse_rest({absprjids=[],objs=[]},ss)
 		 end
 		| _ => (case parse_body_opt ss
-			  of SOME(body,ss) => parse_end({prjids=[],objs=[]},body,ss)
+			  of SOME(body,ss) => parse_end({absprjids=[],objs=[]},body,ss)
 			   | NONE => parse_error( "I expect an `import' or a body"))
 	  end
 
-	and parse_prjids_opt (ss: string list) : ({prjids:prjid list, objs:string list} * string list) option =
+	and parse_absprjids_opt (ss: string list) : ({absprjids:absprjid list, objs:string list} * string list) option =
 	  case ss
 	    of s :: ss =>
 	      if has_ext(s,"pm") then 
-		case parse_prjids_opt ss
-		  of SOME({prjids,objs},ss) => SOME({prjids=ModuleEnvironments.mk_prjid s::prjids,objs=objs}, ss)
-		   | NONE => SOME({prjids=[ModuleEnvironments.mk_prjid  s],objs=[]}, ss)
+		case parse_absprjids_opt ss
+		  of SOME({absprjids,objs},ss) => SOME({absprjids=mk_absprjid_from_path s::absprjids, objs=objs}, ss)
+		   | NONE => SOME({absprjids=[mk_absprjid_from_path s],objs=[]}, ss)
 	      else if has_ext(s, "o") then
 		let fun parse_with_obj(obj, ss) =
-		      case parse_prjids_opt ss
-			of SOME({prjids,objs},ss) => SOME({prjids=prjids,objs=obj::objs}, ss)
-			 | NONE => SOME({prjids=[],objs=[obj]}, ss)
+		      case parse_absprjids_opt ss
+			of SOME({absprjids,objs},ss) => SOME({absprjids=absprjids,objs=mk_absolute obj::objs}, ss)
+			 | NONE => SOME({absprjids=[],objs=[mk_absolute obj]}, ss)
 		in case ss
 		     of ":"::s'::ss' =>
 		       if has_ext(s', "o") then
@@ -326,37 +326,41 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      else NONE
 	     | _  => NONE
 
-        val filename = ModuleEnvironments.prjid_to_string prjid
-	val prj = (parse_prj o lex o (drop_comments prjid) o explode o fromFile) filename
-	  handle IO.Io {name=io_s,...} => error ("The project " ^ quot filename ^ " cannot be opened")
+	val prj = (parse_prj o lex o (drop_comments absprjid) o explode o fromFile) absprjid_s
+	  handle IO.Io {name=io_s,...} => error ("The project " ^ quot absprjid_s ^ " cannot be opened")
 
       in prj
       end
 
-    fun local_check_project (prjid0:prjid, {imports,extobjs,body}:prj) : unit =
+    (* local_check_project  checks that a project file (1) mentions a
+     * program unit atmost once, (2) mentions a project file atmost once,
+     * and (3) mentions only existing external object files (o-files). *)
+
+    fun local_check_project (absprjid0:absprjid, {imports,extobjs,body}:prj) : unit =
       let fun check_imports (_,[]) = ()
-	    | check_imports (P, prjid :: rest) =
-	     let val prjid = (*OS.Path.file*) prjid (*mads: compare full file names *)
-	     in if member prjid P  then error ("The project " ^ quot(ModuleEnvironments.prjid_to_string  prjid) ^ 
-					      " is imported twice in project " ^ quot(ModuleEnvironments.prjid_to_string prjid0))
-		else check_imports(prjid::P,rest)
-	     end
+	    | check_imports (P, absprjid :: rest) =
+	       if member absprjid P then 
+		 error ("The project " ^ quot(ModuleEnvironments.absprjid_to_string absprjid) ^ 
+			" is imported twice in project " ^ quot(ModuleEnvironments.absprjid_to_string absprjid0))
+		else check_imports(absprjid::P,rest)
 	  fun check_extobj extobj =
 	     let val extobj = OS.Path.file extobj
 	         fun exists file = OS.FileSys.access(file,[])
-	     in if not(exists extobj) then error ("The external object file " ^ quot extobj ^ 
-						  " imported in project " ^ quot(ModuleEnvironments.prjid_to_string prjid0) ^ 
-						  " does not exist; first, compile this file.") 
+	     in if not(exists extobj) then 
+	       error ("The external object file " ^ quot extobj ^ " imported in project " ^ 
+		      quot(ModuleEnvironments.absprjid_to_string absprjid0) ^ 
+		      " does not exist; first, compile this file.") 
 		else ()
 	     end
-	  fun check_body (U, body) =
-	    case body
+	  fun check_body (U, body) =    (* Hmm; we do not allow two program units residing *)
+	    case body                   (* in different directories to have the same name! *)
 	      of EMPTYbody => U
 	       | LOCALbody(body1,body2,body3) => check_body(check_body(check_body(U,body1), body2), body3)
 	       | UNITbody (longunitid, body') => 
 		let val unitid = OS.Path.file longunitid
 		in if member unitid U then 
-                      error ("The program unit " ^ quot unitid ^ " is included twice in project " ^ quot(ModuleEnvironments.prjid_to_string prjid0))
+                      error ("The program unit " ^ quot unitid ^ " is included twice in project " ^ 
+			     quot(ModuleEnvironments.absprjid_to_string absprjid0))
 		   else check_body(unitid::U, body')
 		end
       in check_body([], body); check_imports([], imports); List.app check_extobj extobjs
@@ -369,8 +373,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     (* Matching of export elaboration and interpretation bases to
      * those in repository for a given funid *)
 
-    fun match_elab(names_elab, elabB, opaq_env, prjid, funid) =
-      case Repository.lookup_elab (prjid,funid)
+    fun match_elab(names_elab, elabB, opaq_env, absprjid, funid) =
+      case Repository.lookup_elab (absprjid,funid)
 	of SOME (_,(_,_,_,_,names_elab',_,elabB',opaq_env')) => (* names_elab' are already marked generative - lookup *)
 	  (List.app Name.mark_gen names_elab;                   (* returned the entry. The invariant is that every *)
 	   ElabBasis.match(elabB, elabB');                      (* name in the bucket is generative. *)
@@ -379,8 +383,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	   List.app Name.mk_rigid names_elab)
 	 | NONE => (List.app Name.mk_rigid names_elab) (*bad luck*)
 
-    fun match_int(names_int, intB, prjid, funid) =
-      case Repository.lookup_int' (prjid,funid)
+    fun match_int(names_int, intB, absprjid, funid) =
+      case Repository.lookup_int' (absprjid,funid)
 	of SOME(_,(_,_,_,_,names_int',_,tintB')) =>   (* names_int' are already marked generative - lookup *)
 	  (List.app Name.mark_gen names_int;          (* returned the entry. The invariant is that every *)
 	   IntBasis.match(intB, tintB');              (* name in the bucket is generative. *)
@@ -399,7 +403,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun OpacityElim_restrict a = OpacityElim.OpacityEnv.restrict a
     fun opacity_elimination a = OpacityElim.opacity_elimination a
 
-    fun parse_elab_interp (prjid,B, funid, punit, funstamp_now) : Basis * modcode =
+    fun parse_elab_interp (absprjid:absprjid,B, funid, punit, funstamp_now) : Basis * modcode =
           let val _ = Timing.reset_timings()
 	      val _ = Timing.new_file punit
 	      val (infB, elabB, opaq_env, topIntB) = Basis.un B
@@ -408,7 +412,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      val _ = Name.bucket := []
 	      val _ = Flags.reset_warnings ()
 	      val _ = print("[reading source file:\t" ^ punit ^ "]\n")
-	      val res = ParseElab.parse_elab {prjid=prjid,infB=infB,elabB=elabB, file=punit} 
+	      val res = ParseElab.parse_elab {absprjid=absprjid,infB=infB,elabB=elabB, file=punit} 
 	  in (case res
 		of ParseElab.FAILURE (report, error_codes) => (print_error_report report; raise PARSE_ELAB_ERROR error_codes)
 		 | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
@@ -443,7 +447,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      val _ = chat "[interpretation begin...]"
 		      val names_elab = !Name.bucket
 		      val _ = Name.bucket := []
-		      val (intB', modc) = IntModules.interp(prjid, intB_im, topdec', unitname)
+		      val (intB', modc) = IntModules.interp(absprjid, intB_im, topdec', unitname)
 		      val names_int = !Name.bucket
 		      val _ = Name.bucket := []
 		      val _ = chat "[interpretation end...]"
@@ -452,20 +456,20 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		       * bases to those found in repository. *)
 
 		      val _ = chat "[matching begin...]"
-		      val _ = match_elab(names_elab, elabB', opaq_env', prjid, funid)
-		      val _ = match_int(names_int, intB', prjid, funid)
+		      val _ = match_elab(names_elab, elabB', opaq_env', absprjid, funid)
+		      val _ = match_int(names_int, intB', absprjid, funid)
 		      val _ = chat "[matching end...]"
 
-		      val _ = Repository.delete_entries (prjid,funid)
+		      val _ = Repository.delete_entries (absprjid,funid)
 
-		      val _ = Repository.add_elab ((prjid,funid), (infB, elabB_im, longstrids, (opaq_env_im,tynames_elabB_im), 
-								   names_elab, infB', elabB', opaq_env'))
-		      val modc = ModCode.emit (prjid,modc)  (* When module code is inserted in repository,
-							     * names become rigid, so we emit the module code. *)
+		      val _ = Repository.add_elab ((absprjid,funid), (infB, elabB_im, longstrids, (opaq_env_im,tynames_elabB_im), 
+								      names_elab, infB', elabB', opaq_env'))
+		      val modc = ModCode.emit (absprjid,modc)  (* When module code is inserted in repository,
+								* names become rigid, so we emit the module code. *)
 		      val elabE' = ElabBasis.to_E elabB'
 		      val tintB_im = intB_im
 		      val tintB' = intB'
-		      val _ = Repository.add_int' ((prjid,funid),(funstamp_now,elabE',tintB_im,longstrids,names_int,modc,tintB'))
+		      val _ = Repository.add_int' ((absprjid,funid),(funstamp_now,elabE',tintB_im,longstrids,names_int,modc,tintB'))
 		      val B' = Basis.mk(infB',elabB',opaq_env',tintB')
 		  in print_result_report report;
 		    log_cleanup();
@@ -483,7 +487,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun Basis_enrich a = Basis.enrich a
     fun Basis_agree a = Basis.agree a
 
-    fun build_punit(prjid,B: Basis, punit : string, clean : bool) : Basis * modcode * bool * Time.time =
+    fun build_punit(absprjid:absprjid,B: Basis, punit : string, clean : bool) : Basis * modcode * bool * Time.time =
       (* The bool is a `clean' flag;  *)
       let
           val funid = ManagerObjects.funid_from_filename(ManagerObjects.mk_filename punit)
@@ -492,12 +496,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		  handle _ => NONE, FunStamp.from_filemodtime(ManagerObjects.mk_filename punit))   (*always get funstamp before reading content*)
 	      of (SOME modtime, SOME fs) => (modtime, fs)
 	       | _ => error ("The program unit " ^ quot punit ^ " does not exist")
-	  exception CAN'T_REUSE
-      in (case (Repository_lookup_elab (prjid,funid), Repository_lookup_int' (prjid,funid))
+	  exception CAN'T_REUSE of string
+      in (case (Repository_lookup_elab (absprjid,funid), Repository_lookup_int' (absprjid,funid))
 	    of (SOME(_,(infB, elabB, longstrids, (opaq_env,dom_opaq_env), names_elab, infB', elabB', opaq_env')), 
 		SOME(_,(funstamp, elabE, tintB, _, names_int, modc, tintB'))) =>
-	      if FunStamp.eq(funstamp,funstamp_now) andalso ModCode.exist modc then
-		(if clean then (print ("[reusing code for: \t" ^ punit ^ "]\n");
+	      if FunStamp.eq(funstamp,funstamp_now) then
+		if ModCode.exist modc then
+		(if clean then (if !Flags.chat then print ("[reusing code for: \t" ^ punit ^ "]\n") else ();
 				(Basis.mk(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
 		 else if
 		        let
@@ -512,17 +517,19 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			    Basis_agree(longstrids,B,(B_im, dom_opaq_env))
 			in (if res then () else remark_names() ; res)
 			end then 
-	  		          (print ("[reusing code for: \t" ^ punit ^ " *]\n");
+	  		          (if !Flags.chat then print ("[reusing code for: \t" ^ punit ^ " *]\n") else ();
 				   (Basis.mk(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
 
-		 else raise CAN'T_REUSE)
-
-	      else raise CAN'T_REUSE
+		 else raise CAN'T_REUSE "enrichment failed")
+		else raise CAN'T_REUSE "object file does not exist"
+	      else raise CAN'T_REUSE "program unit is modified"
 	      
-	     | _ => raise CAN'T_REUSE)
+	     | _ => raise CAN'T_REUSE "no rep info")
 
-	handle CAN'T_REUSE =>
-	  let val (Bex, modc) = parse_elab_interp (prjid,B, funid, punit, funstamp_now)
+	handle CAN'T_REUSE s =>
+	  let val _ = case s of "no rep info" => ()
+	                      | _ => print ("[cannot reuse code for " ^ quot punit ^ " -- " ^ s ^ ".]\n")
+	      val (Bex, modc) = parse_elab_interp (absprjid,B, funid, punit, funstamp_now)
 	  in (Bex, modc, false, modtime) (*not clean*)
 	  end
       end 
@@ -566,27 +573,27 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * (string*Time.time)list provides modification times for each of
      * the source files mentioned in the project. *)
 
-    fun build_unitid(prjid, B, unitid, clean, modtimes) 
+    fun build_unitid(absprjid, B, unitid, clean, modtimes) 
       : Basis * modcode * bool * (string * Time.time) list =  
       let val {cd_old, file=unitid} = change_dir unitid
       in let val _ = maybe_create_PM_dir()
-	     val (B', modc, clean, modtime) = build_punit (prjid, B, unitid, clean)
+	     val (B', modc, clean, modtime) = build_punit (absprjid, B, unitid, clean)
 	 in cd_old(); (B', modc, clean, (unitid,modtime)::modtimes)
 	 end handle E => (cd_old(); raise E)
       end
 
     (* Build a sequence of units *)
-    fun build_unitids(prjid, B, Bacc, unitids, clean, modtimes)
+    fun build_unitids(absprjid, B, Bacc, unitids, clean, modtimes)
       : Basis * modcode * bool * (string * Time.time) list =  
       case unitids
 	of [] => (Bacc, ModCode.empty, clean, modtimes)
 	 | [unitid] => 
-	  let val (B', modc, clean, modtimes) = build_unitid(prjid, B, unitid, clean, modtimes)
+	  let val (B', modc, clean, modtimes) = build_unitid(absprjid, B, unitid, clean, modtimes)
 	  in (Basis_plus(Bacc, B'), modc, clean, modtimes)
 	  end
 	 | unitid::unitids => 
-	  let val (B1, modc1, clean, modtimes) = build_unitid(prjid, B, unitid, clean, modtimes)
-	      val (B2, modc2, clean, modtimes) = build_unitids(prjid, Basis_plus(B, B1), Basis_plus(Bacc,B1), 
+	  let val (B1, modc1, clean, modtimes) = build_unitid(absprjid, B, unitid, clean, modtimes)
+	      val (B2, modc2, clean, modtimes) = build_unitids(absprjid, Basis_plus(B, B1), Basis_plus(Bacc,B1), 
 							       unitids, clean, modtimes)
 	  in (B2, ModCode.seq(modc1, modc2), clean, modtimes)
 	  end
@@ -602,28 +609,28 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	end
     end
 
-    fun build_body (prjid, B: Basis, body, clean, modtimes) 
+    fun build_body (absprjid:absprjid, B: Basis, body, clean, modtimes) 
       : Basis * modcode * bool * (string * Time.time) list =  
       case body
 	of EMPTYbody => (Basis.empty, ModCode.empty, clean, modtimes)
 	 | LOCALbody (body1,body2,body3) => 
-	  let val (B1, modc1, clean, modtimes) = build_body(prjid, B, body1, clean, modtimes)
-              val (B2, modc2, clean, modtimes) = build_body(prjid, Basis_plus(B,B1), body2, clean, modtimes)
+	  let val (B1, modc1, clean, modtimes) = build_body(absprjid, B, body1, clean, modtimes)
+              val (B2, modc2, clean, modtimes) = build_body(absprjid, Basis_plus(B,B1), body2, clean, modtimes)
 	      val B1' = drop_toplevel B1
 	      val B' = Basis_plus(B1',B2)
 	      val modc' = ModCode.seq(modc1,modc2)
 	  in case body3
 	       of EMPTYbody => (B', modc', clean, modtimes)
-		| _ => let val (B3, modc3, clean, modtimes) = build_body(prjid, Basis_plus(B,B'), body3, clean, modtimes)
+		| _ => let val (B3, modc3, clean, modtimes) = build_body(absprjid, Basis_plus(B,B'), body3, clean, modtimes)
 		       in (Basis_plus(B',B3), ModCode.seq(modc',modc3), clean, modtimes)
 		       end
 	  end 
 	 | UNITbody(unitid,body) => 
 	  (case collect_units(body, [unitid])
-	     of (unitids, NONE) => build_unitids(prjid, B, Basis.empty, unitids, clean, modtimes)
+	     of (unitids, NONE) => build_unitids(absprjid, B, Basis.empty, unitids, clean, modtimes)
 	      | (unitids, SOME body) => 
-	       let val (B1, modc1, clean, modtimes) = build_unitids(prjid, B, Basis.empty, unitids, clean, modtimes)
-		   val (B2, modc2, clean, modtimes) = build_body(prjid, Basis_plus(B,B1), body, clean, modtimes)
+	       let val (B1, modc1, clean, modtimes) = build_unitids(absprjid, B, Basis.empty, unitids, clean, modtimes)
+		   val (B2, modc2, clean, modtimes) = build_body(absprjid, Basis_plus(B,B1), body, clean, modtimes)
 	       in (Basis_plus(B1,B2), ModCode.seq(modc1,modc2), clean, modtimes)
 	       end)
 
@@ -653,13 +660,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
        * changes.
        *)
 
-      (* The result of building a project is propagated to other projects. We use a project map for this. A 
-       * consistent project is one for which it holds that
-       *
-       *       OS.Path.file absprjid = OS.Path.file absprjid' => absprjid = absprjid',  
-       *       for all absolute project identifiers absprjid and absprjid'
-       *
-       * Consistency checking is implemented in the function `build_project' below.
+      (* The result of building a project is propagated to other projects. We use a project map for this.
        *
        *       prjid     ::= name.pm
        *       longprjid ::= prjid | name/longprjid
@@ -674,96 +675,77 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * ---------------------------------------------------- *)
 
     fun pmdir() = 
-      if !region_profiling then 
-	if !gc_flag then
-	  "PM/GCProf/" 
-	else 
-	  "PM/Prof/"
-      else
-	if !gc_flag then
-	  "PM/GC/" 
-	else 
-	  "PM/NoProf/"
+      if !region_profiling then if !gc_flag then "PM/GCProf/" else "PM/Prof/"
+      else if !gc_flag then "PM/GC/" else "PM/NoProf/"
 
-    type absprjid = string
+    type projectmap = (absprjid * extobj list * Basis) list
 
-    type projectmap = (prjid * absprjid * extobj list * Basis) list
-
-    fun projectmap_lookup map prjid =
+    fun projectmap_lookup map absprjid =
       let fun look [] = NONE
-	    | look ((prjid',absprjid,extobjs,basis)::rest) = 
-	        if prjid=prjid' then SOME(absprjid,extobjs,basis)
+	    | look ((absprjid',extobjs,basis)::rest) = 
+	        if absprjid=absprjid' then SOME(extobjs,basis)
 		else look rest
       in look map
       end
       
-    fun projectmap_add (prjid, absprjid, extobjs, basis, map) : projectmap =
-      (prjid, absprjid, extobjs, basis) :: map
+    fun projectmap_add (absprjid, extobjs, basis, map) : projectmap =
+      (absprjid, extobjs, basis) :: map
 
     fun projectmap_plus (projectmap1:projectmap, projectmap2) : projectmap =
       projectmap1 @ projectmap2
 
     (* Add basislib project if auto import is enabled *)
 
-    fun maybe_add_basislib (prjid:prjid) (imports:prjid list) = 
-      let val p = !Flags.basislib_project
-	  val prjid_basislib_file = OS.Path.file p
-          val prjid_file     = OS.Path.file(ModuleEnvironments.prjid_to_string prjid)     
-      in if !Flags.auto_import_basislib andalso prjid_file <> prjid_basislib_file 
-           then ModuleEnvironments.mk_prjid p :: imports
+    fun maybe_add_basislib (absprjid:absprjid) (imports:absprjid list) : absprjid list = 
+      let val absprjid_basislib = ModuleEnvironments.mk_absprjid(!Flags.basislib_project)
+      in if !Flags.auto_import_basislib andalso absprjid <> absprjid_basislib 
+	   andalso not(member absprjid_basislib imports) then absprjid_basislib :: imports
 	 else imports
       end 
 	
 
     (* Build a project *)
 
-    fun build_project {cycleset : prjid list, pmap : projectmap, longprjid : prjid} 
+    fun build_project {cycleset : absprjid list, pmap : projectmap, absprjid : absprjid} 
 
       : {res_basis : Basis, res_modc : modcode, 
 	 pmap : projectmap, extobjs : extobj list, clean : bool} =
 
-      let val {cd_old, file=prjid} = change_dir (ModuleEnvironments.prjid_to_string longprjid)
-          val lprjid_s = ModuleEnvironments.prjid_to_string longprjid
-      in let val _ = if member longprjid cycleset then
-	               warn ("There is a cycle in your project; problematic project identifier: " ^ quot lprjid_s)
+      let val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
+	  val {cd_old, file=prjid} = change_dir absprjid_s
+      in let val _ = if member absprjid cycleset then
+	               warn ("There is a cycle in your project; problematic project identifier: " ^ quot absprjid_s)
 		     else ()
-	     val prj as {imports, extobjs, body} = parse_project(ModuleEnvironments.mk_prjid lprjid_s)
-             val _ = if false then
-                       (testout("Parsed project:\n"); testouttree(layout_prj prj); testout "\n")
-                     else ()
-	     val imports =  maybe_add_basislib longprjid imports
+	     val prj as {imports, extobjs, body} = parse_project absprjid
+(*             val _ = (testout("Parsed project:\n"); testouttree(layout_prj prj); testout "\n") *)
+	     val imports = maybe_add_basislib absprjid imports
+	     val prj = {imports=imports,extobjs=extobjs,body=body}
 	     val prjid_date_file = pmdir() ^ prjid ^ ".date"
 	     val clean = older (OS.FileSys.modTime prjid, OS.FileSys.modTime prjid_date_file) handle _ => false
-	     val _ = if clean then () else local_check_project (longprjid, prj)
+	     val _ = if clean then () else local_check_project (absprjid, prj)
 	     val (B, modc, pmap, extobjs, clean) = 
-	       foldl(fn (longprjid1:prjid,(B, modc, pmap, extobjs, clean0)) => 
-		     let val absprjid1:string = OS.Path.mkAbsolute(ModuleEnvironments.prjid_to_string longprjid1, OS.FileSys.getDir())
-(*		         val prjid1 = OS.Path.file longprjid1*)
-		     in case projectmap_lookup pmap(ModuleEnvironments.mk_prjid absprjid1)
-			  of SOME(absprjid1',extobjs',B') =>
-			    if absprjid1 = absprjid1' then (Basis_plus(B,B'), modc, pmap, extobjs' @ extobjs, clean0)
-			    else error ("Your project is inconsistent! The project identifier " ^ quot absprjid1 ^ 
-					" stands\nfor different projects. Eliminate the inconsistency")
-			   | NONE => 
-			      let val {res_basis, res_modc, pmap, extobjs=extobjs', clean} = 
-				      build_project {cycleset=longprjid :: cycleset, pmap=pmap, 
-                                                     longprjid=(*longprjid1*)ModuleEnvironments.mk_prjid absprjid1}
-				  val pmap = projectmap_add(ModuleEnvironments.mk_prjid absprjid1,absprjid1,extobjs,res_basis,pmap)
-			      in (Basis_plus (B, res_basis), ModCode.seq (modc, res_modc), 
-				  pmap, extobjs' @ extobjs, clean0 andalso clean)
-			      end
-		     end) (Basis.initial, ModCode.empty, pmap, extobjs, clean) imports
+	       foldl(fn (absprjid1:absprjid,(B, modc, pmap, extobjs, clean0)) => 
+		     case projectmap_lookup pmap absprjid1
+		       of SOME(extobjs',B') => (Basis_plus(B,B'), modc, pmap, extobjs' @ extobjs, clean0)
+			| NONE => 
+			 let val {res_basis, res_modc, pmap, extobjs=extobjs', clean} = 
+			       build_project {cycleset=absprjid :: cycleset, pmap=pmap, absprjid= absprjid1}
+				  val pmap = projectmap_add(absprjid1,extobjs,res_basis,pmap)
+			 in (Basis_plus (B, res_basis), ModCode.seq (modc, res_modc), 
+			     pmap, extobjs' @ extobjs, clean0 andalso clean)
+			 end
+		       ) (Basis.initial, ModCode.empty, pmap, extobjs, clean) imports
 
 	       (* Now, check that date files associated with imported projects are older than
 		* the date file for the current project. *)
 
-	     val clean = foldl (fn (longprjid':prjid, clean) => clean andalso
-				let val {dir,file} = OS.Path.splitDirFile(ModuleEnvironments.prjid_to_string longprjid')
-				    val prjid'_date = OS.Path.concat(dir,pmdir() ^ file ^ ".date")
-				in older (OS.FileSys.modTime prjid'_date, OS.FileSys.modTime prjid_date_file) handle _ => false
+	     val clean = foldl (fn (absprjid':absprjid, clean) => clean andalso
+				let val {dir,file} = OS.Path.splitDirFile(ModuleEnvironments.absprjid_to_string absprjid')
+				    val absprjid'_date = OS.Path.concat(dir,pmdir() ^ file ^ ".date")
+				in older (OS.FileSys.modTime absprjid'_date, OS.FileSys.modTime prjid_date_file) handle _ => false
 				end) clean imports
 
-	     val (B', modc', clean, modtimes) = build_body (longprjid, B, body, clean, [])
+	     val (B', modc', clean, modtimes) = build_body (absprjid, B, body, clean, [])
                                                 handle x => (testout "Basis at failing call to build_body:\n";
                                                              testouttree(ManagerObjects.Basis.layout B); testout"\n"; raise x)
 	 in 
@@ -779,14 +761,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * ----------------------------------------- *)
 
     fun build (longprjid_s:string) =   (* May raise PARSE_ELAB_ERROR *)
-      let val longprjid = ModuleEnvironments.mk_prjid longprjid_s
+      let val absprjid = mk_absprjid_from_path longprjid_s
           val _ = Repository.recover()
 	  val emitted_files = EqSet.fromList (Repository.emitted_files())
-	  val _ = let val {res_modc, clean, extobjs, ...} = build_project{cycleset=[], pmap=[], longprjid=longprjid}
+	  val _ = let val {res_modc, clean, extobjs, ...} = build_project{cycleset=[], pmap=[], absprjid=absprjid}
 
 		  (* MEMO: If clean is true then I do not need to rebuild binary. *)
 
-		  in ModCode.mk_exe(ModuleEnvironments.mk_prjid(OS.Path.file longprjid_s), res_modc, extobjs, "run")
+		  in ModCode.mk_exe(absprjid, res_modc, extobjs, "run")
 		  end
 	  val emitted_files' = EqSet.fromList (Repository.emitted_files())
     	  val files_to_delete = EqSet.list (EqSet.difference emitted_files emitted_files')
@@ -800,20 +782,21 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun comp (filepath : string) : unit =
       let val _ = Repository.recover()
 	  val emitted_files = EqSet.fromList (Repository.emitted_files())
-	  val prjid = ModuleEnvironments.mk_prjid(OS.Path.base ((*OS.Path.file*) filepath)) (*mads*)
+	  val absprjid = mk_absprjid_from_path (filepath ^ ".pm")   (* a pseudo project *)
 	    (* make sure that the source file is indeed compiled *)
-	  val _ = Repository.delete_entries (prjid, ManagerObjects.funid_from_filename(ManagerObjects.mk_filename filepath))
+	  val _ = Repository.delete_entries (absprjid, ManagerObjects.funid_from_filename(ManagerObjects.mk_filename filepath))
 	  val _ = maybe_create_PM_dir()
 	  val (modc_basislib, basis_basislib, extobjs_basislib) = 
 	    if !Flags.auto_import_basislib then 
-	      let val {res_modc, res_basis, extobjs, ...} = build_project{cycleset=[], pmap=[], longprjid= ModuleEnvironments.mk_prjid(!Flags.basislib_project)}
+	      let val {res_modc, res_basis, extobjs, ...} = 
+		build_project{cycleset=[], pmap=[], absprjid= ModuleEnvironments.mk_absprjid(!Flags.basislib_project)}
 	      in (res_modc, Basis_plus(Basis.initial,res_basis), extobjs)
 	      end
 	    else (ModCode.empty, Basis.initial, [])
-	  val (_, modc_file, _, _) = build_body(prjid, basis_basislib, UNITbody(filepath,EMPTYbody), false, [])
+	  val (_, modc_file, _, _) = build_body(absprjid, basis_basislib, UNITbody(filepath,EMPTYbody), false, [])
 	  val modc = ModCode.seq(modc_basislib, modc_file)
       in  
-	ModCode.mk_exe(prjid, modc, extobjs_basislib, "run")
+	ModCode.mk_exe(absprjid, modc, extobjs_basislib, "run")
       end
 
 
@@ -821,13 +804,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * Elaborate a single file 
      * ----------------------------- *)
 
-    fun elab (unitname : string) : unit =
-      let val prjid = ModuleEnvironments.mk_prjid unitname
+    fun elab (filepath : string) : unit =
+      let val absprjid = mk_absprjid_from_path (filepath ^ ".pm")   (* a pseudo project *)
 	  val (infB,elabB,_,_) = Basis.un Basis.initial
 	  val _ = Flags.reset_warnings ()
-	  val log_cleanup = log_init unitname
-      in (case ParseElab.parse_elab {prjid=prjid,infB=infB,elabB=elabB,
-				     file=(*unitname_to_sourcefile*) unitname} 
+	  val log_cleanup = log_init filepath
+      in (case ParseElab.parse_elab {absprjid=absprjid,infB=infB,elabB=elabB, file=filepath} 
 	    of ParseElab.SUCCESS {report, ...} => (print_result_report report; log_cleanup())
 	     | ParseElab.FAILURE (report, error_codes) => (print_error_report report; raise PARSE_ELAB_ERROR error_codes)
 	 ) handle E => (log_cleanup(); raise E)
