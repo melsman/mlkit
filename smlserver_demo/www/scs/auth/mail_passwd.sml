@@ -61,7 +61,7 @@ val html_msg = `Du (^email) vil om kort tid modtage en email med dit password.<b
 val html_title = "Password er tilsendt pr. mail (eng. Password has been mailed)"
 
 val _ = 
-  (Ns.Mail.send {to=email, from=ScsConfig.scs_site_adm_email(),subject="Obtain Password",
+  (Ns.Mail.send {to=email, from=ScsConfig.scs_site_adm_email(),subject="UCS Password",
 		 body=ScsDict.sl mail_msg [first_names,last_name,email,passwd,
                                            ScsConfig.scs_site_name(),ScsConfig.scs_site_url()]};
    ScsPage.returnPg html_title html_msg  )
