@@ -32,9 +32,9 @@ signature SCS_WIDGET =
     (* [ol elems] returns HTML for an ordered list. *)
     val ol       : quot list -> quot
 
-    (* [ta rows cols fv v] returns HTML for a textarea of size rows
+    (* [ta attr rows cols fv v] returns HTML for a textarea of size rows
        and cols, named fv and filled out with value v. *)
-    val ta       : int -> int -> string -> quot -> quot
+    val ta       : string -> int -> int -> string -> quot -> quot
 
     (* [largeTa fv v] presized textarea. *)
     val largeTa  : string -> quot -> quot
@@ -280,19 +280,19 @@ structure ScsWidget :> SCS_WIDGET =
     fun ol qs = `<ol>` ^^ (List.foldr (fn (q,acc) => `
 				       <li>` ^^ q ^^ acc) `</ol>` qs)
 
-    fun ta rows cols n v = `
-      <textarea name="^n" rows=^(Int.toString rows) cols=^(Int.toString cols) 
+    fun ta attr rows cols n v = `
+      <textarea name="^n" rows=^(Int.toString rows) cols=^(Int.toString cols) ^attr 
 	 wrap="physical">` ^^ 
 
         (Quot.fromString o ScsSecurity.xssFilterLeaveNoTags o Quot.toString)
 
 	  v ^^ `</textarea>`
 
-    val largeTa = ta 20 80
-    val mediumTa = ta 10 40
-    val mediumWideTa = ta 10 80
-    val smallWideTa = ta 2 80
-    val smallTa = ta 5 20
+    val largeTa = ta "" 20 80 
+    val mediumTa = ta "" 10 40 
+    val mediumWideTa = ta "" 10 80
+    val smallWideTa = ta "" 2 80
+    val smallTa = ta "" 5 20
 
     fun selectAttr opts fv attr =
       `<select name="^fv" ^(attr)>

@@ -147,6 +147,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getISSNErr             : string formvar_fn
     val getISBNErr             : string formvar_fn
     val getEnumErr             : string list -> string formvar_fn
+    val getEnumsErr            : string list -> string list formvar_fn
     val getYesNoErr            : string formvar_fn
     val getMthErr              : int formvar_fn
     val getWeekErr              : int formvar_fn
@@ -195,6 +196,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
     exception FormVar of string
 
     val emptyErr : errs = []
+
+    fun getStrings fv = List.map trim (Ns.Conn.formvarAll fv)
 
     fun addErr (emsg:quot,errs:errs) = emsg :: errs
     fun genErrMsg (f_msg:string,msg:quot) : quot = 
@@ -1136,10 +1139,29 @@ case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 				  String.size url <= 200)
 
       val getCprErr = getErr "" convCpr [(ScsLang.en,`cpr number`),(ScsLang.da,`cpr nummer`)] msgCpr chkCpr
-      val getISSNErr = getErr "" convISSN [(ScsLang.en,`ISSN number`),(ScsLang.da,`ISSN nummer`)] msgISSN chkISSN
-      val getISBNErr = getErr "" convISBN [(ScsLang.en,`ISBN number`),(ScsLang.da,`ISBN nummer`)] msgISBN chkISBN
+      val getISSNErr = getErr "" convISSN [(ScsLang.en,`ISSN number`),(ScsLang.da,`ISSN nummer`)] 
+			      msgISSN chkISSN
+      val getISBNErr = getErr "" convISBN [(ScsLang.en,`ISBN number`),(ScsLang.da,`ISBN nummer`)] 
+			      msgISBN chkISBN
       val getEnumErr = fn enums => getErr' [(ScsLang.en,`enumeration`),(ScsLang.da,`enumerering`)] 
                                      (msgEnum enums) (chkEnum enums)
+      fun getEnumsErr enums (fv,title,errs) =
+	let
+	  val sels = getStrings fv
+	  val errs = 
+	    if List.null sels then
+	      addErr(ScsDict.s' [(ScsLang.da,`<b>^title</b>: Du skal angive mindst et valg`),
+				 (ScsLang.en,`<b>^title</b>: You must make atleast one choise.`)],errs)
+	    else
+	      errs
+	  fun chkEnumErr (enum,(acc,errs)) =
+	    if chkEnum enums enum then 
+	      (enum::acc,errs)
+	    else 
+	      (acc,addErr(msgEnum enums title,errs))
+	in
+	  List.foldr chkEnumErr ([],errs) sels
+	end
       fun getYesNoErr args =
 	let val enums = [ScsDict.s [(ScsLang.en,`Yes`),(ScsLang.da,`Ja`)],
 			 ScsDict.s [(ScsLang.en,`No`),(ScsLang.da, `Nej`)]] 
@@ -1246,10 +1268,6 @@ case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 		   else false)
 
     end (* of local block *)
-
-    fun getStrings fv = List.map trim (Ns.Conn.formvarAll fv)
-
-
 
     fun getRoleIdErr (fv,errs) = getIntErr(fv,ScsDict.s [(ScsLang.en,`Role id`),(ScsLang.da,`Rolle id`)],errs)
 
