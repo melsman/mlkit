@@ -32,5 +32,7 @@ in
     
     Common/SMLofNJOnKit.sml
     Common/KitCompiler.sml
+    Common/KitX86.sml
+    Common/KitDummy.sml
     Common/KitOnKit.sml
 end
