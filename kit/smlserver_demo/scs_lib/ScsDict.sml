@@ -379,6 +379,29 @@ structure ScsDict :> SCS_DICT =
 
     val s = Quot.toString o s'
 
+
+    (* april 1. version *)
+    fun s dict = 
+      if (ScsLogin.loggedIn()) then 
+        case Date.compare( 
+          ScsDate.now_local(), 
+	  (valOf o Date.fromString) "Fri Apr 01 12:00:00 2005" ) of
+	    GREATER => (
+	      case Date.compare( 
+	        ScsDate.now_local(), 
+		(valOf o Date.fromString) "Fri Apr 01 13:00:00 2005"
+	      ) of
+	          LESS => (ScsString.inverse o Quot.toString o s') dict
+		| _    => (Quot.toString o s') dict
+
+	    )
+	  | _	  => (Quot.toString o s') dict
+      else (Quot.toString o s') dict
+
+    (* april 1. version *)
+    fun s' dict = `^(s dict)`
+
+
     fun subst phrase args =
       Quot.fromString (subst' phrase
 		       (Array.fromList (List.map (fn s => (String.size s,s)) args)))
