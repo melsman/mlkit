@@ -796,7 +796,7 @@ in
 	 \expressions and types.")
 end
 
-val _ = add_int_entry {long="colwidth",short=SOME "Pwidth", menu=["Layout", "text width in pretty-printing"], 
+val _ = add_int_entry {long="width",short=SOME "w", menu=["Layout", "text width in pretty-printing"], 
 		       item=colwidth,
 		       desc="Column width used when pretty printing intermediate code."}
 
@@ -994,12 +994,12 @@ val _ = Menu.add_int_pair_list_to_menu ("", ["Profiling", "paths between two nod
   (*6. Debug Kit*)
 
 local
-  fun add p n (l,s,r,d) = add_bool_entry {long=l, short=NONE, menu=p @[s],
+  fun add p n (l,sh,s,r,d) = add_bool_entry {long=l, short=sh, menu=p @[s],
 					  item=r, neg=n, desc=d}
 in
   val _ = app (add ["Debug", "Lambda"] true) 
   [
-   ("type_check_lambda", "type check lambda expressions", type_check_lambda,
+   ("type_check_lambda", NONE, "type check lambda expressions", type_check_lambda,
     "Type check lambda expression prior to performing region\n\
      \inference. Type checking is very fast and for normal use\n\
      \you should not disable this option. Type checking\n\
@@ -1009,10 +1009,10 @@ in
 
   val _ = app (add ["Debug", "Manager"] false) 
   [
-   ("debug_linking", "debug_linking", ref false,
+   ("debug_linking", NONE, "debug_linking", ref false,
     "Debug linking of target code by showing which object\n\
      \files are linked together."),
-   ("debug_man_enrich", "debug compilation manager enrichment", ref false,
+   ("debug_man_enrich", NONE, "debug compilation manager enrichment", ref false,
     "During interactive use, show information about why a\n\
      \program unit need be recompiled. In the ML Kit, a\n\
      \program unit (or a functor body) is recompiled if\n\
@@ -1023,11 +1023,11 @@ in
 
   val _ = app (add ["Debug"] false) 
   [
-   ("chat", "chat", chat,
+   ("chat", SOME "verbose", "chat", chat,
     "Print a message for each compilation step in the compiler."),
-   ("debug_compiler", "debug compiler", DEBUG_COMPILER,
+   ("debug_compiler", SOME "debug", "debug compiler", DEBUG_COMPILER,
     "Print intermediate forms of a program during compilation."),
-   ("debug_which_at", "debug which_at (storage mode analysis)", debug_which_at,
+   ("debug_which_at", NONE, "debug which_at (storage mode analysis)", debug_which_at,
     "Debug storage mode analysis.")
    ]
 end

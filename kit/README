@@ -1,21 +1,25 @@
-The ML Kit with Regions, Version 4.0                    March 1, 2001
-http://www.itu.dk/research/mlkit/
+The ML Kit Version 4.0                               March 5, 2001
+http://www.it.edu/research/mlkit/
 
 0. Introduction
 ---------------
 
-This file describes how to install The ML Kit with Regions (from here
-on just the Kit). If you intend to install the Kit on a RedHat Linux
-Box, consider using one of the RPM's available from the Kit web site. 
+This file describes how to install The ML Kit (from here on just the
+Kit). If you intend to install the Kit on a RedHat Linux Box, consider
+using one of the RPM's available from the Kit web site. The Kit
+follows the convention that releases with odd minor release numbers
+(e.g., 3.1.12) are experimental releases whereas releases with even
+minor release numbers (e.g., 3.0.1) are stable releases. The
+convention only applies to the minor number (i.e., the number
+following the first dot in a release number).
 
-Since you are reading this text, you have already succeeded in
-unpacking the kit directory, "kit". This directory contains the
-sources of the kit (src), the documentation (doc), the standard basis
-library (basislib), and accompanying examples (kitdemo). As you
-install and use the kit, more sub-directories and files will be
-created in the directory "kit". If you want to rename the directory
-from "kit" to something else or move it somewhere else, now is the
-time to do so.
+When you unpack the kit directory, "kit", you'll find that this
+directory contains the sources of the kit (src), the documentation
+(doc), the standard basis library (basislib), and accompanying
+examples (kitdemo). As you install and use the kit, more
+sub-directories and files will be created in the directory "kit". If
+you want to rename the directory from "kit" to something else or move
+it somewhere else, now is the time to do so.
 
 1. Installation
 ---------------
