@@ -101,6 +101,22 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun panicDmlTrans (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
       dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
 
+    fun selectDb' (db: db, q: quot) : Set.set =
+      let 
+	fun isNull(s : Set.set) : bool = prim("__is_null",s)
+	val res = prim("@Ns_DbSelect", (#2 db, quotToString q))
+      in 
+	if isNull res 
+	  then  
+	    (* extract error message from buffer in DbHandle *)
+	    let 
+	      val msg = ""
+	    in 
+	      raise Fail msg
+	    end
+	else res
+      end
+
     fun selectDb (db: db, q: quot) : Set.set =
 	prim("@Ns_DbSelect", (#2 db, quotToString q))
 
