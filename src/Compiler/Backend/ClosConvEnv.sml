@@ -78,6 +78,19 @@ functor ClosConvEnv(structure Lvars : LVARS
 		RhoEnv    : RhoEnv,
 		RhoKindEnv: RhoKindEnv}
 
+    fun labelsEnv (labs : (label list * label list) -> access_type -> (label list * label list))
+      {ConEnv: ConEnv, VarEnv: VarEnv,
+       ExconEnv: ExconEnv, RhoEnv: RhoEnv,
+       RhoKindEnv: RhoKindEnv} =
+      let fun labs' (a,b) = labs b a 
+	val acc : label list * label list = (nil,nil)
+        val acc = LvarFinMap.fold (fn (a,b) => labs b a) acc VarEnv
+        val acc = ExconFinMap.fold (fn ((a,_),b) => labs b a) acc ExconEnv
+        val acc = RegvarFinMap.fold (fn (a,b) => labs b a) acc RhoEnv
+      in acc
+      end
+    
+
     val initialConEnv  : ConEnv = ConFinMap.fromList
       (* Potential representations. The integer denotes the index of nullary/unary
        * constructors in the datatype. The actual tags are computed later. *)

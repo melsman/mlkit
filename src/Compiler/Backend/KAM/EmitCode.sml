@@ -103,9 +103,14 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 
       | Label(lab) => RLL.define_label lab
       | JmpRel(lab) => (out_opcode JMP_REL; RLL.out_label lab)
+(*
       | IfNotEqJmpRel(lab) => (out_opcode IF_NOT_EQ_JMP_REL; RLL.out_label lab)
       | IfLessThanJmpRel(lab) => (out_opcode IF_LESS_THAN_JMP_REL; RLL.out_label lab)
       | IfGreaterThanJmpRel(lab) => (out_opcode IF_GREATER_THAN_JMP_REL; RLL.out_label lab)
+*)
+      | IfNotEqJmpRelImmed(lab,i) => (out_opcode IF_NOT_EQ_JMP_REL_IMMED; RLL.out_label lab; out_int i)
+      | IfLessThanJmpRelImmed(lab,i) => (out_opcode IF_LESS_THAN_JMP_REL_IMMED; RLL.out_label lab; out_int i)
+      | IfGreaterThanJmpRelImmed(lab,i) => (out_opcode IF_GREATER_THAN_JMP_REL_IMMED; RLL.out_label lab; out_int i)
       | DotLabel(lab) => RLL.out_label lab
       | JmpVector(lab,first_sel) => (out_opcode JMP_VECTOR; RLL.out_label lab; out_int first_sel)
 
@@ -125,6 +130,21 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 
       | Comment(s) => ()
       | Nop => ()
+
+      (* The following instructions are purely for optimization *)
+
+      | StackOffset i => (out_opcode STACK_OFFSET; out_int i)
+      | PopPush i => (out_opcode POP_PUSH; out_int i)
+      | ImmedIntPush i => (out_opcode IMMED_INT_PUSH; out_int i)
+      | SelectPush i => (out_opcode SELECT_PUSH; out_int i)
+      | SelectEnvPush i => (out_opcode SELECT_ENV_PUSH; out_int i)
+      | SelectEnvClearAtbotBitPush i => (out_opcode SELECT_ENV_CLEAR_ATBOT_BIT_PUSH; out_int i)
+      | StackAddrPush (i,s) => (out_opcode STACK_ADDR_PUSH; out_int i)
+      | StackAddrInfBitAtbotBitPush i => (out_opcode STACK_ADDR_INF_BIT_ATBOT_BIT_PUSH; out_int i)
+      | SelectStackPush i => (out_opcode SELECT_STACK_PUSH; out_int i)
+      | EnvPush => (out_opcode ENV_PUSH)
+
+      (* primitives *)
 
       | PrimEquali => out_opcode PRIM_EQUAL_I
       | PrimSubi => out_opcode PRIM_SUB_I

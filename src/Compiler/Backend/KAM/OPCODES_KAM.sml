@@ -43,9 +43,9 @@ signature OPCODES_KAM =
     val C_CALL4 : int 
     val LABEL : int 
     val JMP_REL : int 
-    val IF_NOT_EQ_JMP_REL : int 
-    val IF_LESS_THAN_JMP_REL : int 
-    val IF_GREATER_THAN_JMP_REL : int 
+    val IF_NOT_EQ_JMP_REL_IMMED : int 
+    val IF_LESS_THAN_JMP_REL_IMMED : int 
+    val IF_GREATER_THAN_JMP_REL_IMMED : int 
     val DOT_LABEL : int 
     val JMP_VECTOR : int 
     val RAISE : int 
@@ -61,6 +61,16 @@ signature OPCODES_KAM =
     val FETCH_DATA : int 
     val STORE_DATA : int 
     val HALT : int 
+    val STACK_OFFSET : int 
+    val POP_PUSH : int 
+    val IMMED_INT_PUSH : int 
+    val SELECT_PUSH : int 
+    val SELECT_ENV_PUSH : int 
+    val SELECT_ENV_CLEAR_ATBOT_BIT_PUSH : int 
+    val STACK_ADDR_PUSH : int 
+    val STACK_ADDR_INF_BIT_ATBOT_BIT_PUSH : int 
+    val SELECT_STACK_PUSH : int 
+    val ENV_PUSH : int 
     val PRIM_EQUAL_I : int 
     val PRIM_SUB_I : int 
     val PRIM_ADD_I : int 

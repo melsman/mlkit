@@ -59,6 +59,12 @@ struct
 
   fun die s  = Crash.impossible ("ClosExp." ^ s)
 
+  fun pp_lvars s lvs = 
+    let fun loop nil = ()
+	  | loop (lv::lvs) = (print (Lvars.pr_lvar lv); print ","; loop lvs)
+    in print (s ^ " = ["); loop lvs; print "]\n"
+    end
+
   (***********)
   (* ClosExp *)
   (***********)
@@ -1380,33 +1386,41 @@ struct
 	     | _ => die "compile_sels_and_default: no selections.")
       end
 
-    (* Result is a pair of label lists:              *)
-    (*   -- labels to functions, (i.e., code labels) *)
-    (*   -- labels to data, (i.e., data labels)      *)
-    fun find_globals_in_env (lvars, excons, regvars) env =
-      let
-	fun lookup lv f_lookup (fun_lab,dat_lab) =
-	  (case f_lookup env lv of
-	     SOME(CE.FIX(lab,SOME(CE.LVAR lvar),_))       => die "find_globals_in_env: FIX with SCLOS bound to lvar."
-	   | SOME(CE.FIX(lab,SOME(CE.SELECT(lvar,i)),_))  => die "find_globals_in_env: FIX with SCLOS bound to SELECT."
-	   | SOME(CE.FIX(lab,SOME(CE.LABEL sclos_lab),_)) => (lab::fun_lab,sclos_lab::dat_lab) (* lab is a function and sclos is a data object. *)
-	   | SOME(CE.FIX(lab,NONE,_))                     => (lab::fun_lab,dat_lab) (* lab is a function with empty shared closure. *)
-	   | SOME(CE.FIX(lab,_,_))                        => die "find_globals_in_env: global bound to wierd FIX."
-	   | SOME(CE.LVAR _)                              => die "find_globals_in_env: global bound to lvar."
-	   | SOME(CE.RVAR _)                              => die "find_globals_in_env: global bound to rvar."
-	   | SOME(CE.DROPPED_RVAR _)                      => die "find_globals_in_env: global bound to dropped rvar."
-	   | SOME(CE.SELECT _)                            => die "find_globals_in_env: global bound to select expression."
-	   | SOME(CE.LABEL lab)                           => (fun_lab,lab::dat_lab) (* Is a DatLab *)
-	   | NONE                                         => die ("find_globals_in_env: lvar not bound in env."))
-	val pair_labs = foldr (fn (lv,a) => lookup lv CE.lookupVarOpt a) ([],[]) lvars
-	val pair_labs = foldr (fn (ex,a) => lookup ex CE.lookupExconOpt a) pair_labs excons
+    local
+      fun labs (fun_lab: label list, dat_lab: label list) (r:CE.access_type) : label list * label list =
+	case r
+	  of CE.FIX(lab,SOME(CE.LABEL sclos_lab),_) => (lab::fun_lab,sclos_lab::dat_lab) (* lab is a function and sclos is a data object. *)
+	   | CE.FIX(lab,NONE,_) => (lab::fun_lab,dat_lab) (* lab is a function with empty shared closure. *)
+	   | CE.LABEL lab => (fun_lab,lab::dat_lab) (* Is a DatLab *)
+	   | CE.FIX(lab,SOME(CE.LVAR lvar),_) => die "find_globals_in_env: FIX with SCLOS bound to lvar."
+	   | CE.FIX(lab,SOME(CE.SELECT(lvar,i)),_)  => die "find_globals_in_env: FIX with SCLOS bound to SELECT."
+	   | CE.FIX(lab,_,_) => die "find_globals_in_env: global bound to wierd FIX."
+	   | CE.LVAR _ => die "find_globals_in_env: global bound to lvar."
+	   | CE.RVAR _ => die "find_globals_in_env: global bound to rvar."
+	   | CE.DROPPED_RVAR _ => die "find_globals_in_env: global bound to dropped rvar."
+	   | CE.SELECT _ => die "find_globals_in_env: global bound to select expression."
+    in      
+      fun find_globals_in_env_all env = CE.labelsEnv labs env
+
+      (* Result is a pair of label lists:              *)
+      (*   -- labels to functions, (i.e., code labels) *)
+      (*   -- labels to data, (i.e., data labels)      *)
+      fun find_globals_in_env (lvars, excons, regvars) env =
+	let
+	  fun lookup lv f_lookup (fun_lab,dat_lab) =
+	    case f_lookup env lv
+	      of SOME r => labs (fun_lab,dat_lab) r
+	       | NONE => die ("find_globals_in_env: lvar not bound in env.")
+	  val pair_labs = foldr (fn (lv,a) => lookup lv CE.lookupVarOpt a) ([],[]) lvars
+	  val pair_labs = foldr (fn (ex,a) => lookup ex CE.lookupExconOpt a) pair_labs excons
 (*	val pair_labs = foldr (fn (rho,a) => lookup rho CE.lookupRhoOpt a) pair_labs regvars 
 
  this one does not seem necessary because no new regions survive program units and because the
  the global regions 0-3 are allocated statically with address labels 0-3. ME 2000-10-31 
 *)
-      in pair_labs
-      end
+	in pair_labs
+	end
+    end
 
     fun gen_fresh_res_lvars(RegionExp.Mus type_and_places) =
       (case type_and_places of
@@ -2704,10 +2718,20 @@ struct
 		 List.foldr (fn ({excon,label},acc) =>
 			     let
 			       val ce = lookup_excon env excon
+(*mael			       val _ = print ("Label for excon(" ^ Excon.pr_excon excon ^ ") = " ^ 
+					      Labels.pr_label label ^ "\n")
+*)
 			     in
 			       LET{pat=[fresh_lvar("not_used")],bind=STORE(ce,label),scope=acc}
 			     end)
-		 (List.foldr (fn ({lvar,label},acc) => LET{pat=[fresh_lvar("not_used")],bind=STORE(VAR lvar,label),scope=acc})
+		 (List.foldr (fn ({lvar,label},acc) => 
+			      let 
+(*mael				val _ = print ("Label for lvar(" ^ Lvars.pr_lvar lvar ^ ") = " ^ 
+					       Labels.pr_label label ^ "\n")
+*)
+			      in
+				LET{pat=[fresh_lvar("not_used")],bind=STORE(VAR lvar,label),scope=acc}
+			      end)
 		  (FRAME{declared_lvars=lvars_and_labels,declared_excons=excons_and_labels}) lvars_and_labels)
 		  excons_and_labels
 	       end)
@@ -2792,7 +2816,7 @@ struct
 	val lift_exp = liftTrip tr global_env main_lab
 	val _ = add_new_fn(main_lab,CallConv.mk_cc_fn([],NONE,[],[]),lift_exp)
 	val export_env = CE.plus (env_datbind, (get_frame_env()))
-	val export_labs = find_globals_in_env (export_vars) (get_frame_env())
+	val export_labs = find_globals_in_env_all (get_frame_env())
 	val code = get_top_decls() 
 	val all =
 	  {main_lab=main_lab,

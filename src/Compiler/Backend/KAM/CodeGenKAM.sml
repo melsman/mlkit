@@ -77,9 +77,12 @@ struct
   (****************************************************************)
 
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("print_KAM_program", "print KAM program", ref false)]
-  val print_KAM_flag = Flags.lookup_flag_entry "print_KAM_program"
+    [("print_kam_program", "print kam program", ref false)]
 
+  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
+    [("comments_in_kam_code", "comments in kam code", ref true)]
+
+  val comments_in_kam_code = Flags.lookup_flag_entry "comments_in_kam_code"
   val jump_tables = Flags.lookup_flag_entry "jump_tables"
 
   (*************)
@@ -95,6 +98,22 @@ struct
 	| SOME Effect.REAL_RT => true
 	| SOME Effect.STRING_RT => false
 	| SOME _ => false)
+
+  (* Check to inforce that datalabels that are exported are indeed defined *)
+
+  local 
+      val export_labs : label list ref = ref nil
+      fun member l =
+	let fun mem nil = false
+	      | mem (x::xs) = Labels.eq(l,x) orelse mem xs
+	in mem (!export_labs)
+	end
+  in 
+      fun setExportLabs ls = export_labs := ls
+      fun storeData l =
+	if member l then StoreData l
+	else die ("Label " ^ Labels.pr_label l ^ " is not defined")
+  end
 
   (***************************)
   (* Compiler Environment CE *)
@@ -191,25 +210,92 @@ struct
        | _ :: rest => dead_code_elim rest
        | nil => continuation
 
+  (* -----------------------------------------------------------------
+   * Peep hole optimization: we define functions here that takes the
+   * continuation as an extra parameter, which can be inspected and
+   * merged with the instruction proper.
+   * ----------------------------------------------------------------- *)
+
+  fun pop (i, acc) =
+    if i > 0 then
+      case acc 
+	of Pop n :: Push :: acc => PopPush(n+i) :: acc
+	 | PopPush n :: acc => PopPush(n+i) :: acc
+	 | Push :: acc => PopPush i :: acc
+	 | Pop n :: acc => Pop(n+i) :: acc
+	 | _ => Pop i :: acc
+    else if i < 0 then die "pop(i). i < 0"
+	 else (*i=0*) acc
+
+  fun push acc =
+    case acc
+      of Pop i :: acc =>
+	if i > 0 then pop(i-1, acc)
+	else if i < 0 then die "push"
+	     else Push :: acc
+       | _ => Push :: acc
+
+  fun selectEnv(i, s, acc) =
+    case acc
+      of ClearAtbotBit :: Push :: acc => SelectEnvClearAtbotBitPush i :: acc
+       | Push :: acc => SelectEnvPush i :: acc
+       | _ => SelectEnv (i,s) :: acc
+
+  fun select(i, acc) =
+    case acc
+      of Push :: acc => SelectPush i :: acc
+       | _ => Select i :: acc
+
+  fun immedInt (i, acc) =
+    case acc
+      of Push :: acc => ImmedIntPush i :: acc
+       | _ => ImmedInt i :: acc
+
+  fun stackOffset(i, acc) =
+    case acc 
+      of StackOffset n :: acc => StackOffset(n+i)::acc
+       | _ => StackOffset i :: acc
+
   (***********************)
   (* Code Generation     *)
   (***********************)
-  local
-    fun access_lv(lv,env,sp) =
-      case lookupVar env lv of
-	STACK i => SelectStack(0-sp+i, Lvars.pr_lvar lv)
-      | ENV i => SelectEnv(i, Lvars.pr_lvar lv)
-      |	REG_I i => StackAddrInfBit(0-sp+i, Lvars.pr_lvar lv)
-      | REG_F i => StackAddr(0-sp+i, Lvars.pr_lvar lv)
-      | ENV_REG => EnvToAcc
 
-    fun access_rho(rho,env,sp) =
+  local
+    fun selectStack(i, s, acc) =
+      case acc
+	of Push :: acc => SelectStackPush i :: acc
+	 | _ => SelectStack(i,s) :: acc
+
+    fun envToAcc acc =
+      case acc
+	of Push :: acc => EnvPush :: acc
+	 | _ => EnvToAcc :: acc
+
+    fun stackAddrInfBit (i, s, acc) =
+      case acc
+	of SetAtbotBit :: Push :: acc => StackAddrInfBitAtbotBitPush i :: acc
+	 | _ => StackAddrInfBit (i, s) :: acc
+
+    fun stackAddr (i, s, acc) =
+      case acc
+	of Push :: acc => StackAddrPush (i,s) :: acc
+	 | _ => StackAddr (i, s) :: acc
+
+    fun access_lv(lv,env,sp,acc) =
+      case lookupVar env lv of
+	STACK i => selectStack(0-sp+i, Lvars.pr_lvar lv, acc)
+      | ENV i => selectEnv(i, Lvars.pr_lvar lv, acc)
+      |	REG_I i => stackAddrInfBit(0-sp+i, Lvars.pr_lvar lv, acc)
+      | REG_F i => stackAddr(0-sp+i, Lvars.pr_lvar lv, acc)
+      | ENV_REG => envToAcc acc
+
+    fun access_rho(rho,env,sp,acc) =
       case lookupRho env rho of
-	STACK i => SelectStack(0-sp+i, ClosExp.pr_rhos [rho])
-      | ENV i => SelectEnv(i, ClosExp.pr_rhos [rho])
-      |	REG_I i => StackAddrInfBit(0-sp+i, ClosExp.pr_rhos [rho])
-      | REG_F i => StackAddr(0-sp+i, ClosExp.pr_rhos [rho])
-      | ENV_REG => EnvToAcc
+	STACK i => selectStack(0-sp+i, ClosExp.pr_rhos [rho], acc)
+      | ENV i => selectEnv(i, ClosExp.pr_rhos [rho], acc)
+      |	REG_I i => stackAddrInfBit(0-sp+i, ClosExp.pr_rhos [rho], acc)
+      | REG_F i => stackAddr(0-sp+i, ClosExp.pr_rhos [rho], acc)
+      | ENV_REG => envToAcc acc
 
     fun num_args_cc(cc) =
       let
@@ -219,59 +305,57 @@ struct
 	List.length (#args(decomp_cc))
       end
 
+    fun comment(str,C) = 
+      if !comments_in_kam_code then Comment str :: C
+      else C
+
     (* Compile Switch Statements *)
     local
-      fun comment(str,C) = Comment str :: C
       fun new_label str = Labels.new_named str
       fun label(lab,C) = Label lab :: C
       fun jmp(lab,C) = JmpRel lab :: dead_code_elim C
     in
       fun linear_search(sels,
 			default,
-			compile_sel:'sel * KamInst list -> KamInst list,
-			if_no_match_go_lab: label * KamInst list -> KamInst list,
+			if_no_match_go_lab_sel: label * 'sel * KamInst list -> KamInst list,
 			compile_insts: ClosExp.ClosExp * KamInst list -> KamInst list,
 			C) =
-	  JumpTables.linear_search(sels,
-				   default,
-				   comment,
-				   new_label,
-				   compile_sel,
-				   if_no_match_go_lab,
-				   compile_insts,
-				   label,
-				   jmp,
-				   C)
-
+	  JumpTables.linear_search_new(sels,
+				       default,
+				       comment,
+				       new_label,
+				       if_no_match_go_lab_sel,
+				       compile_insts,
+				       label,
+				       jmp,
+				       C)
+	  
       fun binary_search(sels,
 			default,
-			compile_sel: int * KamInst list -> KamInst list,
-			if_not_equal_go_lab: label * KamInst list -> KamInst list,
-			if_less_than_go_lab: label * KamInst list -> KamInst list,
-			if_greater_than_go_lab: label * KamInst list -> KamInst list,
+			if_not_equal_go_lab_sel: label * int * KamInst list -> KamInst list,
+			if_less_than_go_lab_sel: label * int * KamInst list -> KamInst list,
+			if_greater_than_go_lab_sel: label * int * KamInst list -> KamInst list,
 			compile_insts: ClosExp.ClosExp * KamInst list -> KamInst list,
 			C) =
 	if !jump_tables then
-	  JumpTables.binary_search(sels,
-				   default,
-				   comment,
-				   new_label,
-				   compile_sel,
-				   if_not_equal_go_lab,
-				   if_less_than_go_lab,
-				   if_greater_than_go_lab,
-				   compile_insts,
-				   label,
-				   jmp,
-				   fn (sel1,sel2) => Int.abs(sel1-sel2),
-				   fn (lab,sel,C) => JmpVector(lab,sel)::C,
-				   fn (lab,C) => DotLabel(lab) :: C, (* add_label_to_jump_tab  *)
-				   eq_lab,C)
+	  JumpTables.binary_search_new(sels,
+				       default,
+				       comment,
+				       new_label,
+				       if_not_equal_go_lab_sel,
+				       if_less_than_go_lab_sel,
+				       if_greater_than_go_lab_sel,
+				       compile_insts,
+				       label,
+				       jmp,
+				       fn (sel1,sel2) => Int.abs(sel1-sel2),
+				       fn (lab,sel,C) => JmpVector(lab,sel)::C,
+				       fn (lab,C) => DotLabel(lab) :: C, (* add_label_to_jump_tab  *)
+				       eq_lab,C)
 	else
 	  linear_search(sels,
 			default,
-			compile_sel,
-			if_not_equal_go_lab,
+			if_not_equal_go_lab_sel,
 			compile_insts,
 			C)
     end
@@ -284,12 +368,13 @@ struct
 	List.length (#args(decomp_cc))
       end not used anyway 2000-10-15, Niels *)
 
-    fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp) :: acc
-      | CG_ce(ClosExp.RVAR place,env,sp,cc,acc)         = access_rho(place,env,sp) :: acc
+
+    fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp,acc)
+      | CG_ce(ClosExp.RVAR place,env,sp,cc,acc)         = access_rho(place,env,sp,acc)
       | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = die "DROPPED_RVAR not implemented"
       | CG_ce(ClosExp.FETCH lab,env,sp,cc,acc)          = FetchData lab :: acc
-      | CG_ce(ClosExp.STORE(ce,lab),env,sp,cc,acc)      = CG_ce(ce,env,sp,cc, StoreData lab :: acc)
-      | CG_ce(ClosExp.INTEGER i,env,sp,cc,acc)          = ImmedInt i :: acc
+      | CG_ce(ClosExp.STORE(ce,lab),env,sp,cc,acc)      = CG_ce(ce,env,sp,cc, storeData lab :: acc)
+      | CG_ce(ClosExp.INTEGER i,env,sp,cc,acc)          = immedInt (i, acc)
       | CG_ce(ClosExp.STRING s,env,sp,cc,acc)           = ImmedString s :: acc
       | CG_ce(ClosExp.REAL s,env,sp,cc,acc)             = ImmedReal s :: acc
       | CG_ce(ClosExp.PASS_PTR_TO_MEM(sma,i),env,sp,cc,acc) = alloc(sma,i,env,sp,cc,acc)
@@ -306,14 +391,15 @@ struct
       | CG_ce(ClosExp.SELECT(i,ce as ClosExp.VAR lv),env,sp,cc,acc) = 
       (* This may be a SelectEnv? *)
       if Lvars.eq(lv,Lvars.env_lvar) then
-	SelectEnv(i, Lvars.pr_lvar lv)::acc
+	selectEnv(i, Lvars.pr_lvar lv,acc)
       else
-	CG_ce(ce,env,sp,cc,Select(i)::acc)
-      | CG_ce(ClosExp.SELECT(i,ce),env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Select(i)::acc)
+	CG_ce(ce,env,sp,cc, select(i,acc))
+      | CG_ce(ClosExp.SELECT(i,ce),env,sp,cc,acc) = CG_ce(ce,env,sp,cc, select(i,acc))
       | CG_ce(ClosExp.FNJMP{opr,args,clos=NONE,free=[]},env,sp,cc,acc) = 
       CG_ce(opr,env,sp,cc,
-	    Push :: (comp_ces(args,env,sp+1,cc, ApplyFnJmp(List.length args, sp) :: 
-			      dead_code_elim acc)))
+	    push (comp_ces(args,env,sp+1,cc, 
+			   ApplyFnJmp(List.length args, sp) :: 
+			   dead_code_elim acc)))
       | CG_ce(ClosExp.FNJMP{opr,args,clos,free},env,sp,cc,acc) = die "FNJMP: either clos or free are non empty."
       | CG_ce(ClosExp.FNCALL{opr,args,clos=NONE,free=[]},env,sp,cc,acc) = 
       let
@@ -321,30 +407,28 @@ struct
       in
 	PushLbl(return_lbl) ::
 	CG_ce(opr,env,sp+1,cc,
-	      Push ::
-	      comp_ces(args,env,sp+2,cc,ApplyFnCall(List.length args) :: Label(return_lbl) :: acc))
+	      push (comp_ces(args,env,sp+2,cc,
+			     ApplyFnCall(List.length args) :: Label(return_lbl) :: acc)))
       end
-      | CG_ce(ClosExp.FNCALL{opr,args,clos,free},env,sp,cc,acc) = die "FNCALL: either clos or free are non empty."      
+      | CG_ce(ClosExp.FNCALL{opr,args,clos,free},env,sp,cc,acc) = 
+      die "FNCALL: either clos or free are non empty."      
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=NONE,free=[]},env,sp,cc,acc) =
-      ImmedInt 0 ::        (* is it always all the region arguments that are reused? *)
-      Push ::
+      ImmedIntPush 0 ::        (* is it always all the region arguments that are reused? *)
       comp_ces(args,env,sp+1,cc,
 	       ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: 
 	       dead_code_elim acc)
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=SOME clos_ce,free=[]},env,sp,cc,acc) =
       CG_ce(clos_ce,env,sp,cc,
-	    Push ::
-	    comp_ces(args,env,sp+1,cc,
-		     ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: 
-		     dead_code_elim acc))
+	    push (comp_ces(args,env,sp+1,cc,
+			   ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: 
+			   dead_code_elim acc)))
       | CG_ce(ClosExp.JMP{opr,args,reg_vec,reg_args,clos,free},env,sp,cc,acc) = die "JMP either reg_vec or free are non empty."
       | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos=NONE,free=[]},env,sp,cc,acc) =
       let
 	val return_lbl = Labels.new_named "return_from_app"
       in
 	PushLbl(return_lbl) ::
-	ImmedInt 0 ::
-	Push ::
+	ImmedIntPush 0 ::
 	comp_ces(reg_args @ args,env,sp+2,cc,
 		 ApplyFunCall(opr,List.length args + List.length reg_args) :: 
 		 Label(return_lbl) :: acc)
@@ -354,10 +438,10 @@ struct
 	val return_lbl = Labels.new_named "return_from_app"
       in
 	PushLbl(return_lbl) ::
-	CG_ce(clos_ce,env,sp+1,cc, Push ::
-	      comp_ces(reg_args @ args,env,sp+2,cc,
-		       ApplyFunCall(opr,List.length args + List.length reg_args) :: 
-		       Label(return_lbl) :: acc))
+	CG_ce(clos_ce,env,sp+1,cc, 
+	      push (comp_ces(reg_args @ args,env,sp+2,cc,
+			     ApplyFunCall(opr,List.length args + List.length reg_args) :: 
+			     Label(return_lbl) :: acc)))
       end
       | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec,reg_args,clos,free},env,sp,cc,acc) = die "FUNCALL: either reg_vec or free are non empty."
       | CG_ce(ClosExp.LETREGION{rhos,body},env,sp,cc,acc) = 
@@ -366,21 +450,23 @@ struct
 	  | comp_alloc_rhos((place,PhysSizeInf.INF)::rs,env,sp,cc,fn_acc) = 
 	  LetregionInf ::
 	  comp_alloc_rhos(rs,declareRho(place,REG_I(sp),env),sp+(BI.size_of_reg_desc()),cc,fn_acc)
-(*	  | comp_alloc_rhos((place,PhysSizeInf.WORDS 0)::rs,env,sp,cc,fn_acc) = 
-	  comp_alloc_rhos(rs,env,sp,cc,fn_acc) it seems that finite rhos of size 0 actually exists in env? 2000-10-08, Niels 
-and code is actually generated when passing arguments in region polymorphic functions??? *)
+	  | comp_alloc_rhos((place,PhysSizeInf.WORDS 0)::rs,env,sp,cc,fn_acc) = 
+	  (* it seems that finite rhos of size 0 actually exists in env? 2000-10-08, Niels 
+	   * and code is actually generated when passing arguments in region polymorphic functions??? *)
+	  comp_alloc_rhos(rs,declareRho(place,REG_F(sp),env),sp,cc,fn_acc) 
 	  | comp_alloc_rhos((place,PhysSizeInf.WORDS i)::rs,env,sp,cc,fn_acc) = 
-	  LetregionFin(i) ::
-	  comp_alloc_rhos(rs,declareRho(place,REG_F(sp),env),sp+i,cc,fn_acc)
+	  stackOffset(i,
+	  comp_alloc_rhos(rs,declareRho(place,REG_F(sp),env),sp+i,cc,fn_acc))
+
 	fun comp_dealloc_rho((place,PhysSizeInf.INF), acc) =  EndregionInf :: acc
-(*	  | comp_dealloc_rho((place,PhysSizeInf.WORDS 0), acc) = acc 2000-10-08, Niels *)
-	  | comp_dealloc_rho((place,PhysSizeInf.WORDS i), acc) = Pop(i) :: acc
+	  | comp_dealloc_rho((place,PhysSizeInf.WORDS 0), acc) = acc
+	  | comp_dealloc_rho((place,PhysSizeInf.WORDS i), acc) = pop(i, acc)
       in
-	Comment ("Letregion <" ^ (ClosExp.pr_rhos (List.map #1 rhos)) ^ ">") ::
+	comment ("Letregion <" ^ (ClosExp.pr_rhos (List.map #1 rhos)) ^ ">",
 	comp_alloc_rhos(rhos,env,sp,cc,
 			fn (env,sp) => CG_ce(body,env,sp,cc,
 					     (List.foldl (fn (rho,acc) => 
-							  comp_dealloc_rho (rho,acc)) acc rhos)))
+							  comp_dealloc_rho (rho,acc)) acc rhos))))
       end
       | CG_ce(ClosExp.LET{pat=[],bind,scope},env,sp,cc,acc) = die "LET with pat = []."
       | CG_ce(ClosExp.LET{pat,bind,scope},env,sp,cc,acc) = 
@@ -389,9 +475,9 @@ and code is actually generated when passing arguments in region polymorphic func
 	fun declareLvars([],sp,env) = env
 	  | declareLvars(lv::lvs,sp,env) = declareLvars(lvs,sp+1,declareLvar(lv,STACK(sp),env))
       in
-	Comment ("Let <" ^ (ClosExp.pr_lvars pat) ^ ">") ::
-	CG_ce(bind,env,sp,cc, Push ::
-	      CG_ce(scope,declareLvars(pat,sp,env),sp+n,cc,Pop(n) :: acc))
+	comment ("Let <" ^ (ClosExp.pr_lvars pat) ^ ">",
+	CG_ce(bind,env,sp,cc, 
+	      push (CG_ce(scope,declareLvars(pat,sp,env),sp+n,cc, pop(n, acc)))))
       end
       | CG_ce(ClosExp.RAISE ce,env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Raise::acc)
       | CG_ce(ClosExp.HANDLE(ce1,ce2),env,sp,cc,acc) =
@@ -408,21 +494,20 @@ and code is actually generated when passing arguments in region polymorphic func
 	      CG_ce(ce1,env,sp+3,cc, PopExnPtr :: Pop(2) :: Label return_lbl :: acc))
       end
       | CG_ce(ClosExp.SWITCH_I (ClosExp.SWITCH(ce,sels,default)),env,sp,cc,acc) = 
-      CG_ce(ce,env,sp,cc, Push ::
-	    binary_search(sels,
+      CG_ce(ce,env,sp,cc, 
+            binary_search(sels,
 			  default,
-			  fn (i,C) => ImmedInt i :: C,
-			  fn (lab,C) => IfNotEqJmpRel lab :: C,
-			  fn (lab,C) => IfLessThanJmpRel lab :: C,
-			  fn (lab,C) => IfGreaterThanJmpRel lab :: C,
-			  fn (ce,C) => Pop(1) :: CG_ce(ce,env,sp,cc,C),
+			  fn (lab,i,C) => IfNotEqJmpRelImmed (lab,i) :: C,
+			  fn (lab,i,C) => IfLessThanJmpRelImmed (lab,i) :: C,
+			  fn (lab,i,C) => IfGreaterThanJmpRelImmed (lab,i) :: C,
+			  fn (ce,C) => CG_ce(ce,env,sp,cc,C),
 			  acc))
       | CG_ce(ClosExp.SWITCH_S sw,env,sp,cc,acc) = die "SWITCH_S is unfolded in ClosExp"
       | CG_ce(ClosExp.SWITCH_C (ClosExp.SWITCH(ce,sels,default)),env,sp,cc,acc) =
       let (* NOTE: selectors in sels are tagged in ClosExp but the operand is tagged here! *)
 	val con_kind = 
 	  (case sels of
-	     [] => die "CG_ce: SWITCH_C sels is empty"
+	     [] => ClosExp.ENUM 1 (*necessary to compile non-optimized programs (OptLambda off) *)
 	   | ((con,con_kind),_)::rest => con_kind)
 	val sels' = map (fn ((con,con_kind),sel_ce) => 
 			 case con_kind of
@@ -432,17 +517,16 @@ and code is actually generated when passing arguments in region polymorphic func
       in
 	CG_ce(ce,env,sp,cc,
 	      (case con_kind of
-		 ClosExp.ENUM _ => Nop
-	       | ClosExp.UNBOXED _ => UbTagCon
-	       | ClosExp.BOXED _ => Select(0)) :: Push ::
-		 binary_search(sels',
+		 ClosExp.ENUM _ => (fn C => C)
+	       | ClosExp.UNBOXED _ => (fn C => UbTagCon :: C)
+	       | ClosExp.BOXED _ => fn C => select(0,C)) 
+		(binary_search(sels',
 			       default,
-			       fn (i,C) => ImmedInt i :: C,
-			       fn (lab,C) => IfNotEqJmpRel lab :: C,
-			       fn (lab,C) => IfLessThanJmpRel lab :: C,
-			       fn (lab,C) => IfGreaterThanJmpRel lab :: C,
-			       fn (ce,C) => Pop(1) :: CG_ce(ce,env,sp,cc,C),
-			       acc))
+			       fn (lab,i,C) => IfNotEqJmpRelImmed(lab,i) :: C,
+			       fn (lab,i,C) => IfLessThanJmpRelImmed(lab,i) :: C,
+			       fn (lab,i,C) => IfGreaterThanJmpRelImmed(lab,i) :: C,
+			       fn (ce,C) => CG_ce(ce,env,sp,cc,C),
+			       acc)))
       end
       | CG_ce(ClosExp.SWITCH_E sw,env,sp,cc,acc) = die "SWITCH_E is unfolded in ClosExp"
       | CG_ce(ClosExp.CON0{con,con_kind,aux_regions,alloc},env,sp,cc,acc) =
@@ -459,15 +543,15 @@ and code is actually generated when passing arguments in region polymorphic func
 		  2*i+1 
 		else i
 	    in
-	      ImmedInt tag :: acc 
+	      immedInt (tag, acc)
 	    end
 	| ClosExp.UNBOXED i => 
 	    let val tag = 4*i+3 
-	    in reset_regions(ImmedInt tag :: acc)
+	    in reset_regions(immedInt (tag, acc))
 	    end
 	| ClosExp.BOXED i => 
 	    let val tag = Word32.toInt(BI.tag_con0(false,i))
-	    in reset_regions(ImmedInt tag :: Push :: alloc_block(alloc,1,env,sp+1,cc,acc))
+	    in reset_regions(ImmedIntPush tag :: alloc_block(alloc,1,env,sp+1,cc,acc))
 	    end
       end
       | CG_ce(ClosExp.CON1{con,con_kind,alloc,arg},env,sp,cc,acc) =
@@ -482,19 +566,24 @@ and code is actually generated when passing arguments in region polymorphic func
 		 let
 		   val tag = Word32.toInt(BI.tag_con1(false,i))
 		 in
-		   ImmedInt tag :: Push :: CG_ce(arg,env,sp+1,cc,Push ::         (*mael fix: sp -> sp+1 *)
-						 alloc_block(alloc,2,env,sp+2,cc,acc))
+		   ImmedIntPush tag :: 
+		   CG_ce(arg,env,sp+1,cc,             (*mael fix: sp -> sp+1 *)
+			 push (alloc_block(alloc,2,env,sp+2,cc,acc)))
 		 end
 	  | _ => die "CG_ce: CON1.con not unary in env.")
       | CG_ce(ClosExp.DECON{con,con_kind,con_exp},env,sp,cc,acc) =
 	    (case con_kind of
 	       ClosExp.UNBOXED 0 => CG_ce(con_exp,env,sp,cc,acc)
 	     | ClosExp.UNBOXED _ => CG_ce(con_exp,env,sp,cc,ClearBit30And31 :: acc)
-	     | ClosExp.BOXED _ => CG_ce(con_exp,env,sp,cc, Select(1) :: acc)
+	     | ClosExp.BOXED _ => CG_ce(con_exp,env,sp,cc, select(1,acc))
 	     | _ => die "CG_ce: DECON used with con_kind ENUM")
-      | CG_ce(ClosExp.DEREF ce,env,sp,cc,acc) = CG_ce(ce,env,sp,cc, Select(0) :: acc)
-      | CG_ce(ClosExp.REF(sma,ce),env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Push :: alloc_block(sma,1,env,sp+1,cc,acc))
-      | CG_ce(ClosExp.ASSIGN(sma,ce1,ce2),env,sp,cc,acc) = CG_ce(ce1,env,sp,cc,Push :: CG_ce(ce2,env,sp+1,cc,Store(0) :: acc))
+      | CG_ce(ClosExp.DEREF ce,env,sp,cc,acc) = CG_ce(ce,env,sp,cc, select(0,acc))
+      | CG_ce(ClosExp.REF(sma,ce),env,sp,cc,acc) = 
+	       CG_ce(ce,env,sp,cc,
+		     push (alloc_block(sma,1,env,sp+1,cc,acc)))
+      | CG_ce(ClosExp.ASSIGN(sma,ce1,ce2),env,sp,cc,acc) = 
+	       CG_ce(ce1,env,sp,cc, 
+		     push (CG_ce(ce2,env,sp+1,cc,Store(0) :: acc)))
       | CG_ce(ClosExp.RESET_REGIONS{force=false,regions_for_resetting},env,sp,cc,acc) =
 	  foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,env,sp,cc,C)) acc regions_for_resetting
       | CG_ce(ClosExp.RESET_REGIONS{force=true,regions_for_resetting},env,sp,cc,acc) =
@@ -568,7 +657,7 @@ and code is actually generated when passing arguments in region polymorphic func
 	      end
 	  end
       | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = 
-	  Comment "FRAME - this is a nop" :: acc
+	  comment ("FRAME - this is a nop", acc)
 
     and force_reset_aux_region(sma,env,sp,cc,acc) = 
       let
@@ -641,11 +730,13 @@ and code is actually generated when passing arguments in region polymorphic func
       end
 
     and comp_ces_to_block ([],n,env,sp,cc,alloc,acc) = alloc_block(alloc,n,env,sp,cc,acc)
-      | comp_ces_to_block (ce::ces,n,env,sp,cc,alloc,acc) = CG_ce(ce,env,sp,cc,Push::comp_ces_to_block(ces,n+1,env,sp+1,cc,alloc,acc))
+      | comp_ces_to_block (ce::ces,n,env,sp,cc,alloc,acc) = 
+      CG_ce(ce,env,sp,cc, push (comp_ces_to_block(ces,n+1,env,sp+1,cc,alloc,acc)))
 
     and comp_ces ([],env,sp,cc,acc) = acc
       | comp_ces ([ce],env,sp,cc,acc) = CG_ce(ce,env,sp,cc,acc)
-      | comp_ces (ce::ces,env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Push::comp_ces(ces,env,sp+1,cc,acc))
+      | comp_ces (ce::ces,env,sp,cc,acc) = 
+      CG_ce(ce,env,sp,cc, push (comp_ces(ces,env,sp+1,cc,acc)))
 
     local
       fun mk_fun f_fun (lab,cc,ce) =
@@ -681,6 +772,12 @@ and code is actually generated when passing arguments in region polymorphic func
       List.foldr (fn (func,acc) => CG_top_decl func :: acc) [] funcs
   end
 
+  fun pp_labels s ls = 
+    let fun loop nil = ()
+	  | loop (l::ls) = (print (Labels.pr_label l); print ","; loop ls)
+    in print (s ^ " = ["); loop ls; print "]\n"
+    end
+
   (******************************)
   (* Code Generation -- KAM     *)
   (******************************)
@@ -691,10 +788,15 @@ and code is actually generated when passing arguments in region polymorphic func
     let
       val _ = chat "[CodeGeneration for the KAM..."
 
+
       val exports_code = case main_lab_opt
 			   of SOME l => l :: exports_code
 			    | NONE => exports_code
-	
+(*mael
+      val _ = pp_labels "data labels" exports_data
+      val _ = pp_labels "code labels" exports_code
+*)
+      val _ = setExportLabs exports_data
       val asm_prg = {top_decls=CG_clos_prg clos_prg,
 		     main_lab_opt=main_lab_opt,
 		     imports_code=imports_code,
@@ -702,7 +804,7 @@ and code is actually generated when passing arguments in region polymorphic func
 		     exports_code=exports_code,
 		     exports_data=exports_data}
       val _ = 
-	if Flags.is_on "print_KAM_program" then
+	if Flags.is_on "print_kam_program" then
 	  display("\nReport: AFTER CodeGeneration for the KAM:", 
 		  layout_AsmPrg asm_prg)
 	else

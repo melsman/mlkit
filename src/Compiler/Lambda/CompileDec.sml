@@ -2355,6 +2355,9 @@ the 12 lines above are very similar to the code below
 
   end (*local*)
 
+  fun remove_dubs eq nil = nil
+    | remove_dubs eq (x::xs) = if List.exists (fn x' => eq(x,x')) xs then remove_dubs eq xs
+			       else x :: remove_dubs eq xs
 
   (* -----------------------------------------------------
    * Main compilation function
@@ -2388,6 +2391,7 @@ the 12 lines above are very similar to the code below
 	        foldl (fn (lv1, lvs) =>
 			    if List.exists (fn lv => Lvars.eq(lv,lv1)) lvars_env then lvs
 			    else lv1::lvs) [] (CE.lvarsOfCEnv env1)
+	      val lvars_decl = remove_dubs Lvars.eq lvars_decl
 	      val alpha = fresh_tyvar()
 	  in map (fn lv => {lvar=lv,tyvars = [alpha],Type=TYVARtype alpha})    (* forall alpha. alpha *)
 	     lvars_decl
@@ -2400,6 +2404,7 @@ the 12 lines above are very similar to the code below
 	       foldl (fn (ex1, exs) =>
 			   if List.exists (fn ex => Excon.eq(ex,ex1)) excons_env then exs
 			   else ex1::exs) [] (CE.exconsOfCEnv env1)
+	     val excons_decl = remove_dubs Excon.eq excons_decl
 	 in map (fn excon => (excon, NONE)) excons_decl  (*dummy-NONE*)
 	 end
        val declared_excons = declared_excons ()

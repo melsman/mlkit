@@ -114,14 +114,17 @@ fun build_kam () =
 
   (*   ; List.app (fn tf => KitKAM.comp ("../test_dev/"^tf)) test_files *)
   (*   ; KitKAM.comp "../testprogs/f1.sml"*)
-(*
+
       ; disable "auto_import_basislib"
-      ; enable "print_KAM_program" 
+      ; enable "print_kam_program" 
+
       ; enable "print_lift_conv_program"  (*   PrettyPrint.sml is broken!! *)
-*)
+
+(*      ; disable "jump_tables" *)
+(*
    ; KitKAM.build_basislib() 
    ; KitKAM.install() 
-
+*)
   end;
 
 val _ = build_kam()
