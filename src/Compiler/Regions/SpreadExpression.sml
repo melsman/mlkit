@@ -1,6 +1,6 @@
 (*$SpreadExpression: SPREAD_EXPRESSION CON EXCON LAMBDA_EXP REGION_EXP 
    FINMAP RTYPE EFFECT SPREAD_DATATYPE REGION_STAT_ENV 
-   LVARS TYNAME CRASH PRETTYPRINT FLAGS*)
+   LVARS TYNAME CRASH PRETTYPRINT FLAGS C_CONST*)
 
 (*
 *
@@ -45,6 +45,7 @@ functor SpreadExpression(
             and type SpreadDatatype.LambdaExp.datbinds = E.datbinds
             and type SpreadDatatype.cone = Eff.cone
             and type SpreadDatatype.RegionExp.datbinds = E'.datbinds
+  structure FinMap : FINMAP
   structure Flags: FLAGS
   structure Lvars: LVARS
     sharing type Lvars.lvar = E.lvar = E'.lvar = RSE.lvar
@@ -53,6 +54,8 @@ functor SpreadExpression(
   structure Crash: CRASH
   structure PP: PRETTYPRINT
     sharing type PP.StringTree =  E.StringTree = RSE.StringTree 
+  structure CConst : C_CONST
+    sharing TyName = CConst.TyName
 ): SPREAD_EXPRESSION =
 struct
   structure E = E
@@ -89,6 +92,9 @@ struct
   fun warn (lvar,Some s) = Flags.warnings:= ("algorithm S (SpreadExpression), while processing lvar: " ^
                                   Lvars.pr_lvar lvar ^ ":\n" ^ s):: !Flags.warnings
     | warn _ = ()
+
+  val concat = List.foldR (General.curry (op @)) []
+
 
   (* operations which are imported from other modules (for profiling) *)
 
@@ -140,8 +146,6 @@ struct
       in die ("S: argument to " ^ fcn ^ " must be a variable which\
        \ is monomorphic (also in regions and effects)")
       end
-  fun flatten [] = []
-    | flatten (l::ls) = l @ flatten ls
 
   val exn_ty  = E.CONStype([], TyName.tyName_EXN)
 
@@ -662,9 +666,6 @@ good *)
     | E.PRIM(E.PLUS_INTprim,e1::e2::_)    => S_built_in(B, Lvars.plus_int_lvar, [e1,e2])
     | E.PRIM(E.MINUS_INTprim,e1::e2::_)   => S_built_in(B, Lvars.minus_int_lvar, [e1,e2])
     | E.PRIM(E.MUL_INTprim,e1::e2::_)     => S_built_in(B, Lvars.mul_int_lvar, [e1,e2])
-(*KILL 12/11/1997 15:22. tho.:
-    | E.PRIM(E.DIV_INTprim,e1::e2::_)     => S_built_in(B, Lvars.div_int_lvar, [e1,e2])
-*)
     | E.PRIM(E.NEG_INTprim,e1::_)         => S_built_in(B, Lvars.negint_lvar, [e1])
     | E.PRIM(E.ABS_INTprim,e1::_)         => S_built_in(B, Lvars.absint_lvar, [e1])
     | E.PRIM(E.LESS_INTprim,[e1,e2])      => S_built_in(B, Lvars.less_int_lvar, [e1,e2])
@@ -676,63 +677,12 @@ good *)
     | E.PRIM(E.PLUS_REALprim,e1::e2::_)   => S_built_in(B, Lvars.plus_float_lvar, [e1,e2])
     | E.PRIM(E.MINUS_REALprim,e1::e2::_)  => S_built_in(B, Lvars.minus_float_lvar, [e1,e2])
     | E.PRIM(E.MUL_REALprim,e1::e2::_)    => S_built_in(B, Lvars.mul_float_lvar, [e1,e2])
-(*KILL 12/11/1997 15:22. tho.:
-    | E.PRIM(E.DIV_REALprim,e1::e2::_)    => S_built_in(B, Lvars.div_float_lvar, [e1,e2])
-*)
     | E.PRIM(E.NEG_REALprim,e1::_)        => S_built_in(B, Lvars.negfloat_lvar, [e1])
     | E.PRIM(E.ABS_REALprim,e1::_)        => S_built_in(B, Lvars.absfloat_lvar, [e1])
     | E.PRIM(E.LESS_REALprim,[e1,e2])     => S_built_in(B, Lvars.less_float_lvar, [e1,e2])
     | E.PRIM(E.LESSEQ_REALprim,[e1,e2])   => S_built_in(B, Lvars.lesseq_float_lvar, [e1,e2])
     | E.PRIM(E.GREATER_REALprim,[e1,e2])  => S_built_in(B, Lvars.greater_float_lvar, [e1,e2])
     | E.PRIM(E.GREATEREQ_REALprim,[e1,e2]) => S_built_in(B, Lvars.greatereq_float_lvar, [e1,e2])
-    
-
-(*KILL 12/11/1997 15:21. tho.:
-    (* --------------------------------------------------------------------
-     * Non-compiler-supported primitives; Later, the compiler should not
-     * support these primitives directly. Instead, one should introduce
-     * these primitives by use of the CCALL-primitive.
-     * -------------------------------------------------------------------- *)
-
-    (* REAL OPERATIONS *)
-    | E.PRIM(E.FLOORprim, es)         => S_built_in(B, Lvars.floor_lvar, es)
-    | E.PRIM(E.REALprim,es)           => S_built_in(B, Lvars.real_lvar, es)
-    | E.PRIM(E.SQRTprim,es)           => S_built_in(B, Lvars.sqrt_lvar, es)
-    | E.PRIM(E.SINprim,es)            => S_built_in(B, Lvars.sin_lvar, es)
-    | E.PRIM(E.COSprim,es)            => S_built_in(B, Lvars.cos_lvar, es)
-    | E.PRIM(E.ARCTANprim,es)         => S_built_in(B, Lvars.arctan_lvar, es)
-    | E.PRIM(E.EXPprim,es)            => S_built_in(B, Lvars.exp_lvar, es)
-    | E.PRIM(E.LNprim, es)            => S_built_in(B, Lvars.ln_lvar, es)
-
-    (* STREAMS *)
-    | E.PRIM(E.OPEN_INprim, es)       => S_built_in(B, Lvars.open_in_lvar, es)
-    | E.PRIM(E.OPEN_OUTprim, es)      => S_built_in(B, Lvars.open_out_lvar, es)
-    | E.PRIM(E.INPUTprim, es)         => S_built_in(B, Lvars.input_lvar, es)
-    | E.PRIM(E.LOOKAHEADprim, es)     => S_built_in(B, Lvars.lookahead_lvar, es)
-    | E.PRIM(E.CLOSE_INprim, es)      => S_built_in(B, Lvars.close_in_lvar, es)
-    | E.PRIM(E.END_OF_STREAMprim, es) => S_built_in(B, Lvars.end_of_stream_lvar, es)
-    | E.PRIM(E.OUTPUTprim, es)        => S_built_in(B, Lvars.output_lvar, es)
-    | E.PRIM(E.CLOSE_OUTprim, es)     => S_built_in(B, Lvars.close_out_lvar, es)
-    | E.PRIM(E.FLUSH_OUTprim, es)     => S_built_in(B, Lvars.flush_out_lvar, es)
-    | E.PRIM(E.STD_INprim, es)        => S(B,E.VAR{lvar = Lvars.lvar_STD_IN, instances = []}, false)
-    | E.PRIM(E.STD_OUTprim, es)       => S(B,E.VAR{lvar = Lvars.lvar_STD_OUT, instances = []}, false)
-
-    (* STRINGS *)
-    | E.PRIM(E.SIZEprim,es)           => S_built_in(B, Lvars.size_lvar, es)
-    | E.PRIM(E.CHRprim,es)            => S_built_in(B, Lvars.chr_lvar, es)
-    | E.PRIM(E.EXPLODEprim, es)       => S_built_in(B, Lvars.explode_lvar, es)
-    | E.PRIM(E.IMPLODEprim,es)        => S_built_in(B, Lvars.implode_lvar, es)
-
-    (* OTHERS *)
-    | E.PRIM(E.USEprim,es)            => S_built_in(B, Lvars.use_lvar, es)
-    | E.PRIM(E.MODprim, es)           => S_built_in(B, Lvars.mod_int_lvar, es)
-
-    (* primitives that are not supported directly: *)
-    | E.PRIM(E.STRING_CONCATprim, es) => die "cannot spread STRING_CONCAT (should be in prelude)"
-    | E.PRIM(E.NOTEQUALprim _, es)    => die "cannot spread NOTEQUALprim (should be in prelude)"
-    | E.PRIM(E.NOTprim, _ )           => die "S: cannot spread NOTprim (should be in prelude)"
-*)
-
 
 
     | E.SWITCH_I(intsw: int E.Switch)       => (spreadSwitch B S E'.SWITCH_I [] (intsw,toplevel))
@@ -880,36 +830,145 @@ good *)
           retract(B, E'.TR(E'.EQUAL({mu_of_arg1 = mu1, mu_of_arg2 = mu2, alloc = rho},t1,t2), 
                            E'.Mus mus, phi))
         end
-    | E.PRIM(E.CCALLprim (s,{instance=instanceRes}), expressions) => 
-        (* All C functions are required to be exomorphisms, so no sharing
-           between argument and result. We assume that there is a get-effect
-           on every region variable in the domain type and a put effect on
-           every region variable in the result type; 
-           NB: during multiplicity inference, we have to give multiplicity infinity
-           to those region variables that occur under the LIST type constructor
-           in the result type. *)
-	  let 
-            val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
-	    val (mu as (tau,fresh_rho),B) = freshMu(instanceRes,B)
-            val (B, results, mus_args, args_phi) = List.foldR(fn expression => fn (B, results', mus, acc_phi) =>
-                    let val (B, tr' as E'.TR(_,E'.Mus mus',phi')) = S(B, expression,false)
-                    in case mus' of [mu'] => (B, tr'::results', mu' :: mus, phi'::acc_phi)
-                       | _ => die "S: ill-typed CCALL (an argument had not precisely one type and place)"
-                    end) (B,[],[],[]) expressions
-            fun frv(mu) = (*Eff.*)remove_duplicates(List.all (*Eff.*)is_rho (ann_mus [mu] []))
-	    val rhos_res = frv mu
-	    val rhos_res_without_rhos_for_tyvars =
-	          List.dropAll (fn effect => (case Eff.get_place_ty effect of
-						Some Eff.BOT_RT => true
-					      | _ => false)) rhos_res
-            val rhos_mus_args = (*Eff.*)remove_duplicates(flatten(map frv mus_args))
-(*	    val _ = print ("\nrhos_res CCALL: " ^ List.string (pp o R.layout_place) rhos_res ^ "\n") *)
-	    val phi = (*Eff.*)mkUnion(args_phi @  (map (*Eff.*)mkGet rhos_mus_args
-						   @ map (*Eff.*)mkPut rhos_res_without_rhos_for_tyvars))
-	    val e' = E'.CCALL({name = s, resultMu = mu, resultAllocs = rhos_res_without_rhos_for_tyvars}, results)
-	  in
-            retract(B, E'.TR(e', E'.Mus [mu], phi))
-	  end
+
+(*`CCALLprim {name, ...} es' is like an application of a variable `name' to
+ `es', only `name' does not have a region type scheme in the environment & it
+ can take multiple arguments.  How, then, do we obtain a region type scheme
+ for `name'?  The code for `name' is not available to make region inference
+ on so we use its ML type scheme.  So we spread (freshMu) the ML type scheme.
+ As `name' is a function, its ML type scheme has an arrow & we must decide
+ what arrow effect to put there.  We assume `name' gets from every region in
+ the argument type & puts in every region in the result type.  Except that we
+ assume there are no effects on regions that are associated with tyvars.
+ (The polymorphic c function with region type scheme "All 'a'r'rr.('a,'r) ->
+ (('a,'r)*('a,'r), 'rr)" does not really get or put on 'r (but it puts on
+ 'rr).)  So it is a little troublesome to find the get & put regions.  Also,
+ we must ensure that it is always the same region variable that is paired
+ with a specific tyvar.  (In the example above, if we just spread the
+ underlying ML type scheme we would get different region variables on the
+ occurences of 'a: "All 'a'r1'r2'r3'rr.('a,'r1) -> (('a,'r2)*('a,'r3), 'rr)".
+ See?)  See also the chapter `Calling C Functions' in the documentation.*)
+
+    | E.PRIM (E.CCALLprim {name, instances, tyvars, Type}, es) => 
+	let
+	  (*unify_rhos_on_same_tyvars mu = for each pair of occurences of
+	   (tyvar, rho1) & (tyvar, rho2), unify rho1 & rho2.  To do this, an
+	   environment ttr maps a tyvar that has been seen before to the rho
+	   it was seen with.*)
+	  fun unify_rhos_on_same_tyvars mu B = #2 (unify_rhos_on_same_tyvars0 mu
+	        (FinMap.empty : (tyvar, place) FinMap.map, B : cone))
+	  and unify_rhos_on_same_tyvars0 (tau, rho) (ttr, B) =
+	        (case tau of
+		   R.TYVAR tyvar =>
+		     (case FinMap.lookup ttr tyvar of
+			Some rho' => (ttr, Eff.unifyRho (rho, rho') B)
+		      | None =>      (FinMap.add (tyvar, rho, ttr), B))
+		 | R.CONSTYPE (tyname, mus, _, _) =>
+		     unify_rhos_on_same_tyvars00 mus (ttr, B)
+		 | R.RECORD mus => unify_rhos_on_same_tyvars00 mus (ttr, B)
+		 | R.FUN (mus1, _, mus2) =>
+		     unify_rhos_on_same_tyvars00 mus1
+		     (unify_rhos_on_same_tyvars00 mus2 (ttr, B)))
+	  and unify_rhos_on_same_tyvars00 mus (ttr, B) =
+	        List.foldL unify_rhos_on_same_tyvars0 (ttr, B) mus
+
+	  (*c_function_effects mus = the `rhos_for_result' to be annotated on
+	   a ccall; see comment in MUL_EXP.*)
+	       
+	  fun c_function_effects mu : (R.place * int Option) list =
+	        c_function_effects1 no mu
+	  and c_function_effects1 in_list (tau, rho) =
+	        (case tau of
+		   R.TYVAR tyvar => []
+		 | R.CONSTYPE (tyname, mus, rhos, epss) =>
+		     if TyName.eq (tyname, TyName.tyName_LIST) then
+		       (case (mus, rhos) of
+			  ([mu1], [rho1]) =>
+			    (*rho is for cons cells & rho1 is for auxiliary pairs*)
+			    [(rho, None), (rho1, None)] @ c_function_effects1 yes mu1
+			| _ => die "c_function_effects1: strange list type")
+		     else [(rho, in_list (size_of_tyname tyname))]
+		 | R.RECORD [] => [(rho, Some 0)] (*unit is not allocated*)
+		 | R.RECORD mus =>
+		     (rho, in_list (Some (CConst.size_of_record mus)))
+		     :: concat (map (c_function_effects1 in_list) mus)
+		     (*it is assumed that concat does not concat the lists in
+		      opposite order, i.e., that concat [[1,2], [3], [4]] is
+		      [1,2,3,4] and not [4,3,1,2]*)
+		 | R.FUN (mus, eps0, mus') => die "c_function_effects1 (R.FUN ...)")
+          and yes i_opt = None (*i.e., `yes, we are below a list constructor'*)
+          and no i_opt = i_opt (*i.e., `no, we are not below a list constructor'*)
+	  and size_of_tyname tyname =
+	        if TyName.eq (tyname, TyName.tyName_REAL)
+		then Some (CConst.size_of_real ())
+		else if TyName.eq (tyname, TyName.tyName_STRING) then None
+	        else if CConst.unboxed_tyname tyname then Some 0
+		else die ("S (CCALL ...): \nI am sorry, but c functions returning "
+			  ^ TyName.pr_TyName tyname
+			  ^ " are not supported yet.\n")
+
+	  fun frv_except_tyvar_rhos mus =
+	        Eff.remove_duplicates (frv_except_tyvar_rhos0 mus)
+	  and frv_except_tyvar_rhos0 mus =
+	        concat (map frv_except_tyvar_rhos1 mus)
+	  and frv_except_tyvar_rhos1 (tau, rho) =
+	        (case tau of
+		   R.TYVAR tyvar => []
+		 | R.CONSTYPE (tyname, mus, rhos, epss) =>
+		     rho :: epss @ rhos @ frv_except_tyvar_rhos0 mus
+		 | R.RECORD mus =>
+		     rho :: frv_except_tyvar_rhos0 mus
+		 | R.FUN (mus, eps0, mus') => die "frv_except_tyvar_rhos1")
+
+
+	  (*TODO 14/11/1997 19:07. tho.: her er lidt tvivl om retract level &
+	   Eff.push & Eff.pop B freshMu: hvad med det rho, der bliver sat
+	   yderst på typen? det, der er ``til at gemme c-funktionen i''.*)
+
+	  fun sigma_for_c_function (tyvars, Type) B =
+	        let val (mu, B) = freshMu (Type, B)
+		    val B = unify_rhos_on_same_tyvars mu B
+		in
+		  (case mu of
+		     (R.FUN (mus1, eps0, mus2), rho) =>
+		       let val rhos_get = frv_except_tyvar_rhos mus1
+			   val rhos_put = frv_except_tyvar_rhos mus2
+			   val phi0 = Eff.mkUnion (map Eff.mkGet rhos_get
+						 @ map Eff.mkPut rhos_put)
+		       in
+			 Eff.edge (eps0, phi0) ; (*insert effect phi0 on the arrow in mu*)
+			 let val (B, sigma, msg_opt) = R.generalize_all (B, 0 (*TODO 14/11/1997 19:47. tho.*),
+									 tyvars, #1 mu)
+			 in (sigma, B)
+			 end
+		       end
+		   | _ => die "sigma_for_c_function")
+		end
+
+	  val B = pushIfNotTopLevel (toplevel, B) (* for retract *)
+	  val (sigma, B) = sigma_for_c_function (tyvars, Type) B
+	  (*much of the rest is analogous to the case for (APP (VAR ..., ...))*)
+	  val (B, tau, il) = newInstance (B, sigma, instances)
+	in
+	  (case tau of
+	     R.FUN (mus_a, eps_phi0, [mu_r]) =>
+	       let
+		 val (B, trs', mus_es, phis) =
+		       List.foldR (fn e => fn (B, trs', mus_es, phis) =>
+                       let val (B, tr' as E'.TR (_, E'.Mus mus', phi)) = S (B, e, false)
+		       in (case mus' of
+			     [mu'] => (B, tr' :: trs', mu' :: mus_es, phi :: phis)
+			   | _ => die "S: CCALL argument had not precisely one mu")
+		       end) (B, [], [], []) es
+		 val B = unify_mus (mus_a, mus_es) B
+		 val e' = E'.CCALL ({name = name, mu_result = mu_r,
+				     rhos_for_result = c_function_effects mu_r}, trs')
+	       in
+		 retract (B, E'.TR (e', E'.Mus [mu_r], Eff.mkUnion (eps_phi0 :: phis)))
+	       end
+	   | _ => die "CCALL: tau not function type")
+	end
+
     | E.PRIM(E.RESET_REGIONSprim{instance = _}, [e0 as (E.VAR _)] ) =>
           (*              
                      x  => [mu], empty  rho fresh

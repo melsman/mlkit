@@ -100,7 +100,10 @@ struct
       | REF      of 'a * ('a,'b)trip
       | ASSIGN   of 'a * ('a,'b)trip * ('a,'b)trip
       | EQUAL    of {mu_of_arg1: Type * place , mu_of_arg2: Type*place, alloc: 'a} * ('a,'b)trip * ('a,'b)trip
-      | CCALL    of {name: string, resultMu: Type * place, resultAllocs: 'a list} * ('a,'b)trip list  (* Calling C functions *)
+      | CCALL    of {name : string,
+		     mu_result : Type * place, 
+		     rhos_for_result : ('a * int Option) list}
+	            * ('a,'b)trip list
       | RESET_REGIONS of {force: bool, alloc : 'a, regions_for_resetting: 'a list} * ('a,'b)trip     (* for programmer-directed resetting of regions;
 								      * resetting is forced iff "force" is true.
 								      * Forced resetting is not guaranteed to be sound *)
@@ -479,13 +482,14 @@ old*)
                        indent = 0, childsep = PP.RIGHT (eq^ty),
                        children = [layTrip(arg1,2), layTrip(arg2, 2)]}
             end
-        | CCALL({name, resultMu = mu, resultAllocs}, args) =>
-            PP.NODE{start = "ccall(", finish = "):" ^ 
-                             (if !(Flags.print_types) then PP.flatten1(layMu mu) else "") ^ 
-                             (if !(Flags.print_regions) then 
-                                PP.flatten1(layHlist (fn a => PP.LEAF(alloc_string a)) resultAllocs) else ""),
-                    indent = 6, childsep = PP.RIGHT ", ", 
-                    children = PP.LEAF name :: (map (fn t => layTrip(t,0)) args)}
+        | CCALL ({name, mu_result, rhos_for_result}, args) =>
+            PP.NODE {start = "ccall(", finish = "):"
+		     ^ (if !Flags.print_types then PP.flatten1(layMu mu_result) else "")
+		     ^ (if !Flags.print_regions then 
+			  PP.flatten1(layHlist (PP.LEAF o alloc_string o #1) rhos_for_result)
+			else ""),
+	             indent = 6, childsep = PP.RIGHT ", ", 
+		     children = PP.LEAF name :: (map (fn t => layTrip(t,0)) args)}
         | RESET_REGIONS({force, alloc,regions_for_resetting}, t) =>
            let val fcn = if force then "forceResetting " else "resetRegions "
                val aux_regions_t = HNODE{start="[",finish="]", childsep=NONE,

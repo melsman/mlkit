@@ -301,11 +301,20 @@ functor DropRegions(structure MulExp : MUL_EXP
 	     | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => 
 		 EQUAL ({mu_of_arg1=mu_of_arg1, mu_of_arg2=mu_of_arg2, alloc=drop_atplace alloc}, 
 			drop env tr1, drop env tr2)
-	     | CCALL ({name, resultMu, resultAllocs}, trs) =>
-		 let fun filter [] = []
-		       | filter (IGNORE::xs) = filter xs
-		       | filter (x::xs) = x::filter xs
-		 in CCALL ({name=name, resultMu=resultMu, resultAllocs=filter (map drop_atplace resultAllocs)}, map (drop env) trs)
+	     | CCALL ({name, mu_result, rhos_for_result}, trs) =>
+		 let
+		   (*I do not think you can be sure that List.dropAll preserves
+		    the order of the list, so filter is used:*)
+		   fun filter [] = []
+		     | filter ((IGNORE, _) :: xs) = filter xs
+		     | filter ((_, Some 0) :: xs) = die "filter: undropped region with size=0?"
+		     | filter (x :: xs) = x :: filter xs
+		 in CCALL ({name = name,
+			    mu_result = mu_result,
+			    rhos_for_result =
+			      filter (map (fn (atp, i_opt) =>
+					   (drop_atplace atp, i_opt)) rhos_for_result)},
+			   map (drop env) trs)
 		 end
 	     | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => 
                   RESET_REGIONS ({force=force,alloc=drop_atplace alloc, 

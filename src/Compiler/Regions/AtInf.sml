@@ -581,8 +581,13 @@ functor AtInf(structure Lvars: LVARS
 		     | EQUAL ({mu_of_arg1, mu_of_arg2, alloc = (p,liveset)}, tr1,tr2) => 
 		      EQUAL ({mu_of_arg1=mu_of_arg1, mu_of_arg2=mu_of_arg2, alloc=ATTOP p},  (* no need for analysis *)
 			     sma_trip sme tr1,sma_trip sme tr2)
-		     | CCALL ({name, resultMu, resultAllocs}, trs) =>  
-		      CCALL ({name=name,resultMu=resultMu,resultAllocs= map (which_at sme)(*(ATTOP o #1)28/03/1997, Niels*) resultAllocs}, map (sma_trip sme) trs)
+		     | CCALL ({name, mu_result, rhos_for_result}, trs) =>  
+		         CCALL ({name = name, mu_result = mu_result, 
+				 rhos_for_result =
+				     map (fn ((rho, liveset), i_opt) =>
+					  (which_at sme (rho, liveset), i_opt))
+				     rhos_for_result},
+				map (sma_trip sme) trs)
 		     | RESET_REGIONS ({force, alloc = (p, liveset), ...}, tr as (TR(VAR{lvar,...},meta,_,_))) => 
                           (case meta of
                              MulExp.RegionExp.Mus [mu] =>
