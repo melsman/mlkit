@@ -161,10 +161,14 @@ functor CompileBasis(structure Con : CON
 
     fun restrict ({EqEnv,OEnv,TCEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce},
 		  (lvars,lvars_with_prims,tynames,cons,excons)) = 
-      let val excons = Excon.ex_DIV :: Excon.ex_MOD ::
+      let (*Martin Elsman wants to write a comment here
+	   09/09/1997 11:28. tho.*)
+	  val excons = Excon.ex_DIV :: Excon.ex_MOD ::
 	        Excon.ex_MATCH :: Excon.ex_BIND :: excons
-	  val cons = Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)
-	  val tynames = TyName.tyName_BOOL :: tynames        (* for elim eq *) 
+	  val cons = Con.con_NIL :: Con.con_CONS ::
+	        Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)
+	  val tynames = TyName.tyName_LIST ::
+	        TyName.tyName_BOOL :: tynames        (* for elim eq *) 
 	  val (lvars,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
 	  val OEnv1 = OptLambda.restrict(OEnv,lvars)
 	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
