@@ -1,0 +1,2331 @@
+
+
+********** /vol/topps/disk02/MLKIT-afterVersion1/hojfeld/sommerskole/version2/kitdemo/prof-6.sml *************
+
+
+resetRegions(cards): 
+   You have suggested resetting the regions that appear free 
+   in the type scheme and place of 'cards', i.e., in
+   (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)],
+     [r2678],
+     
+    ) 
+    list,
+    r2679
+   )
+   (1)                                                    
+        'r2676': there is a conflict with the locally
+        live variable
+        rest :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2695)],
+               [r2703],
+               
+              ) 
+              list,
+              r2704
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2704,r2697,r2785,r3003,r3439,r3206,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,
+              r2695,r3204,r2703,r2696,r2784,r3002,r3438,r3205}
+        Amongst these, 'r2676' can also be reached from 'r2676'.
+        Thus I have given 'r2676' storage mode "attop".
+   (2)                                                    
+        'r2675': there is a conflict with the locally
+        live variable
+        rest :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2695)],
+               [r2703],
+               
+              ) 
+              list,
+              r2704
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2704,r2697,r2785,r3003,r3439,r3206,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,
+              r2695,r3204,r2703,r2696,r2784,r3002,r3438,r3205}
+        Amongst these, 'r2675' can also be reached from 'r2675'.
+        Thus I have given 'r2675' storage mode "attop".
+   (3)                                                    
+        'r2674': there is a conflict with the locally
+        live variable
+        rest :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2695)],
+               [r2703],
+               
+              ) 
+              list,
+              r2704
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2704,r2697,r2785,r3003,r3439,r3206,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,
+              r2695,r3204,r2703,r2696,r2784,r3002,r3438,r3205}
+        Amongst these, 'r2674' can also be reached from 'r2674'.
+        Thus I have given 'r2674' storage mode "attop".
+   (4)                                                    
+        'r2673': there is a conflict with the locally
+        live variable
+        rest :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2695)],
+               [r2703],
+               
+              ) 
+              list,
+              r2704
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2704,r2697,r2785,r3003,r3439,r3206,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,
+              r2695,r3204,r2703,r2696,r2784,r3002,r3438,r3205}
+        Amongst these, 'r2673' can also be reached from 'r2673'.
+        Thus I have given 'r2673' storage mode "attop".
+   (5)                                                    
+        'r2677': there is a conflict with the locally
+        live variable
+        x' :(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2677,r3440,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200}
+        Amongst these, 'r2677' can also be reached from 'r2677'.
+        Thus I have given 'r2677' storage mode "attop".
+   (6)                                                    
+        'r2678': there is a conflict with the locally
+        live variable
+        cards' :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)],
+               [r2678],
+               
+              ) 
+              list,
+              r2679
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2679,r3442,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,r2677,r3440,r2678,r3441}
+        Amongst these, 'r2678' can also be reached from 'r2678'.
+        Thus I have given 'r2678' storage mode "attop".
+   (7)                                                    
+        'r2679': there is a conflict with the locally
+        live variable
+        cards' :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)],
+               [r2678],
+               
+              ) 
+              list,
+              r2679
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2679,r3442,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,r2677,r3440,r2678,r3441}
+        Amongst these, 'r2679' can also be reached from 'r2679'.
+        Thus I have given 'r2679' storage mode "attop".
+resetRegions(cards): 
+   You have suggested resetting the regions that appear free 
+   in the type scheme and place of 'cards', i.e., in
+   (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)],
+     [r2678],
+     
+    ) 
+    list,
+    r2679
+   )
+   (1)                                                    
+        'r2676': there is a conflict with the locally
+        live variable
+        cards' :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)],
+               [r2678],
+               
+              ) 
+              list,
+              r2679
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2679,r3442,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,r2677,r3440,r2678,r3441}
+        Amongst these, 'r2676' can also be reached from 'r2676'.
+        Thus I have given 'r2676' storage mode "attop".
+   (2)                                                    
+        'r2675': there is a conflict with the locally
+        live variable
+        cards' :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)],
+               [r2678],
+               
+              ) 
+              list,
+              r2679
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2679,r3442,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,r2677,r3440,r2678,r3441}
+        Amongst these, 'r2675' can also be reached from 'r2675'.
+        Thus I have given 'r2675' storage mode "attop".
+   (3)                                                    
+        'r2674': there is a conflict with the locally
+        live variable
+        cards' :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)],
+               [r2678],
+               
+              ) 
+              list,
+              r2679
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2679,r3442,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,r2677,r3440,r2678,r3441}
+        Amongst these, 'r2674' can also be reached from 'r2674'.
+        Thus I have given 'r2674' storage mode "attop".
+   (4)                                                    
+        'r2673': there is a conflict with the locally
+        live variable
+        cards' :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)],
+               [r2678],
+               
+              ) 
+              list,
+              r2679
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2679,r3442,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,r2677,r3440,r2678,r3441}
+        Amongst these, 'r2673' can also be reached from 'r2673'.
+        Thus I have given 'r2673' storage mode "attop".
+   (5)                                                    
+        'r2677': there is a conflict with the locally
+        live variable
+        cards' :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)],
+               [r2678],
+               
+              ) 
+              list,
+              r2679
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2679,r3442,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,r2677,r3440,r2678,r3441}
+        Amongst these, 'r2677' can also be reached from 'r2677'.
+        Thus I have given 'r2677' storage mode "attop".
+   (6)                                                    
+        'r2678': there is a conflict with the locally
+        live variable
+        cards' :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)],
+               [r2678],
+               
+              ) 
+              list,
+              r2679
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2679,r3442,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,r2677,r3440,r2678,r3441}
+        Amongst these, 'r2678' can also be reached from 'r2678'.
+        Thus I have given 'r2678' storage mode "attop".
+   (7)                                                    
+        'r2679': there is a conflict with the locally
+        live variable
+        cards' :
+             (([(((clothes,r2676)*(clothes,r2675)*(clothes,r2674)*(clothes,r2673)),r2677)],
+               [r2678],
+               
+              ) 
+              list,
+              r2679
+             )
+        from which the following region variables can be reached 
+        in the region flow graph:
+             {r2679,r3442,r2676,r3203,r2675,r3202,r2674,r3201,r2673,r3200,r2677,r3440,r2678,r3441}
+        Amongst these, 'r2679' can also be reached from 'r2679'.
+        Thus I have given 'r2679' storage mode "attop".
+
+Report: LAMBDA CODE WITH PROGRAM POINTS:: 
+   let fun v2950 attop r1 pp171 [] (v2951)= 
+           let val v2952 = #0 v2951; val v2953 = #1 v2951
+           in  (case v2952 
+                  of BROWN_TROUSERS => (case v2953 of BROWN_TROUSERS => true | _ => false) (*case*) 
+                  |  BROWN_JACKET => (case v2953 of BROWN_JACKET => true | _ => false) (*case*) 
+                  |  BLUE_TROUSERS => (case v2953 of BLUE_TROUSERS => true | _ => false) (*case*) 
+                  |  BLUE_JACKET => (case v2953 of BLUE_JACKET => true | _ => false) (*case*) 
+                  |  GREEN_TROUSERS => (case v2953 of GREEN_TROUSERS => true | _ => false) (*case*) 
+                  |  GREEN_JACKET => (case v2953 of GREEN_JACKET => true | _ => false) (*case*) 
+                  |  RED_TROUSERS => (case v2953 of RED_TROUSERS => true | _ => false) (*case*) 
+                  |  RED_JACKET => (case v2953 of RED_JACKET => true | _ => false) (*case*) 
+               ) (*case*) 
+           end ; 
+       val it = 
+           letregion r1448:4 
+           in let fun string' atbot r1448 pp173 [r1451:inf] (var138)= 
+                      (case var138 
+                         of 0 => "0"attop r1451 pp174
+                         |  1 => "1"attop r1451 pp175
+                         |  2 => "2"attop r1451 pp176
+                         |  3 => "3"attop r1451 pp177
+                         |  4 => "4"attop r1451 pp178
+                         |  5 => "5"attop r1451 pp179
+                         |  6 => "6"attop r1451 pp180
+                         |  7 => "7"attop r1451 pp181
+                         |  8 => "8"attop r1451 pp182
+                         |  9 => "9"attop r1451 pp183
+                         |  _ => 
+                            letregion r1461:inf, r1462:inf, r1463:2, r1466:1 
+                            in ^[sat r1451 pp194] atbot r1466 pp193 
+                               (letregion r1476:1 
+                                in string'[atbot r1461 pp187] atbot r1476 pp186 
+                                   letregion r1477:2, r1479:0 
+                                   in div[] (var138, 10) atbot r1477 pp184 
+                                   end (*r1477:2, r1479:0*) 
+                                end (*r1476:1*), 
+                                letregion r1469:1 
+                                in string'[atbot r1462 pp191] atbot r1469 pp190 
+                                   letregion r1470:2, r1472:0 
+                                   in mod[] (var138, 10) atbot r1470 pp188 
+                                   end (*r1470:2, r1472:0*) 
+                                end (*r1469:1*)
+                               ) atbot r1463 pp192 
+                            end (*r1461:inf, r1462:inf, r1463:2, r1466:1*)
+                      ) (*case*) 
+              in  letregion r1484:3 
+                  in let fun IntString atbot r1484 pp196 [r1488:inf] (n)= 
+                             (case n < 0 
+                                of true => 
+                                   letregion r1491:0, r1492:inf, r1493:2, r1496:1 
+                                   in ^[sat r1488 pp202] atbot r1496 pp201 
+                                      ("~"attop r1491 pp197, 
+                                       letregion r1499:1 
+                                       in string'[atbot r1492 pp199] atbot r1499 pp198 neg_int[] <n> 
+                                       end (*r1499:1*)
+                                      ) atbot r1493 pp200 
+                                   end (*r1491:0, r1492:inf, r1493:2, r1496:1*)
+                                |  false => 
+                                   letregion r1490:1 
+                                   in string'[sat r1488 pp204] atbot r1490 pp203 n 
+                                   end (*r1490:1*)
+                             ) (*case*) ; 
+                         exception 
+                             ListSubscript 
+                             : 
+                             (((((string,r4)*(int,r2)),r1)->(exn,r1)),r1) 
+                             (* exn value or name attop r1 pp206 *); 
+                         exception ListSub' : (exn,r1) (* exn value or name attop r1 pp207 *)
+                     in  letregion r1511:2 
+                         in let fun count atbot r1511 pp208 [] (var142)= 
+                                    (case #0 var142 
+                                       of :: => 
+                                          (case #1 var142 
+                                             of 0 => let val v2342 = #0 var142; val v2344 = decon_:: v2342 in #0 v2344 end 
+                                             |  _ => 
+                                                let val v2347 = #0 var142; 
+                                                    val v2349 = decon_:: v2347; 
+                                                    val n = #1 var142; 
+                                                    val xs = #1 v2349
+                                                in  letregion r1535:2, r1538:0 
+                                                    in count[] (xs, n - 1) atbot r1535 pp209 
+                                                    end (*r1535:2, r1538:0*)
+                                                end 
+                                          ) (*case*) 
+                                       |  nil => (case #1 var142 of 0 => raise ListSub' | _ => raise ListSub') (*case*) 
+                                    ) (*case*) 
+                            in  letregion r1543:2 
+                                in let fun split atbot r1543 pp212 [r1563:2, r1562:inf, r1561:inf] (var144)= 
+                                           (case #0 var144 
+                                              of :: => 
+                                                 (case #1 var144 
+                                                    of 0 => let val l = #0 var144 in (nil sat r1562 pp213, l) sat r1563 pp214 end 
+                                                    |  _ => 
+                                                       let val v2373 = #0 var144; 
+                                                           val v2375 = decon_:: v2373; 
+                                                           val m = #1 var144; 
+                                                           val x = #0 v2375; 
+                                                           val xs = #1 v2375
+                                                       in  letregion r1589:2 
+                                                           in let val v2378 = 
+b64      letregion r1582:2, r1591:3 
+b64      in split[atbot r1589 pp217,sat r1562 pp218,sat r1561 pp219] atbot r1591 pp216 
+b64         (xs, m - 1) atbot r1582 pp215 
+b64      end (*r1582:2, r1591:3*); 
+b64  val l = #0 v2378; 
+b64  val l' = #1 v2378
+                                                              in  (let val v2381 = (x, l) attop r1561 pp220 in :: attop r1562 pp221 v2381 end , 
+b64   l'
+b64  ) sat r1563 pp222
+                                                              end  
+                                                           end (*r1589:2*)
+                                                       end 
+                                                 ) (*case*) 
+                                              |  nil => 
+                                                 (case #1 var144 
+                                                    of 0 => let val l = #0 var144 in (nil sat r1562 pp223, l) sat r1563 pp224 end 
+                                                    |  _ => raise ListSub'
+                                                 ) (*case*) 
+                                           ) (*case*) 
+                                   in  letregion r1602:1 
+                                       in let fun ListSize atbot r1602 pp226 [] (var147)= 
+                                                  (case var147 
+                                                     of nil => 0
+                                                     |  :: => 
+                                                        let val v2395 = decon_:: var147; val xs = #1 v2395 in 1 + ListSize[] xs end 
+                                                  ) (*case*) 
+                                          in  letregion r1622:6 
+                                              in let fun ListNth atbot r1622 pp229 [r1659:7] (n)= 
+                                                          fn sat r1659 pp243 l => 
+                                                          letregion r1657:5 
+                                                          in  (case n < 0 
+                                                                 of true => 
+b64    raise let val v2358 = ("sub"attop r4 pp230, n) attop r1 pp231
+b64          in  ListSubscript attop r1 pp232 v2358
+b64          end 
+b64 |  false => 
+b64    letregion r1647:6 
+b64    in  letregion r1637:2, r1639:0 
+b64        in count[] (l, n) atbot r1637 pp233 
+b64        end (*r1637:2, r1639:0*) handle 
+b64        (fn atbot r1647 pp238 ListSub' => 
+b64         (case ListSub' 
+b64            of ListSub' => 
+b64               raise let val v2360 = ("sub"attop r4 pp235, n) attop r1 pp236
+b64                     in  ListSubscript attop r1 pp237 v2360
+b64                     end 
+b64            |  _ => raise ListSub'
+b64         ) (*case*) 
+b64        ) 
+b64    end (*r1647:6*)
+                                                              ) (*case*)  handle 
+                                                              (fn atbot r1657 pp242 v2404 => 
+                                                               (case v2404 
+                                                                  of ListSubscript => 
+b64     raise let val v2406 = ("nth"attop r4 pp239, n) attop r1 pp240
+b64           in  ListSubscript attop r1 pp241 v2406
+b64           end 
+b64  |  _ => raise v2404
+                                                               ) (*case*) 
+                                                              ) 
+                                                          end (*r1657:5*); 
+                                                     exception Die : (exn,r1) (* exn value or name attop r1 pp245 *)
+                                                 in  letregion r1663:3 
+                                                     in let fun pr atbot r1663 pp246 [] (s)= 
+b64letregion r1669:2, r1671:0 
+b64in output[] (std_out, s) atbot r1669 pp247 
+b64end (*r1669:2, r1671:0*)
+                                                        in  letregion r1675:4 
+                                                            in let fun die atbot r1675 pp250 [] (s)= 
+b64       let val v2427 = 
+b64               letregion r1680:inf, r1682:0 
+b64               in pr[] 
+b64                  letregion r1683:0, r1685:2, r1688:1 
+b64                  in ^[atbot r1680 pp254] atbot r1688 pp253 
+b64                     ("Professor_game - DIE with message: "attop r1683 pp251, s) atbot r1685 pp252 
+b64                  end (*r1683:0, r1685:2, r1688:1*) 
+b64               end (*r1680:inf, r1682:0*)
+b64       in  raise Die
+b64       end 
+                                                               in  letregion r1694:4 
+b64   in let fun log atbot r1694 pp257 [] (s)= 
+b64              letregion r1699:inf, r1700:2, r1702:0 
+b64              in output[] 
+b64                 (std_out, 
+b64                  letregion r1703:inf, r1704:0, r1705:2, r1708:1 
+b64                  in ^[atbot r1699 pp265] atbot r1708 pp264 
+b64                     (letregion r1710:0, r1712:2, r1715:1 
+b64                      in ^[atbot r1703 pp261] atbot r1715 pp260 
+b64                         ("Professor_game - LOG with message: "attop r1710 pp258, s) atbot r1712 pp259 
+b64                      end (*r1710:0, r1712:2, r1715:1*), 
+b64                      "\n"attop r1704 pp262
+b64                     ) atbot r1705 pp263 
+b64                  end (*r1703:inf, r1704:0, r1705:2, r1708:1*)
+b64                 ) atbot r1700 pp266 
+b64              end (*r1699:inf, r1700:2, r1702:0*); 
+b64          val debug_flag = false
+b64      in  letregion r1722:3 
+b64          in let fun debug atbot r1722 pp269 [] (s)= 
+b64                     (case debug_flag 
+b64                     of true => letregion r1728:0 in log[] s end (*r1728:0*) | false => ()) (*case*) 
+b64             in  letregion r1731:1 
+b64                 in let fun emptyBoard atbot r1731 pp272 [r1740:3, r1739:1, r1738:0] (v3203)= 
+b64                            (0, 0, nil sat r1739 pp273) sat r1740 pp274
+b64                    in  letregion r1743:3 
+b64                        in let fun add atbot r1743 pp276 [r1766:5, r1764:2] (n)= 
+b64                                    fn sat r1766 pp282 var166 => 
+b64                                    let val row = #0 var166; 
+b64                                        val col = #1 var166; 
+b64                                        val row' = 
+b64                                            letregion r1750:2, r1752:0 
+b64                                            in div[] (((row * 4) + n) + col, 4) atbot r1750 pp277 
+b64                                            end (*r1750:2, r1752:0*); 
+b64                                        val col' = 
+b64                                            letregion r1757:2, r1759:0 
+b64                                            in mod[] (((row * 4) + n) + col, 4) atbot r1757 pp279 
+b64                                            end (*r1757:2, r1759:0*)
+b64                                    in  (row', col') attop r1764 pp281
+b64                                    end 
+b64                           in  letregion r1769:2 
+b64                               in let fun pp_newline atbot r1769 pp284 [] (var168)= 
+b64                                          letregion r1771:0, r1773:0 
+b64                                          in pr[] "\n"attop r1771 pp285 
+b64                                          end (*r1771:0, r1773:0*)
+b64                                  in  letregion r1777:2 
+b64                                      in let fun pp_board_line atbot r1777 pp288 [] (var169)= 
+b64                                                 letregion r1779:0, r1781:0 
+b64                                                 in pr[] 
+b64                                                    "+--------------------------------++--------------------------------++--------------------------------++--------------------------------+\n"attop r1779 pp289 
+b64                                                 end (*r1779:0, r1781:0*)
+b64                                         in  letregion r1785:4 
+b64                                             in let fun pp_vertical atbot r1785 pp292 [] (xs)= 
+b64                                                        let val _not_used = 
+b128letregion r1854:inf, r1855:inf 
+b128in let val v2515 = 
+b128           letregion r1793:3 
+b128           in let fun ListMap atbot r1793 pp293 [r1811:inf, r1810:inf] (var141)= 
+b128                      (case var141 
+b128                         of nil => nil sat r1811 pp294
+b128                         |  :: => 
+b128                            let val v2324 = decon_:: var141; 
+b128                                val x = #0 v2324; 
+b128                                val xs = #1 v2324; 
+b128                                val v2329 = 
+b128                                    (letregion r1814:inf, r1816:0 
+b128                                     in pr[] 
+b128                                        letregion r1817:inf, r1818:0, r1819:2, r1822:1 
+b128                                        in ^[atbot r1814 pp310] atbot r1822 pp309 
+b128                                           (letregion r1824:0, r1825:0, r1826:2, r1829:1 
+b128                                            in ^[atbot r1817 pp306] atbot r1829 pp305 
+b128                                               ("|         "attop r1824 pp295, 
+b128                                                (case x 
+b128                                                   of RED_JACKET => "RED_JACKET    "attop r1825 pp296
+b128                                                   |  RED_TROUSERS => "RED_TROUSERS  "attop r1825 pp297
+b128                                                   |  GREEN_JACKET => "GREEN_JACKET  "attop r1825 pp298
+b128                                                   |  GREEN_TROUSERS => "GREEN_TROUSERS"attop r1825 pp299
+b128                                                   |  BLUE_JACKET => "BLUE_JACKET   "attop r1825 pp300
+b128                                                   |  BLUE_TROUSERS => "BLUE_TROUSERS "attop r1825 pp301
+b128                                                   |  BROWN_JACKET => "BROWN_JACKET  "attop r1825 pp302
+b128                                                   |  BROWN_TROUSERS => "BROWN_TROUSERS"attop r1825 pp303
+b128                                                ) (*case*) 
+b128                                               ) atbot r1826 pp304 
+b128                                            end (*r1824:0, r1825:0, r1826:2, r1829:1*), 
+b128                                            "         |"attop r1818 pp307
+b128                                           ) atbot r1819 pp308 
+b128                                        end (*r1817:inf, r1818:0, r1819:2, r1822:1*) 
+b128                                     end (*r1814:inf, r1816:0*), 
+b128                                     letregion r1813:2 
+b128                                     in ListMap[sat r1811 pp313,sat r1810 pp314] atbot r1813 pp312 xs 
+b128                                     end (*r1813:2*)
+b128                                    ) attop r1810 pp315
+b128                            in  :: attop r1811 pp316 v2329
+b128                            end 
+b128                      ) (*case*) 
+b128              in  letregion r1857:2 
+b128                  in ListMap[atbot r1855 pp319,atbot r1854 pp320] atbot r1857 pp318 xs 
+b128                  end (*r1857:2*)
+b128              end  
+b128           end (*r1793:3*)
+b128   in  ()
+b128   end  
+b128end (*r1854:inf, r1855:inf*)
+b64                                                        in  letregion r1859:0 in pp_newline[] () end (*r1859:0*)
+b64                                                        end 
+b64                                                in  letregion r1862:13 
+b64                                                    in let fun pp_cards atbot r1862 pp323 [] (var175)= 
+b64                                                               (case var175 
+b64                                                                  of nil => ()
+b128  |  _ => 
+b128     letregion r1904:inf, r1905:inf, r1906:2 
+b128     in let val v2561 = 
+b128                letregion r1963:10 
+b128                in  let val n = 
+b128                            let val m = ListSize[] var175
+b128                            in  (case 4 < m of true => 4 | false => m) (*case*) 
+b128                            end 
+b128                    in   fn atbot r1963 pp337 l => 
+b128                         (case n < 0 
+b128                            of true => 
+b128                               raise let val v2389 = ("splitNth"attop r4 pp325, n) attop r1 pp326
+b128                                     in  ListSubscript attop r1 pp327 v2389
+b128                                     end 
+b128                            |  false => 
+b128                               letregion r1944:6 
+b128                               in  letregion r1903:2, r1908:3 
+b128                                   in split[attop r1906 pp330,attop r1905 pp331,attop r1904 pp332] atbot r1908 pp329 
+b128                                      (l, n) atbot r1903 pp328 
+b128                                   end (*r1903:2, r1908:3*) handle 
+b128                                   (fn atbot r1944 pp336 ListSub' => 
+b128                                    (case ListSub' 
+b128                                       of ListSub' => 
+b128                                          raise let val v2391 = ("splitNth"attop r4 pp333, n) attop r1 pp334
+b128                                                in  ListSubscript attop r1 pp335 v2391
+b128                                                end 
+b128                                       |  _ => raise ListSub'
+b128                                    ) (*case*) 
+b128                                   ) 
+b128                               end (*r1944:6*)
+b128                         ) (*case*) 
+b128                    end  
+b128                    var175 
+b128                end (*r1963:10*); 
+b128            val left = #0 v2561; 
+b128            val right = #1 v2561; 
+b128            val v2564 = 
+b128                letregion r2020:inf, r2021:inf 
+b128                in let val tops = 
+b128                           letregion r1964:1 
+b128                           in let fun ListMap atbot r1964 pp338 [r2000:inf, r1999:inf] (var141)= 
+b128                                      (case var141 
+b128                                         of nil => nil sat r2000 pp339
+b128                                         |  :: => 
+b128                                            let val v2324 = decon_:: var141; 
+b128                                                val x = #0 v2324; 
+b128                                                val xs = #1 v2324; 
+b128                                                val v2329 = 
+b128                                                    (#3 x, 
+b128                                                     letregion r2002:2 
+b128                                                     in ListMap[sat r2000 pp341,sat r1999 pp342] atbot r2002 pp340 xs 
+b128                                                     end (*r2002:2*)
+b128                                                    ) attop r1999 pp343
+b128                                            in  :: attop r2000 pp344 v2329
+b128                                            end 
+b128                                      ) (*case*) 
+b128                              in  letregion r2023:2 
+b128                                  in ListMap[atbot r2021 pp347,atbot r2020 pp348] atbot r2023 pp346 left 
+b128                                  end (*r2023:2*)
+b128                              end  
+b128                           end (*r1964:1*)
+b128                   in  letregion r2080:inf, r2081:inf 
+b128                       in let val bots = 
+b128                                  letregion r2024:1 
+b128                                  in let fun ListMap atbot r2024 pp349 [r2060:inf, r2059:inf] (var141)= 
+b128                                             (case var141 
+b128                                                of nil => nil sat r2060 pp350
+b128                                                |  :: => 
+b128                                                   let val v2324 = decon_:: var141; 
+b128                                                       val x = #0 v2324; 
+b128                                                       val xs = #1 v2324; 
+b128                                                       val v2329 = 
+b128                                                           (#0 x, 
+b128                                                            letregion r2062:2 
+b128                                                            in ListMap[sat r2060 pp352,sat r2059 pp353] atbot r2062 pp351 xs 
+b128                                                            end (*r2062:2*)
+b128                                                           ) attop r2059 pp354
+b128                                                   in  :: attop r2060 pp355 v2329
+b128                                                   end 
+b128                                             ) (*case*) 
+b128                                     in  letregion r2083:2 
+b128                                         in ListMap[atbot r2081 pp358,atbot r2080 pp359] atbot r2083 pp357 left 
+b128                                         end (*r2083:2*)
+b128                                     end  
+b128                                  end (*r2024:1*)
+b128                          in  letregion r2140:inf, r2141:inf 
+b128                              in let val lefts = 
+b128                                         letregion r2084:1 
+b128                                         in let fun ListMap atbot r2084 pp360 [r2120:inf, r2119:inf] (var141)= 
+b128                                                    (case var141 
+b128                                                       of nil => nil sat r2120 pp361
+b128                                                       |  :: => 
+b128                                                          let val v2324 = decon_:: var141; 
+b128                                                              val x = #0 v2324; 
+b128                                                              val xs = #1 v2324; 
+b128                                                              val v2329 = 
+b192  (#1 x, 
+b192   letregion r2122:2 
+b192   in ListMap[sat r2120 pp363,sat r2119 pp364] atbot r2122 pp362 xs 
+b192   end (*r2122:2*)
+b192  ) attop r2119 pp365
+b128                                                          in  :: attop r2120 pp366 v2329
+b128                                                          end 
+b128                                                    ) (*case*) 
+b128                                            in  letregion r2143:2 
+b128                                                in ListMap[atbot r2141 pp369,atbot r2140 pp370] atbot r2143 pp368 left 
+b128                                                end (*r2143:2*)
+b128                                            end  
+b128                                         end (*r2084:1*)
+b128                                 in  letregion r2200:inf, r2201:inf 
+b128                                     in let val rights = 
+b128                                                letregion r2144:1 
+b128                                                in let fun ListMap atbot r2144 pp371 [r2180:inf, r2179:inf] (var141)= 
+b128                                                           (case var141 
+b128                                                              of nil => nil sat r2180 pp372
+b128                                                              |  :: => 
+b192 let val v2324 = decon_:: var141; 
+b192     val x = #0 v2324; 
+b192     val xs = #1 v2324; 
+b192     val v2329 = 
+b192         (#2 x, 
+b192          letregion r2182:2 
+b192          in ListMap[sat r2180 pp374,sat r2179 pp375] atbot r2182 pp373 xs 
+b192          end (*r2182:2*)
+b192         ) attop r2179 pp376
+b192 in  :: attop r2180 pp377 v2329
+b192 end 
+b128                                                           ) (*case*) 
+b128                                                   in  letregion r2203:2 
+b128                                                       in ListMap[atbot r2201 pp380,atbot r2200 pp381] atbot r2203 pp379 left 
+b128                                                       end (*r2203:2*)
+b128                                                   end  
+b128                                                end (*r2144:1*)
+b128                                        in  letregion r2204:2 
+b128                                            in let fun splice atbot r2204 pp382 [r2280:7, r2243:2, r2242:2, r2241:2] (var172)= 
+b128                                                        fn sat r2280 pp396 var173 => 
+b128                                                        (case var172 
+b128                                                           of nil => 
+b128                                                              (case var173 
+b128                                                                 of nil => nil attop r2243 pp383
+b192 |  :: => 
+b192    letregion r2269:0, r2272:0 
+b192    in die[] "pp_row.splice"attop r2269 pp384 
+b192    end (*r2269:0, r2272:0*)
+b128                                                              ) (*case*) 
+b128                                                           |  :: => 
+b128                                                              (case var173 
+b128                                                                 of nil => 
+b192    letregion r2260:0, r2263:0 
+b192    in die[] "pp_row.splice"attop r2260 pp386 
+b192    end (*r2260:0, r2263:0*)
+b192 |  :: => 
+b192    let val v2539 = decon_:: var172; 
+b192        val v2542 = decon_:: var173; 
+b192        val l = #0 v2539; 
+b192        val lefts = #1 v2539; 
+b192        val r = #0 v2542; 
+b192        val rights = #1 v2542; 
+b192        val v2552 = 
+b192            ((l, r) attop r2241 pp388, 
+b192             letregion r2244:7 
+b192             in  letregion r2247:4 
+b192                 in splice
+b192                     [atbot r2244 pp390,attop r2243 pp391,attop r2242 pp392,attop r2241 pp393]
+b192                    atbot r2247 pp389 
+b192                    lefts 
+b192                 end (*r2247:4*) 
+b192                 rights 
+b192             end (*r2244:7*)
+b192            ) attop r2242 pp394
+b192    in  :: attop r2243 pp395 v2552
+b192    end 
+b128                                                              ) (*case*) 
+b128                                                        ) (*case*) 
+b128                                               in  letregion r2289:inf, r2290:inf, r2291:inf 
+b128                                                   in let val centerRow = 
+b128                                                              letregion r2292:7 
+b128                                                              in  letregion r2295:4 
+b192  in splice
+b192      [atbot r2292 pp399,atbot r2291 pp400,atbot r2290 pp401,atbot r2289 pp402]
+b192     atbot r2295 pp398 
+b192     lefts 
+b192  end (*r2295:4*) 
+b128                                                                  rights 
+b128                                                              end (*r2292:7*); 
+b128                                                          val v2554 = pp_board_line[] (); 
+b128                                                          val v2555 = pp_vertical[] tops; 
+b128                                                          val v2556 = 
+b128                                                              let val _not_used = 
+b192      letregion r2397:inf, r2398:inf 
+b192      in let val v2520 = 
+b192                 letregion r2303:3 
+b192                 in let fun ListMap atbot r2303 pp405 [r2329:inf, r2328:inf] (var141)= 
+b192                            (case var141 
+b192                               of nil => nil sat r2329 pp406
+b192                               |  :: => 
+b192                                  let val v2324 = decon_:: var141; 
+b192                                      val x = #0 v2324; 
+b192                                      val xs = #1 v2324; 
+b192                                      val v2329 = 
+b192                                          (let val l = #0 x; val r = #1 x
+b192                                           in  letregion r2332:inf, r2334:0 
+b192                                               in pr[] 
+b192                                                  letregion r2335:inf, r2336:0, r2337:2, r2340:1 
+b192                                                  in ^[atbot r2332 pp437] atbot r2340 pp436 
+b192                                                     (letregion r2342:inf, r2343:0, r2344:2, r2347:1 
+b192                                                      in ^[atbot r2335 pp433] atbot r2347 pp432 
+b192                                                         (letregion r2356:inf, r2357:0, r2358:2, r2361:1 
+b192                                                          in ^[atbot r2342 pp422] atbot r2361 pp421 
+b192                                                             (letregion r2363:0, r2364:0, r2365:2, r2368:1 
+b192                                                              in ^[atbot r2356 pp418] atbot r2368 pp417 
+b256 ("|"attop r2363 pp407, 
+b256  (case l 
+b256     of RED_JACKET => "RED_JACKET    "attop r2364 pp408
+b256     |  RED_TROUSERS => "RED_TROUSERS  "attop r2364 pp409
+b256     |  GREEN_JACKET => "GREEN_JACKET  "attop r2364 pp410
+b256     |  GREEN_TROUSERS => "GREEN_TROUSERS"attop r2364 pp411
+b256     |  BLUE_JACKET => "BLUE_JACKET   "attop r2364 pp412
+b256     |  BLUE_TROUSERS => "BLUE_TROUSERS "attop r2364 pp413
+b256     |  BROWN_JACKET => "BROWN_JACKET  "attop r2364 pp414
+b256     |  BROWN_TROUSERS => "BROWN_TROUSERS"attop r2364 pp415
+b256  ) (*case*) 
+b192                                                                 ) atbot r2365 pp416 
+b192                                                              end (*r2363:0, r2364:0, r2365:2, r2368:1*), 
+b192                                                              "    "attop r2357 pp419
+b192                                                             ) atbot r2358 pp420 
+b192                                                          end (*r2356:inf, r2357:0, r2358:2, r2361:1*), 
+b192                                                          (case r 
+b192                                                             of RED_JACKET => "RED_JACKET    "attop r2343 pp423
+b192                                                             |  RED_TROUSERS => "RED_TROUSERS  "attop r2343 pp424
+b192                                                             |  GREEN_JACKET => "GREEN_JACKET  "attop r2343 pp425
+b192                                                             |  GREEN_TROUSERS => "GREEN_TROUSERS"attop r2343 pp426
+b192                                                             |  BLUE_JACKET => "BLUE_JACKET   "attop r2343 pp427
+b192                                                             |  BLUE_TROUSERS => "BLUE_TROUSERS "attop r2343 pp428
+b192                                                             |  BROWN_JACKET => "BROWN_JACKET  "attop r2343 pp429
+b192                                                             |  BROWN_TROUSERS => "BROWN_TROUSERS"attop r2343 pp430
+b192                                                          ) (*case*) 
+b192                                                         ) atbot r2344 pp431 
+b192                                                      end (*r2342:inf, r2343:0, r2344:2, r2347:1*), 
+b192                                                      "|"attop r2336 pp434
+b192                                                     ) atbot r2337 pp435 
+b192                                                  end (*r2335:inf, r2336:0, r2337:2, r2340:1*) 
+b192                                               end (*r2332:inf, r2334:0*)
+b192                                           end , 
+b192                                           letregion r2331:2 
+b192                                           in ListMap[sat r2329 pp440,sat r2328 pp441] atbot r2331 pp439 xs 
+b192                                           end (*r2331:2*)
+b192                                          ) attop r2328 pp442
+b192                                  in  :: attop r2329 pp443 v2329
+b192                                  end 
+b192                            ) (*case*) 
+b192                    in  letregion r2400:2 
+b192                        in ListMap[atbot r2398 pp446,atbot r2397 pp447] atbot r2400 pp445 centerRow 
+b192                        end (*r2400:2*)
+b192                    end  
+b192                 end (*r2303:3*)
+b192         in  ()
+b192         end  
+b192      end (*r2397:inf, r2398:inf*)
+b128                                                              in  pp_newline[] ()
+b128                                                              end ; 
+b128                                                          val v2557 = pp_vertical[] bots
+b128                                                      in  pp_board_line[] ()
+b128                                                      end  
+b128                                                   end (*r2289:inf, r2290:inf, r2291:inf*)
+b128                                               end  
+b128                                            end (*r2204:2*)
+b128                                        end  
+b128                                     end (*r2200:inf, r2201:inf*)
+b128                                 end  
+b128                              end (*r2140:inf, r2141:inf*)
+b128                          end  
+b128                       end (*r2080:inf, r2081:inf*)
+b128                   end  
+b128                end (*r2020:inf, r2021:inf*)
+b128        in  pp_cards[] right
+b128        end  
+b128     end (*r1904:inf, r1905:inf, r1906:2*)
+b64                                                               ) (*case*) 
+b64                                                       in  letregion r2421:1 
+b64                                                           in let fun matchClothes atbot r2421 pp453 [r2430:2] (var178)= 
+b128       fn sat r2430 pp454 var179 => 
+b128       (case var178 
+b128          of RED_JACKET => 
+b128             (case var179 
+b128                of RED_TROUSERS => true
+b128                |  RED_JACKET => false
+b128                |  GREEN_TROUSERS => false
+b128                |  GREEN_JACKET => false
+b128                |  BLUE_TROUSERS => false
+b128                |  BLUE_JACKET => false
+b128                |  BROWN_TROUSERS => false
+b128                |  BROWN_JACKET => false
+b128             ) (*case*) 
+b128          |  RED_TROUSERS => 
+b128             (case var179 
+b128                of RED_TROUSERS => false
+b128                |  RED_JACKET => true
+b128                |  GREEN_TROUSERS => false
+b128                |  GREEN_JACKET => false
+b128                |  BLUE_TROUSERS => false
+b128                |  BLUE_JACKET => false
+b128                |  BROWN_TROUSERS => false
+b128                |  BROWN_JACKET => false
+b128             ) (*case*) 
+b128          |  GREEN_JACKET => 
+b128             (case var179 
+b128                of RED_TROUSERS => false
+b128                |  RED_JACKET => false
+b128                |  GREEN_TROUSERS => true
+b128                |  GREEN_JACKET => false
+b128                |  BLUE_TROUSERS => false
+b128                |  BLUE_JACKET => false
+b128                |  BROWN_TROUSERS => false
+b128                |  BROWN_JACKET => false
+b128             ) (*case*) 
+b128          |  GREEN_TROUSERS => 
+b128             (case var179 
+b128                of RED_TROUSERS => false
+b128                |  RED_JACKET => false
+b128                |  GREEN_TROUSERS => false
+b128                |  GREEN_JACKET => true
+b128                |  BLUE_TROUSERS => false
+b128                |  BLUE_JACKET => false
+b128                |  BROWN_TROUSERS => false
+b128                |  BROWN_JACKET => false
+b128             ) (*case*) 
+b128          |  BLUE_JACKET => 
+b128             (case var179 
+b128                of RED_TROUSERS => false
+b128                |  RED_JACKET => false
+b128                |  GREEN_TROUSERS => false
+b128                |  GREEN_JACKET => false
+b128                |  BLUE_TROUSERS => true
+b128                |  BLUE_JACKET => false
+b128                |  BROWN_TROUSERS => false
+b128                |  BROWN_JACKET => false
+b128             ) (*case*) 
+b128          |  BLUE_TROUSERS => 
+b128             (case var179 
+b128                of RED_TROUSERS => false
+b128                |  RED_JACKET => false
+b128                |  GREEN_TROUSERS => false
+b128                |  GREEN_JACKET => false
+b128                |  BLUE_TROUSERS => false
+b128                |  BLUE_JACKET => true
+b128                |  BROWN_TROUSERS => false
+b128                |  BROWN_JACKET => false
+b128             ) (*case*) 
+b128          |  BROWN_JACKET => 
+b128             (case var179 
+b128                of RED_TROUSERS => false
+b128                |  RED_JACKET => false
+b128                |  GREEN_TROUSERS => false
+b128                |  GREEN_JACKET => false
+b128                |  BLUE_TROUSERS => false
+b128                |  BLUE_JACKET => false
+b128                |  BROWN_TROUSERS => true
+b128                |  BROWN_JACKET => false
+b128             ) (*case*) 
+b128          |  BROWN_TROUSERS => 
+b128             (case var179 
+b128                of RED_TROUSERS => false
+b128                |  RED_JACKET => false
+b128                |  GREEN_TROUSERS => false
+b128                |  GREEN_JACKET => false
+b128                |  BLUE_TROUSERS => false
+b128                |  BLUE_JACKET => false
+b128                |  BROWN_TROUSERS => false
+b128                |  BROWN_JACKET => true
+b128             ) (*case*) 
+b128       ) (*case*) 
+b64                                                              in  letregion r2433:8 
+b128  in let fun match atbot r2433 pp456 [r2625:9] (board)= 
+b128              fn sat r2625 pp518 card => 
+b128              (case let val row = #0 board; val col = #1 board; val cards = #2 board
+b128                    in  letregion r2501:5 
+b128                        in  (case row > 0 
+b128                               of true => 
+b128                                  let val topCard = 
+b128                                          letregion r2471:7 
+b128                                          in  letregion r2474:1 
+b128                                              in ListNth[atbot r2471 pp458] atbot r2474 pp457 (((row * 4) + col) - 4) 
+b128                                              end (*r2474:1*) 
+b128                                              cards 
+b128                                          end (*r2471:7*)
+b128                                  in  letregion r2480:2 
+b128                                      in  letregion r2483:1 
+b128                                          in matchClothes[atbot r2480 pp460] atbot r2483 pp459 #0 topCard 
+b128                                          end (*r2483:1*) 
+b128                                          #3 card 
+b128                                      end (*r2480:2*)
+b128                                  end 
+b128                               |  false => true
+b128                            ) (*case*)  handle 
+b128                            (fn atbot r2501 pp468 v2728 => 
+b128                             (case v2728 
+b128                                of ListSubscript => 
+b128                                   let val v2729 = pretty-printing of this multiplicity expression not yet implemented
+b128                                   in  (case #0 v2729 
+b128                                          of nth => 
+b128                                             let val v2731 = pretty-printing of this multiplicity expression not yet implemented; 
+b128                                                 val n = #1 v2731
+b128                                             in  letregion r2485:inf, r2488:0 
+b128                                                 in die[] 
+b128                                                    letregion r2489:0, r2490:inf, r2491:2, r2494:1 
+b128                                                    in ^[atbot r2485 pp466] atbot r2494 pp465 
+b128                                                       ("matchTop "attop r2489 pp461, 
+b128                                                        letregion r2497:1 
+b128                                                        in IntString[atbot r2490 pp463] atbot r2497 pp462 n 
+b128                                                        end (*r2497:1*)
+b128                                                       ) atbot r2491 pp464 
+b128                                                    end (*r2489:0, r2490:inf, r2491:2, r2494:1*) 
+b128                                                 end (*r2485:inf, r2488:0*)
+b128                                             end 
+b128                                          |  _ => raise v2728
+b128                                       ) (*case*) 
+b128                                   end 
+b128                                |  _ => raise v2728
+b128                             ) (*case*) 
+b128                            ) 
+b128                        end (*r2501:5*)
+b128                    end 
+b128              
+b128                 of true => 
+b128                    let val row = #0 board; val col = #1 board; val cards = #2 board
+b128                    in  letregion r2623:9 
+b128                        in  (case col > 0 
+b128                               of true => 
+b128                                  let val leftCard = 
+b128                                          letregion r2510:7 
+b128                                          in  letregion r2513:1 
+b128                                              in ListNth[atbot r2510 pp470] atbot r2513 pp469 (((row * 4) + col) - 1) 
+b128                                              end (*r2513:1*) 
+b128                                              cards 
+b128                                          end (*r2510:7*)
+b128                                  in  letregion r2519:2 
+b128                                      in  letregion r2522:1 
+b128                                          in matchClothes[atbot r2519 pp472] atbot r2522 pp471 #2 leftCard 
+b128                                          end (*r2522:1*) 
+b128                                          #1 card 
+b128                                      end (*r2519:2*)
+b128                                  end 
+b128                               |  false => true
+b128                            ) (*case*)  handle 
+b128                            (fn atbot r2623 pp517 v2762 => 
+b128                             (case v2762 
+b128                                of ListSubscript => 
+b128                                   let val v2763 = pretty-printing of this multiplicity expression not yet implemented
+b128                                   in  (case #0 v2763 
+b128                                          of nth => 
+b128                                             let val v2765 = pretty-printing of this multiplicity expression not yet implemented; 
+b128                                                 val n = #1 v2765
+b128                                             in  letregion r2524:inf, r2527:0 
+b128                                                 in die[] 
+b128                                                    letregion r2528:inf, r2529:inf, r2530:2, r2533:1 
+b128                                                    in ^[atbot r2524 pp515] atbot r2533 pp514 
+b128                                                       (letregion r2539:inf, r2540:0, r2541:2, r2544:1 
+b128                                                        in ^[atbot r2528 pp510] atbot r2544 pp509 
+b128                                                           (letregion r2546:inf, r2547:inf, r2548:2, r2551:1 
+b128                                                            in ^[atbot r2539 pp506] atbot r2551 pp505 
+b128                                                               (letregion r2555:inf, r2556:0, r2557:2, r2560:1 
+b192in ^[atbot r2546 pp501] atbot r2560 pp500 
+b192   (letregion r2562:inf, r2563:inf, r2564:2, r2567:1 
+b192    in ^[atbot r2555 pp497] atbot r2567 pp496 
+b192       (letregion r2571:inf, r2572:0, r2573:2, r2576:1 
+b192        in ^[atbot r2562 pp492] atbot r2576 pp491 
+b192           (letregion r2578:inf, r2579:inf, r2580:2, r2583:1 
+b192            in ^[atbot r2571 pp488] atbot r2583 pp487 
+b192               (letregion r2596:inf, r2597:0, r2598:2, r2601:1 
+b192                in ^[atbot r2578 pp482] atbot r2601 pp481 
+b192                   (letregion r2603:0, r2604:inf, r2605:2, r2608:1 
+b192                    in ^[atbot r2596 pp478] atbot r2608 pp477 
+b192                       ("matchLeft with error "attop r2603 pp473, 
+b192                        letregion r2611:1 
+b192                        in IntString[atbot r2604 pp475] atbot r2611 pp474 n 
+b192                        end (*r2611:1*)
+b192                       ) atbot r2605 pp476 
+b192                    end (*r2603:0, r2604:inf, r2605:2, r2608:1*), 
+b192                    " and size list "attop r2597 pp479
+b192                   ) atbot r2598 pp480 
+b192                end (*r2596:inf, r2597:0, r2598:2, r2601:1*), 
+b192                letregion r2586:1 
+b192                in IntString[atbot r2579 pp485] atbot r2586 pp484 ListSize[] cards 
+b192                end (*r2586:1*)
+b192               ) atbot r2580 pp486 
+b192            end (*r2578:inf, r2579:inf, r2580:2, r2583:1*), 
+b192            ",row "attop r2572 pp489
+b192           ) atbot r2573 pp490 
+b192        end (*r2571:inf, r2572:0, r2573:2, r2576:1*), 
+b192        letregion r2570:1 
+b192        in IntString[atbot r2563 pp494] atbot r2570 pp493 row 
+b192        end (*r2570:1*)
+b192       ) atbot r2564 pp495 
+b192    end (*r2562:inf, r2563:inf, r2564:2, r2567:1*), 
+b192    ", col "attop r2556 pp498
+b192   ) atbot r2557 pp499 
+b192end (*r2555:inf, r2556:0, r2557:2, r2560:1*), 
+b192letregion r2554:1 
+b192in IntString[atbot r2547 pp503] atbot r2554 pp502 col 
+b192end (*r2554:1*)
+b128                                                               ) atbot r2548 pp504 
+b128                                                            end (*r2546:inf, r2547:inf, r2548:2, r2551:1*), 
+b128                                                            " and findPlaceInList "attop r2540 pp507
+b128                                                           ) atbot r2541 pp508 
+b128                                                        end (*r2539:inf, r2540:0, r2541:2, r2544:1*), 
+b128                                                        letregion r2536:1 
+b128                                                        in IntString[atbot r2529 pp512] atbot r2536 pp511 ((row * 4) + col) 
+b128                                                        end (*r2536:1*)
+b128                                                       ) atbot r2530 pp513 
+b128                                                    end (*r2528:inf, r2529:inf, r2530:2, r2533:1*) 
+b128                                                 end (*r2524:inf, r2527:0*)
+b128                                             end 
+b128                                          |  _ => raise v2762
+b128                                       ) (*case*) 
+b128                                   end 
+b128                                |  _ => raise v2762
+b128                             ) (*case*) 
+b128                            ) 
+b128                        end (*r2623:9*)
+b128                    end 
+b128                 |  false => false
+b128              ) (*case*) 
+b128     in  letregion r2628:9 
+b128         in let fun findSol 
+b128                    atbot r2628 pp520 
+b128                    [r2682:inf, r2681:inf, r2680:inf, r2679:inf, r2678:inf, r2677:inf, r2697:inf, r2696:inf, 
+b128                     r2673:inf, r2674:inf, r2675:inf, r2676:inf] 
+b128                    (var190)= 
+b128                    (case #0 var190 
+b128                       of nil => 
+b128                          (case #1 var190 
+b128                             of nil => 
+b128                                let val board = #2 var190; 
+b128                                    val sols = #3 var190; 
+b128                                    val v2833 = 
+b128                                        letregion r3142:0, r3144:0 
+b128                                        in log[] "solution found"attop r3142 pp521 
+b128                                        end (*r3142:0, r3144:0*); 
+b128                                    val v2834 = (board, sols) attop r2681 pp523
+b128                                in  :: attop r2682 pp524 v2834
+b128                                end 
+b128                             |  _ => 
+b128                                let val board = #2 var190; 
+b128                                    val sols = #3 var190; 
+b128                                    val row = #0 board; 
+b128                                    val col = #1 board; 
+b128                                    val v2835 = 
+b128                                        letregion r3158:inf, r3160:0 
+b128                                        in debug[] 
+b128                                           letregion r3161:inf, r3162:0, r3163:2, r3166:1 
+b128                                           in ^[atbot r3158 pp543] atbot r3166 pp542 
+b128                                              (letregion r3168:inf, r3169:inf, r3170:2, r3173:1 
+b128                                               in ^[atbot r3161 pp539] atbot r3173 pp538 
+b128                                                  (letregion r3177:inf, r3178:0, r3179:2, r3182:1 
+b128                                                   in ^[atbot r3168 pp534] atbot r3182 pp533 
+b128                                                      (letregion r3184:0, r3185:inf, r3186:2, r3189:1 
+b128                                                       in ^[atbot r3177 pp530] atbot r3189 pp529 
+b128                                                          ("skipping board with (row, col)=("attop r3184 pp525, 
+b128                                                           letregion r3192:1 
+b128                                                           in IntString[atbot r3185 pp527] atbot r3192 pp526 row 
+b128                                                           end (*r3192:1*)
+b128                                                          ) atbot r3186 pp528 
+b128                                                       end (*r3184:0, r3185:inf, r3186:2, r3189:1*), 
+b128                                                       ","attop r3178 pp531
+b128                                                      ) atbot r3179 pp532 
+b128                                                   end (*r3177:inf, r3178:0, r3179:2, r3182:1*), 
+b128                                                   letregion r3176:1 
+b128                                                   in IntString[atbot r3169 pp536] atbot r3176 pp535 col 
+b128                                                   end (*r3176:1*)
+b128                                                  ) atbot r3170 pp537 
+b128                                               end (*r3168:inf, r3169:inf, r3170:2, r3173:1*), 
+b128                                               ")"attop r3162 pp540
+b128                                              ) atbot r3163 pp541 
+b128                                           end (*r3161:inf, r3162:0, r3163:2, r3166:1*) 
+b128                                        end (*r3158:inf, r3160:0*)
+b128                                in  sols
+b128                                end 
+b128                          ) (*case*) 
+b128                       |  :: => 
+b128                          (case #1 var190 
+b128                             of nil => 
+b128                                let val v2801 = #0 var190; 
+b128                                    val v2805 = decon_:: v2801; 
+b128                                    val alreadyTried = #1 var190; 
+b128                                    val v2803 = #2 var190; 
+b128                                    val sols = #3 var190; 
+b128                                    val x = #0 v2805; 
+b128                                    val rest = #1 v2805; 
+b128                                    val row = #0 v2803; 
+b128                                    val col = #1 v2803; 
+b128                                    val cards = #2 v2803; 
+b128                                    val cards' = 
+b128                                        letregion r2724:2, r2729:5 
+b128                                        in  letregion r2733:3 
+b128                                            in map[atbot r2729 pp548,attop r2679 pp549,attop r2678 pp550] atbot r2733 pp547 
+b128                                               (fn atbot r2724 pp546 var158 => 
+b128                                                let val top = #3 var158; 
+b128                                                    val bot = #0 var158; 
+b128                                                    val left = #1 var158; 
+b128                                                    val right = #2 var158
+b128                                                in  (bot, left, right, top) attop r2677 pp545
+b128                                                end 
+b128                                               ) 
+b128                                            end (*r2733:3*) 
+b128                                            cards 
+b128                                        end (*r2724:2, r2729:5*); 
+b128                                    val x' = 
+b128                                        let val top = #3 x; val bot = #0 x; val left = #1 x; val right = #2 x
+b128                                        in  (bot, left, right, top) attop r2677 pp551
+b128                                        end ; 
+b128                                    val v2838 = 
+b128                                        (resetRegions  [[attop r2676 pp552,attop r2675 pp553,attop r2674 pp554,attop r2673 pp555,attop r2677 pp556,attop r2678 pp557,attop r2679 pp558]]
+b128                                                       cards
+b128                                        ); 
+b128                                    val sols' = 
+b128                                        (case letregion r2750:3, r2756:9 
+b128                                              in  letregion r2759:1 
+b128                                                  in match[atbot r2756 pp561] atbot r2759 pp560 (row, col, cards') atbot r2750 pp559 
+b128                                                  end (*r2759:1*) 
+b128                                                  x' 
+b128                                              end (*r2750:3, r2756:9*)
+b128                                        
+b128                                           of true => 
+b128                                              let val v2842 = 
+b128                                                      letregion r2761:0, r2763:0 
+b128                                                      in debug[] "findSol got a match"attop r2761 pp562 
+b128                                                      end (*r2761:0, r2763:0*)
+b128                                              in  letregion r2766:2 
+b128                                                  in let val v2843 = 
+b128                                                             letregion r2765:2, r2767:5 
+b128                                                             in  letregion r2770:2 
+b192 in add[atbot r2767 pp565,atbot r2766 pp566] atbot r2770 pp564 1 
+b192 end (*r2770:2*) 
+b128                                                                 (row, col) attop r2765 pp567 
+b128                                                             end (*r2765:2, r2767:5*); 
+b128                                                         val row' = #0 v2843; 
+b128                                                         val col' = #1 v2843
+b128                                                     in  letregion r2784:inf, r2785:inf, r2804:4, r2816:12 
+b128                                                         in findSol
+b128                                                             [sat r2682 pp583,sat r2681 pp584,sat r2680 pp585,attop r2679 pp586,attop r2678 pp587,
+b128                                                              attop r2677 pp588,attop r2785 pp589,attop r2784 pp590,attop r2673 pp591,attop r2674 pp592,
+b128                                                              attop r2675 pp593,attop r2676 pp594]
+b128                                                            atbot r2816 pp582 
+b128                                                            (letregion r2863:2, r2865:2 
+b128                                                             in @[attop r2697 pp570,attop r2696 pp571] atbot r2865 pp569 
+b128                                                                (rest, alreadyTried) atbot r2863 pp568 
+b128                                                             end (*r2863:2, r2865:2*), 
+b128                                                             nil attop r2785 pp572, 
+b128                                                             (row', 
+b128                                                              col', 
+b128                                                              letregion r2826:2, r2828:2 
+b128                                                              in @[attop r2679 pp578,attop r2678 pp579] atbot r2828 pp577 
+b192 (cards', 
+b192  let val v2846 = (x', nil attop r2679 pp573) attop r2678 pp574
+b192  in  :: attop r2679 pp575 v2846
+b192  end 
+b128                                                                 ) atbot r2826 pp576 
+b128                                                              end (*r2826:2, r2828:2*)
+b128                                                             ) attop r2680 pp580, 
+b128                                                             sols
+b128                                                            ) atbot r2804 pp581 
+b128                                                         end (*r2784:inf, r2785:inf, r2804:4, r2816:12*)
+b128                                                     end  
+b128                                                  end (*r2766:2*)
+b128                                              end 
+b128                                           |  false => sols
+b128                                        ) (*case*) 
+b128                                in  letregion r2900:4, r2912:12 
+b128                                    in findSol
+b128                                        [sat r2682 pp600,sat r2681 pp601,sat r2680 pp602,sat r2679 pp603,sat r2678 pp604,
+b128                                         sat r2677 pp605,sat r2697 pp606,sat r2696 pp607,sat r2673 pp608,sat r2674 pp609,
+b128                                         sat r2675 pp610,sat r2676 pp611]
+b128                                       atbot r2912 pp599 
+b128                                       (rest, 
+b128                                        let val v2840 = (x, alreadyTried) attop r2696 pp595
+b128                                        in  :: attop r2697 pp596 v2840
+b128                                        end , 
+b128                                        (row, col, cards') attop r2680 pp597, 
+b128                                        sols'
+b128                                       ) atbot r2900 pp598 
+b128                                    end (*r2900:4, r2912:12*)
+b128                                end 
+b128                             |  _ => 
+b128                                let val v2811 = #0 var190; 
+b128                                    val v2815 = decon_:: v2811; 
+b128                                    val alreadyTried = #1 var190; 
+b128                                    val v2813 = #2 var190; 
+b128                                    val sols = #3 var190; 
+b128                                    val x = #0 v2815; 
+b128                                    val rest = #1 v2815; 
+b128                                    val row = #0 v2813; 
+b128                                    val col = #1 v2813; 
+b128                                    val cards = #2 v2813; 
+b128                                    val cards' = 
+b128                                        letregion r2942:2, r2947:5 
+b128                                        in  letregion r2951:3 
+b128                                            in map[atbot r2947 pp615,attop r2679 pp616,attop r2678 pp617] atbot r2951 pp614 
+b128                                               (fn atbot r2942 pp613 var158 => 
+b128                                                let val top = #3 var158; 
+b128                                                    val bot = #0 var158; 
+b128                                                    val left = #1 var158; 
+b128                                                    val right = #2 var158
+b128                                                in  (bot, left, right, top) attop r2677 pp612
+b128                                                end 
+b128                                               ) 
+b128                                            end (*r2951:3*) 
+b128                                            cards 
+b128                                        end (*r2942:2, r2947:5*); 
+b128                                    val x' = 
+b128                                        let val top = #3 x; val bot = #0 x; val left = #1 x; val right = #2 x
+b128                                        in  (bot, left, right, top) attop r2677 pp618
+b128                                        end ; 
+b128                                    val v2849 = 
+b128                                        (resetRegions  [[attop r2676 pp619,attop r2675 pp620,attop r2674 pp621,attop r2673 pp622,attop r2677 pp623,attop r2678 pp624,attop r2679 pp625]]
+b128                                                       cards
+b128                                        ); 
+b128                                    val sols' = 
+b128                                        (case letregion r2968:3, r2974:9 
+b128                                              in  letregion r2977:1 
+b128                                                  in match[atbot r2974 pp628] atbot r2977 pp627 (row, col, cards') atbot r2968 pp626 
+b128                                                  end (*r2977:1*) 
+b128                                                  x' 
+b128                                              end (*r2968:3, r2974:9*)
+b128                                        
+b128                                           of true => 
+b128                                              let val v2853 = 
+b128                                                      letregion r2979:0, r2981:0 
+b128                                                      in debug[] "findSol got a match"attop r2979 pp629 
+b128                                                      end (*r2979:0, r2981:0*)
+b128                                              in  letregion r2984:2 
+b128                                                  in let val v2854 = 
+b128                                                             letregion r2983:2, r2985:5 
+b128                                                             in  letregion r2988:2 
+b192 in add[atbot r2985 pp632,atbot r2984 pp633] atbot r2988 pp631 1 
+b192 end (*r2988:2*) 
+b128                                                                 (row, col) attop r2983 pp634 
+b128                                                             end (*r2983:2, r2985:5*); 
+b128                                                         val row' = #0 v2854; 
+b128                                                         val col' = #1 v2854
+b128                                                     in  letregion r3002:inf, r3003:inf, r3022:4, r3034:12 
+b128                                                         in findSol
+b128                                                             [sat r2682 pp650,sat r2681 pp651,sat r2680 pp652,attop r2679 pp653,attop r2678 pp654,
+b128                                                              attop r2677 pp655,attop r3003 pp656,attop r3002 pp657,attop r2673 pp658,attop r2674 pp659,
+b128                                                              attop r2675 pp660,attop r2676 pp661]
+b128                                                            atbot r3034 pp649 
+b128                                                            (letregion r3081:2, r3083:2 
+b128                                                             in @[attop r2697 pp637,attop r2696 pp638] atbot r3083 pp636 
+b128                                                                (rest, alreadyTried) atbot r3081 pp635 
+b128                                                             end (*r3081:2, r3083:2*), 
+b128                                                             nil attop r3003 pp639, 
+b128                                                             (row', 
+b128                                                              col', 
+b128                                                              letregion r3044:2, r3046:2 
+b128                                                              in @[attop r2679 pp645,attop r2678 pp646] atbot r3046 pp644 
+b192 (cards', 
+b192  let val v2857 = (x', nil attop r2679 pp640) attop r2678 pp641
+b192  in  :: attop r2679 pp642 v2857
+b192  end 
+b128                                                                 ) atbot r3044 pp643 
+b128                                                              end (*r3044:2, r3046:2*)
+b128                                                             ) attop r2680 pp647, 
+b128                                                             sols
+b128                                                            ) atbot r3022 pp648 
+b128                                                         end (*r3002:inf, r3003:inf, r3022:4, r3034:12*)
+b128                                                     end  
+b128                                                  end (*r2984:2*)
+b128                                              end 
+b128                                           |  false => sols
+b128                                        ) (*case*) 
+b128                                in  letregion r3118:4, r3130:12 
+b128                                    in findSol
+b128                                        [sat r2682 pp667,sat r2681 pp668,sat r2680 pp669,sat r2679 pp670,sat r2678 pp671,
+b128                                         sat r2677 pp672,sat r2697 pp673,sat r2696 pp674,sat r2673 pp675,sat r2674 pp676,
+b128                                         sat r2675 pp677,sat r2676 pp678]
+b128                                       atbot r3130 pp666 
+b128                                       (rest, 
+b128                                        let val v2851 = (x, alreadyTried) attop r2696 pp662
+b128                                        in  :: attop r2697 pp663 v2851
+b128                                        end , 
+b128                                        (row, col, cards') attop r2680 pp664, 
+b128                                        sols'
+b128                                       ) atbot r3118 pp665 
+b128                                    end (*r3118:4, r3130:12*)
+b128                                end 
+b128                          ) (*case*) 
+b128                    ) (*case*) 
+b128            in  letregion r3200:inf, r3201:inf, r3202:inf, r3203:inf, r3204:inf, r3205:inf, r3206:inf 
+b128                in let val cardSet = 
+b128                           let val v2862 = 
+b128                                   (let val v2863 = BLUE_TROUSERS atbot r3200 pp680; 
+b128                                        val v2864 = BROWN_JACKET atbot r3203 pp681; 
+b128                                        val v2865 = BLUE_JACKET atbot r3202 pp682; 
+b128                                        val v2866 = BROWN_TROUSERS atbot r3201 pp683
+b128                                    in  (v2864, v2865, v2866, v2863) atbot r3204 pp684
+b128                                    end , 
+b128                                    let val v2867 = 
+b128                                            (let val v2868 = BROWN_TROUSERS attop r3200 pp685; 
+b128                                                 val v2869 = GREEN_JACKET attop r3203 pp686; 
+b128                                                 val v2870 = BROWN_JACKET attop r3202 pp687; 
+b128                                                 val v2871 = RED_TROUSERS attop r3201 pp688
+b128                                             in  (v2869, v2870, v2871, v2868) attop r3204 pp689
+b128                                             end , 
+b128                                             let val v2872 = 
+b128                                                     (let val v2873 = GREEN_TROUSERS attop r3200 pp690; 
+b128                                                          val v2874 = GREEN_JACKET attop r3203 pp691; 
+b128                                                          val v2875 = RED_JACKET attop r3202 pp692; 
+b128                                                          val v2876 = BLUE_TROUSERS attop r3201 pp693
+b128                                                      in  (v2874, v2875, v2876, v2873) attop r3204 pp694
+b128                                                      end , 
+b128                                                      let val v2877 = 
+b128                                                              (let val v2878 = BROWN_TROUSERS attop r3200 pp695; 
+b192   val v2879 = BROWN_JACKET attop r3203 pp696; 
+b192   val v2880 = BLUE_JACKET attop r3202 pp697; 
+b192   val v2881 = RED_TROUSERS attop r3201 pp698
+b128                                                               in  (v2879, v2880, v2881, v2878) attop r3204 pp699
+b128                                                               end , 
+b128                                                               let val v2882 = 
+b192       (let val v2883 = BROWN_TROUSERS attop r3200 pp700; 
+b192            val v2884 = GREEN_JACKET attop r3203 pp701; 
+b192            val v2885 = BLUE_JACKET attop r3202 pp702; 
+b192            val v2886 = RED_TROUSERS attop r3201 pp703
+b192        in  (v2884, v2885, v2886, v2883) attop r3204 pp704
+b192        end , 
+b192        let val v2887 = 
+b192                (let val v2888 = GREEN_TROUSERS attop r3200 pp705; 
+b192                     val v2889 = BROWN_JACKET attop r3203 pp706; 
+b192                     val v2890 = RED_JACKET attop r3202 pp707; 
+b192                     val v2891 = BLUE_TROUSERS attop r3201 pp708
+b192                 in  (v2889, v2890, v2891, v2888) attop r3204 pp709
+b192                 end , 
+b192                 let val v2892 = 
+b192                         (let val v2893 = GREEN_TROUSERS attop r3200 pp710; 
+b192                              val v2894 = BROWN_JACKET attop r3203 pp711; 
+b192                              val v2895 = BLUE_JACKET attop r3202 pp712; 
+b192                              val v2896 = RED_TROUSERS attop r3201 pp713
+b192                          in  (v2894, v2895, v2896, v2893) attop r3204 pp714
+b192                          end , 
+b192                          let val v2897 = 
+b192                                  (let val v2898 = BROWN_TROUSERS attop r3200 pp715; 
+b192                                       val v2899 = BLUE_JACKET attop r3203 pp716; 
+b192                                       val v2900 = RED_JACKET attop r3202 pp717; 
+b192                                       val v2901 = GREEN_TROUSERS attop r3201 pp718
+b192                                   in  (v2899, v2900, v2901, v2898) attop r3204 pp719
+b192                                   end , 
+b192                                   let val v2902 = 
+b192                                           (let val v2903 = GREEN_TROUSERS attop r3200 pp720; 
+b192                                                val v2904 = BROWN_JACKET attop r3203 pp721; 
+b192                                                val v2905 = RED_JACKET attop r3202 pp722; 
+b192                                                val v2906 = GREEN_TROUSERS attop r3201 pp723
+b192                                            in  (v2904, v2905, v2906, v2903) attop r3204 pp724
+b192                                            end , 
+b192                                            let val v2907 = 
+b192                                                    (let val v2908 = BROWN_TROUSERS attop r3200 pp725; 
+b192                                                         val v2909 = GREEN_JACKET attop r3203 pp726; 
+b192                                                         val v2910 = GREEN_JACKET attop r3202 pp727; 
+b192                                                         val v2911 = BLUE_TROUSERS attop r3201 pp728
+b192                                                     in  (v2909, v2910, v2911, v2908) attop r3204 pp729
+b192                                                     end , 
+b192                                                     let val v2912 = 
+b192                                                             (let val v2913 = BROWN_TROUSERS attop r3200 pp730; 
+b256  val v2914 = GREEN_JACKET attop r3203 pp731; 
+b256  val v2915 = BLUE_JACKET attop r3202 pp732; 
+b256  val v2916 = RED_TROUSERS attop r3201 pp733
+b192                                                              in  (v2914, v2915, v2916, v2913) attop r3204 pp734
+b192                                                              end , 
+b192                                                              let val v2917 = 
+b256      (let val v2918 = BLUE_TROUSERS attop r3200 pp735; 
+b256           val v2919 = BROWN_JACKET attop r3203 pp736; 
+b256           val v2920 = RED_JACKET attop r3202 pp737; 
+b256           val v2921 = GREEN_TROUSERS attop r3201 pp738
+b256       in  (v2919, v2920, v2921, v2918) attop r3204 pp739
+b256       end , 
+b256       let val v2922 = 
+b256               (let val v2923 = BROWN_TROUSERS attop r3200 pp740; 
+b256                    val v2924 = RED_JACKET attop r3203 pp741; 
+b256                    val v2925 = GREEN_JACKET attop r3202 pp742; 
+b256                    val v2926 = BLUE_TROUSERS attop r3201 pp743
+b256                in  (v2924, v2925, v2926, v2923) attop r3204 pp744
+b256                end , 
+b256                let val v2927 = 
+b256                        (let val v2928 = GREEN_TROUSERS attop r3200 pp745; 
+b256                             val v2929 = RED_JACKET attop r3203 pp746; 
+b256                             val v2930 = BLUE_JACKET attop r3202 pp747; 
+b256                             val v2931 = BROWN_TROUSERS attop r3201 pp748
+b256                         in  (v2929, v2930, v2931, v2928) attop r3204 pp749
+b256                         end , 
+b256                         let val v2932 = 
+b256                                 (let val v2933 = GREEN_TROUSERS attop r3200 pp750; 
+b256                                      val v2934 = BLUE_JACKET attop r3203 pp751; 
+b256                                      val v2935 = BROWN_JACKET attop r3202 pp752; 
+b256                                      val v2936 = RED_TROUSERS attop r3201 pp753
+b256                                  in  (v2934, v2935, v2936, v2933) attop r3204 pp754
+b256                                  end , 
+b256                                  let val v2937 = 
+b256                                          (let val v2938 = BROWN_TROUSERS attop r3200 pp755; 
+b256                                               val v2939 = GREEN_JACKET attop r3203 pp756; 
+b256                                               val v2940 = RED_JACKET attop r3202 pp757; 
+b256                                               val v2941 = GREEN_TROUSERS attop r3201 pp758
+b256                                           in  (v2939, v2940, v2941, v2938) attop r3204 pp759
+b256                                           end , 
+b256                                           nil atbot r3206 pp760
+b256                                          ) attop r3205 pp761
+b256                                  in  :: attop r3206 pp762 v2937
+b256                                  end 
+b256                                 ) attop r3205 pp763
+b256                         in  :: attop r3206 pp764 v2932
+b256                         end 
+b256                        ) attop r3205 pp765
+b256                in  :: attop r3206 pp766 v2927
+b256                end 
+b256               ) attop r3205 pp767
+b256       in  :: attop r3206 pp768 v2922
+b256       end 
+b256      ) attop r3205 pp769
+b192                                                              in  :: attop r3206 pp770 v2917
+b192                                                              end 
+b192                                                             ) attop r3205 pp771
+b192                                                     in  :: attop r3206 pp772 v2912
+b192                                                     end 
+b192                                                    ) attop r3205 pp773
+b192                                            in  :: attop r3206 pp774 v2907
+b192                                            end 
+b192                                           ) attop r3205 pp775
+b192                                   in  :: attop r3206 pp776 v2902
+b192                                   end 
+b192                                  ) attop r3205 pp777
+b192                          in  :: attop r3206 pp778 v2897
+b192                          end 
+b192                         ) attop r3205 pp779
+b192                 in  :: attop r3206 pp780 v2892
+b192                 end 
+b192                ) attop r3205 pp781
+b192        in  :: attop r3206 pp782 v2887
+b192        end 
+b192       ) attop r3205 pp783
+b128                                                               in  :: attop r3206 pp784 v2882
+b128                                                               end 
+b128                                                              ) attop r3205 pp785
+b128                                                      in  :: attop r3206 pp786 v2877
+b128                                                      end 
+b128                                                     ) attop r3205 pp787
+b128                                             in  :: attop r3206 pp788 v2872
+b128                                             end 
+b128                                            ) attop r3205 pp789
+b128                                    in  :: attop r3206 pp790 v2867
+b128                                    end 
+b128                                   ) attop r3205 pp791
+b128                           in  :: attop r3206 pp792 v2862
+b128                           end ; 
+b128                       val v2859 = 
+b128                           letregion r3440:inf, r3441:inf, r3442:inf, r3443:inf, r3444:inf, r3445:inf 
+b128                           in let val v2860 = 
+b128                                      letregion r3438:inf, r3439:inf, r3446:4, r3448:12 
+b128                                      in findSol
+b128                                          [atbot r3445 pp801,atbot r3444 pp802,atbot r3443 pp803,atbot r3442 pp804,atbot r3441 pp805,
+b128                                           atbot r3440 pp806,atbot r3439 pp807,atbot r3438 pp808,atbot r3200 pp809,atbot r3201 pp810,
+b128                                           atbot r3202 pp811,atbot r3203 pp812]
+b128                                         atbot r3448 pp800 
+b128                                         (cardSet, 
+b128                                          nil atbot r3439 pp793, 
+b128                                          letregion r3468:3 
+b128                                          in emptyBoard
+b128                                              [atbot r3443 pp795,atbot r3442 pp796,atbot r3441 pp797]
+b128                                             atbot r3468 pp794 
+b128                                             () 
+b128                                          end (*r3468:3*), 
+b128                                          nil atbot r3445 pp798
+b128                                         ) atbot r3446 pp799 
+b128                                      end (*r3438:inf, r3439:inf, r3446:4, r3448:12*)
+b128                              in  (case v2860 
+b128                                     of nil => 
+b128                                        letregion r3477:0, r3479:0 
+b128                                        in log[] "No results\n"attop r3477 pp813 
+b128                                        end (*r3477:0, r3479:0*)
+b128                                     |  _ => 
+b128                                        letregion r3565:inf, r3566:inf 
+b128                                        in let val v2861 = 
+b128                                                   letregion r3481:4 
+b128                                                   in let fun ListMap atbot r3481 pp815 [r3527:inf, r3526:inf] (var141)= 
+b128                                                              (case var141 
+b128                                                                 of nil => nil sat r3527 pp816
+b192 |  :: => 
+b192    let val v2324 = decon_:: var141; 
+b192        val x = #0 v2324; 
+b192        val xs = #1 v2324; 
+b192        val v2329 = 
+b192            (let val cards = #2 x; 
+b192                 val v2571 = 
+b192                     letregion r3530:0, r3532:0 
+b192                     in pr[] "New board\n"attop r3530 pp817 
+b192                     end (*r3530:0, r3532:0*); 
+b192                 val v2572 = pp_cards[] cards
+b192             in  pp_newline[] ()
+b192             end , 
+b192             letregion r3529:2 
+b192             in ListMap[sat r3527 pp822,sat r3526 pp823] atbot r3529 pp821 xs 
+b192             end (*r3529:2*)
+b192            ) attop r3526 pp824
+b192    in  :: attop r3527 pp825 v2329
+b192    end 
+b128                                                              ) (*case*) 
+b128                                                      in  letregion r3568:2 
+b128                                                          in ListMap[atbot r3566 pp828,atbot r3565 pp829] atbot r3568 pp827 v2860 
+b128                                                          end (*r3568:2*)
+b128                                                      end  
+b128                                                   end (*r3481:4*)
+b128                                           in  ()
+b128                                           end  
+b128                                        end (*r3565:inf, r3566:inf*)
+b128                                  ) (*case*) 
+b128                              end  
+b128                           end (*r3440:inf, r3441:inf, r3442:inf, r3443:inf, r3444:inf, r3445:inf*)
+b128                   in  close_out[] std_out
+b128                   end  
+b128                end (*r3200:inf, r3201:inf, r3202:inf, r3203:inf, r3204:inf, r3205:inf, r3206:inf
+b128                *)
+b128            end  
+b128         end (*r2628:9*)
+b128     end  
+b128  end (*r2433:8*)
+b64                                                              end  
+b64                                                           end (*r2421:1*)
+b64                                                       end  
+b64                                                    end (*r1862:13*)
+b64                                                end  
+b64                                             end (*r1785:4*)
+b64                                         end  
+b64                                      end (*r1777:2*)
+b64                                  end  
+b64                               end (*r1769:2*)
+b64                           end  
+b64                        end (*r1743:3*)
+b64                    end  
+b64                 end (*r1731:1*)
+b64             end  
+b64          end (*r1722:3*)
+b64      end  
+b64   end (*r1694:4*)
+                                                               end  
+                                                            end (*r1675:4*)
+                                                        end  
+                                                     end (*r1663:3*)
+                                                 end  
+                                              end (*r1622:6*)
+                                          end  
+                                       end (*r1602:1*)
+                                   end  
+                                end (*r1543:2*)
+                            end  
+                         end (*r1511:2*)
+                     end  
+                  end (*r1484:3*)
+              end  
+           end (*r1448:4*)
+   in  {|it: (_,r2), v2950: (_,r1)|}
+   end 
+
+
+Report: REGION FLOW GRAPH FOR PROFILING:: 
+   Begin layout of region flow graph and SCC-graph.
+       [Starting layout of graph...
+       ^[r122:inf]
+          --r122 sat-->   string'[r1451:inf]   --r1451 atbot-->   LETREGION[r1461:inf];
+                                               --r1451 atbot-->   LETREGION[r1462:inf];
+                                               --r1451 atbot-->   LETREGION[r1492:inf];
+                                               --r1451 sat-->   IntString[r1488:inf]   --r1488 atbot-->   LETREGION[r2604:inf];
+b64                       --r1488 atbot-->   LETREGION[r2579:inf];
+b64                       --r1488 atbot-->   LETREGION[r2563:inf];
+b64                       --r1488 atbot-->   LETREGION[r2547:inf];
+b64                       --r1488 atbot-->   LETREGION[r2529:inf];
+b64                       --r1488 atbot-->   LETREGION[r2490:inf];
+b64                       --r1488 atbot-->   LETREGION[r3185:inf];
+b64                       --r1488 atbot-->   LETREGION[r3169:inf];
+                                            ;
+       ;
+          --r122 sat-->   [*r1488*] ;
+          --r122 atbot-->   LETREGION[r1680:inf];
+          --r122 atbot-->   LETREGION[r1703:inf];
+          --r122 atbot-->   LETREGION[r1699:inf];
+          --r122 atbot-->   LETREGION[r1817:inf];
+          --r122 atbot-->   LETREGION[r1814:inf];
+          --r122 atbot-->   LETREGION[r2356:inf];
+          --r122 atbot-->   LETREGION[r2342:inf];
+          --r122 atbot-->   LETREGION[r2335:inf];
+          --r122 atbot-->   LETREGION[r2332:inf];
+          --r122 atbot-->   LETREGION[r2596:inf];
+          --r122 atbot-->   LETREGION[r2578:inf];
+          --r122 atbot-->   LETREGION[r2571:inf];
+          --r122 atbot-->   LETREGION[r2562:inf];
+          --r122 atbot-->   LETREGION[r2555:inf];
+          --r122 atbot-->   LETREGION[r2546:inf];
+          --r122 atbot-->   LETREGION[r2539:inf];
+          --r122 atbot-->   LETREGION[r2528:inf];
+          --r122 atbot-->   LETREGION[r2524:inf];
+          --r122 atbot-->   LETREGION[r2485:inf];
+          --r122 atbot-->   LETREGION[r3177:inf];
+          --r122 atbot-->   LETREGION[r3168:inf];
+          --r122 atbot-->   LETREGION[r3161:inf];
+          --r122 atbot-->   LETREGION[r3158:inf];
+       @[r395:inf]
+          --r395 attop-->   findSol[r2696:inf]   --r2696 attop-->   LETREGION[r2784:inf];
+                                                 --r2696 attop-->   LETREGION[r3002:inf];
+                                                 --r2696 sat-->   [*r2696*] ;
+                                                 --r2696 atbot-->   LETREGION[r3438:inf];
+       ;
+          --r395 attop-->   findSol[r2678:inf]   --r2678 attop-->   [*r2678*] ;
+                                                 --r2678 atbot-->   LETREGION[r3441:inf];
+       ;
+       @[r396:inf]
+          --r396 attop-->   findSol[r2697:inf]   --r2697 attop-->   LETREGION[r2785:inf];
+                                                 --r2697 attop-->   LETREGION[r3003:inf];
+                                                 --r2697 sat-->   [*r2697*] ;
+                                                 --r2697 atbot-->   LETREGION[r3439:inf];
+       ;
+          --r396 attop-->   findSol[r2679:inf]   --r2679 attop-->   [*r2679*] ;
+                                                 --r2679 atbot-->   LETREGION[r3442:inf];
+       ;
+       map[r457:2]   --r457 attop-->   [*r2678*] ;
+       map[r458:2]   --r458 attop-->   [*r2679*] ;
+       map[r473:5]
+          --r473 atbot-->   LETREGION[r2729:5];
+          --r473 atbot-->   LETREGION[r2947:5];
+       LETREGION[r1448:4]
+       LETREGION[r1463:2]
+       LETREGION[r1466:1]
+       LETREGION[r1469:1]
+       LETREGION[r1470:2]
+       LETREGION[r1472:0]
+       LETREGION[r1476:1]
+       LETREGION[r1477:2]
+       LETREGION[r1479:0]
+       LETREGION[r1484:3]
+       LETREGION[r1491:0]
+       LETREGION[r1493:2]
+       LETREGION[r1496:1]
+       LETREGION[r1499:1]
+       LETREGION[r1511:2]
+       LETREGION[r1535:2]
+       LETREGION[r1538:0]
+       LETREGION[r1543:2]
+       split[r1561:inf]
+          --r1561 sat-->   [*r1561*] ;
+          --r1561 attop-->   LETREGION[r1904:inf];
+       split[r1562:inf]
+          --r1562 sat-->   [*r1562*] ;
+          --r1562 attop-->   LETREGION[r1905:inf];
+       split[r1563:2]
+          --r1563 atbot-->   LETREGION[r1589:2];
+          --r1563 attop-->   LETREGION[r1906:2];
+       LETREGION[r1582:2]
+       LETREGION[r1591:3]
+       LETREGION[r1602:1]
+       LETREGION[r1622:6]
+       LETREGION[r1637:2]
+       LETREGION[r1639:0]
+       LETREGION[r1647:6]
+       LETREGION[r1657:5]
+       ListNth[r1659:7]
+          --r1659 atbot-->   LETREGION[r2471:7];
+          --r1659 atbot-->   LETREGION[r2510:7];
+       LETREGION[r1663:3]
+       LETREGION[r1669:2]
+       LETREGION[r1671:0]
+       LETREGION[r1675:4]
+       LETREGION[r1682:0]
+       LETREGION[r1683:0]
+       LETREGION[r1685:2]
+       LETREGION[r1688:1]
+       LETREGION[r1694:4]
+       LETREGION[r1700:2]
+       LETREGION[r1702:0]
+       LETREGION[r1704:0]
+       LETREGION[r1705:2]
+       LETREGION[r1708:1]
+       LETREGION[r1710:0]
+       LETREGION[r1712:2]
+       LETREGION[r1715:1]
+       LETREGION[r1722:3]
+       LETREGION[r1731:1]
+       emptyBoard[r1738:0]   --r1738 atbot-->   [*r3441*] ;
+       emptyBoard[r1739:1]   --r1739 atbot-->   [*r3442*] ;
+       emptyBoard[r1740:3]   --r1740 atbot-->   LETREGION[r3443:inf];
+       LETREGION[r1743:3]
+       LETREGION[r1750:2]
+       LETREGION[r1752:0]
+       LETREGION[r1757:2]
+       LETREGION[r1759:0]
+       add[r1764:2]
+          --r1764 atbot-->   LETREGION[r2766:2];
+          --r1764 atbot-->   LETREGION[r2984:2];
+       add[r1766:5]
+          --r1766 atbot-->   LETREGION[r2767:5];
+          --r1766 atbot-->   LETREGION[r2985:5];
+       LETREGION[r1769:2]
+       LETREGION[r1771:0]
+       LETREGION[r1773:0]
+       LETREGION[r1777:2]
+       LETREGION[r1779:0]
+       LETREGION[r1781:0]
+       LETREGION[r1785:4]
+       LETREGION[r1793:3]
+       ListMap[r1810:inf]
+          --r1810 sat-->   [*r1810*] ;
+          --r1810 atbot-->   LETREGION[r1854:inf];
+       ListMap[r1811:inf]
+          --r1811 sat-->   [*r1811*] ;
+          --r1811 atbot-->   LETREGION[r1855:inf];
+       LETREGION[r1813:2]
+       LETREGION[r1816:0]
+       LETREGION[r1818:0]
+       LETREGION[r1819:2]
+       LETREGION[r1822:1]
+       LETREGION[r1824:0]
+       LETREGION[r1825:0]
+       LETREGION[r1826:2]
+       LETREGION[r1829:1]
+       LETREGION[r1857:2]
+       LETREGION[r1862:13]
+       LETREGION[r1903:2]
+       LETREGION[r1908:3]
+       LETREGION[r1944:6]
+       LETREGION[r1963:10]
+       LETREGION[r1964:1]
+       ListMap[r1999:inf]
+          --r1999 sat-->   [*r1999*] ;
+          --r1999 atbot-->   LETREGION[r2020:inf];
+       ListMap[r2000:inf]
+          --r2000 sat-->   [*r2000*] ;
+          --r2000 atbot-->   LETREGION[r2021:inf];
+       LETREGION[r2002:2]
+       LETREGION[r2023:2]
+       LETREGION[r2024:1]
+       ListMap[r2059:inf]
+          --r2059 sat-->   [*r2059*] ;
+          --r2059 atbot-->   LETREGION[r2080:inf];
+       ListMap[r2060:inf]
+          --r2060 sat-->   [*r2060*] ;
+          --r2060 atbot-->   LETREGION[r2081:inf];
+       LETREGION[r2062:2]
+       LETREGION[r2083:2]
+       LETREGION[r2084:1]
+       ListMap[r2119:inf]
+          --r2119 sat-->   [*r2119*] ;
+          --r2119 atbot-->   LETREGION[r2140:inf];
+       ListMap[r2120:inf]
+          --r2120 sat-->   [*r2120*] ;
+          --r2120 atbot-->   LETREGION[r2141:inf];
+       LETREGION[r2122:2]
+       LETREGION[r2143:2]
+       LETREGION[r2144:1]
+       ListMap[r2179:inf]
+          --r2179 sat-->   [*r2179*] ;
+          --r2179 atbot-->   LETREGION[r2200:inf];
+       ListMap[r2180:inf]
+          --r2180 sat-->   [*r2180*] ;
+          --r2180 atbot-->   LETREGION[r2201:inf];
+       LETREGION[r2182:2]
+       LETREGION[r2203:2]
+       LETREGION[r2204:2]
+       splice[r2241:2]
+          --r2241 attop-->   [*r2241*] ;
+          --r2241 atbot-->   LETREGION[r2289:inf];
+       splice[r2242:2]
+          --r2242 attop-->   [*r2242*] ;
+          --r2242 atbot-->   LETREGION[r2290:inf];
+       splice[r2243:2]
+          --r2243 attop-->   [*r2243*] ;
+          --r2243 atbot-->   LETREGION[r2291:inf];
+       LETREGION[r2244:7]
+       LETREGION[r2247:4]
+       LETREGION[r2260:0]
+       LETREGION[r2263:0]
+       LETREGION[r2269:0]
+       LETREGION[r2272:0]
+       splice[r2280:7]
+          --r2280 atbot-->   [*r2244*] ;
+          --r2280 atbot-->   LETREGION[r2292:7];
+       LETREGION[r2295:4]
+       LETREGION[r2303:3]
+       ListMap[r2328:inf]
+          --r2328 sat-->   [*r2328*] ;
+          --r2328 atbot-->   LETREGION[r2397:inf];
+       ListMap[r2329:inf]
+          --r2329 sat-->   [*r2329*] ;
+          --r2329 atbot-->   LETREGION[r2398:inf];
+       LETREGION[r2331:2]
+       LETREGION[r2334:0]
+       LETREGION[r2336:0]
+       LETREGION[r2337:2]
+       LETREGION[r2340:1]
+       LETREGION[r2343:0]
+       LETREGION[r2344:2]
+       LETREGION[r2347:1]
+       LETREGION[r2357:0]
+       LETREGION[r2358:2]
+       LETREGION[r2361:1]
+       LETREGION[r2363:0]
+       LETREGION[r2364:0]
+       LETREGION[r2365:2]
+       LETREGION[r2368:1]
+       LETREGION[r2400:2]
+       LETREGION[r2421:1]
+       matchClothes[r2430:2]
+          --r2430 atbot-->   LETREGION[r2480:2];
+          --r2430 atbot-->   LETREGION[r2519:2];
+       LETREGION[r2433:8]
+       LETREGION[r2474:1]
+       LETREGION[r2483:1]
+       LETREGION[r2488:0]
+       LETREGION[r2489:0]
+       LETREGION[r2491:2]
+       LETREGION[r2494:1]
+       LETREGION[r2497:1]
+       LETREGION[r2501:5]
+       LETREGION[r2513:1]
+       LETREGION[r2522:1]
+       LETREGION[r2527:0]
+       LETREGION[r2530:2]
+       LETREGION[r2533:1]
+       LETREGION[r2536:1]
+       LETREGION[r2540:0]
+       LETREGION[r2541:2]
+       LETREGION[r2544:1]
+       LETREGION[r2548:2]
+       LETREGION[r2551:1]
+       LETREGION[r2554:1]
+       LETREGION[r2556:0]
+       LETREGION[r2557:2]
+       LETREGION[r2560:1]
+       LETREGION[r2564:2]
+       LETREGION[r2567:1]
+       LETREGION[r2570:1]
+       LETREGION[r2572:0]
+       LETREGION[r2573:2]
+       LETREGION[r2576:1]
+       LETREGION[r2580:2]
+       LETREGION[r2583:1]
+       LETREGION[r2586:1]
+       LETREGION[r2597:0]
+       LETREGION[r2598:2]
+       LETREGION[r2601:1]
+       LETREGION[r2603:0]
+       LETREGION[r2605:2]
+       LETREGION[r2608:1]
+       LETREGION[r2611:1]
+       LETREGION[r2623:9]
+       match[r2625:9]
+          --r2625 atbot-->   LETREGION[r2756:9];
+          --r2625 atbot-->   LETREGION[r2974:9];
+       LETREGION[r2628:9]
+       findSol[r2673:inf]
+          --r2673 attop-->   [*r2673*] ;
+          --r2673 atbot-->   LETREGION[r3200:inf];
+       findSol[r2674:inf]
+          --r2674 attop-->   [*r2674*] ;
+          --r2674 atbot-->   LETREGION[r3201:inf];
+       findSol[r2675:inf]
+          --r2675 attop-->   [*r2675*] ;
+          --r2675 atbot-->   LETREGION[r3202:inf];
+       findSol[r2676:inf]
+          --r2676 attop-->   [*r2676*] ;
+          --r2676 atbot-->   LETREGION[r3203:inf];
+       findSol[r2677:inf]
+          --r2677 attop-->   [*r2677*] ;
+          --r2677 atbot-->   LETREGION[r3440:inf];
+       findSol[r2680:inf]
+          --r2680 sat-->   [*r2680*] ;
+          --r2680 atbot-->   [*r3443*] ;
+       findSol[r2681:inf]
+          --r2681 sat-->   [*r2681*] ;
+          --r2681 atbot-->   LETREGION[r3444:inf];
+       findSol[r2682:inf]
+          --r2682 sat-->   [*r2682*] ;
+          --r2682 atbot-->   LETREGION[r3445:inf];
+       LETREGION[r2724:2]
+       LETREGION[r2733:3]
+       LETREGION[r2750:3]
+       LETREGION[r2759:1]
+       LETREGION[r2761:0]
+       LETREGION[r2763:0]
+       LETREGION[r2765:2]
+       LETREGION[r2770:2]
+       LETREGION[r2804:4]
+       LETREGION[r2816:12]
+       LETREGION[r2826:2]
+       LETREGION[r2828:2]
+       LETREGION[r2863:2]
+       LETREGION[r2865:2]
+       LETREGION[r2900:4]
+       LETREGION[r2912:12]
+       LETREGION[r2942:2]
+       LETREGION[r2951:3]
+       LETREGION[r2968:3]
+       LETREGION[r2977:1]
+       LETREGION[r2979:0]
+       LETREGION[r2981:0]
+       LETREGION[r2983:2]
+       LETREGION[r2988:2]
+       LETREGION[r3022:4]
+       LETREGION[r3034:12]
+       LETREGION[r3044:2]
+       LETREGION[r3046:2]
+       LETREGION[r3081:2]
+       LETREGION[r3083:2]
+       LETREGION[r3118:4]
+       LETREGION[r3130:12]
+       LETREGION[r3142:0]
+       LETREGION[r3144:0]
+       LETREGION[r3160:0]
+       LETREGION[r3162:0]
+       LETREGION[r3163:2]
+       LETREGION[r3166:1]
+       LETREGION[r3170:2]
+       LETREGION[r3173:1]
+       LETREGION[r3176:1]
+       LETREGION[r3178:0]
+       LETREGION[r3179:2]
+       LETREGION[r3182:1]
+       LETREGION[r3184:0]
+       LETREGION[r3186:2]
+       LETREGION[r3189:1]
+       LETREGION[r3192:1]
+       LETREGION[r3204:inf]
+       LETREGION[r3205:inf]
+       LETREGION[r3206:inf]
+       LETREGION[r3446:4]
+       LETREGION[r3448:12]
+       LETREGION[r3468:3]
+       LETREGION[r3477:0]
+       LETREGION[r3479:0]
+       LETREGION[r3481:4]
+       ListMap[r3526:inf]
+          --r3526 sat-->   [*r3526*] ;
+          --r3526 atbot-->   LETREGION[r3565:inf];
+       ListMap[r3527:inf]
+          --r3527 sat-->   [*r3527*] ;
+          --r3527 atbot-->   LETREGION[r3566:inf];
+       LETREGION[r3529:2]
+       LETREGION[r3530:0]
+       LETREGION[r3532:0]
+       LETREGION[r3568:2]
+       ...Finishing layout of graph]
+       [Starting layout of graph...
+       [sccNo 347: r3568,]
+       [sccNo 346: r3532,]
+       [sccNo 345: r3530,]
+       [sccNo 344: r3529,]
+       [sccNo 343: r3527,]   --sccNo 343-->   [sccNo 342: r3566,];
+       [sccNo 341: r3526,]   --sccNo 341-->   [sccNo 340: r3565,];
+       [sccNo 339: r3481,]
+       [sccNo 338: r3479,]
+       [sccNo 337: r3477,]
+       [sccNo 336: r3468,]
+       [sccNo 335: r3448,]
+       [sccNo 334: r3446,]
+       [sccNo 333: r3206,]
+       [sccNo 332: r3205,]
+       [sccNo 331: r3204,]
+       [sccNo 330: r3192,]
+       [sccNo 329: r3189,]
+       [sccNo 328: r3186,]
+       [sccNo 327: r3184,]
+       [sccNo 326: r3182,]
+       [sccNo 325: r3179,]
+       [sccNo 324: r3178,]
+       [sccNo 323: r3176,]
+       [sccNo 322: r3173,]
+       [sccNo 321: r3170,]
+       [sccNo 320: r3166,]
+       [sccNo 319: r3163,]
+       [sccNo 318: r3162,]
+       [sccNo 317: r3160,]
+       [sccNo 316: r3144,]
+       [sccNo 315: r3142,]
+       [sccNo 314: r3130,]
+       [sccNo 313: r3118,]
+       [sccNo 312: r3083,]
+       [sccNo 311: r3081,]
+       [sccNo 310: r3046,]
+       [sccNo 309: r3044,]
+       [sccNo 308: r3034,]
+       [sccNo 307: r3022,]
+       [sccNo 306: r2988,]
+       [sccNo 305: r2983,]
+       [sccNo 304: r2981,]
+       [sccNo 303: r2979,]
+       [sccNo 302: r2977,]
+       [sccNo 301: r2968,]
+       [sccNo 300: r2951,]
+       [sccNo 299: r2942,]
+       [sccNo 298: r2912,]
+       [sccNo 297: r2900,]
+       [sccNo 296: r2865,]
+       [sccNo 295: r2863,]
+       [sccNo 294: r2828,]
+       [sccNo 293: r2826,]
+       [sccNo 292: r2816,]
+       [sccNo 291: r2804,]
+       [sccNo 290: r2770,]
+       [sccNo 289: r2765,]
+       [sccNo 288: r2763,]
+       [sccNo 287: r2761,]
+       [sccNo 286: r2759,]
+       [sccNo 285: r2750,]
+       [sccNo 284: r2733,]
+       [sccNo 283: r2724,]
+       [sccNo 282: r2682,]   --sccNo 282-->   [sccNo 281: r3445,];
+       [sccNo 280: r2681,]   --sccNo 280-->   [sccNo 279: r3444,];
+       [sccNo 278: r2680,]   --sccNo 278-->   [sccNo 114: r3443,];
+       [sccNo 277: r2677,]   --sccNo 277-->   [sccNo 276: r3440,];
+       [sccNo 275: r2676,]   --sccNo 275-->   [sccNo 274: r3203,];
+       [sccNo 273: r2675,]   --sccNo 273-->   [sccNo 272: r3202,];
+       [sccNo 271: r2674,]   --sccNo 271-->   [sccNo 270: r3201,];
+       [sccNo 269: r2673,]   --sccNo 269-->   [sccNo 268: r3200,];
+       [sccNo 267: r2628,]
+       [sccNo 266: r2625,]
+          --sccNo 266-->   [sccNo 265: r2974,];
+          --sccNo 266-->   [sccNo 264: r2756,];
+       [sccNo 263: r2623,]
+       [sccNo 262: r2611,]
+       [sccNo 261: r2608,]
+       [sccNo 260: r2605,]
+       [sccNo 259: r2603,]
+       [sccNo 258: r2601,]
+       [sccNo 257: r2598,]
+       [sccNo 256: r2597,]
+       [sccNo 255: r2586,]
+       [sccNo 254: r2583,]
+       [sccNo 253: r2580,]
+       [sccNo 252: r2576,]
+       [sccNo 251: r2573,]
+       [sccNo 250: r2572,]
+       [sccNo 249: r2570,]
+       [sccNo 248: r2567,]
+       [sccNo 247: r2564,]
+       [sccNo 246: r2560,]
+       [sccNo 245: r2557,]
+       [sccNo 244: r2556,]
+       [sccNo 243: r2554,]
+       [sccNo 242: r2551,]
+       [sccNo 241: r2548,]
+       [sccNo 240: r2544,]
+       [sccNo 239: r2541,]
+       [sccNo 238: r2540,]
+       [sccNo 237: r2536,]
+       [sccNo 236: r2533,]
+       [sccNo 235: r2530,]
+       [sccNo 234: r2527,]
+       [sccNo 233: r2522,]
+       [sccNo 232: r2513,]
+       [sccNo 231: r2501,]
+       [sccNo 230: r2497,]
+       [sccNo 229: r2494,]
+       [sccNo 228: r2491,]
+       [sccNo 227: r2489,]
+       [sccNo 226: r2488,]
+       [sccNo 225: r2483,]
+       [sccNo 224: r2474,]
+       [sccNo 223: r2433,]
+       [sccNo 222: r2430,]
+          --sccNo 222-->   [sccNo 221: r2519,];
+          --sccNo 222-->   [sccNo 220: r2480,];
+       [sccNo 219: r2421,]
+       [sccNo 218: r2400,]
+       [sccNo 217: r2368,]
+       [sccNo 216: r2365,]
+       [sccNo 215: r2364,]
+       [sccNo 214: r2363,]
+       [sccNo 213: r2361,]
+       [sccNo 212: r2358,]
+       [sccNo 211: r2357,]
+       [sccNo 210: r2347,]
+       [sccNo 209: r2344,]
+       [sccNo 208: r2343,]
+       [sccNo 207: r2340,]
+       [sccNo 206: r2337,]
+       [sccNo 205: r2336,]
+       [sccNo 204: r2334,]
+       [sccNo 203: r2331,]
+       [sccNo 202: r2329,]   --sccNo 202-->   [sccNo 201: r2398,];
+       [sccNo 200: r2328,]   --sccNo 200-->   [sccNo 199: r2397,];
+       [sccNo 198: r2303,]
+       [sccNo 197: r2295,]
+       [sccNo 196: r2280,]
+          --sccNo 196-->   [sccNo 195: r2292,];
+          --sccNo 196-->   [sccNo 189: r2244,];
+       [sccNo 194: r2272,]
+       [sccNo 193: r2269,]
+       [sccNo 192: r2263,]
+       [sccNo 191: r2260,]
+       [sccNo 190: r2247,]
+       [sccNo 188: r2243,]   --sccNo 188-->   [sccNo 187: r2291,];
+       [sccNo 186: r2242,]   --sccNo 186-->   [sccNo 185: r2290,];
+       [sccNo 184: r2241,]   --sccNo 184-->   [sccNo 183: r2289,];
+       [sccNo 182: r2204,]
+       [sccNo 181: r2203,]
+       [sccNo 180: r2182,]
+       [sccNo 179: r2180,]   --sccNo 179-->   [sccNo 178: r2201,];
+       [sccNo 177: r2179,]   --sccNo 177-->   [sccNo 176: r2200,];
+       [sccNo 175: r2144,]
+       [sccNo 174: r2143,]
+       [sccNo 173: r2122,]
+       [sccNo 172: r2120,]   --sccNo 172-->   [sccNo 171: r2141,];
+       [sccNo 170: r2119,]   --sccNo 170-->   [sccNo 169: r2140,];
+       [sccNo 168: r2084,]
+       [sccNo 167: r2083,]
+       [sccNo 166: r2062,]
+       [sccNo 165: r2060,]   --sccNo 165-->   [sccNo 164: r2081,];
+       [sccNo 163: r2059,]   --sccNo 163-->   [sccNo 162: r2080,];
+       [sccNo 161: r2024,]
+       [sccNo 160: r2023,]
+       [sccNo 159: r2002,]
+       [sccNo 158: r2000,]   --sccNo 158-->   [sccNo 157: r2021,];
+       [sccNo 156: r1999,]   --sccNo 156-->   [sccNo 155: r2020,];
+       [sccNo 154: r1964,]
+       [sccNo 153: r1963,]
+       [sccNo 152: r1944,]
+       [sccNo 151: r1908,]
+       [sccNo 150: r1903,]
+       [sccNo 149: r1862,]
+       [sccNo 148: r1857,]
+       [sccNo 147: r1829,]
+       [sccNo 146: r1826,]
+       [sccNo 145: r1825,]
+       [sccNo 144: r1824,]
+       [sccNo 143: r1822,]
+       [sccNo 142: r1819,]
+       [sccNo 141: r1818,]
+       [sccNo 140: r1816,]
+       [sccNo 139: r1813,]
+       [sccNo 138: r1811,]   --sccNo 138-->   [sccNo 137: r1855,];
+       [sccNo 136: r1810,]   --sccNo 136-->   [sccNo 135: r1854,];
+       [sccNo 134: r1793,]
+       [sccNo 133: r1785,]
+       [sccNo 132: r1781,]
+       [sccNo 131: r1779,]
+       [sccNo 130: r1777,]
+       [sccNo 129: r1773,]
+       [sccNo 128: r1771,]
+       [sccNo 127: r1769,]
+       [sccNo 126: r1766,]
+          --sccNo 126-->   [sccNo 125: r2985,];
+          --sccNo 126-->   [sccNo 124: r2767,];
+       [sccNo 123: r1764,]
+          --sccNo 123-->   [sccNo 122: r2984,];
+          --sccNo 123-->   [sccNo 121: r2766,];
+       [sccNo 120: r1759,]
+       [sccNo 119: r1757,]
+       [sccNo 118: r1752,]
+       [sccNo 117: r1750,]
+       [sccNo 116: r1743,]
+       [sccNo 115: r1740,]   --sccNo 115-->   [*sccNo 114*] ;
+       [sccNo 113: r1739,]   --sccNo 113-->   [sccNo 49: r3442,];
+       [sccNo 112: r1738,]   --sccNo 112-->   [sccNo 42: r3441,];
+       [sccNo 111: r1731,]
+       [sccNo 110: r1722,]
+       [sccNo 109: r1715,]
+       [sccNo 108: r1712,]
+       [sccNo 107: r1710,]
+       [sccNo 106: r1708,]
+       [sccNo 105: r1705,]
+       [sccNo 104: r1704,]
+       [sccNo 103: r1702,]
+       [sccNo 102: r1700,]
+       [sccNo 101: r1694,]
+       [sccNo 100: r1688,]
+       [sccNo 99: r1685,]
+       [sccNo 98: r1683,]
+       [sccNo 97: r1682,]
+       [sccNo 96: r1675,]
+       [sccNo 95: r1671,]
+       [sccNo 94: r1669,]
+       [sccNo 93: r1663,]
+       [sccNo 92: r1659,]
+          --sccNo 92-->   [sccNo 91: r2510,];
+          --sccNo 92-->   [sccNo 90: r2471,];
+       [sccNo 89: r1657,]
+       [sccNo 88: r1647,]
+       [sccNo 87: r1639,]
+       [sccNo 86: r1637,]
+       [sccNo 85: r1622,]
+       [sccNo 84: r1602,]
+       [sccNo 83: r1591,]
+       [sccNo 82: r1582,]
+       [sccNo 81: r1563,]
+          --sccNo 81-->   [sccNo 80: r1906,];
+          --sccNo 81-->   [sccNo 79: r1589,];
+       [sccNo 78: r1562,]   --sccNo 78-->   [sccNo 77: r1905,];
+       [sccNo 76: r1561,]   --sccNo 76-->   [sccNo 75: r1904,];
+       [sccNo 74: r1543,]
+       [sccNo 73: r1538,]
+       [sccNo 72: r1535,]
+       [sccNo 71: r1511,]
+       [sccNo 70: r1499,]
+       [sccNo 69: r1496,]
+       [sccNo 68: r1493,]
+       [sccNo 67: r1491,]
+       [sccNo 66: r1484,]
+       [sccNo 65: r1479,]
+       [sccNo 64: r1477,]
+       [sccNo 63: r1476,]
+       [sccNo 62: r1472,]
+       [sccNo 61: r1470,]
+       [sccNo 60: r1469,]
+       [sccNo 59: r1466,]
+       [sccNo 58: r1463,]
+       [sccNo 57: r1448,]
+       [sccNo 56: r473,]
+          --sccNo 56-->   [sccNo 55: r2947,];
+          --sccNo 56-->   [sccNo 54: r2729,];
+       [sccNo 53: r458,]
+          --sccNo 53-->   [sccNo 50: r2679,]   --sccNo 50-->   [*sccNo 49*] ;;
+       [sccNo 52: r457,]
+          --sccNo 52-->   [sccNo 43: r2678,]   --sccNo 43-->   [*sccNo 42*] ;;
+       [sccNo 51: r396,]
+          --sccNo 51-->   [*sccNo 50*] ;
+          --sccNo 51-->   [sccNo 48: r2697,]   --sccNo 48-->   [sccNo 47: r3439,];
+                                               --sccNo 48-->   [sccNo 46: r3003,];
+                                               --sccNo 48-->   [sccNo 45: r2785,];
+       ;
+       [sccNo 44: r395,]
+          --sccNo 44-->   [*sccNo 43*] ;
+          --sccNo 44-->   [sccNo 41: r2696,]   --sccNo 41-->   [sccNo 40: r3438,];
+                                               --sccNo 41-->   [sccNo 39: r3002,];
+                                               --sccNo 41-->   [sccNo 38: r2784,];
+       ;
+       [sccNo 37: r122,]
+          --sccNo 37-->   [sccNo 36: r3158,];
+          --sccNo 37-->   [sccNo 35: r3161,];
+          --sccNo 37-->   [sccNo 34: r3168,];
+          --sccNo 37-->   [sccNo 33: r3177,];
+          --sccNo 37-->   [sccNo 32: r2485,];
+          --sccNo 37-->   [sccNo 31: r2524,];
+          --sccNo 37-->   [sccNo 30: r2528,];
+          --sccNo 37-->   [sccNo 29: r2539,];
+          --sccNo 37-->   [sccNo 28: r2546,];
+          --sccNo 37-->   [sccNo 27: r2555,];
+          --sccNo 37-->   [sccNo 26: r2562,];
+          --sccNo 37-->   [sccNo 25: r2571,];
+          --sccNo 37-->   [sccNo 24: r2578,];
+          --sccNo 37-->   [sccNo 23: r2596,];
+          --sccNo 37-->   [sccNo 22: r2332,];
+          --sccNo 37-->   [sccNo 21: r2335,];
+          --sccNo 37-->   [sccNo 20: r2342,];
+          --sccNo 37-->   [sccNo 19: r2356,];
+          --sccNo 37-->   [sccNo 18: r1814,];
+          --sccNo 37-->   [sccNo 17: r1817,];
+          --sccNo 37-->   [sccNo 16: r1699,];
+          --sccNo 37-->   [sccNo 15: r1703,];
+          --sccNo 37-->   [sccNo 14: r1680,];
+          --sccNo 37-->   [sccNo 12: r1488,]   --sccNo 12-->   [sccNo 11: r3169,];
+                                               --sccNo 12-->   [sccNo 10: r3185,];
+                                               --sccNo 12-->   [sccNo 9: r2490,];
+                                               --sccNo 12-->   [sccNo 8: r2529,];
+                                               --sccNo 12-->   [sccNo 7: r2547,];
+                                               --sccNo 12-->   [sccNo 6: r2563,];
+                                               --sccNo 12-->   [sccNo 5: r2579,];
+                                               --sccNo 12-->   [sccNo 4: r2604,];
+       ;
+          --sccNo 37-->   [sccNo 13: r1451,]   --sccNo 13-->   [*sccNo 12*] ;
+                                               --sccNo 13-->   [sccNo 3: r1492,];
+                                               --sccNo 13-->   [sccNo 2: r1462,];
+                                               --sccNo 13-->   [sccNo 1: r1461,];
+       ;
+       ...Finishing layout of graph]
+   End layout of region flow graph and SCC-graph.
+
+
+ *** Warnings ***
+ListNth	 has a type scheme with escaping put effects on region(s): 
+r1, which is also free in the type (schemes) of :  mul_int mul_float plus_int plus_float minus_int minus_float less_int less_float greater_int greater_float neg_int neg_float @ ^ close_out div map mod output std_out v2950 string' IntString count split ListSize Match Bind ListSubscript ListSub'
+r4, which is also free in the type (schemes) of :  ListSubscript
+
+pp_cards	 has a type scheme with escaping put effects on region(s): 
+r1 (see above)
+r4 (see above)
+
+match	 has a type scheme with escaping put effects on region(s): 
+r1 (see above)
+r4 (see above)
+
+findSol	 has a type scheme with escaping put effects on region(s): 
+r1 (see above)
+r4 (see above)
+
+ListMap	 has a type scheme with escaping put effects on region(s): 
+r1 (see above)
+r4 (see above)
+
+Warnings concerning resetting of regions printed earlier in this file!
+(Search on "You have")
+Warnings concerning resetting of regions printed earlier in this file!
+(Search on "You have")
+
+
