@@ -777,6 +777,7 @@ structure ScsPerson :> SCS_PERSON =
     fun nameToHtml (name,email) = Quot.toString
       `<a href="mailto:^(email)">^(name)</a>`
 
+(* OBSOLETE: 2003-11-12, knp
     fun search_form target_url hvs =
       ScsWidget.formBox "/scs/person/person_search.sml" 
         [("submit",ScsDict.s [(ScsLang.en,`Search`),(ScsLang.da,`Søg`)])]
@@ -786,8 +787,45 @@ structure ScsPerson :> SCS_PERSON =
                                     including name, security number and email.`),
 		       (ScsLang.da,`Søg efter alle personer som matcher det mønster du indtaster nedenfor.
                                     Der søges i flere felter, bl.a. navn, cpr nummer og email.`)]) ^^ `<p>` ^^
-       (ScsWidget.tableWithTwoCols[(ScsDict.s' [(ScsLang.en,`Search pattern:`),
-						(ScsLang.da,`Søgemønster`)],ScsWidget.intext 40 "pat")]))
+       (ScsWidget.tableWithTwoCols[(ScsDict.s' [(ScsLang.en,`Find person:`),
+						(ScsLang.da,`Find person`)],ScsWidget.intext 40 "pat")]))
+*)
+
+
+    local 
+      val infos = [
+        (ScsLang.da, `Søg efter alle personer som matcher det mønster du 
+		      indtaster nedenfor. Der søges i flere felter, bl.a. 
+		      navn, cpr nummer og email. Du kan bruge % som 
+		      wildcard.`),
+        (ScsLang.en, `Search after all persons that matches the pattern you 
+		     type in below. Several fields related to a person are 
+		     searched including name, security number and email. You 
+		     can use % as a wildcard.`)]
+      val titles = UcsDict.search_person_dict
+    in
+      fun searchWidget m rw fv value_opt =
+	UcsWidget.twoColumns (titles, infos, m, [UcsWidget.layoutValue rw
+	  (UcsWidget.valOfString value_opt)
+	  (ScsWidget.intextMaxLenVal 40 200 (ScsString.valOf value_opt) fv)
+	] )
+    end
+
+
+    fun search_form target_url hvs = 
+      let
+        val formbox = UcsWidget.FORMBOX{
+	  action     = "/scs/person/person_search.sml", 
+	  form_attr  = [],
+	  buts       = [("submit",ScsDict.s [(ScsLang.en,`Search`),(ScsLang.da,`Søg`)] ,NONE)],
+	  header     = Html.export_hiddens (("target_url",target_url)::hvs),
+	  table_attr = [],
+	  body       = [searchWidget false UcsWidget.WRITE "pat" NONE]
+	}
+      in
+        UcsWidget.layoutComponentGrp formbox
+      end
+
 
    (* Check for form variables *)
     fun getPersonIdErr (fv,errs) = ScsFormVar.getIntErr(fv,"Person id",errs)
