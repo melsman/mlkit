@@ -39,10 +39,10 @@ local
     end
   
   fun report_file(filename, n, inside) = 
-      writeln(implode[filename , ": size = " , toString n , 
-               " comments: ", toString inside, " (",
-               toString(percent(inside, n)) handle Quot => "", 
-               "%)"]);
+      writeln (filename ^ ": size = " ^ toString n 
+	       ^ " comments: " ^ toString inside ^ " ("
+               ^ (toString (percent(inside, n)) handle Quot => "") 
+               ^ "%)");
 
   (* scan_file(filename) scans through the file named
      filename returning either Some(size_in_bytes, size_of_comments)
@@ -62,10 +62,10 @@ local
    end handle Io msg  => (writeln msg; None)
   
   fun report_totals(n,inside) = 
-       writeln(implode["\n\nTotal sizes: ", toString n, 
-            " comments: ", toString inside,
-            " (", toString(percent(inside,n)) handle Quot => "",
-            ")%"])
+       writeln ("\n\nTotal sizes: " ^ toString n
+		^ " comments: " ^ toString inside
+		^ " (" ^ (toString (percent(inside,n)) handle Quot => "")
+                ^ ")%")
 
   (* main(is) reads a sequence of filenames from is,
      one file name pr line (leading spaces are skipped;

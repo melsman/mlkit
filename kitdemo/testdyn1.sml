@@ -10,102 +10,8 @@
 
 *)
 
-local 
-(* ==================================================
- * Prelude for the ML Kit with Regions   ME 17.12.96
- * Changed CCALL primitive (31)          NH 10.02.97
- * ================================================== *)
-
-infix  3 := o
-infix  4 = <> < > <= >= 
-infix  5 @
-infixr 5 ::
-infix  6 + - ^
-infix  7 div mod / * 
-
-exception Ord and Chr and Div and Mod and Quot and Floor and Sqrt and
-      Exp and Ln and Io of string
-
-
-(* ============================
- * BUILT-IN PRIMITIVES
- * ============================ *)
-
-fun op = (x: ''a, y: ''a): bool =           prim(0, (x, y))
-fun (x: 'a ref) := (y: 'a): unit =          prim(17, (x, y)) 
-fun !(x: 'a ref): 'a =                      prim(18, x) 
-
-
-(* ======================
- * IMPORTED PRIMITIVES
- * ====================== *)
-
-fun ord (c:string): int =                   prim(31, ("ordString", "ordString", c, Ord))
-fun chr (i:int): string =                   prim(31, ("chrString", "chrStringProfiling", i, Chr))
-fun size (s:string): int =                  prim(31, ("sizeString", "sizeString", s))
-fun explode (str: string): string list =    prim(31, ("explodeString", "explodeStringProfiling", str))
-fun implode (strs: string list): string =   prim(31, ("implodeString", "implodeStringProfiling", strs))
-fun op ^ (s1:string, s2:string): string =   prim(31, ("concatString", "concatStringProfiling", s1, s2)) 
-fun (x: int) div (y: int): int =            prim(31, ("divInt", "divInt", x, y, Div))
-fun (x: int) mod (y: int): int =            prim(31, ("modInt", "modInt", x, y, Mod)) 
-fun real(x: int): real =                    prim(31, ("realInt", "realInt", x))
-fun floor(x:real):int =                     prim(31, ("floorFloat", "floorFloat", x, Floor))
-fun (x: real) / (y: real): real =           prim(31, ("divFloat", "divFloat", x, y, Quot))
-fun sqrt(x: real): real =                   prim(31, ("sqrtFloat", "sqrtFloat", x, Sqrt)) 
-fun exp(x: real): real =                    prim(31, ("expFloat", "expFloat", x, Exp)) 
-fun ln(x: real): real =                     prim(31, ("lnFloat", "lnFloat", x, Ln)) 
-fun sin(x: real): real =                    prim(31, ("sinFloat", "sinFloat", x)) 
-fun cos(x: real): real =                    prim(31, ("cosFloat", "cosFloat", x)) 
-fun arctan(x: real): real =                 prim(31, ("arctanFloat", "arctanFloat", x)) 
-
-
-abstype instream = INS of int                 (* Streams ala the old Def. *)
-and outstream = OUTS of int
-with
-  val std_in : instream =                     INS(prim(31, ("stdInStream", "stdInStream", 0)))
-  val std_out : outstream =                   OUTS(prim(31, ("stdOutStream", "stdOutStream", 0)))
-
-  exception CANNOT_OPEN
-  fun open_in(f: string): instream =          INS(prim(31, ("openInStream", "openInStream", f, CANNOT_OPEN)))
-                                              handle CANNOT_OPEN => raise Io("Cannot open " ^ f)
-  fun open_out(f: string): outstream =        OUTS(prim(31, ("openOutStream", "openOutStream", f, CANNOT_OPEN)))
-                                              handle CANNOT_OPEN => raise Io("Cannot open " ^ f)
-  fun input(INS i, n: int): string =          prim(31, ("inputStream", "inputStreamProfiling", i, n))
-  fun lookahead(INS i): string =              prim(31, ("lookaheadStream", "lookaheadStreamProfiling", i)) 
-  fun close_in(INS i): unit =                 prim(31, ("closeStream", "closeStream", i))
-  fun end_of_stream(INS i): bool =            prim(31, ("endOfStream", "endOfStream", i))
-  val output_exval =                          Io "Output stream is closed"
-  fun output(OUTS i, str: string): unit =     prim(31, ("outputStream", "outputStream", i, str, output_exval))
-  fun close_out(OUTS i): unit =               prim(31, ("closeStream", "closeStream", i))
-  fun flush_out(OUTS i): unit =               prim(31, ("flushStream", "flushStream", i))    
-end
-
-
-(* ======================
- * DERIVED PRIMITIVES
- * ====================== *)
-
-val not = fn true => false | false => true
-fun (f o g) x = f(g x)
-fun op <> (a,b) = not(a=b)
-fun nil @ M = M
-  | (x :: L) @ M = x :: (L @ M)
-fun map f nil = nil
-  | map f (x :: L) = f x :: map f L
-fun rev l =
-  let fun rev_rec(p as ([], acc)) = p
-        | rev_rec(x::xs, acc) = rev_rec(xs, x::acc)
-  in #2 (rev_rec(l,nil))
-  end
-fun length [] = 0
-  | length (x::xs) = 1 + length xs
-fun app f [] = ()
-  | app f (x::xs) = (f x; app f xs)
-
-in
-
   fun print s = output (std_out, s)
-  fun digit n = chr(ord "0" + n)
+  fun digit n = chr(ord #"0" + n)
   fun digits(n,acc) =
     if n >=0 andalso n<=9 then digit n:: acc
     else digits (n div 10, digit(n mod 10) :: acc)
@@ -130,20 +36,22 @@ in
     let
       val _ = print "Testing string operations:\n\
        \  [implode, explode, chr, ord, size]...\n"
-      fun hds [] = "-"
+      fun hds [] = #"-"
 	| hds (x::_) = x
     in
       error (int_to_string 232 = "232") "int_to_string";
-      error (implode ["hello", " ", "world\n"] = "hello world\n") "implode";
-      error (hds (explode "hello") = "h") "explode";
-      error (chr 66 = "B") "chr";
-      error (ord "B" = 66) "ord";
-      error (((chr 1000) handle Chr => "hej") = "hej") "Chr";
-      error (((chr 1000) handle Div => "h"
-                              | Chr => "kurt") = "kurt") "Chr2";
+      error (implode [#"h", #"e", #"l", #"l", #" "] = "hell ") "implode";
+      error (hds (explode "hello") = #"h") "explode";
+      error (chr 66 = #"B") "chr";
+      error (ord #"B" = 66) "ord";
+      error (((chr 1000) handle Chr => #"h") = #"h") "Chr";
+      error (((chr 1000) handle Div => #"h"
+                              | Chr => #"k") = #"k") "Chr2";
+(*KILL 09/07/1997 21:43. tho.:
       error (((ord "") handle Ord => 5) = 5) "Ord";
       error (((ord "") handle Div => 34
                               | Ord => 5) = 5) "Ord2";
+*)
       error (size "hello I'm 19 long.." = 19) "size"
     end
 
@@ -294,8 +202,3 @@ in
     end
 
   val _ = print "End of test.\n"
-
-end
-
-
-

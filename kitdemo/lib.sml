@@ -1,6 +1,6 @@
 datatype 'a Option = None | Some of 'a 
 
-fun digit n = chr(ord "0" + n)
+fun digit n = chr(ord #"0" + n)
 fun digits(n,acc) =
       if n >=0 andalso n<=9 then digit n:: acc
       else digits (n div 10, digit(n mod 10) :: acc)
@@ -12,23 +12,24 @@ fun writeln s = output(std_out, s^"\n")
 fun percent(i: int, j: int)(*:int*) = 
      floor((real i * 100.0)/real j) 
 
-(* seek: (string -> bool) -> instream -> string list:
+(* seek: (char -> bool) -> instream -> string list:
    seek(pred)(is) returns the list of characters obtained
    by reading from up to and including the first character
    which satisfies "pred". (If no such character exists, the
    empty list is returned.
 *)
-
-fun seek (pred: string -> bool) (is: instream): string list = 
+exception Impossible
+fun seek (pred: char -> bool) (is: instream): char list = 
   let fun readLoop() =
-            case input(is, 1) of
-              ""  =>  []
-            | s => s :: (if pred s then  []
-                        else readLoop())
+            (case explode (input(is, 1)) of
+	       []  =>  []
+	     | [char] => char :: (if pred char then  []
+				  else readLoop())
+	     | _ => (say "lib.seek: impossible"; raise Impossible))
   in readLoop()
   end
 
-fun readLn(is) = seek(fn ch => ch="\n")is
+fun readLn(is) = seek(fn ch => ch = #"\n")is
 
 (* dropwhile: ('a -> bool) -> 'a list -> 'a list; endomorphic *)
 fun dropwhile pred l =
@@ -46,8 +47,8 @@ fun takewhile pred l =
   in take_loop l
   end
 
-fun isSpace(ch:string) = 
-      ch = " " orelse ch = "\t" orelse ch = "\n" 
+fun isSpace(ch:char) = 
+      ch = #" " orelse ch = #"\t" orelse ch = #"\n" 
       (* orelse ch= "\f" orelse ch = "\r" orelse ch = "\v"*)
 
 fun readWord(is): string Option =
