@@ -26,6 +26,8 @@ Test files may contain Standard ML like comments.
 rank.sml            ccl       ecte    nobasislib
 pat.sml             ccl     
 llv.sml
+weeks.sml
+weeks2.sml          ccl       ecte
 typerr.sml          ccl       ecte
 opaque.sml          ccl
 opaque2.sml                           nobasislib
@@ -34,6 +36,7 @@ functor2.sml        ccl
 constraint.sml
 lex.sml                               nobasislib
 layout.sml
+anoq_Exception.sml
 
 (* Tests of some benchmark programs *)
 

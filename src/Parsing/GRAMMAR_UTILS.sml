@@ -50,7 +50,7 @@ signature GRAMMAR_UTILS =
     val fold_specs_to_spec : (info * M.spec) list -> M.spec
 
     val raise_lexical_error_if_none : pos -> 'a option -> 'a
-        (*raise LexBasics.LEXICAL_ERROR (pos, "grr") if the option is NONE.*)
+        (*raise LexBasics.LEXICAL_ERROR (pos, "constant too big") if the option is NONE.*)
 
    (* The following all come from the appropriate modules, but they're here
       for convenience and brevity. *)

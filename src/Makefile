@@ -2,9 +2,14 @@
 # Build the ML Kit including tools, runtime systems, etc.
 #
 
+# Some commands
+MKDIR=mkdir -p
+
+# Some directories
 BINDIR=../bin
 RUNDIR=RuntimeWithGC
-INSTDIR=/usr/local/mlkit
+INSTDIR=/usr/local/mlkit-$(KITVERSION)
+
 ARCH-OS=x86-linux
 HEAP2EXEC=heap2exec/heap2exec heap2exec/run.$(ARCH-OS)
 
@@ -76,19 +81,17 @@ NOPROF_OFILES = `(cd ../basislib/PM/NoProf; ls -w 10000 *.o *.bdy *.date)`
 
 install:
 	rm -rf $(INSTDIR)
-	mkdir $(INSTDIR)
-	mkdir $(INSTDIR)/runtime
-	mkdir $(INSTDIR)/doc
-	mkdir $(INSTDIR)/bin
-	mkdir $(INSTDIR)/kitdemo
-	mkdir $(INSTDIR)/kitdemo/utils
-	mkdir $(INSTDIR)/ml-yacc-lib
-	mkdir $(INSTDIR)/basislib
-	mkdir $(INSTDIR)/basislib/PM
-	mkdir $(INSTDIR)/basislib/PM/NoProf
-	mkdir $(INSTDIR)/basislib/PM/GC
+	$(MKDIR) $(INSTDIR)
+	$(MKDIR) $(INSTDIR)/bin
+	$(MKDIR) $(INSTDIR)/kitdemo
+	$(MKDIR) $(INSTDIR)/kitdemo/utils
+	$(MKDIR) $(INSTDIR)/ml-yacc-lib
+	$(MKDIR) $(INSTDIR)/basislib
+	$(MKDIR) $(INSTDIR)/basislib/PM
+	$(MKDIR) $(INSTDIR)/basislib/PM/NoProf
+	$(MKDIR) $(INSTDIR)/basislib/PM/GC
 
-	(cd RuntimeWithGC; cp -p runtimeSystem.o runtimeSystemGC.o $(INSTDIR)/runtime)
+	(cp -p bin/runtimeSystem.o bin/runtimeSystemGC.o $(INSTDIR)/bin)
 	(cd ..; cp -p copyright readme.x86-linux $(INSTDIR))
 	(cd ../kitdemo; cp -p $(KITDEMO_FILES) $(INSTDIR)/kitdemo) 
 	(cd ../kitdemo/utils; cp -p ListUtils.sml utils.pm $(INSTDIR)/kitdemo/utils) 
@@ -96,7 +99,7 @@ install:
 	(cd ../bin; cp -p mlkit.heap2exec $(INSTDIR)/bin)
 	(cd ../basislib; cp -p $(BASISLIB_FILES) $(INSTDIR)/basislib)
 	(cd ../basislib/PM/NoProf; cp -p $(NOPROF_OFILES) $(INSTDIR)/basislib/PM/NoProf)
-	cp -p ../doc/manual/manual.ps $(INSTDIR)/doc
+	cp -p ../doc/manual/manual.ps $(INSTDIR)
 
 # the following is done in the %post section in the rpm file! 
 # But why not here? Because the installdir is not known yet!

@@ -13,7 +13,7 @@
 (for Version 4)}
 \author{Mads Tofte \and Lars Birkedal \and Martin Elsman \and
 \and Niels Hallenberg \and Tommy H\o jfeld Olesen \and
-Peter Sestoft \and Peter Bertelsen}
+Peter Sestoft}
 \raggedbottom
 
 {\theorembodyfont{\rmfamily} \newtheorem{example}{Example}}
@@ -239,12 +239,12 @@ Standard ML Modules language. The
 ML Kit Version~2 is a further development of the 
 \index{ML Kit!Version 1}%
 ML Kit Version~1, which was developed at Edinburgh University and
-Copenhagen University.  The ML Kit (after Version~1) is also called
+University of Copenhagen.  The ML Kit (after Version~1) is also called
 the ML Kit with Regions.  We hope you will enjoy using the ML Kit with
 Regions as much as we have enjoyed developing it. If your experience
 with the Kit gives rise to comments and suggestions, specifically with
 relation to the goals and visions expressed here, please feel free to
-write.  Further information is available at the ML Kit 
+write.  Further information is available at the ML Kit
 \index{web site}%
 web site:
 \begin{tabbing}
@@ -255,8 +255,37 @@ web site:
 March, 2001\\[1cm]
 Mads Tofte, Lars Birkedal, Martin Elsman,\\
 Niels Hallenberg, Tommy H\o jfeld Olesen,\\
-Peter Sestoft, Peter Bertelsen
+and Peter Sestoft
 \end{flushright}
+
+\newpage
+
+\section*{Contributions}
+Many people have contributed to the development of the ML Kit,
+including Peter Bertelsen, Lars Birkedal, Martin Elsman, Niels
+Hallenberg, Tommy H\o jfeld Olesen, Mads Tofte, David Turner, and
+Peter Sestoft.
+
+\section*{License}
+The ML Kit is released under the GNU General Public License.  
+
+{\sc
+\begin{quote}
+  This program is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License as
+  published by the Free Software Foundation; either version 2 of the
+  License, or (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  General Public License for more details.
+  
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+\end{quote}
+}
 
 \part{Overview}
 
@@ -1699,8 +1728,7 @@ The string and character operations can raise exceptions, as detailed in the
 Standard ML Basis Library documentation.
 
 The structures {\tt Char}, {\tt String}, and {StringCvt} provide other
-useful operations on characters and strings.\footnote{Consult the
-  files {\tt basislib/CHAR.sml}, {\tt basislib/STRING.sml},
+useful operations on characters and strings.\footnote{Consult {\tt basislib/CHAR.sml}, {\tt basislib/STRING.sml},
   and {\tt basislib/STRING\_CVT.sml}.}
 
 \section{Booleans}
