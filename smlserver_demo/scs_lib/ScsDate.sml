@@ -27,6 +27,7 @@ signature SCS_DATE =
     (* PrettyPrinting *)
     val ppIso : Date.date -> string
     val ppDk  : Date.date -> string
+    val ppLongDk : Date.date -> string
     val pp    : Date.date -> string
     val ppDb  : Date.date option -> string
   end
@@ -112,6 +113,23 @@ structure ScsDate :> SCS_DATE =
     (* Pretty Printing *)
     val ppIso = Date.fmt "%Y-%m-%d"
     val ppDk  = Date.fmt "%d/%m-%Y"
+
+    fun ppMthDk d =
+      case Date.month d of
+	Date.Jan => "januar"
+      | Date.Feb => "februar"
+      | Date.Mar => "marts"
+      | Date.Apr => "april"
+      | Date.May => "maj"
+      | Date.Jun => "juni"
+      | Date.Jul => "juli"
+      | Date.Aug => "august"
+      | Date.Sep => "september"
+      | Date.Oct => "oktober"
+      | Date.Nov => "november"
+      | Date.Dec => "december"
+
+    fun ppLongDk d = (Date.fmt "%d. " d) ^ (ppMthDk d) ^ " " ^ (Date.fmt "%Y" d)
       
     fun pp s = 
       case ScsLogin.user_lang of

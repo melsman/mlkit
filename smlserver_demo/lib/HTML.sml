@@ -106,7 +106,6 @@ signature HTML =
     (* HTML encoding  *)
     val urlencode  : string -> string
     val htmlencode : quot -> quot
-
 end
 
 (* 

@@ -4,6 +4,8 @@ sent *)
 
 signature SCS_ERROR =
   sig
+    exception Fail of string
+    val raiseError : quot -> 'a
     val logError   : quot -> unit
     val emailError : quot -> unit
     val panic      : quot -> 'a
@@ -13,6 +15,10 @@ signature SCS_ERROR =
 structure ScsError :> SCS_ERROR =
   struct 
     fun logError emsg = Ns.log (Ns.Error, Quot.toString emsg)
+
+    exception Fail of string
+    
+    fun raiseError emsg = (logError emsg; raise (Fail (Quot.toString emsg)))
 
     fun emailError emsg = Ns.Mail.send {to="nh@it-c.dk",from="ucs@it-c.dk",subject="ScsPanic",body=Quot.toString emsg}
 

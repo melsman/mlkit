@@ -15,7 +15,7 @@ val _ = ScsFormVar.anyErrors errs
 val _ = 
   case submit of
     "Print" => ScsPrint.printDoc category note on_what_table on_what_id 
-      (ScsPrint.docTypeFromString doc_type) source printer
+      (ScsPrint.docTypeFromString doc_type) `^source` printer
   | "Update Source" => ScsPage.returnPg "Printing Documents" (`
       Notice, that you have updated the document source.<p>
 

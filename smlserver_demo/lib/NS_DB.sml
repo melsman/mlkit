@@ -6,6 +6,7 @@ signature NS_DB_BASIC =
     val beginTrans    : quot
     val endTrans      : quot
     val roolback      : quot
+    val fromDate      : Date.date -> string
   end
 
 signature NS_POOL =
@@ -31,7 +32,9 @@ signature NS_DB =
     structure Pool : NS_POOL
 
     eqtype status
-    type set
+    structure Set : NS_SET 
+
+    type set = Set.set (* BUG: we should have Ns.Set and this set share the same type => including structure set here should not be necessary , so type set should be Ns.Set.set so that we can use eg. Ns.Set.foldl on a Db.set; 2001-12-02, nh*)
     type pool = Pool.pool
     type db
 
@@ -48,9 +51,13 @@ signature NS_DB =
     val dmlTransDb      : db * (db -> 'a) -> 'a
     val panicDmlDb      : db -> (quot -> 'a) -> quot -> unit
     val panicDmlTransDb : db -> (quot -> 'a) -> (db -> 'a) -> 'a
-    val select          : db * quot -> set
-    val getRow          : db * set -> status
+    val selectDb        : db * quot -> set
+    val getRowDb        : db * set -> status
+    val getCol          : set * string -> string
+    val getColOpt       : set * string -> string option
     val foldDb          : db * ((string->string)*'a->'a) * 'a * quot -> 'a
+    val foldSetDb       : db * (set*'a->'a) * 'a * quot -> 'a
+    val appDb           : db * ((string->string)->'a) * quot -> unit
     val listDb          : db * ((string->string)->'a) * quot -> 'a list
     val oneFieldDb      : db * quot -> string
     val zeroOrOneFieldDb: db * quot -> string option
@@ -65,6 +72,8 @@ signature NS_DB =
     val panicDmlTrans : (quot -> 'a) -> (db -> 'a) -> 'a
 
     val fold          : ((string->string)*'a->'a) * 'a * quot -> 'a
+    val foldSet       : (set*'a->'a) * 'a * quot -> 'a
+    val app           : ((string->string)->'a) * quot -> unit
     val list          : ((string->string)->'a) * quot -> 'a list
     val oneField      : quot -> string
     val zeroOrOneField: quot -> string option
@@ -82,6 +91,7 @@ signature NS_DB =
     val qq' : string -> string  (* as qq, but encapsulated in quotes ('...') *)
 
     val toDate : string -> Date.date option
+    val fromDate : Date.date -> string
 
     val valueList     : string list -> string
     val setList       : (string*string) list -> string

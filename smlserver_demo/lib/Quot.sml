@@ -21,6 +21,8 @@ signature QUOT =
     val == : (quot * quot) -> bool (* Polymorphic equality is not meaningful on quotations! *)
     val > : (quot * quot) -> bool 
     val >= : (quot * quot) -> bool 
+
+    val wrapString : (quot -> quot) -> (string -> string)
   end
 
 structure Quot : QUOT =
@@ -48,6 +50,8 @@ structure Quot : QUOT =
       val op == = op = o fixPair
       val op > = op String.> o fixPair
       val op >= = op String.>= o fixPair
+
+      fun wrapString (f:quot -> quot): (string -> string) = toString o f o fromString 
     end
   end
 

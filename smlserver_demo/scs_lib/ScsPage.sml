@@ -3,7 +3,7 @@ structure ScsPage :> SCS_PAGE =
     type navbar = (quot * quot) list
     fun navbar nb = Quot.concatWith "/" (List.map (fn (l,n) => Html.ahref l n) nb)
 
-    fun returnPg title body = Ns.return 
+    fun genTop title =
       (case ScsLogin.user_lang of
 	 ScsLang.English => `
 	   <html>
@@ -19,18 +19,7 @@ structure ScsPage :> SCS_PAGE =
 	   <img border=0 src=/images/itc_logo_white.png></a></th></tr>
 	   </table> <p>
 	   <table width=100% border=0 cellpadding=10 cellspacing=0><tr><td>
-	   <h1>^title</h1>
-	   ` ^^ body ^^ `
-	   </td></tr></table>
-	   <p><hr>
-	   <a href=http://smlserver.org><img border=0 src=/images/poweredby_smlserver_logo1.png align=right
-	   alt="You are free to use this logo on your SMLserver scripts"></a>
-
-	   <a href="http://www.smlserver.org/">SMLserver Home Page</a>,  
-	   <a href="/index.sml">Example Home Page</a> 
-	   (<a href="mailto:smlserver@it.edu">smlserver@it.edu</a>) ^(ScsDate.ppIso (ScsDate.now_local()))
-	   </body>
-	   </html>`
+	   <h1>^title</h1>`
 	 | ScsLang.Danish => `
 	   <html>
 	   <head>
@@ -45,8 +34,22 @@ structure ScsPage :> SCS_PAGE =
 	   <img border=0 src=/images/itc_logo_white.png></a></th></tr>
 	   </table> <p>
 	   <table width=100% border=0 cellpadding=10 cellspacing=0><tr><td>
-	   <h1>^title</h1>
-	   ` ^^ body ^^ `
+	   <h1>^title</h1>`)
+
+    fun genBot () =
+      (case ScsLogin.user_lang of
+	 ScsLang.English => `
+	   </td></tr></table>
+	   <p><hr>
+	   <a href=http://smlserver.org><img border=0 src=/images/poweredby_smlserver_logo1.png align=right
+	   alt="You are free to use this logo on your SMLserver scripts"></a>
+
+	   <a href="http://www.smlserver.org/">SMLserver Home Page</a>,  
+	   <a href="/index.sml">Example Home Page</a> 
+	   (<a href="mailto:smlserver@it.edu">smlserver@it.edu</a>) ^(ScsDate.ppIso (ScsDate.now_local()))
+	   </body>
+	   </html>`
+	 | ScsLang.Danish => `
 	   </td></tr></table>
 	   <p><hr>
 	   <a href=http://smlserver.org><img border=0 src=/images/poweredby_smlserver_logo1.png align=right
@@ -57,4 +60,10 @@ structure ScsPage :> SCS_PAGE =
 	   (<a href="mailto:smlserver@it.edu">smlserver@it.edu</a>) ^(ScsDate.ppIso (ScsDate.now_local()))
 	   </body>
 	   </html>`)
+
+    fun returnTop title = (Ns.returnHeaders(); Ns.write (genTop title))
+    val write = Ns.write
+    fun returnBot () = Ns.write (genBot ())
+
+    fun returnPg title body = Ns.return (genTop title ^^ body ^^ (genBot ()))
   end

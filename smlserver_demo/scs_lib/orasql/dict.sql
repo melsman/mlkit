@@ -6,7 +6,7 @@ create table scs_dict (
   phrase_id integer not null,
   lang varchar(10) not null check (lang in ('English','Danish')),
   text varchar(3000) not null,
-  unique (phrase_id,lang));
+  unique (phrase_id,lang,text));
 
 --drop sequence dict_seq;
 --drop sequence phrase_seq;
