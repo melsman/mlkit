@@ -37,7 +37,8 @@ signature SCS_DATE =
     val ppLongDk  : Date.date -> string
     val ppLongEng : Date.date -> string
     val ppDay : Date.date -> string
-    val ppMth : Date.date -> string
+    val ppMth : Date.month -> string
+    val ppMthFromDate : Date.date -> string
     val ppHourMin : Date.date -> string
     val pp    : Date.date -> string
     val ppDb  : Date.date option -> string
@@ -140,8 +141,8 @@ structure ScsDate :> SCS_DATE =
     val ppIso = Date.fmt "%Y-%m-%d"
     val ppDk  = Date.fmt "%d/%m-%Y"
 
-    fun ppMthDk d =
-      case Date.month d of
+    fun ppMthDk mth =
+      case mth of
 	Date.Jan => "januar"
       | Date.Feb => "februar"
       | Date.Mar => "marts"
@@ -155,8 +156,8 @@ structure ScsDate :> SCS_DATE =
       | Date.Nov => "november"
       | Date.Dec => "december"
 
-    fun ppMthEng d =
-      case Date.month d of
+    fun ppMthEng mth =
+      case mth of
 	Date.Jan => "January"
       | Date.Feb => "February"
       | Date.Mar => "Marts"
@@ -170,10 +171,12 @@ structure ScsDate :> SCS_DATE =
       | Date.Nov => "November"
       | Date.Dec => "December"
 
-    fun ppMth d =
+    fun ppMth mth =
       case ScsLogin.user_lang() of
-	ScsLang.da => ppMthDk d
-      | ScsLang.en => ppMthEng d
+	ScsLang.da => ppMthDk mth
+      | ScsLang.en => ppMthEng mth
+
+    fun ppMthFromDate d = ppMth (Date.month d)
 
     fun ppDayDk d =
       case Date.weekDay d of
@@ -209,9 +212,9 @@ structure ScsDate :> SCS_DATE =
 	| ScsLang.en => (pad2 (Date.hour d)) ^ ":" ^ (pad2 (Date.minute d))
       end
 
-    fun ppLongDk d = (Int.toString (Date.day d)) ^ ". " ^(ppMthDk d) ^ " " ^ (Date.fmt "%Y" d)
+    fun ppLongDk d = (Int.toString (Date.day d)) ^ ". " ^(ppMthDk (Date.month d)) ^ " " ^ (Date.fmt "%Y" d)
 
-    fun ppLongEng d = (Int.toString (Date.day d)) ^ " " ^(ppMthEng d) ^ " " ^ (Date.fmt "%Y" d)
+    fun ppLongEng d = (Int.toString (Date.day d)) ^ " " ^(ppMthEng (Date.month d)) ^ " " ^ (Date.fmt "%Y" d)
       
     fun pp s = 
       case ScsLogin.user_lang() of
@@ -231,7 +234,8 @@ structure ScsDate :> SCS_DATE =
       | _ => ""
 
     fun dateOk (d,m,y) =
-      m >= 1 andalso m <= 12 andalso d >= 1 andalso d <= daysInMonth y m andalso y >= 1900 (* Date.sml requires y >= 1900 for some reson??? *)
+      (* Date.sml requires y >= 1900 for some reson??? *)
+      m >= 1 andalso m <= 12 andalso d >= 1 andalso d <= daysInMonth y m andalso y >= 1900 
 
     fun timeOk (h,m,s) =
       h >= 0 andalso h < 24 andalso m>= 0 andalso m < 60 andalso s >= 0 andalso s < 60
@@ -265,7 +269,8 @@ structure ScsDate :> SCS_DATE =
 
     fun add_days d n =
       Date.fromTimeLocal (Time.+ (Time.fromSeconds(n * 24 * 3600),Date.toTime d))
-      handle _ => raise ScsDate ("add_days: can't add " ^ (Int.toString n) ^ " days to the date " ^ (ppIso d))
+      handle _ => raise ScsDate ("add_days: can't add " ^ (Int.toString n) ^ 
+				 " days to the date " ^ (ppIso d))
 
     fun half_year d =
       let
@@ -292,7 +297,6 @@ structure ScsDate :> SCS_DATE =
 	| EQUAL => (p_first,p_mid)
 	| GREATER => (add_days p_mid 1,p_end)
       end
-
   end
 
 

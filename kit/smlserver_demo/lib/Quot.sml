@@ -35,7 +35,16 @@ structure Quot : QUOT =
     val size = String.size o toString
     fun concat qs = List.foldr (op ^^) `` qs
     fun concatFn f qs = (concat o List.map f) qs
-    fun concatWith s qs = fromString (String.concatWith s (List.map toString qs))
+
+    fun concatWith sep [] = ``
+      | concatWith sep l = 
+      let
+	val sep' = fromString sep
+      in
+	concat (tl (foldr (fn (s,acc)=>sep'::s::acc) [] l))
+      end
+(*    fun concatWith s qs = fromString (String.concatWith s (List.map toString qs))*)
+
     val implode = fromString o String.implode 
     val explode = String.explode o toString
     fun map f q = fromString(String.map f (toString q))

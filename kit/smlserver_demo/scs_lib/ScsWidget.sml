@@ -64,6 +64,11 @@ signature SCS_WIDGET =
        matching the encoding we use in Oracle. *)
     val selectYesNoWithDefault : string -> string -> quot
 
+    (* [mthWidget mth_opt fv] returns a quotation for an entry
+        widget for a month. The default month will be marked if
+        exits. Values used are 1 for January etc. *)
+    val mthWidget : ScsDate.mth option -> string -> quot
+
     (* [oneLine] used for what????? *)
     val oneLine : quot * quot -> quot 
 
@@ -167,6 +172,35 @@ signature SCS_WIDGET =
        (start_date option,end_date option) and the two boxes will be
        pre-filled if possible. *)
     val startdateEndtime : Date.date option * Date.date option -> string -> quot
+
+    datatype dt_granularity = 
+      dt_months | dt_days | dt_hours | dt_halves | dt_quarters |
+      dt_fives | dt_minutes | dt_seconds
+    datatype dt_1224 = dt_12 | dt_24
+    datatype dt_type = dt_date | dt_time | dt_date_and_time
+    (* [dtWidget show_date_p date_time_sep use_12_24 default_opt granularity fv]
+
+       This function is a rewrite of the function dt_widget_datetime
+       found in the OpenACS DateTime package (www.openacs.org). Thanks
+       to ron, gregh and smeeks@arsdigita.com
+
+       Returns an HTML form fragment for collecting date-time
+       information with form variable names "fv_year__", "fv_month__",
+       "fv_day__", "fv_hours__", "fv_minutes__", "fv_seconds__", and
+       "fv_1224__" (se datatype dt_1224).
+
+       Default_opt specifies what should be set as the current time in the
+       form. If NONE the current local date and time is used.
+
+       Granularity can be dt_months, dt_days, dt_hours, dt_halves, dt_quarters,
+       dt_fives, dt_minutes, dt_seconds (se datatype dt_granularity).
+
+       If dt_type is dt_date then the date is shown, if dt_time then
+       the time widget is shown and if dt_date_and_time then both time
+       and date widgets are shown.
+
+        *)
+    val dtWidget : dt_type -> string -> dt_1224 -> Date.date option -> dt_granularity -> string -> quot
   end
 
 structure ScsWidget :> SCS_WIDGET =
@@ -307,7 +341,8 @@ structure ScsWidget :> SCS_WIDGET =
 
     fun intextVal s v fv = Html.intext fv (genSize s ^^ ` ` ^^ 
       (genValue o ScsSecurity.xssFilterLeaveNoTags) v)
-    fun intextMaxLenVal s m v fv = Html.intext fv (genMaxSize s m ^^ ` ` ^^ (genValue o ScsSecurity.xssFilterLeaveNoTags) v)
+    fun intextMaxLenVal s m v fv = 
+      Html.intext fv (genMaxSize s m ^^ ` ` ^^ (genValue o ScsSecurity.xssFilterLeaveNoTags) v)
 
     fun intextDate d fv =
       case d of
@@ -356,5 +391,82 @@ structure ScsWidget :> SCS_WIDGET =
          have two separate input boxes. *)
       intextDate start_date_opt (fv^"_FV_start__") ^^ ` <b>--</b> ` ^^
       intextTimestamp end_date_opt (fv^"_FV_end__")
+
+    (* Entering Dates *)
+    datatype dt_granularity = 
+      dt_months | dt_days | dt_hours | dt_halves | dt_quarters |
+      dt_fives | dt_minutes | dt_seconds
+    datatype dt_1224 = dt_12 | dt_24
+    datatype dt_type = dt_date | dt_time | dt_date_and_time
+    local 
+      (* Returns the precision in minutes corresponding to a named
+         granularity *)
+      fun granularity_to_precision g =
+	case g of
+	  dt_months => 40000
+	| dt_days => 1440
+	| dt_hours => 60
+	| dt_halves => 30
+	| dt_quarters => 15
+	| dt_fives => 5
+	| dt_minutes => 1
+	| dt_seconds => 0
+
+      fun roundDateToGranularity g d =
+	let
+	  val precision = granularity_to_precision g
+	  val day = if g = dt_months then 1 else Date.day d
+	  val hour = if ScsList.contains g [dt_months,dt_days] then 0 else Date.hour d
+	  val minute = 
+	    Real.round(Real.fromInt (Date.minute d) / (Real.fromInt precision)) * precision
+	  val second = if g = dt_seconds then Date.second d else 0
+	in
+	  ScsDate.genTimestamp (day,ScsDate.mthFromName(Date.month d),Date.year d,
+				hour,minute,second)
+	end
+      fun valOfOpt f default v_opt =
+	case v_opt of
+	  NONE => default
+	| SOME v => f v
+    in
+      fun mthWidget mth_opt fv =
+	let
+	  val opts = 
+	    List.map (fn mth => (Int.toString mth,ScsDate.ppMth (ScsDate.mthToName mth)))
+	    [1,2,3,4,5,6,7,8,9,10,11,12]
+	in
+	  selectWithDefault opts (valOfOpt Int.toString "" mth_opt) fv
+	end
+
+      fun dtWidget dt_type date_time_sep use_12_24 default_opt granularity fv =
+	let
+	  val to_precision = granularity_to_precision granularity
+	  val show_day_p = to_precision < 1441
+	  val show_hours_p = to_precision < 61
+	  val show_minutes_p = to_precision < 60
+	  val show_seconds_p = to_precision < 1
+
+	  val show_date_p = ScsList.contains dt_type [dt_date,dt_date_and_time]
+	  val show_time_p = ScsList.contains dt_type [dt_time,dt_date_and_time]
+
+	  (* Round default date to match the granularity *)
+	  val default_opt = 
+	    case default_opt of
+	      NONE => NONE
+	    | SOME d => SOME (roundDateToGranularity granularity d)
+		
+	  val date_widget = 
+	    if show_date_p then 
+	      (mthWidget (valOfOpt (SOME o ScsDate.mthFromName o Date.month) NONE default_opt) (fv^"_FV_year__")) ^^
+	      `&nbsp;` ^^
+	      (intextMaxLenVal 5 4 (valOfOpt (Int.toString o Date.year) "" default_opt) (fv^"_FV_year__"))
+	    else
+	      ``
+	in
+	  `Test `
+	end
+    end
+
+
 
   end
