@@ -75,6 +75,9 @@ signature LAMBDA_EXP =
 		      instances : 'Type list,
 		      tyvars : tyvar list,
 		      Type : 'Type} 
+      | EXPORTprim of {name : string,
+		       instance_arg : 'Type,
+		       instance_res : 'Type}
       | RESET_REGIONSprim of {instance: 'Type}        (* NOT Standard ML, for programmer-directed,
 						          but safe, resetting of regions *)
       | FORCE_RESET_REGIONSprim of {instance: 'Type}  (* NOT Standard ML, for programmer-controlled,

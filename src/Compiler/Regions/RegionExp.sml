@@ -117,6 +117,10 @@ struct
 		     mu_result : Type * place, 
 		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b)trip list
+      | EXPORT   of {name : string,
+		     mu_arg : Type * place, (*mu of argument to c function*)
+		     mu_res : Type * place}
+	            * ('a,'b)trip  (* The ML function *)
       | RESET_REGIONS of {force: bool, alloc : 'a, regions_for_resetting: 'a list} * ('a,'b)trip     (* for programmer-directed resetting of regions;
 								      * resetting is forced iff "force" is true.
 								      * Forced resetting is not guaranteed to be sound *)
@@ -183,6 +187,7 @@ struct
       | ASSIGN (_,tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
       | EQUAL (_,tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
       | CCALL (_,trs) => foldl (uncurry mkPhiTr) acc trs
+      | EXPORT (_,tr) => mkPhiTr tr acc
       | RESET_REGIONS (_, tr) => mkPhiTr tr acc
       | FRAME _ => acc
       | _ => acc
@@ -518,6 +523,12 @@ old*)
 			else ""),
 	             indent = 6, childsep = PP.RIGHT ", ", 
 		     children = PP.LEAF name :: (map (fn t => layTrip(t,0)) args)}
+        | EXPORT ({name, mu_arg, mu_res}, arg) =>
+            PP.NODE {start = "_export(" ^ name ^ ", ", finish = "):"
+		     ^ (if !Flags.print_types then PP.flatten1(layMu mu_arg) ^ "->" ^ PP.flatten1(layMu mu_res) 
+			else ""),
+	             indent = 6, childsep = PP.RIGHT ", ", 
+		     children = [PP.LEAF name, layTrip(arg,0)]}
         | RESET_REGIONS({force, alloc,regions_for_resetting}, t) =>
            let val fcn = if force then "forceResetting " else "resetRegions "
                val aux_regions_t = HNODE{start="[",finish="]", childsep=NOSEP,
@@ -867,6 +878,7 @@ for more info*)
 	   | ASSIGN (_,tr1,tr2) => (normTrip tr1; normTrip tr2)
 	   | EQUAL (_,tr1,tr2) => (normTrip tr1; normTrip tr2)
 	   | CCALL (_,trs) => app normTrip trs
+	   | EXPORT (_, tr) => normTrip tr
 	   | RESET_REGIONS (_, tr) => normTrip tr
            | FRAME{declared_lvars, ...} =>()
            | _ => ()

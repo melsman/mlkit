@@ -217,6 +217,7 @@ functor PhysSizeInf(structure Name : NAME
 	      | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => (add_atp alloc; fv tr1; fv tr2)
 	      | CCALL ({rhos_for_result, ...}, trs) => (List.app (add_atp o #1) rhos_for_result;
 							List.app fv trs)
+	      | EXPORT (_,tr) => fv tr
 	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => 
                       (add_atp alloc; 
                        List.app add_atp regions_for_resetting;
@@ -313,6 +314,7 @@ functor PhysSizeInf(structure Name : NAME
 	      | DROP (tr) => ifv tr
 	      | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => (ifv tr1; ifv tr2)
 	      | CCALL (_, trs) => List.app ifv trs
+	      | EXPORT (_, tr) => ifv tr
 	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => ifv tr
 	      | FRAME{declared_lvars, declared_excons} => ()
 	end
@@ -634,6 +636,7 @@ functor PhysSizeInf(structure Name : NAME
 		  | SOME i => psi_add_place_size (rho, WORDS i))))
 	     rhos_for_result ; 
 	     List.app (psi_tr env) trs)
+	 | EXPORT(_,tr) => psi_tr env tr
 	 | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => psi_tr env tr
 	 | FRAME{declared_lvars, ...} =>
 	  let val env' = List.foldr (fn ({lvar,...},frame_env) =>
@@ -734,6 +737,7 @@ functor PhysSizeInf(structure Name : NAME
 				  rhos_for_result},
 		             map ips trs)
 		   end
+	       | EXPORT (i,tr) => EXPORT (i,ips tr)
 	       | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => 
                      RESET_REGIONS ({force=force, alloc=pp alloc,
                                      regions_for_resetting = map pp regions_for_resetting}, ips tr)

@@ -150,6 +150,7 @@ struct
 			rhos_for_result : 'aty list, res: 'aty list}
     | CCALL_AUTO    of {name: string, args: ('aty * foreign_type) list,
 			res: 'aty * foreign_type}
+    | EXPORT        of {name: string, arg: 'aty * foreign_type * foreign_type}
 
   and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)
 
@@ -247,6 +248,14 @@ struct
       in 
 	NODE{start = "", finish = "", indent=0, childsep=NOSEP,children=[t1,t3]}
       end
+
+    fun layout_foreign_type ft =
+	case ft of 
+	    CharArray => LEAF "CharArray"
+	  | Int => LEAF "Int"
+	  | Bool => LEAF "Bool"
+	  | ForeignPtr => LEAF "ForeignPtr"
+	  | Unit => LEAF "Unit"
 
       fun layout_se pr_aty se =
 	(case se of
@@ -467,20 +476,24 @@ struct
 		 end
 	   | CCALL_AUTO{name,args,res} =>
 		 let
-		   fun layout_f CharArray = LEAF "CharArray"
-		     | layout_f Int = LEAF "Int"
-		     | layout_f Bool = LEAF "Bool"
-		     | layout_f ForeignPtr = LEAF "ForeignPtr"
-		     | layout_f Unit = LEAF "Unit"
 		   fun layout_pair (aty, f) = HNODE{start="",finish="",childsep=RIGHT":",
-						    children=[layout_aty pr_aty aty, layout_f f]}
+						    children=[layout_aty pr_aty aty, layout_foreign_type f]}
 		   val t0 = layout_pair res
 		 in
 		   HNODE{start=flatten1(t0) ^ " = ccall_auto(\"" ^ name ^ "\", <", 
 			 finish=">)",
 			 childsep=RIGHT ",",
 			 children=map layout_pair args}
-		 end)
+		 end
+	   | EXPORT{name,arg=(aty,ft1,ft2)} => 
+		 HNODE{start="_export(" ^ name ^ ",",
+		       finish=")",
+		       childsep=RIGHT ",",
+		       children=[layout_aty pr_aty aty,
+				 layout_foreign_type ft1,
+				 layout_foreign_type ft2]}
+		 )
+
 	end
       
       and layout_lss pr_sty pr_offset pr_aty simplify lss = 
@@ -718,6 +731,9 @@ struct
 		val args = map (fn (ce,ft) => (ce_to_atom ce, ft)) args
 	    in CCALL_AUTO{name=name, args=args, res=res}::acc
 	    end
+	 | ClosExp.EXPORT{name,arg=(ce,ft1,ft2)} => 
+	    EXPORT{name=name,arg=(ce_to_atom ce,ft1,ft2)}::
+	    maybe_assign (lvars_res, ATOM UNIT, acc)
 	 | ClosExp.FRAME{declared_lvars,declared_excons} => acc
 
     fun L_top_decl(ClosExp.FUN(lab,cc,ce)) =
@@ -842,6 +858,7 @@ struct
     | get_phreg_ls(PRIM{name,args,res}) = get_phreg_atoms(args,[])
     | get_phreg_ls(CCALL{name,args,rhos_for_result,res}) = get_phreg_atoms(args,get_phreg_atoms(rhos_for_result,[]))
     | get_phreg_ls(CCALL_AUTO{name,args,res}) = get_phreg_atoms(map #1 args,[])
+    | get_phreg_ls(EXPORT{name,arg}) = get_phreg_atom(#1 arg,[])
     | get_phreg_ls _ = die "get_phreg_ls: statement contains statements itself."
 
   (**************************************************************)
@@ -939,6 +956,7 @@ struct
     | def_var_ls(PRIM{res,...}) = get_var_atoms(res,[])
     | def_var_ls(CCALL{res,...}) = get_var_atoms(res,[])
     | def_var_ls(CCALL_AUTO{res=(res,_),...}) = get_var_atom(res,[])
+    | def_var_ls(EXPORT _) = []
     | def_var_ls _ = die "def_var_ls: statement contains statements itself."
 
   (* In CalcOffset.sml, where we calculate bit vectors for GC, lvars bound to *)
@@ -1006,6 +1024,7 @@ struct
 	| (PRIM{name,args,res}) => get_var_atoms(args,[])
 	| (CCALL{name,args,rhos_for_result,res}) => get_var_atoms(args,get_var_atoms(rhos_for_result,[]))
 	| (CCALL_AUTO{name,args,res}) => get_var_atoms(map #1 args,[])
+	| (EXPORT{name,arg}) => get_var_atom(#1 arg,[])
 	|  _ => die "use_var_ls: statement contains statements itself."
       end
 
@@ -1159,6 +1178,8 @@ struct
 	  CCALL{name=name,args=map_atys args,rhos_for_result=map_atys rhos_for_result,res=map_atys res} :: map_lss' lss
 	  | map_lss'(CCALL_AUTO{name,args,res}::lss) = 
 	  CCALL_AUTO{name=name,args=map_pair_atys args,res=map_pair_aty res} :: map_lss' lss
+	  | map_lss'(EXPORT{name,arg=(aty,ft1,ft2)}::lss) =
+	  EXPORT{name=name,arg=(map_aty aty,ft1,ft2)} :: map_lss' lss
       in
 	map_lss' lss
       end

@@ -370,6 +370,10 @@ struct
 		in
 		  psi_r := psi
 		end)
+          | EXPORT(_,tr) =>
+              (infer_trip(tr);
+               psi_r:= get_psi tr
+              )
           | RESET_REGIONS({force: bool, alloc,regions_for_resetting}, tr) =>
                     (* for programmer-directed resetting of regions;
                        resetting is forced iff "force" is true.*)
@@ -490,6 +494,7 @@ struct
           | DROP(tr1) => (set_trip tr1)
           | EQUAL(_, tr1, tr2) => (set_trip tr1; set_trip tr2)
           | CCALL(_, trips) => app set_trip trips
+	  | EXPORT(_,tr) => set_trip tr
           | RESET_REGIONS(_, tr) => set_trip tr
           | FRAME _ => ()
         end handle Abort exn => raise Abort exn
@@ -707,6 +712,7 @@ struct
 		| DROP t => appt f t
 		| EQUAL (_,t1,t2) => (appt f t1; appt f t2)
 		| CCALL (_,ts) => List.app (appt f) ts
+		| EXPORT (_,t) => appt f t
 		| RESET_REGIONS (_,t) => appt f t
 		| FRAME _ => ()
       in

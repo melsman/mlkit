@@ -32,6 +32,7 @@ signature IDENT =
     val id_FALSE: id
     val id_REF: id
     val id_PRIM: id
+    val id_EXPORT: id
     val id_IT: id
 
     val id_QUOTE : id

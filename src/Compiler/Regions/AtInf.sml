@@ -627,6 +627,7 @@ functor AtInf(structure Lvars: LVARS
 					  (which_at sme (rho, liveset), i_opt))
 				     rhos_for_result},
 				map (sma_trip sme) trs)
+		     | EXPORT(i,tr) => EXPORT(i,sma_trip sme tr)
 		     | RESET_REGIONS ({force, alloc = (p, liveset), ...}, tr as (TR(VAR{lvar,...},meta,_,_))) => 
                           (case meta of
                              MulExp.RegionExp.Mus [mu] =>

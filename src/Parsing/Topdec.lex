@@ -113,6 +113,7 @@ DecInteger	   = {DecPosInteger} | {DecNegInteger};
 Real		   = ({DecInteger} "." {DecPosInteger} ("E" {DecInteger})?)
 		     | ({DecInteger} "E" {DecInteger});
 NormalId	   = {Letter} ({Letter} | {Digit} | [_'])*;
+NormalIdOrExport   = "_export" | {NormalId};
 TyVar		   = "'" ({Letter} | {Digit} | [_'])*;
 Symbol		   = [-!%&$#+<=>?@\\~`^|*:/];
 SymbolicId	   = {Symbol}+;
@@ -128,7 +129,7 @@ QualifiedIdNoQuote = ({AnyIdNoQuote} ".")+ {AnyIdNoQuote};
 %s	S C Q AQ;
 %%
 <INITIAL>{VWhiteSpace}	=> (continue());
-<INITIAL>{NormalId}	=> (token_id(yytext,arg,yypos));
+<INITIAL>{NormalIdOrExport} => (token_id(yytext,arg,yypos));
 <INITIAL>"..."		=> (token0(DOTDOTDOT, arg, yypos, yytext));
 <INITIAL>"("		=> ((if LexUtils.parStackIsEmpty arg then ()
 			     else incr (LexUtils.parStackTop arg));

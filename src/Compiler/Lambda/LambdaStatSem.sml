@@ -650,7 +650,17 @@ end
 		    in ts_res
 		    end
 		| _ => die ("c function " ^ name ^ " does not have arrow type"))
-
+	   | EXPORTprim {name, instance_arg, instance_res} => 
+	       (valid_t env instance_arg;
+		valid_t env instance_res;
+		let val arrowType = ARROWtype([instance_arg],[instance_res])
+		    val ts = map (unTypeListOne "EXPORT" o type_e) lexps
+		in if eq_Types ([arrowType],ts) then [unitType]
+		   else (log ("Exported function " ^ name ^ " expected function of type:\n");
+			 log_st (layoutType arrowType);
+			 log "but found type:\n"; log_st (layoutTypes ts);
+			 die "Export of function")
+		end)
 	   | RESET_REGIONSprim {instance} =>
 	     (valid_t env instance;
 	      case lexps

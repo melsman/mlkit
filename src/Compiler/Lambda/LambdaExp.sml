@@ -100,6 +100,9 @@ functor LambdaExp(structure Lvars: LVARS
 		      instances : 'Type list,
 		      tyvars : tyvar list,
 		      Type : 'Type} 
+      | EXPORTprim of {name : string,
+		       instance_arg : 'Type,
+		       instance_res : 'Type}
       | RESET_REGIONSprim of {instance: 'Type}        (* NOT Standard ML, for programmer-directed, 
 						       * but safe, resetting of regions *)
       | FORCE_RESET_REGIONSprim of {instance: 'Type}  (* NOT Standard ML, for programmer-controlled, 
@@ -193,6 +196,7 @@ functor LambdaExp(structure Lvars: LVARS
       | ASSIGNprim{instance} => (foldType g) acc instance 
       | EQUALprim{instance} => (foldType g) acc instance 
       | CCALLprim {instances, ...} => foldl' (foldType g) acc instances
+      | EXPORTprim {instance_arg,instance_res, ...} => (foldType g) ((foldType g) acc instance_arg) instance_res
       | RESET_REGIONSprim{instance} => (foldType g) acc instance 
       | FORCE_RESET_REGIONSprim{instance} => (foldType g) acc instance 
       | _ => acc
@@ -531,6 +535,13 @@ functor LambdaExp(structure Lvars: LVARS
           else 
 	      if !barify_p then PP.LEAF ("Prim." ^ strip_ name)
 	      else PP.LEAF ("ccall " ^ name)
+      | EXPORTprim {name, instance_arg, instance_res} => 
+          if !Flags.print_types then
+	      PP.NODE {start="_export(" ^ name ^ " ", finish=")", indent=2,
+		       children=map layoutType [instance_arg,instance_res], childsep=PP.LEFT ", "}
+          else 
+	      if !barify_p then PP.LEAF ("Prim.export " ^ strip_ name)
+	      else PP.LEAF ("_export " ^ name)
       | RESET_REGIONSprim {instance} => 
           if !Flags.print_types then
 	      PP.NODE{start="resetRegions(", finish=")",indent=2,
@@ -1236,8 +1247,9 @@ functor LambdaExp(structure Lvars: LVARS
 	      | toInt (ASSIGNprim _) = 10
 	      | toInt (EQUALprim _) = 11
 	      | toInt (CCALLprim _) = 12
-	      | toInt (RESET_REGIONSprim _) = 13
-	      | toInt (FORCE_RESET_REGIONSprim _) = 14
+	      | toInt (EXPORTprim _) = 13
+	      | toInt (RESET_REGIONSprim _) = 14
+	      | toInt (FORCE_RESET_REGIONSprim _) = 15
 
 	    fun fun_CONprim _ = 
 		con1 CONprim (fn CONprim a => a | _ => die "pu_prim.CONprim")
@@ -1276,6 +1288,11 @@ functor LambdaExp(structure Lvars: LVARS
 		(convert (fn (n,il,(tvs,t)) => {name=n,instances=il,tyvars=tvs,Type=t}, 
 			  fn {name=n,instances=il,tyvars=tvs,Type=t} => (n,il,(tvs,t)))
 		 (tup3Gen0 (string,pu_Types,pu_TypeScheme)))
+	    fun fun_EXPORTprim _ =
+		con1 EXPORTprim (fn EXPORTprim a => a | _ => die "pu_prim.EXPORTprim")
+		(convert (fn (n,i1,i2) => {name=n,instance_arg=i1,instance_res=i2}, 
+			  fn {name=n,instance_arg=i1,instance_res=i2} => (n,i1,i2))
+		 (tup3Gen0 (string,pu_Type,pu_Type)))
 	    fun fun_RESET_REGIONSprim _ =
 		con1 RESET_REGIONSprim (fn RESET_REGIONSprim a => a | _ => die "pu_prim.RESET_REGIONSprim")
 		(convert(fn t => {instance=t},#instance) pu_Type)
@@ -1295,6 +1312,7 @@ functor LambdaExp(structure Lvars: LVARS
 					   fun_ASSIGNprim,
 					   fun_EQUALprim,
 					   fun_CCALLprim,
+					   fun_EXPORTprim,
 					   fun_RESET_REGIONSprim,
 					   fun_FORCE_RESET_REGIONSprim])
 	end

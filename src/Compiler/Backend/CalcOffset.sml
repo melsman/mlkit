@@ -254,6 +254,7 @@ struct
       | CO_lss(LS.PRIM a::lss,LVmap,PHmap,offset,acc) = LS.PRIM a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.CCALL a::lss,LVmap,PHmap,offset,acc) = LS.CCALL a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.CCALL_AUTO a::lss,LVmap,PHmap,offset,acc) = LS.CCALL_AUTO a :: CO_lss(lss,LVmap,PHmap,offset,acc)
+      | CO_lss(LS.EXPORT a::lss,LVmap,PHmap,offset,acc) = LS.EXPORT a :: CO_lss(lss,LVmap,PHmap,offset,acc)
 
     (********************************)
     (* CO on Top level Declarations *)

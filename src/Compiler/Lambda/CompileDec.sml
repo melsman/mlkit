@@ -2136,7 +2136,8 @@ end; (*match compiler local*)
 	       end
 	   | CE.RESET_REGIONS => die "compile_ident: CE.RESET_REGIONS"
 	   | CE.FORCE_RESET_REGIONS => die "compile_ident: CE.FORCE_RESET_REGIONS"
-	   | CE.PRIM => die "compile_ident: CE.PRIM")
+	   | CE.PRIM => die "compile_ident: CE.PRIM"
+	   | CE.EXPORT => die "compile_ident: CE.EXPORT")
 
     and compileExp env exp =
           (case exp of
@@ -2266,7 +2267,21 @@ end; (*match compiler local*)
 	    | CE.LESSEQ =>    overloaded_prim info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false []
 	    | CE.GREATEREQ => overloaded_prim info CE.GREATEREQ (compileAtexp env) (compileExp env) arg false []
 	    | CE.PRIM => compile_application_of_prim env info arg
-
+	    | CE.EXPORT => 
+		let val (name,args) = decompose_prim_call arg
+		    val (tau_arg,tau_res) = (* The type (tau_arg->tau_res) is the instance of ('a->'b) *)
+			case to_TypeInfo info of
+			    SOME (TypeInfo.VAR_INFO {instances = [tau_arg, tau_res]}) => 
+				(compileType tau_arg, compileType tau_res) 
+			  | _ => die ("Wrong type info for exported function " ^ name)
+		    val _ = if List.length args = 1 then () 
+			    else die ("Wrong number of arguments to the function _export for \
+				      \the exported function " ^ name)
+		in TLE.PRIM (EXPORTprim {name=name,instance_arg=tau_arg,
+					 instance_res=tau_res},
+			     map (compileExp env) args)
+		end
+		    
 	    | CE.CON(con,tyvars,tau0,il) => (*See COMPILER_ENV*)
 	       let
 		 val instances = 

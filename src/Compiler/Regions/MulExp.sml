@@ -187,6 +187,10 @@ struct
 		     mu_result : Type * place, (*mu of result from c function*)
 		     rhos_for_result : ('a * int option) list}
 	            * ('a,'b,'c)trip list  (* Calling C functions *)
+      | EXPORT   of {name : string,
+		     mu_arg : Type * place, (*mu of argument for c function*)
+		     mu_res : Type * place}
+	            * ('a,'b,'c)trip       
       | RESET_REGIONS of {force: bool, alloc : 'a,regions_for_resetting: 'a list} * ('a,'b,'c)trip     (* for programmer-directed resetting of regions;
 									 * resetting is forced iff "force" is true.
 									 * Forced resetting is not guaranteed to be sound *)
@@ -330,6 +334,7 @@ struct
              | DROP(tr1) => (warn_puts_trip TE tr1)
              | EQUAL(_,tr1,tr2)  => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
              | CCALL(_,l) => app (warn_puts_trip TE) l
+             | EXPORT(_,tr) => warn_puts_trip TE tr
              | RESET_REGIONS(_,tr) => warn_puts_trip TE tr
              | FRAME _ => ()
              | LETREGION{body, ...} => warn_puts_trip TE body
@@ -537,6 +542,7 @@ struct
              | DROP(tr1) => (warn_dangle_trip TE tr1)
              | EQUAL(_,tr1,tr2)  => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
              | CCALL(_,l) => app (warn_dangle_trip TE) l
+             | EXPORT(_,tr) => warn_dangle_trip TE tr
              | RESET_REGIONS(_,tr) => warn_dangle_trip TE tr
              | FRAME _ => ()
              | LETREGION{body, ...} => warn_dangle_trip TE body
@@ -978,6 +984,15 @@ struct
 			children = PP.LEAF name :: rhos_for_result_sts
 		                    @ (map (fn t => layTrip(t,0)) args)}
 	    end
+        | EXPORT ({name, mu_arg, mu_res}, arg) =>
+	    let
+	    in PP.NODE {start = "_export(" ^ name, finish = ")"
+			^ (if !Flags.print_types then 
+			       ":" ^ PP.flatten1(layMu mu_arg) ^ " -> " ^ PP.flatten1(layMu mu_res) 
+			   else ""),
+			indent = 6, childsep = PP.RIGHT ", ", 
+			children = [layTrip(arg,0)]}
+	    end
         | RESET_REGIONS({force, alloc,regions_for_resetting}, t) =>
            let val fcn = if force then "forceResetting " else "resetRegions "
                val aux_regions_t = HNODE{start="[",finish="]", childsep=NOSEP,
@@ -1273,6 +1288,7 @@ struct
     | DROP(tr) => e_to_t(DROP(eval env tr))
     | EQUAL(info,tr1,tr2)=>e_to_t(EQUAL(info,eval env tr1, eval env tr2))
     | CCALL(info,trs) => e_to_t(CCALL(info, map (eval env) trs))
+    | EXPORT(info,tr) => e_to_t(EXPORT(info,  eval env tr))
     | RESET_REGIONS(info,tr) => e_to_t(RESET_REGIONS(info, eval env tr))
     | FRAME f => tr
   end
@@ -1562,6 +1578,10 @@ val (body',dep) = mk_deptr(EE',body, dep)
             let val (trs',dep) = mk_deps(EE,trs,dep)
             in (CCALL(c,trs'),dep)
             end
+	| RegionExp.EXPORT(c,tr) =>           
+            let val (tr',dep) = mk_deptr(EE,tr,dep)
+            in (EXPORT(c,tr'),dep)
+            end
 	| RegionExp.RESET_REGIONS(c,tr) =>           
             let val (tr',dep) = mk_deptr(EE,tr,dep)
             in (RESET_REGIONS(c,tr'),dep)
@@ -1821,6 +1841,8 @@ val (body',dep) = mk_deptr(EE',body, dep)
             two_sub (t1,t2) (fn (t1',t2') => e_to_t(EQUAL(info,t1',t2')))
        | CCALL(info, trs) =>
             many_sub trs (fn trs' => e_to_t(CCALL(info,trs')))
+       | EXPORT(info, tr) =>
+            one_sub tr (fn tr' => e_to_t(EXPORT(info,tr')))
        | RESET_REGIONS(info, tr1) =>
             one_sub tr1 (fn tr1' => e_to_t(RESET_REGIONS(info,tr1')))
        | FRAME _ => k tr
@@ -1915,6 +1937,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
       | (DROP(tr1), DROP(tr2)) => eq(tr1,tr2)
       | (EQUAL(_,tr1,tr1'), EQUAL(_,tr2,tr2')) => eq(tr1,tr2) andalso eq(tr1',tr2')
       | (CCALL(_,trs1), CCALL(_,trs2)) => eq_list eq (trs1,trs2)
+      | (EXPORT(_,tr1), EXPORT(_,tr2)) => eq(tr1,tr2)
       | (RESET_REGIONS(_,t1), RESET_REGIONS(_,t2)) => eq(t1,t2)
       | (FRAME _, FRAME _) => true
       | _ => (printerror(e1,e2); false)
@@ -2133,6 +2156,10 @@ val (body',dep) = mk_deptr(EE',body, dep)
               | CCALL(tyinfo,trs) =>
                   let val (trs', _) = tailList(trs,NEXT)
                   in (CCALL(tyinfo, trs'), NEXT)
+                  end
+              | EXPORT(tyinfo,tr) =>
+                  let val (tr', _) = tail(tr,NEXT)
+                  in (EXPORT(tyinfo, tr'), NEXT)
                   end
               | RESET_REGIONS({force,alloc,regions_for_resetting},t) => 
                   let val (t',_) = tail(t,NEXT)

@@ -55,6 +55,16 @@ functor CompilerEnvDummy(structure Ident: IDENT
 				   into a PRIM_APP(n, ...) in the lambda
 				   language. *)
 
+		    | EXPORT    (* Support for exporting ML functions to be used in
+				 * C programs. The function _export has type 
+				 * \/'a,'b. string * ('a -> 'b) -> unit. In a call 
+				 * _export("myFun",fn a:int => a+1)
+				 * the string "myFun" is the name of the assembled 
+				 * function (following C calling conventions), and the
+				 * function (fn a:int => a+1) is the ML function 
+				 * called when the C function "myFun" is called from C 
+				 * code. *)
+
     type CEnv = unit
 
     val emptyCEnv      = ()

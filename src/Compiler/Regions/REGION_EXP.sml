@@ -101,6 +101,11 @@ signature REGION_EXP =
 
       (*`rhos_for_result' is technical; see comment in signature MUL_EXP*)
 
+      | EXPORT   of {name : string,
+		     mu_arg : Type * place, (*mu of argument to c function*)
+		     mu_res : Type * place}
+	            * ('a,'b)trip  (* The ML function *)
+
       | RESET_REGIONS of {force: bool, alloc : 'a, regions_for_resetting: 'a list} 
                          * ('a,'b)trip     (* for programmer-directed resetting of regions;
 				            * resetting is forced iff "force" is true.

@@ -154,6 +154,11 @@ signature MUL_EXP =
 	 same region passed to the c function more than once if it simply
 	 happens to be used for more than one thing.*)
 
+      | EXPORT   of {name : string,
+		     mu_arg : Type * place, (*mu of argument for c function*)
+		     mu_res : Type * place}
+	            * ('a,'b,'c)trip       
+
       | RESET_REGIONS of {force: bool, alloc : 'a, regions_for_resetting: 'a list} 
 			  * ('a,'b,'c)trip		(* for programmer-directed resetting of regions;  *)
                                    			(* resetting is forced iff "force" is true.       *)
