@@ -38,6 +38,7 @@ weeks.sml
 weeks2.sml          ccl       ecte
 weeks3.sml          ccl       ecte
 weeks5.sml
+weeks6.sml                    ecte
 typerr.sml          ccl       ecte
 testcon.sml         ccl       ecte
 freedatatype.sml    ccl       ecte
