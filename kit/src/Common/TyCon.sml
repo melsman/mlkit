@@ -44,6 +44,7 @@ functor TyCon(structure StrId: STRID
     and tycon_REF    = TYCON "ref"
     and tycon_BOOL   = TYCON "bool"
     and tycon_LIST   = TYCON "list"
+    and tycon_TABLE  = TYCON "table"
     and tycon_INSTREAM = TYCON "instream"
     and tycon_OUTSTREAM = TYCON "outstream"
     and tycon_UNIT   = TYCON "unit"

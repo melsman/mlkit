@@ -138,6 +138,7 @@ functor CompilerEnv(structure Ident: IDENT
 					 (tycon_REF, [tyName_REF]),
 					 (tycon_BOOL, [tyName_BOOL]),
 					 (tycon_LIST, [tyName_LIST]),
+					 (tycon_TABLE, [tyName_TABLE]),
 					 (tycon_UNIT, [])
 					 ])
     end

@@ -181,6 +181,7 @@ end
 			       (tyName_REAL, []),
 			       (tyName_STRING, []),
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),
+			       (tyName_TABLE, []),
 			       (tyName_REF, [(*Con.con_REF*)]),
 			       (tyName_EXN, [])]
 

@@ -65,7 +65,8 @@ struct
 
   fun runtype (CONSTYPE(tyname, [], [], [])) =  
        if  List.exists (fn tn => TyName.eq(tn,tyname)) unboxed_tynames then E.WORD_RT
-       else if TyName.eq(tyname,TyName.tyName_STRING) then E.STRING_RT
+       else if TyName.eq(tyname,TyName.tyName_STRING)
+	orelse TyName.eq(tyname, TyName.tyName_TABLE) then E.STRING_RT
        else if TyName.eq(tyname,TyName.tyName_REAL) then E.REAL_RT
        else E.TOP_RT
     | runtype (TYVAR _) = E.BOT_RT
@@ -1117,7 +1118,8 @@ struct
   and size_of_tyname tyname =
         if TyName.eq (tyname, TyName.tyName_REAL)
   	then SOME (CConst.size_of_real ())
-  	else if TyName.eq (tyname, TyName.tyName_STRING) then NONE
+  	else if TyName.eq (tyname, TyName.tyName_STRING)
+	 orelse TyName.eq (tyname, TyName.tyName_TABLE)  then NONE
         else if CConst.unboxed_tyname tyname then SOME 0
   	else die ("S (CCALL ...): \nI am sorry, but c functions returning "
   		  ^ TyName.pr_TyName tyname
