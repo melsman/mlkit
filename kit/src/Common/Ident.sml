@@ -1,6 +1,5 @@
 (* Identifiers - variables or constructors *)
 
-(*$Ident: STRID TIMESTAMP CRASH IDENT*)
 functor Ident(structure StrId: STRID
 	      structure Crash: CRASH
 	     ): IDENT =
@@ -66,13 +65,11 @@ functor Ident(structure StrId: STRID
 
     (* other identifiers in the initial basis *)
 
-    val id_STD_IN = ID "std_in"
-    val id_STD_OUT = ID "std_out"
-
     val id_Div = ID "Div"
     val id_Mod = ID "Mod"
     val id_Match = ID "Match"
     val id_Bind = ID "Bind"
+    val id_Overflow = ID "Overflow"
 
     (* misc: *)
 

@@ -9,7 +9,7 @@ sig
   		| WORD of int
   		| STRING of string
   		| CHAR of int
-		| REAL of real
+		| REAL of string
 
   val eq : scon * scon -> bool
   val lt : scon * scon -> bool

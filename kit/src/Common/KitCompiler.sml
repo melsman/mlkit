@@ -159,6 +159,9 @@ structure K = struct
     fun install() =
       let val os = TextIO.openOut kitbinkit_path
 	  val _ = (TextIO.output(os, "sml110 @SMLload=" ^ kitbinkitimage_path); TextIO.closeOut os)
+	  val _ = OS.Process.system("chmod a+x " ^ kitbinkit_path)
+	    handle _ => (print("\n***Installation not fully succeeded; `chmod a+x " ^ kitbinkit_path ^ "' failed***\n");
+			 OS.Process.success)
 	  fun kitexe (_, []) = (kit(); OS.Process.success)
 	    | kitexe _ = (print "usage: kit\n"; OS.Process.failure) 
       in SMLofNJ.exportFn(kitbinkit_path,kitexe)

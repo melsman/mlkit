@@ -6,7 +6,7 @@ struct
   structure Int = Edlib.Int
   structure String = Edlib.String
 
-  datatype scon = INTEGER of int | STRING of string | REAL of real
+  datatype scon = INTEGER of int | STRING of string | REAL of string
     | WORD of int | CHAR of int
 
   (*INTEGER < STRING < REAL < WORD < CHAR:*)
@@ -26,13 +26,13 @@ struct
    |  pr_scon(WORD i) = Int.string i
    |  pr_scon(STRING s) = String.string s
    |  pr_scon(CHAR i) = "#\"" ^ String.chr i ^ "\""
-   |  pr_scon(REAL r) = Real.toString r
+   |  pr_scon(REAL r) = r
 
   fun eq (INTEGER i1, INTEGER i2) = i1 = i2
     | eq (WORD w1, WORD w2) = w1 = w2
     | eq (STRING s1, STRING s2) = s1 = s2
     | eq (CHAR c1, CHAR c2) = c1 = c2 
-    | eq (REAL r1, REAL r2) = Real.==(r1,r2)
+    | eq (REAL r1, REAL r2) = (r1 = r2)
     | eq _ = false
 
 end;
