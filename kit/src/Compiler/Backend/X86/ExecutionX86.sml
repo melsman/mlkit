@@ -178,14 +178,13 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
       let val files = map (fn s => s ^ " ") files
 	  val shell_cmd = !(Flags.lookup_string_entry "c_compiler") ^ " -o " ^ run ^ " " ^ 
 	    concat files ^ path_to_runtime() ^ " " ^ !clibs
-(*
-	  val shell_cmd = "ld -o " ^ run ^ " " ^ 
-	    concat files ^ path_to_runtime() ^ " /lib/crt0.o " ^ !clibs
-	*)    
-      in (*print("[using link command: " ^ shell_cmd ^ "]\n"); *)
+	  val debug_linking = Flags.lookup_flag_entry "debug_linking"
+	  fun pr_debug_linking s = if !debug_linking then print s else ()
+      in 
+	pr_debug_linking ("[using link command: " ^ shell_cmd ^ "]\n");
 	execute_command shell_cmd;
 	strip run;
-	print("[wrote executable file:\t" ^ run ^ "]\n")	
+	print("[wrote executable file:\t" ^ run ^ "]\n")
       end 
 
   end;
