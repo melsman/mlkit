@@ -1,0 +1,39 @@
+Programs that work with the KAM backend:
+
+ a.pm                                 ok
+ exception1.sml                       -
+ exception2.sml                       -
+ exception3.sml                       -
+ exception4.sml                       -  
+ exception5.sml                       -
+ f1.sml                               ok
+ f2.sml                               ok
+ fft_no_basislib.sml
+ fib.sml                              -    I might have ruined this one by having altered the 
+                                           RETURN_NO_CLOS instruction! To me, it now does as
+	                                   documented, but perhaps I'm wrong...
+ foldl.sml                            -    Compiles but does not run correctly
+ global_region.sml                    -    FETCH_GLOBAL not implemented yet
+ hanoi.sml                            -    as with fib...
+ hello.sml                            ok
+ if.sml                               ok
+ immedString.sml                      ok
+ kitkbjul9_no_basislib.sml
+ kitlife35u_no_basislib.sml
+ kitqsort_no_basislib.sml
+ kitreynolds2_no_basislib.sml
+ kitreynolds3_no_basislib.sml
+ kitsimple_no_basislib.sml
+ kittmergesort_no_basislib.sml
+ l1.sml                               ok
+ list_nh.sml
+ listpair.sml
+ professor_game.sml
+ real1.sml
+ ref-int.sml
+ ref-real.sml
+ ref.sml
+ string1.sml
+ test_dattyp.sml
+ testdyn1.sml
+ testdyn2.sml
