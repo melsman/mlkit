@@ -715,7 +715,6 @@ good *)
     (* STRINGS *)
     | E.PRIM(E.SIZEprim,es)           => S_built_in(B, Lvars.size_lvar, es)
     | E.PRIM(E.CHRprim,es)            => S_built_in(B, Lvars.chr_lvar, es)
-    | E.PRIM(E.ORDprim,es)            => S_built_in(B, Lvars.ord_lvar, es)
     | E.PRIM(E.EXPLODEprim, es)       => S_built_in(B, Lvars.explode_lvar, es)
     | E.PRIM(E.IMPLODEprim,es)        => S_built_in(B, Lvars.implode_lvar, es)
 
@@ -893,10 +892,15 @@ good *)
                     end) (B,[],[],[]) expressions
             fun frv(mu) = (*Eff.*)remove_duplicates(List.all (*Eff.*)is_rho (ann_mus [mu] []))
 	    val rhos_res = frv mu
+	    val rhos_res_without_rhos_for_tyvars =
+	          List.dropAll (fn effect => (case Eff.get_place_ty effect of
+						Some Eff.BOT_RT => true
+					      | _ => false)) rhos_res
             val rhos_mus_args = (*Eff.*)remove_duplicates(flatten(map frv mus_args))
 (*	    val _ = print ("\nrhos_res CCALL: " ^ List.string (pp o R.layout_place) rhos_res ^ "\n") *)
-	    val phi = (*Eff.*)mkUnion(args_phi @  (map (*Eff.*)mkGet rhos_mus_args @ map (*Eff.*)mkPut rhos_res))
-	    val e' = E'.CCALL({name = s, resultMu = mu, resultAllocs = rhos_res}, results)
+	    val phi = (*Eff.*)mkUnion(args_phi @  (map (*Eff.*)mkGet rhos_mus_args
+						   @ map (*Eff.*)mkPut rhos_res_without_rhos_for_tyvars))
+	    val e' = E'.CCALL({name = s, resultMu = mu, resultAllocs = rhos_res_without_rhos_for_tyvars}, results)
 	  in
             retract(B, E'.TR(e', E'.Mus [mu], phi))
 	  end

@@ -363,17 +363,22 @@ struct
                        | RType.CONSTYPE (tyname, mus, places, arreffs) =>
                            if TyName.eq(tyname,TyName.tyName_LIST) then frv mu
 		           else []
+		       | RType.TYVAR tyvar => []
 		       | _ => die "CCALL.unexpected result type"   
 
                      val rhos_res_under_list = Eff.remove_duplicates (get_rhos_res_under_list resultMu)
 (*old	             val psi_res_under_list = sum_psis (map Mul.putInf rhos_res_under_list)  *)
 	             val psis_res_under_list = map Mul.putInf rhos_res_under_list
 	             val rhos_res = frv resultMu
+		     val rhos_res_without_rhos_for_tyvars =
+		           List.dropAll (fn effect => (case Eff.get_place_ty effect of
+							 Some Eff.BOT_RT => true
+						       | _ => false)) rhos_res
 (*	             val _ = print ("\nrhos_res CCALL : " ^ 
                              List.string (pp o R.layout_place) rhos_res ^ "\n") 
 *)
 (*old                     val psi_res = sum_psis (map Mul.put rhos_res) *)
-                     val psis_res = map Mul.put rhos_res
+                     val psis_res = map Mul.put rhos_res_without_rhos_for_tyvars
 (*old     	             val psi_res = Mul.sumef(psi_res, psi_res_under_list)  *)
                      (* total effects *)
 		     val psis = psis_res @ psis_res_under_list @ (*arg_psis @ *) map get_psi trips
