@@ -86,17 +86,30 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
       struct
 	exception Execute of string
 	fun execute_command command : unit =
-	  let val status = OS.Process.system command
+	  let fun loop() = 
+               OS.Process.system command
 	            handle OS.SysErr(s,_) =>
-		      raise Execute ("Exception OS.SysErr \""
+                      (TextIO.output (TextIO.stdOut,
+                                      "\ncommand " ^ command ^ 
+                        "\nfailed (" ^ s ^ "); \
+                         \retry (r), continue (c), or abort (a) ?>");
+                        (case TextIO.input1(TextIO.stdIn) of
+                           SOME #"r" => loop()
+                         | SOME #"c" => OS.Process.success
+                         | SOME #"a" => raise Execute ("Exception OS.SysErr \""
 				     ^ s ^ "\"\nwhen executing shell command:\n"
 			             ^ command)
-	  in if status <> OS.Process.success then
-	        raise Execute ("Error code " ^ Int.toString status ^
-			       " when executing shell command:\n"
-			       ^ command)
-	     else ()
-	  end
+                         | _ => OS.Process.success
+                       )
+                      )
+
+                val status = loop()
+          in if status <> OS.Process.success then
+                       raise Execute ("Error code " ^ Int.toString status ^
+			             " when executing shell command:\n"
+			             ^ command)
+             else ()
+          end
       end
 
     type linkinfo = Compile.linkinfo
