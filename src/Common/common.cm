@@ -43,10 +43,12 @@ SORTED_FINMAP.sml
 SortedFinMap.sml
 MONO_FINMAP.sml
 IntFinMapPT.sml
+IntStringFinMap.sml
 WordFinMapPT.sml
 (*IntFinMap.sml*)
 OrderFinMap.sml
 QuasiMap.sml
+QuasiMap2.sml
 QuasiSet.sml
 
 IntSet.sml
@@ -58,6 +60,7 @@ OrderSet.sml
 ../Manager/OpacityEnv.sml
 
 ../Manager/NAME.sml
+../Manager/NAME2.sml
 ../Manager/Name.sml
 TYNAME.sml
 TyName.sml

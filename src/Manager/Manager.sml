@@ -189,6 +189,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	val appendFunctorInstances : prj -> prj
 	val parse_project          : absprjid -> prj      
 	val local_check_project    : absprjid * prj -> unit
+	val pmdep                  : absprjid -> unit
       end =
     struct
       type extobj = string   (* externally compiled objects; .o-files *)
@@ -487,6 +488,38 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  in {imports=imports,extobjs=extobjs,body=body}
 	  end
 
+      fun pmdep0 absprjid =
+	 let val {imports,body,...} = parse_project absprjid
+	     val uidss = map pmdep0 imports		 
+	     fun dep b uids =
+		 case b of
+		     EMPTYbody => nil
+		   | UNITbody (uid,b) =>
+			 let val os = TextIO.openOut ("PM/" ^ uid ^ ".d")
+			 in (  app (fn u => TextIO.output(os,u^" ")) uids
+			     ; TextIO.closeOut os
+			     ; dep b (uids @ [uid]) @ [uid]
+			    ) handle ? => (TextIO.closeOut os; raise ?)
+			 end
+		   | INLINEbody (b1,b2) =>
+			 let val uids1 = dep b1 uids
+			     val uids2 = dep b2 (uids @ uids1)
+			 in uids1 @ uids2
+			 end
+		   | LOCALbody (b1,b2,b3) =>
+			 let val uids1 = dep b1 uids
+			     val uids2 = dep b2 (uids@uids1)
+			     val uids3 = dep b3 (uids@uids2)
+			 in uids2 @ uids3
+			 end
+		   | PARbody uids' =>
+			 (app (fn uid => (dep (UNITbody(uid,EMPTYbody)) uids; ())) uids'; 
+			  nil)
+	 in dep body (List.concat uidss)
+	 end
+
+      fun pmdep absprjid = (pmdep0 absprjid; ())
+
     end (*structure Project*)
 
     datatype body = datatype Project.body
@@ -539,6 +572,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 				Timer.checkRealTimer realtimer)	    
 	    end handle _ => print "\ntimerReport.Uncaught exception\n"
     in
+(*
 	fun exportRep() : unit =       (* PICKLING *)
 	    let open Pickle
 		val os : outstream = empty()
@@ -557,7 +591,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		val _ = MO.Repository.setRepository r2
 	    in ()
 	    end
-
+*)
 	fun writeBasis punit basis_os =
 	    let val basis_s = Pickle.toString basis_os
 		val _ = print ("\n [End pickling (sz = " ^ sizeToStr (size basis_s) ^ ")]\n")
@@ -572,10 +606,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		let open Pickle
 		    val os : outstream = empty()
 		    val _ = print ("\n [Begin pickling result basis for " ^ punit ^ "...]\n")
-		    val timer = timerStart "Pickler"
+		  (*  val timer = timerStart "Pickler" *)
 		    val os : outstream = pickler Basis.pu B os
-		    val _ = timerReport timer
-		    val _ = print "\n [Writing to file...]\n"
+		  (* val _ = timerReport timer *)
+		    val _ = print "\n [Writing basis to file...]\n"
 		    val _ = writeBasis punit os
 (*
 		    val _ = print ("\n [Basis for " ^ punit ^ " after closure...]\n")
@@ -613,7 +647,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
 	fun doUnpickleBases uid : Basis = 
 	    let val _ = print "\n [Begin unpickling...]\n"
-		val timer = timerStart "Unpickler"
+	      (* val timer = timerStart "Unpickler" *)
 		fun process (nil,is,B) = B
 		  | process (uid::uids,is,B) =
 		    let val s = readFile uid
@@ -630,7 +664,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 				val (B,is) = Pickle.unpickler Basis.pu (Pickle.fromString s)
 			    in process(uids,is,Basis.plus(B0,B))
 			    end handle _ => (print ("doUnpickleBases. error \n"); Basis.empty)
-		    val _ = timerReport timer
+	      (* val _ = timerReport timer *)
 (*		    val _ = print "\n [Begin printing...]\n"
                     val _ = pr_st (MO.Basis.layout B)
 *)
@@ -649,9 +683,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun parse_elab_interp (fi:bool,absprjid:absprjid,B, funid, punit, funstamp_now) : Basis * modcode =
       let 
 	 val unitname = (filename_to_unitname o MO.funid_to_filename) funid
-(*good:	 val B = doUnpickleBases unitname *)
+(*	 val B = doUnpickleBases unitname ;mael 2004-03-10 *)
 	 val _ = Timing.reset_timings()
-	 val _ = Timing.new_file punit	 val log_cleanup = log_init unitname
+	 val _ = Timing.new_file punit	 
+	 val log_cleanup = log_init unitname
 	 val _ = Name.bucket := []
 	 val _ = Flags.reset_warnings ()
 	 val _ = print("[reading source file:\t" ^ punit ^ "]\n")
@@ -715,7 +750,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 val _ = pr_st (MO.Basis.layout B')
 *)
 
-(*good:
+(* ;mael 2004-03-10
 		val B'' = Basis.closure (B_im,B')
 		val _ = doPickleB unitname B''
 *)
@@ -785,11 +820,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  end
       end 
 
-    (* ----------------
-     * build a project
-     * ---------------- *)
-
-    fun Basis_plus (B,B') = Basis.plus(B,B')		    
+    (* -------------------------------
+     * Some operations on directories
+     * ------------------------------- *)
 
     fun maybe_create_dir d : unit = 
       if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
@@ -818,6 +851,101 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      in {cd_old=fn()=>OS.FileSys.chDir old_dir, file=file}
 	      end handle OS.SysErr _ => error ("I cannot access directory " ^ quot dir)
       end
+
+    (* --------------------
+     * Build an mlb-project
+     * -------------------- *)
+
+    fun build_mlb_one mlbfile smlfile : unit =
+	let (* load the bases that smlfile depends on *)
+	    val B = doUnpickleBases smlfile
+	    val log_cleanup = log_init smlfile
+	    val _ = Flags.reset_warnings ()
+	    val _ = print("[reading source file:\t" ^ smlfile ^ "]\n")
+	    val (infB, elabB, opaq_env, topIntB) = Basis.un B
+	    val abs_mlbfile = ModuleEnvironments.mk_absprjid mlbfile
+	    val res = ParseElab.parse_elab {absprjid = abs_mlbfile,
+					    file = smlfile,
+					    infB = infB, elabB = elabB} 
+	in (case res of 
+		ParseElab.FAILURE (report, error_codes) => 
+		    (  print_error_report report
+		     ; raise PARSE_ELAB_ERROR error_codes)
+	      | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
+	      let 
+		val _ = chat "[finding free identifiers begin...]"
+		val freelongids as {longstrids,...} = fid_topdec topdec
+		val _ = chat "[finding free identifiers end...]"
+
+		val (B_im,tynames_elabB_im) = Basis.restrict(B,freelongids)
+		val (infB_im,elabB_im,opaq_env_im,intB_im) = Basis.un B_im
+
+		val _ = chat "[opacity elimination begin...]"
+		val (topdec', opaq_env') = opacity_elimination(opaq_env_im, topdec)
+		val _ = chat "[opacity elimination end...]"
+		  
+		val _ = chat "[interpretation begin...]"
+		val names_elab = !Name.bucket
+		val _ = Name.bucket := []
+		val functor_inline = true
+		val (intB', modc) = 
+		    IntModules.interp(functor_inline, abs_mlbfile, 
+				      intB_im, topdec', smlfile)
+		val names_int = !Name.bucket
+		val _ = Name.bucket := []
+		val _ = chat "[interpretation end...]"
+
+		(* compute result basis *)
+		val B' = Basis.mk(infB',elabB',opaq_env',intB')
+
+		(* match result basis to the one on disk, if there is one (todo) *)
+(*
+		val _ = chat "[matching begin...]"
+		val _ = match_elab(names_elab, elabB', opaq_env', absprjid, funid)
+		val _ = match_int(names_int, intB', absprjid, funid)
+		val _ = chat "[matching end...]"
+*)	  
+		val modc = ModCode.emit (abs_mlbfile,modc)
+
+		(* Testing ; mael 2004-03-02 *)
+(*
+		val _ = print ("\n [Basis for " ^ punit ^ " before closure...]\n")
+                val _ = pr_st (MO.Basis.layout B')
+*)
+
+		val B'' = Basis.closure (B_im,B')
+		val _ = doPickleB smlfile B''
+
+	      in print_result_report report;
+		log_cleanup()
+	      end handle ? => (print_result_report report; raise ?)
+		) handle XX => (log_cleanup(); raise XX)
+      end  
+
+
+
+    structure Mlb = MlbProject()
+
+    fun build_mlb mlbfile = (* May raise PARSE_ELAB_ERROR *)
+	let val _ = maybe_create_pmdir()
+	    val _ = print (" +++ Building mlb-project\n");
+	    val _ = print (" +++ Updating dependencies...\n")
+	    val _ = Mlb.dep mlbfile
+	    val _ = print (" +++ Finding sources...\n")		
+	    val ss = Mlb.sources mlbfile
+		
+	    val _ = print (" +++ Compiling...\n")		
+	    val _ = app (build_mlb_one mlbfile) ss
+
+	    val _ = print (" +++ Linking... (todo)\n")		
+	in ()
+	end
+
+    (* ----------------
+     * build a project
+     * ---------------- *)
+
+    fun Basis_plus (B,B') = Basis.plus(B,B')		    
 
     fun collect_units(body,acc) =
       case body
@@ -1115,6 +1243,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun build (longprjid_s:string) =   (* May raise PARSE_ELAB_ERROR *)
       let val absprjid = mk_absprjid_from_path longprjid_s
+
+(* ;mael 2004-03-10
+	  val _ = print ("[Running pmdep...]\n")
+	  val _ = Project.pmdep absprjid
+	  val _ = print ("[Finished running pmdep]\n")
+*)
           val _ = Repository.recover()
 	  val emitted_files = EqSet.fromList (Repository.emitted_files())
 	  val _ = let val {modc, clean, extobjs, ...} = 
@@ -1171,21 +1305,25 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 ) handle E => (log_cleanup(); raise E)
       end 
 
-    datatype source = SML of string | PM of string | WRONG_FILETYPE of string
+    datatype source = SML of string | PM of string | MLB of string | WRONG_FILETYPE of string 
+
     fun determine_source (s:string) : source = 
-      case OS.Path.ext s
-	of SOME "sml" => SML s
-	 | SOME "sig" => SML s
-	 | SOME "pm" => PM s
-	 | SOME ext => WRONG_FILETYPE ("File name must have extension `.pm', `.sml', or `.sig'.\n" ^
-				       "The file name you gave me has extension `" ^ ext ^ "'.")
-	 | NONE => WRONG_FILETYPE ("File name must have extension `.pm', `.sml', or `.sig'.\n" ^
-				   "The file name you gave me has no extension.")
+	let fun wrong s = WRONG_FILETYPE ("File name must have extension '.pm', '.mlb', '.sml', or '.sig'.\n" ^
+					  "The file name you gave me has " ^ s)
+	in case OS.Path.ext s of 
+	    SOME "sml" => SML s
+	  | SOME "sig" => SML s
+	  | SOME "pm" => PM s
+	  | SOME "mlb" => MLB s
+	  | SOME ext => wrong ("extension " ^ quot ext ^ ".")
+	  | NONE => wrong ("no extension.")
+	end
 	  
     fun comp0 file : unit =
       case determine_source file
 	of SML s => comp_file s
 	 | PM s => build s
+	 | MLB s => build_mlb s
 	 | WRONG_FILETYPE s => (print (s ^ "\n"); raise PARSE_ELAB_ERROR nil)
 
     val timingfile = "KITtimings"
