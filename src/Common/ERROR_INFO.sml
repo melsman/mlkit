@@ -1,0 +1,86 @@
+(*ErrorInfo is part of the ElabInfo.  See ELAB_INFO for an
+ overview of the different kinds of info.*)
+
+(*$ERROR_INFO*)
+
+signature ERROR_INFO =
+  sig
+    type TyName
+    type TyVar
+    type Type
+    type TypeFcn
+    eqtype id
+    eqtype lab
+    eqtype tycon
+    type longid
+    type longtycon 
+    type sigid
+    type strid
+    type longstrid 
+    eqtype funid
+
+    datatype RepeatedId = ID_RID of id      (* Repeated identifier, syntax *)
+			| LAB_RID of lab    (* errors *)
+			| TYCON_RID of tycon
+			| EXCON_RID of id
+			| CON_RID of id
+			| TYVAR_RID of TyVar
+			| STRID_RID of strid
+			| SIGID_RID of sigid
+			| FUNID_RID of funid
+
+    datatype ErrorInfo =
+     (* Core errors: *)
+	UNIFICATION of Type * Type
+      | UNIFICATION_TEXT of string * Type * string * Type
+      | LOOKUP_LONGID of longid
+      | LOOKUP_LONGTYCON of longtycon
+      | NOTCONSTYPE of Type
+      | QUALIFIED_ID of longid
+      | UNGUARDED_TYVARS of TyVar list
+      | WRONG_ARITY of {expected: int, actual: int}
+      | NOTRESOLVED
+      | FLEX_REC_NOT_RESOLVED 
+      | REPEATED_IDS of RepeatedId list
+      | TYVARS_NOT_IN_TYVARSEQ of TyVar list
+      | DATATYPES_ESCAPE_SCOPE of TyName list
+      | TYVARS_SCOPED_TWICE of TyVar list
+
+     (* General module errors: *)
+      | LOOKUP_SIGID of sigid
+      | LOOKUP_LONGSTRID of longstrid
+      | LOOKUP_FUNID of funid
+      | EXDESC_SIDECONDITION
+      | SHARING_TYPE_NOT_TYNAME of longtycon * TypeFcn
+      | SHARING_TYPE_RIGID of longtycon * TyName
+      | SHARING_TYPE_ARITY of TyName list 
+      (*the following four errors come from rule 64, Definition 1997:*)
+      | WHERE_TYPE_NOT_WELLFORMED of longtycon * TyName * Type
+      | WHERE_TYPE_EQTYPE of longtycon * TyName * Type
+      | WHERE_TYPE_RIGID of longtycon * TyName
+      | WHERE_TYPE_NOT_TYNAME of longtycon * TypeFcn * Type
+      | WHERE_TYPE_ARITY of TyVar list * (longtycon * TyName)
+
+     (* Signature matching errors: *)
+      | MISSINGSTR  of longstrid
+      | MISSINGTYPE of longtycon
+      | S_CONFLICTINGARITY of longtycon * (TyName * TypeFcn)
+      | CONFLICTINGEQUALITY of longtycon * (TyName * TypeFcn)
+      | MISSINGVAR of strid list * id
+      | MISSINGEXC of strid list * id
+      | S_RIGIDTYCLASH of longtycon
+      | S_CONFLICTING_DOMCE of longtycon
+      | NOTYENRICHMENT of strid list * id
+      | EXCNOTEQUAL of strid list * id * (Type * Type)
+
+     (* Module unification errors: *)
+      | CYCLE of longstrid
+      | U_RIGIDTYCLASH of longtycon * longtycon
+      | TYPESTRILLFORMEDNESS of longtycon * longtycon
+      | U_CONFLICTING_DOMCE of longtycon * longtycon
+      | U_CONFLICTINGARITY of longtycon * longtycon
+      | RIGIDTYFUNEQERROR of longtycon * longtycon
+
+    type Report
+    val report : ErrorInfo -> Report
+  end;
