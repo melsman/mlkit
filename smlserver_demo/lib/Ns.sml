@@ -175,8 +175,9 @@ structure Ns :> NS =
 	  fun setCookies cookies = String.concat (List.map setCookie cookies)
 
 	  fun deleteCookie { name : string, path : string option } : string =
-	    String.concat["Set-cookie: ", encodeUrl name, (*"=deleted;"*) "=;",
-			  "expires=Friday, 11-Feb-77 12:00:00 GMT",
+	    String.concat["Set-cookie: ", encodeUrl name, "=deleted;",
+			  (*"expires=Friday, 11-Feb-77 12:00:00 GMT"*)
+			  "expires=Fri, 11-Feb-77 12:00:00 GMT",
 			  concatOpt "; path=" path]
 	end
       end
