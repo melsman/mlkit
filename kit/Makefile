@@ -169,3 +169,30 @@ install_smlserver:
 	chmod a+x $(INSTDIR_SMLSERVER)/bin/smlserverc
 	rm -f /usr/bin/smlserverc
 	cp -f -p $(INSTDIR_SMLSERVER)/bin/smlserverc /usr/bin/smlserverc
+
+SMLSERVER_HOST=hug.it.edu
+SMLSERVER_HOSTDIR=$(SMLSERVER_HOST):/web/smlserver/www/dist
+
+dist_smlserver:
+	scp NEWS_SMLSERVER $(SMLSERVER_HOSTDIR)/NEWS_SMLSERVER-$(KITVERSION).txt
+	scp README_SMLSERVER $(SMLSERVER_HOSTDIR)/README_SMLSERVER-$(KITVERSION).txt
+	scp doc/smlserver.pdf $(SMLSERVER_HOSTDIR)/smlserver-$(KITVERSION).pdf
+	scp ../smlserver-$(KITVERSION).tgz $(SMLSERVER_HOSTDIR)/
+	scp $(RPMDIR)/RPMS/i386/smlserver-$(KITVERSION)-1.i386.rpm $(SMLSERVER_HOSTDIR)/
+	scp $(RPMDIR)/SRPMS/smlserver-$(KITVERSION)-1.src.rpm $(SMLSERVER_HOSTDIR)/
+
+
+MLKIT_HOST=ssh.it.edu
+MLKIT_HOSTDIR=$(MLKIT_HOST):/import/www/research/mlkit/dist
+TESTDATE=2002-08-25
+
+dist_mlkit:
+	scp NEWS $(MLKIT_HOSTDIR)/NEWS-$(KITVERSION).txt
+	scp README $(MLKIT_HOSTDIR)/README-$(KITVERSION).txt
+	scp INSTALL $(MLKIT_HOSTDIR)/INSTALL-$(KITVERSION).txt
+	scp doc/manual/mlkit.pdf $(MLKIT_HOSTDIR)/mlkit-$(KITVERSION).pdf
+	scp test/test_report-native-$(TESTDATE).dvi $(MLKIT_HOSTDIR)/test_report-native-$(KITVERSION).dvi
+	scp test/test_report-kam-$(TESTDATE).dvi $(MLKIT_HOSTDIR)/test_report-kam-$(KITVERSION).dvi
+	scp ../mlkit-$(KITVERSION).tgz $(MLKIT_HOSTDIR)/
+	scp $(RPMDIR)/RPMS/i386/mlkit-$(KITVERSION)-1.i386.rpm $(MLKIT_HOSTDIR)/
+	scp $(RPMDIR)/SRPMS/mlkit-$(KITVERSION)-1.src.rpm $(MLKIT_HOSTDIR)/
