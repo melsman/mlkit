@@ -8,11 +8,19 @@ signature FLAGS =
 
     exception ParseScript of string
 
-    (* warnings to be printed at the end of the compilation;
-       by convention, each warning should end with a new-line;
-       the list is reversed before it is printed;
-    *)
-    val warnings: string list ref  
+    (*Warnings*)
+
+    type Report
+    val warn : Report -> unit
+    val warn_string : string -> unit
+    val report_warnings : unit -> unit
+    val reset_warnings : unit -> unit
+      
+    (*Warnings are collected during compilation and printed all at once at
+     the end of the compilation of a program.  The printing is done in
+     Manager which also resets the warnings.*)
+
+      
 
     type state
     val get_state           : unit -> state

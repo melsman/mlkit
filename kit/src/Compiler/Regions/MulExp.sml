@@ -1,6 +1,10 @@
-(*$MulExp: CON EXCON EFFECT RTYPE TYNAME CRASH PRETTYPRINT LVARS LAMBDA_EXP REGION_EXP FLAGS REGION_EXP MUL_EXP MUL REGION_STAT_ENV*)
+(*$MulExp: CON EXCON EFFECT RTYPE TYNAME CRASH PRETTYPRINT LVARS LAMBDA_EXP
+    REGION_EXP FLAGS REGION_EXP MUL_EXP MUL REGION_STAT_ENV REPORT*)
+
 functor MulExp(
   structure Flags: FLAGS
+  structure Report : REPORT
+  sharing type Report.Report = Flags.Report
   structure Con: CON
   structure Excon: EXCON
   structure RegionExp: REGION_EXP
@@ -189,7 +193,9 @@ struct
    *  listed in the warning message.
    *)
 
-  fun warn(s) =  Flags.warnings:= s :: (!Flags.warnings)
+  val line = Report.line
+  val // = Report.//
+  infix //
 
   val already_reported: R.place list ref = ref [];  (* those region variables rho, for which other
 						     * lvars with rho free in their type and place 
@@ -229,10 +235,10 @@ struct
 		    map (fn s => " " ^ s) lvars_and_excons_rho) @ ["\n"]
 		 end
 	 in
-            warn(implode([Lvar.pr_lvar lvar,
-			  "\t has a type scheme with escaping put effects\
-			   \ on region(s): \n"]@
-                          flatten(map report_rho rhos)))
+            Flags.warn (line (Lvar.pr_lvar lvar 
+					      ^ "\t has a type scheme with escaping put effects\
+					       \ on region(s): ")
+	                // line (implode (flatten (map report_rho rhos))))
 	 end
 
     fun warn_puts (TE:regionStatEnv, 
@@ -413,7 +419,9 @@ struct
         val bad_excon_lines = 
              map (fn (excon,(tau,p), bad_rhos) => implode["   " ^ Excon.pr_excon excon^ ": " ^ show_rhos bad_rhos ^ "\n"])
                  l2
-    in warn(implode (source_identification::(bad_lvar_lines @ bad_excon_lines)))
+    in Flags.warn
+         (Report.flatten (map line (source_identification ::
+				    (bad_lvar_lines @ bad_excon_lines))))
     end
 
 

@@ -129,28 +129,15 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
        log_st (FreeIds.layout_ids ids);
        log "\n")
 
-    fun reset_warnings() = Flags.warnings := []
-
-    fun report_warnings () = 
-          (case !Flags.warnings of
-	     [] =>  ()
-	   | [s] => (if !log_to_file then output(std_out, "\n*** 1  warning printed on log file\n")
-		     else ();
-		     output(!Flags.log, "*** warning: " ^ s))
-	   | ss =>  (if !log_to_file then output(std_out, "\n*** " ^ Int.string (length ss)
-						 ^ " warnings printed on log file\n")
-		     else ();
-	             List.apply (fn s => output(!Flags.log, "*** warning: " ^ s)) (rev ss)))
-
     fun print_error_report report = Report.print' report (!Flags.log)
     fun print_result_report report = (Report.print' report (std_out(*!Flags.log*));
-				      report_warnings())
+				      Flags.report_warnings ())
 
     (* ---------------------------------------
      * Reset and commit
      * --------------------------------------- *)
 	
-    fun reset() = (IntModules.reset(); Repository.clear(); reset_warnings())
+    fun reset() = (IntModules.reset(); Repository.clear(); Flags.reset_warnings())
     fun commit() = IntModules.commit()
 
 
@@ -276,7 +263,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      val unitname = (filename_to_unitname o ManagerObjects.funid_to_filename) funid
 	      val log_cleanup = log_init unitname
 	      val _ = Name.bucket := []
-	      val _ = reset_warnings ()
+	      val _ = Flags.reset_warnings ()
 	      (* val _ = print "\n[parsing and elaborating ...\n" *)
 	      val res = ParseElab.parse_elab {infB=infB,elabB=elabB, file=source_filepath} 
 	      (* val _ = print " done]\n" *)

@@ -1,6 +1,6 @@
 (*$SpreadExpression: SPREAD_EXPRESSION CON EXCON LAMBDA_EXP REGION_EXP 
    FINMAP RTYPE EFFECT SPREAD_DATATYPE REGION_STAT_ENV 
-   LVARS TYNAME CRASH PRETTYPRINT FLAGS C_CONST*)
+   LVARS TYNAME CRASH PRETTYPRINT FLAGS C_CONST REPORT*)
 
 (*
 *
@@ -47,6 +47,8 @@ functor SpreadExpression(
             and type SpreadDatatype.RegionExp.datbinds = E'.datbinds
   structure FinMap : FINMAP
   structure Flags: FLAGS
+  structure Report : REPORT
+  sharing type Report.Report = Flags.Report
   structure Lvars: LVARS
     sharing type Lvars.lvar = E.lvar = E'.lvar = RSE.lvar
   structure TyName: TYNAME
@@ -109,8 +111,10 @@ struct
 
   fun die s = Crash.impossible ("SpreadExpression." ^ s)
 
-  fun warn (lvar,Some s) = Flags.warnings:= ("algorithm S (SpreadExpression), while processing lvar: " ^
-                                  Lvars.pr_lvar lvar ^ ":\n" ^ s):: !Flags.warnings
+  fun warn (lvar, Some s) = Flags.warn
+	(Report.// (Report.line ("algorithm S (SpreadExpression), while processing\
+				 \ lvar: " ^ Lvars.pr_lvar lvar ^ ":"),
+		    Report.line s))
     | warn _ = ()
 
   val concat = List.foldR (General.curry (op @)) []

@@ -49,7 +49,7 @@ struct
   fun die msg = Crash.impossible ("R." ^ msg)
 
   fun say s = output(std_out, s)
-  fun checkMsgOpt (Some msg) = Flags.warnings:= (msg^"\n") :: (!Flags.warnings)
+  fun checkMsgOpt (Some msg) = Flags.warn_string msg
     | checkMsgOpt None = ()
 
   fun show_sigma sigma = PrettyPrint.flatten1(RType.mk_lay_sigma false (sigma))
