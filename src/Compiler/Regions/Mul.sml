@@ -604,6 +604,20 @@ struct
               | mul => (ae1, mul)::diffef_aux(psi1', psi2'))
     | diffef_aux _ = raise DiffEf
 
+  local 
+      fun check ((e1,_)::(e2,_)::x) = 
+	  let fun toStr e = PP.flatten1 (Effect.layout_effect e)
+	      val r1 = Effect.rho_of e1
+	      val r2 = Effect.rho_of e2
+	  in
+	      say ("e1 = e2: " ^ Bool.toString(Eff.eq_effect(e1,e2)));
+	      say ("rhoOf(e1) = rhoOf(e2): " ^ Bool.toString(Eff.eq_effect(r1,r2)));
+	      say("e1 = " ^ toStr e1);
+	      say("e2 = " ^ toStr e2);
+	      say("r1 = " ^ toStr r1);
+	      say("r2 = " ^ toStr r2)
+	  end
+  in
   fun diffef(mulef1,mulef2) = 
     diffef_aux(mulef1,mulef2)
      handle DiffEf =>
@@ -612,8 +626,9 @@ struct
         outtree(layout_mulef mulef1);
         say "\nmulef2: ";
         outtree(layout_mulef mulef2);
+	check mulef1;
         die "diffef failed")
-
+  end
 
   fun timesef (mul,[]) = []
     | timesef (mul,(ae1, mul1)::psi)= 
@@ -1027,6 +1042,20 @@ struct
   (* instantiate(actuals: arefset, qmul, Psi, dep)
      instantiates one ground segment of actuals at a time *)
 
+  fun check_eff s e = 
+      if Eff.is_put e orelse Eff.is_get e then
+	  let val r = Eff.rho_of e
+	      val k = Eff.key_of_eps_or_rho r
+	  in if k = 1 andalso not(Eff.eq_effect(Eff.toplevel_region_withtype_top,r)) then
+	      die ("check_eps: " ^ s)
+	     else ()
+	  end
+      else ()
+
+  fun check_psi s nil = ()
+    | check_psi s ((e,_)::xs) =
+      (check_eff s e; check_psi s xs)
+
   fun instantiate([], Xi, Psi, dep)= ()     
     | instantiate((aref0 as (eps0,phi0))::plainarroweffects, 
                   qmul as (eps0' :: epses', [], Psi'), Psi, dep)= 
@@ -1041,11 +1070,16 @@ struct
              val t3 = layout_mulef   (lookup_mularefset(Psi', eps0'))
 *)
              val actual_psi = #2(nf(!(lookup_mularefmap(Psi, eps0))))
+	     val _ = check_psi "actual_psi" actual_psi (* mael 2004-10-19 *)
+	     val formal_psi = lookup_mularefset(Psi', eps0')
+	     val _ = check_psi "formal_psi" formal_psi (* mael 2004-10-19 *)
              val new_actual_psi:mulef = 
                        maxef(actual_psi,
-                             lookup_mularefset(Psi', eps0')) (* formal, acyclic *)
+                             formal_psi) (* formal, acyclic *)
+	     val _ = check_psi "before nf" new_actual_psi (* mael 2004-10-19 *)
              (* (eps0,new_actual_psi) is not necessarily acyclic, so nomalise it: *)
              val (eps0,new_actual_psi) = nf (eps0,new_actual_psi)
+	     val _ = check_psi "after nf" new_actual_psi (* mael 2004-10-19 *)
 (*             val t4 = layout_mulef new_actual_psi  *)
              val Se:efsubst = [(eps0', (eps0,new_actual_psi))]
              val _ = doSubst(eps0, diffef(new_actual_psi,actual_psi), dep)

@@ -394,18 +394,20 @@ functor RegionStatEnv(structure Name : NAME
 	in convert (fn (b1,b2,s,p) => (b1,b2,s,p,NONE,NONE),
 		    fn (b1,b2,s,p,NONE,NONE) => (b1,b2,s,p)
 		     | _ => die "pu_lvar_env_range")
-	    (tup4Gen0(bool,bool,R.pu_sigma,E.pu_effect))
+	    (tup4Gen0(bool,bool,debugUnpickle "sigma" R.pu_sigma,debugUnpickle "effect" E.pu_effect))
 	end
 
     val pu : regionStatEnv Pickle.pu =
 	let open Pickle
-	in convert (fn (te:arity TyNameMap.map,ce: R.sigma ConMap.map,
+	in debugUnpickle "regionStatEnv"
+	    (convert (fn (te:arity TyNameMap.map,ce: R.sigma ConMap.map,
 			ee:(R.Type*R.place) ExconMap.map,le) => {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le},
 		    fn {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le} => (te,ce,ee,le))
 	    (tup4Gen0(TyNameMap.pu TyName.pu pu_arity,
-		      ConMap.pu Con.pu R.pu_sigma,
-		      ExconMap.pu Excon.pu R.pu_mu,
-		      LvarMap.pu Lvar.pu pu_lvar_env_range))
+		      ConMap.pu Con.pu (debugUnpickle "con_env_range" R.pu_sigma),
+		      ExconMap.pu Excon.pu (debugUnpickle "excon_env_range" R.pu_mu),
+		      LvarMap.pu Lvar.pu (debugUnpickle "lvar_env_range" pu_lvar_env_range)))
+	     )
 	end
 
   end

@@ -45,8 +45,8 @@ functor Con(structure Name : NAME
 
     val pu = 
 	Pickle.hashConsEq eq
-	(Pickle.register [con_REF,con_TRUE,con_FALSE,con_NIL,con_CONS,
-			  con_QUOTE,con_ANTIQUOTE]
+	(Pickle.register "Con" [con_REF,con_TRUE,con_FALSE,con_NIL,con_CONS,
+				con_QUOTE,con_ANTIQUOTE]
 	 let open Pickle
 	     fun to (s,n) : con = {str=s,name=n}
 	     fun from ({str=s,name=n} : con) = (s,n)

@@ -6,7 +6,6 @@ structure Polyhash
 
 is
 
-../Edlib/edlib.cm  (* For ListSort *)
 POLYHASH.sml
 Polyhash.sml
 eqhashdyn2.sml

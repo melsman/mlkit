@@ -1,4 +1,4 @@
-val _ = SMLofNJ.Internals.GC.messages false
+(*val _ = SMLofNJ.Internals.GC.messages false *)
 
 (* test/pickle.sml; Martin Elsman 2003-07-01 *)
 
@@ -120,9 +120,11 @@ val _ = okEq' Real.== "test9k" real (~Math.e)
 val _ = okEq' Real.== "test9l" real Real.posInf
 val _ = okEq' Real.== "test9m" real Real.negInf
 val _ = okEq' Real.== "test9n" real Real.posInf
+(*
 val _ = okEq' Real.== "test9o" real Real.maxFinite
 val _ = okEq' Real.== "test9p" real Real.minPos
 val _ = okEq' Real.== "test9q" real Real.minNormalPos
+*)
 
 (* Unit *)
 val _ = okEq "test10a" unit ()
@@ -273,11 +275,36 @@ val _ = okEq "test27a" pu_record {a=3,b=true,c=34}
 val _ = okEq "test27b" (pairGen(int,pu_record)) (232,{a=3,b=true,c=34})
 val _ = okEq "test27c" (pairGen(pu_record,int)) ({a=3,b=true,c=34},2323)
 
-(* Cache *)
+(* Cache:28 *)
 
-(* Register *)
+(* Register:29 *)
+local
+   val registered_refs = [ref 10,ref 11,ref 12]
+   val pu_intref = Pickle.register "intref" registered_refs (Pickle.refGen 0 Pickle.int)
+   val pu_intreflist = Pickle.listGen pu_intref
+   val refs = [ref 1,ref 2] @ registered_refs @ [ref 100, ref 101]
+   fun eq0 (nil,nil) = true
+     | eq0 (x::xs,y::ys) = !x = !y andalso eq0(xs,ys)
+     | eq0 _ = false
+   fun sel (x::xs, 0) = x
+     | sel (x::xs, n) = sel(xs,n-1)
+     | sel _ = raise Fail "sel"
+   fun sel_eq(xs,ys,n) = sel(xs,n) = sel(ys,n)
+   fun sel_noteq(xs,ys,n) = sel(xs,n) <> sel(ys,n)
+   fun eq (xs,ys) = 
+       eq0(xs,ys) andalso
+       sel_eq(xs,ys,2) andalso
+       sel_eq(xs,ys,3) andalso
+       sel_eq(xs,ys,4) andalso 
+       sel_noteq(xs,ys,0) andalso
+       sel_noteq(xs,ys,1) andalso
+       sel_noteq(xs,ys,5) andalso
+       sel_noteq(xs,ys,6)
+in
+   val _ = okEq' eq "test29a" pu_intreflist refs
+end
 
-(* RegisterEq *)
+(* RegisterEq:30 *)
 
 (* Cycles *)
 

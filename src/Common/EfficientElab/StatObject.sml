@@ -232,11 +232,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	let open Pickle
 	    fun to (td,l) = {TypeDesc=td,level=l}
 	    fun from {TypeDesc=td,level=l} = (td,l)
-	in cache (fn pu_td => convert (to,from) (pairGen0(pu_td,ref0EqGen (fn (r1,r2) => !r1 = !r2) int)))
+	in cache "Type" (fn pu_td => convert (to,from) (pairGen0(pu_td,ref0EqGen (fn (r1,r2) => !r1 = !r2) int)))
 	end
     
     val pu_Types : TypeDesc Pickle.pu -> Type list Pickle.pu =
-	Pickle.cache (fn pu_td => Pickle.listGen (pu_Type pu_td))
+	Pickle.cache "Types" (fn pu_td => Pickle.listGen (pu_Type pu_td))
 
     fun swap (x,y) = (y,x)
 	

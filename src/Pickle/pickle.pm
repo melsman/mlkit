@@ -1,5 +1,4 @@
 import
-  ../Edlib/edlib.pm  (* For ListSort *)
 in
   local
     POLYHASH.sml
@@ -10,7 +9,7 @@ in
   in
     pickle.sig
     pickle.sml
-    (* ../../test/pickle.sml *)
+    ../../test/pickle.sml
   end
 end
 

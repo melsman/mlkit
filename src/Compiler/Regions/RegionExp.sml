@@ -194,7 +194,7 @@ struct
   end
 
   fun mkPhi(tr,exported_regvars_and_arroweffects) = 
-        mkPhiTr tr exported_regvars_and_arroweffects
+      mkPhiTr tr exported_regvars_and_arroweffects
 
   fun countletregions _ = ()
 
