@@ -2,8 +2,8 @@ val print_id = ScsFormVar.wrapPanic ScsError.panic (ScsFormVar.wrapIntAsString S
 
 val (clob_id,doc_type,note,on_what_table,on_what_id) = Db.oneRow' (fn g => (g "clob_id", g "doc_type", g "note",
 									    g "on_what_table", g "on_what_id"),
-					 `select clob_id,doc_type,note from scs_print_log where print_id = ^
-								   (Db.qq' print_id)`)
+					 `select clob_id,doc_type,note,on_what_table,on_what_id 
+                                            from scs_print_log where print_id = ^(Db.qq' print_id)`)
 
 val source = DbClob.select clob_id
 
