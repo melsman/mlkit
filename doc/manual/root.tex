@@ -8655,7 +8655,7 @@ x86 native backend. The options are slightly different for the version
 of the ML Kit compiler that uses the bytecode backend.
 
 \begin{verbatim}
-ML Kit version 3.9.1, Jul 06, 2001 [X86 Backend]
+ML Kit version 4.0.0, Sep 20, 2001 [X86 Backend]
 
 Usage: mlkit [OPTION]... [file.sml | file.sig | file.pm]
 
@@ -8745,15 +8745,6 @@ Options:
 --no_eliminate_explicit_records
      Opposite of --eliminate_explicit_records.
 
---fix_conversion                                           (on)
-     Convert   let x = e' in e   to   fix x = e' in e
-     when e' is a lambda abstraction, in order to avoid
-     building of closures in order to increase region
-     polymorphism (Lambda Expression Optimiser).
-
---no_fix_conversion
-     Opposite of --fix_conversion.
-
 --garbage_collection, -gc                                 (off)
      Enable garbage collection. When enabled, regions are
      garbage collected during execution of the program. When
@@ -8782,7 +8773,7 @@ Options:
 --no_import_basislib, -no_basislib
      Opposite of --import_basislib, -basislib.
 
---install_dir S                        ("/home/mael/mlkit/kit")
+--install_dir S                            ("/usr/share/mlkit")
      Installation directory for the ML Kit. For normal
      execution you should not modify this value. However,
      if you wish to use the ML Kit with an altered runtime
@@ -9025,8 +9016,6 @@ Options:
 
 --width N, -w N                                           (100)
      Column width used when pretty printing intermediate code.
-
-
 \end{verbatim}
 
 \newpage
