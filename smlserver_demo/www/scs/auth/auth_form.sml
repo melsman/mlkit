@@ -14,8 +14,13 @@ val login_info = Quot.toString
 (eng.: Please write the email that you use at IT-C (e.g., <b>login@it-c.dk</b> or <b>dfs@ruc.dk</b>))`
 
 val passwd_info = Quot.toString
+`<b>Indtast dit password til UCS:</b> Er du ny bruger eller har du glemt password 
+ så klik <b>Glemt password?</b>.<br><br>
+ <b>Type your UCS password:</b> If you are a new user or you forgot password then 
+ click <b>Forgot password?</b>.`
 
-`Indtast dit password til UCS.<p>Som brugere af IT-Cs IT systemer har
+(*
+Indtast dit password til UCS.<p>Som brugere af IT-Cs IT systemer har
  vi fået tildelt flere forskellige logins og kodeord. For at logge på 
  UCS skal du anvende din email, som enten kan være på formen 
  <b>login@it-c.dk</b> eller en ekstern email,
@@ -31,7 +36,9 @@ val passwd_info = Quot.toString
  have generated a password for you that you must use the first time you
  logon to UCS. You can have the password mailed to you by clicking
  Forgot password?. You can change your password freely when you are
- logged on.)`
+ logged on.
+*)
+
 
 val _ = ScsPage.returnPg ("IT-C.net Authentication")
   (`

@@ -51,18 +51,18 @@ val delete_component =
     Quot.toString `^first_names ^last_name`]]
 
 val user_imp_info =
-  UcsWidget.V [ScsUserImp.nameWidget (first_names ^ " " ^ last_name),
-	       ScsUserImp.normNameWidget norm_name,
-	       ScsUserImp.securityIdWidget security_id,
-	       ScsUserImp.emailWidget email,
-	       ScsUserImp.urlWidget url,
-	       ScsUserImp.externSourceWidget on_what_table on_which_id,
-	       ScsUserImp.lastImportWidget last_auto_import_try,
-	       ScsUserImp.lastModifiedWidget last_modified modifying_user,
-	       ScsUserImp.exactMatchWidget 
-	         (Int.toString user_imp_id) exact_match_id on_what_table security_id email norm_name,
-	       create_new_component,
-	       delete_component]
+  [ScsUserImp.nameWidget (first_names ^ " " ^ last_name),
+   ScsUserImp.normNameWidget norm_name,
+   ScsUserImp.securityIdWidget security_id,
+   ScsUserImp.emailWidget email,
+   ScsUserImp.urlWidget url,
+   ScsUserImp.externSourceWidget on_what_table on_which_id,
+   ScsUserImp.lastImportWidget last_auto_import_try,
+   ScsUserImp.lastModifiedWidget last_modified modifying_user,
+   ScsUserImp.exactMatchWidget 
+   (Int.toString user_imp_id) exact_match_id on_what_table security_id email norm_name,
+   create_new_component,
+   delete_component]
 
 (* Get data on persons with same normalised name in DB *)
 fun persons_in_db norm_name =
@@ -124,7 +124,7 @@ fun gen_table [] = ScsDict.s' [(ScsLang.en,`There are no persons to import in th
 val _ = ScsUserImp.returnPg page_title
   (`<h1>^page_title</h1> 
    <p>
-   ` ^^ (ScsBox.toQuot(ScsBox.V[ScsBox.C(UcsWidget.layoutComponent user_imp_info)])) ^^ `<p>
+   ` ^^ (UcsWidget.layoutComponentGrp (UcsWidget.V(user_imp_info))) ^^ `<p>
    ` ^^
    (gen_table (persons_in_db norm_name)))
 
