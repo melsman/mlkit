@@ -241,26 +241,54 @@ void printTopRegInfo() {
 */
 
 /* Print info about a region. */
-/*
-void printRegionInfo(int rAddr,  char *str) {
+void pp_gen(Gen *gen)
+{
+  Rp* rp;
+
+  fprintf(stderr,"\n[Gen g%d at addr: %x, fp:%x, a:%x, b:%x\n",(is_gen_1(*gen)?1:0),gen,gen->fp, gen->a,gen->b);  
+  for (rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n)) {
+#ifdef ENABLE_GEN_GC
+    fprintf(stderr,"  Rp at addr %x, n:%x, colorPtr:%x, i: %x, rp+1: %x\n",rp,rp->n,rp->colorPtr,&(rp->i), rp+1);
+#else
+    fprintf(stderr,"  Rp at addr %x, n:%x, i: %x, rp+1: %x\n",rp,rp->n,&(rp->i),rp+1);
+#endif /* ENABLE_GEN_GC */
+  }
+  fprintf(stderr,"]\n");
+}
+
+void pp_reg(int rAddr,  char *str) {
   Ro *r;
   Rp *kp;
 
   r = (Ro *) clearStatusBits(rAddr);
-  printf("printRegionInfo called from: %s\n",str);
-  printf("Region at address: %0x\n", r);
-  printf("  fp: %0x\n", (r->g0.fp));
-  printf("  b : %0x\n", (r->g0.b));
-  printf("  a : %0x\n", (r->g0.a));
-  printf("  p : %0x\n", (r->p));
-
-  printf("Region Pages\n");
-  for (kp=r->g0.fp;kp!=NULL;kp=kp->n)
-    printf(" %0x\n ", kp);
+  fprintf(stderr,"printRegionInfo called from: %s\n",str);
+  fprintf(stderr,"Region at address: %0x\n", r);
+  pp_gen(&(r->g0));
+#ifdef ENABLE_GEN_GC
+  pp_gen(&(r->g1));
+#endif /* ENABLE_GEN_GC */
 
   return;
 }
 
+void chk_obj_in_gen(Gen *gen, unsigned int *obj_ptr, char* s) {
+  Rp* rp;
+  int found = 0;
+  return;  // ToDo: GenGC remove
+  for (rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n)) {
+    if (obj_ptr < (unsigned int*)(rp+1) && obj_ptr >= (unsigned int*) &(rp->i))
+      found = 1;
+  }
+  if (! found) {
+    fprintf(stderr,"chk_obj_in_gen, obj_ptr: %x not in gen:\n",obj_ptr);
+    pp_reg((int)(get_ro_from_gen(*gen)),"chk_obj_in_gen");
+    fprintf(stderr,"STOP:%s\n",s);
+    die("");
+  }
+  return;
+}
+
+/*
 void printRegionStack() {
   Ro *r;
 
@@ -396,6 +424,17 @@ void alloc_new_block(Gen *gen) {
 
   FREELIST_MUTEX_UNLOCK;
 
+#ifdef ENABLE_GEN_GC
+  // update colorPtr so that all new objects are considered to be in
+  // tospace ToDo: GenGC find ud af om denne altid skal køres eller om
+  // vi kan nøjes med at indsætte den under doing_gc colorPtr
+  // opdateres EFTER GC, dvs må der under GC være colorPtr som er
+  // udefinerede? Det tror jeg faktisk ikke. Dem i g0 anvendes til at
+  // angive farve ved what gen to alloc to og i g1 anvendes de i
+  // points_in_tospace.
+  np->colorPtr = (unsigned int *)(&(np->i));  
+#endif /* ENABLE_GEN_GC */
+
 #ifdef ENABLE_GC
   if ( doing_gc )
     np->n = set_tospace_bit(NULL);     // to-space bit
@@ -406,8 +445,9 @@ void alloc_new_block(Gen *gen) {
 
   if ( clear_fp(gen->fp) )
 #ifdef ENABLE_GC
-    if ( doing_gc )
+    if ( doing_gc && is_tospace_bit((((Rp *)(gen->b))-1)->n) )
       (((Rp *)(gen->b))-1)->n = set_tospace_bit(np); /* Updates the next field in the last region page. */
+  // ToDo: GenGC only if tospace bit is set already
     else
 #endif
       (((Rp *)(gen->b))-1)->n = np; /* Updates the next field in the last region page. */
@@ -773,7 +813,7 @@ int *allocGen (Gen *gen, int n) {
   allocProfNowInf += sizeObjectDesc;
   if (maxAllocInf == allocNowInf) maxAllocProfInf = allocProfNowInf;
   r->allocProfNow += sizeObjectDesc;
-#endif
+#endif /* PROFILING */
 
   // see if the size of requested memory exceeds 
   // the size of a region page
@@ -785,8 +825,9 @@ int *allocGen (Gen *gen, int n) {
       lobjs = alloc_lobjs(n);
       lobjs->next = set_lobj_bit(r->lobjs);
       r->lobjs = lobjs;
+      die("Allocating Large Object \n"); // ToDo: GenGC remove
       #ifdef PROFILING
-      //    fprintf(stderr,"Allocating Large Object %d bytes\n", 4*n);
+          fprintf(stderr,"Allocating Large Object %d bytes\n", 4*n);
       allocatedLobjs++;
       #endif
 #ifdef ENABLE_GC
@@ -823,6 +864,7 @@ int *allocGen (Gen *gen, int n) {
   }
   gen->a = t2;
 
+  chk_obj_in_gen(gen, (unsigned int*) t1, "allocGen");   // ToDo: GenGC remove when GC works
   debug(printf("]\n"));
 
   return t1;
@@ -844,13 +886,13 @@ void resetGen(Gen *gen)
   /* There is always at least one page in a generation. */ 
   if ( (clear_fp(gen->fp))->n ) { /* There are more than one page in the generation. */
 
-    #ifdef ENABLE_GC
+#ifdef ENABLE_GC
     rp_used--;              // at least one page is freed; see comment in alloc_new_block
                             //   concerning conservative computation.
-    #ifdef SIMPLE_MEMPROF
+#ifdef SIMPLE_MEMPROF
     rp_really_used -= NoOfPagesInGen(gen) - 1;
-    #endif /* SIMPLE_MEMPROF */
-    #endif /* ENABLE_GC */  
+#endif /* SIMPLE_MEMPROF */
+#endif /* ENABLE_GC */  
 
     FREELIST_MUTEX_LOCK;
     (((Rp *)(gen->b))-1)->n = freelist;
@@ -859,7 +901,10 @@ void resetGen(Gen *gen)
     (clear_fp(gen->fp))->n = NULL;
   }
 
-  gen->a = (int *)(&(clear_fp(gen->fp))->i);   /* beginning of data in first page */
+  gen->a = (int *)(&((clear_fp(gen->fp))->i));   /* beginning of data in first page */
+#ifdef ENABLE_GEN_GC
+  (clear_fp(gen->fp))->colorPtr = gen->a;      /* beginning of data in first page */
+#endif /* ENABLE_GEN_GC */
   gen->b = (int *)((clear_fp(gen->fp))+1);     /* end of data in first page */
 
   return;

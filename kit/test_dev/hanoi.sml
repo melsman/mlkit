@@ -4,8 +4,8 @@ let
   infix <
   infix >
 
-  fun out_str(s) = prim ("printStringML","printStringML",s)
-  fun printNum(i:int):unit = prim ("printNum","printNum",i)
+  fun out_str(s) = prim("printStringML", s)
+  fun printNum(i:int):unit = prim ("printNum",i)
 
   fun neq(x,y) = if x<y then false else if x>y then false else true
 
@@ -22,7 +22,7 @@ let
 	  show_move(from,to);
 	  hanoi(n-1, via, to, from))
   val _ = out_str "Hello\n"
-  val _ = hanoi(3,1,2,3);
+  val _ = hanoi(1000,1,2,3);
   val _ = out_str "Hello again\n"
 in
   ()

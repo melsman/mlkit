@@ -35,27 +35,26 @@ infix  0  before
     exception Chr
     exception Fail of string 
 
-fun (a:real) / (b:real) : real = prim ("divFloat", "divFloat", (a,b))
-fun implode (chars : char list) : string = prim ("implodeCharsML", "implodeCharsProfilingML", chars)
-fun concat (ss : string list) : string = prim ("implodeStringML", "implodeStringProfilingML", ss)
-fun (s : string) ^ (s' : string) : string = prim ("concatStringML", "concatStringProfilingML", (s, s'))
+fun (a:real) / (b:real) : real = prim ("divFloat", (a,b))
+fun implode (chars : char list) : string = prim ("implodeCharsML", chars)
+fun concat (ss : string list) : string = prim ("implodeStringML", ss)
+fun (s : string) ^ (s' : string) : string = prim ("concatStringML", (s, s'))
 fun str (c : char) : string = implode [c]
-fun size (s:string): int = prim ("sizeStringML", "sizeStringML", s)
-fun chr (i : int) : char = prim ("chrCharML", "chrCharML", (i, Chr))
-fun ord (c : char) : int = prim ("id", "id", c)
-fun print (x:string):unit = prim("printStringML","printStringML",x)
+fun chr (i : int) : char = prim ("chrCharML", (i, Chr))
+fun ord (c : char) : int = prim ("id", c)
+fun print (x:string):unit = prim("printStringML",x)
 
 fun append [] ys = ys
   | append (x::xs) ys = x :: append xs ys
 fun xs @ ys = append xs ys
 
-fun real (x : int) : real = prim ("realInt", "realInt", x)
-fun floor (x : real) : int = prim ("floorFloat", "floorFloat", x)    (* may raise Overflow *)
+fun real (x : int) : real = prim ("realInt", x)
+fun floor (x : real) : int = prim ("floorFloat", x)    (* may raise Overflow *)
 
 fun not true = false
     | not false = true
 fun (f o g) x = f(g x)
-      fun op = (x: ''a, y: ''a): bool = prim ("=", "=", (x, y))
+      fun op = (x: ''a, y: ''a): bool = prim ("=", (x, y))
 
 val _ = 
 let
@@ -105,7 +104,7 @@ fun app f [] = ()
 	  val arg' =
 	    let val (left', right) = 
                  let val (left, right, _) = partition([], [], bs)
-                 in  forceResetting bs;
+                 in  (*forceResetting bs;*)
                      (copyList left, right)
                  end
                 val sorted' = #2 (quickSort'(right, sorted))
