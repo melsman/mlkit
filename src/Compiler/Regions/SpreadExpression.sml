@@ -394,7 +394,10 @@ struct
             (*val _ = TextIO.output(TextIO.stdOut, "mk_sigma_hat_list: " ^ Lvars.pr_lvar lvar ^ "\n")*)
             val _ = count_fix_rhs()
             val B = (*Eff.*)push(B);         (* for generalize_all *)
-              val E.ARROWtype(tau_x_ml, tau_1_ml) = Type
+	    val (tau_x_ml, tau_1_ml) = 
+		case Type of 
+		    E.ARROWtype p => p 
+		  | _ => die "mk_sigma_hat_list"		  
               val (tau_0, B) = freshType(Type,B)
               val (B,sigma, msg_opt) = generalize_all(B,retract_level,tyvars,tau_0)
               val sigma_hat = R.drop_alphas sigma

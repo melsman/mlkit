@@ -213,11 +213,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    fun from {id=id, equality=e,rank=r,overloaded=ov,explicit=ex,inst} =
 		((id,e,r),ov,ex)
 	in convert (to,from) 
-	    (tup3Gen(tup3Gen(int,
-			     bool,
-			     ref0Gen TyName.Rank.pu),
-		     optionGen (TyName.Set.pu TyName.pu),
-		     optionGen ExplicitTyVar.pu))
+	    (tup3Gen0(tup3Gen0(int,
+			       bool,
+			       TyName.Rank.pu_rankrefOne),
+		      optionGen (TyName.Set.pu TyName.pu),
+		      optionGen ExplicitTyVar.pu))
 	end
 
     val pu_TyLink = 
@@ -232,9 +232,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	let open Pickle
 	    fun to (td,l) = {TypeDesc=td,level=l}
 	    fun from {TypeDesc=td,level=l} = (td,l)
-	in cache (fn pu_td => convert (to,from) (pairGen(pu_td,ref0Gen int)))
+	in cache (fn pu_td => convert (to,from) (pairGen0(pu_td,ref0EqGen (fn (r1,r2) => !r1 = !r2) int)))
 	end
-
+    
     val pu_Types : TypeDesc Pickle.pu -> Type list Pickle.pu =
 	Pickle.cache (fn pu_td => Pickle.listGen (pu_Type pu_td))
 	
@@ -252,26 +252,26 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		pu_TyVar
 	    fun TypeDescARROW (pu_TypeDesc,pu_RecType) =
 		con1 ARROW (fn ARROW a => a | _ => die "pu_TypeDesc.ARROW")
-		(pairGen(pu_Type pu_TypeDesc, pu_Type pu_TypeDesc))
+		(pairGen0(pu_Type pu_TypeDesc, pu_Type pu_TypeDesc))
 	    fun TypeDescRECTYPE  (pu_TypeDesc,pu_RecType) =
 		con1 RECTYPE (fn RECTYPE a => a | _ => die "pu_TypeDesc.RECTYPE")
 		pu_RecType
 	    fun TypeDescCONSTYPE (pu_TypeDesc,pu_RecType) =
 		con1 CONSTYPE (fn CONSTYPE a => a | _ => die "pu_TypeDesc.CONSTYPE")
-		(pairGen(pu_Types pu_TypeDesc, TyName.pu))
+		(pairGen0(pu_Types pu_TypeDesc, TyName.pu))
 
 	    fun RecTypeNILrec (a,b) = con0 NILrec b
 
 	    fun RecTypeROWrec (pu_TypeDesc,pu_RecType) =
 		con1 ROWrec (fn ROWrec a => a | _ => die "pu_RecType.ROWrec")
-		(tup3Gen(Lab.pu,pu_Type pu_TypeDesc,pu_RecType))
+		(tup3Gen0(Lab.pu,pu_Type pu_TypeDesc,pu_RecType))
 
 	    val TypeDescFuns = 
 		[TypeDescTYVAR, TypeDescARROW, TypeDescRECTYPE, TypeDescCONSTYPE]
 	    val RecTypeFuns = [RecTypeNILrec, RecTypeROWrec]
 
-	in data2Gen(TypeDescToInt,TypeDescFuns,
-		    RecTypeToInt,RecTypeFuns)
+	in data2Gen("StatObject.TypeDesc",TypeDescToInt,TypeDescFuns,
+		    "StatObject.RecType",RecTypeToInt,RecTypeFuns)
 	end
 
     val pu_Type = pu_Type pu_TypeDesc
@@ -1887,7 +1887,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      fun fun_EXPANDED _ =
 		  con1 EXPANDED (fn EXPANDED a => a | _ => die "pu_TypeFcn'.EXPANDED")
 		  TypeFcn.pu
-	  in dataGen(toInt,[fun_TYNAME,fun_EXPANDED])
+	  in dataGen("StatObject.TypeFcn'",toInt,[fun_TYNAME,fun_EXPANDED])
 	  end
       val pu = 
 	  let open Pickle 

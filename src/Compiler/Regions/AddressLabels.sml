@@ -43,6 +43,7 @@ functor AddressLabels(structure Name : NAME) : ADDRESS_LABELS =
 			 reg_triple_lab,exn_DIV_lab,exn_MATCH_lab,
 			 exn_BIND_lab,exn_OVERFLOW_lab,exn_INTERRUPT_lab]
 	let open Pickle
-	in pairGen(Name.pu,string)
+	in newHash (Name.key o #1)
+	    (pairGen0(Name.pu,string))
 	end
   end

@@ -27,41 +27,55 @@ signature PICKLE =
     val pairGen   : 'a pu * 'b pu -> ('a * 'b) pu
     val tup3Gen   : 'a pu * 'b pu * 'c pu -> ('a * 'b * 'c) pu
     val tup4Gen   : 'a pu * 'b pu * 'c pu * 'd pu -> ('a * 'b * 'c * 'd) pu
-    val refGen    : 'a pu -> 'a -> 'a ref pu
+    val pairGen0  : 'a pu * 'b pu -> ('a * 'b) pu
+    val tup3Gen0  : 'a pu * 'b pu * 'c pu -> ('a * 'b * 'c) pu
+    val tup4Gen0  : 'a pu * 'b pu * 'c pu * 'd pu -> ('a * 'b * 'c * 'd) pu
+    val refEqGen  : ('a ref * 'a ref -> bool) -> 'a -> 'a pu -> 'a ref pu
+    val refGen    : 'a -> 'a pu -> 'a ref pu
     val ref0Gen   : 'a pu -> 'a ref pu
+    val refOneGen : 'a pu -> 'a ref pu
+    val ref0EqGen : ('a ref * 'a ref -> bool) -> 'a pu -> 'a ref pu
+    val ref0ShGen : 'a pu -> 'a ref pu
     val listGen   : 'a pu -> 'a list pu
     val optionGen : 'a pu -> 'a option pu
     val vectorGen : 'a pu -> 'a Vector.vector pu
     val shareGen  : 'a pu -> 'a pu
-    val enumGen   : ''a list -> ''a pu     
+    val enumGen   : string * ''a list -> ''a pu     
 
-    val dataGen   : ('a->int) * ('a pu -> 'a pu) list -> 'a pu
-    val data2Gen  : ('a->int) * ('a pu * 'b pu -> 'a pu) list 
-	            * ('b->int) * ('a pu * 'b pu -> 'b pu) list 
+    val dataGen   : string * ('a->int) * ('a pu -> 'a pu) list -> 'a pu
+    val data2Gen  : string * ('a->int) * ('a pu * 'b pu -> 'a pu) list 
+	            * string * ('b->int) * ('a pu * 'b pu -> 'b pu) list 
                     -> 'a pu * 'b pu
 
-    val data3Gen  : ('a->int) * ('a pu * 'b pu * 'c pu -> 'a pu) list 
-	            * ('b->int) * ('a pu * 'b pu * 'c pu -> 'b pu) list 
-	            * ('c->int) * ('a pu * 'b pu * 'c pu -> 'c pu) list 
+    val data3Gen  : string * ('a->int) * ('a pu * 'b pu * 'c pu -> 'a pu) list 
+	            * string * ('b->int) * ('a pu * 'b pu * 'c pu -> 'b pu) list 
+	            * string * ('c->int) * ('a pu * 'b pu * 'c pu -> 'c pu) list 
                     -> 'a pu * 'b pu * 'c pu
 
-    val con0       : 'b -> 'b pu -> 'b pu
-    val con1       : ('a->'b) -> ('b->'a) -> 'a pu -> 'b pu
+    val con0      : 'a -> 'b -> 'a pu
+    val con1      : ('a->'b) -> ('b->'a) -> 'a pu -> 'b pu
 
-    val empty      : unit -> outstream
-    val fromString : string -> instream
-    val toString   : outstream -> string
+    val empty     : unit -> outstream
+    val fromString: string -> instream
+    val toString  : outstream -> string
 
-    val convert    : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
+    val convert   : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
+    val convert0  : ('a->'b) * ('b->'a) -> 'a pu -> 'b pu
 
-    val cache      : ('a -> 'b pu) -> 'a -> 'b pu
+    val cache     : ('a -> 'b pu) -> 'a -> 'b pu
 
-    val register   : 'a list -> 'a pu -> 'a pu
+    val register  : 'a list -> 'a pu -> 'a pu
 
-    val registerEq : ('a*'a->bool) -> ('a->int) 
+    val registerEq: ('a*'a->bool) -> ('a->int) 
                      -> 'a list -> 'a pu -> 'a pu
 
-    val debug      : string -> 'a pu -> 'a pu
+    val newHash      : ('a -> int) -> 'a pu -> 'a pu
+    val combHash     : ('a -> int) -> 'a pu -> 'a pu
+    val maybeNewHash : ('a -> int option) -> 'a pu -> 'a pu
+
+    val debug     : string -> 'a pu -> 'a pu
+    val nameGen   : string -> 'a pu -> 'a pu
+    val comment   : string -> 'a pu -> 'a pu
   end
 
 (*

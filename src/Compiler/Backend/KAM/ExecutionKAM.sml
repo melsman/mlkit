@@ -205,6 +205,6 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 	    val pu_pair = pairGen(pu_labels,pu_labels)
 	in convert (fn (c,i,e,u) => {code_label=c,imports=i,exports=e,unsafe=u},
 		    fn {code_label=c,imports=i,exports=e,unsafe=u} => (c,i,e,u))
-	    (tup4Gen(Labels.pu,pu_pair,pu_pair,bool))
+	    (tup4Gen0(Labels.pu,pu_pair,pu_pair,bool))
 	end    
   end

@@ -39,7 +39,8 @@ functor Excon(structure Name : NAME
 	let open Pickle
 	    fun to (s,n) : excon = {str=s,name=n}
 	    fun from ({str=s,name=n} : excon) = (s,n)
-	in convert (to,from) (pairGen(string,Name.pu))
+	in newHash (Name.key o #name)
+	    (convert (to,from) (pairGen0(string,Name.pu)))
 	end
 	
     structure QD : QUASI_DOM =

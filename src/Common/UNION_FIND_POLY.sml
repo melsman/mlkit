@@ -33,5 +33,5 @@ sig
 
   val pu : 'a -> 'a Pickle.pu -> 'a Element Pickle.pu
       (* the first argument is a dummy value to make the pickler work for
-       * cyclic data structures *)
+       * cyclic data structures. *)
 end;

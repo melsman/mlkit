@@ -1,3 +1,5 @@
+val _ = SMLofNJ.Internals.GC.messages false
+
 (* test/pickle.sml; Martin Elsman 2003-07-01 *)
 
 local 
@@ -124,6 +126,9 @@ val _ = okEq' Real.== "test9q" real Real.minNormalPos
 
 (* Unit *)
 val _ = okEq "test10a" unit ()
+val _ = okEq "test10b" (pairGen(unit,int)) ((),5)
+val _ = okEq "test10c" (pairGen(int,unit)) (5,())
+val _ = okEq "test10d" (listGen unit) [(),(),()]
 
 (* PairGen *)
 val _ = okEq "test11a" (pairGen(int,bool)) (3,false)
@@ -202,12 +207,13 @@ val _ = okEq "test23b" (shareGen(optionGen(pairGen(char,int)))) (SOME(#"a",34))
 
 (* enumGen *)
 datatype enum = E1 | E2 | E3 | E4 | E5
-val _ = okEq "test24a" (enumGen[E1,E2,E3,E4,E5]) E1
-val _ = okEq "test24b" (enumGen[E1,E2,E3,E4,E5]) E2
-val _ = okEq "test24c" (enumGen[E1,E2,E3,E4,E5]) E3
-val _ = okEq "test24d" (enumGen[E1,E2,E3,E4,E5]) E4
-val _ = okEq "test24e" (enumGen[E1,E2,E3,E4,E5]) E5
-val _ = okEq "test24f" (listGen(enumGen[E1,E2,E3,E4,E5])) [E5,E4,E3,E3,E2,E1,E5]
+val pu_enum = enumGen("enum",[E1,E2,E3,E4,E5])
+val _ = okEq "test24a" pu_enum E1
+val _ = okEq "test24b" pu_enum E2
+val _ = okEq "test24c" pu_enum E3
+val _ = okEq "test24d" pu_enum E4
+val _ = okEq "test24e" pu_enum E5
+val _ = okEq "test24f" (listGen pu_enum) [E5,E4,E3,E3,E2,E1,E5]
 
 (* dataGen *)
 datatype tree = T of tree * tree | L of string
@@ -217,7 +223,7 @@ local
     fun fun_T pu = con1 T (fn T p => p | _ => raise Fail "T") (pairGen(pu,pu))
     fun fun_L pu = con1 L (fn L s => s | _ => raise Fail "L") string
 in
-    val pu_tree = dataGen(toInt,[fun_T,fun_L])
+    val pu_tree = dataGen("tree",toInt,[fun_T,fun_L])
 end
 
 val _ = okEq "test25a" pu_tree (L "hej")
@@ -243,7 +249,8 @@ local
     val fun_Nb = con0 Nb
 in
     val (pu_atree,pu_btree) = 
-	data2Gen(toInta, [fun_Ta,fun_La], toIntb, [fun_Tb,fun_Lb,fun_Nb])
+	data2Gen("atree", toInta, [fun_Ta,fun_La], 
+		 "btree", toIntb, [fun_Tb,fun_Lb,fun_Nb])
 end
 
 val _ = okEq "test26a" pu_atree (La "hej")
@@ -291,7 +298,7 @@ local
     val pu_node =
 	let fun fun_node pu = con1 Node (fn Node a => a) 
 	    (pairGen(int,refGen nil (listGen pu)))
-	in dataGen(fn _ => 0, [fun_node])
+	in dataGen("node",fn _ => 0, [fun_node])
 	end		
 
     val node : unit -> node =

@@ -1178,14 +1178,14 @@ functor LambdaExp(structure Lvars: LVARS
 		pu_tyvar
 	    fun fun_ARROWtype pu =
 		con1 ARROWtype (fn ARROWtype p => p | _ => die "pu_Type.ARROWtype")
-		(pairGen(pu_TypeList pu,pu_TypeList pu))
+		(pairGen0(pu_TypeList pu,pu_TypeList pu))
 	    fun fun_CONStype pu =
 		con1 CONStype (fn CONStype p => p | _ => die "pu_Type.CONStype")
-		(pairGen(pu_TypeList pu,TyName.pu))
+		(pairGen0(pu_TypeList pu,TyName.pu))
 	    fun fun_RECORDtype pu =
 		con1 RECORDtype (fn RECORDtype a => a | _ => die "pu_Type.RECORDtype")
 		(pu_TypeList pu)
-	    val pu = dataGen(toInt,[fun_TYVARtype,fun_ARROWtype, fun_CONStype, fun_RECORDtype])
+	    val pu = dataGen("LambdaExp.Type",toInt,[fun_TYVARtype,fun_ARROWtype, fun_CONStype, fun_RECORDtype])
 	in (pu, pu_TypeList pu)
 	end
     val pu_tyvars = Pickle.listGen pu_tyvar
@@ -1219,7 +1219,7 @@ functor LambdaExp(structure Lvars: LVARS
 		con1 Frame (fn Frame a => a | _ => die "pu_TypeList.Frame")
 		pu_frame
 	    val fun_RaisedExnBind = con0 RaisedExnBind
-	in dataGen(toInt,[fun_Types,fun_Frame,fun_RaisedExnBind])
+	in dataGen("LambdaExp.TypeList",toInt,[fun_Types,fun_Frame,fun_RaisedExnBind])
 	end
 
     val pu_prim =
@@ -1243,11 +1243,11 @@ functor LambdaExp(structure Lvars: LVARS
 	    fun fun_CONprim _ = 
 		con1 CONprim (fn CONprim a => a | _ => die "pu_prim.CONprim")
 		(convert (fn (c,il) => {con=c,instances=il}, fn {con=c,instances=il} => (c,il))
-		 (pairGen (Con.pu,pu_Types)))
+		 (pairGen0 (Con.pu,pu_Types)))
 	    fun fun_DECONprim _ =
 		con1 DECONprim (fn DECONprim a => a | _ => die "pu_prim.DECONprim")
 		(convert (fn (c,il,lvo) => {con=c,instances=il,lv_opt=lvo}, fn {con=c,instances=il,lv_opt=lvo} => (c,il,lvo))
-		 (tup3Gen (Con.pu,pu_Types,pu_lv_opt)))		
+		 (tup3Gen0 (Con.pu,pu_Types,pu_lv_opt)))		
 	    fun fun_EXCONprim _ = 
 		con1 EXCONprim (fn EXCONprim a => a | _ => die "pu_prim.EXCONprim")
 		Excon.pu
@@ -1276,34 +1276,34 @@ functor LambdaExp(structure Lvars: LVARS
 		con1 CCALLprim (fn CCALLprim a => a | _ => die "pu_prim.CCALLprim")
 		(convert (fn (n,il,(tvs,t)) => {name=n,instances=il,tyvars=tvs,Type=t}, 
 			  fn {name=n,instances=il,tyvars=tvs,Type=t} => (n,il,(tvs,t)))
-		 (tup3Gen (string,pu_Types,pu_TypeScheme)))
+		 (tup3Gen0 (string,pu_Types,pu_TypeScheme)))
 	    fun fun_RESET_REGIONSprim _ =
 		con1 RESET_REGIONSprim (fn RESET_REGIONSprim a => a | _ => die "pu_prim.RESET_REGIONSprim")
 		(convert(fn t => {instance=t},#instance) pu_Type)
 	    fun fun_FORCE_RESET_REGIONSprim _ =
 		con1 FORCE_RESET_REGIONSprim (fn FORCE_RESET_REGIONSprim a => a | _ => die "pu_prim.FORCE_RESET_REGIONSprim")
 		(convert(fn t => {instance=t},#instance) pu_Type)
-	in dataGen(toInt,[fun_CONprim,
-			  fun_DECONprim,
-			  fun_EXCONprim,
-			  fun_DEEXCONprim,
-			  fun_RECORDprim,
-			  fun_SELECTprim,
-			  fun_UB_RECORDprim,
-			  fun_DROPprim,
-			  fun_DEREFprim,
-			  fun_REFprim,
-			  fun_ASSIGNprim,
-			  fun_EQUALprim,
-			  fun_CCALLprim,
-			  fun_RESET_REGIONSprim,
-			  fun_FORCE_RESET_REGIONSprim])
+	in dataGen("LambdaExp.prim",toInt,[fun_CONprim,
+					   fun_DECONprim,
+					   fun_EXCONprim,
+					   fun_DEEXCONprim,
+					   fun_RECORDprim,
+					   fun_SELECTprim,
+					   fun_UB_RECORDprim,
+					   fun_DROPprim,
+					   fun_DEREFprim,
+					   fun_REFprim,
+					   fun_ASSIGNprim,
+					   fun_EQUALprim,
+					   fun_CCALLprim,
+					   fun_RESET_REGIONSprim,
+					   fun_FORCE_RESET_REGIONSprim])
 	end
 
     fun pu_Switch pu_a pu_LambdaExp =
 	let open Pickle
 	in convert (SWITCH,fn SWITCH a => a)
-	    (tup3Gen(pu_LambdaExp,listGen(pairGen(pu_a,pu_LambdaExp)),optionGen pu_LambdaExp))
+	    (tup3Gen0(pu_LambdaExp,listGen(pairGen0(pu_a,pu_LambdaExp)),optionGen pu_LambdaExp))
 	end
 
     val pu_con_lvopt = Pickle.pairGen(Con.pu,pu_lv_opt)
@@ -1335,13 +1335,13 @@ functor LambdaExp(structure Lvars: LVARS
 	    fun fun_VAR pu_LambdaExp =
 		con1 VAR (fn VAR a => a | _ => die "pu_LambdaExp.VAR")
 		(convert (fn (lv,il) => {lvar=lv,instances=il}, fn {lvar=lv,instances=il} => (lv,il))
-		 (pairGen(Lvars.pu,pu_Types)))
+		 (pairGen0(Lvars.pu,pu_Types)))
 	    fun fun_INTEGER pu_LambdaExp =
 		con1 INTEGER (fn INTEGER a => a | _ => die "pu_LambdaExp.INTEGER")
-		(pairGen(int32,pu_Type))
+		(pairGen0(int32,pu_Type))
 	    fun fun_WORD pu_LambdaExp =
 		con1 WORD (fn WORD a => a | _ => die "pu_LambdaExp.WORD")
-		(pairGen(word32,pu_Type))
+		(pairGen0(word32,pu_Type))
 	    fun fun_STRING pu_LambdaExp =
 		con1 STRING (fn STRING a => a | _ => die "pu_LambdaExp.STRING")
 		string
@@ -1351,42 +1351,42 @@ functor LambdaExp(structure Lvars: LVARS
 	    fun fun_FN pu_LambdaExp =
 		con1 FN (fn FN a => a | _ => die "pu_LambdaExp.FN")
 		(convert (fn (p,e) => {pat=p,body=e}, fn {pat=p,body=e} => (p,e))
-		 (pairGen(listGen(pairGen(Lvars.pu,pu_Type)),pu_LambdaExp)))
+		 (pairGen0(listGen(pairGen0(Lvars.pu,pu_Type)),pu_LambdaExp)))
 	    fun fun_LET pu_LambdaExp =
 		con1 LET (fn LET a => a | _ => die "pu_LambdaExp.LET")
 		(convert (fn (p,b,s) => {pat=p,bind=b,scope=s}, fn {pat=p,bind=b,scope=s} => (p,b,s))
-		 (tup3Gen(listGen(tup3Gen(Lvars.pu,pu_tyvars,pu_Type)),
-			  pu_LambdaExp, pu_LambdaExp)))
+		 (tup3Gen0(listGen(tup3Gen0(Lvars.pu,pu_tyvars,pu_Type)),
+			   pu_LambdaExp, pu_LambdaExp)))
 	    fun fun_FIX pu_LambdaExp =
 		let val pu_function = 
 		    convert (fn (lv,tvs,t,e) => {lvar=lv,tyvars=tvs,Type=t,bind=e},
 			     fn {lvar=lv,tyvars=tvs,Type=t,bind=e} => (lv,tvs,t,e))
-		    (tup4Gen(Lvars.pu,pu_tyvars,pu_Type,pu_LambdaExp))
+		    (tup4Gen0(Lvars.pu,pu_tyvars,pu_Type,pu_LambdaExp))
 		in con1 FIX (fn FIX a => a | _ => die "pu_LambdaExp.FIX")
 		    (convert (fn (fs,s) => {functions=fs,scope=s}, fn {functions=fs,scope=s} => (fs,s))
-		     (pairGen(listGen pu_function,
+		     (pairGen0(listGen pu_function,
 			      pu_LambdaExp)))
 		end
 	    fun fun_APP pu_LambdaExp =
 		con1 APP (fn APP a => a | _ => die "pu_LambdaExp.APP")
-		(pairGen(pu_LambdaExp,pu_LambdaExp))
+		(pairGen0(pu_LambdaExp,pu_LambdaExp))
 	    fun fun_EXCEPTION pu_LambdaExp =
 		con1 EXCEPTION (fn EXCEPTION a => a | _ => die "pu_LambdaExp.EXCEPTION")
-		(tup3Gen(Excon.pu,pu_TypeOpt,pu_LambdaExp))
+		(tup3Gen0(Excon.pu,pu_TypeOpt,pu_LambdaExp))
 	    fun fun_RAISE pu_LambdaExp =
 		con1 RAISE (fn RAISE a => a | _ => die "pu_LambdaExp.RAISE")
-		(pairGen(pu_LambdaExp,pu_TypeList))
+		(pairGen0(pu_LambdaExp,pu_TypeList))
 	    fun fun_HANDLE pu_LambdaExp =
 		con1 HANDLE (fn HANDLE a => a | _ => die "pu_LambdaExp.HANDLE")
-		(pairGen(pu_LambdaExp,pu_LambdaExp))
+		(pairGen0(pu_LambdaExp,pu_LambdaExp))
 	    fun fun_SWITCH_I pu_LambdaExp =
 		con1 SWITCH_I (fn SWITCH_I a => a | _ => die "pu_LambdaExp.SWITCH_I")
 		(convert (fn (sw,p) => {switch=sw,precision=p}, fn {switch=sw,precision=p} => (sw,p))
-		 (pairGen(pu_Switch int32 pu_LambdaExp,int)))
+		 (pairGen0(pu_Switch int32 pu_LambdaExp,int)))
 	    fun fun_SWITCH_W pu_LambdaExp =
 		con1 SWITCH_W (fn SWITCH_W a => a | _ => die "pu_LambdaExp.SWITCH_W")
 		(convert (fn (sw,p) => {switch=sw,precision=p}, fn {switch=sw,precision=p} => (sw,p))
-		 (pairGen(pu_Switch word32 pu_LambdaExp,int)))
+		 (pairGen0(pu_Switch word32 pu_LambdaExp,int)))
 	    fun fun_SWITCH_S pu_LambdaExp =
 		con1 SWITCH_S (fn SWITCH_S a => a | _ => die "pu_LambdaExp.SWITCH_S")
 		(pu_Switch string pu_LambdaExp)
@@ -1398,12 +1398,12 @@ functor LambdaExp(structure Lvars: LVARS
 		(pu_Switch pu_excon_lvopt pu_LambdaExp)
 	    fun fun_PRIM pu_LambdaExp =
 		con1 PRIM (fn PRIM a => a | _ => die "pu_LambdaExp.PRIM")
-		(pairGen(pu_prim,listGen pu_LambdaExp))
+		(pairGen0(pu_prim,listGen pu_LambdaExp))
 	    fun fun_FRAME pu_LambdaExp =
 		con1 FRAME (fn FRAME a => a | _ => die "pu_LambdaExp.FRAME")
 		pu_frame
 	    
-	in dataGen(toInt,[fun_VAR,
+	in dataGen("LambdaExp.LambdaExp",toInt,[fun_VAR,
 			  fun_INTEGER,
 			  fun_WORD,
 			  fun_STRING,

@@ -136,6 +136,6 @@ functor CompBasisBarry
 	    fun from {TCEnv=tce, EqEnv=eqe, OEnv=oe} = (tce,eqe,oe)
 	    open Pickle
 	in convert (to,from)
-	    (tup3Gen(LambdaStatSem.pu,EliminateEq.pu,OptLambda.pu))
+	    (tup3Gen0(LambdaStatSem.pu,EliminateEq.pu,OptLambda.pu))
 	end    
   end

@@ -54,6 +54,7 @@ signature TYNAME =
 	val min : rank * rank -> rank
 	val from_TyName : TyName -> rank
 	val pu : rank Pickle.pu
+	val pu_rankrefOne : rank ref Pickle.pu
       end
 
     (* Predefined type names *)

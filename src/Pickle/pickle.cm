@@ -5,6 +5,7 @@ signature PICKLE
 
 is
 
+../Edlib/edlib.cm  (* For ListSort *)
 POLYHASH.sml
 Polyhash.sml
 eqhashdyn2.sml
@@ -14,3 +15,4 @@ stream.sml
 pickle.sig
 pickle.sml
 
+(* ../../test/pickle.sml *)

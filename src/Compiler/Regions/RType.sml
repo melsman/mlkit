@@ -1282,10 +1282,11 @@ struct
 
   (* Picklers *)
   val pu_mu : Type Pickle.pu -> (Type * place) Pickle.pu 
-      = Pickle.cache (fn pu_Type => Pickle.pairGen(pu_Type,E.pu_effect))
+      = Pickle.cache (fn pu_Type => Pickle.nameGen "RType.mu" 
+		      (Pickle.pairGen(pu_Type,E.pu_effect)))
 
   val pu_mus : Type Pickle.pu -> (Type * place) list Pickle.pu
-      = Pickle.cache (Pickle.listGen o pu_mu)
+      = Pickle.cache (Pickle.nameGen "RType.mus" o Pickle.listGen o pu_mu)
 
   val pu_Type =
       let open Pickle
@@ -1298,21 +1299,21 @@ struct
 	      L.pu_tyvar
 	  fun fun_CONSTYPE pu_Type =
 	      con1 CONSTYPE (fn CONSTYPE a => a | _ => die "pu_Type.CONSTYPE")
-	      (tup4Gen(TyName.pu,pu_mus pu_Type,E.pu_effects,E.pu_effects))
+	      (tup4Gen0(TyName.pu,pu_mus pu_Type,E.pu_effects,E.pu_effects))
 	  fun fun_RECORD pu_Type =
 	      con1 RECORD (fn RECORD a => a | _ => die "pu_Type.RECORD")
 	      (pu_mus pu_Type)
 	  fun fun_FUN pu_Type =
 	      con1 FUN (fn FUN a => a | _ => die "pu_Type.FUN")
-	      (tup3Gen(pu_mus pu_Type,E.pu_effect,pu_mus pu_Type))
-      in dataGen(toInt,[fun_TYVAR,fun_CONSTYPE,fun_RECORD,fun_FUN])
+	      (tup3Gen0(pu_mus pu_Type,E.pu_effect,pu_mus pu_Type))
+      in dataGen("RType.Type",toInt,[fun_TYVAR,fun_CONSTYPE,fun_RECORD,fun_FUN])
       end
   val pu_mu = pu_mu pu_Type
 
   val pu_sigma =
       let open Pickle
       in convert (FORALL, fn FORALL a => a)
-	  (tup4Gen(L.pu_tyvars,E.pu_effects,E.pu_effects,pu_Type))
+	  (tup4Gen0(L.pu_tyvars,E.pu_effects,E.pu_effects,pu_Type))
       end
 
 end; (* RType ends here *)

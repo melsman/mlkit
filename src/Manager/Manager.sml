@@ -1002,7 +1002,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 end handle E => (cd_old(); raise E)
       end 
 
-    fun exportRep() : unit =
+    fun exportRep() : unit =       (* PICKLING *)
 	let open Pickle
 	    val os : outstream = empty()
 	    val _ = print "\n [Begin pickling...]\n"
@@ -1014,9 +1014,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	    val _ = print "\n [Begin unpickling...]\n"
 	    val (r2,_) = unpickler MO.Repository.pu (fromString s)
 	    val _ = MO.Repository.setRepository r2
-(*	    val _ = print "\n [Begin printing...]\n"
-	    val _ = pr_st (MO.Basis.layout B'')
-*)
 	in ()
 	end
 

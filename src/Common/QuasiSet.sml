@@ -222,7 +222,7 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
 		con1 (fn (c,m) => Flexible{matchcount=c,imap=m}) 
 		(fn Flexible{matchcount=c,imap=m} => (c,m) | _ => die "pu_map0.Flexible")
 		(pairGen(Name.pu_matchcount,pu_m))
-	in dataGen (toInt,[fun_Rigid,fun_Flexible])
+	in dataGen ("QuasiSet.map0",toInt,[fun_Rigid,fun_Flexible])
 	end
 
     fun pu pu_e =

@@ -330,7 +330,7 @@ functor ModuleEnvironments(
 	      fun to (F,G,E) = BASIS{F=F,G=G,E=E}
 	      fun from (BASIS{F=F,G=G,E=E}) = (F,G,E)
 	  in convert (to,from)
-	      (tup3Gen(F.pu,G.pu,E.pu))
+	      (tup3Gen0(F.pu,G.pu,E.pu))
 	  end
 
     end (*B*)

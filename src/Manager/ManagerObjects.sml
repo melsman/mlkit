@@ -360,10 +360,10 @@ functor ManagerObjects(structure Execution : EXECUTION
 		fun error _ = die "ModCode.pu.NOTEMITTED_MODC"
 		fun fun_NOTEMITTED_MODC _ = 
 		    con1 error error (convert (error,error) unit)
-	    in dataGen(toInt,[fun_EMPTY_MODC,
-			      fun_SEQ_MODC,
-			      fun_EMITTED_MODC,
-			      fun_NOTEMITTED_MODC])
+	    in dataGen("ModCode",toInt,[fun_EMPTY_MODC,
+					fun_SEQ_MODC,
+					fun_EMITTED_MODC,
+					fun_NOTEMITTED_MODC])
 	    end
       end
 
@@ -405,7 +405,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 		fun fun_FUNSTAMP_GEN _ =
 		    con1 FUNSTAMP_GEN (fn FUNSTAMP_GEN v => v | _ => die "pu.FUNSTAMP_GEN")
 		    pu_funid_int
-	    in dataGen(toInt,[fun_FUNSTAMP_MODTIME, fun_FUNSTAMP_GEN])
+	    in dataGen("FunStamp",toInt,[fun_FUNSTAMP_MODTIME, fun_FUNSTAMP_GEN])
 	    end
       end
 
@@ -448,9 +448,9 @@ functor ManagerObjects(structure Execution : EXECUTION
 	    fun from {infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,
 		      opaq_env=opaq_env,T=T,resE=resE} = ((infB,elabB,absprjid),(filename,opaq_env,T),resE)
 	in convert (to,from)
-	    (tup3Gen(tup3Gen(InfixBasis.pu,ModuleEnvironments.B.pu,ModuleEnvironments.pu_absprjid),
-		     tup3Gen(string,OpacityElim.OpacityEnv.pu,listGen TyName.pu), 
-		     Execution.Elaboration.Basics.Environments.E.pu))
+	    (tup3Gen0(tup3Gen0(InfixBasis.pu,ModuleEnvironments.B.pu,ModuleEnvironments.pu_absprjid),
+		      tup3Gen0(string,OpacityElim.OpacityEnv.pu,listGen TyName.pu), 
+		      Execution.Elaboration.Basics.Environments.E.pu))
 	end
 
     val pu_IntSigEnv =
@@ -467,14 +467,14 @@ functor ManagerObjects(structure Execution : EXECUTION
 		con1 IFE (fn IFE a => a)		
 		(FinMap.pu (FunId.pu,
 			    convert (fn ((a,b,c),(d,e,f)) => (a,b,c,d,e,f), fn (a,b,c,d,e,f) => ((a,b,c),(d,e,f)))
-			    (pairGen(tup3Gen(ModuleEnvironments.pu_absprjid,FunStamp.pu,StrId.pu),
-				     tup3Gen(Execution.Elaboration.Basics.Environments.E.pu,
-					     pu_BodyBuilderClos,pu_IntBasis)))))
+			    (pairGen0(tup3Gen0(ModuleEnvironments.pu_absprjid,FunStamp.pu,StrId.pu),
+				      tup3Gen0(Execution.Elaboration.Basics.Environments.E.pu,
+					       pu_BodyBuilderClos,pu_IntBasis)))))
 	    fun fun_IB (pu_IntFunEnv, pu_IntBasis) =
 		con1 IB (fn IB a => a)
-		(tup4Gen(pu_IntFunEnv,pu_IntSigEnv,CompilerEnv.pu,CompileBasis.pu))
-	in data2Gen(IntFunEnvToInt,[fun_IFE],
-		    IntBasisToInt,[fun_IB])
+		(tup4Gen0(pu_IntFunEnv,pu_IntSigEnv,CompilerEnv.pu,CompileBasis.pu))
+	in data2Gen("IntFunEnv",IntFunEnvToInt,[fun_IFE],
+		    "IntBasis",IntBasisToInt,[fun_IB])
 	end
 
     structure IntFunEnv =
@@ -696,11 +696,9 @@ functor ManagerObjects(structure Execution : EXECUTION
 
 	val pu =
 	    let open Pickle
-		fun to (ib,eb,oe,intb) = BASIS(ib,eb,oe,intb)
-		fun from (BASIS(ib,eb,oe,intb)) = (ib,eb,oe,intb)
-	    in convert (to,from)
-		(tup4Gen(InfixBasis.pu, ModuleEnvironments.B.pu, 
-			 OpacityElim.OpacityEnv.pu, IntBasis.pu))
+	    in convert (BASIS, fn BASIS a => a)
+		(tup4Gen0(InfixBasis.pu, ModuleEnvironments.B.pu, 
+			  OpacityElim.OpacityEnv.pu, IntBasis.pu))
 	    end
       end
 
@@ -854,12 +852,14 @@ functor ManagerObjects(structure Execution : EXECUTION
 	    end
 	val pu_intRep : intRep Pickle.pu = 
 	    RM.pu ElabRep.pu_dom (Pickle.listGen pu_int_entry)
-	type repository = ElabRep.elabRep * intRep
+	type repository = ElabRep.elabRep * intRep * intRep'
 	fun getIntRep() = !intRep
+	fun getIntRep'() = !intRep'
 	fun setIntRep r = intRep := r
-	fun getRepository() = (ElabRep.getElabRep(),getIntRep())
-	fun setRepository(er,ir) = (ElabRep.setElabRep er; setIntRep ir)
-	val pu = Pickle.pairGen(ElabRep.pu,pu_intRep)
+	fun setIntRep' r = intRep' := r
+	fun getRepository() = (ElabRep.getElabRep(),getIntRep(),getIntRep'())
+	fun setRepository(er,ir,ir') = (ElabRep.setElabRep er; setIntRep ir; setIntRep' ir')
+	val pu = Pickle.tup3Gen(ElabRep.pu,pu_intRep,pu_intRep)
       end
     
   end

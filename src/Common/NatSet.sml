@@ -206,8 +206,8 @@ functor NatSet(structure PP : PRETTYPRINT) : KIT_MONO_SET =
 	    val fun_empty = Pickle.con0 empty
 	    fun fun_some pu =
 		Pickle.con1 some (fn some a => a | _ => die "pu.some")
-		(Pickle.tup3Gen(Pickle.word,pu,pu))
-	in Pickle.dataGen (toInt,[fun_empty,fun_some])
+		(Pickle.tup3Gen0(Pickle.word,pu,pu))
+	in Pickle.dataGen ("NatSet",toInt,[fun_empty,fun_some])
 	end
 end
 

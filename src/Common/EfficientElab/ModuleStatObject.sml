@@ -381,7 +381,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	      fun to(T,E) = SIGMA {T=T,E=E}
 	      fun from (SIGMA{T,E}) = (T,E)
 	  in convert (to,from)
-	      (pairGen(TyName.Set.pu TyName.pu, E.pu))
+	      (pairGen0(TyName.Set.pu TyName.pu, E.pu))
 	  end
 	  
     end (*Sigma*)
@@ -493,7 +493,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	      fun to (T,E,T'E') = FUNSIG{T=T,E=E,T'E'=T'E'}
 	      fun from (FUNSIG{T=T,E=E,T'E'=T'E'}) = (T,E,T'E')
 	  in convert (to,from)
-	      (tup3Gen(TyName.Set.pu TyName.pu, E.pu, Sigma.pu))
+	      (tup3Gen0(TyName.Set.pu TyName.pu, E.pu, Sigma.pu))
 	  end
 
     end (*Phi*)

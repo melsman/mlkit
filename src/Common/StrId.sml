@@ -45,6 +45,6 @@ functor StrId(structure Timestamp: TIMESTAMP
     val pu_longstrid = 
 	let open Pickle
 	in Pickle.convert (LONGSTRID, fn LONGSTRID a => a)
-	    (pairGen(listGen pu, pu))
+	    (pairGen0(listGen pu, pu))
 	end
   end

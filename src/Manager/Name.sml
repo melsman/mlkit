@@ -79,19 +79,20 @@ functor Name(structure Crash : CRASH) : NAME =
     val exn_OVERFLOW = new_rigid()        (* name 10 *)
     val exn_INTERRUPT = new_rigid()       (* name 11 *)
 
+    fun eq (n1,n2) = key n1 = key n2
+
     local
 	open Pickle
-	val pu00 = tup3Gen(int, bool, ref0Gen bool)
 	fun toRec (k,r,g) = {key=k, rigid=r, gen_mark=g}
 	fun fromRec {key, rigid, gen_mark} = (key,rigid,gen_mark)
-	val pu0 = convert (toRec,fromRec) pu00
+	val pu0 = convert (toRec,fromRec) (tup3Gen0(int, bool, refOneGen bool))
     in
 	val pu = register
 	    [reg_top, reg_bot, reg_string, reg_pair,
 	     reg_array, reg_ref, reg_triple,	     
 	     exn_DIV, exn_MATCH, exn_BIND,
 	     exn_OVERFLOW, exn_INTERRUPT]
-	    (ref0Gen pu0)
+	    (ref0EqGen eq pu0)
 	val pu_matchcount = int
     end
   end

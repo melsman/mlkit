@@ -818,14 +818,14 @@ handle x =>
 	      | resultToInt (FAIL _) = 2
 	    fun fun_MONOLVAR _ =
 		con1 MONOLVAR (fn MONOLVAR a => a | _ => die "pu.MONOLVAR")
-		(pairGen(Lvars.pu,LambdaExp.pu_tyvars))
+		(pairGen0(Lvars.pu,LambdaExp.pu_tyvars))
 	    fun fun_POLYLVAR _ =
 		con1 POLYLVAR (fn POLYLVAR a => a | _ => die "pu.POLYLVAR")
 		Lvars.pu
 	    fun fun_FAIL _ =
 		con1 FAIL (fn FAIL a => a | _ => die "pu.FAIL")
 		string
-	    val pu_res = dataGen(resultToInt,[fun_MONOLVAR,fun_POLYLVAR,fun_FAIL])
+	    val pu_res = dataGen("EliminateEq.result",resultToInt,[fun_MONOLVAR,fun_POLYLVAR,fun_FAIL])
 	    val pu_tnm = TyNameMap.pu TyName.pu pu_res
 	    val pu_tvm = TyVarMap.pu LambdaExp.pu_tyvar Lvars.pu
 	    val pu_lvm = LvarMap.pu Lvars.pu LambdaExp.pu_tyvars

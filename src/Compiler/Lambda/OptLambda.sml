@@ -1075,15 +1075,15 @@ functor OptLambda(structure Lvars: LVARS
 	      fun fun_CFN _ =
 		  con1 CFN (fn CFN a => a | _ => die "pu_contract_env.CFN")
 		  (convert (fn (e,l) => {lexp=e,large=l}, fn {lexp=e,large=l} => (e,l))
-		   (pairGen(LambdaExp.pu_LambdaExp,bool)))
+		   (pairGen0(LambdaExp.pu_LambdaExp,bool)))
 	      fun fun_CFIX _ =
 		  con1 CFIX (fn CFIX a => a | _ => die "pu_contract_env.CFIX")
 		  (convert (fn (t,e,l) => {Type=t,bind=e,large=l}, 
 			    fn {Type=t,bind=e,large=l} => (t,e,l))
-		   (tup3Gen(LambdaExp.pu_Type,LambdaExp.pu_LambdaExp,bool)))		  
+		   (tup3Gen0(LambdaExp.pu_Type,LambdaExp.pu_LambdaExp,bool)))		  
 	      val pu_cv = 
-		  dataGen(toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
-				 fun_CCONST,fun_CFN,fun_CFIX])
+		  dataGen("OptLambda.cv",toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
+						fun_CCONST,fun_CFN,fun_CFIX])
 	  in LvarMap.pu Lvars.pu
 	      (pairGen(LambdaExp.pu_tyvars,pu_cv))
 	  end
@@ -1423,7 +1423,7 @@ functor OptLambda(structure Lvars: LVARS
        in (lamb, !frame_let_env)
        end
      val pu_let_env = 
-	 LvarMap.pu Lvars.pu (Pickle.enumGen [DELAY_SIMPLE,IGNORE])
+	 LvarMap.pu Lvars.pu (Pickle.enumGen ("OptLambda.let_env_res",[DELAY_SIMPLE,IGNORE]))
    end	 
 
 
@@ -1662,7 +1662,7 @@ functor OptLambda(structure Lvars: LVARS
 		 con1 ARG_VARS (fn ARG_VARS a => a | _ => die "pu.ARG_VARS")
 		 pu_lvarVector
 	     val pu_fix_boxity =
-		 dataGen(toInt,[fun_NORMAL_ARGS,fun_UNBOXED_ARGS,fun_ARG_VARS])
+		 dataGen("OptLambda.fix_boxity",toInt,[fun_NORMAL_ARGS,fun_UNBOXED_ARGS,fun_ARG_VARS])
 	 in LvarMap.pu Lvars.pu pu_fix_boxity
 	 end
    end
@@ -2128,8 +2128,8 @@ functor OptLambda(structure Lvars: LVARS
 		LvarMap.pu Lvars.pu (optionGen(pairGen(int,LambdaExp.pu_TypeScheme)))
 	in 
 	    convert (fn ((a,b,c),(d,e,f)) => (a,b,c,d,e,f), fn (a,b,c,d,e,f) => ((a,b,c),(d,e,f)))
-	    (pairGen(tup3Gen(pu_iee,pu_let_env,pu_unbox_fix_env),
-		     tup3Gen(pu_uce,pu_contract_env,pu_contract_env)))
+	    (pairGen0(tup3Gen0(pu_iee,pu_let_env,pu_unbox_fix_env),
+		      tup3Gen0(pu_uce,pu_contract_env,pu_contract_env)))
 	end
 
   end
