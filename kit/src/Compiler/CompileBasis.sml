@@ -184,7 +184,7 @@ functor CompileBasis(structure Con : CON
 	 * equality elimination. This is why we patch the derived
 	 * identifiers below.  Martin-18/03/1998 *)
 
-	  val excons = Excon.ex_DIV :: Excon.ex_MOD ::
+	  val excons = Excon.ex_DIV :: 
 	        Excon.ex_MATCH :: Excon.ex_BIND :: excons
 	  val cons = Con.con_NIL :: Con.con_CONS ::
 	      Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)

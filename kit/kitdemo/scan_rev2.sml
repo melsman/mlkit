@@ -1,8 +1,8 @@
 local
   exception NotBalanced
-  fun scan(is: instream) : int*int =
+  fun scan(is: TextIO.instream) : int*int =
     let
-      fun next() = input(is, 1)
+      fun next() = TextIO.inputN(is, 1)
       fun up(level,inside) = if level>0 then inside+1 
                              else inside
 
@@ -39,59 +39,45 @@ local
     end
   
   fun report_file(filename, n, inside) = 
-      writeln (filename ^ ": size = " ^ toString n 
-               ^ " comments: " ^ toString inside ^ " ("
-               ^ (toString (percent(inside, n)) handle Quot => "") 
-               ^ "%)");
+    writeln(concat[filename, ": size = ", Int.toString n, 
+		   " comments: ", Int.toString inside, " (",
+		   (Int.toString(percent(inside, n)) 
+		    handle _ => "-"), "%)"])
 
-  (* scan_file(filename) scans through the file named
-     filename returning either Some(size_in_bytes, size_of_comments)
-     or, in case of an error, None. In either case a line of
-     information is printed. *)
+  (* scan_file(filename) scans through the file named filename
+     returning either SOME(size_in_bytes, size_of_comments) or, in
+     case of an error, NONE. In either case a line of information is
+     printed. *)
 
-  fun scan_file (filename: string) : (int*int)Option=
-   let val is  = open_in filename 
+  fun scan_file (filename: string) : (int*int)option=
+   let val is  = TextIO.openIn filename 
    in let val (n,inside)  = scan is
-      in close_in is; 
-         report_file(filename, n, inside);
-         Some(n,inside)
+      in TextIO.closeIn is; 
+         report_file(filename^"", n, inside);
+         SOME(n,inside)
       end handle NotBalanced => 
           (writeln(filename ^ ": not balanced");
-           close_in is;
-           None)
-   end handle Io msg  => (writeln msg; None)
+           TextIO.closeIn is;
+           NONE)
+   end handle IO.Io {name,...} => 
+       (writeln(name^" failed."); NONE)
   
-  fun report_totals(n,inside) = 
-       writeln ("\n\nTotal sizes: " ^ toString n
-		^ " comments: " ^ toString inside
-		^ " (" ^ (toString (percent(inside,n)) handle Quot => "")
-                ^ ")%")
-
   (* main(is) reads a sequence of filenames from is,
      one file name pr line (leading spaces are skipped;
      no spaces allowed in file names). Each file is 
      scanned using scan_file after which a summary
      report is printed *)
 
-  fun main(is: instream):unit =
-  let 
-    fun driver(None,n,inside) = 
-          report_totals(n, inside)
-      | driver(Some filename,n:int,inside:int) =
-          case scan_file filename of
-	    Some(n,inside) => report_totals(n,inside)
-	  | None => ()
-
-    fun filename() = "../../kitdemo/life.sml"
-    fun do_it 0 = driver(Some (filename()), 0, 0)
-      | do_it n = (driver(Some (filename()), 0, 0); do_it (n-1))
-  in
-    do_it 10;
-    ()
-  end
-
+  fun main():unit =
+    case readWord(TextIO.stdIn)
+      of SOME filename =>
+	let fun do_it 0 = ()
+	      | do_it n = (scan_file filename; do_it (n-1))
+	in do_it 50
+	end
+       | NONE => ()
 in 
-  val result = main(std_in)
+  val result = main()
 end
 
 

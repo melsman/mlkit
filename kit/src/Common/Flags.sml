@@ -99,9 +99,8 @@ functor Flags (structure Crash : CRASH
     val enhanced_atbot_analysis = ref false
 
     (* Flags for region profiling. *)
-    val region_profiling        = ref false
-    val gen_lambda_with_pp      = ref false
-    val gen_vcg_graph           = ref false
+    val region_profiling = ref false
+    val show_region_flow_graph = ref false
     val print_all_program_points = ref true
     val program_points = (ref []): int list ref
     val region_paths = (ref[]): (int*int) list ref
@@ -497,8 +496,7 @@ struct
      ("debug_which_at", debug_which_at),
      ("enhanced_atbot_analysis", enhanced_atbot_analysis),
      ("region_profiling", region_profiling),
-     ("generate_lambda_code_with_program_points", gen_lambda_with_pp),
-     ("generate_vcg_graph", gen_vcg_graph),
+     ("show_region_flow_graph", show_region_flow_graph),
      ("warn_on_escaping_puts", warn_on_escaping_puts),
      ("chat", chat),
      ("eliminate_polymorphic_equality", eliminate_polymorphic_equality),
@@ -1051,8 +1049,7 @@ struct
 	   [{text = "region profiling",
 	     attr = VALUE (fn () => show_flag (!region_profiling)),
 	     below = ACTION (fn () => toggle_ref region_profiling)},
-	    mk_toggle ("generate lambda program with program points", gen_lambda_with_pp),
-	    mk_toggle ("generate region flow graph (.vcg file)", gen_vcg_graph),
+	    mk_toggle ("show region flow graph and generate .vcg file", show_region_flow_graph),
 	    mk_int_pair_list_action(region_paths, "paths between two nodes in region flow graph")
 (*TODO 31/03/1997 20:37. tho.:
             , program_points_item

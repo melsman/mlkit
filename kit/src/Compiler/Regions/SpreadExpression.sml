@@ -52,13 +52,18 @@ functor SpreadExpression(
     sharing type TyName.TyName = E.TyName = E'.TyName = RSE.TyName =  R.tyname
   structure Crash: CRASH
   structure PP: PRETTYPRINT
-    sharing type PP.StringTree =  E.StringTree = RSE.StringTree  = R.StringTree
+    sharing type PP.StringTree =  E.StringTree = RSE.StringTree  = R.StringTree = Eff.StringTree
   structure CConst : C_CONST
     sharing TyName = CConst.TyName
 ): SPREAD_EXPRESSION =
 struct
 
+  local
+  structure NewInt = Int
+  in
   open Edlib
+  structure Int = NewInt
+  end
 
   structure E = E
   structure E' = E'
@@ -103,6 +108,14 @@ struct
          logsay (Lvars.pr_lvar lvar ^ " is polymorphic:\n");
          logtree(R.mk_lay_sigma false sigma1);
          logsay "\n");
+
+  fun print_tree t = PP.outputTree(print, t, !Flags.colwidth)
+  fun print_mu (tau,rho) = print_tree
+    (PP.NODE{start="(",finish=")",childsep=PP.RIGHT",",indent=1,
+	     children=[R.mk_lay_sigma' false ([],[],[],tau), Eff.layout_effect rho]})
+
+  fun print_tau tau = print_tree (R.mk_lay_sigma' false ([],[],[],tau))
+  fun print_sigma sigma = print_tree (R.mk_lay_sigma false sigma)
 
   fun noSome x msg = 
     case x of 
@@ -888,10 +901,14 @@ good *)
 
     | E.PRIM (E.CCALLprim {name, instances, tyvars, Type}, es) => 
 	let val B = pushIfNotTopLevel (toplevel, B) (* for retract *)
-	    val (mu, B) = freshMu (Type, B)
-	    val (sigma, B) = R.sigma_for_c_function tyvars mu B
+	    val (B, sigma) =
+	      let val B = push B   (* for sigma *)
+		  val (mu, B) = freshMu (Type, B)
+		  val (sigma, B) = R.sigma_for_c_function tyvars mu B
+	      in (#2(pop B), sigma)  (* for sigma *)  
+	      end 
 	    (*much of the rest is analogous to the case for (APP (VAR ..., ...))*)
-	    val (B, tau, il) = newInstance (B, sigma, instances)
+	    val (B, tau, _) = newInstance (B, sigma, instances)
 	in
 	  (case tau of
 	     R.FUN (mus_a, eps_phi0, [mu_r]) =>

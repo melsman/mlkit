@@ -434,10 +434,12 @@ StringDesc *implodeChars (int rAddr, int xs) {
   int ys;
   char *ch;
 
+  /* maybe reset the region for the result */
+  if (is_inf_and_atbot(rAddr)) resetRegion(rAddr);
+
   /*calculate the length of the resultstring:*/
   length = 0;
-  for (ys=xs; isCONS(ys); ys=tl(ys)) {
-    length++; };
+  for (ys=xs; isCONS(ys); ys=tl(ys)) length++;
   res = allocString (rAddr, length);
 
   /*copy length chars from xs to the string:*/
@@ -580,6 +582,13 @@ StringDesc *exnName(int rAddr, int e) {
   return res;
 }
 
+StringDesc *makeChar(int rAddr, char ch) {
+  StringDesc *res;
+  res = allocString(rAddr, 1);
+  *(char *)(res+1) = ch;
+  return res;
+}
+
 
 /*-------------------------------------------------------------------*
  *                Profiling functions.                               *
@@ -649,16 +658,9 @@ StringDesc *allocStringProfiling(int rAddr, int size, int pPoint) {
 }
 
 
-/*-----------------------------------------------------------*
- * makeChar: Make a special string of length 1 in a region.  *
- *-----------------------------------------------------------*/
 StringDesc *makeCharProfiling(int rAddr, char ch, int pPoint) {
   StringDesc *res;
-
   res = allocStringProfiling(rAddr, 1, pPoint);
-  /* I know that there is room for a singleton string in the first fragment, */
-  /* see allocstring.                                              */
-
   *(char *)(res+1) = ch;
   return res;
 }
@@ -666,7 +668,8 @@ StringDesc *makeCharProfiling(int rAddr, char ch, int pPoint) {
 
 StringDesc *implodeCharsProfiling (int rAddr, int xs, int pPoint) {
 
-  /*for comments see implodeChars, which is almost exactly like implodeCharsProfiling*/
+  /* for comments, see implodeChars, which is almost 
+   * exactly like implodeCharsProfiling*/
   StringDesc *res;
   StringFragment *fragPtr;
   int length;
@@ -674,9 +677,11 @@ StringDesc *implodeCharsProfiling (int rAddr, int xs, int pPoint) {
   int ys;
   char *ch;
 
+  /* maybe reset the region for the result */
+  if (is_inf_and_atbot(rAddr)) resetRegion(rAddr);
+
   length = 0;
-  for (ys=xs; isCONS(ys); ys=tl(ys)) {
-    length++; }
+  for (ys=xs; isCONS(ys); ys=tl(ys)) length++;
   res = allocStringProfiling (rAddr, length, pPoint);
 
   ys = xs;
@@ -919,22 +924,4 @@ StringDesc *convertStringToMLProfiling(int rAddr, char *cStr, int pPoint) {
 
 #endif /*PROFILING*/
 
-
-/*09/07/1997 12:18. tho. TODO:
-   kill makeChar here (and in String.h) when IO.c no longer needs it
-*/
-
-/*-----------------------------------------------------------*
- * makeChar: Make a special string of length 1 in a region.  *
- *-----------------------------------------------------------*/
-StringDesc *makeChar(int rAddr, char ch) {
-  StringDesc *res;
-
-  res = allocString(rAddr, 1);
-  /* I know, that there is room for 1 char in the first fragment,  */
-  /* see allocstring.                                              */
-  *(char *)(res+1) = ch;
-
-  return res;
-}
 

@@ -275,7 +275,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	      val _ = Compile.emit {target=target_link, filename=linkfile_s}
 	      val _ = assemble (linkfile_s, linkfile_o)
 	  in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
-	     delete_file linkfile_o
+	    if !(Flags.lookup_flag_entry "delete_target_files") then delete_file linkfile_o
+	    else ()
 	  end
 	
       end (*structure SystemTools*)

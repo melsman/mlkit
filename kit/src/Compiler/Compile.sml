@@ -670,6 +670,7 @@ functor Compile(structure Excon : EXCON
 	val _ = RegionFlowGraphProfiling.reset_graph ()
 	val {code_label,l2kam_ce1, code, exports, imports} = comp_lamb(l2kam_ce, app_conv_psi_pgm) 
 
+(*
 	(* Generate lambda code file with program points *)
 	val old_setting = !print_program_points
 	val _ = print_program_points := true
@@ -682,18 +683,18 @@ functor Compile(structure Excon : EXCON
 	  else ()
 	val _ = print_program_points := old_setting
 	val _ = Flags.print_regions := old_setting2
+*)
 
-	(* Generate VCG graph *)
-	val _ = if (Flags.is_on "generate_vcg_graph") then
-                  let
-	            val outStreamVCG = TextIO.openOut vcg_file
-		  in
-		    (chat "\nGenerate VCG region flow graph for profiling ...";
-		     RegionFlowGraphProfiling.export_graph outStreamVCG;
-		     TextIO.closeOut(outStreamVCG))
-		  end
-		else
-		  ()
+	(* Show region flow graph and generate .vcg file *)
+	val _ = if Flags.is_on "show_region_flow_graph" then
+	           (display("\nReport: REGION FLOW GRAPH FOR PROFILING:", 
+			    RegionFlowGraphProfiling.layout_graph());
+		    let val outStreamVCG = TextIO.openOut vcg_file
+		    in chat "\nGenerating region flow graph for profiling (.vcg file) ...";
+		      RegionFlowGraphProfiling.export_graph outStreamVCG;
+		      TextIO.closeOut(outStreamVCG)
+		    end)
+		else ()
 
 	val target = KAMBackend.generate_target_code code
 	val linkinfo = {code_label=code_label,imports=imports,exports=exports,unsafe=unsafe}

@@ -54,7 +54,6 @@ signature IDENT =
      the prelude:*)
 
     val id_Div : id
-    val id_Mod : id
     val id_Match : id
     val id_Bind : id
     val id_Overflow : id

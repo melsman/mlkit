@@ -1091,7 +1091,6 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 					  LONGVARpriv sigma_numtxt_X_numtxt_to_bool)
 
 	  val DivVE       = VE.singleton (Ident.id_Div, LONGEXCONpriv Type.Exn)
-	  val ModVE       = VE.singleton (Ident.id_Mod, LONGEXCONpriv Type.Exn)
 	  val BindVE      = VE.singleton (Ident.id_Bind, LONGEXCONpriv Type.Exn)
 	  val MatchVE     = VE.singleton (Ident.id_Match, LONGEXCONpriv Type.Exn)
 	  val OverflowVE  = VE.singleton (Ident.id_Overflow, LONGEXCONpriv Type.Exn)
@@ -1141,7 +1140,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		      VE.close primVE,
 		      absVE, negVE, divVE, modVE, plusVE, minusVE, mulVE,
 		      lessVE, greaterVE, lesseqVE, greatereqVE,
-		      resetRegionsVE, forceResettingVE, DivVE, ModVE,
+		      resetRegionsVE, forceResettingVE, DivVE, 
 		      BindVE, MatchVE, OverflowVE]
       in
 	val initial = ENV {SE=SE.empty, TE=TE_initial, VE=VE_initial}

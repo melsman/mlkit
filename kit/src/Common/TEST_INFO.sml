@@ -1,4 +1,3 @@
-(*$TEST_INFO*)
 
 (*The information used by TestEnv to test the kit*)
 signature TEST_INFO =

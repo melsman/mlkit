@@ -123,7 +123,6 @@ functor CompilerEnv(structure Ident: IDENT
 		      (Ident.id_CONS, CON(Con.con_CONS,[tyvar_list],listType,
 					  [LambdaExp.TYVARtype tyvar_list],[0])),
 		      (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
-		      (Ident.id_Mod, EXCON(Excon.ex_MOD, exnType)),
 		      (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
 		      (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType)),
 		      (Ident.id_Overflow, EXCON(Excon.ex_OVERFLOW, exnType))
