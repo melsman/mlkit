@@ -29,6 +29,7 @@ signature FLAGS =
 
     val get_string_entry    : string -> string
     val lookup_string_entry : string -> string ref
+    val get_stringlist_entry: string -> string list
     val lookup_int_entry    : string -> int ref
 
     (* To allow the binary distribution of the Kit to be stored in
@@ -124,9 +125,10 @@ signature FLAGS =
      * entry is not shown in menu and the option cannot be given at the 
      * command line. *)
 
-    val add_bool_entry : bentry -> (unit -> bool)
-    val add_string_entry : string entry -> (unit -> string)
-    val add_int_entry : int entry -> (unit -> int)
+    val add_bool_entry       : bentry -> (unit -> bool)
+    val add_string_entry     : string entry -> (unit -> string)
+    val add_stringlist_entry : string list entry -> (unit -> string list)
+    val add_int_entry        : int entry -> (unit -> int)
 
     (* Read and interpret option list by looking in directory and
      * the extra nullary list and unary list *)
@@ -147,4 +149,6 @@ signature FLAGS =
         val no_dangling_pointers_changes_total : int ref
 	val reset : unit -> unit
       end
+
+    val has_sml_source_ext : string -> bool
   end

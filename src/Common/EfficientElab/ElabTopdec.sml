@@ -412,10 +412,15 @@ functor ElabTopdec
      * Match object in repository (for recompilation)
      * ------------------------------------------------ *)
 
-    val repository = Flags.is_on0 "repository"
+     local
+	 val repository = Flags.is_on0 "repository"
+	 val compile_only = Flags.is_on0 "compile_only"
+     in
+	 fun use_repository() = repository() andalso not(compile_only())
+     end
 
     fun match_and_update_repository (absprjid_and_funid,T',E') : unit =
-      if not(repository()) then ()
+      if not(use_repository()) then ()
       else
       let val N' = map TyName.name (TyName.Set.list T')
 	  val B' = B.from_E E'

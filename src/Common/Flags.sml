@@ -27,6 +27,13 @@ functor Flags (structure Crash : CRASH
      *)
 
 
+    fun has_sml_source_ext (s: string) :bool =
+	case s of 
+	    "sml" => true
+	  | "sig" => true
+	  | "fun" => true
+	  | _ => false
+
     val install_dir = ref "You_did_not_set_path_to_install_dir"
      
     (* Pretty Printing *)
@@ -318,6 +325,7 @@ end (* ParseScript *)
 structure Directory : sig
 			val bool_entry          : bentry -> (unit -> bool)
 			val string_entry        : string entry -> (unit -> string)
+			val stringlist_entry    : string list entry -> (unit -> string list)
 			val int_entry           : int entry -> (unit -> int)
 			val bool_action_entry   : baentry -> unit
 
@@ -326,9 +334,11 @@ structure Directory : sig
 			val turn_on             : string -> unit
 			val turn_off            : string -> unit
 			val add_string_entry    : string * string ref -> (unit -> string)
+			val add_stringlist_entry: string * string list ref -> (unit -> string list)
 			val add_int_entry       : string * int ref -> (unit -> int)
 			val add_bool_entry      : string * bool ref -> (unit -> bool)
 			val get_string_entry    : string -> string
+			val get_stringlist_entry: string -> string list
 			val lookup_string_entry : string -> string ref
 			val lookup_flag_entry   : string -> bool ref
 			val lookup_int_entry    : string -> int ref
@@ -354,6 +364,7 @@ struct
                     | BOOL_ENTRY of bentry
                     | BOOLA_ENTRY of baentry        (* action entry *)
                     | STRING_ENTRY of string entry
+                    | STRINGLIST_ENTRY of string list entry
 
     structure M = OrderFinMap (structure Order = struct type T = string
 							fun lt a (b:string) = a < b
@@ -395,6 +406,17 @@ struct
 		    in fn () => !r
 		    end)
 
+    fun stringlist_entry (e:string list entry) : unit -> string list =
+      case M.lookup (!dir) (#long e) 
+	of SOME _ => die ("stringlist_entry: entry " ^ (#long e) ^ " already in directory")
+	 | NONE => (dir := M.add(#long e, STRINGLIST_ENTRY e,
+				 case #short e of 
+				     SOME s => M.add(s, STRINGLIST_ENTRY e, !dir)
+				   | NONE => !dir);
+		    let val r = #item e
+		    in fn () => !r
+		    end)
+
     fun int_entry (e:int entry) : unit -> int =
       case M.lookup (!dir) (#long e) 
 	of SOME _ => die ("int_entry: entry " ^ (#long e) ^ " already in directory")
@@ -418,6 +440,12 @@ struct
 	 | SOME _ => die ("lookup_string_entry: entry " ^ key ^ " is of wrong kind")
 	 | NONE => die ("lookup_string_entry: no entry " ^ key ^ " in directory")
 
+    fun lookup_stringlist_entry (key) : string list ref =
+      case M.lookup (!dir) key
+	of SOME (STRINGLIST_ENTRY e) => #item e
+	 | SOME _ => die ("lookup_stringlist_entry: entry " ^ key ^ " is of wrong kind")
+	 | NONE => die ("lookup_stringlist_entry: no entry " ^ key ^ " in directory")
+
     fun lookup_int_entry (key) : int ref =
       case M.lookup (!dir) key
 	of SOME (INT_ENTRY e) => #item e
@@ -425,6 +453,8 @@ struct
 	 | NONE => die ("lookup_int_entry: no entry " ^ key ^ " in directory")
 
   val get_string_entry = ! o lookup_string_entry
+
+  val get_stringlist_entry = ! o lookup_stringlist_entry
 
   fun is_on0 (key: string) : unit -> bool = 
     case M.lookup (!dir) key
@@ -451,6 +481,9 @@ struct
 
   fun add_string_entry (long, item) = 
     string_entry {long=long, short=NONE, desc="", item=item, menu=nil} 
+
+  fun add_stringlist_entry (long, item) = 
+    stringlist_entry {long=long, short=NONE, desc="", item=item, menu=nil} 
 
   fun add_int_entry (long, item) = 
     int_entry {long=long, short=NONE, desc="", item=item, menu=nil} 
@@ -485,6 +518,7 @@ struct
       fun value_s (BOOL_ENTRY {item=ref b,...}) = Bool.toString b
 	| value_s (BOOLA_ENTRY {item=ref b,...}) = Bool.toString b
 	| value_s (STRING_ENTRY {item=ref s,...}) = s
+	| value_s (STRINGLIST_ENTRY {item=ref s,...}) = "..."
 	| value_s (INT_ENTRY {item=ref i,...}) = Int.toString i
 
       val (dirEntriesName, dirEntriesValue) = 
@@ -575,6 +609,21 @@ struct
 		      (case ss
 			 of s::ss => (#item e := s; loop ss)
 			  | _ => raise Fail ("missing argument to " ^ s))
+		     | SOME (STRINGLIST_ENTRY e) => 
+			   let fun is_opt s = (String.sub(s,0) = #"-") handle _ => false
+			       fun readToOpt (all as [s],acc) = 
+				   if is_opt s then (rev acc, all)
+				   else (case OS.Path.ext s of
+					     SOME ext => if has_sml_source_ext ext then (rev acc, all)
+							 else (rev (s::acc),nil)
+					   | _ => (rev (s::acc),nil))
+				 | readToOpt (all as s::ss,acc) = 
+				       if is_opt s then (rev acc,all)
+				       else readToOpt(ss,s::acc)
+				 | readToOpt (nil,acc) = (rev acc,nil)
+			       val (args,rest) = readToOpt (ss,nil)
+			   in (#item e := args; loop rest)
+			   end
 		     | SOME (INT_ENTRY e) => 
 			 (case ss
 			    of s::ss => 
@@ -634,6 +683,9 @@ struct
 	  | SOME (STRING_ENTRY e) => 
 	   default("--" ^ #long e ^ opts(#short e), "\"" ^ String.toString(!(#item e)) ^ "\"") ::
 	   indent (#desc e)
+	  | SOME (STRINGLIST_ENTRY e) => 
+	   default("--" ^ #long e ^ opts(#short e), "...") ::
+	   indent (#desc e)
 	  | SOME (INT_ENTRY e) =>
 	   default("--" ^ #long e ^ opti(#short e), Int.toString (!(#item e))) ::
 	   indent (#desc e)
@@ -656,6 +708,7 @@ struct
 	     | SOME (BOOL_ENTRY e) => check(#short e)
 	     | SOME (BOOLA_ENTRY e) => check(#short e)
 	     | SOME (STRING_ENTRY e) => check(#short e)
+	     | SOME (STRINGLIST_ENTRY e) => check(#short e)
 	     | NONE => acc
 	end
     in String.concat (foldl add nil dom)
@@ -678,6 +731,12 @@ fun add_string_entry e =
     of nil => Directory.string_entry e 
      | path => (Menu.add_string_to_menu(#long e, path, #item e);
 		Directory.string_entry e)
+
+fun add_stringlist_entry e = 
+  case #menu e of 
+      nil => Directory.stringlist_entry e 
+    | path => ( (* Menu.add_string_to_menu(#long e, path, #item e); *)
+	       Directory.stringlist_entry e)
 
 fun add_int_entry e = 
   case #menu e
@@ -999,6 +1058,12 @@ end
   val _ = add_bool_entry0 ("enhanced_atbot_analysis", enhanced_atbot_analysis)
   val _ = add_bool_entry0 ("eliminate_polymorphic_equality", eliminate_polymorphic_equality)
 
+  val _ = add_bool_entry 
+      {long="compile_only", short=SOME "c", 
+       menu=["Control","compile only"],
+       item=ref false, neg=false, desc=
+       "Compile only. Suppresses generation of executable"}
+
 exception ParseScript = ParseScript.ParseScript
 
 val is_on = Directory.is_on
@@ -1007,6 +1072,7 @@ val turn_on = Directory.turn_on
 val turn_off = Directory.turn_off
 val lookup_flag_entry = Directory.lookup_flag_entry
 val get_string_entry = Directory.get_string_entry
+val get_stringlist_entry = Directory.get_stringlist_entry
 val lookup_string_entry = Directory.lookup_string_entry
 val lookup_int_entry = Directory.lookup_int_entry
 val read_script = Directory.readScript
@@ -1020,6 +1086,12 @@ val interact = Menu.interact
 val SMLserver = ref false
 val WEBserver = ref "AOLserver"
 
+datatype compiler_mode = 
+    LINK_MODE of string list  (* lnk-files *)
+  | LOAD_BASES of string list   (* eb-files to be loaded; nil if normal *)
+    
+val compiler_mode : compiler_mode ref = ref (LOAD_BASES nil)
+    
 structure Statistics = 
   struct
     val no_dangling_pointers_changes = ref 0
@@ -1027,6 +1099,7 @@ structure Statistics =
     fun reset() = (no_dangling_pointers_changes := 0;
 		   no_dangling_pointers_changes_total := 0)
   end
+
 end (* functor Flags *)  
    
   

@@ -6,9 +6,9 @@ signature MANAGER =
 
     exception PARSE_ELAB_ERROR of ErrorCode.ErrorCode list
 
-    val comp : string -> unit   (* comp path  compiles path into file `run'.
-				 * Log's, vcg's and linkfile are put in current directory. 
-				 * May raise PARSE_ELAB_ERROR. *)
+    val comp : string list -> unit   (* comp paths  compiles paths into file `run'.
+				      * Log's, vcg's and linkfile are put in current directory. 
+				      * May raise PARSE_ELAB_ERROR. *)
 
     val elab : string -> unit   (* elab path  elaborates path
 				 * May raise PARSE_ELAB_ERROR. *)
