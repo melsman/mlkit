@@ -1,6 +1,9 @@
 signature SCS_PRINT =
   sig
-      datatype doc_type = LaTeX
+    datatype doc_type = LaTeX | LaTeX'
+
+    type document = doc_type * quot
+
     val docTypeToString      : doc_type -> string
     val docTypeFromString    : string -> doc_type
     val allDocTypes          : doc_type list
@@ -8,11 +11,12 @@ signature SCS_PRINT =
 
     val allPrinters   : (string * string) list
 
-    (* [returnAsPDF doc_type sources] returns the documents as a single pdf 
+    (* [returnAsPDF documents] returns the documents as a single pdf 
        file *)
-    val returnAsPDF : doc_type -> quot list -> Ns.Conn.status
+    val returnAsPDF : document list -> Ns.Conn.status
 
     (* Widgets *)
+
     val choosePrinter : string -> quot * quot
 
     val printForm     : string -> string -> string -> string -> doc_type 
@@ -32,19 +36,24 @@ signature SCS_PRINT =
 
 structure ScsPrint :> SCS_PRINT =
   struct
-    datatype doc_type = LaTeX
+    datatype doc_type = LaTeX | LaTeX'
+
+    type document = doc_type * quot
+
     fun docTypeToString LaTeX = "LaTeX"
+      | docTypeToString LaTeX' = "LaTeX'"
+
     fun docTypeFromString doc_type =
       case doc_type of
-	"LaTeX" => LaTeX
-      | _ => ScsError.panic 
-        `ScsPrint.docTypeFromString.doc_type ^doc_type not supported.`
-    val allDocTypes = [LaTeX]
+	  "LaTeX" => LaTeX
+	| "LaTeX'" => LaTeX'
+        | _ => ScsError.panic 
+	         `ScsPrint.docTypeFromString.doc_type ^doc_type not supported.`
+    val allDocTypes = [LaTeX, LaTeX']
     fun ppAllDocTypes() = List.map docTypeToString allDocTypes 
 
     val allPrinters = List.map (fn p => (p,p)) 
       ["p151","p151d","p152","p152d","p177","p177d","p177t","p233","p233d","p233t", "p125", "p125a"]
-
 
     (* Generate file which can be printed and previewed. *)
     (* Files are stored in the scs_print_dir directory.  *)
@@ -71,14 +80,12 @@ structure ScsPrint :> SCS_PRINT =
       fun pdffile f = path_preview() ^ "/" ^ f ^ ".pdf"
       fun dvifile f = path_preview() ^ "/" ^ f ^ ".dvi"
       fun pdfurl f = path_preview() ^ "/" ^ f ^ ".pdf"
-(*
-      fun pdfurl f = "/" ^ (getInfo "scs_print_preview") ^ "/" ^ f ^ ".pdf"
-*)
     in
-      fun genTmpPDF doc_type source =
+      fun genTmpPDF (doc_type, source) =
 	case doc_type of
 	  LaTeX =>
 	    let
+val _ = ScsError.log "bruger LaTeX"
 	      val tmpfile = ScsFile.uniqueFile (path_preview())
 	      val _ = ScsFile.save source (texfile tmpfile)
 	      val cmd = Quot.toString `cd ^(path_preview()); ^(ScsConfig.scs_pdflatex()) ^(texfile tmpfile)`
@@ -87,18 +94,36 @@ structure ScsPrint :> SCS_PRINT =
 		tmpfile
 	      else
 		ScsError.panic 
-		  `ScsPrint.genPDF: Can't execute system command: ^cmd`
+		  `ScsPrint.genTmpPDF: Can't execute system command: ^cmd`
 	    end
+	  | LaTeX' =>
+	    let
+val _ = ScsError.log "bruger LaTeX'"
+	      val tmpfile = ScsFile.uniqueFile (path_preview())
+	      val _ = ScsFile.save source (texfile tmpfile)
+	      val cmd = Quot.toString `
+	        cd ^(path_preview()); 
+		^(ScsConfig.scs_latex()) ^(texfile tmpfile) ; 
+		^(ScsConfig.scs_dvips()) ^(dvifile tmpfile) -o ^(psfile tmpfile); 
+		^(ScsConfig.scs_ps2pdf()) ^(psfile tmpfile)`
+	    in
+	      if Process.system cmd = Process.success then
+		tmpfile
+	      else
+		ScsError.panic 
+		  `ScsPrint.genTmpPDF: Can't execute system command: ^cmd`
+	    end
+          | _ => ScsError.panic 
+		  `ScsPrint.genTmpPDF: Unknown document type `
 
-      (* KNP 2003-07-01: tested ok for length sources = 500.
+
+      (* KNP 2003-07-01: tested ok for length documents = 500.
          Be aware that Linux has a limitation on the number of open files 
 	 allowed. The genPDF function could be modified to generate PDFs of 
 	 the 500 documents each, and then glue the superdocs together. *)
-      fun genPDF doc_type sources = 
-	case doc_type of
-	  LaTeX =>
+      fun genPDF (documents:document list) = 
 	    let
-	      val pdf_files = map (genTmpPDF LaTeX) sources
+	      val pdf_files = map genTmpPDF documents
 	      val gluetex = `
 	        \documentclass[a4paper]{article}
 		\usepackage[final]{pdfpages}
@@ -216,11 +241,10 @@ structure ScsPrint :> SCS_PRINT =
       (* Should find printers for the user logged in *)
       fun choosePrinter n = (`Choose printer`, ScsWidget.select allPrinters n)
 
-
       fun printForm category note on_what_table on_what_id doc_type sources =
 	let
 	  val timer = Timer.startRealTimer()
-	  val pdf = genPDF doc_type sources
+	  val pdf = genPDF (map (fn src => (doc_type, src)) sources)
 	  val note_text = (Time.toString o Timer.checkRealTimer) timer
 	in
 	  ScsWidget.formBox "/scs/print/scs-print.sml" 
@@ -233,22 +257,13 @@ structure ScsPrint :> SCS_PRINT =
 	   (Html.inhidden "on_what_table" on_what_table) ^^
 	   (Html.inhidden "on_what_id" on_what_id) ^^
 	   (Html.inhidden "note" note) ^^
-  (*
-	   (ScsWidget.largeTa "source" source) ^^
-  *)
    `<p>` ^^
-   `<p>^note_text sek</p>`
-(*
- ^^
-
-	   (ScsWidget.oneLine (choosePrinter "printer"))
-*)
-)
+   `<p>^note_text sek</p>`)
 	end
 
-      fun returnAsPDF doc_type sources =
+      fun returnAsPDF documents =
 	let
-	  val pdf = genPDF doc_type sources
+	  val pdf = genPDF documents
 	in
 	  Ns.returnFile ( pdf )	  
         end
