@@ -34,7 +34,11 @@ functor ExecutionDummy(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = CompilerEnv.CEnv
+    type Env = CompilerEnv.ElabEnv
     type strdec = TopdecGrammar.strdec
+    type strexp = TopdecGrammar.strexp
+    type funid = TopdecGrammar.funid
+    type strid = TopdecGrammar.strid
     type label = Labels.label
     type linkinfo = unit
     type target = unit
@@ -46,7 +50,7 @@ functor ExecutionDummy(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv
-    fun compile _ = CodeRes (CompilerEnv.emptyCEnv, CompileBasis.empty, (), ())
+    fun compile _ _ = CodeRes (CompilerEnv.emptyCEnv, CompileBasis.empty, (), ())
     val generate_link_code = NONE
     fun emit _ = ""
     fun link_files_with_runtime_system _ _ _ = ()

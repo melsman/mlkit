@@ -23,6 +23,7 @@ Manager/ManagerObjects.sml
 Manager/MANAGER.sml
 Manager/Manager.sml
 Manager/MspComp.sml
+Manager/Scriptlet.sml
 
 Common/Elaboration.sml
 

@@ -7,9 +7,12 @@
 signature COMPILE_DEC =
   sig
     type strdec
+    type funid and strid and Env and strexp
     type CEnv
     type LambdaPgm
 
-    val compileStrdecs: CEnv -> strdec list -> CEnv * LambdaPgm
+    val compileStrdecs: 
+	('a * ('a -> funid -> strid * Env * strexp * CEnv * 'a))
+	-> CEnv -> strdec list -> CEnv * LambdaPgm
 
   end

@@ -15,6 +15,7 @@ in
            K.Flags.WEBserver := "AOLServer";
            (*K.Flags.WEBserver := "Apache";*)
 	   enable "quotation";    (* support for quotation-antiquotation *)
+(*	   enable "formtyping";  *) (* support for form typing *)
 	   K.build_basislib() ;
 	   K.install() 
 	   )

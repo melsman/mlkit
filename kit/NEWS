@@ -1,5 +1,13 @@
 ML Kit NEWS file
 
+ * mael 2003-02-18: Added support for inlining of functor
+   applications. To specify that functor applications in a file should
+   be inlined, one can now write inline specifications in pm-files 
+   using the syntax 'inline funapps in ... end'. Inlining of functor 
+   applications improves performance, because it triggers
+   optimizations, such as function inlining, but it also slows down
+   recompilation.
+
  * mael 2002-12-05: Fixed bug in opacity elimination
    (test/opaque3.sml).
 

@@ -26,7 +26,11 @@ functor ExecutionBarry(BuildCompileBarry : BUILD_COMPILE_BARRY) : EXECUTION =
 
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = CompilerEnv.CEnv
+    type Env = CompilerEnv.ElabEnv
     type strdec = TopdecGrammar.strdec
+    type strexp = TopdecGrammar.strexp
+    type funid = TopdecGrammar.funid
+    type strid = TopdecGrammar.strid
     type label = Labels.label
     type linkinfo = {unsafe:bool}
     type target = Compile.LambdaPgm
@@ -39,10 +43,10 @@ functor ExecutionBarry(BuildCompileBarry : BUILD_COMPILE_BARRY) : EXECUTION =
 
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv
-    fun compile (ce,CB,strdecs,vcg_file) =
+    fun compile fe (ce,CB,strdecs,vcg_file) =
       let val (cb,()) = CompileBasis.de_CompileBasis CB
       in
-	case Compile.compile (ce, cb, strdecs)
+	case Compile.compile fe (ce, cb, strdecs)
 	  of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
 	   | Compile.CodeRes(ce,cb,target,safe) => 
 	    let 

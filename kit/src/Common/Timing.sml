@@ -60,15 +60,17 @@ functor Timing(structure Flags: FLAGS
 		     gc: Time.time,
 		     wallclock: Time.time}) list) list ref = ref []
 
-    fun timing_begin () =
+    fun timing_begin0 s () =
       if !compiler_timings then 
 	(if !timingNow then
-	   die "Only one timer available"
+	   die ("Only one timer available (" ^ s ^ ")")
 	 else
 	   (t := Timer.startCPUTimer(); 
 	    timingNow := true;
 	    rt := Timer.startRealTimer()))
       else ()
+
+    fun timing_begin () = timing_begin0 "no info" ()
 
     fun Time_plus (t1,t2) = Time.+(t1,t2)
 	handle E => raise_again "Time_plus" E
@@ -146,7 +148,7 @@ functor Timing(structure Flags: FLAGS
     fun timing_end_res (name, x) = (timing_end name; x)
 
     fun timing (name:string) (f: 'a -> 'b) (a: 'a) : 'b = 
-      (timing_begin (); f a before timing_end name)
+      (timing_begin0 name (); f a before timing_end name)
 
       
     (* The first list in timings will always be the *)

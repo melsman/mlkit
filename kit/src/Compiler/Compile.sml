@@ -121,7 +121,11 @@ functor Compile(structure Excon : EXCON
 
     type CompBasis = CompBasis.CompBasis
     type CEnv = CompilerEnv.CEnv
+    type Env = CompileDec.Env
     type strdec = CompileDec.strdec
+    type strexp = CompileDec.strexp
+    type funid = CompileDec.funid
+    type strid = CompileDec.strid
 
     fun die s = Crash.impossible ("Compile." ^ s)
 
@@ -265,15 +269,23 @@ functor Compile(structure Excon : EXCON
     (*  Compile the declaration using old compiler environment, ce            *)
     (* ---------------------------------------------------------------------- *)
 
-    fun ast2lambda(ce, strdecs) =
+    fun ast2lambda fe (ce, strdecs) =
       (chat "[Compiling abstract syntax tree into lambda language...";
-       Timing.timing_begin();
+
+(*       Timing.timing_begin(); *)  
+
+       (* timing does not work with functor inlining because it triggers reelaboration,
+	* which is also timed. mael 2003-02-18 *)
+
        let val _ = LambdaExp.reset()  (* Reset type variable counter to improve pretty printing; The generated
 				       * Lambda programs are closed w.r.t. type variables, because code 
 				       * generation of the strdecs is done after an entire top-level 
 				       * declaration is elaborated. ME 1998-09-04 *)
+(*
 	   val (ce1, lamb) =  Timing.timing_end_res 
-	        ("ToLam", CompileDec.compileStrdecs ce strdecs)
+	        ("ToLam", CompileDec.compileStrdecs fe ce strdecs)
+*)
+	   val (ce1, lamb) = CompileDec.compileStrdecs fe ce strdecs
 	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
 	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
        in  
@@ -663,7 +675,7 @@ functor Compile(structure Excon : EXCON
     datatype res = CodeRes of CEnv * CompBasis * ((place*pp)at,place*phsize,unit) LambdaPgm * bool
                  | CEnvOnlyRes of CEnv
 
-    fun compile(CEnv, Basis, strdecs) : res =
+    fun compile fe (CEnv, Basis, strdecs) : res =
       let
 
 	(* There is only space in the basis for one lambdastat-env.
@@ -674,7 +686,7 @@ functor Compile(structure Excon : EXCON
 	val {TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap=Psi,drop_env,psi_env} =
 	  CompBasis.de_CompBasis Basis
 
-        val (lamb,CEnv1, declared_lvars, declared_excons) = ast2lambda(CEnv, strdecs)
+        val (lamb,CEnv1, declared_lvars, declared_excons) = ast2lambda fe (CEnv, strdecs)
 	val (lamb',EqEnv1) = elim_eq_lambda (EqEnv, lamb)
         val (lamb_opt,OEnv1) = optlambda (OEnv, lamb')
 	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)

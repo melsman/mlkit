@@ -19,6 +19,10 @@ signature BUILD_COMPILE =
       sharing type Compile.CompBasis = CompBasis.CompBasis
       sharing type Compile.CEnv = CompilerEnv.CEnv
       sharing type Compile.strdec = ExecutionArgs.Elaboration.PostElabTopdecGrammar.strdec
+      sharing type Compile.strexp = ExecutionArgs.Elaboration.PostElabTopdecGrammar.strexp
+      sharing type Compile.funid = ExecutionArgs.Elaboration.PostElabTopdecGrammar.funid
+      sharing type Compile.strid = ExecutionArgs.Elaboration.PostElabTopdecGrammar.strid
+      sharing type Compile.Env = ExecutionArgs.Elaboration.Basics.Environments.Env
 	
     structure Effect : EFFECT
     structure AtInf : AT_INF

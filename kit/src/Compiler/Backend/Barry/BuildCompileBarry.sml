@@ -19,6 +19,10 @@ signature BUILD_COMPILE_BARRY =
       sharing type Compile.CompBasis = CompBasis.CompBasis
       sharing type Compile.CEnv = CompilerEnv.CEnv
       sharing type Compile.strdec = ExecutionArgs.Elaboration.PostElabTopdecGrammar.strdec
+      sharing type Compile.strexp = ExecutionArgs.Elaboration.PostElabTopdecGrammar.strexp
+      sharing type Compile.funid = ExecutionArgs.Elaboration.PostElabTopdecGrammar.funid
+      sharing type Compile.strid = ExecutionArgs.Elaboration.PostElabTopdecGrammar.strid
+      sharing type Compile.Env = ExecutionArgs.Elaboration.Basics.Environments.Env
 
       sharing type ExecutionArgs.Con.con = CompBasis.con = CompilerEnv.con
       sharing type ExecutionArgs.Excon.excon = CompBasis.excon = CompilerEnv.excon

@@ -10,7 +10,8 @@ signature COMPILE_BARRY =
     type CompBasis
     type CEnv 
     type strdec
-
+    type funid and strid and Env and strexp
+	
     type LambdaPgm
 
     datatype res = CodeRes of CEnv * CompBasis * LambdaPgm * bool
@@ -19,7 +20,9 @@ signature COMPILE_BARRY =
     (* emit: returns the filename for the generated .sml file *)
     val emit : {target: LambdaPgm, filename: string} -> string  
 
-    val compile : CEnv * CompBasis * strdec list -> res
+    val compile : 
+	('a * ('a -> funid -> strid * Env * strexp * CEnv * 'a))
+	-> CEnv * CompBasis * strdec list -> res
   end 
 
 
@@ -40,6 +43,7 @@ functor CompileBarry
                 structure CompileDec: COMPILE_DEC
 		  sharing type CompileDec.LambdaPgm = LambdaExp.LambdaPgm
                   sharing type CompileDec.CEnv = CompilerEnv.CEnv
+                  sharing type CompileDec.Env = CompilerEnv.ElabEnv
 
                 structure OptLambda: OPT_LAMBDA
 		  sharing type OptLambda.LambdaPgm = LambdaExp.LambdaPgm
@@ -73,7 +77,11 @@ functor CompileBarry
 
     type CompBasis = CompBasis.CompBasis
     type CEnv = CompilerEnv.CEnv
+    type Env = CompilerEnv.ElabEnv
     type strdec = CompileDec.strdec
+    type strexp = CompileDec.strexp
+    type funid = CompileDec.funid
+    type strid = CompileDec.strid
     type LambdaPgm = LambdaExp.LambdaPgm
 
     fun die s = Crash.impossible ("Compile." ^ s)
@@ -117,7 +125,7 @@ functor CompileBarry
     (*  Compile the declaration using old compiler environment, ce            *)
     (* ---------------------------------------------------------------------- *)
 
-    fun ast2lambda(ce, strdecs) =
+    fun ast2lambda fe (ce, strdecs) =
       (chat "[Compiling abstract syntax tree into lambda language...";
        Timing.timing_begin();
        let val _ = LambdaExp.reset()  (* Reset type variable counter to improve pretty printing; The generated
@@ -125,7 +133,7 @@ functor CompileBarry
 				       * generation of the strdecs is done after an entire top-level 
 				       * declaration is elaborated. ME 1998-09-04 *)
 	   val (ce1, lamb) =  Timing.timing_end_res 
-	        ("ToLam", CompileDec.compileStrdecs ce strdecs)
+	        ("ToLam", CompileDec.compileStrdecs fe ce strdecs)
 	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
 	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
        in  
@@ -218,7 +226,7 @@ functor CompileBarry
     datatype res = CodeRes of CEnv * CompBasis * LambdaPgm * bool
                  | CEnvOnlyRes of CEnv
 
-    fun compile(CEnv, Basis, strdecs) : res =
+    fun compile fe (CEnv, Basis, strdecs) : res =
       let
 
 	(* There is only space in the basis for one lambdastat-env.
@@ -227,7 +235,7 @@ functor CompileBarry
 
 	val {TCEnv,EqEnv,OEnv} = CompBasis.de_CompBasis Basis
 
-        val (lamb,CEnv1, declared_lvars, declared_excons) = ast2lambda(CEnv, strdecs)
+        val (lamb,CEnv1, declared_lvars, declared_excons) = ast2lambda fe (CEnv, strdecs)
 	val (lamb',EqEnv1) = elim_eq_lambda (EqEnv, lamb)
         val (lamb_opt,OEnv1) = optlambda (OEnv, lamb')
 	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)
