@@ -418,7 +418,8 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC) : NS_DB =
     fun fromReal r = Real.toString r
 
     fun valueList vs = String.concatWith "," (List.map qqq vs)
-    fun setList vs = String.concatWith "," (List.map (fn (n,v) => n ^ "=" ^ qqq v) vs)
+    fun setList vs = String.concatWith (Quot.toString `,
+`) (List.map (fn (n,v) => n ^ "=" ^ qqq v) vs)
 
     fun seqNextval (seqName:string) : int = 
       Handle.wrapDb (fn db => Handle.seqNextvalDb db seqName)
