@@ -23,11 +23,11 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
  Compiler/Backend/KAM/KamInsts.spec
 
 mlkit: basics
-	cd Runtime; $(MAKE) runtimeSystem.o
-	cd Runtime; $(MAKE) runtimeSystemGC.o
-	cd Runtime; $(MAKE) runtimeSystemProf.o
-	cd Runtime; $(MAKE) runtimeSystemGCProf.o
-	cd Runtime; $(MAKE) runtimeSystemTag.o
+	cd Runtime; $(MAKE) runtimeSystem.a
+	cd Runtime; $(MAKE) runtimeSystemGC.a
+	cd Runtime; $(MAKE) runtimeSystemProf.a
+	cd Runtime; $(MAKE) runtimeSystemGCProf.a
+	cd Runtime; $(MAKE) runtimeSystemTag.a
 	echo 'use "build.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit.$(ARCH-OS)
 	rm -f $(BINDIR)/mlkit
@@ -54,7 +54,7 @@ smlserver: basics
 	cd ..; echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
 	chmod a+x $(BINDIR)/smlserverc
 
-basics: genopcodes rp2ps tester heap2exec kitbench
+basics: genopcodes rp2ps tester heap2exec kitbench posix_defs
 
 genopcodes: $(GENOPCODES_TARGETS)
 
@@ -72,6 +72,9 @@ tester:
 
 kitbench:
 	cd Tools/Benchmark; $(MAKE)
+
+posix_defs:
+	cd ../basislib; $(MAKE)
 
 heap2exec: heap2exec/heap2exec
 	cd heap2exec; $(MAKE)

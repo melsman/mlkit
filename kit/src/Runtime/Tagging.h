@@ -1,8 +1,8 @@
 /*----------------------------------------------------------------*
  *                    Tagging operations                          *
  *----------------------------------------------------------------*/
-#ifndef TAGGING
-#define TAGGING
+#ifndef __TAGGING_H
+#define __TAGGING_H
 
 #include "Flags.h"
 #include "Region.h"
@@ -197,4 +197,10 @@
 
 #endif /*NO TAG_VALUES*/
 
-#endif /*TAGGING*/
+#ifdef PROFILING
+#define REGIONARG_FUNCTION(name, ...)  name ## Prof(__VA_ARGS__ , int pPoint)
+#else
+#define REGIONARG_FUNCTION(name, ...)  name(__VA_ARGS__)
+#endif
+
+#endif /*__TAGGING_H*/

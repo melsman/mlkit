@@ -458,6 +458,7 @@ struct
 
     fun compile_c_call_prim(name: string,args: SS.Aty list,opt_ret: SS.Aty option,size_ff:int,tmp:reg,C) =
       let
+(*
 	val (convert: bool,name: string) =
 	  case explode name 
 	    of #"@" :: rest => (BI.tag_values(), implode rest)
@@ -476,13 +477,13 @@ struct
 *)           I.leal(DD("1", reg, reg, ""), R reg) ::
              C)
 	  else C
-
+*)
 	fun push_arg(aty,size_ff,C) =
-	  if convert then
+(*	  if convert then
 	    move_aty_into_reg(aty,tmp,size_ff,
 	    convert_int_to_c(tmp,
 	    I.pushl(R tmp) :: C))
-	  else push_aty(aty,tmp,size_ff,C)
+	  else*) push_aty(aty,tmp,size_ff,C)
 
 	(* size_ff increases when new arguments are pushed on the
          * stack!! The arguments are placed on the stack in reverse 
@@ -500,14 +501,105 @@ struct
 	    of 0 => C
 	     | n => I.addl(I (int_to_string (4*n)), R esp) :: C
 
-	fun store_ret(SOME d,C) = convert_int_to_ml(eax,
-				  move_reg_into_aty(eax,d,size_ff,C))
+	fun store_ret(SOME d,C) = (* convert_int_to_ml(eax, *)
+				  move_reg_into_aty(eax,d,size_ff,C)  (* ) *)
 	  | store_ret(NONE,C) = C
       in
 	push_args(args,
 	I.call(NameLab name) ::
 	pop_args(store_ret(opt_ret,C)))
       end
+
+    (* Compile a C call with auto-conversion: convert ML arguments to C arguments and
+     * convert the C result to an ML result. *)
+    fun compile_c_call_auto(name,args,opt_res,size_ff,tmp,C) =
+      let
+	fun push_bool(aty,size_ff,C) = 
+	  move_aty_into_reg(aty,tmp,size_ff,
+			    I.shrl(I "1", R tmp) :: 
+			    I.pushl(R tmp) :: C)
+
+	fun push_int(aty,size_ff,C) =
+	  if BI.tag_values() then 
+	    move_aty_into_reg(aty,tmp,size_ff,
+			      I.shrl(I "1", R tmp) :: 
+			      I.pushl(R tmp) :: C)
+	  else push_aty(aty,tmp,size_ff,C)
+
+	fun push_foreignptr(aty,size_ff,C) =
+	  if BI.tag_values() then 
+	    case aty
+	      of SS.PHREG_ATY r => (I.leal(D("-1", r), R tmp) :: 
+				    I.pushl(R tmp) :: C)
+	       | _ => move_aty_into_reg(aty,tmp,size_ff,
+					I.leal(D("-1", tmp), R tmp) :: 
+					I.pushl(R tmp) :: C)
+	  else push_aty(aty,tmp,size_ff,C)
+
+	fun push_chararray (aty,size_ff,C) = 
+	  case aty
+	    of SS.PHREG_ATY r => (I.leal(D("4", r), R tmp) :: 
+				  I.pushl(R tmp) :: C)
+	      
+	     | _ => move_aty_into_reg(aty,tmp,size_ff,
+				      I.leal(D("4", tmp), R tmp) :: 
+				      I.pushl(R tmp) :: C)
+	  
+
+	fun push_arg((aty,ft:LS.foreign_type),size_ff,C) =
+	  let val push_fun = case ft
+			       of LS.Bool => push_bool
+				| LS.Int => push_int
+				| LS.ForeignPtr => push_foreignptr
+				| LS.CharArray => push_chararray
+				| LS.Unit => die "CCALL_AUTO.Unit type in argument not supported"
+	  in push_fun(aty,size_ff,C)
+	  end
+
+	(* size_ff increases when new arguments are pushed on the
+         * stack; the arguments are placed on the stack in reverse 
+	 * order. *)
+
+	fun push_args (args,C) =
+	  let fun loop ([], _) = C
+		| loop (arg :: rest, size_ff) = (push_arg(arg,size_ff, 
+					         loop (rest, size_ff + 1)))
+	  in loop(rev args, size_ff)
+	  end
+
+	fun tag_bool_result(reg,C) = I.leal(DD("1", reg, reg, ""), R reg) :: C
+
+	fun maybe_tag_int_result(reg,C) =
+	  if BI.tag_values() then I.leal(DD("1", reg, reg, ""), R reg) :: C
+	  else C
+	    
+	fun maybe_tag_foreignptr_result(reg,C) =
+	  if BI.tag_values() then I.leal(D("1", reg), R reg) :: C
+	  else C
+
+	fun pop_args C = 
+	  case List.length args
+	    of 0 => C
+	     | n => I.addl(I (int_to_string (4*n)), R esp) :: C
+
+	fun convert_result ft =
+	  case ft
+	    of LS.Bool => tag_bool_result
+	     | LS.Int => maybe_tag_int_result
+	     | LS.ForeignPtr => maybe_tag_foreignptr_result
+	     | LS.Unit => die "convert_result.Unit already dealt with"
+	     | LS.CharArray => die "convert_result.CharArray foreign type not supported in auto-conversion result"
+
+	fun store_result ((aty,ft:LS.foreign_type), C) = 
+	  case ft
+	    of LS.Unit => C
+	     | _ => convert_result ft (eax, move_reg_into_aty(eax,aty,size_ff,C))
+      in
+	push_args(args,
+	I.call(NameLab name) ::
+	pop_args(store_result(opt_res,C)))
+      end
+      
 
     (**********************)
     (* Garbage Collection *)
@@ -2311,6 +2403,9 @@ struct
 		      | ("table_size", [t], [d]) => table_size(t,d,size_ff,C)
 		      | ("word_update0", [t,i,x], [d]) => word_update0(t,i,x,d,size_ff,C)
 
+		      | ("__is_null", [t], [d]) => 
+		       cmpi_kill_tmp01 {box=false} (I.je,t, SS.INTEGER_ATY{value=Int32.fromInt 0,
+									   precision=32},d,size_ff,C)
 		      | _ => die ("PRIM(" ^ name ^ ") not implemented")))
 		  end
 	       | LS.CCALL{name,args,rhos_for_result,res} => 
@@ -2322,13 +2417,34 @@ struct
 			die ("CCALL." ^ name ^ " is meant to be a primitive inlined by the compiler " ^ 
 			     "- but it is not dealt with!")
 		      else ()
+		    val _ = 
+		      case (explode name, rhos_for_result)
+			of (_, nil) => ()
+			 | (#"@" :: _, _) =>
+			  die ("CCALL." ^ name ^ ": auto-convertion is supported only for\n" ^
+			       "functions returning integers and taking integers as arguments!\n" ^
+			       "The function " ^ name ^ " takes " ^ Int.toString (length rhos_for_result) ^
+			       "region arguments.")
+			 | _ => ()
 		  in
 		    comment_fn (fn () => "CCALL: " ^ pr_ls ls,
 		     (case (name, rhos_for_result@args, res)
 			of (_,all_args,[]) => comp_c_call(all_args, NONE, C)
 			 | (_,all_args, [res_aty]) => comp_c_call(all_args, SOME res_aty, C)
 			 | _ => die "CCall with more than one result variable"))
-		  end)
+		  end
+	       | LS.CCALL_AUTO{name, args, res} => 
+		  let 
+		    val _ = 
+		      if BI.is_prim name then
+			die ("CCALL_AUTO." ^ name ^ " is meant to be a primitive inlined by the compiler " ^ 
+			     "- but it is not dealt with!")
+		      else ()
+		  in
+		    comment_fn (fn () => "CCALL_AUTO: " ^ pr_ls ls,
+				compile_c_call_auto(name,args,res,size_ff,tmp_reg1,C))
+		  end
+		)
        in
 	 foldr (fn (ls,C) => CG_ls(ls,C)) C lss
        end

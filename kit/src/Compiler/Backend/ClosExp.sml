@@ -78,6 +78,8 @@ struct
   (* ClosExp *)
   (***********)
 
+  datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Unit
+
   datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
     | UNBOXED of int
@@ -130,6 +132,9 @@ struct
     | CCALL           of {name: string,  
 			  args: ClosExp list,
 			  rhos_for_result : ClosExp list}
+    | CCALL_AUTO      of {name: string,  
+			  args: (ClosExp * foreign_type) list,
+			  res: foreign_type}
     | FRAME           of {declared_lvars: {lvar: lvar, label: label} list,
 			  declared_excons: {excon: excon, label: label} list}
 
@@ -171,6 +176,15 @@ struct
       (flatten1(Effect.layout_effect place) ^ ":" ^ pr_phsize phsize)
 
     fun pr_pp pp = "pp" ^ Int.toString pp
+
+    fun layout_f CharArray = LEAF "CharArray"
+      | layout_f Int = LEAF "Int"
+      | layout_f Bool = LEAF "Bool"
+      | layout_f ForeignPtr = LEAF "ForeignPtr"
+      | layout_f Unit = LEAF "Unit"
+
+    fun layout_ce_f layout_ce (ce,f) = HNODE{start="",finish="",childsep=RIGHT":",
+					     children=[layout_ce ce, layout_f f]}
 
     fun layout_switch layout_ce pr_const (SWITCH(ce_arg,sels,default)) =
 	  let
@@ -365,6 +379,11 @@ struct
 		finish=">)",
 		childsep=RIGHT ",",
 		children=(map layout_ce rhos_for_result) @ (map layout_ce args)}
+      | layout_ce(CCALL_AUTO{name,args,res}) =
+	  HNODE{start="ccall_auto(\"" ^ name ^ "\", <",
+		finish=">)",
+		childsep=RIGHT ",",
+		children=(map (layout_ce_f layout_ce) args) @ [layout_f res]}
       | layout_ce(FRAME{declared_lvars,declared_excons}) =
 		  NODE{start="{|",
 		       finish="|}",
@@ -1307,6 +1326,22 @@ struct
                  l2clos_exp_env (concat_lists dbs)
     end
 
+    local 
+      fun member tn nil = false
+	| member tn (x::xs) = TyName.eq (tn,x) orelse member tn xs
+    in
+      fun tn_to_foreign_type (tn : TyName.TyName) : foreign_type =
+	if TyName.eq(tn,TyName.tyName_BOOL) then Bool
+	else
+	  if TyName.eq(tn,TyName.tyName_FOREIGNPTR) then ForeignPtr
+	  else
+	    if member tn [TyName.tyName_STRING, TyName.tyName_CHARARRAY] then CharArray
+	    else 
+	      if member tn [TyName.tyName_IntDefault(), TyName.tyName_WordDefault()] then Int
+	      else die ("tn_to_foreign_type.Type name " ^ TyName.pr_TyName tn 
+			^ " not supported in auto conversion")
+    end
+
     (* -------------------------------- *)
     (*    Add Top Level Functions       *)
     (* -------------------------------- *)
@@ -2145,21 +2180,45 @@ struct
 		 val rhos_for_result' = zip(smas',i_opts)
 		 val smas = comp_region_args_sma rhos_for_result'
 		 val maybe_return_unit =
+		   if BI.tag_values() then
 		   (case mu_result of
 		      (RType.RECORD [], _) => (fn ce => LET{pat=[fresh_lvar("ccall")],bind=ce,
 							    scope=RECORD{elems=[],
 									 alloc=IGNORE,
 									 tag=BI.tag_ignore}})
 		    | _ => (fn ce => ce))
+		   else (fn ce => ce)
 		 val fresh_lvs = map (fn _ => fresh_lvar "sma") smas
 		 fun maybe_insert_smas([],[],ce) = ce
 		   | maybe_insert_smas(fresh_lvs,smas,ce) =
 		   LET{pat=fresh_lvs,bind=UB_RECORD smas,scope=ce}
 	       in
+		 (case explode name
+		    of #"@" :: rest =>    (* AUTO CONVERSION *)
+		      let val name = implode rest
+			  fun ty_trs tr =
+			    case tr
+			      of MulExp.TR(_,RegionExp.Mus[(ty,_)],_,_) => ty
+			       | _ => die "CCALL_AUTO.ty"
+			  fun fty ty : foreign_type =
+			    case ty
+			      of RType.CONSTYPE(tn,_,_,_) => tn_to_foreign_type tn
+			       | RType.RECORD [] => Unit
+			       | _ => die "CCALL_AUTO.fty"
+			  val args = ListPair.zip(ces,map (fty o ty_trs) trs)
+			    handle _ => die "CCALL_AUTO.zip"
+			  val res = case fty (#1 mu_result)
+				      of CharArray => die "CCALL_AUTO.CharArray not supported in result"
+				       | t => t
+		      in (insert_ses(CCALL_AUTO{name=name, args=args, res=res},
+				     ses), 
+			  NONE_SE)
+		      end
+		  | _ =>
 		 (maybe_return_unit(
 		    insert_ses(maybe_insert_smas(fresh_lvs,smas,CCALL{name=name,
 								      args=add_pp_for_profiling(rhos_for_result',ces),
-								      rhos_for_result=map VAR fresh_lvs}),ses)),NONE_SE)
+								      rhos_for_result=map VAR fresh_lvs}),ses)),NONE_SE))
 	       end
 	   | MulExp.RESET_REGIONS({force,alloc,regions_for_resetting},tr) => 
 	       let
@@ -2793,6 +2852,7 @@ struct
 
 		 val ces = List.map (fn tr => liftTrip tr env lab) trs
 		 val smas = comp_region_args_sma (zip(smas,i_opts))       
+(*
 		 val maybe_return_unit =
 		   (case mu_result of (* is it actually necessary to return an unit? 13/09-2000, Niels *)
 		      (RType.RECORD [], _) => (fn ce => LET{pat=[fresh_lvar("ccall")],bind=ce,
@@ -2800,10 +2860,32 @@ struct
 									 alloc=IGNORE,
 									 tag=BI.tag_ignore}})
 		    | _ => (fn ce => ce))
+*)
 	       in
-		 maybe_return_unit(CCALL{name=name,
-					 args=ces,
-					 rhos_for_result=smas})
+		 (case explode name
+		    of #"@" :: rest =>    (* AUTO CONVERSION *)
+		      let val name = implode rest
+			  fun ty_trs tr =
+			    case tr
+			      of MulExp.TR(_,RegionExp.Mus[(ty,_)],_,_) => ty
+			       | _ => die "CCALL_AUTO.ty"
+			  fun fty ty : foreign_type =
+			    case ty
+			      of RType.CONSTYPE(tn,_,_,_) => tn_to_foreign_type tn
+			       | RType.RECORD [] => Unit
+			       | _ => die "CCALL_AUTO.fty"
+			  val args = ListPair.zip(ces,map (fty o ty_trs) trs)
+			    handle _ => die "CCALL_AUTO.zip"
+			  val res = case fty (#1 mu_result)
+				      of CharArray => die "CCALL_AUTO.CharArray not supported in result"
+				       | t => t
+		      in 
+			(*maybe_return_unit*)
+			(CCALL_AUTO{name=name,args=args,res=res})
+		      end
+		  | _ =>
+		      (*maybe_return_unit*)
+		      (CCALL{name=name,args=ces,rhos_for_result=smas}))
 	       end
 	   | MulExp.RESET_REGIONS({force,alloc,regions_for_resetting},tr) => 
 	       let

@@ -910,6 +910,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	val TE_real =      te (TyCon.tycon_REAL, TyName.tyName_REAL)
 	val TE_string =    te (TyCon.tycon_STRING, TyName.tyName_STRING)
 	val TE_chararray = te (TyCon.tycon_CHARARRAY, TyName.tyName_CHARARRAY)
+	val TE_foreignptr= te (TyCon.tycon_FOREIGNPTR, TyName.tyName_FOREIGNPTR)
 	val TE_array =     te (TyCon.tycon_ARRAY, TyName.tyName_ARRAY)
 	val TE_vector=     te (TyCon.tycon_VECTOR, TyName.tyName_VECTOR)
 	val TE_exn =       te (TyCon.tycon_EXN, TyName.tyName_EXN)
@@ -1168,7 +1169,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 				  TE_int31, TE_int32, 
 				  TE_word8, TE_word31, TE_word32,
 				  TE_string, TE_exn, TE_ref, TE_bool, TE_list,
-				  TE_array, TE_vector, TE_chararray (*, TE_word_table*)]
+				  TE_array, TE_vector, TE_chararray, TE_foreignptr (*, TE_word_table*)]
 
 	val tag_values = Flags.is_on0 "tag_values"
 

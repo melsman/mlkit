@@ -42,6 +42,7 @@ signature LAMBDA_EXP =
     (* word8 is compiled into default word-type in CompileDec *)
     val boolType: Type
     val unitType: Type
+    val foreignptrType: Type
     val exnType : Type
     val int31Type : Type
     val int32Type : Type

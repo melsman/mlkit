@@ -433,6 +433,25 @@ struct
 	end
     end
 
+    fun toCString acc = PrimAddi2 :: PrimAddi2 :: acc
+    fun untagBool acc = Primi31Toi :: acc
+    fun tagBool acc = PrimiToi31 :: acc
+    fun cconvert_arg ft acc =
+      case ft
+	of ClosExp.CharArray => toCString acc
+	 | ClosExp.Bool => untagBool acc
+	 | ClosExp.Int => acc
+	 | ClosExp.ForeignPtr => acc
+	 | ClosExp.Unit => acc
+
+    fun cconvert_res ft acc =
+      case ft
+	of ClosExp.CharArray => die "cconvert_res.CharArray not allowed in C result"
+	 | ClosExp.Bool => tagBool acc
+	 | ClosExp.Int => acc
+	 | ClosExp.ForeignPtr => acc
+	 | ClosExp.Unit => acc
+
     fun name_to_built_in_C_function_index name = 
       if !Flags.SMLserver then BuiltInCFunctions.name_to_built_in_C_function_index_nssml name
       else BuiltInCFunctions.name_to_built_in_C_function_index name
@@ -845,6 +864,8 @@ struct
 		  | "word_update0"         => PrimWordTableUpdate
 		  | "table_size"           => PrimTableSize
 
+		  | "__is_null"            => PrimIsNull
+ 
 		  | _ => die ("PRIM(" ^ name ^ ") not implemented")
 	  in
 	    if BI.is_prim name then 
@@ -864,6 +885,14 @@ struct
 			   Ccall(i, List.length all_args) :: acc)
 		else die ("Couldn't generate code for a C-call to " ^ name)
 	      end
+	  end
+      | CG_ce(ClosExp.CCALL_AUTO{name,args,res}, env,sp,cc,acc) =
+	  let val i = name_to_built_in_C_function_index name
+	  in 
+	    if i >= 0 then
+	      comp_ces_ccall_auto(args,env,sp,cc,Ccall(i, List.length args) :: 
+				  cconvert_res res acc)
+	    else die ("Couldn't generate code for a C-autocall to " ^ name)
 	  end
       | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = 
 	  comment ("FRAME - this is a nop", acc)
@@ -946,6 +975,12 @@ struct
       | comp_ces ([ce],env,sp,cc,acc) = CG_ce(ce,env,sp,cc,acc)
       | comp_ces (ce::ces,env,sp,cc,acc) = 
       CG_ce(ce,env,sp,cc, push (comp_ces(ces,env,sp+1,cc,acc)))
+
+    and comp_ces_ccall_auto ([],env,sp,cc,acc) = acc
+      | comp_ces_ccall_auto ([(ce,ft)],env,sp,cc,acc) = CG_ce(ce,env,sp,cc, cconvert_arg ft acc)
+      | comp_ces_ccall_auto ((ce,ft)::ces,env,sp,cc,acc) = 
+      CG_ce(ce,env,sp,cc, 
+	    cconvert_arg ft (push (comp_ces_ccall_auto(ces,env,sp+1,cc,acc))))
 
     local
       fun mk_fun f_fun (lab,cc,ce) =

@@ -92,9 +92,10 @@ functor RegionStatEnv(structure Name : NAME
 		     TyNameMap.add(TyName.tyName_FRAG, (1,[E.STRING_RT],0),
 				   (* the auxiliary region is for a string; hence STRING_RT *)
 		     TyNameMap.add(TyName.tyName_CHARARRAY, (0,[],0),
+		     TyNameMap.add(TyName.tyName_FOREIGNPTR, (0,[],0),
 		     TyNameMap.add(TyName.tyName_ARRAY, (1,[],0),
 		     TyNameMap.add(TyName.tyName_VECTOR, (1,[],0),
-		     TyNameMap.empty))))))))))))))))
+		     TyNameMap.empty)))))))))))))))))
 
     local
 

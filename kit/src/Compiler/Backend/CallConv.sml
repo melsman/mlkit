@@ -213,6 +213,16 @@ functor CallConv(structure Lvars : LVARS
 	  (phreg'::alpha_list,(alpha,phreg)::assign_list,phregs')
 	end
 
+      fun resolve_list_auto phreg_to_alpha ([],assign_list,phregs) = ([],assign_list,phregs)
+	| resolve_list_auto phreg_to_alpha (alpha,assign_list,[]) = (alpha,assign_list,[])
+	| resolve_list_auto phreg_to_alpha ((alpha,ft)::alphas,assign_list,phreg::phregs) =
+	let
+	  val (alpha_list,assign_list,phregs') = resolve_list_auto phreg_to_alpha (alphas,assign_list,phregs)
+	  val phreg' = phreg_to_alpha phreg
+	in
+	  ((phreg',ft)::alpha_list,(alpha,phreg)::assign_list,phregs')
+	end
+
       fun resolve_opt phreg_to_alpha (SOME alpha,assign_list,[]) = (SOME alpha,assign_list,[])
 	| resolve_opt phreg_to_alpha (SOME alpha,assign_list,phreg::phregs) = 
 	let
@@ -221,6 +231,11 @@ functor CallConv(structure Lvars : LVARS
 	  (SOME phreg',(alpha,phreg)::assign_list,phregs)
 	end
 	| resolve_opt phreg_to_alpha (NONE,assign_list,phregs) = (NONE,assign_list,phregs)
+      fun resolve_auto phreg_to_alpha (alpha,assign_list,[]) = (alpha,assign_list,[])
+	| resolve_auto phreg_to_alpha ((alpha,ft),assign_list,phreg::phregs) = 
+	let val phreg' = phreg_to_alpha phreg
+	in ((phreg',ft),(alpha,phreg)::assign_list,phregs)
+	end
     in
       fun resolve_ccall args_phreg_ccall res_phreg_ccall (phreg_to_alpha: lvar  -> 'a)
 	{args: 'a list, rhos_for_result: 'a list, res: 'a list} =
@@ -231,6 +246,15 @@ functor CallConv(structure Lvars : LVARS
 	  val (res',assign_list_res,_) = resolve_list phreg_to_alpha (res,[],res_phreg_ccall)
 	in
 	  ({args=args',rhos_for_result=rhos_for_result',res=res'},assign_list_args,assign_list_res)
+	end
+
+      fun resolve_ccall_auto args_phreg_ccall res_phreg_ccall (phreg_to_alpha: lvar  -> 'a)
+	{args: ('a*'b) list, res: 'a*'b} =
+	let
+	  val (args',assign_list_args,_) = resolve_list_auto phreg_to_alpha (args,nil,args_phreg_ccall)
+	  val (res',assign_list_res,_) = resolve_auto phreg_to_alpha (res,nil,res_phreg_ccall)
+	in
+	  ({args=args',res=res'},assign_list_args,assign_list_res)
 	end
 
       fun resolve_app args_phreg res_phreg (phreg_to_alpha: lvar -> 'a)

@@ -29,6 +29,27 @@ signature LINE_STMT =
     type label
     type ClosPrg
 
+    (* for use with the CCALL_AUTO construct: *)
+    datatype foreign_type =
+      CharArray               (* When passed to a c-function, the
+			       * data field of the ML char-array is 
+			       * passed. Char-arrays in the Kit are
+			       * zero-terminated and prefixed 
+                               * with a size-tag. CharArray may
+			       * not appear in a function result 
+                               * type. *) 
+    | ForeignPtr              (* Foreign pointers are marked so 
+			       * that the garbage collector does
+			       * not trace such pointers. *)
+    | Bool                    (* Booleans are always tagged and
+			       * must thus be converted when 
+			       * passed between the C world and
+			       * the ML world. *)
+    | Int                     (* Integers (and words) are tagged
+			       * when garbage collection is 
+			       * enabled. *)
+    | Unit                    (* Possible in results *)
+
     datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
     | UNBOXED of int
@@ -98,6 +119,8 @@ signature LINE_STMT =
     | PRIM          of {name: string, args: 'aty list,	res: 'aty list}
     | CCALL         of {name: string, args: 'aty list,
 			rhos_for_result : 'aty list, res: 'aty list}
+    | CCALL_AUTO    of {name: string, args: ('aty * foreign_type) list,
+			res: 'aty * foreign_type}
 
     and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)
 

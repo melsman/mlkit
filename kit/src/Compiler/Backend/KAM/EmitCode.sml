@@ -254,6 +254,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | PrimWordTableSub => out_opcode PRIM_WORDTABLE_SUB
       | PrimWordTableUpdate => out_opcode PRIM_WORDTABLE_UPDATE
       | PrimTableSize => out_opcode PRIM_TABLE_SIZE
+      | PrimIsNull => out_opcode PRIM_IS_NULL
 
     end
 

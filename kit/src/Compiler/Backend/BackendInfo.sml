@@ -186,7 +186,9 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 
          "__bytetable_sub", "__bytetable_size", "__bytetable_update",
 
-	 "word_sub0", "word_update0", "table_size"]
+	 "word_sub0", "word_update0", "table_size",
+	 
+	 "__is_null"]
     in
       fun is_prim name = S.member name S orelse S.member name S_flow
       fun is_flow_prim name = S.member name S_flow

@@ -75,6 +75,8 @@ struct
   (* LineStmt *)
   (************)
 
+  datatype foreign_type = datatype ClosExp.foreign_type
+
   datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
     | UNBOXED of int
@@ -145,6 +147,8 @@ struct
     | PRIM          of {name: string, args: 'aty list, res: 'aty list}
     | CCALL         of {name: string, args: 'aty list,
 			rhos_for_result : 'aty list, res: 'aty list}
+    | CCALL_AUTO    of {name: string, args: ('aty * foreign_type) list,
+			res: 'aty * foreign_type}
 
   and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)
 
@@ -458,6 +462,22 @@ struct
 			 finish=">)",
 			 childsep=RIGHT ",",
 			 children=(map (layout_aty pr_aty) rhos_for_result) @ (map (layout_aty pr_aty) args)}
+		 end
+	   | CCALL_AUTO{name,args,res} =>
+		 let
+		   fun layout_f CharArray = LEAF "CharArray"
+		     | layout_f Int = LEAF "Int"
+		     | layout_f Bool = LEAF "Bool"
+		     | layout_f ForeignPtr = LEAF "ForeignPtr"
+		     | layout_f Unit = LEAF "Unit"
+		   fun layout_pair (aty, f) = HNODE{start="",finish="",childsep=RIGHT":",
+						    children=[layout_aty pr_aty aty, layout_f f]}
+		   val t0 = layout_pair res
+		 in
+		   HNODE{start=flatten1(t0) ^ " = ccall_auto(\"" ^ name ^ "\", <", 
+			 finish=">)",
+			 childsep=RIGHT ",",
+			 children=map layout_pair args}
 		 end)
 	end
       
@@ -667,6 +687,17 @@ struct
 	  else CCALL{name=name,args=ces_to_atoms args,
 		     rhos_for_result=ces_to_atoms rhos_for_result,
 		     res=map VAR lvars_res}::acc
+	 | ClosExp.CCALL_AUTO{name,args,res} => 
+	  if BI.is_prim name then 
+	    die ("CCALL_AUTO." ^ name ^ " appears to be a PRIM!")
+	  else 
+	    let val res = case lvars_res
+			    of [lv] => (VAR lv, res)
+			     | _ => die ("CCALL_AUTO.result mismatch (SOME) "
+					 ^ Int.toString(length lvars_res))
+		val args = map (fn (ce,ft) => (ce_to_atom ce, ft)) args
+	    in CCALL_AUTO{name=name, args=args, res=res}::acc
+	    end
 	 | ClosExp.FRAME{declared_lvars,declared_excons} => acc
 
     fun L_top_decl(ClosExp.FUN(lab,cc,ce)) =
@@ -790,6 +821,7 @@ struct
     | get_phreg_ls(RESET_REGIONS{force,regions_for_resetting}) = get_phreg_smas(regions_for_resetting,[])
     | get_phreg_ls(PRIM{name,args,res}) = get_phreg_atoms(args,[])
     | get_phreg_ls(CCALL{name,args,rhos_for_result,res}) = get_phreg_atoms(args,get_phreg_atoms(rhos_for_result,[]))
+    | get_phreg_ls(CCALL_AUTO{name,args,res}) = get_phreg_atoms(map #1 args,[])
     | get_phreg_ls _ = die "get_phreg_ls: statement contains statements itself."
 
   (**************************************************************)
@@ -886,6 +918,7 @@ struct
     | def_var_ls(RESET_REGIONS{force,regions_for_resetting}) = []
     | def_var_ls(PRIM{res,...}) = get_var_atoms(res,[])
     | def_var_ls(CCALL{res,...}) = get_var_atoms(res,[])
+    | def_var_ls(CCALL_AUTO{res=(res,_),...}) = get_var_atom(res,[])
     | def_var_ls _ = die "def_var_ls: statement contains statements itself."
 
   (* In CalcOffset.sml, where we calculate bit vectors for GC, lvars bound to *)
@@ -952,6 +985,7 @@ struct
 	| (RESET_REGIONS{force,regions_for_resetting}) => get_var_smas(regions_for_resetting,[])
 	| (PRIM{name,args,res}) => get_var_atoms(args,[])
 	| (CCALL{name,args,rhos_for_result,res}) => get_var_atoms(args,get_var_atoms(rhos_for_result,[]))
+	| (CCALL_AUTO{name,args,res}) => get_var_atoms(map #1 args,[])
 	|  _ => die "use_var_ls: statement contains statements itself."
       end
 
@@ -1021,6 +1055,9 @@ struct
 	fun map_atys atys = map f_aty atys
 	fun map_rho(binder,offset) = (binder,f_offset offset)
 	fun map_rhos rhos = map map_rho rhos
+
+	fun map_pair_atys l = map (fn (aty,x) => (f_aty aty,x)) l
+	fun map_pair_aty (aty,x) = (f_aty aty,x)
 
 	fun map_sw(map_lss,switch_con,SWITCH(atom,sels,default)) =
 	  let
@@ -1100,6 +1137,8 @@ struct
 	  PRIM{name=name,args=map_atys args,res=map_atys res} :: map_lss' lss
 	  | map_lss'(CCALL{name,args,rhos_for_result,res}::lss) = 
 	  CCALL{name=name,args=map_atys args,rhos_for_result=map_atys rhos_for_result,res=map_atys res} :: map_lss' lss
+	  | map_lss'(CCALL_AUTO{name,args,res}::lss) = 
+	  CCALL_AUTO{name=name,args=map_pair_atys args,res=map_pair_aty res} :: map_lss' lss
       in
 	map_lss' lss
       end

@@ -51,9 +51,6 @@ StringDesc *implodeStringProfilingML(int rAddr, int xs, int pPoint);
 StringDesc *convertStringToMLProfiling(int rAddr, unsigned char *cStr, int pPoint);
 StringDesc *exnNameProfilingML(int rAddr, int e, int pPoint);
 int *explodeStringProfilingML(int rAddr2, StringDesc *str, int pPoint);   // no region for the cons cells
-#ifdef ENABLE_GC
-StringDesc *copy_stringProf(int rAddr, StringDesc* s, int pPoint);
-#endif
 #else
 StringDesc *allocStringML(int rAddr, int sizeML);
 StringDesc *concatStringML(int rAddr, StringDesc *str1, StringDesc *str2);

@@ -42,6 +42,8 @@ signature CLOS_EXP =
     type cc
     type label
 
+    datatype foreign_type = CharArray | ForeignPtr | Bool | Int | Unit
+
     datatype con_kind =  (* the integer is the index in the datatype 0,... *)
       ENUM of int
     | UNBOXED of int
@@ -94,6 +96,9 @@ signature CLOS_EXP =
     | CCALL           of {name: string,  
 			  args: ClosExp list,
 			  rhos_for_result : ClosExp list}
+    | CCALL_AUTO      of {name: string,  
+			  args: (ClosExp * foreign_type) list,
+			  res: foreign_type}
     | FRAME           of {declared_lvars: {lvar: lvar, label: label} list,
 			  declared_excons: {excon: excon, label: label} list}
 
