@@ -410,7 +410,7 @@ structure ScsUserImp :> SCS_USER_IMP =
       let
 	val msg = ScsDict.sl [(ScsLang.en,`Please confirm, that you want to import %0`),
 			      (ScsLang.da,`Bekræft venligst, at du vil importere %0`)]
-	                     [ScsPerson.name person_id]
+	                     [ScsPersonData.name person_id]
       in
 	Quot.toString
           `<a ^(UcsPage.confirmOnClick msg) href="^(Html.genUrl "imp_row.sml" [("user_imp_id",Int.toString user_imp_id),

@@ -3,7 +3,7 @@ val user_id = ScsLogin.auth_roles [ScsRole.SiteAdm]
 val (person_id,errs) = ScsPerson.getPersonIdErr("person_id",ScsFormVar.emptyErr)
 val _ = ScsFormVar.anyErrors errs
 
-val name = ScsPerson.name person_id
+val name = ScsPersonData.name person_id
 
 val title = ScsDict.sl [(ScsLang.en,`Edit roles for %0`),
 			(ScsLang.da,`Ret roller for %0`)] [name]

@@ -7,7 +7,7 @@ val title =
     NONE => ScsDict.s [(ScsLang.en,`User administration`),(ScsLang.da,`Brugeradministration`)]
   | SOME pid => 
       ScsDict.sl [(ScsLang.en,`User administration for %0 (%1)`),(ScsLang.da,`Brugeradministration for %0 (%1)`)] 
-        [ScsPerson.name pid, ScsPerson.email pid]
+        [ScsPersonData.name pid, ScsPersonData.email pid]
 
 val body = 
   case person_id_opt of
@@ -31,7 +31,7 @@ val body =
 	       else ScsDict.s [(ScsLang.da,`Bruger er ikke aktiv`),(ScsLang.en,`User is not active`)]) </b>`)
 	val become = ScsWidget.formBox "/scs/admin/user/become_this_user.sml"
  	  [("submit",ScsDict.sl [(ScsLang.en,`Become this user (%0)`),(ScsLang.da,`Bliv denne bruger (%0)`)]
-	    [ScsPerson.name pid])]
+	    [ScsPersonData.name pid])]
 	  (Html.export_hiddens [("person_id",Int.toString pid)] ^^ `
 	   ^(ScsDict.s [(ScsLang.en,`Become another user`),(ScsLang.da,`Bliv en anden bruger`)])`)
       in
