@@ -88,5 +88,7 @@ in
 
   email_form.sml
   email_sent.sml
+
+  scs/admin/dict/dict_form.sml
  ]
 end

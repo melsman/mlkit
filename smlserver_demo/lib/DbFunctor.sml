@@ -79,6 +79,17 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       in loop acc
       end
 
+    fun listDb (db:db, f:(string->string)->'a, sql: quot) : 'a list = 
+      let 
+	val s : Set.set = select(db, sql)
+	fun g n = Set.getOpt(s, n, "##")
+	fun loop () : 'a list =
+	  if (getRow(db,s) <> NsBasics.END_DATA) then f g :: loop()
+	  else []
+      in 
+	loop ()
+      end
+
     fun wrapDb f =
       let val db = getHandle()
       in (f db before putHandle db)
@@ -87,6 +98,8 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       
     fun fold (f:(string->string)*'a->'a, acc:'a, sql:quot) : 'a =
       wrapDb (fn db => foldDb (db,f,acc,sql))
+
+    fun list (f:(string->string)->'a, sql:quot) : 'a list = wrapDb (fn db => listDb(db,f,sql))
 
     fun oneFieldDb(db,sql) : string =
       let val s : Set.set = select(db, sql)

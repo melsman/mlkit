@@ -37,6 +37,7 @@ in
 		("Email Example (password protected, see the <a href=\"auth_example.sml\">authentication</a> example)",
 		 "email_form.sml"),
 		("SMLserver Images", "images/index.html"),
+		("Dictionary","scs/admin/dict/dict_form.sml"),
 		("This index page", "index.sml")])
 end ^^ `
 

@@ -31,7 +31,7 @@ ns_section "ns/servers"
 ns_param ${user} "${user}'s server"
 
 ns_section "ns/server/${user}"
-ns_param directoryfile index.msp
+ns_param directoryfile index.sml
 ns_param pageroot ${webdir}/www
 ns_param enabletclpages off
 
