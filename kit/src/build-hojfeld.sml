@@ -637,6 +637,8 @@ val cd = "CompileDec";
 val CD = "COMPILE_DEC";
 val bc = "BuildCompile";
 val BC = "BUILD_COMPILE";
+val KAM = "KIT_ABSTRACT_MACHINE";
+val lss = "LambdaStatSem";
 
 reset_changes_file ();
 exportWithSML_NJ();
