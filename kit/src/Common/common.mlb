@@ -2,6 +2,7 @@ local
   basis BasLib = bas $(MLKIT_ROOT)/basislib/basislib.mlb end
   basis Edlib = bas ../Edlib/edlib.mlb end
   basis Pickle = bas ../Pickle/pickle.mlb end
+  basis KitLib = bas $(MLKIT_ROOT)/basislib/kitlib.mlb end
 in
   CRASH.sml
   local open BasLib
@@ -95,6 +96,7 @@ in
   in
      SortedFinMap.sml
      IntFinMapPT.sml
+     IntStringFinMap.sml
      WordFinMapPT.sml
      QuasiMap.sml
      QuasiSet.sml
@@ -141,18 +143,17 @@ in
   ErrorInfo.sml
   ElabInfo.sml
   local open Edlib in ElabDec.sml end
-ErrorTraverse.sml
-TopLevelReport.sml
-../Manager/ElabRepository.sml
-EfficientElab/ElabTopdec.sml
-
-IntDiGraph.sml
-UnionFindPoly.sml
+  ErrorTraverse.sml
+  TopLevelReport.sml
+  local open Pickle in ../Manager/ElabRepository.sml end
+  local open Edlib in EfficientElab/ElabTopdec.sml end
+  local open Edlib Pickle in IntDiGraph.sml end
+  local open Pickle in UnionFindPoly.sml end
 Stack.sml
-DiGraph.sml
+  local open Edlib Pickle in DiGraph.sml end
 Heap.sml
-HashTable.sml
-QuasiEnv.sml
+  local open KitLib in HashTable.sml end
+  local open KitLib in QuasiEnv.sml end
 Timing.sml
 
 end

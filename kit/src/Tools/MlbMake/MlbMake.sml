@@ -44,7 +44,7 @@ signature COMP =
 		    namebase: string,     (* for uniqueness of type names, etc *)
 		    target: string, 
 		    flags: string} -> string
-     val link : {target: string, lnkFiles: string list} -> string
+     val link : {target: string, lnkFiles: string list} -> string option
 
      val mlbdir : unit -> string
      val objFileExt : unit -> string (* e.g., .o *)
@@ -72,11 +72,35 @@ structure MLKitComp : COMP =
 		val s = case basisFiles of nil => s | _ => s ^ " -load " ^ pp_list " " basisFiles
 	    in s ^ " " ^ source
 	    end
-	fun link {target: string, lnkFiles: string list} : string =
-	    mlkitexe() ^ " -o " ^ target ^ " -link " ^ pp_list " " lnkFiles
+	fun link {target: string, lnkFiles: string list} : string option =
+	    SOME(mlkitexe() ^ " -o " ^ target ^ " -link " ^ pp_list " " lnkFiles)
 
 	fun mlbdir() = "MLB/MLKit"
 	fun objFileExt() = ".o"
+    end
+
+structure BarryComp : COMP =
+    struct
+	val name = "barry"
+	val default_barryexe = "/usr/bin/barry"
+	fun compile {basisFiles: string list, 
+		     source: string, 
+		     target: string,  (* file.o -> file.o.lnk, file.o, file.o.eb *)
+		     namebase: string,
+		     flags: string} : string =
+	    let fun barryexe() = 
+		  case OS.Process.getEnv "MLB_BARRY" of
+		      SOME exe => exe
+		    | NONE => default_barryexe
+		val s = barryexe() ^ " -c -no_cross_opt -namebase " ^ namebase ^ " -o " ^ target
+		val s = if flags = "" then s else s ^ " " ^ flags
+		val s = case basisFiles of nil => s | _ => s ^ " -load " ^ pp_list " " basisFiles
+	    in s ^ " " ^ source
+	    end
+	fun link {target: string, lnkFiles: string list} : string option = NONE
+
+	fun mlbdir() = "MLB/Barry"
+	fun objFileExt() = ".b"
     end
 	
 (* [mlkit-mlb flags sources.mlb] Flags not recognized by mlkit-mlb are
@@ -250,8 +274,9 @@ struct
 
 	    val _ = vchat ("Linking...\n")		
 	    val lnkFiles = map (lnkFileFromSmlFile mlbfile) ss
-	    val cmd = C.link {target="a.out", lnkFiles=lnkFiles}
-	in system cmd
+	in case C.link {target="a.out", lnkFiles=lnkFiles} of
+	    SOME cmd => system cmd
+	  | NONE => ()
 	end
 
 end
@@ -268,6 +293,10 @@ struct
 
     structure MlbMLKit = Mlb(structure C = MLKitComp
 			     val verbose = verbose) 
+
+    structure MlbBarry = Mlb(structure C = BarryComp
+			     val verbose = verbose) 
+
 (*    structure MlbMosml = Mlb(MosmlComp) *)
 
     fun error (s : string) = (print ("\nError: " ^ s ^ ".\n\n"); 
@@ -284,8 +313,7 @@ struct
     fun print_usage() = print ("\nUsage: " ^ cmdName() ^ " {-mlkit|-mosml} [OPTION]*... [file.mlb] [COMPILER OPTION]*\n\n" ^
 			       "Options:\n\n")
 
-    val options = [("-mlkit", ["Use ML Kit as compiler."]),
-		   ("-mosml", ["Use Moscow ML as compiler."]),
+    val options = [("-compiler {mlkit,barry}", ["Specify compiler to use (default: mlkit)."]),
 		   ("-version", ["Print version information and exit."]),
 		   ("-help", ["Print help information and exit."])
 		   ]
@@ -320,6 +348,7 @@ struct
 	     val build = 
 		 case !compiler of
 		     "mlkit" => MlbMLKit.build
+		   | "barry" => MlbBarry.build
 		   | comp => error ("compiler " ^ comp ^ " not supported")
 	     fun sappend nil = ""
 	       | sappend [x] = x
