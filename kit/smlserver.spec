@@ -95,6 +95,8 @@ rm -rf $RPM_BUILD_ROOT
 
 # ML Kit Executables
 /usr/share/smlserver/bin/smlserverc.x86-linux
+/usr/share/smlserver/bin/smlserverc
+/usr/bin/smlserverc
 
 # Module for AOLserver (includes runtime system)
 /usr/share/smlserver/bin/nssml.so

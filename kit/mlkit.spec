@@ -88,7 +88,10 @@ rm -rf $RPM_BUILD_ROOT
 
 # ML Kit Executables
 /usr/share/mlkit/bin/mlkit.x86-linux
+/usr/share/mlkit/bin/mlkit
 /usr/share/mlkit/bin/rp2ps
+/usr/bin/mlkit
+/usr/bin/rp2ps
 
 # Runtime Systems
 /usr/share/mlkit/bin/runtimeSystem.o 
