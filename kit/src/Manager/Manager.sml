@@ -777,7 +777,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 			let val s = readFile ebfile handle _ => die("doUnpickleBases0.error reading file " ^ ebfile)
 			    val ((_,infixElabBasis),is) = 
 				Pickle.unpickler pu_NB0 (Pickle.fromString s)
-				handle _ => die("doUnpickleBases0.error unpickling infixElabBasis from file " ^ ebfile)
+				handle Fail s => die("doUnpickleBases0.error unpickling infixElabBasis from file " ^ ebfile ^ ": Fail " ^ s)
+				     | e => die("doUnpickleBases0.error unpickling infixElabBasis from file " ^ ebfile ^ ": " ^ General.exnMessage e)
 			    val (is, entries) = 
 				process(ebfiles,is,[{ebfile=ebfile,
 						     infixElabBasis=infixElabBasis,
