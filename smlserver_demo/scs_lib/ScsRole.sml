@@ -18,8 +18,14 @@ structure ScsRole :> SCS_ROLE =
   struct
     type role = string
     fun has_p uid role =
+let
+val v =
       Db.oneField `select scs_role.has_p(^(Int.toString uid),^(Db.qqq role))
                      from dual` = "t"
+val _ = Ns.log(Ns.Notice,"ScsRole:" ^ (Int.toString uid) ^ " and " ^ role ^ " = " ^ Bool.toString v)
+in
+v
+end
 
     fun has_one_p uid [] = false
       | has_one_p uid (x::xs) = has_p uid x orelse (has_one_p uid xs)
