@@ -79,3 +79,31 @@ begin
 end;
 /
 
+declare
+  eid integer;
+  vid1 integer;
+  vid2 integer;
+  eh_ordering1 integer;
+  eh_ordering2 integer;
+  dkm_ordering1 integer;
+  dkm_ordering2 integer;
+begin
+  eid := scs_enumeration.new( name => 'test' );
+
+  vid1 := scs_enumeration.addValue ( 'test', 'dkmtest', 'da', 'design');
+  vid2 := scs_enumeration.addValue ( 'test', 'ehtest', 'da', 'design');
+
+  select ordering into dkm_ordering1 from scs_enum_values where value = 'dkmtest';
+  select ordering into eh_ordering1 from scs_enum_values where value = 'ehtest';
+  scs_enumeration.swapOrdering( vid1, vid2);
+  select ordering into dkm_ordering2 from scs_enum_values where value = 'dkmtest';
+  select ordering into eh_ordering2 from scs_enum_values where value = 'ehtest';
+  scs_test.testBool( 'swapOrdering', 1,
+    eh_ordering2 = dkm_ordering1 and dkm_ordering2 = eh_ordering1 );
+
+  -- cleaning up
+  scs_enumeration.destroy( 'test' );
+  
+end;
+/
+show errors
