@@ -128,6 +128,8 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getPosRealErr          : real formvar_fn
     val getStringErr           : string formvar_fn
     val getStringLenErr        : int -> string formvar_fn
+    val getStringMinLenErr     : int -> string formvar_fn
+    val getStringWithinListErr : string list -> string formvar_fn
     val getNonEmptyStringErr   : string formvar_fn
     val getNonEmptyStringLenErr: int -> string formvar_fn
     val getIntRangeErr         : int -> int -> int formvar_fn
@@ -388,12 +390,24 @@ structure ScsFormVar :> SCS_FORM_VAR =
         getErrWithOverflow "" [(ScsLang.en,`string`),(ScsLang.da,`tekststreng`)]
           (fn v => if size v = 0 then NONE else SOME v)
 
+      fun getStringWithinListErr l = 
+        getErrWithOverflow "" [(ScsLang.en,`string within the following: [^(String.concatWith ", " l)]`),(ScsLang.da,`tekststreng iblandt følgende: [^(String.concatWith ", " l)]`)]
+          (fn v => if not(List.exists (fn str=>str=v) l) then NONE else SOME v)
+
       fun getStringLenErr l = getErrWithOverflow "" 
         (ScsDict.dictWithArgsToDict 
 	 [(ScsLang.en,`string or it is too long - max. %0 characters`),
 	  (ScsLang.da,`tekststreng eller den er for lang - maks %0 tegn`)] [Int.toString l])
 	(fn v => if size v = 0 orelse size v > l then NONE else SOME v)
+
+      fun getStringMinLenErr l = getErrWithOverflow "" 
+        (ScsDict.dictWithArgsToDict 
+	 [(ScsLang.en,`string or it is too short - min. %0 characters`),
+	  (ScsLang.da,`tekststreng eller den er for kort - minimum %0 tegn`)] [Int.toString l])
+	(fn v => if size v = 0 orelse size v < l then NONE else SOME v)
+
     end
+
 
     fun getIntRangeErr a b (args as (fv:string,emsg:string,errs:errs)) =
       let
