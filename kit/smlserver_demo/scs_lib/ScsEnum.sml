@@ -28,6 +28,11 @@ signature SCS_ENUM =
        val_id in language lang. *)
     val valName    : val_id -> ScsLang.lang -> string
 
+    (* [valToText (value,enum_name,lang)] returns the description of
+        enumeration value val for the enumeration enum_name. Returns
+        "" if no enum_name or value exists. *)
+    val valToText : string * string * ScsLang.lang -> string
+
     (* [allValues enum_name] returns a list of all enumeration values in the
        enumeration with name enum_name *)
     val allValues : enum_name -> int list
@@ -83,6 +88,14 @@ structure ScsEnum :> SCS_ENUM =
       Db.oneField `select scs_text.getText(ev.text_id,^(Db.qqq (ScsLang.toString lang))) as text
                      from scs_enum_values ev
                     where ev.val_id = '^(Int.toString val_id)'`
+
+    fun valToText (value,enum_name,lang) =
+      Db.oneField `select text
+                     from scs_enums
+                    where name = ^(Db.qqq enum_name)
+                      and value = ^(Db.qqq value)
+                      and language = '^(ScsLang.toString lang)'`
+     handle _ => ""
 
     fun getEnumErr enum_name = 
       let
