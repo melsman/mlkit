@@ -48,7 +48,8 @@ is
     table_name  in varchar2,
     id          in integer,
     approved_by in integer,
-    note_text   in varchar
+    note_text   in varchar,
+    modified_by in integer
   );
   
   /* ---------------------
@@ -102,7 +103,8 @@ is
     table_name  in varchar2,
     id          in integer,
     approved_by in integer,
-    note_text   in varchar
+    note_text   in varchar,
+    modified_by in integer
   ) is
   begin
     insert into SCS_APPROVALS(
@@ -111,16 +113,20 @@ is
       ON_WHICH_ID,     
       USER_ID,      
       DECISION,       
+      NOTE_TEXT,
       CREATED_ON,
-      NOTE_TEXT
+      LAST_MODIFIED, 
+      MODIFYING_USER
     ) values(
       scs.new_obj_id,
       table_name,
       id,
       approved_by,
       'f',
+      note_text,
       sysdate,
-      note_text
+      sysdate,
+      modified_by
     );
   end decline_row;
 
