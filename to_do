@@ -69,9 +69,6 @@ functors. Syntax:
           |  file.grm                            yacc source file
           |  file.lex                            lex source file
 
-Allow for adjustment of in-lining strategy in Optimiser. Add a
-function add_int_entry_to_menu, or so, to Flags.
-
 Declare polymorphic eq. in the initial basis, and make it impossible
 to redeclare equality; if equality is in the initial basis then
 in-lining happens automatically.

@@ -1,5 +1,3 @@
-(*$AT_INF*)
-
 (* Storage Mode Analysis *)
 
 signature AT_INF =

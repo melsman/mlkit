@@ -1107,7 +1107,7 @@ struct
                                            else NONE
                      val dropped_rho_formals_opt = 
                           case bound_but_never_written_into of
-                            SOME l => if print_rhos_formals then
+                            SOME l => if print_rhos_formals andalso !Flags.print_types then
                                             SOME(PP.HNODE{start = "[", finish = "]", childsep= PP.RIGHT", ",
                                                   children = layHseq layout_bind l})
                                       else NONE

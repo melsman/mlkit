@@ -1,2 +1,10 @@
-This is "Programming with Regions in the ML Kit"
-the user's guide to Version 3 of the ML Kit.
+This is "Programming with Regions in the ML Kit", the user's guide to
+Version 3 of the ML Kit.
+
+Style conventions:
+------------------
+
+Profile graphs should be produced with the -eps 138mm option to rp2ps.
+
+We use the series comma.
+

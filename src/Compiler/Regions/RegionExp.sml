@@ -180,7 +180,6 @@ struct
   fun mkPhi(tr,exported_regvars_and_arroweffects) = 
         mkPhiTr tr exported_regvars_and_arroweffects
 
-  fun warn_puts _ _ = ()
   fun countletregions _ = ()
 
 

@@ -27,21 +27,22 @@ signature FLAGS =
     val add_string_entry    : string * string ref -> unit
     val get_string_entry    : string -> string
     val lookup_string_entry : string -> string ref
-    val add_flag: string * string * bool ref -> unit
+    val lookup_int_entry    : string -> int ref
+     
       (* add_flag(key, menu_txt, boolref)  adds a new flag to the flag list. 
        * The flag may then be tested on and adjusted using the primitives
        * above. *)
+    val add_flag: string * string * bool ref -> unit
 
-    val add_flag_to_menu: string list* string * string * bool ref -> unit
-    val add_string_to_menu: string list* string * string * string ref -> unit
-
-     (* add_flag_to_menu(path,key,menu_text,flag);
+     (* add_flag_to_menu(path,key,menu_text,flag) etc.:
         add 'flag' with menu text 'menu_text' and dynamic search key 'key' to
         the sub-menu given by 'path'. The path is a list of menu texts, e.g., 
         ["Backends","C or HP PA_RISC","Compile into HP PA-RISC"]. If the path
         is not present in the menu, the menu is not changed.
      *)
-     
+    val add_flag_to_menu: string list * string * string * bool ref -> unit
+    val add_string_to_menu: string list * string * string * string ref -> unit
+    val add_int_to_menu: string list * string * string * int ref -> unit
 
     val raggedRight: bool ref  (* set to true if PrettyPrinting should
 				  be allowed to exceed `colwidth' by as

@@ -157,8 +157,13 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     val print_opt_lambda_expression = ref false
+    val print_drop_regions_expression_with_storage_modes = ref false 
     val _ = Flags.add_flag_to_menu (["Printing of intermediate forms"], "print_opt_lambda_expression",
 				    "print optimised lambda expression", print_opt_lambda_expression)
+    val _ = Flags.add_flag_to_menu (["Printing of intermediate forms"], 
+				    "print_drop_regions_expression_with_storage_modes",
+				    "print drop regions expression with storage modes", 
+				    print_drop_regions_expression_with_storage_modes)
 
     val print_physical_size_inference_expression =
           Flags.lookup_flag_entry "print_physical_size_inference_expression"
@@ -565,8 +570,11 @@ functor Compile(structure Excon : EXCON
          Timing.timing_begin();
          let val (pgm',env') = drop_regions(env, pgm)
 	 in Timing.timing_end("Drop");
-	    if Flags.is_on "print_drop_regions_expression" orelse !Flags.DEBUG_COMPILER then 
+	    if Flags.is_on "print_drop_regions_expression" then 
 	      display("\nReport: AFTER DROP REGIONS:", AtInf.layout_pgm_brief pgm')
+	    else ();
+	    if Flags.is_on "print_drop_regions_expression_with_storage_modes" orelse !Flags.DEBUG_COMPILER then 
+	      display("\nReport: AFTER DROP REGIONS (with storage modes):", AtInf.layout_pgm pgm')
 	    else ();
 	    (pgm',env')
 	 end)

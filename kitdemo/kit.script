@@ -3,8 +3,7 @@
  *
  * syntax: 
  *
- *   DEC   ::= val ID : TYPE = CONST REST 
- *   REST  ::= ;  |  DEC
+ *   DEC   ::= val ID : TYPE = CONST REST <DEC>
  *   ID    ::= sequence_of_letters_underbars_and_primes
  *   TYPE  ::= int |  string  |  bool
  *   CONST ::= ml_integer_constant  |  ml_string_constant  
@@ -18,5 +17,5 @@ val region_profiling : bool = false
 val print_physical_size_inference_expression : bool = false
 val print_types : bool = false
 val report_file_sig : bool = false
-
-;
+val warn_on_escaping_puts : bool = true
+val colwidth : int = 60
