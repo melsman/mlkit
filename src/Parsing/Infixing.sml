@@ -320,13 +320,81 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 		 | atpats =>
 		     GrammarUtils.tuple_atpat (map GrammarUtils.patOfAtpat atpats))
 
-        fun fvalbindToValbind fvalbind =
-          case fvalbind
-            of FVALBIND(info, fclause, _) =>
-              let
-                val (id, rhsList: (atpat list * exp * ty Option) list) = 
-                  resolveFClause (iBas, fclause)
+        exception NOT_SIMPLE
 
+        (* a fvalbind of the special form
+
+                vid atpat_1 ... atpat_n <:ty> = exp
+
+           in which every atpat_i is certain to be matched is transformed into
+
+               vid = fn atpat_1 => ... fn atpat_n = exp <:ty>
+
+        *)
+
+        fun try_simple_fvalbindToValbind(info_fvalbind,id,rhsList: (atpat list * exp * ty Option) list) = 
+          let
+            fun certainMatch_atpat (LONGIDatpat _) = true
+              | certainMatch_atpat (PARatpat(_,pat)) = certainMatch_pat pat
+              | certainMatch_atpat (WILDCARDatpat _) = true
+              | certainMatch_atpat (SCONatpat  _) = false
+              | certainMatch_atpat (RECORDatpat(_,None)) = true
+              | certainMatch_atpat (RECORDatpat(_,Some patrow)) = certainMatch_patrow patrow
+
+            and certainMatch_patrow (DOTDOTDOT _) = true
+              | certainMatch_patrow (PATROW(_,_,pat,None)) =certainMatch_pat pat
+              | certainMatch_patrow (PATROW(_,_,pat,Some patrow)) =
+              certainMatch_pat pat andalso certainMatch_patrow patrow
+         
+            and certainMatch_pat(ATPATpat(_,atpat)) = certainMatch_atpat atpat
+              | certainMatch_pat(CONSpat(_,atpat,_)) = false
+              | certainMatch_pat(TYPEDpat(_,pat,ty)) = certainMatch_pat pat
+              | certainMatch_pat(LAYEREDpat(_,_,_,pat)) = certainMatch_pat pat
+              | certainMatch_pat(UNRES_INFIXpat  _) = false
+
+          in
+            case rhsList of
+              [(atpats,exp,ty_opt)] => 
+                if List.forAll certainMatch_atpat atpats
+                  then
+                    let
+                        val exp' =
+                          case ty_opt
+                            of Some ty => TYPEDexp (GrammarUtils.span_info
+						      (get_info_ty ty,get_info_exp exp),
+                                                    exp, ty)
+                             | None => exp
+
+                        fun curry atpat exp =
+                          let val info_exp = get_info_exp exp
+                              val info_atpat = get_info_atpat atpat
+                              val info_fn = GrammarUtils.span_info(info_atpat, info_exp)
+                          in
+                            FNexp(info_fn,
+                                  MATCH(info_fn,
+                                        MRULE(info_fn,ATPATpat(info_atpat,atpat),exp),None))
+                          end
+                        val rhs = List.foldR curry exp' atpats
+                    in
+                      PLAINvalbind
+                      (info_fvalbind, GrammarUtils.patOfIdent info_fvalbind 
+                       (id, isInfix (iBas, id)),
+                       rhs,
+                       None)
+                    end
+                else raise NOT_SIMPLE
+            | _ => raise NOT_SIMPLE
+          end
+
+        fun fvalbindToValbind (fvalbind as FVALBIND(info, fclause, _)) =
+            let 
+              val (id, rhsList: (atpat list * exp * ty Option) list) = 
+                  resolveFClause (iBas, fclause)
+            in
+              try_simple_fvalbindToValbind(info,id,rhsList) 
+              handle NOT_SIMPLE =>
+              let
+(*                val _ = output(std_out, Ident.pr_id id ^ " is not simple\n")*)
                 val numArgs = (* changed back, 31/3/97, mads*)
                   case rhsList
                     of (atpats, _, _) :: _ => List.size atpats
@@ -425,7 +493,8 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 		   (id, isInfix (iBas, id)),
 		   curriedFn,
 		   None)
-              end (*fvalbindToValbind, I think*)
+              end 
+            end (*fvalbindToValbind*)
 
         fun resolveAll (fvalbind as FVALBIND (_, _, rest)) =
 	      (case fvalbindToValbind fvalbind of
