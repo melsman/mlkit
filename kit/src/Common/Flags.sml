@@ -108,7 +108,8 @@ functor Flags (structure Crash : CRASH
     val region_paths = (ref[]): (int*int) list ref
 
     (* Flags for Lambda Backend *)
-    val perform_reg_alloc = ref false
+    val perform_register_allocation = ref false
+    val enable_lambda_backend = ref false
 
     val chat                    = ref false
     val delay_assembly          = ref false   
@@ -594,7 +595,8 @@ struct
      ("all_multiplicities_infinite", all_multiplicities_infinite), 
      ("log_to_file", log_to_file),  (*true => generate a .log file*)
      ("garbage_collection", garbage_collection),
-     ("perform register allocation", perform_reg_alloc),
+     ("perform_register_allocation", perform_register_allocation),
+     ("enable_lambda_backend", enable_lambda_backend),
      ("DEBUG_COMPILER", DEBUG_COMPILER)]
 
 end (* Directory *)
@@ -1073,7 +1075,8 @@ struct
 	])
     val lambda_backend : item = mk_header "Lambda Backend"
       (DISPLAY
-       [mk_toggle ("perform register allocation", perform_reg_alloc)])
+       [mk_toggle ("enable lambda backend", enable_lambda_backend),
+	mk_toggle ("perform register allocation", perform_register_allocation)])
   in
     val control_item : item = mk_header "Control"
           (DISPLAY

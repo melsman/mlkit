@@ -16,8 +16,8 @@ signature MANAGER_OBJECTS =
       sig
 	val empty : modcode
 	val seq : modcode * modcode -> modcode
-	val mk_modcode : target * linkinfo * string -> modcode   (* Use emit or mk_exe to actually emit code.
-								  * The string is a unit name. *)
+	val mk_modcode : target * linkinfo * string -> modcode (* Use emit or mk_exe to actually emit code.
+								* The string is a program unit name. *)
 	val exist : modcode -> bool
 	val emit : prjid * modcode -> modcode       
 	val mk_exe : prjid * modcode * string list * string -> unit  (* produces executable `string' in target directory *)

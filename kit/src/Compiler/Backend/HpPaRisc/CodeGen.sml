@@ -1,18 +1,14 @@
-functor CodeGen(structure PhysSizeInf : PHYS_SIZE_INF
-		structure Con : CON
+functor CodeGen(structure Con : CON
 		structure Excon : EXCON
 		structure Lvars : LVARS
-		structure Effect : EFFECT
 		structure Labels : ADDRESS_LABELS
 		structure CallConv: CALL_CONV
 		structure LineStmt: LINE_STMT
 		  sharing type Con.con = LineStmt.con
 		  sharing type Excon.excon = LineStmt.excon
 		  sharing type Lvars.lvar = LineStmt.lvar = CallConv.lvar
-                  sharing type Effect.effect = Effect.place = LineStmt.place
                   sharing type Labels.label = LineStmt.label
                   sharing type CallConv.cc = LineStmt.cc
-		  sharing type LineStmt.phsize = PhysSizeInf.phsize
 	        structure SubstAndSimplify: SUBST_AND_SIMPLIFY
                   sharing type SubstAndSimplify.lvar = LineStmt.lvar
                   sharing type SubstAndSimplify.place = LineStmt.place
@@ -24,10 +20,9 @@ functor CodeGen(structure PhysSizeInf : PHYS_SIZE_INF
                   sharing type BI.label = Labels.label
 		structure JumpTables : JUMP_TABLES
 		structure HppaResolveJumps : HPPA_RESOLVE_JUMPS
-		  sharing type HppaResolveJumps.RiscPrg = HpPaRisc.RiscPrg
+		  sharing type HppaResolveJumps.AsmPrg = HpPaRisc.AsmPrg
 	        structure PP : PRETTYPRINT
 		  sharing type PP.StringTree = 
-		               Effect.StringTree = 
 			       LineStmt.StringTree =
                                HpPaRisc.StringTree
 		structure Flags : FLAGS
@@ -36,20 +31,19 @@ functor CodeGen(structure PhysSizeInf : PHYS_SIZE_INF
 		structure Crash : CRASH) : CODE_GEN =
 struct
 
-  type place = Effect.place
   type excon = Excon.excon
   type con = Con.con
   type lvar = Lvars.lvar
-  type phsize = PhysSizeInf.phsize
-  type pp = PhysSizeInf.pp
+  type phsize = LineStmt.phsize
+  type pp = LineStmt.pp
   type cc = CallConv.cc
   type label = Labels.label
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
-  type StoreTypeSS = SubstAndSimplify.StoreTypeCO
+  type StoreTypeCO = SubstAndSimplify.StoreTypeCO
   type AtySS = SubstAndSimplify.Aty
   type reg = HpPaRisc.reg
   type offset = int
-  type RiscPrg = HpPaRisc.RiscPrg
+  type AsmPrg = HpPaRisc.AsmPrg
 
   (***********)
   (* Logging *)
@@ -707,7 +701,7 @@ struct
 					  store_indexed(reg_for_result,WORDS 0,tmp_reg2,
 							#2(foldr (fn (aty,(offset,C)) => 
 								  (offset-1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
-												    C))) (num_elems-1,C') elems))))
+			(*niels; num_elems-1 should be num_elems *)									    C))) (num_elems-1,C') elems))))
 	       end
 	   | LS.REGVEC_RECORD{elems,alloc} =>
 	       let
@@ -889,7 +883,7 @@ struct
 	       fun dealloc_region_prim C =
 		 compile_c_call_prim("deallocateRegionNew",[],NONE,size_ff,C)
 	       fun remove_finite_rhos([]) = []
-		 | remove_finite_rhos(((place,PhysSizeInf.WORDS i),offset)::rest) = remove_finite_rhos rest
+		 | remove_finite_rhos(((place,LineStmt.WORDS i),offset)::rest) = remove_finite_rhos rest
 		 | remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
 	       val rhos_to_allocate = remove_finite_rhos rhos
 	     in
@@ -1005,9 +999,10 @@ struct
     fun exit_hppa_code () = get_lib_functions(COMMENT "****End of HPPA code**** " :: [])
   in
     fun CG {main_lab:label,
-	    code=ss_prg: (StoreTypeSS,offset,AtySS) LinePrg,
+	    code=ss_prg: (StoreTypeCO,offset,AtySS) LinePrg,
 	    imports:label list,
-	    exports:label list} =
+	    exports:label list,
+	    safe:bool} =
       let
 	val _ = chat "[Code Generation..."
 	val _ = reset_static_data()
@@ -1021,7 +1016,7 @@ struct
 						static_data = static_data()}
 	val _ = 
 	  if Flags.is_on "print_HP-PARISC_program" then
-	    display("\nReport: AFTER CODE GENERATION(HP-PARISC):", HpPaRisc.layout_RiscPrg hp_parisc_prg)
+	    display("\nReport: AFTER CODE GENERATION(HP-PARISC):", HpPaRisc.layout_AsmPrg hp_parisc_prg)
 	  else
 	    ()
 	val _ = chat "]\n"
@@ -1140,21 +1135,20 @@ struct
       end
   end
 
+
   (* ------------------------------------------------------------ *)
   (*  Emitting Target Code                                        *)
   (* ------------------------------------------------------------ *)
-  fun emit(prg: RiscPrg,filename: string) : unit = 
+  fun emit(prg: AsmPrg,filename: string) : unit = 
     let 
       val os = TextIO.openOut filename
     in 
-      HpPaRisc.output_RiscPrg(os,prg);
+      HpPaRisc.output_AsmPrg(os,prg);
       TextIO.closeOut os;
       TextIO.output(TextIO.stdOut, "[wrote HP code file:\t" ^ filename ^ "]\n")
     end 
   handle IO.Io {name,...} => Crash.impossible ("HppaKAMBackend.emit:\nI cannot open \""
 					       ^ filename ^ "\":\n" ^ name)
-
-
 end;
 
 

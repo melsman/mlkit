@@ -15,12 +15,55 @@ functor KitCompiler() : sig include MANAGER
     structure Tools   = Tools()
     structure Basics  = Basics(structure Tools = Tools)
     structure AllInfo = Basics.AllInfo
+    structure Name = Basics.Name
+    structure Report = Tools.Report
+    structure Crash = Tools.Crash
+    structure IntFinMap = Tools.IntFinMap
+    structure Flags = Tools.Flags
+    structure PP = Tools.PrettyPrint
 
     structure TopdecParsing  = TopdecParsing(structure Basics = Basics)      
 
     structure Elaboration = Elaboration(structure TopdecParsing = TopdecParsing)
 
-    structure Execution = Execution(structure Elaboration = Elaboration)
+    structure FreeIds = FreeIds
+      (structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
+       structure Environments = Basics.Environments
+       structure ModuleEnvironments = Basics.ModuleEnvironments
+       structure ElabInfo = AllInfo.ElabInfo
+       structure Crash = Tools.Crash
+       structure PP = PP)
+
+    structure Lvars = Lvars(structure Name = Name
+			    structure Report = Report
+			    structure PP = PP
+			    structure Crash = Crash
+			    structure IntFinMap = IntFinMap)
+
+    structure Lvarset = Lvarset(structure Lvars = Lvars)
+
+    structure Labels = AddressLabels(structure Name = Name)
+
+    structure Con = Con(structure Name = Name
+			structure Report = Report
+			structure PP = PP
+			structure Crash = Crash
+			structure IntFinMap = IntFinMap)
+
+    structure Excon = Excon(structure Name = Name
+			    structure Report = Report
+			    structure PP = PP
+			    structure Crash = Crash
+			    structure IntFinMap = IntFinMap)
+
+    structure Execution = Execution(structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
+				    structure FreeIds = FreeIds
+				    structure Basics = Basics
+				    structure Lvars = Lvars
+				    structure Lvarset = Lvarset
+				    structure Con = Con
+				    structure Excon = Excon
+				    structure Labels = Labels)
 
     structure OpacityElim = OpacityElim(structure Crash = Tools.Crash
 					structure PP = Tools.PrettyPrint
@@ -31,18 +74,13 @@ functor KitCompiler() : sig include MANAGER
 					structure StatObject = Basics.StatObject
 					structure TopdecGrammar = Elaboration.PostElabTopdecGrammar)
 
-    structure Flags = Tools.Flags
-
-    structure Crash = Tools.Crash
-
     structure ManagerObjects =
       ManagerObjects(structure ModuleEnvironments = Basics.ModuleEnvironments
 		     structure OpacityElim = OpacityElim
 		     structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
-		     structure CompilerEnv = Execution.CompilerEnv
 		     structure ElabRep = Elaboration.ElabRepository
-		     structure CompileBasis = Execution.CompileBasis
-		     structure Compile = Execution.Compile
+		     structure Execution = Execution
+		     structure Labels = Labels
 		     structure InfixBasis = TopdecParsing.InfixBasis
 		     structure FinMap = Tools.FinMap
 		     structure PP = Tools.PrettyPrint
@@ -93,8 +131,8 @@ functor KitCompiler() : sig include MANAGER
 		 structure ElabInfo = AllInfo.ElabInfo
 		 structure Environments = Basics.Environments
 		 structure CompileBasis = Execution.CompileBasis
-		 structure FreeIds = Execution.FreeIds
-		 structure Compile = Execution.Compile
+		 structure FreeIds = FreeIds
+		 structure Execution = Execution
 		 structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
 		 structure Crash = Tools.Crash
 		 structure Report = Tools.Report
@@ -109,7 +147,7 @@ functor KitCompiler() : sig include MANAGER
 	      structure ModuleEnvironments = Basics.ModuleEnvironments
 	      structure ParseElab = ParseElab
 	      structure IntModules = IntModules
-	      structure FreeIds = Execution.FreeIds
+	      structure FreeIds = FreeIds
 	      structure Timing = Tools.Timing
 	      structure Crash = Tools.Crash
 	      structure Report = Tools.Report

@@ -100,14 +100,23 @@ Backend/CODE_GEN.sml
 Backend/JUMP_TABLES.sml
 Backend/JumpTables.sml
 
-(* HP-PARISC *)
-Backend/HpPaRisc/HPPA_RESOLVE_JUMPS.sml
-Backend/HpPaRisc/HppaResolveJumps.sml
-Backend/HpPaRisc/BackendInfo.sml
-Backend/HpPaRisc/CodeGen.sml
-Backend/HpPaRisc/HP_PA_RISC.sml
-Backend/HpPaRisc/HpPaRisc.sml
+#if defined(KIT_TARGET_X86)
 
+   Backend/X86/BackendInfoX86.sml
+   Backend/X86/CodeGenX86.sml
+   Backend/X86/INSTS_X86.sml
+   Backend/X86/InstsX86.sml
+
+#else (* HP-PARISC *)
+
+   Backend/HpPaRisc/BackendInfo.sml
+   Backend/HpPaRisc/HPPA_RESOLVE_JUMPS.sml
+   Backend/HpPaRisc/HppaResolveJumps.sml
+   Backend/HpPaRisc/CodeGen.sml
+   Backend/HpPaRisc/HP_PA_RISC.sml
+   Backend/HpPaRisc/HpPaRisc.sml
+
+#endif
 
 #if defined(KIT_TARGET_C)
 

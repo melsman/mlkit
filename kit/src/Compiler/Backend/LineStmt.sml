@@ -29,7 +29,7 @@ struct
   type excon = Excon.excon
   type con = Con.con
   type lvar = Lvars.lvar
-  type phsize = PhysSizeInf.phsize
+  datatype phsize = datatype PhysSizeInf.phsize
   type pp = PhysSizeInf.pp
   type cc = CallConv.cc
   type label = Labels.label
