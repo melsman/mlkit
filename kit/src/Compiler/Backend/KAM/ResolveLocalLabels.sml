@@ -24,7 +24,7 @@ functor ResolveLocalLabels(structure BC : BUFF_CODE
 	  let 
 	    val curr_pos = !BC.out_position 
 	  in
-	    IntFinMap.add (lbl_k, Label_defined curr_pos, !label_table);
+	    label_table := IntFinMap.add (lbl_k, Label_defined curr_pos, !label_table);
 	    case L of
 	      [] => ()
 	    |  _ => (* Backpatching the list L of pending labels: *)
@@ -45,7 +45,7 @@ functor ResolveLocalLabels(structure BC : BUFF_CODE
       let
 	val lbl_k = Labels.key lbl
 	fun out_label L =
-	  (IntFinMap.add (lbl_k, Label_undefined ((!BC.out_position, orig) :: L), !label_table);
+	  (label_table := IntFinMap.add (lbl_k, Label_undefined ((!BC.out_position, orig) :: L), !label_table);
 	   BC.out_long_i 0)
       in
 	case IntFinMap.lookup (!label_table) lbl_k 

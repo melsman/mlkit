@@ -105,7 +105,7 @@ fun build_kam () =
       KitKAM.Flags.target_file_extension := ".uo"
 
 (*   ;  KitKAM.build_basislib() *)
-     ; KitKAM.comp "../test/hello.sml"
+     ; KitKAM.comp "../test/if.sml"
 (*      ; KitKAM.install() *)
   end;
 

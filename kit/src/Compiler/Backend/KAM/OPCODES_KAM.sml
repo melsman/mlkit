@@ -1,5 +1,5 @@
 (* This file is auto-generated with Tools/GenOpcodes on *)
-(* Wed Oct 11 21:35:08 2000 *)
+(* Fri Oct 13 16:42:46 2000 *)
 signature OPCODES_KAM = 
   sig
     val ALLOC_N : int 
