@@ -6,20 +6,16 @@ signature MANAGER =
 
     exception PARSE_ELAB_ERROR of ErrorCode.ErrorCode list
     
-    val build : string -> unit                (* build the project. 
-					       * May raise PARSE_ELAB_ERROR. *)
-
-    val comp : string -> unit   (* comp s  compiles (!Flags.source_directory ^ s ^ ".sml")
-				 * into (!Flags.target_directory ^ s ^ ".exe") 
-				 * Log's, vcg's and linkfile are put in target directory. 
+    val build : string -> unit  (* build pmfile  builds the project pmfile. 
 				 * May raise PARSE_ELAB_ERROR. *)
 
-    val elab : string -> unit                 (* elab s  elaborates only; s is a file name
-					       * relative to source_dir.
-					       * May raise PARSE_ELAB_ERROR. *)
+    val comp : string -> unit   (* comp path  compiles path into file `run'.
+				 * Log's, vcg's and linkfile are put in current directory. 
+				 * May raise PARSE_ELAB_ERROR. *)
 
-    val interact : unit -> unit               (* Menu-system to control flags *)
+    val elab : string -> unit   (* elab path  elaborates path
+				 * May raise PARSE_ELAB_ERROR. *)
 
-    val reset : unit -> unit                  (* Resets the system *)
+    val reset : unit -> unit    (* Resets the system *)
     val commit : unit -> unit
   end

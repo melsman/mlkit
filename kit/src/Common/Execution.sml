@@ -21,6 +21,7 @@ functor Execution(structure Elaboration : ELABORATION) : EXECUTION =
 
     structure FreeIds = FreeIds
       (structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
+       structure Environments = Basics.Environments
        structure ElabInfo = AllInfo.ElabInfo
        structure Crash = Tools.Crash
        structure PP = Tools.PrettyPrint)

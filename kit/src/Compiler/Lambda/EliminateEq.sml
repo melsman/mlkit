@@ -12,7 +12,7 @@ functor EliminateEq (structure Lvars : LVARS
 		     structure TyNameMap : MONO_FINMAP
 		       sharing type TyNameMap.dom = TyName.TyName
 			   and type TyNameMap.StringTree = PP.StringTree
-		     structure TyVarMap : ORDER_FINMAP
+		     structure TyVarMap : MONO_FINMAP
 		       sharing type TyVarMap.dom = LambdaExp.tyvar
 	   	           and type TyVarMap.StringTree = PP.StringTree
 		     structure LvarMap : MONO_FINMAP

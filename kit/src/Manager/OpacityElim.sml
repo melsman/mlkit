@@ -47,6 +47,9 @@ functor OpacityElim(structure Crash : CRASH
 
     type topdec = TopdecGrammar.topdec
 
+    fun print_basis B =
+      PP.outputTree(print,ModuleEnvironments.B.layout B, 100)
+
     infix oo
     val op oo = Realisation.oo
     val Id : realisation = Realisation.Id
@@ -420,7 +423,13 @@ functor OpacityElim(structure Crash : CRASH
 	  val (argE, elabB, T, resE) = 
 	    case ElabInfo.to_TypeInfo i
 	      of SOME(TypeInfo.FUNBIND_INFO {argE, elabB, T, resE, opaq_env_opt=NONE}) =>
-		(on_Env rea argE, ModuleEnvironments.B.on rea elabB, T, on_Env rea resE)
+		((*print "\nOPACITY_ELIM-BEFORE_REA\n";
+		 print_basis elabB;*)
+		 let val elabB' = ModuleEnvironments.B.on rea elabB
+		 in (*print "\nOPACITY_ELIM-AFTER_REA\n";
+		   print_basis elabB';*)
+		   (on_Env rea argE, elabB', T, on_Env rea resE)
+		 end)
 	       | _ => die "elim_funbind.wrong type info."
 	  val (strexp',rea') = elim_strexp(oenv, strexp)      
 	  val resE' = on_Env rea' resE

@@ -1,4 +1,4 @@
-(*$INFO_DIGRAPH*)
+
 signature INFO_DIGRAPH =
 sig
   (* To make a DiGaph we have to specify the info field of the nodes, and *
@@ -15,7 +15,7 @@ sig
 
 end
 
-(*$DIGRAPH2*)
+
 signature DIGRAPH2 =
   sig
 
@@ -198,7 +198,6 @@ signature DIGRAPH_SCC =
   end
 
 
-(*$DiGraphAll: PRETTYPRINT FLAGS CRASH ORDER_FINMAP OrderFinMap DIGRAPH_ALL INFO_DIGRAPH REPORT*)
 functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 		   structure PP: PRETTYPRINT
 		   structure Flags: FLAGS
@@ -208,10 +207,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 
     open Edlib
 
-    structure IdFinMap (*: sig 
-			   include ORDER_FINMAP
-                           where type dom = InfoDiGraph.nodeId
-			 end *) =
+    structure IdFinMap  =
       OrderFinMap(structure Order =
 		    struct
 		      type T = InfoDiGraph.nodeId
@@ -638,7 +634,6 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
       end
   end
 
-(*$DiGraph2: PRETTYPRINT FLAGS CRASH ORDER_FINMAP OrderFinMap DiGraphAll DIGRAPH2 INFO_DIGRAPH REPORT*)
 functor DiGraph2(structure InfoDiGraph : INFO_DIGRAPH
 		structure PP: PRETTYPRINT
 		structure Flags: FLAGS
@@ -655,7 +650,6 @@ functor DiGraph2(structure InfoDiGraph : INFO_DIGRAPH
   end
 
 
-(*$DiGraphScc: PRETTYPRINT FLAGS CRASH ORDER_FINMAP OrderFinMap DIGRAPH_SCC DiGraph2 INFO_DIGRAPH REPORT*)
 functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
 		   structure PP: PRETTYPRINT
 		   structure Flags: FLAGS

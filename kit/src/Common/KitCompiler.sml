@@ -8,7 +8,6 @@
  * Execution. *)
 
 functor KitCompiler() : sig include MANAGER 
-                            val test : unit -> unit
 			    structure Flags : FLAGS
 			end  =
   struct
@@ -112,14 +111,6 @@ functor KitCompiler() : sig include MANAGER
 	      structure Report = Tools.Report
 	      structure PP = Tools.PrettyPrint
 	      structure Flags = Tools.Flags)
-
-      structure TestEnv = TestEnv(structure TestInfo = TestInfo (structure Flags = Tools.Flags)
-				  structure Flags = Tools.Flags
-				  structure Manager = Manager
-				  structure Basics = Basics
-				  structure Timing = Tools.Timing)
-
-      val test = TestEnv.test
       open Manager
 
   end;
@@ -149,19 +140,54 @@ structure K = struct
        Flags.lookup_string_entry "path_to_runtime_prof" := 
        OS.Path.concat(kitsrc_path, "Runtime/runtimeSystemProf.o");
        Flags.basislib_project := 
-       (OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../basislib/basislib.pm")));
-       Flags.lookup_string_entry "test_env_directory" := 
-       (OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../TestEnv"))))
+       (OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../basislib/basislib.pm"))))
 
     val date = Date.fmt "%B %d, %Y" (Date.fromTimeLocal (Time.now()))
     val version = "3"
     val greetings = "ML Kit with Regions, Version " ^ version ^ ", " ^ date ^ "\n" ^
                     "Using the " ^ Flags.get_string_entry "kit_backend" ^ " backend\n"
 
-    fun kit scriptfile = (print greetings;
-			  set_paths();
-			  Flags.read_script scriptfile;
-			  Flags.interact())
+    local 
+      datatype source = SML of string | PM of string
+      fun determine_source (s:string) : source option = 
+	case OS.Path.ext s
+	  of SOME "sml" => SOME(SML s)
+	   | SOME "sig" => SOME(SML s)
+	   | SOME "pm" => SOME(PM s)
+	   | SOME ext => (print "File name must have extension `.pm', `.sml', or `.sig'.\n";
+			  print ("The file name you gave me has extension `" ^ ext ^ "'.\n"); NONE)
+	   | NONE => (print "File name must have extension `.pm', `.sml', or `.sig'.\n";
+		      print "The file name you gave me has no extension.\n"; NONE)
+      exception Version
+    in
+      fun kitexe (_, ["-version"]) = (print greetings; OS.Process.success)
+	| kitexe (_, l) =
+	let 
+	    fun exit () = OS.Process.failure
+	    fun go [] = (Flags.interact(); OS.Process.success)
+	      | go [file] = ((case determine_source file
+				of SOME (SML s) => (comp s; OS.Process.success) 
+				 | SOME (PM s) => (build s; OS.Process.success)
+				 | NONE => exit())
+			     handle PARSE_ELAB_ERROR _ => exit())
+	      | go _ = (print "Error: I expect at most one file name.\n"; exit())
+	    fun loop ("-script"::script::rest, _) = loop (rest, script)
+	      | loop ("-timings"::rest, script) = 
+	         (let val os = TextIO.openOut "KITtimings"
+		  in Flags.timings_stream := SOME os;
+		    loop (rest, script)
+		  end handle _ => (print "Error: I could not open file `KITtimings' for writing.\n"; exit()))
+	      | loop ("-nobasislib"::rest, script) = (Flags.auto_import_basislib := false; loop (rest, script))
+	      | loop ("-logtofiles"::rest, script) = (Flags.lookup_flag_entry "log_to_file" := true; loop (rest, script))
+	      | loop ("-prof"::rest, script) = (Flags.lookup_flag_entry "region_profiling" := true; loop (rest, script))
+	      | loop ("-version"::rest, script) = loop (rest, script) (*skip*)
+	      | loop (rest,script) = (Flags.read_script script; go rest)
+	in print greetings;
+	   set_paths(); 
+	   loop (l, "kit.script")
+	end
+    end
+	      
   in
     fun build_basislib() =
       let val memo = !Flags.auto_import_basislib
@@ -191,12 +217,13 @@ structure K = struct
 	  val _ = OS.Process.system("chmod a+x " ^ kitbinkit_path)
 	    handle _ => (print("\n***Installation not fully succeeded; `chmod a+x " ^ kitbinkit_path ^ "' failed***\n");
 			 OS.Process.success)
-	  fun kitexe (_, []) = (kit "kit.script"; OS.Process.success)
-	    | kitexe (_, ["-script", scriptfile]) = (kit scriptfile; OS.Process.success)
-	    | kitexe _ = (print "usage: kit [-script scriptfile]\n"; OS.Process.failure) 
       in SMLofNJ.exportFn(kitbinkit_path,kitexe)
       end
-    val kit = fn () => kit "kit.script"
+
+    fun kit scriptfile = (print greetings;
+			  set_paths();
+			  Flags.read_script scriptfile;
+			  Flags.interact())
   end
 
   val cd = OS.FileSys.chDir

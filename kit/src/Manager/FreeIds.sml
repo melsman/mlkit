@@ -1,10 +1,12 @@
 
 functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
+		 structure Environments : ENVIRONMENTS
 		 structure ElabInfo : ELAB_INFO
 		   sharing type ElabInfo.ElabInfo = TopdecGrammar.info
 		       and type ElabInfo.TypeInfo.strid = TopdecGrammar.strid
-		       and type ElabInfo.TypeInfo.tycon = TopdecGrammar.tycon
-		       and type ElabInfo.TypeInfo.id = TopdecGrammar.id
+		       and type ElabInfo.TypeInfo.tycon = TopdecGrammar.tycon = Environments.tycon
+		       and type ElabInfo.TypeInfo.id = TopdecGrammar.id = Environments.id
+                       and type ElabInfo.TypeInfo.TyEnv = Environments.TyEnv
 		 structure Crash : CRASH
 		 structure PP : PRETTYPRINT
 		  ) :  FREE_IDS =
@@ -48,6 +50,9 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 
     fun add_vid (id:id,{vids,tycons,strids,funids,sigids}:ids) =
       {vids=id::vids,tycons=tycons,strids=strids,funids=funids,sigids=sigids}
+
+    fun add_vids (vids':id list,{vids,tycons,strids,funids,sigids}:ids) =
+      {vids=vids'@vids,tycons=tycons,strids=strids,funids=funids,sigids=sigids}
 
     fun add_tycon (tycon:tycon,{vids,tycons,strids,funids,sigids}:ids) =
       {vids=vids,tycons=tycon::tycons,strids=strids,funids=funids,sigids=sigids}
@@ -178,7 +183,21 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
        | UNRES_FUNdec _ => die "free.UNRES_FUNdec"
        | TYPEdec(_,typbind) => free_typbind I typbind
        | DATATYPEdec(_,datbind) => free_datbind I datbind
-       | DATATYPE_REPLICATIONdec(_,tycon,longtycon) => (use_longtycon(I,longtycon); add_tycon(tycon,empty_ids))
+       | DATATYPE_REPLICATIONdec(info,tycon,longtycon) => 
+         let 
+	   val vids = 
+	     case to_TypeInfo info
+	       of SOME (ElabInfo.TypeInfo.TYENV_INFO TE) => 
+		 (case Environments.TE.lookup TE tycon
+		    of SOME tystr => Edlib.EqSet.list(Environments.VE.dom(Environments.TyStr.to_VE tystr))
+		     | NONE => die "free_dec.DATATYPE_REPLICATIONdec: no tystr") 
+		| _ => die "free_dec.DATATYPE_REPLICATIONdec: no type info"
+	   val strids = #1(TyCon.explode_LongTyCon longtycon)
+	   val longvids = map (fn id => Ident.implode_LongId (strids,id)) vids
+	 in use_longtycon(I,longtycon);
+	   app (fn longvid => use_longvid(I,longvid)) longvids;
+	   add_vids(vids, add_tycon(tycon,empty_ids))
+	 end
        | ABSTYPEdec(_,datbind,dec) => 
          let fun Abs ({tycons,...}:ids) = {tycons=tycons, vids=[], strids=[], funids=[], sigids=[]}
 	     val I1 = free_datbind I datbind

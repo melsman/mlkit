@@ -83,7 +83,6 @@ functor CompileDec(structure Con: CON
                   ): COMPILE_DEC =
   struct
 
-    structure Int = Edlib.Int
     structure List = Edlib.List
     structure ListSort = Edlib.ListSort
     structure ListPair = Edlib.ListPair
@@ -661,7 +660,7 @@ Report: Opt:
   fun string_from_con0 (Con {longid, ...}) = "Con {" ^ Ident.pr_longid longid ^ ", ...}"
     | string_from_con0 (Scon scon) = "Scon " ^ SCon.pr_scon scon
     | string_from_con0 (Excon {longid, ...}) = "Excon {" ^ Ident.pr_longid longid ^ ", ...}"
-    | string_from_con0 (Tuple {arity}) = "Tuple {" ^ Int.string arity ^ "}"
+    | string_from_con0 (Tuple {arity}) = "Tuple {" ^ Int.toString arity ^ "}"
 
   (*the type cmp, and the _cmp functions scattered around are used to define
    function ifeq_cmp which is used to define an orderfinmap that keeps track
@@ -731,7 +730,7 @@ Report: Opt:
     
   fun string_from_path (Access (i, con, path)) =
 	"Access ("
-	^ Int.string i ^ ", "
+	^ Int.toString i ^ ", "
 	^ string_from_con0 con ^ ", "
 	^ string_from_path path ^ ")"
     | string_from_path Obj = "Obj"
@@ -755,7 +754,7 @@ Report: Opt:
   (*TODO 03/12/1997 19:36. tho.   kommenter rhs-typen.
    kommenter forskelle & ligheder med sestofts artikel.*)
 
-  val string_from_rhs = Int.string
+  val string_from_rhs = Int.toString
   fun string_from_rhs' (_, rhs) = string_from_rhs rhs
 
   structure conset : KIT_MONO_SET = OrderSet
@@ -870,11 +869,11 @@ Report: Opt:
     val counter = ref 0
     fun next () = (counter := 1 + !counter ; !counter)
     fun string_from_con (Con {longid, ...}) = Ident.pr_longid longid
-      | string_from_con (Scon (SCon.INTEGER i)) = Int.string i
+      | string_from_con (Scon (SCon.INTEGER i)) = Int.toString i
       | string_from_con (Scon (SCon.STRING s)) = "a_string"
       | string_from_con (Scon (SCon.REAL r)) = "a_real"
       | string_from_con (Scon (SCon.CHAR c)) = "a_char"
-      | string_from_con (Scon (SCon.WORD w)) = Int.string w
+      | string_from_con (Scon (SCon.WORD w)) = Int.toString w
       | string_from_con (Excon {longid, ...}) = Ident.pr_longid longid
       | string_from_con (Tuple {arity}) = "a_tuple"
 
@@ -891,7 +890,7 @@ Det finder du nok aldrig ud af.*)
     fun mk_node kind s = {kind = kind, refs = ref 0, visited = ref false,
 			  lvar = Lvars.new_named_lvar s}
     fun mk_ifeq_node (ifeq as (path, con, edge1, edge2)) : node =
-	  let val node = mk_node (IfEq ifeq) ("n" ^ Int.string (next ())
+	  let val node = mk_node (IfEq ifeq) ("n" ^ Int.toString (next ())
 					      ^ "_" ^ string_from_con con ^ "?")
 	  in 
 	    mapr := map.add (ifeq, node, !mapr) ;
@@ -992,6 +991,7 @@ Det finder du nok aldrig ud af.*)
 			     SOME (TypeInfo.LAB_INFO {index, ...}) => (index, pat)
 			   | _ => die "match_atpat: RECORDatpat info")
 		           | _ => die "match_atpat: RECORDatpat patrow") patrows
+	       val argpats = ListSort.sort (fn (a,_) => fn (b,_) => a < b) argpats
 	     in
 	       match_con (Tuple {arity=List.size argpats}) argpats
 	         (path, termd, ctx, work, rhs, rules)
@@ -1279,6 +1279,15 @@ in
   val pr_decdag = pr o string_from_decdag
 *)
 
+  fun string_from_edge (NONE) = "NONE"
+    | string_from_edge (SOME node) = "SOME(" ^ string_from_node node ^ ")"
+  and string_from_kind (Success rhs') = "Success(" ^ string_from_rhs' rhs' ^ ")"
+    | string_from_kind (IfEq(path,con,edge1,edge2)) = 
+    "IfEq{path=" ^ string_from_path path ^ ", con=" ^ string_from_con0 con ^ 
+    ", edge1=" ^ string_from_edge edge1 ^ ", edge2=" ^ string_from_edge edge2 ^ ")"
+  and string_from_node {kind, refs, visited, lvar} = 
+    "Node{lvar=" ^ Lvars.pr_lvar lvar ^ ", kind=" ^ string_from_kind kind ^ 
+    ", refs=" ^ Int.toString (!refs) ^ ", visited="^ Bool.toString(!visited) ^ "}" 
 
   local
     fun declarations_to_be_made_for_id (id : id) (info : ElabInfo.ElabInfo) (path : path) =
@@ -1426,26 +1435,36 @@ end; (*match compiler local*)
 	   | OverloadingInfo.RESOLVED_CHAR => die "int_or_real: char"
 	   | OverloadingInfo.RESOLVED_STRING => die "int_or_real: string"
 	   | _ => die "int_or_word_or_real: unresolved"
+
+      fun int_or_word_div_mod info (int, word) =
+	case NoSome "int_or_word_div_mod" (ElabInfo.to_OverloadingInfo info) 
+	  of OverloadingInfo.RESOLVED_INT => int
+	   | OverloadingInfo.RESOLVED_REAL => die "int_or_word_div_mod: real"
+	   | OverloadingInfo.RESOLVED_WORD8 => word (* div and mod on word can be used for word8 *)
+	   | OverloadingInfo.RESOLVED_WORD => word
+	   | OverloadingInfo.RESOLVED_CHAR => die "int_or_word_div_mod: char"
+	   | OverloadingInfo.RESOLVED_STRING => die "int_or_word_div_mod: string"
+	   | _ => die "int_or_word_div_mod: unresolved"
 	
-      fun int_or_word_or_real info (int, word, real) =
+      fun int_or_word_or_word8_or_real info (int, word, word8, real) =
 	case NoSome "int_or_word_or_real" (ElabInfo.to_OverloadingInfo info) 
 	  of OverloadingInfo.RESOLVED_INT => int
 	   | OverloadingInfo.RESOLVED_REAL => real
-	   | OverloadingInfo.RESOLVED_WORD8 => int
+	   | OverloadingInfo.RESOLVED_WORD8 => word8
 	   | OverloadingInfo.RESOLVED_WORD => word
-	   | OverloadingInfo.RESOLVED_CHAR => int
+	   | OverloadingInfo.RESOLVED_CHAR => word8
 	   | OverloadingInfo.RESOLVED_STRING => die "int_or_word_or_real: string"
 	   | _ => die "int_or_word_or_real: unresolved"
 
-      fun string_or_int_or_real info (string, int, real) =
-	case NoSome "string_or_int_or_real" (ElabInfo.to_OverloadingInfo info) 
+      fun string_or_int_or_word_or_real info (string, int, word, real) =
+	case NoSome "string_or_int_or_word_or_real" (ElabInfo.to_OverloadingInfo info) 
 	  of OverloadingInfo.RESOLVED_INT => int
 	   | OverloadingInfo.RESOLVED_REAL => real
-	   | OverloadingInfo.RESOLVED_WORD8 => int
-	   | OverloadingInfo.RESOLVED_WORD => int
-	   | OverloadingInfo.RESOLVED_CHAR => int
+	   | OverloadingInfo.RESOLVED_WORD8 => word
+	   | OverloadingInfo.RESOLVED_WORD => word
+	   | OverloadingInfo.RESOLVED_CHAR => word
 	   | OverloadingInfo.RESOLVED_STRING => string
-	   | _ => die "string_or_int_or_real: unresolved"
+	   | _ => die "string_or_int_or_word_or_real: unresolved"
 
       fun ccall name argtypes restype =
 	CCALLprim {name = name, instances = [], tyvars = [],
@@ -1458,32 +1477,41 @@ end; (*match compiler local*)
       val plus_word = binary_int_ccall "plus_word__"
       val minus_word = binary_int_ccall "minus_word__"
       val mul_word = binary_int_ccall "mul_word__"
-      val div_word = binary_int_ccall "div_word__"
-      val mod_word = binary_int_ccall "mod_word__"
-      val neg_word = unary_int_ccall "neg_word__"
+      val div_word = binary_int_ccall' "div_word_"
+      val mod_word = binary_int_ccall' "mod_word_"
+      val plus_word8 = binary_int_ccall "plus_word8__"
+      val minus_word8 = binary_int_ccall "minus_word8__"
+      val mul_word8 = binary_int_ccall "mul_word8__"
+      val div_int = binary_int_ccall' "div_int_"
+      val mod_int = binary_int_ccall' "mod_int_"
 
       fun string_cmp_ccall name = ccall name [stringType, stringType] boolType
+      fun int_cmp_ccall name = ccall name [intType, intType] boolType
 
-      fun unoverload i CE.ABS = int_or_real i (ABS_INTprim, ABS_REALprim)
-	| unoverload i CE.NEG = int_or_word_or_real i (NEG_INTprim, NEG_INTprim, NEG_REALprim)
-	| unoverload i CE.PLUS = int_or_word_or_real i (PLUS_INTprim, PLUS_INTprim, PLUS_REALprim)
-	| unoverload i CE.MINUS = int_or_word_or_real i (MINUS_INTprim, MINUS_INTprim, MINUS_REALprim)
-	| unoverload i CE.MUL = int_or_word_or_real i (MUL_INTprim, MUL_INTprim, MUL_REALprim)
-	| unoverload i CE.DIV = binary_int_ccall' "divInt"
-	| unoverload i CE.MOD = binary_int_ccall' "modInt"
-	| unoverload i CE.LESS =
-	    string_or_int_or_real i
-	      (string_cmp_ccall "lessString", LESS_INTprim, LESS_REALprim)
-	| unoverload i CE.GREATER=
-	    string_or_int_or_real i
-	      (string_cmp_ccall "greaterString", GREATER_INTprim, GREATER_REALprim)
-	| unoverload i CE.LESSEQ =
-	    string_or_int_or_real i
-	      (string_cmp_ccall "lesseqString", LESSEQ_INTprim, LESSEQ_REALprim)
-	| unoverload i CE.GREATEREQ =
-	    string_or_int_or_real i
-	      (string_cmp_ccall "greatereqString", GREATEREQ_INTprim, GREATEREQ_REALprim)
-	| unoverload i _ = die "unoverload"
+      val less_string = string_cmp_ccall "lessString"
+      val greater_string = string_cmp_ccall "greaterString"
+      val lesseq_string = string_cmp_ccall "lesseqString"
+      val greatereq_string = string_cmp_ccall "greatereqString"
+      val less_word = int_cmp_ccall "less_word__"                 (* these primitives also works for word8 *)
+      val greater_word = int_cmp_ccall "greater_word__"
+      val lesseq_word = int_cmp_ccall "lesseq_word__"
+      val greatereq_word = int_cmp_ccall "greatereq_word__"
+
+      fun unoverload i p = 
+	case p
+	  of CE.ABS => int_or_real i (ABS_INTprim, ABS_REALprim)
+	   | CE.NEG => int_or_real i (NEG_INTprim, NEG_REALprim)
+	   | CE.PLUS => int_or_word_or_word8_or_real i (PLUS_INTprim, plus_word, plus_word8, PLUS_REALprim)
+	   | CE.MINUS => int_or_word_or_word8_or_real i (MINUS_INTprim, minus_word, minus_word8, MINUS_REALprim)
+	   | CE.MUL => int_or_word_or_word8_or_real i (MUL_INTprim, mul_word, mul_word8, MUL_REALprim)
+	   | CE.DIV => int_or_word_div_mod i (div_int, div_word)
+	   | CE.MOD => int_or_word_div_mod i (mod_int, mod_word)
+	   | CE.LESS => string_or_int_or_word_or_real i (less_string, LESS_INTprim, less_word, LESS_REALprim)
+	   | CE.GREATER => string_or_int_or_word_or_real i (greater_string, GREATER_INTprim, greater_word, GREATER_REALprim)
+	   | CE.LESSEQ => string_or_int_or_word_or_real i (lesseq_string, LESSEQ_INTprim, lesseq_word, LESSEQ_REALprim)
+	   | CE.GREATEREQ => string_or_int_or_word_or_real i (greatereq_string, GREATEREQ_INTprim, 
+							      greatereq_word, GREATEREQ_REALprim)
+	   | _ => die "unoverload"
     in
       fun overloaded_prim info result (*e.g., CE.ABS*)
 	    compilerAtexp compilerExp (arg: DecGrammar.atexp)
@@ -1505,9 +1533,10 @@ end; (*match compiler local*)
 
       fun overloaded_prim_fn info result (*e.g., CE.ABS*)
 	    takes_one_argument exn_args =
-	    let val ty = int_or_word_or_real info (CONStype ([], TyName.tyName_INT),
-						   CONStype ([], TyName.tyName_INT),
-						   CONStype ([], TyName.tyName_REAL))
+	    let val ty = int_or_word_or_word8_or_real info (CONStype ([], TyName.tyName_INT),
+							    CONStype ([], TyName.tyName_INT),
+							    CONStype ([], TyName.tyName_INT),
+							    CONStype ([], TyName.tyName_REAL))
 	        val lvar1 = Lvars.newLvar ()
 	    in
 	      if takes_one_argument then
@@ -1524,9 +1553,10 @@ end; (*match compiler local*)
 			       @ exn_args)}
 	    end
       fun overloaded_prim_fn' info result = (*e.g., CE.LESS, ... *)
-	    let val ty = CONStype ([], string_or_int_or_real info (TyName.tyName_STRING, 
-								   TyName.tyName_INT,
-								   TyName.tyName_REAL))
+	    let val ty = CONStype ([], string_or_int_or_word_or_real info (TyName.tyName_STRING, 
+									   TyName.tyName_INT,
+									   TyName.tyName_INT,
+									   TyName.tyName_REAL))
 	        val lvar1 = Lvars.newLvar ()
 	    in (*takes two arguments*)
 	      FN {pat=[(lvar1, RECORDtype [ty, ty])],
@@ -1953,6 +1983,11 @@ the 12 lines above are very similar to the code below
 	val rules = map (fn (pat, rhs) => (pat, mk_success_node (pat, rhs)))
 	               pat_rhs_s
 	val decdag = mk_decdag rules
+(*
+	val _ = print "DECDAG:\n"
+	val _ = print (string_from_edge decdag)
+	val _ = print "\n"
+*)
 	val lvar_switch = new_lvar_from_pats pats
 	val obj = VAR {lvar=lvar_switch, instances=[]}
 	      (*instances=[] because the argument to a fn cannot be polymorphic*)
@@ -2603,6 +2638,9 @@ the 12 lines above are very similar to the code below
    * Modules compilation
    * ----------------------------------------------------- *)
 
+  infix footnote
+  fun x footnote y = x
+
   local 
     open TopdecGrammar         
 	   
@@ -2727,3 +2765,4 @@ the 12 lines above are very similar to the code below
   fun reset () = () 
 
   end;
+

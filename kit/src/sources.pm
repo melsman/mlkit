@@ -16,10 +16,6 @@ in
     Manager/MANAGER.sml
     Manager/Manager.sml
     
-    Common/TEST_INFO.sml
-    Common/TestInfo.sml
-    Common/TestEnv.sml
-
     Common/Elaboration.sml
     Common/Execution.sml
     Common/KitCompiler.sml

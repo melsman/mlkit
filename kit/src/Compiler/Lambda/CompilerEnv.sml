@@ -546,6 +546,13 @@ functor CompilerEnv(structure Ident: IDENT
      end
 
 
+   fun pp_tynames l =
+     let fun pp [] = ""
+	   | pp [t] = TyName.pr_TyName t 
+	   | pp (t::ts) = TyName.pr_TyName t ^ "," ^ pp ts
+     in "{" ^ pp l ^ "}"
+     end
+
    type StringTree = FinMap.StringTree
 
     fun layoutCEnv (CENV{StrEnv,VarEnv,TyEnv}) =
@@ -566,7 +573,7 @@ functor CompilerEnv(structure Ident: IDENT
       PP.NODE{start="VarEnv = ",finish="",indent=2,
 	      children= [FinMap.layoutMap {start="{", eq=" -> ", sep=", ", finish="}"}
 			               (PP.layoutAtom Ident.pr_id)
-				       (PP.layoutAtom 
+				       (PP.layoutAtom ((fn f => fn e => f e ^ " withtynames " ^ pp_tynames(tynames_result(e,[])))
 					(fn LVAR (lv,_,_,_) => "LVAR(" ^ Lvars.pr_lvar lv ^ ")"
                                           | RESET_REGIONS => Ident.pr_id Ident.resetRegions
                                           | FORCE_RESET_REGIONS => Ident.pr_id Ident.forceResetting
@@ -584,7 +591,7 @@ functor CompilerEnv(structure Ident: IDENT
 					  | GREATEREQ => "GREATEREQ"
 					  | REF => "REF" 
 					  | CON(con,_,_,_,it) => "CON(" ^ Con.pr_con con ^ ")"
-					  | EXCON (excon,_) => "EXCON(" ^ Excon.pr_excon excon ^ ")"))
+					  | EXCON (excon,_) => "EXCON(" ^ Excon.pr_excon excon ^ ")")))
 				       m],
 	      childsep=PP.NOSEP}
 

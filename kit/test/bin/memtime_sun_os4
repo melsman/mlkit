@@ -1,0 +1,144 @@
+#!/usr/local/bin/tcsh
+
+# ---------------------------------------------------
+#   Shell script to time a program, and put the
+#                result into a file
+# 
+#           By Martin Elsman 29.11.95
+#    Modified by 
+#          Martin Koch,
+#          Niels Hallenberg, 29/05/1996
+#          Niels Hallenberg, 27/03/1997
+#                 mktemp does not exists on SunOS4
+#                 top is also different
+# ---------------------------------------------------
+
+#
+# Default output: std_out
+#
+
+set output_program=/dev/tty
+set output_memtime = /dev/tty
+set temp = /dev/tty
+
+#
+# Read args
+#
+
+while ( $# > "2" )
+ switch ("$1")
+   case "-f":
+     set output_program=$2
+     shift
+     shift
+   breaksw
+   case "-t":
+     set temp=$2
+     shift
+     shift
+   breaksw
+   case "-o":
+     set output_memtime = $2
+     shift
+     shift
+   breaksw
+   default:
+     goto error
+   breaksw
+ endsw
+end
+
+if ($# == "1") then
+  set prg = $1
+  set input = ""
+  shift
+endif
+
+if ($# == "2") then
+  set prg = $1
+  set input = $2
+  shift
+  shift
+endif
+
+if ( $# != "0" ) then 
+  goto error
+endif
+
+#
+# Main procedure
+#
+
+set max_mem_size = Unknown
+set max_mem_res = Unknown
+set real_time = 0
+set user_time = 0
+set system_time = 0
+
+if ($input == "") then
+  (((/usr/5bin/time $prg) >! $output_program) >&! $temp& )
+else
+  (((/usr/5bin/time $prg < $input) >! $output_program) >&! $temp& )
+endif
+
+set finished = 0
+set flag=0
+set infinity = 0
+
+while ($finished == 0)
+	sleep 1
+        set res="`top | grep $prg | grep $USER`"
+	switch ("$res")
+          case "":   
+                     if ($flag == 1) then # We got information from top. 
+                        wait
+                        set max_mem_size = $result[5]
+                        set max_mem_res = $result[6]
+                        set tim=`cat $temp`
+                        set real_time = $tim[2]
+                        set user_time = $tim[4]
+                        set system_time = $tim[6]
+                        set finished = 1 # We are finished with this run.
+                      else
+                        set infinity = "`calc $infinity + 1`"
+                        if ($infinity == 3) then # We end after three times 
+                          wait                   # with no information from top.
+                          set max_mem_size = Unknown
+                          set max_mem_res = Unknown
+                          set tim=`cat $temp`
+                          set real_time = $tim[2]
+                          set user_time = $tim[4]
+                          set system_time = $tim[6]
+                          set finished = 1 # We are finished with this run.
+                        endif
+                      endif
+	  breaksw
+          default: 
+                   set flag=1 # Notice that we got information from top.
+                   set result=($res)
+          breaksw
+        endsw
+end
+
+rm $temp
+
+echo " MAX MEM SIZE:  $max_mem_size" >! $output_memtime
+echo " MAX MEM RES:   $max_mem_res" >> $output_memtime
+echo " Real time:     $real_time" >> $output_memtime
+echo " User time:     $user_time" >> $output_memtime
+echo " System time:   $system_time" >> $output_memtime
+exit
+
+#
+# Error
+#
+
+error:
+  echo "Usage: memtime [-f file] [-o file] prog"
+  echo " prog is the program to run."
+  echo " input is optional input to prog."
+  echo " [-f file] is an optional file for output from prog."
+  echo " [-o file] is an optional file for output from memtime."
+  echo " [-t file] is a temporary file used by the script."
+  exit
+

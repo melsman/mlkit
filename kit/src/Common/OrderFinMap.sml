@@ -1,16 +1,8 @@
-(*$OrderFinMap: PRETTYPRINT REPORT ORDER_FINMAP *)
-
 (* Finite maps using balanced AVL trees *)
-
-(* LOG:
-     29/03/1995-Martin: Changed composemap and ComposeMap such that
-        evaluation is done in order! 
-
-*)
 
 functor OrderFinMap(structure Order : ORDERING
 		    structure PP : PRETTYPRINT
-		    structure Report : REPORT) : ORDER_FINMAP =
+		    structure Report : REPORT) : MONO_FINMAP =
   struct
 
     open Edlib
@@ -281,9 +273,9 @@ functor OrderFinMap(structure Order : ORDERING
 	  #1(del t)
 	end
     in
-      fun remove(k:dom, t:'b map) : ('b map, string) General.Result =
-	General.OK(delete(k, t)) 
-	handle NOTFOUND => General.Fail "element not found" 
+      fun remove(k:dom, t:'b map) : 'b map option =
+	SOME(delete(k, t)) 
+	handle NOTFOUND => NONE
 
       val delete : dom * 'b map -> 'b map = fn (k, t) =>
 	delete(k, t) handle NOTFOUND => t 

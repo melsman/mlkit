@@ -307,7 +307,7 @@ struct
   (* A cone is a finite map from an initial segment of the natural numbers
      to finite maps, which map node keys to nodes *)
 
-  structure ConeLayer(*:ORDER_FINMAP*) = 
+  structure ConeLayer(*:MONO_FINMAP*) = 
       struct
         structure Array = NewArray
         val lsize  = 10
