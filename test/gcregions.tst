@@ -12,7 +12,9 @@ ratio-regions.sml
 lexgen.sml
 mlyacc.pm
 kitsimple.sml
-kitmolgard.sml
+professor2.sml
+
+(* kitmolgard.sml *)
 
 kitfib35.sml           mlton
 tak.sml
@@ -20,4 +22,3 @@ tak.sml
 kittmergesort.sml
 kitlife35u.sml         mlton
 kitkbjul9.sml          mlton
-professor2.sml
