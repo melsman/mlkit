@@ -1,0 +1,25 @@
+(* Initial allows for other modules to be discharged at link time *)
+
+local
+    Initial.sml
+in
+    basis General = 
+      bas 
+        GENERAL.sml General.sml (* OPTION.sml Option.sml *)
+      end
+
+    basis List =
+      let open General
+      in bas
+            LIST.sml List.sml
+         end
+      end
+
+    basis Array =
+        let open General List
+            wordtables.sml
+        in bas 
+            VECTOR.sml Vector.sml
+           end
+        end
+end

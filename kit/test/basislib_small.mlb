@@ -1,0 +1,86 @@
+(* Initial allows for other modules to be discharged at link time *)
+
+local
+    Initial.sml
+in
+    basis General = 
+      bas 
+        GENERAL.sml General.sml OPTION.sml Option.sml 
+      end
+
+    basis List =
+      let open General
+      in bas
+            LIST.sml List.sml LIST_PAIR.sml ListPair.sml
+         end
+      end
+
+    basis Array =
+        let open General List
+            basis Poly =
+              let wordtables.sml
+              in bas 
+                    VECTOR.sml Vector.sml ARRAY.sml Array.sml
+                 end
+              end
+        in bas
+              open Poly   
+              MONO_VECTOR.sml MONO_ARRAY.sml ByteTable.sml 
+           end
+        end
+
+    basis String = 
+       let open General Array
+       in bas
+             STRING_CVT.sml StringCvt.sml 
+             local open List
+                   STR_BASE.sml StrBase.sml 
+             in
+                Char.sml String.sml CHAR.sml STRING.sml SUBSTRING.sml Substring.sml 
+             end
+          end
+       end
+
+    basis Bool = 
+       let open General String 
+       in bas BOOL.sml Bool.sml end
+       end
+
+    basis Word =
+       let open General String
+           basis W = bas WORD.sml Word.sml Word32.sml Word31.sml Word8.sml end
+           basis PW = let open Array W 
+                      in bas PACK_WORD.sml Pack32Little.sml Pack32Big.sml end 
+                      end
+       in bas open W PW end
+       end
+
+    basis Byte = 
+       let open General String Array Word
+       in bas BYTE.sml Byte.sml end
+       end
+ 
+    basis Int =
+       let open General String
+       in bas INTEGER.sml Int.sml Int32.sml Int31.sml end
+       end
+
+    basis Real =
+       let open General String Int
+       in bas MATH.sml Math.sml REAL.sml Real.sml end
+       end
+
+    basis IntInf =
+       let open General String Int Real
+       in bas INT_INF.sml IntInf.sml end
+       end
+  
+    basis Polyhash =
+       let open General String
+       in bas POLYHASH.sml Polyhash.sml end
+       end
+end
+
+local open General String Bool in
+   PrintTest.sml
+end
