@@ -331,9 +331,9 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
     fun getAbsPath db folder_id =
       let
 	val root = ScsConfig.scs_file_storage_root()
-val _ = ScsError.log "******getting root label by folder id******"
+val _ = Ns.NsDebug.addMsg `******getting root label by folder id******`
 	val root_label = ScsError.valOf (getRootLabelByFolderId(db,folder_id))
-val _ = ScsError.log "******getPath ******"
+val _ = Ns.NsDebug.addMsg `******getPath ******`
 	val path = getPath (db,folder_id)
       in
 	root ^ "/" ^ root_label ^ "/" ^ path

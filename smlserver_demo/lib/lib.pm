@@ -1,5 +1,6 @@
   Quot.sml
   local
+    NsDebug.sml
     NsBasics.sml
     NS_SET.sml
     NsSet.sml
