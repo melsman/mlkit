@@ -494,7 +494,8 @@ functor BuildCompile (structure Name : NAME
     structure Labels = AddressLabels(structure Name = Name)
 
     structure BackendInfo = BackendInfo(structure Labels = Labels
-					structure NatSet = NatSet
+					structure Lvars = Lvars
+					structure Lvarset = Lvarset
 					structure PP = PP
 					structure Flags = Flags
 					structure Report = Report
@@ -547,6 +548,7 @@ functor BuildCompile (structure Name : NAME
 				  structure Labels = Labels
 				  structure CallConv = CallConv
 				  structure ClosExp = ClosExp
+				  structure BI = BackendInfo
 				  structure PP = PP
 				  structure Flags = Flags
 				  structure Report = Report
@@ -577,7 +579,6 @@ functor BuildCompile (structure Name : NAME
 					    structure RegAlloc = RegAlloc
 					    structure BI = BackendInfo
 					    structure Lvarset = Lvarset
-					    structure NatSet = NatSet
 					    structure PP = PP
 					    structure Flags = Flags
 					    structure Report = Report
@@ -592,12 +593,27 @@ functor BuildCompile (structure Name : NAME
 				      structure CallConv = CallConv
 				      structure LineStmt = LineStmt
 				      structure FetchAndFlush = FetchAndFlush
-				      structure PHregFinMap = WordFinMap
 				      structure BI = BackendInfo
 				      structure PP = PP
 				      structure Flags = Flags
 				      structure Report = Report
 				      structure Crash = Crash)
+
+    structure SubstAndSimplify = SubstAndSimplify(structure PhysSizeInf = PhysSizeInf
+						  structure Con = Con
+						  structure Excon = Excon
+						  structure Lvars = Lvars
+						  structure Effect = Effect
+						  structure RegvarFinMap = EffVarEnv
+						  structure Labels = Labels
+						  structure CallConv = CallConv
+						  structure LineStmt = LineStmt
+						  structure CalcOffset = CalcOffset
+						  structure BI = BackendInfo
+						  structure PP = PP
+						  structure Flags = Flags
+						  structure Report = Report
+						  structure Crash = Crash)
 
     structure CompLamb = CompLamb(structure Con = Con
 				  structure Excon = Excon
@@ -687,6 +703,7 @@ functor BuildCompile (structure Name : NAME
 	      structure RegAlloc = RegAlloc
 	      structure FetchAndFlush = FetchAndFlush
 	      structure CalcOffset = CalcOffset
+	      structure SubstAndSimplify = SubstAndSimplify
 	      structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
 	      structure CompLamb = CompLamb
 	      structure KAMBackend = KAMBackend

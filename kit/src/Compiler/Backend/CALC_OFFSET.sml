@@ -17,10 +17,11 @@ signature CALC_OFFSET =
     type excon
     type cc
     type label
-    type ('sty,'offset) LinePrg
-    type phreg = word
+    type ('sty,'offset,'aty) LinePrg
+    type phreg
     type StoreTypeIFF
     type offset = int
+    type Atom
 
     datatype StoreType =
         STACK_STY of lvar * offset
@@ -28,11 +29,12 @@ signature CALC_OFFSET =
       | FLUSHED_CALLEE_STY of phreg * offset
       | FLUSHED_CALLER_STY of lvar * phreg * offset
 
-    val CO : {main_lab:label,code:(StoreTypeIFF,unit) LinePrg,imports:label list,exports:label list} ->
-             {main_lab:label,code:(StoreType,offset) LinePrg,imports:label list,exports:label list}
+    val CO : {main_lab:label,code:(StoreTypeIFF,unit,Atom) LinePrg,imports:label list,exports:label list} ->
+             {main_lab:label,code:(StoreType,offset,Atom) LinePrg,imports:label list,exports:label list}
 
     val pr_sty    : StoreType -> string
     val pr_offset : offset -> string
+    val pr_atom   : Atom -> string
 
   end
 

@@ -1,5 +1,7 @@
 functor BackendInfo(structure Labels : ADDRESS_LABELS
-		    structure NatSet: KIT_MONO_SET where type elt = word
+		    structure Lvars : LVARS
+	            structure Lvarset: LVARSET
+		      sharing type Lvarset.lvar = Lvars.lvar
 		    structure PP : PRETTYPRINT
 		    structure Flags : FLAGS
 		    structure Report : REPORT
@@ -8,7 +10,9 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
   struct
 
     type label = Labels.label
-    type phreg = word
+    type lvar = Lvars.lvar
+    type phreg = lvar
+    type phregset = Lvarset.lvarset
     type offset = int
 
     val init_clos_offset = 1     (* First offset in FN closure is 1 and code pointer is at offset 0 *) 
@@ -35,21 +39,26 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val toplevel_region_withtype_string_lab = Labels.new_named("reg_string")
     val toplevel_region_withtype_real_lab   = Labels.new_named("reg_real")
 
-    val args_phreg = [0w1,0w2,0w3,0w4,0w5,0w6,0w7,0w8,0w9,0w10] (* Machine registers containing arguments *)
-    val res_phreg = [0w10,0w9,0w8,0w7,0w6,0w5,0w4,0w3,0w2,0w1]  (* Machine registers containing results *)
+    val vector_of_phregs = Vector.tabulate(32,fn i => Lvars.new_named_lvar ("phreg"^Int.toString i))
+    val phregs = Vector.foldr (fn (phreg,phreg_list) => phreg::phreg_list) [] vector_of_phregs
+    val phregset = Lvarset.lvarsetof phregs
+    fun is_phreg lvar = Lvarset.member(lvar,phregset)
+    fun get_phreg i = Vector.sub(vector_of_phregs,i)
+    fun pr_phreg phreg = Lvars.pr_lvar phreg
 
-    val args_phreg_ccall = [0w1,0w2,0w3,0w4] (* Machine registers containing arguments in CCALLs *)
-    val res_phreg_ccall = [0w4,0w3,0w2,0w1]  (* Machine registers containing results in CCALLs *)
+    val args_phreg = map (fn i => get_phreg i) [1,2,3,4,5,6,7,8,9,10] (* Machine registers containing arguments *)
+    val res_phreg  = map (fn i => get_phreg i) [10,9,8,7,6,5,4,3,2,1] (* Machine registers containing results *)
 
-    val callee_save_phregs = [0w7,0w8,0w9,0w10]
-    val callee_save_phregs_natset = NatSet.fromList callee_save_phregs
-    fun is_callee_save phreg = NatSet.member phreg callee_save_phregs_natset
+    val args_phreg_ccall = map (fn i => get_phreg i) [1,2,3,4] (* Machine registers containing arguments in CCALLs *)
+    val res_phreg_ccall  = map (fn i => get_phreg i) [4,3,2,1] (* Machine registers containing results in CCALLs *)
 
-    val caller_save_phregs = [0w1,0w2,0w3,0w4]
-    val caller_save_phregs_natset = NatSet.fromList caller_save_phregs
-    fun is_caller_save phreg = NatSet.member phreg caller_save_phregs_natset
+    val callee_save_phregs = map (fn i => get_phreg i) [7,8,9,10]
+    val callee_save_phregset = Lvarset.lvarsetof callee_save_phregs
+    fun is_callee_save phreg = Lvarset.member(phreg,callee_save_phregset)
+
+    val caller_save_phregs = map (fn i => get_phreg i) [1,2,3,4]
+    val caller_save_phregset = Lvarset.lvarsetof caller_save_phregs
+    fun is_caller_save phreg = Lvarset.member(phreg,caller_save_phregset)
 
     val init_frame_offset = 0
-
-
   end

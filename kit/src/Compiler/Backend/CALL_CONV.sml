@@ -4,7 +4,7 @@ signature CALL_CONV =
     (* Implements a Call Convention. *)
 
     type lvar    
-    type phreg = word
+    type phreg = lvar
     type offset = int
     type cc
 

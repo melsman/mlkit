@@ -35,7 +35,7 @@ signature LINE_STMT =
     | BOXED of int
 
     type binder = place * phsize
-    type phreg = word
+    type phreg
     datatype Atom =
       VAR           of lvar
     | RVAR          of place
@@ -44,90 +44,113 @@ signature LINE_STMT =
     | INTEGER       of int 
     | UNIT
 
-  and SimpleExp =
-      ATOM            of Atom
+  datatype 'aty SimpleExp =
+      ATOM            of 'aty
     | LOAD            of label
-    | STORE           of Atom * label
+    | STORE           of 'aty * label
     | STRING          of string
     | REAL            of string
-    | CLOS_RECORD     of {label: label, elems: Atom list, alloc: sma}
-    | REGVEC_RECORD   of {elems: sma list, alloc: sma}
-    | SCLOS_RECORD    of {elems: Atom list, alloc: sma}
-    | RECORD          of {elems: Atom list, alloc: sma}
-    | SELECT          of int * Atom
-    | CON0            of {con: con, con_kind: con_kind, aux_regions: sma list, alloc: sma}
-    | CON1            of {con: con, con_kind: con_kind, alloc: sma, arg: Atom}
-    | DECON           of {con: con, con_kind: con_kind, con_atom: Atom}
-    | DEREF           of Atom
-    | REF             of sma * Atom
-    | ASSIGNREF       of sma * Atom * Atom
-    | PASS_PTR_TO_MEM of sma * int (* Used only by CCALL *)
-    | PASS_PTR_TO_RHO of sma       (* Used only by CCALL *)
+    | CLOS_RECORD     of {label: label, elems: 'aty list, alloc: 'aty sma}
+    | REGVEC_RECORD   of {elems: 'aty sma list, alloc: 'aty sma}
+    | SCLOS_RECORD    of {elems: 'aty list, alloc: 'aty sma}
+    | RECORD          of {elems: 'aty list, alloc: 'aty sma}
+    | SELECT          of int * 'aty
+    | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
+    | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}
+    | DECON           of {con: con, con_kind: con_kind, con_aty: 'aty}
+    | DEREF           of 'aty
+    | REF             of 'aty sma * 'aty
+    | ASSIGNREF       of 'aty sma * 'aty * 'aty
+    | PASS_PTR_TO_MEM of 'aty sma * int (* Used only by CCALL *)
+    | PASS_PTR_TO_RHO of 'aty sma       (* Used only by CCALL *)
 
-    and ('sty,'offset) LineStmt = 
-      ASSIGN        of {pat: Atom, bind: SimpleExp}
-    | FLUSH         of Atom * 'offset
-    | FETCH         of Atom * 'offset
-    | FNJMP         of {opr: Atom, args: Atom list, clos: Atom option, 
-			free: Atom list, res: Atom list}
-    | FNCALL        of {opr: Atom, args: Atom list, clos: Atom option, 
-			free: Atom list, res: Atom list}
-    | JMP           of {opr: label, args: Atom list, reg_vec: Atom option, 
-			reg_args: Atom list, clos: Atom option, free: Atom list, res: Atom list}
-    | FUNCALL       of {opr: label, args: Atom list, reg_vec: Atom option, 
-			reg_args: Atom list, clos: Atom option, free: Atom list, res: Atom list}
-    | LETREGION     of {rhos: (binder*'offset) list, body: ('sty,'offset) LineStmt list}
-    | SCOPE         of {pat: 'sty list, scope: ('sty,'offset) LineStmt list}
-    | HANDLE        of ('sty,'offset) LineStmt list * ('sty,'offset) LineStmt list * 'offset
-    | RAISE         of {arg: Atom,defined_atoms: Atom list}
-    | SWITCH_I      of (int,'sty,'offset) Switch
-    | SWITCH_S      of (string,'sty,'offset) Switch
-    | SWITCH_C      of ((con*con_kind),'sty,'offset) Switch
-    | SWITCH_E      of (excon,'sty,'offset) Switch
+    and ('sty,'offset,'aty) LineStmt = 
+      ASSIGN        of {pat: 'aty, bind: 'aty SimpleExp}
+    | FLUSH         of 'aty * 'offset
+    | FETCH         of 'aty * 'offset
+    | FNJMP         of {opr: 'aty, args: 'aty list, clos: 'aty option, 
+			free: 'aty list, res: 'aty list}
+    | FNCALL        of {opr: 'aty, args: 'aty list, clos: 'aty option, 
+			free: 'aty list, res: 'aty list}
+    | JMP           of {opr: label, args: 'aty list, reg_vec: 'aty option, 
+			reg_args: 'aty list, clos: 'aty option, free: 'aty list, res: 'aty list}
+    | FUNCALL       of {opr: label, args: 'aty list, reg_vec: 'aty option, 
+			reg_args: 'aty list, clos: 'aty option, free: 'aty list, res: 'aty list}
+    | LETREGION     of {rhos: (binder*'offset) list, body: ('sty,'offset,'aty) LineStmt list}
+    | SCOPE         of {pat: 'sty list, scope: ('sty,'offset,'aty) LineStmt list}
+    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
+			handl: ('sty,'offset,'aty) LineStmt list, 
+			handl_return: ('sty,'offset,'aty) LineStmt list, 
+			offset: 'offset}
+    | RAISE         of {arg: 'aty,defined_atys: 'aty list}
+    | SWITCH_I      of (int,'sty,'offset,'aty) Switch
+    | SWITCH_S      of (string,'sty,'offset,'aty) Switch
+    | SWITCH_C      of ((con*con_kind),'sty,'offset,'aty) Switch
+    | SWITCH_E      of (excon,'sty,'offset,'aty) Switch
     | RESET_REGIONS of {force: bool, 
-			regions_for_resetting: sma list}
+			regions_for_resetting: 'aty sma list}
     | CCALL         of {name: string,  
-			args: Atom list,
-			rhos_for_result : Atom list,
-			res: Atom list}
+			args: 'aty list,
+			rhos_for_result : 'aty list,
+			res: 'aty list}
 
-    and ('a,'sty,'offset) Switch = SWITCH of Atom * ('a * (('sty,'offset) LineStmt list)) list * (('sty,'offset) LineStmt list)
+    and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)
 
-    and sma = 
-      ATTOP_LI of Atom * pp
-    | ATTOP_LF of Atom * pp
-    | ATTOP_FI of Atom * pp
-    | ATTOP_FF of Atom * pp
-    | ATBOT_LI of Atom * pp
-    | ATBOT_LF of Atom * pp
-    | SAT_FI   of Atom * pp
-    | SAT_FF   of Atom * pp
+    and 'aty sma = 
+      ATTOP_LI of 'aty * pp
+    | ATTOP_LF of 'aty * pp
+    | ATTOP_FI of 'aty * pp
+    | ATTOP_FF of 'aty * pp
+    | ATBOT_LI of 'aty * pp
+    | ATBOT_LF of 'aty * pp
+    | SAT_FI   of 'aty * pp
+    | SAT_FF   of 'aty * pp
     | IGNORE
 
-    datatype ('sty,'offset) TopDecl = 
-      FUN of label * cc * ('sty,'offset) LineStmt list
-    | FN of label * cc * ('sty,'offset) LineStmt list
+    datatype ('sty,'offset,'aty) TopDecl = 
+      FUN of label * cc * ('sty,'offset,'aty) LineStmt list
+    | FN of label * cc * ('sty,'offset,'aty) LineStmt list
   
-    type ('sty,'offset) LinePrg = ('sty,'offset) TopDecl list
+    type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) TopDecl list
 
     val L : {main_lab:label,code:ClosPrg,imports:label list,exports:label list} -> 
-            {main_lab:label,code:(lvar,unit) LinePrg,imports:label list,exports:label list}
+            {main_lab:label,code:(lvar,unit,Atom) LinePrg,imports:label list,exports:label list}
 
-    (*********************************)
-    (* Def and Use sets for LineStmt *)
-    (*********************************)
-    val use_ls            : ('sty,'offset) LineStmt -> lvar list
-    val def_ls            : ('sty,'offset) LineStmt -> lvar list
-    val def_use_ls        : ('sty,'offset) LineStmt -> lvar list * lvar list
+    (***************************************************)
+    (* Def and Use sets for LineStmt RETURN lvars ONLY *)
+    (***************************************************)
     val get_lvar_atom     : Atom * lvar list -> lvar list
     val get_lvar_atoms    : Atom list * lvar list -> lvar list
     val get_lvar_atom_opt : Atom option * lvar list -> lvar list
-    val get_lvar_sma      : sma * lvar list -> lvar list
-    val get_lvar_smas     : sma list * lvar list -> lvar list
-    val use_on_fn         : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
-    val def_on_fn         : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
-    val use_on_fun        : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
-    val def_on_fun        : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val get_lvar_sma      : Atom sma * lvar list -> lvar list
+    val get_lvar_smas     : Atom sma list * lvar list -> lvar list
+
+    val use_lvar_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val def_lvar_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val use_lvar_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val def_lvar_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+
+    val use_lvar_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
+    val def_lvar_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
+    val def_use_lvar_ls   : ('sty,'offset,Atom) LineStmt -> lvar list * lvar list
+
+    (**************************************************************)
+    (* Def and Use sets for LineStmt RETURN BOTH lvars and phregs *)
+    (**************************************************************)
+    val get_var_atom     : Atom * lvar list -> lvar list
+    val get_var_atoms    : Atom list * lvar list -> lvar list
+    val get_var_atom_opt : Atom option * lvar list -> lvar list
+    val get_var_sma      : Atom sma * lvar list -> lvar list
+    val get_var_smas     : Atom sma list * lvar list -> lvar list
+
+    val use_var_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val def_var_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val use_var_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val def_var_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+
+    val use_var_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
+    val def_var_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
+    val def_use_var_ls   : ('sty,'offset,Atom) LineStmt -> lvar list * lvar list
 
     (*****************************************)
     (* Get Machine Registers from a LineStmt *)
@@ -135,15 +158,16 @@ signature LINE_STMT =
     val get_phreg_atom     : Atom * phreg list -> phreg list
     val get_phreg_atoms    : Atom list * phreg list -> phreg list
     val get_phreg_atom_opt : Atom option * phreg list -> phreg list
-    val get_phreg_sma      : sma * phreg list -> phreg list
-    val get_phreg_smas     : sma list * phreg list -> phreg list
+    val get_phreg_sma      : Atom sma * phreg list -> phreg list
+    val get_phreg_smas     : Atom sma list * phreg list -> phreg list
     val get_phreg_in_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> phreg list
     val get_phreg_in_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> phreg list
-    val get_phreg_ls       : ('sty,'offset) LineStmt -> phreg list
+    val get_phreg_ls       : ('sty,'offset,Atom) LineStmt -> phreg list
 
     type StringTree
-    val layout_line_prg : ('sty -> string) -> ('offset -> string) -> ('sty,'offset) LinePrg -> StringTree
-
+    val layout_line_prg : ('sty -> string) -> ('offset -> string) -> ('aty -> string) -> bool -> ('sty,'offset,'aty) LinePrg -> StringTree
+    val pr_phreg        : phreg -> string
+    val pr_atom         : Atom -> string
   end
 
 

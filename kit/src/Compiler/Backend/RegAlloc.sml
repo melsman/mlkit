@@ -12,8 +12,10 @@ functor RegAlloc(structure PhysSizeInf : PHYS_SIZE_INF
                    sharing type Effect.effect = Effect.place = LineStmt.place
                    sharing type Labels.label = LineStmt.label
                    sharing type CallConv.cc = LineStmt.cc
+                   sharing type CallConv.phreg = LineStmt.phreg
 		   sharing type LineStmt.phsize = PhysSizeInf.phsize
 		 structure BI : BACKEND_INFO
+                   sharing type BI.phreg = Lvars.lvar
 		 structure PP : PRETTYPRINT
 		   sharing type PP.StringTree = 
                                 Effect.StringTree = 
@@ -32,15 +34,18 @@ struct
   type pp = PhysSizeInf.pp
   type cc = CallConv.cc
   type label = Labels.label
-  type ('sty,'offset) LinePrg = ('sty,'offset) LineStmt.LinePrg
+  type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
   type phreg = LineStmt.phreg
+  type Atom = LineStmt.Atom
 
   datatype StoreType =
     STACK_STY of lvar
   | PHREG_STY of lvar * phreg
     
   fun pr_sty(STACK_STY lv) = Lvars.pr_lvar lv ^ ":stack"
-    | pr_sty(PHREG_STY(lv,i)) = Lvars.pr_lvar lv ^ ":phreg" ^ Word.toString i
+    | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ LineStmt.pr_phreg phreg
+
+  fun pr_atom atom = LineStmt.pr_atom atom
 
   (***********)
   (* Logging *)
@@ -77,12 +82,12 @@ struct
     (*************************************************)
     local
       fun resolve_args([],lss) = lss
-	| resolve_args((atom,i)::args,lss) = 
-	resolve_args(args,LineStmt.ASSIGN{pat=atom,bind=LineStmt.ATOM(LineStmt.PHREG i)}::lss)
+	| resolve_args((atom,phreg)::args,lss) = 
+	resolve_args(args,LineStmt.ASSIGN{pat=atom,bind=LineStmt.ATOM(LineStmt.PHREG phreg)}::lss)
 
       fun resolve_res([],lss) = lss
-	| resolve_res((atom,i)::res,lss) = 
-	resolve_res(res,LineStmt.ASSIGN{pat=LineStmt.PHREG i,bind=LineStmt.ATOM atom}::lss)
+	| resolve_res((atom,phreg)::res,lss) = 
+	resolve_res(res,LineStmt.ASSIGN{pat=LineStmt.PHREG phreg,bind=LineStmt.ATOM atom}::lss)
 
       fun CC_sw CC_lss (LineStmt.SWITCH(atom_arg,sels,default)) =
 	LineStmt.SWITCH(atom_arg,map (fn (s,lss) => (s,CC_lss lss)) sels, CC_lss default)
@@ -125,7 +130,9 @@ struct
 	end
 	| CC_ls(LineStmt.LETREGION{rhos,body},rest) = LineStmt.LETREGION{rhos=rhos,body=CC_lss body}::rest
 	| CC_ls(LineStmt.SCOPE{pat,scope},rest) = LineStmt.SCOPE{pat=pat,scope=CC_lss scope}::rest
-	| CC_ls(LineStmt.HANDLE(lss1,lss2,offset),rest) = LineStmt.HANDLE(CC_lss lss1,CC_lss lss2,offset)::rest
+	| CC_ls(LineStmt.HANDLE{default,handl,handl_return=[],offset},rest) = 
+	LineStmt.HANDLE{default=CC_lss default,handl=CC_lss handl,handl_return=[],offset=offset}::rest
+	| CC_ls(LineStmt.HANDLE{default,handl,handl_return,offset},rest) = die "CC_ls: handl_return in HANDLE not empty"
 	| CC_ls(LineStmt.SWITCH_I sw,rest) = LineStmt.SWITCH_I(CC_sw CC_lss sw)::rest
 	| CC_ls(LineStmt.SWITCH_S sw,rest) = LineStmt.SWITCH_S(CC_sw CC_lss sw)::rest
 	| CC_ls(LineStmt.SWITCH_C sw,rest) = LineStmt.SWITCH_C(CC_sw CC_lss sw)::rest
@@ -190,8 +197,10 @@ struct
 	| ra_dummy_ls(LineStmt.LETREGION{rhos,body},rest) = LineStmt.LETREGION{rhos=rhos,body=ra_dummy_lss body}::rest
 	| ra_dummy_ls(LineStmt.SCOPE{pat,scope},rest) = 
 	LineStmt.SCOPE{pat=map assign_stack pat,scope=ra_dummy_lss scope}::rest
-	| ra_dummy_ls(LineStmt.HANDLE(lss1,lss2,offset),rest) = LineStmt.HANDLE(ra_dummy_lss lss1,ra_dummy_lss lss2,offset)::rest
-	| ra_dummy_ls(LineStmt.RAISE{arg,defined_atoms},rest) = LineStmt.RAISE{arg=arg,defined_atoms=defined_atoms}::rest
+	| ra_dummy_ls(LineStmt.HANDLE{default,handl,handl_return=[],offset},rest) = 
+	LineStmt.HANDLE{default=ra_dummy_lss default,handl=ra_dummy_lss handl,handl_return=[],offset=offset}::rest
+	| ra_dummy_ls(LineStmt.HANDLE{default,handl,handl_return,offset},rest) = die "ra_dummy_ls: handl_return in HANDLE not empty"
+	| ra_dummy_ls(LineStmt.RAISE{arg,defined_atys},rest) = LineStmt.RAISE{arg=arg,defined_atys=defined_atys}::rest
 	| ra_dummy_ls(LineStmt.SWITCH_I sw,rest) = LineStmt.SWITCH_I(ra_dummy_sw ra_dummy_lss sw)::rest
 	| ra_dummy_ls(LineStmt.SWITCH_S sw,rest) = LineStmt.SWITCH_S(ra_dummy_sw ra_dummy_lss sw)::rest
 	| ra_dummy_ls(LineStmt.SWITCH_C sw,rest) = LineStmt.SWITCH_C(ra_dummy_sw ra_dummy_lss sw)::rest
@@ -214,6 +223,7 @@ struct
     (* REGISTER ALLOCATION WITH COALESCING *)
     (***************************************)
     local
+      (* Remember that a HANDLE defines all CALLER-SAVE registers *)
     in
       fun ra_prg(f) = die "ra: REGISTER ALLOCATION WITH COALESCING not implemented"
     end
@@ -222,7 +232,7 @@ struct
     (* Funtion to invoke the register allocator of choice *)
     (******************************************************)
     fun ra_main {main_lab:label,
-		 code=line_prg: (lvar,unit) LinePrg,
+		 code=line_prg: (lvar,unit,Atom) LinePrg,
 		 imports:label list,
 		 exports:label list} ra_prg =
       let
@@ -230,12 +240,12 @@ struct
 	val line_prg_ra = ra_prg line_prg
 	val _ = 
 	  if Flags.is_on "print_register_allocated_program" then
-	    display("\nReport: AFTER REGISTER ALLOCATION (dummy):", LineStmt.layout_line_prg pr_sty (fn _ => "()") line_prg_ra)
+	    display("\nReport: AFTER REGISTER ALLOCATION (dummy):", LineStmt.layout_line_prg pr_sty (fn _ => "()") pr_atom false line_prg_ra)
 	  else
 	    ()
 	val _ = chat "]\n"
       in
-	{main_lab=main_lab,code=line_prg_ra: (StoreType,unit) LinePrg,imports=imports,exports=exports}
+	{main_lab=main_lab,code=line_prg_ra: (StoreType,unit,Atom) LinePrg,imports=imports,exports=exports}
       end
   in
     fun ra_dummy code = ra_main code ra_dummy_prg
