@@ -94,15 +94,15 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
  StatObject are implemented using TyVar.eq_free.  I don't know what
  difference this makes, or whether it is intended.*)
 
-      local
+
     fun memberTyVarSet x set =
       List.exists (fn y => TyVar.eq (x,y)) set
-      in
+
     fun unionTyVarSet(set1, set2) =
 	set1 @ 
 	List.all 
 	  (fn x => not(memberTyVarSet x set1)) set2
-      end
+
 
 
     (********
@@ -426,6 +426,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		| _ => impossible "CEFold: VE contains non-constructors"))
 	    
       fun close (VE : VarEnv) : VarEnv =
+	    (*since TypeScheme.close is called with imp=true here, it cannot
+	     raise the exception Ungeneralised_but_generalisable*)
 	    FoldPRIVATE
 	      (fn (id, range_private) => fn VE =>
 	             add VE id
@@ -463,18 +465,17 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		(fn range => fn T =>
 		       unionTyVarSet (T, tyvars_in_range range))
 		   []
-      val tyvars' =
-	      Fold
-		(fn (id, range) => fn criminals =>
-		       (case tyvars_in_range range of
-			  [] => criminals
-			| tyvars => (id, tyvars) :: criminals))
-		    []
       fun tynames_in_range (LONGVAR sigma) = TypeScheme.tynames sigma
 	| tynames_in_range (LONGCON sigma) = TypeScheme.tynames sigma
 	| tynames_in_range (LONGEXCON tau) = Type.tynames tau
       val tynames =
 	    fold (TyName.Set.union o tynames_in_range) TyName.Set.empty
+
+      fun ids_with_tyvar_in_type_scheme tyvar =
+	    Fold (fn (id, range) => fn ids =>
+		  if memberTyVarSet tyvar (tyvars_in_range range) then id :: ids
+		  else ids) []
+
     end (*VE*)
 
 
@@ -505,6 +506,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
     structure TE = struct 
       val empty : TyEnv = TYENV FinMap.empty
+      val bogus = empty
       val singleton : tycon * TyStr -> TyEnv = TYENV o FinMap.singleton
       fun plus (TYENV t, TYENV t') : TyEnv = TYENV (FinMap.plus (t, t'))
       fun lookup (TYENV m) tycon : TyStr Option = FinMap.lookup m tycon
@@ -669,9 +671,6 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       and tyvars SE =
 	    fold (fn E => fn tyvars => unionTyVarSet (tyvars, E_tyvars E))
 		  [] SE
-      fun E_tyvars' (ENV {SE, VE, ...}) = VE.tyvars' VE @ tyvars' SE
-      and tyvars' SE =
-	    fold (fn E => fn criminals => E_tyvars' E @ criminals) [] SE
       fun tynames SE =
 	    fold (fn E => fn T => TyName.Set.union (E_tynames E) T)
 	            TyName.Set.empty SE
@@ -730,7 +729,6 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       val empty = ENV {SE=SE.empty, TE=TE.empty, VE=VE.empty}
       val bogus = empty
       val tyvars = SE.E_tyvars
-      val tyvars' = SE.E_tyvars'
       val tynames = SE.E_tynames
       val layout = layoutEnv
 
@@ -1211,13 +1209,20 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    end
       end (*local*)
 
-      local
-	exception BoundTwice of VarEnv
-          (*raised if an identifier is bound twice in the valbind ---
-	   this has been spotted earlier, and we choose to refrain
-	   to close any of the typeschemes in the VE, and just
-	   return VE unmodified *)
+      (*C.close will raise Ungeneralised_but_generalisable tyvar when tyvar
+       could have been generalised if there were no value polymorphism
+       restriction.*)
+
+      exception Ungeneralised_but_generalisable =
+                  StatObject.Ungeneralised_but_generalisable
+
+      local exception BoundTwice of VarEnv
+              (*raised if an identifier is bound twice in the valbind ---
+	       this has been spotted earlier, and we choose to refrain to
+	       close any of the typeschemes in the VE, and C.close just
+	       returns VE unmodified.*)
       in
+
       fun close (C : Context, valbind : valbind, VE : VarEnv) : VarEnv =
 	let
 	  val CONTEXT {E=ENV{SE=SE, VE=VARENV ve_map, ...}, 
@@ -1281,6 +1286,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		      b))
   	    in
 	      TypeScheme.close (not (isExp andalso isVar)) sigma
+	      (*It is TypeScheme.close that may raise
+	       Ungeneralised_but_generalisable*)
 	    end 
 
 	  val VARENV m = VE

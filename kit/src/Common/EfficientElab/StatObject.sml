@@ -165,6 +165,14 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
 
 
+    exception Ungeneralised_but_generalisable of TyVar
+
+    (*`raise Ungeneralised_but_generalisable tyvar' means that tyvar could
+      have been generalised if the value polymorphism restriction did not
+      apply.  This should give a type error `Please provide type annotation
+      for the identifier id' where id is the identifier containing tyvar in
+      its type.  See ElabDec.elab_dec (VALdec ...).*)
+
 
 
     structure TyVar = struct
@@ -873,10 +881,10 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    else ()
 
 	fun generalise0 ov imp ty = 
-	  (*
-	   * generalise overloaded type variables  iff  ov and level > current_level
-	   * generalise imperative type variables  iff imp and level > current_level
-	   *)
+	  (*generalise overloaded type variables  iff  ov and level > current_level.
+	   generalise imperative type variables  iff imp and level > current_level.
+	   may raise Ungeneralised_but_generalisable tyvar when imp is false.*)
+
 	  let 
 	    val ty = findType ty 
 	    val _ = debug_print "generalise0 IN " ty
@@ -886,8 +894,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      (case ty of
 		 {TypeDesc = TYVAR tv, level} =>
 		   if !level > Level.current ()
-		   then if imp andalso (ov orelse not (TyVar.is_overloaded tv))
-			then mk_bound_tyvar tv level
+		   then if ov orelse not (TyVar.is_overloaded tv)
+			then if imp then mk_bound_tyvar tv level
+			     else raise Ungeneralised_but_generalisable tv
 			else level := Level.current ()
 		   else ()
 	       | {TypeDesc = ARROW(ty1,ty2), level} => 
@@ -916,7 +925,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       in
 	fun generalise ov imp tau = (reset () ; generalise0 ov imp tau)
+	(*may raise Ungeneralised_but_generalisable tyvar when imp is false.*)
 	fun fake_generalise imp tau =
+	  (*may raise Ungeneralised_but_generalisable tyvar when imp is false.*)
 	      (reset(); fake := true ; generalise false imp tau ; fake := false ;
 	       (!fake_generic_tyvars, !escaping_tyvars))
       end (*local*)
@@ -926,9 +937,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
        *   For the compiler to work it is important that fake_generalise returns       
        * type variables as generalise followed by generic_tyvars (to follow)
        *   If imp then the expression tau is the type of is
-       * non-expansive and type variables should be generalised: *)
+       * non-expansive and type variables should be generalised.
+       * close may raise Ungeneralised_but_generalisable tyvar
+       * when imp is false.*)
 
       val close = fake_generalise
+      
 
       fun copy ov imp ty =
 	let
@@ -1465,18 +1479,22 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       fun close_overload tau =
 	    (*with generalisation of overloaded tyvars (because of the
-	     first `true' argument to `Type.generalise' below):*)
+	     first `true' argument to `Type.generalise' below).
+	     Since TypeScheme.close is called with imp=true below, it cannot
+	     raise the exception Ungeneralised_but_generalisable*)
 	    let val tau = Type.copy true false tau
 	        val _ = Type.generalise true true tau
 		val tvs = Type.generic_tyvars tau 
 	    in (tvs, tau)
 	    end
 
-      fun close imp (_, tau) =   (* tyvars are discarded; we could check if the list is empty. *)
+      fun close imp (_, tau) =
+	    (* tyvars are discarded; we could check whether the list is empty. *)
 	    (*if imp = true iff the expression tau is the type of is
-	     non-expansive, and then type variables must be generalised:
-	     (the `false' means no generalisation of overloaded tyvars)*)
+	     non-expansive, and then type variables must be generalised.
+	     close may raise Ungeneralised_but_generalisable tyvar when imp is false.*)
 	    let val tau = Type.copy false imp tau
+	              (*(the `false' means no generalisation of overloaded tyvars.)*)
 	        val _ = Type.generalise false imp tau
 		val tvs = Type.generic_tyvars tau 
 	    in (tvs, tau)

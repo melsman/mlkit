@@ -82,6 +82,7 @@ functor ErrorInfo(structure StatObject : STATOBJECT
       | NOTCONSTYPE of Type
       | QUALIFIED_ID of longid
       | UNGUARDED_TYVARS of TyVar list
+      | UNGENERALISABLE_TYVARS of id list
       | WRONG_ARITY of {expected: int, actual: int}
       | FLEX_REC_NOT_RESOLVED 
       | REPEATED_IDS of RepeatedId list
@@ -197,6 +198,10 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 		^ pp_list TyVar.string tyvars
 		^ " in topdec.")
 
+      | report (UNGENERALISABLE_TYVARS ids) =
+	  line ("Provide a type annotation for "
+		^ pp_list Ident.pr_id ids  ^ ".")
+
       | report (WRONG_ARITY{expected, actual}) =
 	  line ("Wrong arity (expected " ^ Int.string expected
 		^ ", actual " ^ Int.string actual ^ ").")
@@ -297,6 +302,7 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 		^ " have " ^ Int.string (TyName.arity tyname)
 	        ^ " or " ^ Int.string (List.size tyvars)
 	        ^ " arguments?")
+
 
       (* Signature Matching Errors *)
 

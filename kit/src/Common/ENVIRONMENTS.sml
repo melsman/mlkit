@@ -81,6 +81,7 @@ signature ENVIRONMENTS =
 	val close                : VarEnv -> VarEnv
 	val layout               : VarEnv -> StringTree
 	val report               : (id * range -> Report) * VarEnv -> Report
+	val ids_with_tyvar_in_type_scheme : TyVar -> VarEnv -> id list
       end (*VE*)
     
 
@@ -105,6 +106,7 @@ signature ENVIRONMENTS =
     structure TE :
       sig
 	val empty                : TyEnv
+	val bogus                : TyEnv
 	val singleton            : tycon * TyStr -> TyEnv
 	val plus                 : TyEnv * TyEnv -> TyEnv
 	val lookup               : TyEnv -> tycon -> TyStr Option
@@ -166,16 +168,7 @@ signature ENVIRONMENTS =
 	val empty                : Env
 	val initial              : Env
 	val bogus                : Env
-
-	(*E.tyvars E = the set of free tyvars in E.  For warnings about
-	 free tyvars at top-level we would like to know whose type scheme
-	 contains the offending tyvars, therefore E.tyvars' E returns a
-	 list of offending id's together with the tyvars that are free in
-	 their type schemes.  E.tyvars' is used by B.tyvars' which again
-	 is used in ElabTopdec.elab_topdec.*)
-
 	val tyvars               : Env -> TyVar list
-	val tyvars'              : Env -> (id * TyVar list) list
 	val tynames              : Env -> TyName.Set.Set
 	val layout               : Env -> StringTree
 
@@ -219,16 +212,21 @@ signature ENVIRONMENTS =
 
 	val lookup_fellow_constructors : Context -> longid -> id list
 
-	(*The function Clos defined p. 20, used in rule 15,
-	 i.e., in ElabDec.elab_dec (C, VALdec ...):*)
+	(*C.clos is the function Clos defined p. 20, used in rule 15, i.e.,
+	 in ElabDec.elab_dec (C, VALdec ...).  C.close will raise
+	 Ungeneralised_but_generalisable tyvar when tyvar could have been
+	 generalised if there were no value polymorphism restriction.  This
+	 should give a type error `Provide type annotation for id' where id
+	 is the identifier containing tyvar in its type.  See
+	 ElabDec.elab_dec (VALdec ...).*)
 
+	exception Ungeneralised_but_generalisable of TyVar
 	val close                : Context * valbind * VarEnv -> VarEnv
 
 	val dom_pat              : Context * pat -> id list
               (*dom_pat (C, pat) = the list of id's bound by pat---i.e.,
 	       only variables and not constructors appearing in pat;
 	       therefore C is needed to get the identifier status of id's.*)
-
       end (*C*)
 
 
