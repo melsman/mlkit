@@ -41,7 +41,7 @@ functor TopdecLex(structure Tokens: Topdec_TOKENS
   fun token0(tokFn, arg, yypos, yytext) =
         tokFn(ofLength(arg, yypos, yytext))
 
-  fun token1(tokFn, value, arg, yypos, yytext) =
+  and token1(tokFn, value, arg, yypos, yytext) =
 	let
 	  val (l, r) = ofLength(arg, yypos, yytext)
 	in
