@@ -590,15 +590,15 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	   ScsLang.en => `^s
 	     <blockquote>
 	     The format of a ISBN-number is
-	     <code>D-DD-DDDDDD-T</code>, where <code>D</code> is a number and <code>T</code> 
+	     <code>DD-DDDD-DDD-T</code>, where <code>D</code> is a number and <code>T</code> 
 	     is either a number or the capital letter X. This is a valid ISBN number: <code>87-7949-044-1</code>. <p>
 	  
 	     We also perform a modulus 11 check of the number you type in.<p>
 	     </blockquote>`
 	 | ScsLang.da => `^s
 	     <blockquote>
-	     Formatet af et ISSN-nummer er
-	     <code>D-DD-DDDDDD-T</code>, hvor <code>D</code> is a tal og <code>T</code> 
+	     Formatet af et ISBN-nummer er
+	     <code>DD-DDDD-DDD-T</code>, hvor <code>D</code> is a tal og <code>T</code> 
 	     er et tal eller det store bogstav X. Et lovligt ISBN-nummer er eksempelvis: <code>87-7949-044-1</code>. <p>
 
 	     Vi udfører også et modulus 11 check på det ISBN nummer, som du indtaster.<p>
@@ -869,7 +869,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	    end
 	in
 	  case String.explode (trim isbn) of
-	    d1 :: (#"-") :: d2 :: d3 :: (#"-") :: d4 :: d5 :: d6 :: d7 :: d8 :: d9 :: (#"-") :: c1 :: [] =>
+	    d1 :: d2 :: (#"-") :: d3 :: d4 :: d5 :: d6 :: (#"-") :: d7 :: d8 :: d9 :: (#"-") :: c1 :: [] =>
 	      isbn_ok(d1,d2,d3,d4,d5,d6,d7,d8,d9,Char.toString c1)
 	  | d1 :: d2 :: d3 :: d4 :: d5 :: d6 :: d7 :: d8 :: d9 :: c1 :: [] =>
 	      isbn_ok(d1,d2,d3,d4,d5,d6,d7,d8,d9,Char.toString c1)
@@ -887,7 +887,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	  
       fun convISBN isbn =
 	case String.explode (trim isbn) of
-	  d1 :: (#"-") :: d2 :: d3 :: (#"-") :: d4 :: d5 :: d6 :: d7 :: d8 :: d9 :: (#"-") :: c1 :: [] =>
+	  d1 :: d2 :: (#"-") :: d3 :: d4 :: d5 :: d6 :: (#"-") :: d7 :: d8 :: d9 :: (#"-") :: c1 :: [] =>
 	    String.implode[d1,(#"-"),d2,d3,(#"-"),d4,d5,d6,d7,d8,d9,(#"-"),c1]
 	| 	  d1 :: d2 :: d3 :: d4 :: d5 :: d6 :: d7 :: d8 :: d9 :: c1 :: [] =>
 	    String.implode[d1,(#"-"),d2,d3,(#"-"),d4,d5,d6,d7,d8,d9,(#"-"),c1]
