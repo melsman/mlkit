@@ -28,6 +28,7 @@
 #include "Exception.h"
 #include "Interp.h"
 #include "String.h"
+#include "Math.h"
 #include "Table.h"
 
 #ifdef KAM
@@ -674,17 +675,27 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       }
 
       Instruct(PRIM_SUB_I1): {
+	if ( acc == Min_Int ) goto raise_overflow;
+	acc = acc - 1;
+	Next;
+	/*
 	temp = acc;
 	acc = acc - 1;
 	if ( acc > temp ) goto raise_overflow;
 	Next;
+	*/
       }
 
       Instruct(PRIM_SUB_I2): {
+	if ( acc == Min_Int || acc == Min_Int + 1 ) goto raise_overflow;
+	acc = acc - 2;
+	Next;
+	/*
 	temp = acc;
 	acc = acc - 2;
 	if ( acc > temp ) goto raise_overflow;
 	Next;
+	*/
       }
 
       Instruct(PRIM_SUB_I): {
@@ -699,17 +710,27 @@ interp(Interp* interpreter,    // Interp; NULL if mode=RESOLVEINSTS
       }
 
       Instruct(PRIM_ADD_I1): {
+	if ( acc == Max_Int ) goto raise_overflow;
+	acc = acc + 1;
+	Next;
+	/*      
 	temp = acc;
 	acc = acc + 1;
 	if ( acc < temp ) goto raise_overflow;
 	Next;
+	*/
       }
 
       Instruct(PRIM_ADD_I2): {
+	if ( acc == Max_Int || acc == Max_Int - 1 ) goto raise_overflow;
+	acc = acc + 2;
+	Next;
+	/*
 	temp = acc;
 	acc = acc + 2;
-	if ( acc < temp ) goto raise_overflow;
+	if ( (int)acc < (int)temp ) goto raise_overflow;
 	Next;
+	*/
       }
 
       Instruct(PRIM_ADD_I): {
