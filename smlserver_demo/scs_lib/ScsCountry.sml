@@ -24,8 +24,17 @@ structure ScsCountry :> SCS_COUNTRY =
 	    from scs_country_codes
 	   order by name`
 	val g_fn = (fn g => (g "name", g "country_id"))
+	fun v_default() = SOME ( 
+	  Db.oneRow' (fn g => ScsData.gToInt g "country_id") `
+	    select country_id
+	      from scs_country_codes
+	     where abbr_iso2 = 'DK'
+	  ` )
+          handle _ => (ScsError.log "country1" ; NONE)
+
       in
-        ScsData.mk_selectBoxFromDb sql g_fn fv v_opt
+        ScsData.mk_selectBoxFromDb sql g_fn fv
+	  ( if Option.isSome v_opt then v_opt else (ScsError.log "country2" ; v_default() ) )
       end
 
     fun countryName country_id lang = Db.oneField `
