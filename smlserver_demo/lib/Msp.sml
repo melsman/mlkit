@@ -54,7 +54,7 @@ fun formvar s =
 
 fun % fnm = 
     case formvar fnm of 
-	NONE   => raise ParamMissing "fnm"
+	NONE   => raise ParamMissing fnm
       | SOME v => v
 
 fun %? fnm = Option.isSome(formvar fnm)
@@ -227,7 +227,7 @@ fun htmlencode s : string =
     let fun encode #"<" = "&lt;"
 	  | encode #">" = "&gt;"
 	  | encode #"&" = "&amp;"
-	  | encode #"\"" = "&#34;" (*MT Aug 5, 2001 *)
+	  | encode #"\"" = "&#34;" (*MT Aug 5, 2001 og igen 27. juli 2002*)
 	  | encode c    = String.str c
     in String.translate encode s end
 end
