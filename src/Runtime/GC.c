@@ -28,12 +28,16 @@ unsigned int *stack_bot_gc = NULL;    // bottom and top of stack -- used during 
 unsigned int *stack_top_gc;           //   determine if a value is stack-allocated
 unsigned int rp_from_space = 0;       // number of region pages in from-space
 unsigned int to_space_old = 0;        // size of to-space (live) at previous GC
-unsigned int alloc_period = 0;        // allocated bytes by alloc between GC's
-unsigned int alloc_total = 0;         // allocated bytes by alloc (total)
+unsigned int lobjs_aftergc_old = 0;   // size of large objects after previous GC
+unsigned int lobjs_aftergc = 0;       // size of large objects after GC
+unsigned int lobjs_beforegc = 0;      // size of large objects before GC
+unsigned int lobjs_period = 0;        // allocated bytes in large objects between GC's
+unsigned int alloc_period = 0;        // allocated bytes by alloc between GC's (excludes lobjs)
+unsigned int alloc_total = 0;         // allocated bytes by alloc (total, includes lobjs)
 unsigned int gc_total = 0;            // bytes recycled by GC (total)
-unsigned int lobj_current = 0;        // bytes currently occupied by large objects
-unsigned int lobj_gc_treshold = 0;    // set time_to_gc to 1 when lobj_current exceeds
-                                      //   lobj_gc_treshold; this variable is adjusted
+unsigned int lobjs_current = 0;       // bytes currently occupied by large objects
+unsigned int lobjs_gc_treshold = 0;   // set time_to_gc to 1 when lobjs_current exceeds
+                                      //   lobjs_gc_treshold; this variable is adjusted
                                       //   after garbage collection.
 double FRAG_sum = 0.0;                // fragmentation denotes how much of region
                                       //   pages are used by values -- and is computed
@@ -467,6 +471,29 @@ allocated_bytes_in_regions(void)
   return n;
 }
 
+static int 
+allocated_bytes_in_lobjs(void) 
+{
+  int n = 0;
+  Ro* rp;
+  Lobjs *lobjs;
+
+  for ( rp = TOP_REGION; rp != NULL; rp = rp->p )
+    {
+      for ( lobjs = rp->lobjs ; lobjs ; lobjs = lobjs->next ) 
+	{
+	  unsigned int tag;
+	  #ifdef PROFILING
+	  tag = *(&(lobjs->value) + sizeObjectDesc);
+	  #else
+	  tag = lobjs->value;
+	  #endif
+	  n += size_lobj(tag);
+	}
+    }
+  return n;
+}
+
 /********************/
 /* OBJECT FUNCTIONS */
 /********************/
@@ -731,6 +758,7 @@ gc(unsigned int **sp, unsigned int reg_map)
     {
       fprintf(stderr,"[GC#%d", num_gc); fflush(stdout);
       size_from_space = allocated_bytes_in_regions();
+      lobjs_beforegc = allocated_bytes_in_lobjs();
       alloc_period_save = alloc_period;
       alloc_period = 0;
     }
@@ -852,15 +880,16 @@ gc(unsigned int **sp, unsigned int reg_map)
 	  else
 	    {
 	      Lobjs *lobjs_ptr_tmp = (*lobjs_ptr)->next;
-	      lobj_current -= size_lobj(tag);
+	      lobjs_current -= size_lobj(tag);
 	      free((*lobjs_ptr));                              // de-allocate object
 	      *lobjs_ptr = lobjs_ptr_tmp;
 	    }
 	}
     }
-  lobj_gc_treshold = (int)(heap_to_live_ratio * (double)lobj_current);
+  lobjs_gc_treshold = (int)(heap_to_live_ratio * (double)lobjs_current);
 
-  /* Reset all constant-bits in the container - FINITE REGIONS and LARGE OBJECTS */
+  // Reset all constant-bits in the container -- FINITE REGIONS 
+  // and LARGE OBJECTS
   clear_scan_container();
 
   rp_used = rp_to_space;
@@ -876,9 +905,11 @@ gc(unsigned int **sp, unsigned int reg_map)
       unsigned int size_to_space;
 
       size_to_space = alloc_period;
+      lobjs_aftergc = allocated_bytes_in_lobjs();
       alloc_period = alloc_period_save;
       alloc_total += alloc_period;
-      gc_total += (size_from_space - size_to_space);
+      alloc_total += lobjs_period;
+      gc_total += (size_from_space + lobjs_beforegc - size_to_space - lobjs_aftergc);
 
       getrusage(RUSAGE_SELF, &rusage_end);
 
@@ -900,27 +931,36 @@ gc(unsigned int **sp, unsigned int reg_map)
 
       if ( num_gc != 1 )
 	{
-	  RI = 100.0 * ( ((double)(to_space_old + alloc_period - size_from_space)) /
-			 ((double)(to_space_old + alloc_period - size_to_space)));
+	  RI = 100.0 * ( ((double)(to_space_old + lobjs_aftergc_old + alloc_period + 
+				   lobjs_period - size_from_space - lobjs_beforegc)) /
+			 ((double)(to_space_old + lobjs_aftergc_old + alloc_period +
+				   lobjs_period - size_to_space - lobjs_aftergc)));
 	  
-	  GC = 100.0 * ( ((double)(size_from_space - size_to_space)) /
-			 ((double)(to_space_old + alloc_period - size_to_space)));
+	  GC = 100.0 * ( ((double)(size_from_space + lobjs_beforegc - size_to_space - lobjs_aftergc)) /
+			 ((double)(to_space_old + lobjs_aftergc_old + alloc_period + lobjs_period - 
+				   size_to_space - lobjs_aftergc)));
 
-	  FRAG = 100.0 * (((double)(size_from_space/1024))/ (double)rp_from_space);
+	  FRAG = 100.0 - 100.0 * (((double)(size_from_space + lobjs_beforegc)) / 
+				  ((double)(4*ALLOCATABLE_WORDS_IN_REGION_PAGE*rp_from_space + lobjs_beforegc)));
 	  FRAG_sum = FRAG_sum + FRAG;
 	}
 
-      fprintf(stderr," %dkb(%dkb) (%4.1f%) --> %dkb(%dkb), free-list: %dkb, alloc: %dkb, RI: %4.1f%, GC: %4.1f%]\n",
+      fprintf(stderr," %dkb(%dkb) +L%dkb (%4.1f%) -> %dkb(%dkb) +L%dkb, free-list: %dkb, alloc: %dkb +L%dkb, RI: %4.1f%, GC: %4.1f%]\n",
 	      size_from_space / 1024,
 	      rp_from_space,
+	      lobjs_beforegc / 1024,
 	      FRAG,
 	      size_to_space / 1024, 
 	      rp_used,
+	      lobjs_aftergc / 1024,
 	      size_free_list(),
 	      alloc_period / 1024,
+	      lobjs_period / 1024,
 	      RI, GC);	     
       
       to_space_old = size_to_space;
+      lobjs_aftergc_old = lobjs_aftergc;
+      lobjs_period = 0;
       alloc_period = 0;
     }
 

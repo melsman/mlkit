@@ -7862,7 +7862,7 @@ function \boxml{raiseif0} may be defined thus:
    void raiseif0(int i_ml, int exn) {
      int i_c;
      i_c = convertIntToC(i_ml);
-     if (i_c = 0) raise_exn(exn);
+     if (i_c == 0) raise_exn(exn);
      return;
    }
 \end{verbatim}

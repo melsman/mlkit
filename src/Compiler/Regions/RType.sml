@@ -1168,45 +1168,53 @@ struct
   
   (*c_function_effects mus = the `rhos_for_result' to be annotated on
    a ccall; see comment in MUL_EXP.*)
-       
-  fun c_function_effects mu : (place * int option) list =
-        c_function_effects1 no mu
-  and c_function_effects1 in_list (tau, rho) =
-        (case tau of
-  	   TYVAR tyvar => []
-  	 | CONSTYPE (tyname, mus, rhos, epss) =>
-  	     if TyName.eq (tyname, TyName.tyName_LIST) then
-  	       (case (mus, rhos) of
-  		  ([mu1], [rho1]) =>
-  		    (*rho is for cons cells & rho1 is for auxiliary pairs*)
-  		    [(rho, NONE), (rho1, NONE)] @ c_function_effects1 yes mu1
-  		| _ => die "c_function_effects1: strange list type")
-  	     else [(rho, in_list (size_of_tyname tyname))]
-  	 | RECORD [] => [(rho, SOME 0)] (*unit is not allocated*)
-  	 | RECORD mus =>
+     
+  local
+      fun size_of_tyname tyname =
+	if TyName.unboxed tyname then SOME 0
+	else if TyName.eq (tyname, TyName.tyName_REAL) then 
+	  SOME (RegConst.size_of_real ())
+        else if (TyName.eq (tyname, TyName.tyName_WORD32)
+		 orelse TyName.eq (tyname, TyName.tyName_INT32)) then
+	  (* boxed because RegConst.unboxed_tyname(tyname) returned false! *)
+	  SOME (RegConst.size_of_record [1]) (* 2001-02-17, Niels - dummy list [1] with one element! *)
+	else if (TyName.eq (tyname, TyName.tyName_STRING)
+		 orelse TyName.eq (tyname, TyName.tyName_CHARARRAY)
+		 orelse TyName.eq (tyname, TyName.tyName_ARRAY)
+		 orelse TyName.eq (tyname, TyName.tyName_VECTOR)) then NONE
+	else die ("S (CCALL ...): \nI am sorry, but c functions returning "
+		  ^ TyName.pr_TyName tyname
+		  ^ " are not supported yet.\n")
+
+      fun below_list _ = NONE (*i.e., `yes, we are below a list constructor'*)
+
+      fun c_function_effects1 in_list ((tau_schema,_),(tau, rho)) =
+        case (tau_schema, tau) 
+	  of (TYVAR _,           _) => []
+	   | (CONSTYPE (_, mus_schema, _, _), CONSTYPE (tyname, mus, rhos, epss)) =>
+	    if TyName.eq (tyname, TyName.tyName_LIST) then
+	      (case (mus_schema, mus, rhos) of
+		 ([mu1_schema], [mu1], [rho1]) =>
+		   (*rho is for cons cells & rho1 is for auxiliary pairs*)
+		   [(rho, NONE), (rho1, NONE)] @ c_function_effects1 below_list (mu1_schema,mu1)
+	       | _ => die "c_function_effects1: strange list type")
+	    else [(rho, in_list (size_of_tyname tyname))]
+           | (RECORD nil, RECORD nil) => [(rho, SOME 0)] (*unit is not allocated*)
+	   | (RECORD mus_schema, RECORD mus) =>
   	     (rho, in_list (SOME (RegConst.size_of_record mus)))
-  	     :: concat_lists (map (c_function_effects1 in_list) mus)
+  	     :: concat_lists (map (c_function_effects1 in_list) (ListPair.zip(mus_schema,mus)
+								 handle _ => die "c_function_effects1.zip"))
   	     (*it is assumed that concat_lists does not concat the lists in
   	      opposite order, i.e., that concat_list [[1,2], [3], [4]] is
   	      [1,2,3,4] and not [4,3,1,2]*)
-  	 | FUN (mus, eps0, mus') => die "c_function_effects1 (FUN ...)")
-  and yes i_opt = NONE (*i.e., `yes, we are below a list constructor'*)
-  and no i_opt = i_opt (*i.e., `no, we are not below a list constructor'*)
-  and size_of_tyname tyname =
-    if TyName.unboxed tyname then SOME 0
-    else if TyName.eq (tyname, TyName.tyName_REAL) then 
-      SOME (RegConst.size_of_real ())
-    else if (TyName.eq (tyname, TyName.tyName_WORD32)
-	     orelse TyName.eq (tyname, TyName.tyName_INT32)) then
-      (* boxed because RegConst.unboxed_tyname(tyname) returned false! *)
-      SOME (RegConst.size_of_record [1]) (* 2001-02-17, Niels - dummy list [1] with one element! *)
-    else if (TyName.eq (tyname, TyName.tyName_STRING)
-	     orelse TyName.eq (tyname, TyName.tyName_CHARARRAY)
-	     orelse TyName.eq (tyname, TyName.tyName_ARRAY)
-	     orelse TyName.eq (tyname, TyName.tyName_VECTOR)) then NONE
-    else die ("S (CCALL ...): \nI am sorry, but c functions returning "
-	      ^ TyName.pr_TyName tyname
-	      ^ " are not supported yet.\n")
+	   | (FUN _, FUN (mus, eps0, mus')) => die "c_function_effects1 (FUN ...)"
+	   | _ => die "c_function_effects1: schema does not match instance"
+  in
+    fun c_function_effects (FORALL(_,_,_,tau), mu) : (place * int option) list =
+      case tau
+	of FUN(_,_,[mu_schema]) => c_function_effects1 (fn i=>i) (mu_schema, mu)
+	 | _ => die "c_function_effects.expecting function type with one return value"
+  end
   
   local
     fun add_rho(rho,acc) = 

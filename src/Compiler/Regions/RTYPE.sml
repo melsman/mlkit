@@ -86,7 +86,8 @@ sig
    with return type-and-place mu; see comment in MUL_EXP.*)
 
   val sigma_for_c_function : tyvar list -> (Type * place) -> cone -> sigma * cone
-  val c_function_effects : (Type * place) -> (place * int option) list
+  val c_function_effects : sigma * (Type*place) -> (place * int option) list
+(*  val c_function_effects : (Type * place) -> (place * int option) list *)
 
   type StringTree
   (* the boolean in the following functions should be true iff on want to 
