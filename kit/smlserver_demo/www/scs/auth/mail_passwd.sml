@@ -4,6 +4,11 @@ val email =
   | NONE => ScsFormVar.wrapFail ScsFormVar.getLoginErr ("email","Email")
 val email = ScsPerson.fix_email email
 
+val lang = 
+  case ScsFormVar.wrapOpt (ScsFormVar.getEnumErr (map ScsLang.toString ScsLang.all)) "lang" of
+    SOME l => ScsLang.fromString l
+  | NONE => ScsLang.en
+
 val emsg = [(ScsLang.en,`You typed an email that is either not in our database or your account has not been activated - 
 			 please click your browsers back button and try again or contact the %0  if you believe
                             your account is not as it should be.<p>`),
@@ -22,10 +27,12 @@ val (passwd,first_names,last_name) =
                           and scs_persons.deleted_p = 'f'
                           and scs_users.deleted_p = 'f'
                           and password is not null`,
-                        ScsDict.sl' emsg [Quot.toString (Html.aemail (ScsConfig.scs_site_adm_email()) 
-							 "Site administrator")])
+                        ScsDict.getQuot
+			(ScsDict.dictWithArgsToDict
+			  emsg [Quot.toString (Html.aemail (ScsConfig.scs_site_adm_email()) 
+					       "Site administrator")]) lang)
 
-val mail_msg = [(ScsLang.da,`Hej %0 %1
+val text_da = `Hej %0 %1
 
 Du har adgang til %4 fra
 
@@ -36,11 +43,8 @@ Du har adgang til %4 fra
 
 Med venlig hilsen
 
-%4 
-
--------------------
-
-Dear %0 %1
+%4`
+val text_en = `Dear %0 %1
 
 You can access %4 from
 
@@ -51,17 +55,35 @@ You can access %4 from
 
 Best Regards,
 
-%4`)]
+%4`
 
-val html_msg = `Du (^email) vil om kort tid modtage en email med dit password.<br>
-  <a href="/scs/auth/auth_form.sml">Tilbage til login siden</a><p>
-  (eng. In a short time, you'll (^email) receive an email with your password.<br>
-   <a href="/scs/auth/auth_form.sml">Go to the login page</a>`
+val mail_msg = 
+  case lang of
+    ScsLang.da => 
+[(ScsLang.da,text_da ^^ `
+-------------------
 
-val html_title = "Password er tilsendt pr. mail (eng. Password has been mailed)"
+` ^^ text_en)]
+| ScsLang.en =>
+[(ScsLang.en,text_en ^^ `
+-------------------
+
+` ^^ text_da)]
+
+val html_msg = 
+  ScsDict.getQuot [(ScsLang.da,`Du (^email) vil om kort tid modtage en email med dit password.<br>
+		    <a href="/scs/auth/auth_form.sml">Tilbage til login siden</a><p>`),
+		   (ScsLang.en,`In a short time, you'll (^email) receive an email with your password.<br>
+		    <a href="/scs/auth/auth_form.sml">Go to the login page</a>`)] lang
+
+val html_title = 
+  ScsDict.getString [(ScsLang.da,`Password er tilsendt pr. mail`),
+		     (ScsLang.en,`Password has been mailed`)] lang
 
 val _ = 
   (Ns.Mail.send {to=email, from=ScsConfig.scs_site_adm_email(),subject="UCS Password",
-		 body=ScsDict.sl mail_msg [first_names,last_name,email,passwd,
-                                           ScsConfig.scs_site_name(),ScsConfig.scs_site_url()]};
+		 body=ScsDict.getString
+		 (ScsDict.dictWithArgsToDict mail_msg [first_names,last_name,email,passwd,
+						       ScsConfig.scs_site_name(),ScsConfig.scs_site_url()]) 
+		 lang};
    ScsPage.returnPg html_title html_msg  )
