@@ -24,6 +24,27 @@ val passwd_info = [(ScsLang.da,` Første gang du logger ind skal du
 	     are logged in, you change the password by clicking the
 	     link <b>Change password</b> from your workspace.`)]
 
+val login_msg = 
+`Som brugere af IT-C's IT systemer har vi fået tildelt flere
+forskellige logins og kodeord. For at logge på UCS skal du anvende det
+login, som er en del af din email på IT-C. Hvis du ikke kender din
+IT-C email, så kan du finde det med <a target="find_person"
+href="/ucs/people/combined_search.sml">Find Person</a>. Første gang du
+logger på skal du anvende et maskingenereret password som du kan få
+tilsendt med at klikke <a href="mail_passwd_form.sml">Glemt
+password?</a>. Når du først er logget på kan du frit ændre dit password.<p>
+
+(eng.: Each user at IT-C has several logins and passwords for
+different systems. To logon to UCS you must use your login that is
+part of your IT-C email. If you do not know your IT-C email, then use
+the <a target="find_person"
+href="/ucs/people/combined_search.sml">Search Person</a>
+functionality. We have generated a password for you that you must use
+the first time you logon to UCS. You can have the password mailed to
+you by clicking <a href="mail_passwd_form.sml">Forgot
+password?</a>. You can change your password freely when you are logged
+on.)`
+
 val _ = ScsPage.returnPg ("IT-C.net Authentication")
   (`
    <blockquote>
@@ -52,5 +73,7 @@ val _ = ScsPage.returnPg ("IT-C.net Authentication")
    </table>
    </form>
    ^(UcsPage.icon_forward) <a href="mail_passwd_form.sml">Glemt password?</a><br>
-   ^(UcsPage.icon_forward) (eng. <a href="mail_passwd_form.sml">Forgot password?</a>)</center></blockquote><p>`))))
+   ^(UcsPage.icon_forward) (eng. <a href="mail_passwd_form.sml">Forgot password?</a>)<p>`) ^^ 
+   `</center><p>` ^^
+   login_msg)) ^^ `</blockquote>`)
 
