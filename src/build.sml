@@ -77,9 +77,9 @@ let
         read_string (s^ch)
     end;
 
-  fun user_types_y () = String.upper (read_string "") = "Y"
-  fun wait_for_return () = (read_string ""; ())
   val upper = implode o map String.upper o explode
+  fun user_types_y () = upper (read_string "") = "Y"
+  fun wait_for_return () = (read_string ""; ())
     
   (* Create directory d, with specified acces rights. *)
   val access_rights = 505
@@ -251,7 +251,8 @@ let
       insert_string_flag out_stream "test_log" "std_out";
       insert_bool_flag out_stream "size_of_ml_kit_test" false;
       insert_bool_flag out_stream "acceptance_test" true;
-      insert_bool_flag out_stream "performance_test" true;
+      insert_bool_flag out_stream "quicker_acceptance_test" true;
+      insert_bool_flag out_stream "performance_test" false;
 
       insert_string_flag out_stream "kit_source_directory" kit_source_directory;
       insert_string_flag out_stream "test_env_directory" test_env_directory;
