@@ -308,12 +308,15 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	(case Ns.Conn.formvarAll fv of
 	   [] => (empty_val,addErr(errNoFormVar(emsg,ScsDict.s ty),errs))
 	 | [""] => (empty_val,addErr(errNoFormVar(emsg,ScsDict.s ty),errs))
-	 | [v] =>
-	     (case chk_fn v of
+	 | [v] => ( 
+	   (case chk_fn v of
 		SOME v => (v,errs)
-	      | NONE => (empty_val, addErr(errTypeMismatch(emsg,ScsDict.s ty,v),errs)))
-		handle Overflow => (empty_val, addErr(errTooLarge(emsg,ScsDict.s ty,v),errs))
-	 | _ => (empty_val, addErr(errTooMany emsg,errs)))
+	      | NONE => (empty_val, addErr(errTypeMismatch(emsg,ScsDict.s ty,v),errs)) 
+	   )
+	   handle Overflow => 
+	       (empty_val, addErr(errTooLarge(emsg,ScsDict.s ty,v),errs) )
+         )
+	 | _ => (empty_val, addErr(errTooMany emsg,errs)) )
     in
       val getIntErr = getErrWithOverflow 0 [(ScsLang.en,`number`),(ScsLang.da,`tal`)]
 	(fn v => let val l = explode v
