@@ -46,6 +46,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     structure IntBasis = MO.IntBasis
     structure ElabBasis = ModuleEnvironments.B
     structure ErrorCode = ParseElab.ErrorCode
+    structure H = Polyhash
 
     fun testout(s: string):unit = TextIO.output(TextIO.stdOut, s)
     fun testouttree(t:PP.StringTree) = PP.outputTree(testout,t,80)
@@ -550,6 +551,15 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 | NONE => (List.app Name.mk_rigid names_int) (*bad luck*)
 
     local (* Pickling *)
+
+	fun readFile f : string = 
+	    let val is = BinIO.openIn f
+	    in let val v = BinIO.inputAll is
+		   val s = Byte.bytesToString v
+	       in BinIO.closeIn is; s
+	       end handle ? => (BinIO.closeIn is; raise ?)
+	    end
+
 	val pchat = chat
 	fun sizeToStr sz = 
 	    if sz < 10000 then Int.toString sz ^ " bytes"
@@ -614,8 +624,64 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		; writePickleStream punit os ext
 	    end
 
-	fun doPickleB punit (B:Basis) : unit = 
-	    doPickleGen punit Basis.pu "eb" B 
+	val pu_NB = Pickle.pairGen(Pickle.listGen Name.pu,Basis.pu)
+
+	fun lnkFileFromSmlFile smlfile = "PM/" ^ smlfile ^ ".lnk"
+	fun ebFileFromSmlFile smlfile = "PM/" ^ smlfile ^ ".eb"
+
+	fun unpickleNB punit : (Name.name list * Basis) option =
+	    let val s = readFile (ebFileFromSmlFile punit)
+		val (NB,is) = Pickle.unpickler pu_NB (Pickle.fromString s)
+	    in SOME NB
+	    end handle _ => NONE
+
+	val Hexn = Fail "Manager.Polyhash.failure"
+
+	fun renameN H N =
+	    let fun nextAvailableKey(H,i) =
+		  case H.peek H i of
+		      SOME _ => nextAvailableKey(H,i+1)
+		    | NONE => i
+	    in foldl (fn (n,i) => 
+		      let val i = nextAvailableKey(H,i)
+		      in Name.assignKey(n,i)
+			  ; i + 1
+		      end) 1 N
+	    end
+
+	fun matchNB((N,B),(N0,B0)) =
+	    let fun app2 f l1 l2 = (List.app f l1 ; List.app f l2)
+		val _ = app2 Name.mark_gen N N0
+		val B = Basis.match(B,B0)
+		val _ = app2 Name.unmark_gen N N0
+	    in (N,B)
+	    end
+
+	fun doPickleNB punit (NB:Name.name list * Basis) : unit = 
+	    let fun doPickle NB = 
+		  (List.app Name.mk_rigid (#1 NB) ; doPickleGen punit pu_NB "eb" NB )		
+	    in case unpickleNB punit of
+		SOME N0B0 => 
+		    let (*   How do we make sure that N and N0 are disjoint?
+			 * We do this by an explicit capture-free renaming of 
+			 * N to N' such that (N)(B,m) = (N')(B',m') and 
+			 * N0 \cap N = \emptyset. 
+			 *   Idea: insert keys of members of N0 in a hashSet; 
+			 * for each member n in N, starting with 1, 
+			 * pick a new key k not in hashSet and reset key(n) 
+			 * to k. This implements a capture free renaming of 
+			 * (N)(B,m) because basenames((N)(B,m)) \cap basenames(N) 
+			 * = \emptyset. *)
+			val H : (int,unit) H.hash_table = H.mkTable (fn x => x, op =) (31, Hexn)
+			val _ = app (fn n => H.insert H (#1(Name.key n),())) (#1 N0B0)
+			val _ = renameN H (#1 NB)
+			val NB = matchNB(NB,N0B0)
+		    in if Basis.eq (#2 NB, #2 N0B0) then (List.app Name.mk_rigid (#1 NB)
+							  ; pchat "identical NB in eb-file")
+		       else doPickle NB
+		    end
+	      | NONE => doPickle NB
+	    end
 
 	fun doPickleModCode punit (modc: modcode) : unit =
 	    doPickleGen punit ModCode.pu "lnk" modc 
@@ -644,14 +710,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	    end
 *)
 
-	fun readFile f : string = 
-	    let val is = BinIO.openIn f
-	    in let val v = BinIO.inputAll is
-		   val s = Byte.bytesToString v
-	       in BinIO.closeIn is; s
-	       end handle ? => (BinIO.closeIn is; raise ?)
-	    end
-
 	fun readDependencies uid = 
 	    let val is = TextIO.openIn ("PM/" ^ uid ^ ".d") 
 	    in let 
@@ -662,24 +720,25 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	       end handle _ => (TextIO.closeIn is; nil)
 	    end handle _ => nil
 
-	fun lnkFileFromSmlFile smlfile = "PM/" ^ smlfile ^ ".lnk"
-	fun ebFileFromSmlFile smlfile = "PM/" ^ smlfile ^ ".eb"
-
 	fun readLinkInfo ss =
 	    let fun process (nil,is,modc) = modc
 		  | process (uid::uids,is,modc) =
 		    let val s = readFile (lnkFileFromSmlFile uid)
+			    handle _ => die ("readLinkInfo.error reading file " ^ uid)
 			val (modc',is) = Pickle.unpickler ModCode.pu 
 			    (Pickle.fromStringHashCons is s)
+			    handle _ => die ("readLinkInfo.error deserializing link code for " ^ uid)
 		    in process(uids,is,ModCode.seq(modc,modc'))
 		    end
 	    in case ss of 
 		nil => ModCode.empty
 	      | uid::uids => 
 		    let val s = readFile (lnkFileFromSmlFile uid)
+			    handle _ => die ("readLinkInfo.error reading file " ^ uid)
 			val (modc,is) = Pickle.unpickler ModCode.pu (Pickle.fromString s)
-		    in process(uids,is,modc)
-		    end handle _ => die ("readLinkInfo. error \n")
+			    handle _ => die ("readLinkInfo.error deserializing link code for " ^ uid)
+		    in process(uids,is,modc) 
+		    end 
 	    end
 
 	fun doUnpickleBases uid : Basis = 
@@ -688,7 +747,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		fun process (nil,is,B) = B
 		  | process (uid::uids,is,B) =
 		    let val s = readFile (ebFileFromSmlFile uid)
-			val (B',is) = Pickle.unpickler Basis.pu 
+			val ((_,B'),is) = Pickle.unpickler pu_NB
 			    (Pickle.fromStringHashCons is s)
 		    in process(uids,is,Basis.plus(B,B'))
 		    end
@@ -698,7 +757,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			nil => B0
 		      | uid::uids => 
 			    let val s = readFile (ebFileFromSmlFile uid)
-				val (B,is) = Pickle.unpickler Basis.pu (Pickle.fromString s)
+				val ((_,B),is) = Pickle.unpickler pu_NB (Pickle.fromString s)
 			    in process(uids,is,Basis.plus(B0,B))
 			    end handle _ => die ("doUnpickleBases. error \n")
 	      (* val _ = timerReport timer *)
@@ -894,16 +953,17 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * -------------------- *)
 
     fun recompileUnnecessary smlfile : bool =
-    (* f.sml<f.{lnk,eb} and forall g \in F(f.d) . g.eb < f.eb *)
+    (* f.sml<f.{lnk,eb} and forall g \in F(f.d) . g.eb < f.lnk *)
 	let fun modTime f = OS.FileSys.modTime f
 	    val op < = Time.<=
 	    val lnkFile = lnkFileFromSmlFile smlfile
 	    val ebFile = ebFileFromSmlFile smlfile
 	    val modTimeSmlFile = modTime smlfile
 	    val modTimeEbFile = modTime ebFile
-	in modTimeSmlFile < modTime lnkFile andalso
+	    val modTimeLnkFile = modTime lnkFile
+	in modTimeSmlFile < modTimeLnkFile andalso
 	   modTimeSmlFile < modTimeEbFile andalso
-	   List.all (fn smlfile => modTime (ebFileFromSmlFile smlfile) < modTimeEbFile)
+	   List.all (fn smlfile => modTime (ebFileFromSmlFile smlfile) < modTimeLnkFile)
 	   (readDependencies smlfile)
 	end handle _ => false
 
@@ -911,13 +971,15 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	if recompileUnnecessary smlfile then ()
 	else 
 	let (* load the bases that smlfile depends on *)
+	    val _ = print("[reading source file:\t" ^ smlfile)
 	    val B = doUnpickleBases smlfile
+	    val _ = print("]\n")
 	    val log_cleanup = log_init smlfile
 	    val _ = Flags.reset_warnings ()
-	    val _ = print("[reading source file:\t" ^ smlfile ^ "]\n")
 	    val (infB, elabB, opaq_env, topIntB) = Basis.un B
 	    val _ = Name.baseSet (mlbfile ^ "." ^ smlfile)
 	    val abs_mlbfile = ModuleEnvironments.mk_absprjid mlbfile
+	    val _ = Name.bucket := []
 	    val res = ParseElab.parse_elab {absprjid = abs_mlbfile,
 					    file = smlfile,
 					    infB = infB, elabB = elabB} 
@@ -959,7 +1021,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		val _ = match_int(names_int, intB', absprjid, funid)
 		val _ = chat "[matching end...]"
 *)	  
-		val modc = ModCode.emit (abs_mlbfile,modc)
 
 		(* Testing ; mael 2004-03-02 *)
 (*
@@ -967,8 +1028,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 val _ = pr_st (MO.Basis.layout B')
 *)
 
-		val B'' = Basis.closure (B_im,B')
-		val _ = doPickleB smlfile B''
+		val NB'' = (names_int @ names_elab, Basis.closure (B_im,B'))
+		val _ = doPickleNB smlfile NB''
+
+		val modc = ModCode.emit (abs_mlbfile,modc)
 		val _ = doPickleModCode smlfile modc
 
 	      in print_result_report report;

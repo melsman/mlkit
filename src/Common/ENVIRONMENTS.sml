@@ -294,8 +294,7 @@ signature ENVIRONMENTS =
 
 
 	val dom                  : realisation -> TyName.Set.Set      (* not quite the Supp.. *)
-	val eq                   : realisation * realisation -> bool  (* may return false even though 
-								       * the realisations are equal *)
+	val eq                   : realisation * realisation -> bool
 
 	(*renaming T = a realisation that maps each tyname in T
 	 to a fresh tyname:*)

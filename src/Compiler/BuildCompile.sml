@@ -242,16 +242,12 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
                   structure Report = Report
 		  structure Crash = Crash)
 
-
-   structure HashTable = HashTable(structure PP = PP)
-
    structure QM_EffVarEnv = QuasiEnv(
       structure OFinMap = EffVarEnv
       val key = Effect.key_of_eps_or_rho
-      structure HashTable = HashTable
+      val eq = Effect.eq_effect
       structure PP = PP
       structure Crash = Crash)
-
 
    structure Mul = Mul(
       structure Name = Name

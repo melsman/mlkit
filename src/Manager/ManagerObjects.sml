@@ -733,7 +733,20 @@ functor ManagerObjects(structure Execution : EXECUTION
 	    in (BASIS(infB,eB',oe',iB'),tynames_eB')
 	    end
 
+	fun match (BASIS(infB,eB,oe,iB), BASIS(infB0,eB0,oe0,iB0)) =
+	    let val _ = ModuleEnvironments.B.match(eB,eB0)
+		val _ = OpacityElim.OpacityEnv.match(oe,oe0)
+		val iB = IntBasis.match(iB,iB0)
+	    in BASIS(infB,eB,oe,iB)
+	    end
+
 	fun domain(BASIS(_,eB,_,_)) : longids = ModuleEnvironments.B.domain eB 
+
+	fun eq(BASIS(infB1,eB1,oe1,iB1), BASIS(infB2,eB2,oe2,iB2)) =
+	    InfixBasis.eq(infB1,infB2) andalso 
+	    ModuleEnvironments.B.enrich(eB1,eB2) andalso ModuleEnvironments.B.enrich(eB2,eB1) andalso
+	    OpacityElim.OpacityEnv.eq(oe1,oe2) andalso 
+	    IntBasis.enrich(iB1,iB2) andalso IntBasis.enrich(iB2,iB1)
 
 	fun closure (B': Basis, B: Basis) : Basis = 
 	    (* closure_B'(B) : the closure of B w.r.t. B' *)

@@ -64,4 +64,5 @@ signature NAME =
     val pu_matchcount : matchcount Pickle.pu
 
     val baseSet : string -> unit
+    val assignKey : name * int -> unit (* used by Manager to alpha-rename export bases *)
   end

@@ -1870,12 +1870,18 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	TyName.Set.fold (fn t => fn acc => acc andalso 
 			 TypeFcn.eq(on_TyName rea0 t, on_TyName rea t)) true T
 
-      fun eq (Realisation_Id, Realisation_Id) = true       (* conservative check, thus eq is a bad word for it *)
+      fun eq (Realisation_Id, Realisation_Id) = true       (* conservative check, thus eq is a bad word for it;
+							    * - better now ; mael 2004-04-06 *)
+	| eq (rea1,rea2) = 
+	let val T = TyName.Set.union (dom rea1) (dom rea2)
+	in enrich (rea1,(rea2,T))
+	end
+(*
 	| eq (rea1,rea2) = 
 	let val T = dom rea1
 	in TyName.Set.eq T (dom rea2) andalso enrich (rea1,(rea2,T))
 	end
-
+*)
       fun match (Realisation_Id, rea0) = ()
 	| match (Not_Id m, rea0) =
 	let fun convert (EXPANDED theta) = theta

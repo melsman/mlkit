@@ -4,40 +4,44 @@
  *)
 
 functor QuasiEnv(structure OFinMap : MONO_FINMAP
-		 structure HashTable : HASH_TABLE
 		 val key : OFinMap.dom -> int
+		 val eq  : OFinMap.dom * OFinMap.dom -> bool
 		 structure PP : PRETTYPRINT
-		   sharing type PP.StringTree = OFinMap.StringTree = HashTable.StringTree
+		   sharing type PP.StringTree = OFinMap.StringTree
 		 structure Crash : CRASH) : QUASI_ENV =
   struct
-    structure H = HashTable
+    structure H = Polyhash
     structure Env = OFinMap
 
     fun die s = Crash.impossible ("QuasiEnv." ^ s)
 
-    type '_a map = '_a Env.map
-    type '_a qmap = '_a map * '_a H.hash_table
+    type 'a map = 'a Env.map
     type dom = Env.dom
+    type 'a qmap = 'a map * (dom,'a) H.hash_table
 
-    fun mk (n : int) (m : '_a map) : '_a qmap = (m, H.mk_empty n)
+    val exn = Fail "QuasiEnv"
+    fun mk (n : int) (m : 'a map) : 'a qmap = (m, H.mkTable (key,eq) (n,exn))
 
     fun lookup ((m,h) : '_a qmap) (a : dom) : '_a option =           (************************)
-      case H.lookup(h,key a)                                         (* First, lookup in the *)
-	of (r as SOME _) => r                                        (* hash table.          *)
+      case H.peek h a of                                             (* First, lookup in the *)
+	  r as SOME _ => r                                           (* hash table.          *)
 	 | NONE => Env.lookup m a                                    (************************)
 
-    fun update (a:dom, r:'_a, (_,h): '_a qmap) = H.update(h,key a,r)        (************************)
+    fun update (a:dom, r:'_a, (_,h): '_a qmap) = H.insert h (a,r)           (************************)
                                                                             (* Always do the update *)
 									    (* in the hash table.   *)
                                                                             (************************)
+	(* I guess its an error to make updates to entries that appear
+	 * in the persistent map -  mael 2004-04-07. We could insert a
+	 * check here to see if this ever happens... *)
+	
 
-    fun Fold (f : ((int * '_b) * 'a) -> 'a) (acc : 'a) ((m,h):'_b qmap) =
+    fun Fold (f : ((dom * 'b) * 'a) -> 'a) (acc : 'a) ((m,h):'b qmap) =
       let fun not_in_hash_table (a,r) = 					(*******************************)
-	    case H.lookup(h,key a) of SOME _ => false | NONE => true		(* First, filter out things in *)
+	    case H.peek h a of SOME _ => false | NONE => true	  	        (* First, filter out things in *)
 	  val m' = Env.filter not_in_hash_table m				(* map that are in hash table  *)
-	  fun f' ((dom,b),a) = f ((key dom,b),a)				(*******************************)	    
-	  val acc' = Env.Fold f' acc m' 	
-      in H.Fold f acc' h
+	  val acc' = Env.Fold f acc m' 	                                        (*******************************)
+      in List.foldl f acc (H.listItems h)
       end
 
     fun combine(m_pure, m_imp as (discard, h)) = (m_pure, h)
@@ -45,8 +49,8 @@ functor QuasiEnv(structure OFinMap : MONO_FINMAP
 
     type StringTree = PP.StringTree                                       (*******************)
     fun layout {start:string,finish:string,eq:string,sep:string} 	  (* Pretty Printing *)
-      (layout_dom: int -> StringTree) (layout_ran: '_a -> StringTree) 	  (*******************)
-      (q : '_a qmap) : StringTree =
+      (layout_dom: dom -> StringTree) (layout_ran: 'a -> StringTree) 	  (*******************)
+      (q : 'a qmap) : StringTree =
       let fun layout_entry(a,r) = PP.NODE{start="",finish="",childsep=PP.RIGHT eq, indent=0,
 					  children=[layout_dom a, layout_ran r]}
       in PP.NODE{start=start,finish=finish,childsep=PP.RIGHT sep, indent=1,
