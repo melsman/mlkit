@@ -54,9 +54,9 @@ Backend/SUBST_AND_SIMPLIFY.sml
 Backend/CODE_GEN.sml
 Backend/JUMP_TABLES.sml
 Backend/X86/INSTS_X86.sml
-Backend/HpPaRisc/HPPA_RESOLVE_JUMPS.sml
-Backend/HpPaRisc/HP_PA_DELAY_SLOT_OPTIMIZATION.sml
-Backend/HpPaRisc/HP_PA_RISC.sml
+(*Backend/HpPaRisc/HPPA_RESOLVE_JUMPS.sml*)
+(*Backend/HpPaRisc/HP_PA_DELAY_SLOT_OPTIMIZATION.sml*)
+(*Backend/HpPaRisc/HP_PA_RISC.sml*)
 
 Lambda/Con.sml
 Lambda/Excon.sml
@@ -127,10 +127,10 @@ Backend/X86/CodeGenX86.sml
 Backend/X86/InstsX86.sml
 
 (* HPPA Backend *)
-Backend/HpPaRisc/HppaResolveJumps.sml
-Backend/HpPaRisc/HpPaDelaySlotOptimization.sml
-Backend/HpPaRisc/CodeGen.sml
-Backend/HpPaRisc/HpPaRisc.sml
+(*Backend/HpPaRisc/HppaResolveJumps.sml*)
+(*Backend/HpPaRisc/HpPaDelaySlotOptimization.sml*)
+(*Backend/HpPaRisc/CodeGen.sml*)
+(*Backend/HpPaRisc/HpPaRisc.sml*)
 
 
 end

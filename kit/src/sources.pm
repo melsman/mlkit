@@ -27,7 +27,7 @@ in
     Compiler/Backend/X86/ExecutionX86.sml
     Compiler/Backend/Dummy/Execution__dummy.sml
     (* Compiler/Backend/PaML/ExecutionPaML.sml *)
-    Compiler/Backend/HpPaRisc/ExecutionHPPA.sml 
+(*    Compiler/Backend/HpPaRisc/ExecutionHPPA.sml *)
 (*    Compiler/Backend/KAM/ExecutionKAM.sml *)
     
     Common/SMLofNJOnKit.sml
