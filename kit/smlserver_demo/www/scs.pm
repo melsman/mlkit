@@ -13,16 +13,32 @@ local
     ../lib/Db.sml
     ../lib/DbClob.sml
   end
-
   ../lib/HTML.sml
   ../lib/Html.sml
+  ../scs_lib/ScsString.sml
+  ../scs_lib/SCS_SECURITY.sml
+  ../scs_lib/ScsSecurity.sml
+  ../scs_lib/ScsLang.sml
+  ../scs_lib/SCS_PAGE.sml
+  ../scs_lib/ScsLogin.sml
+  ../scs_lib/ScsDate.sml
+  ../scs_lib/ScsDict.sml
+  ../scs_lib/ScsPage.sml
+  ../scs_lib/ScsAudit.sml
+  ../scs_lib/ScsError.sml
+  ../scs_lib/ScsFile.sml
+  ../scs_lib/ScsDb.sml
+  ../scs_lib/ScsWidget.sml
+  ../scs_lib/ScsPrint.sml
+  ../scs_lib/ScsReal.sml
+  ../scs_lib/ScsList.sml
   ../lib/MSP.sml
   ../lib/Msp.sml
-  ../demo_lib/Page.sml
-  ../demo_lib/FormVar.sml
-  ../demo_lib/Login.sml
+  ../scs_lib/ScsFormVar.sml
 
-  ../demo_lib/RatingUtil.sml
+  ../scs_lib/ScsGlobal.sml
+
+  rating/RatingUtil.sml
 in
  [
   rating/index.sml
@@ -62,14 +78,14 @@ in
   mul.msp
   show_cookies.sml
   auth_example.sml
+
   cs_form.sml
   cs_add.sml
   cs_upd.sml
   cs_const.sml
-(*
+
   ug.sml
   currency.sml
-*)
   currency_cache.sml
   regexp.sml
   cookie.sml
@@ -83,11 +99,26 @@ in
   email_form.sml
   email_sent.sml
 
+  (* Scs Dictionary *)
+  scs/admin/dict/dict_form.sml
+  scs/admin/dict/dict_entry_form.sml
+
+  (* ScsPrint *)
+  scs/print/scs-print.sml
+  scs/print/log.sml
+  scs/print/show_doc.sml
+  scs/print/toggle_deleted.sml
+
+  (* ScsAuthentication *)
   auth_form.sml
   auth.sml
-  link/index.sml
-  link/add_form.sml
-  link/add.sml
-  link/delete.sml
+  auth_logout.sml
+
+  (* SCS Auditing *)
+  scs/admin/audit/audit_tables.sml
+  scs/audit/audit_trail.sml
+  scs/audit/audit_table.sml
+  scs/audit/audit_row.sml
+
  ]
 end

@@ -1,38 +1,43 @@
+structure FV = FormVar
+
 val _ = Ns.log (Ns.Notice,"Entering auth.sml")
 
 fun redirect() = 
   (Ns.log (Ns.Notice,"Redirecting from auth");
-   Ns.returnRedirect (Ns.Conn.location() ^ "/auth_form.sml"); Ns.exit())
+   Ns.returnRedirect "/auth_form.sml"; 
+   Ns.exit())
 
 val target =
-  case ScsFormVar.wrapOpt ScsFormVar.getStringErr "target" of
-    NONE => redirect()
-  | SOME t => t
+  case FV.wrapOpt FV.getStringErr "target" 
+    of NONE => redirect()
+     | SOME t => t
 
-val al =
-  case ScsFormVar.wrapOpt ScsFormVar.getStringErr "auth_login" of
-    NONE => redirect()
-  | SOME al => al
+val email =
+  case FV.wrapOpt FV.getStringErr "email" 
+    of NONE => redirect()
+     | SOME e => e
 
-val ap =
-  case ScsFormVar.wrapOpt ScsFormVar.getStringErr "auth_password" of
-    NONE => redirect()
-  | SOME ap => ap
+val passwd =
+  case FV.wrapOpt FV.getStringErr "passwd" 
+    of NONE => redirect()
+     | SOME p => p
 
-val user_id =
-  case Db.zeroOrOneField `select user_id from auth_user where login = '^(Db.qq al)'` of
-    NONE => "0"
-  | SOME user_id => user_id
+val pid =
+  case Db.zeroOrOneField `select person_id 
+                          from person 
+                          where email = ^(Db.qq' email)` 
+    of NONE => "0"
+     | SOME pid => pid
 
 val _ = Ns.write
 `HTTP/1.0 302 Found
 Location: ^target
 MIME-Version: 1.0
-^(Ns.Cookie.deleteCookie{name="auth_user_id",path=SOME "/"})
-^(Ns.Cookie.setCookie{name="auth_user_id", value=user_id,expiry=NONE,
+^(Ns.Cookie.deleteCookie{name="auth_person_id",path=SOME "/"})
+^(Ns.Cookie.setCookie{name="auth_person_id", value=pid,expiry=NONE,
 		      domain=NONE,path=SOME "/",secure=false})
 ^(Ns.Cookie.deleteCookie{name="auth_password",path=SOME "/"})
-^(Ns.Cookie.setCookie{name="auth_password", value=ap,expiry=NONE,
+^(Ns.Cookie.setCookie{name="auth_password", value=passwd,expiry=NONE,
 		      domain=NONE,path=SOME "/",secure=false})
 
 

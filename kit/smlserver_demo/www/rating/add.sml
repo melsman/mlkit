@@ -1,8 +1,10 @@
   (* Assume either (1) form variable wid is present 
    * or (2) form variables name and year are present *)
 
+  structure FV = FormVar
+
   val (wid, name, year) =
-    case ScsFormVar.wrapOpt ScsFormVar.getNatErr "wid" of 
+    case FV.wrapOpt FV.getNatErr "wid" of 
       SOME wid =>   (* get name and year *)
 	let val wid = Int.toString wid
 	    val query = 
@@ -13,14 +15,15 @@
 	| _ => raise Fail "add.sml"       
 	end
     | NONE => 
-	let val name = ScsFormVar.wrapFail ScsFormVar.getStringErr ("name","name of wine")
-	    val year = 
-	      ScsFormVar.wrapFail (ScsFormVar.getIntRangeErr 0 3000) ("year", "year of wine")
+	let val name = FV.wrapFail 
+              FV.getStringErr ("name","name of wine")
+	    val year = FV.wrapFail 
+              (FV.getIntRangeErr 0 3000) 
+	      ("year", "year of wine")
 	    val year = Int.toString year
-	    val query = 
-	      `select wid from wine 
-	       where name = ^(Db.qq' name)
-		 and year = ^(Db.qq' year)`
+	    val query = `select wid from wine 
+	                 where name = ^(Db.qq' name)
+		           and year = ^(Db.qq' year)`
 	in 
 	  case Db.zeroOrOneRow query of
 	    SOME [wid] => (wid, name, year)

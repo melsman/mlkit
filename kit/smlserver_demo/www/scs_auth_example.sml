@@ -1,5 +1,5 @@
-val _ = Page.return "Authentication" `
-This example uses the database to store person-id and passwords. You
+val _ = ScsPage.returnPg "Authentication" `
+This example uses the database to store user id and passwords. You
 must load the datamodel (file <code>/www/auth.sql</code>) into either
 Oracle or PostgreSQL.<p>
 
@@ -33,9 +33,9 @@ href="email_form.sml">Send Me a Mail</a> or one of the non
 password protected pages (e.g., <a href="server.sml">server.sml</a> or
 <a href="guess.sml">Guess a Number</a>).<p>
 
-<b>^(if Login.loggedIn then "You are currently logged in with person-id " ^ 
-       (Int.toString Login.person_id) ^ " (<a href=\"auth_logout.sml\">logout</a>) "
-     else "You are not logged in").</b><p>
+<b>^(if ScsLogin.loggedIn then "You are currently logged in with user_id " ^ 
+       (Int.toString ScsLogin.user_id) ^ " (<a href=\"auth_logout.sml\">logout</a>) "
+     else "You are not logged in").<p>
 
 Back to the <a href="index.sml">example</a> page<p>`
 

@@ -19,8 +19,10 @@
   <html>
     <body bgcolor=white>
     <h2>Multiplication Table</h2>
-    <table border=1 width=100% align=center>
+    <table border=1>
       <?MSP$ tab 10 ?>
     </table>
+    <hr><i>Served by <a 
+      href=http://www.smlserver.org>SMLserver</a></i>
     </body>
   </html>

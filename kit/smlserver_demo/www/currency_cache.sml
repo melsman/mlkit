@@ -1,32 +1,30 @@
-fun getdate () = Date.fmt "%Y-%m-%d" (Date.fromTimeLocal (Time.now()))
+structure FV = FormVar
+
+fun getdate () = 
+  Date.fmt "%Y-%m-%d" (Date.fromTimeLocal (Time.now()))
+
 fun round r = Real.fmt (StringCvt.FIX(SOME 2)) r
 
-val a = ScsFormVar.wrapFail ScsFormVar.getRealErr ("a", "amount")
-val a_str = (Real.toString a)
-val s = ScsFormVar.wrapFail ScsFormVar.getStringErr ("s", "source currency")
-val t = ScsFormVar.wrapFail ScsFormVar.getStringErr ("t", "target currency")
+val a = FV.wrapFail FV.getRealErr ("a", "amount")
+val a_str = Real.toString a
+val s = FV.wrapFail FV.getStringErr ("s", "source currency")
+val t = FV.wrapFail FV.getStringErr ("t", "target currency")
 
-fun return_page body =
-  Ns.return (`<html>
-   <head>
-   <title>Currency Service</title>
-   </head>
-   <body bgcolor=white>
-  <h2>Currency Service, ^(getdate())</h2><p>`
-   ^^ body ^^ `
-  <hr>
-  <a href="http://www.smlserver.org/">SMLserver Home Page</a> 
-  (<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-08-08
-   </body>
-   </html>`)
+fun return_page body = Page.return 
+  ("Currency Exchange Service, " ^ getdate()) body
 
-val url = "http://se.finance.yahoo.com/m5?a="^(Ns.encodeUrl a_str)^"&s="^(Ns.encodeUrl s)^"&t="^(Ns.encodeUrl t)
-fun return_err_page () =
-  return_page `The service is currently not available, because we have trouble 
-               getting information from the data source: <a href="^url">^url</a>. <p>
-               Please send me an <a href=\"mailto:nh@itu.dk\">email</a>.`
+val url = 
+  ("http://se.finance.yahoo.com/m5?s=" ^ Ns.encodeUrl s 
+   ^ "&t=" ^ Ns.encodeUrl t)
 
-val pattern = RegExp.fromString (".+" ^ s ^ t ^ ".+<td>([0-9]+).([0-9]+)</td>.+")
+fun return_err_page () = return_page 
+  `The service is currently not available, probably 
+  because we had trouble getting information from the 
+  data source: <a href="^url">^url</a>.`
+
+val pattern = RegExp.fromString 
+  (".+" ^ s ^ t ^ ".+<td>([0-9]+).([0-9]+)</td>.+")
+
 val fetch = Ns.Cache.cacheForAwhile
   (fn url => 
    case Ns.fetchUrl url of 
@@ -34,16 +32,16 @@ val fetch = Ns.Cache.cacheForAwhile
    | SOME pg => 
        (case RegExp.extract pattern pg of
 	  SOME [rate1, rate2] => rate1^"."^rate2
-	| _ => ""), "currency", 300)
+	| _ => ""), "currency", 5*60)
 
 val _ =
   case fetch url of
     "" => return_err_page()
   | rate_str =>
-      let 
-	val rate = Option.valOf (Real.fromString rate_str)
-      in
-	return_page `^a_str (^s) gives you ^((round (a*rate))) (^t).<p>
-	The rate used is ^(round rate) and is obtained from <a href="^url">^url</a>.<p>
-	New <a href="currency.html">Calculation</a>`
+      let val rate = Option.valOf (Real.fromString rate_str)
+      in return_page 
+	`^a_str ^s gives ^(round (a*rate)) ^t.<p>
+	The exchange rate is obtained by fetching<p>
+	<a href="^url">^url</a><p>
+	New <a href="currency_cache.html">Calculation</a>`
       end
