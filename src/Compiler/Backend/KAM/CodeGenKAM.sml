@@ -377,15 +377,15 @@ and code is actually generated when passing arguments in region polymorphic func
       | CG_ce(ClosExp.RAISE ce,env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Raise::acc)
       | CG_ce(ClosExp.HANDLE(ce1,ce2),env,sp,cc,acc) =
       (* An exception handler on the stack contains the following fields: *)
-      (* sp[offset] = pointer to handle closure.                          *)
-      (* sp[offset+1] = label for handl_return code.                      *)
-      (* sp[offset+2] = pointer to previous exception handler used when updating expPtr. *)
+      (* sp[offset+2] = pointer to previous exception handler used when updating exnPtr. *)
+      (* sp[offset+1] = pointer to handle closure.                          *)
+      (* sp[offset] = label for handl_return code.                      *)
       (* Note that we call deallocate_regions_until to the address above the exception handler, *)
       (* when an exception is raised.  *)
       let
 	val return_lbl = Labels.new_named "return_handle"
       in
-	CG_ce(ce2,env,sp,cc, Push :: PushLbl return_lbl :: PushExnPtr ::	 
+	CG_ce(ce2,env,sp,cc, PushLbl return_lbl :: Push :: PushExnPtr ::	 
 	      CG_ce(ce1,env,sp+3,cc, PopExnPtr :: Pop(2) :: Label return_lbl :: acc))
       end
       | CG_ce(ClosExp.SWITCH_I (ClosExp.SWITCH(ce,sels,default)),env,sp,cc,acc) = 

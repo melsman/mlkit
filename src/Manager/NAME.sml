@@ -52,4 +52,18 @@ signature NAME =
     val elim_dubs : ('a -> name) -> 'a list -> 'a list
 *)
 
+    (* Because the runtime system needs to know about the labels
+     * of certain kinds of symbols, we predefine some names here *)
+
+    val reg_top : name             (* name 0 *)
+    val reg_bot : name             (* name 1 *)
+    val reg_string : name          (* name 2 *)
+    val reg_real : name            (* name 3 *)
+
+    val exn_DIV : name             (* name 4 *)
+    val exn_MATCH : name           (* name 5 *)
+    val exn_BIND : name            (* name 6 *)
+    val exn_OVERFLOW : name        (* name 7 *)
+    val exn_INTERRUPT : name       (* name 8 *)
+
   end

@@ -1,7 +1,11 @@
 Programs that work with the KAM backend:
 
  a.pm                                 ok
- exception1.sml                       -
+ b.pm                                 ok
+ exn1.sml                             ok
+ exn2.sml                             ok
+ exn3.sml                             ok
+ exception1.sml                          BlockAllocIfInf not implemented!!
  exception2.sml                       -
  exception3.sml                       -
  exception4.sml                       -  
@@ -9,12 +13,11 @@ Programs that work with the KAM backend:
  f1.sml                               ok
  f2.sml                               ok
  fft_no_basislib.sml
- fib.sml                              -    I might have ruined this one by having altered the 
-                                           RETURN_NO_CLOS instruction! To me, it now does as
-	                                   documented, but perhaps I'm wrong...
- foldl.sml                            -    Compiles but does not run correctly
- global_region.sml                    -    FETCH_GLOBAL not implemented yet
- hanoi.sml                            -    as with fib...
+ fib.sml                              ok
+ fib0.sml                             ok
+ foldl.sml                            ok
+ global_region.sml                    ok
+ hanoi.sml                            ok
  hello.sml                            ok
  if.sml                               ok
  immedString.sml                      ok
@@ -26,7 +29,7 @@ Programs that work with the KAM backend:
  kitsimple_no_basislib.sml
  kittmergesort_no_basislib.sml
  l1.sml                               ok
- list_nh.sml
+ list_nh.sml                          ok
  listpair.sml
  professor_game.sml
  real1.sml

@@ -101,16 +101,16 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     fun size_of_reg_desc() = 4
     fun size_of_handle()   = 4
 
-    val exn_DIV_lab       = Labels.new_named("exnDIV_lab")       (* Global exceptions are globally allocated. *)
-    val exn_MATCH_lab     = Labels.new_named("exnMATCH_lab")
-    val exn_BIND_lab      = Labels.new_named("exnBIND_lab")
-    val exn_OVERFLOW_lab  = Labels.new_named("exn_OVERFLOW_lab")
-    val exn_INTERRUPT_lab = Labels.new_named("exn_INTERRUPT_lab")
+    val toplevel_region_withtype_top_lab    = Labels.reg_top_lab
+    val toplevel_region_withtype_bot_lab    = Labels.reg_bot_lab
+    val toplevel_region_withtype_string_lab = Labels.reg_string_lab
+    val toplevel_region_withtype_real_lab   = Labels.reg_real_lab
 
-    val toplevel_region_withtype_top_lab    = Labels.new_named("reg_top")
-    val toplevel_region_withtype_bot_lab    = Labels.new_named("reg_bot")
-    val toplevel_region_withtype_string_lab = Labels.new_named("reg_string")
-    val toplevel_region_withtype_real_lab   = Labels.new_named("reg_real")
+    val exn_DIV_lab       = Labels.exn_DIV_lab       (* Global exceptions are globally allocated. *)
+    val exn_MATCH_lab     = Labels.exn_MATCH_lab
+    val exn_BIND_lab      = Labels.exn_BIND_lab
+    val exn_OVERFLOW_lab  = Labels.exn_OVERFLOW_lab
+    val exn_INTERRUPT_lab = Labels.exn_INTERRUPT_lab
 
     val init_frame_offset = 0
 

@@ -111,9 +111,9 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | DotLabel(lab) => RLL.out_label lab
       | JmpVector(lab,first_sel) => (out_opcode JMP_VECTOR; RLL.out_label lab; out_int first_sel)
 
-      | Raise => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PushExnPtr => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PopExnPtr => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | Raise => out_opcode RAISE
+      | PushExnPtr => out_opcode PUSH_EXN_PTR
+      | PopExnPtr => out_opcode POP_EXN_PTR
 	  
       | LetregionFin(n) => (out_opcode LETREGION_FIN; out_int n)
       | LetregionInf => (out_opcode LETREGION_INF)
@@ -163,7 +163,8 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | PrimAddw => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | PrimSubw => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 					                              
-      | PrimFreshExname => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | PrimFreshExname => out_opcode PRIM_FRESH_EXNAME
+
     end
 
     fun emit_kam_insts insts = List.app emit_kam_inst insts

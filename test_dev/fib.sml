@@ -10,8 +10,8 @@ local
   fun printNum (i:int) : unit = prim("printNum", "printNum", i)
   fun fib x =
     let
-      val _ = prim ("printString","printString","In FIB\n")
-      val _ = printNum x
+(*      val _ = prim ("printString","printString","In FIB\n")
+      val _ = printNum x *)
     in
       if neq(x,0) orelse neq(x,1) then 
 	1 
