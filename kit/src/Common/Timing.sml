@@ -3,7 +3,8 @@ signature TIMING =
   sig 
     val timing_begin   : unit -> unit 
     val timing_end     : string -> unit
-    val timing_end_res : (string * 'a) -> 'a
+    val timing_end_res : string * 'a -> 'a
+    val timing         : string -> ('a -> 'b) -> 'a -> 'b
     val new_file       : string -> unit
     val get_timings    : unit -> (string *
                                   ({name: string,
@@ -128,6 +129,10 @@ functor Timing(structure Flags: FLAGS
        chat("\n"))
       
     fun timing_end_res (name, x) = (timing_end name; x)
+
+    fun timing (name:string) (f: 'a -> 'b) (a: 'a) : 'b = 
+      (timing_begin (); f a before timing_end name)
+
       
     (* The first list in timings will always be the *)
     (* current one.                                 *)

@@ -17,9 +17,9 @@ functor CodeGen(structure Con : CON
                   sharing type SubstAndSimplify.label = LineStmt.label
 	        structure HpPaRisc : HP_PA_RISC
                   sharing type HpPaRisc.label = Labels.label
-                  sharing type HpPaRisc.lvar = Lvars.lvar
+                  sharing type HpPaRisc.RI.lvar = Lvars.lvar
+                  sharing type HpPaRisc.RI.reg = SubstAndSimplify.reg
 	        structure BI : BACKEND_INFO
-                  sharing type BI.reg = SubstAndSimplify.reg = HpPaRisc.reg
                   sharing type BI.label = Labels.label
 		structure JumpTables : JUMP_TABLES
 		structure HppaResolveJumps : HPPA_RESOLVE_JUMPS
@@ -33,6 +33,10 @@ functor CodeGen(structure Con : CON
 		  sharing type Report.Report = Flags.Report
 		structure Crash : CRASH) : CODE_GEN =
 struct
+
+  structure RI = HpPaRisc.RI
+
+  val lv_to_reg = RI.lv_to_reg
 
   type excon = Excon.excon
   type con = Con.con

@@ -67,7 +67,7 @@ functor Compile(structure Excon : EXCON
 		  sharing type PhysSizeInf.place = Effect.place
 		  sharing type PhysSizeInf.LambdaPgm = MulExp.LambdaPgm
 		  sharing type PhysSizeInf.mul = MulExp.mul
-
+(*
 		structure ClosExp : CLOS_EXP
 		  sharing type ClosExp.place = PhysSizeInf.place
  (*                 sharing type ClosExp.pp = PhysSizeInf.pp *)
@@ -122,7 +122,7 @@ functor Compile(structure Excon : EXCON
 		  sharing type RegionFlowGraphProfiling.place = PhysSizeInf.place
 		  sharing type RegionFlowGraphProfiling.at = AtInf.at
 		  sharing type RegionFlowGraphProfiling.phsize = PhysSizeInf.phsize
-
+*)
 		structure CompilerEnv: COMPILER_ENV
 		  sharing type CompilerEnv.lvar = LambdaExp.lvar
                   sharing type CompilerEnv.excon = LambdaExp.excon = Excon.excon
@@ -135,22 +135,21 @@ functor Compile(structure Excon : EXCON
                 structure OptLambda: OPT_LAMBDA
 		  sharing type OptLambda.LambdaPgm = LambdaExp.LambdaPgm
 
-		structure CompileBasis: COMPILE_BASIS
-		  sharing type CompileBasis.EqEnv = EliminateEq.env
-		  sharing type CompileBasis.OEnv = OptLambda.env
-		  sharing type CompileBasis.TCEnv = LambdaStatSem.env 
-                  sharing type CompileBasis.rse = SpreadExp.RegionStatEnv.regionStatEnv
-		  sharing type CompileBasis.drop_env = DropRegions.env
-		  sharing type CompileBasis.psi_env = PhysSizeInf.env
-	       	  sharing type CompileBasis.mulenv = MulInf.efenv
-                  sharing type CompileBasis.mularefmap = MulInf.mularefmap
-                  sharing type CompileBasis.clos_env = ClosExp.env
+		structure CompBasis: COMP_BASIS
+		  sharing type CompBasis.EqEnv = EliminateEq.env
+		  sharing type CompBasis.OEnv = OptLambda.env
+		  sharing type CompBasis.TCEnv = LambdaStatSem.env 
+                  sharing type CompBasis.rse = SpreadExp.RegionStatEnv.regionStatEnv
+		  sharing type CompBasis.drop_env = DropRegions.env
+		  sharing type CompBasis.psi_env = PhysSizeInf.env
+	       	  sharing type CompBasis.mulenv = MulInf.efenv
+                  sharing type CompBasis.mularefmap = MulInf.mularefmap
 
                 structure Report: REPORT
 		structure Flags: FLAGS
 
 		structure PP: PRETTYPRINT
-		  sharing type CompileBasis.StringTree
+		  sharing type CompBasis.StringTree
                                      = LambdaExp.StringTree
 			             = EliminateEq.StringTree
                                      = CompilerEnv.StringTree
@@ -162,7 +161,7 @@ functor Compile(structure Excon : EXCON
                                      = MulInf.StringTree
 			             = AtInf.StringTree
 			             = PhysSizeInf.StringTree
-		                     = RegionFlowGraphProfiling.StringTree
+(*		                     = RegionFlowGraphProfiling.StringTree *)
                   sharing type PP.Report = Report.Report
 			
 	        structure Name : NAME
@@ -175,7 +174,7 @@ functor Compile(structure Excon : EXCON
 
     structure CE = CompilerEnv
 
-    type CompileBasis = CompileBasis.CompileBasis
+    type CompBasis = CompBasis.CompBasis
     type CEnv = CompilerEnv.CEnv
     type strdec = CompileDec.strdec
 
@@ -692,6 +691,13 @@ functor Compile(structure Excon : EXCON
 	 end)
     end
 
+    type place = PhysSizeInf.place
+    type 'a at = 'a PhysSizeInf.at
+    type phsize = PhysSizeInf.phsize
+    type pp = PhysSizeInf.pp
+    type ('a, 'b, 'c) LambdaPgm = ('a, 'b, 'c) PhysSizeInf.LambdaPgm
+      
+(*
     (* ---------------------------------------------------------------------- *)
     (*   New Lambda Backend                                                   *)
     (* ---------------------------------------------------------------------- *)
@@ -702,116 +708,44 @@ functor Compile(structure Excon : EXCON
     type StoreTypeCO = SubstAndSimplify.StoreTypeCO
     type AtySS = SubstAndSimplify.Aty
 
-    type target_new = {main_lab: label,
+    (* the boolean `safe' is true if the fragment has no side-effects;
+     * for dead code elimination. *)
+    fun lambda_backend (clos_env: ClosExp.env, app_conv_psi_pgm, safe: bool) 
+      : ClosExp.env * {main_lab: label, 
 		       code: (StoreTypeCO,offset,AtySS) LinePrg,
-		       imports: label list * label list,
-		       exports: label list * label list,
-		       safe: bool}     (* true if the fragment has no side-effects;
-					* for dead code elimination. *)
-
-    fun lambda_backend(clos_env,pgm,safe) : ClosExp.env * 
-      {main_lab: label, code:(StoreTypeCO,offset,AtySS) LinePrg,
-       imports: label list * label list, exports: label list * label list, safe:bool}  =
+		       imports: label list * label list, 
+		       exports: label list * label list, 
+		       safe:bool}  =
       let
-	val _ = Timing.timing_begin()
-	val all_clos_exp = Timing.timing_end_res("ClosConv",ClosExp.cc (clos_env, pgm))
-	val clos_env' = #env all_clos_exp
+	val {main_lab,code,imports,exports,env=clos_env1} = 
+	  Timing.timing "ClosConv" ClosExp.cc (clos_env, app_conv_psi_pgm)
+	val all_line_stmt = Timing.timing "LineStmt" LineStmt.L {main_lab=main_lab,
+								 code=code,imports=imports,
+								 exports=exports}
+	val all_reg_alloc = Timing.timing "RegAlloc"
+	  (if Flags.is_on "perform_register_allocation" then RegAlloc.ra
+	   else RegAlloc.ra_dummy) all_line_stmt
 
-	val _ = Timing.timing_begin()
-	val all_line_stmt = 
-	  Timing.timing_end_res("LineStmt",LineStmt.L {main_lab= #main_lab all_clos_exp,
-						       code= #code all_clos_exp,
-						       imports= #imports all_clos_exp,
-						       exports= #exports all_clos_exp})
+	val all_fetch_flush = Timing.timing "FetchFlush" FetchAndFlush.IFF all_reg_alloc
+	val all_calc_offset = Timing.timing "CalcOffset" CalcOffset.CO all_fetch_flush
 
-	val _ = Timing.timing_begin()
-	val all_reg_alloc = 
-	  Timing.timing_end_res("RegAlloc",
-				if Flags.is_on "perform_register_allocation" then 
-				  RegAlloc.ra all_line_stmt
-				else 
-				  RegAlloc.ra_dummy all_line_stmt)
-
-	val _ = Timing.timing_begin()
-	val all_fetch_flush = Timing.timing_end_res("FetchFlush",FetchAndFlush.IFF all_reg_alloc)
-
-	val _ = Timing.timing_begin()
-	val all_calc_offset = Timing.timing_end_res("CalcOffset",CalcOffset.CO all_fetch_flush)
-
-	val _ = Timing.timing_begin()
 	val all_calc_offset_with_bv = 
-	  Timing.timing_end_res("CBV",
-				if !gc_flag then
-				  CalcOffset.CBV all_calc_offset
-				else
-				  all_calc_offset)
+	  if !gc_flag then Timing.timing "CBV" CalcOffset.CBV all_calc_offset
+	  else all_calc_offset
 
-	val _ = Timing.timing_begin()
-	val all_subst_and_simplify = Timing.timing_end_res("SS", SubstAndSimplify.SS all_calc_offset_with_bv)
-      in
-	(clos_env',
-	 {main_lab = #main_lab all_subst_and_simplify,
-	  code = #code all_subst_and_simplify,
-	  imports = #imports all_subst_and_simplify,
-	  exports = #exports all_subst_and_simplify,
-	  safe = safe})
+	val {main_lab, code, imports, exports, ...} = 
+	  Timing.timing "SS" SubstAndSimplify.SS all_calc_offset_with_bv
+      in (clos_env1,
+	 {main_lab=main_lab, code=code, imports=imports, exports=exports,
+	  safe=safe})
       end
-
-
-    (* ===================================
-     * Compile with the NEW backend
-     * =================================== *)
-
-    fun comp_with_backend(rse, Psi, mulenv, drop_env, psi_env, clos_env, lamb_opt, vcg_file) =
-      let
-	val safe = LambdaExp.safeLambdaPgm lamb_opt
-	val (mul_pgm, rse1, mulenv1, Psi1) = SpreadRegMul(rse, Psi, mulenv, lamb_opt)
-        val _ = MulExp.warn_puts(rse, mul_pgm)
-        val k_mul_pgm = k_norm mul_pgm
-	val sma_pgm = storagemodeanalysis k_mul_pgm
-	val (drop_pgm, drop_env1) = drop_regions(drop_env,sma_pgm)
-	val (psi_pgm, psi_env1) = phys_size_inf(psi_env, drop_pgm)
-        val _ = warn_dangling_pointers(rse, psi_pgm)
-        val app_conv_psi_pgm = appConvert psi_pgm
-	val _ = RegionFlowGraphProfiling.reset_graph ()
-	  
-	val (clos_env1, target_new) = lambda_backend(clos_env,app_conv_psi_pgm, safe)
-(*
-	(* Generate lambda code file with program points *)
-	val old_setting = !print_program_points
-	val _ = print_program_points := true
-	val old_setting2 = !Flags.print_regions
-	val _ = Flags.print_regions := true
-	val _ = 
-	  if Flags.is_on "generate_lambda_code_with_program_points" then
-	    (display("\nReport: LAMBDA CODE WITH PROGRAM POINTS:", PhysSizeInf.layout_pgm psi_pgm);
-	     display("\nReport: REGION FLOW GRAPH FOR PROFILING:", RegionFlowGraphProfiling.layout_graph()))
-	  else ()
-	val _ = print_program_points := old_setting
-	val _ = Flags.print_regions := old_setting2
 *)
-
-	(* Show region flow graph and generate .vcg file *)
-	val _ = if Flags.is_on "show_region_flow_graph" then
-	           (display("\nReport: REGION FLOW GRAPH FOR PROFILING:", 
-			    RegionFlowGraphProfiling.layout_graph());
-		    let val outStreamVCG = TextIO.openOut vcg_file
-		    in chat "Generating region flow graph for profiling (.vcg file) ...";
-		      RegionFlowGraphProfiling.export_graph outStreamVCG;
-		      TextIO.closeOut(outStreamVCG)
-		    end)
-		else ()
-
-      in
-	(rse1, Psi1, mulenv1, drop_env1, psi_env1, clos_env1, target_new)
-      end
-
 
     (************************************************************************)
     (* This is the main function; It invokes all the passes of the back end *)
     (************************************************************************)
 
-    datatype res = CodeRes of CEnv * CompileBasis * target_new
+    datatype res = CodeRes of CEnv * CompBasis * ((place*pp)at,place*phsize,unit) LambdaPgm * bool
                  | CEnvOnlyRes of CEnv
 
     fun compile(CEnv, Basis, strdecs, vcg_file) : res =
@@ -825,8 +759,8 @@ functor Compile(structure Excon : EXCON
 	 * in bases. For now, we do type checking after optlambda, only. *)
 
         val _ = RegionExp.printcount:=1;
-	val {TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap,drop_env,psi_env,clos_env} =
-	  CompileBasis.de_CompileBasis Basis
+	val {TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap=Psi,drop_env,psi_env} =
+	  CompBasis.de_CompBasis Basis
 
         val (lamb,CEnv1, declared_lvars, declared_excons) = ast2lambda(CEnv, strdecs)
 	val (lamb',EqEnv1) = elim_eq_lambda (EqEnv, lamb)
@@ -837,14 +771,55 @@ functor Compile(structure Excon : EXCON
           then (chat "Empty lambda program; skipping code generation.";
                 CEnvOnlyRes CEnv1)
 	else
-	  let val (rse1, mularefmap1, mulenv1, drop_env1, psi_env1, clos_env1, target) = 
-	        comp_with_backend(rse, mularefmap, mulenv, drop_env, psi_env, 
-				  clos_env, lamb_opt, vcg_file)
-	      val Basis' = CompileBasis.mk_CompileBasis {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
-							 rse=rse1,mulenv=mulenv1,mularefmap=mularefmap1,
-							 drop_env=drop_env1,psi_env=psi_env1,
-							 clos_env=clos_env1}
-	  in CodeRes (CEnv1, Basis', target)
+	  let
+	    val safe = LambdaExp.safeLambdaPgm lamb_opt
+	    val (mul_pgm, rse1, mulenv1, Psi1) = SpreadRegMul(rse, Psi, mulenv, lamb_opt)
+	    val _ = MulExp.warn_puts(rse, mul_pgm)
+	    val k_mul_pgm = k_norm mul_pgm
+	    val sma_pgm = storagemodeanalysis k_mul_pgm
+	    val (drop_pgm, drop_env1) = drop_regions(drop_env,sma_pgm)
+	    val (psi_pgm, psi_env1) = phys_size_inf(psi_env, drop_pgm)
+	    val _ = warn_dangling_pointers(rse, psi_pgm)
+	    val app_conv_psi_pgm = appConvert psi_pgm
+(*move to Execution
+	    val _ = RegionFlowGraphProfiling.reset_graph ()
+*)
+(*
+	    val (clos_env1, target_new) = 
+	      lambda_backend (clos_env, app_conv_psi_pgm, safe)
+*)
+
+(*
+            (* Generate lambda code file with program points *)
+  	    val old_setting = !print_program_points
+	    val _ = print_program_points := true
+	    val old_setting2 = !Flags.print_regions
+	    val _ = Flags.print_regions := true
+	    val _ = 
+	      if Flags.is_on "generate_lambda_code_with_program_points" then
+		(display("\nReport: LAMBDA CODE WITH PROGRAM POINTS:", PhysSizeInf.layout_pgm psi_pgm);
+		 display("\nReport: REGION FLOW GRAPH FOR PROFILING:", RegionFlowGraphProfiling.layout_graph()))
+	      else ()
+	    val _ = print_program_points := old_setting
+	    val _ = Flags.print_regions := old_setting2
+*)
+
+(* move to Execution
+	    (* Show region flow graph and generate .vcg file *)
+	    val _ = if Flags.is_on "show_region_flow_graph" then
+		       (display("\nReport: REGION FLOW GRAPH FOR PROFILING:", 
+				RegionFlowGraphProfiling.layout_graph());
+			let val outStreamVCG = TextIO.openOut vcg_file
+			in chat "Generating region flow graph for profiling (.vcg file) ...";
+			  RegionFlowGraphProfiling.export_graph outStreamVCG;
+			  TextIO.closeOut(outStreamVCG)
+			end)
+		    else ()
+*)
+	    val Basis' = CompBasis.mk_CompBasis {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
+						 rse=rse1,mulenv=mulenv1,mularefmap=Psi1,
+						 drop_env=drop_env1,psi_env=psi_env1}
+	  in CodeRes (CEnv1, Basis', app_conv_psi_pgm, safe)
 	  end
       end
 

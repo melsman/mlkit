@@ -34,7 +34,7 @@ functor CodeGenKAM(structure PhysSizeInf : PHYS_SIZE_INF
                    structure Flags : FLAGS
 		   structure Report : REPORT
 		     sharing type Report.Report = Flags.Report
-		   structure Crash : CRASH) : sig end =
+		   structure Crash : CRASH) (* : sig end *) =
 
 struct
   structure LvarFinMap = Lvars.Map

@@ -36,14 +36,25 @@ signature HP_PA_RISC =
     val arg_float0     : reg
     val ret_float0     : reg
 
-    val reg_eq   : reg*reg -> bool
-
     (*-----------------------------------------------------------*)
     (* Converting Between General Registers and Precolored Lvars *)
     (* As Used In The Phases Preceeding Code Generation          *)
     (*-----------------------------------------------------------*)
+
     type lvar
-    val all_regs                : reg list
+
+    structure RI : REGISTER_INFO
+      where type reg = reg
+      where type lvar = lvar
+
+    val lv_to_reg_no : lvar -> int
+    val callee_save_regs_ccall : reg list
+    val caller_save_regs_ccall : reg list
+    val all_regs : reg list
+
+(*
+    type lvar
+    val reg_eq   : reg*reg -> bool
     val all_regs_as_lvs         : lvar list
     val is_reg                  : lvar -> bool
     val lv_to_reg               : lvar -> reg
@@ -60,7 +71,8 @@ signature HP_PA_RISC =
     val callee_save_regs_ccall_as_lvs : lvar list
     val caller_save_regs_ccall        : reg list
     val caller_save_regs_ccall_as_lvs : lvar list
-      
+*)      
+
     (*----------------------------------------------------------*)
     (*                     HPPA RISC Syntax                     *)
     (*                                                          *)
@@ -227,7 +239,7 @@ signature HP_PA_RISC =
     (* To Emit Code *)
     val pr_inst        : RiscInst -> string
     val pp_lab         : lab -> string
-    val pr_reg         : reg -> string
+(*  val pr_reg         : reg -> string *)
     val output_AsmPrg : TextIO.outstream * AsmPrg -> unit
 
   end

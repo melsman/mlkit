@@ -45,8 +45,10 @@ in
 	((* build_runtime("RuntimePaML");
 	 build_runtime("Runtime"); *)
 	 build_runtime("RuntimeWithGC");
+(*
 	 build_rp2ps();
 	 build_kittester();
+*)
 	 build_kit())
 end ;
 

@@ -10,28 +10,22 @@ functor MulInf(
   structure TyName: TYNAME
   structure RType: RTYPE
   structure MulExp: MUL_EXP
-  structure RegionExp: REGION_EXP
   structure Mul: MUL
   structure Eff: EFFECT
-    sharing type Eff.cone = RegionExp.cone = Mul.Effect.cone
-    sharing type Eff.place = RegionExp.place = MulExp.place = RType.place = Mul.place 
-	         = RegionExp.effect 
-                 = MulExp.effectvar = MulExp.ateffect = MulExp.RegionExp.place
+    sharing type Eff.cone = MulExp.cone = Mul.Effect.cone
+    sharing type Eff.place = MulExp.place = RType.place = Mul.place 
+	         = MulExp.effect = MulExp.ateffect
                  = Mul.effectvar 
     sharing type Mul.mularefmap = MulExp.mularefmap
-    sharing type RegionExp.trip = MulExp.RegionExp.trip
     sharing type Mul.dependency_map = MulExp.dependency_map
-    sharing type RType.il = RegionExp.il = MulExp.il
-    sharing type Mul.lvar = MulExp.lvar = MulExp.RegionExp.lvar
-    sharing type MulExp.excon = MulExp.RegionExp.excon 
+    sharing type RType.il = MulExp.il
+    sharing type Mul.lvar = MulExp.lvar
     sharing type Mul.mulef = MulExp.mulef
-    sharing type RegionExp.metaType = MulExp.metaType = MulExp.RegionExp.metaType
-    sharing type MulExp.RegionExp.Type = RType.Type  = MulExp.Type
+    sharing type RType.Type  = MulExp.Type
     sharing type Mul.mul = MulExp.mul
     sharing type MulExp.qmularefset = Mul.qmularefset 
     sharing type TyName.TyName = RType.tyname
     sharing type Mul.efenv = MulExp.efenv
-    sharing type MulExp.datbinds = RegionExp.datbinds
     sharing type Mul.mularef = MulExp.mularef
   structure Lvar: LVARS
     sharing type Lvar.lvar = Mul.lvar
@@ -41,6 +35,8 @@ functor MulInf(
     sharing type Mul.StringTree = PP.StringTree = MulExp.StringTree = Eff.StringTree
   ): MUL_INF =
 struct
+
+  structure RegionExp = MulExp.RegionExp
 
   type ('a,'b)LambdaPgm_phi = ('a,'b) RegionExp.LambdaPgm
   type ('a,'b,'c)LambdaPgm_psi = ('a,'b,'c) MulExp.LambdaPgm

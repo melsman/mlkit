@@ -1,4 +1,4 @@
-
+      
 signature COMPILE =
   sig
 
@@ -6,24 +6,19 @@ signature COMPILE =
      * functor applications. If no code is generated, only a CEnv is
      * returned. *)
 
-    type CEnv and CompileBasis and strdec 
+    type CompBasis
+    type CEnv 
+    type strdec 
 
-    type label
+    type place 
+    type pp
+    type 'a at
+    type phsize
+    type ('a,'b,'c) LambdaPgm
 
-    type StoreTypeCO
-    type offset = int
-    type AtySS
-    type ('sty, 'offset, 'aty) LinePrg
-    type target_new = {main_lab: label,
-		       code: (StoreTypeCO,offset,AtySS) LinePrg,
-		       imports: label list * label list,
-		       exports: label list * label list,
-		       safe: bool}     (* true if the fragment has no side-effects;
-					* for dead code elimination. *)
+    datatype res = CodeRes of CEnv * CompBasis * ((place*pp)at,place*phsize,unit) LambdaPgm * bool
+                 | CEnvOnlyRes of CEnv      (* the boolean is true (safe) if the code has no side-effects *)
 
-    datatype res = CodeRes of CEnv * CompileBasis * target_new
-                 | CEnvOnlyRes of CEnv
-
-    val compile : CEnv * CompileBasis * strdec list * string -> res
-
+    val compile : CEnv * CompBasis * strdec list * string -> res
   end 
+
