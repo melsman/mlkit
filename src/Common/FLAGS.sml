@@ -56,10 +56,6 @@ signature FLAGS =
 
     val DEBUG_COMPILER:		bool ref
 
-    val optimiser :             bool ref
-
-    
-
     val print_effects : bool ref          (* Region inference debug options *)
     val print_types : bool ref
     val print_regions : bool ref
@@ -131,9 +127,9 @@ signature FLAGS =
      * entry is not shown in menu and the option cannot be given at the 
      * command line. *)
 
-    val add_bool_entry : bentry -> unit
-    val add_string_entry : string entry -> unit
-    val add_int_entry : int entry -> unit
+    val add_bool_entry : bentry -> (unit -> bool)
+    val add_string_entry : string entry -> (unit -> string)
+    val add_int_entry : int entry -> (unit -> int)
 
     (* Read and interpret option list by looking in directory and
      * the extra nullary list and unary list *)

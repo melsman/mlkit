@@ -13,8 +13,8 @@ struct
 
   (* Add some dynamic flags for pretty-printing region variables. *) 
   
-  fun add_entry (k, s, r, d) = 
-    Flags.add_bool_entry {long=k,short=NONE,item=r,neg=false,menu=["Layout",s],desc=d}
+  fun add_entry (k, s, r, d) : unit = 
+      (Flags.add_bool_entry {long=k,short=NONE,item=r,neg=false,menu=["Layout",s],desc=d}; ())
 
   val print_rho_levels = ref false
   val print_rho_types = ref false

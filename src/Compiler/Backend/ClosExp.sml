@@ -66,6 +66,25 @@ struct
 
   val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
 
+  val print_normalized_program_p = Flags.add_bool_entry 
+      {long="print_normalized_program", short=NONE, 
+       menu=["Printing of intermediate forms","print normalized expression"],
+       item=ref false, neg=false, desc=
+       "Print Region Expression after K-normalisation."}
+
+  val print_clos_conv_program_p = Flags.add_bool_entry 
+      {long="print_clos_conv_program", short=SOME "Pccp", 
+       menu=["Printing of intermediate forms","print closure converted expression"],
+       item=ref false, neg=false, desc=
+       "Print Region Expression after closure conversion."}
+
+  val print_lift_conv_program_p = Flags.add_bool_entry 
+      {long="print_lift_conv_program", short=SOME "Plcp", 
+       menu=["Printing of intermediate forms","print lifted expression for the KAM"],
+       item=ref false, neg=false, desc=
+       "Print Region Expression after lifting. Used for the\n\
+	\compilation into byte code (KAM)."}
+
   fun pp_lvars s lvs = 
     let fun loop nil = ()
 	  | loop (lv::lvs) = (print (Lvars.pr_lvar lv); print ","; loop lvs)
@@ -3034,7 +3053,7 @@ struct
 	val n_prog = prog
 
 	val _ = 
-	  if Flags.is_on "print_normalized_program" then
+	  if print_normalized_program_p() then
 	    display("\nReport: AFTER NORMALIZATION:", PhysSizeInf.layout_pgm n_prog)
 	  else ()
 
@@ -3082,7 +3101,7 @@ struct
 	   imports=import_labs,
 	   exports=export_labs}
 	val _ = 
-	  if Flags.is_on "print_lift_conv_program" then
+	  if print_lift_conv_program_p() then
 	    (display("\nReport: export_env:", CE.layoutEnv export_env);
 	     display("\nReport: AFTER LIFT: ", layout_clos_prg(#code(all))))
 	  else
@@ -3115,14 +3134,14 @@ struct
       val _ = chat "[Closure Conversion..."
       val n_prog = N prog
       val _ = 
-	if Flags.is_on "print_normalized_program" then
+	if print_normalized_program_p() then
 	  display("\nReport: AFTER NORMALIZATION:", PhysSizeInf.layout_pgm n_prog)
 	else
 	  ()
       val Fenv = F n_prog
       val all = clos_conv (clos_env, Fenv, n_prog)
       val _ = 
-	if Flags.is_on "print_clos_conv_program" then
+	if print_clos_conv_program_p() then
 	  display("\nReport: AFTER CLOSURE CONVERSION:", layout_clos_prg (#code(all)))
 	else
 	  ()

@@ -195,8 +195,10 @@ functor CompileBarry
     (*   Optimise the lambda code                                             *)
     (* ---------------------------------------------------------------------- *)
 
+    val optimise_p = Flags.is_on0 "optimiser"
+
     fun optlambda (env, lamb) =
-          ((if !Flags.optimiser then chat "[Optimising lambda term..."
+          ((if optimise_p() then chat "[Optimising lambda term..."
 	    else chat "[Rewriting lambda term...");
 	   Timing.timing_begin();
 	   let 
