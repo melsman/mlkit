@@ -226,6 +226,6 @@ fun lexordset x = tmergesort x
     
 in
   val done = "done";
-  fun doit() = testit()
+  fun doit() = (testit(); testit(); testit())
 end
  

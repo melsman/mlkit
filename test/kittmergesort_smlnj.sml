@@ -69,7 +69,7 @@ fun tmergesort [] = []
 
 fun doit() = 
 let 
-  val n = 50000
+  val n = 100000
   val xs = snd(randlist(n,1,[]))
   val _ = print "\n List generated\n"
   fun report msg = print(msg^"\n")

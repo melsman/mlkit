@@ -28,6 +28,7 @@ DLXSimulator.sml
 (* smith-normal-form.sml    out-of-memory without GC *)
 (* matrix-multiply.sml      out-of-memory without GC *)
 ratio-regions.sml
+kitsimple.sml
 (*
 barnes-hut.pm
 nucleic.pm

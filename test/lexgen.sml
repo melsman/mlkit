@@ -47,6 +47,9 @@ see the COPYRIGHT NOTICE for details and restrictions.
 	05/18/95 (jhr) changed Vector.vector to Vector.fromList
 *
  * $Log$
+ * Revision 1.3  2001/11/16 17:09:42  mael
+ * changes
+ *
  * Revision 1.2  2001/10/21 22:26:58  mael
  * meny new benchmark programs ported from mlton
  *
@@ -211,11 +214,27 @@ struct
 
 end
 
+structure L = 
+	struct
+	  nonfix >
+	  type key = int list * string
+	  fun > ((key,item:string),(key',item')) =
+	    let fun f ((a:int)::a') (b::b') = if Int.> (a,b) then true
+					   else if a=b then f a' b'
+					   else false
+		  | f _ _ = false
+	    in f key key'
+	    end
+	end
+
+structure RB = RedBlack(L)
+
 signature LEXGEN =
   sig
      val lexGen: string -> unit
   end
 
+local
 structure LexGen: LEXGEN =
    struct
    open Array List
@@ -851,21 +870,6 @@ fun makebegin () : unit =
    in say "\n(* start state definitions *)\n\n"; make(listofdict(!StateTab))
    end
                        
-structure L = 
-	struct
-	  nonfix >
-	  type key = int list * string
-	  fun > ((key,item:string),(key',item')) =
-	    let fun f ((a:int)::a') (b::b') = if Int.> (a,b) then true
-					   else if a=b then f a' b'
-					   else false
-		  | f _ _ = false
-	    in f key key'
-	    end
-	end
-
-structure RB = RedBlack(L)
-
 fun maketable (fins:(int * (int list)) list,
 	     tcs :(int * (int list)) list,
 	     tcpairs: (int * int) list,
@@ -1312,5 +1316,6 @@ structure Main =
 
 fun repeat (0, f) = ()
   | repeat (n, f) = (f(); repeat (n-1, f))
-
+in
 val _ = repeat (10, Main.doit)
+end

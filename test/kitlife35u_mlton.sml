@@ -224,7 +224,7 @@ fun lexordset x = tmergesort x
       
     fun testit _ = show(iter 250)    (* inserted call of iter *)
     
-    val _ = testit ()
+    val _ = (testit (); testit (); testit ())
 in
     val done = "done";
 end
