@@ -615,5 +615,3 @@ fun doit() =
    end
 
 end
-
-val _ = doit()
