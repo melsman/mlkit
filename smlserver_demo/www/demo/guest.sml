@@ -13,12 +13,12 @@ val form =
    </form>`
  
 fun layoutRow (f,acc) = 
-  `<li> <i>^(f "comment")</i>
+  `<li> <i>^(f "comments")</i>
    -- <a href="mailto:^(f "email")">^(f "name")</a>
    <p>` ^^ acc
 
 val rows = Db.fold layoutRow ``
-  `select email,name,comment
+  `select email,name,comments
    from guest
    order by name`
 

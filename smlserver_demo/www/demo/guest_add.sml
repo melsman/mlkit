@@ -5,7 +5,7 @@ val (e,rs) = FormVar.getEmailErr("e", "Email", rs)
 val _ = FormVar.anyErrors rs
 
 val _ = Db.dml 
-  `insert into guest (name,email,comment)
+  `insert into guest (name,email,comments)
    values (^(Db.qqq n),^(Db.qqq e),^(Db.qqq c))`
 
 val _ = Ns.returnRedirect "guest.sml"
