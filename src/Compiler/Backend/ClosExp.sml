@@ -988,6 +988,16 @@ struct
     (* ------------------------------------------------------- *)
     val dummy_sma = IGNORE
 
+    fun get_pp(ATTOP_LI (ce,pp)) = pp
+      | get_pp(ATTOP_LF (ce,pp)) = pp
+      | get_pp(ATTOP_FI (ce,pp)) = pp
+      | get_pp(ATTOP_FF (ce,pp)) = pp
+      | get_pp(ATBOT_LI (ce,pp)) = pp
+      | get_pp(ATBOT_LF (ce,pp)) = pp
+      | get_pp(  SAT_FI (ce,pp)) = pp
+      | get_pp(  SAT_FF (ce,pp)) = pp
+      | get_pp(IGNORE) = die "get_pp: combination not recognized."
+
     fun get_ce(ATTOP_LI (ce,pp)) = ce
       | get_ce(ATTOP_LF (ce,pp)) = ce
       | get_ce(ATTOP_FI (ce,pp)) = ce
@@ -2061,6 +2071,16 @@ struct
 	       (* case that the C function calls resetRegion.  See also the chapter  *)
 	       (* `Calling C Functions' in the documentation.                        *)
 	       let
+		 fun add_pp_for_profiling ([], args) = args
+		   | add_pp_for_profiling ((sma,i_opt)::rest,args) = 
+		   if Flags.is_on "region_profiling" then
+		       (case i_opt of
+			  SOME 0 => die "get_pp_for_profiling (CCALL ...): argument region with size 0"
+			| SOME i => add_pp_for_profiling(rest,args)
+			| NONE   => args @ [INTEGER(Int.toString(get_pp sma))]) (*get any arbitrary pp (they are the same):*)
+		   else
+		     args
+
 		 fun comp_region_args_sma [] = []
 		   | comp_region_args_sma ((sma, i_opt)::rest) = 
 		       (case i_opt of
@@ -2072,7 +2092,8 @@ struct
 
 		 val ces_and_ses = List.map (fn tr => ccTrip tr env lab cur_rv) trs
 		 val (smas',ces,ses) = unify_smas_ces_and_ses(smas_and_ses,ces_and_ses)
-		 val smas = comp_region_args_sma (zip(smas',i_opts))       
+		 val rhos_for_result' = zip(smas',i_opts)
+		 val smas = comp_region_args_sma rhos_for_result'
 		 val maybe_return_unit =
 		   (case mu_result of
 		      (RType.RECORD [], _) => (fn ce => LET{pat=[fresh_lvar("ccall")],bind=ce,
@@ -2087,7 +2108,7 @@ struct
 	       in
 		 (maybe_return_unit(
 		    insert_ses(maybe_insert_smas(fresh_lvs,smas,CCALL{name=name,
-								      args=ces,
+								      args=add_pp_for_profiling(rhos_for_result',ces),
 								      rhos_for_result=map VAR fresh_lvs}),ses)),NONE_SE)
 	       end
 	   | MulExp.RESET_REGIONS({force,alloc,regions_for_resetting},tr) => 

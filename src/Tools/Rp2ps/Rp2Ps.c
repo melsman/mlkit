@@ -342,8 +342,8 @@ static void checkArgs(int argc, char *argv[]) {
       match = 1;
     } 
           
-    if (strcmp((char *)argv[0], "-interact")==0) {
-      printf("Interact\n");
+    if (strcmp((char *)argv[0], "-interactive")==0) {
+      printf("Interactive\n");
       match = 1;
       interact = 1;
     } 
@@ -542,7 +542,6 @@ main(int argc, char *argv[]) {
     FindProgramPoint(prgPoint);
   if (interact)
     interactive();
-
   return;
 }
 
