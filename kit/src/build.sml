@@ -1,3 +1,4 @@
+
 (*build.sml*)
 
 (* This file builds an ML Kit from a consult file and exports an image into
@@ -437,7 +438,7 @@ else
    \Start the new kit by typing \"../bin/" ^ kit_version ^ "/kit\".\n");
 
 (*
-exportFn (export_file, fn_to_export) : unit;
+exportFn (export_file ^ "_standalone", fn_to_export) : unit;
 *)
 
 (******************************************************************

@@ -23,6 +23,7 @@ Common/EfficientElab/StatObject.sml
 Common/ElabDec.sml
 Common/ElabInfo.sml
 Common/EqFinMap.sml
+Common/EqSetList.sml
 Common/ErrorInfo.sml
 Common/ErrorTraverse.sml
 Common/FINMAP.sml
