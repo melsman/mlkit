@@ -63,6 +63,9 @@ Ns.Quot.return `<HTML>
 <tr><th>ns/server/^user directoryfile</th>
     <td>^(getOpt(Ns.Info.configGetValue{sectionName="ns/server/"^user, key="directoryfile"}, "none")) </td>
 </tr>
+<tr><th>ns/server/^user/db</th>
+    <td>^(getOpt(Ns.Info.configGetValue{sectionName="ns/server/"^user^"/db", key="Pools"}, "none")) </td>
+</tr>
 <tr><th>ns/parameters not-there</th>
     <td>^(getOpt(Ns.Info.configGetValue{sectionName="ns/parameters", key="not-there"}, "none")) </td>
 </tr>

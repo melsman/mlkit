@@ -21,7 +21,8 @@ signature NS =
     val ERROR : status
     val END_DATA : status
 
-    type set
+    type set = int
+    structure Set : NS_SET
 
     structure Conn :
       sig
@@ -89,51 +90,6 @@ signature NS =
 	(* Return the url (relative to server-root) associated with 
 	 * the request. *)
 	val url : unit -> string
-      end
-
-    structure Set :
-      sig
-	(* get the first value associated with a key, if present *)
-	val get : set * string -> string option
-	val getOpt : set * string * string -> string
-
-	(* Return the current size of a set *)
-	val size : set -> int
-
-	(* Check if a key in a set is unique, case sensitive *)
-	val unique : set * string -> bool       
-
-	(* Return the key name of a field *)
-	val key : set * int -> string option    
-
-	(* Return the value of a field *)
-	val value : set * int -> string option
-
-	(* Return the list representation of a set *)
-	val list : set -> (string * string) list
-
-	(* Return the elements that satisfy the property *)
-	val filter : (string * string -> bool) -> set -> (string * string) list
-
-	(* Fold over a set *)
-	val foldl : ((string * string) * 'a -> 'a) -> 'a -> set -> 'a
-	val foldr : ((string * string) * 'a -> 'a) -> 'a -> set -> 'a
-      end
-
-    type db
-    type poolname = string
-    structure Db :
-      sig
-	val poolGetHandle : poolname -> db
-	val poolPutHandle : db -> unit
-	val dmlDb : db * string -> status
-	val dml : string -> status
-	val select : db * string -> set
-	val getRow : db * set -> status
-	val foldDb : db * ((string->string)*'a->'a) * 'a * string -> 'a
-	val fold : ((string->string)*'a->'a) * 'a * string -> 'a
-        val qq : string -> string
-	val seq_nextval_exp : string -> string
       end
 
     structure Cache :
@@ -276,4 +232,8 @@ signature NS =
     val fetchUrl : string -> string option
 
     val exit : unit -> 'a
+
+    (* Creating the two supported database interfaces *)
+    structure DbOra : DB
+    structure DbPg  : DB
   end
