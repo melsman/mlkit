@@ -378,7 +378,7 @@ structure ScsUserImp :> SCS_USER_IMP =
                      and (e.deleted_p = 't' or
 			  e.accepted_status_vid is null or
                           scs_enumeration.getVal(e.accepted_status_vid) <> 'accepted')`,
-              basic_info_sql = fn id => `select e.firstnames || ' ' || e.last_name as name, 
+              basic_info_sql = fn id => `select e.first_names || ' ' || e.last_name as name, 
                                                 e.email,
                                                 e.security_id,
                                                 on_what_table,
