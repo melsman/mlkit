@@ -354,24 +354,21 @@ functor IntSet(structure PP : PRETTYPRINT): KIT_MONO_SET =
 	       children=listmap layoutItem (list s)}
 
     val pu_bal =
-	let open Pickle
-	in enumGen ("IntSet.bal",[L,B,R])
-	end
+	Pickle.enumGen ("IntSet.bal",[L,B,R])
 
     fun die s = let val s = "Impossible: OrderSet." ^ s
 		in print s ; raise Fail s
 		end
 
     fun pu _ = 
-	let open Pickle
-	    fun toInt E = 0
+	let fun toInt E = 0
 	      | toInt (N _) = 1
-	    val funE = con0 E
+	    val funE = Pickle.con0 E
 	    fun funN pu =
-		con1 (fn (a,b,c,d) => N(a,d,c,b)) (fn N(a,b,c,d) => (a,d,c,b) 
-                                                    | _ => die "pu.funN")
-		(tup4Gen0(int,pu_bal,pu,pu))
-	in dataGen ("IntSet.Set",toInt,[funE,funN])
+		Pickle.con1 (fn (a,b,c,d) => N(a,d,c,b)) (fn N(a,b,c,d) => (a,d,c,b) 
+	                                                   | _ => die "pu.funN")
+		(Pickle.tup4Gen0(Pickle.int,pu_bal,pu,pu))
+	in Pickle.dataGen ("IntSet.Set",toInt,[funE,funN])
 	end
 
   end

@@ -27,8 +27,10 @@ functor ModuleStatObject(structure StrId  : STRID
 				 = TyName.Set.StringTree (*= StatObject.StringTree*)
 
 			 structure Flags : FLAGS
+			 structure Crash : CRASH
 			) : MODULE_STATOBJECT =
   struct
+    fun die s = Crash.impossible ("ModuleStatObject." ^ s)
 
     (*import from StatObject:*)
     type realisation       = StatObject.realisation
@@ -350,12 +352,29 @@ functor ModuleStatObject(structure StrId  : STRID
 	  (E'',T,E,phi)
 	end
 
+      fun eq (SIGMA{T=T1,E=E1}, Sig as SIGMA{T,...}) =
+	if TyName.Set.size T1 <> TyName.Set.size T then false
+	else let val Sig as SIGMA{T,E} = rename_Sig Sig
+                 val phi = sigMatchRea(Sig,E1)
+	     in TyName.Set.eq T1 (Realisation.on_TyName_set phi T)
+	     end handle _ => false
+(*
       (* assumption: NO tynames in Sig1 and Sig2 may be marked generative. *)
       fun eq (SIGMA{T=T1,E=E1}, Sig2 as SIGMA{T,...}) =
 	if TyName.Set.size T1 <> TyName.Set.size T then false
 	else (* First rename bound names of Sig2 and then match E2 against E1 and
 	      * then check for equality of E1 and E2. *)
-	  let val SIGMA{T=T2,E=E2} = rename_Sig Sig2
+	  let fun check s tn =
+	        if Name.is_gen (TyName.name tn) then
+		    die ("eq.check" ^ s ^ ".TyName " ^ TyName.pr_TyName tn ^ " is generative already.")
+		else ()
+	      fun checkT2 tn = 
+	        if Name.rigid(TyName.name tn) then
+		    die ("eq.checkT2.TyName " ^ TyName.pr_TyName tn ^ " is rigid.")
+		else check "T2" tn
+	      val _ = app (check "") (TyName.Set.list T1)
+	      val SIGMA{T=T2,E=E2} = rename_Sig Sig2
+	      val _ = app checkT2 (TyName.Set.list T2)
 	      val T1 = TyName.Set.list T1
 	      val T2 = TyName.Set.list T2
 	      val _ = mark_names T1
@@ -363,8 +382,11 @@ functor ModuleStatObject(structure StrId  : STRID
 	      val _ = E_match(E2,E1)
 	      val _ = unmark_names T1
 	      val _ = unmark_names T2
-	  in E_eq(E1,E2)
+	      val b = E_eq(E1,E2)
+	      val _ = print ("eq: result= " ^ Bool.toString b ^ "\n")
+	  in b
 	  end
+*)
 		  
       fun layout (SIGMA {T, E}) =
 (*	    if !Flags.DEBUG_STATOBJECTS then *)
@@ -377,11 +399,10 @@ functor ModuleStatObject(structure StrId  : STRID
 
       (* Pickler *)
       val pu =
-	  let open Pickle
-	      fun to(T,E) = SIGMA {T=T,E=E}
+	  let fun to(T,E) = SIGMA {T=T,E=E}
 	      fun from (SIGMA{T,E}) = (T,E)
-	  in convert (to,from)
-	      (pairGen0(TyName.Set.pu TyName.pu, E.pu))
+	  in Pickle.convert (to,from)
+	      (Pickle.pairGen0(TyName.Set.pu TyName.pu, E.pu))
 	  end
 	  
     end (*Sigma*)
@@ -463,6 +484,15 @@ functor ModuleStatObject(structure StrId  : STRID
       in
 	fun eq(FUNSIG{T=T1,E=E1,T'E'=Sig1'}, funsig2 as FUNSIG{T,...}) =
 	  if TyName.Set.size T1 <> TyName.Set.size T then false
+	  else let val FUNSIG{T=T2,E=E2,T'E'=Sig2'} = rename_FunSig funsig2
+		   val Sig2 = SIGMA{T=T2,E=E2}
+		   val phi = sigMatchRea(Sig2,E1)
+	       in TyName.Set.eq T1 (Realisation.on_TyName_set phi T2)
+		   andalso Sigma.eq(Sigma.on(phi,Sig2'),Sig1')
+	       end handle _ => false
+(*
+	fun eq(FUNSIG{T=T1,E=E1,T'E'=Sig1'}, funsig2 as FUNSIG{T,...}) =
+	  if TyName.Set.size T1 <> TyName.Set.size T then false
 	  else 
 	    let val FUNSIG{T=T2,E=E2,T'E'=Sig2'} = rename_FunSig funsig2
 	        val T1 = TyName.Set.list T1
@@ -472,8 +502,9 @@ functor ModuleStatObject(structure StrId  : STRID
 		val _ = E_match(E2,E1)
 		val _ = unmark_names T1
 		val _ = unmark_names T2
-	  in E_eq(E1,E2) andalso Sigma.eq(Sig1',Sig2')
-	  end
+	    in E_eq(E1,E2) andalso Sigma.eq(Sig1',Sig2')
+	    end
+*)
       end
 
       fun layout (FUNSIG{T, E, T'E'}) =
@@ -489,11 +520,10 @@ functor ModuleStatObject(structure StrId  : STRID
 	    end
 
       val pu =
-	  let open Pickle
-	      fun to (T,E,T'E') = FUNSIG{T=T,E=E,T'E'=T'E'}
+	  let fun to (T,E,T'E') = FUNSIG{T=T,E=E,T'E'=T'E'}
 	      fun from (FUNSIG{T=T,E=E,T'E'=T'E'}) = (T,E,T'E')
-	  in convert (to,from)
-	      (tup3Gen0(TyName.Set.pu TyName.pu, E.pu, Sigma.pu))
+	  in Pickle.convert (to,from)
+	      (Pickle.tup3Gen0(TyName.Set.pu TyName.pu, E.pu, Sigma.pu))
 	  end
 
     end (*Phi*)

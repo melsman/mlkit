@@ -612,14 +612,13 @@ functor DropRegions(structure Name : NAME
 
 
     val pu_env_res = 
-	let open Pickle
-	    fun toInt (FIXBOUND _) = 0
+	let fun toInt (FIXBOUND _) = 0
 	      | toInt NOTFIXBOUND = 1
 	    fun fun_FIXBOUND _ =
-		con1 FIXBOUND (fn FIXBOUND a => a | _ => die "pu_env_res.FIXBOUND")
-		(listGen bool)
-	    val fun_NOTFIXBOUND = con0 NOTFIXBOUND
-	in dataGen("DropRegions.env_res",toInt,[fun_FIXBOUND,fun_NOTFIXBOUND])
+		Pickle.con1 FIXBOUND (fn FIXBOUND a => a | _ => die "pu_env_res.FIXBOUND")
+		(Pickle.listGen Pickle.bool)
+	    val fun_NOTFIXBOUND = Pickle.con0 NOTFIXBOUND
+	in Pickle.dataGen("DropRegions.env_res",toInt,[fun_FIXBOUND,fun_NOTFIXBOUND])
 	end
 
     val pu_env : env Pickle.pu = 

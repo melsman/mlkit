@@ -161,6 +161,7 @@ signature MANAGER_OBJECTS =
 	val initialBasis0 : unit -> Basis0
 	val matchBasis0 : Basis0 * Basis0 -> Basis0
 	val eqBasis0 : Basis0 * Basis0 -> bool
+	val showBasis0 : (string -> unit) -> Basis0 -> unit
 
 	type Basis1 = opaq_env * IntBasis
 	val pu_Basis1 : Basis1 Pickle.pu
@@ -168,6 +169,7 @@ signature MANAGER_OBJECTS =
 	val initialBasis1 : unit -> Basis1
 	val matchBasis1 : Basis1 * Basis1 -> Basis1
 	val eqBasis1 : Basis1 * Basis1 -> bool
+	val showBasis1 : (string -> unit) -> Basis1 -> unit
       end
 
     structure Repository :

@@ -356,19 +356,16 @@ functor OrderSet(structure Order : ORDERING
 	       children=listmap layoutItem (list s)}
 
     val pu_bal =
-	let open Pickle
-	in enumGen ("OrderSet.bal",[L,B,R])
-	end
+	Pickle.enumGen ("OrderSet.bal",[L,B,R])
 
     fun pu pu_elt = 
-	let open Pickle
-	    fun toInt E = 0
+	let fun toInt E = 0
 	      | toInt (N _) = 1
-	    val funE = con0 E
-	    fun funN (pu : Set pu) : Set pu =
-		con1 N (fn N a => a | _ => impossible "pu.N")
-		(tup4Gen0(pu_elt,pu,pu,pu_bal))
-	in dataGen ("OrderSet.Set",toInt,[funE,funN])
+	    val funE = Pickle.con0 E
+	    fun funN (pu : Set Pickle.pu) : Set Pickle.pu =
+		Pickle.con1 N (fn N a => a | _ => impossible "pu.N")
+		(Pickle.tup4Gen0(pu_elt,pu,pu,pu_bal))
+	in Pickle.dataGen ("OrderSet.Set",toInt,[funE,funN])
 	end
   end
 

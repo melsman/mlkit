@@ -52,8 +52,6 @@ functor AddressLabels(structure Name : NAME) : ADDRESS_LABELS =
 	  reg_pair_lab,reg_array_lab,reg_ref_lab,
 	  reg_triple_lab,exn_DIV_lab,exn_MATCH_lab,
 	  exn_BIND_lab,exn_OVERFLOW_lab,exn_INTERRUPT_lab]
-	 let open Pickle
-	 in newHash (#1 o Name.key o #1)
-	     (pairGen(Name.pu,string))
-	 end)
+	 (Pickle.newHash (#1 o Name.key o #1)
+	  (Pickle.pairGen(Name.pu,Pickle.string))))
   end

@@ -212,6 +212,53 @@ functor CompBasis(structure Con : CON
 	   psi_env=psi_env1}, lvars, cons, excons)
       end
 
+    fun subtractPredefinedCons cons = 
+	let fun eq a b = Con.eq(a,b)
+	    fun fromList l = Set.fromList eq l
+	in Set.list
+	    (Set.difference eq (fromList cons) (fromList Con.consPredefined))
+	end
+
+    fun subtractPredefinedExcons excons = 
+	let fun eq a b = Excon.eq(a,b)
+	    fun fromList l = Set.fromList eq l
+	in Set.list
+	    (Set.difference eq (fromList excons) (fromList Excon.exconsPredefined))
+	end
+    
+    fun subtractPredefinedTynames tns = 
+	TyName.Set.list
+	(TyName.Set.difference (TyName.Set.fromList tns) (TyName.Set.fromList TyName.tynamesPredefined))
+
+    fun restrict0 ({EqEnv,OEnv,TCEnv,rse,mulenv,mularefmap,drop_env,psi_env},
+		  (lvars,tynames,cons,excons)) = 
+      let
+	  (* Don't include identifiers that are declared by the initial basis *)
+	  
+	  val tynames = subtractPredefinedTynames tynames
+	  val cons = subtractPredefinedCons cons
+	  val excons = subtractPredefinedExcons excons
+	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
+	  val lvars = lvars_eq @ lvars
+	  val (OEnv1,cons,tynames) = OptLambda.restrict(OEnv,lvars,cons,tynames)
+	  val tynames = subtractPredefinedTynames tynames
+	  val cons = subtractPredefinedCons cons
+	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
+	  val rse1 = RegionStatEnv.restrict(rse,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
+	  val mulenv1 = Mul.restrict_efenv(mulenv,lvars)
+	  val mularefmap1 = Mul.restrict_mularefmap(mularefmap,nil)
+	  val drop_env1 = DropRegions.restrict(drop_env,lvars)
+	  val psi_env1 = PhysSizeInf.restrict(psi_env,lvars)
+      in ({TCEnv=TCEnv1,
+	   EqEnv=EqEnv1,
+	   OEnv=OEnv1,
+	   rse=rse1,
+	   mulenv=mulenv1,
+	   mularefmap=mularefmap1,
+	   drop_env=drop_env1,
+	   psi_env=psi_env1}, lvars, cons, excons)
+      end
+
     fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)
 
     val pu =
@@ -221,15 +268,14 @@ functor CompBasis(structure Con : CON
 	    fun from {TCEnv=tce, EqEnv=eqe, OEnv=oe, rse,
 		      mulenv=me, mularefmap=mm, drop_env=de, psi_env=pe}
 		= ((tce,eqe,oe,rse),(me,mm,de,pe))
-	    open Pickle
-	in convert (to,from)
-	    (pairGen0(tup4Gen0(comment "LambdaStatSem.pu" LambdaStatSem.pu,
-			       comment "EliminateEq.pu" EliminateEq.pu,
-			       OptLambda.pu,
-			       comment "RegionStatEnv" RegionStatEnv.pu),
-		      tup4Gen0(comment "Mul.efenv" Mul.pu_efenv, 
-			       comment "Mul.mularefmap" Mul.pu_mularefmap,
-			       comment "DropRegions.env" DropRegions.pu_env,
-			       comment "PhysSizeInf.env" PhysSizeInf.pu_env)))
+	in Pickle.convert (to,from)
+	    (Pickle.pairGen0(Pickle.tup4Gen0(Pickle.comment "LambdaStatSem.pu" LambdaStatSem.pu,
+					     Pickle.comment "EliminateEq.pu" EliminateEq.pu,
+					     OptLambda.pu,
+					     Pickle.comment "RegionStatEnv" RegionStatEnv.pu),
+			     Pickle.tup4Gen0(Pickle.comment "Mul.efenv" Mul.pu_efenv, 
+					     Pickle.comment "Mul.mularefmap" Mul.pu_mularefmap,
+					     Pickle.comment "DropRegions.env" DropRegions.pu_env,
+					     Pickle.comment "PhysSizeInf.env" PhysSizeInf.pu_env)))
 	end
   end

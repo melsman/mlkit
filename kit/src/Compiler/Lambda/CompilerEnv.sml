@@ -666,8 +666,7 @@ functor CompilerEnv(structure Ident: IDENT
       end
 
     val pu_result =
-	let open Pickle
-	    fun toInt (LVAR _) = 0
+	let fun toInt (LVAR _) = 0
 	      | toInt (CON _) = 1
 	      | toInt REF = 2
 	      | toInt (EXCON _) = 3
@@ -688,65 +687,60 @@ functor CompilerEnv(structure Ident: IDENT
 	      | toInt EXPORT = 18
 
 	    fun fun_LVAR _ = 
-		con1 LVAR (fn LVAR lv => lv | _ => die "pu.LVAR")
-		(tup4Gen(Lvars.pu, LambdaExp.pu_tyvars,
-			 LambdaExp.pu_Type, LambdaExp.pu_Types))
+		Pickle.con1 LVAR (fn LVAR lv => lv | _ => die "pu.LVAR")
+		(Pickle.tup4Gen(Lvars.pu, LambdaExp.pu_tyvars,
+				LambdaExp.pu_Type, LambdaExp.pu_Types))
 	    fun fun_CON _ = 
-		con1 CON (fn CON lv => lv | _ => die "pu.CON")
-		(tup4Gen(Con.pu, LambdaExp.pu_tyvars,
-			     LambdaExp.pu_Type, LambdaExp.pu_Types))
+		Pickle.con1 CON (fn CON lv => lv | _ => die "pu.CON")
+		(Pickle.tup4Gen(Con.pu, LambdaExp.pu_tyvars,
+				LambdaExp.pu_Type, LambdaExp.pu_Types))
 	    fun fun_EXCON _ = 
-		con1 EXCON (fn EXCON lv => lv | _ => die "pu.CON")
-		(pairGen(Excon.pu,LambdaExp.pu_Type))
-	in dataGen("CompilerEnv.result",toInt,
-		   [fun_LVAR,
-		    fun_CON,
-		    con0 REF,
-		    fun_EXCON,
-		    con0 ABS,
-		    con0 NEG,
-		    con0 PLUS,
-		    con0 MINUS,
-		    con0 MUL,
-		    con0 DIV,
-		    con0 MOD,
-		    con0 LESS,
-		    con0 GREATER,
-		    con0 LESSEQ,
-		    con0 GREATEREQ,
-		    con0 RESET_REGIONS,
-		    con0 FORCE_RESET_REGIONS,
-		    con0 PRIM,
-		    con0 EXPORT])
+		Pickle.con1 EXCON (fn EXCON lv => lv | _ => die "pu.CON")
+		(Pickle.pairGen(Excon.pu,LambdaExp.pu_Type))
+	in Pickle.dataGen("CompilerEnv.result",toInt,
+			  [fun_LVAR,
+			   fun_CON,
+			   Pickle.con0 REF,
+			   fun_EXCON,
+			   Pickle.con0 ABS,
+			   Pickle.con0 NEG,
+			   Pickle.con0 PLUS,
+			   Pickle.con0 MINUS,
+			   Pickle.con0 MUL,
+			   Pickle.con0 DIV,
+			   Pickle.con0 MOD,
+			   Pickle.con0 LESS,
+			   Pickle.con0 GREATER,
+			   Pickle.con0 LESSEQ,
+			   Pickle.con0 GREATEREQ,
+			   Pickle.con0 RESET_REGIONS,
+			   Pickle.con0 FORCE_RESET_REGIONS,
+			   Pickle.con0 PRIM,
+			   Pickle.con0 EXPORT])
 	end
 
     val pu_PathEnv = 
-	let open Pickle
-	in PathEnv.pu (listGen int) (pairGen(Lvars.pu,LambdaExp.pu_Type))
-	end
+	PathEnv.pu (Pickle.listGen Pickle.int) (Pickle.pairGen(Lvars.pu,LambdaExp.pu_Type))
     val pu_VarEnv =
-	let open Pickle
-	in FinMap.pu(Ident.pu,pu_result)
-	end
+	FinMap.pu(Ident.pu,pu_result)
     val (pu,_,_) =
-	let open Pickle
-	    val pu_TyNames = listGen TyName.pu
+	let val pu_TyNames = Pickle.listGen TyName.pu
 	    fun CEnvToInt _ = 0
 	    fun StrEnvToInt _ = 0
 	    fun TyEnvToInt _ = 0
 	    fun fun_CENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
-		con1 (fn ((se,ve),(te,pe)) => CENV{StrEnv=se,VarEnv=ve,TyEnv=te,PathEnv=pe})
+		Pickle.con1 (fn ((se,ve),(te,pe)) => CENV{StrEnv=se,VarEnv=ve,TyEnv=te,PathEnv=pe})
 		(fn CENV{StrEnv=se,VarEnv=ve,TyEnv=te,PathEnv=pe} => ((se,ve),(te,pe)))
-		(pairGen0(pairGen0(pu_StrEnv,pu_VarEnv),pairGen0(pu_TyEnv,pu_PathEnv)))
+		(Pickle.pairGen0(Pickle.pairGen0(pu_StrEnv,pu_VarEnv),Pickle.pairGen0(pu_TyEnv,pu_PathEnv)))
 	    fun fun_STRENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
-		con1 STRENV (fn STRENV v => v)
+		Pickle.con1 STRENV (fn STRENV v => v)
 		(FinMap.pu(StrId.pu,pu_CEnv))
 	    fun fun_TYENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
-		con1 TYENV (fn TYENV v => v)
-		(FinMap.pu(TyCon.pu,pairGen(pu_TyNames,pu_CEnv)))
-	in data3Gen("CompilerEnv.CEnv",CEnvToInt,[fun_CENV],
-		    "CompilerEnv.StrEnv",StrEnvToInt,[fun_STRENV],
-		    "CompilerEnv.TyEnv",TyEnvToInt,[fun_TYENV])
+		Pickle.con1 TYENV (fn TYENV v => v)
+		(FinMap.pu(TyCon.pu,Pickle.pairGen(pu_TyNames,pu_CEnv)))
+	in Pickle.data3Gen("CompilerEnv.CEnv",CEnvToInt,[fun_CENV],
+			   "CompilerEnv.StrEnv",StrEnvToInt,[fun_STRENV],
+			   "CompilerEnv.TyEnv",TyEnvToInt,[fun_TYENV])
 	end
 
   end

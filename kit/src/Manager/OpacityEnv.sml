@@ -82,10 +82,7 @@ functor OpacityEnv(structure FunId : FUNID
 	      children=[layout_fe fe, Realisation.layout rea]}
 
     val pu : opaq_env Pickle.pu =
-	let open Pickle
-	in
-	    pairGen(FE.pu FunId.pu (pairGen(TyName.Set.pu TyName.pu,
-					    Realisation.pu)),
-		    Realisation.pu)
-	end
+	Pickle.pairGen(FE.pu FunId.pu (Pickle.pairGen(TyName.Set.pu TyName.pu,
+						      Realisation.pu)),
+		       Realisation.pu)
   end

@@ -32,6 +32,8 @@ signature CON =
     val con_QUOTE : con
     val con_ANTIQUOTE : con
 
+    val consPredefined : con list
+
     val pu : con Pickle.pu
 
     structure Map : MONO_FINMAP where type dom = con

@@ -617,6 +617,7 @@ struct
 	      say("r1 = " ^ toStr r1);
 	      say("r2 = " ^ toStr r2)
 	  end
+	| check _ = die "check bad"
   in
   fun diffef(mulef1,mulef2) = 
     diffef_aux(mulef1,mulef2)
@@ -1169,12 +1170,11 @@ struct
 
   (* Picklers *)
   val pu_mul =
-      let open Pickle
-	  fun toInt INF = 0
+      let fun toInt INF = 0
 	    | toInt (NUM _) = 1
-	  val fun_INF = con0 INF
-	  fun fun_NUM _ = con1 NUM (fn NUM a => a | _ => die "pu_mul.NUM") int
-      in dataGen("Mul.mul",toInt,[fun_INF,fun_NUM])
+	  val fun_INF = Pickle.con0 INF
+	  fun fun_NUM _ = Pickle.con1 NUM (fn NUM a => a | _ => die "pu_mul.NUM") Pickle.int
+      in Pickle.dataGen("Mul.mul",toInt,[fun_INF,fun_NUM])
       end
   val pu_mulef = Pickle.nameGen "mulef" (Pickle.listGen(Pickle.pairGen0(Eff.pu_effect,pu_mul)))
   val pu_mularef = Pickle.nameGen "mularef" (Pickle.pairGen0(Eff.pu_effect,pu_mulef))

@@ -824,23 +824,22 @@ functor EliminateEq (structure Name : NAME
 	 raise e)
 
     val pu =
-	let open Pickle
-	    fun resultToInt (MONOLVAR _) = 0
+	let fun resultToInt (MONOLVAR _) = 0
 	      | resultToInt (POLYLVAR _) = 1
 	      | resultToInt (FAIL _) = 2
 	    fun fun_MONOLVAR _ =
-		con1 MONOLVAR (fn MONOLVAR a => a | _ => die "pu.MONOLVAR")
-		(pairGen0(Lvars.pu,LambdaExp.pu_tyvars))
+		Pickle.con1 MONOLVAR (fn MONOLVAR a => a | _ => die "pu.MONOLVAR")
+		(Pickle.pairGen0(Lvars.pu,LambdaExp.pu_tyvars))
 	    fun fun_POLYLVAR _ =
-		con1 POLYLVAR (fn POLYLVAR a => a | _ => die "pu.POLYLVAR")
+		Pickle.con1 POLYLVAR (fn POLYLVAR a => a | _ => die "pu.POLYLVAR")
 		Lvars.pu
 	    fun fun_FAIL _ =
-		con1 FAIL (fn FAIL a => a | _ => die "pu.FAIL")
-		string
-	    val pu_res = dataGen("EliminateEq.result",resultToInt,[fun_MONOLVAR,fun_POLYLVAR,fun_FAIL])
+		Pickle.con1 FAIL (fn FAIL a => a | _ => die "pu.FAIL")
+		Pickle.string
+	    val pu_res = Pickle.dataGen("EliminateEq.result",resultToInt,[fun_MONOLVAR,fun_POLYLVAR,fun_FAIL])
 	    val pu_tnm = TyNameMap.pu TyName.pu pu_res
 	    val pu_tvm = TyVarMap.pu LambdaExp.pu_tyvar Lvars.pu
 	    val pu_lvm = LvarMap.pu Lvars.pu LambdaExp.pu_tyvars
-	in tup3Gen(pu_tnm,pu_tvm,pu_lvm)
+	in Pickle.tup3Gen(pu_tnm,pu_tvm,pu_lvm)
 	end
   end

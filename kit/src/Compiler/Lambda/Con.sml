@@ -34,24 +34,32 @@ functor Con(structure Name : NAME
     fun match (con1, con2) = Name.match(name con1, name con2)
 
     (* Predefined Constructors *)
-    val con_REF   : con  = mk_con "ref"
-    val con_TRUE  : con  = mk_con "true"
-    val con_FALSE : con  = mk_con "false"
-    val con_NIL   : con  = mk_con "nil"
-    val con_CONS  : con  = mk_con "::"
+    local 
+	val bucket = ref nil
+	fun predef s = 
+	    let val c = mk_con s
+	    in bucket := c :: !bucket 
+		; c
+	    end	       
+    in
+	val con_REF   : con      = predef "ref"
+	val con_TRUE  : con      = predef "true"
+	val con_FALSE : con      = predef "false"
+	val con_NIL   : con      = predef "nil"
+	val con_CONS  : con      = predef "::"	    
+	val con_QUOTE : con      = predef "QUOTE"
+	val con_ANTIQUOTE : con  = predef "ANTIQUOTE"
 
-    val con_QUOTE : con  = mk_con "QUOTE"
-    val con_ANTIQUOTE : con  = mk_con "ANTIQUOTE"
+	val consPredefined = !bucket
+    end
 
     val pu = 
 	Pickle.hashConsEq eq
-	(Pickle.register "Con" [con_REF,con_TRUE,con_FALSE,con_NIL,con_CONS,
-				con_QUOTE,con_ANTIQUOTE]
-	 let open Pickle
-	     fun to (s,n) : con = {str=s,name=n}
+	(Pickle.register "Con" consPredefined
+	 let fun to (s,n) : con = {str=s,name=n}
 	     fun from ({str=s,name=n} : con) = (s,n)
-	 in newHash (#1 o Name.key o #name)
-	     (convert (to,from) (pairGen0(string,Name.pu)))
+	 in Pickle.newHash (#1 o Name.key o #name)
+	     (Pickle.convert (to,from) (Pickle.pairGen0(Pickle.string,Name.pu)))
 	 end)
 
     structure QD : QUASI_DOM =

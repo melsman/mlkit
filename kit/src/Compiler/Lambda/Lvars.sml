@@ -83,14 +83,13 @@ functor Lvars(structure Name : NAME
     val pu =
 	Pickle.hashConsEq eq
 	(Pickle.register "Lvars" [env_lvar,notused_lvar]
-	 let open Pickle
-	     fun to ((n,s,f),i,u) : lvar = 
+	 let fun to ((n,s,f),i,u) : lvar = 
 		 {name=n, str=s, free=f, inserted=i, use=u}
 	     fun from ({name=n, str=s, free=f, inserted=i, use=u} : lvar) = ((n,s,f),i,u)
-	 in newHash (#1 o Name.key o #name)
-	     (convert (to,from)
-	      (tup3Gen0(tup3Gen0(Name.pu,string,refOneGen bool), 
-			refOneGen bool,refOneGen int)))
+	 in Pickle.newHash (#1 o Name.key o #name)
+	     (Pickle.convert (to,from)
+	      (Pickle.tup3Gen0(Pickle.tup3Gen0(Name.pu,Pickle.string,Pickle.refOneGen Pickle.bool), 
+			       Pickle.refOneGen Pickle.bool,Pickle.refOneGen Pickle.int)))
 	 end)
 
   end

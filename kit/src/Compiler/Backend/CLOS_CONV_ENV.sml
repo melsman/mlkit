@@ -63,6 +63,11 @@ signature CLOS_CONV_ENV =
 			  cons:con list,
 			  excons:excon list} -> env
 
+    (* restrict0 : Don't include predeclared regions *)
+    val restrict0 : env * {lvars:lvar list,
+			   cons:con list,
+			   excons:excon list} -> env
+
     val labelsEnv : (label list * label list -> access_type -> label list * label list) 
       -> env -> label list * label list
 

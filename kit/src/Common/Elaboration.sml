@@ -635,8 +635,7 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 	  fun layoutMap _ = die "layoutMap"
 	  fun reportMap _ = die "reportMap"
 	  val pu = fn pu_d => fn pu_r =>
-	      let open Pickle
-		  val pu_d = pairGen(pu_d,listGen bool)
+	      let val pu_d = Pickle.pairGen(pu_d,Pickle.listGen Pickle.bool)
 	      in pu pu_d pu_r
 	      end
 	end

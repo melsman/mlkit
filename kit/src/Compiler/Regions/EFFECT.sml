@@ -84,6 +84,8 @@ sig
   val toplevel_region_withtype_triple : effect
   val toplevel_arreff : effect
 
+  val toplevelRhoFromTy : runType -> effect
+
   val push: cone -> cone
 
   val pop : cone -> coneLayer * cone

@@ -301,11 +301,6 @@ struct
 				       instance = ref NONE})
   fun find node = G.find node
 
-  fun setInstance(node,node') =  (* see explanation in signature *)
-      get_instance node := SOME node'
-
-  fun clearInstance(node,_) = get_instance node := NONE
-
   fun remove_duplicates effects =
     let fun loop([], acc) = acc
           | loop(effect::rest, acc) =
@@ -807,16 +802,43 @@ struct
     if region_inference() then freshRhoWithTy p
     else case rt 
 	   of TOP_RT => (toplevel_region_withtype_top,cone)
+	    | WORD_RT => die "maybeFreshRhoWithTy.not possible"
 	    | BOT_RT => freshRhoWithTy p (* toplevel_region_withtype_bot *)
 	    | STRING_RT => (toplevel_region_withtype_string,cone)
 	    | PAIR_RT => (toplevel_region_withtype_pair,cone)
 	    | ARRAY_RT => (toplevel_region_withtype_array,cone)
 	    | REF_RT => (toplevel_region_withtype_ref,cone)
 	    | TRIPLE_RT => (toplevel_region_withtype_triple,cone)
-	    | WORD_RT => die "maybeFreshRhoWithTy.not possible"
 
   val freshRhoWithTy = fn (WORD_RT,cone) => (toplevel_region_withtype_word, cone)
                         | p => freshRhoWithTy p (*maybeFreshRhoWithTy p *) 
+
+  fun toplevelRhoFromTy rt : effect =
+      case rt of
+	  TOP_RT => toplevel_region_withtype_top
+	| WORD_RT => toplevel_region_withtype_word
+	| BOT_RT => toplevel_region_withtype_bot
+	| STRING_RT => toplevel_region_withtype_string
+	| PAIR_RT => toplevel_region_withtype_pair
+	| ARRAY_RT => toplevel_region_withtype_array
+	| REF_RT => toplevel_region_withtype_ref
+	| TRIPLE_RT => toplevel_region_withtype_triple
+
+  fun setInstance(node,node') =  (* see explanation in signature *)
+      let (* val key = 
+	  case get_level_and_key node of
+	      SOME (_,k) => !k
+	    | NONE => die "setInstance: not rho or eps"
+	  val _ = if key <= 9 then die ("setInstance: instantiating toplevel effect " ^ PP.flatten1 (layout_effect node))
+		  else () *)
+	  (* This check is not ok (I think) because sigmas may decrease in 
+	   * the number of bound variables during region inference; see RegInf...
+	   *)
+      in
+	  get_instance node := SOME node'
+      end
+
+  fun clearInstance(node,_) = get_instance node := NONE
 
 
   (* Picklers *)
@@ -877,41 +899,40 @@ struct
       (Pickle.optionGen o #1 o pu_node_nodes)
 
   val pu_einfo =
-      let open Pickle
-	  fun toInt (EPS _) = 0
+      let fun toInt (EPS _) = 0
 	    | toInt (UNION _) = 1
 	    | toInt PUT = 2
 	    | toInt GET = 3
 	    | toInt WORDEFFECT = 4
 	    | toInt (RHO _) = 5
 	  fun fun_EPS pu_einfo =
-	      newHash (fn EPS {key=ref k,...} => k | _ => die "pu_einfo.newHash.EPS")
-	      (con1 (fn ((k,l,r),p) => EPS{key=k,level=l,represents=r,instance=ref NONE,pix=p})
+	      Pickle.newHash (fn EPS {key=ref k,...} => k | _ => die "pu_einfo.newHash.EPS")
+	      (Pickle.con1 (fn ((k,l,r),p) => EPS{key=k,level=l,represents=r,instance=ref NONE,pix=p})
 	       (fn EPS{key=k,level=l,represents=r,instance=ref NONE,pix=p} => ((k,l,r),p)
 	         | _ => die "pu_einfo.fun_EPS")
-	       (pairGen0(tup3Gen0(pu_intref,pu_intref,pu_represents pu_einfo),
-			 pu_intref)))
+	       (Pickle.pairGen0(Pickle.tup3Gen0(pu_intref,pu_intref,pu_represents pu_einfo),
+				pu_intref)))
 	  fun fun_UNION pu_einfo =
-	      con1 (fn r => UNION{represents=r})
+	      Pickle.con1 (fn r => UNION{represents=r})
 	      (fn UNION {represents=r} => r
 	        | _ => die "pu_einfo.fun_UNION")
 	      (pu_represents pu_einfo)
-	  val fun_PUT = con0 PUT
-	  val fun_GET = con0 GET
-	  val fun_WORDEFFECT = con0 WORDEFFECT
+	  val fun_PUT = Pickle.con0 PUT
+	  val fun_GET = Pickle.con0 GET
+	  val fun_WORDEFFECT = Pickle.con0 WORDEFFECT
 	  fun fun_RHO pu_einfo =
-	      newHash (fn RHO {key=ref k,...} => k | _ => die "pu_einfo.newHash.RHO")
-	      (con1 (fn ((k,p,g,l),px,t) => RHO {key=k,put=p,get=g,level=l,
-						 instance=ref NONE,pix=px,ty=t})
+	      Pickle.newHash (fn RHO {key=ref k,...} => k | _ => die "pu_einfo.newHash.RHO")
+	      (Pickle.con1 (fn ((k,p,g,l),px,t) => RHO {key=k,put=p,get=g,level=l,
+							instance=ref NONE,pix=px,ty=t})
 	       (fn RHO {key=k,put=p,get=g,level=l,instance=ref NONE,pix=px,ty=t} =>
 		((k,p,g,l),px,t)
 	         | _ => die "pu_einfo.fun_RHO")
-	       (tup3Gen0(tup4Gen0(pu_intref, nameGen "put" (pu_nodeopt pu_einfo),
-				  nameGen "get" (pu_nodeopt pu_einfo),
-				  pu_intref),
-			 pu_intref,pu_runType)))
-      in dataGen("Effect.einfo",toInt,[fun_EPS, fun_UNION, fun_PUT, fun_GET,
-				       fun_WORDEFFECT, fun_RHO])
+	       (Pickle.tup3Gen0(Pickle.tup4Gen0(pu_intref, Pickle.nameGen "put" (pu_nodeopt pu_einfo),
+						Pickle.nameGen "get" (pu_nodeopt pu_einfo),
+						pu_intref),
+				pu_intref,pu_runType)))
+      in Pickle.dataGen("Effect.einfo",toInt,[fun_EPS, fun_UNION, fun_PUT, fun_GET,
+					      fun_WORDEFFECT, fun_RHO])
       end
 
   val (pu_effect, pu_effects) = pu_node_nodes pu_einfo
@@ -1188,7 +1209,7 @@ tracing *)
 		  orelse !k2 = 3 andalso t1<>BOT_RT
 		  then 
 		      die ("illegal unification involving global region(s) " ^ 
-			   Int.toString (!k1) ^ " / " ^ Int.toString (!k2))
+			   Int.toString (!k1) ^ show_runType t1 ^ " / " ^ Int.toString (!k2) ^ show_runType t2)
 	      else
 		  RHO{level = l1, put = aux_combine(p1,p2), 
 		      get = aux_combine(g1,g2), key =min_key(k1,k2), 

@@ -273,76 +273,64 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
     (* Picklers *)
     val pu_ConArg = 
-	let open Pickle
-	in pairGen(TypeScheme.pu, listGen Ident.pu)
-	end
+	Pickle.pairGen(TypeScheme.pu, Pickle.listGen Ident.pu)
 
     val pu_range_private =
-	let open Pickle
-	    fun toInt (LONGVARpriv _) = 0
+	let fun toInt (LONGVARpriv _) = 0
 	      | toInt (LONGCONpriv _) = 1
 	      | toInt (LONGEXCONpriv _) = 2
 	    fun fun_LONGVARpriv _ = 
-		con1 LONGVARpriv (fn LONGVARpriv a => a | _ => die "pu_range_private.LONGVARpriv")
+		Pickle.con1 LONGVARpriv (fn LONGVARpriv a => a | _ => die "pu_range_private.LONGVARpriv")
 		TypeScheme.pu
 
 	    fun fun_LONGCONpriv _ = 
-		con1 LONGCONpriv (fn LONGCONpriv a => a | _ => die "pu_range_private.LONGCONpriv")
+		Pickle.con1 LONGCONpriv (fn LONGCONpriv a => a | _ => die "pu_range_private.LONGCONpriv")
 		pu_ConArg
 
 	    fun fun_LONGEXCONpriv _ = 
-		con1 LONGEXCONpriv (fn LONGEXCONpriv a => a | _ => die "pu_range_private.LONGEXCONpriv")
+		Pickle.con1 LONGEXCONpriv (fn LONGEXCONpriv a => a | _ => die "pu_range_private.LONGEXCONpriv")
 		Type.pu
 
-	in dataGen ("Environments.range_private",toInt,[fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
+	in Pickle.dataGen ("Environments.range_private",toInt,[fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
 	end
 
     val pu_VarEnv : VarEnv Pickle.pu =
-	let open Pickle
-	in Pickle.convert (VARENV, fn VARENV s => s) 
-	    (FinMap.pu (Ident.pu,pu_range_private))
-	end
+	Pickle.convert (VARENV, fn VARENV s => s) 
+	(FinMap.pu (Ident.pu,pu_range_private))
 
     val pu_TyStr : TyStr Pickle.pu =
-	let open Pickle 
-	    fun to (tf,ve) = TYSTR{theta=tf,VE=ve}
+	let fun to (tf,ve) = TYSTR{theta=tf,VE=ve}
 	    fun from (TYSTR{theta,VE}) = (theta,VE)
-	in convert (to,from)
-	    (pairGen(TypeFcn.pu,pu_VarEnv))
+	in Pickle.convert (to,from)
+	    (Pickle.pairGen(TypeFcn.pu,pu_VarEnv))
 	end
 
     val pu_TyEnv : TyEnv Pickle.pu =
-	let open Pickle
-	in Pickle.convert (TYENV, fn TYENV s => s) 
-	    (FinMap.pu (TyCon.pu,pu_TyStr))
-	end
+	Pickle.convert (TYENV, fn TYENV s => s) 
+	(FinMap.pu (TyCon.pu,pu_TyStr))
 
     val pu_ExplicitTyVarEnv : ExplicitTyVarEnv Pickle.pu =
-	let open Pickle
-	in Pickle.convert (EXPLICITTYVARENV, fn EXPLICITTYVARENV s => s) 
-	    (FinMap.pu (DecGrammar.TyVar.pu,Type.pu))
-	end
+	Pickle.convert (EXPLICITTYVARENV, fn EXPLICITTYVARENV s => s) 
+	(FinMap.pu (DecGrammar.TyVar.pu,Type.pu))
 
     val (pu_Env, pu_StrEnv) =
-	let open Pickle
-	    fun EnvToInt (ENV _) = 0
+	let fun EnvToInt (ENV _) = 0
 	    fun StrEnvToInt (STRENV _) = 0
 	    fun fun_ENV (pu_Env, pu_StrEnv) =
-		con1 (fn (se,te,ve) => ENV{SE=se,TE=te,VE=ve}) (fn ENV{SE=se,TE=te,VE=ve} => (se,te,ve))
-		(tup3Gen0(pu_StrEnv,pu_TyEnv,pu_VarEnv))
+		Pickle.con1 (fn (se,te,ve) => ENV{SE=se,TE=te,VE=ve}) (fn ENV{SE=se,TE=te,VE=ve} => (se,te,ve))
+		(Pickle.tup3Gen0(pu_StrEnv,pu_TyEnv,pu_VarEnv))
 	    fun fun_STRENV (pu_Env, pu_StrEnv) =
-		con1 STRENV (fn STRENV a => a)
+		Pickle.con1 STRENV (fn STRENV a => a)
 		(FinMap.pu(StrId.pu,pu_Env))		 
-	in data2Gen ("Environments.Env",EnvToInt,[fun_ENV],
-		     "Environments.StrEnv",StrEnvToInt,[fun_STRENV])
+	in Pickle.data2Gen ("Environments.Env",EnvToInt,[fun_ENV],
+			    "Environments.StrEnv",StrEnvToInt,[fun_STRENV])
 	end
 
     val pu_Context =
-	let open Pickle
-	    fun to (U,E) = CONTEXT{U=U,E=E}
+	let fun to (U,E) = CONTEXT{U=U,E=E}
 	    fun from (CONTEXT{U,E}) = (U,E)
-	in convert (to,from)
-	    (pairGen0(pu_ExplicitTyVarEnv, pu_Env))
+	in Pickle.convert (to,from)
+	    (Pickle.pairGen0(pu_ExplicitTyVarEnv, pu_Env))
 	end
 
     fun layoutSE (STRENV m) = 

@@ -149,11 +149,11 @@ functor FinMap(structure Report: REPORT
     fun uniquify fm = FM {elts=elimDups fm,unique=reftrue}
 
     fun pu (pu_d, pu_r) =
-	let open Pickle
-	    fun to (es,br) = FM {elts=es,unique=br}
+	let fun to (es,br) = FM {elts=es,unique=br}
 	    fun from (FM {elts,unique}) = (elts, unique)
-	in convert (to,from o uniquify)
-	    (pairGen(listGen(pairGen(pu_d,pu_r)),refOneGen bool))
+	in Pickle.convert (to,from o uniquify)
+	    (Pickle.pairGen(Pickle.listGen(Pickle.pairGen(pu_d,pu_r)),
+			    Pickle.refOneGen Pickle.bool))
 	end
 (*
     fun eq eq_e (m1,m2) =

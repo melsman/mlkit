@@ -3168,6 +3168,7 @@ struct
   val enrich = ClosConvEnv.enrich
   val match = ClosConvEnv.match
   val restrict = ClosConvEnv.restrict
+  val restrict0 = ClosConvEnv.restrict0
   val layout_env = ClosConvEnv.layoutEnv
 
   (******************************)

@@ -339,11 +339,10 @@ functor ModuleEnvironments(
       fun match (BASIS {F,G,E}, BASIS {F=F0,G=G0,E=E0}) = E.match (E,E0)
 
       val pu =
-	  let open Pickle
-	      fun to (F,G,E) = BASIS{F=F,G=G,E=E}
+	  let fun to (F,G,E) = BASIS{F=F,G=G,E=E}
 	      fun from (BASIS{F=F,G=G,E=E}) = (F,G,E)
-	  in convert (to,from)
-	      (tup3Gen0(F.pu,G.pu,E.pu))
+	  in Pickle.convert (to,from)
+	      (Pickle.tup3Gen0(F.pu,G.pu,E.pu))
 	  end
 
     end (*B*)
