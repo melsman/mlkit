@@ -90,46 +90,46 @@ struct
       fun CC_sw CC_lss (LS.SWITCH(atom_arg,sels,default)) =
 	LS.SWITCH(atom_arg,map (fn (s,lss) => (s,CC_lss lss)) sels, CC_lss default)
 
-      fun CC_ls(LS.FNJMP{opr,args,clos,free,res},rest) =
+      fun CC_ls(LS.FNJMP{opr,args,clos,free,res,bv},rest) =
 	let
 	  val ({clos,args,free,res,...},assign_list_args,assign_list_res) = 
 	    CallConv.resolve_app LS.PHREG {clos=clos,free=free,args=args,reg_vec=NONE,reg_args=[],res=res}
 	in
 	  resolve_res(assign_list_args,
-		      LS.FNJMP{opr=opr,args=args,clos=clos,free=free,res=res}::
+		      LS.FNJMP{opr=opr,args=args,clos=clos,free=free,res=res,bv=bv}::
 		      resolve_args(assign_list_res,rest))
 	end
-	| CC_ls(LS.FNCALL{opr,args,clos,free,res},rest) =
+	| CC_ls(LS.FNCALL{opr,args,clos,free,res,bv},rest) =
 	let
 	  val ({clos,args,free,res,...},assign_list_args,assign_list_res) = 
 	    CallConv.resolve_app LS.PHREG {clos=clos,free=free,args=args,reg_vec=NONE,reg_args=[],res=res}
 	in
 	  resolve_res(assign_list_args,
-		      LS.FNCALL{opr=opr,args=args,clos=clos,free=free,res=res}::
+		      LS.FNCALL{opr=opr,args=args,clos=clos,free=free,res=res,bv=bv}::
 		      resolve_args(assign_list_res,rest))
 	end
-	| CC_ls(LS.JMP{opr,args,reg_vec,reg_args,clos,free,res},rest) =
+	| CC_ls(LS.JMP{opr,args,reg_vec,reg_args,clos,free,res,bv},rest) =
 	let
 	  val ({clos,args,free,res,reg_vec,reg_args},assign_list_args,assign_list_res) = 
 	    CallConv.resolve_app LS.PHREG {clos=clos,free=free,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
 	in
 	  resolve_res(assign_list_args,
-		      LS.JMP{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res}::
+		      LS.JMP{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bv}::
 		      resolve_args(assign_list_res,rest))
 	end
-	| CC_ls(LS.FUNCALL{opr,args,reg_vec,reg_args,clos,free,res},rest) =
+	| CC_ls(LS.FUNCALL{opr,args,reg_vec,reg_args,clos,free,res,bv},rest) =
 	let
 	  val ({clos,args,free,res,reg_vec,reg_args},assign_list_args,assign_list_res) = 
 	    CallConv.resolve_app LS.PHREG {clos=clos,free=free,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
 	in
 	  resolve_res(assign_list_args,
-		      LS.FUNCALL{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res}::
+		      LS.FUNCALL{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bv}::
 		      resolve_args(assign_list_res,rest))
 	end
 	| CC_ls(LS.LETREGION{rhos,body},rest) = LS.LETREGION{rhos=rhos,body=CC_lss body}::rest
 	| CC_ls(LS.SCOPE{pat,scope},rest) = LS.SCOPE{pat=pat,scope=CC_lss scope}::rest
-	| CC_ls(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv),offset},rest) = 
-	LS.HANDLE{default=CC_lss default,handl=(CC_lss handl,handl_lv),handl_return=([],handl_return_lv),offset=offset}::rest
+	| CC_ls(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset},rest) = 
+	LS.HANDLE{default=CC_lss default,handl=(CC_lss handl,handl_lv),handl_return=([],handl_return_lv,bv),offset=offset}::rest
 	| CC_ls(LS.HANDLE{default,handl,handl_return,offset},rest) = die "CC_ls: handl_return in HANDLE not empty"
 	| CC_ls(LS.SWITCH_I sw,rest) = LS.SWITCH_I(CC_sw CC_lss sw)::rest
 	| CC_ls(LS.SWITCH_S sw,rest) = LS.SWITCH_S(CC_sw CC_lss sw)::rest
@@ -201,9 +201,9 @@ struct
 	   | LS.FUNCALL a => LS.FUNCALL a
 	   | LS.LETREGION{rhos,body} => LS.LETREGION{rhos=rhos,body=ra_assign_lss body}
 	   | LS.SCOPE{pat,scope} => LS.SCOPE{pat=map assign pat,scope=ra_assign_lss scope}
-	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv),offset} => 
+	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset} => 
 	    LS.HANDLE{default=ra_assign_lss default,handl=(ra_assign_lss handl,handl_lv),
-		      handl_return=([],handl_return_lv),offset=offset}
+		      handl_return=([],handl_return_lv,bv),offset=offset}
 	   | LS.HANDLE{default,handl,handl_return,offset} => die "ra_dummy_ls: handl_return in HANDLE not empty"
 	   | LS.RAISE{arg,defined_atys} => LS.RAISE{arg=arg,defined_atys=defined_atys}
 	   | LS.SWITCH_I sw => LS.SWITCH_I(ra_assign_sw ra_assign_lss sw)
@@ -620,7 +620,7 @@ struct
 	   | LS.FETCH _ => die "MakeInitial: FETCH not inserted yet."
 	   | LS.LETREGION{rhos,body} => app mk body
 	   | LS.SCOPE{pat,scope} => app mk scope
-	   | LS.HANDLE{default,handl=(handl_lss,handl_lv),handl_return=(handl_return_lss,handl_return_lv),offset} => 
+	   | LS.HANDLE{default,handl=(handl_lss,handl_lv),handl_return=(handl_return_lss,handl_return_lv,bv),offset} => 
 	    (app mk default; app mk handl_lss; app mk handl_return_lss; 
 	     app add (LS.get_var_atom (handl_lv,nil)); 
 	     app add (LS.get_var_atom (handl_return_lv,nil)))

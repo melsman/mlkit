@@ -31,6 +31,9 @@ signature CALC_OFFSET =
     val CO : {main_lab:label,code:(StoreTypeIFF,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
              {main_lab:label,code:(StoreType,offset,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
 
+    val CBV: {main_lab:label,code:(StoreType,offset,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
+             {main_lab:label,code:(StoreType,offset,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
+
     val pr_sty    : StoreType -> string
     val pr_offset : offset -> string
     val pr_atom   : Atom -> string

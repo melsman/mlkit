@@ -975,6 +975,10 @@ struct
 	       callStr=";in=25,26;out=29; (MILLICALL)"} ::
        copy(ret1,d,C))
 
+      (* Put a bitvector into the code. *)
+    fun gen_bv([],C) = C
+      | gen_bv(w::ws,C) = gen_bv(ws,DOT_WORD("0X"^Word32.fmt StringCvt.HEX w)::C)
+
     (*******************)
     (* Code Generation *)
     (*******************)
@@ -1185,7 +1189,7 @@ struct
 			     end))
 	   | LS.FLUSH(aty,offset) => COMMENT (pr_ls ls) :: store_aty_in_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)
 	   | LS.FETCH(aty,offset) => COMMENT (pr_ls ls) :: load_aty_from_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)
-	   | LS.FNJMP(cc as{opr,args,clos,free,res}) =>
+	   | LS.FNJMP(cc as {opr,args,clos,free,res,bv}) =>
 	       COMMENT (pr_ls ls) :: 
 	       let
 		 val (spilled_args,_,_) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=[],reg_vec=NONE,res=res}
@@ -1203,7 +1207,7 @@ struct
 					      base_plus_offset(sp,WORDS(~size_ff-size_ccf),sp,          (* return label is now at top of stack *)
 							       META_BV{n=false,x=Gen 0,b=tmp_reg1}::C)) (* Is C dead code? *)
 	       end
-	   | LS.FNCALL{opr,args,clos,free,res} =>
+	   | LS.FNCALL{opr,args,clos,free,res,bv} =>
 	       COMMENT (pr_ls ls) :: 
 		  let
 		    val (spilled_args,spilled_res,return_lab_offset) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=[],reg_vec=NONE,res=res}
@@ -1225,9 +1229,9 @@ struct
 		    load_label_addr(return_lab,SS.PHREG_ATY tmp_reg1,size_ff,                 (* Fetch return label address *)
 				    base_plus_offset(sp,WORDS(size_rcf),sp,                   (* Move sp after rcf *)
 						     STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} :: (* Push Return Label *)
-						     flush_args(jmp(LABEL return_lab :: fetch_res C))))
+						     flush_args(jmp(gen_bv(bv,LABEL return_lab :: fetch_res C)))))
 		  end
-	   | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,free,res}) => 
+	   | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,free,res,bv}) => 
 		  COMMENT (pr_ls ls) :: 
 		  let
 		    val (spilled_args,_,_) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
@@ -1239,7 +1243,7 @@ struct
 		      base_plus_offset(sp,WORDS(~size_ff-size_ccf),sp,
 				       jmp C)
 		  end
-	   | LS.FUNCALL{opr,args,reg_vec,reg_args,clos,free,res} =>
+	   | LS.FUNCALL{opr,args,reg_vec,reg_args,clos,free,res,bv} =>
 		  COMMENT (pr_ls ls) :: 
 		  let
 		    val (spilled_args,spilled_res,return_lab_offset) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
@@ -1254,7 +1258,7 @@ struct
 		    load_label_addr(return_lab,SS.PHREG_ATY tmp_reg1,size_ff,                 (* Fetch return label address *)
 				    base_plus_offset(sp,WORDS(size_rcf),sp,                   (* Move sp after rcf *)
 						     STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} :: (* Push Return Label *)
-						     flush_args(jmp(LABEL return_lab :: fetch_res C))))
+						     flush_args(jmp(gen_bv(bv,LABEL return_lab :: fetch_res C)))))
 		  end
 	   | LS.LETREGION{rhos,body} =>
 		  COMMENT "letregion" :: 
@@ -1274,7 +1278,7 @@ struct
 			    foldl (fn (_,C) => dealloc_region_prim C) C rhos_to_allocate)) rhos_to_allocate
 		  end
 	   | LS.SCOPE{pat,scope} => CG_lss(scope,size_ff,size_ccf,C)
-	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_aty),offset} =>
+	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_aty,bv),offset} =>
 	   (* An exception handler in an activation record staring at address offset contains the following fields: *)
 	   (* sp[offset] = label for handl_return code.                                                             *)
 	   (* sp[offset+1] = pointer to handle closure.                                                             *)
@@ -1315,10 +1319,11 @@ struct
 		 val res_reg = lv_to_reg(CallConv.handl_return_phreg())
 	       in
 		 COMMENT "HANDL RETRUN CODE: handl_return_aty = res_phreg" ::
+		 gen_bv(bv,
 		 LABEL handl_return_lab ::
 		 move_aty_to_aty(SS.PHREG_ATY res_reg,handl_return_aty,size_ff,
 				 CG_lss(handl_return,size_ff,size_ccf,
-					LABEL handl_join_lab :: C))
+					LABEL handl_join_lab :: C)))
 	       end
 	   in
 	     COMMENT "START OF EXCEPTION HANDLER" ::

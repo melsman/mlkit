@@ -69,22 +69,18 @@ signature LINE_STMT =
     | FLUSH         of 'aty * 'offset
     | FETCH         of 'aty * 'offset
     | FNJMP         of {opr: 'aty, args: 'aty list, clos: 'aty option, 
-			free: 'aty list, res: 'aty list}
+			free: 'aty list, res: 'aty list, bv: Word32.word list}
     | FNCALL        of {opr: 'aty, args: 'aty list, clos: 'aty option, 
-			free: 'aty list, res: 'aty list}
+			free: 'aty list, res: 'aty list, bv: Word32.word list}
     | JMP           of {opr: label, args: 'aty list, reg_vec: 'aty option, 
-			reg_args: 'aty list, clos: 'aty option, free: 'aty list, res: 'aty list}
+			reg_args: 'aty list, clos: 'aty option, free: 'aty list, res: 'aty list, bv: Word32.word list}
     | FUNCALL       of {opr: label, args: 'aty list, reg_vec: 'aty option, 
-			reg_args: 'aty list, clos: 'aty option, free: 'aty list, res: 'aty list}
+			reg_args: 'aty list, clos: 'aty option, free: 'aty list, res: 'aty list, bv: Word32.word list}
     | LETREGION     of {rhos: (binder*'offset) list, body: ('sty,'offset,'aty) LineStmt list}
     | SCOPE         of {pat: 'sty list, scope: ('sty,'offset,'aty) LineStmt list}
-(*    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
-			handl: ('sty,'offset,'aty) LineStmt list, 
-			handl_return: ('sty,'offset,'aty) LineStmt list, 
-			offset: 'offset}*)
     | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
 			handl: ('sty,'offset,'aty) LineStmt list * 'aty, 
-			handl_return: ('sty,'offset,'aty) LineStmt list * 'aty, 
+			handl_return: ('sty,'offset,'aty) LineStmt list * 'aty * (Word32.word list), 
 			offset: 'offset}
     | RAISE         of {arg: 'aty,defined_atys: 'aty list}
     | SWITCH_I      of (int,'sty,'offset,'aty) Switch
@@ -132,10 +128,12 @@ signature LINE_STMT =
     val get_lvar_sma      : Atom sma * lvar list -> lvar list
     val get_lvar_smas     : Atom sma list * lvar list -> lvar list
 
-    val use_lvar_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
-    val def_lvar_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
-    val use_lvar_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
-    val def_lvar_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val use_lvar_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list,bv: Word32.word list} -> lvar list
+    val def_lvar_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list,bv: Word32.word list} -> lvar list
+    val use_lvar_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
+			     clos: Atom option,free: Atom list,res: Atom list,bv: Word32.word list} -> lvar list
+    val def_lvar_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
+			     clos: Atom option,free: Atom list,res: Atom list,bv: Word32.word list} -> lvar list
 
     val use_lvar_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
     val def_lvar_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
@@ -150,10 +148,12 @@ signature LINE_STMT =
     val get_var_sma      : Atom sma * lvar list -> lvar list
     val get_var_smas     : Atom sma list * lvar list -> lvar list
 
-    val use_var_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
-    val def_var_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
-    val use_var_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
-    val def_var_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val use_var_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list,bv: Word32.word list} -> lvar list
+    val def_var_on_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list,bv: Word32.word list} -> lvar list
+    val use_var_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
+			    clos: Atom option,free: Atom list,res: Atom list,bv: Word32.word list} -> lvar list
+    val def_var_on_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
+			    clos: Atom option,free: Atom list,res: Atom list,bv: Word32.word list} -> lvar list
 
     val use_var_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
     val def_var_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
@@ -167,8 +167,9 @@ signature LINE_STMT =
     val get_phreg_atom_opt : Atom option * lvar list -> lvar list
     val get_phreg_sma      : Atom sma * lvar list -> lvar list
     val get_phreg_smas     : Atom sma list * lvar list -> lvar list
-    val get_phreg_in_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
-    val get_phreg_in_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val get_phreg_in_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,
+			      clos: Atom option,free: Atom list,res: Atom list,bv: Word32.word list} -> lvar list
+    val get_phreg_in_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list,bv: Word32.word list} -> lvar list
     val get_phreg_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
 
     type StringTree

@@ -19,6 +19,7 @@ functor CalcOffset(structure PhysSizeInf : PHYS_SIZE_INF
                         sharing type FetchAndFlush.lvar = LineStmt.lvar
                         sharing type FetchAndFlush.Atom = LineStmt.Atom
 		      structure BI : BACKEND_INFO
+		      structure IntSet: KIT_MONO_SET where type elt = int
 		      structure PP : PRETTYPRINT
 		        sharing type PP.StringTree = 
                                    Effect.StringTree = 
@@ -82,6 +83,9 @@ struct
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
     [("print_calc_offset_program", "print program with offsets in activation records inserted (LineStmt)", ref false)]
 
+  (*********************)
+  (* Calculate Offsets *)
+  (*********************)
   local
     structure LS = LineStmt
     structure IFF = FetchAndFlush
@@ -202,13 +206,13 @@ struct
       in
 	LS.SCOPE{pat=pat',scope=CO_lss(scope,LVmap',PHmap',offset',[])} :: CO_lss(lss,LVmap,PHmap,offset,acc)
       end
-      | CO_lss(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_lv),...}::lss,LVmap,PHmap,offset,acc) = 
+      | CO_lss(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_lv,bv),...}::lss,LVmap,PHmap,offset,acc) = 
       let
 	val (handl',size_handl) = (CO_lss(handl,LVmap,PHmap,offset++(BI.size_of_handle()),[]),0)
 	val (default',size_default) = (CO_lss(default,LVmap,PHmap,offset++(BI.size_of_handle()),[]),0)
 	val handl_return' = CO_lss(handl_return,LVmap,PHmap,offset(*++(BI.size_of_handle())*),[])
       in
-	LS.HANDLE{default=default',handl=(handl',handl_lv),handl_return=(handl_return',handl_return_lv),offset=offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
+	LS.HANDLE{default=default',handl=(handl',handl_lv),handl_return=(handl_return',handl_return_lv,bv),offset=offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
       end
       | CO_lss(LS.RAISE a::lss,LVmap,PHmap,offset,acc) = LS.RAISE a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.SWITCH_I sw::lss,LVmap,PHmap,offset,acc) = CO_sw(CO_lss,LS.SWITCH_I,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
@@ -262,4 +266,219 @@ struct
       end
   end
 
+  (************************)
+  (* Calculate BitVectors *)
+  (************************)
+  local
+    structure LS = LineStmt
+    structure LvarFinMap = Lvars.Map
+
+    (* We have an environment LVenv mapping variables to their offsets in the activation record          *)
+    (* -- A spilled variable may be live at an application                                               *)
+    (* -- A variable mapped into a caller save register and never flused is never live at an application *)
+    (* -- A variable mapped into a caller save register and flused may be live at an application         *)
+    (* -- A variable mapped into a callee save register is not considered yet!                           *)
+    fun add_sty(STACK_STY(lv,offset),LVmap) = LvarFinMap.add(lv,offset,LVmap) 
+      | add_sty(PHREG_STY(lv,phreg),LVmap) = LVmap 
+      | add_sty(FLUSHED_CALLEE_STY(phreg,offset),LVmap) = LVmap
+      | add_sty(FLUSHED_CALLER_STY(lv,phreg,offset),LVmap) = LvarFinMap.add(lv,offset,LVmap)
+
+    fun add_stys([],LVmap) = LVmap
+      | add_stys(sty::rest,LVmap) = add_stys(rest,add_sty(sty,LVmap))
+
+    fun lookup_lvs(LVmap,[]) = []
+      | lookup_lvs(LVmap,lv::lvs) =
+      case LvarFinMap.lookup LVmap lv of
+	SOME r => r::lookup_lvs(LVmap,lvs)
+      | NONE  => lookup_lvs(LVmap,lvs)
+
+    fun lvset_difference(lv_set,lv_list,LVmap) = foldr (fn (offset,set) => IntSet.remove offset set) lv_set (lookup_lvs(LVmap,lv_list))
+    fun lvset_add(lv_set,lv_list,LVmap) = foldr (fn (offset,set) => IntSet.insert offset set) lv_set (lookup_lvs(LVmap,lv_list))
+
+    fun gen_bitvector(L_set,size_ff) =
+      let
+	val w0 = Word32.fromInt 0
+	fun pw w = print ("Word is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
+	fun pws ws = app pw ws
+	fun set_bit(bit_no,w) = Word32.orb(w,Word32.<<(Word32.fromInt 1,Word.fromInt bit_no))
+
+	val offsets_in_bitvector_sorted = ListSort.sort (fn i1 => (fn i2 => i1 < i2)) (IntSet.list L_set)
+
+	fun gen_words([],adjust,word) = [word]
+	  | gen_words(offset::offsets,adjust,word) =
+	  if (offset-adjust<32) then
+	    gen_words(offsets,adjust,set_bit(offset-adjust,word))
+	  else
+	    word::gen_words(offset::offsets,adjust+32,Word32.fromInt 0)
+
+	val num_words = 
+	  if size_ff mod 32 = 0 then
+	    size_ff div 32
+	  else
+	    (size_ff div 32)+1
+	fun postfix_words l =
+	  if length l < num_words then
+	    postfix_words(l@[Word32.fromInt 0])
+	  else
+	    l
+
+	val ws = postfix_words(gen_words(offsets_in_bitvector_sorted,0,w0))
+(*	val _ = app (fn off => print ("Offset " ^ Int.toString off ^ "\n")) offsets_in_bitvector_sorted
+	val _ = pws ws
+	val _ = print ("size_ff is " ^ Int.toString size_ff ^ " and num_words is " ^ Int.toString num_words ^ "\n")*)
+      in
+        Word32.fromInt size_ff :: ws
+      end
+
+    fun CBV_sw(CBV_lss,gen_sw,LS.SWITCH(atom,sels,default),L_set,LVenv,lss) =
+      let
+	val (L_set',lss') = CBV_lss(lss,LVenv,L_set)
+	val (sels',L_set_sels) = 
+	  foldr 
+	  (fn ((sel,lss),(sels_acc,L_set_acc)) => 
+	   let 
+	     val (L_set_lss',lss') = CBV_lss(lss,LVenv,L_set)
+	   in 
+	     ((sel,lss')::sels_acc,IntSet.union L_set_acc L_set_lss')
+	   end) ([],IntSet.empty) sels
+
+	val (L_set_def,default') = CBV_lss(default,LVenv,L_set)
+      in
+	(lvset_add(IntSet.union L_set_def L_set_sels,LS.get_lvar_atom(atom,[]),LVenv),
+	 gen_sw(LS.SWITCH(atom,sels',default'))::lss')
+      end
+
+    fun CBV_lss (lss,size_ff) =
+      let 
+	fun CBV_lss'([],LVenv,L_set) = (L_set,[])
+	  | CBV_lss'(ls::lss,LVenv,L_set) =
+	  (case ls of
+	     LS.FNJMP(cc as {opr,args,clos,free,res,bv}) => 
+	       let
+		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
+		 val (def,use) = LineStmt.def_use_lvar_ls ls
+		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
+		 val bit_vector = gen_bitvector(lvset_kill_def,size_ff)
+	       in
+		(lvset_add(lvset_kill_def,use,LVenv),
+		 LS.FNJMP{opr=opr,args=args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
+	       end
+	   | LS.FNCALL(cc as {opr,args,clos,free,res,bv}) =>
+	       let
+		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
+		 val (def,use) = LineStmt.def_use_lvar_ls ls
+		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
+		 val bit_vector = gen_bitvector(lvset_kill_def,size_ff)
+	       in
+		(lvset_add(lvset_kill_def,use,LVenv),
+		 LS.FNCALL{opr=opr,args=args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
+	       end
+	  | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,free,res,bv}) =>
+	       let
+		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
+		 val (def,use) = LineStmt.def_use_lvar_ls ls
+		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
+		 val bit_vector = gen_bitvector(lvset_kill_def,size_ff)
+	       in
+		(lvset_add(lvset_kill_def,use,LVenv),
+		 LS.JMP{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
+	       end
+	   | LS.FUNCALL(cc as {opr,args,reg_vec,reg_args,clos,free,res,bv}) =>
+	       let
+		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
+		 val (def,use) = LineStmt.def_use_lvar_ls ls
+		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
+		 val bit_vector = gen_bitvector(lvset_kill_def,size_ff)
+	       in
+		(lvset_add(lvset_kill_def,use,LVenv),
+		 LS.FUNCALL{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bit_vector}::lss')
+	       end
+	   | LS.LETREGION{rhos,body} => 
+	       let
+		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
+		 val (L_set_letregion,body') = CBV_lss'(body,LVenv,L_set')
+	       in
+		 (L_set_letregion,
+		  LS.LETREGION{rhos=rhos,body=body'}::lss')
+	       end
+	   | LS.SCOPE{pat,scope} =>
+	       let
+		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
+		 val (L_set_scope,scope') = CBV_lss'(scope,add_stys(pat,LVenv),L_set)
+	       in
+		 (L_set_scope,
+		  LS.SCOPE{pat=pat,scope=scope'}::lss')
+	       end
+	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_lv,bv),offset} =>
+	       (* Pointer to handle closure is at offset+1, see CodeGen.sml *)
+	       let
+		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
+		 val (L_set_handl_return,handl_return') = CBV_lss'(handl_return,LVenv,L_set')
+		 val bv_handl_return = gen_bitvector(L_set_handl_return,size_ff)
+		 val (L_set_default,default') = CBV_lss'(default,LVenv,L_set')
+		 val (L_set_handl,handl') = CBV_lss'(handl,LVenv,L_set_default)
+	       in
+		 (IntSet.insert (offset+1) L_set_handl ,
+		  LS.HANDLE{default=default',
+			    handl=(handl',
+				   handl_lv),
+			    handl_return=(handl_return',
+					  handl_return_lv,
+					  bv_handl_return),
+			    offset=offset}::lss')
+	       end
+	   | LS.SWITCH_I sw => CBV_sw(CBV_lss',LS.SWITCH_I,sw,L_set,LVenv,lss)
+	   | LS.SWITCH_S sw => CBV_sw(CBV_lss',LS.SWITCH_S,sw,L_set,LVenv,lss)
+	   | LS.SWITCH_C sw => CBV_sw(CBV_lss',LS.SWITCH_C,sw,L_set,LVenv,lss)
+	   | LS.SWITCH_E sw => CBV_sw(CBV_lss',LS.SWITCH_E,sw,L_set,LVenv,lss)
+	   | _ => 
+	       let
+		 val (L_set,lss') = CBV_lss'(lss,LVenv,L_set)
+		 val (def,use) = LineStmt.def_use_lvar_ls ls
+	       in
+		 (lvset_add(lvset_difference(L_set,def,LVenv),use,LVenv),
+		  ls::lss')
+	       end)
+      in
+	#2(CBV_lss'(lss,LvarFinMap.empty,IntSet.empty))
+      end
+
+    (*********************************)
+    (* CBV on Top level Declarations *)
+    (*********************************)
+    fun do_top_decl gen_fn (lab,cc,lss) =
+      let
+	val size_cc = CallConv.get_cc_size cc
+	val _ = if size_cc <> 1 then die "do_top_decl: CC not of size 1" else () (* For now we assume all variables are passed in machine registers *)
+	val size_ff = CallConv.get_frame_size cc
+	val lss_cbv = CBV_lss(lss,size_ff)
+      in
+	gen_fn(lab,cc,lss_cbv)
+      end
+
+    fun CBV_top_decl(LineStmt.FUN(lab,cc,lss)) = do_top_decl LineStmt.FUN (lab,cc,lss)
+      | CBV_top_decl(LineStmt.FN(lab,cc,lss)) = do_top_decl LineStmt.FN (lab,cc,lss)
+
+  in
+    fun CBV {main_lab:label,
+	     code=co_prg: (StoreType,offset,Atom) LinePrg,
+	     imports:label list * label list,
+	     exports:label list * label list} =
+      let
+	val _ = chat "[Calculate BitVectors..."
+	val line_prg_cbv = foldr (fn (func,acc) => CBV_top_decl func :: acc) [] co_prg
+	val _ = chat "]\n"
+      in
+	{main_lab=main_lab,code=line_prg_cbv: (StoreType,offset,Atom) LinePrg,imports=imports,exports=exports}
+      end
+
+  end
+
 end;
+
+
+(*    fun lvset_add(lv_set,lv_list) = (app (fn lv => Array.update(lv_set,lv,true)) lv_list;lv_set)
+    fun lvset_delete(lv_set,lv_list) = (app (fn lv => Array.update(lv_set,lv,false)) lv_list;lv_set)
+    fun lvset_difference(lv_set,lv_list) = (app (fn lv => Array.update(lv_set,lv,false)) lv_list;lv_set)
+*)
+
