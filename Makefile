@@ -1,4 +1,3 @@
-#Ken was here
 all:
 	(cd src; $(MAKE))
 
