@@ -1965,46 +1965,50 @@ The infinite region {\tt r7} holds the auxiliary pairs of the list.
 \hrule
 \end{figure}
 
-%mael
+
 %---------------------------------------------------------
 \chapter{First-Order Functions}
 %---------------------------------------------------------
-In this chapter, we shall treat \index{function}\index{function!first-order}functions that are declared with
-\index{fun@\texttt{fun}}{\tt fun} and that are first-order (i.e., that neither take functions
+In this chapter, we shall treat
+\index{function}%
+\index{function!first-order}%
+functions that are declared with 
+%\index{fun@\texttt{fun}}
+{\tt fun} and that are first-order (i.e., that neither take functions
 as arguments nor produce functions as results). Higher-order functions
-are treated in Chapter~\ref{hof.sec}.
-Region polymorphism works uniformly over all types; 
-we use lists as an example of the general scheme. 
+are treated in Chapter~\ref{hof.sec}.  Region polymorphism works
+uniformly over all types; we use lists as an example of the general
+scheme.
+
 \section{Region-Polymorphic Functions}
 \index{region polymorphism|(}%
-It would be a serious limitation if 
-all lists produced by a function were stored
-in the same region, for then all those lists would have to be kept
-alive till the last time one of them were used. The solution that the Kit
-offers to this problem is {\em region-polymorphic functions}, that is, functions
-that are passed regions at runtime. 
+It would be a serious limitation if all lists produced by a series of
+calls to a function were stored in the same region, for then all those
+lists would have to be kept alive till the last time one of them were
+used. The solution that the Kit offers to this problem is {\em
+  region-polymorphic functions}, that is, functions that are passed
+regions at runtime.
 
-When one declares a function that, when called, produces
-a fresh list, then the region inference algorithm will automatically insert extra
+When one declares a function that, when called, produces a fresh list,
+then the region inference algorithm will automatically insert extra
 \index{region parameter!formal}%
-formal region parameters in the function declaration.
-At every place one refers to the function, for example because one calls the function,
-the region inference algorithm inserts
-a list of 
+formal region parameters in the function declaration.  At every place
+one refers to the function, for example because one calls the
+function, the region inference algorithm inserts a list of
 \index{region parameter!actual}%
-actual region parameters that tell the function 
-where to put its
-result. This is all done automatically; the user does not have to introduce
-region parameters or pass them as arguments. Even so, it is useful to understand
-the general principle, so that one can good use of region polymorphism.
+actual region parameters that tell the function where to put its
+result. This is all done automatically; the user does not have to
+introduce region parameters or pass them as arguments. Even so, it is
+useful to understand the general principle, so that one can make good
+use of region polymorphism.
 
+%mael
 The syntax of a (single) function declaration in $\MulExp$ is:
 \begin{tabbing}
 \ \ \ \ \ \=\tt fun $f$ $\at\,\rho_0$ [$\rho_1$, $\cdots$, $\rho_k$] $x$ = $e$
 \end{tabbing}
-Here $\rho_0$ denotes the region in which the closure for $f$ is stored,
-$\rho_1, \ldots,\rho_k$ are 
-the 
+Here $\rho_0$ denotes the region in which the closure for $f$ is
+stored, $\rho_1, \ldots,\rho_k$ are the
 \index{region parameter!formal}%
 {\em formal region parameters}, $x$ is the
 value parameter (a single variable), and $e$ is the body of the function.
