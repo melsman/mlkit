@@ -264,6 +264,14 @@ struct
 			C)
     end
 
+(*    fun num_args_cc cc =
+      let
+	val decomp_cc = CallConv.decompose_cc cc
+      in
+	List.length (#reg_args(decomp_cc)) +
+	List.length (#args(decomp_cc))
+      end not used anyway 2000-10-15, Niels *)
+
     fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp) :: acc
       | CG_ce(ClosExp.RVAR place,env,sp,cc,acc)         = access_rho(place,env,sp) :: acc
       | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = die "DROPPED_RVAR not implemented"
@@ -292,7 +300,7 @@ struct
       | CG_ce(ClosExp.SELECT(i,ce),env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Select(i)::acc)
       | CG_ce(ClosExp.FNJMP{opr,args,clos=NONE,free=[]},env,sp,cc,acc) = 
       CG_ce(opr,env,sp,cc,
-	    Push :: (comp_ces(args,env,sp+1,cc, ApplyFnJmp(List.length (#args(CallConv.decompose_cc cc)),List.length args) :: acc)))
+	    Push :: (comp_ces(args,env,sp+1,cc, ApplyFnJmp(List.length args, sp) :: acc)))
       | CG_ce(ClosExp.FNJMP{opr,args,clos,free},env,sp,cc,acc) = die "FNJMP: either clos or free are non empty."
       | CG_ce(ClosExp.FNCALL{opr,args,clos=NONE,free=[]},env,sp,cc,acc) = 
       let
@@ -306,22 +314,21 @@ struct
       | CG_ce(ClosExp.FNCALL{opr,args,clos,free},env,sp,cc,acc) = die "FNCALL: either clos or free are non empty."      
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=NONE,free=[]},env,sp,cc,acc) =
       comp_ces(args,env,sp,cc,
-	       ApplyFunJmpNoClos(opr,List.length (#args(CallConv.decompose_cc cc)) - (List.length reg_args),List.length args) :: acc)
+	       ApplyFunJmpNoClos(opr,List.length args,sp - (List.length reg_args)) :: acc)
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=SOME clos_ce,free=[]},env,sp,cc,acc) =
       CG_ce(clos_ce,env,sp,cc,
 	    Push ::
 	    comp_ces(args,env,sp+1,cc,
-		     ApplyFunJmp(opr,List.length (#args(CallConv.decompose_cc cc)) - (List.length reg_args),List.length args) :: acc))
+		     ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: acc))
       | CG_ce(ClosExp.JMP{opr,args,reg_vec,reg_args,clos,free},env,sp,cc,acc) = die "JMP either reg_vec or free are non empty."
       | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos=NONE,free=[]},env,sp,cc,acc) =
       let
 	val return_lbl = Labels.new_named "return_from_app"
       in
 	PushLbl(return_lbl) ::
-	comp_ces(reg_args,env,sp+1,cc,
-		 comp_ces(args,env,sp+1+(List.length reg_args),cc,
-			  ApplyFunCallNoClos(opr,List.length args + List.length reg_args) :: 
-			  Label(return_lbl) :: acc))
+	comp_ces(reg_args @ args,env,sp+1,cc,
+		 ApplyFunCallNoClos(opr,List.length args + List.length reg_args) :: 
+		 Label(return_lbl) :: acc)
       end
       | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos=SOME clos_ce,free=[]},env,sp,cc,acc) = 
       let
@@ -329,10 +336,9 @@ struct
       in
 	PushLbl(return_lbl) ::
 	CG_ce(clos_ce,env,sp+1,cc, Push ::
-	      comp_ces(reg_args,env,sp+2,cc,
-		       comp_ces(args,env,sp+2+(List.length reg_args),cc,
-				ApplyFunCallNoClos(opr,List.length args + List.length reg_args) :: 
-				Label(return_lbl) :: acc)))
+	      comp_ces(reg_args @ args,env,sp+2,cc,
+		       ApplyFunCall(opr,List.length args + List.length reg_args) :: 
+		       Label(return_lbl) :: acc))
       end
       | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec,reg_args,clos,free},env,sp,cc,acc) = die "FUNCALL: either reg_vec or free are non empty."
       | CG_ce(ClosExp.LETREGION{rhos,body},env,sp,cc,acc) = 
@@ -446,7 +452,7 @@ and code is actually generated when passing arguments in region polymorphic func
 	     fun reset_regions C =
 	       List.foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,env,sp,cc,C)) C aux_regions
 	   in  
-	     reset_regions(ImmedInt tag :: alloc_block(alloc,1,env,sp,cc,acc))
+	     reset_regions(ImmedInt tag :: Push :: alloc_block(alloc,1,env,sp+1,cc,acc))
 	   end)
       | CG_ce(ClosExp.CON1{con,con_kind,alloc,arg},env,sp,cc,acc) =
 	 (case con_kind of
@@ -460,8 +466,8 @@ and code is actually generated when passing arguments in region polymorphic func
 		 let
 		   val tag = Word32.toInt(BI.tag_con1(false,i))
 		 in
-		   CG_ce(arg,env,sp,cc,Push :: ImmedInt tag :: 
-			 alloc_block(alloc,2,env,sp+1,cc,acc))
+		   ImmedInt tag :: Push :: CG_ce(arg,env,sp,cc,Push ::
+						 alloc_block(alloc,2,env,sp+2,cc,acc))
 		 end
 	  | _ => die "CG_ce: CON1.con not unary in env.")
       | CG_ce(ClosExp.DECON{con,con_kind,con_exp},env,sp,cc,acc) =
@@ -471,7 +477,7 @@ and code is actually generated when passing arguments in region polymorphic func
 	     | ClosExp.BOXED _ => CG_ce(con_exp,env,sp,cc, Select(1) :: acc)
 	     | _ => die "CG_ce: DECON used with con_kind ENUM")
       | CG_ce(ClosExp.DEREF ce,env,sp,cc,acc) = CG_ce(ce,env,sp,cc, Select(0) :: acc)
-      | CG_ce(ClosExp.REF(sma,ce),env,sp,cc,acc) = CG_ce(ce,env,sp,cc,alloc_block(sma,1,env,sp,cc,acc))
+      | CG_ce(ClosExp.REF(sma,ce),env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Push :: alloc_block(sma,1,env,sp+1,cc,acc))
       | CG_ce(ClosExp.ASSIGN(sma,ce1,ce2),env,sp,cc,acc) = CG_ce(ce1,env,sp,cc,Push :: CG_ce(ce2,env,sp+1,cc,Store(0) :: acc))
       | CG_ce(ClosExp.RESET_REGIONS{force=false,regions_for_resetting},env,sp,cc,acc) =
 	  foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,env,sp,cc,C)) acc regions_for_resetting
@@ -695,7 +701,7 @@ and code is actually generated when passing arguments in region polymorphic func
 	| ClosExp.SAT_FI(ce,pp)   => comp_ce(ce,BlockAllocSatInf(n) :: acc)
 	| ClosExp.SAT_FF(ce,pp)   => comp_ce(ce,BlockAllocSatIfInf(n) :: acc)
 	| ClosExp.ATBOT_LI(ce,pp) => comp_ce(ce,BlockAllocAtbot(n) :: acc)
-	| ClosExp.ATBOT_LF(ce,pp) => comp_ce(ce,acc)
+	| ClosExp.ATBOT_LF(ce,pp) => comp_ce(ce,Block(n) :: acc)
 	| ClosExp.IGNORE => acc (*die "CodeGenKAM.alloc_block: sma = Ignore" 05/10-2000, Niels *)
       end
 
@@ -729,13 +735,13 @@ and code is actually generated when passing arguments in region polymorphic func
 	let
 	  val decomp_cc = CallConv.decompose_cc cc
 	  fun add_lvar (lv,(offset,env)) = (offset+1,declareLvar(lv,STACK(offset),env))
-	  fun add_clos_opt (NONE,env) = env
-	    | add_clos_opt (SOME clos_lv, env) = declareLvar(clos_lv,ENV_REG,env)
+	  fun add_clos_opt (NONE,env) = (env, ReturnNoClos)
+	    | add_clos_opt (SOME clos_lv, env) = (declareLvar(clos_lv,ENV_REG,env), Return)
 	  val (offset,env) = List.foldl add_lvar (List.foldl add_lvar 
 						  (0,initialEnv) (#reg_args(decomp_cc))) (#args(decomp_cc))
-	  val env = add_clos_opt(#clos(decomp_cc),env)
+	  val (env,return_inst) = add_clos_opt(#clos(decomp_cc),env)
 	in
-	  f_fun(lab,CG_ce(ce,env,offset,cc,[Return(offset,List.length (#res(decomp_cc)))]))
+	  f_fun(lab,CG_ce(ce,env,offset,cc,[return_inst(offset,List.length (#res(decomp_cc)))]))
 	end
     in
       fun CG_top_decl(ClosExp.FUN(lab,cc,ce)) = mk_fun FUN (lab,cc,ce)

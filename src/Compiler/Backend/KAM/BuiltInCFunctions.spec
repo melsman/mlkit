@@ -10,6 +10,7 @@ sml_getrealtime
 sml_localoffset
 exnName
 printString
+printNum
 implodeChars
 implodeString
 concatString

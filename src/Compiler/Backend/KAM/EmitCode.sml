@@ -35,10 +35,10 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | AllocSatIfInf(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | AllocAtbot(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
-      | BlockAlloc(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | BlockAlloc(n) => (out_opcode BLOCK_ALLOC_N; out_int n)
       | BlockAllocIfInf(n)  => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | BlockAllocSatInf(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | Block(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | Block(n) => (out_opcode BLOCK_N; out_int n)
       | BlockAllocSatIfInf(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | BlockAllocAtbot(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
@@ -48,16 +48,16 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | SetBit30 => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | SetBit31 => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | ClearBit30And31 => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | UbTagCon => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | UbTagCon => out_opcode UB_TAG_CON
 	
       | SelectStack(off,s) => (out_opcode SELECT_STACK_N; out_int off)
-      | SelectEnv(off,s) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | Select(off) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | Store(off) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | SelectEnv(off,s) => (out_opcode SELECT_ENV_N; out_int off)
+      | Select(off) => (out_opcode SELECT_N; out_int off)
+      | Store(off) => (out_opcode STORE_N; out_int off)
 
-      | StackAddrInfBit(off,s) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | StackAddr(off,s) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | EnvToAcc => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | StackAddrInfBit(off,s) => (out_opcode STACK_ADDR_INF_BIT; out_int off)
+      | StackAddr(off,s) => (out_opcode STACK_ADDR; out_int off)
+      | EnvToAcc => out_opcode ENV_TO_ACC
 
       |	ImmedInt(i) => (out_opcode IMMED_INT; out_int i)
       | ImmedString(str) => 
@@ -90,6 +90,10 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 	  (out_opcode RETURN;
 	   out_int n1;
 	   out_int n2)
+      | ReturnNoClos(n1,n2) => 
+	  (out_opcode RETURN_NO_CLOS;
+	   out_int n1;
+	   out_int n2)
 
       | Ccall(idx,arity) => 
 	  (out_opcode C_CALL;
@@ -109,9 +113,9 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | PopExnPtr => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 	  
       | LetregionFin(n) => (out_opcode LETREGION_FIN; out_int n)
-      | LetregionInf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | EndregionInf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | ResetRegion => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | LetregionInf => (out_opcode LETREGION_INF)
+      | EndregionInf => (out_opcode ENDREGION_INF)
+      | ResetRegion => (out_opcode RESET_REGION)
       | MaybeResetRegion => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | ResetRegionIfInf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
@@ -122,7 +126,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | Nop => ()
 
       | PrimEqual => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimSubi => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | PrimSubi => out_opcode PRIM_SUB_I
       | PrimAddi => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | PrimNegi => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | PrimAbsi => die ("inst " ^ (pr_inst inst) ^ " not emitted")
@@ -163,7 +167,8 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 
     fun emit_top_decl top_decl =
       let
-	fun emit_decl (lab,kam_insts) = emit_kam_insts kam_insts
+	fun emit_decl (lab,kam_insts) = (RLL.define_label lab;
+					 emit_kam_insts kam_insts)
       in
 	case top_decl of
 	  Kam.FUN(lab,kam_insts) => emit_decl(lab,kam_insts)

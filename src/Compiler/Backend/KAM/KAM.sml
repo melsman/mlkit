@@ -94,6 +94,7 @@ signature KAM =
       | ApplyFunJmp of label * int * int
       | ApplyFunJmpNoClos of label * int * int
       | Return of int * int
+      | ReturnNoClos of int * int
 
       | Ccall of int * int
 
