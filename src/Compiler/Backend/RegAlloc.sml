@@ -594,8 +594,8 @@ struct
 			((#adjList v_node) := u :: !(#adjList v_node);
 			 (#degree v_node) := !(#degree v_node) + 1)
 		      else ())
-		  | NONE => die ("AddEdge.nTableLookup v_key: " ^ Lvars.pr_lvar v))
-	     | NONE => die ("AddEdge.nTableLookup u_key: " ^ Lvars.pr_lvar u))
+		  | NONE => () (*mael die ("AddEdge.nTableLookup v_key: " ^ Lvars.pr_lvar v) *))
+	     | NONE => () (*mael die ("AddEdge.nTableLookup u_key: " ^ Lvars.pr_lvar u) *))
     end	    
 
   fun MakeWorklist() =
@@ -786,7 +786,7 @@ struct
 	in
 	  case nTableLookup i
 	    of SOME n => #uses n := !(#uses n) + 1
-	     | NONE => die ("MakeInitial.add_use: " ^ Lvars.pr_lvar lv ^ " not in nTableLookup")
+	     | NONE => () (*mael die ("MakeInitial.add_use: " ^ Lvars.pr_lvar lv ^ " not in nTableLookup") *)
 	end
       fun add lv = 
 	let 
@@ -837,7 +837,7 @@ struct
       fun set_lrs_status(new_s,lv) = 
 	case nTableLookup (key lv)
 	  of SOME {lrs = (lrs as ref old_s),...} => lrs := merge_lrs(old_s,new_s)
-	   | NONE => die "set_lrs_status - nTableLookup failed"
+	   | NONE => () (*mael die "set_lrs_status - nTableLookup failed" *)
       fun lvarset_app f lvs = (Lvarset.mapset f lvs; ())
       fun def_use_var_ls ls =
 	let val (def,use) = LS.def_use_var_ls ls
@@ -1050,10 +1050,13 @@ struct
     end
   
   fun ra_top_decl f =
-    case CC_top_decl f 
-      of LS.FUN(lab,cc,lss) => LS.FUN(lab,cc,ra_body (Labels.pr_label lab, lss))
-       | LS.FN(lab,cc,lss) => LS.FN(lab,cc,ra_body (Labels.pr_label lab, lss))
-	
+    let val f = CC_top_decl f 
+    in fast_pr (LineStmt.layout_line_prg LineStmt.pr_sty (fn _ => "") pr_atom false [f]); 
+      case f
+	of LS.FUN(lab,cc,lss) => LS.FUN(lab,cc,ra_body (Labels.pr_label lab, lss))
+	 | LS.FN(lab,cc,lss) => LS.FN(lab,cc,ra_body (Labels.pr_label lab, lss))
+    end
+
   fun ra_prg funcs = 
     foldr (fn (func,acc) => ra_top_decl func :: acc) [] funcs
     
