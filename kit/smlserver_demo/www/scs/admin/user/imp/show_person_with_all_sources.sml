@@ -26,12 +26,24 @@ val intro_text =
 fun gen_rows (name, sql) =
   (name,
    ScsError.wrapPanic
-   (Db.list (fn g => (g "name", g "email", g "security_id"))) sql)
+   (Db.list (fn g => (g "name", g "email", g "security_id", g "on_what_table", g "on_which_id"))) sql)
 
-fun layout_row (name, email, security_id) =
+fun layout_row (name, email, security_id, on_what_table, on_which_id) =
+  let
+    val del_rel_link = 
+      if on_what_table <> "" andalso on_which_id <> "" then
+	`<a href="^(UcsPage.confirmDelUrl (Html.genUrl "del_external_rel.sml" 
+          [("person_id",Int.toString person_id),
+	   ("on_what_table",on_what_table),
+	   ("on_which_id",on_which_id)]))">^(UcsPage.icon_remove)`
+      else
+	`&nbsp;`
+  in
     `<td><b>^name</b></td>
      <td>^email</td>
-     <td>^security_id</td>`
+     <td>^security_id</td>
+     <td align="center">` ^^ del_rel_link ^^ `</td>`
+  end
 
 fun gen_table (name,rows) =
   case rows of
@@ -42,7 +54,8 @@ fun gen_table (name,rows) =
 	   header=`<tr><th align="center" colspan="3">^(ScsDict.s name)</th></tr>
 	           <tr><th>^(ScsUserImp.nameField())</th>
 	           <th>^(ScsUserImp.emailField())</th>
-                   <th>^(ScsUserImp.securityIdField())</th></tr>`,
+                   <th>^(ScsUserImp.securityIdField())</th>
+                   <th>^(ScsUserImp.delRelField())</th></tr>`,
 	   align="center",
 	   footer=``} 
 	  layout_row
@@ -57,7 +70,7 @@ val rowss =
   (List.map ScsUserImp.getSource ScsUserImp.all_sources)
 
 (* Add central personnel register info *)
-val rowss = (ScsUserImp.service_name, [(name,email,security_id)]) :: rowss
+val rowss = (ScsUserImp.service_name, [(name,email,security_id,"","")]) :: rowss
 
 val _ = UcsPage.returnPg title
   (`<h1>^title</h1> 
