@@ -36,17 +36,17 @@ signature SCS_WIDGET =
        and cols, named fv and filled out with value v. *)
     val ta       : int -> int -> string -> quot -> quot
 
-    (* [largeTa] presized textarea. *)
+    (* [largeTa fv v] presized textarea. *)
     val largeTa  : string -> quot -> quot
 
-    (* [mediumTa] presized textarea. *)
+    (* [mediumTa fv v] presized textarea. *)
     val mediumTa : string -> quot -> quot
 
-    (* [mediumWideTa] presized textarea. *)
+    (* [mediumWideTa fv v] presized textarea. *)
     val mediumWideTa : string -> quot -> quot
     val smallWideTa  : string -> quot -> quot
 
-    (* [smallTa] presized textarea. *)
+    (* [smallTa fv v] presized textarea. *)
     val smallTa  : string -> quot -> quot
 
     (* [select opts fv] returns HTML for a selection box with options

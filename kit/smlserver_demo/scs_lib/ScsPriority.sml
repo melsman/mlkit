@@ -21,6 +21,17 @@ signature SCS_PRIORITY =
 
     val compare : priority_record*priority_record -> order
 
+    (* [getPriority rel_id] returns a record from DB if exists;
+        otherwise returns NONE *)
+    val getPriority : int -> priority_record option
+
+    (* [getPriorityFromDbErr (rel_id,errs)] returns a 
+	priority_record option and adds an error message if it is NONE *)
+    val getPriorityFromDbErr : int * ScsFormVar.errs 
+      -> (priority_record option) * ScsFormVar.errs
+
+    (* [getAllPriorities (on_what_parent_table, on_which_parent_id, 
+          on_what_child_table)] returns a list of records from DB *)
     val getAllPriorities : string * int * string -> priority_record list
 
     val newPriorityRelTrans : string * int * string * int -> Db.Handle.db 
@@ -61,9 +72,7 @@ structure ScsPriority :> SCS_PRIORITY =
       | DECREASE_PRIORITY => "decrease_priority"
 
 
-    fun getAllPriorities (on_what_parent_table, 
-			  on_which_parent_id, on_what_child_table) = 
-      let
+    local
         fun f g = {
 	  rel_id	       = ScsData.gToInt g "rel_id",
 	  on_what_parent_table = g "on_what_parent_table",
@@ -72,18 +81,44 @@ structure ScsPriority :> SCS_PRIORITY =
 	  on_which_child_id    = ScsData.gToInt g "on_which_child_id",
 	  priority	       = ScsData.gToInt g "priority"
 	}
-	val prio_sql = `
+	val pre_prio_sql = `
 	  select rel_id, on_what_parent_table, on_which_parent_id,
 		 on_what_child_table, on_which_child_id, priority
 	    from scs_priority_rels
-	   where on_what_parent_table = ^(Db.qqq on_what_parent_table)
-	     and on_which_parent_id   = ^(Int.toString on_which_parent_id)
-	     and on_what_child_table  = ^(Db.qqq on_what_child_table)
-	   order by priority
 	`
-      in
-        ScsError.wrapPanic (Db.list f) prio_sql
-      end
+    in
+      fun getPriority rel_id = 
+	let
+	  val post_prio_sql = `
+	     where rel_id = ^(Int.toString rel_id)
+	  `
+	in
+	  SOME( Db.oneRow' f (pre_prio_sql ^^ post_prio_sql) )
+	  handle _ => NONE
+	end
+
+      fun getPriorityFromDbErr (rel_id, errs) =
+        let
+	  val err_msg = ScsDict.s' (UcsDict.fromDbErrMsg UcsDict.priority_dict)
+	in
+	  case getPriority rel_id of 
+	      NONE	 => (NONE, ScsFormVar.addErr(err_msg,errs))
+	    | SOME prio  => (SOME prio, errs)
+	end
+
+      fun getAllPriorities (on_what_parent_table, 
+			    on_which_parent_id, on_what_child_table) = 
+	let
+	  val post_prio_sql = `
+	     where on_what_parent_table = ^(Db.qqq on_what_parent_table)
+	       and on_which_parent_id   = ^(Int.toString on_which_parent_id)
+	       and on_what_child_table  = ^(Db.qqq on_what_child_table)
+	     order by priority
+	  `
+	in
+	  ScsError.wrapPanic (Db.list f) (pre_prio_sql ^^ post_prio_sql)
+	end
+    end (* of local *)
 
       fun newPriorityRelTrans (on_what_parent_table, on_which_parent_id, 
 			       on_what_child_table, on_which_child_id) db = 
