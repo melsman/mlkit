@@ -925,6 +925,9 @@ functor CompileDec(structure Con: CON
 		      (* <> (NOTEQUALprim) is declared in the prelude as an
 		       * ordinary variable (not a primitive), so it does
 		       * not show up here *)
+		  | ORDprim => (case args of
+				  [exp] => compileExp env exp
+				| _ => die "compileExp(APPexp(PRIM... ORDprim...))")
 		  | CCALLprim _ => 
 		      let
 			fun extractString exp =
