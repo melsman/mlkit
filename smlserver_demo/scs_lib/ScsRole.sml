@@ -23,6 +23,7 @@ signature SCS_ROLE =
     | UcsPrInternAdm      (* Created in ucs-pr-patch002.sql *)
     | UcsTrTimeRecordAdm  (* Created in ucs-tr-initialdata-create.sql *)
     | UcsObOptagAdm  	  (* Created in ucs-ob-initialdata-create.sql *)
+    | UcsCbCourseAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
     | Other of string
 
     (* [fromString str] returns the corresponding role which is either
@@ -74,6 +75,7 @@ structure ScsRole :> SCS_ROLE =
     | UcsPrInternAdm    
     | UcsTrTimeRecordAdm
     | UcsObOptagAdm  	  
+    | UcsCbCourseAdm
     | Other of string
 
     fun fromString str = 
@@ -94,7 +96,8 @@ structure ScsRole :> SCS_ROLE =
       | "UcsPrITAdm"	    => UcsPrITAdm	
       | "UcsPrInternAdm"    => UcsPrInternAdm    
       | "UcsTrTimeRecordAdm" => UcsTrTimeRecordAdm
-      | "UcsObOptagAdm"     => UcsObOptagAdm
+      | "UcsObOptagAdm"     => UcsObOptagAdm 
+      | "UcsCbCourseAdm"    => UcsCbCourseAdm
       | s => Other s
  
     (* [toString role] returns the string representation of the role
@@ -118,6 +121,7 @@ structure ScsRole :> SCS_ROLE =
       | UcsPrInternAdm    => "UcsPrInternAdm"    
       | UcsTrTimeRecordAdm => "UcsTrTimeRecordAdm"
       | UcsObOptagAdm	   => "UcsObOptagAdm"
+      | UcsCbCourseAdm	   => "UcsCbCourseAdm"
       | Other s => s
 	  
     (* We cache the result for 5 minutes.
