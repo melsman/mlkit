@@ -15,7 +15,14 @@ links:
 
 Moreover, it must contain a file `hardlinkA' and a hard link
 `hardlinkB' to `hardlinkA' (or vice versa). The directory must not
-contain a file or directory named `exists.not'.
+contain a file or directory named `exists.not'. To get the above
+links, execute:
+
+       ln -s README testlink; \
+       ln -s testcycl testcycl; \
+       ln -s exists.not testbadl; \
+       echo '' > hardlinkA; \
+       ln hardlinkA hardlinkB
 
 To run all the tests, invoke `kittester' as follows (from this
 directory):
