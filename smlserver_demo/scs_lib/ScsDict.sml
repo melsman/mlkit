@@ -148,6 +148,19 @@ signature SCS_DICT =
        with white space is replaced by the n'th arg in the list
        args. *)
     val sl' : dict -> string list -> quot
+
+    (* [dictWithArgsToDict dict args] substitutes args into dict and
+       returns a new dict with any %n pattern substituted with some
+       arg from args. The following
+
+          val str = sl dict args
+          val str' = sl' dict args
+
+       is similar to
+  
+          val str = s (dictWithArgsToDict dict args)
+          val str = s' (dictWithArgsToDict dict args) *)
+    val dictWithArgsToDict : dict -> string list -> dict
   end
 
 structure ScsDict :> SCS_DICT =
@@ -306,15 +319,23 @@ structure ScsDict :> SCS_DICT =
 
     val s = Quot.toString o s'
 
-    fun sl' dict args =
-      let
-        val phrase = s dict
-      in
+    local 
+      fun subst phrase args =
 	Quot.fromString (subst' phrase
-		          (Array.fromList (List.map (fn s => (String.size s,s)) args)))
-      end          
+			 (Array.fromList (List.map (fn s => (String.size s,s)) args)))
+    in
+      fun sl' dict args =
+	let
+	  val phrase = s dict
+	in
+	  subst phrase args
+	end          
 
-    fun sl dict args = Quot.toString(sl' dict args)   
+      fun sl dict args = Quot.toString(sl' dict args)   
+
+      fun dictWithArgsToDict dict args =
+	List.map (fn (lang,phrase) => (lang, subst (Quot.toString phrase) args)) dict
+    end
   end
 
 

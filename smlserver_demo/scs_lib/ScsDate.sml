@@ -34,6 +34,7 @@ signature SCS_DATE =
     val ppLongEng : Date.date -> string
     val pp    : Date.date -> string
     val ppDb  : Date.date option -> string
+    val ppTimestamp : Date.date -> string
   end
 
 structure ScsDate :> SCS_DATE =
@@ -161,6 +162,8 @@ structure ScsDate :> SCS_DATE =
       case ScsLogin.user_lang of
 	ScsLang.da => ppDk s
       | ScsLang.en => ppIso s
+
+    fun ppTimestamp s = Date.fmt "%H:%M.%S" s ^ " " ^ pp s
 
     fun ppDb s =
       case s

@@ -71,6 +71,7 @@ structure ScsDb :> SCS_DB =
     fun userLang user_id = ScsLang.toString ScsLogin.user_lang
 
     val ppDate = ScsDate.ppDb o Db.toDate
+
   end
 
 
