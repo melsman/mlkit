@@ -19,7 +19,7 @@ rp2ps: $(OFILES)
 
 
 clean:
-	rm -f *.o core a.out *~ 
+	rm -f *.o core a.out *~ rp2ps
 
 depend:
 	mv Makefile Makefile.bak
