@@ -190,6 +190,11 @@ struct
   (*                           *)
   (*****************************)
 
+  fun isWordRegion(rho) = 
+        case Eff.get_place_ty rho of
+          SOME Eff.WORD_RT => true
+        | _ => false
+
   type StringTree = PP.StringTree
   fun layPair(t1,t2) = PP.NODE{start = "(", finish = ")", indent = 1, childsep = PP.RIGHT", ", 
                                children = [t1, t2]}
@@ -206,14 +211,16 @@ struct
                             children = map layMu mus}
   in
     fun layout_declared_lvar{lvar, sigma = ref sigma, place} =
+      if not(!Flags.print_word_regions) andalso isWordRegion place then
+         PP.NODE{start = Lvar.pr_lvar lvar ^ ": ", finish = "",
+                indent = 5, childsep = PP.NOSEP, children = [R.mk_lay_sigma false sigma]}
+      else
          PP.NODE{start = Lvar.pr_lvar lvar ^ ": (", finish = ")",
                 indent = 5, childsep = PP.RIGHT",", children = [R.mk_lay_sigma false sigma,
                                                              Eff.layout_effect place]}
 
-    fun layout_declared_lvar'{lvar, compound, create_region_record, sigma = ref sigma, place} =
-         PP.NODE{start = Lvar.pr_lvar lvar ^ ": (", finish = ")",
-                indent = 5, childsep = PP.RIGHT",", children = [R.mk_lay_sigma false sigma,
-                                                             Eff.layout_effect place]}
+    fun layout_declared_lvar'{lvar, compound, create_region_record, sigma, place} =
+      layout_declared_lvar{lvar=lvar,sigma=sigma,place=place}
 
     fun layout_declared_excon(excon,mu_opt) = PP.LEAF(Excon.pr_excon(excon))
 
@@ -280,7 +287,8 @@ old*)
          let val sigma_t = R.mk_lay_sigma' omit_region_info (alphas, rhos, epss, tau)
              val start:string = Lvar.pr_lvar lvar ^ " " ^
                                  (if !Flags.print_types then ":" else "")
-             val sigma_rho_t = if !Flags.print_regions andalso !Flags.print_types then 
+             val sigma_rho_t = if !Flags.print_regions andalso !Flags.print_types andalso
+				 (!Flags.print_word_regions orelse not(isWordRegion p)) then 
                                   NODE{start = "(", finish = ")", childsep = RIGHT",", 
                                        indent = 1, 
                                        children = [sigma_t, Eff.layout_effect p]} 

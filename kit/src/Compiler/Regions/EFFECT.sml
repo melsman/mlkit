@@ -1,4 +1,3 @@
-(*$EFFECT *)
 
 signature EFFECT =
 sig

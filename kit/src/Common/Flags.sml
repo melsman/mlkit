@@ -60,7 +60,7 @@ functor Flags (structure Crash : CRASH
     (* Elimination of polymorphic equality *)
     val eliminate_polymorphic_equality = ref true
 
-    val unbox_datatypes         = ref false
+    val unbox_datatypes         = ref true
     val tag_integers            = ref false
     val tag_values              = ref false
 
@@ -68,7 +68,8 @@ functor Flags (structure Crash : CRASH
 
     val DEBUG_REGIONINFERENCE =  ref false
     val print_effects = ref false
-    val print_regions = ref false
+    val print_regions = ref true
+    val print_word_regions = ref false
     val print_types  = ref false
     val warn_on_escaping_rhos = ref false
     val all_multiplicities_infinite = ref false   
@@ -269,10 +270,11 @@ struct
         end 
   and parseRest (input: string list, acc_bind: parse_result) : state =
         let val input1 = drop_spaces input
-        in  case input1 of
-             ";" :: input2 => (input2, rev acc_bind)
-            |"v" :: _ => parseDec(input1, acc_bind)
-            | _ => raise ParseScript "expected 'val' or ';'"
+        in  case input1 
+	      of [] => ([], rev acc_bind) 
+	       | ";" :: input2 => parseRest(input2, acc_bind)
+	       | "v" :: _ => parseDec(input1, acc_bind)
+	       | _ => raise ParseScript "expected 'val', ';', or 'end of file'"
         end;
   
   fun drop_comments (l: string list) : string list =
@@ -482,6 +484,7 @@ struct
      ("eliminate_polymorphic_equality", eliminate_polymorphic_equality),
      ("print_types", print_types),
      ("print_regions", print_regions),
+     ("print_word_regions", print_word_regions),
      ("print_effects", print_effects), 
      ("print_type_name_stamps", print_type_name_stamps), 
      ("all_multiplicities_infinite", all_multiplicities_infinite), 
@@ -961,6 +964,7 @@ struct
 	    mk_toggle ("print type name stamps and attributes", print_type_name_stamps),
 	    mk_toggle ("print effects", print_effects),
 	    mk_toggle ("print regions ", print_regions),
+	    mk_toggle ("print word regions ", print_word_regions),
 	    mk_toggle ("print in K-Normal Form", print_K_normal_forms),
 	    mk_toggle ("ragged right margin in pretty-printing", raggedRight),
 	    mk_int_action (colwidth, "text width")])
@@ -1116,8 +1120,9 @@ struct
 			     (*5.*) test_environment_item,
 			     (*6.*) debug_kit_item,
                              (*7.*) compile_an_sml_file_item,
-			     (*8.*) compile_it_again_item,
-                             (*9.*) gc_item]) ;
+			     (*8.*) compile_it_again_item
+			     (*, (*9.*) gc_item*) 
+			     ]) ;
 
                          (**************************)
                          (* interact               *)
@@ -1129,9 +1134,6 @@ struct
         handle Quit => ()
 	     | Crash.CRASH => (outLine "*** CRASH raised *" ; interact ()) 
 	     | Io s => (outLine ("*** Io \"" ^ s ^ "\" raised *"); interact ())
-(*	     | SML_NJ.Unsafe.CInterface.SystemCall s =>
-	         (outLine ("*** SystemCall \"" ^ s ^ "\" raised *"); interact ())
-*)
 	     | Overflow => (outLine "*** Overflow raised *"; interact ())
 	     | e => (outLine "*** Uncaught exception\nI shall reraise it...\n" ;
 		     raise e ;

@@ -545,6 +545,11 @@ struct
   (* same as in RegionExp)     *)
   (*****************************)
 
+  fun isWordRegion(rho) = 
+        case Eff.get_place_ty rho of
+          SOME Eff.WORD_RT => true
+        | _ => false
+
   type StringTree = PP.StringTree
   fun layPair(t1,t2) = PP.NODE{start = "(", finish = ")", indent = 1, childsep = PP.RIGHT", ", 
                                children = [t1, t2]}
@@ -620,7 +625,8 @@ struct
          let val sigma_t = R.mk_lay_sigma' omit_region_info (alphas, rhos, epss, tau)
              val start:string = Lvar.pr_lvar lvar ^
                                  (if !Flags.print_types then ":" else "")
-             val sigma_rho_t = if !Flags.print_regions andalso !Flags.print_types then 
+             val sigma_rho_t = if !Flags.print_regions andalso !Flags.print_types andalso
+				 (!Flags.print_word_regions orelse not(isWordRegion rho)) then 
                                   NODE{start = "(", finish = ")", childsep = RIGHT",", 
                                        indent = 1, 
                                        children = [sigma_t, Eff.layout_effect rho]} 
@@ -955,13 +961,7 @@ struct
         | SWITCH_C(sw) => layoutSwitch layTrip Con.pr_con sw
         | SWITCH_E(sw) => layoutSwitch layTrip Excon.pr_excon sw
         | FRAME{declared_lvars, declared_excons} =>
-             let val l1 = map (fn {lvar, sigma, place, other} =>
-                               NODE{start = Lvar.pr_lvar lvar ^ ": (", finish = ")",
-                                    indent = 5, childsep = RIGHT",", 
-                                    children = [if !Flags.print_types then 
-                                                   R.mk_lay_sigma omit_region_info sigma
-                                                else LEAF "_",
-                                                Eff.layout_effect place]})
+             let val l1 = map layout_declared_lvar
                               declared_lvars
                  val l2 = map (LEAF o Excon.pr_excon) (map #1 declared_excons)
              in NODE{start = "{|", finish = "|}", indent = 0, childsep = RIGHT ", ", 
@@ -969,6 +969,21 @@ struct
              end
                                     
         | _ => LEAF "pretty-printing of this multiplicity expression not yet implemented"
+
+      and layout_declared_lvar {lvar, sigma, place, other} =
+	if not(!Flags.print_word_regions) andalso isWordRegion place then
+	  NODE{start = Lvar.pr_lvar lvar ^ ": ", finish = "",
+	       indent = 5, childsep = NOSEP, 
+	       children = [if !Flags.print_types then 
+			     R.mk_lay_sigma omit_region_info sigma
+			   else LEAF "_"]}
+	else 
+	  NODE{start = Lvar.pr_lvar lvar ^ ": (", finish = ")",
+	       indent = 5, childsep = RIGHT",", 
+	       children = [if !Flags.print_types then 
+			     R.mk_lay_sigma omit_region_info sigma
+			   else LEAF "_",
+			     Eff.layout_effect place]}
 
       and layTrip(TR(e,RegionExp.Mus mus,rea,ref psi),n) = 
         let val t1 = 

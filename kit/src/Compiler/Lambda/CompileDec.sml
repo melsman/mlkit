@@ -906,27 +906,9 @@ Det finder du nok aldrig ud af.*)
 	     SOME node => node
 	   | NONE => mk_ifeq_node ifeq)
 
-(*KILL 12/01/1998 19:15. tho.:
-    fun mk_success_node (rhs as (_, (_, used_ref as ref false)) : rhs) : node =
-	  (used_ref := true ; mk_node (Success rhs) ("rhs" ^ string_from_rhs rhs))
-      | mk_success_node _ = die "mk_success_node"
-*)
     val fail_edge = NONE
   end (*local*)
 
-(*KILL 12/01/1998 20:57. tho.:
-  fun add_id_to_rhs (id : id) (info : ElabInfo.ElabInfo) (path : path)
-	(declarations_to_be_made : declarations_to_be_made, data) : rhs =
-	(case to_TypeInfo info of
-	   SOME (TypeInfo.VAR_PAT_INFO {tyvars, Type}) =>
-	     let val alphas = map compileTyVar tyvars
-		 val tau = compileType Type
-		 val lvar = new_lvar_from_id id
-	     in
-	       ((id, (lvar, alphas, tau), path) :: declarations_to_be_made, data)
-	     end
-	 | _ => die "add_id_to_rhs")
-*)
 
   type work = pat list * path list * termd list
   type rule = pat * node
@@ -1226,34 +1208,6 @@ in
 	     else compile_node compile_no obj raise_something tau_return_opt env node)
 
   val compile_decdag = compile_edge
-	
-      
-
-(*KILL 13/01/1998 11:27. tho.:
-  fun compile_node_to_function compile_no obj raise_something tau_return env
-	(node : node) =
-	let fun compile_edge NONE = raise_something obj
-	      | compile_edge (SOME node') = compile_jump_to node'
-	    val body = compile_node compile_no obj raise_something env compile_edge node
-	    val Type = ARROWtype ([unitType], [tau_return]) 
-	in {lvar= #lvar node, tyvars=[], Type=Type,
-	    bind=FN {pat = [(Lvars.new_named_lvar "obj", unitType)],
-		     body = body}}
-	(*tyvars=[] because an rhs can never be polymorphic, because we
-	 always use compile_node_to_function to make rhs's; in the case of
-	 valbinds, the ``rhs'' (not really an rhs) is not compiled to a
-	 function (see compile_binding)*)
-	end 
-*)
-(*KILL 13/01/1998 12:17. tho.:
-fun compile_decdag_to_functions  compile_no obj raise_something tau_return env
-	(decdag : edge) =
-	compile_decdag_to_functions0  compile_no obj raise_something tau_return env
-	(decdag : edge) []
-  and compile_decdag_to_functions0  compile_no obj raise_something tau_return env
-	(decdag : edge) functions =
-*)
-
 
   (*reachable edge = the nodes that are reachable from the edge `edge'; so
    `reachable decdag' gives you the nodes of the decdag `decdag'*)
@@ -1413,6 +1367,18 @@ fun compile_decdag_to_functions  compile_no obj raise_something tau_return env
 	  in
 	    mk_node (Success rhs') ("rhs" ^ string_from_rhs' rhs')
 	  end
+
+    fun simple_pat (ATPATpat (_, atpat)) = simple_atpat atpat
+      | simple_pat (TYPEDpat (_, pat, _)) = simple_pat pat
+      | simple_pat _ = NONE
+    and simple_atpat (LONGIDatpat (info, OP_OPT (longid, _))) =
+      (case to_TypeInfo info 
+	 of SOME (TypeInfo.VAR_PAT_INFO _) => (*it is a variable, not a nullary constructor*)
+	   SOME(Ident.decompose0 longid)
+	  | _ => NONE)
+      | simple_atpat (PARatpat (_, pat)) = simple_pat pat
+      | simple_atpat _ = NONE
+
   end(*local*)
 
 
@@ -2240,72 +2206,60 @@ the 12 lines above are very similar to the code below
    in the two situations.  TODO
 
    compile_binding maybe ought to, but does not, use the `topLevel'
-   argument.*)
+   argument.
+   
+   We treat the case where the pattern is a simple variable as a
+   special case; that is, in case we are compiling a binding of the
+   form `vid = <exp>' (where vid does not have constructor status)
+   then we do not call upon the pattern matcher. Instead, we construct
+   the binding manually. ME 1998-08-23
 
+   *)
 
     and compile_binding env (topLevel, pat, exp, (tyvars, Type))
         : CE.CEnv * (LambdaExp -> LambdaExp) =
-    let val decdag = mk_decdag [(pat, mk_success_node (pat, 0))]
-        val f = fn scope =>
-	  let val (tyvars', tau') = compileTypeScheme (tyvars, Type)
-	      val lvar_switch = new_lvar_from_pat pat
-	      val obj = VAR {lvar=lvar_switch, instances=map TYVARtype tyvars'}
-	      fun compile_no (i, env_rhs) = scope
-	      val raise_something = fn obj =>
-		    RAISE (PRIM (EXCONprim Excon.ex_BIND, []), LambdaExp.RaisedExnBind)
-	  in
-	    (case compile_decdag  compile_no obj raise_something NONE env decdag of
-	       ([], lexp) => LET {pat = [(lvar_switch, tyvars', tau')],
-				  bind = compileExp env exp,
-				  scope = lexp}
-	     | _ =>
-		 die "compile_binding: there should only be functions when there are\n\
-		  \shared nodes in the decdag, i.e., nodes that are jumped to by\n\
-		  \more than one node, and there can be no shared nodes in a decdag\n\
-		  \from a valbind, because a valbind only has one rule (one pattern):\n\
-		  \all jumps will either be to a fail node, the single success node,\n\
-		  \or to the ``next'' ifeq node.")
-	  end
-	val env_rhs = env_from_decdag decdag
-    in
-      if exhaustive (reachable decdag) then () else
-	Flags.warn
-	  (report_SourceInfo (DecGrammar.get_info_pat pat)
-	   // line "Pattern not exhaustive.") ;
-      (env_rhs, f)
-    end
-(*KILL 13/01/1998 13:17. tho.:
-	      fun compile_edge NONE = raise_something obj
-		| compile_edge (Some node) =
-		    compile_node compile_no obj raise_something env compile_edge node
-*)
-(*KILL 21/12/1997 18:44. tho.:
-	    pr "\n\ncompile_binding: decdag is:\n";
-	    pr_decdag decdag;
-*)
-(*KILL 16/12/1997 17:26. tho.:
-	      val compile_no = (fn (0, env_rhs) => scope
-		                 | _ => die "compileBinding.compile_no")
-*)
-(*KILL 26/11/1997 16:08. tho.:
-        val decTree = matchCompiler compileTypeScheme
-	  (root, [pat], {warnInexhaustive=false, warnNoBindings=not topLevel})
-	(* Decision tree which takes the root apart according to the pattern. *)
-
-        val env1 = envOfDecTree decTree    (* The identifier environment generated 
-					    * by this (single) pattern. *)
-	val f = fn scope =>
-	  let val exp' = compileExp env exp
-	      val tyvars' = map (TV.lookup "compileBinding") tyvars
-	      val tau' = compileType Type
-	      val exp'' = compileDecTree (CE.declareLvar(root,map TYVARtype tyvars',env))
-		          (decTree, fn _ => scope, raiseBind, true) 
-	  in LET{pat=[(root,tyvars',tau')],
-		 bind=exp',
-		 scope=exp''}
-	  end
-*)
-
+      (case simple_pat pat
+	 of SOME vid => 
+	   let val lvar = Lvars.new_named_lvar (Ident.pr_id vid)
+	       val (tyvars', tau') = compileTypeScheme (tyvars, Type)
+	       val env' = CE.declareVar (vid, (lvar, tyvars', tau'), CE.emptyCEnv) 
+	       val f = fn scope => LET {pat = [(lvar, tyvars', tau')],
+					bind = compileExp env exp,
+					scope = scope}
+	   in (env', f)
+	   end
+	  | NONE => 
+	   let 
+	     val decdag = mk_decdag [(pat, mk_success_node (pat, 0))]
+	     val f = fn scope =>
+	       let val (tyvars', tau') = compileTypeScheme (tyvars, Type)
+		   val lvar_switch = new_lvar_from_pat pat
+		   val obj = VAR {lvar=lvar_switch, instances=map TYVARtype tyvars'}
+		   fun compile_no (i, env_rhs) = scope
+		   val raise_something = fn obj =>
+		     RAISE (PRIM (EXCONprim Excon.ex_BIND, []), LambdaExp.RaisedExnBind)
+	       in
+		 case compile_decdag  compile_no obj raise_something NONE env decdag 
+		   of ([], lexp) => LET {pat = [(lvar_switch, tyvars', tau')],
+					 bind = compileExp env exp,
+					 scope = lexp}
+		    | _ =>
+		     die "compile_binding: there should only be functions when there are\n\
+		      \shared nodes in the decdag, i.e., nodes that are jumped to by\n\
+		      \more than one node, and there can be no shared nodes in a decdag\n\
+		      \from a valbind, because a valbind only has one rule (one pattern):\n\
+		      \all jumps will either be to a fail node, the single success node,\n\
+		      \or to the ``next'' ifeq node."
+	       end
+	     val env_rhs = env_from_decdag decdag
+           in
+	     if exhaustive (reachable decdag) then () else
+	       Flags.warn
+	       (report_SourceInfo (DecGrammar.get_info_pat pat)
+		// line "Pattern not exhaustive.") ;
+	       (env_rhs, f)
+	   end
+	 )
 
    (* compileREC - compile a list of `rec' pattern/expression pairs. The
       patterns must all be variables (and aren't even allowed to be

@@ -4,8 +4,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <sys/times.h>
-
-#include "MlConvert.h"
+#include "Tagging.h"
+#include "String.h"
 
 /* SunOS 4 appears not to have mktime: */
 #if defined(sun) && !defined(__svr4__)

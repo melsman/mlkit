@@ -186,6 +186,11 @@ struct
   
   (* pretty-printing of types *)
 
+  fun isWordRegion(rho) = 
+        case E.get_place_ty rho of
+          SOME E.WORD_RT => true
+        | _ => false
+
   fun leaf s = PP.LEAF s
   fun Node x = PP.NODE x
 
@@ -223,30 +228,28 @@ struct
                          children = [lay_node arreff]} 
               else leaf "->"
 
-    fun lay_tau_rec ty = 
+    fun lay_tau_rec parenthesise ty = 
           case ty of
             TYVAR v => layout_tyvar v
           | FUN(mus1,areff,mus2) =>
-               Node{start = "(", finish = ")", indent = 1,
-                                childsep = PP.NOSEP,
-                    children = 
-                            [layout_arg_res mus1,
-                             layout_arrow_rec areff,
-                             layout_arg_res mus2]
-                   }
+	      let val children = [layout_arg_res mus1, layout_arrow_rec areff, layout_arg_res mus2]
+	      in if parenthesise then
+		   Node{start = "(", finish = ")", indent = 1, childsep = PP.NOSEP, children = children}
+		 else Node{start="", finish="", indent=1, childsep=PP.NOSEP, children=children}
+	      end
           | CONSTYPE(tyname,[],[],[]) => 
               leaf (TyName.pr_TyName tyname)
           | CONSTYPE(tyname,mu_list,place_list,arreff_list) =>
               if omit_region_info 
               then 
-                let val mu_tree =  layout_tuple lay_mu_rec mu_list
+                let val mu_tree =  layout_tuple (lay_mu_rec true) mu_list
                 in Node{start = "", finish = "", indent = 0, 
                           childsep = PP.RIGHT " ",
                           children = [mu_tree,   
                                       leaf (TyName.pr_TyName tyname)]}
                 end
               else
-                let val mu_tree =  layout_list lay_mu_rec mu_list
+                let val mu_tree =  layout_list (lay_mu_rec true) mu_list
                     val rho_tree = layout_nodes place_list
                     val effect_tree = layout_list lay_node arreff_list
                     val arguments_tree =
@@ -260,19 +263,21 @@ struct
                 end
           | RECORD [] => leaf "unit"
           | RECORD mu_list =>
-                  Node{start = "(", finish = ")", 
-                       childsep = PP.RIGHT "*", indent = 1,
-                       children = map lay_mu_rec mu_list}
-    and lay_mu_rec (tau,rho)= 
-          if omit_region_info then
-            lay_tau_rec tau
-          else
-            layout_pair (lay_tau_rec tau, lay_node rho)
+		if parenthesise then Node{start = "(", finish = ")", childsep = PP.RIGHT "*", indent = 1,
+					 children = map (lay_mu_rec true) mu_list}
+		else Node{start = "", finish = "", childsep = PP.RIGHT "*", indent = 1,
+			  children = map (lay_mu_rec true) mu_list}
 
-    and layout_arg_res [mu] = lay_mu_rec mu
-      | layout_arg_res mus = layout_list lay_mu_rec mus
+    and lay_mu_rec parenthesise (tau,rho)= 
+      if omit_region_info orelse (not(!Flags.print_word_regions) 
+				  andalso isWordRegion rho) then
+	lay_tau_rec parenthesise tau
+      else layout_pair (lay_tau_rec false tau, lay_node rho)
+
+    and layout_arg_res [mu] = lay_mu_rec true mu
+      | layout_arg_res mus = layout_list (lay_mu_rec true) mus
   in
-    (lay_tau_rec, lay_mu_rec)
+    (lay_tau_rec false, lay_mu_rec false)
   end;
 
   (* unification *)
@@ -350,11 +355,6 @@ struct
           List.all   (fn f => not(!(E.get_visited f))) free
             footnote List.apply (fn b => E.get_visited b := false) bound
       end
-
-  fun isWordRegion(rho) = 
-        case E.get_place_ty rho of
-          SOME E.WORD_RT => true
-        | _ => false
 
   fun free_puts(FORALL(alphas,rhos,epss,tau)) =
       let val annotations = ann_ty tau []

@@ -1,4 +1,3 @@
-(*$Effect: DIGRAPH PRETTYPRINT REPORT CRASH EFFECT FLAGS OrderFinMap*)
 
 functor Effect(structure G: DIGRAPH
                structure Crash: CRASH
@@ -18,8 +17,8 @@ struct
   (* Add some dynamic flags for pretty-printing region variables. *) 
   
   val add_entry = fn (s, s', r) => Flags.add_flag_to_menu (["Layout"], s, s', r)
-  val print_rho_levels = ref true
-  val print_rho_types = ref true
+  val print_rho_levels = ref false
+  val print_rho_types = ref false
   val entries = [("print_rho_levels", "print levels of region variables", print_rho_levels),
 		 ("print_rho_types", "print runtime types of region variables", print_rho_types)]
   val _ = List.apply add_entry entries
@@ -108,7 +107,9 @@ struct
 		    else "") ^ 
 		   (if !print_rho_levels then "(" ^ show_level level ^ ")" 
 		    else "")^
-                   (case put of SOME _ => "$" | NONE => ""))
+                   (if !print_rho_types then 
+		      case put of SOME _ => "$" | NONE => ""
+		    else ""))
 
   fun transparent(UNION _) = true
     | transparent _     = false

@@ -385,7 +385,8 @@ StringDesc *concatString(int rAddr, StringDesc *str1, StringDesc *str2) {
 }
 
 /*----------------------------------------------------------------*
- * printString: Print all fragments in a string one at a time.    *
+ * printString: Print all fragments in a string one at a time     *
+ * and do a flush.                                                *
  *----------------------------------------------------------------*/
 void printString(StringDesc *str) {
 
@@ -403,6 +404,7 @@ void printString(StringDesc *str) {
     printf("Fragment at %8x: %s\n",fragPtr, cString);
     #endif
   }
+  fflush(stdout);
 }
 
 /*-------------------------------------------------------------*
@@ -619,7 +621,7 @@ int *explodeString(int rAddr2, /*int rAddr3,*/ StringDesc *str) {
 #endif
 
   if (sizeStringDefine(str) == 0)
-    makeNil(res)
+    makeNIL(res)
   else {
     /* First char is special, because we have to return a ptr to it. */
     fragPtr = &(str->sf);
@@ -641,7 +643,7 @@ int *explodeString(int rAddr2, /*int rAddr3,*/ StringDesc *str) {
       }
       i=0; /* Start with first character in the following fragments. */
     }
-    makeNil(consPtr)
+    makeNIL(consPtr)
     second(pair) = (int) consPtr;
   }
 
@@ -666,7 +668,7 @@ int *explodeString(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *str) {
 #endif
 
   if (sizeStringDefine(str) == 0)
-    makeNil(rAddr1, res)
+    makeNIL(rAddr1, res)
   else {
     /* First char is special, because we have to return a ptr to it. */
     fragPtr = &(str->sf);
@@ -693,7 +695,7 @@ int *explodeString(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *str) {
       }
       i=0; /* Start with first character in the following fragments. */
     }
-    makeNil(rAddr1, consPtr)
+    makeNIL(rAddr1, consPtr)
     second(pair) = (int) consPtr;
   }
 
@@ -911,7 +913,7 @@ int *explodeStringProfiling(int rAddr2, /*int rAddr3,*/ StringDesc *str, int pPo
 #endif
 
   if (sizeStringDefine(str) == 0)
-    makeNil(res)
+    makeNIL(res)
   else {
     /* First char is special, because we have to return a ptr to it. */
     fragPtr = &(str->sf);
@@ -933,7 +935,7 @@ int *explodeStringProfiling(int rAddr2, /*int rAddr3,*/ StringDesc *str, int pPo
       }
       i=0; /* Start with first character in the following fragments. */
     }
-    makeNil(consPtr)
+    makeNIL(consPtr)
     second(pair) = (int) consPtr;
   }
 
@@ -959,14 +961,14 @@ int *explodeStringProfiling(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *
 #endif
 
   if (sizeStringDefine(str) == 0)
-    makeNilProfiling(rAddr1, res, pPoint)
+    makeNILProf(rAddr1, res, pPoint)
   else {
     /* First char is special, because we have to return a ptr to it. */
     fragPtr = &(str->sf);
     allocRecordMLProf(rAddr2, 2, pair, pPoint);
     first(pair) = convertIntToML (*(char *)(fragPtr+1)); 
 /*    first(pair) = (int) makeCharProfiling(rAddr3, *(char *)(fragPtr+1), pPoint);   08/07/1997 23:15. tho.*/
-    makeCONSProfiling(rAddr1, pair, consPtr, pPoint);
+    makeCONSProf(rAddr1, pair, consPtr, pPoint);
     res = consPtr;
     i = 1;
     for (;fragPtr;fragPtr=fragPtr->n) {
@@ -975,13 +977,13 @@ int *explodeStringProfiling(int rAddr1, int rAddr2, /*int rAddr3,*/ StringDesc *
 	allocRecordMLProf(rAddr2, 2, tpair, pPoint);
 	first(tpair) = convertIntToML (*ch++);
 /*	first(tpair) = (int) makeCharProfiling(rAddr3, *ch++, pPoint);  08/07/1997 23:16. tho.*/
-	makeCONSProfiling(rAddr1, tpair, consPtr, pPoint);
+	makeCONSProf(rAddr1, tpair, consPtr, pPoint);
 	second(pair) = (int) consPtr;
 	pair = tpair;
       }
       i=0; /* Start with first character in the following fragments. */
     }
-    makeNilProfiling(rAddr1, consPtr, pPoint)
+    makeNILProf(rAddr1, consPtr, pPoint)
     second(pair) = (int) consPtr;
   }
 

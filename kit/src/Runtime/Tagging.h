@@ -84,6 +84,7 @@
 
 #if TAG_VALUES
 #define mkTagRecordML(recAddr, size)  (*((int *)recAddr) = (size)*8+valueTagRecord)
+#define elemRecordML(recAddr, offset) (*((int *)(recAddr)+(offset+1)))
 #define storeElemRecordML(recAddr, offset, mlVal) (*(((int *)recAddr)+(offset+1))=(mlVal))
 #define allocRecordML(rAddr, size, recAddr) {recAddr=alloc(rAddr, size+1);\
         				     mkTagRecordML(recAddr, size);}
@@ -102,6 +103,7 @@
 
 #else /* don't tag values */
 #define mkTagRecordML(recAddr, size)
+#define elemRecordML(recAddr, offset) (*((int *)(recAddr)+(offset)))
 #define storeElemRecordML(recAddr, offset, mlVal) (*(((int *)recAddr)+(offset))=(mlVal))
 #define allocRecordML(rAddr, size, recAddr) {recAddr=alloc(rAddr, size);}
 #define first(x)   (*(int *)(x))
@@ -117,50 +119,5 @@
 #endif /*PROFILING*/
 
 #endif /*NO TAG_VALUES*/
-
-/*----------------------------------------------------------------*
- * Operations on Lists                                            *
- *----------------------------------------------------------------*/
-
-#define contag(x)  (*(int *)x)            /* Constructor tag of a value.   */
-#define conarg(x)  (*((int *)(x)+1))      /* Constructor arg of a value.   */
-#define NIL        (8*0+valueTagCon0)     /* Tag for a NIL constructor.    */
-#define CONS       (8*0+valueTagCon1)     /* Tag for a CONS constructor.   */
-#define isNIL(x)   (contag(x) == NIL)     /* Is the con. tag NIL.          */
-#define isCONS(x)  (contag(x) == CONS)    /* Is the con. tag CONS.         */
-
-#define makeNIL(rAddr, ptr) {ptr = alloc(rAddr, 1);\
-                             contag(ptr) = NIL;}
-
-#define makeCONS(rAddr, pair, ptr) {ptr = alloc(rAddr, 2);\
-				    contag(ptr) = CONS;\
-				    conarg(ptr) = (int) pair;}
-
-#ifdef PROFILING
-
-#define sizeObjectDesc (sizeof(ObjectDesc)/4)
-
-#define makeNILProf(rAddr, ptr, pPoint) {\
-  ptr = alloc(rAddr, 1+sizeObjectDesc);\
-  ((ObjectDesc *) ptr)->atId = pPoint; \
-  ((ObjectDesc *) ptr)->size = 1; /* Size is one word. */ \
-  ptr = (int *)(((ObjectDesc *)ptr)+1); \
-  contag(ptr) = NIL;\
-}
-
-#define makeCONSProf(rAddr, pair, ptr, pPoint) {\
-  ptr = alloc(rAddr, 2+sizeObjectDesc);\
-  ((ObjectDesc *) ptr)->atId = pPoint; \
-  ((ObjectDesc *) ptr)->size = 2; /* Size is two words. */ \
-  ptr = (int *)(((ObjectDesc *)ptr)+1); \
-  contag(ptr) = CONS; \
-  conarg(ptr) = (int) pair; \
-}
-
-#endif /*PROFILING*/
-
-#define hd(x)      (first(conarg(x)))     /* Head of a list.               */
-#define tl(x)      (second(conarg(x)))    /* Tail of a list.               */
-
 
 #endif /*TAGGING*/

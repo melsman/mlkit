@@ -418,20 +418,22 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun Basis_enrich a = Basis.enrich a
     fun Basis_agree a = Basis.agree a
 
-    fun build_punit(prjid,B: TopBasis, punit : string, clean : bool) : Basis * modcode * bool =  (* the bool is a `clean' flag *)
+    fun build_punit(prjid,B: TopBasis, punit : string, clean : bool) : Basis * modcode * bool * Time.time =
+      (* The bool is a `clean' flag;  *)
       let
           val funid = ManagerObjects.funid_from_filename punit
-          val funstamp_now = 
-	    case FunStamp.from_filemodtime punit  (*always get funstamp before reading content*)
-	      of SOME fs => fs
-	       | NONE => error ("The program unit " ^ quot punit ^ " does not exist")
+          val (modtime, funstamp_now) = 
+	    case (SOME(OS.FileSys.modTime punit)
+		  handle _ => NONE, FunStamp.from_filemodtime punit)   (*always get funstamp before reading content*)
+	      of (SOME modtime, SOME fs) => (modtime, fs)
+	       | _ => error ("The program unit " ^ quot punit ^ " does not exist")
 	  exception CAN'T_REUSE
       in (case (Repository_lookup_elab (prjid,funid), Repository_lookup_int (prjid,funid))
 	    of (SOME(_,(infB, elabB, longstrids, (opaq_env,dom_opaq_env), names_elab, infB', elabB', opaq_env')), 
 		SOME(_,(funstamp, elabE, intB, _, names_int, modc, intB'))) =>
 	      if FunStamp.eq(funstamp,funstamp_now) andalso ModCode.exist modc then
 		(if clean then (print ("[reusing code for: \t" ^ punit ^ "]\n");
-				(Basis.mk(infB',elabB',opaq_env',intB'), modc, clean))
+				(Basis.mk(infB',elabB',opaq_env',intB'), modc, clean, modtime))
 		 else if
 		        let
 			  val B_im = Basis.mk(infB,elabB,opaq_env,intB)
@@ -446,7 +448,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			in (if res then () else remark_names() ; res)
 			end then 
 	  		          (print ("[reusing code for: \t" ^ punit ^ " *]\n");
-				   (Basis.mk(infB',elabB',opaq_env',intB'), modc, clean))
+				   (Basis.mk(infB',elabB',opaq_env',intB'), modc, clean, modtime))
 
 		 else raise CAN'T_REUSE)
 
@@ -456,7 +458,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
 	handle CAN'T_REUSE =>
 	  let val (Bex, modc) = parse_elab_interp (prjid,B, funid, punit, funstamp_now)
-	  in (Bex, modc, false) (*not clean*)
+	  in (Bex, modc, false, modtime) (*not clean*)
 	  end
       end 
 
@@ -487,20 +489,25 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      end handle OS.SysErr _ => error ("I cannot access directory " ^ quot dir)
       end
 
-    fun build_body (prjid, B:TopBasis, Bacc, body, clean) : TopBasis * Basis * modcode * bool =  (* the bool is a `clean' flag *)
+    fun build_body (prjid, B:TopBasis, Bacc, body, clean, modtimes) 
+      : TopBasis * Basis * modcode * bool * (string * Time.time) list =  
+      (* The bool is a `clean' flag; it is true if all entries 
+       * of the project so far have been reused. *)
+      (* The (string * Time.time) list provides modification times for
+       * each of the source files mentioned in the project. *)
       case body
-	of SEQbody [] => (B, Bacc, ModCode.empty, clean)
+	of SEQbody [] => (B, Bacc, ModCode.empty, clean, modtimes)
 	 | SEQbody (body :: bodys) => 
-	  let val (B1, B1acc, modc1, clean) = build_body (prjid, B, Bacc, body, clean)
-	      val (B2, B2acc, modc2, clean) = build_body (prjid, B1, B1acc, SEQbody bodys, clean)
-	  in (B2, B2acc, ModCode.seq(modc1, modc2), clean)
+	  let val (B1, B1acc, modc1, clean, modtimes) = build_body (prjid, B, Bacc, body, clean, modtimes)
+	      val (B2, B2acc, modc2, clean, modtimes) = build_body (prjid, B1, B1acc, SEQbody bodys, clean, modtimes)
+	  in (B2, B2acc, ModCode.seq(modc1, modc2), clean, modtimes)
 	  end
 	 | LOCALbody _ => error "local not implemented"
 	 | UNITbody unitid => 
 	  let val {cd_old, file=unitid} = change_dir unitid
 	  in let val _ = maybe_create_PM_dir()
-	         val (B', modc', clean) = build_punit (prjid, B, unitid, clean)
-	     in cd_old(); (Basis_plus'(B,B'), Basis_plus(Bacc,B'), modc', clean)
+	         val (B', modc', clean, modtime) = build_punit (prjid, B, unitid, clean)
+	     in cd_old(); (Basis_plus'(B,B'), Basis_plus(Bacc,B'), modc', clean, (unitid,modtime)::modtimes)
 	     end handle E => (cd_old(); raise E)
 	  end
 	
@@ -572,6 +579,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun projectmap_add (prjid, absprjid, extobjs, basis, map) : projectmap =
       (prjid, absprjid, extobjs, basis) :: map
 
+    fun projectmap_plus (projectmap1:projectmap, projectmap2) : projectmap =
+      projectmap1 @ projectmap2
 
     (* Add basislib project if auto import is enabled *)
 
@@ -591,10 +600,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 pmap : projectmap, extobjs : extobj list, clean : bool} =
 
       let val {cd_old, file=prjid} = change_dir longprjid
-	  val _ = if member prjid cycleset then
-	             error ("There is a cycle in your project; problematic project identifier: " ^ quot prjid)
-		  else ()
-      in let val prj as {imports, extobjs, body} = parse_project prjid
+      in let val _ = if member prjid cycleset then
+	               error ("There is a cycle in your project; problematic project identifier: " ^ quot prjid)
+		     else ()
+	     val prj as {imports, extobjs, body} = parse_project prjid
 	     val imports = maybe_add_basislib prjid imports
 	     val prjid_date_file = pmdir() ^ prjid ^ ".date"
 	     val clean = older (OS.FileSys.modTime prjid, OS.FileSys.modTime prjid_date_file) handle _ => false
@@ -626,7 +635,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 				in older (OS.FileSys.modTime prjid'_date, OS.FileSys.modTime prjid_date_file) handle _ => false
 				end) clean imports
 
-	     val (_, B', modc', clean) = build_body (prjid, B, Basis.empty, body, clean)
+	     val (_, B', modc', clean, modtimes) = build_body (prjid, B, Basis.empty, body, clean, [])
 	 in 
 	    if clean then () else (maybe_create_PM_dir();
 				   output_date_file prjid_date_file);
@@ -661,6 +670,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       let val _ = Repository.recover()
 	  val emitted_files = EqSet.fromList (Repository.emitted_files())
 	  val prjid = OS.Path.base (OS.Path.file filepath)
+	    (* make sure that the source file is indeed recompiled *)
+	  val _ = Repository.delete_entries (prjid, ManagerObjects.funid_from_filename filepath)
 	  val _ = maybe_create_PM_dir()
 	  val (modc_basislib, basis_basislib, extobjs_basislib) = 
 	    if !Flags.auto_import_basislib then 
@@ -668,7 +679,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      in (res_modc, Basis.plus'(Basis.initial(),res_basis), extobjs)
 	      end
 	    else (ModCode.empty, Basis.initial(), [])
-	  val (_, _, modc_file, _) = build_body(prjid, basis_basislib, Basis.empty, UNITbody filepath, false)
+	  val (_, _, modc_file, _, _) = build_body(prjid, basis_basislib, Basis.empty, UNITbody filepath, false, [])
 	  val modc = ModCode.seq(modc_basislib, modc_file)
       in  
 	ModCode.mk_exe(prjid, modc, extobjs_basislib, "run")

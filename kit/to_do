@@ -11,9 +11,21 @@ TO BE FIXED BY: (MT|MAEL|FAXE)
 
 WAIT
 
+Implement some kind of project reuse; it currently takes too long for
+the manager to find out that the code for the basis library can be
+reused. The problem is that the result basis for the basis library
+project is reconstructed, from the result bases for the individual
+sources of the library, every time the project is reused.
 
-Eliminate generated object code that is never used. We cannot
-eliminate object code for units with side-effects, however.
+It seems that kam variables are local to each target unit; currently,
+however, we allocate a global store (in data space) for these
+variables and this store grows, infinitely, when the project is
+recompiled. Instead, we can associate spilled registers to DataLabel's
+(KAM terminology). DataLabel's are already supported by
+KbpToHpPa. Only a few changes seem necessary (e.g., space is currently
+allocated (statically) for each store into the slot.) We also need to
+modify register allocation, such that spilled variables are associated
+with DataLabel's.
 
 Variables that occur free in a program unit are associated with
 labelled slots in the data segment of the final executable; thus,
@@ -39,16 +51,6 @@ functors. Syntax:
           |  file.o                              precompiled object
           |  file.grm                            yacc source file
           |  file.lex                            lex source file
-
-It seems that kam variables are local to each target unit; currently,
-however, we allocate a global store (in data space) for these
-variables and this store grows, infinitely, when the project is
-recompiled. Instead, we can associate spilled registers to DataLabel's
-(KAM terminology). DataLabel's are already supported by
-KbpToHpPa. Only a few changes seem necessary (e.g., space is currently
-allocated (statically) for each store into the slot.) We also need to
-modify register allocation, such that spilled variables are associated
-with DataLabel's.
 
 Allow for adjustment of in-lining strategy in Optimiser. Add a
 function add_int_entry_to_menu, or so, to Flags.
@@ -77,14 +79,9 @@ system not tested for resetting automatically (in CompLamb);
 currently, the user must do the resetting in the C function. Is there
 a reason?
 
-Delete the TestEnv/Output_X_on_Y directories and replace them by one
-directory ExpectedOutput. The output from running the tests should be
-the same on different machines. Moreover, the output should be the
-same even if profiling is enabled (profiling messages should be
-directed to stdErr).
-
 
 DONE
+
 
 
 ERROR:
@@ -94,6 +91,17 @@ PRIORITY: (HIGH|MEDIUM|LOW)
 REPORTED BY: (MT|MAEL|FAXE) + date
 TO BE FIXED BY: (MT|MAEL|FAXE)
 FIXED BY: (MT|MAEL|FAXE) + date
+
+
+[(ME 1998-08-21): Eliminate generated object code that is never used
+by applying a backward use-analysis. We cannot eliminate object code
+for units with side-effects, however.]
+
+[(ME 1998-08-21): Delete the TestEnv/Output_X_on_Y directories and
+replace them by one directory expected_output. The output from running
+the tests should be the same on different machines. Moreover, the
+output should be the same even if profiling is enabled (profiling
+messages should be directed to stdErr).]
 
 
 

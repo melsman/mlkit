@@ -344,7 +344,7 @@ shows a possible progression of the region stack.
 \begin{figure}
 \hrule
 \begin{center}
-\begin{picture}(70,50)(0,0)
+\begin{picture}(70,45)(0,0)
 \put(0,5){\framebox(10,25){}}
 \put(5,0){\makebox(0,0){$\boxml{r}_0$}}
 \put(15,5){\framebox(10,5){}}
@@ -605,27 +605,26 @@ achieved by organising the main loop of the program as follows:
 (*8*) fun iter n = #2(nthgen'(n,gun()))
   end
 \end{verbatim}
-Here \boxml{nthgen'} \index{nthgen@{\tt nthgen}}is the main loop of the program. It takes a pair as
-argument; the first component of the pair indicates the number of iterations
-desired, while the second, \boxml{g}, is the current generation. The use of
-the {\tt as} pattern in line 1 forces the argument and the result of 
-\boxml{nthgen'} to be in the same regions. Such a function is called
-a \index{region endomorphism}{\em region endomorphism}. In line 3, we compute a fresh
-generation, which lies in fresh regions, as it happens. Having printed the
-generation (line 4) we then reset the regions containing {\tt g}. The
-compiler checks that this is safe. Then, in line 6 we copy {\tt g'} and
-the target of this copy must be the regions of {\tt g}, 
-because \boxml{nthgen'} is a region endomorphism (see Figure~\ref{doublecopy.fig}). 
-All in all, we have achieved
-that at most two generations are live at the same time (a fact that can
-be checked by inspecting the region annotated code, if one feels 
-passionately about it).\footnote{The entire life program is available in
-{\tt kitdemo/life.sml}, \index{life@{\tt life}}project \boxml{kitdemo/life.pm}. (Running projects is
-described in Section~\ref{tryit.sec}.) Run with n=10000 on the HP PA-RISC, 
-the memory consumption (program + data) 
-quickly reaches 192Kb and it stays there for the
-remaining generations. The size of the executable program, which
-includes the runtime system, is 164Kb.} 
+Here \boxml{nthgen'} \index{nthgen@{\tt nthgen}}is the main loop of
+the program. It takes a pair as argument; the first component of the
+pair indicates the number of iterations desired, while the second,
+\boxml{g}, is the current generation. The use of the {\tt as} pattern
+in line 1 forces the argument and the result of \boxml{nthgen'} to be
+in the same regions. Such a function is called a \index{region
+  endomorphism}{\em region endomorphism}. In line 3, we compute a
+fresh generation, which lies in fresh regions, as it happens. Having
+printed the generation (line 4) we then reset the regions containing
+{\tt g}. The compiler checks that this is safe. Then, in line 6 we
+copy {\tt g'} and the target of this copy must be the regions of {\tt
+  g}, because \boxml{nthgen'} is a region endomorphism (see
+Figure~\ref{doublecopy.fig}).  All in all, we have achieved that at
+most two generations are live at the same time (a fact that can be
+checked by inspecting the region annotated code, if one feels
+passionately about it).\footnote{The source file for the life program
+  is \boxml{kitdemo/life.sml}\index{life@{\tt life}}. Running programs
+  is described in Section~\ref{tryit.sec}. When run with n=10000 on
+  the HP PA-RISC, the memory consumption quickly reaches 180Kb and
+  stays there for the remaining generations.}
 \begin{figure}[t]
 \hrule
 \begin{center}
@@ -725,7 +724,7 @@ however, one needs to master the methods described in Part~\ref{understanding.se
 
 
 \chapter{Making Regions Concrete}
-In this chapter we give a brief overview of how the abstract
+In this chapter, we give a brief overview of how the abstract
 memory model presented in the last chapter is mapped down to conventional
 memory. In doing so, we shall introduce notation and concepts that will be
 used extensively in what follows.
@@ -752,7 +751,7 @@ An infinite region is represented as a linked list of fixed-size \index{region p
 The runtime system maintains a free list of such pages. An infinite region
 is represented by a \index{region descriptor}{\em region descriptor}, which is a record kept on
 the runtime stack. The region descriptor contains two pointers: one to
-the first and one to the last region page in the linked list which 
+the first and one to the last region page in the linked list that
 represents the region. Allocating an infinite region involves getting a
 page from the \index{free list}free list and pushing a region descriptor 
 onto the runtime
@@ -773,30 +772,32 @@ by $0<1<\infty$. Multiplicities annotate
 binding occurrences of region variables. An expression of the form
 $$\boxml{letregion $\rho:m$ in $e$ end}$$
 where $m$ is a multiplicity,
-gives rise to an allocation of a region which is finite if $m<\infty$, and
+gives rise to an allocation of a region, which is finite if $m<\infty$, and
 infinite otherwise.
+
 \section{Runtime Types of Regions}
 \label{runtimetypes.sec}
-Every region has a \index{runtime type}runtime type. The following runtime types
-exist: {\tt real}, {\tt string} and {\tt top}. Not surprisingly, regions of runtime type
-{\tt real} and {\tt string} contain values of ML type {\tt real} and
-{\tt string}, respectively. Regions with runtime type {\tt top} can contain
-all other forms of allocated values, i.e., constructed values, tuples, records
-and function closures.
+Every region has a \index{runtime type}runtime type. The following
+runtime types exist: {\tt real}, {\tt string} and {\tt top}. Not
+surprisingly, regions of runtime type {\tt real} and {\tt string}
+contain values of ML type {\tt real} and {\tt string}, respectively.
+Regions with runtime type {\tt top} can contain all other forms of
+allocated values, that is, constructed values, tuples, records, and
+function closures.
 
 It is often, but not always, the case that all values that reside in the
 same region have the same type (considered as representations of ML values).
  
 \section{Allocation and De-Allocation of Regions}
 \label{aldeal.sec}
-The analysis which decides when regions should be allocated and de-allocated
+The analysis that decides when regions should be allocated and de-allocated
 is called {\em region inference}. Region inference inserts 
 several forms of memory management directives
 as directives into the program.
 The target language of region inference is called \index{RegExp@$\RegExp$}$\RegExp$.
 
 In $\RegExp$, 
-region allocation and de-allocation are explicit, they are always paired 
+region allocation and de-allocation are explicit, they are always paired,
 and they follow
 the syntactical structure of the source program. 
 If $e$ is an expression in $\RegExp$, then so is\index{letregion@{\tt letregion}}
@@ -822,7 +823,7 @@ other Standard ML implementation.
 \index{Kit Abstract Machine}The Kit contains a virtual machine, called
 the {\em Kit Abstract Machine} (KAM, for short), which details the
 above ideas. The KAM is a register machine with one linear address
-space which it partitions into a stack and a heap. The heap holds
+space, which is partitioned into a stack and a heap. The heap holds
 region pages, all of the same size.  The KAM has simple RISC-like
 instructions, for example for moving word-size data between two
 registers or between a register and a memory location.  More complex
@@ -839,14 +840,14 @@ stack for spilling. However, register allocation will not be described in this r
 %access. 
 Also, we do not discuss the interaction between hardware cache strategies and
 the code generated by the Kit. While both can be important in practice, we do not want
-to go to that level of detail. Our primary concern is with establishing a model which
+to go to that level of detail. Our primary concern is with establishing a model that
 the user can safely use as a worst-case model of what happens at runtime.
 
 \section{Intermediate Languages}
 The Kit compiles Standard ML programs via a sequence of typed intermediate 
-languages into  KAM instructions, which in turn are compiled into ANSI C or to HP 
+languages into  KAM instructions, which in turn are compiled into ANSI C or into HP 
 PA-RISC assembly language.
-The intermediate languages
+The intermediate languages that
 we shall refer to in the following are (in the order in which they are used in the
 compilation process):
 \begin{description}
@@ -861,58 +862,58 @@ unless instructed otherwise.
 is also annotated with a multiplicity (Section~\ref{fininf.sec}) in addition to a runtime type.
 Again, the default is that the runtime type is not printed. The terms of $\MulExp$ are polymorphic 
 in the information that annotate the nodes of the terms. That way, $\MulExp$ can be used
-as a common intermediate language for a number of the internal analyses of the compiler which
+as a common intermediate language for a number of the internal analyses of the compiler, which
 add more and more information on the syntax tree.
-The analysis which computes multiplicities is called the \index{multiplicity analysis}{\em multiplicity analysis}.
+The analysis that computes multiplicities is called the \index{multiplicity analysis}{\em multiplicity analysis}.
 \end{description}
 %The Kit compiles SML records into $\Lam$-tuples and compiles 
 %SML-matches and other constructs containing patterns
 %into simpler $\Lam$-constructs. 
 
-The Kit contains a \index{Lambda optimiser}{\em $\Lam$-optimiser}
-which will happily rewrite $\Lam$-terms when it is clear that this results in faster programs
-(as long as the transformations cannot lead to increased space usage).
+The Kit contains a \index{Lambda optimiser}$\Lam$ optimiser,
+which will happily rewrite $\Lam$ terms when it is clear that this rewrite results in faster programs
+(as long as the rewrite cannot lead to increased space usage).
 
-Region inference takes $\Lam$ to be the source language. Region Inference happens after
-the lambda-optimiser has had a go at the lambda term. 
-Therefore, it wasn't really true when we said that region inference simply annotates source
+Region inference takes $\Lam$ to be the source language. Region inference happens after
+the $\Lam$ optimiser has had a go at the $\Lam$ term. 
+Therefore, it was not really true when we said that region inference simply annotates source
 programs;  we ignored the translation from SML to $\Lam$ and
-the $\Lam$ optimiser. Thus one has to get used to (mostly minor) differences between
+the $\Lam$ optimiser. Thus, one has to get used to (mostly minor) differences between
 the source language and the intermediate languages of the compiler if one wants to read
 programs in their intermediate forms.
 
 When we want to show the result of the analyses, we usually show a $\MulExp$ expression.
 
 \section{Runtime System}
-The \index{runtime system}runtime system is written in C. It is small (less than 100Kb 
+The \index{runtime system}runtime system is written in C. It is small (less than 50Kb 
 of code when compiled).
 It contains operations for allocating and de-allocating regions, extending regions,
-obtaining more space from the operating system, recording region profiling information and performing
-low-level operations on strings.
+obtaining more space from the operating system, recording region profiling information, and performing
+low-level operations for use by the SML Basis Library.
 
-It is possible to call \index{C!calling}C functions from ML Kit code. The Kit takes care of the memory
-allocation, by allocating regions before the call and de-allocating regions after the
-call. The C functions can build ML data structures such as lists through abstract operations provided
-by the Kit runtime system. C functions have to obey certain restrictions,  
-see Chapter~\ref{ccall.sec}
-for further details.
+It is possible to call \index{C!calling}C functions from ML Kit code.
+The Kit takes care of the memory allocation, by allocating regions for
+the result of the call before the call and de-allocating the regions
+at some point after the call. The C functions can build ML data
+structures such as lists through abstract operations provided by the
+Kit runtime system. See Chapter~\ref{ccall.sec} for further details.
 
 \part{Understanding Regions}
 \label{understanding.sec}
 \chapter{Records and Tuples}
-In this chapter we describe construction of \index{record}records and selection of record
+In this chapter, we describe construction of \index{record}records and selection of record
 components. We also use records to introduce  \index{type!region-annotated}{\em region-annotated
-types} and \index{effect}{\em effects} which are crucial for understanding when regions are allocated
+types} and \index{effect}{\em effects}, which are crucial for understanding when regions are allocated
 and de-allocated.
 \section{Syntax}
 As part of the SML to \index{Lambda@$\Lam$}$\Lam$ translation, all SML records and SML tuples are compiled into
-$\Lam$-tuples. The components of $\Lam$-tuples are numbered from left to right, starting from 0.
+$\Lam$ tuples. The components of $\Lam$ tuples are numbered from left to right, starting from 0.
 %$\Lam$ has an operation 
 %\index{select@{\tt SELECT}}$\boxml{SELECT}(i,e)$ 
 %for selecting component number $i$
 %from the $\Lam$-tuple denoted by the $\Lam$-expression $e$.
 Selection is a primitive operation, both in $\Lam$ and in the other
-intermediate languages. This primitive is printed using ML notation 
+intermediate languages. This primitive is printed using SML notation 
 \boxml{\#$i$}. Components are numbered from 0: the $i$th components of
 a tuple of type $\tau_1\ast\ldots\ast\tau_n$ is accessed by
 \boxml{\#$i$}, for $0\leq i\leq n-1$. 
@@ -922,8 +923,8 @@ $$\boxml{(}e_1\boxml{,}\ldots\boxml{,}e_n\boxml{)}$$
 However, the corresponding expression in $\RegExp$ and $\MulExp$ takes the form
 $$\boxml{(}e_1\boxml{,}\ldots\boxml{,}e_n\boxml{) at}\rho$$
 \index{at@{\tt at}}where $\rho$ is a \index{region variable}region variable indicating where the tuple should be put.
-In the case $n=0$,  the $\at\rho$ is not printed, since the empty tuple is not
-allocated: it is just a constant which fits in a \index{register}KAM register.
+In the case $n=0$,  the $\at\rho$ is not printed, because the empty tuple is not
+allocated: it is just a constant that fits in a \index{register}KAM register.
 
 Records are evaluated left to right.
 
@@ -934,24 +935,24 @@ Consider the source program
        val xy = ((),()) 
        val x = #1 xy;
 \end{verbatim}
-Here is the resulting $\MulExp$ program:\footnote{Project: \boxml{kitdemo/proj.pm}, file \boxml{kitdemo/projection.sml}.}
+Here is the resulting $\MulExp$ program:\footnote{Program
+  \boxml{kitdemo/projection.sml}. Running programs is described in
+  Section~\ref{tryit.sec}.}
 \begin{verbatim}
    let val xy = ((), ()) at r1; val x = #0 xy
-   in  {|xy: (_,r1), x: (_,r2)|}
+   in  {|xy: (_,r1), x: _|}
    end 
 \end{verbatim}
-There are several things to note from this example. 
+There are several things to notice from this example. 
 \begin{enumerate}
-\item The $\MulExp$ program contains two free region variables
-      {\tt r1} and {\tt r2}. Note that the construction of the
+\item The $\MulExp$ program contain a free region variable
+      {\tt r1}. Notice that the construction of the
       pair {\tt xy} has been annotated by ``{\tt at r1}'', indicating
-      where the pair should be put. Similarly, {\tt r2} is the
-      place of {\tt x} (although, as we shall see below, this does
-      not denote a real region);
+      where the pair should be put;
 %      Values of type unit are not
  %     stored in regions and hence the {\tt at}-annotations on the
  %     two occurrences of {\tt ()} are not printed.
-\item The expression {\tt \{|xy:(\_,r1), x:(\_,r2)|\}} is
+\item The expression \verb+{|xy: (_,r1), x: _|}+ is
       an example of a \index{frame}{\em frame expression}. A frame enumerates
       the components that are exported from a compilation unit.
 %      It is similar to a record, except that its components
@@ -962,49 +963,50 @@ There are several things to note from this example.
  %     has been suppressed, so one only sees the region variables.
 \end{enumerate}
 \section{Region-Annotated Types}
+\label{reganntypes.sec}
 ML type inference infers a type for every expression in the program.
-Region-inference extends this idea by inferring for each expression a
-\index{type!region-annotated}{\em region-annotated type}. The region-annotated type of an expression
-is the ML type of the expression decorated with extra region information.
-In a region-annotated type, every type constructor (e.g., \boxml{int},
-\boxml{unit} and \boxml{list}) is paired with a region variable, indicating
-where the value is going to be put at runtime.
+Region inference extends this idea by inferring for each expression a
+\index{type!region-annotated}{\em region-annotated type}. The
+region-annotated type of an expression is the ML type of the
+expression decorated with extra region information.  In a
+region-annotated type, every type constructor that represents boxed
+values (e.g., pairs and strings) is paired with a region variable,
+indicating where the value is to be put at runtime. Type constructors
+that represents unboxed values (e.g., integers and booleans) are not
+paired with a region variable.
 
 The following are examples of region-annotated types
 \begin{description}
-\item[\fbox{$(\boxml{int}, \rho)$}] The type of integers in region $\rho$. 
-\item[\fbox{$(\boxml{unit}, \rho)$}] The type of 0-tuples in region $\rho$. 
-Integers and
-0-tuples are represented \index{boxing}unboxed at runtime 
-(rather than being stored in regions).\footnote{To {\em box}
-a value means to store the value in memory and represent it by its address. 
-Values which are kept in registers are said to be {\em unboxed}.}  The types
-{\tt unit}, {\tt bool} and {\tt int} are always decorated 
-with one particular region variable,  \index{r2@{\tt r2}}\boxml{r2}. 
-\item[\fbox{$\bigl((\boxml{int}, \rho_1)\ast (\boxml{string}, \rho_2), \rho_3\bigr)$}] Denotes
-pairs in $\rho_3$ whose first component is an integer in $\rho_1$ and whose second
-component is a string in region $\rho_2$. 
+\item[\fbox{$\boxml{unit}$}] The type of 0-tuples.   Integers, booleans, and 0-tuples are represented \index{boxing}unboxed
+  at runtime (rather than being stored in regions).\footnote{To {\em
+      box} a value means to store the value in memory and represent it
+    by its address.  Values that are kept in registers are said to be
+    {\em unboxed}.}
+\item[\fbox{$(\boxml{string}, \rho)$}] The type of strings in region
+  $\rho$.
+\item[\fbox{$\bigl(\boxml{int} \ast (\boxml{string}, \rho_1), \rho_2\bigr)$}] Denotes
+  pairs in $\rho_2$ whose first component is an integer and whose second
+  component is a string in region $\rho_1$. 
 \end{description}
-A pair of a region-annotated type and a region variable is called a
-``(region-annotated) type and place''.  We use $\mu$ to range over
-types and places\index{type and place}
-$$\mu::=(\tau,\rho)$$
+
+%A pair of a region-annotated type and a region variable is called a
+%``(region-annotated) type and place''.  We use $\mu$ to range over
+%types and places\index{type and place}
+%$$\mu::=(\tau,\rho)$$
 
 One can get the Kit to print the region-annotated types it infers
 for binding occurrences of variables. 
 The above example then becomes
 \begin{verbatim}
-   let val xy:(((unit,r2)*(unit,r2)),r1) = ((), ()) at r1; 
-       val x:(unit,r2) = #0 xy
-   in  {|xy: (((unit,r2)*(unit,r2)),r1), x: (unit,r2)|}
+   let val xy:(unit*unit,r1) = ((), ()) at r1; val x:unit = #0 xy
+   in  {|x: unit, xy: (unit*unit,r1)|}
    end 
 \end{verbatim}
 
 \section{Effects and {\tt letregion}}
 \label{effects.sec}
-Here is an example of an SML program which first creates a pair and
-then selects a component of the pair, after which the pair is garbage:\footnote{Project: \boxml{kitdemo/effect.pm}, 
-file: \boxml{kitdemo/elimpair.sml}.}
+Here is an example of an SML program that first creates a pair and
+then selects a component of the pair, after which the pair is garbage:\footnote{Program \boxml{kitdemo/elimpair.sml}.}
 \begin{verbatim}
      val n = let 
                 val pair = if true then (3+4, 4+5) 
@@ -1015,7 +1017,7 @@ file: \boxml{kitdemo/elimpair.sml}.}
 \end{verbatim}
 The Kit compiles the declaration into the 
 $\MulExp$ program shown in Figure~\ref{elimpair.fig}.\footnote{
-In general, the $\Lam$-optimiser performs various optimisations;
+In general, the $\Lam$ optimiser performs various optimisations;
 elimination of case analyses whose outcome are known statically
 is not one of them.}
 The compiler compiles the program as it is, without reducing the conditional
@@ -1034,7 +1036,7 @@ to its {\tt then} branch.
               in  #0 pair
               end  
            end
-   in  {|n: (_,r2)|}
+   in  {|n: _|}
    end 
 \end{verbatim}
 \caption{Region inference decides that the 
@@ -1055,7 +1057,7 @@ is a multiplicity indicating that there is only one store
 operation into the region. (The \index{multiplicity analysis}multiplicity analysis
 has discovered that there is at most one store from the {\tt then}
 branch and at most one store from the {\tt else} branch and that
-at most one of the branches will be chosen.) Thus the pair will be
+at most one of the branches will be chosen.) Thus, the pair will be
 allocated in a little region on the runtime stack.
 
 But how does the Kit know that it is safe to de-allocate {\tt r7}
@@ -1077,24 +1079,22 @@ In our example, the region inference algorithm considers the sub-expression $e_0
                       ) (*case*) 
               in  #0 pair
               end  \end{verbatim}
-and finds that it has region-annotated type $(\boxml{int}, \boxml{r2})$ and effect
-$$\{\Put(\boxml{r7}), \Get(\boxml{r7}), \Put(\boxml{r2}), \Get(\boxml{r2})\}.$$
-The atomic effects on \index{r2@{\tt r2}}$\boxml{r2}$ stem from the integer operations: all integers
-are put into the same virtual region.
+and finds that it has region-annotated type $\boxml{int}$ and effect
+$\{\Put(\boxml{r7}), \Get(\boxml{r7})\}$.
 
 Whenever a region variable occurs free in the effect of an expression but occurs
 free neither in the region-annotated type of the expression nor in the type of any
-program variable which occurs free in the expression then that region variable denotes
-a region which is only used locally within the expression.  
+program variable that occurs free in the expression then that region variable denotes
+a region that is used only locally within the expression.  
 That this is true is of course far from trivial, but it
 has been proved for a skeletal version of $\RegExp$.  Consequently, 
 when this condition is met, the region inference
-algorithm wraps a \index{letregion@{\tt letregion}}{\tt letregion}-binding of the region variable
+algorithm wraps a \index{letregion@{\tt letregion}}{\tt letregion} binding of the region variable
 around that expression.
 
 In our example, there are no free variables in $e_0$; moreover, $\boxml{r7}$
-occurs in the effect of $e_0$ but not in the region-annotated type of $e_0$. Thus
-the region inference algorithm inserts a {\tt letregion}-binding of $\boxml{r7}$
+occurs in the effect of $e_0$ but not in the region-annotated type of $e_0$. Thus,
+the region inference algorithm inserts a {\tt letregion} binding of $\boxml{r7}$
 around $e_0$.
 
 \section{Runtime Representation}
@@ -1102,68 +1102,51 @@ A \index{record!runtime representation of}record with 0 components (the value of
 is stored in a \index{register}KAM register, not in a region.
 A record with $n$ components ($n\geq 2$) takes up precisely $n$ 32-bit words in a region;
 the tuple is represented by the (32-bit) address of the first component of the tuple.
-Note that the Kit \index{boxing}boxes tuples.
+Notice that the Kit \index{boxing}boxes tuples.
 However, records are not tagged. Avoiding tags is possible, because
-(a) there is no pointer tracing garbage collection; and (b) 
+(1) there is no pointer tracing garbage collection; and (2) 
 \index{equality!polymorphic}polymorphic equality is 
 compiled into \index{equality!monomorphic}monomorphic 
 equality functions that do not have
 to examine the type of objects at runtime. 
 %Thanks to \index{K-normalisation}K-normalisation,
 
-$\Lam$, $\RegExp$ and $\MulExp$ allow one to express unboxed tuples, 
+$\Lam$, $\RegExp$, and $\MulExp$ allow one to express unboxed tuples, 
 also in the case of function calls and returns, but the Kit does not 
-(yet) have a boxing analysis which exploits it, nor does the 
-code generator generate code for unboxed tuples, multiple function arguments 
+(yet) have a boxing analysis that exploits it, nor does the 
+code generator generate code for unboxed tuples, multiple function arguments,
 or multiple function return values.\index{record!unboxed}
 
 A tuple is not allocated until its components have been evaluated.
 
-\section{A First Session with The Kit}
+\section{A First Session with the Kit}
 \label{tryit.sec}
-The Kit is a \index{batch compilation}batch compiler.  A
-\index{project}{\em project} consists of a number of SML source files,
-enumerated in a \index{project file}{\em project file}. Executing a
-project consists of first compiling the project and then running the
+The Kit is a \index{batch compilation}batch compiler. Thus, executing a
+program consists of first compiling the program and then running the
 generated target program. Because the Kit stores files in the
 directories where your source files are located you should make a
-personal copy of these directories. Thus, before you proceed, you
+personal copy of these directories. Therefore, before you proceed, you
 should make a personal copy of the {\tt kitdemo} directory, which is
 part of the distribution.
 
-\subsection{Getting your own Script File}
-To compile a project, you need your own personal \index{script
-  file}{\em script file}. Your script file contains your personal
-preferences concerning what should be printed on log files, what
-format should be used when printing programs, and so on. When you
-start the Kit, you give your script file as an argument.
+The Kit provides two mechanisms for compiling programs. The first
+mechanism allows you to compile a single SML source file whereas the
+second mechanism allows you to compile and maintain projects, which
+are collections of SML source files. To compile a single SML source
+file or a project, you need an executable version of the Kit; let us
+assume it is available on your system as a UNIX program called {\tt
+  kit}.\footnote{The {\tt readme} file in the distribution tells you
+  how to install the Kit.}  We shall postpone the discussion of howto
+compile projects to Chapter~\ref{modules_and_projects.chap}.
 
-If you have built the executable Kit yourself, there will be a script
-file called {\tt kit.script} in the same directory as you instructed
-the build program to put the executable Kit in and you can use that
-script file as is. Otherwise, obtain a script file from a friend or
-from the Web site mentioned in the Preface and modify it as described
-in Section~\ref{scriptmodify.sec}.
+\subsection{Compiling an SML Source File}
+To compile the SML source file {\tt projection.sml} of
+Example~\ref{proj.ex}, place yourself in the {\tt kitdemo} directory
+(your personal copy of it, that is) and start the Kit with the shell
+command {\tt kit}.
 
-\subsection{Compiling a Project}
-To compile a project, you need an executable version of the 
-Kit; let us assume it is available on your system as a UNIX 
-program called {\tt kit}. 
-
-
-To compile Example~\ref{proj.ex}, place yourself in the {\tt kitdemo}
-directory (your personal copy of it, that is) and start the Kit with
-the shell command
-\begin{tabbing}
-\indent\tt kit -script $\hbox{\it script}$
-\end{tabbing}
-where {\it script} is the name of your script file. If you do not
-provide a script argument, the Kit will try to read a script file {\tt
-  kit.script} from the working directory.
-
-After the Kit has uttered various greetings, you will 
-find yourself in a rudimentary menu-driven dialogue, see
-Figure~\ref{dialogue.fig}.
+After the Kit has uttered various greetings, you will find yourself in
+a rudimentary menu-driven dialogue, see Figure~\ref{dialogue.fig}.
 \begin{figure}
 \hrule
 \begin{verbatim}
@@ -1179,7 +1162,7 @@ Figure~\ref{dialogue.fig}.
         8       Compile an sml file...........  >>>
         9       Compile it again.............. ("dummy") >>>
 
-Toggle line (t <number>), Activate line (a <number>), Up (u), or Quit(q): 
+Toggle line (t <number>), Activate line (a <number>), Up (u), or Quit(quit): 
 
 >
 \end{verbatim}
@@ -1192,46 +1175,26 @@ forms that arise under compilation (this is how the annotated programs
 shown in this section were obtained). 
 Choose \texttt{Printing of intermediate forms} (i.e., type \texttt{1}
 followed by carriage return), and then \texttt{print drop regions
-expression} to toggle on the printing of the \emph{MulExp} program.
+expression} to toggle on the printing of the $\MulExp$ program.
 Go up one level in the menu tree by typing \texttt{u} followed by return,
 and you are back in the main menu.
 
-Next, you are going to interact with the separate compilation system.
-Select the \texttt{Project} menu.  Choose
-\texttt{Set project file name}; then type \boxml{"proj.pm"} (including
-the quotes) followed by return.  
-Here {\tt proj.pm} is a project file, which contains the
-names of the files one wants to compile.  Our project consists of two
-files {\tt kitdemo/prelude.sml} and {\tt kitdemo/projection.sml}.  
-The \index{prelude}prelude must be
-included in all projects (not just demonstration programs). The file
-{\tt projection.sml} contains the ML
-declaration shown in Section~\ref{proj.ex}.
+Now, choose \texttt{Compile an sml file}; then type
+\boxml{"projection.sml"} (including the quotes) followed by return.
+The Kit outputs (among other things) the $\MulExp$ program shown in
+Section~\ref{proj.ex}.
 
-Then select {\tt Compile and link project}. For each source file
-$f$\texttt{.sml} the Kit produces a \index{log file}{\em log file}
-$f$\texttt{.log}.  You will find the output shown in
-Section~\ref{proj.ex} in the log file {\tt projection.log} after the
-heading
-\begin{quote}
-{\tt Report: AFTER DROP REGIONS:}
-\end{quote}
 Go up one on the menu tree.  Printing of the region-annotated types
-can now be done by selecting \boxml{Layout} from the main menu, and
-then \texttt{print types}.
+can now be enabled by selecting \boxml{Layout} from the main menu, and
+then \texttt{print types}.  Thereafter, go back to the top-most menu
+and choose \texttt{Compile it again} to compile the source file {\tt
+  projection.sml} again. This time, the Kit outputs the $\MulExp$
+program shown in Section~\ref{reganntypes.sec}.
 
-Thereafter, go back to the {\tt Project} menu, select {\tt Touch
-  source file} and enter the string \boxml{"projection.sml"}, to
-\index{touching a source file}indicate that you want to recompile that
-source file.  Select {\tt Compile and link project} again.  This will
-bring the project up to date. One can then inspect the log file again
-to see the region-annotated types.  If you modify a source file you
-need not use the menu item to touch it; the Kit uses time stamps to
-check if a source file need be compiled.
+Next, you can try the example in Section~\ref{effects.sec}; select
+\texttt{Compile an sml file} from the top-most menu and enter
+\boxml{"elimpair.sml"}.
 
-Next, you can try the example in Section~\ref{effects.sec}: select
-\texttt{Set project file name}, enter \boxml{"effect.pm"}, and then
-{\tt Compile and link project}.
 
 \subsection{Running a Target Program}
 If no errors were found during compilation, the Kit produces a
@@ -1243,30 +1206,36 @@ Running the target program is done from the UNIX shell by typing \index{run@{\tt
 \begin{verbatim}
        run
 \end{verbatim}
-The file will probably be around 100Kb large, even for the 
-trivial examples considered in this chapter.  
-This is because it contains the Kit runtime system and the compiled code for
-the prelude.
+The file will probably be around 100Kb large, even for the trivial
+examples considered in this chapter.  This is because it contains the
+Kit runtime system and compiled code for the parts of the SML Basis
+Library that are needed for linking.
 
 Running the programs presented in this chapter is not particularly
 exciting, because none of them produce output! However, as an
 exercise, try executing the \index{hello world@{\tt hello world}}{\tt
-  hello} project, which, like all other example files in this
+  helloworld.sml} program, which, like all other example files in this
 document, is located in the \index{kitdemo directory@{\tt kitdemo}
   directory}{\tt kitdemo} directory.
 
 
 \chapter{Basic Values}
-\index{Standard ML!{1990}}\index{Standard ML!{1997 revision}}\index{Standard ML!{Basis Library}}
-Values of types {\tt int}, {\tt real} and {\tt string} are defined in accordance with
-the 1990 Definition of Standard ML.
-In due course, they will be modified
-to comply to the revised Definition of Standard ML and the emerging Basis Library.
+In this chapter, we describe how basic values such as integers, reals,
+strings, and booleans are represented in the Kit. The Kit complies to
+the Definition of Standard ML (Revised)\index{Standard ML!{1997
+    revision}} and to large parts of the Standard ML Basis
+Library;\footnote{See the Kit web site for a link to the Standard ML
+  Basis Library.}\index{Standard ML!{Basis Library}} that is, as a
+programmer, you can refer to components of the Standard ML Basis
+Library through the {\em initial basis}\index{initial basis}, in which all programs are
+compiled.  Throughout this chapter, we introduce some of the
+top-level bindings that are provided by the initial basis.
+
 \section{Integers}
 \label{integers.sec}
-Values of type \index{integer}{\tt int} are represented as 32 bit integers.
+Values of type \index{integer}{\tt int} are represented as 32 bit signed integers.
 The following operations on integers are 
-pre-defined:\index{{\tt =}}\index{{\tt <>}}\index{{\tt <}}\index{{\tt >}}\index{{\tt <=}}\index{{\tt >=}}\index{{\tt +}}\index{{\tt -}}\index{div@{\tt div}}\index{mod@{\tt mod}}\index{{\tt *}}\index{\verb+~+}\index{abs@{\tt abs}}
+pre-defined at top-level:\index{{\tt =}}\index{{\tt <>}}\index{{\tt <}}\index{{\tt >}}\index{{\tt <=}}\index{{\tt >=}}\index{{\tt +}}\index{{\tt -}}\index{div@{\tt div}}\index{mod@{\tt mod}}\index{{\tt *}}\index{\verb+~+}\index{abs@{\tt abs}}
 \begin{verbatim}
 infix  4 = <> < > <= >= 
 infix  6 + - 
@@ -1274,21 +1243,17 @@ infix  7 div mod  *
 val ~ :  int -> int
 val abs: int -> int
 \end{verbatim}
+Many other useful operations on integers are available in the {\tt
+  Int} structure.\footnote{To see what operations are available in the
+  {\tt Int} structure, consult the file {\tt
+    kit/basislib/INTEGER.sml}.}
+
 At runtime, integers are represented without any form of boxing or tagging, so
-all 32 bits are available.
-Integers are kept in KAM \index{register}registers or, when necessary, 
-on the runtime \index{stack}stack. 
+all 32 bits are available. 
 
-For uniformity, region inference pairs all type constructors with a region
-variable. In the case of integers, where no region is required for
-storing the values, a fixed region, \index{r2@{\tt r2}}{\tt r2}, 
-is used throughout the program.
-
-At present, arithmetic operations do not raise any exceptions when their
-result is undefined or out of range.\index{exception}
 \section{Reals}
-The \index{real number}prelude defines the following operations on reals:
-\index{{\tt =}}\index{{\tt <>}}\index{{\tt <}}\index{{\tt >}}\index{{\tt <=}}\index{{\tt >=}}\index{{\tt +}}\index{{\tt -}}\index{{\tt *}}\index{{\tt /}}\index{\verb+~+}\index{abs@{\tt abs}}\index{real@{\tt real}}\index{floor@{\tt floor}}\index{sqrt@{\tt sqrt}}\index{exp@{\tt exp}}\index{ln@{\tt ln}}\index{sin@{\tt sin}}\index{cos@{\tt cos}}\index{arctan@{\tt arctan}}
+The initial basis\index{initial basis} provides the following operations on reals:
+\index{{\tt =}}\index{{\tt <>}}\index{{\tt <}}\index{{\tt >}}\index{{\tt <=}}\index{{\tt >=}}\index{{\tt +}}\index{{\tt -}}\index{{\tt *}}\index{{\tt /}}\index{\verb+~+}\index{abs@{\tt abs}}\index{real@{\tt real}}\index{trunc@{\tt trunc}}\index{floor@{\tt floor}}\index{ceil@{\tt ceil}}\index{round@{\tt round}}
 \begin{verbatim}
 infix  4 = <> < > <= >= 
 infix  6 + - 
@@ -1296,57 +1261,77 @@ infix  7  * /
 val ~ : real -> real
 val abs: real -> real
 val real: int -> real
+val trunc : real -> int
 val floor : real -> int
-val sqrt  : real -> real
-val exp   : real -> real
-val ln    : real -> real
-val sin   : real -> real
-val cos   : real -> real
-val arctan: real -> real
+val ceil : real -> int
+val round : real -> int
 \end{verbatim}
-%All operations on reals are implemented by calls to C-functions in the
-%runtime system.
-Values of type {\tt real} are implemented as 64 bit floating point numbers. 
-They are always boxed, i.e., represented as a pointer to two consecutive 32 bit \index{alignment}words.
-These two words reside in a region and start on a double-aligned address. For that reason,
-regions with \index{runtime type}runtime type {\tt real} (Section~\ref{runtimetypes.sec}) are never unified with regions of any
+Values of type {\tt real} are implemented as 64 bit floating point
+numbers.  They are always boxed, that is, represented as a pointer to
+two consecutive 32 bit \index{alignment}words.  These two words reside
+in a region and start on a double-aligned address. For this reason,
+regions with \index{runtime type}runtime type {\tt real} (see
+Section~\ref{runtimetypes.sec}) are never unified with regions of any
 other runtime type.
 
-A real constant $c$ in the source program is translated
-into an expression of the form \index{at@{\tt at}}$c\at\rho$, where $\rho$ is a
-region variable, indicating the region into which the real will be
-stored.  
+A real constant $c$ in the source program is translated into an
+expression of the form \index{at@{\tt at}}$c\at\rho$, where $\rho$ is
+a region variable, indicating the region into which the real will be
+stored.
 
-At present, arithmetic operations do not raise any exceptions when their
-result is undefined or out of range.\index{exception}
-\section{Strings}
-The prelude defines the following operations on strings:\index{{\tt =}}\index{\verb+^+}\index{ord@{\tt ord}}\index{chr@{\tt chr}}\index{size@{\tt size}}\index{explode@{\tt explode}}\index{implode@{\tt implode}}
+The structures {\tt Real} and {\tt Math} provide other useful
+operations on reals.
+
+\section{Characters and Strings}
+The initial basis\index{initial basis} provides the following top-level operations on characters and strings:\index{{\tt =}}\index{\verb+^+}\index{ord@{\tt ord}}\index{chr@{\tt chr}}\index{str@{\tt str}}\index{size@{\tt size}}\index{explode@{\tt explode}}\index{implode@{\tt implode}}\index{concat@{\tt concat}}\index{substring@{\tt substring}}
 \begin{verbatim}
 infix  4 = 
 infix  6 ^
-val ord: string -> int
-val chr: string -> int
+val ord: char -> int
+val chr: int -> char
+val str: char -> string
 val size: string -> int
-val explode: string -> string list
-val implode: string list -> string
+val explode: string -> char list
+val implode: char list -> string
 val ^ : string * string -> string
+val concat: string list -> string
+val substring: string * int * int -> string
 \end{verbatim}
-A string is represented by a 32 bit pointer into an infinite region. 
-The string is stored in consecutive bytes in the region, except if the size of
-the string exceeds the length of one region page, in which case the string is split
-into smaller strings which are linked together. This is completely transparent
+Characters are represented as 32 bit words, although only 8 bits are
+used to store the character. Just like integers, characters are
+unboxed and untagged.
+
+A string is represented by a 32 bit pointer into an infinite region.
+The string is stored in consecutive bytes in the region, except if the
+size of the string exceeds the length of one region page, in which
+case the string is split into smaller strings which are linked
+together. The internal string representation is completely transparent
 to the programmer, who does not have to worry about the actual size of
-region pages.
+region pages. Characters of a string takes up only 8 bits of
+memory each.
 
-Calls of {\tt ord}, {\tt chr} and {\tt size} take constant time and space.
-Calls of {\tt explode}, {\tt implode} and \verb+^+ take time and space proportional to
-the sum of the size of their input and their output.
+Calls of {\tt ord}, {\tt chr}, {\tt str}, and {\tt size} take constant
+time and space.  Calls of {\tt explode}, {\tt implode}, {tt concat},
+{\tt substring}, and \verb+^+ take time and space proportional to the
+sum of the size of their input and their output.
 
-The string operations can raise exceptions, as detailed in the 1990 Definition.
+The string and character operations can raise exceptions, as detailed in the
+Standard ML Basis Library documentation.
+
+The structures {\tt Char} and {\tt String} provide other useful
+operations on characters and strings.
 
 \section{Booleans}
-The boolean values {\tt true} and {\tt false}
-are represented unboxed. Size: one word.
+The boolean values {\tt true} and {\tt false} are represented as 32
+bit words, although only one bit is used to denote the value. Booleans
+are unboxed. The initial basis\index{initial basis} provides the following top-level
+operations on booleans:\index{{\tt =}}\index{not@{\tt not}}
+\begin{verbatim}
+infix 4 =
+val not: bool -> bool
+\end{verbatim}
+The structure {\tt Bool} provides other useful operations on booleans.
+
 %
 \chapter{Lists}
 \label{lists.sec}\index{list}
@@ -1360,7 +1345,7 @@ show how they correspond to the layout of lists in memory.
 Section~\ref{listexamples.sec} gives a small example.
 \section{Syntax}
 \label{lsyn.sec}
-In Standard ML all lists are constructed 
+In Standard ML, all lists are constructed 
 from the two constructors \index{::@{\tt ::}}\boxml{::} (read: cons)
 and \index{nil@{\tt nil}}{\tt nil}.   
 As a shorthand, one can write $\boxml{[}\exp_1\boxml{,}\cdots
@@ -1373,7 +1358,7 @@ The type schemes of {\tt nil} and {\tt cons} are
 $$\boxml{nil}\mapsto\forall\alpha.\alpha\boxml{list}\qquad
   \boxml{::} \mapsto\forall\alpha.\alpha\ast\alpha\boxml{list}\to\alpha\boxml{list}
 $$
-In particular, note that {\tt ::} is always applied to a pair. The construction
+In particular, notice that {\tt ::} is always applied to a pair. The construction
 of the pair and the application of {\tt ::} should not be confused: the pair and the
 constructed value are separate values.
 For example, the declaration
@@ -1394,83 +1379,76 @@ on pairs can then give access to the components of the pair.
   val (x::y::_) = abc  (* binds x to "a" and y to "b" *)
 \end{verbatim}
 In the last declaration, the pattern \boxml{(x::y::\_)} is short for the pattern
-$$\boxml{(op ::(x, op ::(y, \_)))},$$ which combines decomposition of constructed
+$$\boxml{(op ::(x, op ::(y, \_)))}$$ which combines decomposition of constructed
 values with decomposition of pairs.
 
-Many ML implementations represent lists differently by always packing the
-constructor and the pair into one value. %Indeed, it is possible to set parameters
-%in the ML Kit to make it use this more compact list representation 
-%(See Section~\ref{unboxlists.sec}).
-%For this presentation, however, we stick with the scheme described above.
-
 The intermediate languages 
-$\Lam$ and $\RegExp$ have SML-like constructs for applying constructors, but
+$\Lam$, $\RegExp$, and $\MulExp$ have SML-like constructs for applying constructors, but
 they decompose constructed values  
 by applying a \index{decon@{\tt decon}}deconstructor primitive,
 not by pattern matching.\index{at@{\tt at}}
 \begin{center}
-\begin{tabular}{|c|c|c|}\hline
-$\Lam$ & $\RegExp$ & \\ \hline
-\boxml{nil}   & \boxml{nil at $\rho$}    & store nil in region $\rho$\\
-$\boxml{::}\,(e)$ & $(\boxml{::at$\rho$})\,(e)$ & create cons cell in region $\rho$\\
-$\boxml{decon\_::}\,(e)$ & $\boxml{decon\_::}\,(e)$ & cons decomposition\\
+\begin{tabular}{|c|c|}\hline
+$\Lam$, $\RegExp$, or $\MulExp$ & \\ \hline
+\boxml{nil}   &  create {\tt nil} value \\
+$\boxml{::}\,(e)$ & create {\tt ::} (cons) value \\
+$\boxml{decon\_::}\,(e)$ & cons decomposition \\
 \hline
 \end{tabular}
 \end{center}
 In $\Lam$, which has essentially the same type system as SML,
  $\boxml{decon\_::}$, the decomposition function for {\tt ::}, has 
-type $\forall\alpha.\alpha\LIST\to\alpha\ast\alpha\LIST$.
-In addition, $\Lam$ and $\RegExp$ have a simple case construct:
+type $\forall\alpha.\alpha\boxml{list}\to\alpha\ast\alpha\boxml{list}$.
+In addition, $\Lam$, $\RegExp$, and $\MulExp$ have a simple case construct:
 $$\boxml{(case $e$ of :: => $e_1$ | \_ => $e_2$)}$$
 where $e$ must have list type. 
+
+Only the auxiliary pairs of a list (and perhaps the elements) are
+allocated in regions at runtime; the list constructors {\tt nil} and
+{\tt ::} are represented unboxed as 32 bit words, using the least
+significant bit to distinguish {\tt nil} from {\tt ::} (a pointer to
+an auxiliary pair of the list).
+
 \section{Region-Annotated List Types}
 \label{listtypes.sec}
-In Standard ML all elements of a given list must have the same type.
-We extend this constraint to region inference  by saying that all
-values in the same list must reside in the same region(s), that all the
-constructed values must reside in one region and that all auxiliary pairs
-{\tt ::} must reside in the same region. 
+In Standard ML, all elements of a given list must have the same type.
+We extend this constraint to region inference by saying that all
+element values in the same list must reside in the same region(s) and that all
+auxiliary pairs of the same list must reside in the same region.
 \begin{figure}
 \hrule
 
 \begin{center}
-\begin{picture}(110,60)(0,0)
+\begin{picture}(75,35)(0,0)
 \put(0,0){\framebox(30,10){\boxml{"a"}}}
 \put(0,10){\framebox(30,10){\boxml{"b"}}}
 \put(0,20){\framebox(30,10){\boxml{"c"}}}
 %
-\put(40,0){\framebox(30,10){$(\qquad,\qquad)$}}
-\put(40,10){\framebox(30,10){$(\qquad,\qquad)$}}
-\put(40,20){\framebox(30,10){$(\qquad,\qquad)$}}
-%
-\put(80,0){\framebox(30,10){\boxml{nil}}}
-\put(80,10){\framebox(30,10){$(\boxml{::},\qquad)$}}
-\put(80,20){\framebox(30,10){$(\boxml{::},\qquad)$}}
-\put(80,30){\framebox(30,10){$(\boxml{::},\qquad)$}}
+\put(40,0){\framebox(30,10){$(\qquad,\boxml{nil})$}}
+\put(40,10){\framebox(30,10){$(\qquad,\boxml{::})$}}
+\put(40,20){\framebox(30,10){$(\qquad,\boxml{::})$}}
 %
 \put(50,5){\vector(-1,1){20}}
 \put(50,15){\vector(-1,0){20}}
 \put(50,25){\vector(-1,-1){20}}
 %
-\put(60,5){\vector(3,0){20}}
-\put(60,15){\vector(3,0){20}}
-\put(60,25){\vector(3,0){20}}
+\put(60,15){\line(3,0){15}}
+\put(60,25){\line(3,0){15}}
 %
-\put(100,15){\vector(-4,-1){30}}
-\put(100,25){\vector(-4,-1){30}}
-\put(100,35){\vector(-4,-1){30}}
+\put(75,15){\line(0,-1){7}}
+\put(75,25){\line(0,-1){7}}
+%
+\put(75,18){\vector(-1,0){5}}
+\put(75,8){\vector(-1,0){5}}
 %
 \put(15,-5){\hbox{$\rho_1$}}
 \put(55,-5){\hbox{$\rho_2$}}
-\put(95,-5){\hbox{$\rho_3$}}
 \end{picture}
 \end{center}
 \caption{Layout of the list 
-$\boxml{["a","b","c"]}:(((\boxml{string},\rho_1),[\rho_2])\boxml{list}, \rho_3)$
-in memory. The spine of the list
-resides in $\rho_3$ while the auxiliary pairs reside in $\rho_2$.
-Each auxiliary pair takes up two words; each constructed value $(\boxml{::},\_)$
-takes up two words; {\tt nil} takes up one word.}
+$\boxml{["a","b","c"]}:((\boxml{string},\rho_1),[\rho_2])\boxml{list}$
+in memory. The auxiliary pairs of the list reside in $\rho_2$.
+Each auxiliary pair takes up two words; the constructors {\tt ::} (cons) and {\tt nil} are represented unboxed.}
 \medskip
 
 \hrule
@@ -1478,97 +1456,84 @@ takes up two words; {\tt nil} takes up one word.}
 \end{figure}
 
 
-Thus region inference does not 
-distinguish between a list and its tail. 
-Indeed a typical use of an infinite region is to hold the \index{spine of list}{\em spine} of
-a list, i.e., all the {\tt ::} cells and the {\tt nil} cell of the list.\index{type!region-annotated}
-For an example, Figure~\ref{listregions.fig}
-shows how the list 
-\boxml{["a","b","c"]} 
-is laid out in memory.
+Thus, region inference does not distinguish between a list and its
+tail.  Indeed, a typical use of an infinite region is to hold all the
+auxiliary pairs of a list.\index{type!region-annotated} For an
+example, Figure~\ref{listregions.fig} shows how the list
+\boxml{["a","b","c"]} is laid out in memory.
 
-In general, 
-the region-annotated type and place of a list takes the form\index{type and place}
-$$((\mu,[\rho_2])\boxml{list},\rho_3)$$
-where $\mu = (\tau_1,\rho_1)$ is the type and place of the members of the list, 
-$\rho_3$ is the region where the spine of the list resides, 
-and $\rho_2$ is the region where the auxiliary pairs of the list are stored.
-For example, the type $$(((\boxml{string},\rho_1),[\rho_2])\boxml{list},\rho_3)$$
-classifies lists which has their spine in $\rho_3$, auxiliary pairs in $\rho_2$ and
-strings in a region $\rho_1$. 
+In general, the region-annotated type of a list takes the form
+$$(\tau,[\rho])\boxml{list}$$
+where $\tau$ is the region-annotated
+type of the members of the list and where $\rho$ is the region where
+the auxiliary pairs of the list are stored.  For example, the region-annotated type
+$$((\boxml{string},\rho_1),[\rho_2])\boxml{list}$$
+classifies lists
+that have their auxiliary pairs in a region $\rho_2$ and strings in a region
+$\rho_1$.
 
 Not all lists need to live in the same regions!
 Formally, {\tt nil} and {\tt ::} have the following region-annotated types:
 \begin{eqnarray*}
-\boxml{nil} & \mapsto & \forall\alpha\rho_1\rho_2.((\alpha,\rho_1),[\rho_2])\LIST\\
-\boxml{::}  & \mapsto & \forall\alpha\rho_1\rho_2\rho_3\epsilon.((\alpha,\rho_1)\ast(((\alpha,\rho_1),[\rho_2])\LIST,\rho_3),\rho_2)
-\ar{\epsilon.\{\Put(\rho_3)\}}\\
-&&\qquad\qquad\qquad(((\alpha,\rho_1),[\rho_2])\LIST,\rho_3)
+\boxml{nil} & \mapsto & \forall\alpha\rho.(\alpha,[\rho])\boxml{list}\\
+\boxml{::}  & \mapsto & \forall\alpha\rho\epsilon.(\alpha\ast(\alpha,[\rho])\boxml{list},\rho)
+\ar{\epsilon.\emptyset} (\alpha,[\rho])\boxml{list}
 \end{eqnarray*}
 Despite its verbosity, 
 the type scheme for {\tt ::} deserves careful study. It is polymorphic not just in types
-(signified by the bound type variable $\alpha$) but also in region variables (signified by the 
-bound $\rho_1$, $\rho_2$ and $\rho_3$). The $\epsilon$ is a so-called \index{effect variable}{\em effect variable}. 
-The 
-\index{put@{$\Put$}}$\epsilon.\{\Put(\rho_3)\}$ appearing on the function arrow is called an \index{arrow effect}{\em arrow effect}.
+(signified by the bound type variable $\alpha$) but also in regions (signified by the 
+bound region variable $\rho$). The $\epsilon$ is a so-called \index{effect variable}{\em effect variable}. 
+The $\epsilon.\emptyset$ appearing on the function arrow is called an \index{arrow effect}{\em arrow effect}.
 Occurring in a function type, an arrow effect describes the effect of applying the function.
-In this case, the effect is to create a constructed value in $\rho_3$, hence the effect is
-the singleton set $\{\Put(\rho_3)\}$. The effect variable $\epsilon$ is used for expressing dependencies between
-effects (examples follow in Chapter~\ref{hof.sec}). Due to the fact that the variables are universally quantified, every
-occurrence of {\tt ::} can, potentially, be in its own region. But notice that the type
-of {\tt ::} forces the element, which is consed onto the list, to be in the same region ($\rho_1$)
-as the already existing elements of the list. Similarly, the type forces the pairs to be in
-one region ($\rho_2$) and the spine cells to be in one region ($\rho_3$).
+In this case, the effect is empty, as only unboxed values are manipulated by {\tt ::}. The effect variable $\epsilon$ 
+is used for expressing dependencies between effects (examples follow in Chapter~\ref{hof.sec}). Due to the fact that 
+the variables are universally quantified, every occurrence of a list can, potentially, be in its own regions. But notice 
+that the type of {\tt ::} forces the element, which is consed onto the list, to be in the same regions 
+as the already existing elements of the list. Similarly, the type forces the auxiliary pairs to be in
+one region ($\rho$).
 
 \section{Example: Basic List Operations}
 \label{listexamples.sec}
-The Kit compiles this program\footnote{Project: {\tt
-    kitdemo/lists.pm}, file \texttt{kitdemo/onetwothree.sml}.}  
+The Kit compiles the program\footnote{Program \texttt{kitdemo/onetwothree.sml}.}  
 \begin{verbatim}
        let val l = [1, 2, 3];
            val (x::_) = l
        in x end;
 \end{verbatim}       
-into the $\RegExp$-program shown in Figure~\ref{listprint.fig}.
+into the $\RegExp$ program shown in Figure~\ref{listprint.fig}.
 \begin{figure}
 \hrule
 \begin{verbatim}
 
    let val it = 
-           letregion r7:INF, r8:INF 
+           letregion r7:INF 
            in let val l = 
-                      let val v2290 = 
+                      let val v40150 = 
                               (1, 
-                               let val v2291 = 
+                               let val v40151 = 
                                        (2, 
-                                        let val v2292 = 
-                                                (3, 
-                                                 nil at r7
-                                                ) at r8
-                                        in  :: at r7 v2292
+                                        let val v40152 = 
+                                                (3, nil) at r7 
+                                        in :: v40152 
                                         end 
-                                       ) at r8
-                               in  :: at r7 v2291
+                                       ) at r7
+                               in  :: v40151
                                end 
-                              ) at r8
-                      in  :: at r7 v2290
+                              ) at r7
+                      in  :: v40150
                       end 
               in  (case l 
-                     of :: => 
-                        let val v2287 = decon_:: l
-                        in  #0 v2287
-                        end 
-                     |  _ => raise Bind
+                     of :: => #0 decon_:: l 
+                      | _ => raise Bind
                   ) (*case*) 
               end  
-           end
-   in  {|it: (_,r2)|}
+           end (*r7:INF*)
+   in  {|it: _|}
    end 
 \end{verbatim}
 \caption{Example showing construction and deconstruction of a small list.
 Layout of the list {\tt l} is analogous to Figure~\ref{listregions.fig}.
-The infinite regions {\tt r7} and {\tt r8} hold the spine of the list
-and the auxiliary pairs, respectively.
+The infinite region {\tt r7} holds the auxiliary pairs of the list.
 }
 \label{listprint.fig}
 \medskip
@@ -4919,7 +4884,7 @@ detect it? If not, the Kit will tell you when you compile the program.\footnote{
 
 
 \chapter{Modules and Projects}
-
+\label{modules_and_projects.chap}
 In Section \ref{tryit.sec} we described how software projects with
 multiple source files are compiled in the Kit. In this chapter we
 describe how to program in the large, with the Kit, using Standard ML

@@ -138,8 +138,6 @@ local
   			    (i,j-1),(i,j+1),
   			    (i+1,j-1),(i+1,j),(i+1,j+1)]
   
-  
-  fun pr x = TextIO.output(TextIO.stdOut, x)
   infix footnote
   fun x footnote y = x
 
@@ -192,7 +190,7 @@ local
   
   
 
-  fun show(x) = app (fn s => (pr s; pr "\n"))(plot(alive x));
+  fun show(x) = app (fn s => (print s; print "\n"))(plot(alive x));
   
   local 
     fun nthgen'(p as(0,g)) = p 

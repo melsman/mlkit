@@ -76,6 +76,6 @@
 /* Use boxed or unboxed representation of lists. If elimination of
    polymorphic equality is disabled boxed representation must be
    used. */
-#define UNBOX_LISTS 0
+#define UNBOX_LISTS 1
 
 #endif /*FLAGS*/
