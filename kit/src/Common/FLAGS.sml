@@ -145,5 +145,11 @@ signature FLAGS =
 
     (* help_all()  provides help on all options in the directory *)
     val help_all : unit -> string
-            
-  end;
+
+    structure Statistics :
+      sig
+        val no_dangling_pointers_changes       : int ref
+        val no_dangling_pointers_changes_total : int ref
+	val reset : unit -> unit
+      end
+  end

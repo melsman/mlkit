@@ -91,6 +91,28 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 	  \assembler files (.s files). Passing the --gstabs\n\
 	  \option to `as' makes it possible to step through\n\
 	  \the generated program using gdb (The GNU Debugger)."}
+	 
+    val dangle_stat_p = ref false
+    val _ = Flags.add_bool_entry 
+	{long="dangling_pointers_statistics", short=NONE, neg=false, 
+	 menu=["Debug","dangling pointers statistics"], item=dangle_stat_p, 
+	 desc="When enabled, the compiler prints statistics about\n\
+          \the number of times strengthening of the region typing\n\ 
+	  \rules (to avoid dangling pointers during evaluation)\n\
+	  \effects the target program. This flag is useful only\n\
+	  \when the flag -gc or -no_dangle is enabled."}
+
+    fun report_dangle_stat() =
+	 if !dangle_stat_p then
+	   let val n = !Flags.Statistics.no_dangling_pointers_changes
+               val total = !Flags.Statistics.no_dangling_pointers_changes_total
+	   in
+	       print ("Dangling pointers statistics: \n\
+		      \ * Number of changes due to strengthening of typing \n\
+		      \   rules to avoid dangling pointers: " ^ Int.toString n ^
+		      "\n * Total number of changes: " ^ Int.toString total ^ "\n")
+	   end
+	 else ()
  
     val backend_name = "X86"
 
@@ -184,7 +206,9 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 	pr_debug_linking ("[using link command: " ^ shell_cmd ^ "]\n");
 	execute_command shell_cmd;
 	strip run;
-	print("[wrote executable file:\t" ^ run ^ "]\n")
+	print("[wrote executable file:\t" ^ run ^ "]\n");
+	report_dangle_stat()
       end 
 
   end;
+

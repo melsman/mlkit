@@ -206,6 +206,12 @@ struct
 (*
 	  val _ = print ("New effects are " ^ PrettyPrint.flatten1 (PrettyPrint.layout_list Effect.layout_effect_deep effects) ^ "\n")
 *)
+	  (* Statistics *)
+	  fun incr r n = r := !r + n
+	  val _ = if length effects > 0 then
+                     (incr Flags.Statistics.no_dangling_pointers_changes 1;
+		      incr Flags.Statistics.no_dangling_pointers_changes_total (length effects))
+		  else ()
 	in Effect.Lf effects
 	end
 

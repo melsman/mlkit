@@ -12,6 +12,12 @@ local
     (app enable enables; app disable disables; f();
      app disable enables; app enable disables)
 
+  fun comp_nodangle() =
+    enable_disable 
+    ["dangling_pointers_statistics", "scratch"] 
+    ["dangling_pointers"] 
+    K.build_basislib      
+
   fun comp_GC() =
     enable_disable 
     ["garbage_collection", "scratch"] 
@@ -50,6 +56,7 @@ val _ = (enable "print_types"; enable "print_rho_types")
 	   enable "debug_compiler";
 *)
 
+(*  val _ = comp_nodangle() *)
   val _ = comp_RI_GC()
   val _ = comp_RI()
 
@@ -57,6 +64,7 @@ val _ = (enable "print_types"; enable "print_rho_types")
 
   val _ = comp_RI_GC_PROF()
   val _ = comp_RI_PROF()
+
   val _ = K.install()
 
 end
