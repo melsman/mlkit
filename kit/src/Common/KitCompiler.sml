@@ -9,6 +9,7 @@
 
 functor KitCompiler() : sig include MANAGER 
 			    structure Flags : FLAGS
+			    structure Crash : CRASH
 			end  =
   struct
     structure Tools   = Tools()
@@ -31,6 +32,8 @@ functor KitCompiler() : sig include MANAGER
 					structure TopdecGrammar = Elaboration.PostElabTopdecGrammar)
 
     structure Flags = Tools.Flags
+
+    structure Crash = Tools.Crash
 
     structure ManagerObjects =
       ManagerObjects(structure ModuleEnvironments = Basics.ModuleEnvironments
@@ -202,6 +205,8 @@ structure K = struct
 	  postjob()) handle exn => (postjob(); raise exn)
       end
 
+    fun die s = Crash.impossible ("KitCompiler." ^ s)
+
     fun install() =
       let val _ = print "\n ** Installing compiler executable **\n\n"
           fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
@@ -209,10 +214,12 @@ structure K = struct
 	    case arch_os()
 	      of ("X86", "Linux") => (Flags.lookup_string_entry "c_libs" := "-lm";
 				      "kit.x86-linux")
-	    | ("HPPA", "HPUX") => (Flags.lookup_string_entry "c_libs" := "-lM";
-				   "kit.hppa-hpux9")
-	    | ("SUN", "OS4") => "unknown"
-	    | _ => "unknown"
+	       | ("HPPA", "HPUX") => (Flags.lookup_string_entry "c_libs" := "-lM";
+				      "kit.hppa-hpux9")
+	       | ("SPARC", "Solaris") => (Flags.lookup_string_entry "c_libs" := "-lm";
+					  "kit.sparc-solaris")
+	       | ("SUN", "OS4") => die "install: Configuration unknown"
+	       | _ => die "install: Configuration unknown"
 	  val kitbinkitimage_path = OS.Path.joinDirFile{dir=kitbin_path, file=kit_image()}
 	  val os = TextIO.openOut kitbinkit_path
 	  val _ = (TextIO.output(os, "sml @SMLload=" ^ kitbinkitimage_path ^ " $*"); TextIO.closeOut os)

@@ -68,6 +68,15 @@ structure MemTime : MEM_TIME =
 	      in 
 		memtime_exe ^ " -f " ^ outputfile ^ " -o " ^ tempfile ^ " -t " ^ temp ^ " " ^ program
 	      end
+	     | ("SPARC", "Solaris") =>
+	      let (* We use shell script for SUN_OS4. *)
+		val memtime_exe = OS.Path.joinDirFile{dir= !bin_directory, file="memtime_sun_os4"}
+		val temp = "time.temp"
+		val _ = (msg "executing target program: ";
+			 msg ("memtime_sun_os4 -f " ^ outputfile ^ " -o " ^ tempfile ^ " -t " ^  temp ^ " " ^ program))
+	      in 
+		memtime_exe ^ " -f " ^ outputfile ^ " -o " ^ tempfile ^ " -t " ^ temp ^ " " ^ program
+	      end
 	     | (arch,os) => raise Crash ("Error in memtime, " ^ arch ^ "-" ^ os ^ " not supported.")
 
 	val _ = execute_shell_command shell_command

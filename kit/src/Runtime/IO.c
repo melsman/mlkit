@@ -7,7 +7,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#if defined(linux) || defined(_WIN32)
+#if defined(linux) || defined(_WIN32) || defined(sun)
 #include <sys/types.h>
 #include <utime.h>
 #endif

@@ -193,6 +193,7 @@ structure Tester : TESTER =
 	    case arch_os()
 	      of ("X86", "Linux") => "kittester.x86-linux"
 	       | ("HPPA", "HPUX") => "kittester.hppa-hpux9"
+	       | ("SPARC", "Solaris") => "kittester.sparc-solaris"
 	       | ("SUN", "OS4") => "unknown"
 	       | _ => "unknown"
 	  val kit_bin_kittester_image_path = OS.Path.joinDirFile{dir=kit_bin_path, file=kittester_image()}
