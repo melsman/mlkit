@@ -1,5 +1,11 @@
 ML Kit NEWS file
 
+ * mael 2002-12-05: Fixed bug in opacity elimination
+   (test/opaque3.sml).
+
+ * mael 2002-12-05: Fixed bug concerning free type variables at
+   top-level in local function (test/ftv.sml).
+
        **** ML Kit version 4.1.3 is released (internally) ****
 
  * mael 2002-11-08: Implemented uncurrying of functions. This

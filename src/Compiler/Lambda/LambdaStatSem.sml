@@ -374,6 +374,15 @@ end
      *  Semantic Operations
      * --------------------------------------------------------- *)
 
+    fun valid_t (e:env) (ty:Type) : unit =
+	case ty of
+	    CONStype(ts,tn) => (lookup_tyname e tn; valid_ts e ts)
+	  | ARROWtype(ts1,ts2) => (valid_ts e ts1; valid_ts e ts2)
+	  | TYVARtype _ => ()
+	  | RECORDtype ts => valid_ts e ts	
+    and valid_ts (e:env) nil = ()
+      | valid_ts (e:env) (t::ts) = (valid_t e t; valid_ts e ts)
+
     fun mk_instance ((tyvars,Type):TypeScheme, instances : Type list) =
       let val S = LambdaBasics.mk_subst (fn () => "mk_instance") (tyvars, instances)
       in LambdaBasics.on_Type S Type
@@ -473,28 +482,12 @@ end
 
     (* Type checking of primitives *)
     fun type_prim (env:env) (prim:Type prim) lexps : Type list = 
-      let
-	val type_e = type_lexp env
-	fun check_list s ([], []) = ()
-	  | check_list s (tn::tns, e::es) = let val t = CONStype([],tn)
-						val ts = unTypeList s (type_e e)
-					    in if eq_Types([t],ts) then check_list s (tns, es)
-					       else die (s ^ ": "
-							 ^ pp_list pr_Type [t]
-							 ^ "<>"
-							 ^ pp_list pr_Type ts)
-					    end
-	  | check_list s _ = die ("zip " ^ s)
-
-	fun type_prim' argtynames restyname s = (check_list s (argtynames, lexps);
-						 [CONStype([],restyname)])
-
-	fun type_prim_unit argtynames s = (check_list s (argtynames, lexps);
-					   [unit_Type])
+      let val type_e = type_lexp env
       in
 	case prim
 	  of CONprim{con,instances} =>
-	    (case lexps
+	    (valid_ts env instances;
+	     case lexps
 	       of [] => [mk_instance(lookup_con env con, instances)]
 		| [lexp] =>
 		 (case mk_instance(lookup_con env con, instances)
@@ -505,7 +498,8 @@ end
 		     | _ => die "CONprim.Unary constructor does not have arrow type")
 		| _ => die "CONprim.Wrong number of args")
 	   | DECONprim{con,instances,...} => 
-	       (case lexps
+	       (valid_ts env instances;
+		case lexps
 		  of [lexp] => (case mk_instance(lookup_con env con, instances)
 				  of ARROWtype([t1],[t2]) =>
 				    let val s = ("DECONprim: " (* ^ Con.pr_con con *))
@@ -551,7 +545,8 @@ end
 			    | _ => die "SELECTprim.Wrong number of args.")  
 	   | UB_RECORDprim => map ((unTypeListOne "UB_RECORDprim") o type_e) lexps
 	   | DEREFprim {instance} => (* instance: argument type of primitive *)
-	       (case lexps
+	       (valid_t env instance;
+		case lexps
 		  of [lexp] => (case instance 
 				  of CONStype([t], tyName_REF) =>
 				    let val s = "DEREFprim"
@@ -566,7 +561,8 @@ end
 		         let val tyvar = fresh_tyvar()
 			 in close_Type (ARROWtype([TYVARtype tyvar], [CONStype([TYVARtype tyvar], tyName_REF)]))
 			 end
-		  in case lexps
+		  in valid_t env instance;
+		      case lexps
 		       of [lexp] =>
 			 (case mk_instance(typescheme_REF, [instance])
 			    of ARROWtype([t1],[t2]) =>
@@ -579,7 +575,8 @@ end
 		      | _ => die "REFprim.Wrong number of args"
 		  end
 	   | ASSIGNprim {instance} => (* instance: argument type of primitive *)
-	       (case lexps
+	       (valid_t env instance;
+		case lexps
 		  of [lexp1, lexp2] => (case instance
 					  of RECORDtype [CONStype([t], tyName_REF), t'] =>
 					    let val ts1 = unTypeList "ASSIGNprim1" (type_e lexp1)  
@@ -595,7 +592,8 @@ end
 		     of [lexp] => (type_e lexp; nil)
 		      | _ => die "DROPprim -- one parameter expected")
 	   | EQUALprim {instance} => (* instance: argument type of primitive *)
-	       (case lexps
+	       (valid_t env instance;
+		case lexps
 		  of [lexp1,lexp2] => (case instance
 					 of RECORDtype [t1,t2] =>
 					   let val ts1 = unTypeList "EQUALprim1" (type_e lexp1)  
@@ -607,7 +605,9 @@ end
 					  | _ => die "EQUALprim.Wrong instance kind")
 		   | _ => die "EQUALprim.Wrong number of args") 
 	   | CCALLprim {name, instances, tyvars, Type} => 
-	       (case mk_instance ((tyvars, Type), instances) of
+	       (valid_ts env instances;
+		valid_t env Type;
+		case mk_instance ((tyvars, Type), instances) of
 		  ARROWtype (ts_arg, ts_res) =>
 		    let val ts = map (unTypeListOne "CCALL" o type_e) lexps
 		        val ts_res = 
@@ -636,7 +636,8 @@ end
 		| _ => die ("c function " ^ name ^ " does not have arrow type"))
 
 	   | RESET_REGIONSprim {instance} =>
-	     (case lexps
+	     (valid_t env instance;
+	      case lexps
 		of [lexp] => 
 		  let val ts = unTypeList "RESET_REGIONSprim1" (type_e lexp)
 		  in if eq_Types(ts,[instance]) then [unit_Type]
@@ -644,7 +645,8 @@ end
 		  end
 		 | _ => die "RESET_REGIONSprim.Wrong number of args")
 	   | FORCE_RESET_REGIONSprim {instance} => 
-	     (case lexps
+	     (valid_t env instance;
+	      case lexps
 		of [lexp] =>
 		  let val ts = unTypeList "FORCE_RESET_REGIONSprim" (type_e lexp)
 		  in if eq_Types(ts,[instance]) then [unit_Type]
@@ -657,9 +659,10 @@ end
     (* Type checking of lambda expressions *)
     and type_lexp (env:env) (lexp:LambdaExp) : TypeList =
       (case lexp
-	of VAR{lvar,instances} => Types [mk_instance(lookup_lvar env lvar, instances)] 
-	 | INTEGER (i,t) => Types [t]
-	 | WORD (w,t) => Types [t]
+	of VAR{lvar,instances} => (valid_ts env instances; 
+				   Types [mk_instance(lookup_lvar env lvar, instances)])
+	 | INTEGER (i,t) => (valid_t env t; Types [t])
+	 | WORD (w,t) => (valid_t env t; Types [t])
 	 | STRING s => Types [CONStype([], tyName_STRING)]
 	 | REAL s => Types [CONStype([], tyName_REAL)]
 	 | FN {pat,body} =>
@@ -667,7 +670,7 @@ end
 				     add_lvar(lvar,([],Type),env)) env pat
 	      val ts_body = unTypeList "FN" (type_lexp env' body)
 	      val ts_arg = map #2 pat
-	  in Types [ARROWtype(ts_arg, ts_body)]
+	  in valid_ts env ts_arg; Types [ARROWtype(ts_arg, ts_body)]
 	  end
 	 | LET {pat=nil,bind,scope} =>   (* wild card *)
 	  let val ts = unTypeList "WILD" (type_lexp env bind)
@@ -692,6 +695,7 @@ end
 
 	      val ts_bind = unTypeList "LET.bind" (type_lexp env bind)
 	  in 
+	      valid_ts env (map #3 pat);
 	    (((app (fn ((_,tyvars,tau), tau') => check_type_scheme(tyvars, tau, tau'))
 	       (BasisCompat.ListPair.zipEq (pat,ts_bind))) handle BasisCompat.ListPair.UnequalLengths => 
 	                 die "LET.pattern and bind type differ in numbers of components"));
@@ -699,7 +703,7 @@ end
 	  end
 	 | FIX {functions, scope} =>
 	  let val env' = foldl (fn ({lvar,tyvars,Type,bind}, env) =>
-				     add_lvar(lvar,([],Type),env)) env functions
+				     (valid_t env Type; add_lvar(lvar,([],Type),env))) env functions
 (*	      val _ =
 		let type t = {lvar:lvar,tyvars:tyvar list, Type : Type, bind:LambdaExp}
 		    fun ch_abs [] = ()
@@ -732,9 +736,11 @@ end
 	       end
 	      | _ => die "APP.argument type not arrow")
 	 | EXCEPTION (excon, typeopt, lexp) =>
-	     type_lexp (add_excon(excon,typeopt,env)) lexp
+	      (case typeopt of SOME t => valid_t env t | NONE => ();
+	       type_lexp (add_excon(excon,typeopt,env)) lexp)
 	 | RAISE (lexp, tl) =>
-	     (case type_lexp env lexp
+	     ((* valid_ts env tl; *)
+	      case type_lexp env lexp
 		of Types [CONStype([],tyName_EXN)] => tl
 		 | _ => die "RAISE.type not exn")
 	 | HANDLE (lexp1, lexp2) =>
@@ -772,7 +778,7 @@ end
 		   let 
 		     fun on_lvar {lvar,tyvars,Type} =
 		       let val (tyvars, Type) = lookup_lvar env lvar
-		       in {lvar=lvar, tyvars=tyvars,Type=Type}
+		       in valid_t env Type; {lvar=lvar, tyvars=tyvars,Type=Type}
 		       end
 		     fun on_excon (excon,_) = (excon, lookup_excon env excon)
 		   in

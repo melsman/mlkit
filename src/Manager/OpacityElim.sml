@@ -22,6 +22,7 @@ functor OpacityElim(structure Crash : CRASH
 		      sharing type TopdecGrammar.info = ElabInfo.ElabInfo
 		      sharing type TopdecGrammar.tycon = Environments.tycon
 		      sharing type TopdecGrammar.funid = OpacityEnv.funid
+		      sharing type TopdecGrammar.StringTree = PP.StringTree
 		    structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		      sharing ModuleEnvironments.TyName = Environments.TyName
 		      sharing type ModuleEnvironments.Basis = ElabInfo.TypeInfo.Basis
@@ -44,6 +45,10 @@ functor OpacityElim(structure Crash : CRASH
     fun die s = Crash.impossible ("OpacityElim." ^ s)
     fun pr_st st = PP.outputTree (print, st, 100)
     fun pr_rea s rea = (print ("\n" ^ s ^ " = "); pr_st (Realisation.layout rea); print "\n")
+    fun pr_tdec td = (print "Topdec is\n";
+		      PP.printTree(TopdecGrammar.layoutTopdec td);
+		      print "\n")
+    fun pr_env E = pr_st(Environments.E.layout E)
 
     type realisation = Environments.realisation
     type opaq_env = OpacityEnv.opaq_env
@@ -192,6 +197,12 @@ functor OpacityElim(structure Crash : CRASH
        in (MRULE(i',pat',exp'), rea')
        end
 
+     and elim_exbind(rea,EXBIND(i,opopt,opt,r)) =
+	 EXBIND(on_info(rea,i),opopt,opt,elim_exbind_opt(rea,r))
+       | elim_exbind(rea,EXEQUAL(i,opopt,id,r)) = EXEQUAL(on_info(rea,i),opopt,id,elim_exbind_opt(rea,r))
+     and elim_exbind_opt(rea,SOME exb) = SOME(elim_exbind(rea,exb))
+       | elim_exbind_opt(rea,NONE) = NONE
+
      and elim_dec(rea,dec) =
        case dec
 	 of VALdec(i,tyvars,valbind) => 
@@ -240,7 +251,7 @@ functor OpacityElim(structure Crash : CRASH
 			       TYPEdec(typedecinfo,typbind),
 			       dec')), rea' oo rea'')
 	   end
-	   | EXCEPTIONdec(i,exbind) => (EXCEPTIONdec(on_info(rea,i),exbind),Id)
+	   | EXCEPTIONdec(i,exbind) => (EXCEPTIONdec(on_info(rea,i),elim_exbind(rea,exbind)),Id)
 	   | LOCALdec(i,dec1,dec2) =>
 	   let val (dec1', rea') = elim_dec(rea,dec1)
 	       val (dec2', rea'') = elim_dec(rea oo rea', dec2)
@@ -349,7 +360,6 @@ functor OpacityElim(structure Crash : CRASH
 	      val i' = on_info(rea', i)
 	      val i'' = on_info(rea_of oenv, i')
 (*
-	      fun pr_env E = pr_st(Environments.E.layout E)
 	      fun pr_env_in_info s i =
 		case normalise_opt_type_info(ElabInfo.to_TypeInfo i)
 		  of SOME(TypeInfo.TRANS_CONSTRAINT_INFO E) => (print (s ^ "\n"); pr_env E)
@@ -363,18 +373,18 @@ functor OpacityElim(structure Crash : CRASH
 	  end
 	 | OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	  let val (strexp', rea') = elim_strexp(oenv, strexp)
-	      val (E,rea'') = case normalise_opt_type_info(ElabInfo.to_TypeInfo (on_info(rea_of oenv,i)))
+	      val (E,rea'') = case normalise_opt_type_info(ElabInfo.to_TypeInfo (on_info(rea_of oenv oo rea',i)))
 				of SOME(TypeInfo.OPAQUE_CONSTRAINT_INFO (E,rea'')) => (E,rea'')
 				 | _ => die "elim_strexp.OPAQUE_CONSTRAINT.no info"
-	      val rea''' = rea' oo rea''
 (*
-	      val _ = print "\n Opaque Constraint.\n"
+	      val _ = print "\n Opaque Constraint. Env is\n"
+	      val _ = pr_env E
+	      val _ = print "\n"
 	      val _ = pr_rea "rea'" rea'
 	      val _ = pr_rea "rea''" rea''
-	      val _ = pr_rea "rea'''" rea'''
 *)
 	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.TRANS_CONSTRAINT_INFO E)  
-	  in (TRANSPARENT_CONSTRAINTstrexp(i',strexp',sigexp), rea''')
+	  in (TRANSPARENT_CONSTRAINTstrexp(i',strexp',sigexp), rea'')
 	  end
 	 | APPstrexp(i, funid, strexp) => 
 	  let val (strexp', rea_strexp) = elim_strexp(oenv, strexp)
@@ -414,32 +424,30 @@ functor OpacityElim(structure Crash : CRASH
 	      val rea_g2 = Realisation_renaming (TyName_Set_difference T (Realisation_dom rea_g1))
 		                            (* a realisation for those generative names 
 					     * that become visible. *)
-
-	      fun pr s rea = (print ("\n" ^ s ^ " = "); pr_st (Realisation.layout rea); print "\n")
 (*
 	      val _ = print ("\nOpacity Elimination of functor application of " ^ FunId.pr_FunId funid ^ "\n")
-	      val _ = pr "rea_0" rea_0
-	      val _ = pr "rea_funid" rea_funid
-	      val _ = pr "rea_strexp" rea_strexp
-	      val _ = pr "rea_i" rea_i
-	      val _ = pr "rea_g" rea_g
-	      val _ = pr "rea_g_" rea_g_
-	      val _ = pr "rea_g1" rea_g1
-	      val _ = pr "rea_g2" rea_g2
+	      val _ = pr_rea "rea_0" rea_0
+	      val _ = pr_rea "rea_funid" rea_funid
+	      val _ = pr_rea "rea_strexp" rea_strexp
+	      val _ = pr_rea "rea_i" rea_i
+	      val _ = pr_rea "rea_g" rea_g
+	      val _ = pr_rea "rea_g_" rea_g_
+	      val _ = pr_rea "rea_g1" rea_g1
+	      val _ = pr_rea "rea_g2" rea_g2
 *)
 	      (* new functor instance realisation *)
 (*	      val rea_i' = rea_strexp oo rea_0 oo rea_i  *)
 	      val rea_i' = Realisation_restrict (Realisation_dom rea_i) (rea_0 oo rea_strexp oo rea_i)
 
-(*	      val _ = pr "rea_i'" rea_i'  *)
+(*	      val _ = pr_rea "rea_i'" rea_i' *)
 
 	      val rea_g' = rea_g1 oo rea_g2
 
-(*	      val _ = pr "rea_g'" rea_g' *)
+(*	      val _ = pr_rea "rea_g'" rea_g' *)
 
 	      val rea' = rea_g2 oo rea_i' oo rea_funid oo rea_g_ oo rea_0 oo rea_strexp
 
-(*	      val _ = pr "rea'" rea' *)
+(*	      val _ = pr_rea "rea'" rea' *)
 
 	      val E' = on_Env rea' E
 	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNCTOR_APP_INFO{rea_inst=rea_i',rea_gen=rea_g',Env=E'})
@@ -485,12 +493,12 @@ functor OpacityElim(structure Crash : CRASH
 	  val (argE, elabB, elabB', T, resE) = 
 	    case ElabInfo.to_TypeInfo i
 	      of SOME(TypeInfo.FUNBIND_INFO {argE, elabBref=ref elabB, T, resE, opaq_env_opt=NONE}) =>
-		((*print "\nOPACITY_ELIM-BEFORE_REA\n";
+		((* print "\nOPACITY_ELIM-BEFORE_REA\n";
 		 print_basis elabB;
 		 pr "rea" rea; *)
 
 		 let val elabB' = ModuleEnvironments.B.on rea elabB
-		 in (*print "\nOPACITY_ELIM-AFTER_REA\n";
+		 in (* print "\nOPACITY_ELIM-AFTER_REA\n";
 		   print_basis elabB'; *)
 		   (on_Env rea argE, elabB, elabB', T, on_Env rea resE)
 		 end)
@@ -570,6 +578,7 @@ functor OpacityElim(structure Crash : CRASH
        ((* Compiler.Profile.reset();
 	 Compiler.Profile.setTimingMode true; *)
 	let
+(*	    val _ = pr_tdec topdec *)
 	  val (t,e) = elim_topdec (oenv, topdec)
 (*
 	  val _ = print "\nOpacity_elimination env:\n"

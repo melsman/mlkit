@@ -44,6 +44,7 @@ freedatatype2.sml   ccl       ecte
 sharing.sml         ccl       ecte
 opaque.sml          ccl
 opaque2.sml                        ue nobasislib
+opaque3.sml                        nobasislib
 functor.sml         ccl
 functor2.sml        ccl
 functor3.sml
@@ -55,6 +56,7 @@ danwang.pm                    tc
 testmatc.sml        ccl
 excon.sml
 dangle4.sml                   gc prof
+ftv.sml
 
 (* Tests of some benchmark programs *)
 
