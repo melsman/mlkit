@@ -495,6 +495,7 @@ functor Compile(structure Excon : EXCON
 	  val (cone, rse_con, spread_pgm) = spread(cone,rse,opt_pgm)
 	  val (cone, rse', reginf_pgm) = inferRegions(cone,rse,rse_con,spread_pgm)
 	  val (mul_pgm, mulenv', Psi') = mulInf(reginf_pgm,Psi,cone,mulenv)
+	  val _ = MulInf.contract mul_pgm
       in (mul_pgm, rse', mulenv', Psi')
       end
 

@@ -1,5 +1,8 @@
 all: test_kam test_mlkit
 
+bench_cr:
+	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkit:-scratch -cr: -o cr2.html tp.tst)' | tcsh -s
+
 bench_uc:
 	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-scratch -no_uncurry: -mlkit -o uc3.html tp.tst)' | tcsh -s
 

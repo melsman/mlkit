@@ -1053,6 +1053,16 @@ struct
       | insert_ce_in_sma(ce',  SAT_FF (ce,pp)) =   SAT_FF (ce',pp)
       | insert_ce_in_sma(ce',IGNORE)= die "insert_ce_in_sma: combination not recognized."
 
+    fun pr_rho_kind (CE.FF) = "FF"
+      | pr_rho_kind (CE.FI) = "FI"
+      | pr_rho_kind (CE.LF) = "LF"
+      | pr_rho_kind (CE.LI) = "LI"
+
+    fun pr_at (AtInf.ATTOP _) = "Attop"
+      | pr_at (AtInf.ATBOT _) = "Atbot"
+      | pr_at (AtInf.SAT _) = "Sat"
+      | pr_at (AtInf.IGNORE) = "Ignore"
+
     fun convert_sma (AtInf.ATTOP(rho,pp),CE.LI,ce) = ATTOP_LI (ce,pp)
       | convert_sma (AtInf.ATTOP(rho,pp),CE.LF,ce) = ATTOP_LF (ce,pp)
       | convert_sma (AtInf.ATTOP(rho,pp),CE.FI,ce) = ATTOP_FI (ce,pp)
@@ -1061,7 +1071,8 @@ struct
       | convert_sma (AtInf.ATBOT(rho,pp),CE.LF,ce) = ATBOT_LF (ce,pp)
       | convert_sma (AtInf.SAT(rho,pp),CE.FI,ce) = SAT_FI (ce,pp)
       | convert_sma (AtInf.SAT(rho,pp),CE.FF,ce) = SAT_FF (ce,pp)    
-      | convert_sma  _ = die "convert_sma: sma combination not recognized."
+      | convert_sma (at,rk,ce) = die ("convert_sma: sma combination not recognized." ^
+				      "at=" ^ pr_at at ^ ", rk=" ^ pr_rho_kind rk ^ "\n")
 
     (* ----------------------------------------------- *)
     (*    Utility Functions on Select Expressions      *)
