@@ -74,9 +74,10 @@ email: ^(ScsPersonData.email(ScsLogin.user_id()))
 	      NONE => []
 	    | SOME s => Ns.Set.list s
  	  )
+	val logmsg = emsg ^^ (foldl op^^ `` fvs)
       in
-	(logError (emsg ^^ (foldl op^^ `` fvs));
-	 emailError emsg;
+	(logError logmsg;
+	 emailError logmsg;
 	 ScsPage.returnPg title msg;
 	 Ns.exit())
       end
