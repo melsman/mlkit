@@ -1,6 +1,3 @@
-(*$StatObject: SORTED_FINMAP IDENT SCON LAB TYNAME TYCON TYVAR
-	TIMESTAMP LIST_HACKS FLAGS REPORT FINMAP FINMAPEQ PRETTYPRINT
-	CRASH STATOBJECT*)
 
 functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		    structure Ident : IDENT
@@ -817,13 +814,19 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val String = mk_ConsType ([], TyName.tyName_STRING)
       val Bool   = mk_ConsType ([], TyName.tyName_BOOL)
       val Char   = mk_ConsType ([], TyName.tyName_CHAR)
+      val Word8  = mk_ConsType ([], TyName.tyName_WORD8)
       val Word   = mk_ConsType ([], TyName.tyName_WORD)
 
-      fun of_scon (SCon.INTEGER _) = Int
-	| of_scon (SCon.STRING _)  = String
-	| of_scon (SCon.REAL _)    = Real
-	| of_scon (SCon.WORD _)    = Word
-	| of_scon (SCon.CHAR _)    = Char
+      fun simple_scon ty = {type_scon = ty, overloading = NONE}
+      fun of_scon (SCon.INTEGER _) = simple_scon Int
+	| of_scon (SCon.STRING _) = simple_scon String
+	| of_scon (SCon.REAL _) = simple_scon Real
+	| of_scon (SCon.CHAR _) = simple_scon Char
+	| of_scon (SCon.WORD i) = 
+	if i > 255 then simple_scon Word
+	else let val tv = TyVar.fresh_overloaded [TyName.tyName_WORD8, TyName.tyName_WORD]
+	     in {type_scon=from_TyVar tv, overloading=SOME tv}
+	     end 
 
       (*generalise and fake_generalise:*)
 

@@ -4,10 +4,6 @@
 
 (* Static semantic objects - Definition v3 page 17 *)
 
-(*$Environments: DEC_GRAMMAR STRID IDENT TYCON TYNAME STATOBJECT
-	PRETTYPRINT SORTED_FINMAP FINMAP TIMESTAMP REPORT FLAGS
-	LIST_HACKS LIST_SORT CRASH ENVIRONMENTS*)
-
 functor Environments(structure DecGrammar: DEC_GRAMMAR
 		     structure StrId: STRID
 
@@ -1015,13 +1011,12 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 				      TyStr.from_theta_and_VE (theta_unit, VE_unit))
 	end
 
-	val TE_byte_table = te (TyCon.tycon_BYTE_TABLE, TyName.tyName_BYTE_TABLE)
 	val TE_word_table = te (TyCon.tycon_WORD_TABLE, TyName.tyName_WORD_TABLE)
 
 	val TE_initial = joinTE [TE_unit, TE_int, TE_real,
 				 TE_word, TE_word8, TE_char, 
 				 TE_string, TE_exn, TE_ref, TE_bool, TE_list,
-				 TE_byte_table, TE_word_table]
+				 TE_word_table]
 	local 
 	  fun mk_sigma() = (*construct the type scheme: forall 'a.'a->unit*)
 	    let val _ = Level.push()
