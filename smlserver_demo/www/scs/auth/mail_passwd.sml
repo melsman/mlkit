@@ -22,7 +22,8 @@ val (passwd,first_names,last_name) =
                           and scs_persons.deleted_p = 'f'
                           and scs_users.deleted_p = 'f'
                           and password is not null`,
-                        ScsDict.sl' emsg [Quot.toString (Html.aemail (ScsConfig.scs_site_name()) "Site administrator")])
+                        ScsDict.sl' emsg [Quot.toString (Html.aemail (ScsConfig.scs_site_adm_email()) 
+							 "Site administrator")])
 
 val mail_msg = [(ScsLang.da,`Hej %0 %1
 

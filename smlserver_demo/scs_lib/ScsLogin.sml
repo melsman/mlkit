@@ -68,6 +68,7 @@ structure ScsLogin :> SCS_LOGIN =
 	                             scs_user.language_pref(user_id) as lang
                                 from scs_users
                                where user_id = ^(Db.qqq user_id)
+                                 and password is not null
                                  and deleted_p = 'f'` of
 	  NONE => NONE
 	| SOME [db_psw,db_lang] => SOME (db_psw,db_lang)
