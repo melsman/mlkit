@@ -125,7 +125,7 @@ functor EliminateEq (structure Name : NAME
 			   (case TyNameMap.lookup tnmap0 tn
 			      of SOME(POLYLVAR lv0) => Lvars.match(lv,lv0)
 			       | _ => ())
-                           | _ => die "match_tnmap") () tnmap;
+                           | _ => ()) () tnmap;
 	  tnmap
 	end
 
