@@ -103,6 +103,7 @@ signature STATOBJECT =
 	    val to_pair             : RecType -> Type * Type
 	  end
 	val from_pair               : Type * Type -> Type
+	val from_triple             : Type * Type * Type -> Type
 	val Unit                    : Type
 
 	(*function types*)
