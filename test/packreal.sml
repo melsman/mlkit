@@ -35,7 +35,7 @@ local
 	    val bytes = toBytes r
 	    val _ = print (", sz(vector) = " ^ Int.toString (Word8Vector.length bytes))
 	    val bytes_s = Byte.bytesToString bytes
-	    val _ = print (", bs = " ^ String.toString bytes_s ^ " sz = " ^ Int.toString(size bytes_s))
+	    val _ = print (", sz(bs) " ^ Int.toString(size bytes_s))
 	    val r' = fromBytes bytes
 	    val _ = print (", r' = " ^ Real.toString r' ^ "]\n")
 	in r == r'

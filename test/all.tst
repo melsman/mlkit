@@ -134,3 +134,4 @@ word32.sml                    gc gengc prof
 regexp1.sml                   gc gengc prof
 regexp2.sml                   gc gengc prof
 pickle.pm                     gc gengc prof
+packreal.sml                  gc gengc prof

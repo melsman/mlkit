@@ -44,6 +44,9 @@ local
 	    SOME i => i
 	  | _ => raise Fail "maxInt"
 
+    val maxWord =
+	0w2 * Word.fromInt maxInt + 0w1
+
     val minInt = 
 	case Int.minInt of 
 	    SOME i => i
@@ -53,6 +56,9 @@ local
 	case Int32.maxInt of 
 	    SOME i => i
 	  | _ => raise Fail "maxInt32"
+
+    val maxWord32 =
+	0w2 * Word32.fromLargeInt maxInt32 + 0w1
 
     val minInt32 = 
 	case Int32.minInt of 
@@ -65,12 +71,14 @@ val _ = okEq "test1a" word 0w0
 val _ = okEq "test1b" word 0w7
 val _ = okEq "test1c" word (Word.fromInt maxInt)
 val _ = okEq "test1d" word (Word.fromInt minInt)
+val _ = okEq "test1e" word maxWord
 
 (* Word32 *)
 val _ = okEq "test2a" word32 0w0
 val _ = okEq "test2b" word32 0w7
 val _ = okEq "test2c" word32 (Word32.fromLargeInt maxInt32)
 val _ = okEq "test2d" word32 (Word32.fromLargeInt minInt32)
+val _ = okEq "test2e" word32 maxWord32
 
 (* Int *)
 val _ = okEq "test3a" int 0
