@@ -3,32 +3,27 @@
    on the base support modules for MLYacc (MyBase.sml), and my support functors
    - these are the functors that are referred to freely. *)
 
-(*$Parse : TOPDEC_GRAMMAR LEX_BASICS PARSE_INFO INFIX_BASIS
-         PRETTYPRINT REPORT FINMAP BASIC_IO FLAGS CRASH MyBase
-         LexSML_ ParseSML_ GrammarUtils LexUtils Infixing
-         PARSE*)
-
 functor Parse (structure TopdecGrammar : TOPDEC_GRAMMAR
 	       structure LexBasics : LEX_BASICS
 	       structure ParseInfo : PARSE_INFO
 	       sharing type ParseInfo.SourceInfo.pos = LexBasics.pos
 	       sharing type TopdecGrammar.info = ParseInfo.ParseInfo
-	      structure InfixBasis : INFIX_BASIS
-                sharing type InfixBasis.id = TopdecGrammar.DecGrammar.Ident.id
-		    and type InfixBasis.Basis = ParseInfo.DFInfo.InfixBasis
-              structure Report: REPORT
-                sharing type LexBasics.Report
+	       structure InfixBasis : INFIX_BASIS
+               sharing type InfixBasis.id = TopdecGrammar.DecGrammar.Ident.id
+	       sharing type InfixBasis.Basis = ParseInfo.DFInfo.InfixBasis
+               structure Report: REPORT
+               sharing type LexBasics.Report
 		           = ParseInfo.SourceInfo.Report
 		           = InfixBasis.Report
 		           = Report.Report
-              structure PrettyPrint: PRETTYPRINT
-                sharing type TopdecGrammar.StringTree = PrettyPrint.StringTree
+               structure PrettyPrint: PRETTYPRINT
+               sharing type TopdecGrammar.StringTree = PrettyPrint.StringTree
 		  = LexBasics.StringTree
-		sharing type PrettyPrint.Report = Report.Report
-              structure FinMap: FINMAP
-              structure BasicIO: BASIC_IO
-              structure Flags: FLAGS
-              structure Crash: CRASH
+	       sharing type PrettyPrint.Report = Report.Report
+               structure FinMap: FINMAP
+               structure BasicIO: BASIC_IO
+               structure Flags: FLAGS
+               structure Crash: CRASH
 		) : PARSE =
   struct
     structure Stream = Stream()

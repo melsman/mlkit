@@ -1,15 +1,8 @@
 (* Finite sets using balanced AVL trees *)
 
-(* LOG: 
-    08/03/1995-Martin: Optimized difference (s1 \ s2). Now check
-                       if s1 is empty.
-*)
-
 functor OrderSet(structure Order : ORDERING
 		 structure PP : PRETTYPRINT): KIT_MONO_SET =
   struct
-
-    open Edlib
 
     infix ==
 

@@ -9,8 +9,6 @@ functor TyName(
 	      ) : TYNAME =
   struct
 
-    open Edlib
-
     (* Type names are based on names which may be `matched'. In
      * particular, if two type names, n1 and n2, are successfully
      * matched, eq(n1,n2) = true. This may affect the canonical
@@ -38,9 +36,9 @@ functor TyName(
 			in rank_bucket := rr :: ( !rank_bucket ) ;
 			  rr 
 			end)
-	  fun min(r1,r2) = Int.min r1 r2
+	  fun min(r1,r2) = Int.min (r1, r2)
 	  fun reset () =
-	    (List.apply (fn rr => rr := 0) (!rank_bucket);
+	    (List.app (fn rr => rr := 0) (!rank_bucket);
 	     rank_bucket := [];
 	     current_rank := 0)
 	  val op <= : rank * rank -> bool = op <=
@@ -51,7 +49,11 @@ functor TyName(
 			  
 
     fun freshTyName {tycon: tycon, arity: int, equality: bool} =
-      {tycon=tycon, name=Name.new(), rank=Rank.new(), arity=arity, equality=equality}
+      let val name = Name.new()
+      in (* if tycon = TyCon.tycon_EXN then print ("generating fresh type name exn(" ^ 
+	                                           Int.toString(Name.key name) ^ ")\n") else (); *)
+	{tycon=tycon, name=name, rank=Rank.new(), arity=arity, equality=equality}
+      end
 
     fun arity ({arity, ...} : TyName) : int = arity
 
@@ -78,7 +80,7 @@ functor TyName(
          let val str = TyCon.pr_TyCon (tycon tn)
 	 in if !print_type_name_stamps then
 	      let val eq = if equality tn then "E " else ""
-		  val id = Int.string (Name.key (name tn))
+		  val id = Int.toString (Name.key (name tn))
 	      in str ^ "(" ^ eq ^ id ^ ")"
 	      end
 	    else str

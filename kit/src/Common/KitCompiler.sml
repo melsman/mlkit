@@ -49,6 +49,7 @@ functor KitCompiler() : sig include MANAGER
       
     structure ParseElab = ParseElab
       (structure Parse = TopdecParsing.Parse
+       structure Timing = Tools.Timing
        structure ElabTopdec = Elaboration.ElabTopdec
        structure ModuleEnvironments = Basics.ModuleEnvironments
        structure PreElabTopdecGrammar = TopdecParsing.PreElabTopdecGrammar
@@ -178,6 +179,7 @@ structure K = struct
 		    loop (rest, script)
 		  end handle _ => (print "Error: I could not open file `KITtimings' for writing.\n"; exit()))
 	      | loop ("-nobasislib"::rest, script) = (Flags.auto_import_basislib := false; loop (rest, script))
+	      | loop ("-reportfilesig"::rest, script) = (Flags.lookup_flag_entry "report_file_sig" := true; loop (rest, script))
 	      | loop ("-logtofiles"::rest, script) = (Flags.lookup_flag_entry "log_to_file" := true; loop (rest, script))
 	      | loop ("-prof"::rest, script) = (Flags.lookup_flag_entry "region_profiling" := true; loop (rest, script))
 	      | loop ("-version"::rest, script) = loop (rest, script) (*skip*)

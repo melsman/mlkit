@@ -10,7 +10,29 @@ functor ElabTopdec
    structure StatObject : STATOBJECT
    structure ParseInfo : PARSE_INFO
    structure ElabInfo : ELAB_INFO
+   structure IG : TOPDEC_GRAMMAR
+   sharing type IG.tycon = ElabInfo.TypeInfo.tycon
+   structure OG : TOPDEC_GRAMMAR
+   sharing type OG.tycon = IG.tycon 
+(*   sharing type OG.tycon = OG.DecGrammar.tycon = OG.DecGrammar.TyCon.tycon *)
+
+   structure Environments : ENVIRONMENTS
+   structure ModuleStatObject: MODULE_STATOBJECT
+   structure ModuleEnvironments : MODULE_ENVIRONMENTS
+   structure Name : NAME
+   structure ElabRep : ELAB_REPOSITORY
+   structure ElabDec : ELABDEC
+   structure FinMap : FINMAP
+   structure Flags : FLAGS
+   structure Crash : CRASH
+
    sharing ElabInfo.ParseInfo = ParseInfo
+   sharing ElabInfo.TypeInfo.TyName = StatObject.TyName
+   sharing Environments.TyName = StatObject.TyName
+   sharing ModuleEnvironments.TyName = StatObject.TyName
+   sharing ModuleStatObject.TyName = StatObject.TyName
+   sharing ElabRep.TyName = ModuleEnvironments.TyName
+
    sharing type ElabInfo.ErrorInfo.TyName = StatObject.TyName
    sharing type ElabInfo.ErrorInfo.TyVar = StatObject.TyVar
    sharing type ElabInfo.ErrorInfo.TypeFcn = StatObject.TypeFcn
@@ -20,103 +42,86 @@ functor ElabTopdec
    sharing type ElabInfo.ErrorInfo.longstrid = StrId.longstrid
    sharing type ElabInfo.TypeInfo.realisation = StatObject.realisation
    sharing type ElabInfo.TypeInfo.strid = StrId.strid
-       and ElabInfo.TypeInfo.TyName = StatObject.TyName
 
-  structure IG : TOPDEC_GRAMMAR
-     sharing type IG.strid = StrId.strid
-     sharing type IG.longstrid = StrId.longstrid 
-     sharing type IG.sigid = SigId.sigid
-     sharing type IG.info = ParseInfo.ParseInfo
-     sharing type IG.tyvar = StatObject.ExplicitTyVar
-     sharing type ElabInfo.ErrorInfo.id = IG.id
-     sharing type ElabInfo.ErrorInfo.tycon = IG.tycon
-     sharing type ElabInfo.ErrorInfo.funid = IG.funid
-     sharing type ElabInfo.ErrorInfo.longtycon = IG.longtycon
-     sharing type IG.StringTree = PrettyPrint.StringTree
-         and type IG.tycon = IG.DecGrammar.tycon = IG.DecGrammar.TyCon.tycon
+   sharing type IG.strid = StrId.strid
+   sharing type IG.longstrid = StrId.longstrid 
+   sharing type IG.sigid = SigId.sigid
+   sharing type IG.info = ParseInfo.ParseInfo
+   sharing type IG.tyvar = StatObject.ExplicitTyVar
+   sharing type ElabInfo.ErrorInfo.id = IG.id
+   sharing type ElabInfo.ErrorInfo.tycon = IG.tycon
+   sharing type ElabInfo.ErrorInfo.funid = IG.funid
+   sharing type ElabInfo.ErrorInfo.longtycon = IG.longtycon
+   sharing type IG.StringTree = PrettyPrint.StringTree
 
-  structure OG : TOPDEC_GRAMMAR
-     sharing type OG.funid = IG.funid
-     sharing type OG.strid = IG.strid
-     sharing type OG.sigid = SigId.sigid
-     sharing type OG.longstrid = StrId.longstrid
-     sharing type OG.longtycon = IG.longtycon
-     sharing type OG.tyvar = IG.tyvar
-     sharing type OG.tycon = IG.tycon = ElabInfo.TypeInfo.tycon
-     sharing type OG.id = IG.id
-     sharing type OG.info = ElabInfo.ElabInfo
-     sharing type OG.StringTree = PrettyPrint.StringTree
-         and type OG.tycon = OG.DecGrammar.tycon = OG.DecGrammar.TyCon.tycon
+(*   sharing type IG.tycon = IG.DecGrammar.tycon = IG.DecGrammar.TyCon.tycon *)
 
-   structure Environments : ENVIRONMENTS
-     sharing Environments.TyName = StatObject.TyName
-     sharing type Environments.TyVar = StatObject.TyVar
-     sharing type Environments.Type = StatObject.Type
-     sharing type Environments.TypeScheme = StatObject.TypeScheme
-     sharing type Environments.Substitution = StatObject.Substitution
-     sharing type Environments.TypeFcn = StatObject.TypeFcn
-     sharing type Environments.level = StatObject.level
-     sharing type Environments.realisation = StatObject.realisation
-     sharing type Environments.id = IG.id
-     sharing type Environments.strid = IG.strid
-     sharing type Environments.tycon = IG.tycon
-     sharing type Environments.ExplicitTyVar = StatObject.ExplicitTyVar
-     sharing type Environments.longtycon = IG.longtycon
-     sharing type Environments.longstrid = IG.longstrid
-     sharing type Environments.ty = IG.ty
-         and type Environments.Env = ElabInfo.TypeInfo.Env
+   sharing type OG.funid = IG.funid
+   sharing type OG.strid = IG.strid
+   sharing type OG.sigid = SigId.sigid
+   sharing type OG.longstrid = StrId.longstrid
+   sharing type OG.longtycon = IG.longtycon
+   sharing type OG.tyvar = IG.tyvar
+   sharing type OG.id = IG.id
+   sharing type OG.info = ElabInfo.ElabInfo
+   sharing type OG.StringTree = PrettyPrint.StringTree
 
-   structure ModuleStatObject: MODULE_STATOBJECT
-     sharing ModuleStatObject.TyName = StatObject.TyName
-     sharing type ModuleStatObject.Env = Environments.Env
-     sharing type ModuleStatObject.realisation = StatObject.realisation
-     sharing type ModuleStatObject.StringTree = PrettyPrint.StringTree
-         and type ModuleStatObject.SigMatchError = ElabInfo.ErrorInfo.SigMatchError
+   sharing type Environments.TyVar = StatObject.TyVar
+   sharing type Environments.Type = StatObject.Type
+   sharing type Environments.TypeScheme = StatObject.TypeScheme
+   sharing type Environments.Substitution = StatObject.Substitution
+   sharing type Environments.TypeFcn = StatObject.TypeFcn
+   sharing type Environments.level = StatObject.level
+   sharing type Environments.realisation = StatObject.realisation
+   sharing type Environments.id = IG.id
+   sharing type Environments.strid = IG.strid
+   sharing type Environments.tycon = IG.tycon
+   sharing type Environments.ExplicitTyVar = StatObject.ExplicitTyVar
+   sharing type Environments.longtycon = IG.longtycon
+   sharing type Environments.longstrid = IG.longstrid
+   sharing type Environments.ty = IG.ty
+   sharing type Environments.Env = ElabInfo.TypeInfo.Env
 
-   structure ModuleEnvironments : MODULE_ENVIRONMENTS
-     sharing ModuleEnvironments.TyName = StatObject.TyName
-     sharing type ModuleEnvironments.TyVar = StatObject.TyVar
-     sharing type ModuleEnvironments.TyStr = Environments.TyStr
-     sharing type ModuleEnvironments.Env = Environments.Env
-     sharing type ModuleEnvironments.Sig = ModuleStatObject.Sig
-     sharing type ModuleEnvironments.FunSig = ModuleStatObject.FunSig
-     sharing type ModuleEnvironments.Context = Environments.Context
-     sharing type ModuleEnvironments.realisation = StatObject.realisation
-     sharing type ModuleEnvironments.id = IG.id
-     sharing type ModuleEnvironments.strid = IG.strid
-     sharing type ModuleEnvironments.tycon = IG.tycon
-     sharing type ModuleEnvironments.longstrid = IG.longstrid
-     sharing type ModuleEnvironments.longtycon = IG.longtycon
-     sharing type ModuleEnvironments.sigid = IG.sigid
-     sharing type ModuleEnvironments.funid = IG.funid
-         and type ModuleEnvironments.Basis = ElabInfo.TypeInfo.Basis
+   sharing type ModuleStatObject.Env = Environments.Env
+   sharing type ModuleStatObject.realisation = StatObject.realisation
+   sharing type ModuleStatObject.StringTree = PrettyPrint.StringTree
+   sharing type ModuleStatObject.SigMatchError = ElabInfo.ErrorInfo.SigMatchError
 
-   structure Name : NAME
-     sharing type Name.name = StatObject.TyName.name
+   sharing type ModuleEnvironments.TyVar = StatObject.TyVar
+   sharing type ModuleEnvironments.TyStr = Environments.TyStr
+   sharing type ModuleEnvironments.Env = Environments.Env
+   sharing type ModuleEnvironments.Sig = ModuleStatObject.Sig
+   sharing type ModuleEnvironments.FunSig = ModuleStatObject.FunSig
+   sharing type ModuleEnvironments.Context = Environments.Context
+   sharing type ModuleEnvironments.realisation = StatObject.realisation
+   sharing type ModuleEnvironments.id = IG.id
+   sharing type ModuleEnvironments.strid = IG.strid
+   sharing type ModuleEnvironments.tycon = IG.tycon
+   sharing type ModuleEnvironments.longstrid = IG.longstrid
+   sharing type ModuleEnvironments.longtycon = IG.longtycon
+   sharing type ModuleEnvironments.sigid = IG.sigid
+   sharing type ModuleEnvironments.funid = IG.funid
+   sharing type ModuleEnvironments.Basis = ElabInfo.TypeInfo.Basis
 
-   structure ElabRep : ELAB_REPOSITORY
-     sharing ElabRep.TyName = ModuleEnvironments.TyName
-         and type ElabRep.name = Name.name
-         and type ElabRep.ElabBasis = ModuleEnvironments.Basis
-	 and type ElabRep.funid = IG.funid
+   sharing type Name.name = StatObject.TyName.name
 
-   structure ElabDec : ELABDEC
-     sharing type ElabDec.PreElabDec = IG.dec
-     sharing type ElabDec.PostElabDec = OG.dec
-     sharing type ElabDec.PreElabTy = IG.ty
-     sharing type ElabDec.PostElabTy = OG.ty
-     sharing type ElabDec.Env = Environments.Env
-     sharing type ElabDec.Context = Environments.Context
-     sharing type ElabDec.Type = StatObject.Type
-     sharing type ElabDec.TyName = StatObject.TyName
+   sharing type ElabRep.name = Name.name
+   sharing type ElabRep.ElabBasis = ModuleEnvironments.Basis
+   sharing type ElabRep.funid = IG.funid
 
-   structure FinMap : FINMAP
-   structure Flags : FLAGS
-   structure Crash : CRASH
+   sharing type ElabDec.PreElabDec = IG.dec
+   sharing type ElabDec.PostElabDec = OG.dec
+   sharing type ElabDec.PreElabTy = IG.ty
+   sharing type ElabDec.PostElabTy = OG.ty
+   sharing type ElabDec.Env = Environments.Env
+   sharing type ElabDec.Context = Environments.Context
+   sharing type ElabDec.Type = StatObject.Type
+   sharing type ElabDec.TyName = StatObject.TyName
+
      ) : ELABTOPDEC  =
   struct
 
-    open Edlib
+    structure List = Edlib.List
 
     fun impossible s = Crash.impossible ("ElabTopdec." ^ s)
     fun noSome NONE s = impossible s
@@ -1252,9 +1257,11 @@ functor ElabTopdec
 	    val (T_E, out_sigexp) = elab_sigexp (B, sigexp)
 	    val (T, E) = Sigma.to_T_and_E T_E
 	    val B' = B B_plus_E (E.from_SE (SE.singleton (strid,E)))
+(*
 	    fun print_basis B =
 	      PrettyPrint.outputTree(print,ModuleEnvironments.B.layout B, 100)
-	    (*val _ = print_basis B'*)
+	    val _ = print_basis B'
+*)
 	    val (T'', E', out_strexp) = elab_strexp(B', strexp)
 	    val T' = TyName.Set.intersect (tynames_E E') (TyName.Set.fromList T'')
 	    val T'E' = Sigma.from_T_and_E (T',E')
@@ -1262,7 +1269,7 @@ functor ElabTopdec
 	    val out_i = if EqSet.member funid (F.dom F)
 			then repeatedIdsError (i, [ErrorInfo.FUNID_RID funid])
 			else ElabInfo.plus_TypeInfo (okConv i) 
-			  (TypeInfo.FUNBIND_INFO {argE=E,elabB=B',T=TyName.Set.fromList T'',resE=E',opaq_env_opt=NONE})
+			  (TypeInfo.FUNBIND_INFO {argE=E,elabBref=ref B',T=TyName.Set.fromList T'',resE=E',opaq_env_opt=NONE})
 	  in
 	    (F.singleton (funid, (prjid,Phi.from_T_and_E_and_Sigma (T, E, T'E'))) F_plus_F F,
 	     OG.FUNBIND (out_i, funid, strid, out_sigexp, out_strexp,

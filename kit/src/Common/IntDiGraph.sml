@@ -119,7 +119,6 @@ signature DIGRAPH2 =
 			 graph -> TextIO.outstream -> unit
   end
 
-(*$DIGRAPH_ALL: DIGRAPH2*)
 signature DIGRAPH_ALL =
   sig
     include DIGRAPH2
@@ -178,7 +177,6 @@ signature DIGRAPH_ALL =
 
   end
 
-(*$DIGRAPH_SCC: DIGRAPH2*)
 signature DIGRAPH_SCC =
   sig
     include DIGRAPH2
@@ -205,7 +203,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 		   structure Report : REPORT):DIGRAPH_ALL =
   struct
 
-    open Edlib
+    structure List = Edlib.List
 
     structure IdFinMap  =
       OrderFinMap(structure Order =
@@ -599,7 +597,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 	     in 
 		"label: \"" ^ className ^ "(" ^ layoutEdgeInfo(edgeInfo) ^ ")\""
 	     end
-           val class = "class: " ^ (Int.string classNo) ^ " "
+           val class = "class: " ^ (Int.toString classNo) ^ " "
 	   val endEdge = "}" ^ newLine
 	 in
 	   List.apply 
@@ -611,7 +609,7 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 	 end     
 
        fun exportClassNames (classNo, className, nodePairs) = 
-	 TextIO.output(out, "classname " ^ (Int.string classNo) ^ ":\"" ^ className ^ "\"" ^ newLine)
+	 TextIO.output(out, "classname " ^ (Int.toString classNo) ^ ":\"" ^ className ^ "\"" ^ newLine)
 
 	val beginGraph = "graph: {" ^ newLine
 	val attrGraph = "title: \"" ^ title ^ "\"" ^ newLine ^
@@ -657,7 +655,7 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
 		   structure Report : REPORT):DIGRAPH_SCC =
   struct
 
-    open Edlib
+    structure List = Edlib.List
 
     structure DiGraph = DiGraphAll(structure InfoDiGraph = InfoDiGraph
 				   structure PP = PP
@@ -735,11 +733,11 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
 		       (fn n' => (fn l => 
 				  if !(getVisited n') then       (* n' processed before. *)
 				    (if !(getDfsNo n') <> 0 then (* is n' in this scc.   *)
-				       Int.min (!(getDfsNo n')) l
+				       Int.min (!(getDfsNo n'), l)
 				     else
 				       l)
 				  else
-				    Int.min (processNode n') l)) low (getNodes((getOutSet n))))
+				    Int.min (processNode n', l))) low (getNodes((getOutSet n))))
 	  in
 	    (if !(getDfsNo n) = low then (* n is root in a scc *)
 	       (newSCC();
@@ -795,7 +793,7 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
 	sccGraph
       end
 
-    fun layoutSccNo sccNo = "sccNo " ^ (Int.string sccNo) 
+    fun layoutSccNo sccNo = "sccNo " ^ (Int.toString sccNo) 
     fun layoutComponent layoutId (sccNo, scc) =
       "[" ^ (layoutSccNo sccNo) ^ ": " ^
       (List.foldR (fn node => (fn str =>
@@ -849,14 +847,11 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
   end
 
 (*
-(*$Test: FLAGS PRETTYPRINT CRASH REPORT DiGraphScc *)
 functor Test(structure Flags      : FLAGS
 	     structure PP         : PRETTYPRINT
 	     structure Crash      : CRASH
 	     structure Report     : REPORT)  =
   struct
-
-    open Edlib
 
     structure IntDiGraph = DiGraphScc(structure InfoDiGraph =
 					struct
@@ -882,7 +877,7 @@ functor Test(structure Flags      : FLAGS
     val layoutInfo = PP.LEAF 
     fun layoutInfoString i =
       case getInfo i of
-	(i,s) => (Int.string i) ^ ": " ^ s
+	(i,s) => (Int.toString i) ^ ": " ^ s
 
     fun do_test1() =
       let
@@ -974,22 +969,22 @@ functor Test(structure Flags      : FLAGS
 	  (reachable (findNode 9 g));
 
 	log "Trying layoutGraph.";
-	log (pp(layoutGraph (fn (i,s) => "[r"^(Int.string i)^"="^s^"]") (fn i => i) (fn i => "r"^(Int.string i)) (rangeGraph g) ));
+	log (pp(layoutGraph (fn (i,s) => "[r"^(Int.toString i)^"="^s^"]") (fn i => i) (fn i => "r"^(Int.toString i)) (rangeGraph g) ));
 
 	log "Trying scc.";
-	log (pp(layoutScc (fn i => "r"^(Int.string i)) (genSccGraph g)));
+	log (pp(layoutScc (fn i => "r"^(Int.toString i)) (genSccGraph g)));
 
 	log "Trying pathsBetweenTwoNodes: 6 and 1.";
-	log (pp(layoutPaths (fn i => "r"^(Int.string i)) (pathsBetweenTwoNodes (findNode 6 g) (findNode 1 g) (genSccGraph g))));
+	log (pp(layoutPaths (fn i => "r"^(Int.toString i)) (pathsBetweenTwoNodes (findNode 6 g) (findNode 1 g) (genSccGraph g))));
 
 	log "Trying pathsBetweenTwoNodes: 8 and 5.";
-	log (pp(layoutPaths (fn i => "r"^(Int.string i)) (pathsBetweenTwoNodes (findNode 8 g) (findNode 5 g) (genSccGraph g))));
+	log (pp(layoutPaths (fn i => "r"^(Int.toString i)) (pathsBetweenTwoNodes (findNode 8 g) (findNode 5 g) (genSccGraph g))));
 
 	log "Trying pathsBetweenTwoNodes: 9 and 1.";
-	log (pp(layoutPaths (fn i => "r"^(Int.string i)) (pathsBetweenTwoNodes (findNode 9 g) (findNode 1 g) (genSccGraph g))));
+	log (pp(layoutPaths (fn i => "r"^(Int.toString i)) (pathsBetweenTwoNodes (findNode 9 g) (findNode 1 g) (genSccGraph g))));
 
 	log "Trying pathsBetweenTwoNodes: 9 and 9.";
-	log (pp(layoutPaths (fn i => "r"^(Int.string i)) (pathsBetweenTwoNodes (findNode 9 g) (findNode 9 g) (genSccGraph g))));
+	log (pp(layoutPaths (fn i => "r"^(Int.toString i)) (pathsBetweenTwoNodes (findNode 9 g) (findNode 9 g) (genSccGraph g))));
 
 
 	log "Finished test2"

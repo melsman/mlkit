@@ -4,10 +4,20 @@ functor Flags (structure Crash : CRASH
 	       structure Report : REPORT) : FLAGS =
   struct
 
-    structure NewString = String
-    open Edlib OldIO OldString
-    open General
+    structure NewGeneral = General
+    structure StringParse = Edlib.StringParse
+    structure IntParse = Edlib.IntParse
+    structure BoolParse = Edlib.BoolParse
+    structure PairParse = Edlib.PairParse
+    structure ListParse = Edlib.ListParse
+    structure ListPair = Edlib.ListPair
+    structure General = Edlib.General
+    structure List = Edlib.List
 
+    val explode' = OldString.explode
+
+    fun outLine (s) = print(s ^ "\n")
+	
     fun die s = Crash.impossible ("Flags." ^ s)
 
      (* To introduce a new dynamic flag, do the following:
@@ -125,14 +135,13 @@ functor Flags (structure Crash : CRASH
 
     val colwidth               = ref 80
 
-    val log        = ref std_out
+    val log        = ref TextIO.stdOut
 
     val indent_ccode   = ref false;
 
     (* Program manager *)
 
-    fun dummy _ : unit = output (std_out,
-				 "uninitialised function reference in Flags")
+    fun dummy _ : unit = print "uninitialised function reference in Flags!"
     val project_file_name = ref "sources.pm"
     val build_project_ref: (string -> unit)ref = ref dummy
     val comp_ref: (string -> unit)ref  = ref dummy
@@ -172,10 +181,10 @@ functor Flags (structure Crash : CRASH
 	       [] =>  ()
 	     | reports =>
 		 (if !log_to_file then
-		    output (std_out, "\n*** " ^ Int.string (List.size reports)
-			    ^ " warning"
-			    ^ (case reports of [_] => "" | _ => "s")
-		            ^ " printed on log file\n")
+		    print ("\n*** " ^ Int.toString (List.size reports)
+			   ^ " warning"
+			   ^ (case reports of [_] => "" | _ => "s")
+			   ^ " printed on log file\n")
 		  else ();
 		  let val reports = rev reports
 		      val report = Report.//(Report.line " *** Warnings ***", Report.flatten reports)
@@ -222,16 +231,19 @@ struct
   exception ParseScript of string
   
   fun is_letter_or_digit (ch: string) = 
-    ord ch >= ord "a" andalso ord ch <= ord "z" orelse
-    ord ch >= ord "A" andalso ord ch <= ord "Z" orelse
-    ch = "'" orelse ch = "_"
+    case explode ch
+      of ch::_ => 
+	ord ch >= ord #"a" andalso ord ch <= ord #"z" orelse
+	ord ch >= ord #"A" andalso ord ch <= ord #"Z" orelse
+	ch = #"'" orelse ch = #"_"
+       | _ => die "is_letter_or_digit"
   
   fun is_space (ch: string) =
       ch = " " orelse ch = "\t" orelse ch = "\n"
   
   fun lex_id (input: string list) : string * string list =
     let val (id_l , rest) = List.removePrefix is_letter_or_digit input
-    in (implode id_l, rest)
+    in (concat id_l, rest)
     end
   
   fun skip_colon (":" :: rest) = rest
@@ -247,16 +259,16 @@ struct
   
   fun lex_const ty input =
     case ty of 
-      Int => (case IntParse.parse (implode input) of
-                OK (i, rest) => (INT i , explode rest)
+      Int => (case IntParse.parse (concat input) of
+                General.OK (i, rest) => (INT i , explode' rest)
               | _ => raise ParseScript "expected integer constant"
              )
-    | String => (case StringParse.parse (implode input) of
-		   OK (s, rest) => (STRING s  , explode rest)
+    | String => (case StringParse.parse (concat input) of
+		   General.OK (s, rest) => (STRING s  , explode' rest)
 		 | _ => raise ParseScript "expected string constant"
 		)
-    | Bool => (case BoolParse.parse (implode input) of
-		 OK (b, rest) => (BOOL b , explode rest)
+    | Bool => (case BoolParse.parse (concat input) of
+		 General.OK (b, rest) => (BOOL b , explode' rest)
 	       | _ => raise ParseScript "expected bool constant"
 	      )
   
@@ -298,10 +310,10 @@ struct
   
   fun parseScript(filename: string) = 
     (let val state as (_, bindings) = 
-         parseDec(drop_comments(explode(StringParse.fromFile filename)),[])
+         parseDec(drop_comments(explode'(StringParse.fromFile filename)),[])
      in bindings
-     end handle Io s => raise ParseScript s)
-       handle ParseScript s => (output(!log, "\n *parse error*: " ^ s ^ "\n");
+     end handle IO.Io {name,function,...} => raise ParseScript (name ^":"^function))
+       handle ParseScript s => (TextIO.output(!log, "\n *parse error*: " ^ s ^ "\n");
 				raise ParseScript s)
 
 end (* ParseScript *)
@@ -389,7 +401,7 @@ struct
   (* Read and interpret script and update directory according to 
    * parse result. *)
   local
-    fun update_assoc([], key,_) = output(std_out, "Cannot find script key: " ^ key ^ "\n")
+    fun update_assoc([], key,_) = print("Cannot find script key: " ^ key ^ "\n")
       | update_assoc((key',r)::rest, key, value) = 
       if key=key' then r:= value else update_assoc(rest, key, value);
 
@@ -404,26 +416,23 @@ struct
   in
     fun readScript script_file : unit = 
       if OS.FileSys.access (script_file, []) then
-	    (print ("Reading script file " ^ NewString.toString script_file ^ "\n");
+	    (print ("Reading script file " ^ String.toString script_file ^ "\n");
 	     interpret (ParseScript.parseScript script_file) 
 	     handle _ => print ("Error while reading script file\n"))
-      else print ("No script file " ^ NewString.toString script_file ^ " present\n")
+      else print ("No script file " ^ String.toString script_file ^ " present\n")
   end
 
   (* Write all possible entries which can be changed from *)
   (* the script file.                                     *)
   fun show_script_entries () =
     let
-      fun out(s) = output(std_out, s)
-      fun outLine (s) = out(s ^ "\n")
-	
       val dirEntriesName = (List.map #1 (!(#strings (dir)))) @ 
 	                   (List.map #1 (!(#integers (dir)))) @ 
 			   (List.map #1 (!(#booleans (dir))))
 
       val dirEntriesValue = (List.map (! o #2) (!(#strings (dir)))) @ 
-                            (List.map (Int.string o ! o #2) (!(#integers (dir)))) @ 
-			    (List.map (Bool.string o ! o #2) (!(#booleans (dir))))
+                            (List.map (Int.toString o ! o #2) (!(#integers (dir)))) @ 
+			    (List.map (Bool.toString o ! o #2) (!(#booleans (dir))))
       
       fun calc_width w [] = w
 	| calc_width w (s::xs) = 
@@ -434,9 +443,9 @@ struct
 
       val column_width = calc_width 0 (dirEntriesName @ dirEntriesValue)
 
-      fun make_field s = String.padR " " column_width s
+      fun make_field s = StringCvt.padRight #" " column_width s
       
-      val horizontal_column_line = String.padR "-" column_width ""
+      val horizontal_column_line = StringCvt.padRight #"-" column_width ""
       fun horizontal_line 0 res = res ^ "+"
 	| horizontal_line n res = horizontal_line (n-1) (res ^ "+" ^ horizontal_column_line)
       
@@ -546,9 +555,7 @@ struct
     | empty _ = false;
 
   fun max(i:int, j: int) = if i>=j then i else j
-  fun out(s) = output(std_out, s)
-  fun outLine(s) = out(s ^ "\n")
-  fun pad width text = String.padR "." width text;
+  fun pad width text = StringCvt.padRight #"." width text;
   fun help () = outLine "\n\n***Try again\n"
   
   val menu = ref(DISPLAY[]) ; (* updated later*)
@@ -559,7 +566,7 @@ struct
   fun mk_header text below : item = {text=text,attr=VALUE(fn _ => ""),below=below}
 
 
-  (*read_string r () = read a string from std_in.  If the input is some
+  (*read_string r () = read a string from TextIO.stdIn.  If the input is some
    string in quotes, read_string assigns it to the ref r (and sets the global
    (whooa!) ref u_or_q_from_read_string is to false), and returns.  If the
    input is `u' or `quit', read_string does not update r, sets
@@ -570,39 +577,39 @@ struct
   fun read_string r () =
       (u_or_q_from_read_string := false ;
        outLine "<string in double quotes>, Up (u), or Quit (quit): >" ;
-       let val s = TextIO.inputLine std_in
-	   val (_, l) = List.splitFirst (fn ch => ch <> " ") (explode s)
+       let val s = TextIO.inputLine TextIO.stdIn
+	   val (_, l) = List.splitFirst (fn ch => ch <> #" ") (explode s)
 	         handle List.First _ => ([],[])
        in
 	 case l of 
 	   [] => (help () ; read_string r ())
-	 | "q" :: "u" :: "i" :: "t" :: _  => u_or_q_from_read_string := true
-	 | "u" :: _  => u_or_q_from_read_string := true
-	 | "\"" (*"*) :: _  => 
+	 | #"q" :: #"u" :: #"i" :: #"t" :: _  => u_or_q_from_read_string := true
+	 | #"u" :: _  => u_or_q_from_read_string := true
+	 | #"\"" (*"*) :: _  => 
            (case StringParse.parse (implode l) of 
-	      OK (s,_) => r := s | _ => (help () ; read_string r ()))
+	      General.OK (s,_) => r := s | _ => (help () ; read_string r ()))
 	 | _ => (help () ; read_string r ())
        end)
 
   fun read_int r () =
     (outLine "<number> or up (u): >";
-     let val s = TextIO.inputLine std_in
-       val (_, l) = List.splitFirst(fn ch => ch <> " ")(explode s)
+     let val s = TextIO.inputLine TextIO.stdIn
+       val (_, l) = List.splitFirst(fn ch => ch <> #" ")(explode s)
 	 handle List.First _ => ([],[])
      in case l 
 	  of [] => (help(); read_int r ())
-	   | "q" :: "u" :: "i" :: "t" :: _  => ()
-	   | "u" :: _  => ()
+	   | #"q" :: #"u" :: #"i" :: #"t" :: _  => ()
+	   | #"u" :: _  => ()
 	   | _ => case IntParse.parse (implode l) of
-	    OK(i,_) => r:= i | _ => (help(); read_int r ())
+	    General.OK(i,_) => r:= i | _ => (help(); read_int r ())
      end)
 
   fun mk_string_action(r: string ref, text) =
-    {text = text, attr = VALUE (fn () => "(" ^ String.string(!r) ^ ")"),
+    {text = text, attr = VALUE (fn () => "(" ^ String.toString(!r) ^ ")"),
      below = ACTION (read_string r)};
 
   fun mk_int_action(r: int ref, text) =
-    {text = text, attr = VALUE(fn _ => Int.string(!r)),
+    {text = text, attr = VALUE(fn _ => Int.toString(!r)),
      below = ACTION (read_int r)};
 
 
@@ -692,7 +699,7 @@ struct
                        (lines)
   
            fun outText (n,text, s: string) =
-	         outLine("\t" ^ Int.string n ^ "\t" ^ pad width text ^ s)
+	         outLine("\t" ^ Int.toString n ^ "\t" ^ pad width text ^ s)
            
            fun display_line (n, {text, attr, below}) =
              case (attr, below) of
@@ -715,7 +722,7 @@ struct
     let 
       fun loop  n = if n<= 0 then [] else  " " :: loop(n-1)
     in
-      implode(loop n)
+      concat(loop n)
     end;
   
                         (********************)
@@ -745,10 +752,10 @@ struct
             end
         fun show_choice (b: bool, text, below)  =
             let val botton_width = mk_odd (size text + 4) 
-                val rule = implode(hrepeat (if b then "==" else "- ") (botton_width div 2)
+                val rule = concat(hrepeat (if b then "==" else "- ") (botton_width div 2)
                                    @ [(if b then "=" else "-")])
                 val lrule = if b then "|" else " "
-                fun centerline text = implode[lrule, " ",  center text (botton_width-4), " ", lrule]
+                fun centerline text = concat[lrule, " ",  center text (botton_width-4), " ", lrule]
                 val status = if b then "on" ^
                          (if empty below then "" else " >>>")
                              else "off"^
@@ -789,7 +796,7 @@ struct
   val delta = 4
   fun outLineInd indent s =
      (outLine ""; (*start new line*)
-      out(blanks indent ^ s)
+      print(blanks indent ^ s)
      )
   fun show_full_menu  indent menu = case menu of
     DISPLAY l => List.apply (show_full_item indent) l  
@@ -798,7 +805,7 @@ struct
       show_full_menu (indent+delta) below1;
       outLineInd (indent) ("BUTTON OFF: " ^ text2);
       show_full_menu (indent+delta) below2)
-  | ACTION _ => out " fn"
+  | ACTION _ => print " fn"
   | NOMENU => ()
   and show_full_item indent {text: string, attr = VALUE show, below} =
         (outLineInd indent (text ^ " " ^ show());
@@ -826,36 +833,36 @@ struct
                  | HELP;
   
   fun read_display_cmd(): cmd =
-    (output(std_out, "\n>");
-     let val s = TextIO.inputLine std_in
-         val (_, l) = List.splitFirst (fn ch => ch <> " ") (explode s)
+    (print "\n>";
+     let val s = TextIO.inputLine TextIO.stdIn
+         val (_, l) = List.splitFirst (fn ch => ch <> #" ") (explode s)
 	       handle List.First _ => ([],[])
      in case l of
           [] => HELP
-        | "q" :: "u" :: "i" :: "t" :: _ => QUIT
-        | "u" :: _ => UP
-        | "a" :: l' => (case IntParse.parse (implode l') of
-                         OK(i, _) => ACTIVATE i
+        | #"q" :: #"u" :: #"i" :: #"t" :: _ => QUIT
+        | #"u" :: _ => UP
+        | #"a" :: l' => (case IntParse.parse (implode l') of
+                         General.OK(i, _) => ACTIVATE i
                        | _ => HELP)
-        | "t" :: l' => (case IntParse.parse (implode l') of
-                         OK(i, _) => TOGGLE i
+        | #"t" :: l' => (case IntParse.parse (implode l') of
+                         General.OK(i, _) => TOGGLE i
                        | _ => HELP)
         | ch :: l' =>  (case IntParse.parse (implode l) of
-                         OK(n,_) => ACTIVATE_OR_TOGGLE n
+                         General.OK(n,_) => ACTIVATE_OR_TOGGLE n
                         | _ => HELP)
      end);
   
   fun read_button_cmd () : cmd =
-        (output (std_out, "\n>");
-	 let val s = TextIO.inputLine std_in
-	     val (_, l) = List.splitFirst (fn ch => ch <> " ") (explode s)
+        (print "\n>";
+	 let val s = TextIO.inputLine TextIO.stdIn
+	     val (_, l) = List.splitFirst (fn ch => ch <> #" ") (explode s)
 	           handle List.First _ => ([],[])
 	 in case l of
 	   [] => HELP
-	 | "q" :: "u" :: "i" :: "t" :: _ => QUIT
-	 | "u" :: _ => UP
-	 | "a" :: l' => ACTIVATE_BOT
-	 | "t" :: l' => TOGGLE_BOT
+	 | #"q" :: #"u" :: #"i" :: #"t" :: _ => QUIT
+	 | #"u" :: _ => UP
+	 | #"a" :: l' => ACTIVATE_BOT
+	 | #"t" :: l' => TOGGLE_BOT
 	 | _ => HELP
 	 end);
   
@@ -879,18 +886,17 @@ struct
   fun read_int_list r () =
     (outLine "<type an int list, e.g. [4,3]> or up (u): >";
      let
-       val s = TextIO.inputLine std_in
-       (*val _ = output(std_out, s)*)
+       val s = TextIO.inputLine TextIO.stdIn
        val parseInt = IntParse.parse
        val parseIntList = ListParse.parseSep "[" "]" "," parseInt
      in
        case explode s
 	 of [] => (help(); read_int_list r ())
-	  | "u" :: _  => ()
-	  | "q" :: "u" :: "i" :: "t" :: _  => ()
-	  | "["::_ => (case parseIntList s
+	  | #"u" :: _  => ()
+	  | #"q" :: #"u" :: #"i" :: #"t" :: _  => ()
+	  | #"["::_ => (case parseIntList s
 			      handle ListParse.Sep _ => die "parseIntList" of
-			 OK(l',_) => (r := l')
+			 General.OK(l',_) => (r := l')
 		       | _ => (help(); read_int_list r ()))
 	  | _ => (help(); read_int_list r ())
      end)
@@ -899,19 +905,18 @@ struct
     (outLine "<type an int pair list of region variables,\n\
 	  \e.g. [(formal reg. var. at pp.,letregion bound reg. var.)]> or up (u): >" ;
      let
-       val s = TextIO.inputLine std_in
-       (*val _ = output(std_out, s)*)
+       val s = TextIO.inputLine TextIO.stdIn
        val parseInt = IntParse.parse
        val parseIntPair = PairParse.parse parseInt parseInt
        val parseIntPairList = ListParse.parseSep "[" "]" "," parseIntPair
      in
        case (explode s)
 	 of [] => (help(); read_int_pair_list r ())
-	  | "u" :: _  => ()
-	  | "q" :: "u" :: "i" :: "t" :: _  => ()
-	  | "["::_ => (case parseIntPairList s
+	  | #"u" :: _  => ()
+	  | #"q" :: #"u" :: #"i" :: #"t" :: _  => ()
+	  | #"["::_ => (case parseIntPairList s
 			      handle ListParse.Sep _ => die "parseIntList" of
-			 OK(l',_) => (r := l')
+			 General.OK(l',_) => (r := l')
 		       | _ => (help(); read_int_pair_list r ()))
 	  | _ => (help(); read_int_pair_list r ())
      end)
@@ -920,7 +925,7 @@ struct
               {text = text, 
 	       attr = VALUE 
 	       (fn _ => (List.string 
-			 (fn i => (Int.string i))
+			 (fn i => (Int.toString i))
 			 (!r))),
 	       below = ACTION (read_int_list r)};
 
@@ -929,7 +934,7 @@ struct
 	       attr = VALUE 
 	       (fn _ => (List.string 
 			 (fn (i1, i2) => 
-			  "(" ^ Int.string i1 ^ "," ^ Int.string i2 ^ ")")
+			  "(" ^ Int.toString i1 ^ "," ^ Int.toString i2 ^ ")")
 			 (!r))),
 	       below = ACTION (read_int_pair_list r)};
   
@@ -1022,7 +1027,7 @@ struct
 		 below = ACTION (fn () => (read_string script () ;
 					   if !u_or_q_from_read_string then () 
 					   else Directory.readScript (!script)))},
-		{text = "Read it again", attr = VALUE(fn _ => "(" ^ String.string (!script) ^ ")"),
+		{text = "Read it again", attr = VALUE(fn _ => "(" ^ String.toString (!script) ^ ")"),
 		 below = ACTION (fn _ => (Directory.readScript (!script)))}]
     end
 
@@ -1108,7 +1113,7 @@ struct
 				     comp_current_source_file ()))}
     val compile_it_again_item : item =
           {text = "Compile it again",
-	   attr = VALUE (fn () => "(" ^ String.string (!current_source_file) ^ ")"),
+	   attr = VALUE (fn () => "(" ^ String.toString (!current_source_file) ^ ")"),
 	   below = ACTION comp_current_source_file}
   end (*local*)
 
@@ -1140,11 +1145,12 @@ struct
   fun interact () = interact0 ()
         handle Quit => ()
 	     | Crash.CRASH => (outLine "*** CRASH raised *" ; interact ()) 
-	     | Io s => (outLine ("*** Io \"" ^ s ^ "\" raised *"); interact ())
+	     | IO.Io _ => (outLine ("*** IO.Io raised *"); interact ())
 	     | Overflow => (outLine "*** Overflow raised *"; interact ())
-	     | e => (outLine "*** Uncaught exception\nI shall reraise it...\n" ;
-		     raise e ;
-		     interact ())
+	     | e => (outLine ("*** Uncaught exception " ^ NewGeneral.exnName e ^ " ***");
+		     outLine ("Exn message: " ^ NewGeneral.exnMessage e);
+		     outLine "I shall reraise it...";
+		     raise e)
 
   and interact0 () = inter ([], !menu)
   
@@ -1169,7 +1175,7 @@ struct
 		  (outLine("***Nothing to activate ");
 		   inter(path,menu))
 	      | {below, attr = SWITCH(ref false), ...} =>
-		  (outLine ("***Switch is disabled - use  `t" ^ Int.string n
+		  (outLine ("***Switch is disabled - use  `t" ^ Int.toString n
 			    ^ "' to toggle menu, if that is what you want");
 		  inter(path, menu) )
 	      | {text, below, ...} => (inter(text::path, below); inter(path, menu))

@@ -1,8 +1,5 @@
 (* Grammar for modules - Definition v3 pages 12-14 *)
 
-
-(*$TOPDEC_GRAMMAR : DEC_GRAMMAR STRID FUNID SIGID*)
-
 signature TOPDEC_GRAMMAR =
   sig
     (* Core declarations. *)

@@ -1,5 +1,3 @@
-(*$ElabInfo : PARSE_INFO SOURCE_INFO ERROR_INFO TYPE_INFO
-        DF_INFO OVERLOADING_INFO CRASH PRETTYPRINT ELAB_INFO*)
 
 functor ElabInfo (structure ParseInfo : PARSE_INFO
 		  structure ErrorInfo : ERROR_INFO

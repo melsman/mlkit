@@ -2,9 +2,9 @@ functor TopdecLex(structure Tokens: Topdec_TOKENS
 			   structure LexBasics: LEX_BASICS
 			   structure LexUtils: LEX_UTILS
 			     sharing type LexUtils.svalue = Tokens.svalue
-				 and type LexUtils.token = Tokens.token
-				 and type LexUtils.pos = LexBasics.pos
-				 and type LexUtils.SourceReader
+			     sharing type LexUtils.token = Tokens.token
+			     sharing type LexUtils.pos = LexBasics.pos
+			     sharing type LexUtils.SourceReader
 					  = LexBasics.SourceReader
 			  )
 	=

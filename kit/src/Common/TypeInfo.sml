@@ -10,15 +10,13 @@ functor TypeInfo (structure Crash: CRASH
 		    sharing type PP.StringTree = StatObject.StringTree
 		  structure Environments : ENVIRONMENTS
 		    sharing type Environments.StringTree = PP.StringTree
-		        and type Environments.realisation = StatObject.realisation
+		    sharing type Environments.realisation = StatObject.realisation
 		  structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		    sharing type ModuleEnvironments.StringTree = PP.StringTree
 		    ) : TYPE_INFO =
   struct
 
     fun die s = Crash.impossible ("TypeInfo." ^ s)
-
-    structure Int = Edlib.Int
 
     type longid = Ident.longid
     type Type = StatObject.Type
@@ -59,7 +57,7 @@ functor TypeInfo (structure Crash: CRASH
     | OPEN_INFO of strid list * tycon list * id list
     | INCLUDE_INFO of strid list * tycon list
     | FUNCTOR_APP_INFO of {rea_inst : realisation, rea_gen : realisation, Env : Env}
-    | FUNBIND_INFO of {argE: Env,elabB: Basis, T: TyName.Set.Set, resE: Env, opaq_env_opt: opaq_env option}
+    | FUNBIND_INFO of {argE: Env,elabBref: Basis ref, T: TyName.Set.Set, resE: Env, opaq_env_opt: opaq_env option}
     | TRANS_CONSTRAINT_INFO of Env
     | OPAQUE_CONSTRAINT_INFO of Env * realisation
     | DELAYED_REALISATION of realisation * TypeInfo
@@ -92,11 +90,12 @@ functor TypeInfo (structure Crash: CRASH
 	    | INCLUDE_INFO i => INCLUDE_INFO i
 	    | FUNCTOR_APP_INFO {rea_inst,rea_gen,Env} => 
 	     FUNCTOR_APP_INFO {rea_inst=phi_on_phi' rea_inst, rea_gen=phi_on_phi' rea_gen, Env=phi_on_E Env}
-            | FUNBIND_INFO {argE,elabB,T,resE,opaq_env_opt} => die "on_TypeInfo': FUNBIND_INFO"
+            | FUNBIND_INFO {argE,elabBref,T,resE,opaq_env_opt} => die "on_TypeInfo': FUNBIND_INFO"
 (*	     FUNBIND_INFO {argE=phi_on_E argE,elabB=elabB,T=T,resE=resE,rea_opt=SOME phi} *)
             | TRANS_CONSTRAINT_INFO E => TRANS_CONSTRAINT_INFO (phi_on_E E)
             | OPAQUE_CONSTRAINT_INFO (E,phi') => OPAQUE_CONSTRAINT_INFO (phi_on_E E, phi_on_phi' phi')
-	    | DELAYED_REALISATION (phi',ti) => on_TypeInfo'(phi_on_phi' phi', ti)
+(*	    | DELAYED_REALISATION (phi',ti) => on_TypeInfo'(phi_on_phi' phi', ti)  *)
+	    | DELAYED_REALISATION (phi',ti) => on_TypeInfo'(phi, on_TypeInfo'(phi', ti))
       end
 
     fun on_TypeInfo a = DELAYED_REALISATION a
@@ -120,7 +119,7 @@ functor TypeInfo (structure Crash: CRASH
       case info
 	of LAB_INFO{index,tyvars,Type} => 
 	  PP.NODE{start="LAB_INFO(", finish=")",indent=2,
-		  children=[PP.LEAF (Int.string index),
+		  children=[PP.LEAF (Int.toString index),
 			    layout_tyvars tyvars,
 			    layoutType Type],
 		  childsep = PP.RIGHT ","}
@@ -140,8 +139,8 @@ functor TypeInfo (structure Crash: CRASH
 		     childsep=PP.RIGHT ","}
 	 | CON_INFO{numCons, index, tyvars,Type,longid,instances} =>
 	     PP.NODE{start="CON_INFO(",  finish=")", indent=2,
-		     children=[PP.LEAF("numCons: " ^ Int.string numCons),
-			       PP.LEAF("index: " ^ Int.string index),
+		     children=[PP.LEAF("numCons: " ^ Int.toString numCons),
+			       PP.LEAF("index: " ^ Int.toString index),
 			       PP.NODE{start="tyvars: ",finish="",
 				       indent=4,
 				       children=[layout_tyvars tyvars],
@@ -202,7 +201,7 @@ functor TypeInfo (structure Crash: CRASH
 						   children=[layout_strids strids,
 							     layout_tycons tycons]}
 	 | FUNCTOR_APP_INFO {rea_inst,rea_gen,Env} => PP.LEAF "FUNCTOR_APP_INFO{rea_inst,rea_gen,Env}"
-	 | FUNBIND_INFO {argE,elabB,T,resE,opaq_env_opt} => PP.NODE{start="FUNBIND_INFO(", finish=")",
+	 | FUNBIND_INFO {argE,elabBref,T,resE,opaq_env_opt} => PP.NODE{start="FUNBIND_INFO(", finish=")",
 								    indent=2,childsep=PP.NOSEP,
 								    children=[layoutEnv argE]}
 	 | TRANS_CONSTRAINT_INFO Env => PP.NODE{start="TRANS_CONSTRAINT_INFO(", finish=")",

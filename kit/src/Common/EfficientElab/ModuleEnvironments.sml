@@ -12,22 +12,22 @@ functor ModuleEnvironments(
 	    sharing Environments.TyName = StatObject.TyName
 	    sharing type Environments.longstrid = StrId.longstrid
 	    sharing type Environments.strid      = StrId.strid = TyCon.strid
-		and type Environments.tycon      = TyCon.tycon
-		and type Environments.longtycon      = TyCon.longtycon
-		and type Environments.TypeScheme = StatObject.TypeScheme
-		and type Environments.TyVar = StatObject.TyVar
-	        and type Environments.Type = StatObject.Type
-	        and type Environments.realisation = StatObject.realisation
-		and type Environments.id = Ident.id
-		and type Environments.longid = Ident.longid
+	    sharing type Environments.tycon      = TyCon.tycon
+	    sharing type Environments.longtycon      = TyCon.longtycon
+	    sharing type Environments.TypeScheme = StatObject.TypeScheme
+	    sharing type Environments.TyVar = StatObject.TyVar
+	    sharing type Environments.Type = StatObject.Type
+	    sharing type Environments.realisation = StatObject.realisation
+	    sharing type Environments.id = Ident.id
+	    sharing type Environments.longid = Ident.longid
 
 	  structure ModuleStatObject : MODULE_STATOBJECT
 	    sharing Environments.TyName = ModuleStatObject.TyName
 	    sharing type Environments.TypeFcn = StatObject.TypeFcn
 	    sharing type ModuleStatObject.id = Environments.id
-		and type ModuleStatObject.Env = Environments.Env
-		and type ModuleStatObject.realisation = StatObject.realisation
-		and type ModuleStatObject.TyVar = StatObject.TyVar
+	    sharing type ModuleStatObject.Env = Environments.Env
+	    sharing type ModuleStatObject.realisation = StatObject.realisation
+	    sharing type ModuleStatObject.TyVar = StatObject.TyVar
 
 	  structure PP : PRETTYPRINT
 	    sharing type ModuleStatObject.StringTree = PP.StringTree
@@ -37,17 +37,15 @@ functor ModuleEnvironments(
 
 	  structure FinMap : FINMAP
 	    sharing type FinMap.StringTree = PP.StringTree
-	        and type FinMap.Report = Report.Report
+	    sharing type FinMap.Report = Report.Report
 
 	  structure FinMapEq : FINMAPEQ
 	    sharing type FinMapEq.StringTree = PP.StringTree
-	        and type FinMapEq.Report = Report.Report
+	    sharing type FinMapEq.Report = Report.Report
 
 	  structure Crash : CRASH
           ) : MODULE_ENVIRONMENTS =
   struct
-
-    open Edlib
 
     fun die s = Crash.impossible ("ModuleEnvironments."^s)
 
@@ -265,18 +263,18 @@ functor ModuleEnvironments(
       fun restrictB (BASIS {F=FUNENV F,G=SIGENV G,E},
 		     {longvids : longid list, longtycons : longtycon list, longstrids : longstrid list,
 		      funids : funid list, sigids : sigid list}) =
-	let val F' = List.foldL
-	               (fn funid => fn Fnew =>
+	let val F' = foldl
+	               (fn (funid, Fnew) =>
 			let val FunSig = (case FinMap.lookup F funid of
 					    SOME FunSig => FunSig
-					  | NONE => die "restrictB.funid not in basis.")
+					  | NONE => die ("restrictB.funid " ^ FunId.pr_FunId funid ^ " not in basis."))
 			in FinMap.add(funid,FunSig,Fnew)
 			end) FinMap.empty funids 
-	    val G' = List.foldL
-	               (fn sigid => fn Gnew =>
+	    val G' = foldl
+	               (fn (sigid, Gnew) =>
 			let val Sig = (case FinMap.lookup G sigid of
 					 SOME Sig => Sig
-				       | NONE => die "restrictB.sigid not in basis.")
+				       | NONE => die ("restrictB.sigid " ^ SigId.pr_SigId sigid ^ " not in basis."))
 			in FinMap.add(sigid,Sig,Gnew)
 			end) FinMap.empty sigids
 	    val E' = E.restrict (E, {longvids=longvids, longtycons=longtycons, longstrids=longstrids})

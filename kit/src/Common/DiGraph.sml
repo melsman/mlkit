@@ -1,5 +1,3 @@
-(*$DiGraph : STACK UNION_FIND_POLY PRETTYPRINT FLAGS CRASH DIGRAPH *)
-
 (* 
  * Directed graphs with an equivalence relation on the nodes           
  *
@@ -16,7 +14,6 @@ functor DiGraph(structure UF : UNION_FIND_POLY
   struct
 
     structure List = Edlib.List
-    structure Int = Edlib.Int
 
     fun say s = TextIO.output(TextIO.stdOut, s ^ "\n")
 
@@ -431,7 +428,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
         fun min_list(smallest,[]) = smallest
           | min_list(smallest:int,x::xs) = 
               if x < smallest then min_list(x, xs) else min_list(smallest, xs)
-        fun min'(x,y) = if y = 0 then x else Int.min x y
+        fun min'(x,y) = if y = 0 then x else Int.min (x, y)
         val count = ref 1 
         fun inc r = r := !r + 1
         val stack : '_info node stack = empty () 
@@ -470,7 +467,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
                 end
             in
               (*trace ("lowlink -- body, n : " ^ (pp(layout_node layout_info n))
-                     ^ " low : " ^ Int.string low);*)
+                     ^ " low : " ^ Int.toString low);*)
               if low = !(get_dfnumber n) then (* a new scc starts *)
                 (scc_list := [] :: !scc_list;
                  loop())
@@ -672,16 +669,12 @@ functor DiGraph(structure UF : UNION_FIND_POLY
 
 (*
 
-(*$Test: DIGRAPH FLAGS PRETTYPRINT
-*)
 functor TestDiGraph(structure DiGraph : DIGRAPH
 		    structure Flags   : FLAGS
 		    structure PP      : PRETTYPRINT
 		    sharing type DiGraph.StringTree = PP.StringTree
 		      ) (* : sig end *) =
   struct
-
-    open Edlib OldString
 
     fun etest(found, expected) = 
         if found = expected then "OK"
@@ -733,7 +726,7 @@ fun etest(label,found,expected) =
 
     val graph = !graph 
       
-    val layout_info = PP.LEAF o Int.string o (op !)  
+    val layout_info = PP.LEAF o Int.toString o (op !)  
 
     fun test_quotient() = 
       (log "graph in depth first search order:";

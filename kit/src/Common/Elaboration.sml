@@ -5,12 +5,14 @@ signature TOOLS =
     structure FinMap: FINMAP
     structure FinMapEq : FINMAPEQ
     structure SortedFinMap: SORTED_FINMAP
+    structure IntFinMap : MONO_FINMAP where type dom = int
 
     structure PrettyPrint: PRETTYPRINT
       sharing type FinMap.StringTree
 	           = FinMapEq.StringTree
 		   = SortedFinMap.StringTree
 		   = PrettyPrint.StringTree
+	           = IntFinMap.StringTree
 
     structure Flags: FLAGS
             
@@ -41,6 +43,9 @@ functor Tools(): TOOLS =
 					structure Crash = Crash
                                         structure Flags = Flags
 				       )
+    structure IntFinMap = IntFinMap(structure Report = Report
+				    structure PP = PrettyPrint
+				   )
 
     structure FinMap = FinMap(structure Report = Report
 			      structure PP = PrettyPrint
@@ -173,6 +178,7 @@ signature BASICS =
 	  and type ModuleEnvironments.TyStr = Environments.TyStr
 	  and type ModuleEnvironments.TyVar = StatObject.TyVar
 	  and type ModuleEnvironments.id = Ident.id
+	  and type ModuleEnvironments.longid = Ident.longid
 	  and type ModuleEnvironments.strid = StrId.strid
 	  and type ModuleEnvironments.sigid = SigId.sigid
 	  and type ModuleEnvironments.funid = FunId.funid
@@ -261,6 +267,8 @@ functor Basics(structure Tools: TOOLS): BASICS =
 
       structure StatObject : STATOBJECT = 
 	StatObject(structure SortedFinMap  = Tools.SortedFinMap
+		   structure Name = Name
+		   structure IntFinMap = Tools.IntFinMap
 		   structure Ident = Ident
 		   structure Lab = Lab
 		   structure SCon = SCon
@@ -486,7 +494,7 @@ signature ELABORATION =
 	  and type PostElabDecGrammar.longtycon = Basics.TyCon.longtycon
 	  and type PostElabDecGrammar.tyvar = Basics.TyVar.SyntaxTyVar
  	  and type PostElabDecGrammar.id = Basics.Ident.id
- 	  and type PostElabDecGrammar.longid = Basics.Ident.longid
+ 	  and type PostElabDecGrammar.longid = Basics.Ident.longid = Basics.ModuleEnvironments.longid
 	  and type PostElabDecGrammar.info
 		   = Basics.AllInfo.ElabInfo.ElabInfo
 	  and type PostElabDecGrammar.StringTree

@@ -1,13 +1,14 @@
 (* Finite maps *)
 
-(*$FinMapEq: REPORT PRETTYPRINT FINMAPEQ*)
-
 functor FinMapEq(structure Report: REPORT
-	       structure PP: PRETTYPRINT
+		 structure PP: PRETTYPRINT
 	      ): FINMAPEQ =
   struct
 
-    open Edlib
+    structure List = Edlib.List
+    structure Set = Edlib.Set
+    structure General = Edlib.General
+    structure ListSort = Edlib.ListSort
 
     type ('a, 'b) map = ('a *  'b) list
 
@@ -51,7 +52,7 @@ functor FinMapEq(structure Report: REPORT
 	      if eq(x,x') then (x, folder(y, y')) :: rest
 	      else (x, y) :: insert(x', y', rest)
       in
-	List.foldL (fn (x, y) => fn m => insert(x, y, m)) map1 map2
+	foldl (fn ((x, y), m) => insert(x, y, m)) map1 map2
       end
 
     fun dom eq (m: ('a, 'b) map) = Set.fromList (General.curry eq) (map #1 m)
@@ -65,10 +66,10 @@ functor FinMapEq(structure Report: REPORT
         map (fn (a, b) => (a, f(a, b))) m
 
     fun fold (f : ('a * 'b) -> 'b) (x : 'b) (m : ('d,'a) map) : 'b = 
-	List.foldL (fn (a, b) => fn c => f(b, c)) x m
+	foldl (fn ((a, b), c) => f(b, c)) x m
 
     fun Fold (f : (('a * 'b) * 'c) -> 'c) (x : 'c) (m : ('a,'b) map) : 'c =
-	List.foldL (fn (a, b) => fn c => f((a, b), c)) x m
+	foldl (fn ((a, b), c) => f((a, b), c)) x m
 
     val filter = List.all
 

@@ -1,6 +1,5 @@
 (* Lexing basics. *)
 
-(*$LEX_BASICS*)
 signature LEX_BASICS =
   sig
    (* Loads of horrible side-effecting stuff to keep track of the source

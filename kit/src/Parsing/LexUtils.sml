@@ -8,8 +8,11 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 		): LEX_UTILS =
   struct
     
-    open Edlib OldString OldIO
-    open General
+    fun explode' a = OldString.explode a
+    fun ord' a = OldString.ord a
+
+    structure List = Edlib.List
+    structure StringType = Edlib.StringType
 
     open LexBasics Token
     fun impossible s = Crash.impossible ("LexUtils." ^ s)
@@ -33,7 +36,7 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 	  | glue(".", nil) = impossible "asQualId.glue"
 	  | glue(x, nil) = [x]
       in
-	glue("", explode text)
+	glue("", explode' text)
       end
 
     val asQualId =
@@ -68,9 +71,9 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 	       SOME i => chars_to_posint_in_base0 base (n * base + i) chars
 	     | NONE => n)
       and char_to_int_opt base char =
-	    let val i = if StringType.isUpper char then ord char - ord "A" + 10
-			else if StringType.isLower char then ord char - ord "a" + 10
-			     else if StringType.isDigit char then ord char - ord "0"
+	    let val i = if StringType.isUpper char then ord' char - ord #"A" + 10
+			else if StringType.isLower char then ord' char - ord #"a" + 10
+			     else if StringType.isDigit char then ord' char - ord #"0"
 				  else ~1 (*hack*)
 	    in 
 	      if i>=0 andalso i<base then SOME i else NONE
@@ -103,8 +106,8 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 
       fun exception_to_opt p x = SOME (p x) handle Overflow => NONE
     in
-      val asInteger = exception_to_opt (chars_to_int o explode)
-      val asWord = exception_to_opt (asWord0 o explode)
+      val asInteger = exception_to_opt (chars_to_int o explode')
+      val asWord = exception_to_opt (asWord0 o explode')
       val chars_to_posint_in_base = fn base => fn chars =>
 	    chars_to_posint_in_base base chars
 	    handle Overflow => impossible "chars_to_posint_in_base"
@@ -130,21 +133,21 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 		   stringChars=text :: stringChars, commentDepth=0}
 
     fun addControlChar text arg =
-      addChars (chr(ord(String.nth 2 text) - ord "@")) arg
+      addChars (str(chr(ord(String.sub(text,2)) - ord #"@"))) arg
 
-    fun asDigit text = ord text - ord "0"
+    fun asDigit text = ord' text - ord #"0"
 
     local
       fun add_numbered_char (pos, text) arg limit n =
 	    if n > limit then
 	      raise LexBasics.LEXICAL_ERROR
-		      (pos, "ASCII escape " ^ text ^ " must be <= " ^ Int.string limit)
+		      (pos, "ASCII escape " ^ text ^ " must be <= " ^ Int.toString limit)
 	    else
-	      addChars (chr n) arg
+	      addChars (str(chr n)) arg
     in
       fun addAsciiChar (pos, text) arg =
 	    add_numbered_char (pos, text) arg 255
-	      (case explode text of
+	      (case explode' text of
 		 ["\\", c1, c2, c3] => chars_to_posint_in_base 10 [c1, c2, c3]
 	       | _ => impossible "addAsciiChar")
 
@@ -155,13 +158,13 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 
       fun addUnicodeChar (pos, text) arg =
 	    add_numbered_char (pos, text) arg 255
-	      (case explode text of
+	      (case explode' text of
 		 ["\\", "u", c1, c2, c3, c4] =>
 		   chars_to_posint_in_base 16 [c1, c2, c3, c4]
 	       | _ => impossible "addUnicodeChar")
     end (*local*)
 
-    fun asString(LEX_ARGUMENT{stringChars, ...}) = implode(rev stringChars)
+    fun asString(LEX_ARGUMENT{stringChars, ...}) = concat(rev stringChars)
 
    (*keyword detection (better done here than by the lexer). *)
 

@@ -1,4 +1,4 @@
-(*$InfixBasis: IDENT FINMAP REPORT PRETTYPRINT INFIX_BASIS*)
+
 functor InfixBasis(structure Ident: IDENT
 		   structure FinMap: FINMAP
 
@@ -10,7 +10,7 @@ functor InfixBasis(structure Ident: IDENT
 		  ): INFIX_BASIS =
   struct
 
-    open Edlib
+    structure ListSort = Edlib.ListSort
 
     type id = Ident.id
 
@@ -19,8 +19,8 @@ functor InfixBasis(structure Ident: IDENT
     fun pr_InfixEntry fix =
       case fix
 	of NONFIX => "nonfix"
-	 | INFIX n => "infix " ^ Int.string n
-	 | INFIXR n => "infixr " ^ Int.string n
+	 | INFIX n => "infix " ^ Int.toString n
+	 | INFIXR n => "infixr " ^ Int.toString n
 
     type Basis = (id, InfixEntry) FinMap.map
 
@@ -34,7 +34,7 @@ functor InfixBasis(structure Ident: IDENT
       fun declare iBas (id, fix) = FinMap.add(id, fix, iBas)
     in
       fun new(ids, fix) =
-	List.foldL (fn id => fn iBas => declare iBas (id, fix)) emptyB ids
+	foldl (fn (id,iBas) => declare iBas (id, fix)) emptyB ids
     end
 
     fun lookup iBas id =

@@ -1,5 +1,3 @@
-(*$GrammarUtils : TOPDEC_GRAMMAR LEX_BASICS PARSE_INFO CRASH
-     REPORT PRETTYPRINT GRAMMAR_UTILS*)
 
 functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 		      structure LexBasics : LEX_BASICS
@@ -19,8 +17,8 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 			) : GRAMMAR_UTILS =
   struct
 
-    open Edlib
-    open General
+    structure List = Edlib.List
+    structure General = Edlib.General
 
     fun impossible s = Crash.impossible ("GrammarUtils." ^ s)
 
@@ -270,8 +268,8 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
               let 
                 val i = 
                   (case (List.index (General.curry (op =) tv) tyvarseq) of
-                    OK i => i
-                  | Fail _ =>
+                    General.OK i => i
+                  | General.Fail _ =>
                      Crash.unimplemented
                       "No check for tyvar on rsh in lhs of withtype defined type")
               in

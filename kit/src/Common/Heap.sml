@@ -6,7 +6,6 @@
 
 (* 16/09/1996, Niels Hallenberg.                          *)
 
-(*$HEAP_INFO: *)
 signature HEAP_INFO =
   sig
     type elem                              (* Type of ordered elements. *)
@@ -14,7 +13,6 @@ signature HEAP_INFO =
     val layout : elem -> string            (* Layout element.           *)
   end
 
-(*$HEAP: HEAP_INFO*)
 signature HEAP =
   sig
     structure HeapInfo : HEAP_INFO
@@ -40,11 +38,8 @@ signature HEAP =
     val delete_max : heap -> heap * HeapInfo.elem
   end
 
-(*$Heap: HEAP*)
 functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
   struct
-
-    open Edlib
 
     structure HeapInfo = HeapInfo
     exception Heap of string
@@ -100,7 +95,7 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
 	      (merge(h1,h2), xs2)
 	    end
     in
-      fun from_list xs = #1 (from_list' (List.size xs, xs))
+      fun from_list xs = #1 (from_list' (length xs, xs))
     end
 
     local
@@ -128,7 +123,7 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
     fun sort xs = to_list_sorted (from_list xs)
 
     fun layout Empty = "E"
-      | layout (Node(h,v,l,r)) = "N("^(Int.string h)^","^(HeapInfo.layout v)^"," ^
+      | layout (Node(h,v,l,r)) = "N("^(Int.toString h)^","^(HeapInfo.layout v)^"," ^
                                  (layout l) ^ "," ^ (layout r) ^ ")"
 
     fun export_heap_vcg (title: string)
@@ -144,11 +139,11 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
           let
 	    val node_id = fresh_node()
             val begin_node = "node: {"
-            val title_node = "title: \"" ^ (Int.string node_id) ^ "\" "
+            val title_node = "title: \"" ^ (Int.toString node_id) ^ "\" "
             val label_node = 
 	      (case v of
 		 NONE => ("label: \" Empty \" ")
-	       | SOME (h,v) => ("label: \"" ^ "W:" ^ (Int.string h) ^ ",Val:" ^ (HeapInfo.layout v) ^ "\" "))
+	       | SOME (h,v) => ("label: \"" ^ "W:" ^ (Int.toString h) ^ ",Val:" ^ (HeapInfo.layout v) ^ "\" "))
             val end_node = "}" ^ new_line
           in
             (TextIO.output(out, begin_node ^ title_node ^ label_node ^ end_node);
@@ -158,8 +153,8 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
         fun export_edge n_id1 n_id2 edge_info =
           let
             val begin_edge = "edge: {"
-            val sourcename = "sourcename: \"" ^ (Int.string n_id1) ^ "\" "
-            val targetname = "targetname: \"" ^ (Int.string n_id2) ^ "\" "
+            val sourcename = "sourcename: \"" ^ (Int.toString n_id1) ^ "\" "
+            val targetname = "targetname: \"" ^ (Int.toString n_id2) ^ "\" "
             val label = "label: \"" ^ edge_info ^ "\" "
 	    val class = "class: 1"
             val end_edge = "}" ^ new_line
@@ -244,8 +239,6 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
 functor TestHeap ()  =
 struct
 
-  open Edlib
-
   structure HeapInfo =
     struct
       datatype hval = C of {count: int ref,
@@ -255,8 +248,8 @@ struct
       type elem = heap_val
       fun leq (ref (C {count = ref c1, ...}), ref (C{count = ref c2, ...})) = c1 <= c2
       fun layout (ref (C {count = ref c, id, vars = ref xs})) =
-	"Id(" ^ (Int.string id) ^ ") with count: " ^ (Int.string c) ^ 
-        " and vars: [" ^ (List.foldL (fn (ref (C {count = ref c1, id, ...})) => fn acc => acc ^ "(" ^ (Int.string c1) ^ ":" ^ (Int.string id) ^ ")" ) "" xs) ^ "]."
+	"Id(" ^ (Int.toString id) ^ ") with count: " ^ (Int.toString c) ^ 
+        " and vars: [" ^ (foldl (fn (ref (C {count = ref c1, id, ...}),acc) => acc ^ "(" ^ (Int.toString c1) ^ ":" ^ (Int.toString id) ^ ")" ) "" xs) ^ "]."
     end
 
   structure Heap : HEAP = Heap(structure HeapInfo = HeapInfo)
@@ -265,14 +258,14 @@ struct
   fun error s = TextIO.output(TextIO.stdOut, "ERROR: " ^ s)
 
   fun gen_list 0 xs = xs
-    | gen_list n xs = gen_list (n-1) ((ref (HeapInfo.C{count = ref n, id = n, vars = ref xs}))::(List.rev xs))
+    | gen_list n xs = gen_list (n-1) ((ref (HeapInfo.C{count = ref n, id = n, vars = ref xs}))::(rev xs))
     
   fun do_test () =
     let
       val _ = print "Starting testing...\n"
       val _ = print "Testing end...\n"
       val temp_list = gen_list 10 []
-      val h = List.foldL (fn n => (fn acc => Heap.insert n acc)) Heap.empty temp_list
+      val h = foldl (fn (n, acc) => Heap.insert n acc) Heap.empty temp_list
       val res = Heap.layout h
       val out_stream = TextIO.openOut ("test1.vcg")
       val _ = Heap.export_heap_vcg "Heap" h out_stream
