@@ -962,20 +962,9 @@ tracing *)
             if newlevel>= n then cone
             else   (* newlevel < level: lower level *)
                    let 
-(*		     val _ = if !key = 59 then print (" *** Lowering effect " ^ PP.flatten1 (layout_effect effect) ^ 
-							" from level " ^ Int.toString n ^ " to level " ^ Int.toString newlevel ^ "\n")
-			     else ()
-*)
-		     val cone' = remove(effect,l,!key,cone) (* take 
-                                      node out of cone high cone level*)
-(*
-		     handle X => (print ("Exception raised in Effect.low - newlevel = " ^ Int.toString newlevel ^ " \n"); 
-				  print ("Level of effect " ^ PP.flatten1 (layout_effect effect) ^ " is " ^
-					 (case level_of effect of SOME i => Int.toString i | NONE => "_") ^ "\n");
-				  raise X)
-*)
-                       val _  = l:= newlevel
-                       val cone'' = add(effect, newlevel, !key,cone') (* put 
+		     val cone' = remove(effect,l,!key,cone) (* take node out of cone *)
+		     val _  = l:= newlevel
+		     val cone'' = add(effect, newlevel, !key,cone') (* put 
                                           node back in cone at lower level*)
                    in
                        low' (cone'',G.out_of_node (G.find effect))
@@ -1122,6 +1111,13 @@ tracing *)
 	    end
     end
 
+  fun unifyNodes_no_lowering f (n1, n2) : unit = 
+    let val(n1,n2) = (G.find n1, G.find n2)
+    in if G.eq_nodes(n1,n2) then ()
+       else (f(n1, n2); ())
+
+    end
+
   (* unifyRho(rho_node1, rho_node2) cone : cone
      First lower rho_node1 and rho_node2 to the same level; then union
      the two nodes (none of which have children)
@@ -1129,6 +1125,10 @@ tracing *)
 
   fun unifyRho(rho_node1, rho_node2) cone : cone = 
     unifyNodes(G.union einfo_combine_rho)(rho_node1, rho_node2) cone
+
+  fun unifyRho_no_lowering(r1,r2) : unit =
+    unifyNodes_no_lowering (G.union einfo_combine_rho) (r1,r2)
+      
 
   (* unifyEps(eps_node1, eps_node2) cone : cone
      First lower eps_node1 and eps_node2 to the same level; then union

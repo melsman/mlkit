@@ -13,6 +13,8 @@ signature MUL_INF =
         val k_normPgm: (place,place*mul, qmularefset ref)LambdaPgm_psi  ->
                        (place,place*mul, qmularefset ref)LambdaPgm_psi 
 
+	val contract : (place,place*mul, qmularefset ref)LambdaPgm_psi -> unit
+
         type StringTree
 
         val layoutLambdaPgm: (place,place*mul,qmularefset ref)LambdaPgm_psi -> StringTree

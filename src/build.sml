@@ -18,6 +18,12 @@ local
     ["dangling_pointers"] 
     K.build_basislib      
 
+  fun comp_contractregions() =
+    enable_disable 
+    ["contract_regions", "scratch"] 
+    [] 
+    K.build_basislib      
+
   fun comp_nouncurry() =
     enable_disable 
     ["scratch"] 
@@ -82,6 +88,8 @@ in
 (*  val _ = comp_RI_GC_TP_PROF() *)
 
 (*  val _ = comp_nouncurry() *)
+
+(*  val _ = comp_contractregions() *)
 
   val _ = comp_RI()
   val _ = comp_RI_GC()

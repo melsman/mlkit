@@ -634,5 +634,523 @@ struct
 
           (pgm', EE',  Psi_export) footnote Mul.reset_dep()
 	end
+
+  (* Contract: traverse program and combine regions of the same region
+   * type that are bound by the same letregion construct. *)
+
+  local open MulExp in
+      datatype app_cont = APP_CONT | APP_BREAK
+      local
+	  fun apps appt (SWITCH(t,ts,d)) : unit = 
+	      (appt t; List.app (fn (_,t) => appt t) ts; 
+	       case d of SOME t => appt t | NONE => ())
+	  fun appt f (TR(e,_,_,_)) : unit = appe f e
+	  and appe f e =
+	      case f e of
+		  APP_BREAK => ()
+		| APP_CONT => 
+	      case e of
+		  VAR _ => ()
+		| INTEGER _ => ()
+		| WORD _ => ()
+		| STRING _ => ()
+		| REAL _ => ()
+		| UB_RECORD ts => List.app (appt f) ts
+		| FN {pat,body,free,alloc} => appt f body
+		| LET {k_let, pat, bind, scope} => (appt f bind; appt f scope)
+		| LETREGION {B,rhos,body} => appt f body
+		| FIX {free, shared_clos, functions,scope} =>
+		      let fun appf {lvar,occ,tyvars,rhos,epss,
+				    Type,rhos_formals,bound_but_never_written_into,
+				    other, bind} = appt f bind
+		      in  List.app appf functions; appt f scope
+		      end
+		| APP (_,_,t1,t2) => (appt f t1; appt f t2)
+		| EXCEPTION (_,_,_,_,t) => appt f t
+		| RAISE t => appt f t
+		| HANDLE (t1,t2) => (appt f t1; appt f t2)
+		| SWITCH_I {switch,precision} => apps (appt f) switch
+		| SWITCH_W {switch,precision} => apps (appt f) switch
+		| SWITCH_S switch => apps (appt f) switch
+		| SWITCH_C switch => apps (appt f) switch
+		| SWITCH_E switch => apps (appt f) switch
+		| CON0 _ => ()
+		| CON1 (_,t) => appt f t
+		| DECON (_,t) => appt f t
+		| EXCON (_,opt) => (case opt of 
+					SOME (_,t) => appt f t
+				      | NONE => ())
+		| DEEXCON (_,t) => appt f t
+		| RECORD (_,ts) => List.app (appt f) ts
+		| SELECT (_,t) => appt f t
+		| DEREF t => appt f t
+		| REF (_,t) => appt f t
+		| ASSIGN (_,t1,t2) => (appt f t1; appt f t2)
+		| DROP t => appt f t
+		| EQUAL (_,t1,t2) => (appt f t1; appt f t2)
+		| CCALL (_,ts) => List.app (appt f) ts
+		| RESET_REGIONS (_,t) => appt f t
+		| FRAME _ => ()
+      in
+	  fun app f (PGM{expression,...}) = appt f expression
+	  val appt = appt
+      end
+
+      local exception LVARS of lvar list
+      in
+	  fun exported_lvars p =
+	      let fun r (FRAME {declared_lvars,...}) =
+		     raise LVARS (map #lvar declared_lvars)
+		    | r _ = APP_CONT
+	      in app r p ; die "exported_lvars.shouldn't get here"
+	      end handle LVARS lvs => lvs
+      end
+
+      fun contract_letregions (p : (place,place*mul, qmularefset ref)LambdaPgm_psi) : unit =
+	  let 
+	      fun on_letregion x =
+		  let fun seek r nil = NONE
+			| seek r ((_,Mul.NUM _)::rs) = seek r rs
+			| seek r ((r',Mul.INF)::rs) = 
+		      (case (Eff.get_place_ty r, Eff.get_place_ty r') of
+			   (SOME rt, SOME rt') => if rt=rt' then SOME r'
+						  else seek r rs
+			 | _ => die "contract")
+		      fun t (nil,acc) = rev acc
+			| t ((p as (_,Mul.NUM _))::rs,acc) = t(rs,p::acc)
+			| t ((p as (r,Mul.INF))::rs, acc) =
+			  (* look for infinite regions in acc with same runType *)
+			  (case seek r acc of
+			       SOME r' => (Eff.unifyRho (r,r') Eff.initCone; t(rs,acc))
+			     | NONE => t(rs,p::acc))
+		  in t (x,nil)
+		  end
+	      fun f (LETREGION {B,rhos,body}) = (rhos := on_letregion(!rhos); APP_CONT)
+		| f _ = APP_CONT
+	  in
+	      app f p
+	  end
+
+      fun member lv nil = false
+	| member lv (x::xs) = Lvar.eq(lv,x) orelse member lv xs
+
+      type rng = {formals:(place*mul) list ref, rargss: place list ref list ref, 
+		  argss:place list ref list ref}
+
+      (* Build initial a-list from formal region arguments; an a-list describes
+       * which region parameters that may be collapsed. Because we do not wish
+       * to collapse finite regions, unique numbers are chosen for finite 
+       * regions, whereas 1 is chosen for infinite regions. Further, infinite 
+       * regions of different types should not be collapsed. *)
+      fun init_alist (pl: (place*mul)list) : int list =
+	  let 
+	      fun lookup (ty,e,n) = 
+		  let fun look nil = (n,(ty,n)::e,n+1)
+			| look ((ty',i)::xs) = if ty=ty' then (i,e,n) else look xs
+		  in look e
+		  end
+	  in
+	      rev(#1(List.foldl (fn ((p,m),(l,e,n)) =>
+				 case m of
+				     Mul.NUM _ => (n::l,e,n+1)
+				   | Mul.INF => 
+					 (case Eff.get_place_ty p of
+					      SOME ty => let val (i,e,n) = lookup(ty,e,n)
+							 in (i::l,e,n)
+							 end
+					    | NONE => die "init_alist"))
+		     (nil,nil,1) pl))
+	  end
+	  
+      (* Build a-list from region vector. *)
+      fun args_alist (pl: place list) : int list =
+	  let fun get n p e =
+	        let fun loop nil = (n, (p,n)::e,n+1)
+		      | loop ((p',i)::rest) = if Eff.eq_effect(p,p') then (i,e,n) 
+					      else loop rest
+		in loop e
+		end
+	  in
+	      rev(#1(List.foldl (fn (p,(l,e,n)) =>
+				 let val (i,e,n) = get n p e
+				 in (i::l,e,n)
+				 end)
+		     (nil,nil,1) pl))
+	  end
+      
+      fun eq_E (E:(place list * int list)list) (p,p') =
+	  let fun loop z (nil,_) = NONE
+		| loop z (_,nil) = NONE
+		| loop z (x::xs,y::ys) = if Eff.eq_effect(z,x) then SOME y
+					 else loop z (xs,ys)
+	      fun loop2 n z nil = NONE
+		| loop2 n z (x::xs) = (case loop z x of
+					   SOME i => SOME (n,i)
+					 | NONE => loop2 (n+1) z xs)
+	      fun find p : (int*int) option = loop2 1 p E
+	  in case find p of
+	      SOME pair => (case find p' of
+				SOME pair' => pair=pair'
+			      | NONE => false)
+	    | NONE => false
+	  end
+	      
+      fun rargs_alist (E: (place list * int list)list) (pl: place list) : int list =
+	  let fun eq (p,p') = Eff.eq_effect (p,p') orelse eq_E E (p,p')
+	      fun get n p e =
+		  let fun loop nil = (n, (p,n)::e,n+1)
+			| loop ((p',i)::rest) = if eq(p,p') then (i,e,n) 
+						else loop rest
+		  in loop e
+		  end
+	  in
+ 	      rev(#1(List.foldl (fn (p,(l,e,n)) =>
+				 let val (i,e,n) = get n p e
+				 in (i::l,e,n)
+				 end)
+		     (nil,nil,1) pl))
+	  end
+
+      (* Collapse two a-lists into one a-list *)
+      fun collapse_alist (l1:int list) (l2:int list) : int list =
+	  let fun get n p e =
+		  let fun look nil = (n, (p,n)::e, n+1)
+			| look ((p',i)::rest) = if p = p' then (i,e,n) else look rest
+		  in look e
+		  end
+	  in rev(#1(ListPair.foldl (fn (i1,i2,(l,e,n)) =>
+				    let val (i,e,n) = get n (i1,i2) e
+				    in (i::l,e,n)
+				    end) (nil,nil,1) (l1,l2)))
+	  end
+
+      fun pp_ls nil = ""
+	| pp_ls [x] = x
+	| pp_ls (x::xs) = x ^ "," ^ pp_ls xs
+      fun pp_list nil = "[]"
+	| pp_list xs = "[" ^ pp_ls xs ^ "]"
+      fun pp_mul (Mul.NUM _) = "f"
+	| pp_mul (Mul.INF) = ""
+      fun pp_places xs = pp_list (map (fn p => PP.flatten1 (Eff.layout_effect p)) xs)
+      fun pp_formals xs = pp_list (map (fn (p,m) => (PP.flatten1 (Eff.layout_effect p) ^ pp_mul m)) xs)
+      fun pp_args xs = pp_places (!xs)
+      fun pp_ints xs = pp_list (map Int.toString xs)
+      fun pp_argss nil = ""
+	| pp_argss (x::xs) = "  " ^ pp_args x ^ "\n" ^ pp_argss xs
+
+      val touched = ref false
+      val touch_count = ref 0
+      fun unify_formals lv (alist: int list, formals: (place*mul)list) : unit =
+	  let fun unify (_,_,nil,nil) = ()
+		| unify (x,p,x'::xs,(p',_)::ps) = 
+	      if x = x' then (Eff.unifyRho_no_lowering (p,p'); 
+			      touched := true;
+			      touch_count := !touch_count + 1
+(*			      ; print("UNIFYING(" ^ Lvar.pr_lvar lv ^ "\n") *)
+			      )
+	      else unify (x,p,xs,ps)
+		| unify _ = die "unify_formals.unify"
+	      fun loop (nil,nil) = ()
+		| loop (x::xs, (p,_)::ps) = (unify (x,p,xs,ps); loop (xs,ps))
+		| loop _ = die "unify_formals.loop"
+	  in loop (alist,formals)
+	  end
+
+      fun trim_args (alist: int list, l:'a list) =
+	  let fun is_in (x,nil) = false
+		| is_in (x,y::ys) = x=y orelse is_in(x,ys)
+	      fun loop (nil,nil,e) = nil
+		| loop (x::xs,p::ps,e) = if is_in (x,e) then loop (xs,ps,e)
+					 else p :: loop (xs,ps,x::e)
+		| loop _ = die "trim_args"
+	  in loop(alist,l,nil)
+	  end
+	  
+      fun contract_args' (fss: (lvar*rng) list list) : unit =
+	  let 
+	      fun alist_before_rec (formals,argss) =
+		  let val alist1 = init_alist (!formals)
+		      val alist2 = List.foldl (fn (args,al) =>
+					       collapse_alist (args_alist (!args)) al)
+			  alist1 (!argss)
+		  in alist2
+		  end
+
+	      fun onef ((lvar,{formals,rargss,argss}), alist) =
+		  ((* print ("FUNCTION " ^ Lvar.pr_lvar lvar ^ ":\n  ");
+		   print (pp_formals (!formals) ^ "\n recursive apps:\n");
+		   print (pp_argss (!rargss) ^ " apps:\n");
+		   print (pp_argss (!argss) ^ " alist: ");
+		   print (pp_ints alist ^ "\n"); *)
+		   unify_formals lvar (alist,!formals);
+		   formals := trim_args (alist,!formals);
+		   List.app (fn args => args := (trim_args (alist,!args))) (!argss);
+		   List.app (fn rargs => rargs := (trim_args (alist,!rargs))) (!rargss))
+		     
+	      fun one_group (fs : (lvar*rng)list) : unit =
+		  let 
+		      fun process (with_alists) : ((lvar * rng) * int list) list =
+			  let 
+			      val E = map (fn ((lv,{formals,...}),al) =>
+					   (map (fn (p,_) => p) (!formals), al))
+				  with_alists
+			      val alists = map (fn ((lv,{rargss,...}),al) =>
+						List.foldl (fn (rargs,al) =>
+							    collapse_alist (rargs_alist E (!rargs)) al)
+						al (!rargss))
+				  with_alists
+			  in if map #2 with_alists = alists then with_alists
+			     else (* compute new `with_alists' based on assumptions 
+				   * and result, and reprocess. *)
+				 let 
+				     val with_alists = 
+					 ListPair.map (fn ((f,al),al') =>
+						       (f,collapse_alist al al'))
+					 (with_alists,alists)
+				 in process with_alists
+				 end
+			  end
+		      val with_alists_init = map (fn r as (_, {formals,argss,...}) => 
+						  (r,alist_before_rec (formals,argss))) fs
+		      val with_alists = process with_alists_init
+		  in List.app onef with_alists
+		  end
+
+	      fun loop n =
+		  (touched:=false;
+		   List.app one_group fss;
+		   if !touched then loop (n+1)
+		   else n)
+	      val n = (touch_count := 0; loop 1)
+	  in  
+	      print ("Argument contractions: " ^ Int.toString (!touch_count) ^ " - "
+		     ^ Int.toString n ^ " rounds.\n")
+	  end
+
+      fun contract_args p : unit =
+	  let val M : rng Lvar.Map.map ref = ref Lvar.Map.empty    (* for quick lookup *)
+	      val L : (lvar * rng) list list ref = ref nil         (* lists of mutually recursive functions *)
+	      val exported = exported_lvars p
+	      fun is_exported lv = member lv exported
+	      local		  
+		  val fix_stack : lvar list ref = ref nil
+	      in
+		  fun push lv : unit = fix_stack := (lv :: (!fix_stack))
+		  fun pop() : unit =
+		      case !fix_stack of
+			  x::xs => fix_stack := xs
+			| _ => die "contract_args.pop"
+		  fun is_rec lv = member lv (!fix_stack)
+	      end
+	      fun build e : app_cont =
+		  case e of
+		      VAR {lvar,fix_bound=true,rhos_actuals,...} =>
+			  (case Lvar.Map.lookup (!M) lvar of
+			       SOME {argss,rargss,...} => 
+				   if is_rec lvar then 
+				       (rargss := (rhos_actuals :: (!rargss)); APP_BREAK)
+				   else 
+				       (argss := (rhos_actuals :: (!argss)); APP_BREAK)
+			     | NONE => APP_BREAK)
+		    | FIX {functions,scope,...} =>
+		     let val funs : (lvar * rng) list = 
+			 List.foldl (fn ({lvar,rhos_formals,...},acc) =>
+				     if is_exported lvar then acc
+				     else let val rng = {formals=rhos_formals,
+							 argss=ref nil, rargss=ref nil}
+					  in M := Lvar.Map.add(lvar,rng,!M);
+					      (lvar,rng)::acc
+					  end)
+			 nil functions
+		     in
+			 L := funs :: !L;  (* for processing   *)
+			 List.app (fn {lvar,bind,...} => push lvar) functions;
+			 List.app (fn {bind,...} => appt build bind) functions;
+			 List.app (fn _ => pop ()) functions;
+			 appt build scope;
+			 APP_BREAK
+		     end
+		    | _ => APP_CONT
+	  in app build p;
+	      contract_args' (!L)
+	  end 
+
+      (* Region specialization; tranform
   
+            let fun f [...r...] x = e
+            in  ... f [...r'...] e' ...
+            end
+ 
+         into
+
+            let fun f [...] x = e{r'/r}
+            in ... f [...] e' ...
+            end
+
+         provided r' is in scope at the declaration of f and f is invariant in r
+         and all applications of f instantiate r' for r. 
+      *)
+
+      type srng = {R:place list list, formals:(place*mul) list ref, 
+		   rargss: place list ref list ref, argss:place list ref list ref}
+
+      fun inR (p,nil) = false
+	| inR (p,l::ls) = inR'(p,l) orelse inR (p,ls)
+      and inR' (p,nil) = false
+	| inR' (p,x::xs) = Eff.eq_effect(p,x) orelse inR' (p,xs)
+
+      fun drop (nil,       nil)   = nil
+	| drop (true::ds,  x::xs) = drop(ds,xs)
+	| drop (false::ds, x::xs) = x :: drop(ds,xs)
+	| drop _ = die "drop"
+
+      val touched = ref false
+      val counter = ref 0
+      fun touch () = (touched := true; 
+		      counter:= (!counter + 1))
+
+      fun same_arg n xss =
+	  let fun loop nil = NONE
+		| loop (xs::xss) =
+	         let val r = List.nth (!xs,n)
+		 in case loop xss of
+		     res as SOME r' => if Eff.eq_effect(r,r') then res
+				       else NONE
+		   | NONE => SOME r
+		 end
+	  in loop xss
+	  end handle _ => die "same_arg"
+
+      fun invariant n p xss =
+	  let fun loop nil = true
+		| loop (xs::xss) = (Eff.eq_effect(List.nth (!xs,n),p) 
+				    andalso invariant n p xss)
+	  in loop xss
+	  end handle _ => die "invariant"
+
+      fun spec (fss : (lvar * srng) list list) =
+	  let 
+	      fun one_f (lv,{R,formals,rargss,argss}) =
+		  let 
+		      (*
+		      val _ = print ("FUNCTION " ^ Lvar.pr_lvar lv ^ "\n")
+		      val _ = print ("R = " ^ String.concat (map pp_places R) ^ "\n")
+		      val _ = print ("  formals: " ^ pp_formals (!formals) ^ "\n")
+		      val _ = print ("  argss: " ^ pp_argss (!argss))
+		      val _ = print ("  rargss: " ^ pp_argss (!rargss))
+			  *)
+		      fun go (n,nil) : bool list = nil  (* true=drop*)
+			| go (n,(f as (p,_))::fs) =
+		          (case same_arg n (!argss) of
+			       SOME r =>
+				   if inR (r, R) andalso invariant n p (!rargss)
+				       then (Eff.unifyRho_no_lowering (p,r);
+					     touch();
+					     true::go(n+1,fs))
+				   else false::go(n+1,fs)
+			     | NONE => false::go(n+1,fs))
+		      val ds = go (0,!formals)
+		  in  formals := drop(ds,!formals)
+		    ; List.app (fn rargs => rargs := drop(ds,!rargs)) (!rargss)
+		    ; List.app (fn args => args := drop(ds,!args)) (!argss)
+		  end
+	      fun loop n =
+		  (touched := false;
+		   List.app (List.app one_f) fss;
+		   if !touched then loop (n+1)
+		   else n)
+	      val n = (counter := 0; loop 1)
+	  in
+	      print ("Region specialization: " ^ Int.toString (!counter) ^ " - "
+		     ^ Int.toString n ^ " rounds.\n")
+	  end
+
+      fun specialize p : unit =
+	  let val M : srng Lvar.Map.map ref = ref Lvar.Map.empty    (* for quick lookup *)
+	      val L : (lvar * srng) list list ref = ref nil         (* lists of mutually recursive functions *)
+	      val exported = exported_lvars p
+	      fun is_exported lv = member lv exported
+	      local		  
+		  val fix_stack : lvar list ref = ref nil
+		  val reg_stack : place list list ref = ref 
+		      [[Eff.toplevel_region_withtype_top,
+			Eff.toplevel_region_withtype_string,
+			Eff.toplevel_region_withtype_pair]]
+	      in
+		  fun push_lv lv : unit = fix_stack := (lv :: (!fix_stack))
+		  fun pop_lv() : unit =
+		      case !fix_stack of
+			  x::xs => fix_stack := xs
+			| _ => die "specialize.pop_lv"
+		  fun is_rec_lv lv = member lv (!fix_stack)
+		  fun push_regs regs = reg_stack := (regs :: (!reg_stack))
+		  fun pop_regs () : unit =
+		      case !reg_stack of
+			  x::xs => reg_stack := xs
+			| _ => die "specialize.pop_regs"		      
+		  fun get_reg_stack () = !reg_stack
+	      end
+	      fun build e : app_cont =
+		  case e of
+		      VAR {lvar,fix_bound=true,rhos_actuals,...} =>
+			  (case Lvar.Map.lookup (!M) lvar of
+			       SOME {argss,rargss,...} => 
+				   if is_rec_lv lvar then 
+				       (rargss := (rhos_actuals :: (!rargss)); APP_BREAK)
+				   else 
+				       (argss := (rhos_actuals :: (!argss)); APP_BREAK)
+			     | NONE => APP_BREAK)
+		    | FIX {functions,scope,...} =>
+		     let val funs : (lvar * srng) list = 
+			 List.foldl (fn ({lvar,rhos_formals,...},acc) =>
+				     if is_exported lvar then acc
+				     else let val srng = {R=get_reg_stack(),
+							  formals=rhos_formals,
+							  argss=ref nil, rargss=ref nil}
+					  in M := Lvar.Map.add(lvar,srng,!M);
+					      (lvar,srng)::acc
+					  end)
+			 nil functions
+		     in
+			 L := funs :: !L;  (* for processing   *)
+			 List.app (fn {lvar,bind,rhos_formals,...} => 
+				   (push_lv lvar; push_regs (map #1 (!rhos_formals)))) functions;
+			 List.app (fn {bind,...} => appt build bind) functions;
+			 List.app (fn _ => (pop_lv (); pop_regs())) functions;
+			 appt build scope;
+			 APP_BREAK
+		     end
+		    | LETREGION{B,rhos,body} => 
+		     (push_regs (map #1 (!rhos));
+		      appt build body;
+		      pop_regs();
+		      APP_BREAK)
+		    | _ => APP_CONT
+	  in app build p;
+	      spec (!L)
+	  end 
+
+
+      val _ = Flags.add_bool_entry 
+	  {long="contract_regions", short=SOME"cr", item=ref false,
+	   menu=["Control", "Regions", "contract regions"], neg=false,
+	   desc=
+	   "When this option is enabled, identically typed\n\
+	    \regions bound by the same letregion construct\n\
+	    \are unified. Moreover, region parameters to\n\
+	    \non-exported functions are trimmed whenever\n\
+	    \possible."}
+	   
+      val contract_p = Flags.is_on0 "contract_regions"
+	   
+      fun contract p =
+	   if contract_p() then
+	       (contract_letregions p;
+		contract_args p;
+		specialize p;
+		contract_args p)
+	   else ()
+		      
+  end  
+
 end;

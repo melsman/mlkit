@@ -532,8 +532,11 @@ functor AtInf(structure Lvars: LVARS
 		     | FIX{free,shared_clos = shared_clos as (shared_rho,liveset),functions,scope} =>
   		         let 
                             val (RE,LE,EE) = sme
-                            val LE' = foldl  (fn ({lvar,tyvars, rhos, epss, Type, ...}, acc) => 
-                                       SME.declare_lvar_env(lvar,rvars(RType.FORALL(tyvars,rhos,epss,Type),shared_rho),acc))
+                            val LE' = foldl  (fn ({lvar,tyvars, rhos_formals, epss, Type, ...}, acc) => 
+					      let val rhos = map (fn (a,_) => a) (!rhos_formals)
+					      in SME.declare_lvar_env(lvar,rvars(RType.FORALL(tyvars,rhos,
+							epss,Type),shared_rho),acc)
+					      end)
                                       LE functions
                             val sme' = (RE,LE',EE)
                             fun do_function {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
@@ -543,7 +546,8 @@ functor AtInf(structure Lvars: LVARS
                                   TR(FN{pat,body,free,alloc}, mu_lam, phi_lam, psi_lam) =>
                                     let
                                        fun extend (rho, RE') = SME.declare_regvar_env(rho,SME.LETREC_BOUND,RE')
-                                       val RE_for_body_of_fn = foldl extend SME.empty_regvar_env rhos
+				       val rhos' = map (fn (a,_) => a) (!rhos_formals)
+                                       val RE_for_body_of_fn = foldl extend SME.empty_regvar_env rhos'
                                        val fn' = sma_fn(sme',RE_for_body_of_fn,pat,body,free,alloc)
                                     in 
        			              {lvar=lvar,occ=occ,tyvars=tyvars,rhos=rhos,epss=epss,Type=Type,

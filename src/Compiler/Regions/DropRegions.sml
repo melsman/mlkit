@@ -330,7 +330,10 @@ functor DropRegions(structure Name : NAME
 		  fun tr_function {lvar,occ,tyvars,rhos,epss,
                                    Type,rhos_formals=ref formals,bound_but_never_written_into,
                                    other,bind} : tr =
-		    let val bool_list = drop_places(rhos,epss)
+		    let 
+			val rhos = map #1 formals  (* thinned, contracted version of rhos above
+						    * ; see MulInf.sml *)
+			val bool_list = drop_places(rhos,epss)
 		        val formals' = filter_bl(bool_list,formals)
                         val drop_formals' = (filter_bl (map not bool_list, formals))
 

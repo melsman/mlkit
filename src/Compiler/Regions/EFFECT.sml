@@ -146,6 +146,7 @@ sig
   val algorithm_R: bool ref (* false during S, true during R *)
   val unifyEps: effect * effect -> cone -> cone
   val unifyRho: effect * effect -> cone -> cone
+  val unifyRho_no_lowering: effect * effect -> unit  (* hack; mael 2002-11-19 *)
 
   val insertEps: effect -> cone -> cone
   val insertRho: effect -> cone -> cone
