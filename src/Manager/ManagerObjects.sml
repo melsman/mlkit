@@ -1,8 +1,3 @@
-(*$ManagerObjects: MODULE_ENVIRONMENTS TOPDEC_GRAMMAR COMPILER_ENV
-                   COMPILE_BASIS COMPILE INFIX_BASIS ELAB_REPOSITORY
-                   FINMAP NAME FLAGS CRASH MANAGER_OBJECTS
-                   OPACITY_ELIM*)
-
 (* COMPILER_ENV is the lambda env mapping structure and value 
  * identifiers to lambda env's and lvars *)
 
@@ -114,7 +109,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	 * Deleting a file
 	 * -------------------- *)
 
-	fun delete_file f = Shell.execute_command ("/bin/rm -f " ^ f)
+	fun delete_file f = OS.FileSys.remove f handle _ => ()
 
 	(* -------------------------------
 	 * Assemble a file into a .o-file
@@ -232,29 +227,24 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
      * Modification times of files
      *)
 
-    type time = Time.time  
-    val time_to_string : time -> string = Time.toString      
-    fun mtime (s: string) : time = 
-      (OS.FileSys.modTime s)
-      handle _ => die ("mtime \"" ^ s ^ "\": Time.modTime raised exception")
-
     type funid = FunId.funid
     fun funid_from_filename (filename: filename) =    (* contains .sml - hence it cannot *)
       FunId.mk_FunId filename                         (* be declared by the user. *)
     fun funid_to_filename (funid: funid) : filename =
       FunId.pr_FunId funid
 
-    datatype funstamp = FUNSTAMP_MODTIME of funid * time
+    datatype funstamp = FUNSTAMP_MODTIME of funid * Time.time
                       | FUNSTAMP_GEN of funid * int
     structure FunStamp =
       struct
 	val counter = ref 0
 	fun new (funid: funid) : funstamp =
 	  FUNSTAMP_GEN (funid, (counter := !counter + 1; !counter))
-	fun from_filemodtime (filepath: filepath) :funstamp =
-	  FUNSTAMP_MODTIME (funid_from_filename filepath (*well*), mtime filepath)
+	fun from_filemodtime (filepath: filepath) : funstamp option =
+	  SOME(FUNSTAMP_MODTIME (funid_from_filename filepath, OS.FileSys.modTime filepath))
+	  handle _ => NONE
 	val eq : funstamp * funstamp -> bool = op =
-	fun pr (FUNSTAMP_MODTIME (funid,time)) = FunId.pr_FunId funid ^ "##" ^ time_to_string time
+	fun pr (FUNSTAMP_MODTIME (funid,time)) = FunId.pr_FunId funid ^ "##" ^ Time.toString time
 	  | pr (FUNSTAMP_GEN (funid,i)) = FunId.pr_FunId funid ^ "#" ^ Int.string i
       end
 
@@ -375,9 +365,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	    debug("OpacityRealisation", OpacityElim_enrich (rea1,(rea2,dom_rea))) andalso
 	    debug("IntBasis", IntBasis_enrich(intB1,intB2))
 	end
-(*
-	fun eq(B,B') = enrich(B,B') andalso enrich(B',B)
-*)
+
 	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
 	  PP.NODE{start="BASIS(", finish = ")",indent=1,childsep=PP.RIGHT ", ",
 		  children=[InfixBasis.layoutBasis infB, ModuleEnvironments.B.layout elabB,
@@ -388,7 +376,6 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type name = Name.name
     structure Repository =
       struct
-(*	type elabRep = (funid, (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) list) FinMap.map ref *)
 	type intRep = (funid, (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) list) FinMap.map ref
 	val intRep : intRep = ref FinMap.empty
 	fun clear() = (ElabRep.clear();

@@ -10,6 +10,7 @@ signature OPACITY_ELIM =
     val plus : realisation * realisation -> realisation
     val enrich : realisation * (realisation * TyName.Set.Set) -> bool
     val restrict : realisation * TyName.Set.Set -> realisation
+    val match : realisation * realisation -> unit
     val empty : realisation
     val initial : realisation
 

@@ -30,6 +30,7 @@ functor OpacityElim(structure Crash : CRASH
     val plus = Environments.Realisation.oo
     val enrich = Environments.Realisation.enrich
     fun restrict (rea,set) = Environments.Realisation.restrict set rea
+    val match = Environments.Realisation.match
     val empty : realisation = Environments.Realisation.Id
     val initial : realisation = Environments.Realisation.Id  (* here we want to insert  char -> word8,  int -> word, etc. *)
 
