@@ -1,3 +1,33 @@
+mael 2004-10-30 Plan for mlb-files implementation in the ML Kit.
+
+Status: It is now possible to compile simple mlb-files and have
+export-basis information stored on disk for each compilation unit. A
+"dependency analysis", which is run before compilation units are
+compiled, determines which exported export-bases a compilation unit
+depends on.
+
+Things to do:
+
+ 1) Move the MLB implementation outside of the ML Kit, so that it can
+    be used also by the Moscow ML compiler. Figure out what
+    command-line features should be supported by the ML Kit executable
+    (or Moscow ML):
+
+        mlkit -c -o myfile -load u1.eb ... uN.eb file.sml   // generates myfile.{eb,o,li}
+        mlkit -o a.out -link u1 ... uN                   // generates a.out
+
+ 2) Optimize loading of export bases so that only infix and elaboration
+    bases are loaded for all {u1.eb ... uN.eb} in
+         
+        mlkit -o myfile -load u1.eb ... uN.eb file.sml
+
+    After the infix and elaboration bases are loaded, the program unit
+    can be parsed and elaborated into a typed abstract syntax
+    tree. Once the program unit has been elaborated, free identifiers
+    of the program unit can be found [Els98, Chapter 4]. From this
+    information, the subset U of {u1,...,uN} necessary for compilation
+    can be found.
+
 Possible things to do
 ---------------------
 

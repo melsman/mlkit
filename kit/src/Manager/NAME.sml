@@ -67,4 +67,5 @@ signature NAME =
     val baseSet : string -> unit
     val baseGet : unit -> string
     val assignKey : name * int -> unit (* used by Manager to alpha-rename export bases *)
+    val rematching : bool ref
   end

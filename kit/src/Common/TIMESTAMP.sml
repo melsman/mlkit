@@ -1,4 +1,3 @@
-(*$TIMESTAMP*)
 signature TIMESTAMP =
   sig
     eqtype stamp

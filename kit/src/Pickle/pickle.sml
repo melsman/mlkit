@@ -81,8 +81,11 @@ structure Pickle :> PICKLE = (* was : *)
     fun stringHash acc s = 
 	let val sz = size s
 	    val sz = if sz > maxLength then maxLength else sz
-	    fun loop (n,a) = if n >= sz then a
-			     else loop (n+1, hashAddSmall0 (Word.fromInt(Char.ord(String.sub(s,n)))) a)
+	    fun loop (n,a) = 
+		if n >= sz then a
+		else loop (n+1, 
+			   hashAddSmall0 
+			   (Word.fromInt(Char.ord(String.sub(s,n)))) a)
 	in loop (0,acc)
 	end
 
@@ -100,16 +103,18 @@ structure Pickle :> PICKLE = (* was : *)
 	end =
     struct
 	type pe = (dyn, S.loc) H.hash_table
-	fun empty () = H.mkTable (Word.toIntX o Dyn.hash maxDepth, Dyn.eq) (10,PickleExn)
+	fun empty () = 
+	    H.mkTable (Word.toIntX o Dyn.hash maxDepth, Dyn.eq) (10,PickleExn)
 	fun lookup pe d = H.peek pe d
 	fun insert pe (d,loc) = H.insert pe (d,loc) 
 	fun reportBucket s (pe,d,typ) : unit = 
 	    if true then () else
 		let val (c,h) = H.peekSameHash pe d
 		    val maxBucket = 10
-		in if c > maxBucket then print ("** " ^ s ^ ".Bucket > " ^ Int.toString maxBucket 
-						^ " (c=" ^ Int.toString c ^ ",h=" 
-						^ Int.toString h ^") **: " ^ typ ^ "\n")
+		in if c > maxBucket then 
+		    print ("** " ^ s ^ ".Bucket > " ^ Int.toString maxBucket 
+			   ^ " (c=" ^ Int.toString c ^ ",h=" 
+			   ^ Int.toString h ^") **: " ^ typ ^ "\n")
 		   else ()
 		end
 	fun bucketSizes pe = H.bucketSizes pe
@@ -137,7 +142,8 @@ structure Pickle :> PICKLE = (* was : *)
 	end =
     struct
 	type hce = (dyn, dyn) H.hash_table
-	fun empty() = H.mkTable (Word.toIntX o Dyn.hash maxDepth, Dyn.eq) (10,PickleExn)
+	fun empty() = 
+	    H.mkTable (Word.toIntX o Dyn.hash maxDepth, Dyn.eq) (10,PickleExn)
 	fun add hce d =
 	    case H.peek hce d of
 		SOME d => d
@@ -206,7 +212,8 @@ structure Pickle :> PICKLE = (* was : *)
     val word = wordGen "word" (w_to_w32, w32_to_w)
     val word32 = wordGen "word32" (fn x => x, fn x => x)
     val int = wordGen "int" (Word32.fromInt, Word32.toIntX)
-    val int32 = wordGen "int32" (Word32.fromLargeInt o Int32.toLarge, Int32.fromLarge o Word32.toLargeIntX)
+    val int32 = wordGen "int32" (Word32.fromLargeInt o Int32.toLarge, 
+				 Int32.fromLarge o Word32.toLargeIntX)
 	
     val bool = wordGen "bool" (fn true => 0w1 | false => 0w0,
 			       fn 0w0 => false | _ => true)
@@ -219,7 +226,8 @@ structure Pickle :> PICKLE = (* was : *)
       let val REF = 0w0 and DEF = 0w1           
 	  val hash_share = newHashCount()
 	  val typ = "SH(" ^ typ pu ^ ")"
-          val (toDyn,fromDyn) = Dyn.new (fn v => fn d => #1 (hasher pu v (hash_share,d))) (#eq pu)
+          val (toDyn,fromDyn) = 
+	      Dyn.new (fn v => fn d => #1 (hasher pu v (hash_share,d))) (#eq pu)
 	  fun h2 v  =
 	      hashComb (fn p => hasher pu v (hashAddSmallNoCount hash_share p))
       in  {pickler = (fn v => fn (s, pe:pe) =>
@@ -233,17 +241,21 @@ structure Pickle :> PICKLE = (* was : *)
 			| NONE =>
 			      let val s = S.outcw(DEF,s)
 				  val loc = S.getLoc s
-				  val res = pickler pu v (s, pe)    (* do insert after the pickling    *)
-			      in case PickleEnv.lookup pe d of      (*  - otherwise there are problems *)
-				  SOME _ => res                     (*    with cycles.                 *)
+				  (* do insert after the pickling    *)
+	  		          (*  - otherwise there are problems *)
+			          (*    with cycles.                 *)
+				  val res = pickler pu v (s, pe)    
+			      in case PickleEnv.lookup pe d of      
+				  SOME _ => res                     
 				| NONE =>
 				      let (*
 					  val (c,h) = H.peekSameHash pe d
 					  val maxBucket = 10
-					  val _ = if c > maxBucket then print ("** Bucket > " ^ Int.toString maxBucket 
-									       ^ " (c=" ^ Int.toString c ^ ",h=" 
-									       ^ Int.toString h ^") **: " ^ typ ^ "\n"
-									       ^ "** Value = " ^ pp v ^ "\n")
+					  val _ = if c > maxBucket then 
+                                                    print ("** Bucket > " ^ Int.toString maxBucket 
+							   ^ " (c=" ^ Int.toString c ^ ",h=" 
+							   ^ Int.toString h ^") **: " ^ typ ^ "\n"
+							   ^ "** Value = " ^ pp v ^ "\n")
 						  else ()
 					  *)
 				      in PickleEnv.insert pe (d,loc) 
@@ -258,14 +270,18 @@ structure Pickle :> PICKLE = (* was : *)
 				val loc' = w32_to_w loc
 			    in case UnpickleEnv.lookup upe loc' of
 				SOME d => (fromDyn d, (s,upe,hce))
-			      | NONE => fail ("shareGen.impossible, loc=" ^ Word32.toString loc ^ ", loc'=" ^ Word.toString loc')
+			      | NONE => fail ("shareGen.impossible, loc=" 
+					      ^ Word32.toString loc ^ ", loc'=" 
+					      ^ Word.toString loc')
 			    end
 			   else if tag = DEF then
 			       let val loc = S.getLoc s
 				   val (v,(s,upe,hce)) = unpickler pu (s,upe,hce)
 				   val _ = case UnpickleEnv.lookup upe loc of
 				       NONE => ()
-				     | SOME _ => fail ("shareGen.Location " ^ Word.toString loc ^ " already there!")
+				     | SOME _ => fail ("shareGen.Location " 
+						       ^ Word.toString loc 
+						       ^ " already there!")
 			       in UnpickleEnv.insert upe (loc,toDyn v)
 				; (v, (s,upe,hce))
 			       end
@@ -316,16 +332,20 @@ structure Pickle :> PICKLE = (* was : *)
 			  end),
 	     hasher = (fn (a,b) => 
 		       hashComb (fn p => 
-				 let val p = hashAddSmallNoCount hash_pair (hasher pu1 a p)
+				 let val p = hashAddSmallNoCount 
+				       hash_pair (hasher pu1 a p)
 				 in hashComb (hasher pu2 b) p
 				 end)),
-	     eq = fn (p1 as (a1,a2),p2 as (b1,b2)) => p1==p2 orelse #eq pu1 (a1,b1) andalso #eq pu2 (a2,b2),
+	     eq = fn (p1 as (a1,a2),p2 as (b1,b2)) => 
+	             p1==p2 
+	             orelse #eq pu1 (a1,b1) andalso #eq pu2 (a2,b2),
 	     typ = "P(" ^ typ pu1 ^ "," ^ typ pu2 ^ ")"}
 	end
 
     fun pairGen pu = shareGen(pairGen0 pu)
 
-    fun refEqGen (eq: 'a ref * 'a ref -> bool) (v_dummy:'a) (pu:'a pu) : 'a ref pu =
+    fun refEqGen (eq: 'a ref * 'a ref -> bool) 
+	(v_dummy:'a) (pu:'a pu) : 'a ref pu =
       debug "refEqGen"
       let (*val eq = if very_safe_p then op = else eq *)
 	  val REF_LOC = 0w0 and REF_DEF = 0w1           
@@ -584,9 +604,9 @@ structure Pickle :> PICKLE = (* was : *)
         in (debug "data2Gen.a" (aGetPUP()), debug "data2Gen.b" (bGetPUP()))
 	end
 
-    fun data3Gen (aname, aToInt: 'a -> int, afs : ('a pu * 'b pu * 'c pu -> 'a pu) list,
-		  bname, bToInt: 'b -> int, bfs : ('a pu * 'b pu * 'c pu -> 'b pu) list,
-		  cname, cToInt: 'c -> int, cfs : ('a pu * 'b pu * 'c pu -> 'c pu) list) 
+    fun data3Gen (aname, aToInt: 'a->int, afs : ('a pu*'b pu*'c pu->'a pu)list,
+		  bname, bToInt: 'b->int, bfs : ('a pu*'b pu*'c pu->'b pu)list,
+		  cname, cToInt: 'c->int, cfs : ('a pu*'b pu*'c pu->'c pu)list) 
 	: 'a pu * 'b pu * 'c pu =
 	let val aHashData = newHashCount()
 	    val bHashData = newHashCount()
@@ -624,7 +644,8 @@ structure Pickle :> PICKLE = (* was : *)
 	    and aGetPUPI (i:int) =
 		case !aPs of
 		    NoCache => let val _ = aPs := Caching
-				   val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),cGetPUP())) afs
+				   val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),
+							     cGetPUP())) afs
 				   val psv = Vector.fromList ps0
 			       in aPs := Cached psv
 				   ; Vector.sub(psv,i)
@@ -658,7 +679,8 @@ structure Pickle :> PICKLE = (* was : *)
 	    and bGetPUPI (i:int) =
 		case !bPs of
 		    NoCache => let val _ = bPs := Caching
-				   val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),cGetPUP())) bfs
+				   val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),
+							     cGetPUP())) bfs
 				   val psv = Vector.fromList ps0
 			       in bPs := Cached psv
 				   ; Vector.sub(psv,i)
@@ -692,7 +714,8 @@ structure Pickle :> PICKLE = (* was : *)
 	    and cGetPUPI (i:int) =
 		case !cPs of
 		    NoCache => let val _ = cPs := Caching
-				   val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),cGetPUP())) cfs
+				   val ps0 = map (fn f => f (aGetPUP(),bGetPUP(),
+							     cGetPUP())) cfs
 				   val psv = Vector.fromList ps0
 			       in cPs := Cached psv
 				   ; Vector.sub(psv,i)
@@ -720,14 +743,16 @@ structure Pickle :> PICKLE = (* was : *)
 			  in hashAddSmallNoCount (Word.fromInt i)
 			      (hashAddSmallNoCount cHashData (h_arg v p))
 			  end)
-        in (debug "data3Gen.a" (aGetPUP()), debug "data3Gen.b" (bGetPUP()), debug "data3Gen.c" (cGetPUP()))
+        in (debug "data3Gen.a" (aGetPUP()), 
+	    debug "data3Gen.b" (bGetPUP()), 
+	    debug "data3Gen.c" (cGetPUP()))
 	end
 
     fun con0 (b: 'b) (_: 'a) =
 	{pickler = fn _ => fn spe => spe,
 	 unpickler = fn is => (b,is),
 	 hasher = fn _ => fn p => p,
-	 eq = fn _ => true,                  (* tag is checked with toInt in dataNGen *)
+	 eq = fn _ => true,       (* tag is checked with toInt in dataNGen *)
 	 typ = "con0"}               
 
     fun con1 (con:'a->'b) (decon: 'b->'a) (pu: 'a pu) =
@@ -843,7 +868,8 @@ structure Pickle :> PICKLE = (* was : *)
 	     unpickler = (fn is => let val (v,is) = unpickler pu is
 				   in (to v,is)
 				   end),
-	     hasher = fn v => hashComb (fn p => hashAddSmallNoCount hash_conv ((hasher pu o back) v p)),
+	     hasher = fn v => hashComb (fn p => hashAddSmallNoCount 
+					hash_conv ((hasher pu o back) v p)),
 	     eq = fn (x,y) => #eq pu (back x, back y),
 	     typ = "conv(" ^ typ pu ^ ")"}
 	end
@@ -913,7 +939,8 @@ structure Pickle :> PICKLE = (* was : *)
     fun cache (s:string) : ('a -> 'b pu) -> 'a -> 'b pu = cache0 s
     fun cache2 (s:string) : ('a -> 'b pu * 'c pu) -> 'a -> 'b pu * 'c pu = cache0 s
 
-    fun registerEq (eq: 'a * 'a -> bool) (key : 'a -> int) (debug_str:string) (vs: 'a list) (pu : 'a pu) : 'a pu =
+    fun registerEq (eq: 'a * 'a -> bool) (key : 'a -> int) 
+	(debug_str:string) (vs: 'a list) (pu : 'a pu) : 'a pu =
 	let val h : ('a,word) H.hash_table = H.mkTable (key, eq) (10,PickleExn)
 (*	    val _ = print ("registerEq: " ^ debug_str ^ "\n") *)
 	    val _ = List.foldl (fn (e,n) => (H.insert h (e,n); n + 0w1)) 0w1 vs
@@ -949,7 +976,8 @@ structure Pickle :> PICKLE = (* was : *)
 
     fun hashConsEq (eq:'a*'a->bool) (pu: 'a pu) : 'a pu =
 	let val hash = newHashCount()
-	    val (toDyn,fromDyn) = Dyn.new (fn v => fn d => #1 (hasher pu v (hash,d))) eq
+	    val (toDyn,fromDyn) = 
+		Dyn.new (fn v => fn d => #1 (hasher pu v (hash,d))) eq
 	in  {pickler= pickler pu,
 	     unpickler= fn is => 
 	     let val (v,is) = unpickler pu is
@@ -978,11 +1006,14 @@ structure Pickle :> PICKLE = (* was : *)
 	else
 	{pickler = (fn a => fn spe => 
 		    let val pos = (S.getLoc o #1) spe
-			val _ = print ("\n[Begin pickling: " ^ s ^ " - pos=" ^ (Int.toString o Word.toInt) pos ^ "]\n") 
+			val _ = print ("\n[Begin pickling: " ^ s ^ " - pos=" 
+				       ^ (Int.toString o Word.toInt) pos ^ "]\n") 
 			val spe = pickler pu a spe
 			val pos' = (S.getLoc o #1) spe
-			val _ = print ("\n[End pickling  : " ^ s ^ " - pos=" ^ (Int.toString o Word.toInt) pos' ^ ", diff=" ^
-				       Int.toString(Word.toInt pos' - Word.toInt pos) ^ "]\n") 
+			val _ = print ("\n[End pickling  : " ^ s ^ " - pos=" 
+				       ^ (Int.toString o Word.toInt) pos' ^ ", diff=" 
+				       ^ Int.toString(Word.toInt pos' - Word.toInt pos) 
+				       ^ "]\n") 
 		    in spe
 		    end),
 	 unpickler = unpickler pu,
@@ -990,7 +1021,8 @@ structure Pickle :> PICKLE = (* was : *)
 	 eq = #eq pu,
 	 typ = typ pu}
 
-    fun checkUnpickle (f: 'a -> unit) (pu as {pickler,unpickler,eq,typ,hasher} : 'a pu) : 'a pu =
+    fun checkUnpickle (f: 'a -> unit) 
+	(pu as {pickler,unpickler,eq,typ,hasher} : 'a pu) : 'a pu =
 	pu
 (*
 	{pickler=pickler,
@@ -1003,7 +1035,8 @@ structure Pickle :> PICKLE = (* was : *)
 	 hasher=hasher} 
 *)
 
-    fun debugUnpickle (s : string) (pu as {pickler,unpickler,eq,typ,hasher} : 'a pu) : 'a pu =
+    fun debugUnpickle (s : string) 
+	(pu as {pickler,unpickler,eq,typ,hasher} : 'a pu) : 'a pu =
 	pu
 (*
 	{pickler=pickler,

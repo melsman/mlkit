@@ -26,8 +26,10 @@ Manager/Manager.sml
 Manager/MspComp.sml
 Manager/Scriptlet.sml
 
+(*
 Manager/MLB_PROJECT.sml
 Manager/MlbProject.sml
+*)
 
 Common/Elaboration.sml
 
