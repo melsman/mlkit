@@ -35,7 +35,7 @@ struct
 
   val _ = Flags.add_bool_entry
     {long="disable_flow_var", short=NONE, item=ref false,neg=false,
-     menu=["Disable Flow Variables", "Disable Flow Variables (LineStmt)"],
+     menu=["Debug", "Disable Flow Variables (LineStmt)"],
      desc=""}
 
   type place = Effect.place

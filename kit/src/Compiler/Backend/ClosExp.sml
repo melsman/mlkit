@@ -35,6 +35,10 @@ functor ClosExp(structure Con : CON
                   sharing type ClosConvEnv.lvar = Lvars.lvar
                   sharing type ClosConvEnv.label = Labels.label
 		structure BI : BACKEND_INFO
+	        structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING 
+		   sharing type RegionFlowGraphProfiling.place = PhysSizeInf.place = MulExp.place
+		   sharing type RegionFlowGraphProfiling.at = AtInf.at
+		   sharing type RegionFlowGraphProfiling.phsize = PhysSizeInf.phsize = ClosConvEnv.phsize
 	        structure PP : PRETTYPRINT
 		  sharing type PP.StringTree = Effect.StringTree = AtInf.StringTree = PhysSizeInf.StringTree =
 		               ClosConvEnv.StringTree
@@ -58,6 +62,8 @@ struct
   type ('a,'b,'c)LambdaPgm = ('a,'b,'c)MulExp.LambdaPgm
 
   fun die s  = Crash.impossible ("ClosExp." ^ s)
+
+  val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
 
   fun pp_lvars s lvs = 
     let fun loop nil = ()
@@ -1157,6 +1163,11 @@ struct
       fun get_frame_env () = !global_env
     end
 
+    fun lookup_fix_profiling env lv =
+      case CE.lookupVarOpt env lv 
+	of SOME (CE.FIX(_,_,_,formals)) => formals
+	 | _ => die "lookup_fix_profiling"
+
     fun lookup_ve env lv =
       let
 	fun resolve_se(CE.LVAR lv') = (VAR lv',NONE_SE)
@@ -1175,15 +1186,15 @@ struct
 	  | resolve_se _ = die "resolve_se: wrong FIX or RVAR binding in VE"
       in
 	case CE.lookupVarOpt env lv of
-	  SOME(CE.FIX(_,SOME a,_)) => resolve_se(a)
-	| SOME(CE.FIX(_,NONE,_)) => die "lookup_ve: this case should be caught in APP."
+	  SOME(CE.FIX(_,SOME a,_,_)) => resolve_se(a)
+	| SOME(CE.FIX(_,NONE,_,_)) => die "lookup_ve: this case should be caught in APP."
 	| SOME(a) => resolve_se(a)               
 	| NONE  => die ("lookup_ve: lvar(" ^ (Lvars.pr_lvar lv) ^ ") not bound in env.")
       end
 
     fun lookup_fun env lv =
       case CE.lookupVarOpt env lv of
-	  SOME(CE.FIX(lab,ce,size)) => (lab,size)
+	  SOME(CE.FIX(lab,ce,size,_)) => (lab,size)
 	| _ => die ("lookup_fun: function(" ^ Lvars.pr_lvar lv ^ ") does not exists")
 
     fun lookup_excon env excon =
@@ -1316,9 +1327,9 @@ struct
 	fun remove [] = []
 	  | remove (lv::lvs) = 
 	      (case CE.lookupVar env lv of 
-	          CE.FIX(lab,NONE,0) => remove lvs
-		| CE.FIX(lab,NONE,i) => die "remove_zero_sized_region_closure_lvars: FIX messed up"
-		| CE.FIX(lab,SOME _,0) => die "remove_zero_sized_region_closure_lvars: FIX messed up"
+	          CE.FIX(lab,NONE,0,_) => remove lvs
+		| CE.FIX(lab,NONE,i,_) => die "remove_zero_sized_region_closure_lvars: FIX messed up"
+		| CE.FIX(lab,SOME _,0,_) => die "remove_zero_sized_region_closure_lvars: FIX messed up"
 		| _ => lv :: remove lvs)
       in
 	(remove lvs,rhos,excons)
@@ -1337,11 +1348,11 @@ struct
 	(* is not constructed to put such region closures into the actual closure.   *)
 	fun add_free_lv (lv,(env,i)) = 
 	  (case CE.lookupVar org_env lv of 
-	     CE.FIX(lab,NONE,0)   => (CE.declareLvar(lv,CE.FIX(lab,NONE,0),env),i)
-	   | CE.FIX(lab,NONE,s)   => die "add_free_lv: CE.FIX messed up."
-	   | CE.FIX(lab,SOME _,0) => die "add_free_lv: CE.FIX messed up."
-	   | CE.FIX(lab,SOME _,s) => (CE.declareLvar(lv,CE.FIX(lab,SOME(CE.SELECT(lv_clos,i)),s),env),i+1)
-	   | _                    => (CE.declareLvar(lv,CE.SELECT(lv_clos,i),env),i+1))
+	     CE.FIX(lab,NONE,0,formals)   => (CE.declareLvar(lv,CE.FIX(lab,NONE,0,formals),env),i)
+	   | CE.FIX(lab,NONE,s,formals)   => die "add_free_lv: CE.FIX messed up."
+	   | CE.FIX(lab,SOME _,0,formals) => die "add_free_lv: CE.FIX messed up."
+	   | CE.FIX(lab,SOME _,s,formals) => (CE.declareLvar(lv,CE.FIX(lab,SOME(CE.SELECT(lv_clos,i)),s,formals),env),i+1)
+	   | _ => (CE.declareLvar(lv,CE.SELECT(lv_clos,i),env),i+1))
 	fun add_free_excon (excon,(env,i)) = 
 	  (CE.declareExcon(excon,(CE.SELECT(lv_clos,i),
 				  CE.lookupExconArity org_env excon),env),i+1) 
@@ -1415,12 +1426,12 @@ struct
     local
       fun labs (fun_lab: label list, dat_lab: label list) (r:CE.access_type) : label list * label list =
 	case r
-	  of CE.FIX(lab,SOME(CE.LABEL sclos_lab),_) => (lab::fun_lab,sclos_lab::dat_lab) (* lab is a function and sclos is a data object. *)
-	   | CE.FIX(lab,NONE,_) => (lab::fun_lab,dat_lab) (* lab is a function with empty shared closure. *)
+	  of CE.FIX(lab,SOME(CE.LABEL sclos_lab),_,_) => (lab::fun_lab,sclos_lab::dat_lab) (* lab is a function and sclos is a data object. *)
+	   | CE.FIX(lab,NONE,_,_) => (lab::fun_lab,dat_lab) (* lab is a function with empty shared closure. *)
 	   | CE.LABEL lab => (fun_lab,lab::dat_lab) (* Is a DatLab *)
-	   | CE.FIX(lab,SOME(CE.LVAR lvar),_) => die "find_globals_in_env: FIX with SCLOS bound to lvar."
-	   | CE.FIX(lab,SOME(CE.SELECT(lvar,i)),_)  => die "find_globals_in_env: FIX with SCLOS bound to SELECT."
-	   | CE.FIX(lab,_,_) => die "find_globals_in_env: global bound to wierd FIX."
+	   | CE.FIX(lab,SOME(CE.LVAR lvar),_,_) => die "find_globals_in_env: FIX with SCLOS bound to lvar."
+	   | CE.FIX(lab,SOME(CE.SELECT(lvar,i)),_,_)  => die "find_globals_in_env: FIX with SCLOS bound to SELECT."
+	   | CE.FIX(lab,_,_,_) => die "find_globals_in_env: global bound to wierd FIX."
 	   | CE.LVAR _ => die "find_globals_in_env: global bound to lvar."
 	   | CE.RVAR _ => die "find_globals_in_env: global bound to rvar."
 	   | CE.DROPPED_RVAR _ => die "find_globals_in_env: global bound to dropped rvar."
@@ -1542,22 +1553,23 @@ struct
 		 val lv_sclos = fresh_lvar("sclos")
 		 val ces_and_ses = gen_ces_and_ses_free env free_vars_in_shared_clos
 		   handle _ => die "FIX"
+		 val lvars_labels_formals = map (fn {lvar, rhos_formals=ref formals, ...} =>
+						 (lvar, fresh_lab(Lvars.pr_lvar lvar), formals)) functions
 		 val lvars = map #lvar functions
 		 val binds = map #bind functions
 		 val formalss = map (! o #rhos_formals) functions (* place*phsize *)
 		 val dropss = map (valOf o #bound_but_never_written_into) functions
 		   handle Option => die "FIX.dropps: bound but never written was None"
 
-		 val labels = map (fn lv => fresh_lab(Lvars.pr_lvar lv)) lvars
-		 val lvars_and_labels = zip(lvars,labels)
+		 val labels = map #2 lvars_labels_formals
 
 		 val env_scope =
 		   if shared_clos_size = 0 then
 		     (env plus_decl_with CE.declareLvar)
-		     (map (fn (lv,lab) => (lv,CE.FIX(lab,NONE,0))) lvars_and_labels)
+		     (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,NONE,0,formals))) lvars_labels_formals)
 		   else
 		     (env plus_decl_with CE.declareLvar)
-		     (map (fn (lv,lab) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos),shared_clos_size))) lvars_and_labels)
+		     (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos),shared_clos_size,formals))) lvars_labels_formals)
 		   
 		 fun compile_fn (lvar,bind,formals,drops,lab) =
 		   let
@@ -1571,10 +1583,10 @@ struct
 		     val env_with_funs =
 		       if shared_clos_size = 0 then
 			 (env_bodies plus_decl_with CE.declareLvar)
-			 (map (fn (lv,lab) => (lv,CE.FIX(lab,NONE,0))) lvars_and_labels)
+			 (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,NONE,0,formals))) lvars_labels_formals)
 		       else
 			 (env_bodies plus_decl_with CE.declareLvar)
-			 (map (fn (lv,lab) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos_fn),shared_clos_size))) lvars_and_labels)
+			 (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos_fn),shared_clos_size,formals))) lvars_labels_formals)
 		     val lv_rv = fresh_lvar("rv")
 		     val (reg_args, env_with_rv) =
 		       if region_vectors then
@@ -1636,6 +1648,13 @@ struct
 		* and a jmp - that is, if we recognice that regions in registers and on the stack
 		* can be reused. *)
 	       let
+		 val _ = 
+		   if region_profiling() then
+		     let val rhos_formals = lookup_fix_profiling env lvar
+		     in RegionFlowGraphProfiling.add_edges((rhos_formals,Lvars.pr_lvar lvar),rhos_actuals)
+		     end
+		   else ()
+		 
 		 val ces_and_ses = (* We remove the unboxed record. *)
 		   case tr2 of
 		     MulExp.TR(MulExp.UB_RECORD trs,_,_,_) => List.map (fn tr => ccTrip tr env lab cur_rv) trs
@@ -1666,6 +1685,14 @@ struct
 			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=true, rhos_actuals=ref rhos_actuals,...},_,_,_), 
 			tr2) =>
 	       let
+		 (* Insert edges in the Region Flow Graph for Profiling. *)
+		 val _ = 
+		   if region_profiling() then
+		     let val rhos_formals = lookup_fix_profiling env lvar
+		     in RegionFlowGraphProfiling.add_edges((rhos_formals,Lvars.pr_lvar lvar),rhos_actuals)
+		     end
+		   else ()
+
 		 val ces_and_ses = (* We remove the unboxed record. *)
 		   case tr2 of
 		     MulExp.TR(MulExp.UB_RECORD trs,_,_,_) => List.map (fn tr => ccTrip tr env lab cur_rv) trs
@@ -1706,63 +1733,6 @@ struct
 		 (insert_ses(FNJMP{opr=ce_opr',args=ces',clos=SOME ce_opr'},
 			     ses'),NONE_SE)
 	       end
-(*
-	   | MulExp.APP(NONE,_, (*  primitive *)
-			tr1 as MulExp.TR(MulExp.VAR{lvar,fix_bound=false, rhos_actuals=ref rhos_actuals,...},_,_,_), 
-			tr2) =>
-	       let
-		 val ces_and_ses = 
-		   (case tr2 of
-		      MulExp.TR(MulExp.UB_RECORD trs,_,_,_) => 
-			List.map (fn tr => ccTrip tr env lab cur_rv) trs    (* all primitives have *)
-		      | _ => die "APP.lvar.prim.args not UB_RECORD")        (* unboxed arguments.  *)
-
-		 val prim_name =
-		   (case (Lvars.primitive lvar, rhos_actuals) of
-		      (NONE, []) => die ("APP.expected primitive: " ^ Lvars.pr_lvar lvar)
-		    | (NONE, _) => die ("APP.non-primitive with unboxed region parameters: lvar = " ^ Lvars.pr_lvar lvar)
-		    | (SOME prim, _) =>
-			(case prim of
-			   Lvars.PLUS_INT        => BI.PLUS_INT
-			 | Lvars.MINUS_INT       => BI.MINUS_INT
-			 | Lvars.MUL_INT         => BI.MUL_INT
-			 | Lvars.NEG_INT         => BI.NEG_INT
-			 | Lvars.ABS_INT         => BI.ABS_INT
-			 | Lvars.LESS_INT        => BI.LESS_INT
-			 | Lvars.LESSEQ_INT      => BI.LESSEQ_INT
-			 | Lvars.GREATER_INT     => BI.GREATER_INT
-			 | Lvars.GREATEREQ_INT   => BI.GREATEREQ_INT
-			 | Lvars.PLUS_FLOAT      => BI.PLUS_FLOAT
-			 | Lvars.MINUS_FLOAT     => BI.MINUS_FLOAT
-			 | Lvars.MUL_FLOAT       => BI.MUL_FLOAT
-			 | Lvars.DIV_FLOAT       => BI.DIV_FLOAT
-			 | Lvars.NEG_FLOAT       => BI.NEG_FLOAT
-			 | Lvars.ABS_FLOAT       => BI.ABS_FLOAT
-			 | Lvars.LESS_FLOAT      => BI.LESS_FLOAT
-			 | Lvars.LESSEQ_FLOAT    => BI.LESSEQ_FLOAT
-			 | Lvars.GREATER_FLOAT   => BI.GREATER_FLOAT
-			 | Lvars.GREATEREQ_FLOAT => BI.GREATEREQ_FLOAT))
-
-		 val smas_and_ses = List.map (fn alloc => convert_alloc(alloc,env)) rhos_actuals
-
-		 val (smas,ces,ses) = unify_smas_ces_and_ses (smas_and_ses,ces_and_ses)
-		 (* Only real primitives allocate and only one time. *)
-		 val smas_ccall = map (fn sma => PASS_PTR_TO_MEM(sma,BI.size_of_real())) smas
-		 val fresh_lvs = map (fn _ => fresh_lvar "sma") smas_ccall
-		 fun maybe_insert_smas([],[],ce) = ce
-		   | maybe_insert_smas(fresh_lvs,smas,ce) =
-		   LET{pat=fresh_lvs,bind=UB_RECORD smas,scope=ce}
-
-	       in
-		 (insert_ses(maybe_insert_smas(fresh_lvs,smas_ccall,
-					       CCALL{name=prim_name,
-						     args=ces,
-						     rhos_for_result=map VAR fresh_lvs}),ses),NONE_SE)
-	       end
-	   | MulExp.APP(NONE,_, (*  primitive *)
-			tr1, (* not lvar: error *)
-			tr2) =>  die "expected primitive operation"
-*)
 	   | MulExp.APP(SOME MulExp.FNCALL,_, tr1, tr2) =>
 	       let
 		 val ces_and_ses = 
@@ -1780,6 +1750,12 @@ struct
 
 	   | MulExp.LETREGION{B,rhos=ref bound_regvars,body} => 
 	       let
+		 (* Insert letregion nodes in the RegionFlowGraph. *)
+		 val _ = 
+		   if region_profiling() then
+		     RegionFlowGraphProfiling.add_nodes (bound_regvars,"LETREGION")
+		   else ()
+
 		 val env_with_kind =
 		   (env plus_decl_with CE.declareRhoKind)
 		   (map (fn (place,phsize) => (place,mult("l",phsize))) bound_regvars)
@@ -2130,7 +2106,7 @@ struct
 	       let
 		 fun add_pp_for_profiling ([], args) = args
 		   | add_pp_for_profiling ((sma,i_opt)::rest,args) = 
-		   if Flags.is_on "region_profiling" then
+		   if region_profiling() then
 		       (case i_opt of
 			  SOME 0 => die "get_pp_for_profiling (CCALL ...): argument region with size 0"
 			| SOME i => add_pp_for_profiling(rest,args)
@@ -2186,13 +2162,13 @@ struct
 		 val lvars_and_labels' = 
 		   List.map (fn lvar => 
 			     (case CE.lookupVar env lvar of
-				CE.FIX(lab,SOME(CE.LVAR lv_clos),i) => 
+				CE.FIX(lab,SOME(CE.LVAR lv_clos),i,formals) => 
 				  let 
 				    val lab_sclos = fresh_lab(Lvars.pr_lvar lv_clos ^ "_lab")
 				  in
-				    (SOME{lvar=lv_clos,label=lab_sclos},{lvar=lvar,acc_type=CE.FIX(lab,SOME(CE.LABEL lab_sclos),i)})
+				    (SOME{lvar=lv_clos,label=lab_sclos},{lvar=lvar,acc_type=CE.FIX(lab,SOME(CE.LABEL lab_sclos),i,formals)})
 				  end
-			      | CE.FIX(lab,NONE,i) => (NONE,{lvar=lvar,acc_type=CE.FIX(lab,NONE,i)})
+			      | CE.FIX(lab,NONE,i,formals) => (NONE,{lvar=lvar,acc_type=CE.FIX(lab,NONE,i,formals)})
 			      | CE.LVAR lv => 
 				  let
 				    val lab = fresh_lab(Lvars.pr_lvar lvar ^ "_lab")
@@ -2248,11 +2224,11 @@ struct
 	  | SOME(CE.DROPPED_RVAR rho) => die ("lookup_ve: dropped rho=" ^ (pr_rhos [rho]) ^ ".")
 	  | SOME(CE.SELECT(lv',i)) => SELECT(i,VAR lv')
 	  | SOME(CE.LABEL lab) => FETCH(lab)
-	  | SOME(CE.FIX(_,SOME (CE.SELECT(lv',i)),_)) => SELECT(i,VAR lv')
-	  | SOME(CE.FIX(_,SOME (CE.LVAR lv'),_)) => VAR lv'
-	  | SOME(CE.FIX(_,SOME (CE.LABEL lab),_)) => FETCH(lab)
-	  | SOME(CE.FIX(_,SOME a,_)) => die ("lookup_ve on FIX(SOME " ^ (CE.pr_access_type a) ^ ") -- not implemented")
-	  | SOME(CE.FIX(_,NONE,_)) => die "lookup_ve: this case should be caught in APP."
+	  | SOME(CE.FIX(_,SOME (CE.SELECT(lv',i)),_,_)) => SELECT(i,VAR lv')
+	  | SOME(CE.FIX(_,SOME (CE.LVAR lv'),_,_)) => VAR lv'
+	  | SOME(CE.FIX(_,SOME (CE.LABEL lab),_,_)) => FETCH(lab)
+	  | SOME(CE.FIX(_,SOME a,_,_)) => die ("lookup_ve on FIX(SOME " ^ (CE.pr_access_type a) ^ ") -- not implemented")
+	  | SOME(CE.FIX(_,NONE,_,_)) => die "lookup_ve: this case should be caught in APP."
 	  | NONE  => die ("lookup_ve: lvar(" ^ (Lvars.pr_lvar lv) ^ ") not bound in env.")
 
 	fun lookup_rho env place =
@@ -2374,22 +2350,24 @@ struct
 			    List.map (fn excon => lookup_excon env excon) free_excons,
 			    List.map (fn place => lookup_rho env place) free_rhos)
 		   
+		 val lvars_labels_formals = map (fn {lvar, rhos_formals=ref formals, ...} =>
+						 (lvar, fresh_lab(Lvars.pr_lvar lvar), formals)) functions
+
 		 val lvars = map #lvar functions
 		 val binds = map #bind functions
 		 val formalss = map (! o #rhos_formals) functions (* place*phsize *)
 		 val dropss = map (valOf o #bound_but_never_written_into) functions
 		   handle Option => die "FIX.dropps: bound but never written was None"
 
-		 val labels = map (fn lv => fresh_lab(Lvars.pr_lvar lv)) lvars
-		 val lvars_and_labels = zip(lvars,labels)
+		 val labels = map #2 lvars_labels_formals
 
 		 val env_scope =
 		   if shared_clos_size = 0 then
 		     (env plus_decl_with CE.declareLvar)
-		     (map (fn (lv,lab) => (lv,CE.FIX(lab,NONE,0))) lvars_and_labels)
+		     (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,NONE,0,formals))) lvars_labels_formals)
 		   else
 		     (env plus_decl_with CE.declareLvar)
-		     (map (fn (lv,lab) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos),shared_clos_size))) lvars_and_labels)
+		     (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos),shared_clos_size,formals))) lvars_labels_formals)
 		   
 		 fun compile_fn (lvar,bind,formals,drops,lab) =
 		   let
@@ -2404,10 +2382,10 @@ struct
 		     val env_with_funs =
 		       if shared_clos_size = 0 then
 			 (env_bodies plus_decl_with CE.declareLvar)
-			 (map (fn (lv,lab) => (lv,CE.FIX(lab,NONE,0))) lvars_and_labels)
+			 (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,NONE,0,formals))) lvars_labels_formals)
 		       else
 			 (env_bodies plus_decl_with CE.declareLvar)
-			 (map (fn (lv,lab) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos_fn),shared_clos_size))) lvars_and_labels)
+			 (map (fn (lv,lab,formals) => (lv,CE.FIX(lab,SOME(CE.LVAR lv_sclos_fn),shared_clos_size,formals))) lvars_labels_formals)
 
 		     val rho_lvs = List.map (fn _ => fresh_lvar("rho")) formals (* fresh lvs for region parameters 12/09-2000, Niels *)
 		     val env_with_rho_lvs =
@@ -2825,13 +2803,13 @@ struct
 		 val lvars_and_labels' = 
 		   List.map (fn lvar => 
 			     (case CE.lookupVar env lvar of
-				CE.FIX(lab,SOME(CE.LVAR lv_clos),i) => 
+				CE.FIX(lab,SOME(CE.LVAR lv_clos),i,formals) => 
 				  let 
 				    val lab_sclos = fresh_lab(Lvars.pr_lvar lv_clos ^ "_lab")
 				  in
-				    (SOME{lvar=lv_clos,label=lab_sclos},{lvar=lvar,acc_type=CE.FIX(lab,SOME(CE.LABEL lab_sclos),i)})
+				    (SOME{lvar=lv_clos,label=lab_sclos},{lvar=lvar,acc_type=CE.FIX(lab,SOME(CE.LABEL lab_sclos),i,formals)})
 				  end
-			      | CE.FIX(lab,NONE,i) => (NONE,{lvar=lvar,acc_type=CE.FIX(lab,NONE,i)})
+			      | CE.FIX(lab,NONE,i,formals) => (NONE,{lvar=lvar,acc_type=CE.FIX(lab,NONE,i,formals)})
 			      | CE.LVAR lv => 
 				  let
 				    val lab = fresh_lab(Lvars.pr_lvar lvar ^ "_lab")

@@ -23,7 +23,15 @@ in
 
 	   disable "garbage_collection";
 	   enable "region_profiling"; 
+	   enable "log_to_file";
+	   enable "print_all_program_points";
+	   enable "print_region_flow_graph";	   
+	   enable "print_call_explicit_expression";
 	   K.build_basislib();
+	   disable "print_call_explicit_expression";
+	   disable "print_region_flow_graph";	   
+	   disable "print_all_program_points";
+	   disable "log_to_file";
 
 	   enable "garbage_collection";
 	   enable "region_profiling"; 
@@ -31,15 +39,6 @@ in
 
            disable "garbage_collection";
 	   disable "region_profiling"; 
-
-(*	   enable "comments_in_x86_asmcode";*)
-(*	   enable "gdb_support"; *)
-(*	   enable "log_to_file"; *)
-(*	   disable "print_all_program_points"; *)
-(*	   disable "log_to_file"; *)
-(*	   disable "print_call_explicit_expression"; *)
-
-
 
 	   K.install()
 )

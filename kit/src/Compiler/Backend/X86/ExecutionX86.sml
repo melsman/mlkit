@@ -114,11 +114,11 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
     fun compile (ce, CB, strdecs, vcg_file) =
       let val (cb,closenv) = CompileBasis.de_CompileBasis CB
       in
-	case Compile.compile (ce, cb, strdecs, vcg_file)
+	case Compile.compile (ce, cb, strdecs)
 	  of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
 	   | Compile.CodeRes(ce,cb,target,safe) => 
 	    let 
-	      val (closenv, target_new) = NativeCompile.compile(closenv,target,safe)
+	      val (closenv, target_new) = NativeCompile.compile(closenv,target,safe,vcg_file)
 	      val {main_lab, code, imports, exports, safe} = target_new
 	      val asm_prg = Tools.Timing.timing "CG" CodeGen.CG target_new
 	      val linkinfo = mk_linkinfo {code_label=main_lab,

@@ -19,6 +19,6 @@ signature COMPILE =
     datatype res = CodeRes of CEnv * CompBasis * ((place*pp)at,place*phsize,unit) LambdaPgm * bool
                  | CEnvOnlyRes of CEnv      (* the boolean is true (safe) if the code has no side-effects *)
 
-    val compile : CEnv * CompBasis * strdec list * string -> res
+    val compile : CEnv * CompBasis * strdec list -> res
   end 
 

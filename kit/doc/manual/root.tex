@@ -855,7 +855,7 @@ make a personal copy of the {\tt kit/kitdemo} directory, place
 yourself in it, and start the kit:\footnote{We assume that you have added
   the {\tt kit/bin} directory to your {\tt PATH} shell variable.}
 \begin{verbatim}
-   kit
+   mlkit
 \end{verbatim}
 Select \boxml{Profiling} from the Kit menu (type 4, then carriage
 return).  Toggle \boxml{region profiling} (type 0, then carriage
@@ -863,18 +863,20 @@ return). Go up one level (type \boxml{u}, then carriage return).
 Select \boxml{Compile file or project}.  Type \boxml{"life.sml"}
 (including the quotes, then return). After the Kit has compiled
 \boxml{life.sml}, type \boxml{quit}. The executable life program is
-\boxml{kitdemo/run}.
+\boxml{kitdemo/run}.\footnote{Alternatively, you can generate the
+  executable file {\tt run} by typing {\tt mlkit -prof life.sml} in
+  the shell.}
 
 Next, you run \boxml{run}, as follows:
 \begin{verbatim}
-   run -microsec 10000
+   ./run -realtimer -microsec 10000
 \end{verbatim}
 This will make a profiling snapshot every 10,000 microseconds (i.e.,
 every ten milliseconds). If you are satisfied with less fine-grained
 information, choose a larger number; it will speed up execution. If
 you just type
 \begin{verbatim}
-   run 
+   ./run 
 \end{verbatim}
 there will be one snapshot per second.
 
@@ -1294,7 +1296,7 @@ If no errors were found during compilation, the Kit produces a
 Running the target program is done from the UNIX shell by typing
 \index{run@\texttt{run}}%
 \begin{verbatim}
-       run
+   ./run
 \end{verbatim}
 For small programs, the file will probably be around 50Kb large, even
 for the trivial examples considered in this chapter.  This is because
@@ -2483,18 +2485,17 @@ $l$ & $n$ & 200,000 bytes\\
 $l$ sorted & $n$ & 200,000 bytes\\
 $r$ & $n$ & 200,000 bytes\\
 $r$ sorted & $n$ & 200,000 bytes\\
-finite regions on stack & $3n$ & 600,000 bytes\\ \hline
-total in regions& $9n$ & 1,800,000 bytes
+finite regions on stack & $2n$ & 400,000 bytes\\ \hline
+total in regions& $9n$ & 1,600,000 bytes
 \end{tabular}
 \end{center}
 
-It turns out that each iterative call of \boxml{merge} pushes three
-registers on the stack, so that stack size will be approximately
-$3\times 4\times n$ bytes, which for $n=50,000$ is 600,000 bytes.  The
-total space consumption for sorting 50,000 integers should therefore
-be roughly 2,400,000 bytes.
+%It turns out that each iterative call of \boxml{merge} pushes three
+%registers on the stack, so that stack size will be approximately
+%$3\times 4\times n$ bytes, which for $n=50,000$ is 600,000 bytes.  The
+%total space consumption for sorting 50,000 integers should therefore
+%be roughly 2,400,000 bytes.
 
-%mael - do the testing when the profiler becomes available
 To check the above analysis, we sorted 50,000 integers with the region
 profiler enabled.  As one sees in Figures~\ref{msortregion.fig} and
 \ref{msortstack.fig}, the space usage found by region profiling
@@ -2504,7 +2505,12 @@ correspond well to the results of our analysis.
 \includegraphics{msortregion.ps}
 \end{center}
 \caption{Region profiling of {\tt msort} sorting 50,000
-integers. The high-level mark of 1,800,288 bytes is exact (i.e., not sampled).}
+  integers. The high-level mark denotes the sum of the maximum amount
+  of memory allocated in regions and the maximum amount of memory allocated
+  on the stack. Because the amount of memory used in regions and the
+  amount of memory used on the stack may not top on the same time, the
+  high-level mark may be higher than the maximum total amount of
+  memory used.}
 \label{msortregion.fig}
 \end{figure}
 
@@ -4086,7 +4092,7 @@ declared outside {\tt llength}, using
 
    fun glength(l) = #2(global(l, 0))
 
-   val k = 10000
+   val k = 500000
    val run = 
      nlength(upto k) + tlength(upto k) + klength(upto k) 
      + llength(upto k) + glength(upto k);
@@ -4122,10 +4128,9 @@ pushed onto the stack.
 
 In Figure~\ref{length.region.fig}, we clearly see the five phases.  In
 each phase, first a list is built---seen as an almost linear growth in
-a region; then follows a shorter computation of the length of the
-list.  The space behavior of the five ways of computing the length
-vary considerably. We shall have more to say about the time behavior
-in what follows.
+a region; then follows a computation of the length of the list.  The
+space behavior of the five ways of computing the length vary. We shall
+have more to say about the time behavior in what follows.
 
 As one would expect, {\tt nlength} leads to a peak in stack size; it
 does not use regions. The peak in stack size is caused by the stacking
@@ -4259,7 +4264,7 @@ III processor.\footnote{If you try to run the experiments yourself,
   you will probably need to increase the stacksize limit by issuing
   the command {\tt limit stacksize 200M} in your {\tt tcsh} shell.}
 The results are shown in Figure~\ref{length.timing.fig}. Because {\tt
-  upto} alone takes 0.54 seconds to build the list, the differences in
+  upto} alone takes 0.62 seconds to build the list, the differences in
 times are clear: the versions of the length function that take pairs
 as arguments are slower than the version that stores values on the
 stack (i.e., {\tt nlength}), which again is slower than {\tt tlength},
@@ -4271,7 +4276,7 @@ which take its arguments unboxed, probably in registers.
 \begin{center}
 \begin{tabular}{|c|c|c|c|c|c|c|}\hline
 program      & {\tt upto} & {\tt nlength} & {\tt tlength} & {\tt klength} & {\tt llength} & {\tt glength} \\ \hline
-sec. & 0.54 & 1.20 & 0.99 & 1.90 & 1.97 & 1.46 \\ \hline
+sec. & 0.62 & 1.18 & 0.93 & 1.92 & 1.94 & 1.47 \\ \hline
 \end{tabular}
 \end{center}
 \caption{User time in seconds for building a list of 10 million elements and
@@ -4481,9 +4486,9 @@ Figure~\ref{msortregion.fig} on page~\pageref{msortregion.fig}.
 \caption{Region profiling of the improved mergesort. 
   The lower triangle contains unsorted elements, while the upper
   triangle contains sorted elements.  The program was compiled with
-  profiling enabled and then run with the command \boxml{run -microsec 100000}. 
+  profiling enabled and then run with the command \boxml{run -realtime -microsec 10000}. 
   The PostScript picture \boxml{region.ps} was generated
-  with the command \boxml{rp2ps -region -sampleMax 1000 -eps 137 mm}
+  with the command \boxml{rp2ps -region -eps 137 mm}
   and then previewed using the command \boxml{ghostview region.ps}~.}
 \label{msortreset.fig}
 \end{figure}
@@ -5748,17 +5753,17 @@ example. Consider the project {\tt PolySet.pm},\footnote{Project
 file {\tt PolySet.sml} contains the following top-level declaration:
 \newpage
 \begin{verbatim}
-structure PolySet =
-  struct
-    type 'a set = 'a list
-    val empty = []
-    fun singleton x = [x]
-    fun mem(x,[]) = false
-      | mem(x,y::ys) = x=y orelse mem(x,ys)
-    fun union(s1,[]) = s1
-      | union(s1,x::s2) = if mem(x,s1) then union(s1,s2)
-                          else x::union(s1,s2)
-  end
+   structure PolySet =
+     struct
+       type 'a set = 'a list
+       val empty = []
+       fun singleton x = [x]
+       fun mem(x,[]) = false
+         | mem(x,y::ys) = x=y orelse mem(x,ys)
+       fun union(s1,[]) = s1
+         | union(s1,x::s2) = if mem(x,s1) then union(s1,s2)
+                             else x::union(s1,s2)
+     end
 \end{verbatim}
 The code generated by the Kit for the {\tt PolySet} structure is
 exactly as if the declarations were written outside of a structure.
@@ -6080,7 +6085,7 @@ different kinds of graphs may be created:
   \begin{center}
     \texttt{letregion} $\rho$ \texttt{in} $e$ \texttt{end}
   \end{center}
-  expression are collected into one coloured band, labelled $\rho$. The
+  expression are collected into one colored band, labelled $\rho$. The
   region variables that label bands are always global or {\tt letregion}-bound,
   never formal region parameters.
 \item An 
@@ -6253,75 +6258,76 @@ Figure~\ref{scan_rev1_1.fig}.
   \includegraphics{scan_rev1_1.ps}
 \end{center}
 \caption{Memory is accumulated in the top two
-  bands. The global regions \texttt{r1} and \texttt{r89717} hold the
+  bands. The global regions \texttt{r1} and \texttt{r211397} hold the
   largets amount of memory. The graph was generated by first
   compiling the {\tt kitdemo/scan\_rev1.pm} project with profiling
-  enabled. Then by executing \texttt{echo life.sml | run -microsec 10000} and finally by
+  enabled. Then by executing \texttt{echo life.sml | run -realtime -microsec 1000} and finally by
   typing \texttt{rp2ps -region -name scan\_rev1}.}
 \label{scan_rev1_1.fig}
 \end{figure}
 
-The graph shows that region \texttt{r1} holds the largest amount of memory,
-but also that it does not increase over time. Region \texttt{r89717}, however,
-accumulates more memory for each time it scans the file {\tt life.sml}.
+The graph shows that region \texttt{r211397} accumulates more memory
+for each time it scans the file {\tt life.sml}.
 
-To see what happens in region \texttt{r89717}, we make an object profile of
+To see what happens in region \texttt{r211397}, we make an object profile of
 that region, see Figure \ref{scan_rev1_2.fig}.
 \begin{figure}
 \begin{center}
   \includegraphics{scan_rev1_2.ps}
 \end{center}
 \caption{There seems to be a space leak at program point
-  \texttt{pp6155}. The graph was generated by typing \texttt{rp2ps
-    -object 89717}.}
+  \texttt{pp14788}. The graph was generated by typing \texttt{rp2ps
+    -object 211397}.}
 \label{scan_rev1_2.fig}
 \end{figure}
-The object profile shows that program point \texttt{pp6155}
+The object profile shows that program point \texttt{pp14788}
 continually allocates memory that is first freed when the program
-stops. We now search for \texttt{pp6155} in the log files of the basis
+stops. We now search for \texttt{pp14788} in the log files of the basis
 library, that is, we execute the UNIX command
 \begin{verbatim}
-   fgrep pp6155 *.log
+   fgrep pp14788 *.log
 \end{verbatim}
-from the directory {\tt basislib}, and find that {\tt pp6155}
+from the directory {\tt basislib}, and find that {\tt pp14788}
 appears in the file {\tt General.sml.log}, which contains the following
 fragment:
 \begin{verbatim}
-   fun implode attop r1 pp6154 [r45074:inf] (chars)= 
-     ccall(implodeCharsProfiling,  sat r45074 pp6155, chars);
+   fun implode attop r1 pp14787 [r105882:inf] (chars)= 
+       ccall(implodeCharsProfilingML,  sat r105882 pp14788, chars); 
 \end{verbatim}
 So the space leak is caused by function {\tt implode} being called
-with region {\tt r89717} instantiated for the formal region variable
-{\tt r45074}.
+with region {\tt r211397} instantiated for the formal region variable
+{\tt r105882}.
 
-We now search for \texttt{r89717} in file \texttt{scan\_rev1.sml.log} and
+We now search for \texttt{r211397} in file \texttt{scan\_rev1.sml.log} and
 find the following fragment of the region flow graph:
+\begin{small}
 \begin{verbatim}
-   toString[r75249:inf] --r75249 attop--> LETREGION[r89717:inf]
-   readWord[r89487:inf] --r89487 atbot--> [*r89717*]
+   readWord[r211165:inf]  --r211165 atbot-->  [*r211397*]
+   toString[r140988:inf]  --r140988 attop-->  LETREGION[r211397:inf]
 \end{verbatim}
+\end{small}
 The fragment is read as follows. The formal region variable {\tt
-  r75249} is instantiated to the {\tt letregion}-bound region variable
-{\tt r89717} in a call to {\tt toString}. Moreover, also the formal
-region variable {\tt r89487} (of function {\tt readWord}) is
-instantiated to {\tt r89717}. (The asterisks ({\tt *}) denote that the
+  r211165} is instantiated to the {\tt letregion}-bound region variable
+{\tt r211397} in a call to {\tt toString}. Moreover, also the formal
+region variable {\tt r211165} (of function {\tt readWord}) is
+instantiated to {\tt r211397}. (The asterisks ({\tt *}) denote that the
 node has been displayed before.)
 
-Region flow graphs are local to each program in a project. A call to a
-non-local region-polymorphic function introduces an edge in the region
-flow graph, but the graph says nothing about in which module the
-called function is located. Thus, it may be necessary to look in
-several log files to find the path from a formal region variable to an
-actual region variable. By inspecting the call-explicit programs found
-in {\tt basislib/Int.sml.log} and {\tt kitdemo/lib.sml.log} one finds
-that both {\tt toString} and {\tt readWord} eventually call {\tt
-  implode}. However, {\tt readWord} is called only initially, thus, we
-conclude that the space leak is caused by function {\tt toString}
-(from the {\tt Int} structure) being called with region {\tt r89717}
-instantiated for the formal region variable {\tt r75249}. Indeed, by
-inspecting the calls to {\tt toString} in the call-explicit program
-found in {\tt scan\_rev1.sml.log}, we see that {\tt toString} is called
-with actual region {\tt r89717}. 
+Region flow graphs are local to each program fragment in a project. A
+call to a non-local region-polymorphic function introduces an edge in
+the region flow graph, but the graph says nothing about in which
+module the called function is located. Thus, it may be necessary to
+look in several log files to find the path from a formal region
+variable to an actual region variable. By inspecting the call-explicit
+programs found in {\tt basislib/Int.sml.log} and {\tt
+  kitdemo/lib.sml.log} one finds that both {\tt toString} and {\tt
+  readWord} eventually call {\tt implode}. However, {\tt readWord} is
+called only initially, thus, we conclude that the space leak is caused
+by function {\tt toString} (from the {\tt Int} structure) being called
+with region {\tt r211397} instantiated for the formal region variable
+{\tt r140988}. Indeed, by inspecting the calls to {\tt toString} in the
+call-explicit program found in {\tt scan\_rev1.sml.log}, we see that
+{\tt toString} is called with actual region {\tt r211397}.
 
 The {\tt concat} function from the initial basis catenates a list of
 strings. But all the strings in the argument list to {\tt concat} are
@@ -6395,8 +6401,8 @@ Figure~\ref{scan_rev2_1.fig} shows a region profile of the
 \end{center}
 \caption{There is no space leak: no matter how many times we scan the
   file, the project will use the same number of words. The graph was
-  generated by executing \texttt{echo life.sml | run -microsec 10000} and \texttt{rp2ps
-    -region}.}
+  generated by executing \texttt{echo life.sml | run -realtime -microsec 10000} and \texttt{rp2ps
+    name scan\_rev2 -region}.}
 \label{scan_rev2_1.fig}
 \end{figure}
 
@@ -6413,23 +6419,28 @@ and instructs the compiler whether to report a region flow graph.
 
 The compile-time profiling strategy is set up in the 
 \index{Profiling@\texttt{Profiling} sub-menu}%
-{\tt Profiling} sub-menu:\index{instruction count profiling@\texttt{instruction count profiling}}\footnote{The   
-  \texttt{instruction count profiling} option is available only with the
-  native backend and has nothing to do with region profiling; it simply
-  counts the number of executed instructions in the target program
-  excluding runtime calls and instructions in the link file. It should be used
-  only when region profiling is disabled. If the number of instructions
-  executed gets too large, the {\tt Overflow} exception is raised.}
+{\tt Profiling} sub-menu:
+
+%\index{instruction count
+%  profiling@\texttt{instruction count profiling}}\footnote{The
+%  \texttt{instruction count profiling} option is available only with
+%  the native backend and has nothing to do with region profiling; it
+%  simply counts the number of executed instructions in the target
+%  program excluding runtime calls and instructions in the link file.
+%  It should be used only when region profiling is disabled. If the
+%  number of instructions executed gets too large, the {\tt Overflow}
+%  exception is raised.}
 
 %\begin{quote}
 %\begin{footnotesize}
 \begin{verbatim}
    Profiling
 
-   0      region profiling............................. off >>>
-   1      show region flow graph and generate .vcg file off
-   2      paths between two nodes in region flow graph. [] >>>
-   3      instruction count profiling.................. off
+   0     region profiling............................ off
+   1     print region flow graph..................... off
+   2     print all program points.................... off
+   3     print program points........................ [] >>>
+   4     paths between two nodes in region flow graph [] >>>
 \end{verbatim}
 %\end{footnotesize}
 %\end{quote}
@@ -6445,11 +6456,11 @@ either
 {\tt print call-explicit expression} from the {\tt Printing of
   intermediate forms} sub-menu together with the item 
 \index{print program points@\texttt{print program points}}%
-{\tt print program points} from the {\tt Layout} sub-menu.
+{\tt print all program points}.
 
 To make the compiler report a region flow graph, enable
-\index{show region flow graph and generate .vcg file@\texttt{show region flow graph and generate .vcg file}}%
-{\tt show region flow graph and generate .vcg file}. The region flow
+\index{print region flow graph@\texttt{print region flow graph}}%
+{\tt print region flow graph}. The region flow
 graph is reported both in text layout and in a {\tt .vcg} file, which,
 when interpreted by the 
 \index{VCG tool}%
@@ -6462,14 +6473,14 @@ VCG tool, provides a graphical version of the graph.\footnote{The VCG
 As a running example, we use the 
 \index{life@\texttt{life}}%
 {\tt life} program.\footnote{Program {\tt kitdemo/life.sml}.}  We
-enable the {\tt region profiling} option and the {\tt show region flow
-  graph and generate .vcg file} option from the {\tt Profiling}
-sub-menu together with the options {\tt print call-explicit
-  expression} and {\tt print program points} from the sub-menus {\tt
-  Printing of intermediate forms} and {\tt Layout}, respectively.
+enable the {\tt region profiling} option, the {\tt print all program points} option, and the {\tt print region flow
+  graph} option from the {\tt Profiling}
+sub-menu together with the option {\tt print call-explicit
+  expression} from the sub-menu {\tt
+  Printing of intermediate forms}.
 
 By enabling the option {\tt Log to file} from the {\tt File} sub-menu
-and by compiling the program using the {\tt Compile an sml file} entry in
+and by compiling the program using the {\tt Compile file or project} entry in
 the main-menu, the Kit now generates several files of which we have
 {\tt life.log} (containing, among other things, the call-explicit
 region-annotated program with program points and the region flow graph
@@ -6485,23 +6496,23 @@ for the {\tt life.sml} source file.  The region flow graph is found by
 searching for \texttt{REGION FLOW GRAPH FOR PROFILING}. The graph
 contains the following fragment (modified slightly to fit here):\label{reg_flow_graph.ex}
 \begin{verbatim}
-   cp_list[r89698:inf]
-    --r89698 sat-->  [*r89698*] ;
-    --r89698 atbot-->   LETREGION[r90769:inf];
-    --r89698 sat-->   nthgen'[r90246:inf]   
-                       --r90246 sat-->   [*r90246*] ;
-                       --r90246 atbot-->   LETREGION[r90812:inf];
+   cp_list[r211368:inf]
+    --r211368 sat-->   [*r211368*]
+    --r211368 sat--> nthgen'[r211902:inf]   
+                      --r211902 atbot--> LETREGION[r212422:inf]
+                      --r211902 sat--> [*r211902*]
+    --r211368 atbot-->   LETREGION[r212384:inf]
 \end{verbatim}
 The region flow graph is almost equivalent to the graph used by the
 storage mode analysis (see page~\pageref{region flow graph}). In the
-graph, region variables are nodes and there is edge between two nodes
+graph, region variables are nodes and there is an edge between two nodes
 $\rho$ and $\rho'$ if $\rho$ is a formal region parameter of a
 function that is applied to actual region parameter $\rho'$. It
 follows that \texttt{letregion}-bound region variables are always leaf
 nodes.
 
 Nodes in the graph are written in square brackets, where for example
-\texttt{cp\_list[r89698:inf]} means that \texttt{r89698} is a formal
+\texttt{cp\_list[r211368:inf]} means that \texttt{r211368} is a formal
 region parameter of function \texttt{cp\_list}. An asterisk inside a
 square bracket means that the node has been written earlier. Only the
 node identifier (i.e., the region variable) will then be printed. The
@@ -6512,11 +6523,11 @@ size of the region is printed after the region variable; we use {\tt
 Edges are written with the {\em from node\/} identifier annotated on
 them. The edge points to the \emph{to node}. The fragment
 \begin{verbatim}
-   cp_list[r89698:inf]
-    --r89698 sat-->  [*r89698*] ;
+   cp_list[r211368:inf]
+    --r211368 sat-->   [*r211368*]
 \end{verbatim}
-is read: there is an edge from node \texttt{r89698} to node
-\texttt{r89698} and node \texttt{r89698} has been written earlier. From
+is read: there is an edge from node \texttt{r211368} to node
+\texttt{r211368} and node \texttt{r211368} has been written earlier. From
 the cycle in the graph, one can conclude that \texttt{cp\_list} calls
 itself recursively; if you look in file {\tt life.sml}, you will
 find something like
@@ -6554,11 +6565,11 @@ variables contained in each scc is annotated on the scc node.
 Consider, for example, the following fragment of the scc version of
 the region flow graph for the {\tt life} program:
 \begin{verbatim}
-   [sccNo 184: r90473,]   --sccNo 184-->   [sccNo 183: r90717,];
+   [sccNo 97: r211904,]   --sccNo 97-->   [sccNo 96: r212427,];
 \end{verbatim}
-Here, we have a scc node (id 184) containing region variable
-\texttt{r90473} and an edge to scc node (id 183) containing region
-variable \texttt{r90717}.
+Here, we have a scc node (id 97) containing region variable
+\texttt{r211904} and an edge to scc node (id 96) containing region
+variable \texttt{r212427}.
 
 %--------------------------------------------------------
 \section{Region Flow Paths\label{regFlowPath.sec}}
@@ -6582,15 +6593,15 @@ sub-menu:
 \begin{verbatim}
    Profiling
 
-   0       region profiling............................. off >>>
-   1       show region flow graph and generate .vcg file off
-   2       paths between two nodes in region flow graph. [] >>>
-   3       instruction count profiling.................. off 
+   0     region profiling............................ on
+   1     print region flow graph..................... on
+   2     print all program points.................... on
+   3     print program points........................ [] >>>
+   4     paths between two nodes in region flow graph [] >>>
 
-   Toggle line (t <number>), Activate line (a <number>), Up (u), 
-   or Quit (quit): 
+   Select (<number>), Help (h <number>), Up (u), or Quit (quit): 
 
-   >2
+   >4
    <type an int pair list of region variables,
    e.g. [(formal reg. var. at pp.,letregion bound reg. var.)]> 
    or up (u): >
@@ -8349,16 +8360,15 @@ system when building the executable file \texttt{run}.
 
 \subsection{Testing while bootstrapping}
 
-You can easily apply all the ML Kit tests in the test directory. This
-will, perform an acceptance test on the four configurations of the ML:
+It is possible to apply all the ML Kit tests in the test directory.
+The regression test performs a test on the following four
+configurations of the ML Kit:
 
 \begin{enumerate}
-
 \item with region inference alone
 \item with region inference and profiling
 \item with region inference and garbage collection
 \item with region inference, garbage collection and profiling
-
 \end{enumerate}
 
 Choose the kit to test (e.g., \emph{kit\_v3}).
@@ -8385,15 +8395,16 @@ find a program called \texttt{kittester} and a file
 \texttt{all\_test}. The file \texttt{all\_test} contains the programs
 that are tested and under what configurations. The program
 \texttt{kittester} performs the test, that is, each program is
-compiled, executed and output is compared to expected output. Finally
-a \LaTeX{} report with the result of the test is generated in the file
-\texttt{test\_report.dvi}.
+compiled, executed and output is compared to the expected output.
+Finally a \LaTeX{} report with the result of the test is generated in
+the file \texttt{test\_report.dvi}.
 
 \subsection{Profiling the ML Kit}
 
 The Kit can only compile itself when garbage collection is enabled,
 that is, the ML Kit compiler is not optimized for regions. The memory
-usage is the same for all the kits generated during the bootstrapping.
+usage is the same for all the kits generated during the bootstrapping
+process.
 
 We arbitrarily choose to profile $\emph{kit}{v3}$ while it generates
 $\emph{kit}_{v4}$.

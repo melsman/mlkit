@@ -31,7 +31,7 @@
 
    fun glength(l) = #2(global(l, 0))
 
-   val k = 10000
+   val k = 10000000
    val run = 
      nlength(upto k) + tlength(upto k) + klength(upto k) 
-     + llength(upto k) + glength(upto k);
+     + llength(upto k) + glength(upto k)

@@ -84,7 +84,7 @@ functor Flags (structure Crash : CRASH
 
     (* Flags for region profiling. *)
     val region_profiling = ref false
-    val show_region_flow_graph = ref false
+    val print_region_flow_graph = ref false
     val print_all_program_points = ref false
     val program_points = (ref []): int list ref
     val region_paths = (ref[]): (int*int) list ref
@@ -978,9 +978,10 @@ in
      \produces a profile file run.rp, which can then be read\n\
      \by the profiling tool rp2ps that comes with the ML Kit to\n\
      \produce profiling graphs of various forms."),
-    ("show_region_flow_graph", NONE, "show region flow graph and generate .vcg file", show_region_flow_graph,
-     "Show a region flow graph for the program and generate a\n\
-      \.vcg-file, which can be viewed using the xvcg."),
+    ("print_region_flow_graph", SOME "Prfg", "print region flow graph", print_region_flow_graph,
+     "Print a region flow graph for the program fragment\n\
+     \and generate a .vcg-file, which can be viewed using\n\
+     \the xvcg program."),
      ("print_all_program_points", SOME "Ppp", "print all program points", print_all_program_points,
       "Print all program points when printing physical size\n\
        \inference expressions. Use the menu item\n\

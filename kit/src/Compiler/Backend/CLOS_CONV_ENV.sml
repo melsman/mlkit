@@ -28,6 +28,8 @@ signature CLOS_CONV_ENV =
       | SELECT of lvar * int                    (* Select from closure or region vector      *)
       | LABEL of label                          (* Global declared variable                  *)
       | FIX of label * access_type option * int (* Label is code pointer, access_type is the *)
+                                                (* shared closure and int is size of closure *)
+                 * (place * phsize) list        (* for region profiling graph *)
 
     datatype rho_kind =
         FF (* Rho is formal and finite *)

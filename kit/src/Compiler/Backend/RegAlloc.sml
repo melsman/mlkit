@@ -4,6 +4,8 @@ functor RegAlloc(structure Con : CON
 		 structure Effect : EFFECT
 		 structure Lvarset : LVARSET
 		   sharing type Lvarset.lvar = Lvars.lvar
+		 structure IntFinMap : MONO_FINMAP where type dom = int
+		 structure NatSet : KIT_MONO_SET where type elt = word
 		 structure Labels : ADDRESS_LABELS
 		 structure CallConv: CALL_CONV
 		 structure LineStmt: LINE_STMT
@@ -395,10 +397,10 @@ struct
   local 
     fun norm (wle:worklist_enum) (wl:node list ref) : unit = 
       wl := List.filter (fn n => !(#worklist n) = wle) (!wl)
-  in 
     fun norm_simplifyWorklist () = norm simplifyWorklist_enum simplifyWorklist
     fun norm_freezeWorklist() = norm freezeWorklist_enum freezeWorklist
     fun norm_spillWorklist() = norm spillWorklist_enum spillWorklist
+  in 
     fun isEmpty_simplifyWorklist() =
       (norm_simplifyWorklist(); isEmpty(!simplifyWorklist))
     fun isEmpty_freezeWorklist() =
@@ -453,6 +455,7 @@ struct
   end
 
   (* nTable; table from lvar keys to nodes *)
+(*
   local
     val nTable : (int*node)list Array.array = Array.array (512,nil)
     fun hash i = Word.toInt(Word.andb(Word.fromInt i, 0w511))
@@ -472,8 +475,19 @@ struct
     fun nTableReset () : unit = (Array.modify (fn _ => nil) nTable;
 				 app (fn n => nTableAdd(key' n, n)) precolored)
   end
+*)
+  local
+    structure M = IntFinMap
+    val nTableInit : node M.map = M.fromList (map (fn n => (key' n, n)) precolored)
+    val nTable : node M.map ref = ref nTableInit
+  in
+    fun nTableLookup i : node option = M.lookup (!nTable) i
+    fun nTableAdd (i:int, n:node) : unit = nTable := M.add(i,n,!nTable)
+    fun nTableReset() = nTable := nTableInit
+  end
 
   (* moveList; table from lvar keys to moves *)
+(*
   local
     val mTable : (int*move list)list Array.array = Array.array (512,nil)
     fun hash i = Word.toInt(Word.andb(Word.fromInt i, 0w511))
@@ -492,7 +506,22 @@ struct
       in Array.update(mTable,h,add l)
       end
   end
-
+*)
+  local
+    structure M = IntFinMap
+    val mTable : (move list ref) M.map ref = ref M.empty
+  in
+    fun moveListLookup i : move list = 
+      case M.lookup (!mTable) i
+	of SOME rl => !rl 
+	 | NONE => nil
+    fun moveListAdd (i:int, m:move) : unit = 
+      case M.lookup (!mTable) i
+	of SOME rl => rl := m :: !rl
+	 | NONE => mTable := M.add(i,ref [m],!mTable)
+    fun moveListReset() = mTable := M.empty
+  end
+(*
   local 
     val adjSet : (int*int)list Array.array = Array.array (1024,nil)
     fun hash (i1,i2) = Word.toInt(Word.andb(0w65599 * Word.fromInt i1 + Word.fromInt i2, 0w1023))
@@ -511,6 +540,25 @@ struct
 	val l = Array.sub(adjSet, h)
       in if find p l then () else Array.update(adjSet,h,p::l)
       end
+  end
+*)
+  local
+    structure S = NatSet
+    structure M = IntFinMap
+    val adjSet : (S.Set ref) M.map ref = ref M.empty
+  in
+    fun adjSetMember (i1,i2) : bool = 
+      if i1 < i2 then (case M.lookup (!adjSet) i1
+			 of SOME s => S.member (Word.fromInt i2) (!s)
+			  | NONE => false)
+      else adjSetMember(i2,i1)
+    fun adjSetAdd (i1,i2) : unit = 
+      if i1 < i2 then (case M.lookup (!adjSet) i1
+			 of SOME s => if S.member (Word.fromInt i2) (!s) then ()
+				      else s := S.insert (Word.fromInt i2) (!s)
+			  | NONE => adjSet := M.add(i1,ref(S.singleton (Word.fromInt i2)),!adjSet))
+      else adjSetAdd(i2,i1)
+    fun adjSetReset() = adjSet := M.empty
   end
 
   fun raReset () = (worklistsReset(); movelistsReset(); nTableReset(); 
@@ -728,31 +776,23 @@ struct
 
   fun AssignColors() : unit =
     let
-      fun assign_color (n:node,pri1,pri2,pri3) =
-	(case Lvarset.members pri1 of
-	   nil => (case Lvarset.members pri2 of
-		     nil => (case Lvarset.members pri3 of
-			       nil => (spilledNodesAdd (n:node); inc_spills())
-			     | c::_ => (coloredNodesAdd (n:node); #color (n:node) := SOME c; inc_assigned_colors()))
+      fun assign_color (n:node,pri1,pri2,notOkColors) =
+	(case Lvarset.members (Lvarset.difference(pri1,notOkColors)) of
+	   nil => (case Lvarset.members (Lvarset.difference(pri2,notOkColors)) of
+		     nil => (spilledNodesAdd (n:node); inc_spills())
 		   | c::_ => (coloredNodesAdd (n:node); #color (n:node) := SOME c; inc_assigned_colors()))
 	 | c::_ => (coloredNodesAdd (n:node); #color (n:node) := SOME c; inc_assigned_colors()))
 
       fun find_color (n:node,notOkColors) =
-	let
-	  val (callee_save_ccall,callee_save_mlkit,caller_save_mlkit) =
-	    (Lvarset.difference(RI.callee_save_ccall_phregset,notOkColors),
-	     Lvarset.empty,
-	     Lvarset.difference(RI.caller_save_phregset,notOkColors))
-	in
-	  if !(#lrs n) = ml_call then
-	    (inc_ml_call(); assign_color(n,callee_save_mlkit,callee_save_ccall,caller_save_mlkit))
+	if !(#lrs n) = ml_call then
+	  (inc_ml_call(); assign_color(n,RI.callee_save_ccall_phregset,RI.caller_save_phregset,notOkColors))
+	else
+	  if !(#lrs n) = c_call then 
+	    (inc_c_call(); assign_color(n,RI.callee_save_ccall_phregset,RI.caller_save_phregset,notOkColors))
 	  else
-	    if !(#lrs n) = c_call then 
-	      (inc_c_call(); assign_color(n,callee_save_ccall,callee_save_mlkit,caller_save_mlkit))
-	    else
-	      (inc_no_call(); assign_color(n,caller_save_mlkit,callee_save_ccall,callee_save_mlkit))
-	end
+	    (inc_no_call(); assign_color(n,RI.caller_save_phregset,RI.callee_save_ccall_phregset,notOkColors))
 
+(*
       fun find_color_simple (n:node,notOkColors) =
 	let
 	  val okColors = Lvarset.difference(allColors,notOkColors) 
@@ -761,7 +801,7 @@ struct
 	    of nil => (spilledNodesAdd (n:node); inc_spills())
 	     | c::_ => (coloredNodesAdd (n:node); #color (n:node) := SOME c; inc_assigned_colors())
 	end
-		
+*)		
       fun pop_loop (ns : node list) =
 	case ns
 	  of nil => app (fn n => if !(#worklist n) = coalescedNodes_enum then

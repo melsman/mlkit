@@ -49,6 +49,16 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 				  structure Report = Report
 				  structure Crash = Crash)
 
+    structure RegionFlowGraphProfiling =
+      RegionFlowGraphProfiling(structure Effect = Effect
+			       structure AtInf = AtInf
+			       structure PhySizeInf = PhysSizeInf
+			       structure PP = PP
+			       structure Flags = Flags
+			       structure Crash = Crash
+			       structure Report = Report)
+
+
     structure ClosExp = ClosExp(structure Con = Con
 				structure Excon = Excon
 				structure Lvars = Lvars
@@ -59,6 +69,7 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 				structure Mul = Mul
 				structure AtInf = AtInf
 				structure PhysSizeInf = PhysSizeInf
+				structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
 				structure Labels = Labels
 				structure ClosConvEnv = ClosConvEnv
 				structure BI = BackendInfo
@@ -139,7 +150,7 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
     fun compile (ce, CB, strdecs, vcg_file) =
       let val (cb,closenv) = CompileBasis.de_CompileBasis CB
       in
-	case Compile.compile (ce, cb, strdecs, vcg_file)
+	case Compile.compile (ce, cb, strdecs)
 	  of Compile.CEnvOnlyRes ce => CEnvOnlyRes ce
 	   | Compile.CodeRes(ce,cb,target,safe) => 
 	    let 
