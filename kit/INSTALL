@@ -119,13 +119,13 @@ the source distribution.
 
 6. Testing your Installation
 ----------------------------
-To test the installation, execute the commands
+To truly test the installation, execute the commands
 
    % cd test
-   % ../bin/kittester /usr/local/mlkit/bin/mlkit x86_noprof_nogc.tst
+   % ../bin/kittester /usr/local/mlkit/bin/mlkit all.tst
 
 The last command runs a set of tests and generates a test report
-test/test_report.dvi.
+test/test_report.dvi. Be aware that this testing may take some time.
 
 7. Road Map
 -----------

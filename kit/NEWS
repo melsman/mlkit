@@ -1,0 +1,28 @@
+ML Kit NEWS file                                         May 7, 2001
+
+           **** ML Kit version 3.4.0 is released ****
+
+ * many bug fixes
+
+ * replaced HP backend with x86 native backend
+
+ * bytecode backend added as an alternative to the x86 native backend;
+   primarily, the bytecode backend is added for portability and for
+   use with the SMLserver project, which adds Standard ML language
+   support to AOLserver -- a webserver from America Online
+ 
+ * added support for reference tracing garbage collection
+
+ * Word31, Word32, Word8, Int31 and Int32 structures added
+
+
+[1998-12-03]   **** ML Kit version 3.0 is released ****
+
+ * ...
+
+[1997]         **** ML Kit version 2.0 is released ****
+
+ * ...
+
+[1993]         **** ML Kit version 1.0 is released ****
+
