@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include "ns.h"
 #include "../Runtime/LoadKAM.h"
+#include "../Runtime/HeapCache.h"
 #include "../Runtime/Region.h"
 #include "../Runtime/String.h"
 
@@ -26,8 +27,7 @@
 
 #define NSSML_OK 0
 #define NSSML_FILENOTFOUND (-1)
-#define NSSML_NOTIMESTAMP (-2)
-#define NSSML_ULFILENOTFOUND (-3)
+#define NSSML_ULFILENOTFOUND (-2)
 
 static char *extendedtyping = NULL;
 
@@ -59,7 +59,6 @@ typedef struct {
   char* hModule;
   char* prjid;
   char ulFileName[NSSML_PATH_MAX];
-  char timeStampFileName[NSSML_PATH_MAX];
   time_t timeStamp;
 } InterpContext;
 
@@ -183,8 +182,6 @@ rpMap = regionPageMapNew();
 
   sprintf(ctx->ulFileName, "%s/PM/%s.ul", 
 	  Ns_PageRoot(hServer), ctx->prjid);
-  sprintf(ctx->timeStampFileName, "%s/PM/%s.timestamp", 
-	  Ns_PageRoot(hServer), ctx->prjid);
   
   ctx->timeStamp = (time_t)-1; 
 
@@ -202,7 +199,6 @@ rpMap = regionPageMapNew();
     
   Ns_Log(Notice, "nssml: module is now loaded");
   Ns_Log(Notice, "nssml: ulFileName is %s", ctx->ulFileName);
-  Ns_Log(Notice, "nssml: timeStampFileName is %s", ctx->timeStampFileName);
 
   // Execute init script if it appears in configuration file
   // Fetch init script
@@ -278,8 +274,7 @@ nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid)
 
 /* ---------------------------------------------------------
  * nssml_processSmlFile - function for processing sml-files; returns
- * NSSML_OK, NSSML_NOTIMESTAMP, NSSML_FILENOTFOUND, or
- * NSSML_ULFILENOTFOUND. In case NSSML_NOTIMESTAMP or
+ * NSSML_OK, NSSML_FILENOTFOUND, or NSSML_ULFILENOTFOUND. In case 
  * NSSML_ULFILENOTFOUND is returned, the function writes a message to
  * the error log.
  * --------------------------------------------------------- */
@@ -301,17 +296,17 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
   }
 
   /*
-   * Test to see if the time stamp file exists
+   * Test to see if the ul-file exists
    */
 
-  t = nssml_fileModTime(ctx->timeStampFileName);
+  t = nssml_fileModTime(ctx->ulFileName);
   
   if ( t == (time_t)-1 )
     {
       Ns_Log(Error, 
-	     "nssml: time stamp file %s not existing - web service not working",
-	     &ctx->timeStampFileName);
-      return NSSML_NOTIMESTAMP;
+	     "nssml: ul-file %s does not exist - web service not working",
+	     &ctx->ulFileName);
+      return NSSML_ULFILENOTFOUND;
     }
 
   /*
@@ -321,13 +316,19 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
   if ( ctx->timeStamp != t ) 
     {
       // Reload the interpreter
+
       FILE* is;
       char buff[NSSML_PATH_MAX];
       int count = 0;
 
+      // TO DO: somehow wait for all executions to finish!
+
       // free all code elements present in the
       // interpreter, including code cache entries...
       interpClear(ctx->interp);
+
+      // clear the heap cache
+      clearHeapCache();
 
       is = fopen(ctx->ulFileName, "r");
       if ( is == NULL ) 
@@ -341,6 +342,9 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
 	{
 	  if ( buff[strlen(buff) - 1] == '\n' ) 
 	    buff[strlen(buff) - 1] = '\0';
+
+	  if ( ! strcmp(buff,"scripts:") )
+	    break;
 
 	  interpLoadExtend(ctx->interp, buff);
 	  // Ns_Log(Notice, "nssml: Loading %s", buff);
@@ -405,7 +409,6 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
 	break;
       }
     case NSSML_ULFILENOTFOUND:
-    case NSSML_NOTIMESTAMP:
       {
 	Ns_ConnReturnNotice(conn, 200, 
 			    "The web service is temporarily out of service",

@@ -36,8 +36,12 @@ signature MANAGER_OBJECTS =
 	 * foreign compiler (e.g., gcc). *)
 	val size : modcode -> int (* for debugging *)
 	(* write the file absprjid[.pm -> .ul] *)
-	val mk_uoFileList : absprjid * modcode -> unit
-	val deleteTimeStampFile : absprjid -> unit
+	val makeUlfile : absprjid * modcode * modcode -> unit
+	(* [makeUlfile (p,mc1,mc2)] stores a file containing the names
+	 * of uo-files in mc1, followed by the line ``scripts:'', followed
+	 * by the uo-files in mc2 with the prefix consisting of the uo-files 
+	 * in mc1 removed. *)
+	val deleteUlfile : absprjid -> unit
       end
 
     type filename (*= string*)

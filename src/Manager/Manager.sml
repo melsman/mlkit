@@ -821,8 +821,16 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			of SOME _ => ()
 			 | NONE => 
 			    if body3 = EMPTYbody andalso isPAR body2 then 
-				MO.ModCode.mk_uoFileList (absprjid,modc1)
+				MO.ModCode.makeUlfile (absprjid,modc1,modc)
 			    else ()
+(*
+				let val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
+				in 
+				    error ("Problem with the project " ^ quot absprjid_s ^ ": \n\
+				     \  A parallel-construct [...] is allowed to appear only in the \n\
+				     \  scope of a local-construct, appearing at the end of a project.")
+				end
+*)
 	      val B1' = drop_toplevel B1
 	  in case body3
 	       of EMPTYbody => (Basis_plus_opt'(B1', B2_opt), modc, clean, modtimes)
@@ -943,7 +951,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
       let val absprjid_s = ModuleEnvironments.absprjid_to_string absprjid
 	  val {cd_old, file=prjid} = change_dir absprjid_s
-	  val _ = ModCode.deleteTimeStampFile absprjid (* for KAM/AOLserver binding/compilation *)
+	  val _ = ModCode.deleteUlfile absprjid (* for KAM/AOLserver binding/compilation *)
       in let val _ = if member absprjid cycleset then
 	               error ("There is a cycle in your project; problematic project identifier: " 
 			      ^ quot absprjid_s)
