@@ -47,14 +47,17 @@ functor IntModules(structure Name : NAME
 		   structure TopdecGrammar : TOPDEC_GRAMMAR
 		     sharing type TopdecGrammar.strdec = Compile.strdec
 		         and type TopdecGrammar.strid = CompilerEnv.strid = ModuleEnvironments.strid
+			 and type TopdecGrammar.longstrid = CompilerEnv.longstrid = ModuleEnvironments.longstrid
+			 and type TopdecGrammar.longtycon = CompilerEnv.longtycon = ModuleEnvironments.longtycon
 			 and type TopdecGrammar.info = ElabInfo.ElabInfo
 			 and type TopdecGrammar.topdec = ParseElab.topdec
 
 		   structure FreeIds : FREE_IDS
-		     sharing type FreeIds.id = ManagerObjects.id
-		         and type FreeIds.strid = ManagerObjects.strid = TopdecGrammar.strid
+		     sharing type FreeIds.longid = ManagerObjects.longid
+		         and type ManagerObjects.strid = TopdecGrammar.strid
+		         and type FreeIds.longstrid = ManagerObjects.longstrid = TopdecGrammar.longstrid
 		         and type FreeIds.funid = ManagerObjects.funid = TopdecGrammar.funid
-			 and type FreeIds.tycon = ManagerObjects.tycon = TopdecGrammar.tycon
+			 and type FreeIds.longtycon = ManagerObjects.longtycon = TopdecGrammar.longtycon
 			 and type FreeIds.strexp = TopdecGrammar.strexp = ManagerObjects.strexp
 
 		   structure Crash : CRASH
@@ -269,9 +272,11 @@ functor IntModules(structure Name : NAME
 	       * we can reuse. *)
 	      fun reuse_code () =
 		case Repository.lookup_int (prjid,funid)
-		  of SOME(_,(funstamp',Eres',intB',N',mc',intB'')) =>
+		  of SOME(_,(funstamp',Eres',intB',longstrids,N',mc',intB'')) =>
 		    if FunStamp.eq(funstamp,funstamp') andalso
-		       IntBasis.enrich(IntBasis.plus(intB0,intB1),intB') andalso
+		       let val intB0' = IntBasis.plus(intB0,intB1)
+		       in IntBasis.enrich(intB0',intB') andalso IntBasis.agree(longstrids,intB0',intB')
+		       end andalso
 		       ElabEnv.eq(Eres,Eres') andalso ModCode.exist mc' then 
 		      let val _ = print ("[reusing instance code for functor " ^ FunId.pr_FunId funid ^ "]\n")
 			  val (_,ce',cb') = IntBasis.un intB''
@@ -288,17 +293,17 @@ functor IntModules(structure Name : NAME
 	       of SOME(ce',cb',mc') => (ce', CompileBasis.plus(cb,cb'), ModCode.seq(mc,mc'))
 		| NONE => 
 		 let val strexp0 = body_blaster()
-		     val intB' = 
+		     val (intB', longstrids) = 
 		       let
 			   val _ = chat " [finding free identifiers begin...]\n"
-                           val fid = FreeIds.free_ids_strexp strexp0
+                           val {funids,longstrids,longtycons,longvids,...} = FreeIds.fid_strexp strexp0
 			   val _ = chat " [finding free identifiers end...]\n"
-			   val tuple = (FreeIds.funids_of_ids fid, FreeIds.strids_of_ids fid,
-					FreeIds.vids_of_ids fid, FreeIds.tycons_of_ids fid)
 			   val _ = chat " [restricting interpretation basis begin...]\n"
-			   val intB' = IntBasis.restrict(IntBasis.plus(intB0,intB1), tuple)
+			   val intB' = IntBasis.restrict(IntBasis.plus(intB0,intB1), 
+							 {funids=funids,longtycons=longtycons,
+							  longstrids=longstrids,longvids=longvids})
 			   val _ = chat " [restricting interpretation basis end...]\n"
-		       in intB'
+		       in (intB', longstrids)
 		       end
 		     val strexp0' =
 		       let fun on_ElabInfo(phi,i) = 
@@ -327,16 +332,16 @@ functor IntModules(structure Name : NAME
 		      * entry in the repository and we emit the generated code,
 		      * since all names now have become rigid. *)
 		     val mc' = case Repository.lookup_int (prjid,funid)
-			       of SOME(entry_no, (_,_,_,N2,_,intB2)) => (* names in N2 are already marked generative, since *)
+			       of SOME(entry_no, (_,_,_,_,N2,_,intB2)) => (* names in N2 are already marked generative, since *)
 				 (List.apply Name.mark_gen N';          (* N2 is returned by lookup_int *)
 				  IntBasis.match(intB'', intB2);
 				  List.apply Name.unmark_gen N';
 				  let val mc' = ModCode.emit (prjid, mc')
-				  in Repository.owr_int((prjid,funid),entry_no,(funstamp,Eres,intB',N',mc',intB''));
+				  in Repository.owr_int((prjid,funid),entry_no,(funstamp,Eres,intB',longstrids,N',mc',intB''));
 				     mc'
 				  end)
 				| NONE => let val mc' = ModCode.emit (prjid, mc')
-					  in Repository.add_int((prjid,funid),(funstamp,Eres,intB',N',mc',intB''));
+					  in Repository.add_int((prjid,funid),(funstamp,Eres,intB',longstrids,N',mc',intB''));
 					     mc'
 					  end
 		     val mc'' = ModCode.seq(mc,mc')
@@ -516,12 +521,12 @@ functor IntModules(structure Name : NAME
 
 
     fun int_funbind (prjid: prjid, intB: IntBasis, FUNBIND(i, funid, strid, sigexp, strexp, funbind_opt)) : IntFunEnv =
-      let val ids_strexp = FreeIds.free_ids_strexp strexp
-	  val strids = List.dropAll (fn strid' => strid = strid') (FreeIds.strids_of_ids ids_strexp)
-	  val ids = FreeIds.vids_of_ids ids_strexp
-	  val funids = FreeIds.funids_of_ids ids_strexp
-	  val tycons = FreeIds.tycons_of_ids ids_strexp
-	  val intB0 = IntBasis.restrict(intB, (funids,strids,ids,tycons))
+      let val {funids,longtycons,longstrids,longvids,...} = FreeIds.fid_strexp strexp
+	  val longstrids = List.dropAll (fn longstrid => 
+					 case StrId.explode_longstrid longstrid
+					   of ([],strid') => strid = strid'
+					    | (strid'::_,_) => strid = strid') longstrids
+	  val intB0 = IntBasis.restrict(intB, {funids=funids,longstrids=longstrids,longvids=longvids,longtycons=longtycons})
 	  val funstamp = FunStamp.new funid
 	  val (E, body_builder_info) =
 	    case to_TypeInfo i

@@ -15,9 +15,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      and type IntModules.modcode = ManagerObjects.modcode
 		structure FreeIds : FREE_IDS
 		  sharing type FreeIds.topdec = ParseElab.topdec
-		      and type FreeIds.id = ManagerObjects.id = ModuleEnvironments.id
-		      and type FreeIds.tycon = ManagerObjects.tycon = ModuleEnvironments.tycon
-		      and type FreeIds.strid = ManagerObjects.strid = ModuleEnvironments.strid
+		      and type FreeIds.longid = ManagerObjects.longid = ModuleEnvironments.longid = Environments.longid
+		      and type FreeIds.longtycon = ManagerObjects.longtycon = ModuleEnvironments.longtycon = Environments.longtycon
+		      and type FreeIds.longstrid = ManagerObjects.longstrid = ModuleEnvironments.longstrid = Environments.longstrid
 		      and type FreeIds.funid = ManagerObjects.funid = ModuleEnvironments.funid
 		      and type FreeIds.sigid = ManagerObjects.sigid = ModuleEnvironments.sigid
 		structure OpacityElim : OPACITY_ELIM
@@ -128,9 +128,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * Debugging and reporting
      * ------------------------------------------- *)
 
-    fun debug_free_ids ids =
-      (log ("\nFree ids:");
-       log_st (FreeIds.layout_ids ids);
+    fun debug_free_longids longids =
+      (log ("\nFree longids:");
+       log_st (FreeIds.layout_longids longids);
        log "\n")
 
     fun print_error_report report = Report.print' report (!Flags.log)
@@ -293,18 +293,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun match_elab(names_elab, elabB, rea, prjid, funid) =
       case Repository.lookup_elab (prjid,funid)
-	of SOME (_,(_,_,_,names_elab',_,elabB',rea')) => (* names_elab' are already marked generative - lookup *)
-	  (List.apply Name.mark_gen names_elab;          (* returned the entry. The invariant is that every *)
-	   ElabBasis.match(elabB, elabB');               (* name in the bucket is generative. *)
+	of SOME (_,(_,_,_,_,names_elab',_,elabB',rea')) => (* names_elab' are already marked generative - lookup *)
+	  (List.apply Name.mark_gen names_elab;            (* returned the entry. The invariant is that every *)
+	   ElabBasis.match(elabB, elabB');                 (* name in the bucket is generative. *)
 	   OpacityElim.match(rea,rea');
 	   List.apply Name.unmark_gen names_elab)
 	 | NONE => () (*bad luck*)
 
     fun match_int(names_int, intB, prjid, funid) =
       case Repository.lookup_int (prjid,funid)
-	of SOME(_,(_,_,_,names_int',_,intB')) =>   (* names_int' are already marked generative - lookup *)
-	  (List.apply Name.mark_gen names_int;     (* returned the entry. The invariant is that every *)
-	   IntBasis.match(intB, intB');            (* name in the bucket is generative. *)
+	of SOME(_,(_,_,_,_,names_int',_,intB')) =>   (* names_int' are already marked generative - lookup *)
+	  (List.apply Name.mark_gen names_int;       (* returned the entry. The invariant is that every *)
+	   IntBasis.match(intB, intB');              (* name in the bucket is generative. *)
 	   List.apply Name.unmark_gen names_int)
 	 | NONE => () (*bad luck*)
 
@@ -313,7 +313,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * (may raise PARSE_ELAB_ERROR)
      * -------------------------------- *)
 
-    fun free_ids a = FreeIds.free_ids a
+    fun fid_topdec a = FreeIds.fid_topdec a
     fun ElabBasis_restrict a = ElabBasis.restrict a
     fun IntBasis_restrict a = IntBasis.restrict a
     fun OpacityElim_restrict a = OpacityElim.restrict a
@@ -337,22 +337,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		  let val names_elab = !Name.bucket
 
 		      val _ = chat "[finding free identifiers begin...]\n"
-		      val freeids as {ids,tycons,strids,funids,sigids} =
-			let val ids = free_ids topdec
-			in {ids=FreeIds.vids_of_ids ids, tycons=FreeIds.tycons_of_ids ids,
-			    strids=FreeIds.strids_of_ids ids, funids=FreeIds.funids_of_ids ids,
-			    sigids=FreeIds.sigids_of_ids ids}
-			end
+		      val freelongids as {longvids,longtycons,longstrids,funids,sigids} = fid_topdec topdec
 		      val _ = chat "[finding free identifiers end...]\n"
 
 		      (* val _ = debug_free_ids ids *)
 		      val _ = chat "[restricting elaboration basis begin...]\n"
-		      val elabB_im = ElabBasis_restrict(elabB,freeids)
+		      val elabB_im = ElabBasis_restrict(elabB,freelongids)
 		      val _ = chat "[restricting elaboration basis end...]\n"
 		      (* val _ = debug_basis "Import" Bimp *)
 
 		      val _ = chat "[restricting interpretation basis begin...]\n"
-		      val intB_im = IntBasis_restrict(intB, (funids,strids,ids,tycons))
+		      val intB_im = IntBasis_restrict(intB, {funids=funids,longstrids=longstrids,longtycons=longtycons,
+							     longvids=longvids})
 		      val _ = chat "[restricting interpretation basis end...]\n"
 
  		      val tynames_elabB_im = ElabBasis.tynames elabB_im
@@ -379,12 +375,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
 		      val _ = Repository.delete_entries (prjid,funid)
 
-		      val _ = Repository.add_elab ((prjid,funid), (infB, elabB_im, (rea_im,tynames_elabB_im), 
+		      val _ = Repository.add_elab ((prjid,funid), (infB, elabB_im, longstrids, (rea_im,tynames_elabB_im), 
 								   names_elab, infB', elabB', rea'))
 		      val modc = ModCode.emit (prjid,modc)  (* When module code is inserted in repository,
 							     * names become rigid, so we emit the module code. *)
 		      val elabE' = ElabBasis.to_E elabB'
-		      val _ = Repository.add_int ((prjid,funid), (funstamp_now, elabE', intB_im, names_int, modc, intB'))
+		      val _ = Repository.add_int ((prjid,funid), (funstamp_now, elabE', intB_im, longstrids, names_int, modc, intB'))
 		      val B' = Basis.mk(infB',elabB',rea',intB')
 		  in print_result_report report;
 		    log_cleanup();
@@ -400,6 +396,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun Repository_lookup_elab a = Repository.lookup_elab a
     fun Repository_lookup_int a = Repository.lookup_int a
     fun Basis_enrich a = Basis.enrich a
+    fun Basis_agree a = Basis.agree a
 
     fun build_punit(prjid,B, punit : string, clean : bool) : Basis * modcode * bool =  (* the bool is a `clean' flag *)
       let
@@ -410,8 +407,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	       | NONE => error ("The program unit " ^ quot punit ^ " does not exist")
 	  exception CAN'T_REUSE
       in (case (Repository_lookup_elab (prjid,funid), Repository_lookup_int (prjid,funid))
-	    of (SOME(_,(infB, elabB, (rea,dom_rea), names_elab, infB', elabB', rea')), 
-		SOME(_,(funstamp, elabE, intB, names_int, modc, intB'))) =>
+	    of (SOME(_,(infB, elabB, longstrids, (rea,dom_rea), names_elab, infB', elabB', rea')), 
+		SOME(_,(funstamp, elabE, intB, _, names_int, modc, intB'))) =>
 	      if FunStamp.eq(funstamp,funstamp_now) andalso ModCode.exist modc then
 		(if clean then (print ("[reusing code for: \t" ^ punit ^ "]\n");
 				(Basis.mk(infB',elabB',rea',intB'), modc, clean))
@@ -424,7 +421,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 						 List.apply Name.mark_gen names_int)     (* names; notice that enrichment of *)
 		                                                                         (* elaboration bases requires all *)
 			  val _ = unmark_names()                                         (* names be unmarked. Names in the *)
-			  val res = Basis_enrich(B, (B_im, dom_rea))                     (* global basis are always unmarked. *)
+			  val res = Basis_enrich(B, (B_im, dom_rea)) andalso             (* global basis are always unmarked. *)
+			    Basis_agree(longstrids,B,(B_im, dom_rea))
 			in (if res then () else remark_names() ; res)
 			end then 
 	  		          (print ("[reusing code for: \t" ^ punit ^ " *]\n");

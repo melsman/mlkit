@@ -51,7 +51,7 @@ signature MANAGER_OBJECTS =
 	val layout : IntFunEnv -> StringTree
       end
 
-    type CEnv and CompileBasis and id and tycon
+    type CEnv and CompileBasis and longtycon and longid and longstrid
     structure IntBasis :
       sig
 	val mk : IntFunEnv * CEnv * CompileBasis -> IntBasis
@@ -59,9 +59,11 @@ signature MANAGER_OBJECTS =
 	val empty : IntBasis
 	val initial : IntBasis
 	val plus : IntBasis * IntBasis -> IntBasis
-	val restrict : IntBasis * (funid list * strid list * id list * tycon list) -> IntBasis
+	val restrict : IntBasis * {funids:funid list, longstrids: longstrid list,
+				   longvids: longid list, longtycons: longtycon list} -> IntBasis
 	val match : IntBasis * IntBasis -> IntBasis
 	val enrich : IntBasis * IntBasis -> bool
+	val agree : longstrid list * IntBasis * IntBasis -> bool   (* structure agreement *)
 	val layout : IntBasis -> StringTree
       end
 
@@ -74,6 +76,7 @@ signature MANAGER_OBJECTS =
 	val un : Basis -> InfixBasis * ElabBasis * realisation * IntBasis
 	val plus : Basis * Basis -> Basis
 	val enrich : Basis * (Basis * TyName.Set.Set) -> bool
+	val agree : longstrid list * Basis * (Basis * TyName.Set.Set) -> bool
 	val layout : Basis -> StringTree
       end
 
@@ -105,17 +108,23 @@ signature MANAGER_OBJECTS =
 	   * the functor application/ unit. This is used when checking
 	   * if reuse is allowed. *)
 
-	val lookup_elab : (prjid * funid) -> (int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
-						     InfixBasis * ElabBasis * realisation)) option
-	val lookup_int : (prjid * funid) -> (int * (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis)) option
+	val lookup_elab : (prjid * funid) -> 
+	  (int * (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
+		  InfixBasis * ElabBasis * realisation)) option
+	val lookup_int : (prjid * funid) -> 
+	  (int * (funstamp * ElabEnv * IntBasis * longstrid list * name list * modcode * IntBasis)) option
 	  
-	val add_elab : (prjid * funid) * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
-					  InfixBasis * ElabBasis * realisation) -> unit
-	val add_int : (prjid * funid) * (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) -> unit
+	val add_elab : (prjid * funid) * 
+	  (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
+	   InfixBasis * ElabBasis * realisation) -> unit
+	val add_int : (prjid * funid) * 
+	  (funstamp * ElabEnv * IntBasis * longstrid list * name list * modcode * IntBasis) -> unit
 
-	val owr_elab : (prjid * funid) * int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
-						InfixBasis * ElabBasis * realisation) -> unit
-	val owr_int : (prjid * funid) * int * (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) -> unit
+	val owr_elab : (prjid * funid) * int * 
+	  (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
+	   InfixBasis * ElabBasis * realisation) -> unit
+	val owr_int : (prjid * funid) * int * 
+	  (funstamp * ElabEnv * IntBasis * longstrid list * name list * modcode * IntBasis) -> unit
 
 	val emitted_files : unit -> string list   (* returns the emitted files mentioned in the repository; *)
                                                   (* used for deleting files which are no longer mentioned. *)

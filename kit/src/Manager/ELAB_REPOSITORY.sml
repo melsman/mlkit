@@ -5,7 +5,7 @@ signature ELAB_REPOSITORY =
 
     structure TyName : TYNAME
 
-    type funid and InfixBasis and ElabBasis and realisation and name
+    type funid and InfixBasis and ElabBasis and realisation and name and longstrid
     type prjid = string
 
     val empty_infix_basis : InfixBasis
@@ -22,14 +22,17 @@ signature ELAB_REPOSITORY =
 	   * overwrite functions for owerwriting a particular
 	   * entry. *)
 
-    val lookup_elab : (prjid * funid) -> (int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
-						 InfixBasis * ElabBasis * realisation)) option
+    val lookup_elab : (prjid * funid) -> 
+      (int * (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
+	      InfixBasis * ElabBasis * realisation)) option
 
-    val add_elab : (prjid * funid) * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
-				      InfixBasis * ElabBasis * realisation) -> unit
+    val add_elab : (prjid * funid) * 
+      (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
+       InfixBasis * ElabBasis * realisation) -> unit
 
-    val owr_elab : (prjid * funid) * int * (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
-					    InfixBasis * ElabBasis * realisation) -> unit
+    val owr_elab : (prjid * funid) * int * 
+      (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
+       InfixBasis * ElabBasis * realisation) -> unit
 
     val recover : unit -> unit
 

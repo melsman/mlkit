@@ -1,4 +1,3 @@
-(*$ElabRepository: NAME FINMAP TYNAME ELAB_REPOSITORY INFIX_BASIS*)
 
 functor ElabRepository(structure Name : NAME
 		       structure FinMap : FINMAP
@@ -7,6 +6,7 @@ functor ElabRepository(structure Name : NAME
 		       eqtype funid
 		       type ElabBasis
 		       type realisation
+		       type longstrid
 		       structure Crash : CRASH) : ELAB_REPOSITORY =
   struct
 
@@ -18,6 +18,7 @@ functor ElabRepository(structure Name : NAME
      and funid = funid
      and ElabBasis = ElabBasis
      and realisation = realisation
+     and longstrid = longstrid
 
     structure TyName = TyName
 
@@ -26,7 +27,7 @@ functor ElabRepository(structure Name : NAME
     val empty_infix_basis : InfixBasis = InfixBasis.emptyB
 
     type prjid = string
-    type elabRep = (prjid * funid, (InfixBasis * ElabBasis * (realisation * TyName.Set.Set) * name list * 
+    type elabRep = (prjid * funid, (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
 				    InfixBasis * ElabBasis * realisation) list) FinMap.map ref
     val elabRep : elabRep = ref FinMap.empty
 
@@ -66,13 +67,13 @@ functor ElabRepository(structure Name : NAME
 		   | NONE => die "owr_rep.NONE"
 	     end
 
-    val lookup_elab = lookup_rep elabRep #4 
+    val lookup_elab = lookup_rep elabRep #5 
     val add_elab = add_rep elabRep
     val owr_elab = owr_rep elabRep
 
     fun recover() =
       List.apply 
-      (List.apply (fn entry => List.apply Name.mark_gen (#4 entry)))
+      (List.apply (fn entry => List.apply Name.mark_gen (#5 entry)))
       (FinMap.range (!elabRep))
 
   end

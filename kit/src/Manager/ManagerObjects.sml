@@ -8,14 +8,19 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       structure TopdecGrammar : TOPDEC_GRAMMAR   (*needed for type strexp*)
 			 sharing type TopdecGrammar.funid = ModuleEnvironments.funid
 			     and type TopdecGrammar.id = ModuleEnvironments.id
+			     and type TopdecGrammar.longtycon = ModuleEnvironments.longtycon
+			     and type TopdecGrammar.longstrid = ModuleEnvironments.longstrid
 		       structure OpacityElim : OPACITY_ELIM
 			 sharing OpacityElim.TyName = ModuleEnvironments.TyName
 			     and type OpacityElim.realisation = ModuleEnvironments.realisation
 			     and type OpacityElim.topdec = TopdecGrammar.topdec
 		       structure CompilerEnv : COMPILER_ENV
 			 sharing type CompilerEnv.id = ModuleEnvironments.id
+			     and type CompilerEnv.longid = TopdecGrammar.DecGrammar.Ident.longid
 			     and type CompilerEnv.strid = ModuleEnvironments.strid
+			     and type CompilerEnv.longstrid = ModuleEnvironments.longstrid
 			     and type CompilerEnv.tycon = ModuleEnvironments.tycon
+			     and type CompilerEnv.longtycon = ModuleEnvironments.longtycon
 		       structure CompileBasis : COMPILE_BASIS
 			 sharing type CompileBasis.lvar = CompilerEnv.lvar
 			     and type CompileBasis.TyName = ModuleEnvironments.TyName
@@ -29,6 +34,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			     and type ElabRep.InfixBasis = InfixBasis.Basis
 			     and type ElabRep.ElabBasis = ModuleEnvironments.Basis
 			     and type ElabRep.realisation = OpacityElim.realisation
+			     and type ElabRep.longstrid = ModuleEnvironments.longstrid
 			     and ElabRep.TyName = ModuleEnvironments.TyName
 		       structure FinMap : FINMAP
 		       structure PP : PRETTYPRINT
@@ -110,12 +116,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	 *-------------------------------- *)
 
 	fun assemble (file_s, file_o) =
-          (Shell.execute_command (!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s)
-(*TODO 25/02/1998 21:22. tho.:
-	   ;
-	   delete_file file_s
-*)
-	   )
+          (Shell.execute_command (!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s);
+	   delete_file file_s)
 
 	  (*e.g., "cc -Aa -c -o link.o link.s"
 
@@ -296,7 +298,9 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  (PP.LEAF o FunId.pr_FunId) (PP.LEAF o FunStamp.pr o #2) ife
       end
 
-    type id = ModuleEnvironments.id
+    type longid = TopdecGrammar.DecGrammar.Ident.longid
+    type longstrid = TopdecGrammar.StrId.longstrid
+    type longtycon = TopdecGrammar.DecGrammar.TyCon.longtycon
     structure IntBasis =
       struct
 	val mk = IB
@@ -305,9 +309,9 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	val initial = IB (IntFunEnv.initial, CompilerEnv.initialCEnv, CompileBasis.initial)
 	fun plus (IB(ife1,ce1,cb1), IB(ife2,ce2,cb2)) =
 	  IB(IntFunEnv.plus(ife1,ife2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus(cb1,cb2))
-	fun restrict (IB (ife,ce,cb), (funids, strids, ids, tycons)) : IntBasis =
+	fun restrict (IB (ife,ce,cb), {funids, longstrids, longvids, longtycons}) : IntBasis =
 	  let val ife' = IntFunEnv.restrict(ife,funids)
-	      val ce' = CompilerEnv.restrictCEnv(ce,strids,ids,tycons)
+	      val ce' = CompilerEnv.restrictCEnv(ce,{longstrids=longstrids,longvids=longvids,longtycons=longtycons})
 	      val lvars = CompilerEnv.lvarsOfCEnv ce'
 	      val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce')
 	      val tynames = [TyName.tyName_EXN,     (* exn is used explicitly in CompileDec *)
@@ -337,6 +341,31 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	    andalso CompileBasis_enrich(cb0,cb)
 	end
 
+	local
+	  fun agree1(longstrid, IB(_,ce1,cb1), IB(_,ce2,cb2)) =
+	    let val ce1 = CompilerEnv.lookup_longstrid ce1 longstrid
+	        val ce2 = CompilerEnv.lookup_longstrid ce2 longstrid
+	    in
+	      CompilerEnv.enrichCEnv(ce1,ce2) andalso CompilerEnv.enrichCEnv(ce2,ce1) andalso
+	      let 
+		fun restr ce cb =
+		  let val lvars = CompilerEnv.lvarsOfCEnv ce
+		      val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce)
+		      val tynames = CompilerEnv.tynamesOfCEnv ce
+		      val cons = CompilerEnv.consOfCEnv ce
+		      val excons = CompilerEnv.exconsOfCEnv ce
+		  in CompileBasis.restrict(cb,(lvars,lvars_with_prims,tynames,cons,excons))
+		  end
+		val cb1 = restr ce1 cb1
+		val cb2 = restr ce2 cb2
+	      in CompileBasis.eq(cb1,cb2)
+	      end
+	    end
+	in
+	  fun agree ([],B1,B2) = true
+	    | agree (longstrid::longstrids, B1, B2) = agree1(longstrid, B1, B2) andalso agree(longstrids, B1, B2)
+	end
+
 	fun layout(IB(ife,ce,cb)) =
 	  PP.NODE{start="IntBasis = [", finish="]", indent=1, childsep=PP.RIGHT ", ",
 		  children=[IntFunEnv.layout ife,
@@ -347,7 +376,6 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type ElabBasis = ModuleEnvironments.Basis 
     type InfixBasis = InfixBasis.Basis
     type sigid = ModuleEnvironments.sigid
-    type tycon = ModuleEnvironments.tycon
     type realisation = OpacityElim.realisation
     datatype Basis = BASIS of InfixBasis * ElabBasis * realisation * IntBasis
     structure Basis =
@@ -380,6 +408,9 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	    debug("IntBasis", IntBasis_enrich(intB1,intB2))
 	end
 
+	fun agree(longstrids, BASIS(_,elabB1,rea1,intB1), (BASIS(_,elabB2,rea2,intB2), dom_rea)) =
+	  ModuleEnvironments.B.agree(longstrids,elabB1,elabB2) andalso IntBasis.agree(longstrids,intB1,intB2)
+	  
 	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
 	  PP.NODE{start="BASIS(", finish = ")",indent=1,childsep=PP.RIGHT ", ",
 		  children=[InfixBasis.layoutBasis infB, ModuleEnvironments.B.layout elabB,
@@ -390,10 +421,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type name = Name.name
     structure Repository =
       struct
-	type intRep = (prjid * funid, (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) list) FinMap.map ref
+	type intRep = (prjid * funid, (funstamp * ElabEnv * IntBasis * longstrid list * 
+				       name list * modcode * IntBasis) list) FinMap.map ref
 	val intRep : intRep = ref FinMap.empty
 	fun clear() = (ElabRep.clear();
-		       List.apply (List.apply (ModCode.delete_files o #5)) (FinMap.range (!intRep));  
+		       List.apply (List.apply (ModCode.delete_files o #6)) (FinMap.range (!intRep));  
 		       intRep := FinMap.empty)
 	fun delete_rep rep prjid_and_funid = case FinMap.remove (prjid_and_funid, !rep)
 				     of Edlib.General.OK res => rep := res
@@ -428,26 +460,26 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		      of SOME res => FinMap.add(prjid_and_funid,owr(n,res,entry),r)
 		       | NONE => die "owr_rep.NONE"
 		 end
-	val lookup_int = lookup_rep intRep #4
+	val lookup_int = lookup_rep intRep #5
 
 	fun add_int (prjid_and_funid,entry) = 
-	  if ModCode.all_emitted (#5 entry) then  (* just make sure... *)
+	  if ModCode.all_emitted (#6 entry) then  (* just make sure... *)
 	    add_rep intRep (prjid_and_funid, entry)
 	  else die "add_int"
 
 	fun owr_int (prjid_and_funid,n,entry) =
-	  if ModCode.all_emitted (#5 entry) then  (* just make sure... *)
+	  if ModCode.all_emitted (#6 entry) then  (* just make sure... *)
 	    owr_rep intRep (prjid_and_funid,n,entry)
 	  else die "owr_int"
 
 	fun recover_intrep() =
 	  List.apply 
-	  (List.apply (fn entry => List.apply Name.mark_gen (#4 entry)))
+	  (List.apply (fn entry => List.apply Name.mark_gen (#5 entry)))
 	  (FinMap.range (!intRep))
 
 	fun emitted_files() =
 	  let fun files_entries ([],acc) = acc
-		| files_entries ((_,_,_,_,mc,_)::entries,acc) = 
+		| files_entries ((_,_,_,_,_,mc,_)::entries,acc) = 
 		    files_entries(entries,ModCode.emitted_files(mc,acc))
 	  in FinMap.fold files_entries [] (!intRep)
 	  end
