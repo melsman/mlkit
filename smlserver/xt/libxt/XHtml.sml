@@ -121,7 +121,10 @@ structure XHtml : XHTML_EXTRA =
 	type ('x,'a,'p,'k) form = ('x,nil,'a,'p,'k) felt
 	type 'a rad = 'a
 
-	fun swap x = x
+	type ('x,'y) num = unit
+	fun One () = ()
+	fun Succ () = ()
+	fun swap () x = x
 
 	fun input (name,it,value) = 
 	    let val a = case value of
@@ -208,8 +211,8 @@ structure XHtml : XHTML_EXTRA =
 	fun meta {content:string} : helt =
 	    elem0("meta", attr "content" content)
 
-	fun link {typ:string,rel:string} : helt =
-	    elem0("meta", attr "type" typ @ attr "rel" rel)
+	fun link {typ:string,rel:string,href:string} : helt =
+	    elem0("link", attr "type" typ @ attr "rel" rel @ attr "href" href)
 
 	type head = elem
 	fun head (t,h) = 

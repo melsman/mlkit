@@ -309,6 +309,10 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		      | ARGtype ("list",t) => 
 			    outi 7 ("\"\"] @ listArgs_ \"" ^ p ^ "\" \"" ^ name 
 				    ^ "\" " ^ typeToString t ^ " " ^ name ^ "' @ [")
+		      | ARGtype ("option",t) => 
+			    outi 7 ("\"\"] @ listArgs_ \"" ^ p ^ "\" \"" ^ name 
+				    ^ "\" " ^ typeToString t ^ " (case " ^ name 
+				    ^ "' of NONE => nil | SOME n => [n]) @ [")
 		      | _ => error "unsupported ARGtype"
 		    end
 
@@ -412,6 +416,9 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		      | ARGtype ("list",BASEtype bt) => 
 			    ("    val " ^ name ^ " = Obj.fromList' (" ^ objFromBaseType bt ^ ")\n\
 			     \        (SMLserver.Unsafe.formvarAll \"" ^ name ^ "\")\n")
+		      | ARGtype ("option",BASEtype bt) => 
+			    ("    val " ^ name ^ " = Obj.fromOption' (" ^ objFromBaseType bt ^ ")\n\
+			     \        (SMLserver.Unsafe.formvar \"" ^ name ^ "\")\n")
 		      | typ => error ("unsupported type: " ^ prType typ)
 	    in
 		concat (["structure X = ", name, " (\n",

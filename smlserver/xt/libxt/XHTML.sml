@@ -147,15 +147,20 @@ signature XHTML =
 	type ('x,'y,'a,'p,'k) felt = ('x,'y,'a,inform,'p,'k) elt
 	type ('x,'a,'p,'k) form = ('x,nil,'a,'p,'k) felt
 
-	val swap    : ('n1->'n2->'x,'y,'a,'p,'k) felt 
-                      -> ('n2->'n1->'x,'y,'a,'p,'k) felt
+	(* Functionality for swapping the front name in a name list 
+	 * with another name in the list. *)
+	type ('old,'new) num
+	val One   : unit -> ('n1->'n2->'x,'n2->'n1->'x) num
+	val Succ  : ('n1->'x,'n2->'y) num -> ('n1->'n->'x,'n2->'n->'y) num 
+	val swap  : ('x,'xx) num -> ('x,'y,'a,'p,'k) felt 
+                    -> ('xx,'y,'a,'p,'k) felt
 
 	(* Input elements *)
 	val inputText      : ('n,'t)fname -> 't obj option -> ('n->'x,'x,'a,'p,inline flow) felt
 	val inputPassword  : ('n,'t)fname -> 't obj option -> ('n->'x,'x,'a,'p,inline flow) felt
 
-	val inputRadio     : ('n,'t)fname -> 't obj -> ('n rad->'x,'x,'a,'p,inline flow) felt
-	val inputRadio'    : ('n,'t)fname -> 't obj -> ('n rad->'x,'n rad->'x,'a,'p,inline flow) felt
+	val inputRadio     : ('n,'t option)fname -> 't obj -> ('n rad->'x,'x,'a,'p,inline flow) felt
+	val inputRadio'    : ('n,'t option)fname -> 't obj -> ('n rad->'x,'n rad->'x,'a,'p,inline flow) felt
 	val radioDrop      : ('n rad->'x,'y,'a,'p,'k) felt -> ('n->'x,'y,'a,'p,'k) felt
 
 	type 'a checkbox
@@ -185,7 +190,7 @@ signature XHTML =
 	val script  : {typ:string} -> string -> helt
 	val style   : {typ:string} -> string -> helt
 	val meta    : {content:string} -> helt
-	val link    : {typ:string,rel:string} -> helt
+	val link    : {typ:string,rel:string,href:string} -> helt
 
 	type head
 	val head    : string * helt list -> head
