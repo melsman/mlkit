@@ -74,18 +74,22 @@ Kam/AddressLabels.sml
   Regions/TestSpreadDataType.sml
   Regions/TestSpreadExp.sml
 
-  Kam/COMP_LAMB.sml
-  Kam/COMP_LAMB_ENV.sml
-  Kam/CompLamb.sml
-  Kam/CompLambEnv.sml
-  Kam/KAM_BACKEND.sml
-  Kam/KAM_VAR.sml
-  Kam/KIT_ABSTRACT_MACHINE.sml
-  Kam/KamVar.sml
   Kam/PHYS_SIZE_INF.sml
   Kam/PhysSizeInf.sml
   Kam/REGION_FLOW_GRAPH_PROFILING.sml
   Kam/RegionFlowGraphProfiling.sml
+
+(*
+  Kam/COMP_LAMB.sml
+  Kam/COMP_LAMB_ENV.sml
+  Kam/CompLamb.sml
+  Kam/CompLambEnv.sml
+
+  Kam/KAM_BACKEND.sml
+
+  Kam/KAM_VAR.sml
+  Kam/KIT_ABSTRACT_MACHINE.sml
+  Kam/KamVar.sml
 
   Cfg/CFG_INFO.sml
   Cfg/CFG_INST.sml
@@ -93,6 +97,7 @@ Kam/AddressLabels.sml
   Cfg/CfgKitAM.sml
   Cfg/TRANSFORM_KBP.sml
   Cfg/TransformKbp.sml
+*)
 
   Backend/CLOS_CONV_ENV.sml
   Backend/ClosConvEnv.sml
@@ -135,34 +140,5 @@ Kam/AddressLabels.sml
    Backend/HpPaRisc/HP_PA_RISC.sml
    Backend/HpPaRisc/HpPaRisc.sml
 
-#endif
-
-#if defined(KIT_TARGET_C)
-   C/C_INFO.sml
-   C/CInfo.sml
-   C/KBP_TO_C.sml
-   C/KbpToC.sml
-   C/C_CODE.sml
-   C/CCode.sml
-   C/CKAMBackend.sml
-#elif defined(KIT_TARGET_DUMMY)
-#else
-   (* the default is to use the HP backend; to compile the C backend
-    * write   CM.SymVal.define("KIT_TARGET_C", 1);
-    * before executing   CM.make(); 
-    *)
-   Hppa/DELAY_SLOT_OPTIMIZATION.sml
-   Hppa/DelaySlotOptimization.sml
-   Hppa/HPPA_INFO.sml
-   Hppa/HPPA_RISC.sml
-   Hppa/HpPaInfo.sml
-   Hppa/HpPaRisc.sml
-   Hppa/HppaKAMBackend.sml
-   Hppa/INST_COUNT_PROFILING.sml
-   Hppa/InstCountProfiling.sml
-   Hppa/KBP_TO_HPPA.sml
-   Hppa/KbpToHpPa.sml
-   Hppa/RESOLVE_JUMPS.sml
-   Hppa/ResolveJumps.sml
 #endif
 

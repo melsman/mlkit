@@ -181,18 +181,14 @@ structure K = struct
       let val kitsrc_dir = OS.Path.concat(root_dir, "src")
       in
 	Flags.lookup_string_entry "path_to_runtime" := 
-	(if Flags.is_on "enable_lambda_backend" then
-	   OS.Path.concat(kitsrc_dir, "RuntimeWithGC/runtimeSystem.o")
-	 else
-	   OS.Path.concat(kitsrc_dir, "Runtime/runtimeSystem.o"));
+	(OS.Path.concat(kitsrc_dir, "RuntimeWithGC/runtimeSystem.o"));
+
         Flags.lookup_string_entry "path_to_runtime_prof" := 
-	(if Flags.is_on "enable_lambda_backend" then 
-	   OS.Path.concat(kitsrc_dir, "RuntimeWithGC/runtimeSystemProf.o")
-	 else
-	   OS.Path.concat(kitsrc_dir, "Runtime/runtimeSystemProf.o"));
+	(OS.Path.concat(kitsrc_dir, "RuntimeWithGC/runtimeSystemProf.o"));
 
         Flags.lookup_string_entry "path_to_runtime_gc" := 
 	OS.Path.concat(kitsrc_dir, "RuntimeWithGC/runtimeSystemGC.o");
+
 	Flags.lookup_string_entry "path_to_runtime_gc_prof" := 
 	OS.Path.concat(kitsrc_dir, "RuntimeWithGC/runtimeSystemGCProf.o");
 	

@@ -164,9 +164,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	 * Append functions
 	 * ----------------------------- *)
 	  
-	val enable_lambda_backend = Flags.lookup_flag_entry "enable_lambda_backend"
-
-	fun append_ext s = s ^ (if !enable_lambda_backend then ".s" else !target_file_extension)
+	fun append_ext s = s ^ ".s"
 
 	fun append_o s = s ^ ".o"
 

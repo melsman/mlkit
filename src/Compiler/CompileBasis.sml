@@ -27,11 +27,6 @@ functor CompileBasis(structure Con : CON
 		       sharing type DropRegions.place = RegionStatEnv.place
 		     structure PhysSizeInf : PHYS_SIZE_INF
 		       sharing type PhysSizeInf.lvar = LambdaStatSem.lvar
-		     structure CompLamb : COMP_LAMB
-		       sharing type CompLamb.lvar = LambdaStatSem.lvar
-		       sharing type CompLamb.con = Con.con
-		       sharing type CompLamb.excon = Excon.excon
-		       sharing type CompLamb.place = RegionStatEnv.place
 		     structure ClosExp : CLOS_EXP
 		       sharing type ClosExp.con = Con.con
 		       sharing type ClosExp.excon = Excon.excon
@@ -44,7 +39,6 @@ functor CompileBasis(structure Con : CON
                                           = RegionStatEnv.StringTree
 			                  = PhysSizeInf.StringTree
                                           = Mul.StringTree
-			                  = CompLamb.StringTree
 			                  = DropRegions.StringTree 
 			                  = ClosExp.StringTree
 		     structure Flags : FLAGS
@@ -67,7 +61,6 @@ functor CompileBasis(structure Con : CON
     type mularefmap = Mul.mularefmap
     type drop_env = DropRegions.env
     type psi_env = PhysSizeInf.env
-    type l2kam_ce = CompLamb.env
     type clos_env = ClosExp.env
     type CompileBasis = {TCEnv : TCEnv, (* lambda type check environment *)
 			 EqEnv : EqEnv, (* elimination of polymorphic equality environment *)
@@ -77,7 +70,6 @@ functor CompileBasis(structure Con : CON
 			 mularefmap: mularefmap,
 			 drop_env: drop_env,
 			 psi_env: psi_env, 
-			 l2kam_ce: l2kam_ce,
 			 clos_env: clos_env}
 
     type TopCompileBasis = CompileBasis
@@ -95,7 +87,6 @@ functor CompileBasis(structure Con : CON
 		 mularefmap=Mul.empty_mularefmap,
 		 drop_env=DropRegions.empty,
 		 psi_env=PhysSizeInf.empty,
-		 l2kam_ce=CompLamb.empty,
 		 clos_env=ClosExp.empty}
 
     val initial = {TCEnv=LambdaStatSem.initial,
@@ -106,12 +97,11 @@ functor CompileBasis(structure Con : CON
 		   mularefmap=Mul.initial_mularefmap,
 		   drop_env=DropRegions.init,
 		   psi_env=PhysSizeInf.init,
-		   l2kam_ce=CompLamb.init,
 		   clos_env=ClosExp.init}
 
-    fun plus({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce,clos_env},
+    fun plus({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,clos_env},
 	     {TCEnv=TCEnv',EqEnv=EqEnv',OEnv=OEnv',rse=rse',mulenv=mulenv',
-	      mularefmap=mularefmap',drop_env=drop_env',psi_env=psi_env',l2kam_ce=l2kam_ce',clos_env=clos_env'}) =
+	      mularefmap=mularefmap',drop_env=drop_env',psi_env=psi_env',clos_env=clos_env'}) =
       {TCEnv=LambdaStatSem.plus(TCEnv,TCEnv'),
        EqEnv=EliminateEq.plus(EqEnv,EqEnv'),
        OEnv=OptLambda.plus(OEnv,OEnv'),
@@ -120,13 +110,12 @@ functor CompileBasis(structure Con : CON
        mularefmap=Mul.plus_mularefmap(mularefmap, mularefmap'),
        drop_env=DropRegions.plus(drop_env, drop_env'),
        psi_env=PhysSizeInf.plus(psi_env,psi_env'),
-       l2kam_ce=CompLamb.plus(l2kam_ce, l2kam_ce'),
        clos_env=ClosExp.plus(clos_env,clos_env')}
 
     val plus' = plus
 
     type StringTree = PP.StringTree
-    fun layout_CompileBasis {TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce,clos_env} =
+    fun layout_CompileBasis {TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,clos_env} =
       PP.NODE{start="{", finish="}", indent=1, childsep=PP.RIGHT "; ",
               children=[EliminateEq.layout_env EqEnv,
 			OptLambda.layout_env OEnv,
@@ -136,7 +125,6 @@ functor CompileBasis(structure Con : CON
                         Mul.layout_mularefmap mularefmap,
 			DropRegions.layout_env drop_env,
 			PhysSizeInf.layout_env psi_env,
-			CompLamb.layout_env l2kam_ce,
 			ClosExp.layout_env clos_env
                        ]
              }
@@ -155,12 +143,11 @@ functor CompileBasis(structure Con : CON
       fun Mul_enrich_mularefmap a = Mul.enrich_mularefmap a
       fun DropRegions_enrich a = DropRegions.enrich a
       fun PhysSizeInf_enrich a = PhysSizeInf.enrich a
-      fun CompLamb_enrich a = CompLamb.enrich a
       fun ClosExp_enrich a = ClosExp.enrich a
     in
-      fun enrich ({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce,clos_env},
+      fun enrich ({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,clos_env},
 		  {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,rse=rse1,mulenv=mulenv1,
-		   mularefmap=mularefmap1,drop_env=drop_env1,psi_env=psi_env1,l2kam_ce=l2kam_ce1,
+		   mularefmap=mularefmap1,drop_env=drop_env1,psi_env=psi_env1,
 		   clos_env=clos_env1}) =
 	debug("EqEnv", EliminateEq_enrich(EqEnv,EqEnv1)) andalso 
 	debug("TCEnv", LambdaStatSem_enrich(TCEnv,TCEnv1)) andalso
@@ -170,24 +157,22 @@ functor CompileBasis(structure Con : CON
 	debug("mularefmap", Mul_enrich_mularefmap(mularefmap,mularefmap1)) andalso
 	debug("drop_env", DropRegions_enrich(drop_env,drop_env1)) andalso
 	debug("psi_env", PhysSizeInf_enrich(psi_env,psi_env1)) andalso
-	debug("l2kam_ce", CompLamb_enrich(l2kam_ce,l2kam_ce1)) andalso
 	debug("clos_env", ClosExp.enrich(clos_env,clos_env1))
       val enrich' = enrich
     end
 
-    fun match ({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce,clos_env},
+    fun match ({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,clos_env},
 	       {TCEnv=TCEnv0,EqEnv=EqEnv0,OEnv=OEnv0,rse=rse0,mulenv=mulenv0,
-		mularefmap=mularefmap0,drop_env=drop_env0,psi_env=psi_env0,l2kam_ce=l2kam_ce0,
+		mularefmap=mularefmap0,drop_env=drop_env0,psi_env=psi_env0,
 		clos_env=clos_env0}) = 
       let val EqEnv = EliminateEq.match(EqEnv,EqEnv0) 
-	  val l2kam_ce = CompLamb.match(l2kam_ce, l2kam_ce0)
 	  val _ = ClosExp.match(clos_env,clos_env0)
       in {TCEnv=TCEnv,EqEnv=EqEnv,OEnv=OEnv,rse=rse,mulenv=mulenv,
-	  mularefmap=mularefmap,drop_env=drop_env,psi_env=psi_env,l2kam_ce=l2kam_ce,
+	  mularefmap=mularefmap,drop_env=drop_env,psi_env=psi_env,
 	  clos_env=clos_env}
       end
 
-    fun restrict ({EqEnv,OEnv,TCEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce,clos_env},
+    fun restrict ({EqEnv,OEnv,TCEnv,rse,mulenv,mularefmap,drop_env,psi_env,clos_env},
 		  (lvars,lvars_with_prims,tynames,cons,excons)) = 
       let
 	
@@ -230,7 +215,6 @@ functor CompileBasis(structure Con : CON
 	  val drop_env1 = DropRegions.restrict(drop_env,lvars_with_prims)
 	  val psi_env1 = PhysSizeInf.restrict(psi_env,lvars_with_prims)
 	  val places = DropRegions.drop_places places
-	  val l2kam_ce1 = CompLamb.restrict(l2kam_ce,{lvars=lvars,places=places,excons=excons,cons=cons})
 	  val clos_env1 = ClosExp.restrict(clos_env,{lvars=lvars,excons=excons,cons=cons})
       in {TCEnv=TCEnv1,
 	  EqEnv=EqEnv1,
@@ -240,7 +224,6 @@ functor CompileBasis(structure Con : CON
 	  mularefmap=mularefmap1,
 	  drop_env=drop_env1,
 	  psi_env=psi_env1,
-	  l2kam_ce=l2kam_ce1,
 	  clos_env=clos_env1}
       end
 

@@ -2161,7 +2161,7 @@ struct
 	  display("\nReport: AFTER NORMALIZATION:", PhysSizeInf.layout_pgm n_prog)
 	else
 	  ()
-      val Fenv = F n_prog
+(*      val Fenv = F n_prog *)
       val all = clos_conv (clos_env, n_prog)
       val _ = 
 	if Flags.is_on "print_clos_conv_program" then
