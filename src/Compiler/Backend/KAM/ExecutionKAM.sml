@@ -120,23 +120,14 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 
     val backend_name = "KAM"
 
-    (* Maybe create a file with all uo-files listed in order; we get the name 
-     * of the file from the Flags variable uolistfile *)
-    val kam_uolistfile = ref ""
-
-    val _ = Flags.add_string_entry 
-      {long="kam_uolistfile", short=NONE, item=kam_uolistfile,
-       menu=["Control", "KAM uo-list file"], 
-       desc="File for listing the uo-files (KAM code files) that make\n\
-	\up the compiled program."}
-
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = BuildCompile.CompilerEnv.CEnv
     type strdec = TopdecGrammar.strdec
     type target = CodeGen.AsmPrg
     type label = Labels.label
 
-    type linkinfo = {code_label:label, imports: label list * label list, exports : label list * label list, unsafe:bool}
+    type linkinfo = {code_label:label, imports: label list * label list, 
+		     exports : label list * label list, unsafe:bool}
     fun code_label_of_linkinfo (li:linkinfo) = #code_label li
     fun exports_of_linkinfo (li:linkinfo) = #exports li
     fun imports_of_linkinfo (li:linkinfo) = #imports li
@@ -179,27 +170,17 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
       in EmitCode.emit {target=target, filename=filename};
 	filename
       end
-
-    fun mk_uolistfile uofiles =
-      case !kam_uolistfile
-	of "" => ()
-	 | s => let val os = TextIO.openOut s
-		in app (fn f => TextIO.output(os, f ^ "\n")) uofiles;
-		  TextIO.closeOut os;
-		  print("[Created file " ^ s ^ "]\n")
-		end
 	      
     fun link_files_with_runtime_system _ files run = 
-      let
-	  val os = TextIO.openOut run	    
-      in
-(*	print ("[Creating file " ^ run ^ " begin ...]\n"); *)
-	TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/bin/kam ");
-	app (fn f => TextIO.output(os, f ^ " ")) files;
-	TextIO.closeOut os;
-	OS.Process.system "chmod a+x run";
-	print("[Created file " ^ run ^ "]\n");
-	mk_uolistfile files
-(* 	; app (print o (fn s => "   " ^ s ^ "\n")) files *)
-      end
+      if !Flags.SMLserver then ()
+      else 
+	let val os = TextIO.openOut run	    
+	in (* print ("[Creating file " ^ run ^ " begin ...]\n"); *)
+	  TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/bin/kam ");
+	  app (fn f => TextIO.output(os, f ^ " ")) files;
+	  TextIO.closeOut os;
+	  OS.Process.system "chmod a+x run";
+	  print("[Created file " ^ run ^ "]\n")
+	  (* ; app (print o (fn s => "   " ^ s ^ "\n")) files  *)
+	end
   end
