@@ -81,10 +81,13 @@ int isnanFloat(int s);
 int posInfFloat(int d);
 int negInfFloat(int d);
 
-StringDesc* stringOfFloat(int rAddr, int f);
-StringDesc* stringOfFloatProf(int rAddr, int f, int pPlint);
-StringDesc* generalStringOfFloat(int rAddr, StringDesc *str, int f);
-StringDesc* generalStringOfFloatProf(int rAddr, StringDesc *str, int f, int pPoint);
+#ifdef PROFILING
+String stringOfFloatProf(Region rAddr, int f, int pPlint);
+String generalStringOfFloatProf(Region rAddr, String str, int f, int pPoint);
+#else
+String stringOfFloat(Region rAddr, int f);
+String generalStringOfFloat(Region rAddr, String str, int f);
+#endif
 
 /* For basislib Math structure */
 int sml_sqrt(int d, int s);

@@ -1,8 +1,8 @@
 /*----------------------------------------------------------------*
  *                         Regions                                *
  *----------------------------------------------------------------*/
-#ifndef REGION
-#define REGION
+#ifndef REGION_H
+#define REGION_H
 
 #include "Flags.h"
  
@@ -55,20 +55,15 @@ words in all.
 The Danish word 'klump' means 'chunk', in this case:  'region page'.
 */
 
-
 #define ALLOCATABLE_WORDS_IN_REGION_PAGE 254
 /*Number of words that can be allocated in each regionpage.*/
 /*If you change this, remember also to change src/Compiler/Kam/CConst.sml
   and src/Compiler/Backend/HpPaRisc/BackendInfo.sml. */
 
-typedef union klump {
-  struct {
-    union klump * n;                   /* NULL or pointer to next page. */
-    struct ro * r;                     /* Pointer back to region descriptor. Used by GC. */
-    int i[ALLOCATABLE_WORDS_IN_REGION_PAGE]; /* space for data*/
-  } k;
-  double x; /* The union ensures alignment of region pages on double aligned
-               addresses (i.e., addresses that are divisible by 8). */
+typedef struct klump {
+  struct klump *n;                   /* NULL or pointer to next page. */
+  struct ro *r;                      /* Pointer back to region descriptor. Used by GC. */
+  int i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data*/
 } Klump;
 
 #define HEADER_WORDS_IN_REGION_PAGE 2 
@@ -145,6 +140,9 @@ typedef struct ro {
 
   Lobjs *lobjs;     // large objects: a list of malloced memory in each region
 } Ro;
+
+typedef Ro* Region;
+
 #define sizeRo (sizeof(Ro)/4) /* size of region descriptor in words */
 #define sizeRoProf (3)        /* We use three words extra when profiling. */
 
@@ -172,10 +170,10 @@ of the region and is useful for, among other things, tail recursion).
 #define setAtbotBit(x)      ((x) | 0x00000002)
 #define clearAtbotBit(x)    ((x) & 0xFFFFFFFD)
 #define setStatusBits(x)    ((x) | 0x00000003)
-#define clearStatusBits(x)  ((x) & 0xFFFFFFFC)
-#define is_inf_and_atbot(x) (((x) & 0x00000003)==0x00000003)
-#define is_inf(x)           (((x) & 0x00000001)==0x00000001)
-#define is_atbot(x)         (((x) & 0x00000002)==0x00000002)
+#define clearStatusBits(x)  ((Region)(((unsigned int)(x)) & 0xFFFFFFFC))
+#define is_inf_and_atbot(x) ((((unsigned int)(x)) & 0x00000003)==0x00000003)
+#define is_inf(x)           ((((unsigned int)(x)) & 0x00000001)==0x00000001)
+#define is_atbot(x)         ((((unsigned int)(x)) & 0x00000002)==0x00000002)
 
 /*----------------------------------------------------------------*
  * Type of freelist and top-level region                          *
@@ -200,22 +198,22 @@ extern Ro * topRegion;
 #ifdef KAM
 int *allocateRegion(Ro *roAddr, Ro** topRegionCell);
 void deallocateRegionNew(Ro** topRegionCell);
-void deallocateRegionsUntil(int rAdr, Ro** topRegionCell);
+void deallocateRegionsUntil(Region rAdr, Ro** topRegionCell);
 #else
 int *allocateRegion(Ro *roAddr);
 void deallocateRegionNew();
-void deallocateRegionsUntil(int rAdr);
-void deallocateRegionsUntil_X86(int rAdr);
+void deallocateRegionsUntil(Region rAddr);
+void deallocateRegionsUntil_X86(Region rAddr);
 #endif
 
-int *alloc (int rAdr, int n);
+int *alloc (Region rAddr, int n);
 void callSbrk();
 
 #ifdef ENABLE_GC
 void callSbrkArg(int no_of_region_pages);
 #endif /* ENABLE_GC */
 
-int resetRegion(int rAdr);
+Region resetRegion(Region rAddr);
 
 /*----------------------------------------------------------------*
  *        Declarations to support profiling                       *
@@ -306,15 +304,15 @@ extern int size_to_space;
 
 
 /* Profiling functions. */
-int *allocRegionInfiniteProfiling(Ro *roAddr, unsigned int regionId);
-int *allocRegionInfiniteProfilingMaybeUnTag(Ro *roAddr, unsigned int regionId);
+int *allocRegionInfiniteProfiling(Region roAddr, unsigned int regionId);
+int *allocRegionInfiniteProfilingMaybeUnTag(Region roAddr, unsigned int regionId);
 void allocRegionFiniteProfiling(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
 void allocRegionFiniteProfilingMaybeUnTag(FiniteRegionDesc *rdAddr, unsigned int regionId, int size);
 int *deallocRegionFiniteProfiling(void);
-int *allocProfiling(int rAddr,int n, int pPoint);  // used by Table.c
+int *allocProfiling(Region rAddr,int n, int pPoint);  // used by Table.c
 #endif /*Profiling*/
 
 void printTopRegInfo();
 int size_free_list();
 
-#endif /*REGION*/
+#endif /*REGION_H*/

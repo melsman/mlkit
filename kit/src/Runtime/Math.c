@@ -487,11 +487,11 @@ static void mkSMLMinus(char * s) {
   return;
 }
 
-StringDesc* 
+String
 #ifdef PROFILING
-stringOfFloatProf(int rAddr, int arg, int pPoint) 
+stringOfFloatProf(Region rAddr, int arg, int pPoint) 
 #else
-stringOfFloat(int rAddr, int arg) 
+stringOfFloat(Region rAddr, int arg) 
 #endif
 {
   char buf[64];
@@ -508,11 +508,11 @@ stringOfFloat(int rAddr, int arg)
 #endif
 }
 
-StringDesc* 
+String
 #ifdef PROFILING
-generalStringOfFloatProf(int rAddr, StringDesc *format, int f, int pPoint) 
+generalStringOfFloatProf(Region rAddr, String format, int f, int pPoint) 
 #else
-generalStringOfFloat(int rAddr, StringDesc *format, int f) 
+generalStringOfFloat(Region rAddr, String format, int f) 
 #endif
 {
   char result_buf[512];

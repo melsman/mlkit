@@ -14,10 +14,11 @@
   instance, that a table is initialized before returning.
 */
 
-#ifndef __STRING_H
-#define __STRING_H
+#ifndef STRING_H
+#define STRING_H
 
 #include "Flags.h"
+#include "Region.h"
 
 // Representation of ML strings
 
@@ -26,39 +27,41 @@ typedef struct stringDesc {
   unsigned char data;            // C String (null-terminated
 } StringDesc;
 
-#define sizeStringDefine(str)    ((((StringDesc *)str)->size) >> 6) /* Remove stringtag. We do not tag the size. */
+typedef StringDesc* String;
+
+#define sizeStringDefine(str)    ((((String)(str))->size) >> 6) /* Remove stringtag. We do not tag the size. */
 
 /******************************************************************
  * EXTERNAL DECLARATIONS (ML functions, basislib)                 *
  ******************************************************************/
 
 int chrCharML(int charNrML, int exn);
-// int __bytetable_size(StringDesc *str);
-// int __bytetable_sub(StringDesc *str, int i);
-// void __bytetable_update(StringDesc *str, int i, int c);
-void printStringML(StringDesc *str);
-int lessStringML(StringDesc *str1, StringDesc *str2);
-int lesseqStringML(StringDesc *str1, StringDesc *str2);
-int greaterStringML(StringDesc *str1, StringDesc *str2);
-int greatereqStringML(StringDesc *str1, StringDesc *str2);
-int equalStringML(StringDesc *str1, StringDesc *str2);
+// int __bytetable_size(String str);
+// int __bytetable_sub(String str, int i);
+// void __bytetable_update(String str, int i, int c);
+void printStringML(String str);
+int lessStringML(String str1, String str2);
+int lesseqStringML(String str1, String str2);
+int greaterStringML(String str1, String str2);
+int greatereqStringML(String str1, String str2);
+int equalStringML(String str1, String str2);
 
 #ifdef PROFILING
-StringDesc *allocStringProfilingML(int rAddr, int sizeML, int pPoint);
-StringDesc *concatStringProfilingML(int rAddr, StringDesc *str1, StringDesc *str2, int pPoint);
-StringDesc *implodeCharsProfilingML (int rAddr, int xs, int pPoint);
-StringDesc *implodeStringProfilingML(int rAddr, int xs, int pPoint);
-StringDesc *convertStringToMLProfiling(int rAddr, unsigned char *cStr, int pPoint);
-StringDesc *exnNameProfilingML(int rAddr, int e, int pPoint);
-int *explodeStringProfilingML(int rAddr2, StringDesc *str, int pPoint);   // no region for the cons cells
+String allocStringProfilingML(Region rAddr, int sizeML, int pPoint);
+String concatStringProfilingML(Region rAddr, String str1, String str2, int pPoint);
+String implodeCharsProfilingML (Region rAddr, int xs, int pPoint);
+String implodeStringProfilingML(Region rAddr, int xs, int pPoint);
+String convertStringToMLProfiling(Region rAddr, unsigned char *cStr, int pPoint);
+String exnNameProfilingML(Region rAddr, int e, int pPoint);
+int *explodeStringProfilingML(Region rAddr2, String str, int pPoint);   // no region for the cons cells
 #else
-StringDesc *allocStringML(int rAddr, int sizeML);
-StringDesc *concatStringML(int rAddr, StringDesc *str1, StringDesc *str2);
-StringDesc *implodeCharsML (int rAddr, int xs);
-StringDesc *implodeStringML(int rAddr, int xs);
-StringDesc *convertStringToML(int rAddr, unsigned char *cStr);
-StringDesc* exnNameML(int rAddr, int e);
-int *explodeStringML(int rAddr2, StringDesc *str);  // no region for the cons cells
+String allocStringML(Region rAddr, int sizeML);
+String concatStringML(Region rAddr, String str1, String str2);
+String implodeCharsML (Region rAddr, int xs);
+String implodeStringML(Region rAddr, int xs);
+String convertStringToML(Region rAddr, unsigned char *cStr);
+String exnNameML(Region rAddr, int e);
+int *explodeStringML(Region rAddr2, String str);  // no region for the cons cells
 #endif /*PROFILING*/
 
-#endif /* __STRING_H */
+#endif /* STRING_H */

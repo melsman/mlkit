@@ -2,8 +2,8 @@
  *                  COMMAND LINE                                  *
  *----------------------------------------------------------------*/
 
-#ifndef __COMMAND_LINE_H
-#define __COMMAND_LINE_H
+#ifndef COMMAND_LINE_H
+#define COMMAND_LINE_H
 
 #include <stdio.h>
 #include "Flags.h"
@@ -36,14 +36,12 @@ extern double heap_to_live_ratio;
 /*----------------------------------------*
  * Prototypes                             *
  *----------------------------------------*/
-StringDesc *sml_commandline_name(int rAddr);
-
-int sml_commandline_args(int pairRho, int strRho);
-
 #ifdef PROFILING
-StringDesc *sml_commandline_nameProfiling(int rAddr, int pPoint);
-int sml_commandline_argsProfiling(int pairRho, int strRho, int pPoint);
+String sml_commandline_nameProfiling(Region rAddr, int pPoint);
+int sml_commandline_argsProfiling(Region pairRho, Region strRho, int pPoint);
+#else
+String sml_commandline_name(Region rAddr);
+int sml_commandline_args(Region pairRho, Region strRho);
 #endif /* PROFILING */
 
-
-#endif /* __COMMAND_LINE_H */
+#endif /* COMMAND_LINE_H */

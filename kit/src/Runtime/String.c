@@ -15,21 +15,21 @@
 //     bytes, so we have to convert to words, and make alignment. The 
 //     content of the string is not initialized. 
 
-static inline StringDesc *
+static inline String
 #ifdef PROFILING
-allocStringProfiling(int rAddr, int size, int pPoint)
+allocStringProfiling(Region rAddr, int size, int pPoint)
 #else 
-allocString(int rAddr, int size) 
+allocString(Region rAddr, int size) 
 #endif
 {
-  StringDesc * sd;
+  String sd;
   int szAlloc;                // size of string in words + tag
   int size0 = size + 1;       // size with space for '\0'
   szAlloc = 1 + ((size0 % 4) ? (size0 / 4)+1 : (size0 / 4));  // 1 is for the tag
 #ifdef PROFILING
-  sd = (StringDesc *) allocProfiling(rAddr, szAlloc, pPoint);
+  sd = (String) allocProfiling(rAddr, szAlloc, pPoint);
 #else
-  sd = (StringDesc *) alloc(rAddr, szAlloc);
+  sd = (String) alloc(rAddr, szAlloc);
 #endif
   sd->size = val_tag_string(size);
   return sd;
@@ -37,7 +37,7 @@ allocString(int rAddr, int size)
 
 // convertStringToC: Copy ML string to 'buf' of size 'buflen'
 void 
-convertStringToC(StringDesc *mlStr, unsigned char *buf, int buflen, int exn) 
+convertStringToC(String mlStr, unsigned char *buf, int buflen, int exn) 
 {
   int i, sz;
   unsigned char *p;
@@ -57,14 +57,14 @@ convertStringToC(StringDesc *mlStr, unsigned char *buf, int buflen, int exn)
 
 // convertStringToML: The ML string is allocated in the region 
 // pointen at by rAddr.
-StringDesc *
+String
 #ifdef PROFILING
-convertStringToMLProfiling(int rAddr, unsigned char *cStr, int pPoint) 
+convertStringToMLProfiling(Region rAddr, unsigned char *cStr, int pPoint) 
 #else
-convertStringToML(int rAddr, unsigned char *cStr) 
+convertStringToML(Region rAddr, unsigned char *cStr) 
 #endif
 {
-  StringDesc *res;
+  String res;
   unsigned char *p;
   int i;
 
@@ -89,21 +89,21 @@ printStringList(int xs)
 {
   for ( ; isCONS(xs); xs = tl(xs) )
     {
-      printStringML((StringDesc *) hd(xs));
+      printStringML((String) hd(xs));
     }
 }
 */
 
 // makeChar: convert a char to a string
 /*
-StringDesc *
+String
 #ifdef PROFILING
-makeCharProfiling(int rAddr, unsigned char ch, int pPoint) 
+makeCharProfiling(Region rAddr, unsigned char ch, int pPoint) 
 #else
-makeChar(int rAddr, unsigned char ch) 
+makeChar(Region rAddr, unsigned char ch) 
 #endif
 {
-  StringDesc *res;
+  String res;
 #ifdef PROFILING
   res = allocStringProfiling(rAddr, 1, pPoint);
 #else
@@ -123,15 +123,15 @@ makeChar(int rAddr, unsigned char ch)
 //     the basis library and size may be tagged.  A
 //     string/W8vector/W8array is a scalar value so GC does not require
 //     that the string is initialized.
-StringDesc *
+String
 #ifdef PROFILING
-allocStringProfilingML(int rAddr, int sizeML, int pPoint) 
+allocStringProfilingML(Region rAddr, int sizeML, int pPoint) 
 #else
-allocStringML(int rAddr, int sizeML) 
+allocStringML(Region rAddr, int sizeML) 
 #endif
 {
   int sizeC = convertIntToC(sizeML);
-  StringDesc *strPtr;
+  String strPtr;
 #ifdef PROFILING
   strPtr = allocStringProfiling(rAddr,sizeC,pPoint);
 #else
@@ -154,20 +154,20 @@ chrCharML(int charNrML, int exn)
 
 /*
 int 
-__bytetable_size(StringDesc *s) 
+__bytetable_size(String s) 
 {
   return convertIntToML(sizeStringDefine(s));
 }
 */
 
-StringDesc *
+String
 #ifdef PROFILING
-concatStringProfilingML(int rAddr, StringDesc *str1, StringDesc *str2, int pPoint) 
+concatStringProfilingML(Region rAddr, String str1, String str2, int pPoint) 
 #else
-concatStringML(int rAddr, StringDesc *str1, StringDesc *str2) 
+concatStringML(Region rAddr, String str1, String str2) 
 #endif
 {
-  StringDesc *res;
+  String res;
   unsigned char *s, *p;
   int i, sz;
   sz = sizeStringDefine(str1) + sizeStringDefine(str2);
@@ -191,14 +191,14 @@ concatStringML(int rAddr, StringDesc *str1, StringDesc *str2)
   return res;
 }
 
-StringDesc *
+String
 #ifdef PROFILING
-implodeCharsProfilingML(int rAddr, int xs, int pPoint) 
+implodeCharsProfilingML(Region rAddr, int xs, int pPoint) 
 #else
-implodeCharsML(int rAddr, int xs) 
+implodeCharsML(Region rAddr, int xs) 
 #endif
 {
-  StringDesc *res;
+  String res;
   int length = 0;
   int ys;
   unsigned char *p;
@@ -232,14 +232,14 @@ implodeCharsML(int rAddr, int xs)
 // implodeStringML
 // Example: ["ABC","DEF","GHI","JKL"]                            
 //   = CONS("ABC",CONS("DEF",CONS("GHI",CONS("JKL",NIL))))
-StringDesc *
+String
 #ifdef PROFILING
-implodeStringProfilingML(int rAddr, int xs, int pPoint) 
+implodeStringProfilingML(Region rAddr, int xs, int pPoint) 
 #else
-implodeStringML(int rAddr, int xs) 
+implodeStringML(Region rAddr, int xs) 
 #endif
 {
-  StringDesc *res;
+  String res;
   int sz=0;
   int ys;
   unsigned char *p;
@@ -259,10 +259,10 @@ implodeStringML(int rAddr, int xs)
   p = &(res->data);
   for ( ys = xs; isCONS(ys); ys = tl(ys) )
     {
-      StringDesc* sd;
+      String sd;
       int i;
       unsigned char *s;
-      sd = (StringDesc*)hd(ys);
+      sd = (String)hd(ys);
       s = &(sd->data);
       for ( i = 0; i < sizeStringDefine(sd); i++ )
 	{
@@ -276,7 +276,7 @@ implodeStringML(int rAddr, int xs)
 // __bytetable_sub: returns the i'th character of the string.
 /*
 int 
-__bytetable_sub(StringDesc *str,int iML) 
+__bytetable_sub(String str,int iML) 
 {
   int iC;
   unsigned char ch;
@@ -289,7 +289,7 @@ __bytetable_sub(StringDesc *str,int iML)
 // __bytetable_update: updates the i'th character of the string.
 /*
 void 
-__bytetable_update(StringDesc *str, int iML, int cML) 
+__bytetable_update(String str, int iML, int cML) 
 {
   int iC;
   unsigned char ch;
@@ -300,7 +300,7 @@ __bytetable_update(StringDesc *str, int iML, int cML)
 */
 
 void 
-printStringML(StringDesc *str) 
+printStringML(String str) 
 {
   fputs(&(str->data),stdout);
   fflush(stdout);
@@ -308,7 +308,7 @@ printStringML(StringDesc *str)
 }
 
 static inline int
-mystrcmp (StringDesc *s1, StringDesc *s2) 
+mystrcmp (String s1, String s2) 
 {
   int min, l1, l2, i;
   unsigned char *p1, *p2;
@@ -333,7 +333,7 @@ mystrcmp (StringDesc *s1, StringDesc *s2)
 }
 
 int 
-lessStringML(StringDesc *s1, StringDesc *s2) 
+lessStringML(String s1, String s2) 
 {
   if ( mystrcmp (s1, s2) < 0 )
     {
@@ -343,7 +343,7 @@ lessStringML(StringDesc *s1, StringDesc *s2)
 }
 
 int 
-lesseqStringML(StringDesc *s1, StringDesc *s2) 
+lesseqStringML(String s1, String s2) 
 {
   if ( mystrcmp (s1, s2) <= 0 )
     {
@@ -353,7 +353,7 @@ lesseqStringML(StringDesc *s1, StringDesc *s2)
 }
 
 int 
-greaterStringML(StringDesc *s1, StringDesc *s2) 
+greaterStringML(String s1, String s2) 
 {
   if ( mystrcmp (s1, s2) > 0 )
     {
@@ -363,7 +363,7 @@ greaterStringML(StringDesc *s1, StringDesc *s2)
 }
 
 int 
-greatereqStringML(StringDesc *s1, StringDesc *s2) 
+greatereqStringML(String s1, String s2) 
 {
   if ( mystrcmp (s1, s2) >= 0 )
     {
@@ -373,7 +373,7 @@ greatereqStringML(StringDesc *s1, StringDesc *s2)
 }
 
 int 
-equalStringML(StringDesc *s1, StringDesc *s2) 
+equalStringML(String s1, String s2) 
 {
   if ( sizeStringDefine(s1) != sizeStringDefine(s2) )
     {
@@ -388,19 +388,19 @@ equalStringML(StringDesc *s1, StringDesc *s2)
 
 // exnNameML: return name of exception; the function 
 // is exomorphic by copying
-StringDesc *
+String
 #ifdef PROFILING
-exnNameProfilingML(int rAddr, int e, int pPoint) 
+exnNameProfilingML(Region rAddr, int e, int pPoint) 
 #else
-exnNameML(int rAddr, int e) 
+exnNameML(Region rAddr, int e) 
 #endif
 {
-  StringDesc *ml_s;
+  String ml_s;
 
 #ifdef TAG_VALUES
-  ml_s = (StringDesc*)(* ( (*((int **)e+1)) + 2));
+  ml_s = (String)(* ( (*((int **)e+1)) + 2));
 #else
-  ml_s = (StringDesc*)(* ( (*(int **)e) + 1));
+  ml_s = (String)(* ( (*(int **)e) + 1));
 #endif
 
 #ifdef PROFILING
@@ -415,9 +415,9 @@ exnNameML(int rAddr, int e)
 
 int *
 #ifdef PROFILING
-explodeStringProfiling(int rAddr, StringDesc *str, int pPoint) 
+explodeStringProfiling(Region rAddr, String str, int pPoint) 
 #else
-explodeStringML(int rAddr, StringDesc *str) 
+explodeStringML(Region rAddr, String str) 
 #endif
 {
   int *res, *consPtr, *pair, *tpair, i, sz;

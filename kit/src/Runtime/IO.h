@@ -12,12 +12,12 @@
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
-int openInStream(StringDesc *filenamePtr, int exn);
-int openOutStream(StringDesc *filenamePtr, int exn);
-int openAppendStream(StringDesc *filenamePtr, int exn);
+int openInStream(String filenamePtr, int exn);
+int openOutStream(String filenamePtr, int exn);
+int openAppendStream(String filenamePtr, int exn);
 void closeStream(FILE *stream);
 // int endOfStream(FILE *stream);
-int outputStream(FILE *outStream, StringDesc *stringPtr, int exn);
+int outputStream(FILE *outStream, String stringPtr, int exn);
 void flushStream(FILE *stream);
 int stdInStream(int dummy);
 int stdOutStream(int dummy);
@@ -26,9 +26,9 @@ int input1Stream(FILE *is);
 int lookaheadStream(FILE *is);
 
 #ifdef PROFILING
-StringDesc *inputStreamProfiling(int rd, FILE *is, int n, int pPoint);
+String inputStreamProfiling(Region rd, FILE *is, int n, int pPoint);
 #else
-StringDesc *inputStream(int rd, FILE *is, int n);
+String inputStream(Region rd, FILE *is, int n);
 #endif /*PROFILING*/
 
 #endif /* __IO_H */

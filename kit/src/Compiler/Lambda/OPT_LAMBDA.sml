@@ -6,12 +6,14 @@ signature OPT_LAMBDA =
     type Type
     type tyvar
     type lvar
+    type TyName
+    type con
       
     val initial : env
     val empty : env
     val plus : env * env -> env
 
-    val restrict : env * lvar list -> env
+    val restrict : env * lvar list * con list * TyName list -> env * con list * TyName list
     val enrich : env * env -> bool
 
     val optimise: env * LambdaPgm -> LambdaPgm * env

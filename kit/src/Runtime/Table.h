@@ -3,10 +3,12 @@
 #define __TABLE_H
 #include "Region.h"
 
-typedef struct table {
+typedef struct {
   int size;     // combined size and tag-field
   int data;     // first element
-} Table;
+} TableDesc;
+
+typedef TableDesc* Table; 
 
 // word_sub0(t,i): extract element i from table t; no bounds check
 // int word_sub0 (Table* t, int i);
@@ -18,18 +20,18 @@ typedef struct table {
 // word_table0(rAddr, n): return a pointer to a table 
 // with n elements allocated in the region indicated by rAddr
 #ifdef PROFILING
-Table* word_table0Prof (int rAddr, int n, int pPoint);
+Table word_table0Prof (Region rAddr, int n, int pPoint);
 #else
-Table* word_table0 (int rAddr, int n);
+Table word_table0 (Region rAddr, int n);
 #endif
 
 // word_table_init(rAddr, n, x): return a pointer to a table 
 // with n initialized (=x) elements allocated in the 
 // region indicated by rAddr
 #ifdef PROFILING
-Table* word_table_initProf (int rAddr, int n, int x, int pPoint);
+Table word_table_initProf (Region rAddr, int n, int x, int pPoint);
 #else
-Table* word_table_init (int rAddr, int n, int x);
+Table word_table_init (Region rAddr, int n, int x);
 #endif
 
 // table_size(t) : returns the number of elements in t. This 
@@ -37,7 +39,7 @@ Table* word_table_init (int rAddr, int n, int x);
 // on vectors (EliminateEq.sml). Also used for bounds 
 // checking.
 
-// int table_size (Table * t);
+// int table_size (Table t);
 
 #endif /*__TABLE_H*/
 

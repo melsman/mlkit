@@ -11,6 +11,8 @@ functor CompBasis(structure Con : CON
 		    sharing type EliminateEq.TyName = LambdaStatSem.TyName = TyName.TyName
 		  structure OptLambda : OPT_LAMBDA
 		    sharing type OptLambda.lvar = LambdaStatSem.lvar
+                    sharing type OptLambda.con = Con.con
+                    sharing type OptLambda.TyName = TyName.TyName
 		  structure RegionStatEnv: REGION_STAT_ENV
 		    sharing type RegionStatEnv.lvar = LambdaStatSem.lvar
 		    sharing type RegionStatEnv.excon = Excon.excon
@@ -177,7 +179,7 @@ functor CompBasis(structure Con : CON
                 say "(end of equality environment)\n";
                 raise x) 
 	  val lvars = lvars_eq @ lvars
-	  val OEnv1 = OptLambda.restrict(OEnv,lvars)
+	  val (OEnv1,cons,tynames) = OptLambda.restrict(OEnv,lvars,cons,tynames)
 	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
 	  val rse1 = RegionStatEnv.restrict(rse,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
 	  val mulenv1 = Mul.restrict_efenv(mulenv,lvars)

@@ -279,7 +279,7 @@ clear_scan_container()
 }
 
 /* We mark all region pages such that we can distinguish them from to-space */
-/* region pages by setting a bit in the next k.n pointer.                   */
+/* region pages by setting a bit in the next n pointer.                   */
 static void mk_from_space() {
   Ro *rp;
   Klump *rp_tmp;
@@ -305,7 +305,7 @@ static void mk_from_space() {
     #endif
 
     /* Move Region Pages To From--Space */
-    (((Klump *)rp->b)-1)->k.n = from_space_begin;
+    (((Klump *)rp->b)-1)->n = from_space_begin;
     from_space_begin = rp->fp;
 
     /* Allocate New Region Page */
@@ -315,7 +315,7 @@ static void mk_from_space() {
 
   /* Calculate size of from space */
   rp_from_space = 0;
-  for (rp_tmp=from_space_begin;rp_tmp;rp_tmp=rp_tmp->k.n)
+  for (rp_tmp=from_space_begin;rp_tmp;rp_tmp=rp_tmp->n)
     rp_from_space ++;
   return;
 }
@@ -343,7 +343,7 @@ static void check_rp_in_from_space(Klump *rp) {
   int ok = 0;
   Klump *rp_tmp;
 
-  for (rp_tmp=from_space_begin;rp_tmp;rp_tmp=((Klump *)(((unsigned int)rp_tmp->k.n) & 0xFFFFFFFE)))
+  for (rp_tmp=from_space_begin;rp_tmp;rp_tmp=((Klump *)(((unsigned int)rp_tmp->n) & 0xFFFFFFFE)))
     if (rp_tmp == rp) ok = 1;
   
   if (!ok)
@@ -390,7 +390,7 @@ allocated_bytes_in_region(Ro *rd)
   int allocated_bytes = 0;
 
   rp = rd->fp;
-  scan_ptr = rp->k.i;
+  scan_ptr = rp->i;
   
   while (((int *)scan_ptr) != rd->a) {
     rp = get_rp_header(scan_ptr);
@@ -410,7 +410,7 @@ allocated_bytes_in_region(Ro *rd)
     }
     case TAG_TABLE: {
       int sizeWords;
-      Table* table = (Table *)scan_ptr;
+      Table table = (Table)scan_ptr;
       sizeWords = get_table_size(table->size) + 1;
       scan_ptr += sizeWords;
       allocated_bytes += (4*sizeWords);
@@ -453,7 +453,7 @@ allocated_bytes_in_region(Ro *rd)
     if ((((int *)scan_ptr) != rd->a) &&
 	((((int *)scan_ptr) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) ||
 	 (*((int *)scan_ptr) == notPP))) {
-      scan_ptr = ((unsigned int*) (rp->k.n))+HEADER_WORDS_IN_REGION_PAGE;
+      scan_ptr = ((unsigned int*) (rp->n))+HEADER_WORDS_IN_REGION_PAGE;
     }
   }
   return allocated_bytes;
@@ -536,9 +536,9 @@ copy_val(unsigned int *obj_ptr, Ro *rd)
 
   size = get_size_obj(obj_ptr);              // size includes descriptor
 #ifdef PROFILING
-  new_obj_ptr = allocProfiling((int)rd,size,pPoint);
+  new_obj_ptr = allocProfiling(rd,size,pPoint);
 #else
-  new_obj_ptr = alloc((int)rd,size);
+  new_obj_ptr = alloc(rd,size);
 #endif
   copy_words(obj_ptr,new_obj_ptr,size);
   *obj_ptr = tag_forward_ptr(new_obj_ptr);   // install forward pointer
@@ -556,7 +556,7 @@ copy_obj(unsigned int *obj_ptr)
   unsigned int *new_obj_ptr;
 
   rp = get_rp_header(obj_ptr);           // get region page 
-  rd = rp->k.r;                          // get region descriptor
+  rd = rp->r;                            // get region descriptor
   new_obj_ptr = copy_val(obj_ptr,rd);
   if ( is_status_NONE(rd) ) 
     {
@@ -620,7 +620,7 @@ scan_value(unsigned int* scan_ptr)
     return scan_ptr + sizeWords;
   }
   case TAG_TABLE: {
-    Table *table = (Table *)scan_ptr;
+    Table table = (Table)scan_ptr;
     sizeWords = get_table_size(table->size);
     scan_ptr++;
     while ( sizeWords )
@@ -689,7 +689,7 @@ do_scan_stack()
       scan_ptr = pop_scan_stack();
       /* Get Region Page and Region Descriptor */
       rp = get_rp_header(scan_ptr);
-      rd = rp->k.r;
+      rd = rp->r;
       while (((int *)scan_ptr) != rd->a) {
 	rp = get_rp_header(scan_ptr);
 #if PROFILING
@@ -702,7 +702,7 @@ do_scan_stack()
 	if ((((int *)scan_ptr) != rd->a) &&
 	    ((((int *)scan_ptr) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) ||
 	     (*((int *)scan_ptr) == notPP))) {
-	  scan_ptr = ((unsigned int*) (rp->k.n))+HEADER_WORDS_IN_REGION_PAGE;
+	  scan_ptr = ((unsigned int*) (rp->n))+HEADER_WORDS_IN_REGION_PAGE;
 	}
       }
       set_status_NONE(rd);
@@ -857,7 +857,7 @@ gc(unsigned int **sp, unsigned int reg_map)
   do_scan_stack();
 
   /* We Are Done And Must Insert from-space Into The FreeList */
-  from_space_end->k.n = freelist;
+  from_space_end->n = freelist;
   freelist = from_space_begin;
 
   /* Run through all infinite regions and free all 

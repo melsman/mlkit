@@ -264,13 +264,16 @@ functor OptLambda(structure Lvars: LVARS
     * cross-module optimisation...
     * ----------------------------------------------------- *)
 
-   fun closed lamb : bool =
+   fun closed (lvars_free_ok:lvar list, 
+	       excons_free_ok:excon list, 
+	       lamb) : bool =
      let 
        exception OPEN
-       fun check_con con = 
+       fun check_con con =
 	 if (Con.eq(con,Con.con_NIL) orelse Con.eq(con,Con.con_CONS)
 	     orelse Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE)) then ()
 	 else raise OPEN
+
        fun check_excon ex x = 
 	 if is_in_ex ex x then () else raise OPEN
        fun appOpt f NONE = ()
@@ -420,17 +423,21 @@ functor OptLambda(structure Lvars: LVARS
 	| eq_cvs (nil,nil) = true
 	| eq_cvs _ = false
 
-      fun closed_small_cv (lvar,tyvars,cv) : bool =
+      fun closed_small_cv (lvars_free_ok,excons_free_ok,lvar,tyvars,cv) : bool =
 	case cv
-	  of CVAR e1 => closed (FN{pat=[(lvar,unitType)],body=e1})
-	   | CRECORD cvs => (Listfoldl (fn (cv,acc) => acc andalso closed_small_cv(lvar,tyvars,cv))
+	  of CVAR e1 => closed (lvars_free_ok, excons_free_ok, 
+				FN{pat=[(lvar,unitType)],body=e1})
+	   | CRECORD cvs => (Listfoldl (fn (cv,acc) => acc 
+					andalso closed_small_cv(lvars_free_ok, excons_free_ok,lvar,tyvars,cv))
 			     true cvs)
 	   | CUNKNOWN => true
 	   | CCONST e1 => true
 	   | CFN{lexp,large} => (not large andalso 
-				 closed (FN{pat=[(lvar,unitType)],body=lexp}))
+				 closed (lvars_free_ok, excons_free_ok, 
+					 FN{pat=[(lvar,unitType)],body=lexp}))
 	   | CFIX{bind,Type,large} => (not large andalso 
-				       closed (FIX{functions=[{lvar=lvar,
+				       closed (lvars_free_ok, excons_free_ok, 
+					       FIX{functions=[{lvar=lvar,
 							       tyvars=tyvars,
 							       Type=Type,
 							       bind=bind}],
@@ -500,9 +507,10 @@ functor OptLambda(structure Lvars: LVARS
 
       fun layout_cv_scheme (tyvars,cv) = PP.LEAF (show_cv cv)
 
-      fun cross_module_inline lvar (tyvars,cv) = 
-	cross_module_opt() andalso closed_small_cv (lvar,tyvars,cv)
-	
+      fun cross_module_inline (lvars_free_ok, excons_free_ok) lvar (tyvars,cv) = 
+	cross_module_opt() 
+	andalso closed_small_cv(lvars_free_ok,excons_free_ok,lvar,tyvars,cv)
+
       val frame_contract_env : env option ref = ref NONE
 
       (* -----------------------------------------------------------------
@@ -894,16 +902,18 @@ functor OptLambda(structure Lvars: LVARS
 	       end
 	      | FRAME{declared_excons,declared_lvars} => 
 	       let val lvars = map #lvar declared_lvars
+		   val excons = map #1 declared_excons
 		   val env' = 
 		     List.foldL (fn lv => fn acc => 
 				 case LvarMap.lookup env lv
 				   of SOME res => 
-				     if cross_module_inline lv res then LvarMap.add(lv,res,acc)
+				     if cross_module_inline (lvars,excons) lv res 
+				       then LvarMap.add(lv,res,acc)
 				     else LvarMap.add(lv,(nil,CUNKNOWN),acc)
 				    | NONE => LvarMap.add(lv,(nil,CUNKNOWN),acc)) 
 		     LvarMap.empty lvars 
 	       in  frame_contract_env := SOME env'
-		 ; app (mk_live_excon o #1) declared_excons
+		 ; app mk_live_excon excons
 		 ; (lamb, CUNKNOWN)
 	       end
 	      | _ => (lamb, cv)
@@ -939,11 +949,17 @@ functor OptLambda(structure Lvars: LVARS
 			of SOME res1 => eq_cv_scheme(res1,res2)
 			 | NONE => false) true ce2
 
-      fun restrict_contract_env(ce,lvars) = 
-	List.foldL (fn lv => fn acc => 
+      fun free_contract_env_res(res,cons,tns) = (cons,tns)
+
+      fun restrict_contract_env(ce,lvars,cons,tns) = 
+	List.foldL (fn lv => fn (e,cons,tns) => 
 		    case LvarMap.lookup ce lv
-		      of SOME res => LvarMap.add(lv,res,acc)
-		       | NONE => die "restrict_contract_env.lv not in env") LvarMap.empty lvars 
+		      of SOME res => 
+			let val (cons,tns) = free_contract_env_res(res,cons,tns)
+			in (LvarMap.add(lv,res,e),cons,tns)
+			end
+		       | NONE => die "restrict_contract_env.lv not in env") 
+	(LvarMap.empty,cons,tns) lvars 
 
       val layout_contract_env : contract_env -> StringTree = 
 	LvarMap.layoutMap {start="ContractEnv={",eq="->", sep=", ", finish="}"} 
@@ -1652,11 +1668,14 @@ functor OptLambda(structure Lvars: LVARS
       (LvarMap.plus (e1,e1'), LvarMap.plus (e2,e2'), 
        LvarMap.plus (e3,e3'), LvarMap.plus (e4,e4'))
 
-    fun restrict((inv_eta_env,let_env, unbox_fix_env,contract_env), lvars) =
-      (restrict_inv_eta_env(inv_eta_env,lvars),
-       restrict_let_env(let_env,lvars),
-       restrict_unbox_fix_env(unbox_fix_env,lvars),
-       restrict_contract_env(contract_env,lvars))
+    fun restrict((inv_eta_env,let_env, unbox_fix_env,contract_env), lvars, cons, tns) =
+      let val e1 = restrict_inv_eta_env(inv_eta_env,lvars)
+	  val e2 = restrict_let_env(let_env,lvars)
+	  val e3 = restrict_unbox_fix_env(unbox_fix_env,lvars)
+	  val (e4,cons,tns) = restrict_contract_env(contract_env,lvars,cons,tns)
+      in
+	((e1, e2, e3, e4), cons, tns)
+      end
 
     fun enrich((inv_eta_env1,let_env1,unbox_fix_env1,contract_env1): env,
 	       (inv_eta_env2,let_env2,unbox_fix_env2,contract_env2): env) : bool =
