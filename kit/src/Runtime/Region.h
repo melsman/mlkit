@@ -145,7 +145,7 @@ typedef struct ro {
                           The beginning of the newest page of the region can be calculated
                           as a fixed offset from b. Thus the region descriptor gives
                           direct access to both the first and the last region page
-                          of the region. This makes it possible to de-allocated the
+                          of the region. This makes it possible to de-allocate the
                           entire region in constant time, by appending it to the free list.*/
 
   /* here are the extra fields that are used when profiling is turned on: */
