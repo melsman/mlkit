@@ -1,7 +1,5 @@
 -- $Id$
 
-set serveroutput on -- show output on the screen (in sqlplus)
-
 /* ======================================================================
    package scs_test
 
@@ -139,7 +137,7 @@ as
   procedure testExn(
     testname varchar2,
     testcase integer,
-    exp char,
+    exp varchar2,
     all_exns varchar2 default 'f'
   ) 
   is
