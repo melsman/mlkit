@@ -10,6 +10,7 @@ as
 
   procedure printTest(
     testname varchar2,
+    testcase integer,
     expression boolean
   ) ;
 
@@ -24,6 +25,7 @@ create or replace package body scs_test
 as
   procedure printTest(
     testname varchar2,
+    testcase integer,
     expression boolean
   ) 
   is
@@ -34,7 +36,7 @@ as
     else
       str := 'false: ';
     end if;
-    DBMS_output.put_line( str || testname );    
+    DBMS_output.put_line( str || testname || ' testcase ' || to_char(testcase) );    
   end printTest;
 
 end scs_test;
