@@ -626,11 +626,13 @@ functor ManagerObjects(structure Execution : EXECUTION
 	  end
 
 	local 
-	  fun IntFunEnv_enrich a = IntFunEnv.enrich a
-	  fun IntSigEnv_enrich a = IntSigEnv.enrich a
-	  fun CompilerEnv_enrichCEnv a = CompilerEnv.enrichCEnv a
-	  fun CompileBasis_enrich a = CompileBasis.enrich a
-	  fun CompileBasis_enrich a = CompileBasis.enrich a
+	    fun db_f s true = true
+	      | db_f s false = false before print ("IntBasis.enrich:" ^ s ^ " false\n")
+
+	    fun IntFunEnv_enrich a = db_f "IntFunEnv" (IntFunEnv.enrich a)
+	    fun IntSigEnv_enrich a = db_f "IntSigEnv" (IntSigEnv.enrich a)
+	    fun CompilerEnv_enrichCEnv a = db_f "CompilerEnv" (CompilerEnv.enrichCEnv a)
+	    fun CompileBasis_enrich a = db_f "CompileBasis" (CompileBasis.enrich a)
 	in
 	  fun enrich(IB(ife0,ise0,ce0,cb0),IB(ife,ise,ce,cb)) =
 	    IntFunEnv_enrich(ife0,ife) andalso IntSigEnv_enrich(ise0,ise) 
@@ -742,11 +744,14 @@ functor ManagerObjects(structure Execution : EXECUTION
 
 	fun domain(BASIS(_,eB,_,_)) : longids = ModuleEnvironments.B.domain eB 
 
+	fun db_f s true = true
+	  | db_f s false = false before print ("Basis.eq:" ^ s ^ " false\n")
+
 	fun eq(BASIS(infB1,eB1,oe1,iB1), BASIS(infB2,eB2,oe2,iB2)) =
-	    InfixBasis.eq(infB1,infB2) andalso 
-	    ModuleEnvironments.B.enrich(eB1,eB2) andalso ModuleEnvironments.B.enrich(eB2,eB1) andalso
-	    OpacityElim.OpacityEnv.eq(oe1,oe2) andalso 
-	    IntBasis.enrich(iB1,iB2) andalso IntBasis.enrich(iB2,iB1)
+	    db_f "InfixBasis" (InfixBasis.eq(infB1,infB2)) andalso 
+	    db_f "B_l" (ModuleEnvironments.B.enrich(eB1,eB2)) andalso db_f "B_r" (ModuleEnvironments.B.enrich(eB2,eB1)) andalso
+	    db_f "OpacityEnv" (OpacityElim.OpacityEnv.eq(oe1,oe2)) andalso 
+	    db_f "IB_l" (IntBasis.enrich(iB1,iB2)) andalso db_f "IB_r" (IntBasis.enrich(iB2,iB1))
 
 	fun closure (B': Basis, B: Basis) : Basis = 
 	    (* closure_B'(B) : the closure of B w.r.t. B' *)
@@ -779,9 +784,9 @@ functor ManagerObjects(structure Execution : EXECUTION
 
     type name = Name.name
     structure Repository =
-      struct
+      struct	  
 	structure RM = RepositoryFinMap
-
+	 
 	type elab_entry = InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * 
 	  name list * InfixBasis * ElabBasis * opaq_env
 
@@ -795,7 +800,13 @@ functor ManagerObjects(structure Execution : EXECUTION
 
 	val intRep : intRep ref = ref RM.empty
 	val intRep' : intRep' ref = ref RM.empty
-	fun clear() = (ElabRep.clear();
+
+	val repository_chat = false
+	fun rchat s = if repository_chat then print("Repository: calling " ^ s ^ "\n")
+		      else ()
+
+	fun clear() = (rchat "clear";
+		       ElabRep.clear();
 		       List.app (List.app (ModCode.delete_files o #6)) (RM.range (!intRep));  
 		       List.app (List.app (ModCode.delete_files o #6)) (RM.range (!intRep'));  
 		       intRep := RM.empty;
@@ -805,11 +816,15 @@ functor ManagerObjects(structure Execution : EXECUTION
 	val is_absprjid_basislib = ModuleEnvironments.is_absprjid_basislib
 
 	fun delete_rep rep absprjid_and_funid = 
-	  case RM.remove (strip_install_dir' absprjid_and_funid, !rep)
-	    of SOME res => rep := res
-	     | _ => ()
+	    let val _ = rchat "delete_rep"
+	    in
+		case RM.remove (strip_install_dir' absprjid_and_funid, !rep)
+		    of SOME res => rep := res
+		  | _ => ()
+	    end
 
-	fun delete_entries absprjid_and_funid = (ElabRep.delete_entries absprjid_and_funid; 
+	fun delete_entries absprjid_and_funid = (rchat "delete_entries";
+						 ElabRep.delete_entries absprjid_and_funid; 
 						 delete_rep intRep absprjid_and_funid;
 						 delete_rep intRep' absprjid_and_funid)
 
@@ -848,7 +863,8 @@ functor ManagerObjects(structure Execution : EXECUTION
 	  end
 
 	fun lookup_rep rep exportnames_from_entry (absprjid_and_funid as (absprjid,_)) =
-	  let val all_gen = foldl (fn (n, b) => b andalso Name.is_gen n) true
+	  let val _ = rchat "lookup_rep"
+	      val all_gen = foldl (fn (n, b) => b andalso Name.is_gen n) true
 	      fun find ([], n) = NONE
 		| find (entry::entries, n) = 
 		if (all_gen o exportnames_from_entry) entry then 
@@ -864,7 +880,8 @@ functor ManagerObjects(structure Execution : EXECUTION
 	  end
 
 	fun add_rep rep (absprjid_and_funid as (absprjid,_),entry) : unit =
-	  rep := let val r = !rep 
+	  rep := let val _ = rchat "add_rep"
+		     val r = !rep 
 		     val i = strip_install_dir' absprjid_and_funid
 		 in case RM.lookup r i
 		      of SOME res => RM.add(i,res @ [entry],r)
@@ -874,7 +891,8 @@ functor ManagerObjects(structure Execution : EXECUTION
 		 end
 
 	fun owr_rep rep (absprjid_and_funid,n,entry) : unit =
-	  rep := let val r = !rep
+	  rep := let val _ = rchat "owr_rep"
+		     val r = !rep
 		     val i = strip_install_dir' absprjid_and_funid
 	             fun owr(0,entry::res,entry') = entry'::res
 		       | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
@@ -902,9 +920,10 @@ functor ManagerObjects(structure Execution : EXECUTION
 	  else die "owr_int"
 
 	fun recover_intrep ir =
-	  List.app 
-	  (List.app (fn entry : 'a1*'a2*'a3*'a4*(name list)*'a6*'a7 => List.app Name.mark_gen (#5 entry)))
-	  (RM.range ir)
+	    (rchat "recover_intrep";
+	     List.app 
+	     (List.app (fn entry : 'a1*'a2*'a3*'a4*(name list)*'a6*'a7 => List.app Name.mark_gen (#5 entry)))
+	     (RM.range ir))
 
 	fun emitted_files() =
 	  let fun files_entries ([],acc) = acc
@@ -915,7 +934,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 	val lookup_elab = ElabRep.lookup_elab
 	val add_elab = ElabRep.add_elab
 	val owr_elab = ElabRep.owr_elab
-	fun recover() = (ElabRep.recover(); recover_intrep (!intRep); recover_intrep (!intRep'))
+	fun recover() = (rchat "recover"; ElabRep.recover(); recover_intrep (!intRep); recover_intrep (!intRep'))
 
 	val pu_int_entry =
 	    let open Pickle

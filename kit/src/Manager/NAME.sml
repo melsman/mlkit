@@ -42,6 +42,7 @@ signature NAME =
     type matchcount                                     
     val current_matchcount : unit -> matchcount          
     val matchcount_lt : matchcount * matchcount -> bool
+    val matchcount_invalid : matchcount  (* ~1 for forcing ensurance check of pickled bases *)
 
     (* Because the runtime system needs to know about the labels
      * of certain kinds of symbols, we predefine some names here *)

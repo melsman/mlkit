@@ -283,17 +283,130 @@ functor OptLambda(structure Lvars: LVARS
     * Equality on lambda expressions (conservative approximation)
     * ----------------------------------------------------------------- *)
 
-    fun eq_lamb (INTEGER (n,t), INTEGER (n',t')) = n=n' andalso eq_Type(t,t')
-      | eq_lamb (WORD(n,t), WORD(n',t')) = n=n' andalso eq_Type(t,t')
-      | eq_lamb (REAL r, REAL r') = (r = r')
-      | eq_lamb (STRING s, STRING s') = (s = s')
-      | eq_lamb (VAR{lvar,instances=il},VAR{lvar=lvar',instances=il'}) = Lvars.eq(lvar,lvar') andalso eq_Types(il,il')
-      | eq_lamb (PRIM(RECORDprim, lambs),PRIM(RECORDprim, lambs')) = eq_lambs(lambs,lambs')
-      | eq_lamb _ = false
-    and eq_lambs ([],[]) = true
-      | eq_lambs (x::xs,x'::xs') = eq_lamb(x,x') andalso eq_lambs(xs,xs')
-      | eq_lambs _ = false
-      
+    local
+	fun lvarsEq m (lv,lv') : bool = Lvars.eq(lv,lv')  (*free lvar*)
+	    orelse 
+	    (case LvarMap.lookup m lv of
+		 SOME lv'' => Lvars.eq(lv',lv'')
+	       | NONE => false)
+
+	fun eq_pat m ((lv,t)::ps,(lv',t')::ps') =
+	    if eq_Type(t,t') then
+		(case eq_pat m (ps,ps') of
+		     SOME m => SOME (LvarMap.add(lv,lv',m))
+		   | NONE => NONE)
+	    else NONE
+	  | eq_pat m (nil,nil) = SOME m
+	  | eq_pat _ _ = NONE
+
+	fun eqOpt eq (NONE,NONE) = true
+	  | eqOpt eq (SOME a, SOME b) = eq (a,b)
+	  | eqOpt _ _ = false
+
+	fun eqAll eq (nil,nil) = true
+	  | eqAll eq (x::xs,y::ys) = eq(x,y) andalso eqAll eq (xs,ys)
+	  | eqAll _ _ = false
+
+	fun eq_TypeList (Types ts,Types ts') = eq_Types(ts,ts')
+	  | eq_TypeList _ = false
+
+	fun eq_prim m (p,p') = 
+	    case (p,p') of
+		(RECORDprim, RECORDprim) => true
+	      | (SELECTprim i,SELECTprim i') => i=i'
+	      | (CONprim {con,instances=il}, CONprim {con=con',instances=il'}) => 
+		    Con.eq(con,con') andalso eq_Types(il,il')
+	      | (EXCONprim excon, EXCONprim excon') => Excon.eq(excon,excon')
+	      | (DEEXCONprim excon, DEEXCONprim excon') => Excon.eq(excon,excon')
+	      | (UB_RECORDprim,UB_RECORDprim) => true
+	      | (DECONprim{con,instances=il,lv_opt}, DECONprim{con=con',instances=il',lv_opt=lv_opt'}) => 
+		    Con.eq(con,con') andalso eq_Types(il,il') (* andalso eqOpt (lvarsEq m) (lv_opt,lv_opt') <-- only used with Barry *)
+	      | (DROPprim, DROPprim) => true
+	      | (DEREFprim {instance=t}, DEREFprim {instance=t'}) => eq_Type(t,t')
+	      | (REFprim {instance=t}, REFprim {instance=t'}) => eq_Type(t,t')
+	      | (ASSIGNprim {instance=t}, ASSIGNprim {instance=t'}) => eq_Type(t,t')
+	      | (EQUALprim {instance=t}, EQUALprim {instance=t'}) => eq_Type(t,t')
+	      | (RESET_REGIONSprim {instance=t}, RESET_REGIONSprim {instance=t'}) => eq_Type(t,t')
+	      | (FORCE_RESET_REGIONSprim {instance=t}, FORCE_RESET_REGIONSprim {instance=t'}) => eq_Type(t,t')
+	      | (CCALLprim{name=n,instances=il,tyvars=tvs,Type=t}, CCALLprim{name=n',instances=il',tyvars=tvs',Type=t'}) => 
+		    n = n' andalso eq_Types (il,il') andalso eq_sigma((tvs,t),(tvs',t'))
+	      | (EXPORTprim{name=n,instance_arg=a,instance_res=r}, EXPORTprim{name=n',instance_arg=a',instance_res=r'}) => 
+		    n = n' andalso eq_Type(a,a') andalso eq_Type(r,r')
+	      | _ => false
+
+	fun eq_sw eq_lamb0m eq (SWITCH(e,es,eo),SWITCH(e',es',eo')) =	    
+	    eq_lamb0m (e,e') 
+	    andalso eqAll (fn ((a,e),(a',e')) => eq(a,a') andalso eq_lamb0m (e,e')) (es,es')
+	    andalso eqOpt (eq_lamb0m) (eo,eo')
+
+	fun eq_lamb0 m (INTEGER (n,t), INTEGER (n',t')) = n=n' andalso eq_Type(t,t')
+	  | eq_lamb0 m (WORD(n,t), WORD(n',t')) = n=n' andalso eq_Type(t,t')
+	  | eq_lamb0 m (REAL r, REAL r') = (r = r')
+	  | eq_lamb0 m (STRING s, STRING s') = (s = s')
+	  | eq_lamb0 m (VAR{lvar,instances=il},VAR{lvar=lvar',instances=il'}) = lvarsEq m (lvar,lvar') andalso eq_Types(il,il')
+	  | eq_lamb0 m (PRIM(p,lambs),PRIM(p',lambs')) = eq_prim m (p,p') andalso eqAll (eq_lamb0 m) (lambs,lambs')
+	  | eq_lamb0 m (APP(e1,e2),APP(e1',e2')) = eq_lamb0 m (e1,e1') andalso eq_lamb0 m (e2,e2')
+	  | eq_lamb0 m (HANDLE(e1,e2),HANDLE(e1',e2')) = eq_lamb0 m (e1,e1') andalso eq_lamb0 m (e2,e2')
+	  | eq_lamb0 m (RAISE(e,tl),RAISE(e',tl')) = eq_lamb0 m (e,e') andalso eq_TypeList(tl,tl')
+	  | eq_lamb0 m (SWITCH_I {switch=sw,precision=p}, SWITCH_I {switch=sw',precision=p'}) = 
+	    p = p' andalso eq_sw (eq_lamb0 m) (op =) (sw,sw')
+	  | eq_lamb0 m (SWITCH_W {switch=sw,precision=p}, SWITCH_W {switch=sw',precision=p'}) = 
+	    p = p' andalso eq_sw (eq_lamb0 m) (op =) (sw,sw')
+	  | eq_lamb0 m (SWITCH_S sw, SWITCH_S sw') = eq_sw (eq_lamb0 m) (op =) (sw,sw')
+	  | eq_lamb0 m (SWITCH_C sw, SWITCH_C sw') = 
+	    (* optional lvars are only used with Barry, where they are used to make pretty-printing prettier *)
+	    eq_sw (eq_lamb0 m) (fn((c,lvo),(c',lvo')) => Con.eq(c,c') (* andalso eqOpt (eqLvars m) (lvo,lvo') *) ) (sw,sw')
+	  | eq_lamb0 m (SWITCH_E sw, SWITCH_E sw') = 
+	    eq_sw (eq_lamb0 m) (fn((c,lvo),(c',lvo')) => Excon.eq(c,c') (* andalso eqOpt (eqLvars m) (lvo,lvo') *) ) (sw,sw')
+	  | eq_lamb0 m (FN{pat,body},FN{pat=pat',body=body'}) = 	    
+	    (case eq_pat m (pat,pat') of
+		 SOME m => eq_lamb0 m (body,body')
+	       | NONE => false)
+	  | eq_lamb0 m (LET{pat=[(lv,tvs,t)],bind=b,scope=s},LET{pat=[(lv',tvs',t')],bind=b',scope=s'}) =
+		 length tvs = length tvs'
+		 andalso
+		 let
+		     val tv_taus = map (fn _ => TYVARtype(fresh_tyvar())) tvs
+		     val S = mk_subst (fn () => "eq_lamb01.LET") (tvs,tv_taus)
+		     val S' = mk_subst (fn () => "eq_lamb02.LET") (tvs',tv_taus)
+		     val t = on_Type S t
+		     val t' = on_Type S' t'
+		 in eq_Type(t,t')
+		     andalso 
+		     let
+			 val b = on_LambdaExp S b
+			 val b' = on_LambdaExp S' b'
+		     in eq_lamb0 m (b,b')
+		     end
+		 end
+		 andalso eq_lamb0 (LvarMap.add(lv,lv',m)) (s,s')
+(*
+	  | eq_lamb0 m (FIX{functions=[{lvar=lv,tyvars=tvs,Type=t,bind=b}],scope=s},
+			FIX{functions=[{lvar=lv',tyvars=tvs',Type=t',bind=b'}],scope=s'}) =
+		 length tvs = length tvs'
+		 andalso
+		 let
+		     val tv_taus = map (fn _ => TYVARtype(fresh_tyvar())) tvs
+		     val S = mk_subst (fn () => "eq_lamb01") (tvs,tv_taus)
+		     val S' = mk_subst (fn () => "eq_lamb02") (tvs',tv_taus)
+		     val t = on_Type S t
+		     val t' = on_Type S' t'
+		 in eq_Type(t,t')
+		     andalso 
+		     let
+			 val b = on_LambdaExp S b
+			 val b' = on_LambdaExp S' b'
+		     in eq_lamb0 (LvarMap.add(lv,lv',m)) (b,b')
+		     end
+		 end
+		 andalso eq_lamb0 (LvarMap.add(lv,lv',m)) (s,s')
+*)		 
+	  | eq_lamb0 _ _ = false
+    in
+	fun eq_lamb p = eq_lamb0 LvarMap.empty p
+    end
+
+
    (* -----------------------------------------------------------------
     * lvar_in_lamb lvar lamb - Returns true, if there are any free
     * occurrences of the lvar in the LambdaExp lamb.
@@ -571,7 +684,28 @@ functor OptLambda(structure Lvars: LVARS
 
       fun lookup_lvar (env, lvar) = LvarMap.lookup env lvar
 
-      fun layout_cv_scheme (tyvars,cv) = PP.LEAF (show_cv cv)
+      fun layout_cv cv = 
+	  case cv of
+	      CFN{large=false,lexp} => 
+		  PP.NODE{start="(small fn == ", finish=")",
+			  indent=2,childsep=PP.NOSEP,
+			  children=[layoutLambdaExp lexp]}
+	    | CFIX{large=false,Type,bind} => 
+		  PP.NODE{start="(small fix: ", finish=")",
+			  indent=2,childsep=PP.RIGHT " == ",
+			  children=[layoutType Type, layoutLambdaExp bind]}
+	    | _ => PP.LEAF (show_cv cv)
+
+      fun layout_tyvars tvs = 
+	  PP.NODE{start="{", finish="}",indent=0,
+		  childsep=PP.RIGHT",",
+		  children=map (PP.LEAF o pr_tyvar) tvs}
+
+      fun layout_cv_scheme (tyvars,cv) = 
+	  PP.NODE{start="[\\/", finish="]", indent=0,
+		  childsep=PP.RIGHT ".",
+		  children=[layout_tyvars tyvars,layout_cv cv]}
+		  
 
       fun cross_module_inline (lvars_free_ok, excons_free_ok) lvar (tyvars,cv) = 
 	cross_module_opt() 
@@ -1051,7 +1185,7 @@ functor OptLambda(structure Lvars: LVARS
 
       val layout_contract_env : contract_env -> StringTree = 
 	LvarMap.layoutMap {start="ContractEnv={",eq="->", sep=", ", finish="}"} 
-	(PP.LEAF o Lvars.pr_lvar) layout_cv_scheme
+	(PP.LEAF o Lvars.pr_lvar') layout_cv_scheme
 
       val pu_contract_env =
 	  let open Pickle
@@ -2056,14 +2190,21 @@ functor OptLambda(structure Lvars: LVARS
 	((e1, e2, e3, e4, e5, e6), cons1 @ cons2, tns1 @ tns2)
       end
 
+    val debug_man_enrich = Flags.is_on0 "debug_man_enrich"
+
+    fun debug(s, b) = if debug_man_enrich() then
+                         (if b then print("\n" ^ s ^ ": enrich succeeded.")
+			  else print("\n" ^ s ^ ": enrich failed."); b)
+		      else b
+
     fun enrich((inv_eta_env1,let_env1,unbox_fix_env1,uc_env1,cenv11,cenv21): env,
 	       (inv_eta_env2,let_env2,unbox_fix_env2,uc_env2,cenv12,cenv22): env) : bool =
-      enrich_inv_eta_env(inv_eta_env1,inv_eta_env2) andalso
-      enrich_let_env(let_env1,let_env2) andalso
-      enrich_unbox_fix_env(unbox_fix_env1,unbox_fix_env2) andalso
-      enrich_contract_env(cenv11,cenv12) andalso
-      enrich_contract_env(cenv21,cenv22) andalso
-      enrich_uc_env(uc_env1,uc_env2)
+      debug("inv_eta_env", enrich_inv_eta_env(inv_eta_env1,inv_eta_env2)) andalso
+      debug("let_env", enrich_let_env(let_env1,let_env2)) andalso
+      debug("unbox_fix_env", enrich_unbox_fix_env(unbox_fix_env1,unbox_fix_env2)) andalso
+      debug("contract_env", enrich_contract_env(cenv11,cenv12)) andalso
+      debug("contract_env2", enrich_contract_env(cenv21,cenv22)) andalso
+      debug("uc_env", enrich_uc_env(uc_env1,uc_env2))
 
     fun layout_env (e1,e2,e3,e4,e5,e6) = 
       PP.NODE{start="",finish="",indent=0,childsep=PP.RIGHT ",",

@@ -415,6 +415,7 @@ functor CompilerEnv(structure Ident: IDENT
        | eq_res (RESET_REGIONS,RESET_REGIONS) = true
        | eq_res (FORCE_RESET_REGIONS,FORCE_RESET_REGIONS) = true
        | eq_res (PRIM,PRIM) = true
+       | eq_res (EXPORT,EXPORT) = true
        | eq_res _ = false
        
      fun enrichVarEnv(env1: VarEnv, env2: VarEnv) : bool =

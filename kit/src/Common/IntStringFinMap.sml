@@ -14,11 +14,19 @@ functor IntStringFinMap(structure IntFinMap : MONO_FINMAP
       structure IM = IntFinMap
       structure SM = StringFinMap
 
-      fun die s = Crash.impossible ("IntAlphaFinMap." ^ s)
+      fun die s = Crash.impossible ("IntStringFinMap." ^ s)
 	  
       type dom = int * string
 	  
       type 'b map = 'b SM.map IM.map 
+
+      fun fold f a im =
+	  IM.fold (fn (sm,a) => SM.fold f a sm) a im
+
+      fun Fold f a im =
+	  IM.Fold (fn ((i,sm),a) => SM.Fold (fn ((s,v),a) => f(((i,s),v),a)) a sm) a im
+	  
+      fun dom m = Fold (fn ((d,_),a) => d::a) nil m
 
       val empty : 'b map = IM.empty
 	  
@@ -31,30 +39,55 @@ functor IntStringFinMap(structure IntFinMap : MONO_FINMAP
 	      NONE => NONE
 	    | SOME m => SM.lookup m s
 
-      fun add ((i,s):dom,v,im) =
-	  case IM.lookup im i of
-	      NONE => IM.add(i,SM.singleton(s,v),im)
-	    | SOME sm => IM.add(i,SM.add(s,v,sm),im)
+      val check_p = false
+
+      fun checkOne s d m =
+	  if not(check_p) then m 
+	  else m before
+	  (case lookup m d of
+	       SOME _ => ()
+	     | NONE => die (s ^ " - Failed to find: " ^ Int.toString (#1 d) ^ "(" ^ #2 d ^ ")"))
+
+      fun checkDom s m0 m = 
+	  if not(check_p) then m 
+	  else
+	  m before 
+	  (app (fn d => (checkOne s d m; ())) (dom m0))
+
+      fun checkDom' s d m = 
+	  if not(check_p) then m 
+	  else
+	  m before 
+	  (app (fn d => (checkOne s d m; ())) d)
+
+      fun checkAll s m = 
+	  if not(check_p) then m 
+	  else checkDom s m m 
+
+      fun checkAllOpt s m =
+	  case m of NONE => m
+	| SOME m' => m before (checkAll s m'; ())
+
+      fun add ((i,s):dom,v,im) = checkOne "add" (i,s)
+	  (case IM.lookup im i of
+	       NONE => IM.add(i,SM.singleton(s,v),im)
+	     | SOME sm => IM.add(i,SM.add(s,v,sm),im))
 
       fun plus (im1,im2) =
-	  IM.mergeMap SM.plus im1 im2
+	  checkDom "plus1" im1
+	  (checkDom "plus2" im2
+	   (checkAll "plus3"
+	    (IM.mergeMap SM.plus im1 im2)))
 	  
       fun remove ((i,s),im) =
-	  case IM.lookup im i of
-	      NONE => NONE
-	    | SOME sm =>
+	  checkAllOpt "remove" 
+	  (case IM.lookup im i of
+	       NONE => NONE
+	     | SOME sm =>
 		  case SM.remove (s,sm) of
 		      NONE => NONE
-		    | SOME sm => SOME (IM.add (i,sm,im))
+		    | SOME sm => SOME (IM.add (i,sm,im)))
 
-      fun fold f a im =
-	  IM.fold (fn (sm,a) => SM.fold f a sm) a im
-
-      fun Fold f a im =
-	  IM.Fold (fn ((i,sm),a) => SM.Fold (fn ((s,v),a) => f(((i,s),v),a)) a sm) a im
-	  
-      fun dom m = Fold (fn ((d,_),a) => d::a) nil m
-	  
       fun range m = Fold (fn ((_,r),a) => r::a) nil m
 	
       fun composemap f m = IM.composemap (SM.composemap f) m
@@ -80,11 +113,15 @@ functor IntStringFinMap(structure IntFinMap : MONO_FINMAP
 	  
       exception Restrict of string
       fun restrict(pp, m: 'b map, dom : dom list) : 'b map =
-	  foldl(fn (d, acc) => 
-		case lookup m d of 
-		    SOME res => add(d,res,acc)
-		  | NONE => raise Restrict(pp d)) empty dom 
-	  
+	  let val m = checkAll "restrict1" m
+	  in
+	      checkDom' "restrict" dom
+	      (foldl(fn (d, acc) => 
+		     case lookup m d of 
+			 SOME res => add(d,res,acc)
+		       | NONE => raise Restrict(pp d)) empty dom)
+	  end
+
       fun enrich en (m0, m) =
 	  Fold(fn ((d,r),b) => b andalso
 	       case lookup m0 d of 

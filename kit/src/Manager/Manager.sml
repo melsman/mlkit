@@ -1016,19 +1016,15 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
 		(* match result basis to the one on disk, if there is one (todo) *)
 (*
-		val _ = chat "[matching begin...]"
-		val _ = match_elab(names_elab, elabB', opaq_env', absprjid, funid)
-		val _ = match_int(names_int, intB', absprjid, funid)
-		val _ = chat "[matching end...]"
-*)	  
-
-		(* Testing ; mael 2004-03-02 *)
-(*
 		val _ = print ("\n [Basis for " ^ punit ^ " before closure...]\n")
                 val _ = pr_st (MO.Basis.layout B')
 *)
 
+		(* Construct export basis *)
 		val NB'' = (names_int @ names_elab, Basis.closure (B_im,B'))
+
+		(* Write export basis to disk if there is not 
+		 * already an identical export basis on disk *)
 		val _ = doPickleNB smlfile NB''
 
 		val modc = ModCode.emit (abs_mlbfile,modc)

@@ -12,7 +12,7 @@ functor QuasiMap(structure IntStringFinMap : MONO_FINMAP where type dom = int * 
 		   sharing type Name.name = QD.name
 		 structure Crash : CRASH
 		 structure PP : PRETTYPRINT
-		 structure Report : REPORT) : MONO_FINMAP =
+		 structure Report : REPORT) : MONO_FINMAP = 
   struct
 
     structure M = IntStringFinMap
@@ -57,7 +57,8 @@ functor QuasiMap(structure IntStringFinMap : MONO_FINMAP where type dom = int * 
 	val (consistent, rigid) = (* Property: rigid => consistent *)
 	  M.Fold(fn((i,(d,_)),(c,r)) => (c andalso key d = i, r andalso rigid d)) (true,true) imap
 	val imap = if consistent then imap
-		   else M.fold(fn((d,e),im) => M.add(key d,(d,e),im)) M.empty imap
+		   else (print "\nQuasiMap: ensure_consistent_imap.not consistent\n"
+			 ; M.fold(fn((d,e),im) => M.add(key d,(d,e),im)) M.empty imap)
       in {rigid=rigid,imap=imap}
       end
     
@@ -95,34 +96,41 @@ functor QuasiMap(structure IntStringFinMap : MONO_FINMAP where type dom = int * 
 	 | M(ref(Flexible{imap,...})) => mk_flex (M.add(key d,(d,e),imap))
 
     fun plus(m1,m2) =
-      case (ensure_consistent m1, ensure_consistent m2)
-	of (Empty, m) => m
-	 | (m, Empty) => m
-	 | (M(ref(Rigid im1)), M(ref(Rigid im2))) => mk_rigid (M.plus(im1,im2))
-	 | (m1,m2) => mk_flex (M.plus(imap' m1, imap' m2))
+	let val m1 = ensure_consistent m1
+	    val m2 = ensure_consistent m2
+	in
+	    case (m1, m2) of 
+		(Empty, m) => m
+	      | (m, Empty) => m
+	      | (M(ref(Rigid im1)), M(ref(Rigid im2))) => mk_rigid (M.plus(im1,im2))
+	      | (m1,m2) => mk_flex (M.plus(imap' m1, imap' m2))
+	end
 
     fun remove (d, m) = 
-      case ensure_consistent m
-	of Empty => NONE
-	 | M(ref(Rigid im)) => 
-	  (case M.remove(key d, im)
-	     of SOME im' => if M.isEmpty im' then SOME Empty
-			    else SOME(mk_rigid im')
-	      | NONE => NONE)
-	 | M(ref(Flexible{imap,...})) => 
-	     (case M.remove(key d, imap)
-		of SOME im' => if M.isEmpty im' then SOME Empty
-			       else SOME(mk_flex im')
-		 | NONE => NONE)
+	let val m = ensure_consistent m
+	in
+	    case m of
+		Empty => NONE
+	      | M(ref(Rigid im)) => 
+		    (case M.remove(key d, im)
+			 of SOME im' => if M.isEmpty im' then SOME Empty
+					else SOME(mk_rigid im')
+		       | NONE => NONE)
+	      | M(ref(Flexible{imap,...})) => 
+			 (case M.remove(key d, imap)
+			      of SOME im' => if M.isEmpty im' then SOME Empty
+					     else SOME(mk_flex im')
+			    | NONE => NONE)
+	end
 
     fun dom Empty = []
-      | dom m = map #1 (M.range (imap' m)) 
+      | dom m = map #1 (M.range (imap' (ensure_consistent m)))
 
     fun range Empty = []
-      | range m = map #2 (M.range (imap' m)) 
+      | range m = map #2 (M.range (imap' (ensure_consistent m))) 
 
     fun list Empty = []
-      | list m = M.range (imap' m)
+      | list m = M.range (imap' (ensure_consistent m))
 
     fun fromList nil = Empty
       | fromList l =
@@ -164,10 +172,12 @@ functor QuasiMap(structure IntStringFinMap : MONO_FINMAP where type dom = int * 
       in plus(m1,m2)
       end
     fun mergeMap f m1 m2 =
-      let fun f' ((d1,e1), (d2,e2)) = 
+      let val m1 = ensure_consistent m1
+	  val m2 = ensure_consistent m2
+	  fun f' ((d1,e1), (d2,e2)) = 
 	     if key d1 = key d2 then (d1, f(e1,e2))
 	     else die "mergeMap, f'"
-      in case (ensure_consistent m1, ensure_consistent m2)
+      in case (m1, m2)
 	   of (Empty, m) => m
 	    | (m, Empty) => m
 	    | (M(ref(Rigid im1)), M(ref(Rigid im2))) => mk_rigid (M.mergeMap f' im1 im2)
@@ -192,15 +202,18 @@ functor QuasiMap(structure IntStringFinMap : MONO_FINMAP where type dom = int * 
 		end
 
     fun enrich f (m1, m2) =
-      case (ensure_consistent m1, ensure_consistent m2)
-	of (_, Empty) => true
-	 | (Empty, _) => false
-	 | (m1, m2) => let val im1 = imap' m1
-	                   val im2 = imap' m2
-			   fun f' ((_,e1),(_,e2)) = f (e1,e2)  (* This is the function we want to *)
-		       in M.enrich f' (im1, im2)             (* update for more efficient enrichment *)
-		       end                                     (* using refs. *)
-      
+	let val m1 = ensure_consistent m1
+	    val m2 = ensure_consistent m2
+	in
+	    case (m1, m2) of
+		(_, Empty) => true
+	      | (Empty, _) => false
+	      | (m1, m2) => let val im1 = imap' m1
+				val im2 = imap' m2
+				fun f' ((_,e1),(_,e2)) = f (e1,e2)  (* This is the function we want to *)
+			    in M.enrich f' (im1, im2)               (* update for more efficient enrichment *)
+			    end                                     (* using refs. *)
+	end
 
     type StringTree = PP.StringTree
       
@@ -228,7 +241,8 @@ functor QuasiMap(structure IntStringFinMap : MONO_FINMAP where type dom = int * 
 		con1 Rigid (fn Rigid a => a | _ => die "pu_map0.Rigid")
 		pu_m
 	    fun fun_Flexible _ =
-		con1 (fn (c,m) => Flexible{matchcount=c,imap=m}) 
+		con1 (fn (c,m) => Flexible{matchcount=Name.matchcount_invalid,imap=m}) (* invalidate earlier matchcount; i.e., force 
+											* ensurance of consistency *)
 		(fn Flexible{matchcount=c,imap=m} => (c,m)
 	          | _ => die "pu_map0.Flexible")
 		(pairGen0(Name.pu_matchcount,pu_m))

@@ -81,7 +81,18 @@ functor EliminateEq (structure Name : NAME
 	    val lvmap' = List.foldl (fn (lv,acc) =>
 				     case LvarMap.lookup lvmap lv
 				       of SOME res => LvarMap.add(lv,res,acc)
-					| NONE => die ("restrict.lv: " ^ Lvars.pr_lvar lv ^ " not in map"))
+					| NONE => 
+					   let 
+					       fun pp_list p l =
+						   let fun pp nil = ""
+							 | pp [x] = p x
+							 | pp (x::xs) = p x ^ ", " ^  pp xs
+						   in "[" ^ pp l ^ "]"
+						   end
+					       val dom_lvmap = pp_list Lvars.pr_lvar' (LvarMap.dom lvmap)
+					   in die ("restrict.lv: " ^ Lvars.pr_lvar' lv ^ " not in map\n\
+					           \dom(lvmap) = " ^ dom_lvmap)
+					   end)
 	                 LvarMap.empty lvars
 	in (lvars', (tnmap',TyVarMap.empty,lvmap'))
 	end  
@@ -124,7 +135,7 @@ functor EliminateEq (structure Name : NAME
 	 lvmap)
 
       local 
-	fun layout_lvar lv = PP.LEAF (Lvars.pr_lvar lv)
+	fun layout_lvar lv = PP.LEAF (Lvars.pr_lvar' lv)
 	fun layout_result (FAIL str) = PP.LEAF str
 	  | layout_result (MONOLVAR (lv,_)) = PP.LEAF ("MONO " ^ Lvars.pr_lvar lv)
 	  | layout_result (POLYLVAR lv) = PP.LEAF ("POLY " ^ Lvars.pr_lvar lv)
@@ -164,8 +175,9 @@ functor EliminateEq (structure Name : NAME
       val env_map : (result->result) -> env -> env = env_map (* only used at top-level *)
       val enrich : env * env -> bool = enrich
       val match : env * env -> env = match
-      fun restrict(e: env, {lvars:lvar list,tynames:TyName list}): lvar list * env = restrict'(e,{lvars=lvars,tynames=tynames})
-handle x => 
+      fun restrict(e: env, {lvars:lvar list,tynames:TyName list}): lvar list * env = 
+	  restrict'(e,{lvars=lvars,tynames=tynames})
+	  handle x => 
                (say "ElimiateEq.restrict failed\n";
                 say "The equality environment is:\n";
                 PP.outputTree(say,  layout_env e, 70);

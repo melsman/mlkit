@@ -180,7 +180,7 @@ functor QuasiSet(structure IntStringFinMap : MONO_FINMAP where type dom = int * 
     fun apply f m = fold (fn d => fn () => f d) () m
 
     fun list Empty = []
-      | list m = M.range (imap' m)
+      | list m = M.range (imap' (ensure_consistent m))
 
     fun fromList nil = Empty
       | fromList l =
@@ -219,7 +219,8 @@ functor QuasiSet(structure IntStringFinMap : MONO_FINMAP where type dom = int * 
 		con1 Rigid (fn Rigid a => a | _ => die "pu_map0.Rigid")
 		pu_m
 	    fun fun_Flexible _ =
-		con1 (fn (c,m) => Flexible{matchcount=c,imap=m}) 
+		con1 (fn (c,m) => Flexible{matchcount=Name.matchcount_invalid,imap=m})  (* invalidate earlier matchcount; i.e., force 
+											 * ensurance of consistency *)
 		(fn Flexible{matchcount=c,imap=m} => (c,m) | _ => die "pu_map0.Flexible")
 		(pairGen(Name.pu_matchcount,pu_m))
 	in dataGen ("QuasiSet.map0",toInt,[fun_Rigid,fun_Flexible])
