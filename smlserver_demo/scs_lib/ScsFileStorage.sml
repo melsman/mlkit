@@ -338,25 +338,13 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	Quot.toString `<img width="16" height="16" border="0" src="^img">`
       end
 
-    fun uploadFolderForm (folder_id,action,priv,hidden_fvs,fv_mode,fv_filename,fv_desc,fn_return_file,fn_del_file) = 
+    fun uploadFolderForm (folder_id,action,priv,hidden_fvs,fv_mode,fv_filename,fv_desc,
+			  fn_return_file,fn_del_file) = 
       let
-	val upload_info_dict = [(ScsLang.en,`You must choose a file on your local machine and type in a description 
-				 for that file.`),
-				(ScsLang.da,`Du skal vælge en fil på din lokale maskine og indtaste en beskrivelse af filen.`)]
-	val (pre_header,pre_footer) =
-	  if ScsList.contains priv [read_add,read_add_delete,admin] then
-	    (`<form enctype=multipart/form-data method=post action="^(action)"> ` ^^
-	     (Html.export_hiddens ((fv_mode,upload_mode_add) :: hidden_fvs)),
-	     `<tr><td colspan="5">&nbsp;</td></tr>
-	      <tr><td><input type=file size="20" name="^(fv_filename)"></td>
-	      <td><input type=text size="30" name="^(fv_desc)"></td>
- 	      <td>^(UcsPage.mk_submit("submit",ScsDict.s [(ScsLang.da,`Gem fil`),
-							  (ScsLang.en,`Upload file`)],NONE)) 
-	     ^(UcsPage.info (ScsDict.s upload_info_dict))</td>
-	      <td colspan="2">&nbsp;</td>
-	      </tr></form>`)
-	  else
-	    (``,``)
+	val upload_info_dict = [(ScsLang.en,`You must choose a file on your local machine 
+                                 and type in a description for that file.`),
+				(ScsLang.da,`Du skal vælge en fil på din lokale maskine og 
+                                 indtaste en beskrivelse af filen.`)]
 	fun upload_fn_row bgcolor ({file_id,folder_id,revision_id,filename,description,filename_on_disk,
 				    filesize,last_modified,last_modifying_user,mime_type}:file_type) = 
 	  let
@@ -377,25 +365,44 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
              </tr>`
 	  end
 	val files = getFilesInFolderId folder_id
+	val (pre_header,pre_footer) =
+	  if ScsList.contains priv [read_add,read_add_delete,admin] then
+	    (`<form enctype=multipart/form-data method=post action="^(action)"> ` ^^
+	     (Html.export_hiddens ((fv_mode,upload_mode_add) :: hidden_fvs)),
+	     `<tr><td colspan="5">&nbsp;</td></tr>
+	      <tr><td><input type=file size="20" name="^(fv_filename)"></td>
+	      <td><input type=text size="30" name="^(fv_desc)"></td>
+ 	      <td>^(UcsPage.mk_submit("submit",ScsDict.s [(ScsLang.da,`Gem fil`),
+							  (ScsLang.en,`Upload file`)],NONE)) 
+	     ^(UcsPage.info (ScsDict.s upload_info_dict))</td>
+	      <td colspan="2">&nbsp;</td>
+	      </tr></form>`)
+	  else
+	    (``,``)
+	val table =
+	  if priv = read andalso null files then
+	    `` (* No need to show table *)
+	  else
+	    UcsPage.lineTable {hdcolor = "white",
+			       width = "100%",
+			       header = pre_header ^^ `
+			       <tr bgcolor="#999999">
+			       <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_filename_dict)</td>
+			       <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_desc_dict)</td>
+			       <td class="headercell" align="right">
+			       ^(ScsDict.s UcsDict.scs_file_storage_filesize_dict)</td>
+			       <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_upload_date_dict)</td>
+			       <td class="headercell">^(if mayDelFile_p priv then
+							  ScsDict.s UcsDict.del_dict
+							else 
+							  "&nbsp;")</td>
+			       </tr>`,
+			       row_col1 = "#FFFFFF", 
+			       row_col2 = "#EEEEEE",
+			       align = "",
+			       footer = pre_footer} upload_fn_row files
       in
-	(List.length files,
-	 UcsPage.lineTable {hdcolor = "white",
-			    width = "100%",
-			    header = pre_header ^^ `
-			    <tr bgcolor="#999999">
-			    <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_filename_dict)</td>
-			    <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_desc_dict)</td>
-			    <td class="headercell" align="right">^(ScsDict.s UcsDict.scs_file_storage_filesize_dict)</td>
-			    <td class="headercell">^(ScsDict.s UcsDict.scs_file_storage_upload_date_dict)</td>
-			    <td class="headercell">^(if mayDelFile_p priv then
-						       ScsDict.s UcsDict.del_dict
-						     else 
-						       "&nbsp;")</td>
-			    </tr>`,
-			    row_col1 = "#FFFFFF", 
-			    row_col2 = "#EEEEEE",
-			    align = "",
-			    footer = pre_footer} upload_fn_row files)
+	(List.length files,table)
       end
 
     local
