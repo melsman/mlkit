@@ -39,6 +39,9 @@ unsigned int lobjs_current = 0;       // bytes currently occupied by large objec
 unsigned int lobjs_gc_treshold = 0;   // set time_to_gc to 1 when lobjs_current exceeds
                                       //   lobjs_gc_treshold; this variable is adjusted
                                       //   after garbage collection.
+unsigned int rp_gc_treshold = 0;      // set time_to_gc to 1 when rp_used exceeds
+                                      //   rp_gc_treshold; this variable is adjusted
+                                      //   after garbage collection.
 double FRAG_sum = 0.0;                // fragmentation denotes how much of region
                                       //   pages are used by values -- and is computed
                                       //   as an average of percentages computed at
@@ -1029,11 +1032,21 @@ gc(unsigned int **sp, unsigned int reg_map)
   clear_scan_container();
 
   rp_used = rp_to_space;
-  ratio = (((double)rp_total)/(double)rp_used);
-  if ( ratio < heap_to_live_ratio ) {
-    to_allocate = heap_to_live_ratio*((double)rp_used) - ((double)rp_total);
-    callSbrkArg(((int)(to_allocate))+REGION_PAGE_BAG_SIZE);
-  }
+
+  // Update the GC treshold for region pages - we add -1.0 to
+  // leave room for copying...
+  rp_gc_treshold = (int)((heap_to_live_ratio - 1.0) * (double)rp_total / heap_to_live_ratio);
+  if ( (int)((heap_to_live_ratio - 1.0) * (double)rp_used) > rp_gc_treshold )
+    rp_gc_treshold = (int)((heap_to_live_ratio - 1.0) * (double)rp_used);
+#ifdef SIMPLE_MEMPROF
+  //  rp_really_used = rp_to_space;
+#endif
+
+  // ratio = (double)rp_total / (double)rp_used;
+  // if ( ratio < heap_to_live_ratio ) {
+  // to_allocate = heap_to_live_ratio * (double)rp_used - (double)rp_total;
+  // callSbrkArg((int)to_allocate + REGION_PAGE_BAG_SIZE);
+  // }
 
   if ( verbose_gc ) 
     {
@@ -1100,6 +1113,9 @@ gc(unsigned int **sp, unsigned int reg_map)
       alloc_period = 0;
     }
 
+#ifdef SIMPLE_MEMPROF
+  rp_really_used -= rp_from_space;
+#endif
   time_to_gc = 0; 
   doing_gc = 0; // Mutex on the garbage collector
   

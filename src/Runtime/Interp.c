@@ -599,7 +599,7 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
       }
       Instruct(ENDREGION_INF): {
 	debug(printf("endregionInf\n"));
-	deallocateRegionNew(topRegionCell);
+	deallocateRegion(topRegionCell);
 	popNDef(sizeRo);
 	Next;
       }

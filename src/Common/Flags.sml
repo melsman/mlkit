@@ -824,7 +824,7 @@ val _ = add_bool_entry {long="cross_module_opt",short=SOME "cross_opt",
 val recompile_basislib = ref false
 val _ = add_bool_entry {long="recompile_basislib",short=SOME "scratch", 
 			menu=["Control", "recompile basis library"],
-			item=recompile_basislib,neg=true, 
+			item=recompile_basislib,neg=false, 
 			desc=
 			"Recompile basis library from scratch. This option\n\
 			 \is useful together with other options that control\n\
@@ -916,11 +916,13 @@ val _ = add_bool_entry {long="tag_values", short=SOME"tag", item=tag_values,
 			\collection is enabled for implementing pointer\n\
 			\traversal."}
 
-val _ = add_bool_entry {long="tag_free_pairs_gc", short=NONE, item=ref true,
-			menu=["Control", "tag free pairs for gc"], neg=true,
+val _ = add_bool_entry {long="tag_pairs", short=NONE, item=ref false,
+			menu=["Control", "tag pairs"], neg=false,
 			desc=
-			"Tag free collection of pairs when garbage\n\
-			\collection is enabled."}
+			"Use a tagged representation of pairs for garbage\n\			
+			 \collection. Garbage collection works fine with a\n\
+			 \tag-free representation of pairs, so this option\n\
+			 \is here for measurement purposes."}
 
 local
   val gc = ref false
