@@ -10,7 +10,7 @@
                   and passwd = ^(Db.qq' passwd)`
 
   val _ = 
-    if Db.dml update = Ns.OK then 
-      Ns.returnRedirect ("search.sml?email=" 
-			 ^ Ns.encodeUrl email)
-    else Page.return "Employee Database" `Update failed`
+    (Db.dml update;
+     Ns.returnRedirect ("search.sml?email=" 
+			 ^ Ns.encodeUrl email))
+    handle _ => Page.return "Employee Database" `Update failed`

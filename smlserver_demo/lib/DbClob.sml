@@ -6,8 +6,8 @@ signature DB_CLOB =
     val update_fn : string -> quot -> (Db.db -> unit) (* lambda version of update to use as part of a larger transaction *)
     val select    : string -> quot                    (* select a Clob given a clob_id *)
     val select_fn : string -> (Db.db -> quot)         (* lamda version of select - to use in a larger transaction *)
-    val delete    : string -> Ns.status               (* delete clob given a clob_id *)
-    val delete_fn : string -> (Db.db -> Ns.status)    (* lambda version of delete - to use in a larger transaction *)
+    val delete    : string -> unit                    (* delete clob given a clob_id *)
+    val delete_fn : string -> (Db.db -> unit)         (* lambda version of delete - to use in a larger transaction *)
   end
 
 structure DbClob :> DB_CLOB =
@@ -34,7 +34,7 @@ structure DbClob :> DB_CLOB =
     fun insert_fn q = insert_fn' (Int.toString (Db.seqNextval "db_clob_id_seq")) q
     val insert = Db.dmlTrans o insert_fn
 
-    fun delete_fn (clob_id : string) : Db.db -> Ns.status =
+    fun delete_fn (clob_id : string) : Db.db -> unit =
       fn db => Db.dmlDb(db,`delete from clob where clob_id = ^(Db.qq' clob_id)`)
     fun delete clob_id = Db.dmlTrans (delete_fn clob_id)
 

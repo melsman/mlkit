@@ -4,7 +4,6 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 		   structure Info : NS_INFO) : NS_DB =
   struct
     type ns_db = int
-    structure Set = Set
     type set = Set.set
     type status = NsBasics.status
     type quot = string frag list
@@ -51,8 +50,14 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       (pool, prim("@Ns_DbPoolGetHandle", pool))
     fun poolPutHandle (db : db) : unit =
       prim("@Ns_DbPoolPutHandle", #2 db)
-    fun dmlDb (db : db, q: quot) : status =
-      prim("@Ns_DbDML", (#2 db, quotToString q))
+    fun dmlDb (db : db, q: quot) : unit =
+      let
+	val status = prim("@Ns_DbDML", (#2 db, quotToString q))
+      in
+	if status = NsBasics.ERROR then 
+	  raise Fail ("dml: " ^ Quot.toString q ^ " failed") 
+	else ()
+      end
     fun panicDmlDb (db:db) (f_panic: quot -> 'a) (q: quot) : unit =
       (dmlDb (db,q); () handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
 
@@ -63,16 +68,18 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       in
 	dmlDb (db,DbBasic.endTrans);
 	res
-      end handle X => (dmlDb (db,DbBasic.roolback); raise X)
+      end handle X => (dmlDb (db,DbBasic.rollback); raise X)
     fun panicDmlTransDb (db:db) (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
       dmlTransDb (db,f) handle X => (f_panic(`^(General.exnMessage X)`))
 
     fun getHandle () : db = poolGetHandle(Pool.getPool())
     fun putHandle db : unit = (poolPutHandle db; Pool.putPool (#1 db))
       
-    fun dml (q: quot) : status =
-      let val db = getHandle()
-      in (dmlDb (db,q) before putHandle db)
+    fun dml (q: quot) : unit =
+      let 
+	val db = getHandle()
+      in 
+	(dmlDb (db,q) before putHandle db)
 	handle X => (putHandle db; raise X)
       end
     fun maybeDml (q: quot) : unit = ((dml q; ()) handle X => ())
@@ -95,7 +102,8 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
 
     fun selectDb (db: db, q: quot) : Set.set =
-      prim("@Ns_DbSelect", (#2 db, quotToString q))
+	prim("@Ns_DbSelect", (#2 db, quotToString q))
+
     fun getRowDb (db : db, s : Set.set) : status =
       prim("@Ns_DbGetRow", (#2 db, s))
 
@@ -290,7 +298,7 @@ structure NsDbBasicOra : NS_DB_BASIC =
     val sysdateExp = "sysdate"
     val beginTrans = `begin transaction`
     val endTrans = `end transaction`
-    val roolback = `roolback`
+    val rollback = `rollback`
     fun fromDate d = "to_date('" ^ (Date.fmt "%Y-%m-%d %H:%M:%S" d) ^ "','YYYY-MM-DD HH24:MI:SS')"
   end
 
@@ -302,7 +310,7 @@ structure NsDbBasicPG : NS_DB_BASIC =
     val sysdateExp = "now()"
     val beginTrans = `begin`
     val endTrans = `commit`
-    val roolback = `roolback`
+    val rollback = `rollback`
     fun fromDate d = Date.fmt "%Y-%m-%d %H:%M:%S" d
   end
 
@@ -314,7 +322,7 @@ structure NsDbBasicMySQL : NS_DB_BASIC =
     val sysdateExp = "now()"
     val beginTrans = `begin`
     val endTrans = `commit`
-    val roolback = `roolback`
+    val rollback = `rollback`
     fun fromDate d = Date.fmt "%Y-%m-%d %H:%M:%S" d  (* type DATETIME in MySQL *)
   end
 
