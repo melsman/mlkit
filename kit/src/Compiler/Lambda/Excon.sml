@@ -33,6 +33,14 @@ functor Excon(structure Name : NAME
     val ex_OVERFLOW  : excon  = mk_excon "Overflow"
     val ex_INTERRUPT : excon  = mk_excon "Interrupt"
 
+    val pu = 
+	let open Pickle
+	    fun to (s,n) : excon = {str=s,name=n}
+	    fun from ({str=s,name=n} : excon) = (s,n)
+	in convert (to,from) (pairGen(string,Name.pu))
+	end
+	
+
     structure QD : QUASI_DOM =
       struct
 	type dom = excon

@@ -2,17 +2,18 @@
 
 functor OrderFinMap(structure Order : ORDERING
 		    structure PP : PRETTYPRINT
-		    structure Report : REPORT) : MONO_FINMAP =
+		    structure Report : REPORT
+		    structure Crash : CRASH) : MONO_FINMAP =
   struct
 
-    infix eq
+    fun die s = Crash.impossible ("OrderFinMap." ^ s)
 
     type dom = Order.T
 
     fun a < b = Order.lt a b
     val lt = op <
 
-    fun (i1:dom) eq (i2:dom) = 
+    fun eq (i1:dom, i2:dom) = 
       not (i1 < i2 orelse i2 < i1)
 
     (* The balance of a tree is 'L', if the left subtree is one
@@ -487,5 +488,51 @@ old *)
     fun reportMap f t = Report.flatten(map f (list t))
 
     val reportMapSORTED  = reportMap
+
+    (* Pickler *)
+    val pu_bal : bal Pickle.pu = Pickle.enumGen[L,B,R]
+
+    fun pu (pu_dom : dom Pickle.pu) (pu_r : 'a Pickle.pu) : 'a map Pickle.pu = 
+	let open Pickle
+	    fun toInt E = 0
+	      | toInt (N _) = 1
+	    fun eq(E,E) = true
+	      | eq(N(d1,r1,m1,m1',b1),N(d2,r2,m2,m2',b2)) =
+		b1 = b2 andalso #4 pu_dom(d1,d2) andalso #4 pu_r(r1,r2)
+		andalso eq(m1,m2) andalso eq(m1',m2')
+	      | eq _ = false
+	    fun fun_E _ =
+		(fn _ => fn spe => spe,
+		 fn supe => (E,supe),
+		 fn _ => fn _ => 0w0,
+		 eq)
+	    fun fun_N pu =
+		(fn N(d,r,m1,m2,b) => 
+		 (fn spe => let val spe = pickler pu_dom d spe
+				val spe = pickler pu_r r spe
+				val spe = pickler pu m1 spe
+				val spe = pickler pu m2 spe
+				val spe = pickler pu_bal b spe
+			    in spe
+			    end)
+	          | _ => die "pu.fun_N.pickler",
+		 fn supe =>
+		 let val (d,supe) = unpickler pu_dom supe
+		     val (r,supe) = unpickler pu_r supe
+		     val (m1,supe) = unpickler pu supe
+		     val (m2,supe) = unpickler pu supe
+		     val (b,supe) = unpickler pu_bal supe
+		 in (N(d,r,m1,m2,b),supe)
+		 end,
+		 fn N(d,r,m1,m2,b) =>
+		 hashCombine(hasher pu_dom d,
+			     hashCombine(hasher pu_r r,
+					 hashCombine(hasher pu m1,
+						     hashCombine(hasher pu m2,
+								 hasher pu_bal b))))
+		  | _ => die "pu.fun_N.hasher",
+		 eq)
+	in dataGen(toInt,eq,[fun_E,fun_N])
+	end
 
   end

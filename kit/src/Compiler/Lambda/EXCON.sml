@@ -29,5 +29,7 @@ signature EXCON =
     val ex_OVERFLOW : excon
     val ex_INTERRUPT : excon
 
+    val pu : excon Pickle.pu
+
     structure Map : MONO_FINMAP where type dom = excon
   end

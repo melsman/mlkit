@@ -40,4 +40,8 @@ signature FINMAP =
 			 -> (''a * 'b -> Report)
 			 -> (''a, 'b) map
 			 -> Report
+
+    val pu : ''a Pickle.pu * 'b Pickle.pu -> (''a,'b) map Pickle.pu
+
+    val eq : ('b*'b->bool) -> (''a,'b) map * (''a,'b) map -> bool
   end;

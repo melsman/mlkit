@@ -44,4 +44,6 @@ signature TYCON =
 
     val is_'true'_'nil'_etc : tycon -> bool
     val is_'it' : tycon -> bool
+
+    val pu : tycon Pickle.pu
   end;

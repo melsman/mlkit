@@ -61,4 +61,6 @@ signature NAME =
     val exn_OVERFLOW : name        (* name 10 *)
     val exn_INTERRUPT : name       (* name 11 *)
 
+    val pu : name Pickle.pu
+    val pu_matchcount : matchcount Pickle.pu
   end

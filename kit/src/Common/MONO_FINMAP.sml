@@ -46,4 +46,5 @@ signature MONO_FINMAP =
     type Report
     val reportMap: (dom * 'b -> Report) -> 'b map -> Report
 
+    val pu : dom Pickle.pu -> 'a Pickle.pu -> 'a map Pickle.pu
   end

@@ -53,6 +53,7 @@ signature TYNAME =
 	val <= : rank * rank -> bool
 	val min : rank * rank -> rank
 	val from_TyName : TyName -> rank
+	val pu : rank Pickle.pu
       end
 
     (* Predefined type names *)
@@ -84,6 +85,8 @@ signature TYNAME =
 
     type StringTree
     val layout : TyName -> StringTree
+
+    val pu : TyName Pickle.pu
 
     structure Map : MONO_FINMAP
     structure Set : KIT_MONO_SET

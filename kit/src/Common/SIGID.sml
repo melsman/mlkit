@@ -1,6 +1,5 @@
-(* Signature identifiers - Definition v3 page 10 *)
+(* Signature identifiers *)
 
-(*$SIGID*)
 signature SIGID =
   sig
     eqtype sigid
@@ -9,4 +8,6 @@ signature SIGID =
     and pr_SigId : sigid -> string
 
     val < : sigid * sigid -> bool	(* Used for top-level printout *)
-  end;
+
+    val pu : sigid Pickle.pu
+  end

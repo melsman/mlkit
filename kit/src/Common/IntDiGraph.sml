@@ -13,6 +13,7 @@ sig
   val lt: nodeId -> nodeId -> bool
   val getId: info -> nodeId
 
+  val pu : nodeId Pickle.pu
 end
 
 
@@ -212,7 +213,9 @@ functor DiGraphAll(structure InfoDiGraph : INFO_DIGRAPH
 		      fun lt (a:T) b = InfoDiGraph.lt a b
 		    end
 		  structure PP = PP
-		  structure Report = Report)
+		  structure Report = Report
+		  structure Crash = Crash
+		  val pu_dom = InfoDiGraph.pu)
 
 
     (*-------------------------------------------------------------------------------------*
@@ -678,6 +681,7 @@ functor DiGraphScc(structure InfoDiGraph : INFO_DIGRAPH
 					  type edgeInfo = SCCedgeInfo
 					  fun lt (a:nodeId) b = (a<b)
 					  fun getId ((i,ns):info) = i
+					  val pu = Pickle.int
 					end
 				      structure PP = PP
 				      structure Flags = Flags

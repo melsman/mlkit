@@ -1,5 +1,5 @@
-(*B in Basis, F in FunEnv, and G in SigEnv, Definition 1997,
-fig. 11, p. 29*)
+(* B in Basis, F in FunEnv, and G in SigEnv, Definition 1997,
+ * fig. 11, p. 29*)
 
 signature MODULE_ENVIRONMENTS =
   sig
@@ -43,6 +43,8 @@ signature MODULE_ENVIRONMENTS =
 	val dom              : SigEnv -> sigid EqSet.Set
 	val layout           : SigEnv -> StringTree
 	val report           : (sigid * Sig -> Report) * SigEnv -> Report
+
+	val pu               : SigEnv Pickle.pu
       end
 
 
@@ -55,6 +57,7 @@ signature MODULE_ENVIRONMENTS =
     val strip_install_dir : absprjid -> absprjid
     val strip_install_dir' : absprjid * funid -> absprjid * funid
     val is_absprjid_basislib : absprjid -> bool
+    val pu_absprjid : absprjid Pickle.pu
 
     structure F :
       sig
@@ -68,6 +71,8 @@ signature MODULE_ENVIRONMENTS =
 	val dom              : FunEnv -> funid EqSet.Set
 	val layout           : FunEnv -> StringTree
 	val report           : (funid * FunSig -> Report) * FunEnv -> Report
+
+	val pu               : FunEnv Pickle.pu
       end
 
 
@@ -113,5 +118,7 @@ signature MODULE_ENVIRONMENTS =
 					longstrids : longstrid list, funids : funid list,
 					sigids : sigid list} -> Basis
 	val match            : Basis * Basis -> unit
+
+	val pu               : Basis Pickle.pu
       end
-  end;
+  end

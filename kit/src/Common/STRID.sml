@@ -23,4 +23,6 @@ signature STRID =
 
    (* Needed for top-level printing: *)
     val < : strid * strid -> bool
-  end;
+
+    val pu : strid Pickle.pu
+  end

@@ -43,4 +43,6 @@ signature KIT_MONO_SET =
 
     val layoutSet : {start: string, sep: string, finish: string} ->
       (elt -> StringTree) -> Set -> StringTree
+
+    val pu : elt Pickle.pu -> Set Pickle.pu
   end;

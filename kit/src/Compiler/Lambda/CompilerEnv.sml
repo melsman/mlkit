@@ -92,14 +92,16 @@ functor CompilerEnv(structure Ident: IDENT
 					  fun lt (a:T) b = spath_lt(a,b)
 				      end
 		    structure PP = PP
-		    structure Report = Report)
+		    structure Report = Report
+		    structure Crash = Crash)
 
     type PathEnv = (lvar*Type) PathEnv.map
     type VarEnv = (id,result) FinMap.map
-    datatype CEnv = CENV of {StrEnv:StrEnv, VarEnv:VarEnv, TyEnv:TyEnv, PathEnv:PathEnv}
+
+    datatype CEnv = CENV of {StrEnv:StrEnv, VarEnv:VarEnv, TyEnv: TyEnv, PathEnv:PathEnv}
     and StrEnv  = STRENV of (strid,CEnv) FinMap.map
-    and TyEnv   = TYENV of (tycon,TyName list * CEnv) FinMap.map
-	
+    and TyEnv = TYENV of (tycon,TyName list * CEnv) FinMap.map
+
     val emptyStrEnv   : StrEnv = STRENV FinMap.empty
     and emptyVarEnv   : VarEnv = FinMap.empty
     and emptyTyEnv    : TyEnv  = TYENV FinMap.empty
@@ -650,5 +652,122 @@ functor CompilerEnv(structure Ident: IDENT
 	 layout_res m
       end
 
-  end;
+    val pu_result =
+	let open Pickle
+	    fun toInt (LVAR _) = 0
+	      | toInt (CON _) = 1
+	      | toInt REF = 2
+	      | toInt (EXCON _) = 3
+	      | toInt ABS = 4
+	      | toInt NEG = 5
+	      | toInt PLUS = 6
+	      | toInt MINUS = 7
+	      | toInt MUL = 8
+	      | toInt DIV = 9
+	      | toInt MOD = 10
+	      | toInt LESS = 11
+	      | toInt GREATER = 12
+	      | toInt LESSEQ = 13
+	      | toInt GREATEREQ = 14
+	      | toInt RESET_REGIONS = 15
+	      | toInt FORCE_RESET_REGIONS = 16
+	      | toInt PRIM = 17          
+	    fun eq (LVAR (lv1,tvs1,t1,ts1), LVAR (lv2,tvs2,t2,ts2)) = 
+		#4 Lvars.pu(lv1,lv2) andalso
+		#4 LambdaExp.pu_tyvars(tvs1,tvs2) andalso
+		#4 LambdaExp.pu_Type(t1,t2) andalso
+		#4 LambdaExp.pu_Types(ts1,ts2)
+	      | eq (CON (c1,tvs1,t1,ts1), CON (c2,tvs2,t2,ts2)) =
+		#4 Con.pu(c1,c2) andalso
+		#4 LambdaExp.pu_tyvars(tvs1,tvs2) andalso
+		#4 LambdaExp.pu_Type(t1,t2) andalso
+		#4 LambdaExp.pu_Types(ts1,ts2)
+	      | eq (REF,REF) = true
+	      | eq (EXCON (e1,t1), EXCON (e2,t2)) =
+		#4 Excon.pu(e1,e2) andalso
+		#4 LambdaExp.pu_Type(t1,t2)
+	      | eq (ABS,ABS) = true
+	      | eq (NEG,NEG) = true
+	      | eq (PLUS,PLUS) = true
+	      | eq (MINUS,MINUS) = true
+	      | eq (MUL,MUL) = true
+	      | eq (DIV,DIV) = true
+	      | eq (MOD,MOD) = true
+	      | eq (LESS,LESS) = true
+	      | eq (GREATER,GREATER) = true
+	      | eq (LESSEQ,LESSEQ) = true
+	      | eq (GREATEREQ,GREATEREQ) = true
+	      | eq (RESET_REGIONS,RESET_REGIONS) = true
+	      | eq (FORCE_RESET_REGIONS,FORCE_RESET_REGIONS) = true
+	      | eq (PRIM,PRIM) = true
+	      | eq _ = false
+	    fun fun_LVAR _ = 
+		    con1 eq LVAR (fn LVAR lv => lv | _ => die "pu.LVAR")
+		    (tup4Gen(Lvars.pu, LambdaExp.pu_tyvars,
+			     LambdaExp.pu_Type, LambdaExp.pu_Types))
+	    fun fun_CON _ = 
+		    con1 eq CON (fn CON lv => lv | _ => die "pu.CON")
+		    (tup4Gen(Con.pu, LambdaExp.pu_tyvars,
+			     LambdaExp.pu_Type, LambdaExp.pu_Types))
+	    fun fun_EXCON _ = 
+		    con1 eq EXCON (fn EXCON lv => lv | _ => die "pu.CON")
+		    (pairGen(Excon.pu,LambdaExp.pu_Type))
+	in dataGen(toInt,eq,
+		   [fun_LVAR,
+		    fun_CON,
+		    con0 eq REF,
+		    fun_EXCON,
+		    con0 eq ABS,
+		    con0 eq NEG,
+		    con0 eq PLUS,
+		    con0 eq MINUS,
+		    con0 eq MUL,
+		    con0 eq DIV,
+		    con0 eq MOD,
+		    con0 eq LESS,
+		    con0 eq GREATER,
+		    con0 eq LESSEQ,
+		    con0 eq GREATEREQ,
+		    con0 eq RESET_REGIONS,
+		    con0 eq FORCE_RESET_REGIONS,
+		    con0 eq PRIM])
+	end
+
+    val pu_PathEnv = 
+	let open Pickle
+	in PathEnv.pu (listGen int) (pairGen(Lvars.pu,LambdaExp.pu_Type))
+	end
+    val pu_VarEnv =
+	let open Pickle
+	in FinMap.pu(Ident.pu,pu_result)
+	end
+    val (pu,_,_) =
+	let open Pickle
+	    val pu_TyNames = listGen TyName.pu
+	    fun CEnvToInt _ = 0
+	    fun StrEnvToInt _ = 0
+	    fun TyEnvToInt _ = 0
+	    fun CEnvEq(CENV{StrEnv=se1,VarEnv=ve1,TyEnv=te1,PathEnv=pe1},
+		       CENV{StrEnv=se2,VarEnv=ve2,TyEnv=te2,PathEnv=pe2}) =
+		#4 pu_PathEnv (pe1,pe2) andalso #4 pu_VarEnv (ve1,ve2)
+		andalso StrEnvEq(se1,se2) andalso TyEnvEq(te1,te2)
+	    and StrEnvEq(STRENV m1, STRENV m2) = FinMap.eq CEnvEq (m1,m2)
+	    and TyEnvEq(TYENV m1, TYENV m2) = FinMap.eq (fn ((tns1,e1),(tns2,e2)) => #4 pu_TyNames (tns1,tns2)
+							 andalso CEnvEq(e1,e2)) (m1,m2)
+	    fun fun_CENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
+		convert (fn ((se,ve),(te,pe)) => CENV{StrEnv=se,VarEnv=ve,TyEnv=te,PathEnv=pe},
+			 fn CENV{StrEnv=se,VarEnv=ve,TyEnv=te,PathEnv=pe} => ((se,ve),(te,pe)))
+		(pairGen(pairGen(pu_StrEnv,pu_VarEnv),pairGen(pu_TyEnv,pu_PathEnv)))
+	    fun fun_STRENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
+		convert (STRENV,fn STRENV v => v)
+		(FinMap.pu(StrId.pu,pu_CEnv))
+	    fun fun_TYENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
+		convert (TYENV,fn TYENV v => v)
+		(FinMap.pu(TyCon.pu,pairGen(pu_TyNames,pu_CEnv)))
+	in data3Gen(CEnvToInt,CEnvEq,[fun_CENV],
+		    StrEnvToInt,StrEnvEq,[fun_STRENV],
+		    TyEnvToInt,TyEnvEq,[fun_TYENV])
+	end
+
+  end
 

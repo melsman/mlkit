@@ -1,6 +1,5 @@
-(* Signature identifiers - Definition v3 page 10 *)
+(* Signature identifiers *)
 
-(*$SigId: SIGID*)
 functor SigId(): SIGID =
   struct
     datatype sigid = SIGID of string
@@ -9,4 +8,6 @@ functor SigId(): SIGID =
     fun pr_SigId(SIGID str) = str
 
     val op < = fn (SIGID str1, SIGID str2) => str1 < str2
-  end;
+
+    val pu = Pickle.convert (SIGID, fn SIGID s => s) Pickle.string
+  end

@@ -145,6 +145,21 @@ functor FinMap(structure Report: REPORT
 		childsep=PP.RIGHT sep, children=map doit (list m)
 	       }
       end
+
+    fun pu (pu_d, pu_r) =
+	let open Pickle
+	    fun to (es,br) = FM {elts=es,unique=br}
+	    fun from (FM {elts,unique}) = (elts, unique)
+	in convert (to,from)
+	    (pairGen(listGen(pairGen(pu_d,pu_r)),ref0Gen bool))
+	end
+
+    fun eq eq_e (m1,m2) =
+	let fun eqs (nil,nil) = true
+	      | eqs ((a1,e1)::es1,(a2,e2)::es2) = a1=a2 andalso eqs (es1,es2) andalso eq_e(e1,e2)
+	      | eqs _ = false
+	in eqs (list m1,list m2)
+	end
   end;
 
 

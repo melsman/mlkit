@@ -129,5 +129,6 @@ functor CompilerEnvDummy(structure Ident: IDENT
 
    fun layoutCEnv () = PP.LEAF ""
 
+   val pu = Pickle.unit
   end;
 

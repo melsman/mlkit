@@ -31,4 +31,7 @@ sig
   val find_rep_and_info : 'info Element -> 'info Element * 'info  (* The argument element need 
                                                      not be canonical *)
 
+  val pu : 'a -> 'a Pickle.pu -> 'a Element Pickle.pu
+      (* the first argument is a dummy value to make the pickler work for
+       * cyclic data structures *)
 end;

@@ -1160,5 +1160,43 @@ functor LambdaExp(structure Lvars: LVARS
     fun barify a = 
 	(barify_p := true; 
 	 layoutPgm a before barify_p := false)
+
+    (* Picklers *)
+    val pu_tyvar = Pickle.word
+
+    val (pu_Type,pu_Types) =
+	let open Pickle
+	    fun toInt (TYVARtype _) = 0
+	      | toInt (ARROWtype _) = 1
+	      | toInt (CONStype _) = 2
+	      | toInt (RECORDtype _) = 3
+	    fun eq (TYVARtype tv1, TYVARtype tv2) = tv1 = tv2
+	      | eq (ARROWtype (ts1,ts1'), ARROWtype (ts2,ts2')) = eqs(ts1,ts2) andalso eqs(ts2,ts2')
+	      | eq (CONStype(ts1,tn1), CONStype(ts2,tn2)) = #4 TyName.pu (tn1,tn2) andalso eqs(ts1,ts2)
+	      | eq (RECORDtype ts1, RECORDtype ts2) = eqs (ts1,ts2)
+	      | eq _ = false
+	    and eqs (nil,nil) = true
+	      | eqs (t1::ts1,t2::ts2) = eqs(ts1,ts2) andalso eq(t1,t2)
+	      | eqs _ = false
+
+	    val pu_TypeList : Type Pickle.pu -> Type list Pickle.pu = 
+		Pickle.cache listGen
+
+	    fun fun_TYVARtype _ = 
+		con1 eq TYVARtype (fn TYVARtype tv => tv | _ => die "pu_Type.TYVARtype")
+		pu_tyvar
+	    fun fun_ARROWtype pu =
+		con1 eq ARROWtype (fn ARROWtype p => p | _ => die "pu_Type.ARROWtype")
+		(pairGen(pu_TypeList pu,pu_TypeList pu))
+	    fun fun_CONStype pu =
+		con1 eq CONStype (fn CONStype p => p | _ => die "pu_Type.CONStype")
+		(pairGen(pu_TypeList pu,TyName.pu))
+	    fun fun_RECORDtype pu =
+		con1 eq RECORDtype (fn RECORDtype a => a | _ => die "pu_Type.RECORDtype")
+		(pu_TypeList pu)
+	    val pu = dataGen(toInt,eq,[fun_TYVARtype,fun_ARROWtype, fun_CONStype, fun_RECORDtype])
+	in (pu, pu_TypeList pu)
+	end
+    val pu_tyvars = Pickle.listGen pu_tyvar
 	
   end;

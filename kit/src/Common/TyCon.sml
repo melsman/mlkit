@@ -79,4 +79,6 @@ functor TyCon(structure StrId: STRID
 
     fun is_'it' (TYCON "it") = true
       | is_'it' (TYCON _) = false
-  end;
+
+    val pu = Pickle.convert (TYCON, fn TYCON s => s) Pickle.string
+  end

@@ -19,6 +19,8 @@ signature OPACITY_ENV =
 
     type StringTree
     val layout : opaq_env -> StringTree
+
+    val pu : opaq_env Pickle.pu
   end
 
 functor OpacityEnv(structure FunId : FUNID
@@ -38,7 +40,8 @@ functor OpacityEnv(structure FunId : FUNID
 				   val lt = fn a => fn b => FunId.<(a,b)
 				 end
 			       structure PP = PP
-			       structure Report = Report)
+			       structure Report = Report
+			       structure Crash = Crash)
 
     type funenv = (TyName.Set.Set * realisation) FE.map
 
@@ -69,4 +72,12 @@ functor OpacityEnv(structure FunId : FUNID
     fun layout (fe,rea) =
       PP.NODE{start="OPAQ_ENV(",finish=")",childsep=PP.RIGHT",",indent=1,
 	      children=[layout_fe fe, Realisation.layout rea]}
+
+    val pu : opaq_env Pickle.pu =
+	let open Pickle
+	in
+	    pairGen(FE.pu FunId.pu (pairGen(TyName.Set.pu TyName.pu,
+					    Realisation.pu)),
+		    Realisation.pu)
+	end
   end

@@ -7,8 +7,11 @@ functor InfixBasis(structure Ident: IDENT
 
 		   structure PP: PRETTYPRINT
 		     sharing type FinMap.StringTree = PP.StringTree
+   	           structure Crash : CRASH
 		  ): INFIX_BASIS =
   struct
+
+    fun die s = Crash.impossible ("InfixBasis." ^ s)
 
     type id = Ident.id
 
@@ -63,4 +66,38 @@ functor InfixBasis(structure Ident: IDENT
       FinMap.layoutMap {start="<iBas: ", eq=" -> ", sep="; ", finish=">"}
       		       (PP.layoutAtom Ident.pr_id)
 		       (PP.layoutAtom pr_InfixEntry)
-  end;
+
+    val pu_InfixEntry =
+	let open Pickle
+	    fun toInt NONFIX = 0
+	      | toInt (INFIX _) = 1
+	      | toInt (INFIXR _) = 2
+	    fun fun_NONFIX _ =
+		(fn _ => fn spe => spe,
+		 fn supe => (NONFIX,supe),
+		 fn _ => fn d => 0w0,
+		 op =)
+	    fun fun_INFIX _ =
+		(fn INFIX i => pickler int i
+	          | _ => die "pu_InfixEntry.INFIX.pickler",
+		 fn supe => let val (i, supe) = unpickler int supe
+			    in (INFIX i,supe)
+			    end,
+		 fn INFIX i => hasher int i
+		  | _ => die "pu_InfixEntry.INFIX.hasher",
+		 op =)
+	    fun fun_INFIXR _ =
+		(fn INFIXR i => pickler int i
+	          | _ => die "pu_InfixEntry.INFIXR.pickler",
+		 fn supe => let val (i, supe) = unpickler int supe
+			    in (INFIXR i,supe)
+			    end,
+		 fn INFIXR i => hasher int i
+		  | _ => die "pu_InfixEntry.INFIXR.hasher",
+		 op =)
+	in dataGen(toInt,op =,[fun_NONFIX,fun_INFIX,fun_INFIXR])
+	end
+
+    val pu : Basis Pickle.pu = FinMap.pu(Ident.pu,pu_InfixEntry)
+
+  end

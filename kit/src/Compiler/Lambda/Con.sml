@@ -43,6 +43,13 @@ functor Con(structure Name : NAME
     val con_QUOTE : con  = mk_con "QUOTE"
     val con_ANTIQUOTE : con  = mk_con "ANTIQUOTE"
 
+    val pu = 
+	let open Pickle
+	    fun to (s,n) : con = {str=s,name=n}
+	    fun from ({str=s,name=n} : con) = (s,n)
+	in convert (to,from) (pairGen(string,Name.pu))
+	end
+
     structure QD : QUASI_DOM =
       struct
 	type dom = con

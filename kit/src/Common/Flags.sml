@@ -359,7 +359,9 @@ struct
 							fun lt a (b:string) = a < b
 						 end
 			       structure PP = PP
-			       structure Report = Report)
+			       structure Report = Report
+			       structure Crash = Crash
+			       val pu_dom = Pickle.string)
 
     val dir : entry0 M.map ref = ref M.empty
 

@@ -135,6 +135,9 @@ functor ModuleEnvironments(
 	if Realisation.is_Id rea then G
 	else SIGENV (FinMap.composemap (fn Sigma => Sigma.on (rea,Sigma)) m)
 
+      val pu = Pickle.convert (SIGENV, fn SIGENV m => m) 
+	  (FinMap.pu (SigId.pu,Sigma.pu))
+
     end (*G*)
 
 
@@ -160,6 +163,8 @@ functor ModuleEnvironments(
 	(OS.Path.mkRelative(absprjid, !Flags.install_dir),
 	 FunId.mk_FunId (OS.Path.mkRelative(FunId.pr_FunId funid, !Flags.install_dir)))
       else p
+
+    val pu_absprjid = Pickle.string
 
 
     structure F = struct
@@ -202,6 +207,9 @@ functor ModuleEnvironments(
       fun on rea (F as FUNENV m) = 
 	if Realisation.is_Id rea then F
 	else FUNENV (FinMap.composemap (fn (absprjid, Phi) => (absprjid, Phi.on (rea, Phi))) m)
+
+      val pu = Pickle.convert (FUNENV, fn FUNENV m => m) 
+	  (FinMap.pu (FunId.pu, Pickle.pairGen(Pickle.string,Phi.pu)))
 
     end (*F*)
 
@@ -316,6 +324,15 @@ functor ModuleEnvironments(
       (*Matching function for compilation manager*)
 
       fun match (BASIS {F,G,E}, BASIS {F=F0,G=G0,E=E0}) = E.match (E,E0)
+
+      val pu =
+	  let open Pickle
+	      fun to (F,G,E) = BASIS{F=F,G=G,E=E}
+	      fun from (BASIS{F=F,G=G,E=E}) = (F,G,E)
+	  in convert (to,from)
+	      (tup3Gen(F.pu,G.pu,E.pu))
+	  end
+
     end (*B*)
 
   end; (*functor ModuleEnvironments*)

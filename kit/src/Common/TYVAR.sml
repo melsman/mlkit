@@ -1,6 +1,5 @@
-(* type variables - Definition v3 page 4 *)
+(* Explicit type variables *)
 
-(*$TYVAR*)
 signature TYVAR = 
   sig 
     eqtype SyntaxTyVar
@@ -9,4 +8,6 @@ signature TYVAR =
     and pr_tyvar: SyntaxTyVar -> string
 
     val isEquality: SyntaxTyVar -> bool
+
+    val pu : SyntaxTyVar Pickle.pu
   end;

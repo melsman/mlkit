@@ -41,8 +41,6 @@ signature STATOBJECT =
         val pr                      : level -> string
       end
 
-
-
     (*Association list for the printing of type variables:*)
     val newTVNames                  : unit -> TVNames	
 
@@ -65,9 +63,9 @@ signature STATOBJECT =
 	(*TODO 26/01/1997 14:17. tho.: ugly ad hoc set functions:*)
 	val intersectTyVarSet       : TyVar list * TyVar list -> TyVar list
 	val unionTyVarSet           : TyVar list * TyVar list -> TyVar list
+
+	val pu                      : TyVar Pickle.pu
       end (*TyVar*)
-
-
 
     structure Type :
       sig
@@ -100,6 +98,8 @@ signature STATOBJECT =
 	          (*needed by compiler. the returned list is sorted
 		   (non-ascending) with respect to Lab.<*)
 	    val to_pair             : RecType -> Type * Type
+
+	    val pu                  : RecType Pickle.pu
 	  end
 	val from_pair               : Type * Type -> Type
 	val from_triple             : Type * Type * Type -> Type
@@ -156,6 +156,8 @@ signature STATOBJECT =
 
 	val match : Type * Type -> unit   (* for compilation manager *)
 
+	val pu : Type Pickle.pu
+
       end (*Type*)
 
 
@@ -206,6 +208,8 @@ signature STATOBJECT =
 	(*for compilation manager:*)
 	val match : TypeScheme * TypeScheme -> unit
 
+	val pu : TypeScheme Pickle.pu
+
       end (*TypeScheme*)
 
 
@@ -249,6 +253,8 @@ signature STATOBJECT =
 	(*for compilation manager:*)
 	val match : TypeFcn * TypeFcn -> unit
 
+	val pu : TypeFcn Pickle.pu
+
       end (*TypeFcn*)
 
 
@@ -281,6 +287,7 @@ signature STATOBJECT =
 	val dom                     : realisation -> TyName.Set.Set
 	val eq                      : realisation * realisation -> bool
 	val layout                  : realisation -> StringTree
+	val pu                      : realisation Pickle.pu
 
       end (*Realisation*)
 

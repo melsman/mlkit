@@ -13,4 +13,6 @@ signature LAB =
 					   for tupleness. *)
 
     val pr_Lab: lab -> string
+
+    val pu : lab Pickle.pu
   end;
