@@ -46,4 +46,5 @@ structure ScsReal :> SCS_REAL =
       in
 	String.implode (List.rev (f l_rev))
       end
+
   end

@@ -10,13 +10,15 @@ signature SCS_PRINT =
 
     (* Widgets *)
     val choosePrinter : string -> quot * quot
-    val printForm     : string -> string -> string -> string -> doc_type -> quot -> quot
+
+    val printForm     : string -> string -> string -> string -> doc_type -> quot list -> quot
 
     (* Actual Printing *)
     (* bug: must also have an target_url so that you can get from the print-response page back to the origin *)
     val printDoc      : string -> string -> string -> string -> doc_type -> quot -> string -> Ns.status
 
     val printDocs     : (string * string * string * string * doc_type * quot) list -> string -> Ns.status
+
   end
 
 structure ScsPrint :> SCS_PRINT =
@@ -56,19 +58,47 @@ structure ScsPrint :> SCS_PRINT =
       fun dvifile f = path_preview() ^ "/" ^ f ^ ".dvi"
       fun pdfurl f = "/" ^ (getInfo "scs_print_preview") ^ "/" ^ f ^ ".pdf"
     in
-      fun genTarget doc_type source =
+      fun genTmpPDF doc_type source =
 	case doc_type of
 	  LaTeX =>
 	    let
 	      val tmpfile = ScsFile.uniqueFile (path_preview())
 	      val _ = ScsFile.save source (texfile tmpfile)
-	      val cmd = Quot.toString `cd ^(path_preview()); latex ^(texfile tmpfile); latex ^(texfile tmpfile); dvips -o ^(psfile tmpfile) ^(dvifile tmpfile); ps2pdf ^(psfile tmpfile) ^(pdffile tmpfile)`
+	      val cmd = Quot.toString `cd ^(path_preview()); /usr/local/teTeX/bin/i686-pc-linux-gnu/pdflatex ^(texfile tmpfile)`
+	    in
+	      if Process.system cmd = Process.success then
+		tmpfile
+	      else
+		ScsError.panic 
+		  `ScsPrint.genPDF: Can't execute system command: ^cmd`
+	    end
+
+      fun genPDF doc_type sources = 
+	case doc_type of
+	  LaTeX =>
+	    let
+	      val pdf_files = map (genTmpPDF LaTeX) sources
+	      val gluetex = `
+	        \documentclass[a4paper]{article}
+		\usepackage[final]{pdfpages}
+		\begin{document}
+		` ^^ 
+		foldl (fn (tmpFile,acc) => acc ^^ `\includepdf[pages=-]
+		  {^tmpFile.pdf}`) `` pdf_files ^^ `
+		\end{document}`
+	      val tmpfile = ScsFile.uniqueFile (path_preview())
+	      val _ = ScsFile.save gluetex (texfile tmpfile)
+	      val cmd = Quot.toString( `cd ^(path_preview()); /usr/local/teTeX/bin/i686-pc-linux-gnu/pdflatex ^(texfile tmpfile); ` ^^ 
+	        foldl (fn (tmp_file,acc) => acc^^`rm -f ^tmp_file`) `` pdf_files )
 	    in
 	      if Process.system cmd = Process.success
 		then pdfurl tmpfile
 	      else
-		ScsError.panic `ScsPrint.genTarget: Can't execute system command: ^cmd`
+		ScsError.panic 
+		  `ScsPrint.genPDF: Can't execute system command: ^cmd`
 	    end
+
+
       fun printDoc category note on_what_table on_what_id doc_type source printer =
 	case doc_type of
 	  LaTeX =>
@@ -115,7 +145,7 @@ structure ScsPrint :> SCS_PRINT =
                            Ns.encodeUrl ("show_doc.sml?print_id="^print_id))">fjerne</a> dokumentet fra journalen igen.
                            Du vender da tilbage til udskriftssiden igen.`))
 
-	      else ScsError.panic `ScsPrint.genTarget: Can't execute system command: ^cmd`
+	      else ScsError.panic `ScsPrint.genPDF: Can't execute system command: ^cmd`
 	    end
 
       fun printDoc' batch_id category note on_what_table on_what_id doc_type source printer =
@@ -148,7 +178,7 @@ structure ScsPrint :> SCS_PRINT =
 	      if Process.system cmd = Process.success
 		then (ScsDb.panicDmlTrans ins_log;
 		      target_f)
-	      else (ScsError.panic `ScsPrint.genTarget: Can't execute system command: ^cmd`;target_f)
+	      else (ScsError.panic `ScsPrint.genPDF: Can't execute system command: ^cmd`;target_f)
 	    end
 
       fun printDocs docs printer =
@@ -164,18 +194,21 @@ structure ScsPrint :> SCS_PRINT =
       (* Should find printers for the user logged in *)
       fun choosePrinter n = (`Choose printer`, ScsWidget.select allPrinters n)
 
-      fun printForm category note on_what_table on_what_id doc_type source =
+      fun printForm category note on_what_table on_what_id doc_type sources =
 	ScsWidget.formBox "/scs/print/scs-print.sml" 
 	[("submit", "Print"),("submit","Update Source")] 
 	(`You may change the source below and then either print the 
 	 changed document or update the preview link.<p>` ^^ 
-	 `<a href="^(genTarget doc_type source)">preview</a><br>` ^^
+	 `<a href="^(genPDF doc_type sources)">preview</a><br>` ^^
 	 (Html.inhidden "doc_type" (docTypeToString doc_type)) ^^
 	 (Html.inhidden "category" category) ^^
 	 (Html.inhidden "on_what_table" on_what_table) ^^
 	 (Html.inhidden "on_what_id" on_what_id) ^^
 	 (Html.inhidden "note" note) ^^
-	 (ScsWidget.largeTa "source" source) ^^ `<p>` ^^
+(*
+	 (ScsWidget.largeTa "source" source) ^^
+*)
+ `<p>` ^^
 	 (ScsWidget.oneLine (choosePrinter "printer")))
       end
   end

@@ -69,6 +69,10 @@ signature SCS_PERSON =
        of Female) is returned. Otherwise an exception is returned. *)
     val cprToSex : string -> sex
 
+    (* [isFemale_p cpr] returns true if the cpr is female. Throws an 
+	exception if cpr is invalid *)
+    val isFemale_p : string -> bool
+
     (* [fix_email email] do the following conversions:
          - if email is of form login@itu.dk => login@it-c.dk
          - if email is of form login@it.edu => login@it-c.dk
@@ -206,4 +210,8 @@ structure ScsPerson :> SCS_PERSON =
           try "nh@it.edu";
           try "nh@diku.dk")
        handle Fail s => print s*)
+
+    fun isFemale_p cpr = 
+      cprToSex cpr = Female
+
   end
