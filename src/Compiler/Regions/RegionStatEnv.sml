@@ -104,7 +104,9 @@ functor RegionStatEnv(structure R: RTYPE
 	val (rho'',c) = E.freshRhoWithTy(E.TOP_RT, c)
 	val alpha_rho_list = (mkListType((alpha_ty,rho), rho'), rho'')
 	val (arreff, c) = E.freshEps c
+     
 	val _ = E.edge(arreff, E.mkPut rho'')
+
 
 	val cons_mu = R.FUN([(R.RECORD[(alpha_ty,rho),alpha_rho_list],
 							rho')],
@@ -457,4 +459,7 @@ functor RegionStatEnv(structure R: RTYPE
 			    layout_lvar_env lvar_env]}
 
   end;
+
+
+
 

@@ -291,9 +291,13 @@ struct
   	in
            (FIX{free =free, shared_clos = (rho, norm_liveset(union_llv(localFree, liveset))),
                 functions = 
-                  map(fn({lvar,occ,tyvars,rhos,epss,Type,rhos_formals,other,bind = _}, bind) =>
+                  map(fn({lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
+                          bound_but_never_written_into,
+                          other,bind = _}, bind) =>
                        {lvar=lvar,occ=occ,tyvars=tyvars,rhos=rhos,epss=epss,Type=Type,
-                        rhos_formals = rhos_formals,other=other,bind = bind})
+                        rhos_formals = rhos_formals,
+                        bound_but_never_written_into=bound_but_never_written_into,
+                        other=other,bind = bind})
                      (ListPair.zip(functions,map #1 children)),
                 scope = scope'},
 	    localFree)

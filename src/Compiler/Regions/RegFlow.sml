@@ -282,7 +282,10 @@ struct
          case e of
             FIX {free, shared_clos, functions, scope} =>
               let 
-                fun mk_graph_lvar {lvar,occ = instances, tyvars,rhos= formal_regvars,epss = formal_arreffs,Type,rhos_formals,other,bind} =
+                fun mk_graph_lvar {lvar,occ = instances, tyvars,rhos= formal_regvars,
+                                   epss = formal_arreffs,Type,rhos_formals,
+                                   bound_but_never_written_into,
+                                   other,bind} =
                       let
 
                          val _ = List.apply insert formal_arreffs

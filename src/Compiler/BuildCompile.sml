@@ -428,7 +428,10 @@ functor BuildCompile (structure TyName : TYNAME
 					structure PP = PP
 					structure FinMapEq = FinMapEq
 					structure Flags = Flags
-					structure Eff = Effect)
+					structure Eff = Effect
+                                        structure Mul= Mul
+                                        structure RegionExp = RegionExp
+                                        structure ExCon = Excon)
 
     structure PhysSizeInf = PhysSizeInf(structure MulExp = MulExp
 					structure Effect = Effect

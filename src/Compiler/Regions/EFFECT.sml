@@ -23,7 +23,18 @@ sig
 
   val removeatomiceffects: (effect * 'a)list * effect list-> (effect * 'a)list
   val get_visited: effect -> bool ref
+
   val get_instance: effect -> effect Option ref
+
+  (* setInstance(rho,rho') sets the instance field of  rho 
+     (a generic variable) to rho', its instance; 
+     setInstance(eps,eps') sets the instance field of eps to eps'*)
+
+  val setInstance: effect*effect -> unit
+
+  (* clearInstance(rho,rho') clears the instance field of rho *)
+  val clearInstance: effect * effect -> unit
+
   val pix : effect -> int ref
   val remove_duplicates: effect list -> effect list
 
@@ -132,7 +143,7 @@ sig
   val insertEps: effect -> cone -> cone
   val insertRho: effect -> cone -> cone
 
-  val unify_with_toplevel_rhos_eps : effect list -> unit
+  val unify_with_toplevel_rhos_eps : cone * effect list -> cone
 
   datatype delta_phi = Lf of effect list | Br of delta_phi * delta_phi
   val observe: int* delta_phi * effect ->  unit

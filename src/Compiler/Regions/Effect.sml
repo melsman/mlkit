@@ -93,12 +93,13 @@ struct
       | PUT   => PP.LEAF "put"
       | GET   => PP.LEAF "get"
       | UNION _=> PP.LEAF "U"
-      | RHO{key, level,ty,...} => 
+      | RHO{key, level,ty,put,...} => 
 	  PP.LEAF ("r" ^ show_key key ^ 
 		   (if !print_rho_types then show_runType ty
 		    else "") ^ 
 		   (if !print_rho_levels then "(" ^ show_level level ^ ")" 
-		    else ""))
+		    else "")^
+                   (case put of Some _ => "$" | None => ""))
 
   fun transparent(UNION _) = true
     | transparent _     = false
@@ -248,6 +249,11 @@ struct
   fun mkEps(level,key) = G.mk_node(EPS{key = ref key, level = ref level, represents = None, pix = ref ~1, instance = ref None})
 
   fun find node = G.find node
+
+  fun setInstance(node,node') =  (* see explanation in signature *)
+      get_instance node := Some node'
+
+  fun clearInstance(node,_) = get_instance node := None
 
 (*
   fun remove_duplicates effects =
@@ -634,7 +640,9 @@ struct
                      in
                         (new_rho::rhos', add(new_rho, n, k, c))
                      end
-                   | _ => die "renameRhos: not a region variable"
+                   | _ => (log_string"renameRhos: expected region variable, found:\n";
+                           log_tree(layout_effect_deep rho);
+                           die "renameRhos: not a region variable")
                   ) ([],c) rhos
 
   fun renameRhos(rhos, c: cone as (n,_)) : effect list * cone =
@@ -646,7 +654,7 @@ struct
   fun rename_epss_aux(epss, c: cone as (n,_), f, g) : effect list * cone =
       List.foldR (fn eps => fn (epss',c) =>
                   case G.find_info(G.find eps) of
-                    EPS{level,pix,represents = None,...} =>
+                    EPS{level,pix,(*represents = None,*)...} =>
                      let val k = freshInt()
                          val new_eps= 
                       G.mk_node(EPS{key = ref(k), level = ref(g level),
@@ -656,7 +664,9 @@ struct
                      in
                         (new_eps::epss', add(new_eps, n, k, c))
                      end
-                   | _ => die "renameEpss: not a region variable"
+                   | _ => (log_string"renameEpss: expected effect variable, found:\n";
+                           log_tree(layout_effect_deep eps);
+                           die "renameEpss: not an effect variable")
                   ) ([],c) epss
   fun renameEpss(epss, c: cone as (n,_)) : effect list * cone =
       rename_epss_aux(epss,c,fn(ref int) => int, fn(ref int) => int)
@@ -965,6 +975,9 @@ tracing *)
     case (einfo1, einfo2) 
       of (RHO{level = l1, put = p1, get = g1,key=k1,instance=instance1, pix = pix1,ty = t1}, 
 	  RHO{level=l2,put=p2,get=g2,key=k2, instance = instance2, pix = pix2, ty = t2}) =>
+       if !k1<> !k2 andalso (!k1 < 6 andalso !k2 < 6) then 
+         die ("attempt of unifying global regions " ^ Int.string (!k1) ^ " / " ^ Int.string (!k2))
+       else
 	RHO{level = l1, put = aux_combine(p1,p2), 
 	    get = aux_combine(g1,g2), key =min_key(k1,k2), instance = instance1, pix = pix1, ty = lub_runType(t1,t2)}
 	| _ => die "einfo_combine_rho"
@@ -1032,13 +1045,39 @@ tracing *)
 
   (* -------------------------------------------------------
    * unify_with_toplevel_rhos_eps(rhos_epss) : unit
-   * Unify eps_nodes with toplevel eps node and rho nodes
+   * ----------
+   * Unify (eps_nodes@toplevel_nodes) with toplevel eps node and rho nodes
    * with toplevel rhos of corresponding runtypes. Assume
-   * all nodes are of top level. 
+   * all nodes are of top level. The inclusion of toplevel_nodes
+   * has the following effect:
+     unifies all region variables at level 1 in cone that have runtime type top with r1;
+     unifies all region variables at level 1 in cone that have runtime type word with r2;
+     ...
+     unifies all region variables at level 1 in cone that have runtime type string with r5;
+     This is necessary after region inference, since it is possible to introduce level 1
+     region variables that are not one of the pre-defined regions r1-r5. 
+     Example:
+     unit1:
+          val id: string -> string = 
+               (fn x => (output(std_out, "a");x)) o(fn x => (output(std_out, "a");x))
+     unit2:
+          val g= fn s:string => (let val x = "a"^"b"  
+                                 in fn y => (output(std_out, x); y)
+                                 end)
+
+          val result = if true then id else g "c";
+
+     Here "a"^"b" is put in a region which is secondary in the type of g "c". Since
+     the types of g "c" and id are unified in the last line, and since id has arrow
+     effect e6.{put(r1), get(r1), ..., put(r6), get(r6)}, where all the variables have
+     level 1, the region of "a"^"b" is lowered to level 1 without being unified with any
+     of the pre-declared global regions. So it is necessary to unify the region of
+     "a"^"b" with r4, the global region of type string.
+
    * ------------------------------------------------------- *)
 
-  fun unify_with_toplevel_rhos_eps(rhos_epss) : unit =
-    List.apply 
+  fun unify_with_toplevel_rhos_eps(cone as (n,c),rhos_epss) : cone =
+   (List.apply 
     (fn rho_eps =>
        let fun union_with(toplevel_rho) : unit =
 	     if G.eq_nodes(G.find toplevel_rho,G.find rho_eps) then ()
@@ -1058,8 +1097,12 @@ tracing *)
 	       | None => die "unify_with_toplevel_rhos.no runtype info"
 
 	  else die "unify_with_toplevel_rhos_eps.not rho or eps"
-       end) rhos_epss
-    
+       end) (rhos_epss@
+             ConeLayer.range(noSome(Cone.lookup c 1, (* 1 is the number of the top level *)
+                                    "mk_top_level_unique: not top-level in cone")));
+    (* the above side-effects cone; now return it: *)
+    cone
+   )
 
   (*****************************************************)
   (* generic instance of region- and effect variables  *)
@@ -1407,6 +1450,7 @@ tracing *)
       | _ => raise AE_LT
     end
 
+
   local (* sorting of atomic effects *)
     fun merge([], ys) = ys:effect list
       | merge(xs, []) = xs
@@ -1618,6 +1662,7 @@ tracing *)
     case G.get_info(G.find eps) of
       EPS{represents = Some l, ...} => l
     | _ => die "represents"
+
 
 end; 
 

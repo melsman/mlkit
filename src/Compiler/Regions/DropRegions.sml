@@ -1,28 +1,37 @@
 (*$DropRegions: MUL_EXP AT_INF LVARS CRASH EFFECT DROP_REGIONS FINMAP
-                FINMAPEQ PRETTYPRINT RTYPE REGION_STAT_ENV FLAGS *)
+                FINMAPEQ PRETTYPRINT RTYPE REGION_STAT_ENV FLAGS REGION_EXP EXCON MUL*)
 
 (* Drop Regions *)
 
-functor DropRegions(structure MulExp : MUL_EXP
+functor DropRegions(structure ExCon: EXCON
+                    structure MulExp : MUL_EXP
+                    structure Mul: MUL
+                      sharing type Mul.mulef = MulExp.mulef
+                    structure RegionExp : REGION_EXP
+                      sharing RegionExp = MulExp.RegionExp
+                      sharing type RegionExp.metaType = MulExp.metaType
 		    structure AtInf : AT_INF
-		      sharing type AtInf.place = MulExp.place
-			  and type AtInf.LambdaPgm = MulExp.LambdaPgm = MulExp.LambdaPgm
+		      sharing type AtInf.LambdaPgm = MulExp.LambdaPgm = MulExp.LambdaPgm
                           and type AtInf.LambdaExp = MulExp.LambdaExp
 		    structure RSE : REGION_STAT_ENV
 		      sharing type RSE.lvar = MulExp.lvar
 		    structure RType : RTYPE
 		      sharing type RType.sigma = RSE.TypeAndPlaceScheme
-			  and type RType.place = MulExp.place = RSE.place = RType.effect
+                      sharing type RegionExp.Type = RType.Type
+                      sharing type RType.Type = RegionExp.Type
 		    structure Lvars : LVARS
 		      sharing type Lvars.lvar = MulExp.lvar
 		    structure Crash : CRASH
 		    structure FinMapEq : FINMAPEQ
 		    structure Eff : EFFECT
-		      sharing type Eff.place = MulExp.place = MulExp.effect
+		      sharing type Eff.place = MulExp.place = MulExp.effect = RegionExp.place =
+                                   RType.place = RSE.place = RType.effect =
+                                   AtInf.place = Eff.effect
 		    structure PP : PRETTYPRINT
 		      sharing type PP.StringTree = Eff.StringTree = FinMapEq.StringTree = MulExp.StringTree
                                    = AtInf.StringTree
 		    structure Flags : FLAGS
+                    sharing type ExCon.excon = MulExp.excon
 		      ) : DROP_REGIONS =
   struct
     open MulExp AtInf
@@ -72,7 +81,6 @@ functor DropRegions(structure MulExp : MUL_EXP
       | place_atplace (SAT place) = place
       | place_atplace _ = die "place_atplace"
 
-
 									         (******************)
     local val bucket : place list ref = ref []                                   (* Visited fields *)
     in fun unvisit place = Eff.get_visited place := false		         (******************)
@@ -82,51 +90,26 @@ functor DropRegions(structure MulExp : MUL_EXP
     end
 
 
-    (* drop_places(places, _) returns a list of booleans of the same length
-       as places. The i'th boolean is true iff the i'th place should be kept
-       after dropping. A region variable rho should be kept iff it has ever had
-       a put effect on it. Earlier (in Version 2), the criterion was that
-       rho should be kept, if there was a put(rho) effect amongst the arrow effects
-       of the type of the function under consideration; but this is too weak, it turns
-       out: there may be no put(rho) effect in the function type and yet be a put(rho)
-       effect because rho is used as an actual argument to a region-polymorphic function
-       which, however, is not called! An example is
+    (* from version 2: *)
 
-	fun foldStateList f start = List.foldR (General.curry f) start numStateList
-
-       where foldR and curry are defined (somewhat unusually) by
-
-             fun curry(f: 'a*'b->'c)(x:'a)(y:'b):'c = f(x,y)
-             fun foldR(f: 'b -> 'a -> 'a)(acc:'a)(l:'b list): 'a = acc
-
-       Here curry f has a region parameter, rho, say for the region of the pair (x,y).
-       In foldStateList the application (curry f) introduces an actual region, rho',
-       corresponding to this pair, so rho' must not be dropped.
-       However, foldR never calls its argument function, so foldStateList has no
-       put on the rho'. Thus Version 2 would drop rho', leading to a compile time error
-       (namely that rho' was never bound). The current version looks for a the hash-consed
-       Put-node inside rho' and finds the put node that originated from the application
-       of curry. Thus the present version will not drop rho'.
-
-    *)
-
-
-    fun drop_places(places, _ (*arreffs*) ) =         
-      let   (*************************)
-            (* a rho is marked if it *)
-            (* should NOT be dropped *)
-            (*************************)
-        fun visit_put_rhos (places) = List.foldL Eff.acc_rho [] places
-	fun unvisit_word_bot_rhos rhos = 
-              List.apply (fn rho => if word_or_bot_region rho then unvisit rho else ()) rhos
-	val l = visit_put_rhos places
+    fun drop_places(places, arreffs) =         (*************************)
+      let                                      (* a rho is marked if it *)
+	                              	       (* should NOT be dropped *)
+	fun visit_put_rhos [] = ()             (*************************)
+	  | visit_put_rhos (arreff::arreffs) =
+	  let fun visit_eval_effect effect = if Eff.is_put effect then visit(Eff.rho_of effect) else ()
+	      val _ = List.apply visit_eval_effect (Eff.represents arreff)
+	  in visit_put_rhos arreffs
+	  end
+	fun unvisit_word_bot_rhos [] = ()
+	  | unvisit_word_bot_rhos (rho::rhos) =
+	  (if word_or_bot_region rho then unvisit rho
+	   else (); unvisit_word_bot_rhos rhos)
+	val _ = visit_put_rhos arreffs
 	val _ = unvisit_word_bot_rhos places
 	val bl = map is_visited places
-      in (*reset_bucket();*)
-         List.apply (fn rho=>Eff.get_visited rho:=false) l;
-         bl
+      in reset_bucket(); bl
       end
-
 
     fun filter_bl([],[]) = []
       | filter_bl(true::bl,x::xs) = x :: filter_bl(bl,xs)
@@ -134,7 +117,7 @@ functor DropRegions(structure MulExp : MUL_EXP
       | filter_bl _ = die "filter_bl"
 
    (* -----------------------------------------------------------------
-    * Environment
+    * Environment for Lambda Variables
     * ----------------------------------------------------------------- *)
 
     datatype env_res = FIXBOUND of bool list | NOTFIXBOUND
@@ -182,6 +165,23 @@ functor DropRegions(structure MulExp : MUL_EXP
 
 
    (* -----------------------------------------------------------------
+    * Environment for Region Variables
+    * ----------------------------------------------------------------- *)
+
+    datatype regenv_res = DROP | KEEP
+    type place = RType.place
+    type regenv = (place, regenv_res) FinMapEq.map
+    val empty_regenv = FinMapEq.empty : regenv
+    fun add_regenv (rho, res, regenv) = FinMapEq.add Eff.eq_effect (rho, res, regenv)
+
+    type StringTree = PP.StringTree
+    fun layout_regenv_res DROP = PP.LEAF "drop"
+      | layout_regenv_res KEEP = PP.LEAF "keep"
+    val layout_regenv = FinMapEq.layoutMap 
+           {start="Environment for region variables in DropRegions:(",finish=")",eq=" -> ",sep=", "} Eff.layout_effect layout_regenv_res
+
+
+   (* -----------------------------------------------------------------
     * Do some checking
     * ----------------------------------------------------------------- *)
 
@@ -199,6 +199,24 @@ functor DropRegions(structure MulExp : MUL_EXP
     fun check_atp_t atp s = check_atplace (Eff.TOP_RT, atp) s
 
 
+    fun filter [] = []
+      | filter (IGNORE::xs) = filter xs
+      | filter (x::xs) = x::filter xs
+
+   (* maybe_add_rho regvar_env rho acc   conses rho onto acc if
+      rho is marked as DROP in regvar_env: *)
+
+   fun maybe_add_rho regvar_env rho acc = 
+      case FinMapEq.lookup Eff.eq_effect regvar_env rho
+        of Some DROP => rho :: acc
+      | _ =>  acc
+
+   fun maybe_add regvar_env atp acc =
+     case atp of
+       IGNORE => acc
+     | ATTOP rho => maybe_add_rho regvar_env rho acc
+     | ATBOT rho => maybe_add_rho regvar_env rho acc
+     | SAT rho => maybe_add_rho regvar_env rho acc
 
    (* -----------------------------------------------------------------
     * Dropping regions
@@ -206,24 +224,47 @@ functor DropRegions(structure MulExp : MUL_EXP
 
     exception AbortExpression 
 
-    fun drop env (TR(e,metaType,ateffs,mulef)) =
+    fun drop (env as (lvar_env: env, regvar_env: regenv)) 
+             (t0 as TR(e,metaType,ateffs,mulef)) (acc: place list) : 
+             (place at, place*mul, unit)trip * place list=
+
       let
-	fun drop_sw (SWITCH(tr,sel,opt)) =
-	  let val sel' = map (fn (a,tr) => (a, drop env tr)) sel
-	    val opt' = case opt of Some tr => Some (drop env tr) | None => None
-	  in SWITCH(drop env tr,sel',opt')
+	fun drop_sw (SWITCH(tr,sel,opt)) acc =
+	  let val (sel', acc) = List.foldR (fn (a,tr) => fn (trs, acc) =>
+                                            let val (tr', acc) = drop env tr acc
+                                            in ((a, tr') :: trs, acc)
+                                            end) ([] , acc) sel
+	    val (opt',acc) = 
+              case opt of 
+                Some tr => let val (tr', acc) = drop env tr acc
+                           in (Some tr', acc) end
+              | None => (None, acc)
+            val (tr', acc) = drop env tr acc
+	  in (SWITCH(tr',sel',opt'), acc)
 	  end
 
-	val e' =
+	val (e', acc) =
 	 (case e
-	    of VAR {alloc=None,rhos_actuals=ref[],...} => e       (* fix-bound and prim lvars are dealed with below *)
+	    of VAR {alloc=None,rhos_actuals=ref[],...} => (e, acc)       (* fix-bound and prim lvars are dealt with below *)
 	     | VAR _ => die "drop.should be fix-bound"
-	     | INTEGER (n, atp) => (check_atp_w atp "INTEGER"; INTEGER (n, IGNORE))
-	     | STRING (s, atp) => (check_atp_s atp "STRING"; e)
-	     | REAL (s, atp) => (check_atp_r atp "REAL"; e)
-	     | UB_RECORD trips => UB_RECORD (map (drop env) trips)
-	     | FN{pat,body,free,alloc=atp} => (check_atp_t atp "FN_CLOS"; 
-					       FN{pat=pat,body=drop env body,free=free,alloc=atp})
+	     | INTEGER (n, atp) => (check_atp_w atp "INTEGER"; (INTEGER (n, IGNORE), acc))
+	     | STRING (s, atp) => (check_atp_s  atp "STRING";
+                                   (e, maybe_add regvar_env atp acc))
+	     | REAL (s, atp) => (check_atp_r atp "REAL"; (e, maybe_add regvar_env atp acc))
+	     | UB_RECORD trips => 
+                           let val (trips', acc) = List.foldR (fn tr => fn (trs,acc) =>
+                                                    let val (tr', acc)= drop env tr acc
+                                                    in (tr'::trs, acc)
+                                                    end) ([], acc) trips
+                           in (UB_RECORD trips', acc) 
+                           end
+	     | FN{pat,body,free,alloc=atp} => 
+                           (check_atp_t atp "FN_CLOS"; 
+                            let val (body', acc) = drop env body acc
+                            in
+                              (FN{pat=pat,body=body',free=free,alloc=atp},
+                               maybe_add regvar_env atp acc)
+                            end)
 	     | LETREGION{B,rhos=ref rhos,body} =>
 	      let fun drop_rhos [] = []
 		    | drop_rhos ((rho as (p,mul))::rhos) =
@@ -231,110 +272,254 @@ functor DropRegions(structure MulExp : MUL_EXP
 		       else ((*if bot_region p then die "letregion bound variable with runtype BOT."
 			     else ();mads *)   rho::drop_rhos rhos)
 		  val rhos' = drop_rhos rhos
-	      in LETREGION{B=B,rhos=ref rhos',body=drop env body}
+                  val (body', acc) = drop env body acc
+	      in (LETREGION{B=B,rhos=ref rhos',body=body'}, acc)
 	      end
 	     | LET{k_let,pat,bind,scope} =>
-	      let val env' = List.foldL(fn (lvar,_,_,_,_,_,_) => fn acc => 
-					add(lvar,NOTFIXBOUND,acc)) env pat 
-	      in LET{k_let=k_let,pat=pat,bind=drop env bind, scope=drop env' scope}
+	      let val env' = (List.foldL(fn (lvar,_,_,_,_,_,_) => fn acc => 
+					add(lvar,NOTFIXBOUND,acc)) lvar_env pat,
+                              regvar_env)
+                  val (scope', acc) = drop env' scope acc
+                  val (bind', acc) = drop env bind acc
+	      in (LET{k_let=k_let,pat=pat,bind=bind', 
+                      scope=scope'}, acc)
 	      end
 	     | FIX{free,shared_clos=atp,functions,scope} =>
 	      let val _ = check_atp_t atp "FIX_CLOS"
-		  type tr = lvar * bool list * (place * mul) list
-		  fun tr_function {lvar,occ,tyvars,rhos,epss,Type,rhos_formals=ref formals,other,bind} : tr =
-		    let val bl = drop_places(rhos,epss)
-		        val formals' = filter_bl(bl,formals)
-		    in (lvar, bl, formals')
+                  val acc = maybe_add regvar_env atp acc
+		  type tr = lvar * bool list * (place * mul) list * (place*mul) list * regenv 
+		  fun tr_function {lvar,occ,tyvars,rhos,epss,
+                                   Type,rhos_formals=ref formals,bound_but_never_written_into,
+                                   other,bind} : tr =
+		    let val bool_list = drop_places(rhos,epss)
+		        val formals' = filter_bl(bool_list,formals)
+                        val drop_formals' = (filter_bl (map not bool_list, formals))
+
+                        (* regvars_env' extends regvar with one binding for each bound region
+                           variable in the type scheme of the function. Every region variable
+                           is mapped to KEEP or DROP *)
+
+                        val regvar_env': regenv =  List.foldL
+                                              (fn (((rho,_),b:bool)) => fn regenv => 
+                                                 add_regenv(rho, if b then KEEP else DROP, regenv))
+                                              regvar_env
+                                              (ListPair.zip(formals, bool_list)
+                                               handle _ => die "FIX: formals and bool list have different lengths")
+		    in (lvar, bool_list, formals', drop_formals',  regvar_env')
 		    end
 		  val trs : tr list = map tr_function functions
-		  val env' = List.foldL (fn (lvar,bl,_) => fn env => add(lvar,FIXBOUND bl,env)) env trs
-		  fun new_functions [] [] = []
-		    | new_functions ({lvar,occ,tyvars,rhos,epss,Type,rhos_formals,other,bind}::fcs)
-		    ((lvar',_,formals)::trs') = (if not(Lvars.eq(lvar,lvar')) then die "new_functions.lvar"
-						 else {lvar=lvar,occ = [], (* simpler to drop all occurrences 
-                                                                              than to drop regions in them *)
-                                                       tyvars=tyvars,
-						       rhos=rhos,epss=epss,Type=Type,rhos_formals=ref formals,
-						       other=other,bind=drop env' bind}:: new_functions fcs trs')
-		    | new_functions _ _ = die "new_functions"
-		  val functions' = new_functions functions trs
-		  val scope' = drop env' scope
-	      in FIX{free=free,shared_clos=atp,functions=functions',scope=scope'}
+		  val lvar_env' = List.foldL (fn (lvar,bool_list,_,_,_) => fn env => 
+                                              add(lvar,FIXBOUND bool_list,env)) lvar_env trs
+
+		  fun new_functions [] [] acc = ([], acc)
+		    | new_functions ({lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
+                                      other,bind,bound_but_never_written_into}::fcs)
+  		                     ((lvar',_,formals,drop_formals',regvar_env')::trs') acc = 
+                      (if not(Lvars.eq(lvar,lvar')) then die "new_functions.lvar"
+                       else 
+                         let val (bind', acc1) = drop(lvar_env',regvar_env') bind []
+                             val bound_but_never_written_into = (* drop_formals' intersect acc1 *)
+                                 (* List.all (fn (rho,_) => List.exists (fn rho' => 
+                                             Eff.eq_effect(rho,rho')) acc1) *) drop_formals'
+                             val propagate = (* acc1 setminus drop_formals' *)
+                                  List.all (fn rho => not(List.exists (fn (rho',_) => 
+                                             Eff.eq_effect(rho,rho')) drop_formals')) acc1
+                             val (rest, acc) = new_functions fcs trs' (propagate @ acc)
+                         in
+                          ({lvar=lvar,occ = [], (* simpler to drop all occurrences 
+                                                  than to drop regions in them *)
+                             tyvars=tyvars,
+                             rhos=rhos,epss=epss,Type=Type,rhos_formals=ref formals,
+                             bound_but_never_written_into = Some(bound_but_never_written_into),
+                             other=other,
+                             bind=bind'}  (* function body traversed here *) 
+                         :: rest, acc)
+                         end
+                       )
+		    | new_functions _ _ acc = die "new_functions"
+		  val (functions', acc) = new_functions functions trs acc
+		  val (scope',acc) = drop (lvar_env', regvar_env) scope acc
+	      in (FIX{free=free,shared_clos=atp,functions=functions',scope=scope'}, acc)
 	      end
-	     | APP(ck,sr,tr1 as TR(VAR{lvar,il,plain_arreffs, alloc, rhos_actuals=ref actuals, other},metaType,ateffs,mulef), tr2) =>
-	      (case lookup env lvar
-		 of Some (FIXBOUND bl) =>
-		   let val _ = case alloc of Some atp => check_atp_t atp ("RHO_VECTOR." ^ Lvars.pr_lvar lvar) | None => ()
-		       val actuals' = filter_bl(bl,actuals)
-		   in APP(ck,sr,TR(VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,alloc=alloc,
-				 rhos_actuals=ref actuals',other=other},metaType,ateffs,mulef), drop env tr2)
+	     | APP(ck,sr,tr1 as TR(VAR{lvar,il,plain_arreffs, alloc, 
+                                       rhos_actuals=ref actuals, other},metaType,
+                                   ateffs,mulef), tr2) =>
+	      (case lookup lvar_env lvar
+		 of Some (FIXBOUND bool_list) =>
+		   let val acc = case alloc of 
+                                 Some atp => (check_atp_t atp ("RHO_VECTOR." ^ Lvars.pr_lvar lvar) ;
+                                              maybe_add regvar_env atp acc)
+                                             
+                               | None => acc
+		       val actuals' = filter_bl(bool_list,actuals)
+                       val acc = List.foldL (maybe_add regvar_env) acc actuals'
+                       val (tr2', acc) = drop env tr2 acc
+		   in (APP(ck,sr,TR(VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,alloc=alloc,
+				 rhos_actuals=ref actuals',other=other},metaType,ateffs,mulef), 
+                          tr2'), acc)
 		   end
 	          | _ => (case (alloc, actuals)
-			       of (None, []) => APP(ck,sr,tr1, drop env tr2)
+			       of (None, []) => 
+                                 let val (tr2', acc) = drop env tr2 acc
+                                 in (APP(ck,sr,tr1,tr2'), acc)
+                                 end
 				| _ => die ("drop.APP(VAR= " ^ Lvars.pr_lvar lvar ^ " ,tr2)")))
-	     | APP(ck,sr,tr1,tr2) => APP(ck,sr,drop env tr1, drop env tr2)
-	     | EXCEPTION(excon,b,mu,atp,tr) => (check_atp_t atp "EXCEPTION"; EXCEPTION(excon,b,mu,atp,drop env tr))
-	     | RAISE tr => RAISE (drop env tr)
-	     | HANDLE (tr1,tr2) => HANDLE (drop env tr1, drop env tr2)
-	     | SWITCH_I sw => SWITCH_I (drop_sw sw)
-	     | SWITCH_S sw => SWITCH_S (drop_sw sw)
-	     | SWITCH_C sw => SWITCH_C (drop_sw sw)
-	     | SWITCH_E sw => SWITCH_E (drop_sw sw)
+	     | APP(ck,sr,tr1,tr2) => 
+                 let val (tr1', acc) = drop env tr1 acc
+                   val   (tr2', acc) = drop env tr2 acc
+                 in
+                   (APP(ck,sr,tr1',tr2'), acc)
+                 end
+	     | EXCEPTION(excon,b,mu,atp,tr) =>
+                 let val acc = maybe_add regvar_env atp acc
+                     val (tr', acc) =  drop env tr acc
+                 in check_atp_t atp "EXCEPTION"; 
+                    (EXCEPTION(excon,b,mu,atp, tr'), acc)
+                 end
+	     | RAISE tr => 
+                 let val (tr', acc) = drop env tr acc in (RAISE (tr'), acc) end
+	     | HANDLE (tr1,tr2) => 
+                 let val (tr1', acc) = drop env tr1 acc
+                     val (tr2', acc) = drop env tr2 acc
+                 in
+                   (HANDLE(tr1', tr2'), acc)
+                 end
+	     | SWITCH_I sw => 
+                 let val (sw', acc) = drop_sw sw acc
+                 in (SWITCH_I sw', acc)
+                 end
+	     | SWITCH_S sw => 
+                 let val (sw', acc) = drop_sw sw acc
+                 in (SWITCH_S sw', acc)
+                 end
+	     | SWITCH_C sw => 
+                 let val (sw', acc) = drop_sw sw acc
+                 in (SWITCH_C sw', acc)
+                 end
+	     | SWITCH_E sw => 
+                 let val (sw', acc) = drop_sw sw acc
+                 in (SWITCH_E sw', acc)
+                 end
 	     | CON0 {con, il, aux_regions, alloc} => 
-		 let fun filter [] = []
-		       | filter (IGNORE::xs) = filter xs
-		       | filter (x::xs) = x :: filter xs
-		 in CON0{con=con,il=il,aux_regions=filter(map drop_atplace aux_regions),
-			 alloc=drop_atplace alloc}
+		 let val aux_regions' = filter(map drop_atplace aux_regions)
+                     val acc = List.foldL (maybe_add regvar_env) acc (alloc::aux_regions')
+		 in (CON0{con=con,il=il,
+                          aux_regions=aux_regions',
+                          alloc=drop_atplace alloc}, acc)
 		 end
-	     | CON1 ({con, il, alloc}, tr) => CON1({con=con,il=il,alloc=drop_atplace alloc}, drop env tr)
-	     | DECON (c, tr) => DECON (c, drop env tr)
-	     | EXCON (excon, opt) => EXCON(excon, case opt
-						    of Some (alloc,tr) => Some (drop_atplace alloc, drop env tr)
-						     | None => None)
-	     | DEEXCON (excon,tr) => DEEXCON(excon,drop env tr)
-	     | RECORD (alloc, trs) => RECORD(drop_atplace alloc, map (drop env) trs)
-	     | SELECT (i, tr) => SELECT(i,drop env tr)
-	     | DEREF tr => DEREF (drop env tr)
-	     | REF (alloc,tr) => REF(drop_atplace alloc, drop env tr)
-	     | ASSIGN (alloc,tr1,tr2) => ASSIGN(drop_atplace alloc, drop env tr1, drop env tr2)
+	     | CON1 ({con, il, alloc}, tr) => 
+                 let val (tr', acc) = drop env tr acc
+                     val acc = maybe_add regvar_env alloc acc
+                 in
+                   (CON1({con=con,il=il,
+                          alloc= drop_atplace alloc},tr'),
+                    acc)
+                 end
+	     | DECON (c, tr) => 
+                 let val (tr', acc) = drop env tr acc
+                 in (DECON (c,tr'), acc)
+                 end
+	     | EXCON (excon, opt) => 
+                 let val (tr_opt', acc) = 
+                   case opt of
+                     Some (alloc,tr) => let val acc = maybe_add regvar_env alloc acc
+                                            val (tr', acc) = drop env tr acc
+                                        in (Some(drop_atplace alloc, tr'), acc)
+                                        end
+                   | None => (None, acc)
+                 in
+                   (EXCON(excon, tr_opt'), 
+                    acc)
+                 end
+	     | DEEXCON (excon,tr) => let val (tr', acc) = drop env tr acc
+                                     in (DEEXCON(excon, tr'), acc)
+                                     end
+	     | RECORD (alloc, trs) => 
+                  let val acc = maybe_add regvar_env (drop_atplace alloc) acc
+                    val (trs', acc) = List.foldR (fn tr => fn (trs, acc) =>
+                                                  let val (tr', acc) = drop env tr acc
+                                                  in (tr'::trs, acc)
+                                                  end)
+                                      ([], acc) trs
+                  in
+                     (RECORD(drop_atplace alloc, trs'), acc)
+                  end
+	     | SELECT (i, tr) => 
+                  let val (tr', acc) = drop env tr acc
+                  in (SELECT(i, tr'), acc)
+                  end
+	     | DEREF tr => 
+                  let val (tr', acc) = drop env tr acc
+                  in (DEREF tr', acc)
+                  end
+	     | REF (alloc,tr) => 
+                  let val acc = maybe_add regvar_env alloc acc
+                    val (tr', acc)= drop env tr acc
+                  in
+                    (REF(drop_atplace alloc,tr'), acc)
+                  end
+	     | ASSIGN (alloc,tr1,tr2) => 
+                  let val acc = maybe_add regvar_env alloc acc
+                      val (tr1', acc) = drop env tr1 acc
+                      val (tr2', acc) = drop env tr2 acc
+                  in (ASSIGN(drop_atplace alloc, tr1', tr2'),
+                      acc)
+                  end
 	     | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => 
-		 EQUAL ({mu_of_arg1=mu_of_arg1, mu_of_arg2=mu_of_arg2, alloc=drop_atplace alloc}, 
-			drop env tr1, drop env tr2)
+                 let val acc = maybe_add regvar_env alloc acc
+                     val (tr1', acc) = drop env tr1 acc
+                     val (tr2', acc) = drop env tr2 acc
+                 in
+                   (EQUAL ({mu_of_arg1=mu_of_arg1, 
+                            mu_of_arg2=mu_of_arg2, 
+                            alloc=drop_atplace alloc}, tr1', tr2'), acc)
+                 end
 	     | CCALL ({name, mu_result, rhos_for_result}, trs) =>
 		 let
+                   val acc = List.foldL (maybe_add regvar_env) acc (map #1 rhos_for_result)
+                   val (trs', acc) = List.foldR (fn tr => fn (trs, acc) =>
+                                                 let val (tr', acc) = drop env tr acc
+                                                 in (tr'::trs, acc)
+                                                 end)
+                                                ([],acc) trs
 		   (*I do not think you can be sure that List.dropAll preserves
 		    the order of the list, so filter is used:*)
 		   fun filter [] = []
 		     | filter ((IGNORE, _) :: xs) = filter xs
 		     | filter ((_, Some 0) :: xs) = die "filter: undropped region with size=0?"
 		     | filter (x :: xs) = x :: filter xs
-		 in CCALL ({name = name,
+		 in(CCALL ({name = name,
 			    mu_result = mu_result,
 			    rhos_for_result =
 			      filter (map (fn (atp, i_opt) =>
 					   (drop_atplace atp, i_opt)) rhos_for_result)},
-			   map (drop env) trs)
+			   trs'), acc)
 		 end
 	     | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => 
-                  RESET_REGIONS ({force=force,alloc=drop_atplace alloc, 
-                                  regions_for_resetting = map drop_atplace regions_for_resetting}, 
-                                 drop env tr)
+                 let 
+                   val acc = maybe_add regvar_env alloc acc
+                   val regions_for_resetting' = map drop_atplace regions_for_resetting
+                   val acc = List.foldL (maybe_add regvar_env) acc regions_for_resetting'
+                   val (tr', acc) = drop env tr acc
+                 in
+                  (RESET_REGIONS ({force=force,alloc=drop_atplace alloc, 
+                                  regions_for_resetting = regions_for_resetting'}, 
+                                 tr'), acc)
+                 end
 	     | FRAME{declared_lvars,declared_excons} =>
 		 let val lvars = map #lvar declared_lvars
-		   val env' = List.foldL (fn lv => fn env' =>
-					  (case lookup env lv
-					     of Some bl => add(lv,bl,env')
+		   val lvar_env' = List.foldL (fn lv => fn env' =>
+					  (case lookup lvar_env lv
+					     of Some bool_list => add(lv,bool_list,env')
 					      | None => die "drop.FRAME.lv not in env")) empty lvars
-		   val _ = export_env := env'
-		 in e
+		   val _ = export_env := lvar_env'
+		 in (e, acc)
 		 end
            ) handle  Crash.CRASH => 
                            (log "\nDropRegions failed at expression:";
                             dump(AtInf.layout_exp_brief e);
                             raise AbortExpression)
-
-      in TR(e',metaType,ateffs,mulef)
+      in (TR(e',metaType,ateffs,mulef), acc)
       end
 
     fun drop_regions (env:env,
@@ -345,9 +530,11 @@ functor DropRegions(structure MulExp : MUL_EXP
 			  export_basis,
 			  export_Psi}) =
       let val _ = export_env := empty
-	  val expression' = drop env expression
+	  val (expression', acc) = drop (env, empty_regenv) expression []
                             handle AbortExpression =>
                              die "drop_regions failed"
+          val _ = case acc of [] => ()
+                    | _ => die "non-empty list of regions to be dropped at top-level"
 	  val env' = ! export_env
 	  val _ = export_env := empty
 	  val export_rhos' = List.foldL (fn rho => fn places =>

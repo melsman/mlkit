@@ -130,6 +130,7 @@ struct
                                   epss: effect list,              (* type     *)
 				  Type : Type,                    (* scheme.  *)
 				  rhos_formals: 'b list ref,
+                                  bound_but_never_written_into: 'b list Option,
                                   other:  'c,
 				  bind : ('a,'b,'c)trip} list,
 		     scope : ('a,'b,'c)trip}
@@ -249,7 +250,8 @@ struct
 			   RSE.declareLvar(lvar, (true,true,R.FORALL(tyvars,rhos,epss,Type), shared_clos , None, None), TE'))
 			TE functions
 	
-	             fun warn_lvar {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,other,bind} =
+	             fun warn_lvar {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
+                                    bound_but_never_written_into,other,bind} =
 	                  let val sigma = R.FORALL(tyvars,rhos,epss,Type)
 	                  in
 	                     warn_if_escaping_puts(TE, lvar, sigma);
@@ -1059,6 +1061,7 @@ struct
         )
       and  mk_mutual_binding(opt_alloc, functions) = 
         let fun mk_fix({lvar,occ,tyvars,rhos,epss,Type, rhos_formals= ref rhos_formals, 
+                        bound_but_never_written_into,
 			bind as TR(FN{pat, body, ...},_,_,_),other})  (no, rest_of_mutual_binding) =
               (*   
 
@@ -1079,12 +1082,19 @@ struct
                                             Some(PP.HNODE{start = "[", finish = "]", childsep= PP.RIGHT", ",
                                                   children = layHseq layout_bind rhos_formals})
                                            else None
+                     val dropped_rho_formals_opt = 
+                          case bound_but_never_written_into of
+                            Some l => if print_rhos_formals then
+                                            Some(PP.HNODE{start = "[", finish = "]", childsep= PP.RIGHT", ",
+                                                  children = layHseq layout_bind l})
+                                      else None
+                          | _ => None
                      val value_formals = PP.HNODE{start="(", finish = ")= ", childsep = PP.RIGHT ", ", 
                                                   children = map (fn (lvar,_) => PP.LEAF(Lvar.pr_lvar lvar)) pat}
                      val body_t = layTrip(body, 0)
                      val t1 = PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT " ",
                                       children = PP.LEAF (Lvar.pr_lvar lvar):: 
-                                                 get_opt[sigma_t_opt, opt_alloc, rho_formals_opt, Some(value_formals)]}
+                                                 get_opt[sigma_t_opt, opt_alloc, rho_formals_opt,dropped_rho_formals_opt, Some(value_formals)]}
                     in
                       PP.NODE{start = keyword , finish = "", indent = 4, childsep = PP.NONE, 
                               children = [t1, body_t]}
@@ -1152,9 +1162,12 @@ struct
     | FIX{free,shared_clos,functions,scope} =>
          e_to_t(FIX{free=free,shared_clos=shared_clos,scope = eval env scope,
              functions = map 	
-               (fn{lvar,occ,tyvars,rhos,epss,Type,rhos_formals,other,bind} =>
+               (fn{lvar,occ,tyvars,rhos,epss,Type,rhos_formals,bound_but_never_written_into,
+                   other,bind} =>
                   {lvar=lvar,occ=occ,tyvars=tyvars,rhos=rhos,epss=epss,Type=Type,
-                   rhos_formals=rhos_formals,other=other,
+                   rhos_formals=rhos_formals,
+                   bound_but_never_written_into=bound_but_never_written_into,
+                   other=other,
                    bind = eval [] bind}) functions})
     | APP(ck,sr,tr1,tr2) => e_to_t(APP(ck,sr,eval env tr1, eval env tr2))
     | EXCEPTION(excon,b,mu,a,tr) =>
@@ -1478,13 +1491,15 @@ val (body',dep) = mk_deptr(EE',body, dep)
                 | x => (outtree(RegionExp.layoutLambdaExp' e); raise Abort x)
 
       and mk_dep_funcs(EE, [], [], dep) = ([],dep)
-        | mk_dep_funcs(EE, {lvar,occ,tyvars,rhos=ref rhos,epss=ref epss,Type,formal_regions,bind}::rest, 
+        | mk_dep_funcs(EE, {lvar,occ,tyvars,rhos=ref rhos,epss=ref epss,Type,
+                            formal_regions,bind}::rest, 
                            r :: rest_refs, dep)=
              let val (bind', dep) = mk_deptr(EE,bind,dep)
                  val (functions', dep) = mk_dep_funcs(EE, rest, rest_refs, dep)
                  val new_occ = map (#1 o !) (! occ)
              in ({lvar=lvar,occ=new_occ,tyvars=tyvars,rhos=rhos,
                   epss=epss,Type=Type,rhos_formals=ref (map (fn rho=>(rho,Mul.NUM 1)) rhos),
+                  bound_but_never_written_into = None,
                   bind=bind',other = r}::functions', dep)
              end
 	| mk_dep_funcs _ = die "mk_dep_funcs"
@@ -1617,9 +1632,12 @@ val (body',dep) = mk_deptr(EE',body, dep)
         )))
       | FIX{free,shared_clos,functions,scope} =>
         kne scope (fn scope' =>
-         let val functions' = map (fn{lvar,occ,tyvars,rhos,epss,Type,rhos_formals,other,bind} =>
+         let val functions' = map (fn{lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
+                                      bound_but_never_written_into=bound_but_never_written_into,
+                                      other,bind} =>
                            {lvar= lvar, occ=occ,tyvars=tyvars,rhos=rhos,epss=epss,Type=Type,
                             rhos_formals=rhos_formals,other = other,
+                            bound_but_never_written_into=bound_but_never_written_into,
                             bind = kne bind (fn x => x)}) functions
          in k(e_to_t(FIX{free=free, shared_clos=shared_clos, functions = functions', scope=scope'}))
          end)
@@ -2052,11 +2070,13 @@ val (body',dep) = mk_deptr(EE',body, dep)
               | None => raise NOT_PRIM)
         and do_functions [] = []
           | do_functions ({lvar,occ,tyvars,rhos,epss,Type,
-                           rhos_formals,other,bind}::rest_functions) =
+                           rhos_formals,bound_but_never_written_into,other,bind}::rest_functions) =
               let val (bind',_) = tailTrip(Some(!rhos_formals,true))(bind, NEXT) (* proceed to next closure *)
               in
                  {lvar=lvar, occ=occ,tyvars=tyvars, rhos=rhos, epss=epss, 
-                  Type=Type,rhos_formals=rhos_formals, other=other,
+                  Type=Type,rhos_formals=rhos_formals, 
+                  bound_but_never_written_into=bound_but_never_written_into,
+                  other=other,
                   bind=bind'} :: do_functions rest_functions
               end
             

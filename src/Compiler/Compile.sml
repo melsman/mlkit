@@ -215,6 +215,9 @@ functor Compile(structure Excon : EXCON
                              else fn _ => None)
                              (fn _ => None)) x
 
+    fun say x = output(!Flags.log, x)
+    fun sayenv rse = PP.outputTree(say, SpreadExp.RegionStatEnv.layout rse, !Flags.colwidth)
+
     type arity = int
 
 
@@ -402,7 +405,8 @@ functor Compile(structure Excon : EXCON
 			       Effect.lower toplevel effect cone) cone new_layer
 
 (*	val _ = print "\n*** Unifying toplevel regions and effects ***\n" *)
-	val new_layer = (Effect.unify_with_toplevel_rhos_eps new_layer; [])
+        val cone = Effect.unify_with_toplevel_rhos_eps(cone,new_layer)
+	val new_layer = []
 
         val _ = Timing.timing_end("Reg. Inf. (NEW)")
      (*   val _ = (Profile.profileOff();
@@ -439,6 +443,8 @@ functor Compile(structure Excon : EXCON
 	       end handle _ => die "cannot form rse'")
 	     | _ => die "program does not have type frame"
     in 
+        say "Resulting region-static environment:\n";
+        sayenv(rse');
         if !Flags.DEBUG_COMPILER 
             then display("\nReport: After Region Inference (NEW)", layoutRegionPgm pgm') 
         else ();

@@ -134,10 +134,20 @@ struct
   fun combine(Psi_global: mularefmap, Psi_local: imp_mularefmap): imp_mularefmap= 
        QM_EffVarEnv.combine(Psi_global, Psi_local)
 
+  fun summul (NUM n1, NUM n2) = if n1 + n2 > K then INF else NUM (n1 + n2)
+    | summul _ = INF
+
+  fun compress [] = []
+    | compress [(ae,m)] = [(ae,m)]
+    | compress ((ae1,m1)::(ae2,m2)::rest) =
+        if Eff.eq_effect(ae1, ae2) then
+           compress((ae1, summul(m1,m2))::rest)
+        else (ae1,m1)::compress((ae2,m2)::rest)
+
   fun equal_mulef(mulef1,mulef2) =
     let val sort = ListSort.sort (fn (ae1,_) => fn (ae2,_) => Eff.ae_lt(ae1,ae2))
-        val mulef1 = sort mulef1
-        val mulef2 = sort mulef2
+        val mulef1 = compress(sort mulef1)
+        val mulef2 = compress(sort mulef2)
 	fun eq ([],[]) = true
 	  | eq ((ae1,mul1)::mulef1,(ae2,mul2)::mulef2) =
 	  Eff.eq_effect(ae1,ae2) andalso mul1=mul2 andalso eq (mulef1,mulef2)
@@ -419,8 +429,6 @@ struct
 
   fun inteffect psi = map (fn(x, mul)=>(x, intof_mul mul)) psi
 
-  fun summul (NUM n1, NUM n2) = if n1 + n2 > K then INF else NUM (n1 + n2)
-    | summul _ = INF
 
   fun maxmul (NUM n1, NUM n2) = if n1 > n2 then NUM n1 else NUM n2
     | maxmul _ = INF
@@ -604,6 +612,18 @@ struct
    
   fun getmultiplicities_loop(psi, [])= []
     | getmultiplicities_loop((ae1, mul1)::psi, rho::rhos) =
+(*experiment
+        let
+  	    val rho_key = Eff.key_of_eps_or_rho rho
+            val ae_key = Eff.key_of_eps_or_rho(Eff.rho_of ae1)
+        in
+          if rho_key = ae_key
+            then mul1:: getmultiplicities_loop(psi, rhos)
+          else if rho_key < ae_key
+               then NUM 0 :: getmultiplicities_loop((ae1, mul1)::psi, rhos)
+          else getmultiplicities_loop(psi, rho::rhos)
+        end
+*)
         let
   	    val ae2 = Eff.mkPut rho (* important: mkPut returns existing Put rho, if one exists*)
         in
@@ -613,11 +633,19 @@ struct
                then NUM 0 :: getmultiplicities_loop((ae1, mul1)::psi, rhos)
           else getmultiplicities_loop(psi, rho::rhos)
         end
+
     | getmultiplicities_loop([], ae2::phi) = map (fn _ => NUM 0) (ae2::phi)
 
   fun getmultiplicities(psi,rhos) = getmultiplicities_loop(psi,rhos)
 
   fun getmultiplicities_unsorted(psi,rhos) = 
+(*experiment
+      map (fn rho => let val key_rho = Eff.key_of_eps_or_rho rho
+                     in #2(List.first (fn (ae,mul) => Eff.is_put_with_key key_rho ae) psi)
+                        handle List.First _ => NUM 0
+                     end)
+          rhos
+*)
       map (fn rho => let val ae_rho = Eff.mkPut rho
                      in #2(List.first (fn (ae,mul) => Eff.eq_effect(ae, ae_rho)) psi)
                         handle List.First _ => NUM 0
@@ -688,12 +716,6 @@ struct
 
   fun apply_mularefset(S, Psi)= pairmap apply_mularef S Psi 
 
-  fun compress [] = []
-    | compress [(ae,m)] = [(ae,m)]
-    | compress ((ae1,m1)::(ae2,m2)::rest) =
-        if Eff.eq_effect(ae1, ae2) then
-           compress((ae1, summul(m1,m2))::rest)
-        else (ae1,m1)::compress((ae2,m2)::rest)
 
   fun sort_psi psi = Sort.sort (fn((ae1,_),(ae2,_)) => Eff.ae_lt(ae1,ae2)) psi
 
@@ -964,27 +986,27 @@ old*)
     | instantiate((aref0 as (eps0,phi0))::plainarroweffects, 
                   qmul as (eps0' :: epses', [], Psi'), Psi, dep)= 
 	 let
-             (*val _ = if checkPsi Psi' then () else 
+(*             val _ = if checkPsi Psi' then () else 
                         (say "instantiate applied to ill-formed Xi = ";
-                         outtree(layout_qmul qmul))
+                         outtree(layout_qmul qmul))*)
              val t0 = layout_qmul qmul
              val t1 = layout_mularef (!(lookup_mularefmap(Psi, eps0)))
              val t2 = layout_mularef (nf(!(lookup_mularefmap(Psi, eps0))))
-             val t3 = layout_mulef   (lookup_mularefset(Psi', eps0'))*)
+             val t3 = layout_mulef   (lookup_mularefset(Psi', eps0'))
              val actual_psi = #2(nf(!(lookup_mularefmap(Psi, eps0))))
              val new_actual_psi:mulef = 
                        maxef(actual_psi,
                              lookup_mularefset(Psi', eps0')) (* formal, acyclic *)
              (* (eps0,new_actual_psi) is not necessarily acyclic, so nomalise it: *)
              val (eps0,new_actual_psi) = nf (eps0,new_actual_psi)
-             (*val t4 = layout_mulef new_actual_psi*)
+             val t4 = layout_mulef new_actual_psi
              val Se:efsubst = [(eps0', (eps0,new_actual_psi))]
              val _ = doSubst(eps0, diffef(new_actual_psi,actual_psi), dep)
-                             (*   handle x => (say "qmul="; outtree t0;
+                                handle x => (say "qmul="; outtree t0;
                                    say "lookup Psi gave"; outtree t1;
                                    say "nf gave"; outtree t2;
                                    say "lookup Psi' gave"; outtree t3;
-                                   say "new_actual_psi was:"; outtree t4; raise x) *)
+                                   say "new_actual_psi was:"; outtree t4; raise x) 
 	 in
               instantiate(plainarroweffects,
                           (epses', [], 
@@ -1034,7 +1056,6 @@ old*)
            if Eff.eq_effect(eps,eps') then eps::rest 
            else if Eff.ae_lt(eps', eps) then eps' :: eps :: rest
            else eps::cons_if_not_there(eps',rest)
-
 
   fun mk_init_dep ((eps, r as ref (mularef as (eps',psi))), dep) : dependency_map=
        (* add r as a shared semantic object of off effectvariables in eps'.psi  *)

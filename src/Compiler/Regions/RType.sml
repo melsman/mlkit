@@ -14,6 +14,7 @@ functor RType(structure Flags : FLAGS
 struct
   fun say s= output(std_out, s ^ "\n");
   fun logsay s= output(!Flags.log, s );
+  fun log_tree t= PP.outputTree(logsay, t, !Flags.colwidth)
   fun show_rho rho = PP.flatten1(E.layout_effect rho)
   fun show_rhos rhos = List.string show_rho rhos
 
@@ -419,6 +420,18 @@ struct
              end
       end
   
+  (* maybe_increase_runtype(mu as (tau,rho)) increases the runType of rho to 
+     be the least upper bound of its current runType and the runType of tau.
+     This must be done during instantiation of type schemes when (tau,rho)
+     is the result of instantiating (alpha',rho') where rho' has runtype BOT_RT *)
+
+  fun maybe_increase_runtype(mu as (tau,rho)) =
+    let val old = case E.get_place_ty rho of Some old => old | _ => die "maybe_increase_runtype"
+      val new = runtype tau
+    in if old<>new then E.setRunType rho (E.lub_runType(old,new)) else ();
+      mu
+    end
+
 
   (* instantiation of type schemes *)
 
@@ -436,12 +449,6 @@ struct
   fun mk_il(taus,places,effects) = (taus,places,effects)
   fun un_il(taus,places,effects) = (taus,places,effects)
 
-  fun setInstance(node,node') = 
-                 (E.get_instance node) := Some node'
-
-  fun clearInstance(node,_) = 
-                 (E.get_instance node) := None
-
   fun instAux(S as (St,Sr,Se),tau) cone = 
         let
           (* debugging 
@@ -453,8 +460,8 @@ struct
           *)
           val find = E.find
 
-          val _ = List.apply setInstance Sr
-          val _ = List.apply setInstance Se
+          val _ = List.apply E.setInstance Sr
+          val _ = List.apply E.setInstance Se
 
           fun fst(x,y) = x
 
@@ -526,17 +533,20 @@ struct
                     val (chng2, rho2) = cp_rho rho
                 in
                     if chng1 orelse chng2 
-                      then (true, (tau1,rho2)) 
+                      then case tau of
+                             TYVAR _ => (true, maybe_increase_runtype(tau1,rho2))
+                           | _ =>(true,(tau1, rho2)) 
                     else (false,mu)
                 end
+
 
 
             val Ty = #2(cp_ty tau)
                                   (* this is where arrow effects are instantiated*)
             val (cone, updates) = E.instNodesClever (#2 S @ #3 S) cone
 
-            val _ = List.apply clearInstance Sr
-            val _ = List.apply clearInstance Se
+            val _ = List.apply E.clearInstance Sr
+            val _ = List.apply E.clearInstance Se
 
             (*val _ = footnote Profile.profileOff()*)
         in
@@ -974,6 +984,18 @@ struct
     | merge(l::ls, ixs :: l2) = ixs :: merge(l::ls,l2)
     | merge _ = die ".merge: ill-formed merge"
 
+  fun fail_aux(sigma,sigma'): unit =
+          (logsay "MatchSchemes: matching of type schmes failed\n";
+           logsay "  the supposedly more general type scheme :\n    ";
+           log_tree (layout_sigma(sigma)); logsay "\n";
+           logsay "  the supposedly less general type scheme :\n    ";
+           log_tree (layout_sigma(sigma')); logsay "\n")
+
+  fun failwith(x,sigma,sigma') = 
+   (fail_aux(sigma,sigma');
+    raise x
+   )
+
   fun matchSchemes(sigma as FORALL([], rhos, epss,tau),
             sigma' as FORALL([], rhos', epss', tau')) :
                                  (il * cone) -> (il * cone) =
@@ -1008,19 +1030,15 @@ struct
       val thin = mk_transformer(rhos'_origins_extended, epss'_origins_extended)
     in
       fn ((old_taus, old_rhos, old_epss), cone) =>
-          let val (new_rhos, cone) = E.cloneRhos(add_rhos, cone)
+         (let val (new_rhos, cone) = E.cloneRhos(add_rhos, cone)
               val (new_epss, cone) = E.cloneEpss(add_epss, cone)
           in
               thin ((old_taus,new_rhos@old_rhos, new_epss @ old_epss), cone)
-          end
-    end  handle FAIL_MATCH msg => raise FAIL_MATCH
-          (implode ["MatchSchemes: matching of type schmes failed\n",
-                    "  the supposedly more general type scheme :\n    " ,
-                       PP.flatten1(mk_lay_sigma (not(!Flags.print_regions)) sigma), "\n",
-                    "  the supposedly less general type scheme :\n    ", 
-                       PP.flatten1(mk_lay_sigma (not(!Flags.print_regions)) sigma'), "\n", msg])
+          end handle x => failwith (x,sigma,sigma'))
+    end  handle x => failwith(x,sigma,sigma')
     )
   | matchSchemes _ = raise FAIL_MATCH "matchSchemes: type scheme had bound type variables"
+
 
   val exnType: Type = CONSTYPE(TyName.tyName_EXN,[],[],[])  
   val intType: Type = CONSTYPE(TyName.tyName_INT,[],[],[])  

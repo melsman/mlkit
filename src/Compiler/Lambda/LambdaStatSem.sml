@@ -599,6 +599,7 @@ end
 					  | _ => die "EQUALprim.Wrong instance kind")
 		   | _ => die "EQUALprim.Wrong number of args") 
 	   | LESS_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "LESS_REALprim"
+	   | EQUAL_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "EQUAL_INTprim"
 	   | LESS_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "LESS_INTprim"
 	   | GREATER_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "GREATER_REALprim"
 	   | GREATER_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "GREATER_INTprim"

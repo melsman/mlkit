@@ -13,6 +13,8 @@ functor LambdaExp(structure Lvars: LVARS
     type excon = Excon.excon
     type TyName = TyName.TyName
 
+    fun die s = Crash.impossible ("LambdaExp." ^ s)
+
     type tyvar = int
     fun equality_tyvar tyvar = (tyvar mod 2) = 1
     fun pr_tyvar tyvar = (if equality_tyvar tyvar then "''a" else "'a") ^ Int.string tyvar
@@ -89,6 +91,7 @@ functor LambdaExp(structure Lvars: LVARS
       | MINUS_REALprim
       | MINUS_INTprim
       | EQUALprim of {instance: 'Type}
+      | EQUAL_INTprim
       | LESS_REALprim
       | LESS_INTprim
       | GREATER_REALprim
@@ -252,6 +255,11 @@ functor LambdaExp(structure Lvars: LVARS
       | PLUS_INTprim => PP.LEAF("+")
       | MINUS_REALprim => PP.LEAF("-")
       | MINUS_INTprim => PP.LEAF("-")
+      | EQUAL_INTprim => 
+          if !Flags.print_types then
+            PP.LEAF("=[int]")
+          else
+            PP.LEAF("=")
       | EQUALprim {instance} => 
           if !Flags.print_types then
 	      PP.NODE{start="=(",finish=")",indent=2,
@@ -287,11 +295,11 @@ functor LambdaExp(structure Lvars: LVARS
 	fun child(x,lamb) =
 	  PP.NODE{start="",finish="",indent=0,
 		  children=[PP.LEAF (show_const x),
-			    layoutLambdaExp lamb],
+			    layoutLambdaExp(lamb,0)],
 		  childsep=PP.LEFT " => "}
       in
-	PP.NODE{start="SWITCH(",finish=")",indent=3,
-		children=[layoutLambdaExp lamb,
+	PP.NODE{start="(case ",finish=")",indent=3,
+		children=[layoutLambdaExp(lamb,0),
 			  PP.NODE{start="",finish="",indent=0,
 				  children=(map child rules) @ 
 				  (case wildcardOpt of 
@@ -299,165 +307,18 @@ functor LambdaExp(structure Lvars: LVARS
 				   | Some lamb => 
 				       [PP.NODE{start="",finish="",indent=0,
 						children=[PP.LEAF "_",
-							  layoutLambdaExp lamb],
+							  layoutLambdaExp(lamb,0)],
 						childsep=PP.LEFT " => "}]),
 				     childsep=PP.LEFT " | "}],
 		childsep = PP.RIGHT " of "} 
       end
 
 
-    fun layoutPgm (PGM(DATBINDS dblist,lamb)) =
-      let
-	val layoutcb =
-	  map (fn (con,tauopt) =>
-	       PP.NODE{start="",finish="",indent=0, childsep=PP.LEFT " of ",
-		       children=PP.LEAF (Con.pr_con con) :: layoutTypeOpt tauopt})
-				     
-	fun layoutdb (tyvars,tyname,cb) =
-	  let
-	    val tyvars_tynameT = 
-	      case layoutTyvarseq tyvars
-		of Some t => PP.NODE {start="",finish="",childsep=PP.RIGHT " ",indent=0,
-				      children=[t, PP.LEAF(TyName.pr_TyName tyname)]}
-		 | None => PP.LEAF(TyName.pr_TyName tyname)
-	    val cbT = PP.NODE{start="",finish="",indent=0,
-			      children=layoutcb cb,
-			      childsep=PP.LEFT" | "}
-	  in
-	    PP.NODE{start="",finish="",indent=0,
-		    children=[tyvars_tynameT,PP.LEAF " = ",cbT],
-		    childsep=PP.NONE}
-	  end
-	  
-	fun layoutMutualRec_db db =
-	  PP.NODE{start="DATATYPE [",finish="] ",indent=3,
-		  children=map layoutdb db,childsep=PP.LEFT" and "}
+   fun parenthesise(st: PP.StringTree): PP.StringTree=
+     PP.NODE{start = "(", finish= ")", indent=1, children = [st], childsep = PP.NONE}
 
-	val dbTs = map layoutMutualRec_db dblist
 
-	val lambT = layoutLambdaExp lamb
-      in
-	PP.NODE{start="",finish="",indent=0,
-		children=dbTs @ [lambT],childsep=PP.NONE}
-      end
-
-    and layoutLambdaExp lamb: StringTree =
-      case lamb of 
-        VAR {lvar=lv,instances=taus} => 
-	  PP.NODE{start=Lvars.pr_lvar lv ^ ":(", finish=")",indent=0,
-		  children=map layoutType taus,
-		  childsep=PP.RIGHT ","}
-      | INTEGER i => PP.LEAF(Int.string i)
-      | STRING s => PP.LEAF(String.string s)
-      | REAL r => PP.LEAF(Real.string r)
-      | FN {pat,body} => 
-	  PP.NODE{start="FN ",finish="", indent=1,
-		  children=[layoutFnPat pat,
-			    layoutLambdaExp body], 
-		  childsep=PP.RIGHT "=> "
-		  }
-      | LET {pat,bind,scope} => 
-	  let 
-	    val binding = PP.NODE{start="", finish="",
-				  indent=0, childsep=PP.RIGHT " = ",
-				  children=[layoutLetPat pat,
-					    layoutLambdaExp bind]}
-	  in
-	    PP.NODE{start="LET ",finish=" END ",indent=4,
-		    children=[binding,layoutLambdaExp scope],
-		    childsep=PP.LEFT " IN "}
-	  end
-      | FIX{functions, scope} =>
-	  let
-	    fun layoutFunction {lvar, tyvars, Type, bind} =
-	      PP.NODE{start=Lvars.pr_lvar lvar ^ ": ", finish="", indent=3,
-		      children=[layoutTypeScheme(tyvars,Type),
-				layoutLambdaExp bind], childsep=PP.RIGHT " = "}
-	  in
-	    PP.NODE{start="FIX ", finish=" END ", indent=4,
-		    childsep=PP.LEFT " IN ",
-		    children=[PP.NODE{start="", finish="", indent=0,
-				      children=map layoutFunction functions,
-				      childsep=PP.RIGHT ", "
-				      },
-			      layoutLambdaExp scope]
-		    }
-	  end
-      | APP(lamb1, lamb2) =>
-	  PP.NODE{start="APP(", finish=")", indent=3,
-		  children=[layoutLambdaExp lamb1, layoutLambdaExp lamb2],
-		  childsep=PP.RIGHT ", "
-		  }
-      | EXCEPTION(excon,None,lamb) =>
-	  PP.NODE{start="EXCEPTION " ^ Excon.pr_excon excon ^ " in",finish="",
-		  indent=0, children=[layoutLambdaExp lamb],
-		  childsep=PP.NONE}
-      | EXCEPTION(excon,Some tau,lamb) =>
-	  PP.NODE{start="",finish="", indent=0,
-		  children=[PP.NODE{start="EXCEPTION " ^ Excon.pr_excon excon ^ ": ",
-				    finish="",indent=0,
-				    children=[layoutType tau],
-				    childsep=PP.NONE},
-			    layoutLambdaExp lamb], 
-		  childsep=PP.RIGHT " in "
-		  }
-      | RAISE(lamb,typelist) =>
-	  PP.NODE{start="RAISE(", finish=")", indent=3,
-		  children=[layoutLambdaExp lamb,
-			    layoutTypeList typelist], childsep=PP.RIGHT ","
-		  }
-
-      | HANDLE(lamb1, lamb2) =>
-	  PP.NODE{start="HANDLE(", finish=")", indent=3,
-		  children=[layoutLambdaExp lamb1, layoutLambdaExp lamb2],
-		  childsep=PP.LEFT " with "
-		  }
-      | SWITCH_I sw => 
-	  layoutSwitch layoutLambdaExp Int.string sw
-      | SWITCH_S sw => 
-	  layoutSwitch layoutLambdaExp (fn x => x) sw
-      | SWITCH_C sw => 
-	  layoutSwitch layoutLambdaExp Con.pr_con sw
-      | SWITCH_E sw => 
-	  layoutSwitch layoutLambdaExp Excon.pr_excon sw
-      | PRIM(prim,lambs) =>
-	  PP.NODE{start="PRIM(",finish=")",indent=3,
-		  children=[layoutPrim layoutType prim,
-			    PP.NODE{start="[",finish="]",indent=1,
-				    children=map layoutLambdaExp lambs,
-				    childsep=PP.RIGHT ","}],
-		  childsep=PP.RIGHT ", "}
-      | FRAME fr => layoutFrame "FRAME" fr
-
-    and layoutFrame str {declared_lvars, declared_excons} =
-      let
-	fun lvar_child({lvar,tyvars,Type}) =
-	  PP.NODE{start=Lvars.pr_lvar lvar ^ ": ", finish="", indent=3,
-		  children=[layoutTypeScheme(tyvars,Type)],
-		  childsep=PP.NONE
-		  }
-	  
-	val lvars_children = map lvar_child  declared_lvars
-	fun excon_child(excon, ty_opt) =
-	  let val (connect,type_tree) = 
-	    case ty_opt of
-	      None => ( "", PP.LEAF "")
-	    | Some tau => (" of ", layoutType tau)
-	  in
-	    PP.NODE{start=Excon.pr_excon excon  ^ connect, finish="", indent=3,
-		    children=[type_tree],
-		    childsep=PP.NONE
-		             }	  
-	  end
-	val excons_children = map excon_child  declared_excons
-	  
-      in
-	PP.NODE{start = str ^ "(", finish = ")", indent = 6,
-		children = excons_children @ lvars_children,
-		childsep = PP.RIGHT ", "}
-      end
-
-    and layoutTyvarseq tyvars =
+   fun layoutTyvarseq tyvars =
       case tyvars
 	of nil => None
 	 | [tv] => Some(PP.LEAF (pr_tyvar tv))
@@ -466,9 +327,8 @@ functor LambdaExp(structure Lvars: LVARS
 			       childsep=PP.RIGHT ", "
 			      }
 		      )
-
        
-    and layoutType tau =
+   fun layoutType tau =
        case tau of
 	 TYVARtype tv => PP.LEAF (pr_tyvar tv)
        | ARROWtype(taus,taus') => 
@@ -505,7 +365,39 @@ functor LambdaExp(structure Lvars: LVARS
 	  | Frame fr => layoutFrame "Frame" fr
 	  | RaisedExnBind => PP.LEAF "RaisedExnBind")
  
-    and layoutTypeScheme(tyvars,tau) =
+    and layoutTypeOpt (Some tau) = [layoutType tau]
+      | layoutTypeOpt None = []
+
+
+    and layoutFrame str {declared_lvars, declared_excons} =
+      let
+	fun lvar_child({lvar,tyvars,Type}) =
+	  PP.NODE{start=Lvars.pr_lvar lvar ^ ": ", finish="", indent=3,
+		  children=[layoutTypeScheme(tyvars,Type)],
+		  childsep=PP.NONE
+		  }
+	  
+	val lvars_children = map lvar_child  declared_lvars
+	fun excon_child(excon, ty_opt) =
+	  let val (connect,type_tree) = 
+	    case ty_opt of
+	      None => ( "", PP.LEAF "")
+	    | Some tau => (" of ", layoutType tau)
+	  in
+	    PP.NODE{start=Excon.pr_excon excon  ^ connect, finish="", indent=3,
+		    children=[type_tree],
+		    childsep=PP.NONE
+		             }	  
+	  end
+	val excons_children = map excon_child  declared_excons
+	  
+      in
+	PP.NODE{start = str ^ "(", finish = ")", indent = 6,
+		children = excons_children @ lvars_children,
+		childsep = PP.RIGHT ", "}
+      end
+
+  and layoutTypeScheme(tyvars,tau) =
       let 
 	val tyvarsT = layoutTyvarseq tyvars
 	val tauT = layoutType tau
@@ -518,8 +410,298 @@ functor LambdaExp(structure Lvars: LVARS
 		    childsep=PP.RIGHT"."}
       end
 
-    and layoutTypeOpt (Some tau) = [layoutType tau]
-      | layoutTypeOpt None = []
+   fun layVarSigma(lvar,alphas,tau) =
+     if !Flags.print_types 
+       then
+         let val sigma_t = layoutTypeScheme(alphas, tau)
+             val start:string = Lvars.pr_lvar lvar ^ " :" 
+         in PP.NODE{start = start, finish = "", indent = String.size start +1,
+                    childsep = PP.NONE, children = [sigma_t]}
+         end
+     else PP.LEAF(Lvars.pr_lvar lvar)
+
+   fun layPatLet [] = PP.LEAF("()")
+     | layPatLet [one as (lvar,tyvars,tau)] = 
+           layVarSigma(lvar,tyvars,tau)
+     | layPatLet pat = PP.HNODE{start = "(", finish = ")", childsep = PP.RIGHT",", 
+                                children = map (fn (lvar,tyvars,tau) => 
+                                              layVarSigma(lvar,tyvars,tau)) pat}
+
+
+    fun layoutPgm (PGM(DATBINDS dblist,lamb)) =
+      let
+	val layoutcb =
+	  map (fn (con,tauopt) =>
+	       PP.NODE{start="",finish="",indent=0, childsep=PP.LEFT " of ",
+		       children=PP.LEAF (Con.pr_con con) :: layoutTypeOpt tauopt})
+				     
+	fun layoutdb (tyvars,tyname,cb) =
+	  let
+	    val tyvars_tynameT = 
+	      case layoutTyvarseq tyvars
+		of Some t => PP.NODE {start="",finish="",childsep=PP.RIGHT " ",indent=0,
+				      children=[t, PP.LEAF(TyName.pr_TyName tyname)]}
+		 | None => PP.LEAF(TyName.pr_TyName tyname)
+	    val cbT = PP.NODE{start="",finish="",indent=0,
+			      children=layoutcb cb,
+			      childsep=PP.LEFT" | "}
+	  in
+	    PP.NODE{start="",finish="",indent=0,
+		    children=[tyvars_tynameT,PP.LEAF " = ",cbT],
+		    childsep=PP.NONE}
+	  end
+	  
+	fun layoutMutualRec_db db =
+	  PP.NODE{start="datatype ",finish="",indent=3,
+		  children=map layoutdb db,childsep=PP.LEFT" and "}
+
+	val dbTs = map layoutMutualRec_db dblist
+
+	val lambT = layoutLambdaExp(lamb,0)
+      in
+	PP.NODE{start="",finish="",indent=0,
+		children=dbTs @ [lambT],childsep=PP.NONE}
+      end
+
+    and layout_infix (context:int) (precedence: int) (operator: string) expressions = 
+        if context > precedence then
+          PP.NODE{start = "(", finish= ")", indent = 1, childsep = PP.RIGHT operator,
+                  children = map (fn e => layoutLambdaExp(e,0)) expressions}
+        else
+          PP.NODE{start = "", finish= "", indent =0, childsep = PP.RIGHT operator,
+                  children = map (fn e => layoutLambdaExp(e,0)) expressions}
+
+    and layoutLambdaExp(lamb,context:int): StringTree =
+      case lamb of 
+        VAR {lvar=lv,instances=taus} => 
+          if !Flags.print_types then 
+            PP.NODE{start=Lvars.pr_lvar lv ^ ":(", finish=")",indent=0,
+                    children=map layoutType taus,
+                    childsep=PP.RIGHT ","}
+          else PP.LEAF(Lvars.pr_lvar lv)
+      | INTEGER i => PP.LEAF(Int.string i)
+      | STRING s => PP.LEAF(String.string s)
+      | REAL r => PP.LEAF(Real.string r)
+      | FN {pat,body} => 
+	  PP.NODE{start="(fn ",finish=")", indent=1,
+		  children=[layoutFnPat pat,
+			    layoutLambdaExp(body,0)], 
+		  childsep=PP.RIGHT "=> "
+		  }
+      | LET {pat,bind,scope} => layout_let_fix_and_exception lamb
+      | FIX{functions, scope} =>
+	  let
+	    fun layoutFunction {lvar, tyvars, Type, bind} =
+              if !Flags.print_types then
+                PP.NODE{start=Lvars.pr_lvar lvar ^ ": " , finish="", indent=3,
+                        children=[layoutTypeScheme(tyvars,Type),
+                                  layoutLambdaExp(bind,0)], childsep=PP.RIGHT " = "}
+              else
+                PP.NODE{start=Lvars.pr_lvar lvar ^ " = ", finish="", indent=3,
+                        children=[layoutLambdaExp(bind,0)], childsep=PP.NONE}
+	  in
+	    PP.NODE{start="fix ", finish=" end ", indent=4,
+		    childsep=PP.LEFT " in ",
+		    children=[PP.NODE{start="", finish="", indent=0,
+				      children=map layoutFunction functions,
+				      childsep=PP.RIGHT ", "
+				      },
+			      layoutLambdaExp(scope,0)]
+		    }
+	  end
+      | APP(lamb1, lamb2) =>
+	  PP.NODE{start= if context>13 then "(" else "", 
+                  finish=if context>13 then ")" else "", 
+		  childsep=PP.RIGHT " ",
+                  indent=1,
+		  children=[layoutLambdaExp(lamb1,13), layoutLambdaExp(lamb2,14)]
+		  }
+      | EXCEPTION(excon,None,lamb) =>
+	  PP.NODE{start="exception " ^ Excon.pr_excon excon ^ " in",finish="",
+		  indent=0, children=[layoutLambdaExp(lamb,0)],
+		  childsep=PP.NONE}
+      | EXCEPTION(excon,Some tau,lamb) =>
+	  PP.NODE{start="",finish="", indent=0,
+		  children=[PP.NODE{start="exception  " ^ Excon.pr_excon excon ^ ": ",
+				    finish="",indent=0,
+				    children=[layoutType tau],
+				    childsep=PP.NONE},
+			    layoutLambdaExp(lamb,0)], 
+		  childsep=PP.RIGHT " in "
+		  }
+      | RAISE(lamb,typelist) =>
+	  PP.NODE{start=if context>=13 then "raise(" else "raise",
+                  finish=if context>=13 then ")" else "", 
+                  indent=6,
+		  children=[layoutLambdaExp(lamb,12),
+			    layoutTypeList typelist], childsep=PP.RIGHT ","
+		  }
+
+      | HANDLE(lamb1, lamb2) =>
+          PP.NODE{start=if context>=12 then "(" else "", 
+                  finish=if context>=12 then ")" else "", 
+                  indent=3,
+		  children=[layoutLambdaExp(lamb1,12), layoutLambdaExp(lamb2,12)],
+		  childsep=PP.LEFT " handle "
+		  }
+      | SWITCH_I sw => 
+	  layoutSwitch layoutLambdaExp Int.string sw
+      | SWITCH_S sw => 
+	  layoutSwitch layoutLambdaExp (fn x => x) sw
+      | SWITCH_C sw => 
+	  layoutSwitch layoutLambdaExp Con.pr_con sw
+      | SWITCH_E sw => 
+	  layoutSwitch layoutLambdaExp Excon.pr_excon sw
+      | PRIM(prim,lambs) =>
+         (case (prim,lambs) of
+           (RECORDprim,_) =>
+             PP.NODE{start="(",finish=")",indent=1,
+                     children=(map (fn e => layoutLambdaExp(e,0))  lambs),
+                     childsep=PP.RIGHT ","}
+         | (UB_RECORDprim,_) =>
+             PP.NODE{start="<",finish=">",indent=1,
+                     children=(map (fn e => layoutLambdaExp(e,0)) lambs),
+                     childsep=PP.RIGHT ","}
+         | (SELECTprim i, [lamb]) => 
+             PP.NODE{start="#" ^ Int.string i ^ "(",finish=")",indent=1,
+                     children=[layoutLambdaExp(lamb,0)],
+                     childsep=PP.NONE}
+         | (DEREFprim{instance},[lamb]) =>
+             PP.NODE{start="!(",finish=")",indent=2,
+                     children=[layoutLambdaExp(lamb,0)],
+                     childsep=PP.NONE}
+         | (REFprim{instance},[lamb]) =>
+             PP.NODE{start="ref(",finish=")",indent=2,
+                     children=[layoutLambdaExp(lamb,0)],
+                     childsep=PP.NONE}
+         | (ASSIGNprim{instance},_) => layout_infix context 3 " := "lambs
+         | (MUL_REALprim, [_,_]) => layout_infix context 7 " * " lambs
+         | (MUL_INTprim, [_,_]) =>  layout_infix context 7 " * " lambs
+         | (PLUS_REALprim, [_,_]) => layout_infix context 6 " + " lambs
+         | (PLUS_INTprim, [_,_]) =>  layout_infix context 6 " + " lambs
+         | (MINUS_REALprim, [_,_]) => layout_infix context 6 " - "lambs
+         | (MINUS_INTprim, [_,_]) =>  layout_infix context 6 " - "lambs
+         | (EQUALprim{instance},[_,_]) => layout_infix context 4 " = "lambs
+         | (EQUAL_INTprim, [_,_]) => layout_infix context 4 " = "lambs
+         | (LESS_REALprim, [_,_]) => layout_infix context 4 " < "lambs
+         | (LESS_INTprim, [_,_]) => layout_infix context 4 " < "lambs
+         | (GREATER_REALprim, [_,_]) => layout_infix context 4 " > "lambs
+         | (GREATER_INTprim, [_,_]) => layout_infix context 4 " > "lambs
+         | (LESSEQ_REALprim, [_,_]) => layout_infix context 4 " <= "lambs
+         | (LESSEQ_INTprim, [_,_]) => layout_infix context 4 " <= "lambs
+         | (GREATEREQ_REALprim, [_,_]) => layout_infix context 4 " >= "lambs
+         | (GREATEREQ_INTprim, [_,_]) => layout_infix context 4 " >= "lambs
+         | _ => 
+  	  PP.NODE{start="PRIM(",finish=")",indent=3,
+		  children=[layoutPrim layoutType prim,
+			    PP.NODE{start="[",finish="]",indent=1,
+				    children=map(fn x => layoutLambdaExp(x,0)) lambs,
+				    childsep=PP.RIGHT ","}],
+		  childsep=PP.RIGHT ", "}
+        )
+      | FRAME fr => layoutFrame "FRAME" fr
+
+    and layout_let_fix_and_exception lexp = 
+          let 
+            val inInfo = ref ""
+            fun layout_rec lexp = 
+                  case lexp of 
+                    LET{pat, bind, scope} =>
+                        let
+                          val (binds, body) = layout_rec scope
+                          val _ = inInfo := "(* let *)"
+                        in
+                           (mk_valbind(pat,bind)::binds, body)
+                        end
+                  | FIX({functions,scope}) =>
+                        let
+                          val (binds', body) = layout_rec scope
+                          val _ = inInfo := "(* fix *)"
+                        in
+                          (mk_mutual_binding (List.rev functions):: binds', body)
+                        end
+                  | EXCEPTION(excon, ty_opt, scope) =>
+                        let 
+                          val (binds', body) = layout_rec scope
+                          val _ = inInfo := "(* exn *)"
+                        in
+                           (mk_excon_binding(excon, ty_opt)::binds', body)
+                        end
+                  | _ => ([],layoutLambdaExp(lexp,0))
+
+           val (l, body) = layout_rec lexp
+           val bindings =  PP.NODE{start = "", finish = "", childsep = PP.RIGHT "; ", 
+                                indent = 0, children = l}
+          in
+            PP.NODE{start= "let ",
+                    finish=" end " (* ^ (!inInfo) *),   (*martin*)
+                    indent=4,
+                    children=[bindings,body],
+                    childsep=PP.LEFT (" in " (* ^ (!inInfo) *) )} (*martin*)
+          end
+
+      and mk_valbind(pat, e) = 
+        let 
+            val child1 = layPatLet pat   (*NB*)
+         in
+            PP.NODE{start = "val ",finish="",childsep=PP.RIGHT " = ",
+                 indent=4,  children=[child1, layoutLambdaExp(e,0)] }
+        end
+      and mk_excon_binding(excon, ty_opt) = 
+            (* exception EXCON : mu  (* exn value or name at RHO *) or
+               excpetion EXCON : mu 
+            *)
+         (case ty_opt of
+            None =>  PP.NODE{start = "exception ",finish="",childsep=PP.RIGHT " : ",
+                 indent=4,  children=[PP.LEAF(Excon.pr_excon excon)] }
+          | Some ty => PP.NODE{start = "exception ",finish="",childsep=PP.RIGHT " ",
+                 indent=4,  children=[PP.LEAF(Excon.pr_excon excon), PP.LEAF ":", layoutType ty]}
+        )
+      and  mk_mutual_binding(functions) = 
+        let fun mk_fix({lvar,tyvars,Type, bind as (FN{pat, body, ...})})
+                     (no, rest_of_mutual_binding) =
+              (*   
+                   fun f  : sigma  
+                       (x_1, ..., x_n) = 
+                       body
+                            OR
+                   fun f (x_1, ..., x_n)  = body   
+                            OR
+                   fun f (x_1, ..., x_n)  = 
+                         body
+                            OR
+                   fun f (x1:mu_1,
+                          ...
+                          xn: mu_n
+                         )  = 
+                         body   
+              *)
+              (no-1,
+                   let
+                     val sigma_t = layoutTypeScheme(tyvars,Type)
+                     val t1 = let val s: string = Lvars.pr_lvar lvar ^ 
+                                 (if !Flags.print_types then ":" else "")
+                              in  PP.NODE{start = s, finish = "", indent = String.size s +1,
+                                          childsep = PP.NONE, children = [sigma_t]}
+                              end
+                     val formals = PP.HNODE{start="(", finish = ") =", childsep = PP.RIGHT ", ", 
+                                                  children = map (fn (lvar,_) => PP.LEAF(Lvars.pr_lvar lvar))
+                                                                 pat}
+                     val keyword = if no = 1 then "fun " else "and "
+                     val body_t = PP.NODE{start = "", finish ="", indent = 4, childsep = PP.NONE,
+                                          children = [layoutLambdaExp(body, 0)]}
+                    in
+                      PP.NODE{start = keyword , finish = "", indent = 4, childsep = PP.NONE, 
+                              children = [t1, formals, body_t]}
+                    end
+                  :: rest_of_mutual_binding)
+            | mk_fix _ _ = die "mk_fix: rhs of fix does not begin with lambda"
+       in
+        PP.NODE{start = "", finish = "", indent = 0,
+                childsep = PP.NONE, 
+                children = #2(List.foldL mk_fix (List.size functions,[]) functions)}
+       end
+
 
 
     and layoutFnPat atpats =
@@ -531,13 +713,19 @@ functor LambdaExp(structure Lvars: LVARS
 		 childsep=PP.RIGHT ","}
 
     and layoutFnAtPat (lvar, Type) =
-      PP.NODE {start=Lvars.pr_lvar lvar ^ ":", finish="", indent=0,
-	       children=[layoutType Type], childsep=PP.NONE}
+      if !Flags.print_types then
+        PP.NODE {start=Lvars.pr_lvar lvar ^ ":", finish="", indent=0,
+                 children=[layoutType Type], childsep=PP.NONE}
+      else
+        PP.LEAF(Lvars.pr_lvar lvar)
 
     and layoutLetAtPat (lvar, tyvars, Type) =
-      PP.NODE {start=Lvars.pr_lvar lvar ^ ":", finish="", indent=0,
-	       children=[layoutTypeScheme(tyvars,Type)], childsep=PP.NONE}
-
+      if !Flags.print_types then
+        PP.NODE {start=Lvars.pr_lvar lvar ^ ":", finish="", indent=0,
+	         children=[layoutTypeScheme(tyvars,Type)], childsep=PP.NONE}
+      else
+        PP.LEAF(Lvars.pr_lvar lvar)
 
     val layoutLambdaPgm = layoutPgm
+    val layoutLambdaExp = fn e => layoutLambdaExp(e,0)
   end;

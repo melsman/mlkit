@@ -34,6 +34,8 @@ signature DECISION_LIST =
     type AndOrTree
     val decisions: AndOrTree -> Decision list
 
+    val deterministic: (int list -> int list) -> Decision list -> int Option
+
     type StringTree
     val layoutDecision: Decision -> StringTree
   end;
