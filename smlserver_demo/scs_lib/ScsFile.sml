@@ -151,9 +151,10 @@ structure ScsFile :> SCS_FILE =
 	val ds = FileSys.openDir dir
 	val _ = FileSys.chDir dir
 	fun loop () =
-(*	  case FileSys.readDir ds of
-	    SOME f => (FileSys.remove f; loop ())
-	  | NONE => *)()
+	  case FileSys.readDir ds of
+	    "" => ()
+	  
+	  | f  => ( (if FileSys.isDir f then () else FileSys.remove f);loop () )
       in
 	loop();
 	FileSys.closeDir ds
