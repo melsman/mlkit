@@ -113,6 +113,8 @@ signature TOPDEC_GRAMMAR =
       SIGtopdec of info * sigdec * topdec Option |
       FUNtopdec of info * fundec * topdec Option
 
+    val empty_topdec : topdec
+
     val getExplicitTyVarsCondesc : condesc -> tyvar list
     val info_on_strexp : strexp -> info
     val info_on_strdec : strdec -> info

@@ -3,7 +3,9 @@
 
 (*$DecGrammar: LAB SCON TYVAR TYCON STRID IDENT DEC_GRAMMAR PRETTYPRINT*)
 
-functor DecGrammar(structure GrammarInfo: sig  type GrammarInfo  end
+functor DecGrammar(structure GrammarInfo: sig type GrammarInfo 
+					      val bogus_info : GrammarInfo
+					  end
 		   structure Lab   : LAB
 		   structure SCon  : SCON
 		   structure TyVar : TYVAR
@@ -31,6 +33,7 @@ struct
    and longstrid = StrId.longstrid  (* structure identifiers *)
 
   type info = GrammarInfo.GrammarInfo
+  val bogus_info = GrammarInfo.bogus_info
 
   datatype 'a op_opt = OP_OPT of 'a * bool
   datatype 'a WithInfo = WITH_INFO of info * 'a

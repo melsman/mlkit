@@ -728,7 +728,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (* This function compiles a project and leaves a file "run" in the target directory. *)
     (* This file can then be executed.                                                   *)
     fun evalProjects project_name =
-      (Manager.load project_name;
+      (Manager.read project_name;
        Manager.build())
       
     fun gen_input_str None = ""

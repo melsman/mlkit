@@ -274,6 +274,10 @@ functor ModuleStatObject(structure StrId  : STRID
       fun tynames (SIGMA {T, E}) = TyName.Set.difference (E.tynames E) T
       fun instance (SIGMA {T, E}) : Env =
 	    Realisation.on_Env (Realisation.renaming T) E
+      fun instance' (SIGMA {T, E}) : TyName.Set.Set * Env =
+	let val (T', phi) = Realisation.renaming' T
+	in (T', Realisation.on_Env phi E)
+	end
       fun on' (phi : realisation, Sigma as SIGMA {T, E}) : Sig * realisation =
 	    (*        ^ renaming of bound names *)
 	    let
@@ -295,10 +299,16 @@ functor ModuleStatObject(structure StrId  : STRID
 	    if Realisation.is_Id phi then Sigma else
 	      #1 (on' (phi, Sigma))
 
+      fun rename_Sig (SIGMA{T,E}) =
+	let val phi = Realisation.renaming T
+	in SIGMA{T=Realisation.on_TyName_set phi T,
+		 E=Realisation.on_Env phi E}
+	end
+
       fun match (Sig as SIGMA {T, E}, E') : Env =
-	(*E' matches Sigma if there exists E'' s.t. Sigma >= E'' and
-	 E' enriches E''. match will raise No_match if there is no match.
-	 otherwise match will return the match E''.*)
+	(* E' matches Sigma if there exists E'' s.t. Sigma >= E'' and
+	 * E' enriches E''. match will raise No_match if there is no match.
+	 * otherwise match will return the match E''.*)
 	    let val phi = sigMatchRea (Sig,E')  (*sigMatchRea will raise No_match,
 						 if no realisation can be found*)
 	        val E'' = Realisation.on_Env phi E
@@ -308,11 +318,23 @@ functor ModuleStatObject(structure StrId  : STRID
 	      E''
 	    end
 
-      fun rename_Sig (SIGMA{T,E}) =
-	let val phi = Realisation.renaming T
-	in SIGMA{T=Realisation.on_TyName_set phi T,
-		 E=Realisation.on_Env phi E}
+      (* match' is used to implement opaque signature matching. We
+       * return the `transparent env', E_t, the `opaque env', E_o, and
+       * a realisation, phi, mapping abstract type names of the opaque
+       * env into type functions, such that phi(E_o) = E_t. *)
+
+      fun match' (Sig, E') : Env * Env * realisation =
+	let val (Sig as SIGMA{T,E}) = rename_Sig Sig
+
+	    val phi = sigMatchRea (Sig,E')  (* sigMatchRea will raise No_match,
+					     * if no realisation can be found. *)
+	    val E'' = Realisation.on_Env phi E
+	in
+	  check_enrichment (E',E'') ;       (* check_enrichment will raise No_match,
+					     * if E' does not enrich E''*)
+	  (E'',E,phi)
 	end
+
 
       fun eq_Env(E1,E2) = (check_enrichment(E1,E2);
 			   check_enrichment(E2,E1);

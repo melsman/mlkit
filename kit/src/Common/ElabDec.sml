@@ -157,9 +157,9 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     val onVE = VE.on     infixr onVE
     infixr oo    val op oo = Substitution.oo
 
-    val C_cplus_E = C.cplus_E    infixr C_cplus_E
-    val C_cplus_TE = C.cplus_TE   infixr C_cplus_TE 
-    val C_cplus_VE_and_TE = C.cplus_VE_and_TE    infixr C_cplus_VE_and_TE
+    fun C_cplus_E a = C.cplus_E a   infixr C_cplus_E
+    fun C_cplus_TE a = C.cplus_TE a  infixr C_cplus_TE 
+    fun C_cplus_VE_and_TE a = C.cplus_VE_and_TE a   infixr C_cplus_VE_and_TE
 
     (*types needed for the signature ELABDEC*)
     type PreElabDec  = IG.dec  
@@ -239,6 +239,9 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
       fun addTypeInfo_TYENV (ElabInfo, TE : TyEnv) =
 	    ElabInfo.plus_TypeInfo ElabInfo (TYENV_INFO TE)
+
+      fun addTypeInfo_ABSTYPE (ElabInfo, (TE : TyEnv, rea : realisation)) =
+	    ElabInfo.plus_TypeInfo ElabInfo (ABSTYPE_INFO (TE,rea))
 
       fun addTypeInfo_PLAINvalbind (ElabInfo, tau) =
             ElabInfo.plus_TypeInfo ElabInfo
@@ -951,12 +954,13 @@ old*)
                val (VE2, TE2) = Environments.maximise_equality_in_VE_and_TE
 		                  (VE1, TE1)
                val (S, E, out_dec) = elab_dec(C C_cplus_VE_and_TE (VE2,TE2), dec)
-               val (E',TE2',phi) = Environments.ABS' (TE2, E)
+               val (E',phi) = Environments.ABS (TE2, E)
+		 (* the realisation returned maps abstract type 
+		  * names to type names for the datbind. *)
              in
                (S,E',
-		OG.ABSTYPEdec(addTypeInfo_TYENV (okConv i, TE2'),
-			      out_datbind,
-			      phi_on_dec phi out_dec)) (*martin*)
+		OG.ABSTYPEdec(addTypeInfo_ABSTYPE (okConv i, (TE2, phi)),
+			      out_datbind, out_dec))
              end
 
            (* Exception declaration *)                          (*rule 20*)
@@ -2138,7 +2142,8 @@ let
       | S on_TypeInfo (EXBIND_INFO {TypeOpt=None}) = EXBIND_INFO {TypeOpt=None}
       | S on_TypeInfo (EXBIND_INFO {TypeOpt=Some Type}) = 
 	    EXBIND_INFO {TypeOpt=Some (S on_repeated Type)}   
-      | S on_TypeInfo (TYENV_INFO TE) = TYENV_INFO TE  (*MEMO...*)
+      | S on_TypeInfo (TYENV_INFO TE) = TYENV_INFO TE                  (*no free tyvars here*)
+      | S on_TypeInfo (ABSTYPE_INFO (TE,rea)) = ABSTYPE_INFO (TE,rea)  (*no free tyvars here*)
       | S on_TypeInfo (EXP_INFO {Type}) = 
 	    EXP_INFO {Type=S on_repeated Type}
       | S on_TypeInfo (MATCH_INFO {Type}) = 
@@ -2153,6 +2158,8 @@ let
       | S on_TypeInfo (FUNBIND_INFO E) = FUNBIND_INFO E (* signatures are closed *)
       | S on_TypeInfo (TRANS_CONSTRAINT_INFO E) =
 	    TRANS_CONSTRAINT_INFO E (* signatures are closed *)
+      | S on_TypeInfo (OPAQUE_CONSTRAINT_INFO E_and_phi) =
+	    OPAQUE_CONSTRAINT_INFO E_and_phi (* signatures and realisations are closed *)
   in
     fun resolve_i ElabInfo =
           (case ElabInfo.to_TypeInfo ElabInfo of

@@ -88,14 +88,13 @@ signature FLAGS =
     val indent_ccode:         bool ref
 
     (*Project Manager.  These ref's are necessary because Flags.interact
-     depends on, e.g., Manager.touch but module Flags cannot depend on
+     depends on, e.g., Manager.build_project but module Flags cannot depend on
      module Manager because Manager depends on Flags.  Perhaps interact
      should be in Manager instead of in Flags?*)
 
-    val build_ref: (unit -> unit)ref
-    val load_ref : (string -> unit)ref
-    val touch_ref : (string -> unit)ref
-    val show_ref : (unit -> unit)ref
+    val build_project_ref: (unit -> unit)ref
+    val read_project_ref : (string -> unit)ref
+    val show_project_ref : (unit -> unit)ref
     val comp_ref: (string -> unit)ref
     val test_ref: (unit -> unit)ref
 

@@ -42,6 +42,7 @@ functor TypeInfo (structure Ident: IDENT
     | EXCON_INFO of {Type:Type,longid:longid}
     | EXBIND_INFO of {TypeOpt : Type Option}
     | TYENV_INFO of TyEnv
+    | ABSTYPE_INFO of TyEnv * realisation
     | EXP_INFO of {Type:Type}
     | MATCH_INFO of {Type:Type}
     | PLAINvalbind_INFO of {tyvars: TyVar list, escaping: TyVar list, Type: Type}
@@ -50,11 +51,13 @@ functor TypeInfo (structure Ident: IDENT
     | FUNCTOR_APP_INFO of realisation * Env
     | FUNBIND_INFO of Env
     | TRANS_CONSTRAINT_INFO of Env
+    | OPAQUE_CONSTRAINT_INFO of Env * realisation
       
     fun on_TypeInfo (phi,ti) =
       let val phi_on_Type   = StatObject.Realisation.on_Type phi
 	  val phi_on_TE     = Environments.Realisation.on_TyEnv phi (* fn TE => TE *)  (* I wonder if abstype works now - Martin *)
 	  val phi_on_E      = Environments.Realisation.on_Env phi         (* it used to be the identity *)
+	  val phi_on_phi' = fn phi' => StatObject.Realisation.oo(phi,phi')
       in case ti 
 	   of LAB_INFO {index, tyvars, Type} => LAB_INFO {index=index,tyvars=tyvars,
 							  Type=phi_on_Type Type}
@@ -69,15 +72,17 @@ functor TypeInfo (structure Ident: IDENT
 	    | EXCON_INFO {Type,longid} => EXCON_INFO {Type=phi_on_Type Type, longid=longid}
 	    | EXBIND_INFO {TypeOpt} => EXBIND_INFO {TypeOpt = map_opt phi_on_Type TypeOpt}
 	    | TYENV_INFO TE => TYENV_INFO (phi_on_TE TE)
+	    | ABSTYPE_INFO (TE,phi') => ABSTYPE_INFO (phi_on_TE TE, phi_on_phi' phi')
 	    | EXP_INFO {Type} => EXP_INFO{Type=phi_on_Type Type}
 	    | MATCH_INFO {Type} => MATCH_INFO{Type=phi_on_Type Type}
 	    | PLAINvalbind_INFO {tyvars, escaping, Type} =>
 	     PLAINvalbind_INFO {tyvars=tyvars, escaping = escaping,Type=phi_on_Type Type}
 	    | OPEN_INFO i => OPEN_INFO i
 	    | INCLUDE_INFO i => INCLUDE_INFO i
-	    | FUNCTOR_APP_INFO (phi',E) => FUNCTOR_APP_INFO (StatObject.Realisation.oo(phi,phi'), phi_on_E E)
+	    | FUNCTOR_APP_INFO (phi',E) => FUNCTOR_APP_INFO (phi_on_phi' phi', phi_on_E E)
             | FUNBIND_INFO E => FUNBIND_INFO (phi_on_E E)
-            | TRANS_CONSTRAINT_INFO E => TRANS_CONSTRAINT_INFO(phi_on_E E)
+            | TRANS_CONSTRAINT_INFO E => TRANS_CONSTRAINT_INFO (phi_on_E E)
+            | OPAQUE_CONSTRAINT_INFO (E,phi') => OPAQUE_CONSTRAINT_INFO (phi_on_E E, phi_on_phi' phi')
       end
 
     type StringTree = PP.StringTree
@@ -154,6 +159,10 @@ functor TypeInfo (structure Ident: IDENT
 	     PP.NODE{start="TYENV_INFO(",finish=")",indent=2,
 		     children=[layoutTyEnv TE],
 		     childsep = PP.NONE}
+	 | ABSTYPE_INFO (TE,phi) =>
+	     PP.NODE{start="ABSTYPE_INFO(",finish=")",indent=2,
+		     children=[layoutTyEnv TE, PP.LEAF "phi"],
+		     childsep = PP.RIGHT ", "}
 	 | EXP_INFO{Type} => 
 	     PP.NODE{start="EXP_INFO(",finish=")",indent=2,
 		     children=[layoutType Type],
@@ -190,4 +199,7 @@ functor TypeInfo (structure Ident: IDENT
 	 | TRANS_CONSTRAINT_INFO Env => PP.NODE{start="TRANS_CONSTRAINT_INFO(", finish=")",
 						indent=2,childsep=PP.NONE,
 						children=[layoutEnv Env]}
+	 | OPAQUE_CONSTRAINT_INFO (Env,phi) => PP.NODE{start="OPAQUE_CONSTRAINT_INFO(", finish=")",
+						indent=2,childsep=PP.RIGHT ", ",
+						children=[layoutEnv Env, PP.LEAF "phi"]}
   end;

@@ -132,11 +132,9 @@ functor Flags(structure Crash: CRASH): FLAGS =
     fun dummy _ : unit = output (std_out,
 				 "uninitialised function reference in Flags")
     val project_file_name = ref "dummy"
-    val build_ref: (unit -> unit)ref = ref dummy
-    val show_ref: (unit -> unit)ref  = ref dummy
-    val load_ref: (string -> unit)ref  = ref dummy
-    val touch_unit_ref = ref "dummy"
-    val touch_ref: (string -> unit)ref  = ref dummy
+    val build_project_ref: (unit -> unit)ref = ref dummy
+    val show_project_ref: (unit -> unit)ref  = ref dummy
+    val read_project_ref: (string -> unit)ref  = ref dummy
     val comp_ref: (string -> unit)ref  = ref dummy
     val test_ref: (unit -> unit)ref  = ref dummy
     val current_source_file = ref "dummy"
@@ -910,21 +908,12 @@ struct
           mk_header "Project"
 	  (DISPLAY
 	   [mk_string_action (project_file_name, "Set project file name"),
-	    {text = "Read project file", attr = noop_attr, 
-	     below = ACTION (fn () => !load_ref (!project_file_name))},
+	    {text = "(Re)read project file", attr = noop_attr, 
+	     below = ACTION (fn () => !read_project_ref (!project_file_name))},
 	    {text = "Show project status", attr = noop_attr, 
-	     below = ACTION (fn () => !show_ref())},
+	     below = ACTION (fn () => !show_project_ref())},
 	    {text = "Compile and link project", attr = noop_attr, 
-	     below = ACTION (fn () => !build_ref())}])
-(*old
-	    {text = "Touch a program unit", attr = noop_attr, 
-	     below = ACTION (fn () => (read_string touch_unit_ref () ;
-				       if !u_or_q_from_read_string then () else
-				       !touch_ref (!touch_unit_ref)))},
-	    {text = "Touch it again",
-	     attr = VALUE (fn () => "(" ^ String.string (!touch_unit_ref) ^ ")"),
-	     below = ACTION (fn () => !touch_ref (!touch_unit_ref))}])
-old*)
+	     below = ACTION (fn () => !build_project_ref())}])
 
   (*1. Printing of intermediate forms*)
 

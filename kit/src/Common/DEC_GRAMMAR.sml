@@ -25,6 +25,7 @@ sig
   type longstrid sharing type longstrid = StrId.longstrid
 
   type info       (* info about the position in the source text, errors etc *)
+  val bogus_info : info
 
   datatype 'a op_opt = OP_OPT of 'a * bool
   datatype 'a WithInfo = WITH_INFO of info * 'a
