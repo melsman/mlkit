@@ -1,19 +1,15 @@
-(*$LambdaBasics: LVARS TYNAME FINMAP FINMAPEQ LAMBDA_EXP CRASH FLAGS
-                 LAMBDA_BASICS *)
 
 functor LambdaBasics (structure Lvars : LVARS 
 		      structure TyName : TYNAME
 		      structure TLE : LAMBDA_EXP
 			sharing type TLE.lvar = Lvars.lvar
-			    and type TLE.TyName = TyName.TyName
+			sharing type TLE.TyName = TyName.TyName
 		      structure Crash : CRASH
 		      structure FinMap : FINMAP
 		      structure FinMapEq : FINMAPEQ
 		      structure Flags : FLAGS) : LAMBDA_BASICS =
   struct
 
-    structure Int = Edlib.Int
-    structure List = Edlib.List
     structure Set = Edlib.Set
 
     open TLE
@@ -22,9 +18,11 @@ functor LambdaBasics (structure Lvars : LVARS
 
     fun log x = TextIO.output(!Flags.log,x)
 
-    fun foldl f a []      = a
-      | foldl f a (x::xs) = foldl f (f a x) xs
+    fun foldl' f a []      = a
+      | foldl' f a (x::xs) = foldl' f (f a x) xs
 
+    fun member a [] = false
+      | member a (x::xs) = a=x orelse member a xs
 
     (* passTD: (LambdaExp -> LambdaExp) -> LambdaExp ->
      * LambdaExp. Applies a transformation over an entire lambda
@@ -108,7 +106,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	val new_acc = f acc lamb
 	
 	fun foldSwitch (SWITCH(arg, selections, wildcard)) =
-	  let val acc' = foldl (foldTD f) (foldTD f new_acc arg) (map #2 selections)
+	  let val acc' = foldl' (foldTD f) (foldTD f new_acc arg) (map #2 selections)
           in case wildcard
 	       of SOME lamb => foldTD f acc' lamb
 		| NONE => acc'
@@ -121,7 +119,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | REAL _ => new_acc
 	   | FN{pat,body} => foldTD f new_acc body
 	   | LET{pat,bind,scope} => foldTD f (foldTD f new_acc bind) scope
-	   | FIX{functions,scope} => foldTD f (foldl (foldTD f) new_acc  (map #bind functions)) scope
+	   | FIX{functions,scope} => foldTD f (foldl' (foldTD f) new_acc  (map #bind functions)) scope
 	   | APP(lamb1, lamb2) => foldTD f (foldTD f new_acc lamb1) lamb2
 	   | EXCEPTION(excon,tauOpt,lamb) => foldTD f new_acc lamb
 	   | RAISE(lamb,tl) => foldTD f new_acc lamb
@@ -130,7 +128,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | SWITCH_S switch => foldSwitch switch
 	   | SWITCH_C switch => foldSwitch switch
 	   | SWITCH_E switch => foldSwitch switch
-	   | PRIM(prim,lambs) => foldl (foldTD f) new_acc lambs
+	   | PRIM(prim,lambs) => foldl' (foldTD f) new_acc lambs
 	   | FRAME _ => new_acc
       end
 
@@ -381,8 +379,8 @@ functor LambdaBasics (structure Lvars : LVARS
 	let fun mk ([],[]) = []
 	      | mk (tv::tvs,t::ts) = (tv,t) :: mk(tvs,ts)
 	      | mk (l1,l2) = die ("mk_subst: " 
-				  ^ Int.string (List.size l1) ^ " tyvars, " 
-				  ^ Int.string (List.size l2) ^ " types; " ^ f())
+				  ^ Int.toString (length l1) ^ " tyvars, " 
+				  ^ Int.toString (length l2) ^ " types; " ^ f())
 	in mk p
 	end
 
@@ -391,8 +389,9 @@ functor LambdaBasics (structure Lvars : LVARS
 	let 
 	  fun tv_Subst tau = 
 	    (case tau 
-		 of TYVARtype tyvar =>((#2(List.first (fn (tyvar':tyvar, tau') => tyvar = tyvar') S))
-                                       handle _ => tau)
+		 of TYVARtype tyvar => (case List.find (fn (tyvar':tyvar, tau') => tyvar = tyvar') S
+					  of SOME res => #2 res
+					   | NONE => tau)
 		  | ARROWtype(taus1,taus2) => ARROWtype(map tv_Subst taus1,map tv_Subst taus2)
 		  | CONStype(taus,tyname) => CONStype(map tv_Subst taus,tyname)
 		  | RECORDtype taus => RECORDtype (map tv_Subst taus)
@@ -438,7 +437,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | CONStype(taus,_) => tyvarsTypes taus
 	   | RECORDtype taus => tyvarsTypes taus
       and tyvarsTypes taus = 
-	List.foldL (fn tau => fn set => 
+	foldl (fn (tau, set) => 
 		    Set.union equal_tyvar (tyvarsType tau) set) Set.empty taus
 
 
@@ -451,7 +450,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	    in tyvarsTypes rangeS
 	    end
 
-	  fun restrictS S from = List.all (fn (tv,tau) => not(List.member tv from)) S 
+	  fun restrictS S from = List.filter (fn (tv,tau) => not(member tv from)) S 
 
 	  fun check_capture S bound_tyvars = 
 	    let val S' = restrictS S bound_tyvars
@@ -473,7 +472,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	    end
 
 	  fun on_let_pat S atpats =
-	    List.foldR (fn (lvar,tyvars,tau) => fn (S, atpats) =>
+	    foldr (fn ((lvar,tyvars,tau),(S, atpats)) =>
 			let val S' = check_capture S tyvars
 			in (S', (lvar, tyvars, on_Type S' tau)::atpats)
 			end)

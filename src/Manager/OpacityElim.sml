@@ -55,6 +55,8 @@ functor OpacityElim(structure Crash : CRASH
     val Id : realisation = Realisation.Id
     val on_Env = Realisation.on_Env
 
+    val tynames_initial_basis = ModuleEnvironments.B.tynames ModuleEnvironments.B.initial
+
     (* ---------------------------------------------------------------------
      * Eliminate opaque signature constraints by translating them into
      * transparent signature constraints; this is fine since we have
@@ -422,7 +424,7 @@ functor OpacityElim(structure Crash : CRASH
       let val rea = rea_of oenv
 	  val (argE, elabB, T, resE) = 
 	    case ElabInfo.to_TypeInfo i
-	      of SOME(TypeInfo.FUNBIND_INFO {argE, elabB, T, resE, opaq_env_opt=NONE}) =>
+	      of SOME(TypeInfo.FUNBIND_INFO {argE, elabBref=ref elabB, T, resE, opaq_env_opt=NONE}) =>
 		((*print "\nOPACITY_ELIM-BEFORE_REA\n";
 		 print_basis elabB;*)
 		 let val elabB' = ModuleEnvironments.B.on rea elabB
@@ -434,7 +436,16 @@ functor OpacityElim(structure Crash : CRASH
 	  val (strexp',rea') = elim_strexp(oenv, strexp)      
 	  val resE' = on_Env rea' resE
 	  val T' = TyName.Set.difference (Environments.E.tynames resE') (ModuleEnvironments.B.tynames elabB)
-	  val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNBIND_INFO {argE=argE, elabB=elabB, T=T', resE=resE', 
+
+	    (* also subtract the set of type names that can be
+	     * introduced in the program by derived forms, exhaustive
+	     * matches, overloading, etc; this set is a subset of the
+	     * set of type names that occurs free in the initial
+	     * basis. *)
+
+	  val T' = TyName.Set.difference T' tynames_initial_basis
+
+	  val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNBIND_INFO {argE=argE, elabBref=ref elabB, T=T', resE=resE', 
 								    opaq_env_opt=SOME oenv})
 	  val oenv' = from_funid(funid,(T',rea'))
 	  val (funbindopt',oenv'') = elim_opt_oenv elim_funbind (oenv, funbindopt)

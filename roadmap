@@ -1,11 +1,11 @@
-The ML Kit with Regions                         March 12, 1998
+The ML Kit with Regions                              November 6, 1998
 
 
                            DIRECTORIES IN
 
                       The ML Kit with Regions 
 
-   http://www.diku.dk/research-groups/topps/activities/kit2/index.html
+   http://www.diku.dk/research-groups/topps/activities/mlkit.html
 
 
 Directory structure
@@ -14,13 +14,16 @@ Directory structure
   bin/		executable kits, compiled programs, and related things
   src/		sources for the kit and some utilities
   doc/		documentation
-  TestEnv/	for testing the kit
+  test/  	for testing the kit
   kitdemo/      example input for the kit (i.e., sml source files
                 and project files)
-  basislib/     basis library (still incomplete)
+  basislib/     basis library
+  kitlib/       kit specific library functions
+  ml-yacc-lib/  interface to ML Yacc generated parsers
   readme	read it
   roadmap	this file
   copyright	copyright notices
+  to_do         things that need be done
 
 
 bin/ in detail
@@ -30,12 +33,10 @@ If you have built and installed the Kit (as described in file
 "readme") this directory will contain an executable file "kit" (i.e.,
 a script for launching SML/NJ with a kit-image.)
 
-When the file "kit" is the executed, it will try to read in a kit
-script file "kit.script" in the current directory. Entries that are
-not present in the script file will have a default value.
-
-Most of the settings that you can set in a kit script file can also be
-set interactively.
+Two other tools are placed in the bin/ directory when the Kit is
+built. These are the profiling graph tool `rp2ps' (Region Profile to
+PostScript) and the Kit Tester Tool `kittester'. See below for
+information about these tools.
 
 
 src/ in detail
@@ -43,6 +44,7 @@ src/ in detail
 
   src/sources.cm	list of source files for the kit
       Common/           source files
+      Edlib/
       Manager/
       Parsing/
       Compiler/ ...
@@ -50,90 +52,58 @@ src/ in detail
 	       C/	files specific to ANSI C kit
 		...
       Runtime/		C source files and executables for runtime system
+      Tools/            sources for Kit tools (rp2ps and kittester)
 
 
-src/Runtime/Version17/ in detail
---------------------------------
+src/Runtime/ in detail
+----------------------
 
-  src/Runtime/Version17/Runtime.c
+  src/Runtime/Runtime.c
                             ...
                         Makefile
                         runtime_hpux.o
                         runtime_prof_hpux.o
                         runtime_sun_os4.o
                         runtime_prof_sun_os4.o
-                        Rp2Ps/ ...
 
-See the file "Makefile".
+See the file `Makefile'.
 
 
-src/Runtime/Version17/Rp2Ps/ in detail
---------------------------------------
+src/Tools/Rp2Ps/ in detail
+--------------------------
 
-  src/Runtime/Version17/Rp2Ps/Rp2ps.c
+  src/Tools/Rp2Ps/Rp2ps.c
                                  ...
                               Makefile
                               rp2psHPUX*
                               rp2psSUN_OS4* 
 
-The tool "rp2ps" converts output from a program compiled with region
+The tool `rp2ps' converts output from a program compiled with region
 profiling enabled to a profile graph in postscript, that is, it
 converts an .rp file to a .ps file.  See the file "Makefile".
 
 
-TestEnv/ in detail
-------------------
+src/Tools/Tester/ in detail
+---------------------------
 
-The ``test environment'' will make ``acceptance'' and
-``performance'' tests.  If you do not intend to change the kit
-source, you do not need the acceptance test: It tests whether a
-given set of sml ``test programs'' compiled with the kit
-generate the same output when run as they did with an earlier
-version of the kit.  
-   The performance test measures how long it takes the kit (and
-different phases of it) to compile the test programs.  It also
-measures the run-time and memory consumption of the code
-generated for the test programs.
-
-  TestEnv/ML_to_C_on_HPUX/AcceptanceTest/ ... 
-                          PerformanceTest/ ...
-                          test_reportML_to_C_on_HPUX.tex
-                          test_reportML_to_C_on_HPUX.dvi
-          ML_to_HPPA_on_HPUX/  ...
-          ML_to_C_on_SUN_OS4/  ...
-          Sources/
-	  KitScripts/no_prof.script	kit scripts used for tests
-		     prof.script
-	  bin/memtime_hpux*		executables used for performance test
-              memtime_sun_os4*
-          Output_C_on_HPUX/
-          Output_C_on_SUN_OS4/
-          Output_HPPA_on_HPUX/
+This directory holds the sources for the Kit Tester Tool.
 
 
-The directories of the form "ML_to_X_on_Y/..." contain the
-result of the tests.  The test environment generates a test
-report in file "test_reportML_to_C_on_HPUX.tex" which it tex's,
-resulting in file "test_reportML_to_C_on_HPUX.dvi".  It does not
-automatically call xdvi to show that file.
+test/ in detail
+---------------
 
-Directory "Sources/" contains sml test programs used in the
-tests.  Directory "KitScripts/" contains kit scripts used in the
-tests.  For instance, file "KitScripts/no_prof.script" contains
-the ``kit script declaration'' 
-
-   val region_profiling : bool = false
-
-You can customise the test environment by editing the ML Kit
-source file "src/Common/TestInfo.sml".
-
-The directories of the form "Output_X_on_Y" contain output files
-from the programs in TestEnv/Sources executed on the three
-versions of the ML Kit. If you use TestInfo as it is, the
-acceptance test will compare output from the programs executed
-on your machine against output from the programs in these
-directories.
-
+This directory holds test programs for the Kit. A regression test of
+the Kit is made by invoking the Kit Tester Tool with a so called test
+file as argument, which mentions what SML sources should be compiled
+and run; the Kit Tester Tool tests if the output generated by the
+compiler and the executable equals the output from a previous run. The
+test measures how long it takes the kit (and different phases of it)
+to compile the test programs. It also measures the run-time and memory
+consumption of the code generated for the test programs. The tool
+generates a dvi file, which can be viewed using the command `xdvi
+test_report.dvi' from the test/ directory (provided you have the xdvi
+program installed on your system). See the file "test/README" for
+further details.
 
 
 File types
@@ -142,14 +112,12 @@ File types
 .sml		sml source files.
 .c		C code generated by the ANSI C version of the kit
 .s		HP PA-RISC code generated by the HP PA-RISC version of the kit
-.o		.c or .s files compiled using cc or gcc
-.script		a ``kit script'' file sets references used globally in the kit
+.o		.c or .s files compiled using gcc
+.script		a `kit script' file sets references used globally in the kit
 .log		"file.log" is a log from the compilation of "file.sml".
 .vcg		a region flow graph in a text representation
 		you need a particular program to view it.  See the file "readme".
 .rp		output from program compiled with region profiling turned on. 
 		run it through "rp2ps" to get a postscript file.
-
-.c, .s, .vcg, and .log files are put in the target directory
-(which as a default is "bin/ML_to_X_on_Y/").
+.tst            test files used by the Kit Tester Tool. 
 

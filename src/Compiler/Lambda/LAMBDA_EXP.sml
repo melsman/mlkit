@@ -37,7 +37,7 @@ signature LAMBDA_EXP =
       | CONStype    of Type list * TyName
       | RECORDtype  of Type list
 
-    val tyvars : Type -> tyvar Edlib.EqSet.Set
+    val tyvars : Type -> tyvar EqSet.Set
     val boolType: Type
     val unitType: Type
     val exnType : Type

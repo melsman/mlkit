@@ -24,19 +24,21 @@ functor MulExp(
   structure Lvar : LVARS
   structure Lam: LAMBDA_EXP
     sharing type Lam.lvar = Lvar.lvar = RegionExp.lvar  = Mul.lvar
-        and type Lam.tyvar = R.tyvar = RegionExp.tyvar
+    sharing type Lam.tyvar = R.tyvar = RegionExp.tyvar
   structure RSE: REGION_STAT_ENV
     sharing type RSE.excon = Excon.excon 
-        and type RSE.lvar = Lvar.lvar
-        and type RSE.TypeAndPlaceScheme = R.sigma
-        and type RSE.Type = R.Type
-        and type RSE.place = R.place 
+    sharing type RSE.lvar = Lvar.lvar
+    sharing type RSE.TypeAndPlaceScheme = R.sigma
+    sharing type RSE.Type = R.Type
+    sharing type RSE.place = R.place 
 ) : MUL_EXP = 
 struct
-
-    open Edlib
+  
+    structure ListPair = Edlib.ListPair
 
     structure RegionExp = RegionExp
+
+    fun uncurry f (a, b) = f a b
 
     fun say s = (TextIO.output(TextIO.stdOut, s ^"\n"); TextIO.output(!Flags.log, s^ "\n"))
     fun say' s = (TextIO.output(TextIO.stdOut, s ); TextIO.output(!Flags.log, s))
@@ -253,7 +255,7 @@ struct
 	  case e of
 	    FIX{shared_clos, functions, scope, ... (*bound_lvars,binds,scope,info*)} => 
 	         let val TE' = 
-	                List.foldR (fn {lvar,tyvars,rhos,epss,Type,...} => fn TE' => 
+	                foldr (fn ({lvar,tyvars,rhos,epss,Type,...}, TE') => 
 			   RSE.declareLvar(lvar, (true,true,R.FORALL(tyvars,rhos,epss,Type), shared_clos , NONE, NONE), TE'))
 			TE functions
 	
@@ -265,11 +267,11 @@ struct
 			     warn_puts_trip TE' bind
 	                  end
 	         in
-	             List.apply warn_lvar functions;
+	             app warn_lvar functions;
 		     warn_puts_trip TE' scope
 	         end
              | FN{pat,body,...} =>
-                let val TE' = List.foldR (fn (lvar,(tau,rho)) => fn TE' => 
+                let val TE' = foldr (fn ((lvar,(tau,rho)), TE') => 
                     RSE.declareLvar(lvar, (true,true,R.type_to_scheme tau, rho , NONE, NONE), TE'))
 			TE pat
                 in 
@@ -278,7 +280,7 @@ struct
              | LET{k_let,pat,bind,scope} =>
                    (warn_puts_trip TE bind;
                     let 
-                        val TE' = List.foldR (fn (lvar,_,tyvars,ref epss,tau,rho,_)  => fn TE' => 
+                        val TE' = foldr (fn ((lvar,_,tyvars,ref epss,tau,rho,_), TE') => 
 			   RSE.declareLvar(lvar, (true,true,R.FORALL(tyvars,[],epss,tau), rho , NONE, NONE), TE'))
                            TE
             		   pat
@@ -299,14 +301,14 @@ struct
              | DECON(_,tr) => warn_puts_trip TE tr
              | EXCON(_,SOME(_, tr)) => warn_puts_trip TE tr
              | DEEXCON(_,tr) =>warn_puts_trip TE tr
-             | RECORD(_,l) => List.apply (warn_puts_trip TE) l
-             | UB_RECORD l => List.apply (warn_puts_trip TE) l
+             | RECORD(_,l) => app (warn_puts_trip TE) l
+             | UB_RECORD l => app (warn_puts_trip TE) l
              | SELECT(_,tr) => warn_puts_trip TE tr
              | DEREF tr => warn_puts_trip TE tr
              | REF(_,tr) => warn_puts_trip TE tr
              | ASSIGN(_,tr1,tr2) => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
              | EQUAL(_,tr1,tr2)  => (warn_puts_trip TE tr1; warn_puts_trip TE tr2)
-             | CCALL(_,l) => List.apply (warn_puts_trip TE) l
+             | CCALL(_,l) => app (warn_puts_trip TE) l
              | RESET_REGIONS(_,tr) => warn_puts_trip TE tr
              | FRAME _ => ()
              | LETREGION{body, ...} => warn_puts_trip TE body
@@ -316,27 +318,27 @@ struct
 
 	   and warn_puts_i TE (SWITCH(e, list, e')) = 
 	       (warn_puts_trip TE e;
-	        List.apply ((warn_puts_trip TE) o #2) list;
+	        app ((warn_puts_trip TE) o #2) list;
 		warn_puts_opt TE  e'
 	       )
 	   and warn_puts_s TE (SWITCH(e, list, e')) = 
 	       (warn_puts_trip TE e;
-	        List.apply ((warn_puts_trip TE) o #2) list;
+	        app ((warn_puts_trip TE) o #2) list;
 		warn_puts_opt TE  e'
 	       )
 	   and warn_puts_r TE (SWITCH(e, list,e')) = 
 	       (warn_puts_trip TE e;
-	        List.apply ((warn_puts_trip TE) o #2) list;
+	        app ((warn_puts_trip TE) o #2) list;
 		warn_puts_opt TE e'
 	       )
 	   and warn_puts_c TE (SWITCH(e, list, e')) = 
 	       (warn_puts_trip TE e;
-	        List.apply ((warn_puts_trip TE) o #2) list;
+	        app ((warn_puts_trip TE) o #2) list;
 		warn_puts_opt TE e'
 	       )
 	   and warn_puts_e TE (SWITCH(e, list, e')) = 
 	       (warn_puts_trip TE e;
-	        List.apply ((warn_puts_trip TE) o #2) list;
+	        app ((warn_puts_trip TE) o #2) list;
 		warn_puts_opt TE  e'
 	       )
 	   and warn_puts_opt TE NONE = ()
@@ -377,7 +379,7 @@ struct
   *)
 
   fun bad_rhos(fn_level, rhos): place list = 
-      List.all (fn rho=> case Eff.level_of rho of
+      List.filter (fn rho=> case Eff.level_of rho of
                            SOME level_rho => level_rho > fn_level
                          | NONE => die "bad_rhos: no level"
                ) rhos
@@ -385,7 +387,7 @@ struct
   type bad_lvars = (Lvar.lvar * (sigma*place)*place list)list
 
   fun bad_lvars(fn_level, TE, lvars) : bad_lvars = 
-    List.foldL (fn lvar => fn acc => case RSE.lookupLvar TE lvar of
+    foldl (fn (lvar, acc) => case RSE.lookupLvar TE lvar of
                   SOME (_,_,sigma,p,_,_) =>
                     (case bad_rhos(fn_level, p:: R.frv_sigma sigma) of
                        [] => acc
@@ -396,7 +398,7 @@ struct
   type bad_excons = (Excon.excon * (R.Type*place)*place list)list
 
   fun bad_excons(fn_level, TE, excons) : bad_excons = 
-    List.foldL (fn excon => fn acc => case RSE.lookupExcon TE excon of
+    foldl (fn (excon, acc) => case RSE.lookupExcon TE excon of
                   SOME (tau,p) =>
                     (case bad_rhos(fn_level, p:: R.frv_mu(tau,p)) of
                        [] => acc
@@ -437,7 +439,7 @@ struct
 	  case e of
 	    FIX{shared_clos, functions, scope, ... (*bound_lvars,binds,scope,info*)} => 
 	         let val TE' = 
-	                List.foldR (fn {lvar,tyvars,rhos,epss,Type,...} => fn TE' => 
+	                foldr (fn ({lvar,tyvars,rhos,epss,Type,...}, TE') => 
 			   RSE.declareLvar(lvar, (true,true,R.FORALL(tyvars,rhos,epss,Type), get_place shared_clos , NONE, NONE), TE'))
 			TE functions
 	
@@ -448,7 +450,7 @@ struct
              | FN{pat,body,
                       free = ref(SOME(lvars, excons, _)),
                       ...} =>
-                let val TE' = List.foldR (fn (lvar,(tau,rho)) => fn TE' => 
+                let val TE' = foldr (fn ((lvar,(tau,rho)), TE') => 
                     RSE.declareLvar(lvar, (true,true,R.type_to_scheme tau, rho , NONE, NONE), TE'))
 			TE pat
                     val level_fn = case eps_opt of
@@ -468,7 +470,7 @@ struct
              | LET{k_let,pat,bind,scope} =>
                    (warn_dangle_trip TE bind;
                     let 
-                        val TE' = List.foldR (fn (lvar,_,tyvars,ref epss,tau,rho,_)  => fn TE' => 
+                        val TE' = foldr (fn ((lvar,_,tyvars,ref epss,tau,rho,_), TE') => 
 			   RSE.declareLvar(lvar, (true,true,R.FORALL(tyvars,[],epss,tau), rho , NONE, NONE), TE'))
                            TE
             		   pat
@@ -489,14 +491,14 @@ struct
              | DECON(_,tr) => warn_dangle_trip TE tr
              | EXCON(_,SOME(_, tr)) => warn_dangle_trip TE tr
              | DEEXCON(_,tr) =>warn_dangle_trip TE tr
-             | RECORD(_,l) => List.apply (warn_dangle_trip TE) l
-             | UB_RECORD l => List.apply (warn_dangle_trip TE) l
+             | RECORD(_,l) => app (warn_dangle_trip TE) l
+             | UB_RECORD l => app (warn_dangle_trip TE) l
              | SELECT(_,tr) => warn_dangle_trip TE tr
              | DEREF tr => warn_dangle_trip TE tr
              | REF(_,tr) => warn_dangle_trip TE tr
              | ASSIGN(_,tr1,tr2) => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
              | EQUAL(_,tr1,tr2)  => (warn_dangle_trip TE tr1; warn_dangle_trip TE tr2)
-             | CCALL(_,l) => List.apply (warn_dangle_trip TE) l
+             | CCALL(_,l) => app (warn_dangle_trip TE) l
              | RESET_REGIONS(_,tr) => warn_dangle_trip TE tr
              | FRAME _ => ()
              | LETREGION{body, ...} => warn_dangle_trip TE body
@@ -507,27 +509,27 @@ struct
 
 	   and warn_dangle_i TE (SWITCH(e, list, e')) = 
 	       (warn_dangle_trip TE e;
-	        List.apply ((warn_dangle_trip TE) o #2) list;
+	        app ((warn_dangle_trip TE) o #2) list;
 		warn_dangle_opt TE  e'
 	       )
 	   and warn_dangle_s TE (SWITCH(e, list, e')) = 
 	       (warn_dangle_trip TE e;
-	        List.apply ((warn_dangle_trip TE) o #2) list;
+	        app ((warn_dangle_trip TE) o #2) list;
 		warn_dangle_opt TE  e'
 	       )
 	   and warn_dangle_r TE (SWITCH(e, list,e')) = 
 	       (warn_dangle_trip TE e;
-	        List.apply ((warn_dangle_trip TE) o #2) list;
+	        app ((warn_dangle_trip TE) o #2) list;
 		warn_dangle_opt TE e'
 	       )
 	   and warn_dangle_c TE (SWITCH(e, list, e')) = 
 	       (warn_dangle_trip TE e;
-	        List.apply ((warn_dangle_trip TE) o #2) list;
+	        app ((warn_dangle_trip TE) o #2) list;
 		warn_dangle_opt TE e'
 	       )
 	   and warn_dangle_e TE (SWITCH(e, list, e')) = 
 	       (warn_dangle_trip TE e;
-	        List.apply ((warn_dangle_trip TE) o #2) list;
+	        app ((warn_dangle_trip TE) o #2) list;
 		warn_dangle_opt TE  e'
 	       )
 	   and warn_dangle_opt TE NONE = ()
@@ -556,7 +558,7 @@ struct
 
   fun layout_set children = PP.NODE{start = "{", finish = "}", indent = 1, childsep = PP.RIGHT", ", 
                                children = children}
-  fun get_opt l = List.foldR (fn opt => fn acc => 
+  fun get_opt l = foldr (fn (opt, acc) => 
                          case opt of SOME t => t::acc | NONE => acc) [] l
 
 
@@ -585,7 +587,7 @@ struct
       fun layHlist f l = HNODE{start = "[", finish = "]", childsep = RIGHT ",",
 			       children = map f l}
 
-      fun layHseq f l : StringTree list = List.foldR(fn y => fn ts => case f y of SOME t => t::ts 
+      fun layHseq f l : StringTree list = foldr(fn (y, ts) => case f y of SOME t => t::ts 
 	                                                                        | _ => ts)[]l
 
       fun layHlistopt f l = HNODE{start = "[", finish = "]", childsep = RIGHT ",",
@@ -783,8 +785,8 @@ struct
         | VAR{lvar, il, alloc = SOME (a), rhos_actuals = ref rhos_actuals, plain_arreffs,other} => 
             lay_il(Lvar.pr_lvar lvar, " at" ^^ layout_alloc a, il, rhos_actuals) ^^^ layout_other other
 
-        | INTEGER(i, a) => LEAF(Int.string i ^^ layout_alloc a)
-        | STRING(s, a) => LEAF(String.string s ^^ layout_alloc a)
+        | INTEGER(i, a) => LEAF(Int.toString i ^^ layout_alloc a)
+        | STRING(s, a) => LEAF(String.toString s ^^ layout_alloc a)
         | REAL(r, a) => LEAF(r ^^ layout_alloc a)
         | UB_RECORD(args) =>
             PP.NODE{start = "<", finish = ">" , indent = 1, childsep = PP.RIGHT", ", 
@@ -829,7 +831,7 @@ struct
                     children = map (fn trip => layTrip(trip,0)) args}
             end
         | SELECT(i, trip) =>
-             PP.NODE{start = "#"^Int.string i ^ " ", finish = "", indent = 4, childsep = PP.NOSEP,
+             PP.NODE{start = "#"^Int.toString i ^ " ", finish = "", indent = 4, childsep = PP.NOSEP,
                      children = [layTrip(trip,3)]}
         | FN{pat,body,free,alloc}=> layLam((pat,body,alloc), n, "")
         | APP(NONE,_,TR(VAR{lvar, il, alloc, rhos_actuals=ref rhos_actuals, plain_arreffs,other},_,_,_), t2) =>
@@ -956,7 +958,7 @@ struct
                  end
                )
             else layTrip(body,n)
-        | SWITCH_I(sw) => layoutSwitch layTrip Int.string  sw
+        | SWITCH_I(sw) => layoutSwitch layTrip Int.toString  sw
         | SWITCH_S(sw) => layoutSwitch layTrip (fn s => s) sw
         | SWITCH_C(sw) => layoutSwitch layTrip Con.pr_con sw
         | SWITCH_E(sw) => layoutSwitch layTrip Excon.pr_excon sw
@@ -1041,7 +1043,7 @@ struct
                           val (binds', body) = layout_rec e2
                           val _ = inInfo := "(* fix *)"
                         in
-                          (mk_mutual_binding (layout_alloc shared_clos,List.rev functions):: binds', body)
+                          (mk_mutual_binding (layout_alloc shared_clos,rev functions):: binds', body)
                         end
                   | EXCEPTION(excon, nullary, mu, alloc, scope as TR(e2, _,_,_)) =>
                         let 
@@ -1128,7 +1130,7 @@ struct
        in
         PP.NODE{start = "", finish = "", indent = 0,
                 childsep = PP.NOSEP, 
-                children = #2(List.foldL mk_fix (List.size functions,[]) functions)}
+                children = #2(foldl (uncurry mk_fix) (length functions,[]) functions)}
        end
 
     in
@@ -1312,7 +1314,7 @@ struct
     let 
       val r= ref Mul.empty_qmularefset  (* dummy *)
       val fev_sigma = 
-        Eff.setminus(List.all Eff.is_arrow_effect (Eff.subgraph (epss)),
+        Eff.setminus(List.filter Eff.is_arrow_effect (Eff.subgraph (epss)),
                      epss)
       val dep_acc = Mul.add_dependencies(dep_acc,Mul.MULSCHEME r,fev_sigma)
     in 
@@ -1381,7 +1383,7 @@ struct
             in (UB_RECORD ts', dep)
             end
         | RegionExp.FN{pat,body,alloc} =>
-            let val EE' = List.foldL (fn (lvar,_) => fn EE => Mul.declare(EE,lvar,ref(Mul.empty_qmularefset)))
+            let val EE' = foldl (fn ((lvar,_), EE) => Mul.declare(EE,lvar,ref(Mul.empty_qmularefset)))
                           EE pat
 val (body',dep) = mk_deptr(EE',body, dep)
             in (FN{pat=pat,body=body',free=ref NONE,alloc=alloc}, dep)
@@ -1390,7 +1392,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
             let val _ = sawLetregion();  (* for profiling *)
                 val (body',dep) = mk_deptr(EE,body, dep)
                 val discharged = map Eff.find (!B)
-                val discharged_rhos_sorted = rev(Eff.sort(List.all Eff.is_rho (discharged)))
+                val discharged_rhos_sorted = rev(Eff.sort(List.filter Eff.is_rho (discharged)))
             in (LETREGION{B = B, 
                           rhos = ref (map (fn rho => (rho,Mul.NUM 1)) discharged_rhos_sorted),
                           body = body'},
@@ -1398,7 +1400,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
             end
         | RegionExp.LET{pat ,bind,scope} =>
             let val (bind', dep) = mk_deptr(EE,bind, dep)
-                val (EE_extended, Xi_refs, dep)  = List.foldR extend_env_at_let (EE,[],dep) pat
+                val (EE_extended, Xi_refs, dep)  = foldr (uncurry extend_env_at_let) (EE,[],dep) pat
                 val pat' = map (fn ((lvar, tys, ty,p), Xi_ref) => (lvar,ref[],tys,ref[],ty,p,Xi_ref))
                                (ListPair.zip(pat, Xi_refs))
                 val (scope', dep) = mk_deptr(EE_extended,scope, dep)
@@ -1406,7 +1408,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
             end
         | RegionExp.FIX{shared_clos, functions,scope} =>
             let 
-              val (EE_extended, Xi_refs, dep) = List.foldR extend_env_at_fix (EE,[], dep) functions
+              val (EE_extended, Xi_refs, dep) = foldr (uncurry extend_env_at_fix) (EE,[], dep) functions
               val (functions', dep) = mk_dep_funcs(EE_extended, functions, Xi_refs, dep)
               val (scope', dep) = mk_deptr(EE_extended, scope, dep)
             in
@@ -1548,7 +1550,7 @@ val (body',dep) = mk_deptr(EE',body, dep)
   local 
     val r = ref 0
   in
-    fun fresh _ = (r:= !r + 1; Lvar.new_named_lvar ("k" ^ Int.string(!r)))
+    fun fresh _ = (r:= !r + 1; Lvar.new_named_lvar ("k" ^ Int.toString(!r)))
   end
 
   exception Abort

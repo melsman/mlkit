@@ -27,6 +27,10 @@ TO BE FIXED BY: FAXE?
 
 =============================== WAIT ===============================
 
+So as to make printing of profile graphs use less ink, modify rp2ps
+such that black is not used as the color for the largest area in
+a profile graph.
+
 Large elaboration bases are annotated on the ast (functor bindings)
 during elaboration. Such annotated bases cause opacity elimination to
 be slow when compiling large programs; opacity elimination applies

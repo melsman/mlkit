@@ -3,7 +3,8 @@ OldString.sml OldIO.sml
 
 local
 
-  INT.sml Int.sml BOOL.sml Bool.sml EDLIB_GENERAL.sml EdlibGeneral.sml
+  (* INT.sml Int.sml BOOL.sml Bool.sml *) 
+  EDLIB_GENERAL.sml EdlibGeneral.sml
   LIST.sml List.sml 
 
   CORE_VECTOR.sml CoreVector.sml
@@ -11,10 +12,10 @@ local
   STRING_TYPE.sml StringType.sml
 
   NON_STANDARD.sml NonStandard.sml CORE_UTILS.sml CoreUtils.sml
-  STRING.sml String.sml EQ_SET.sml EqSet.sml
-
+  STRING.sml String.sml EQ_SET.sml 
+(*
   PAIR.sml Pair.sml
-
+*)
   INSTREAM.sml Instream.sml
 
   (* Parsers *)
@@ -26,6 +27,7 @@ local
   SET.sml Set.sml
 
 in
+   EqSet.sml
     ORDERING.sml Edlib.sml
 end
 

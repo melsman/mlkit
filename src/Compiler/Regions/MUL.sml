@@ -10,6 +10,7 @@ sig
       type mularefmap                   (* multiplicity arrow effect maps, Psi *)                                      
       type imp_mularefmap               (* imperative multiplicity arrow effect maps, Psi *)                         
       type efenv                        (* effect environments *)
+      type top_efenv                    (* efficient top-level effect environments *)
       type efsubst                      (* effect substitutions *)
       type qmularefset                  (* quantified multiplicity arrow effect set*)
       type lvar                         (* lambda variables *)
@@ -84,13 +85,15 @@ sig
       val restrict_mularefmap : mularefmap * effectvar list -> mularefmap
       val enrich_mularefmap : mularefmap * mularefmap -> bool
 
+      val topify_efenv : efenv -> top_efenv
       val lookup_efenv: efenv*lvar->qmularefset ref
       val declare: efenv*lvar*qmularefset ref -> efenv
-      val plus   : efenv * efenv -> efenv 
-      val restrict_efenv : efenv * lvar list -> efenv
+      val plus : efenv * efenv -> efenv 
+      val plus' : top_efenv * top_efenv -> top_efenv 
+      val restrict_efenv : top_efenv * lvar list -> efenv
 
-      type regionStatEnv
-      val enrich_efenv : (efenv*regionStatEnv) * (efenv*regionStatEnv) -> bool
+      type top_regionStatEnv
+      val enrich_efenv : (top_efenv*top_regionStatEnv) * (top_efenv*top_regionStatEnv) -> bool
 
       val apply_mulef 		:efsubst*mulef -> mulef		
       val apply_mularef 	:efsubst*mularef -> mularef		
@@ -135,6 +138,7 @@ sig
       val layout_Phi: arroweffect list -> StringTree
       val layout_effect : effect -> StringTree
       val layout_efenv : efenv -> StringTree
+      val layout_top_efenv : top_efenv -> StringTree
   end
 
 

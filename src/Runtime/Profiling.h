@@ -95,11 +95,13 @@ void AlarmHandler();
 void Statistik();
 void resetProfiler();
 void updateMaxProfStack();
-void queueMark();  /* does nothing */
 void queueMarkProf();  /* tell the time next time there is a profile tick */
 char *allocMemProfiling(int i);
 ProfTabList* profTabListInsertAndInitialize(ProfTabList* p, int regionId);
 
+#else /*PROFILING not defined */
+
+void queueMark();  /* does nothing */
 
 #endif /*PROFILING*/
 

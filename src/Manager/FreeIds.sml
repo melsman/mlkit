@@ -1,18 +1,23 @@
 
 functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 		 structure Environments : ENVIRONMENTS
+		 structure ModuleEnvironments : MODULE_ENVIRONMENTS
+		   sharing type ModuleEnvironments.longid = TopdecGrammar.DecGrammar.longid
+		   sharing type ModuleEnvironments.longtycon = TopdecGrammar.longtycon
+		   sharing type ModuleEnvironments.longstrid = TopdecGrammar.longstrid
+		   sharing type ModuleEnvironments.funid = TopdecGrammar.funid
+		   sharing type ModuleEnvironments.sigid = TopdecGrammar.sigid
 		 structure ElabInfo : ELAB_INFO
 		   sharing type ElabInfo.ElabInfo = TopdecGrammar.info
-		       and type ElabInfo.TypeInfo.strid = TopdecGrammar.strid
-		       and type ElabInfo.TypeInfo.tycon = TopdecGrammar.tycon = Environments.tycon
-		       and type ElabInfo.TypeInfo.id = TopdecGrammar.id = Environments.id
-                       and type ElabInfo.TypeInfo.TyEnv = Environments.TyEnv
+		   sharing type ElabInfo.TypeInfo.strid = TopdecGrammar.strid
+		   sharing type ElabInfo.TypeInfo.tycon = TopdecGrammar.tycon = Environments.tycon
+		   sharing type ElabInfo.TypeInfo.id = TopdecGrammar.id = Environments.id
+                   sharing type ElabInfo.TypeInfo.TyEnv = Environments.TyEnv
+                   sharing type ElabInfo.TypeInfo.Basis = ModuleEnvironments.Basis
 		 structure Crash : CRASH
 		 structure PP : PRETTYPRINT
 		  ) :  FREE_IDS =
   struct
-
-    structure List = Edlib.List
 
     fun die s = Crash.impossible ("FreeIds."^s)
 
@@ -98,6 +103,12 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
       fun get_free_longids() : longids = 
 	{longvids= !bucket_longvids, longtycons= !bucket_longtycons, 
 	 longstrids= !bucket_longstrids, funids= !bucket_funids, sigids= !bucket_sigids}
+      fun install_longids ({funids, sigids, longstrids, longtycons, longvids} : longids) : unit =
+	(bucket_funids:=funids;
+	 bucket_sigids:=sigids;
+	 bucket_longstrids:=longstrids;
+	 bucket_longtycons:=longtycons;
+	 bucket_longvids:=longvids)
     end
 
     (* -------------------------------------
@@ -125,6 +136,12 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
     fun use_sigid({sigids,...}:ids,sigid:sigid): unit =
       if mem(sigid,sigids) then () else mk_free_sigid sigid
 
+    fun use_longids (ids:ids, {longvids,longtycons,longstrids,funids,sigids}) : unit =
+      (app (fn a => use_longvid (ids, a)) longvids; 
+       app (fn a => use_longtycon (ids, a)) longtycons; 
+       app (fn a => use_longstrid (ids, a)) longstrids; 
+       app (fn a => use_funid (ids, a)) funids; 
+       app (fn a => use_sigid (ids, a)) sigids)
 
     (* Get type info from info-nodes; we could do better here, because
      * we force applications of realisations without using the
@@ -189,7 +206,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 	     case to_TypeInfo info
 	       of SOME (ElabInfo.TypeInfo.TYENV_INFO TE) => 
 		 (case Environments.TE.lookup TE tycon
-		    of SOME tystr => Edlib.EqSet.list(Environments.VE.dom(Environments.TyStr.to_VE tystr))
+		    of SOME tystr => EqSet.list(Environments.VE.dom(Environments.TyStr.to_VE tystr))
 		     | NONE => die "free_dec.DATATYPE_REPLICATIONdec: no tystr") 
 		| _ => die "free_dec.DATATYPE_REPLICATIONdec: no type info"
 	   val strids = #1(TyCon.explode_LongTyCon longtycon)
@@ -210,14 +227,14 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 				  end
        | OPENdec(info,longstrids_with_info) =>
 	  let fun use_longstrids_with_info(I,longstrids_with_info) =
-	         List.apply (fn WITH_INFO(_,longstrid) => use_longstrid(I,longstrid)) 
+	         List.app (fn WITH_INFO(_,longstrid) => use_longstrid(I,longstrid)) 
 		 longstrids_with_info
 	      val (strids, tycons, ids) = case to_TypeInfo info
 					    of SOME (ElabInfo.TypeInfo.OPEN_INFO decls) => decls
 					     | _ => die "OPENdec - no decl. info"
-	      val decl_strids = List.foldL (fn strid => fn ids => add_strid(strid,ids))
-	      val decl_tycons = List.foldL (fn tycon => fn ids => add_tycon(tycon,ids))
-	      val decl_ids = List.foldL (fn vid => fn ids => add_vid(vid,ids))
+	      val decl_strids = foldl (fn (strid,ids) => add_strid(strid,ids))
+	      val decl_tycons = foldl (fn (tycon,ids) => add_tycon(tycon,ids))
+	      val decl_ids = foldl (fn (vid,ids) => add_vid(vid,ids))
 	  in use_longstrids_with_info(I,longstrids_with_info);
 	     decl_strids (decl_tycons (decl_ids empty_ids ids) tycons) strids
 	  end
@@ -308,7 +325,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
     and free_ty I =
       fn TYVARty _ => ()
        | RECORDty(_,tyrow_opt) => free_tyrow_opt I tyrow_opt
-       | CONty(_,tys,longtycon) => (List.apply (free_ty I) tys; use_longtycon(I,longtycon))
+       | CONty(_,tys,longtycon) => (List.app (free_ty I) tys; use_longtycon(I,longtycon))
        | FNty(_,ty1,ty2) => (free_ty I ty1; free_ty I ty2)
        | PARty(_,ty) => free_ty I ty
     and free_ty_opt I NONE = ()
@@ -379,8 +396,8 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 	  let val (strids, tycons) = case to_TypeInfo info
 				       of SOME (ElabInfo.TypeInfo.INCLUDE_INFO specs) => specs
 					| _ => die "INCLUDEspec - no specs info"
-	      val decl_strids = List.foldL (fn strid => fn ids => add_strid(strid,ids))
-	      val decl_tycons = List.foldL (fn tycon => fn ids => add_tycon(tycon,ids))
+	      val decl_strids = foldl (fn (strid,ids) => add_strid(strid,ids))
+	      val decl_tycons = foldl (fn (tycon,ids) => add_tycon(tycon,ids))
 	  in free_sigexp I sigexp;
 	     decl_strids (decl_tycons empty_ids tycons) strids
 	  end
@@ -430,10 +447,22 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
       | free_strdesc_opt I (SOME strdesc) = free_strdesc I strdesc
 
     fun free_fundec I (FUNCTORfundec(_,funbind)) : ids = free_funbind I funbind
-    and free_funbind I (FUNBIND(_,funid,strid,sigexp,strexp,funbind_opt)) : ids =
-      (free_sigexp I sigexp;
-       free_strexp (add_strid(strid,I)) strexp;
-       (add_funid(funid,empty_ids)) ++ free_funbind_opt I funbind_opt)
+    and free_funbind I (FUNBIND(info,funid,strid,sigexp,strexp,funbind_opt)) : ids =
+      let val _ = free_sigexp I sigexp
+	  val longids = get_free_longids()
+	  val _ = reset_buckets()
+	  val _ = free_strexp empty_ids strexp   (* (add_strid(strid,I)) *)
+	  val longids_body = get_free_longids()
+	  val _ = install_longids longids
+	  val _ = use_longids (add_strid(strid,I), longids_body)
+	  val _ = case to_TypeInfo info
+		    of SOME (ElabInfo.TypeInfo.FUNBIND_INFO {argE,elabBref,T,resE,opaq_env_opt}) =>
+		      ((elabBref := ModuleEnvironments.B.restrict(!elabBref,longids_body))
+		       handle _ => die "free_funbind.restrict failed")
+		     | _ => die "free_funbind.no type info" 
+      in
+	add_funid(funid,empty_ids) ++ free_funbind_opt I funbind_opt
+      end
     and free_funbind_opt I NONE = empty_ids
       | free_funbind_opt I (SOME funbind) = free_funbind I funbind
 

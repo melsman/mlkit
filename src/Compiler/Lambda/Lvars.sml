@@ -3,8 +3,6 @@
 functor Lvars(structure Name : NAME) : LVARS =
   struct
 
-    open Edlib
-
     (* Lambda variables are based on names which may be `matched'. In
      * particular, if two lambda variables, lv1 and lv2, are
      * successfully matched, eq(lv1,lv2) = true. This may affect the
@@ -45,11 +43,11 @@ functor Lvars(structure Name : NAME) : LVARS =
 				     prim=SOME prim}
 
 
-    fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.string (Name.key name)
+    fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.toString (Name.key name)
       | pr_lvar {str,...} = str
 
-    fun pr_lvar' ({str="",name,...} : lvar) : string = "v_" ^ Int.string (Name.key name)
-      | pr_lvar' {str,name,...} = str ^ "_" ^ Int.string (Name.key name)
+    fun pr_lvar' ({str="",name,...} : lvar) : string = "v_" ^ Int.toString (Name.key name)
+      | pr_lvar' {str,name,...} = str ^ "_" ^ Int.toString (Name.key name)
 
     fun name ({name,...} : lvar) : name = name
 

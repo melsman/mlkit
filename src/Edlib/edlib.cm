@@ -1,9 +1,9 @@
 Group 
  
   structure Edlib 
-  structure OldIO
+(*  structure OldIO *)
   structure OldString
-(*  structure Bits *)
+  structure EqSet
 
   signature ORDERING
 
@@ -12,11 +12,12 @@ is
 Edlib.sml
 OldString.sml
 OldIO.sml
-(* Bits.sml *)
+(*
 INT.sml
 Int.sml
 BOOL.sml
 Bool.sml
+*)
 EDLIB_GENERAL.sml
 EdlibGeneral.sml
 LIST.sml
@@ -34,16 +35,9 @@ String.sml
 EQ_SET.sml
 EqSet.sml
 (*
-CORE_ARRAY.sml
-CoreArray.sml
-VECTOR.sml
-Vector.sml
-ARRAY.sml
-Array.sml
-*)
 PAIR.sml
 Pair.sml
-
+*)
 INSTREAM.sml
 Instream.sml
 
@@ -61,10 +55,6 @@ LIST_PAIR.sml
 ListPair.sml
 LIST_SORT.sml
 ListSort.sml
-(*
-REAL.sml
-Real.sml
-*)
 SET.sml
 Set.sml
 ORDERING.sml

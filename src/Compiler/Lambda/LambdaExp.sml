@@ -8,10 +8,7 @@ functor LambdaExp(structure Lvars: LVARS
 		  structure Flags: FLAGS) : LAMBDA_EXP =
   struct
 
-    structure EqSet = Edlib.EqSet
-    structure Int = Edlib.Int
-    structure List = Edlib.List
-    structure String = Edlib.String
+    fun uncurry f (x,y) = f x y
 
     type lvar = Lvars.lvar
     type con = Con.con
@@ -308,7 +305,7 @@ functor LambdaExp(structure Lvars: LVARS
       | DEEXCONprim excon => 
 	  PP.LEAF("deexcon" ^ Excon.pr_excon excon)
       | RECORDprim => PP.LEAF("record")
-      | SELECTprim i => PP.LEAF("select(" ^ Int.string i ^ ")")
+      | SELECTprim i => PP.LEAF("select(" ^ Int.toString i ^ ")")
       | UB_RECORDprim => PP.LEAF("ubrecord") 
       | NEG_INTprim => PP.LEAF("~" )
       | NEG_REALprim => PP.LEAF("~")
@@ -559,8 +556,8 @@ functor LambdaExp(structure Lvars: LVARS
                     children=map layoutType taus,
                     childsep=PP.RIGHT ","}
           else PP.LEAF(Lvars.pr_lvar lv)
-      | INTEGER i => PP.LEAF(Int.string i)
-      | STRING s => PP.LEAF(String.string s)
+      | INTEGER i => PP.LEAF(Int.toString i)
+      | STRING s => PP.LEAF(String.toString s)
       | REAL r => PP.LEAF(r)
       | FN {pat,body} => 
 	  PP.NODE{start="(fn ",finish=")", indent=1,
@@ -625,7 +622,7 @@ functor LambdaExp(structure Lvars: LVARS
 		  childsep=PP.LEFT " handle "
 		  }
       | SWITCH_I sw => 
-	  layoutSwitch layoutLambdaExp Int.string sw
+	  layoutSwitch layoutLambdaExp Int.toString sw
       | SWITCH_S sw => 
 	  layoutSwitch layoutLambdaExp (fn x => x) sw
       | SWITCH_C sw => 
@@ -643,7 +640,7 @@ functor LambdaExp(structure Lvars: LVARS
                      children=(map (fn e => layoutLambdaExp(e,0)) lambs),
                      childsep=PP.RIGHT ","}
          | (SELECTprim i, [lamb]) => 
-             PP.NODE{start="#" ^ Int.string i ^ "(",finish=")",indent=1,
+             PP.NODE{start="#" ^ Int.toString i ^ "(",finish=")",indent=1,
                      children=[layoutLambdaExp(lamb,0)],
                      childsep=PP.NOSEP}
          | (DEREFprim{instance},[lamb]) =>
@@ -698,7 +695,7 @@ functor LambdaExp(structure Lvars: LVARS
                           val (binds', body) = layout_rec scope
                           val _ = inInfo := "(* fix *)"
                         in
-                          (mk_mutual_binding (List.rev functions):: binds', body)
+                          (mk_mutual_binding (rev functions):: binds', body)
                         end
                   | EXCEPTION(excon, ty_opt, scope) =>
                         let 
@@ -779,7 +776,7 @@ functor LambdaExp(structure Lvars: LVARS
        in
         PP.NODE{start = "", finish = "", indent = 0,
                 childsep = PP.NOSEP, 
-                children = #2(List.foldL mk_fix (List.size functions,[]) functions)}
+                children = #2(foldl (uncurry mk_fix) (length functions,[]) functions)}
        end
 
 

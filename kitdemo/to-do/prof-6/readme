@@ -1,5 +1,0 @@
-project prof-6 compiled with profiling turned on with the kit
-release on april 30 gives a binary (run) that gives a `bus
-error' when run on ask or thor.  This may have something to do
-with the extreme memory consumption of the program.  God
-fornøjelse.

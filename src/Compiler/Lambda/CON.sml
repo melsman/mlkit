@@ -1,7 +1,5 @@
 (* Constructors for the lambda language *)
 
-(*$CON *)
-
 signature CON = 
   sig 
 

@@ -1,9 +1,6 @@
-(*$DropRegions: MUL_EXP AT_INF LVARS CRASH EFFECT DROP_REGIONS FINMAP
-                FINMAPEQ PRETTYPRINT RTYPE REGION_STAT_ENV FLAGS REGION_EXP EXCON MUL*)
 
-(* Drop Regions *)
-
-functor DropRegions(structure ExCon: EXCON
+functor DropRegions(structure Name : NAME
+		    structure ExCon: EXCON
                     structure MulExp : MUL_EXP
                     structure Mul: MUL
                       sharing type Mul.mulef = MulExp.mulef
@@ -12,7 +9,7 @@ functor DropRegions(structure ExCon: EXCON
                       sharing type RegionExp.metaType = MulExp.metaType
 		    structure AtInf : AT_INF
 		      sharing type AtInf.LambdaPgm = MulExp.LambdaPgm = MulExp.LambdaPgm
-                          and type AtInf.LambdaExp = MulExp.LambdaExp
+                      sharing type AtInf.LambdaExp = MulExp.LambdaExp
 		    structure RSE : REGION_STAT_ENV
 		      sharing type RSE.lvar = MulExp.lvar
 		    structure RType : RTYPE
@@ -21,6 +18,8 @@ functor DropRegions(structure ExCon: EXCON
                       sharing type RType.Type = RegionExp.Type
 		    structure Lvars : LVARS
 		      sharing type Lvars.lvar = MulExp.lvar
+		      sharing type Lvars.name = Name.name
+		    structure IntFinMap : MONO_FINMAP where type dom = int
 		    structure Crash : CRASH
 		    structure FinMapEq : FINMAPEQ
 		    structure Eff : EFFECT
@@ -29,7 +28,7 @@ functor DropRegions(structure ExCon: EXCON
                                    AtInf.place = Eff.effect
 		    structure PP : PRETTYPRINT
 		      sharing type PP.StringTree = Eff.StringTree = FinMapEq.StringTree = MulExp.StringTree
-                                   = AtInf.StringTree
+                                   = AtInf.StringTree = IntFinMap.StringTree
 		    structure Flags : FLAGS
                     sharing type ExCon.excon = MulExp.excon
 		      ) : DROP_REGIONS =
@@ -129,11 +128,15 @@ functor DropRegions(structure ExCon: EXCON
 
     datatype env_res = FIXBOUND of bool list | NOTFIXBOUND
     type env = (lvar, env_res) FinMapEq.map
+    type top_env = env_res IntFinMap.map
+    fun keyOfLvar lv = Name.key(Lvars.name lv)
+    fun topify e =
+      FinMapEq.Fold (fn ((d,r),a) => IntFinMap.add(keyOfLvar d,r,a)) IntFinMap.empty e
     val empty = FinMapEq.empty : env
     fun add (lv, res, env) = FinMapEq.add Lvars.eq (lv, res, env)
     fun lookup env lv = FinMapEq.lookup Lvars.eq env lv
                                                                            (*****************************)
-    val init =                                                             (* create the initial env by *)
+    val init = topify                                                      (* create the initial env by *)
       let fun foldfn ((lvar, (compound,_,sigma,_,_,_)), env) =             (* folding over RSE.initial  *)
 	    if compound then let val (_,places,arreffs) = RType.bv sigma   (*****************************)
 				 val bl = drop_places(places,arreffs)
@@ -144,18 +147,19 @@ functor DropRegions(structure ExCon: EXCON
       end
 
     fun plus a = FinMapEq.plus Lvars.eq a
+    fun plus' a = IntFinMap.plus a
 
-    fun restrict(env,lvars) = 
-      List.foldL(fn lv => fn acc =>
-		 case lookup env lv
-		   of SOME res => add(lv,res,acc)
-		    | NONE => die "restrict.lv not in env") empty lvars
+    fun restrict(tenv,lvars) = 
+      foldl(fn (lv,acc) =>
+	    case IntFinMap.lookup tenv (keyOfLvar lv)
+	      of SOME res => add(lv,res,acc)
+	       | NONE => die "restrict.lv not in env") empty lvars
 
     fun enrich(env1,env2) =
-      FinMapEq.Fold(fn ((lv2,res2),b) => b andalso
-		    case lookup env1 lv2
-		      of SOME res1 => res1=res2
-		       | NONE => false) true env2 
+      IntFinMap.Fold(fn ((lv2,res2),b) => b andalso
+		     case IntFinMap.lookup env1 lv2
+		       of SOME res1 => res1=res2
+			| NONE => false) true env2 
 
     type StringTree = PP.StringTree
     fun layout_bool true = PP.LEAF "1"
@@ -165,6 +169,8 @@ functor DropRegions(structure ExCon: EXCON
       | layout_env_res NOTFIXBOUND = PP.LEAF "NOTFIXBOUND"
     fun layout_lvar lv = PP.LEAF (Lvars.pr_lvar lv)
     val layout_env = FinMapEq.layoutMap {start="DROPENV(",finish=")",eq=" -> ",sep=", "} layout_lvar layout_env_res
+    val layout_top_env = IntFinMap.layoutMap {start="TOP_DROPENV(",finish=")",eq=" -> ",sep=", "} 
+      (PP.LEAF o Int.toString) layout_env_res
 
     val export_env = ref empty
 

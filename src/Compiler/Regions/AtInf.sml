@@ -40,7 +40,6 @@ functor AtInf(structure Lvars: LVARS
 
     structure NewList = List
     structure List = Edlib.List
-    structure Int = Edlib.Int
     
     (* In the old storage mode analysis an environment was propagated to later
      * program units. Since we must assign storage mode attop to regions passed
@@ -256,10 +255,10 @@ functor AtInf(structure Lvars: LVARS
   fun lines (l: string list) = PP.NODE{start="",finish="", indent=0,childsep=PP.NOSEP, children = map PP.LEAF l}
 
   fun item (item_number:int) (t:StringTree) = 
-    let val s = "(" ^ Int.string item_number ^ ")"
+    let val s = "(" ^ Int.toString item_number ^ ")"
     in
        PP.NODE{start = s, finish = "", 
-               indent = Int.max (size s+1) 5,
+               indent = Int.max (size s+1, 5),
                childsep = PP.NOSEP, children = [t]}
     end
 
@@ -411,9 +410,9 @@ functor AtInf(structure Lvars: LVARS
                  SOME(List.first is_visited lrv) handle List.First _  => NONE
       in
 	  debug1(rho_related,liveset);
-	  List.apply visit rho_related;
+	  NewList.app visit rho_related;
 	  any_live(rho,sme,liveset,rho_points_into, SAT rho)
-	    footnote List.apply unvisit rho_related
+	    footnote NewList.app unvisit rho_related
       end
 
   fun show_place_at (ATTOP p) = "attop " ^ show_place p
@@ -520,18 +519,18 @@ functor AtInf(structure Lvars: LVARS
 		     | LETREGION{B,rhos,body} => 
                          let 
                             val (RE,LE,EE) = sme
-                            fun extend (rho,mul) RE' = SME.declare_regvar_env(rho,SME.LETREGION_BOUND,RE')
-                            val sme_body = (List.foldL extend RE (!rhos), LE, EE)
+                            fun extend ((rho,mul), RE') = SME.declare_regvar_env(rho,SME.LETREGION_BOUND,RE')
+                            val sme_body = (foldl extend RE (!rhos), LE, EE)
                          in 
                             LETREGION{B=B,rhos=rhos,body=sma_trip sme_body body}
                          end
 		     | LET{k_let,pat,bind,scope} =>
   		         let val (RE,LE,EE) = sme
                              fun do_pat (lv,ils,tvs,effs,tau,p,other) = (lv,ils,tvs,effs,tau,p,())
-                             fun extend (lvar,_,alphas,ref [], ty, rho, other) LE =
+                             fun extend ((lvar,_,alphas,ref [], ty, rho, other), LE) =
                                            SME.declare_lvar_env(lvar,rvars(mu_to_scheme_and_place(ty,rho)), LE)
-                               | extend _ _ = die "non-empty list of bound region or effect variables at LET"
-                             val sme_scope = (RE,List.foldL extend LE pat,EE)
+                               | extend _ = die "non-empty list of bound region or effect variables at LET"
+                             val sme_scope = (RE, foldl extend LE pat,EE)
 		         in LET{k_let=k_let,pat=map do_pat pat,
                                 bind=sma_trip sme bind,
                                 scope=sma_trip sme_scope scope}
@@ -539,7 +538,7 @@ functor AtInf(structure Lvars: LVARS
 		     | FIX{free,shared_clos = shared_clos as (shared_rho,liveset),functions,scope} =>
   		         let 
                             val (RE,LE,EE) = sme
-                            val LE' = List.foldL  (fn {lvar,tyvars, rhos, epss, Type, ...} => fn acc => 
+                            val LE' = foldl  (fn ({lvar,tyvars, rhos, epss, Type, ...}, acc) => 
                                        SME.declare_lvar_env(lvar,rvars(RType.FORALL(tyvars,rhos,epss,Type),shared_rho),acc))
                                       LE functions
                             val sme' = (RE,LE',EE)
@@ -549,8 +548,8 @@ functor AtInf(structure Lvars: LVARS
                                (case bind of
                                   TR(FN{pat,body,free,alloc}, mu_lam, phi_lam, psi_lam) =>
                                     let
-                                       fun extend rho RE' = SME.declare_regvar_env(rho,SME.LETREC_BOUND,RE')
-                                       val RE_for_body_of_fn = List.foldL extend SME.empty_regvar_env rhos
+                                       fun extend (rho, RE') = SME.declare_regvar_env(rho,SME.LETREC_BOUND,RE')
+                                       val RE_for_body_of_fn = foldl extend SME.empty_regvar_env rhos
                                        val fn' = sma_fn(sme',RE_for_body_of_fn,pat,body,free,alloc)
                                     in 
        			              {lvar=lvar,occ=occ,tyvars=tyvars,rhos=rhos,epss=epss,Type=Type,
@@ -621,8 +620,8 @@ functor AtInf(structure Lvars: LVARS
                                                analyse_rhos_for_resetting(sme,liveset,free_regions)      
                                        val conflicts' = 
                                               if force then
-                                                    List.foldL (fn SAT rho => (fn acc => FORMAL_REGION_PARAM rho :: acc)
-                                                                 | _ => (fn acc => acc)) conflicts place_at_list
+                                                    foldl (fn (SAT rho, acc) => FORMAL_REGION_PARAM rho :: acc
+                                                            | (_, acc) => acc) conflicts place_at_list
                                               else conflicts
                                    in
                                       case conflicts' of 
@@ -655,10 +654,10 @@ functor AtInf(structure Lvars: LVARS
 	    end
         and sma_fn(sme,regvar_env0,pat,body,free,alloc) = 
                      let val (_, LE, EE) = sme
-                         fun extend (lvar, mu) LE = 
+                         fun extend ((lvar, mu), LE) = 
                            SME.declare_lvar_env(lvar,rvars(mu_to_scheme_and_place mu), LE)
                          val sme_body = (regvar_env0, 
-                                         List.foldL extend LE pat,  
+                                         foldl extend LE pat,  
                                          EE)
                      in
                          FN{pat=pat,body=sma_trip sme_body body,
@@ -692,17 +691,17 @@ functor AtInf(structure Lvars: LVARS
                  (place at, place*mul, unit)LambdaPgm =
         (debug_which_at := (Flags.is_on "debug_which_at");
          all_attop := (Flags.is_on "disable_atbot_analysis");
-         chat "\nBuilding region flow graph...\n";
+         chat "Building region flow graph ...";
          Timing.timing_begin();
          RegFlow.mk_graph(pgm) handle _ => die "call of RegFlow.mk_graph failed";
          Timing.timing_end("RegFlow");
          Timing.timing_begin();
-         chat "\nComputing locally live variables...\n";
+         chat "Computing locally live variables ...";
          let val pgm' = LLV.llv pgm 
                         handle _ => die "call of LLV.llv failed"
          in 
            Timing.timing_end("LocLive");
-           chat "\nStorage mode analysis ...\n";
+           chat "Storage mode analysis ...";
            Timing.timing_begin();
            (sma0(pgm')handle AbortExpression => die "call of sma0 failed")
              footnote Timing.timing_end("SMA")

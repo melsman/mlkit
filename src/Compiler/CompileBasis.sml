@@ -5,33 +5,33 @@ functor CompileBasis(structure Con : CON
 		     structure TyName : TYNAME
 		     structure LambdaStatSem : LAMBDA_STAT_SEM
 		       sharing type LambdaStatSem.con = Con.con
-			   and type LambdaStatSem.excon = Excon.excon
+		       sharing type LambdaStatSem.excon = Excon.excon
 		     structure EliminateEq : ELIMINATE_EQ
 		       sharing type EliminateEq.lvar = LambdaStatSem.lvar = Lvars.lvar
-			   and type EliminateEq.TyName = LambdaStatSem.TyName = TyName.TyName
+		       sharing type EliminateEq.TyName = LambdaStatSem.TyName = TyName.TyName
 		     structure OptLambda : OPT_LAMBDA
 		       sharing type OptLambda.lvar = LambdaStatSem.lvar
 		     structure RegionStatEnv: REGION_STAT_ENV
 		       sharing type RegionStatEnv.lvar = LambdaStatSem.lvar
-			   and type RegionStatEnv.excon = Excon.excon
-			   and type RegionStatEnv.con = Con.con
-			   and type RegionStatEnv.TyName = TyName.TyName
+		       sharing type RegionStatEnv.excon = Excon.excon
+		       sharing type RegionStatEnv.con = Con.con
+		       sharing type RegionStatEnv.TyName = TyName.TyName
 		     structure Mul: MUL
 		       sharing type Mul.lvar = LambdaStatSem.lvar
-			   and type Mul.effectvar = RegionStatEnv.effectvar
-			   and type Mul.regionStatEnv = RegionStatEnv.regionStatEnv
+		       sharing type Mul.effectvar = RegionStatEnv.effectvar
+		       sharing type Mul.top_regionStatEnv = RegionStatEnv.top_regionStatEnv
 		     structure Effect: EFFECT
 		       sharing type Effect.effect = RegionStatEnv.place = RegionStatEnv.effectvar
 		     structure DropRegions: DROP_REGIONS
 		       sharing type DropRegions.lvar = LambdaStatSem.lvar
-			   and type DropRegions.place = RegionStatEnv.place
+		       sharing type DropRegions.place = RegionStatEnv.place
 		     structure PhysSizeInf : PHYS_SIZE_INF
 		       sharing type PhysSizeInf.lvar = LambdaStatSem.lvar
 		     structure CompLamb : COMP_LAMB
 		       sharing type CompLamb.lvar = LambdaStatSem.lvar
-			   and type CompLamb.con = Con.con
-			   and type CompLamb.excon = Excon.excon
-			   and type CompLamb.place = RegionStatEnv.place
+		       sharing type CompLamb.con = Con.con
+		       sharing type CompLamb.excon = Excon.excon
+		       sharing type CompLamb.place = RegionStatEnv.place
 		     structure PP: PRETTYPRINT
 		       sharing type PP.StringTree
 			                  = OptLambda.StringTree
@@ -55,14 +55,22 @@ functor CompileBasis(structure Con : CON
     type excon = Excon.excon
     type TyName = EliminateEq.TyName
     type TCEnv = LambdaStatSem.env
+    type TopTCEnv = LambdaStatSem.top_env
     type EqEnv = EliminateEq.env
+    type TopEqEnv = EliminateEq.top_env
     type OEnv = OptLambda.env
+    type TopOEnv = OptLambda.top_env
     type rse = RegionStatEnv.regionStatEnv
+    type top_rse = RegionStatEnv.top_regionStatEnv
     type mulenv  = Mul.efenv
+    type top_mulenv  = Mul.top_efenv
     type mularefmap = Mul.mularefmap
     type drop_env = DropRegions.env
+    type top_drop_env = DropRegions.top_env
     type psi_env = PhysSizeInf.env
+    type top_psi_env = PhysSizeInf.top_env
     type l2kam_ce = CompLamb.env
+    type top_l2kam_ce = CompLamb.top_env
     type CompileBasis = {TCEnv : TCEnv, (* lambda type check environment *)
 			 EqEnv : EqEnv, (* elimination of polymorphic equality environment *)
 			 OEnv: OEnv, 
@@ -73,16 +81,34 @@ functor CompileBasis(structure Con : CON
 			 psi_env: psi_env, 
 			 l2kam_ce: l2kam_ce}
 
-    type TopCompileBasis = CompileBasis
+    type TopCompileBasis = {TCEnv : TopTCEnv, (* lambda type check environment *)
+			    EqEnv : TopEqEnv, (* elimination of polymorphic equality environment *)
+			    OEnv: TopOEnv, 
+			    rse: top_rse, 
+			    mulenv: top_mulenv,
+			    mularefmap: mularefmap,
+			    drop_env: top_drop_env,
+			    psi_env: top_psi_env, 
+			    l2kam_ce: top_l2kam_ce}
 
     fun mk_CompileBasis a = a
     fun de_CompileBasis a = a
 
-    fun topify a = a
+    fun topify {TCEnv, EqEnv, OEnv, rse, mulenv, mularefmap, drop_env,
+		psi_env, l2kam_ce} = 
+      {TCEnv=LambdaStatSem.topify TCEnv, 
+       EqEnv=EliminateEq.topify EqEnv, 
+       OEnv=OptLambda.topify OEnv,
+       rse=RegionStatEnv.topify rse, 
+       mulenv=Mul.topify_efenv mulenv, 
+       mularefmap=mularefmap, 
+       drop_env=DropRegions.topify drop_env,
+       psi_env=PhysSizeInf.topify psi_env, 
+       l2kam_ce=CompLamb.topify l2kam_ce}
 
     val empty = {TCEnv=LambdaStatSem.empty,
 		 EqEnv=EliminateEq.empty,
-		 OEnv=OptLambda.empty_env,
+		 OEnv=OptLambda.empty,
 		 rse=RegionStatEnv.empty,
 		 mulenv=Mul.empty_efenv,
 		 mularefmap=Mul.empty_mularefmap,
@@ -92,9 +118,9 @@ functor CompileBasis(structure Con : CON
 
     val initial = {TCEnv=LambdaStatSem.initial,
 		   EqEnv=EliminateEq.initial,
-		   OEnv=OptLambda.initial_env,
-		   rse=RegionStatEnv.initial,
-		   mulenv=Mul.initial,
+		   OEnv=OptLambda.initial,
+		   rse=RegionStatEnv.topify RegionStatEnv.initial,
+		   mulenv=Mul.topify_efenv Mul.initial,
 		   mularefmap=Mul.initial_mularefmap,
 		   drop_env=DropRegions.init,
 		   psi_env=PhysSizeInf.init,
@@ -113,7 +139,19 @@ functor CompileBasis(structure Con : CON
        psi_env=PhysSizeInf.plus(psi_env,psi_env'),
        l2kam_ce=CompLamb.plus(l2kam_ce, l2kam_ce')}
 
-    val plus' = plus
+    fun plus'({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce},
+	      {TCEnv=TCEnv',EqEnv=EqEnv',OEnv=OEnv',rse=rse',mulenv=mulenv',
+	      mularefmap=mularefmap',drop_env=drop_env',psi_env=psi_env',l2kam_ce=l2kam_ce'}) =
+      {TCEnv=LambdaStatSem.plus'(TCEnv,TCEnv'),
+       EqEnv=EliminateEq.plus'(EqEnv,EqEnv'),
+       OEnv=OptLambda.plus'(OEnv,OEnv'),
+       rse=RegionStatEnv.plus'(rse,rse'),
+       mulenv=Mul.plus'(mulenv,mulenv'),
+       mularefmap=Mul.plus_mularefmap(mularefmap, mularefmap'),
+       drop_env=DropRegions.plus'(drop_env, drop_env'),
+       psi_env=PhysSizeInf.plus'(psi_env,psi_env'),
+       l2kam_ce=CompLamb.plus'(l2kam_ce, l2kam_ce')}
+
 
     type StringTree = PP.StringTree
     fun layout_CompileBasis {TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce} =
@@ -220,8 +258,10 @@ functor CompileBasis(structure Con : CON
 	  psi_env=psi_env1,
 	  l2kam_ce=l2kam_ce1}
       end
-    val restrict' = restrict
 
-    fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)
-
+    fun eq (B1,B2) = 
+      let val B1 = topify B1
+	val B2 = topify B2
+      in enrich(B1,B2) andalso enrich(B2,B1)
+      end
   end

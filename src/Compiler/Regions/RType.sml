@@ -15,7 +15,10 @@ functor RType(structure Flags : FLAGS
              ) : RTYPE = 
 struct
 
-  open Edlib
+  structure List = Edlib.List
+  structure ListSort = Edlib.ListSort
+  structure ListPair = Edlib.ListPair
+  fun curry f a b = f(a,b)
 
   fun say s= TextIO.output(TextIO.stdOut, s ^ "\n");
   fun logsay s= TextIO.output(!Flags.log, s );
@@ -29,7 +32,7 @@ struct
   fun noSome (SOME v) s = v
     | noSome NONE s = die s
 
-  fun concat_lists l = List.foldR (General.curry (op @)) [] l
+  fun concat_lists l = List.foldR (curry (op @)) [] l
 
   infix footnote
   fun x footnote y = x
@@ -865,7 +868,7 @@ struct
   fun pair_pix node = (node, !(E.pix node))
 
   fun intsort l = ListSort.sort (fn i: int => fn j: int => i<=j) l
-  fun show_int_list (l:int list)  = concat (map (fn i => " " ^ Int.string i)l)
+  fun show_int_list (l:int list)  = concat (map (fn i => " " ^ Int.toString i)l)
 
   fun tell_int_list msg (l: int list) = 
       (logsay(msg ^ show_int_list l ^ "\n");  l)
