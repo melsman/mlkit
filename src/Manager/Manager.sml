@@ -745,7 +745,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * to avoid recompilation when nothing that comes earlier in a project has changed. A `clean' flag is used
      * to denote that nothing that comes earlier in a project has changed. Note that projects are closed, so
      * initially, when building a project, the clean flag is true. For each project file `file.pm' we associate
-     * a dummy date file `file.pm.date' in the `PM/Prof' or `PM/NoProf' directory. The clean flag is preserved if
+     * a dummy date file `file.pm.date' in the `PM/RI' or `PM/RI_PROF' directory. The clean flag is preserved if
      *
      *    (1) file.pm > file.pm.date
      *    (2) building project f.pm returns true, for all f.pm \in file.pm

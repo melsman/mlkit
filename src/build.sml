@@ -16,6 +16,13 @@ in
   val _ = (
 
 	   enable "garbage_collection";
+
+	   (* for testing gc only *)
+	   disable "region_inference";
+	   K.build_basislib();
+	   enable "region_inference";
+
+
 	   K.build_basislib();
 
 	   disable "garbage_collection";
