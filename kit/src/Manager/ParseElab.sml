@@ -6,7 +6,7 @@ functor ParseElab(structure Parse: PARSE
 
  	          structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		    sharing type ElabTopdec.StaticBasis = ModuleEnvironments.Basis
-			  
+                    sharing type ElabTopdec.prjid = ModuleEnvironments.prjid			  
 		  structure PreElabTopdecGrammar: TOPDEC_GRAMMAR
 		    sharing type PreElabTopdecGrammar.topdec
 				      = ElabTopdec.PreElabTopdec

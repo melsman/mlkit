@@ -145,6 +145,8 @@ functor ModuleEnvironments(
 
     datatype FunEnv = FUNENV of (funid, prjid*FunSig) FinMap.map
     type prjid = string
+    fun prjid_to_string(prjid) = prjid
+    fun mk_prjid x = x 
 
     structure F = struct
       val empty = FUNENV FinMap.empty

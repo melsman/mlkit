@@ -556,6 +556,7 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 						type funid = Basics.FunId.funid
 						type ElabBasis = Basics.ModuleEnvironments.Basis
 						type longstrid = Basics.StrId.longstrid
+                                                type prjid = Basics.ModuleEnvironments.prjid
 						structure Crash =  Tools.Crash
 						structure FinMap = Tools.FinMap)
 

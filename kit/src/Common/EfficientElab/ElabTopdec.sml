@@ -25,6 +25,7 @@ functor ElabTopdec
    structure Flags : FLAGS
    structure Crash : CRASH
 
+   sharing type ElabRep.prjid = ModuleEnvironments.prjid
    sharing ElabInfo.ParseInfo = ParseInfo
    sharing ElabInfo.TypeInfo.TyName = StatObject.TyName
    sharing Environments.TyName = StatObject.TyName

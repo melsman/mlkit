@@ -6,7 +6,7 @@ signature PARSE_ELAB =
 
     type Report and InfixBasis and ElabBasis and topdec
 
-    type prjid = string
+    type prjid (* = string*)
 
     datatype Result = SUCCESS of {report: Report, infB: InfixBasis, 
 				  elabB: ElabBasis, topdec: topdec}

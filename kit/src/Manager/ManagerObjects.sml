@@ -33,6 +33,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			 sharing type ElabRep.opaq_env = OpacityElim.opaq_env
 			 sharing type ElabRep.longstrid = ModuleEnvironments.longstrid
 			 sharing ElabRep.TyName = ModuleEnvironments.TyName
+                         sharing type ElabRep.prjid = ModuleEnvironments.prjid  
 		       structure FinMap : FINMAP
 		       structure PP : PRETTYPRINT
 			 sharing type PP.StringTree = Execution.CompilerEnv.StringTree 
@@ -63,7 +64,15 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     structure TyName = ModuleEnvironments.TyName
     type StringTree = PP.StringTree
     type filename = string
+
+    fun mk_filename x = x
+    fun filename_to_string x  = x
+
+    type prjid = ModuleEnvironments.prjid
+(*    type target = Compile.target*)
+
     type target = Execution.target
+
 
     (* ----------------------------------------------------
      * Determine where to put target files; if profiling is
@@ -357,22 +366,22 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  | exist (NOTEMITTED_MODC _) = true
 	  | exist (EMITTED_MODC(file,_)) = OS.FileSys.access (file,[]) handle _ => false
 
-	fun emit(prjid, modc) =
+	fun emit(prjid: prjid, modc) =
 	  let fun em EMPTY_MODC = EMPTY_MODC
 		| em (SEQ_MODC(modc1,modc2)) = SEQ_MODC(em modc1, em modc2)
 		| em (EMITTED_MODC(fp,li)) = EMITTED_MODC(fp,li)
 		| em (NOTEMITTED_MODC(target,linkinfo,filename)) = 
-	              EMITTED_MODC(SystemTools.emit(target, OS.Path.base prjid ^ "-" ^ filename),linkinfo)
+	              EMITTED_MODC(SystemTools.emit(target, OS.Path.base(OS.Path.file(ModuleEnvironments.prjid_to_string prjid)) ^ "-" ^ filename),linkinfo)
                            (*puts ".o" on filename*)
 	  in em modc
 	  end
 
-	fun mk_exe (prjid, modc, extobjs, run) =
+	fun mk_exe (prjid: prjid, modc, extobjs, run) =
 	  let fun get (EMPTY_MODC, acc) = acc
 		| get (SEQ_MODC(modc1,modc2), acc) = get(modc1,get(modc2,acc))
 		| get (EMITTED_MODC p, acc) = p::acc
 		| get (NOTEMITTED_MODC(target,li,filename), acc) =
-	             (SystemTools.emit(target, OS.Path.base prjid ^ "-" ^ filename),li)::acc
+	             (SystemTools.emit(target, OS.Path.base(OS.Path.file(ModuleEnvironments.prjid_to_string prjid)) ^ "-" ^ filename),li)::acc
 	  in SystemTools.link(get(modc,[]), extobjs, run)
 	  end
 

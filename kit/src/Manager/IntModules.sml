@@ -70,6 +70,7 @@ functor IntModules(structure Name : NAME
 	           structure PP : PRETTYPRINT
 		     sharing type PP.StringTree = Environments.StringTree = ModuleEnvironments.StringTree
 		   structure Flags: FLAGS
+                   sharing type ModuleEnvironments.prjid = ManagerObjects.prjid  = ParseElab.prjid
 		   ) : INT_MODULES =
   struct
 
@@ -339,7 +340,7 @@ functor IntModules(structure Name : NAME
 	       of SOME(ce',cb',mc') => (ce', CompileBasis.plus(cb,cb'), ModCode.seq(mc,mc'))
 		| NONE => 
 		 let val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^ 
-				   " (from project " ^ prjid ^ ") begin]\n")
+				   " (from project " ^ ModuleEnvironments.prjid_to_string prjid ^ ") begin]\n")
 		     val _ = chat "[recreating functor body begin...]"
 		     val strexp0 = body_blaster()
 		     val _ = chat "[recreating functor body end...]"
@@ -500,7 +501,7 @@ functor IntModules(structure Name : NAME
 		 else (elabB, NotDerivedForm)
 
 	       val funid_string = FunId.pr_FunId funid
-	       val filename = pmdir() ^ OS.Path.base prjid ^ "-" ^ funid_string ^ ".bdy"
+	       val filename = pmdir() ^ OS.Path.base(OS.Path.file(ModuleEnvironments.prjid_to_string prjid)) ^ "-" ^ funid_string ^ ".bdy"
 	       val filename = OS.Path.mkAbsolute(filename,OS.FileSys.getDir())
 	       type pos = ElabInfo.ParseInfo.SourceInfo.pos
 	       fun info_to_positions (i : ElabInfo.ElabInfo) : pos * pos =

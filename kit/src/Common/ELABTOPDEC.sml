@@ -7,7 +7,7 @@ signature ELABTOPDEC =
 
     type PreElabTopdec and PostElabTopdec
 
-    type prjid = string
+    type prjid (*= string*)
 
     val elab_topdec: prjid * StaticBasis * PreElabTopdec -> StaticBasis * PostElabTopdec
 

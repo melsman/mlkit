@@ -47,7 +47,9 @@ signature MODULE_ENVIRONMENTS =
 
 
                        (*F, functor environments*)
-    type prjid = string
+    eqtype prjid (* = string *)
+    val prjid_to_string: prjid -> string
+    val mk_prjid: string -> prjid
 
     structure F :
       sig
