@@ -265,9 +265,11 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
            and typbind (as required, Def. p. 66) *)
       let
 
-        (* replace --- replaces typevariables in ty, that 
-           occur in tyvarseq with the corresonding types in tyseq,
-           assumes size of tyvarseq = size of tyseq *)
+        (* replace --- replaces typevariables in ty, that occur in
+           tyvarseq with the corresonding types in tyseq, assumes size
+           of tyvarseq = size of tyseq ; that is, this one implements
+           substitution. *)
+
         fun replaceTy tyvarseq tyseq ty = 
           case ty of 
             TYVARty(i, tv) => 
@@ -339,7 +341,11 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
                         arguments*)
                      CONty(i, map rewriteTy tyseq', longtycon')
                 else
-                  ty
+		  (* Was: ty ; ME 2001-03-05 - bug reported by Stephen
+		   * Weeks, Mon, 7 Aug 2000. *)
+		  (* keep type constructor, but traverse its
+		   arguments*)
+		  CONty(i, map rewriteTy tyseq', longtycon')
               end
           | FNty(i, ty1, ty2) => 
               FNty(i, rewriteTy ty1, rewriteTy ty2)
@@ -362,17 +368,26 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
           | rewriteConBind (CONBIND(i, con, SOME ty, SOME conbind)) =
               CONBIND(i, con, SOME (rewriteTy ty), SOME (rewriteConBind conbind))
 
+	fun in_dom tc tb = (lookup_tycon tc tb; true)
+	  handle Lookup_tycon => false
+
+	fun check i tycon =		    
+	  if in_dom tycon typbind then
+	    let val pos = left i
+	    in raise LexBasics.LEXICAL_ERROR (pos, "type constructor " ^ TyCon.pr_TyCon tycon 
+					      ^ " is bound by both datatype binding and withtype binding")
+	    end
+	  else ()
+
       in
         case datbind of 
           DATBIND(i, tyvarlist, tycon, conbind, NONE) =>
-            DATBIND(i, tyvarlist, tycon, rewriteConBind conbind, NONE)
+	    (check i tycon;
+	     DATBIND(i, tyvarlist, tycon, rewriteConBind conbind, NONE))
         | DATBIND(i, tyvarlist, tycon, conbind, SOME datbind) =>
-            let 
-              val datbind' = rewriteDatBind(datbind, typbind) 
-            in
-              DATBIND(i, tyvarlist, tycon, 
-                      rewriteConBind conbind, SOME datbind')
-            end
+            (check i tycon;
+	     DATBIND(i, tyvarlist, tycon, 
+		     rewriteConBind conbind, SOME (rewriteDatBind(datbind, typbind))))
       end
 
 

@@ -1,3 +1,5 @@
+KITVERSION=4.0
+
 mlkit:
 	cd src; $(MAKE)
 
@@ -23,8 +25,9 @@ clean:
 	cd smlserver_demo/www; rm -rf *~ PM
 	cd src; $(MAKE) clean
 
-tgz: clean
-	cd ..; mv kit mlkit-3.2; tar cf mlkit-3.2.tar mlkit-3.2; mv mlkit-3.2 kit; gzip mlkit-3.2.tar; mv mlkit-3.2.tar.gz mlkit-3.2.tgz
+tgz:
+	cd ..; cvs -d linux.it.edu:/cvsroot -q export -d mlkit-$(KITVERSION) mlkit/kit
+	cd ..; tar czf mlkit-$(KITVERSION).tgz mlkit-$(KITVERSION)
 
 install:
 	cd src; $(MAKE) install
