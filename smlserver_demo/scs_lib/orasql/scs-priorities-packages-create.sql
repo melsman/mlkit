@@ -110,11 +110,12 @@ as
     );
 
     return rel_id;
-
+/*
   exception
     when others then 	      
       raise_application_error(
         scs.ScsDbExn, 'scs_priority.new: unknown error' );
+*/
   end new; 
 
 
