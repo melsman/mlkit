@@ -44,6 +44,11 @@ is
     role_id	in scs_roles.role_id%TYPE
   ) ;
 
+  procedure add(
+    party_id	in scs_parties.party_id%TYPE,
+    role_abbrev in scs_roles.abbreviation%TYPE
+  ) ;
+
   procedure remove(
     party_id	in scs_parties.party_id%TYPE,
     role_id	in scs_roles.role_id%TYPE  
@@ -122,6 +127,22 @@ is
       commit; -- if party_id has the role already
   end add;
 
+  procedure add(
+    party_id	in scs_parties.party_id%TYPE,
+    role_abbrev in scs_roles.abbreviation%TYPE
+  )
+  is
+    v_role_id scs_roles.role_id%TYPE;
+  begin
+    select scs_roles.role_id
+      into v_role_id
+      from scs_roles
+     where scs_roles.abbreviation = add.role_abbrev;
+    add(party_id,v_role_id);
+  exception
+    when others then
+      raise_application_error(scs.ScsDbExn,'scs_role.add: role ' || role_abbrev || ' does not exists');
+  end add;
 
   procedure remove(
     party_id	in scs_parties.party_id%TYPE,

@@ -1,6 +1,8 @@
 -- This code i a down-sized and modified version of the users module found
 -- in openACS (www.openacs.org): file community-core-create.sql.
 
+-- The field state below follows the Phil'g registration cyclus - yet
+-- to be implemented, 2002-10-20, nh.
 create table scs_users (
   user_id integer
     constraint scs_users_user_id_nn not null
@@ -26,6 +28,12 @@ create table scs_users (
     constraint scs_users_n_sessions_nn not null,
   password_question varchar2(1000),
   password_answer varchar2(1000),
+  state varchar(30) default 'authorized'
+    constraint scs_users_state_nn not null
+    constraint scs_users_state_ck 
+      check(state in ('need_email_verification_and_admin_approv', 'need_admin_approv', 
+                      'need_email_verification', 'rejected', 'authorized', 
+                      'banned', 'deleted')),
   last_modified date default sysdate 
     constraint scs_users_last_mod_nn not null,
   modifying_user integer
@@ -67,6 +75,7 @@ create table scs_user_imports (
     constraint scs_user_imps_l_mod_nn not null,
   modifying_user integer
     constraint scs_user_imps_l_mod_u_nn not null
+    constraint scs_user_imps_l_mod_u_fk references scs_users(user_id)
 );
 
 comment on column scs_users.no_alerts_until is '
@@ -84,36 +93,12 @@ comment on column scs_users.second_to_last_visit is ' This is what
 comment on column scs_users.n_sessions is ' How many times this user
  has visited ';
 
------------------------------
--- SCS USER IMPORT PACKAGE --
------------------------------
-/*
-create or replace package scs_user_imp
-as
-
-end scs_user_imp;
-/
-show errors
-*/
-
---------------------------------------------
--- SCS USER IMPORT PACKAGE IMPLEMENTATION --
---------------------------------------------
-/*
-create or replace package body scs_user_imp
-as
-
-end scs_user_imp;
-/
-show errors
-*/
 ----------------------
 -- SCS USER PACKAGE --
 ----------------------
-
 create or replace package scs_user
 as
- function new (
+  function new (
     user_id           in scs_users.user_id%TYPE default null,
     password          in scs_users.password%TYPE,
     salt              in scs_users.salt%TYPE,
@@ -165,7 +150,12 @@ as
   ) return scs_persons.person_id%TYPE;
 
   procedure imp_row (
-    user_imp_id in scs_user_imports.user_imp_id%TYPE
+    user_imp_id in scs_user_imports.user_imp_id%TYPE,
+    always_p    in char default 'f'
+  );
+
+  procedure imp_all_rows (
+    always_p in char default 'f'
   );
 end scs_user;
 /
@@ -194,7 +184,7 @@ as
     first_names	      in scs_persons.first_names%TYPE,
     last_name	      in scs_persons.last_name%TYPE,
     security_id       in scs_persons.security_id%TYPE default null,
-    language_pref     in scs_user_preferences.language_pref%TYPE default 'en'
+    language_pref     in scs_user_preferences.language_pref%TYPE default 'da'
   ) return scs_users.user_id%TYPE
   is
     v_user_id scs_users.user_id%TYPE;
@@ -388,7 +378,8 @@ as
   end imp_exact_match;
 
   procedure imp_row (
-    user_imp_id in scs_user_imports.user_imp_id%TYPE
+    user_imp_id in scs_user_imports.user_imp_id%TYPE,
+    always_p    in char default 'f'
   )
   is
     v_person_id scs_persons.person_id%TYPE;
@@ -436,7 +427,8 @@ as
            where scs_parties.party_id = v_person_id;
         end if;
         /* on_what_table and on_which_id */
-        if imp_row.row.on_what_table is not null and imp_row.row.on_which_id is not null then
+        if imp_row.row.on_what_table is not null and 
+           imp_row.row.on_which_id is not null then
           scs_person_rel.add(person_id => v_person_id,
                              on_what_table => imp_row.row.on_what_table,
                              on_which_id => imp_row.row.on_which_id);
@@ -450,7 +442,8 @@ as
       /* We create a new user, if no other person has the same normalised name */
       begin
         if imp_row.row.norm_name is not null and 
-           scs_person.norm_name_exists_p(imp_row.row.norm_name) = 'f' then
+           (scs_person.norm_name_exists_p(imp_row.row.norm_name) = 'f' or
+           always_p = 't') then
           /* No other row exsits with the same normalised name which is non empty */
           tmp_id := scs_user.new(password => scs_user.gen_passwd(imp_row.row.email),
                                  salt => scs_random.rand_string(30),
@@ -484,6 +477,21 @@ as
     when no_data_found then
       return; /* We silently ignore that the import row does not exist. */
   end imp_row;
+
+  procedure imp_all_rows (
+    always_p in char default 'f'
+  )
+  is
+    r scs_user_imports%ROWTYPE;
+  begin
+    for r in (select * 
+                from scs_user_imports
+               order by user_imp_id)
+    loop
+      scs_user.imp_row(user_imp_id => r.user_imp_id,
+                       always_p => always_p);
+    end loop;
+  end imp_all_rows;
 end scs_user;
 /
 show errors
@@ -513,7 +521,7 @@ begin
                       password       => 'change_me',
                       salt           => '12345666554321dlksaælfdsa',
                       modifying_user => '1',
-                      email          => 'nh@it-c.dk',
+                      email          => 'siteadm@it-c.dk',
                       first_names    => 'Site-wide SCS Administrator',
                       last_name      => 'SCS');
 
@@ -529,6 +537,3 @@ begin
 end;
 / 
 show errors
-               
-
-
