@@ -2581,7 +2581,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
   fun emit(prg: AsmPrg,filename: string) : unit = 
     (I.emit(prg,filename);
      print ("[wrote X86 code file:\t" ^ filename ^ "]\n"))
-    handle IO.Io {name,...} => Crash.impossible ("X86KAMBackend.emit:\nI cannot open \""
+    handle IO.Io {name,...} => Crash.impossible ("CodeGenX86.emit:\nI cannot open \""
 						 ^ filename ^ "\":\n" ^ name)
 
 end
