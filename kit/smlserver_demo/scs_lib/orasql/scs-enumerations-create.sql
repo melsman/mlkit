@@ -22,6 +22,22 @@ create table scs_enum_values(
   constraint scs_enum_values_un unique(enum_id,value)
 );
 
+--------------
+-- TRIGGERS --
+--------------
+
+-- The trigger makes sure that the affiliated scs-texts are deleted
+-- when we delete an enumeration.
+create or replace trigger scs_enum_values_before_del_tr
+before delete on scs_enum_values
+for each row
+declare
+begin
+  scs_text.delete(:old.text_id);
+end scs_enum_values_before_del_tr;
+/
+show errors;
+
 -------------------------
 -- ENUMERATION PACKAGE --
 -------------------------
@@ -38,9 +54,12 @@ as
     value	in scs_enum_values.value%TYPE
   ) return scs_enum_values.val_id%TYPE;
 
-  procedure delete (
-    id		in scs_enumerations.enum_id%TYPE default null,
-    name	in scs_enumerations.name%TYPE default null
+  procedure destroy (
+    enum_id     in scs_enumerations.enum_id%TYPE
+  );
+ 
+  procedure destroy (
+    name	in scs_enumerations.name%TYPE
   );
 
   function getTID(
@@ -73,7 +92,8 @@ as
     value	in scs_enum_values.value%TYPE
   ) return scs_enum_values.val_id%TYPE
   is
-    val_id scs_enum_values.val_id%TYPE;
+    val_id        scs_enum_values.val_id%TYPE;
+    v_text_id_old scs_texts.text_id%TYPE;
   begin
     -- anonymous block needed here to handle
     -- case where no record was found
@@ -93,50 +113,61 @@ as
       insert into scs_enum_values( val_id, enum_id, text_id, value ) 
       values ( val_id, enum_id, text_id, value );
     else
+      begin
+        select text_id
+          into v_text_id_old
+          from scs_enum_values
+         where val_id = val_id;
+      exception
+        when no_data_found then 
+          commit;
+      end;
+      
       update scs_enum_values 
          set text_id = updateValue.text_id
-       where enum_id = updateValue.enum_id
-         and val_id = val_id;
+       where val_id = val_id;
+      
+      if v_text_id_old is not null and v_text_id_old <> updateValue.text_id then
+        scs_text.delete(v_text_id_old);
+      end if;
     end if;
     return val_id;
   end updateValue;
 
-
-  procedure delete (
-    id		in scs_enumerations.enum_id%TYPE default null,
-    name	in scs_enumerations.name%TYPE default null
+  procedure destroy (
+    enum_id in scs_enumerations.enum_id%TYPE
   )
   is
-    v_id scs_enumerations.enum_id%TYPE;
   begin
-    if scs_enumeration.delete.name <> null then
-      select enum_id
-        into v_id
-        from scs_enumerations
-       where name = scs_enumeration.delete.name;
-    else
-      v_id := scs_enumeration.delete.id;
-    end if;
-
-    if v_id = null then
-      return;
-    end if;
-   
-    -- delete all texts describing enumerations
-    for row in (select text_id 
-                  from scs_enum_values 
-                 where enum_id = v_id) loop
-      scs_text.delete(row.text_id);
-    end loop;
-
     -- delete all enumeration values.
-    delete scs_enum_values where enum_id = v_id;
+    -- the affiliated scs_texts are deleted by trigger
+    -- scs_enum_values_before_del_tr
+    delete scs_enum_values where enum_id = destroy.enum_id;
 
     -- delete the enumeration
-    delete scs_enumerations where enum_id = v_id;
+    delete scs_enumerations where enum_id = destroy.enum_id;
     return;
-  end delete;
+  end destroy;
 
+  procedure destroy (
+    name	in scs_enumerations.name%TYPE
+  )
+  is
+    v_enum_id scs_enumerations.enum_id%TYPE;
+  begin
+    select enum_id
+      into v_enum_id
+      from scs_enumerations
+     where name = scs_enumeration.destroy.name;
+
+    destroy(v_enum_id);
+    return;
+
+  -- If name does not exist then we silently return
+  exception 
+    when NO_DATA_FOUND then
+      return;
+  end destroy;
 
   function getTID(
     enum_id	in scs_enumerations.enum_id%TYPE,
@@ -150,11 +181,16 @@ as
       where enum_id = getTID.enum_id 
         and value = getTID.value;
     if getTID.text_id is null then 
-      raise_application_error( -20000, 'No text_id found for value='
+      raise_application_error( scs.ScsDbExn, 'No text_id found for value='
 				       || value || ' and enum_id=' || to_char(enum_id) ); 
     end if;
 
     return text_id; 
+
+  exception
+    when NO_DATA_FOUND then
+      raise_application_error( scs.ScsDbExn, 'No text_id found for value='
+				       || value || ' and enum_id=' || to_char(enum_id) ); 
   end getTID;
 
 end scs_enumeration;

@@ -9,6 +9,7 @@ declare
   tid2 integer;
   tid3 integer;
   tid4 integer;
+  tid5 integer;
   tmp integer;
 
   bool1 boolean;
@@ -34,12 +35,20 @@ begin
   tid4 := scs_text.updateText( language => 'da', text => 'sven på dansk' );
   scs_test.testBool( 'updateText', 5, scs_text.getText( tid4, 'da' ) = 'sven på dansk' ); 
 
-
   scs_test.testExn('updateText', 6, 'declare 
                                         tmp integer; 
                                       begin 
                                         tmp := scs_text.updateText( language => ''kd'', text => ''fejl på kd'');
                                       end;','f');
+
+  scs_test.testBool('exists_p', 1, scs_text.exists_p(tid3) = 't');
+  scs_test.testBool('exists_p', 2, scs_text.exists_p(tid3, 'da') = 't');
+  scs_test.testBool('exists_p', 3, scs_text.exists_p(tid3, 'kd') = 'f');
+  scs_test.testBool('exists_p', 4, scs_text.exists_p(42) = 'f');
+  scs_test.testBool('exists_p', 5, scs_text.exists_p(42,'en') = 'f');
+  tid5 := scs_text.new;
+  scs_test.testBool('exists_p', 6, scs_text.exists_p(tid5) = 't');
+  scs_test.testBool('exists_p', 7, scs_text.exists_p(tid5, 'da') = 'f');
 
   scs_test.testExn('getText', 1, 'declare
                                     tmpString varchar(1000);
