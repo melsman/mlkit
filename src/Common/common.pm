@@ -2,7 +2,7 @@ import ../Edlib/edlib.pm
 in
 
   BASIC_IO.sml
-  BasicIO.sml
+  commonBasicIO.sml
   CRASH.sml
   Crash.sml
   REPORT.sml
@@ -83,7 +83,7 @@ in
 
   ../Parsing/MyBase.sml
 
-  ../Parsing/Topdec.grm.sig
+  ../Parsing/Topdec.grm-sig.sml
   ../Parsing/Topdec.grm.sml
 
   ../Parsing/LEX_UTILS.sml

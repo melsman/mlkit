@@ -125,7 +125,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
                 val status = loop()
           in if status <> OS.Process.success then
-                       raise Execute ("Error code " ^ Int.toString status ^
+                       raise Execute ("Error code " ^ Int.toString ~1(*status*) ^
 			             " when executing shell command:\n"
 			             ^ command)
              else ()

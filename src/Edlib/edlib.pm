@@ -1,9 +1,9 @@
 
 local
   EDLIB_GENERAL.sml EdlibGeneral.sml
-  LIST.sml List.sml 
+  LIST.sml (*List.sml *) edList.sml
   EQ_SET.sml SET.sml 
-  LIST_PAIR.sml ListPair.sml LIST_SORT.sml 
+  LIST_PAIR.sml (*ListPair.sml*) edListPair.sml LIST_SORT.sml 
 in
    ListSort.sml
    Set.sml

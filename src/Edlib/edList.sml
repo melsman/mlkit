@@ -19,6 +19,32 @@ DESCRIPTION
 RCS LOG
 
 $Log$
+Revision 1.1  2000/05/05 14:22:19  kfl
+Changes made to the kit so as it can be compiled with mosml 1.99
+----------------------------------------------------------------
+  * Made a mosmlhacks.pm file.  The only thing in there now is the
+    Word32 hack.
+  * Added Compiler/compilerx86.pm
+  * Used mosmlhack.pm in Compiler/compilerx86.pm
+  * Changed sources.pm to use Compiler/compilerx86.pm and
+    Compiler/Backend/X86/ExecutionX86.sml
+  * Changes from Martin in basislib/Initial.sml
+  * Changed
+	    val garbage_collection = ref true
+    to
+	    val garbage_collection = ref false
+    in src/Common/Flags.sml
+  * Changed substring to String.substring in Parsing/Topdec.lex.sml
+  * Changed `status' to `~1' on line 128 in
+    Manager/ManagerObjects.sml
+  * Renamed Edlib/List.sml Edlib/edList.sml
+    and Edlib/ListPair.sml Edlib/edListPair.sml
+  * Parsing/Topdec.grm.sig renamed to Parsing/Topdec.grm-sig.sml (also
+    in Common/common.pm)
+  * Renamed Common/BasicIO.sml Common/commonBasicIO.sml
+  * Corrected a sharing spec bug (not decteded by sml/nj) in
+    Compiler/Backend/X86/CodeGenX86.sml
+
 Revision 1.1  1998/01/22 17:01:15  mael
 I have ported the ML Kit to SML/NJ 110.0.2. Use CM.make() to build the system.
 Parts of the Edinburgh Library are still used; they are located in the Edlib

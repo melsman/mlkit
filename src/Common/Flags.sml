@@ -153,7 +153,7 @@ functor Flags (structure Crash : CRASH
 
     (* Garbage Collection *)
            
-    val garbage_collection = ref true
+    val garbage_collection = ref false
 
     (* deletion of linkable files *)
 

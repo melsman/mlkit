@@ -680,7 +680,7 @@ let fun continue() : Internal.result =
 	| action (i,(node::acts)::l) =
 		case node of
 		    Internal.N yyk => 
-			(let val yytext = substring(!yyb,i0,i-i0)
+			(let val yytext = String.substring(!yyb,i0,i-i0)
 			     val yypos = i0+ !yygone
 			open UserDeclarations Internal.StartStates
  in (yybufpos := i; case yyk of 
@@ -792,7 +792,7 @@ let fun continue() : Internal.result =
 		        if (l=i0) then UserDeclarations.eof yyarg
 		                  else action(l,NewAcceptingLeaves))
 		  else (if i0=l then yyb := newchars
-		     else yyb := substring(!yyb,i0,l-i0)^newchars;
+		     else yyb := String.substring(!yyb,i0,l-i0)^newchars;
 		     yygone := !yygone+i0;
 		     yybl := size (!yyb);
 		     scan (s,AcceptingLeaves,l-i0,0))
