@@ -61,10 +61,6 @@ mael 2001-08-07: improvment of pattern-matching; matching against a
 
 mael 2001-08-07: catch stack-overflow
 
-mael 2001-08-07: implement strings and vectors efficiently using
-  malloc if they don't fit in a region page. Part of this is already
-  implemented, but we need to af
-
 mael 2001-08-03: man pages for mlkit and smlserver, rp2ps
 
 mael 2001-08-03: colors in rp2ps output

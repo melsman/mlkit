@@ -42,6 +42,8 @@ struct
 
   val region_profiling : unit -> bool = Flags.is_on0 "region_profiling"
 
+  val untagged_pairs : unit -> bool = fn _ => false
+
   type label = Labels.label
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
   type StoreTypeCO = SubstAndSimplify.StoreTypeCO
@@ -651,6 +653,9 @@ struct
          I.lab l ::
          copy(tmp_reg1, t, C))
       end
+
+    (* mael: here we should subtract one word from n0 if tagging is enabled,
+     * untagging of pairs is enabled, and the region is a pair-region... *)
 
     fun alloc_kill_tmp01(t:reg,n0:int,size_ff,pp:LS.pp,C) =
       let val n = if region_profiling() then n0 + BI.objectDescSizeP 
@@ -1741,23 +1746,59 @@ struct
 		    | LS.RECORD{elems=[],alloc,tag} => 
 		     move_aty_to_aty(SS.UNIT_ATY,pat,size_ff,C) (* Unit is unboxed *)
 		    | LS.RECORD{elems,alloc,tag} =>
-		     let val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+		  (*  if BI.tag_values() andalso List.length elems = 2 andalso untagged_pairs() then
+			 let 
+			     (* Explanation of how we deal with untagged pairs in the presence
+			      * of garbage collection and tagging of values in general 
+			      * - mael 2002-07-15: 
+			      *
+			      * Only pairs that are stored in infinite regions should be 
+			      * untagged, that is, pairs stored in finite regions on the stack
+			      * should still be tagged. Thus, we need to be careful to deal
+			      * correctly with regions passed to functions at runtime; if a
+			      * formal region variable has 'finite' multiplicity, the region
+			      * passed at runtime can either be finite or infinite, thus in
+			      * this case, the exact layout of the pair is not determined 
+			      * until runtime. 
+			      *
+			      * To deal with the above mentioned problem, we store elements
+			      * in the pair with the register tmp_reg0 as a base pointing to
+			      * the first element in the pair. Before the elements are 
+			      * stored, the pair is allocated (possibly with room for a tag),
+                              * and a pointer to the resulting pair is stored in the result
+			      * register... *)
+
+			     fun store_elems C =
+			       #2(foldr (fn (aty,(offset,C)) => 
+				       (offset-1,store_aty_in_reg_record(aty, (*temp=*)tmp_reg1, 
+                                                                              (*base=*)tmp_reg0,
+									 WORDS offset,size_ff, C))) 
+				(1,C) elems)
+			     
+			     val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff, 
+                                                       store_elems C)
+			     val reg_for_index0 = SOME tmp_reg0
+			     val num_elems = 2
+                         in alloc_ap_kill_tmp01(reg_for_index0,alloc,reg_for_result,num_elems,size_ff,C')
+			 end
+		     else *)
+		     let 
+			 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 		         val num_elems = List.length elems
+			 fun store_elems last_offset =
+			     #2(foldr (fn (aty,(offset,C)) => 
+				       (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
+									 WORDS offset,size_ff, C))) 
+				(last_offset,C') elems)
 		     in
 		       if BI.tag_values() then
-			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
+  		         alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems+1,size_ff,
        		         load_immed(IMMED(Word32.toLargeIntX tag),tmp_reg0,
-			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
-		         #2(foldr (fn (aty,(offset,C)) => 
-				   (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
-								     WORDS offset,size_ff, C))) 
-			    (num_elems,C') elems))))
+ 			 store_indexed(reg_for_result,WORDS 0,tmp_reg0,
+			 store_elems num_elems)))
 		       else
 			 alloc_ap_kill_tmp01(alloc,reg_for_result,num_elems,size_ff,
-			 #2(foldr (fn (aty,(offset,C)) => 
-				   (offset-1,store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,
-								     WORDS offset,size_ff, C))) 
-			    (num_elems-1,C') elems))
+			 store_elems (num_elems-1))
 		     end
 		    | LS.SELECT(i,aty) => 
 		     if BI.tag_values() then

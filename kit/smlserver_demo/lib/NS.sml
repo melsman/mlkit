@@ -30,6 +30,9 @@ signature NS = sig
                        -> string
   val fetchUrl       : string -> string option
   val exit           : unit -> 'a
+  val registerTrap   : string -> unit
+  val scheduleScript : string -> int -> unit
+  val scheduleDaily  : string -> {hour:int, minute:int} -> unit
 
   (* sub-structures *)
   structure Set      : NS_SET
@@ -123,4 +126,31 @@ end
  Interrupt, which is silently caught by the SMLserver module 
  (other uncaught exceptions are logged in the server.log 
  file).
+
+ [registerTrap p] after a call to this function, requests for
+ files that matches the path p, which may contain globs, are 
+ trapped. The effect of a file being trapped is that the 
+ script ../sys/trap.sml is executed instead. Usually, calls 
+ to the registerTrap function appears in the initialization 
+ script ../sys/init.sml to control access to web content.
+
+ [scheduleScript f d] after a call to this function, the 
+ script determined by the file f is scheduled to execute
+ every d seconds. Usually, calls to the scheduleScript 
+ function appears in the initialization script 
+ ../sys/init.sml to setup scheduled execution.
+
+ [scheduleDaily f {hour,minute}] after a call to this 
+ function, the script determined by the file f is scheduled
+ to execute every day at the specified time (hour and 
+ minute). The hour can be an integer from 0 to 23, and the 
+ minute an integer from 0 to 59.
+
+ [scheduleWeekly f {day,hour,minute}] after a call to this 
+ function, the script determined by the file f is scheduled
+ to execute every week at the specified time (day, hour, and 
+ minute). The day can be an integer from 0 to 6, where 0 
+ represents Sunday. The hour can be an integer from 0 to 23, 
+ and the minute an integer from 0 to 59.
+
 *)

@@ -55,3 +55,8 @@ nssml_CacheCreateSz
 Ns_CacheFlush
 nssml_CacheSet
 nssml_CacheGet
+
+nssml_registerTrap
+nssml_scheduleScript
+nssml_scheduleDaily
+nssml_scheduleWeekly

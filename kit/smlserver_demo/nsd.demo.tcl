@@ -47,6 +47,11 @@ ns_param hostname $host
 ns_section "ns/server/${user}/module/nssml"
 ns_param prjid sources
 
+# Initialization script to schedule script execution and 
+# register trapping of URL requests; remember to include
+# the initialization script in the project file.
+#ns_param initscript ../sys/init.sml
+
 # 
 # Database drivers 
 #
