@@ -27,6 +27,7 @@ smlserver:
 clean:
 	rm -rf *~ bin PM run
 	cd basislib; $(MAKE) clean
+	cd doc/manual; $(MAKE) clean
 	cd kitlib; rm -rf PM run *~
 	cd ml-yacc-lib; rm -rf PM *~
 	cd kitdemo; rm -rf PM run *~ */PM */*~
@@ -39,9 +40,16 @@ clean:
 	cd smlserver_demo/demo/employee; rm -rf *~ PM 
 	cd smlserver_demo/demo/link; rm -rf *~ PM 
 	cd smlserver_demo/demo_lib; rm -rf *~ PM 
+	cd smlserver_demo/demo_lib/orasql; rm -rf *~ PM 
+	cd smlserver_demo/demo_lib/pgsql; rm -rf *~ PM 
 	cd smlserver_demo/scs_lib; rm -rf *~ PM 
+	cd smlserver_demo/scs_lib/pgsql; rm -rf *~ PM
 	cd smlserver_demo/log; rm -f server.log access* nspid*
 	cd smlserver_demo/www; rm -rf *~ PM
+	cd smlserver_demo/www/demo; rm -rf *~ PM
+	cd smlserver_demo/www/demo/rating; rm -rf *~ PM
+	cd smlserver_demo/www/demo/link; rm -rf *~ PM
+	cd smlserver_demo/www/demo/employee; rm -rf *~ PM
 	cd src; $(MAKE) clean
 
 tgz_export:

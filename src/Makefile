@@ -86,7 +86,6 @@ clean:
 	cd Edlib; rm -rf PM CM *~
 	cd heap2exec; $(MAKE) clean
 	cd Runtime; $(MAKE) clean
-	cd RuntimeWithGC; $(MAKE) clean
 	cd Tools/Tester; $(MAKE) clean
 	cd Tools/Rp2ps; $(MAKE) clean
 	cd Tools/GenOpcodes; $(MAKE) clean
