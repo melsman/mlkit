@@ -519,6 +519,19 @@ end;
 /
 show errors
 
+create or replace trigger scs_person_rels_in_up_del_tr
+before insert or update on scs_person_rels
+for each row
+when (new.on_what_table = 'ucs_ob')
+begin
+  update ucs_ob_applications 
+     set person_id = :new.person_id
+   where application_id = :new.on_which_id ;
+end;
+/
+show errors
+
+
 create or replace trigger scs_profiles_upd_tr 
 before update on scs_profiles
 for each row
