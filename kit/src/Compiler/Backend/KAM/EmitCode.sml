@@ -37,13 +37,13 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 
       | BlockAlloc(n) => (out_opcode BLOCK_ALLOC_N; out_int n)
       | BlockAllocIfInf(n)  => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | BlockAllocSatInf(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | BlockAllocSatInf(n) => (out_opcode BLOCK_ALLOC_SAT_INF_N; out_int n)
       | Block(n) => (out_opcode BLOCK_N; out_int n)
-      | BlockAllocSatIfInf(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | BlockAllocSatIfInf(n) => (out_opcode BLOCK_ALLOC_SAT_IF_INF_N; out_int n)
       | BlockAllocAtbot(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
       | ClearAtbotBit => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | SetAtbotBit => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | SetAtbotBit => out_opcode SET_ATBOT_BIT
 
       | SetBit30 => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | SetBit31 => die ("inst " ^ (pr_inst inst) ^ " not emitted")
@@ -75,7 +75,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 	     gen_alignment align) (* obtain word alignment! *)
 	  end
       | ImmedReal(r) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-	
+
       | Push => (out_opcode PUSH)
       | PushLbl(lab) => (out_opcode PUSH_LBL; RLL.out_label lab)
       | Pop(n) => (out_opcode POP_N; out_int n)
@@ -95,10 +95,10 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 	   out_int n1;
 	   out_int n2)
 
-      | Ccall(idx,arity) => 
-	  (out_opcode C_CALL;
-	   out_int idx;
-	   out_int arity)
+      | Ccall(idx,1) => (out_opcode C_CALL1; out_int idx)
+      | Ccall(idx,2) => (out_opcode C_CALL2; out_int idx)
+      | Ccall(idx,3) => (out_opcode C_CALL3; out_int idx)
+      | Ccall(idx,n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
       | Label(lab) => RLL.define_label lab
       | JmpRel(lab) => (out_opcode JMP_REL; RLL.out_label lab)
@@ -125,11 +125,11 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | Comment(s) => ()
       | Nop => ()
 
-      | PrimEqual => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | PrimEquali => out_opcode PRIM_EQUAL_I
       | PrimSubi => out_opcode PRIM_SUB_I
-      | PrimAddi => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimNegi => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimAbsi => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | PrimAddi => out_opcode PRIM_ADD_I
+      | PrimNegi => out_opcode PRIM_NEG_I
+      | PrimAbsi => out_opcode PRIM_ABS_I
 
       | PrimAddf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | PrimSubf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
@@ -184,7 +184,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
        RLL.reset_label_table();
        List.app emit_top_decl top_decls;
        BC.dump_buffer filename;
-       print ("[wrote KAM code file:\t" ^ filename ^ "]\n");
+       print ("[wrote KAM code file:\t" ^ filename ^ " of size " ^ (Int.toString (!BC.out_position)) ^ " bytes]\n");
        chat "]\n") handle IO.Io {name,...} => Crash.impossible ("EmitCode.emit:\nI cannot open \""
 								^ filename ^ "\":\n" ^ name)
 

@@ -123,7 +123,7 @@ signature KAM =
       | Comment of string
       | Nop
 
-      | PrimEqual
+      | PrimEquali
       | PrimSubi
       | PrimAddi
       | PrimNegi

@@ -3,8 +3,10 @@
 (* function and not used there.                                              *)
 (* Works only if inline functions are disabled.                              *)
 
-fun print (s:string) : unit = prim("printString", "printString", s)
-fun f () = "It works"
+local
+  fun print (s:string) : unit = prim("printString", "printString", s)
+  fun f () = "It works"
 
-val _ = print (f ())
-
+  val _ = print (f ())
+in
+end

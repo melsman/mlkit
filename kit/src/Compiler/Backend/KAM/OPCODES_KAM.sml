@@ -1,5 +1,5 @@
 (* This file is auto-generated with Tools/GenOpcodes on *)
-(* Tue Oct 17 09:27:49 2000 *)
+(* Wed Oct 18 08:29:00 2000 *)
 signature OPCODES_KAM = 
   sig
     val ALLOC_N : int 
@@ -40,7 +40,9 @@ signature OPCODES_KAM =
     val APPLY_FUN_JMP_NO_CLOS : int 
     val RETURN : int 
     val RETURN_NO_CLOS : int 
-    val C_CALL : int 
+    val C_CALL1 : int 
+    val C_CALL2 : int 
+    val C_CALL3 : int 
     val LABEL : int 
     val JMP_REL : int 
     val IF_NOT_EQ_JMP_REL : int 
@@ -59,7 +61,7 @@ signature OPCODES_KAM =
     val RESET_REGION_IF_INF : int 
     val FETCH_GLOBAL : int 
     val STORE_GLOBAL : int 
-    val PRIM_EQUAL : int 
+    val PRIM_EQUAL_I : int 
     val PRIM_SUB_I : int 
     val PRIM_ADD_I : int 
     val PRIM_NEG_I : int 

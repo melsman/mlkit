@@ -143,7 +143,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | Comment of string
       | Nop
 
-      | PrimEqual
+      | PrimEquali
       | PrimSubi
       | PrimAddi
       | PrimNegi
@@ -313,7 +313,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | Comment(s) => "Comment[" :: s :: "]" :: acc
       | Nop => "Nop" :: acc
 
-      | PrimEqual => "PrimEqual" :: acc
+      | PrimEquali => "PrimEquali" :: acc
       | PrimSubi => "PrimSubi" :: acc
       | PrimAddi => "PrimAddi" :: acc
       | PrimNegi => "PrimNegi" :: acc                    
