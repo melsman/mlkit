@@ -78,13 +78,6 @@ struct
 		    childsep=PP.NOSEP
 		    })
 
-  (****************************************************************)
-  (* Add Dynamic Flags                                            *)
-  (****************************************************************)
-
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("print_fetch_and_flush_program", "print program with fetch and flush (LineStmt)", ref false)]
-
   local
     structure LS = LineStmt
     structure RA = RegAlloc

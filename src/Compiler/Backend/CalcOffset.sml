@@ -80,13 +80,6 @@ struct
 		    childsep=PP.NOSEP
 		    })
 
-  (****************************************************************)
-  (* Add Dynamic Flags                                            *)
-  (****************************************************************)
-
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("print_calc_offset_program", "print program with offsets in activation records inserted (LineStmt)", ref false)]
-
   (*********************)
   (* Calculate Offsets *)
   (*********************)

@@ -80,8 +80,6 @@ struct
     [("print_KAM_program", "print KAM program", ref false)]
   val print_KAM_flag = Flags.lookup_flag_entry "print_KAM_program"
 
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
-    [("jump_tables", "Use jump tables", ref true)]
   val jump_tables = Flags.lookup_flag_entry "jump_tables"
 
   (*************)
@@ -328,7 +326,7 @@ struct
       end
       | CG_ce(ClosExp.FNCALL{opr,args,clos,free},env,sp,cc,acc) = die "FNCALL: either clos or free are non empty."      
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=NONE,free=[]},env,sp,cc,acc) =
-      ImmedInt 0 ::
+      ImmedInt 0 ::        (* is it always all the region arguments that are reused? *)
       Push ::
       comp_ces(args,env,sp+1,cc,
 	       ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: 
@@ -662,8 +660,11 @@ and code is actually generated when passing arguments in region polymorphic func
 	  fun add_lvar (lv,(offset,env)) = (offset+1,declareLvar(lv,STACK(offset),env))
 	  fun add_clos_opt (NONE,env) = (env, Return)
 	    | add_clos_opt (SOME clos_lv, env) = (declareLvar(clos_lv,ENV_REG,env), Return)
-	  val (offset,env) = List.foldl add_lvar (List.foldl add_lvar 
-						  (0,initialEnv) (#reg_args(decomp_cc))) (#args(decomp_cc))
+	  val _ = print "Regvars formals:\n"
+	  val _ = app (fn lv => print (Lvars.pr_lvar lv ^ ", ")) (#reg_args(decomp_cc))
+	  val _ = print "\n"
+          val (offset,env) = List.foldl add_lvar (0,initialEnv) (#reg_args(decomp_cc))
+	  val (offset,env) = List.foldl add_lvar (offset,env) (#args(decomp_cc))
 	  val (env,return_inst) = add_clos_opt(#clos(decomp_cc),env)
 
 	  val returns = Int.max(1, List.length (#res(decomp_cc)))  (* the return_inst instruction assumes 

@@ -6,6 +6,19 @@ signature GEN_OPCODES =
 structure GenOpcodes : GEN_OPCODES =
   struct
 
+    fun copy_if_different source target =
+      let fun all f = 
+	    let val is = TextIO.openIn f
+	    in TextIO.inputAll is before TextIO.closeIn is
+	    end handle _ => ""
+      in 
+	if all source = all target then 
+	  (OS.FileSys.remove source) handle _ => 
+	    print ("\n*** Error removing file " ^ source ^ "\n")
+	else if OS.Process.system ("mv " ^ source ^ " " ^ target) = OS.Process.success then ()
+	     else print ("\n*** Error renaming " ^ source ^ " to " ^ target ^ "\n")
+      end 
+
     fun gen_spec_insts spec_file =
       String.tokens (fn #" " => true | #"\n" => true | _ => false) (TextIO.inputAll(TextIO.openIn(spec_file)))
 
@@ -13,9 +26,10 @@ structure GenOpcodes : GEN_OPCODES =
 
     fun write_functor spec_file functor_file =
       let
+	val tmp_file = OS.FileSys.tmpName ()
 	val spec_insts = gen_spec_insts spec_file
-	val out_stream = TextIO.openOut(functor_file)
-	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes on *)\n")
+	val out_stream = TextIO.openOut(tmp_file)
+	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes *)\n")
 (*	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")*)
 	val _ = TextIO.output(out_stream, "functor OpcodesKAM () : OPCODES_KAM = \n")
 	val _ = TextIO.output(out_stream, "  struct\n");
@@ -24,13 +38,15 @@ structure GenOpcodes : GEN_OPCODES =
 	val _ = List.foldl write_opcode 0 spec_insts
 	val _ = TextIO.output(out_stream, "  end\n");
       in
-	TextIO.closeOut(out_stream)
+	TextIO.closeOut(out_stream);
+	copy_if_different tmp_file functor_file
       end
 
     fun write_signature spec_file signature_file =
       let
+	val tmp_file = OS.FileSys.tmpName ()
 	val spec_insts = gen_spec_insts spec_file
-	val out_stream = TextIO.openOut(signature_file)
+	val out_stream = TextIO.openOut(tmp_file)
 	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes on *)\n")
 (*	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")*)
 	val _ = TextIO.output(out_stream, "signature OPCODES_KAM = \n")
@@ -40,13 +56,15 @@ structure GenOpcodes : GEN_OPCODES =
 	val _ = List.foldl write_opcode 0 spec_insts
 	val _ = TextIO.output(out_stream, "  end\n");
       in
-	TextIO.closeOut(out_stream)
+	TextIO.closeOut(out_stream);
+	copy_if_different tmp_file signature_file
       end
 
     fun write_kam_insts_C spec_file kam_insts_C_file =
       let
+	val tmp_file = OS.FileSys.tmpName ()
 	val spec_insts = gen_spec_insts spec_file
-	val out_stream = TextIO.openOut(kam_insts_C_file)
+	val out_stream = TextIO.openOut(tmp_file)
 	val _ = TextIO.output(out_stream, "/* This file is auto-generated with Tools/GenOpcodes on */\n")
 (*	val _ = TextIO.output(out_stream, "/* " ^ (cur_date()) ^ " */\n")*)
 	val _ = TextIO.output(out_stream, "enum instructions {\n")
@@ -56,13 +74,15 @@ structure GenOpcodes : GEN_OPCODES =
 					  write_opcode rest)
 	val _ = write_opcode spec_insts
       in
-	TextIO.closeOut(out_stream)
+	TextIO.closeOut(out_stream);
+	copy_if_different tmp_file kam_insts_C_file
       end
 
     fun write_functor_cfuncs spec_file functor_file =
       let
+	val tmp_file = OS.FileSys.tmpName ()
 	val spec_insts = gen_spec_insts spec_file
-	val out_stream = TextIO.openOut(functor_file)
+	val out_stream = TextIO.openOut(tmp_file)
 	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes on *)\n")
 (*	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")*)
 
@@ -86,13 +106,15 @@ structure GenOpcodes : GEN_OPCODES =
 			())
 	val _ = TextIO.output(out_stream, "      | _ => ~1\n  end\n");
       in
-	TextIO.closeOut(out_stream)
+	TextIO.closeOut(out_stream);
+	copy_if_different tmp_file functor_file
       end
 
     fun write_built_in_c_funcs_C spec_file outfile =
       let
+	val tmp_file = OS.FileSys.tmpName ()
 	val spec_insts = gen_spec_insts spec_file
-	val out_stream = TextIO.openOut(outfile)
+	val out_stream = TextIO.openOut(tmp_file)
 	val _ = TextIO.output(out_stream, "/* This file is auto-generated with Tools/GenOpcodes on */\n")
 (*	val _ = TextIO.output(out_stream, "/* " ^ (cur_date()) ^ " */\n")*)
 	val _ = TextIO.output(out_stream, "#include \"Prims.h\"\n\n")
@@ -105,7 +127,8 @@ structure GenOpcodes : GEN_OPCODES =
 					  write_opcode rest)
 	val _ = write_opcode spec_insts
       in
-	TextIO.closeOut(out_stream)
+	TextIO.closeOut(out_stream);
+	copy_if_different tmp_file outfile
       end
 
     fun process_args [src_dir] = SOME src_dir

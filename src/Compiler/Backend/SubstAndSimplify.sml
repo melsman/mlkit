@@ -100,12 +100,6 @@ struct
     | eq_aty(UNIT_ATY,UNIT_ATY) = true
     | eq_aty _ = false
 
-  (****************************************************************)
-  (* Add Dynamic Flags                                            *)
-  (****************************************************************)
-
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("print_simplified_program", "print simplified program (LineStmt)", ref false)]
 
   (*****************************)
   (* Simplify And Substitution *)

@@ -468,7 +468,7 @@ struct
   (* Functions for adding an entry to the directory. *)
   local
     fun add_entry([], key, r) = [(key,r)]
-      | add_entry((key',r')::rest,key,r) = if key=key' then (key,r)::rest
+      | add_entry((key',r')::rest,key,r) = if key=key' then die ("Entry already exists: " ^ key)
 					   else (key',r')::add_entry(rest, key, r) 
   in
     fun add_string_entry(key,r) = #strings dir := add_entry(!(#strings dir),key,r)
@@ -596,12 +596,13 @@ struct
      ("optimiser", optimiser),
      ("raggedRight", raggedRight),
      ("print_all_program_points", print_all_program_points),
-     ("all_multiplicities_infinite", all_multiplicities_infinite), 
      ("log_to_file", log_to_file),  (*true => generate a .log file*)
      ("garbage_collection", garbage_collection),
      ("auto_import_basislib", auto_import_basislib),
      ("perform_register_allocation", perform_register_allocation),
      ("DEBUG_COMPILER", DEBUG_COMPILER)]
+
+
 
 end (* Directory *)
 
@@ -1325,6 +1326,7 @@ struct
 
 end (*structure Menu*)
 
+
 exception ParseScript = ParseScript.ParseScript
 type state = Directory.state
 val get_state = Directory.get_state
@@ -1344,6 +1346,56 @@ val add_flag_to_menu = Menu.add_flag_to_menu
 val add_string_to_menu = Menu.add_string_to_menu
 val add_int_to_menu = Menu.add_int_to_menu
 val interact = Menu.interact
+
+  (****************************************************************)
+  (* Add Dynamic Flags                                            *)
+  (****************************************************************)
+
+  val _ = app (fn (x,y,r) => add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
+    [("print_normalized_program", "print normalized expression (MulExp)", ref false),
+     ("print_clos_conv_program", "print closure converted expression (ClosExp)", ref false),
+     ("print_lift_conv_program", "print lifted expression for the KAM (ClosExp)", ref false)]
+
+  val _ = add_flag_to_menu (["Control","Lambda Backend"],
+			    "jump_tables", "Use jump tables", ref true)
+
+  val _ = add_flag_to_menu(["Control"], "link_time_dead_code_elimination", 
+			   "link time dead-code elimination", ref true)
+
+  val _ = add_flag_to_menu(["Debug Kit", "Manager"], "debug_linking", "debug_linking", ref false)
+
+  val _ = add_flag_to_menu (["Control"], "report_file_sig", "report program unit signatures", ref false)
+
+  val _ = add_flag_to_menu (["Printing of intermediate forms"],
+			    "print_linearised_program", 
+			    "print linearised program (LineStmt)", ref false)
+
+  val _ = add_flag_to_menu (["Control","Lambda Backend"],
+			    "use_flow_variables", "Use Flow Variables", ref true)
+
+  val _ = add_flag_to_menu (["Printing of intermediate forms"],
+			    "print_register_allocated_program", 
+			    "print register allocated program (LineStmt)", ref false)
+
+  val _ = add_flag_to_menu (["Control","Lambda Backend"],
+			    "export_ig_graph", "Export IG graph in xvcg file", ref false)
+
+  val _ = add_flag_to_menu (["Printing of intermediate forms"],
+			    "print_fetch_and_flush_program", 
+			    "print program with fetch and flush (LineStmt)", ref false)
+
+  val _ = add_flag_to_menu (["Printing of intermediate forms"],
+			    "print_calc_offset_program", 
+			    "print program with offsets in activation records inserted (LineStmt)", 
+			    ref false)
+
+  val _ = add_flag_to_menu (["Printing of intermediate forms"],
+			    "print_simplified_program", 
+			    "print simplified program (LineStmt)", ref false)
+
+  val _ = add_flag_to_menu (["Debug Kit", "Manager"], 
+			    "debug_man_enrich", "debug man enrich", ref false)
+
 
 end (* functor Flags *)  
    

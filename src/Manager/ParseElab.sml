@@ -61,11 +61,7 @@ functor ParseElab(structure Parse: PARSE
      * Dynamic flags
      * ----------------------------------------------------------------- *)
 
-    val report_file_sig = ref false
-    val _ = Flags.add_flag_to_menu
-          (["Control"], "report_file_sig",
-	   "report program unit signatures", report_file_sig)
-
+    val report_file_sig = Flags.lookup_flag_entry "report_file_sig" 
 
     infix //
     val op // = Report.//

@@ -408,15 +408,6 @@ struct
       "(["^(pr_lvars lvars)^"],["^(pr_excons excons)^"],["^(pr_rhos rhos)^"])"
   end
 
-  (****************************************************************)
-  (* Add Dynamic Flags                                            *)
-  (****************************************************************)
-
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("print_normalized_program", "print normalized expression (MulExp)", ref false),
-     ("print_clos_conv_program", "print closure converted expression (ClosExp)", ref false),
-     ("print_lift_conv_program", "print lifted expression for the KAM (ClosExp)", ref false)]
-
   (*****************************************************************************************)
   (*****************************************************************************************)
   (* Compilation Functions Starts Here                                                     *)

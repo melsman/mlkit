@@ -76,15 +76,13 @@ struct
   (****************************************************************)
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
     [("print_HP-PARISC_program_meta", "print HP-PARISC program (with META instructions)", ref false),
-     ("print_HP-PARISC_program", "print HP-PARISC program", ref false),
-     ("debug_codeGen","DEBUG CODE_GEN",ref false)]
+     ("print_HP-PARISC_program", "print HP-PARISC program", ref false)]
 
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
-    [("inline_alloc", "Inline alloc", ref true),
-     ("jump_tables", "Use jump tables", ref true)]
+    [("inline_alloc_HP-PARISC", "Inline alloc HP-PARISC", ref true)]
 
   val do_garbage_collection = Flags.lookup_flag_entry "garbage_collection"
-  val inline_alloc = Flags.lookup_flag_entry "inline_alloc"
+  val inline_alloc = Flags.lookup_flag_entry "inline_alloc_HP-PARISC"
   val jump_tables = Flags.lookup_flag_entry "jump_tables"
 
   (********************************)

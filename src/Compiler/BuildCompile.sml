@@ -5,21 +5,54 @@
 
 signature BUILD_COMPILE = 
   sig
+    structure ExecutionArgs : EXECUTION_ARGS
     structure CompilerEnv : COMPILER_ENV
+      sharing type CompilerEnv.ElabEnv = ExecutionArgs.Elaboration.Basics.Environments.Env
+      sharing type CompilerEnv.id = ExecutionArgs.Elaboration.Basics.ModuleEnvironments.id
+      sharing type CompilerEnv.longid = ExecutionArgs.Elaboration.PostElabTopdecGrammar.DecGrammar.longid
+      sharing type CompilerEnv.strid = ExecutionArgs.Elaboration.Basics.StrId.strid
+      sharing type CompilerEnv.longstrid = ExecutionArgs.Elaboration.Basics.StrId.longstrid
+      sharing type CompilerEnv.tycon = ExecutionArgs.Elaboration.Basics.TyCon.tycon
+      sharing type CompilerEnv.longtycon = ExecutionArgs.Elaboration.Basics.TyCon.longtycon
     structure CompBasis: COMP_BASIS
     structure Compile: COMPILE
+      sharing type Compile.CompBasis = CompBasis.CompBasis
+      sharing type Compile.CEnv = CompilerEnv.CEnv
+      sharing type Compile.strdec = ExecutionArgs.Elaboration.PostElabTopdecGrammar.strdec
+	
     structure Effect : EFFECT
     structure AtInf : AT_INF
     structure PhysSizeInf : PHYS_SIZE_INF
+      sharing type PhysSizeInf.phsize = Compile.phsize
+      sharing type PhysSizeInf.at = AtInf.at = Compile.at
+      sharing type PhysSizeInf.pp = Compile.pp
+(*      sharing type PhysSizeInf.env = CompBasis. *)
     structure MulExp : MUL_EXP
+      sharing type MulExp.LambdaPgm = PhysSizeInf.LambdaPgm = Compile.LambdaPgm
+      sharing type MulExp.con = ExecutionArgs.Con.con = CompBasis.con = CompilerEnv.con
+      sharing type MulExp.excon = ExecutionArgs.Excon.excon = CompBasis.excon = CompilerEnv.excon
     structure EffVarEnv : MONO_FINMAP
     structure RType : RTYPE
+      sharing type MulExp.il = RType.il
+      sharing type MulExp.Type = RType.Type
+      sharing type MulExp.TyName = RType.tyname = ExecutionArgs.Elaboration.Basics.TyName.TyName 
+	= CompBasis.TyName = CompilerEnv.TyName
     structure Mul : MUL
-    structure RegionExp : REGION_EXP
+      sharing type MulExp.qmularefset = Mul.qmularefset
+      sharing type MulExp.mulef = Mul.mulef
+      sharing type MulExp.StringTree = Mul.StringTree = AtInf.StringTree = EffVarEnv.StringTree = RType.StringTree
+	= PhysSizeInf.StringTree = Effect.StringTree = ExecutionArgs.Elaboration.Basics.Tools.PrettyPrint.StringTree
+	= CompBasis.StringTree = CompilerEnv.StringTree
+      sharing type Mul.mul = PhysSizeInf.mul
+      sharing type MulExp.lvar = ExecutionArgs.Lvars.lvar = Mul.lvar = CompBasis.lvar = CompilerEnv.lvar = PhysSizeInf.lvar
+      sharing type MulExp.effect = Mul.effectvar = RType.place = PhysSizeInf.place 
+	= AtInf.place = Effect.place = EffVarEnv.dom = Mul.place = MulExp.place = Compile.place
   end  
 
-functor BuildCompile (include EXECUTION_ARGS) : BUILD_COMPILE =
+functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
   struct
+    structure ExecutionArgs = ExecutionArgs
+    open ExecutionArgs
     structure Basics = Elaboration.Basics
     structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
     structure Tools = Basics.Tools

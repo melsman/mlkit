@@ -51,14 +51,9 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     fun die s = Crash.impossible("ManagerObjects." ^ s)
     fun chat s = if !Flags.chat then print (s ^ "\n") else ()
 
-    val link_time_dead_code_elimination = ref true
-    val _ = Flags.add_flag_to_menu(["Control"], 
-				   "link_time_dead_code_elimination", "link time dead-code elimination", 
-				   link_time_dead_code_elimination)
+    val link_time_dead_code_elimination = Flags.lookup_flag_entry "link_time_dead_code_elimination"
     local
-      val debug_linking = ref false
-      val _ = Flags.add_flag_to_menu(["Debug Kit", "Manager"], 
-				     "debug_linking", "debug_linking", debug_linking)
+      val debug_linking = Flags.lookup_flag_entry "debug_linking"
     in
       fun pr_debug_linking s = if !debug_linking then print s else ()
     end

@@ -34,7 +34,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 	case inst of
 	Alloc(n) => (out_opcode ALLOC_N; out_int n)
       | AllocIfInf(n)  => (out_opcode ALLOC_IF_INF_N; out_int n)
-      | AllocSatInf(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | AllocSatInf(n) => (out_opcode ALLOC_SAT_INF_N; out_int n)
       | AllocSatIfInf(n) => (out_opcode ALLOC_SAT_IF_INF_N; out_int n)
       | AllocAtbot(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
@@ -91,10 +91,8 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | ApplyFnJmp(n1,n2) => (out_opcode APPLY_FN_JMP; out_int n1; out_int n2)
       | ApplyFunCall(lab,n) => (out_opcode APPLY_FUN_CALL; RLL.out_label lab; out_int n)
       | ApplyFunJmp(lab,n1,n2) => (out_opcode APPLY_FUN_JMP; RLL.out_label lab; out_int n1; out_int n2)
-      | Return(n1,n2) => 
-	  (out_opcode RETURN;
-	   out_int n1;
-	   out_int n2)
+
+      | Return(n1,n2) => (out_opcode RETURN; out_int n1; out_int n2)
 
       | Ccall(idx,0) => (out_opcode C_CALL0; out_int idx)
       | Ccall(idx,1) => (out_opcode C_CALL1; out_int idx)

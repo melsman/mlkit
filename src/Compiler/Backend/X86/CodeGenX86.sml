@@ -76,13 +76,10 @@ struct
   (* Add Dynamic Flags                                            *)
   (****************************************************************)
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("comments_in_asmcode", "comments in assembler code", ref false)]
-
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
-    [("jump_tables", "Use jump tables", ref true)]
+    [("comments_in_x86_asmcode", "comments in x86 assembler code", ref false)]
 
   val jump_tables = Flags.lookup_flag_entry "jump_tables"
-  val comments_in_asmcode = Flags.lookup_flag_entry "comments_in_asmcode"
+  val comments_in_asmcode = Flags.lookup_flag_entry "comments_in_x86_asmcode"
   val do_garbage_collection = Flags.lookup_flag_entry "garbage_collection"
 
   (**********************************
