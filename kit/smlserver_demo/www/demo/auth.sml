@@ -1,26 +1,21 @@
 structure FV = FormVar
 
-val _ = Ns.log (Ns.Notice,"Entering auth.sml")
-
 fun redirect() = 
   (Ns.log (Ns.Notice,"Redirecting from auth");
-   Ns.returnRedirect "/auth_form.sml"; 
+   Ns.returnRedirect "/demo/auth_form.sml"; 
    Ns.exit())
 
-val target =
-  case FV.wrapOpt FV.getStringErr "target" 
-    of NONE => redirect()
-     | SOME t => t
+val target = case FV.wrapOpt FV.getStringErr "target" 
+	       of NONE => redirect()
+		| SOME t => t
 
-val email =
-  case FV.wrapOpt FV.getStringErr "email" 
-    of NONE => redirect()
-     | SOME e => e
+val email = case FV.wrapOpt FV.getStringErr "email" 
+	      of NONE => redirect()
+	       | SOME e => e
 
-val passwd =
-  case FV.wrapOpt FV.getStringErr "passwd" 
-    of NONE => redirect()
-     | SOME p => p
+val passwd = case FV.wrapOpt FV.getStringErr "passwd" 
+	       of NONE => redirect()
+		| SOME p => p
 
 val pid =
   case Db.zeroOrOneField `select person_id 

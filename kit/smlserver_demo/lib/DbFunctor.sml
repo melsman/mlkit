@@ -48,11 +48,11 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun init(sectionName, key) = Pool.initPools(sectionName, key)
 
     fun poolGetHandle (pool : pool) : db =
-      (pool, prim("nssml_DbPoolGetHandle", pool))
+      (pool, prim("@Ns_DbPoolGetHandle", pool))
     fun poolPutHandle (db : db) : unit =
-      prim("nssml_DbPoolPutHandle", #2 db)
+      prim("@Ns_DbPoolPutHandle", #2 db)
     fun dmlDb (db : db, q: quot) : status =
-      prim("nssml_DbDML", (#2 db, quotToString q))
+      prim("@Ns_DbDML", (#2 db, quotToString q))
     fun panicDmlDb (db:db) (f_panic: quot -> 'a) (q: quot) : unit =
       (dmlDb (db,q); () handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
 
@@ -95,9 +95,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
 
     fun selectDb (db: db, q: quot) : Set.set =
-      prim("nssml_DbSelect", (#2 db, quotToString q))
+      prim("@Ns_DbSelect", (#2 db, quotToString q))
     fun getRowDb (db : db, s : Set.set) : status =
-      prim("nssml_DbGetRow", (#2 db, s))
+      prim("@Ns_DbGetRow", (#2 db, s))
 
     fun getCol (s,n) = Set.getOpt(s,n,"##")
     val getColOpt = Set.get

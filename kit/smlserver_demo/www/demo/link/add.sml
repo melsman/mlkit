@@ -2,7 +2,7 @@ structure FV = FormVar
 
 val _ = 
   if Login.person_id = Login.default_id then 
-    (Ns.returnRedirect "/auth_form.sml";
+    (Ns.returnRedirect "/demo/auth_form.sml";
      Ns.exit())
   else ()
 

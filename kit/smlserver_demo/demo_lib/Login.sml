@@ -7,10 +7,37 @@ signature LOGIN =
     val loggedIn   : bool
 
     val auth_filter : string list -> unit
+
+    val new_passwd : int -> string
+    (* [new_passwd n] generate a new password constructed from n
+     * characters chosen randomly from the set {0-9a-zA-Z} 
+     *)
   end
 
 structure Login : LOGIN =
   struct
+    fun new_passwd n : string =
+      let val gen = Random.newgen()
+	  val ch_rng = ord #"z" - ord #"a"
+	  val range = 10 + 2*ch_rng
+	  fun ch () : char = 
+	    let val i = Random.range(0,range) gen
+	    in if i < 10 then chr (i+ord #"0")
+	       else if i-10 < ch_rng then chr(i-10+ord #"a")
+		    else chr(i-10-ch_rng+ord #"A")
+	    end
+	  fun loop (0,acc) = implode(rev acc)
+	    | loop (n,acc) =
+	    let val c = ch()
+	    in if ( c = #"o" orelse c = #"O" orelse c = #"0" orelse 
+		   c = #"1" orelse c = #"l" ) 
+		 then
+		   loop(n,acc)
+	       else loop (n-1, c::acc)
+	    end
+      in loop (n, nil)
+      end
+
     val default_id : int = 0
 
     (* auth_verify_user; return user_id if happy, 0 otherwise *)

@@ -1,11 +1,11 @@
 val target = 
   case FormVar.wrapOpt FormVar.getStringErr "target" 
     of SOME t => t
-     | NONE => "/index.sml"
+     | NONE => "/demo/index.sml"
 
 val _ = Page.return "Login to SMLserver.org" `
-To modify the link database, you must enter your <b>email address</b> and your <b>password</b>.
-<form action="/auth.sml" method=post>
+Enter your <b>email address</b> and <b>password</b>.
+<form action="/demo/auth.sml" method=post>
 <table>
  <input type=hidden name=target value="^target">
  <tr><td><b>Email address</b></td>
@@ -22,4 +22,7 @@ To modify the link database, you must enter your <b>email address</b> and your <
 </table>
 </form>
 If you're not already a member, you may register
-by filling out a <a href=auth_new.sml>form</a>.`
+by filling out a <a href=auth_new_form.sml>form</a>. If 
+you forgot your password, the systen can 
+<a href=auth_send_form.sml>send it to you by 
+email</a>.`

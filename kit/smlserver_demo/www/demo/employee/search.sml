@@ -25,7 +25,7 @@
                   </td></tr>
            </table>
          </form><p>
-         Try a <a href=index.html>new search?</a>`
+         Try a <a href=index.sml>new search?</a>`
     | _ => 
 	 Page.return "Employee Search Failure"
 	 `Use the back-button in your web-browser 

@@ -6,40 +6,39 @@ val examples =
    ("Guess with Bill", "guess.sml", []),
    ("Form variables", "formvar.sml", ["formvar_chk.sml"]),
    ("Server information", "server.sml", []),
+   ("Regular Expressions", "regexp.sml", []),
+   ("Dictionary Cache","cache.sml", ["cache_add.sml","cache_lookup.sml"]),
    ("Currency service", "currency_cache.html", ["currency_cache.sml"]),
    ("Send an email", "mail_form.sml", ["mail.sml"]),
-   ("Employee search", "employee/index.sml", ["search.sml","update.sml"]),
-   ("Best Wines web-site", "rating/index.sml", ["rating/rating.sql", "rating/add0.sml", 
+   ("Employee search (DB)", "employee/index.sml", ["search.sml","update.sml"]),
+   ("Best Wines (DB)", "rating/index.sml", ["rating/rating.sql", "rating/add0.sml", 
 						"rating/add.sml", "rating/wine.sml"]),
-   ("SMLserver link database (password protected)", "link/index.sml", ["link/add_form.sml", "link/add.sml", 
-								       "link/delete.sml"]),
+   ("Link database (DB)", "link/index.sml", ["link/add_form.sml", "link/add.sml", 
+						  "link/delete.sml"]),
 (*   ("Game of life", "life.sml"),  *)
-   ("Hello world", "hello.msp", []),
-   ("Multiplication table", "mul.msp", []),
-   ("Generating calendars", "calendar.msp", []),
-   ("A demo of various MSP styles", "test.msp", []),
-   ("Regular Expressions", "regexp.sml",[]),
-   ("Simple Dictionary (Caching)","cache.sml",["cache_add.sml","cache_lookup.sml"]),
+   ("Hello world (MSP)", "hello.msp", []),
+   ("Multiplication (MSP)", "mul.msp", []),
+   ("Calendars (MSP)", "calendar.msp", []),
+   ("Tables (MSP)", "test.msp", []),
    ("SMLserver images", "images/index.html", []),
    ("This index page", "index.sml", [])]
 
 fun src_link n s = `<a href="^s.txt">^(Int.toString n)</a>`
 
 fun sources n nil = ``
-  | sources n [s1,s2] = src_link n s1 ^^ `, ` ^^ src_link (n+1) s2
+  | sources n [s] = src_link n s
   | sources n (s::ss) = src_link n s ^^ `, ` ^^ sources (n+1) ss
 
 fun mkrow (desc, src, srcs) = 
-  `<tr><td><a href="^src">^desc</a></td><td>` 
-  ^^ sources 1 (src::srcs) ^^ `</td></tr>`
+  `<tr><td><font size=-2><a href="^src">^desc</a></font></td><td align=right>
+   <font size=-2>` 
+  ^^ sources 1 (src::srcs) ^^ `</font></td></tr>`
 
 val _ = Page.return "SMLserver Examples" 
   (`See the <a href=http://www.smlserver.org>SMLserver 
     Home Page</a> for SMLserver news and updates.<p>
-    <h2>Examples</h2>
-
-    <TABLE BORDER>
-    <TR><TH>Example</TH><TH>source files</TH></TR>` 
+    <TABLE>
+    <TR><TH>Example</TH><TH>source</TH></TR>` 
     ^^ Quot.concat (List.map mkrow examples) ^^ 
    `</TABLE>
     <p>
