@@ -1,5 +1,11 @@
 -- $Id$
 
+-- Also add an ordering used in selections: default increasing ordering
+
+------------
+-- Tables --
+------------
+
 create table scs_enumerations(
   enum_id integer
     constraint scs_enumerations_enum_id_nn not null
@@ -18,9 +24,29 @@ create table scs_enum_values(
     constraint scs_enum_values_enum_id_fk references scs_enumerations(enum_id),
   text_id integer
     constraint scs_enum_values_text_id_fk references scs_texts(text_id),
-  value varchar2(30),
+  value varchar2(100),
+  active_p char(1) default ('t')
+    constraint scs_enum_values_active_p_nn not null
+    constraint scs_enum_values_active_p_ck
+      check (active_p in ('t','f')),
   constraint scs_enum_values_un unique(enum_id,value)
 );
+
+-----------
+-- Views --
+-----------
+
+create or replace view scs_enums as
+select scs_enumerations.enum_id, scs_enumerations.name, 
+       scs_enum_values.val_id, scs_enum_values.value, scs_enum_values.active_p, 
+       scs_texts.text_id, 
+       scs_text_lang.lang_id, scs_text_lang.text,
+       scs_lang.language
+  from scs_enumerations, scs_enum_values, scs_texts, scs_lang, scs_text_lang
+ where scs_enumerations.enum_id = scs_enum_values.enum_id
+   and scs_enum_values.text_id = scs_texts.text_id
+   and scs_texts.text_id = scs_text_lang.text_id
+   and scs_text_lang.lang_id = scs_lang.lang_id;
 
 --------------
 -- TRIGGERS --
@@ -54,6 +80,13 @@ as
     value	in scs_enum_values.value%TYPE
   ) return scs_enum_values.val_id%TYPE;
 
+  function addValue (
+    name        in scs_enumerations.name%TYPE,
+    value       in scs_enum_values.value%TYPE,
+    language    in scs_lang.language%TYPE,
+    text        in scs_text_lang.text%TYPE
+  ) return scs_enum_values.val_id%TYPE;
+
   procedure destroy (
     enum_id     in scs_enumerations.enum_id%TYPE
   );
@@ -67,6 +100,13 @@ as
     value	in scs_enum_values.value%TYPE    
   ) return scs_texts.text_id%TYPE;
 
+  function getEnumId (
+    name	in scs_enumerations.name%TYPE
+  ) return scs_enumerations.enum_id%TYPE;     
+
+  function getName (
+    enum_id	in scs_enumerations.enum_id%TYPE
+  ) return scs_enumerations.name%TYPE;     
 end scs_enumeration;
 /
 show errors
@@ -83,6 +123,11 @@ as
     new_enum_id := scs.new_obj_id( new.enum_id );
     insert into scs_enumerations( enum_id, name ) values (new_enum_id,name);
     return new_enum_id;
+
+    exception
+      when others then
+        raise_application_error(scs.ScsDbExn,'scs_enumeration.new: Can''t create unum_id: ' || 
+                                enum_id || ' with name: ' || name);
   end new;
 
 
@@ -133,6 +178,59 @@ as
     end if;
     return val_id;
   end updateValue;
+
+  function getName (
+    enum_id	in scs_enumerations.enum_id%TYPE
+  ) return scs_enumerations.name%TYPE
+  is
+    v_name scs_enumerations.name%TYPE;
+  begin
+    select name
+      into v_name
+      from scs_enumerations
+     where scs_enumerations.enum_id = getName.enum_id;
+
+    return v_name;
+
+  exception
+    when NO_DATA_FOUND then
+      raise_application_error(scs.ScsDbExn,'scs_enumeration.getName: can''t find enum_id: ' || enum_id);
+  end getName;
+
+  function getEnumId (
+    name in scs_enumerations.name%TYPE
+  ) return scs_enumerations.enum_id%TYPE
+  is
+    v_enum_id scs_enumerations.enum_id%TYPE;
+  begin
+    select enum_id
+      into v_enum_id
+      from scs_enumerations
+     where scs_enumerations.name = getEnumId.name;
+
+    return v_enum_id;
+
+  exception
+    when NO_DATA_FOUND then
+      raise_application_error(scs.ScsDbExn,'scs_enumeration.getEnumId: can''t find name: ' || name);        
+  end getEnumId;
+
+  function addValue (
+    name        in scs_enumerations.name%TYPE,
+    value       in scs_enum_values.value%TYPE,
+    language    in scs_lang.language%TYPE,
+    text        in scs_text_lang.text%TYPE
+  ) return scs_enum_values.val_id%TYPE
+  is
+  begin
+    return scs_enumeration.updateValue(enum_id => getEnumId(addValue.name),
+                                       value => addValue.value,
+                                       text_id => scs_text.updateText(language => addValue.language,
+                                                                      text => addValue.text));
+  exception
+    when others then
+      raise_application_error(scs.ScsDbExn,'scs_enumeration.addValue: can''t add value ' || value);
+  end addValue;
 
   procedure destroy (
     enum_id in scs_enumerations.enum_id%TYPE
@@ -196,8 +294,3 @@ as
 end scs_enumeration;
 /
 show errors
-
-
-
-
-
