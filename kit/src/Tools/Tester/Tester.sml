@@ -88,7 +88,7 @@ structure Tester : TESTER =
 	    end handle CompilerTimings.ReadTimingsError s => (msgErr s; ())
 	  else ()
 
-	val exe_file = "runexe"
+	val exe_file = "./runexe"
 	fun rename_and_run() =
 	  if OS.Process.system ("mv run " ^ exe_file) = OS.Process.success then
 	    let 

@@ -1,0 +1,235 @@
+The ML Kit INSTALL file                                  March 8, 2001
+http://www.it.edu/research/mlkit/
+
+Content
+-------
+
+   0. Introduction
+   1. Installation Requirements 
+   2. Preparing for Building and Installation
+   3. Building and Installing the ML Kit (Native Backend)
+   4. Building and Installing the ML Kit (Bytecode Backend)
+   5. Binary Distributions
+   6. Testing your Installation
+   7. Road Map
+   8. File Types
+
+0. Introduction
+---------------
+This file describes how to install the ML Kit (from here on just the
+Kit), a compiler for the programming language Standard ML. If you
+intend to install the Kit on a RedHat Linux Box, consider using one of
+the RPM's available from the Kit web site.
+
+1. Installation Requirements
+----------------------------
+To install and use the ML Kit, you need a Linux box running Redhat
+Linux 7.0 or similar. 
+
+Unless you are installing one of the binary RPM distributions, you
+need Standard ML of New Jersey version 110.0.6 (or later) to compile
+the ML Kit sources. A link to the home page for the Standard ML of New
+Jersey compiler is available from the ML Kit home page. Once
+installed, the ML Kit will take up around 25Mb of disk space, which
+includes documentation, example files, and a pre-compiled Standard ML
+Basis Library.
+
+2. Preparing for Building and Installation
+------------------------------------------
+In the following, except in the section on "Binary Distributions",
+we assume that version 110.0.6 (or later) of Standard ML of New Jersey
+is installed on your Linux box, such that the command "sml" is
+available from the command line. We shall also assume that you have
+downloaded the compressed tar-file named mlkit-x.y.z.tgz and placed it
+somewhere on your system. You now have the option of installing the
+version of the ML Kit with the native backend or the version with the
+bytecode backend.
+
+3. Building and Installing the ML Kit (Native Backend)
+------------------------------------------------------
+Assuming you have downloaded the tar-file mlkit-x.y.z.tgz as described
+in the previous section, proceed as follows:
+
+  * Unpack the sources. Execute the command
+
+      % tar xzf mlkit-x.y.z.tgz
+
+    This command creates the directory mlkit-x.y.z.
+
+  * Build the ML Kit. Execute the commands:
+
+      % cd mlkit-x.y.z
+      % make mlkit
+
+  * Install the ML Kit. If you have root access to your machine,
+    execute
+
+      # make install
+
+    which installs the ML Kit in the /usr/local/mlkit-x.y.z 
+    directory. Alternatively, if you want to install the ML Kit in
+    your home directory, execute
+   
+      % make install INSTDIR_NATIVE=$(HOME)/mlkit-x.y.z
+    
+Once installed, make a personal copy of the kitdemo/ directory and try
+compile the kitdemo/helloworld.sml program. The commands
+
+   % cd kitdemo
+   % /usr/local/mlkit-x.y.z/bin/mlkit helloworld.sml
+
+should create a file called run (placed in the working directory)
+that, when executed, should print a greeting from the Kit.
+
+4. Building and Installing the ML Kit (Bytecode Backend)
+--------------------------------------------------------
+To build and install a version of the ML Kit that uses the bytecode
+backend, exchange the make commands in the previous section with
+
+   % make mlkit_kam
+
+and 
+
+   # make install_kam
+
+which installs the ML Kit in the /usr/local/mlkit-kam-x.y.z directory;
+it is thus possible to have both a version of the ML Kit that uses the
+native backend and a version of the ML Kit that uses the bytecode
+backend installed at the same time. If you do not have root-access to
+the machine, you can install the ML Kit in your home directory, by
+executing
+   
+   % make install_kam INSTDIR_KAM=$(HOME)/mlkit-kam-x.y.z
+    
+Once installed, make a personal copy of the kitdemo/ directory and try
+compile the kitdemo/helloworld.sml program. The commands
+
+   % cd kitdemo
+   % /usr/local/mlkit-kam-x.y.z/bin/mlkit_kam helloworld.sml
+
+should create a file called run (placed in the working directory)
+that, when executed, should print a greeting from the Kit.
+
+5. Binary Distributions
+-----------------------
+Binary distributions in form of RPM files are available from the ML
+Kit home page. If you ever need to build RPM files for the ML Kit
+yourself, consult the documentation in the mlkit.spec file found in
+the source distribution.
+
+6. Testing your Installation
+----------------------------
+To test the installation, execute the commands
+
+   % cd test
+   % ../bin/kittester /usr/local/mlkit/bin/mlkit x86_noprof_nogc.tst
+
+The last command runs a set of tests and generates a test report
+test/test_report.dvi.
+
+7. Road Map
+-----------
+The source distribution contains the following files and directories:
+ 
+  src/		sources for the Kit and some utilities
+  doc/		documentation. The User's Guide is called
+                "Programming with Regions in the ML Kit" and is
+                available as doc/manual/mlkit.pdf.
+  test/  	test cases for the Kit
+  test_dev/     test cases used under development
+  kitdemo/      example input for the kit (i.e., sml source files
+                and project files)
+  basislib/     Standard ML Basis Library for the Kit
+  kitlib/       kit-specific library functions
+  ml-yacc-lib/  interface to ML Yacc generated parsers
+  Makefile
+  README	read it
+  INSTALL	this file
+  copyright	copyright and license notices
+  to_do         things we need to do
+
+
+7.1. src/ in detail
+------------------
+
+  src/
+      sources.cm	list of source files for the kit
+      Makefile
+      Common/           source files
+      Edlib/            the Kit still uses a couple of modules that
+                        stem from the Edinburgh Library. These modules
+                        are in the Edlib directory.
+      Manager/          Modules concerning separate compilation and 
+                        static interpretation.
+      Parsing/          Modules concerning lexing and parsing
+      Compiler/ ...
+         Lambda/        compilation into lambda code and optimization
+         Regions/       region inference, multiplicity inference, etc.
+         Backend/
+            X86/        x86 native backend
+            KAM/        bytecode backend
+            Dummy/      dummy backend (no code generation)
+            HpPaRisc/   HP PA-RISC backend (not supported)
+      RuntimeWithGC/	C source files and executables for runtime system
+      heap2exec/        creating executables from sml/nj images
+      Tools/            sources for Kit tools (Rp2ps, Tester, and GenOpcodes)
+
+7.2. src/Tools/Rp2Ps/ in detail
+-------------------------------
+The tool "rp2ps" converts output from a program compiled with region
+profiling enabled to a profile graph in postscript, that is, it
+converts an .rp file to a .ps file.  See the file "Makefile".
+
+  src/Tools/Rp2Ps/Rp2ps.c
+      ...
+      Makefile
+      rp2ps
+
+7.3. src/Tools/Tester/ in detail
+--------------------------------
+This directory holds the sources for the Kit Tester Tool.
+
+7.4. test/ in detail
+--------------------
+This directory holds test programs for the Kit. A regression test of
+the Kit is made by invoking the Kit Tester Tool with two arguments, a
+path to an "mlkit" executable and a so called test file, which
+mentions what SML sources should be compiled and run; the Kit Tester
+Tool tests if the output generated by the compiler and the executable
+equals the output from a previous run. The test measures how long it
+takes the kit (and different phases of it) to compile the test
+programs. It also measures the run-time and memory consumption of the
+code generated for the test programs. The tool generates a dvi file,
+which can be viewed using the command "xdvi test_report.dvi" from the
+test/ directory (provided you have the xdvi program installed on your
+system). See the file "test/README" for further details.
+
+7.5. bin/ in detail
+-------------------
+After executing "make" or "make mlkit_kam", a new directory bin/ has
+been created:
+
+  bin/		executable versions of the Kit and other programs
+
+After a successful build, the bin/ directory contains an executable
+file "mlkit". Two other tools are placed in the bin/ directory when
+the Kit is built. These are the profiling graph tool "rp2ps" (Region
+Profile to PostScript) and the Kit Tester Tool "kittester". See below
+for information about these tools. The build process also stores
+different compiled versions of the runtime system in the bin/
+directory.
+
+8. File Types
+-------------
+.sml		sml source files.
+.c		C code generated by the ANSI C version of the kit
+.s		assembler files generated by the native backend of the Kit
+.o		.c or .s files compiled using gcc
+.script		a "kit script" file sets references used globally in the kit
+.log		"file.log" is a log from the compilation of "file.sml".
+.vcg		a region flow graph in a text representation
+		you need a particular program to view it.  See the file "readme".
+.rp		output from program compiled with region profiling turned on. 
+		run it through "rp2ps" to get a postscript file.
+.tst            test files used by the Kit Tester Tool. 
+

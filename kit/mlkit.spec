@@ -57,12 +57,12 @@ supports most of the Standard ML Basis Library. The Kit uses a region
 based memory management scheme in which allocation and de-allocation
 primitives are added to the program at compile time. The Kit also
 makes it possible to combine the region based memory management scheme
-with traditional reference tracing garbage collection. The Kit
-generates efficient native code for the x86 architecture; there is
-also a version of the Kit that generates portable bytecode, which can
-be interpreted by an abstract machine. The largest program compiled
-with the Kit is the Kit itself (around 80.000 lines of SML, plus the
-Basis Library).
+with traditional reference tracing garbage collection. Two versions of
+the the ML Kit is available, one that generates efficient native code
+for the x86 architecture and one that generates portable bytecode that
+can be interpreted by an abstract machine. The largest program
+compiled with the Kit is the Kit itself (around 80.000 lines of SML,
+plus the Basis Library).
 
 %prep
 %setup
@@ -99,7 +99,12 @@ make install
 
 %post
 echo '#!/bin/sh' > ${RPM_INSTALL_PREFIX}/bin/mlkit
-echo -e '${RPM_INSTALL_PREFIX}/bin/mlkit.x86-linux ${RPM_INSTALL_PREFIX} $$*' >> ${RPM_INSTALL_PREFIX}/bin/mlkit
+echo ''${RPM_INSTALL_PREFIX}/bin/mlkit.x86-linux ${RPM_INSTALL_PREFIX}' $*' >> ${RPM_INSTALL_PREFIX}/bin/mlkit
 chmod a+x ${RPM_INSTALL_PREFIX}/bin/mlkit
 ln -sf ${RPM_INSTALL_PREFIX}/bin/mlkit /usr/bin/mlkit
 ln -sf ${RPM_INSTALL_PREFIX}/bin/rp2ps /usr/bin/rp2ps
+
+%preun
+rm -rf ${RPM_INSTALL_PREFIX}/bin/mlkit
+rm -rf /usr/bin/mlkit /usr/bin/rp2ps
+
