@@ -42,6 +42,7 @@ show errors
 -- LOAD THE ENTIRE SCS DATA MODEL --
 ------------------------------------
 
+@scs-test-create.sql;
 @scs-math-create.sql;
 @scs-random-create.sql;
 @scs-logs-create.sql;

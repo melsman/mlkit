@@ -1,3 +1,8 @@
+drop package scs_grp_type;
+drop package scs_grp_member_rel;
+drop package scs_grp_composition_rel;
+drop package scs_group;
+
 drop view scs_grp_element_map;
 drop view scs_grp_component_map;
 drop view scs_grp_member_map;

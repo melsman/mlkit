@@ -12,5 +12,6 @@ drop sequence scs_object_id_seq;
 @scs-enumerations-drop.sql
 @scs-locales-drop.sql
 @scs-logs-drop.sql
+@scs-test-drop.sql;
 
 select table_name from user_tables order by table_name;
