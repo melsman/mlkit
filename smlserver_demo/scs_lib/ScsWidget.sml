@@ -218,8 +218,14 @@ structure ScsWidget :> SCS_WIDGET =
     fun ol qs = `<ol>` ^^ (List.foldr (fn (q,acc) => `
 				       <li>` ^^ q ^^ acc) `</ol>` qs)
 
-    fun ta rows cols n v = `<textarea name="^n" rows=^(Int.toString rows) cols=^(Int.toString cols) wrap="physical">` ^^ 
-                            v ^^ `</textarea>`
+    fun ta rows cols n v = `
+      <textarea name="^n" rows=^(Int.toString rows) cols=^(Int.toString cols) 
+	 wrap="physical">` ^^ 
+
+        (Quot.fromString o ScsSecurity.xssFilterLeaveNoTags o Quot.toString) 
+
+	  v ^^ `
+      </textarea>`
 
     val largeTa = ta 20 80
     val mediumTa = ta 10 40
@@ -296,10 +302,14 @@ structure ScsWidget :> SCS_WIDGET =
     fun genSize s = `size="^(Int.toString s)"`
     fun genMaxSize s m = genSize s ^^ ` maxlength="^(Int.toString m)"`
     fun genValue v = `value="^v"`
-    fun intext s fv = Html.intext fv (genSize s)
+    fun intext s fv = 
+      Html.intext fv (genSize s)
     fun intextMaxLen s m fv = Html.intext fv (genMaxSize s m)
-    fun intextVal s v fv = Html.intext fv (genSize s ^^ ` ` ^^ genValue v)
-    fun intextMaxLenVal s m v fv = Html.intext fv (genMaxSize s m ^^ ` ` ^^ genValue v)
+
+    fun intextVal s v fv = Html.intext fv (genSize s ^^ ` ` ^^ 
+      (genValue o ScsSecurity.xssFilterLeaveNoTags) v)
+    fun intextMaxLenVal s m v fv = Html.intext fv (genMaxSize s m ^^ ` ` ^^ (genValue o ScsSecurity.xssFilterLeaveNoTags) v)
+
     fun intextDate d fv =
       case d of
 	NONE => intextMaxLenVal 10 10 "" fv
