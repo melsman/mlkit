@@ -62,6 +62,7 @@ functor ParseElab(structure Parse: PARSE
      * ----------------------------------------------------------------- *)
 
     val report_file_sig = Flags.lookup_flag_entry "report_file_sig" 
+    val debug = Flags.is_on0 "debug_compiler"
 
     infix //
     val op // = Report.//
@@ -129,6 +130,14 @@ functor ParseElab(structure Parse: PARSE
 
     end (*local*)
 
+    fun maybe_print_topdec topdec =
+	if debug() then
+	    let val _ = print "AST before elaboration:\n"
+		val st = PreElabTopdecGrammar.layoutTopdec topdec
+	    in PP.printTree st
+	    end
+	else ()
+
     val empty_success = SUCCESS{report=Report.null, infB=InfixBasis.emptyB,
 				elabB=ModuleEnvironments.B.empty, topdec=PostElabTopdecGrammar.empty_topdec}
 
@@ -142,7 +151,8 @@ functor ParseElab(structure Parse: PARSE
 	  val _ = chat "[elaboration..."
 	  val _ = Timing.timing_begin()
 	  val elab_res = case parse_res 
-			   of (infB, SOME topdec) => (elab (absprjid, infB, elabB, topdec) 
+			   of (infB, SOME topdec) => (maybe_print_topdec topdec;
+						      elab (absprjid, infB, elabB, topdec) 
 						      handle E => (Timing.timing_end "Elab" ; raise E))
 			    | (infB, NONE) => empty_success
 	  val _ = Timing.timing_end "Elab" 

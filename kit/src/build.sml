@@ -18,6 +18,12 @@ local
     ["dangling_pointers"] 
     K.build_basislib      
 
+  fun comp_nouncurry() =
+    enable_disable 
+    ["scratch"] 
+    ["uncurry"] 
+    K.build_basislib            
+
   fun comp_GC() =
     enable_disable 
     ["garbage_collection", "scratch"] 
@@ -57,9 +63,8 @@ local
     []
     K.build_basislib
 in
-(*
-val _ = (enable "print_types"; enable "print_rho_types")
-*)
+(*  val _ = (enable "print_types"; enable "print_rho_types") *)
+
 (*
            disable "import_basislib";
 	   enable "print_types";
@@ -70,16 +75,16 @@ val _ = (enable "print_types"; enable "print_rho_types")
 
 (*  val _ = comp_nodangle() *)
 
-  val _ = comp_RI_GC()
+(*  val _ = comp_GC() *)
 
 (*  val _ = comp_RI_GC_TP() *)
 
 (*  val _ = comp_RI_GC_TP_PROF() *)
 
+(*  val _ = comp_nouncurry() *)
+
   val _ = comp_RI()
-
-(*  val _ = comp_GC() *)
-
+  val _ = comp_RI_GC()
   val _ = comp_RI_GC_PROF()
   val _ = comp_RI_PROF()
 

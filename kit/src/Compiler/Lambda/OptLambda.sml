@@ -89,6 +89,11 @@ functor OptLambda(structure Lvars: LVARS
 		     !Flags.colwidth);
        die ("optimisation failed (" ^ msg ^ ")"))
 
+    fun prLambdaExp s e = 
+	(print ("\n" ^ s ^ ": \n");
+	 PP.outputTree(print, LambdaExp.layoutLambdaExp e, 200);
+	 print "\n")
+
     fun filter p [] = []
       | filter p (x::xs) = if p x then x::filter p xs else filter p xs
 
@@ -198,21 +203,6 @@ functor OptLambda(structure Lvars: LVARS
       fun reset_tick() = flag := false
       fun test_tick() = !flag
     end
-
-
-   (* -----------------------------------------------------------------
-    * Equality on types
-    * ----------------------------------------------------------------- *)
-(*
-    fun eq_tau (TYVARtype tv1, TYVARtype tv2) = tv1=tv2
-      | eq_tau (ARROWtype (tl1, tl1'), ARROWtype (tl2,tl2')) = eq_taus(tl1,tl2) andalso eq_taus(tl1',tl2')
-      | eq_tau (CONStype (tl1,tn1), CONStype (tl2,tn2)) = TyName.eq(tn1,tn2) andalso eq_taus(tl1,tl2)
-      | eq_tau (RECORDtype tl1, RECORDtype tl2) = eq_taus(tl1,tl2)
-      | eq_tau _ = false
-    and eq_taus ([],[]) = true
-      | eq_taus (tau1::taus1,tau2::taus2) = eq_tau(tau1,tau2) andalso eq_taus(taus1,taus2)
-      | eq_taus _ = false
-*)
 
    (* -----------------------------------------------------------------
     * Equality on lambda expressions (conservative approximation)
@@ -601,6 +591,9 @@ functor OptLambda(structure Lvars: LVARS
        * Reduce
        * ----------------------------------------------------------------- *)
 
+      fun single_arg_fn (FN{pat=[_],body}) = true
+	| single_arg_fn _ = false
+
       fun is_boolean con = 
 	Con.eq(Con.con_TRUE, con) orelse Con.eq(Con.con_FALSE, con)
 	
@@ -708,6 +701,19 @@ functor OptLambda(structure Lvars: LVARS
 	       if safeLambdaExp bind then 
 		 (decr_uses bind; tick "reduce - dead-let"; reduce (env, (scope, cv)))
 	       else fail
+	   | LET{pat,bind,scope} => 
+		   (case bind of
+			PRIM(UB_RECORDtype, es) =>
+			    if length pat <> length es then
+				die "LET.bind"
+			    else
+				let val e : LambdaExp = Listfoldl 
+				      (fn ((p,e),scope) => LET{pat=[p],bind=e,scope=scope})
+				      scope (ListPair.zip(pat,es))
+				in  tick "reduce - let-split"
+				  ; reduce (env, (e,cv))
+				end				 
+		      | _ => fail)
 	  | PRIM(SELECTprim n,[lamb]) =>
 	       let fun do_select () =
 		      case cv 
@@ -715,7 +721,8 @@ functor OptLambda(structure Lvars: LVARS
 			  let val nth_cv = List.nth n cvs
 			    handle List.Subscript _ => die "reduce4"
 			  in case nth_cv 
-			       of CVAR var => (tick "reduce - sel-var"; decr_uses lamb; incr_uses var; reduce (env, (var,nth_cv)))
+			       of CVAR var => (tick "reduce - sel-var"; decr_uses lamb; 
+					       incr_uses var; reduce (env, (var,nth_cv)))
 				| CCONST(e as INTEGER _) => (tick "reduce - sel-int"; 
 							     decr_uses lamb; (e, nth_cv))
 				| CCONST(e as WORD _) => (tick "reduce - sel-word"; 
@@ -727,18 +734,23 @@ functor OptLambda(structure Lvars: LVARS
 		    of PRIM(RECORDprim,lambs) =>
 		      let val (lamb', lambs') = List.removeNth n lambs
 		      in if safeLambdaExps lambs' then
-			   (tick "reduce - sel-record"; app decr_uses lambs'; reduce(env, (lamb', CUNKNOWN)))
+			   (tick "reduce - sel-record"; app decr_uses lambs'; 
+			    reduce(env, (lamb', CUNKNOWN)))
 			 else do_select()
 		      end
 		     | _ => do_select()
 	       end 
 	  | FIX{functions,scope} =>
 	       let val lvs = map #lvar functions
-	       in if zero_uses lvs then (tick "reduce - dead-fix"; app (decr_uses o #bind) functions; reduce (env, (scope,cv)))
+	       in if zero_uses lvs then (tick "reduce - dead-fix"; 
+					 app (decr_uses o #bind) functions; 
+					 reduce (env, (scope,cv)))
 		  else case functions
 			 of [function as {lvar,tyvars,Type,bind}] =>
-			   if not(lvar_in_lamb lvar bind) then 
-			     (tick "reduce - fix-let"; reduce (env, (LET{pat=[(lvar,tyvars,Type)],bind=bind,scope=scope},cv)))
+			   if single_arg_fn bind andalso not(lvar_in_lamb lvar bind) then 
+			     (tick "reduce - fix-let"; 
+			      reduce (env, (LET{pat=[(lvar,tyvars,Type)],
+						bind=bind,scope=scope},cv)))
 			   else fail
 			  | _ => fail
 	       end 
@@ -1476,6 +1488,20 @@ functor OptLambda(structure Lvars: LVARS
 		    end
 		   | _ => APP(lvexp, trans env arg)
 	      end
+	  | VAR{lvar,instances} => 
+	      (case lookup env lvar of 
+		   SOME(UNBOXED_ARGS (sigma as (tyvars, ARROWtype(argTypes,res)))) =>
+		       let val _ = tick "unbox - inverse-eta"
+			   val lv = Lvars.newLvar()
+			   val S = mk_subst (fn _ => "unbox.subst") (tyvars,instances)
+			   val tau = on_Type S (RECORDtype argTypes)
+			   fun sels (n, acc) =
+			       if n < 0 then acc 
+			       else sels (n-1, PRIM(SELECTprim n, [VAR{lvar=lv,instances=nil}])::acc)
+			   val args = PRIM(UB_RECORDprim, sels (length argTypes - 1, nil))
+		       in FN{pat=[(lv,tau)],body=APP(lamb, args)}
+		       end
+		 | _ => lamb)
 	  | FRAME{declared_lvars,...} => 
 	      let val env' = restrict_unbox_fix_env (env, map #lvar declared_lvars)
 	      in (frame_unbox_fix_env := env' ; lamb)
@@ -1581,17 +1607,28 @@ functor OptLambda(structure Lvars: LVARS
             of VAR {lvar=lvar',instances=instances'} =>
 	      (case LvarMap.lookup env lvar' 
 	         of SOME (FIXBOUND(tyvars,Type)) => 
-		   let val lv = Lvars.newLvar()
-                       val subst = case instances' of [] => mk_subst (fn () => "inverse_eta") ([],[]) 
+		   let val subst = case instances' of [] => mk_subst (fn () => "inverse_eta") ([],[]) 
                                       | _ => mk_subst (fn () => "inverse_eta") (tyvars,instances')
                         (* The above case analysis caters for the fact that the 
                          * instances may be empty, if this occurrence of lvar' is
                          * on the rhs of a val rec which declares lvar' *)
-		       val tau_lv = case on_Type subst Type 
-                                      of ARROWtype([tau1],_) => tau1
-				       | ARROWtype(_,_) => die "inverse_eta -- fix bound lvar of multi-arg function-type"
-	                               | _ => die "inverse_eta -- fix bound lvar of non-function type"
-		   in FN{pat=[(lv,tau_lv)], body=APP(lamb,VAR{lvar=lv,instances=[]})}
+		       val lv = Lvars.newLvar()
+		       val lv_e = VAR{lvar=lv,instances=[]}
+		       val (pat,arg) = 
+			   case on_Type subst Type of 
+			       ARROWtype([tau],_) => ([(lv, tau)], lv_e)
+			     | ARROWtype(taus,_) => die "inverse_eta - multi-args"
+(*
+			      let fun sels (n,acc) = 
+				    if n < 0 then acc
+				    else sels(n-1,PRIM(SELECTprim n, [lv_e]) :: acc)
+			      in
+				  ([(lv, RECORDtype taus)], 
+				   PRIM(UB_RECORDprim, sels(length taus - 1, nil)))
+			      end
+*)
+			     | _ => die "inverse_eta -- fix bound lvar of non-function type"
+		   in FN{pat=pat, body=APP(lamb,arg)}
 		   end                 
 		  | _ => lamb) 
 	     | LET{pat,bind,scope} => 
@@ -1623,6 +1660,213 @@ functor OptLambda(structure Lvars: LVARS
 	  !frame_inveta_env)
       end
 
+
+   (* -----------------------------------------------------------------
+    * Uncurrying of functions
+    *
+    *  Transform 
+    *
+    *     fix f : sigma = \x1:t1...\xn:tn . 
+    *        e[f e1 ... en][f]
+    *     in e'[f_il e1' ... en'][f_il]
+    *     end
+    *
+    *  into
+    *
+    *     fix f : sigma' = \<x1:t1...xn:tn> . 
+    *        e[f <e1 ... en>][\x_1':t1...\xn':tn.f<x1'...xn'>]
+    *     in e'[f_il <e1'...en'>][\x1'':t1'...\xn'':tn'.f_il<x1''...xn''>]
+    *     end
+    *
+    *  where
+    *
+    *     sigma  = \/av.t1 -> ... -> tn -> t
+    *     sigma' = \/av. <t1...tn> -> t
+    *     av = a1...an
+    *     ti' = ti[il/av]    i=1..n
+    *     xi', xi'' fresh    i=1..n
+    *
+    *  E : Var -> N * TypeScheme 
+    * ----------------------------------------------------------------- *)
+
+   val uncurrying = ref true
+
+   val _ = Flags.add_bool_entry 
+       {long="uncurrying",short=SOME "uncurry", 
+	menu=["Control", "Optimiser", "uncurrying"],
+	item=uncurrying,neg=true, 
+	desc= 
+	"Enable uncurrying of curried functions. The uncurried\n\
+	 \function takes its arguments unboxed in registers or\n\
+	 \on the stack. For partial applications and non-\n\
+	 \application uses of the function, appropriate eta-\n\
+	 \expansions are applied."}
+
+   type TypeScheme = tyvar list * Type
+   type uc_env = (int * TypeScheme) option LvarMap.map
+
+   fun restrict_uc_env(uc_env:uc_env,lvars) = 
+       List.foldL (fn lv => fn acc => 
+		   case LvarMap.lookup uc_env lv
+		     of SOME res => LvarMap.add(lv,res,acc)
+		      | NONE => LvarMap.add(lv,NONE,acc)) LvarMap.empty lvars 
+
+   fun uc_eq (NONE, NONE) = true
+     | uc_eq (SOME (n1,s1),SOME(n2,s2)) = n1=n2 andalso eq_sigma(s1,s2)
+     | uc_eq _ = false
+
+   fun enrich_uc_env(e1,e2) = LvarMap.enrich uc_eq (e1,e2)
+
+   fun layoutUcPair NONE = PP.LEAF "NONE"
+     | layoutUcPair (SOME(n,s)) = PP.HNODE{start="(" ^ Int.toString n ^ ", ",childsep=PP.NOSEP,
+					   finish=")", children=[layoutTypeScheme s]}
+   fun layout_uc_env e = LvarMap.layoutMap {start="UCMap= {", finish="}",
+					    eq=" -> ", sep = ","}
+       (PP.LEAF o Lvars.pr_lvar) layoutUcPair e
+
+   fun uc_find_app (env, APP(e1,e2),acc,n) = uc_find_app(env,e1,e2::acc,n+1)
+     | uc_find_app (env, v as VAR{lvar,instances=il}, acc, n) = 
+       (case LvarMap.lookup env lvar of
+	    SOME (SOME (N,sigma)) => 
+		if n = N then 
+		    ((* print ("Uncurrying application of " ^ Lvars.pr_lvar lvar 
+			    ^ " (" ^ Int.toString n ^ ")\n"); *)
+		     tick ("uncurry - app(" ^ Int.toString n ^ ")");
+		     SOME (v, sigma, il, acc, n))
+		else NONE
+	  | _ => NONE)
+     | uc_find_app _ = NONE
+       
+   fun uc_lambdas e : int =
+       case e of
+	   FN{pat=[_],body} => 1 + uc_lambdas body
+	 | _ => 0
+
+   fun uc_rem_lambdas 0 b = (nil,b)
+     | uc_rem_lambdas n b =
+       case b of
+	   FN{pat=[p],body} =>
+	       let val (pat,b) = uc_rem_lambdas (n-1) body
+	       in (p::pat,b)
+	       end
+	 | FN _ => die "uc_rem_lambdas.FN"
+	 | _ => die "uc_rem_lambdas.not FN"
+
+   fun uc_tau 0 t = (nil,t)
+     | uc_tau n t =
+       case t of
+	   ARROWtype([t1],[t2]) => 
+	       let val (ts,t) = uc_tau (n-1) t2
+	       in (t1::ts,t)
+	       end
+	 | ARROWtype _ => die "uc_tau.ARROWtype"
+	 | _ => die "uc_tau.not ARROWtype"
+
+   val uc_env_frame : uc_env ref = ref LvarMap.empty
+
+   fun uc env e =
+       case (*fixify env*) e of
+	   FIX {functions,scope} =>
+	       let val (functions',env') = uc_functions env functions
+	       in FIX{functions=functions',
+		      scope=uc (LvarMap.plus(env,env')) scope}
+	       end
+	 | LET{pat=[(lv,tyvars,tau)],bind=b as VAR{lvar,instances},scope} => 
+	       if !uncurrying then
+	       (case LvarMap.lookup env lvar of
+		    SOME (SOME (n,(tvs,ARROWtype(ts,_)))) =>
+			if n <> length ts then die "uncurry.LET-VAR.length"
+			else
+			    let val S = mk_subst (fn _ => "uncurry.LET-VAR") (tvs,instances)
+				val ts = map (on_Type S) ts
+				val pat = map (fn t => (Lvars.newLvar(),t)) ts
+				val args = PRIM(UB_RECORDprim, map (fn (lv,_) => VAR{lvar=lv,instances=nil}) pat)
+				val (ts',t') = uc_tau n tau
+				val tau' = ARROWtype(ts',[t'])
+				val env' = LvarMap.add(lv,SOME(n,(tyvars,tau')),env)
+				val function = {lvar=lv,tyvars=tyvars,Type=tau',
+						bind=FN{pat=pat,body=APP(b,args)}}
+			    in 
+				tick ("uncurry - let-var(" ^ Int.toString n ^ ")");
+				FIX{functions=[function],scope=uc env' scope}
+			    end				    
+		  | _ => map_lamb (uc env) e)
+	       else map_lamb (uc env) e
+	 | FRAME{declared_lvars,...} => 
+	       (uc_env_frame := restrict_uc_env (env, map #lvar declared_lvars); e)
+	 | VAR {lvar,instances} => 
+	       (case LvarMap.lookup env lvar of
+		    SOME (SOME (n,(tvs,ARROWtype(ts,_)))) =>
+			let (* val _ = print ("Eta-expanding application of uncurried function " 
+					   ^ Lvars.pr_lvar lvar ^ "\n") *)
+			    val _ = tick ("uncurry - eta-expand(" ^ Int.toString n ^ ")")
+			    val S = mk_subst (fn _ => "uc.VAR") (tvs,instances)
+			    val ts = map (on_Type S) ts
+			    val _ = if length ts = 0 then die "uc.VAR - empty arg type list"
+				    else ()
+			    val lvts = map (fn t => (Lvars.newLvar(),t)) ts
+			    val lves = map (fn (lv,_) => VAR{lvar=lv,instances=nil}) lvts
+			in Listfoldr (fn (lvt,e) => FN{pat=[lvt],body=e})
+			    (APP(e,PRIM(UB_RECORDprim, lves))) lvts
+			end
+		  | _ => e)
+	 | _ => case uc_find_app (env,e,nil,0) of
+	       NONE => map_lamb (uc env) e
+	     | SOME (v, sigma, il, es, n) => APP(v, PRIM(UB_RECORDprim, map (uc env) es))
+   and uc_functions (env:uc_env) functions =
+       let fun mk_envs (nil,env_b,env_s) = (env_b, env_s)
+	     | mk_envs ({lvar:lvar,tyvars,Type:Type,bind:LambdaExp}::rest,env_b,env_s) =
+	      let val n = uc_lambdas bind
+		  val (env_b,env_s) =
+		      if !uncurrying andalso n >= 2 then 
+			  let val (ts,t) = uc_tau n Type
+			      val tau = ARROWtype(ts,[t])
+			  in (LvarMap.add(lvar,SOME(n,(nil,tau)),env_b),
+			      LvarMap.add(lvar,SOME(n,(tyvars,tau)),env_s))
+			  end
+		      else (LvarMap.add(lvar,NONE,env_b),
+			    LvarMap.add(lvar,NONE,env_s))
+	      in mk_envs (rest,env_b,env_s)
+	      end
+	   val (env_b,env_s) = mk_envs(functions,LvarMap.empty,LvarMap.empty)	       
+       in (map (uc_function env_b env) functions,env_s)
+       end
+   and uc_function env_b env {lvar:lvar,tyvars:tyvar list,Type:Type,bind:LambdaExp} =
+       case LvarMap.lookup env_b lvar of
+	   NONE => die "fix-bound lvar not in uc-env"
+	 | SOME NONE => {lvar=lvar,tyvars=tyvars,Type=Type,
+			 bind=uc (LvarMap.plus(env,env_b)) bind}
+	 | SOME(SOME(n,(tvs,tau))) => 
+	       ((* print ("Uncurrying function " ^ Lvars.pr_lvar lvar ^ " (" 
+		       ^ Int.toString n ^ ")\n"); *)
+		tick ("uncurry - fix(" ^ Int.toString n ^ ")");
+	       {lvar=lvar,tyvars=tyvars,Type=tau,
+		bind= uc_function_bind (LvarMap.plus(env,env_b)) n bind})
+   and uc_function_bind env n bind =
+       let val (pat,e) = uc_rem_lambdas n bind
+       in FN{pat=pat,body=uc env e}
+       end
+   and fixify env e =
+       case e of
+	   LET{pat=[(lv,tyvars,tau)],bind=b as VAR _, scope} => 
+	       (case uc env b of
+		    b as FN _ => 
+			FIX{functions= [{lvar=lv,tyvars=tyvars,
+					 Type=tau,bind=b}],
+			    scope=scope}
+		  | _ => e)
+	 | _ => e
+
+
+   (* disabling uncurrying is done by not transforming FIX'es and
+    * not introducing uncurry information in the uncurry environment.
+    * This way, disabling can be done on a per-file basis. *)
+   fun uncurry env e =
+       (uc_env_frame := LvarMap.empty;
+	let val e' = uc env e
+	in (e', !uc_env_frame)
+	    before uc_env_frame := LvarMap.empty
+	end)
 
    (* -----------------------------------------------------------------
     * The Optimiser Engine
@@ -1660,34 +1904,43 @@ functor OptLambda(structure Lvars: LVARS
     * The lambda optimiser environment
     * ----------------------------------------------------------------- *)
 
-    type env = inveta_env * let_env * unbox_fix_env * contract_env
+    type env = inveta_env * let_env * unbox_fix_env * uc_env 
+	* contract_env * contract_env
 
-    val empty =  (LvarMap.empty, LvarMap.empty, LvarMap.empty, LvarMap.empty)
+    val empty =  (LvarMap.empty, LvarMap.empty, LvarMap.empty, 
+		  LvarMap.empty, LvarMap.empty, LvarMap.empty)
     val initial = empty
-    fun plus ((e1, e2, e3, e4), (e1', e2', e3', e4')) = 
+    fun plus ((e1, e2, e3, e4, e5, e6), (e1', e2', e3', e4', e5', e6')) = 
       (LvarMap.plus (e1,e1'), LvarMap.plus (e2,e2'), 
-       LvarMap.plus (e3,e3'), LvarMap.plus (e4,e4'))
+       LvarMap.plus (e3,e3'), LvarMap.plus (e4,e4'), 
+       LvarMap.plus (e5,e5'), LvarMap.plus (e6,e6'))
 
-    fun restrict((inv_eta_env,let_env, unbox_fix_env,contract_env), lvars, cons, tns) =
+    fun restrict((inv_eta_env,let_env, unbox_fix_env,uc_env,cenv1,cenv2), lvars, cons, tns) =
       let val e1 = restrict_inv_eta_env(inv_eta_env,lvars)
 	  val e2 = restrict_let_env(let_env,lvars)
 	  val e3 = restrict_unbox_fix_env(unbox_fix_env,lvars)
-	  val (e4,cons,tns) = restrict_contract_env(contract_env,lvars,cons,tns)
+	  val e4 = restrict_uc_env(uc_env,lvars)
+	  val (e5,cons1,tns1) = restrict_contract_env(cenv1,lvars,cons,tns)
+	  val (e6,cons2,tns2) = restrict_contract_env(cenv2,lvars,cons,tns)
       in
-	((e1, e2, e3, e4), cons, tns)
+	((e1, e2, e3, e4, e5, e6), cons1 @ cons2, tns1 @ tns2)
       end
 
-    fun enrich((inv_eta_env1,let_env1,unbox_fix_env1,contract_env1): env,
-	       (inv_eta_env2,let_env2,unbox_fix_env2,contract_env2): env) : bool =
+    fun enrich((inv_eta_env1,let_env1,unbox_fix_env1,uc_env1,cenv11,cenv21): env,
+	       (inv_eta_env2,let_env2,unbox_fix_env2,uc_env2,cenv12,cenv22): env) : bool =
       enrich_inv_eta_env(inv_eta_env1,inv_eta_env2) andalso
       enrich_let_env(let_env1,let_env2) andalso
       enrich_unbox_fix_env(unbox_fix_env1,unbox_fix_env2) andalso
-      enrich_contract_env(contract_env1,contract_env2)
+      enrich_contract_env(cenv11,cenv12) andalso
+      enrich_contract_env(cenv21,cenv22) andalso
+      enrich_uc_env(uc_env1,uc_env2)
 
-    fun layout_env (e1,e2,e3,e4) = 
+    fun layout_env (e1,e2,e3,e4,e5,e6) = 
       PP.NODE{start="",finish="",indent=0,childsep=PP.RIGHT ",",
 	      children=[layout_inveta_env e1, layout_let_env e2,
-			layout_unbox_fix_env e3, layout_contract_env e4]}
+			layout_unbox_fix_env e3, 
+			layout_uc_env e4, layout_contract_env e5,
+			layout_contract_env e6]}
       
 
    (* -----------------------------------------------------------------
@@ -1696,28 +1949,38 @@ functor OptLambda(structure Lvars: LVARS
     * performed after possibly optimisation
     * ----------------------------------------------------------------- *)
 
-    fun rewrite (inveta_env,let_env,unbox_fix_env) lamb =
-      let val (lamb1,let_env') = functionalise_let let_env lamb
-	  val lamb2 = fix_conversion lamb1 
-	  val (lamb3,inveta_env') = inverse_eta_for_fix_bound_lvars inveta_env lamb2
-	  val (lamb4,unbox_fix_env') = unbox_fix_args unbox_fix_env lamb3
-      in (lamb4, (inveta_env', let_env',unbox_fix_env'))
-      end
+    fun rewrite (inveta_env,let_env) lamb =
+	let val (lamb,let_env) = functionalise_let let_env lamb
+	    val lamb = fix_conversion lamb
+	    val (lamb,inveta_env) = inverse_eta_for_fix_bound_lvars inveta_env lamb
+	in (lamb, (inveta_env, let_env))
+	end
 
 
    (* -----------------------------------------------------------------
     * The Optimiser
     * ----------------------------------------------------------------- *)
 
-    val optimise = fn (env, pgm as (PGM(DATBINDS db,lamb))) =>
-          let
-	    val (env1,env2,env3,env4) = env
-	    val (lamb, env4) = if !Flags.optimiser then optimise env4 lamb 
-			       else (lamb, contract_env_dummy lamb)
-	    val (lamb, (env1,env2,env3)) = rewrite (env1,env2,env3) lamb
-	    val env = (env1,env2,env3,env4)
-	  in
+    fun maybeoptimise cenv e =
+	if !Flags.optimiser then optimise cenv e
+	else (e, contract_env_dummy e)
+
+    fun optimise (env, PGM(DATBINDS db,lamb)) =
+	let
+	    val (env1,env2,ubenv,ucenv,cenv,cenv2) = env
+	    val (lamb, cenv) = maybeoptimise cenv lamb 
+	    val lamb = fix_conversion lamb
+(*	    val _ = prLambdaExp "Before unbox" lamb *)
+	    val (lamb, ubenv) = unbox_fix_args ubenv lamb
+(*	    val _ = prLambdaExp "Before uncurry" lamb *)
+	    val (lamb, ucenv) = uncurry ucenv lamb
+(*	    val _ = prLambdaExp "Before 2nd optimize round" lamb *)
+	    val (lamb, cenv2) = maybeoptimise cenv2 lamb 
+(*	    val _ = prLambdaExp "Before rewriting" lamb *)
+	    val (lamb, (env1,env2)) = rewrite (env1,env2) lamb
+	    val env = (env1,env2,ubenv,ucenv,cenv,cenv2)
+	in
 	    (PGM(DATBINDS db, lamb), env)
-	  end
+	end
 
   end;

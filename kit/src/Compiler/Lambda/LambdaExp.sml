@@ -835,7 +835,7 @@ functor LambdaExp(structure Lvars: LVARS
                      children=(map (fn e => layoutLambdaExp(e,0))  lambs),
                      childsep=PP.RIGHT ","}
          | (UB_RECORDprim,_) =>
-	      let val (s,f) = if !barify_p then ("(",")") else ("","")
+	      let val (s,f) = if !barify_p then ("(",")") else ("<",">")
 	      in PP.NODE{start=s,finish=f,indent=1,
 			 children=(map (fn e => layoutLambdaExp(e,0)) lambs),
 			 childsep=PP.RIGHT ","}
@@ -1040,8 +1040,13 @@ functor LambdaExp(structure Lvars: LVARS
                      val formals_t = 
 			 case pat of
 			     [(lvar,_)] => PP.LEAF (pr_lvar lvar ^ " = ")
-			   | _ => PP.HNODE{start="(", finish = ") = ", childsep = PP.RIGHT ", ", 
-					   children = map (fn (lvar,_) => PP.LEAF(pr_lvar lvar)) pat}
+			   | _ => 
+				 if !barify_p then 
+				     PP.HNODE{start="(", finish = ") = ", childsep = PP.RIGHT ", ", 
+					      children = map (fn (lvar,_) => PP.LEAF(pr_lvar lvar)) pat}
+				 else 
+				     PP.HNODE{start="<", finish = "> = ", childsep = PP.RIGHT ", ", 
+					      children = map (fn (lvar,_) => PP.LEAF(pr_lvar lvar)) pat}
                      val head_t = PP.HNODE{start="", finish ="", childsep = PP.RIGHT " ",
 					   children = [PP.LEAF keyword,t1,formals_t]}
                      val body_t = PP.NODE{start = "", finish ="", indent = 2, childsep = PP.NOSEP,
