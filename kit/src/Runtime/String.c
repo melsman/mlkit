@@ -201,6 +201,8 @@ mystrcmp (String s1, String s2)
   int min, l1, l2, i;
   unsigned char *p1, *p2;
 
+  if ( s1 == s2 ) return 0;
+
   l1 = sizeStringDefine(s1);
   l2 = sizeStringDefine(s2);
 
@@ -263,15 +265,16 @@ greatereqStringML(String s1, String s2)
 int 
 equalStringML(String s1, String s2) 
 {
-  if ( sizeStringDefine(s1) != sizeStringDefine(s2) )
-    {
-      return mlFALSE;
-    }
-  if ( mystrcmp (s1, s2) == 0 )
-    {
-      return mlTRUE;
-    }
-  return mlFALSE;
+  unsigned char *p1, *p2;
+  int sz;
+  if (s1 == s2) return mlTRUE;
+  
+  sz = sizeStringDefine(s1);  
+  if ( sz != sizeStringDefine(s2) )
+    return mlFALSE;
+  for (p1 = &(s1->data), p2 = &(s2->data) ; sz > 0 ; sz-- )
+    if ( *p1++ != *p2++ ) return mlFALSE;
+  return mlTRUE;
 }
 
 // exnNameML: return name of exception; the function 
