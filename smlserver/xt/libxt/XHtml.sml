@@ -244,7 +244,7 @@ structure XHtml : XHTML_EXTRA =
 			  | pe (elem1 (t,a,e), c) = btaga t a :: pe (e, etag t :: c)
 			  | pe (seq (e1,e2): elem, c) = pe(e1,pe(e2,c))
 		    in concat 
-			(["<?xml version=\"1.0\"?>\n\
+			(["<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n\
 			 \<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n\
 			 \   \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n\
 			 \<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">\n"] 
