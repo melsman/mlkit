@@ -88,9 +88,10 @@ signature DIGRAPH =
       (* Takes the union of all nodes in the given graph (typcically a scc) *)
 
     val union_without_edge_duplication : 
-                   ('info * 'info -> 'info) -> 
-                   ('info node * 'info node) -> (* nodes canonical *)
-                   'info node
+                   ('_info * '_info -> '_info) -> 
+                   ('_info -> bool) -> 
+                   ('_info node * '_info node) -> (* nodes canonical *)
+                   '_info node
                    
     (* union_without_edge_duplication(info_combine)(n1,n2): like   union,
        but with removal of duplicate out-edges.

@@ -192,15 +192,22 @@ functor DiGraph(structure UF : UNION_FIND_POLY
     fun reset_df_num g = List.apply (fn node=> set_dfnumber (find node) 0) g
 
     fun union_without_edge_duplication 
-              (info_combine : 'info * 'info -> 'info) 
-              (n1 : 'info node, n2 : 'info node) : 'info node =
+              (info_combine : '_info * '_info -> '_info) 
+              (visit_children: '_info -> bool)
+              (n1 : '_info node, n2 : '_info node) : '_info node =
       let
-        fun onto([]: 'info node list, acc: 'info node list) = acc
-          | onto((n: 'info node) :: rest, acc) =
+        val visited_nodes = ref []
+        fun onto([]: '_info node list, acc: '_info node list) = acc
+          | onto((n: '_info node) :: rest, acc) =
               onto(rest, 
                    let val n = find n 
                        val r = get_visited n
-                   in if !r then acc else (r:= true; n:: acc)
+                   in if !r then acc 
+                      else (r:= true; 
+                            visited_nodes:= n:: !visited_nodes;
+                            if visit_children(get_info n)
+                              then onto(out_of_node n, acc)
+                            else n:: acc)
                    end)
                  
         fun node_combine (GRAPHNODE{info=info1,
@@ -213,9 +220,11 @@ functor DiGraph(structure UF : UNION_FIND_POLY
                     out= (* visit all nodes in out2, then cons unvisited nodes
                              from out1 onto out2 and finally unvisit all nodes in
                              the result : *)
-                         (visit out2;
-                          let val result = onto(out1,out2)
-                          in unvisit result; result end),
+                         ((*visit out2;*)
+                          let val result = onto(out1,onto(out2,[]))
+                          in unvisit(!visited_nodes);
+                             result 
+                          end),
                     df_num = df_num, visited=visited}
       in
         UF.union node_combine (n1,n2)
