@@ -20,4 +20,5 @@ structure Data0 =
 	val d2 = Plus(Ref r, Plus(d1,Int 4))
 	val _ = r := Int 1000
 	val v2 = eval d2
+	fun f() : 'a = raise Interrupt
     end
