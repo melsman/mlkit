@@ -28,7 +28,9 @@ structure ScsReal :> SCS_REAL =
       in
 	case lang of
 	  ScsLang.da =>
-	    String.map (fn c => if c = #"." then #"," else if c = #"," then #"." else c)
+	    String.map (fn c => if c = #"." then #"," 
+				else if c = #"," then #"." 
+				     else if c = #"~" then #"-" else c)
 	    (Real.fmt (StringCvt.FIX(SOME dec)) r')
 	  | ScsLang.en => Real.fmt (StringCvt.FIX(SOME dec)) r'
       end
