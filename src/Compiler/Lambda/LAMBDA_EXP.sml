@@ -139,6 +139,7 @@ signature LAMBDA_EXP =
     val layoutLambdaPgm: LambdaPgm -> StringTree
     val layoutLambdaExp: LambdaExp -> StringTree
     val layoutType     : Type -> StringTree
+    val layoutTypeScheme : tyvar list * Type -> StringTree
     val layoutTypeList : TypeList -> StringTree
     val layoutPrim     : ('Type -> StringTree) -> 'Type prim -> StringTree
   end

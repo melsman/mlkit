@@ -33,6 +33,7 @@ functor OptLambda(structure Lvars: LVARS
 
     val Listfoldl = List.foldl
     val Listfoldr = List.foldr
+    val Listnull = List.null
     structure List = Edlib.List
     structure ListPair = Edlib.ListPair
 
@@ -1212,17 +1213,17 @@ functor OptLambda(structure Lvars: LVARS
      (* The environment *)
 
      datatype fix_boxity = NORMAL_ARGS 
-       | UNBOXED_ARGS of int * Type (* number of arguments; Type is the argument type (a tuple-type) *)
+       | UNBOXED_ARGS of tyvar list * Type (* sigma is the scheme of the function after unboxing *)
        | ARG_VARS of Lvars.lvar Vector.vector 
 
      fun layout_fix_boxity NORMAL_ARGS = PP.LEAF "NORMAL_ARGS"
-       | layout_fix_boxity (UNBOXED_ARGS (i,Type)) = PP.LEAF ("UNBOXED_ARGS(" ^ Int.toString i ^ ")")
+       | layout_fix_boxity (UNBOXED_ARGS sigma) = layoutTypeScheme sigma
        | layout_fix_boxity (ARG_VARS _) = PP.LEAF "ARG_VARS"
 
      fun eq_fix_boxity (NORMAL_ARGS,NORMAL_ARGS) = true
        | eq_fix_boxity (ARG_VARS _, _) = die "eq_fix_boxity; shouldn't get here"
        | eq_fix_boxity (_, ARG_VARS _) = die "eq_fix_boxity; shouldn't get here"
-       | eq_fix_boxity (UNBOXED_ARGS (i1,Type1), UNBOXED_ARGS (i2,Type2)) = i1 = i2 andalso eq_Type(Type1,Type2)
+       | eq_fix_boxity (UNBOXED_ARGS sigma1, UNBOXED_ARGS sigma2) = eq_sigma(sigma1, sigma2)
        | eq_fix_boxity _ = false 
 
      type unbox_fix_env = fix_boxity LvarMap.map
@@ -1257,8 +1258,8 @@ functor OptLambda(structure Lvars: LVARS
 		 case Type
 		   of ARROWtype([RECORDtype nil],res) => normal()
 		    | ARROWtype([rt as RECORDtype ts],res) =>
-		     if unboxable lv body andalso !Flags.optimiser andalso !unbox_function_arguments then
-		       LvarMap.add(lvar,UNBOXED_ARGS (length ts, rt),env)
+		     if !Flags.optimiser andalso !unbox_function_arguments andalso unboxable lv body then
+		       LvarMap.add(lvar,UNBOXED_ARGS (tyvars,ARROWtype(ts,res)),env)
 		     else 
 		       normal()
 		    | _ => normal()
@@ -1269,16 +1270,13 @@ functor OptLambda(structure Lvars: LVARS
 						  bind=FN{pat=argpat, body=body}}
 	       in case lookup env lvar
 		    of SOME NORMAL_ARGS => mk_fun Type [(lv,pt)] (trans env body)
-		     | SOME (UNBOXED_ARGS (sz, _)) =>
+		     | SOME (UNBOXED_ARGS (_, Type' as ARROWtype(argTypes,_))) =>
 		      let (* create argument env *)
+			val sz = length argTypes
 			val vector = Vector.tabulate 
 			  (sz, fn i => Lvars.new_named_lvar (Lvars.pr_lvar lv ^ "-" ^ Int.toString i))
 			val env' = LvarMap.add(lv, ARG_VARS vector, env)
 			val body' = trans env' body
-			val (Type', argTypes) = 
-			  case Type
-			    of ARROWtype([RECORDtype argTypes], res) => (ARROWtype (argTypes, res), argTypes) 
-			     | _ => die "unbox_fix_args.trans.trans_function(no arrow)"
 			val (i, argpat) = (Listfoldr (fn (argType, (i, argpat)) => 
 						      (i-1, (Vector.sub (vector, i), argType) :: argpat)) 
 					   (sz-1,nil) argTypes)
@@ -1296,12 +1294,14 @@ functor OptLambda(structure Lvars: LVARS
 	   in
 	     FIX{functions=functions,scope=scope}
 	   end
-	  | PRIM(SELECTprim i, [VAR{lvar,instances=nil}]) => 
+	  | PRIM(SELECTprim i, [VAR{lvar,instances}]) => 
 	   (case lookup env lvar
 	      of SOME (ARG_VARS vector) =>
-		let val lv = Vector.sub (vector, i) handle _ => die "trans.select"
-		in VAR{lvar=lv,instances=nil} 
-		end
+		if Listnull instances then
+		  let val lv = Vector.sub (vector, i) handle _ => die "trans.select"
+		  in VAR{lvar=lv,instances=nil} 
+		  end
+		else die "trans.select.instances"
 	       | _ => lamb)
 	  | APP(lvexp as VAR{lvar,instances}, arg) =>
 	      let fun mk_app lv i = 
@@ -1312,17 +1312,22 @@ functor OptLambda(structure Lvars: LVARS
 					    )))
 	      in
 		case lookup env lvar
-		  of SOME(UNBOXED_ARGS (sz, Type)) =>
-		    (case arg
-		       of PRIM(RECORDprim, args) => 
-			 if length args <> sz then die "unbox_fix_args.trans.app(length)"
-			 else APP(lvexp, PRIM(UB_RECORDprim, map (trans env) args)) 
-		       | VAR{lvar,instances=nil} => mk_app lvar sz
-		       | _ => 
-			 let val lv_tmp = Lvars.newLvar()
-			 in LET{pat=[(lv_tmp, nil, Type)], bind=trans env arg,
-				scope=mk_app lv_tmp sz}
-			 end)
+		  of SOME(UNBOXED_ARGS (sigma as (tyvars, ARROWtype(argTypes,res)))) =>
+		    let val sz = length argTypes
+		    in
+		      case arg
+			of PRIM(RECORDprim, args) => 
+			  if length args <> sz then die "unbox_fix_args.trans.app(length)"
+			  else APP(lvexp, PRIM(UB_RECORDprim, map (trans env) args)) 
+			 | VAR{lvar,instances=nil} => mk_app lvar sz
+			 | _ => 
+			    let val lv_tmp = Lvars.newLvar()
+			      val S = mk_subst (fn () => "OptLambda.trans.app") (tyvars, instances)
+			      val Type = on_Type S (RECORDtype argTypes)
+			    in LET{pat=[(lv_tmp, nil, Type)], bind=trans env arg,
+				   scope=mk_app lv_tmp sz}
+			    end
+		    end
 		   | _ => APP(lvexp, trans env arg)
 	      end
 	  | FRAME{declared_lvars,...} => 
@@ -1344,8 +1349,11 @@ functor OptLambda(structure Lvars: LVARS
      fun pr_env e =
        PP.outputTree (print, layout_unbox_fix_env e, 200)
      fun unbox_fix_args (env:unbox_fix_env) lamb : LambdaExp * unbox_fix_env =
-       let (* val _ = print "Import unbox_fix_env:\n"
-	 val _ = pr_env env *)
+       let
+(*
+	 val _ = print "Import unbox_fix_env:\n"
+	 val _ = pr_env env
+*)
 	   val _ = frame_unbox_fix_env := LvarMap.empty
 	   val lamb = trans env lamb
 (*
