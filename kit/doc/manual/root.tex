@@ -8016,7 +8016,7 @@ identifier {\tt second} to the C function
   be compiled; if you forget, the Kit will complain.}
 \begin{verbatim}
    fun second(pair : 'a * 'b) : 'b =
-     prim("select_second", "select_second", pair)
+     prim("select_second", pair)
 \end{verbatim}
 The Kit associates the following region-annotated type scheme to the value
 identifier {\tt second}:
@@ -8122,36 +8122,36 @@ is listed in Figure~\ref{my_lib.pm.fig}, makes use of these functions.
 The source file \verb|my_lib.sml|, which is part of the
 \verb|my_lib.pm| project, contains the following ML declarations:
 \begin{verbatim}
-   fun power(base : int, n : int) : int = 
-     prim ("power", "power", (base, n))
+   fun power(base: int, n: int) : int = 
+     prim ("power", (base, n))
 
-   fun power_auto(base : int, n : int) : int = 
-     prim ("@power_auto", "@power_auto", (base, n))
+   fun power_auto(base: int, n: int) : int = 
+     prim ("@power_auto", (base, n))
 
-   fun power_real (base : real, n : int) : real = 
-     prim ("power_real", "power_real", (base, n))
+   fun power_real (base: real, n: int) : real = 
+     prim ("power_real", (base, n))
 
-   fun print_string_list (string_list : string list) : unit = 
-     prim ("print_string_list", "print_string_list", string_list)
+   fun print_string_list (ss: string list) : unit = 
+     prim ("print_string_list", ss)
 
    exception Power
-   fun power_exn (base : real, n : int) : real = 
-     prim ("power_exn", "power_exn", (base, n, Power))
+   fun power_exn (base: real, n: int) : real = 
+     prim ("power_exn", (base, n, Power))
 
    exception DIR
-   fun dir (directory : string) : string list = 
-     prim ("dir", "dirProf", (directory, DIR))
+   fun dir (directory: string) : string list = 
+     prim ("dir", (directory, DIR))
 
    fun real_list () : real list = 
-     prim ("real_list", "real_listProf", ())
+     prim ("real_list", ())
 
    fun change_elem (p : int*string) : string*int =
-     prim ("change_elem", "change_elem", p)
+     prim ("change_elem", p)
 \end{verbatim}
 
-The implementation of each of the C functions is summarized below (see
-the files \verb|my_lib.c| and \verb|my_lib.sml| in the {\tt kitdemo}
-directory for detailed comments.)
+The C function implementations are summarized below (see the files
+\verb|my_lib.c| and \verb|my_lib.sml| in the {\tt kitdemo} directory
+for detailed comments.)
 
 \begin{example}\label{power.ex}
   The \index{power@\texttt{power}}\texttt{power} function shows how to convert
@@ -8180,9 +8180,7 @@ directory for detailed comments.)
 
 \begin{example}\label{power_exn.ex}
   The \index{power_exn@\texttt{power\_exn}}\texttt{power\_exn} function shows how an
-  exception can be raised from a C function. Notice that it is
-  necessary to {\tt return} from the C function after you have called
-  the \verb|raise_exn| function.
+  exception can be raised from a C function.
 \end{example}
 
 \begin{example}\label{dir.ex}
@@ -8195,8 +8193,8 @@ directory for detailed comments.)
   start of the C function. The checks should be placed at the start of
   the function, orelse not inserted at all.
   
-  If you compare the C functions \texttt{dir} and \texttt{dirProf} you may
-  notice how the function \texttt{dir} is modified to work with
+  If you compare the C functions \texttt{dir} and \texttt{dirProf} you
+  may see how the function \texttt{dirProf} is modified to work with
   profiling.
 \end{example}
 
@@ -8216,23 +8214,23 @@ directory for detailed comments.)
   result string.
   
   At first thought it should be enough to just swap the two arguments, and
-  not copy the string into the string region, i.e. one could write the
+  not copy the string into the string region, that is, one could write the
   following function:
 \begin{verbatim}
-   int change_elem(int newPair, int stringRho, int pair) {
-     int firstElem_ml, secondElem_ml;
-     firstElem_ml = elemRecordML(pair, 0);
-     secondElem_ml = elemRecordML(pair, 1);
-     elemRecordML(newPair, 0) = secondElem_ml;
-     elemRecordML(newPair, 1) = firstElem_ml;
-     return newPair;
-   }
+?  int change_elem(int newPair, int stringRho, int pair) {
+?    int firstElem_ml, secondElem_ml;
+?    firstElem_ml = elemRecordML(pair, 0);
+?    secondElem_ml = elemRecordML(pair, 1);
+?    elemRecordML(newPair, 0) = secondElem_ml;
+?    elemRecordML(newPair, 1) = firstElem_ml;
+?    return newPair;
+?  }
 \end{verbatim}
   This function may work sometimes but it is not safe! Region
   inference expects the result string to be allocated in
   \texttt{stringRho}, and may therefore de-allocate the region containing
   the argument string, \verb|secondElem_ml|, while the string in the
-  returned pair is still alive. A safe version of \verb|change_elem| is
+  returned pair is still live. The safe version of \verb|change_elem| is
   found in \verb|my_lib.c|.
 \end{example}
 
