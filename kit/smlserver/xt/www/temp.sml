@@ -7,6 +7,6 @@ functor temp () : SCRIPTLET =
 	    (temp2.form 
 	     (p(  $ "Enter a temperature in degrees Celcius:"
 		& br()
-		& (inputText attr (A.size 5)) (temp2.tempC, SOME (Form.Int 34))
+		& inputTexta (A.size 5) temp2.tempC NONE
 		& inputSubmit "Compute Fahrenheit Temperature")))
     end

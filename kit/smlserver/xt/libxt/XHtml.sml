@@ -12,8 +12,6 @@ structure XHtmlHidden__ : XHTML_EXTRA =
 
 	type na = A.na
 
-	type ('a1,'a2) coreattrs = ('a1,'a2,na,na,na,na,na,na,na,na,na,na,na,na) A.attr
-
 	fun html p = p
 
 	type inform = unit 
@@ -46,7 +44,7 @@ structure XHtmlHidden__ : XHTML_EXTRA =
 	  in String.translate enc s 
 	  end
 
-	fun attr0 t s = [t ^ "=\"" ^ s ^ "\""]
+	fun attr t s = [t ^ "=\"" ^ s ^ "\""]
 
 	datatype elem =
 	    txt of string 
@@ -54,10 +52,10 @@ structure XHtmlHidden__ : XHTML_EXTRA =
 	  | elem1 of string * string list * elem
 	  | seq of elem * elem
 
-	type ('x,'y,'a,'f,'p,'k,'u) elt = elem
-	type ('x,'y,'a,'f,'p,'u,'v) inl2inl = elem -> elem
-	type ('x,'y,'a,'f,'p,'u,'v) inl2inlpre = elem -> elem
-	type ('x,'y,'a,'f,'p,'u,'v) inl2blk = elem -> elem
+	type ('x,'y,'a,'f,'p,'k) elt = elem
+	type ('x,'y,'a,'f,'p) inl2inl = elem -> elem
+	type ('x,'y,'a,'f,'p) inl2inlpre = elem -> elem
+	type ('x,'y,'a,'f,'p) inl2blk = elem -> elem
 
 	type body = elem
 
@@ -100,34 +98,33 @@ structure XHtmlHidden__ : XHTML_EXTRA =
 	fun li e         = elem1("li",nil,e)
 	fun dt e         = elem1("dt",nil,e)
 	fun dd e         = elem1("dd",nil,e)
-	fun td e         = elem1("td",nil,e)
-	fun th e         = elem1("th",nil,e)
-	fun tr e         = elem1("tr",nil,e)
-	fun table e      = elem1("table",nil,e)
+	fun tda a e      = elem1("td",a,e)
+	fun td e         = tda nil e
+	fun tha a e      = elem1("th",a,e)
+	fun th e         = tha nil e
+	fun tra a e      = elem1("tr",a,e)
+	fun tr e         = tra nil e
+	fun tablea a e   = elem1("table",a,e)
+	fun table e      = tablea nil e
 
 	infix &
 	val op &  = seq
 	fun flatten (x, nil) = x
 	  | flatten (x, op :: p) = seq(x,flatten p)
 
-	infix attr
-	fun f attr a = fn x => 
-	    case f x of
-		elem0(t,l) => elem0(t,l@a)
-	      | elem1(t,l,e) => elem1(t,l@a,e)
-	      | e => e
+	fun imga a {src,alt} = elem0("img", attr "src" src @ attr "alt" (quotencode alt) @ a)
+	fun img r = imga nil r
 
-	fun img {src,alt} = elem0("img", attr0 "src" src @ attr0 "alt" (quotencode alt))
-
-	fun body e = elem1("body",nil,e)
+	fun bodya a e = elem1("body",a,e)
+	fun body e    = bodya nil e
 
 	(* Forms *)
 	type ('n, 'typ) fname = {script: string, n: string} 
 	type nil = unit
 	type 't var = 't Form.var
 
-	type ('x,'y,'a,'p,'k,'u) felt = ('x,'y,'a,inform,'p,'k,'u) elt
-	type ('x,'a,'p,'k,'u) form = ('x,nil,'a,'p,'k,'u) felt
+	type ('x,'y,'a,'p,'k) felt = ('x,'y,'a,inform,'p,'k) elt
+	type ('x,'a,'p,'k) form = ('x,nil,'a,'p,'k) felt
 	type 'a rad = 'a
 
 	type ('x,'y) num = unit
@@ -135,52 +132,64 @@ structure XHtmlHidden__ : XHTML_EXTRA =
 	fun Succ () = ()
 	fun swap () x = x
 
-	fun input (name,it,value) = 
+	fun input (name,it,value,a) = 
 	    let val a = case value of
-		    SOME s => attr0 "value" s
-		  | NONE => nil
-		val a = case name of
-		    SOME {n,script} => attr0 "name" n @ a
+		    SOME s => attr "value" s @ a
 		  | NONE => a
-	    in elem0("input", attr0 "type" it @ a)
+		val a = case name of
+		    SOME {n,script} => attr "name" n @ a
+		  | NONE => a
+	    in elem0("input", attr "type" it @ a)
 	    end
 
- 	fun inputHidden n var = 
-	    input (SOME n, "hidden", SOME (SMLserver.Unsafe.Form.toString var))
+ 	fun inputHiddena a n var = 
+	    input (SOME n, "hidden", SOME (SMLserver.Unsafe.Form.toString var), a)
+	fun inputHidden n var = inputHiddena nil n var
 
-	fun inputSubmit s = 
-	    input (NONE, "submit", SOME s)
+	fun inputSubmita a s = 
+	    input (NONE, "submit", SOME s, a)
+	fun inputSubmit s = inputSubmita nil s
 
-	fun inputReset s = 
-	    input (NONE, "reset", SOME s)
+	fun inputReseta a s = 
+	    input (NONE, "reset", SOME s, a)
+	fun inputReset s = inputReseta nil s
 
-	fun inputText (n,var) = 
-	    input (SOME n, "text", Option.map SMLserver.Unsafe.Form.toString var)
+	fun inputTexta a n var = 
+	    input (SOME n, "text", Option.map SMLserver.Unsafe.Form.toString var, a)
+	fun inputText n var = inputTexta nil n var
 
-	fun inputPassword (n,var) = 
-	    input (SOME n, "password", Option.map SMLserver.Unsafe.Form.toString var)
+	fun inputPassworda a n var = 
+	    input (SOME n, "password", Option.map SMLserver.Unsafe.Form.toString var, a)
+	fun inputPassword n var = inputPassworda nil n var
 
-	fun inputRadio (n,var) = 
-	    input (SOME n, "radio", SOME (SMLserver.Unsafe.Form.toString var))
+	fun inputRadioa a n var = 
+	    input (SOME n, "radio", SOME (SMLserver.Unsafe.Form.toString var), a)
+	fun inputRadio n var = inputRadioa nil n var
 
-	fun inputRadio' (n,var) = inputRadio (n,var)
+	fun inputRadio' n var = inputRadio n var
+	fun inputRadioa' a n var = inputRadioa a n var
 	    
 	fun radioDrop x = x
 
 	type 'a checkbox = unit
-	fun inputCheckbox (n,var) =
-	    input (SOME n, "checkbox", SOME (SMLserver.Unsafe.Form.toString var))
-	fun inputCheckbox' (n,var) = inputCheckbox (n,var)
+	fun inputCheckboxa a n var =
+	    input (SOME n, "checkbox", SOME (SMLserver.Unsafe.Form.toString var), a)
+	fun inputCheckbox n var = inputCheckboxa nil n var
+
+	fun inputCheckbox' n var = inputCheckbox n var
+	fun inputCheckboxa' a n var = inputCheckboxa a n var
+
 	fun checkboxDrop x = x
 
-	fun textarea ({n,script}, {rows,cols}, var) = 
+	fun textareaa a {n,script} {rows,cols} var = 
 	    let val s = getOpt(Option.map SMLserver.Unsafe.Form.toString var,"")
 	    in elem1("textarea", 
-		     attr0 "name" n 
-		     @ attr0 "rows" (Int.toString rows) 
-		     @ attr0 "cols" (Int.toString cols), 
+		     a @ attr "name" n 
+		     @ attr "rows" (Int.toString rows) 
+		     @ attr "cols" (Int.toString cols), 
 		     txt s)  (* memo: what is to be done with s? *)
 	    end
+	fun textarea n rc var = textareaa nil n rc var
 
 	type 't select_option = {text: string, value: 't var, 
 				 selected: bool, disabled: bool}
@@ -190,9 +199,9 @@ structure XHtmlHidden__ : XHTML_EXTRA =
 	fun select0 a opts =
 	    let 
 		fun battr s false = nil
-		  | battr s true = attr0 s s
+		  | battr s true = attr s s
 		fun opt {text, value, selected, disabled} =
-		    elem1("option", (attr0 "value" value 
+		    elem1("option", (attr "value" value 
 				     @ battr "selected" selected 
 				     @ battr "disabled" disabled), $text)
 	    in
@@ -202,26 +211,27 @@ structure XHtmlHidden__ : XHTML_EXTRA =
 				   foldl (fn (x,a) => a & opt x) (opt x) xs)
 	    end
 
-	fun select ({n,script}, opts) =
+	fun selecta a {n,script} opts =
 	    let val opts = map (fn {text,value,selected,disabled} =>
 				{text=text,value=SMLserver.Unsafe.Form.toString value, selected=selected,
 				 disabled=disabled}) opts
-	    in select0 (attr0 "name" n) opts
+	    in select0 (a @ attr "name" n) opts
 	    end
+	fun select n opts = selecta nil n opts
 
 	(* Head elements *)
 	type helt = elem
 	fun script {typ:string} s : helt =
-	    elem1("script", attr0 "type" typ, txt s)
+	    elem1("script", attr "type" typ, txt s)
 
 	fun style {typ:string} s : helt =
-	    elem1("style", attr0 "type" typ, txt s)
+	    elem1("style", attr "type" typ, txt s)
 
 	fun meta {content:string} : helt =
-	    elem0("meta", attr0 "content" content)
+	    elem0("meta", attr "content" content)
 
 	fun link {typ:string,rel:string,href:string} : helt =
-	    elem0("link", attr0 "type" typ @ attr0 "rel" rel @ attr0 "href" href)
+	    elem0("link", attr "type" typ @ attr "rel" rel @ attr "href" href)
 
 	type head = elem
 	fun head (t,h) = 
@@ -232,10 +242,10 @@ structure XHtmlHidden__ : XHTML_EXTRA =
 	structure Unsafe =
 	    struct
 		fun form {action,method} e = 
-		    elem1 ("form", (attr0 "action" action
-				    @ attr0 "method" method), e)
+		    elem1 ("form", (attr "action" action
+				    @ attr "method" method), e)
 
-		fun ahref {src} e = elem1("a", attr0 "href" src, e)
+		fun ahref {src} e = elem1("a", attr "href" src, e)
 		    		    
 		fun toString (h,e) : string =
 		    let 
@@ -280,7 +290,7 @@ structure XHtmlHidden__ : XHTML_EXTRA =
 	in
 	    fun validLink() = 
 	       Unsafe.ahref {src="http://validator.w3.org/check/referer"}
-	       ((img attr (height (px 31) % width (px 88)))
+	       (imga (height (px 31) % width (px 88)) 
 		{src="http://www.w3.org/Icons/valid-xhtml10",
 		 alt="Valid XHTML 1.0!"})
 	end			

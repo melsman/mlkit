@@ -13,8 +13,8 @@ functor mul (F : sig val sz : int Form.var
 	    tr (iter (col r) sz)
 
 	fun tab sz = 
-	    (table attr (A.border 4 % A.width (A.pct 90) 
-			 % A.frame A.vsides % A.rules A.rows))
+	    (tablea (A.border 4 % A.width (A.pct 90) 
+		     % A.frame A.vsides % A.rules A.rows))
 	    (iter (row sz) sz)
 
 	val sz = Page.get "Size" F.sz
