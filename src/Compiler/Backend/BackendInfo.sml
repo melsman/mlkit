@@ -90,7 +90,6 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val atbot_bit = 2 (* We add 2 to an address to set the atbot bit. *)
 
     val tag_values       = Flags.is_on0 "tag_values"
-    val tag_integers     = Flags.is_on0 "tag_integers"
     val region_profiling = Flags.is_on0 "region_profiling"
 
     val size_of_real = RegConst.size_of_real
@@ -110,8 +109,8 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val finiteRegionDescSizeP = 2 (* Number of words in a finite region descriptor when profiling is used. *)
     val objectDescSizeP = 2       (* Number of words in an object descriptor when profiling is used. *)
 
-    fun defaultIntPrecision() = if tag_integers() then 31 else 32
-    fun defaultWordPrecision() = if tag_integers() then 31 else 32
+    fun defaultIntPrecision() = if tag_values() then 31 else 32
+    fun defaultWordPrecision() = if tag_values() then 31 else 32
 
     val toplevel_region_withtype_top_lab    = Labels.reg_top_lab
     val toplevel_region_withtype_bot_lab    = Labels.reg_bot_lab

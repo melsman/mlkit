@@ -183,10 +183,11 @@ struct
    * Allocation in Polymorphically Typed Languages. 1993. Technical
    * Report. *)
 
-  val tag_integers = Flags.is_on0 "tag_integers"
+  val dangling_pointers = Flags.is_on0 "dangling_pointers"
+
 (*
   fun gc_no_dangling_pointers(rse,blvs,e,B,mus1,mus2,eps,rho) =
-    if not(tag_integers()) then B
+    if not(tag_values()) then B
     else 
       let 
 	fun rhos_sigma lv : place list = 
@@ -498,7 +499,7 @@ struct
         end
 (*
         let 
-	  val rt = if ( (precision = 32 andalso tag_integers()) 
+	  val rt = if ( (precision = 32 andalso tag_values()) 
 		       orelse (*for the future*)
 		       precision > 32 ) then Eff.TOP_RT
 		   else Eff.WORD_RT
@@ -518,7 +519,7 @@ struct
 	    NOTAIL)
         end
 (*
-	  val rt = if ( (precision = 32 andalso tag_integers()) 
+	  val rt = if ( (precision = 32 andalso tag_values()) 
 		       orelse (*for the future*)
 		       precision > 32 ) then Eff.TOP_RT
 		   else Eff.WORD_RT
@@ -582,8 +583,8 @@ struct
 
           val (rho, B) = (*Eff.*)freshRhoWithTy(Eff.TOP_RT, B)
 
-	  val free = if tag_integers() then SOME(LB.freevars e)  (*region inference without dangling pointers*)
-		     else NONE
+	  val free = if dangling_pointers() then NONE
+		     else SOME(LB.freevars e)  (*region inference without dangling pointers*)
         in
           (B, E'.TR(E'.FN{pat = ListPair.zip(map #1 pat, mus), body = t1, alloc = rho, free=free},
                     E'.Mus [(R.FUN(mus,eps,mu_list1), rho)], (*Eff.*)mkPut(rho)),

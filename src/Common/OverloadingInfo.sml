@@ -21,14 +21,14 @@ functor OverloadingInfo (structure StatObject : STATOBJECT
     | RESOLVED_WORD31
     | RESOLVED_WORD32
 
-    val tag_integers = Flags.is_on0 "tag_integers"
+    val tag_values = Flags.is_on0 "tag_values"
 
     fun resolvedIntDefault () = 
-      if tag_integers() then RESOLVED_INT31
+      if tag_values() then RESOLVED_INT31
       else RESOLVED_INT32
 
     fun resolvedWordDefault () = 
-      if tag_integers() then RESOLVED_WORD31
+      if tag_values() then RESOLVED_WORD31
       else RESOLVED_WORD32
 
     fun string (UNRESOLVED_IDENT tyvars) = "UNRESOLVED_IDENT"

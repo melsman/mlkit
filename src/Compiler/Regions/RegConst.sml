@@ -31,7 +31,6 @@ struct
    val initial_closure_offset = 1	(*initial offset for free variables in a closure*)
 
    val tag_values = Flags.is_on0 "tag_values"
-   val tag_integers = Flags.is_on0 "tag_integers"
 
    fun size_of_real () = 
      if tag_values() then 4 else 2

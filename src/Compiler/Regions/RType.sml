@@ -18,8 +18,6 @@ struct
   structure List = Edlib.List
   structure ListPair = Edlib.ListPair
 
-  val tag_integers = Flags.is_on0 "tag_integers"
-
   fun curry f a b = f(a,b)
 
   fun say s= TextIO.output(TextIO.stdOut, s ^ "\n");
@@ -1111,7 +1109,7 @@ struct
 
   (* Whether word32 and int32 types are boxed is determined dynamically
    * in SpreadExpression on the basis of the function TyName.unboxed(tn),
-   * which depends on the flag tag_integers. At the stage of region
+   * which depends on the flag tag_values. At the stage of region
    * inference, integer and word types are resolved to be either word8,
    * word31, word32, int31, or int32. The default integer type is 
    * dynamically determined to be the largest integer type that fits 

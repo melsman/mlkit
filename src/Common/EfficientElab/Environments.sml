@@ -1167,12 +1167,12 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 				  TE_string, TE_exn, TE_ref, TE_bool, TE_list,
 				  TE_word_table]
 
-	val tag_integers = Flags.is_on0 "tag_integers"
+	val tag_values = Flags.is_on0 "tag_values"
 
 	fun TE_initial() =
 	  let 
 	    val (defaultTyNameInt, defaultTyNameWord) = 
-	      if tag_integers() then (TyName.tyName_INT31, TyName.tyName_WORD31)
+	      if tag_values() then (TyName.tyName_INT31, TyName.tyName_WORD31)
 	      else (TyName.tyName_INT32, TyName.tyName_WORD32)
 	    val TE_int = te (TyCon.tycon_INT, defaultTyNameInt)
 	    val TE_word = te (TyCon.tycon_WORD, defaultTyNameWord)

@@ -532,20 +532,20 @@ handle x =>
 
    fun INTEGER' i = INTEGER(Int32.fromInt i, intDefaultType())
 
-   val tag_integers = Flags.is_on0 "tag_integers"
+   val tag_values = Flags.is_on0 "tag_values"
 
    fun ccall name argtypes restype =
      CCALLprim {name = name, instances = [], tyvars = [],
 		Type = ARROWtype (argtypes, [restype])}
 
    fun MINUS_INTprim() = 
-     let val n = if tag_integers() then "__minus_int31" else "__minus_int32ub"
+     let val n = if tag_values() then "__minus_int31" else "__minus_int32ub"
        val t = intDefaultType()
      in ccall n [t, t] t
      end
 
    fun LESS_INTprim() = 
-     let val n = if tag_integers() then "__less_int31" else "__less_int32ub"
+     let val n = if tag_values() then "__less_int31" else "__less_int32ub"
        val t = intDefaultType()
      in ccall n [t,t] boolType
      end

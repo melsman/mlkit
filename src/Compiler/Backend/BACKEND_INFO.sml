@@ -38,7 +38,6 @@ signature BACKEND_INFO =
     val atbot_bit        : int (* We must add 2 to an address to set the atbot bit. *)
 
     val tag_values       : unit -> bool
-    val tag_integers     : unit -> bool
     val size_of_real     : unit -> int
     val size_of_ref      : unit -> int
     val size_of_record   : 'a list -> int

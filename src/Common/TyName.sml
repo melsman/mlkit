@@ -12,7 +12,7 @@ functor TyName(
   struct
 
     fun die s = Crash.impossible ("TyName." ^ s)
-    val tag_integers = Flags.is_on0 "tag_integers"
+    val tag_values = Flags.is_on0 "tag_values"
 
     (* Type names are based on names which may be `matched'. In
      * particular, if two type names, n1 and n2, are successfully
@@ -102,8 +102,8 @@ functor TyName(
     val tyName_EXN = freshTyName{tycon=TyCon.tycon_EXN, arity=0, equality=false}
     val _ = Rank.reset()
 
-    fun tyName_IntDefault() = if tag_integers() then tyName_INT31 else tyName_INT32
-    fun tyName_WordDefault() = if tag_integers() then tyName_WORD31 else tyName_WORD32
+    fun tyName_IntDefault() = if tag_values() then tyName_INT31 else tyName_INT32
+    fun tyName_WordDefault() = if tag_values() then tyName_WORD31 else tyName_WORD32
 
     val print_type_name_stamps = Flags.is_on0 "print_type_name_stamps"
 
@@ -116,7 +116,7 @@ functor TyName(
 	    in str ^ "(" ^ eq ^ id ^ ")"
 	  end
 	else 
-	  (if tag_integers() then 
+	  (if tag_values() then 
 	     (if eq(tn, tyName_INT31) then "int"
 	      else if eq(tn, tyName_WORD31) then "word"
 		   else str)
@@ -127,7 +127,7 @@ functor TyName(
       end
 
     fun unboxed_num32 tn = 
-      not(tag_integers()) andalso (eq(tn,tyName_INT32)
+      not(tag_values()) andalso (eq(tn,tyName_INT32)
 				   orelse eq(tn,tyName_WORD32))
 
     fun unboxed tn = unboxed_num32 tn orelse !(#unboxed tn)
@@ -139,7 +139,7 @@ functor TyName(
       orelse eq(tn, tyName_INT31) 
       orelse eq(tn, tyName_WORD31) 
       orelse eq(tn, tyName_LIST) 
-      orelse ( not(tag_integers()) andalso ( eq(tn,tyName_INT32) 
+      orelse ( not(tag_values()) andalso ( eq(tn,tyName_INT32) 
 					    orelse eq(tn,tyName_WORD32) ))
 *)
       fun setUnboxed (tn: TyName) : unit = 
