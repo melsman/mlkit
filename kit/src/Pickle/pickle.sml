@@ -907,11 +907,8 @@ structure Pickle :> PICKLE = (* was : *)
 
     val real = 
 	debug "real"
-	(convert (fn v => 
-		  case Real.fromString v of
-		      SOME v => v
-		    | NONE => fail "real.convert",
-		  Real.toString) 
+	(convert (fn s => PackRealBig.fromBytes(Byte.stringToBytes s),
+		  fn r => Byte.bytesToString(PackRealBig.toBytes r))
 	 string)
 
     val time = 

@@ -1057,7 +1057,7 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 	val add_elab = ElabRep.add_elab
 	val owr_elab = ElabRep.owr_elab
 	fun recover() = (rchat "recover"; ElabRep.recover(); recover_intrep (!intRep); recover_intrep (!intRep'))
-
+(*
 	val pu_int_entry =
 	    Pickle.convert (fn ((a1,a2,a3,a4),(a5,a6,a7)) => (a1,a2,a3,a4,a5,a6,a7),
 			    fn (a1,a2,a3,a4,a5,a6,a7) => ((a1,a2,a3,a4),(a5,a6,a7)))
@@ -1065,6 +1065,7 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 			     Pickle.tup3Gen0(Pickle.listGen Name.pu,ModCode.pu,IntBasis.pu)))
 	val pu_intRep : intRep Pickle.pu = 
 	    RM.pu ElabRep.pu_dom (Pickle.listGen pu_int_entry)
+*)
 	type repository = ElabRep.elabRep * intRep * intRep'
 	fun getIntRep() = !intRep
 	fun getIntRep'() = !intRep'
@@ -1072,7 +1073,7 @@ functor ManagerObjects(Execution : EXECUTION) : MANAGER_OBJECTS =
 	fun setIntRep' r = intRep' := r
 	fun getRepository() = (ElabRep.getElabRep(),getIntRep(),getIntRep'())
 	fun setRepository(er,ir,ir') = (ElabRep.setElabRep er; setIntRep ir; setIntRep' ir')
-	val pu = Pickle.tup3Gen(ElabRep.pu,pu_intRep,pu_intRep)
+(*	val pu = Pickle.tup3Gen(ElabRep.pu,pu_intRep,pu_intRep) *)
       end
     
   end

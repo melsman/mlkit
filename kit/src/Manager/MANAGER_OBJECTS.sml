@@ -241,7 +241,7 @@ signature MANAGER_OBJECTS =
 	type repository
 	val getRepository : unit -> repository
 	val setRepository : repository -> unit
-	val pu            : repository Pickle.pu
+(*	val pu            : repository Pickle.pu *)
       end
     
   end

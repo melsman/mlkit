@@ -70,7 +70,7 @@ signature COMP =
 		    namebase: string,     (* for uniqueness of type names, etc *)
 		    target: string, 
 		    flags: string} -> string
-     val link : {target: string, lnkFiles: string list} -> string option
+     val link : {target: string, lnkFiles: string list, flags: string} -> string option
 
      val mlbdir : unit -> string
      val objFileExt : unit -> string (* e.g., .o *)
@@ -98,8 +98,8 @@ structure MLKitComp : COMP =
 		val s = case basisFiles of nil => s | _ => s ^ " -load " ^ pp_list " " basisFiles
 	    in s ^ " " ^ source
 	    end
-	fun link {target: string, lnkFiles: string list} : string option =
-	    SOME(mlkitexe() ^ " -o " ^ target ^ " -link " ^ pp_list " " lnkFiles)
+	fun link {target: string, lnkFiles: string list, flags:string} : string option =
+	    SOME(mlkitexe() ^ " " ^ flags ^ " -o " ^ target ^ " -link " ^ pp_list " " lnkFiles)
 
 	fun mlbdir() = "MLB/MLKit"
 	fun objFileExt() = ".o"
@@ -123,7 +123,7 @@ structure BarryComp : COMP =
 		val s = case basisFiles of nil => s | _ => s ^ " -load " ^ pp_list " " basisFiles
 	    in s ^ " " ^ source
 	    end
-	fun link {target: string, lnkFiles: string list} : string option = NONE
+	fun link {target: string, lnkFiles: string list, flags: string} : string option = NONE
 
 	fun mlbdir() = "MLB/Barry"
 	fun objFileExt() = ".b"
@@ -381,7 +381,7 @@ struct
 
 	    val _ = vchat ("Linking...\n")		
 	    val lnkFiles = map (lnkFileFromSmlFile mlbfile) ss
-	in case C.link {target="a.out", lnkFiles=lnkFiles} of
+	in case C.link {target="a.out",lnkFiles=lnkFiles,flags=flags} of
 	    SOME cmd => system cmd
 	  | NONE => ()
 	end handle Exit => ()

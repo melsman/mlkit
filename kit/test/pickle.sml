@@ -25,6 +25,10 @@ local
 
     open Pickle
 
+    fun tm_eq(t1,t2) =
+	Time.<(Time.-(t1,t2),Time.fromSeconds 2)
+	handle _ => Time.<(Time.-(t2,t1),Time.fromSeconds 2)
+
     fun okEq' eq s_tst (pu: 'a pu) (v1 : 'a) =
 	tst' s_tst 
 	(fn () => 
@@ -100,7 +104,7 @@ val _ = okEq "test7a" char #"a"
 val _ = app (okEq "test7b" char) (mkS(258,nil))
 
 (* Time *)
-val _ = okEq "test8a" time (Time.now())
+val _ = okEq' tm_eq "test8a" time (Time.now())
 val _ = okEq "test8b" time Time.zeroTime
 val _ = okEq "test8c" time (Time.fromSeconds 0)
 val _ = okEq "test8d" time (Time.fromSeconds 100)
