@@ -489,8 +489,10 @@ void MakeRegionProfile(void) {
     Disaster("noOfSamples >= SampleMax and SampleMax <> nsamples."); /* then we keep exactly SampleMax samples. */
 
   showMax = 1;
-  maxValue = maxRegions*4;
-  sprintf(maxValueStr, "Maximum allocated bytes in regions: %2.0f.", maxValue);
+  maxValue = maxRegions*4;   /* The total memory used is often lower than what the line suggests
+			      * because the time the stack is maximal may not be the same time
+			      * that allocation in regions is maximal! mael 2001-05-22 */
+  sprintf(maxValueStr, "Maximum allocated bytes in regions (%2.0f) and on stack (%2.0f)", maxValue, maxStack);
   maxValue += maxStack; /* Ajusting the max. allocation line. */
   yLab = MallocString("bytes");
   PutFile();

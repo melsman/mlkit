@@ -41,7 +41,7 @@ functor Tools(): TOOLS =
 
     local
       val raggedRight = ref true
-      val colwidth = ref 200
+      val colwidth = ref 100
     in
       structure PrettyPrint = PrettyPrint(structure Report = Report
 					  structure Crash = Crash

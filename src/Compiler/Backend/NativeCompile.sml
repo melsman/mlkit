@@ -35,7 +35,7 @@ signature NATIVE_COMPILE =
     type Aty
 
 
-    val compile : BackendEnv * ((place*pp)at,place*phsize,unit) LambdaPgm * bool -> 
+    val compile : BackendEnv * ((place*pp)at,place*phsize,unit) LambdaPgm * bool * string(*vcg_file*) -> 
       BackendEnv * {main_lab:label,
 		    code:(StoreTypeCO,offset,Aty) LinePrg,
 		    imports:label list * label list,
@@ -83,6 +83,7 @@ functor NativeCompile (include EXECUTION_ARGS
     structure Report = Tools.Report
     structure IntFinMap = Tools.IntFinMap
     structure Timing = Tools.Timing
+    structure NatSet = NatSet(structure PP = PP)
 
     structure TyName = Basics.TyName
 
@@ -125,6 +126,7 @@ functor NativeCompile (include EXECUTION_ARGS
 				structure RegionExp = RegionExp
 				structure AtInf = AtInf
 				structure PhysSizeInf = PhysSizeInf
+				structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
 				structure Labels = Labels
 				structure ClosConvEnv = ClosConvEnv
 				structure BI = BackendInfo
@@ -154,6 +156,8 @@ functor NativeCompile (include EXECUTION_ARGS
 				  structure Con = Con
 				  structure Excon = Excon
 				  structure Lvars = Lvars
+				  structure IntFinMap = IntFinMap
+				  structure NatSet = NatSet
 				  structure Effect = Effect
 				  structure Lvarset = Lvarset
 				  structure Labels = Labels
@@ -226,18 +230,50 @@ functor NativeCompile (include EXECUTION_ARGS
     type Aty = SubstAndSimplify.Aty
 
     val gc_p = Flags.is_on0 "garbage_collection"
+    val print_region_flow_graph = Flags.is_on0 "print_region_flow_graph"
+
+    fun fast_pr stringtree = 
+           (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
+            TextIO.output(!Flags.log, "\n\n"))
+
+    fun display(title, tree) =
+        fast_pr(PP.NODE{start=title ^ ": ",
+                   finish="",
+                   indent=3,
+                   children=[tree],
+                   childsep=PP.NOSEP
+                  }
+          )
+
+    fun chat s = if !Flags.chat then print (s ^ "\n") else ()
 
     (* the boolean `safe' is true if the fragment has no side-effects;
      * for dead code elimination. *)
-    fun compile (clos_env: ClosExp.env, app_conv_psi_pgm, safe: bool) 
+    fun compile (clos_env: ClosExp.env, app_conv_psi_pgm, safe: bool, vcg_file:string) 
       : ClosExp.env * {main_lab: label, 
 		       code: (StoreTypeCO,offset,Aty) LinePrg,
 		       imports: label list * label list, 
 		       exports: label list * label list, 
 		       safe:bool}  =
       let
+	
+	val _ = RegionFlowGraphProfiling.reset_graph ()
+
 	val {main_lab,code,imports,exports,env=clos_env1} = 
 	  Timing.timing "ClosConv" ClosExp.cc (clos_env, app_conv_psi_pgm)
+
+	(* Show region flow graph and generate .vcg file *)
+	val _ = 
+	  if print_region_flow_graph() then
+	    (display("Report: REGION FLOW GRAPH FOR PROFILING:", 
+		     RegionFlowGraphProfiling.layout_graph());
+	     let val outStreamVCG = TextIO.openOut vcg_file
+	     in RegionFlowGraphProfiling.export_graph outStreamVCG;
+	       TextIO.closeOut(outStreamVCG);
+	       chat ("[Wrote region flow graph for profiling to file " ^ vcg_file ^ "]")
+	     end)
+	  else ()
+
 	val all_line_stmt = Timing.timing "LineStmt" LineStmt.L {main_lab=main_lab,
 								 code=code,imports=imports,
 								 exports=exports}

@@ -727,20 +727,27 @@ struct
 			        store_indexed(base_reg,offset,tmp,C))
 
     fun force_reset_aux_region_kill_tmp0(sma,t:reg,size_ff,C) = 
-      case sma 
-	of LS.ATBOT_LI(aty,pp) => move_aty_into_reg_ap(aty,t,size_ff,
-				  reset_region(t,tmp_reg0,size_ff,C))
-	 | LS.SAT_FI(aty,pp) => move_aty_into_reg_ap(aty,t,size_ff, (* We do not check the storage mode *)
-			        reset_region(t,tmp_reg0,size_ff,C))
-	 | LS.SAT_FF(aty,pp) => 
-	  let val default_lab = new_local_lab "no_reset"
-	  in move_aty_into_reg_ap(aty,t,size_ff, (* We check the inf bit but not the storage mode *)
-             I.btl(I "0", R t) ::                (* Is region infinite? kill tmp_reg0. *)
-             I.jnc default_lab :: 
-	     reset_region(t,tmp_reg0,size_ff,
-             I.lab default_lab :: C))
-	  end
-	 | _ => C
+      let fun do_reset(aty,pp) = move_aty_into_reg_ap(aty,t,size_ff,
+			          reset_region(t,tmp_reg0,size_ff,C))
+          fun maybe_reset(aty,pp) = 
+	    let val default_lab = new_local_lab "no_reset"
+  	    in move_aty_into_reg_ap(aty,t,size_ff, (* We check the inf bit but not the storage mode *)
+	       I.btl(I "0", R t) ::                (* Is region infinite? kill tmp_reg0. *)
+               I.jnc default_lab :: 
+	       reset_region(t,tmp_reg0,size_ff,
+               I.lab default_lab :: C))
+	    end
+      in case sma 
+	   of LS.ATTOP_LI(aty,pp) => do_reset(aty,pp)
+	    | LS.ATTOP_LF _ => C
+	    | LS.ATTOP_FI(aty,pp) => do_reset(aty,pp)
+	    | LS.ATTOP_FF(aty,pp) => maybe_reset(aty,pp)
+	    | LS.ATBOT_LI(aty,pp) => do_reset(aty,pp)
+	    | LS.ATBOT_LF _ => C
+	    | LS.SAT_FI(aty,pp) => do_reset(aty,pp)     (* We do not check the storage mode *)
+	    | LS.SAT_FF(aty,pp) => maybe_reset(aty,pp)
+	    | LS.IGNORE => C
+      end
 
       fun maybe_reset_aux_region_kill_tmp0(sma,t:reg,size_ff,C) = 
 	case sma 

@@ -638,7 +638,7 @@ functor Compile(structure Excon : EXCON
     datatype res = CodeRes of CEnv * CompBasis * ((place*pp)at,place*phsize,unit) LambdaPgm * bool
                  | CEnvOnlyRes of CEnv
 
-    fun compile(CEnv, Basis, strdecs, vcg_file) : res =
+    fun compile(CEnv, Basis, strdecs) : res =
       let
 
 	(* There is only space in the basis for one lambdastat-env.
@@ -668,41 +668,6 @@ functor Compile(structure Excon : EXCON
 	    val (psi_pgm, psi_env1) = phys_size_inf(psi_env, drop_pgm)
 	    val _ = warn_dangling_pointers(rse, psi_pgm)
 	    val app_conv_psi_pgm = appConvert psi_pgm
-(*move to Execution
-	    val _ = RegionFlowGraphProfiling.reset_graph ()
-*)
-(*
-	    val (clos_env1, target_new) = 
-	      lambda_backend (clos_env, app_conv_psi_pgm, safe)
-*)
-
-(*
-            (* Generate lambda code file with program points *)
-  	    val old_setting = !print_program_points
-	    val _ = print_program_points := true
-	    val old_setting2 = !Flags.print_regions
-	    val _ = Flags.print_regions := true
-	    val _ = 
-	      if Flags.is_on "generate_lambda_code_with_program_points" then
-		(display("Report: LAMBDA CODE WITH PROGRAM POINTS:", PhysSizeInf.layout_pgm psi_pgm);
-		 display("Report: REGION FLOW GRAPH FOR PROFILING:", RegionFlowGraphProfiling.layout_graph()))
-	      else ()
-	    val _ = print_program_points := old_setting
-	    val _ = Flags.print_regions := old_setting2
-*)
-
-(* move to Execution
-	    (* Show region flow graph and generate .vcg file *)
-	    val _ = if Flags.is_on "show_region_flow_graph" then
-		       (display("Report: REGION FLOW GRAPH FOR PROFILING:", 
-				RegionFlowGraphProfiling.layout_graph());
-			let val outStreamVCG = TextIO.openOut vcg_file
-			in chat "Generating region flow graph for profiling (.vcg file) ...";
-			  RegionFlowGraphProfiling.export_graph outStreamVCG;
-			  TextIO.closeOut(outStreamVCG)
-			end)
-		    else ()
-*)
 	    val Basis' = CompBasis.mk_CompBasis {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
 						 rse=rse1,mulenv=mulenv1,mularefmap=Psi1,
 						 drop_env=drop_env1,psi_env=psi_env1}

@@ -60,6 +60,7 @@ functor ClosConvEnv(structure Lvars : LVARS
       | LABEL of label                          (* Global declared variable                  *)
       | FIX of label * access_type option * int (* Label is code pointer, access_type is the *)
                                                 (* shared closure and int is size of closure *)
+                 * (place * phsize) list        (* for region profiling graph *)
 
     datatype rho_kind =
         FF (* Rho is formal and finite *)
@@ -227,15 +228,15 @@ functor ClosConvEnv(structure Lvars : LVARS
     (* --------------------------------------------------------------------- *)
 
     fun acc_type_eq(LABEL lab1,LABEL lab2) = Labels.eq(lab1,lab2)
-      | acc_type_eq(FIX(lab1,SOME acc_ty1,i1),FIX(lab2,SOME acc_ty2,i2)) = Labels.eq(lab1,lab2) andalso acc_type_eq(acc_ty1,acc_ty2)
-      | acc_type_eq(FIX(lab1,NONE,i1),FIX(lab2,NONE,i2)) = Labels.eq(lab1,lab2)
+      | acc_type_eq(FIX(lab1,SOME acc_ty1,i1,_),FIX(lab2,SOME acc_ty2,i2,_)) = Labels.eq(lab1,lab2) andalso acc_type_eq(acc_ty1,acc_ty2)
+      | acc_type_eq(FIX(lab1,NONE,i1,_),FIX(lab2,NONE,i2,_)) = Labels.eq(lab1,lab2)
       | acc_type_eq(LABEL _,FIX _) = false
       | acc_type_eq(FIX _,LABEL _) = false
       | acc_type_eq _ = die "acc_type_eq"
 
     fun match_acc_type(LABEL lab1,LABEL lab2) = Labels.match(lab1,lab2)
-      | match_acc_type(FIX(lab1,SOME acc_ty1,i1),FIX(lab2,SOME acc_ty2,i2)) = (Labels.match(lab1,lab2);match_acc_type(acc_ty1,acc_ty2))
-      | match_acc_type(FIX(lab1,NONE,i1),FIX(lab2,NONE,i2)) = Labels.match(lab1,lab2)
+      | match_acc_type(FIX(lab1,SOME acc_ty1,i1,_),FIX(lab2,SOME acc_ty2,i2,_)) = (Labels.match(lab1,lab2);match_acc_type(acc_ty1,acc_ty2))
+      | match_acc_type(FIX(lab1,NONE,i1,_),FIX(lab2,NONE,i2,_)) = Labels.match(lab1,lab2)
       | match_acc_type(LABEL _,FIX _) = ()
       | match_acc_type(FIX _,LABEL _) = ()
       | match_acc_type _ = die "match_acc_type"
@@ -335,15 +336,15 @@ functor ClosConvEnv(structure Lvars : LVARS
        | DROPPED_RVAR place => PP.LEAF("D" ^ PP.flatten1(Effect.layout_effect place))
        | SELECT (lvar,i) => PP.LEAF("#" ^ Int.toString i ^ "(" ^ Lvars.pr_lvar lvar ^ ")")
        | LABEL label => PP.LEAF(Labels.pr_label label)
-       | FIX (label,SOME(LVAR lvar),size) => PP.LEAF("FIX(" ^ Labels.pr_label label ^ "," ^ Lvars.pr_lvar lvar ^ 
+       | FIX (label,SOME(LVAR lvar),size,_) => PP.LEAF("FIX(" ^ Labels.pr_label label ^ "," ^ Lvars.pr_lvar lvar ^ 
 						     "," ^ Int.toString size ^ ")")
-       | FIX (label,SOME(SELECT(lvar,i)),size) => PP.LEAF("FIX(" ^ Labels.pr_label label ^ ",#" ^ 
+       | FIX (label,SOME(SELECT(lvar,i)),size,_) => PP.LEAF("FIX(" ^ Labels.pr_label label ^ ",#" ^ 
 							  Int.toString i ^ "(" ^ Lvars.pr_lvar lvar ^ ")," ^
 							  Int.toString size ^ ")")
-       | FIX (label1,SOME(LABEL label2),size) => PP.LEAF("FIX(" ^ Labels.pr_label label1 ^ "," ^ 
+       | FIX (label1,SOME(LABEL label2),size,_) => PP.LEAF("FIX(" ^ Labels.pr_label label1 ^ "," ^ 
 							 Labels.pr_label label2 ^ 
 							 "," ^ Int.toString size ^ ")")
-       | FIX (label,NONE,0) => PP.LEAF("FIX(" ^ Labels.pr_label label ^ ",empty_clos)")
+       | FIX (label,NONE,0,_) => PP.LEAF("FIX(" ^ Labels.pr_label label ^ ",empty_clos)")
        | _ => die "layout_access_type"
 
     and layout_rho_kind =
