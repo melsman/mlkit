@@ -42,31 +42,37 @@ structure ScsError :> SCS_ERROR =
 
     fun raiseError emsg = (logError emsg; raise (Fail (Quot.toString emsg)))
 
-    fun emailError emsg = Ns.Mail.send {to=ScsConfig.scs_site_adm_email(),
-					from=ScsConfig.scs_site_adm_email(),
-					subject="ScsPanic",body=Quot.toString emsg}
+    local
+      fun genErrorMsg emsg =
+	`script: ^(Ns.Conn.location())^(Ns.Conn.url()).
+	` ^^ emsg
+    in
+      fun emailError emsg = Ns.Mail.send {to=ScsConfig.scs_site_adm_email(),
+					  from=ScsConfig.scs_site_adm_email(),
+					  subject="ScsPanic",
+					  body=Quot.toString (genErrorMsg emsg)}
 
-    fun panic emsg = 
-      let
-	val emsg = `script: ^(Ns.Conn.location())^(Ns.Conn.url()).
-	  ` ^^ emsg
-      in
-	(logError emsg;
-	 emailError emsg;
-	 case ScsLogin.user_lang() of
-	   ScsLang.en =>
-	     ScsPage.returnPg "System Error" `
-	     It seems that the system can't complete your request.<p>
-	     This is probably our fault. The system administrator has been
-	     notified.<p>
-	     Please try again later`
-	 | ScsLang.da => ScsPage.returnPg "Systemfejl" `
-	     Vi kan desværre ikke fuldføre din forespørgsel.<p>
-	     Dette er sandsynligvis vores fejl. Vores systemadministrater 
-	     er blevet informeret om problemt.<p>
-	     Du må meget gerne prøve igen senere.`;
-	 Ns.exit())
-      end
+      fun panic emsg = 
+	let
+	  val emsg = genErrorMsg emsg
+	in
+	  (logError emsg;
+	   emailError emsg;
+	   case ScsLogin.user_lang() of
+	     ScsLang.en =>
+	       ScsPage.returnPg "System Error" `
+	       It seems that the system can't complete your request.<p>
+	       This is probably our fault. The system administrator has been
+	       notified.<p>
+	       Please try again later`
+	   | ScsLang.da => ScsPage.returnPg "Systemfejl" `
+	       Vi kan desværre ikke fuldføre din forespørgsel.<p>
+	       Dette er sandsynligvis vores fejl. Vores systemadministrater 
+	       er blevet informeret om problemt.<p>
+	       Du må meget gerne prøve igen senere.`;
+	       Ns.exit())
+	end
+    end
 
     fun valOf NONE = panic `valOf(NONE)`
       | valOf (SOME v) = v
