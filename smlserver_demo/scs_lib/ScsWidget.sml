@@ -192,7 +192,7 @@ structure ScsWidget :> SCS_WIDGET =
       <tr valign=top>
       <td>` ^^
       body ^^ `
-      </td>
+      </td></tr>
       </table><br>
       ` ^^ (List.foldr (fn ((name,value),acc) => `<input class=submit type=submit name=^name value="^value">` ^^ acc) `</form>` bs)
 

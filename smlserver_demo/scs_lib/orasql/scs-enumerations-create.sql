@@ -103,7 +103,6 @@ as
     value	in scs_enum_values.value%TYPE    
   ) return scs_texts.text_id%TYPE;
 
-
   function getTID(
     val_id	in scs_enum_values.val_id%TYPE
   ) return scs_texts.text_id%TYPE;
@@ -121,11 +120,19 @@ as
     enum_id	in scs_enumerations.enum_id%TYPE
   ) return scs_enumerations.name%TYPE;
 
+  function getVal (
+    val_id in scs_enum_values.val_id%TYPE
+  ) return scs_enum_values.value%TYPE;
+  
   procedure swapOrdering(
     val_id1	in scs_enum_values.val_id%TYPE,
     val_id2	in scs_enum_values.val_id%TYPE
   ) ;
 
+  function vidToString (
+    val_id in scs_enum_values.val_id%TYPE,
+    language    in scs_lang.language%TYPE
+  ) return varchar2;
 end scs_enumeration;
 /
 show errors
@@ -216,8 +223,25 @@ as
 
   exception
     when NO_DATA_FOUND then
-      raise_application_error(scs.ScsDbExn,'scs_enumeration.getName: can''t find enum_id: ' || enum_id);
+      raise_application_error(scs.ScsDbExn,'scs_enumeration.getName: can''t find enum_id: ' || to_char(enum_id));
   end getName;
+
+  function getVal (
+    val_id in scs_enum_values.val_id%TYPE
+  ) return scs_enum_values.value%TYPE
+  is
+    v_value scs_enum_values.value%TYPE;
+  begin
+    select value
+      into v_value
+      from scs_enum_values
+     where val_id = getVal.val_id;
+
+    return v_value;
+  exception
+    when others then
+      raise_application_error(scs.ScsDbExn,'scs_enumeration.getVal: can''t find val_id: ' || to_char(val_id));      
+  end getVal;
 
   function getEnumId (
     name in scs_enumerations.name%TYPE
@@ -354,7 +378,6 @@ as
       raise_application_error( scs.ScsDbExn, 'No text_id found for val_id=' || to_char(val_id) ); 
   end getTID;
 
-
   procedure swapOrdering(
     val_id1	in scs_enum_values.val_id%TYPE,
     val_id2	in scs_enum_values.val_id%TYPE
@@ -391,6 +414,22 @@ as
 
   end swapOrdering;
 
+  function vidToString (
+    val_id      in scs_enum_values.val_id%TYPE,
+    language    in scs_lang.language%TYPE
+  ) return varchar2
+  is
+    v_text varchar2(200);
+  begin
+    select scs_text.getText(getTID(vidToString.val_id),vidToString.language)
+      into v_text
+      from dual;
+     
+    return v_text;
+  exception
+    when others then
+      raise_application_error(scs.ScsDbExn, 'scs_enumeration.vidToString(' || to_char(val_id) || ')'); 
+  end vidToString;
 
 end scs_enumeration;
 /
