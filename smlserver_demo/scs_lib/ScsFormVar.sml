@@ -131,6 +131,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getNonEmptyStringErr   : string formvar_fn
     val getNonEmptyStringLenErr: int -> string formvar_fn
     val getIntRangeErr         : int -> int -> int formvar_fn
+    val getRealRangeErr        : real -> real -> real formvar_fn
     val getEmailErr            : string formvar_fn 
     val getNameErr             : string formvar_fn 
     val getAddrErr             : string formvar_fn
@@ -408,6 +409,22 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	else
 	  (0,errs')
       end
+
+    fun getRealRangeErr a b (args as (fv:string,emsg:string,errs:errs)) =
+      let
+	val (x,errs') = getRealErr args
+      in
+	if List.length errs = List.length errs' then
+	  if a <= x andalso x <= b 
+	    then (x,errs)
+	  else (0.0,addErr(genErrMsg(emsg,
+                                   ScsDict.sl' [(ScsLang.en,`The real <i>%0</i> is not within the valid range [%1,...,%2].`),
+                                                (ScsLang.da,`Tallet <i>%0</i> er ikke indenfor intervallet [%1,...,%2].`)]
+                                   [Real.toString x,Real.toString a,Real.toString b]),errs))
+	else
+	  (0.0,errs')
+      end
+
     fun getErr (empty_val:'a) (conv_val:string->'a) (ty_dict:ScsDict.dict) 
                (add_fn:string->quot) (chk_fn:string->bool) =
       let
