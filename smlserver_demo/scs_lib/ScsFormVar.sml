@@ -888,9 +888,9 @@ structure ScsFormVar :> SCS_FORM_VAR =
       fun convISBN isbn =
 	case String.explode (trim isbn) of
 	  d1 :: d2 :: (#"-") :: d3 :: d4 :: d5 :: d6 :: (#"-") :: d7 :: d8 :: d9 :: (#"-") :: c1 :: [] =>
-	    String.implode[d1,(#"-"),d2,d3,(#"-"),d4,d5,d6,d7,d8,d9,(#"-"),c1]
+	    String.implode[d1,d2,(#"-"),d3,d4,d5,d6,(#"-"),d7,d8,d9,(#"-"),c1]
 	| 	  d1 :: d2 :: d3 :: d4 :: d5 :: d6 :: d7 :: d8 :: d9 :: c1 :: [] =>
-	    String.implode[d1,(#"-"),d2,d3,(#"-"),d4,d5,d6,d7,d8,d9,(#"-"),c1]
+	    String.implode[d1,d2,(#"-"),d3,d4,d5,d6,(#"-"),d7,d8,d9,(#"-"),c1]
 	| _ => ScsError.panic `ScsFormVar.convISBN failned on ^isbn`
 
       fun chkEnum enums v =
