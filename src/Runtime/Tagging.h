@@ -198,9 +198,15 @@
 #endif /*NO TAG_VALUES*/
 
 #ifdef PROFILING
-#define REGIONARG_FUNCTION(name, ...)  name ## Prof(__VA_ARGS__ , int pPoint)
+#define REG_POLY_FUN_HDR(name, ...)  name ## Prof(__VA_ARGS__, int pPoint)
+#define REG_POLY_CALL(name, ...)     name ## Prof(__VA_ARGS__, pPoint)
+#define COMMA_INT_PPOINT  , int pPoint
+#define COMMA_PPOINT      , pPoint
 #else
-#define REGIONARG_FUNCTION(name, ...)  name(__VA_ARGS__)
+#define REG_POLY_FUN_HDR(name, ...)  name(__VA_ARGS__)
+#define REG_POLY_CALL(name, ...) name(__VA_ARGS__)
+#define COMMA_INT_PPOINT
+#define COMMA_PPOINT
 #endif
 
 #endif /*__TAGGING_H*/

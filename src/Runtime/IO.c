@@ -19,7 +19,7 @@
 #include "Math.h"
 
 int 
-openInStream(StringDesc *path, int exn)                    /* SML Basis */
+openInStream(String path, int exn)                    /* SML Basis */
 {              
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "r")) == NULL) 
@@ -31,7 +31,7 @@ openInStream(StringDesc *path, int exn)                    /* SML Basis */
 }
 
 int 
-openOutStream(StringDesc *path, int exn)                   /* SML Basis */
+openOutStream(String path, int exn)                   /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "w")) == NULL) 
@@ -43,7 +43,7 @@ openOutStream(StringDesc *path, int exn)                   /* SML Basis */
 }
 
 int 
-openAppendStream(StringDesc *path, int exn)                /* SML Basis */
+openAppendStream(String path, int exn)                /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "a")) == NULL) 
@@ -55,7 +55,7 @@ openAppendStream(StringDesc *path, int exn)                /* SML Basis */
 }
 
 int 
-openInBinStream(StringDesc *path, int exn)                 /* SML Basis */
+openInBinStream(String path, int exn)                 /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "rb")) == NULL) 
@@ -67,7 +67,7 @@ openInBinStream(StringDesc *path, int exn)                 /* SML Basis */
 }
 
 int 
-openOutBinStream(StringDesc *path, int exn)                /* SML Basis */
+openOutBinStream(String path, int exn)                /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "wb")) == NULL) 
@@ -79,7 +79,7 @@ openOutBinStream(StringDesc *path, int exn)                /* SML Basis */
 }
 
 int 
-openAppendBinStream(StringDesc *path, int exn)             /* SML Basis */
+openAppendBinStream(String path, int exn)             /* SML Basis */
 {
   FILE *fileDesc;
   if ((fileDesc = fopen(&(path->data), "ab")) == NULL) 
@@ -110,12 +110,8 @@ input1Stream(FILE *is)
 //   Reads n characters from input, n<=64. If EOF is read, 
 //   then a string less than n is returned.
 
-StringDesc *
-#ifdef PROFILING
-inputStreamProfiling(Region rd, FILE *is, int n, int pPoint) 
-#else
-inputStream(Region rd, FILE *is, int n) 
-#endif
+String
+REG_POLY_FUN_HDR(inputStream, Region rd, FILE *is, int n) 
 {
   unsigned char buf[100];
   int i, ch;
@@ -142,11 +138,7 @@ inputStream(Region rd, FILE *is, int n)
   // i characters read
   buf[i] = '\0';
 
-#ifdef PROFILING
-  return convertStringToMLProfiling(rd, buf, pPoint);
-#else
-  return convertStringToML(rd, buf);
-#endif
+  return REG_POLY_CALL(convertStringToML, rd, buf);
 }
 
 int
@@ -188,7 +180,7 @@ endOfStream(FILE *stream)
 */
 
 int 
-outputStream(FILE *os, StringDesc *s, int exn) 
+outputStream(FILE *os, String s, int exn) 
 {
   os = (FILE *)untag_scalar(os);
   if ( fputs(&(s->data), os) == EOF )
@@ -228,7 +220,7 @@ stdErrStream(int dummy)
 }
 
 void 
-sml_chdir(StringDesc *dirname, int exn)              /* SML Basis */
+sml_chdir(String dirname, int exn)              /* SML Basis */
 {
   if ( chdir(&(dirname->data)) != 0 ) 
     {
@@ -238,7 +230,7 @@ sml_chdir(StringDesc *dirname, int exn)              /* SML Basis */
 }
 
 void 
-sml_remove(StringDesc *name, int exn)                /* SML Basis */
+sml_remove(String name, int exn)                /* SML Basis */
 {
   int ret;
   ret = unlink(&(name->data));
@@ -250,7 +242,7 @@ sml_remove(StringDesc *name, int exn)                /* SML Basis */
 }
 
 void 
-sml_rename(StringDesc *oldname, StringDesc *newname, int exn)    /* SML Basis */
+sml_rename(String oldname, String newname, int exn)    /* SML Basis */
 {
   if ( rename(&(oldname->data), &(newname->data)) != 0 ) 
     {
@@ -260,7 +252,7 @@ sml_rename(StringDesc *oldname, StringDesc *newname, int exn)    /* SML Basis */
 }
 
 int 
-sml_access(StringDesc *path, int permarg, int exn)               /* ML */
+sml_access(String path, int permarg, int exn)               /* ML */
 {
   long perms;
   long perm = convertIntToC(permarg);
@@ -278,12 +270,8 @@ sml_access(StringDesc *path, int permarg, int exn)               /* ML */
   return mlFALSE;
 }
 
-StringDesc *
-#ifdef PROFILING
-sml_getdirProfiling(Region rAddr, int exn, int pPoint) 	 /* SML Basis */
-#else
-sml_getdir(Region rAddr, int exn)                 	 /* SML Basis */
-#endif
+String
+REG_POLY_FUN_HDR(sml_getdir, Region rAddr, int exn)                 	 /* SML Basis */
 {
  char directory[MAXPATHLEN];
  char *res;
@@ -293,15 +281,11 @@ sml_getdir(Region rAddr, int exn)                 	 /* SML Basis */
    {
      raise_exn(exn); 
    }
-#ifdef PROFILING
- return convertStringToMLProfiling(rAddr, directory, pPoint);
-#else
- return convertStringToML(rAddr, directory);
-#endif
+ return REG_POLY_CALL(convertStringToML, rAddr, directory);
 }
 
 int 
-sml_isdir(StringDesc *path, int exn)             /* SML Basis */
+sml_isdir(String path, int exn)             /* SML Basis */
 {
   struct stat buf;
   if ( stat(&(path->data), &buf) == -1 ) 
@@ -316,7 +300,7 @@ sml_isdir(StringDesc *path, int exn)             /* SML Basis */
 }
 
 void 
-sml_mkdir(StringDesc *path, int exn)                        /* SML Basis */
+sml_mkdir(String path, int exn)                        /* SML Basis */
 {
   if ( mkdir(&(path->data), 0777) == -1 ) 
     {
@@ -327,7 +311,7 @@ sml_mkdir(StringDesc *path, int exn)                        /* SML Basis */
 
 
 int 
-sml_modtime(int vAddr, StringDesc *path, int exn)             /* SML Basis */
+sml_modtime(int vAddr, String path, int exn)             /* SML Basis */
 {
   struct stat buf;
   if ( stat(&(path->data), &buf) == -1 ) 
@@ -340,7 +324,7 @@ sml_modtime(int vAddr, StringDesc *path, int exn)             /* SML Basis */
 }
 
 void 
-sml_rmdir(StringDesc *path, int exn)              /* SML Basis */
+sml_rmdir(String path, int exn)              /* SML Basis */
 {
   if ( rmdir(&(path->data)) == -1 ) 
     {
@@ -350,7 +334,7 @@ sml_rmdir(StringDesc *path, int exn)              /* SML Basis */
 }
 
 void 
-sml_settime(StringDesc *path, int time, int exn)     /* SML Basis */
+sml_settime(String path, int time, int exn)     /* SML Basis */
 {
   struct utimbuf tbuf;
   tbuf.actime = tbuf.modtime = (long)(get_d(time));
@@ -362,7 +346,7 @@ sml_settime(StringDesc *path, int time, int exn)     /* SML Basis */
 }
 
 int 
-sml_filesize(StringDesc *path, int exn)              /* SML Basis */
+sml_filesize(String path, int exn)              /* SML Basis */
 {
   struct stat buf;
   if ( stat(&(path->data), &buf) == -1 ) 
@@ -373,7 +357,7 @@ sml_filesize(StringDesc *path, int exn)              /* SML Basis */
 }
 
 int 
-sml_opendir(StringDesc *path, int exn)           /* SML Basis */
+sml_opendir(String path, int exn)           /* SML Basis */
 {
   DIR * dstr;    
   dstr = opendir(&(path->data));
@@ -385,12 +369,8 @@ sml_opendir(StringDesc *path, int exn)           /* SML Basis */
   return (int)tag_scalar(dstr); 
 }
 
-StringDesc *
-#ifdef PROFILING
-sml_readdirProfiling(Region rAddr, int v, int pPoint)          /* SML Basis */
-#else
-sml_readdir(Region rAddr, int v)                               /* SML Basis */
-#endif
+String
+REG_POLY_FUN_HDR(sml_readdir, Region rAddr, int v)    /* SML Basis */
 {
   struct dirent *direntry;
   char* res;
@@ -405,11 +385,7 @@ sml_readdir(Region rAddr, int v)                               /* SML Basis */
     {
       res = (*direntry).d_name;
     }
-#ifdef PROFILING
-  return convertStringToMLProfiling(rAddr, res, pPoint);
-#else
-  return convertStringToML(rAddr, res);
-#endif
+  return REG_POLY_CALL(convertStringToML, rAddr, res);
 }
 
 void 
@@ -441,12 +417,8 @@ sml_errno(void)             /* SML Basis */
   return convertIntToML(errno);                 // not thread-safe!!
 }
 
-StringDesc *
-#ifdef PROFILING
-sml_errormsgProfiling(Region rAddr, int errnum, int pPoint)    /* SML Basis */
-#else
-sml_errormsg(Region rAddr, int errnum)                         /* SML Basis */
-#endif
+String
+REG_POLY_FUN_HDR(sml_errormsg, Region rAddr, int errnum)    /* SML Basis */
 {
   char *res;
   if (errnum < 0 || errnum >= sys_nerr) 
@@ -457,15 +429,11 @@ sml_errormsg(Region rAddr, int errnum)                         /* SML Basis */
     {
       res = (char *)sys_errlist[errnum];
     }
-  #ifdef PROFILING
-  return convertStringToMLProfiling(rAddr, res, pPoint);
-  #else
-  return convertStringToML(rAddr, res);
-  #endif
+  return REG_POLY_CALL(convertStringToML, rAddr, res);
 }
 
 int 
-sml_islink(StringDesc *path, int exn)              /* SML Basis */
+sml_islink(String path, int exn)              /* SML Basis */
 {
   struct stat buf;
   if (lstat(&(path->data), &buf) == -1) 
@@ -479,12 +447,8 @@ sml_islink(StringDesc *path, int exn)              /* SML Basis */
   return mlFALSE;
 }
 
-StringDesc *
-#ifdef PROFILING
-sml_readlinkProfiling(Region rAddr, StringDesc *path, int exn, int pPoint)         /* SML Basis */
-#else
-sml_readlink(Region rAddr, StringDesc *path, int exn)                              /* SML Basis */
-#endif
+String
+REG_POLY_FUN_HDR(sml_readlink, Region rAddr, String path, int exn)    /* SML Basis */
 {
   char buffer[MAXPATHLEN];
   long result;
@@ -494,21 +458,13 @@ sml_readlink(Region rAddr, StringDesc *path, int exn)                           
       raise_exn(exn); 
     }
   buffer[result] = '\0';
-#ifdef PROFILING
-  return convertStringToMLProfiling(rAddr, buffer, pPoint);
-#else
-  return convertStringToML(rAddr, buffer);
-#endif
+  return REG_POLY_CALL(convertStringToML, rAddr, buffer);
 }
 
 extern char *realpath();
 
-StringDesc *
-#ifdef PROFILING
-sml_realpathProfiling(Region rAddr, StringDesc *path, int exn, int pPoint)   /* SML Basis */
-#else
-sml_realpath(Region rAddr, StringDesc *path, int exn)                        /* SML Basis */
-#endif
+String
+REG_POLY_FUN_HDR(sml_realpath, Region rAddr, String path, int exn)  /* SML Basis */
 {
   char buffer[MAXPATHLEN];
   char *result;
@@ -518,15 +474,11 @@ sml_realpath(Region rAddr, StringDesc *path, int exn)                        /* 
       raise_exn(exn);
       return NULL;
     }
-#ifdef PROFILING
-  return convertStringToMLProfiling(rAddr, result, pPoint);
-#else
-  return convertStringToML(rAddr, result);
-#endif
+  return REG_POLY_CALL(convertStringToML, rAddr, result);
 }
 
 int 
-sml_devinode(int vAddr, StringDesc *path, int exn)             /* SML Basis */
+sml_devinode(int vAddr, String path, int exn)             /* SML Basis */
 {
   struct stat buf;
   if (stat(&(path->data), &buf) == -1) 
@@ -542,7 +494,7 @@ sml_devinode(int vAddr, StringDesc *path, int exn)             /* SML Basis */
 }
 
 int 
-sml_system(StringDesc *cmd, int exn)         /* SML Basis */
+sml_system(String cmd, int exn)         /* SML Basis */
 {
   int res;
   res = system(&(cmd->data));
@@ -553,12 +505,8 @@ sml_system(StringDesc *cmd, int exn)         /* SML Basis */
   return convertIntToML(res);
 }
 
-StringDesc *
-#ifdef PROFILING
-sml_getenvProfiling(Region rAddr, StringDesc *var, int exn, int pPoint)   /* SML Basis */
-#else
-sml_getenv(Region rAddr, StringDesc *var, int exn)                        /* SML Basis */
-#endif
+String
+REG_POLY_FUN_HDR(sml_getenv, Region rAddr, String var, int exn)  /* SML Basis */
 {
   char *res;
   res = (char *)(getenv(&(var->data)));
@@ -566,9 +514,5 @@ sml_getenv(Region rAddr, StringDesc *var, int exn)                        /* SML
     {
       raise_exn(exn);
     }
-#ifdef PROFILING
-  return convertStringToMLProfiling(rAddr, res, pPoint);
-#else
-  return convertStringToML(rAddr, res);
-#endif
+  return REG_POLY_CALL(convertStringToML, rAddr, res);
 }

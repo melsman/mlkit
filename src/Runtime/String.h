@@ -19,6 +19,7 @@
 
 #include "Flags.h"
 #include "Region.h"
+#include "Tagging.h"
 
 // Representation of ML strings
 
@@ -46,22 +47,12 @@ int greaterStringML(String str1, String str2);
 int greatereqStringML(String str1, String str2);
 int equalStringML(String str1, String str2);
 
-#ifdef PROFILING
-String allocStringProfilingML(Region rAddr, int sizeML, int pPoint);
-String concatStringProfilingML(Region rAddr, String str1, String str2, int pPoint);
-String implodeCharsProfilingML (Region rAddr, int xs, int pPoint);
-String implodeStringProfilingML(Region rAddr, int xs, int pPoint);
-String convertStringToMLProfiling(Region rAddr, unsigned char *cStr, int pPoint);
-String exnNameProfilingML(Region rAddr, int e, int pPoint);
-int *explodeStringProfilingML(Region rAddr2, String str, int pPoint);   // no region for the cons cells
-#else
-String allocStringML(Region rAddr, int sizeML);
-String concatStringML(Region rAddr, String str1, String str2);
-String implodeCharsML (Region rAddr, int xs);
-String implodeStringML(Region rAddr, int xs);
-String convertStringToML(Region rAddr, unsigned char *cStr);
-String exnNameML(Region rAddr, int e);
-int *explodeStringML(Region rAddr2, String str);  // no region for the cons cells
-#endif /*PROFILING*/
+String REG_POLY_FUN_HDR(allocStringML, Region rAddr, int sizeML);
+String REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2);
+String REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, int xs);
+String REG_POLY_FUN_HDR(implodeStringML, Region rAddr, int xs);
+String REG_POLY_FUN_HDR(convertStringToML, Region rAddr, unsigned char *cStr);
+String REG_POLY_FUN_HDR(exnNameML, Region rAddr, int e);
+int * REG_POLY_FUN_HDR(explodeStringML, Region rAddr2, String str);  // no region for the cons cells
 
 #endif /* STRING_H */

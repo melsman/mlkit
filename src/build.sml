@@ -50,8 +50,8 @@ val _ = (enable "print_types"; enable "print_rho_types")
 *)
 
   val _ = comp_RI_GC()
-
   val _ = comp_RI()
+
 (*  val _ = comp_GC() *)
 
   val _ = comp_RI_GC_PROF()

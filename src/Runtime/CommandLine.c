@@ -232,26 +232,14 @@ void parseCmdLineArgs(int argc, char *argv[]) {
   return;
 }
 
-#ifdef PROFILING
 String
-sml_commandline_nameProfiling(Region rAddr, int pPoint) 
+REG_POLY_FUN_HDR(sml_commandline_name, Region rAddr) 
 {
-  return convertStringToMLProfiling(rAddr, commandline_argv[0], pPoint);
+  return REG_POLY_CALL(convertStringToML, rAddr, commandline_argv[0]);
 } 
-#else
-String
-sml_commandline_name(Region rAddr) 
-{
-  return convertStringToML(rAddr, commandline_argv[0]);
-} 
-#endif /*PROFILING*/
 
 int 
-#ifdef PROFILING
-sml_commandline_argsProfiling(Region pairRho, Region strRho, int pPoint) 
-#else
-sml_commandline_args(Region pairRho, Region strRho) 
-#endif
+REG_POLY_FUN_HDR(sml_commandline_args, Region pairRho, Region strRho) 
 {
   int *resList, *pairPtr;
   String mlStr;
@@ -259,13 +247,8 @@ sml_commandline_args(Region pairRho, Region strRho)
   makeNIL(resList);  
   while ( counter > app_arg_index ) 
     {
-#ifdef PROFILING
-      mlStr = convertStringToMLProfiling(strRho, commandline_argv[--counter], pPoint);
-      allocRecordMLProf(pairRho, 2, pairPtr, pPoint);
-#else
-      mlStr = convertStringToML(strRho, commandline_argv[--counter]);
-      allocRecordML(pairRho, 2, pairPtr);
-#endif
+      mlStr = REG_POLY_CALL(convertStringToML, strRho, commandline_argv[--counter]);
+      REG_POLY_CALL(allocRecordML, pairRho, 2, pairPtr);
       first(pairPtr) = (int) mlStr;
       second(pairPtr) = (int) resList;
       makeCONS(pairPtr, resList);
