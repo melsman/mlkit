@@ -8,9 +8,22 @@ signature BUILD_COMPILE =
     structure CompilerEnv : COMPILER_ENV
     structure CompileBasis: COMPILE_BASIS
     structure Compile: COMPILE
+    structure CallConv : CALL_CONV
+    structure LineStmt : LINE_STMT
+    structure SubstAndSimplify : SUBST_AND_SIMPLIFY
   end  
 
 functor BuildCompile (structure Name : NAME
+		      structure Lvars : LVARS
+			sharing type Lvars.name = Name.name
+		      structure Lvarset : LVARSET
+			sharing type Lvars.lvar = Lvarset.lvar
+		      structure Labels : ADDRESS_LABELS
+			sharing type Labels.name = Name.name
+		      structure Con : CON
+			sharing type Con.name = Name.name
+		      structure Excon : EXCON
+			sharing type Excon.name = Name.name
 		      structure TopdecGrammar: TOPDEC_GRAMMAR
 		      structure ElabInfo : ELAB_INFO
 			sharing type ElabInfo.ElabInfo = TopdecGrammar.info
@@ -44,6 +57,10 @@ functor BuildCompile (structure Name : NAME
 		        sharing type Report.Report = Flags.Report
 		      structure IntFinMap : MONO_FINMAP where type dom = int
 		      structure WordFinMap : MONO_FINMAP where type dom = word
+		      structure BackendInfo : BACKEND_INFO
+			sharing type BackendInfo.label = Labels.label
+			sharing type BackendInfo.lvar = Lvars.lvar
+                        sharing type BackendInfo.lvarset = Lvarset.lvarset
 		      structure PP: PRETTYPRINT
 			sharing type PP.StringTree = FinMapEq.StringTree
 			sharing type PP.StringTree = FinMap.StringTree 
@@ -52,6 +69,10 @@ functor BuildCompile (structure Name : NAME
 			sharing type PP.StringTree = StatObject.StringTree
 			sharing type PP.StringTree = IntFinMap.StringTree
                         sharing type PP.StringTree = WordFinMap.StringTree
+                        sharing type PP.StringTree = Lvars.Map.StringTree
+                        sharing type PP.StringTree = Excon.Map.StringTree
+                        sharing type PP.StringTree = Con.Map.StringTree
+			
 			sharing type PP.Report = Report.Report
 				  = ElabInfo.ParseInfo.SourceInfo.Report
 		      structure Crash: CRASH
@@ -68,48 +89,6 @@ functor BuildCompile (structure Name : NAME
     structure StrId = DecGrammar.StrId
     structure TyCon = DecGrammar.TyCon
 
-    structure Lvars = Lvars(structure Name = Name
-			    structure Report = Report
-			    structure PP = PP
-			    structure Crash = Crash
-			    structure IntFinMap = IntFinMap)
-
-    structure Lvarset = Lvarset(structure Lvars = Lvars)
-
-    structure Con = Con(structure Name = Name
-			structure Report = Report
-			structure PP = PP
-			structure Crash = Crash
-			structure IntFinMap = IntFinMap)
-
-    structure Excon = Excon(structure Name = Name
-			    structure Report = Report
-			    structure PP = PP
-			    structure Crash = Crash
-			    structure IntFinMap = IntFinMap)
-
-(*
-    structure LvarEqMap = EqFinMap(structure Report = Report
-				   structure PP = PP
-				   type dom = Lvars.lvar
-				   val eq = Lvars.eq)
-
-    structure ConEqMap = EqFinMap(structure Report = Report
-				  structure PP = PP
-				  type dom = Con.con
-				  val eq = Con.eq)
-
-    structure ExconEqMap = EqFinMap(structure Report = Report
-				    structure PP = PP
-				    type dom = Excon.excon
-				    val eq = Excon.eq)
-
-    structure TyNameEqMap = EqFinMap(structure Report = Report
-				     structure PP = PP
-				     type dom = TyName.TyName
-				     val eq = TyName.eq)
-*)
-
     structure LambdaExp =
       LambdaExp(structure Lvars = Lvars
                 structure Con = Con
@@ -117,8 +96,7 @@ functor BuildCompile (structure Name : NAME
                 structure TyName = TyName
                 structure PP = PP
                 structure Crash = Crash
-                structure Flags = Flags
-               )
+                structure Flags = Flags)
 
     structure LambdaBasics = 
       LambdaBasics(structure Lvars = Lvars
@@ -170,26 +148,25 @@ functor BuildCompile (structure Name : NAME
                                 structure Flags = Flags
                                 structure Crash = Crash)
 
-   structure Effect (*:EFFECT*) = Effect(structure G = DiGraph
-				    structure Flags = Flags
-				    structure PP = PP
-				    structure Crash = Crash
-				    structure Report = Report)
+   structure Effect = Effect(structure G = DiGraph
+			     structure Flags = Flags
+			     structure PP = PP
+			     structure Crash = Crash
+			     structure Report = Report)
 
-  structure CConst = CConst
-    (structure Flags = Flags
-     structure Crash = Crash
-     structure TyName = TyName)
+  structure CConst = CConst(structure Flags = Flags
+			    structure Crash = Crash
+			    structure TyName = TyName)
 
-   structure RType(*:RTYPE*) = RType(structure Flags = Flags
-				 structure Crash = Crash
-				 structure E = Effect
-				 structure DiGraph = DiGraph
-				 structure L = LambdaExp
-				 structure CConst = CConst
-				 structure FinMap = FinMap
-				 structure TyName = TyName
-				 structure PP = PP)
+   structure RType = RType(structure Flags = Flags
+			   structure Crash = Crash
+			   structure E = Effect
+			   structure DiGraph = DiGraph
+			   structure L = LambdaExp
+			   structure CConst = CConst
+			   structure FinMap = FinMap
+			   structure TyName = TyName
+			   structure PP = PP)
 
    structure RegionStatEnv = RegionStatEnv(
      structure Name = Name
@@ -335,6 +312,7 @@ functor BuildCompile (structure Name : NAME
 
     structure KAMBackend = KAMBackend(structure PP = PP
 				      structure HashTable = HashTable
+				      structure Labels = Labels
 				      structure IntFinMap = IntFinMap
 				      structure IntSet = IntSet
 				      structure Report = Report
@@ -491,23 +469,6 @@ functor BuildCompile (structure Name : NAME
 			       structure Crash = Crash
 			       structure Report = Report)
 
-    structure Labels = AddressLabels(structure Name = Name)
-
-    structure HpPaRisc = HpPaRisc(structure Labels = Labels
-				  structure Lvars = Lvars
-				  structure PP = PP
-				  structure Crash = Crash)
-
-
-    structure BackendInfo = BackendInfo(structure Labels = Labels
-					structure Lvars = Lvars
-					structure Lvarset = Lvarset
-					structure HpPaRisc = HpPaRisc
-					structure PP = PP
-					structure Flags = Flags
-					structure Report = Report
-					structure Crash = Crash) : BACKEND_INFO
-
     structure ClosConvEnv = ClosConvEnv(structure Lvars = Lvars
 					structure Con = Con
 					structure Excon = Excon
@@ -622,32 +583,6 @@ functor BuildCompile (structure Name : NAME
 						  structure Report = Report
 						  structure Crash = Crash)
 
-    structure JumpTables = JumpTables(structure BI = BackendInfo)
-
-    structure HppaResolveJumps =
-      HppaResolveJumps(structure HpPaRisc = HpPaRisc
-		       structure Labels = Labels
-   		       structure Crash = Crash
-		       structure IntFinMap = IntFinMap)
-
-    structure CodeGen = CodeGen(structure PhysSizeInf = PhysSizeInf
-				structure Con = Con
-				structure Excon = Excon
-				structure Lvars = Lvars
-				structure Effect = Effect
-				structure Labels = Labels
-				structure CallConv = CallConv
-				structure LineStmt = LineStmt
-				structure SubstAndSimplify = SubstAndSimplify
-				structure BI = BackendInfo
-				structure HpPaRisc = HpPaRisc
-				structure JumpTables = JumpTables
-				structure HppaResolveJumps = HppaResolveJumps
-				structure PP = PP
-				structure Flags = Flags
-				structure Report = Report
-				structure Crash = Crash)
-
     structure CompLamb = CompLamb(structure Con = Con
 				  structure Excon = Excon
 				  structure Lvars = Lvars
@@ -737,8 +672,6 @@ functor BuildCompile (structure Name : NAME
 	      structure FetchAndFlush = FetchAndFlush
 	      structure CalcOffset = CalcOffset
 	      structure SubstAndSimplify = SubstAndSimplify
-	      structure HpPaRisc = HpPaRisc
-	      structure CodeGen = CodeGen
 	      structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
 	      structure CompLamb = CompLamb
 	      structure KAMBackend = KAMBackend
@@ -756,5 +689,4 @@ functor BuildCompile (structure Name : NAME
 	      structure PP = PP
 	      structure Crash = Crash
 	      structure Timing = Timing)
-
   end

@@ -187,10 +187,10 @@ signature HP_PA_RISC =
         FUN of label * RiscInst list
       | FN of label * RiscInst list
 
-    type RiscPrg = {top_decls: TopDecl list,
-		    init_code: RiscInst list,
-		    exit_code: RiscInst list,
-		    static_data: RiscInst list}
+    type AsmPrg = {top_decls: TopDecl list,
+		   init_code: RiscInst list,
+		   exit_code: RiscInst list,
+		   static_data: RiscInst list}
 
     (*******************************)
     (* Basic Compilation Functions *)
@@ -206,12 +206,12 @@ signature HP_PA_RISC =
     (* PrettyPrinting *)
     (******************)
     type StringTree
-    val layout_RiscPrg : RiscPrg -> StringTree
+    val layout_AsmPrg : AsmPrg -> StringTree
 
     (* To Emit Code *)
     val pp_lab         : lab -> string
     val pr_reg         : reg -> string
-    val output_RiscPrg : TextIO.outstream * RiscPrg -> unit
+    val output_AsmPrg : TextIO.outstream * AsmPrg -> unit
 
   end
 

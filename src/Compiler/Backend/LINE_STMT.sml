@@ -20,7 +20,7 @@ signature LINE_STMT =
     *)
 
     type place 
-    type phsize
+    datatype phsize = INF | WORDS of int
     type pp = int
     type lvar
     type con

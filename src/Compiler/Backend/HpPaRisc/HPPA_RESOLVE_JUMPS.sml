@@ -5,7 +5,7 @@ signature HPPA_RESOLVE_JUMPS =
    * Resolvation of jumps for HP Precision Architecture code. 
    * ---------------------------------------------------------------------- *)
 
-   type RiscPrg
-   val RJ : RiscPrg -> RiscPrg
+   type AsmPrg
+   val RJ : AsmPrg -> AsmPrg
 
   end

@@ -15,20 +15,16 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			 sharing OpacityElim.TyName = ModuleEnvironments.TyName
 			 sharing type OpacityElim.OpacityEnv.realisation = ModuleEnvironments.realisation
 			 sharing type OpacityElim.topdec = TopdecGrammar.topdec
-		       structure CompilerEnv : COMPILER_ENV
-			 sharing type CompilerEnv.id = ModuleEnvironments.id
-			 sharing type CompilerEnv.longid = TopdecGrammar.DecGrammar.Ident.longid
-			 sharing type CompilerEnv.strid = ModuleEnvironments.strid
-			 sharing type CompilerEnv.longstrid = ModuleEnvironments.longstrid
-			 sharing type CompilerEnv.tycon = ModuleEnvironments.tycon
-			 sharing type CompilerEnv.longtycon = ModuleEnvironments.longtycon
-		       structure CompileBasis : COMPILE_BASIS
-			 sharing type CompileBasis.lvar = CompilerEnv.lvar
-			 sharing type CompileBasis.TyName = ModuleEnvironments.TyName
-			               = CompilerEnv.TyName
-			 sharing type CompileBasis.con = CompilerEnv.con
-			 sharing type CompileBasis.excon = CompilerEnv.excon
-		       structure Compile : COMPILE
+		       structure Execution : EXECUTION
+			 sharing type Execution.CompilerEnv.id = ModuleEnvironments.id
+			 sharing type Execution.CompilerEnv.longid = TopdecGrammar.DecGrammar.Ident.longid
+			 sharing type Execution.CompilerEnv.strid = ModuleEnvironments.strid
+			 sharing type Execution.CompilerEnv.longstrid = ModuleEnvironments.longstrid
+			 sharing type Execution.CompilerEnv.tycon = ModuleEnvironments.tycon
+			 sharing type Execution.CompilerEnv.longtycon = ModuleEnvironments.longtycon
+			 sharing type Execution.CompileBasis.TyName = ModuleEnvironments.TyName
+		       structure Labels : ADDRESS_LABELS
+			 sharing type Labels.label = Execution.label
 		       structure InfixBasis: INFIX_BASIS
 		       structure ElabRep : ELAB_REPOSITORY
 			 sharing type ElabRep.funid = TopdecGrammar.funid 
@@ -39,14 +35,17 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			 sharing ElabRep.TyName = ModuleEnvironments.TyName
 		       structure FinMap : FINMAP
 		       structure PP : PRETTYPRINT
-			 sharing type PP.StringTree = CompilerEnv.StringTree 
-			   = CompileBasis.StringTree = ModuleEnvironments.StringTree
-			   = FinMap.StringTree = InfixBasis.StringTree = OpacityElim.OpacityEnv.StringTree
+			 sharing type PP.StringTree = Execution.CompilerEnv.StringTree 
+			   = ModuleEnvironments.StringTree = FinMap.StringTree 
+			   = InfixBasis.StringTree = OpacityElim.OpacityEnv.StringTree
 		       structure Name : NAME
 			 sharing type Name.name = ModuleEnvironments.TyName.name = ElabRep.name
 		       structure Flags : FLAGS
 		       structure Crash : CRASH) : MANAGER_OBJECTS =
   struct
+
+    structure CompilerEnv = Execution.CompilerEnv
+    structure CompileBasis = Execution.CompileBasis
 
     fun die s = Crash.impossible("ManagerObjects." ^ s)
     fun chat s = if !Flags.chat then print (s ^ "\n") else ()
@@ -64,7 +63,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     structure TyName = ModuleEnvironments.TyName
     type StringTree = PP.StringTree
     type filename = string
-    type target = Compile.target
+    type target = Execution.target
 
     (* ----------------------------------------------------
      * Determine where to put target files; if profiling is
@@ -112,7 +111,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
           end
       end
 
-    type linkinfo = Compile.linkinfo
+    type linkinfo = Execution.linkinfo
     structure SystemTools =
       struct
 	val c_compiler = Flags.lookup_string_entry "c_compiler"
@@ -135,7 +134,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	 * Append functions
 	 * ----------------------------- *)
 	  
-	fun append_ext s = s ^ !target_file_extension
+	val enable_lambda_backend = Flags.lookup_flag_entry "enable_lambda_backend"
+
+	fun append_ext s = s ^ (if !enable_lambda_backend then ".s" else !target_file_extension)
+
 	fun append_o s = s ^ ".o"
 
 	(* --------------------
@@ -196,7 +198,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	      val target_filename = OS.Path.mkAbsolute(target_filename, OS.FileSys.getDir())
               val target_filename_s = append_ext target_filename
 	      val target_filename_o = append_o target_filename
-	      val _ = Compile.emit {target=target,filename=target_filename_s}
+	      val _ = Execution.emit {target=target,filename=target_filename_s}
 	      val _ = assemble (target_filename_s, target_filename_o)
 	  in target_filename_o
 	  end
@@ -207,11 +209,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	 * linking. 
 	 * ------------------------------------------------------------- *)
 
-	structure EATable : sig type table
-				val mk : unit -> table
-				val look : table * Compile.EA -> bool
-				val insert : table * Compile.EA -> unit
-			    end =
+	structure labelTable : sig type table
+				   val mk : unit -> table
+				   val look : table * Labels.label -> bool
+				   val insert : table * Labels.label -> unit
+			       end =
 	  struct
 	    type table = (string list) Array.array
 	    val table_size = 1009
@@ -227,36 +229,30 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		    | f (x::xs) = a=x orelse f xs 
 	      in f l
 	      end
-	    fun look (table,ea) =
-	      let val s = Compile.pp_EA ea
+	    fun look (table,lab) =
+	      let val s = Labels.pr_label lab
 		  val h = hash s
 		  val l = Array.sub(table,h)
 	      in member s l
 	      end
-	    fun insert (table,ea) = 
-	      let val s = Compile.pp_EA ea
+	    fun insert (table,lab) = 
+	      let val s = Labels.pr_label lab
 		  val h = hash s
 		  val l = Array.sub(table,h)
 	      in if member s l then ()
 		 else Array.update(table,h,s::l)
 	      end
-(*	    fun reset () =
-	      let fun loop 0 = ()
-		    | loop i = Array.update(table,i-1,nil)
-	      in loop table_size
-	      end 
-*)
 	  end
 
-	fun unsafe(tf,li) = Compile.unsafe_linkinfo li
-	fun exports(tf,li) = Compile.exports_of_linkinfo li
-	fun imports(tf,li) = Compile.imports_of_linkinfo li
+	fun unsafe(tf,li) = Execution.unsafe_linkinfo li
+	fun exports(tf,li) = Execution.exports_of_linkinfo li
+	fun imports(tf,li) = Execution.imports_of_linkinfo li
 	fun dead_code_elim tfiles_with_linkinfos = 
 	  let 
 	    val _ = pr_debug_linking "[Link time dead code elimination begin...]\n"
-	    val table = EATable.mk()
-	    fun require eas : unit = List.app (fn ea => EATable.insert(table,ea)) eas
-	    fun required eas : bool = foldl (fn (ea,acc) => acc orelse EATable.look(table,ea)) false eas
+	    val table = labelTable.mk()
+	    fun require labs : unit = List.app (fn lab => labelTable.insert(table,lab)) labs
+	    fun required labs : bool = foldl (fn (lab,acc) => acc orelse labelTable.look(table,lab)) false labs
 	    fun reduce [] = []
 	      | reduce (obj::rest) = 
 	      let val rest' = reduce rest
@@ -302,13 +298,13 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  let val tfiles_with_linkinfos = dead_code_elim tfiles_with_linkinfos
 	      val linkinfos = map #2 tfiles_with_linkinfos
 	      val target_files = map #1 tfiles_with_linkinfos
-	      val eas = map Compile.code_label_of_linkinfo linkinfos
+	      val labs = map Execution.code_label_of_linkinfo linkinfos
 	      val extobjs = elim_dupl (extobjs,[])
-	      val target_link = Compile.generate_link_code eas
+	      val target_link = Execution.generate_link_code labs
 	      val linkfile = pmdir() ^ "link_objects"
 	      val linkfile_s = append_ext linkfile
 	      val linkfile_o = append_o linkfile
-	      val _ = Compile.emit {target=target_link, filename=linkfile_s}
+	      val _ = Execution.emit {target=target_link, filename=linkfile_s}
 	      val _ = assemble (linkfile_s, linkfile_o)
 	  in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
 	    if !(Flags.lookup_flag_entry "delete_target_files") 
@@ -329,7 +325,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
       struct
 	val empty = EMPTY_MODC
 	val seq = SEQ_MODC
-        val mk_modcode = NOTEMITTED_MODC
+        fun mk_modcode(t,l,f) = NOTEMITTED_MODC(t,l,f)
 
 	fun exist EMPTY_MODC = true
 	  | exist (SEQ_MODC(mc1,mc2)) = exist mc1 andalso exist mc2

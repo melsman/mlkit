@@ -40,14 +40,14 @@ functor IntModules(structure Name : NAME
 		   structure CompileBasis : COMPILE_BASIS
 		     sharing type CompileBasis.CompileBasis = ManagerObjects.CompileBasis 
 
-		   structure Compile : COMPILE
-		     sharing type Compile.CEnv = ManagerObjects.CEnv
-		     sharing type Compile.CompileBasis = ManagerObjects.CompileBasis
-		     sharing type Compile.linkinfo = ManagerObjects.linkinfo
-		     sharing type Compile.target = ManagerObjects.target
+		   structure Execution : EXECUTION
+		     sharing type Execution.CEnv = ManagerObjects.CEnv
+		     sharing type Execution.CompileBasis = ManagerObjects.CompileBasis
+		     sharing type Execution.linkinfo = ManagerObjects.linkinfo
+		     sharing type Execution.target = ManagerObjects.target
 
 		   structure TopdecGrammar : TOPDEC_GRAMMAR
-		     sharing type TopdecGrammar.strdec = Compile.strdec
+		     sharing type TopdecGrammar.strdec = Execution.strdec
 		     sharing type TopdecGrammar.strid = CompilerEnv.strid = ModuleEnvironments.strid
 		     sharing type TopdecGrammar.longstrid = CompilerEnv.longstrid = ModuleEnvironments.longstrid
 		     sharing type TopdecGrammar.longtycon = CompilerEnv.longtycon = ModuleEnvironments.longtycon
@@ -155,10 +155,10 @@ functor IntModules(structure Name : NAME
 			   of SOME unitname => unitname
 			    | NONE => fresh_unitname()
 	  val vcg_filename = (* pmdir() ^ *) unitname ^ ".vcg"
-      in case Compile.compile(ce,cb,strdecs,vcg_filename)
-	   of Compile.CodeRes(ce',cb',target,linkinfo) =>
+      in case Execution.compile(ce,cb,strdecs,vcg_filename)
+	   of Execution.CodeRes(ce',cb',target,linkinfo) =>
 	     (ce',cb', ModCode.mk_modcode(target,linkinfo,unitname))
-	    | Compile.CEnvOnlyRes ce' => (ce', CompileBasis.empty, ModCode.empty)
+	    | Execution.CEnvOnlyRes ce' => (ce', CompileBasis.empty, ModCode.empty)
       end
 
     (* funapp_strdec strdec  returns true if strdec 

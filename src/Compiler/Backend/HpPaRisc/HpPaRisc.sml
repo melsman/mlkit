@@ -253,10 +253,10 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
         FUN of label * RiscInst list
       | FN of label * RiscInst list
 
-    type RiscPrg = {top_decls: TopDecl list,
-		    init_code: RiscInst list,
-		    exit_code: RiscInst list,
-		    static_data: RiscInst list}
+    type AsmPrg = {top_decls: TopDecl list,
+		   init_code: RiscInst list,
+		   exit_code: RiscInst list,
+		   static_data: RiscInst list}
 
     (*----------------------------------------------------------*)
     (*                    Pretty printing                       *)
@@ -459,7 +459,7 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
 
       | SEQ _ => die "pp_inst - SEQ"
 
-    fun output_RiscPrg (os,{top_decls,init_code,exit_code,static_data}) =
+    fun output_AsmPrg (os,{top_decls,init_code,exit_code,static_data}) =
       let
 	fun fold ([], acc) = acc
 	  | fold (inst::insts, acc) = "\n"::(pp_inst(inst, fold (insts, acc)))
@@ -484,7 +484,7 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
       end
 
     type StringTree = PP.StringTree
-    fun layout_RiscPrg({top_decls,init_code,exit_code,static_data}) =
+    fun layout_AsmPrg({top_decls,init_code,exit_code,static_data}) =
       let
 	open PP
 	fun layout_risc_inst i = LEAF(concat(pp_inst(i,[])))

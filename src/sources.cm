@@ -21,5 +21,12 @@ Manager/MANAGER.sml
 Manager/Manager.sml
 
 Common/Elaboration.sml
-Common/Execution.sml
+
+Compiler/EXECUTION.sml
+#if defined(KIT_TARGET_X86)
+  Compiler/Backend/X86/ExecutionX86.sml
+#else
+  Compiler/Backend/HpPaRisc/ExecutionHPPA.sml
+#endif
+
 Common/KitCompiler.sml

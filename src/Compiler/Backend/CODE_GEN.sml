@@ -1,29 +1,23 @@
-
+(* Generate Target Code *)
 signature CODE_GEN =
   sig
 
-    (* Generate Target Code
-
-    *)
-
-    type place 
-    type phsize
-    type pp = int
-    type lvar
-    type con
-    type excon
-    type cc
     type label
     type ('sty,'offset,'aty) LinePrg
-    type reg
     type offset = int
-    type StoreTypeSS
+    type StoreTypeCO
     type AtySS
-    type RiscPrg
+    type AsmPrg
 
-    val CG   : {main_lab:label,code:(StoreTypeSS,offset,AtySS) LinePrg,imports:label list,exports:label list} -> RiscPrg
-    val generate_link_code : label list -> RiscPrg
-    val emit : RiscPrg * string -> unit
+    val CG : {main_lab:label,
+	      code:(StoreTypeCO,offset,AtySS) LinePrg,
+	      imports:label list,
+	      exports:label list,
+	      safe:bool} -> AsmPrg
+
+
+    val emit : AsmPrg * string -> unit
+    val generate_link_code : label list -> AsmPrg
   end
 
 
