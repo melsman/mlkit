@@ -2961,11 +2961,11 @@ effects.  One example is found in the
      raise IO.Io {function = fcn^"", name = nam^"", cause = exn} 
 
    fun openIn (f: string) : instream = 
-     {ic=prim("openInStream","openInStream",(f,CannotOpen)), 
+     {ic=prim("openInStream", (f,CannotOpen)), 
       name=f} handle exn => raiseIo "openIn" f exn
 
    fun openOut(f: string): outstream = 
-     {oc=prim("openOutStream","openOutStream",(f,CannotOpen)), 
+     {oc=prim("openOutStream", (f,CannotOpen)), 
       name=f} handle exn => raiseIo "openOut" f exn
 \end{verbatim}
 As explained in Chapter~\ref{exceptions.sec}, 
@@ -7373,26 +7373,30 @@ of the functionality found in this library is programmed in C and
 linked to the Kit runtime system.  The declarations in system
 dependent parts of the library use a special built-in identifier
 called \index{prim@\texttt{prim}}\texttt{prim}, which is declared to have type
-scheme $\forall \alpha \beta .  (\texttt{string} \ast \texttt{string}
-\ast \alpha) \rightarrow \beta$ in the initial basis.  A primitive
+scheme $\forall \alpha \beta .  \texttt{string} 
+\ast \alpha \rightarrow \beta$ in the initial basis.  A primitive
 function is then declared by passing its name to \texttt{prim}.  For
 example, the declaration
 \begin{verbatim}
    fun (s : string) ^ (s' : string) : string = 
-     prim ("concatString", "concatStringProfiling", (s, s'))
+     prim ("concatString", (s, s'))
 \end{verbatim}
 declares string catenation.  The argument and result types are
 explicitly stated so as to give the primitive the correct type scheme.
-The first string \boxml{"concatString"} denotes a C
-function identifier.\footnote{Some primitives (e.g., \boxml{"="} and \boxml{":="}) are
-  recognised and implemented in assembler by the compiler.} For the
-example declaration, the Kit generates a call to the C function \boxml{concatString} with arguments {\tt s} and {\tt s'}. The C
-function must then of course be present at link-time; if not, the Kit will complain. The second
-argument to {\tt prim} is a C function identifier to use---instead of the first---when profiling is
-enabled, see Section~\ref{prof.sec}. A convenient way to declare a C function is to use the
-following scheme:
+The string \boxml{"concatString"} denotes a C function
+identifier.\footnote{Some primitives (e.g., \boxml{"="} and
+  \boxml{":="}) are recognised and implemented in assembler by the
+  compiler.} For the example declaration, the Kit generates a call to
+the C function \boxml{concatString} with arguments {\tt s} and {\tt
+  s'}. The C function must then of course be present at link-time; if
+not, the Kit complains.\footnote{When profiling is enabled, the Kit
+  automatically appends the extension \texttt{Prof} for those
+  functions that take regions (and thus a program point) as argument;
+  see Section~\ref{prof.sec}.}%
+A convenient way to declare a C function is to use the following
+scheme:
 $$\texttt{fun}~ \emph{vid} ~\texttt{(}x_1:\tau_1, \ldots, x_n:\tau_n\texttt{)}
-    : \tau ~\texttt{=} ~\texttt{prim(}\emph{c\_func}, \emph{c\_funcProf}, \texttt{(}
+    : \tau ~\texttt{=} ~\texttt{prim(}\emph{c\_func}, \texttt{(}
   x_1, \ldots, x_n\texttt{)} \texttt{)}
 $$
 The result type $\tau$ must be of the form
@@ -7504,7 +7508,7 @@ Additional arguments holding pointers to pre-allocated space and
 infinite regions are passed to the C function prior to the ML
 arguments. Consider again the ML declaration
 $$\texttt{fun}~ \emph{vid} ~\texttt{(}x_1:\tau_1, \ldots, x_n:\tau_n\texttt{)}
-    : \tau ~\texttt{=} ~\texttt{prim(}\emph{c\_func}, \emph{c\_funcProf}, \texttt{(}
+    : \tau ~\texttt{=} ~\texttt{prim(}\emph{c\_func}, \texttt{(}
   x_1, \ldots, x_n\texttt{)} \texttt{)}
 $$
 \noindent
@@ -7524,8 +7528,8 @@ pre-allocated space and infinite regions as described above.
 The runtime system provides a small set of conversion macros and
 functions for use by C functions that need to convert between ML
 values and C values. Using these conversion macros and functions for
-converting between representations protects you against any future
-change in the representation of ML values. The conversion macros and
+converting between representations protects you against future
+changes in the representation of ML values. The conversion macros and
 functions are declared in the header
 files:\index{Tagging.h@\texttt{Tagging.h}}\index{String.h@\texttt{String.h}}
 \begin{verbatim}
@@ -7610,9 +7614,10 @@ Section~\ref{Cexamples.sec}.
 %--------------------
 \subsection{Booleans}
 %--------------------
-Four constants provide the values of true and false in ML and in
-C. These constants are defined by the following macros:\footnote{Booleans in the
-Kit are tagged even when garbage collection is disabled.}
+Four constants provide the values of true and false in ML and in C.
+These constants are defined by the following macros:\footnote{For
+  historical reasons, booleans in the Kit are tagged even when garbage
+  collection is disabled.}
 \index{mlTRUE@\texttt{mlTRUE}}%
 \index{mlFALSE@\texttt{mlFALSE}}%
 \index{cTRUE@\texttt{cTRUE}}%
@@ -7851,7 +7856,7 @@ declaration:
 \begin{verbatim}
    exception Exn
    fun raiseif0 (arg : int) : unit = 
-     prim("raiseif0", "raiseif0", (arg, Exn))
+     prim("raiseif0", (arg, Exn))
 \end{verbatim}
 If we want the function \texttt{raiseif0} to raise the exception value
 \texttt{Exn} if the argument (\texttt{arg}) is 0 then we use the
@@ -7894,8 +7899,8 @@ point is passed as the last argument:
 \end{tabbing}
 \noindent
 No special version of the C function is needed if it does not allocate
-into infinite regions; in this case, the same C function identifier can be
-passed as the first and second argument to \boxml{prim}.
+into infinite regions; in this case, the same C function can be used
+both when profiling is enabled and disabled.
 
 A program point passed to a C function is an integer; it identifies the
 allocation point that represents the C call in the program, see
@@ -7905,13 +7910,13 @@ The runtime system provides special versions of various allocation
 macros and functions presented earlier in this chapter:
 \index{allocRealProf@\texttt{allocRealProf}}%
 \index{allocRecordMLProf@\texttt{allocRecordMLProf}}%
-\index{convertStringToMLProfiling@\texttt{convertStringToMLProfiling}}%
+\index{convertStringToMLProf@\texttt{convertStringToMLProf}}%
 \begin{verbatim}
    #define allocRealProf(realRho, realPtr, pPoint)
    #define allocRecordMLProf(rhoRec, ssize, recAddr, pPoint)
-   StringDesc *convertStringToMLProfiling(int rhoString, 
-                                          char *cStr, 
-                                          int pPoint);
+   StringDesc *convertStringToMLProf(int rhoString, 
+                                     char *cStr, 
+                                     int pPoint);
 \end{verbatim}
 
 Here is the profiling version of the C function
@@ -8081,7 +8086,7 @@ Auto conversion is enabled by prepending a {\tt @}-character to
 the name of the C function, as in the following example:
 \begin{verbatim}
    fun power_auto(base : int, n : int) : int = 
-     prim ("@power_auto", "@power_auto", (base, n))
+     prim ("@power_auto", (base, n))
 \end{verbatim}
 
 \noindent

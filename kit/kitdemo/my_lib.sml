@@ -8,12 +8,12 @@
  * use the same C function when profiling is enabled. *)
 
 fun power(base : int, n : int) : int = 
-  prim ("power", "power", (base, n))
+  prim ("power", (base, n))
 
 (* We also have a version using auto conversion: *)
 
 fun power_auto(base : int, n : int) : int = 
-  prim ("@power_auto", "@power_auto", (base, n))
+  prim ("@power_auto", (base, n))
 
 (* The function power_real is similar to power, except that the base
  * is now a real. The result type is also a real so an address to
@@ -22,14 +22,14 @@ fun power_auto(base : int, n : int) : int =
  * function can be used when profiling is enabled. *)
 
 fun power_real (base : real, n : int) : real = 
-  prim ("power_real", "power_real", (base, n))
+  prim ("power_real", (base, n))
       
 (* The function print_string_list prints a list of strings on
  * stdout. The result value is unit so the same C function may be used
  * when profiling is enabled. *)
 
 fun print_string_list (string_list : string list) : unit = 
-  prim ("print_string_list", "print_string_list", string_list)
+  prim ("print_string_list", string_list)
 
 (* The function power_exn shows how an exception may be passed and
  * raised in the C function. The result value is a real so the same
@@ -37,7 +37,7 @@ fun print_string_list (string_list : string list) : unit =
 
 exception Power
 fun power_exn (base : real, n : int) : real = 
-  prim ("power_exn", "power_exn", (base, n, Power))
+  prim ("power_exn", (base, n, Power))
 
 (* The function dir shows how we can use UNIX system calls to get the
  * contents of a directory. We also show how the ML exception
@@ -50,7 +50,7 @@ fun power_exn (base : real, n : int) : real =
 
 exception DIR
 fun dir (directory : string) : string list = 
-  prim ("dir", "dirProf", (directory, DIR))
+  prim ("dir", (directory, DIR))
 
 (* The function real_list shows, that an infinite region is passed to
  * the C function to hold the reals. In function power_real an address
@@ -60,8 +60,9 @@ fun dir (directory : string) : string list =
  * necessary because we allocate in three infinite regions. *)
 
 fun real_list () : real list = 
-  prim ("real_list", "real_listProf", ())
+  prim ("real_list", ())
 
-(* The function change_elem exchanges the elements in a pair. *)
+(* The function change_elem exchanges the elements in a pair (no 
+ * sharing). *)
 fun change_elem (p : int*string) : string*int =
-  prim ("change_elem", "change_elem", p)
+  prim ("change_elem", p)
