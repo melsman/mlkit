@@ -116,13 +116,11 @@ functor Parse (structure TopdecGrammar : TOPDEC_GRAMMAR
       in
         if sameToken(firstToken, eof)
         then
-          (if !Flags.DEBUG_PARSING then BasicIO.println "**EOF**" else ();
-           PS_EOF
+          (PS_EOF
           )
         else if sameToken(firstToken, sc)
         then
-          (if !Flags.DEBUG_PARSING then BasicIO.println "**SC**" else ();
-           parseStream(STATE rest)
+          (parseStream(STATE rest)
           )
         else
           (let
@@ -136,9 +134,6 @@ functor Parse (structure TopdecGrammar : TOPDEC_GRAMMAR
                     | GrammarUtils.LAYERPAT_ERROR positions =>
                         raise ESCAPE ("Bad layered pattern", positions)
            in
-             if !Flags.DEBUG_PARSING
-             then BasicIO.println "**SUCCESS**"
-             else ();
              PS_SUCCESS(topdec, STATE lazyStream')
            end
           ) handle ESCAPE (text, (lPos, rPos)) =>

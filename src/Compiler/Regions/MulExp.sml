@@ -365,7 +365,7 @@ struct
      the program to see whether it will result in a dangling pointer.
 
      A lambda abstraction fn pat => e only gives rise to a dangling pointer
-     if there is has a free program variable which in its type scheme has
+     if there is a free program variable which in its type scheme has
      a free region variable whose level is greater than the level of the
      effect variable associated with the fn. 
 
@@ -394,7 +394,9 @@ struct
                   SOME (_,_,sigma,p,_,_) =>
                     (case bad_rhos(fn_level, p:: R.frv_sigma sigma) of
                        [] => acc
-                     | l  => (lvar,(sigma,p), l) :: acc)
+                     | l  => (print ("Lvar " ^ Lvar.pr_lvar lvar ^ " has a type scheme with " ^ 
+				     "a region variable with higher level than the epsilon of the function."); 
+			      (lvar,(sigma,p), l) :: acc))
                 | NONE => die "bad_lvars: lvar not in scope")
                [] lvars
 
@@ -425,16 +427,20 @@ struct
         val bad_excon_lines = 
              map (fn (excon,(tau,p), bad_rhos) => concat["   " ^ Excon.pr_excon excon^ ": " ^ show_rhos bad_rhos ^ "\n"])
                  l2
-    in Flags.warn
-         (Report.flatten (map line (source_identification ::
-				    (bad_lvar_lines @ bad_excon_lines))))
+    in 
+       Report.print (Report.flatten (map line (source_identification ::
+					       (bad_lvar_lines @ bad_excon_lines))));
+       Crash.unimplemented "Potential dangling pointer! Garbage collection is unsound in this case. \n \
+	\ Please disable garbage collection or alter your program so that no non-live values \n \
+	\ escape in closures."
     end
 
+  val gc_p = Flags.is_on0 "garbage_collection"
 
   fun warn_dangling_pointers (TE:regionStatEnv, 
                    (PGM{expression = TR(e,_,_,_), ...}):('place,'a,'b) LambdaPgm,
                    get_place: 'place -> place):unit = 
-    if not(Flags.is_on "garbage_collection") 
+    if not(gc_p()) 
       then ()
     else      
       let
@@ -446,8 +452,8 @@ struct
 			   RSE.declareLvar(lvar, (true,true,R.FORALL(tyvars,rhos,epss,Type), get_place shared_clos , NONE, NONE), TE'))
 			TE functions
 	
-	         in
-		     warn_dangle_trip TE' scope
+	         in warn_dangle_trip TE' scope;
+		   app (warn_dangle_trip TE' o #bind) functions 
 	         end
 
              | FN{pat,body,
@@ -474,7 +480,7 @@ struct
                    (warn_dangle_trip TE bind;
                     let 
                         val TE' = foldr (fn ((lvar,_,tyvars,ref epss,tau,rho,_), TE') => 
-			   RSE.declareLvar(lvar, (true,true,R.FORALL(tyvars,[],epss,tau), rho , NONE, NONE), TE'))
+					 RSE.declareLvar(lvar, (true,true,R.FORALL(tyvars,[],epss,tau), rho , NONE, NONE), TE'))
                            TE
             		   pat
                    in warn_dangle_trip TE' scope

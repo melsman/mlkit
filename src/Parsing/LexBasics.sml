@@ -121,17 +121,11 @@ functor LexBasics(structure BasicIO: BASIC_IO
 	  let
 	    val ref(SOURCE_TEXT{lines, ...}) = sourceTextRef
 	  in
-	    if !Flags.DEBUG_ERRORPRINT then pr n else ();
 	    #line(List.nth (lines,n-1))
 	  end
       in
 	POSITION(fn () =>
 	  let
-	    val _ =
-	      if !Flags.DEBUG_ERRORPRINT then
-		 BasicIO.println("positionFn(absPos=" ^ Int.toString absPos ^ ")")
-	      else ()
-
 	    val ref(SOURCE_TEXT{filename, lines}) = sourceTextRef
 
 	    fun search(n, previousLine, (L as {absCharacter, line}) :: rest) =
@@ -234,13 +228,6 @@ functor LexBasics(structure BasicIO: BASIC_IO
 		of nil => 0
 		 | {absCharacter, line} :: _ => absCharacter + size line
 
-	    val _ =
-	      if !Flags.DEBUG_ERRORPRINT then
-		BasicIO.println("absPos(" ^ String.toString line ^ ") = "
-				^ Int.toString absPos
-			       )
-	      else ()
-
 	   (* The new list of lines: *)
 	    val newLines = rev({absCharacter=absPos, line=line} :: oldLines)
 
@@ -263,15 +250,6 @@ functor LexBasics(structure BasicIO: BASIC_IO
 
     fun highlight(line, column, width) =
       let
-	val _ =
-	  if !Flags.DEBUG_ERRORPRINT then
-	    BasicIO.println("highlight " ^ String.toString line
-			    ^ ", " ^ Int.toString column
-			    ^ " =-> " ^ Int.toString width
-			   )
-	  else
-	    ()
-
 	fun drop_nl [] = []
 	  | drop_nl (#"\n"::rest) = drop_nl rest
 	  | drop_nl (c::rest) = c :: drop_nl rest

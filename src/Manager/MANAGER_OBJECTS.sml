@@ -41,8 +41,10 @@ signature MANAGER_OBJECTS =
       end
 
     type filename (*= string*)
-    val mk_filename: string -> filename
-    val filename_to_string: filename -> string
+    val mk_filename : string -> filename
+    val filename_to_string : filename -> string
+    val pmdir : unit -> string (* based on flags, returns a relative path to a directory
+				* in which to store object code. *)
 
     type funstamp and funid
     structure FunStamp :

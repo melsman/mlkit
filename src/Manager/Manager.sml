@@ -38,11 +38,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		    ) : MANAGER =
   struct
 
-    structure Basis = ManagerObjects.Basis
-    structure FunStamp = ManagerObjects.FunStamp
-    structure ModCode = ManagerObjects.ModCode
-    structure Repository = ManagerObjects.Repository
-    structure IntBasis = ManagerObjects.IntBasis
+    structure MO = ManagerObjects
+    structure Basis = MO.Basis
+    structure FunStamp = MO.FunStamp
+    structure ModCode = MO.ModCode
+    structure Repository = MO.Repository
+    structure IntBasis = MO.IntBasis
     structure ElabBasis = ModuleEnvironments.B
     structure ErrorCode = ParseElab.ErrorCode
 
@@ -53,11 +54,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     type prjid = string
     type longprjid = string
 
-
     fun die s = Crash.impossible ("Manager." ^ s)
 
     val region_profiling = Flags.lookup_flag_entry "region_profiling"
-    val gc_flag          = Flags.lookup_flag_entry "garbage_collection"
 
     exception PARSE_ELAB_ERROR of ErrorCode.ErrorCode list
     fun error (s : string) = (print ("\nError: " ^ s ^ ".\n\n"); raise PARSE_ELAB_ERROR[])
@@ -82,14 +81,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * Unit names, file names and directories
      * ----------------------------------------- *)
 
-    type filename = ManagerObjects.filename   (* At some point we should use *)
+    type filename = MO.filename   (* At some point we should use *)
                                                   (* abstract types for these things *)
-    type funid = ManagerObjects.funid             (* so that we correctly distinguish *)
-     and funstamp = ManagerObjects.funstamp       (* unit names and file names. *)
+    type funid = MO.funid             (* so that we correctly distinguish *)
+     and funstamp = MO.funstamp       (* unit names and file names. *)
 
     fun unitname_to_logfile unitname = unitname ^ ".log"
-    fun unitname_to_sourcefile unitname = ManagerObjects.mk_filename unitname (*mads ^ ".sml"*)
-    fun filename_to_unitname (f:filename) : string = ManagerObjects.filename_to_string f
+    fun unitname_to_sourcefile unitname = MO.mk_filename unitname (*mads ^ ".sml"*)
+    fun filename_to_unitname (f:filename) : string = MO.filename_to_string f
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
@@ -112,7 +111,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			    \protected existing log file?)\n" ^ msg)
 	       fun log_init() = (Flags.log := log_stream;
 				 TextIO.output (log_stream, "\n\n********** "
-					 ^ ManagerObjects.filename_to_string source_file ^ " *************\n\n"))
+					 ^ MO.filename_to_string source_file ^ " *************\n\n"))
 	       fun log_cleanup() = (Flags.log := old_log_stream; TextIO.closeOut log_stream;
 				    TextIO.output (TextIO.stdOut, "[wrote log file:\t" ^ log_file ^ "]\n"))
 	   in log_init();
@@ -397,8 +396,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       end
 
 
-    type Basis = ManagerObjects.Basis
-    type modcode = ManagerObjects.modcode
+    type Basis = MO.Basis
+    type modcode = MO.modcode
 
     (* Matching of export elaboration and interpretation bases to
      * those in repository for a given funid *)
@@ -437,7 +436,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       let val _ = Timing.reset_timings()
 	 val _ = Timing.new_file punit
 	 val (infB, elabB, opaq_env, topIntB) = Basis.un B
-	 val unitname = (filename_to_unitname o ManagerObjects.funid_to_filename) funid
+	 val unitname = (filename_to_unitname o MO.funid_to_filename) funid
 	 val log_cleanup = log_init unitname
 	 val _ = Name.bucket := []
 	 val _ = Flags.reset_warnings ()
@@ -531,10 +530,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun build_punit(absprjid:absprjid,B: Basis, punit : string, clean : bool) : Basis * modcode * bool * Time.time =
       (* The bool is a `clean' flag;  *)
       let
-          val funid = ManagerObjects.funid_from_filename(ManagerObjects.mk_filename punit)
+          val funid = MO.funid_from_filename(MO.mk_filename punit)
           val (modtime, funstamp_now) = 
 	    case (SOME(OS.FileSys.modTime punit) handle _ => NONE, 
-		  FunStamp.from_filemodtime(ManagerObjects.mk_filename punit))   (*always get funstamp before reading content*)
+		  FunStamp.from_filemodtime(MO.mk_filename punit))   (*always get funstamp before reading content*)
 	      of (SOME modtime, SOME fs) => (modtime, fs)
 	       | _ => error ("The program unit " ^ quot punit ^ " does not exist")
 	  exception CAN'T_REUSE of string
@@ -581,19 +580,24 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun Basis_plus (B,B') = Basis.plus(B,B')		    
 
-    fun maybe_create_dir d : unit =
+    fun maybe_create_dir d : unit = 
       if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
 	if OS.FileSys.isDir d then ()
 	else error ("The file " ^ quot d ^ " is not a directory")
-      else (OS.FileSys.mkDir d handle _ => ())
-(* error ("I cannot create directory " ^ quot d ^ " --- the current directory is " ^ OS.FileSys.getDir())
-*)
-    fun maybe_create_PM_dir() : unit =
-      (maybe_create_dir "PM"; 
-       maybe_create_dir "PM/Prof"; 
-       maybe_create_dir "PM/NoProf";
-       maybe_create_dir "PM/GC";
-       maybe_create_dir "PM/GCProf")
+      else ((OS.FileSys.mkDir d;()) handle _ => 
+	    error ("I cannot create directory " ^ quot d ^ " --- the current directory is " ^ 
+		   OS.FileSys.getDir()))
+
+    fun maybe_create_pmdir() =
+      let val dirs = String.tokens (fn c => c = #"/") (MO.pmdir())
+	fun append_path "" d = d
+	  | append_path p d = p ^ "/" ^ d
+	fun loop (p, nil) = ()
+	  | loop (p, d::ds) = let val p = append_path p d
+			      in maybe_create_dir p; loop(p, ds)
+			      end
+      in loop("", dirs)
+      end
 
     fun change_dir p : {cd_old : unit -> unit, file : string} =
       let val {dir,file} = OS.Path.splitDirFile p
@@ -619,7 +623,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun build_unitid(absprjid, B, unitid, clean, modtimes) 
       : Basis * modcode * bool * (string * Time.time) list =  
       let val {cd_old, file=unitid} = change_dir unitid
-      in let val _ = maybe_create_PM_dir()
+      in let val _ = maybe_create_pmdir()
 	     val (B', modc, clean, modtime) = build_punit (absprjid, B, unitid, clean)
 	 in cd_old(); (B', modc, clean, (unitid,modtime)::modtimes)
 	 end handle E => (cd_old(); raise E)
@@ -657,7 +661,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       fun drop_toplevel B = 
 	let val (_, _, phi, tintB)  = Basis.un B	  
 	    val (_, _, _, tcb) = IntBasis.un tintB
-	    val tintB' = IntBasis.mk(ManagerObjects.IntFunEnv.empty, ManagerObjects.IntSigEnv.empty, emptyCEnv, tcb)
+	    val tintB' = IntBasis.mk(MO.IntFunEnv.empty, MO.IntSigEnv.empty, emptyCEnv, tcb)
 	in Basis.mk(emptyInfB, ElabBasis.empty, phi, tintB')
 	end
     end
@@ -683,7 +687,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		build_body(absprjid, Basis_plus(B,B1), body2, clean, modtimes, modc1)
 	      val _ = case B2_opt
 			of SOME _ => ()
-			 | NONE => ManagerObjects.ModCode.mk_uoFileList (absprjid,modc1)
+			 | NONE => MO.ModCode.mk_uoFileList (absprjid,modc1)
 	      val B1' = drop_toplevel B1
 	  in case body3
 	       of EMPTYbody => (Basis_plus_opt'(B1', B2_opt), modc, clean, modtimes)
@@ -713,49 +717,39 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	     in (NONE, ModCode.seq(modc,modc1), clean, modtimes)
 	     end
 
-      (* Write a dummy file for the project into the `PM/Prof' or `PM/NoProf' directory. The date of this dummy
-       * file tells when the project was last modified. *)
+    (* Write a dummy file for the project into the actual pm-directory. The date of this dummy
+     * file tells when the project was last modified. *)
 
     fun output_date_file date_file =
-      let val os = TextIO.openOut date_file
+      let val _ = maybe_create_pmdir()
+	  val os = TextIO.openOut date_file
       in TextIO.output(os, "date"); TextIO.closeOut os
       end
 
     val older = Time.<
 
-
-      (* We use two schemes for avoiding unnecessary recompilation. First, we use the modification time of a source
-       * to avoid recompilation when nothing that comes earlier in a project has changed. A `clean' flag is used
-       * to denote that nothing that comes earlier in a project has changed. Note that projects are closed, so
-       * initially, when building a project, the clean flag is true. For each project file `file.pm' we associate
-       * a dummy date file `file.pm.date' in the `PM/Prof' or `PM/NoProf' directory. The clean flag is preserved if
-       *    (1) file.pm > file.pm.date
-       *    (2) building project f.pm returns true, for all f.pm \in file.pm
-       *    (3) f.pm.date > file.pm.date, for all f.pm \in file.pm
-       * Now, when processing the body of the project the clean flag is preserved until the modification time
-       * of a source is different from (newer than) the modification time found in the repository.
-       *
-       * Second, if the first approach fails we use enrichment to tell if the source actually depends on the 
-       * changes.
-       *)
-
-      (* The result of building a project is propagated to other projects. We use a project map for this.
-       *
-       *       prjid     ::= name.pm
-       *       longprjid ::= prjid | name/longprjid
-       *       absprjid  ::= /longprjid
-       *)
-
-    (* ----------------------------------------------------
-     * Determine where to put target files; if profiling is
-     * enabled then we put target files into the PM/Prof/
-     * directory; otherwise, we put target files into the
-     * PM/NoProf/ directory.
-     * ---------------------------------------------------- *)
-
-    fun pmdir() = 
-      if !region_profiling then if !gc_flag then "PM/GCProf/" else "PM/Prof/"
-      else if !gc_flag then "PM/GC/" else "PM/NoProf/"
+    (* We use two schemes for avoiding unnecessary recompilation. First, we use the modification time of a source
+     * to avoid recompilation when nothing that comes earlier in a project has changed. A `clean' flag is used
+     * to denote that nothing that comes earlier in a project has changed. Note that projects are closed, so
+     * initially, when building a project, the clean flag is true. For each project file `file.pm' we associate
+     * a dummy date file `file.pm.date' in the `PM/Prof' or `PM/NoProf' directory. The clean flag is preserved if
+     *
+     *    (1) file.pm > file.pm.date
+     *    (2) building project f.pm returns true, for all f.pm \in file.pm
+     *    (3) f.pm.date > file.pm.date, for all f.pm \in file.pm
+     *
+     * Now, when processing the body of the project the clean flag is preserved until the modification time
+     * of a source is different from (newer than) the modification time found in the repository.
+     *
+     * Second, if the first approach fails we use enrichment to tell if the source actually depends on the 
+     * changes.
+     *
+     * The result of building a project is propagated to other projects. We use a project map for this.
+     *
+     *       prjid     ::= name.pm
+     *       longprjid ::= prjid | name/longprjid
+     *       absprjid  ::= /longprjid
+     *)
 
     val strip_install_dir = ModuleEnvironments.strip_install_dir
 
@@ -777,9 +771,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     (* Add basislib project if auto import is enabled *)
 
+    val import_basislib = Flags.lookup_flag_entry "import_basislib"
+
     fun maybe_add_basislib (absprjid:absprjid) (imports:absprjid list) : absprjid list = 
       let val absprjid_basislib = ModuleEnvironments.mk_absprjid(!Flags.basislib_project)
-      in if !Flags.auto_import_basislib andalso absprjid <> absprjid_basislib 
+      in if !import_basislib andalso absprjid <> absprjid_basislib 
 	   andalso not(member absprjid_basislib imports) then absprjid_basislib :: imports
 	 else imports
       end 
@@ -802,7 +798,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 (*             val _ = (testout("Parsed project:\n"); testouttree(layout_prj prj); testout "\n") *)
 	     val imports = maybe_add_basislib absprjid imports
 	     val prj = {imports=imports,extobjs=extobjs,body=body}
-	     val prjid_date_file = pmdir() ^ prjid ^ ".date"
+	     val prjid_date_file = MO.pmdir() ^ prjid ^ ".date"
 	     val clean = older (OS.FileSys.modTime prjid, OS.FileSys.modTime prjid_date_file) handle _ => false
 (*	     val _ = print (absprjid_s ^ ": clean0 " ^ Bool.toString clean ^ "\n") *)
 	     val _ = if clean then () else local_check_project (absprjid, prj)
@@ -831,20 +827,19 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
 	     val clean = foldl (fn (absprjid':absprjid, clean) => clean andalso
 				let val {dir,file} = OS.Path.splitDirFile(ModuleEnvironments.absprjid_to_string absprjid')
-				    val absprjid'_date = OS.Path.concat(dir,pmdir() ^ file ^ ".date")
+				    val absprjid'_date = OS.Path.concat(dir, MO.pmdir() ^ file ^ ".date")
 				in older (OS.FileSys.modTime absprjid'_date, OS.FileSys.modTime prjid_date_file) handle _ => false
 				end) clean imports
 
 (*	     val _ = print (absprjid_s ^ ": clean2 " ^ Bool.toString clean ^ "\n") *)
 	     val (B'_opt, modc, clean, modtimes) = build_body (absprjid, B, body, clean, [], modc)
 (*	       handle x => (testout "Basis at failing call to build_body:\n";
-			    testouttree(ManagerObjects.Basis.layout B); testout"\n"; raise x) 
+			    testouttree(MO.Basis.layout B); testout"\n"; raise x) 
 *)
 
 (*	     val _ = print (absprjid_s ^ ": clean3 " ^ Bool.toString clean ^ "\n") *)
 	 in 
-	    if clean then () else (maybe_create_PM_dir();
-				   output_date_file prjid_date_file);
+	    if clean then () else output_date_file prjid_date_file;
 	    cd_old();
 	    {res_basis_opt=B'_opt, modc=modc, pmap=pmap, extobjs=extobjs, clean=clean}
 	 end handle E => (cd_old(); raise E)
@@ -867,22 +862,22 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		  end
 	  val emitted_files' = EqSet.fromList (Repository.emitted_files())
     	  val files_to_delete = EqSet.list (EqSet.difference emitted_files emitted_files')
-      in List.app ManagerObjects.SystemTools.delete_file files_to_delete
+      in List.app MO.SystemTools.delete_file files_to_delete
       end
 
     (* -----------------------------
      * Compile a single file 
      * ----------------------------- *)
 
-    fun comp (filepath : string) : unit =
+    fun comp_file (filepath : string) : unit =
       let val _ = Repository.recover()
 	  val emitted_files = EqSet.fromList (Repository.emitted_files())
 	  val absprjid = mk_absprjid_from_path (filepath ^ ".pm")   (* a pseudo project *)
 	    (* make sure that the source file is indeed compiled *)
-	  val _ = Repository.delete_entries (absprjid, ManagerObjects.funid_from_filename(ManagerObjects.mk_filename filepath))
-	  val _ = maybe_create_PM_dir()
+	  val _ = Repository.delete_entries (absprjid, MO.funid_from_filename(MO.mk_filename filepath))
+	  val _ = maybe_create_pmdir()
 	  val (modc_basislib, basis_basislib, extobjs_basislib) = 
-	    if !Flags.auto_import_basislib then 
+	    if !import_basislib then 
 	      let val {modc, res_basis_opt, extobjs, ...} = 
 		build_project{cycleset=[], pmap=[], absprjid= ModuleEnvironments.mk_absprjid(!Flags.basislib_project), modc=ModCode.empty}
 	      in (modc, Basis_plus_opt(Basis.initial,res_basis_opt), extobjs)
@@ -909,14 +904,42 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 ) handle E => (log_cleanup(); raise E)
       end 
 
+    datatype source = SML of string | PM of string | WRONG_FILETYPE of string
+    fun determine_source (s:string) : source = 
+      case OS.Path.ext s
+	of SOME "sml" => SML s
+	 | SOME "sig" => SML s
+	 | SOME "pm" => PM s
+	 | SOME ext => WRONG_FILETYPE ("File name must have extension `.pm', `.sml', or `.sig'.\n" ^
+				       "The file name you gave me has extension `" ^ ext ^ "'.")
+	 | NONE => WRONG_FILETYPE ("File name must have extension `.pm', `.sml', or `.sig'.\n" ^
+				   "The file name you gave me has no extension.")
+	  
+    fun comp0 file : unit =
+      case determine_source file
+	of SML s => comp_file s
+	 | PM s => build s
+	 | WRONG_FILETYPE s => (print (s ^ "\n"); raise PARSE_ELAB_ERROR nil)
 
-    (* initialize Flags.build_ref to contain build (for interaction), etc.
+    val timingfile = "KITtimings"
+    fun comp file : unit =
+      if Flags.is_on "compiler_timings" then
+	let val os = (TextIO.openOut (timingfile)
+		      handle _ => (print ("Error: I could not open file `" ^ timingfile ^ "' for writing");
+				   raise PARSE_ELAB_ERROR nil))
+	  fun close () = (TextIO.closeOut os; 
+			  Flags.timings_stream := NONE;
+			  print ("[wrote compiler timings file: "  ^ timingfile ^ "]\n"))
+	in Flags.timings_stream := SOME os;
+	  comp0 file handle E => (close(); raise E);
+	    close()
+	end
+      else comp0 file
+
+    (* initialize Flags.comp_ref to contain build (for interaction), etc.
      * See comment in FLAGS.*)
-
     fun wrap f a = (f a) handle PARSE_ELAB_ERROR _ => 
       TextIO.output(TextIO.stdOut, "\n ** Parse or elaboration error occurred. **\n")
-
-    val _ = Flags.build_project_ref := wrap build
     val _ = Flags.comp_ref := wrap comp
 
   end

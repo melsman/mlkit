@@ -1,17 +1,21 @@
 
 functor ElabRepository(structure Name : NAME
-		       structure FinMap : FINMAP
 		       structure TyName : TYNAME
 		       structure InfixBasis : INFIX_BASIS
 		       structure OpacityEnv : OPACITY_ENV
-		       structure Flags : FLAGS
 		       eqtype funid
+                       eqtype absprjid
+		       structure RepositoryFinMap : MONO_FINMAP
+			 where type dom = absprjid * funid
+		       structure Flags : FLAGS
 		       type ElabBasis
 		       type longstrid
-                       eqtype absprjid
 		       val strip_install_dir' : absprjid * funid -> absprjid * funid
 		       structure Crash : CRASH) : ELAB_REPOSITORY =
   struct
+
+    structure TyName = TyName
+    structure RM = RepositoryFinMap
 
     type name = Name.name
      and InfixBasis = InfixBasis.Basis
@@ -22,23 +26,22 @@ functor ElabRepository(structure Name : NAME
 
     val region_profiling : bool ref = Flags.lookup_flag_entry "region_profiling"
 
-    structure TyName = TyName
-
     fun die s = Crash.impossible ("ElabRepository."^s)
 
     val empty_infix_basis : InfixBasis = InfixBasis.emptyB
     val empty_opaq_env : opaq_env = OpacityEnv.empty
 
     type absprjid = absprjid
-    type elabRep = ((absprjid * funid) * bool, (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
-						InfixBasis * ElabBasis * opaq_env) list) FinMap.map ref
+    type elab_entry = (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * 
+		       name list * InfixBasis * ElabBasis * opaq_env)
+    type elabRep = elab_entry list RM.map ref
       (* the bool is true if profiling is enabled *)
 
-    val elabRep : elabRep = ref FinMap.empty
+    val elabRep : elabRep = ref RM.empty
 
-    fun clear() = elabRep := FinMap.empty
+    fun clear() = elabRep := RM.empty
 
-    fun delete_rep rep absprjid_and_funid = case FinMap.remove ((absprjid_and_funid, !region_profiling), !rep)
+    fun delete_rep rep absprjid_and_funid = case RM.remove (absprjid_and_funid, !rep)
 					      of SOME res => rep := res
 					       | _ => ()
 
@@ -51,27 +54,27 @@ functor ElabRepository(structure Name : NAME
 	    | find (entry::entries, n) = 
 	    if (all_gen o exportnames_from_entry) entry then SOME(n,entry)
 	    else find(entries,n+1)
-      in case FinMap.lookup (!rep) (strip_install_dir' absprjid_and_funid, !region_profiling)
+      in case RM.lookup (!rep) (strip_install_dir' absprjid_and_funid)
 	   of SOME entries => find(entries, 0)
 	    | NONE => NONE
       end
 
     fun add_rep rep (absprjid_and_funid,entry) : unit =
       rep := let val r = !rep 
-                 val i = (strip_install_dir' absprjid_and_funid, !region_profiling)
-	     in case FinMap.lookup r i
-		  of SOME res => FinMap.add(i,res @ [entry],r)
-		   | NONE => FinMap.add(i,[entry],r)
+                 val i = strip_install_dir' absprjid_and_funid
+	     in case RM.lookup r i
+		  of SOME res => RM.add(i,res @ [entry],r)
+		   | NONE => RM.add(i,[entry],r)
 	     end
 
     fun owr_rep rep (absprjid_and_funid,n,entry) : unit =
       rep := let val r = !rep
-                 val i = (strip_install_dir' absprjid_and_funid, !region_profiling)
+                 val i = strip_install_dir' absprjid_and_funid
 		 fun owr(0,entry::res,entry') = entry'::res
 		   | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
 		   | owr _ = die "owr_rep.owr"
-	     in case FinMap.lookup r i
-		  of SOME res => FinMap.add(i,owr(n,res,entry),r)
+	     in case RM.lookup r i
+		  of SOME res => RM.add(i,owr(n,res,entry),r)
 		   | NONE => die "owr_rep.NONE"
 	     end
 
@@ -82,6 +85,6 @@ functor ElabRepository(structure Name : NAME
     fun recover() =
       List.app 
       (List.app (fn entry => List.app Name.mark_gen (#5 entry)))
-      (FinMap.range (!elabRep))
+      (RM.range (!elabRep))
 
   end

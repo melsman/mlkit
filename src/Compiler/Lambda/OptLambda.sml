@@ -1436,9 +1436,6 @@ functor OptLambda(structure Lvars: LVARS
 	      (case LvarMap.lookup env lvar' 
 	         of SOME (FIXBOUND(tyvars,Type)) => 
 		   let val lv = Lvars.newLvar()
-		       val _ = if !Flags.DEBUG_OPTIMISER then
-			         log ("inverse_eta: " ^ (Lvars.pr_lvar lvar'))
-		               else ()
                        val subst = case instances' of [] => mk_subst (fn () => "inverse_eta") ([],[]) 
                                       | _ => mk_subst (fn () => "inverse_eta") (tyvars,instances')
                         (* The above case analysis caters for the fact that the 

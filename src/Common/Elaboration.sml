@@ -37,14 +37,23 @@ functor Tools(): TOOLS =
     structure BasicIO = BasicIO()
     structure Crash = Crash(structure BasicIO = BasicIO)
     structure Report = Report(structure BasicIO = BasicIO)
-    structure Flags = Flags(structure Crash = Crash
-			    structure Report = Report)
     structure Timestamp = Timestamp()
 
-    structure PrettyPrint = PrettyPrint(structure Report = Report
-					structure Crash = Crash
-                                        structure Flags = Flags
-				       )
+    local
+      val raggedRight = ref true
+      val colwidth = ref 200
+    in
+      structure PrettyPrint = PrettyPrint(structure Report = Report
+					  structure Crash = Crash
+					  val raggedRight = raggedRight
+					  val colwidth = colwidth)
+      structure Flags = Flags(structure Crash = Crash
+			      structure Report = Report
+			      structure PP = PrettyPrint
+			      val raggedRight = raggedRight
+			      val colwidth = colwidth)
+    end
+
     structure IntFinMap = IntFinMap(structure Report = Report
 				    structure PP = PrettyPrint
 				   )
@@ -493,6 +502,9 @@ signature ELABORATION =
       sharing type ElabRepository.opaq_env = Basics.OpacityEnv.opaq_env
       sharing ElabRepository.TyName = Basics.TyName
 
+    structure RepositoryFinMap : MONO_FINMAP
+      where type dom = Basics.ModuleEnvironments.absprjid * Basics.FunId.funid
+
     structure ElabTopdec : ELABTOPDEC
       sharing type ElabTopdec.StaticBasis = ElabRepository.ElabBasis
       sharing type ElabTopdec.StringTree = Basics.Tools.PrettyPrint.StringTree
@@ -534,7 +546,7 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
       structure AllInfo = Basics.AllInfo
       structure ElabInfo = AllInfo.ElabInfo
     in
-
+      
       structure PostElabDecGrammar =
 	DecGrammar(structure GrammarInfo =
 		     struct
@@ -556,6 +568,51 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 		      structure FunId = Basics.FunId
 		      structure PrettyPrint = Tools.PrettyPrint)
 
+      structure RepositoryFinMap = 
+	struct
+	  type absprjid = Basics.ModuleEnvironments.absprjid
+	  type funid = Basics.FunId.funid
+
+	  fun b_lt (false, true) = true
+	    | b_lt _ = false
+	  fun bs_lt(_,[]) = false
+	    | bs_lt([],_) = true
+	    | bs_lt(b::bs,c::cs) = b_lt(b,c) orelse (b = c andalso bs_lt(bs,cs))
+
+	  structure M = OrderFinMap(structure Report = Basics.Tools.Report
+				    structure PP = Tools.PrettyPrint
+				    structure Order = struct
+							type T = absprjid * funid * bool list
+							fun lt (a,f,bs) (a',f',bs') = Basics.ModuleEnvironments.lt_absprjid(a,a')
+							  orelse (a = a' andalso (Basics.FunId.< (f,f') orelse
+										  f = f' andalso bs_lt (bs,bs')))
+						      end)
+
+	  val prof_p : unit->bool = Basics.Tools.Flags.is_on0 "region_profiling"
+	  val gc_p : unit->bool = Basics.Tools.Flags.is_on0 "garbage_collection"
+	    
+	  fun Tr (a,f) = (a,f,[prof_p(),gc_p()])
+	  fun die s = Basics.Tools.Crash.impossible ("Elaboration.RepositoryFinMap." ^ s)
+
+	  open M
+	  type dom = absprjid * funid
+	  fun singleton (d,b) = M.singleton(Tr d,b)
+	  fun lookup m d = M.lookup m (Tr d)
+	  fun add (d, b, m) = M.add (Tr d, b, m)
+	  fun remove (d,m) = M.remove(Tr d,m)
+	  fun dom m = die "dom"
+	  fun list _ = die "list"
+	  fun fromList _ = die "fromList"
+	  fun ComposeMap _ = die "ComposeMap"
+	  fun Fold _ = die "Fold"
+	  fun filter _ = die "filter"
+	  fun addList _ = die "addList"
+	  fun filter _ = die "filter"
+	  fun restrict _ = die "restrict"
+	  fun layoutMap _ = die "layoutMap"
+	  fun reportMap _ = die "reportMap"
+	end
+
       structure ElabRepository = ElabRepository(structure Name = Basics.Name
 						structure InfixBasis = TopdecParsing.InfixBasis
 						structure TyName = Basics.TyName
@@ -567,7 +624,7 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
                                                 type absprjid = Basics.ModuleEnvironments.absprjid
 						val strip_install_dir' = Basics.ModuleEnvironments.strip_install_dir'
 						structure Crash =  Tools.Crash
-						structure FinMap = Tools.FinMap)
+						structure RepositoryFinMap = RepositoryFinMap)
 
       structure ElabTopdec =
 	ElabTopdec(structure PrettyPrint = Tools.PrettyPrint

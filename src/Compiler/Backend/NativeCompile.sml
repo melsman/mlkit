@@ -224,8 +224,8 @@ functor NativeCompile (include EXECUTION_ARGS
     type offset = SubstAndSimplify.offset
     type StoreTypeCO = SubstAndSimplify.StoreTypeCO
     type Aty = SubstAndSimplify.Aty
-      
-    val gc_flag = Flags.lookup_flag_entry "garbage_collection"
+
+    val gc_p = Flags.is_on0 "garbage_collection"
 
     (* the boolean `safe' is true if the fragment has no side-effects;
      * for dead code elimination. *)
@@ -242,14 +242,14 @@ functor NativeCompile (include EXECUTION_ARGS
 								 code=code,imports=imports,
 								 exports=exports}
 	val all_reg_alloc = Timing.timing "RegAlloc"
-	  (if Flags.is_on "perform_register_allocation" then RegAlloc.ra
+	  (if Flags.is_on "register_allocation" then RegAlloc.ra
 	   else RegAlloc.ra_dummy) all_line_stmt
 
 	val all_fetch_flush = Timing.timing "FetchFlush" FetchAndFlush.IFF all_reg_alloc
 	val all_calc_offset = Timing.timing "CalcOffset" CalcOffset.CO all_fetch_flush
 
 	val all_calc_offset_with_bv = 
-	  if !gc_flag then Timing.timing "CBV" CalcOffset.CBV all_calc_offset
+	  if gc_p() then Timing.timing "CBV" CalcOffset.CBV all_calc_offset
 	  else all_calc_offset
 
 	val {main_lab, code, imports, exports, ...} = 

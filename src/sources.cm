@@ -1,9 +1,9 @@
 Group 
 
-structure KitX86
-structure KitDummy
-structure KitHPPA
-structure KitKAM
+functor KitX86
+functor KitDummy
+functor KitHPPA
+functor KitKAM
 
 is
 

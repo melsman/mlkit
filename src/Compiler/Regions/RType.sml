@@ -63,10 +63,8 @@ struct
   (* details of runtype are exploited in SpreadDataType.infer_arity_ty *)
 
   local open TyName
-        val unbox_datatypes = Flags.lookup_flag_entry "unbox_datatypes"
         fun tyname_unboxed tn =                                     (* NB: unit is also unboxed *)
-	  eq(tn, tyName_INT) orelse eq(tn, tyName_BOOL) orelse
-	  (!unbox_datatypes andalso eq(tn, tyName_LIST))
+	  eq(tn, tyName_INT) orelse eq(tn, tyName_BOOL) orelse eq(tn, tyName_LIST)
   in
     fun runtype (CONSTYPE(tn, _, _, _)) =  
       if tyname_unboxed tn then E.WORD_RT

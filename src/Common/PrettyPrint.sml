@@ -2,7 +2,8 @@
 
 functor PrettyPrint(structure Report: REPORT
                     structure Crash: CRASH
-                    structure Flags: FLAGS
+                    val raggedRight : bool ref
+		    val colwidth : int ref
                    ): PRETTYPRINT =
   struct
 
@@ -205,10 +206,10 @@ functor PrettyPrint(structure Report: REPORT
       end;
 
     fun print (width: int) (LEAF s): minipage = (* width >= 3 *)
-          if size s <= width orelse !Flags.raggedRight then LINES[s] else LINES["..."]
+          if size s <= width orelse !raggedRight then LINES[s] else LINES["..."]
       | print width (t as HNODE{start, finish,  children, childsep}) =
            (* print children, as many as possible on each line *)
-           let val width' = if !Flags.raggedRight then !Flags.colwidth else width
+           let val width' = if !raggedRight then !colwidth else width
            in if width'-size start>= 0 then
                 botRightConcat finish
                 let  val stringLists: string list = 
@@ -228,7 +229,7 @@ functor PrettyPrint(structure Report: REPORT
       | print (width: int)
               (t as NODE{start, finish, indent, children, childsep}) =
           let                           (* Try to make it go into just one line *)
-            val width' = if !Flags.raggedRight then !Flags.colwidth else width
+            val width' = if !raggedRight then !colwidth else width
             val flatString: string = flattenOrRaiseFlatString(t,width')
           in
             LINES[flatString]
@@ -238,10 +239,10 @@ functor PrettyPrint(structure Report: REPORT
                 val finishLines = if finish = "" then LINES nil else LINES[strip finish]
               in
                 if        size start <= width andalso size finish <= width
-                   orelse !Flags.raggedRight
+                   orelse !raggedRight
                 then                    (* print children indented *)
                   if         width - indent >= 3 
-                      orelse !Flags.raggedRight
+                      orelse !raggedRight
                   then                  (* enough space to attempt printing
                                              of children *)
                     let
@@ -293,17 +294,17 @@ functor PrettyPrint(structure Report: REPORT
             val s = strip s     (* If we're printing children multi-line, we
                                    *always* take off leading spaces from
                                    the separator. *)
-            val firstWidth: int = if !Flags.raggedRight then width else width - ind
-            val restWidth = if !Flags.raggedRight then width else width - ind - size s
+            val firstWidth: int = if !raggedRight then width else width - ind
+            val restWidth = if !raggedRight then width else width - ind - size s
           in
-            if restWidth < 3 andalso not(!Flags.raggedRight) then 
+            if restWidth < 3 andalso not(!raggedRight) then 
               indent ind (LINES["..."])
             else
               let
                 val restPages = map ((indent ind) o (print restWidth)) rest
                 val restPages' =
                   map (topLeftConcat s) restPages
-                val firstWidth' = if !Flags.raggedRight then firstWidth else firstWidth + size s
+                val firstWidth' = if !raggedRight then firstWidth else firstWidth + size s
               in
                 PILE(indent ind (print firstWidth' first),
                      pilePages restPages')
@@ -312,11 +313,11 @@ functor PrettyPrint(structure Report: REPORT
 
       | pileChildren(width, ind, RIGHT s, children) =
           let
-            val myWidth = if !Flags.raggedRight then width
+            val myWidth = if !raggedRight then width
                           else width - ind (* - size s *)
                                         (* We ignore the right sep's width. *)
           in
-            if myWidth < 3 andalso not(!Flags.raggedRight) 
+            if myWidth < 3 andalso not(!raggedRight) 
             then
               indent ind (LINES["..."])
             else

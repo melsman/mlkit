@@ -33,6 +33,12 @@ functor SubstAndSimplify(structure PhysSizeInf : PHYS_SIZE_INF
 		         structure Crash : CRASH) : SUBST_AND_SIMPLIFY =
 struct
 
+  val _ = Flags.add_bool_entry 
+    {long="print_simplified_program", short=NONE, item=ref false,
+     menu=["Printing of intermediate forms", "print simplified program (LineStmt)"], neg=false, 
+     desc="Print simplified program after register\n\
+      \allocation."}
+
   type place = Effect.place
   type excon = Excon.excon
   type con = Con.con

@@ -376,12 +376,6 @@ functor CompileDec(structure Con: CON
             in RECORDtype tys'
             end
 
-      val compileType = fn typ =>
-        (if !Flags.DEBUG_COMPILER andalso false then 
-           TextIO.output(TextIO.stdOut,"compileType: typ = " ^ Type.string typ ^ "\n")
-         else ();
-         compileType typ)
-
       val domType : StatObject.Type -> StatObject.Type =
         #1 o (NoSome "domType(2)") o Type.un_FunType  
         o (NoSome "domType(1)") o Type.to_FunType

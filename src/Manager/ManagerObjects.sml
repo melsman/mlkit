@@ -34,6 +34,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			 sharing type ElabRep.longstrid = ModuleEnvironments.longstrid
 			 sharing ElabRep.TyName = ModuleEnvironments.TyName
                          sharing type ElabRep.absprjid = ModuleEnvironments.absprjid  
+		       structure RepositoryFinMap : MONO_FINMAP
+			 where type dom = ModuleEnvironments.absprjid * TopdecGrammar.funid 
 		       structure FinMap : FINMAP
 		       structure PP : PRETTYPRINT
 			 sharing type PP.StringTree = Execution.CompilerEnv.StringTree 
@@ -51,7 +53,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     fun die s = Crash.impossible("ManagerObjects." ^ s)
     fun chat s = if !Flags.chat then print (s ^ "\n") else ()
 
-    val link_time_dead_code_elimination = Flags.lookup_flag_entry "link_time_dead_code_elimination"
+    val link_time_dead_code_elimination = true
     local
       val debug_linking = Flags.lookup_flag_entry "debug_linking"
     in
@@ -68,10 +70,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     fun filename_to_string x  = x
 
     type absprjid = ModuleEnvironments.absprjid
-(*    type target = Compile.target*)
 
     type target = Execution.target
 
+    val gc_p = Flags.is_on0 "garbage_collection"
 
     (* ----------------------------------------------------
      * Determine where to put target files; if profiling is
@@ -82,64 +84,18 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
     local
       val region_profiling = Flags.lookup_flag_entry "region_profiling"
-      val gc_flag          = Flags.lookup_flag_entry "garbage_collection"
     in 
       fun pmdir() = 
 	if !region_profiling then 
-	  if !gc_flag then
-	    "PM/GCProf/" 
-	  else 
-	    "PM/Prof/"
-	else
-	  if !gc_flag then
-	    "PM/GC/" 
-	  else 
-	    "PM/NoProf/"
+	  if gc_p() then "PM/GCProf/" 
+	  else "PM/Prof/"
+	else if gc_p() then "PM/GC/" 
+        else "PM/NoProf/"
     end
-
-(*
-   (* -----------------------------------------------------------------
-    * Execute shell command and return the result code.
-    * ----------------------------------------------------------------- *)
-
-    structure Shell =
-      struct
-	exception Execute of string
-	fun execute_command command : unit =
-	  let fun loop() = 
-               OS.Process.system command
-	            handle OS.SysErr(s,_) =>
-                      (TextIO.output (TextIO.stdOut,
-                                      "\ncommand " ^ command ^ 
-                        "\nfailed (" ^ s ^ "); \
-                         \retry (r), continue (c), or abort (a) ?>");
-                        (case TextIO.input1(TextIO.stdIn) of
-                           SOME #"r" => loop()
-                         | SOME #"c" => OS.Process.success
-                         | SOME #"a" => raise Execute ("Exception OS.SysErr \""
-				     ^ s ^ "\"\nwhen executing shell command:\n"
-			             ^ command)
-                         | _ => OS.Process.success
-                       )
-                      )
-
-                val status = loop()
-          in if status <> OS.Process.success then
-                       raise Execute ("Error code " ^ Int.toString ~1(*status*) ^
-			             " when executing shell command:\n"
-			             ^ command)
-             else ()
-          end
-      end
-*)
 
     type linkinfo = Execution.linkinfo
     structure SystemTools =
       struct
-(*
-	val c_compiler = Flags.lookup_string_entry "c_compiler"
-	val c_libs = Flags.lookup_string_entry "c_libs"
-*)
 	(*logging*)
 	val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
@@ -148,18 +104,14 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	(*linking*)
 	val region_profiling = Flags.lookup_flag_entry "region_profiling"
-	val gc_flag          = Flags.lookup_flag_entry "garbage_collection"
-	fun path_to_runtime () = ! (Flags.lookup_string_entry
-				    (if !region_profiling then 
-				       if !gc_flag then
-					 "path_to_runtime_gc_prof"
-				       else
-					 "path_to_runtime_prof"
-				     else 
-				       if !gc_flag then
-					 "path_to_runtime_gc"
-				       else
-					 "path_to_runtime"))
+	fun path_to_runtime () = 
+	  let fun file () = (if !region_profiling then 
+			       if gc_p() then "runtimeSystemGCProf.o"
+			       else "runtimeSystemProf.o"
+			     else if gc_p() then "runtimeSystemGC.o"
+				  else "runtimeSystem.o")
+	  in OS.Path.concat(OS.Path.concat(!Flags.install_dir, "bin"), file())
+	  end
 
 
 	(* -----------------------------
@@ -176,52 +128,6 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	fun delete_file f = OS.FileSys.remove f handle _ => ()
 
-(*
-        (* -----------------------
-         * Postponing assembly (to avoid failing system calls)
-         *)
-
-        val r : TextIO.outstream option ref  = ref NONE
-        fun init_commandfile() = 
-            r:= SOME(TextIO.openOut "compile");
-        fun add_to_commandfile(s:string) = 
-            case !r of NONE => (init_commandfile(); add_to_commandfile s)
-            | SOME(os) => TextIO.output(os, s ^"\n")
-        fun close_commandfile() = 
-            case !r of NONE => ()
-            | SOME(os) => TextIO.closeOut os
-not used anymore 2000-10-17, Niels *)
-
-	(* -------------------------------
-	 * Assemble a file into a .o-file
-	 *-------------------------------- *)
-(*
-	fun assemble (file_s, file_o) =
-          (if !(Flags.lookup_flag_entry "delay_assembly")
-           then 
-	     () (*add_to_commandfile(!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s)2000-10-17, Niels*)
-           else 
-	     (Shell.execute_command (!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s);
-	      if !(Flags.lookup_flag_entry "delete_target_files")
-		then  delete_file file_s 
-	      else ()))
-
-	  (*e.g., "cc -Aa -c -o link.o link.s"
-
-	   man cc:
-	   -c          Suppress the link edit phase of the compilation, and
-		       force an object (.o) file to be produced for each .c
-		       file even if only one program is compiled.  Object
-		       files produced from C programs must be linked before
-		       being executed.
-
-	   -ooutfile   Name the output file from the linker outfile.  The
-		       default name is a.out.*)
-	  handle Shell.Execute s => die ("assemble: " ^ s)
-*)
-
-	val assemble = Execution.assemble
-
 	(* -----------------------------------------------
 	 * Emit assembler code and assemble it. 
 	 * ----------------------------------------------- *)
@@ -232,7 +138,7 @@ not used anymore 2000-10-17, Niels *)
               val target_filename_s = append_ext target_filename
 	      val target_filename_o = append_o target_filename
 	      val _ = Execution.emit {target=target,filename=target_filename_s}
-	      val _ = assemble (target_filename_s, target_filename_o)
+	      val _ = Execution.assemble (target_filename_s, target_filename_o)
 	  in target_filename_o
 	  end
 
@@ -304,22 +210,6 @@ not used anymore 2000-10-17, Niels *)
 	  end
 
 	val link_files_with_runtime_system = Execution.link_files_with_runtime_system path_to_runtime
-(*
-	fun link_files_with_runtime_system files run =
-          let 
-	    val files = map (fn s => s ^ " ") files
-	    val shell_cmd = (!c_compiler ^ " -o " ^ run ^ " " ^ concat files ^ path_to_runtime () ^ " " ^ !c_libs)
-	  in
-	    (if !(Flags.lookup_flag_entry "delay_assembly") then
-	       ((*add_to_commandfile shell_cmd;2000-10-17, Niels*)
-		TextIO.output (TextIO.stdOut, "[wrote compile file:\tcompile\n"))
-	     else
-	       (Shell.execute_command shell_cmd;
-	       TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n")))(*;
-	    close_commandfile()2000-10-17, Niels*)
-	  end 
-	handle Shell.Execute s => die ("link_files_with_runtime_system:\n" ^ s)
-*)
 
 	fun member f [] = false
 	  | member f ( s :: ss ) = f = s orelse member f ss
@@ -335,7 +225,7 @@ not used anymore 2000-10-17, Niels *)
 	fun link (tfiles_with_linkinfos, extobjs, run) : unit =
 	  let 
 	    val tfiles_with_linkinfos = 
-	      if false (*!link_time_dead_code_elimination*) then dead_code_elim tfiles_with_linkinfos
+	      if link_time_dead_code_elimination then dead_code_elim tfiles_with_linkinfos
 	      else tfiles_with_linkinfos
 	    val linkinfos = map #2 tfiles_with_linkinfos
 	    val target_files = map #1 tfiles_with_linkinfos
@@ -347,17 +237,9 @@ not used anymore 2000-10-17, Niels *)
 	  in case Execution.generate_link_code
 	       of SOME generate_link_code =>
 		 let val target_link = generate_link_code (labs, exports)
-		   val linkfile = pmdir() ^ "link_objects"
-		   val linkfile_s = append_ext linkfile
-		   val linkfile_o = append_o linkfile
-		   val _ = Execution.emit {target=target_link, filename=linkfile_s}
-		   val _ = assemble (linkfile_s, linkfile_o)
+		   val linkfile_o = emit(target_link, "link_objects")
 		 in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
-		   if !(Flags.lookup_flag_entry "delete_target_files") 
-		     andalso  
-		     not (!(Flags.lookup_flag_entry "delay_assembly"))
-		     then delete_file linkfile_o
-		   else ()
+		     delete_file linkfile_o
 		 end
 		| NONE => 
 		 link_files_with_runtime_system target_files run
@@ -427,16 +309,14 @@ not used anymore 2000-10-17, Niels *)
 	  in "PM/" ^ base_absprjid ^ ".timestamp"
 	  end
 
-	val smlserver : bool ref = Flags.lookup_flag_entry "smlserver"
-
 	fun deleteTimeStampFile absprjid : unit =
-	  if not(!smlserver) then ()
+	  if not(!Flags.SMLserver) then ()
 	  else let val f = timeStampFileName absprjid
 	       in OS.FileSys.remove f handle _ => ()
 	       end
 
 	fun mk_uoFileList (absprjid: absprjid, modc) : unit =
-	  if not(!smlserver) then ()
+	  if not(!Flags.SMLserver) then ()
 	  else
 	    let val modc = emit (absprjid, modc)
 	      val base_absprjid = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
@@ -712,6 +592,7 @@ not used anymore 2000-10-17, Niels *)
     type name = Name.name
     structure Repository =
       struct
+	structure RM = RepositoryFinMap
 
 	type elab_entry = InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * 
 	  name list * InfixBasis * ElabBasis * opaq_env
@@ -719,30 +600,24 @@ not used anymore 2000-10-17, Niels *)
 	type int_entry = funstamp * ElabEnv * IntBasis * longstrid list * name list * 
 	  modcode * IntBasis
 
-	type int_entry' = funstamp * ElabEnv * IntBasis * longstrid list * name list * 
-	  modcode * IntBasis
+	type int_entry' = int_entry
 
-	type intRep = ((absprjid * funid) * bool, int_entry list) FinMap.map ref
-	  (* the bool is true if profiling is enabled *)
+	type intRep = int_entry list RM.map ref
+	type intRep' = int_entry' list RM.map ref
 
-	type intRep' = ((absprjid * funid) * bool, int_entry' list) FinMap.map ref
-	  (* the bool is true if profiling is enabled *)
-
-	val region_profiling : bool ref = Flags.lookup_flag_entry "region_profiling"
-
-	val intRep : intRep = ref FinMap.empty
-	val intRep' : intRep' = ref FinMap.empty
+	val intRep : intRep = ref RM.empty
+	val intRep' : intRep' = ref RM.empty
 	fun clear() = (ElabRep.clear();
-		       List.app (List.app (ModCode.delete_files o #6)) (FinMap.range (!intRep));  
-		       List.app (List.app (ModCode.delete_files o #6)) (FinMap.range (!intRep'));  
-		       intRep := FinMap.empty;
-		       intRep' := FinMap.empty)
+		       List.app (List.app (ModCode.delete_files o #6)) (RM.range (!intRep));  
+		       List.app (List.app (ModCode.delete_files o #6)) (RM.range (!intRep'));  
+		       intRep := RM.empty;
+		       intRep' := RM.empty)
 
 	val strip_install_dir' = ModuleEnvironments.strip_install_dir'
 	val is_absprjid_basislib = ModuleEnvironments.is_absprjid_basislib
 
 	fun delete_rep rep absprjid_and_funid = 
-	  case FinMap.remove ((strip_install_dir' absprjid_and_funid, !region_profiling), !rep)
+	  case RM.remove (strip_install_dir' absprjid_and_funid, !rep)
 	    of SOME res => rep := res
 	     | _ => ()
 
@@ -795,29 +670,29 @@ not used anymore 2000-10-17, Niels *)
 		    SOME(n, prepend_install_dir entry)
 		  else SOME(n,entry)
 		else find(entries,n+1)
-	  in case FinMap.lookup (!rep) (strip_install_dir' absprjid_and_funid, !region_profiling)
+	  in case RM.lookup (!rep) (strip_install_dir' absprjid_and_funid)
 	       of SOME entries => find(entries, 0)
 		| NONE => NONE
 	  end
 
 	fun add_rep rep (absprjid_and_funid as (absprjid,_),entry) : unit =
 	  rep := let val r = !rep 
-		     val i = (strip_install_dir' absprjid_and_funid, !region_profiling)
-		 in case FinMap.lookup r i
-		      of SOME res => FinMap.add(i,res @ [entry],r)
-		       | NONE => FinMap.add(i, [if is_absprjid_basislib absprjid then
-						  remove_install_dir entry
-						else entry], r)
+		     val i = strip_install_dir' absprjid_and_funid
+		 in case RM.lookup r i
+		      of SOME res => RM.add(i,res @ [entry],r)
+		       | NONE => RM.add(i, [if is_absprjid_basislib absprjid then
+					      remove_install_dir entry
+					    else entry], r)
 		 end
 
 	fun owr_rep rep (absprjid_and_funid,n,entry) : unit =
 	  rep := let val r = !rep
-		     val i = (strip_install_dir' absprjid_and_funid, !region_profiling)
+		     val i = strip_install_dir' absprjid_and_funid
 	             fun owr(0,entry::res,entry') = entry'::res
 		       | owr(n,entry::res,entry') = entry:: owr(n-1,res,entry')
 		       | owr _ = die "owr_rep.owr"
-		 in case FinMap.lookup r i
-		      of SOME res => FinMap.add(i,owr(n,res,entry),r)
+		 in case RM.lookup r i
+		      of SOME res => RM.add(i,owr(n,res,entry),r)
 		       | NONE => die "owr_rep.NONE"
 		 end
 	val lookup_int = lookup_rep intRep #5
@@ -841,13 +716,13 @@ not used anymore 2000-10-17, Niels *)
 	fun recover_intrep ir =
 	  List.app 
 	  (List.app (fn entry : 'a1*'a2*'a3*'a4*(name list)*'a6*'a7 => List.app Name.mark_gen (#5 entry)))
-	  (FinMap.range ir)
+	  (RM.range ir)
 
 	fun emitted_files() =
 	  let fun files_entries ([],acc) = acc
 		| files_entries ((_,_,_,_,_,mc,_)::entries,acc) = 
 		    files_entries(entries,ModCode.emitted_files(mc,acc))
-	  in FinMap.fold files_entries (FinMap.fold files_entries [] (!intRep)) (!intRep')
+	  in RM.fold files_entries (RM.fold files_entries [] (!intRep)) (!intRep')
 	  end
 	val lookup_elab = ElabRep.lookup_elab
 	val add_elab = ElabRep.add_elab

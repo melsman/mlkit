@@ -37,13 +37,11 @@ functor Timing(structure Flags: FLAGS
     fun msg(s: string) = (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
     fun msg'(s: string) = (TextIO.output(TextIO.stdOut, s); TextIO.flushOut (TextIO.stdOut))
 	  
-    val show_compiler_timings = ref false;
-    val _ = Flags.add_flag_to_menu (["Control"], "show_compiler_timings",
-				    "show compiler timings",
-				    show_compiler_timings)
+    val compiler_timings = ref false;
+    val _ = Flags.add_bool_entry {long="compiler_timings", short=SOME "timings", item=compiler_timings,
+				  neg=false, menu=["Debug", "compiler timings"],
+				  desc="Show compiler timings for each compilation phase."}
 
-    fun chat(s: string) = if !show_compiler_timings then (msg' s; msg s) else ()
-                             
     val t = ref (Timer.startCPUTimer())
     val rt = ref (Timer.startRealTimer())
 
@@ -56,16 +54,15 @@ functor Timing(structure Flags: FLAGS
 		     gc: Time.time,
 		     wallclock: Time.time}) list) list ref = ref []
 
-    val doTiming = ref false
     fun timing_begin () =
-      if not(!doTiming) then () else
-	(if !timingNow = true then
+      if !compiler_timings then 
+	(if !timingNow then
 	   die "Only one timer available"
 	 else
 	   (t := Timer.startCPUTimer(); 
 	    timingNow := true;
 	    rt := Timer.startRealTimer()))
-
+      else ()
 
     fun add_time_elems {name=name1: string, non_gc=non_gc1: Time.time,
 			system=system1: Time.time,
@@ -101,36 +98,36 @@ functor Timing(structure Flags: FLAGS
 	 | NONE => ()
       
     fun timing_end (name) = 
-      if not(!doTiming) then () else
-      (chat("\n");
-       let 
-	 val _ = timingNow := false
-	 val {gc, sys=system, usr=non_gc} = Timer.checkCPUTimer (!t)
-	 val wallclock = Timer.checkRealTimer (!rt)
+      if !compiler_timings orelse !timingNow then 
+	(let 
+	   val _ = timingNow := false
+	   val {gc, sys=system, usr=non_gc} = Timer.checkCPUTimer (!t)
+	   val wallclock = Timer.checkRealTimer (!rt)
 
-	 val padL = StringCvt.padLeft #" " 15 
+	   val padL = StringCvt.padLeft #" " 15 
 	   
-	 val time_elem = {name = name,
-			  non_gc = non_gc,
-			  system = system,
-			  gc = gc,
-			  wallclock = wallclock}
+	   val time_elem = {name = name,
+			    non_gc = non_gc,
+			    system = system,
+			    gc = gc,
+			    wallclock = wallclock}
 
-	 val _ = maybe_export_timings time_elem
+	   val _ = maybe_export_timings time_elem
 
-	 val _ = timings :=
-	   (case (!timings) 
-	      of [] => [("Unknown", [time_elem])]
-	       | ((file,timings)::rest) =>
-		(file,insert_time_elem timings time_elem)::rest)
-       in
-	 chat
-	 (concat[name,"\n","\t",padL "non-gc", padL "system", padL "gc", padL"wallclock",
-		  "\n\t",
-		  padL (Time.toString non_gc),padL (Time.toString system),
-		  padL (Time.toString gc),padL (Time.toString wallclock)])
-       end;
-       chat("\n"))
+	   val _ = timings :=
+	     (case (!timings) 
+		of [] => [("Unknown", [time_elem])]
+		 | ((file,timings)::rest) =>
+		  (file,insert_time_elem timings time_elem)::rest)
+	 in
+(*	   chat
+	   (concat[name,"\n","\t",padL "non-gc", padL "system", padL "gc", padL"wallclock",
+		   "\n\t",
+		   padL (Time.toString non_gc),padL (Time.toString system),
+		   padL (Time.toString gc),padL (Time.toString wallclock)]) *) ()
+	 end  (*;
+	   chat("\n") *))
+      else ()
       
     fun timing_end_res (name, x) = (timing_end name; x)
 

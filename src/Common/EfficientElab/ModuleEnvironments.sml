@@ -142,6 +142,7 @@ functor ModuleEnvironments(
     (*F, functor environments*)
 
     type absprjid = string
+    fun lt_absprjid (a,b:string) = a < b
 
     datatype FunEnv = FUNENV of (funid, absprjid*FunSig) FinMap.map
     fun absprjid_to_string(absprjid) = absprjid

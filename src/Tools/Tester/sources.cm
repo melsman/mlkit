@@ -5,3 +5,14 @@ CompilerTimings.sml
 TestReport.sml
 MemTime.sml
 Tester.sml
+
+MemUsage.sml
+
+INFO.sml
+# if ( defined(OPSYS_UNIX) && defined(ARCH_SPARC) )
+   SolarisInfo.sml
+# elif ( defined(OPSYS_UNIX) && defined(ARCH_X86) )
+   LinuxInfo.sml
+# else
+   DummyInfo.sml  (* This code only works for Solaris and Linux. *)
+# endif

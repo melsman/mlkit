@@ -283,14 +283,9 @@ functor RegionStatEnv(structure Name : NAME
        * lookupCon function if unboxing of datatypes is enabled:
        *)
 
-    local val unbox_datatypes = Flags.lookup_flag_entry "unbox_datatypes"
-    in
-      fun lookupCon(rse : regionStatEnv as {con_env,...}) con =
-	if Con.eq(con,Con.con_CONS) then
-	  if !unbox_datatypes then SOME cons_sigma_unboxed
-	  else ConMap.lookup con_env con
-	else ConMap.lookup con_env con
-    end
+    fun lookupCon(rse : regionStatEnv as {con_env,...}) con =
+      if Con.eq(con,Con.con_CONS) then SOME cons_sigma_unboxed
+      else ConMap.lookup con_env con
 
     fun lookupExcon(rse : regionStatEnv as {excon_env,...}) = ExconMap.lookup excon_env
     fun lookupLvar(rse  : regionStatEnv as {lvar_env,...}) = LvarMap.lookup lvar_env

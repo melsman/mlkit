@@ -105,7 +105,6 @@ functor BackendInfoPAML(structure Labels : ADDRESS_LABELS
 
     val tag_values      = Flags.lookup_flag_entry "tag_values"
     val tag_integers    = Flags.lookup_flag_entry "tag_integers"
-    val unbox_datatypes = Flags.lookup_flag_entry "unbox_datatypes"
 
     fun size_of_real ()    = if !tag_values then 4 else 2
     fun size_of_ref ()     = if !tag_values then 2 else 1

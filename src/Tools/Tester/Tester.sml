@@ -50,11 +50,11 @@ structure Tester : TESTER =
 	  end
 	val {dir, file} = OS.Path.splitDirFile filepath
 	val _ = if dir="" then () else OS.FileSys.chDir dir
-	val compile_command_base = "kit -logtofiles " ^ 
-	  (if opt TestFile.NoBasisLib then "-nobasislib " else "") ^
-          (if opt TestFile.NoOptimiser then "-nooptimiser " else "") ^
-	  (if opt TestFile.TimeCompiler then "-timings " else "") ^
-          (if opt TestFile.CompareCompilerLogs then "-reportfilesig " else "")
+	val compile_command_base = "kit --log_to_file " ^ 
+	  (if opt TestFile.NoBasisLib then "-no_basislib " else "") ^
+          (if opt TestFile.NoOptimiser then "--no_optimiser " else "") ^
+	  (if opt TestFile.TimeCompiler then "--timings " else "") ^
+          (if opt TestFile.CompareCompilerLogs then "--report_file_sig " else "")
 
 	val compile_command = compile_command_base ^ file	  
 	val compile_command_prof = compile_command_base ^ "-prof " ^ file
@@ -99,7 +99,7 @@ structure Tester : TESTER =
 	    in 
 	      if opt TestFile.TimeExecutable then
 		let val {max_mem_size,max_res_size,real,user,sys} =
-		       MemTime.memtime {msg=msg',program=exe_file,outputfile=file ^ ".out"}
+		       MemTime.memtime {msg=msg',program=exe_file,args=nil,outputfile=file ^ ".out"}
 		    val ok = test_output()
 		    val exesize = size_of_file exe_file
 		    val exesize_stripped = 
@@ -224,7 +224,7 @@ structure Tester : TESTER =
     fun process_args [testfile] = SOME testfile
       | process_args _ = NONE
 
-    fun print_usage progname = print("\nusage: " ^ progname ^ " testfile\n")
+    fun print_usage progname = print("\nUsage: kittester testfile\n")
 
     fun main (progname, args) =
       case process_args args
@@ -274,12 +274,3 @@ structure Tester : TESTER =
     val _ = install()
 
   end
-
-(*
-fun mk() = (OS.FileSys.chDir "/home/disk07/mael/kit/src/Tools/Tester/";
-	    CM.make())
-
-val cd = OS.FileSys.chDir
-fun cdsrc() = cd "/home/disk07/mael/kit/src/Tools/Tester/"
-fun cdtest() = cd "/home/disk07/mael/kit/test/"
-*)

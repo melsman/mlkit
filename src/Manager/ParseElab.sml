@@ -73,28 +73,20 @@ functor ParseElab(structure Parse: PARSE
       | FAILURE of Report * ErrorCode.ErrorCode list
 
     fun elab (absprjid : absprjid, infB, elabB, topdec) : Result =
-          let val debugParse =
-	            if !Flags.DEBUG_PARSING then
-		      PP.reportStringTree(PreElabTopdecGrammar.layoutTopdec topdec)
-		      // PP.reportStringTree(InfixBasis.layoutBasis infB)
-		    else Report.null
+          let
 	      val (elabB', topdec') = ElabTopdec.elab_topdec (absprjid, elabB, topdec)
 	  in
 	    (case ErrorTraverse.traverse topdec' of
 	       ErrorTraverse.SUCCESS =>
-		 let val debugElab =
-		           if !Flags.DEBUG_ELABTOPDEC then
-			     ((PP.reportStringTree(ElabTopdec.layoutStaticBasis elabB'))
-			      // (PP.reportStringTree(PostElabTopdecGrammar.layoutTopdec topdec')))
-			   else Report.null
+		 let
 		     val report = if !report_file_sig then
 			             TopLevelReport.report {infB=infB, elabB=elabB', bindings=false}
 				  else Report.null
 		 in
-		   SUCCESS {report = debugParse // debugElab // report,
+		   SUCCESS {report =report,
 			    infB = infB, elabB = elabB', topdec = topdec'}
 		 end
-	     | ErrorTraverse.FAILURE (error_report, error_codes) => FAILURE (debugParse // error_report, error_codes))
+	     | ErrorTraverse.FAILURE (error_report, error_codes) => FAILURE (error_report, error_codes))
 	  end
 
     exception Parse of Report.Report

@@ -10,6 +10,7 @@ signature MEM_TIME =
     val bin_directory : string ref
     val memtime : {msg : string -> unit,
 		   program: string,
+		   args:string list,
 		   outputfile: string} -> timings
   end
 
@@ -17,6 +18,7 @@ structure MemTime : MEM_TIME =
   struct
 
     exception Crash of string
+    fun die s = raise Crash ("MemTime: " ^ s)
 
     val bin_directory = ref "uninitialised"
 
@@ -25,12 +27,12 @@ structure MemTime : MEM_TIME =
     fun execute_shell_command command =
       let val status = OS.Process.system command
       in if status = OS.Process.success then ()
-	 else raise Crash ("Error no. " ^ Int.toString status
+	 else die ("Error no. " ^ Int.toString status
 				 ^ " when executing shell command " ^ command ^ ".")
       end handle OS.SysErr(s,_) =>
-	            raise Crash ("Error in executing shell command " ^ command ^ ".\n"
+	            die ("Error in executing shell command " ^ command ^ ".\n"
 				 ^ "Reported error: " ^ s)
-               | _ => raise Crash ("Unknown exception when executing shell command "
+               | _ => die ("Unknown exception when executing shell command "
 				   ^ command ^ ".")
 
     (* time_command times the command.     *)
@@ -42,22 +44,43 @@ structure MemTime : MEM_TIME =
 		    user : string,
 		    sys  : string}
 
+    fun max i1 (i2:int) = if i1 > i2 then i1 else i2
+
+    fun parseLine (s: string) : int * int =
+      let val cs = explode s
+	fun getc nil = NONE
+	  | getc (c::cs) = SOME(c,cs)
+      in case Int.scan StringCvt.DEC getc cs
+	   of SOME (i1, cs) =>
+	     (case Int.scan StringCvt.DEC getc cs
+		of SOME (i2, _) => (i1,i2)
+		 | NONE => die "parseLine2")
+	    | NONE => die "parseLine1"
+      end
+
+    fun report i = (* i is in kilobytes *)
+      if i > 10000 then Int.toString (i div 1000) ^ "M"
+      else Int.toString i ^ "K"
+    
     (* This function uses shell script memtime located in the Target
      * directory. In the future, it should be replaced by ML code. *)
 
-    fun memtime {msg:string->unit,program:string, outputfile:string} : timings= 
+    fun memtime {msg:string->unit,program:string, args:string list,outputfile:string} : timings= 
       let
 	val msg = fn s => msg("    " ^ s)
-	val tempfile = "timex.temp"
 	fun std () = 	      
-	  let val shell_command = program ^ " > " ^ outputfile
-	      val _ = (msg "executing target program: "; msg shell_command)
+	  let
+	      val _ = msg ("executing target program: " ^ program)
 (*	      val cpu_timer = Timer.startCPUTimer() *)
 	      val real_timer = Timer.startRealTimer()
-	      val _ = execute_shell_command shell_command
-(*              val {usr, sys, gc} = Timer.checkCPUTimer cpu_timer*)
+	      val {count,rss,size} = MemUsage.memUsage {cmd=program, args=args, delay=MemUsage.quarterSecond, 
+							out_file=outputfile}
+	      val max_mem_size = report size
+	      val max_res_size = report rss
+
+(*            val {usr, sys, gc} = Timer.checkCPUTimer cpu_timer *)
               val real = Timer.checkRealTimer real_timer
-	  in {max_mem_size = "--", max_res_size = "--", 
+	  in {max_mem_size = max_mem_size, max_res_size = max_res_size, 
 	      real = Time.toString real, user = "--", sys = "--"}
 	    (* cpu_timer does not measure time spent in child processes, hence it
 	     does not work for system calls, which are forked. *)
@@ -66,6 +89,7 @@ structure MemTime : MEM_TIME =
       in case arch_os()
 	   of ("HPPA", "HPUX") =>
 	     let (* We use shell script for HPUX. *)
+	       val tempfile = "timex.temp"
 	       val memtime_exe = OS.Path.joinDirFile{dir= !bin_directory, file="memtime_hpux"}
 	       val _ = (msg "executing target program: ";
 			msg ("memtime_hpux -f " ^ outputfile ^ " -o " ^ tempfile ^ " " ^ program))
@@ -118,3 +142,4 @@ structure MemTime : MEM_TIME =
 	    | (arch,os) => raise Crash ("Error in memtime, " ^ arch ^ "-" ^ os ^ " not supported.")
       end  handle IO.Io {name=s,...} => raise Crash ("Error in memtime: " ^ s)
   end
+

@@ -32,6 +32,11 @@ functor CalcOffset(structure PhysSizeInf : PHYS_SIZE_INF
 			) : CALC_OFFSET =
 struct
 
+  val _ = Flags.add_bool_entry 
+    {long="print_calc_offset_program", short=NONE, item=ref false, neg=false,
+     menu=["Printing of intermediate forms", "print program with activation record offsets (LineStmt)"],
+     desc=""}
+    
   type place = Effect.place
   type excon = Excon.excon
   type con = Con.con

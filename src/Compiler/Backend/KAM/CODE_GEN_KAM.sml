@@ -8,7 +8,4 @@ signature CODE_GEN_KAM =
 	      code: ClosPrg,
 	      imports:label list * label list,
 	      exports:label list * label list} -> AsmPrg
-
-    val generate_link_code : label list -> AsmPrg
-
   end

@@ -702,9 +702,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	        (fn tyname => fn phi => Realisation.oo (phi, generate0 tyname))
 		  Realisation.Id T
 	and generate0 tyname =
-	      (if !Flags.DEBUG_TYPES then TextIO.output (TextIO.stdOut,"generate0\n")
-	       else () ;
-	       Realisation.singleton
+	      (Realisation.singleton
 	         (tyname, TypeFcn.from_TyName
 		           (TyName.freshTyName
 			     {tycon = TyName.tycon tyname,
