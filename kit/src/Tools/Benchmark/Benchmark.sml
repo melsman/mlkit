@@ -35,43 +35,60 @@ structure Benchmark =
     fun ppTime t = TD (Time.toString t) 
     fun ppMem n = TD (if n > 10000 then Int.toString(n div 1000) ^ "M"
 		      else Int.toString n ^ "K")
-      
+    fun ppTimeB t = TD(B (Time.toString t) )
+    fun ppMemB n = TD(B (if n > 10000 then Int.toString(n div 1000) ^ "M"
+			 else Int.toString n ^ "K"))
+
     fun BenchTable opts (h,l,memusage) =
       let
 	fun pp p opt v = 
 	  if List.exists (fn opt' => opt=opt') opts then p v
 	  else ""
 
+	fun loc p : string =
+	  if OS.Path.ext p = SOME "sml" then
+	    let val is = TextIO.openIn p
+	      fun read (n) =
+		if TextIO.inputLine is = "" then n
+		else read(n+1)
+	    in (Int.toString(read 0) before TextIO.closeIn is)
+	      handle _ => (TextIO.closeIn is; "&nbsp;")
+	    end
+	  else "&nbsp;"
+
 	fun BenchLine (p, SOME (outfile, png, {count,rss,size,data,stk,exe,
 					       real,user,sys})) = 
 	  TR(TD(tagAttr "A" ("HREF=" ^ p) p) 
-	     ^ pp ppMem  "rss"  rss 
+	     ^ TD (loc p)
+	     ^ pp ppMemB  "rss"  rss 
 	     ^ pp ppMem  "size" size 
 	     ^ pp ppMem  "data" data 
 	     ^ pp ppMem  "stk"  stk 
 	     ^ pp ppMem  "exe"  exe 
-	     ^ pp ppTime "real" real 
-	     ^ pp ppTime "user" user 
+	     ^ pp ppTimeB "user" user 
 	     ^ pp ppTime "sys"  sys 
+	     ^ pp ppTime "real" real 
 	     ^ TD(tagAttr "A" ("HREF=" ^ outfile) "output")
 	     ^ (if memusage then TD(tagAttr "A" ("HREF=" ^ png) "graph") else ""))
+	     ^ "\n"
 	  | BenchLine (p, NONE) = 
 	  let val sz = Int.toString(length opts + (if memusage then 3 else 2))
-	  in TR(TD(tagAttr "A" ("HREF=" ^ p) p) ^ tagAttr "TD" ("COLSPAN=" ^ sz) " - ")
+	  in TR(TD(tagAttr "A" ("HREF=" ^ p) p) ^ TD(loc p) ^ tagAttr "TD" ("COLSPAN=" ^ sz) " - ") ^ "\n"
 	  end
 	val BenchHeader =
-	  TR(TH "Program" 
+	  TR(TH "Program"
+	     ^ TH "Lines"
 	     ^ pp TH "rss"  "RSS" 
 	     ^ pp TH "size" "Size" 
 	     ^ pp TH "data" "Data" 
 	     ^ pp TH "stk"  "Stk" 
 	     ^ pp TH "exe"  "Exe"
-	     ^ pp TH "real" "Real" 
 	     ^ pp TH "user" "User" 
 	     ^ pp TH "sys"  "Sys" 
-	     ^ TH "Output" ^ (if memusage then TH "Graph" else ""))
+	     ^ pp TH "real" "Real" 
+	     ^ TH "Output" ^ (if memusage then TH "Graph" else "")) ^ "\n"
       in
-	H2 h ^ TABLE (concat (BenchHeader :: map BenchLine l)) ^ "<P>"
+	H2 h ^ "\n" ^ TABLE (concat (BenchHeader :: map BenchLine l)) ^ "<P>\n"
       end
 
     fun BenchPage p =
@@ -144,7 +161,7 @@ structure Benchmark =
 	  val _ = print ("Parsing test-files\n")
 	  val ps = sourceFiles inputs
 	  val l = map (process (compile kitdir flags) memusage) ps
-      in BenchTable ["rss", "size", "data", "stk", "exe", "real", "user", "sys"] (head,l,memusage)
+      in BenchTable ["loc", "rss", "size", "data", "stk", "exe", "real", "user", "sys"] (head,l,memusage)
       end
 
     fun tokenize nil = nil
