@@ -302,10 +302,14 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | ASSIGNprim {instance} => ASSIGNprim {instance=on_tau ren instance}
 	   | EQUALprim {instance} => EQUALprim {instance=on_tau ren instance}
 	   | CCALLprim {name, instances, tyvars, Type} =>
-	       CCALLprim {name=name, instances=map (on_tau ren) instances,
-			  tyvars=tyvars, Type=Type}
+	    let val tvs_pairs = map (fn tv => (tv, new_tv tv)) tyvars
+	        val ren_local = add_tvs tvs_pairs empty_ren
+	    in CCALLprim {name=name, instances=map (on_tau ren) instances,
+			  tyvars=map (on_tv ren_local) tyvars, Type=on_tau ren_local Type}
               (*the type scheme (tyvars, Type) is for a special purpose in the
-	       region inference and back end; it must not be changed*)
+	       region inference and back end; it must not be changed; we must rename bound
+	       tyvars, however. *)
+	    end
 	   | RESET_REGIONSprim {instance} => RESET_REGIONSprim {instance=on_tau ren instance}
 	   | FORCE_RESET_REGIONSprim {instance} => FORCE_RESET_REGIONSprim {instance=on_tau ren instance}
 	   | x => x
@@ -403,8 +407,8 @@ functor LambdaBasics (structure Lvars : LVARS
 	| on_TypeList S (Types ts) = Types (on_Types S ts)
 	| on_TypeList S tl = tl                              (* no free tyvars in a frame! *)
 
-      fun on_prim [] (prim: Type prim) : Type prim = prim
-	| on_prim S (prim: Type prim) : Type prim =
+      fun on_prim [] (prim: Type prim) : Type prim = prim   (* basically the same function as above for *)
+	| on_prim S (prim: Type prim) : Type prim =         (* renamings; mael *)
 	case prim 
 	  of CONprim {con, instances} => CONprim {con=con, instances=on_Types S instances}
 	   | DECONprim {con, instances} => DECONprim {con=con,instances=on_Types S instances}
@@ -412,6 +416,11 @@ functor LambdaBasics (structure Lvars : LVARS
 	   | REFprim {instance} => REFprim{instance=on_Type S instance}
 	   | ASSIGNprim {instance} => ASSIGNprim{instance=on_Type S instance}
 	   | EQUALprim {instance} => EQUALprim{instance=on_Type S instance}
+	   | CCALLprim {name, instances, tyvars, Type} =>
+	    CCALLprim {name=name, instances=map (on_Type S) instances,
+		       tyvars=tyvars, Type=Type}
+              (*the type scheme (tyvars, Type) is for a special purpose in the
+	       region inference and back end; it is closed (i.e., ftv(Type) \subseteq {tyvars}) *)
 	   | RESET_REGIONSprim {instance} => RESET_REGIONSprim{instance=on_Type S instance}
 	   | FORCE_RESET_REGIONSprim {instance} => FORCE_RESET_REGIONSprim{instance=on_Type S instance}
 	   | _ => prim
