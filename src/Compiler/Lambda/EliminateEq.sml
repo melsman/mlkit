@@ -363,7 +363,9 @@ functor EliminateEq (structure Lvars : LVARS
 	fun mono_env [] env = env
 	  | mono_env ((tyvars,tn,_)::dbs') env =
 	  let val env' = if TyName.equality tn then 
-	                   add_tyname (tn, MONOLVAR (Lvars.newLvar(), tyvars), env)
+	                    let val lvar = Lvars.new_named_lvar ("eq_" ^ TyName.pr_TyName tn)
+			    in add_tyname (tn, MONOLVAR (lvar, tyvars), env)
+			    end
 			 else env
 	  in mono_env dbs' env'
 	  end
