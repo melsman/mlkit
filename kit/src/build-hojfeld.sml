@@ -417,7 +417,7 @@ in
   print ("\n    Architecture..........: " ^ kit_architecture);
   print ("\n    Using tempfile........: " ^ temp_file);
    
-  if exists_file (export_dir) then () else create_dir export_dir
+  if exists_file (export_dir) then () else create_dir export_dir;
 (*KILL 30/03/1997 00:58. tho.:  scary to a user
      print ("\n\n Directory: " ^ export_dir ^ " does not exists.");
      print ("\n Create directory (y/n): ");
@@ -627,4 +627,5 @@ val CD = "COMPILE_DEC";
 val bc = "BuildCompile";
 val BC = "BUILD_COMPILE";
 
+reset_changes_file ();
 exportWithSML_NJ();
