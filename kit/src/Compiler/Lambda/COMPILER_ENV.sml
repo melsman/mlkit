@@ -105,8 +105,10 @@ signature COMPILER_ENV =
                                                                             (* We should clean this *) 
                                                                             (* up at some point!! - Mads *)
 
+(*KILL 21/12/1997 20:10. tho.:
     val declareLvar : (lvar * Type list * CEnv) -> CEnv      (* these are local for each program unit *)
     val lookupLvar : CEnv -> lvar -> Type list               (* and should *not* be here...           *)
+*)
 
     val tynamesOfCEnv: CEnv -> TyName list
       (* Return the list of tynames occurring in CEnv *)

@@ -1,6 +1,6 @@
 (*$CompileDec : CON EXCON TYNAME TOPDEC_GRAMMAR STATOBJECT ENVIRONMENTS LVARS
-        LAMBDA_EXP LAMBDA_BASICS COMPILER_ENV MATCH_COMPILER ELAB_INFO FINMAP
-        FINMAPEQ CRASH FLAGS PRETTYPRINT REPORT COMPILE_DEC*)
+        LAMBDA_EXP LAMBDA_BASICS COMPILER_ENV ELAB_INFO FINMAP FINMAPEQ CRASH
+        FLAGS PRETTYPRINT REPORT COMPILE_DEC*)
 
 (* At some point we should clean up this code.. Constructors are not
  * looked up in the environment anymore.. Also, - it would be nice if
@@ -55,6 +55,7 @@ functor CompileDec(structure Con: CON
 			 and type CompilerEnv.ElabEnv = Environments.Env
 			 and type CompilerEnv.TyName = TyName.TyName
 			 and type CompilerEnv.tycon = Environments.tycon
+(*KILL 29/11/1997 12:09. tho.:
 
                    structure MatchCompiler: MATCH_COMPILER
                      sharing type MatchCompiler.pat = TopdecGrammar.DecGrammar.pat
@@ -68,10 +69,13 @@ functor CompileDec(structure Con: CON
 		         and type MatchCompiler.SType = StatObject.Type
 			 and type MatchCompiler.TyVar = StatObject.TyVar
 			 and type MatchCompiler.tyvar = LambdaExp.tyvar
+*)
 
 		   structure ElabInfo : ELAB_INFO
                      sharing type ElabInfo.ElabInfo = TopdecGrammar.info
+(*KILL 29/11/1997 12:09. tho.:
                          and type MatchCompiler.TypeInfo = ElabInfo.TypeInfo.TypeInfo
+*)
                          and type ElabInfo.TypeInfo.longid = TopdecGrammar.DecGrammar.longid
                          and type ElabInfo.TypeInfo.TyEnv = Environments.TyEnv
                          and type ElabInfo.TypeInfo.TyVar = StatObject.TyVar
@@ -82,7 +86,9 @@ functor CompileDec(structure Con: CON
 			 and type ElabInfo.TypeInfo.id = TopdecGrammar.id
 
                    structure FinMap: FINMAP
+(*KILL 29/11/1997 12:09. tho.:
                      sharing type MatchCompiler.map = FinMap.map
+*)
 
 	           structure FinMapEq: FINMAPEQ
 
@@ -97,9 +103,12 @@ functor CompileDec(structure Con: CON
 
                   ): COMPILE_DEC =
   struct
-    open MatchCompiler LambdaExp
-    structure Grammar = TopdecGrammar.DecGrammar
-    open Grammar
+(*KILL 29/11/1997 12:10. tho.:
+    open MatchCompiler
+*)
+    open LambdaExp
+    structure DecGrammar = TopdecGrammar.DecGrammar
+    open DecGrammar
 
     (*import from StatObject:*)
     structure TyVar        = StatObject.TyVar            (* be careful - there are *)
@@ -121,12 +130,14 @@ functor CompileDec(structure Con: CON
     structure OverloadingInfo = ElabInfo.OverloadingInfo
     structure TypeInfo = ElabInfo.TypeInfo
     structure CE = CompilerEnv
+         type CEnv = CE.CEnv
     structure TLE = LambdaExp
 
     infix plus
     val (op plus) = CE.plus
 
     fun die s = Crash.impossible ("CompileDec." ^ s)
+    fun pr (s : string) : unit = output(std_out, s)
 
     val region_profiling = Flags.lookup_flag_entry "region_profiling"
 
@@ -182,26 +193,26 @@ functor CompileDec(structure Con: CON
     in
       val TLEunit = PRIM(RECORDprim,[])
 
-        (* raiseMatch and raiseBind: 
-         *   depends on the way we compile exceptions --- for "_1", c.f. 
-         * function new_excon below 
-         * XXX UNFINISHED: Match and Bind should be built-in exception constructors
-	 * Fixed now, - Match and Bind are initially in env (and in functor Excon)..
-         *)
-
-      fun raiseMatch tau' = RAISE (PRIM(EXCONprim Excon.ex_MATCH, []), Types [tau'])
-      val raiseBind = RAISE (PRIM(EXCONprim Excon.ex_BIND, []), RaisedExnBind)
-
       fun monoLet((lv,tau,lamb1),lamb2) =
         LET{pat=[(lv,[],tau)],
             bind=lamb1,
             scope=lamb2}
+(*KILL 16/12/1997 17:33. tho.:
 
       fun polyLet tyvars ((lv,tau,lamb1),lamb2) = 
         LET{pat=[(lv,tyvars,tau)],
             bind=lamb1,
             scope=lamb2}
+*)
     end
+
+    fun new_lvar_from_string_opt None = Lvars.newLvar ()  
+      | new_lvar_from_string_opt (Some string) = Lvars.new_named_lvar string
+    val new_lvar_from_id = Lvars.new_named_lvar o Ident.pr_id
+    val new_lvar_from_pat =
+          new_lvar_from_string_opt o DecGrammar.find_topmost_id_in_pat
+    fun new_lvar_from_pats [pat] = new_lvar_from_pat pat
+      | new_lvar_from_pats _ = Lvars.newLvar ()
 
 
     (* -----------------------------------------------------
@@ -264,35 +275,15 @@ functor CompileDec(structure Con: CON
 
 
     (* ---------------------------------------------------------------------- *)
-    (*           Extract type info from syntactic objects                     *)
-    (* ---------------------------------------------------------------------- *)
-
-   fun to_TypeInfo i =
-     case ElabInfo.to_TypeInfo i
-       of Some ti => Some(TypeInfo.normalise ti)
-	| None => None 
-
-    local 
-      open TypeInfo
-    in
-      fun type_of_exp (exp: Grammar.exp) : StatObject.Type =
-        case to_TypeInfo (get_info_exp exp) of 
-          Some(EXP_INFO{Type}) => Type
-        | _ => die "type_of_exp"
-
-      fun type_of_match (match: Grammar.match) : StatObject.Type =
-        case to_TypeInfo (get_info_match match) of 
-          Some(MATCH_INFO{Type}) => Type
-        | _ => die "type_of_match"
-    end      
-
-    (* ---------------------------------------------------------------------- *)
     (*                     Utilities                                          *)
     (* ---------------------------------------------------------------------- *)
 
     fun makeList (f: 'a -> 'a Option) (x: 'a) =
       x :: (case f x of Some y => makeList f y
                       | None => nil)
+
+    fun map_opt f (Some x) = Some (f x)
+      | map_opt f None = None
 
     fun NoSome errmsg x =
       case x of 
@@ -333,6 +324,10 @@ functor CompileDec(structure Con: CON
       in "[" ^ pr_l l ^ "]"
       end
 
+    fun hd s (x::xs) = x
+      | hd s [] = die (s ^ ".hd")
+
+
 
     (* ---------------------------------------------------------------------- *)
     (*           Utility functions used to compile constructors               *)
@@ -342,6 +337,32 @@ functor CompileDec(structure Con: CON
 
     fun compileCon (id:id) : con = Con.mk_con(Ident.pr_id id)
 
+
+    (* ---------------------------------------------------------------------- *)
+    (*           Extract type info from syntactic objects                     *)
+    (* ---------------------------------------------------------------------- *)
+
+    val to_TypeInfo = map_opt TypeInfo.normalise o ElabInfo.to_TypeInfo
+(*KILL 15/12/1997 20:03. tho.:
+   fun to_TypeInfo i =
+     case ElabInfo.to_TypeInfo i
+       of Some ti => Some(TypeInfo.normalise ti)
+	| None => None 
+*)
+
+    local 
+      open TypeInfo
+    in
+      fun type_of_exp (exp: DecGrammar.exp) : StatObject.Type =
+        case to_TypeInfo (get_info_exp exp) of 
+          Some(EXP_INFO{Type}) => Type
+        | _ => die "type_of_exp"
+
+      fun type_of_match (match: DecGrammar.match) : StatObject.Type =
+        case to_TypeInfo (get_info_match match) of 
+          Some(MATCH_INFO{Type}) => Type
+        | _ => die "type_of_match"
+    end      
 
     (* ---------------------------------------------------------------------- *)
     (*         Compilation of the semantic objects Type and TypeScheme        *)
@@ -425,23 +446,6 @@ functor CompileDec(structure Con: CON
      *
      *      ([a,b], t, [(A, Some a), (B, Some b)])
      *)
-(*KILL 20/11/1997 15:01. tho.:
-
-   type subst = (TLE.tyvar, TLE.tyvar) FinMap.map
-
-   fun mk_S [] = FinMap.empty
-     | mk_S ((a,b)::xs) = FinMap.add(a,b,mk_S xs)
-
-   fun on_Type (S:subst) (Type:Type) : Type =
-     let fun on (ARROWtype(taus1, taus2)) = ARROWtype(map on taus1, map on taus2)
-	   | on (CONStype(taus,tyname)) = CONStype(map on taus, tyname)
-	   | on (TYVARtype tv) = TYVARtype (case FinMap.lookup S tv
-					      of Some tv' => tv'
-					       | None => tv)
-	   | on (RECORDtype taus) = RECORDtype(map on taus)
-     in on Type
-     end
-*)
 
    fun on_TypeOpt _ None = None
      | on_TypeOpt S (Some tau) = Some (LambdaBasics.on_Type S tau)
@@ -458,14 +462,15 @@ functor CompileDec(structure Con: CON
       as tyvars0
     *)
 
-   fun normalize_sigma' (tyvars0: TLE.tyvar list, Type: Type): TLE.tyvar list * TLE.tyvar list * Type * Type Option=
+   fun normalize_sigma' (tyvars0: TLE.tyvar list, Type: Type)
+	 : TLE.tyvar list * TLE.tyvar list * Type * Type Option=
      let
        val (tyvars, tauOpt, tyname) =
 	 case Type 
 	   of ARROWtype([tau],[CONStype(taus,tyname)]) => (map unTyVarType taus, Some tau, tyname)
 	    | CONStype(taus,tyname) => (map unTyVarType taus, None, tyname)
-	    | _ => die "compile_and_normalize_cb.wrong type"
-       val S = LambdaBasics.mk_subst (fn () => "CompileDec.normalize_sigma': wrong number of tyvars")
+	    | _ => die "normalize_sigma': wrong type"
+       val S = LambdaBasics.mk_subst (fn () => "CompileDec.normalize_sigma'")
 	         (tyvars, map TLE.TYVARtype tyvars0) 
        val tauOpt' = on_TypeOpt S tauOpt
        val tau = case tauOpt'
@@ -494,8 +499,8 @@ functor CompileDec(structure Con: CON
     (*	       (i.e., almost a TyStr)                                         *)
     (* ---------------------------------------------------------------------- *)
 
-    fun compile'TyStr' (tyname : TyName, VE : VarEnv) 
-      : CE.CEnv * TLE.tyvar list * (con * Type Option) list =
+   fun compile'TyStr' (tyname : TyName, VE : VarEnv) 
+	 : CE.CEnv * TLE.tyvar list * (con * Type Option) list =
       let
 	val tyvars : TyVar list = 
 	  let exception H of TyVar list
@@ -523,6 +528,7 @@ functor CompileDec(structure Con: CON
 
     datatype FailType = RAISEMATCH of TLE.Type | RAISESELF of TLE.Type
 
+(*KILL 26/11/1997 16:30. tho.:
    (* envOfDecTree - for `val <pat> = <exp>' bindings, we want the environment
       to pass out for use in the scope of the declaration. So, we guddle
       around the decision tree to look for it. This scheme will fail for
@@ -578,11 +584,554 @@ functor CompileDec(structure Con: CON
         (envOfDecTree' tree; die "envOfDecTree")
         handle Gotcha e => e
       end
+*)
+
+
+
+
+(* ---------------------------------------------------------------------- *)
+(*         Pattern match compilation                                      *)
+(* ---------------------------------------------------------------------- *)
+
+local
+
+  abstype span = Infinite | Finite of int
+  with
+    val span_from_int = Finite
+    val span_infinite = Infinite
+    val span_256 = Finite 256
+    val span_1 = Finite 1
+    fun span_eq Infinite Infinite = true
+      | span_eq (Finite i1) (Finite i2) = i1 = i2
+      | span_eq _ _ = false
+    fun span_eq_int Infinite i = false
+      | span_eq_int (Finite i1) i2 = i1 = i2
+  end (*abstype*)
+
+  datatype con = Con of {longid : longid,
+			 span : span, 
+			 nullary : bool,
+			 info : ElabInfo.ElabInfo}
+               | Scon of SCon.scon
+	       | Excon of {longid : longid, nullary : bool}
+               | Tuple of {arity : int}
+  (*nullary=true when the (exception) constructor takes zero arguments;
+   otherwise it takes one argument.*)
+  
+  fun string_from_con0 (Con {longid, ...}) = "Con {" ^ Ident.pr_longid longid ^ ", ...}"
+    | string_from_con0 (Scon scon) = "Scon " ^ SCon.pr_scon scon
+    | string_from_con0 (Excon {longid, ...}) = "Excon {" ^ Ident.pr_longid longid ^ ", ...}"
+    | string_from_con0 (Tuple {arity}) = "Tuple {" ^ Int.string arity ^ "}"
+
+  (*`con_eq' is used for comparing paths which is only used by the
+   optimisation that prevents the pattern matcher from duplicating code.
+   `con_staticmatch' is used to decide at compile-time whether a con will
+   match or not.  There is no significant reason to have both `con_eq' &
+   `con_staticmatch'.*)
+
+  fun con_eq (Con {longid=longid1, span=span1, nullary=nullary1, ...},
+	      Con {longid=longid2, span=span2, nullary=nullary2, ...}) =
+	longid1 = longid2 andalso span_eq span1 span2 andalso nullary1 = nullary2
+    | con_eq (Scon scon1, Scon scon2) = scon1 = scon2
+    | con_eq (Tuple {arity=arity1}, Tuple {arity=arity2}) = arity1 = arity2
+    | con_eq (Excon {longid=longid1, ...}, Excon {longid=longid2, ...}) =
+	longid1 = longid2
+    | con_eq _ = false
+
+  fun con_staticmatch (Con {longid=longid1, span=span1, nullary=nullary1, ...},
+		       Con {longid=longid2, span=span2, nullary=nullary2, ...}) =
+	longid1 = longid2 andalso span_eq span1 span2 andalso nullary1 = nullary2
+	(*TODO 21/12/1997 14:09. tho.:  doesn't it suffice to check longid1 = longid2?*)
+    | con_staticmatch (Scon scon1, Scon scon2) = scon1 = scon2
+    | con_staticmatch (Tuple {arity=arity1}, Tuple {arity=arity2}) = arity1 = arity2
+    | con_staticmatch (Excon {longid=longid1, ...}, Excon {longid=longid2, ...}) =
+	longid1 = longid2
+        (*At first, I thought that this should be `false' because one cannot
+	 in general decide that two occurences of the same excon are bound to
+	 the same exception name although the excon is the same.  But the
+	 excon occurences that will be compared with con_staticmatch occur so
+	 close to each other that they will always be bound to the same
+	 exception name if they are the same excon.  (So there is no
+	 significant reason to have both `con_eq' & `con_staticmatch'.)*)
+    | con_staticmatch _ = die "con_staticmatch: impossible because the input to \
+	                      \the pattern matcher has been type checked."
+
+  fun arity (Con {nullary, ...}) = if nullary then 0 else 1
+    | arity (Scon scon) = 0
+    | arity (Excon {nullary, ...}) = if nullary then 0 else 1
+    | arity (Tuple {arity}) = arity
+
+  fun span (Con {span, ...}) = span
+    | span (Scon (SCon.INTEGER x)) = span_infinite
+    | span (Scon (SCon.STRING x)) = span_infinite
+    | span (Scon (SCon.REAL x)) = die "span: real scon in pattern"
+    | span (Scon (SCon.CHAR x)) = span_256
+    | span (Scon (SCon.WORD x)) = span_infinite
+    | span (Excon _) = span_infinite
+    | span (Tuple {arity}) = span_1
+
+  (*list of cons:*)
+  fun isin (x,[]) = false
+    | isin (x,x'::xs) = con_staticmatch (x, x') orelse isin (x, xs)
+
+  datatype path = Access of int * con * path | Obj
+    (*a path is a description of how to access a component value of the value
+     that is being pattern matched.  For instance, if the value being matched
+     against is `(0, Bah (0,1,v,4))', the path
+
+        Access (2, Tuple foo,
+	        Access (0, Con {longid=Bah, ...},
+		        Access (1, Tuple hoo,
+			        Obj)))
+
+     points out v, i.e., the first element in the path is the "innermost"
+     part of the path.*)
+    
+  fun string_from_path (Access (i, con, path)) =
+	"Access ("
+	^ Int.string i ^ ", "
+	^ string_from_con0 con ^ ", "
+	^ string_from_path path ^ ")"
+    | string_from_path Obj = "Obj"
+
+  fun path_eq (Access (i1, pcon1, path1), Access (i2, pcon2, path2)) =
+	i1 = i2 andalso con_eq (pcon1, pcon2) andalso path_eq (path1, path2)
+    | path_eq (Obj, Obj) = true
+    | path_eq _ = false
+
+  type declaration_to_be_made = id * (lvar * LambdaExp.tyvar list * Type) * path
+  type declarations_to_be_made = declaration_to_be_made list
+  type rhs = declarations_to_be_made * int
+  (*TODO 03/12/1997 19:36. tho.   kommenter rhs-typen.
+   kommenter forskelle & ligheder med sestofts artikel.*)
+
+  fun rhs_eq ((_, i1) : rhs, (_, i2) : rhs) = i1 = i2
+  fun string_from_rhs (_, i) = Int.string i
+
+  datatype termd = Pos of con * termd list | Neg of con list
+  type context = (con * termd list) list
+
+  fun addneg (Neg nonset, con) = Neg (con::nonset)
+    | addneg _ = die "addneg"
+
+  fun augment ([], termd) = []
+    | augment ((con, args) :: rest, termd)  = (con, termd :: args) :: rest
+
+  fun norm ((con, args) :: rest) = augment (rest, Pos (con, rev args))
+    | norm _ = die "norm" 
+
+  fun buildtermd ([], termd, []) = termd
+    | buildtermd ((con,args) :: rest, termd, (_, _, dargs) :: work) =
+	buildtermd (rest, Pos (con, rev args @ (termd :: dargs)), work)
+    | buildtermd _ = die "buildtermd"
+
+  datatype matchresult = Yes | No | Maybe
+
+  fun staticmatch (con : con, termd : termd) : matchresult =
+	(case termd of
+	   Pos (pcon, _) => if con_staticmatch (con, pcon) then Yes else No
+	 | Neg (nonset)  => if isin (con, nonset) then No
+			    else if span_eq_int (span con) (length nonset + 1) then Yes
+				 else Maybe)
+
+  datatype 'rhs decision1 = Success of 'rhs 
+                          | IfEq of path * con * 'rhs decision * 'rhs decision
+  withtype 'rhs decision0 = lvar * 'rhs decision1
+       and 'rhs decision  = 'rhs decision0 Option
+
+    (*each Success & IfEq node (i.e., the nodes of type decision0) will be
+     compiled into a LambdaExp function.  The lvar is the name of that
+     function.  The lvar also serves as unique identification of its node.
+     The opposite of Success (i.e., failure) is indicated by None : 'rhs
+     decision and will be compiled into `raise something'.*)
+
+  type decdag = rhs decision * rhs decision0 list
+  type t0 = rhs decision0
+  type t = rhs decision
+
+  fun t_eq (None, None) = true
+    | t_eq (Some (lvar1, _), Some (lvar2, _)) = Lvars.eq (lvar1, lvar2)
+    | t_eq _ = false
+        (*In t_eq, I could equally well have used `rhs_eq (rhs1, rhs2)' for
+	 Success nodes, and
+
+          `path_eq (path1, path2) andalso con_eq (con1, con2)
+                                  andalso t_eq (t11, t12) andalso t_eq (t21, t22)'
+
+	 for IfEq nodes, but I prefer not to, because it would mean the whole
+	 `skeleton of IfEq nodes' has to be traversed every time IfEq nodes
+	 are compared.*)
+
+	
+  local
+    val r : rhs decision0 list ref = ref []
+    val counter = ref 0
+    fun next () = (counter := 1 + !counter ; !counter)
+
+    fun string_from_con (Con {longid, ...}) = Ident.pr_longid longid
+      | string_from_con (Scon (SCon.INTEGER i)) = Int.string i
+      | string_from_con (Scon (SCon.STRING s)) = "a_string"
+      | string_from_con (Scon (SCon.REAL r)) = "a_real"
+      | string_from_con (Scon (SCon.CHAR c)) = "a_char"
+      | string_from_con (Scon (SCon.WORD w)) = Int.string w
+      | string_from_con (Excon {longid, ...}) = Ident.pr_longid longid
+      | string_from_con (Tuple {arity}) = "a_tuple"
+
+    infix into
+    fun t into (t',l) = (t', t::l);
+  in
+    fun reset () = (r := [] ; counter := 0)
+    fun get_r () = !r
+    fun update f = let val (t, l) = f(!r) in r:= l; t end
+
+    fun insertIfEq (path : path, con : con, t1, t2) (l : rhs decision0 list)
+	  : rhs decision * rhs decision0 list  =
+	  (case l of
+	     [] => let val lvar = Lvars.new_named_lvar
+	                             ("n" ^ Int.string (next ())
+				      ^ "__is_it_" ^ string_from_con con)
+		       val newt = (lvar, IfEq (path, con, t1, t2))
+		   in (Some newt, [newt])
+		   end
+	  | (l as ((t0 as (lvar', IfEq (path', con', t1', t2'))) :: rest)) =>
+	      if t_eq (t1, t1') andalso t_eq (t2, t2')
+		andalso path_eq (path, path') andalso con_eq (con, con')
+	      then (Some t0, l)
+	      else t0 into insertIfEq (path, con, t1, t2) rest
+	  | (t0 :: rest) => t0 into insertIfEq (path, con, t1, t2) rest)
+
+    fun insertFailure l = (None, l)
+(*KILL 17/12/1997 16:08. tho.:
+    fun insertFailure [] = (Failure, [Failure])
+      | insertFailure (l as (Failure :: rest)) = (Failure, l)
+      | insertFailure (t :: rest) = t into insertFailure rest
+*)
+
+    fun insertSuccess (rhs : rhs) [] : rhs decision * rhs decision0 list =
+	  let val lvar = Lvars.new_named_lvar ("rhs" ^ string_from_rhs rhs)
+	      val newt = (lvar, Success rhs)
+	  in (Some newt, [newt]) end
+      | insertSuccess rhs (l as ((t0 as (lvar', Success rhs')) :: rest)) =
+	  if rhs_eq (rhs, rhs') then (Some t0, l)
+	  else t0 into insertSuccess rhs rest
+      | insertSuccess rhs (t0 :: rest) = t0 into insertSuccess rhs rest
+  end (*local*)
+
+  fun add_id_to_rhs (id : id) (info : ElabInfo.ElabInfo) (path : path)
+	(declarations_to_be_made : declarations_to_be_made, i : int) : rhs =
+	(case to_TypeInfo info of
+	   Some (TypeInfo.VAR_PAT_INFO {tyvars, Type}) =>
+	     let val alphas = map compileTyVar tyvars
+		 val tau = compileType Type
+		 val lvar = new_lvar_from_id id
+	     in
+	       ((id, (lvar, alphas, tau), path) :: declarations_to_be_made, i)
+	     end
+	 | _ => die "add_id_to_rhs") 
+
+  type work = pat list * path list * termd list
+  type rule = pat * rhs
+
+  fun fail (termd : termd, []) = update insertFailure
+    | fail (termd, (pat1, rhs1) :: rulerest) =
+	match_pat (pat1, Obj, termd, [], [], rhs1, rulerest)
+  and succeed (ctx : context, [] : work list, rhs : rhs, rules : rule list) =
+	update (insertSuccess rhs)
+    | succeed (ctx, work1::workr, rhs, rules) =
+	(case work1 of
+	   ([],[],[]) => succeed (norm ctx, workr, rhs, rules)
+	 | (pat1::patr, path1::pathr, termd1::termdr) =>
+	     match_pat (pat1, path1, termd1, ctx,
+			(patr, pathr, termdr)::workr, rhs, rules)
+	 | _ => die "succeed")
+  and match_pat (pat : pat, path : path, termd : termd, ctx : context,
+		 work : work list, rhs : rhs, rules : rule list) =
+	(case pat of
+	   ATPATpat (info, atpat) => match_atpat (atpat, path, termd, ctx, work, rhs, rules)
+	 | CONSpat (info, longid_op_opt, atpat) =>
+	     (case to_TypeInfo info of
+		Some (TypeInfo.CON_INFO {numCons   : int,
+					 index     : int,
+					 instances : TypeInfo.Type list,
+					 tyvars    : TyVar list,
+					 Type      : TypeInfo.Type,
+					 longid    : longid}) => 
+		  match_con (Con {longid=longid, span=span_from_int numCons,
+				  info=info,
+		                  (*because it appears in a CONSpat:*)nullary=false})
+		    [(0, ATPATpat (DecGrammar.bogus_info, atpat))]
+		      (path, termd, ctx, work, rhs, rules)
+	      | Some (TypeInfo.EXCON_INFO {Type, longid}) =>
+		  match_con (Excon {longid=longid,
+				    (*because it appears in a CONSpat:*)nullary=false})
+		    [(0, ATPATpat (DecGrammar.bogus_info, atpat))]
+		      (path, termd, ctx, work, rhs, rules)
+	       | _ => die "match_pat (CONSpat ...)")
+	 | TYPEDpat (info, pat, ty) =>
+	     match_pat (pat, path, termd, ctx, work, rhs, rules)
+	 | LAYEREDpat (info, OP_OPT (id, _), ty_opt, pat) =>
+	     match_pat (pat, path, termd, ctx, work,
+			add_id_to_rhs id info path rhs, rules)
+	 | UNRES_INFIXpat _ => die "match_pat (UNRES_INFIXpat ...)")
+	
+  and match_atpat (atpat, path, termd, ctx, work, rhs, rules) =
+	(case atpat of
+	   WILDCARDatpat info => succeed (augment (ctx, termd), work, rhs, rules)
+	     (*WILDCARDatpat is treated almost like variable patterns*)
+	 | SCONatpat (info, scon) =>
+	     match_con (Scon scon) [] (path, termd, ctx, work, rhs, rules)
+	 | LONGIDatpat (info, OP_OPT (longid, _)) =>
+	     (case to_TypeInfo info of
+		Some (TypeInfo.VAR_PAT_INFO {tyvars, Type}) =>
+		  (*it is a variable, not a nullary constructor*)
+		  succeed (augment (ctx, termd), work,
+			   add_id_to_rhs (Ident.decompose0 longid) info path rhs,
+			   rules)
+	      | Some (TypeInfo.CON_INFO {numCons   : int,
+					 index     : int,
+					 instances : TypeInfo.Type list,
+					 tyvars    : TyVar list,
+					 Type      : TypeInfo.Type,
+					 longid    : longid}) => 
+		  match_con (Con {longid=longid, span=span_from_int numCons, info=info,
+		                  (*because it appears in a LONGIDatpat:*)nullary=true})
+		    [] (path, termd, ctx, work, rhs, rules)
+	      | Some (TypeInfo.EXCON_INFO {Type, longid}) =>
+		  match_con (Excon {longid=longid,
+				    (*because it appears in a LONGIDatpat:*)nullary=true})
+		    [] (path, termd, ctx, work, rhs, rules)
+	      | _ => die "match_atpat (LONGIDatpat ...)")
+	 | RECORDatpat (info, patrow_opt) =>
+	     let val patrows = (case patrow_opt of
+		       None => []
+		     | Some patrow => makeList
+			 (fn PATROW (_, _, _, patrow_opt) => patrow_opt
+		           | DOTDOTDOT _ => die "match_atpat: DOTDOTDOT")
+			 patrow)
+	       val argpats =
+		     map (fn PATROW (info, _, pat, _) =>
+			  (case to_TypeInfo info of
+			     Some (TypeInfo.LAB_INFO {index, ...}) => (index, pat)
+			   | _ => die "match_atpat: RECORDatpat info")
+		           | _ => die "match_atpat: RECORDatpat patrow") patrows
+	     in
+	       match_con (Tuple {arity=List.size argpats}) argpats
+	         (path, termd, ctx, work, rhs, rules)
+	     end
+	 | PARatpat (info, pat) => match_pat (pat, path, termd, ctx, work, rhs, rules))
+
+  (*match_con pcon argpats (path, termd, ctx, work, rhs, rules) = `pcon' is
+   the compile-time description of the constructor that we want to generate
+   code to match.  `argpats' are the argument patterns to `pcon', each paired
+   with its "Access number", the argument to the constructor Access that will
+   access the component corresponding to that pattern.  The rest of the
+   arguments of match_con describe the state of the pattern match compiler as
+   they do in the other functions (`succeed', `match_pat' etc.).*)
+
+  and match_con pcon (argpats : (int * pat) list)
+	(path, termd, ctx, work, rhs, rules) =
+	let
+	  fun getdargs (Neg _) = map (fn _ => Neg []) argpats
+	    | getdargs (Pos (con, dargs)) = dargs
+	  fun getoargs () = map (fn (i, pat) => Access (i, pcon, path)) argpats
+	  fun succeed' () = succeed
+		((pcon, []) :: ctx,
+		 (map #2 argpats, getoargs (), getdargs termd) :: work,
+		 rhs,
+		 rules)
+	  fun fail' newtermd = fail (buildtermd (ctx, newtermd, work), rules)
+	in
+	  (case staticmatch (pcon, termd) of
+	     Yes => succeed' ()
+	   | No => fail' termd
+	   | Maybe => let val left = succeed' ()
+			  val right = fail' (addneg (termd, pcon))
+		      in update (insertIfEq (path, pcon, left, right))
+		      end)
+	end
+
+	  
+  fun env_from (declarations_to_be_made : declarations_to_be_made) =
+	List.foldL (*TODO 03/12/1997 18:04. tho.:
+		    or foldR? probably of no importance*)
+	  (fn (id, (lvar, tyvars, tau), path) => fn env_sofar =>
+	   CE.declareVar (id, (lvar, tyvars, tau), env_sofar))
+	  (*TODO 03/12/1997 18:09. tho. that above correct?*)
+	  CE.emptyCEnv declarations_to_be_made
+
+
+  fun compile_path env obj Obj = obj
+    | compile_path env obj (Access (0, Con {longid, span, nullary, info}, path)) =
+	(case to_TypeInfo info of
+	   Some (TypeInfo.CON_INFO {tyvars, Type, longid, instances, ...}) =>
+	     (case lookupLongid env longid (NORMAL info) of
+		CE.CON (con, tyvars, _, il, it) =>
+		  let val instances' = map compileType instances
+		      val S = CE.mk_subst (fn () => "CompileDec.compile_path")
+				(tyvars, instances')
+		      val il' = CE.apply_it (it, CE.on_il (S, il))
+		  in
+		    PRIM (DECONprim {con=con, instances=il'},
+			  [compile_path env obj path])
+		  end
+	      | CE.REF =>
+		  (case instances of [instance] =>
+		       (*for deref, the instance is the instantiated argument type:*)
+		       PRIM (DEREFprim {instance=CONStype ([compileType instance],
+							   TyName.tyName_REF)},
+			     [compile_path env obj path])
+		   | _ => die "compile_path: ref instances")
+	      | _ => die "compile_path: Con, longid")
+	 | _ => die "compile_path: Con, info")
+    | compile_path env obj (Access (_, Con _, path)) = die "compile_path: _, Con _"
+    | compile_path env obj (Access (i, Excon {longid, ...}, path)) =
+	PRIM (DEEXCONprim (#1 (lookupLongexcon env longid (OTHER "compile_path"))),
+	      [compile_path env obj path])
+    | compile_path env obj (Access (i, Tuple {arity}, path)) =
+	if 0 <= i andalso i < arity
+	then PRIM (SELECTprim i, [compile_path env obj path]) 
+	else die "compile_path: i's range"
+    | compile_path env obj (Access (_, Scon _, path)) = die "compile_path: scon"
+
+
+  (*compile_rhs = 42
+
+   How? In
+
+       fn ((42, (x, _)), (_, {y, ...})) => e1
+        | ((_, (_, z)), (_, {y, ...})) => e2
+
+   we will want to compile e1 to
+
+      LET x = <code to access x>
+      IN LET y = <code to access y>
+      IN <e1 compiled in an environment that says something about x & y>
+
+   The rhs for the first mrule will say something about x & y.  First, we use
+   this information to build the abovementioned environment.  Then we compile
+   e1 in it.  Then we add the surrounding LET's, again using the
+   aforementioned information.*)
+
+  fun compile_rhs compile_no obj env poly rhs =
+	let
+	  val (declarations_to_be_made : declarations_to_be_made, i) = rhs
+	  val env_rhs = CE.plus (env, env_from declarations_to_be_made)
+	  val lexp = compile_no (i, env_rhs)
+	in mk_declarations_to_be_made declarations_to_be_made lexp obj env poly
+	end
+
+  and mk_declarations_to_be_made declarations_to_be_made lexp obj env poly =
+	List.foldL  (*TODO 10/12/1997 11:56. tho. or -R? probably of no importanc*)
+	  (fn (id, (lvar, tyvars, tau), path) => fn lexp_sofar =>
+	   (LET {pat = [(lvar, if poly then tyvars else [], tau)],
+		       bind = compile_path env obj path,
+		       scope = lexp_sofar}))
+		lexp declarations_to_be_made
+
+in
+
+  fun compile_jump_to lvar =
+	APP (VAR {lvar = lvar, instances = []}, PRIM (RECORDprim, []))
+	  (*instances=[] because the var can never be polymorphic
+	   because it is the name of a non-polymorphic function.*)
+
+  fun compile_t_to_lexp compile_no obj raise_something env poly
+	(compile_transition_to_t : rhs decision -> LambdaExp) t =
+	(case t of
+	   None => raise_something obj
+	 | Some (_, IfEq (path, con, t1, t2)) =>
+	     let fun switch (switch_x : 'x Switch -> LambdaExp, x : 'x) : LambdaExp =
+		       switch_x (SWITCH (compile_path env obj path,
+					 [(x, compile_transition_to_t t1)],
+					 Some (compile_transition_to_t t2)))
+	     in (case con of
+		   Con {longid, ...} =>
+		     switch (SWITCH_C, lookupLongcon env longid
+					 (OTHER "compile_t_to_lexp"))
+		 | Scon (SCon.INTEGER i) => switch (SWITCH_I, i)
+		 | Scon (SCon.STRING s) => switch (SWITCH_S, s)
+		 | Scon (SCon.REAL r) => die "compile_t_to_lexp: real"
+		 | Scon (SCon.CHAR i) => switch (SWITCH_I, i)
+		 | Scon (SCon.WORD i) => switch (SWITCH_I, i)
+		 | Excon {longid, ...} =>
+		     switch (SWITCH_E, 
+			     #1 (lookupLongexcon env longid (OTHER "compile_t_to_lexp")))
+		 | Tuple _ => die "compile_t_to_lexp: Tuple")
+	     end
+	 | Some (_, Success rhs) => compile_rhs compile_no obj env poly rhs)
+
+  fun compile_t0_to_function compile_no obj raise_something tau_return env t =
+	let fun compile_transition_to_t None = raise_something obj
+	      | compile_transition_to_t (Some (lvar, _)) = compile_jump_to lvar
+	    val body = compile_t_to_lexp compile_no obj raise_something env
+	                 (*does the pattern make polymorphic bindings?*)
+(*TODO 21/12/1997 20:11. tho.:  prøv med true
+
+	      false
+*)true
+			 compile_transition_to_t (Some t)
+	    val Type = ARROWtype ([unitType], [tau_return]) 
+	in {lvar= #1 t, tyvars=[], Type=Type,
+	    bind=FN {pat = [(Lvars.new_named_lvar "x", unitType)],
+		     body = body}}
+	(*tyvars=[] because an rhs can never be polymorphic, because we
+	 always use compile_t0_to_function to make rhs's; in the case of
+	 valbinds, the ``rhs'' (not really an rhs) is not compiled to a
+	 function (see compile_binding)*)
+	end 
+
+  fun string_from_decdag (decdag as (t, t0s) : rhs decision * rhs decision0 list) =
+	"(" ^ string_from_t t ^ ",\n[" ^ string_from_t0s t0s ^ "])\n"
+  and string_from_t None = "None"
+    | string_from_t (Some (lvar, decision1)) =
+	"Some (" ^ Lvars.pr_lvar lvar ^ ", " ^ string_from_decison1 decision1 ^ ")"
+  and string_from_t0s t0s = List.foldR (fn t0 => fn s =>
+					string_from_t0 t0 ^ ",\n" ^ s) "" t0s
+  and string_from_t0 (lvar, decision1) =
+	"  (" ^ Lvars.pr_lvar lvar ^ "-- " ^ string_from_decison1 decision1 ^ ")"
+  and string_from_decison1 (IfEq (path, con, t1, t2)) =
+	"IfEq (" ^ string_from_path path ^ ", "
+	^ string_from_con0 con ^ ", "
+	^ short_string_from_t t1 ^ ", "
+	^ short_string_from_t t2 ^ ")"
+    | string_from_decison1 (Success rhs) = "Success " ^ string_from_rhs rhs
+  and short_string_from_t None = "None"
+    | short_string_from_t (Some (lvar, _)) = "Some (" ^ Lvars.pr_lvar lvar ^ ", ...)"
+
+  val pr_decdag = pr o string_from_decdag
+
+
+  fun mk_decdag (pats : pat list) : rhs decision * rhs decision0 list =
+	let val tab = List.tabulate (List.size pats,
+				     fn i => ([] : declarations_to_be_made, i))
+	  val rules = ListPair.zip (pats, tab) handle ListPair.Zip => die "mk_decdag"
+	in (reset () ; (fail (Neg [], rules), get_r ())) 
+	end
+
+  (*env_from_decdag is only used by compile_binding.  The decdag will always
+   be from a pattern that only has one rhs, and env_from_decdag extracts from
+   the decdag the environment in which this rhs expression must be
+   compiled.*)
+
+  fun env_from_decdag (_, t0s) = (*because the pattern is from a let-binding
+				 there will always be exactly one Success node.
+				 we grab the environment from that node:*)
+	(case List.all (fn (_, Success _) => true | _ => false) t0s of
+	   [(_, Success rhs)] =>
+	     (case rhs of (declarations_to_be_made, _) =>
+		env_from declarations_to_be_made)
+	 | _ => die "env_from_decdag: not exactly a Success")
+
+end; (*match compiler local*)
+
+
+
 
 
     (* ---------------------------------------------------------------------- *)
     (*         Primitives for overloaded arithmetic operators                 *)
     (* ---------------------------------------------------------------------- *)
+
 
     local 
       fun int_or_real info (int, real) =
@@ -630,7 +1179,7 @@ functor CompileDec(structure Con: CON
 	| unoverload i _ = die "unoverload"
     in
       fun overloaded_prim info result (*e.g., CE.ABS*)
-	    compilerAtexp compilerExp (arg: Grammar.atexp)
+	    compilerAtexp compilerExp (arg: DecGrammar.atexp)
 	    takes_one_argument exn_args =
 	    if takes_one_argument then
 	      let val arg' = compilerAtexp arg
@@ -847,11 +1396,16 @@ functor CompileDec(structure Con: CON
 
 	   | TYPEDexp(_, exp, _) => compileExp env exp
 
-	   | HANDLEexp(_, exp', match) =>
+	   | HANDLEexp (_, exp', match) =>
 	       let val e1' = compileExp env exp'
-		   val tau' = compileType (type_of_exp exp)
-		   val e2' = compileMatch env (match, false,RAISESELF tau')
-	       in HANDLE(e1',e2')
+		   val tau_return = compileType (type_of_exp exp)
+		   val e2' = compile_match env
+		                (match, false, tau_return,
+				(*when no mrule matches, the raised exception
+				 (obj, which is not known here)
+				 must be reraised:*)
+				fn obj => RAISE (obj, Types [tau_return]))
+	       in HANDLE (e1',e2')
 	       end
 
 	   | RAISEexp(i, exp') => 
@@ -861,11 +1415,17 @@ functor CompileDec(structure Con: CON
 	       end
 
 	   | FNexp(_, match) => 
-	       let val tau' = 
+	       let val tau_return = 
 		         (case compileType (type_of_exp exp) of
-			    TLE.ARROWtype(_,[tau']) => tau'
+			    ARROWtype (_, [tau_return]) => tau_return
 			  | _ => die "compileExp: FNexp did not have (unary) arrow type")
-	       in compileMatch env (match, true, RAISEMATCH tau')
+	       in compile_match env (match, true, tau_return,
+				    (*when no mrule matches, exception Match must
+				     be raised: (abstracted over obj because
+				     of HANDLEexp above)*)
+				    fn obj =>
+				    RAISE (PRIM (EXCONprim Excon.ex_MATCH, []),
+					   Types [tau_return]))
 	       end
 
 	   | UNRES_INFIXexp _ =>  die "compileExp(UNRES_INFIX)")
@@ -890,9 +1450,7 @@ functor CompileDec(structure Con: CON
 		    val il' = CE.on_il(S, il)
 		in if Lvars.pr_lvar lv = "="  (* specialise equality on integers *)
                       andalso case instances' of 
-                                [CONStype([], tyname)] => 
-                                  TyName.eq(tyname, TyName.tyName_INT)
-                                  orelse TyName.eq(tyname, TyName.tyName_CHAR)
+                                [CONStype([], tyname)] => TyName.eq(tyname, TyName.tyName_INT)
                               | _ => false
                    then PRIM(EQUAL_INTprim, case arg' of
                                           PRIM(RECORDprim,l ) => l
@@ -961,9 +1519,7 @@ functor CompileDec(structure Con: CON
                         (* Specialice EQUALprim to EQUAL_INTprim, when possible *)
                         val prim' = case (isequal,instance') of
                                       (true,CONStype([], tyname)) =>
-                                        if TyName.eq(tyname,TyName.tyName_INT) orelse
-                                          TyName.eq(tyname,TyName.tyName_CHAR)
-                                          then EQUAL_INTprim 
+                                        if TyName.eq(tyname,TyName.tyName_INT) then EQUAL_INTprim 
                                         else prim {instance=instance'}
                                     | _ => prim {instance=instance'}
 		     in TLE.PRIM (prim', args')
@@ -1029,21 +1585,6 @@ the 12 lines above are very similar to the code below
 				      instances = map TLE.TYVARtype tyvars},
 		           map (compileExp env) args)
 	       end
-
-(*KILL 20/11/1997 14:32. tho.:
-
-	       let val tau = Type.mk_Arrow (tau_argument, tau_result) 
-		   val sigma = TypeScheme.close true (TypeScheme.from_Type tau)
-		   val (tyvars, Type) = TypeScheme.to_TyVars_and_Type sigma
-		   val (_, instances) = TypeScheme.instance'' sigma
-	       in
-		 TLE.PRIM (CCALLprim {name = s,
-				      instances = map compileType instances,
-				      tyvars = map compileTyVar tyvars,
-				      Type = flatten_c_function_type (compileType Type)},
-		           map (compileExp env) args)
-	       end
-*)
 	   | _ => die "compile_application_of_prim: wrong type info in ccall")
 
 
@@ -1078,36 +1619,41 @@ the 12 lines above are very similar to the code below
           e1 :: decompose_prim_args0 exprow_opt
 
 
-    (* compileMatch - compiles a match into a FN expression; this is used
-      for FNexp expressions and also for handlers. The failure argument
-      indicates what to plant for non-matches; RAISEMATCH means plant a lambda
-      which raises the Match exception, whereas RAISESELF means raise the
-      original packet. `warn' is true if inexhaustiveness warnings are
-      required (TRUE for case statement on excons, for example, but FALSE
-      for the equivalent in a handler).
-        compileMatch is a bit wasteful in that if a rule is reachable more
-      than once through a decision tree, the RHS expression will get compiled
-      each time. It's rather difficult to abstract this away, since different
-      decision paths to a particular rule result in different bindings for
-      the pattern variables. This isn't impossible to solve, but I don't
-      want to bother doing it. -- Nick *)
+    (*compile_match = compile a match into a FN expression; this is used for
+     FNexp & HANDLEexp expressions.  `raise_something' indicates what to
+     plant for non-matches; it can either be a lexp that raises exception
+     Match or reraises the raised exception.  `warn' is true if
+     inexhaustiveness warnings are required (true for case statement on
+     excons, for example, but false for the equivalent in a handler).*)
 
-    and compileMatch env (match, warn, failure) =
+    and compile_match env (match, warn, tau_return, raise_something) =
       let
-         val matches = makeList (fn MATCH(_, _, m) => m) match
-         val pats = map (fn MATCH(_, MRULE(_, pat, _), _) => pat) matches
-         val exps = map (fn MATCH(_, MRULE(_, _, exp), _) => exp) matches
-             (* We need to compile each exp into a lambda, for which we need 
-              * the environment established by the corresponding pattern. 
-              *)
-
-         val root = case pats
-		      of [pat] =>
-			(case Grammar.find_topmost_id_in_pat pat 
-			   of Some string => Lvars.new_named_lvar string
-			    | _ => Lvars.newLvar())
-		       | _ => Lvars.newLvar()
-
+	val matches = makeList (fn MATCH(_, _, m) => m) match
+	val pats = map (fn MATCH(_, MRULE(_, pat, _), _) => pat) matches
+	val exps = map (fn MATCH(_, MRULE(_, _, exp), _) => exp) matches
+	val decdag as (t, t0s) = mk_decdag pats
+	val lvar_switch = new_lvar_from_pats pats
+	val obj = VAR {lvar=lvar_switch, instances=[]}
+	      (*instances=[] because the argument to a fn cannot be polymorphic*)
+	val tau_argument = compileType (domType (type_of_match match))
+	val compile_no = fn (i, env_rhs) =>
+	                 (compileExp env_rhs (List.nth i exps
+					      handle _ => die "compile_match: nth"))
+      in
+(*KILL 21/12/1997 18:44. tho.:
+	 pr "\n\ncompileMatch: decdag is:\n";
+	 pr_decdag decdag;
+*)
+	 FN {pat = [(lvar_switch, tau_argument)],
+	     body =
+	       FIX {functions =
+		      map (compile_t0_to_function compile_no
+			   obj raise_something tau_return env) t0s,
+		    scope = (case t of
+			       Some (lvar, _) => compile_jump_to lvar
+			     | None => raise_something obj)}}
+      end
+(*KILL 25/11/1997 15:07. tho.:
          val decTree = matchCompiler compileTypeScheme 
 	   (root, pats, {warnInexhaustive=warn, warnNoBindings=false})
 
@@ -1127,6 +1673,10 @@ the 12 lines above are very similar to the code below
 	 val tau = compileType (domType (type_of_match match))
       in FN{pat=[(root,tau)], body=exp}
       end
+*)
+
+
+
 
    (* compileDec - takes an enclosing environment and a declaration, and
       returns the environment *for this declaration only*, together with a
@@ -1218,13 +1768,13 @@ the 12 lines above are very similar to the code below
           of PLAINvalbind(i, pat, exp, None) =>
             (case to_TypeInfo i
 	       of Some (TypeInfo.PLAINvalbind_INFO{tyvars,Type,...}) => 
-		 compileBinding env (topLevel, pat, exp,(tyvars,Type))
+		 compile_binding env (topLevel, pat, exp, (tyvars, Type))
 		| _ => die "compileValbind: no type info")
 
            | PLAINvalbind(i, pat, exp, Some vb) =>
                (case to_TypeInfo i
 		  of Some (TypeInfo.PLAINvalbind_INFO{tyvars,Type,...}) =>
-		    let val (env1, f1) = compileBinding env (topLevel, pat, exp,(tyvars,Type))
+		    let val (env1, f1) = compile_binding env (topLevel, pat, exp, (tyvars, Type))
 		        val (envRest, f2) = compileValbind env (topLevel,vb)
 		    in (env1 plus envRest, f1 o f2)
 		    end
@@ -1314,25 +1864,86 @@ the 12 lines above are very similar to the code below
       in (env1,f1)
       end
 
-  (* compileBinding - we're compiling something like
+   (*compile_binding: we are compiling something like
+
         `let val pat = exp in scope end'.
-      compileBinding returns the environment established by `pat',
-      and a function: LambdaExp->LambdaExp, which is applied to the
-      `scope' expression to yield the entire let expression. This
-      generalises to parallel (`and'-linked) bindings. As long as we
-      get the environment handling right (and don't make the thing
-      `rec' by mistake), we can finally just cascade together the result
-      functions returned by compileBinding.
-      sigma is the type scheme of the exp, recorded during elaboration. *)
 
-    and compileBinding env (topLevel, pat, exp, (tyvars,Type))
-        : (CE.CEnv * (LambdaExp -> LambdaExp)) =
-      let
-        val root = (* Root of the pattern. *)
-                   case Grammar.find_topmost_id_in_pat pat of
-                     None => Lvars.newLvar()  
-                   | Some string => Lvars.new_named_lvar string
+    compile_binding returns the environment established by `pat', and a
+    function: LambdaExp->LambdaExp, which is applied to the `scope'
+    expression to yield the entire let expression. This generalises to
+    parallel (`and'-linked) bindings. As long as we get the environment
+    handling right (and don't make the thing `rec' by mistake), we can
+    finally just cascade together the result functions returned by
+    compile_binding.  sigma is the type scheme of the exp, recorded during
+    elaboration.*)
 
+  (*TODO: compile_decdag_for_valbind: basically serves the same purpose as
+   compile_decdag.  It is used when the pattern is from a valbind, i.e.,
+   something like
+
+     `val <pat> = <exp>'
+
+   The reason for using compile_decdag_for_valbind is that we cannot with
+   this type of pattern generate a FIX with functions as we do when the
+   pattern is from a `fn <pat> => ...' or a `... handle <pat>'.  In the
+   latter cases we generate a FIX with functions to implement the finite
+   automaton that matches a value against the pattern.  This means that the
+   scope of the pattern ends up as a FIX-bound function body, and this will
+   not do when the scope may be a FRAME, which the scope of a valbind may be.
+   Sorry about this messy explanation.
+
+   No, it is better to explain this by giving examples of the code generated
+   by the two compile_decdag-functions.  TODO
+
+   Since compile_decdag_for_valbind is only used for decdags that stem from
+   valbinds, it expects the decdag to have a very particular form:  Either
+   the valbind is something like `val V = exp', where no test is necessary,
+   and thus the decdag is a single Success node.  Or the valbind is something
+   like `val (V :: VS) = exp', where it is necessary to test whether the
+   value has the form `V :: VS', and thus the decdag contains exactly three
+   nodes: an IfEq, a Success, and a Failure VRØVL (that raises Bind).  In the
+   latter case, we generate the following LambdaExp
+
+     SWITCH <code according to the IfEq node>
+       x => <code as described by the Success node
+	      or maybe the Failure node>
+       _ => <code as described by the final node
+	       (Failure or Success accordingly)>
+
+   *)
+
+
+    and compile_binding env (topLevel, pat, exp, (tyvars, Type))
+        : CE.CEnv * (LambdaExp -> LambdaExp) =
+    let val decdag as (t, t0s) = mk_decdag [pat]
+        val f = fn scope =>
+	  let val (tyvars', tau') = compileTypeScheme (tyvars, Type)
+	      val lvar_switch = new_lvar_from_pat pat
+	      val obj = VAR {lvar=lvar_switch, instances=map TYVARtype tyvars'}
+	      fun compile_no (i, env_rhs) = scope
+	      val raise_something = fn obj =>
+		    RAISE (PRIM (EXCONprim Excon.ex_BIND, []), LambdaExp.RaisedExnBind)
+	      fun compile_transition_to_t t =
+		    compile_t_to_lexp compile_no obj raise_something env
+		    (*does the pattern make polymorphic bindings?*)true
+		      compile_transition_to_t t
+	  in
+(*KILL 21/12/1997 18:44. tho.:
+	    pr "\n\ncompile_binding: decdag is:\n";
+	    pr_decdag decdag;
+*)
+	    LET {pat = [(lvar_switch, tyvars', tau')],
+		 bind = compileExp env exp,
+		 scope = compile_transition_to_t t}
+	  end
+	val env_rhs = env_from_decdag decdag
+    in (env_rhs, f)
+    end
+(*KILL 16/12/1997 17:26. tho.:
+	      val compile_no = (fn (0, env_rhs) => scope
+		                 | _ => die "compileBinding.compile_no")
+*)
+(*KILL 26/11/1997 16:08. tho.:
         val decTree = matchCompiler compileTypeScheme
 	  (root, [pat], {warnInexhaustive=false, warnNoBindings=not topLevel})
 	(* Decision tree which takes the root apart according to the pattern. *)
@@ -1349,17 +1960,8 @@ the 12 lines above are very similar to the code below
 		 bind=exp',
 		 scope=exp''}
 	  end
-      in (env1, f)
+*)
 
-        (* Given the final scope of this declaration, we can compile
-         * the declaration tree such that `scope' appears in the scope
-         * of the pattern. Weird side- effect that the compilation is
-         * passed out as a suspension. Note that the last argument to
-         * compileDecTree is true, since variables bound by the
-         * pattern pat should be LET bound in the lambda language to
-         * allow polymorphism. *)
-
-      end
 
    (* compileREC - compile a list of `rec' pattern/expression pairs. The
       patterns must all be variables (and aren't even allowed to be
@@ -1398,6 +2000,7 @@ the 12 lines above are very similar to the code below
 				  scope=scope}
       in (env', f')
       end                                                            
+(*KILL 15/12/1997 20:02. tho.:
 
     and compileSconSwitch env (arg: lvar,
                                selections: (scon, DecisionTree) map,
@@ -1462,6 +2065,12 @@ the 12 lines above are very similar to the code below
 
         handle Next => die "compileSconSwitch"
       end
+
+
+
+
+     
+
 
    (* 
     * compileDecTree: 
@@ -1557,6 +2166,18 @@ the 12 lines above are very similar to the code below
 		  case (NoSome o Type.un_FunType o NoSome o Type.to_FunType) tau 
 		    of (tau1,_) => (List.all (mem (Type.tyvars tau1)) tyvars, tau1)
 		end
+
+(*TODO 18/12/1997 17:15. tho.
+ convert_sigma tager et sigma, som består af en piltype,
+ og returnerer så at sige sigmaet for argumenttypen.  Alt
+ besværet kommer af, at listen af bundne tyvar'er skal trimmes.
+
+ Hvorfor er min kode ikke lige så kompliceret (med convert_sigma, polyLet
+ etc.)? Fordi jeg ikke laver så mange let'er; jeg laver koden `#1 (#2 obj)',
+ hvor birkeboy laver koden `let v1 = #2 obj in let v2 = #1 v1 in ...'.  Men
+ det skal jeg nok også gøre senere for at undgå at samme værdi pilles frem
+ flere gange.*)
+
 	  in case lookupLongid env longcon (OTHER "CON_DECOMPOSE")
 	       of CE.CON(con,tvs,_,il,it) =>
 		 let val (tyvars,tau) = convert_sigma sigma
@@ -1653,6 +2274,7 @@ the 12 lines above are very similar to the code below
 			      and compileDecTreeOpt env (None, _, _,_) = None
       | compileDecTreeOpt env (Some t, compiler, failure,poly) =
       Some(compileDecTree env (t,compiler,failure,poly))
+*)
 
 
   (* -----------------------------------------------------
