@@ -9,6 +9,23 @@ REPORTED BY: (MT|MAEL|FAXE) + date
 TO BE FIXED BY: (MT|MAEL|FAXE)
 
 
+BUGS:
+
+ERROR: bug in rp2ps?
+SYMPTOM: naar jeg proever 
+
+      ../bin/rp2ps -region -name life -sampleMax 1000 -eps 150 mm
+
+produceres der en PostScript fil, som kun viser et delvist billede.
+Derimod virker -sampleMax 500 fint!
+
+TESTFILE: ~tofte/issmkit/kit/kitdemo/badprofile.rp.  (omdoeb den til profile.rp)
+PRIORITY: HIGH
+REPORTED BY: MT, Aug 26, 1998
+TO BE FIXED BY: FAXE?
+
+
+
 WAIT
 
 Implement some kind of project reuse; it currently takes too long for
