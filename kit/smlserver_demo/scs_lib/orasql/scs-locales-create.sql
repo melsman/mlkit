@@ -75,6 +75,11 @@ as
     object_id in scs_texts.text_id%TYPE default null
   ) return scs_texts.text_id%TYPE;
 
+  procedure delete (
+    text_id	in scs_texts.text_id%TYPE,
+    language	in scs_lang.language%TYPE default null
+  );
+
   function updateText(
     text_id in scs_texts.text_id%TYPE default null,
     language in scs_lang.language%TYPE,
@@ -111,6 +116,36 @@ as
     return text_id;
   end new;
 
+  procedure delete (
+    text_id	in scs_texts.text_id%TYPE,
+    language	in scs_lang.language%TYPE default null
+  )
+  is
+    v_lang_id scs_lang.lang_id%TYPE;
+  begin
+    if language <> null then
+      select lang_id 
+        into v_lang_id 
+        from scs_lang 
+       where language = scs_text.delete.language;      
+      -- delete the text in one language only.
+      delete scs_text_lang 
+       where text_id = scs_text.delete.text_id 
+         and lang_id = v_lang_id;
+    else
+      -- delete the entire text in all languages.
+      delete scs_text_lang 
+       where text_id = scs_text.delete.text_id;
+    end if;    
+
+    -- we delete the text_id only if there is no rows in 
+    -- scs_text_lang. Notice the reference constraint in 
+    -- table scs_text_lang.
+    delete scs_texts 
+     where text_id = scs_text.delete.text_id;
+    return;
+  end delete;
+
   function updateText(
     text_id in scs_texts.text_id%TYPE default null,
     language in scs_lang.language%TYPE,
@@ -141,9 +176,8 @@ as
     return new_text_id;
   exception
     when no_data_found then
-      raise_application_error( -20000, 'unknown language: '||updateText.language );
+      raise_application_error( scs.ScsDbExn, 'unknown language: '||updateText.language );
   end updateText;
-
 
   function getText(
     text_id in scs_texts.text_id%TYPE,
@@ -159,7 +193,7 @@ as
     return text;
   exception 
     when no_data_found then
-      raise_application_error( -20001, 'no text in '||language||' for text_id '||to_char(text_id) );
+      raise_application_error( scs.ScsDbExn, 'no text in '||language||' for text_id '||to_char(text_id) );
   end getText;  
 
 end scs_text;

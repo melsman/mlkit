@@ -3,7 +3,7 @@
 -- community-core-create.sql.
 
 create table scs_persons (
-  person_id 
+  person_id integer
     constraint scs_persons_person_id_nn not null
     constraint scs_persons_person_id_fk references scs_parties(party_id)
     constraint scs_persons_pk primary key,
@@ -20,10 +20,24 @@ create table scs_persons (
     constraint scs_persons_deleted_p_ck check (deleted_p in ('t','f'))
 );
 
+create table scs_person_rels (
+  person_id integer
+    constraint scs_person_rels_person_id_nn not null
+    constraint scs_person_rels_person_id_fk references scs_persons(person_id)
+    constraint scs_person_rels_person_id_pk primary key,
+  on_what_table varchar(100)
+    constraint scs_person_rels_on_w_tab_nn not null,
+  on_which_id varchar(100)
+    constraint scs_person_rels_on_w_id_nn not null
+);
+
 comment on table scs_persons is '
 ';
 
-create or replace package person
+-------------------------
+-- Package Description --
+-------------------------
+create or replace package scs_person
 as
   function new (
     person_id      in scs_persons.person_id%TYPE default null,
@@ -49,11 +63,15 @@ as
     person_id in scs_persons.person_id%TYPE
   ) return scs_persons.last_name%TYPE;
 
-end person;
+end scs_person;
 /
 show errors
 
-create or replace package body person
+------------------
+-- Package Body --
+------------------
+
+create or replace package body scs_person
 as
   function new (
     person_id      in scs_persons.person_id%TYPE default null,
@@ -69,7 +87,7 @@ as
   is
     v_person_id scs_persons.person_id%TYPE;
   begin
-    v_person_id := party.new(person_id,email,url,last_modified,modifying_user,deleted_p);
+    v_person_id := scs_party.new(person_id,'scs_persons',email,url,last_modified,modifying_user,deleted_p);
 
     insert into scs_persons (person_id, first_names, last_name, security_id, 
                              last_modified, modifying_user, deleted_p)
@@ -86,9 +104,9 @@ as
   begin
     update scs_persons
        set deleted_p = 't'
-     where person_id = person.delete.person_id;
+     where person_id = scs_person.delete.person_id;
 
-    party.delete(person_id);
+    scs_party.delete(person_id);
   end delete;
 
   function name (
@@ -100,7 +118,7 @@ as
     select first_names || ' ' || last_name
       into v_person_name
       from scs_persons
-     where person_id = person.name.person_id;
+     where person_id = scs_person.name.person_id;
 
     return v_person_name;
   end name;
@@ -114,7 +132,7 @@ as
     select first_names
       into v_person_first_names
       from scs_persons
-     where person_id = person.first_names.person_id;
+     where person_id = scs_person.first_names.person_id;
 
     return v_person_first_names;
   end first_names;
@@ -128,10 +146,10 @@ as
     select last_name
       into v_person_last_name
       from scs_persons
-     where person_id = person.last_name.person_id;
+     where person_id = scs_person.last_name.person_id;
 
     return v_person_last_name;
   end last_name;
-end person;
+end scs_person;
 /
 show errors

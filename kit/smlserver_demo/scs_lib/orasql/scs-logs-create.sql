@@ -18,6 +18,9 @@ create table scs_logs (
    constraint scs_logs_message_nn not null
 );
 
+-------------------------
+-- Package Description --
+-------------------------
 create or replace package scs_log
 as
   procedure notice (
@@ -44,6 +47,9 @@ end;
 /
 show errors
 
+------------------
+-- Package Body --
+------------------
 create or replace package body scs_log
 as
   procedure notice (

@@ -5,6 +5,9 @@ create table scs_parties (
   party_id integer
     constraint scs_parties_party_id_nn not null
     constraint scs_parties_pk primary key,
+  party_type varchar(100)
+    constraint scs_parties_party_type_ck
+      check(party_type in ('scs_persons','scs_groups')),
   email	varchar2(100)
     constraint scs_parties_email_un unique,
   url varchar2(200),
@@ -42,10 +45,11 @@ show errors
 -- PARTY PACKAGE --
 -------------------
 
-create or replace package party
+create or replace package scs_party
 as
   function new (
     party_id	   in scs_parties.party_id%TYPE default null,
+    party_type     in scs_parties.party_type%TYPE default null,
     email	   in scs_parties.email%TYPE,
     url		   in scs_parties.url%TYPE default null,
     last_modified  in scs_parties.last_modified%TYPE default sysdate,
@@ -61,14 +65,15 @@ as
     party_id in scs_parties.party_id%TYPE
   ) return varchar2;
 
-end party;
+end scs_party;
 /
 show errors
 
-create or replace package body party
+create or replace package body scs_party
 as
   function new (
     party_id	   in scs_parties.party_id%TYPE default null,
+    party_type     in scs_parties.party_type%TYPE default null,
     email	   in scs_parties.email%TYPE,
     url		   in scs_parties.url%TYPE default null,
     last_modified  in scs_parties.last_modified%TYPE default sysdate,
@@ -81,8 +86,8 @@ as
   begin
     v_party_id := scs.new_obj_id(party_id);
 
-    insert into scs_parties (party_id, email, url)
-      values (v_party_id, lower(email), url);
+    insert into scs_parties (party_id, party_type, email, url)
+      values (v_party_id, party_type, lower(email), url);
 
     return v_party_id;
   end new;
@@ -95,7 +100,7 @@ as
     update scs_parties
        set deleted_p = 't',
            email = party_id || '-' || email
-     where scs_parties.party_id = party.delete.party_id;
+     where scs_parties.party_id = scs_party.delete.party_id;
   end delete;
 
   function email (
@@ -112,7 +117,7 @@ as
     return v_email;
  end email;
 
-end party;
+end scs_party;
 /
 show errors
 

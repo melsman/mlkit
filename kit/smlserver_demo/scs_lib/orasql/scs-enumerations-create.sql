@@ -14,17 +14,13 @@ create table scs_enum_values(
     constraint scs_enum_values_val_id_nn not null
     constraint scs_enum_values_val_id_pk primary key,
   enum_id integer
-    constraint scs_enum_values_enum_id_nn not null,
-  constraint scs_enum_values_enum_id_fk foreign key(enum_id) references scs_enumerations(enum_id),
+    constraint scs_enum_values_enum_id_nn not null
+    constraint scs_enum_values_enum_id_fk references scs_enumerations(enum_id),
   text_id integer
-    constraint scs_enum_values_text_tid_fk references scs_texts(text_id),
+    constraint scs_enum_values_text_id_fk references scs_texts(text_id),
   value varchar2(30),
   constraint scs_enum_values_un unique(enum_id,value)
 );
-
-/
-show errors
-
 
 -------------------------
 -- ENUMERATION PACKAGE --
@@ -40,7 +36,12 @@ as
     enum_id	in scs_enumerations.enum_id%TYPE,
     text_id	in scs_texts.text_id%TYPE,
     value	in scs_enum_values.value%TYPE
-  ) ;
+  );
+
+  procedure delete (
+    id		in scs_enumerations.enum_id%TYPE default null,
+    name	in scs_enumerations.name%TYPE default null
+  );
 
   function getTID(
     enum_id	in scs_enumerations.enum_id%TYPE,
@@ -65,7 +66,6 @@ as
     return new_enum_id;
   end new;
 
-
   procedure updateValue(
     enum_id	in scs_enumerations.enum_id%TYPE,
     text_id	in scs_texts.text_id%TYPE,
@@ -86,6 +86,40 @@ as
     end if;
   end updateValue;
 
+  procedure delete (
+    id		in scs_enumerations.enum_id%TYPE default null,
+    name	in scs_enumerations.name%TYPE default null
+  )
+  is
+    v_id scs_enumerations.enum_id%TYPE;
+  begin
+    if scs_enumeration.delete.name <> null then
+      select enum_id
+        into v_id
+        from scs_enumerations
+       where name = scs_enumeration.delete.name;
+    else
+      v_id := scs_enumeration.delete.id;
+    end if;
+
+    if v_id = null then
+      return;
+    end if;
+   
+    -- delete all texts describing enumerations
+    for row in (select text_id 
+                  from scs_enum_values 
+                 where enum_id = v_id) loop
+      scs_text.delete(row.text_id);
+    end loop;
+
+    -- delete all enumeration values.
+    delete scs_enum_values where enum_id = v_id;
+
+    -- delete the enumeration
+    delete scs_enumerations where enum_id = v_id;
+    return;
+  end delete;
 
   function getTID(
     enum_id	in scs_enumerations.enum_id%TYPE,
@@ -106,8 +140,11 @@ as
     return text_id; 
   end getTID;
 
-
 end scs_enumeration;
 /
 show errors
+
+
+
+
 
