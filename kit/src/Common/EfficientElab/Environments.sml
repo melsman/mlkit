@@ -1427,6 +1427,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	end
 
       fun renaming (T: TyName.Set.Set) : realisation = #2 (renaming' T)
+      val match = Realisation.match
       val enrich = Realisation.enrich
       val layout = Realisation.layout
 
