@@ -8,3 +8,9 @@ Profile graphs should be produced with the -eps 138mm option to rp2ps.
 
 We use the series comma.
 
+Pdf-version
+-----------
+
+To generate the mlkit.pdf file, execute
+
+  % dvipdf root.dvi mlkit.pdf
