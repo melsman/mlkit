@@ -54,7 +54,7 @@ signature SCS_DICT =
 
      (* [d1 source_lang phrase arg] translates the phrase written in
         source_lang into the language preferred by the logged in
-        user. Then replaces any %1 pattern surrounded with white space
+        user. Then replaces any %0 pattern surrounded with white space
         with arg. *)
     val d1 : ScsLang.lang -> string -> string -> string
     val d1': ScsLang.lang -> quot -> string -> quot
@@ -220,4 +220,5 @@ structure ScsDict :> SCS_DICT =
 											(String.size arg3,arg3)]))
       end
   end
+
 
