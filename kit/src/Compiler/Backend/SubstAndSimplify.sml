@@ -231,11 +231,27 @@ struct
 	  | SS_lss'(LS.FUNCALL a::lss) = LS.FUNCALL(do_fun_app a) :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.LETREGION{rhos,body}::lss) = LS.LETREGION{rhos=rhos,body=SS_lss(body,ATYmap,add_sty_binders(rhos,RHOmap))} :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.SCOPE{pat,scope}::lss) = LS.SCOPE{pat=pat,scope=SS_lss(scope,add_sty_lvs(pat,ATYmap),RHOmap)} :: SS_lss(lss,ATYmap,RHOmap)
-	  | SS_lss'(LS.HANDLE{default,handl,handl_return,offset}::lss) =
-	  LS.HANDLE{default=SS_lss(default,ATYmap,RHOmap),
-		    handl=SS_lss(handl,ATYmap,RHOmap),
-		    handl_return=SS_lss(handl_return,ATYmap,RHOmap),
-		    offset=offset} :: SS_lss(lss,ATYmap,RHOmap)
+	  | SS_lss'(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_lv),offset}::lss) =
+	  (* MEGA HACK: *)
+	  (* The lvar handl_lv is the lvar that the handle closure is bound to in handl. We need *)
+	  (* use the handl_lv in CodeGen to make code that store the handle closure in the       *)
+	  (* exception handler in the activation frame. handl_lv is bound to the outer most      *)
+	  (* scope declaration in handl and we match it out explicitly to get access to the sty  *)
+	  (* that is necessary to produce the aty for handl_lv.                                  *)
+	  (* Note, we do not have a problem with hand_return_lv that is the lvar containing the  *)
+	  (* result of evaluating either default or the handler, (i.e., hand_return_lv must be   *)
+	  (* bound outside default and therefore included in the incoming ATYmap).               *)
+	  let
+	    val handl_aty =
+	      (case handl of
+		 LS.SCOPE{pat,scope}::[] => atom_to_aty(handl_lv,add_sty_lvs(pat,ATYmap),RHOmap)
+	       | _ => die "SS_lss': SCOPE not first in handl")
+	  in
+	    LS.HANDLE{default=SS_lss(default,ATYmap,RHOmap),
+		      handl=(SS_lss(handl,ATYmap,RHOmap),handl_aty),
+		      handl_return=(SS_lss(handl_return,ATYmap,RHOmap),atom_to_aty' handl_return_lv),
+		      offset=offset} :: SS_lss(lss,ATYmap,RHOmap)
+	  end
 	  | SS_lss'(LS.RAISE{arg,defined_atys}::lss) = LS.RAISE{arg=atom_to_aty' arg,defined_atys=atoms_to_atys defined_atys} :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.SWITCH_I sw::lss) = SS_sw(SS_lss,LS.SWITCH_I,sw,ATYmap,RHOmap) :: SS_lss(lss,ATYmap,RHOmap)
 	  | SS_lss'(LS.SWITCH_S sw::lss) = SS_sw(SS_lss,LS.SWITCH_S,sw,ATYmap,RHOmap) :: SS_lss(lss,ATYmap,RHOmap)

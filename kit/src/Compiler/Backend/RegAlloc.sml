@@ -128,8 +128,8 @@ struct
 	end
 	| CC_ls(LS.LETREGION{rhos,body},rest) = LS.LETREGION{rhos=rhos,body=CC_lss body}::rest
 	| CC_ls(LS.SCOPE{pat,scope},rest) = LS.SCOPE{pat=pat,scope=CC_lss scope}::rest
-	| CC_ls(LS.HANDLE{default,handl,handl_return=[],offset},rest) = 
-	LS.HANDLE{default=CC_lss default,handl=CC_lss handl,handl_return=[],offset=offset}::rest
+	| CC_ls(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv),offset},rest) = 
+	LS.HANDLE{default=CC_lss default,handl=(CC_lss handl,handl_lv),handl_return=([],handl_return_lv),offset=offset}::rest
 	| CC_ls(LS.HANDLE{default,handl,handl_return,offset},rest) = die "CC_ls: handl_return in HANDLE not empty"
 	| CC_ls(LS.SWITCH_I sw,rest) = LS.SWITCH_I(CC_sw CC_lss sw)::rest
 	| CC_ls(LS.SWITCH_S sw,rest) = LS.SWITCH_S(CC_sw CC_lss sw)::rest
@@ -201,8 +201,8 @@ struct
 	   | LS.FUNCALL a => LS.FUNCALL a
 	   | LS.LETREGION{rhos,body} => LS.LETREGION{rhos=rhos,body=ra_assign_lss body}
 	   | LS.SCOPE{pat,scope} => LS.SCOPE{pat=map assign pat,scope=ra_assign_lss scope}
-	   | LS.HANDLE{default,handl,handl_return=[],offset} => 
-	    LS.HANDLE{default=ra_assign_lss default,handl=ra_assign_lss handl,handl_return=[],offset=offset}
+	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv),offset} => 
+	    LS.HANDLE{default=ra_assign_lss default,handl=(ra_assign_lss handl,handl_lv),handl_return=([],handl_return_lv),offset=offset}
 	   | LS.HANDLE{default,handl,handl_return,offset} => die "ra_dummy_ls: handl_return in HANDLE not empty"
 	   | LS.RAISE{arg,defined_atys} => LS.RAISE{arg=arg,defined_atys=defined_atys}
 	   | LS.SWITCH_I sw => LS.SWITCH_I(ra_assign_sw ra_assign_lss sw)

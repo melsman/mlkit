@@ -169,13 +169,13 @@ struct
       in
 	LS.SCOPE{pat=pat',scope=CO_lss(scope,LVmap',PHmap',offset',[])} :: CO_lss(lss,LVmap,PHmap,offset,acc)
       end
-      | CO_lss(LS.HANDLE{default,handl,handl_return,...}::lss,LVmap,PHmap,offset,acc) = 
+      | CO_lss(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_lv),...}::lss,LVmap,PHmap,offset,acc) = 
       let
-	val lss1' = CO_lss(default,LVmap,PHmap,offset++(BI.size_of_handle()),[])
-	val lss2' = CO_lss(handl,LVmap,PHmap,offset++(BI.size_of_handle()),[])
-	val handl_return' = CO_lss(handl_return,LVmap,PHmap,offset++(BI.size_of_handle()),[])
+	val (handl',size_handl) = (CO_lss(handl,LVmap,PHmap,offset++(BI.size_of_handle()),[]),0)
+	val (default',size_default) = (CO_lss(default,LVmap,PHmap,offset++(BI.size_of_handle()),[]),0)
+	val handl_return' = CO_lss(handl_return,LVmap,PHmap,offset(*++(BI.size_of_handle())*),[])
       in
-	LS.HANDLE{default=lss1',handl=lss2',handl_return=handl_return',offset=offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
+	LS.HANDLE{default=default',handl=(handl',handl_lv),handl_return=(handl_return',handl_return_lv),offset=offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
       end
       | CO_lss(LS.RAISE a::lss,LVmap,PHmap,offset,acc) = LS.RAISE a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.SWITCH_I sw::lss,LVmap,PHmap,offset,acc) = CO_sw(CO_lss,LS.SWITCH_I,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)

@@ -238,6 +238,17 @@ functor CallConv(structure Lvars : LVARS
 	  (aty_args,aty_res,return_lab_offset)
 	end
     end
+
+    (* The Call Convention supports one return register for handle functions *)
+    fun handl_return_phreg() = 
+      case BI.res_phreg of
+	phreg::rest => phreg
+      | _ => die "handl_return_phreg needs at least one machine register for the result"
+
+    fun handl_arg_phreg() =
+      case BI.args_phreg of
+	phreg1::phreg2::rest => (phreg1,phreg2)
+      | _ => die "handl function needs at least two machine registers for arguments"
 	
     (******************)
     (* PrettyPrinting *)

@@ -70,16 +70,17 @@ signature BACKEND_INFO =
     val minJumpTabSize     : int
 
     (* Names For Primitive Functions *)
-    val EQUAL_INT     : string
-    val MINUS_INT     : string
-    val PLUS_INT      : string
-    val MUL_INT       : string
-    val NEG_INT       : string
-    val ABS_INT       : string
-    val LESS_INT      : string
-    val LESSEQ_INT    : string
-    val GREATER_INT   : string
-    val GREATEREQ_INT : string
+    val EQUAL_INT      : string
+    val MINUS_INT      : string
+    val PLUS_INT       : string
+    val MUL_INT        : string
+    val NEG_INT        : string
+    val ABS_INT        : string
+    val LESS_INT       : string
+    val LESSEQ_INT     : string
+    val GREATER_INT    : string
+    val GREATEREQ_INT  : string
+    val FRESH_EXN_NAME : string
   end
 
 

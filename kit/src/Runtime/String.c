@@ -925,3 +925,9 @@ StringDesc *convertStringToMLProfiling(int rAddr, char *cStr, int pPoint) {
 #endif /*PROFILING*/
 
 
+/* DEBUG */
+void printNum(int n) {
+  printf("Num: %d\n",n);
+  return;
+}
+

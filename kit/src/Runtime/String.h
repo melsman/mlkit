@@ -83,4 +83,6 @@ int *explodeStringProfiling (int rAddr1, int rAddr2, StringDesc *str, int pPoint
 StringDesc *concatStringProfiling(int rAddr, StringDesc *str1, StringDesc *str2, int pPoint);
 #endif /*PROFILING*/
 
+void printNum(int n);
+
 #endif /*STRING*/

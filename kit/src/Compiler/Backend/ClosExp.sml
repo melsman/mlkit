@@ -1290,7 +1290,9 @@ struct
 	   | CE.FIX(lab,SOME _,0) => die "add_free_lv: CE.FIX messed up."
 	   | CE.FIX(lab,SOME _,s) => (CE.declareLvar(lv,CE.FIX(lab,SOME(CE.SELECT(lv_clos,i)),s),env),i+1)
 	   | _                    => (CE.declareLvar(lv,CE.SELECT(lv_clos,i),env),i+1))
-	fun add_free_excon (excon,(env,i)) = (CE.declareExcon(excon,CE.SELECT(lv_clos,i),env),i+1)
+	fun add_free_excon (excon,(env,i)) = 
+	  (CE.declareExcon(excon,(CE.SELECT(lv_clos,i),
+				  CE.lookupExconArity org_env excon),env),i+1) (*!!!*)
 	fun add_free_rho (place,(env,i)) = 
 	  (CE.declareRhoKind(place,CE.lookupRhoKind org_env place,
 			     CE.declareRho(place,CE.SELECT(lv_clos,i),env)),i+1)
@@ -1698,11 +1700,11 @@ struct
 		 val lv2 = fresh_lvar "exn0-2"
 		 val lv3 = fresh_lvar "exn0-3"
 		 val lv4 = fresh_lvar "exn0-4"
-		 val env' = CE.declareExcon(excon,CE.LVAR lv4,env)
+		 val env' = CE.declareExcon(excon,(CE.LVAR lv4,CE.NULLARY_EXCON),env)
 		 val (sma,se_a) = convert_alloc(alloc,env)
 	       in
 		 (LET{pat=[lv1], 
-		      bind=CCALL{name="fresh_exname",
+		      bind=CCALL{name=BI.FRESH_EXN_NAME,
 				 args=[],
 				 rhos_for_result=[]},
 		      scope=insert_se(LET{pat=[lv2], 
@@ -1721,11 +1723,11 @@ struct
 		 val lv1 = fresh_lvar "exn0-1"
 		 val lv2 = fresh_lvar "exn0-2"
 		 val lv3 = fresh_lvar "exn0-3"
-		 val env' = CE.declareExcon(excon,CE.LVAR lv3,env)
+		 val env' = CE.declareExcon(excon,(CE.LVAR lv3,CE.UNARY_EXCON),env)
 		 val (sma,se_a) = convert_alloc(alloc,env)
 	       in
 		 (LET{pat=[lv1], 
-		      bind=CCALL{name="fresh_exname",
+		      bind=CCALL{name=BI.FRESH_EXN_NAME,
 				 args=[],
 				 rhos_for_result=[]},
 		      scope=LET{pat=[lv2], 
@@ -1798,23 +1800,32 @@ struct
 	   | MulExp.SWITCH_E(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
 		 val (selections,opt) =
-		   compile_sels_and_default selections opt (fn m=>lookup_excon env m) (fn tr => ccTrip tr env lab cur_rv)
+		   compile_sels_and_default selections opt (fn m=>(lookup_excon env m,CE.lookupExconArity env m)) (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
 		 fun compile_seq_switch(ce,[],default) = default
-		   | compile_seq_switch(ce,((ce_e,se_e),ce')::rest,default) =
+		   | compile_seq_switch(ce,(((ce_e,se_e),arity),ce')::rest,default) =
 		   let
 		     val lv_sw = fresh_lvar("sw")
 		     val lv_exn1 = fresh_lvar("exn1")
 		     val lv_exn2 = fresh_lvar("exn2")
 		   in
-		     LET{pat=[lv_exn1],
-			 bind=insert_se(SELECT(0,ce_e),se_e),
-			 scope=LET{pat=[lv_exn2],
-				   bind=SELECT(0,VAR lv_exn1),
-				   scope=LET{pat=[lv_sw],
-					     bind=CCALL{name=BI.EQUAL_INT,args=[ce,VAR lv_exn2],rhos_for_result=[]},
-					     scope=SWITCH_I(SWITCH(VAR lv_sw,[(BI.ml_true,ce')],
-								   compile_seq_switch(ce,rest,default)))}}}
+		     (case arity of
+			CE.NULLARY_EXCON =>
+			  LET{pat=[lv_exn1],
+			      bind=insert_se(SELECT(0,ce_e),se_e),
+			      scope=LET{pat=[lv_exn2],
+					bind=SELECT(0,VAR lv_exn1),
+					scope=LET{pat=[lv_sw],
+						  bind=CCALL{name=BI.EQUAL_INT,args=[ce,VAR lv_exn2],rhos_for_result=[]},
+						  scope=SWITCH_I(SWITCH(VAR lv_sw,[(BI.ml_true,ce')],
+									compile_seq_switch(ce,rest,default)))}}}
+		      | UNARY_EXCON => 
+			  LET{pat=[lv_exn1],
+			      bind=insert_se(SELECT(0,ce_e),se_e),
+			      scope=LET{pat=[lv_sw],
+					bind=CCALL{name=BI.EQUAL_INT,args=[ce,VAR lv_exn1],rhos_for_result=[]},
+					scope=SWITCH_I(SWITCH(VAR lv_sw,[(BI.ml_true,ce')],
+							      compile_seq_switch(ce,rest,default)))}})
 		   end
 		 val lv_exn_arg1 = fresh_lvar("exn_arg1")
 		 val lv_exn_arg2 = fresh_lvar("exn_arg2")
@@ -1823,7 +1834,7 @@ struct
 			 bind=SELECT(0,ce),
 			 scope=LET{pat=[lv_exn_arg2],
 				   bind=SELECT(0,VAR lv_exn_arg1),
-				   scope=insert_se(compile_seq_switch(ce,selections,opt),se)}}
+				   scope=insert_se(compile_seq_switch(VAR lv_exn_arg2,selections,opt),se)}}
 	       in
 		 (ce_res,NONE_SE)
 	       end
@@ -2028,7 +2039,8 @@ struct
 		 val excons_and_labels = List.map (fn excon => {excon=excon,label=fresh_lab(Excon.pr_excon excon ^ "_lab")}) excons
 		 val frame_env =
 		   (frame_env_lv plus_decl_with CE.declareExcon)
-		   (map (fn {excon,label} => (excon,CE.LABEL label)) excons_and_labels)
+		   (map (fn {excon,label} => (excon,(CE.LABEL label,
+						     CE.lookupExconArity env excon(*!!!*)))) excons_and_labels)
 		 val _ = set_frame_env frame_env
 	       in
 		 (List.foldr (fn ({excon,label},acc) =>
@@ -2066,7 +2078,8 @@ struct
 	val clos_exp = insert_se(ccTrip tr global_env main_lab NONE)
 	val _ = add_new_fn(main_lab,CallConv.mk_cc_fn([],NONE,[],[]),clos_exp)
 	val export_env = CE.plus (env_datbind, (get_frame_env()))
-	val export_labs = find_globals_in_env (export_vars) (get_frame_env()) 
+	val export_labs = find_globals_in_env (export_vars) (get_frame_env())
+      (* val _ = display("\nReport: export_env:", CE.layoutEnv export_env)*)
       in
 	{main_lab=main_lab,
 	 code=get_top_decls(),
