@@ -124,6 +124,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getIntErr              : int formvar_fn
     val getNatErr              : int formvar_fn
     val getRealErr             : real formvar_fn
+    val getPosRealErr          : real formvar_fn
     val getStringErr           : string formvar_fn
     val getStringLenErr        : int -> string formvar_fn
     val getNonEmptyStringErr   : string formvar_fn
@@ -325,6 +326,19 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		   case l
 		     of c::_ => 
 		       if Char.isDigit c orelse c = #"-" orelse c = #"~" then
+			 (case Real.scan List.getItem l
+			    of SOME (n, nil) => SOME n
+			  | _ => NONE)
+		       else NONE
+		   | nil => NONE
+		 end)
+
+      val getPosRealErr = getErrWithOverflow 0.0 [(ScsLang.en,` positive real`),(ScsLang.da,`positivt kommatal`)]
+	(fn v => let val l = explode (ScsReal.normReal v)
+		 in
+		   case l
+		     of c::_ => 
+		       if Char.isDigit c then
 			 (case Real.scan List.getItem l
 			    of SOME (n, nil) => SOME n
 			  | _ => NONE)
