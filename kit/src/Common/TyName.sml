@@ -6,7 +6,7 @@ functor TyName(
    structure Flags                  : FLAGS
    structure PrettyPrint            : PRETTYPRINT
    structure Report                 : REPORT
-   structure IntFinMap              : MONO_FINMAP where type dom = int
+   structure IntStringFinMap        : MONO_FINMAP where type dom = int * string
    structure Crash                  : CRASH
 	      ) : TYNAME =
   struct
@@ -80,6 +80,8 @@ functor TyName(
 
     fun name ({name, ...} : TyName) : name = name
 
+    val id = Name.key o name
+
     (* We should only allow matching of type names when their attributes 
      * are equal; otherwise changes in attributes are not caught by
      * the system.. *)
@@ -90,9 +92,7 @@ functor TyName(
 	Name.match(name tn1, name tn2)
       else ()
 
-    val id = Name.key o name
-
-    val op eq = (fn (tn1,tn2) => id tn1 = id tn2)  
+    val op eq = fn (tn1,tn2) => Name.eq(name tn1, name tn2)  
 
     val tyName_BOOL = fresh true {tycon=TyCon.tycon_BOOL, arity=0, equality=true}
       
@@ -122,8 +122,9 @@ functor TyName(
       in
 	if print_type_name_stamps() then
 	  let val eq = if equality tn then "E " else ""
-	    val id = Int.toString (Name.key (name tn))
-	    in str ^ "(" ^ eq ^ id ^ ")"
+	      val (i,b) = Name.key (name tn)
+	      val id = Int.toString i
+	  in str ^ "(" ^ eq ^ id ^ b ^ ")"
 	  end
 	else 
 	  (if tag_values() then 
@@ -159,7 +160,7 @@ functor TyName(
 		  equality=e, unboxed=u}
 	     fun from ({tycon=t, name=n, arity=a, rank=r,
 			equality=e, unboxed=u} : TyName) = ((t,n,a),r,e,u)	    
-	 in newHash id
+	 in newHash (#1 o Name.key o name)
 	     (convert (to,from)
 	      (tup4Gen0(tup3Gen0(TyCon.pu,Name.pu,int),
 			refOneGen int,bool,refOneGen bool)))
@@ -173,14 +174,14 @@ functor TyName(
 	val pp = pr_TyName
       end
 
-    structure Map = QuasiMap(structure IntFinMap = IntFinMap
+    structure Map = QuasiMap(structure IntStringFinMap = IntStringFinMap
 			     structure QD = QD
 			     structure Name = Name
 			     structure Crash = Crash
 			     structure PP = PrettyPrint
 			     structure Report = Report)
 
-    structure Set = QuasiSet(structure IntFinMap = IntFinMap
+    structure Set = QuasiSet(structure IntStringFinMap = IntStringFinMap
 			     structure QD = QD
 			     structure Name = Name
 			     structure Crash = Crash

@@ -29,7 +29,6 @@ signature LAMBDA_EXP =
     val lt_tyvar : tyvar * tyvar -> bool
     val equality_tyvar : tyvar -> bool
     val reset : unit -> unit
-    val commit : unit -> unit
 
     datatype Type =
         TYVARtype   of tyvar

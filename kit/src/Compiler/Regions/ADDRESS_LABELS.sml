@@ -14,7 +14,7 @@ signature ADDRESS_LABELS =
     val new_named : string -> label
     val eq        : label * label -> bool
     val lt        : label * label -> bool (* Used locally by ClosExp *)
-    val key       : label -> int
+    val key       : label -> int * string (* the string is the base (i.e., compilation unit) *)
     val pr_label  : label -> string
 
     type name

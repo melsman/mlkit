@@ -6,8 +6,8 @@ signature QUASI_DOM =
     val pp : dom -> string
   end
 
-functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
-		 structure QD : QUASI_DOM
+functor QuasiMap(structure IntStringFinMap : MONO_FINMAP where type dom = int * string
+  	         structure QD : QUASI_DOM
 	         structure Name : NAME
 		   sharing type Name.name = QD.name
 		 structure Crash : CRASH
@@ -15,17 +15,19 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
 		 structure Report : REPORT) : MONO_FINMAP =
   struct
 
-    structure IFM = IntFinMap
+    structure M = IntStringFinMap
 
-    fun die s = Crash.impossible ("Quasimap." ^ s)
+    fun die s = Crash.impossible ("QuasiMap2." ^ s)
 
     fun key d = Name.key(QD.name d)
     fun rigid d = Name.rigid(QD.name d)
       
     type dom = QD.dom
       
-    type 'a imap = 'a IFM.map
-    datatype 'a map0 = Rigid of (dom * 'a) imap | Flexible of {matchcount: Name.matchcount, imap: (dom * 'a) imap}
+    type 'a imap = 'a M.map
+    datatype 'a map0 = Rigid of (dom * 'a) imap 
+                     | Flexible of {matchcount: Name.matchcount, 
+				    imap: (dom * 'a) imap}
       
     datatype 'a map = M of 'a map0 ref | Empty
       
@@ -33,8 +35,10 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
       
     fun singleton (d,e) = 
       let val nd = QD.name d
-      in if Name.rigid nd then M (ref (Rigid(IFM.singleton(Name.key nd,(d,e)))))
-	 else M (ref (Flexible {imap = IFM.singleton(Name.key nd,(d,e)), matchcount = Name.current_matchcount()}))
+	  val k = Name.key nd
+      in if Name.rigid nd then M (ref (Rigid(M.singleton(k,(d,e)))))
+	 else M (ref (Flexible {imap = M.singleton(k,(d,e)), 
+				matchcount = Name.current_matchcount()}))
       end
 
     fun isEmpty Empty = true
@@ -51,9 +55,9 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
     fun ensure_consistent_imap (imap : (dom * 'a) imap) : {rigid: bool, imap : (dom * 'a) imap} =
       let 
 	val (consistent, rigid) = (* Property: rigid => consistent *)
-	  IFM.Fold(fn((i,(d,_)),(c,r)) => (c andalso key d = i, r andalso rigid d)) (true,true) imap
+	  M.Fold(fn((i,(d,_)),(c,r)) => (c andalso key d = i, r andalso rigid d)) (true,true) imap
 	val imap = if consistent then imap
-		   else IFM.fold(fn((d,e),im) => IFM.add(key d,(d,e),im)) IFM.empty imap
+		   else M.fold(fn((d,e),im) => M.add(key d,(d,e),im)) M.empty imap
       in {rigid=rigid,imap=imap}
       end
     
@@ -74,7 +78,7 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
     (* Lookup *)
     fun lookup m d = 
       case imap (ensure_consistent m)
-	of SOME im => (case IFM.lookup im (key d)
+	of SOME im => (case M.lookup im (key d)
 			 of SOME (_, e) => SOME e
 			  | NONE => NONE)
 	 | NONE => NONE
@@ -85,45 +89,45 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
 	 | M(ref(Rigid imap)) =>
 	  let val nd = QD.name d
 	      val i = Name.key nd
-	  in if Name.rigid nd then mk_rigid(IFM.add(i,(d,e),imap))
-	     else mk_flex (IFM.add(i,(d,e),imap))
+	  in if Name.rigid nd then mk_rigid(M.add(i,(d,e),imap))
+	     else mk_flex (M.add(i,(d,e),imap))
 	  end
-	 | M(ref(Flexible{imap,...})) => mk_flex (IFM.add(key d,(d,e),imap))
+	 | M(ref(Flexible{imap,...})) => mk_flex (M.add(key d,(d,e),imap))
 
     fun plus(m1,m2) =
       case (ensure_consistent m1, ensure_consistent m2)
 	of (Empty, m) => m
 	 | (m, Empty) => m
-	 | (M(ref(Rigid im1)), M(ref(Rigid im2))) => mk_rigid (IFM.plus(im1,im2))
-	 | (m1,m2) => mk_flex (IFM.plus(imap' m1, imap' m2))
+	 | (M(ref(Rigid im1)), M(ref(Rigid im2))) => mk_rigid (M.plus(im1,im2))
+	 | (m1,m2) => mk_flex (M.plus(imap' m1, imap' m2))
 
     fun remove (d, m) = 
       case ensure_consistent m
 	of Empty => NONE
 	 | M(ref(Rigid im)) => 
-	  (case IFM.remove(key d, im)
-	     of SOME im' => if IFM.isEmpty im' then SOME Empty
+	  (case M.remove(key d, im)
+	     of SOME im' => if M.isEmpty im' then SOME Empty
 			    else SOME(mk_rigid im')
 	      | NONE => NONE)
 	 | M(ref(Flexible{imap,...})) => 
-	     (case IFM.remove(key d, imap)
-		of SOME im' => if IFM.isEmpty im' then SOME Empty
+	     (case M.remove(key d, imap)
+		of SOME im' => if M.isEmpty im' then SOME Empty
 			       else SOME(mk_flex im')
 		 | NONE => NONE)
 
     fun dom Empty = []
-      | dom m = map #1 (IFM.range (imap' m)) 
+      | dom m = map #1 (M.range (imap' m)) 
 
     fun range Empty = []
-      | range m = map #2 (IFM.range (imap' m)) 
+      | range m = map #2 (M.range (imap' m)) 
 
     fun list Empty = []
-      | list m = IFM.range (imap' m)
+      | list m = M.range (imap' m)
 
     fun fromList nil = Empty
       | fromList l =
       let val (imap, rigid) = 
-	    foldl (fn ((d,e),(im,r)) => (IFM.add(key d, (d,e), im), r andalso rigid d)) (IFM.empty, true) l
+	    foldl (fn ((d,e),(im,r)) => (M.add(key d, (d,e), im), r andalso rigid d)) (M.empty, true) l
       in if rigid then mk_rigid imap
 	 else mk_flex imap
       end
@@ -133,7 +137,7 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
 	of [] => Empty
 	 | l => 
 	  let val (imap, rigid) = 
-	        foldl (fn ((d,e),(im,r)) => (IFM.add(key d,(d, f e),im), r andalso rigid d)) (IFM.empty, true) l
+	        foldl (fn ((d,e),(im,r)) => (M.add(key d,(d, f e),im), r andalso rigid d)) (M.empty, true) l
 	  in if rigid then mk_rigid imap
 	     else mk_flex imap
 	  end
@@ -143,7 +147,7 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
 	of [] => Empty
 	 | l => 
 	  let val (imap, rigid) = 
-	        foldl (fn ((d,e),(im,r)) => (IFM.add(key d,(d, f(d, e)),im), r andalso rigid d)) (IFM.empty, true) l
+	        foldl (fn ((d,e),(im,r)) => (M.add(key d,(d, f(d, e)),im), r andalso rigid d)) (M.empty, true) l
 	  in if rigid then mk_rigid imap
 	     else mk_flex imap
 	  end
@@ -166,8 +170,8 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
       in case (ensure_consistent m1, ensure_consistent m2)
 	   of (Empty, m) => m
 	    | (m, Empty) => m
-	    | (M(ref(Rigid im1)), M(ref(Rigid im2))) => mk_rigid (IFM.mergeMap f' im1 im2)
-	    | (m1,m2) => mk_flex (IFM.mergeMap f' (imap' m1) (imap' m2))
+	    | (M(ref(Rigid im1)), M(ref(Rigid im2))) => mk_rigid (M.mergeMap f' im1 im2)
+	    | (m1,m2) => mk_flex (M.mergeMap f' (imap' m1) (imap' m2))
       end
 
     fun pp_lookup pp [] i = die "pp_lookup; element not there"
@@ -181,8 +185,8 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
 	 | m => let val im = imap' m
 		    val ns = map key l
 		    val pp' = pp_lookup pp l 
-		    val im' = IFM.restrict (pp', im, ns) handle IFM.Restrict s => raise Restrict s
-		    val rigid = IFM.fold (fn ((d,_), r) => r andalso rigid d) true im'
+		    val im' = M.restrict (pp', im, ns) handle M.Restrict s => raise Restrict s
+		    val rigid = M.fold (fn ((d,_), r) => r andalso rigid d) true im'
 		in if rigid then mk_rigid im'
 		   else mk_flex im'
 		end
@@ -194,7 +198,7 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
 	 | (m1, m2) => let val im1 = imap' m1
 	                   val im2 = imap' m2
 			   fun f' ((_,e1),(_,e2)) = f (e1,e2)  (* This is the function we want to *)
-		       in IFM.enrich f' (im1, im2)             (* update for more efficient enrichment *)
+		       in M.enrich f' (im1, im2)             (* update for more efficient enrichment *)
 		       end                                     (* using refs. *)
       
 
@@ -216,8 +220,8 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
 
     fun pu_map0 (pu_d : dom Pickle.pu) (pu_a : 'a Pickle.pu) : 'a map0 Pickle.pu =
 	let open Pickle
-	    fun szMap m = IFM.fold (fn (_,a) => a+1) 0 m
-	    val pu_m = combHash szMap (IFM.pu Pickle.int (pairGen(pu_d,pu_a)))
+	    fun szMap m = M.fold (fn (_,a) => a+1) 0 m
+	    val pu_m = combHash szMap (M.pu (pairGen(Pickle.int,Pickle.string)) (pairGen(pu_d,pu_a)))
 	    fun toInt (Rigid _) = 0
 	      | toInt (Flexible _) = 1
 	    fun fun_Rigid _ =
@@ -235,7 +239,7 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
 	let open Pickle
 	    fun to (SOME v) = M v
 	      | to NONE = Empty
-	    fun from (m as M v) = if IFM.isEmpty (imap' m) then die "pu.hmmm" else SOME v
+	    fun from (m as M v) = if M.isEmpty (imap' m) then die "pu.hmmm" else SOME v
 	      | from Empty = NONE
 	in convert (to,from) (optionGen (ref0ShGen (pu_map0 pu_d pu_a)))
 	end

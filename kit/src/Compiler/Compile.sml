@@ -243,12 +243,11 @@ functor Compile(structure Excon : EXCON
      * ----------------------------------------- *)
 
     local 
-      val effect_init = ref 9   (* there are six free variables (global_regions) in init_rse. *)
-      val effect_count = ref (!effect_init)
+      val effect_init = 9   (* there are six free variables (global_regions) in init_rse. *)
+      val effect_count = ref effect_init
     in
       fun effect_counter() = (effect_count := !effect_count + 1; !effect_count)
-      fun reset_effect_count() = effect_count := !effect_init
-      fun commit_effect_count() = effect_init := !effect_count
+      fun reset_effect_count() = effect_count := effect_init
     end
 
 
@@ -257,12 +256,11 @@ functor Compile(structure Excon : EXCON
      * -------------------------------------------- *)
 
     local 
-      val pp_init = ref 1   (* ~1 and 0 are reserved *)
-      val pp_count = ref (!pp_init)
+      val pp_init = 1   (* ~1 and 0 are reserved *)
+      val pp_count = ref (pp_init)
     in
       fun pp_counter() = (pp_count := !pp_count + 1; !pp_count)
-      fun reset_pp_count() = pp_count := !pp_init
-      fun commit_pp_count() = pp_init := !pp_count
+      fun reset_pp_count() = pp_count := pp_init
     end
 
     (* ---------------------------------------------------------------------- *)

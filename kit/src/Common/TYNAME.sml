@@ -38,7 +38,7 @@ signature TYNAME =
     val arity    : TyName -> int
     val equality : TyName -> bool
     val tycon    : TyName -> tycon
-    val id       : TyName -> int
+    val id       : TyName -> int * string (* the string is the base (i.e., the defining program unit) *)
 
     (* Names *)
     type name

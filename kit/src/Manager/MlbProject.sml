@@ -1,21 +1,36 @@
 functor MlbProject () : MLB_PROJECT = 
     struct
-	type bid = string
-	fun bid s = s
-	fun pp_bid s = s
+	structure Bid :>
+	    sig eqtype bid and longbid
+		val bid : string -> bid
+		val longbid : bid list -> longbid
+		val pp_bid : bid -> string
+		val pp_longbid : longbid -> string
+		val explode : longbid -> bid list
+	    end =
+	struct
+	    type bid = string 
+	    type longbid = bid list
+	    fun bid s = s
+	    fun pp_bid s = s
+	    fun longbid (bids:bid list) : longbid = bids
+	    fun pp_longbid nil = raise Fail "empty longbid"
+	      | pp_longbid [b] = pp_bid b
+	      | pp_longbid (b::bs) = pp_bid b ^ "." ^ pp_longbid bs
+	    fun explode ss = ss
+	end
 
-	datatype bexp = SEQbexp of bexp * bexp
+	datatype bexp = BASbexp of bdec
                       | LETbexp of bdec * bexp
-                      | FILEbexp of string        (* file.sml *)
-                      | BIDbexp of bid
-	              | EMPTYbexp 
+                      | LONGBIDbexp of Bid.longbid
 
              and bdec = SEQbdec of bdec * bdec
-                      | LOCALbdec of bdec * bdec
-                      | BASbdec of bid * bexp
-                      | OPENbdec of bexp
-		      | USEbdec of string         (* file.mlb *)
 	              | EMPTYbdec 
+                      | LOCALbdec of bdec * bdec
+                      | BASISbdec of Bid.bid * bexp
+                      | OPENbdec of Bid.longbid list
+	              | SMLFILEbdec of string  (* path.{sml,sig} *)
+		      | MLBFILEbdec of string  (* path.mlb *)
 
 	fun error (s : string) = 
 	    (print ("\nError: " ^ s ^ ".\n\n"); raise Fail "MlbProject.error")
@@ -44,8 +59,7 @@ functor MlbProject () : MLB_PROJECT =
 	  in loop(0,l)
 	  end
 
-	fun is_symbol #"(" = true
-	  | is_symbol #")" = true
+	fun is_symbol #"=" = true
 	  | is_symbol _ = false
 
 	fun lex chs : string list =
@@ -86,15 +100,6 @@ functor MlbProject () : MLB_PROJECT =
 	fun is_smlfile s = 
 	    has_ext(s,"sml") orelse has_ext(s,"sig")
 
-	fun is_keyword s = 
-	    case s of
-		"open" => true
-	      | "let" => true
-	      | "in" => true
-	      | "end" => true
-	      | "bas" => true
-	      | _ => false
-
 	fun is_id s = 
 	    case explode s of
 		c::cs => Char.isAlpha c 
@@ -103,8 +108,35 @@ functor MlbProject () : MLB_PROJECT =
 				      orelse c = #"'") cs
 	      | _ => false
 
-	fun is_bid s = 
-	    is_id s andalso not (is_keyword s)
+	local
+	    fun is_keyword s = 
+		case s of
+		    "open" => true
+		  | "let" => true
+		  | "local" => true
+		  | "in" => true
+		  | "end" => true
+		  | "bas" => true
+		  | "basis" => true
+		  | _ => false
+			
+	    fun is_fileext s =
+		case s of
+		    "mlb" => true
+		  | "sml" => true
+		  | "sig" => true
+		  | _ => false
+			
+	in
+	    fun is_bid s =
+		is_id s andalso not (is_keyword s) andalso not (is_fileext s)
+
+	    fun is_longbid s = 
+		let val fs = String.fields (fn c => c = #".") s
+		in if List.all is_bid fs then SOME (Bid.longbid (map Bid.bid fs))
+		   else NONE
+		end
+	end
 
 	fun print_ss ss = (print "Tokens: "; app (fn s => print (s ^ " ")) ss; print "\n")
 			
@@ -115,52 +147,45 @@ functor MlbProject () : MLB_PROJECT =
           | s::_ => error ("while parsing basis file " ^ quot mlbfile ^ " : " ^ msg ^ "(reached " ^ quot s ^ ")")
 
 
-
-	fun parse_bexp_more mlbfile (bexp,ss) =
-	    case parse_bexp_opt mlbfile ss of
-		SOME(bexp',ss) => SOME(SEQbexp(bexp,bexp'),ss)
-	      | NONE => SOME(bexp,ss)
-
-	and parse_bdec_more mlbfile (bdec,ss) =
+	fun parse_bdec_more mlbfile (bdec,ss) =
 	    case parse_bdec_opt mlbfile ss of
 		SOME(bdec',ss) => SOME(SEQbdec(bdec,bdec'),ss)
 	      | NONE => SOME(bdec,ss)
 
-	and parse_bexp_opt mlbfile (ss:string list) : (bexp * string list) option =	    
+	and parse_bexp mlbfile (ss:string list) : bexp * string list =	    
 	    case ss of
-		nil => NONE
+		nil => parse_error1 mlbfile ("missing basis expression", ss)
 	      | "let" :: ss => 
 		    let 
-			fun parse_rest'(bdec,bexp,ss) =
-			    case ss of 
-				"end" :: ss => parse_bexp_more mlbfile (LETbexp(bdec,bexp),ss)
-			      | _ => parse_error1 mlbfile ("I expect an 'end'", ss)
 			fun parse_rest(bdec,ss) =
 			    case ss of 
 				"in" :: ss => 
-				    (case parse_bexp_opt mlbfile ss of 
-					 NONE => parse_rest'(bdec,EMPTYbexp,ss)
-				       | SOME(bexp,ss) => parse_rest'(bdec,bexp,ss))
-			      | _ => parse_error1 mlbfile ("I expect an 'in'", ss)
+				    let val (bexp,ss) = parse_bexp mlbfile ss
+				    in 
+					case ss of 
+					    "end" :: ss => (LETbexp(bdec,bexp),ss)
+					  | _ => parse_error1 mlbfile ("missing 'end'", ss)
+				    end
+			      | _ => parse_error1 mlbfile ("missing 'in'", ss)
 		    in case parse_bdec_opt mlbfile ss of 
 			NONE => parse_rest(EMPTYbdec,ss)
 		      | SOME(bdec,ss) => parse_rest(bdec,ss)
 		    end
-	      | "(" :: ss => 
+	      | "bas" :: ss => 
 		    let 
-			fun parse_rest(bexp,ss) =
+			fun parse_rest(bdec,ss) =
 			    case ss of
-				")" :: ss => parse_bexp_more mlbfile (bexp,ss)
-			      | _ => parse_error1 mlbfile ("I expect an ')'", ss)
+				"end" :: ss => (BASbexp bdec, ss)
+			      | _ => parse_error1 mlbfile ("missing 'end'", ss)
 		    in
-			case parse_bexp_opt mlbfile ss of 
-			    NONE => parse_rest(EMPTYbexp,ss)
-			  | SOME(bexp,ss) => parse_rest(bexp,ss)
+			case parse_bdec_opt mlbfile ss of 
+			    NONE => parse_rest(EMPTYbdec,ss)
+			  | SOME(bdec,ss) => parse_rest(bdec,ss)
 		    end
-	      | s :: ss => 
-		    if is_smlfile s then parse_bexp_more mlbfile (FILEbexp s,ss)
-		    else if is_bid s then parse_bexp_more mlbfile (BIDbexp s,ss)
-			 else NONE
+	      | s :: ss' => 
+		    (case is_longbid s of
+			 SOME longbid => (LONGBIDbexp longbid,ss')
+		       | NONE => parse_error1 mlbfile ("invalid basis expression", ss))
 
 	and parse_bdec_opt mlbfile ss =
 	    case ss of
@@ -177,32 +202,38 @@ functor MlbProject () : MLB_PROJECT =
 					 NONE => parse_rest'(bdec,EMPTYbdec,ss)
 				       | SOME(bdec',ss) => parse_rest'(bdec,bdec',ss))
 			      | _ => parse_error1 mlbfile ("I expect an 'in'", ss)
-		    in print "Entering local\n";
-			print_ss ss;
-			case parse_bdec_opt mlbfile ss of 
+		    in case parse_bdec_opt mlbfile ss of 
 			NONE => parse_rest(EMPTYbdec,ss)
-		      | SOME(bdec,ss) => (print "ok:"; print_ss ss; parse_rest(bdec,ss))
+		      | SOME(bdec,ss) => parse_rest(bdec,ss)
 		    end
-	      | "bas" :: ss =>
+	      | "basis" :: ss =>
 		    (case ss of
 			 nil => parse_error1 mlbfile ("I expect a basis identifier", ss)
-		       | bid :: ss => 
+		       | bid :: ss =>
+			     if not (is_bid bid) then
+				 parse_error1 mlbfile ("I expect a basis identifier", ss)
+			     else
 			     (case ss of
 				  "=" :: ss => 
-				      (case parse_bexp_opt mlbfile ss of
-					   SOME (bexp,ss) => parse_bdec_more mlbfile (BASbdec(bid,bexp),ss)
-					 | NONE => parse_error1 mlbfile ("I expect a basis expression", ss))
-				| _ => parse_error1 mlbfile ("I expect an '='", ss)))
+				      let val (bexp,ss) = parse_bexp mlbfile ss
+				      in parse_bdec_more mlbfile (BASISbdec(Bid.bid bid,bexp),ss)
+				      end
+				| _ => parse_error1 mlbfile ("missing '='", ss)))
 	      | "open" :: ss => 	
-		   (case ss of
-			f :: ss' => 
-			    if is_mlbfile f then parse_bdec_more mlbfile (USEbdec f,ss')
-			    else
-				(case parse_bexp_opt mlbfile ss of
-				     SOME(bexp,ss) => parse_bdec_more mlbfile (OPENbdec bexp,ss)
-				   | NONE => parse_error1 mlbfile ("I expect a basis expression", ss))
-		      | nil => parse_error1 mlbfile ("I expect a basis expression or a basis file", ss))
-	      | _ => NONE
+			 let 
+			     fun readBids (nil,acc) = (rev acc, nil)
+			       | readBids (ss_all as (s::ss),acc) = 
+				 (case is_longbid s of
+				      SOME longbid => readBids(ss,longbid::acc)
+				    | NONE => (rev acc, ss_all))
+			     val (longbids,ss) = readBids (ss,nil)
+			 in parse_bdec_more mlbfile (OPENbdec longbids,ss)
+			 end
+	      | s :: ss =>
+			 if is_smlfile s then parse_bdec_more mlbfile (SMLFILEbdec s,ss)
+			 else if is_mlbfile s then parse_bdec_more mlbfile (MLBFILEbdec s,ss)
+			      else NONE
+	      | nil => NONE
 
         fun fromFile (filename:string) =
 	    let val is = TextIO.openIn filename 
@@ -219,8 +250,8 @@ functor MlbProject () : MLB_PROJECT =
 		    val _ = print_ss ss
 		in  case parse_bdec_opt mlbfile ss of
 		    SOME (bdec,nil) => bdec
-		  | SOME (bdec,ss) => parse_error1 mlbfile ("I expect a basis declaration", ss)
-		  | NONE => parse_error1 mlbfile ("I expect a basis declaration", ss)
+		  | SOME (bdec,ss) => parse_error1 mlbfile ("misformed basis declaration", ss)
+		  | NONE => parse_error1 mlbfile ("missing basis declaration", ss)
 		end
 	    handle IO.Io {name=io_s,...} => error ("The basis file " ^ quot mlbfile ^ " cannot be opened")
 
@@ -229,76 +260,86 @@ functor MlbProject () : MLB_PROJECT =
 
 	structure DepEnv = 
 	    struct
-		type env = (string * string list) list
-		fun lookup env bid : string list option =
-		    let fun look nil = NONE
-			  | look ((x,xs)::rest) = if bid = x then SOME xs
-						  else look rest
-		    in look env
+		type L = string list	    
+		datatype D = D of L * (Bid.bid * D) list
+		fun lookup d longbid : D option =
+		    let fun look nil _ = NONE
+			  | look ((x,d)::xs) y = if x = y then SOME d else look xs y
+			fun lookD _ nil = raise Fail "empty longbid"
+			  | lookD (D(_,xs)) [y] = look xs y
+			  | lookD (D(_,xs)) (y::ys) =
+			    case look xs y of
+				SOME d => lookD d ys
+			      | NONE => NONE
+		    in lookD d (Bid.explode longbid)
 		    end
-		fun plus (e1, e2) = e2 @ e1
-		fun add env bid xs = (bid,xs)::env
-		val empty = nil
+		fun plus (D(L1,M1),D(L2,M2)) = D(L2 @ L1, M1 @ M2)
+
+		fun getL (D(L,_)) : L = L
+		fun singleBidEntry e = D(nil,[e])
+		fun singleFile f = D([f],nil)
+		val empty = D(nil,nil)
 	    end
 
-	type L = string list
-	type D = DepEnv.env
+	type D = DepEnv.D
 	    
 	val op + = DepEnv.plus
 
-	fun dep_bdec (L:L) (D:D) bdec : D * L =
+	fun dep_bexp (D:D) bexp : D =
+	    case bexp of
+	        BASbexp bdec => dep_bdec D bdec
+	      | LETbexp (bdec,bexp) =>
+		    let val D1 = dep_bdec D bdec
+			val D2 = dep_bexp (D+D1) bexp
+		    in D2
+		    end
+	      | LONGBIDbexp longbid =>
+		    (case DepEnv.lookup D longbid of
+			 SOME D => D
+		       | NONE => error ("The long basis identifier " 
+					^ Bid.pp_longbid longbid 
+					^ " is undefined"))
+
+	and dep_bdec (D:D) bdec : D =
 	    case bdec of
 		SEQbdec (bdec1,bdec2) =>
-		    let val (D1,L1) = dep_bdec L D bdec1
-			val (D2,L2) = dep_bdec (L @ L1) (D + D1) bdec2
-		    in (D1 + D2, L1 @ L2)
+		    let val D1 = dep_bdec D bdec1
+			val D2 = dep_bdec (D + D1) bdec2
+		    in (D1 + D2)
 		    end
+	      | EMPTYbdec => DepEnv.empty
 	      | LOCALbdec (bdec1,bdec2) =>
-		    let val (D1,L1) = dep_bdec L D bdec1
-			val (D2,L2) = dep_bdec (L @ L1) (D + D1) bdec2
-		    in (D2, L2)
+		    let val D1 = dep_bdec D bdec1
+			val D2 = dep_bdec (D + D1) bdec2
+		    in D2
 		    end
-	      | BASbdec (bid, bexp) =>
-		    let val L' = dep_bexp L D bexp
-		    in (DepEnv.add DepEnv.empty bid L', nil)
+	      | BASISbdec (bid, bexp) =>
+		    let val D' = dep_bexp D bexp
+		    in DepEnv.singleBidEntry (bid,D')
 		    end
-	      | OPENbdec bexp =>
-		    let val L' = dep_bexp L D bexp
-		    in (DepEnv.empty, L')
+	      | OPENbdec longbids =>
+		    let val D' = 
+			foldl (fn (longbid,Dacc) => 
+			       case DepEnv.lookup D longbid of
+				   SOME D => Dacc + D
+				 | NONE => error ("The long basis identifier " 
+						  ^ Bid.pp_longbid longbid 
+						  ^ " is undefined")) DepEnv.empty longbids
+		    in D'
 		    end
-	      | USEbdec mlbfile =>
-		    dep_bdec_file mlbfile
-	      | EMPTYbdec => 
-		    (DepEnv.empty,nil)
+	      | SMLFILEbdec smlfile =>
+ 		    (let val file = "PM/" ^ smlfile ^ ".d"
+			 val os = TextIO.openOut file       (* what about general paths *)
+ 		     in (  app (fn u => TextIO.output(os,u^" ")) (DepEnv.getL D)
+ 			 ; TextIO.closeOut os
+ 			 ; DepEnv.singleFile smlfile
+ 			 ) handle ? => (TextIO.closeOut os; raise ?)
+ 		     end handle _ => error("Failed to write to file " ^ quot smlfile))
+	      | MLBFILEbdec mlbfile => dep_bdec_file mlbfile
 
-	and dep_bexp (L:L) (D:D) bexp : L =
-	    case bexp of
-		SEQbexp (bexp1,bexp2) =>
-		    let val L1 = dep_bexp L D bexp1
-			val L2 = dep_bexp (L@L1) D bexp2
-		    in L1 @ L2
-		    end
-	      | LETbexp (bdec,bexp) =>
-		    let val (D1,L1) = dep_bdec L D bdec
-			val L2 = dep_bexp (L@L1) (D+D) bexp
-		    in L2
-		    end
-	      | FILEbexp s =>
-		    (let val os = TextIO.openOut ("PM/" ^ s ^ ".d")       (* what about general paths *)
-		     in (  app (fn u => TextIO.output(os,u^" ")) L
-			 ; TextIO.closeOut os
-			 ; [s]
-			 ) handle ? => (TextIO.closeOut os; raise ?)
-		     end handle _ => error("Failed to read source file " ^ quot s))
-	      | BIDbexp bid =>
-		    (case DepEnv.lookup D bid of
-			 SOME L => L
-		       | NONE => error ("The basis identifier " ^ quot bid ^ " is undefined"))
-	      | EMPTYbexp => nil
-
-	and dep_bdec_file mlbfile : D * L =
+	and dep_bdec_file mlbfile : D =
 	    let val bdec = parse mlbfile
-	    in dep_bdec nil DepEnv.empty bdec
+	    in dep_bdec DepEnv.empty bdec
 	    end
 
 	fun dep (mlbfile : string) : unit =
@@ -312,6 +353,7 @@ functor MlbProject () : MLB_PROJECT =
 		     val (ss, mlbs) = srcs_bdec mlbs bdec
 		 in (ss,mlb::mlbs)
 		 end
+
 	and srcs_bdec mlbs bdec =
 	    case bdec of 
 		SEQbdec (bdec1,bdec2) =>
@@ -319,31 +361,26 @@ functor MlbProject () : MLB_PROJECT =
 			val (ss2,mlbs) = srcs_bdec mlbs bdec2
 		    in (ss1@ss2,mlbs)
 		    end
+	      | EMPTYbdec => (nil,mlbs)
 	      | LOCALbdec (bdec1,bdec2) =>
 		    let val (ss1,mlbs) = srcs_bdec mlbs bdec1
 			val (ss2,mlbs) = srcs_bdec mlbs bdec2
 		    in (ss1@ss2,mlbs)
 		    end
-	      | BASbdec (bid,bexp) => srcs_bexp mlbs bexp
-	      | OPENbdec bexp => srcs_bexp mlbs bexp
-	      | USEbdec mlb => srcs_bdec_file mlbs mlb
-	      | EMPTYbdec => (nil,mlbs)
+	      | BASISbdec (bid,bexp) => srcs_bexp mlbs bexp
+	      | OPENbdec _ => (nil,mlbs)
+	      | SMLFILEbdec smlfile => ([smlfile],mlbs)
+	      | MLBFILEbdec mlb => srcs_bdec_file mlbs mlb
 		    
 	and srcs_bexp mlbs bexp =
 	    case bexp of
-		SEQbexp (bexp1,bexp2) =>
-		    let val (ss1,mlbs) = srcs_bexp mlbs bexp1
-			val (ss2,mlbs) = srcs_bexp mlbs bexp2
-		    in (ss1@ss2,mlbs)
-		    end
+		BASbexp bdec => srcs_bdec mlbs bdec
 	      | LETbexp (bdec,bexp) =>
 		    let val (ss1,mlbs) = srcs_bdec mlbs bdec
 			val (ss2,mlbs) = srcs_bexp mlbs bexp
 		    in (ss1@ss2,mlbs)
 		    end
-	      | FILEbexp s => ([s],mlbs)
-	      | BIDbexp bid => (nil,mlbs)
-	      | EMPTYbexp => (nil,mlbs)
+	      | LONGBIDbexp _ => (nil,mlbs)
 	
 	fun sources (mlbfile : string) : string list =
 	    #1 (srcs_bdec_file nil mlbfile)

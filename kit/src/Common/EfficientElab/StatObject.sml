@@ -566,8 +566,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	 * are the same. If the type names are different, they are
 	 * printed differently, even if they have the same tycon. *)
 
-	fun full_works tyname = concat [TyName.pr_TyName tyname, "<", 
-					 Int.toString (TyName.id tyname) , ">"]
+	fun full_works tyname = 
+	    let val (i,b) = TyName.id tyname
+	    in concat [TyName.pr_TyName tyname, "<", 
+		       Int.toString i , "-", b, ">"]
+	    end
+
 	fun TyName_string_as_opt (tyname, tyname'_opt) =
 	     case tyname'_opt of 
 	       SOME tyname' => 

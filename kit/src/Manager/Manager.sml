@@ -863,6 +863,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	    val _ = Flags.reset_warnings ()
 	    val _ = print("[reading source file:\t" ^ smlfile ^ "]\n")
 	    val (infB, elabB, opaq_env, topIntB) = Basis.un B
+	    val _ = Name.baseSet (mlbfile ^ "." ^ smlfile)
 	    val abs_mlbfile = ModuleEnvironments.mk_absprjid mlbfile
 	    val res = ParseElab.parse_elab {absprjid = abs_mlbfile,
 					    file = smlfile,

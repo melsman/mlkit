@@ -16,8 +16,16 @@ functor AddressLabels(structure Name : NAME) : ADDRESS_LABELS =
     fun key (n,s) = Name.key n
 
     fun eq(l1,l2) = key l1 = key l2
-    fun lt(l1,l2) = key l1 < key l2
-    fun pr_label(l,s) = s ^ Int.toString (Name.key l)
+    fun lt(l1,l2) = 
+	let val (i1,s1) = key l1 
+	    val (i2,s2) = key l2
+	in i1 < i2 orelse (i1=i2 andalso s1 < s2)
+	end
+
+    fun pr_label(l,s) = 
+	let val (i,b) = Name.key l
+	in s ^ "." ^ Int.toString i ^ "." ^ b
+	end
 
     type name = Name.name
     fun name (l,s) = l
@@ -44,7 +52,7 @@ functor AddressLabels(structure Name : NAME) : ADDRESS_LABELS =
 			  reg_triple_lab,exn_DIV_lab,exn_MATCH_lab,
 			  exn_BIND_lab,exn_OVERFLOW_lab,exn_INTERRUPT_lab]
 	 let open Pickle
-	 in newHash (Name.key o #1)
+	 in newHash (#1 o Name.key o #1)
 	     (pairGen(Name.pu,string))
 	 end)
   end

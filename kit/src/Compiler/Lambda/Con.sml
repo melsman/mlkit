@@ -4,7 +4,7 @@ functor Con(structure Name : NAME
 	    structure Report : REPORT
 	    structure Crash : CRASH
 	    structure PP : PRETTYPRINT
-	    structure IntFinMap : MONO_FINMAP where type dom = int
+	    structure IntStringFinMap : MONO_FINMAP where type dom = int * string
 	      ) : CON =
   struct
 
@@ -19,18 +19,18 @@ functor Con(structure Name : NAME
     fun mk_con (s: string) : con = {str=s,name=Name.new()}
 
     fun pr_con ({str,...}: con) : string = str
-    fun pr_con' ({str,name}: con) : string = str ^ "_" ^ Int.toString (Name.key name)
+    fun pr_con' ({str,name}: con) : string = str ^ "_" ^ Int.toString (#1(Name.key name))
 
     fun name ({name,...}: con) : name = name
 
     val op < = fn (con1, con2) => 
       let val s1 = pr_con con1
 	  val s2 = pr_con con2
-      in if s1 = s2 then Name.key (name con1) < Name.key (name con2)
+      in if s1 = s2 then Name.lt (name con1, name con2)
 	 else s1 < s2
       end
 
-    fun eq (con1, con2) = Name.key (name con1) = Name.key (name con2)
+    fun eq (con1, con2) = Name.eq (name con1, name con2)
     fun match (con1, con2) = Name.match(name con1, name con2)
 
     (* Predefined Constructors *)
@@ -50,7 +50,7 @@ functor Con(structure Name : NAME
 	 let open Pickle
 	     fun to (s,n) : con = {str=s,name=n}
 	     fun from ({str=s,name=n} : con) = (s,n)
-	 in newHash (Name.key o #name)
+	 in newHash (#1 o Name.key o #name)
 	     (convert (to,from) (pairGen0(string,Name.pu)))
 	 end)
 
@@ -62,7 +62,7 @@ functor Con(structure Name : NAME
 	val pp = pr_con
       end
 
-    structure Map = QuasiMap(structure IntFinMap = IntFinMap
+    structure Map = QuasiMap(structure IntStringFinMap = IntStringFinMap
 			     structure Name = Name
 			     structure Crash = Crash
 			     structure PP = PP

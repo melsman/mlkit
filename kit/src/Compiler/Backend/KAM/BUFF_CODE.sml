@@ -19,10 +19,12 @@ signature BUFF_CODE =
 
     val out_real : real -> unit
 
+    type key = int * string (*Label key; the string is the base (i.e., the program unit) *)
+
     val dump_buffer : {filename : string,
-		       main_lab_opt : int option,
-		       map_import_code : (int * int) list,
-		       map_import_data : (int * int) list,
-		       map_export_code : (int * int) list,
-		       map_export_data : (int * int) list} -> unit
+		       main_lab_opt : key option,
+		       map_import_code : (int * key) list,
+		       map_import_data : (int * key) list,
+		       map_export_code : (key * int) list,
+		       map_export_data : (key * int) list} -> unit
   end

@@ -11,8 +11,7 @@ signature RESOLVE_LOCAL_LABELS =
     val out_label : label -> unit
 
     val imports : label list -> (int * label) list   (* the ints are relative addresses to
-						      * code positions that refers to the 
-						      * labels *)
+						      * code positions that refer to the labels *)
     val exports : label list -> (label * int) list   (* returns relative addresses for the labels *)
   end
 

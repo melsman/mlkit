@@ -6,6 +6,7 @@ signature TOOLS =
     structure FinMapEq : FINMAPEQ
     structure SortedFinMap: SORTED_FINMAP
     structure IntFinMap : MONO_FINMAP where type dom = int
+    structure IntStringFinMap : MONO_FINMAP where type dom = int * string
     structure WordFinMap : MONO_FINMAP where type dom = word
 
     structure PrettyPrint: PRETTYPRINT
@@ -14,6 +15,7 @@ signature TOOLS =
 		   = SortedFinMap.StringTree
 		   = PrettyPrint.StringTree
 	           = IntFinMap.StringTree
+	           = IntStringFinMap.StringTree
                    = WordFinMap.StringTree
 
     structure Flags: FLAGS
@@ -57,6 +59,20 @@ functor Tools(): TOOLS =
     structure IntFinMap = IntFinMap(structure Report = Report
 				    structure PP = PrettyPrint
 				   )
+
+    structure StringFinMap = OrderFinMap(structure PP = PrettyPrint
+					 structure Report = Report
+					 structure Crash = Crash
+					 structure Order = struct type T = string
+								  fun lt s1 (s2:string) = s1 < s2
+							   end)
+
+    structure IntStringFinMap = IntStringFinMap(structure Report = Report
+						structure PP = PrettyPrint
+						structure Crash = Crash
+						structure IntFinMap = IntFinMap
+						structure StringFinMap = StringFinMap
+					       )
 
     structure WordFinMap = WordFinMap(structure Report = Report
 				      structure PP = PrettyPrint)
@@ -275,7 +291,7 @@ functor Basics(structure Tools: TOOLS): BASICS =
     structure Name = Name (structure Crash = Tools.Crash)
 
     structure TyName = TyName(structure TyCon = TyCon
-			      structure IntFinMap = Tools.IntFinMap
+			      structure IntStringFinMap = Tools.IntStringFinMap
 			      structure Crash = Tools.Crash
 			      structure Name = Name
 			      structure Flags = Tools.Flags

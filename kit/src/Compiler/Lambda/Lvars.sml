@@ -4,7 +4,7 @@ functor Lvars(structure Name : NAME
 	      structure Report : REPORT
 	      structure Crash : CRASH
 	      structure PP : PRETTYPRINT
-	      structure IntFinMap : MONO_FINMAP where type dom = int
+	      structure IntStringFinMap : MONO_FINMAP where type dom = int * string
 		) : LVARS =
   struct
 
@@ -31,19 +31,21 @@ functor Lvars(structure Name : NAME
 
     fun newLvar() : lvar = new_named_lvar ""
 
-    fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.toString (Name.key name)
+    fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.toString (#1(Name.key name))
       | pr_lvar {str,...} = str
 
-    fun pr_lvar' ({str="",name,...} : lvar) : string = "v_" ^ Int.toString (Name.key name)
-      | pr_lvar' {str,name,...} = str ^ "_" ^ Int.toString (Name.key name)
+    fun pr_lvar' ({str="",name,...} : lvar) : string = "v_" ^ Int.toString (#1(Name.key name))
+      | pr_lvar' {str,name,...} = str ^ "_" ^ Int.toString (#1(Name.key name))
 
     fun name ({name,...} : lvar) : name = name
 
     fun key lv = Name.key (name lv)
 
-    fun leq(lv1,lv2) = key lv1 <= key lv2
-    fun lt(lv1,lv2) = key lv1 < key lv2
-    fun eq(lv1,lv2) = key lv1 = key lv2
+    fun lt(lv1,lv2) = Name.lt(name lv1,name lv2)
+
+    fun eq(lv1,lv2) = Name.eq(name lv1, name lv2)
+
+    fun leq(lv1,lv2) = lt(lv1,lv2) orelse eq(lv1,lv2)
 
     fun usage ({use,...} : lvar) = use
     fun reset_use lv = usage lv := 0
@@ -64,7 +66,7 @@ functor Lvars(structure Name : NAME
 	val pp = pr_lvar
       end
 
-    structure Map = QuasiMap(structure IntFinMap = IntFinMap
+    structure Map = QuasiMap(structure IntStringFinMap = IntStringFinMap
 			     structure Name = Name
 			     structure Crash = Crash
 			     structure PP = PP
@@ -82,7 +84,7 @@ functor Lvars(structure Name : NAME
 	     fun to ((n,s,f),i,u) : lvar = 
 		 {name=n, str=s, free=f, inserted=i, use=u}
 	     fun from ({name=n, str=s, free=f, inserted=i, use=u} : lvar) = ((n,s,f),i,u)
-	 in newHash (Name.key o #name)
+	 in newHash (#1 o Name.key o #name)
 	     (convert (to,from)
 	      (tup3Gen0(tup3Gen0(Name.pu,string,refOneGen bool), 
 			refOneGen bool,refOneGen int)))
@@ -110,104 +112,131 @@ struct
 
     datatype lvarset = 
 	LF 
-      | BR of lvar option * lvarset * lvarset
+      | BR of lvar list * lvarset * lvarset    (* ordered list of lvars w.r.t. #2 o Lvars.key *)
 
-    fun sing (0w0,lvar) = BR(SOME lvar, LF, LF)
+    fun sing (0w0,lvar) = BR([lvar], LF, LF)
       | sing (n,lvar) = if andb(n,0w1) <> 0w0 then
-	                BR(NONE, sing(rshift(n,0w1),lvar), LF)
+	                BR(nil, sing(rshift(n,0w1),lvar), LF)
 		 else
-		     BR(NONE, LF, sing(rshift(n,0w1) - 0w1, lvar))
+		     BR(nil, LF, sing(rshift(n,0w1) - 0w1, lvar))
 
-    fun singleton lvar = sing (Word.fromInt(Lvars.key lvar),lvar)
+    fun singleton lvar = sing (Word.fromInt(#1(Lvars.key lvar)),lvar)
 	
     fun cardinality LF             = 0
-      | cardinality (BR(b, t1, t2)) = 
-          case b of SOME _ => 1 + cardinality t1 + cardinality t2
-          | NONE => cardinality t1 + cardinality t2
+      | cardinality (BR(b, t1, t2)) = List.length b + cardinality t1 + cardinality t2
 
-    fun mkBR (NONE, LF, LF) = LF
+    fun mkBR (nil, LF, LF) = LF
       | mkBR (b, t1, t2) = BR(b, t1, t2)
 	
-    infix orElse
-    fun _ orElse (b2 as SOME _) = b2
-      | (b1 as SOME _) orElse _ = b1
-      | _ orElse _ = NONE
+    fun mergeOr (nil,lvs) = lvs
+      | mergeOr (lvs,nil) = lvs
+      | mergeOr (lvs1' as (lv1::lvs1),lvs2' as (lv2::lvs2)) =
+	let val s1 = #2 (Lvars.key lv1)
+	    val s2 = #2 (Lvars.key lv2)
+	in if s1 < s2 then lv1::mergeOr(lvs1,lvs2')
+	   else if s2 < s1 then lv2::mergeOr(lvs1',lvs2)
+		else lv2::mergeOr(lvs1,lvs2)
+	end
 
     fun union (LF, ns2) = ns2
       | union (ns1, LF) = ns1
       | union (BR(b1, t11, t12), BR(b2, t21, t22)) =
-	BR(b1 orElse b2, union(t11, t21), union(t12, t22))
+	BR(mergeOr(b1,b2), union (t11, t21), union (t12, t22))
 	
     fun add (set,lvar) = union(set, singleton lvar)
 
-    infix andAlso
-    fun (SOME _) andAlso (b2 as SOME _) = b2
-      | _ andAlso _ = NONE
+    fun mergeAnd (nil,_) = nil
+      | mergeAnd (_,nil) = nil
+      | mergeAnd (lvs1' as (lv1::lvs1),lvs2' as (lv2::lvs2)) =
+	let val s1 = #2 (Lvars.key lv1)
+	    val s2 = #2 (Lvars.key lv2)
+	in if s1 < s2 then mergeAnd(lvs1,lvs2')
+	   else if s2 < s1 then mergeAnd(lvs1',lvs2)
+		else lv2::mergeAnd(lvs1,lvs2)
+	end
 
     fun intersection (LF, ns2) = LF
       | intersection (ns1, LF) = LF
       | intersection (BR(b1, t11, t12), BR(b2, t21, t22)) =
-	mkBR(b1 andAlso b2, intersection(t11, t21), intersection(t12, t22))
-	
+	mkBR(mergeAnd(b1,b2), intersection(t11, t21), intersection(t12, t22))
+
+    fun diff (nil,_) = nil
+      | diff (lvs,nil) = lvs
+      | diff (lvs1' as (lv1::lvs1),lvs2' as (lv2::lvs2)) =
+	let val s1 = #2 (Lvars.key lv1)
+	    val s2 = #2 (Lvars.key lv2)
+	in if s1 < s2 then lv1 :: diff(lvs1,lvs2')
+	   else if s2 < s1 then diff(lvs1',lvs2)
+		else diff(lvs1,lvs2)
+	end
 
     fun difference (LF, ns2) = LF
       | difference (ns1, LF) = ns1
-      | difference (BR(b1, t11, t12), BR(SOME _, t21, t22)) =
-        	mkBR(NONE, difference(t11, t21), difference(t12, t22))
-      | difference (BR(b1, t11, t12), BR(NONE, t21, t22)) =
-          	mkBR(b1, difference(t11, t21), difference(t12, t22))
+      | difference (BR(b1, t11, t12), BR(b2, t21, t22)) =
+	mkBR(diff(b1,b2), difference(t11, t21), difference(t12, t22))
 		  
     fun delete (is, i) = difference(is, singleton i)
 
     fun present(SOME _) = true
       | present NONE = false
 
+    fun dis (nil,_) = true
+      | dis (_,nil) = true
+      | dis (lvs1' as (lv1::lvs1),lvs2' as (lv2::lvs2)) =
+	let val s1 = #2 (Lvars.key lv1)
+	    val s2 = #2 (Lvars.key lv2)
+	in if s1 < s2 then dis(lvs1,lvs2')
+	   else if s2 < s1 then dis(lvs1',lvs2)
+		else false
+	end
+
     fun disjoint (LF, ns2) = true
       | disjoint (ns1, LF) = true
       | disjoint (BR(b1, t11, t12), BR(b2, t21, t22)) =
-	not (present b1 andalso present b2) 
-	andalso disjoint(t11, t21) 
+	dis(b1,b2) andalso disjoint(t11, t21) 
 	andalso disjoint (t12, t22)  
 
 (*  fun member (i, is) = not(disjoint(is, singleton i)) *)
 
     fun member (lvar, is) = 
-	let fun mem (_, LF)             = false
-	      | mem (0w0, BR(b, _, _))     = (case b of SOME _ => true | _ => false)
+	let val (i,s) = Lvars.key lvar
+	    fun mems nil = false
+	      | mems (x::xs) = #2 (Lvars.key x) = s orelse mems xs
+	    fun mem (_, LF) = false
+	      | mem (0w0, BR(b, _, _)) = mems b
 	      | mem (n, BR(_, ns1, ns2)) =
 	        if andb(n,0w1) <> 0w0 then
 	             mem(rshift(n,0w1), ns1)
 		 else
 		     mem(rshift(n,0w1) - 0w1, ns2)
-	in mem(Word.fromInt(Lvars.key lvar), is) end
+	in mem(Word.fromInt i, is) end
 
     fun lvarsetof []      = LF
       | lvarsetof (x::xs) = add(lvarsetof xs, x)
 
     fun foldset f (e, t) =
-	let fun sl (n, d, LF, a)                 = a
-	      | sl (n, d, BR(b, LF, LF), a) = 
-                (case b of SOME lvar => f(a,lvar) | _ => a)
-	      | sl (n, d, BR(b, t1,    LF), a) = 
-		sl(n+d, 2*d, t1,(case b of SOME lvar => f(a,lvar) | _ => a) )
-	      | sl (n, d, BR(b, t1,    t2), a)    = 
-		sl(n+d, 2*d, t1, 
-		   sl(n+2*d, 2*d, t2, (case b of SOME lvar => f(a,lvar) | _ => a)))
+	let fun fo a b = foldl (fn (lv,a) => f(a,lv)) a b
+	    fun sl (n, d, LF, a)                 = a
+	      | sl (n, d, BR(b, LF, LF), a) = fo a b
+	      | sl (n, d, BR(b, t1, LF), a) = 
+		sl(n+d, 2*d, t1, fo a b)
+	      | sl (n, d, BR(b, t1, t2), a)    = 
+		sl(n+d, 2*d, t1, sl(n+2*d, 2*d, t2, fo a b))
 	in sl(0, 1, t, e) end
 
     fun mapset f t = foldset (fn (a,i) => f i :: a) ([], t)
 
     fun members t = foldset (fn (a,i) => i :: a) ([], t)
 
-    fun findLvar (pred: lvar -> '_a option) lvarset = 
-      let exception Found of (lvar * '_a)option
+    fun findLvar (pred: lvar -> 'a option) lvarset = 
+      let exception Found of (lvar * 'a)option
+	  fun ss nil = ()
+	    | ss (lv::lvs) = (case pred lv of
+				SOME x => raise Found(SOME(lv,x))
+			      | NONE => ss lvs)
           fun search LF = ()
-            | search (BR(SOME lvar, set1, set2)) =
-               (case pred lvar of
-                  SOME x => raise Found(SOME(lvar,x))
-                | NONE => (search set1; search set2)
-               )
-            | search (BR(NONE, set1, set2)) = (search set1; search set2)
+            | search (BR(lvs, set1, set2)) =
+               (ss lvs; search set1; search set2)
       in
         (search lvarset; NONE) handle Found result => result
       end

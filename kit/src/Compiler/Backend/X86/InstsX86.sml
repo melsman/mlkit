@@ -133,12 +133,15 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       | pr_reg al = "%al"
       | pr_reg cl = "%cl"
 
-    fun remove_ctrl s = "Lab" ^ String.implode (List.filter Char.isAlphaNum (String.explode s))
+    fun remove_ctrl s = "Lab" ^ 
+	String.implode (List.filter (fn c =>
+				     Char.isAlphaNum c orelse
+				     c = #"_" orelse c = #".") (String.explode s))
 
     fun pr_lab (DatLab l) = remove_ctrl(Labels.pr_label l)
       | pr_lab (LocalLab l) = "." ^ remove_ctrl(Labels.pr_label l)
       | pr_lab (NameLab s) = s
-      | pr_lab (MLFunLab l) = "fun_" ^ remove_ctrl(Labels.pr_label l)
+      | pr_lab (MLFunLab l) = "fun." ^ remove_ctrl(Labels.pr_label l)
 
     (* Convert ~n to -n *)
     fun int_to_string i = if i >= 0 then Int.toString i

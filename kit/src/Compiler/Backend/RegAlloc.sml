@@ -333,7 +333,8 @@ struct
     fun inc_ml_call() = ml_call := !ml_call+1
   end
 
-  fun key lv = Lvars.key lv
+  (* Register allocation is entirely local, thus, we can assume that all ints in the key are unique! *)
+  fun key lv = #1 (Lvars.key lv)
 
   datatype worklist_enum =
     precolored_enum | initial_enum | simplifyWorklist_enum | freezeWorklist_enum |
@@ -1123,7 +1124,7 @@ struct
 			       else repeat())
 	 
 	fun assign(LS.V lv) = 
-	  (case nTableLookup (Lvars.key lv)
+	  (case nTableLookup (key lv)
 	    of SOME n => 
 	      (case !(#color n)
 		 of SOME c => PHREG_STY (lv,c)

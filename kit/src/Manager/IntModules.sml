@@ -725,12 +725,4 @@ functor IntModules(structure Name : NAME
 	  end 
 	 | (NONE, NONE) => (IntBasis.empty, ModCode.empty)
 	 | (NONE, SOME topdec) => int_topdec(fi,SOME unitname,absprjid,intB,topdec)
-
-
-
-
-(*
-    fun reset() = (Compile.reset(); reset_unitname_counter())
-    val commit = Compile.commit
-*)
   end
