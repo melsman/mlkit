@@ -790,7 +790,7 @@ val _ = Ns.NsDebug.addMsg `******getPath by folder id: ^(Int.toString folder_id)
 		 ())
       | SOME file =>
 	  let
-	    val path = Db.Handle.wrapDb getAbsPath (#folder_id file)
+	    val path = (* todo: NH #path_on_disk file *) Db.Handle.wrapDb getAbsPath (#folder_id file)
 	    val filename_on_disk = path ^ "/" ^ #filename_on_disk file
 	    fun return_error () = 
 	      (ScsPage.returnPg 
