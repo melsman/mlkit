@@ -1,5 +1,12 @@
 ML Kit NEWS file                                       October, 2001
 
+ * mael 2001-11-02: Bug fix involving Int32 operations in the presence
+   of profiling and GC; file src/Compiler/Backend/FetchAndFlush.sml.
+
+ * mael 2001-11-01: Added structures Pack32Little, Pack32Big, IntInf
+   to basis library implementation; implementations are ported from 
+   SML/NJ.
+
  * mael 2001-10-30: Bug fix involving unboxing of function arguments
    in OptLambda.sml; see test file test/unbox.sml.
 
