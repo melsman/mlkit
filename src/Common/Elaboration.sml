@@ -94,8 +94,8 @@ signature BASICS =
 
     structure InfixBasis : INFIX_BASIS
       sharing type InfixBasis.id = Ident.id
-	  and type InfixBasis.Report = Tools.Report.Report
-	  and type InfixBasis.StringTree = Tools.PrettyPrint.StringTree
+      sharing type InfixBasis.Report = Tools.Report.Report
+      sharing type InfixBasis.StringTree = Tools.PrettyPrint.StringTree
 
     structure SCon : SCON
 
@@ -109,15 +109,15 @@ signature BASICS =
 
     structure TyName : TYNAME
       sharing type TyName.tycon = TyCon.tycon
-	  and type TyName.name = Name.name
-          and type TyName.StringTree = Tools.PrettyPrint.StringTree
+      sharing type TyName.name = Name.name
+      sharing type TyName.StringTree = Tools.PrettyPrint.StringTree
 
     structure StatObject : STATOBJECT
       sharing StatObject.TyName    = TyName
       sharing type StatObject.ExplicitTyVar = TyVar.SyntaxTyVar
-          and type StatObject.strid     = StrId.strid
-	  and type StatObject.scon      = SCon.scon
-	  and type StatObject.lab       = Lab.lab
+      sharing type StatObject.strid     = StrId.strid
+      sharing type StatObject.scon      = SCon.scon
+      sharing type StatObject.lab       = Lab.lab
 
     structure SigId : SIGID
     structure FunId : FUNID
@@ -130,101 +130,101 @@ signature BASICS =
 	sharing type PreElabDecGrammar.StringTree     = Tools.PrettyPrint.StringTree
 
       sharing PreElabDecGrammar.Ident = Ident
-          and PreElabDecGrammar.StrId = StrId
-	  and PreElabDecGrammar.TyCon = TyCon
-	  and PreElabDecGrammar.TyVar = TyVar
-	  and PreElabDecGrammar.Lab = Lab
-	  and PreElabDecGrammar.SCon = SCon
+      sharing PreElabDecGrammar.StrId = StrId
+      sharing PreElabDecGrammar.TyCon = TyCon
+      sharing PreElabDecGrammar.TyVar = TyVar
+      sharing PreElabDecGrammar.Lab = Lab
+      sharing PreElabDecGrammar.SCon = SCon
 
     structure Environments : ENVIRONMENTS
       sharing Environments.TyName       = StatObject.TyName
       sharing type Environments.Type         = StatObject.Type
-          and type Environments.TyVar        = StatObject.TyVar
-	  and type Environments.TypeScheme   = StatObject.TypeScheme
-	  and type Environments.TypeFcn      = StatObject.TypeFcn
-	  and type Environments.realisation  = StatObject.realisation
-	  and type Environments.level        = StatObject.level
-	  and type Environments.id           = Ident.id
-	  and type Environments.longid       = Ident.longid
-	  and type Environments.Substitution = StatObject.Substitution
-	  and type Environments.ty           = PreElabDecGrammar.ty
-	  and type Environments.longtycon    = TyCon.longtycon
-	  and type Environments.longstrid    = StrId.longstrid
-	  and type Environments.ExplicitTyVar  = TyVar.SyntaxTyVar
-	  and type Environments.strid       = StrId.strid
-	  and type Environments.valbind = PreElabDecGrammar.valbind
-	  and type Environments.pat = PreElabDecGrammar.pat
+      sharing type Environments.TyVar        = StatObject.TyVar
+      sharing type Environments.TypeScheme   = StatObject.TypeScheme
+      sharing type Environments.TypeFcn      = StatObject.TypeFcn
+      sharing type Environments.realisation  = StatObject.realisation
+      sharing type Environments.level        = StatObject.level
+      sharing type Environments.id           = Ident.id
+      sharing type Environments.longid       = Ident.longid
+      sharing type Environments.Substitution = StatObject.Substitution
+      sharing type Environments.ty           = PreElabDecGrammar.ty
+      sharing type Environments.longtycon    = TyCon.longtycon
+      sharing type Environments.longstrid    = StrId.longstrid
+      sharing type Environments.ExplicitTyVar  = TyVar.SyntaxTyVar
+      sharing type Environments.strid       = StrId.strid
+      sharing type Environments.valbind = PreElabDecGrammar.valbind
+      sharing type Environments.pat = PreElabDecGrammar.pat
 
     structure ModuleStatObject : MODULE_STATOBJECT
       sharing ModuleStatObject.TyName = TyName
       sharing type ModuleStatObject.Env = Environments.Env
-	  and type ModuleStatObject.realisation = StatObject.realisation
-	  and type ModuleStatObject.strid = StrId.strid
-	  and type ModuleStatObject.longstrid = StrId.longstrid
-	  and type ModuleStatObject.longtycon = TyCon.longtycon
-	  and type ModuleStatObject.Type = StatObject.Type
-	  and type ModuleStatObject.TypeScheme = StatObject.TypeScheme
-	  and type ModuleStatObject.TypeFcn = StatObject.TypeFcn
-	  and type ModuleStatObject.TyVar = StatObject.TyVar
-	  and type ModuleStatObject.id = Ident.id
+      sharing type ModuleStatObject.realisation = StatObject.realisation
+      sharing type ModuleStatObject.strid = StrId.strid
+      sharing type ModuleStatObject.longstrid = StrId.longstrid
+      sharing type ModuleStatObject.longtycon = TyCon.longtycon
+      sharing type ModuleStatObject.Type = StatObject.Type
+      sharing type ModuleStatObject.TypeScheme = StatObject.TypeScheme
+      sharing type ModuleStatObject.TypeFcn = StatObject.TypeFcn
+      sharing type ModuleStatObject.TyVar = StatObject.TyVar
+      sharing type ModuleStatObject.id = Ident.id
 
     structure ModuleEnvironments : MODULE_ENVIRONMENTS
       sharing ModuleEnvironments.TyName = TyName
       sharing type ModuleEnvironments.realisation = StatObject.realisation
-          and type ModuleEnvironments.longstrid = StrId.longstrid
-          and type ModuleEnvironments.longtycon = TyCon.longtycon
-	  and type ModuleEnvironments.Context = Environments.Context
-	  and type ModuleEnvironments.FunSig = ModuleStatObject.FunSig
-	  and type ModuleEnvironments.TyStr = Environments.TyStr
-	  and type ModuleEnvironments.TyVar = StatObject.TyVar
-	  and type ModuleEnvironments.id = Ident.id
-	  and type ModuleEnvironments.longid = Ident.longid
-	  and type ModuleEnvironments.strid = StrId.strid
-	  and type ModuleEnvironments.sigid = SigId.sigid
-	  and type ModuleEnvironments.funid = FunId.funid
-	  and type ModuleEnvironments.Env = Environments.Env
-	  and type ModuleEnvironments.Sig = ModuleStatObject.Sig
+      sharing type ModuleEnvironments.longstrid = StrId.longstrid
+      sharing type ModuleEnvironments.longtycon = TyCon.longtycon
+      sharing type ModuleEnvironments.Context = Environments.Context
+      sharing type ModuleEnvironments.FunSig = ModuleStatObject.FunSig
+      sharing type ModuleEnvironments.TyStr = Environments.TyStr
+      sharing type ModuleEnvironments.TyVar = StatObject.TyVar
+      sharing type ModuleEnvironments.id = Ident.id
+      sharing type ModuleEnvironments.longid = Ident.longid
+      sharing type ModuleEnvironments.strid = StrId.strid
+      sharing type ModuleEnvironments.sigid = SigId.sigid
+      sharing type ModuleEnvironments.funid = FunId.funid
+      sharing type ModuleEnvironments.Env = Environments.Env
+      sharing type ModuleEnvironments.Sig = ModuleStatObject.Sig
 
     structure OpacityEnv : OPACITY_ENV
       sharing OpacityEnv.TyName = TyName
-	  and type OpacityEnv.funid = FunId.funid
-	  and type OpacityEnv.StringTree = Tools.PrettyPrint.StringTree
+      sharing type OpacityEnv.funid = FunId.funid
+      sharing type OpacityEnv.StringTree = Tools.PrettyPrint.StringTree
 
     structure AllInfo : ALL_INFO
       sharing type AllInfo.TypeInfo.Type = StatObject.Type
-	  and type AllInfo.TypeInfo.TyVar = StatObject.TyVar
-	  and type AllInfo.TypeInfo.TyEnv = Environments.TyEnv
-	  and type AllInfo.TypeInfo.longid = Ident.longid
-	  and type AllInfo.TypeInfo.realisation = StatObject.realisation
-	  and type AllInfo.TypeInfo.Env = Environments.Env
-	  and type AllInfo.TypeInfo.strid = StrId.strid
-	  and type AllInfo.TypeInfo.tycon = TyCon.tycon
-	  and type AllInfo.TypeInfo.id = Ident.id
-	  and AllInfo.TypeInfo.TyName = StatObject.TyName
-	  and type AllInfo.TypeInfo.Basis = ModuleEnvironments.Basis
-	  and type AllInfo.ErrorInfo.Type = StatObject.Type
-	  and type AllInfo.ErrorInfo.TypeScheme = StatObject.TypeScheme
-	  and type AllInfo.ErrorInfo.TyVar = StatObject.TyVar
-	  and type AllInfo.ErrorInfo.TyName = TyName.TyName
-	  and type AllInfo.ErrorInfo.TypeFcn = StatObject.TypeFcn
-	  and type AllInfo.ErrorInfo.lab = Lab.lab
-	  and type AllInfo.ErrorInfo.tycon = TyCon.tycon
-	  and type AllInfo.ErrorInfo.longid = Ident.longid
-	  and type AllInfo.ErrorInfo.longtycon = TyCon.longtycon
-	  and type AllInfo.ErrorInfo.strid = StrId.strid
-	  and type AllInfo.ErrorInfo.longstrid = StrId.longstrid
-	  and type AllInfo.ErrorInfo.sigid = SigId.sigid
-	  and type AllInfo.ErrorInfo.funid = FunId.funid
-	  and type AllInfo.ErrorInfo.id = Ident.id
-	  and type AllInfo.ErrorInfo.SigMatchError = ModuleStatObject.SigMatchError
-	  and type AllInfo.SourceInfo.pos = LexBasics.pos
-	  and type AllInfo.SourceInfo.Report = Tools.Report.Report
-	  and type AllInfo.ElabInfo.StringTree = Tools.PrettyPrint.StringTree
-          and type AllInfo.OverloadingInfo.RecType = StatObject.RecType
-          and type AllInfo.OverloadingInfo.TyVar = StatObject.TyVar
-	  and type AllInfo.OverloadingInfo.StringTree = Tools.PrettyPrint.StringTree
-	  and type AllInfo.ElabInfo.ParseInfo = PreElabDecGrammar.info
-	  and type AllInfo.ElabInfo.ParseInfo.DFInfo.InfixBasis = InfixBasis.Basis
+      sharing type AllInfo.TypeInfo.TyVar = StatObject.TyVar
+      sharing type AllInfo.TypeInfo.TyEnv = Environments.TyEnv
+      sharing type AllInfo.TypeInfo.longid = Ident.longid
+      sharing type AllInfo.TypeInfo.realisation = StatObject.realisation
+      sharing type AllInfo.TypeInfo.Env = Environments.Env
+      sharing type AllInfo.TypeInfo.strid = StrId.strid
+      sharing type AllInfo.TypeInfo.tycon = TyCon.tycon
+      sharing type AllInfo.TypeInfo.id = Ident.id
+      sharing AllInfo.TypeInfo.TyName = StatObject.TyName
+      sharing type AllInfo.TypeInfo.Basis = ModuleEnvironments.Basis
+      sharing type AllInfo.ErrorInfo.Type = StatObject.Type
+      sharing type AllInfo.ErrorInfo.TypeScheme = StatObject.TypeScheme
+      sharing type AllInfo.ErrorInfo.TyVar = StatObject.TyVar
+      sharing type AllInfo.ErrorInfo.TyName = TyName.TyName
+      sharing type AllInfo.ErrorInfo.TypeFcn = StatObject.TypeFcn
+      sharing type AllInfo.ErrorInfo.lab = Lab.lab
+      sharing type AllInfo.ErrorInfo.tycon = TyCon.tycon
+      sharing type AllInfo.ErrorInfo.longid = Ident.longid
+      sharing type AllInfo.ErrorInfo.longtycon = TyCon.longtycon
+      sharing type AllInfo.ErrorInfo.strid = StrId.strid
+      sharing type AllInfo.ErrorInfo.longstrid = StrId.longstrid
+      sharing type AllInfo.ErrorInfo.sigid = SigId.sigid
+      sharing type AllInfo.ErrorInfo.funid = FunId.funid
+      sharing type AllInfo.ErrorInfo.id = Ident.id
+      sharing type AllInfo.ErrorInfo.SigMatchError = ModuleStatObject.SigMatchError
+      sharing type AllInfo.SourceInfo.pos = LexBasics.pos
+      sharing type AllInfo.SourceInfo.Report = Tools.Report.Report
+      sharing type AllInfo.ElabInfo.StringTree = Tools.PrettyPrint.StringTree
+      sharing type AllInfo.OverloadingInfo.RecType = StatObject.RecType
+      sharing type AllInfo.OverloadingInfo.TyVar = StatObject.TyVar
+      sharing type AllInfo.OverloadingInfo.StringTree = Tools.PrettyPrint.StringTree
+      sharing type AllInfo.ElabInfo.ParseInfo = PreElabDecGrammar.info
+      sharing type AllInfo.ElabInfo.ParseInfo.DFInfo.InfixBasis = InfixBasis.Basis
   end;
 
 
@@ -257,9 +257,11 @@ functor Basics(structure Tools: TOOLS): BASICS =
 			    structure Crash = Tools.Crash
 			   )
 
-    structure Name = Name ()
+    structure Name = Name (structure Crash = Tools.Crash)
 
     structure TyName = TyName(structure TyCon = TyCon
+			      structure IntFinMap = Tools.IntFinMap
+			      structure Crash = Tools.Crash
 			      structure Name = Name
 			      structure Flags = Tools.Flags
 			      structure PrettyPrint = Tools.PrettyPrint
@@ -431,15 +433,15 @@ signature TOPDEC_PARSING =
 
     structure PreElabTopdecGrammar: TOPDEC_GRAMMAR
       sharing PreElabTopdecGrammar.DecGrammar = PreElabDecGrammar
-	  and PreElabTopdecGrammar.SigId = Basics.SigId
-	  and PreElabTopdecGrammar.FunId = Basics.FunId
+      sharing PreElabTopdecGrammar.SigId = Basics.SigId
+      sharing PreElabTopdecGrammar.FunId = Basics.FunId
 
     structure InfixBasis: INFIX_BASIS
       sharing InfixBasis = Basics.InfixBasis
 
     structure Parse: PARSE
       sharing type Parse.topdec = PreElabTopdecGrammar.topdec
-	  and type Parse.InfixBasis = InfixBasis.Basis
+      sharing type Parse.InfixBasis = InfixBasis.Basis
   end;
 
 
@@ -481,30 +483,30 @@ signature ELABORATION =
 
     structure ElabRepository : ELAB_REPOSITORY
       sharing type ElabRepository.funid = Basics.FunId.funid
-	  and type ElabRepository.name = Basics.Name.name
-	  and type ElabRepository.ElabBasis = Basics.ModuleEnvironments.Basis 
+      sharing type ElabRepository.name = Basics.Name.name
+      sharing type ElabRepository.ElabBasis = Basics.ModuleEnvironments.Basis 
 	    
     structure ElabTopdec : ELABTOPDEC
       sharing type ElabTopdec.StaticBasis = ElabRepository.ElabBasis
 
     structure PostElabDecGrammar : DEC_GRAMMAR
       sharing type PostElabDecGrammar.lab = Basics.Lab.lab
-	  and type PostElabDecGrammar.scon = Basics.SCon.scon
-	  and type PostElabDecGrammar.tycon = Basics.TyCon.tycon
-	  and type PostElabDecGrammar.longtycon = Basics.TyCon.longtycon
-	  and type PostElabDecGrammar.tyvar = Basics.TyVar.SyntaxTyVar
- 	  and type PostElabDecGrammar.id = Basics.Ident.id
- 	  and type PostElabDecGrammar.longid = Basics.Ident.longid = Basics.ModuleEnvironments.longid
-	  and type PostElabDecGrammar.info
+      sharing type PostElabDecGrammar.scon = Basics.SCon.scon
+      sharing type PostElabDecGrammar.tycon = Basics.TyCon.tycon
+      sharing type PostElabDecGrammar.longtycon = Basics.TyCon.longtycon
+      sharing type PostElabDecGrammar.tyvar = Basics.TyVar.SyntaxTyVar
+      sharing type PostElabDecGrammar.id = Basics.Ident.id
+      sharing type PostElabDecGrammar.longid = Basics.Ident.longid = Basics.ModuleEnvironments.longid
+      sharing type PostElabDecGrammar.info
 		   = Basics.AllInfo.ElabInfo.ElabInfo
-	  and type PostElabDecGrammar.StringTree
+      sharing type PostElabDecGrammar.StringTree
 	           = Basics.Tools.PrettyPrint.StringTree
 
     structure PostElabTopdecGrammar : TOPDEC_GRAMMAR
       sharing PostElabTopdecGrammar.DecGrammar = PostElabDecGrammar
-	  and PostElabTopdecGrammar.StrId = Basics.StrId
-	  and PostElabTopdecGrammar.SigId = Basics.SigId
-	  and PostElabTopdecGrammar.FunId = Basics.FunId
+      sharing PostElabTopdecGrammar.StrId = Basics.StrId
+      sharing PostElabTopdecGrammar.SigId = Basics.SigId
+      sharing PostElabTopdecGrammar.FunId = Basics.FunId
       sharing type PostElabTopdecGrammar.topdec = ElabTopdec.PostElabTopdec
   end;
 

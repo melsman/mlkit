@@ -16,7 +16,6 @@ functor RType(structure Flags : FLAGS
 struct
 
   structure List = Edlib.List
-  structure ListSort = Edlib.ListSort
   structure ListPair = Edlib.ListPair
   fun curry f a b = f(a,b)
 

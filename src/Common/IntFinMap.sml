@@ -4,9 +4,6 @@ functor IntFinMap(structure PP : PRETTYPRINT
 		  structure Report : REPORT) : MONO_FINMAP =
   struct
 
-    structure List = Edlib.List
-    structure General = Edlib.General
-
     infix eq
 
     type dom = int
@@ -408,7 +405,7 @@ old*)
              end
 
     in
-       #1(mk_avl(#2(build(List.size l, l))))
+       #1(mk_avl(#2(build(List.length l, l))))
     end
 
 (* old
@@ -469,7 +466,7 @@ old *)
 
     exception Restrict
     fun restrict(m: 'b map, dom : dom list) : 'b map =
-      List.foldL(fn d => fn acc => 
+      foldl(fn (d, acc) => 
 		 case lookup m d
 		   of SOME res => add(d,res,acc)
 		    | NONE => raise Restrict) empty dom 

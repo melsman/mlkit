@@ -7,21 +7,21 @@ functor OpacityElim(structure Crash : CRASH
 		    structure Environments : ENVIRONMENTS
 		      sharing type Environments.realisation = ElabInfo.TypeInfo.realisation 
 			                                 = OpacityEnv.realisation
-			  and type Environments.TyEnv = ElabInfo.TypeInfo.TyEnv
-			  and type Environments.Env = ElabInfo.TypeInfo.Env
-			  and type Environments.StringTree = PP.StringTree
+		      sharing type Environments.TyEnv = ElabInfo.TypeInfo.TyEnv
+		      sharing type Environments.Env = ElabInfo.TypeInfo.Env
+		      sharing type Environments.StringTree = PP.StringTree
 		    structure StatObject : STATOBJECT
 		      sharing StatObject.TyName = Environments.TyName = OpacityEnv.TyName = ElabInfo.TypeInfo.TyName
-			  and type StatObject.TypeFcn = Environments.TypeFcn
+		      sharing type StatObject.TypeFcn = Environments.TypeFcn
 		    structure TopdecGrammar : TOPDEC_GRAMMAR
 		      sharing type TopdecGrammar.info = ElabInfo.ElabInfo
-			  and type TopdecGrammar.tycon = Environments.tycon
-			  and type TopdecGrammar.funid = OpacityEnv.funid
+		      sharing type TopdecGrammar.tycon = Environments.tycon
+		      sharing type TopdecGrammar.funid = OpacityEnv.funid
 		    structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		      sharing ModuleEnvironments.TyName = Environments.TyName
-		          and type ModuleEnvironments.Basis = ElabInfo.TypeInfo.Basis
-			  and type ModuleEnvironments.realisation = ElabInfo.TypeInfo.realisation
-			  and type ModuleEnvironments.TyName = ElabInfo.TypeInfo.TyName
+		      sharing type ModuleEnvironments.Basis = ElabInfo.TypeInfo.Basis
+		      sharing type ModuleEnvironments.realisation = ElabInfo.TypeInfo.realisation
+		      sharing type ModuleEnvironments.TyName = ElabInfo.TypeInfo.TyName
 			    ) : OPACITY_ELIM =
   struct
     structure TyName = Environments.TyName
@@ -422,22 +422,25 @@ functor OpacityElim(structure Crash : CRASH
 
     fun elim_funbind(oenv, FUNBIND(i, funid, strid, sigexp, strexp, funbindopt)) =
       let val rea = rea_of oenv
-	  val (argE, elabB, T, resE) = 
+	  fun pr s rea = (print ("\n" ^ s ^ " = "); pr_st (Realisation.layout rea); print "\n")
+	  val (argE, elabB, elabB', T, resE) = 
 	    case ElabInfo.to_TypeInfo i
 	      of SOME(TypeInfo.FUNBIND_INFO {argE, elabBref=ref elabB, T, resE, opaq_env_opt=NONE}) =>
 		((*print "\nOPACITY_ELIM-BEFORE_REA\n";
-		 print_basis elabB;*)
+		 print_basis elabB;
+		 pr "rea" rea; *)
+
 		 let val elabB' = ModuleEnvironments.B.on rea elabB
 		 in (*print "\nOPACITY_ELIM-AFTER_REA\n";
-		   print_basis elabB';*)
-		   (on_Env rea argE, elabB', T, on_Env rea resE)
+		   print_basis elabB'; *)
+		   (on_Env rea argE, elabB, elabB', T, on_Env rea resE)
 		 end)
 	       | _ => die "elim_funbind.wrong type info."
 	  val (strexp',rea') = elim_strexp(oenv, strexp)      
 	  val resE' = on_Env rea' resE
-	  val T' = TyName.Set.difference (Environments.E.tynames resE') (ModuleEnvironments.B.tynames elabB)
+	  val T' = TyName.Set.difference (Environments.E.tynames resE') (ModuleEnvironments.B.tynames elabB')
 
-	    (* also subtract the set of type names that can be
+	    (* Also subtract the set of type names that can be
 	     * introduced in the program by derived forms, exhaustive
 	     * matches, overloading, etc; this set is a subset of the
 	     * set of type names that occurs free in the initial
@@ -447,6 +450,10 @@ functor OpacityElim(structure Crash : CRASH
 
 	  val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNBIND_INFO {argE=argE, elabBref=ref elabB, T=T', resE=resE', 
 								    opaq_env_opt=SOME oenv})
+	    (* We store the original elaboration basis elabB in 
+	     * which the functor body should be reelaborated (see
+	     * IntModules). *)
+
 	  val oenv' = from_funid(funid,(T',rea'))
 	  val (funbindopt',oenv'') = elim_opt_oenv elim_funbind (oenv, funbindopt)
       in (FUNBIND(i',funid,strid,sigexp,strexp',funbindopt'), plus(oenv',oenv''))

@@ -66,14 +66,27 @@ functor BuildCompile (structure Name : NAME
     structure StrId = DecGrammar.StrId
     structure TyCon = DecGrammar.TyCon
 
-    structure Lvars = Lvars(structure Name = Name)
+    structure Lvars = Lvars(structure Name = Name
+			    structure Report = Report
+			    structure PP = PP
+			    structure Crash = Crash
+			    structure IntFinMap = IntFinMap)
 
     structure Lvarset = Lvarset(structure Lvars = Lvars)
 
-    structure Con = Con(structure Name = Name)
+    structure Con = Con(structure Name = Name
+			structure Report = Report
+			structure PP = PP
+			structure Crash = Crash
+			structure IntFinMap = IntFinMap)
 
-    structure Excon = Excon(structure Name = Name)
+    structure Excon = Excon(structure Name = Name
+			    structure Report = Report
+			    structure PP = PP
+			    structure Crash = Crash
+			    structure IntFinMap = IntFinMap)
 
+(*
     structure LvarEqMap = EqFinMap(structure Report = Report
 				   structure PP = PP
 				   type dom = Lvars.lvar
@@ -93,6 +106,7 @@ functor BuildCompile (structure Name : NAME
 				     structure PP = PP
 				     type dom = TyName.TyName
 				     val eq = TyName.eq)
+*)
 
     structure LambdaExp =
       LambdaExp(structure Lvars = Lvars
@@ -118,10 +132,12 @@ functor BuildCompile (structure Name : NAME
 		    structure Con = Con
 		    structure Excon = Excon
 		    structure TyName = TyName
-		    structure FinMap = FinMap
 		    structure Name = Name
+(*
+		    structure FinMap = FinMap
 		    structure IntFinMap = IntFinMap
 		    structure FinMapEq = FinMapEq
+*)
 		    structure NatSet = NatSet(structure PP = PP)
 		    structure LambdaExp = LambdaExp
 		    structure LambdaBasics = LambdaBasics
@@ -133,14 +149,14 @@ functor BuildCompile (structure Name : NAME
       EliminateEq(structure Lvars = Lvars
 		  structure Con = Con
 		  structure Name = Name
-		  structure IntFinMap = IntFinMap
+(*		  structure IntFinMap = IntFinMap *)
 		  structure TyName = TyName
 		  structure LambdaExp = LambdaExp
 		  structure Crash = Crash
 		  structure Flags = Flags
 		  structure PP = PP
-		  structure LvarMap = LvarEqMap
-		  structure TyNameMap = TyNameEqMap
+(*		  structure LvarMap = LvarEqMap
+		  structure TyNameMap = TyNameEqMap *)
 		  structure TyVarMap =
 		    OrderFinMap(structure Order = struct type T = LambdaExp.tyvar
 							 fun lt (a:T) b = LambdaExp.lt_tyvar(a,b)
@@ -181,7 +197,7 @@ functor BuildCompile (structure Name : NAME
 
    structure RegionStatEnv = RegionStatEnv(
      structure Name = Name
-     structure IntFinMap = IntFinMap
+(*     structure IntFinMap = IntFinMap *)
      structure Flags=Flags
      structure R = RType 
      structure E = Effect
@@ -190,10 +206,12 @@ functor BuildCompile (structure Name : NAME
      structure Excon = Excon
      structure Lvar = Lvars
      structure Crash = Crash
+(*
      structure TyNameMap = TyNameEqMap
      structure LvarMap = LvarEqMap
      structure ConMap = ConEqMap
      structure ExconMap = ExconEqMap
+*)
      structure L = LambdaExp
      structure PP = PP)
 
@@ -281,10 +299,10 @@ functor BuildCompile (structure Name : NAME
 
    structure Mul = Mul(
       structure Name = Name
-      structure IntFinMap = IntFinMap
+(*      structure IntFinMap = IntFinMap *)
       structure Lam = LambdaExp
       structure Eff = Effect
-      structure LvarMap = LvarEqMap
+(*      structure LvarMap = LvarEqMap *)
       structure Crash = Crash
       structure Flags = Flags
       structure Lvar = Lvars
@@ -377,7 +395,7 @@ functor BuildCompile (structure Name : NAME
 		structure LvarDiGraphScc = LvarDiGraphScc
 		structure LambdaBasics = LambdaBasics
 		structure FinMap = FinMap
-		structure LvarMap = LvarEqMap
+(*		structure LvarMap = LvarEqMap *)
 		structure BasicIO = BasicIO
 		structure Con = Con
 		structure Excon = Excon
@@ -430,7 +448,9 @@ functor BuildCompile (structure Name : NAME
 
     structure DropRegions = DropRegions(structure MulExp = MulExp
 					structure Name = Name
-					structure IntFinMap = IntFinMap
+					(*
+                                           structure IntFinMap = IntFinMap 
+					 *)
 					structure AtInf = AtInf
 					structure RSE = RegionStatEnv
 					structure RType = RType
@@ -447,7 +467,9 @@ functor BuildCompile (structure Name : NAME
       
     structure PhysSizeInf = PhysSizeInf(structure MulExp = MulExp
 					structure Name = Name
+(*
 					structure IntFinMap = IntFinMap
+*)
 					structure Effect = Effect
 					structure TyName = TyName
 					structure AtInf = AtInf
@@ -457,7 +479,9 @@ functor BuildCompile (structure Name : NAME
 					structure DiGraph = DiGraph
 					structure RType = RType
 					structure RegvarFinMap = EffVarEnv
-					structure LvarMap = LvarEqMap
+(*
+					structure LvarMap = LvarEqMap 
+*)
 					structure Flags = Flags
 					structure Crash = Crash
 					structure PP = PP
@@ -466,17 +490,23 @@ functor BuildCompile (structure Name : NAME
 
     structure CompLambEnv = CompLambEnv(structure Lvars = Lvars
 					structure Name = Name
+(*
 					structure IntFinMap = IntFinMap
+*)
 					structure Con = Con
 					structure Excon = Excon
 					structure Effect = Effect
 					structure MulExp = MulExp
 					structure KAM =  KAMBackend.KAM
-					structure LvarFinMap = LvarEqMap
+(*
+					structure LvarFinMap = LvarEqMap 
+*)
 					structure RegvarFinMap = EffVarEnv
 					structure PhysSizeInf = PhysSizeInf
+(*
 					structure ConFinMap = ConEqMap
 					structure ExconFinMap = ExconEqMap
+*)
 					structure PP = PP
 					structure Crash = Crash)
 

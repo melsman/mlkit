@@ -20,7 +20,6 @@ functor RegInf(
     sharing type RSE.Type = RType.Type = Exp.Type
     sharing type RSE.TypeAndPlaceScheme = RType.sigma = Exp.sigma
     sharing type RSE.excon = Exp.excon
-    sharing type RSE.lvar = Exp.lvar
     sharing type RType.il = Exp.il = RSE.il
     sharing type RType.cone= Effect.cone = Exp.cone = RSE.cone
     sharing type Exp.tyvar = RType.tyvar

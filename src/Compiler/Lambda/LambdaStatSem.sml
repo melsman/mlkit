@@ -20,15 +20,12 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		        sharing type Lvars.lvar = LambdaExp.lvar
 			sharing type Lvars.name = Name.name
 		      structure Crash : CRASH
-		      structure FinMap : FINMAP
-		      structure IntFinMap : MONO_FINMAP where type dom = int
-		      structure FinMapEq : FINMAPEQ
 		      structure NatSet : KIT_MONO_SET
 			sharing type NatSet.elt = LambdaExp.tyvar
 		      structure PP : PRETTYPRINT
-			sharing type PP.StringTree =
-			  LambdaExp.StringTree = 
-			  FinMap.StringTree = FinMapEq.StringTree
+			sharing type PP.StringTree = LambdaExp.StringTree =
+			  Excon.Map.StringTree = Con.Map.StringTree = Lvars.Map.StringTree
+			  = TyName.Map.StringTree
 		      structure Flags : FLAGS) : LAMBDA_STAT_SEM =
   struct
 
@@ -91,12 +88,10 @@ end
      * --------------------------------------------------------- *)
 
     structure E : sig
-		    type env and top_env		      
+		    type env
 		    val empty : env
-                    val topify : env -> top_env
-		    val initial : top_env
+		    val initial : env
 		    val plus : env * env -> env
-		    val plus' : top_env * top_env -> top_env
 		    val add_con : con * TypeScheme * env -> env
 		    val add_tyname : TyName * con list * env -> env
 		    val add_lvar : lvar * TypeScheme * env -> env
@@ -106,63 +101,42 @@ end
 		    val lookup_lvar : env -> lvar -> TypeScheme
 		    val lookup_excon : env -> excon -> Type option
 		    val ftv_env : env -> NatSet.Set
-		    val restrict : top_env * {lvars:lvar list,
-					      tynames:TyName list,
-					      cons: con list,
-					      excons:excon list} -> env
-		    val enrich : top_env * top_env -> bool
+		    val restrict : env * {lvars:lvar list,
+					  tynames:TyName list,
+					  cons: con list,
+					  excons:excon list} -> env
+		    val enrich : env * env -> bool
 		    type StringTree
 		    val layout_env : env -> StringTree
-		    val layout_top_env : top_env -> StringTree
 		    val layoutTypes : Type list -> StringTree
 		  end =
       struct
+
+	structure ConMap = Con.Map
+	structure LvarMap = Lvars.Map
+	structure ExconMap = Excon.Map
+	structure TyNameMap = TyName.Map
 
 	(* maintain the set of free type variables of an environment;
 	 * operations are simple since we know that variables are
 	 * unique. This makes ftv_env cheap. *)
 
 	type env = {ftv : NatSet.Set, 
-		    con_env : (con, TypeScheme) FinMapEq.map,
-		    tyname_env : (TyName, con list) FinMapEq.map,   (* the con list is the domain of TE *)
-		    lvar_env : (lvar, TypeScheme) FinMapEq.map,
-		    excon_env : (excon, Type option) FinMapEq.map}	  
-	  
-	type top_env = {ftv : NatSet.Set, 
-			con_env : TypeScheme IntFinMap.map,       (* domain is con *)
-			tyname_env : (con list) IntFinMap.map,    (* domain is tyname *)
-			lvar_env : TypeScheme IntFinMap.map,      (* domain is lvar *)
-			excon_env : (Type option) IntFinMap.map}  (* domain is excon *)	  
+		    con_env : TypeScheme ConMap.map,
+		    tyname_env : (con list) TyNameMap.map,   (* the con list is the domain of TE *)
+		    lvar_env : TypeScheme LvarMap.map,
+		    excon_env : (Type option) ExconMap.map}	  
 
-	fun keyOfLvar lv = Name.key(Lvars.name lv)
-	fun keyOfExcon excon = Name.key(Excon.name excon)
-	fun keyOfCon con = Name.key(Con.name con)
-	fun keyOfTyName tn = Name.key(TyName.name tn)
-
-	local
-	  fun topify_env topper env = FinMapEq.Fold(fn ((d,e),a) => IntFinMap.add(topper d, e, a)) IntFinMap.empty env
-	  fun topify_con_env env = topify_env keyOfCon env
-	  fun topify_tyname_env env = topify_env keyOfTyName env
-	  fun topify_lvar_env env = topify_env keyOfLvar env
-	  fun topify_excon_env env = topify_env keyOfExcon env
-	in 
-	  fun topify {ftv, con_env, tyname_env, lvar_env, excon_env} =
-	    {ftv=ftv,con_env=topify_con_env con_env, tyname_env=topify_tyname_env tyname_env,
-	     lvar_env=topify_lvar_env lvar_env, excon_env=topify_excon_env excon_env}
-	end	    
-
-	val empty_con_env = FinMapEq.empty
-	val empty_tyname_env = FinMapEq.empty
-	val empty_lvar_env = FinMapEq.empty
-	val empty_excon_env = FinMapEq.empty
+	val empty_con_env = ConMap.empty
+	val empty_tyname_env = TyNameMap.empty
+	val empty_lvar_env = LvarMap.empty
+	val empty_excon_env = ExconMap.empty
 	  
 	val empty : env = {ftv = NatSet.empty,
 			   con_env = empty_con_env,
 			   tyname_env = empty_tyname_env,
 			   lvar_env = empty_lvar_env,
 			   excon_env = empty_excon_env}
-	  
-	fun initMapeq eq = foldl (fn ((v,r), m) => FinMapEq.add eq (v,r,m)) FinMapEq.empty
 	  
 	val initial_con_env = 
 	  let 
@@ -184,7 +158,7 @@ end
 				       [CONStype([TYVARtype tyvar], tyName_LIST)]))
 	      end
 	  in
-	    initMapeq Con.eq [ (* (Con.con_REF, typescheme_REF), *)
+	    ConMap.fromList [ (* (Con.con_REF, typescheme_REF), *)
 			      (Con.con_TRUE, typescheme_TRUE),
 			      (Con.con_FALSE, typescheme_FALSE),
 			      (Con.con_NIL, typescheme_NIL),
@@ -192,7 +166,7 @@ end
 	  end
 
 	val initial_tyname_env = 
-	  initMapeq TyName.eq [(tyName_BOOL, [Con.con_TRUE, Con.con_FALSE]),
+	  TyNameMap.fromList  [(tyName_BOOL, [Con.con_TRUE, Con.con_FALSE]),
 			       (tyName_INT, []),
 (*old
 			       (tyName_CHAR, []),
@@ -208,15 +182,15 @@ old*)
 	val initial_lvar_env = empty_lvar_env
 	  
 	val initial_excon_env =
-	  initMapeq Excon.eq [(Excon.ex_DIV, NONE : Type option),
+	  ExconMap.fromList  [(Excon.ex_DIV, NONE : Type option),
 			      (Excon.ex_MATCH, NONE),
 			      (Excon.ex_BIND, NONE),
 			      (Excon.ex_OVERFLOW, NONE)]
 
 	val ftv_initial =
-	  FinMapEq.fold (fn (sigma,set) => NatSet.union (ftv_TypeScheme sigma) set)
-	  (FinMapEq.fold (fn (sigma,set) => NatSet.union (ftv_TypeScheme sigma) set)
-	   (FinMapEq.fold (fn (SOME Type,set) => NatSet.union (ftv_Type Type) set
+	  ConMap.fold (fn (sigma,set) => NatSet.union (ftv_TypeScheme sigma) set)
+	  (LvarMap.fold (fn (sigma,set) => NatSet.union (ftv_TypeScheme sigma) set)
+	   (ExconMap.fold (fn (SOME Type,set) => NatSet.union (ftv_Type Type) set
 	                  | (NONE,set) => set) NatSet.empty initial_excon_env)
 	   initial_lvar_env)
 	  initial_con_env
@@ -226,32 +200,19 @@ old*)
 			     tyname_env=initial_tyname_env,
 			     lvar_env=initial_lvar_env,
 			     excon_env=initial_excon_env}
-	val initial : top_env = topify initial
 	  
 	fun plus ({ftv,con_env, tyname_env, lvar_env, excon_env},
 		  {ftv=ftv', con_env=con_env', tyname_env=tyname_env',
 		   lvar_env=lvar_env', excon_env=excon_env'}) : env =
 	  {ftv=NatSet.union ftv ftv', 
-	   con_env=FinMapEq.plus Con.eq (con_env,con_env'),
-	   tyname_env=FinMapEq.plus TyName.eq (tyname_env,tyname_env'),
-	   lvar_env=FinMapEq.plus Lvars.eq (lvar_env,lvar_env'),
-	   excon_env=FinMapEq.plus Excon.eq (excon_env,excon_env')}
-
-	fun plus'({ftv,con_env, tyname_env, lvar_env, excon_env},
-		  {ftv=ftv', con_env=con_env', tyname_env=tyname_env',
-		   lvar_env=lvar_env', excon_env=excon_env'}) : top_env =
-	  let val op + = IntFinMap.plus
-	  in {ftv=NatSet.union ftv ftv', 
-	      con_env=con_env+con_env', 
-	      tyname_env=tyname_env + tyname_env',
-	      lvar_env=lvar_env+lvar_env',
-	      excon_env=excon_env+excon_env'}
-	  end
-
+	   con_env=ConMap.plus (con_env,con_env'),
+	   tyname_env=TyNameMap.plus (tyname_env,tyname_env'),
+	   lvar_env=LvarMap.plus (lvar_env,lvar_env'),
+	   excon_env=ExconMap.plus (excon_env,excon_env')}
 
 	fun add_con (con, TypeScheme, {ftv,con_env,tyname_env,lvar_env,excon_env}) =
 	  {ftv=NatSet.union ftv (ftv_TypeScheme TypeScheme),
-	   con_env=FinMapEq.add Con.eq (con,TypeScheme,con_env),
+	   con_env=ConMap.add (con,TypeScheme,con_env),
 	   tyname_env=tyname_env,
 	   lvar_env=lvar_env, 
 	   excon_env=excon_env}
@@ -259,7 +220,7 @@ old*)
 	fun add_tyname (tyname, conlist, {ftv,con_env,tyname_env,lvar_env,excon_env}) =
 	  {ftv=ftv,
 	   con_env=con_env,
-	   tyname_env=FinMapEq.add TyName.eq (tyname, conlist, tyname_env),
+	   tyname_env=TyNameMap.add (tyname, conlist, tyname_env),
 	   lvar_env=lvar_env, 
 	   excon_env=excon_env}
 
@@ -267,7 +228,7 @@ old*)
 	  {ftv=NatSet.union ftv (ftv_TypeScheme TypeScheme),
 	   con_env=con_env,
 	   tyname_env=tyname_env,
-	   lvar_env=FinMapEq.add Lvars.eq (lvar,TypeScheme,lvar_env), 
+	   lvar_env=LvarMap.add (lvar,TypeScheme,lvar_env), 
 	   excon_env=excon_env}
 
 	fun add_excon (excon, TypeOpt, {ftv,con_env,tyname_env,lvar_env,excon_env}) =
@@ -275,26 +236,26 @@ old*)
 			   of SOME Type => NatSet.union ftv (ftv_Type Type)
 			    | NONE => ftv
 	  in {ftv=ftv', con_env=con_env,tyname_env=tyname_env,
-	      lvar_env=lvar_env,excon_env=FinMapEq.add Excon.eq (excon,TypeOpt,excon_env)}
+	      lvar_env=lvar_env,excon_env=ExconMap.add (excon,TypeOpt,excon_env)}
 	  end
 
 	fun lookup_con ({con_env,...} : env) con =
-	  case FinMapEq.lookup Con.eq con_env con
+	  case ConMap.lookup con_env con
 	    of SOME r => r
 	     | NONE => die ("lookup_con.Cannot find " ^ Con.pr_con con)
 
 	fun lookup_tyname ({tyname_env,...} : env) tyname =
-	  case FinMapEq.lookup TyName.eq tyname_env tyname
+	  case TyNameMap.lookup tyname_env tyname
 	    of SOME r => r
 	     | NONE => die ("lookup_tyname.Cannot find " ^ pr_TyName tyname)
 
 	fun lookup_lvar ({lvar_env,...} : env) lvar =
-	  case FinMapEq.lookup Lvars.eq lvar_env lvar
+	  case LvarMap.lookup lvar_env lvar
 	    of SOME r => r
 	     | NONE => die ("lookup_lvar.Cannot find " ^ Lvars.pr_lvar lvar)
 
 	fun lookup_excon ({excon_env,...} : env) excon =
-	  case FinMapEq.lookup Excon.eq excon_env excon
+	  case ExconMap.lookup excon_env excon
 	    of SOME r => r
 	     | NONE => die ("lookup_excon.Cannot find " ^ Excon.pr_excon excon)
 
@@ -319,19 +280,19 @@ old*)
 							children=[layout_tyvars tyvars, layoutType Type]}
 
 	fun layout_con_env con_env =
-	  FinMapEq.layoutMap {start="ConEnv: {", eq=" -> ", sep=", ", finish="}"}
+	  ConMap.layoutMap {start="ConEnv: {", eq=" -> ", sep=", ", finish="}"}
 	  layout_con layoutTypeScheme con_env
 
 	fun layout_tyname_env tyname_env =
-	  FinMapEq.layoutMap {start="TyNameEnv: {", eq=" -> ", sep=", ", finish="}"}
+	  TyNameMap.layoutMap {start="TyNameEnv: {", eq=" -> ", sep=", ", finish="}"}
 	  layout_tyname layout_cons tyname_env
 
 	fun layout_lvar_env lvar_env =
-	  FinMapEq.layoutMap {start="LvarEnv: {", eq=" -> ", sep=", ", finish="}"}
+	  LvarMap.layoutMap {start="LvarEnv: {", eq=" -> ", sep=", ", finish="}"}
 	  layout_lvar layoutTypeScheme lvar_env
 
 	fun layout_excon_env excon_env =
-	  FinMapEq.layoutMap {start="ExConEnv: {", eq=" -> ", sep=", ", finish="}"}
+	  ExconMap.layoutMap {start="ExConEnv: {", eq=" -> ", sep=", ", finish="}"}
 	  layout_excon layoutTypeOpt excon_env
 
 	fun layout_env ({con_env, tyname_env, lvar_env, excon_env,...} : env) = 
@@ -340,49 +301,36 @@ old*)
 				       layout_tyname_env tyname_env,
 				       layout_lvar_env lvar_env,
 				       layout_excon_env excon_env]}
-	fun layout_top_env _ = PP.LEAF "layout_top_env not implemented"
 
-        exception FAIL_restrict of string
-	fun restrict_map eq mkstring topper (m,l) = 
-	  foldl (fn (a, acc) => FinMapEq.add eq
-		      (a,case IntFinMap.lookup m (topper a)
-			   of SOME r => r
-			    | NONE => raise FAIL_restrict(mkstring a),acc)) FinMapEq.empty l
-
-	fun restrict_con_env a = restrict_map Con.eq Con.pr_con keyOfCon a
-	fun restrict_tyname_env a = restrict_map TyName.eq TyName.pr_TyName keyOfTyName a
-	fun restrict_lvar_env a = restrict_map Lvars.eq Lvars.pr_lvar keyOfLvar a
-	fun restrict_excon_env a = restrict_map Excon.eq Excon.pr_excon keyOfExcon a
-
-	fun restrict(top_env as {ftv,con_env,tyname_env,lvar_env,excon_env}:top_env,{cons,tynames,lvars,excons}) =
+	fun restrict(env as {ftv,con_env,tyname_env,lvar_env,excon_env}: env,{cons,tynames,lvars,excons}) =
 	  let val _ = if NatSet.isEmpty ftv then () else die "restrict.ftvset not empty"
               fun say s = print(s^"\n");
-              fun sayenv() = PP.outputTree(say,layout_top_env top_env, !Flags.colwidth)
-	      val con_env1 = restrict_con_env(con_env,cons)
-                             handle FAIL_restrict dom => 
+              fun sayenv() = PP.outputTree(say,layout_env env, !Flags.colwidth)
+	      val con_env1 = ConMap.restrict(con_env,cons)
+                             handle ConMap.Restrict => 
                                (say "problems with constructor environment"; 
-                                say ("constructor: " ^ dom);
+                                say ("constructor ");
                                 say ("is not in the domain of the environment:");
                                 sayenv();
                                 die "LambdaStatSem.restrict")
-	      val tyname_env1 = restrict_tyname_env(tyname_env,tynames)
-                             handle FAIL_restrict dom => 
+	      val tyname_env1 = TyNameMap.restrict(tyname_env,tynames)
+                             handle TyNameMap.Restrict => 
                                (say "problems with tyname environment"; 
-                                say ("tyname: " ^ dom);
+                                say ("tyname ");
                                 say ("is not in the domain of the environment:");
                                 sayenv();
                                 die "LambdaStatSem.restrict")
-	      val lvar_env1 = restrict_lvar_env(lvar_env,lvars)
-                             handle FAIL_restrict dom => 
+	      val lvar_env1 = LvarMap.restrict(lvar_env,lvars)
+                             handle LvarMap.Restrict => 
                                (say "problems with lvar environment"; 
-                                say ("lvar: " ^ dom);
+                                say ("lvar ");
                                 say ("is not in the domain of the environment:");
                                 sayenv();
                                 die "LambdaStatSem.restrict")
-	      val excon_env1 = restrict_excon_env(excon_env,excons)
-                             handle FAIL_restrict dom => 
+	      val excon_env1 = ExconMap.restrict(excon_env,excons)
+                             handle ExconMap.Restrict => 
                                (say "problems with excon environment"; 
-                                say ("excon: " ^ dom);
+                                say ("excon ");
                                 say ("is not in the domain of the environment:");
                                 sayenv();
                                 die "LambdaStatSem.restrict")

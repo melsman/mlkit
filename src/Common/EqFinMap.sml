@@ -7,9 +7,6 @@ functor EqFinMap(structure Report: REPORT
 	        ): MONO_FINMAP =
   struct
 
-    structure General = Edlib.General
-    structure List = Edlib.List
-
     type dom = dom
     datatype 'b map = FM of {elts: (dom * 'b) list, unique : bool ref}
       
@@ -36,7 +33,7 @@ functor EqFinMap(structure Report: REPORT
 
     fun add (x, y, FM{elts=l,...}) = FM{elts=(x,y)::l,unique=ref false}
 
-    fun addList pairs m = List.foldR (fn (d,r) => fn m => add(d,r,m)) m pairs
+    fun addList pairs m = foldr (fn ((d,r), m) => add(d,r,m)) m pairs
 
     fun fromList pairs = addList pairs empty
 
@@ -69,7 +66,7 @@ functor EqFinMap(structure Report: REPORT
 	      if eq(x,x') then (x, folder(y, y')) :: rest
 	      else (x, y) :: insert(x', y', rest)
       in
-	FM{elts=List.foldL (fn (x, y) => fn m => insert(x, y, m)) map1 map2,
+	FM{elts=foldl (fn ((x, y), m) => insert(x, y, m)) map1 map2,
 	   unique=ref ((!u1) andalso (!u2))}
       end
 
@@ -112,20 +109,20 @@ functor EqFinMap(structure Report: REPORT
         FM{elts=map (fn (a, b) => (a, f(a, b))) (list m),unique=ref true}
 
     fun fold (f : ('a * 'b) -> 'b) (x : 'b) (m : 'a map) : 'b = 
-	List.foldL (fn (a, b) => fn  c => f(b, c)) x (list m)
+	foldl (fn ((a, b), c) => f(b, c)) x (list m)
 
     fun Fold (f : ((dom * 'b) * 'c) -> 'c) (x : 'c) (m : 'b map) : 'c =
-	List.foldL (fn (a, b) => fn c => f((a, b), c)) x (list m)
+	foldl (fn ((a, b), c) => f((a, b), c)) x (list m)
 
     fun filter pred (m: 'b map) = 
 	let val elts = list m
 	in
-	    FM{elts=List.all pred elts,unique=ref true}
+	    FM{elts=List.filter pred elts,unique=ref true}
 	end
 
     exception Restrict
     fun restrict(m: 'b map, dom : dom list) : 'b map =
-      List.foldL(fn d => fn acc => 
+      foldl(fn (d, acc) => 
 		 case lookup m d
 		   of SOME res => add(d,res,acc)
 		    | NONE => raise Restrict) empty dom 

@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <sys/times.h>
 
-#if defined(linux)
+#if defined(linux) || defined(_WIN32)
 #include <sys/resource.h>
 #endif
 

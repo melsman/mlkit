@@ -7,35 +7,35 @@
 functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       structure TopdecGrammar : TOPDEC_GRAMMAR   (*needed for type strexp*)
 			 sharing type TopdecGrammar.funid = ModuleEnvironments.funid
-			     and type TopdecGrammar.id = ModuleEnvironments.id
-			     and type TopdecGrammar.longtycon = ModuleEnvironments.longtycon
-			     and type TopdecGrammar.longstrid = ModuleEnvironments.longstrid
+			 sharing type TopdecGrammar.id = ModuleEnvironments.id
+			 sharing type TopdecGrammar.longtycon = ModuleEnvironments.longtycon
+			 sharing type TopdecGrammar.longstrid = ModuleEnvironments.longstrid
 		       structure OpacityElim : OPACITY_ELIM
 			 sharing OpacityElim.TyName = ModuleEnvironments.TyName
-			     and type OpacityElim.OpacityEnv.realisation = ModuleEnvironments.realisation
-			     and type OpacityElim.topdec = TopdecGrammar.topdec
+			 sharing type OpacityElim.OpacityEnv.realisation = ModuleEnvironments.realisation
+			 sharing type OpacityElim.topdec = TopdecGrammar.topdec
 		       structure CompilerEnv : COMPILER_ENV
 			 sharing type CompilerEnv.id = ModuleEnvironments.id
-			     and type CompilerEnv.longid = TopdecGrammar.DecGrammar.Ident.longid
-			     and type CompilerEnv.strid = ModuleEnvironments.strid
-			     and type CompilerEnv.longstrid = ModuleEnvironments.longstrid
-			     and type CompilerEnv.tycon = ModuleEnvironments.tycon
-			     and type CompilerEnv.longtycon = ModuleEnvironments.longtycon
+			 sharing type CompilerEnv.longid = TopdecGrammar.DecGrammar.Ident.longid
+			 sharing type CompilerEnv.strid = ModuleEnvironments.strid
+			 sharing type CompilerEnv.longstrid = ModuleEnvironments.longstrid
+			 sharing type CompilerEnv.tycon = ModuleEnvironments.tycon
+			 sharing type CompilerEnv.longtycon = ModuleEnvironments.longtycon
 		       structure CompileBasis : COMPILE_BASIS
 			 sharing type CompileBasis.lvar = CompilerEnv.lvar
-			     and type CompileBasis.TyName = ModuleEnvironments.TyName
+			 sharing type CompileBasis.TyName = ModuleEnvironments.TyName
 			               = CompilerEnv.TyName
-			     and type CompileBasis.con = CompilerEnv.con
-			     and type CompileBasis.excon = CompilerEnv.excon
+			 sharing type CompileBasis.con = CompilerEnv.con
+			 sharing type CompileBasis.excon = CompilerEnv.excon
 		       structure Compile : COMPILE
 		       structure InfixBasis: INFIX_BASIS
 		       structure ElabRep : ELAB_REPOSITORY
 			 sharing type ElabRep.funid = TopdecGrammar.funid 
-			     and type ElabRep.InfixBasis = InfixBasis.Basis
-			     and type ElabRep.ElabBasis = ModuleEnvironments.Basis
-			     and type ElabRep.opaq_env = OpacityElim.opaq_env
-			     and type ElabRep.longstrid = ModuleEnvironments.longstrid
-			     and ElabRep.TyName = ModuleEnvironments.TyName
+			 sharing type ElabRep.InfixBasis = InfixBasis.Basis
+			 sharing type ElabRep.ElabBasis = ModuleEnvironments.Basis
+			 sharing type ElabRep.opaq_env = OpacityElim.opaq_env
+			 sharing type ElabRep.longstrid = ModuleEnvironments.longstrid
+			 sharing ElabRep.TyName = ModuleEnvironments.TyName
 		       structure FinMap : FINMAP
 		       structure PP : PRETTYPRINT
 			 sharing type PP.StringTree = CompilerEnv.StringTree 
@@ -546,6 +546,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			    OpacityElim.OpacityEnv.layout rea, IntBasis.layout intB]}
 
 	val initial = TOPBASIS (InfixBasis.emptyB, ModuleEnvironments.B.initial, OpacityElim.OpacityEnv.initial, IntBasis.initial)
+	val _ = app Name.mk_rigid (!Name.bucket)
 	fun plus' (TOPBASIS (infb,elabb,rea,tintb), TOPBASIS (infb',elabb',rea',tintb')) =
 	  TOPBASIS (InfixBasis.compose(infb,infb'), ModuleEnvironments.B.plus (elabb, elabb'),
 		    OpacityElim.OpacityEnv.plus(rea,rea'), IntBasis.plus'(tintb, tintb'))

@@ -13,54 +13,54 @@ functor IntModules(structure Name : NAME
 
 		   structure Environments : ENVIRONMENTS
 		     sharing type Environments.realisation = ElabInfo.TypeInfo.realisation
-		         and type Environments.Env = CompilerEnv.ElabEnv = ElabInfo.TypeInfo.Env
-			 and type Environments.TyName.name = Name.name
-			 and type Environments.TyName = ElabInfo.TypeInfo.TyName
-			 and type Environments.strid = ElabInfo.TypeInfo.strid
-			 and type Environments.tycon = ElabInfo.TypeInfo.tycon
-			 and type Environments.id = ElabInfo.TypeInfo.id
+		     sharing type Environments.Env = CompilerEnv.ElabEnv
+		     sharing type Environments.TyName.name = Name.name
+		     sharing type Environments.TyName = ElabInfo.TypeInfo.TyName
+		     sharing type Environments.strid = ElabInfo.TypeInfo.strid
+		     sharing type Environments.tycon = ElabInfo.TypeInfo.tycon
+		     sharing type Environments.id = ElabInfo.TypeInfo.id
 
 		   structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		     sharing type ModuleEnvironments.Env = Environments.Env
-		         and type ModuleEnvironments.Basis = ManagerObjects.ElabBasis 
+		     sharing type ModuleEnvironments.Basis = ManagerObjects.ElabBasis 
 			                                   = ElabInfo.TypeInfo.Basis
-			 and type ModuleEnvironments.strid = Environments.strid
+		     sharing type ModuleEnvironments.strid = Environments.strid
 
 	           structure ParseElab : PARSE_ELAB
 		     sharing type ParseElab.InfixBasis = ManagerObjects.InfixBasis =
 		               ElabInfo.ParseInfo.DFInfo.InfixBasis
-		         and type ParseElab.ElabBasis = ManagerObjects.ElabBasis
+		     sharing type ParseElab.ElabBasis = ManagerObjects.ElabBasis
 
 		   structure OpacityElim : OPACITY_ELIM
 		     sharing type OpacityElim.topdec = ParseElab.topdec
-		         and type OpacityElim.opaq_env = ElabInfo.TypeInfo.opaq_env
-			 and OpacityElim.TyName = ElabInfo.TypeInfo.TyName = Environments.TyName
-		         and type OpacityElim.OpacityEnv.realisation = Environments.realisation
+		     sharing type OpacityElim.opaq_env = ElabInfo.TypeInfo.opaq_env
+		     sharing OpacityElim.TyName = ElabInfo.TypeInfo.TyName = Environments.TyName
+		     sharing type OpacityElim.OpacityEnv.realisation = Environments.realisation
 
 		   structure CompileBasis : COMPILE_BASIS
 		     sharing type CompileBasis.CompileBasis = ManagerObjects.CompileBasis 
 
 		   structure Compile : COMPILE
 		     sharing type Compile.CEnv = ManagerObjects.CEnv
-		         and type Compile.CompileBasis = ManagerObjects.CompileBasis
-			 and type Compile.linkinfo = ManagerObjects.linkinfo
-			 and type Compile.target = ManagerObjects.target
+		     sharing type Compile.CompileBasis = ManagerObjects.CompileBasis
+		     sharing type Compile.linkinfo = ManagerObjects.linkinfo
+		     sharing type Compile.target = ManagerObjects.target
 
 		   structure TopdecGrammar : TOPDEC_GRAMMAR
 		     sharing type TopdecGrammar.strdec = Compile.strdec
-		         and type TopdecGrammar.strid = CompilerEnv.strid = ModuleEnvironments.strid
-			 and type TopdecGrammar.longstrid = CompilerEnv.longstrid = ModuleEnvironments.longstrid
-			 and type TopdecGrammar.longtycon = CompilerEnv.longtycon = ModuleEnvironments.longtycon
-			 and type TopdecGrammar.info = ElabInfo.ElabInfo
-			 and type TopdecGrammar.topdec = ParseElab.topdec
+		     sharing type TopdecGrammar.strid = CompilerEnv.strid = ModuleEnvironments.strid
+		     sharing type TopdecGrammar.longstrid = CompilerEnv.longstrid = ModuleEnvironments.longstrid
+		     sharing type TopdecGrammar.longtycon = CompilerEnv.longtycon = ModuleEnvironments.longtycon
+		     sharing type TopdecGrammar.info = ElabInfo.ElabInfo
+		     sharing type TopdecGrammar.topdec = ParseElab.topdec
 
 		   structure FreeIds : FREE_IDS
 		     sharing type FreeIds.longid = ManagerObjects.longid
-		         and type FreeIds.strid = ManagerObjects.strid = TopdecGrammar.strid
-		         and type FreeIds.longstrid = ManagerObjects.longstrid = TopdecGrammar.longstrid
-		         and type FreeIds.funid = ManagerObjects.funid = TopdecGrammar.funid
-			 and type FreeIds.longtycon = ManagerObjects.longtycon = TopdecGrammar.longtycon
-			 and type FreeIds.strexp = TopdecGrammar.strexp = ManagerObjects.strexp
+		     sharing type FreeIds.strid = ManagerObjects.strid = TopdecGrammar.strid
+		     sharing type FreeIds.longstrid = ManagerObjects.longstrid = TopdecGrammar.longstrid
+		     sharing type FreeIds.funid = ManagerObjects.funid = TopdecGrammar.funid
+		     sharing type FreeIds.longtycon = ManagerObjects.longtycon = TopdecGrammar.longtycon
+		     sharing type FreeIds.strexp = TopdecGrammar.strexp = ManagerObjects.strexp
 
 		   structure Crash : CRASH
 		   structure Report : REPORT
@@ -104,7 +104,7 @@ functor IntModules(structure Name : NAME
     type IntBasis = ManagerObjects.IntBasis
      and topdec = TopdecGrammar.topdec
      and modcode = ManagerObjects.modcode
-     and CompileBasis = CompileBasis. CompileBasis
+     and CompileBasis = CompileBasis.CompileBasis
      and CEnv = CE.CEnv
      and IntFunEnv = ManagerObjects.IntFunEnv
 
@@ -340,8 +340,8 @@ functor IntModules(structure Name : NAME
 			     case to_TypeInfo i
 			       of SOME i' => ElabInfo.plus_TypeInfo i (ElabInfo.TypeInfo.on_TypeInfo(phi,i'))
 				| NONE => i
-			   val phi_eff = Environments.Realisation.mk_Efficient phi
-		       in TopdecGrammar.map_strexp_info (fn i => on_ElabInfo(phi_eff,i)) strexp0
+			   (* val phi_eff = Environments.Realisation.mk_Efficient phi *)
+		       in TopdecGrammar.map_strexp_info (fn i => on_ElabInfo(phi,i)) strexp0
 		       end
 
 		     (* Before we interpret strexp0' we force generated names
@@ -366,9 +366,10 @@ functor IntModules(structure Name : NAME
 		      * since all names now have become rigid. *)
 		     val mc' = case Repository.lookup_int (prjid,funid)
 			       of SOME(entry_no, (_,_,_,_,N2,_,intB2)) => (* names in N2 are already marked generative, since *)
-				 (List.app Name.mark_gen N';          (* N2 is returned by lookup_int *)
+				 (List.app Name.mark_gen N';              (* N2 is returned by lookup_int *)
 				  IntBasis.match(intB'', IntBasis.topify intB2);
 				  List.app Name.unmark_gen N';
+				  List.app Name.mk_rigid N';
 				  let val mc' = ModCode.emit (prjid, mc')
                                       val tintB' = IntBasis.topify intB'
 				  in Repository.owr_int((prjid,funid),entry_no,(funstamp,Eres,tintB',longstrids,N',mc',intB''));
@@ -376,7 +377,8 @@ functor IntModules(structure Name : NAME
 				  end)
 				| NONE => let val mc' = ModCode.emit (prjid, mc')
 					      val tintB' = IntBasis.topify intB'
-					  in Repository.add_int((prjid,funid),(funstamp,Eres,tintB',longstrids,N',mc',intB''));
+					  in List.app Name.mk_rigid N';
+					     Repository.add_int((prjid,funid),(funstamp,Eres,tintB',longstrids,N',mc',intB''));
 					     mc'
 					  end
 		     val mc'' = ModCode.seq(mc,mc')
@@ -454,13 +456,13 @@ functor IntModules(structure Name : NAME
 	       end
 	      | _ => die "derived_form_repair.topdec is not a single structure binding.")
 
-    val keep_functor_bodies_in_memory = ref false
+    val keep_functor_bodies_in_memory = false
 
     fun generate_body_builder(prjid : prjid, funid, strid_arg,
 			      {infB: InfixBasis, elabB: ElabBasis, T: TyName list, 
 			       resE: ElabEnv, opaq_env: OpacityElim.opaq_env}, strexp : strexp) : unit -> strexp =
 
-      if !keep_functor_bodies_in_memory then fn () => strexp
+      if keep_functor_bodies_in_memory then fn () => strexp
 
       else let (* If the structure identifier is invented then we are
 		* dealing with the derived form of a functor
@@ -528,18 +530,19 @@ functor IntModules(structure Name : NAME
 			 val (topdec, opaq_env') = opacity_elimination(opaq_env, topdec)
 			 val _ = chat "[opacity elimination end...]"
 			 val resE' = Environments.Realisation.on_Env (OpacityElim.OpacityEnv.rea_of opaq_env') resE'
+			 val resE' = Environments.Realisation.on_Env (OpacityElim.OpacityEnv.rea_of opaq_env) resE'
 
 			 val names_elab = !Name.bucket
 			 val _ = Name.bucket := names_old  (* re-install old names *)
 						       
 						       
-			 (* MEMO : the type name set T does not
-			  * include type names generated during
-			  * opacity elimination. *)
+			 (* The type name set T includes type names
+			  * generated during opacity elimination, see
+			  * functor OpacityElim; ME 1998-11-10. *)
 
 			 (* Now, do matching *)
 			 val _ = (List.app (Name.mark_gen o TyName.name) T;
-				  List.app Name.mark_gen names_elab;
+				  List.app Name.mark_gen names_elab; 
 				  ElabEnv.match(resE', resE);
 				  List.app (Name.unmark_gen o TyName.name) T;
 				  List.app Name.unmark_gen names_elab)

@@ -1,5 +1,3 @@
-(*$MUL_INF*)
-
 (* Multiplicity Inference *)
 
 signature MUL_INF =  

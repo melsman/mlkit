@@ -17,9 +17,6 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 			) : GRAMMAR_UTILS =
   struct
 
-    structure List = Edlib.List
-    structure General = Edlib.General
-
     fun impossible s = Crash.impossible ("GrammarUtils." ^ s)
 
     structure TopdecGrammar = TopdecGrammar
@@ -167,7 +164,7 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
           tuple_atexp_with_info
 	    (span_info (get_info_exp exp1,
 			get_info_exp (List.last (exp2::exps))
-			handle List.Empty s => impossible "tuple_atexp: last"))
+			handle _ => impossible "tuple_atexp: last"))
 	       (exp1::exp2::exps)
       | tuple_atexp _ = impossible "tuple_atexp _"
 
@@ -254,6 +251,15 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 	    ATEXPexp (info, LETatexp (info, dec, callVar))
 	  end
 
+    local
+      fun count _ [] _ = NONE
+	| count p (x::xs) n = if p x then SOME n
+			      else count p xs (n + 1)
+    in
+      fun index p l = count p l 0
+    end
+
+
     fun rewriteDatBind(datbind, typbind) =
         (* XXX no check for different identifiers to be bound in datbind 
            and typbind (as required, Def. p. 66) *)
@@ -267,15 +273,13 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
             TYVARty(i, tv) => 
               let 
                 val i = 
-                  (case (List.index (General.curry (op =) tv) tyvarseq) of
-                    General.OK i => i
-                  | General.Fail _ =>
-                     Crash.unimplemented
-                      "No check for tyvar on rsh in lhs of withtype defined type")
+                  case index (fn a => a=tv) tyvarseq
+		    of SOME i => i
+		     | NONE => Crash.unimplemented
+                      "No check for tyvar on rsh in lhs of withtype defined type"
               in
-                (List.nth i tyseq) 
-                handle List.Subscript _ => 
-                         impossible "rewriteDatBind---replaceTy"
+                (List.nth (tyseq,i)) 
+                handle _ => impossible "rewriteDatBind---replaceTy"
               end
           | RECORDty(i, NONE) =>
               ty
@@ -323,7 +327,7 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
                   (let 
                      val (tyvarseq1, ty1) = lookup_tycon tycon' typbind
                      val _ = 
-                       if (List.size tyseq') <> (List.size tyvarseq1) then
+                       if (List.length tyseq') <> (List.length tyvarseq1) then
                          Crash.unimplemented
 			   "GrammarUtils.rewriteDatBind< insert error info into i >"
                        else ()
@@ -385,7 +389,7 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
           tuple_atpat_with_info
 	    (span_info (get_info_pat pat1,
 			get_info_pat (List.last (pat2::pats))
-			handle List.Empty s => impossible "tuple_atpat: last"))
+			handle _ => impossible "tuple_atpat: last"))
 	       (pat1::pat2::pats)
       | tuple_atpat _ = impossible "tuple_atpat"
 
@@ -448,14 +452,16 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
   (*fold_specs_to_spec [(i1,spec1),(i2,spec2),(i3,spec3)] =
    SEQspec(i13, SEQspec(i12, spec1, spec2), spec3)*)
 
+    fun foldl' f [] = NONE
+      | foldl' f (h::t) = SOME(foldl f h t)
+
     fun fold_specs_to_spec i_spec_s =
-	  #2 (List.foldL'
-	        (fn (i2, spec2) => fn (i1, spec1) =>
-	             let val i12 = span_info (i1, i2)
-		     in (i12, SEQspec (i12, spec1, spec2))
-		     end)
-	          i_spec_s)
-             handle List.Empty s => impossible s
+      case foldl' (fn ((i2, spec2), (i1, spec1)) =>
+		   let val i12 = span_info (i1, i2)
+		   in (i12, SEQspec (i12, spec1, spec2))
+		   end) i_spec_s
+	of SOME res => #2 res
+	 | NONE => impossible "fold_specs_to_spec"
 
     fun raise_lexical_error_if_none pos NONE =
           raise LexBasics.LEXICAL_ERROR (pos, "constant too big")

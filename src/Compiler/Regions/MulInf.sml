@@ -14,10 +14,10 @@ functor MulInf(
   structure Mul: MUL
   structure Eff: EFFECT
     sharing type Eff.cone = RegionExp.cone = Mul.Effect.cone
-    sharing type Eff.place = RegionExp.place = MulExp.place = RType.place = Mul.place
-    sharing type Mul.Effect.effect = RegionExp.effect = RType.effect 
+    sharing type Eff.place = RegionExp.place = MulExp.place = RType.place = Mul.place 
+	         = RegionExp.effect 
                  = MulExp.effectvar = MulExp.ateffect = MulExp.RegionExp.place
-                 = Mul.effectvar = MulExp.effect
+                 = Mul.effectvar 
     sharing type Mul.mularefmap = MulExp.mularefmap
     sharing type RegionExp.trip = MulExp.RegionExp.trip
     sharing type Mul.dependency_map = MulExp.dependency_map
@@ -28,7 +28,7 @@ functor MulInf(
     sharing type RegionExp.metaType = MulExp.metaType = MulExp.RegionExp.metaType
     sharing type MulExp.RegionExp.Type = RType.Type  = MulExp.Type
     sharing type Mul.mul = MulExp.mul
-    sharing type MulExp.qmularefset =  Mul.qmularefset = MulExp.qmularefset
+    sharing type MulExp.qmularefset = Mul.qmularefset 
     sharing type TyName.TyName = RType.tyname
     sharing type Mul.efenv = MulExp.efenv
     sharing type MulExp.datbinds = RegionExp.datbinds

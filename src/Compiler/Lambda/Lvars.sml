@@ -1,6 +1,11 @@
 (* Lambda variables *)
 
-functor Lvars(structure Name : NAME) : LVARS =
+functor Lvars(structure Name : NAME
+	      structure Report : REPORT
+	      structure Crash : CRASH
+	      structure PP : PRETTYPRINT
+	      structure IntFinMap : MONO_FINMAP where type dom = int
+		) : LVARS =
   struct
 
     (* Lambda variables are based on names which may be `matched'. In
@@ -95,6 +100,27 @@ functor Lvars(structure Name : NAME) : LVARS =
 
     fun is_free ({free,...} : lvar) = free
     fun is_inserted ({inserted,...} : lvar) = inserted
+
+    structure QD : QUASI_DOM =
+      struct
+	type dom = lvar
+	type name = Name.name
+	val name = name
+	val pp = pr_lvar
+      end
+(*
+    structure Map = EqFinMap(structure Report = Report
+			     structure PP = PP
+			     type dom = lvar
+			     val eq = eq)
+*)
+    structure Map = QuasiMap(structure IntFinMap = IntFinMap
+			     structure Name = Name
+			     structure Crash = Crash
+			     structure PP = PP
+			     structure Report = Report
+			     structure QD = QD)
+
   end;
 
 

@@ -271,7 +271,9 @@ signature STATOBJECT =
 	val is_Id                   : realisation -> bool
 	val oo                      : realisation * realisation -> realisation
 	val singleton               : TyName * TypeFcn -> realisation
-	val from_T_and_theta        : TyName.Set.Set * TypeFcn -> realisation
+
+	(*from_T_and_tyname (T, t0) = the realisation {t |-> t0 | t in T} *)
+	val from_T_and_tyname       : TyName.Set.Set * TyName -> realisation
 	val restrict                : TyName.Set.Set -> realisation -> realisation
 	val restrict_from           : TyName.Set.Set -> realisation -> realisation
 	val renaming                : TyName.Set.Set -> realisation
@@ -282,20 +284,6 @@ signature STATOBJECT =
 	val dom                     : realisation -> TyName.Set.Set
 	val eq                      : realisation * realisation -> bool
 	val layout                  : realisation -> StringTree
-
-	  (* Ordinary realisations are represented as a linear map
-	   * from type names to type functions; the linearity is
-	   * necessary to allow for type names to be matched (for
-	   * avoiding recompilation).  Efficient realisations, which
-	   * are maps from type name keys to type functions, are
-	   * represented using efficient integer maps. Notice that efficient
-	   * realisations should not exist across matching of
-	   * names. Efficient realisations are used for applying
-	   * realisations to type info in functor bodies,
-	   * efficiently. ME 1998-11-02 *)
-
- 	val is_Efficient            : realisation -> bool
-	val mk_Efficient            : realisation -> realisation
 
       end (*Realisation*)
 

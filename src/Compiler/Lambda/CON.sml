@@ -28,4 +28,5 @@ signature CON =
     val con_NIL   : con
     val con_CONS  : con
 
+    structure Map : MONO_FINMAP where type dom = con
   end

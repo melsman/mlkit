@@ -34,12 +34,14 @@ FINMAP.sml
 FinMap.sml
 FINMAPEQ.sml
 FinMapEq.sml
-EqFinMap.sml
+(*EqFinMap.sml*)
 SORTED_FINMAP.sml
 SortedFinMap.sml
 MONO_FINMAP.sml
 IntFinMapPT.sml
+(*IntFinMap.sml*)
 OrderFinMap.sml
+QuasiMap.sml
 
 IntSet.sml
 NatSet.sml

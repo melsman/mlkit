@@ -8,7 +8,7 @@ signature EXECUTION =
       sharing type FreeIds.topdec = Elaboration.ElabTopdec.PostElabTopdec
     structure Compile: COMPILE
       sharing type Compile.CompileBasis = CompileBasis.CompileBasis
-	  and type Compile.CEnv = CompilerEnv.CEnv
+      sharing type Compile.CEnv = CompilerEnv.CEnv
   end;
 
 

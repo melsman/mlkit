@@ -6,6 +6,8 @@ functor TyName(
    structure Flags                  : FLAGS
    structure PrettyPrint            : PRETTYPRINT
    structure Report                 : REPORT
+   structure IntFinMap              : MONO_FINMAP where type dom = int
+   structure Crash                  : CRASH
 	      ) : TYNAME =
   struct
 
@@ -100,15 +102,78 @@ functor TyName(
     val tyName_EXN = freshTyName{tycon=TyCon.tycon_EXN, arity=0, equality=false}
     val _ = Rank.reset()
 
-    structure Map : MONO_FINMAP = EqFinMap(structure Report = Report
-					   structure PP = PrettyPrint
-					   type dom = TyName
-					   val eq = eq)
+    structure QD : QUASI_DOM =
+      struct
+	type dom = TyName
+	type name = Name.name
+	val name = name
+	val pp = pr_TyName
+      end
 
+    structure Map = QuasiMap(structure IntFinMap = IntFinMap
+			     structure QD = QD
+			     structure Name = Name
+			     structure Crash = Crash
+			     structure PP = PrettyPrint
+			     structure Report = Report)
+(*
+    structure Map = EqFinMap(structure Report = Report
+			     structure PP = PrettyPrint
+			     type dom = TyName
+			     val eq = eq)
+*)
     structure Set : KIT_MONO_SET = EqSetList(structure PP = PrettyPrint
 					     type elt = TyName
 					     val eq = eq)
 
     type StringTree = PrettyPrint.StringTree
     val layout = PrettyPrint.LEAF o pr_TyName
+
+    structure TestMap =
+      struct
+	(*
+	val _ = print "[test begin]\n"
+	fun error s = print ("error: " ^ s ^ "\n")
+	fun assert s false = error s
+	  | assert _ _ = ()
+
+	fun new s = freshTyName{tycon=TyCon.mk_TyCon s, arity=0, equality=false}
+	  
+	val t = new "t"
+
+	val l = ["t1", "t2", "t3", "t4", "t5"]
+
+	val ts as [t1,t2,t3,t4,t5] = map new l
+
+	val m = Map.fromList (map (fn t => (t, pr_TyName t)) ts)
+
+	val _ = case Map.lookup m t2
+		  of SOME s => assert "test1" (s=pr_TyName t2)
+		   | _ => error "test2"
+	val m' = Map.restrict (m,[t3,t4])
+
+	val _ = case Map.lookup m' t2
+		  of NONE => ()
+		   | _ => error "test3"
+
+	val s4 = pr_TyName t4
+	val _ = case Map.lookup m' t4
+		  of SOME s => assert "test4" (s=s4)
+		   | _ => error "test5"
+
+	val _ = Name.mark_gen (name t4)	    
+	val _ = Name.mark_gen (name t)	    
+	val _ = match(t4,t)
+	val _ = Name.unmark_gen (name t4)	    
+	val _ = Name.unmark_gen (name t)	    
+	val _ = case Map.lookup m' t
+		  of SOME s => assert "test6" (s=s4)
+		   | _ => error "test7"
+	val _ = case Map.lookup m' t4
+		  of SOME s => assert "test8" (s=s4)
+		   | _ => error "test9"
+
+	val _ = print "[end of test]\n"
+*)
+      end
   end;

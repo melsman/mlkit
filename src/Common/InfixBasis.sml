@@ -10,8 +10,6 @@ functor InfixBasis(structure Ident: IDENT
 		  ): INFIX_BASIS =
   struct
 
-    structure ListSort = Edlib.ListSort
-
     type id = Ident.id
 
     datatype InfixEntry = NONFIX | INFIX of int | INFIXR of int

@@ -73,10 +73,10 @@ signature LVARS =
 
     val primitive : lvar -> primitive option
 
+    structure Map : MONO_FINMAP where type dom = lvar
+
   end;
 
-
-(*$LVARSET*)
 
 (***********************************************************************
   Applicative representation of finite sets of naturals, 1993-01-03

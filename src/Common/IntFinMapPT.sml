@@ -41,7 +41,12 @@ struct
 
   val empty = Empty
 
-  fun singleton (d,r) = Lf (fromInt d, r)
+  fun check s d = if Int.<(d, 0) then print ("IntFinMapPT." ^ s ^ " error\n")  
+		  else ()
+
+  fun singleton (d,r) = 
+    ((* check "singleton" d; *)
+     Lf (fromInt d, r))
 
   fun isEmpty Empty = true
     | isEmpty _ = false
@@ -53,7 +58,7 @@ struct
           | look (Br (p,m,t0,t1)) =
               if w <= p then look t0
                         else look t1
-    in look t end
+    in (*check "lookup" k;*) look t end
 
   fun join (m,p0,t0,p1,t1) =
     (* combine two trees with prefixes p0 and p1,
@@ -76,7 +81,7 @@ struct
               else join (m+m,w,Lf (w,x),p,t)
     in ins t end
 
-  fun add (k,x,t) = insertw #2 (fromInt k,x,t)
+  fun add (k,x,t) = ((*check "add" k;*) insertw #1 (fromInt k,x,t))   (* was #2 *)
 
   fun merge c (s,t) =
     let fun mrg (s as Br (p,m,s0,s1), t as Br (q,n,t0,t1)) =
@@ -112,14 +117,8 @@ struct
     | Fold f b (Lf(w,e)) = f((toInt w,e),b)
     | Fold f b (Br(_,_,t1,t2)) = Fold f (Fold f b t1) t2
 
-  fun fromList l =
-    let fun fl ([], a) = a
-	  | fl ((d,r)::rest, a) = fl(rest,add(d,r,a))
-    in fl(l,empty)
-    end
-
   fun remove (d,t) =  (* not terribly efficient! *)
-    case lookup t d 
+    case ((* check "remove" d;*) lookup t d)
       of SOME _ => SOME(Fold (fn ((d',e),a) => if d=d' then a
 					       else add(d',e,a)) empty t)
        | NONE => NONE
@@ -150,6 +149,8 @@ struct
     
   fun addList [] m = m
     | addList ((d,r)::rest) m = addList rest (add(d,r,m))
+
+  fun fromList l = addList l empty
     
   exception Restrict
   fun restrict (m, l) =
@@ -190,23 +191,20 @@ struct
 
 end
 
-(*
 
 structure TestIntFinMap : sig end =
   struct
-    
-    local
-      structure BasicIO = BasicIO()
-      structure Report = Report(structure BasicIO=BasicIO)
-      structure Crash=Crash(structure BasicIO = BasicIO)
-      structure PP = PrettyPrint(structure Report=Report
-				 structure Crash=Crash
-				 structure Flags=Flags(structure Crash=Crash
-						       structure Report=Report))
-    in
-      structure IFM = IntFinMap(structure Report=Report
-				structure PP=PP)
-    end
+(*    
+    structure BasicIO = BasicIO()
+    structure Report = Report(structure BasicIO=BasicIO)
+    structure Crash=Crash(structure BasicIO = BasicIO)
+    structure PP = PrettyPrint(structure Report=Report
+			       structure Crash=Crash
+			       structure Flags=Flags(structure Crash=Crash
+						     structure Report=Report))
+
+    structure IFM = IntFinMap(structure Report=Report
+			      structure PP=PP)
 
     fun member [] e = false
       | member (x::xs) e = x=e orelse member xs e
@@ -218,9 +216,11 @@ structure TestIntFinMap : sig end =
     fun mk [] = []
       | mk (x::xs) = (x,Int.toString x)::mk xs
 
-    val l1 = mk [12,234,345,23,234,6,456,78,345,23,78,79,657,345,234,
-		456,78,7,45,3,56,578,7,567,345,35,2,456,57,8,5]
-    val l2 = mk [23,43,4,456,456,23,4523,4,47,5,567,4356,345,34,79,78,53,5,5,6,47,567,56,7,46,345,34,5,36,47,57]
+    fun mk' [] = []
+      | mk' (x::xs) = (x,Int.toString x ^ "'")::mk' xs
+
+    val l1 = mk [12,234,345,23,234,6,456,78,345,23,78,79,657,345,234,456,78,0,7,45,3,56,578,7,567,345,35,2,456,57,8,5]
+    val l2 = mk' [23,43,4,456,456,23,4523,4,47,5,567,4356,345,34,79,78,53,5,5,6,47,567,56,7,46,345,34,5,36,47,57]
 
     val m1 = IFM.fromList l1
     val m2 = IFM.fromList l2
@@ -235,13 +235,13 @@ structure TestIntFinMap : sig end =
     val test2 = test "test2" (IFM.lookup m1 6 = SOME "6")
     val test3 = test "test3" (IFM.lookup m1 9 = NONE)
 
-    val test4 = test "test4" (IFM.lookup m3 4356 = SOME "4356")
+    val test4 = test "test4" (IFM.lookup m3 4356 = SOME "4356'")
 
     val test5 = test "test5" (IFM.lookup m3 35 = SOME "35")
 
     val m4 = IFM.restrict (m3, [6,345,23,34,657,47])
 
-    val test6 = test "test6" (IFM.lookup m4 23 = SOME "23")
+    val test6 = test "test6" (IFM.lookup m4 23 = SOME "23'")
     val test6 = test "test6" (IFM.lookup m4 657 = SOME "657")
     val test7 = test "test7" (IFM.lookup m4 35 = NONE)
     val test8 = test "test8" (IFM.lookup m4 78 = NONE)
@@ -256,9 +256,12 @@ structure TestIntFinMap : sig end =
 
     val test10 = test "test10" (sum (IFM.dom m1) = sum (remdubs (map #1 l1,[])))
 
-    val test11 = test "test11" (IFM.lookup (IFM.add(2222,"2222",m1)) 2222 = SOME "2222")
-    val test12 = test "test12" (IFM.lookup (IFM.add(234,"234",m1)) 234 = SOME "234")
+    val test11 = test "test11" (IFM.lookup (IFM.add(2222,"2222''",m1)) 2222 = SOME "2222''")
+    val test12 = test "test12" (IFM.lookup (IFM.add(234,"234''",m1)) 234 = SOME "234''")
 
+    val st = IFM.layoutMap {start="{",finish="}", eq=" -> ", sep=", "} (PP.LEAF o Int.toString) PP.LEAF m3
+
+    val _ = PP.outputTree(print, st, 100)
+*)
   end
 
-*)
