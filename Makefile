@@ -119,6 +119,7 @@ install_smlserver:
 	$(INSTALL) -R smlserver_demo $(INSTDIR_WEB)/smlserver_demo 
 	$(INSTALL) -R basislib $(INSTDIR_WEB)/basislib
 	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_WEB)/doc
+	$(INSTALL) doc/smlserver.html $(INSTDIR_WEB)/doc
 	chown -R `whoami`.`whoami` $(INSTDIR_WEB)
 	chmod -R ug+rw $(INSTDIR_WEB)
 	chmod -R o+r $(INSTDIR_WEB)
