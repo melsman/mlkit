@@ -269,6 +269,10 @@ signature SCS_PERSON =
        xxxxxx-yyyy is returned; otherwise the argument is returned. *)
     val ppCpr : string -> string
 
+    (* [unppCpr cpr]  if cpr is on the form xxxxxx-yyyy then the string
+       xxxxxxyyyy is returned; otherwise the argument is returned. *)
+    val unppCpr : string -> string
+
     (* [makeCprPublic cpr] if cpr in on the form aaaaaabbbb then the
        revised cpr aaaaaaXXXX is returned *)
     val makeCprPublic : string -> string
@@ -1112,6 +1116,17 @@ structure ScsPerson :> SCS_PERSON =
 	val (x,y) = splitCpr cpr
       in
 	x ^ "-" ^ y
+      end
+    handle _ => cpr
+
+    fun unppCpr cpr =
+      let 
+	val (x,dash,y) = (String.substring (cpr,0,6), String.substring (cpr,6,1), String.substring (cpr,7,4))
+      in
+(ScsError.log (cpr ^ "  " ^ x ^ "  " ^ dash ^ "  " ^ y);
+	if dash = "-" then x ^ y 
+	else cpr
+)
       end
     handle _ => cpr
 

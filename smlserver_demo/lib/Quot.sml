@@ -24,6 +24,8 @@ signature QUOT =
 
     val wrapString : (quot -> quot) -> (string -> string)
 
+    (* [valOf v] returns the empty quotation if v is NONE;
+       otherwise q if v is SOME q. *)
     val valOf : quot option -> quot
   end
 

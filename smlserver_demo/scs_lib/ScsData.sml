@@ -4,6 +4,7 @@ signature SCS_DATA =
     val getOracleIdTrans : Db.Handle.db -> int
 
     val gToInt     : (string -> string) -> string -> int
+    val gToIntOpt  : (string -> string) -> string -> int option
     val gToReal    : (string -> string) -> string -> real
     val gToRealOpt : (string -> string) -> string -> real option
     val gToBool    : (string -> string) -> string -> bool
@@ -47,6 +48,7 @@ structure ScsData :> SCS_DATA =
       fun gToDate g field_name = gToTemplate g field_name Db.toDate
     end
 
+    fun gToIntOpt  g field_name = Int.fromString (g field_name)
     fun gToRealOpt g field_name = Real.fromString (g field_name)
 
     local
