@@ -123,12 +123,6 @@ functor Compile(structure Excon : EXCON
 		  sharing type RegionFlowGraphProfiling.at = AtInf.at
 		  sharing type RegionFlowGraphProfiling.phsize = PhysSizeInf.phsize
 
-		structure CompLamb : COMP_LAMB
-		  sharing type CompLamb.at = AtInf.at
-		  sharing type CompLamb.LambdaPgm = PhysSizeInf.LambdaPgm
-		  sharing type CompLamb.place = PhysSizeInf.place
-		  sharing type CompLamb.phsize = PhysSizeInf.phsize
-
 		structure CompilerEnv: COMPILER_ENV
 		  sharing type CompilerEnv.lvar = LambdaExp.lvar
                   sharing type CompilerEnv.excon = LambdaExp.excon = Excon.excon
@@ -141,11 +135,6 @@ functor Compile(structure Excon : EXCON
                 structure OptLambda: OPT_LAMBDA
 		  sharing type OptLambda.LambdaPgm = LambdaExp.LambdaPgm
 
-                structure KAMBackend : KAM_BACKEND
-		  sharing type CompLamb.EA = KAMBackend.EA
-		  sharing type CompLamb.code = KAMBackend.code
-		  sharing type KAMBackend.label = LineStmt.label
-
 		structure CompileBasis: COMPILE_BASIS
 		  sharing type CompileBasis.EqEnv = EliminateEq.env
 		  sharing type CompileBasis.OEnv = OptLambda.env
@@ -153,7 +142,6 @@ functor Compile(structure Excon : EXCON
                   sharing type CompileBasis.rse = SpreadExp.RegionStatEnv.regionStatEnv
 		  sharing type CompileBasis.drop_env = DropRegions.env
 		  sharing type CompileBasis.psi_env = PhysSizeInf.env
-                  sharing type CompileBasis.l2kam_ce = CompLamb.env 
 	       	  sharing type CompileBasis.mulenv = MulInf.efenv
                   sharing type CompileBasis.mularefmap = MulInf.mularefmap
                   sharing type CompileBasis.clos_env = ClosExp.env
@@ -190,14 +178,6 @@ functor Compile(structure Excon : EXCON
     type CompileBasis = CompileBasis.CompileBasis
     type CEnv = CompilerEnv.CEnv
     type strdec = CompileDec.strdec
-    type EA = KAMBackend.EA
-    type label = KAMBackend.label
-    type linkinfo = {code_label:label, imports: label list, exports : label list, unsafe:bool}
-    fun code_label_of_linkinfo (li:linkinfo) = #code_label li
-    fun exports_of_linkinfo (li:linkinfo) = #exports li
-    fun imports_of_linkinfo (li:linkinfo) = #imports li
-    fun unsafe_linkinfo (li:linkinfo) = #unsafe li
-    fun mk_linkinfo a : linkinfo = a
 
     fun die s = Crash.impossible ("Compile." ^ s)
 
@@ -327,14 +307,12 @@ functor Compile(structure Excon : EXCON
 
 (*
     (* The following reset functions are never called *)
-    fun reset () = (CompLamb.reset();   (* resets counters and kamvar marks! *)
-		    LambdaExp.reset();  (* counters only *)
+    fun reset () = (LambdaExp.reset();  (* counters only *)
 		    reset_pp_count();
 		    reset_effect_count();
                     Effect.reset())       (* resets global cone *)
 
-    fun commit () = (CompLamb.commit();
-		     commit_pp_count();
+    fun commit () = (commit_pp_count();
 		     LambdaExp.commit();
 		     commit_effect_count();
 		     Effect.commit())
@@ -779,41 +757,12 @@ functor Compile(structure Excon : EXCON
 	  safe = safe})
       end
 
-    (* ---------------------------------------------------------------------- *)
-    (*   Compile region annotated code to KAM code                            *)
-    (* ---------------------------------------------------------------------- *)
-    fun comp_lamb(l2kam_ce, pgm) = 
-      let val _ = chat "Compiling region annotated lambda language ..."
-	  val _ = Timing.timing_begin()
-	  val {code_label, code, env=l2kam_ce1,imports,exports} = CompLamb.comp_lamb(l2kam_ce, pgm)
-	  fun ea_to_label s ea =
-	    case KAMBackend.un_lab_ea ea
-	      of SOME l => l
-	       | NONE => (case KAMBackend.un_datalab_ea ea
-			    of SOME l => l
-			     | NONE => die ("comp_lamb." ^ s))
-	  fun eas_to_labels eas =
-	    foldl (fn (ea, acc) =>
-		   case KAMBackend.un_lab_ea ea
-		     of SOME l => l::acc
-		      | NONE => (case KAMBackend.un_datalab_ea ea
-				   of SOME l => l::acc
-				    | NONE => acc)) [] eas
-
-	  val code_label = ea_to_label "code_label" code_label
-	  val imports = eas_to_labels imports
-	  val exports = map (ea_to_label "exports") exports
-	  val _ = Timing.timing_end("CompLam")
-      in {code_label=code_label, code=code, l2kam_ce1=l2kam_ce1, imports=imports,exports=exports}
-      end
-
 
     (* ===================================
      * Compile with the NEW backend
      * =================================== *)
 
-    type target = KAMBackend.target
-    fun comp_with_new_backend(rse, Psi, mulenv, drop_env, psi_env, l2kam_ce, clos_env, lamb_opt, vcg_file) =
+    fun comp_with_new_backend(rse, Psi, mulenv, drop_env, psi_env, clos_env, lamb_opt, vcg_file) =
       let
 	val safe = LambdaExp.safeLambdaPgm lamb_opt
 	val (mul_pgm, rse1, mulenv1, Psi1) = SpreadRegMul(rse, Psi, mulenv, lamb_opt)
@@ -825,7 +774,6 @@ functor Compile(structure Excon : EXCON
         val _ = warn_dangling_pointers(rse, psi_pgm)
         val app_conv_psi_pgm = appConvert psi_pgm
 	val _ = RegionFlowGraphProfiling.reset_graph ()
-	val {code_label,l2kam_ce1, code, exports, imports} = comp_lamb(l2kam_ce, app_conv_psi_pgm) 
 	  
 	val (clos_env1, target_new) = new_lambda_backend(clos_env,app_conv_psi_pgm, safe)
 (*
@@ -854,10 +802,8 @@ functor Compile(structure Excon : EXCON
 		    end)
 		else ()
 
-	val target = KAMBackend.generate_target_code code
-	val linkinfo = {code_label=code_label,imports=imports,exports=exports,unsafe=not(safe)}
       in
-	(rse1, Psi1, mulenv1, drop_env1, psi_env1, l2kam_ce1, clos_env1, target, linkinfo, target_new)
+	(rse1, Psi1, mulenv1, drop_env1, psi_env1, clos_env1, target_new)
       end
 
 
@@ -865,7 +811,7 @@ functor Compile(structure Excon : EXCON
     (* This is the main function; It invokes all the passes of the back end *)
     (************************************************************************)
 
-    datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo * target_new
+    datatype res = CodeRes of CEnv * CompileBasis * target_new
                  | CEnvOnlyRes of CEnv
 
     fun compile(CEnv, Basis, strdecs, vcg_file) : res =
@@ -879,7 +825,7 @@ functor Compile(structure Excon : EXCON
 	 * in bases. For now, we do type checking after optlambda, only. *)
 
         val _ = RegionExp.printcount:=1;
-	val {TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap,drop_env,psi_env,l2kam_ce,clos_env} =
+	val {TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap,drop_env,psi_env,clos_env} =
 	  CompileBasis.de_CompileBasis Basis
 
         val (lamb,CEnv1, declared_lvars, declared_excons) = ast2lambda(CEnv, strdecs)
@@ -892,28 +838,15 @@ functor Compile(structure Excon : EXCON
                 CEnvOnlyRes CEnv1)
 	else
 	  let val (rse1, mularefmap1, mulenv1, drop_env1, psi_env1, 
-		   l2kam_ce1, clos_env1, target, linkinfo, target_new) = 
+		   clos_env1, target_new) = 
 	              comp_with_new_backend(rse, mularefmap, mulenv, drop_env, psi_env, 
-					    l2kam_ce, clos_env, lamb_opt, vcg_file)
+					    clos_env, lamb_opt, vcg_file)
 	      val Basis' = CompileBasis.mk_CompileBasis {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,
 							 rse=rse1,mulenv=mulenv1,mularefmap=mularefmap1,
 							 drop_env=drop_env1,psi_env=psi_env1,
-							 l2kam_ce=l2kam_ce1,clos_env=clos_env1}
-	  in CodeRes (CEnv1, Basis', target, linkinfo, target_new)
+							 clos_env=clos_env1}
+	  in CodeRes (CEnv1, Basis', target_new)
 	  end
       end
-
-    val generate_link_code : label list -> target = 
-      let
-	(* Global regions for all modules. *)
-	val basis_info : (int*EA) list = 
-	  [(Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_top, KAMBackend.KAM.toplevel_region_withtype_topEA),
-	   (Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_string, KAMBackend.KAM.toplevel_region_withtype_stringEA),
-	   (Effect.key_of_eps_or_rho Effect.toplevel_region_withtype_real, KAMBackend.KAM.toplevel_region_withtype_realEA)]
-      in
-	KAMBackend.generate_link_code basis_info
-      end
-    val emit = KAMBackend.emit
-
 
   end;

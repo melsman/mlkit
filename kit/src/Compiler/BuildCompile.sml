@@ -311,19 +311,6 @@ functor BuildCompile (structure Name : NAME
 
     structure IntSet = IntSet(structure PP = PP)
 
-    structure KAMBackend = KAMBackend(structure PP = PP
-				      structure HashTable = HashTable
-				      structure Labels = Labels
-				      structure IntFinMap = IntFinMap
-				      structure IntSet = IntSet
-				      structure Report = Report
-				      structure Name = Name
-				      structure CConst = CConst
-				      structure Flags = Flags
-				      structure Timing = Timing
-				      structure Crash = Crash)
-
-
     structure CompilerEnv =
       CompilerEnv(structure Ident = Ident
 		  structure StrId = StrId
@@ -448,18 +435,6 @@ functor BuildCompile (structure Name : NAME
 					structure PP = PP
 					structure CConst = CConst
 					  )
-
-    structure CompLambEnv = CompLambEnv(structure Lvars = Lvars
-					structure Name = Name
-					structure Con = Con
-					structure Excon = Excon
-					structure Effect = Effect
-					structure MulExp = MulExp
-					structure KAM =  KAMBackend.KAM
-					structure RegvarFinMap = EffVarEnv
-					structure PhysSizeInf = PhysSizeInf
-					structure PP = PP
-					structure Crash = Crash)
 
     structure RegionFlowGraphProfiling =
       RegionFlowGraphProfiling(structure Effect = Effect
@@ -587,26 +562,6 @@ functor BuildCompile (structure Name : NAME
 						  structure Report = Report
 						  structure Crash = Crash)
 
-    structure CompLamb = CompLamb(structure Con = Con
-				  structure Excon = Excon
-				  structure Lvars = Lvars
-				  structure TyName = TyName
-				  structure KAM = KAMBackend.KAM
-				  structure KamVar = KAMBackend.KamVar
-				  structure Effect = Effect
-				  structure RType = RType
-				  structure IntSet = IntSet
-				  structure MulExp = MulExp
-				  structure AtInf = AtInf
-				  structure PhysSizeInf = PhysSizeInf
-				  structure CE = CompLambEnv
-				  structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
-				  structure PP = PP
-				  structure Flags = Flags
-				  structure Report = Report
-				  structure Crash = Crash
-				  structure CConst = CConst)
-
 
     structure CompileBasis =
       CompileBasis(structure CompilerEnv = CompilerEnv
@@ -621,7 +576,6 @@ functor BuildCompile (structure Name : NAME
 		   structure RegionStatEnv = RegionStatEnv
 		   structure DropRegions = DropRegions
 		   structure PhysSizeInf = PhysSizeInf
-		   structure CompLamb = CompLamb
 		   structure ClosExp = ClosExp
 		   structure Report = Report
 		   structure PP = PP
@@ -677,8 +631,6 @@ functor BuildCompile (structure Name : NAME
 	      structure CalcOffset = CalcOffset
 	      structure SubstAndSimplify = SubstAndSimplify
 	      structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
-	      structure CompLamb = CompLamb
-	      structure KAMBackend = KAMBackend
 	      structure CompilerEnv = CompilerEnv
 	      structure RType = RType
 	      structure Effect = Effect

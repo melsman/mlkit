@@ -111,7 +111,6 @@ functor Flags (structure Crash : CRASH
 
     (* Flags for Lambda Backend *)
     val perform_register_allocation = ref true
-    val enable_lambda_backend = ref true
 
     val chat                    = ref false
     val delay_assembly          = ref false   
@@ -603,7 +602,6 @@ struct
      ("garbage_collection", garbage_collection),
      ("auto_import_basislib", auto_import_basislib),
      ("perform_register_allocation", perform_register_allocation),
-     ("enable_lambda_backend", enable_lambda_backend),
      ("DEBUG_COMPILER", DEBUG_COMPILER)]
 
 end (* Directory *)
@@ -1082,8 +1080,7 @@ struct
 	])
     val lambda_backend : item = mk_header "Lambda Backend"
       (DISPLAY
-       [mk_toggle ("enable lambda backend", enable_lambda_backend),
-	mk_toggle ("perform register allocation", perform_register_allocation),
+       [mk_toggle ("perform register allocation", perform_register_allocation),
 	mk_toggle("Garbage Collection", garbage_collection)])
   in
     val control_item : item = mk_header "Control"

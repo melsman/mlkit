@@ -32,6 +32,7 @@ functor OptLambda(structure Lvars: LVARS
   struct
 
     val Listfoldl = List.foldl
+    val Listfoldr = List.foldr
     structure List = Edlib.List
     structure ListPair = Edlib.ListPair
 
@@ -1263,21 +1264,27 @@ functor OptLambda(structure Lvars: LVARS
 	       end
 	       | mk_env _ = die "unbox_fix_args.f.mk_env"	       
 	     fun trans_function env {lvar,tyvars,Type,bind=FN{pat=[(lv,pt)],body}} =
-	       let fun mk_fun Type body = {lvar=lvar,tyvars=tyvars,Type=Type, 
-					   bind=FN{pat=[(lv,pt)], body=body}}
+	       let fun mk_fun Type argpat body = {lvar=lvar,tyvars=tyvars,Type=Type, 
+						  bind=FN{pat=argpat, body=body}}
 	       in case lookup env lvar
-		    of SOME NORMAL_ARGS => mk_fun Type (trans env body)
+		    of SOME NORMAL_ARGS => mk_fun Type [(lv,pt)] (trans env body)
 		     | SOME (UNBOXED_ARGS (sz, _)) =>
 		      let (* create argument env *)
 			val vector = Vector.tabulate 
 			  (sz, fn i => Lvars.new_named_lvar (Lvars.pr_lvar lv ^ "-" ^ Int.toString i))
 			val env' = LvarMap.add(lv, ARG_VARS vector, env)
 			val body' = trans env' body
-			val Type' = 
+			val (Type', argTypes) = 
 			  case Type
-			    of ARROWtype([RECORDtype args], res) => ARROWtype (args, res) 
+			    of ARROWtype([RECORDtype argTypes], res) => (ARROWtype (argTypes, res), argTypes) 
 			     | _ => die "unbox_fix_args.trans.trans_function(no arrow)"
-		      in mk_fun Type' body'
+			val (i, argpat) = (Listfoldr (fn (argType, (i, argpat)) => 
+						      (i-1, (Vector.sub (vector, i), argType) :: argpat)) 
+					   (sz-1,nil) argTypes)
+			  handle _ => die "unbox_fix_args.trans.trans_function(subscript)"
+			val _ = if i <> ~1 then die "unbox_fix_args.trans.trans_function(foldr)"
+				else ()
+		      in mk_fun Type' argpat body'
 		      end
 		     | _ => die "unbox_fix_args.trans.trans_function"
 	       end
@@ -1321,6 +1328,12 @@ functor OptLambda(structure Lvars: LVARS
 	  | FRAME{declared_lvars,...} => 
 	      let val env' = restrict_unbox_fix_env (env, map #lvar declared_lvars)
 	      in (frame_unbox_fix_env := env' ; lamb)
+	      end
+	  | LET {pat,bind,scope} => 
+	      let val env' = Listfoldl (fn ((lvar,_,_),e) => LvarMap.add(lvar,NORMAL_ARGS,e)) env pat
+	      in LET{pat=pat,
+		     bind=trans env bind,
+		     scope=trans env' scope}
 	      end
 	  | _ => map_lamb (trans env) lamb
    in
@@ -1515,7 +1528,7 @@ functor OptLambda(structure Lvars: LVARS
 	  val lamb2 = fix_conversion lamb1 
 	  val (lamb3,inveta_env') = inverse_eta_for_fix_bound_lvars inveta_env lamb2
 	  val (lamb4,unbox_fix_env') = unbox_fix_args unbox_fix_env lamb3
-      in (lamb3, (inveta_env', let_env',unbox_fix_env'))
+      in (lamb4, (inveta_env', let_env',unbox_fix_env'))
       end
 
 

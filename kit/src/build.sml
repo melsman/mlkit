@@ -52,13 +52,6 @@ local
     
   fun arch_os() = (SMLofNJ.SysInfo.getHostArch(), SMLofNJ.SysInfo.getOSName())
   
-  fun available_with_C_backend () : bool =
-    case arch_os()
-      of ("X86", "Linux") => true
-       | ("HPPA", "HPUX") => true
-       | ("SPARC", "Solaris") => true
-       | _ => false
-
   fun no_cross () : string =
     (print ("\n **  ERROR: Cross compilation is possible only from the  **\n" ^
 	    " **  x86 platform to the Palm platform or with the       **\n" ^
@@ -67,18 +60,12 @@ local
     
   and resolve_backend () =
     let val _ = print "\nWhich platform do you want to use as target?\n(type \
-                       \C, HPPA, HPPAOLD, X86, PaML, or DUMMY): "
+                       \HPPA, X86, PaML, or DUMMY): "
       val s = upper (read_string "")  
     in 
       case s           (* set a symbol for the compilation manager CM *)
-	of "C" => if available_with_C_backend() then (CM.SymVal.define("KIT_TARGET_C", 1); s)
-		  else (print ("\n **  ERROR: The ML Kit does not compile to C on the  **\n" ^
-			       " **  platform you are running on.                    **\n");
-			resolve_backend())
-         | "HPPA" => if #1(arch_os()) = "HPPA" then (CM.SymVal.define("KIT_TARGET_HPPA", 1); s)
+	of "HPPA" => if #1(arch_os()) = "HPPA" then (CM.SymVal.define("KIT_TARGET_HPPA", 1); s)
 		     else no_cross()
-         | "HPPAOLD" => if #1(arch_os()) = "HPPA" then (CM.SymVal.define("KIT_TARGET_HPPA", 1); s)
-			else no_cross()
 	 | "X86" => if #1(arch_os()) = "X86" then (CM.SymVal.define("KIT_TARGET_X86", 1); s)
 		    else no_cross()
 	 | "PAML" => if #1(arch_os()) = "X86" then (CM.SymVal.define("KIT_TARGET_PAML", 1); s)
@@ -147,23 +134,8 @@ val _ =
   let
     fun enable s = K.Flags.lookup_flag_entry s := true
     fun disable s =  K.Flags.lookup_flag_entry s := false
-    val profflags = ["region_profiling", "print_program_points",
-		     "print_call_explicit_expression", "log_to_file"]
-    fun treat_as_old "HPPAOLD" = true
-      | treat_as_old "C" = true
-      | treat_as_old _ = false
   in 
-    if treat_as_old backend then
-      (disable "enable_lambda_backend";
-       disable "garbage_collection";
-       K.build_basislib();
-       app enable profflags;
-       K.build_basislib();
-       app disable profflags;
-       K.install())
-    else 
-      (enable "enable_lambda_backend";
-       disable "garbage_collection";
+      (disable "garbage_collection";
        disable "delete_target_files";
        K.build_basislib();
        K.install())
