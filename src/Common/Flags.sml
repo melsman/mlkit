@@ -4,6 +4,7 @@ functor Flags (structure Crash : CRASH
 	       structure Report : REPORT) : FLAGS =
   struct
 
+    structure NewString = String
     open Edlib OldIO OldString
     open General
 
@@ -106,8 +107,6 @@ functor Flags (structure Crash : CRASH
     val c_compiler = ref "cc -Aa" (*or maybe "gcc -ansi"*)
     val c_libs = ref "-lm" (*include math lib when compiling target code from the kit*)
 
-    val path_to_kit_script = ref "kit.script"    (*used in this module and in TestEnv*)
-      
     (* The following three are only used by TestEnv: *)
     val kit_version = ref "You_did_not_set_kit_version" (*e.g. "ML_to_HPPA_on_HPUX"*)
     val test_env_directory = ref "You_did_not_set_kit_source_directory"
@@ -315,8 +314,7 @@ structure Directory : sig
 			val lookup_string_entry : string -> string ref
 			val add_int_entry       : string * int ref -> unit
 			val add_bool_entry      : string * bool ref -> unit
-			val readScript          : unit -> unit
-			val readScriptName      : string -> unit
+			val readScript          : string -> unit
 			val show_script_entries : unit -> unit
 		      end =
 struct
@@ -388,10 +386,12 @@ struct
                    | (s, ParseScript.INT newval) => update_int(s,newval)
                    | (s, ParseScript.BOOL newval) => update_bool(s,newval)) l;
   in
-    fun readScript (): unit = 
-          interpret (ParseScript.parseScript (!path_to_kit_script))
-    fun readScriptName name : unit = 
-          interpret (ParseScript.parseScript (name))
+    fun readScript script_file : unit = 
+      if OS.FileSys.access (script_file, []) then
+	    (print ("Reading script file " ^ NewString.toString script_file ^ "\n");
+	     interpret (ParseScript.parseScript script_file) 
+	     handle _ => print ("Error while reading script file\n"))
+      else print ("No script file " ^ NewString.toString script_file ^ " present\n")
   end
 
   (* Write all possible entries which can be changed from *)
@@ -446,7 +446,7 @@ struct
 	 ("c_compiler", c_compiler),  (*e.g. "cc -Aa" or "gcc -ansi"*)
 	 ("c_libs", c_libs),  (*e.g. "-lm"*)
 	 ("target_file_extension", target_file_extension),  (*e.g. ".c" or ".s"*)
-	 ("path_to_kit_script", path_to_kit_script),
+(*	 ("path_to_kit_script", path_to_kit_script), *)
 	   (*e.g. "MLKitv2.0/bin/" ^ kit_version ^ "/kit.script"*)
 
 	 (*the following are only used by TestEnv:*)
@@ -988,15 +988,17 @@ struct
   (*3,5. File menu*)
 
   val file_item : item = mk_header "File"
-        (DISPLAY
-	 [mk_toggle ("Log to file", log_to_file),
-	  mk_string_action (path_to_runtime, "Runtime system (no profiling)"),
-	  mk_string_action (path_to_runtime_prof, "Runtime system (profiling)"),
-	  mk_string_action (path_to_kit_script, "Set script file name"),
-	  {text = "Read the script", attr = VALUE (fn _ => ""), 
-	   below = ACTION Directory.readScript}])
-
-
+    let val script = ref "kit.script"
+    in DISPLAY [mk_toggle ("Log to file", log_to_file),
+		mk_string_action (path_to_runtime, "Runtime system (no profiling)"),
+		mk_string_action (path_to_runtime_prof, "Runtime system (profiling)"),
+		{text = "Read a script file", attr = noop_attr, 
+		 below = ACTION (fn () => (read_string script () ;
+					   if !u_or_q_from_read_string then () 
+					   else Directory.readScript (!script)))},
+		{text = "Read it again", attr = VALUE(fn _ => "(" ^ String.string (!script) ^ ")"),
+		 below = ACTION (fn _ => (Directory.readScript (!script)))}]
+    end
 
   (*4. Profiling menu*)
 
@@ -1226,7 +1228,6 @@ val add_string_entry = Directory.add_string_entry
 val get_string_entry = Directory.get_string_entry
 val lookup_string_entry = Directory.lookup_string_entry
 val read_script = Directory.readScript
-fun read_script_name name = Directory.readScriptName name
 val show_script_entries = Directory.show_script_entries
 val add_flag = Menu.add_flag   
 val add_flag_to_menu = Menu.add_flag_to_menu

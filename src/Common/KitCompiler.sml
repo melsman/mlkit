@@ -126,6 +126,48 @@ structure KitCompiler = KitCompiler ()
 structure K = struct
   open KitCompiler
 
+  local
+
+    (* Directories *)
+
+    val kitsrc_path = OS.FileSys.getDir()   (* assumes we are in kit/src/ directory *)
+    val kitbin_path = OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../bin"))
+    val kitbinkit_path = OS.Path.joinDirFile{dir=kitbin_path, file="kit"}
+    val kitbinkitimage_path = OS.Path.joinDirFile{dir=kitbin_path, file="kit.hppa-hpux9"}
+
+    fun set_paths() = 
+      (Flags.lookup_string_entry "path_to_runtime" := 
+       OS.Path.concat(kitsrc_path, "Runtime/Version17/runtimeHPUX.o");
+       Flags.lookup_string_entry "path_to_runtime_prof" := 
+       OS.Path.concat(kitsrc_path, "Runtime/Version17/runtimeHPUXProf.o");
+       Flags.lookup_string_entry "test_env_directory" := 
+       (OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../TestEnv"))))
+
+    val date = Date.fmt "%B %d, %Y" (Date.fromTimeLocal (Time.now()))
+    val version = "2.1"
+    val greetings = "ML Kit with Regions, Version " ^ version ^ ", " ^ date ^ "\n"
+
+    val _ = Flags.lookup_string_entry "kit_architecture" := "HPUX"
+    val _ = Flags.lookup_string_entry "kit_version" := "ML_to_HPPA_on_HPUX"
+
+  in
+    fun kit() = (print greetings;
+		 set_paths();
+		 Flags.read_script "kit.script";
+		 Flags.interact())
+
+    fun install() =
+      let val os = TextIO.openOut kitbinkit_path
+	  val _ = (TextIO.output(os, "sml110 @SMLload=" ^ kitbinkitimage_path); TextIO.closeOut os)
+	  fun kitexe (_, []) = (kit(); OS.Process.success)
+	    | kitexe _ = (print "usage: kit\n"; OS.Process.failure) 
+      in SMLofNJ.exportFn(kitbinkit_path,kitexe)
+      end
+  end
+
+
+
+(*
   fun i a = ((*OS..chDir "/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/src/" ;*)
 	     Flags.lookup_string_entry "path_to_kit_script"
 	     := "../bin/ML_to_HPPA_on_HPUX/kit.script" ;
@@ -146,4 +188,5 @@ structure K = struct
 	      \Reading script file.\n") ;
 	     Flags.read_script () ;
 	     Flags.interact ()) ;
+*)
 end (*structure K*)

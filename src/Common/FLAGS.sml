@@ -106,8 +106,7 @@ signature FLAGS =
     val region_paths : (int*int) list ref 
 
     (* Reading script. *)
-    val read_script : unit -> unit
-    val read_script_name : string -> unit
+    val read_script : string -> unit
     val show_script_entries : unit -> unit
 
     (* interactive toggling of flags: *)

@@ -669,9 +669,5 @@ mael*)
     val _ = Flags.comp_ref := wrap comp
 
     val interact = Flags.interact
-    val read_script = Flags.read_script
-
-    fun kit () = (read_script();
-		  interact())
 
   end

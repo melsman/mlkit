@@ -50,8 +50,8 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 strategy_name = "NoProf", (* single word *)
 				 comment = "Region profiling not enabled.",
 				 exec_opt = "",
-				 old_dir = Some (!test_env_directory ^
-						 "Output_HPPA_on_HPUX/Acceptance/NoProf/")}
+				 old_dir = Some (OS.Path.concat(!test_env_directory,
+								"Output_HPPA_on_HPUX/Acceptance/NoProf/"))}
       
       fun acceptance_strategy_HPUX_HPPA_prof () = 
 	    ACCEPTANCE_STRATEGY {kit_script = "prof.script", (*--USER--*)
@@ -60,8 +60,8 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 comment = "Region profiling enabled. A profile datafile is not exported. \
 				  \ Profiling every 500000 microsec.",
 				 exec_opt = "-microsec 500000 -noDatafile -noStat",
-				 old_dir = Some (!test_env_directory ^
-						 "Output_HPPA_on_HPUX/Acceptance/Prof/")}
+				 old_dir = Some (OS.Path.concat(!test_env_directory,
+								"Output_HPPA_on_HPUX/Acceptance/Prof/"))}
 
       fun acceptance_strategy_HPUX_C () = 
 	    ACCEPTANCE_STRATEGY {kit_script = "no_prof.script", (*--USER--*)
@@ -69,8 +69,8 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 strategy_name = "NoProf", (* single word *)
 				 comment = "Region profiling not enabled.",
 				 exec_opt = "",
-				 old_dir = Some (!test_env_directory ^
-						 "Output_C_on_HPUX/Acceptance/NoProf/")}
+				 old_dir = Some (OS.Path.concat(!test_env_directory,
+								"Output_C_on_HPUX/Acceptance/NoProf/"))}
       
       fun acceptance_strategy_HPUX_C_prof () = 
 	    ACCEPTANCE_STRATEGY {kit_script = "prof.script", (*--USER--*)
@@ -79,8 +79,8 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 comment = "Region profiling enabled. A profile datafile is not exported. \
 				  \ Profiling every 4 second.",
 				 exec_opt = "-sec 4 -noDatafile -noStat",
-				 old_dir = Some (!test_env_directory ^
-						 "Output_C_on_HPUX/Acceptance/Prof/")}
+				 old_dir = Some (OS.Path.concat(!test_env_directory,
+								"Output_C_on_HPUX/Acceptance/Prof/"))}
 
       fun acceptance_strategy_SUN_OS4_C () = 
 	    ACCEPTANCE_STRATEGY {kit_script = "no_prof.script", (*--USER--*)
@@ -88,8 +88,8 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 strategy_name = "NoProf", (* single word *)
 				 comment = "Region profiling not enabled.",
 				 exec_opt = "",
-				 old_dir = Some (!test_env_directory ^
-						 "Output_C_on_SUN_OS4/Acceptance/NoProf/")}
+				 old_dir = Some (OS.Path.concat(!test_env_directory,
+								"Output_C_on_SUN_OS4/Acceptance/NoProf/"))}
       
       fun acceptance_strategy_SUN_OS4_C_prof () = 
 	    ACCEPTANCE_STRATEGY {kit_script = "prof.script", (*--USER--*)
@@ -98,8 +98,8 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 comment = "Region profiling enabled. A profile datafile is not exported. \
 				  \ Profiling every 30 second.",
 				 exec_opt = "-sec 30 -noDatafile -noStat",
-				 old_dir = Some (!test_env_directory ^
-						 "Output_C_on_SUN_OS4/Acceptance/Prof/")}
+				 old_dir = Some (OS.Path.concat(!test_env_directory,
+								"Output_C_on_SUN_OS4/Acceptance/Prof/"))}
     in
       fun acceptance_strategies () = (*USER*)
 	    (case !kit_version of
