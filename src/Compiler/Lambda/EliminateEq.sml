@@ -30,6 +30,7 @@ functor EliminateEq (structure Name : NAME
     fun die s = Crash.impossible ("EliminateEq." ^ s)
     fun log s = (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log))
 
+    val quotation = Flags.is_on0 "quotation"
 
     (* ------------------------------------------------------------
      * The Environment
@@ -445,10 +446,21 @@ handle x =>
 	val dbss = [[([tv], tn_list,cbs)]]
 	val (f, e) = gen_datatype_eq empty dbss
 	val (f', e') = gen_datatype_for_table ()
+        val (f'', e'') = gen_datatype_for_quotation ()
       in 
-	(f o f', plus (e, e'))
+	(f o f' o f'', plus(plus(e,e'),e''))
       end
-
+    and gen_datatype_for_quotation () =
+      if quotation() then
+        let
+          val tv = fresh_tyvar()
+          val tau_tv = TYVARtype tv
+          val cbs = [(Con.con_QUOTE, SOME (CONStype([], TyName.tyName_STRING))),
+                     (Con.con_ANTIQUOTE, SOME tau_tv)]
+          val dbss = [[([tv], TyName.tyName_FRAG, cbs)]]
+        in gen_datatype_eq empty dbss
+        end
+      else (fn e => e, empty)
     and gen_datatype_for_table () =
  
 (*the word_table equality function written in sml (7 lines):

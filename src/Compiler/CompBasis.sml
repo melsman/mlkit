@@ -46,6 +46,8 @@ functor CompBasis(structure Con : CON
     fun say s = log s
     val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
 
+    val quotation = Flags.is_on0 "quotation"
+
     type lvar = LambdaStatSem.lvar
     type con = Con.con
     type excon = Excon.excon
@@ -169,9 +171,13 @@ functor CompBasis(structure Con : CON
 	        Excon.ex_MATCH :: Excon.ex_BIND :: excons
 	  val cons = Con.con_NIL :: Con.con_CONS ::
 	      Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)
+	  val cons = if quotation() then Con.con_QUOTE :: Con.con_ANTIQUOTE :: cons
+                     else cons
 	  val tynames = TyName.tyName_LIST :: 
               TyName.tyName_BOOL ::
 	      TyName.tyName_VECTOR :: tynames     (* for elim eq *) 
+          val tynames = if quotation() then TyName.tyName_FRAG :: tynames
+                        else tynames
 	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames}) handle x =>
                (say "CompileBasis.restrict: ElimiateEq.restrict failed\n";
                 say "Then equality environment is:\n";
