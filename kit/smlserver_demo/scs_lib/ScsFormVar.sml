@@ -776,7 +776,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
       val getLoginErr = getErr' (ScsDict.s [(ScsLang.en, `login`),(ScsLang.da,`login`)]) msgLogin 
 	(fn login =>
 	 regExpMatch "[a-z][a-z0-9\\-]+" login andalso 
-	 String.size login >= 2 andalso String.size login <= 10)
+	 String.size login >= 2 andalso String.size login <= 15)
       val getPhoneErr = getErr' (ScsDict.s [(ScsLang.en, `phone number`),(ScsLang.da,`telefonnummer`)]) 
                           msgPhone (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
       (* getHtml : not implemented yet *)

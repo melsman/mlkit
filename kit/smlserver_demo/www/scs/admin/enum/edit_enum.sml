@@ -8,7 +8,7 @@ val title = ScsDict.s [(ScsLang.en,`Edit Enumerations`),
 		       (ScsLang.da,`Ret Enumereringer`)]
 
 val search_form =
-  UcsPb.formBox "edit_enum.sml" 
+  UcsPb.formBox NONE "edit_enum.sml" 
   [("submit",ScsDict.s [(ScsLang.en,`Edit Enumeration`),
 			(ScsLang.da,`Ret Enumerering`)],NONE)]
   ``
@@ -19,7 +19,7 @@ val edit_enum_form =
     NONE => ``
   | SOME enum_id => 
       let
-	fun enum_fn_row (enum_val : ScsEnum.enum_value) =
+	fun enum_fn_row bgcolor (enum_val : ScsEnum.enum_value) =
 	  let
 	    val (text_da_widget,text_eng_widget) =
 	      if val_id = SOME(#val_id enum_val) then
@@ -42,13 +42,14 @@ val edit_enum_form =
 		(``,``)
 	  in
 	    pre_form ^^
-	    `<td>^(#value enum_val)</td>
+	    `<tr bgcolor="^bgcolor">
+	     <td>^(#value enum_val)</td>
 	    <td>^(text_da_widget)</td>
 	    <td>^(text_eng_widget)</td>
 	    <td>^(if #active_p enum_val then ScsDict.s UcsPb.yes_dict else ScsDict.s UcsPb.no_dict)</td>
 	    <td>^(Int.toString (#ordering enum_val))</td>
 	    <td>^(Quot.toString edit_link)</td>
-	    ` ^^ post_form
+	    </tr>` ^^ post_form
 	  end
 	val enum_table = 
 	  UcsPage.lineTable {hdcolor = "white",
