@@ -1,5 +1,8 @@
+val _ = Ns.log (Ns.Notice,"Entering auth.sml")
+
 fun redirect() = 
-  (Ns.returnRedirect "http://localhost:8005/auth/auth_form.sml"; Ns.exit())
+  (Ns.log (Ns.Notice,"Redirecting from auth");
+   Ns.returnRedirect "http://localhost:8005/auth/auth_form.sml"; Ns.exit())
 
 val target =
   case FormVar.wrapOpt FormVar.getStringErr "target" of
@@ -18,10 +21,10 @@ val ap =
 
 val user_id =
   case Db.zeroOrOneField `select user_id from auth_user where login = '^(Db.qq al)'` of
-    NONE => redirect()
+    NONE => "0"
   | SOME user_id => user_id
 
-val _ = Ns.log(Ns.Notice, "auth.sml: " ^ target)
+val _ = Ns.log(Ns.Notice, "auth.sml: " ^ target ^ " and user id = " ^ user_id)
 val _ = Ns.write
 `HTTP/1.0 302 Found
 Location: ^target
@@ -35,3 +38,4 @@ MIME-Version: 1.0
 
 
 You should not be seeing this!`
+

@@ -100,10 +100,10 @@ in
   formvar_chk.sml
   url_desc.sml
 
+  auth_example.sml
   auth/auth.sml
   auth/auth_form.sml
   auth/auth_logout.sml
-  auth/admin/admin.sml
   auth/admin/show_cookies.sml
   auth/www/www.sml
  ]
