@@ -35,6 +35,9 @@ signature SCS_FILE =
     (* [cp source_file target_file] copies source_file into
         target_file. Raises Fail on error. *)
     val cp : string -> string -> unit
+
+    (* [deleteAllFilesInDir dir] deletes all files in dir *)
+    val deleteAllFilesInDir : string -> unit
   end
 
 structure ScsFile :> SCS_FILE =
@@ -141,5 +144,18 @@ structure ScsFile :> SCS_FILE =
 	  ()
 	else
 	  raise Fail (Quot.toString `ScsFile.cp: can't copy file ^(source_file) into ^(target_file)`)
+      end
+
+    fun deleteAllFilesInDir dir =
+      let
+	val ds = FileSys.openDir dir
+	val _ = FileSys.chDir dir
+	fun loop () =
+(*	  case FileSys.readDir ds of
+	    SOME f => (FileSys.remove f; loop ())
+	  | NONE => *)()
+      in
+	loop();
+	FileSys.closeDir ds
       end
   end
