@@ -629,11 +629,11 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
 	     <blockquote>
-	     The date must be in the Danish format <code>DD/MM-YYYY</code> (e.g., 25/01-2001) or 
+	     The date must be in the Danish format <code>DD/MM-YYYY</code> (e.g., 25/01-2001), in the format <code>DD-MM-YYYY</code> (e.g., 28-12-1972) or 
 	     in the ISO format <code>YYYY-MM-DD</code> (e.g., 2001-01-25). The date must be after 1900.
 	     </blockquote>`
 	| ScsLang.da => `^s
-	     Datoen skal være i formatet <code>DD/MM-YYYY</code> (f.eks. 25/01-2001) eller
+	     Datoen skal være i formatet <code>DD/MM-YYYY</code> (f.eks. 25/01-2001), i formatet <code>DD-MM-YYYY</code> (f.eks. 28-12-1972) eller
 	     i formatet <code>YYYY-MM-DD</code> (f.eks. 2001-01-25). Datoen skal være efter 1900
 	     </blockquote>`)
 
