@@ -34,6 +34,8 @@ signature SCS_WIDGET =
     val intextDate      : Date.date option -> string -> quot
 
     val maybe           : string -> quot -> quot
+
+    val selectLang      : ScsLang.lang -> string -> quot
   end
 
 structure ScsWidget :> SCS_WIDGET =
@@ -163,4 +165,9 @@ structure ScsWidget :> SCS_WIDGET =
       | SOME d' => intextMaxLenVal 10 10 (ScsDate.pp d') fv
 
     fun maybe fv text = if fv = "" then `` else text
+
+    fun selectLang default fv = 
+      selectWithDefault (List.map (fn l => (% (ScsLang.toString l),ScsLang.toString l)) ScsLang.all) 
+      (ScsLang.toString default) fv
+
   end

@@ -62,10 +62,10 @@ install:
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
 	$(MKDIR) $(INSTDIR)/doc
-	$(INSTALL) bin/runtimeSystem.o $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemGC.o $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemGCProf.o $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemProf.o $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystem.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGC.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGCProf.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemProf.a $(INSTDIR)/bin
 	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
 	$(INSTALL) bin/mlkit.$(ARCH-OS) $(INSTDIR)/bin
 	$(INSTALL) copyright $(INSTDIR)

@@ -1,7 +1,5 @@
 local
   ../lib/Quot.sml
-  ../lib/HTML.sml
-  ../lib/Html.sml
   local
     ../lib/NsBasics.sml
     ../lib/NS_SET.sml
@@ -15,6 +13,9 @@ local
     ../lib/Db.sml
     ../lib/DbClob.sml
   end
+  ../lib/HTML.sml
+  ../lib/Html.sml
+  ../scs_lib/ScsString.sml
   ../scs_lib/SCS_SECURITY.sml
   ../scs_lib/ScsSecurity.sml
   ../scs_lib/ScsLang.sml
@@ -23,7 +24,9 @@ local
   ../scs_lib/ScsDate.sml
   ../scs_lib/ScsDict.sml
   ../scs_lib/ScsPage.sml
+  ../scs_lib/ScsAudit.sml
   ../scs_lib/ScsError.sml
+  ../scs_lib/ScsFile.sml
   ../scs_lib/ScsDb.sml
   ../scs_lib/ScsWidget.sml
   ../scs_lib/ScsPrint.sml
@@ -73,6 +76,8 @@ in
   mail_form.sml
   mail.sml
   mul.msp
+  show_cookies.sml
+  auth_example.sml
 
   cs_form.sml
   cs_add.sml
@@ -91,22 +96,29 @@ in
   formvar_chk.sml
   url_desc.sml
 
-  auth_example.sml
-  auth.sml
-  auth_form.sml
-  auth_logout.sml
-  show_cookies.sml
-
   email_form.sml
   email_sent.sml
 
   (* Scs Dictionary *)
   scs/admin/dict/dict_form.sml
+  scs/admin/dict/dict_entry_form.sml
 
   (* ScsPrint *)
   scs/print/scs-print.sml
   scs/print/log.sml
   scs/print/show_doc.sml
   scs/print/toggle_deleted.sml
+
+  (* ScsAuthentication *)
+  auth_form.sml
+  auth.sml
+  auth_logout.sml
+
+  (* SCS Auditing *)
+  scs/admin/audit/audit_tables.sml
+  scs/audit/audit_trail.sml
+  scs/audit/audit_table.sml
+  scs/audit/audit_row.sml
+
  ]
 end

@@ -2,12 +2,13 @@ signature SCS_AUDIT =
   sig
     (* This module is based on the Audit package found in ACS version 3.4.4 (www.arsdigita.com) *)
 
-    (* [trail columns_not_reported start_date end_date table_name ids] returns a HTML fragment
+    (* [trail columns_not_reported start_date end_date table_name ids limit] returns a HTML fragment
        showing all changes between start_date and end_date on the rows in table table_name
        identified by the keys ids (a list of pairs with key name and key value) *)
     val trail : string list -> Date.date option -> Date.date option -> string -> (string*string) list -> quot
 
-    val trail_for_table : string list -> Date.date option -> Date.date option -> string -> string list -> unit
+    val trail_for_table : string list -> Date.date option -> Date.date option 
+                          -> string -> string list -> int option -> unit
   end
 
 structure ScsAudit :> SCS_AUDIT =
@@ -107,7 +108,7 @@ structure ScsAudit :> SCS_AUDIT =
              and ` ^^ wh_audit ^^ `
            order by ^audit_table_name.last_modified asc`
 
-	val _ = Ns.log(Ns.Notice,Quot.toString (`AUDIT SQL: ` ^^ sql))
+	(*val _ = Ns.log(Ns.Notice,Quot.toString (`AUDIT SQL: ` ^^ sql))*)
 
 	val (audit_html:quot,old_values:(string,string)Splaymap.dict,audit_count:int) = 
 	  Db.foldSet (trail_row columns_not_reported,
@@ -122,7 +123,7 @@ structure ScsAudit :> SCS_AUDIT =
              and ` ^^ wh_main ^^ `
            order by ^table_name.last_modified asc`
 
-	val _ = Ns.log(Ns.Notice,Quot.toString (`MAIN SQL: ` ^^ sql))
+	(*val _ = Ns.log(Ns.Notice,Quot.toString (`MAIN SQL: ` ^^ sql))*)
 
 	val (all_html:quot,old_values:(string,string)Splaymap.dict,audit_count:int) = 
 	  Db.foldSet (trail_row columns_not_reported,(audit_html,old_values,audit_count),sql)
@@ -131,7 +132,7 @@ structure ScsAudit :> SCS_AUDIT =
       end
 
     (* The id pairs (id,val) must correspond to the compound key in table table_name *)
-    fun trail_for_table columns_not_reported start_date end_date table_name id_columns =
+    fun trail_for_table columns_not_reported start_date end_date table_name id_columns limit =
       let
 	val audit_table_name = table_name ^ "_audit"
 
@@ -143,6 +144,11 @@ structure ScsAudit :> SCS_AUDIT =
 	  case start_date of
 	    NONE => wh
 	  | SOME d => wh ^^ ` and last_modified > ^(Db.fromDate d)`
+
+	val wh =
+	  case limit of
+	    NONE => wh
+	  | SOME l => wh ^^ ` and rownum < '^(Int.toString l)'`
 
         (* Generate SQL for main and audit table restrictions for ids *)
 	val ids = String.concatWith ", " id_columns

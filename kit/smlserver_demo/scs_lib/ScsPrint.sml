@@ -70,10 +70,12 @@ structure ScsPrint :> SCS_PRINT =
 	  LaTeX =>
 	    let
 	      val print_id = Int.toString (Db.seqNextval "scs_print_id_seq")
+	      val batch_id = Int.toString (Db.seqNextval "scs_print_batch_id_seq")
 	      val tmpfile = ScsFile.uniqueFile (path_preview()) ^ "-" ^ print_id
 	      val _ = ScsFile.save source (texfile tmpfile)
 	      val journal_base = (getInfo "scs_print_journal") ^ "/"
-	      val journal_dir = (Date.fmt "%Y"  (ScsDate.now_local())) ^ "/" ^ (Date.fmt "%m"  (ScsDate.now_local()))
+	      val journal_dir = (Date.fmt "%Y"  (ScsDate.now_local())) ^ "/" ^ 
+		(Date.fmt "%m"  (ScsDate.now_local())) ^ "/" ^ (StringCvt.padLeft #"0" 4 batch_id)
 	      val _ = ScsFile.mkDir (journal_base ^ journal_dir)
 	      val target_f = journal_dir ^ "/" ^ tmpfile ^ ".pdf"
 	      val cmd = Quot.toString `cd ^(path_preview()); latex ^(texfile tmpfile); dvips -o ^(psfile tmpfile) ^(dvifile tmpfile); lpr -P^printer ^(psfile tmpfile); ps2pdf ^(psfile tmpfile) ^(pdffile tmpfile); mv ^(pdffile tmpfile) ^(journal_base ^ target_f)`
@@ -81,10 +83,10 @@ structure ScsPrint :> SCS_PRINT =
 		let
 		  val clob_id = DbClob.insert_fn source db
 		in
-		  Db.dmlDb (db, `insert into scs_print_log (print_id,user_id,category,clob_id,print_cmd,
+		  Db.dmlDb (db, `insert into scs_print_log (batch_id,print_id,user_id,category,clob_id,print_cmd,
 							    target_file,doc_type,note,deleted_p,
 							    on_what_table, on_what_id, time_stamp)
-			    values (^(Db.valueList [print_id,Int.toString ScsLogin.user_id,
+			    values (^(Db.valueList [batch_id,print_id,Int.toString ScsLogin.user_id,
 						    category,clob_id,cmd,target_f,
 						    docTypeToString doc_type,note,"f",
 						    on_what_table,on_what_id]),

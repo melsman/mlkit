@@ -98,6 +98,10 @@ signature HTML =
     val select     : string -> string -> quot -> quot
     val option     : string -> string -> quot
 
+    val export_hiddens : (string * string) list -> quot
+    val export_url_vars: (string * string) list -> quot
+    val genUrl         : string -> (string * string) list -> string
+
     (* HTML frames and framesets *)
     val frameset   : string -> quot -> quot
     val frame      : { src : string, name : string } -> quot

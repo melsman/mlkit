@@ -273,22 +273,32 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	SOME i => i
       | NONE => raise Fail "Db.seqNextval.nextval not an integer"	
       end
+
+    fun seqCurrval (seqName:string) : int = 
+      let val s = oneField `select ^(seqCurrvalExp seqName) ^fromDual`
+      in case Int.fromString s of
+	SOME i => i
+      | NONE => raise Fail "Db.seqCurrval.nextval not an integer"	
+      end
+
   end
 
 structure NsDbBasicOra : NS_DB_BASIC =
   struct
     fun seqNextvalExp seq_name = seq_name ^ ".nextval"
+    fun seqCurrvalExp seq_name = seq_name ^ ".currval"
     val fromDual = "from dual"
     val sysdateExp = "sysdate"
     val beginTrans = `begin transaction`
-    val endTrans = `commit`
-    val roolback = `end transaction`
+    val endTrans = `end transaction`
+    val roolback = `roolback`
     fun fromDate d = "to_date('" ^ (Date.fmt "%Y-%m-%d %H:%M:%S" d) ^ "','YYYY-MM-DD HH24:MI:SS')"
   end
 
 structure NsDbBasicPG : NS_DB_BASIC =
   struct
     fun seqNextvalExp seq_name = "nextval('" ^ seq_name ^ "')"
+    fun seqCurrvalExp seq_name = "currval('" ^ seq_name ^ "')"
     val fromDual = ""
     val sysdateExp = "now()"
     val beginTrans = `begin`

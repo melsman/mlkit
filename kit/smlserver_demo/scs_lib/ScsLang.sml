@@ -2,6 +2,7 @@ signature SCS_LANG =
   sig
     exception ScsLang of string
     datatype lang = Danish | English
+    val all : lang list
     val toString : lang -> string
     val fromString : string -> lang
   end
@@ -10,6 +11,7 @@ structure ScsLang :> SCS_LANG =
   struct
     exception ScsLang of string
     datatype lang = Danish | English
+    val all = [Danish,English]
     fun toString Danish = "Danish"
       | toString English = "English"
     fun fromString "Danish" = Danish

@@ -7,6 +7,7 @@ signature MEM_USAGE =
     type report = {count:int, rss:int, size: int, 
 		   data: int, stk: int, exe: int,
 		   sys: Time.time, user: Time.time, real: Time.time}
+    val pp_report : report -> string
               
     val memUsage: {cmd: string, args: string list, out_file: string} -> report
   end
@@ -19,6 +20,13 @@ structure MemUsage : MEM_USAGE =
     type report = {count:int, rss:int, size: int, 
 		   data: int, stk: int, exe: int,
 		   sys: Time.time, user: Time.time, real: Time.time}
+
+    fun pp_report {count,rss,size,data,stk,exe,sys,user,real} =
+      "count: " ^ (Int.toString count) ^ "\nrss: " ^ (Int.toString rss) ^
+      "Kb.\nsize: " ^ (Int.toString size) ^ "Kb.\ndata: " ^ (Int.toString data) ^
+      "Kb.\nstk: " ^ (Int.toString stk) ^ "Kb.\nexe: " ^ (Int.toString exe) ^
+      "Kb.\nsys: " ^ (Time.toString sys) ^ "sec.\nuser: " ^ (Time.toString user) ^
+      "sec.\nreal: " ^ (Time.toString real) ^ "sec.\n"
 
     fun max i i' = if i > i' then i else i'
 
@@ -36,7 +44,7 @@ structure MemUsage : MEM_USAGE =
 	val pid_s = (Int.toString o Word32.toInt o Posix.Process.pidToWord) pid
 	  
 	val delay = Time.fromMilliseconds 10
-	fun sleep() = OS.IO.poll(nil,SOME delay)
+	fun sleep() = OS.IO.poll(nil,SOME delay) 
 
 	fun loop acc = case (sleep(); Info.getInfo pid_s)
 			 of SOME minfo => loop (new acc minfo)
