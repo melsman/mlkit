@@ -76,7 +76,7 @@ as
     testname varchar2,
     testcase integer,
     exp varchar2,
-    all_exns varchar2
+    all_exns varchar2 default 'f'
   );
 
   /* ------------------

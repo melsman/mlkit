@@ -4,6 +4,12 @@
 ------------------------------------
 -- LOAD THE ENTIRE SCS DATA MODEL --
 ------------------------------------
+
+-- this sequences is used by the function scs.new_obj_id
+-- to create unique ids throughout the database
+create sequence scs_object_id_seq start with 50000;
+
+
 @scs-packages-create.sql
 @scs-math-packages-create.sql;
 @scs-test-packages-create.sql;
