@@ -84,14 +84,17 @@ structure ScsLogin :> SCS_LOGIN =
       in
 	case (auth_user_id,session_id) of
 	  (SOME user_id, SOME psw) =>
-	    (case getUserInfoFromDb user_id of
+	    (case Int.fromString user_id of
 	       NONE => (COOKIE,default)
-	     | SOME (db_psw,db_lang) => 
-		 if db_psw = psw then 
-		   (case Int.fromString user_id of
-		      NONE => (COOKIE,default)
-		    | SOME u_id => (COOKIE,(u_id,ScsLang.fromString db_lang)))
-		 else (COOKIE,default))
+	     | SOME _ => 
+		 (case getUserInfoFromDb user_id of
+		    NONE => (COOKIE,default)
+		  | SOME (db_psw,db_lang) => 
+		      if db_psw = psw then 
+			(case Int.fromString user_id of
+			   NONE => (COOKIE,default)
+			 | SOME u_id => (COOKIE,(u_id,ScsLang.fromString db_lang)))
+		      else (COOKIE,default)))
 	| _ => (NO_COOKIE,default)
       end
     handle Ns.Cookie.CookieError _ => (NO_COOKIE,default)
