@@ -493,9 +493,16 @@ functor BuildCompile (structure Name : NAME
 
     structure Labels = AddressLabels(structure Name = Name)
 
+    structure HpPaRisc = HpPaRisc(structure Labels = Labels
+				  structure Lvars = Lvars
+				  structure PP = PP
+				  structure Crash = Crash)
+
+
     structure BackendInfo = BackendInfo(structure Labels = Labels
 					structure Lvars = Lvars
 					structure Lvarset = Lvarset
+					structure HpPaRisc = HpPaRisc
 					structure PP = PP
 					structure Flags = Flags
 					structure Report = Report
@@ -615,6 +622,22 @@ functor BuildCompile (structure Name : NAME
 						  structure Report = Report
 						  structure Crash = Crash)
 
+    structure CodeGen = CodeGen(structure PhysSizeInf = PhysSizeInf
+				structure Con = Con
+				structure Excon = Excon
+				structure Lvars = Lvars
+				structure Effect = Effect
+				structure Labels = Labels
+				structure CallConv = CallConv
+				structure LineStmt = LineStmt
+				structure SubstAndSimplify = SubstAndSimplify
+				structure BI = BackendInfo
+				structure HpPaRisc = HpPaRisc
+				structure PP = PP
+				structure Flags = Flags
+				structure Report = Report
+				structure Crash = Crash)
+
     structure CompLamb = CompLamb(structure Con = Con
 				  structure Excon = Excon
 				  structure Lvars = Lvars
@@ -704,6 +727,8 @@ functor BuildCompile (structure Name : NAME
 	      structure FetchAndFlush = FetchAndFlush
 	      structure CalcOffset = CalcOffset
 	      structure SubstAndSimplify = SubstAndSimplify
+	      structure HpPaRisc = HpPaRisc
+	      structure CodeGen = CodeGen
 	      structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
 	      structure CompLamb = CompLamb
 	      structure KAMBackend = KAMBackend

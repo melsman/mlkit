@@ -28,12 +28,11 @@ signature REG_ALLOC =
     type cc
     type label
     type ('sty,'offset,'aty) LinePrg
-    type phreg
     type Atom
 
     datatype StoreType =
       STACK_STY of lvar
-    | PHREG_STY of lvar * phreg
+    | PHREG_STY of lvar * lvar
 
     val ra_dummy : {main_lab:label,code:(lvar,unit,Atom) LinePrg,imports:label list,exports:label list} ->
                    {main_lab:label,code:(StoreType,unit,Atom) LinePrg,imports:label list,exports:label list}

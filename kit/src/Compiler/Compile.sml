@@ -117,6 +117,15 @@ functor Compile(structure Excon : EXCON
                   sharing type SubstAndSimplify.StoreTypeCO = CalcOffset.StoreType
                   sharing type SubstAndSimplify.AtomCO = CalcOffset.Atom
 
+		structure CodeGen : CODE_GEN                      (* TODO: We must build a new CodeGen module such that Compile.sml    *)
+		  sharing type CodeGen.place = LineStmt.place     (* gets indenpendent of the chosen backend 10/12/1998, Niels         *)
+                  sharing type CodeGen.phsize = LineStmt.phsize
+                  sharing type CodeGen.LinePrg = LineStmt.LinePrg
+                  sharing type CodeGen.label = LineStmt.label
+                  sharing type CodeGen.lvar = LineStmt.lvar
+                  sharing type CodeGen.StoreTypeSS = SubstAndSimplify.StoreTypeCO
+                  sharing type CodeGen.AtySS = SubstAndSimplify.Aty
+
 		structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING
 		  sharing type RegionFlowGraphProfiling.place = PhysSizeInf.place
 		  sharing type RegionFlowGraphProfiling.at = AtInf.at
@@ -715,6 +724,7 @@ functor Compile(structure Excon : EXCON
 	val all_fetch_flush = FetchAndFlush.IFF all_reg_alloc
 	val all_calc_offset = CalcOffset.CO all_fetch_flush
 	val all_subst_and_simplify = SubstAndSimplify.SS all_calc_offset
+	val all_risc_prg = CodeGen.CG all_subst_and_simplify
       in
 	#env(all_clos_exp)
       end

@@ -1,6 +1,6 @@
 functor CallConv(structure Lvars : LVARS
                  structure BI : BACKEND_INFO
-		   sharing type BI.phreg = Lvars.lvar
+                   sharing type BI.lvar = Lvars.lvar
 		 structure PP : PRETTYPRINT
 		 structure Flags : FLAGS
                  structure Report : REPORT
@@ -8,7 +8,6 @@ functor CallConv(structure Lvars : LVARS
 		 structure Crash : CRASH) : CALL_CONV = 
   struct
     type lvar = Lvars.lvar
-    type phreg = BI.phreg
     type offset = int
 
     (***********)
@@ -21,7 +20,7 @@ functor CallConv(structure Lvars : LVARS
     datatype CC_STY =
         CC_NO_STY of lvar
       | CC_STACK of lvar * offset
-      | CC_PHREG of lvar * phreg
+      | CC_PHREG of lvar * lvar
 
     type cc = {clos:       CC_STY option,
 	       free:       CC_STY list,
@@ -63,6 +62,22 @@ functor CallConv(structure Lvars : LVARS
 
     fun get_frame_size({frame_size = NONE,...}:cc) = die "get_frame_size: frame_size does not exists"
       | get_frame_size({frame_size = SOME f_size,...}:cc) = f_size
+
+    fun filter_out_phreg([]) = []
+      | filter_out_phreg(CC_NO_STY lv::rest) = die "filter_out_phreg: stack and machine registers not annotated yet"
+      | filter_out_phreg(CC_STACK a::rest) = CC_STACK a :: (filter_out_phreg rest)
+      | filter_out_phreg(CC_PHREG _::rest) = filter_out_phreg rest
+
+    fun filter_out_phreg_opt(NONE) = []
+      | filter_out_phreg_opt(SOME a) = filter_out_phreg([a])
+
+    fun get_cc_size{clos,free,args,reg_vec,reg_args,res,frame_size} =
+      List.length(filter_out_phreg_opt clos) +
+      List.length(filter_out_phreg free) +
+      List.length(filter_out_phreg args) +
+      List.length(filter_out_phreg_opt reg_vec) +
+      List.length(filter_out_phreg res) +
+      1 (* The return label occupies one word on the stack. *)
 
     fun add_frame_size({clos,free,args,reg_vec,reg_args,res,frame_size},f_size) =
       {clos = clos,
@@ -139,7 +154,7 @@ functor CallConv(structure Lvars : LVARS
 	end
 	| resolve_opt phreg_to_alpha (NONE,assign_list,phregs) = (NONE,assign_list,phregs)
     in
-      fun resolve_ccall(phreg_to_alpha: phreg  -> 'a)
+      fun resolve_ccall(phreg_to_alpha: lvar  -> 'a)
 	{args: 'a list, rhos_for_result: 'a list, res: 'a list} =
 	let
 	  val (args',assign_list_args,phregs) = resolve_list phreg_to_alpha (args,[],BI.args_phreg_ccall)
@@ -149,7 +164,7 @@ functor CallConv(structure Lvars : LVARS
 	in
 	  ({args=args',rhos_for_result=rhos_for_result',res=res'},assign_list_args,assign_list_res)
 	end
-      fun resolve_app (phreg_to_alpha: phreg -> 'a)
+      fun resolve_app (phreg_to_alpha: lvar -> 'a)
 	{clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} =
 	let
 	  val (clos',assign_list_args,phregs) = resolve_opt phreg_to_alpha (clos,[],BI.args_phreg)
@@ -213,7 +228,7 @@ functor CallConv(structure Lvars : LVARS
 
     fun pr_sty(CC_NO_STY lv) = Lvars.pr_lvar lv
       | pr_sty(CC_STACK(lv,offset)) = Lvars.pr_lvar lv ^ ":stack(" ^ Int.toString offset ^ ")"
-      | pr_sty(CC_PHREG(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ BI.pr_phreg phreg
+      | pr_sty(CC_PHREG(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ Lvars.pr_lvar phreg
 
     fun pr_sty_opt(SOME sty) = pr_sty sty
       | pr_sty_opt(NONE) = ""

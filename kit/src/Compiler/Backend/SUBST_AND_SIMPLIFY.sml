@@ -15,7 +15,7 @@ signature SUBST_AND_SIMPLIFY =
     type cc
     type label
     type ('sty,'offset,'aty) LinePrg
-    type phreg
+    type reg
     type StoreTypeCO
     type AtomCO
     type offset = int
@@ -25,7 +25,7 @@ signature SUBST_AND_SIMPLIFY =
       | REG_F_ATY        of offset
       | STACK_ATY        of offset
       | DROPPED_RVAR_ATY
-      | PHREG_ATY        of phreg
+      | PHREG_ATY        of reg
       | INTEGER_ATY      of int 
       | UNIT_ATY
 

@@ -35,12 +35,12 @@ signature LINE_STMT =
     | BOXED of int
 
     type binder = place * phsize
-    type phreg
+
     datatype Atom =
       VAR           of lvar
     | RVAR          of place
     | DROPPED_RVAR  of place
-    | PHREG         of phreg
+    | PHREG         of lvar
     | INTEGER       of int 
     | UNIT
 
@@ -155,18 +155,18 @@ signature LINE_STMT =
     (*****************************************)
     (* Get Machine Registers from a LineStmt *)
     (*****************************************)
-    val get_phreg_atom     : Atom * phreg list -> phreg list
-    val get_phreg_atoms    : Atom list * phreg list -> phreg list
-    val get_phreg_atom_opt : Atom option * phreg list -> phreg list
-    val get_phreg_sma      : Atom sma * phreg list -> phreg list
-    val get_phreg_smas     : Atom sma list * phreg list -> phreg list
-    val get_phreg_in_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> phreg list
-    val get_phreg_in_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> phreg list
-    val get_phreg_ls       : ('sty,'offset,Atom) LineStmt -> phreg list
+    val get_phreg_atom     : Atom * lvar list -> lvar list
+    val get_phreg_atoms    : Atom list * lvar list -> lvar list
+    val get_phreg_atom_opt : Atom option * lvar list -> lvar list
+    val get_phreg_sma      : Atom sma * lvar list -> lvar list
+    val get_phreg_smas     : Atom sma list * lvar list -> lvar list
+    val get_phreg_in_fun   : {opr: label,args: Atom list,reg_vec: Atom option,reg_args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val get_phreg_in_fn    : {opr: Atom,args: Atom list,clos: Atom option,free: Atom list,res: Atom list} -> lvar list
+    val get_phreg_ls       : ('sty,'offset,Atom) LineStmt -> lvar list
 
     type StringTree
     val layout_line_prg : ('sty -> string) -> ('offset -> string) -> ('aty -> string) -> bool -> ('sty,'offset,'aty) LinePrg -> StringTree
-    val pr_phreg        : phreg -> string
+    val pr_phreg        : lvar -> string
     val pr_atom         : Atom -> string
   end
 

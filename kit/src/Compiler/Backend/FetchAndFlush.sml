@@ -15,13 +15,12 @@ functor FetchAndFlush(structure PhysSizeInf : PHYS_SIZE_INF
 		        sharing type LineStmt.phsize = PhysSizeInf.phsize
 		      structure RegAlloc: REG_ALLOC
                         sharing type RegAlloc.lvar = LineStmt.lvar
-                        sharing type RegAlloc.phreg = LineStmt.phreg
 			sharing type RegAlloc.Atom = LineStmt.Atom
 		      structure BI : BACKEND_INFO
-                        sharing type BI.phreg = Lvars.lvar = LineStmt.phreg
+                        sharing type BI.lvar = Lvars.lvar
 		      structure Lvarset: LVARSET
 		        sharing type Lvarset.lvar = LineStmt.lvar
-			sharing type Lvarset.lvarset= BI.phregset
+			sharing type Lvarset.lvarset= BI.lvarset
 		      structure PP : PRETTYPRINT
 		        sharing type PP.StringTree = 
                                    Effect.StringTree = 
@@ -42,14 +41,13 @@ struct
   type label = Labels.label
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
   type StoreTypeRA = RegAlloc.StoreType
-  type phreg = RegAlloc.phreg
   type Atom = RegAlloc.Atom
 
   datatype StoreType =
     STACK_STY of lvar
-  | PHREG_STY of lvar * phreg
-  | FLUSHED_CALLEE_STY of phreg
-  | FLUSHED_CALLER_STY of lvar * phreg
+  | PHREG_STY of lvar * lvar
+  | FLUSHED_CALLEE_STY of lvar
+  | FLUSHED_CALLER_STY of lvar * lvar
 
   fun pr_sty(STACK_STY lv) = Lvars.pr_lvar lv ^ ":stack"
     | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ LineStmt.pr_phreg phreg
