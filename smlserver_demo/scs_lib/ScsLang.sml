@@ -60,10 +60,32 @@ structure ScsLang :> SCS_LANG =
                                      from scs_lang
                                     order by text`)
       handle _ => []
-    fun toText lang to_lang =
-      Db.oneField `select scs_text.getText(scs_lang.language_name_tid,^(Db.qqq (toString to_lang))) as text
-                     from scs_lang
-                    where scs_lang.language = '^(toString lang)'`
+
+    (* We cache the result for 24 hours.
+       Cache def: (lang, to_lang) -> string
+       We flush the cache when we edit roles, (i.e., se script files
+       in directory /web/ucs/www/scs/admin/role/ *)
+
+    local
+      val lang_cache_def = 
+	Ns.Cache.get(Ns.Cache.Pair Ns.Cache.String Ns.Cache.String,
+		     Ns.Cache.String,
+		     "ScsLang",
+		     Ns.Cache.WhileUsed (24*60*60))
+
+      fun toText' (lang, to_lang) = Db.oneField `
+	select scs_text.getText(
+	  	 scs_lang.language_name_tid, ^(Db.qqq to_lang)
+	       ) as text
+	  from scs_lang
+	 where scs_lang.language = ^(Db.qqq lang)`
+
+      val toText'_cache = Ns.Cache.memoize lang_cache_def toText'
+    in
+      fun toText' (lang, to_lang) = toText'_cache (lang, to_lang)
+    end
+
+    fun toText lang to_lang = toText' (toString lang, toString to_lang)
 
     fun all_for_sel_box lang =
       (Db.list (fn g => (g "text",g "value")) 

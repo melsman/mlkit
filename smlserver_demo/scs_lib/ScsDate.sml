@@ -77,6 +77,7 @@ signature SCS_DATE =
     val ppWeekdayDk : Date.weekday -> string
     val ppWeekdayEng : Date.weekday -> string
     val ppWeekday          : Date.weekday -> string
+    val ppWeekdayInLang : ScsLang.lang -> Date.weekday -> string
     val ppWeekdayOneLetter : Date.weekday -> string
     val ppDay : Date.date -> string
     val ppMth : Date.month -> string
@@ -309,10 +310,11 @@ structure ScsDate :> SCS_DATE =
       | Date.Sat => "Saturday"
       | Date.Sun => "Sunday"
 
-    fun ppWeekday w =
-      case ScsLogin.user_lang() of
+    fun ppWeekdayInLang lang w = case lang of
 	ScsLang.da => ppWeekdayDk w
       | ScsLang.en => ppWeekdayEng w
+
+    fun ppWeekday w = ppWeekdayInLang (ScsLogin.user_lang()) w
 
     fun ppWeekdayOneLetter w = Char.toString(String.sub (ppWeekday w,0))
 
