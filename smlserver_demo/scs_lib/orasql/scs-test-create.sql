@@ -93,7 +93,7 @@ as
       printl( 'ok: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLCODE || ']');
     when others then
       if all_exns = 'f' then
-        printl( 'error: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLCODE || ']');
+        printl( 'error: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLERRM || ']');
       else
         printl( 'ok: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLCODE || ']');
       end if;

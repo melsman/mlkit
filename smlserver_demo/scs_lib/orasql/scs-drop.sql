@@ -1,6 +1,8 @@
 drop package scs;
 drop sequence scs_object_id_seq;
 
+@scs-math-drop.sql;
+@scs-random-drop.sql;
 @scs-groups-drop.sql
 @scs-users-drop.sql
 @scs-persons-drop.sql

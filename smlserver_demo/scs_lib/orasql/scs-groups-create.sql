@@ -932,7 +932,7 @@ is
     modifying_user in scs_groups.modifying_user%TYPE
   ) return scs_groups.grp_id%TYPE;
 
-  procedure delete (
+  procedure destroy (
     grp_id in scs_groups.grp_id%TYPE
   );
 
@@ -1007,25 +1007,25 @@ is
   end new;
 
   -- TO_DO: modifying user, and then auditing info - if we want that info? 2002-09-17, nh
-  procedure delete (
+  procedure destroy (
     grp_id in scs_groups.grp_id%TYPE
   )
   is
   begin
     -- Delete all member relations.
     delete from scs_grp_member_rels
-     where grp_id = scs_group.delete.grp_id;
+     where grp_id = scs_group.destroy.grp_id;
 
     -- Delete all composition relations.
     delete from scs_grp_composition_rels
-     where grp_id_one = scs_group.delete.grp_id
-        or grp_id_two = scs_group.delete.grp_id; 
+     where grp_id_one = scs_group.destroy.grp_id
+        or grp_id_two = scs_group.destroy.grp_id; 
 
     delete from scs_groups
-     where grp_id = scs_group.delete.grp_id;
+     where grp_id = scs_group.destroy.grp_id;
 
-    scs_party.delete(scs_group.delete.grp_id);
-  end delete;
+    scs_party.destroy(scs_group.destroy.grp_id);
+  end destroy;
 
   function getID (
     name in scs_groups.grp_name%TYPE

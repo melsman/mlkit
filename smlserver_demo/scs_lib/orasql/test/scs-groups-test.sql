@@ -288,24 +288,24 @@ begin
   /* betty  M A(t) */ scs_group.member_p(party_id => betty, grp_id => A, cascade_membership=>'t') = 't');
 
   scs_test.print('[Remove the test groups...');
-  scs_group.delete(G);
-  scs_group.delete(F);
-  scs_group.delete(E);
-  scs_group.delete(D);
-  scs_group.delete(C);
-  scs_group.delete(B);
-  scs_group.delete(A);
+  scs_group.destroy(G);
+  scs_group.destroy(F);
+  scs_group.destroy(E);
+  scs_group.destroy(D);
+  scs_group.destroy(C);
+  scs_group.destroy(B);
+  scs_group.destroy(A);
   scs_test.printl(']');
 
   scs_test.print('[Remove the test members...');
-  scs_user.delete(joe);
-  scs_user.delete(jane);
-  scs_user.delete(bob);
-  scs_user.delete(betty);
-  scs_user.delete(jack);
-  scs_user.delete(jill);
-  scs_user.delete(sven);
-  scs_user.delete(stacy);
+  scs_user.destroy(joe);
+  scs_user.destroy(jane);
+  scs_user.destroy(bob);
+  scs_user.destroy(betty);
+  scs_user.destroy(jack);
+  scs_user.destroy(jill);
+  scs_user.destroy(sven);
+  scs_user.destroy(stacy);
   scs_test.printl(']');
 
   scs_test.testBool('Check Representation', 7, scs_group.check_representation_all = 't') ;
@@ -322,8 +322,8 @@ begin
                                              grp_id_two => ' || B || ', 
                                              modifying_user => scs_user.system);
      end;','t');
-  scs_group.delete(B);
-  scs_group.delete(A);
+  scs_group.destroy(B);
+  scs_group.destroy(A);
 
   scs_test.printl('[Test fail on indirect composition cycles]');
   A := scs_group.new(grp_name => 'A', email => 'A', modifying_user => scs_user.system);
@@ -341,9 +341,9 @@ begin
                                              modifying_user => scs_user.system);
      end;','t');
 
-  scs_group.delete(C);
-  scs_group.delete(B);
-  scs_group.delete(A);
+  scs_group.destroy(C);
+  scs_group.destroy(B);
+  scs_group.destroy(A);
 
 end;
 /
