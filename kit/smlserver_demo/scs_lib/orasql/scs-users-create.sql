@@ -254,11 +254,18 @@ as
     user_id in scs_users.user_id%TYPE
   )
   is
+    v_deleted_p		char(1);
   begin
-    update scs_users
-       set deleted_p = 't',
-           screen_name = user_id || '-' || screen_name
-     where user_id = scs_user.destroy.user_id;
+    select deleted_p into v_deleted_p
+    from scs_users
+    where scs_users.user_id = scs_user.destroy.user_id;
+
+    if( v_deleted_p = 'f' ) then
+      update scs_users
+         set deleted_p = 't',
+             screen_name = user_id || '-' || screen_name
+       where user_id = scs_user.destroy.user_id;
+    end if;
 
     scs_person.destroy(user_id);
   end destroy;
