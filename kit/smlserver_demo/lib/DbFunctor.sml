@@ -1,4 +1,3 @@
-
 functor DbFunctor (structure DbBasic : NS_DB_BASIC
 		   structure Set : NS_SET
 		   structure Info : NS_INFO) : NS_DB =
@@ -13,7 +12,6 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     structure Pool : NS_POOL =
       struct
 	type pool = string
-	exception DbPoolError of string
 
 	local
 	  val pools : pool list ref = ref [] 
@@ -21,13 +19,13 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	  fun initPools (sectionName,key) =
 	    case Info.configGetValue{sectionName=sectionName, key=key} of
 	      SOME ps => pools := (String.tokens (fn ch => ch = #",") ps)
-	    | NONE => raise (DbPoolError ("No pools specified in file " ^ Info.configFile() ^ 
+	    | NONE => raise (Fail ("initPools.no pools specified in file " ^ Info.configFile() ^ 
 			     "; section " ^ sectionName ^ " and key " ^ key ^ "."))
 	  fun initPoolsL pns = pools := pns
 	  fun putPool pn = pools := pn :: !pools
 	  fun getPool () = 
 	    case !pools of
-	      [] => raise DbPoolError "In getPool: No more pools"
+	      [] => raise Fail "getPool.no more pools"
 	    | pn::ps => (pools := ps; pn)
 	  fun toList () = !pools
 	  fun pp () = 
@@ -47,7 +45,11 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun init(sectionName, key) = Pool.initPools(sectionName, key)
 
     fun poolGetHandle (pool : pool) : db =
-      (pool, prim("@Ns_DbPoolGetHandle", pool))
+      let
+	val h : ns_db = prim("@Ns_DbPoolGetHandle", pool)
+      in
+	if h = 0 then raise Fail "poolGetHandle:Can't allocate handle" else (pool,h)
+      end
     fun poolPutHandle (db : db) : unit =
       prim("@Ns_DbPoolPutHandle", #2 db)
     fun dmlDb (db : db, q: quot) : unit =
@@ -82,11 +84,15 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	(dmlDb (db,q) before putHandle db)
 	handle X => (putHandle db; raise X)
       end
+
     fun maybeDml (q: quot) : unit = ((dml q; ()) handle X => ())
+
     fun panicDml (f_panic: quot -> 'a) (q: quot) : unit =
       ((dml q; ()) handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
-    fun errorDml (f_error: unit -> 'a) (q: quot) : unit =
-      ((dml q; ()) handle X => (f_error(); ()))
+
+(*    fun errorDml (f_error: unit -> 'a) (q: quot) : unit =
+      ((dml q; ()) handle X => (f_error(); ()))*)
+
     fun dmlTrans (f: db -> 'a) : 'a =
       let 
 	val db = getHandle()
@@ -101,24 +107,23 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun panicDmlTrans (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
       dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
 
-    fun selectDb' (db: db, q: quot) : Set.set =
+    fun selectDb (db: db, q: quot) : Set.set =
       let 
 	fun isNull(s : Set.set) : bool = prim("__is_null",s)
 	val res = prim("@Ns_DbSelect", (#2 db, quotToString q))
       in 
 	if isNull res 
 	  then  
-	    (* extract error message from buffer in DbHandle *)
 	    let 
-	      val msg = ""
+	      val msg = "selectDb: SQL Error"
 	    in 
 	      raise Fail msg
 	    end
 	else res
       end
 
-    fun selectDb (db: db, q: quot) : Set.set =
-	prim("@Ns_DbSelect", (#2 db, quotToString q))
+(*    fun selectDb (db: db, q: quot) : Set.set =
+	prim("@Ns_DbSelect", (#2 db, quotToString q))*)
 
     fun getRowDb (db : db, s : Set.set) : status =
       prim("@Ns_DbGetRow", (#2 db, s))
@@ -180,63 +185,112 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 
     fun list (f:(string->string)->'a, sql:quot) : 'a list = wrapDb (fn db => listDb(db,f,sql))
 
-    fun oneRow' (f:(string->string)->'a, sql:quot) : 'a = 
-      case list (f,sql) of
-	[] => raise Fail "No rows"
-      | [r] => r
-      | _ => raise Fail "More than one row"
+    fun zeroOrOneRowDb'(db,f,sql) : 'a option =
+      let 
+	val s : Set.set = selectDb(db, sql)
+	fun g n = Set.getOpt(s, n, "##")
+      in
+	if getRowDb(db,s) <> NsBasics.END_DATA then
+	  let 
+	    val res = SOME (f g)
+	  in
+	    if getRowDb(db,s) = NsBasics.END_DATA then
+	      res
+	    else raise Fail "zeroOrOneRowDb'.more than one row"
+	  end
+	else NONE (* Ok, no rows *)
+      end
 
     fun zeroOrOneRow' (f:(string->string)->'a, sql:quot) : 'a option = 
-      case list (f,sql) of
-	[] => NONE
-      | [r] => SOME r
-      | _ => raise Fail "More than one row"
+      wrapDb (fn db => zeroOrOneRowDb'(db,f,sql))
 
     fun oneFieldDb(db,sql) : string =
-      let val s : Set.set = selectDb(db, sql)
-      in 
-	if getRowDb(db,s) <> NsBasics.END_DATA then
-	  if Set.size s = 1 then 
-	    case Set.value(s,0) of
-	      SOME s => s
-	    | NONE => raise Fail "Db.oneFieldDb.no value in set"
-	  else raise Fail "Db.oneFieldDb.size of set not one"
-	else raise Fail "Db.oneFieldDb.no rows"
+      let 
+	val s : Set.set = selectDb(db, sql)
+	val res =
+	  if getRowDb(db,s) <> NsBasics.END_DATA then
+	    if Set.size s = 1 then 
+	      case Set.value(s,0) of
+		SOME s => s
+	      | NONE => raise Fail "Db.oneFieldDb.no value in set"
+	    else raise Fail "Db.oneFieldDb.size of set not one"
+	  else raise Fail "Db.oneFieldDb.no rows"
+      in
+	if getRowDb(db,s) = NsBasics.END_DATA then 
+	  res 
+	else raise Fail "oneFieldDb.more than one row"
       end
 
     fun oneField (sql : quot) : string = 
       wrapDb (fn db => oneFieldDb(db,sql))
 
     fun zeroOrOneFieldDb(db,sql) : string option =
-      let val s : Set.set = selectDb(db, sql)
-      in 
+      let 
+	val s : Set.set = selectDb(db, sql)
+      in
 	if getRowDb(db,s) <> NsBasics.END_DATA then
-	  if Set.size s = 1 then 
-	    Set.value(s,0)
-	  else NONE
-	else NONE
+	  let 
+	    val res = 
+	      if Set.size s = 1 then 
+		Set.value(s,0)
+	      else raise Fail "zeroOrOneFieldDb.size of set is not one"
+	  in
+	    if getRowDb(db,s) = NsBasics.END_DATA then
+	      res 
+	    else raise Fail "zeroOrOneFieldDb.more than one row"
+	  end
+	else NONE (* OK, no rows *)
       end
 
     fun zeroOrOneField (sql : quot) : string option =
       wrapDb (fn db => zeroOrOneFieldDb(db,sql))
 
     fun oneRowDb(db,sql) : string list =
-      let val s : Set.set = selectDb(db, sql)
-      in 
-	if getRowDb(db,s) <> NsBasics.END_DATA then
-	  Set.foldr (fn ((k,v), a) => v :: a) nil s
-	else raise Fail "Db.oneRowDb.no rows"
+      let 
+	val s : Set.set = selectDb(db, sql)
+	val res =
+	  if getRowDb(db,s) <> NsBasics.END_DATA then
+	    Set.foldr (fn ((k,v), a) => v :: a) nil s
+	  else raise Fail "Db.oneRowDb.no rows"
+      in
+	if getRowDb(db,s) = NsBasics.END_DATA then
+	  res
+	else raise Fail "oneRowDb.more that one row"
+      end
+
+    fun oneRowDb'(db,f:(string->string)->'a,sql:quot) : 'a =
+      let 
+	val s : Set.set = selectDb(db, sql)
+	fun g n = Set.getOpt(s, n, "##")
+	val res =
+	  if getRowDb(db,s) <> NsBasics.END_DATA then
+	    f g
+	  else raise Fail "Db.oneRowDb'.no rows"
+      in
+	if getRowDb(db,s) = NsBasics.END_DATA then
+	  res
+	else raise Fail "oneRowDb'.more that one row"
       end
 
     fun oneRow sql : string list =
       wrapDb (fn db => oneRowDb(db,sql))
 
+    fun oneRow' (f:(string->string)->'a, sql:quot) : 'a = 
+      wrapDb (fn db => oneRowDb'(db,f,sql))
+
     fun zeroOrOneRowDb(db,sql) : string list option =
-      let val s : Set.set = selectDb(db, sql)
-      in 
+      let 
+	val s : Set.set = selectDb(db, sql)
+      in
 	if getRowDb(db,s) <> NsBasics.END_DATA then
-	  SOME(Set.foldr (fn ((k,v), a) => v :: a) nil s)
-	else NONE
+	  let 
+	    val res = SOME (Set.foldr (fn ((k,v), a) => v :: a) nil s)
+	  in
+	    if getRowDb(db,s) = NsBasics.END_DATA then
+	      res
+	    else raise Fail "zeroOrOneRowDb.more than one row"
+	  end
+	else NONE (* Ok, no rows *)
       end
 
     fun zeroOrOneRow sql : string list option =
@@ -291,19 +345,25 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun valueList vs = String.concatWith "," (List.map qq' vs)
     fun setList vs = String.concatWith "," (List.map (fn (n,v) => n ^ "=" ^ qq' v) vs)
 
-    fun seqNextval (seqName:string) : int = 
-      let val s = oneField `select ^(seqNextvalExp seqName) ^fromDual`
+    fun seqNextvalDb (db,seqName:string) : int = 
+      let val s = oneFieldDb (db,`select ^(seqNextvalExp seqName) ^fromDual`)
       in case Int.fromString s of
 	SOME i => i
       | NONE => raise Fail "Db.seqNextval.nextval not an integer"	
       end
-    fun seqCurrval (seqName:string) : int = 
-      let val s = oneField `select ^(seqCurrvalExp seqName) ^fromDual`
+
+    fun seqNextval (seqName:string) : int = 
+      wrapDb (fn db => seqNextvalDb(db,seqName))
+
+    fun seqCurrvalDb (db,seqName:string) : int = 
+      let val s = oneFieldDb (db,`select ^(seqCurrvalExp seqName) ^fromDual`)
       in case Int.fromString s of
 	SOME i => i
       | NONE => raise Fail "Db.seqCurrval.nextval not an integer"	
       end
 
+    fun seqCurrval (seqName:string) : int = 
+      wrapDb (fn db => seqCurrvalDb(db,seqName))
   end
 
 structure NsDbBasicOra : NS_DB_BASIC =

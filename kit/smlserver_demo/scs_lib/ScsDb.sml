@@ -28,7 +28,7 @@ structure ScsDb :> SCS_DB =
 
     fun panicDml f = Db.panicDml ScsError.panic f
     fun panicDmlTrans f = Db.panicDmlTrans ScsError.panic f
-    fun errorDml emsg sql = (Db.errorDml (fn () => (Ns.log (Ns.Notice, "hej");
+    fun errorDml emsg sql = (Db.panicDml (fn _ => (Ns.log (Ns.Notice, "hej");
 						    ScsPage.returnPg "Databasefejl" emsg)) sql;())
 
     fun panicOneRow (f:(string->string)->'a) (sql:quot) : 'a  = 
