@@ -18,7 +18,7 @@
 	let val name = FV.wrapFail 
               FV.getStringErr ("name","name of wine")
 	    val year = FV.wrapFail 
-              (FV.getIntRangeErr 0 3000) 
+              (FV.getIntRangeErr 1 3000) 
 	      ("year", "year of wine")
 	    val year = Int.toString year
 	    val query = `select wid from wine 

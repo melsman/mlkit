@@ -5,7 +5,7 @@ create table wine (
        wid       integer primary key,
        name      varchar(100) not null,
        year      integer,
-       check     ( 0 <= year and year <= 3000 ),
+       check     ( 1 <= year and year <= 3000 ),
        unique    ( name, year )
 );
 
