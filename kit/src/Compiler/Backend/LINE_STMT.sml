@@ -113,8 +113,8 @@ signature LINE_STMT =
   
     type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) TopDecl list
 
-    val L : {main_lab:label,code:ClosPrg,imports:label list,exports:label list} -> 
-            {main_lab:label,code:(lvar,unit,Atom) LinePrg,imports:label list,exports:label list}
+    val L : {main_lab:label,code:ClosPrg,imports:label list * label list,exports:label list * label list} -> 
+            {main_lab:label,code:(lvar,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
 
     (***************************************************)
     (* Def and Use sets for LineStmt RETURN lvars ONLY *)
@@ -166,6 +166,8 @@ signature LINE_STMT =
 
     type StringTree
     val layout_line_prg : ('sty -> string) -> ('offset -> string) -> ('aty -> string) -> bool -> ('sty,'offset,'aty) LinePrg -> StringTree
+    val layout_line_stmt: ('sty -> string) -> ('offset -> string) -> ('aty -> string) -> bool -> ('sty,'offset,'aty) LineStmt -> StringTree
+    val pr_line_stmt    : ('sty -> string) -> ('offset -> string) -> ('aty -> string) -> bool -> ('sty,'offset,'aty) LineStmt -> string
     val pr_phreg        : lvar -> string
     val pr_atom         : Atom -> string
   end

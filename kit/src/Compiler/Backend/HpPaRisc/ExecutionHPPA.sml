@@ -137,8 +137,8 @@ functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
 	    let val {main_lab, code, imports, exports, safe} = target_new
 	        val asm_prg = CodeGen.CG target_new
 		val linkinfo = Compile.mk_linkinfo {code_label=main_lab,
-						    imports=imports,
-						    exports=exports,
+						    imports=(#1 imports) @ (#2 imports), (* Merge MLFunLab and DatLab *)
+						    exports=(#1 exports) @ (#2 exports), (* Merge MLFunLab and DatLab *)
 						    unsafe=not(safe)}
 	    in CodeRes(ce,cb,NEWtarget asm_prg,linkinfo)
 	    end

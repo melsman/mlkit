@@ -711,14 +711,14 @@ functor Compile(structure Excon : EXCON
 
     type target_new = {main_lab: label,
 		       code: (StoreTypeCO,offset,AtySS) LinePrg,
-		       imports: label list,
-		       exports: label list,
+		       imports: label list * label list,
+		       exports: label list * label list,
 		       safe: bool}     (* true if the fragment has no side-effects;
 					* for dead code elimination. *)
 
     fun new_lambda_backend(clos_env,pgm,safe) : ClosExp.env * 
       {main_lab: label, code:(StoreTypeCO,offset,AtySS) LinePrg,
-       imports: label list, exports: label list, safe:bool}  =
+       imports: label list * label list, exports: label list * label list, safe:bool}  =
       let
 	val all_clos_exp = ClosExp.cc (clos_env, pgm)
 	val clos_env' = #env all_clos_exp

@@ -1358,20 +1358,23 @@ struct
 	     | _ => die "compile_sels_and_default: no selections.")
       end
 
+    (* Result is a pair of label lists:              *)
+    (*   -- labels to functions, (i.e., code labels) *)
+    (* -- labels to data, (i.e., code to data)       *)
     fun find_globals_in_env (lvars, excons, regvars) env =
       let
-	fun lookup lv f_lookup =
+	fun lookup lv f_lookup (fun_lab,dat_lab) =
 	  (case f_lookup env lv of
-	     SOME(CE.FIX(lab,_,_))    => lab (* Is a MLFunLab *)
+	     SOME(CE.FIX(lab,_,_))    => (lab::fun_lab,dat_lab) (* Is a MLFunLab *)
 	   | SOME(CE.LVAR _)          => die "find_globals_in_env: global bound to lvar."
 	   | SOME(CE.RVAR _)          => die "find_globals_in_env: global bound to rvar."
 	   | SOME(CE.DROPPED_RVAR _)  => die "find_globals_in_env: global bound to dropped rvar."
 	   | SOME(CE.SELECT _)        => die "find_globals_in_env: global bound to select expression."
-	   | SOME(CE.LABEL lab)       => lab (* Is a DatLab *)
+	   | SOME(CE.LABEL lab)       => (fun_lab,lab::dat_lab) (* Is a DatLab *)
 	   | NONE                     => die ("find_globals_in_env: lvar not bound in env."))
-	val lvar_labs = map (fn lv => lookup lv CE.lookupVarOpt) lvars
+	val lvar_pair_labs = foldr (fn (lv,acc) => lookup lv CE.lookupVarOpt acc) ([],[]) lvars
       in
-	List.foldr (fn (excon,labs) => lookup excon CE.lookupExconOpt::labs) lvar_labs excons
+	foldr (fn (excon,acc) => lookup excon CE.lookupExconOpt acc) lvar_pair_labs excons
       end
 
     fun gen_fresh_res_lvars(RegionExp.Mus type_and_places) =

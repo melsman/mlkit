@@ -164,250 +164,267 @@ struct
 
   (* simplify is a bool used to not print non operative constructs *)
   (* like scope and letregion on finite regions.                   *)
-  fun layout_line_prg pr_sty pr_offset pr_aty simplify top_decls = 
-    let
-      open PP
+  local
+    open PP
 
-      fun pr_phsize(PhysSizeInf.INF)     = "inf"
-	| pr_phsize(PhysSizeInf.WORDS i) = Int.toString i
+    fun pr_phsize(PhysSizeInf.INF)     = "inf"
+      | pr_phsize(PhysSizeInf.WORDS i) = Int.toString i
 
-      fun pr_binder(place,phsize) = 
-	(PP.flatten1(Effect.layout_effect place) ^ ":" ^ pr_phsize phsize)
+    fun pr_binder(place,phsize) = 
+      (PP.flatten1(Effect.layout_effect place) ^ ":" ^ pr_phsize phsize)
 
-      fun pr_con_kind(ENUM i)    = "enum " ^ Int.toString i
-	| pr_con_kind(UNBOXED i) = "unboxed " ^ Int.toString i
-	| pr_con_kind(BOXED i)   = "boxed " ^ Int.toString i
+    fun pr_con_kind(ENUM i)    = "enum " ^ Int.toString i
+      | pr_con_kind(UNBOXED i) = "unboxed " ^ Int.toString i
+      | pr_con_kind(BOXED i)   = "boxed " ^ Int.toString i
 
-      fun pr_pp pp = "pp" ^ Int.toString pp
+    fun pr_pp pp = "pp" ^ Int.toString pp
 
-      fun layout_aty aty = LEAF(pr_aty aty)
+    fun layout_aty pr_aty aty = LEAF(pr_aty aty)
       
-      fun layout_aty_opt(SOME aty) = layout_aty aty
-	| layout_aty_opt(NONE) = LEAF ""
+    fun layout_aty_opt pr_aty (SOME aty) = layout_aty pr_aty aty
+      | layout_aty_opt pr_aty (NONE) = LEAF ""
 
-      fun layout_switch layout_lss pr_const (SWITCH(aty_arg,sels,default)) =
-	let
-	  fun layout_sels(const,ls_sel) =
-	    NODE{start="",finish="",indent=0,
-		 children=[LEAF (pr_const const),layout_lss ls_sel],
-		 childsep=RIGHT " => "}
-	  val t1 = NODE{start="(case ",finish=" ",indent=2, childsep = NOSEP, 
-			children=[layout_aty aty_arg]}
-	  val t2 = NODE{start="of " ,finish="",indent=6,childsep=LEFT " | ",
-			children=(map layout_sels sels) @ 
-			[NODE{start="",finish="",indent=0,
-			      children=[LEAF "_",layout_lss default],
-			      childsep=RIGHT " => "}]}
-	  val t3 = NODE{start="",finish=") (*case*) ",indent=3,childsep=NOSEP,children=[t2]}
-	in 
-	  NODE{start = "", finish = "", indent=0, childsep=NOSEP,children=[t1,t3]}
-	end
+    fun layout_switch pr_aty layout_lss pr_const (SWITCH(aty_arg,sels,default)) =
+      let
+	fun layout_sels(const,ls_sel) =
+	  NODE{start="",finish="",indent=0,
+	       children=[LEAF (pr_const const),layout_lss ls_sel],
+	       childsep=RIGHT " => "}
+	val t1 = NODE{start="(case ",finish=" ",indent=2, childsep = NOSEP, 
+		      children=[layout_aty pr_aty aty_arg]}
+	val t2 = NODE{start="of " ,finish="",indent=6,childsep=LEFT " | ",
+		      children=(map layout_sels sels) @ 
+		      [NODE{start="",finish="",indent=0,
+			    children=[LEAF "_",layout_lss default],
+			    childsep=RIGHT " => "}]}
+	val t3 = NODE{start="",finish=") (*case*) ",indent=3,childsep=NOSEP,children=[t2]}
+      in 
+	NODE{start = "", finish = "", indent=0, childsep=NOSEP,children=[t1,t3]}
+      end
 
-      fun layout_se(ATOM aty) = layout_aty aty
-	| layout_se(LOAD lab) = LEAF("load(" ^ Labels.pr_label lab ^ ")")
-	| layout_se(STORE(aty,lab)) = LEAF("store(" ^ pr_aty aty ^ "," ^ Labels.pr_label lab ^ ")")
-	| layout_se(STRING s)  = LEAF("\"" ^ s ^ "\"")
-	| layout_se(REAL s)    = LEAF(s)
-	| layout_se(CLOS_RECORD{label,elems,alloc}) = HNODE{start="[",
-							    finish="]clos " ^ pr_sma alloc,
-							    childsep=RIGHT ",",
-							    children=LEAF(Labels.pr_label label)::
-							    map layout_aty elems}
-	| layout_se(REGVEC_RECORD{elems,alloc}) = HNODE{start="[",
-							finish="]regvec " ^ pr_sma alloc,
-							childsep=RIGHT ",",
-							children=map (fn sma => layout_sma sma) elems}
-	| layout_se(SCLOS_RECORD{elems,alloc}) = HNODE{start="[",
-						       finish="]sclos " ^ pr_sma alloc,
-						       childsep=RIGHT ",",
-						       children= map layout_aty elems}
-	| layout_se(RECORD{elems,alloc}) = HNODE{start="[",
-						 finish="] " ^ pr_sma alloc,
-						 childsep=RIGHT ",",
-						 children= map layout_aty elems}
-	| layout_se(SELECT(i,aty)) = HNODE{start="#" ^ Int.toString i ^ "(",
-					    finish=")",
-					    childsep=NOSEP,
-					    children=[layout_aty aty]}
-	| layout_se(CON0{con,con_kind,aux_regions,alloc}) =
-	HNODE{start=Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ") [",
-	      finish="]aux " ^ pr_sma alloc,
-	      childsep=RIGHT ",",
-	      children=map (fn sma => layout_sma sma) aux_regions}
-	| layout_se(CON1{con,con_kind,alloc,arg}) = 
-	HNODE{start=Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ") ",
-	      finish="" ^ pr_sma alloc,
-	      childsep=NOSEP,
-	      children=[layout_aty arg]}
-	| layout_se(DECON{con,con_kind,con_aty}) =
-	LEAF("decon(" ^ Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")," ^ pr_aty con_aty ^ ")")
-	| layout_se(DEREF(aty)) = LEAF("!" ^ pr_aty aty)
-	| layout_se(REF(sma,aty)) = LEAF("ref " ^ pr_aty aty ^ " " ^ pr_sma sma)
-	| layout_se(ASSIGNREF(sma,aty1,aty2)) = HNODE{start="",
-							finish="",
-							childsep=RIGHT " := ",
-							children=[layout_aty aty1,layout_aty aty2]}
-	| layout_se(PASS_PTR_TO_MEM(sma,i)) = LEAF("MEM(" ^ pr_sma sma ^ "," ^ Int.toString i ^ ")")
-	| layout_se(PASS_PTR_TO_RHO(sma)) = LEAF("PTR(" ^ pr_sma sma ^ ")")
+      fun layout_se pr_aty se =
+	(case se of
+	   ATOM aty => layout_aty pr_aty aty
+	 | LOAD lab => LEAF("load(" ^ Labels.pr_label lab ^ ")")
+	 | STORE(aty,lab) => LEAF("store(" ^ pr_aty aty ^ "," ^ Labels.pr_label lab ^ ")")
+	 | STRING s  => LEAF("\"" ^ s ^ "\"")
+	 | REAL s    => LEAF(s)
+	 | CLOS_RECORD{label,elems,alloc} => HNODE{start="[",
+						   finish="]clos " ^ pr_sma pr_aty alloc,
+						   childsep=RIGHT ",",
+						   children=LEAF(Labels.pr_label label)::
+						   map (layout_aty pr_aty) elems}
+	 | REGVEC_RECORD{elems,alloc} => HNODE{start="[",
+					       finish="]regvec " ^ pr_sma pr_aty alloc,
+					       childsep=RIGHT ",",
+					       children=map (layout_sma pr_aty) elems}
+	 | SCLOS_RECORD{elems,alloc} => HNODE{start="[",
+					      finish="]sclos " ^ pr_sma pr_aty alloc,
+					      childsep=RIGHT ",",
+					      children= map (layout_aty pr_aty) elems}
+	 | RECORD{elems,alloc} => HNODE{start="[",
+					finish="] " ^ pr_sma pr_aty alloc,
+					childsep=RIGHT ",",
+					children= map (layout_aty pr_aty) elems}
+	 | SELECT(i,aty) => HNODE{start="#" ^ Int.toString i ^ "(",
+				  finish=")",
+				  childsep=NOSEP,
+				  children=[layout_aty pr_aty aty]}
+	 | CON0{con,con_kind,aux_regions,alloc} =>
+	     HNODE{start=Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ") [",
+		   finish="]aux " ^ pr_sma pr_aty alloc,
+		   childsep=RIGHT ",",
+		   children=map (layout_sma pr_aty) aux_regions}
+	 | CON1{con,con_kind,alloc,arg} => 
+	     HNODE{start=Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ") ",
+		   finish="" ^ pr_sma pr_aty alloc,
+		   childsep=NOSEP,
+		   children=[layout_aty pr_aty arg]}
+	 | DECON{con,con_kind,con_aty} =>
+	     LEAF("decon(" ^ Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")," ^ pr_aty con_aty ^ ")")
+	 | DEREF(aty) => LEAF("!" ^ pr_aty aty)
+	 | REF(sma,aty) => LEAF("ref " ^ pr_aty aty ^ " " ^ pr_sma pr_aty sma)
+	 | ASSIGNREF(sma,aty1,aty2) => HNODE{start="",
+					     finish="",
+					     childsep=RIGHT " := ",
+					     children=[layout_aty pr_aty aty1,layout_aty pr_aty aty2]}
+	 | PASS_PTR_TO_MEM(sma,i) => LEAF("MEM(" ^ pr_sma pr_aty sma ^ "," ^ Int.toString i ^ ")")
+	 | PASS_PTR_TO_RHO(sma) => LEAF("PTR(" ^ pr_sma pr_aty sma ^ ")"))
 	
-      and layout_ls(ASSIGN{pat,bind}) = HNODE{start="",
-					      finish="",
-					      childsep=RIGHT " = ",
-					      children=[LEAF(pr_aty pat),layout_se bind]}
-	| layout_ls(FLUSH(aty,offset)) = LEAF("flush(" ^ pr_aty aty ^ "," ^ pr_offset offset ^ ")")
-	| layout_ls(FETCH(aty,offset)) = LEAF("fetch(" ^ pr_aty aty ^ "," ^ pr_offset offset ^ ")")
-	| layout_ls(FNJMP{opr,args,clos,free,res}) =
-	let
-	  val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map layout_aty res}
-	  val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_aty args}
-	  val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt clos]}
-	  val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_aty free}
+      and layout_ls pr_sty pr_offset pr_aty simplify ls =
+	let 
+	  fun layout_lss_local lss = layout_lss pr_sty pr_offset pr_aty simplify lss
 	in
-	  HNODE{start=flatten1(t0) ^ " = " ^ pr_aty opr ^ "_fnjmp ",
-		finish="", childsep=RIGHT " ",
-		children=[t1,t2,t3]}
-	end
-	| layout_ls(FNCALL{opr,args,clos,free,res}) =
-	let
-	  val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map layout_aty res}
-	  val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_aty args}
-	  val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt clos]}
-	  val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_aty free}
-	in
-	  HNODE{start=flatten1(t0) ^ " = " ^ pr_aty opr ^ "_fncall ",
-		finish="", childsep=RIGHT " ",
-		children=[t1,t2,t3]}
-	end
-	| layout_ls(JMP{opr,args,reg_vec,reg_args,clos,free,res}) =
-	let
-	  val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map layout_aty res}
-	  val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_aty args}
-	  val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt clos]}
-	  val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_aty free}
-	  val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_aty reg_args}
-	  val t5 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt reg_vec]}
-	in
-	  HNODE{start=flatten1(t0) ^ " = " ^ Labels.pr_label opr ^ "_funjmp ",
-		finish="", childsep=RIGHT " ",
-		children=[t1,t5,t4,t2,t3]}
-	end
-	| layout_ls(FUNCALL{opr,args,reg_vec,reg_args,clos,free,res}) =
-	let
-	  val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map layout_aty res}
-	  val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_aty args}
-	  val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt clos]}
-	  val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_aty free}
-	  val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map layout_aty reg_args}
-	  val t5 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt reg_vec]}
-	in
-	  HNODE{start=flatten1(t0) ^ " = " ^ Labels.pr_label opr ^ "_funcall ",
-		finish="", childsep=RIGHT " ",
-		children=[t1,t5,t4,t2,t3]}
-	end
-	| layout_ls(LETREGION{rhos,body}) = 
-	let
-	  fun remove_finite_rhos([]) = []
-	    | remove_finite_rhos(((place,PhysSizeInf.WORDS i),offset)::rest) = remove_finite_rhos rest
-	    | remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
-	  val rhos = if simplify then remove_finite_rhos rhos else rhos
-	  val binders = HNODE{start = "", 
-			      finish = "", 
-			      childsep = RIGHT", ", 
-			      children = map (fn (b,offset) => LEAF(pr_binder b ^ pr_offset offset)) rhos}
-	in 
-	  (case rhos of
-	     [] => layout_lss body
-	   | _ => NODE{start= "letregion " ^ flatten1(binders) ^ " in ",
-		       finish= "end (*" ^ flatten1(binders) ^ "*)",
-		       childsep= NOSEP,
-		       indent=2,
-		       children= [layout_lss body]})
-	end
-	| layout_ls(SCOPE{pat=[],scope}) = layout_lss scope
-	| layout_ls(SCOPE{pat,scope}) =
-	if simplify then
-	  layout_lss scope
-	else
-	  let
-	    val lay_pat = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (fn sty => LEAF(pr_sty sty)) pat}
-	  in
-	    PP.NODE{start= "scope " ^ flatten1(lay_pat) ^ " in ",
-		    finish=" end ",
-		    indent=2,
-		    childsep=NOSEP,
-		    children=[layout_lss scope]}
-	  end
-	| layout_ls(HANDLE{default,handl,handl_return,offset}) =
-	let
-	  val node_exn = NODE{start="[",finish="]",childsep=RIGHT"] handlereturn [", indent=2,children=[layout_lss handl,layout_lss handl_return]}
-	in
-	  NODE{start="[",finish="",childsep=RIGHT("] handle " ^ pr_offset offset ^ " "),indent=2,children=[layout_lss default,node_exn]}
-	end
-	| layout_ls(RAISE{arg,defined_atys}) = PP.LEAF("raise " ^ pr_aty arg) (* Defined atys not written 08/12/1998, Niels*)
-	| layout_ls(SWITCH_I sw) = layout_switch layout_lss (Int.toString) sw
-	| layout_ls(SWITCH_S sw) = layout_switch layout_lss (fn s => s) sw
-        | layout_ls(SWITCH_C sw) = 
-	layout_switch layout_lss (fn (con,con_kind) => Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")") sw
-        | layout_ls(SWITCH_E sw) = layout_switch layout_lss Excon.pr_excon sw
-	| layout_ls(RESET_REGIONS{force=true,regions_for_resetting}) =
-	HNODE{start="force reset regions",
-	      finish="",
-	      childsep=RIGHT ",",
-	      children=map (fn sma => layout_sma sma) regions_for_resetting}
-	| layout_ls(RESET_REGIONS{force=false,regions_for_resetting}) =
-	HNODE{start="reset regions",
-	      finish="",
-	      childsep=RIGHT ",",
-	      children=map (fn sma => layout_sma sma) regions_for_resetting}
-        | layout_ls(CCALL{name,args,rhos_for_result,res}) =
-	let
-	  val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map layout_aty res}
-	in
-	  HNODE{start=flatten1(t0) ^ " = ccall(\"" ^ name ^ "\", <", 
-		finish=">)",
-		childsep=RIGHT ",",
-		children=(map layout_aty args) @ (map layout_aty rhos_for_result)}
+	  (case ls of
+	     ASSIGN{pat,bind} => HNODE{start="",
+				       finish="",
+				       childsep=RIGHT " = ",
+				       children=[LEAF(pr_aty pat),layout_se pr_aty bind]}
+	   | FLUSH(aty,offset) => LEAF("flush(" ^ pr_aty aty ^ "," ^ pr_offset offset ^ ")")
+	   | FETCH(aty,offset) => LEAF("fetch(" ^ pr_aty aty ^ "," ^ pr_offset offset ^ ")")
+	   | FNJMP{opr,args,clos,free,res} =>
+	       let
+		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
+		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
+		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
+		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
+	       in
+		 HNODE{start=flatten1(t0) ^ " = " ^ pr_aty opr ^ "_fnjmp ",
+		       finish="", childsep=RIGHT " ",
+		       children=[t1,t2,t3]}
+	       end
+	   | FNCALL{opr,args,clos,free,res} =>
+	       let
+		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
+		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
+		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
+		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
+	       in
+		 HNODE{start=flatten1(t0) ^ " = " ^ pr_aty opr ^ "_fncall ",
+		       finish="", childsep=RIGHT " ",
+		       children=[t1,t2,t3]}
+	       end
+	   | JMP{opr,args,reg_vec,reg_args,clos,free,res} =>
+	       let
+		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
+		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
+		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
+		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
+		 val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) reg_args}
+		 val t5 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty reg_vec]}
+	       in
+		 HNODE{start=flatten1(t0) ^ " = " ^ Labels.pr_label opr ^ "_funjmp ",
+		       finish="", childsep=RIGHT " ",
+		       children=[t1,t5,t4,t2,t3]}
+	       end
+	   | FUNCALL{opr,args,reg_vec,reg_args,clos,free,res} =>
+	       let
+		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
+		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
+		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
+		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
+		 val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) reg_args}
+		 val t5 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty reg_vec]}
+	       in
+		 HNODE{start=flatten1(t0) ^ " = " ^ Labels.pr_label opr ^ "_funcall ",
+		       finish="", childsep=RIGHT " ",
+		       children=[t1,t5,t4,t2,t3]}
+	       end
+	   | LETREGION{rhos,body} =>
+	       let
+		 fun remove_finite_rhos([]) = []
+		   | remove_finite_rhos(((place,PhysSizeInf.WORDS i),offset)::rest) = remove_finite_rhos rest
+		   | remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
+		 val rhos = if simplify then remove_finite_rhos rhos else rhos
+		 val binders = HNODE{start = "", 
+				     finish = "", 
+				     childsep = RIGHT", ", 
+				     children = map (fn (b,offset) => LEAF(pr_binder b ^ pr_offset offset)) rhos}
+	       in 
+		 (case rhos of
+		    [] => layout_lss_local body
+		  | _ => NODE{start= "letregion " ^ flatten1(binders) ^ " in ",
+			      finish= "end (*" ^ flatten1(binders) ^ "*)",
+			      childsep= NOSEP,
+			      indent=2,
+			      children= [layout_lss_local body]})
+	       end
+	   | SCOPE{pat=[],scope} => layout_lss_local scope
+	   | SCOPE{pat,scope} =>
+	       if simplify then
+		 layout_lss_local scope
+	       else
+		 let
+		   val lay_pat = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (fn sty => LEAF(pr_sty sty)) pat}
+		 in
+		   PP.NODE{start= "scope " ^ flatten1(lay_pat) ^ " in ",
+			   finish=" end ",
+			   indent=2,
+			   childsep=NOSEP,
+			   children=[layout_lss_local scope]}
+		 end
+	   | HANDLE{default,handl,handl_return,offset} =>
+		 let
+		   val node_exn = NODE{start="[",finish="]",childsep=RIGHT"] handlereturn [", indent=2,children=[layout_lss_local handl,layout_lss_local handl_return]}
+		 in
+		   NODE{start="[",finish="",childsep=RIGHT("] handle " ^ pr_offset offset ^ " "),indent=2,children=[layout_lss_local default,node_exn]}
+		 end
+	   | RAISE{arg,defined_atys} => PP.LEAF("raise " ^ pr_aty arg) (* Defined atys not written 08/12/1998, Niels*)
+	   | SWITCH_I sw => layout_switch pr_aty layout_lss_local (Int.toString) sw
+	   | SWITCH_S sw => layout_switch pr_aty layout_lss_local (fn s => s) sw
+	   | SWITCH_C sw =>
+		 layout_switch pr_aty layout_lss_local (fn (con,con_kind) => Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")") sw
+           | SWITCH_E sw => layout_switch pr_aty layout_lss_local Excon.pr_excon sw
+	   | RESET_REGIONS{force=true,regions_for_resetting} =>
+		 HNODE{start="force reset regions",
+		       finish="",
+		       childsep=RIGHT ",",
+		       children=map (layout_sma pr_aty) regions_for_resetting}
+	   | RESET_REGIONS{force=false,regions_for_resetting} =>
+		 HNODE{start="reset regions",
+		       finish="",
+		       childsep=RIGHT ",",
+		       children=map (layout_sma pr_aty) regions_for_resetting}
+	   | CCALL{name,args,rhos_for_result,res} =>
+		 let
+		   val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
+		 in
+		   HNODE{start=flatten1(t0) ^ " = ccall(\"" ^ name ^ "\", <", 
+			 finish=">)",
+			 childsep=RIGHT ",",
+			 children=(map (layout_aty pr_aty) args) @ (map (layout_aty pr_aty) rhos_for_result)}
+		 end)
 	end
       
-      and layout_lss lss = NODE{start="",
-				finish= "",
-				indent= 0,
-				childsep= RIGHT ";",
-				children= map layout_ls lss}
+      and layout_lss pr_sty pr_offset pr_aty simplify lss = 
+	NODE{start="",
+	     finish= "",
+	     indent= 0,
+	     childsep= RIGHT ";",
+	     children= map (layout_ls pr_sty pr_offset pr_aty simplify) lss}
 
-      and pr_sma(ATTOP_LI(aty,pp)) = "attop_li " ^ pr_aty aty ^ " " ^ pr_pp pp
-	| pr_sma(ATTOP_LF(aty,pp)) = "attop_lf " ^ pr_aty aty ^ " " ^ pr_pp pp
-	| pr_sma(ATTOP_FI(aty,pp)) = "attop_fi " ^ pr_aty aty ^ " " ^ pr_pp pp
-	| pr_sma(ATTOP_FF(aty,pp)) = "attop_ff " ^ pr_aty aty ^ " " ^ pr_pp pp
-	| pr_sma(ATBOT_LI(aty,pp)) = "atbot_li " ^ pr_aty aty ^ " " ^ pr_pp pp
-	| pr_sma(ATBOT_LF(aty,pp)) = "atbot_lf " ^ pr_aty aty ^ " " ^ pr_pp pp
-	| pr_sma(SAT_FI(aty,pp))   = "sat_fi " ^ pr_aty aty ^ " " ^ pr_pp pp
-	| pr_sma(SAT_FF(aty,pp))   = "sat_ff " ^ pr_aty aty ^ " " ^ pr_pp pp
-	| pr_sma(IGNORE)            = "ignore "
+      and pr_sma pr_aty sma =
+	(case sma of
+	   ATTOP_LI(aty,pp) => "attop_li " ^ pr_aty aty ^ " " ^ pr_pp pp
+	 | ATTOP_LF(aty,pp) => "attop_lf " ^ pr_aty aty ^ " " ^ pr_pp pp
+	 | ATTOP_FI(aty,pp) => "attop_fi " ^ pr_aty aty ^ " " ^ pr_pp pp
+	 | ATTOP_FF(aty,pp) => "attop_ff " ^ pr_aty aty ^ " " ^ pr_pp pp
+	 | ATBOT_LI(aty,pp) => "atbot_li " ^ pr_aty aty ^ " " ^ pr_pp pp
+	 | ATBOT_LF(aty,pp) => "atbot_lf " ^ pr_aty aty ^ " " ^ pr_pp pp
+	 | SAT_FI(aty,pp)   => "sat_fi " ^ pr_aty aty ^ " " ^ pr_pp pp
+	 | SAT_FF(aty,pp)   => "sat_ff " ^ pr_aty aty ^ " " ^ pr_pp pp
+	 | IGNORE            => "ignore ")
 
-      and layout_sma sma = LEAF(pr_sma sma)
+      and layout_sma pr_aty sma = LEAF(pr_sma pr_aty sma)
 
-      fun layout_top_decl (FUN(lab,cc,lss)) =
+      fun layout_top_decl pr_sty pr_offset pr_aty simplify (FUN(lab,cc,lss)) =
           NODE{start = "FUN " ^ Labels.pr_label lab ^ "{" ^ CallConv.pr_cc cc ^ "}=", 
 	       finish = "", 
 	       indent = 2, 
 	       childsep = NOSEP, 
-	       children = [layout_lss lss]}
-      | layout_top_decl (FN(lab,cc,lss)) =
+	       children = [layout_lss pr_sty pr_offset pr_aty simplify lss]}
+      | layout_top_decl pr_sty pr_offset pr_aty simplify (FN(lab,cc,lss)) =
 	  NODE{start = "FN " ^ Labels.pr_label lab ^ "{" ^ CallConv.pr_cc cc ^ "}=", 
 	       finish = "", 
 	       indent = 2, 
-	       childsep = RIGHT ";", 
-	       children = map layout_ls lss}
+	       childsep = NOSEP,
+	       children = [layout_lss pr_sty pr_offset pr_aty simplify lss]}
 
-      fun layout_line_stmt ls = layout_ls ls
-    in
-      NODE{start="LineStmt program begin",
-	   finish="LineStmt program end",
-	   indent=2,
-	   childsep=NOSEP,
-	   children = map layout_top_decl top_decls}
-    end
+      fun layout_line_stmt' pr_sty pr_offset pr_aty simplify ls = layout_ls pr_sty pr_offset pr_aty simplify ls
+      fun layout_line_prg' pr_sty pr_offset pr_aty simplify top_decls =
+	NODE{start="LineStmt program begin",
+	     finish="LineStmt program end",
+	     indent=2,
+	     childsep=NOSEP,
+	     children = map (layout_top_decl pr_sty pr_offset pr_aty simplify) top_decls}
+  in
+    fun layout_line_prg pr_sty pr_offset pr_aty simplify top_decls = 
+      layout_line_prg' pr_sty pr_offset pr_aty simplify top_decls
+    fun layout_line_stmt pr_sty pr_offset pr_aty simplify ls =
+      layout_line_stmt' pr_sty pr_offset pr_aty simplify ls
+    fun pr_line_stmt pr_sty pr_offset pr_aty simplify ls =
+      PP.flatten1(layout_line_stmt' pr_sty pr_offset pr_aty simplify ls)
+  end
 
   (****************************************************************)
   (* Add Dynamic Flags                                            *)
@@ -740,8 +757,8 @@ struct
   (******************************)
   fun L {main_lab:label,
 	 code=clos_prg:ClosPrg,
-	 imports:label list,
-	 exports:label list} =
+	 imports:label list * label list,
+	 exports:label list * label list} =
     let
       val _ = chat "[Linearisation..."
       val line_prg = L_clos_prg clos_prg

@@ -211,8 +211,8 @@ struct
   in
     fun CO {main_lab:label,
 	     code=iff_prg: (StoreTypeIFF,unit,Atom) LinePrg,
-	     imports:label list,
-	     exports:label list} =
+	     imports:label list * label list,
+	     exports:label list * label list} =
       let
 	val _ = chat "[Calculate Offsets..."
 	val line_prg_co = foldr (fn (func,acc) => CO_top_decl func :: acc) [] iff_prg

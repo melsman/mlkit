@@ -28,8 +28,8 @@ signature CALC_OFFSET =
       | FLUSHED_CALLEE_STY of lvar * offset
       | FLUSHED_CALLER_STY of lvar * lvar * offset
 
-    val CO : {main_lab:label,code:(StoreTypeIFF,unit,Atom) LinePrg,imports:label list,exports:label list} ->
-             {main_lab:label,code:(StoreType,offset,Atom) LinePrg,imports:label list,exports:label list}
+    val CO : {main_lab:label,code:(StoreTypeIFF,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
+             {main_lab:label,code:(StoreType,offset,Atom) LinePrg,imports:label list * label list,exports:label list * label list}
 
     val pr_sty    : StoreType -> string
     val pr_offset : offset -> string

@@ -47,7 +47,7 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     fun size_of_real ()  = if !tag_values then 4 else 2
     fun size_of_ref ()   = if !tag_values then 2 else 1
     fun size_of_record l = if !tag_values then List.length l + 1 else List.length l
-    fun size_of_reg_desc() = 3
+    fun size_of_reg_desc() = 4
     fun size_of_handle() = 4
 
     val exn_DIV_lab      = Labels.new_named("exnDIV")       (* Global exceptions are globally allocated. *)

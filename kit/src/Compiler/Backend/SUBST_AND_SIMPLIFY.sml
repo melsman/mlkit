@@ -29,10 +29,16 @@ signature SUBST_AND_SIMPLIFY =
       | INTEGER_ATY      of int 
       | UNIT_ATY
 
-    val SS : {main_lab:label,code:(StoreTypeCO,offset,AtomCO) LinePrg,imports:label list,exports:label list} ->
-             {main_lab:label,code:(StoreTypeCO,offset,Aty) LinePrg,imports:label list,exports:label list}
 
+    val SS : {main_lab:label,code:(StoreTypeCO,offset,AtomCO) LinePrg,imports:label list * label list,exports:label list * label list} ->
+             {main_lab:label,code:(StoreTypeCO,offset,Aty) LinePrg,imports:label list * label list,exports:label list * label list}
 
+    (****************)
+    (* PRETTY PRINT *)
+    (****************)
+    val pr_sty    : StoreTypeCO -> string
+    val pr_offset : offset -> string
+    val pr_aty    : Aty -> string
   end
 
 
