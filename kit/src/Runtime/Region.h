@@ -72,6 +72,14 @@ RegionPageMap* regionPageMapNew(void);
 extern RegionPageMap* rpMap;
 #endif /* REGION_PAGE_STAT */
 
+/* 
+ * Number of words that can be allocated in each regionpage and number
+ * of words in the header part of each region page.
+ *
+ * ALLOCATABLE_WORDS_IN_REGION_PAGE + HEADER_WORDS_IN_REGION_PAGE must
+ * be one 1Kb - used by GC.
+ */
+
 #ifdef ENABLE_GEN_GC
 #define ALLOCATABLE_WORDS_IN_REGION_PAGE 253
 #define HEADER_WORDS_IN_REGION_PAGE 3
@@ -79,10 +87,6 @@ extern RegionPageMap* rpMap;
 #define ALLOCATABLE_WORDS_IN_REGION_PAGE 254
 #define HEADER_WORDS_IN_REGION_PAGE 2 
 #endif /* ENABLE_GEN_GC */
-
-/* Number of words that can be allocated in each regionpage.  If you
- * change this, remember also to change
- * src/Compiler/Backend/X86/BackendInfo.sml. */
 
 typedef struct rp {
   struct rp *n;                   /* NULL or pointer to next page. */
@@ -92,15 +96,6 @@ typedef struct rp {
   #endif /* ENABLE_GEN_GC */
   int i[ALLOCATABLE_WORDS_IN_REGION_PAGE];  /* space for data*/
 } Rp;
-
-
-
-/* Number of words in the header part of a region page. If you 
- * change this, remember also to change
- * src/Compiler/Backend/X86/BackendInfo.sml.
- *
- * ALLOCATABLE_WORDS_IN_REGION_PAGE + HEADER_WORDS_IN_REGION_PAGE must
- * be one 1Kb, used by GC.  */
 
 #define is_rp_aligned(rp)  (((rp) & 0x3FF) == 0)
 

@@ -821,6 +821,7 @@ int *allocGen (Gen *gen, int n) {
   if ( n > ALLOCATABLE_WORDS_IN_REGION_PAGE )   // notice: n is in words
     {
       Lobjs* lobjs;
+      // fprintf(stderr,"Allocating large object of %d words\n", n);
       r = get_ro_from_gen(*gen);
       lobjs = alloc_lobjs(n);
       lobjs->next = set_lobj_bit(r->lobjs);
