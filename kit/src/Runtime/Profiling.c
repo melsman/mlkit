@@ -217,9 +217,9 @@ void profTabDecrAllocNow(int regionId, int i, char *s) {
       /* checkProfTab("profTabDecrAllocNow.exit"); */
       return;
     };
-  printf("Error.%s: regionId %d do not exist in profiling table\n", s, regionId);
-  printf("profTabCountDebug = %d, profTabSize = %d\n", profTabCountDebug, 
-	 profTabSize());
+  fprintf(stderr, "Error.%s: regionId %d does not exist in profiling table\n", s, regionId);
+  fprintf(stderr, "profTabCountDebug = %d, profTabSize = %d\n", profTabCountDebug, 
+	  profTabSize());
   printProfTab();
   perror("profTabDecrAllocNow error\n");
   exit(-1);

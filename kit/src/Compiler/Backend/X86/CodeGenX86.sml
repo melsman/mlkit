@@ -1967,19 +1967,32 @@ struct
 		     let val offset = if BI.tag_values() then 1 else 0
 		         val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 			 fun maybe_tag_value C =
-			   if BI.tag_values() andalso tag_pairs_p() then  (* a better name than tag_pairs_p would be great; mael 2003-05-15 *)
+			   (* tag_pairs_p is false if pairs, tripples, tables and refs are untagged *)
+			   if BI.tag_values() andalso tag_pairs_p() then  
 			     I.movl(I (int_to_string(Word32.toInt(BI.tag_ref(false)))), 
 				    D("0", reg_for_result)) :: C
 			   else C
+			 fun allocate (reg_for_result,C) =
+			   if BI.tag_values() andalso not (tag_pairs_p()) then
+			     alloc_untagged_value_ap_kill_tmp01(alloc,reg_for_result,BI.size_of_ref()-1,size_ff,C)
+			   else
+			     alloc_ap_kill_tmp01(alloc,reg_for_result,BI.size_of_ref(),size_ff,C)
+(*			 val size_of_ref = to be removed 2003-08-26, nh
+			   if BI.tag_values() andalso not (tag_pairs_p()) then
+			     BI.size_of_ref() - 1
+			   else
+			     BI.size_of_ref()*)
 		     in
 		       if SS.eq_aty(pat,aty) then (* We must preserve aty *)
-			 alloc_ap_kill_tmp01(alloc,tmp_reg1,BI.size_of_ref(),size_ff,
-			 store_aty_in_reg_record(aty,tmp_reg0,tmp_reg1,WORDS offset,size_ff,
-			 copy(tmp_reg1,reg_for_result,maybe_tag_value C')))
+			 (*alloc_ap_kill_tmp01(alloc,tmp_reg1,size_of_ref,size_ff, to be removed 2003-08-26, nh*)
+                         allocate (tmp_reg1,
+				   store_aty_in_reg_record(aty,tmp_reg0,tmp_reg1,WORDS offset,size_ff,
+							   copy(tmp_reg1,reg_for_result,maybe_tag_value C')))
 		       else
-			 alloc_ap_kill_tmp01(alloc,reg_for_result,BI.size_of_ref(),size_ff,
-		         store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,WORDS offset,size_ff,
-		         maybe_tag_value C'))
+			 (*alloc_ap_kill_tmp01(alloc,reg_for_result,size_of_ref,size_ff,to be removed 2003-08-26, nh*)
+                         allocate (reg_for_result,
+				   store_aty_in_reg_record(aty,tmp_reg0,reg_for_result,WORDS offset,size_ff,
+							   maybe_tag_value C'))
 		     end
 		    | LS.ASSIGNREF(alloc,aty1,aty2) =>
 		     let 

@@ -487,7 +487,7 @@ allocated_bytes_in_region(Region r)
 }
 
 static inline int
-allocated_bytes_in_pairrefgen(Gen *gen)
+allocated_bytes_in_pairgen(Gen *gen)
 {
   Rp* rp;
   int n = 0;
@@ -503,12 +503,39 @@ allocated_bytes_in_pairrefgen(Gen *gen)
 }
 
 static int
-allocated_bytes_in_pairrefregion(Ro* r)
+allocated_bytes_in_pairregion(Ro* r)
 {
   #ifdef ENABLE_GEN_GC
-    return allocated_bytes_in_pairrefgen(&(r->g0)) + allocated_bytes_in_pairrefgen(&(r->g1));
+    return allocated_bytes_in_pairgen(&(r->g0)) + allocated_bytes_in_pairgen(&(r->g1));
   #else  
-    return allocated_bytes_in_pairrefgen(&(r->g0));
+    return allocated_bytes_in_pairgen(&(r->g0));
+  #endif /* ENABLE_GEN_GC */
+}
+
+
+static inline int
+allocated_bytes_in_refgen(Gen *gen)
+{
+  Rp* rp;
+  int n = 0;
+  for ( rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
+    {
+      if ( clear_tospace_bit(rp->n) )
+	// untagges refs occupies 1 word so entire region page is full
+	n += 4 * ALLOCATABLE_WORDS_IN_REGION_PAGE;  // not last page
+      else
+	n += 4 * ((gen->a) - (rp->i));  // last page
+    }
+  return n;
+}
+
+static int
+allocated_bytes_in_refregion(Ro* r)
+{
+  #ifdef ENABLE_GEN_GC
+    return allocated_bytes_in_refgen(&(r->g0)) + allocated_bytes_in_refgen(&(r->g1));
+  #else  
+    return allocated_bytes_in_refgen(&(r->g0));
   #endif /* ENABLE_GEN_GC */
 }
 
@@ -547,8 +574,10 @@ allocated_bytes_in_regions(void)
     {
       switch (rtype(r->g0)) { // g0 and g1 has the same rtype
       case RTYPE_PAIR:
+	n += allocated_bytes_in_pairregion(r);
+	break;
       case RTYPE_REF:
-	n += allocated_bytes_in_pairrefregion(r);
+	n += allocated_bytes_in_refregion(r);
 	break;
       case RTYPE_TRIPLE:
 	n += allocated_bytes_in_tripleregion(r);
@@ -1202,6 +1231,44 @@ gc(unsigned int **sp, unsigned int reg_map)
     *value_ptr = evacuate(*value_ptr);
     // printf("evacuating value in data labels end\n");
   }
+
+
+  //  #ifdef ENABLE_GEN_GC
+  //    /* If minor gc, then refs and tables in g1 and lobjs are also 
+  //       part of the root-set */
+  //    /* ToDo: GenGC insert so only done in minor gc */
+  //    for ( r = TOP_REGION ; r ; r = r->p ) {
+  //      switch ( rtype(r->g1) ) {
+  //      case RTYPE_REF: {
+  //	value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
+  //	// evacuate content of refs in g1
+  //	while ( ((int *)value_ptr+1) != gen->a ) 
+  //	    {
+  //	      rp = get_rp_header(s);
+  //#if PROFILING
+  //	      s += sizeObjectDesc;
+  //#endif
+  //	      *(s+1) = evacuate(*(s+1));
+  //	      s += 1;
+  //	      
+  //	      /* If at end of region page or the region page is full, go 
+  //	       * to next region page. */
+  //	      if ((((int *)s+1) != gen->a) && 
+  //		  ((((int *)s+1) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+  //		   || (*((int *)s+1) == notPP)))
+  //		{
+  //		  s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE - 1;
+  //		}
+  //	    }
+  //		  /* ToDo: GenGC: slet check */
+  //
+      // is r a ref-region, then evacuate all objects in r->g0 and r->g1
+      //   check that lobjs is empty
+
+      // is r a table-region, then evacuate all objects in r->g0 and r->g1 and r->lobjs
+  //    }
+  //  #endif /* ENABLE_GEN_GC */
+
 
   do_scan_stack();
 
