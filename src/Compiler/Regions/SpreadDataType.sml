@@ -178,6 +178,7 @@ struct
   |  E.RECORDtype(types) => 
          foldr (uncurry plus) (0,[case types of [] => Effect.WORD_RT
                                | [_,_] => Effect.PAIR_RT 
+			       | [_,_,_] => Effect.TRIPLE_RT 
                                | _ => Effect.TOP_RT],zero) 
           (map (infer_arity_ty rse current_tynames) types)
   )

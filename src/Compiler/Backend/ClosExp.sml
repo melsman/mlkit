@@ -1463,6 +1463,9 @@ struct
 	 SOME Effect.WORD_RT   => Effect.toplevel_region_withtype_word
        | SOME Effect.STRING_RT => Effect.toplevel_region_withtype_string
        | SOME Effect.PAIR_RT   => Effect.toplevel_region_withtype_pair
+       | SOME Effect.ARRAY_RT  => Effect.toplevel_region_withtype_array
+       | SOME Effect.REF_RT    => Effect.toplevel_region_withtype_ref
+       | SOME Effect.TRIPLE_RT => Effect.toplevel_region_withtype_triple
        | SOME Effect.TOP_RT    => Effect.toplevel_region_withtype_top
        | SOME Effect.BOT_RT    => Effect.toplevel_region_withtype_bot
        | _ => die "drop_rho: no runtime-type")

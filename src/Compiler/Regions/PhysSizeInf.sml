@@ -545,14 +545,6 @@ functor PhysSizeInf(structure Name : NAME
 	  in 
 	    case place_atplace shared_clos
 	      of SOME place => (let val sz = fix_closure_size fvs
-(*debug
-				    fun hd nil = die "hd"
-				      | hd (x::_) = x
-				    val _ = if E.eq_effect(E.toplevel_region_withtype_top,place) then
-					print("function " ^ Lvars.pr_lvar (#lvar (hd functions)) 
-					      ^ " of size " ^ pr_phsize sz ^ "\n")
-					    else ()
-debug*)
 				in psi_add_place_size (place,sz);
 				map (fn {bind=TR(FN{body,...},_,_,_),...} => psi_tr env' body
 			              | _ => die "psi_tr.FIX.FN expected") functions;
@@ -564,14 +556,6 @@ debug*)
 	  let val actuals = map (fn atp => case place_atplace atp
 					     of SOME place => place
 					      | NONE => die "APP.actual atp is IGNORE.") atps
-(*
-	      val _ = case alloc
-			of SOME atp =>
-			  (case place_atplace atp
-			     of SOME place => psi_add_place_size (place, size_region_vector actuals)
-			      | NONE => die "APP.atp is IGNORE")
-			 | NONE => () (* region vector empty or unboxed.~~ *)  
-*)
 	  in case lookup_env env lvar                               		  
 	       (* If lvar is bound in the program we add edges
 		* between formals and actuals, otherwise we add

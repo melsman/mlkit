@@ -44,14 +44,6 @@ signature NAME =
     val reset : unit -> unit
     val commit : unit -> unit
 
-    (* Operations on lists of elements that have names as components *) 
-(*
-    val union : ('a -> name) -> 'a list * 'a list -> 'a list
-    val diff : ('a -> name) -> 'a list * 'a list -> 'a list
-    val disjoint : ('a -> name) -> 'a list * 'a list -> bool
-    val elim_dubs : ('a -> name) -> 'a list -> 'a list
-*)
-
     (* Because the runtime system needs to know about the labels
      * of certain kinds of symbols, we predefine some names here *)
 
@@ -59,11 +51,14 @@ signature NAME =
     val reg_bot : name             (* name 1 *)
     val reg_string : name          (* name 2 *)
     val reg_pair : name            (* name 3 *)
+    val reg_array : name           (* name 4 *)
+    val reg_ref : name             (* name 5 *)
+    val reg_triple : name          (* name 6 *)
 
-    val exn_DIV : name             (* name 4 *)
-    val exn_MATCH : name           (* name 5 *)
-    val exn_BIND : name            (* name 6 *)
-    val exn_OVERFLOW : name        (* name 7 *)
-    val exn_INTERRUPT : name       (* name 8 *)
+    val exn_DIV : name             (* name 7 *)
+    val exn_MATCH : name           (* name 8 *)
+    val exn_BIND : name            (* name 9 *)
+    val exn_OVERFLOW : name        (* name 10 *)
+    val exn_INTERRUPT : name       (* name 11 *)
 
   end

@@ -275,7 +275,7 @@ void printRegionStack() {
 int NoOfPagesInRegion(Ro *r) {
   int i;
   Klump *rp;
-  for ( i = 0, rp = clear_pairregion(r->fp) ; rp ; rp = clear_tospace_bit(rp->n) ) 
+  for ( i = 0, rp = clear_rtype(r->fp) ; rp ; rp = clear_tospace_bit(rp->n) ) 
     i++;
   return i;
 }
@@ -359,9 +359,9 @@ Region allocateRegion(Region r
   rp = freelist;
   freelist = freelist->n;
 
-  REGION_PAGE_MAP_INCR(rp)   /* Niels - update frequency hashtable */
-
   FREELIST_MUTEX_UNLOCK;
+
+  REGION_PAGE_MAP_INCR(rp)   /* Niels - update frequency hashtable */
 
   rp->n = NULL;                  // First and last region page
   rp->r = r;                     // Point back To region descriptor
@@ -374,7 +374,6 @@ Region allocateRegion(Region r
   
   TOP_REGION = r;
 
-  // We have to set the infinitebit
   r = (Ro *)setInfiniteBit((int)r);
 
   debug(printf("]\n"));
@@ -385,40 +384,8 @@ Region allocateRegion(Region r
 #ifdef ENABLE_GC
 Region allocatePairRegion(Region r)
 {
-  Klump *rp;
-  r = clearStatusBits(r);
-
-  FREELIST_MUTEX_LOCK;
-
-  if ( freelist == NULL ) callSbrk();
-
-  rp_used++;
-  #ifdef SIMPLE_MEMPROF
-  rp_really_used++;
-  rp_max_check();
-  #endif
-
-  rp = freelist;
-  freelist = freelist->n;
-
-  FREELIST_MUTEX_UNLOCK;
-
-  REGION_PAGE_MAP_INCR(rp)       // Update frequency hashtable */
-
-  rp->n = NULL;                  // First and last region page
-  rp->r = r;                     // Point back To region descriptor
-
-  r->a = (int *)(&(rp->i));      // We allocate from i in the page
-  r->b = (int *)(rp+1);          // The border is after this page
-  r->p = TOP_REGION;	         // Push this region onto the region stack
-  r->fp = rp;                    // Update pointer to the first page
-  r->lobjs = NULL;               // The list of large objects is empty
-  
-  TOP_REGION = r;
-
-  set_pairregion(r);
-
-  r = (Region)setInfiniteBit((int)r);
+  r = allocateRegion(r);
+  set_pairregion(clearStatusBits(r));
   return r;
 }
 #endif /*ENABLE_GC*/
@@ -516,7 +483,7 @@ void deallocateRegion(
 
   FREELIST_MUTEX_LOCK;
   (((Klump *)TOP_REGION->b)-1)->n = freelist;
-  freelist = clear_pairregion(TOP_REGION->fp);
+  freelist = clear_rtype(TOP_REGION->fp);
   FREELIST_MUTEX_UNLOCK;
 
   TOP_REGION=TOP_REGION->p;
@@ -703,7 +670,7 @@ void alloc_new_block(Ro *r) {
   np = freelist;
   freelist = freelist->n;
 
-  REGION_PAGE_MAP_INCR(np); /* update frequency hashtable */
+  REGION_PAGE_MAP_INCR(np); // update frequency hashtable
 
   FREELIST_MUTEX_UNLOCK;
 
@@ -713,25 +680,27 @@ void alloc_new_block(Ro *r) {
   else 
 #endif
     np->n = NULL;
-  np->r = r;      /* We Point Back To Region Descriptor. Used By GC. */
+  np->r = r;         // Install origin-pointer - used by GC
 
-  if ( clear_pairregion(r->fp) )
+  if ( clear_rtype(r->fp) )
 #ifdef ENABLE_GC
     if ( doing_gc )
       (((Klump *)(r->b))-1)->n = set_tospace_bit(np); /* Updates the next field in the last region page. */
     else
 #endif
       (((Klump *)(r->b))-1)->n = np; /* Updates the next field in the last region page. */
-  else
+  else {
 #ifdef ENABLE_GC
-    if ( is_pairregion(r) )
+    int rt;
+    if ( rt = rtype(r) )
       {
 	r->fp = np;              /* Update pointer to the first page. */
-	set_pairregion(r);
+	set_rtype(r,rt);
       }
     else 
 #endif
       r->fp = np;                /* Update pointer to the first page. */
+  }
   r->a = (int *)(&(np->i));      /* Updates the allocation pointer. */
   r->b = (int *)(np+1);          /* Updates the border pointer. */
 }
@@ -867,7 +836,7 @@ resetRegion(Region rAdr)
 #endif
 
   /* There is always at least one page in a region. */
-  if ( (clear_pairregion(r->fp))->n ) { /* There are more than one page in the region. */
+  if ( (clear_rtype(r->fp))->n ) { /* There are more than one page in the region. */
 
     #ifdef ENABLE_GC
     rp_used--;              // at least one page is freed; see comment in alloc_new_block
@@ -879,13 +848,13 @@ resetRegion(Region rAdr)
 
     FREELIST_MUTEX_LOCK;
     (((Klump *)r->b)-1)->n = freelist;
-    freelist = (clear_pairregion(r->fp))->n;
+    freelist = (clear_rtype(r->fp))->n;
     FREELIST_MUTEX_UNLOCK;
-    (clear_pairregion(r->fp))->n = NULL;
+    (clear_rtype(r->fp))->n = NULL;
   }
 
-  r->a = (int *)(&(clear_pairregion(r->fp))->i);   /* beginning of klump in first page */
-  r->b = (int *)((clear_pairregion(r->fp))+1);     /* end of klump in first page */
+  r->a = (int *)(&(clear_rtype(r->fp))->i);   /* beginning of klump in first page */
+  r->b = (int *)((clear_rtype(r->fp))+1);     /* end of klump in first page */
 
   free_lobjs(r->lobjs);
   r->lobjs = NULL;

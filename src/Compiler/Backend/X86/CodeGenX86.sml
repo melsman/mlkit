@@ -132,7 +132,10 @@ struct
     val global_region_labs = 
       [(Effect.toplevel_region_withtype_top, BI.toplevel_region_withtype_top_lab),
        (Effect.toplevel_region_withtype_string, BI.toplevel_region_withtype_string_lab),
-       (Effect.toplevel_region_withtype_pair, BI.toplevel_region_withtype_pair_lab)]
+       (Effect.toplevel_region_withtype_pair, BI.toplevel_region_withtype_pair_lab),
+       (Effect.toplevel_region_withtype_array, BI.toplevel_region_withtype_array_lab),
+       (Effect.toplevel_region_withtype_ref, BI.toplevel_region_withtype_ref_lab),
+       (Effect.toplevel_region_withtype_triple, BI.toplevel_region_withtype_triple_lab)]
 
     (* Labels Local To This Compilation Unit *)
     fun new_local_lab name = LocalLab (Labels.new_named name)

@@ -27,12 +27,15 @@ functor AddressLabels(structure Name : NAME) : ADDRESS_LABELS =
     val reg_bot_lab = (Name.reg_bot, "reg_bot")                   (* label 1 *)
     val reg_string_lab = (Name.reg_string, "reg_string")          (* label 2 *)
     val reg_pair_lab = (Name.reg_pair, "reg_pair")                (* label 3 *)
+    val reg_array_lab = (Name.reg_array, "reg_array")             (* label 4 *)
+    val reg_ref_lab = (Name.reg_ref, "reg_ref")                   (* label 5 *)
+    val reg_triple_lab = (Name.reg_triple, "reg_triple")          (* label 6 *)
 
-    val exn_DIV_lab = (Name.exn_DIV, "exn_DIV")                   (* label 4 *)
-    val exn_MATCH_lab = (Name.exn_MATCH, "exn_MATCH")             (* label 5 *)
-    val exn_BIND_lab = (Name.exn_BIND, "exn_BIND")                (* label 6 *)
-    val exn_OVERFLOW_lab = (Name.exn_OVERFLOW, "exn_OVERFLOW")    (* label 7 *)
-    val exn_INTERRUPT_lab = (Name.exn_INTERRUPT, "exn_INTERRUPT") (* label 8 *)
+    val exn_DIV_lab = (Name.exn_DIV, "exn_DIV")                   (* label 7 *)
+    val exn_MATCH_lab = (Name.exn_MATCH, "exn_MATCH")             (* label 8 *)
+    val exn_BIND_lab = (Name.exn_BIND, "exn_BIND")                (* label 9 *)
+    val exn_OVERFLOW_lab = (Name.exn_OVERFLOW, "exn_OVERFLOW")    (* label 10 *)
+    val exn_INTERRUPT_lab = (Name.exn_INTERRUPT, "exn_INTERRUPT") (* label 11 *)
       
   end
 

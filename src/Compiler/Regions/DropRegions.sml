@@ -59,6 +59,9 @@ functor DropRegions(structure Name : NAME
     fun pr_rt Eff.WORD_RT = "word"
       | pr_rt Eff.STRING_RT = "string"
       | pr_rt Eff.PAIR_RT = "pair"
+      | pr_rt Eff.ARRAY_RT = "array"
+      | pr_rt Eff.REF_RT = "ref"
+      | pr_rt Eff.TRIPLE_RT = "triple"
       | pr_rt Eff.BOT_RT = "bot"
       | pr_rt Eff.TOP_RT = "top"
 
@@ -245,6 +248,9 @@ functor DropRegions(structure Name : NAME
 		    (case Eff.get_place_ty (Eff.find rho)
 		       of SOME Eff.STRING_RT => Eff.toplevel_region_withtype_string
 			| SOME Eff.PAIR_RT => Eff.toplevel_region_withtype_pair
+			| SOME Eff.ARRAY_RT => Eff.toplevel_region_withtype_array
+			| SOME Eff.REF_RT => Eff.toplevel_region_withtype_ref
+			| SOME Eff.TRIPLE_RT => Eff.toplevel_region_withtype_triple
 			| SOME _ => Eff.toplevel_region_withtype_top
 			| NONE => die "S_atp.lookup")
 		   | _ => atp

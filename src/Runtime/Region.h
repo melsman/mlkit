@@ -207,17 +207,50 @@ typedef Ro* Region;
 #define descRo_a(rAddr,w) (rAddr->a = rAddr->a - w) /* Used in IO.inputStream */
 
 
-/* When garbage collection is enabled, a bit in the region descriptor
- * is used to determine if a region holds pairs only, which makes it
- * possible to use a tag-free scheme for pairs.  */
+// When GC is enabled, bits in the region descriptor (in the r->fp pointer) 
+// are used to tell the type of values in the region, in the
+// case that the values are untagged. Because region pages are aligned
+// on 1k boundaries, plenty of bits are available in the r->fp pointer.
+// We use the three least significant bits:
+//
+//     000    (hex 0x0)   ordinary tagged values
+//     001    (hex 0x1)   pairs
+//     010    (hex 0x2)   reals
+//     011    (hex 0x3)   refs
+//     111    (hex 0x7)   arrays (value is tagged, but the region type 
+//                                is needed by generational collector)
 
 #ifdef ENABLE_GC
-#define is_pairregion(rd)           ((unsigned int)((rd)->fp) & 0x01)
-#define set_pairregion(rd)          (rd->fp = (Klump*)(((unsigned int)((rd)->fp)) | 0x01))
-#define clear_pairregion(fp)        ((Klump*)((unsigned int)(fp) & 0xFFFFFFFE))
+#define RTYPE_PAIR          0x1
+#define RTYPE_REAL          0x2
+#define RTYPE_REF           0x3
+#define RTYPE_ARRAY         0x7
+#define rtype(rd)           ((unsigned int)((rd)->fp) & 0x07)
+#define clear_rtype(fp)     ((Klump*)((unsigned int)(fp) & 0xFFFFFFF8))
+#define is_pairregion(rd)   (rtype(rd) == RTYPE_PAIR)
+#define is_realregion(rd)   (rtype(rd) == RTYPE_REAL)
+#define is_refregion(rd)    (rtype(rd) == RTYPE_REF)
+#define is_arrayregion(rd)  (rtype(rd) == RTYPE_ARRAY)
+#define set_rtype(rd,rt)    ((rd)->fp = (Klump*)(((unsigned int)((rd)->fp)) | (rt)))
+#define set_pairregion(rd)  (set_rtype((rd),RTYPE_PAIR))
+#define set_realregion(rd)  (set_rtype((rd),RTYPE_REAL))
+#define set_refregion(rd)   (set_rtype((rd),RTYPE_REF))
+#define set_arrayregion(rd) (set_rtype((rd),RTYPE_ARRAY))
 #else
-#define clear_pairregion(fp)        (fp)
+#define clear_rtype(fp)     (fp)
 #endif /*ENABLE_GC*/
+
+// /* When garbage collection is enabled, a bit in the region descriptor
+//  * is used to determine if a region holds pairs only, which makes it
+//  * possible to use a tag-free scheme for pairs.  */
+
+// #ifdef ENABLE_GC
+// #define is_pairregion(rd)           ((unsigned int)((rd)->fp) & 0x01)
+// #define set_pairregion(rd)          ((rd)->fp = (Klump*)(((unsigned int)((rd)->fp)) | 0x01))
+// #define clear_pairregion(fp)        ((Klump*)((unsigned int)(fp) & 0xFFFFFFFE))
+// #else
+// #define clear_pairregion(fp)        (fp)
+// #endif /*ENABLE_GC*/
 
 /*
 Region polymorphism

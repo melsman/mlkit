@@ -174,11 +174,17 @@ struct
          SOME Eff.WORD_RT   => add_edge_iter(rho,Eff.toplevel_region_withtype_word)
        | SOME Eff.STRING_RT => add_edge_iter(rho,Eff.toplevel_region_withtype_string)
        | SOME Eff.PAIR_RT   => add_edge_iter(rho,Eff.toplevel_region_withtype_pair)
+       | SOME Eff.ARRAY_RT  => add_edge_iter(rho,Eff.toplevel_region_withtype_array)
+       | SOME Eff.REF_RT    => add_edge_iter(rho,Eff.toplevel_region_withtype_ref)
+       | SOME Eff.TRIPLE_RT => add_edge_iter(rho,Eff.toplevel_region_withtype_triple)
        | SOME Eff.TOP_RT    => add_edge_iter(rho,Eff.toplevel_region_withtype_top)
        | SOME Eff.BOT_RT => (add_edge_iter(rho,Eff.toplevel_region_withtype_bot);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_word);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_string);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_pair);
+                             add_edge_iter(rho,Eff.toplevel_region_withtype_array);
+                             add_edge_iter(rho,Eff.toplevel_region_withtype_ref);
+                             add_edge_iter(rho,Eff.toplevel_region_withtype_triple);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_top))
        | NONE => die "connect_to_global"
 
