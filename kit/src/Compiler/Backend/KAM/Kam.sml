@@ -10,64 +10,12 @@ functor Kam(structure Labels : ADDRESS_LABELS
     (***********)
     fun die s  = Crash.impossible ("KAM." ^ s)
 
-(*    fun is_im5  n = n <    16 andalso n >=    ~16
-    fun is_im11 n = n <  1024 andalso n >=  ~1024
-    fun is_im12 n = n <  2048 andalso n >=  ~2048
-    fun is_im14 n = n <  8192 andalso n >=  ~8192
-    fun is_im17 n = n < 65536 andalso n >= ~65536
-    fun is_im19 n = n < 262144 andalso n >= ~262144
- 18/09-2000, Niels *)
-
     (*----------------------------------------------------------*)
     (*                          Code                            *)
     (*----------------------------------------------------------*)
 
     type label = Labels.label
     fun eq_lab(l1,l2) = Labels.eq(l1,l2)
-
-(*    datatype lab = 
-        DatLab of label      (* For data to propagate across program units *)
-      | LocalLab of label    (* Local label inside a block *)
-      | NameLab of string    (* For ml strings, jumps to runtime system,
-			        code label, finish label, etc. *)
-      | MLFunLab of label    (* Labels on ML Functions *)
-
-    fun eq_lab (DatLab label1, DatLab label2) = Labels.eq(label1,label2)
-      | eq_lab (LocalLab label1, LocalLab label2) = Labels.eq(label1,label2)
-      | eq_lab (NameLab s1, NameLab s2) = s1 = s2
-      | eq_lab (MLFunLab label1, MLFunLab label2) = Labels.eq(label1,label2)
-      | eq_lab _ = false 18/09-2000, Niels *)
-
-(*    datatype cond = NEVER
-		  | ALWAYS
-		  | EQUAL
-		  | NOTEQUAL
-		  | GREATERTHAN
-		  | GREATEREQUAL
-		  | LESSTHAN
-		  | LESSEQUAL
-                  | GREATERTHAN_UNSIGNED
-                  | GREATEREQUAL_UNSIGNED
-                  | LESSTHAN_UNSIGNED
-                  | LESSEQUAL_UNSIGNED
-		  | ODD
-		  | EVEN
-18/09-2000, Niels *)
-(*    fun revCond NEVER = ALWAYS
-      | revCond ALWAYS = NEVER
-      | revCond EQUAL = NOTEQUAL
-      | revCond NOTEQUAL = EQUAL
-      | revCond GREATERTHAN = LESSEQUAL
-      | revCond GREATEREQUAL = LESSTHAN
-      | revCond LESSTHAN = GREATEREQUAL
-      | revCond LESSEQUAL = GREATERTHAN
-      | revCond GREATERTHAN_UNSIGNED = LESSEQUAL_UNSIGNED
-      | revCond GREATEREQUAL_UNSIGNED = LESSTHAN_UNSIGNED
-      | revCond LESSTHAN_UNSIGNED = GREATEREQUAL_UNSIGNED
-      | revCond LESSEQUAL_UNSIGNED = GREATERTHAN_UNSIGNED
-      | revCond ODD = EVEN
-      | revCond EVEN = ODD
-18/09-2000, Niels *)
 
     datatype KamInst = 
         Alloc of int
@@ -99,7 +47,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | StackAddr of int * string         (* string for debug only *)
       | EnvToAcc
 
-      |	ImmedInt of string
+      |	ImmedInt of Int32.int
       | ImmedString of string
       | ImmedReal of string
 	
@@ -117,11 +65,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | Label of label
       | JmpRel of label
-(*
-      | IfNotEqJmpRel of label
-      | IfLessThanJmpRel of label
-      | IfGreaterThanJmpRel of label
-*)
+
       | IfNotEqJmpRelImmed of label * Int32.int
       | IfLessThanJmpRelImmed of label * Int32.int
       | IfGreaterThanJmpRelImmed of label * Int32.int
@@ -149,7 +93,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | StackOffset of int
       | PopPush of int
-      | ImmedIntPush of string
+      | ImmedIntPush of Int32.int
       | SelectPush of int
       | SelectEnvPush of int
       | SelectEnvClearAtbotBitPush of int
@@ -189,20 +133,36 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | PrimLessEqualUnsigned
       | PrimGreaterEqualUnsigned
 	
-      | PrimAddw8
-      | PrimSubw8
-      | PrimMulw8
-	
-      | PrimAndi
-      | PrimOri
-      | PrimXori
-      | PrimShiftLefti
-      | PrimShiftRightSignedi
-      | PrimShiftRightUnsignedi
+      | PrimAndw
+      | PrimOrw
+      | PrimXorw
+      | PrimShiftLeftw
+      | PrimShiftRightSignedw
+      | PrimShiftRightUnsignedw
 	
       | PrimAddw
       | PrimSubw
       | PrimMulw
+
+      | PrimSubi31
+      | PrimAddi31
+      | PrimMuli31
+      | PrimNegi31
+      | PrimAbsi31
+      | PrimXorw31
+      | PrimShiftLeftw31
+      | PrimShiftRightSignedw31
+      | PrimShiftRightUnsignedw31	
+      | PrimAddw31
+      | PrimSubw31
+      | PrimMulw31
+
+      | Primi31Toi	
+      | PrimiToi31
+      | Primw31Tow
+      | PrimwTow31
+      | Primw31TowX
+      | PrimwToi
 	
       | PrimFreshExname
 
@@ -236,33 +196,9 @@ functor Kam(structure Labels : ADDRESS_LABELS
       fun remove_ctrl s = "Lab" ^ String.implode (List.filter Char.isAlphaNum (String.explode s))
       fun remove_ctrl' s = String.implode (List.filter Char.isPrint (String.explode s))
     in
-(*      fun pp_lab (DatLab l) = remove_ctrl(Labels.pr_label l)
-	| pp_lab (LocalLab l) = remove_ctrl(Labels.pr_label l) 
-	| pp_lab (NameLab s) = s
-	| pp_lab (MLFunLab l) = remove_ctrl(Labels.pr_label l) 18/09-2000, Niels *)
       fun pp_lab l = Labels.pr_label l
-
-(*      fun pp_lab' (DatLab l,acc)   = remove_ctrl(Labels.pr_label l) :: acc
-	| pp_lab' (LocalLab l,acc) = remove_ctrl(Labels.pr_label l) :: acc 
-	| pp_lab' (NameLab s,acc)  = s :: acc
-	| pp_lab' (MLFunLab l,acc) = remove_ctrl(Labels.pr_label l) :: acc 18/09-2000, Niels *)
-	fun pp_lab' (l,acc) = Labels.pr_label l :: acc
+      fun pp_lab' (l,acc) = Labels.pr_label l :: acc
     end
-
-(*    fun pp_cond NEVER = ""
-      | pp_cond ALWAYS = ",TR"
-      | pp_cond EQUAL = ",="
-      | pp_cond NOTEQUAL = ",<>"
-      | pp_cond GREATERTHAN = ",>"
-      | pp_cond GREATEREQUAL = ",>="
-      | pp_cond LESSTHAN = ",<"
-      | pp_cond LESSEQUAL = ",<="
-      | pp_cond GREATERTHAN_UNSIGNED = ",>>"
-      | pp_cond GREATEREQUAL_UNSIGNED = ",>>="
-      | pp_cond LESSTHAN_UNSIGNED = ",<<"
-      | pp_cond LESSEQUAL_UNSIGNED = ",<<="
-      | pp_cond ODD = ",OD"
-      | pp_cond EVEN = ",EV" 18/09-2000, Niels *)
 
     val indent = "\t"
 
@@ -298,7 +234,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | StackAddr(off,s) => "StackAddr(" :: (pp_i off) :: "," :: s :: ")" :: acc
       | EnvToAcc => "EnvToAcc" :: acc
 
-      |	ImmedInt(i) => "ImmedInt(" :: i :: ")" :: acc
+      |	ImmedInt(i) => "ImmedInt(" :: Int32.toString i :: ")" :: acc
       | ImmedString(s) => "ImmedString(\"" :: String.toString s :: "\")" :: acc
       | ImmedReal(r) => "ImmedReal(" :: r :: ")" :: acc
 	
@@ -316,11 +252,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | Label(lab) => "Label(" :: (pp_lab lab) :: ")" :: acc
       | JmpRel(lab) => "JmpRel(" :: (pp_lab lab) :: ")" :: acc
-(*
-      | IfNotEqJmpRel(lab) => "IfNotEqJmpRel(" :: (pp_lab lab) :: ")" :: acc
-      | IfLessThanJmpRel(lab) => "IfLessThanJmpRel(" :: (pp_lab lab) :: ")" :: acc
-      | IfGreaterThanJmpRel(lab) => "IfGreaterThanJmpRel(" :: (pp_lab lab) :: ")" :: acc
-*)
+
       | IfNotEqJmpRelImmed(lab,i) => "IfNotEqJmpRelImmed(" :: (pp_lab lab) :: "," :: Int32.toString i :: ")" :: acc
       | IfLessThanJmpRelImmed(lab,i) => "IfLessThanJmpRelImmed(" :: (pp_lab lab) :: "," :: Int32.toString i ::")" :: acc
       | IfGreaterThanJmpRelImmed(lab,i) => "IfGreaterThanJmpRelImmed(" :: (pp_lab lab) :: "," :: Int32.toString i :: ")" :: acc
@@ -348,7 +280,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | StackOffset i => "StackOffset(" :: Int.toString i :: ")" :: acc
       | PopPush i => "PopPush(" :: Int.toString i :: ")" :: acc
-      | ImmedIntPush i => "ImmedIntPush(" :: i :: ")" :: acc
+      | ImmedIntPush i => "ImmedIntPush(" :: Int32.toString i :: ")" :: acc
       | SelectPush i => "SelectPush(" :: Int.toString i :: ")" :: acc
       | SelectEnvPush i => "SelectEnvPush(" :: Int.toString i :: ")" :: acc
       | SelectEnvClearAtbotBitPush i => "SelectEnvClearAtbotBitPush(" :: Int.toString i :: ")" :: acc
@@ -388,53 +320,40 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | PrimLessEqualUnsigned => "PrimLessEqualUnsigned" :: acc
       | PrimGreaterEqualUnsigned => "PrimGreaterEqualUnsigned" :: acc
 					                              
-      | PrimAddw8 => "PrimAddw8" :: acc
-      | PrimSubw8 => "PrimSubw8" :: acc
-      | PrimMulw8 => "PrimMulw8" :: acc
-					                              
-      | PrimAndi => "PrimAndi" :: acc
-      | PrimOri => "PrimOri" :: acc
-      | PrimXori => "PrimXori" :: acc
-      | PrimShiftLefti => "PrimShiftLefti" :: acc
-      | PrimShiftRightSignedi => "PrimShiftRightSignedi" :: acc
-      | PrimShiftRightUnsignedi	=> "PrimShiftRightUnsignedi" :: acc
+      | PrimAndw => "PrimAndw" :: acc
+      | PrimOrw => "PrimOrw" :: acc
+      | PrimXorw => "PrimXorw" :: acc
+      | PrimShiftLeftw => "PrimShiftLeftw" :: acc
+      | PrimShiftRightSignedw => "PrimShiftRightSignedw" :: acc
+      | PrimShiftRightUnsignedw	=> "PrimShiftRightUnsignedw" :: acc
 					                              
       | PrimAddw => "PrimAddw" :: acc
       | PrimSubw => "PrimSubw" :: acc
       | PrimMulw => "PrimMulw" :: acc
+
+      | PrimSubi31 => "PrimSubi31" :: acc
+      | PrimAddi31 => "PrimAddi31" :: acc
+      | PrimMuli31 => "PrimMuli31" :: acc
+      | PrimNegi31 => "PrimNegi31" :: acc
+      | PrimAbsi31 => "PrimAbsi31" :: acc
+      | PrimXorw31 => "PrimXorw31" :: acc
+      | PrimShiftLeftw31 => "PrimShiftLeftw31" :: acc
+      | PrimShiftRightSignedw31 => "PrimShiftRightSignedw31" :: acc
+      | PrimShiftRightUnsignedw31 => "PrimShiftRightUnsignedw31" :: acc	
+      | PrimAddw31 => "PrimAddw31" :: acc
+      | PrimSubw31 => "PrimSubw31" :: acc
+      | PrimMulw31 => "PrimMulw31" :: acc
+
+      | Primi31Toi => "Primi31Toi" :: acc	
+      | PrimiToi31 => "PrimiToi31" :: acc
+      | Primw31Tow => "Primw31Tow" :: acc
+      | PrimwTow31 => "PrimwTow31" :: acc
+      | Primw31TowX => "Primw31TowX" :: acc
+      | PrimwToi => "PrimwToi" :: acc
 					                              
       | PrimFreshExname => "PrimFreshExname" :: acc
 
     fun pr_inst i = concat(pp_inst(i,[]))
-
-(*
-    fun output_AsmPrg (os, {top_decls, main_lab_opt, import_size, export_size, data_size}) =
-      let
-	fun fold ([], acc) = acc
-	  | fold (inst::insts, acc) = "\n"::(pp_inst(inst, fold (insts, acc)))
-	fun out_kam_insts insts = out_list (fold(insts, []))
-	fun pp_top_decl(FUN(lab,insts)) = 
-	  (TextIO.output(os,"\n;fun " ^ Labels.pr_label lab ^ " is {");
-	   out_kam_insts insts;
-	   TextIO.output(os,"\n;}\n"))
-	  | pp_top_decl(FN(lab,insts)) =
-	  (TextIO.output(os,"\n;fn " ^ Labels.pr_label lab ^ " is {");
-	   out_kam_insts insts;
-	   TextIO.output(os,"\n;}\n"))
-      in
-	(set_out_stream os;
-	 TextIO.output(os, "\nHEADER is {\n  Main label option = " ^ 
-		       (case main_lab_opt
-			  of SOME lab => "SOME " ^ Labels.pr_label lab
-			   | NONE => "NONE"));
-	 TextIO.output(os, "\n  Import size = " ^ Int.toString import_size);
-	 TextIO.output(os, "\n  Export size = " ^ Int.toString export_size);
-	 TextIO.output(os, "\n  Data size = " ^ Int.toString data_size ^ "}");
-	 List.app pp_top_decl top_decls;
-	 TextIO.output(os,"\n\n");
-	 reset_output_stream())
-      end
-*)
 
     type StringTree = PP.StringTree
     fun layout_AsmPrg({top_decls,

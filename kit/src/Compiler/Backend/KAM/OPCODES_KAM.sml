@@ -95,17 +95,32 @@ signature OPCODES_KAM =
     val PRIM_GREATER_THAN_UNSIGNED : int 
     val PRIM_LESS_EQUAL_UNSIGNED : int 
     val PRIM_GREATER_EQUAL_UNSIGNED : int 
-    val PRIM_ADD_W8 : int 
-    val PRIM_SUB_W8 : int 
-    val PRIM_MUL_W8 : int 
-    val PRIM_AND_I : int 
-    val PRIM_OR_I : int 
-    val PRIM_XOR_I : int 
-    val PRIM_SHIFT_LEFT_I : int 
-    val PRIM_SHIFT_RIGHT_SIGNED_I : int 
-    val PRIM_SHIFT_RIGHT_UNSIGNED_I : int 
+    val PRIM_AND_W : int 
+    val PRIM_OR_W : int 
+    val PRIM_XOR_W : int 
+    val PRIM_SHIFT_LEFT_W : int 
+    val PRIM_SHIFT_RIGHT_SIGNED_W : int 
+    val PRIM_SHIFT_RIGHT_UNSIGNED_W : int 
     val PRIM_ADD_W : int 
     val PRIM_SUB_W : int 
     val PRIM_MUL_W : int 
+    val PRIM_SUB_I31 : int 
+    val PRIM_ADD_I31 : int 
+    val PRIM_MUL_I31 : int 
+    val PRIM_NEG_I31 : int 
+    val PRIM_ABS_I31 : int 
+    val PRIM_XOR_W31 : int 
+    val PRIM_SHIFT_LEFT_W31 : int 
+    val PRIM_SHIFT_RIGHT_SIGNED_W31 : int 
+    val PRIM_SHIFT_RIGHT_UNSIGNED_W31 : int 
+    val PRIM_ADD_W31 : int 
+    val PRIM_SUB_W31 : int 
+    val PRIM_MUL_W31 : int 
+    val PRIM_I31_TO_I : int 
+    val PRIM_I_TO_I31 : int 
+    val PRIM_W31_TO_W : int 
+    val PRIM_W_TO_W31 : int 
+    val PRIM_W31_TO_W_X : int 
+    val PRIM_W_TO_I : int 
     val PRIM_FRESH_EXNAME : int 
   end

@@ -79,7 +79,7 @@ signature KAM =
       | StackAddr of int * string        (* string for debug only *)
       | EnvToAcc
 
-      |	ImmedInt of string
+      |	ImmedInt of Int32.int
       | ImmedString of string
       | ImmedReal of string
 	
@@ -97,11 +97,7 @@ signature KAM =
 
       | Label of label
       | JmpRel of label
-(*
-      | IfNotEqJmpRel of label
-      | IfLessThanJmpRel of label
-      | IfGreaterThanJmpRel of label
-*)
+
       | IfNotEqJmpRelImmed of label * Int32.int
       | IfLessThanJmpRelImmed of label * Int32.int
       | IfGreaterThanJmpRelImmed of label * Int32.int
@@ -129,7 +125,7 @@ signature KAM =
 
       | StackOffset of int
       | PopPush of int
-      | ImmedIntPush of string
+      | ImmedIntPush of Int32.int
       | SelectPush of int
       | SelectEnvPush of int
       | SelectEnvClearAtbotBitPush of int
@@ -167,21 +163,36 @@ signature KAM =
       | PrimLessEqualUnsigned
       | PrimGreaterEqualUnsigned
 	
-      | PrimAddw8
-      | PrimSubw8
-      | PrimMulw8
-	
-      | PrimAndi
-      | PrimOri
-      | PrimXori
-      | PrimShiftLefti
-      | PrimShiftRightSignedi
-      | PrimShiftRightUnsignedi
-	
+      | PrimAndw
+      | PrimOrw
+      | PrimXorw
+      | PrimShiftLeftw
+      | PrimShiftRightSignedw
+      | PrimShiftRightUnsignedw	
       | PrimAddw
       | PrimSubw
       | PrimMulw
-	
+
+      | PrimSubi31
+      | PrimAddi31
+      | PrimMuli31
+      | PrimNegi31
+      | PrimAbsi31
+      | PrimXorw31
+      | PrimShiftLeftw31
+      | PrimShiftRightSignedw31
+      | PrimShiftRightUnsignedw31	
+      | PrimAddw31
+      | PrimSubw31
+      | PrimMulw31
+
+      | Primi31Toi	
+      | PrimiToi31
+      | Primw31Tow
+      | PrimwTow31
+      | Primw31TowX
+      | PrimwToi
+
       | PrimFreshExname
 
     datatype TopDecl =
