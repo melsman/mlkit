@@ -29,7 +29,8 @@ functor CompileDec(structure Con: CON
                      sharing type LambdaExp.lvar = Lvars.lvar
                      sharing type LambdaExp.con = Con.con
                      sharing type LambdaExp.excon = Excon.excon
-                     sharing type LambdaExp.TyName = TyName.TyName
+		     sharing type LambdaExp.TyName = TyName.TyName
+		     sharing type LambdaExp.StringTree = Environments.StringTree = StatObject.StringTree
 
 		   structure LambdaBasics : LAMBDA_BASICS
 		     sharing type LambdaBasics.LambdaExp = LambdaExp.LambdaExp
@@ -116,6 +117,7 @@ functor CompileDec(structure Con: CON
 
     fun die s = Crash.impossible ("CompileDec." ^ s)
     fun pr (s : string) : unit = TextIO.output(TextIO.stdOut, s)
+    fun pr_st st = (PrettyPrint.outputTree(print,st,100); print "\n")
 
     val region_profiling = Flags.lookup_flag_entry "region_profiling"
 
@@ -132,7 +134,7 @@ functor CompileDec(structure Con: CON
      * ---------------------------------------- *)
 
     fun declareExcon(id,(excon,tau),CE) = CE.declareExcon(id,(excon,tau),CE)
-    fun declareCon(id,(con,tyvars,tau,it),CE) = CE.declareCon(id,(con,tyvars,tau,it),CE)
+    fun declareCon(id,(con,tyvars,tau),CE) = CE.declareCon(id,(con,tyvars,tau),CE)
 
     datatype lookup_info = NORMAL of ElabInfo.ElabInfo | OTHER of string
     fun lookup_error(kind: string, CE, longid, info:lookup_info) =
@@ -159,7 +161,7 @@ functor CompileDec(structure Con: CON
 
     fun lookupLongcon CE longid (info:lookup_info)=
       case CE.lookup_longid CE longid
-	of SOME(CE.CON (con,_,_,_,_)) => con
+	of SOME(CE.CON (con,_,_,_)) => con
 	 | _ => lookup_error("long value constructor",CE,longid,info)
 
     fun lookupLongid CE longid (info:lookup_info) = 
@@ -401,72 +403,39 @@ functor CompileDec(structure Con: CON
 
 
     (* ---------------------------------------------------------------------- *)
-    (*	       Compilation and normalization of constructor bindings          *)
+    (*	       Compilation of constructor bindings                            *)
     (* ---------------------------------------------------------------------- *)
 
-    (* We normalize constructor bindings such that if
-     *
-     *      CE =  {A |-> \/ab.a -> (a,b) t,
-     *             B |-> \/ba.a -> (b,a) t}
-     * we get:
-     *
-     *      CE' = {A |-> \/ab.a -> (a,b) t,
-     *             B |-> \/ab.b -> (a,b) t}
-     * or:
-     *
-     *      ([a,b], t, [(A, SOME a), (B, SOME b)])
-     *)
+    (* The compilation requires constructor bindings to be on a form where nullary
+     * constructors have type scheme \/'a1,...,'an.('a1,...,'an)t and where 
+     * unary constructors have type \/'a1,...,'an.(tau -> ('a1,...,'an)t), for 
+     * any tau for which ftv(tau) \subseteq {'a1,...,'an}. The compiler is quite
+     * picky on the exact order of the type variables, thus, alpha-conversion of 
+     * the type schemes are not allowed. *)
 
    fun on_Type S tau = LambdaBasics.on_Type S tau
-
-   fun on_TypeOpt _ NONE = NONE
-     | on_TypeOpt S (SOME tau) = SOME (on_Type S tau)
 
    fun unTyVarType (TYVARtype tv) = tv
      | unTyVarType _ = die "unTyVarType"
 
-   (* normalize_sigma tyvars0 Type:
-      Type is the body of a type scheme of a constructor; 
-      tyvars0 are the bound variables
-      of the type scheme. 
-      normalize_sigma tyvars0 Type normalizes Type into
-      a type where the type arguments come in the same order
-      as tyvars0
-    *)
-
    fun mk_subst a = LambdaBasics.mk_subst a
+   fun on_il(S, il) = map (LambdaBasics.on_Type S) il
 
-   fun normalize_sigma' (tyvars0: TLE.tyvar list, Type: Type)
-	 : TLE.tyvar list * TLE.tyvar list * Type * Type option=
-     let
-       val (tyvars, tauOpt, tyname) =
-	 case Type 
-	   of ARROWtype([tau],[CONStype(taus,tyname)]) => (map unTyVarType taus, SOME tau, tyname)
-	    | CONStype(taus,tyname) => (map unTyVarType taus, NONE, tyname)
-	    | _ => die "normalize_sigma': wrong type"
-       val S = mk_subst (fn () => "CompileDec.normalize_sigma'")
-	         (tyvars, map TLE.TYVARtype tyvars0) 
-       val tauOpt' = on_TypeOpt S tauOpt
-       val tau = case tauOpt'
-		   of SOME tau => ARROWtype([tau],[CONStype(map TYVARtype tyvars0, tyname)])
-		    | NONE => CONStype(map TYVARtype tyvars0, tyname)
-     in
-       (tyvars,tyvars0, tau, tauOpt')
-     end 
+   fun pr_tvs tvs = pr_list LambdaExp.pr_tyvar tvs
 
-   fun normalize_sigma (tyvars0: TLE.tyvar list, Type: Type): TLE.tyvar list * Type=
-     let val (_, tyvars0,tau', _) =  normalize_sigma' (tyvars0: TLE.tyvar list, Type: Type)
-     in (tyvars0,tau') (* the normalized type scheme *)
-     end
-
-   fun compile_and_normalize_cb tyvars0 ((con, Type), (env, cons_TypeOpts))
+   fun compile_cb tyvars0 ((con, Type), (env, cons_TypeOpts))
      : CE.CEnv * (con * Type option) list =
      let val con' = compileCon con
-       val (tyvars,_, tau, tauOpt') = normalize_sigma'(tyvars0, Type)
-       val it : CE.instance_transformer = CE.mk_it tyvars tyvars0
+         val (tyvars, tauOpt) =
+	   case Type 
+	     of ARROWtype([tau],[CONStype(taus,tyname)]) => (map unTyVarType taus, SOME tau)
+	      | CONStype(taus,tyname) => (map unTyVarType taus, NONE)
+	      | _ => die "compile_cb: wrong type"
+	 (* tyvars should equal tyvars0 *)
      in
-       (declareCon(con,(con',tyvars0,tau, it),env), (con', tauOpt') :: cons_TypeOpts)
+       (declareCon(con,(con',tyvars0,Type),env), (con', tauOpt) :: cons_TypeOpts)
      end
+
 
     (* ---------------------------------------------------------------------- *)
     (*	       Compilation of the semantic object (tyname, VE)                *)
@@ -483,6 +452,10 @@ functor CompileDec(structure Con: CON
 			  in raise H tyvars
 			  end) [] VE) handle H tyvars => tyvars
 	  end
+(*
+	val _ = print "compileTyStr: tyvars =\n"
+	val _ = pr_st (PrettyPrint.layout_list TyVar.layout tyvars) 
+*)
 	val tyvars' = map (TV.lookup "compile'TyStr'") tyvars
 	val cbs : (id * Type) list = 
 	  VE.CEFold (fn (con, typescheme) => fn cbs =>
@@ -490,8 +463,13 @@ functor CompileDec(structure Con: CON
 			  val tau' = compileType tau
 		      in (con, tau') :: cbs
 		      end) [] VE 
+(*
+	val _ = print "compileTyStr: VE = \n"
+	val _ = pr_st (VE.layout VE)
+*)
 	val (env, cons_TypeOpts) =
-	  foldl (compile_and_normalize_cb tyvars') (CE.emptyCEnv,[]) (rev cbs)
+(*	  foldl (compile_and_normalize_cb tyvars') (CE.emptyCEnv,[]) (rev cbs) *)
+	  foldl (compile_cb tyvars') (CE.emptyCEnv,[]) (rev cbs)
       in
 	(env, tyvars', cons_TypeOpts)
       end
@@ -1037,21 +1015,24 @@ Det finder du nok aldrig ud af.*)
 	   CE.declareVar (id, (lvar, tyvars, tau), env_sofar))
 	  CE.emptyCEnv declarations_to_be_made
 
+  fun pr_tau tau = (PrettyPrint.flatten1 o LambdaExp.layoutType) tau
+  fun pr_il il = pr_list pr_tau il
 
   fun compile_path env obj Obj = obj
     | compile_path env obj (Access (0, Con {info, ...}, path)) =
 	(case to_TypeInfo info of
 	   SOME (TypeInfo.CON_INFO {tyvars, Type, longid, instances, ...}) =>
 	     (case lookupLongid env longid (NORMAL info) of
-		CE.CON (con, tyvars, _, il, it) =>
-		  let val instances' = map compileType instances
-		      val S = CE.mk_subst (fn () => "CompileDec.compile_path")
-				(tyvars, instances')
-		      val il' = CE.apply_it (it, CE.on_il (S, il))
+		CE.CON (con, tyvars, _, il) =>  (* because the con occurs in the pattern, we 
+						 * have {instances'/tyvars}il = instances'. *)
+		  let 
+		      val instances' = map compileType instances 
+		      val il' = instances'
 		  in
 		    PRIM (DECONprim {con=con, instances=il'},
 			  [compile_path env obj path])
 		  end
+
 	      | CE.REF =>
 		  (case instances of [instance] =>
 		       (*for deref, the instance is the instantiated argument type:*)
@@ -1636,8 +1617,8 @@ end; (*match compiler local*)
 		       | _ => die ("compileAtexp(LVAR..): no type info for "
 				   ^ Ident.pr_longid longid))
 		    val instances' = map compileType instances
-		    val S = CE.mk_subst (fn () => "CompileDec.IDENTatexp") (tyvars, instances')
-		    val il' = CE.on_il(S,il)
+		    val S = mk_subst (fn () => "CompileDec.IDENTatexp") (tyvars, instances')
+		    val il' = on_il(S,il)
 		in VAR {lvar=lv,instances=il'}
 		end handle X => (print (" Exception raised in CompileDec.IDENTatexp.LVAR.longid = "
 					^ Ident.pr_longid longid ^ "\n");
@@ -1655,7 +1636,7 @@ end; (*match compiler local*)
 	   | CE.GREATER =>   overloaded_prim_fn' info CE.GREATER
 	   | CE.LESSEQ =>    overloaded_prim_fn' info CE.LESSEQ
 	   | CE.GREATEREQ => overloaded_prim_fn' info CE.GREATEREQ
-	   | CE.CON(con,tyvars,tau0,il,it) => (*See COMPILER_ENV*)
+	   | CE.CON(con,tyvars,tau0,il) => (*See COMPILER_ENV*)
 	       let
 		 fun is_Arrow_tau (ARROWtype _) = true
 		   | is_Arrow_tau _ = false
@@ -1672,19 +1653,17 @@ end; (*match compiler local*)
 		    let val lv = Lvars.newLvar()
 		        val tau' = dom_tau tau0 (* compileType (domType Type) *)
 			val instances' = map compileType instances
-			val S = CE.mk_subst (fn () => "CompileDec.CON(arg)") (tyvars, instances')
-			val il' = CE.on_il(S,il)
-			val il'' = CE.apply_it(it,il')
+			val S = mk_subst (fn () => "CompileDec.CON(arg)") (tyvars, instances')
+			val il' = on_il(S,il)
 		    in FN{pat=[(lv,tau')],
-			  body=PRIM(CONprim{con=con, instances=il''},
+			  body=PRIM(CONprim{con=con, instances=il'},
 				    [VAR{lvar=lv,instances=[]}])}
 		    end
 		  else
 		    let val instances' = map compileType instances
-		        val S = CE.mk_subst (fn () => "CompileDec.CON(noarg)") (tyvars, instances')
-			val il' = CE.on_il(S,il)
-			val il'' = CE.apply_it(it,il')
-		    in PRIM(CONprim {con=con, instances=il''},[])
+		        val S = mk_subst (fn () => "CompileDec.CON(noarg)") (tyvars, instances')
+			val il' = on_il(S,il)
+		    in PRIM(CONprim {con=con, instances=il'},[])
 		    end
 	       end
 	   | CE.REF =>
@@ -1792,10 +1771,10 @@ end; (*match compiler local*)
 				       of SOME(TypeInfo.VAR_INFO{instances}) =>
 					 map compileType instances
 					| _ => die "compileExp(APPexp..): wrong type info"
-		    val S = CE.mk_subst (fn () => ("CompileDec.APPexp.LVAR("
+		    val S = mk_subst (fn () => ("CompileDec.APPexp.LVAR("
 						   ^ Lvars.pr_lvar lv ^ ")"))
 		              (tyvars,instances')
-		    val il' = CE.on_il(S, il)
+		    val il' = on_il(S, il)
 		in if Lvars.pr_lvar lv = "="  (* specialise equality on integers *)
                       andalso case instances' of 
                                 [CONStype([], tyname)] => TyName.eq(tyname, TyName.tyName_INT)
@@ -1856,7 +1835,8 @@ end; (*match compiler local*)
 	       fun f isequal prim =
 		     let val args' = map (compileExp env) args
 		         val instance' = (case to_TypeInfo info of
-			       SOME (TypeInfo.VAR_INFO {instances = [instanceRes, instance]}) =>
+(*			       SOME (TypeInfo.VAR_INFO {instances = [instanceRes, instance]}) => *)
+			       SOME (TypeInfo.VAR_INFO {instances = [instance, instanceRes]}) =>
 				 compileType instance 
 			     | _ => die "compileExp(APPexp(PRIM..): wrong type info")
 		        (*The code right above depends on the order of the
@@ -1899,7 +1879,8 @@ the 12 lines above are very similar to the code below
 
     and compile_application_of_c_function env info s args =
           (case to_TypeInfo info of
-	     SOME (TypeInfo.VAR_INFO {instances = [tau_result, tau_argument]}) =>
+	     SOME (TypeInfo.VAR_INFO {instances = [tau_argument, tau_result]}) =>
+(*	     SOME (TypeInfo.VAR_INFO {instances = [tau_result, tau_argument]}) => *)
 	       
 	       (*Concerning instance lists on c calls:  The built-in id
 		`prim' has type scheme `All'a'b.(string * string * 'a)->'b'.
@@ -2262,6 +2243,7 @@ the 12 lines above are very similar to the code below
 	 of SOME vid => 
 	   let val lvar = Lvars.new_named_lvar (Ident.pr_id vid)
 	       val (tyvars', tau') = compileTypeScheme (tyvars, Type)
+		 handle ? => (print ("compile_binding.SOME: lvar = " ^ Lvars.pr_lvar lvar ^ "\n"); raise ?)
 	       val env' = CE.declareVar (vid, (lvar, tyvars', tau'), CE.emptyCEnv) 
 	       val bind = compileExp env exp
 	       val f = fn scope => LET {pat = [(lvar, tyvars', tau')],
@@ -2272,8 +2254,9 @@ the 12 lines above are very similar to the code below
 	   let 
 	     val decdag = mk_decdag [(pat, mk_success_node (pat, 0))]
 	     val f = fn scope =>
-	       let val (tyvars', tau') = compileTypeScheme (tyvars, Type)
-		   val lvar_switch = new_lvar_from_pat pat
+	       let val lvar_switch = new_lvar_from_pat pat
+		   val (tyvars', tau') = compileTypeScheme (tyvars, Type)
+		     handle ? => (print ("compile_binding.NONE: lvar = " ^ Lvars.pr_lvar lvar_switch ^ "\n"); raise ?)
 		   val obj = VAR {lvar=lvar_switch, instances=map TYVARtype tyvars'}
 		   fun compile_no (i, env_rhs) = scope
 		   val raise_something = fn obj =>
@@ -2333,6 +2316,7 @@ the 12 lines above are very similar to the code below
 
 	val lexps = map (compileExp (env plus recEnv)) exps
 	val sigmas' = map compileTypeScheme sigmas
+	  handle ? => (print ("lvars = " ^ pr_list Lvars.pr_lvar lvars ^ "\n"); raise ?)
 	val env' = mk_scope_env lvars sigmas'
 	val functions = mk_bindings lvars sigmas' lexps
 	val f' = fn scope => FIX {functions=functions, scope=scope}
@@ -2487,7 +2471,6 @@ the 12 lines above are very similar to the code below
     compileTypeScheme (TypeScheme.to_TyVars_and_Type sigma)
 
   val _ = CE.set_compileTypeScheme compileTypeScheme   (* MEGA HACK - Martin *)
-  val _ = CE.set_normalize_sigma normalize_sigma   (* Another one; Mads *)
 
 
   end;

@@ -721,8 +721,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		     | BOUND => if !(#level ty) = Level.GENERIC then insert f_b tl else ())
 		| TYVAR (ref (TYPE_INSTANCE _))  => die "tyvars0"
 		| RECTYPE r => RecType.fold (fn (ty, ()) => tyvars0 f_b ty) () (findRecType r)
-		| ARROW (ty,ty') => (tyvars0 f_b ty; tyvars0 f_b ty')
-		| CONSTYPE (types,_) => List.foldL (fn ty => fn () => tyvars0 f_b ty) () types
+		| ARROW (ty,ty') =>     (* For the compilation of value constructors, we
+					 * extract the tyvars of ty' before those of ty. 
+					 * Martin-15/11/1998 *)
+		    (tyvars0 f_b ty'; tyvars0 f_b ty)
+
+		| CONSTYPE (types,_) => List.foldR (fn ty => fn () => tyvars0 f_b ty) () types
 	  end
 
         fun tyvars1 f_b ty = (bucket := []; tyvars0 f_b ty; !bucket)
@@ -927,15 +931,16 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			     else mk_escaping_tyvar tv level
 			else level := Level.current ()
 		   else ()
-	       | ARROW (tau1, tau2) => 
-		    level := Int.min (generalise0 {ov=ov, imp=imp, tau=tau1}, 
-				      generalise0 {ov=ov, imp=imp, tau=tau2})
+	       | ARROW (tau1, tau2) =>    (* For the compilation of value constructors, we
+					   * generalise tau2 before tau1. Martin-15/11/1998 *)
+		    level := Int.min (generalise0 {ov=ov, imp=imp, tau=tau2}, 
+				      generalise0 {ov=ov, imp=imp, tau=tau1})
 	       | RECTYPE r => 
 		    level := generaliseRecType {ov=ov, imp=imp, r=r}
 	       | CONSTYPE (taus, tyname) => 
 		    level := foldl Int.min Level.NONGENERIC
 		                 (map (fn tau => generalise0
-				       {ov=ov, imp=imp, tau=tau}) taus)) ;
+				       {ov=ov, imp=imp, tau=tau}) (rev taus))) ;
 	    debug_print "generalise0 OUT" tau ;
 	    ! (#level tau)
 	  end
@@ -1005,8 +1010,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		  | {TypeDesc = TYVAR _,level} => 
 		     die "copyType"
 		  | {TypeDesc = ARROW(ty1,ty2), level} => 
-		     {TypeDesc = ARROW(copyType ty1,copyType ty2),
-		      level = ref (!level)}
+		     let val ty2 = copyType ty2   (* For the compilation of value constructors, we *)
+		         val ty1 = copyType ty1   (* copy ty2 before ty1. Martin-15/11/1998 *)
+		     in
+		       {TypeDesc = ARROW(ty1,ty2), level = ref (!level)}
+		     end
 		  | {TypeDesc = RECTYPE r, level} => 
 		     {TypeDesc = RECTYPE (copyRecType r),
 		      level = ref (!level)}
@@ -1670,15 +1678,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		   (pr_st o layout) theta;
 		   raise TypeScheme.InstanceError (s ^ "[TypeFcn.apply]"))
 	      val _ = debug_print "TypeFcn.apply"
-
-(*30/10/97-Martin
-	      fun f (tv as ref (NO_TYPE_INSTANCE tvdesc)) = 
-		       (case FinMapEq.lookup TyVarDesc_eq fresh_taus_map tvdesc of
-			  NONE => Type.from_TyVar (TyVar.refresh tv)
-			| SOME tau => tau)
-		| f _ = die "TypeFcn.apply: f"
-	      val fresh_taus = map f tyvars
-*)
 	    in
 	      map Type.unify (ListPair.zip (fresh_taus, taus)) ;
 	      tau'
@@ -1753,17 +1752,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      print_node {start=from ^ ": ", finish="", indent=0,
 			  children=[layout theta], childsep=PP.NOSEP}
 	    else ()
-(*debug
-      val eq = fn (tf, tf') =>
-	 let val tmp = !Flags.DEBUG_TYPES
-	 in print "Checking equality of type functions:\n";
-	    Flags.DEBUG_TYPES := true;
-	    debug_print "first" tf;
-	    debug_print "second" tf'; 
-	    Flags.DEBUG_TYPES := tmp;
-	    eq(tf,tf')
-	 end
-*)	 
 
       fun match (TYPEFCN{tau,...}, TYPEFCN{tau=tau0,...}) : unit = Type.match(tau,tau0)
 
@@ -1890,9 +1878,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     in
       val _ =
 	if TypeFcn.eq(theta1,theta2) then ()
-(*	  TextIO.output(TextIO.stdOut,"***TYPEFCN EQUALITY Test \t\tsucceeded***\n") *)
-	else
-	  TextIO.output(TextIO.stdOut,"***TYPEFCN EQUALITY Test did \t\t***not*** succeed***\n")
+	else TextIO.output(TextIO.stdOut,"***TYPEFCN EQUALITY Test did \t\t***not*** succeed***\n")
   
     end
 
@@ -2131,19 +2117,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       val phi = Realisation.singleton(t,theta2)
       val theta1' = Realisation.on_TypeFcn phi theta1
-(*
-      val tmp = !Flags.DEBUG_TYPES
-      val _ = Flags.DEBUG_TYPES := true
-      val _ = TypeFcn.debug_print "TYREA TYPEFCN Test -- theta1" theta1
-      val _ = TypeFcn.debug_print "TYREA TYPEFCN Test -- theta2" theta2
-      val _ = TypeFcn.debug_print "TYREA TYPEFCN Test -- theta1'" theta1'
-      val _ = Flags.DEBUG_TYPES := tmp
-*)
       val _ =
 	if TypeFcn.eq(theta1,theta1') then ()
-(*	  TextIO.output(TextIO.stdOut,"***TYREA TYPEFCN EQAULITY Test \t\tsucceeded\n") *)
-	else
-	  TextIO.output(TextIO.stdOut,"***TYREA TYPEFCN EQUALITY Test did \t\t***not*** succeed\n")
+	else TextIO.output(TextIO.stdOut,"***TYREA TYPEFCN EQUALITY Test did \t\t***not*** succeed\n")
 
     in
       val _ = ()

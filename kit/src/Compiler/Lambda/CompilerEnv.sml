@@ -45,12 +45,6 @@ functor CompilerEnv(structure Ident: IDENT
     type longtycon = TyCon.longtycon
     type TyName = LambdaExp.TyName
 
-    type instance_transformer = int list
-
-    type subst = LambdaBasics.subst
-    fun mk_subst a = LambdaBasics.mk_subst a
-    fun on_il(S, il) = map (LambdaBasics.on_Type S) il
-
     (* layout functions *)
     fun layout_scheme(tvs,tau) =
       PP.NODE{start="",finish="",indent=0,childsep=PP.NOSEP,
@@ -63,7 +57,7 @@ functor CompilerEnv(structure Ident: IDENT
 
 
     datatype result = LVAR of lvar * tyvar list * Type * Type list
-                    | CON of con * tyvar list * Type * Type list * instance_transformer
+                    | CON of con * tyvar list * Type * Type list
                     | REF       (* ref is *not* a constructor in the backend, but a primitive! *)
                     | EXCON of excon * Type
                     | ABS | NEG | PLUS | MINUS | MUL | DIV | MOD | LESS 
@@ -114,12 +108,12 @@ functor CompilerEnv(structure Ident: IDENT
                       (Ident.resetRegions, RESET_REGIONS),
                       (Ident.forceResetting, FORCE_RESET_REGIONS),
 		      (Ident.id_REF, REF),
-		      (Ident.id_TRUE, CON(Con.con_TRUE,[],boolType,[],[])),
-		      (Ident.id_FALSE, CON(Con.con_FALSE,[],boolType,[],[])),
+		      (Ident.id_TRUE, CON(Con.con_TRUE,[],boolType,[])),
+		      (Ident.id_FALSE, CON(Con.con_FALSE,[],boolType,[])),
 		      (Ident.id_NIL, CON(Con.con_NIL,[tyvar_list],listType,
-					 [LambdaExp.TYVARtype tyvar_list],[0])),
+					 [LambdaExp.TYVARtype tyvar_list])),
 		      (Ident.id_CONS, CON(Con.con_CONS,[tyvar_list],listType,
-					  [LambdaExp.TYVARtype tyvar_list],[0])),
+					  [LambdaExp.TYVARtype tyvar_list])),
 		      (Ident.id_Div, EXCON(Excon.ex_DIV, exnType)),
 		      (Ident.id_Match, EXCON(Excon.ex_MATCH, exnType)),
 		      (Ident.id_Bind, EXCON(Excon.ex_BIND, exnType)),
@@ -152,10 +146,10 @@ functor CompilerEnv(structure Ident: IDENT
 	      VarEnv=VARENV (FinMap.add(id, LVAR (lv,tyvars,tau,il0), m))}
       end
 
-    fun declareCon(id, (con,tyvars,tau,it), CENV{StrEnv,VarEnv=VARENV m,TyEnv}) =
+    fun declareCon(id, (con,tyvars,tau), CENV{StrEnv,VarEnv=VARENV m,TyEnv}) =
       let val il0 = map LambdaExp.TYVARtype tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
-	      VarEnv=VARENV(FinMap.add(id,CON (con,tyvars,tau,il0,it), m))}
+	      VarEnv=VARENV(FinMap.add(id,CON (con,tyvars,tau,il0), m))}
       end
 
     fun declareExcon(id, excon, CENV{StrEnv,VarEnv=VARENV map,TyEnv}) =
@@ -229,7 +223,7 @@ functor CompilerEnv(structure Ident: IDENT
 	 | LESSEQ => Lvars.lesseq_int_lvar :: Lvars.lesseq_float_lvar :: lvs
 	 | GREATEREQ => Lvars.greatereq_int_lvar :: Lvars.greatereq_float_lvar :: lvs
 	 | _ => lvs
-    fun cons_result (CON (c,_,_,_,_), cs) = c :: cs
+    fun cons_result (CON (c,_,_,_), cs) = c :: cs
       | cons_result (_, cs) = cs
     fun excons_result (EXCON (c,_), cs) = c :: cs
       | excons_result (_, cs) = cs
@@ -242,7 +236,7 @@ functor CompilerEnv(structure Ident: IDENT
       | tynames_taus (tau::taus,tns) = tynames_tau(tau,tynames_taus(taus,tns))
 
     fun tynames_result (LVAR (_,_,tau,il), tns) : TyName list = tynames_taus(il,tynames_tau(tau,tns))
-      | tynames_result (CON(_,_,tau,il,_), tns) = tynames_taus(il,tynames_tau(tau,tns))
+      | tynames_result (CON(_,_,tau,il), tns) = tynames_taus(il,tynames_tau(tau,tns))
       | tynames_result (EXCON(_,tau), tns) = tynames_tau(tau,tns)
       | tynames_result (REF, tns) = TyName.tyName_REF :: tns
       | tynames_result (_, tns) = tns
@@ -270,25 +264,6 @@ functor CompilerEnv(structure Ident: IDENT
 	  and tynames_SE(STRENV m, acc) = FinMap.fold tynames_E acc m 
       in (TyName.Set.list o TyName.Set.fromList) (tynames_E(ce,[]))
       end
-
-   fun mk_it tyvars tyvars0 =
-     let  fun index _ _ [] = die "index"
-	    | index n x' (x::xs) = if x=x' then n
-				   else index (n+1) x' xs
-          fun f [] a = rev a
-	    | f (tv0::tvs0) a = f tvs0 (index 0 tv0 tyvars :: a)
-     in f tyvars0 []
-     end
-
-   fun apply_it(it,types) =
-     let fun sel 0 (x::xs) = x
-	   | sel n (x::xs) = sel (n-1) xs
-	   | sel _ _ = die "apply_it"
-         fun f [] a = rev a
-	   | f (n::ns) a = f ns (sel n types :: a)
-     in f it []
-     end
-
 
    (* -------------
     * Restriction
@@ -346,8 +321,8 @@ functor CompilerEnv(structure Ident: IDENT
      fun eq_res (LVAR (lv1,tvs1,tau1,il1), LVAR (lv2,tvs2,tau2,il2)) = 
        Lvars.eq(lv1,lv2) andalso
        LambdaBasics.eq_sigma_with_il((tvs1,tau1,il1),(tvs2,tau2,il2))
-       | eq_res (CON(con1,tvs1,tau1,il1,it1), CON(con2,tvs2,tau2,il2,it2)) =
-       Con.eq(con1, con2) andalso it1 = it2 andalso
+       | eq_res (CON(con1,tvs1,tau1,il1), CON(con2,tvs2,tau2,il2)) =
+       Con.eq(con1, con2) andalso
        LambdaBasics.eq_sigma_with_il((tvs1,tau1,il1),(tvs2,tau2,il2))
        | eq_res (REF, REF) = true
        | eq_res (EXCON (excon1,tau1), EXCON (excon2,tau2)) = 
@@ -408,7 +383,7 @@ functor CompilerEnv(structure Ident: IDENT
 
    local  
      fun matchRes (LVAR (lv,_,_,_), LVAR (lv0,_,_,_)) = Lvars.match(lv,lv0)
-       | matchRes (CON(con,_,_,_,it), CON(con0,_,_,_,it0)) = if it = it0 then Con.match(con,con0) else ()
+       | matchRes (CON(con,_,_,_), CON(con0,_,_,_)) = Con.match(con,con0)
        | matchRes (EXCON (excon,_), EXCON (excon0,_)) = Excon.match(excon,excon0)
        | matchRes _ = ()
 
@@ -439,23 +414,18 @@ functor CompilerEnv(structure Ident: IDENT
    val compileTypeScheme_knot: (TypeScheme -> tyvar list * Type) option ref = ref NONE   (* MEGA HACK *)
    fun set_compileTypeScheme c = compileTypeScheme_knot := (SOME c)
 
-   val normalize_sigma_knot: (tyvar list * Type -> tyvar list * Type) option ref = ref NONE   (* MEGA HACK *)
-   fun set_normalize_sigma c = normalize_sigma_knot := (SOME c)
-
    fun constrain (ce: CEnv, elabE : ElabEnv) =
      let open Environments
          val compileTypeScheme = case compileTypeScheme_knot 
 				   of ref (SOME compileTypeScheme) => compileTypeScheme
 				    | ref NONE => die "compileTypeScheme_knot not set" 
-         val normalize_sigma = case normalize_sigma_knot
-				   of ref (SOME f) =>f
-				    | ref NONE => die "normalize_sigma_knot not set" 
          fun constr_ran (tr, er) =
 	   case tr
 	     of LVAR(lv,tvs,tau,il) =>
 	       (case er
 		  of VE.LONGVAR sigma => 
 		    let val (tvs',tau') = compileTypeScheme sigma
+		          handle ? => (print ("constr_ran. lvar = " ^ Lvars.pr_lvar lv ^ "\n"); raise ?)
 		        val S = LambdaBasics.match_sigma((tvs,tau),tau')
 			  handle X => (print ("\nMatch failed for var matching var " ^ Lvars.pr_lvar lv ^ "\n");
 				       print "Type scheme in translation env:\n";
@@ -467,26 +437,25 @@ functor CompilerEnv(structure Ident: IDENT
 		    in LVAR(lv,tvs',tau',il')
 		    end
 		   | _ => die "constr_ran.LVAR.longvar expected") 
-	      | CON(con,tvs,tau,il,it) =>
+	      | CON(con,tvs,tau,il) =>
 	       (case er
 		  of VE.LONGVAR sigma =>
 		    let val (tvs',tau') = compileTypeScheme sigma
+		          handle ? => (print ("constr_ran.LONGVAR: con = " ^ Con.pr_con con ^ "\n"); raise ?)
 		        val S = LambdaBasics.match_sigma((tvs,tau),tau')
 			  handle X => (print ("\nMatch failed for var matching con " ^ Con.pr_con con ^ "\n");
 				       raise X)			
 			val il' = map (LambdaBasics.on_Type S) il
-		    in CON(con,tvs',tau',il',it)
+		    in CON(con,tvs',tau',il')
 		    end
 		   | VE.LONGCON sigma =>
 		    let val (tvs',tau') = compileTypeScheme sigma
-                        (* the bound variables tvs' come in random order: 
-                           normalize it along tvs: *)
-                        val (tvs',tau') = normalize_sigma(tvs,tau')
+		          handle ? => (print ("constr_ran.LONGCON: con = " ^ Con.pr_con con ^ "\n"); raise ?)
 		        val S = LambdaBasics.match_sigma((tvs,tau),tau')
 			  handle X => (print ("\nMatch failed for con matching con " ^ Con.pr_con con ^ "\n");
 				       raise X)			
 			val il' = map (LambdaBasics.on_Type S) il
-		    in if LambdaBasics.eq_sigma((tvs,tau),(tvs',tau')) then CON(con,tvs',tau',il',it)
+		    in if LambdaBasics.eq_sigma((tvs,tau),(tvs',tau')) then CON(con,tvs',tau',il')
 		       else (print "\nconstr_ran.CON.type schemes should be equal.\n";
                              print "Elaboration environment:\n\n";
                              pr_st (Environments.E.layout elabE);
@@ -503,6 +472,7 @@ functor CompilerEnv(structure Ident: IDENT
 	       (case er
 		  of VE.LONGVAR sigma =>
 		    let val (tvs',tau') = compileTypeScheme sigma
+		          handle ? => (print ("constr_ran.EXCON: excon = " ^ Excon.pr_excon excon ^ "\n"); raise ?)
 		    in if tvs' = [] andalso LambdaBasics.eq_Type(tau,tau') then EXCON(excon,tau)
 		       else die "constr_ran.EXCON.LONGVAR"
 		    end
@@ -588,7 +558,7 @@ functor CompilerEnv(structure Ident: IDENT
 					  | LESSEQ => "LESSEQ"
 					  | GREATEREQ => "GREATEREQ"
 					  | REF => "REF" 
-					  | CON(con,_,_,_,it) => "CON(" ^ Con.pr_con con ^ ")"
+					  | CON(con,_,_,_) => "CON(" ^ Con.pr_con con ^ ")"
 					  | EXCON (excon,_) => "EXCON(" ^ Excon.pr_excon excon ^ ")")))
 				       m],
 	      childsep=PP.NOSEP}
