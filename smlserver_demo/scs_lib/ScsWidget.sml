@@ -13,6 +13,7 @@ signature SCS_WIDGET =
     val mediumWideTA : string -> quot -> quot
     val smallTA  : string -> quot -> quot
     val select   : (string * string) list -> string -> quot
+    val selectYesNoWithDefault : string -> string -> quot
     val selectWithDefault : (string * string) list -> string -> string -> quot
     val oneLine : quot * quot -> quot
     val errorOnEmptyList : string -> 'a list -> 'a list
@@ -31,6 +32,8 @@ signature SCS_WIDGET =
     val intextVal       : int -> string -> string -> quot
     val intextMaxLenVal : int -> int -> string -> string -> quot
     val intextDate      : Date.date option -> string -> quot
+
+    val maybe           : string -> quot -> quot
   end
 
 structure ScsWidget :> SCS_WIDGET =
@@ -96,6 +99,8 @@ structure ScsWidget :> SCS_WIDGET =
       ` ^^ (List.foldr (fn ((l,v),acc) => `
 			<option value="^v" ^(if v=default then "selected" else "")>^l</option>` ^^ acc) `</select>` opts)
 
+    val selectYesNoWithDefault = selectWithDefault [(%"Yes","t"),(%"No","f")]
+
     fun oneLine (text,widget) = text ^^ ` ` ^^ widget
 
     fun errorOnEmptyList (text : string) (ls : 'a list) : 'a list =
@@ -156,4 +161,6 @@ structure ScsWidget :> SCS_WIDGET =
       case d of
 	NONE => intextMaxLenVal 10 10 "" fv
       | SOME d' => intextMaxLenVal 10 10 (ScsDate.pp d') fv
+
+    fun maybe fv text = if fv = "" then `` else text
   end

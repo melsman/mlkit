@@ -1,6 +1,7 @@
 signature SCS_LIST =
   sig
-    val allDifferent : ('a -> 'a -> bool) -> 'a list -> bool
+    val allDifferent : ('a * 'a -> bool) -> 'a list -> bool
+    val allOrNone    : ('a -> bool) -> 'a list -> bool
   end
 
 structure ScsList :> SCS_LIST =
@@ -8,10 +9,11 @@ structure ScsList :> SCS_LIST =
     (* Given a list of strings, checks that they are mutually different. *)
     fun allDifferent fn_eq ls =
       let
-	fun check(c,ls1,ls2) = not (List.exists (fn_eq c) (ls1@ls2))
+	fun check(c,ls1,ls2) = not (List.exists (fn x => fn_eq(c,x)) (ls1@ls2))
 	fun check_all ([],ls2) = true
 	  | check_all (x::xs,ls2) = check(x,xs,ls2) andalso check_all(xs,x::ls2)
       in
         check_all (ls,[])
       end
+    fun allOrNone fn_empty ls = List.all fn_empty ls orelse List.all (not o fn_empty) ls
   end

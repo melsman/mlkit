@@ -88,6 +88,12 @@ insert into scs_dict (dict_id, phrase_id, lang, text) values (69,36,'English','d
 insert into scs_dict (dict_id, phrase_id, lang, text) values (70,36,'Danish','dato');
 insert into scs_dict (dict_id, phrase_id, lang, text) values (71,22,'English','string');
 insert into scs_dict (dict_id, phrase_id, lang, text) values (72,22,'Danish','tegnstreng');
+insert into scs_dict (dict_id, phrase_id, lang, text) values (73,37,'English','Yes/No');
+insert into scs_dict (dict_id, phrase_id, lang, text) values (74,37,'Danish','Ja/Nej');
+insert into scs_dict (dict_id, phrase_id, lang, text) values (75,38,'English','Yes');
+insert into scs_dict (dict_id, phrase_id, lang, text) values (76,38,'Danish','Ja');
+insert into scs_dict (dict_id, phrase_id, lang, text) values (77,39,'English','No');
+insert into scs_dict (dict_id, phrase_id, lang, text) values (78,39,'Danish','Nej');
 
 commit;
 column text format a30;
