@@ -70,6 +70,12 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 	\might also need to link with libraries other than\n\
 	\libm.so (\"-lm\")."}
 
+    val strip_p = ref false
+    val _ = Flags.add_bool_entry 
+       {long="strip", short=NONE, neg=false, item=strip_p,
+	menu=["Control", "strip executable"],
+	desc="If enabled, the Kit strips the generated executable."}
+
     val _ = Flags.add_bool_entry
        {long="delete_target_files", short=NONE, neg=true, item=ref true,
 	menu=["Debug", "delete target files"], 
@@ -151,6 +157,10 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 	filename_o
       end
 
+    fun strip run =
+      if !strip_p then (execute_command ("strip " ^ run)
+	                handle _ => ())
+      else ()
 
     fun link_files_with_runtime_system path_to_runtime files run =
       let val files = map (fn s => s ^ " ") files
@@ -158,6 +168,7 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 	    concat files ^ path_to_runtime() ^ " " ^ !clibs
       in (*print("[using link command: " ^ shell_cmd ^ "]\n"); *)
 	execute_command shell_cmd;
+	strip run;
 	print("[wrote executable file:\t" ^ run ^ "]\n")	
       end 
 
