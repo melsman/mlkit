@@ -47,7 +47,7 @@ as
      function email
      --------------
      returns the email for a party_id
-     Throws a ScsDbExn exception if party_id is illegal
+     Returns null if party_id is illegal
   */
   function email (
     party_id in scs_parties.party_id%TYPE
@@ -57,7 +57,7 @@ as
      function partyIdByEmail
      --------------
      returns the party id for the party with the argument
-     email. Returns null if such an email does not exists. Eamil is
+     email. Returns null if such an email does not exists. Email is
      unique.  */
   function partyIdByEmail (
     email in scs_parties.email%TYPE
@@ -159,8 +159,10 @@ as
     return v_email;
  exception 
    when NO_DATA_FOUND then
-     raise_application_error( scs.ScsDbExn, 
-			       'no party with id '|| email.party_id );
+     return null;
+   when others then
+     raise_application_error(scs.ScsDbExn, 
+        		     'some error on party with id '|| email.party_id );
  end email;
 
   function url (
