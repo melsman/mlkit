@@ -924,7 +924,7 @@ Det finder du nok aldrig ud af.*)
 	     match_con (Scon (scon, typeScon info)) [] (path, termd, ctx, work, rhs, rules)
 	 | LONGIDatpat (info, OP_OPT (longid, _)) =>
 	     (case to_TypeInfo info of
-		SOME (TypeInfo.VAR_PAT_INFO {tyvars, Type}) =>
+		SOME (TypeInfo.VAR_PAT_INFO _) =>
 		  (*it is a variable, not a nullary constructor*)
 		  succeed (augment (ctx, termd), work, rhs, rules)
 	      | SOME (TypeInfo.CON_INFO {numCons   : int,
@@ -2336,9 +2336,7 @@ the 12 lines above are very similar to the code below
 		 let
 (*		   (* omit tyvars that are not in Type *)
 		   val tyvarsType = Type.tyvars Type
-		   val tyvars = List.foldr (fn (tv,acc) => 
-					    if List.exists (fn tv' => TyVar.eq(tv,tv')) tyvarsType then tv::acc
-					    else acc) nil tyvars
+		   val tyvars = List.filter (fn tv => List.exists (fn tv' => TyVar.eq(tv,tv')) tyvarsType) tyvars
 *)
 		   val (env1, f1) = compile_binding env (topLevel, pat, exp, (tyvars, Type))
 		 in case vbOpt
@@ -2352,7 +2350,7 @@ the 12 lines above are very similar to the code below
 
            | RECvalbind(_, vb) =>
                let val pairs = flattenRecValbind vb
-               in compileREC env (ListPair.unzip pairs)
+               in compileREC env pairs
                end
       end
 
@@ -2525,12 +2523,61 @@ the 12 lines above are very similar to the code below
       bracketted??), and the RHS's must all be lambdas. Type constraints
       are allowed, though. Returns the rec env only, plus `fn scope -> lexp'. *)
 
-    and compileREC env (pats, exps): CE.CEnv * (LambdaExp -> LambdaExp) =
+    and compileREC (env:CE.CEnv) (pat_exp__s : (pat * exp) list) : CE.CEnv * (LambdaExp -> LambdaExp) =
       let
-	fun mk_env ids_lvars_sigmas = 
-	  foldr(fn ((id,lv,(tvs,tau)), env) => CE.declareVar(id,(lv,tvs,tau),env)) 
-	  CE.emptyCEnv ids_lvars_sigmas
+        (* Actually, to support layered patterns in the bindings, multiple 
+	 * identifiers may map to the same lambda variable. Type information 
+	 * is recorded on both the LONGIDatpat and LAYEREDpat nodes. *)
 
+	fun mk_env idss_lvars_sigmas = 
+	  foldr (fn ((ids,lv,(tvs,tau)), env) => 
+		 foldr (fn (id,env) => CE.declareVar(id,(lv,tvs,tau),env)) env ids)
+	  CE.emptyCEnv idss_lvars_sigmas
+
+	fun add_scheme (_, scheme as SOME _) = scheme
+	  | add_scheme (i, _) =
+	  case to_TypeInfo i
+	    of SOME(TypeInfo.VAR_PAT_INFO{tyvars,Type}) => SOME(compileTypeScheme(tyvars,Type))
+	     | SOME _ => die "compileREC.add_scheme.wrong type info"
+	     | NONE => die "compileREC.add_scheme.no type info"
+
+	fun ids_pat (TYPEDpat(_, pat, _), scheme, ids) = ids_pat (pat, scheme, ids)
+	  | ids_pat (ATPATpat(_, atpat), scheme, ids) = ids_atpat (atpat, scheme, ids)
+	  | ids_pat (LAYEREDpat(i, OP_OPT (id,_), _, pat), scheme, ids) = 
+	  ids_pat (pat, add_scheme(i,scheme), id::ids)
+	  | ids_pat (UNRES_INFIXpat _, _, _) = die "ids_pat.UNRES_INFIXpat"
+	  | ids_pat (CONSpat _, _, _) = die "ids_pat.CONSpat"
+	and ids_atpat (WILDCARDatpat _, scheme, ids) = (scheme, ids)
+	  | ids_atpat (SCONatpat _, _, _) = die "ids_atpat.SCONatpat"
+	  | ids_atpat (LONGIDatpat(i,OP_OPT(longid, _)), scheme, ids) = 
+	  (case Ident.decompose longid
+	     of (nil, id) => (add_scheme(i,scheme), id::ids)
+	      | _ => die("compileREC.ids_atpat.LONGIDatpat.long: " ^ Ident.pr_longid longid ^ ")"))
+	  | ids_atpat (RECORDatpat _, _, _) = die "compileREC.ids_atpat.RECORDatpat"
+	  | ids_atpat (PARatpat(_,pat), scheme, ids) = ids_pat(pat, scheme, ids)
+
+	val ids_lv_sch_exp__s = 
+	  foldr (fn ((pat,exp),acc) => 
+		 case ids_pat (pat, NONE, nil)
+		   of (NONE, nil) => acc (* only wildcard involved; discard binding *)
+		    | (SOME _, nil) => die "compileREC.ids_sch_exp__s.scheme but no ids"
+		    | (SOME sch, ids as id :: _) => 
+		     let val lv = Lvars.new_named_lvar(Ident.pr_id id)
+		     in (ids, lv, sch, exp) :: acc
+		     end
+		    | _ => die "compileREC.ids_sch_exp__s.no scheme but ids") 
+	  nil pat_exp__s
+
+	val ids_lv_sch__s = map (fn (ids,lv,sch,_) => (ids,lv,sch)) ids_lv_sch_exp__s
+	val ids_lv_ty__s = map (fn (ids,lv,(tvs,ty)) => (ids,lv,([],ty))) ids_lv_sch__s
+	  
+	val recEnv : CE.CEnv = env plus (mk_env ids_lv_ty__s)
+	val scopeEnv : CE.CEnv = mk_env ids_lv_sch__s
+
+	val functions = 
+	  map (fn (_,lv,(tvs,ty),exp) => {lvar=lv,tyvars=tvs,Type=ty,bind=compileExp recEnv exp})
+	  ids_lv_sch_exp__s
+(*
 	fun id_sigma(TYPEDpat(_, pat, _)) = id_sigma pat
           | id_sigma(ATPATpat(_, LONGIDatpat(info, OP_OPT(longid, _)))) =
               (case Ident.decompose longid
@@ -2555,9 +2602,9 @@ the 12 lines above are very similar to the code below
 	  (map (fn ((_,lvar,(tyvars,Type)),bind) => {lvar=lvar, tyvars=tyvars, Type=Type, bind=bind})
 	   (ListPair.zip (ids_lvars_sigmas,binds)))
 	  handle ListPair.Zip => die "compileREC.functions.Zip"
-
+*)
 	val f' = fn scope => FIX {functions=functions, scope=scope}
-      in (scopeEnv, f')
+      in (scopeEnv : CE.CEnv, f' : LambdaExp -> LambdaExp)
       end                                                            
 
   (* -----------------------------------------------------

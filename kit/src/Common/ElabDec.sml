@@ -379,24 +379,9 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 				     VE : VarEnv, 
 				     valbind: OG.valbind) : OG.valbind =
       let 
-	fun lookup_id id = VE.lookup VE id
-
-        fun do_valbind (vb : OG.valbind) : OG.valbind =
-          case vb 
-	    of OG.PLAINvalbind(i, pat, exp, vb_opt) =>
-	      let val i' = case ElabInfo.to_TypeInfo i 
-			     of SOME (TypeInfo.PLAINvalbind_INFO{tyvars=[],Type}) =>
-			       ElabInfo.plus_TypeInfo i 
-			       (TypeInfo.PLAINvalbind_INFO{tyvars=generic_tyvars, Type=Type})
-			      | _ => impossible "ElabDec.do_valbind: wrong type info"
-		  val vb_opt' = case vb_opt
-				  of SOME vb => SOME(do_valbind vb)
-				   | NONE => NONE
-	      in OG.PLAINvalbind(i', do_pat pat, exp, vb_opt')
-	      end
-	     | OG.RECvalbind(i, vb) => OG.RECvalbind(i,do_valbind vb)
-
-        and do_pat pat =
+	val generic_tyvars_pat = ref nil
+	fun add_tyvars tvs = generic_tyvars_pat := TyVar.unionTyVarSet (!generic_tyvars_pat, tvs)
+        fun do_pat pat =
           case pat 
 	    of OG.ATPATpat(i, atpat) => OG.ATPATpat(i,do_atpat atpat)
 	     | OG.CONSpat(i, longid_op, atpat) => OG.CONSpat(i, longid_op, do_atpat atpat)
@@ -406,6 +391,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 		    case VE.lookup VE id
 		      of SOME(VE.LONGVAR sigma) => 
 			let val (tyvars, Type) = TypeScheme.to_TyVars_and_Type sigma
+			    val _ = add_tyvars tyvars
 			in ElabInfo.plus_TypeInfo i (TypeInfo.VAR_PAT_INFO{tyvars=tyvars,Type=Type})
 			end
 		       | _ => i
@@ -425,6 +411,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 			(case VE.lookup VE id
 			   of SOME(VE.LONGVAR sigma) => 
 			     let val (tyvars, Type) = TypeScheme.to_TyVars_and_Type sigma
+			         val _ = add_tyvars tyvars			       
 			     in ElabInfo.plus_TypeInfo i (TypeInfo.VAR_PAT_INFO{tyvars=tyvars,Type=Type})
 			     end
 			    | _ => i)
@@ -438,6 +425,23 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
           case patrow 
 	    of OG.DOTDOTDOT _ => patrow
 	     | OG.PATROW(i, l, pat, patrowOpt) => OG.PATROW(i, l, do_pat pat, map_opt do_patrow patrowOpt)
+
+        fun do_valbind (vb : OG.valbind) : OG.valbind =
+          case vb 
+	    of OG.PLAINvalbind(i, pat, exp, vb_opt) =>
+	      let val _ = generic_tyvars_pat := nil
+		  val pat = do_pat pat		    
+		  val i' = case ElabInfo.to_TypeInfo i 
+			     of SOME (TypeInfo.PLAINvalbind_INFO{tyvars=[],Type}) =>
+			       ElabInfo.plus_TypeInfo i 
+			       (TypeInfo.PLAINvalbind_INFO{tyvars= !generic_tyvars_pat, Type=Type})
+			      | _ => impossible "ElabDec.do_valbind: wrong type info"
+		  val vb_opt' = case vb_opt
+				  of SOME vb => SOME(do_valbind vb)
+				   | NONE => NONE
+	      in OG.PLAINvalbind(i', pat, exp, vb_opt')
+	      end
+	     | OG.RECvalbind(i, vb) => OG.RECvalbind(i,do_valbind vb)
       in
         do_valbind valbind
       end

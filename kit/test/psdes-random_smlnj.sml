@@ -60,8 +60,8 @@ structure Main =
 	       if i = 0
 		  then
 		     if w = 0wxEAD56832
-			then ()
-		     else raise Fail "bug"
+			then print "OK\n"
+		     else print ("ERROR: w is " ^ Word32.toString w ^ "\n")
 	       else loop (i - 1, w + word())
 	 in loop (10000000, 0w0)
 	 end
