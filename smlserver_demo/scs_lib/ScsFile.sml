@@ -88,18 +88,18 @@ structure ScsFile :> SCS_FILE =
 	    val kb = b / 1024.0
 	  in
 	    if kb < 1024.0 then
-	      ppReal kb ^ "kb"
+	      ppReal kb ^ "Kb"
 	    else
 	      let 
 		val mb = kb / 1024.0
 	      in
 		if mb < 1024.0 then
-		  ppReal mb ^ "mb"
+		  ppReal mb ^ "Mb"
 		else
 		  let
 		    val gb = mb / 1024.0
 		  in
-		    ppReal gb ^ "gb"
+		    ppReal gb ^ "Gb"
 		  end
 	      end
 	  end
