@@ -190,7 +190,7 @@ signature ENVIRONMENTS =
 	val plus_TE              : Context * TyEnv    -> Context
 	val plus_VE_and_TE       : Context * (VarEnv * TyEnv) -> Context
 	val to_U                 : Context -> ExplicitTyVar list
-	val ExplicitTyVar_lookup : Context -> ExplicitTyVar -> Type
+	val ExplicitTyVar_lookup : Context -> ExplicitTyVar -> Type option
 	val from_E               : Env -> Context
 	val on                   : Substitution * Context  -> Context
 

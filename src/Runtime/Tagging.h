@@ -55,7 +55,7 @@
 #define get_table_size(s)   ((s) >> 6)
 
 #ifdef TAG_VALUES
-#define val_tag_real              (gen_record_tag(3,3,0,6))
+#define val_tag_real              (gen_record_tag(2,2,0,6))
 #define val_tag_record(s)         (gen_record_tag((s),0,0,6))
 #define val_tag_scalar_record(s)  (gen_record_tag((s),(s),0,6))
 #define val_tag_ref               (gen_string_tag(0,0,5))
@@ -112,7 +112,7 @@
  * get_d may be used as l-value as well. */
 
 #ifdef TAG_VALUES
-#define get_d(s)     (* (double *)(((int *)s)+2))
+#define get_d(s)     (* (double *)(((int *)s)+1))
 #define set_dtag(d)  (* (int *)(d) = val_tag_real)
 #define convertRealToC(mlReal)  (get_d((mlReal)))
 #define convertRealToML(cReal, mlReal) {get_d((mlReal)) = (cReal);\

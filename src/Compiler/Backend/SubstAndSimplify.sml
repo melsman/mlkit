@@ -235,7 +235,7 @@ struct
 	  | SS_se(LS.DEREF atom) = LS.DEREF(atom_to_aty' atom)
 	  | SS_se(LS.REF(sma,atom)) = LS.REF(sma_to_sma' sma,atom_to_aty' atom)
 	  | SS_se(LS.ASSIGNREF(sma,atom1,atom2)) = LS.ASSIGNREF(sma_to_sma' sma,atom_to_aty' atom1,atom_to_aty' atom2)
-	  | SS_se(LS.PASS_PTR_TO_MEM(sma,i)) = LS.PASS_PTR_TO_MEM(sma_to_sma' sma,i)
+	  | SS_se(LS.PASS_PTR_TO_MEM(sma,i,b)) = LS.PASS_PTR_TO_MEM(sma_to_sma' sma,i,b)
 	  | SS_se(LS.PASS_PTR_TO_RHO(sma)) = LS.PASS_PTR_TO_RHO(sma_to_sma' sma)
 
 	fun SS_lss'([]) = []

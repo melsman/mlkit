@@ -33,7 +33,7 @@ struct
    val tag_values = Flags.is_on0 "tag_values"
 
    fun size_of_real () = 
-     if tag_values() then 4 else 2
+     if tag_values() then 3 else 2
 
    fun size_of_ref () = 
      if tag_values() then 2 else 1
