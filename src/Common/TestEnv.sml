@@ -694,10 +694,10 @@ functor TestEnv(structure TestInfo: TEST_INFO
      * memory information from the top program, hence we rename the generated `run'
      * file to run_project. *)
 
-    fun evalProjects project_name =
+    fun evalProject project_name =
       (Manager.build project_name;
        OS.FileSys.rename{old="run", new="run_project"})
-      handle OS.SysErr _ => raise Crash_test "evalProjects. Problem with renaming of run file."
+      handle OS.SysErr _ => raise Crash_test "evalProject. Problem with renaming of run file."
 
     fun gen_input_str NONE = ""
       | gen_input_str (SOME input_str) = " < " ^ input_str ^ " "
@@ -755,6 +755,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       val _ = ok_log_report ("Compiled " ^ filename ^ new_line)
 
 	       val exe_file = unitname ^ ".exe"		
+	       val _ = OS.FileSys.rename{old="run", new=exe_file}
+		 handle OS.SysErr _ => raise Crash_test ("Error: could not rename file `run' to file `" ^ exe_file ^ "'")
 	       val new_out_datafile = OS.Path.joinDirFile{dir=new_compile_strategy_dir, file= unitname ^ ".out"}
 	       val shell_command = (exe_file ^ " " ^ exec_opt ^ 
 				    (gen_input_str input_to_file) ^
@@ -787,7 +789,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       val _ = reset()
 
 	       val _ = ok_log_report ("Compiling project " ^ project_name ^ ".")
-	       val _ = evalProjects project_name handle X => 
+	       val _ = evalProject project_name handle X => 
 		 (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
 		
 	       val new_out_datafile = OS.Path.joinDirFile{dir=new_compile_strategy_dir, file= OS.Path.base project_name ^ ".out"}
@@ -937,7 +939,9 @@ functor TestEnv(structure TestInfo: TEST_INFO
 		         (raise Crash_test "Error: Compile Error")
 		     
 	       val _ = ok_log_report ("Compiled " ^ filename ^ new_line)
-	       val exe_file = unitname ^ ".exe"		
+	       val exe_file = unitname ^ ".exe"
+	       val _ = OS.FileSys.rename{old="run", new=exe_file}
+		 handle OS.SysErr _ => raise Crash_test ("Error: could not rename file `run' to file `" ^ exe_file ^ "'")
 	       val new_out_datafile = OS.Path.joinDirFile{dir=new_compile_strategy_dir, file= unitname ^ ".out"}
 	       val (max_mem_size: string, max_res_size: string,
 		    real : string, user : string, sys  : string) =
@@ -971,7 +975,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       val _ = ok_log_report ("Compiling ML project " ^ project_name ^ ".")
 	       val _ = 
 		 let
-		   val _ = evalProjects project_name
+		   val _ = evalProject project_name
 		   val new_timings = List.map (fn (s,list) => (project_name (* ^":"^(get_filename(s)) *),list)) (Timing.get_timings())
 		 in
 		   timings := (!timings) @ new_timings
@@ -1104,45 +1108,35 @@ old*)
     (*********************************************)
     (* Top level functions controlling the test. *)
     (*********************************************)
-    local      
-      (* This function checks that the test directory exists, 
-         and a sub directory for this test can be created.   *)
 
-      fun dir_test () =
-	let
+    (* This function checks that the test directory exists, 
+     * and a sub directory for this test can be created.   *)
+
+    fun dir_test () =
+      let
 	  val _ = reset_test_report ()
 	  val _ = ok_log_report (new_line ^ "*************Now starting ordinary directory test.***************")
 
 	  val _ = if exists_directory (!test_env_directory) then
               	    ok_log_report("Test directory " ^ shorten_filename (!test_env_directory) ^ " exists.")
-		  else
-		    raise Crash_test ("Test directory: " ^ shorten_filename (!test_env_directory) ^ " does not exists.")
+		  else raise Crash_test ("Test directory: " ^ shorten_filename (!test_env_directory) ^ " does not exists.")
 
 	  val _ = if exists_directory (source_directory ()) then
 	            ok_log_report("Source directory " ^ shorten_filename (source_directory ()) ^ " exists.")
-		  else
-		    raise Crash_test ("Source directory: " ^ shorten_filename (source_directory ()) ^ " does not exists.")
-
+		  else raise Crash_test ("Source directory: " ^ shorten_filename (source_directory ()) ^ " does not exists.")
 
 	  val _ = if exists_directory (bin_directory ()) then
 	            ok_log_report("Bin directory " ^ shorten_filename (bin_directory ()) ^ " exists.")
-		  else
-		    raise Crash_test ("Bin directory: " ^ shorten_filename (bin_directory ()) ^ " does not exists.")
+		  else raise Crash_test ("Bin directory: " ^ shorten_filename (bin_directory ()) ^ " does not exists.")
+      in 
+	create_dir_and_maybe_rename_old (new_version_dir ());
+	test_report_stream := open_test_report()
+      end
 
-	  val _ = create_dir_and_maybe_rename_old (new_version_dir ())
-
-	  val _ = test_report_stream := open_test_report()
-
-	in
-	  ()
-	end
-    in
-      fun test () = 
-	let
-	  val _ = test_log_stream := (if (!test_log_string) = "std_out" then
-				        TextIO.stdOut
-				      else 
-					TextIO.openOut(!test_log_string))
+    fun test () = 
+      let 
+	  val _ = test_log_stream := (if (!test_log_string) = "std_out" then TextIO.stdOut
+				      else TextIO.openOut(!test_log_string))
 
 	  val _ = ok_log ("Using logfile: " ^ (!test_log_string))
 	  val orig_dir = get_working_directory()
@@ -1150,46 +1144,33 @@ old*)
 	  fun close_logfile () =
 	    if (!test_log_string) <> "std_out" then
 	      TextIO.closeOut (!test_log_stream)
-	    else
-	      ()
-	in
-	  let
-	    (* Record state before we change any flags. *)
-	    val state = Flags.get_state()
+	    else ()
 
-	    val _ = dir_test ()
+	  fun maybe (ref true) f = f ()
+	    | maybe (ref false) f = ()
 
-	    val _ = add_lines_test_report []
+	  (* Record state before we change any flags. *)
+	  val state = Flags.get_state()
 
-	    val _ = if !acceptance_test_flag then
-                      acceptance_test ()
-		    else
-		      ()
-
-	    val _ = if !performance_test_flag then
-                      performance_test ()
-		    else
-		      ()
-
-	    val _ = export_test_report()
-	    val _ = latex_test_report()
-
-	    (* Reset state again. *)
-	    val _ = Flags.reset_state state
-	  in
+	  fun endit() =
 	    (change_directory orig_dir; 
-	     ok_log_report "Test finished.";
-	     close_logfile ();
-	     ())
-	  end
-        handle 
-	  Crash_test s => (change_directory orig_dir; 
-			   error_log s;
-			   error_log "Test finished abnormally";
-			   close_logfile ();
-			   ())
+	     Flags.reset_state state; 	   (* Reset state again. *)
+	     close_logfile ())
+	in
+	  (Flags.auto_import_basislib := false;
+	   dir_test ();
+	   add_lines_test_report [];
+	   maybe acceptance_test_flag acceptance_test;
+	   maybe performance_test_flag performance_test;
+	   export_test_report();
+	   latex_test_report();
+	   ok_log_report "Test finished.";
+	   endit()
+	   ) handle Crash_test s => (error_log s;
+				     error_log "Test finished abnormally";
+				     endit())
 	end
-    end (* Local for test *)
+
     val _ = Flags.test_ref := test ;
               (*hack to allow fun `test' to appear on the interact menu*)
   end (* Struct *)
