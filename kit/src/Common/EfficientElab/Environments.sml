@@ -765,12 +765,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 	val boolVE =
 	      VE.plus (VE.singleton_con (Ident.id_TRUE, 
-					 TypeScheme.from_Type 
-					   Type.Bool,
+					 TypeScheme.from_Type Type.Bool,
 					 [Ident.id_FALSE, Ident.id_TRUE]),
 	               VE.singleton_con (Ident.id_FALSE,
-					 TypeScheme.from_Type 
-					   Type.Bool,
+					 TypeScheme.from_Type Type.Bool,
 					 [Ident.id_FALSE, Ident.id_TRUE]))
 	val TE_bool = TE.singleton (TyCon.tycon_BOOL,
 				   mk_tystr (TyName.tyName_BOOL,
@@ -781,13 +779,13 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	local
 	  val _ = Level.push()
 
-	  val alpha = TyVar.fresh {equality=false, overloaded=false}
+	  val alpha = TyVar.fresh_normal ()
 	  val alphaTy = Type.from_TyVar alpha
 
 	  val refTy =
 	        Type.mk_Arrow (alphaTy, Type.mk_Ref alphaTy)
 
-	  val beta = TyVar.fresh {equality=false, overloaded=false}
+	  val beta = TyVar.fresh_normal ()
 	  val betaTy = Type.from_TyVar beta
 
 	  val refTy_to_TE =
@@ -809,9 +807,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  val _ = Level.push()
 
 		 (* nil *)
-	  val alpha1 = 
-		TyVar.fresh {equality=false, overloaded=false}
-
+	  val alpha1 = TyVar.fresh_normal ()
 	  val alphaTy = Type.from_TyVar alpha1
 
 	  val listTy =
@@ -823,8 +819,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 					[Ident.id_CONS, Ident.id_NIL])
 
 		 (* cons *)
-	  val alpha1 = 
-		TyVar.fresh {equality=false, overloaded=false}
+	  val alpha1 = TyVar.fresh_normal ()
 
 	  val alphaTy = Type.from_TyVar alpha1
 	  val listTy = 
@@ -842,8 +837,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	   variants of type schemes for cons and nil, for TE*)
 
 		 (* nil *)
-	  val alpha1 = 
-		TyVar.fresh {equality=false, overloaded=false}
+	  val alpha1 = TyVar.fresh_normal ()
 
 	  val alphaTy = Type.from_TyVar alpha1
 
@@ -856,8 +850,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 					[Ident.id_CONS, Ident.id_NIL])
 
 		 (* cons *)
-	  val alpha1 = 
-		TyVar.fresh {equality=false, overloaded=false}
+	  val alpha1 = TyVar.fresh_normal ()
 	  val alphaTy = Type.from_TyVar alpha1
 	  val listTy = 
 		Type.from_ConsType
@@ -882,76 +875,99 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	       (* overloaded functions *)
 	local
 	  val _ = Level.push()
-	  val alpha =
-		TyVar.fresh {equality = false, overloaded = false}
+	  val alpha = TyVar.fresh_normal ()
 	  val alphaTy = Type.from_TyVar alpha
 
-	  val beta = TyVar.fresh {equality=false, overloaded=false}
+	  val beta = TyVar.fresh_normal ()
 	  val betaTy = Type.from_TyVar beta
 
-	  val primTy = Type.mk_Arrow
+	  val tau_int_X_alpha_to_beta = Type.mk_Arrow
 			 (Type.from_pair (Type.Int, alphaTy),
 			  betaTy)
 
-	  val primTyScheme = TypeScheme.from_Type primTy
+	  val sigma_int_X_alpha_to_beta = TypeScheme.from_Type tau_int_X_alpha_to_beta
 
-	  val num = TyVar.fresh {equality=false, overloaded=true}
-	  val numTy = Type.from_TyVar num
+	  val tyvar_num = TyVar.fresh_overloaded [TyName.tyName_INT,
+						  TyName.tyName_WORD,
+						  TyName.tyName_REAL]
+	  val tau_num = Type.from_TyVar tyvar_num
 
-	  val overloadedOpArityTwoTy =
-		Type.mk_Arrow (Type.from_pair (numTy, numTy),
-					numTy)
+	  val tau_num_X_num_to_num =
+		Type.mk_Arrow (Type.from_pair (tau_num, tau_num), tau_num)
 
-	  val num' = TyVar.fresh {equality=false, overloaded=true}
-	  val numTy' = Type.from_TyVar num'
+	  val tyvar_realint =
+	        TyVar.fresh_overloaded [TyName.tyName_REAL, TyName.tyName_INT]
+	  val tau_realint = Type.from_TyVar tyvar_realint
 
-	  val overloadedOpArityOneTy =
-		Type.mk_Arrow (numTy', numTy')
+	  val tau_realint_to_realint = Type.mk_Arrow (tau_realint, tau_realint)
 
-	  val num'' = TyVar.fresh {equality=false, overloaded=true}
-	  val numTy'' = Type.from_TyVar num''
+	  val tyvar_numtxt = TyVar.fresh_overloaded 
+				[TyName.tyName_INT, TyName.tyName_WORD,
+				 TyName.tyName_REAL, TyName.tyName_CHAR,
+				 TyName.tyName_STRING]
+	  val tau_numtxt = Type.from_TyVar tyvar_numtxt
+	  val tau_numtxt_X_numtxt_to_bool =
+		Type.mk_Arrow (Type.from_pair (tau_numtxt, tau_numtxt),
+			       Type.Bool)
 
-	  val overloadedRelOpTy =
-		Type.mk_Arrow (Type.from_pair (numTy'', numTy''),
-					Type.Bool)
+	  val tyvar_wordint = TyVar.fresh_overloaded [TyName.tyName_INT,
+						      TyName.tyName_WORD]
+	  val tau_wordint = Type.from_TyVar tyvar_wordint
+	  val tau_wordint_X_wordint_to_wordint =
+	        Type.mk_Arrow (Type.from_pair (tau_wordint, tau_wordint),
+			       tau_wordint)
 
 	  val _ = Level.pop()
 
-	  (* Overloaded types manually closed, to ensure closing of overloaded 
-	     type variable *)
+	  (*overloaded types manually closed, to ensure closing of overloaded 
+	   type variable:*)
 
-	  val overloadedOpArityTwoTyScheme = 
+	  val sigma_num_X_num_to_num = 
 		TypeScheme.from_TyVars_and_Type
-		  ([num], overloadedOpArityTwoTy)
+		  ([tyvar_num], tau_num_X_num_to_num)
 
-	  val overloadedOpArityOneTyScheme = 
+	  val sigma_realint_to_realint = 
 		TypeScheme.from_TyVars_and_Type
-		  ([num], overloadedOpArityOneTy)
+		  ([tyvar_num], tau_realint_to_realint)
 
-	  val overloadedRelOpTyScheme =
+	  val sigma_numtxt_X_numtxt_to_bool =
 		TypeScheme.from_TyVars_and_Type
-		  ([num], overloadedRelOpTy)
+		  ([tyvar_num], tau_numtxt_X_numtxt_to_bool)
+
+	  val sigma_wordint_X_wordint_to_wordint =
+	        TypeScheme.from_TyVars_and_Type
+		  ([tyvar_wordint], tau_wordint_X_wordint_to_wordint)
+
 	in
-	  val primVE      = VE.singleton(Ident.id_PRIM, LONGVARpriv primTyScheme)
+	  val primVE      = VE.singleton (Ident.id_PRIM,
+					  LONGVARpriv sigma_int_X_alpha_to_beta)
+	  val absVE       = VE.singleton (Ident.id_ABS, 
+					  LONGVARpriv sigma_realint_to_realint)
+	  val negVE       = VE.singleton (Ident.id_NEG,
+					  LONGVARpriv sigma_realint_to_realint)
+	  val divVE       = VE.singleton (Ident.id_DIV,
+					  LONGVARpriv sigma_wordint_X_wordint_to_wordint)
+	  val modVE       = VE.singleton (Ident.id_MOD,
+					  LONGVARpriv sigma_wordint_X_wordint_to_wordint)
+	  val plusVE      = VE.singleton (Ident.id_PLUS, 
+					  LONGVARpriv sigma_num_X_num_to_num)
+	  val minusVE     = VE.singleton (Ident.id_MINUS,
+					  LONGVARpriv sigma_num_X_num_to_num)
+	  val mulVE       = VE.singleton (Ident.id_MUL, 
+					  LONGVARpriv sigma_num_X_num_to_num)
+	  val lessVE      = VE.singleton (Ident.id_LESS, 
+					  LONGVARpriv sigma_numtxt_X_numtxt_to_bool)
+	  val greaterVE   = VE.singleton (Ident.id_GREATER, 
+					  LONGVARpriv sigma_numtxt_X_numtxt_to_bool)
+	  val lesseqVE    = VE.singleton (Ident.id_LESSEQ, 
+					  LONGVARpriv sigma_numtxt_X_numtxt_to_bool)
+	  val greatereqVE = VE.singleton (Ident.id_GREATEREQ, 
+					  LONGVARpriv sigma_numtxt_X_numtxt_to_bool)
 
-	  val absVE       = VE.singleton(Ident.id_ABS, 
-				     LONGVARpriv overloadedOpArityOneTyScheme)
-	  val negVE       = VE.singleton(Ident.id_NEG,
-				     LONGVARpriv overloadedOpArityOneTyScheme)
-	  val plusVE      = VE.singleton(Ident.id_PLUS, 
-				     LONGVARpriv overloadedOpArityTwoTyScheme)
-	  val minusVE     = VE.singleton(Ident.id_MINUS,
-				     LONGVARpriv overloadedOpArityTwoTyScheme)
-	  val mulVE       = VE.singleton(Ident.id_MUL, 
-				     LONGVARpriv overloadedOpArityTwoTyScheme)
-	  val lessVE      = VE.singleton(Ident.id_LESS, 
-				     LONGVARpriv overloadedRelOpTyScheme)
-	  val greaterVE   = VE.singleton(Ident.id_GREATER, 
-				     LONGVARpriv overloadedRelOpTyScheme)
-	  val lesseqVE    = VE.singleton(Ident.id_LESSEQ, 
-				     LONGVARpriv overloadedRelOpTyScheme)
-	  val greatereqVE = VE.singleton(Ident.id_GREATEREQ, 
-				     LONGVARpriv overloadedRelOpTyScheme)
+	  val DivVE       = VE.singleton (Ident.id_Div, LONGEXCONpriv Type.Exn)
+	  val ModVE       = VE.singleton (Ident.id_Mod, LONGEXCONpriv Type.Exn)
+	  val BindVE      = VE.singleton (Ident.id_Bind, LONGEXCONpriv Type.Exn)
+	  val MatchVE     = VE.singleton (Ident.id_Match, LONGEXCONpriv Type.Exn)
 
 	  fun joinVE [] = VE.empty
 	    | joinVE (VE :: rest) = VE.plus (VE, joinVE rest)
@@ -974,11 +990,9 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	local 
 	  fun mk_sigma() = (*construct the type scheme: forall 'a.'a->unit*)
 	    let val _ = Level.push()
-		val alpha = TyVar.fresh
-			      {equality=false, overloaded=false}
+		val alpha = TyVar.fresh_normal ()
 		val alphaTy = Type.from_TyVar alpha
-		val arrowType = Type.mk_Arrow (alphaTy,
-							  Type.Unit)
+		val arrowType = Type.mk_Arrow (alphaTy, Type.Unit)
 		val _ = Level.pop()
 	    in 
 	      TypeScheme.from_TyVars_and_Type ([alpha], arrowType)
@@ -995,11 +1009,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	val VE_initial =
 	      joinVE [VE.close refVE, VE.close boolVE, VE.close listVE,
 		      VE.close primVE,
-		      absVE, negVE, plusVE, minusVE, mulVE, lessVE, greaterVE,
-		      lesseqVE, greatereqVE, resetRegionsVE, forceResettingVE
-		(*18/01/1997 19:53. tho.  Martin, skal Bind og Match
-		 ikke være her? Der stod før: `, VE_of_EE initialEE'*)
-		(* ,VE_std_in, VE_std_out *)]
+		      absVE, negVE, divVE, modVE, plusVE, minusVE, mulVE,
+		      lessVE, greaterVE, lesseqVE, greatereqVE,
+		      resetRegionsVE, forceResettingVE, DivVE, ModVE,
+		      BindVE, MatchVE]
       in
 	val initial = ENV {SE=SE.empty, TE=TE_initial, VE=VE_initial}
       end
@@ -1160,7 +1173,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		 | Some b => 
 		     (if !Flags.DEBUG_ELABDEC then
 			 output (std_out, Ident.pr_id id ^ "'s exp is " 
-				 ^ (if b then "NOT " else "") ^ "expansive\n")
+				 ^ (if not b then "NOT " else "") ^ "expansive\n")
 		      else () ;
 		      b))
   	    in

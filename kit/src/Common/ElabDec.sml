@@ -49,7 +49,8 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                   sharing type ElabInfo.ErrorInfo.tycon = OG.tycon
                   sharing type ElabInfo.ErrorInfo.lab   = OG.lab
                   sharing type ElabInfo.ErrorInfo.longtycon = OG.longtycon
-                  sharing type ElabInfo.OverloadingInfo.Type = StatObject.Type
+                  sharing type ElabInfo.OverloadingInfo.RecType = StatObject.RecType
+                  sharing type ElabInfo.OverloadingInfo.TyVar = StatObject.TyVar
                   sharing type ElabInfo.TypeInfo.Type    = StatObject.Type
                   sharing type ElabInfo.TypeInfo.TyEnv  = Environments.TyEnv
                   sharing type ElabInfo.TypeInfo.TyVar   = StatObject.TyVar
@@ -66,6 +67,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                   sharing type StatObject.StringTree
                                = Environments.StringTree
                                = IG.StringTree
+                               = OG.StringTree
                                = PP.StringTree
                   sharing type PP.Report = Report.Report
 
@@ -86,6 +88,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     structure TyVar        = StatObject.TyVar
     structure TyName       = StatObject.TyName
          type Type         = StatObject.Type
+         type TyVar        = StatObject.TyVar
          type RecType      = StatObject.RecType
     structure Type         = StatObject.Type
     structure TypeScheme   = StatObject.TypeScheme
@@ -242,22 +245,11 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 	      (PLAINvalbind_INFO {Type=tau, tyvars=[], escaping=[]})
     end
 
-    (********
-    Get a fresh type variable
-    *********
-    Returns a type variable with the equality and overloading 
-    attributes set to be false.
-    ********)
 
-    fun TyVar_fresh () =
-          TyVar.fresh {equality=false, overloaded=false}
+   (*Type_bogus () = when we get elaboration errors we often need to return a
+    bogus type.  It's best if that's just a fresh type variable:*)
 
-    fun Type_fresh () = Type.from_TyVar (TyVar_fresh ())
-
-   (* When we get elaboration errors we often need to return a bogus type.
-      It's best if that's just 'a. *)
-
-    val Type_bogus  = Type_fresh 
+    val Type_bogus = Type.fresh_normal
 
     fun Unify(tau, tau', i): Substitution * ElabInfo =
       case Type.unify (tau, tau')
@@ -573,22 +565,25 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
 
                (* Variable *)                                   
               Some(VE.LONGVAR sigma) =>
-                 let 
-                   val (instance,instances) = TypeScheme.instance'' sigma
+                 let val (instance, instances) = TypeScheme.instance'' sigma
+		   (*if Type.overloaded_tyvars instances yields [], then there
+		    are no overloaded tyvars in the type.  If there is exactly
+		    one overloaded tyvar, longid may be a primitive
+		    (e.g., + : 'a * 'a -> 'a, where 'a is overloaded), and this
+		    tyvar must later be resolved.  If there is more than one
+		    overloaded tyvar in the type, longid cannot be a primitive,
+		    and the overloading info will never be needed (e.g.,
+	            fun ~+ ((x,y),(v,w)) = (x+v,y+w))*)
+		   val out_i =
+		         addTypeInfo_VAR
+			   ((case List.all TyVar.is_overloaded (Type.tyvars instance) of
+			       [tyvar] => preOverloadingConv
+				            (i, OverloadingInfo.UNRESOLVED_IDENT tyvar)
+			     | _ => okConv i),
+			    instances)
                  in  
                    (Substitution.Id, instance,
-                    OG.IDENTatexp(
-                      (case Type.getOverloadedTyVar instance of
-                           None => addTypeInfo_VAR(okConv i,
-                                                   instances)
-                         | Some tv => 
-                             addTypeInfo_VAR(preOverloadingConv
-                                             (i, OverloadingInfo.UNRESOLVED 
-                                              (Type.from_TyVar tv)),
-                                             instances)),
-                      OG.OP_OPT(longid, withOp)
-                    )
-                   )
+                    OG.IDENTatexp (out_i, OG.OP_OPT (longid, withOp)))
                  end
 
               (* Constructor *)
@@ -727,7 +722,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
              let
                val (S1, tau1, out_exp)   = elab_exp(C, exp)
                val (S2, tau2, out_atexp) = elab_atexp(S1 onC C, atexp)
-               val new   = Type_fresh ()
+               val new   = Type.fresh_normal ()
                val arrow = Type.mk_Arrow(tau2,new) 
                val (S3, i') = UnifyWithTexts("operand suggests operator type",arrow, 
                                              "but I found operator type",S2 on tau1, i)
@@ -769,7 +764,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
                val (S1, tau1, out_exp) = elab_exp(C, exp)
                val exnType = Type.Exn
                val (S2, i')    = Unify(exnType, S1 on tau1, i)
-               val tau = Type_fresh ()
+               val tau = Type.fresh_normal ()
              in
                (S2 oo S1, tau, OG.RAISEexp(addTypeInfo_EXP(i',tau), out_exp))
              end
@@ -781,7 +776,7 @@ old*)
                val exnType = Type.Exn
                val (S2, i')    = UnifyWithTexts("type of expression after 'raise' should be",
                                                 exnType, "but I found type", tau1, i)
-               val tau = Type_fresh ()
+               val tau = Type.fresh_normal ()
              in
                (S2 oo S1, tau, OG.RAISEexp(addTypeInfo_EXP(i',tau), out_exp))
              end
@@ -1256,7 +1251,7 @@ old*)
 
             val domain_list = dom_vb(C, valbind) 
 
-            fun TypeScheme_fresh () = TypeScheme.from_Type (Type_fresh ())
+            fun TypeScheme_fresh () = TypeScheme.from_Type (Type.fresh_normal ())
 
             fun setup id VE =
 	          VE.plus (VE, VE.singleton_var (id, TypeScheme_fresh ()))
@@ -1588,7 +1583,7 @@ old*)
           (* Wildcard *)                                        (*rule 32*)
           IG.WILDCARDatpat i  =>
             (Substitution.Id, 
-             (VE.empty, Type_fresh ()),
+             (VE.empty, Type.fresh_normal ()),
               OG.WILDCARDatpat(okConv i))
 
           (* Special constant *)                                (*rule 33*)
@@ -1640,7 +1635,7 @@ old*)
                 | _ =>          (* make new variable environment *) 
                                 (* unbound long identifier *)
                     let
-                      val tau = Type_fresh ()
+                      val tau = Type.fresh_normal ()
                       val tau_scheme = TypeScheme.from_Type tau
                     in
                       case Ident.decompose longid
@@ -1743,7 +1738,7 @@ old*)
               (Substitution.Id,
                (VE.empty, rho),
                OG.DOTDOTDOT(preOverloadingConv(i,
-                   OverloadingInfo.UNRESOLVED (Type.from_RecType rho))))
+                   OverloadingInfo.UNRESOLVED_DOTDOTDOT rho)))
             end
 
     (****** patterns - Definition, p. ? ******)
@@ -1792,7 +1787,7 @@ old*)
 
                 Some(VE.LONGCON sigma) =>
                   let
-                    val new = Type_fresh ()
+                    val new = Type.fresh_normal ()
                     val arrow = Type.mk_Arrow(tau', new) 
                     val (tau1,instances) = TypeScheme.instance'' sigma
                     val (S1, i') = UnifyWithTexts("argument to long value constructor \
@@ -1832,7 +1827,7 @@ old*)
 
               | Some(VE.LONGVAR sigma) =>
                   let
-                    val new = Type_fresh ()
+                    val new = Type.fresh_normal ()
                     val arrow = Type.mk_Arrow(new, tau')
                     val tau = TypeScheme.instance sigma
                     val (S1, i') = Unify(arrow,tau,i)
@@ -2063,26 +2058,19 @@ let
         #2 (List.first (fn (tau', oi) => Type.eq (tau, tau'))
 	      tau_to_overloadinginfo_alist)
 
-  in
-  (*resolve_tau gives OverloadingInfo.RESOLVED_INT when overloading couldn't be
-   resolved.  According to the definition (p. 72), int is the default type
-   except for /, but / is not overloaded in this compiler; / always has type
-   real * real -> real, as there is only one kind of real.
-   25/06/1997 10:30. tho.*)
-
-  fun resolve_tau (typ : Type) : OverloadingInfo.OverloadingInfo =
-        let val typ' = S on typ
+  fun resolve_tau tau : OverloadingInfo.OverloadingInfo =
+        let val tau' = S on tau
 	in
 	  if !Flags.DEBUG_ELABDEC then
-	    (pr("res: tv is: ", Type.layout typ);
-	     pr("res:  S on tv yields type: ", Type.layout typ'))
+	    (pr("res: tv is: ", Type.layout tau);
+	     pr("res:  S on tv yields type: ", Type.layout tau'))
 	  else ();
-	  (case Type.to_TyVar typ' of
-	     None => (tau_to_overloadinginfo typ'
+	  (case Type.to_TyVar tau' of
+	     None => (tau_to_overloadinginfo tau'
 		      handle List.First _ => OverloadingInfo.RESOLVED_INT)
 		 (*TODO 25/06/1997 10:11. tho.
 		  can raise List.First _ occur?  I'd rather do an impossible
-		  here:  If typ' is not a tyvar, it must be one of int, real,
+		  here:  If tau' is not a tyvar, it must be one of int, real,
 		  string, char, & word; everything else would be a type
 		  error.  Well, perhaps it can occur then, namely when there
 		  is a type error (they do occur), and since type errors
@@ -2091,16 +2079,26 @@ let
 		  return RESOLVED_INT, as unresolved overloading should not
 		  result in an error message.*)
 	   | Some tv' =>
-	       if Type.eq  (typ',typ)
+	       if Type.eq (tau', tau)
 	       then (if !Flags.DEBUG_ELABDEC
 		     then output (std_out, "res: Some tv\n") else () ; 
 		     OverloadingInfo.RESOLVED_INT)
-	       else resolve_tau typ')    (* Repeat application of S *)
+	       else resolve_tau tau')    (* Repeat application of S *)
 	end
+  in
+
+  (*resolve_tyvar gives OverloadingInfo.RESOLVED_INT when overloading couldn't be
+   resolved.  According to the definition (p. 72), int is the default type
+   except for /, but / is not overloaded in this compiler; / always has type
+   real * real -> real, as there is only one kind of real.
+   25/06/1997 10:30. tho.*)
+
+  val resolve_tyvar : TyVar -> OverloadingInfo.OverloadingInfo =
+        resolve_tau o Type.from_TyVar
   end (*local*)
 
   datatype flexresResult = FLEX_RESOLVED | FLEX_NOTRESOLVED
-  fun flexrecres(typ : Type) : flexresResult =
+  fun flexrecres (rho : RecType) : flexresResult =
         let
 	  fun loop typ = 
 	        let val typ' = S on typ
@@ -2112,8 +2110,8 @@ let
 		  if Type.eq (typ',typ) then typ else loop typ'
 		end
 	in
-	  if Type.existsRecVarsType (loop typ) then FLEX_NOTRESOLVED
-	  else FLEX_RESOLVED
+	  if Type.contains_row_variable (loop (Type.from_RecType rho))
+	  then FLEX_NOTRESOLVED else FLEX_RESOLVED
 	end
 
   local
@@ -2175,7 +2173,7 @@ let
 
   end (*local open TypeInfo ...*)
 
-  (*resolve_X X: apply resolve_i to all info fields i in X and resolve_tau to
+  (*resolve_X X: apply resolve_i to all info fields i in X and resolve_tyvar to
    all overloadinginfos on id's in X, and also do something about flex
    records.*)
 
@@ -2185,9 +2183,9 @@ let
         | IDENTatexp(i, op_opt) =>
               (case ElabInfo.to_OverloadingInfo i of 
                    None => IDENTatexp (resolve_i i, op_opt)
-                 | Some (OverloadingInfo.UNRESOLVED typ) =>
+                 | Some (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
 		     IDENTatexp
-		       (ElabInfo.plus_OverloadingInfo i (resolve_tau typ), 
+		       (ElabInfo.plus_OverloadingInfo i (resolve_tyvar tyvar), 
 			op_opt)
                  | Some _ => impossible "resolve_atexp")
         | RECORDatexp(i, None) => RECORDatexp(resolve_i i,None)
@@ -2294,14 +2292,12 @@ let
       DOTDOTDOT(i) => 
         (case (ElabInfo.to_OverloadingInfo i) of 
            None => patrow
-         | Some (OverloadingInfo.UNRESOLVED typ) =>
-             (case flexrecres typ of
-                FLEX_RESOLVED => 
-                  DOTDOTDOT (ElabInfo.remove_OverloadingInfo i)
+         | Some (OverloadingInfo.UNRESOLVED_DOTDOTDOT rho) =>
+             (case flexrecres rho of
+                FLEX_RESOLVED => DOTDOTDOT (ElabInfo.remove_OverloadingInfo i)
               | FLEX_NOTRESOLVED =>
                   DOTDOTDOT
-		    (ElabInfo.plus_ErrorInfo 
-		       i ErrorInfo.FLEX_REC_NOT_RESOLVED))
+		    (ElabInfo.plus_ErrorInfo i ErrorInfo.FLEX_REC_NOT_RESOLVED))
          | Some _ => impossible "resolve_patrow")
     | PATROW(i, lab, pat, None) => 
         PATROW(resolve_i i, lab, resolve_pat pat, None)
