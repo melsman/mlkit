@@ -11,9 +11,15 @@ val maxint : int =
 
 val minint = ~maxint -1
 
+fun tagging() = precision = SOME 31
+
 infix seq
 fun e1 seq e2 = e2;
 fun test t s = print (t ^ ": " ^ s ^ "\n")
+fun check true = "OK"
+  | check false = "ERR"
+fun test' t b = test t (check b)
+fun test'' t f = test t ((check (f())) handle _ => "EXN")
 
 val test1 = test "test1" ((~minint seq "WRONG") handle Overflow => "OK")
 
@@ -79,4 +85,23 @@ val test24 = test "test24" ((100 div 0     seq  "WRONG") handle Div => "OK")
 val test25 = test "test25" ((100 mod 0     seq  "WRONG") handle Div => "OK")
 val test26 = test "test26" ((minint div ~1 seq  "WRONG") handle Overflow => "OK")
 
+val test35 = test' "test35" (toLarge ~1 = ~1)
+val test36 = test' "test36" (toLarge 1 = 1)
+val test37 = test' "test37" (toLarge 0 = 0)
+val test38 = test' "test38" (tagging() andalso (toLarge maxint = 1073741823)
+			     orelse (toLarge maxint = 2147483647))
+val test39 = test' "test39" (tagging() andalso (toLarge minint = ~1073741824)
+			     orelse (toLarge minint = ~2147483648))
+
+val test40 = test'' "test40" (fn _ => fromLarge(toLarge ~1) = ~1)
+val test41 = test'' "test41" (fn _ => fromLarge(toLarge maxint) = maxint)
+val test42 = test'' "test42" (fn _ => fromLarge(toLarge 0) = 0)
+val test42 = test'' "test42" (fn _ => fromLarge(toLarge minint) = minint)
+
+val test43 = test "test43" ((fromLarge(Int32.+(toLarge maxint, 1)) seq "WRONG") handle Overflow => "OK")
+val test44 = test "test44" ((fromLarge(Int32.-(toLarge minint, 1)) seq "WRONG") handle Overflow => "OK")
+val test45 = test "test45" ((fromLarge(valOf Int32.maxInt) seq (if tagging() then "WRONG" else "OK"))
+			    handle Overflow => if tagging() then "OK" else "WRONG")
+val test46 = test "test46" ((fromLarge(valOf Int32.minInt) seq (if tagging() then "WRONG" else "OK")) 
+			    handle Overflow => if tagging() then "OK" else "WRONG")
 end
