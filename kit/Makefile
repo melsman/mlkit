@@ -11,12 +11,15 @@ MKDIR=mkdir -p
 INSTALL=cp -p
 
 mlkit:
+	$(MKDIR) bin
 	cd src; $(MAKE)
 
 mlkit_kam:
+	$(MKDIR) bin
 	cd src; $(MAKE) mlkit_kam
 
 smlserver:
+	$(MKDIR) bin
 	cd src; $(MAKE) smlserver
 
 clean:
