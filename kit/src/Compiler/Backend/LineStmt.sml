@@ -497,16 +497,6 @@ struct
       PP.flatten1(layout_line_stmt' pr_sty pr_offset pr_aty simplify ls)
   end
 
-  (****************************************************************)
-  (* Add Dynamic Flags                                            *)
-  (****************************************************************)
-
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("print_linearised_program", "print linearised program (LineStmt)", ref false)]
-
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
-    [("use_flow_variables", "Use Flow Variables", ref true)]
-
   val flow_var_flag = Flags.lookup_flag_entry "use_flow_variables"
 
   (*************)

@@ -1,5 +1,5 @@
 This directory contains test programs for the ML Kit. Many of the test
-cases for the SML Basis Library have been borrowed from the Moscow ML
+cases for the SML Basis Library are stolen from the Moscow ML
 distribution.
 
 The test is invoked with the `kittester' program located (after the

@@ -1,6 +1,7 @@
 
-functor ExecutionHPPA(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
+functor ExecutionHPPA(BuildCompile : BUILD_COMPILE) : EXECUTION =
   struct
+    structure ExecutionArgs = BuildCompile.ExecutionArgs
     open ExecutionArgs
 
     structure Basics = Elaboration.Basics
@@ -29,8 +30,6 @@ functor ExecutionHPPA(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 		  val down_growing_stack : bool = false        (* false for HPPA code generation *)
 		  val double_alignment_required : bool = true  (* true for HPPA code generation *)
 		  val extra_prims = nil)
-
-    structure BuildCompile = BuildCompile(ExecutionArgs)
 
     structure NativeCompile = NativeCompile(open ExecutionArgs
 					    open BuildCompile

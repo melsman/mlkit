@@ -79,10 +79,10 @@ executable "run", which the Kit has placed in the "kitdemo"
 directory.
 
 As explained in "Programming with Regions in the ML Kit"
-(doc/manual/manual.ps.gz), every user can have his or her own kit
+(doc/manual/manual.ps.gz), users can have their own kit
 script with personal preferences (flags to control optimizations,
 pretty-printing of intermediate forms, etc.) The Kit does not force
-you to use script files; it will work fine with the default
+you to use script files; it works fine with the default
 settings. A sample kit script file "kit.script" is located in the
 "kitdemo" directory.
 
@@ -115,7 +115,7 @@ The VCG tool, which is used to show region flow graphs, can be found at
 
 Please see the www site:
 
-   http://www.itu.dk/research/mlkit/
+   http://www.it.edu/research/mlkit/
 
 
 6. Known bugs/limitations
@@ -127,14 +127,20 @@ Arithmetic and Trigonomitric functions in Math module:
   do not always return NaN precisely when the Basis
   Library stipulates that they should.
 
-C-backend: 
+KAM-backend (Kit Abstract Machine):
   Arithmetic operations do not raise Overflow. 
 
 Polymorphic equality:
-  Polymorphic equality is implemented only for ``regular'' data types.
-  (A datatype binding   tyvarseq tycon = conbind     is said to be regular if
-   all occurrences of tycon in conbind are in the context 
-   tyvarseq tycon.)
+
+  Polymorphic equality is implemented only for ``regular'' data
+  types. A datatype binding
+ 
+     tyvarseq_1 tycon_1 = conbind_1 AND ... AND tvseq_n tycon_n = conbind_n
+
+  is {\em regular\/} iff all occurrences of tycon_i, i \in {1,...,n}
+  in {conbind_1, ..., conbind_n} are in the context 
+
+     tyvarseq_i tycon_i
 
 -------
 

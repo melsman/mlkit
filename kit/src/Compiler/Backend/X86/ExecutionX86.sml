@@ -1,6 +1,7 @@
 
-functor ExecutionX86 (ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
+functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
   struct
+    structure ExecutionArgs = BuildCompile.ExecutionArgs
     open ExecutionArgs
 
     structure Basics = Elaboration.Basics
@@ -29,8 +30,6 @@ functor ExecutionX86 (ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 		  val down_growing_stack : bool = true          (* true for x86 code generation *)
 		  val double_alignment_required : bool = false  (* false for x86 code generation *)
 		  val extra_prims = nil)                        (* for KAM *)
-
-    structure BuildCompile = BuildCompile (ExecutionArgs)
 
     structure NativeCompile = NativeCompile(open ExecutionArgs
 					    open BuildCompile

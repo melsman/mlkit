@@ -21,11 +21,7 @@ functor CompilerEnvDummy(structure Ident: IDENT
 
     fun die s = Crash.impossible ("CompilerEnv."^s)
 
-
-    val debug_man_enrich = ref false
-    val _ = Flags.add_flag_to_menu (["Debug Kit", "Manager"], 
-				    "debug_man_enrich", "debug man enrich",
-				    debug_man_enrich)
+    val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
 
     type con = unit
     type excon = unit

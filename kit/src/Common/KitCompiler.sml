@@ -341,11 +341,12 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 
 local
   structure ExecutionArgs = ExecutionArgs()
+  structure BuildCompile = BuildCompile (ExecutionArgs)
 in
 
-  structure KitX86 = KitCompiler(ExecutionX86(ExecutionArgs))
-  structure KitHPPA = KitCompiler(ExecutionHPPA(ExecutionArgs))
-  structure KitKAM = KitCompiler(ExecutionKAM(ExecutionArgs))
+  structure KitX86 = KitCompiler(ExecutionX86(BuildCompile))
+  structure KitKAM = KitCompiler(ExecutionKAM(BuildCompile))
+  structure KitHPPA = KitCompiler(ExecutionHPPA(BuildCompile))
   structure KitDummy = KitCompiler(ExecutionDummy(ExecutionArgs))
 
 end (*local*)

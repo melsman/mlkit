@@ -1,4 +1,4 @@
-(* This file is auto-generated with Tools/GenOpcodes on *)
+(* This file is auto-generated with Tools/GenOpcodes *)
 functor OpcodesKAM () : OPCODES_KAM = 
   struct
     val ALLOC_N = 0

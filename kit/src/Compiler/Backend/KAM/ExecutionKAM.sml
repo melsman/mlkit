@@ -1,6 +1,7 @@
 
-functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
+functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
   struct
+    open BuildCompile
     open ExecutionArgs
 
     structure Basics = Elaboration.Basics
@@ -14,9 +15,6 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
     structure Flags = Tools.Flags
     structure Report = Tools.Report
     structure Crash = Tools.Crash
-
-    structure BuildCompile = BuildCompile (ExecutionArgs)
-    open BuildCompile
 
     structure BackendInfo = 
       BackendInfo(structure Labels = Labels
@@ -171,14 +169,15 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
       let fun modify s = case rev (explode s)
 			   of #"o" :: rest => implode (rev(#"o" :: #"u" :: rest))
 			    | _ => s
+	  val files = map modify files
 	  val os = TextIO.openOut run
       in
 (*	print ("[Creating file " ^ run ^ " begin ...]\n"); *)
 	TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/src/RuntimeWithGC/kam ");
-	app (fn f => TextIO.output(os, modify f ^ " ")) files;
+	app (fn f => TextIO.output(os, f ^ " ")) files;
 	TextIO.closeOut os;
 	OS.Process.system "chmod a+x run";
-	print("[Created file " ^ run ^ "]\n");
-	app (print o (fn s => "   " ^ s ^ "\n")) files
+	print("[Created file " ^ run ^ "]\n")
+(* 	; app (print o (fn s => "   " ^ s ^ "\n")) files *)
       end
   end

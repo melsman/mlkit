@@ -74,15 +74,6 @@ struct
     | one_in_list([x]) = x
     | one_in_list _ = die "one_in_list: list has more than one element."
 
-  (****************************************************************)
-  (* Add Dynamic Flags                                            *)
-  (****************************************************************)
-
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
-    [("print_register_allocated_program", "print register allocated program (LineStmt)", ref false)]
-
-  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
-    [("export_ig_graph", "Export IG graph in xvcg file", ref false)]
 
   val export_ig_flag = Flags.lookup_flag_entry "export_ig_graph"
 
