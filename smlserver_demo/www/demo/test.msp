@@ -5,7 +5,7 @@
 <H1>MSP examples: generating tables in various styles</H1>
 
 This page was generated <?MSP= Date.toString
-(Date.fromTimeLocal(Time.now())) ?> to illustrate Mosml Server Pages.
+(Date.fromTimeLocal(Time.now())) ?> to illustrate ML Server Pages.
 
 <?MSP (* SML script, imperative style *)
 

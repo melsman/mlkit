@@ -1,0 +1,55 @@
+local
+  ../lib/Quot.sml
+  local
+    ../lib/NsBasics.sml
+    ../lib/NS_SET.sml
+    ../lib/NsSet.sml
+    ../lib/NsInfo.sml
+    ../lib/NS_DB.sml
+    ../lib/DbFunctor.sml
+  in
+    ../lib/NS.sml
+    ../lib/Ns.sml  
+    ../lib/Db.sml
+    ../lib/DbClob.sml
+  end
+
+  ../lib/HTML.sml
+  ../lib/Html.sml
+  ../lib/MSP.sml
+  ../lib/Msp.sml
+  ../demo_lib/Page.sml
+  ../demo_lib/FormVar.sml
+  ../demo_lib/Login.sml
+
+  ../demo_lib/RatingUtil.sml
+in
+ [
+  demo/index.sml
+  demo/rating/index.sml
+  demo/rating/add.sml
+  demo/rating/add0.sml
+  demo/rating/wine.sml
+  demo/employee/update.sml
+  demo/employee/search.sml
+  demo/time_of_day.sml
+  demo/guess.sml
+  demo/counter.sml
+  demo/temp.sml
+  demo/recipe.sml
+  demo/hello.msp
+  demo/calendar.msp
+  demo/test.msp
+  demo/server.sml
+  demo/mail_form.sml
+  demo/mail.sml
+  demo/mul.msp
+  demo/currency_cache.sml
+  demo/formvar.sml
+  demo/formvar_chk.sml
+  demo/link/index.sml
+  demo/link/add_form.sml
+  demo/link/add.sml
+  demo/link/delete.sml
+ ]
+end
