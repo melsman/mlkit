@@ -4,7 +4,7 @@
 --   Also add an ordering used in selections: default increasing ordering
 
 /* ======================================================================
-   package scs_user
+   package scs_enumeration
 
    History:
    281102 Kennie Nybo Pontoppidan <kennie@it-c.dk> added comments
@@ -142,6 +142,20 @@ as
     enum_id	in scs_enumerations.enum_id%TYPE,
     value	in scs_enum_values.value%TYPE    
   ) return scs_enum_values.val_id%TYPE;
+
+  /* ------------------
+     function getVID
+     ------------------
+     looks up the pair (name, value) in scs_enumerations, scs_enum_values 
+     and returns the corresponding val_id
+     
+     if no row exists with (enum_id, value), null is returned
+  */
+  function getVID(
+    name	in scs_enumerations.name%TYPE,
+    value	in scs_enum_values.value%TYPE    
+  ) return scs_enum_values.val_id%TYPE;
+
 
   /* ------------------
      function getEnumId
@@ -479,6 +493,30 @@ as
     when NO_DATA_FOUND then
       return null;
   end getVID;
+
+
+  function getVID(
+    name	in scs_enumerations.name%TYPE,
+    value	in scs_enum_values.value%TYPE    
+  ) return scs_enum_values.val_id%TYPE
+  is
+    v_val_id	scs_enum_values.val_id%TYPE;
+    v_enum_id	scs_enumerations.enum_id%TYPE;
+  begin
+    v_enum_id := getEnumId( name => getVID.name );
+
+    select val_id
+      into v_val_id
+      from scs_enum_values
+     where enum_id = v_enum_id
+       and value = getVID.value;
+
+    return v_val_id;
+  exception
+    when NO_DATA_FOUND then
+      return null;
+  end getVID;
+
 
   function getTID(
     val_id	in scs_enum_values.val_id%TYPE

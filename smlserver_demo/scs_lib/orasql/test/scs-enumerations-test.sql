@@ -18,6 +18,7 @@ declare
   rand_name	varchar2(10);
   rand_name2	varchar2(10);
   rand_name3	varchar2(10);
+
   textid1	integer;
   textid2	integer;
 
@@ -210,6 +211,29 @@ begin
   scs_test.testBool( 'getVID', 4, 
     scs_enumeration.getVID( enum_id => illegal_id,
 			    value => scs_random.rand_string(10) ) is null );
+
+  -- testing getVID, name version
+  scs_test.printl( 'testing function ''getVID'' name version:' );
+  valid1 := scs_enumeration.updateValue( enum_id => enumid1, 
+					 value => 'new_val', 
+					 text_id => scs_text.new );
+  -- known val_id
+  scs_test.testBool( 'getVID, name version', 1, 
+    scs_enumeration.getVID( name => rand_name, 
+			    value => 'new_val') = valid1 );
+  -- unknown name
+  scs_test.testBool( 'getVID, name version', 2, 
+    scs_enumeration.getVID( name => scs_random.rand_string(10),
+			    value => 'new_val') is null );
+  -- unknown value
+  scs_test.testBool( 'getVID, name version', 3, 
+    scs_enumeration.getVID( name  => rand_name, 
+			    value => scs_random.rand_string(10) ) is null );
+  -- unknown name, unknown value
+  scs_test.testBool( 'getVID, name version', 4, 
+    scs_enumeration.getVID( name => scs_random.rand_string(10),
+			    value => scs_random.rand_string(10) ) is null );
+
 
   scs_test.printl( 'testing procedures ''destroy'':' );
   -- unknown enum_id
