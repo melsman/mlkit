@@ -1,10 +1,23 @@
 signature SCS_STRING =
   sig
     val translate  : (char -> string) -> string -> string
+
+    (* [replace from to str] replaces all occurences of from with to in str *)
+    val replace	   : string -> string -> string -> string
+
     val lower      : string -> string
     val upper      : string -> string
     val lowerFirst : string -> string
     val upperFirst : string -> string
+
+    (* [upperFirstInEveryWord str] transforms 
+       ""                                 -> ""
+       "Kennie"				  -> "Kennie"
+       "kennie"				  -> "Kennie"
+       "   kennie  "			  -> "Kennie"
+       "   kennie   Nybo     pontoppidan" -> "Kennie Nybo Pontoppidan"
+    *)
+    val upperFirstInEveryWord : string -> string
 
     (* [canonical s] returns a canonical representation of s, that is,
        all words are separated by only one space; new lines etc. has
@@ -63,10 +76,58 @@ structure ScsString =
       end
       handle _ => str
 
-    fun canonical s = String.concatWith " " (String.tokens Char.isSpace s)
-
     fun trim s = 
       Substring.string (Substring.dropr Char.isSpace (Substring.dropl Char.isSpace (Substring.all s)))
+
+    fun toWords (str,acc) = 
+      let
+        val substr = Substring.all str
+      in 
+	if Substring.isEmpty substr then (rev acc)
+	else 
+	  let
+	    val (first,rest) = Substring.position " " substr
+	    val rest_trimmed = trim (Substring.string rest)
+	    val new_acc = first::acc
+	  in 
+	    toWords (rest_trimmed, new_acc)
+	  end
+      end
+
+    fun replace from to str = 
+      let
+        val result = []
+	val substr_to = Substring.all to
+	fun repl (substr,acc) = 
+	  let
+	    val (first,rest) = Substring.position from substr
+	  in
+	    if Substring.isEmpty substr then (rev acc)
+	    else 
+	      let 
+		val (new_rest, new_acc) =
+		  if Substring.isEmpty rest then
+		    (rest, first :: acc)
+		  else  (
+		    Substring.triml (size from) rest,
+		    first :: substr_to :: acc)
+	      in
+		repl(new_rest, new_acc)
+	      end
+	  end
+      in
+        Substring.concat (repl (Substring.all str,result))
+      end
+
+    fun upperFirstInEveryWord str = 
+      let
+        val words = toWords (str, [])
+	val words = map Substring.string words
+      in
+        String.concatWith " " (map upperFirst words)
+      end
+
+    fun canonical s = String.concatWith " " (String.tokens Char.isSpace s)
 
     fun shorten text length = 
       String.substring( text, 0, Int.min(length, String.size text) ) ^ "..."
