@@ -128,7 +128,7 @@ structure ScsEnum :> SCS_ENUM =
 	    | NONE => false
       in
         ScsFormVar.getErr 0 (Option.valOf o Int.fromString) 
-	(ScsDict.s [(ScsLang.en,`enumeration`),(ScsLang.da,`enumerering`)]) msgEnum chkEnum
+	[(ScsLang.en,`enumeration`),(ScsLang.da,`enumerering`)] msgEnum chkEnum
       end
     end
 
@@ -214,7 +214,7 @@ structure ScsEnum :> SCS_ENUM =
           | NONE => false
       in
         ScsFormVar.getErr 0 (Option.valOf o Int.fromString) 
-          (ScsDict.s [(ScsLang.en,`enumeration`),(ScsLang.da,`enumerering`)]) msgEnum chkEnum
+          [(ScsLang.en,`enumeration`),(ScsLang.da,`enumerering`)] msgEnum chkEnum
       end
 
     fun enumName enum_id =

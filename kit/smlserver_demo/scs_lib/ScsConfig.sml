@@ -16,7 +16,7 @@ signature SCS_CONFIG =
 structure ScsConfig :> SCS_CONFIG =
   struct
     local
-      fun getInfo key =
+      fun getInfo key = 
 	case (Ns.Info.configGetValueExact {sectionName="ns/server/"^Ns.Conn.server()^"/SCS",key=key}) of
 	  NONE => raise Fail ("ScsConfig.getInfo: can't find key " ^ key)
 	| SOME v => v

@@ -77,31 +77,46 @@ structure ScsLogin :> SCS_LOGIN =
     end
 
     (* auth_verify_user; return user_id if happy, 0 otherwise *)
-    fun verifyUser' () =
-      let
-	val auth_user_id = Ns.Cookie.getCookieValue "auth_user_id"
-	val session_id = Ns.Cookie.getCookieValue "session_id"
-      in
-	case (auth_user_id,session_id) of
-	  (SOME user_id, SOME psw) =>
-	    (case Int.fromString user_id of
-	       (* matching on "deleted" is a IE hack. It seems that IE always sends the 
+    local
+      (* We memoize the cookie information for one connection
+         only. The cookie information is checked exactly once for
+         every connection. This also works with caching of library
+         code because the function verifyUser is never executed by the
+         library code - only on every request *)
+      val user_info : ((cookie_info * (int * ScsLang.lang)) option) ref = ref NONE
+      fun verifyUser'' () =
+	let
+	  val auth_user_id = Ns.Cookie.getCookieValue "auth_user_id"
+	  val session_id = Ns.Cookie.getCookieValue "session_id"
+	in
+	  case (auth_user_id,session_id) of
+	    (SOME user_id, SOME psw) =>
+	      (case Int.fromString user_id of
+		 (* matching on "deleted" is a IE hack. It seems that IE always sends the 
 		  deleted cookie back to us! *)
-	       NONE => if user_id = "deleted" then (NO_COOKIE,default) else (COOKIE,default)
-	     | SOME _ => 
-		 (case getUserInfoFromDb user_id of
-		    NONE => (COOKIE,default)
-		  | SOME (db_psw,db_lang) => 
-		      if db_psw = psw then 
-			(case Int.fromString user_id of
-			   NONE => (COOKIE,default)
-			 | SOME u_id => (COOKIE,(u_id,ScsLang.fromString db_lang)))
-		      else (COOKIE,default)))
-	| _ => (NO_COOKIE,default)
-      end
-    handle Ns.Cookie.CookieError _ => (NO_COOKIE,default)
-	 | Ns.MissingConnection => (NO_COOKIE,default)
-      
+		 NONE => if user_id = "deleted" then (NO_COOKIE,default) else (COOKIE,default)
+	       | SOME _ => 
+		   (case getUserInfoFromDb user_id of
+		      NONE => (COOKIE,default)
+		    | SOME (db_psw,db_lang) => 
+			if db_psw = psw then 
+			  (case Int.fromString user_id of
+			     NONE => (COOKIE,default)
+			   | SOME u_id => (COOKIE,(u_id,ScsLang.fromString db_lang)))
+			else (COOKIE,default)))
+	  | _ => (NO_COOKIE,default)
+	end
+      handle Ns.Cookie.CookieError _ => (NO_COOKIE,default)
+	   | Ns.MissingConnection => raise Fail ("ScsLogin.verifyUser'': You probably call this " ^ 
+						 "function during library initialization")
+    in
+      fun verifyUser' () =
+	case !user_info of
+	  NONE => (user_info := SOME (verifyUser''());
+		   Option.valOf (!user_info))
+	| SOME i => i
+    end
+
     fun verifyUser () = #2(verifyUser'())
 
     (* We look for login-cookies on every request *)

@@ -162,7 +162,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getStrings : string -> string list
 
     (* For extensions *)
-    val getErr : 'a -> (string->'a) -> string -> (string->quot) -> (string->bool) -> 'a formvar_fn
+    val getErr : 'a -> (string->'a) -> ScsDict.dict -> (string->quot) -> (string->bool) -> 'a formvar_fn
   end
 
 structure ScsFormVar :> SCS_FORM_VAR =
@@ -280,19 +280,19 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	  handle X => f_panic(`^("\n") ^fv : ^(General.exnMessage X)`))
 
     local
-      fun getErrWithOverflow (empty_val:'a) (ty:string) (chk_fn:string->'a option) =
+      fun getErrWithOverflow (empty_val:'a) (ty:ScsDict.dict) (chk_fn:string->'a option) =
 	fn (fv:string,emsg:string,errs:errs) =>
 	(case Ns.Conn.formvarAll fv of
-	   [] => (empty_val,addErr(errNoFormVar(emsg,ty),errs))
-	 | [""] => (empty_val,addErr(errNoFormVar(emsg,ty),errs))
+	   [] => (empty_val,addErr(errNoFormVar(emsg,ScsDict.s ty),errs))
+	 | [""] => (empty_val,addErr(errNoFormVar(emsg,ScsDict.s ty),errs))
 	 | [v] =>
 	     (case chk_fn v of
 		SOME v => (v,errs)
-	      | NONE => (empty_val, addErr(errTypeMismatch(emsg,ty,v),errs)))
-		handle Overflow => (empty_val, addErr(errTooLarge(emsg,ty,v),errs))
+	      | NONE => (empty_val, addErr(errTypeMismatch(emsg,ScsDict.s ty,v),errs)))
+		handle Overflow => (empty_val, addErr(errTooLarge(emsg,ScsDict.s ty,v),errs))
 	 | _ => (empty_val, addErr(errTooMany emsg,errs)))
     in
-      val getIntErr = getErrWithOverflow 0 (ScsDict.s [(ScsLang.en,`number`),(ScsLang.da,`tal`)])
+      val getIntErr = getErrWithOverflow 0 [(ScsLang.en,`number`),(ScsLang.da,`tal`)]
 	(fn v => let val l = explode v
 		 in 
 		   case l
@@ -304,7 +304,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		       else NONE
 		   | nil => NONE
 		 end handle Fail s => NONE)
-      val getNatErr = getErrWithOverflow 0 (ScsDict.s [(ScsLang.en,`positive number`),(ScsLang.da,`positivt tal`)])
+      val getNatErr = getErrWithOverflow 0 [(ScsLang.en,`positive number`),(ScsLang.da,`positivt tal`)]
 	(fn v => let val l = explode v
 		 in 
 		   case l
@@ -317,7 +317,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		   | nil => NONE
 		 end)
 	  
-      val getRealErr = getErrWithOverflow 0.0 (ScsDict.s [(ScsLang.en,`real`),(ScsLang.da,`kommatal`)])
+      val getRealErr = getErrWithOverflow 0.0 [(ScsLang.en,`real`),(ScsLang.da,`kommatal`)]
 	(fn v => let val l = explode (ScsReal.normReal v)
 		 in
 		   case l
@@ -331,12 +331,13 @@ structure ScsFormVar :> SCS_FORM_VAR =
 		 end)
 
       val getStringErr = 
-        getErrWithOverflow "" (ScsDict.s [(ScsLang.en,`string`),(ScsLang.da,`tekststreng`)])
+        getErrWithOverflow "" [(ScsLang.en,`string`),(ScsLang.da,`tekststreng`)]
           (fn v => if size v = 0 then NONE else SOME v)
 
       fun getStringLenErr l = getErrWithOverflow "" 
-        (ScsDict.sl [(ScsLang.en,`string or it is too long - max. %0 characters`),
-	             (ScsLang.da,`tekststreng eller den er for lang - maks %0 tegn`)] [Int.toString l])
+        (ScsDict.dictWithArgsToDict 
+	 [(ScsLang.en,`string or it is too long - max. %0 characters`),
+	  (ScsLang.da,`tekststreng eller den er for lang - maks %0 tegn`)] [Int.toString l])
 	(fn v => if size v = 0 orelse size v > l then NONE else SOME v)
     end
 
@@ -354,8 +355,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	else
 	  (0,errs')
       end
-    
-    fun getErr (empty_val:'a) (conv_val:string->'a) (ty:string) (add_fn:string->quot) (chk_fn:string->bool) =
+    fun getErr (empty_val:'a) (conv_val:string->'a) (ty_dict:ScsDict.dict) 
+               (add_fn:string->quot) (chk_fn:string->bool) =
       let
         val err1 = [(ScsLang.en,`You must provide a <b>%0</b>.`),
                     (ScsLang.da,`Du skal indtaste <b>%0</b>.`)]
@@ -363,25 +364,24 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	            (ScsLang.da,`Du skal indtaste korrekt <b>%0</b> - <i>%1</i> er ikke korrekt`)]
       in
         fn (fv:string,emsg:string,errs:errs) =>
-        case Ns.Conn.formvarAll fv of
-          []  => (empty_val,addErr(genErrMsg(emsg,add_fn (ScsDict.sl err1 [ty])),errs))
-        | [""]  => (empty_val,addErr(genErrMsg(emsg,add_fn (ScsDict.sl err1 [ty])),errs))
-        | [v] => 
-	    if chk_fn v then
-	      (conv_val v,errs)
-  	    else
-	      (empty_val, addErr(genErrMsg(emsg,add_fn (ScsDict.sl err2 [ty,v])),errs))
-        | _ => (empty_val, addErr(errTooMany emsg,errs))
+	let
+	  val ty = ScsDict.s ty_dict
+	in
+	  case Ns.Conn.formvarAll fv of
+	    []  => (empty_val,addErr(genErrMsg(emsg,add_fn (ScsDict.sl err1 [ty])),errs))
+	  | [""]  => (empty_val,addErr(genErrMsg(emsg,add_fn (ScsDict.sl err1 [ty])),errs))
+	  | [v] => 
+	      if chk_fn v then
+		(conv_val v,errs)
+	      else
+		(empty_val, addErr(genErrMsg(emsg,add_fn (ScsDict.sl err2 [ty,v])),errs))
+	  | _ => (empty_val, addErr(errTooMany emsg,errs))
+	end
       end
 
     local
       val getErr' = getErr "" trim
-      fun msgString s = `^s` (*
-	(case ScsLogin.user_lang() of
-	   ScsLang.en => `^s
-	     You must type a string`
-	| ScsLang.da => `^s
-	     Du skal indtaste en tegnstreng.`) 2003-04-04, nh *)
+      fun msgString s = `^s` 
       fun msgLenString l s = 
 	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
@@ -760,43 +760,44 @@ structure ScsFormVar :> SCS_FORM_VAR =
       fun chkLang v = (ScsLang.fromString v; true) handle _ => false
     in
       val getNonEmptyStringErr = 
-	getErr' (ScsDict.s [(ScsLang.en,`string`),(ScsLang.da,`tekststreng`)]) msgString
+	getErr' [(ScsLang.en,`string`),(ScsLang.da,`tekststreng`)] msgString
 	(fn str => trim str <> "")
-
       fun getNonEmptyStringLenErr l = 
-	getErr' (ScsDict.s [(ScsLang.en,`string`),(ScsLang.da,`tekststreng`)]) (msgLenString l)
+	getErr' [(ScsLang.en,`string`),(ScsLang.da,`tekststreng`)] (msgLenString l)
 	(fn str => let val str' = trim str in str' <> "" andalso (size str') <= l end)
 
-      val getEmailErr = getErr' (ScsDict.s [(ScsLang.en,`email`),(ScsLang.da,`email`)]) msgEmail
+      val getEmailErr = getErr' [(ScsLang.en,`email`),(ScsLang.da,`email`)] msgEmail
 	(fn email => regExpMatch "[^@\t ]+@[^@.\t ]+(\\.[^@.\n ]+)+" (trim email)) 
-      val getNameErr = getErr' (ScsDict.s [(ScsLang.en,`name`),(ScsLang.da,`navn`)]) 
+      val getNameErr = getErr' [(ScsLang.en,`name`),(ScsLang.da,`navn`)] 
                          msgName (regExpMatch "[a-zA-ZAÆØÅaæøåüäéá '\\-]+")
-      val getAddrErr = getErr' (ScsDict.s [(ScsLang.en, `address`),(ScsLang.da, `adresse`)])
+      val getAddrErr = getErr' [(ScsLang.en, `address`),(ScsLang.da, `adresse`)]
                          msgAddr (regExpMatch "[a-zA-Z0-9ÆØÅæøåüá '\\-.:;,]+")
-      val getLoginErr = getErr' (ScsDict.s [(ScsLang.en, `login`),(ScsLang.da,`login`)]) msgLogin 
+
+      val getLoginErr = getErr' [(ScsLang.en, `login`),(ScsLang.da,`login`)] msgLogin 
 	(fn login =>
 	 regExpMatch "[a-z][a-z0-9\\-]+" login andalso 
 	 String.size login >= 2 andalso String.size login <= 15)
-      val getPhoneErr = getErr' (ScsDict.s [(ScsLang.en, `phone number`),(ScsLang.da,`telefonnummer`)]) 
+      val getPhoneErr = getErr' [(ScsLang.en, `phone number`),(ScsLang.da,`telefonnummer`)] 
                           msgPhone (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
       (* getHtml : not implemented yet *)
-      val getHtmlErr = getErr' (ScsDict.s [(ScsLang.en, `HTML text`),(ScsLang.da,`HTML tekst`)]) 
+      val getHtmlErr = getErr' [(ScsLang.en, `HTML text`),(ScsLang.da,`HTML tekst`)] 
                           msgHTML (fn html => html <> "")
-      val getUrlErr =  getErr' (ScsDict.s [(ScsLang.en,`URL`),(ScsLang.da,`URL`)]) 
+      val getUrlErr =  getErr' [(ScsLang.en,`URL`),(ScsLang.da,`URL`)] 
                           msgURL (regExpMatch "http://[0-9a-zA-Z/\\-\\\\._~]+(:[0-9]+)?")
-      val getCprErr = getErr "" convCpr (ScsDict.s [(ScsLang.en,`cpr number`),(ScsLang.da,`cpr nummer`)]) msgCpr chkCpr
-      val getEnumErr = fn enums => getErr' (ScsDict.s [(ScsLang.en,`enumeration`),(ScsLang.da,`enumerering`)]) 
+      val getCprErr = getErr "" convCpr [(ScsLang.en,`cpr number`),(ScsLang.da,`cpr nummer`)] msgCpr chkCpr
+      val getEnumErr = fn enums => getErr' [(ScsLang.en,`enumeration`),(ScsLang.da,`enumerering`)] 
                                      (msgEnum enums) (chkEnum enums)
-      val getYesNoErr = let val enums = [ScsDict.s [(ScsLang.en,`Yes`),(ScsLang.da,`Ja`)],
-                                         ScsDict.s [(ScsLang.en,`No`),(ScsLang.da, `Nej`)]] 
-                         in getErr' (ScsDict.s [(ScsLang.en,`Yes/No`),(ScsLang.da,`Ja/Nej`)]) 
-                              (msgEnum enums) (chkEnum ["t","f"]) 
-                        end
-      val getDateIso = getErr' (ScsDict.s [(ScsLang.en,`date`),(ScsLang.da,`dato`)]) msgDateIso chkDateIso
-      val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate (ScsDict.s [(ScsLang.en,`date`),(ScsLang.da,`dato`)]) 
+      fun getYesNoErr args =
+	let val enums = [ScsDict.s [(ScsLang.en,`Yes`),(ScsLang.da,`Ja`)],
+			 ScsDict.s [(ScsLang.en,`No`),(ScsLang.da, `Nej`)]] 
+	in getErr' [(ScsLang.en,`Yes/No`),(ScsLang.da,`Ja/Nej`)] 
+	  (msgEnum enums) (chkEnum ["t","f"]) args
+	end
+      val getDateIso = getErr' [(ScsLang.en,`date`),(ScsLang.da,`dato`)] msgDateIso chkDateIso
+      val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate [(ScsLang.en,`date`),(ScsLang.da,`dato`)] 
                          msgDate chkDate
       val getDbTimestampErr = getErr (ScsDate.genTimestamp(1,1,1,0,0,0)) 
-	convDbTimestamp (ScsDict.s [(ScsLang.da,`dato og tidspunt`),(ScsLang.en,`time and date`)])
+	convDbTimestamp [(ScsLang.da,`dato og tidspunt`),(ScsLang.en,`time and date`)]
 	msgDbTimestamp chkDbTimestamp
 				      
       fun getPeriodErr (fv:string,emsg:string,errs:errs) = 
@@ -870,12 +871,12 @@ structure ScsFormVar :> SCS_FORM_VAR =
           ((start_date,end_time),errs)
         end
 
-      val getTableName = getErr' (ScsDict.s [(ScsLang.da,`table name`),(ScsLang.en,`tabelnavn`)]) 
+      val getTableName = getErr' [(ScsLang.da,`table name`),(ScsLang.en,`tabelnavn`)] 
                            msgTableName (regExpMatch "[a-zA-Z_]+")
-      val getLangErr = getErr ScsLang.en ScsLang.fromString (ScsDict.s [(ScsLang.en,`language`),(ScsLang.da,`sprog`)])
+      val getLangErr = getErr ScsLang.en ScsLang.fromString [(ScsLang.en,`language`),(ScsLang.da,`sprog`)]
                          msgLang chkLang
-      val getRegExpErr = getErr (RegExp.fromString "$") RegExp.fromString (ScsDict.s [(ScsLang.en,`regular expression`),
-                                                                                      (ScsLang.da,`regulaert udtryk`)])
+      val getRegExpErr = getErr (RegExp.fromString "$") RegExp.fromString [(ScsLang.en,`regular expression`),
+									   (ScsLang.da,`regulaert udtryk`)]
                            msgRegExp chkRegExp
     end
 
