@@ -25,7 +25,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		      structure PP : PRETTYPRINT
 			sharing type PP.StringTree = LambdaExp.StringTree =
 			  Excon.Map.StringTree = Con.Map.StringTree = Lvars.Map.StringTree
-			  = TyName.Map.StringTree
+			  = TyName.Map.StringTree = NatSet.StringTree
 		      structure Flags : FLAGS) : LAMBDA_STAT_SEM =
   struct
 
@@ -318,9 +318,20 @@ end
 				       layout_excon_env excon_env]}
 
 	fun restrict(env as {ftv,con_env,tyname_env,lvar_env,excon_env}: env,{cons,tynames,lvars,excons}) =
-	  let val _ = if NatSet.isEmpty ftv then () else die "restrict.ftvset not empty"
+	  let 
               fun say s = print(s^"\n");
               fun sayenv() = PP.outputTree(print,layout_env env, !Flags.colwidth)
+	      fun sayset() = PP.outputTree(print,NatSet.layoutSet {start="{",finish="}",
+								   sep=","} (PP.LEAF o pr_tyvar) ftv, 
+					   !Flags.colwidth)
+	      val _ = if true (* NatSet.isEmpty ftv*)  then ()   (* there can in fact be free type variables in
+								  * a topdec - see EfficientElab/ElabTopdec.sml *)
+		      else (say ("Restrict: Problem with set of free type variables");
+			    say ("not being empty. Here is the environment: ");
+			    sayenv();
+			    say ("Non-empty set is:");
+			    sayset();
+			    die "restrict.ftvset not empty")
 	      val con_env1 = ConMap.restrict(Con.pr_con,con_env,cons)
                              handle ConMap.Restrict s => 
                                (say ("Problem with constructor environment; constructor " ^ s); 
