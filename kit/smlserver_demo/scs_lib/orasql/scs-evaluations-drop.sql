@@ -1,0 +1,2 @@
+drop table scs_evaluation_answers;
+drop table scs_evaluation_questions;
