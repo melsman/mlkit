@@ -145,7 +145,7 @@ local
       val inputAll_4 = TextIO.inputAll
       val input1_4 = TextIO.input1
       val inputN_4 = TextIO.inputN
-      val inputLine_2 = TextIO.inputLine
+      val inputLine_2 = fn is => getOpt(TextIO.inputLine is,"")
       val endOfStream_4 = TextIO.endOfStream
       val lookahead_3 = TextIO.lookahead
       val openOut_2 = TextIO.openOut
@@ -718,9 +718,9 @@ local
       fun CPN'report_timing_0 msg_3 =
 	  (case ! timer_0 of
 	     (SOME t_23) =>
-	     let val {gc = gc_1, sys = sys_1, usr = usr_1} =
+	     let val {sys = sys_1, usr = usr_1} =
 		     Timer.checkCPUTimer t_23
-		 val total_0 = Time.+ (usr_1, Time.+ (gc_1, sys_1))
+		 val total_0 = Time.+ (usr_1, sys_1)
 		 val text_0 =
 		     concat
 		     [msg_3,
@@ -728,8 +728,6 @@ local
 		      Time.toString total_0,
 		      "=",
 		      Time.toString usr_1,
-		      "+",
-		      Time.toString gc_1,
 		      "+",
 		      Time.toString sys_1,
 		      "\n"]

@@ -6,7 +6,7 @@ COMP_FLAGS=
 
 bootstrap:
 	cd src; make genopcodes
-	cd src; ../bin/mlkit -gc $(COMP_FLAGS) sources.pm
+	cd src; ../bin/mlkit -gc $(COMP_FLAGS) Compiler/native.pm
 	$(MKDIR) $(INSTDIR)
 	$(MKDIR) $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystem.a $(INSTDIR)/bin
@@ -30,7 +30,7 @@ bootstrap:
 	$(INSTALL) -a src $(INSTDIR)/src
 	cd $(INSTDIR)/src; make clean
 	$(INSTALL) -a ml-yacc-lib $(INSTDIR)/ml-yacc-lib
-	$(INSTALL) -a basislib $(INSTDIR)/basislib
+	$(INSTALL) -a basis $(INSTDIR)/basis
 	chown -R `whoami`.`whoami` $(INSTDIR)
 	chmod -R ug+rw $(INSTDIR)
 	chmod -R o+r $(INSTDIR)
