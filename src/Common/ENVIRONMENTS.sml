@@ -190,19 +190,19 @@ signature ENVIRONMENTS =
 
                             (*context*)
 
-    structure C :
+    structure C :   (* No T-component *)
       sig
-	val from_T_and_E         : TyName.Set.Set * Env -> Context
+(*	val from_T_and_E         : TyName.Set.Set * Env -> Context  *)
 	val plus_VE              : Context * VarEnv   -> Context
 	val plus_U               : Context * ExplicitTyVar list -> Context
-	val cplus_E              : Context * Env      -> Context
-	val cplus_TE             : Context * TyEnv    -> Context
-	val plus_TE              : Context * TyEnv    -> Context    (* does not add to T component *)
-	val cplus_VE_and_TE      : Context * (VarEnv * TyEnv) -> Context
+	val plus_E               : Context * Env      -> Context
+	val plus_TE              : Context * TyEnv    -> Context
+(*	val plus_TE              : Context * TyEnv    -> Context    (* does not add to T component *)  *)
+	val plus_VE_and_TE      : Context * (VarEnv * TyEnv) -> Context
 	val to_U                 : Context -> ExplicitTyVar list
 	val to_U'                : Context -> ExplicitTyVarEnv
 	val ExplicitTyVarEnv_lookup : ExplicitTyVarEnv -> ExplicitTyVar -> level
-	val to_T                 : Context -> TyName.Set.Set
+(*	val to_T                 : Context -> TyName.Set.Set  *)
 	val from_E               : Env -> Context
 	val on                   : Substitution * Context  -> Context
 
@@ -292,9 +292,10 @@ signature ENVIRONMENTS =
 	val layout : realisation -> StringTree
       end (*Realisation*)
 
-    val ABS : TyEnv * Env -> Env * realisation
+    val ABS : TyEnv * Env -> TyName list * Env * realisation
 	  (* The realisation returned maps abstract type names into
-	   * type names for the datbind. *)
+	   * type names for the datbind. ABS also returns the set of new
+	   * generated names. *)
 
     (*maximise_equality_in_VE_and_TE (VE, TE) = maximise equality in
      TE.  Only used by ElabDec, rule 19 and 20, and ElabTopdec, rule
