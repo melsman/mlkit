@@ -69,8 +69,10 @@ structure ScsPicture :> SCS_PICTURE =
 
     fun identifyPictureErr (file,errs) =
       case identifyPicture file of
-	NONE => (NONE,ScsFormVar.addErr(ScsDict.s' [(ScsLang.da,`Filen kan ikke identificeres som et billede.`),
-						    (ScsLang.en,`The file can't be identified as a picture.`)],
+	NONE => (NONE,ScsFormVar.addErr(ScsDict.s' [(ScsLang.da,`Filen kan ikke identificeres 
+						     som et billede.`),
+						    (ScsLang.en,`The file can't be identified 
+						     as a picture.`)],
 					errs))
       | SOME p => (SOME p, errs)
 

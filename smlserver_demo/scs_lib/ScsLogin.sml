@@ -53,6 +53,8 @@ signature SCS_LOGIN =
 
 structure ScsLogin :> SCS_LOGIN =
   struct
+    (* We might add a check on a form variable lang and 
+       use that as default if exists. 2003-11-17, nh *)
     val default_lang : ScsLang.lang = ScsLang.da
     val default_id : int = 0
     val default = (default_id,default_lang)
