@@ -191,6 +191,14 @@ signature SCS_DICT =
 	language are concatenated
 	NB Only support for Danish and English *)
     val concat : dict -> dict -> dict
+
+    (* [lower dict] returns the dict with all letters converted to
+        lower case *)
+    val lower : dict -> dict
+
+    (* [upper dict] returns the dict with all letters converted to
+        upper case *)
+    val upper : dict -> dict
   end
 
 structure ScsDict :> SCS_DICT =
@@ -402,6 +410,11 @@ structure ScsDict :> SCS_DICT =
         [(ScsLang.da, q1_da ^^ q2_da), (ScsLang.en, q1_en ^^ q2_en)]
       end
 
+    fun lower d =
+      List.map (fn (l,q) => (l,(Quot.fromString o ScsString.lower o Quot.toString) q)) d
+
+    fun upper d =
+      List.map (fn (l,q) => (l,(Quot.fromString o ScsString.upper o Quot.toString) q)) d
   end
 
 
