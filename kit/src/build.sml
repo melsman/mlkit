@@ -91,15 +91,12 @@ end ;
 val _ = K.Flags.lookup_flag_entry "delete_target_files" := false;
 *)
 
-(*
 val _ = (K.Flags.lookup_flag_entry "region_profiling" := false;
 	 K.build_basislib();
 	 K.Flags.lookup_flag_entry "region_profiling" := true;
 	 K.build_basislib();
 	 K.Flags.lookup_flag_entry "region_profiling" := false)
-*)
-(*
-val _ = K.build_basislib();
+
 val _ = K.install();
-*)
+
 
