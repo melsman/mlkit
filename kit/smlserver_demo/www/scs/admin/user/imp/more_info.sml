@@ -28,12 +28,19 @@ val (first_names,last_name,norm_name,
 				     (ScsLang.da,`Importrække eksisterer ikke`)])
 
 val create_new_component =
-  UcsWidget.oneColumnText
-  [ScsDict.sl'
-   [(ScsLang.en,`You may <a ^(UcsPage.confirmCreateOnClick()) href="%0">create</a> %1 as a new person.`),
-    (ScsLang.da,`Du kan <a ^(UcsPage.confirmCreateOnClick()) href="%0">oprette</a> %1 som en ny person.`)] 
-   [Html.genUrl "imp_row.sml" [("user_imp_id",Int.toString user_imp_id)],
-    Quot.toString `^first_names ^last_name`]]
+  if ScsError.wrapPanic 
+    Db.existsOneRow `select email 
+                       from scs_parties
+                      where lower(email) = lower(^(Db.qqq email))`
+    then
+      UcsWidget.oneColumnText [``]
+  else
+    UcsWidget.oneColumnText
+    [ScsDict.sl'
+     [(ScsLang.en,`You may <a ^(UcsPage.confirmCreateOnClick()) href="%0">create</a> %1 as a new person.`),
+      (ScsLang.da,`Du kan <a ^(UcsPage.confirmCreateOnClick()) href="%0">oprette</a> %1 som en ny person.`)]
+     [Html.genUrl "imp_row.sml" [("user_imp_id",Int.toString user_imp_id)],
+      Quot.toString `^first_names ^last_name`]]
 
 val delete_component =
   UcsWidget.oneColumnText
@@ -68,7 +75,8 @@ fun persons_in_db norm_name =
                per.last_modified,
  	       scs_person.name(per.modifying_user) as modifying_user
           from scs_persons per, scs_parties party
-         where per.norm_name = lower(^(Db.qqq norm_name))
+         where (per.norm_name = lower(^(Db.qqq norm_name)) or
+                party.email = lower(^(Db.qqq email)))
            and per.person_id = party.party_id
            and per.deleted_p = 'f'
            and party.deleted_p = 'f'
@@ -91,8 +99,8 @@ fun gen_table [] = ScsDict.s' [(ScsLang.en,`There are no persons to import in th
   | gen_table persons =
   let
     val title_with_norm_name =
-      ScsDict.s [(ScsLang.en,`Below, you see persons with the same normalised name in the personnel register.`),
-		 (ScsLang.da,`Nedenfor ser du de personer i personregistret med samme normaliserede navn.`)]
+      ScsDict.s [(ScsLang.en,`Below, you see persons with the same normalised name or email in the personnel register.`),
+		 (ScsLang.da,`Nedenfor ser du de personer i personregistret med samme normaliserede navn eller email.`)]
   in
     `
     <hr>
