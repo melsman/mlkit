@@ -69,8 +69,11 @@ fun f (s:Ns.Set.set,acc) =
     val ls = List.rev (Ns.Set.list s)
   in
     case acc of
-      NONE => SOME `^(String.concatWith ";" (List.map #1 ls))^("\n")^(String.concatWith ";" (List.map #2 ls))`
-    | SOME acc => SOME (acc ^^ `^("\n")^(String.concatWith ";" (List.map #2 ls))`)
+      NONE => SOME ( Quot.concatWith ";" (List.map (Quot.fromString o #1) ls) ^^ `^("\n")` ^^ 
+		    (Quot.concatWith ";" (List.map (Quot.fromString o #2) ls)), 1)
+    | SOME (acc,n) => SOME (acc ^^ 
+			    `^("\n")` ^^
+			    (Quot.concatWith ";" (List.map (Quot.fromString o #2) ls)),n+1)
   end
     
 val res = 
@@ -79,9 +82,9 @@ val res =
   else
     (case Db.foldSet f NONE `^query` of
        NONE => `No rows returned`
-     | SOME res => res)
+     | SOME (res,n) => `There are ^(Int.toString n) rows<p>.` ^^ res)
        handle Fail e => `Database error: returned error:<p>
-	                 <pre>^e</pre>`
+	 <pre>^e</pre>`
 
 val upd_add_but = if id = "" then ("submit","Add") else ("submit","Update")
 
