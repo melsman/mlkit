@@ -27,6 +27,11 @@ signature CALL_CONV =
     val get_frame_size                : cc -> int
     val add_frame_size                : cc * int -> cc
     val get_cc_size                   : cc -> int
+    val get_rcf_size                  : cc -> int
+    val get_ccf_size                  : cc -> int
+
+    val resolve_act_cc                : {clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} ->
+                                        ('a * int) list * ('a * int) list * int
 
     (******************)
     (* PrettyPrinting *)

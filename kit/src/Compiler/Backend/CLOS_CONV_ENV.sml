@@ -10,10 +10,12 @@ signature CLOS_CONV_ENV =
     type phsize
     type label
 
-    datatype con_kind =
+    datatype con_kind =     (* the integer is the index in the datatype 0,... *)
         ENUM of int
-      | UNBOXED of int
-      | BOXED of int
+      | UB_NULLARY of int
+      | UB_UNARY of int
+      | B_NULLARY of int
+      | B_UNARY of int
 
     datatype access_type =
         LVAR of lvar                            (* Variable                                  *)

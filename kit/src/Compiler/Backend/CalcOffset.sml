@@ -1,3 +1,5 @@
+(* Doubles are not aligned yet! 18/12/1998, Niels *)
+
 functor CalcOffset(structure PhysSizeInf : PHYS_SIZE_INF
 		      structure Con : CON
 		      structure Excon : EXCON
@@ -120,7 +122,7 @@ struct
 		 val (binder',offset') = assign_binder(binder,offset)
 	       in
 		 (binder'::acc,offset')
-	       end) ([],0) binders
+	       end) ([],offset) binders
       end
 
     fun assign_stys(stys,LVmap,PHmap,offset) =
@@ -173,7 +175,7 @@ struct
 	val lss2' = CO_lss(handl,LVmap,PHmap,offset++(BI.size_of_handle()),[])
 	val handl_return' = CO_lss(handl_return,LVmap,PHmap,offset++(BI.size_of_handle()),[])
       in
-	LS.HANDLE{default=lss1',handl=lss2',handl_return=handl_return',offset=offset++(BI.size_of_handle())}::CO_lss(lss,LVmap,PHmap,offset,acc)
+	LS.HANDLE{default=lss1',handl=lss2',handl_return=handl_return',offset=offset}::CO_lss(lss,LVmap,PHmap,offset,acc)
       end
       | CO_lss(LS.RAISE a::lss,LVmap,PHmap,offset,acc) = LS.RAISE a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.SWITCH_I sw::lss,LVmap,PHmap,offset,acc) = CO_sw(CO_lss,LS.SWITCH_I,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)

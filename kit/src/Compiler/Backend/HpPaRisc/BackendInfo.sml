@@ -39,15 +39,16 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val value_tag_record = 4
     val value_tag_ref    = 5
 
-    val inf_bit = 1   (* We must add 1 to an address to set the infinite bit. *)
-    val atbot_bit = 2 (* We must add 2 to an address to set the atbot bit. *)
+    val inf_bit = 1   (* We add 1 to an address to set the infinite bit. *)
+    val atbot_bit = 2 (* We add 2 to an address to set the atbot bit. *)
 
-    val tag_values = Flags.lookup_flag_entry "tag_values"
+    val tag_values   = Flags.lookup_flag_entry "tag_values"
+    val tag_integers = Flags.lookup_flag_entry "tag_integers"
     fun size_of_real ()  = if !tag_values then 4 else 2
     fun size_of_ref ()   = if !tag_values then 2 else 1
     fun size_of_record l = if !tag_values then List.length l + 1 else List.length l
     fun size_of_reg_desc() = 3
-    fun size_of_handle() = 3
+    fun size_of_handle() = 4
 
     val exn_DIV_lab      = Labels.new_named("exnDIV")       (* Global exceptions are globally allocated. *)
     val exn_MATCH_lab    = Labels.new_named("exnMATCH")
@@ -77,4 +78,20 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 
     val init_frame_offset = 0
 
+    (* Jump Tables *)
+    val minCodeInBinSearch = 5
+    val maxDiff = 10
+    val minJumpTabSize = 5
+
+    (* Names For Primitive Functions *)
+    val EQUAL_INT     = "__equal_int"
+    val MINUS_INT     = "__minus_int"
+    val PLUS_INT      = "__plus_int"
+    val MUL_INT       = "__mul_int"
+    val NEG_INT       = "__neg_int"
+    val ABS_INT       = "__abs_int"
+    val LESS_INT      = "__less_int"
+    val LESSEQ_INT    = "__lesseq_int"
+    val GREATER_INT   = "__greater_int"
+    val GREATEREQ_INT = "__greatereq_int"
   end

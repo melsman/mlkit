@@ -113,6 +113,10 @@ struct
 			handl: ('sty,'offset,'aty) LineStmt list, 
 			handl_return: ('sty,'offset,'aty) LineStmt list, 
 			offset: 'offset}
+(*    | HANDLE        of {default: ('sty,'offset,'aty) LineStmt list, 
+			handl: ('sty,'offset,'aty) LineStmt list * 'aty, 
+			handl_return: ('sty,'offset,'aty) LineStmt list * 'aty, 
+			offset: 'offset}*)
     | RAISE         of {arg: 'aty,defined_atys: 'aty list}
     | SWITCH_I      of (int,'sty,'offset,'aty) Switch
     | SWITCH_S      of (string,'sty,'offset,'aty) Switch
@@ -469,7 +473,7 @@ struct
     fun L_ce(ClosExp.VAR lv,lvars_res,acc)             = ASSIGN{pat=VAR(one_lvar lvars_res),bind=ATOM(VAR lv)}::acc
       | L_ce(ClosExp.RVAR place,lvars_res,acc)         = die "RVAR not implemented"
       | L_ce(ClosExp.DROPPED_RVAR place,lvars_res,acc) = die "DROPPED_RVAR not implemented"
-      | L_ce(ClosExp.FETCH lab,lvars_res,acc)           = ASSIGN{pat=VAR(one_lvar lvars_res),bind=LOAD lab}::acc
+      | L_ce(ClosExp.FETCH lab,lvars_res,acc)          = ASSIGN{pat=VAR(one_lvar lvars_res),bind=LOAD lab}::acc
       | L_ce(ClosExp.STORE(ce,lab),lvars_res,acc)      = ASSIGN{pat=VAR(one_lvar lvars_res),bind=STORE(ce_to_atom ce,lab)}::acc
       | L_ce(ClosExp.INTEGER i,lvars_res,acc)          = ASSIGN{pat=VAR(one_lvar lvars_res),bind=ATOM(INTEGER i)}::acc
       | L_ce(ClosExp.STRING s,lvars_res,acc)           = ASSIGN{pat=VAR(one_lvar lvars_res),bind=STRING s}::acc
@@ -505,6 +509,15 @@ struct
       | L_ce(ClosExp.RAISE ce,lvars_res,acc) = RAISE{arg=ce_to_atom ce,defined_atys=map VAR lvars_res}::acc
       | L_ce(ClosExp.HANDLE(ce1,ce2),lvars_res,acc) =
 	  HANDLE{default=L_ce(ce1,lvars_res,[]),handl=L_ce(ce2,lvars_res,[]),handl_return=[],offset=()}::acc (* for now, offset is unit *)
+(*      | L_ce(ClosExp.HANDLE(ce1,ce2),[lv_res],C) =
+	  let
+	    val clos_lv = Labels.new_named "handleCloslv"
+	  in
+	    HANDLE{{default=L_ce(ce1,lvars_res,[]),
+		    handl=(SCOPE{pat=mk_sty clos_lv,scope=L_ce(ce2,[clos_lv],[])},clos_lv),
+		    handl_return=([],lvars_res),offset=()}::C (* for now, offset is unit *)
+	  end
+      | L_ce(ClosExp.HANDLE(ce1,ce2),lvars_res,C) = die "L_ce: HANDLE with more than one lvars_res"*)
       | L_ce(ClosExp.SWITCH_I sw,lvars_res,acc) = SWITCH_I(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn i => i))::acc
       | L_ce(ClosExp.SWITCH_S sw,lvars_res,acc) = SWITCH_S(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),fn s => s))::acc
       | L_ce(ClosExp.SWITCH_C sw,lvars_res,acc) = SWITCH_C(L_ce_sw(sw,fn (ce,acc) => L_ce(ce,lvars_res,acc),

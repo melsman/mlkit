@@ -21,6 +21,10 @@ functor CodeGen(structure PhysSizeInf : PHYS_SIZE_INF
                   sharing type HpPaRisc.label = Labels.label
 	        structure BI : BACKEND_INFO
                   sharing type BI.reg = SubstAndSimplify.reg = HpPaRisc.reg
+                  sharing type BI.label = Labels.label
+		structure JumpTables : JUMP_TABLES
+		structure HppaResolveJumps : HPPA_RESOLVE_JUMPS
+		  sharing type HppaResolveJumps.RiscPrg = HpPaRisc.RiscPrg
 	        structure PP : PRETTYPRINT
 		  sharing type PP.StringTree = 
 		               Effect.StringTree = 
@@ -80,14 +84,31 @@ struct
     structure SS = SubstAndSimplify
     structure LS = LineStmt
 
+    local
+      structure LibFunSet =
+	OrderSet(structure Order =
+		   struct
+		     type T = string
+		     fun lt(l1: T) l2 = l1 < l2
+		   end
+		 structure PP =PP
+		 structure Report = Report)
+      val lib_functions = ref LibFunSet.empty
+    in
+      fun add_lib_function str = lib_functions := LibFunSet.insert str (!lib_functions)
+      fun reset_lib_functions () = lib_functions := LibFunSet.empty
+      fun get_lib_functions C = 
+	List.foldr (fn (str,C) => DOT_IMPORT(NameLab str, "CODE") :: C) C (LibFunSet.list (!lib_functions))
+    end
+
     (* Labels Local To This Compilation Unit *)
     fun new_local_lab name = LocalLab (Labels.new_named name)
     local
       val counter = ref 0
       fun incr() = (counter := !counter + 1; !counter)
     in
-      fun new_string_lab() : lab = NameLab("StringLab" ^ Int.toString(incr()))
-      fun new_float_lab() : lab = NameLab("FloatLab" ^ Int.toString(incr()))
+      fun new_string_lab() : lab = DatLab(Labels.new_named ("StringLab" ^ Int.toString(incr())))
+      fun new_float_lab() : lab = DatLab(Labels.new_named ("FloatLab" ^ Int.toString(incr())))
       fun reset_label_counter() = counter := 0
     end
 
@@ -97,7 +118,7 @@ struct
     in
       fun add_static_data (insts) = (static_data := insts @ !static_data)
       fun reset_static_data () = static_data := []
-      fun get_static_data() = !static_data
+      fun get_static_data C = !static_data @ C
     end
 
     (* Convert ~n to -n *)
@@ -187,7 +208,7 @@ struct
       | move_aty_into_reg(SS.STACK_ATY offset,dst_reg,size_ff,C) = load_indexed(dst_reg,sp,WORDS(~size_ff+offset),C)
       | move_aty_into_reg(SS.DROPPED_RVAR_ATY,dst_reg,size_ff,C) = C
       | move_aty_into_reg(SS.PHREG_ATY phreg,dst_reg,size_ff,C)  = if dst_reg = phreg then C else COPY{r=phreg,t=dst_reg} :: C
-      | move_aty_into_reg(SS.INTEGER_ATY i,dst_reg,size_ff,C)    = load_immed(IMMED i,dst_reg,C)
+      | move_aty_into_reg(SS.INTEGER_ATY i,dst_reg,size_ff,C)    = load_immed(IMMED i,dst_reg,C) (* Integers are tagged in ClosExp *)
       | move_aty_into_reg(SS.UNIT_ATY,dst_reg,size_ff,C)         = load_immed(IMMED BI.ml_unit,dst_reg,C)
 
     (* dst_aty = src_reg *)
@@ -238,23 +259,37 @@ struct
       let
 	val (reg_for_result,C') = resolve_aty_def(dst_aty,tmp_reg1,size_ff,C)
       in
-	ADDIL{i="L'" ^ Labels.pr_label lab ^ "-$global$",r=dp} ::
-	LDO{d="R'" ^ Labels.pr_label lab ^ "-$global$",b=Gen 1,t=reg_for_result} :: 
+	ADDIL{i="L'" ^ pp_lab lab ^ "-$global$",r=dp} ::
+	LDO{d="R'" ^ pp_lab lab ^ "-$global$",b=Gen 1,t=reg_for_result} :: 
 	LDW{d="0",s=Space 0,b=reg_for_result,t=reg_for_result} :: C'
       end
 
     (* lab[0] = src_aty *)
     (* Kills Gen 1      *)
     fun store_in_label(SS.PHREG_ATY src_reg,label,size_ff,C) =
-      ADDIL{i="L'" ^ Labels.pr_label label ^ "-$global$",r=dp} ::
-      LDO{d="R'" ^ Labels.pr_label label ^ "-$global$",b=Gen 1,t=tmp_reg1} :: 
+      ADDIL{i="L'" ^ pp_lab label ^ "-$global$",r=dp} ::
+      LDO{d="R'" ^ pp_lab label ^ "-$global$",b=Gen 1,t=tmp_reg1} :: 
       STW{r=src_reg,d="0",s=Space 0,b=tmp_reg1} :: C
       | store_in_label(src_aty,label,size_ff,C) =
       move_aty_into_reg(src_aty,tmp_reg2,size_ff,
-			ADDIL{i="L'" ^ Labels.pr_label label ^ "-$global$",r=dp} ::
-			LDO{d="R'" ^ Labels.pr_label label ^ "-$global$",b=Gen 1,t=tmp_reg1} :: 
+			ADDIL{i="L'" ^ pp_lab label ^ "-$global$",r=dp} ::
+			LDO{d="R'" ^ pp_lab label ^ "-$global$",b=Gen 1,t=tmp_reg1} :: 
 			STW{r=tmp_reg2,d="0",s=Space 0,b=tmp_reg1} :: C)
 
+      (* Generate a string label *)
+    fun gen_string_lab str =
+      let
+	val string_lab = new_string_lab()
+	val _ = add_static_data [DOT_DATA,
+				 DOT_ALIGN 4,
+				 LABEL string_lab,
+				 DOT_WORD(Int.toString(size(str)*8+BI.value_tag_string)),
+				 DOT_WORD (Int.toString(size(str))),
+				 DOT_WORD "0", (* NULL pointer to next fragment. *)
+				 DOT_STRINGZ str]
+      in
+	string_lab
+      end
 
     (* Can be used to update the stack or a record when the argument is an ATY *)
     (* base_reg[offset] = src_aty *)
@@ -302,6 +337,7 @@ struct
 
     fun compile_c_call_prim(name: string, args: SS.Aty list,opt_ret: SS.Aty option,size_ff: int,C) =
       let
+	val _ = add_lib_function name
 	val (convert: bool,name: string) =
 	  (case explode name of
 	     #"@" :: rest => (!BI.tag_values, implode rest)
@@ -413,18 +449,45 @@ struct
       end
       | alloc_ap(LS.SAT_FF(aty,pp),dst_reg:reg,n,size_ff,C) = 
       let
-	val default_lab = new_local_lab "no_reset"
+	val finite_lab = new_local_lab "no_alloc"
+	val attop_lab = new_local_lab "no_reset"
       in
 	move_aty_into_reg_ap(aty,dst_reg,size_ff,
-			     META_IF_BIT{r=dst_reg,bitNo=31,target=default_lab} ::
-			     META_IF_BIT{r=dst_reg,bitNo=30,target=default_lab} ::
-			     reset_region(dst_reg,size_ff,LABEL default_lab :: 
-					  alloc(dst_reg,n,size_ff,C)))
+			     META_IF_BIT{r=dst_reg,bitNo=31,target=finite_lab} ::
+			     META_IF_BIT{r=dst_reg,bitNo=30,target=attop_lab} ::
+			     reset_region(dst_reg,size_ff,LABEL attop_lab :: 
+					  alloc(dst_reg,n,size_ff,LABEL finite_lab :: C)))
       end
 
     fun set_atbot_bit(dst_reg:reg,C) = DEPI{cond=NEVER, i="1", p="30", len="1", t=dst_reg} :: C
     fun clear_atbot_bit(dst_reg:reg,C) = DEPI{cond=NEVER, i="0", p="30", len="1", t=dst_reg} :: C
 
+    (* Set Atbot bits on region variables *)
+    fun prefix_sm(LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+      | prefix_sm(LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+      | prefix_sm(LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+      | prefix_sm(LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+      | prefix_sm(LS.ATBOT_LI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+      | prefix_sm(LS.ATBOT_LF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+      | prefix_sm(LS.SAT_FI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C)   = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+      | prefix_sm(LS.SAT_FF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C)   = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
+      | prefix_sm(LS.IGNORE,dst_reg:reg,size_ff,C)                           = die "store_sm_in_record: IGNORE not implemented."
+      | prefix_sm(LS.ATTOP_LI(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+      | prefix_sm(LS.ATTOP_LF(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+      | prefix_sm(LS.ATTOP_FI(aty,pp),dst_reg:reg,size_ff,C) = 
+      move_aty_into_reg_ap(aty,dst_reg,size_ff,
+			   clear_atbot_bit(dst_reg,C))
+      | prefix_sm(LS.ATTOP_FF(aty,pp),dst_reg:reg,size_ff,C) = 
+      move_aty_into_reg_ap(aty,dst_reg,size_ff,
+			   clear_atbot_bit(dst_reg,C))
+      | prefix_sm(LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp),dst_reg:reg,size_ff,C) = 
+      base_plus_offset(sp,BYTES(~size_ff*4+offset_reg_i*4+BI.inf_bit+BI.atbot_bit),dst_reg,C)
+      | prefix_sm(LS.ATBOT_LI(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,set_atbot_bit(dst_reg,C))
+      | prefix_sm(LS.ATBOT_LF(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+      | prefix_sm(LS.SAT_FI(aty,pp),dst_reg:reg,size_ff,C)   = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+      | prefix_sm(LS.SAT_FF(aty,pp),dst_reg:reg,size_ff,C)   = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
+
+    (* Used to build a region vector *)
     fun store_sm_in_record(LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp),tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
       | store_sm_in_record(LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp),tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
       | store_sm_in_record(LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp),tmp:reg,base_reg,offset,size_ff,C) = die "store_sm_in_record: DROPPED_RVAR_ATY not implemented."
@@ -453,7 +516,9 @@ struct
       | store_sm_in_record(LS.ATBOT_LI(SS.REG_I_ATY offset_reg_i,pp),tmp:reg,base_reg,offset,size_ff,C) = 
       base_plus_offset(sp,BYTES(~size_ff*4+offset_reg_i*4+BI.inf_bit+BI.atbot_bit),tmp,
 		       store_indexed(base_reg,offset,tmp,C))
-      | store_sm_in_record(LS.ATBOT_LI(aty,pp),tmp:reg,base_reg,offset,size_ff,C) = move_aty_into_reg_ap(aty,tmp,size_ff,set_atbot_bit(tmp,C))
+      | store_sm_in_record(LS.ATBOT_LI(aty,pp),tmp:reg,base_reg,offset,size_ff,C) = 
+      move_aty_into_reg_ap(aty,tmp,size_ff,set_atbot_bit(tmp,
+							 store_indexed(base_reg,offset,tmp,C)))
       | store_sm_in_record(LS.ATBOT_LF(SS.PHREG_ATY phreg,pp),tmp:reg,base_reg,offset,size_ff,C) = store_indexed(base_reg,offset,phreg,C)
       | store_sm_in_record(LS.ATBOT_LF(aty,pp),tmp:reg,base_reg,offset,size_ff,C) = 
       move_aty_into_reg_ap(aty,tmp,size_ff,store_indexed(base_reg,offset,tmp,C))
@@ -464,7 +529,7 @@ struct
       | store_sm_in_record(LS.SAT_FF(aty,pp),tmp:reg,base_reg,offset,size_ff,C) =
       move_aty_into_reg_ap(aty,tmp,size_ff,store_indexed(base_reg,offset,tmp,C))
 
-      fun maybe_reset_region(LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = C
+(*      fun maybe_reset_region(LS.ATTOP_LI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = C
 	| maybe_reset_region(LS.ATTOP_LF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = C
 	| maybe_reset_region(LS.ATTOP_FI(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = C
 	| maybe_reset_region(LS.ATTOP_FF(SS.DROPPED_RVAR_ATY,pp),dst_reg:reg,size_ff,C) = C
@@ -497,7 +562,7 @@ struct
 	| maybe_reset_region(LS.ATTOP_LF(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C) (* status bits are not set *)
 	| maybe_reset_region(LS.ATTOP_FI(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
 	| maybe_reset_region(LS.ATTOP_FF(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C)
-        | maybe_reset_region(LS.ATBOT_LF(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C) (* status bits are not set *)
+        | maybe_reset_region(LS.ATBOT_LF(aty,pp),dst_reg:reg,size_ff,C) = move_aty_into_reg_ap(aty,dst_reg,size_ff,C) (* status bits are not set *)*)
 
       fun maybe_reset_aux_region(LS.ATBOT_LI(aty,pp),tmp_reg:reg,size_ff,C) = 
 	move_aty_into_reg_ap(aty,tmp_reg,size_ff,
@@ -508,7 +573,7 @@ struct
 	in
 	  move_aty_into_reg_ap(aty,tmp_reg,size_ff,
 			       META_IF_BIT{r=tmp_reg,bitNo=30,target=default_lab} ::
-						 reset_region(tmp_reg,size_ff,LABEL default_lab :: C))
+			       reset_region(tmp_reg,size_ff,LABEL default_lab :: C))
 	end
 	| maybe_reset_aux_region(LS.SAT_FF(aty,pp),dst_reg:reg,size_ff,C) = 
 	let
@@ -517,9 +582,84 @@ struct
 	  move_aty_into_reg_ap(aty,dst_reg,size_ff,
 			       META_IF_BIT{r=dst_reg,bitNo=31,target=default_lab} ::
 			       META_IF_BIT{r=dst_reg,bitNo=30,target=default_lab} ::
-						 reset_region(dst_reg,size_ff,LABEL default_lab :: C))
+			       reset_region(dst_reg,size_ff,LABEL default_lab :: C))
 	end
 	| maybe_reset_aux_region(_,dst_reg:reg,size_ff,C) = C
+
+      (* Compile Switch Statements *)
+      local
+	fun comment(str,C) = COMMENT str :: C
+	fun new_label str = new_local_lab str
+	fun label(lab,C) = LABEL lab :: C
+	fun jmp(lab,C) = META_B{n=false,target=lab} :: C
+      in
+	fun linear_search(sels,
+			  default,
+			  compile_sel:'sel * RiscInst list -> RiscInst list,
+			  if_no_match_go_lab: lab * RiscInst list -> RiscInst list,
+			  compile_insts,C) =
+	  JumpTables.linear_search(sels,
+				   default,
+				   comment,
+				   new_label,
+				   compile_sel,
+				   if_no_match_go_lab,
+				   compile_insts,
+				   label,jmp,C)
+      end
+
+      fun cmpi(cond,x:reg,y:reg,d:reg,C) = 
+	LDI {i=int_to_string BI.ml_true, t=d} ::
+	COMCLR {cond=cond,r1=x,r2=y,t=Gen 1} ::
+	LDI {i=int_to_string BI.ml_false,t=d} :: C
+
+      fun maybe_tag_integers(inst,C) =		  
+	if !BI.tag_integers then
+	  inst :: C
+	else
+	  C
+		  
+      fun muli(x:reg,y:reg,d:reg,C) = (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
+	if !BI.tag_integers then
+	  (add_lib_function("$$mulI");
+	   COPY{r=x,t=arg1} ::
+	   SHD{cond=NEVER,r1=Gen 0,r2=arg1,p="1",t=arg1} ::
+	   COPY{r=y,t=arg0} ::
+	   LDO {d="-1",b=arg0,t=arg0} ::
+	   META_BL {n=false,target=NameLab "$$mulI",rpLink=mrp, 
+		    callStr=";in=25,26;out=29;(MILLICALL)"} ::
+	   LDO{d="1",b=ret1,t=ret1} ::
+	   COPY{r=ret1,t=d} :: C)
+	else
+	  (add_lib_function("$$muloI");
+	   COPY{r=x,t=arg1} ::
+	   COPY{r=y,t=arg0} ::
+	   META_BL {n=false,target=NameLab "$$muloI",rpLink=mrp, 
+		    callStr=";in=25,26;out=29; (MILLICALL)"} ::
+	   COPY{r=ret1,t=d} :: C)
+
+      fun negi(x:reg,d:reg,C) = (* Exception Overflow not implemented *)
+	let
+	  val base = 
+	    if !BI.tag_integers then 
+	      "2" 
+	    else 
+	      "0"
+	in
+	  SUBI{cond=NEVER,i=base,r=x,t=d} :: C
+	end
+
+     fun absi(x:reg,d:reg,C) = (* Exception Overflow not implemented *)
+       let
+	 val base = 
+	   if !BI.tag_integers then 
+	     "2" 
+	   else 
+	     "0"
+       in
+	 ADD{cond=GREATERTHAN,r1=x,r2=Gen 0,t=d} ::
+	 SUBI{cond=NEVER,i=base,r=x,t=d} :: C
+       end
 
     (*******************)
     (* Code Generation *)
@@ -530,18 +670,11 @@ struct
 	fun CG_ls(LS.ASSIGN{pat,bind},C) = 
 	  (case bind of
 	     LS.ATOM src_aty => move_aty_to_aty(src_aty,pat,size_ff,C)
-	   | LS.LOAD label => load_from_label(label,pat,size_ff,C)
-	   | LS.STORE(src_aty,label) => store_in_label(src_aty,label,size_ff,C)
+	   | LS.LOAD label => load_from_label(DatLab label,pat,size_ff,C)
+	   | LS.STORE(src_aty,label) => store_in_label(src_aty,DatLab label,size_ff,C)
 	   | LS.STRING str =>
 	       let
-		 val string_lab = new_string_lab()
-		 val _ = add_static_data [DOT_DATA,
-					  DOT_ALIGN 4,
-					  LABEL string_lab,
-					  DOT_WORD(Int.toString(size(str)*8+BI.value_tag_string)),
-					  DOT_WORD (Int.toString(size(str))),
-					  DOT_WORD "0", (* NULL pointer to next fragment. *)
-					  DOT_STRINGZ str]
+		 val string_lab = gen_string_lab str
 	       in
 		 load_label_addr(string_lab,pat,size_ff,C)
 	       end
@@ -567,35 +700,43 @@ struct
 	   | LS.CLOS_RECORD{label,elems,alloc} => 
 	       let
 		 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+		 val num_elems = List.length elems
 	       in
 		 alloc_ap(alloc,reg_for_result,List.length elems + 1,size_ff,
-			  load_label_addr(NameLab (Labels.pr_label label),SS.PHREG_ATY tmp_reg2,size_ff,
+			  load_label_addr(MLFunLab label,SS.PHREG_ATY tmp_reg2,size_ff,
 					  store_indexed(reg_for_result,WORDS 0,tmp_reg2,
 							#2(foldr (fn (aty,(offset,C)) => 
-								  (offset+1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,C))) (1,C') elems))))
+								  (offset-1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
+												    C))) (num_elems-1,C') elems))))
 	       end
 	   | LS.REGVEC_RECORD{elems,alloc} =>
 	       let
 		 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+		 val num_elems = List.length elems
 	       in
 		 alloc_ap(alloc,reg_for_result,List.length elems,size_ff,
-			  #2(foldr (fn (sma,(offset,C)) => (offset+1,store_sm_in_record(sma,tmp_reg2,reg_for_result,WORDS offset,size_ff,C))) (0,C') elems))
+			  #2(foldr (fn (sma,(offset,C)) => (offset-1,store_sm_in_record(sma,tmp_reg2,reg_for_result,WORDS offset,size_ff,
+											C))) (num_elems-1,C') elems))
 	       end
 	   | LS.SCLOS_RECORD{elems,alloc} => 
 	       let
 		 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+		 val num_elems = List.length elems
 	       in
 		 alloc_ap(alloc,reg_for_result,List.length elems,size_ff,
-			    #2(foldr (fn (aty,(offset,C)) => (offset+1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,C))) (0,C') elems))
+			    #2(foldr (fn (aty,(offset,C)) => (offset-1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
+											       C))) (num_elems-1,C') elems))
 	       end
 	   | LS.RECORD{elems,alloc} =>
 	       let
 		 val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
+		 val num_elems = List.length elems
 	       in
 		 alloc_ap(alloc,reg_for_result,List.length elems,size_ff,
-			    #2(foldr (fn (aty,(offset,C)) => (offset+1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,C))) (0,C') elems))
+			    #2(foldr (fn (aty,(offset,C)) => (offset-1,store_aty_in_reg_record(aty,tmp_reg2,reg_for_result,WORDS offset,size_ff,
+											       C))) (num_elems-1,C') elems))
 	       end
-	   | LS.SELECT(i,aty) => move_index_aty_to_aty(pat,aty,WORDS i,size_ff,C)
+	   | LS.SELECT(i,aty) => move_index_aty_to_aty(aty,pat,WORDS i,size_ff,C)
 	   | LS.CON0{con,con_kind,aux_regions,alloc} =>
 	       (case con_kind of
 		  LS.ENUM i => 
@@ -668,7 +809,7 @@ struct
 	       let
 		 val offset = if !BI.tag_values then 1 else 0
 	       in
-		 move_index_aty_to_aty(pat,aty,WORDS offset,size_ff,C)
+		 move_index_aty_to_aty(aty,pat,WORDS offset,size_ff,C)
 	       end
 	   | LS.REF(alloc,aty) =>
 	       let
@@ -702,14 +843,44 @@ struct
 	     let
 	       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 	     in 
-	       maybe_reset_region(alloc,reg_for_result,size_ff,C')
+	       prefix_sm(alloc,reg_for_result,size_ff,C')
 	     end)
 	  | CG_ls(LS.FLUSH(aty,offset),C) = store_aty_in_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)
 	  | CG_ls(LS.FETCH(aty,offset),C) = load_aty_from_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)
-	  | CG_ls(LS.FNJMP a,C) = not_impl("FNJMP",C)
-	  | CG_ls(LS.FNCALL a,C) = not_impl("FNCALL",C)
-	  | CG_ls(LS.JMP a,C) = not_impl("JMP",C)
-	  | CG_ls(LS.FUNCALL a,C) = not_impl("FUNCALL",C)
+	  | CG_ls(LS.FNJMP{opr,args,clos,free,res},C) = CG_ls(LS.FNCALL{opr=opr,args=args,clos=clos,free=free,res=res},C)
+	  | CG_ls(LS.FNCALL{opr,args,clos,free,res},C) =
+	     let
+	       val (spilled_args,spilled_res,return_lab_offset) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=[],reg_vec=NONE,res=res}
+	       val return_lab = new_local_lab "return_from_app"
+	       fun flush_args C =
+		 foldr (fn ((aty,offset),C) => store_aty_in_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)) C spilled_args
+	       fun fetch_res C =
+		 foldr (fn ((aty,offset),C) => load_aty_from_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)) C spilled_res
+	       fun jmp C = 
+		 case opr of
+		   SS.PHREG_ATY opr_reg => META_BV{n=false,x=Gen 0,b=opr_reg}::C
+		 | _ => move_aty_into_reg(opr,tmp_reg1,size_ff,
+					  META_BV{n=false,x=Gen 0,b=tmp_reg1}::C)
+	     in
+	       load_label_addr(return_lab,SS.PHREG_ATY tmp_reg1,size_ff,
+			       store_indexed(sp,WORDS return_lab_offset,tmp_reg1,
+					     flush_args(jmp(LABEL return_lab :: fetch_res C))))
+	     end
+	  | CG_ls(LS.JMP a,C) = CG_ls(LS.FUNCALL a,C) (* Tail call not implemented yet. *)
+	  | CG_ls(LS.FUNCALL{opr,args,reg_vec,reg_args,clos,free,res},C) =
+	     let
+	       val (spilled_args,spilled_res,return_lab_offset) = CallConv.resolve_act_cc {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
+	       val return_lab = new_local_lab "return_from_app"
+	       fun flush_args C =
+		 foldr (fn ((aty,offset),C) => store_aty_in_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)) C spilled_args
+	       fun fetch_res C =
+		 foldr (fn ((aty,offset),C) => load_aty_from_reg_record(aty,tmp_reg1,sp,WORDS offset,size_ff,C)) C spilled_res
+	       fun jmp C = META_B{n=false,target=MLFunLab opr} :: C
+	     in
+	       load_label_addr(return_lab,SS.PHREG_ATY tmp_reg1,size_ff,
+			       store_indexed(sp,WORDS return_lab_offset,tmp_reg1,
+					     flush_args(jmp(LABEL return_lab :: fetch_res C))))
+	     end
 	  | CG_ls(LS.LETREGION{rhos,body},C) = 
 	     let
 	       fun alloc_region_prim((_,offset),C) = 
@@ -729,18 +900,109 @@ struct
 	  | CG_ls(LS.SCOPE{pat,scope},C) = CG_lss(scope,size_ff,size_cc,C)
 	  | CG_ls(LS.HANDLE{default,handl,handl_return,offset},C) = not_impl("HANDLE",C)
 	  | CG_ls(LS.RAISE{arg,defined_atys},C) = not_impl("RAISE",C)
-	  | CG_ls(LS.SWITCH_I sw,C) = not_impl("SWITCH_I",C)
-	  | CG_ls(LS.SWITCH_S sw,C) = not_impl("SWITCH_S",C)
-	  | CG_ls(LS.SWITCH_C sw,C) = not_impl("SWITCH_C",C)
-	  | CG_ls(LS.SWITCH_E sw,C) = not_impl("SWITCH_E",C)
-	  | CG_ls(LS.RESET_REGIONS{force,regions_for_resetting},C) = not_impl("RESET_REGIONS",C)
-	  | CG_ls(LS.CCALL{name,args,rhos_for_result,res},C) = not_impl("CCALL",C)
+	  | CG_ls(LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY opr_reg,sels,default)),C) = 
+	     linear_search(sels,
+			   default,
+			   fn (i,C) => load_immed(IMMED i,tmp_reg2,C),
+			   fn (lab,C) => META_IF{cond=EQUAL,r1=opr_reg,r2=tmp_reg2,target=lab} :: C,
+			   fn (lss,C) => CG_lss (lss,size_ff,size_cc,C),
+			   C)
+	  | CG_ls(LS.SWITCH_I(LS.SWITCH(opr_aty,sels,default)),C) =
+	     move_aty_into_reg(opr_aty,tmp_reg1,size_ff,
+			       linear_search(sels,
+					     default,
+					     fn (i,C) => load_immed(IMMED i,tmp_reg2,C),
+					     fn (lab,C) => META_IF{cond=EQUAL,r1=tmp_reg1,r2=tmp_reg2,target=lab} :: C,
+					     fn (lss,C) => CG_lss (lss,size_ff,size_cc,C),
+					     C))
+	  | CG_ls(LS.SWITCH_S sw,C) = die "SWITCH_S is unfolded in ClosExp"
+	  | CG_ls(LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)),C) = 
+	     let (* NOTE: selectors in sels are tagged in ClosExp but the operand is untagged here! *)
+	       val con_kind = 
+		 (case sels of
+		    [] => die "CG_ls: SWITCH_C sels is empty"
+		  | ((con,con_kind),_)::rest => con_kind)
+	       val sels' = map (fn ((con,con_kind),sel_insts) => 
+				case con_kind of
+				  LS.ENUM i => (i,sel_insts)
+				| LS.UNBOXED i => (i,sel_insts)
+				| LS.BOXED i => (i,sel_insts)) sels
+	       fun UbTagCon(src_aty,C) =
+		 move_aty_into_reg(src_aty,tmp_reg0,size_ff, 
+				   COPY{r=tmp_reg0, t=tmp_reg1} :: (* operand is in tmp_reg1, see SWITCH_I *)
+				   DEPI{cond=NEVER, i="0", p="29", len="30", t=tmp_reg1} ::
+				   ADDI{cond=NOTEQUAL, i="-3", r=tmp_reg1, t=Gen 1} ::      (* nullify copy if tr = 3 *)
+				   COPY{r=tmp_reg0, t=tmp_reg1} :: C)
+				   
+	     in
+	       (case con_kind of
+		  LS.ENUM _ => CG_ls(LS.SWITCH_I(LS.SWITCH(opr_aty,sels',default)),C)
+		| LS.UNBOXED _ => UbTagCon(opr_aty,
+					   CG_ls(LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY tmp_reg1,sels',default)),C))
+		| LS.BOXED _ => move_index_aty_to_aty(opr_aty,SS.PHREG_ATY tmp_reg1,WORDS 0,size_ff,
+						      CG_ls(LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY tmp_reg1,sels',default)),C)))
+	     end
+	  | CG_ls(LS.SWITCH_E sw,C) = die "SWITCH_E is unfolded in ClosExp"
+	  | CG_ls(LS.RESET_REGIONS{force=false,regions_for_resetting},C) = 
+	     foldr (fn (alloc,C) => maybe_reset_aux_region(alloc,tmp_reg1,size_ff,C)) C regions_for_resetting
+	  | CG_ls(LS.RESET_REGIONS{force=true,regions_for_resetting},C) = not_impl("CG_ls: force regions not implemented",C)
+	  | CG_ls(LS.CCALL{name,args,rhos_for_result,res},C) = 
+	     (* Note that the prim names are defined in BackendInfo! *)
+	     (case (name,args@rhos_for_result,res) of
+		("__equal_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])      => cmpi(EQUAL,x,y,d,C)
+	      | ("__minus_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])      => SUBO{cond=NEVER,r1=x,r2=y,t=d} :: maybe_tag_integers(LDO{d="1",b=d,t=d},C)
+	      | ("__plus_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])       => ADDO{cond=NEVER,r1=x,r2=y,t=d} :: maybe_tag_integers(LDO {d="-1",b=d,t=d},C)
+	      | ("__mul_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])        => muli(x,y,d,C)
+	      | ("__neg_int",[SS.PHREG_ATY x],[SS.PHREG_ATY d])                       => negi(x,d,C)
+	      | ("__abs_int",[SS.PHREG_ATY x],[SS.PHREG_ATY d])                       => absi(x,d,C)
+	      | ("__less_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])       => cmpi(LESSTHAN,x,y,d,C)
+	      | ("__lesseq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])     => cmpi(LESSEQUAL,x,y,d,C)
+	      | ("__greater_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])    => cmpi(GREATERTHAN,x,y,d,C)
+	      | ("__greatereq_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])  => cmpi(GREATEREQUAL,x,y,d,C)
+	      | _ => 
+		  (case res of
+		     [] => compile_c_call_prim(name,args@rhos_for_result,NONE,size_ff,C)
+		   | [res_aty] => compile_c_call_prim(name,args@rhos_for_result,SOME res_aty,size_ff,C)
+		   | _ => die "CCall with more than one result variable"))
       in
 	foldr (fn (ls,C) => CG_ls(ls,C)) C lss
       end
 
-    fun CG_top_decl(LS.FUN(lab,cc,lss)) = FUN(lab,CG_lss(lss,CallConv.get_frame_size cc,CallConv.get_cc_size cc,[]))
-      | CG_top_decl(LS.FN(lab,cc,lss)) = FN(lab,CG_lss(lss,CallConv.get_frame_size cc,CallConv.get_cc_size cc,[]))
+    fun CG_top_decl(LS.FUN(lab,cc,lss)) = 
+      let
+	val size_ff = CallConv.get_frame_size cc
+	val size_cc = CallConv.get_cc_size cc
+	val C = base_plus_offset(sp,WORDS(~size_ff-size_cc),sp,
+				 load_indexed(tmp_reg1,sp,WORDS(CallConv.get_rcf_size cc),
+								META_BV{n=false,x=Gen 0,b=tmp_reg1}::[]))
+      in
+	FUN(lab,
+	    LABEL(MLFunLab lab) ::
+	    base_plus_offset(sp,WORDS(size_ff+size_cc),sp,
+			     CG_lss(lss,size_ff,size_cc,C)))
+      end
+      | CG_top_decl(LS.FN(lab,cc,lss)) = 
+      let
+	val size_ff = CallConv.get_frame_size cc
+	val size_cc = CallConv.get_cc_size cc
+	val C = base_plus_offset(sp,WORDS(~size_ff-size_cc),sp,
+				 load_indexed(tmp_reg1,sp,WORDS(CallConv.get_rcf_size cc),
+								META_BV{n=false,x=Gen 0,b=tmp_reg1}::[]))
+      in
+	FN(lab,
+	   LABEL(MLFunLab lab) ::
+	   base_plus_offset(sp,WORDS(size_ff+size_cc),sp,
+			    CG_lss(lss,size_ff,size_cc,C)))
+      end
+
+    (*********************************************************)
+    (* Init, Static Data and Exit Code for this program unit *)
+    (*********************************************************)
+    fun static_data() = DOT_DATA :: get_static_data([DOT_IMPORT (NameLab "$global$", "DATA"),
+						     COMMENT "****End of staticData****",
+						     DOT_END])
+    fun init_hppa_code() = COMMENT "**** Begin HPPA code**** " :: DOT_CODE :: []
+    fun exit_hppa_code () = get_lib_functions(COMMENT "****End of HPPA code**** " :: [])
   in
     fun CG {main_lab:label,
 	    code=ss_prg: (StoreTypeSS,offset,AtySS) LinePrg,
@@ -750,10 +1012,13 @@ struct
 	val _ = chat "[Code Generation..."
 	val _ = reset_static_data()
 	val _ = reset_label_counter()
-	val hp_parisc_prg = {top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
-			     init_code = [],
-			     exit_code = [],
-			     static_data = get_static_data()}
+	val _ = reset_lib_functions()
+	val _ = add_static_data (map (fn lab => DOT_IMPORT(MLFunLab lab, "CODE")) imports) (* should differentiate between datLabs and MLFunLabs *)
+	val _ = add_static_data (map (fn lab => DOT_EXPORT(MLFunLab lab, "CODE")) (main_lab::exports)) (* should differentiate between datLabs and MLFunLabs *)
+	val hp_parisc_prg = HppaResolveJumps.RJ{top_decls = foldr (fn (func,acc) => CG_top_decl func :: acc) [] ss_prg,
+						init_code = init_hppa_code(),
+						exit_code = exit_hppa_code(),
+						static_data = static_data()}
 	val _ = 
 	  if Flags.is_on "print_HP-PARISC_program" then
 	    display("\nReport: AFTER CODE GENERATION(HP-PARISC):", HpPaRisc.layout_RiscPrg hp_parisc_prg)
@@ -763,7 +1028,132 @@ struct
       in
 	hp_parisc_prg
       end
+
+    (* ------------------------------------------------------------------------------ *)
+    (*              Generate Link Code for Incremental Compilation                    *)
+    (* ------------------------------------------------------------------------------ *)
+    fun generate_link_code (linkinfos:label list) =
+      let	
+	val _ = reset_static_data()
+	val _ = reset_label_counter()
+	val _ = reset_lib_functions()
+
+	val global_region_labs = [BI.toplevel_region_withtype_top_lab,
+				  BI.toplevel_region_withtype_string_lab,
+				  BI.toplevel_region_withtype_real_lab]
+	val lab_exit = Labels.new_named "lab_exit"
+	val next_prog_unit = Labels.new_named "next_prog_unit"
+	val progunit_labs = linkinfos
+
+	val (progunit_labs, first_progunit_lab) =
+	  case progunit_labs @ [lab_exit] of
+	    first::rest => (rev rest, first)
+	  | _ => die "generate_link_code.list empty"
+
+	fun slot_for_datlab(l,C) =
+	  DOT_DATA ::
+	  DOT_ALIGN 4 ::
+	  DOT_EXPORT(DatLab l, "DATA") ::
+	  LABEL (DatLab l) ::
+	  DOT_WORD "0" :: C
+	fun slots_for_datlabs(l,C) = foldr slot_for_datlab C l
+	fun add_progunits(l,C) = foldr (fn (lab,C) => DOT_IMPORT(MLFunLab lab,"CODE") :: C) C l
+	val static_data = 
+	  slots_for_datlabs(global_region_labs,
+			    add_progunits(linkinfos,
+					  DOT_EXPORT (NameLab "code", "ENTRY,PRIV_LEV=3") ::
+					  DOT_IMPORT (NameLab "terminate", "CODE") ::
+					  DOT_DATA ::
+					  DOT_IMPORT (NameLab "$global$", "DATA") ::
+
+					  LABEL(NameLab "exn_INTERRUPT") :: (* only temporary *)
+					  DOT_WORD "0" :: (* only temporary *)
+					  DOT_EXPORT(NameLab "exn_INTERRUPT","DATA") :: (* only temporary *)
+					  LABEL(NameLab "exn_OVERFLOW") :: (* only temporary *)
+					  DOT_WORD "0" :: (* only temporary *)
+					  DOT_EXPORT(NameLab "exn_OVERFLOW","DATA") :: (* only temporary *)
+
+					  COMMENT "**** End of Link Code ****" ::
+					  DOT_END :: []))
+	val _  = add_static_data static_data
+
+	fun push_addresses_progunits(progunit_labs,C) = 
+	  foldr (fn (l,C) => load_label_addr(MLFunLab l,SS.PHREG_ATY tmp_reg1,0,
+					     STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} :: C)) C progunit_labs
+
+	val _ = add_lib_function "allocateRegion"
+	fun allocate_global_regions(region_labs,C) = 
+	  foldl (fn (lab,C) => 
+		 COPY{r=sp, t=arg0} ::
+		 LDO {d=(Int.toString(BI.size_of_reg_desc()*4)),b=sp,t=sp} ::
+		 align_stack(META_BL{n=false,target=NameLab "allocateRegion",rpLink=rp,callStr="ARGW0=GR, RTNVAL=GR"} ::
+			     restore_stack(store_in_label(SS.PHREG_ATY ret0,DatLab lab,0,C)))) C region_labs
+
+	fun init_insts C =
+	  COMMENT "**** Init Link Code ****" ::
+	  DOT_CODE ::
+	  LABEL (NameLab "code") ::
+	  DOT_PROC ::
+	  DOT_CALLINFO "CALLS, FRAME=0, SAVE_RP, SAVE_SP, ENTRY_GR=18" ::
+	  DOT_ENTRY ::
+
+	  (* Allocate global regions and push them on stack *)
+	  COMMENT "Allocate global regions and push them on the stack" ::
+	  allocate_global_regions(global_region_labs,
+
+	  (* Push addresses of program units on stack, starting with the exit label and
+	   * ending with label for the second program unit. *)
+	  push_addresses_progunits(progunit_labs,
+
+         (* Push Address Of next_prog_unit function *)
+	 load_label_addr(NameLab (Labels.pr_label next_prog_unit),SS.PHREG_ATY tmp_reg1,0,
+         STW{r=tmp_reg1,d="0",s=Space 0,b=sp} ::
+
+	  (* Jump to first program unit. *)
+	  META_B {n=false, target=MLFunLab first_progunit_lab} :: C)))
+	  
+	fun nextlab_insts C =
+	  let val res = if !BI.tag_values then 1 (* 2 * 0 + 1 *)
+			else 0
+	  in
+	    LABEL(NameLab(Labels.pr_label next_prog_unit)) :: (* Code that jumps to the next program unit *)
+	    LDW {d="0",s=Space 0,b=sp,t=tmp_reg1}  ::         (* tmp_reg1 = next_prog_unit label *)
+	    LDWM {d="-4",s=Space 0,b=sp,t=tmp_reg0} ::        (* tmp_reg0 = label of next prog unit *)
+	    STW{r=tmp_reg1,d="0",s=Space 0,b=sp} ::           (* now make sp point at next_prog_unit label again *)
+	    META_BV{n=false,x=Gen 0,b=tmp_reg0} ::            (* now jump to next program unit *)
+	    
+	    LABEL(NameLab "raise_exn") ::(* only temporary *)
+	    LABEL(NameLab(Labels.pr_label lab_exit)) ::
+	    COMMENT "**** Link Exit code ****" ::
+	    compile_c_call_prim("terminate", [SS.INTEGER_ATY res], NONE,0,
+				DOT_EXIT :: 
+				DOT_PROCEND :: C)
+	  end
+
+	val init_link_code = init_insts(nextlab_insts [])
+	val _ = add_static_data [DOT_EXPORT(NameLab "raise_exn","CODE")] (* only temporary *)
+      in
+	HppaResolveJumps.RJ{top_decls = [],
+			    init_code = init_link_code,
+			    exit_code = get_lib_functions [],
+			    static_data = get_static_data []}
+      end
   end
+
+  (* ------------------------------------------------------------ *)
+  (*  Emitting Target Code                                        *)
+  (* ------------------------------------------------------------ *)
+  fun emit(prg: RiscPrg,filename: string) : unit = 
+    let 
+      val os = TextIO.openOut filename
+    in 
+      HpPaRisc.output_RiscPrg(os,prg);
+      TextIO.closeOut os;
+      TextIO.output(TextIO.stdOut, "[wrote HP code file:\t" ^ filename ^ "]\n")
+    end 
+  handle IO.Io {name,...} => Crash.impossible ("HppaKAMBackend.emit:\nI cannot open \""
+					       ^ filename ^ "\":\n" ^ name)
+
 
 end;
 

@@ -88,7 +88,6 @@ Backend/ClosExp.sml
 Backend/LINE_STMT.sml
 Backend/LineStmt.sml
 Backend/BACKEND_INFO.sml
-Backend/BackendInfo.sml
 Backend/REG_ALLOC.sml
 Backend/RegAlloc.sml
 Backend/FETCH_AND_FLUSH.sml
@@ -98,8 +97,13 @@ Backend/CalcOffset.sml
 Backend/SUBST_AND_SIMPLIFY.sml
 Backend/SubstAndSimplify.sml
 Backend/CODE_GEN.sml
+Backend/JUMP_TABLES.sml
+Backend/JumpTables.sml
 
 (* HP-PARISC *)
+Backend/HpPaRisc/HPPA_RESOLVE_JUMPS.sml
+Backend/HpPaRisc/HppaResolveJumps.sml
+Backend/HpPaRisc/BackendInfo.sml
 Backend/HpPaRisc/CodeGen.sml
 Backend/HpPaRisc/HP_PA_RISC.sml
 Backend/HpPaRisc/HpPaRisc.sml
