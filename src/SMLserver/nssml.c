@@ -127,7 +127,7 @@ codeCacheMutexUnlock()
 void
 logLoading(char *file)
 {
-  Ns_Log(Notice, "nssml: loaded bytecode for file %s", file);
+  Ns_Log(Notice, "nssml: loaded %s", file);
 }
 
 int
@@ -145,6 +145,8 @@ rpMap = regionPageMapNew();
   Ns_InitializeMutex(&stackPoolMutex);
   Ns_InitializeMutex(&freelistMutex);
   Ns_InitializeMutex(&codeCacheMutex);
+
+  resolveGlobalCodeFragments();
 
   /*
    * Create and initalize the interpreter context.
@@ -205,11 +207,12 @@ nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid)
   char name[NSSML_PATH_MAX];
   pageRoot = Ns_PageRoot(hServer);
   if ( strstr(url,pageRoot) != url ) {
-    Ns_Log(Error, "nssml: pageRoot %s is not a substring of the requested url %s", pageRoot, url);
+    Ns_Log(Error, "nssml: pageRoot %s is not a substring of the requested url %s", 
+	   pageRoot, url);
     return -1;
   }
   strcpy(uo, pageRoot);
-  strcat(uo, "/PM/RI/");
+  strcat(uo, "/PM/");
   strcat(uo, prjid);
   strcat(uo, "-");
   i = strlen(uo);

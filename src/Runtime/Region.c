@@ -423,6 +423,31 @@ Region allocatePairRegion(Region r)
 }
 #endif /*ENABLE_GC*/
 
+
+void free_lobjs(Lobjs* lobjs)
+{
+  while ( lobjs ) 
+    {
+      Lobjs* lobjsTmp;
+#ifdef ENABLE_GC
+      unsigned int tag;
+  #ifdef PROFILING
+      tag = *((&(lobjs->value)) + sizeObjectDesc);
+  #else
+      tag = lobjs->value;
+  #endif	  
+      lobjs_current -= size_lobj(tag);
+#endif	  
+      lobjsTmp = clear_lobj_bit(lobjs->next);
+#ifdef ENABLE_GC
+      free(lobjs->orig);
+#else
+      free(lobjs);
+#endif
+      lobjs = lobjsTmp;
+    }
+}
+
 /*----------------------------------------------------------------------*
  *deallocateRegion:                                                     *
  *  Pops the top region of the stack, and insert the regionpages in the *
@@ -457,7 +482,9 @@ void deallocateRegion(
   #endif
   #endif /* ENABLE_GC */
 
-  // free large objects
+  free_lobjs(TOP_REGION->lobjs);
+
+  /*
   if ( TOP_REGION->lobjs )
     {
       Lobjs* lobjs = TOP_REGION->lobjs;
@@ -482,6 +509,7 @@ void deallocateRegion(
 	  lobjs = lobjsTmp;
 	}
     }
+  */
 
   /* Insert the region pages in the freelist; there is always 
    * at-least one page in a region. */
@@ -859,31 +887,8 @@ resetRegion(Region rAdr)
   r->a = (int *)(&(clear_pairregion(r->fp))->i);   /* beginning of klump in first page */
   r->b = (int *)((clear_pairregion(r->fp))+1);     /* end of klump in first page */
 
-  if ( r->lobjs )
-    {                                // free large objects
-      Lobjs* lobjs = r->lobjs;
-      while ( lobjs ) 
-	{
-	  Lobjs* lobjsTmp;
-#ifdef ENABLE_GC
-	  unsigned int tag;
-	  #ifdef PROFILING
-	  tag = *((&(lobjs->value)) + sizeObjectDesc);
-	  #else
-	  tag = lobjs->value;
-	  #endif	  
-	  lobjs_current -= size_lobj(tag);
-#endif	  
-	  lobjsTmp = clear_lobj_bit(lobjs->next);
-#ifdef ENABLE_GC
-	  free(lobjs->orig);
-#else
-	  free(lobjs);
-#endif
-	  lobjs = lobjsTmp;
-	}
-      r->lobjs = NULL;
-    }
+  free_lobjs(r->lobjs);
+  r->lobjs = NULL;
 
 #ifdef PROFILING
   r->allocNow = 0;
@@ -1178,3 +1183,16 @@ int *allocProfiling(Region r,int n, int pPoint) {
 }
 
 #endif /*PROFILING*/
+
+#ifdef KAM
+void free_region_pages(Klump* first, Klump* last)
+{
+  if ( first == 0 )
+    return;
+  FREELIST_MUTEX_LOCK;
+  last->n = freelist;
+  freelist = first;
+  FREELIST_MUTEX_UNLOCK;
+  return;
+}
+#endif /*KAM*/

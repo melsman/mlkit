@@ -10,6 +10,7 @@
 #include "Region.h"
 #include "KamInsts.h"
 #include "Stack.h"
+#include "HeapCache.h"
 #include "Exception.h"
 #include "Interp.h"
 
@@ -85,15 +86,17 @@ stringMapNew(void)
 {
   StringMap* stringMap;
 
-  if ( (stringMap = (StringMap*) malloc(sizeof(unsigned long) * STRING_MAP_HASH_TABLE_SIZE) ) <= 0 ) {
-    die("Unable to allocate memory for StringMapHashTable");
-  }
+  if ( (stringMap = (StringMap*) malloc(sizeof(unsigned long) * 
+					STRING_MAP_HASH_TABLE_SIZE) ) <= 0 ) 
+    {
+      die("Unable to allocate memory for StringMapHashTable");
+    }
 
   stringMapZero(stringMap);
   return stringMap;
 }
 
-/* lookup bytecode in a stringMapHashTable; returns 0 on failure */
+// lookup bytecode in a stringMapHashTable; returns 0 on failure
 
 bytecode_t
 stringMapLookup(StringMap* stringMap, char* name)
@@ -159,7 +162,7 @@ labelMapInsert(LabelMap* labelMap,
 }  
 
 
-/* Create and allocate space for a new LabelMapHashTable */
+// Create and allocate space for a new LabelMapHashTable
 
 void 
 labelMapZero(LabelMap* labelMap)
@@ -175,15 +178,17 @@ labelMapNew(void)
 {
   LabelMap* labelMap;
 
-  if ( (labelMap = (LabelMap*) malloc(sizeof(unsigned long) * LABEL_MAP_HASH_TABLE_SIZE) ) <= 0 ) {
-    die("Unable to allocate memory for LabelMapHashTable");
-  }
+  if ( (labelMap = (LabelMap*) malloc(sizeof(unsigned long) * 
+				      LABEL_MAP_HASH_TABLE_SIZE) ) <= 0 ) 
+    {
+      die("Unable to allocate memory for LabelMapHashTable");
+    }
 
   labelMapZero(labelMap);
   return labelMap;
 }
 
-/* lookup a label in a labelMapHashTable; returns 0 on failure */
+// lookup a label in a labelMapHashTable; returns 0 on failure
 
 unsigned long 
 labelMapLookup(LabelMap* labelMap, unsigned long label) 
@@ -290,7 +295,7 @@ void labelMapClear(LabelMap* labelMap)
   }
 }
 
-/* read_long: read a long from a buffer */
+// read_long: read a long from a buffer
 
 static unsigned long 
 read_unsigned_long(unsigned char *buffer) 
@@ -349,8 +354,8 @@ print_exec_header(struct exec_header* exec_header)
 }
   
 
-/* read_exec_header: Leaves fd at the beginning of the code 
-   segment on success */
+// read_exec_header: Leaves fd at the beginning of the code 
+// segment on success
 
 static int 
 read_exec_header(FILE* fd, struct exec_header * exec_header) 
@@ -411,7 +416,7 @@ attempt_open(char* name, struct exec_header* exec_header)
   return fd;
 }
 
-/* memo: maybe merge with my_read above! */
+// memo: maybe merge with my_read above!
 static int 
 loadCode(FILE *fd, unsigned long n, bytecode_t ch) 
 {
@@ -435,7 +440,7 @@ loadCode(FILE *fd, unsigned long n, bytecode_t ch)
 static int 
 resolveCodeImports(LabelMap* labelMap, 
 		   FILE* fd,
-		   unsigned long import_size,    /* size is in entries */
+		   unsigned long import_size,    // size is in entries
 		   bytecode_t start_code) 
 {	   
   unsigned long relAddr;
@@ -451,13 +456,16 @@ resolveCodeImports(LabelMap* labelMap,
     relAddr = read_unsigned_long(buffer); 
     label = read_unsigned_long(buffer + 4); 
 
-    debug(printf("Importing relAddr = %d (0x%x), label = %d (0x%x) \n", relAddr, relAddr, label, label));
+    debug(printf("Importing relAddr = %d (0x%x), label = %d (0x%x) \n", 
+		 relAddr, relAddr, label, label));
 
-    if ( (absTargetAddr = (bytecode_t)labelMapLookup(labelMap, label)) == 0 ) {
-      return -4;
-    }
+    if ( (absTargetAddr = (bytecode_t)labelMapLookup(labelMap, label)) == 0 ) 
+      {
+	return -4;
+      }
     absSourceAddr = start_code + relAddr;
-    * (unsigned long*)absSourceAddr = (unsigned long)(absTargetAddr - absSourceAddr);
+    * (unsigned long*)absSourceAddr = 
+      (unsigned long)(absTargetAddr - absSourceAddr);
     import_size --;
   }
   return 0;
@@ -466,7 +474,7 @@ resolveCodeImports(LabelMap* labelMap,
 static int 
 resolveDataImports(LabelMap* labelMap, 
 		   FILE* fd,
-		   unsigned long import_size,    /* size is in entries */
+		   unsigned long import_size,    // size is in entries
 		   bytecode_t start_code) 
 {	   
   unsigned long relAddr, dsAddr;
@@ -498,7 +506,7 @@ resolveDataImports(LabelMap* labelMap,
 static LabelMap* 
 addCodeExports(LabelMap* labelMap, 
 	       FILE* fd, 
-	       unsigned long export_size,     /* size is in entries */
+	       unsigned long export_size,     // size is in entries
 	       bytecode_t start_code) 
 {	   
   unsigned long label;
@@ -523,17 +531,18 @@ addCodeExports(LabelMap* labelMap,
   return labelMap;
 }
 
-/* Read entries (lab, relAddr), where lab is a compile time label for 
- * a slot in the data segment and relAddr is the place in the bytecode where lab appears in
- * a `StoreData lab' instruction. For each pair, a new slot is allocated in the data segment 
- * (data_size is incremented), then the `StoreData lab' instruction is modified, and finally,
- * the label is associated with the new offset in the hash table that maps labels to offsets.  
- */
+/* Read entries (lab, relAddr), where lab is a compile time label for
+ * a slot in the data segment and relAddr is the place in the bytecode
+ * where lab appears in a `StoreData lab' instruction. For each pair,
+ * a new slot is allocated in the data segment (data_size is
+ * incremented), then the `StoreData lab' instruction is modified, and
+ * finally, the label is associated with the new offset in the hash
+ * table that maps labels to offsets.  */
 
 static int 
 addDataExports(Interp* interp, 
 	       FILE* fd, 
-	       unsigned long export_size,  /* size is in entries */
+	       unsigned long export_size,  // size is in entries
 	       bytecode_t start_code)     
 {
   unsigned long label, relAddr, newDsAddr;
@@ -544,8 +553,10 @@ addDataExports(Interp* interp,
       return TRUNCATED_FILE;
     }
     label = read_unsigned_long(buffer); 
-    relAddr = read_unsigned_long(buffer + 4);   /* relative address of `StoreData lab' address in bytecode */
-    newDsAddr = interp->data_size++;            /* new data segment address (relative to ds-register) */
+    // relAddr is the relative address of `StoreData lab' address in bytecode
+    relAddr = read_unsigned_long(buffer + 4);   
+    // newDsAddr is the new data segment address (relative to ds-register)
+    newDsAddr = interp->data_size++;            
 
     debug(printf("Export label = %d (0x%x), relAddr = %d (0x%x), newDsAddr = %d\n", 
 		 label, label, relAddr, relAddr, newDsAddr));
@@ -566,10 +577,11 @@ interpLoad(Interp* interp, char* file, FILE* fd,
 
   debug(print_exec_header(exec_header_ptr));
 
-  /* allocate space for loaded code */
-  if ( (start_code = (bytecode_t) malloc(exec_header_ptr->code_size)) == 0 ) {
-    die2("interpLoad: Cannot allocate start_code for ", file);
-  }
+  // allocate space for loaded code
+  if ( (start_code = (bytecode_t) malloc(exec_header_ptr->code_size)) == 0 ) 
+    {
+      die2("interpLoad: Cannot allocate start_code for ", file);
+    }
 
   debug(printf("[Load code segment]\n"));
   if ( loadCode(fd, exec_header_ptr->code_size, start_code) < 0 ) {
@@ -579,14 +591,20 @@ interpLoad(Interp* interp, char* file, FILE* fd,
   debug(printf("[Resolving code imports]\n"));
   /* Now, resolve the labels in the import table - 
    * first the code labels then the data labels */
-  if ( resolveCodeImports(interp->codeMap, fd, exec_header_ptr->import_size_code, start_code) < 0 ) {
-    die2("interpLoad: Cannot resolve code imports for ", file);
-  }
+  if ( resolveCodeImports(interp->codeMap, fd, 
+			  exec_header_ptr->import_size_code, 
+			  start_code) < 0 ) 
+    {
+      die2("interpLoad: Cannot resolve code imports for ", file);
+    }
 
   debug(printf("[Resolving data imports]\n"));
-  if ( resolveDataImports(interp->dataMap, fd, exec_header_ptr->import_size_data, start_code) < 0 ) {
-    die2("interpLoad: Cannot resolve data imports for ", file);
-  }
+  if ( resolveDataImports(interp->dataMap, fd, 
+			  exec_header_ptr->import_size_data, 
+			  start_code) < 0 ) 
+    {
+      die2("interpLoad: Cannot resolve data imports for ", file);
+    }
 
 #ifdef LAB_THREADED
   debug(printf("[Resolving instructions]\n"));
@@ -616,28 +634,35 @@ interpLoadExtend(Interp* interp, char* file)
 
   debug(printf("[Extend hash table with code exports]\n"));
   if ( (interp->codeMap = addCodeExports(interp->codeMap, fd, 
-					 exec_header.export_size_code, start_code)) < 0 ) {
-    die2("interpLoadExtend: Cannot resolve code exports for ", file);
-  }
+					 exec_header.export_size_code, 
+					 start_code)) < 0 ) 
+    {
+      die2("interpLoadExtend: Cannot resolve code exports for ", file);
+    }
 
   debug(printf("[Extend hash table with data exports]\n"));
-  if ( addDataExports(interp, fd, exec_header.export_size_data, start_code) < 0 ) {
-    die2("interpLoadExtend: Cannot resolve data exports for ", file);
-  }
+  if ( addDataExports(interp, fd, exec_header.export_size_data, 
+		      start_code) < 0 ) 
+    {
+      die2("interpLoadExtend: Cannot resolve data exports for ", file);
+    }
   
   fclose(fd);
 
-  /* extend the code list with the new code segment */
+  // extend the code list with the new code segment
   interp->codeList = listCons((unsigned long)start_code, interp->codeList);
 
-  if ( exec_header.main_lab_opt != 0 ) {
+  if ( exec_header.main_lab_opt ) {
 
     unsigned long absAddr;       /* We need to look up this 
 				  * label in the code export map */
 
-    if ( (absAddr = labelMapLookup(interp->codeMap, exec_header.main_lab_opt)) == 0 ) {
-      die2("interpLoadExtend: Failed to lookup absolute main-label address for ", file);
-    }
+    if ( (absAddr = labelMapLookup(interp->codeMap, 
+				   exec_header.main_lab_opt)) == 0 ) 
+      {
+	die2("interpLoadExtend: Failed to lookup absolute main-label address for ", 
+	     file);
+      }
     interp->exeList = listCons(absAddr, interp->exeList);
   }
 
@@ -648,133 +673,172 @@ interpLoadExtend(Interp* interp, char* file)
 /* allocate global region and store 
  * address in data segment at address n */
 
-#define GLOBAL_REGION(n) { debug(printf("Allocating global region %d at sp=%x\n",n,sp)); \
-                           *(ds + n) = (int) allocateRegion((Ro*) sp, &topRegion); \
-                           offsetSP(sizeRo); }
+#define GLOBAL_REGION(n) { \
+  debug(printf("Allocating global region %d at sp=%x\n",(n),sp)); \
+  *(ds + (n)) = (int) allocateRegion((Ro*) sp, &topRegion); \
+  offsetSP(sizeRo); \
+}
 
-#define GLOBAL_EXCON(X, NAME) { debug(printf("Allocating global excon (%d) at sp=%x\n", X, sp)); \
-                                selectStackDef(0) = (unsigned long)(sp + 1); \
-                                selectStackDef(1) = exname_counter++; \
-                                selectStackDef(2) = (unsigned long)convertStringToML((Region)*(ds + 2), NAME); \
-                                *(ds + X) = (unsigned long)sp; \
-                                offsetSP(3); }
+#define GLOBAL_EXCON(X, NAME) { \
+  debug(printf("Allocating global excon (%d) at sp=%x\n", (X), sp)); \
+  selectStackDef(0) = (unsigned long)(sp + 1); \
+  selectStackDef(1) = exname_counter++; \
+  selectStackDef(2) = (unsigned long)convertStringToML((Region)*(ds + 2), (NAME)); \
+  *(ds + (X)) = (unsigned long)sp; \
+  offsetSP(3); \
+}
 
 /*
  * interpRun - Run the interpreter passed as argument; the second
  * argument extra_code is put on the stack for execution in case it is
  * not NULL (used by the interpLoadRun function). 
  *
- * Returns: whatever the interpreter returns */
+ * Returns: whatever the interpreter returns 
+ */
+
+#define INIT_CODE_SIZE 3
+static unsigned long init_code[INIT_CODE_SIZE] = {
+  RETURN,0,1
+};
+  
+#define EXIT_CODE_SIZE 2
+static unsigned long exit_code[EXIT_CODE_SIZE] = {
+  //  ENDREGION_INF,               // deallocate the four global regions
+  //  ENDREGION_INF,
+  //  ENDREGION_INF,
+  //  ENDREGION_INF,
+  IMMED_INT0,                  // success
+  HALT                         // make the interpreter return the 
+                               // content of the accumulator
+};
+
+static unsigned long global_exnhandler_closure[1] = {
+  0   // place holder for code pointer
+};
+  
+#define GLOBAL_EXNHANDLER_CODE_SIZE 2
+static unsigned long global_exnhandler_code[GLOBAL_EXNHANDLER_CODE_SIZE] = {
+  GLOBAL_EXN_HANDLER_REPORT,   // sets acc to error (-1 or -2)
+  //  POP_N, 3, 
+  //  ENDREGION_INF,               // deallocate the four global regions
+  //  ENDREGION_INF,
+  //  ENDREGION_INF,
+  //  ENDREGION_INF,
+  HALT                         // make the interpreter return the 
+                               // content of the accumulator
+};
+
+/* resolveGlobalCodeFragments is called from main_interp and 
+ * SMLserver's Ns_ModuleInit function; should be called exactly once
+ * before execution of any bytecode. */
+void 
+resolveGlobalCodeFragments(void)
+{
+  resolveCode((bytecode_t)init_code, INIT_CODE_SIZE);
+  resolveCode((bytecode_t)exit_code, EXIT_CODE_SIZE);
+  resolveCode((bytecode_t)global_exnhandler_code, 
+	      GLOBAL_EXNHANDLER_CODE_SIZE);
+  // create closure (no env)
+  * global_exnhandler_closure = (unsigned long)global_exnhandler_code;    
+}
 
 int 
 interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr) 
 {
-  unsigned long * ds;
-  unsigned long * exnPtr;
+  unsigned long *ds, *sp, *exnPtr, *sp0;
   unsigned long exname_counter = 0;
-  unsigned long * sp;
-  unsigned long * sp0;
+  Heap* h;
   int res;
   LongList* p;
   Ro* topRegion = NULL;
 
-# define INIT_CODE_SIZE 3
-  unsigned long init_code[INIT_CODE_SIZE] = {
-    RETURN,0,1
-  };
+  h = getHeap();
+  if ( h->status == HSTAT_UNINITIALIZED )
+    {
+      (int*)ds = h->ds;
+      sp = ds;
+
+      // make room for data space on the stack
+      debug(printf("DATASPACE ds = 0x%x\n", ds));
+      sp += interpreter->data_size;
+      debug(printf("STACK sp = 0x%x, datasize = %d\n", sp, interpreter->data_size));
+
+      // Now, allocate global regions and store addresses in data segment
+      // the indexes should be the same as those defined in Manager/Name.sml
+      GLOBAL_REGION(0);   // rtype top, uses ds, modifies sp
+      // GLOBAL_REGION(1);   // rtype bot
+      GLOBAL_REGION(2);   // rtype pair
+      GLOBAL_REGION(3);   // rtype string
+
+      // Initialize primitive exceptions
+      GLOBAL_EXCON(4,"Div");     // uses ds, modifies sp
+      GLOBAL_EXCON(5,"Match");
+      GLOBAL_EXCON(6,"Bind");
+      GLOBAL_EXCON(7,"Overflow");
+      GLOBAL_EXCON(8,"Interrupt");
+
+      exn_OVERFLOW = (Exception*)**(unsigned long**)(ds+7);
+      exn_INTERRUPT = (Exception*)**(unsigned long**)(ds+8);
+
+      // Push global exception handler on the stack
+      pushDef((unsigned long)exit_code);         // push return address on stack
+      pushDef((unsigned long) 0);                // Dummy env for exit_code
+      pushDef((unsigned long)global_exnhandler_closure); // push closure on stack (no env)
+      pushDef(0);                                // no previous handler on stack
+
+      exnPtr = sp - 1;                           // update exnPtr
+
+      /* push address for exit-bytecode on the stack */
+      debug(printf("Pushing exit-address %x on stack at sp = %x\n", 
+		   (unsigned long)exit_code, sp));
+      pushDef((unsigned long)exit_code);
+      pushDef((unsigned long)0);
+
+      sp0 = sp;
+
+      // push all execution addresses on the stack
+      for (p = interpreter->exeList; p ; p = p->next) {
+	debug(printf("Pushing address %x on stack at sp = %x\n", 
+		     (unsigned long)p->elem, sp));
+	pushDef((unsigned long)p->elem);
+	pushDef((unsigned long)0);
+      }
+
+      // start interpretation by interpreting the init_code
+      res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
+		       exname_counter,(bytecode_t)init_code);
   
-# define EXIT_CODE_SIZE 6
-  unsigned long exit_code[EXIT_CODE_SIZE] = {
-    ENDREGION_INF,               /* deallocate the four global regions */				     
-    ENDREGION_INF,
-    ENDREGION_INF,
-    ENDREGION_INF,
-    IMMED_INT0,                  /* success */
-    HALT                         /* make the interpreter return the 
-				  * content of the accumulator */
-  };
-
-  unsigned long global_exnhandler_closure[1] = {
-    0   /* place holder for code pointer */
-  };
+      if ( res >= 0 && extra_code )
+	{
+	  initializeHeap(h,(int*)sp0,(int*)exnPtr);
+	}
+      else 
+	{
+	  deleteHeap(h);
+	  return res;
+	}
+    }
   
-# define GLOBAL_EXNHANDLER_CODE_SIZE 8
-  unsigned long global_exnhandler_code[GLOBAL_EXNHANDLER_CODE_SIZE] = {
-    GLOBAL_EXN_HANDLER_REPORT,   /* sets acc to error (-1 or -2) */
-    POP_N, 3, 
-    ENDREGION_INF,               /* deallocate the four global regions */				     
-    ENDREGION_INF,
-    ENDREGION_INF,
-    ENDREGION_INF,
-    HALT                         /* make the interpreter return the 
-				  * content of the accumulator */    
-  };
+  // no exception raised by code so far
 
-  resolveCode((bytecode_t)init_code, INIT_CODE_SIZE);
-  resolveCode((bytecode_t)exit_code, EXIT_CODE_SIZE);
-  resolveCode((bytecode_t)global_exnhandler_code, GLOBAL_EXNHANDLER_CODE_SIZE);
+  // perhaps jump to the extra bytecode
+  if ( extra_code ) {
 
-  /* create closure (no env) */
-  * global_exnhandler_closure = (unsigned long)global_exnhandler_code;  
-  
-  sp0 = allocate_stack();
-  sp = sp0;
+    // fetch heap data
+    (int*)sp = h->sp;
+    (int*)ds = h->ds;
+    (int*)exnPtr = h->exnPtr;
+    topRegion = h->r3copy->r;
 
-  /* create dataspace on the stack */
-  ds = sp;
-  debug(printf("DATASPACE ds = 0x%x\n", ds));
-  sp += interpreter->data_size;
-  debug(printf("STACK sp = 0x%x, datasize = %d\n", sp, interpreter->data_size));
+    touchHeap(h);
 
-  /* Now, allocate global regions and store addresses in data segment */
-  GLOBAL_REGION(0);   /* rtype top */
-  GLOBAL_REGION(1);   /* rtype string */
-  GLOBAL_REGION(2);   /* rtype real */
-  GLOBAL_REGION(3);   /* rtype bot */
+    res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
+		     exname_counter,(bytecode_t)extra_code);
 
-  /* Initialize primitive exceptions */
-  GLOBAL_EXCON(4,"Div");
-  GLOBAL_EXCON(5,"Match");
-  GLOBAL_EXCON(6,"Bind");
-  GLOBAL_EXCON(7,"Overflow");
-  GLOBAL_EXCON(8,"Interrupt");
-
-  exn_OVERFLOW = (Exception*)**(unsigned long**)(ds+7);
-  exn_INTERRUPT = (Exception*)**(unsigned long**)(ds+8);
-
-  /* Push global exception handler on the stack */  
-  pushDef((unsigned long)exit_code);                   /* push return address on stack */
-  pushDef((unsigned long) 0);                          /* Dummy env for exit_code */
-  pushDef((unsigned long)global_exnhandler_closure);   /* push closure on stack (no env) */
-  pushDef(0);                                          /* no previous handler on stack */
-
-  exnPtr = sp - 1;                                     /* update exnPtr */
-
-  /* push address for exit-bytecode on the stack */
-  debug(printf("Pushing exit-address %x on stack at sp = %x\n", (unsigned long)exit_code, sp));
-  pushDef((unsigned long)exit_code);
-  pushDef((unsigned long)0);
-
-  /* perhaps push the extra bytecode onto the stack for execution */
-  if ( extra_code != NULL ) {
-    pushDef((unsigned long)extra_code);
-    pushDef((unsigned long)0);
+    releaseHeap(h);
   }    
 
-  /* push all execution addresses on the stack */
-  for (p = interpreter->exeList; p != NULL; p = p->next) {
-    debug(printf("Pushing address %x on stack at sp = %x\n", (unsigned long)p->elem, sp));
-    pushDef((unsigned long)p->elem);
-    pushDef((unsigned long)0);
-  }
-
-  /* start interpretation by interpreting the init_code. */
-  res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
-		   exname_counter,(bytecode_t)init_code);
-  
-  release_stack(sp0);
-
-  return res;   /* return whatever the interpreter returns */
+  return res;   // return whatever the interpreter returns
 }
 
 /* ------------------------------------------------------
@@ -835,8 +899,8 @@ interpClear(Interp* interp)
 #endif
   longListFreeElem(interp->codeList);
   interp->codeList = NULL;
-  longListFree(interp->exeList);   // here we free only the list - not the 
-  interp->exeList = NULL;          // elements, which have already been freed
+  longListFree(interp->exeList); // here we free only the list - not the 
+  interp->exeList = NULL;        // elements, which have already been freed
   interp->data_size = INTERP_INITIAL_DATASIZE;
 }
 

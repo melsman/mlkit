@@ -110,13 +110,13 @@ functor ClosConvEnv(structure Lvars : LVARS
        (Excon.ex_INTERRUPT, (LABEL(BI.exn_INTERRUPT_lab),NULLARY_EXCON))]
     val initialRhoEnv : RhoEnv = RegvarFinMap.fromList
       [(Effect.toplevel_region_withtype_top,LABEL(BI.toplevel_region_withtype_top_lab)),
-       (Effect.toplevel_region_withtype_bot,   (* arbitrary binding, but some binding
+(*       (Effect.toplevel_region_withtype_bot,   (* arbitrary binding, but some binding
                                                   is required, since DropRegions may 
                                                   leave a region with type bot in
                                                   the expression which CompLamb takes
                                                   as input (mads, Nov 16 1997)
                                                *)
-        LABEL(BI.toplevel_region_withtype_bot_lab)),
+        LABEL(BI.toplevel_region_withtype_bot_lab)), mael 2002-10-30 *)
        (Effect.toplevel_region_withtype_string, LABEL(BI.toplevel_region_withtype_string_lab)),
        (Effect.toplevel_region_withtype_pair, LABEL(BI.toplevel_region_withtype_pair_lab))]
     val initialRhoKindEnv : RhoKindEnv = RegvarFinMap.fromList

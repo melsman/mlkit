@@ -151,3 +151,5 @@ int interpRun(Interp* interp, bytecode_t extra_code, char** errorStr);
 /* Free all loaded code */
 void interpClear(Interp* interp);
 
+/* Initialize global code fragments */
+void resolveGlobalCodeFragments(void);

@@ -56,6 +56,7 @@ functor PhysSizeInf(structure Name : NAME
     fun msg s = (TextIO.output(TextIO.stdOut, s ^ "\n"); TextIO.flushOut TextIO.stdOut)
     fun die s = Crash.impossible ("PhysSizeInf."^s)
     fun log_st st = PP.outputTree(fn s => TextIO.output(!Flags.log,s), st, 70)
+    fun pr_st st = PP.outputTree(print, st, 70)
     fun noSome NONE s = die s
       | noSome (SOME x) s = x
     fun map_opt f (SOME x) = SOME (f x)
@@ -85,10 +86,10 @@ functor PhysSizeInf(structure Name : NAME
 	PP.NODE{start=s ^ " {",finish=" }",indent=1,childsep=PP.RIGHT ", ",
 		children=(map layout_lvar lvars) @ (map layout_excon excons) @ (map E.layout_effect places)}
       fun layout_fvs' (lv, ref (SOME (lvars, excons, places))) =
-	PP.NODE{start=Lvars.pr_lvar lv ^ " -> <<",finish=">>",indent=1,childsep=PP.RIGHT ",",
+	PP.NODE{start=Lvars.pr_lvar lv ^ " -> [",finish="]",indent=1,childsep=PP.RIGHT ",",
 		children=(map layout_lvar lvars) @ (map layout_excon excons) @ (map E.layout_effect places)}
 	| layout_fvs' (lv,_) = PP.LEAF(Lvars.pr_lvar lv ^ " -> <<not available>>")
-      val log_fvs = log_st o layout_fvs
+      val pr_fvs = pr_st o layout_fvs'
       val log_fvs' = log_st o layout_fvs'
 
       local (* buckets *)
@@ -285,13 +286,11 @@ functor PhysSizeInf(structure Name : NAME
 		  List.apply ((List.apply (unmark_place o #1)) o getOpt o #bound_but_never_written_into) functions;
 		  List.apply ((List.apply (unmark_place o #1)) o ! o #rhos_formals) functions;
 		  List.apply (unmark_lvar o #lvar) functions
-
-	  (*debug
+(*
 		;case functions
-		  of [{lvar,...}] => log_fvs (lvar, free)
+		  of [{lvar,...}] => pr_fvs (lvar, free)
 		   | _ => () 
-	  debug end*)
-
+*)
 	       end
 	      | APP(_,_,tr1,tr2) => (ifv tr1; ifv tr2)
 	      | EXCEPTION(excon,b,tp,alloc,scope) => ifv scope
@@ -344,9 +343,9 @@ functor PhysSizeInf(structure Name : NAME
     fun phsize_max _ INF = INF
       | phsize_max INF _ = INF
       | phsize_max (WORDS i) (WORDS i') = WORDS (Int.max(i,i'))
-    fun layout_phsize INF = PP.LEAF "inf"
-      | layout_phsize (WORDS i) = PP.LEAF (Int.toString i)
-
+    fun pr_phsize INF = "inf"
+      | pr_phsize (WORDS i) = Int.toString i
+    fun layout_phsize phsize = PP.LEAF (pr_phsize phsize)
 
     (* ----------------------------------------------------------------------
      * Physical sizes of storable (boxed) values.
@@ -547,10 +546,19 @@ functor PhysSizeInf(structure Name : NAME
 	                 env functions
 	  in 
 	    case place_atplace shared_clos
-	      of SOME place => (psi_add_place_size (place,fix_closure_size fvs);
+	      of SOME place => (let val sz = fix_closure_size fvs
+(*debug
+				    fun hd nil = die "hd"
+				      | hd (x::_) = x
+				    val _ = if E.eq_effect(E.toplevel_region_withtype_top,place) then
+					print("function " ^ Lvars.pr_lvar (#lvar (hd functions)) 
+					      ^ " of size " ^ pr_phsize sz ^ "\n")
+					    else ()
+debug*)
+				in psi_add_place_size (place,sz);
 				map (fn {bind=TR(FN{body,...},_,_,_),...} => psi_tr env' body
 			              | _ => die "psi_tr.FIX.FN expected") functions;
-				psi_tr env' scope)
+				psi_tr env' scope end)
 	       | NONE => die "psi_tr.FIX"
 	  end
 	 | FIX _ => die "psi_tr.free vars not available."
