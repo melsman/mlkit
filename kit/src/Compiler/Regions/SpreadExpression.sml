@@ -1026,9 +1026,9 @@ good *)
      val _ = Eff.algorithm_R:=false
      (*val _ = Eff.trace := []*)
      val E.PGM(datbinds,e) = p
-     (*val _ = if !Flags.chat then msg("\nSpreading datatypes ...") else ()*)
+     val _ = if !Flags.chat then msg("\nSpreading datatypes ...") else ()
      val (new_rse, new_datbinds) = (*SpreadDatatype.*)spreadDatbinds rse datbinds cone
-     (*val _ = if !Flags.chat then msg("\nSpreading expression ...") else ()*)
+     val _ = if !Flags.chat then msg("\nSpreading expression ...") else ()
      val _ = count_RegEffClos := 0
      val (cone',t') = spreadExp (cone,(*RSE.*)plus(rse,new_rse), e,true) 
 

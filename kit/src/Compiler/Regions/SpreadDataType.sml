@@ -92,8 +92,6 @@ struct
    (**************************)
 
 
-  type arity = int * Effect.runType list * int
-  val arity0 = (0, [], 0)
 
   fun merge_runtypes([], l2) = l2
     | merge_runtypes(l1, []) = l1
@@ -105,9 +103,23 @@ struct
             else if i1 = i2 then x :: merge_runtypes(xs, ys)
             else (* i2 < i1 *) y :: merge_runtypes(l1, ys)
         end
+
+  abstype eff_arity = EA of int
+  with
+    val zero = EA 0
+    val one  = EA 1
+    fun eplus(EA 0, EA 0) = EA 0
+      | eplus _ = EA 1
+    fun eff_arity_int(EA i) = i
+  end
+
+  type arity = int * Effect.runType list * eff_arity
+  val arity0 = (0, [], zero)
+
+
   infix ++
-  fun ((a,b,c) ++ (a',b',c')) = (a+a':int, merge_runtypes(b,b'), c+c': int)
-  fun plus (a,b,c)(a',b',c') = (a+a':int, merge_runtypes(b,b'), c+c': int)
+  fun ((a,b,c) ++ (a',b',c')) = (a+a':int, merge_runtypes(b,b'), eplus(c,c'))
+  fun plus (a,b,c)(a',b',c') = (a+a':int, merge_runtypes(b,b'), eplus(c,c'))
 
   (* An {\sl arity} is a triple
 
@@ -130,9 +142,16 @@ struct
     List.foldR(fn (tyname,arity:arity) => fn acc: arity => 
        (* add region and effect arities (type arities are already the same in all
           the mutually recursive type names *)
-      (#1 arity, merge_runtypes(#2 acc , #2 arity), #3 acc + #3 arity)) arity0  new_tyenv_association_list
+      (#1 arity, merge_runtypes(#2 acc , #2 arity), eplus(#3 acc, #3 arity))) 
+    arity0  new_tyenv_association_list
 
   fun zap_ty_arity(_,l,c) = (0, l, c)
+  fun mk_abstract(a,b,0) = (a,b,zero)
+    | mk_abstract(a,b,1) = (a,b,one)
+    | mk_abstract _ = Crash.impossible "SpreadDataType.mk_abstract"
+
+  fun mk_concrete(a,b,c) = (a,b,eff_arity_int c)
+
   fun infer_arity_ty rse (current_tynames: tyname list) (tau: E.Type): arity =
     (case tau of
      E.TYVARtype _ =>  arity0
@@ -144,7 +163,7 @@ struct
 
   |  E.ARROWtype(taus1,taus2) => 
         List.foldL plus 
-         (List.foldL plus (0,[Effect.TOP_RT],1)    (* closures have runtype TOP_RT *)
+         (List.foldL plus (0,[Effect.TOP_RT],one)    (* closures have runtype TOP_RT *)
           (map (infer_arity_ty rse current_tynames) taus1)
          )
         (map (infer_arity_ty rse current_tynames) taus2)
@@ -153,19 +172,19 @@ struct
          List.foldR plus arity0 (map (infer_arity_ty rse current_tynames) types)
          ++ (if List.exists (fn tn => TyName.eq(tn,tyname)) current_tynames 
                then arity0
-               else (0,[R.runtype(R.CONSTYPE(tyname,[],[],[]))],0) ++
+               else (0,[R.runtype(R.CONSTYPE(tyname,[],[],[]))],zero) ++
                      let val (global, local_rse) = rse 
                      in
                       (case RSE.lookupTyName local_rse tyname of
-                         Some arity => zap_ty_arity(RSE.un_arity arity)
+                         Some arity => mk_abstract(zap_ty_arity(RSE.un_arity arity))
                        | None => (case RSE.lookupTyName global tyname of
-                           Some arity => zap_ty_arity(RSE.un_arity arity)
+                           Some arity => mk_abstract(zap_ty_arity(RSE.un_arity arity))
                          | None => die ("infer_arity_ty. Type name: " 
                                   ^ TyName.pr_TyName tyname)))
                      end)
   |  E.RECORDtype(types) => 
          List.foldR plus (0,[case types of [] => Effect.WORD_RT
-                               | _ => Effect.TOP_RT],0) 
+                               | _ => Effect.TOP_RT],zero) 
           (map (infer_arity_ty rse current_tynames) types)
   )
 
@@ -181,7 +200,7 @@ struct
   fun infer_arity_single_datbind rse (current_tynames : tyname list)
                                      (single_datbind:single_datbind as  
                                       (tyvar_list, tyname, conbind_list)): (tyname * arity)=
-    (tyname, (length (tyvar_list), [], 0)
+    (tyname, (length (tyvar_list), [], zero)
              ++ (infer_arity_conbind_list rse current_tynames conbind_list))
 
   (******************************)
@@ -202,7 +221,8 @@ struct
 
   fun get_eps arreff_resource () = 
     case !arreff_resource of [] => die "get_eps: no more epsilons"
-  | arreff::rest => (arreff_resource:= rest; arreff)
+  | arreff::rest => ((*arreff_resource:= rest; always choose the same "fresh" variable! *)
+                      arreff)
 
 
   fun spread_ty_to_mu(tyvar_to_place: tyvar -> place Option,
@@ -315,7 +335,7 @@ struct
 
       val (common_place,cone) = Effect.freshRhoWithTy(Effect.TOP_RT, cone)
 
-   (*   val _ = output(std_out,PP.flatten(PP.format(80,layout_arity common_arity)))  *)
+   (*mads*)   val _ = output(std_out,PP.flatten(PP.format(80,layout_arity(mk_concrete( common_arity)))))
 
       val (fresh_aux_rhos,cone) = fresh_list(Effect.freshRho,length(#2 common_arity),cone) 
       val l = map (fn (rt,rho) => (Effect.setRunType rho rt; (rt,rho)))
@@ -324,7 +344,7 @@ struct
 
       val rho_resource = ref l
 
-      val (fresh_aux_arreffs,cone) = fresh_list (Effect.freshEps,#3 common_arity, cone)
+      val (fresh_aux_arreffs,cone) = fresh_list (Effect.freshEps,eff_arity_int(#3 common_arity), cone)
       val arreff_resource = ref fresh_aux_arreffs
 
       (* The datbind is run through and a datatype binding is
@@ -392,7 +412,7 @@ struct
               ((tyname,db') :: tdb_list, cone) 
           end (* spread_single_datbind *)
 
-      fun msg(s) = () (*output(std_out, s^"\n")*)
+      fun msg(s) = (*mads*) output(std_out, s^"\n")
       val _ = msg "Computing new datatype bindings..."
       val (target_datbind,cone) = List.foldL (spread_single_datbind) ([],cone) datbind
       val _ = msg "Computing new constructor env..."
@@ -406,7 +426,7 @@ struct
           List.foldR (fn (tyname, (a,b,c) ) => fn  new_rse => 
                       let 
                         val export_arity = 
-                          RSE.mk_arity(a, #2 common_arity, #3 common_arity)
+                          RSE.mk_arity(a, #2 common_arity, eff_arity_int(#3 common_arity))
                       in
                         RSE.declareTyName(tyname,export_arity,new_rse)
                       end
