@@ -1,12 +1,3 @@
-(* Things to do better:
-
-    - we should save the physical filename in both scs-folders and
-      scs-revisions so that there is no need for the function
-      getAbsPath. Its slow!!!
-      2003-11-09, nh
-
-*)
-
 
 signature SCS_FILE_STORAGE = 
   sig
@@ -347,7 +338,9 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	   filename = g "filename",
 	   description = g "description",
 	   filename_on_disk = g "filename_on_disk",
-	   path_on_disk = Db.Handle.wrapDb (getAbsPath folder_id), (* this is not efficient!!! *)
+	   path_on_disk = 
+	     ScsConfig.scs_file_storage_root() ^ "/" ^ 
+	     (g "root_label") ^ "/" ^ (g "path_on_disk") ^ (g "label") ^ "/",
 	   filesize = (ScsError.valOf o Int.fromString) (g "filesize"),
 	   last_modified = (ScsError.valOf o Db.toDate) (g "last_modified"),
 	   last_modifying_user = (ScsError.valOf o Int.fromString) (g "last_modifying_user"),
@@ -361,6 +354,9 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 	`select scs_fs_revisions.revision_id,
 	        scs_fs_files.file_id,
 	        scs_fs_folders.folder_id,
+		scs_fs_folders.path_on_disk,
+                scs_fs_folders.label,
+                scs_fs_instances.label as root_label,
                 scs_fs_files.name as filename,
 	        scs_fs_files.description,
   		scs_fs_revisions.filename as filename_on_disk,
@@ -770,7 +766,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 			    last_modified = sysdate
                       where revision_id = '^(Int.toString (#revision_id file))'`
 		  val _ = ScsError.wrapPanic (ScsFile.cp source_file) 
-		    (#path_on_disk file ^ "/" ^ (#filename_on_disk file))
+		    (#path_on_disk file ^ (#filename_on_disk file))
 		in
 		  errs
 		end
@@ -788,8 +784,8 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		 ())
       | SOME file =>
 	  let
-	    val path = #path_on_disk file (*Db.Handle.wrapDb (getAbsPath (#folder_id file)) 2003-11-18, nh*)
-	    val filename_on_disk = path ^ "/" ^ #filename_on_disk file
+	    val path = #path_on_disk file 
+	    val filename_on_disk = path ^ #filename_on_disk file
 	    fun return_error () = 
 	      (ScsPage.returnPg 
 	       (ScsDict.s UcsDict.file_not_found_dict) 
@@ -822,7 +818,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		   ())
 	| SOME file =>
 	    let
-	      val path = #path_on_disk file (* Db.Handle.wrapDb (getAbsPath (#folder_id file)) 2003-11-18, nh *)
+	      val path = #path_on_disk file
 	      val files_to_delete =
 		Db.Handle.listDb db (fn g => g "filename") `select filename 
                                                               from scs_fs_revisions
@@ -834,7 +830,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		Db.Handle.dmlDb db `delete from scs_fs_files
 		                     where file_id = '^(Int.toString file_id)'`
 	      val _ = List.app (fn filename_on_disk => 
-				FileSys.remove (path ^ "/" ^ filename_on_disk)
+				FileSys.remove (path ^ filename_on_disk)
 				handle _ => ()) files_to_delete
 	    in
 	      ()
@@ -861,7 +857,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 				       administrator</a>.`)],errs)
 	| SOME file =>
 	    let
-	      val path = #path_on_disk file (* Db.Handle.wrapDb (getAbsPath (#folder_id file)) 2003-11-18, nh *)
+	      val path = #path_on_disk file
 	      val files_to_delete =
 		Db.Handle.listDb db (fn g => g "filename") `select filename 
                                                               from scs_fs_revisions
@@ -873,7 +869,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
 		Db.Handle.dmlDb db `delete from scs_fs_files
 		                     where file_id = '^(Int.toString file_id)'`
 	      val _ = List.app (fn filename_on_disk => 
-				FileSys.remove (path ^ "/" ^ filename_on_disk)
+				FileSys.remove (path ^ filename_on_disk)
 				handle _ => ()) files_to_delete
 	    in
 	      errs
