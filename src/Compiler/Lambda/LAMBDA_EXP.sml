@@ -143,7 +143,6 @@ signature LAMBDA_EXP =
       | HANDLE   of LambdaExp * LambdaExp
       | SWITCH_I of int Switch
       | SWITCH_S of string Switch
-      | SWITCH_R of real Switch
       | SWITCH_C of con Switch
       | SWITCH_E of excon Switch
       | PRIM     of Type prim * LambdaExp list

@@ -252,7 +252,6 @@ functor DropRegions(structure MulExp : MUL_EXP
 	     | HANDLE (tr1,tr2) => HANDLE (drop env tr1, drop env tr2)
 	     | SWITCH_I sw => SWITCH_I (drop_sw sw)
 	     | SWITCH_S sw => SWITCH_S (drop_sw sw)
-	     | SWITCH_R sw => SWITCH_R (drop_sw sw)
 	     | SWITCH_C sw => SWITCH_C (drop_sw sw)
 	     | SWITCH_E sw => SWITCH_E (drop_sw sw)
 	     | CON0 {con, il, aux_regions, alloc} => 

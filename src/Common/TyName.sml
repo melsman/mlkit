@@ -56,7 +56,7 @@ functor TyName(
     val tyName_BOOL = freshTyName{tycon=TyCon.tycon_BOOL, arity=0, equality=true}
     val tyName_INT  = freshTyName{tycon=TyCon.tycon_INT, arity=0, equality=true}
     val tyName_WORD = freshTyName{tycon=TyCon.tycon_WORD, arity=0, equality=true}
-    val tyName_REAL = freshTyName{tycon=TyCon.tycon_REAL, arity=0, equality=true}
+    val tyName_REAL = freshTyName{tycon=TyCon.tycon_REAL, arity=0, equality=false}
     val tyName_STRING = freshTyName{tycon=TyCon.tycon_STRING, arity=0, equality=true}
     val tyName_CHAR = freshTyName{tycon=TyCon.tycon_CHAR, arity=0, equality=true}
     val tyName_LIST = freshTyName{tycon=TyCon.tycon_LIST, arity=1, equality=true}

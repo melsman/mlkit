@@ -337,7 +337,6 @@ struct
            end
        | Exp.SWITCH_I sw => R_sw(B,rse,sw)
        | Exp.SWITCH_S sw => R_sw(B,rse,sw)
-       | Exp.SWITCH_R sw => R_sw(B,rse,sw)
        | Exp.SWITCH_C sw => R_sw(B,rse,sw)
        | Exp.SWITCH_E sw => R_sw(B,rse,sw)
        | Exp.CON0 _ => (B, Effect.Lf[])

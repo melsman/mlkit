@@ -87,7 +87,6 @@ struct
       | HANDLE   of ('a,'b)trip * ('a,'b)trip
       | SWITCH_I of ('a,'b,int) Switch 
       | SWITCH_S of ('a,'b,string) Switch 
-      | SWITCH_R of ('a,'b,real) Switch 
       | SWITCH_C of ('a,'b,con) Switch 
       | SWITCH_E of ('a,'b,excon) Switch 
       | CON0     of {con : con, il : il, aux_regions: 'a list, alloc: 'a}
@@ -152,7 +151,6 @@ struct
       | HANDLE(tr1, tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
       | SWITCH_I sw => mkPhiSw sw acc
       | SWITCH_S sw => mkPhiSw sw acc
-      | SWITCH_R sw => mkPhiSw sw acc
       | SWITCH_C sw => mkPhiSw sw acc
       | SWITCH_E sw => mkPhiSw sw acc
       | CON0 _ => acc
@@ -517,7 +515,6 @@ old*)
                  end
                )
         | SWITCH_I(sw) => layoutSwitch layTrip Int.string  sw
-        | SWITCH_R(sw) => layoutSwitch layTrip Real.string sw
         | SWITCH_S(sw) => layoutSwitch layTrip (fn s => s) sw
         | SWITCH_C(sw) => layoutSwitch layTrip Con.pr_con sw
         | SWITCH_E(sw) => layoutSwitch layTrip Excon.pr_excon sw
@@ -822,7 +819,6 @@ for more info*)
            | SWITCH_I(sw) => normsw sw
            | SWITCH_S(sw) => normsw sw
            | SWITCH_C(sw) => normsw sw
-           | SWITCH_R(sw) => normsw sw
            | SWITCH_E(sw) => normsw sw
 	   | CON0 _ => ()
 	   | CON1 (_,tr) => normTrip tr

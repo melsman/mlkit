@@ -322,7 +322,6 @@ functor OptLambda(structure Lvars: LVARS
 	   * is unsafe anyway. *)
 	  | SWITCH_I sw                 => safe_sw safe sw
 	  | SWITCH_S sw                 => safe_sw safe sw
-	  | SWITCH_R sw                 => safe_sw safe sw
 	  | SWITCH_C sw                 => safe_sw safe sw
 	  | SWITCH_E sw                 => safe_sw safe sw
 	  | PRIM(prim,lambs)            => (safe_prim prim; app safe lambs) 
@@ -659,7 +658,6 @@ functor OptLambda(structure Lvars: LVARS
 			   else fail
 			  | SWITCH_I sw => do_sw SWITCH_I sw
 			  | SWITCH_S sw => do_sw SWITCH_S sw
-			  | SWITCH_R sw => do_sw SWITCH_R sw
 			  | SWITCH_C sw => do_sw SWITCH_C sw
 			  | SWITCH_E sw => do_sw SWITCH_E sw
 			  | _ => fail
@@ -715,7 +713,6 @@ functor OptLambda(structure Lvars: LVARS
 	      else fail
 	  | SWITCH_I switch => reduce_switch (reduce, env, fail, switch)
 	  | SWITCH_S switch => reduce_switch (reduce, env, fail, switch)
-	  | SWITCH_R switch => reduce_switch (reduce, env, fail, switch)
 	  | SWITCH_C switch => reduce_switch (reduce, env, fail, switch)
 	  | SWITCH_E switch => reduce_switch (reduce, env, fail, switch)
 	  | _ => fail
@@ -816,7 +813,6 @@ functor OptLambda(structure Lvars: LVARS
 	      | HANDLE(lamb1, lamb2) => (HANDLE(fst(contr (env, lamb1)), fst(contr (env, lamb2))),CUNKNOWN)
 	      | SWITCH_I switch => contr_switch (contr, reduce, env, SWITCH_I, switch)
 	      | SWITCH_S switch => contr_switch (contr, reduce, env, SWITCH_S, switch)
-	      | SWITCH_R switch => contr_switch (contr, reduce, env, SWITCH_R, switch)
 	      | SWITCH_C switch => contr_switch (contr, reduce, env, SWITCH_C, switch)
 	      | SWITCH_E switch => 
 	       let val res = contr_switch (contr, reduce, env, SWITCH_E, switch)

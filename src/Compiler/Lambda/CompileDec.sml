@@ -1314,11 +1314,6 @@ functor CompileDec(structure Con: CON
 	        | _ => raise Next) 
           (FinMap.list m)
 
-        fun foldRealMap m =
-          map (fn (SCon.REAL x, t) => (x, compileDecTree env (t, compiler,failure,poly))
-                | _ => raise Next) 
-          (FinMap.list m)
-
         fun foldCharMap m =
           map (fn (SCon.CHAR x, t) => (x, compileDecTree env (t, compiler,failure,poly))
 	        | _ => raise Next) 
@@ -1341,14 +1336,6 @@ functor CompileDec(structure Con: CON
 	let val selections' = foldStringMap selections
 	    val w' = compileDecTree env (wildcard,compiler,failure,poly)
 	in SWITCH_S(SWITCH(VAR{lvar=arg,instances=CE.lookupLvar env arg},
-			   selections',Some w'))
-	end
-
-        handle Next =>
-
-        let val selections' = foldRealMap selections
-	    val w' = compileDecTree env (wildcard,compiler,failure,poly)
-	in SWITCH_R(SWITCH(VAR{lvar=arg,instances=CE.lookupLvar env arg},
 			   selections',Some w'))
 	end
 

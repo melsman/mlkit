@@ -732,7 +732,6 @@ good *)
 
     | E.SWITCH_I(intsw: int E.Switch)       => (spreadSwitch B S E'.SWITCH_I [] (intsw,toplevel))
     | E.SWITCH_S(stringsw:  string E.Switch)=> (spreadSwitch B S E'.SWITCH_S [] (stringsw,toplevel))
-    | E.SWITCH_R(realsw: real E.Switch)     => (spreadSwitch B S E'.SWITCH_R [] (realsw,toplevel))
     | E.SWITCH_C(consw: E.con E.Switch) => (spreadSwitch B S E'.SWITCH_C [] (consw,toplevel))
     | E.SWITCH_E(exconsw: E.excon E.Switch as
                  E.SWITCH(_,choices,_))=>(spreadSwitch B S E'.SWITCH_E

@@ -10,6 +10,10 @@
 
 *)
 
+  infix ==
+  val epsilon = 0.000666 
+  fun r1 == r2 = abs (r1 - r2) < epsilon (*no perfect world*)
+
   fun print s = output (std_out, s)
   fun digit n = chr(ord #"0" + n)
   fun digits(n,acc) =
@@ -47,11 +51,6 @@
       error (((chr 1000) handle Chr => #"h") = #"h") "Chr";
       error (((chr 1000) handle Div => #"h"
                               | Chr => #"k") = #"k") "Chr2";
-(*KILL 09/07/1997 21:43. tho.:
-      error (((ord "") handle Ord => 5) = 5) "Ord";
-      error (((ord "") handle Div => 34
-                              | Ord => 5) = 5) "Ord2";
-*)
       error (size "hello I'm 19 long.." = 19) "size"
     end
 
@@ -72,7 +71,7 @@
     let
       val _ = print "Testing polymorphic equality...\n"
       val a = [(34,"hejsa"), (4, "bw")]
-      val b = [[3.23], [~34.23]]
+      val b = [[3,23], [~34,23]]
       val c = (56, ref "hello")
       val d = ref "hej"
       datatype k = A of int * string | B | C of k * k
@@ -82,8 +81,8 @@
     in
       error (a = [(34,"hejsa"), (4, "bw")]) "equal";
       error ((a = [(34,"hejsa"), (4, "cw")]) = false) "equal2";
-      error (b = [[3.23], [~34.23]]) "equal3";
-      error ((b = [[3.23], [~34.21]]) = false) "equal4";
+      error (b = [[3,23], [~34,23]]) "equal3";
+      error ((b = [[3,23], [~34,21]]) = false) "equal4";
       error ((c = (56, ref "hello")) = false) "equal5 (ref1)";
       error ((34,d) = (34,d)) "equal5 (ref2)";
       error (k1 <> k2) "equal6 (dat k)";
@@ -109,8 +108,8 @@
       error (~ (~2) = 2) "~2";
       error (abs 5 = 5) "abs1";
       error (abs (~23) = 23) "abs2";
-      error ((exp 640000000000000.0 handle Exp => 4.0) = 4.0) "Exp";
-      error ((ln 0.0 handle Ln => 4.0) = 4.0) "Ln";
+      error (((floor (exp 640000000000000.0)) handle Exp => 4) = 4) "Exp";
+      error ((floor (ln 0.0) handle Ln => 4) = 4) "Ln";
       error (floor (23.23) = 23) "floor1";
       error (floor (~23.23) = ~24) "floor2";
       error (((floor (23.0E23)) handle Floor => 4) = 4) "Floor";
@@ -139,24 +138,24 @@
       val _ = print "Testing arithmetic real operations:\n\
        \   [+, -, *, /, ~, abs, real, sqrt, <, >, <=, >=] ...\n"
     in
-      error (4.0 + 3.0 = 7.0) "+";
-      error (4.0 - 1.0 = 3.0) "-";
-      error (4.0 * 3.0 = 12.0) "*";
+      error (4.0 + 3.0 == 7.0) "+";
+      error (4.0 - 1.0 == 3.0) "-";
+      error (4.0 * 3.0 == 12.0) "*";
 (*      print "* ok.\n"; *)
-      error (9.0 / 2.0 = 4.5) "/";
+      error (9.0 / 2.0 == 4.5) "/";
 (*      print "/ ok.\n"; *)
-      error (((4.0 / 0.0) handle Quot => 23.12) = 23.12) "Quot"; 
+      error ((floor (4.0 / 0.0) handle Quot => 23) = 23) "Quot"; 
 (*      print "Quot ok.\n"; *)
-      error (~ 5.3 = ~5.3) "~1";
-      error (~ (~2.23) = 2.23) "~2";
-      error (abs 5.23 = 5.23) "abs1";
-      error (abs (~23.12) = 23.12) "abs2";
-      error (real 5 = 5.0) "real1";
-      error (real ~5 = ~5.0) "real2";
-      error (sqrt 0.0 = 0.0) "sqrt1";
+      error (~ 5.3 == ~5.3) "~1";
+      error (~ (~2.23) == 2.23) "~2";
+      error (abs 5.23 == 5.23) "abs1";
+      error (abs (~23.12) == 23.12) "abs2";
+      error (real 5 == 5.0) "real1";
+      error (real ~5 == ~5.0) "real2";
+      error (sqrt 0.0 == 0.0) "sqrt1";
       error (sqrt 2.0 > 1.4) "sqrt2";
       error (sqrt 2.0 < 1.5) "sqrt3";
-      error (((sqrt ~4.0) handle Sqrt => 3.0) = 3.0) "Sqrt";
+      error (((sqrt ~4.0) handle Sqrt => 3.0) == 3.0) "Sqrt";
 (*      print "Sqrt ok.\n"; *)
 
       error ((23.34 < 40.23) = true) "<1";
