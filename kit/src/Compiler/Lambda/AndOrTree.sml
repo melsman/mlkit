@@ -25,6 +25,11 @@ functor AndOrTree(structure Ident: IDENT
 
     structure EqSet = EqSetList
 
+    fun to_TypeInfo i =
+      case ElabInfo.to_TypeInfo i
+	of Some ti => Some(ElabInfo.TypeInfo.normalise ti)
+	 | None => None 
+
     type RuleNum = int
     type (''a, 'b) map = (''a, 'b) FinMap.map
     structure TypeInfo = ElabInfo.TypeInfo
@@ -81,7 +86,7 @@ functor AndOrTree(structure Ident: IDENT
 
    (* one or two general utilities. *)
     fun explodePatrow(PATROW(i, lab, pat, patrow_opt)) =
-	  (lab, (case ElabInfo.to_TypeInfo i
+	  (lab, (case to_TypeInfo i
 		   of Some ti => ti
 		    | None => Crash.impossible "explodePatrow"
 		), pat
@@ -172,17 +177,17 @@ functor AndOrTree(structure Ident: IDENT
 	     treeFromAtomicPat(rulenum, atpat)
 
 	 | CONSpat(i, OP_OPT(longid, _), atpat) =>
-	     (case ElabInfo.to_TypeInfo i
+	     (case to_TypeInfo i
 		of Some (TypeInfo.CON_INFO _) => 
 		     initialConNode(rulenum,  longid,
-				    case ElabInfo.to_TypeInfo i
+				    case to_TypeInfo i
 				      of Some ti => ti
 				       | None => Crash.impossible "initialAndOrTree",
 				    treeFromAtomicPat(rulenum, atpat)
 				   )
 		 | Some (TypeInfo.EXCON_INFO _) => 
 		     initialExconNode(rulenum, longid,
-				      case ElabInfo.to_TypeInfo i of
+				      case to_TypeInfo i of
 					Some ti => ti 
 				      | None => Crash.impossible "initialAndOrTree",
 				      treeFromAtomicPat(rulenum, atpat)
@@ -207,17 +212,17 @@ functor AndOrTree(structure Ident: IDENT
 	     initialSconNode(rulenum, scon)
 
 	 | LONGIDatpat(i, OP_OPT(longid, _)) =>
-	     (case ElabInfo.to_TypeInfo i
+	     (case to_TypeInfo i
 		of Some (TypeInfo.CON_INFO _) =>
 		     initialConNode(rulenum,  longid,
-				    case ElabInfo.to_TypeInfo i
+				    case to_TypeInfo i
 				      of Some ti => ti
 				       | None => Crash.impossible "treeFromAtomicPat",
 				    nullLeaf rulenum
 				   )
 		 | Some (TypeInfo.EXCON_INFO _) =>
 		     initialExconNode(rulenum, longid, 
-				      case ElabInfo.to_TypeInfo i
+				      case to_TypeInfo i
 					of Some ti => ti
 					 | None => Crash.impossible "treeFromAtomicPat",
 				      nullLeaf rulenum
@@ -282,17 +287,17 @@ functor AndOrTree(structure Ident: IDENT
 	     mergeAtomicPattern(tree, (rulenum, atpat))
 
 	 | CONSpat(i, OP_OPT(longid, _), atpat) =>
-	     (case ElabInfo.to_TypeInfo i
+	     (case to_TypeInfo i
 		of Some (TypeInfo.CON_INFO _) =>
 		     addInConNode(rulenum,  longid,
-				  case ElabInfo.to_TypeInfo i
+				  case to_TypeInfo i
 				    of Some ti => ti
 				     | None => Crash.impossible "mergePattern",
 				  Some atpat, tree
 				 )
 		 | Some (TypeInfo.EXCON_INFO _) =>
 		     addInExconNode(rulenum, longid,
-				    case ElabInfo.to_TypeInfo i
+				    case to_TypeInfo i
 				      of Some ti => ti
 				       | None => Crash.impossible "mergePattern",
 				    Some atpat, tree
@@ -318,10 +323,10 @@ functor AndOrTree(structure Ident: IDENT
 	     addInSconNode(rulenum, scon, tree)
 
 	 | LONGIDatpat(i, OP_OPT(longid, _)) =>
-	     (case ElabInfo.to_TypeInfo i
+	     (case to_TypeInfo i
 		of Some (TypeInfo.CON_INFO _) => 	(* A nullary constructor here *)
 		     addInConNode(rulenum,  longid,
-				  case ElabInfo.to_TypeInfo i
+				  case to_TypeInfo i
 				    of Some ti => ti
 				     | None =>
 					 Crash.impossible "MergeAtomicPattern",
@@ -329,7 +334,7 @@ functor AndOrTree(structure Ident: IDENT
 				 )
 		 | Some (TypeInfo.EXCON_INFO _) =>
 		     addInExconNode(rulenum, longid, 
-				  case ElabInfo.to_TypeInfo i
+				  case to_TypeInfo i
 				    of Some ti => ti
 				     | None =>
 					 Crash.impossible "MergeAtomicPattern",
