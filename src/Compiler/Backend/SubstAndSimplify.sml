@@ -190,19 +190,17 @@ struct
 	fun sma_to_sma' sma = sma_to_sma(sma,ATYmap,RHOmap)
 	fun atom_to_aty' atom = atom_to_aty(atom,ATYmap,RHOmap) 
 
-	fun do_fn_app{opr,args,clos,free,res,bv} =
+	fun do_fn_app{opr,args,clos,res,bv} =
 	  {opr=atom_to_aty' opr,
 	   args=atoms_to_atys args,
 	   clos=atom_to_aty_opt(clos,ATYmap,RHOmap),
-	   free=atoms_to_atys free,
 	   res=atoms_to_atys res,
 	   bv=bv}
 
-	fun do_fun_app{opr,args,clos,free,res,reg_vec,reg_args,bv} =
+	fun do_fun_app{opr,args,clos,res,reg_vec,reg_args,bv} =
 	  {opr=opr,
 	   args=atoms_to_atys args,
 	   clos=atom_to_aty_opt(clos,ATYmap,RHOmap),
-	   free=atoms_to_atys free,
 	   res=atoms_to_atys res,
 	   reg_vec=atom_to_aty_opt(reg_vec,ATYmap,RHOmap),
 	   reg_args=atoms_to_atys reg_args,

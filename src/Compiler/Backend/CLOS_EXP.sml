@@ -66,12 +66,12 @@ signature CLOS_EXP =
     | SCLOS_RECORD    of {elems: ClosExp list * ClosExp list * ClosExp list, alloc: sma}
     | RECORD          of {elems: ClosExp list, alloc: sma, tag: Word32.word}
     | SELECT          of int * ClosExp
-    | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option, free: ClosExp list}
-    | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option, free: ClosExp list}
+    | FNJMP           of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
+    | FNCALL          of {opr: ClosExp, args: ClosExp list, clos: ClosExp option}
     | JMP             of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list, 
-			  clos: ClosExp option, free: ClosExp list}
+			  clos: ClosExp option}
     | FUNCALL         of {opr: label, args: ClosExp list, reg_vec: ClosExp option, reg_args: ClosExp list, 
-			  clos: ClosExp option, free: ClosExp list}
+			  clos: ClosExp option}
     | LETREGION       of {rhos: binder list, body: ClosExp}
     | LET             of {pat: lvar list, bind: ClosExp, scope: ClosExp}
     | RAISE           of ClosExp

@@ -52,27 +52,6 @@ signature HP_PA_RISC =
     val caller_save_regs_ccall : reg list
     val all_regs : reg list
 
-(*
-    type lvar
-    val reg_eq   : reg*reg -> bool
-    val all_regs_as_lvs         : lvar list
-    val is_reg                  : lvar -> bool
-    val lv_to_reg               : lvar -> reg
-    val lv_to_reg_no            : lvar -> int
-    val reg_args_as_lvs         : lvar list
-    val reg_res_as_lvs          : lvar list
-    val reg_args_ccall_as_lvs   : lvar list
-    val reg_res_ccall_as_lvs    : lvar list
-    val callee_save_regs_mlkit        : reg list
-    val callee_save_regs_mlkit_as_lvs : lvar list
-    val caller_save_regs_mlkit        : reg list
-    val caller_save_regs_mlkit_as_lvs : lvar list
-    val callee_save_regs_ccall        : reg list
-    val callee_save_regs_ccall_as_lvs : lvar list
-    val caller_save_regs_ccall        : reg list
-    val caller_save_regs_ccall_as_lvs : lvar list
-*)      
-
     (*----------------------------------------------------------*)
     (*                     HPPA RISC Syntax                     *)
     (*                                                          *)

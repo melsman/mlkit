@@ -102,12 +102,6 @@ functor HpPaRisc(structure Labels : ADDRESS_LABELS
 	val reg_res_ccall_as_lvs = map reg_to_lv reg_res_ccall
 	val res_phreg_ccall = reg_res_ccall_as_lvs
 
-	val callee_save_regs_mlkit = map Gen []
-	val callee_save_regs_mlkit_as_lvs = map reg_to_lv callee_save_regs_mlkit
-	val callee_save_phregs = callee_save_regs_mlkit_as_lvs
-	val callee_save_phregset = Lvarset.lvarsetof callee_save_phregs
-	fun is_callee_save _ = false
-
 	val caller_save_regs_mlkit = map Gen [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,21,22,23,24,25,26,28,29]
 	val caller_save_regs_mlkit_as_lvs = map reg_to_lv caller_save_regs_mlkit
 	val caller_save_phregs = caller_save_regs_mlkit_as_lvs

@@ -105,40 +105,40 @@ struct
     fun CC_sw CC_lss (LS.SWITCH(atom_arg,sels,default)) =
       LS.SWITCH(atom_arg,map (fn (s,lss) => (s,CC_lss lss)) sels, CC_lss default)
 
-    fun CC_ls(LS.FNJMP{opr,args,clos,free,res,bv},rest) =
+    fun CC_ls(LS.FNJMP{opr,args,clos,res,bv},rest) =
       let
-	val ({clos,args,free,res,...},assign_list_args,assign_list_res) = 
-	  CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,free=free,args=args,reg_vec=NONE,reg_args=[],res=res}
+	val ({clos,args,res,...},assign_list_args,assign_list_res) = 
+	  CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=NONE,reg_args=[],res=res}
 	in
 	  resolve_res(assign_list_args,
-		      LS.FNJMP{opr=opr,args=args,clos=clos,free=free,res=res,bv=bv}::
+		      LS.FNJMP{opr=opr,args=args,clos=clos,res=res,bv=bv}::
 		      resolve_args(assign_list_res,rest))
 	end
-	| CC_ls(LS.FNCALL{opr,args,clos,free,res,bv},rest) =
+	| CC_ls(LS.FNCALL{opr,args,clos,res,bv},rest) =
 	let
-	  val ({clos,args,free,res,...},assign_list_args,assign_list_res) = 
-	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,free=free,args=args,reg_vec=NONE,reg_args=[],res=res}
+	  val ({clos,args,res,...},assign_list_args,assign_list_res) = 
+	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=NONE,reg_args=[],res=res}
 	in
 	  resolve_res(assign_list_args,
-		      LS.FNCALL{opr=opr,args=args,clos=clos,free=free,res=res,bv=bv}::
+		      LS.FNCALL{opr=opr,args=args,clos=clos,res=res,bv=bv}::
 		      resolve_args(assign_list_res,rest))
 	end
-	| CC_ls(LS.JMP{opr,args,reg_vec,reg_args,clos,free,res,bv},rest) =
+	| CC_ls(LS.JMP{opr,args,reg_vec,reg_args,clos,res,bv},rest) =
 	let
-	  val ({clos,args,free,res,reg_vec,reg_args},assign_list_args,assign_list_res) = 
-	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,free=free,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
+	  val ({clos,args,res,reg_vec,reg_args},assign_list_args,assign_list_res) = 
+	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
 	in
 	  resolve_res(assign_list_args,
-		      LS.JMP{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bv}::
+		      LS.JMP{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,res=res,bv=bv}::
 		      resolve_args(assign_list_res,rest))
 	end
-	| CC_ls(LS.FUNCALL{opr,args,reg_vec,reg_args,clos,free,res,bv},rest) =
+	| CC_ls(LS.FUNCALL{opr,args,reg_vec,reg_args,clos,res,bv},rest) =
 	let
-	  val ({clos,args,free,res,reg_vec,reg_args},assign_list_args,assign_list_res) = 
-	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,free=free,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
+	  val ({clos,args,res,reg_vec,reg_args},assign_list_args,assign_list_res) = 
+	    CallConv.resolve_app RI.args_phreg RI.res_phreg LS.PHREG {clos=clos,args=args,reg_vec=reg_vec,reg_args=reg_args,res=res}
 	in
 	  resolve_res(assign_list_args,
-		      LS.FUNCALL{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,free=free,res=res,bv=bv}::
+		      LS.FUNCALL{opr=opr,args=args,reg_vec=reg_vec,reg_args=reg_args,clos=clos,res=res,bv=bv}::
 		      resolve_args(assign_list_res,rest))
 	end
 	| CC_ls(LS.LETREGION{rhos,body},rest) = LS.LETREGION{rhos=rhos,body=CC_lss body}::rest
@@ -354,7 +354,7 @@ struct
 		   worklist=ref precolored_enum, adjList=ref nil,
 		   alias = ref NONE, color=ref (SOME lv),
 		   lrs = ref no_call, uses = ref 0})
-    (RI.caller_save_phregs @ RI.callee_save_phregs)  
+    RI.caller_save_phregs  
   fun reset_precolored() = 
     app (fn ({lv,degree, mv_related, worklist, adjList, alias, color, lrs, uses} : node) =>
 	 (degree:=0; mv_related:=NONE; worklist:=precolored_enum;
@@ -733,7 +733,7 @@ struct
 	let
 	  val (callee_save_ccall,callee_save_mlkit,caller_save_mlkit) =
 	    (Lvarset.difference(RI.callee_save_ccall_phregset,notOkColors),
-	     Lvarset.difference(RI.callee_save_phregset,notOkColors),
+	     Lvarset.empty,
 	     Lvarset.difference(RI.caller_save_phregset,notOkColors))
 	in
 	  if !(#lrs n) = ml_call then

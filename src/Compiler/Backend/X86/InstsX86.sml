@@ -260,7 +260,6 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	  map (fn r => Lvars.new_named_lvar (pr_reg r)) regs
 	val map_lvs_to_reg = LvarFinMap.fromList(ListPair.zip(reg_lvs,regs))
 	  
-(*	val all_regs_as_lvs = reg_lvs  *)
 	val all_regs = reg_lvs
 	  
 	fun is_reg lv = 
@@ -281,39 +280,22 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
 	     | cl => die "reg_to_lv: cl not available for register allocation"
 	      
 	val reg_args = [eax,ebx,edi]
-(*	val reg_args_as_lvs = map reg_to_lv reg_args *)
 	val args_phreg = map reg_to_lv reg_args
 	val reg_res = [edi,ebx,eax] 
-(*	val reg_res_as_lvs = map reg_to_lv reg_res *)
 	val res_phreg = map reg_to_lv reg_res
 	
 	val reg_args_ccall = []
-(*	val reg_args_ccall_as_lvs = map reg_to_lv reg_args_ccall *)
 	val reg_res_ccall = [eax] 
-(*	val reg_res_ccall_as_lvs = map reg_to_lv reg_res_ccall *)
 	val args_phreg_ccall = map reg_to_lv reg_args_ccall
 	val res_phreg_ccall = map reg_to_lv reg_res_ccall
-	  
-	  
-(* 	val caller_save_regs_mlkit_as_lvs = map reg_to_lv caller_save_regs_mlkit *)
-	  
-	  
-	(* tmp_reg0 and tmp_reg1 should not be in this list as they are never live across a C call *)
-(* 	val caller_save_regs_ccall_as_lvs = map reg_to_lv caller_save_regs_ccall *)
-	  
+	  	  
 	fun reg_eq(reg1,reg2) = reg1 = reg2
-
-	val callee_save_regs_mlkit = []
-	val callee_save_regs_mlkit_as_lvs = []
 	val callee_save_regs_ccall = []
 	val callee_save_regs_ccall_as_lvs = []
-	val callee_save_phregs   = []
-	val callee_save_phregset = Lvarset.lvarsetof []
-	fun is_callee_save phreg = false	  
+
 	val callee_save_ccall_phregs   = []
 	val callee_save_ccall_phregset = Lvarset.lvarsetof []
 	fun is_callee_save_ccall phreg = false
-
 	  
 	val caller_save_regs_mlkit = [eax,ebx,edi,edx,esi]
 	val caller_save_phregs = map reg_to_lv caller_save_regs_mlkit

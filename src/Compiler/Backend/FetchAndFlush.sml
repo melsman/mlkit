@@ -208,7 +208,6 @@ struct
 	       else
 		 acc
 	       | lv_to_remove(RA.FV_STY lv,acc) f = acc
-	     val lvs_to_remove = foldr (fn (sty,acc) => lv_to_remove (sty,acc) RI.is_callee_save) [] pat
 	     val lvs_to_remove_ccall = foldr (fn (sty,acc) => lv_to_remove (sty,acc) RI.is_callee_save_ccall) [] pat
 	     fun add_phreg(RA.STACK_STY lv,acc) = acc
 	       | add_phreg(RA.PHREG_STY (lv,phreg),acc) = phreg::acc
@@ -216,7 +215,7 @@ struct
 	     val phregs_to_add = foldr (fn (sty,acc) => add_phreg(sty,acc)) [] pat
 	   in
 	     (L_set',
-	      lvset_difference(F_set',lvs_to_remove),
+	      F_set',
 	      lvset_difference(C_set',lvs_to_remove_ccall),
 	      lvset_add(R_set',phregs_to_add))
 	   end
@@ -224,7 +223,7 @@ struct
 	   let
 	     val (L_set1,F_set1,C_set1,R_set1) = F_lss(default,L_set,F_set,C_set,R_set)
 	     val (L_set2,F_set2,C_set2,R_set2) = F_lss(handl,L_set1,F_set1,C_set1,R_set1) 
-	     val R_set_all = Lvarset.union(R_set2,RI.callee_save_phregset)  (* We must save ALL callee save registers across a handle! *)
+	     val R_set_all = R_set2
 	     val handl_return_lvar = LS.get_var_atom (handl_return_lv,nil)
 	     val F_set3 = Lvarset.union(F_set2,lvset_difference(L_set,handl_return_lvar)) (* We must flush all caller save registers that are live *)
                                                                                           (* after the handle. We define handl_return_lv in the    *)
@@ -398,12 +397,10 @@ struct
 	  in
 	    case handl_return of
 	      [] => (LS.HANDLE{default=lss1',handl=(lss2',handl_lv),
-			       handl_return=(insert_fetch_callee(RI.callee_save_phregs,  (* forkert, de skal fetches i raise 23/02/1999, Niels *)
-								 insert_fetch_if(lvars_to_fetch,[])),handl_return_lv,bv),
+			       handl_return=(insert_fetch_if(lvars_to_fetch,[]),handl_return_lv,bv),
 			       offset=offset}::acc,U_set2)
 	    | [flush_ls] => (LS.HANDLE{default=lss1',handl=(lss2',handl_lv),
-				       handl_return=(flush_ls :: (insert_fetch_callee(RI.callee_save_phregs, (* forkert, de skal fetches i raise 23/02/1999, Niels *)
-										      insert_fetch_if(lvars_to_fetch,[]))),handl_return_lv,bv),
+				       handl_return=(flush_ls :: insert_fetch_if(lvars_to_fetch,[]),handl_return_lv,bv),
 				       offset=offset}::acc,U_set2)
 	    | _ => die "IF_lss': handl_return contains more than one statement."
 	  end
@@ -433,11 +430,8 @@ struct
 	val (_,F_set,C_set,R_set) = F_lss(lss,Lvarset.empty,Lvarset.empty,Lvarset.empty,Lvarset.empty)
 	val F = lvset_delete(F_set,CallConv.get_spilled_args cc)
 	val C = lvset_delete(C_set,CallConv.get_spilled_args cc)
-	val R = Lvarset.intersection(R_set,RI.callee_save_phregset)
-	val R_list = Lvarset.members R
-	val lss_iff = [LS.SCOPE{pat = mk_flushed_callee R_list,
-				scope = insert_flush_callee(R_list,
-							    IFF_lss(lss,Lvarset.union(F,C),insert_fetch_callee(R_list,[])))}]
+	val lss_iff = [LS.SCOPE{pat = nil,
+				scope = IFF_lss(lss,Lvarset.union(F,C),nil)}]
 	val (lss_if,_) = IF_lss(lss_iff,F,C)
       in
 	gen_fn(lab,cc,lss_if)

@@ -31,7 +31,6 @@ functor CallConv(structure Lvars : LVARS
       | CC_PHREG of lvar * lvar
 
     type cc = {clos:       CC_STY option,
-	       free:       CC_STY list,
 	       args:       CC_STY list,
 	       reg_vec:    CC_STY option,
 	       reg_args:   CC_STY list,
@@ -44,18 +43,16 @@ functor CallConv(structure Lvars : LVARS
     fun mk_sty_opt(SOME lv) = SOME(CC_NO_STY lv)
       | mk_sty_opt(NONE) = NONE
 
-    fun mk_cc_fn(args,clos,free,ress) =
+    fun mk_cc_fn(args,clos,ress) =
       {clos = mk_sty_opt clos,
-       free = map CC_NO_STY free,
        args = map CC_NO_STY args,
        reg_vec = NONE,
        reg_args = [],
        res=map CC_NO_STY ress,
        frame_size = NONE}
 
-    fun mk_cc_fun(args,clos,free,reg_vec,reg_args,ress) =
+    fun mk_cc_fun(args,clos,reg_vec,reg_args,ress) =
       {clos = mk_sty_opt clos,
-       free = map CC_NO_STY free,
        args = map CC_NO_STY args,
        reg_vec = mk_sty_opt reg_vec,
        reg_args = map CC_NO_STY reg_args,
@@ -75,18 +72,16 @@ functor CallConv(structure Lvars : LVARS
 
     fun get_res_lvars({res,...}:cc) = map get_lvar_sty res
 
-    fun get_arg_lvars({clos, free, args, reg_vec, reg_args, ...}:cc) = 
+    fun get_arg_lvars({clos, args, reg_vec, reg_args, ...}:cc) = 
       get_lvar_sty_opt'(clos,
-      get_lvar_stys'(free,
       get_lvar_stys'(args,
       get_lvar_sty_opt'(reg_vec,
-      get_lvar_stys'(reg_args,[])))))
+      get_lvar_stys'(reg_args,[]))))
 
-    fun decompose_cc({clos, free, args, reg_vec,reg_args, res, ...}:cc) : 
-      {clos : lvar option, free : lvar list, args : lvar list, 
+    fun decompose_cc({clos, args, reg_vec,reg_args, res, ...}:cc) : 
+      {clos : lvar option, args : lvar list, 
        reg_vec : lvar option,reg_args : lvar list, res : lvar list} =
       {clos = get_lvar_sty_opt clos,
-       free = map get_lvar_sty free,
        args = map get_lvar_sty args,
        reg_vec = get_lvar_sty_opt reg_vec,
        reg_args = map get_lvar_sty reg_args,
@@ -111,10 +106,9 @@ functor CallConv(structure Lvars : LVARS
     fun filter_out_stack_opt(NONE,C) = C
       | filter_out_stack_opt(SOME a,C) = filter_out_stack([a],C)
 
-    fun get_rcf_size{clos,free,args,reg_vec,reg_args,res,frame_size} = List.length(filter_out_phreg res)
-    fun get_ccf_size{clos,free,args,reg_vec,reg_args,res,frame_size} =
+    fun get_rcf_size{clos,args,reg_vec,reg_args,res,frame_size} = List.length(filter_out_phreg res)
+    fun get_ccf_size{clos,args,reg_vec,reg_args,res,frame_size} =
       List.length(filter_out_phreg_opt clos) +
-      List.length(filter_out_phreg free) +
       List.length(filter_out_phreg args) +
       List.length(filter_out_phreg_opt reg_vec)
 
@@ -123,9 +117,8 @@ functor CallConv(structure Lvars : LVARS
       get_ccf_size cc +
       1 (* The return label occupies one word on the stack. *)
 
-    fun add_frame_size({clos,free,args,reg_vec,reg_args,res,frame_size},f_size) =
+    fun add_frame_size({clos,args,reg_vec,reg_args,res,frame_size},f_size) =
       {clos = clos,
-       free = free,
        args = args,
        reg_vec = reg_vec,
        reg_args = reg_args,
@@ -225,39 +218,34 @@ functor CallConv(structure Lvars : LVARS
 	  ({args=args',rhos_for_result=rhos_for_result',res=res'},assign_list_args,assign_list_res)
 	end
       fun resolve_app args_phreg res_phreg (phreg_to_alpha: lvar -> 'a)
-	{clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} =
+	{clos: 'a option, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} =
 	let
 	  val (clos',assign_list_args,phregs) = resolve_opt phreg_to_alpha (clos,[],args_phreg)
 	  val (reg_vec',assign_list_args,phregs) = resolve_opt phreg_to_alpha (reg_vec,assign_list_args,phregs)
 	  val (args',assign_list_args,phregs) = resolve_list phreg_to_alpha (args,assign_list_args,phregs)
-	  val (free',assign_list_args,phregs) = resolve_list phreg_to_alpha (free,assign_list_args,phregs)
 	  val (reg_args',assign_list_args,phregs) = resolve_list phreg_to_alpha (reg_args,assign_list_args,phregs)
 
 	  val (res',assign_list_res,_) = resolve_list phreg_to_alpha (res,[],res_phreg)
 	in
 	  ({clos = clos',
-	    free = free',
 	    args = args',
 	    reg_vec = reg_vec',
 	    reg_args = reg_args',
 	    res = res'},assign_list_args,assign_list_res)
 	end
 
-      fun resolve_cc args_phreg res_phreg {clos,free,args,reg_vec,reg_args,res,frame_size} =
+      fun resolve_cc args_phreg res_phreg {clos,args,reg_vec,reg_args,res,frame_size} =
 	let
 	  val _ = reset_offset()
 	  val (clos_sty_opt,lv_phreg_args,phregs) = resolve_sty_opt(clos,[],args_phreg)
 	  val (reg_vec_sty_opt,lv_phreg_args,phregs) = resolve_sty_opt(reg_vec,lv_phreg_args,phregs)
-	  val (args_stys,lv_phreg_args,phregs) = resolve_stys_args(args,lv_phreg_args,phregs)  (*MEMO:won't work for multiple 
-												*free vars as args*)
-	  val (free_stys,lv_phreg_args,phregs) = resolve_stys(free,lv_phreg_args,phregs)
+	  val (args_stys,lv_phreg_args,phregs) = resolve_stys_args(args,lv_phreg_args,phregs)
 	  val (reg_args_stys,lv_phreg_args,_) = resolve_stys(reg_args,lv_phreg_args,phregs)
 
 	  val _ = get_next_offset() (* The next offset is for the return address *)
 	  val (res_stys,lv_phreg_res,_) = resolve_stys(res,[],res_phreg)
 	in
 	  ({clos=clos_sty_opt,
-	    free=free_stys,
 	    args=args_stys,
 	    reg_vec=reg_vec_sty_opt,
 	    reg_args=reg_args_stys,
@@ -267,26 +255,26 @@ functor CallConv(structure Lvars : LVARS
 	   lv_phreg_res)
 	end
 
-      fun get_spilled_args {clos,free,args,reg_vec,reg_args,res,frame_size} =
-	map #1 (get_spilled_sty_opt(clos,get_spilled_stys(free,get_spilled_stys(args,get_spilled_sty_opt(reg_vec,get_spilled_stys(reg_args,[]))))))
+      fun get_spilled_args {clos,args,reg_vec,reg_args,res,frame_size} =
+	map #1 (get_spilled_sty_opt(clos,get_spilled_stys(args,get_spilled_sty_opt(reg_vec,get_spilled_stys(reg_args,[])))))
 
-      fun get_spilled_args_with_offsets{clos,free,args,reg_vec,reg_args,res,frame_size} =
-	get_spilled_sty_opt(clos,get_spilled_stys(free,get_spilled_stys(args,get_spilled_sty_opt(reg_vec,get_spilled_stys(reg_args,[])))))
+      fun get_spilled_args_with_offsets{clos,args,reg_vec,reg_args,res,frame_size} =
+	get_spilled_sty_opt(clos,get_spilled_stys(args,get_spilled_sty_opt(reg_vec,get_spilled_stys(reg_args,[]))))
 
-      fun get_spilled_res {clos,free,args,reg_vec,reg_args,res,frame_size} =
+      fun get_spilled_res {clos,args,reg_vec,reg_args,res,frame_size} =
 	map #1 (get_spilled_stys(res,[]))
 
-      fun get_spilled_res_with_offsets {clos,free,args,reg_vec,reg_args,res,frame_size} =
+      fun get_spilled_res_with_offsets {clos,args,reg_vec,reg_args,res,frame_size} =
 	get_spilled_stys(res,[])
 
-      fun resolve_act_cc args_phreg res_phreg {clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} =
+      fun resolve_act_cc args_phreg res_phreg {clos: 'a option, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} =
 	let
 	  fun append_to_list_opt(NONE,l) = l
 	    | append_to_list_opt(SOME e,l) = e::l
 	  fun calc_offset([],offset,l) = (offset,List.rev l)
 	    | calc_offset(a::aa,offset,l) = calc_offset(aa,offset+1,(a,offset)::l)
 	  val res' = List.drop(res,List.length res_phreg) handle General.Subscript => []
-	  val args_list = append_to_list_opt(clos,append_to_list_opt(reg_vec,args@free@reg_args))
+	  val args_list = append_to_list_opt(clos,append_to_list_opt(reg_vec,args@reg_args))
 	  val args' = List.drop(args_list,List.length args_phreg) handle General.Subscript => []
 	  val (o_res,aty_res) = calc_offset(res',0,[])
 	  val return_lab_offset = o_res
@@ -296,8 +284,8 @@ functor CallConv(structure Lvars : LVARS
 	end
     end
 
-    fun get_register_args {clos,free,args,reg_vec,reg_args,res,frame_size} =
-      filter_out_stack_opt(clos,filter_out_stack(free,filter_out_stack(args,filter_out_stack_opt(reg_vec,filter_out_stack(reg_args,[])))))
+    fun get_register_args {clos,args,reg_vec,reg_args,res,frame_size} =
+      filter_out_stack_opt(clos,filter_out_stack(args,filter_out_stack_opt(reg_vec,filter_out_stack(reg_args,[]))))
 
     (* The Call Convention supports one return register for handle functions *)
     fun handl_return_phreg res_phreg = 
@@ -329,12 +317,11 @@ functor CallConv(structure Lvars : LVARS
 
     fun pr_stys stys = pr_seq stys pr_sty
 
-    fun pr_cc{clos,free,args,reg_vec,reg_args,res,frame_size} =
+    fun pr_cc{clos,args,reg_vec,reg_args,res,frame_size} =
       "args=<" ^ pr_stys args ^
       ">,reg_vec=<" ^ pr_sty_opt reg_vec ^ 
       ">,reg_args=<" ^ pr_stys reg_args ^
       ">,clos=<" ^ pr_sty_opt clos ^ 
-      ">,free=<" ^ pr_stys free ^ 
       ">,res=<" ^ pr_stys res ^ ">" ^
       pr_frame_size frame_size
 

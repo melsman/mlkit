@@ -1380,10 +1380,10 @@ struct
 			     end)
 	   | LS.FLUSH(aty,offset) => COMMENT (pr_ls ls) :: store_aty_in_reg_record_kill_gen1(aty,tmp_reg1,sp,WORDS(~size_ff+offset),size_ff,C)
 	   | LS.FETCH(aty,offset) => COMMENT (pr_ls ls) :: load_aty_from_reg_record_kill_gen1(aty,tmp_reg1,sp,WORDS(~size_ff+offset),size_ff,C)
-	   | LS.FNJMP(cc as {opr,args,clos,free,res,bv}) =>
+	   | LS.FNJMP(cc as {opr,args,clos,res,bv}) =>
 	       COMMENT (pr_ls ls) :: 
 	       let
-		 val (spilled_args,_,_) = CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,free=free,
+		 val (spilled_args,_,_) = CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,
 								   reg_args=[],reg_vec=NONE,res=res}
 		 val offset_codeptr = if !BI.tag_values then "4" else "0"
 	       in
@@ -1400,12 +1400,12 @@ struct
 			    base_plus_offset_kill_gen1(sp,WORDS(~size_ff-size_ccf),sp,         (* return label is now at top of stack *)
 			    META_BV{n=false,x=Gen 0,b=tmp_reg1}::C))                 (* Is C dead code? *)
 	       end
-	   | LS.FNCALL{opr,args,clos,free,res,bv} =>
+	   | LS.FNCALL{opr,args,clos,res,bv} =>
 	       COMMENT (pr_ls ls) :: 
 		  let
 		    val offset_codeptr = if !BI.tag_values then "4" else "0"
 		    val (spilled_args,spilled_res,return_lab_offset) = 
-		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,free=free,reg_args=[],reg_vec=NONE,res=res}
+		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=[],reg_vec=NONE,res=res}
 		    val size_rcf = length spilled_res
 		    val size_ccf = length spilled_args
 		    val size_cc = size_rcf+size_ccf+1
@@ -1431,11 +1431,11 @@ struct
 		    STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} ::                        (* Push Return Label *)
 		    flush_args(jmp(gen_bv(bv,LABEL return_lab :: fetch_res C)))))
 		  end
-	   | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,free,res,bv}) => 
+	   | LS.JMP(cc as {opr,args,reg_vec,reg_args,clos,res,bv}) => 
 		  COMMENT (pr_ls ls) :: 
 		  let
 		    val (spilled_args,_,_) = 
-		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
+		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=reg_args,reg_vec=reg_vec,res=res}
 		    fun jmp C = META_B{n=false,target=MLFunLab opr} :: C (* Is C dead code? *)
 		  in
 		    if List.length spilled_args > 0 then
@@ -1444,11 +1444,11 @@ struct
 		      base_plus_offset_kill_gen1(sp,WORDS(~size_ff-size_ccf),sp,
 				       jmp C)
 		  end
-	   | LS.FUNCALL{opr,args,reg_vec,reg_args,clos,free,res,bv} =>
+	   | LS.FUNCALL{opr,args,reg_vec,reg_args,clos,res,bv} =>
 		  COMMENT (pr_ls ls) :: 
 		  let
 		    val (spilled_args,spilled_res,return_lab_offset) = 
-		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,free=free,reg_args=reg_args,reg_vec=reg_vec,res=res}
+		      CallConv.resolve_act_cc RI.args_phreg RI.res_phreg {args=args,clos=clos,reg_args=reg_args,reg_vec=reg_vec,res=res}
 		    val size_rcf = List.length spilled_res
 		    val return_lab = new_local_lab "return_from_app"
 		    fun flush_args C =
