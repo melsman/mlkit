@@ -8,8 +8,8 @@ create table scs_users (
     constraint scs_users_user_id_nn not null
     constraint scs_users_user_id_fk references scs_persons(person_id)
     constraint scs_users_pk primary key,
-  password char(40),
-  salt char(40),
+  password varchar(40),
+  salt varchar(40),
   screen_name varchar2(100)
     constraint scs_users_screen_name_un unique,
   priv_name integer default 0 
@@ -137,6 +137,10 @@ as
   function deleted_p (
     user_id in scs_users.user_id%TYPE
   ) return char;
+
+  function language_pref (
+    user_id in scs_users.user_id%TYPE
+  ) return scs_user_preferences.language_pref%TYPE;
 
   function gen_passwd (
     email in varchar2
@@ -267,6 +271,23 @@ as
   
     return v_deleted_p;
   end deleted_p;
+
+  function language_pref (
+    user_id in scs_users.user_id%TYPE
+  ) return scs_user_preferences.language_pref%TYPE
+  is
+    v_lang_pref scs_user_preferences.language_pref%TYPE;
+  begin
+    select language_pref
+      into v_lang_pref
+      from scs_user_preferences
+     where user_id = language_pref.user_id;
+
+    return v_lang_pref;
+  exception
+    when others then
+      raise_application_error(scs.ScsDbExn,'Can''t find language pref for user_id ' || user_id || '.');
+  end language_pref;
 
   /* You'd have to have the same first 4 digits and do it at the same
     time of day to get a dup.
@@ -509,13 +530,32 @@ end;
 /
 show errors
 
+-----------
+-- Views --
+-----------
+create or replace view scs_users_active as
+  select *
+    from scs_users
+   where deleted_p = 'f'
+     and user_id <> 0;
+
 -------------------
 -- SCS USER DATA --
 -------------------
 
 declare 
   uid scs_users.user_id%TYPE;
+  role_id integer;
 begin
+  -- SiteAdm is the role giving sitewide administrator rights
+  role_id := scs_role.new(abbreviation => 'SiteAdm',
+                          role_description_tid => 
+                            scs_text.updateText(language => 'da',
+                                                text => 'Site administrator',
+                                                language2 => 'en',
+                                                text2 => 'Site administrator'));
+
+
   -- We hard code user_id 1 as being the site wide administrator
   uid := scs_user.new(user_id        => '1',
                       password       => 'change_me',
@@ -524,6 +564,7 @@ begin
                       email          => 'siteadm@it-c.dk',
                       first_names    => 'Site-wide SCS Administrator',
                       last_name      => 'SCS');
+  scs_role.add(party_id => uid, role_id => role_id);
 
   -- We hard code user_id 0 as being the "not logged in" user
   uid := scs_user.new(user_id        => '0',

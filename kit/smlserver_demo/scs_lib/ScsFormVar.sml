@@ -109,8 +109,9 @@ structure ScsFormVar :> SCS_FORM_VAR =
     val regExpMatch   = RegExp.match   o RegExp.fromString
     val regExpExtract = RegExp.extract o RegExp.fromString
 
-    val % = ScsDict.d ScsLang.English
-      
+    val % = ScsDict.d ScsLang.en "scs_lib" "ScsFormVar.sml"
+    val %% = ScsDict.dl ScsLang.en "scs_lib" "ScsFormVar.sml"
+
     exception FormVar of string
 
     val emptyErr : errs = []
@@ -127,7 +128,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 
     fun buildErrMsg (errs: errs) : quot =
       (case ScsLogin.user_lang of
-	 ScsLang.English => `
+	 ScsLang.en => `
 	   We had a problem processing your entry:
 
 	   <ul>` ^^ 
@@ -137,7 +138,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	   Please back up using your browser, correct it, and resubmit your entry<p>
 	   
 	   Thank you.`
-	 | ScsLang.Danish => 
+	 | ScsLang.da => 
 	   let
 	     val (problem_string, please_correct) = if List.length errs = 1 then
 	       ("en fejl","fejlen") else ("nogle fejl","fejlene")
@@ -272,7 +273,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
       val getStringErr = getErrWithOverflow "" (%"string") (fn v => if size v = 0 then NONE else SOME v)
 
       fun getStringLenErr l = getErrWithOverflow "" 
-	(ScsDict.d1 ScsLang.English "string or it is too long - max. %0 characters" (Int.toString l))
+	(%% [(Int.toString l)] "string or it is too long - max. %0 characters")
 	(fn v => if size v = 0 orelse size v > l then NONE else SOME v)
     end
 
@@ -307,14 +308,14 @@ structure ScsFormVar :> SCS_FORM_VAR =
       val getErr' = getErr "" trim
       fun msgEmail s = 
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>A few examples of valid emails:
 	     <ul>
 	     <li>login@it-c.dk
 	     <li>user@supernet.com
 	     <li>FirstLastname@very.big.company.com\n
 	     </ul></blockquote>`
-	| ScsLang.Danish => `^s
+	| ScsLang.da => `^s
 	     <blockquote>Her er nogle eksempler på emails:
 	     <ul>
 	     <li>login@it-c.dk
@@ -323,25 +324,25 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     </ul></blockquote>`)
       fun msgName s = 
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>
 	     A name may contain the letters from the alphabet including: <b>'</b>, <b>\</b>,<b>-</b>,<b>æ</b>,
 	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>,<b>ä</b>,<b>é</b>,<b>á</b> and space.
 	     </blockquote>`
-	 | ScsLang.Danish => `^s
+	 | ScsLang.da => `^s
 	     <blockquote>
 	     Et navn må indeholde bogstaver fra alfabetet samt disse tegn: <b>'</b>, <b>\</b>,<b>-</b>,<b>æ</b>,
 	     <b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>,<b>ä</b>,<b>é</b>,<b>á</b> og mellemrum.
 	     </blockquote>`)
       fun msgAddr s = 
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>
 	     An address may contain digits, letters from the alphabet including:
 	     <b>'</b>, <b>\\ </b>, <b>-</b>, <b>.</b>, <b>:</b> og <b>;</b> og <b>,</b>,
 	     <b>æ</b>,<b>ø</b>,<b>å</b>,<b>Æ</b>,<b>Ø</b>,<b>Å</b>,<b>ü</b>,<b>á</b>
 	     </blockquote>`
-	 | ScsLang.Danish => `^s
+	 | ScsLang.da => `^s
 	     <blockquote>
 	     En adresse må indeholde tal, bogstaver fra alfabetet samt disse tegn: 
 	     <b>'</b>, <b>\\ </b>, <b>-</b>, <b>.</b>, <b>:</b> og <b>;</b> og <b>,</b>,
@@ -349,14 +350,14 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     </blockquote>`)
       fun msgLogin s = 
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>
 	     A login may contain lowercase letters from the alphabet and digits - the first
 	     character must not be a digit. Special characters 
 	     like <b>æ</b>,<b>ø</b>,<b>å</b>,<b>;</b>,<b>^^</b>,<b>%</b> are not alowed. 
 	     A login must be no more than 10 characters and at least three characters.
 	     </blockquote>`
-	 | ScsLang.Danish => `^s
+	 | ScsLang.da => `^s
 	     <blockquote>
 	     Et login må indeholde bogstaver fra alfabetet og tal - det første tegn må 
 	     ikke være et tal. Specialtegn såsom <b>æ</b>,<b>ø</b>,<b>å</b>,<b>;</b>,
@@ -365,41 +366,41 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     </blockquote>`)
       fun msgPhone s = 
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>
 	     A telephone numer may contain numbers and letters from the alphabet 
 	     including <b>-</b>, <b>,</b> and <b>.</b>.
 	     </blockquote>`
-	 | ScsLang.Danish => `^s
+	 | ScsLang.da => `^s
 	     <blockquote>
 	     Et telefonnummer må indeholde tal og bogstaver fra alfabetet
 	     samt <b>-</b>, <b>,</b> and <b>.</b>.
 	     </blockquote>`)
       fun msgHTML s = 	
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>
 	     You may use the following HTML tags in your text: Not implemented yet.
 	     </blokcquote>`
-	 | ScsLang.Danish => `^s
+	 | ScsLang.da => `^s
 	     <blockquote>
 	     Det er tilladt at anvende følgende HTML tags i din tekst: Desværre ikke implementeret.
 	     </blokcquote>`)
       fun msgURL s = 
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>
 	     <a href="/url_desc.sml">URL (Uniform Resource Locator)</a> - 
 	     we only support the <code>http://</code> type (e.g., <code>http://www.it.edu</code>).
 	     </blockquote>`
-	 | ScsLang.Danish => `^s
+	 | ScsLang.da => `^s
 	     <blockquote>
 	     <a href="/url_desc.sml">URL (Uniform Resource Locator)</a> - 
 	     vi supporterer kun <code>http://</code> type (f.eks. <code>http://www.it-c.dk</code>).
 	     </blockquote>`)
       fun msgCpr s = 
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>
 	     If you hold a Danish CPR-number, then the format is:
 	     <code>DDMMYYYY-TTTT</code>, where <code>TTTT</code> are four numbers, for instance
@@ -420,7 +421,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     Moren, born August 31, 1975 writes: <b>310875-CLM1</b>.
 	     
 	     </blockquote>`
-	 | ScsLang.Danish => `^s
+	 | ScsLang.da => `^s
 	     <blockquote>
 	     Hvis du har et dansk CPR-nummer, så er formatet:
 	     DDMMYYYY-TTTT, hvor TTTT er fire tal, eksempelvis
@@ -444,48 +445,48 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     </blockquote>`)
       fun msgEnum enums s =
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     You must choose among the following enumerations:
 	     <blockquote>
 	     ^(String.concatWith "," enums)
 	     </blockquote>`
-	| ScsLang.Danish => `^s
+	| ScsLang.da => `^s
 	     Du skal indtaste en af de følgende værdier:
 	     <blockquote>
 	     ^(String.concatWith "," enums)
 	     </blockquote>`)
       fun msgDateIso s = 
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>
 	     You must type a <b>date</b> in the ISO format <code>YYYY-MM-DD</code> (e.g., 2001-10-25).
 	     </blockquote>`
-	| ScsLang.Danish => `^s
+	| ScsLang.da => `^s
 	     Du skal indtaste en <b>dato</b> i ISO formatet, dvs. <code>YYYY-MM-DD</code> (f.eks. 2001-10-25).
 	     </blockquote>`)
       fun msgDate s = 
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>
 	     You must type a <b>date</b> in either the Danish format <code>DD/MM-YYYY</code> (e.g., 25/01-2001) or 
 	     the ISO format <code>YYYY-MM-DD</code> (e.g., 2001-01-25).
 	     </blockquote>`
-	| ScsLang.Danish => `^s
+	| ScsLang.da => `^s
 	     Du skal indtaste en <b>dato</b> enten i formatet <code>DD/MM-YYYY</code> (f.eks. 25/01-2001) eller
 	     i formatet <code>YYYY-MM-DD</code> (f.eks. 2001-01-25).
 	     </blockquote>`)
       fun msgTableName s = 
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>
 	     You have not specified a valid <b>table name</b>
 	     </blockquote>`
-	| ScsLang.Danish => `^s
+	| ScsLang.da => `^s
 	     Du har ikke specificeret et korrekt <b>tabelnavn</b>.
 	     </blockquote>`)
       fun msgRegExp s = 
 	(case ScsLogin.user_lang of
-	   ScsLang.English => `^s
+	   ScsLang.en => `^s
 	     <blockquote>
 	     You must type a <b>regular expression</b> defined as follows.<p>
 	     <pre>
@@ -513,7 +514,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
  Whitespace is significant.  Special characters can be escaped by \  
 </pre>
 	     </blockquote>`
-	| ScsLang.Danish => `^s
+	| ScsLang.da => `^s
 	     <blockquote>
 	     Du skal indtaste et <b>regulært udtryk</b> defineret således.<p>
 	     <pre>
@@ -541,7 +542,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
  Mellemrum har betydning. Tegn escapes ved \  
 </pre>
 	     </blockquote>`)
-      fun msgLang s = msgEnum (List.map (% o ScsLang.toString) ScsLang.all) s 
+      fun msgLang s = msgEnum (ScsLang.all_as_text ScsLogin.user_lang) s
 
       fun convCpr cpr =
 	case String.explode (trim cpr) of
@@ -656,7 +657,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
       val getDateIso = getErr' (%"date") msgDateIso chkDateIso
       val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate (%"date") msgDate chkDate
       val getTableName = getErr' (%"table name") msgTableName (regExpMatch "[a-zA-Z_]+")
-      val getLangErr = getErr ScsLang.English ScsLang.fromString (%"language") msgLang chkLang
+      val getLangErr = getErr ScsLang.en ScsLang.fromString (%"language") msgLang chkLang
       val getRegExpErr = getErr (RegExp.fromString "$") RegExp.fromString (%"regular expression") msgRegExp chkRegExp
     end
 

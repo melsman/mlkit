@@ -37,26 +37,40 @@ is
   procedure destroy(
     role_id	 in scs_roles.role_id%TYPE default null,
     abbreviation in scs_roles.abbreviation%TYPE default null
-  ) ;
+  );
+
+  function abbrev_to_roleid(
+    role_abbrev in scs_roles.abbreviation%TYPE
+  ) return scs_roles.role_id%TYPE;
 
   procedure add(
     party_id	in scs_parties.party_id%TYPE,
     role_id	in scs_roles.role_id%TYPE
-  ) ;
+  );
 
   procedure add(
     party_id	in scs_parties.party_id%TYPE,
     role_abbrev in scs_roles.abbreviation%TYPE
-  ) ;
+  );
 
   procedure remove(
     party_id	in scs_parties.party_id%TYPE,
     role_id	in scs_roles.role_id%TYPE  
-  ) ;
+  );
+
+  procedure remove(
+    party_id	in scs_parties.party_id%TYPE,
+    role_abbrev in scs_roles.abbreviation%TYPE
+  );
 
   function has_p(
     party_id	in scs_parties.party_id%TYPE,
     role_id	in scs_roles.role_id%TYPE
+  ) return char;
+
+  function has_p(
+    party_id	in scs_parties.party_id%TYPE,
+    role_abbrev in scs_roles.abbreviation%TYPE
   ) return char;
 
 end scs_role;
@@ -85,7 +99,6 @@ is
     return role_id;
   end new;
 
-
   procedure destroy(
     role_id	 in scs_roles.role_id%TYPE default null,
     abbreviation in scs_roles.abbreviation%TYPE default null
@@ -111,8 +124,27 @@ is
     delete from scs_roles
     where role_id = v_role_id;
 
+  exception
+    when others then
+      return; -- we silently ignore that the role does not exists.
   end destroy;
 
+  function abbrev_to_roleid(
+    role_abbrev in scs_roles.abbreviation%TYPE
+  ) return scs_roles.role_id%TYPE
+  is 
+    v_role_id scs_roles.role_id%TYPE;
+  begin
+    select scs_roles.role_id
+      into v_role_id
+      from scs_roles
+     where scs_roles.abbreviation = abbrev_to_roleid.role_abbrev;
+    return v_role_id;
+
+  exception
+    when others then
+      raise_application_error(scs.ScsDbExn,'scs_role.abbrev_to_roleid: role ' || role_abbrev || ' does not exists');
+  end abbrev_to_roleid;
 
   procedure add(
     party_id	in scs_parties.party_id%TYPE,
@@ -121,10 +153,12 @@ is
   is
   begin
     insert into scs_role_rels( party_id, role_id ) values ( add.party_id, add.role_id );
-    commit;
   exception
     when dup_val_on_index then 
-      commit; -- if party_id has the role already
+      return; -- if party_id has the role already
+    when others then
+      raise_application_error(scs.ScsDbExn,'scs_role.add: role_id ' || role_id || ' or ' ||
+                                           'party_id ' || party_id || ' does not exists');
   end add;
 
   procedure add(
@@ -132,16 +166,14 @@ is
     role_abbrev in scs_roles.abbreviation%TYPE
   )
   is
-    v_role_id scs_roles.role_id%TYPE;
   begin
-    select scs_roles.role_id
-      into v_role_id
-      from scs_roles
-     where scs_roles.abbreviation = add.role_abbrev;
-    add(party_id,v_role_id);
+    scs_role.add(party_id => party_id,
+                 role_id => scs_role.abbrev_to_roleid(add.role_abbrev));
+
   exception
     when others then
-      raise_application_error(scs.ScsDbExn,'scs_role.add: role ' || role_abbrev || ' does not exists');
+      raise_application_error(scs.ScsDbExn,'scs_role.add: role ' || role_abbrev || ' or ' ||
+                                           'party_id ' || party_id || ' does not exists');
   end add;
 
   procedure remove(
@@ -153,9 +185,20 @@ is
     delete from scs_role_rels 
     where party_id = remove.party_id 
       and role_id = remove.role_id;
-    commit;
   end remove;
 
+  procedure remove(
+    party_id	in scs_parties.party_id%TYPE,
+    role_abbrev in scs_roles.abbreviation%TYPE
+  ) 
+  is
+  begin
+    scs_role.remove(party_id => remove.party_id,
+                    role_id => scs_role.abbrev_to_roleid(remove.role_abbrev));
+  exception
+    when others then
+      return; -- Ignore, that role or party_id does not exist.
+  end remove;
 
   function has_p(
     party_id	in scs_parties.party_id%TYPE,
@@ -176,6 +219,19 @@ is
     end if;
 
     return answer;
+  end has_p;
+
+  function has_p(
+    party_id	in scs_parties.party_id%TYPE,
+    role_abbrev in scs_roles.abbreviation%TYPE
+  ) return char
+  is
+  begin
+    return has_p(party_id => party_id,
+                 role_id => scs_role.abbrev_to_roleid(has_p.role_abbrev));
+  exception
+    when others then
+      return 'f'; -- Role does not exists.
   end has_p;
 
 end scs_role;

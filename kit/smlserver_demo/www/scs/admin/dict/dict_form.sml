@@ -1,6 +1,6 @@
-val % = ScsDict.d ScsLang.English
-val %% = ScsDict.d' ScsLang.English
-val d3 = ScsDict.d3' ScsLang.English
+val % = ScsDict.d ScsLang.en "scs" "admin/dict/dict_form.sml"
+val %% = ScsDict.d' ScsLang.en "scs" "admin/dict/dict_form.sml"
+val dl' = ScsDict.dl' ScsLang.en "scs" "admin/dict/dict_form.sml"
 
 val (target_lang,errs) = ScsFormVar.getLangErr ("target_lang", %"target language", ScsFormVar.emptyErr)
 val (source_lang,errs) = ScsFormVar.getLangErr ("source_lang", %"source language", errs)
@@ -95,15 +95,15 @@ val _ =
   languages.<p>` ^^ (ScsWidget.formBox "dict_form.sml" [("submit",%"Show Dictionary"),("submit",%"Empty Cache"),("submit",%"Export Dictionary")] (`
 		     Source language` ^^ (ScsWidget.selectLang source_lang "source_lang") ^^ `
 		     <br> Target language` ^^ (ScsWidget.selectLang target_lang "target_lang") ^^ 
-   (d3 `<br>Search on %0  <br> using the regular expression %1 <br>
-    (leave <b>$</b> to get all empty phrases and type <b>.*</b> to get all phrases).<p>
-         Limit rows: %2` 
-	 (Quot.toString (ScsWidget.selectWithDefault [(%"source phrases","source"),
-						      (%"target phrases","target"),(%"script filenames","script")]
-			 search_lang "search_lang"))
-	 (Quot.toString (ScsWidget.intextVal 20 regexp_str "regexp"))
-	 (Quot.toString (ScsWidget.intextVal 5 limit_rows "limit_rows")))
-)) ^^ `<p><hr>` ^^ entry_forms)
+   (dl' [(Quot.toString (ScsWidget.selectWithDefault [(%"source phrases","source"),
+						      (%"target phrases","target"),
+						      (%"script filenames","script")]
+			 search_lang "search_lang")),
+	 (Quot.toString (ScsWidget.intextVal 20 regexp_str "regexp")),
+	 (Quot.toString (ScsWidget.intextVal 5 limit_rows "limit_rows"))]
+    `<br>Search on %0  <br> using the regular expression %1 <br>
+       (leave <b>$</b> to get all empty phrases and type <b>.*</b> to get all phrases).<p>
+       Limit rows: %2` ) )) ^^ `<p><hr>` ^^ entry_forms)
 
 
 

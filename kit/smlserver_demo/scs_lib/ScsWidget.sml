@@ -35,12 +35,14 @@ signature SCS_WIDGET =
 
     val maybe           : string -> quot -> quot
 
+    (* [selectLang lang default] returns an HTML selection box with
+    all languages in the users default language. *)
     val selectLang      : ScsLang.lang -> string -> quot
   end
 
 structure ScsWidget :> SCS_WIDGET =
   struct
-    val % = ScsDict.d ScsLang.English
+    val % = ScsDict.d ScsLang.en "scs_lib" "ScsWidget.sml"
     fun namedBox hdcolor bgcolor title body = `
       <table border=0 bgcolor="^hdcolor" cellpadding=1 cellspacing=0>
       <tr><td><table border=0 bgcolor="^bgcolor" cellpadding=3 cellspacing=0 width=100%>
@@ -109,11 +111,11 @@ structure ScsWidget :> SCS_WIDGET =
       (case ls of
 	[] => (ScsPage.returnPg (%"Can't find " ^ text) 
 	       (case ScsLogin.user_lang of
-		  ScsLang.English => `
+		  ScsLang.en => `
 		    We had a problem finding ^text.<p>
 		    Please back up using your browser, and resubmit your entry<p>
 		    Thank you.`
-		| ScsLang.Danish => 
+		| ScsLang.da => 
 		    `Vi kan ikke finde ^text.<p>
 		    Vær venlig at klikke på "tilbage"-knappen i din browser, og
 		    indsend dine oplysninger igen<p>
@@ -167,7 +169,6 @@ structure ScsWidget :> SCS_WIDGET =
     fun maybe fv text = if fv = "" then `` else text
 
     fun selectLang default fv = 
-      selectWithDefault (List.map (fn l => (% (ScsLang.toString l),ScsLang.toString l)) ScsLang.all) 
+      selectWithDefault (ScsLang.all_for_sel_box ScsLogin.user_lang)
       (ScsLang.toString default) fv
-
   end

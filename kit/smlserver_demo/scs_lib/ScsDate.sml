@@ -133,8 +133,8 @@ structure ScsDate :> SCS_DATE =
       
     fun pp s = 
       case ScsLogin.user_lang of
-	ScsLang.Danish => ppDk s
-      | ScsLang.English => ppIso s
+	ScsLang.da => ppDk s
+      | ScsLang.en => ppIso s
 
     fun ppDb s =
       case s

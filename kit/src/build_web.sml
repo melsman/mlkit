@@ -12,6 +12,8 @@ in
   val _ = (disable "garbage_collection";
 	   disable "cross_module_opt";   (* better module reuse *)
 	   K.Flags.SMLserver := true;
+           K.Flags.WEBserver := "AOLServer";
+           (*K.Flags.WEBserver := "Apache";*)
 	   enable "quotation";    (* support for quotation-antiquotation *)
 	   K.build_basislib() ;
 	   K.install() 

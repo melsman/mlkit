@@ -30,13 +30,13 @@ structure ScsError :> SCS_ERROR =
 	(logError emsg;
 	 emailError emsg;
 	 case ScsLogin.user_lang of
-	   ScsLang.English =>
+	   ScsLang.en =>
 	     ScsPage.returnPg "System Error" `
 	     It seems that the system can't complete your request.<p>
 	     This is probably our fault. The system administrator has been
 	     notified.<p>
 	     Please try again later`
-	 | ScsLang.Danish => ScsPage.returnPg "Systemfejl" `
+	 | ScsLang.da => ScsPage.returnPg "Systemfejl" `
 	     Vi kan desværre ikke fuldføre din forespørgsel.<p>
 	     Dette er sandsynligvis vores fejl. Vores systemadministrater 
 	     er blevet informeret om problemt.<p>

@@ -6,10 +6,10 @@ signature SCS_REAL =
 
 structure ScsReal :> SCS_REAL =
   struct
-    fun toString ScsLang.Danish r = 
+    fun toString ScsLang.da r = 
       String.map (fn c => if c = #"." then #"," else if c = #"," then #"." else c)
       (Real.fmt (StringCvt.FIX(SOME 2)) r)
-    | toString ScsLang.English r = Real.fmt (StringCvt.FIX(SOME 2)) r
+    | toString ScsLang.en r = Real.fmt (StringCvt.FIX(SOME 2)) r
 
     local
       fun fromString' s =
@@ -17,8 +17,8 @@ structure ScsReal :> SCS_REAL =
 	  NONE => ScsError.panic `ScsLang.fromString: ^s not a real`
 	| SOME r => r
     in
-      fun fromString ScsLang.Danish s =
+      fun fromString ScsLang.da s =
 	fromString' (String.map (fn c => if c = #"." then #"," else if c = #"," then #"." else c) s)
-      | fromString ScsLang.English s = fromString' s
+      | fromString ScsLang.en s = fromString' s
     end
   end

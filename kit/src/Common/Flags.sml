@@ -1149,6 +1149,7 @@ val help_all = Directory.help_all
 val interact = Menu.interact
 
 val SMLserver = ref false
+val WEBserver = ref "AOLserver"
 
 structure Statistics = 
   struct

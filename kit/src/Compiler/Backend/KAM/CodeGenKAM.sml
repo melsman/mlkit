@@ -455,7 +455,11 @@ struct
 	 | ClosExp.Unit => acc
 
     fun name_to_built_in_C_function_index name = 
-      if !Flags.SMLserver then BuiltInCFunctions.name_to_built_in_C_function_index_nssml name
+      if !Flags.SMLserver then 
+        if !Flags.WEBserver = "Apache" then 
+	  BuiltInCFunctions.name_to_built_in_C_function_index_apsml name
+	else
+	  BuiltInCFunctions.name_to_built_in_C_function_index_nssml name
       else BuiltInCFunctions.name_to_built_in_C_function_index name
 
     fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp,acc)
