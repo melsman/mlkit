@@ -112,6 +112,7 @@ functor DecisionTree(structure Lab: LAB
 		   get to a decision tree node with no live rules left -
 		   this is essentially our inexhaustiveness condition. *)
 
+
   (* Printing (layout) routines: I need them here because I use them
      internally. *)
 
@@ -121,6 +122,8 @@ functor DecisionTree(structure Lab: LAB
       FinMap.Fold (fn ((d, r), strs) => f (d, r) :: strs) nil map
 
     val printRules = List.stringSep "[" "]" ", " Int.string
+
+
 
    (* layoutDecisionTree pulls the same sort of trick as layoutLambdaExp:
       any sequence of decomposition bindings is printed at a single level
@@ -541,9 +544,14 @@ old *)
 	     )
 
 	 | (here, (dec as DECISION{path, select, defaults})) :: decs =>
+(*
            (case finalDecision liveRules dec of
               EqSetList.ONE rule => bindIdentifiers compileTypeScheme (root, pats, rule)
             | _ => 
+*)            
+           (case DecisionList.deterministic (fn rules => rules /\ liveRules) (map #2 sortedList) of
+              Some rule => bindIdentifiers compileTypeScheme (root, pats, rule)
+            | None =>
 	     let
 			(* includeIt: only hang on to those constructors which
 			   have rules which are live. `includeIt' determines

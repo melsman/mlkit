@@ -337,7 +337,6 @@ struct
                  end)                
           | CCALL ({name, rhos_for_result, ...}, trips) => (*Calling C functions*)
                 (List.apply infer_trip trips;
-
                  (*We produce a `put(rho) : m' for every rho which occurs in
 		  the result type.  If rho occurs in a LIST type then m is
 		  INFINITE---otherwise it is NUM 1.  To do this, we use the
@@ -385,13 +384,17 @@ struct
       and inf_rh_sides(functions, shared_clos) =
         let
           val t0 = Mul.last_increment()
-          val _ = List.apply (fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,other,bind} =>
+          val _ = List.apply (fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
+                                  bound_but_never_written_into,
+                                  other,bind} =>
                 let val qmul = Mul.makeqmularefset(rhos,epss,Psi,shared_clos,cone)
                 in
                     other:= qmul
                 end) functions
         in
-          List.apply(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,other,bind} => 
+          List.apply(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
+                         bound_but_never_written_into,
+                         other,bind} => 
                            (infer_trip(bind);
                             (* update type scheme for the function, if there has been
                                a change. *)
@@ -478,7 +481,7 @@ struct
                            raise Abort exn)
 
       and set_rh_sides(functions, shared_clos) =
-          List.apply(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,other,bind} => 
+          List.apply(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,bound_but_never_written_into,other,bind} => 
                            (set_trip(bind);
                             (* Set the PUT multiplicites of the formal region variables *)
                             case Type of

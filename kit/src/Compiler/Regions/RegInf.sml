@@ -13,7 +13,7 @@ functor RegInf(
   structure PrettyPrint : PRETTYPRINT
      sharing type PrettyPrint.StringTree
                   = RType.StringTree = RSE.StringTree 
-                  = Effect.StringTree = Exp.StringTree
+                  = Effect.StringTree = Exp.StringTree 
   structure Flags: FLAGS
     sharing type RSE.place = RType.place = Exp.place
         and type Exp.effect = RType.effect = RType.place = Effect.effect
@@ -38,10 +38,15 @@ struct
   fun footnote(x,y) = x
   infix footnote
 
-  exception AbortExp of string
+  exception AbortExp  (* Region inference of any expression is 
+                         enclosed in a handle which handles any
+                         exception - except AbortExp - (typically Crash.impossible)
+                         and converts it to AbortExp. Then AbortExp
+                         is propagated to the top-level call of 
+                         the region inference algorithm, which 
+                         calls Crash.impossible *)
 
   fun die msg = Crash.impossible ("R." ^ msg)
-  fun dieR msg = raise AbortExp (msg)
 
   fun say s = output(std_out, s)
   fun checkMsgOpt (Some msg) = Flags.warnings:= (msg^"\n") :: (!Flags.warnings)
@@ -73,10 +78,10 @@ struct
   fun Below(B, mus) =
     let val free_rhos_and_epss = ann_mus mus []
         val B' = List.foldL  (Effect.lower(Effect.level B - 1)) B free_rhos_and_epss
-                 handle _ => raise AbortExp "Below.lower failed\n"
+                 handle _ => die "Below.lower failed\n"
     in 
         popAndClean(B')
-            handle _ => dieR "Below.popAndClean failed\n"
+            handle _ => die "Below.popAndClean failed\n"
     end
 
 
@@ -116,6 +121,21 @@ struct
     fun sayCone B = PrettyPrint.outputTree(device,Effect.layoutCone B,!Flags.colwidth);
     fun sayLn s = (output(std_out, s ^ "\n");
                    device(s ^ "\n"))
+    fun logtree(t:PrettyPrint.StringTree) = PrettyPrint.outputTree(device, t, !Flags.colwidth)
+    fun log_sigma(sigma_5hat, f) = 
+      (case RType.bv sigma_5hat of 
+         ([], _, _) => 
+           (sayLn ("***" ^ Lvar.pr_lvar f ^ " is:");
+            logtree(RType.mk_lay_sigma false sigma_5hat);
+            device "\n")
+       | (alpha::alphas,[],_) =>
+           (sayLn ("******" ^ Lvar.pr_lvar f ^ " is polymorphic with escaping regions:");
+            logtree(RType.mk_lay_sigma false sigma_5hat);
+            device "\n")
+       | (alpha::alphas,_,_) =>
+           (sayLn ("***" ^ Lvar.pr_lvar f ^ " is polymorphic:");
+            logtree(RType.mk_lay_sigma false sigma_5hat);
+            device "\n"));
 
     val count_visited = ref 0  (* number of nodes visited in the abstract syntax tree *)
     val count_RegEffClos = ref 0 (* number of times regEffClos is called *)
@@ -150,12 +170,12 @@ struct
                  let 
                    val (tau_1,B,updates: (effect * Effect.delta_phi)list) = instClever(sigma,il)(B)
                      handle Crash.CRASH =>
-                       dieR ("inst failed; type scheme:\n" ^
+                       die ("inst failed; type scheme:\n" ^
                              PrettyPrint.flatten1(RType.mk_lay_sigma false (sigma)) ^ "\n")
                  in
                    case mt of 
                      Exp.Mus [(tau, _)] =>
-                       (let val B' = (unify_ty(tau,tau_1)B handle _ => dieR "unify_ty failed\n");
+                       (let val B' = (unify_ty(tau,tau_1)B handle _ => die "unify_ty failed\n");
                         in
                             List.apply update_increment    updates;
                             List.apply (update_areff o #1) updates
@@ -163,9 +183,9 @@ struct
                             (B',Effect.Lf[])
                         end
                        )
-                   | _ => dieR ("R.VAR{...}: bad metatype")
+                   | _ => die ("R.VAR{...}: bad metatype")
                  end
-              | None => dieR ("R.VAR{...}: free lvar" ^ Lvar.pr_lvar lvar)
+              | None => die ("R.VAR{...}: free lvar" ^ Lvar.pr_lvar lvar)
             )
          end
        | Exp.INTEGER _ => (B, Effect.Lf [])
@@ -190,14 +210,14 @@ struct
                     update_areff(eps_phi0);
                     (B, Effect.Lf [])
                 end
-            | _ => dieR "R: FN expression had bad meta type")
+            | _ => die "R: FN expression had bad meta type")
            
    
        | Exp.LETREGION_B{B = B1, discharged_phi, body} =>
            let
              val discharged_basis = !B1
              val B = pushLayer(discharged_basis,B) handle _ =>
-                       dieR "pushLayer failed\n"
+                       die "pushLayer failed\n"
              val (B, delta_phi_body) = R(B,rse,body)
 
            in
@@ -210,6 +230,7 @@ struct
            let 
                val (B,d1) = R(B,rse,bind)
                val sigma' = RType.type_to_scheme tau1'
+               val _ = log_sigma(RType.insert_alphas(alphas, sigma'), lvar)
                val rse' = RSE.declareLvar(lvar,(false,false,insert_alphas(alphas, sigma'), 
                                                 rho1', None, None),
                                           rse)
@@ -217,7 +238,7 @@ struct
             in
                (B, Effect.Br(d1,d2))
             end
-       | Exp.LET _ => dieR "LET.multiple bindings not implemented." 
+       | Exp.LET _ => die "LET.multiple bindings not implemented." 
        | Exp.FIX{shared_clos = rho0,
                  functions,
                  scope = t2} =>
@@ -242,17 +263,19 @@ struct
               let
                     fun Rrec(B3,sigma_3hat,previous_functions_ok:bool) =
                       let
-                       (* val _ = sayLn("fix:entering Rrec " ^ Lvar.pr_lvar f ^ ":" ^ show_sigma sigma_3hat)*)
+                        val _ = sayLn("fix:entering Rrec " ^ Lvar.pr_lvar f (*^ ":" ^ show_sigma sigma_3hat*))
                        (* val _ = sayCone B3*)
                        (* val _ = sayLn("before rename , sigma is " ^ show_sigma (sigma_3hat))*)
                         val sigma3_hat_save = alpha_rename(sigma_3hat,B3) (* for checking 
                                                                                    alpha_equality below *)
+                               handle _ => die("failed to rename type scheme " ^ 
+                                                show_sigma sigma_3hat)
 
                        (* val _ = sayLn("after  rename , sigma is " ^ show_sigma sigma3_hat_save)*)
                         val rse' = RSE.declareLvar(f,(true,true,sigma3_hat_save, rho0, Some occ, None),rse) (*mads 5/2/97*)
                         val bv_sigma3_hat as (_,rhos,epsilons) = RType.bv sigma_3hat
                         val B3' = pushLayer(sort(epsilons@rhos), B3)
-                                    handle _ => dieR "pushLayer failed\n"
+                                    handle _ => die "pushLayer failed\n"
                         val (B4,delta_rhs) = R(B3', rse',bind)
                         val _ = count_RegEffClos:= !count_RegEffClos+1
                         val (B5,sigma_5hat, msg_opt) = regEffClos(B4, Effect.level(B3),phi4,tau4)
@@ -262,11 +285,12 @@ struct
                         (*val _ = Profile.profileOn();*)
                       in
                          if alpha_equal(sigma3_hat_save, sigma_5hat) B5 (*footnote Profile.profileOff()*)
-                              handle _ => dieR ("alpha_equal failed\n" ^
-                                                "sigma_3_hat_save = \n" ^ show_sigma sigma3_hat_save ^
-                                                "\nsigma5_hat       = \n" ^ show_sigma sigma_5hat)
+                              handle _ => die ("alpha_equal failed\n" ^
+                                               "sigma_3_hat_save = \n" ^ show_sigma sigma3_hat_save ^
+                                               "\nsigma5_hat       = \n" ^ show_sigma sigma_5hat)
                          then 
                                 ((*sayLn("fix:  leaving " ^ Lvar.pr_lvar f);*)
+                                 log_sigma(RType.insert_alphas(alphavec,sigma_5hat), f);
                                  (* update bindings in syntax tree *)
                                  rhosr:= newrhos;  
                                  epssr:= newepss;
@@ -276,10 +300,10 @@ struct
                            let 
                              val transformer = matchSchemes(sigma_3hat, sigma_5hat)
                                     handle RType.FAIL_MATCH msg =>
-                                    dieR ("failed to match type schemes at FIX " ^ Lvar.pr_lvar f ^ "\n" ^ msg)
+                                    die ("failed to match type schemes at FIX " ^ Lvar.pr_lvar f ^ "\n" ^ msg)
                              val _ = map (fn (r as ref(il,f)) => r:= (il, transformer o f)) (!occ)
                                     handle RType.FAIL_MATCH msg =>
-                                    dieR ("failed to transform instantiation lists at FIX " 
+                                    die ("failed to transform instantiation lists at FIX " 
                                           ^ Lvar.pr_lvar f ^ "\n" ^ msg)
                            in
                              (* update bindings in syntax tree *)
@@ -292,7 +316,7 @@ struct
                in
                    (fn B => Rrec(B, RType.FORALL([],rhovec,epsvec,tau0),true))
                end
-		| doOneRhs _ _ = dieR "doOneRhs.wrong bind"
+		| doOneRhs _ _ = die "doOneRhs.wrong bind"
               
               fun loop(B, [], true, rse) = B
                 | loop(B, [], false, rse) = loop(B,functions,true,rse)
@@ -375,18 +399,22 @@ struct
             (B, Effect.Lf[])
            )
        ) (* case *)
-          handle AbortExp msg =>
+          handle AbortExp  => raise AbortExp 
+               | _ => 
           (device "Region inference failed (function R)\n";
-           device msg;
+           device "Smallest enclosing expression:\n";
            PrettyPrint.outputTree(device,layoutExp(e),!Flags.colwidth);
+           device "Region Static Environment:\n";
+           PrettyPrint.outputTree(device,RSE.layout(rse),!Flags.colwidth);
            device "\n";
-           die "***Region inference failed***\n"
+           raise AbortExp
           )
 
       end (* let fun R_sw ...*)
   in
      Effect.algorithm_R:=true;
-     (*show_visited o  *) #1 o R   (* for toplas submission: call show_visited*)
+     (* for toplas submission: insert call show_visited *)
+     (fn x => (* show_visited *) (#1(R x)) handle AbortExp => Crash.impossible "R failed")
   end;
 
 

@@ -53,7 +53,7 @@ functor SpreadExpression(
     sharing type TyName.TyName = E.TyName = E'.TyName = RSE.TyName =  R.tyname
   structure Crash: CRASH
   structure PP: PRETTYPRINT
-    sharing type PP.StringTree =  E.StringTree = RSE.StringTree 
+    sharing type PP.StringTree =  E.StringTree = RSE.StringTree  = R.StringTree
   structure CConst : C_CONST
     sharing TyName = CConst.TyName
 ): SPREAD_EXPRESSION =
@@ -81,6 +81,26 @@ struct
   infix footnote
   fun x footnote y = x
   fun say(s) = output(std_out, s ^ "\n");
+  fun logsay(s) = output(!Flags.log, s);
+  fun logtree(t:PP.StringTree) = PP.outputTree(logsay, t, !Flags.colwidth)
+
+  fun log_sigma(sigma1, lvar) = 
+    case R.bv sigma1 of 
+      ([], _, _) => 
+        (say ("***" ^ Lvars.pr_lvar lvar ^ " is:");
+         logsay (Lvars.pr_lvar lvar ^ " is:\n");
+         logtree(R.mk_lay_sigma false sigma1);
+         logsay "\n")
+    | (alpha::alphas,[],_) =>
+        (say ("******" ^ Lvars.pr_lvar lvar ^ " is  polymorphic with escaping regions");
+         logsay (Lvars.pr_lvar lvar ^ " is polymorphic with escaping regions:\n");
+         logtree(R.mk_lay_sigma false sigma1);
+         logsay "\n")
+    | (alpha::alphas,_,_) =>
+        (say ("***" ^ Lvars.pr_lvar lvar ^ " is  polymorphic");
+         logsay (Lvars.pr_lvar lvar ^ " is polymorphic:\n");
+         logtree(R.mk_lay_sigma false sigma1);
+         logsay "\n");
 
   fun noSome x msg = 
     case x of 
@@ -467,6 +487,7 @@ struct
                         B, rse, pat'_list) =
                  let  
                       val sigma = R.type_to_scheme tau_1
+                      val _ = log_sigma(R.insert_alphas(alphas, sigma),lvar)
                       val rse = (*RSE.*)declareLvar(lvar,
                                  (false,false,R.insert_alphas(alphas, sigma), 
                                   rho_1, None, None),rse)
@@ -672,6 +693,18 @@ good *)
     | E.PRIM(E.LESSEQ_INTprim,[e1,e2])    => S_built_in(B, Lvars.lesseq_int_lvar, [e1,e2])
     | E.PRIM(E.GREATER_INTprim,[e1,e2])   => S_built_in(B, Lvars.greater_int_lvar, [e1,e2])
     | E.PRIM(E.GREATEREQ_INTprim,[e1,e2]) => S_built_in(B, Lvars.greatereq_int_lvar, [e1,e2])
+    | E.PRIM(E.EQUAL_INTprim,[e1_ML: E.LambdaExp,e2_ML: E.LambdaExp]) => 
+        let
+	    val (B,t1 as E'.TR(e1, E'.Mus [mu1 as (_,rho_1)],phi1)) = S(B,e1_ML, false)
+	    val (B,t2 as E'.TR(e2, E'.Mus [mu2 as (_,rho_2)],phi2)) = S(B,e2_ML, false)
+            val (rho,B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
+            val mus = [(R.boolType,rho)]
+        in
+            (B, E'.TR(E'.EQUAL({mu_of_arg1=mu1, mu_of_arg2 = mu2, alloc = rho},
+                               t1, t2),
+                      E'.Mus mus,
+                    (*Eff.*)mkUnion([mkGet rho_1, mkGet rho_2, mkPut rho])))
+        end
 
     (* REAL OPERATIONS *)
     | E.PRIM(E.PLUS_REALprim,e1::e2::_)   => S_built_in(B, Lvars.plus_float_lvar, [e1,e2])
@@ -710,7 +743,6 @@ good *)
         let 
           val sigma = noSome ((*RSE.*)lookupCon rse con) "S (CONprim): constructor not in RSE"
           val (B, tau', il) = newInstance(B,sigma,instances)
-(*          val (rho, B) = (*Eff.*)freshRhoWithTy(runtype tau', B)*)
           val (mu1,_,mus2,mu2) = case tau' of R.FUN(mu1,areff, mus2 as [mu2]) => (mu1,areff,mus2,mu2)
                                   | _ => die "S: unary constructor not functional"
           val (B, t1 as E'.TR(e1', E'.Mus mu1', phi1)) = S(B, arg, false)
@@ -1068,6 +1100,7 @@ good *)
             fun spreadRhss(B)[] = (B,[]) 
               | spreadRhss(B)((lvar,tyvars,sigma_hat,bind)::rest) =
                   let 
+                    val _ = output(std_out, "spreading: " ^ Lvars.pr_lvar lvar ^ "\n")
                     val B = (*Eff.*)push(B)
                       val (B, t1 as E'.TR(_, E'.Mus [(tau1, rho1)], phi1)) = spreadExp(B, rse1, bind,false)
                       val B = (*Eff.*)unifyRho(rho1,rho) B          
@@ -1075,6 +1108,8 @@ good *)
                       val (B,sigma1,msg_opt) = regEffClos(B, retract_level, phi1, tau1)
                       val _ = warn(lvar,msg_opt)
                     val (_,B) = (*Eff.*)pop B (* back to retract level *)
+                    
+                    val _  = log_sigma(R.insert_alphas(tyvars, sigma1), lvar)
                     val (B, l) = spreadRhss(B)(rest)
                   in  
                     (B, (t1,tau1,sigma1)::l)

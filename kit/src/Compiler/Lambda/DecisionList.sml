@@ -191,4 +191,32 @@ functor DecisionList(structure Lab: LAB
 	  		 (fn (L, _) => "#" ^ Lab.pr_Lab L)
 			 path
 	  ^ " : "
+
+
+    fun rulesDecision(DECISION{select, defaults,...}) acc= 
+             rulesSelect select (defaults :: acc)
+    and rulesSelect(CON_SELECT m) acc =
+             FinMap.Fold (fn ((id,(_,subdec)), acc) => rulesSubDecision subdec acc) acc m
+      | rulesSelect(SCON_SELECT(m)) acc = 
+             FinMap.Fold (fn ((scon,subdec), acc) => rulesSubDecision subdec acc) acc m
+      | rulesSelect(EXCON_SELECT(l)) acc = 
+             List.foldL (fn (longid,(_,subdec)) => rulesSubDecision subdec) acc l
+    and rulesSubDecision(SUB_DECISION{rules, decisions}) acc =
+             List.foldL rulesDecision (rules :: acc) decisions
+             
+    type rule = int
+
+    fun deterministic (inter: rule list -> rule list) (l: Decision list): int Option = 
+       let
+           exception FALSE
+           val minima =   
+               List.foldL (fn rules => fn acc => 
+                  case inter rules of [] => acc (*raise FALSE*) | r::_ => r::acc) [] 
+               (List.foldL rulesDecision [] l)
+           fun all_equal(x:: l) = if List.forAll (fn y:int => x=y) l then Some x else None
+             | all_equal [] = None
+       in
+          all_equal(minima) 
+       end handle FALSE => None
+
   end;

@@ -286,6 +286,7 @@ functor OptLambda(structure Lvars: LVARS
 (*KILL 12/11/1997 15:46. tho.:
 	  | NOTEQUALprim _     => ()
 *)
+          | EQUAL_INTprim       => ()
 	  | LESS_INTprim       => ()
 	  | LESS_REALprim      => ()
 	  | GREATER_INTprim    => ()

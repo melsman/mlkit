@@ -88,6 +88,7 @@ signature MUL_EXP =
                                   epss: effect list,                    (* type     *)
 				  Type : Type,                          (* scheme.  *)
 				  rhos_formals: 'b list ref, 
+                                  bound_but_never_written_into: 'b list Option, (* set by DropRegions; used by CompLamb*)
                                   other:  'c,
 				  bind : ('a,'b,'c)trip} list,
 		     scope : ('a,'b,'c)trip}

@@ -248,7 +248,7 @@ functor CompilerEnv(structure Ident: IDENT
     val lvarsOfCEnv = varsOfCEnv lvars_result
     val consOfCEnv = varsOfCEnv cons_result
     val exconsOfCEnv = varsOfCEnv excons_result
-    val primlvarsOfCEnv = varsOfCEnv primlvars_result
+    val primlvarsOfCEnv = varsOfCEnv primlvars_result 
 
     fun tynamesOfCEnv ce : TyName list =
       let fun tynames_TE(TYENV m, acc) = FinMap.fold (op @) acc m 

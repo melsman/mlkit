@@ -888,7 +888,15 @@ functor CompileDec(structure Con: CON
 						   ^ Lvars.pr_lvar lv ^ ")"))
 		              (tyvars,instances')
 		    val il' = CE.on_il(S, il)
-		in APP(VAR{lvar=lv,instances=il'},arg')
+		in if Lvars.pr_lvar lv = "="  (* specialise equality on integers *)
+                      andalso case instances' of 
+                                [CONStype([], tyname)] => TyName.eq(tyname, TyName.tyName_INT)
+                              | _ => false
+                   then PRIM(EQUAL_INTprim, case arg' of
+                                          PRIM(RECORDprim,l ) => l
+                                         | _ => die "compileExp(APPexp..): expected pair")
+                   else
+                     APP(VAR{lvar=lv,instances=il'},arg')
 		end
 
 	    | CE.RESET_REGIONS =>
@@ -937,7 +945,7 @@ functor CompileDec(structure Con: CON
 	   name s of the primitive operation and its arguments.*)
 
           (let val (s, args) = decompose_prim_call atexp
-	       fun f prim =
+	       fun f isequal prim =
 		     let val args' = map (compileExp env) args
 		         val instance' = (case to_TypeInfo info of
 			       Some (TypeInfo.VAR_INFO {instances = [instanceRes, instance]}) =>
@@ -947,19 +955,26 @@ functor CompileDec(structure Con: CON
 			 instances recorded during elaboration.  We need the
 			 instance corresponding to the argument of prim,
 			 which in EfficientCoreElab version is the second*)
-		     in TLE.PRIM (prim {instance=instance'}, args')
+                
+                        (* Specialice EQUALprim to EQUAL_INTprim, when possible *)
+                        val prim' = case (isequal,instance') of
+                                      (true,CONStype([], tyname)) =>
+                                        if TyName.eq(tyname,TyName.tyName_INT) then EQUAL_INTprim 
+                                        else prim {instance=instance'}
+                                    | _ => prim {instance=instance'}
+		     in TLE.PRIM (prim', args')
 		     end
 (*TODO 12/11/1997 18:37. tho.:
 the 12 lines above are very similar to the code below
 *)
 	   in
 	     (case s of
-		"!" => f DEREFprim (*ref (REFprim) is a constructor, so it does not show up here*)
-	      | ":=" => f ASSIGNprim
-	      | "=" => f EQUALprim
+		"!" => f false DEREFprim (*ref (REFprim) is a constructor, so it does not show up here*)
+	      | ":=" => f false ASSIGNprim
+	      | "=" => f true EQUALprim
+
 (*KILL 20/11/1997 15:38. tho.:
  it is wrong to remove "id" here; now it is done in CompLamb.
-
 	      | "id" => 
 		  (*type conversions that result in no code to run at
 		   run-time are declared as prim "id"'s; for instance, ord is

@@ -525,7 +525,9 @@ functor AtInf(structure Lvars: LVARS
                                        SME.declare_lvar_env(lvar,rvars(RType.FORALL(tyvars,rhos,epss,Type),shared_rho),acc))
                                       LE functions
                             val sme' = (RE,LE',EE)
-                            fun do_function {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,other,bind} =
+                            fun do_function {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
+                                             bound_but_never_written_into,
+                                             other,bind} =
                                (case bind of
                                   TR(FN{pat,body,free,alloc}, mu_lam, phi_lam, psi_lam) =>
                                     let
@@ -534,7 +536,9 @@ functor AtInf(structure Lvars: LVARS
                                        val fn' = sma_fn(sme',RE_for_body_of_fn,pat,body,free,alloc)
                                     in 
        			              {lvar=lvar,occ=occ,tyvars=tyvars,rhos=rhos,epss=epss,Type=Type,
-			               rhos_formals=rhos_formals,other=(),
+			               rhos_formals=rhos_formals,
+                                       bound_but_never_written_into=bound_but_never_written_into,
+                                       other=(),
                                        bind=TR(fn', mu_lam,phi_lam,psi_lam)}
                                     end
                                 | _ => die "right-hand side of fun must be a lambda-abstraction"
