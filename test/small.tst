@@ -18,13 +18,20 @@ Test files may contain Standard ML like comments.
 
 *)
 
-int32.sml            gc
-int32_2.sml          gc
-word.sml             gc
-word32.sml           gc 
-word31.sml           gc 
-int31.sml            gc
-int31_2.sml          gc
-int.sml              gc
-int_2.sml            gc
-filesys.sml          gc
+kittmergesort.sml       tx tc gc
+kitqsort.sml            tx tc gc
+kitmandelbrot.sml       tx tc gc
+kitsimple.sml           tx tc gc
+kitlife35u.sml          tx tc gc
+kkb36c.sml              tx tc gc
+fft.sml                 tx tc gc
+(*
+vliw.sml                tx tc gc
+lexgen.sml              tx tc gc
+mlyacc.pm               tx tc gc
+logic.pm                tx tc gc
+barnes-hut.pm           tx tc gc
+nucleic.pm              tx tc gc
+ray.pm                  tx tc gc
+ratio-regions.sml       tx tc gc
+*)
