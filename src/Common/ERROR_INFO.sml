@@ -34,6 +34,7 @@ signature ERROR_INFO =
      (* Core errors: *)
 	UNIFICATION of Type * Type
       | UNIFICATION_TEXT of string * Type * string * Type
+      | UNIFICATION_RANK of Type * Type * TyVar * TyName
       | LOOKUP_LONGID of longid
       | LOOKUP_LONGTYCON of longtycon
       | NOTCONSTYPE of Type

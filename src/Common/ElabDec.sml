@@ -262,17 +262,26 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
     fun Unify(tau, tau', i): Substitution * ElabInfo =
       case Type.unify (tau, tau')
-        of Some subst => (subst, okConv i)
-         | None =>
+        of Type.UnifyOk => (Substitution.Id, okConv i)  (* substitutions are dummies *)
+         | Type.UnifyFail =>
              (Substitution.bogus,
               errorConv(i, ErrorInfo.UNIFICATION(tau, tau'))
              )
+         | Type.UnifyRankError(tv,tn) => 
+             (Substitution.bogus,
+              errorConv(i, ErrorInfo.UNIFICATION_RANK(tau, tau', tv, tn))
+             )
+
     fun UnifyWithTexts(text,tau,text', tau', i): Substitution * ElabInfo =
       case Type.unify(tau, tau')
-        of Some subst => (subst, okConv i)
-         | None =>
+        of Type.UnifyOk => (Substitution.Id, okConv i)
+         | Type.UnifyFail =>
              (Substitution.bogus,
               errorConv(i, ErrorInfo.UNIFICATION_TEXT(text,tau,text', tau'))
+             )
+         | Type.UnifyRankError(tv,tn) =>
+             (Substitution.bogus,
+              errorConv(i, ErrorInfo.UNIFICATION_RANK(tau, tau', tv, tn))
              )
 
    (* Traversal of patterns to build a VE. We only do this for `rec'
@@ -534,6 +543,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
         do_valbind valbind
       end
 
+(*old
     (*
      * phi_on_dec phi dec :
      *   applies the type realisation to the recorded type information in the 
@@ -549,7 +559,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
       in
         OG.map_dec_info phi_on_Info dec
       end
-
+old*)
     
     (********************************************************)
     (*      Elaboration (type checking)                     *)
@@ -870,24 +880,14 @@ old*)
                val (S, VE, out_valbind) =
                      elab_valbind (C.plus_U (C, U), valbind)
                val _ = Level.pop()
-	       val (VE', escaping_tyvars) = C.close (S onC C, valbind, VE)
-               val out_i =
-		     (case escaping_tyvars of
-			[] =>
-			  (case ListHacks.intersect (ExplicitTyVars, C.to_U C) of
-			     [] => okConv i
-			   | explicittyvars => errorConv
+	       val (VE', _) = C.close (S onC C, valbind, VE)
+               val out_i = case ListHacks.intersect (ExplicitTyVars, C.to_U C) 
+			     of [] => okConv i
+			      | explicittyvars => errorConv
 			       (i, ErrorInfo.TYVARS_SCOPED_TWICE
-				    (map TyVar.from_ExplicitTyVar explicittyvars)))
-		      | escaping_tyvars => 
-			  errorConv (i,
-			    (ErrorInfo.UNGENERALISABLE_TYVARS
-			     o uniq o concat
-			     o map (VE.ids_with_tyvar_in_type_scheme VE))
-			    escaping_tyvars))
-				   
-               val out_valbind = generalise_type_info_valbind
-		                   (S onC C, S, out_valbind)
+				    (map TyVar.from_ExplicitTyVar explicittyvars))
+
+               val out_valbind = generalise_type_info_valbind (S onC C, S, out_valbind)
 	         (*generalise type info recorded in PLAINvalbind and
 		  patterns of value bindings*)
 
@@ -1144,10 +1144,13 @@ old*)
 		       let val (_, tau1) = TypeScheme.to_TyVars_and_Type sigma1
 			   val (_, tau2) = TypeScheme.to_TyVars_and_Type sigma2
 		       in (case Type.unify(tau1, tau2) of
-			     Some S => (S, i)
-			   | None => (Substitution.bogus,
-				      ElabInfo.plus_ErrorInfo i
-				      (ErrorInfo.UNIFICATION(tau1, tau2))))
+			     Type.UnifyOk => (Substitution.Id, i)   (* substitutions are dummies *)
+			   | Type.UnifyFail => (Substitution.bogus,
+						ElabInfo.plus_ErrorInfo i
+						(ErrorInfo.UNIFICATION(tau1, tau2)))
+			   | Type.UnifyRankError(tv,tn) => (Substitution.bogus,
+							    ElabInfo.plus_ErrorInfo i
+							    (ErrorInfo.UNIFICATION(tau1, tau2))))
 		       end
 		    | _ => impossible "processID")
 
@@ -2100,8 +2103,8 @@ let
 		    (if !Flags.DEBUG_ELABDEC
 		     then output (std_out, "res: Some tv\n") else () ;
 		     (case Type.unify (Type.Int, tau') of
-			Some S => ()
-		      | None => impossible "resolve_tau: unify") ;
+			Type.UnifyOk => ()
+		      | _ => impossible "resolve_tau: unify") ;
 		     OverloadingInfo.RESOLVED_INT)
 	       else (*repeat application of S:*) resolve_tau tau')
 	end

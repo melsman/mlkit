@@ -156,6 +156,9 @@ functor ModuleEnvironments(
 	    FinMap.fold
 	      (fn (Phi, tyvars) => TyVar.unionTyVarSet (Phi.tyvars Phi, tyvars))
 	        [] F
+      fun tyvars' (FUNENV F) =
+	    FinMap.fold
+	      (fn (Phi, criminals) => Phi.tyvars' Phi @ criminals) [] F
       fun dom (FUNENV F) = FinMap.dom F
       fun layout (FUNENV m) =
 	    let val l = FinMap.Fold op :: nil m

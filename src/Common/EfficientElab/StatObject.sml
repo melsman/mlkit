@@ -37,6 +37,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
     type tycon = TyCon.tycon
     structure TyName = TyName
+    structure Rank = TyName.Rank
+    type rank = Rank.rank
     type TyName = TyName.TyName
     type lab  = Lab.lab (*record labels*)
     val ONE = Lab.mk_IntegerLab 1
@@ -79,8 +81,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		 else Int.string i
     end (*Level*)
 
-
-
+    val dummy_rank_ref = ref(Rank.current())  (* Used for bound type variables. *)
 
     datatype TypeDesc = 
         TYVAR of TyVar
@@ -95,11 +96,14 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     and TyVarDesc =
         ORDINARY of {id : int,
 		     equality : bool,
+		     rank: rank ref,
 		     overloaded : overloaded}
-	(*the overloaded field contains a list of types that the overloaded
-	 tyvar may be instantiated to, e.g., [Type.Real, Type.Int,
-	 Type.Word], if the overloaded tyvar stands for a socalled  num,
-	 e.g., in the type scheme for +*)
+	(* The rank field contains an updatable rank for the type variable. See TYNAME for
+	 * further comments. *)
+	(* The overloaded field contains a list of types that the overloaded
+	 * tyvar may be instantiated to, e.g., [Type.Real, Type.Int,
+	 * Type.Word], if the overloaded tyvar stands for a socalled  num,
+	 * e.g., in the type scheme for +*)
       | EXPLICIT of ExplicitTyVar
 
     and overloaded = Overloaded of TyName.Set.Set
@@ -216,6 +220,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       fun fresh0 {equality, overloaded} =
 	    ref (NO_TYPE_INSTANCE (ORDINARY {id = (r := !r + 1 ; !r),
 					     equality = equality,
+					     rank=ref (Rank.current()),
 					     overloaded = overloaded}))
       fun fresh_normal () = fresh0 {equality=false, overloaded=Nonoverloaded}
       fun fresh_overloaded tynames =
@@ -223,7 +228,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		    overloaded=Overloaded (TyName.Set.fromList tynames)}
       end
 
-      fun refresh (ref (NO_TYPE_INSTANCE (ORDINARY {id, equality, overloaded}))) =
+      fun refresh (ref (NO_TYPE_INSTANCE (ORDINARY {id, equality, overloaded, ...}))) =
 	    fresh0 {equality = equality, overloaded = overloaded}
 	| refresh (ref (NO_TYPE_INSTANCE (EXPLICIT ExplicitTyVar))) =
 	    fresh0 {equality = ExplicitTyVar.isEquality ExplicitTyVar,
@@ -235,11 +240,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    Some ExplicitTyVar
 	| to_ExplicitTyVar _ = None
 
-      val fresh_bound = ref o NO_TYPE_INSTANCE o ORDINARY
+      fun fresh_bound {id, equality, overloaded} = (ref o NO_TYPE_INSTANCE o ORDINARY)
+	{id=id,equality=equality, overloaded=overloaded,rank=dummy_rank_ref}
 
       val ordA = String.ord "a"
       fun pretty_string names 
-	(ref (NO_TYPE_INSTANCE (ORDINARY {equality, overloaded, id}))) =
+	(ref (NO_TYPE_INSTANCE (ORDINARY {equality, overloaded, id, ...}))) =
 	    let val boring = 
 	              if id < 0 then "S" ^ Int.string(~id) else "U" ^ Int.string id
 	    in
@@ -859,6 +865,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		 None =>  let val tvdesc' = ORDINARY
 		             {id = next_bound_id(),
 			      equality = ExplicitTyVar.isEquality ExplicitTyVar,
+			      rank=dummy_rank_ref,
 			      overloaded = TyVar.get_overloaded tv}
 			  in 
 			    tv := NO_TYPE_INSTANCE tvdesc';
@@ -872,6 +879,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		(ordinaryMap := tv::(!ordinaryMap);
 		 tv := NO_TYPE_INSTANCE(ORDINARY{id = next_bound_id(),
 						 equality = equality,
+						 rank=dummy_rank_ref,
 						 overloaded = TyVar.get_overloaded tv}))
 
 	  | mk_bound_tyvar0 _ = impossible "mk_bound_tyvar0"
@@ -1023,9 +1031,10 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
 	fun make_equality0 ty = 
 	      (case #TypeDesc (findType ty) of
-		 TYVAR (tv as (ref (NO_TYPE_INSTANCE (ORDINARY {overloaded, id, ...})))) =>
+		 TYVAR (tv as (ref (NO_TYPE_INSTANCE (ORDINARY {overloaded, id, rank, ...})))) =>
 		   tv := NO_TYPE_INSTANCE (ORDINARY {equality = true,
 						     overloaded = overloaded,
+						     rank = rank,
 						     id = id})
 	       | TYVAR (tv as ref (NO_TYPE_INSTANCE (EXPLICIT ExplicitTyVar))) =>
 		   if ExplicitTyVar.isEquality ExplicitTyVar then () else raise NotEquality
@@ -1045,13 +1054,10 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       end
 
 
-      (*This exception is raised if an explicit type variable is
-       unified with a type variable with lower level, since then
-       the side condition concerning free type variables on rule
-       17 in the Definition is not satisfied*)
+      datatype unify_result = UnifyOk (* of Substitution *)
+	                    | UnifyFail 
+                            | UnifyRankError of TyVar * TyName
 
-
-      exception FREE_TYVARS_EXN of TyVar list
 
       (*******
       Unify types (tau,tau') s.t. range (subst) intersection restr_tyvars = empty
@@ -1065,22 +1071,37 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	********)
 
 	exception Unify of string
+	      and Rank of TyVar * TyName
 
 	(********
-	The `occurs' check for tyvars in tys; besides doing the occurs check
-	the level of type variables in ty with level > lev is set to lev.
+	The `occurs' check for tyvars in tys; besides doing the occurs
+	check the level of type variables in ty with level > lev is
+	set to lev. Further, the rank of type variables in ty with
+	rank > rnk is set to rnk. Also, since unification should fail
+	if a type variable with rank r1 is unified with a type
+	containing type names with ranks greater than r1, we check for
+	this here and raise Unify if this is the case.
 	********)
 
-	fun occurs_tv_in_Type (lev: level) (tv: TyVar) (ty: Type): bool =
+	fun occurs_tv_in_Type (lev: level) (rnk: rank) (tv: TyVar) (ty: Type): bool =
 	  let
 	    fun occursType ty = 
 	      case findType ty of
 		{TypeDesc = TYVAR tv', level} =>
-		  (if !level > lev then level := lev else (); tv = tv')
+		  (if !level > lev then level := lev else ();
+		     (case tv'
+			of ref (NO_TYPE_INSTANCE (ORDINARY {overloaded, id, rank, ...})) =>
+			        if Rank.<=(rnk,!rank) then rank := rnk
+				else ()
+			 | ref (NO_TYPE_INSTANCE _) => ()
+			 | _ => die "occursType") ;
+		   tv = tv')
 	      | {TypeDesc = ARROW(ty1, ty2), level} =>
 		  occursType ty1 orelse occursType ty2
-	      | {TypeDesc = CONSTYPE(tys, _), level} =>
-		  List.foldL (fn ty => fn b => b orelse occursType ty) false tys
+	      | {TypeDesc = CONSTYPE(tys, tn), level} =>
+		  if Rank.<=(Rank.from_TyName tn, rnk) then
+		    List.foldL (fn ty => fn b => b orelse occursType ty) false tys
+		  else raise Rank(tv,tn)
 	      | {TypeDesc = RECTYPE r, level} =>
 		  RecType.fold (fn (ty, b) => b orelse occursType ty) false r
 	  in
@@ -1121,14 +1142,14 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	fun unify_with_overloaded_tyvar tynames1 tau = 
 	      (case #TypeDesc (findType tau) of
 		 TYVAR (tv as (ref (NO_TYPE_INSTANCE (ORDINARY
-			  {equality, id, overloaded=Nonoverloaded, ...})))) =>
+			  {equality, id, overloaded=Nonoverloaded, rank, ...})))) =>
 		   tv := NO_TYPE_INSTANCE (ORDINARY
-			   {equality = equality, id = id,
+			   {equality = equality, id = id, rank = rank,
 			    overloaded=Overloaded tynames1})
 	       | TYVAR (tv as (ref (NO_TYPE_INSTANCE (ORDINARY
-			  {equality, id, overloaded=Overloaded tynames2, ...})))) =>
+			  {equality, id, overloaded=Overloaded tynames2, rank, ...})))) =>
 		   tv := NO_TYPE_INSTANCE (ORDINARY
-			   {equality = equality, id = id,
+			   {equality = equality, id = id, rank = rank,
 			    overloaded=Overloaded (TyName.Set.intersect
 						     tynames1 tynames2)})
 	       | TYVAR (ref (NO_TYPE_INSTANCE (EXPLICIT _))) =>
@@ -1213,7 +1234,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		       (*Test example: 
 			  (fn x => let val f = fn (y: ''a) => x = y in 2 end);*)
 
-		       raise FREE_TYVARS_EXN [tv]
+		       (*This exception is raised if an explicit type variable is
+			unified with a type variable with lower level, since then
+			the side condition concerning free type variables on rule
+			17 in the Definition is not satisfied*)
+
+		       raise Unify "unifyExplicit.5"
 		     else 
 		       tv' := TYPE_INSTANCE ty)
 	     end
@@ -1232,10 +1258,13 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			 ty') = unifyExplicit(ty,ty')
 
 	  | unifyTyVar0
-	      (ty  as {TypeDesc = TYVAR(tv as ref(NO_TYPE_INSTANCE(ORDINARY r))),
+	      (ty  as {TypeDesc = TYVAR(tv as ref(NO_TYPE_INSTANCE(ORDINARY{rank=rank_ref as ref r, ...}))),
 		       level=level},
-	       ty' as {TypeDesc = TYVAR(tv' as ref(NO_TYPE_INSTANCE(ORDINARY r'))),
+	       ty' as {TypeDesc = TYVAR(tv' as ref(NO_TYPE_INSTANCE(ORDINARY{rank=rank_ref' as ref r', ...}))),
 		       level=level'}) =
+	      let val rank = Rank.min(r,r')
+	      in rank_ref := rank ;
+		 rank_ref' := rank ;
 	          if List.member tv restricted_tyvars then
 		    if List.member tv' restricted_tyvars then raise Unify "unifyTyVar0"
 		    else (level := Int.min (!level) (!level') ;
@@ -1243,11 +1272,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		  else
 		    (level' := Int.min (!level) (!level') ;
 		     unify_with_tyvar(tv,ty'))
-		    
-	  | unifyTyVar0 (ty  as {TypeDesc = TYVAR(tv as ref(NO_TYPE_INSTANCE(ORDINARY r))),
+	      end
+	  | unifyTyVar0 (ty  as {TypeDesc = TYVAR(tv as ref(NO_TYPE_INSTANCE(ORDINARY {rank, ...}))),
 				 level = level},
 			 ty') =
-		  if occurs_tv_in_Type (!level) tv ty'
+		  if occurs_tv_in_Type (!level) (!rank) tv ty'
 		    orelse List.member tv restricted_tyvars
 		    then raise Unify "unifyTyVar0.2"
 		  else unify_with_tyvar(tv, ty')
@@ -1364,17 +1393,17 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	(********
 	Unify two types, handling the exception generated if we fail
 	********)
-	  Some (unifyType (tau,tau'))
-	  handle Unify s => None
-	       | FREE_TYVARS_EXN _ => None
+	  (unifyType (tau,tau'); UnifyOk)
+	  handle Unify s => UnifyFail
+	       | Rank(tv,tn) => UnifyRankError(tv,tn)
       end
 
       val unify = restricted_unify nil
 
       fun instantiate_arbitrarily tyvar =
 	    (case unify (from_TyVar tyvar, Int) of
-	       Some Substitution => ()
-	     | None => impossible "instantiate_arbitrarily")
+	       UnifyOk => ()
+	     | _ => impossible "instantiate_arbitrarily")
 
       (*Matching functions for compilation manager*)
 
@@ -1489,8 +1518,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
                                  fail!! -- Martin
 *)
 	       (case Type.restricted_unify (TyVar.unionTyVarSet(fv_tau',fv_sigma)) (tau,tau') 
-		  of Some _ => true
-		   | None => false)
+		  of Type.UnifyOk => true
+		   | _ => false)
 	     end)
 
       fun generalises_TypeScheme (sigma, (betas,tau)) : bool =
@@ -1732,7 +1761,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       val tau2 = 
 	let
-	  val tv = ref (NO_TYPE_INSTANCE(ORDINARY{id= ~1, equality = false,
+	  val tv = ref (NO_TYPE_INSTANCE(ORDINARY{id= ~1, equality = false, rank=dummy_rank_ref,
 						  overloaded = Nonoverloaded}))
 	  val ty  = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val ty' = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
@@ -1792,7 +1821,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val _ = Type.generalise {ov=false, imp=true, tau=tau1}
       val tau2 = 
 	let
-	  val tv = ref (NO_TYPE_INSTANCE(ORDINARY{id= ~1, equality = false,
+	  val tv = ref (NO_TYPE_INSTANCE(ORDINARY{id= ~1, equality = false, rank=dummy_rank_ref,
 						  overloaded = Nonoverloaded}))
 	  val ty  = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val ty' = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}

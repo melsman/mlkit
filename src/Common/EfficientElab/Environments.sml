@@ -463,6 +463,13 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		(fn range => fn T =>
 		       unionTyVarSet (T, tyvars_in_range range))
 		   []
+      val tyvars' =
+	      Fold
+		(fn (id, range) => fn criminals =>
+		       (case tyvars_in_range range of
+			  [] => criminals
+			| tyvars => (id, tyvars) :: criminals))
+		    []
       fun tynames_in_range (LONGVAR sigma) = TypeScheme.tynames sigma
 	| tynames_in_range (LONGCON sigma) = TypeScheme.tynames sigma
 	| tynames_in_range (LONGEXCON tau) = Type.tynames tau
@@ -669,6 +676,9 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       and tyvars SE =
 	    fold (fn E => fn tyvars => unionTyVarSet (tyvars, E_tyvars E))
 		  [] SE
+      fun E_tyvars' (ENV {SE, VE, ...}) = VE.tyvars' VE @ tyvars' SE
+      and tyvars' SE =
+	    fold (fn E => fn criminals => E_tyvars' E @ criminals) [] SE
       fun tynames SE =
 	    fold (fn E => fn T => TyName.Set.union (E_tynames E) T)
 	            TyName.Set.empty SE
@@ -727,6 +737,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       val empty = ENV {SE=SE.empty, TE=TE.empty, VE=VE.empty}
       val bogus = empty
       val tyvars = SE.E_tyvars
+      val tyvars' = SE.E_tyvars'
       val tynames = SE.E_tynames
       val layout = layoutEnv
 
