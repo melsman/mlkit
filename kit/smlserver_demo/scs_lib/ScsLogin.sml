@@ -108,10 +108,10 @@ You should not be seeing this!`;
 	val (user_id,user_lang) = verifyUser()
       in	
 	if user_id = 0 then
-          (reject (`Du skal indtaste email og password for at få adgang til systemet. ` ^^
+          (reject (``(*`Du skal indtaste email og password for at få adgang til systemet. ` ^^
 		   `Hvis du allerede har indtastet en email og password, så må du prøve igen.<p>` ^^
 		   `(eng. You must type in an email and password to get access to the web-site. ` ^^
-                   `If you have already typed in an email and password, then you must try again.)<p>`);
+                   `If you have already typed in an email and password, then you must try again.)<p>`*));
 	   default_id)
         else
           user_id
@@ -126,7 +126,7 @@ You should not be seeing this!`;
         else
 	  (reject (`Du har ikke de nødvendige adgangsprivilegier til at tilgå siden. ` ^^
                    `Hvis du mener det er en fejl, så send en email til ` ^^ 
-		    (Html.aemail "ScsConfig.scs_site_adm_email" "administrator") ^^ `.<p>` ^^
+		    (Html.aemail "ScsConfig.scs_site_adm_email" "administrator") ^^ `.<br>` ^^
 		   `(eng. You do not have access to the page you are requesting. ` ^^
                    `Please send an email to the ` ^^ 
                     (Html.aemail "ScsConfig.scs_site_adm_email" "administrator") ^^ ` if you
@@ -160,10 +160,10 @@ You should not be seeing this!`;
            holds one of the roles in the roles list before serving any
            of the protected_pages *)
 	if force_login andalso not loggedIn then
-	  reject (`Du skal indtaste email og password for at få adgang til systemet. ` ^^
+	  reject (``(*`Du skal indtaste email og password for at få adgang til systemet. ` ^^
 		  `Hvis du allerede har indtastet en email og password, så må du prøve igen.<p>` ^^
 		  `(eng. You must type in an email and password to get access to the web-site. ` ^^
-                  `If you have already typed in an email and password, then you must try again.<p>`)
+                  `If you have already typed in an email and password, then you must try again.)<p>`*))
 	else
 	  List.app verifyUserFilter protected_pages
       end

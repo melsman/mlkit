@@ -1,4 +1,6 @@
-val email = ScsFormVar.wrapFail ScsFormVar.getEmailErr ("email","Email")
+val email = ScsFormVar.wrapFail ScsFormVar.getLoginErr ("email","Email")
+
+val email = email^"@it-c.dk"
 
 val emsg = [(ScsLang.en,`You typed an email that is either not in our database or your account has not been activated - 
 			 please click your browsers back button and try again or contact the %0  if you believe
@@ -20,19 +22,7 @@ val (passwd,first_names,last_name) =
                           and password is not null`,
                         ScsDict.sl' emsg [Quot.toString (Html.aemail (ScsConfig.scs_site_name()) "Site administrator")])
 
-val mail_msg = [(ScsLang.en,`Dear %0 %1
-
-You can access %4 from
-
-    %5
-
-  Login: %2
-  Password: %3
-
-Best Regards,
-
-%4`),
-   (ScsLang.da,`Hej %0 %1
+val mail_msg = [(ScsLang.da,`Hej %0 %1
 
 Du har adgang til %4 fra
 
@@ -43,17 +33,29 @@ Du har adgang til %4 fra
 
 Med venlig hilsen
 
+%4 
+
+-------------------
+
+Dear %0 %1
+
+You can access %4 from
+
+    %5
+
+  Login: %2
+  Password: %3
+
+Best Regards,
+
 %4`)]
 
-val html_msg = ScsDict.sl' [(ScsLang.en,`In a short time, you'll receive an email with your password.<p>
+val html_msg = `Du vil om kort tid modtage en email med dit password.<br>
+  <a href="/scs/auth/auth_form.sml">Tilbage til login siden</a><p>
+  (eng. In a short time, you'll receive an email with your password.<br>
+   <a href="/scs/auth/auth_form.sml">Go to the login page</a>`
 
-      <a href="%0">Go to the main page</a>`),
-                (ScsLang.da,`Du vil om kort tid modtage en email med dit password.<p>
-
-      <a href="%0">Go to the main page</a>`)] [ScsConfig.scs_site_index_page()]
-
-val html_title = ScsDict.s [(ScsLang.en,`Password has been mailed`),
-                            (ScsLang.da,`Password er tilsendt pr. mail`)]
+val html_title = "Password er tilsendt pr. mail (eng. Password has been mailed)"
 
 val _ = 
   (Ns.Mail.send {to=email, from=ScsConfig.scs_site_adm_email(),subject="Obtain Password",
