@@ -1,6 +1,8 @@
 Possible things to do
 ---------------------
 
+  2001-10-05, Niels: warn on match in exhaustive
+
   2001-10-03, Niels:
     Luk huller hvad angår genstart af server, eksempelvis at når en
     select sætning fejler så skal exception Fail rejses og ikke blot

@@ -44,6 +44,7 @@ signature NS_DB =
     val select          : db * quot -> set
     val getRow          : db * set -> status
     val foldDb          : db * ((string->string)*'a->'a) * 'a * quot -> 'a
+    val listDb          : db * ((string->string)->'a) * quot -> 'a list
     val oneFieldDb      : db * quot -> string
     val zeroOrOneFieldDb: db * quot -> string option
     val oneRowDb        : db * quot -> string list
@@ -54,6 +55,7 @@ signature NS_DB =
     val panicDml      : (string * string -> 'a) -> quot -> unit
 
     val fold          : ((string->string)*'a->'a) * 'a * quot -> 'a
+    val list          : ((string->string)->'a) * quot -> 'a list
     val oneField      : quot -> string
     val zeroOrOneField: quot -> string option
     val oneRow        : quot -> string list
