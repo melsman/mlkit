@@ -3,6 +3,9 @@
 #include "Output.h"
 #include "Rp2Ps.h"
 
+#define MB 1024.0 * 1024.0
+#define KB 1024.0
+
 /***************************************************************************
  * Curves.                                                                 *
  ***************************************************************************/
@@ -300,10 +303,10 @@ static void YAxisMark(double y, double num, mkb unit)
 
   switch (unit) {
     case MEGABYTE :
-      sprintf(info, "%dM", (int) (num / 1e6));
+      sprintf(info, "%dM", (int) (num / MB));
       break;
     case KILOBYTE :
-      sprintf(info, "%dk", (int) (num / 1e3));
+      sprintf(info, "%dK", (int) (num / KB));
       break;
     case BYTE:
       sprintf(info, "%d", (int) (num));
@@ -321,6 +324,7 @@ static void YAxis(void)
   double increment, i;
   double t, y;
   double legendlen;
+  double scale;
   mkb unit;
   
     /* draw the y axis line */
@@ -331,13 +335,16 @@ static void YAxis(void)
   output->Text(JustifyVertical,xpage(0.0) - borderspace,ypage(0.0)+graphheight,SCALE_FONT,yLab); 
 
     /* draw y axis scaling */
-  increment = Round(yrange / (double) N_Y_MARKS);
+
+  scale = yrange > KB ? KB : 1.0;
+
+  increment = scale * Round(yrange / ((double) N_Y_MARKS * scale));
 
   if (increment < (double)1.0) increment = (double)1.0;
 
-  if (increment >= 1e6) {
+  if (increment >= MB) {
       unit = MEGABYTE;
-  } else if (increment >= 1e3) {
+  } else if (increment >= KB) {
       unit = KILOBYTE;
   } else {
       unit = BYTE;
