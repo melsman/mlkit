@@ -149,7 +149,7 @@ void Comments(void)
   int i;
   double m;
   for (i = 0; i < ncomments; i++) {
-    m = ((double)(commenttable[i]-sampletable[0]) / xrange) * graphwidth;
+    m = ((double)(commenttable[i] /* -sampletable[0] */) / xrange) * graphwidth;
     SampleLine(m,0.0,graphheight-10);
     output->Text(JustifyVertical,xpage(m),ypage(0.0)+graphheight-10,SCALE_FONT,commentstring[i]);
   }
@@ -161,7 +161,7 @@ void Marks(void)
   double m;
 
   for (i = 0; i < nmarks; i++) {
-    m = ((double)(marktable[i]-sampletable[0]) / xrange) * graphwidth;
+    m = ((double)(marktable[i] /* -sampletable[0] */) / xrange) * graphwidth;
     outputCaret(xpage(m), ypage(0.0), 4.0);
   }
 }

@@ -6440,7 +6440,6 @@ The compile-time profiling strategy is set up in the
    1     print region flow graph..................... off
    2     print all program points.................... off
    3     print program points........................ [] >>>
-   4     paths between two nodes in region flow graph [] >>>
 \end{verbatim}
 %\end{footnotesize}
 %\end{quote}
@@ -6453,7 +6452,7 @@ either
 \index{print physical size inference expression@\texttt{print physical size inference expression}}%
 {\tt print physical size inference expression} or
 \index{print call-explicit expression@\texttt{print call-explicit expression}}%
-{\tt print call-explicit expression} from the {\tt Printing of
+{\tt print call\-explicit expression} from the {\tt Printing of
   intermediate forms} sub-menu together with the item 
 \index{print program points@\texttt{print program points}}%
 {\tt print all program points}.
@@ -6511,14 +6510,16 @@ function that is applied to actual region parameter $\rho'$. It
 follows that \texttt{letregion}-bound region variables are always leaf
 nodes.
 
-Nodes in the graph are written in square brackets, where for example
-\texttt{cp\_list[r211368:inf]} means that \texttt{r211368} is a formal
-region parameter of function \texttt{cp\_list}. An asterisk inside a
-square bracket means that the node has been written earlier. Only the
-node identifier (i.e., the region variable) will then be printed. The
-size of the region is printed after the region variable; we use {\tt
-  inf} for infinite regions and {\em size\/} for finite regions of size
-{\em size\/} words.
+Nodes in the graph are written in square brackets, which are labeled
+with the token {\tt LETREGION} or the name of the function for which
+the region variable is a formal parameter. For example, the notation
+\texttt{cp\_list[r211368:inf]} identifies the node \texttt{r211368},
+which is a formal region parameter of the function \texttt{cp\_list}.
+An asterisk inside a square bracket means that the node has been
+written earlier.  Only the node identifier (i.e., the region variable)
+will then be printed. The size of the region is printed after the
+region variable; we use {\tt inf} for infinite regions and {\em
+  size\/} for finite regions of size {\em size\/} words.
 
 Edges are written with the {\em from node\/} identifier annotated on
 them. The edge points to the \emph{to node}. The fragment
@@ -6571,74 +6572,73 @@ Here, we have a scc node (id 97) containing region variable
 \texttt{r211904} and an edge to scc node (id 96) containing region
 variable \texttt{r212427}.
 
-%--------------------------------------------------------
-\section{Region Flow Paths\label{regFlowPath.sec}}
-%--------------------------------------------------------
-If you are interested in the possible paths
-\index{region flow path}%
-from one region variable to another, the Kit can find them for you.
-Assume that you have an object profile for some region variable $\rho$
-showing that a certain allocation point is responsible for the
-allocations and that the region variable written at the allocation
-point is not $\rho$, but some other region variable $\rho'$. In this
-case, $\rho'$ must be a formal region variable of some
-region-polymorphic function; it is now interesting to find out how
-$\rho'$ has been instantiated to $\rho$.
+% %--------------------------------------------------------
+% \section{Region Flow Paths\label{regFlowPath.sec}}
+% %--------------------------------------------------------
+% If you are interested in the possible paths
+% \index{region flow path}%
+% from one region variable to another, the Kit can find them for you.
+% Assume that you have an object profile for some region variable $\rho$
+% showing that a certain allocation point is responsible for the
+% allocations and that the region variable written at the allocation
+% point is not $\rho$, but some other region variable $\rho'$. In this
+% case, $\rho'$ must be a formal region variable of some
+% region-polymorphic function; it is now interesting to find out how
+% $\rho'$ has been instantiated to $\rho$.
 
-You can specify the from and to nodes that you want the paths for in
-the menu item
-\index{paths between two nodes in region flow graph@\texttt{paths between two nodes in region flow graph}}%
-{\tt paths between two nodes in region flow graph} in the {\tt Profiling}
-sub-menu:
-\begin{verbatim}
-   Profiling
+% You can specify the from and to nodes that you want the paths for in
+% the menu item
+% \index{paths between two nodes in region flow graph@\texttt{paths between two nodes in region flow graph}}%
+% {\tt paths between two nodes in region flow graph} in the {\tt Profiling}
+% sub-menu:
+% \begin{verbatim}
+%    Profiling
 
-   0     region profiling............................ on
-   1     print region flow graph..................... on
-   2     print all program points.................... on
-   3     print program points........................ [] >>>
-   4     paths between two nodes in region flow graph [] >>>
+%    0     region profiling............................ on
+%    1     print region flow graph..................... on
+%    2     print all program points.................... on
+%    3     print program points........................ [] >>>
+%    4     paths between two nodes in region flow graph [] >>>
 
-   Select (<number>), Help (h <number>), Up (u), or Quit (quit): 
+%    Select (<number>), Help (h <number>), Up (u), or Quit (quit): 
 
-   >4
-   <type an int pair list of region variables,
-   e.g. [(formal reg. var. at pp.,letregion bound reg. var.)]> 
-   or up (u): >
-\end{verbatim}
+%    >4
+%    <type an int pair list of region variables,
+%    e.g. [(formal reg. var. at pp.,letregion bound reg. var.)]> 
+%    or up (u): >
+% \end{verbatim}
 
-At this point, you can type in a list of integer pairs, that is, you
-can specify several pairs of nodes that you want the paths for.
+% At this point, you can type a list of integer pairs, that is, you
+% can specify several pairs of nodes that you want the paths for.
 
-Compiling the source program again gives a new log file where you can
-search for \texttt{Starting layout of paths}:\footnote{Because region
-  variables may change when re-compiling a source file, it may be
-  necessary to start all over by starting the Kit again and compile
-  the program again to make sure that the regions you have specified
-  will match the regions in a region flow graph of a previous
-  compilation.}
-\begin{verbatim}
-   [Starting layout of paths...
-       [Start path: 
-           [sccNo 63: r89698,]--->
-           [sccNo 62: r90246,]--->
-           [sccNo 61: r90812,]
-       ]
-   ...Finishing layout of paths]
-\end{verbatim}
-If you look at the region flow graph on
-page~\pageref{reg_flow_graph.ex}, you see that the only path from
-region \texttt{r89698} to region \texttt{r90812} goes through function
-\texttt{nthgen'}, that is, \texttt{nthgen'} calls \texttt{cp\_list}. If
-you look in the file \texttt{life.sml} you may notice that
-\texttt{nthgen'} actually calls a function \texttt{copy} and not
-\texttt{cp\_list}. The function \texttt{copy} is declared as
-\begin{verbatim}
-   fun copy (GEN l) = GEN(cp_list l)
-\end{verbatim}
-If you look at the call-explicit region-annotated program in file
-\texttt{life.log}, you may notice that the function \texttt{copy} has
-been in-lined by the optimiser.
+% Compiling the source program again gives a new log file where you can
+% search for \texttt{Starting layout of paths}:\footnote{Because region
+%   variables may change when recompiling a source file, it may be
+%   necessary to start all over by starting the Kit again and recompile
+%   the program to make sure that the regions you have specified will
+%   match the regions in a region flow graph of a previous compilation.}
+% \begin{verbatim}
+%    [Starting layout of paths...
+%        [Start path: 
+%            [sccNo 63: r89698,]--->
+%            [sccNo 62: r90246,]--->
+%            [sccNo 61: r90812,]
+%        ]
+%    ...Finishing layout of paths]
+% \end{verbatim}
+% If you look at the region flow graph on
+% page~\pageref{reg_flow_graph.ex}, you see that the only path from
+% region \texttt{r89698} to region \texttt{r90812} goes through function
+% \texttt{nthgen'}, that is, \texttt{nthgen'} calls \texttt{cp\_list}. If
+% you look in the file \texttt{life.sml} you may notice that
+% \texttt{nthgen'} actually calls a function \texttt{copy} and not
+% \texttt{cp\_list}. The function \texttt{copy} is declared as
+% \begin{verbatim}
+%    fun copy (GEN l) = GEN(cp_list l)
+% \end{verbatim}
+% If you look at the call-explicit region-annotated program in file
+% \texttt{life.log}, you may notice that the function \texttt{copy} has
+% been in-lined by the optimiser.
 
 %---------------------------------
 \section{Using the VCG Tool}
@@ -6649,8 +6649,8 @@ The
 VCG tool can be used to visualise region flow graphs exported in {\tt
   .vcg} files. We assume that the tool is installed and that it can be
 started by typing \texttt{xvcg} at the command prompt.  We use the file
-\texttt{life.vcg} as a running example. Typing \mbox{\texttt{xvcg
-    life.vcg}} at the command prompt gives the window shown in
+\texttt{life.sml.vcg} as a running example. Typing \mbox{\texttt{xvcg
+    life.sml.vcg}} at the command prompt gives the window shown in
 Figure~\ref{vcg1.fig}.
 \begin{figure}
 \begin{center}
@@ -6685,34 +6685,36 @@ menu. The graph is folded again by choosing {\tt Fold Subgraph} and
 clicking on one of the nodes. All nodes in the graph then turn black;
 clicking on the right mouse button then folds the graph.
 
-Region flow paths are also exported together with the region flow
-graph. Each path is numbered and can be viewed by the {\tt Expose/Hide
-  edges} facility in the VCG pull-down menu, see Figure~\ref{vcg3.fig}.
-\begin{figure}
-\begin{center}
-  \scalebox{0.6}{\includegraphics{vcg3.ps}}
-\end{center}
-\caption{After choosing the
-  {\tt Expose/Hide edges} facility you get this window. The window
-  shows that there are two classes of edges in the graph; one for the
-  region flow graph and one for the path from node \texttt{r89698} to node
-  \texttt{r90812}. If you have generated the path from Section~\ref{regFlowPath.sec}, the option
-  \texttt{Path2(r89698,r90812)} is present.}
-\label{vcg3.fig}
-\end{figure}
+% Region flow paths are also exported together with the region flow
+% graph. Each path is numbered and can be viewed by the {\tt Expose/Hide
+%   edges} facility in the VCG pull-down menu, see Figure~\ref{vcg3.fig}.
+% \begin{figure}
+% \begin{center}
+%   \scalebox{0.6}{\includegraphics{vcg3.ps}}
+% \end{center}
+% \caption{After choosing the
+%   {\tt Expose/Hide edges} facility you get this window. The window
+%   shows that there are two classes of edges in the graph; one for the
+%   region flow graph and one for the path from node \texttt{r89698} to node
+%   \texttt{r90812}. 
+%   %If you have generated the path from Section~\ref{regFlowPath.sec}, the option
+%   %\texttt{Path2(r89698,r90812)} is present.
+%   }
+% \label{vcg3.fig}
+% \end{figure}
 
-Each path is numbered because there can be several paths between the same
-two nodes. Clicking on the {\tt Graph} edge class will hide the edges in the
-region flow graph so that edges in the generated path are the only edges
-shown, see Figure~\ref{vcg4.fig}.
-\begin{figure}
-\begin{center}
-  \scalebox{0.6}{\includegraphics{vcg4.ps}}
-\end{center}
-\caption{The figure shows the path between
-  node \texttt{r89698} and \texttt{r90812}.}
-\label{vcg4.fig}
-\end{figure}
+% Each path is numbered because there can be several paths between the same
+% two nodes. Clicking on the {\tt Graph} edge class will hide the edges in the
+% region flow graph so that edges in the generated path are the only edges
+% shown, see Figure~\ref{vcg4.fig}.
+% \begin{figure}
+% \begin{center}
+%   \scalebox{0.6}{\includegraphics{vcg4.ps}}
+% \end{center}
+% \caption{The figure shows the path between
+%   node \texttt{r89698} and \texttt{r90812}.}
+% \label{vcg4.fig}
+% \end{figure}
 
 %----------------------------------
 \section{Runtime Profiling Strategy}
@@ -6722,7 +6724,7 @@ executable file, \texttt{run}. Typing \texttt{run} at the command prompt will
 execute the program with a predefined 
 \index{profile strategy!runtime}%
 runtime profiling strategy, which is displayed when the program is
-run:
+run with the {\tt verbose} option:
 \begin{verbatim}
    ---------------------Profiling-Enabled---------------------
     The profile timer (unix virtual timer) is turned on.
@@ -6733,8 +6735,7 @@ run:
 You can change the 
 \index{profile strategy!options}%
 profiling strategy by passing command line arguments directly to the
-executable.  The second line says that a virtual timer is used. In general, what timers are available
-  is very much system dependent. Under the HP-UX operating system, there
+executable.  The second line says that a virtual timer is used. There
 are three possible timers, each of which can be enabled using one of
 the following options:\footnote{A complete description can be
     found in the manual page for \texttt{getitimer}.}
@@ -6760,7 +6761,7 @@ The third line says that a
 the program stops normal execution, and memory is traversed to collect
 profile data. The more often a profile tick occurs the more detailed
 you profile (and the slower the program will run). The
-\index{time slot}%
+\index{profiling!time slot}%
 {\em time slot\/} (i.e., the time between to succeeding profile ticks) to use
 is specified by the 
 \index{sec@\texttt{-sec} option}%
@@ -6769,68 +6770,75 @@ is specified by the
 \texttt{-microsec n} options. A time slot of half a second is
 specified by \texttt{-microsec 500000} and not by \texttt{-sec
   0.5}.\footnote{The lowest possible time slot to use is system
-  dependent. It is also system dependent how long time passes
-  before the time wraps.  Wrapping will in practice not happen on a HP-UX system,
-  but it will happen after about 40 minutes on a SUN OS4 system.}
+  dependent. 
+%  It is also system dependent how long time passes
+%  before the time wraps.  Wrapping will in practice not happen on a HP-UX system,
+%  but it will happen after about 40 minutes on a SUN OS4 system.
+}
 
 The fourth line says that the collected profile data is exported to
-the file \texttt{profile.rp}. This file can be changed by the 
+the file \texttt{profile.rp}. The default file name setting can be
+changed with the
 \index{file@\texttt{-file} option}%
 \texttt{-file name} option.
 
-There are several other possible command line options; use the \texttt{-h} option or the 
+There are several other possible command-line options; use the
+\texttt{-h} option or the
 \index{help@\texttt{-help} option}%
-\texttt{-help} option for details.
+\texttt{-help} option for details. When garbage collection is enabled,
+options for controlling garbage collection are also available as
+command-line options (see Section~\ref{gc.chap}).
 
 %----------------------------------
 \section{Regions Statistics}
 %----------------------------------
-If the executable file {\tt run} is executed with the option {\tt -showStat} then
+If the executable file {\tt run} is executed with the option {\tt
+  -showStat} then
 \index{region statistics}%
 {\em region statistics\/} is printed just before the program
 terminates. Region statistics includes information about the use of
-regions and does not depend on the specifics of the runtime
-profiling strategy; in fact, region statistics includes only exact,
-non-sampled values for the program. Assuming that {\tt run} is the
-executable file generated by compiling the program {\tt life} with
-profiling enabled, executing {\tt run -showStat} yields---just before
-the program terminates---the region statistics shown in
+regions and does not depend on the specifics of the runtime profiling
+strategy; in fact, region statistics includes only exact, non-sampled
+values for the program. Assuming that {\tt run} is the executable file
+generated by compiling the program {\tt life} with profiling enabled,
+executing {\tt ./run -showStat} yields---just before the program
+terminates---the region statistics shown in
 Figure~\ref{region_statistics.fig}.
 \begin{figure}
 \hrule \medskip
 \begin{verbatim}
    MALLOC
      Number of calls to malloc: 2
-     Alloc. in each malloc call: 24240 bytes
-     Total allocation by malloc: 48480 bytes (0.0Mb)
+     Alloc. in each malloc call: 30720 bytes
+     Total allocation by malloc: 61440 bytes (0.1Mb)
 
    REGION PAGES
-     Size of one page: 800 bytes
-     Max number of allocated pages: 53
+     Size of one page: 1016 bytes
+     Max number of allocated pages: 45
      Number of allocated pages now: 4
-     Max space for region pages: 42400 bytes (0.0Mb)
+     Max space for region pages: 45720 bytes (0.0Mb)
 
    INFINITE REGIONS
      Size of infinite region descriptor: 16 bytes
      Number of calls to allocateRegionInf: 95764
      Number of calls to deallocateRegionInf: 95761
-     Number of calls to alloc: 858873
+     Number of calls to alloc: 858816
      Number of calls to resetRegion: 123378
      Number of calls to deallocateRegionsUntil: 0
 
    ALLOCATION
-     Max alloc. space in pages: 18056 bytes (0.0Mb)
-       incl. prof. info: 36240 bytes (0.0Mb)
-     Infinite regions utilisation (36240/42400): 85%
+     Max alloc. space in pages: 17912 bytes (0.0Mb)
+       incl. prof. info: 36048 bytes (0.0Mb)
+     Infinite regions utilisation (36048/45720): 79%
 
    STACK
-     Number of calls to allocateRegionFin: 3164508
-     Number of calls to deallocateRegionFin: 3164508
-     Max space for finite regions: 6608 bytes (0.0Mb)
+     Number of calls to allocateRegionFin: 1797844
+     Number of calls to deallocateRegionFin: 1797844
+     Max space for finite regions: 6116 bytes (0.0Mb)
      Max space for region descs: 256 bytes (0.0Mb)
-     Max size of stack: 7412 bytes (0.0Mb)
-       incl. prof. info: 11244 bytes (0.0Mb)
-       in profile tick: 4524 bytes (0.0Mb)
+     Max size of stack: 33780 bytes (0.0Mb)
+       incl. prof. info: 35660 bytes (0.0Mb)
+       in profile tick: 18768 bytes (0.0Mb)
 \end{verbatim}
 \caption{Region statistics for the {\tt life} program.}
 \label{region_statistics.fig}
@@ -6845,15 +6853,15 @@ Each infinite region form a linked list of one or more
 {\em region pages\/} whose size is found in the {\tt REGION PAGES}
 part. The value
 \begin{verbatim}
-   Max number of allocated pages: 53
+   Max number of allocated pages: 45
 \end{verbatim}
 multiplied by
 \begin{verbatim}
-   Size of one page: 800 bytes
+   Size of one page: 1016 bytes
 \end{verbatim}
 gives 
 \begin{verbatim}
-   Max space for region pages: 42400 bytes (0.0Mb)
+   Max space for region pages: 45720 bytes (0.0Mb)
 \end{verbatim}
 
 In the {\tt INFINITE REGIONS} part, we see the number of calls to
@@ -6861,16 +6869,16 @@ infinite region operations such as {\tt allocateRegionInf} and {\tt
   alloc}. The program allocates 95764 infinite regions and
 de-allocates 95761; the three global regions are not de-allocated
 before the region statistics is printed and the program terminates.
-The program allocates 858873 objects in infinite regions. It has
-been possible to reset an infinite region 123378 times. The {\tt
-  deallocateRegionsUntil} operation is called whenever an exception is
-raised, thus, we see that no exceptions were raised by the program.
+The program allocates 858816 objects in infinite regions. Infinite
+regions has been reset 123378 times. The {\tt deallocateRegionsUntil}
+operation is called whenever an exception is raised, thus, we see that
+no exceptions were raised by the program.
 
 Because objects allocated in infinite regions are not split across
 different region pages (except strings), it is not always possible to
 fill out a region page entirely. In the {\tt ALLOCATION} part, the value
 \begin{verbatim}
-   Infinite regions utilisation (36240/42400): 85%
+   Infinite regions utilisation (36048/45720): 79%
 \end{verbatim}
 shows memory utilisation for infinite regions at the moment where the
 program has allocated the largest amount of memory in infinite
@@ -6878,12 +6886,12 @@ regions.
 
 In the {\tt STACK} part, we see that the program allocates and
 de-allocates the same number of finite regions. We also see that the
-space used for finite regions is 6608 bytes and that the total use of
-stack space is 7412 bytes (excluding space used to hold profiling
+space used for finite regions is 6116 bytes and that the total use of
+stack space is 33780 bytes (excluding space used to hold profiling
 information). The stack size values
 \begin{verbatim}
-   incl. prof. info: 11244 bytes (0.0Mb)
-   in profile tick: 4524 bytes (0.0Mb)
+   incl. prof. info: 35660 bytes (0.0Mb)
+   in profile tick: 18768 bytes (0.0Mb)
 \end{verbatim}
 can be used to see if it is necessary to profile with a smaller time
 slot, which will often lower the difference between the two values.
@@ -6894,10 +6902,11 @@ slot, which will often lower the difference between the two values.
 %--------------------------------------------
 The profile datafile {\tt profile.rp} can be processed by the 
 \index{rp2ps@\texttt{rp2ps} options|(}%
-graph generator {\tt rp2ps} (read: RegionProfile2PostScript) found
-in the {\tt bin} directory.\footnote{The {\tt rp2ps} program is based on a profiler by
-  Colin Runciman, David Wakeling and Niklas R\"{o}jemo.} The graph
-generator is controlled by command line options.
+graph generator {\tt rp2ps} (read: RegionProfile2PostScript) found in
+the {\tt bin} directory.\footnote{The {\tt rp2ps} program is based on
+  a Haskell profiler written by Colin Runciman, David Wakeling and Niklas
+  R\"{o}jemo.} The graph generator is controlled by command line
+options.
 
 A 
 \index{region profile}%
@@ -6911,21 +6920,10 @@ file {\tt region.ps} by reading profile information from the
 \index{profile data file}%
 profile data file {\tt profile.rp}, see Figure~\ref{profStrategy.fig}.
 A region profile for the {\tt life} program is shown in
-Figure~\ref{prof_eks1.fig}. The region that occupies the largest area
-is at the top. If there are more regions than can be shown in
-different shades, then the smallest regions are collected in an OTHER
-band at the bottom.
-
-\begin{figure}
-\begin{center}
-\includegraphics{prof_eks1.ps}
-\end{center}
-\caption{Region profile of the {\tt life} program. The region 
-  that occupies the largest area is at the top. The graph was 
-  produced by first typing \texttt{run -microsec 20000} at the
-  command prompt and then typing \texttt{rp2ps -region}.}
-\label{prof_eks1.fig}
-\end{figure}
+Figure~\ref{lifeprof80.fig} on page~\pageref{lifeprof80.fig}. The
+region that occupies the largest area is at the top. If there are more
+regions than can be shown in different shades, then the smallest
+regions are collected in an OTHER band at the bottom.
 
 Each region is identified with a number that matches a {\tt
   letregion}-bound region variable in the region-annotated program.
@@ -6937,7 +6935,7 @@ shows stack usage excluding finite regions and region descriptors for
 infinite regions.
 
 The vertical line marked ``Maximum allocated bytes in regions'' in
-Figure~\ref{prof_eks1.fig} is called the {\em maximum allocation
+Figure~\ref{lifeprof80.fig} is called the {\em maximum allocation
   line}; it shows the maximum number of bytes allocated in regions
 when the program was executed. Because we also show the stack use on
 the graph (as the {\tt rDesc} and {\tt stack} band), the maximum
@@ -6947,13 +6945,13 @@ allocation line and the top band shows the inaccuracy of the profiling
 strategy. To decrease the gap, it often helps to use a smaller time
 slot.
 
-The largest region shown in Figure~\ref{prof_eks1.fig} is {\tt
-  r90812}. An
+The largest region shown in Figure~\ref{lifeprof80.fig} is {\tt
+  r212422}. An
 \index{object profile}%
 \index{object@\texttt{-object} option}%
-object profile of region {\tt r90812} is produced by typing
+object profile of region {\tt r212422} is produced by typing
 \begin{verbatim}
-   rp2ps -object 90812
+   rp2ps -object 212422
 \end{verbatim}
 at the command prompt. We obtain the object profile shown in
 Figure~\ref{prof_eks2.fig}.
@@ -6961,11 +6959,11 @@ Figure~\ref{prof_eks2.fig}.
 \begin{center}
 \includegraphics{prof_eks2.ps}
 \end{center}
-\caption{The object profile shows all allocation points allocating into region {\tt r90812}.}
+\caption{The object profile shows all allocation points allocating into region {\tt r212422}.}
 \label{prof_eks2.fig}
 \end{figure}
 
-We see that allocation point \texttt{pp12223} is responsible for the
+We see that allocation point \texttt{pp29479} is responsible for the
 largest amount of allocations in the program. The allocation point may
 be found in the region-annotated program resulting from compiling the
 {\tt life} program (remember to enable printing of program points). In
@@ -7028,8 +7026,8 @@ file. It is printed as \texttt{Number of ticks:}.
 Figure~\ref{prof_eks4.fig} shows the profile for the following
 command line:
 \begin{verbatim}
-   rp2ps -region -sampleMax 50 -name life
-         -comment 9 "A comment at time 9" -sortByTime
+   rp2ps -region -sampleMax 50 -name life \
+         -comment 0.6 "A comment at time 0.6" -sortBySize
 \end{verbatim}
 
 \begin{figure}
@@ -7040,7 +7038,7 @@ command line:
 \label{prof_eks4.fig}
 \end{figure}
 
-The graph generator recognises several options that are not shown
+The graph generator recognises several options that are not mentioned
 here. Help on these options is obtained by typing \texttt{rp2ps -h} or
 \index{help@\texttt{-help} option}%
 {\tt rp2ps -help} at the command prompt.
@@ -7319,7 +7317,7 @@ example, the declaration
 declares string catenation.  The argument and result types are
 explicitly stated so as to give the primitive the correct type scheme.
 The first string \boxml{"concatString"} denotes a C
-function identifier.\footnote{Some strings (e.g., \boxml{"="} and \boxml{":="}) are
+function identifier.\footnote{Some primitives (e.g., \boxml{"="} and \boxml{":="}) are
   recognised and implemented in assembler by the compiler.} For the
 example declaration, the Kit generates a call to the C function \boxml{concatString} with arguments {\tt s} and {\tt s'}. The C
 function must then of course be present at link-time; if not, the Kit will complain. The second
@@ -7473,9 +7471,7 @@ files:\index{Tagging.h@\texttt{Tagging.h}}\index{String.h@\texttt{String.h}}
 \subsection{Integers}
 %--------------------
 There are two macros for converting between the ML representation of
-integers and the C representation of integers:\footnote{In this
-release of the Kit, these macros are the identity maps, but that may
-change.}
+integers and the C representation of integers:\footnote{These macros are the identity maps when garbage collection is disabled.}
 \index{convertIntToC@\texttt{convertIntToC}}%
 \index{convertIntToML@\texttt{convertIntToML}}%
 \begin{verbatim}
@@ -7549,7 +7545,7 @@ Section~\ref{Cexamples.sec}.
 %--------------------
 Four constants provide the values of true and false in ML and in
 C. These constants are defined by the following macros:\footnote{Booleans in the
-Kit are tagged for historical reasons.}
+Kit are tagged even when garbage collection is disabled.}
 \index{mlTRUE@\texttt{mlTRUE}}%
 \index{mlFALSE@\texttt{mlFALSE}}%
 \index{cTRUE@\texttt{cTRUE}}%
@@ -7794,7 +7790,7 @@ If we want the function \texttt{raiseif0} to raise the exception value
 \texttt{Exn} if the argument (\texttt{arg}) is 0 then we use the
 function \verb|raise_exn| provided by the runtime system, by
 including the header file {\tt src/Runtime/Exception.h}. The C
-function \boxml{raiseif0} may be declared thus:
+function \boxml{raiseif0} may be defined thus:
 \begin{verbatim}
    void raiseif0(int i_ml, int exn) {
      int i_c;
@@ -7807,14 +7803,6 @@ There is no need to make the function return the value \boxml{mlUNIT};
 in case the type of the return value is \boxml{unit} then the Kit
 automatically inserts code for returning the ML value \boxml{()} after
 the call to the C function.
-
-The implementation of the \verb|raise_exn| function for the native
-backend differs from that of the C backend; in the native backend,
-\verb|raise_exn| never returns, whereas in the C backend,
-\verb|raise_exn| sets a flag, which is checked (by code generated by
-the Kit) when the function returns. Thus, to obtain the same behavior
-with the two backends, one should avoid side effecting expressions and
-statements between function returns and calls of \verb|raise_exn|.
 
 Exceptions are used in examples~\ref{power_exn.ex} and~\ref{dir.ex} in
 Section~\ref{Cexamples.sec}.
@@ -8541,7 +8529,7 @@ x86 native backend. The options are slightly different for the version
 of the ML Kit compiler that uses the bytecode backend.
 
 \begin{verbatim}
-ML Kit version 3.4.0, May 14, 2001 [X86 Backend]
+ML Kit version 3.4.0, May 27, 2001 [X86 Backend]
 
 Usage: mlkit [OPTION]... [file.sml | file.sig | file.pm]
 
@@ -8782,6 +8770,11 @@ Options:
 --print_physical_size_inference_expression, -Ppse         (off)
      Print Region Expression after physical size inference.
 
+--print_region_flow_graph, -Prfg                          (off)
+     Print a region flow graph for the program fragment
+     and generate a .vcg-file, which can be viewed using
+     the xvcg program.
+
 --print_regions, -Pregions                                 (on)
      Print region variables in types and expressions.
 
@@ -8852,10 +8845,6 @@ Options:
 --report_file_sig, -sig                                   (off)
      Report signatures for each file read.
 
---show_region_flow_graph                                  (off)
-     Show a region flow graph for the program and generate a
-     .vcg-file, which can be viewed using the xvcg.
-
 --specialize_recursive_functions                           (on)
      Specialise recursive functions. Use the option
      maximum_specialise_size to control which functions
@@ -8897,7 +8886,7 @@ Options:
      region type scheme contains a put effect on a region
      that is not quantified.
 
---width N, -w N                                           (200)
+--width N, -w N                                           (100)
      Column width used when pretty printing intermediate code.
 \end{verbatim}
 
