@@ -29,7 +29,7 @@ insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Uninterpreted binary'    , 'application/octet-stream'      , 'bin' );
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'ODA ODIF'                , 'application/oda'               , 'oda' );
 insert into scs_fs_mime_types (id,label,mime_type,file_extension,file_icon) 
-  values (scs_fs_mime_types_id_seq.nextval, 'PDF', 'application/pdf', 'pdf', '/ucs/images/file_icon.gif');
+  values (scs_fs_mime_types_id_seq.nextval, 'PDF', 'application/pdf', 'pdf', '/ucs/images/icon_PDF.gif');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'PostScript'              , 'application/postscript'        , 'ps' );
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'RTF - Rich Text Format'  , 'application/rtf'               , 'rtf' );
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Stereolithography'       , 'application/sla'               , 'stl');
@@ -61,7 +61,7 @@ insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'TeX DVI file'            , 'application/x-dvi'             , 'dvi' );
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Archive GNU Tar'         , 'application/x-gtar'            , 'gtar');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension,file_icon) 
-  values (scs_fs_mime_types_id_seq.nextval, 'Archive gzip compressed' , 'application/x-gzip'            , 'gz', '/ucs/images/file_icon.gif');
+  values (scs_fs_mime_types_id_seq.nextval, 'Archive gzip compressed' , 'application/x-gzip'            , 'gz', '/ucs/images/icon_ZIP.gif');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'CGI Script'              , 'application/x-httpd-cgi'       , 'cgi');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Adobe Illustrator'       , 'application/x-illustrator'     , 'ai' );
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Installshield data'      , 'application/x-installshield'   , 'wis');
@@ -84,9 +84,9 @@ insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Archive SVR4 cpio'       , 'application/x-sv4cpio'         , 'sv4cpio');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Archive SVR4 crc'        , 'application/x-sv4crc'          , 'sv4crc');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension,file_icon) 
-  values (scs_fs_mime_types_id_seq.nextval, 'Archive Tar'             , 'application/x-tar'             , 'tar', '/ucs/images/file_icon.gif');
+  values (scs_fs_mime_types_id_seq.nextval, 'Archive Tar'             , 'application/x-tar'             , 'tar', '/ucs/images/icon_TAR.gif');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension,file_icon) 
-  values (scs_fs_mime_types_id_seq.nextval, 'Archive Zipped Tar'      , 'application/x-zipped-tar'             , 'tgz', '/ucs/images/file_icon.gif');
+  values (scs_fs_mime_types_id_seq.nextval, 'Archive Zipped Tar'      , 'application/x-zipped-tar'             , 'tgz', '/ucs/images/icon_TGZ.gif');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Text - TeX source'         , 'application/x-tex'             , 'tex' );
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Text - Texinfo (emacs)'    , 'application/x-texinfo'         , 'texinfo' );
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Text - troff'              , 'application/x-troff'           , 'tr' );
@@ -96,7 +96,7 @@ insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Archive POSIX Tar'       , 'application/x-ustar'           , 'ustar');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'X509 CA Cert'            , 'application/x-x509-ca-cert'    , 'cacert');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension,file_icon) 
-  values (scs_fs_mime_types_id_seq.nextval, 'Archive Zip'             , 'application/zip'               , 'zip', '/ucs/images/file_icon.gif');
+  values (scs_fs_mime_types_id_seq.nextval, 'Archive Zip'             , 'application/zip'               , 'zip', '/ucs/images/icon_ZIP.gif');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Basic audio (m-law PCM)' , 'audio/basic'                   , 'au' );
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Audio Midi'              , 'audio/midi'                    , 'midi');
 insert into scs_fs_mime_types (id,label,mime_type,file_extension) values (scs_fs_mime_types_id_seq.nextval, 'Audio MPEG'              , 'audio/x-mpeg'                  , 'mp3');

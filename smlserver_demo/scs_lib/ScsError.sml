@@ -8,6 +8,7 @@ signature SCS_ERROR =
     val logError   : quot -> unit
     val emailError : quot -> unit
     val panic      : quot -> 'a
+    val panic'     : quot -> quot -> 'a
     val valOf      : 'a option -> 'a
 
     (* [valOfMsg msg v_opt] returns the msg to the user and no error
@@ -36,6 +37,7 @@ signature SCS_ERROR =
 
 structure ScsError :> SCS_ERROR =
   struct 
+    fun panic' a b = raise Fail "not implemented"
     fun logError emsg = Ns.log (Ns.Error, Quot.toString emsg)
 
     fun raiseError emsg = (logError emsg; raise (Fail (Quot.toString emsg)))

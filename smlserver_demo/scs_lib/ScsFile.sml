@@ -21,6 +21,12 @@ signature SCS_FILE =
        after the call to this function) Raises ScsError.Fail on error
        *)
     val uniqueFile : string -> string
+
+   (* [ppFilesize size_in_bytes] return a string with the filesize
+       pretty printed in bytes, kilobytes, megabytes or gigabytes
+       depending on its size. *) 
+    val ppFilesize : int -> string
+
   end
 
 structure ScsFile :> SCS_FILE =
@@ -69,4 +75,33 @@ structure ScsFile :> SCS_FILE =
     in
       fun uniqueFile dir = uniqueFile_ dir 10
     end
+
+    fun ppFilesize size_in_bytes =
+      let
+	val ppReal = ScsReal.toString (ScsLogin.user_lang())
+	val b = Real.fromInt size_in_bytes
+      in
+	if b < 1024.0 then
+	  Int.toString size_in_bytes ^ "b" 
+	else
+	  let
+	    val kb = b / 1024.0
+	  in
+	    if kb < 1024.0 then
+	      ppReal kb ^ "kb"
+	    else
+	      let 
+		val mb = kb / 1024.0
+	      in
+		if mb < 1024.0 then
+		  ppReal mb ^ "mb"
+		else
+		  let
+		    val gb = mb / 1024.0
+		  in
+		    ppReal gb ^ "gb"
+		  end
+	      end
+	  end
+      end
   end

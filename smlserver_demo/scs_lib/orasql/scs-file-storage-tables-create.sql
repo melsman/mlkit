@@ -116,6 +116,10 @@ create table scs_fs_files (
     constraint scs_fs_files_del_p_nn not null
     constraint scs_fs_files_del_p_ck
       check (deleted_p in ('t','f')),
+  mime_type_id integer
+    constraint scs_fs_files_mime_type_id_nn not null
+    constraint scs_fs_files_mime_type_id_fk
+      references scs_fs_mime_types(id),
   last_modified date default sysdate
     constraint scs_fs_files_last_mod_nn not null,
   last_modifying_user integer

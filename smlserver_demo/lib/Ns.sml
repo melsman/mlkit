@@ -311,7 +311,8 @@ structure Ns :> NS =
 				case fv of
 				  large_fv {fv_name,filename,filesize,content,content_types} =>
 				    (NsSet.put (form, Substring.string fv_name,Substring.string filename);
-				     NsSet.put (form, Substring.string fv_name ^ ".filesize", Int.toString filesize);
+				     NsSet.put (form, Substring.string fv_name ^ ".filesize", 
+						Int.toString filesize);
 				     List.app (storeContentType fv_name) content_types)
 				| small_fv {fv_name,content,content_types} =>
 				    (NsSet.put(form,Substring.string fv_name,Substring.string content);
