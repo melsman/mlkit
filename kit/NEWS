@@ -1,9 +1,6 @@
-ML Kit NEWS file                                         July 5, 2001
+ML Kit NEWS file                                       September, 2001
 
- * nh 2001-09-17: Added SMLserver features:
-     cookie support
-     cache support
-     authentication example with simple filtering
+           **** ML Kit version 4.0.0 is released ****
 
  * mael 2001-08-16: Fixed bug in separate compilation framework; match
    function in ClosConvEnv functor was non-exhaustive.

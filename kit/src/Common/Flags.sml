@@ -61,7 +61,6 @@ functor Flags (structure Crash : CRASH
     (* Optimiser *)
     val statistics_after_optimisation = ref false
     val minimize_fixs = ref true
-    val fix_conversion = ref true
     val contract = ref true
     val specialize_recursive_functions = ref true
     val unbox_function_arguments = ref true
@@ -826,11 +825,6 @@ in
     [
     ("minimize_fixs", "minimize fixs", minimize_fixs,
      "Minimize fix constructs (Lambda Expression Optimiser)."), 	
-    ("fix_conversion", "fix conversion", fix_conversion,
-     "Convert   let x = e' in e   to   fix x = e' in e\n\
-      \when e' is a lambda abstraction, in order to avoid\n\
-      \building of closures in order to increase region\n\
-      \polymorphism (Lambda Expression Optimiser)."), 
      ("contract", "contract", contract,
       "Contract is responsible for in-lining, specialization,\n\
        \elimination of dead code, and much else (Lambda\n\

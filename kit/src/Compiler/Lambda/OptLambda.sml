@@ -56,7 +56,9 @@ functor OptLambda(structure Lvars: LVARS
 
     val statistics_after_optimisation = Flags.lookup_flag_entry "statistics_after_optimisation"
     val minimize_fixs = Flags.lookup_flag_entry "minimize_fixs"
-    val fix_conversion_ref = Flags.lookup_flag_entry "fix_conversion"
+    val fix_conversion_ref = ref true  (* users should not be able to disable fix_conversion
+					* because polymorphism in regions must co-work
+					* with polymorphism in type variables *)
     val contract_ref = Flags.lookup_flag_entry "contract"
     val specialize_recursive_functions = Flags.lookup_flag_entry "specialize_recursive_functions"
     val eliminate_explicit_records_ref = Flags.lookup_flag_entry "eliminate_explicit_records"
