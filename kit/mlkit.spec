@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------
-# RPM Spec File for the ML Kit Version 3.4.0
+# RPM Spec File for the ML Kit Version 3.9.0
 # ---------------------------------------------------------------------
 #
 # Here is a short description of how to build an RPM File for the ML
@@ -8,13 +8,13 @@
 #   % make
 #
 # from within the ML Kit root directory. You must also be able to
-# install the Kit in /usr/local/mlkit with the command (you need to be
+# install the Kit in /usr/share/mlkit with the command (you need to be
 # root to do this)
 # 
 #   # make install
 #
 # The install section in the Makefile copies all files that the end
-# user needs to run the kit into the /usr/local/mlkit directory. Here
+# user needs to run the kit into the /usr/share/mlkit directory. Here
 # you need to be careful that the files that are copied are also
 # mentioned in the %files section of this spec file.
 #
@@ -37,15 +37,15 @@
 
 Summary: A Standard ML compiler
 Name: mlkit
-Version: 3.4.0
+Version: 3.9.0
 Release: 1
 Copyright: GPL
 Group: Development/Languages
-Source: http://www.it.edu/research/mlkit/download/mlkit-3.4.0.tgz
+Source: http://www.it.edu/research/mlkit/download/mlkit-3.9.0.tgz
 URL: http://www.it.edu/research/mlkit
 Vendor: IT University of Copenhagen
 Packager: Martin Elsman (mael@dina.kvl.dk)
-Prefix: /usr/local/mlkit
+Prefix: /usr/share/mlkit
 ExclusiveOS: Linux
 ExcludeArch: sparc alpha
 
@@ -71,31 +71,37 @@ plus the Basis Library).
 make
 
 %install
+rm -rf $RPM_BUILD_ROOT
 make install
+
+%clean
+rm -rf $RPM_BUILD_ROOT
 
 %files
 
 #
 # Documentation, Etc.
 #
-%doc /usr/local/mlkit/doc/mlkit.pdf
-%doc /usr/local/mlkit/README
-/usr/local/mlkit/copyright
+%doc /usr/share/mlkit/doc/mlkit.pdf
+%doc /usr/share/mlkit/README
+/usr/share/mlkit/copyright
 
 # ML Kit Executables
-/usr/local/mlkit/bin/mlkit.x86-linux
-/usr/local/mlkit/bin/rp2ps
+/usr/share/mlkit/bin/mlkit.x86-linux
+/usr/share/mlkit/bin/rp2ps
 
 # Runtime Systems
-/usr/local/mlkit/bin/runtimeSystem.o 
-/usr/local/mlkit/bin/runtimeSystemGC.o
+/usr/share/mlkit/bin/runtimeSystem.o 
+/usr/share/mlkit/bin/runtimeSystemGC.o
+/usr/share/mlkit/bin/runtimeSystemGCProf.o 
+/usr/share/mlkit/bin/runtimeSystemProf.o
 
 # The Demonstration Directory
-/usr/local/mlkit/kitdemo
+/usr/share/mlkit/kitdemo
 
 # Libraries
-/usr/local/mlkit/ml-yacc-lib
-/usr/local/mlkit/basislib
+/usr/share/mlkit/ml-yacc-lib
+/usr/share/mlkit/basislib
 
 %post
 echo '#!/bin/sh' > ${RPM_INSTALL_PREFIX}/bin/mlkit
@@ -105,6 +111,6 @@ ln -sf ${RPM_INSTALL_PREFIX}/bin/mlkit /usr/bin/mlkit
 ln -sf ${RPM_INSTALL_PREFIX}/bin/rp2ps /usr/bin/rp2ps
 
 %preun
-rm -rf ${RPM_INSTALL_PREFIX}/bin/mlkit
-rm -rf /usr/bin/mlkit /usr/bin/rp2ps
+rm -f ${RPM_INSTALL_PREFIX}/bin/mlkit
+rm -f /usr/bin/mlkit /usr/bin/rp2ps
 

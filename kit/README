@@ -1,4 +1,4 @@
-The ML Kit README file                                  March 8, 2001
+The ML Kit README file                                  June 12, 2001
 http://www.it.edu/research/mlkit/
 
 0. Introduction
@@ -61,7 +61,7 @@ running Standard ML programs with the ML Kit. Copy the kitdemo/
 directory to your home directory and try compile the helloworld.sml
 program:
 
-  % cp -R /usr/local/mlkit/kitdemo ~/kitdemo
+  % cp -R /usr/share/mlkit/kitdemo ~/kitdemo
   % cd ~/kitdemo
   % mlkit helloworld.sml
 

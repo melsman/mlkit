@@ -4,6 +4,7 @@ nssml_GetConn
 Ns_ConnGetQuery
 nssml_SetGet
 nssml_SetPut
+nssml_isNullString
 Ns_SetFree
 nssml_SetCreate
 nssml_SetSize

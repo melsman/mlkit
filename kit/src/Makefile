@@ -45,7 +45,7 @@ mlkit_kam: basics
 
 smlserver: basics
 	cd RuntimeWithGC; $(MAKE) runtimeSystemKamNsSml.o
-	cd SMLserver; $(MAKE) smlserver
+	cd SMLserver; $(MAKE)
 	echo 'use "build_web.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_web.$(ARCH-OS)
 	rm -f $(BINDIR)/mlkit_web
@@ -97,7 +97,7 @@ clean:
 	cd Compiler/Kam; rm -rf PM CM *~
 	cd Compiler/Cfg; rm -rf PM CM *~
 	cd Compiler/Lambda; rm -rf PM CM *~
-	cd SMLserver; $(MAKE) clean2
+	cd SMLserver; rm -f nssml.so *.o *~
 
 grm:
 	cd Parsing; ml-lex Topdec.lex; ml-yacc Topdec.grm

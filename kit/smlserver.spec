@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------
-# RPM Spec File for the ML Kit SMLserver Version 3.4.0
+# RPM Spec File for the ML Kit SMLserver Version 3.9.0
 # ---------------------------------------------------------------------
 #
 # Here is a short description of how to build an RPM File for the ML
@@ -9,13 +9,13 @@
 #   % make smlserver
 #
 # from within the ML Kit root directory. You must also be able to
-# install the Kit in /usr/local/smlserver with the command (you need to 
+# install the Kit in /usr/share/smlserver with the command (you need to 
 # be root to do this)
 # 
 #   # make install_smlserver
 #
 # The install section in the Makefile copies all files that the end
-# user needs to use SMLserver into the /usr/local/smlserver directory. 
+# user needs to use SMLserver into the /usr/share/smlserver directory. 
 # Here you need to be careful that the files that are copied are also
 # mentioned in the %files section of this spec file.
 #
@@ -38,17 +38,18 @@
 
 Summary: SML Support for AOLserver
 Name: smlserver
-Version: 3.4.0
+Version: 3.9.0
 Release: 1
 Copyright: GPL
 Group: Development/Languages
-Source: http://www.it.edu/research/mlkit/download/smlserver-3.4.0.tgz
+Source: http://www.it.edu/research/mlkit/download/smlserver-3.9.0.tgz
 URL: http://www.it.edu/research/mlkit
 Vendor: IT University of Copenhagen
 Packager: Martin Elsman (mael@dina.kvl.dk)
-Prefix: /usr/local/smlserver
+Prefix: /usr/share/smlserver
 ExclusiveOS: Linux
 ExcludeArch: sparc alpha
+Requires: aolserver
 
 %description 
 SMLserver is an SML module for AOLserver, an Open Source webserver
@@ -77,27 +78,31 @@ about this work, consult http://www.dina.kvl.dk/~sestoft/msp
 make smlserver
 
 %install
+rm -rf $RPM_BUILD_ROOT
 make install_smlserver
+
+%clean
+rm -rf $RPM_BUILD_ROOT
 
 %files
 
 # Documentation, Etc.
-%doc /usr/local/smlserver/doc/mlkit.pdf
-%doc /usr/local/smlserver/README
-%doc /usr/local/smlserver/README_SMLSERVER
-/usr/local/smlserver/copyright
+%doc /usr/share/smlserver/doc/mlkit.pdf
+%doc /usr/share/smlserver/README
+%doc /usr/share/smlserver/README_SMLSERVER
+/usr/share/smlserver/copyright
 
 # ML Kit Executables
-/usr/local/smlserver/bin/mlkit_web.x86-linux
+/usr/share/smlserver/bin/mlkit_web.x86-linux
 
 # Module for AOLserver (includes runtime system)
-/usr/local/smlserver/bin/nssml.so
+/usr/share/smlserver/bin/nssml.so
 
 # The Demonstration Directory
-/usr/local/smlserver/smlserver_demo
+/usr/share/smlserver/smlserver_demo
 
 # Libraries
-/usr/local/smlserver/basislib
+/usr/share/smlserver/basislib
 
 %post
 echo '#!/bin/sh' > ${RPM_INSTALL_PREFIX}/bin/mlkit_web
@@ -106,5 +111,5 @@ chmod a+x ${RPM_INSTALL_PREFIX}/bin/mlkit_web
 ln -sf ${RPM_INSTALL_PREFIX}/bin/mlkit_web /usr/bin/mlkit_web
 
 %preun
-rm -rf ${RPM_INSTALL_PREFIX}/bin/mlkit_web
+rm -f ${RPM_INSTALL_PREFIX}/bin/mlkit_web
 

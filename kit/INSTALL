@@ -1,4 +1,4 @@
-The ML Kit INSTALL file                                  March 8, 2001
+The ML Kit INSTALL file                                  June 12, 2001
 http://www.it.edu/research/mlkit/
 
 Content
@@ -66,7 +66,7 @@ in the previous section, proceed as follows:
 
       # make install
 
-    which installs the ML Kit in the /usr/local/mlkit-x.y.z 
+    which installs the ML Kit in the /usr/share/mlkit-x.y.z 
     directory. Alternatively, if you want to install the ML Kit in
     your home directory, execute
    
@@ -76,7 +76,7 @@ Once installed, make a personal copy of the kitdemo/ directory and try
 compile the kitdemo/helloworld.sml program. The commands
 
    % cd kitdemo
-   % /usr/local/mlkit-x.y.z/bin/mlkit helloworld.sml
+   % /usr/share/mlkit-x.y.z/bin/mlkit helloworld.sml
 
 should create a file called run (placed in the working directory)
 that, when executed, should print a greeting from the Kit.
@@ -92,7 +92,7 @@ and
 
    # make install_kam
 
-which installs the ML Kit in the /usr/local/mlkit-kam-x.y.z directory;
+which installs the ML Kit in the /usr/share/mlkit-kam-x.y.z directory;
 it is thus possible to have both a version of the ML Kit that uses the
 native backend and a version of the ML Kit that uses the bytecode
 backend installed at the same time. If you do not have root-access to
@@ -105,7 +105,7 @@ Once installed, make a personal copy of the kitdemo/ directory and try
 compile the kitdemo/helloworld.sml program. The commands
 
    % cd kitdemo
-   % /usr/local/mlkit-kam-x.y.z/bin/mlkit_kam helloworld.sml
+   % /usr/share/mlkit-kam-x.y.z/bin/mlkit_kam helloworld.sml
 
 should create a file called run (placed in the working directory)
 that, when executed, should print a greeting from the Kit.
@@ -122,7 +122,7 @@ the source distribution.
 To truly test the installation, execute the commands
 
    % cd test
-   % ../bin/kittester /usr/local/mlkit/bin/mlkit all.tst
+   % ../bin/kittester /usr/share/mlkit/bin/mlkit all.tst
 
 The last command runs a set of tests and generates a test report
 test/test_report.dvi. Be aware that this testing may take some time.
