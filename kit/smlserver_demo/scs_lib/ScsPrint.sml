@@ -86,14 +86,14 @@ structure ScsPrint :> SCS_PRINT =
 		let
 		  val clob_id = DbClob.insert_fn source db
 		in
-		  Db.dmlDb (db, `insert into scs_print_log (batch_id,print_id,user_id,category,clob_id,print_cmd,
-							    target_file,doc_type,note,deleted_p,
-							    on_what_table, on_what_id, time_stamp)
-			    values (^(Db.valueList [batch_id,print_id,Int.toString ScsLogin.user_id,
-						    category,clob_id,cmd,target_f,
-						    docTypeToString doc_type,note,"f",
-						    on_what_table,on_what_id]),
-				    ^(Db.sysdateExp))`)
+		  Db.dmlDb db `insert into scs_print_log (batch_id,print_id,user_id,category,clob_id,print_cmd,
+				                          target_file,doc_type,note,deleted_p,
+							  on_what_table, on_what_id, time_stamp)
+			       values (^(Db.valueList [batch_id,print_id,Int.toString ScsLogin.user_id,
+				                       category,clob_id,cmd,target_f,
+						       docTypeToString doc_type,note,"f",
+						       on_what_table,on_what_id]),
+				       ^(Db.sysdateExp))`
 		end
 	    in
 	      if Process.system cmd = Process.success
@@ -134,14 +134,14 @@ structure ScsPrint :> SCS_PRINT =
 		let
 		  val clob_id = DbClob.insert_fn source db
 		in
-		  Db.dmlDb (db, `insert into scs_print_log (batch_id,print_id,user_id,category,clob_id,print_cmd,
-							    target_file,doc_type,note,deleted_p,
-							    on_what_table, on_what_id, time_stamp)
-			    values (^(Db.valueList [batch_id,print_id,Int.toString ScsLogin.user_id,
-						    category,clob_id,cmd,target_f,
-						    docTypeToString doc_type,note,"f",
-						    on_what_table,on_what_id]),
-				    ^(Db.sysdateExp))`)
+		  Db.dmlDb db `insert into scs_print_log (batch_id,print_id,user_id,category,clob_id,print_cmd,
+				  	                  target_file,doc_type,note,deleted_p,
+							  on_what_table, on_what_id, time_stamp)
+			       values (^(Db.valueList [batch_id,print_id,Int.toString ScsLogin.user_id,
+				 		       category,clob_id,cmd,target_f,
+						       docTypeToString doc_type,note,"f",
+						       on_what_table,on_what_id]),
+				       ^(Db.sysdateExp))`
 		end
 	    in
 	      if Process.system cmd = Process.success

@@ -29,6 +29,8 @@ structure Ns :> NS =
 
     structure Conn =
       struct
+	type status = status
+	type set = set
 	fun returnHtml(status: int, s: string) : status =
 	  prim("@Ns_ConnReturnHtml", (getConn(),status,s,size s))
 	fun return s = returnHtml(200,s)

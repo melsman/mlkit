@@ -3,6 +3,10 @@
     NsBasics.sml
     NS_SET.sml
     NsSet.sml
+    NS_CACHE.sml
+    NS_CONN.sml
+    NS_COOKIE.sml
+    NS_MAIL.sml
     NsInfo.sml
     NS_DB.sml
     DbFunctor.sml

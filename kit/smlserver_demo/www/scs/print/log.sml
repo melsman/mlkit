@@ -1,9 +1,9 @@
 val dicts = Db.list (fn g => (g "login", g "print_id", g "category", g "doc_type", g "note", 
-			      g "time_stamp", g "deleted_p"),
+			      g "time_stamp", g "deleted_p"))
 		     `select login, print_id, category, doc_type, note, time_stamp, deleted_p
                         from scs_print_log,auth_user 
                        where scs_print_log.user_id = auth_user.user_id
-                       order by deleted_p, time_stamp desc`)
+                       order by deleted_p, time_stamp desc`
 
 val _ = ScsPage.returnPg "Print Log" 
   (case dicts of

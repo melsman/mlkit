@@ -17,7 +17,7 @@
        `<tr><th> ^(RatingUtil.bottleImgs rating)
         <td> ^(g"comments")
         <td> ^(RatingUtil.mailto (g"email") (g"fullname"))`
-     end ^^ r, nil, query)
+     end ^^ r) nil query
 
   val body =
     `<table width=95% bgcolor="#dddddd" border=1>

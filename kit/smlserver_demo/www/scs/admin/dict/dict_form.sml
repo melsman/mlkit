@@ -35,7 +35,7 @@ val filter_p =
 val phrases = 
   let
     val l = List.filter filter_p
-    (Db.list(fn g => (g "phrase_id",g "target_id", g "target_phrase", g "source_phrase", g "script", g "entry_date"),
+    (Db.list (fn g => (g "phrase_id",g "target_id", g "target_phrase", g "source_phrase", g "script", g "entry_date"))
 	     `select scs_dict_source.phrase_id,
                      scs_dict_source.lang as source_lang,scs_dict_source.phrase as source_phrase,
 		     scs_dict_source.script, scs_dict_source.entry_date,
@@ -43,7 +43,7 @@ val phrases =
 	        from scs_dict_source, (select * from scs_dict_target where lang = '^(ScsLang.toString target_lang)') t
                where scs_dict_source.phrase_id = t.phrase_id(+)
                  and scs_dict_source.lang = '^(ScsLang.toString source_lang)'
-	       order by entry_date`))
+	       order by entry_date`)
   in
     List.take (l,Option.valOf (Int.fromString limit_rows)) handle _ => l
   end
@@ -57,12 +57,12 @@ val entry_forms =
 `
 	     else
 	       `insert into scs_dict_target (phrase_id,target_id,lang,phrase) values (^(Db.seqCurrvalExp "scs_dict_phrase_seq"),^(Db.seqNextvalExp "scs_dict_target_seq"),^(Db.valueList [g "lang", g "phrase"]));
-`),`<pre>`,
+`)) `<pre>`
 	       `select * from
 	       (select phrase_id, to_number(null) as target_id, lang, phrase, script, entry_date from scs_dict_source
 		union
 		select phrase_id, target_id, lang, phrase, '' as script, to_date(null) as entry_date from scs_dict_target)
-	       order by phrase_id,target_id desc`) ^^ `</pre>`
+	       order by phrase_id,target_id desc` ^^ `</pre>`
   else
     if ScsFormVar.isErrors errs orelse source_lang = target_lang then
       %% `No phrases selected<p> The source language and target language must not be the same.`

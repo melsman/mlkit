@@ -1,8 +1,8 @@
 val tables = Db.list (fn g => List.nth (Option.valOf 
-		      (RegExp.extract (RegExp.fromString "(.*)_AUDIT") (g "table_name")),0),
+		      (RegExp.extract (RegExp.fromString "(.*)_AUDIT") (g "table_name")),0))
 		      `select table_name 
                          from user_tables 
-                        where lower(table_name) like '%_audit'`)
+                        where lower(table_name) like '%_audit'`
 
 val _ = ScsPage.returnPg "Audit Tables" (`
 
