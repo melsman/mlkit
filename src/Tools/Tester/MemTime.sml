@@ -74,7 +74,7 @@ structure MemTime : MEM_TIME =
 (*	      val cpu_timer = Timer.startCPUTimer() *)
 	      val real_timer = Timer.startRealTimer()
 	      val {count,rss,size} = MemUsage.memUsage {cmd=program, args=args, 
-							delay=(*MemUsage.quarterSecond*) MemUsage.second, 
+							delay=MemUsage.quarterSecond, 
 							out_file=outputfile}
 	      val max_mem_size = report size
 	      val max_res_size = report rss
