@@ -1,6 +1,3 @@
-(*$LocallyLiveVariables: LVARS LVARSET CON EXCON PRETTYPRINT CRASH FLAGS EFFECT RTYPE
-MUL_INF MUL_EXP LOCALLY_LIVE_VARIABLES*)
-
 (* Locally live variables: second pass of Storage Mode Analysis *)
 
 

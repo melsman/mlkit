@@ -1,9 +1,9 @@
 import Edlib/edlib.pm
        Common/common.pm
-     (*Compiler/compiler.pm*)
+       Compiler/compiler.pm
        
 in
-(*    Manager/FREE_IDS.sml
+    Manager/FREE_IDS.sml
     Manager/FreeIds.sml
     Manager/INT_MODULES.sml
     Manager/IntModules.sml
@@ -19,5 +19,4 @@ in
     Common/Elaboration.sml
     Common/Execution.sml
     Common/KitCompiler.sml
-*)
 end

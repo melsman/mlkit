@@ -21,92 +21,90 @@ functor Compile(structure Excon : EXCON
 
                 structure SpreadExp: SPREAD_EXPRESSION
 		  sharing SpreadExp.E = LambdaExp
-		      and SpreadExp.E' = RegionExp
-                      and type SpreadExp.place = Effect.effect = Effect.effect
-                      and type SpreadExp.cone = Effect.cone = SpreadExp.RegionStatEnv.cone
-		      and type SpreadExp.RegionStatEnv.TypeAndPlaceScheme = RegionExp.sigma
-		      and type SpreadExp.RegionStatEnv.excon = RegionExp.excon
-		      and type SpreadExp.RegionStatEnv.lvar = RegionExp.lvar
-		      and type SpreadExp.RegionStatEnv.place = RegionExp.place
-		      and type SpreadExp.RegionStatEnv.Type = RegionExp.Type
+		  sharing SpreadExp.E' = RegionExp
+                  sharing type SpreadExp.place = Effect.effect
+                  sharing type SpreadExp.cone = Effect.cone = SpreadExp.RegionStatEnv.cone
+		  sharing type SpreadExp.RegionStatEnv.TypeAndPlaceScheme = RegionExp.sigma
+		  sharing type SpreadExp.RegionStatEnv.excon = RegionExp.excon
+		  sharing type SpreadExp.RegionStatEnv.lvar = RegionExp.lvar
+		  sharing type SpreadExp.RegionStatEnv.place = RegionExp.place
+		  sharing type SpreadExp.RegionStatEnv.Type = RegionExp.Type
 
                 structure RegInf: REGINF
 		  sharing type RegInf.cone = Effect.cone
-		      and type RegInf.rse = SpreadExp.RegionStatEnv.regionStatEnv
-		      and type RegInf.trip = RegionExp.trip
-		      and type RegInf.place = RType.place = SpreadExp.place = RegionExp.place
+		  sharing type RegInf.rse = SpreadExp.RegionStatEnv.regionStatEnv
+		  sharing type RegInf.trip = RegionExp.trip
+		  sharing type RegInf.place = RType.place = SpreadExp.place = RegionExp.place
 
 		structure Mul: MUL
 		structure MulInf: MUL_INF
-		  sharing type MulInf.place = Effect.place
-		      and type MulInf.cone = RegInf.cone
-		      and type MulInf.efenv = Mul.efenv
-		      and type MulInf.mularefmap = Mul.mularefmap (*Psi*)
-		      and type MulInf.LambdaPgm_phi = RegionExp.LambdaPgm
+		  sharing type MulInf.place = RegionExp.effect
+		  sharing type MulInf.cone = RegInf.cone
+		  sharing type MulInf.efenv = Mul.efenv
+		  sharing type MulInf.mularefmap = Mul.mularefmap (*Psi*)
+		  sharing type MulInf.LambdaPgm_phi = RegionExp.LambdaPgm
 
 		structure MulExp: MUL_EXP
 		  sharing type MulInf.LambdaPgm_psi = MulExp.LambdaPgm
-		      and type MulExp.place = MulInf.place
-		      and type MulExp.mul = MulInf.mul
-                      and type MulExp.regionStatEnv= SpreadExp.RegionStatEnv.regionStatEnv
+		  sharing type MulExp.place = MulInf.place
+		  sharing type MulExp.mul = MulInf.mul
+                  sharing type MulExp.regionStatEnv= SpreadExp.RegionStatEnv.regionStatEnv
 
 		structure AtInf: AT_INF
 		  sharing type AtInf.LambdaPgm = MulExp.LambdaPgm
-		      and type AtInf.place = Effect.place
-		      and type AtInf.mul = MulExp.mul
-		      and type AtInf.qmularefset = MulInf.qmularefset = MulExp.qmularefset
+		  sharing type AtInf.place = Effect.place
+		  sharing type AtInf.mul = MulExp.mul
+		  sharing type AtInf.qmularefset = MulInf.qmularefset = MulExp.qmularefset
 			      
 		structure DropRegions: DROP_REGIONS
 		  sharing type DropRegions.at = AtInf.at
-		      and type DropRegions.place = Effect.place
-		      and type DropRegions.mul = MulExp.mul
-		      and type DropRegions.LambdaPgm = MulExp.LambdaPgm
+		  sharing type DropRegions.place = Effect.place
+		  sharing type DropRegions.mul = MulExp.mul
+		  sharing type DropRegions.LambdaPgm = MulExp.LambdaPgm
 
 		structure PhysSizeInf : PHYS_SIZE_INF
 		  sharing type PhysSizeInf.at = AtInf.at
-		      and type PhysSizeInf.place = Effect.place
-		      and type PhysSizeInf.LambdaPgm = MulExp.LambdaPgm
-		      and type PhysSizeInf.mul = MulExp.mul
+		  sharing type PhysSizeInf.place = Effect.place
+		  sharing type PhysSizeInf.LambdaPgm = MulExp.LambdaPgm
+		  sharing type PhysSizeInf.mul = MulExp.mul
 
 		structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING
-		sharing type RegionFlowGraphProfiling.place = PhysSizeInf.place
-		    and type RegionFlowGraphProfiling.at = AtInf.at
-		    and type RegionFlowGraphProfiling.phsize = PhysSizeInf.phsize
-		    and type RegionFlowGraphProfiling.pp = PhysSizeInf.pp
+		  sharing type RegionFlowGraphProfiling.place = PhysSizeInf.place
+		  sharing type RegionFlowGraphProfiling.at = AtInf.at
+		  sharing type RegionFlowGraphProfiling.phsize = PhysSizeInf.phsize
 
 		structure CompLamb : COMP_LAMB
 		  sharing type CompLamb.at = AtInf.at
-		      and type CompLamb.LambdaPgm = PhysSizeInf.LambdaPgm
-		      and type CompLamb.place = PhysSizeInf.place
-		      and type CompLamb.phsize = PhysSizeInf.phsize
-		      and type CompLamb.pp = PhysSizeInf.pp
+		  sharing type CompLamb.LambdaPgm = PhysSizeInf.LambdaPgm
+		  sharing type CompLamb.place = PhysSizeInf.place
+		  sharing type CompLamb.phsize = PhysSizeInf.phsize
 
 		structure CompilerEnv: COMPILER_ENV
 		  sharing type CompilerEnv.lvar = LambdaExp.lvar
-                      and type CompilerEnv.excon = LambdaExp.excon = Excon.excon
-                      and type CompilerEnv.Type = LambdaExp.Type
+                  sharing type CompilerEnv.excon = LambdaExp.excon = Excon.excon
+                  sharing type CompilerEnv.Type = LambdaExp.Type
 
                 structure CompileDec: COMPILE_DEC
 		  sharing type CompileDec.LambdaPgm = LambdaExp.LambdaPgm
-                      and type CompileDec.CEnv = CompilerEnv.CEnv
+                  sharing type CompileDec.CEnv = CompilerEnv.CEnv
 
                 structure OptLambda: OPT_LAMBDA
 		  sharing type OptLambda.LambdaPgm = LambdaExp.LambdaPgm
 
                 structure KAMBackend : KAM_BACKEND
 		  sharing type CompLamb.EA = KAMBackend.EA
-		      and type CompLamb.code = KAMBackend.code
+		  sharing type CompLamb.code = KAMBackend.code
 
 		structure CompileBasis: COMPILE_BASIS
 		  sharing type CompileBasis.EqEnv = EliminateEq.env
-		      and type CompileBasis.OEnv = OptLambda.env
-		      and type CompileBasis.TCEnv = LambdaStatSem.env 
-                      and type CompileBasis.rse = SpreadExp.RegionStatEnv.regionStatEnv
-		      and type CompileBasis.drop_env = DropRegions.env
-		      and type CompileBasis.psi_env = PhysSizeInf.env
-                      and type CompileBasis.l2kam_ce = CompLamb.env 
-	       	      and type CompileBasis.mulenv = MulInf.efenv
-                      and type CompileBasis.mularefmap = MulInf.mularefmap
+		  sharing type CompileBasis.OEnv = OptLambda.env
+		  sharing type CompileBasis.TCEnv = LambdaStatSem.env 
+                  sharing type CompileBasis.rse = SpreadExp.RegionStatEnv.regionStatEnv
+		  sharing type CompileBasis.drop_env = DropRegions.env
+		  sharing type CompileBasis.psi_env = PhysSizeInf.env
+                  sharing type CompileBasis.l2kam_ce = CompLamb.env 
+	       	  sharing type CompileBasis.mulenv = MulInf.efenv
+                  sharing type CompileBasis.mularefmap = MulInf.mularefmap
 
                 structure Report: REPORT
 		structure Flags: FLAGS
@@ -125,7 +123,7 @@ functor Compile(structure Excon : EXCON
 			             = AtInf.StringTree
 			             = PhysSizeInf.StringTree
 		                     = RegionFlowGraphProfiling.StringTree
-                      and type PP.Report = Report.Report
+                  sharing type PP.Report = Report.Report
 			
 	        structure Name : NAME
 
@@ -134,8 +132,6 @@ functor Compile(structure Excon : EXCON
 		  ): COMPILE =
 
   struct
-
-    structure List = Edlib.List
 
     structure CE = CompilerEnv
 
@@ -180,12 +176,14 @@ functor Compile(structure Excon : EXCON
                       TextIO.flushOut log)
     fun pr st = pr0 st (!Flags.log)
 
-    fun length l = List.foldR (fn _ => fn n => n+1) 0 l
+    fun length l = foldr (fn (_, n) => n+1) 0 l
 
-    fun msg(s: string) = (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log)
-			  (*; TextIO.output(TextIO.stdOut, s)*))
-
-    fun chat(s: string) = if !Flags.chat then msg s else ()
+    local
+      fun msg(s: string) = (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log)
+      (*; TextIO.output(TextIO.stdOut, s)*))
+    in
+      fun chat(s: string) = if !Flags.chat then msg (s^"\n") else ()
+    end
 
     fun fast_pr stringtree = 
            (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
@@ -279,7 +277,7 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     fun ast2lambda(ce, strdecs) =
-      (ifthen (!Flags.chat) (fn _ => msg("\nCompiling abstract syntax tree into lambda language ..."));
+      (chat "Compiling abstract syntax tree into lambda language begin ...";
        Timing.timing_begin();
        let val _ = LambdaExp.reset()  (* Reset type variable counter to improve pretty printing; The generated
 				       * Lambda programs are closed w.r.t. type variables, because code 
@@ -290,6 +288,7 @@ functor Compile(structure Excon : EXCON
 	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
 	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
        in  
+	 chat "Compiling abstract syntax tree into lambda language end.";
 	 ifthen (!Flags.DEBUG_COMPILER) (fn _ => display("Report: UnOpt", layoutLambdaPgm lamb));
 	 (lamb,ce1, declared_lvars, declared_excons) 
      end)
@@ -315,13 +314,13 @@ functor Compile(structure Excon : EXCON
 
     fun type_check_lambda (a,b) =
       if Flags.is_on "type_check_lambda" then
-	(chat "\nType checking lambda term begin ...\n";
+	(chat "Type checking lambda term begin ...";
 	 Timing.timing_begin();
 	 let 
 	   val env' = Timing.timing_end_res ("CheckLam",(LambdaStatSem.type_check {env = a,  letrec_polymorphism_only = false,
                   pgm =  b}))
 	 in
-	   chat "\nType checking lambda term end ...\n";
+	   chat "Type checking lambda term end.";
 	   env'
 	 end)
       else LambdaStatSem.empty
@@ -333,12 +332,12 @@ functor Compile(structure Excon : EXCON
 
     fun elim_eq_lambda (env,lamb) =
       if Flags.is_on "eliminate_polymorphic_equality" then
-	(chat "\nEliminating polymorphic equality begin ...\n";
+	(chat "Eliminating polymorphic equality begin ...";
 	 Timing.timing_begin();
 	 let val (lamb', env') = 
 	   Timing.timing_end_res ("ElimEq", EliminateEq.elim_eq (env, lamb))
 	 in
-	   chat "\nEliminating polymorphic equality end ...\n";
+	   chat "Eliminating polymorphic equality end.";
 	   if !Flags.DEBUG_COMPILER then 
 	     (display("Lambda Program After Elimination of Pol. Eq.", 
 		      layoutLambdaPgm lamb');
@@ -354,11 +353,8 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     fun optlambda (env, lamb) =
-          (if !Flags.chat then 
-             msg (if !Flags.optimiser
-		  then "\nOptimising lambda term ..."
-		  else "\nRewriting lambda term ...")
-	   else ();
+          ((if !Flags.optimiser then chat "Optimising lambda term ..."
+	    else chat "Rewriting lambda term ...");
 	   Timing.timing_begin();
 	   let 
 	     val (lamb_opt, env') = 
@@ -374,7 +370,7 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     fun spread(cone,rse, lamb_opt)=
-        (chat "\nSpreading regions and effects ...";
+        (chat "Spreading regions and effects ...";
          Timing.timing_begin();
          (*Profile.reset();
          Profile.profileOn();*)
@@ -402,7 +398,7 @@ functor Compile(structure Excon : EXCON
                          export_basis=export_basis  (* list of region variables and arrow effects *)
                         }) = 
     let
-        val _ = (chat "\nInferring regions and effects ...";
+        val _ = (chat "Inferring regions and effects ...";
 		 Timing.timing_begin()
                  (*;Compiler.Profile.reset()
                  ;Compiler.Profile.setTimingMode true*))
@@ -418,7 +414,7 @@ functor Compile(structure Excon : EXCON
         val _ = out_layer(Effect.layoutEtas new_layer)
 *)
 	val toplevel = Effect.level Effect.initCone
-	val cone = List.foldL (fn effect => fn cone =>
+	val cone = foldl (fn (effect, cone) =>
 			       Effect.lower toplevel effect cone) cone new_layer
 
 (*        val _ = print "new_layer after lowering:\n"
@@ -451,15 +447,14 @@ functor Compile(structure Excon : EXCON
 	  case spread_lamb_exp
 	    of RegionExp.TR(_,RegionExp.Frame{declared_lvars,declared_excons},_) =>
 	      (let val rse_temp = 
-		 List.foldL (fn {lvar,compound,create_region_record,sigma, place} => fn rse =>
+		 foldl (fn ({lvar,compound,create_region_record,sigma, place}, rse) =>
 			     SpreadExp.RegionStatEnv.declareLvar(lvar,(compound, 
 							   create_region_record, !sigma, place, 
 							   SOME(ref[]) (* reset occurrences *), NONE
 							 ), rse)) rse_con declared_lvars
 	       in
-		 List.foldL (fn (excon, SOME(Type, place)) => (fn rse =>
-							       SpreadExp.RegionStatEnv.declareExcon(excon,(Type,place),rse))
-			      | _ => die "rse.excon") rse_temp declared_excons
+		 foldl (fn ((excon, SOME(Type, place)), rse) => SpreadExp.RegionStatEnv.declareExcon(excon,(Type,place),rse)
+	                 | _ => die "rse.excon") rse_temp declared_excons
 
 	       end handle _ => die "cannot form rse'")
 	     | _ => die "program does not have type frame"
@@ -479,7 +474,7 @@ functor Compile(structure Excon : EXCON
     fun mulInf(program_after_R:(Effect.place,unit)RegionExp.LambdaPgm, Psi, cone, mulenv) =
     let
 
-        val _ = (chat "\nInferring multiplicities ...";
+        val _ = (chat "Inferring multiplicities ...";
                 Timing.timing_begin()
                 (*;Profile.reset()
                 ;Profile.profileOn()*) )
@@ -526,7 +521,7 @@ functor Compile(structure Excon : EXCON
     local open MulInf
     in fun k_norm(pgm: (place,place*mul,qmularefset ref)LambdaPgm_psi) 
 	: (place,place*mul,qmularefset ref)LambdaPgm_psi =
-	(chat "\nK-normalisation ...\n";
+	(chat "K-normalisation ...";
          Timing.timing_begin();
          let val pgm' = MulInf.k_normPgm pgm
 	 in Timing.timing_end("Knorm");
@@ -567,7 +562,7 @@ functor Compile(structure Excon : EXCON
     in
       val drop_regions : env*(place at,place*mul,unit)LambdaPgm -> (place at,place*mul,unit)LambdaPgm * env =
 	fn (env, pgm) =>
-	(chat "\nDrop Regions ...\n";
+	(chat "Drop Regions ...";
          Timing.timing_begin();
          let val (pgm',env') = drop_regions(env, pgm)
 	 in Timing.timing_end("Drop");
@@ -590,7 +585,7 @@ functor Compile(structure Excon : EXCON
    in
       fun phys_size_inf (env: env, pgm:(place at,place*mul,unit)LambdaPgm) 
 	: ((place*pp)at,place*phsize,unit)LambdaPgm * env =
-	(chat "\nPhysical Size Inference ...\n";
+	(chat "Physical Size Inference ...";
          Timing.timing_begin();
          let val (pgm',env') = psi(pp_counter, env, pgm)
 	 in Timing.timing_end("PSI");
@@ -613,7 +608,7 @@ functor Compile(structure Excon : EXCON
               | get_place_at(AtInf.SAT(rho,pp)) = rho
               | get_place_at(AtInf.IGNORE) = Effect.toplevel_region_withtype_top
         in
-            chat "\nChecking whether there are dangling pointers ...";
+            chat "Checking whether there are dangling pointers ...";
             Timing.timing_begin();
             MulExp.warn_dangling_pointers(rse, psi_pgm, get_place_at);
             Timing.timing_end("Dangle")
@@ -628,7 +623,7 @@ functor Compile(structure Excon : EXCON
     in
       fun appConvert (pgm:((place*pp)at,place*phsize,unit)LambdaPgm): 
                           ((place*pp)at,place*phsize,unit)LambdaPgm =
-	(chat "\nApplication Conversion ...\n";
+	(chat "Application Conversion ...";
          Timing.timing_begin();
          let val pgm' = PhysSizeInf.appConvert(pgm)
 	 in Timing.timing_end("AppConv");
@@ -643,7 +638,7 @@ functor Compile(structure Excon : EXCON
     (*   Compile region annotated code to KAM code                            *)
     (* ---------------------------------------------------------------------- *)
     fun comp_lamb(l2kam_ce, pgm) = 
-      let val _ = chat "\nCompiling region annotated lambda language ..."
+      let val _ = chat "Compiling region annotated lambda language ..."
 	  val _ = Timing.timing_begin()
 	  val {code_label, code, env=l2kam_ce1,imports,exports} = CompLamb.comp_lamb(l2kam_ce, pgm)
 	  val _ = Timing.timing_end("CompLam")
@@ -690,7 +685,7 @@ functor Compile(structure Excon : EXCON
 	           (display("\nReport: REGION FLOW GRAPH FOR PROFILING:", 
 			    RegionFlowGraphProfiling.layout_graph());
 		    let val outStreamVCG = TextIO.openOut vcg_file
-		    in chat "\nGenerating region flow graph for profiling (.vcg file) ...";
+		    in chat "Generating region flow graph for profiling (.vcg file) ...";
 		      RegionFlowGraphProfiling.export_graph outStreamVCG;
 		      TextIO.closeOut(outStreamVCG)
 		    end)
@@ -727,7 +722,7 @@ functor Compile(structure Excon : EXCON
 	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)
       in
 	if isEmptyLambdaPgm lamb_opt 
-          then (chat "Empty lambda program; skipping code generation.\n";
+          then (chat "Empty lambda program; skipping code generation.";
                 CEnvOnlyRes CEnv1)
 	else
 	  let val (rse1, mularefmap1, mulenv1, drop_env1, psi_env1, l2kam_ce1, target, linkinfo) = 

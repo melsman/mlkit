@@ -1,45 +1,44 @@
 
 functor Mul(
+  structure Name : NAME
   structure Lam: LAMBDA_EXP
   structure Eff: EFFECT
   structure LvarMap: MONO_FINMAP
     sharing type LvarMap.dom = Lam.lvar
+  structure IntFinMap : MONO_FINMAP where type dom = int
   structure Crash: CRASH
   structure Flags: FLAGS
   structure Lvar: LVARS
     sharing type Lvar.lvar = Lam.lvar
+    sharing type Lvar.name = Name.name
   structure TyName: TYNAME
   structure RType: RTYPE
    sharing type RType.effect = Eff.effect
    sharing type TyName.TyName = RType.tyname = Lam.TyName
    sharing type RType.cone = Eff.cone
    sharing type RType.LambdaType = Lam.Type 
-       and type RType.runType = Eff.runType
+   sharing type RType.runType = Eff.runType
   structure RSE : REGION_STAT_ENV
     sharing type RSE.lvar = Lvar.lvar
-	and type RSE.TyName = TyName.TyName
-	and type RSE.TypeAndPlaceScheme = RType.sigma
-	and type RSE.runType = RType.runType
+    sharing type RSE.TyName = TyName.TyName
+    sharing type RSE.TypeAndPlaceScheme = RType.sigma
+    sharing type RSE.runType = RType.runType
   structure PP: PRETTYPRINT
     sharing type PP.StringTree = Eff.StringTree  = RType.StringTree =
-            LvarMap.StringTree
+            LvarMap.StringTree = IntFinMap.StringTree
   structure QM_EffVarEnv: QUASI_ENV
     sharing type QM_EffVarEnv.StringTree = PP.StringTree
-	and type QM_EffVarEnv.dom = Eff.effect
+    sharing type QM_EffVarEnv.dom = Eff.effect
   ) : MUL =
 struct
 
   structure List = Edlib.List
-  structure Int = Edlib.Int
   structure ListPair = Edlib.ListPair
   structure ListSort = Edlib.ListSort
 
   structure GlobalEffVarEnv = QM_EffVarEnv.Env
 
   (* auxiliaries *)
-(*  fun say s = (TextIO.output(TextIO.stdOut, s^"\n"); TextIO.output(!Flags.log, s^ "\n"))
-  fun say' s = (TextIO.output(TextIO.stdOut, s); TextIO.output(!Flags.log, s)) 
-*)
   fun say s = print (s^"\n")
   fun say' s = print s
   fun mes s = TextIO.output(!Flags.log, s)
@@ -182,12 +181,17 @@ struct
   val empty_qmularefset :qmularefset = (([], [],[]), Eff.toplevel_region_withtype_top )
 
   type efenv = qmularefset ref LvarMap.map  
+  type top_efenv = qmularefset ref IntFinMap.map  
 
-  fun restrict_efenv(efenv,lvars) =
-    List.foldL(fn lv => fn acc =>
-	       case LvarMap.lookup efenv lv
-		 of SOME res => LvarMap.add(lv,res,acc)
-		  | NONE => die "restrict_efenv") LvarMap.empty lvars
+  fun keyOfLvar lv = Name.key(Lvar.name lv)
+  fun topify_efenv efenv =
+    LvarMap.Fold(fn((d,r),a) => IntFinMap.add(keyOfLvar d,r,a)) IntFinMap.empty efenv
+
+  fun restrict_efenv(tefenv,lvars) =
+    foldl(fn (lv,acc) =>
+	  case IntFinMap.lookup tefenv (keyOfLvar lv)
+	    of SOME res => LvarMap.add(lv,res,acc)
+	     | NONE => die "restrict_efenv") LvarMap.empty lvars
  
   (* normalize_qmularefset(qmularefset,sigma) normalizes qmularefset
    * with respect to the order arroweffects occur in tau of sigma.
@@ -270,16 +274,16 @@ struct
     in equal_mularefset(mularefset1,mularefset2)
     end
 
-  type regionStatEnv = RSE.regionStatEnv
+  type top_regionStatEnv = RSE.top_regionStatEnv
   fun enrich_efenv((efenv1,rse1),(efenv2,rse2)) =
-    LvarMap.Fold(fn ((lv2,ref res2),b) => b andalso
-	    case LvarMap.lookup efenv1 lv2
+    IntFinMap.Fold(fn ((lv2,ref res2),b) => b andalso
+	    case IntFinMap.lookup efenv1 lv2
 	      of SOME (ref res1) => 
-		let val sigma1 = case RSE.lookupLvar rse1 lv2
-				   of SOME a => #3 a
+		let val sigma1 = case RSE.top_lookupLvar rse1 lv2
+				   of SOME a => a
 				    | NONE => die "enrich_efenv.lv not in rse1"
-		    val sigma2 = case RSE.lookupLvar rse2 lv2
-				   of SOME a => #3 a
+		    val sigma2 = case RSE.top_lookupLvar rse2 lv2
+				   of SOME a => a
 				    | NONE => die "enrich_efenv.lv not in rse2"			
 		in equal_qmularefset((res1,sigma1),(res2,sigma2))
 		end
@@ -364,7 +368,7 @@ struct
          PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT sep,
                  children =   [t1,t2]}
 
-  fun show_mul (NUM n) = Int.string n
+  fun show_mul (NUM n) = Int.toString n
     | show_mul INF = "INF"
 
   fun layout_mul m = PP.LEAF (show_mul m)
@@ -387,7 +391,7 @@ struct
         layout_pair(layout_effectvar eps,".", layout_mulef psi)
   fun layout_mularefset Psi = 
         layout_set (map layout_mularef Psi)
-  fun layout_effectvar_int (i:int) = PP.LEAF(Int.string i)
+  fun layout_effectvar_int (i:int) = PP.LEAF(Int.toString i)
   fun layout_mularefmap Psi = 
         GlobalEffVarEnv.layoutMap{start = "Mularefmap: [", finish = "]", eq = " -> ", sep = ", "}
           layout_effectvar (layout_mularef o !) Psi
@@ -425,6 +429,12 @@ struct
   fun layout_efenv mulenv = 
         LvarMap.layoutMap{start="Efenv: [", finish = "]", eq = " -> ", sep = ", "}
           (PP.LEAF o Lvar.pr_lvar)
+          (layout_qmularefset o !) 
+          mulenv
+
+  fun layout_top_efenv mulenv = 
+        IntFinMap.layoutMap{start="TopEfenv: [", finish = "]", eq = " -> ", sep = ", "}
+          (PP.LEAF o Int.toString)
           (layout_qmularefset o !) 
           mulenv
 
@@ -731,6 +741,7 @@ struct
 
   fun declare(EE,x,Xi) = LvarMap.add(x,Xi,EE)
   fun plus(EE,EE') = LvarMap.plus(EE,EE')
+  fun plus'(EE,EE') = IntFinMap.plus(EE,EE')
 
   fun getimage([], x)= NONE
     | getimage((x, fx)::f, x')= if Eff.eq_effect(x,x') then SOME fx else getimage(f, x')
@@ -807,8 +818,8 @@ struct
 	 in
 	     ((epses, [], apply_regionsubst_mularefset(Sr, Psi)), place)
 	 end
-          handle ListPair.Zip => die ("instantiateRegions: " ^ Int.string(List.size rhos) ^ " formals, " ^
-                                      Int.string (List.size places) ^ "actuals")
+          handle ListPair.Zip => die ("instantiateRegions: " ^ Int.toString(List.size rhos) ^ " formals, " ^
+                                      Int.toString (List.size places) ^ "actuals")
 
   fun cyclic(eps, []) = false
     | cyclic(eps, (eps',_):: rest) =

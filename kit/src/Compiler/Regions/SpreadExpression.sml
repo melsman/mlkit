@@ -16,32 +16,32 @@ functor SpreadExpression(
   structure E: LAMBDA_EXP
   structure E': REGION_EXP
     sharing type E.con = E'.con = Con.con
-	and type E.TyName = E'.TyName 
-        and type E.excon = E'.excon = ExCon.excon
+    sharing type E.TyName = E'.TyName 
+    sharing type E.excon = E'.excon = ExCon.excon
   structure Eff: EFFECT
   structure R: RTYPE
     sharing type E'.tyvar = R.tyvar = E.tyvar
-        and type R.cone = Eff.cone
-        and type R.LambdaType  = E.Type 
-        and type R.place = Eff.place = Eff.effect = E'.place = E'.effect 
-        and type R.il = E'.il 
-        and type R.Type = E'.Type
-        and type R.runType = Eff.runType
+    sharing type R.cone = Eff.cone
+    sharing type R.LambdaType  = E.Type 
+    sharing type R.place = Eff.place = Eff.effect = E'.place = E'.effect 
+    sharing type R.il = E'.il 
+    sharing type R.Type = E'.Type
+    sharing type R.runType = Eff.runType
   structure RSE: REGION_STAT_ENV
     sharing type RSE.TypeAndPlaceScheme = R.sigma = E'.sigma
-        and type RSE.place = R.place
-        and type RSE.Type = R.Type = E'.Type
-        and type RSE.place = R.place
-        and type RSE.runType = R.runType
-        and type RSE.con = E.con = Con.con 
-        and type RSE.excon = E.excon  = E'.excon
-        and type RSE.il = R.il
-        and type RSE.cone = R.cone = E'.cone
+    sharing type RSE.place = R.place
+    sharing type RSE.Type = R.Type = E'.Type
+    sharing type RSE.place = R.place
+    sharing type RSE.runType = R.runType
+    sharing type RSE.con = E.con = Con.con 
+    sharing type RSE.excon = E.excon  = E'.excon
+    sharing type RSE.il = R.il
+    sharing type RSE.cone = R.cone = E'.cone
   structure SpreadDatatype: SPREAD_DATATYPE
-        sharing type RSE.regionStatEnv = SpreadDatatype.rse
-            and type SpreadDatatype.LambdaExp.datbinds = E.datbinds
-            and type SpreadDatatype.cone = Eff.cone
-            and type SpreadDatatype.RegionExp.datbinds = E'.datbinds
+    sharing type RSE.regionStatEnv = SpreadDatatype.rse
+    sharing type SpreadDatatype.LambdaExp.datbinds = E.datbinds
+    sharing type SpreadDatatype.cone = Eff.cone
+    sharing type SpreadDatatype.RegionExp.datbinds = E'.datbinds
   structure FinMap : FINMAP
   structure Flags: FLAGS
   structure Report : REPORT
@@ -58,12 +58,7 @@ functor SpreadExpression(
 ): SPREAD_EXPRESSION =
 struct
 
-  local
-  structure NewInt = Int
-  in
-  open Edlib
-  structure Int = NewInt
-  end
+  structure List = Edlib.List
 
   structure E = E
   structure E' = E'
@@ -196,7 +191,7 @@ struct
 
 
   fun adjust_instances(transformer, occ as ref l) =
-       List.apply (fn r as ref(il, f)=> r:= (il, transformer o f)) l
+       app (fn r as ref(il, f)=> r:= (il, transformer o f)) l
 
   fun mkRhs(rse,rho)([],[],[]) = (rse,[])
     | mkRhs(rse,rho)((lvar,tyvars,sigma_hat,bind)::rest1,
@@ -1051,14 +1046,15 @@ good *)
   fun spreadPgm(cone, rse: rse,p: E.LambdaPgm): cone * rse * (place,unit)E'.LambdaPgm =
   let
      fun msg(s: string) = (TextIO.output(TextIO.stdOut, s); TextIO.flushOut TextIO.stdOut) 
+     fun chat s = if !Flags.chat then msg(s ^ "\n") else ()
      val _ = Eff.algorithm_R:=false
      (*val _ = Eff.trace := []*)
      val E.PGM(datbinds,e) = p
-     val _ = if !Flags.chat then msg("\nSpreading datatypes ...") else ()
-     val (new_rse, new_datbinds) = (*SpreadDatatype.*)spreadDatbinds rse datbinds cone
-     val _ = if !Flags.chat then msg("\nSpreading expression ...") else ()
+     val _ = chat "Spreading datatypes ..."
+     val (new_rse, new_datbinds) = spreadDatbinds rse datbinds cone
+     val _ = chat "Spreading expression ..."
      val _ = count_RegEffClos := 0
-     val (cone',t') = spreadExp (cone,(*RSE.*)plus(rse,new_rse), e,true) 
+     val (cone',t') = spreadExp (cone, plus(rse,new_rse), e,true) 
 
     (* for toplas submission: 
      val _ = TextIO.output(!Flags.log, "\nRegEffGen (times called during S)" ^ Int.string (!count_RegEffClos) ^ "\n")

@@ -18,19 +18,20 @@ functor SpreadDatatype(
    sharing type E.con = Con.con
   structure R: RTYPE
    sharing type R.tyvar = E.tyvar
-       and type R.cone = Effect.cone
+   sharing type R.cone = Effect.cone
   structure TyName: TYNAME
   structure E': REGION_EXP
-    sharing type E'.sigma = R.sigma and type E'.con = Con.con
-     and type E'.TyName = TyName.TyName
+    sharing type E'.sigma = R.sigma 
+    sharing type E'.con = Con.con
+    sharing type E'.TyName = TyName.TyName
   structure RSE: REGION_STAT_ENV
     sharing type RSE.TypeAndPlaceScheme = R.sigma
-        and type RSE.place = R.effect = Effect.effect
-        and type RSE.Type = R.Type
-        and type RSE.place = R.place
-        and type RSE.runType = Effect.runType = R.runType
-        and type RSE.con = E.con = Con.con 
-        and type RSE.excon = E.excon 
+    sharing type RSE.place = R.effect = Effect.effect = R.place
+    sharing type RSE.Type = R.Type
+(*    sharing type RSE.place = R.place *)
+    sharing type RSE.runType = Effect.runType = R.runType
+    sharing type RSE.con = E.con = Con.con 
+    sharing type RSE.excon = E.excon 
   sharing type TyName.TyName = E.TyName = E'.TyName = 
            RSE.TyName = R.tyname
   structure Flags : FLAGS
@@ -39,8 +40,6 @@ functor SpreadDatatype(
     sharing type PP.StringTree = FinMap.StringTree = E.StringTree = RSE.StringTree = R.StringTree
 ): SPREAD_DATATYPE =
 struct
-
-  open Edlib
 
   structure E = E
   structure E' = E'
@@ -61,6 +60,7 @@ struct
   type effect = Effect.effect
   type sigma = R.sigma
 
+  fun uncurry f (a,b) = f a b
          
   fun die s = Crash.impossible ("SpreadDatatype." ^ s)
 
@@ -124,8 +124,8 @@ struct
   *)
 
 
-  fun layout_arity(a,b,c) = PP.LEAF ("(" ^ Int.string a ^ "," ^ Int.string(length(b)) ^ "," 
-                                     ^ Int.string c ^ ")")
+  fun layout_arity(a,b,c) = PP.LEAF ("(" ^ Int.toString a ^ "," ^ Int.toString(length(b)) ^ "," 
+                                     ^ Int.toString c ^ ")")
 
 
   (* All type names in a mutually recursive datbind have the same
@@ -133,7 +133,7 @@ struct
     the arities found for individual type names: *)
        
   fun sum_arities new_tyenv_association_list = 
-    List.foldR(fn (tyname,arity:arity) => fn acc: arity => 
+    foldr(fn ((tyname,arity:arity), acc: arity) => 
        (* add region and effect arities (type arities are already the same in all
           the mutually recursive type names *)
       (#1 arity, merge_runtypes(#2 acc , #2 arity), eplus(#3 acc, #3 arity))) 
@@ -156,14 +156,14 @@ struct
         the arity.                       *) 
 
   |  E.ARROWtype(taus1,taus2) => 
-        List.foldL plus 
-         (List.foldL plus (0,[Effect.TOP_RT],one)    (* closures have runtype TOP_RT *)
+        foldl (uncurry plus) 
+         (foldl (uncurry plus) (0,[Effect.TOP_RT],one)    (* closures have runtype TOP_RT *)
           (map (infer_arity_ty rse current_tynames) taus1)
          )
         (map (infer_arity_ty rse current_tynames) taus2)
 
   |  E.CONStype(types,tyname) => 
-         List.foldR plus arity0 (map (infer_arity_ty rse current_tynames) types)
+         foldr (uncurry plus) arity0 (map (infer_arity_ty rse current_tynames) types)
          ++ (if List.exists (fn tn => TyName.eq(tn,tyname)) current_tynames 
                then arity0
                else (0,[R.runtype(R.CONSTYPE(tyname,[],[],[]))],zero) ++
@@ -177,15 +177,15 @@ struct
                                   ^ TyName.pr_TyName tyname)))
                      end)
   |  E.RECORDtype(types) => 
-         List.foldR plus (0,[case types of [] => Effect.WORD_RT
+         foldr (uncurry plus) (0,[case types of [] => Effect.WORD_RT
                                | _ => Effect.TOP_RT],zero) 
           (map (infer_arity_ty rse current_tynames) types)
   )
 
   fun infer_arity_conbind_list rse current_tynames conbind_list =
-    List.foldR 
-     (fn (con, SOME tau) => (fn  acc => infer_arity_ty rse  current_tynames tau   ++ acc)
-       | _  => fn acc => acc
+    foldr 
+     (fn ((con, SOME tau), acc) => infer_arity_ty rse  current_tynames tau   ++ acc
+       | (_, acc) => acc
      ) arity0 conbind_list
 
   type single_datbind = tyvar list * tyname * (con * Type option) list
@@ -210,8 +210,9 @@ struct
        end
 
   fun get_place (rho_resource: (Effect.runType * place)list ref) rt = 
-      #2(List.first (fn (rt',rho) => rt = rt') (! rho_resource)) 
-      handle List.First _ => die "get_place: no more places"
+    case (List.find (fn (rt',rho) => rt = rt') (! rho_resource)) 
+      of SOME e => #2 e
+       | NONE => die "get_place: no more places"
 
   fun get_eps arreff_resource () = 
     case !arreff_resource of [] => die "get_eps: no more epsilons"
@@ -282,13 +283,13 @@ struct
     end
 
   fun mk_rse_constructors (target_db: target_db) con_rse: rse=
-          List.foldL (fn (con,_,sigma) => fn con_rse => 
+          foldl (fn ((con,_,sigma), con_rse) => 
                          RSE.declareCon(con, sigma, con_rse))
                      con_rse
                      (#2 target_db) (* the list of constructors for one type name *)
 
   fun mk_rse_one_mutual_recursion (target_dbs: target_datbind) con_rse =
-           List.foldL mk_rse_constructors con_rse target_dbs
+           foldl (uncurry mk_rse_constructors) con_rse target_dbs
 
 
   (************************************************************************)
@@ -351,8 +352,8 @@ struct
           let 
               val (tyvar_list, tyname, conbind_list) = db
               val (tyvar_conversion0,cone) = 
-                  List.foldR 
-                          (fn alpha => fn (rho_list, cone) => 
+                  foldr 
+                          (fn (alpha,(rho_list, cone)) => 
                            let val (rho, cone') = 
                                  Effect.freshRhoWithTy (Effect.BOT_RT, cone)
                            in 
@@ -361,8 +362,8 @@ struct
               val new_mus0 = map (fn (alpha,rho) => (R.TYVAR alpha, rho))
                                  tyvar_conversion0
               val tyvarPairMap0 = 
-                   List.foldR 
-                    (fn (alpha,rho) => fn m => FinMap.add (alpha, rho, m))
+                   foldr 
+                    (fn ((alpha,rho), m) => FinMap.add (alpha, rho, m))
                     FinMap.empty tyvar_conversion0
 
               val result_type = 
@@ -401,7 +402,7 @@ struct
                   ) (*spreadCon*)
 
               val (db': (Con.con * E'.constructorKind * R.sigma) list, cone) = 
-                    (List.foldR spreadCon ([],cone) conbind_list)
+                    (foldr (uncurry spreadCon) ([],cone) conbind_list)
           in
               ((tyname,db') :: tdb_list, cone) 
           end (* spread_single_datbind *)
@@ -409,7 +410,7 @@ struct
       fun msg(s) = if !Flags.chat then (*mads*) TextIO.output(TextIO.stdOut, s^"\n") else ()
 
       (*val _ = msg "Computing new datatype bindings..."*)
-      val (target_datbind,cone) = List.foldL (spread_single_datbind) ([],cone) datbind
+      val (target_datbind,cone) = foldl (uncurry spread_single_datbind) ([],cone) datbind
       (*val _ = msg "Computing new constructor env..."*)
 
       val rse = mk_rse_one_mutual_recursion target_datbind rse 
@@ -418,7 +419,7 @@ struct
          mutually recursive datbind to the common arity: *)
 
       val rse  =  (* extend local rse with tyname bindings *)
-          List.foldR (fn (tyname, (a,b,c) ) => fn  new_rse => 
+          foldr (fn ((tyname, (a,b,c) ), new_rse) => 
                       let 
                         val export_arity = 
                           RSE.mk_arity(a, #2 common_arity, eff_arity_int(#3 common_arity))
@@ -441,7 +442,7 @@ struct
                      (E.DATBINDS(datbinds : datbind list)) cone
                         : rse * E'.datbinds=
      let val (rse1, reversed_target_datbind, cone') = 
-            List.foldL (spreadDatbind (Effect.level cone) global_rse) 
+            foldl (uncurry(spreadDatbind (Effect.level cone) global_rse)) 
               (RSE.empty, [], Effect.push cone) datbinds 
          (* no need to pop cone *)
      in

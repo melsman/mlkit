@@ -2,9 +2,9 @@
  *                        Profiling                               *
  *----------------------------------------------------------------*/
 
-/* Only include this file if PROFILING is defined... */
-
-#ifdef PROFILING
+/* Only include this file if PROFILING is defined...  The queueMark
+ * function should be defined if PROFILING is not defined, however;
+ * look at the bottom. */
 
 #include <stdio.h>
 
@@ -21,6 +21,7 @@
 #include "Tagging.h"
 #include "String.h"
 
+#ifdef PROFILING
 
 /*----------------------------------------------------------------*
  * Global declarations                                            *
@@ -261,10 +262,6 @@ ObjectList* lookupObjectListTable(int atId) {
 
 /* This function sets the flags 'tellTime' so that next time
    a tick is made, the time is printed on stdout */
-
-void queueMark(StringDesc *str) {
-    tellTime = tellTime;
-}
 
 void queueMarkProf(StringDesc *str, int pPoint){
     tellTime = 1;
@@ -1194,6 +1191,12 @@ void checkArgs(int argc, char *argv[]) {
     }
   }
 
+  return;
+}
+
+#else /*PROFILING is not defined */
+
+void queueMark(StringDesc *str){
   return;
 }
 

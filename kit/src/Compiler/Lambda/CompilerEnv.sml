@@ -8,29 +8,27 @@ functor CompilerEnv(structure Ident: IDENT
 		    structure Excon: EXCON
 		    structure Environments : ENVIRONMENTS
 		      sharing type Environments.strid = StrId.strid
-			  and type Environments.id = Ident.id
-			  and type Environments.longid = Ident.longid
-			  and type Environments.tycon = TyCon.tycon
-			  and type Environments.longtycon = TyCon.longtycon
-			  and type Environments.longstrid = StrId.longstrid
+		      sharing type Environments.id = Ident.id
+		      sharing type Environments.longid = Ident.longid
+		      sharing type Environments.tycon = TyCon.tycon
+		      sharing type Environments.longtycon = TyCon.longtycon
+		      sharing type Environments.longstrid = StrId.longstrid
 		    structure LambdaExp : LAMBDA_EXP
 		      sharing type LambdaExp.TyName = TyName.TyName
 		    structure LambdaBasics : LAMBDA_BASICS
 		      sharing type LambdaBasics.Type = LambdaExp.Type
-                          and type LambdaBasics.tyvar = LambdaExp.tyvar
+                      sharing type LambdaBasics.tyvar = LambdaExp.tyvar
 		    structure Lvars: LVARS
 		    structure FinMap: FINMAP
 		    structure FinMapEq : FINMAPEQ
 		    structure PP: PRETTYPRINT
 		      sharing type FinMap.StringTree = PP.StringTree
-		          and type LambdaExp.StringTree = PP.StringTree 
+		      sharing type LambdaExp.StringTree = PP.StringTree 
 			           = FinMapEq.StringTree = TyName.StringTree = Environments.StringTree
 	            structure Flags : FLAGS
 		    structure Crash: CRASH
 		   ): COMPILER_ENV =
   struct
-
-    open Edlib
 
     fun die s = Crash.impossible ("CompilerEnv."^s)
 
@@ -50,7 +48,7 @@ functor CompilerEnv(structure Ident: IDENT
     type instance_transformer = int list
 
     type subst = LambdaBasics.subst
-    val mk_subst = LambdaBasics.mk_subst
+    fun mk_subst a = LambdaBasics.mk_subst a
     fun on_il(S, il) = map (LambdaBasics.on_Type S) il
 
     (* layout functions *)
@@ -92,7 +90,7 @@ functor CompilerEnv(structure Ident: IDENT
     and emptyTyEnv     = TYENV FinMap.empty
     val emptyCEnv      = CENV {StrEnv=emptyStrEnv, VarEnv=emptyVarEnv, TyEnv=emptyTyEnv}
 
-    fun initMap a = List.foldL (fn (v,r) => fn m => FinMap.add(v,r,m)) FinMap.empty a
+    fun initMap a = foldl (fn ((v,r), m) => FinMap.add(v,r,m)) FinMap.empty a
     val initialStrEnv = emptyStrEnv
 
     val boolType = LambdaExp.boolType
@@ -148,16 +146,16 @@ functor CompilerEnv(structure Ident: IDENT
 			   VarEnv=initialVarEnv,
 			   TyEnv=initialTyEnv}
 
-    fun declareVar(id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=VARENV map,TyEnv}) =
-      let val il0 = List.map LambdaExp.TYVARtype tyvars
+    fun declareVar(id, (lv, tyvars, tau), CENV{StrEnv,VarEnv=VARENV m,TyEnv}) =
+      let val il0 = map LambdaExp.TYVARtype tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
-	      VarEnv=VARENV (FinMap.add(id, LVAR (lv,tyvars,tau,il0), map))}
+	      VarEnv=VARENV (FinMap.add(id, LVAR (lv,tyvars,tau,il0), m))}
       end
 
-    fun declareCon(id, (con,tyvars,tau,it), CENV{StrEnv,VarEnv=VARENV map,TyEnv}) =
-      let val il0 = List.map LambdaExp.TYVARtype tyvars
+    fun declareCon(id, (con,tyvars,tau,it), CENV{StrEnv,VarEnv=VARENV m,TyEnv}) =
+      let val il0 = map LambdaExp.TYVARtype tyvars
       in CENV{StrEnv=StrEnv, TyEnv=TyEnv,
-	      VarEnv=VARENV(FinMap.add(id,CON (con,tyvars,tau,il0,it), map))}
+	      VarEnv=VARENV(FinMap.add(id,CON (con,tyvars,tau,il0,it), m))}
       end
 
     fun declareExcon(id, excon, CENV{StrEnv,VarEnv=VARENV map,TyEnv}) =

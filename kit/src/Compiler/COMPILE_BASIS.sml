@@ -26,12 +26,10 @@ signature COMPILE_BASIS =
     val plus' : TopCompileBasis * TopCompileBasis -> TopCompileBasis
 
     val eq : CompileBasis * CompileBasis -> bool
-    val enrich : CompileBasis * CompileBasis -> bool
-    val enrich' : TopCompileBasis * CompileBasis -> bool
+    val enrich : TopCompileBasis * TopCompileBasis -> bool
 
-    val match : CompileBasis * CompileBasis -> CompileBasis
-    val restrict : CompileBasis * (lvar list * lvar list * TyName list * con list * excon list) -> CompileBasis
-    val restrict' : TopCompileBasis * (lvar list * lvar list * TyName list * con list * excon list) -> CompileBasis
+    val match : CompileBasis * TopCompileBasis -> CompileBasis
+    val restrict : TopCompileBasis * (lvar list * lvar list * TyName list * con list * excon list) -> CompileBasis
 
     val mk_CompileBasis: {TCEnv:TCEnv,EqEnv:EqEnv,OEnv:OEnv,rse:rse,mulenv:mulenv,mularefmap:mularefmap,
 			  drop_env:drop_env,psi_env:psi_env,l2kam_ce:l2kam_ce} -> CompileBasis

@@ -50,27 +50,26 @@ signature MANAGER_OBJECTS =
 	val layout : IntFunEnv -> StringTree
       end
 
-    type CEnv and CompileBasis and longtycon and longid and longstrid and TopIntBasis
+    type CEnv and CompileBasis and TopCompileBasis and longtycon and longid and longstrid and TopIntBasis
     structure IntBasis :
       sig
 	val mk : IntFunEnv * CEnv * CompileBasis -> IntBasis
 	val un : IntBasis -> IntFunEnv * CEnv * CompileBasis
+	val mk' : IntFunEnv * CEnv * TopCompileBasis -> TopIntBasis
+	val un' : TopIntBasis -> IntFunEnv * CEnv * TopCompileBasis
 	val empty : IntBasis
 	val plus : IntBasis * IntBasis -> IntBasis
-	val restrict : IntBasis * {funids:funid list, longstrids: longstrid list,
-				   longvids: longid list, longtycons: longtycon list} -> IntBasis
-	val match : IntBasis * IntBasis -> IntBasis
-	val enrich : IntBasis * IntBasis -> bool
-	val agree : longstrid list * IntBasis * IntBasis -> bool   (* structure agreement *)
+	val match : IntBasis * TopIntBasis -> IntBasis
+	val agree : longstrid list * TopIntBasis * TopIntBasis -> bool   (* structure agreement *)
 	val layout : IntBasis -> StringTree
 
-	(* operations that are only used in Manager *)	
-	val initial : TopIntBasis
+	val enrich : TopIntBasis * TopIntBasis -> bool
 	val topify : IntBasis -> TopIntBasis
+
+	val initial : TopIntBasis
 	val plus' : TopIntBasis * TopIntBasis -> TopIntBasis
-	val enrich' : TopIntBasis * IntBasis -> bool
-	val restrict' : TopIntBasis * {funids:funid list, longstrids: longstrid list,
-				       longvids: longid list, longtycons: longtycon list} -> IntBasis
+	val restrict : TopIntBasis * {funids:funid list, longstrids: longstrid list,
+				      longvids: longid list, longtycons: longtycon list} -> IntBasis
       end
 
     type Basis and TopBasis and InfixBasis and ElabBasis and opaq_env and sigid
@@ -82,11 +81,13 @@ signature MANAGER_OBJECTS =
 	val plus : Basis * Basis -> Basis
 	val layout : Basis -> StringTree
 
-	val agree : longstrid list * TopBasis * (Basis * TyName.Set.Set) -> bool
-	val enrich : TopBasis * (Basis * TyName.Set.Set) -> bool
+	val agree : longstrid list * TopBasis * (TopBasis * TyName.Set.Set) -> bool
+	val enrich : TopBasis * (TopBasis * TyName.Set.Set) -> bool
+
 	val initial : TopBasis
 	val topify : Basis -> TopBasis
 	val plus' : TopBasis * TopBasis -> TopBasis
+	val mk' : InfixBasis * ElabBasis * opaq_env * TopIntBasis -> TopBasis 
 	val un' : TopBasis -> InfixBasis * ElabBasis * opaq_env * TopIntBasis
       end
 
@@ -105,36 +106,37 @@ signature MANAGER_OBJECTS =
 	val delete_entries : prjid * funid -> unit
 
 	  (* Repository lookup's return the first entry for a (prjid,funid)
-	   * which is reusable (i.e. where all export (ty-)names are
-	   * marked generative.) In particular, this means that an
-	   * entry which has been added, cannot be returned by a
-	   * lookup, prior to executing `recover().' The integer
-	   * provided by the lookup functions can be given to the
+	   * that is reusable (i.e. where all export (ty-)names are
+	   * marked generative.) In particular, entries that have been added, 
+	   * cannot be returned by a lookup, prior to executing `recover().' 
+	   * The integer provided by the lookup functions can be given to the
 	   * overwrite functions for owerwriting a particular
 	   * entry. *)
 
 	  (* The elaboration environment in the interpretation
 	   * repository is supposed to be the elaboration result of
-	   * the functor application/ unit. This is used when checking
-	   * if reuse is allowed. *)
+	   * the functor application/ unit; the environment is necessary 
+	   * for checking if reuse is allowed. *)
 
-	val lookup_elab : (prjid * funid) -> 
-	  (int * (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
-		  InfixBasis * ElabBasis * opaq_env)) option
-	val lookup_int : (prjid * funid) -> 
-	  (int * (funstamp * ElabEnv * IntBasis * longstrid list * name list * modcode * IntBasis)) option
+	type elab_entry = InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * 
+	  name list * InfixBasis * ElabBasis * opaq_env
+
+	type int_entry = funstamp * ElabEnv * TopIntBasis * longstrid list * name list * 
+	  modcode * IntBasis
+
+	type int_entry' = funstamp * ElabEnv * TopIntBasis * longstrid list * name list * 
+	  modcode * TopIntBasis
 	  
-	val add_elab : (prjid * funid) * 
-	  (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
-	   InfixBasis * ElabBasis * opaq_env) -> unit
-	val add_int : (prjid * funid) * 
-	  (funstamp * ElabEnv * IntBasis * longstrid list * name list * modcode * IntBasis) -> unit
+	val lookup_elab : (prjid * funid) -> (int * elab_entry) option
+	val lookup_int : (prjid * funid) -> (int * int_entry) option    (* IntModules *) 
+	val lookup_int' : (prjid * funid) -> (int * int_entry') option  (* Manager *) 
+	  
+	val add_elab : (prjid * funid) * elab_entry -> unit
+	val add_int : (prjid * funid) * int_entry -> unit          (* IntModules *) 
+	val add_int' : (prjid * funid) * int_entry' -> unit        (* Manager *)
 
-	val owr_elab : (prjid * funid) * int * 
-	  (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
-	   InfixBasis * ElabBasis * opaq_env) -> unit
-	val owr_int : (prjid * funid) * int * 
-	  (funstamp * ElabEnv * IntBasis * longstrid list * name list * modcode * IntBasis) -> unit
+	val owr_elab : (prjid * funid) * int * elab_entry -> unit
+	val owr_int : (prjid * funid) * int * int_entry -> unit    (* IntModules *)
 
 	val emitted_files : unit -> string list   (* returns the emitted files mentioned in the repository; *)
                                                   (* used for deleting files which are no longer mentioned. *)
@@ -142,9 +144,9 @@ signature MANAGER_OBJECTS =
 
           (* Before building a project the repository should be
 	   * ``recovered'' meaning that all export names are marked
-	   * generative (see NAME). Then when an entry is reused,
-	   * export names are marked non-generative (for an entry to
-	   * be reused all export names must be marked generative.) *)
+	   * generative (see NAME). Then, when an entry is reused,
+	   * export names are marked non-generative; for an entry to
+	   * be reused, all export names must be marked generative. *)
 
       end
     

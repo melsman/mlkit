@@ -407,7 +407,9 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     structure IntBasis =
       struct
 	val mk = IB
+	val mk' = TIB
 	fun un (IB ib) = ib
+	fun un' (TIB ib) = ib
 	val empty = IB (IntFunEnv.empty, CompilerEnv.emptyCEnv, CompileBasis.empty)
 	fun plus (IB(ife1,ce1,cb1), IB(ife2,ce2,cb2)) =
 	  IB(IntFunEnv.plus(ife1,ife2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus(cb1,cb2))
@@ -440,13 +442,13 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		val cb' = cb_restr(cb,(lvars,lvars_with_prims,tynames,cons,excons))
 	    in (ife',ce',cb')
 	    end
-	in fun restrict (IB ib, res) = IB(restr(CompileBasis.restrict, ib, res))
-	   fun restrict' (TIB tib, res) = IB(restr(CompileBasis.restrict', tib, res))
+	in 
+	   fun restrict (TIB tib, res) = IB(restr(CompileBasis.restrict, tib, res))
 	end 
 
-	fun match(IB(ife1,ce1,cb1),IB(ife2,ce2,cb2)) =
+	fun match(IB(ife1,ce1,cb1),TIB(ife2,ce2,tcb2)) =
 	  let val _ = CompilerEnv.match(ce1,ce2)
-	      val cb1' = CompileBasis.match(cb1,cb2)
+	      val cb1' = CompileBasis.match(cb1,tcb2)
 	  in IB(ife1,ce1,cb1')
 	  end
 
@@ -454,41 +456,39 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  fun IntFunEnv_enrich a = IntFunEnv.enrich a
 	  fun CompilerEnv_enrichCEnv a = CompilerEnv.enrichCEnv a
 	  fun CompileBasis_enrich a = CompileBasis.enrich a
-	  fun CompileBasis_enrich' a = CompileBasis.enrich' a
-	  fun enrich0(enr,(ife0,ce0,cb0),IB(ife,ce,cb)) =
+	  fun CompileBasis_enrich a = CompileBasis.enrich a
+	  fun enrich0(enr,(ife0,ce0,cb0),(ife,ce,cb)) =
 	    IntFunEnv_enrich(ife0,ife) andalso CompilerEnv_enrichCEnv(ce0,ce) 
 	    andalso enr(cb0,cb)
 	in
-	  fun enrich(IB IB1, IB2) = enrich0(CompileBasis_enrich, IB1, IB2)
-	  fun enrich'(TIB IB1, IB2) = enrich0(CompileBasis_enrich', IB1, IB2)
+	  fun enrich(TIB IB1, TIB IB2) = enrich0(CompileBasis_enrich, IB1, IB2)
 	end
 
 	local
-	  fun agree1(rest, longstrid, (_,ce1,cb1), IB(_,ce2,cb2)) =
+	  fun agree1(longstrid, (_,ce1,cb1), (_,ce2,cb2)) =
 	    let val ce1 = CompilerEnv.lookup_longstrid ce1 longstrid
 	        val ce2 = CompilerEnv.lookup_longstrid ce2 longstrid
 	    in
 	      CompilerEnv.enrichCEnv(ce1,ce2) andalso CompilerEnv.enrichCEnv(ce2,ce1) andalso
 	      let 
-		fun restr rest ce cb =
+		fun restr ce cb =
 		  let val lvars = CompilerEnv.lvarsOfCEnv ce
 		      val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce)
 		      val tynames = CompilerEnv.tynamesOfCEnv ce
 		      val cons = CompilerEnv.consOfCEnv ce
 		      val excons = CompilerEnv.exconsOfCEnv ce
-		  in rest(cb,(lvars,lvars_with_prims,tynames,cons,excons))
+		  in CompileBasis.restrict(cb,(lvars,lvars_with_prims,tynames,cons,excons))
 		  end
-		val cb1 = restr rest ce1 cb1
-		val cb2 = restr CompileBasis.restrict ce2 cb2
+		val cb1 = restr ce1 cb1
+		val cb2 = restr ce2 cb2
 	      in CompileBasis.eq(cb1,cb2)
 	      end
 	    end
-	  fun agree2 (rest, [], _,_) = true
-	    | agree2 (rest, longstrid::longstrids, B1, B2) = 
-	    agree1(rest, longstrid, B1, B2) andalso agree2(rest, longstrids, B1, B2)
+	  fun agree2 ([], _,_) = true
+	    | agree2 (longstrid::longstrids, B1, B2) = 
+	    agree1(longstrid, B1, B2) andalso agree2(longstrids, B1, B2)
 	in
-	  fun agree (l, IB B1, B2) = agree2 (CompileBasis.restrict, l, B1, B2) 
-	  fun agree' (l, TIB B1, B2) = agree2 (CompileBasis.restrict', l, B1, B2) 
+	  fun agree (l, TIB B1, TIB B2) = agree2 (l, B1, B2) 
 	end
 
 	fun layout(IB(ife,ce,cb)) =
@@ -528,17 +528,17 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  fun InfixBasis_eq a = InfixBasis.eq a
 	  fun ModuleEnvironments_B_enrich a = ModuleEnvironments.B.enrich a
 	  fun OpacityElim_enrich a = OpacityElim.OpacityEnv.enrich a
-	  fun IntBasis_enrich' a = IntBasis.enrich' a
+	  fun IntBasis_enrich a = IntBasis.enrich a
 	in
-	  fun enrich (TOPBASIS (infB1,elabB1,rea1,tintB1), (BASIS (infB2,elabB2,rea2,intB2), dom_rea)) = 
+	  fun enrich (TOPBASIS (infB1,elabB1,rea1,tintB1), (TOPBASIS (infB2,elabB2,rea2,tintB2), dom_rea)) = 
 	    debug("InfixBasis", InfixBasis_eq(infB1,infB2)) andalso 
 	    debug("ElabBasis", ModuleEnvironments_B_enrich (elabB1,elabB2)) andalso
 	    debug("OpacityEnv", OpacityElim_enrich (rea1,(rea2,dom_rea))) andalso
-	    debug("IntBasis", IntBasis_enrich'(tintB1,intB2))
+	    debug("IntBasis", IntBasis_enrich(tintB1,tintB2))
 	end
 
-	fun agree(longstrids, TOPBASIS(_,elabB1,rea1,tintB1), (BASIS(_,elabB2,rea2,intB2), dom_rea)) =
-	  ModuleEnvironments.B.agree(longstrids,elabB1,elabB2) andalso IntBasis.agree'(longstrids,tintB1,intB2)
+	fun agree(longstrids, TOPBASIS(_,elabB1,rea1,tintB1), (TOPBASIS(_,elabB2,rea2,tintB2), dom_rea)) =
+	  ModuleEnvironments.B.agree(longstrids,elabB1,elabB2) andalso IntBasis.agree(longstrids,tintB1,tintB2)
 	  
 	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
 	  PP.NODE{start="BASIS(", finish = ")",indent=1,childsep=PP.RIGHT ", ",
@@ -551,7 +551,9 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		    OpacityElim.OpacityEnv.plus(rea,rea'), IntBasis.plus'(tintb, tintb'))
 
 	fun topify (BASIS(infB,elabB,rea,intB)) = TOPBASIS(infB,elabB,rea,IntBasis.topify intB)
+	val empty' = topify empty
 
+	fun mk' a = TOPBASIS a
 	fun un' (TOPBASIS a) = a
       end
 
@@ -559,20 +561,37 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type name = Name.name
     structure Repository =
       struct
-	type intRep = ((prjid * funid) * bool, (funstamp * ElabEnv * IntBasis * longstrid list * 
-						name list * modcode * IntBasis) list) FinMap.map ref
+
+	type elab_entry = InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * 
+	  name list * InfixBasis * ElabBasis * opaq_env
+
+	type int_entry = funstamp * ElabEnv * TopIntBasis * longstrid list * name list * 
+	  modcode * IntBasis
+
+	type int_entry' = funstamp * ElabEnv * TopIntBasis * longstrid list * name list * 
+	  modcode * TopIntBasis
+
+	type intRep = ((prjid * funid) * bool, int_entry list) FinMap.map ref
 	  (* the bool is true if profiling is enabled *)
+
+	type intRep' = ((prjid * funid) * bool, int_entry' list) FinMap.map ref
+	  (* the bool is true if profiling is enabled *)
+
 	val region_profiling : bool ref = Flags.lookup_flag_entry "region_profiling"
 
 	val intRep : intRep = ref FinMap.empty
+	val intRep' : intRep' = ref FinMap.empty
 	fun clear() = (ElabRep.clear();
 		       List.app (List.app (ModCode.delete_files o #6)) (FinMap.range (!intRep));  
-		       intRep := FinMap.empty)
+		       List.app (List.app (ModCode.delete_files o #6)) (FinMap.range (!intRep'));  
+		       intRep := FinMap.empty;
+		       intRep' := FinMap.empty)
 	fun delete_rep rep prjid_and_funid = case FinMap.remove ((prjid_and_funid, !region_profiling), !rep)
-				     of Edlib.General.OK res => rep := res
-				      | _ => ()
+					       of SOME res => rep := res
+						| _ => ()
 	fun delete_entries prjid_and_funid = (ElabRep.delete_entries prjid_and_funid; 
-					      delete_rep intRep prjid_and_funid)
+					      delete_rep intRep prjid_and_funid;
+					      delete_rep intRep' prjid_and_funid)
 	fun lookup_rep rep exportnames_from_entry prjid_and_funid =
 	  let val all_gen = foldl (fn (n, b) => b andalso Name.is_gen n) true
 	      fun find ([], n) = NONE
@@ -603,32 +622,38 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       | NONE => die "owr_rep.NONE"
 		 end
 	val lookup_int = lookup_rep intRep #5
+	val lookup_int' = lookup_rep intRep' #5
 
 	fun add_int (prjid_and_funid,entry) = 
 	  if ModCode.all_emitted (#6 entry) then  (* just make sure... *)
 	    add_rep intRep (prjid_and_funid, entry)
 	  else die "add_int"
 
+	fun add_int' (prjid_and_funid,entry) = 
+	  if ModCode.all_emitted (#6 entry) then  (* just make sure... *)
+	    add_rep intRep' (prjid_and_funid, entry)
+	  else die "add_int'"
+
 	fun owr_int (prjid_and_funid,n,entry) =
 	  if ModCode.all_emitted (#6 entry) then  (* just make sure... *)
 	    owr_rep intRep (prjid_and_funid,n,entry)
 	  else die "owr_int"
 
-	fun recover_intrep() =
+	fun recover_intrep ir =
 	  List.app 
-	  (List.app (fn entry => List.app Name.mark_gen (#5 entry)))
-	  (FinMap.range (!intRep))
+	  (List.app (fn entry : 'a1*'a2*'a3*'a4*(name list)*'a6*'a7 => List.app Name.mark_gen (#5 entry)))
+	  (FinMap.range ir)
 
 	fun emitted_files() =
 	  let fun files_entries ([],acc) = acc
 		| files_entries ((_,_,_,_,_,mc,_)::entries,acc) = 
 		    files_entries(entries,ModCode.emitted_files(mc,acc))
-	  in FinMap.fold files_entries [] (!intRep)
+	  in FinMap.fold files_entries (FinMap.fold files_entries [] (!intRep)) (!intRep')
 	  end
 	val lookup_elab = ElabRep.lookup_elab
 	val add_elab = ElabRep.add_elab
 	val owr_elab = ElabRep.owr_elab
-	fun recover() = (ElabRep.recover(); recover_intrep())
+	fun recover() = (ElabRep.recover(); recover_intrep (!intRep); recover_intrep (!intRep'))
       end
     
   end

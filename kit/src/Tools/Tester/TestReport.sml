@@ -264,9 +264,9 @@ structure TestReport : TEST_REPORT =
 		val (l1,l2,l3) = split_lines l
 	    in 
 	      section "Comparison of Output from Executables";
-	      outln "This section shows if the output from running an executable equals the expected output.";
-	      outln "Executables that are measured in Section ``Measurements of Executables'' (if one such section exists)";
-	      outln "are not shown here.";
+	      outln "This section shows if the output from execution equals the expected output.";
+	      outln "Entries for executables that are measured in Section ``Measurements of Executables''";
+	      outln "(if one such section exists) are not shown here.";
 	      outln "";
 	      outln "\\vspace{4mm}";
 	      table l1;
@@ -304,7 +304,8 @@ structure TestReport : TEST_REPORT =
 	     endenv "verbatim")
 
 	  fun logsection (lines : string list) =
-	    (section "Test Log";
+	    (outln "\\twocolumn";
+	     section "Test Log";
 	     outln "Here is the log for the test:";
 	     beginenv "verbatim";
 	     app outln lines;

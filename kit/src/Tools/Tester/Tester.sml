@@ -51,7 +51,8 @@ structure Tester : TESTER =
 	val _ = if dir="" then () else OS.FileSys.chDir dir
 	val compile_command_base = "kit -logtofiles " ^ 
 	  (if opt TestFile.NoBasisLib then "-nobasislib " else "") ^
-	  (if opt TestFile.TimeCompiler then "-timings " else "")
+	  (if opt TestFile.TimeCompiler then "-timings " else "") ^
+          (if opt TestFile.CompareCompilerLogs then "-reportfilesig " else "")
 
 	val compile_command = compile_command_base ^ file	  
 	val compile_command_prof = compile_command_base ^ "-prof " ^ file	  

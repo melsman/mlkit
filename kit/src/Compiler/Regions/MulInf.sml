@@ -1,4 +1,3 @@
-(*$MulInf: MUL_INF MUL REGION_EXP EFFECT CRASH MUL_EXP RTYPE TYNAME PRETTYPRINT FLAGS LVARS*)
 
       (***************************************************)
       (*          Multiplicity Inference                 *)
@@ -43,8 +42,6 @@ functor MulInf(
   ): MUL_INF =
 struct
 
-  open Edlib
-
   type ('a,'b)LambdaPgm_phi = ('a,'b) RegionExp.LambdaPgm
   type ('a,'b,'c)LambdaPgm_psi = ('a,'b,'c) MulExp.LambdaPgm
   type ('a,'b,'c)LambdaExp = ('a,'b,'c) MulExp.LambdaExp
@@ -73,7 +70,7 @@ struct
   fun get_place tr = case get_mu tr of RegionExp.Mus[(_,p)] => p | _ => die "get_place"
 
   fun frv(mu): RType.place list = 
-        Eff.remove_duplicates(List.all Eff.is_rho (RType.ann_mus [mu] []))
+        Eff.remove_duplicates(List.filter Eff.is_rho (RType.ann_mus [mu] []))
 
   fun cons_if_there (NONE) l = l
     | cons_if_there (SOME x) l = x::l
@@ -140,7 +137,7 @@ struct
              let 
                 val right_hand_sides = (cons_if_there opt_else (map #2 choices))
 
-                val _ = List.apply (fn tr => infer_trip(tr)) (tr0 :: right_hand_sides)
+                val _ = app (fn tr => infer_trip(tr)) (tr0 :: right_hand_sides)
                 val case_object_place = get_place tr0
                 val choices_psi = max_psis (map get_psi right_hand_sides)
              in
@@ -174,7 +171,7 @@ struct
           | REAL(_,p) => psi_r:= Mul.put p
           | UB_RECORD(trips) =>
              let 
-                val _ = List.apply(fn tr => infer_trip(tr))trips
+                val _ = app(fn tr => infer_trip(tr))trips
                 val psi = sum_psis(map get_psi trips)
              in 
                 psi_r:= psi
@@ -213,7 +210,7 @@ struct
           | LET{k_let,pat,bind,scope} =>
              let
                 val _ = infer_trip(bind)
-                val _  = List.apply (fn (lvar,il_r,alphas,epss,tau,p,Xi_ref) =>    (* 13/3/97 *)
+                val _  = app (fn (lvar,il_r,alphas,epss,tau,p,Xi_ref) =>    (* 13/3/97 *)
                            (Xi_ref:= Mul.makeqmularefset([],!epss,Psi,p,cone)
                             ))
                            pat
@@ -308,7 +305,7 @@ struct
                  psi_r:= get_psi tr (*Mul.sumef(Mul.get(get_place(tr)), get_psi tr)*) )
           | RECORD(p, triples) =>
                 let 
-                   val _ = List.apply(fn tr => infer_trip(tr))triples
+                   val _ = app(fn tr => infer_trip(tr))triples
                    val psi = sum_psis(Mul.put p :: map get_psi triples)
                 in 
                    psi_r:= psi
@@ -342,11 +339,11 @@ struct
                 (infer_trip(tr1);
                  infer_trip(tr2);
                  let val annotations = RType.ann_mus[mu_of_arg1, mu_of_arg2] []
-                     val frv = Eff.remove_duplicates(List.all Eff.is_rho annotations)
+                     val frv = Eff.remove_duplicates(List.filter Eff.is_rho annotations)
                  in psi_r:= sum_psis(get_psi tr1::get_psi tr2 :: Mul.put alloc :: [] (*map Mul.getInf frv*))
                  end)                
           | CCALL ({name, rhos_for_result, ...}, trips) => (*Calling C functions*)
-                (List.apply infer_trip trips;
+                (app infer_trip trips;
                  (*We produce a `put(rho) : m' for every rho which occurs in
 		  the result type.  If rho occurs in a LIST type then m is
 		  INFINITE---otherwise it is NUM 1.  To do this, we use the
@@ -355,8 +352,7 @@ struct
 		  comment in MUL_EXP.)*)
 
 		 let val (rhos_inf, rhos_fin) =
-		       List.foldL (fn (rho, i_opt) =>
-				   fn (rhos_inf, rhos_fin) =>
+		       foldl (fn ((rho, i_opt),(rhos_inf, rhos_fin)) =>
 				   (case i_opt of
 				      SOME i => (rhos_inf, rho :: rhos_fin)
 				    | NONE =>   (rho :: rhos_inf, rhos_fin)))
@@ -380,13 +376,13 @@ struct
                 end)
           | FRAME{declared_lvars, declared_excons} =>
              return_EE := 
-                List.foldL(fn {lvar, other, ...} => 
-                           fn EE => ((*say(Lvar.pr_lvar lvar ^ ":"); (*mads*)
-                                     outtree(Mul.layout_qmularefset(!other));
-                                     say "\n";*)
-                                             Mul.declare(EE,lvar, other)))
-                     Mul.empty_efenv
-                     declared_lvars
+                foldl(fn ({lvar, other, ...}, EE) => 
+		      ((*say(Lvar.pr_lvar lvar ^ ":"); (*mads*)
+		       outtree(Mul.layout_qmularefset(!other));
+		       say "\n";*)
+		      Mul.declare(EE,lvar, other)))
+		Mul.empty_efenv
+		declared_lvars
         end handle Abort exn => raise Abort exn
                  | exn => (outtree(layouttrip tr);
                            raise Abort exn)
@@ -394,7 +390,7 @@ struct
       and inf_rh_sides(functions, shared_clos) =
         let
           val t0 = Mul.last_increment()
-          val _ = List.apply (fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
+          val _ = app (fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
                                   bound_but_never_written_into,
                                   other,bind} =>
                 let val qmul = Mul.makeqmularefset(rhos,epss,Psi,shared_clos,cone)
@@ -402,7 +398,7 @@ struct
                     other:= qmul
                 end) functions
         in
-          List.apply(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
+          app(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,
                          bound_but_never_written_into,
                          other,bind} => 
                            (infer_trip(bind);
@@ -441,7 +437,7 @@ struct
              let 
                 val right_hand_sides = (cons_if_there opt_else (map #2 choices))
              in
-                List.apply set_trip (tr0 :: right_hand_sides)
+                app set_trip (tr0 :: right_hand_sides)
              end
         in
           case e of
@@ -449,7 +445,7 @@ struct
           | INTEGER _ => ()
           | STRING _ => ()
           | REAL _ => ()
-          | UB_RECORD(trips) => List.apply(fn tr => set_trip(tr))trips
+          | UB_RECORD(trips) => app(fn tr => set_trip(tr))trips
           | FN{body, ...} => set_trip(body) 
           | LETREGION{B: effect list ref, rhos, body} =>
              let val _ = set_trip(body)
@@ -477,13 +473,13 @@ struct
 	  | EXCON(_,SOME(_,tr)) => set_trip tr
 	  | EXCON(_,NONE) => ()  
           | DEEXCON(_, tr) => set_trip tr
-          | RECORD (_, triples) => List.apply set_trip triples
+          | RECORD (_, triples) => app set_trip triples
           | SELECT(_, tr) => set_trip tr
           | DEREF tr => set_trip tr
           | REF(_, tr) => set_trip tr
           | ASSIGN(_, tr1, tr2) => (set_trip tr1; set_trip tr2)
           | EQUAL(_, tr1, tr2) => (set_trip tr1; set_trip tr2)
-          | CCALL(_, trips) => List.apply set_trip trips
+          | CCALL(_, trips) => app set_trip trips
           | RESET_REGIONS(_, tr) => set_trip tr
           | FRAME _ => ()
         end handle Abort exn => raise Abort exn
@@ -491,7 +487,7 @@ struct
                            raise Abort exn)
 
       and set_rh_sides(functions, shared_clos) =
-          List.apply(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,bound_but_never_written_into,other,bind} => 
+          app(fn {lvar,occ,tyvars,rhos,epss,Type,rhos_formals,bound_but_never_written_into,other,bind} => 
                            (set_trip(bind);
                             (* Set the PUT multiplicites of the formal region variables *)
                             case Type of
@@ -556,7 +552,7 @@ struct
                                           including only PUT and EPS nodes *)
             val _ = if test then say "  making the arrow effect set Phi..." else ()
             val Phi = map (fn eps => (eps, Eff.represents eps)) 
-                          (Eff.toplevel_arreff :: (List.all Eff.is_arrow_effect effects))
+                          (Eff.toplevel_arreff :: (List.filter Eff.is_arrow_effect effects))
             val _ = if test then say "  made Phi, now constructing the map Psi..." else ()
             val Psi = makezero_Phi Phi
                       (* Psi records multiplicities for effect variables that are
@@ -588,13 +584,13 @@ struct
                atomic effects in exported multiplicity arrow effects to infinity. *)
 
             val export_Psi_list = 
-                  List.foldR (fn node => fn acc => 
+                  foldr (fn (node, acc) => 
                                let val r:Mul.mularef ref =  
                                           Mul.lookup_mularefmap(Psi, node) 
                                in 
                                   r:= Mul.mk_infinite(!r);
                                   r :: acc
-                               end handle _ => acc) [] (List.all Eff.is_arrow_effect export_basis)
+                               end handle _ => acc) [] (List.filter Eff.is_arrow_effect export_basis)
 
             val Psi_export = Mul.reify export_Psi_list
 
@@ -609,7 +605,7 @@ struct
 	      end
 
 	    val export_rhos = 
-	      List.foldL (fn effect => fn rhos => if Eff.is_rho effect then effect::rhos else rhos)
+	      foldl (fn (effect, rhos) => if Eff.is_rho effect then effect::rhos else rhos)
 	      [] export_basis
 		
             val pgm' = MulExp.PGM{expression = tr',

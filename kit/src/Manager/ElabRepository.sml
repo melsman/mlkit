@@ -11,9 +11,6 @@ functor ElabRepository(structure Name : NAME
 		       structure Crash : CRASH) : ELAB_REPOSITORY =
   struct
 
-    open Edlib
-    open General
-
     type name = Name.name
      and InfixBasis = InfixBasis.Basis
      and funid = funid
@@ -40,13 +37,13 @@ functor ElabRepository(structure Name : NAME
     fun clear() = elabRep := FinMap.empty
 
     fun delete_rep rep prjid_and_funid = case FinMap.remove ((prjid_and_funid, !region_profiling), !rep)
-					   of OK res => rep := res
+					   of SOME res => rep := res
 					    | _ => ()
     fun delete_entries prjid_and_funid = delete_rep elabRep prjid_and_funid
 
     fun lookup_rep rep exportnames_from_entry prjid_and_funid =
-      let val all_gen = List.foldR (fn n => fn b => b andalso
-				    Name.is_gen n) true
+      let val all_gen = foldr (fn (n, b) => b andalso
+			       Name.is_gen n) true
 	  fun find ([], n) = NONE
 	    | find (entry::entries, n) = 
 	    if (all_gen o exportnames_from_entry) entry then SOME(n,entry)
@@ -80,8 +77,8 @@ functor ElabRepository(structure Name : NAME
     val owr_elab = owr_rep elabRep
 
     fun recover() =
-      List.apply 
-      (List.apply (fn entry => List.apply Name.mark_gen (#5 entry)))
+      List.app 
+      (List.app (fn entry => List.app Name.mark_gen (#5 entry)))
       (FinMap.range (!elabRep))
 
   end

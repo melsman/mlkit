@@ -1,6 +1,3 @@
-(*$RegFlow: LVARS CON EXCON PRETTYPRINT CRASH FLAGS EFFECT RTYPE
-MUL_EXP REG_FLOW*)
-
 (* Region Flow Analysis: first pass of Storage Mode Analysis *)
 
 
@@ -22,9 +19,7 @@ functor RegFlow(
 
 struct
 
-  structure List = Edlib.List
   structure ListPair = Edlib.ListPair
-  structure Int = Edlib.Int
 
   structure PP = PrettyPrint
   type lvar = Lvars.lvar
@@ -108,7 +103,7 @@ struct
           | reachable_edges (n::rest,acc) = reachable_edges(rest, reachable(n,acc))
 
         fun revisit(NODE(p,v,ref L)) = 
-          if !v then (v:= false; List.apply revisit L)
+          if !v then (v:= false; List.app revisit L)
           else ()
 
       in
@@ -194,7 +189,7 @@ struct
 
     (* find the places that are reachable from the place p *)
     fun reachable_in_graph_with_insertion p =
-        List.foldL (fn nodeVal => fn acc: place list =>
+        foldl (fn (nodeVal, acc: place list) =>
                      if Eff.is_rho nodeVal then nodeVal :: acc else acc)
                    []
                    (reachable(lookup_R_with_insert p))
@@ -214,7 +209,7 @@ struct
 	        loop (pr, reachable(lookup_R_with_insert p, acc))
 	    val reachableNodes = loop (ps, [])
 	in 
-	    List.foldL (fn NODE(nodeVal, v, _) => fn acc : place list =>
+	    foldl (fn (NODE(nodeVal, v, _), acc : place list) =>
 			(v := false; 
                          if Eff.is_rho nodeVal then nodeVal :: acc else acc))
 	                [] reachableNodes
@@ -235,7 +230,7 @@ struct
       in 
          (* make sure arreff is inserted *)
          add_node_iter(arreff);
-         List.apply (fn child => 
+         List.app (fn child => 
                        if Eff.is_rho child orelse 
                           Eff.is_arrow_effect child
                        then add_edge_iter(arreff, child)
@@ -292,9 +287,9 @@ struct
                                    other,bind} =
                       let
 
-                         val _ = List.apply insert formal_arreffs
+                         val _ = List.app insert formal_arreffs
 
-                         (*val _ = log("lvar = " ^ Lvars.pr_lvar lvar ^ ":" ^ Int.string(List.size formal_regvars)) *)
+                         (*val _ = log("lvar = " ^ Lvars.pr_lvar lvar ^ ":" ^ Int.toString(length formal_regvars)) *)
                          
                          (* region-polymorphic functions which are exported must have their formal
                             region parameters connected to global regions with the same runtime type.
@@ -305,32 +300,32 @@ struct
                              let val (taus, actual_rhos, actual_epss) = RType.un_il il
                              in
                                 (* connect every formal region variable to corresponding actual region variable *)
-                                List.apply add_edge_iter
+                                List.app add_edge_iter
                                 (ListPair.zip(formal_regvars, actual_rhos)
                                  handle ListPair.Zip => die ("deal_with_one_instance (1)"
-                                                   ^ Int.string(List.size formal_regvars)
+                                                   ^ Int.toString(length formal_regvars)
                                                    ^ " " ^ 
-                                                     Int.string(List.size actual_rhos)));
+                                                     Int.toString(length actual_rhos)));
      
                                 (* connect every formal effect variable to corresponding actual effect variable *)
-                                List.apply add_edge_iter
+                                List.app add_edge_iter
                                 (ListPair.zip(formal_arreffs,actual_epss)
                                  handle ListPair.Zip => die "deal_with_one_instance (2)");
      
-                                List.apply insert actual_epss
+                                List.app insert actual_epss
      
                              end
      
                       in
-                        List.apply add_node_iter formal_regvars;
-                        if is_exported lvar then List.apply connect_to_global formal_regvars
+                        List.app add_node_iter formal_regvars;
+                        if is_exported lvar then List.app connect_to_global formal_regvars
                         else ();
-                        List.apply add_node_iter formal_arreffs;
-                        List.apply deal_with_one_instance instances;
+                        List.app add_node_iter formal_arreffs;
+                        List.app deal_with_one_instance instances;
                         mk_graph bind
                       end
               in
-                  List.apply mk_graph_lvar functions;
+                  List.app mk_graph_lvar functions;
                   mk_graph scope
               end
           (* from here on only trivial traversal*)
@@ -349,41 +344,41 @@ struct
           | DECON(_,tr) => mk_graph tr
           | EXCON(_,SOME(_,tr)) => mk_graph tr
           | DEEXCON(_,tr) => mk_graph tr
-          | RECORD(_, trs) => List.apply mk_graph trs
-          | UB_RECORD(trs) => List.apply mk_graph trs
+          | RECORD(_, trs) => List.app mk_graph trs
+          | UB_RECORD(trs) => List.app mk_graph trs
           | SELECT(_, tr) => mk_graph tr
           | DEREF tr => mk_graph tr
           | REF(_,tr) => mk_graph tr
           | ASSIGN(_,tr1,tr2) => (mk_graph tr1; mk_graph tr2)
           | EQUAL(_,tr1, tr2) => (mk_graph tr1; mk_graph tr2)
-          | CCALL(_,trs) => List.apply mk_graph trs
+          | CCALL(_,trs) => List.app mk_graph trs
           | RESET_REGIONS(_,tr) => mk_graph tr
           | LETREGION{body, ...} => mk_graph body
           | _ => ()
       
         and mk_graph_i(SWITCH(tr, list,e')) = 
             (mk_graph tr;
-             List.apply (mk_graph o #2) list;
+             List.app (mk_graph o #2) list;
              mk_graph_opt e'
             )
         and mk_graph_s(SWITCH(tr, list,e')) = 
             (mk_graph tr;
-             List.apply (mk_graph o #2) list;
+             List.app (mk_graph o #2) list;
              mk_graph_opt e'
             )
         and mk_graph_r(SWITCH(tr, list,e')) = 
             (mk_graph tr;
-             List.apply (mk_graph o #2) list;
+             List.app (mk_graph o #2) list;
              mk_graph_opt e'
             )
         and mk_graph_c(SWITCH(tr, list,e')) = 
             (mk_graph tr;
-             List.apply (mk_graph o #2) list;
+             List.app (mk_graph o #2) list;
              mk_graph_opt e'
             )
         and mk_graph_e(SWITCH(tr, list,e')) = 
             (mk_graph tr;
-             List.apply (mk_graph o #2) list;
+             List.app (mk_graph o #2) list;
              mk_graph_opt e'
             )
         and mk_graph_opt NONE = ()

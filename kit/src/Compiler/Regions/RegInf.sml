@@ -16,20 +16,17 @@ functor RegInf(
                   = Effect.StringTree = Exp.StringTree 
   structure Flags: FLAGS
     sharing type RSE.place = RType.place = Exp.place
-        and type Exp.effect = RType.effect = RType.place = Effect.effect
-        and type RSE.Type = RType.Type = Exp.Type
-        and type RSE.TypeAndPlaceScheme = RType.sigma = Exp.sigma
-        and type RSE.excon = Exp.excon
-        and type RSE.lvar = Exp.lvar
-        and type RType.il = Exp.il = RSE.il
-        and type RType.cone= Effect.cone = Exp.cone = RSE.cone
-        and type Exp.tyvar = RType.tyvar
-        and type RType.delta_phi = Effect.delta_phi
+    sharing type Exp.effect = RType.effect = RType.place = Effect.effect
+    sharing type RSE.Type = RType.Type = Exp.Type
+    sharing type RSE.TypeAndPlaceScheme = RType.sigma = Exp.sigma
+    sharing type RSE.excon = Exp.excon
+    sharing type RSE.lvar = Exp.lvar
+    sharing type RType.il = Exp.il = RSE.il
+    sharing type RType.cone= Effect.cone = Exp.cone = RSE.cone
+    sharing type Exp.tyvar = RType.tyvar
+    sharing type RType.delta_phi = Effect.delta_phi
 ):REGINF =
 struct
-
-  structure List = Edlib.List
-  structure Int = Edlib.Int
 
   type cone = RType.cone
   type place = RType.place
@@ -41,6 +38,8 @@ struct
 
   fun footnote(x,y) = x
   infix footnote
+
+  fun uncurry f (x,y) = f x y
 
   exception AbortExp  (* Region inference of any expression is 
                          enclosed in a handle which handles any
@@ -81,7 +80,7 @@ struct
 
   fun Below(B, mus) =
     let val free_rhos_and_epss = ann_mus mus []
-        val B' = List.foldL  (Effect.lower(Effect.level B - 1)) B free_rhos_and_epss
+        val B' = foldl  (uncurry (Effect.lower(Effect.level B - 1))) B free_rhos_and_epss
                  handle _ => die "Below.lower failed\n"
     in 
         popAndClean(B')
@@ -145,8 +144,8 @@ struct
     val count_RegEffClos = ref 0 (* number of times regEffClos is called *)
 
     fun show_visited  result = 
-    (device ("Visited (number of nodes visited during R)" ^ Int.string(! count_visited) ^ "\n");
-     device ("RegEffGen (number of times called during R)" ^ Int.string(! count_RegEffClos) ^ "\n");
+    (device ("Visited (number of nodes visited during R)" ^ Int.toString(! count_visited) ^ "\n");
+     device ("RegEffGen (number of times called during R)" ^ Int.toString(! count_RegEffClos) ^ "\n");
      result)
 
 
@@ -154,7 +153,7 @@ struct
       let 
         fun R_sw(B,rse, Exp.SWITCH(t1, rules, t_opt)) =
            let val (B,d1) = R(B,rse,t1)
-               val (B,d2) = List.foldL (fn (lhs,rhs) => fn (B,d) => 
+               val (B,d2) = foldl (fn ((lhs,rhs), (B,d)) => 
                                       let val (B',d') = R(B,rse,rhs)
                                       in (B', Effect.Br(d,d'))
                                       end) (B,d1) rules
@@ -181,8 +180,8 @@ struct
                      Exp.Mus [(tau, _)] =>
                        (let val B' = (unify_ty(tau,tau_1)B handle _ => die "unify_ty failed\n");
                         in
-                            List.apply update_increment    updates;
-                            List.apply (update_areff o #1) updates
+                            List.app update_increment    updates;
+                            List.app (update_areff o #1) updates
                               handle _ => die "update_areff in VAR case";
                             (B',Effect.Lf[])
                         end
@@ -195,13 +194,13 @@ struct
        | Exp.INTEGER _ => (B, Effect.Lf [])
        | Exp.STRING  _ => (B, Effect.Lf [])
        | Exp.REAL    _ => (B, Effect.Lf [])
-       | Exp.UB_RECORD ts => List.foldR(fn t => fn (B, d)  => 
+       | Exp.UB_RECORD ts => foldr(fn (t, (B, d)) => 
                                         let val (B', d') = R(B,rse,t) in (B',Effect.Br(d,d')) end) 
                                         (B,Effect.Lf[]) ts
        | Exp.FN{pat, body, alloc} =>
            (case mt of
               Exp.Mus [(RType.FUN(mus2,eps_phi0,mus1),_)] =>
-                let val rse' = List.foldL (fn (lvar, mu as (tau,rho))=>fn rse =>
+                let val rse' = foldl (fn ((lvar, mu as (tau,rho)), rse) =>
                           RSE.declareLvar(lvar, (false,false,
                                  RType.type_to_scheme tau, rho,NONE,NONE), 
                                           rse)) rse
@@ -338,9 +337,9 @@ struct
                   in RSE.declareLvar(f,(true,true,sigma1hat', rho0, SOME occ, NONE),rse)
                   end
 
-              val B1 = loop(B,functions,true,List.foldL addBindingForRhs rse functions)
+              val B1 = loop(B,functions,true, foldl (uncurry addBindingForRhs) rse functions)
 
-              val rse' = List.foldL addBindingForScope rse functions
+              val rse' = foldl (uncurry addBindingForScope) rse functions
               
             in
               R(B, rse', t2)
@@ -373,7 +372,7 @@ struct
        | Exp.EXCON (_, NONE) => (B, Effect.Lf[])
        | Exp.EXCON (_, SOME (_,t)) => R(B,rse,t)
        | Exp.DEEXCON (_, t) => R(B,rse,t)
-       | Exp.RECORD (_, ts) => List.foldR(fn t => fn (B, d)  => 
+       | Exp.RECORD (_, ts) => foldr(fn (t, (B, d))  => 
 					  let val (B', d') = R(B,rse,t) in (B',Effect.Br(d,d')) end) 
                                (B,Effect.Lf[]) ts
        | Exp.SELECT (_, t) => R(B,rse,t)
@@ -389,12 +388,12 @@ struct
                val (B,d2) = R(B,rse,t2)
            in  (B,Effect.Br(d1,d2))
            end
-       | Exp.CCALL (_, ts) => List.foldR(fn t => fn (B, d)  => 
+       | Exp.CCALL (_, ts) => foldr(fn (t,(B, d))  => 
 					 let val (B', d') = R(B,rse,t) in (B',Effect.Br(d,d')) end) 
                               (B,Effect.Lf[]) ts
        | Exp.RESET_REGIONS (_, t) => R(B,rse,t)
        | Exp.FRAME{declared_lvars,declared_excons} =>
-           (List.apply(fn {lvar, sigma, ...} =>
+           (List.app(fn {lvar, sigma, ...} =>
                         case RSE.lookupLvar rse lvar of
                           SOME(_,_,sigma',_,_,_) => sigma:=sigma'
                         | _ => die ("R: cannot build frame; lvar \"" ^ Lvar.pr_lvar lvar 

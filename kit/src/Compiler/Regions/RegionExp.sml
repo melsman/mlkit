@@ -13,11 +13,11 @@ functor RegionExp(
   structure Lvar : LVARS
   structure Lam: LAMBDA_EXP
     sharing type Lam.lvar = Lvar.lvar
-        and type Lam.tyvar = R.tyvar
+    sharing type Lam.tyvar = R.tyvar
 ) : REGION_EXP = 
 struct
 
-  open Edlib
+    fun uncurry f (a,b) = f a b
 
     fun die s  = Crash.impossible ("RegionExp." ^ s)
 
@@ -132,19 +132,18 @@ struct
   fun mkPhiTr(TR(e,_,phi)) acc = mkPhiExp e (phi::acc)
   and mkPhiExp(e) acc = 
     let fun mkPhiSw(SWITCH(tr0, l, opt))acc  =
-                mkPhiTr tr0 (List.foldL mkPhiTr acc
+                mkPhiTr tr0 (foldl (uncurry mkPhiTr) acc
                               (cons_if_there(opt,map #2 l)))
     in
       case e of
-        UB_RECORD(ts) => List.foldL mkPhiTr acc ts
+        UB_RECORD(ts) => foldl (uncurry mkPhiTr) acc ts
       | FN {body, ...} => mkPhiTr body acc
       | LETREGION_B{B: effect list ref, body: ('a,'b)trip, ...} =>
            mkPhiTr body (!B @ acc)
       | LET{pat, bind,scope} => mkPhiTr scope (mkPhiTr bind acc)
       | FIX{shared_clos,functions,scope} =>
           let 
-            val acc' = List.foldL (fn {epss as ref arreffs,bind, ...} => 
-                                     fn acc =>
+            val acc' = foldl (fn ({epss as ref arreffs,bind, ...}, acc) =>
                                        mkPhiTr bind (arreffs @ acc))
                                    acc
                                    functions
@@ -165,13 +164,13 @@ struct
       | EXCON (_,NONE) => acc
       | EXCON (_,SOME(_,tr)) => mkPhiTr tr acc
       | DEEXCON (_,tr) => mkPhiTr tr acc
-      | RECORD (_,trs) => List.foldL mkPhiTr acc trs
+      | RECORD (_,trs) => foldl (uncurry mkPhiTr) acc trs
       | SELECT (_,tr) => mkPhiTr tr acc
       | DEREF tr => mkPhiTr tr acc
       | REF (_,tr) => mkPhiTr tr acc
       | ASSIGN (_,tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
       | EQUAL (_,tr1,tr2) => mkPhiTr tr1 (mkPhiTr tr2 acc)
-      | CCALL (_,trs) => List.foldL mkPhiTr acc trs
+      | CCALL (_,trs) => foldl (uncurry mkPhiTr) acc trs
       | RESET_REGIONS (_, tr) => mkPhiTr tr acc
       | FRAME _ => acc
       | _ => acc
@@ -198,7 +197,7 @@ struct
   fun layPair(t1,t2) = PP.NODE{start = "(", finish = ")", indent = 1, childsep = PP.RIGHT", ", 
                                children = [t1, t2]}
 
-  fun get_opt l = List.foldR (fn opt => fn acc => 
+  fun get_opt l = foldr (fn (opt, acc) => 
                          case opt of SOME t => t::acc | NONE => acc) [] l
 
 
@@ -379,8 +378,8 @@ old*)
         | VAR{lvar, il_r, alloc = SOME a} => 
             lay_il(Lvar.pr_lvar lvar, " at" ^^ layout_alloc a, #1(! il_r))
           
-        | INTEGER(i, a) => LEAF(Int.string i ^^ layout_alloc a)
-        | STRING(s, a) => LEAF(String.string s ^^ layout_alloc a)
+        | INTEGER(i, a) => LEAF(Int.toString i ^^ layout_alloc a)
+        | STRING(s, a) => LEAF(String.toString s ^^ layout_alloc a)
         | REAL(r, a) => LEAF(r ^^ layout_alloc a)
         | UB_RECORD(args) =>
             PP.NODE{start = "<", finish = ">" , indent = 1, childsep = PP.RIGHT", ", 
@@ -425,7 +424,7 @@ old*)
                     children = map (fn trip => layTrip(trip,0)) args}
             end
         | SELECT(i, trip) =>
-             PP.NODE{start = "#"^Int.string i ^ " ", finish = "", indent = 4, childsep = PP.NOSEP,
+             PP.NODE{start = "#"^Int.toString i ^ " ", finish = "", indent = 4, childsep = PP.NOSEP,
                      children = [layTrip(trip,3)]}
         | FN{pat, body, alloc}=> layLam((pat,body,alloc), n, "")
         | APP(TR(VAR{lvar, il_r, alloc = SOME alloc},_,_), t2) =>
@@ -528,7 +527,7 @@ old*)
                  in NODE{start = "", finish = "", indent = 0, childsep = NOSEP, children = [t1,t2,t3]}
                  end
                )
-        | SWITCH_I(sw) => layoutSwitch layTrip Int.string  sw
+        | SWITCH_I(sw) => layoutSwitch layTrip Int.toString  sw
         | SWITCH_S(sw) => layoutSwitch layTrip (fn s => s) sw
         | SWITCH_C(sw) => layoutSwitch layTrip Con.pr_con sw
         | SWITCH_E(sw) => layoutSwitch layTrip Excon.pr_excon sw
@@ -601,7 +600,7 @@ for more info*)
                           val (binds', body) = layout_rec e2
                           val _ = inInfo := "(* fix *)"
                         in
-                          (mk_mutual_binding (layout_alloc shared_clos,List.rev functions):: binds', body)
+                          (mk_mutual_binding (layout_alloc shared_clos,rev functions):: binds', body)
                         end
                   | EXCEPTION(excon, nullary, mu, alloc, scope as TR(e2, _,_)) =>
                         let 
@@ -721,7 +720,7 @@ for more info*)
        in
         PP.NODE{start = "", finish = "", indent = 0,
                 childsep = PP.NOSEP, 
-                children = #2(List.foldL mk_fix (List.size functions,[]) functions)}
+                children = #2(foldl (uncurry mk_fix) (length functions,[]) functions)}
        end
 
     in
@@ -809,21 +808,21 @@ for more info*)
          let 
            fun normsw(SWITCH(tr1,rhsides, tr_opt)) =
                 (normTrip tr1;
-                 List.apply (fn (_, tr) => normTrip tr) rhsides;
+                 app (fn (_, tr) => normTrip tr) rhsides;
                  case tr_opt of NONE => ()
                  | SOME tr => normTrip tr)
          in 
           case e of
-             UB_RECORD ts => List.apply normTrip ts
+             UB_RECORD ts => app normTrip ts
            | FN{body,...} => normTrip body
            | LETREGION_B{B,body,...} =>
-               (List.apply normVar (!B);
+               (app normVar (!B);
                 normTrip body)
            | LET{bind, scope, ...} => (normTrip bind;  normTrip scope)
            | FIX{functions, scope, ...} =>
-                (List.apply (fn {rhos, epss, bind, ...} => 
-                       (List.apply normVar (!rhos); 
-                        List.apply normVar (!epss);
+                (app (fn {rhos, epss, bind, ...} => 
+                       (app normVar (!rhos); 
+                        app normVar (!epss);
                         normTrip bind)) functions;
                  normTrip scope)
            | APP(tr1,tr2) => (normTrip tr1; normTrip tr2)
@@ -840,20 +839,20 @@ for more info*)
 	   | EXCON (_,NONE) => ()
 	   | EXCON (_,SOME(_,tr)) => normTrip tr
 	   | DEEXCON (_,tr) => normTrip tr
-	   | RECORD (_,trs) => List.apply normTrip trs
+	   | RECORD (_,trs) => app normTrip trs
 	   | SELECT (_,tr) => normTrip tr
 	   | DEREF tr => normTrip tr
 	   | REF (_,tr) => normTrip tr
 	   | ASSIGN (_,tr1,tr2) => (normTrip tr1; normTrip tr2)
 	   | EQUAL (_,tr1,tr2) => (normTrip tr1; normTrip tr2)
-	   | CCALL (_,trs) => List.apply normTrip trs
+	   | CCALL (_,trs) => app normTrip trs
 	   | RESET_REGIONS (_, tr) => normTrip tr
            | FRAME{declared_lvars, ...} =>()
            | _ => ()
        end
     in
        (* re_number exported region and effect variables *)
-       (*List.apply (*(Eff.setkey tick)*) normVar export_basis; commented out; mads *)
+       (*app (*(Eff.setkey tick)*) normVar export_basis; commented out; mads *)
        (* re_number bound variables in expression*)
        normTrip expression 
     end

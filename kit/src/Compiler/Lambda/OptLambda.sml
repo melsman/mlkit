@@ -1,6 +1,8 @@
 (* OptLambda - lambda code optimiser. *)
 
 functor OptLambda(structure Lvars: LVARS
+		  structure Name : NAME
+		    sharing type Name.name = Lvars.name
 		  structure LambdaExp: LAMBDA_EXP
 		    sharing type LambdaExp.lvar = Lvars.lvar
 		  structure LvarDiGraphScc : DIGRAPH_SCC
@@ -9,13 +11,14 @@ functor OptLambda(structure Lvars: LVARS
 		      and type info = Lvars.lvar
  	          structure LambdaBasics : LAMBDA_BASICS
 		    sharing type LambdaBasics.LambdaExp = LambdaExp.LambdaExp
-		        and type LambdaBasics.lvar = Lvars.lvar 
-			and type LambdaBasics.excon = LambdaExp.excon
-			and type LambdaBasics.Type = LambdaExp.Type
-			and type LambdaBasics.tyvar = LambdaExp.tyvar
+		    sharing type LambdaBasics.lvar = Lvars.lvar 
+		    sharing type LambdaBasics.excon = LambdaExp.excon
+		    sharing type LambdaBasics.Type = LambdaExp.Type
+		    sharing type LambdaBasics.tyvar = LambdaExp.tyvar
 		  structure FinMap : FINMAP
 		  structure LvarMap : MONO_FINMAP
 		    sharing type LvarMap.dom = Lvars.lvar
+		  structure IntFinMap : MONO_FINMAP where type dom = int
 		  structure BasicIO: BASIC_IO
                   structure Con : CON
                     sharing type Con.con = LambdaExp.con
@@ -27,13 +30,14 @@ functor OptLambda(structure Lvars: LVARS
 		  structure Crash: CRASH
                   structure PP: PRETTYPRINT
                     sharing type PP.StringTree = LambdaExp.StringTree = 
-		                 FinMap.StringTree = LvarMap.StringTree
+		                 FinMap.StringTree = LvarMap.StringTree = IntFinMap.StringTree
 		 ): OPT_LAMBDA =
   struct
 
     structure List = Edlib.List
-    structure Int = Edlib.Int
     structure ListPair = Edlib.ListPair
+
+    fun keyOfLvar lv = Name.key(Lvars.name lv)
 
     open LambdaExp LambdaBasics
     type bound_lvar = {lvar:lvar, tyvars:tyvar list, Type: Type}
@@ -123,7 +127,7 @@ functor OptLambda(structure Lvars: LVARS
         end 
       val stat_map : stat_map ref = ref FinMap.empty
       val layout_stat = (FinMap.layoutMap {start="Optimiser Statistics:", eq=" : ", sep=", ", finish =""}
-	PP.LEAF (PP.LEAF o Int.string)) o pad
+	PP.LEAF (PP.LEAF o Int.toString)) o pad
       fun print_size_difference size_before size_after =
 	let
 	  val per     = 100.0*(real (size_before - size_after))/(real size_before)
@@ -131,8 +135,8 @@ functor OptLambda(structure Lvars: LVARS
 	  val rounded = (real (Real.round (dec*per)))/dec
 	in 
 	  log("\n------------------------------------------------\n" ^ 
-	      "   Size before: " ^ (Int.string size_before) ^ ".\n" ^
-	      "   Size after:  " ^ (Int.string size_after) ^ ".\n" ^ 
+	      "   Size before: " ^ (Int.toString size_before) ^ ".\n" ^
+	      "   Size after:  " ^ (Int.toString size_after) ^ ".\n" ^ 
 	      (if size_before > 0 then 
 		 "   Reduced:     " ^ (Real.toString rounded) ^ "%.\n"
 	       else "\n") ^ 
@@ -146,8 +150,8 @@ functor OptLambda(structure Lvars: LVARS
 				    | _ => die "incr_tick_counter"
       fun print_tick_count_list () =
 	let fun p [] = ""
-	      | p [n] = Int.string n
-	      | p (n::ns) = Int.string n ^ ", " ^ p ns
+	      | p [n] = Int.toString n
+	      | p (n::ns) = Int.toString n ^ ", " ^ p ns
 	in log ("ticks pr. round: " ^ p (rev (!tick_count_list)))
 	end
 
@@ -1104,21 +1108,25 @@ functor OptLambda(structure Lvars: LVARS
        | layout_let_env_res IGNORE = PP.LEAF "IGNORE"
 
      type let_env = let_env_res LvarMap.map
+     type let_top_env = let_env_res IntFinMap.map
 
      fun enrich_let_env(let_env1,let_env2) =
-       LvarMap.Fold (fn ((lv2,res2),b) => b andalso
-		     case LvarMap.lookup let_env1 lv2
-		       of SOME res1 => res1=res2
-			| NONE => false) true let_env2
+       IntFinMap.Fold (fn ((lv2,res2),b) => b andalso
+		       case IntFinMap.lookup let_env1 lv2
+			 of SOME res1 => res1=res2
+			  | NONE => false) true let_env2
 
      fun restrict_let_env(let_env,lvars) = 
        List.foldL (fn lv => fn acc => 
-		   case LvarMap.lookup let_env lv
+		   case IntFinMap.lookup let_env (keyOfLvar lv)
 		     of SOME res => LvarMap.add(lv,res,acc)
 		      | NONE => die "restrict_let_env.lv not in env") LvarMap.empty lvars 
 
      val layout_let_env = LvarMap.layoutMap {start="LetEnv={",eq="->", sep=", ", finish="}"} 
       (PP.LEAF o Lvars.pr_lvar) layout_let_env_res
+
+     val layout_let_top_env = IntFinMap.layoutMap {start="TopLetEnv={",eq="->", sep=", ", finish="}"} 
+      (PP.LEAF o Int.toString) layout_let_env_res
 
      fun lookup env lv = LvarMap.lookup env lv
      fun add_lv (lv,res,env) = LvarMap.add(lv,res,env)
@@ -1172,9 +1180,11 @@ functor OptLambda(structure Lvars: LVARS
           | _ => map_lamb (f env) lamb
    in
      type let_env = let_env
+     type let_top_env = let_top_env
      val enrich_let_env = enrich_let_env
      val restrict_let_env = restrict_let_env
      val layout_let_env = layout_let_env
+     val layout_let_top_env = layout_let_top_env
      fun functionalise_let env lamb = 
        let val lamb = f env lamb
        in (lamb, !frame_let_env)
@@ -1196,10 +1206,11 @@ functor OptLambda(structure Lvars: LVARS
     datatype inveta_res = FIXBOUND of tyvar list * Type
                         | NOTFIXBOUND
     type inveta_env = inveta_res LvarMap.map
+    type inveta_top_env = inveta_res IntFinMap.map
 
     fun restrict_inv_eta_env(inveta_env,lvars) =
       List.foldL(fn lv => fn acc => 
-		 case LvarMap.lookup inveta_env lv
+		 case IntFinMap.lookup inveta_env (keyOfLvar lv)
 		   of SOME res => LvarMap.add(lv,res,acc)
 		    | NONE => die "restrict_inv_eta_env.lv not in env") LvarMap.empty lvars
 
@@ -1227,8 +1238,8 @@ functor OptLambda(structure Lvars: LVARS
       | eq_inveta_res (NOTFIXBOUND, NOTFIXBOUND) = true
       | eq_inveta_res _ = false
     fun enrich_inv_eta_env(inveta_env1,inveta_env2) =
-      LvarMap.Fold(fn ((lv2,res2),b) => b andalso
-		   case LvarMap.lookup inveta_env1 lv2
+      IntFinMap.Fold(fn ((lv2,res2),b) => b andalso
+		   case IntFinMap.lookup inveta_env1 lv2
 		      of SOME res1 => eq_inveta_res(res1,res2)
 		       | NONE => false) true inveta_env2
  
@@ -1240,6 +1251,8 @@ functor OptLambda(structure Lvars: LVARS
       | layout_inveta_res NOTFIXBOUND = PP.LEAF "NOTFIXBOUND"
     val layout_inveta_env = LvarMap.layoutMap {start="InvEtaEnv={",eq="->", sep=", ", finish="}"} 
       (PP.LEAF o Lvars.pr_lvar) layout_inveta_res
+    val layout_inveta_top_env = IntFinMap.layoutMap {start="TopInvEtaEnv={",eq="->", sep=", ", finish="}"} 
+      (PP.LEAF o Int.toString) layout_inveta_res
 
     val frame_inveta_env = ref (LvarMap.empty : inveta_env)
 
@@ -1304,7 +1317,7 @@ functor OptLambda(structure Lvars: LVARS
 
 	  fun loop n lamb = if n > max_optimise then lamb 
 			    else let val _ = reset_tick()
-				     val _ = log ("Pass number " ^ Int.string (n+1) ^ "\n")
+				     val _ = log ("Pass number " ^ Int.toString (n+1) ^ "\n")
 				     val lamb' = loop_opt lamb
 				     val _ = end_round() (*stat*)
 				 in if test_tick() then loop (n+1) lamb'
@@ -1325,9 +1338,19 @@ functor OptLambda(structure Lvars: LVARS
     * ----------------------------------------------------------------- *)
 
     type env = inveta_env * let_env
-    val empty_env =  (LvarMap.empty, LvarMap.empty)
-    val initial_env = empty_env
+    type top_env = inveta_top_env * let_top_env
+
+    local
+      fun topify_lvarenv e =
+	LvarMap.Fold(fn((d,r),a) => IntFinMap.add(keyOfLvar d,r,a)) IntFinMap.empty e
+    in
+      fun topify (e1,e2) = (topify_lvarenv e1, topify_lvarenv e2)
+    end
+
+    val empty =  (LvarMap.empty, LvarMap.empty)
+    val initial = (IntFinMap.empty, IntFinMap.empty)
     fun plus ((e1, e2), (e1', e2')) = (LvarMap.plus (e1,e1'), LvarMap.plus (e2,e2'))
+    fun plus' ((e1, e2), (e1', e2')) = (IntFinMap.plus (e1,e1'), IntFinMap.plus (e2,e2'))
 
     fun restrict((inv_eta_env,let_env), lvars) =
       (restrict_inv_eta_env(inv_eta_env,lvars),
@@ -1339,6 +1362,8 @@ functor OptLambda(structure Lvars: LVARS
     fun layout_env (e1,e2) = PP.NODE{start="",finish="",indent=0,childsep=PP.RIGHT ",",
 				     children=[layout_inveta_env e1, layout_let_env e2]}
 
+    fun layout_top_env (e1,e2) = PP.NODE{start="",finish="",indent=0,childsep=PP.RIGHT ",",
+					 children=[layout_inveta_top_env e1, layout_let_top_env e2]}
 
 
    (* -----------------------------------------------------------------

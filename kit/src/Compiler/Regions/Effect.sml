@@ -11,9 +11,6 @@ functor Effect(structure G: DIGRAPH
 
 struct
 
-  structure NewArray = Array
-  open Edlib
-
   (* Add some dynamic flags for pretty-printing region variables. *) 
   
   val add_entry = fn (s, s', r) => Flags.add_flag_to_menu (["Layout"], s, s', r)
@@ -21,7 +18,7 @@ struct
   val print_rho_types = ref false
   val entries = [("print_rho_levels", "print levels of region variables", print_rho_levels),
 		 ("print_rho_types", "print runtime types of region variables", print_rho_types)]
-  val _ = List.apply add_entry entries
+  val _ = app add_entry entries
 
 
   type StringTree = PP.StringTree
@@ -67,15 +64,15 @@ struct
       else TOP_RT (* mael: shouldn't this be "die"? *)
 
   type key = int ref (* for printing and sorting of nodes *)
-  fun show_key(ref i) = Int.string i
+  fun show_key(ref i) = Int.toString i
   fun layout_key(r) = PP.LEAF(show_key r)
 
   fun key_lt(ref i, ref (j:int)) = i<j
 
-  fun show_key(ref i ) = Int.string i
+  fun show_key(ref i ) = Int.toString i
 
   type level = int ref (* for stratification of cones *)
-  fun show_level(ref i ) = Int.string i
+  fun show_level(ref i ) = Int.toString i
   fun layout_level(l) = PP.LEAF(show_level l)
 
 
@@ -256,7 +253,7 @@ struct
       let 
           val new = G.mk_node(UNION{represents=NONE})
       in
-          List.apply (fn n => G.mk_edge(new, G.find n)) l;
+          app (fn n => G.mk_edge(new, G.find n)) l;
           new
       end
 
@@ -281,7 +278,7 @@ struct
         val effects = map find effects
     in
         loop(effects,[])
-          footnote List.apply (fn node => G.get_visited node:= false) effects
+          footnote app (fn node => G.get_visited node:= false) effects
     end
 *)
 
@@ -296,7 +293,7 @@ struct
 
         val result = loop(effects,[])
     in
-        List.apply (fn node => G.get_visited node:= false) result;
+        app (fn node => G.get_visited node:= false) result;
         result
     end
 
@@ -309,7 +306,6 @@ struct
 
   structure ConeLayer(*:MONO_FINMAP*) = 
       struct
-        structure Array = NewArray
         val lsize  = 10
          infix eq
      
@@ -343,11 +339,11 @@ struct
      
          fun remove(k0, t) = 
           let val i = k0 mod lsize
-              val l' = List.all (fn (i',_) =>i'<>i)(Array.sub(t,i))
+              val l' = List.filter (fn (i',_) =>i'<>i)(Array.sub(t,i))
           in 
               Array.update(t, i, l');
-              General.OK t
-          end handle _ => General.Fail "element not found" 
+              SOME t
+          end handle _ => NONE
      
          fun range (m:'b map) : 'b list =
            let
@@ -367,7 +363,7 @@ struct
      
      
          fun fromSortedList l a=
-           List.foldL (fn (d,r) => fn a => add(d,r, a)) a l
+           foldl (fn ((d,r),a) => add(d,r, a)) a l
      
          type StringTree = PP.StringTree
      
@@ -407,14 +403,14 @@ struct
                      val empty:  map
                      val lookup: map -> int -> coneLayer option
                      val add: int * coneLayer * map -> map
-                     val remove: int * map -> (map, string)General.Result
+                     val remove: int * map -> map option
                      val layoutMap: {start: string, eq: string, sep: string, finish: string} ->
                          (int -> StringTree) -> 
                          (coneLayer -> StringTree) ->  cone -> StringTree
                      val reset: cone -> unit
                   end =
   struct
-    local open NewArray
+    local open Array
     in
        val max_cone_level = 1000
        type map = coneLayer array
@@ -428,18 +424,18 @@ struct
        fun add(i,coneLayer,_) = 
           (update(global_array, i, coneLayer)
                     handle _ => die ("Cone.add: index " 
-                                     ^ Int.string i 
+                                     ^ Int.toString i 
                                      ^ "out of range [0.." 
-                                     ^ Int.string (i-1) ^ "]\n");
+                                     ^ Int.toString (i-1) ^ "]\n");
            global_array)
      
        fun remove(i,_) =
           (update(global_array, i, ConeLayer.empty);
-           General.OK global_array)
-           handle _ => General.Fail ("Cone.remove: index " 
-                                     ^ Int.string i 
+           SOME global_array)
+           handle _ => NONE (* General.Fail ("Cone.remove: index " 
+                                     ^ Int.toString i 
                                      ^ "out of range [0.." 
-                                     ^ Int.string (i-1) ^ "]\n")
+                                     ^ Int.toString (i-1) ^ "]\n") *)
     
        fun reset (_,array) =      (* reset levels 0 to max_cone_level -1 in array *)
 	 let fun reset_loop(i) =
@@ -478,7 +474,7 @@ struct
   val emptyCone = (0,Cone.empty)
   fun layoutLayer (layer: coneLayer) : PP.StringTree= 
       ConeLayer.layoutMap{start = "{", finish = "}", eq = "=", sep = ","}
-                         ( PP.LEAF o Int.string)
+                         ( PP.LEAF o Int.toString)
                          layout_effect_deep
                          layer
   fun layoutLayerRng (layer: coneLayer): PP.StringTree =
@@ -490,7 +486,7 @@ struct
 
   fun layoutCone (cone:cone) : PP.StringTree =
       Cone.layoutMap{start = "{", finish = "}\n", eq = "=", sep = ","}
-                         (fn i: int => PP.LEAF("level " ^ Int.string i))
+                         (fn i: int => PP.LEAF("level " ^ Int.toString i))
                          layoutLayer
                          (cone)
 
@@ -500,7 +496,7 @@ struct
        case Cone.lookup c (!level) of
          NONE => die "remove: (no such level in cone)"
        | SOME layer => (case ConeLayer.remove(key,layer) of
-           General.OK layer' => (n,Cone.add(!level,layer',c)) 
+           SOME layer' => (n,Cone.add(!level,layer',c)) 
                                     (* replaces old layer*)
          | _ => die "remove: (no such key in cone)")
 
@@ -508,7 +504,7 @@ struct
 
   fun add(effect, level:int, key:int, cone as (n,c)): cone =
        case Cone.lookup c level of
-         NONE => die ("add: (no such level in cone): " ^ Int.string level)
+         NONE => die ("add: (no such level in cone): " ^ Int.toString level)
        | SOME layer => 
            (n,Cone.add(level, ConeLayer.add(key,effect,layer), c)) 
                                    (* replaces old layer*)
@@ -586,9 +582,9 @@ struct
         let val top_layer = noSome(Cone.lookup c n, "pop: no such layer")
         in  (top_layer,
              (n-1, case Cone.remove(n,c) of
-                    General.OK(c') => c'
+                    SOME c' => c'
                   | _ => Crash.impossible ("Pop of cone failed: level = " 
-                                           ^ Int.string n)
+                                           ^ Int.toString n)
              ))
         end
 
@@ -602,7 +598,7 @@ struct
                                     lowered to lower levels *)
              sort(
               remove_duplicates(
-               List.all (fn eff => let val (ref l, _) = noSome (get_level_and_key eff, "popAndClean")
+               List.filter (fn eff => let val (ref l, _) = noSome (get_level_and_key eff, "popAndClean")
                                    in l>= n 
                                    end)  (ConeLayer.range top_layer)))
             
@@ -637,13 +633,13 @@ struct
   fun insertEps eps (cone as (n,c)) = add(eps,n, get_key_of_eps eps, cone)
 
   fun freshRhos(rhos,c: cone): effect list * cone  = 
-      List.foldR (fn rho => fn (rhos',c) => 
+      foldr (fn (rho,(rhos',c)) => 
                   let val (rho',c) = freshRho c 
                   in (rho'::rhos',c) 
                   end) ([],c) rhos
 
   fun rename_rhos_aux(rhos, c: cone as (n,_), f, g) : effect list * cone =
-      List.foldR (fn rho => fn (rhos',c) =>
+      foldr (fn (rho,(rhos',c)) =>
                   case G.find_info(G.find rho) of
                     RHO{level,pix,ty,...} =>
                      let val k = freshInt()
@@ -666,7 +662,7 @@ struct
       rename_rhos_aux(rhos, c, fn(ref int) => ~1, fn _ => n)
 
   fun rename_epss_aux(epss, c: cone as (n,_), f, g) : effect list * cone =
-      List.foldR (fn eps => fn (epss',c) =>
+      foldr (fn (eps,(epss',c)) =>
                   case G.find_info(G.find eps) of
                     EPS{level,pix,(*represents = NONE,*)...} =>
                      let val k = freshInt()
@@ -715,7 +711,7 @@ struct
       end
 
   fun freshEpss(epss, c: cone): effect list * cone = 
-    List.foldR (fn eps => fn (epss',c) => 
+    foldr (fn (eps,(epss',c)) => 
                 let val (eps',c) = freshEps c 
                 in (eps'::epss',c) 
                 end) ([],c) epss
@@ -756,7 +752,7 @@ struct
 			     toplevel_region_withtype_real]
         val puts = map mkPut toplevel_rhos
         val gets = map mkGet toplevel_rhos
-    in List.apply (fn to => edge(find toplevel_arreff,find to)) (puts@gets)
+    in app (fn to => edge(find toplevel_arreff,find to)) (puts@gets)
     end
 
   (* Optimization: For regions of type word we reuse 
@@ -796,22 +792,22 @@ struct
           let val (l,r) = List.splitFirst(fn y => y<>x) rest
                           handle _ => (rest,[])
           in 
-              (x, List.size l +1, x * (List.size l +1))::
+              (x, length l +1, x * (length l +1))::
               report(r)
           end;
     fun report1 [] = ()
       | report1((x, multiplicity, product)::rest)=
-         (say ("depth " ^ Int.string x  ^ ": " 
-                  ^ Int.string(multiplicity) ^ " times = " ^
-                  Int.string product ^  "\n");
+         (say ("depth " ^ Int.toString x  ^ ": " 
+                  ^ Int.toString(multiplicity) ^ " times = " ^
+                  Int.toString product ^  "\n");
           report1 rest)
     
     val l1 = report l
-    val sum = List.foldL (fn x:int => fn y => x+y) 0 
+    val sum = foldl (fn (x:int, y) => x+y) 0 
               (map #3 l1)
   in
     report1 l1;
-    say("\nsum = " ^ Int.string sum ^ "\n")
+    say("\nsum = " ^ Int.toString sum ^ "\n")
   end;
    
 tracing *)
@@ -835,7 +831,7 @@ tracing *)
 
   val globalIncs: delta_phi Increments.map ref = ref(Increments.empty)
 
-  fun unvisitDelta (Lf effects) = List.apply G.unvisit_all effects
+  fun unvisitDelta (Lf effects) = app G.unvisit_all effects
     | unvisitDelta (Br(d1,d2)) = (unvisitDelta d1; unvisitDelta d2)
 
   fun update_increment(eff,Lf[]) = ()
@@ -937,7 +933,7 @@ tracing *)
 
   fun lower_delta level delta B = 
     case delta of 
-      Lf(l: effect list) => List.foldL (lower level) B l
+      Lf(l: effect list) => foldl (fn (a,b) => lower level a b) B l
     | Br(d1, d2) => lower_delta level d2 (lower_delta level d1 B)
 
 
@@ -947,9 +943,9 @@ tracing *)
        are the result). Finally, unmark all nodes in l2 *)
      let val l1 = map find l1 
          and l2 = map find l2
-     in List.apply (fn node => G.get_visited node:= true) l2;
-        List.all (fn node => not(!(G.get_visited node))) l1
-          footnote List.apply (fn node => G.get_visited node:= false) l2
+     in app (fn node => G.get_visited node:= true) l2;
+        List.filter (fn node => not(!(G.get_visited node))) l1
+          footnote app (fn node => G.get_visited node:= false) l2
      end
   
   (* update_areff(eps) assumes that the increments recorded for eps have
@@ -1013,7 +1009,7 @@ tracing *)
           orelse !k1 = 3 andalso t2<>BOT_RT
           orelse !k2 = 3 andalso t1<>BOT_RT
          then 
-         die ("illegal unification involving global region(s) " ^ Int.string (!k1) ^ " / " ^ Int.string (!k2))
+         die ("illegal unification involving global region(s) " ^ Int.toString (!k1) ^ " / " ^ Int.toString (!k2))
        else
 	RHO{level = l1, put = aux_combine(p1,p2), 
 	    get = aux_combine(g1,g2), key =min_key(k1,k2), instance = instance1, pix = pix1, ty = lub_runType(t1,t2)}
@@ -1155,13 +1151,13 @@ tracing *)
       fun lower_new_edges(n: effect, new_target_nodes:effect list)cone: cone =
         let val (level, key) = noSome ((get_level_and_key n) , 
                                        "instNodes: no level")
-        in List.foldL (lower (!level)) cone new_target_nodes
+        in foldl (fn (a,b) => lower (!level) a b) cone new_target_nodes
         end
 
       val targets_and_new_children: (effect * effect list) list =
                  G.multi_graft bound_to_free l 
     in 
-      (List.foldL lower_new_edges cone targets_and_new_children,
+      (foldl (fn (a,b) => lower_new_edges a b) cone targets_and_new_children,
        map(fn (target, its_new_children) => (target, Lf(its_new_children)))targets_and_new_children)
     end;
 
@@ -1184,9 +1180,9 @@ tracing *)
       (*val _ = Profile.profileOn()*)
       val destination = G.find destination
 (*
-      val _ = say("\n-----------------\nLEVEL = " ^ Int.string l ^ "\n")
+      val _ = say("\n-----------------\nLEVEL = " ^ Int.toString l ^ "\n")
       val _ = say("SOURCE = ")
-      val _ = List.apply (fn source => PP.outputTree(say, layout_effect_deep source, !Flags.colwidth)) sources
+      val _ = app (fn source => PP.outputTree(say, layout_effect_deep source, !Flags.colwidth)) sources
       val _ = say("\nDESTINATION = ")
       val _ = PP.outputTree(say, layout_effect_deep destination, !Flags.colwidth)
 *)    
@@ -1255,7 +1251,7 @@ tracing *)
                                  if l'<=l then
                                    (* include it, without examining children *)
                                    (*(sawEpsDidContinue(); *)
-                                    (*List.apply G.visit_all (G.out_of_node n);*)
+                                    (*apply G.visit_all (G.out_of_node n);*)
                                     n::ns
                                  else 
                                   (* do not include n itself, but search children *)
@@ -1314,7 +1310,7 @@ tracing *)
      find all the Put and Get nodes reachable from node *)
 
   fun findPutAndGets(node) = 
-      List.all is_put_or_get (G.topsort [node])
+      List.filter is_put_or_get (G.topsort [node])
 
 
   (* sameLists(l1, l2) : bool   returns true if l1 and l2 contain the same elements;
@@ -1323,7 +1319,7 @@ tracing *)
   *)
 
   fun sameLists(l1,l2) : bool =
-    let fun visit l1 = List.apply (fn node => G.get_visited node := true) l1
+    let fun visit l1 = app (fn node => G.get_visited node := true) l1
         fun unvisit([], acc) = acc
           | unvisit(x::l2',acc) = 
              let val r = G.find_visited x
@@ -1383,7 +1379,7 @@ tracing *)
 
   fun get_visited node = G.find_visited node (*G.get_visited(G.find node)*)
 
-  fun get_opt l = List.foldR (fn opt => fn acc => 
+  fun get_opt l = foldl (fn (opt,acc) => 
                          case opt of SOME t => t::acc | NONE => acc) [] l
 
   fun layoutEtas(etas: effect list): StringTree list = 
@@ -1444,7 +1440,7 @@ tracing *)
 (*   print"unify_with_toplevel_rhos_eps: list of nodes for unification:\n";
    say_etas(layoutEtas nodes_for_unification);
    print"now unifying...:\n";*)
-   (List.apply 
+   (app 
     (fn rho_eps =>
        let fun union_with(toplevel_rho) : unit =
 	     if G.eq_nodes(G.find toplevel_rho,G.find rho_eps) then ()
@@ -1557,11 +1553,11 @@ tracing *)
          now remove from psi all ae:m for which ae takes the form eps in discharged_basis
          or PUT rho or GET rho for rho in discharged_basis:
       *)
-      let val refs = List.foldL visit_eps_or_rho [] discharged_basis 
+      let val refs = foldl (fn (a,b) => visit_eps_or_rho a b) [] discharged_basis 
           fun keep (ae,mul): bool = not(!(G.get_visited(G.find ae)))
       in 
-         List.all keep psi footnote
-            List.apply (fn r => r := false) refs
+         List.filter keep psi footnote
+            app (fn r => r := false) refs
       end
 
   (************************************)
@@ -1940,7 +1936,7 @@ val (big_cone, big_list) = loop 50000 (push ec, []);
 
 val _ = say "ready to unify the 5000 region variables";
 
-fun unified() = List.foldL (fn rho1 => fn (cone,rho) => (unifyRho(rho1,rho)cone,rho1))
+fun unified() = foldl (fn (rho1,(cone,rho)) => (unifyRho(rho1,rho)cone,rho1))
                          (big_cone,(hd big_list))
                          big_list;
 
