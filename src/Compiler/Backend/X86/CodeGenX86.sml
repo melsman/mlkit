@@ -1489,7 +1489,7 @@ struct
 	       | LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)) => 
 		  let (* NOTE: selectors in sels are tagged in ClosExp but the operand is tagged here! *)
 		    val con_kind = case sels 
-				     of [] => die "CG_ls: SWITCH_C sels is empty"
+				     of [] => LS.ENUM 1 (*necessary to compile non-optimized programs (OptLambda off) *)
 				      | ((con,con_kind),_)::rest => con_kind
  		    val sels' = map (fn ((con,con_kind),sel_insts) => 
 				     case con_kind 
