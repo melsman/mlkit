@@ -48,6 +48,9 @@ functor OpacityElim(structure Crash : CRASH
 	of Some type_info => ElabInfo.plus_TypeInfo elab_info (ElabInfo.TypeInfo.on_TypeInfo(rea,type_info))
 	 | None => elab_info          (* plus_TypeInfo is destructive as we want it to be.. *)
 
+    fun normalise_opt_type_info None = None
+      | normalise_opt_type_info (Some ti) = Some (TypeInfo.normalise ti)
+
     fun elim_opt elim (rea, Some phrase) =
       let val (phrase', rea') = elim(rea,phrase)
       in (Some phrase', rea')
@@ -166,7 +169,7 @@ functor OpacityElim(structure Crash : CRASH
 	   let val (dec',rea') = elim_dec(rea,dec)
 	       val i' = on_info(rea,i)
 	       val dummyinfo = i
-	       val (TE,rea'') = case ElabInfo.to_TypeInfo i'
+	       val (TE,rea'') = case normalise_opt_type_info(ElabInfo.to_TypeInfo i')
 				  of Some(TypeInfo.ABSTYPE_INFO (TE,rea)) => (TE,rea)
 				   | _ => die "elim_dec.ABSTYPE.no tyenv info"
 	       val datatypedecinfo = ElabInfo.plus_TypeInfo dummyinfo (TypeInfo.TYENV_INFO TE) 
@@ -300,7 +303,7 @@ functor OpacityElim(structure Crash : CRASH
 	  end
 	 | OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	  let val (strexp', rea') = elim_strexp(rea, strexp)
-	      val (E,rea'') = case ElabInfo.to_TypeInfo (on_info(rea,i))
+	      val (E,rea'') = case normalise_opt_type_info(ElabInfo.to_TypeInfo (on_info(rea,i)))
 				of Some(TypeInfo.OPAQUE_CONSTRAINT_INFO (E,rea'')) => (E,rea'')
 				 | _ => die "elim_strexp.OPAQUE_CONSTRAINT.no info"
 	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.TRANS_CONSTRAINT_INFO E)  

@@ -44,35 +44,39 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     structure IntBasis = ManagerObjects.IntBasis
     structure ElabBasis = ModuleEnvironments.B
 
-    type filename = ManagerObjects.filename
-     and filepath = ManagerObjects.filepath
-     and funid = ManagerObjects.funid
-     and funstamp = ManagerObjects.funstamp
-
     fun die s = Crash.impossible ("Manager." ^ s)
-    fun error (s : string) = (print "**ERROR**\n";
-			      print s; print "\n";
-			      die "")
+    fun error (s : string) = (print "\nError: "; print s; print "\n\n")
 
-    (* ------------
-     * Directories
-     * ------------ *)
+
+    (* -----------------------------------------
+     * Unit names, file names and directories
+     * ----------------------------------------- *)
+
+    type filename = ManagerObjects.filename       (* At some point we should use *)
+     and filepath = ManagerObjects.filepath       (* abstract types for these things *)
+     and funid = ManagerObjects.funid             (* so that we correctly distinguish *)
+     and funstamp = ManagerObjects.funstamp       (* unit names and file names. *)
 
     val source_directory = Flags.lookup_string_entry "source_directory"
     val log_directory = Flags.lookup_string_entry "log_directory"
-    fun filename_to_logfile filename = !log_directory ^ filename ^ ".log"
-    fun filename_to_sourcefile file = !source_directory ^ file ^ ".sml"
+    fun unitname_to_logfile unitname = !log_directory ^ unitname ^ ".log"
+    fun unitname_to_sourcefile unitname = !source_directory ^ unitname ^ ".sml"
+    fun filename_to_unitname (f:string) : string =
+      case rev (explode f)
+	of "l"::"m"::"s"::"."::unitname => implode (rev unitname)
+	 | _ => die "filename_to_unitname.filename not ending with .sml"
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
+
 
     (* ----------------------------------------------------
      * log_init  gives you back a function for cleaning up
      * ---------------------------------------------------- *)
 
-    fun log_init filename =
+    fun log_init unitname =
       let val old_log_stream = !Flags.log
-	  val log_file = filename_to_logfile filename
-	  val source_file = filename_to_sourcefile filename
+	  val log_file = unitname_to_logfile unitname
+	  val source_file = unitname_to_sourcefile unitname
       in if !log_to_file then
 	   let val log_stream = open_out log_file
 	             handle Io msg => die ("Cannot open log file\n\
@@ -98,16 +102,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun log (s:string) : unit = output (!Flags.log, s)
     fun log' s = log (s ^ "\n")
     fun log_st (st) : unit = PP.outputTree (log, st, 70)
-
-
-    (* -----------------------------------------------------------------
-     * Dynamic flags
-     * ----------------------------------------------------------------- *)
-
-    val report_file_sig = ref false
-    val _ = Flags.add_flag_to_menu
-          (["Control"], "report_file_sig",
-	   "report types, values, etc.", report_file_sig)
+    fun chat s = if !Flags.chat then log s else ()
 	  
     (* ----------------------------------------
      * Some parsing functions
@@ -147,8 +142,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	             List.apply (fn s => output(!Flags.log, "*** warning: " ^ s)) (rev ss)))
 
     fun print_error_report report = Report.print' report (!Flags.log)
-    fun print_result_report report = ((if !report_file_sig then Report.print' report (!Flags.log) 
-				       else ());
+    fun print_result_report report = (Report.print' report (!Flags.log);
 				      report_warnings())
 
     (* ---------------------------------------
@@ -174,15 +168,22 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * ---------------------------- *)
 
     fun show () : unit =
-      let val strs = map (ManagerObjects.funid_to_filename o #1) (!project)
-	  fun max(a:int,b) = if a > b then a else b
-	  fun sz [] m = m
-	    | sz (s::rest) m = sz rest (max(size s,m))
-	  val sz = 2 + sz strs 0
+      let
+	  val sz =
+	    let val unitnames = map (filename_to_unitname o ManagerObjects.funid_to_filename o #1) (!project)
+	        fun max(a:int,b) = if a > b then a else b
+		fun sz [] m = m
+		  | sz (s::rest) m = sz rest (max(size s,m))
+	    in 2 + sz unitnames 0
+	    end
 	  fun pr [] = ()
-	    | pr (x::xs) = (print " "; print x; print "\n"; pr xs)
+	    | pr ((funid, path:string)::rest) = 
+	    let val unitname = (filename_to_unitname o ManagerObjects.funid_to_filename) funid
+	    in print " "; print (String.padR " " (sz - size unitname) unitname); 
+	       print path; print "\n"; pr rest
+	    end
       in print (String.padR "-" sz "" ^ "---------\n"); 
-	 pr strs;
+	 pr (!project);
 	 print (String.padR "-" sz "" ^ "---------\n")
       end
 
@@ -191,6 +192,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      *             repository is not reset; use reset() for this.
      * ---------------------------------------------------------- *)
 
+    exception RepeatedProgramUnit of string
     fun read (s : string) : unit =  
       let val s = !source_directory ^ s
  	  fun is_whitesp "\n" = true
@@ -207,15 +209,29 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  fun lex_names acc cs = case lex_whitesp cs
 				   of [] => rev acc
 				    | cs => let val (name,cs') = lex_name(cs, [])
-					    in lex_names (name::acc) cs'
+					    in if List.member name acc then raise RepeatedProgramUnit name
+					       else lex_names (name::acc) cs'
 					    end
 
-	  val files = (lex_names [] o drop_comments o explode o StringParse.fromFile) s
+	  val unitnames = (lex_names [] o drop_comments o explode o StringParse.fromFile) s
+
+	  (* For the repository not to be messed up it is important to
+	   * keep functor identifiers stemming from user declarations
+	   * distinct from functor identifiers stemming from file
+	   * names. This distinction is guarantied by the `.sml' file
+	   * extension on filenames.
+	   *)
+
+	  val filenames = map (fn f => f ^ ".sml") unitnames
       in
 	 project := map (fn f => (ManagerObjects.funid_from_filename f,
-				  !source_directory ^ f ^ ".sml")) files
-      end handle Io io_s => (error ("Project file \"" ^ s ^ "\" cannot be opened."))
-               | ParseProjectFile s1 => (error ("Parsing project file \"" ^ s ^ "\": " ^ s1))
+				  !source_directory ^ f)) filenames
+      end handle Io io_s => 
+	           error ("Project file `" ^ s ^ "' cannot be opened.")
+               | ParseProjectFile s1 => 
+	           error ("Parsing project file `" ^ s ^ "': " ^ s1)
+	       | RepeatedProgramUnit name => 
+	           error ("Repeated program unit `" ^ name ^ "' in project file `" ^ s ^ "'.")
 
 
     type Basis = ManagerObjects.Basis
@@ -256,8 +272,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
           let val _ = Timing.reset_timings()
 	      val _ = Timing.new_file(source_filepath)
 	      val (infB, elabB, rea, intB) = Basis.un B
-	      val filename = ManagerObjects.funid_to_filename funid
-	      val log_cleanup = log_init filename
+	      val unitname = (filename_to_unitname o ManagerObjects.funid_to_filename) funid
+	      val log_cleanup = log_init unitname
 	      val _ = Name.bucket := []
 	      val _ = reset_warnings ()
 	      (* val _ = print "\n[parsing and elaborating ...\n" *)
@@ -268,36 +284,46 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		 | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
 		  let val names_elab = !Name.bucket
 
+		      val _ = chat "[finding free identifiers begin...]\n"
 		      val freeids as {ids,tycons,strids,funids,sigids} =
 			let val ids = free_ids topdec
 			in {ids=FreeIds.vids_of_ids ids, tycons=FreeIds.tycons_of_ids ids,
 			    strids=FreeIds.strids_of_ids ids, funids=FreeIds.funids_of_ids ids,
 			    sigids=FreeIds.sigids_of_ids ids}
 			end
+		      val _ = chat "[finding free identifiers end...]\n"
 
 		      (* val _ = debug_free_ids ids *)
+		      val _ = chat "[restricting elaboration basis begin...]\n"
 		      val elabB_im = ElabBasis_restrict(elabB,freeids)
+		      val _ = chat "[restricting elaboration basis end...]\n"
 		      (* val _ = debug_basis "Import" Bimp *)
 
-		      (* val _ = print "\n[restricting interpretation basis ...\n" *)
+		      val _ = chat "[restricting interpretation basis begin...]\n"
 		      val intB_im = IntBasis_restrict(intB, (funids,strids,ids,tycons))
-		      (* val _ = print " done]\n" *)
+		      val _ = chat "[restricting interpretation basis end...]\n"
 
  		      val tynames_elabB_im = ElabBasis.tynames elabB_im
 		      val rea_im = OpacityElim_restrict(rea,tynames_elabB_im)
 
+		      val _ = chat "[opacity elimination begin...]\n"
 		      val (topdec', rea') = opacity_elimination(rea_im, topdec)
+		      val _ = chat "[opacity elimination end...]\n"
 
+		      val _ = chat "[interpretation begin...]\n"
 		      val _ = Name.bucket := []
-		      val (intB', modc) = IntModules.interp(intB_im, topdec', filename)
+		      val (intB', modc) = IntModules.interp(intB_im, topdec', unitname)
 		      val names_int = !Name.bucket
 		      val _ = Name.bucket := []
+		      val _ = chat "[interpretation end...]\n"
 
 		      (* match export elaboration and interpretation
 		       * bases to those found in repository. *)
 
+		      val _ = chat "[matching begin...]\n"
 		      val _ = match_elab(names_elab, elabB', funid)
 		      val _ = match_int(names_int, intB', funid)
+		      val _ = chat "[matching end...]\n"
 
 		      val _ = Repository.delete_entries funid
 
@@ -389,19 +415,19 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * Compile a single file 
      * ----------------------------- *)
 
-    fun comp (filename : string) : unit =
+    fun comp (unitname : string) : unit =
       let val (infB,elabB,rea,intB) = Basis.un Basis.initial
 	  val _ = reset()
 	  val _ = Timing.reset_timings()
-	  val _ = Timing.new_file filename
-	  val log_cleanup = log_init filename
+	  val _ = Timing.new_file unitname
+	  val log_cleanup = log_init unitname
       in (case ParseElab.parse_elab {infB=infB,elabB=elabB,
-				     file=filename_to_sourcefile filename} 
+				     file=unitname_to_sourcefile unitname} 
 	    of ParseElab.SUCCESS {report, topdec, ...} =>
 	      let val (topdec',_) = OpacityElim.opacity_elimination(rea,topdec)
-		  val (_, modc) = IntModules.interp(intB, topdec', filename)
+		  val (_, modc) = IntModules.interp(intB, topdec', unitname)
 		  val modc = ModCode.emit modc
-	      in ModCode.mk_exe(modc, filename ^ ".exe");
+	      in ModCode.mk_exe(modc, unitname ^ ".exe");
 	         print_result_report report;
 		 log_cleanup()
 	      end
@@ -414,12 +440,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * Elaborate a single file 
      * ----------------------------- *)
 
-    fun elab (filename : string) : unit =
+    fun elab (unitname : string) : unit =
       let val (infB,elabB,_,_) = Basis.un Basis.initial
 	  val _ = reset()
-	  val log_cleanup = log_init filename
+	  val log_cleanup = log_init unitname
       in (case ParseElab.parse_elab {infB=infB,elabB=elabB,
-				     file=filename_to_sourcefile filename} 
+				     file=unitname_to_sourcefile unitname} 
 	    of ParseElab.SUCCESS {report, ...} => (print_result_report report; log_cleanup())
 	     | ParseElab.FAILURE report => (print_error_report report; log_cleanup())
 	 ) handle E => (log_cleanup(); raise E)

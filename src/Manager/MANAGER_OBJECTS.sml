@@ -40,8 +40,8 @@ signature MANAGER_OBJECTS =
 	val empty : IntFunEnv
 	val initial : IntFunEnv
 	val plus : IntFunEnv * IntFunEnv -> IntFunEnv
-	val add : funid * (funstamp * strid * ElabEnv * strexp * IntBasis) * IntFunEnv -> IntFunEnv
-	val lookup : IntFunEnv -> funid -> funstamp * strid * ElabEnv * strexp * IntBasis  
+	val add : funid * (funstamp * strid * ElabEnv * (unit -> strexp) * IntBasis) * IntFunEnv -> IntFunEnv
+	val lookup : IntFunEnv -> funid -> funstamp * strid * ElabEnv * (unit -> strexp) * IntBasis  
 	val restrict : IntFunEnv * funid list -> IntFunEnv
 	val enrich : IntFunEnv * IntFunEnv -> bool  (* using funstamps *)
 	val layout : IntFunEnv -> StringTree

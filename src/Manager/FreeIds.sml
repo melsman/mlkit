@@ -135,6 +135,17 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
     fun use_sigid({sigids,...}:ids,sigid:sigid): unit =
       if SigIdSet.member sigid sigids then () else mk_free_sigid sigid
 
+
+    (* Get type info from info-nodes; we could do better here, since
+     * we force applications of realisations without using the
+     * annotated type info. *)
+
+    fun to_TypeInfo i =
+      case ElabInfo.to_TypeInfo i
+	of Some ti => Some(ElabInfo.TypeInfo.normalise ti)
+	 | None => None 
+
+
     (* --------------------------------------
      * We carry around a persistent set of
      * bound identifiers, I. 
@@ -198,7 +209,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
 	  let fun use_longstrids_with_info(I,longstrids_with_info) =
 	         List.apply (fn WITH_INFO(_,longstrid) => use_longstrid(I,longstrid)) 
 		 longstrids_with_info
-	      val (strids, tycons, ids) = case ElabInfo.to_TypeInfo info
+	      val (strids, tycons, ids) = case to_TypeInfo info
 					    of Some (ElabInfo.TypeInfo.OPEN_INFO decls) => decls
 					     | _ => die "OPENdec - no decl. info"
 	      val decl_strids = List.foldL (fn strid => fn ids => add_strid(strid,ids))
@@ -267,7 +278,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
       fn WILDCARDatpat _ => empty_ids
        | SCONatpat _ => empty_ids
        | LONGIDatpat(info,OP_OPT(longid,_)) => 
-          (case ElabInfo.to_TypeInfo info
+          (case to_TypeInfo info
 	     of Some (ElabInfo.TypeInfo.VAR_PAT_INFO _) =>
 	       (case Ident.decompose longid
 		  of ([],id) => add_vid(id, empty_ids)
@@ -362,7 +373,7 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
        | EXCEPTIONspec(_,exdesc) => (free_exdesc I exdesc; empty_ids)
        | STRUCTUREspec(_,strdesc) => free_strdesc I strdesc
        | INCLUDEspec(info,sigexp) =>
-	  let val (strids, tycons) = case ElabInfo.to_TypeInfo info
+	  let val (strids, tycons) = case to_TypeInfo info
 				       of Some (ElabInfo.TypeInfo.INCLUDE_INFO specs) => specs
 					| _ => die "INCLUDEspec - no specs info"
 	      val decl_strids = List.foldL (fn strid => fn ids => add_strid(strid,ids))

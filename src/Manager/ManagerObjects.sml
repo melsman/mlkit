@@ -1,6 +1,7 @@
 (*$ManagerObjects: MODULE_ENVIRONMENTS TOPDEC_GRAMMAR COMPILER_ENV
                    COMPILE_BASIS COMPILE INFIX_BASIS ELAB_REPOSITORY
-                   FINMAP NAME FLAGS CRASH MANAGER_OBJECTS OPACITY_ELIM*)
+                   FINMAP NAME FLAGS CRASH MANAGER_OBJECTS
+                   OPACITY_ELIM*)
 
 (* COMPILER_ENV is the lambda env mapping structure and value 
  * identifiers to lambda env's and lvars *)
@@ -262,8 +263,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type CompileBasis = CompileBasis.CompileBasis
     type strexp = TopdecGrammar.strexp
     type strid = ModuleEnvironments.strid
-    datatype IntFunEnv = IFE of (funid, funstamp * strid * ElabEnv * strexp * IntBasis) FinMap.map
-         and IntBasis = IB of IntFunEnv * CEnv * CompileBasis 
+    datatype IntFunEnv = IFE of (funid, funstamp * strid * ElabEnv * (unit -> strexp) * IntBasis) FinMap.map
+         and IntBasis = IB of IntFunEnv * CEnv * CompileBasis
+
+    (* The closure is to represent a structure expression in a compact way *)
 
     structure IntFunEnv =
       struct
