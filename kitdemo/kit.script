@@ -1,23 +1,19 @@
-(* ------------------------------------------------------------------------
+(* -----------------------------------------------------------
  * ML Kit script file.
- *
  *
  * syntax: 
  *
- *   DEC::= val ID : TYPE  = CONST REST 
- *   REST::= ;
- *       |  DEC
- *   ID  ::= sequence_of_letters_underbars_and_primes
- *   TYPE::= int | string | bool
- *   CONST::= ml_integer_constant | ml_string_constant | ml_bool_constant
+ *   DEC   ::= val ID : TYPE = CONST REST 
+ *   REST  ::= ;  |  DEC
+ *   ID    ::= sequence_of_letters_underbars_and_primes
+ *   TYPE  ::= int |  string  |  bool
+ *   CONST ::= ml_integer_constant  |  ml_string_constant  
+ *           | ml_bool_constant
  *
  *   blanks, tabs and newlines are separators;
  *   comments are enclosed in (* and *) and can be nested.
- * ------------------------------------------------------------------------- *)
+ * ----------------------------------------------------------- *)
 
-val chat : bool = false
-val statistics_after_optimisation : bool = false
-val DEBUG_COMPILER : bool = false
 val region_profiling : bool = false
 val print_physical_size_inference_expression : bool = false
 val print_types : bool = false
