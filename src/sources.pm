@@ -1,5 +1,6 @@
 import 
     Edlib/edlib.pm
+    Pickle/pickle.pm
     Common/common.pm
     Compiler/compiler.pm
 in
