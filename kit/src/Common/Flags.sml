@@ -105,6 +105,7 @@ functor Flags (structure Crash : CRASH
 
     val path_to_runtime = ref "You_did_not_set_path_to_runtime"
     val path_to_runtime_prof = ref "You_did_not_set_path_to_runtime_prof"
+
     val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
     val c_libs = ref "-lM" (*include math lib when compiling target code from the kit*)
 
@@ -127,6 +128,8 @@ functor Flags (structure Crash : CRASH
     val comp_ref: (string -> unit)ref  = ref dummy
     val test_ref: (unit -> unit)ref  = ref dummy
     val current_source_file = ref "dummy"
+    val auto_import_basislib = ref true
+    val basislib_project = ref "You_did_not_set_basislib_project"
 
     (* Garbage Collection *)
            

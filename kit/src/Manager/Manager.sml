@@ -34,9 +34,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                 structure Flags : FLAGS) : MANAGER =
   struct
 
-    structure Int = Edlib.Int
-    structure List = Edlib.List
-    structure String = Edlib.String
     structure StringParse = Edlib.StringParse
     structure EqSet = Edlib.EqSet
 
@@ -57,6 +54,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun error (s : string) = (print ("\nError: " ^ s ^ ".\n\n"); raise PARSE_ELAB_ERROR[])
     fun quot s = "`" ^ s ^ "'"
 
+    fun member s l = let fun m [] = false
+			   | m (x::xs) = x = s orelse m xs
+		     in m l
+		     end
+
     (* -----------------------------------------
      * Unit names, file names and directories
      * ----------------------------------------- *)
@@ -69,11 +71,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun unitname_to_logfile unitname = unitname ^ ".log"
     fun unitname_to_sourcefile unitname = unitname (*mads ^ ".sml"*)
     fun filename_to_unitname (f:string) : string = f
-(*mads
-      case rev (explode f)
-	of #"l":: #"m":: #"s":: #"."::unitname => implode (rev unitname)
-	 | _ => die "filename_to_unitname.filename not ending with .sml"
-*)
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
@@ -153,12 +150,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * Projects
      * ---------- *)
 
+    type extobj = string   (* externally compiled objects; .o-files *)
     type prjid = string
     type unitid = string
     datatype body = SEQbody of body list
                   | LOCALbody of body * body
                   | UNITbody of unitid 
-    type prj = {imports : prjid list, body : body}
+    type prj = {imports : prjid list, extobjs: extobj list, body : body}
 
 
     fun parse_project (prjid : prjid) : prj =
@@ -230,40 +228,44 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      else NONE
 		
         fun parse_prj (ss : string list) : prj =
-	  let fun parse_end(prjids, body, ss) =
+	  let fun parse_end({prjids,objs}, body, ss) =
 	        case ss
-		  of [] => {imports=prjids,body=body}
+		  of [] => {imports=prjids,extobjs=objs,body=body}
 		   | _ => parse_error1( "I expect end of file", ss)
 	  in case ss
-	       of [] => {imports=[],body=SEQbody[]}
+	       of [] => {imports=[],extobjs=[],body=SEQbody[]}
 		| "import" :: ss =>
-		 let fun parse_rest'(prjids,body,ss) =
+		 let fun parse_rest'(prjids_objs,body,ss) =
 		       case ss
-			 of "end" :: ss => parse_end(prjids,body,ss)
+			 of "end" :: ss => parse_end(prjids_objs,body,ss)
 			  | _ => parse_error1( "I expect an `end'", ss)
-		     fun parse_rest(prjids, ss) =
+		     fun parse_rest(prjids_objs, ss) =
 		       case ss
 			 of "in" :: ss =>
 			   (case parse_body_opt ss
-			      of SOME(body, ss) => parse_rest'(prjids,body,ss)
-			       | NONE => parse_rest'(prjids,SEQbody[],ss))
+			      of SOME(body, ss) => parse_rest'(prjids_objs,body,ss)
+			       | NONE => parse_rest'(prjids_objs,SEQbody[],ss))
 			  | _ => parse_error1( "I expect an `in'", ss)
 		 in case parse_prjids_opt ss
-		      of SOME(prjids,ss) => parse_rest(prjids,ss)
-		       | NONE => parse_rest([],ss)
+		      of SOME(prjids_objs,ss) => parse_rest(prjids_objs,ss)
+		       | NONE => parse_rest({prjids=[],objs=[]},ss)
 		 end
 		| _ => (case parse_body_opt ss
-			  of SOME(body,ss) => parse_end([],body,ss)
+			  of SOME(body,ss) => parse_end({prjids=[],objs=[]},body,ss)
 			   | NONE => parse_error( "I expect an `import' or a body"))
 	  end
 
-	and parse_prjids_opt ss =
+	and parse_prjids_opt ss : ({prjids:string list, objs:string list} * string list) option =
 	  case ss
 	    of s :: ss =>
 	      if has_ext(s,"pm") then 
 		case parse_prjids_opt ss
-		  of SOME(prjids,ss) => SOME(s :: prjids, ss)
-		   | NONE => SOME([s], ss)
+		  of SOME({prjids,objs},ss) => SOME({prjids=s::prjids,objs=objs}, ss)
+		   | NONE => SOME({prjids=[s],objs=[]}, ss)
+	      else if has_ext(s, "o") then
+		case parse_prjids_opt ss
+		  of SOME({prjids,objs},ss) => SOME({prjids=prjids,objs=s::objs}, ss)
+		   | NONE => SOME({prjids=[],objs=[s]}, ss)
 	      else NONE
 	     | _  => NONE
 
@@ -273,13 +275,21 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       in prj
       end
 
-    fun local_check_project (prjid0, {imports,body}) : unit =
+    fun local_check_project (prjid0, {imports,extobjs,body}) : unit =
       let fun check_imports (_,[]) = ()
 	    | check_imports (P, prjid :: rest) =
 	     let val prjid = OS.Path.file prjid
-	     in if List.member prjid P then error ("The project " ^ quot prjid ^ 
-						   " is imported twice in project " ^ quot prjid0)
+	     in if member prjid P then error ("The project " ^ quot prjid ^ 
+					      " is imported twice in project " ^ quot prjid0)
 		else check_imports(prjid::P,rest)
+	     end
+	  fun check_extobj extobj =
+	     let val extobj = OS.Path.file extobj
+	         fun exists file = OS.FileSys.access(file,[])
+	     in if not(exists extobj) then error ("The external object file " ^ quot extobj ^ 
+						  " imported in project " ^ quot prjid0 ^ 
+						  " does not exist; first, compile this file.") 
+		else ()
 	     end
 	  fun check_body (U, body) =
 	    case body
@@ -288,11 +298,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	       | LOCALbody(body1,body2) => check_body(check_body(U,body1), body2)
 	       | UNITbody longunitid => 
 		let val unitid = OS.Path.file longunitid
-		in if List.member unitid U then 
+		in if member unitid U then 
                       error ("The program unit " ^ quot unitid ^ " is included twice in project " ^ quot prjid0)
 		   else unitid::U
 		end
-      in check_body([], body); check_imports([], imports)
+      in check_body([], body); check_imports([], imports); List.app check_extobj extobjs
       end
 
 
@@ -305,18 +315,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun match_elab(names_elab, elabB, opaq_env, prjid, funid) =
       case Repository.lookup_elab (prjid,funid)
 	of SOME (_,(_,_,_,_,names_elab',_,elabB',opaq_env')) => (* names_elab' are already marked generative - lookup *)
-	  (List.apply Name.mark_gen names_elab;                 (* returned the entry. The invariant is that every *)
+	  (List.app Name.mark_gen names_elab;                   (* returned the entry. The invariant is that every *)
 	   ElabBasis.match(elabB, elabB');                      (* name in the bucket is generative. *)
 	   OpacityElim.OpacityEnv.match(opaq_env,opaq_env');
-	   List.apply Name.unmark_gen names_elab)
+	   List.app Name.unmark_gen names_elab)
 	 | NONE => () (*bad luck*)
 
     fun match_int(names_int, intB, prjid, funid) =
       case Repository.lookup_int (prjid,funid)
 	of SOME(_,(_,_,_,_,names_int',_,intB')) =>   (* names_int' are already marked generative - lookup *)
-	  (List.apply Name.mark_gen names_int;       (* returned the entry. The invariant is that every *)
+	  (List.app Name.mark_gen names_int;         (* returned the entry. The invariant is that every *)
 	   IntBasis.match(intB, intB');              (* name in the bucket is generative. *)
-	   List.apply Name.unmark_gen names_int)
+	   List.app Name.unmark_gen names_int)
 	 | NONE => () (*bad luck*)
 
     (* --------------------------------
@@ -339,10 +349,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      val log_cleanup = log_init unitname
 	      val _ = Name.bucket := []
 	      val _ = Flags.reset_warnings ()
-
-	      (* val _ = print "\n[parsing and elaborating ...\n" *)
+	      val _ = print("[reading source file:\t" ^ punit ^ "]\n")
 	      val res = ParseElab.parse_elab {prjid=prjid,infB=infB,elabB=elabB, file=punit} 
-	      (* val _ = print " done]\n" *)
 	  in (case res
 		of ParseElab.FAILURE (report, error_codes) => (print_error_report report; raise PARSE_ELAB_ERROR error_codes)
 		 | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
@@ -427,10 +435,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		 else if
 		        let
 			  val B_im = Basis.mk(infB,elabB,opaq_env,intB)
-			  fun unmark_names () = (List.apply Name.unmark_gen names_elab;  (* Unmark names - they where *)
-						 List.apply Name.unmark_gen names_int)   (* marked in the repository. *)
-			  fun remark_names () = (List.apply Name.mark_gen names_elab;    (*  If enrichment fails we remark *)
-						 List.apply Name.mark_gen names_int)     (* names; notice that enrichment of *)
+			  fun unmark_names () = (List.app Name.unmark_gen names_elab;    (* Unmark names - they where *)
+						 List.app Name.unmark_gen names_int)     (* marked in the repository. *)
+			  fun remark_names () = (List.app Name.mark_gen names_elab;      (*  If enrichment fails we remark *)
+						 List.app Name.mark_gen names_int)       (* names; notice that enrichment of *)
 		                                                                         (* elaboration bases requires all *)
 			  val _ = unmark_names()                                         (* names be unmarked. Names in the *)
 			  val res = Basis_enrich(B, (B_im, dom_opaq_env)) andalso        (* global basis are always unmarked. *)
@@ -459,13 +467,16 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun Basis_plus (B,B') = Basis.plus(B,B')		    
     fun Basis_plus' (B,B') = Basis.plus'(B,B')		    
 
+    fun maybe_create_dir d : unit =
+      if OS.FileSys.access (d, []) handle _ => error ("I cannot access `" ^ d ^ "' directory") then
+	if OS.FileSys.isDir d then ()
+	else error ("the file `" ^ d ^ "' is not a directory")
+      else (OS.FileSys.mkDir d handle _ => error ("I cannot create `" ^ d ^ "' directory"))
+
     fun maybe_create_PM_dir() : unit =
-      (if OS.FileSys.access ("PM", []) then
-	 if OS.FileSys.isDir "PM" then ()
-	 else error ("the file `PM' is not a directory")
-       else (OS.FileSys.mkDir "PM"
-	     handle _ => error ("I cannot create `PM' directory")))
-	 handle _ => error ("I cannot access `PM' directory")
+      (maybe_create_dir "PM"; maybe_create_dir "PM/Prof"; maybe_create_dir "PM/NoProf")
+      
+	 
 
     fun change_dir p : {cd_old : unit -> unit, file : string} =
       let val {dir,file} = OS.Path.splitDirFile p
@@ -494,7 +505,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  end
 	
 
-      (* Write a dummy file for the project into the `PM' directory. The date of this dummy
+      (* Write a dummy file for the project into the `PM/Prof' or `PM/NoProf' directory. The date of this dummy
        * file tells when the project was last modified. *)
 
     fun output_date_file date_file =
@@ -509,7 +520,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
        * to avoid recompilation when nothing that comes earlier in a project has changed. A `clean' flag is used
        * to denote that nothing that comes earlier in a project has changed. Note that projects are closed, so
        * initially, when building a project, the clean flag is true. For each project file `file.pm' we associate
-       a dummy date file `file.pm.date' in the `PM' directory. The clean flag is preserved if
+       * a dummy date file `file.pm.date' in the `PM/Prof' or `PM/NoProf' directory. The clean flag is preserved if
        *    (1) file.pm > file.pm.date
        *    (2) building project f.pm returns true, for all f.pm \in file.pm
        *    (3) f.pm.date > file.pm.date, for all f.pm \in file.pm
@@ -533,58 +544,84 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
        *       absprjid  ::= /longprjid
        *)
 
+    (* ----------------------------------------------------
+     * Determine where to put target files; if profiling is
+     * enabled then we put target files into the PM/Prof/
+     * directory; otherwise, we put target files into the
+     * PM/NoProf/ directory.
+     * ---------------------------------------------------- *)
+
+    local
+      val region_profiling = Flags.lookup_flag_entry "region_profiling"
+    in fun pmdir() = if !region_profiling then "PM/Prof/" else "PM/NoProf/"
+    end
+
+
     type absprjid = string
 
-    type projectmap = (prjid * absprjid * Basis) list
+    type projectmap = (prjid * absprjid * extobj list * Basis) list
 
     fun projectmap_lookup map prjid =
       let fun look [] = NONE
-	    | look ((prjid',absprjid,basis)::rest) = 
-	        if prjid=prjid' then SOME(absprjid,basis)
+	    | look ((prjid',absprjid,extobjs,basis)::rest) = 
+	        if prjid=prjid' then SOME(absprjid,extobjs,basis)
 		else look rest
       in look map
       end
       
-    fun projectmap_add (prjid, absprjid, basis, map) : projectmap =
-      (prjid, absprjid, basis) :: map
+    fun projectmap_add (prjid, absprjid, extobjs, basis, map) : projectmap =
+      (prjid, absprjid, extobjs, basis) :: map
+
+
+    (* Add basislib project if auto import is enabled *)
+
+    fun maybe_add_basislib imports = 
+      let val p = !Flags.basislib_project
+      in if !Flags.auto_import_basislib then p :: imports
+	 else imports
+      end 
+	
+
+    (* Build a project *)
 
     fun build_project {cycleset : prjid list, pmap : projectmap, longprjid : prjid} 
 
       : {res_basis : Basis, res_modc : modcode, 
-	 pmap : projectmap, clean : bool} =
+	 pmap : projectmap, extobjs : extobj list, clean : bool} =
 
       let val {cd_old, file=prjid} = change_dir longprjid
-	  val _ = if List.member prjid cycleset then
+	  val _ = if member prjid cycleset then
 	             error ("There is a cycle in your project; problematic project identifier: " ^ quot prjid)
 		  else ()
-      in let val prj as {imports, body} = parse_project prjid
-	     val prjid_date_file = "PM/" ^ prjid ^ ".date"
+      in let val prj as {imports, extobjs, body} = parse_project prjid
+	     val imports = maybe_add_basislib imports
+	     val prjid_date_file = pmdir() ^ prjid ^ ".date"
 	     val clean = older (OS.FileSys.modTime prjid, OS.FileSys.modTime prjid_date_file) handle _ => false
 	     val _ = if clean then () else local_check_project (prjid, prj)
-	     val (B, modc, pmap, clean) = 
-	       foldl(fn (longprjid1,(B, modc, pmap, clean0)) => 
+	     val (B, modc, pmap, extobjs, clean) = 
+	       foldl(fn (longprjid1,(B, modc, pmap, extobjs, clean0)) => 
 		     let val absprjid1 = OS.Path.mkAbsolute(longprjid1, OS.FileSys.getDir())
 		         val prjid1 = OS.Path.file longprjid1
 		     in case projectmap_lookup pmap prjid1
-			  of SOME(absprjid1',B') =>
-			    if absprjid1 = absprjid1' then (Basis_plus'(B,B'), modc, pmap, clean0)
+			  of SOME(absprjid1',extobjs',B') =>
+			    if absprjid1 = absprjid1' then (Basis_plus'(B,B'), modc, pmap, extobjs' @ extobjs, clean0)
 			    else error ("Your project is inconsistent! The project identifier " ^ quot prjid1 ^ 
-					" stands for different projects.\nEliminate the inconsistency")
+					" stands\nfor different projects. Eliminate the inconsistency")
 			   | NONE => 
-			      let val {res_basis, res_modc, pmap, clean} = 
+			      let val {res_basis, res_modc, pmap, extobjs=extobjs', clean} = 
 				      build_project {cycleset=prjid :: cycleset, pmap=pmap, longprjid=longprjid1}
-				  val pmap = projectmap_add(prjid1,absprjid1,res_basis,pmap)
+				  val pmap = projectmap_add(prjid1,absprjid1,extobjs,res_basis,pmap)
 			      in (Basis_plus' (B, res_basis), ModCode.seq (modc, res_modc), 
-				  pmap, clean0 andalso clean)
+				  pmap, extobjs' @ extobjs, clean0 andalso clean)
 			      end
-		     end) (Basis.initial(), ModCode.empty, pmap, clean) imports
+		     end) (Basis.initial(), ModCode.empty, pmap, extobjs, clean) imports
 
 	       (* Now, check that date files associated with imported projects are older than
 		* the date file for the current project. *)
 
 	     val clean = foldl (fn (longprjid', clean) => clean andalso
 				let val {dir,file} = OS.Path.splitDirFile longprjid'
-				    val prjid'_date = OS.Path.concat(dir,"PM/" ^ file ^ ".date")
+				    val prjid'_date = OS.Path.concat(dir,pmdir() ^ file ^ ".date")
 				in older (OS.FileSys.modTime prjid'_date, OS.FileSys.modTime prjid_date_file) handle _ => false
 				end) clean imports
 
@@ -593,7 +630,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	    if clean then () else (maybe_create_PM_dir();
 				   output_date_file prjid_date_file);
 	    cd_old();
-	    {res_basis=B', res_modc=ModCode.seq(modc, modc'), pmap=pmap, clean=clean}
+	    {res_basis=B', res_modc=ModCode.seq(modc, modc'), pmap=pmap, extobjs=extobjs, clean=clean}
 	 end handle E => (cd_old(); raise E)
       end 
 
@@ -604,15 +641,15 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun build longprjid =   (* May raise PARSE_ELAB_ERROR *)
       let val _ = Repository.recover()
 	  val emitted_files = EqSet.fromList (Repository.emitted_files())
-	  val _ = let val {res_modc, clean, ...} = build_project{cycleset=[], pmap=[], longprjid=longprjid}
+	  val _ = let val {res_modc, clean, extobjs, ...} = build_project{cycleset=[], pmap=[], longprjid=longprjid}
 
 		  (* MEMO: If clean is true then I do not need to rebuild binary. *)
 
-		  in ModCode.mk_exe (OS.Path.file longprjid, res_modc, "run")
+		  in ModCode.mk_exe (OS.Path.file longprjid, res_modc, extobjs, "run")
 		  end
 	  val emitted_files' = EqSet.fromList (Repository.emitted_files())
     	  val files_to_delete = EqSet.list (EqSet.difference emitted_files emitted_files')
-      in List.apply ManagerObjects.SystemTools.delete_file files_to_delete
+      in List.app ManagerObjects.SystemTools.delete_file files_to_delete
       end
 
     (* -----------------------------
@@ -624,33 +661,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  val _ = reset()
 	  val (_, _, modc, _) = build_body(prjid, Basis.initial(), Basis.empty, UNITbody filepath, false)
       in maybe_create_PM_dir();
-	ModCode.mk_exe(prjid, modc, OS.Path.file prjid ^ ".exe")
-      end
-(*mael
-      let val {dir, file=filename} = OS.Path.splitDirFile filepath
-	  val unitname = OS.Path.base filename
-	  val prjid = unitname
-          val (infB,elabB,rea,intB) = Basis.un Basis.initial
-	  val _ = maybe_create_PM_dir()
-	  val _ = reset()
-	  val _ = Timing.reset_timings()
-	  val _ = Timing.new_file unitname
-	  val log_cleanup = log_init unitname
-      in (case ParseElab.parse_elab {prjid=prjid,infB=infB,elabB=elabB,
-				     file=unitname_to_sourcefile unitname} 
-	    of ParseElab.SUCCESS {report, topdec, ...} =>
-	      let val (topdec',_) = OpacityElim.opacity_elimination(rea,topdec)
-		  val (_, modc) = IntModules.interp(prjid, intB, topdec', OS.Path.file unitname)
-		  val modc = ModCode.emit (prjid, modc)
-	      in ModCode.mk_exe(prjid, modc, OS.Path.file unitname ^ ".exe");
-	         print_result_report report;
-		 log_cleanup()
-	      end
-	     | ParseElab.FAILURE (report, error_codes) => (print_error_report report; raise PARSE_ELAB_ERROR error_codes)
-         ) handle XX => (log_cleanup(); raise XX)
-      end 
-mael*)
-
+	ModCode.mk_exe(prjid, modc, [], OS.Path.file prjid ^ ".exe")  (* No external object files generated *)
+      end                                                             (* by foreign compilers. *)
 
 
     (* -----------------------------

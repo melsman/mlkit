@@ -537,6 +537,7 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 						structure InfixBasis = TopdecParsing.InfixBasis
 						structure TyName = Basics.TyName
 						structure OpacityEnv = Basics.OpacityEnv
+						structure Flags = Tools.Flags
 						type funid = Basics.FunId.funid
 						type ElabBasis = Basics.ModuleEnvironments.Basis
 						type longstrid = Basics.StrId.longstrid
