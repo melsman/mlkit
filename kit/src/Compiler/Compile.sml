@@ -174,7 +174,8 @@ functor Compile(structure Excon : EXCON
 
     fun length l = List.foldR (fn _ => fn n => n+1) 0 l
 
-    fun msg(s: string) = (output(!Flags.log, s); NonStandard.flush_out (!Flags.log))
+    fun msg(s: string) = (output(!Flags.log, s); NonStandard.flush_out (!Flags.log);
+                          output(std_out, s))
 
     fun chat(s: string) = if !Flags.chat then msg s else ()
 
@@ -267,7 +268,7 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     fun ast2lambda(ce, strdecs) =
-      (ifthen (!Flags.chat) (fn _ => msg("\nCompiling into lambda language ..."));
+      (ifthen (!Flags.chat) (fn _ => msg("\nCompiling abstract syntax tree into lambda language ..."));
        Timing.timing_begin();
        let val (ce1, lamb) =  Timing.timing_end_res 
 	        ("To lamb", CompileDec.compileStrdecs ce strdecs)
@@ -695,7 +696,9 @@ functor Compile(structure Excon : EXCON
         val (lamb_opt,OEnv1) = optlambda (OEnv, lamb')
 	val TCEnv1 = type_check_lambda (TCEnv, lamb_opt)
       in
-	if isEmptyLambdaPgm lamb_opt then CEnvOnlyRes CEnv1
+	if isEmptyLambdaPgm lamb_opt 
+          then (chat "Empty lambda program; skipping code generation.\n";
+                CEnvOnlyRes CEnv1)
 	else
 	  let val (rse1, mularefmap1, mulenv1, drop_env1, psi_env1, l2kam_ce1, target, linkinfo) = 
 	       comp_with_new_backend(rse, mularefmap, mulenv, drop_env, psi_env, l2kam_ce, lamb_opt, vcg_file)
