@@ -221,6 +221,8 @@ Manager/NAME.sml
 Manager/Name.sml
 Manager/PARSE_ELAB.sml
 Manager/ParseElab.sml
+Manager/OPACITY_ELIM.sml
+Manager/OpacityElim.sml
 Parsing/GRAMMAR_UTILS.sml
 Parsing/GrammarUtils.sml
 Parsing/HOOKS.sml
