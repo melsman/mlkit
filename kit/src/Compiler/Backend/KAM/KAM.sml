@@ -120,6 +120,9 @@ signature KAM =
       | FetchGlobal of label
       | StoreGlobal of label
 
+      | FetchData of label
+      | StoreData of label
+
       | Comment of string
       | Nop
 
@@ -165,10 +168,11 @@ signature KAM =
       | FN of label * KamInst list
 
     type AsmPrg = {top_decls: TopDecl list,
-		   init_code: KamInst list,
-		   exit_code: KamInst list,
-		   static_data: KamInst list}
-
+		   main_lab_opt: label option,
+		   imports_code: label list,     (* code imports *)
+		   imports_data: label list,     (* data imports *)
+		   exports_code: label list,     (* code exports *)
+		   exports_data: label list}     (* data exports *)
 
     (******************)
     (* PrettyPrinting *)
@@ -179,7 +183,7 @@ signature KAM =
     (* To Emit Code *)
     val pr_inst        : KamInst -> string
     val pp_lab         : label -> string
-    val output_AsmPrg : TextIO.outstream * AsmPrg -> unit
+(*    val output_AsmPrg : TextIO.outstream * AsmPrg -> unit *)
 
   end
 

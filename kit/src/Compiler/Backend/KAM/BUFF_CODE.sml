@@ -16,5 +16,10 @@ signature BUFF_CODE =
 
     val out_long_w32 : Word32.word -> unit
 
-    val dump_buffer : string -> unit
+    val dump_buffer : {filename : string,
+		       main_lab_opt : int option,
+		       map_import_code : (int * int) list,
+		       map_import_data : (int * int) list,
+		       map_export_code : (int * int) list,
+		       map_export_data : (int * int) list} -> unit
   end

@@ -108,13 +108,13 @@ fun build_kam () =
       enable "delay_assembly";
       enable "print_KAM_program";
       enable "print_lift_conv_program";
-      enable "chat";
+(*      enable "chat"; *)
       KitKAM.Flags.target_file_extension := ".uo"
 
-(*   ;  KitKAM.build_basislib() *)
-   ;   List.app (fn tf => KitKAM.comp ("../test_dev/"^tf)) test_files
-    (* ; KitKAM.comp "../testprogs/f1.sml"*)
-(*      ; KitKAM.install() *)
+  (*   ; KitKAM.build_basislib() *)
+  (*   ; List.app (fn tf => KitKAM.comp ("../test_dev/"^tf)) test_files *)
+  (*   ; KitKAM.comp "../testprogs/f1.sml"*)
+  (*   ; KitKAM.install() *)
   end;
 
 val _ = build_kam()

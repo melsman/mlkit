@@ -56,12 +56,15 @@ functor Timing(structure Flags: FLAGS
 		     gc: Time.time,
 		     wallclock: Time.time}) list) list ref = ref []
 
-    fun timing_begin () = (if !timingNow = true then
-			     die "Only one timer available"
-			   else
-			     (t := Timer.startCPUTimer(); 
-			      timingNow := true;
-			      rt := Timer.startRealTimer()))
+    val doTiming = ref false
+    fun timing_begin () =
+      if not(!doTiming) then () else
+	(if !timingNow = true then
+	   die "Only one timer available"
+	 else
+	   (t := Timer.startCPUTimer(); 
+	    timingNow := true;
+	    rt := Timer.startRealTimer()))
 
 
     fun add_time_elems {name=name1: string, non_gc=non_gc1: Time.time,
@@ -98,6 +101,7 @@ functor Timing(structure Flags: FLAGS
 	 | NONE => ()
       
     fun timing_end (name) = 
+      if not(!doTiming) then () else
       (chat("\n");
        let 
 	 val _ = timingNow := false

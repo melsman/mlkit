@@ -122,6 +122,9 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | FetchGlobal(lab) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | StoreGlobal(lab) => () (*die ("inst " ^ (pr_inst inst) ^ " not emitted") not implemented yet *)
 
+      | FetchData(lab) => (out_opcode FETCH_DATA; RLL.out_label lab)   (* fetch from data segment *)
+      | StoreData(lab) => (out_opcode STORE_DATA; RLL.out_label lab)   (* store in data segment *)
+
       | Comment(s) => ()
       | Nop => ()
 
@@ -176,16 +179,34 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       end
     
     fun emit {target as {top_decls: Kam.TopDecl list,
-			 init_code: Kam.KamInst list,
-			 exit_code: Kam.KamInst list,
-			 static_data: Kam.KamInst list}, filename:string} : unit = 
-      (chat ("[Emitting KAM code in file " ^ filename ^ "...");
-       BC.init_out_code();
-       RLL.reset_label_table();
-       List.app emit_top_decl top_decls;
-       BC.dump_buffer filename;
-       print ("[wrote KAM code file:\t" ^ filename ^ " of size " ^ (Int.toString (!BC.out_position)) ^ " bytes]\n");
-       chat "]\n") handle IO.Io {name,...} => Crash.impossible ("EmitCode.emit:\nI cannot open \""
-								^ filename ^ "\":\n" ^ name)
+			 main_lab_opt,
+			 imports_code: label list,
+			 imports_data: label list,
+			 exports_code: label list,
+			 exports_data: label list}, filename:string} : unit = 
+      let val _ = chat ("[Emitting KAM code in file " ^ filename ^ "...")
+	  val _ = (BC.init_out_code();
+		   RLL.reset_label_table();
+		   List.app emit_top_decl top_decls)
 
+	    (* to find out where in the code there are references to external
+	     * labels, we look in the environment maintained by RLL, which
+	     * maps labels to either 1) a known position in the bytecode or 2) a list
+	     * of those places that need be updated once the label position is known. *)
+
+	  val map_import_code = map (fn (i,l) => (i, Labels.key l)) (RLL.imports imports_code)
+	  val map_import_data = map (fn (i,l) => (i, Labels.key l)) (RLL.imports imports_data)
+	  val map_export_code = map (fn (l,i) => (Labels.key l, i)) (RLL.exports exports_code)
+	  val map_export_data = nil (* MEMO : places in data segments *)
+      in
+	(BC.dump_buffer {filename=filename, 
+			 main_lab_opt=Option.map Labels.key main_lab_opt, 
+			 map_import_code=map_import_code, 
+			 map_import_data=map_import_data, 
+			 map_export_code=map_export_code, 
+			 map_export_data=map_export_data};
+	 print ("[wrote KAM code file:\t" ^ filename ^ "]\n");
+	 chat "]\n") handle IO.Io {name,...} => Crash.impossible ("EmitCode.emit:\nI cannot open \""
+								  ^ filename ^ "\":\n" ^ name)
+      end
   end

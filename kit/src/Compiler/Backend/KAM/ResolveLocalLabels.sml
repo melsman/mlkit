@@ -11,7 +11,7 @@ functor ResolveLocalLabels(structure BC : BUFF_CODE
     type label = Labels.label
     datatype label_definition =
       Label_defined of int
-    | Label_undefined of (int * int) list
+    | Label_undefined of (int * int) list     (* aren't the two integers the same always? ME 2000-10-24 *)
 
     val label_table : label_definition IntFinMap.map ref = ref IntFinMap.empty
 
@@ -54,6 +54,29 @@ functor ResolveLocalLabels(structure BC : BUFF_CODE
 	  | SOME (Label_undefined L) => out_label L
       end
 
-    fun out_label l = out_label_with_orig (!BC.out_position) l
+    fun out_label l = out_label_with_orig (!BC.out_position) l    (* for relative jumps *)
 
+    fun imports (labels: label list): (int * label) list =   (* the ints are relative addresses to
+							      * code positions that refers to the 
+							      * labels *)
+      let 
+	fun each (l,acc) =
+	  case IntFinMap.lookup (!label_table) (Labels.key l) 
+	    of SOME (Label_undefined L) => 
+	      foldl (fn ((a,b),acc) => if a <> b then die "imports - no, the two integers are not always identical!"
+				       else (a, l) :: acc) acc L
+	    | SOME _ => die "imports - Label_undefined expected"
+	    | NONE => die "imports - NONE"
+      in foldl each nil labels
+      end
+
+    fun exports (labels: label list) : (label * int) list =      (* returns relative addresses for the labels *)
+      let 
+	fun each l =
+	  case IntFinMap.lookup (!label_table) (Labels.key l) 
+	    of SOME (Label_defined i) => (l,i)
+	     | SOME _ => die "exports - Label_defined expected"
+	     | NONE => die "exports - NONE"
+      in map each labels
+      end
   end
