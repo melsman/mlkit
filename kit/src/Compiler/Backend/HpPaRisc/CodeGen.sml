@@ -13,7 +13,7 @@ functor CodeGen(structure Con : CON
 	        structure SubstAndSimplify: SUBST_AND_SIMPLIFY
                   sharing type SubstAndSimplify.lvar = LineStmt.lvar
                   sharing type SubstAndSimplify.place = LineStmt.place
-                  sharing type SubstAndSimplify.LinePrg = LineStmt.LinePrg
+(*                  sharing type SubstAndSimplify.LinePrg = LineStmt.LinePrg *)
                   sharing type SubstAndSimplify.label = LineStmt.label
 	        structure HpPaRisc : HP_PA_RISC
                   sharing type HpPaRisc.label = Labels.label
@@ -23,7 +23,7 @@ functor CodeGen(structure Con : CON
                   sharing type BI.label = Labels.label
 		structure JumpTables : JUMP_TABLES
 		structure HppaResolveJumps : HPPA_RESOLVE_JUMPS
-		  sharing type HppaResolveJumps.AsmPrg = HpPaRisc.AsmPrg
+		  where type AsmPrg = HpPaRisc.AsmPrg
 	        structure PP : PRETTYPRINT
 		  sharing type PP.StringTree = 
 			       LineStmt.StringTree =

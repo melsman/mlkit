@@ -746,8 +746,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 				end) clean imports
 
 	     val (B', modc', clean, modtimes) = build_body (absprjid, B, body, clean, [])
-                                                handle x => (testout "Basis at failing call to build_body:\n";
-                                                             testouttree(ManagerObjects.Basis.layout B); testout"\n"; raise x)
+(*	       handle x => (testout "Basis at failing call to build_body:\n";
+			    testouttree(ManagerObjects.Basis.layout B); testout"\n"; raise x) 
+*)
 	 in 
 	    if clean then () else (maybe_create_PM_dir();
 				   output_date_file prjid_date_file);

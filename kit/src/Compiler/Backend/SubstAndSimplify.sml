@@ -18,7 +18,7 @@ functor SubstAndSimplify(structure PhysSizeInf : PHYS_SIZE_INF
                            sharing type CalcOffset.lvar = LineStmt.lvar
 			   sharing type CalcOffset.Atom = LineStmt.Atom
                            sharing type CalcOffset.place = LineStmt.place = RegvarFinMap.dom
-                           sharing type CalcOffset.LinePrg = LineStmt.LinePrg
+                       (*    sharing type CalcOffset.LinePrg = LineStmt.LinePrg *)
 			   sharing type CalcOffset.Atom = LineStmt.Atom
 			 structure BI : BACKEND_INFO
                            sharing type BI.lvar = Lvars.lvar

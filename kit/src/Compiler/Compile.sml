@@ -70,49 +70,49 @@ functor Compile(structure Excon : EXCON
 
 		structure ClosExp : CLOS_EXP
 		  sharing type ClosExp.place = PhysSizeInf.place
-                  sharing type ClosExp.pp = PhysSizeInf.pp
+ (*                 sharing type ClosExp.pp = PhysSizeInf.pp *)
                   sharing type ClosExp.phsize = PhysSizeInf.phsize
                   sharing type ClosExp.at = AtInf.at
                   sharing type ClosExp.LambdaPgm = PhysSizeInf.LambdaPgm
 
 	        structure LineStmt : LINE_STMT
+                    where type ClosPrg = ClosExp.ClosPrg
 		  sharing type LineStmt.place = PhysSizeInf.place
-                  sharing type LineStmt.pp = PhysSizeInf.pp
+(*                  sharing type LineStmt.pp = PhysSizeInf.pp *)
                   sharing type LineStmt.phsize = PhysSizeInf.phsize
-                  sharing type LineStmt.ClosPrg = ClosExp.ClosPrg
                   sharing type LineStmt.label = ClosExp.label
 
 	        structure RegAlloc : REG_ALLOC
+                  where type ('a, 'b, 'c)LinePrg = ('a, 'b, 'c)LineStmt.LinePrg
 		  sharing type RegAlloc.place = LineStmt.place
                   sharing type RegAlloc.phsize = LineStmt.phsize
-                  sharing type RegAlloc.LinePrg = LineStmt.LinePrg
                   sharing type RegAlloc.label = LineStmt.label
                   sharing type RegAlloc.lvar = LineStmt.lvar
                   sharing type RegAlloc.Atom = LineStmt.Atom
                   sharing type RegAlloc.StoreTypeLI = LineStmt.StoreType
 
 	        structure FetchAndFlush : FETCH_AND_FLUSH
+                  where type ('a, 'b, 'c)LinePrg = ('a, 'b, 'c)LineStmt.LinePrg
 		  sharing type FetchAndFlush.place = LineStmt.place
                   sharing type FetchAndFlush.phsize = LineStmt.phsize
-                  sharing type FetchAndFlush.LinePrg = LineStmt.LinePrg
                   sharing type FetchAndFlush.label = LineStmt.label
                   sharing type FetchAndFlush.lvar = LineStmt.lvar
                   sharing type FetchAndFlush.StoreTypeRA = RegAlloc.StoreType
                   sharing type FetchAndFlush.Atom = LineStmt.Atom
 
 	        structure CalcOffset : CALC_OFFSET
+                  where type ('a, 'b, 'c)LinePrg = ('a, 'b, 'c)LineStmt.LinePrg
 		  sharing type CalcOffset.place = LineStmt.place
                   sharing type CalcOffset.phsize = LineStmt.phsize
-                  sharing type CalcOffset.LinePrg = LineStmt.LinePrg
                   sharing type CalcOffset.label = LineStmt.label
                   sharing type CalcOffset.lvar = LineStmt.lvar
                   sharing type CalcOffset.StoreTypeIFF = FetchAndFlush.StoreType
                   sharing type CalcOffset.Atom = LineStmt.Atom
 
 	        structure SubstAndSimplify : SUBST_AND_SIMPLIFY
+                  where type ('a, 'b, 'c)LinePrg = ('a, 'b, 'c)LineStmt.LinePrg
 		  sharing type SubstAndSimplify.place = LineStmt.place
                   sharing type SubstAndSimplify.phsize = LineStmt.phsize
-                  sharing type SubstAndSimplify.LinePrg = LineStmt.LinePrg
                   sharing type SubstAndSimplify.label = LineStmt.label
                   sharing type SubstAndSimplify.lvar = LineStmt.lvar
                   sharing type SubstAndSimplify.StoreTypeCO = CalcOffset.StoreType
