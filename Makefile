@@ -121,7 +121,8 @@ install_smlserver:
 	$(INSTALL) NEWS_SMLSERVER $(INSTDIR_SMLSERVER)
 	$(INSTALL) -R smlserver_demo $(INSTDIR_SMLSERVER)/smlserver_demo 
 	$(INSTALL) -R basislib $(INSTDIR_SMLSERVER)/basislib
-	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
+#	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_SMLSERVER)/doc
+	$(INSTALL) doc/smlserver.pdf $(INSTDIR_SMLSERVER)/doc
 	chown -R `whoami`.`whoami` $(INSTDIR_SMLSERVER)
 	chmod -R ug+rw $(INSTDIR_SMLSERVER)
 	chmod -R o+r $(INSTDIR_SMLSERVER)

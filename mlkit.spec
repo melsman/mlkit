@@ -113,7 +113,3 @@ chmod a+x ${RPM_INSTALL_PREFIX}/bin/mlkit
 ln -sf ${RPM_INSTALL_PREFIX}/bin/mlkit /usr/bin/mlkit
 ln -sf ${RPM_INSTALL_PREFIX}/bin/rp2ps /usr/bin/rp2ps
 
-%preun
-rm -f ${RPM_INSTALL_PREFIX}/bin/mlkit
-rm -f /usr/bin/mlkit /usr/bin/rp2ps
-
