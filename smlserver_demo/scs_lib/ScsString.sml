@@ -28,6 +28,8 @@ signature SCS_STRING =
     (* [ml_search_pattern pat] returns a pattern with % added at each
         space *)
     val mk_search_pattern : string -> string
+
+    val quoteString : string -> string
   end
 
 structure ScsString =
@@ -55,4 +57,5 @@ structure ScsString =
       else 
 	"%"^(String.concatWith "%" (String.tokens Char.isSpace pat))^"%"
 
+    fun quoteString str = Quot.toString `"^str"`
   end
