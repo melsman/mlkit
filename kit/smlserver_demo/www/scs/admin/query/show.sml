@@ -92,7 +92,7 @@ val _ = ScsPage.returnPg "Query" (`Evaluate queries directly in the database<p>
         Name: <input type=text name=name value="^name"><br>
         Arity: <input type=text name=arity value="^arity"><br>
         Description: <textarea name=description cols=30 rows=3>^desc</textarea><br>
-        Query: <textarea name=query cols=70 rows=15>^query</textarea>`)) ^^ 
+        Query: <textarea name=query cols=120 rows=25>^query</textarea>`)) ^^ 
 `
 <hr>
 <pre>
