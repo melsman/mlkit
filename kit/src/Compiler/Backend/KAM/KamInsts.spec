@@ -165,3 +165,4 @@ PRIM_WORDTABLE_UPDATE       0
 PRIM_TABLE_SIZE             0
 
 PRIM_IS_NULL                0
+GET_CONTEXT                 0

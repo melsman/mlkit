@@ -258,6 +258,8 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | PrimTableSize => out_opcode PRIM_TABLE_SIZE
       | PrimIsNull => out_opcode PRIM_IS_NULL
 
+	  | GetContext => out_opcode GET_CONTEXT
+
     end
 
     fun emit_kam_insts insts = List.app emit_kam_inst insts

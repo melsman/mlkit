@@ -752,7 +752,7 @@ resolveGlobalCodeFragments(void)
 }
 
 int 
-interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr) 
+interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr, void *serverState) 
 {
   unsigned long *ds, *sp, *exnPtr, *sp0;
   unsigned long exnCnt = 0;
@@ -818,7 +818,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
 
       // start interpretation by interpreting the init_code
       res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
-		       &exnCnt,(bytecode_t)init_code);
+		       &exnCnt,(bytecode_t)init_code, serverState);
   
       if ( res >= 0 && extra_code )
 	{
@@ -847,7 +847,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
     touchHeap(h);
 
     res = interpCode(interpreter,sp,ds,exnPtr,&topRegion,errorStr,
-		     &exnCnt,(bytecode_t)extra_code);
+		     &exnCnt,(bytecode_t)extra_code, serverState);
 
     releaseHeap(h);
   }    
@@ -867,7 +867,7 @@ extern void logLoading(char *file);
 #endif
 
 int 
-interpLoadRun(Interp* interp, char* file, char** errorStr) 
+interpLoadRun(Interp* interp, char* file, char** errorStr, void *serverState) 
 {
   bytecode_t start_code;
   int res;
@@ -894,7 +894,7 @@ interpLoadRun(Interp* interp, char* file, char** errorStr)
    *  loaded bytecode as an extra parameter. 
    */
 
-  res = interpRun(interp, start_code, errorStr);
+  res = interpRun(interp, start_code, errorStr, serverState);
 
 #if !( THREADS && CODE_CACHE )
   free(start_code);

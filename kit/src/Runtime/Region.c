@@ -8,11 +8,16 @@
 #include "GC.h"
 #include "CommandLine.h"
 
-#ifdef THREADS
+#if defined(THREADS) && defined(AOLSERVER)
 #include "/usr/share/aolserver/include/ns.h"
 extern Ns_Mutex freelistMutex;
 #define FREELIST_MUTEX_LOCK     Ns_LockMutex(&freelistMutex);
 #define FREELIST_MUTEX_UNLOCK   Ns_UnlockMutex(&freelistMutex);
+#elif defined(THREADS) && defined(APACHE)
+#include "apr_thread_mutex.h"
+extern apr_thread_mutex_t *freelistMutex;
+#define FREELIST_MUTEX_LOCK     apr_thread_mutex_lock(freelistMutex);
+#define FREELIST_MUTEX_UNLOCK   apr_thread_mutex_unlock(freelistMutex);
 #else
 #define FREELIST_MUTEX_LOCK
 #define FREELIST_MUTEX_UNLOCK

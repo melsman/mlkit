@@ -143,10 +143,10 @@ int interpLoadExtend(Interp* interp, char* file);
 /* Load a bytecode file and run it, then release the loaded code;
  * later we can provide a version of this function that caches the
  * loaded code. */
-int interpLoadRun(Interp* interp, char* file, char** errorStr);
+int interpLoadRun(Interp* interp, char* file, char** errorStr, void *serverState);
 
 /* Run an interpreter */ 
-int interpRun(Interp* interp, bytecode_t extra_code, char** errorStr);
+int interpRun(Interp* interp, bytecode_t extra_code, char** errorStr, void *serverState);
 
 /* Free all loaded code */
 void interpClear(Interp* interp);
