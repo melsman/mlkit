@@ -15,7 +15,8 @@ functor CalcOffset(structure PhysSizeInf : PHYS_SIZE_INF
 		        sharing type LineStmt.phsize = PhysSizeInf.phsize
 		      structure FetchAndFlush: FETCH_AND_FLUSH
                         sharing type FetchAndFlush.lvar = LineStmt.lvar
-		      structure PHregFinMap : MONO_FINMAP where type dom = word
+                        sharing type FetchAndFlush.phreg = LineStmt.phreg = Lvars.lvar
+                        sharing type FetchAndFlush.Atom = LineStmt.Atom
 		      structure BI : BACKEND_INFO
 		      structure PP : PRETTYPRINT
 		        sharing type PP.StringTree = 
@@ -35,10 +36,11 @@ struct
   type pp = PhysSizeInf.pp
   type cc = CallConv.cc
   type label = Labels.label
-  type ('sty,'offset) LinePrg = ('sty,'offset) LineStmt.LinePrg
+  type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) LineStmt.LinePrg
   type StoreTypeIFF = FetchAndFlush.StoreType
   type phreg = FetchAndFlush.phreg
   type offset = int
+  type Atom = LineStmt.Atom
 
   datatype StoreType =
     STACK_STY of lvar * offset
@@ -47,11 +49,12 @@ struct
   | FLUSHED_CALLER_STY of lvar * phreg * offset
 
   fun pr_sty(STACK_STY(lv,offset)) = Lvars.pr_lvar lv ^ ":stack(" ^ Int.toString offset ^ ")"
-    | pr_sty(PHREG_STY(lv,i)) = Lvars.pr_lvar lv ^ ":phreg" ^ Word.toString i
-    | pr_sty(FLUSHED_CALLEE_STY(i,offset)) = "phreg" ^ Word.toString i ^ ":flushed_callee(" ^ Int.toString offset ^ ")"
-    | pr_sty(FLUSHED_CALLER_STY(lv,i,offset)) = Lvars.pr_lvar lv ^ ":flushed phreg" ^ Word.toString i ^ ":stack(" ^ Int.toString offset ^ ")"
+    | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ LineStmt.pr_phreg phreg
+    | pr_sty(FLUSHED_CALLEE_STY(phreg,offset)) = LineStmt.pr_phreg phreg ^ ":flushed_callee(" ^ Int.toString offset ^ ")"
+    | pr_sty(FLUSHED_CALLER_STY(lv,phreg,offset)) = Lvars.pr_lvar lv ^ ":flushed " ^ LineStmt.pr_phreg phreg ^ ":stack(" ^ Int.toString offset ^ ")"
 
   fun pr_offset offset = "stack(" ^ Int.toString offset ^ ")"
+  fun pr_atom atom = LineStmt.pr_atom atom
 
   (***********)
   (* Logging *)
@@ -105,14 +108,8 @@ struct
       | NONE  => die ("lookup_lv(" ^ (Lvars.pr_lvar lv) ^ ")")
     fun add_lv(lv_map,r,lv) = LvarFinMap.add(lv,r,lv_map)
 
-    fun lookup_phreg(ph_map,phreg) =
-      case PHregFinMap.lookup ph_map phreg of
-	SOME r => r
-      | NONE => die ("lookup_phreg(" ^ (Word.toString phreg) ^ ")")
-    fun add_phreg(ph_map,r,phreg) = PHregFinMap.add(phreg,r,ph_map)
-
     fun assign_offset_atom(LS.VAR lv,LVmap,PHmap) = lookup_lv(LVmap,lv)  
-      | assign_offset_atom(LS.PHREG phreg,LVmap,PHmap) = lookup_phreg(PHmap,phreg)
+      | assign_offset_atom(LS.PHREG phreg,LVmap,PHmap) = lookup_lv(PHmap,phreg)
       | assign_offset_atom _ = die "assign_offset_atom: not a VAR or PHREG."
 
     fun assign_binders(binders,offset) =
@@ -132,10 +129,10 @@ struct
       let
 	fun assign_sty(IFF.STACK_STY lv,LVmap,PHmap,offset) = (STACK_STY(lv,offset),add_lv(LVmap,offset,lv),PHmap,offset++1)
 	  | assign_sty(IFF.PHREG_STY(lv,phreg),LVmap,PHmap,offset) = (PHREG_STY(lv,phreg),LVmap,PHmap,offset)
-	  | assign_sty(IFF.FLUSHED_CALLEE_STY(phreg),LVmap,PHmap,offset) = (FLUSHED_CALLEE_STY(phreg,offset),LVmap,add_phreg(PHmap,offset,phreg),offset++1)
+	  | assign_sty(IFF.FLUSHED_CALLEE_STY(phreg),LVmap,PHmap,offset) = (FLUSHED_CALLEE_STY(phreg,offset),LVmap,add_lv(PHmap,offset,phreg),offset++1)
 	  | assign_sty(IFF.FLUSHED_CALLER_STY(lv,phreg),LVmap,PHmap,offset) = (FLUSHED_CALLER_STY(lv,phreg,offset),add_lv(LVmap,offset,lv),PHmap,offset++1)
       in
-	foldr (fn (sty,(stys_acc,LVmap,PHmap,offset)) =>
+	foldl (fn (sty,(stys_acc,LVmap,PHmap,offset)) =>
 	       let
 		 val (sty',LVmap',PHmap',offset') = assign_sty(sty,LVmap,PHmap,offset)
 	       in
@@ -172,12 +169,13 @@ struct
       in
 	LS.SCOPE{pat=pat',scope=CO_lss(scope,LVmap',PHmap',offset',[])} :: CO_lss(lss,LVmap,PHmap,offset,acc)
       end
-      | CO_lss(LS.HANDLE(lss1,lss2,_)::lss,LVmap,PHmap,offset,acc) = 
+      | CO_lss(LS.HANDLE{default,handl,handl_return,...}::lss,LVmap,PHmap,offset,acc) = 
       let
-	val lss1' = CO_lss(lss1,LVmap,PHmap,offset++(BI.size_of_handle()),[])
-	val lss2' = CO_lss(lss2,LVmap,PHmap,offset++(BI.size_of_handle()),[])
+	val lss1' = CO_lss(default,LVmap,PHmap,offset++(BI.size_of_handle()),[])
+	val lss2' = CO_lss(handl,LVmap,PHmap,offset++(BI.size_of_handle()),[])
+	val handl_return' = CO_lss(handl_return,LVmap,PHmap,offset++(BI.size_of_handle()),[])
       in
-	LS.HANDLE(lss1',lss2',offset++(BI.size_of_handle()))::CO_lss(lss,LVmap,PHmap,offset,acc)
+	LS.HANDLE{default=lss1',handl=lss2',handl_return=handl_return',offset=offset++(BI.size_of_handle())}::CO_lss(lss,LVmap,PHmap,offset,acc)
       end
       | CO_lss(LS.RAISE a::lss,LVmap,PHmap,offset,acc) = LS.RAISE a :: CO_lss(lss,LVmap,PHmap,offset,acc)
       | CO_lss(LS.SWITCH_I sw::lss,LVmap,PHmap,offset,acc) = CO_sw(CO_lss,LS.SWITCH_I,sw,LVmap,PHmap,offset) :: CO_lss(lss,LVmap,PHmap,offset,acc)
@@ -195,7 +193,7 @@ struct
 	val _ = reset_max_offset()
 	val LVmap_args = LvarFinMap.fromList (CallConv.get_spilled_args_with_offsets cc)
 	val LVmap_res = LvarFinMap.addList (CallConv.get_spilled_res_with_offsets cc) LVmap_args
-	val lss_co = CO_lss(lss,LVmap_res,PHregFinMap.empty,BI.init_frame_offset,[])
+	val lss_co = CO_lss(lss,LVmap_res,LvarFinMap.empty,BI.init_frame_offset,[])
 	val cc' = CallConv.add_frame_size(cc,get_max_offset())
       in
 	LineStmt.FUN(lab,cc',lss_co)
@@ -205,14 +203,14 @@ struct
 	val _ = reset_max_offset()
 	val LVmap_args = LvarFinMap.fromList (CallConv.get_spilled_args_with_offsets cc)
 	val LVmap_res = LvarFinMap.addList (CallConv.get_spilled_res_with_offsets cc) LVmap_args
-	val lss_co = CO_lss(lss,LVmap_res,PHregFinMap.empty,BI.init_frame_offset,[])
+	val lss_co = CO_lss(lss,LVmap_res,LvarFinMap.empty,BI.init_frame_offset,[])
 	val cc' = CallConv.add_frame_size(cc,get_max_offset())
       in
 	LineStmt.FN(lab,cc',lss_co)
       end
   in
     fun CO {main_lab:label,
-	     code=iff_prg: (StoreTypeIFF,unit) LinePrg,
+	     code=iff_prg: (StoreTypeIFF,unit,Atom) LinePrg,
 	     imports:label list,
 	     exports:label list} =
       let
@@ -220,12 +218,12 @@ struct
 	val line_prg_co = foldr (fn (func,acc) => CO_top_decl func :: acc) [] iff_prg
 	val _ = 
 	  if Flags.is_on "print_calc_offset_program" then
-	    display("\nReport: AFTER CALCULATING OFFSETS IN ACTIVATION RECORDS:", LineStmt.layout_line_prg pr_sty pr_offset line_prg_co)
+	    display("\nReport: AFTER CALCULATING OFFSETS IN ACTIVATION RECORDS:", LineStmt.layout_line_prg pr_sty pr_offset pr_atom false line_prg_co)
 	  else
 	    ()
 	val _ = chat "]\n"
       in
-	{main_lab=main_lab,code=line_prg_co: (StoreType,offset) LinePrg,imports=imports,exports=exports}
+	{main_lab=main_lab,code=line_prg_co: (StoreType,offset,Atom) LinePrg,imports=imports,exports=exports}
       end
   end
 

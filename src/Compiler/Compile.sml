@@ -88,6 +88,7 @@ functor Compile(structure Excon : EXCON
                   sharing type RegAlloc.LinePrg = LineStmt.LinePrg
                   sharing type RegAlloc.label = LineStmt.label
                   sharing type RegAlloc.lvar = LineStmt.lvar
+                  sharing type RegAlloc.Atom = LineStmt.Atom
 
 	        structure FetchAndFlush : FETCH_AND_FLUSH
 		  sharing type FetchAndFlush.place = LineStmt.place
@@ -96,6 +97,7 @@ functor Compile(structure Excon : EXCON
                   sharing type FetchAndFlush.label = LineStmt.label
                   sharing type FetchAndFlush.lvar = LineStmt.lvar
                   sharing type FetchAndFlush.StoreTypeRA = RegAlloc.StoreType
+                  sharing type FetchAndFlush.Atom = LineStmt.Atom
 
 	        structure CalcOffset : CALC_OFFSET
 		  sharing type CalcOffset.place = LineStmt.place
@@ -104,6 +106,16 @@ functor Compile(structure Excon : EXCON
                   sharing type CalcOffset.label = LineStmt.label
                   sharing type CalcOffset.lvar = LineStmt.lvar
                   sharing type CalcOffset.StoreTypeIFF = FetchAndFlush.StoreType
+                  sharing type CalcOffset.Atom = LineStmt.Atom
+
+	        structure SubstAndSimplify : SUBST_AND_SIMPLIFY
+		  sharing type SubstAndSimplify.place = LineStmt.place
+                  sharing type SubstAndSimplify.phsize = LineStmt.phsize
+                  sharing type SubstAndSimplify.LinePrg = LineStmt.LinePrg
+                  sharing type SubstAndSimplify.label = LineStmt.label
+                  sharing type SubstAndSimplify.lvar = LineStmt.lvar
+                  sharing type SubstAndSimplify.StoreTypeCO = CalcOffset.StoreType
+                  sharing type SubstAndSimplify.AtomCO = CalcOffset.Atom
 
 		structure RegionFlowGraphProfiling : REGION_FLOW_GRAPH_PROFILING
 		  sharing type RegionFlowGraphProfiling.place = PhysSizeInf.place
@@ -702,6 +714,7 @@ functor Compile(structure Excon : EXCON
 	    RegAlloc.ra_dummy all_line_stmt
 	val all_fetch_flush = FetchAndFlush.IFF all_reg_alloc
 	val all_calc_offset = CalcOffset.CO all_fetch_flush
+	val all_subst_and_simplify = SubstAndSimplify.SS all_calc_offset
       in
 	#env(all_clos_exp)
       end

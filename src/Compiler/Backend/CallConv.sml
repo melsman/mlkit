@@ -1,5 +1,6 @@
 functor CallConv(structure Lvars : LVARS
                  structure BI : BACKEND_INFO
+		   sharing type BI.phreg = Lvars.lvar
 		 structure PP : PRETTYPRINT
 		 structure Flags : FLAGS
                  structure Report : REPORT
@@ -56,7 +57,7 @@ functor CallConv(structure Lvars : LVARS
 
     fun get_lvar_sty(CC_NO_STY lv) = lv
       | get_lvar_sty(CC_STACK(lv,_)) = lv
-      | get_lvar_sty(CC_PHREG(lv,i)) = lv
+      | get_lvar_sty(CC_PHREG(lv,phreg)) = lv
 
     fun get_res_lvars({res,...}:cc) = map get_lvar_sty res
 
@@ -92,7 +93,7 @@ functor CallConv(structure Lvars : LVARS
 
       fun get_spilled_stys(stys,acc) = foldr (fn (sty,acc) => get_spilled_sty(sty,acc)) acc stys
 
-      fun assign_phreg(CC_NO_STY lv, i) = (CC_PHREG(lv,i),(lv,i))
+      fun assign_phreg(CC_NO_STY lv, phreg) = (CC_PHREG(lv,phreg),(lv,phreg))
 	| assign_phreg(CC_STACK _,_) = die "assign_phreg: sty is CC_STACK and not CC_NO_STY."
 	| assign_phreg(CC_PHREG _,_) = die "assign_phreg: sty is CC_PHREG and not CC_NO_STY."
 
@@ -212,13 +213,13 @@ functor CallConv(structure Lvars : LVARS
 
     fun pr_sty(CC_NO_STY lv) = Lvars.pr_lvar lv
       | pr_sty(CC_STACK(lv,offset)) = Lvars.pr_lvar lv ^ ":stack(" ^ Int.toString offset ^ ")"
-      | pr_sty(CC_PHREG(lv,i)) = Lvars.pr_lvar lv ^ ":phreg" ^ Word.toString i
+      | pr_sty(CC_PHREG(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ BI.pr_phreg phreg
 
     fun pr_sty_opt(SOME sty) = pr_sty sty
       | pr_sty_opt(NONE) = ""
 
     fun pr_frame_size(NONE) = ""
-      | pr_frame_size(SOME f_size) = "f_size: " ^ Int.toString f_size
+      | pr_frame_size(SOME f_size) = ",f_size: " ^ Int.toString f_size
 
     fun pr_stys stys = pr_seq stys pr_sty
 
@@ -228,7 +229,7 @@ functor CallConv(structure Lvars : LVARS
       ">,reg_args=<" ^ pr_stys reg_args ^
       ">,clos=<" ^ pr_sty_opt clos ^ 
       ">,free=<" ^ pr_stys free ^ 
-      ">,res=<" ^ pr_stys res ^ "> " ^
+      ">,res=<" ^ pr_stys res ^ ">" ^
       pr_frame_size frame_size
 
   end

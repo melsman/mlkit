@@ -95,6 +95,8 @@ Backend/FETCH_AND_FLUSH.sml
 Backend/FetchAndFlush.sml
 Backend/CALC_OFFSET.sml
 Backend/CalcOffset.sml
+Backend/SUBST_AND_SIMPLIFY.sml
+Backend/SubstAndSimplify.sml
 
 #if defined(KIT_TARGET_C)
 
