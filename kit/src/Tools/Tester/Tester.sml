@@ -243,7 +243,7 @@ structure Tester : TESTER =
 		                          | TestFile.PM (filepath,opt) => (filepath,opt,kitexe)) entries
 		  in app process_entry entries;
 		    msgErrors();
-		    TestReport.export {errors=noOfErrors(),testfile_string=testfile_string};
+		    TestReport.export {errors=noOfErrors(),testfile_string=testfile_string, kitexe=kitexe};
 		    if noOfErrors() = 0 then OS.Process.success else OS.Process.failure
 		  end) before (TextIO.closeOut (!msglog))
 	  end

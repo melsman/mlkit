@@ -1196,7 +1196,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 		 in
 		   if not(isEmptyTyVarList(tyvarsNotInTyVarList)) then
 		     (TE, OG.TYPBIND(errorConv(i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ 
-					       (map TyVar.from_ExplicitTyVar tyvarsNotInTyVarList)),
+					       (map OG.TyVar.pr_tyvar tyvarsNotInTyVarList)),
 				     ExplicitTyVars, tycon, out_ty, out_typbind_opt))
 		   else
 		     if (EqSet.member tycon (TE.dom TE)) then 
@@ -1254,6 +1254,11 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
               List.filter 
                 (fn tv => not (ListHacks.member tv ExplicitTyVars))
                 (IG.getExplicitTyVarsConbind conbind)
+
+	    val (_, C') = C.plus_U'(C', tyvarsNotInTyVarList)  (* if tyvarsNotInTyVarList
+								* is not empty, then there is
+								* a type error, which we catch
+								* below. *)
             val (typeFcn, _) = 
 	      case C.lookup_tycon C tycon of
                 SOME(tystr) => TyStr.to_theta_and_VE(tystr)
@@ -1287,7 +1292,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 		    errorConv (i, ErrorInfo.REBINDING_IT)
 		  else if not (isEmptyTyVarList tyvarsNotInTyVarList) then
 		    errorConv (i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ 
-			       (map TyVar.from_ExplicitTyVar
+			       (map OG.TyVar.pr_tyvar
 				  tyvarsNotInTyVarList))
 		  else
 		    let val repeated_ids_errorinfos =

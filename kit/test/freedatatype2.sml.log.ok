@@ -1,0 +1,9 @@
+
+
+********** freedatatype2.sml *************
+
+
+freedatatype2.sml, line 17, column 19:
+        let datatype t = C of 'a
+                     ^^^^^^^^^^^
+unbound type variable 'a.

@@ -9,14 +9,6 @@ REPORTED BY: (MT|ME|FAXE) + date
 TO BE FIXED BY: (MT|ME|FAXE)
 
 =============================== BUGS ===============================
-ERROR: ElabDec datatype error
-SYMPTOM: Compilation crashes: 
-           Impossible: Environments.ExplicitTyVar_lookup 
-TESTFILE: kit/test/freedatatype.sml
-PRIORITY: MEDIUM
-REPORTED BY: ME 1999-05-05
-TO BE FIXED BY: ME
---------------------------------------------------------------------
 ERROR: CompileDec `val rec pat' error
 SYMPTOM: Compilation crashes: 
            Impossible: CompileDec.compileREC.id_sigma
@@ -45,14 +37,6 @@ compilation, we should restrict the annotated bases to those
 identifiers that occur free in the functor binding. Is it possible to
 do this restriction during the pass for finding free identifiers
 (FreeIds)?
-
-In Fig 8.1 the regions r17 and r19 appear never to be used (because we
-do not print the at r17 and at r19 that hold the empty region
-parameter records. This might confuse users (and it makes the program
-less pretty). I think we should clean up the implementation to get rid
-of this problem. (One could of course hack the pretty-printer, but it
-would be more satisfactory to get the letregions deleted properly - or
-at least marked by "omit"). -Mads.
  
 Implement some kind of project reuse; it currently takes too long for
 the manager to find out that the code for the basis library can be
@@ -64,12 +48,6 @@ Variables that occur free in a program unit are associated with
 labelled slots in the data segment of the final executable; thus,
 these variables need not be stored in closures. It suffices to fetch
 them from the data segment.
-
-Make recompilation dependent on a notion of `compiler configuration'
-(list of entry-flag pairs); in this way, we can ensure that linking
-will always succeed even if the compiler configuration changes. A
-configuration should include entries such as ("tag_values", BOOL
-false), and so on.
 
 Currently, we do not treat multiple declarations of the same functor
 identifier in the same project. We can allow this; but we cannot allow
@@ -89,11 +67,6 @@ ML-Yacc and ML-Lex. Syntax:
 Declare polymorphic eq. in the initial basis, and make it impossible
 to redeclare equality; if equality is in the initial basis then
 in-lining happens automatically.
-
-Get TestEnv performance test to work properly under HPUX 10. The
-problem is that the UNIX program `top' generates unparsable output
-under HPUX 10. Are there any system calls that can do the same job as
-`top'?
 
 How are we going to model the differences between the specification of
 the Math structure and the semantics of /usr/include/math.h? For now,
@@ -229,3 +202,13 @@ and so on.  DONE]
 
 --------------------------------------------------------------------
 
+ERROR: ElabDec datatype error
+SYMPTOM: Compilation crashes: 
+           Impossible: Environments.ExplicitTyVar_lookup 
+TESTFILE: kit/test/freedatatype.sml
+PRIORITY: MEDIUM
+REPORTED BY: ME 1999-05-05
+TO BE FIXED BY: ME
+FIXED BY: ME 2001-03-10
+COMMENT: See the file kit/test/freedatatype.sml for comments.
+--------------------------------------------------------------------
