@@ -29,6 +29,9 @@ signature SCS_ERROR =
        shown to the user and no error is logged or emailed. This is 
        not a panic error.*)
     val wrapMsg   : quot -> ('a -> 'b) -> 'a -> 'b
+
+    (* [log msg] writes msg to the serverlog *)
+    val log : string -> unit
   end
 
 structure ScsError :> SCS_ERROR =
@@ -80,4 +83,7 @@ structure ScsError :> SCS_ERROR =
     fun wrapMsg msg f a = f a
       handle _ => (ScsPage.returnPg "" msg;
 		   Ns.exit())
+
+    fun log msg = Ns.log (Ns.Notice, msg)
+
   end

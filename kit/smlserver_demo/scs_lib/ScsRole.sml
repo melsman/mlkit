@@ -11,7 +11,7 @@ signature SCS_ROLE =
     | OaAdm
     | UcsPbSupervisorAdm  (* Created in ucs-pb-supervisor-lists-initialdata-create.sql *)
     | UcsPbProjectAdm     (* Created in ucs-pb-initialdata-create.sql *)
-    | UcsEbEventEditor    (* Created in ucs-events-initialdata-create.sql *)
+    | UcsEbEventEditor    (* Created in ucs-eb-initialdata-create.sql *)
     | ScsPersonAdm        (* Created in scs-users-initialdata-create.sql *)
     | Other of string
 
