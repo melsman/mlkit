@@ -1,5 +1,32 @@
 local
+
+  (* RegExp SML/NJ Utilities *)
+  local
+    ../sml/RegExp/Utils/ord-key-sig.sml
+    ../sml/RegExp/Utils/lib-base-sig.sml
+    ../sml/RegExp/Utils/lib-base.sml
+    ../sml/RegExp/Utils/ord-set-sig.sml
+    ../sml/RegExp/Utils/list-set-fn.sml
+    ../sml/RegExp/FrontEnd/syntax-sig.sml
+    ../sml/RegExp/FrontEnd/syntax.sml
+    ../sml/RegExp/FrontEnd/parser-sig.sml
+    ../sml/RegExp/Glue/match-tree.sml
+    ../sml/RegExp/BackEnd/engine-sig.sml
+    ../sml/RegExp/Glue/regexp-sig.sml
+    ../sml/RegExp/Glue/regexp-fn.sml
+    ../sml/RegExp/Utils/ord-map-sig.sml
+    ../sml/RegExp/Utils/list-map-fn.sml
+    ../sml/RegExp/BackEnd/fsm.sml
+    (*../sml/RegExp/BackEnd/dfa-engine.sml*)
+    ../sml/RegExp/BackEnd/bt-engine.sml
+    ../sml/RegExp/FrontEnd/awk-syntax.sml
+  in
+    ../sml/RegExp/REG_EXP.sml
+    ../sml/RegExp/RegExp.sml
+  end
+
   ../sml/Quot.sml
+
   local
     ../sml/NsBasics.sml
     ../sml/NS_SET.sml

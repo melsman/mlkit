@@ -1,0 +1,82 @@
+This is a regular expressions library. It is based on a decoupling
+of the surface syntax used to specify regular expressions and the
+backend engine that implements the matcher.  An abstract syntax is used
+to communicate between the front end and the back end of the system,
+
+
+                      USING REGULAR EXPRESSIONS
+
+Given a structure S1 describing a surface syntax and a structure S2 
+describing a matching engine, a regular expression package can be
+defined by applying the functor: 
+
+  RegExpFn (structure P=S1  structure E=S2) : REGEXP
+
+To match a regular expression, one first needs to compile a
+representation in the surface syntax. The type of a compiled regular
+expression is given in the REGEXP signature as: 
+
+  type regexp
+
+Two functions are provided in
+the REGEXP signature:
+
+  val compile : (char,'a) StringCvt.reader -> (regexp, 'a) StringCvt.reader
+  val compileString : string -> regexp  
+
+The function compile is a regexp reader, while compileString is
+specialized to strings.
+
+Once a regular expression has been compiled, three functions are
+provided to perform the matching:
+
+   val find   : 
+   val prefix :   [[ See types in Glue/regexp-sig.sml ]]
+   val match  : 
+
+The function find returns a reader that searches a stream and attempts
+to match the given regular expression. The function prefix returns a
+reader that attempts to match the regular expression at the current
+position in the stream. The function match takes a list of regular
+expressions and functions and returns a reader that attempts to match
+one of the regular expressions at the current position in the
+stream. The function corresponding to the matched regular expression
+is invoked on the matching information.
+
+
+                         MATCHING INFORMATION
+
+Once a match is found, it is returned as a match_tree datatype
+(defined in Glue/match-tree.sml). This is a hierarchical structure
+describing the matches of the various subexpressions appearing in the
+matched regular expression. A match for an expression is a record
+containing the position of the match and its length. The root of the
+structure always described the outermost match (the whole string
+matched by the regular expression). See the file Glue/match-tree.sml
+for more details. 
+
+                               ROADMAP
+
+FrontEnd/     Implementation of various surface syntaxes
+BackEnd/      Implementation of various matching engines
+Glue/         Glue code
+
+
+                              FRONT ENDS
+
+A single surface syntax is currently implemented, providing an AWK
+syntax to describe regular expressions. See the file
+FrontEnd/awk-syntax.sml for a description of the actual syntax.
+
+
+                              BACK ENDS
+
+Two matching engines are implemented:
+1) A backtracking engine (BackEnd/bt-engine.sml), that provides full
+   submatching information. Slow, low memory footprint, low startup
+   cost. 
+2) An automaton-based engine (BackEnd/dfa-engine.sml), that provides
+   only top-level matching information (the string matched). Fast,
+   but memory-intensive and high startup cost (the cost of
+   constructing the automaton in the first place)
+

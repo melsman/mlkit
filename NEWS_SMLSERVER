@@ -1,4 +1,7 @@
-File NEWS_SMLSERVER                                   July 22, 2001
+File NEWS_SMLSERVER                                September 22, 2001
+
+ * nh 2001-09-17: Added support for cookies, caching. Added
+     authentication example with simple filtering.
 
  * mael 2001-07-22: Primitives for accessing the AOLserver
    configuration file added to the Ns structure. Also added primitive 

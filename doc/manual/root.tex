@@ -8268,45 +8268,31 @@ To build \emph{kit\_v1}
 enter the directory \texttt{kit} (i.e., the directory containing the
 file \texttt{copyright}). The \texttt{kit} directory contains a {\tt
   Makefile} that automates the bootstrapping process.  Assuming, that
-you installed the ML Kit in the directory
-\texttt{/import/home/nh/ITU/MLKit/mlkit}, type the following commands
-in order to generate the \emph{kit\_v1} compiler:
-
-\begin{small}
-\begin{quote}
+the ML Kit is installed in the directory
+\texttt{\$HOME/mlkit}, from within this directory,
+type the following commands so as to generate the \emph{kit\_v1}
+compiler:
 \begin{verbatim}
-# pwd
-/import/home/nh/ITU/MLKit/mlkit/kit
-# make clean
-...
-# make
-...
-# ll bin/kit.x86-linux 
-...  32742964 Jun  7 12:29 bin/kit.x86-linux
-# 
+  # make clean
+  ...
+  # make
+  ...
 \end{verbatim}
-\end{quote}
-\end{small}
 
-The file \texttt{bin/kit.x86-linux} is \emph{kit\_v1}. It is an SML/NJ
-image that can be executed using the file \texttt{bin/mlkit}. It has
-been compiled using the Basis Library of SML/NJ and executes using the
-runtime system of SML/NJ. We now install \texttt{kit\_v1} in a new
-directory, say \texttt{mlkit-v1}:
-
-\begin{small}
-\begin{quote}
+The {\tt make} command produces a file \texttt{bin/kit.x86-linux},
+which is an SML/NJ image that can be executed using the shell script
+\texttt{bin/mlkit}. The image is compiled using the Basis Library of
+SML/NJ and executes using the runtime system of SML/NJ. We now install
+\texttt{kit\_v1} in a new directory, say \texttt{mlkit-v1}:
 \begin{verbatim}
-# make install INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v1
-...
-# unlimit stacksize
-# make bootstrap INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v1
+  # make install INSTDIR=$HOME/mlkit-v1
+  ...
+  # unlimit stacksize
+  # make bootstrap INSTDIR=$HOME/mlkit-v1
 \end{verbatim}
-\end{quote}
-\end{small}
-
 These commands create the directory \texttt{mlkit-v1} with files
 necessary to bootstrap and test \emph{kit\_v1}. The command
+\index{unlimit stacksize}%
 \texttt{unlimit stacksize} is necessary because the ML Kit stores lots
 of data on the stack (i.e., in finite regions).
 
@@ -8316,7 +8302,7 @@ Compiling the ML Kit source with \emph{kit\_v1} generates
 system of the ML Kit using region inference. However, \emph{kit\_v2}
 is still affected by SML/NJ, for instance, many constants including
 bit-vectors are calculated using the Basis Library of SML/NJ.  Thus,
-the \emph{kit\_v2} executable may work even though the ML Kit
+the \emph{kit\_v2} executable may work even if the ML Kit
 implementation of the Basis Library is buggy.
 
 Unfortunately, because of the engineering of the recompilation scheme
@@ -8330,8 +8316,8 @@ every time a program is compiled.
 
 Another reason that the two executables \emph{kit\_v2} and
 \emph{kit\_v3} are different is that machine code labels are chosen
-different when memorization of the Basis Library is supported compared
-to when memorization is not supported.
+different when memorization of the Basis Library is used compared
+to when memorization is not used.
 
 To generate the \emph{kit\_v2} compiler, enter the directory
 \texttt{mlkit-v1}. Here you find a {\tt Makefile} with a {\tt
@@ -8341,71 +8327,47 @@ installs \texttt{kit\_v2}. This process may take several hours
 depending on your machine:\footnote{Your machine should have at least
   1 Gb of RAM to avoid swapping during the entire bootstrapping
   process.}
-
-\begin{small}
-\begin{quote}
 \begin{verbatim}
-# cd /import/home/nh/ITU/MLKit/mlkit-v1
-...
-# unlimit stacksize
-# make bootstrap INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v2
+  # cd $HOME/mlkit-v1
+  ...
+  # unlimit stacksize
+  # make bootstrap INSTDIR=$HOME/mlkit-v2
 \end{verbatim}
-\end{quote}
-\end{small}
-
 To generate 
 \index{bootstrap!\emph{kit\_v3}}%
 the \emph{kit\_v3} compiler, enter the \texttt{mlkit-v2} directory and
 bootstrap once more by using the {\tt Makefile} located in
 \texttt{mlkit-v2}:
-
-\begin{small}
-\begin{quote}
 \begin{verbatim}
-# cd /import/home/nh/ITU/MLKit/mlkit-v2
-# unlimit stacksize
-# make bootstrap INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v3
-...
+  # cd $HOME/mlkit-v2
+  # unlimit stacksize
+  # make bootstrap INSTDIR=$HOME/mlkit-v3
+  ...
 \end{verbatim}
-\end{quote}
-\end{small}
-
 To generate 
 \index{bootstrap!\emph{kit\_v4}}%
 the \emph{kit\_v4} compiler, enter the \texttt{mlkit-v3} directory and
 bootstrap yet another time by using the {\tt Makefile} located in
 \texttt{mlkit-v3}:
-
-\begin{small}
-\begin{quote}
 \begin{verbatim}
-# cd /import/home/nh/ITU/MLKit/mlkit-v3
-# unlimit stacksize
-# make bootstrap INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v4
-...
+  # cd $HOME/mlkit-v3
+  # unlimit stacksize
+  # make bootstrap INSTDIR=$HOME/mlkit-v4
+  ...
 \end{verbatim}
-\end{quote}
-\end{small}
-
 To see that the two executables \emph{kit\_v3} and \emph{kit\_v4} are
 identical, you can apply the \texttt{diff} command on the two
 binaries:
-
-\begin{small}
-\begin{quote}
 \begin{verbatim}
-# ll /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit.img 
-...  8867248 Jun  8 11:02 /import/.../mlkit-v3/bin/mlkit.img*
-# ll /import/home/nh/ITU/MLKit/mlkit-v4/bin/mlkit.img
-...  8867248 Jun  9 01:40 /import/.../mlkit-v4/bin/mlkit.img*
-# diff /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit.img 
-       /import/home/nh/ITU/MLKit/mlkit-v4/bin/mlkit.img
-#
+  # diff $HOME/mlkit-v3/bin/mlkit.img \
+         $HOME/mlkit-v4/bin/mlkit.img
+  #
 \end{verbatim}
-\end{quote}
-\end{small}
 
-\section{Details of Compiling the ML Kit with Itself}
+% # ll /import/home/nh/ITU/MLKit/mlkit-v3/bin/mlkit.img 
+% ...  8867248 Jun  8 11:02 /import/.../mlkit-v3/bin/mlkit.img*
+
+\section{Compiling the ML Kit with Itself}
 
 To compile the ML Kit with the ML Kit, each {\tt Makefile} takes the
 approach of launching the appropriate ML Kit compiler with the file 
@@ -8418,23 +8380,16 @@ the file {\tt run} in the \texttt{src} directory:
 %If you are using one of the versions: \emph{kit\_v2}, $\ldots$,
 %\emph{kit\_v4} you must supply an install directory:
 
-\begin{small}
-\begin{quote}
 \begin{verbatim}
-# pwd
-/import/home/nh/ITU/MLKit/mlkit-v3/src
-# ../bin/mlkit sources.pm
-ML Kit version 3.4.0, Jun 09, 2001 [X86 Backend]
-[reading source file:   Initial.sml]
-...
+  # cd $HOME/mlkit-v3/src
+  # ../bin/mlkit sources.pm
+  ...
 \end{verbatim}
-\end{quote}
-\end{small}
 
 % The install directory is necessary for the ML Kit to find the runtime
 % system when building the executable file \texttt{run}.
 
-\section{Testing the Bootstrapped ML Kit Compiler}
+\section{Testing the Bootstrapped Compiler}
 \index{bootstrap!testing}%
 
 It is possible to apply all the ML Kit tests in the test directory to
@@ -8448,25 +8403,22 @@ a test on the following four configurations of the ML Kit:
 \item with region inference, garbage collection, and profiling
 \end{enumerate}
 
-To make a regression test of the \emph{kit\_v3} compiler, enter the
-{\tt mlkit-v3} directory and execute the following commands:
+To make a regression test of the \emph{kit\_v3} compiler, execute the
+following commands:
 
-\begin{quote}
 \begin{verbatim}
-# pwd
-/import/home/nh/ITU/MLKit/mlkit-v3
-# make all_test
-...
+  # cd $HOME/mlkit-v3
+  # make all_test
+  ...
 \end{verbatim}
-\end{quote}
-
 If you look in the \texttt{all\_test} entry in the {\tt Makefile}, you
-find a program called \texttt{kittester} and a file \texttt{all.tst}.
-The file \texttt{all.tst} contains the programs that are tested and
-under what configurations. The program \texttt{kittester} performs the
-test, that is, each program is compiled, executed and output is
-compared to the expected output.  Finally a \LaTeX{} report with the
-result of the test is written to the file \texttt{test\_report.dvi}.
+find that the entry calls a program called \texttt{kittester} with a
+file \texttt{all.tst} given as argument.  The file \texttt{all.tst}
+contains information about the programs that are tested and under what configurations.
+The program \texttt{kittester} performs the test, that is, each
+program is compiled, executed and output is compared to the expected
+output.  Finally a \LaTeX{} report with the result of the test is
+written to the file \texttt{test\_report.dvi}.
 
 When you inspect the test report \texttt{test\_report.dvi}, you may
 notice that {\tt kittester} reports some errors (at the time of
@@ -8474,9 +8426,10 @@ writing 16 errors are reported but that may change as the test suite
 is extended). All files resulting in compile time errors (option
 \texttt{ecte} in file \texttt{all.tst}) are reported twice with an
 error in \texttt{test\_report.dvi}. The errors are reported because
-the Basis Library is compiled for each program and output therefore
-differs from expected output (see the discussion about memorization of
-the Basis Library on page \pageref{memorize_bootstrap.sec}).
+the Basis Library is compiled for each program and compiler output
+therefore differs from expected compiler output (see the discussion
+about memorization of the Basis Library on page
+\pageref{memorize_bootstrap.sec}).
 
 \section{Profiling the ML Kit}
 
@@ -8488,28 +8441,36 @@ To profile the ML Kit, we generate a version of the ML Kit compiler
 with profiling enabled; we call it 
 \index{bootstrap!\emph{kit\_v4prof}}%
 $\emph{kit\_v4prof}$ and build it using $\emph{kit}_{v4}$:
-
-\begin{small}
-\begin{quote}
 \begin{verbatim}
-# cd /import/home/nh/ITU/MLKit/mlkit-v4
-# unlimit stacksize
-# make bootstrap COMP_FLAGS=-prof 
-    INSTDIR=/import/home/nh/ITU/MLKit/mlkit-v4prof
-...
+  # cd $HOME/mlkit-v4
+  # unlimit stacksize
+  # make bootstrap COMP_FLAGS=-prof INSTDIR=$HOME/mlkit-v4prof
+  ...
 \end{verbatim}
-\end{quote}
-\end{small}
+To generate a region profile of the ML Kit we use $\emph{kit\_v4prof}$
+to compile a smaller program \texttt{kitkbjul9.sml} found in the
+\texttt{test} directory of the source distribution. We enter the
+\texttt{test} directory and compile \texttt{kitkbjul9.sml} using the
+\texttt{mlkit} program (with profiling enabled), located in the
+\texttt{bin} directory:
 
+\begin{verbatim}
+  # cd $HOME/mlkit-v4prof/test
+  # unlimit stacksize
+  # ../bin/mlkit kitkbjul9.sml
+  ...
+  [wrote executable file: run]
+  # rp2ps -region -name "MLKit compiling kitkbjul9" \
+         -sampleMax 2000 -eps 137 mm
+  Region profiling to output file region.ps.
+  Using name MLKit compiling kitkbjul9.
+  Using 2000 samples.
+  Using encapsulated postscript with width 388 pt.
+  # gv -seascape region.ps
+\end{verbatim}
 
-To generate a region profile of the ML Kit we use
-$\emph{kit\_v4prof}$ to compile a smaller program
-\texttt{kitkbjul9.sml} found in the \texttt{test} directory of the source distribution.
-
-We enter the \texttt{test} directory and compile
-\texttt{kitkbjul9.sml} using the \texttt{mlkit} program (with
-profiling enabled), located in the \texttt{bin} directory.
-
+Figure~\ref{mlkit_compiling_kitkbjul9.fig} shows the region
+profile obtained with the commands shown above.
 \begin{figure}
 %\hrule \medskip
 \begin{center}
@@ -8518,48 +8479,11 @@ profiling enabled), located in the \texttt{bin} directory.
 \caption{A region profile of the ML Kit compiling the program \texttt{kitkbjul9.sml}, 
 which is located in the \texttt{test} directory of the source distribution.}
 \label{mlkit_compiling_kitkbjul9.fig}
-%\medskip\hrule
-\end{figure}
-
-\begin{small}
-\begin{quote}
-\begin{verbatim}
-# pwd
-/import/home/nh/ITU/MLKit/mlkit-v4prof/test
-# unlimit stacksize
-# ../bin/mlkit kitkbjul9.sml
-ML Kit version 3.4.0, Jun 11, 2001 [X86 Backend]
-[reading source file:   Initial.sml]
-...
-[wrote executable file: run]
-# ll profile.rp 
-...       5457344 Jun 11 21:39 profile.rp
-# rp2ps -region -name "MLKit compiling kitkbjul9" 
-       -sampleMax 2000 -eps 137 mm
-Region profiling to output file region.ps.
-Using name MLKit compiling kitkbjul9.
-Using 2000 samples.
-Using encapsulated postscript with width 388 pt.
-# gv -seascape region.ps
-\end{verbatim}
-\end{quote}
-\end{small}
-
-\begin{figure}
-%\hrule \medskip
-\begin{center}
-\includegraphics{mlkit_compiling_kitkbjul9_400msec.eps}
-\end{center}
-\caption{A region profile of the MLKit compiling the program \texttt{kitkbjul9.sml}. 
- Memory is traversed once every 0.1 second.}
-\label{mlkit_compiling_kitkbjul9_400msec.fig}
 \medskip\hrule
 \end{figure}
 
-Figure~\ref{mlkit_compiling_kitkbjul9.fig} shows the region
-profile obtained with the commands shown above.
 
-\subsection{Controlling Profiling Options at Runtime}
+\section{Controlling Profiling Options}
 
 To control the profiling options at runtime as described in
 Chapter~\ref{useOfProf.sec}, we use the program \texttt{mlkit.img} in
@@ -8573,32 +8497,33 @@ profile similar to Figure~\ref{mlkit_compiling_kitkbjul9.fig} except
 that the number of profile ticks is increased using the option
 (\texttt{-microsec 100000}):
 
-\begin{small}
-\begin{quote}
 \begin{verbatim}
-# unlimit stacksize
-# pwd
-/import/home/nh/ITU/MLKit/mlkit-v4prof/test
-# ../bin/mlkit.img -realtime -microsec 100000 
-  /import/home/nh/ITU/MLKit/mlkit-v4prof/ kitkbjul9.sml 
-ML Kit version 3.4.0, Jun 11, 2001 [X86 Backend]
-[reading source file:   Initial.sml]
-...
-[wrote executable file: run]
-# ll profile.rp 
-...     50384960 Jun 11 22:19 profile.rp
-# rp2ps -region -sampleMax 2000 -eps 137 mm
-        -name "MLKit compiling kitkbjul9 (100000 microsec)"         
-Region profiling to output file region.ps.
-Using name MLKit compiling kitkbjul9 (100000 microsec).
-Using 2000 samples.
-Using encapsulated postscript with width 388 pt.
-# ll region.ps 
-...       897954 Jun 11 22:24 region.ps
-# gv -seascape region.ps
+  # unlimit stacksize
+  # cd $HOME/mlkit-v4prof/test
+  # ../bin/mlkit.img -realtime -microsec 100000 \
+    $HOME/mlkit-v4prof/ kitkbjul9.sml 
+  ...
+  [wrote executable file: run]
+  # rp2ps -region -sampleMax 2000 -eps 137 mm \
+          -name "MLKit compiling kitkbjul9 (100000 microsec)"         
+  Region profiling to output file region.ps.
+  Using name MLKit compiling kitkbjul9 (100000 microsec).
+  Using 2000 samples.
+  Using encapsulated postscript with width 388 pt.
+  # gv -seascape region.ps
 \end{verbatim}
-\end{quote}
-\end{small}
+
+\begin{figure}
+%\hrule \medskip
+\begin{center}
+\includegraphics{mlkit_compiling_kitkbjul9_400msec.eps}
+\end{center}
+\caption{A region profile of the MLKit compiling the program \texttt{kitkbjul9.sml}. 
+ Memory is traversed once every 0.1 second.}
+\label{mlkit_compiling_kitkbjul9_400msec.fig}
+%\medskip\hrule
+\end{figure}
+
                                 
 
 %---------------------------------------------------------
