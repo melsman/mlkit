@@ -28,6 +28,7 @@ functor IntModules(structure Name : NAME
 		     sharing type FreeIds.id = ManagerObjects.id
 		         and type FreeIds.strid = ManagerObjects.strid = TopdecGrammar.strid
 		         and type FreeIds.funid = ManagerObjects.funid = TopdecGrammar.funid
+			 and type FreeIds.tycon = ManagerObjects.tycon = TopdecGrammar.tycon
 			 and type FreeIds.strexp = TopdecGrammar.strexp = ManagerObjects.strexp
 		   structure Crash : CRASH
 		   structure Flags: FLAGS
@@ -199,9 +200,9 @@ functor IntModules(structure Name : NAME
 	  end
 	| OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) => die "OPAQUE_CONSTRAINTstrexp.not impl"
 	| APPstrexp(i, funid, strexp) => 
-	  let val phi = case ElabInfo.to_TypeInfo i
-			  of Some (ElabInfo.TypeInfo.FUNCTOR_APP_INFO phi) => phi
-			   | _ => die "int_strexp.APPstrexp.no phi info"
+	  let val (phi,Eres) = case ElabInfo.to_TypeInfo i
+				 of Some (ElabInfo.TypeInfo.FUNCTOR_APP_INFO phiEres) => phiEres
+				  | _ => die "int_strexp.APPstrexp.no (phi,E) info"
 	      val (ce, cb, mc) = int_strexp(intB, strexp)
 	      val (funstamp,strid,E,strexp0,intB0) = IntFunEnv.lookup ((#1 o IntBasis.un) intB) funid
 	      val E' = Environments.Realisation.on_Env phi E
@@ -213,9 +214,10 @@ functor IntModules(structure Name : NAME
 	       * we can reuse. *)
 	      fun reuse_code () =
 		case Repository.lookup_int funid
-		  of Some(_,(funstamp',intB',N',mc',intB'')) =>
+		  of Some(_,(funstamp',Eres',intB',N',mc',intB'')) =>
 		    if FunStamp.eq(funstamp,funstamp') andalso
-		       IntBasis.enrich(IntBasis.plus(intB0,intB1),intB') then 
+		       IntBasis.enrich(IntBasis.plus(intB0,intB1),intB') andalso
+		       Environments.E.eq(Eres,Eres') then 
 		      let val _ = print ("  [reusing instance code for functor " ^ FunId.pr_FunId funid ^ "]\n")
 			  val (_,ce',cb') = IntBasis.un intB''
 			  val _ = List.apply Name.unmark_gen N'   (* unmark names - they where *)
@@ -229,11 +231,10 @@ functor IntModules(structure Name : NAME
 		| None => 
 		 let val intB' = 
 		       let val fid = FreeIds.free_ids_strexp strexp0
-			   val (funids,strids,ids) = (FreeIds.funids_of_ids fid,
-						      FreeIds.strids_of_ids fid,
-						      FreeIds.vids_of_ids fid)
+			   val tuple = (FreeIds.funids_of_ids fid, FreeIds.strids_of_ids fid,
+					FreeIds.vids_of_ids fid, FreeIds.tycons_of_ids fid)
 (*			   val _ = print "\n[doing restriction in functor app.." *)
-			   val intB' = IntBasis.restrict(IntBasis.plus(intB0,intB1), (funids,strids,ids))
+			   val intB' = IntBasis.restrict(IntBasis.plus(intB0,intB1), tuple)
 (*			   val _ = print "done.]\n" *)
 		       in intB'
 		       end
@@ -264,16 +265,16 @@ functor IntModules(structure Name : NAME
 		      * entry in the repository and we emit the generated code,
 		      * since all names now have become rigid. *)
 		     val mc' = case Repository.lookup_int funid
-			       of Some(entry_no, (_,_,N2,_,intB2)) => (* names in N2 are already marked generative, since *)
+			       of Some(entry_no, (_,_,_,N2,_,intB2)) => (* names in N2 are already marked generative, since *)
 				 (List.apply Name.mark_gen N';        (* N2 is returned by lookup_int *)
 				  IntBasis.match(intB'', intB2);
 				  List.apply Name.unmark_gen N';
 				  let val mc' = ModCode.emit mc'
-				  in Repository.owr_int(funid,entry_no,(funstamp,intB',N',mc',intB''));
+				  in Repository.owr_int(funid,entry_no,(funstamp,Eres,intB',N',mc',intB''));
 				     mc'
 				  end)
 				| None => let val mc' = ModCode.emit mc'
-					  in Repository.add_int(funid,(funstamp,intB',N',mc',intB''));
+					  in Repository.add_int(funid,(funstamp,Eres,intB',N',mc',intB''));
 					     mc'
 					  end
 		     val mc'' = ModCode.seq(mc,mc')
@@ -293,7 +294,8 @@ functor IntModules(structure Name : NAME
 	  val strids = List.dropAll (fn strid' => strid = strid') (FreeIds.strids_of_ids ids_strexp)
 	  val ids = FreeIds.vids_of_ids ids_strexp
 	  val funids = FreeIds.funids_of_ids ids_strexp
-	  val intB0 = IntBasis.restrict(intB, (funids,strids,ids))
+	  val tycons = FreeIds.tycons_of_ids ids_strexp
+	  val intB0 = IntBasis.restrict(intB, (funids,strids,ids,tycons))
 	  val funstamp = FunStamp.new funid
 	  val E = case ElabInfo.to_TypeInfo i
 		    of Some (ElabInfo.TypeInfo.FUNBIND_INFO E) => E

@@ -759,6 +759,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	val TE_int = te (TyCon.tycon_INT, TyName.tyName_INT)
 	val TE_char = te (TyCon.tycon_CHAR, TyName.tyName_CHAR)
 	val TE_word = te (TyCon.tycon_WORD, TyName.tyName_WORD)
+	val TE_word8 = te (TyCon.tycon_WORD8, TyName.tyName_WORD8)
 	val TE_real = te (TyCon.tycon_REAL, TyName.tyName_REAL)
 	val TE_string = te (TyCon.tycon_STRING, TyName.tyName_STRING)
 	val TE_exn = te (TyCon.tycon_EXN, TyName.tyName_EXN)
@@ -889,6 +890,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 	  val tyvar_num = TyVar.fresh_overloaded [TyName.tyName_INT,
 						  TyName.tyName_WORD,
+						  TyName.tyName_WORD8,
 						  TyName.tyName_REAL]
 	  val tau_num = Type.from_TyVar tyvar_num
 
@@ -902,7 +904,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  val tau_realint_to_realint = Type.mk_Arrow (tau_realint, tau_realint)
 
 	  val tyvar_numtxt = TyVar.fresh_overloaded 
-				[TyName.tyName_INT, TyName.tyName_WORD,
+				[TyName.tyName_INT, TyName.tyName_WORD, TyName.tyName_WORD8,
 				 TyName.tyName_REAL, TyName.tyName_CHAR,
 				 TyName.tyName_STRING]
 	  val tau_numtxt = Type.from_TyVar tyvar_numtxt
@@ -911,7 +913,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 			       Type.Bool)
 
 	  val tyvar_wordint = TyVar.fresh_overloaded [TyName.tyName_INT,
-						      TyName.tyName_WORD]
+						      TyName.tyName_WORD, TyName.tyName_WORD8]
 	  val tau_wordint = Type.from_TyVar tyvar_wordint
 	  val tau_wordint_X_wordint_to_wordint =
 	        Type.mk_Arrow (Type.from_pair (tau_wordint, tau_wordint),
@@ -1016,6 +1018,131 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       in
 	val initial = ENV {SE=SE.empty, TE=TE_initial, VE=VE_initial}
       end
+
+
+      (* Support for recompilation *)
+
+      fun equal_VarEnvRan (VE.LONGVAR s1, VE.LONGVAR s2) =
+	    StatObject.TypeScheme.eq (s1,s2)
+	| equal_VarEnvRan (VE.LONGCON s1, VE.LONGCON s2) =
+	    StatObject.TypeScheme.eq (s1,s2)
+	| equal_VarEnvRan (VE.LONGEXCON t1, VE.LONGEXCON t2) =
+	    StatObject.Type.eq (t1,t2)
+	| equal_VarEnvRan _ = false
+
+      fun enrich_TyEnv (TE1,TE2) =
+	    TE.Fold (fn (tycon2, TyStr2) => fn b => b andalso
+		     case TE.lookup TE1 tycon2 of
+		       Some TyStr1 => TyStr.eq (TyStr1,TyStr2)
+		     | None => false) true TE2
+
+      fun equal_TyEnv(TE1,TE2) =
+	let val sorter = TyCon.<
+	    val dom1 = ListSort.sort sorter (EqSet.list (TE.dom TE1))
+	    val dom2 = ListSort.sort sorter (EqSet.list (TE.dom TE2))
+	in dom1 = dom2 andalso enrich_TyEnv (TE1,TE2)
+	end
+
+      fun enrich_VarEnv(VE1,VE2) =
+	    VE.Fold (fn (id2,r2) => fn b => b andalso
+			  (case VE.lookup VE1 id2 of
+			     Some r1 => equal_VarEnvRan(r1,r2)
+			   | None => false)) true VE2
+
+      fun equal_VarEnv(VE1,VE2) =
+	let val sorter = Ident.<
+	    val dom1 = ListSort.sort sorter (EqSet.list (VE.dom VE1))
+	    val dom2 = ListSort.sort sorter (EqSet.list (VE.dom VE2))
+	in dom1 = dom2 andalso enrich_VarEnv(VE1,VE2)
+	end
+
+      fun equal_Env(E1,E2) =
+	let val (SE1,TE1,VE1) = un E1
+	    val (SE2,TE2,VE2) = un E2
+	in equal_StrEnv(SE1,SE2)
+	  andalso equal_TyEnv(TE1,TE2)
+	  andalso equal_VarEnv(VE1,VE2)
+	end
+
+      and enrich_StrEnv(SE1,SE2) = SE.Fold (fn (strid2,S2) => fn b => b andalso
+					     case SE.lookup SE1 strid2 of
+					       Some S1 => equal_Env(S1,S2)
+					     | None => false) true SE2
+
+      and equal_StrEnv(SE1,SE2) =
+	let val sorter = StrId.<
+	    val dom1 = ListSort.sort sorter (EqSet.list (SE.dom SE1))
+	    val dom2 = ListSort.sort sorter (EqSet.list (SE.dom SE2))
+	in dom1 = dom2 andalso enrich_StrEnv (SE1,SE2)
+	end
+
+      fun enrich_Env(E1,E2) =
+	let val (SE1,TE1,VE1) = un E1
+	    val (SE2,TE2,VE2) = un E2
+	in enrich_StrEnv(SE1,SE2)
+	  andalso enrich_TyEnv(TE1,TE2)
+	  andalso enrich_VarEnv(VE1,VE2)
+	end
+
+      val enrich = enrich_Env
+      val eq = equal_Env
+
+
+      (* Restriction *)
+      fun restrict(E,(ids,tycons,strids)) =
+	let val (SE,TE,VE) = un E
+	    val SE' = List.foldL
+	                (fn strid => fn SEnew =>
+			 let val E = (case SE.lookup SE strid of
+					Some E => E
+				      | None => impossible "restrictE: strid not in env.")
+			 in SE.plus (SEnew, SE.singleton (strid,E))
+			 end) SE.empty strids
+	    val TE' = List.foldL
+	                (fn tycon => fn TEnew =>
+			 let val TyStr = (case TE.lookup TE tycon of
+					    Some TyStr => TyStr
+					  | None => impossible "restrictE: tycon not in env.")
+			 in TE.plus (TEnew, TE.singleton (tycon,TyStr))
+			 end) TE.empty tycons
+	    val VE' = VE.restrict (VE,ids)
+	in mk (SE',TE',VE')
+	end
+
+      (* Matching *)
+
+	fun match_VE_range (VE.LONGVAR sigma1, VE.LONGVAR sigma2) =
+	      StatObject.TypeScheme.match (sigma1, sigma2)
+	  | match_VE_range (VE.LONGCON sigma1, VE.LONGCON sigma2) =
+	      StatObject.TypeScheme.match (sigma1, sigma2)
+	  | match_VE_range (VE.LONGEXCON tau1, VE.LONGEXCON tau2) =
+	      StatObject.Type.match (tau1, tau2)
+	  | match_VE_range _ = ()
+
+	fun matchVE (VE,VE0) = VE.Fold (fn (id,r) => fn () =>
+					   (case VE.lookup VE0 id of
+					      Some r0 => match_VE_range (r,r0)
+					    | None => ())) () VE
+
+	fun matchTE (TE,TE0) = TE.Fold (fn (tycon, TyStr) => fn () =>
+					   (case TE.lookup TE0 tycon of
+					      Some TyStr0 => ()
+					    (*C.match_TyStr(TyStr,TyStr0) *) (* MEMO *)
+					    | None => ())) () TE
+
+	fun match (E,E0) =
+	      let val (SE, TE, VE)  = un E
+		  val (SE0,TE0,VE0) = un E0
+	      in
+		matchSE (SE, SE0) ; 
+		matchTE (TE, TE0) ;
+		matchVE (VE, VE0)
+	      end
+
+	and matchSE (SE,SE0) = SE.Fold (fn (strid,E) => fn () =>
+					   (case SE.lookup SE0 strid of
+					      Some E0 => match (E,E0)
+					    | None => ())) () SE
     end (*E*)
 
 

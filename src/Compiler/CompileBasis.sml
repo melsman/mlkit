@@ -166,10 +166,12 @@ functor CompileBasis(structure Con : CON
 	  val excons = Excon.ex_DIV :: Excon.ex_MOD ::
 	        Excon.ex_MATCH :: Excon.ex_BIND :: excons
 	  val cons = Con.con_NIL :: Con.con_CONS ::
-	        Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)
-	  val tynames = TyName.tyName_LIST ::
-	        TyName.tyName_BOOL :: tynames        (* for elim eq *) 
-	  val (lvars,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
+	      Con.con_TRUE :: Con.con_FALSE :: cons   (* for elim eq *)
+	  val tynames = TyName.tyName_LIST :: 
+              TyName.tyName_BOOL :: tynames        (* for elim eq *) 
+	  val (lvars_eq,EqEnv1) = EliminateEq.restrict(EqEnv,{lvars=lvars,tynames=tynames})
+	  val lvars = lvars_eq @ lvars
+	  val lvars_with_prims = lvars_eq @ lvars_with_prims
 	  val OEnv1 = OptLambda.restrict(OEnv,lvars)
 	  val TCEnv1 = LambdaStatSem.restrict(TCEnv,{lvars=lvars,tynames=tynames,cons=cons,excons=excons})
 	  val lvars_with_prims = (*CompilerEnv.primlvarsOfCEnv CEnv1*) lvars_with_prims (*hack*)

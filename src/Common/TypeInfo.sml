@@ -41,13 +41,13 @@ functor TypeInfo (structure Ident: IDENT
 		   tyvars: TyVar list, Type: Type,longid:longid}
     | EXCON_INFO of {Type:Type,longid:longid}
     | EXBIND_INFO of {TypeOpt : Type Option}
-    | DATBIND_INFO of {TE : TyEnv}
+    | TYENV_INFO of TyEnv
     | EXP_INFO of {Type:Type}
     | MATCH_INFO of {Type:Type}
     | PLAINvalbind_INFO of {tyvars: TyVar list, escaping: TyVar list, Type: Type}
     | OPEN_INFO of strid list * tycon list * id list
     | INCLUDE_INFO of strid list * tycon list
-    | FUNCTOR_APP_INFO of realisation
+    | FUNCTOR_APP_INFO of realisation * Env
     | FUNBIND_INFO of Env
     | TRANS_CONSTRAINT_INFO of Env
       
@@ -68,14 +68,14 @@ functor TypeInfo (structure Ident: IDENT
 		       longid=longid}
 	    | EXCON_INFO {Type,longid} => EXCON_INFO {Type=phi_on_Type Type, longid=longid}
 	    | EXBIND_INFO {TypeOpt} => EXBIND_INFO {TypeOpt = map_opt phi_on_Type TypeOpt}
-	    | DATBIND_INFO {TE} => DATBIND_INFO {TE=phi_on_TE TE}
+	    | TYENV_INFO TE => TYENV_INFO (phi_on_TE TE)
 	    | EXP_INFO {Type} => EXP_INFO{Type=phi_on_Type Type}
 	    | MATCH_INFO {Type} => MATCH_INFO{Type=phi_on_Type Type}
 	    | PLAINvalbind_INFO {tyvars, escaping, Type} =>
 	     PLAINvalbind_INFO {tyvars=tyvars, escaping = escaping,Type=phi_on_Type Type}
 	    | OPEN_INFO i => OPEN_INFO i
 	    | INCLUDE_INFO i => INCLUDE_INFO i
-	    | FUNCTOR_APP_INFO phi' => FUNCTOR_APP_INFO (StatObject.Realisation.oo(phi,phi'))
+	    | FUNCTOR_APP_INFO (phi',E) => FUNCTOR_APP_INFO (StatObject.Realisation.oo(phi,phi'), phi_on_E E)
             | FUNBIND_INFO E => FUNBIND_INFO (phi_on_E E)
             | TRANS_CONSTRAINT_INFO E => TRANS_CONSTRAINT_INFO(phi_on_E E)
       end
@@ -150,8 +150,8 @@ functor TypeInfo (structure Ident: IDENT
 				 of None => PP.LEAF "None"
 				  | Some tau => layoutType tau],
 		     childsep = PP.NONE}
-	 | DATBIND_INFO{TE} =>
-	     PP.NODE{start="DATBIND_INFO(",finish=")",indent=2,
+	 | TYENV_INFO TE =>
+	     PP.NODE{start="TYENV_INFO(",finish=")",indent=2,
 		     children=[layoutTyEnv TE],
 		     childsep = PP.NONE}
 	 | EXP_INFO{Type} => 
@@ -183,7 +183,7 @@ functor TypeInfo (structure Ident: IDENT
 	 | INCLUDE_INFO (strids,tycons) => PP.NODE{start="INCLUDE_INFO(",finish=")",indent=2,childsep=PP.RIGHT ", ",
 						   children=[layout_strids strids,
 							     layout_tycons tycons]}
-	 | FUNCTOR_APP_INFO realisation => PP.LEAF "FUNCTOR_APP_INFO(rea)"
+	 | FUNCTOR_APP_INFO (realisation,E) => PP.LEAF "FUNCTOR_APP_INFO(rea,E)"
 	 | FUNBIND_INFO Env => PP.NODE{start="FUNBIND_INFO(", finish=")",
 				       indent=2,childsep=PP.NONE,
 				       children=[layoutEnv Env]}

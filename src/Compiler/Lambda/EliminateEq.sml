@@ -73,7 +73,7 @@ functor EliminateEq (structure Lvars : LVARS
 				       of Some res => TyNameMap.add(tn,res,acc)    (* is not here... *)
 					| None => acc) TyNameMap.empty tynames
 	    val lvars' = TyNameMap.Fold (fn ((_,POLYLVAR lv), lvars) => lv :: lvars
-	                                 | _ => die "restrict.not POLYLVAR") lvars tnmap'
+	                                 | _ => die "restrict.not POLYLVAR") [] tnmap'
 	    val lvmap' = List.foldL (fn lv => fn acc =>
 				     case LvarMap.lookup lvmap lv
 				       of Some res => LvarMap.add(lv,res,acc)

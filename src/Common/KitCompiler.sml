@@ -541,7 +541,7 @@ functor StaticObjects(structure TopdecParsing: TOPDEC_PARSING
   end;
 
 (*$ELABORATION: BASICS STATIC_OBJECTS ELABTOPDEC DEC_GRAMMAR
-	 TOPDEC_GRAMMAR*)
+	 TOPDEC_GRAMMAR ELAB_REPOSITORY*)
 
 signature ELABORATION =
   sig
@@ -550,7 +550,13 @@ signature ELABORATION =
     structure StaticObjects : STATIC_OBJECTS
       sharing StaticObjects.Basics = Basics
 
+    structure ElabRepository : ELAB_REPOSITORY
+      sharing type ElabRepository.funid = Basics.FunId.funid
+	  and type ElabRepository.name = Basics.Name.name
+	  and type ElabRepository.ElabBasis = StaticObjects.ModuleEnvironments.Basis 
+	    
     structure ElabTopdec : ELABTOPDEC
+      sharing type ElabTopdec.StaticBasis = ElabRepository.ElabBasis
 
     structure PostElabDecGrammar : DEC_GRAMMAR
       sharing type PostElabDecGrammar.lab = Basics.Lab.lab
@@ -584,8 +590,8 @@ signature ELABORATION =
 	           = Basics.Tools.PrettyPrint.StringTree
   end;
 
-(*$Elaboration: TOPDEC_PARSING STATIC_OBJECTS DecGrammar
-	 TopdecGrammar ElabTopdec ElabDec ELABORATION *)
+(*$Elaboration: TOPDEC_PARSING STATIC_OBJECTS DecGrammar TopdecGrammar
+	 ElabRepository ElabTopdec ElabDec ELABORATION *)
 
 functor Elaboration(structure TopdecParsing : TOPDEC_PARSING
 		      sharing TopdecParsing.PreElabDecGrammar
@@ -637,6 +643,13 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING
 		      structure FunId = Basics.FunId
 		      structure PrettyPrint = Tools.PrettyPrint)
 
+      structure ElabRepository = ElabRepository(structure Name = Basics.Name
+						structure InfixBasis = TopdecParsing.InfixBasis
+						type funid = Basics.FunId.funid
+						type ElabBasis = ModuleEnvironments.Basis
+						structure Crash =  Tools.Crash
+						structure FinMap = Tools.FinMap)
+
       structure ElabTopdec =
 	ElabTopdec(structure PrettyPrint = Tools.PrettyPrint
 		   structure IG = TopdecParsing.PreElabTopdecGrammar
@@ -645,7 +658,8 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING
 		   structure ModuleEnvironments = ModuleEnvironments
 		   structure StatObject = Basics.StatObject
 		   structure ModuleStatObject   = ModuleStatObject
-
+		   structure Name = Basics.Name
+		   structure ElabRep = ElabRepository
 		   structure ElabDec =
 		     ElabDec (structure ParseInfo = AllInfo.ParseInfo
 			      structure ElabInfo = AllInfo.ElabInfo
@@ -752,7 +766,7 @@ functor KitCompiler() : sig include MANAGER
     structure Elaboration =
       Elaboration(structure TopdecParsing = TopdecParsing
 		  structure StaticObjects = StaticObjects)
-      
+
     structure Execution = Execution(structure Elaboration = Elaboration)
 
     structure Flags = Tools.Flags
@@ -761,6 +775,7 @@ functor KitCompiler() : sig include MANAGER
       ManagerObjects(structure ModuleEnvironments = StaticObjects.ModuleEnvironments
 		     structure TopdecGrammar = Elaboration.PostElabTopdecGrammar
 		     structure CompilerEnv = Execution.CompilerEnv
+		     structure ElabRep = Elaboration.ElabRepository
 		     structure CompileBasis = Execution.CompileBasis
 		     structure Compile = Execution.Compile
 		     structure InfixBasis = TopdecParsing.InfixBasis
@@ -816,6 +831,7 @@ functor KitCompiler() : sig include MANAGER
     structure Manager =
       Manager(structure ManagerObjects = ManagerObjects
 	      structure Name = Basics.Name
+	      structure Environments = StaticObjects.Environments
 	      structure ModuleEnvironments = StaticObjects.ModuleEnvironments
 	      structure ParseElab = ParseElab
 	      structure IntModules = IntModules

@@ -45,7 +45,7 @@ signature MANAGER_OBJECTS =
 	val layout : IntFunEnv -> StringTree
       end
 
-    type CEnv and CompileBasis and id
+    type CEnv and CompileBasis and id and tycon
     structure IntBasis :
       sig
 	val mk : IntFunEnv * CEnv * CompileBasis -> IntBasis
@@ -53,13 +53,13 @@ signature MANAGER_OBJECTS =
 	val empty : IntBasis
 	val initial : IntBasis
 	val plus : IntBasis * IntBasis -> IntBasis
-	val restrict : IntBasis * (funid list * strid list * id list) -> IntBasis
+	val restrict : IntBasis * (funid list * strid list * id list * tycon list) -> IntBasis
 	val match : IntBasis * IntBasis -> IntBasis
 	val enrich : IntBasis * IntBasis -> bool
 	val layout : IntBasis -> StringTree
       end
 
-    type Basis and InfixBasis and ElabBasis and sigid and tycon
+    type Basis and InfixBasis and ElabBasis and sigid
     structure Basis :
       sig
 	val initial : Basis
@@ -91,14 +91,19 @@ signature MANAGER_OBJECTS =
 	   * overwrite functions for owerwriting a particular
 	   * entry. *)
 
+	  (* The elaboration environment in the interpretation
+	   * repository is supposed to be the elaboration result of
+	   * the functor application/ unit. This is used when checking
+	   * if reuse is allowed. *)
+
 	val lookup_elab : funid -> (int * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis)) Option
-	val lookup_int : funid -> (int * (funstamp * IntBasis * name list * modcode * IntBasis)) Option
+	val lookup_int : funid -> (int * (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis)) Option
 
 	val add_elab : funid * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) -> unit
-	val add_int : funid * (funstamp * IntBasis * name list * modcode * IntBasis) -> unit
+	val add_int : funid * (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) -> unit
 
 	val owr_elab : funid * int * (InfixBasis * ElabBasis * name list * InfixBasis * ElabBasis) -> unit
-	val owr_int : funid * int * (funstamp * IntBasis * name list * modcode * IntBasis) -> unit
+	val owr_int : funid * int * (funstamp * ElabEnv * IntBasis * name list * modcode * IntBasis) -> unit
 
 	val emitted_files : unit -> string list   (* returns the emitted files mentioned in the repository; *)
                                                   (* used for deleting files which are no longer mentioned. *)

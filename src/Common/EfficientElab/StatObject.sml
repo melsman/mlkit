@@ -24,6 +24,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		      ) : STATOBJECT =
   struct
     fun impossible s = Crash.impossible ("StatObject." ^ s)
+    val die = impossible
     fun noSome None s = impossible s
       | noSome (Some x) s = x
     fun is_Some None = false
@@ -1435,15 +1436,18 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	       val tau = instance sigma
 	       val fv_tau' = Type.tyvars tau'
 	     in
+(*
 	       (case Type.unify (tau,tau') of
 		  Some _ => true
 		| None   => false)
-(*KILL 14/03/1997 15:12. tho.:
-	       (case Type.restricted_unify
-		      (TyVar.unionTyVarSet(fv_tau',fv_sigma)) (tau,tau') of
-		  Some _ => true
-		| None   => false)
+
+  KILL 14/03/1997 15:12. tho.:   NO Tommy - one must use restricted unify! Consider
+                                 -- generalises_Type(int->int, 'a->int) -- This should
+                                 fail!! -- Martin
 *)
+	       (case Type.restricted_unify (TyVar.unionTyVarSet(fv_tau',fv_sigma)) (tau,tau') 
+		  of Some _ => true
+		   | None => false)
 	     end)
 
       fun generalises_TypeScheme (sigma, sigma') : bool =
@@ -1520,72 +1524,56 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     end (*TypeScheme*)
 
 
+    (* Type functions are implemented almost as type schemes. However,
+     * we keep track of bound variables of a type function
+     * explicitly. This is necessary to check if two type functions
+     * are equal (bound variables may not be reordered or dropped as
+     * for type schemes) and to obtain the arity of a type function.
+     *
+     * -- Martin 
+     *)
 
     datatype TypeFcn =  TYPEFCN of {tyvars : TyVar list, tau : Type}
 
     structure TypeFcn = struct
-      fun eq (TYPEFCN {tyvars, tau},
-	      TYPEFCN {tyvars=tyvars', tau=tau'}) = 
-	    List.forAll (TyVar.eq_bound EQ_NOT_SIGNIFICANT)
-	      (ListPair.zip (tyvars, tyvars'))
-(*KILL 14/03/1997 14:00. tho.:
-	    (List.foldL (fn (tv, tv') => fn b => 
-			  b andalso TyVar.eq_bound EQ_NOT_SIGNIFICANT (tv, tv'))
-	       true
-	         (ListPair.zip (tyvars, tyvars')))
-*)
-	    andalso Type.eq_equality_not_significant (tau, tau')
-	    handle ListPair.Zip => false
 
-      fun from_TyVars_and_Type (tyvar_list : TyVar list, tau : Type) =
-	    let val tyvars = Type.tyvars tau
-  	        val dummy_tv = TyVar.fresh_bound {id = 0, equality = false,
-						  overloaded = not_overloaded}
-		fun f tv = 
-		      let 
-			fun look [] = dummy_tv
-  			  | look (tv'::tvs) = 
-			      if TyVar.eq_free (tv,tv') then tv' else look tvs
-		      in
-			look tyvars
-		      end
-                (*make those tyvars in tyvar_list that do not occur in tau
-		 into dummy_tv:*)
-		val tyvar_list' = map f tyvar_list
-	    (*kunne vel gøres med:
-		val tyvar_list' = map (fn tyvar =>
-		                       if List.exists
-					    (fn tyvar_in_tau =>
-					     TyVar.eq_free (tyvar, tyvar_in_tau))
-					       tyvars_in_tau
-				       then tyvar else tyvar_dummy) tyvar_list
-		val tyvar_list' = map (fn tyvar =>
-		                       if List.exists
-					    ((General.curry TyVar.eq_free) tyvar)
-					       tyvar_list'
-				       then tyvar else tyvar_dummy)  tyvar_list
-		  *)
-	    in
-	      Type.generalise false true tau ;
-	      TYPEFCN {tyvars=tyvar_list', tau=tau}
-	    end
-	    (*debug
-	      if !Flags.DEBUG_TYPES then
-		output (std_out,"TypeFcn.from_TyVars_and_Type\n") else () ;
-	      debug*)
-            (*debug
-		      val _ = print "making type function\n" (*martin*)
-		      val _ = print " TyVars:"
-		      val _ = map (fn a => print (TyVar.string a ^ " ")) tyvar_list 
-		      val _ = print "\n Tyvars in tau:"
-		      val _ = map (fn a => print (TyVar.string a ^ " ")) tyvars 
-		      val _ = print "\n"
-	      debug*)
-	    (*old	      (Flags.DEBUG_TYPES := true;
-			     Type.debug_print "TypeFcn.from_TyVars_and_Type " tau;
-			     impossible "TypeFcn.from_TyVars_and_Type")
-	      *)
+      fun eq (TYPEFCN {tyvars, tau}, TYPEFCN {tyvars=tyvars', tau=tau'}) = 
+	(Type.eq_equality_not_significant (tau, tau') andalso
+	 List.forAll (TyVar.eq_bound EQ_NOT_SIGNIFICANT) (ListPair.zip (tyvars, tyvars')))
+	handle ListPair.Zip => false
+	
+      val dummy_tv = TyVar.fresh_bound {id=0, equality=false, overloaded=not_overloaded}
 
+      local fun eq_tyvar(tv,tv') = TyVar.eq_bound EQ_NOT_SIGNIFICANT (tv,tv') orelse
+	                           TyVar.eq_free (tv,tv')
+  	    fun insert_dummies(tyvars, tyvars') =    (* returns tyvars with those tyvars not in *)
+	      let fun maybe_replace_with_dummy tv =  (* tyvars' replaced with dummy-tyvars. *)
+		    let fun look [] = dummy_tv
+			  | look (tv'::tvs) = if eq_tyvar (tv,tv') then tv' else look tvs
+		    in look tyvars'
+		    end
+	      in map maybe_replace_with_dummy tyvars
+	      end
+	    fun subst m tv = 
+	      let fun look (tv'::tvs,tv''::tvs') = if eq_tyvar (tv,tv') then tv''
+						   else look(tvs,tvs')
+		    | look ([],[]) = tv
+		    | look _ = die "from_TyVars_and_Type.look"
+	      in look m
+	      end
+      in 
+	fun from_TyVars_and_Type (tyvars : TyVar list, tau : Type) =
+	  let val tyvars_tau = Type.tyvars tau
+	      val tyvars' = insert_dummies(tyvars, tyvars_tau)   (* make those tyvars in tyvars that *)
+	                                                         (* do not occur in tau into dummy_tv. *)
+	      val tau' = Type.copy false true tau
+	      val tyvars_tau' = Type.tyvars tau'
+	      val tyvars'' = map (subst (tyvars_tau,tyvars_tau')) tyvars'
+	  in Type.generalise false true tau' ;
+	     TYPEFCN {tyvars=tyvars'', tau=tau'}
+	  end
+      end
+    
       fun apply (theta as (TYPEFCN {tyvars, tau}), taus : Type list) : Type =
 	    let
 	      val (tau', fresh_taus_map) = TypeScheme.instance' tau
@@ -1597,10 +1585,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		| f _ = impossible "TypeFcn.apply: f"
 	      val fresh_taus = map f tyvars
 	    in
-	      map (fn (fresh_tau, tau) => 
-		        Type.restricted_unify (Type.free_and_bound_tyvars tau)
-		          (fresh_tau, tau))
-	        (ListPair.zip (fresh_taus, taus)) ;
+	      map Type.unify (ListPair.zip (fresh_taus, taus)) ;
 	      tau'
 	    end handle ListPair.Zip => impossible "TypeFcn.apply: zip"
 
@@ -1613,29 +1598,38 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    (case Type.make_equality (TypeScheme.instance tau) of
 	       Some _ => true
 	     | None => false)
+
       fun tynames (TYPEFCN {tyvars, tau}) = Type.tynames tau
+
       fun grounded (theta : TypeFcn, tynameset : TyName.Set.Set) : bool =
-	    TyName.Set.isEmpty (TyName.Set.difference
-				(tynames theta) tynameset)
+	    TyName.Set.isEmpty (TyName.Set.difference (tynames theta) tynameset)
+
       fun from_TyName (tyname : TyName) : TypeFcn =
-	    let
-	      fun make_list 0 = []
-		| make_list x =
-		    let val tyvar = TyVar.fresh_normal ()
-		    in
-		      tyvar :: make_list (x-1)
-		    end
-	      val tyvars = make_list (TyName.arity tyname)
-	      val _ = Level.push ()
-	      val tau = Type.mk_ConsType (map Type.from_TyVar tyvars, tyname)
-	      val _ = Level.pop ()
-	    in
-	      from_TyVars_and_Type (tyvars, tau)
+	    let fun make_list 0 = []
+		  | make_list x = let val tyvar = TyVar.fresh_normal ()
+				  in tyvar :: make_list (x-1)
+				  end
+		val tyvars = make_list (TyName.arity tyname)
+		val _ = Level.push ()
+		val tau = Type.mk_ConsType (map Type.from_TyVar tyvars, tyname)
+		val _ = Level.pop ()
+	    in from_TyVars_and_Type (tyvars, tau)
 	    end
+
       fun to_TyName (TYPEFCN {tyvars, tau}) : TyName Option =
-	    (case Type.un_ConsType tau of
-	       Some (_,t) => Some t
-	     | _ => None)
+	case Type.un_ConsType tau 
+	  of Some (taus,t) =>
+	    let fun check ([],[]) = true
+		  | check (tv::tvs,tau::taus) = 
+	             (case Type.to_TyVar tau
+			of Some tv' => TyVar.eq_bound EQ_NOT_SIGNIFICANT (tv,tv')
+			 | None => false) andalso check(tvs,taus)
+		  | check _ = false
+	    in if check(tyvars,taus) then Some t
+	       else None
+	    end
+	   | _ => None
+
       val is_TyName = is_Some o to_TyName
       local val tyvar = TyVar.fresh_bound {id= ~1, equality=false,
 					   overloaded=not_overloaded}
@@ -1666,6 +1660,17 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      print_node {start=from ^ ": ", finish="", indent=0,
 			  children=[layout theta], childsep=PP.NONE}
 	    else ()
+(*debug
+      val eq = fn (tf, tf') =>
+	 let val tmp = !Flags.DEBUG_TYPES
+	 in print "Checking equality of type functions:\n";
+	    Flags.DEBUG_TYPES := true;
+	    debug_print "first" tf;
+	    debug_print "second" tf'; 
+	    Flags.DEBUG_TYPES := tmp;
+	    eq(tf,tf')
+	 end
+*)	 
     end (*TypeFcn*)
 
     
@@ -1788,8 +1793,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val _ = TypeFcn.debug_print "TYPEFCN Test -- theta2" theta2
     in
       val _ =
-	if TypeFcn.eq(theta1,theta2) then
-	  output(std_out,"***TYPEFCN EQUALITY Test \t\tsucceeded***\n")
+	if TypeFcn.eq(theta1,theta2) then ()
+(*	  output(std_out,"***TYPEFCN EQUALITY Test \t\tsucceeded***\n") *)
 	else
 	  output(std_out,"***TYPEFCN EQUALITY Test did \t\t***not*** succeed***\n")
   
@@ -1887,7 +1892,20 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	       end)
       fun on_TypeFcn Realisation_Id typefcn = typefcn
 	| on_TypeFcn phi (TYPEFCN {tyvars, tau}) =
-	    TYPEFCN {tyvars = tyvars, tau = on_Type phi tau}
+	let val tau = on_Type phi tau
+	    val _ = Level.push()
+	    val (tau', fresh_taus_map) = TypeScheme.instance' tau
+	    val _ = Level.pop()
+	    fun f (tv as ref (NO_TYPE_INSTANCE tvdesc)) = 
+	      (case FinMapEq.lookup TyVarDesc_eq fresh_taus_map tvdesc 
+		 of None => TypeFcn.dummy_tv
+		  | Some tau => (case Type.to_TyVar tau
+				   of Some tv => tv
+				    | None => die "on_TypeFcn.1"))
+	      | f _ = impossible "on_TypeFcn.2"
+	    val tyvars' = map f tyvars
+	in TypeFcn.from_TyVars_and_Type(tyvars',tau')
+	end
       fun on_TypeFcn' Realisation_Id typefcn' = typefcn'
 	| on_TypeFcn' phi (TYNAME t) =  
 	    on_TyName' phi t
@@ -1920,16 +1938,20 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val theta1 = TypeFcn.from_TyVars_and_Type([a,b],tau)
 
       val theta2 = TypeFcn.from_TyName t
-      val _ = TypeFcn.debug_print "TYREA TYPEFCN Test -- theta1" theta1
-      val _ = TypeFcn.debug_print "TYREA TYPEFCN Test -- theta2" theta2
 
       val phi = Realisation.singleton(t,theta2)
       val theta1' = Realisation.on_TypeFcn phi theta1
-
+(*
+      val tmp = !Flags.DEBUG_TYPES
+      val _ = Flags.DEBUG_TYPES := true
+      val _ = TypeFcn.debug_print "TYREA TYPEFCN Test -- theta1" theta1
+      val _ = TypeFcn.debug_print "TYREA TYPEFCN Test -- theta2" theta2
       val _ = TypeFcn.debug_print "TYREA TYPEFCN Test -- theta1'" theta1'
+      val _ = Flags.DEBUG_TYPES := tmp
+*)
       val _ =
-	if TypeFcn.eq(theta1,theta1') then
-	  output(std_out,"***TYREA TYPEFCN EQAULITY Test \t\tsucceeded\n")
+	if TypeFcn.eq(theta1,theta1') then ()
+(*	  output(std_out,"***TYREA TYPEFCN EQAULITY Test \t\tsucceeded\n") *)
 	else
 	  output(std_out,"***TYREA TYPEFCN EQUALITY Test did \t\t***not*** succeed\n")
 

@@ -114,14 +114,6 @@ functor ModuleEnvironments(
 	      (fn (Sig, T) =>
 	            TyName.Set.union T (Sigma.tynames Sig))
 	        TyName.Set.empty  G
-      fun tyvars (SIGENV G) =
-	    FinMap.fold
-	      (fn (Sig, tyvars) => TyVar.unionTyVarSet (Sigma.tyvars Sig, tyvars))
-	         [] G
-      fun tyvars' (SIGENV G) =
-	    FinMap.fold
-	      (fn (Sig, criminals) => Sigma.tyvars' Sig @ criminals)
-	         [] G
       fun dom (SIGENV G) = FinMap.dom G
       fun layout (SIGENV m) =
 	    let val l = FinMap.Fold (op ::) nil m
@@ -211,10 +203,8 @@ functor ModuleEnvironments(
 	    else
 	      BASIS {T = T, F = F, G = G, E = Realisation.on_Env phi E}
       fun tyvars (BASIS{T, F, G, E}) : TyVar list =
-	    TyVar.unionTyVarSet (F.tyvars F,
-				 TyVar.unionTyVarSet (G.tyvars G, E.tyvars E))
-      fun tyvars' (BASIS{T, F, G, E}) =
-	    F.tyvars' F @ G.tyvars' G @ E.tyvars' E
+	    TyVar.unionTyVarSet (F.tyvars F, E.tyvars E)    (* no tyvars in G *)
+      fun tyvars' (BASIS{T, F, G, E}) = F.tyvars' F @ E.tyvars' E
       fun tynames (BASIS{T, F, G, E}) =
             TyName.Set.union (F.tynames F)
 	    (TyName.Set.union (G.tynames G) (E.tynames E))
@@ -272,70 +262,7 @@ functor ModuleEnvironments(
 
               (*Enrichment relation for compilation manager*)
 
-  (*TODO 27/01/1997 22:49. tho.  bør funktionerne nedenfor ikke
-   være i modulerne hhv. TE, VE og SE?*)
-
-      fun equal_VarEnvRan (VE.LONGVAR s1, VE.LONGVAR s2) =
-	    StatObject.TypeScheme.eq (s1,s2)
-	| equal_VarEnvRan (VE.LONGCON s1, VE.LONGCON s2) =
-	    StatObject.TypeScheme.eq (s1,s2)
-	| equal_VarEnvRan (VE.LONGEXCON t1, VE.LONGEXCON t2) =
-	    StatObject.Type.eq (t1,t2)
-	| equal_VarEnvRan _ = false
-
-      fun enrich_TyEnv (TE1,TE2) =
-	    TE.Fold (fn (tycon2, TyStr2) => fn b => b andalso
-		     case TE.lookup TE1 tycon2 of
-		       Some TyStr1 => TyStr.eq (TyStr1,TyStr2)
-		     | None => false) true TE2
-
-      fun equal_TyEnv(TE1,TE2) =
-	let fun sorter a b = TyCon.< (a,b)
-	    val dom1 = ListSort.sort sorter (EqSet.list (TE.dom TE1))
-	    val dom2 = ListSort.sort sorter (EqSet.list (TE.dom TE2))
-	in dom1 = dom2 andalso enrich_TyEnv (TE1,TE2)
-	end
-
-      fun enrich_VarEnv(VE1,VE2) =
-	    VE.Fold (fn (id2,r2) => fn b => b andalso
-			  (case VE.lookup VE1 id2 of
-			     Some r1 => equal_VarEnvRan(r1,r2)
-			   | None => false)) true VE2
-
-      fun equal_VarEnv(VE1,VE2) =
-	let fun sorter a b = Ident.< (a,b)
-	    val dom1 = ListSort.sort sorter (EqSet.list (VE.dom VE1))
-	    val dom2 = ListSort.sort sorter (EqSet.list (VE.dom VE2))
-	in dom1 = dom2 andalso enrich_VarEnv(VE1,VE2)
-	end
-
-      fun equal_Env(E1,E2) =
-	let val (SE1,TE1,VE1) = E.un E1
-	    val (SE2,TE2,VE2) = E.un E2
-	in equal_StrEnv(SE1,SE2)
-	  andalso equal_TyEnv(TE1,TE2)
-	  andalso equal_VarEnv(VE1,VE2)
-	end
-
-      and enrich_StrEnv(SE1,SE2) = SE.Fold (fn (strid2,S2) => fn b => b andalso
-					     case SE.lookup SE1 strid2 of
-					       Some S1 => equal_Env(S1,S2)
-					     | None => false) true SE2
-
-      and equal_StrEnv(SE1,SE2) =
-	let fun sorter a b = StrId.< (a,b)
-	    val dom1 = ListSort.sort sorter (EqSet.list (SE.dom SE1))
-	    val dom2 = ListSort.sort sorter (EqSet.list (SE.dom SE2))
-	in dom1 = dom2 andalso enrich_StrEnv (SE1,SE2)
-	end
-
-      fun enrich_Env(E1,E2) =
-	let val (SE1,TE1,VE1) = E.un E1
-	    val (SE2,TE2,VE2) = E.un E2
-	in enrich_StrEnv(SE1,SE2)
-	  andalso enrich_TyEnv(TE1,TE2)
-	  andalso enrich_VarEnv(VE1,VE2)
-	end
+      val enrich_Env = E.enrich
 
       fun enrich_SigEnv(SIGENV G1,SIGENV G2) = 
 	FinMap.Fold (fn ((sigid2,Sig2), b) => b andalso
@@ -358,26 +285,6 @@ functor ModuleEnvironments(
 
               (*Restriction relation for compilation manager*)
 
-      fun restrictE(E,{ids,tycons,strids}) =
-	let val (SE,TE,VE) = E.un E
-	    val SE' = List.foldL
-	                (fn strid => fn SEnew =>
-			 let val E = (case SE.lookup SE strid of
-					Some E => E
-				      | None => die "restrictE: strid not in env.")
-			 in SE.plus (SEnew, SE.singleton (strid,E))
-			 end) SE.empty strids
-	    val TE' = List.foldL
-	                (fn tycon => fn TEnew =>
-			 let val TyStr = (case TE.lookup TE tycon of
-					    Some TyStr => TyStr
-					  | None => die "restrictE: tycon not in env.")
-			 in TE.plus (TEnew, TE.singleton (tycon,TyStr))
-			 end) TE.empty tycons
-	    val VE' = VE.restrict (VE,ids)
-	in E.mk (SE',TE',VE')
-	end
-
 
       (*TODO 27/01/1997 22:53. tho.  brug operationerne på F og G
        i s. f. at pille direkte ved deres repræsentation:*)
@@ -398,7 +305,7 @@ functor ModuleEnvironments(
 				       | None => die "restrictB.sigid not in basis.")
 			in FinMap.add(sigid,Sig,Gnew)
 			end) FinMap.empty sigids
-	    val E' = restrictE (E, {ids=ids, tycons=tycons, strids=strids})
+	    val E' = E.restrict (E, (ids, tycons, strids))
 	in BASIS {T=T, F=FUNENV F', G=SIGENV G', E=E'}
 	end
       val enrich = enrichB
@@ -406,42 +313,8 @@ functor ModuleEnvironments(
 
       (*Matching function for compilation manager*)
 
-      local
-	fun match_VE_range (VE.LONGVAR sigma1, VE.LONGVAR sigma2) =
-	      StatObject.TypeScheme.match (sigma1, sigma2)
-	  | match_VE_range (VE.LONGCON sigma1, VE.LONGCON sigma2) =
-	      StatObject.TypeScheme.match (sigma1, sigma2)
-	  | match_VE_range (VE.LONGEXCON tau1, VE.LONGEXCON tau2) =
-	      StatObject.Type.match (tau1, tau2)
-	  | match_VE_range _ = ()
-
-	fun matchVE (VE,VE0) = VE.Fold (fn (id,r) => fn () =>
-					   (case VE.lookup VE0 id of
-					      Some r0 => match_VE_range (r,r0)
-					    | None => ())) () VE
-
-	fun matchTE (TE,TE0) = TE.Fold (fn (tycon, TyStr) => fn () =>
-					   (case TE.lookup TE0 tycon of
-					      Some TyStr0 => ()
-					    (*C.match_TyStr(TyStr,TyStr0) *) (* MEMO *)
-					    | None => ())) () TE
-
-	fun matchE (E,E0) =
-	      let val (SE, TE, VE)  = E.un E
-		  val (SE0,TE0,VE0) = E.un E0
-	      in
-		matchSE (SE, SE0) ; 
-		matchTE (TE, TE0) ;
-		matchVE (VE, VE0)
-	      end
-
-	and matchSE (SE,SE0) = SE.Fold (fn (strid,E) => fn () =>
-					   (case SE.lookup SE0 strid of
-					      Some E0 => matchE (E,E0)
-					    | None => ())) () SE
-      in
-	fun match (BASIS {T,F,G,E}, BASIS {T=T0,F=F0,G=G0,E=E0}) = matchE (E,E0)
-      end (*local*)
+      fun match (BASIS {T,F,G,E}, BASIS {T=T0,F=F0,G=G0,E=E0}) = E.match (E,E0)
     end (*B*)
 
   end; (*functor ModuleEnvironments*)
+

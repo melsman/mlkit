@@ -1,8 +1,14 @@
-(*$LambdaStatSem: CRASH LAMBDA_EXP EXCON CON TYNAME LVARS FINMAP
-                  FINMAPEQ PRETTYPRINT FLAGS LAMBDA_STAT_SEM
-                  KIT_MONO_SET*)
+(*$LambdaStatSem: CRASH LAMBDA_EXP LAMBDA_BASICS EXCON CON TYNAME
+                  LVARS FINMAP FINMAPEQ PRETTYPRINT FLAGS
+                  LAMBDA_STAT_SEM KIT_MONO_SET*)
 
 functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
+		      structure LambdaBasics : LAMBDA_BASICS
+			sharing type LambdaBasics.LambdaExp = LambdaExp.LambdaExp
+			    and type LambdaBasics.excon = LambdaExp.excon
+			    and type LambdaBasics.lvar = LambdaExp.lvar
+			    and type LambdaBasics.tyvar = LambdaExp.tyvar
+			    and type LambdaBasics.Type = LambdaExp.Type
 		      structure Excon : EXCON
 		        sharing type Excon.excon = LambdaExp.excon
 		      structure Con : CON
@@ -22,6 +28,15 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 			  FinMap.StringTree = FinMapEq.StringTree
 		      structure Flags : FLAGS) : LAMBDA_STAT_SEM =
   struct
+
+         	                 (* There is a bug in SML/NJ'93 which causes equality
+				  * attributes of type names to propagate
+				  * erroneous. Particularly, the type `Type' allows for
+				  * equality though it should not (TyName does not admit
+				  * equality.) - Martin. *)
+    nonfix =
+    val op = = 4.3
+
 
     (* ---------------------------------------------------------
      * We assume lambda variables and constructors and exception 
@@ -318,31 +333,18 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
      *  Semantic Operations
      * --------------------------------------------------------- *)
 
-    type subst = (tyvar, Type) FinMap.map
-    fun on_Type (S:subst) Type =
-      let fun f Type =
-	    case Type
-	      of TYVARtype tv => (case FinMap.lookup S tv
-				    of Some tau => tau
-				     | None => Type)
-	       | ARROWtype (tl1, tl2) => ARROWtype (map f tl1, map f tl2)
-	       | CONStype (ts, tyname) => CONStype (map f ts, tyname)
-	       | RECORDtype ts => RECORDtype (map f ts)
-      in if FinMap.isEmpty S then Type else f Type
-      end
-	       
-    fun mk_subst [] = FinMap.empty
-      | mk_subst ((tyvar, Type)::rest) = FinMap.add(tyvar, Type, mk_subst rest)
-
     fun mk_instance ((tyvars,Type):TypeScheme, instances : Type list) =
-      let val S = mk_subst (ListPair.zip (tyvars, instances))
-	handle ListPair.Zip => die "mk_instance"
-      in on_Type S Type
+      let val S = LambdaBasics.mk_subst "mk_instance" (tyvars, instances)
+      in LambdaBasics.on_Type S Type
       end
 
-    (* we can use `=' to check equality of types. The eqType is nice, though: *)
+    (* we CANNOT use `=' to check equality of types - we use eq_Type. *)
 
-    fun eqType s (t,t') = if t = t' then () else die ("eqType " ^ s)
+    val eq_Type = LambdaBasics.eq_Type
+    val eq_Types = LambdaBasics.eq_Types
+
+    fun eqType s (tau,tau') = if eq_Type(tau,tau') then () 
+			      else die ("eqType " ^ s)
 
     val unit_Type = RECORDtype []
 
@@ -370,7 +372,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
      *                          o  RaisedExnBind
      *)
 
-    fun lub (tl as Types ts, Types ts') = if ts = ts' then tl
+    fun lub (tl as Types ts, Types ts') = if eq_Types(ts,ts') then tl
 					  else die "lub. Types vs. Types"
       | lub (RaisedExnBind, tl) = tl
       | lub (tl, RaisedExnBind) = tl
@@ -416,7 +418,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 	fun check_list s ([], []) = ()
 	  | check_list s (tn::tns, e::es) = let val t = CONStype([],tn)
 						val ts = unTypeList s (type_e e)
-					    in if [t] = ts then check_list s (tns, es)
+					    in if eq_Types([t],ts) then check_list s (tns, es)
 					       else die s
 					    end
 	  | check_list s _ = die s
@@ -435,7 +437,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		 (case mk_instance(lookup_con env con, instances)
 		    of ARROWtype([t1],[t2]) =>
 		      let val ts = unTypeList "CONprim" (type_e lexp)
-		      in if [t1] = ts then [t2]
+		      in if eq_Types([t1],ts) then [t2]
 			 else die ("CONprim: " ^ Con.pr_con con)
 		      end
 		     | _ => die "CONprim.Unary constructor does not have arrow type")
@@ -446,7 +448,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 				  of ARROWtype([t1],[t2]) =>
 				    let val s = ("DECONprim: " (* ^ Con.pr_con con *))
 				        val ts = unTypeList s (type_e lexp)
-				    in if [t2] = ts then [t1]
+				    in if eq_Types([t2],ts) then [t1]
 				       else die s
 				    end
 				   | _ => die "DECONprim.Unary constructor does not have arrow type")
@@ -460,7 +462,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 				     of Some t =>
 				       let val s = ("EXCONprim: " (* ^ Excon.pr_excon excon *))
 					   val ts = unTypeList s (type_e lexp)
-				       in if [t] = ts then [CONStype([],tyName_EXN)]
+				       in if eq_Types([t],ts) then [CONStype([],tyName_EXN)]
 					  else die s
 				       end
 				      | None => die "EXCONprim.Nullary excon applied to arg.")
@@ -471,7 +473,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 					of Some t =>
 					  let val s = ("DEEXCONprim: " (* ^ Excon.pr_excon excon *)) 
 					      val ts = unTypeList s (type_e lexp)
-					  in if ts = [CONStype([],tyName_EXN)] then [t]
+					  in if eq_Types(ts,[CONStype([],tyName_EXN)]) then [t]
 					     else die s
 					  end
 					 | None => die "DEEXCONprim.Unary excon does not have arrow type")
@@ -507,7 +509,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		  of [lexp] =>
 		    let val s = "EXPLODEprim"
 		        val ts = unTypeList s (type_e lexp)
-		    in if ts = [CONStype([], tyName_STRING)] then [CONStype([CONStype([],tyName_STRING)], tyName_LIST)]
+		    in if eq_Types(ts,[CONStype([], tyName_STRING)]) then [CONStype([CONStype([],tyName_STRING)], tyName_LIST)]
 		       else die s
 		    end
 		   | _ => die "EXPLODEprim.Wrong number of args")
@@ -516,7 +518,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		  of [lexp] => 
 		    let val s = "IMPLODEprim"
 		      val ts = unTypeList s (type_e lexp)
-		    in if ts = [CONStype([CONStype([], tyName_STRING)], tyName_LIST)] then [CONStype([],tyName_STRING)]
+		    in if eq_Types(ts,[CONStype([CONStype([], tyName_STRING)], tyName_LIST)]) then [CONStype([],tyName_STRING)]
 		       else die s
 		    end
 		   | _ => die "IMPLODEprim.Wrong number of args")
@@ -526,7 +528,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 				  of CONStype([t], tyName_REF) =>
 				    let val s = "DEREFprim"
 				        val ts = unTypeList s (type_e lexp)
-				    in if ts = [instance] then [t]
+				    in if eq_Types(ts,[instance]) then [t]
 				       else die s
 				    end
 				   | _ => die "DEREFprim.Wrong instance")
@@ -542,7 +544,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 			    of ARROWtype([t1],[t2]) =>
 			      let val s = "REFprim"
 				  val ts = unTypeList s (type_e lexp)
-			      in if ts = [t1] then [t2]
+			      in if eq_Types(ts,[t1]) then [t2]
 				 else die s
 			      end
 			     | _ => die "REFprim.type scheme for ref does not have arrow type")
@@ -554,8 +556,8 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 					  of RECORDtype [CONStype([t], tyName_REF), t'] =>
 					    let val ts1 = unTypeList "ASSIGNprim1" (type_e lexp1)  
 					        val ts2 = unTypeList "ASSIGNprim2" (type_e lexp2)  
-					    in if t = t' andalso ts1 = [CONStype([t], tyName_REF)]
-					                 andalso ts2 = [t'] then [unit_Type]
+					    in if eq_Type(t,t') andalso eq_Types(ts1,[CONStype([t], tyName_REF)])
+					                 andalso eq_Types(ts2,[t']) then [unit_Type]
 					       else die "ASSIGNprim3"
 					    end 
 					   | _ => die "ASSIGNprim.Wrong instance kind") 
@@ -576,8 +578,8 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 					 of RECORDtype [t1,t2] =>
 					   let val ts1 = unTypeList "EQUALprim1" (type_e lexp1)  
 					       val ts2 = unTypeList "EQUALprim2" (type_e lexp2)  
-					   in if t1 = t2 andalso ts1 = [t1]
-					                 andalso ts2 = [t2] then [CONStype([], tyName_BOOL)] 
+					   in if eq_Type(t1,t2) andalso eq_Types(ts1,[t1])
+					                 andalso eq_Types(ts2,[t2]) then [CONStype([], tyName_BOOL)] 
 					      else die "EQUALprim3"
 					   end 
 					  | _ => die "EQUALprim.Wrong instance kind")
@@ -610,7 +612,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 	     (case lexps
 		of [lexp] => 
 		  let val ts = unTypeList "RESET_REGIONSprim1" (type_e lexp)
-		  in if ts = [instance] then [unit_Type]
+		  in if eq_Types(ts,[instance]) then [unit_Type]
 		     else die "RESET_REGIONSprim2"
 		  end
 		 | _ => die "RESET_REGIONSprim.Wrong number of args")
@@ -618,7 +620,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 	     (case lexps
 		of [lexp] =>
 		  let val ts = unTypeList "FORCE_RESET_REGIONSprim" (type_e lexp)
-		  in if ts = [instance] then [unit_Type]
+		  in if eq_Types(ts,[instance]) then [unit_Type]
 		     else die "FORCE_RESET_REGIONSprim"
 		  end
 		 | _ => die "FORCE_RESET_REGIONSprim.Wrong number of args")
@@ -649,8 +651,8 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		else (fn _ => ())
 
 	      fun check_type_scheme(tyvars, tau, tau') =
-		if tau = tau' then (check_polymorphism tyvars; 
-				    tyvars_not_in_env(tyvars, env))
+		if eq_Type(tau,tau') then (check_polymorphism tyvars; 
+					   tyvars_not_in_env(tyvars, env))
 		else die "LET.types not equal"
 
 	      val ts_bind = unTypeList "LET.bind" (type_lexp env bind)
@@ -686,7 +688,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 	  (case type_lexp env lexp1
 	     of Types [ARROWtype(ts_arg,ts_res)] =>
 	       let val ts = unTypeList "APP" (type_lexp env lexp2)
-	       in if ts = ts_arg then Types ts_res
+	       in if eq_Types(ts,ts_arg) then Types ts_res
 		  else
 		    (log "types expected:\n"; log_st (layoutTypes ts_arg);
 		     log "\ntypes:\n"; log_st (layoutTypes ts);
@@ -704,7 +706,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 		(case type_lexp env lexp2
 		   of Types [ARROWtype([CONStype([],tyName_EXN)], ts_res)] =>
 		     let val ts = unTypeList "HANDLE" (type_lexp env lexp1)
-		     in if ts = ts_res then Types ts_res
+		     in if eq_Types(ts,ts_res) then Types ts_res
 			else die "HANDLE"
 		     end
 		    | _ => die "HANDLE.wrong handler type")

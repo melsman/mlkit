@@ -237,8 +237,8 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
       fun addTypeInfo_VAR_PAT (ElabInfo, tau) =
             ElabInfo.plus_TypeInfo ElabInfo (VAR_PAT_INFO {tyvars=[], Type=tau})
 
-      fun addTypeInfo_DATBIND (ElabInfo, TE : TyEnv) =
-	    ElabInfo.plus_TypeInfo ElabInfo (DATBIND_INFO {TE=TE})
+      fun addTypeInfo_TYENV (ElabInfo, TE : TyEnv) =
+	    ElabInfo.plus_TypeInfo ElabInfo (TYENV_INFO TE)
 
       fun addTypeInfo_PLAINvalbind (ElabInfo, tau) =
             ElabInfo.plus_TypeInfo ElabInfo
@@ -907,7 +907,7 @@ old*)
                val (TE, out_typbind) = elab_typbind(C, typbind)
              in
                (Substitution.Id, E.from_TE TE,
-                OG.TYPEdec(okConv i, out_typbind))
+                OG.TYPEdec(addTypeInfo_TYENV (okConv i, TE), out_typbind))
              end
 
            (* Datatype declaration *)                           (*rule 17*)
@@ -920,7 +920,7 @@ old*)
                val _ = debug_pr_msg "elab_dec(DATATYPEdec)"
              in
                (Substitution.Id, E.from_VE_and_TE (VE2, TE2),
-                OG.DATATYPEdec(addTypeInfo_DATBIND (okConv i, TE2),
+                OG.DATATYPEdec(addTypeInfo_TYENV (okConv i, TE2),
                                out_datbind)) (*martin*)
              end
 
@@ -935,7 +935,7 @@ old*)
 		    (Substitution.Id,
 		     E.from_VE_and_TE (VE,TE),
 		     OG.DATATYPE_REPLICATIONdec
-		       (addTypeInfo_DATBIND (okConv i, TE), tycon, longtycon))
+		       (addTypeInfo_TYENV (okConv i, TE), tycon, longtycon))
 		  end
 	      | None =>
 		  (Substitution.bogus,
@@ -954,7 +954,7 @@ old*)
                val (E',TE2',phi) = Environments.ABS' (TE2, E)
              in
                (S,E',
-		OG.ABSTYPEdec(addTypeInfo_DATBIND (okConv i, TE2'),
+		OG.ABSTYPEdec(addTypeInfo_TYENV (okConv i, TE2'),
 			      out_datbind,
 			      phi_on_dec phi out_dec)) (*martin*)
              end
@@ -2149,7 +2149,7 @@ let
       | S on_TypeInfo (EXBIND_INFO {TypeOpt=None}) = EXBIND_INFO {TypeOpt=None}
       | S on_TypeInfo (EXBIND_INFO {TypeOpt=Some Type}) = 
 	    EXBIND_INFO {TypeOpt=Some (S on_repeated Type)}   
-      | S on_TypeInfo (DATBIND_INFO {TE}) = DATBIND_INFO {TE=TE}  (*MEMO...*)
+      | S on_TypeInfo (TYENV_INFO TE) = TYENV_INFO TE  (*MEMO...*)
       | S on_TypeInfo (EXP_INFO {Type}) = 
 	    EXP_INFO {Type=S on_repeated Type}
       | S on_TypeInfo (MATCH_INFO {Type}) = 

@@ -39,7 +39,7 @@ functor InfixBasis(structure Ident: IDENT
 	of Some fix => fix
 	 | None => NONFIX
 
-    val compose = FinMap.plus
+    fun compose a = FinMap.plus a
 
     fun eq (B1, B2) =
       let fun sorter (a,_) (b,_) = Ident.< (a,b)

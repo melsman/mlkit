@@ -9,7 +9,7 @@ signature ELIMINATE_EQ =
     val plus : env * env -> env
 
     val restrict : env * {lvars:lvar list,tynames:TyName list} -> lvar list * env
-      (* restrict(env,{lvars,tynames}) returns lvars updated with the range of tynameenv,
+      (* restrict(env,{lvars,tynames}) returns lvars in the range of the restricted tynameenv,
        * together with a restricted environment. *)
 
     val match : env * env -> env
