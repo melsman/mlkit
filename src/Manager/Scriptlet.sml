@@ -274,12 +274,12 @@ functor Scriptlet(val error : string -> 'a) : SCRIPTLET =
 		     ; outs (ind 4)
 	   (*form*)  ; outs "val form : ("
 		     ; app (fn {name,...} => outs (name ^ "->")) fields
-		     ; outl "nil,'a,'p,block flow) form"
-		     ; outi 10 "-> (nil,nil,'a,formclosed,'p,block flow) elt"
+		     ; outl "nil,'a,'p,(block,NOT)flow) form"
+		     ; outi 10 "-> (nil,nil,'a,formclosed,'p,(block,'i)flow) elt"
 		     ; outs (ind 4)
            (*link*)  ; outs "val link : "
-		     ; maybe_out_recordargs fields "('x,'y,ina,'f,'p,inline flow) elt"
-		     ; outi 10 "-> ('x,'y,aclosed,'f,'p,inline flow) elt"
+		     ; maybe_out_recordargs fields "('x,'y,ina,'f,'p,(NOT,inline)flow) elt"
+		     ; outi 10 "-> ('x,'y,aclosed,'f,'p,('b,inline)flow) elt"
 		     ; outs (ind 4)
        (*redirect*)  ; outs "val redirect : "
 		     ; maybe_out_recordargs fields "SMLserver.Cookie.cookiedata list"
