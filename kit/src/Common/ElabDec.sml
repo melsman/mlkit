@@ -1784,8 +1784,13 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
           (* Explicit type variable *)                          (*rule 44*)
           IG.TYVARty(i, ExplicitTyVar) =>
-	    let val ty_opt = SOME (C.ExplicitTyVar_lookup C ExplicitTyVar)
-	    in (ty_opt, OG.TYVARty(okConv i, ExplicitTyVar))
+	    let val ty_opt = C.ExplicitTyVar_lookup C ExplicitTyVar
+		val i = 
+		    case ty_opt of 
+			SOME _ => okConv i
+		      | NONE => errorConv (i,ErrorInfo.TYVARS_NOT_IN_TYVARSEQ 
+					   [OG.TyVar.pr_tyvar ExplicitTyVar])
+	    in (ty_opt, OG.TYVARty(i, ExplicitTyVar))
 	    end
 
           (* Record type *)                                     (*rule 45*)

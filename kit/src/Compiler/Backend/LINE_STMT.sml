@@ -88,8 +88,9 @@ signature LINE_STMT =
     | DEREF           of 'aty
     | REF             of 'aty sma * 'aty
     | ASSIGNREF       of 'aty sma * 'aty * 'aty
-    | PASS_PTR_TO_MEM of 'aty sma * int (* Used only by CCALL *)
-    | PASS_PTR_TO_RHO of 'aty sma       (* Used only by CCALL *)
+    | PASS_PTR_TO_MEM of 'aty sma * int * bool (* Used only by CCALL *)
+                                               (* The boolean is true if the region has an untagged type *)
+    | PASS_PTR_TO_RHO of 'aty sma              (* Used only by CCALL *)
 
     and ('sty,'offset,'aty) LineStmt = 
       ASSIGN        of {pat: 'aty, bind: 'aty SimpleExp}

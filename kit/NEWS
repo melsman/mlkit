@@ -1,5 +1,11 @@
 ML Kit NEWS file
 
+ * mael 2003-05-13: Reals now only take up three words (instead of
+   four) when tagging is enabled.
+
+ * mael 2003-05-08: Fixed bug related to free type variables in type
+   bindings.
+
  * mael 2003-02-18: Added support for inlining of functor
    applications. To specify that functor applications in a file should
    be inlined, one can now write inline specifications in pm-files 

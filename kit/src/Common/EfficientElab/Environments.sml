@@ -1325,9 +1325,12 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun to_U (CONTEXT {U=EXPLICITTYVARENV m, E}) : ExplicitTyVar list =
 	    EqSet.list(FinMap.dom m)
       fun ExplicitTyVar_lookup (CONTEXT{U=EXPLICITTYVARENV m,E}) ExplicitTyVar =
+	  FinMap.lookup m ExplicitTyVar
+(*
 	    (case FinMap.lookup m ExplicitTyVar of
 	       NONE => impossible "ExplicitTyVar_lookup" (*Level.GENERIC*)
 	     | SOME Type => Type)
+*)
       fun to_E (CONTEXT {U, E}) = E
       fun plus_E (CONTEXT {U, E}, E') = CONTEXT {U=U, E=E.plus (E, E')}
       fun plus_TE(C,TE) = plus_E(C,E.from_TE TE)

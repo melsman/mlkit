@@ -115,8 +115,9 @@ struct
     | DEREF           of 'aty
     | REF             of 'aty sma * 'aty
     | ASSIGNREF       of 'aty sma * 'aty * 'aty
-    | PASS_PTR_TO_MEM of 'aty sma * int (* Used only by CCALL *)
-    | PASS_PTR_TO_RHO of 'aty sma       (* Used only by CCALL *)
+    | PASS_PTR_TO_MEM of 'aty sma * int * bool (* Used only by CCALL *)
+                                               (* The boolean is true if the region has an untagged type *)
+    | PASS_PTR_TO_RHO of 'aty sma              (* Used only by CCALL *)
 
   and ('sty,'offset,'aty) LineStmt = 
       ASSIGN        of {pat: 'aty, bind: 'aty SimpleExp}
@@ -293,7 +294,8 @@ struct
 					     finish="",
 					     childsep=RIGHT " := ",
 					     children=[layout_aty pr_aty aty1,layout_aty pr_aty aty2]}
-	 | PASS_PTR_TO_MEM(sma,i) => LEAF("MEM(" ^ pr_sma pr_aty sma ^ "," ^ Int.toString i ^ ")")
+	 | PASS_PTR_TO_MEM(sma,i,b) => LEAF("MEM(" ^ pr_sma pr_aty sma ^ "," ^ Int.toString i ^ ","
+					    ^ Bool.toString b ^ ")")
 	 | PASS_PTR_TO_RHO(sma) => LEAF("PTR(" ^ pr_sma pr_aty sma ^ ")"))
 	
       and layout_ls pr_sty pr_offset pr_aty simplify ls =
@@ -538,14 +540,11 @@ struct
     | zip ((x::xs),(y::ys)) = (x,y) :: (zip (xs,ys))
     | zip _ = die "zip: Cannot zip two lists."
 
-(*
-  fun is_region_real place =
-    (case Effect.get_place_ty place
-       of NONE => die "LETREGION.alloc.regvar has no runtype."
-	| SOME Effect.REAL_RT => true
-	| SOME Effect.STRING_RT => false
-	| SOME _ => false)
-*)
+  fun is_region_pair place =
+    case Effect.get_place_ty place of 
+	NONE => die "is_region_pair"
+      | SOME Effect.PAIR_RT => true
+      | SOME _ => false
 
   (***********************)
   (* Linearization: L_ce *)
@@ -580,6 +579,18 @@ struct
     fun smas_to_smas([]) = []
       | smas_to_smas(sma::smas) = sma_to_sma(sma)::smas_to_smas(smas)
 
+    fun ce_of_sma sma =
+	case sma of
+	    ClosExp.ATTOP_LI(ce,pp) => SOME ce
+	  | ClosExp.ATTOP_LF(ce,pp) => SOME ce
+	  | ClosExp.ATTOP_FI(ce,pp) => SOME ce
+	  | ClosExp.ATTOP_FF(ce,pp) => SOME ce
+	  | ClosExp.ATBOT_LI(ce,pp) => SOME ce
+	  | ClosExp.ATBOT_LF(ce,pp) => SOME ce
+	  | ClosExp.SAT_FI(ce,pp)   => SOME ce
+	  | ClosExp.SAT_FF(ce,pp)   => SOME ce
+	  | ClosExp.IGNORE          => NONE
+
     fun con_kind_to_con_kind(ClosExp.ENUM i) = ENUM i
       | con_kind_to_con_kind(ClosExp.UNBOXED i) = UNBOXED i
       | con_kind_to_con_kind(ClosExp.BOXED i) = BOXED i
@@ -606,7 +617,14 @@ struct
 	 | ClosExp.WORD i => maybe_assign (lvars_res, ATOM(WORD i), acc)
 	 | ClosExp.STRING s => maybe_assign (lvars_res, STRING s, acc)
 	 | ClosExp.REAL s => maybe_assign (lvars_res, REAL s, acc)
-	 | ClosExp.PASS_PTR_TO_MEM(sma,i) => maybe_assign (lvars_res, PASS_PTR_TO_MEM(sma_to_sma sma,i), acc)
+	 | ClosExp.PASS_PTR_TO_MEM(sma,i) => 
+	    let fun untagged_region_type sma = 
+		   case ce_of_sma sma of
+		       SOME (ClosExp.RVAR rho) => is_region_pair rho
+		     | _ => false
+		val b = untagged_region_type sma
+	    in maybe_assign (lvars_res, PASS_PTR_TO_MEM(sma_to_sma sma,i,b), acc)
+	    end
 	 | ClosExp.PASS_PTR_TO_RHO sma => maybe_assign (lvars_res, PASS_PTR_TO_RHO(sma_to_sma sma), acc)
 	 | ClosExp.UB_RECORD ces => List.foldr (fn ((ce,lv_res),acc) => L_ce(ce,[lv_res],acc)) acc (zip(ces,lvars_res))
 	 | ClosExp.CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc} => 
@@ -802,7 +820,7 @@ struct
     | get_phreg_se(DEREF atom,acc) = get_phreg_atom(atom,acc)
     | get_phreg_se(REF(sma,atom),acc) = get_phreg_sma(sma,get_phreg_atom(atom,acc))
     | get_phreg_se(ASSIGNREF(sma,atom1,atom2),acc) = get_phreg_sma(sma,get_phreg_atom(atom1,get_phreg_atom(atom2,acc)))
-    | get_phreg_se(PASS_PTR_TO_MEM(sma,i),acc) = get_phreg_sma(sma,acc)
+    | get_phreg_se(PASS_PTR_TO_MEM(sma,i,_),acc) = get_phreg_sma(sma,acc)
     | get_phreg_se(PASS_PTR_TO_RHO sma,acc) = get_phreg_sma(sma,acc)
 
   fun get_phreg_in_fun{opr,args,reg_vec,reg_args,clos,res,bv} = (* Operand is always a label *)
@@ -957,7 +975,7 @@ struct
       | (DEREF atom,acc) => get_var_atom(atom,acc)
       | (REF(sma,atom),acc) => get_var_sma(sma,get_var_atom(atom,acc))
       | (ASSIGNREF(sma,atom1,atom2),acc) => get_var_sma(sma,get_var_atom(atom1,get_var_atom(atom2,acc)))
-      | (PASS_PTR_TO_MEM(sma,i),acc) => get_var_sma(sma,acc)
+      | (PASS_PTR_TO_MEM(sma,i,_),acc) => get_var_sma(sma,acc)
       | (PASS_PTR_TO_RHO sma,acc) => get_var_sma(sma,acc)
 
     fun use_var_on_fun' ignore_rvars {opr,args,reg_vec,reg_args,clos,res,bv} = (* Operand is always a label *)
@@ -1107,7 +1125,7 @@ struct
 	  | map_se(DEREF aty) = DEREF(map_aty aty)
 	  | map_se(REF(sma,aty)) = REF(map_sma sma,map_aty aty)
 	  | map_se(ASSIGNREF(sma,aty1,aty2)) = ASSIGNREF(map_sma sma,map_aty aty1,map_aty aty2)
-	  | map_se(PASS_PTR_TO_MEM(sma,i)) = PASS_PTR_TO_MEM(map_sma sma,i)
+	  | map_se(PASS_PTR_TO_MEM(sma,i,b)) = PASS_PTR_TO_MEM(map_sma sma,i,b)
 	  | map_se(PASS_PTR_TO_RHO(sma)) = PASS_PTR_TO_RHO(map_sma sma)
 
 	fun map_lss'([]) = []

@@ -397,13 +397,6 @@ struct
     (* base_reg[offset] = src_aty *)
     fun store_aty_in_reg_record(aty,t:reg,b,n:Offset,size_ff,C) =
 	store_aty_indexed(b:reg,n:Offset,aty,t:reg,size_ff,C)
-(*
-    fun store_aty_in_reg_record(SS.PHREG_ATY src_reg,t:reg,base_reg,offset:Offset,size_ff,C) =
-          store_indexed(base_reg,offset,R src_reg,C)
-      | store_aty_in_reg_record(src_aty,t:reg,base_reg,offset:Offset,size_ff,C) =
-	  move_aty_into_reg(src_aty,t,size_ff,
-	  store_indexed(base_reg,offset,R t,C))
-*)
 
     (* Can be used to load from the stack or a record when destination is an ATY *)
     (* dst_aty = base_reg[offset] *)
@@ -461,7 +454,7 @@ struct
 
     (* Push float on float stack *)
     fun push_float_aty(float_aty, t, size_ff) =       
-      let val disp = if BI.tag_values() then "8" 
+      let val disp = if BI.tag_values() then (*"8"*) "4"
 		     else "0"
       in fn C => case float_aty 
 		   of SS.PHREG_ATY x => I.fldl(D(disp, x)) :: C
@@ -473,7 +466,7 @@ struct
     fun pop_store_float_reg(base_reg,t:reg,C) =
       if BI.tag_values() then 
         store_immed(BI.tag_real false, base_reg, WORDS 0,
-	I.fstpl (D("8",base_reg)) :: C)
+	I.fstpl (D( (*"8"*) "4",base_reg)) :: C)   (* mael 2003-05-08 *)
       else 
 	I.fstpl (D("0",base_reg)) :: C
 
@@ -1753,14 +1746,14 @@ struct
 		         val _ = 
 			   if BI.tag_values() then 
 			     add_static_data [I.dot_data,
-					      I.dot_align 8,
+				(*	      I.dot_align 8, *)
 					      I.lab float_lab,
 					      I.dot_long(BI.pr_tag_w(BI.tag_real(true))),
-					      I.dot_long "0", (* dummy *)
+				(*	      I.dot_long "0", (* dummy *) *)
 					      I.dot_double str]
 			   else
 			     add_static_data [I.dot_data,
-					      I.dot_align 8,
+				(*	      I.dot_align 8, *)
 					      I.lab float_lab,
 					      I.dot_double str]
 		     in load_label_addr(float_lab,pat,tmp_reg1,size_ff,C)
@@ -1994,13 +1987,15 @@ struct
 			 move_immed(Int32.fromInt BI.ml_unit, R reg_for_result,C')
                        else C')
 		     end
-		    | LS.PASS_PTR_TO_MEM(alloc,i) =>
+		    | LS.PASS_PTR_TO_MEM(alloc,i,untagged_value) =>
 		     let
 		       val (reg_for_result,C') = resolve_aty_def(pat,tmp_reg1,size_ff,C)
 		     in
 			 (* HACK: When tagging is enabled, only pairs take up 3 words
 			  * (of those type of objects that can be returned from a C function) *)
-			 if BI.tag_values() andalso not(tag_pairs_p()) andalso i = 3 then
+			 (* Hack eliminated: We now pass a boolean which is true for allocations 
+			  * of tag-free values. mael 2003-05-13 *)
+			 if BI.tag_values() andalso not(tag_pairs_p()) andalso untagged_value then
 			     alloc_pair_ap_kill_tmp01 (alloc,reg_for_result,size_ff,C')
 			 else
 			     alloc_ap_kill_tmp01(alloc,reg_for_result,i,size_ff,C')
