@@ -1,3 +1,21 @@
+Unsolved bugs
+
+
+ + ahref in Msp.sml is buggy, 2001-06-01, Niels
+
+ + Fra url: http://www.it-c.dk/people/tofte/eksperiment1/index.html
+
+    The results were (sorted by decreasing speed):
+
+    1.4,393 secs: compiler: ML Kit; target code: no garbage collection (i.e., only regions) 
+    2.4,802 secs: compiler: ML Kit; target code: regions and garbage collection 
+    3.6,3 secs: compiler: mosml; target code: garbage collection, no regions 
+    4.8,131 secs: compiler: ML Kit; target code: regions, garbage collection and profiling.
+       Check the region profile graph and the object profil of the largest region. (The program
+       points in the latter graph do not seem to be right: maybe the same program points are
+       used in the basis library and in the evaluation system code?.) 
+
+
                              VERSION 3
 
 
