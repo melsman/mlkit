@@ -329,14 +329,9 @@ struct
      
          type dom = int
      
-         (* The balance of a tree is 'L', if the left subtree is one
-            deeper than the right subtree, 'B' if the left and right subtrees
-            have the same depth, and 'R' if the right subtree is one deeper than
-            the left subtree: *)
-     
          type 'b map = (int*'b)list array
      
-         val empty = Array.array(lsize,[]:(int*effect)list)
+         val empty = Array.array((*lsize*)0,[]:(int*effect)list)
          fun mkEmpty() = Array.array(lsize,[])
      
          fun lookup t key =
@@ -347,17 +342,16 @@ struct
              loop(Array.sub(t,key mod lsize))
            end
      
-     
          fun add(k0,d0, t) =
           let val i = k0 mod lsize
               val l = Array.sub(t,i)
           in Array.update(t, i, (k0,d0)::l); t
           end
      
-     
          fun remove(k0, t) = 
           let val i = k0 mod lsize
-              val l' = List.filter (fn (i',_) =>i'<>i)(Array.sub(t,i))
+              (*was: val l' = List.filter (fn (i',_) =>i'<>i)(Array.sub(t,i))  ; ME 2001-03-07*)
+	      val l' = List.filter (fn (k,_) =>k<>k0)(Array.sub(t,i))
           in 
               Array.update(t, i, l');
               SOME t
@@ -585,7 +579,7 @@ struct
             | is_sorted [x] = true
             | is_sorted ((i:int,_)::(j,y):: rest) = 
                  i<j andalso is_sorted ((j,y)::rest)
-          val _ = if is_sorted l then () else die "pushLayer: atomic effects not not sorted"
+          val _ = if is_sorted l then () else die "pushLayer: atomic effects not sorted"
           val layer = ConeLayer.fromSortedList l (ConeLayer.mkEmpty())
       in
           (n+1, Cone.add(n+1, layer, c))
@@ -1001,7 +995,6 @@ tracing *)
 
 	if k1 = k2 then die "einfo_combine_eps: expected keys to be different"
 	else (* merge increment information for einfo1 and einfo2 *)
-	  
 	  if k1 < k2 then
 	    (if !algorithm_R then
 	       case Increments.lookup(!globalIncs)eps2
@@ -1054,7 +1047,7 @@ tracing *)
         else if l1<l2 then lower l1 node2 cone
         else (* l1>l2 *)   lower l2 node1 cone
     | _ => die "mkSameLevel: one of the two nodes was not \
-               \and EPS or a RHO node"
+               \an EPS or a RHO node"
   
 
   (* unifyNodes f (node1, node2) cone : cone
@@ -1069,11 +1062,10 @@ tracing *)
   fun unifyNodes f (node1, node2) cone : cone = 
     let val(node1, node2) = (G.find node1, G.find node2)
     in if G.eq_nodes(node1,node2) then cone
-       else
-          let val cone1 = mkSameLevel(node1, node2) cone
-          in f(node1, node2);
-             cone1
-          end
+       else let val cone1 = mkSameLevel(node1, node2) cone
+	    in f(node1, node2);
+	      cone1
+	    end
     end
 
   (* unifyRho(rho_node1, rho_node2) cone : cone
@@ -1093,7 +1085,8 @@ tracing *)
     unifyNodes(G.union_without_edge_duplication 
                (einfo_combine_eps(eps_node1,eps_node2)) 
                is_union)
-              (eps_node1, eps_node2) cone;
+              (eps_node1, eps_node2) cone
+
 
 
   (*****************************************************)
@@ -1369,7 +1362,8 @@ tracing *)
     case (einfo1,einfo2) of
         (UNION _ , _) => einfo2
       | (_, UNION _) => einfo1
-      | (EPS _, EPS _) => einfo1
+      | (EPS {key=ref k1,...}, EPS {key=ref k2,...}) => 
+	  if k1 < k2 then einfo1 else einfo2  (* was einfo1 ; ME 2001-03-07 *)
       | _ => die "einfo_scc_combine: strongly connected\
                  \ component in effect graph contained \
                   \\nnode which was neither an arrow effect nor a union"
@@ -1455,9 +1449,11 @@ tracing *)
                 ConeLayer.range(noSome(Cone.lookup c 1, (* 1 is the number of the top level *)
                                     "mk_top_level_unique: not top-level in cone"))
   in
-(*   print"unify_with_toplevel_rhos_eps: list of nodes for unification:\n";
+(*
+   print"unify_with_toplevel_rhos_eps: list of nodes for unification:\n";
    say_etas(layoutEtas nodes_for_unification);
-   print"now unifying...:\n";*)
+   print"now unifying...:\n";
+*)
    (app 
     (fn rho_eps =>
        let fun union_with(toplevel_rho) : unit =
@@ -1466,10 +1462,23 @@ tracing *)
        in (*say_etas[layout_effect rho_eps] (*test*);*)
          if is_arrow_effect(G.find rho_eps) then
 	    if G.eq_nodes(G.find toplevel_arreff,G.find rho_eps) then ()
-	    else (G.union_without_edge_duplication 
-		  (einfo_combine_eps(toplevel_arreff,rho_eps))
+	    else (
+(*
+		  print "unifying with toplevel_arreff:";
+		  say_eps toplevel_arreff;
+		  say_eps rho_eps;
+		  print "\n";
+*)
+		  G.union_without_edge_duplication 
+		  (einfo_combine_eps(G.find toplevel_arreff,G.find rho_eps))
                   is_union
-                  (G.find toplevel_arreff,G.find rho_eps);())
+                  (G.find toplevel_arreff,G.find rho_eps);
+(*
+		  print "toplevel_arreff, rho_eps :";
+		  say_eps toplevel_arreff;
+		  say_eps rho_eps; print "\n";
+*)
+		  ())
 	  else if is_rho (G.find rho_eps) then
 	    case get_place_ty rho_eps
 	      of SOME WORD_RT =>   union_with(toplevel_region_withtype_word)
@@ -1746,9 +1755,13 @@ tracing *)
       end
 
   fun represents(eps) =
-    case G.get_info(G.find eps) of
-      EPS{represents = SOME l, ...} => l
-    | _ => die "represents"
+    let val eps = G.find eps
+    in case G.get_info(eps) 
+	 of EPS{represents = SOME l, ...} => l
+	  | _ => (say "No info for eps\n";
+		  say_eps eps;
+		  die ("represents"))
+    end
 
 
 end; 
