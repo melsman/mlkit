@@ -62,7 +62,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | StackAddr(off,s) => (out_opcode STACK_ADDR; out_int off)
       | EnvToAcc => out_opcode ENV_TO_ACC
 
-      |	ImmedInt(i) => (out_opcode IMMED_INT; out_int (Option.valOf(Int.fromString i)))
+      |	ImmedInt(i) => (out_opcode IMMED_INT; out_long_i32 i)
       | ImmedString(str) => 
 	  let
 	    val str_size = String.size str
@@ -103,11 +103,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 
       | Label(lab) => RLL.define_label lab
       | JmpRel(lab) => (out_opcode JMP_REL; RLL.out_label lab)
-(*
-      | IfNotEqJmpRel(lab) => (out_opcode IF_NOT_EQ_JMP_REL; RLL.out_label lab)
-      | IfLessThanJmpRel(lab) => (out_opcode IF_LESS_THAN_JMP_REL; RLL.out_label lab)
-      | IfGreaterThanJmpRel(lab) => (out_opcode IF_GREATER_THAN_JMP_REL; RLL.out_label lab)
-*)
+
       | IfNotEqJmpRelImmed(lab,i) => (out_opcode IF_NOT_EQ_JMP_REL_IMMED; RLL.out_label lab; out_long_i32 i)
       | IfLessThanJmpRelImmed(lab,i) => (out_opcode IF_LESS_THAN_JMP_REL_IMMED; RLL.out_label lab; out_long_i32 i)
       | IfGreaterThanJmpRelImmed(lab,i) => (out_opcode IF_GREATER_THAN_JMP_REL_IMMED; RLL.out_label lab; out_long_i32 i)
@@ -135,7 +131,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 
       | StackOffset i => (out_opcode STACK_OFFSET; out_int i)
       | PopPush i => (out_opcode POP_PUSH; out_int i)
-      | ImmedIntPush i => (out_opcode IMMED_INT_PUSH; out_int (Option.valOf(Int.fromString i)))
+      | ImmedIntPush i => (out_opcode IMMED_INT_PUSH; out_long_i32 i)
       | SelectPush i => (out_opcode SELECT_PUSH; out_int i)
       | SelectEnvPush i => (out_opcode SELECT_ENV_PUSH; out_int i)
       | SelectEnvClearAtbotBitPush i => (out_opcode SELECT_ENV_CLEAR_ATBOT_BIT_PUSH; out_int i)
@@ -175,20 +171,35 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | PrimLessEqualUnsigned => (out_opcode PRIM_LESS_EQUAL_UNSIGNED)
       | PrimGreaterEqualUnsigned => (out_opcode PRIM_GREATER_EQUAL_UNSIGNED)
 					                              
-      | PrimAddw8 => out_opcode PRIM_ADD_W8
-      | PrimSubw8 => out_opcode PRIM_SUB_W8
-      | PrimMulw8 => out_opcode PRIM_MUL_W8
-					                              
-      | PrimAndi => out_opcode PRIM_AND_I
-      | PrimOri => out_opcode PRIM_OR_I
-      | PrimXori => out_opcode PRIM_XOR_I
-      | PrimShiftLefti => out_opcode PRIM_SHIFT_LEFT_I
-      | PrimShiftRightSignedi => out_opcode PRIM_SHIFT_RIGHT_SIGNED_I
-      | PrimShiftRightUnsignedi	=> out_opcode PRIM_SHIFT_RIGHT_UNSIGNED_I
-					                              
+      | PrimAndw => out_opcode PRIM_AND_W
+      | PrimOrw => out_opcode PRIM_OR_W
+      | PrimXorw => out_opcode PRIM_XOR_W
+      | PrimShiftLeftw => out_opcode PRIM_SHIFT_LEFT_W
+      | PrimShiftRightSignedw => out_opcode PRIM_SHIFT_RIGHT_SIGNED_W
+      | PrimShiftRightUnsignedw	=> out_opcode PRIM_SHIFT_RIGHT_UNSIGNED_W
       | PrimAddw => out_opcode PRIM_ADD_W
       | PrimSubw => out_opcode PRIM_SUB_W
       | PrimMulw => out_opcode PRIM_MUL_W
+
+      | PrimSubi31 => out_opcode PRIM_SUB_I31
+      | PrimAddi31 => out_opcode PRIM_ADD_I31
+      | PrimMuli31 => out_opcode PRIM_MUL_I31
+      | PrimNegi31 => out_opcode PRIM_NEG_I31
+      | PrimAbsi31 => out_opcode PRIM_ABS_I31
+      | PrimXorw31 => out_opcode PRIM_XOR_W31
+      | PrimShiftLeftw31 => out_opcode PRIM_SHIFT_LEFT_W31
+      | PrimShiftRightSignedw31 => out_opcode PRIM_SHIFT_RIGHT_SIGNED_W31
+      | PrimShiftRightUnsignedw31 => out_opcode PRIM_SHIFT_RIGHT_UNSIGNED_W31
+      | PrimAddw31 => out_opcode PRIM_ADD_W31
+      | PrimSubw31 => out_opcode PRIM_SUB_W31
+      | PrimMulw31 => out_opcode PRIM_MUL_W31
+
+      | Primi31Toi => out_opcode PRIM_I31_TO_I
+      | PrimiToi31 => out_opcode PRIM_I_TO_I31
+      | Primw31Tow => out_opcode PRIM_W31_TO_W
+      | PrimwTow31 => out_opcode PRIM_W_TO_W31
+      | Primw31TowX => out_opcode PRIM_W31_TO_W_X
+      | PrimwToi => out_opcode PRIM_W_TO_I
 					                              
       | PrimFreshExname => out_opcode PRIM_FRESH_EXNAME
 

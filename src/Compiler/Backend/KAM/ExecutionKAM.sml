@@ -177,6 +177,7 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 	in (* print ("[Creating file " ^ run ^ " begin ...]\n"); *)
 	  TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/bin/kam ");
 	  app (fn f => TextIO.output(os, f ^ " ")) files;
+	  TextIO.output(os, "--args $0 $*");
 	  TextIO.closeOut os;
 	  OS.Process.system "chmod a+x run";
 	  print("[Created file " ^ run ^ "]\n")

@@ -18,4 +18,4 @@ Test files may contain Standard ML like comments.
 
 *)
 
-mlyacc.pm              tx tc gc
+mlyacc.pm              tx tc

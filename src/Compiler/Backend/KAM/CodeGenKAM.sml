@@ -215,22 +215,26 @@ struct
   fun wordToStr (w : Word32.word) : string =
     "0x" ^ Word32.toString w
 
-  (* formatting of immediate integer and word values *)
-  fun fmtInt {value: Int32.int, precision:int} : string =
-    if BI.tag_integers() then
-      if precision <= 31 then 
-	(intToStr (2 * value + 1)         (* use tagged-unboxed representation *)
-	 handle Overflow => 
-	   die "formatInt.Overflow")
-      else intToStr value                 (* use untagged-boxed representation *)
-    else intToStr value                   (* use untagged-unboxed representation *)
-      
-  fun fmtWord {value: Word32.word, precision: int} : string =
-    if BI.tag_integers() then
-      if precision <= 31 then 
-	wordToStr (0w2 * value + 0w1)  (* use tagged-unboxed representation *)
-      else wordToStr value             (* use untagged-boxed representation *)
-    else wordToStr value               (* use untagged-unboxed representation *)
+    fun maybeTagInt {value: Int32.int, precision:int} : Int32.int =
+      case precision
+	of 31 => ((2 * value + 1)         (* use tagged-unboxed representation *)
+		  handle Overflow => die "maybeTagInt.Overflow")
+	 | 32 => value                    (* use untagged representation - maybe boxed *)
+	 | _ => die "maybeTagInt"
+
+    fun maybeTagWord {value: Word32.word, precision:int} : Word32.word =
+      case precision
+	of 31 =>                            (* use tagged representation *)
+	  let val w = 0w2 * value + 0w1   
+	  in if w < value then die "maybeTagWord.Overflow"
+	     else w
+	  end
+	 | 32 => value                      (* use untagged representation - maybe boxed *)
+	 | _ => die "maybeTagWord"
+
+    (* formatting of immediate integer and word values *)
+    fun fmtInt a : string = intToStr(maybeTagInt a)
+    fun fmtWord a : string = wordToStr(maybeTagWord a)
 
 
   (* ----------------------------------------------------------------------------
@@ -282,24 +286,21 @@ struct
       of Push :: acc => SelectPush i :: acc
        | _ => Select i :: acc
 
-  fun immedInt (i, acc) =
+  fun immedInt (i : Int32.int, acc) =
     case acc
       of Push :: acc => ImmedIntPush i :: acc
        | _ => ImmedInt i :: acc
 
-  fun immedInt' (i, acc) =
-    let val s = fmtInt i
+  fun immedWord (w : Word32.word, acc) =
+    let val i = Word32.toLargeIntX w
     in case acc
-	 of Push :: acc => ImmedIntPush s :: acc
-	  | _ => ImmedInt s :: acc
+	 of Push :: acc => ImmedIntPush i :: acc
+	  | _ => ImmedInt i :: acc
     end
 
-  fun immedWord' (w, acc) =
-    let val s = fmtWord w
-    in case acc
-	 of Push :: acc => ImmedIntPush s :: acc
-	  | _ => ImmedInt s :: acc
-    end
+  fun immedIntMaybeTag (a, acc) = immedInt (maybeTagInt a, acc)
+  fun immedWordMaybeTag (a, acc) = immedWord (maybeTagWord a, acc)
+
 
   fun stackOffset(i, acc) =
     case acc 
@@ -383,7 +384,7 @@ struct
 			C) =
 	let
  	  fun maybe_tag (i : Int32.int) : Int32.int = 
-	    if BI.tag_integers() andalso precision < 32 then 2*i+1
+	    if precision < 32 then 2*i+1
 	    else i
 	  val sels = map (fn (i,e) => (maybe_tag(toInt i), e)) sels
 	in
@@ -420,8 +421,8 @@ struct
       | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = die "DROPPED_RVAR not implemented"
       | CG_ce(ClosExp.FETCH lab,env,sp,cc,acc)          = FetchData lab :: acc
       | CG_ce(ClosExp.STORE(ce,lab),env,sp,cc,acc)      = CG_ce(ce,env,sp,cc, storeData lab :: acc)
-      | CG_ce(ClosExp.INTEGER i,env,sp,cc,acc)          = immedInt' (i, acc)
-      | CG_ce(ClosExp.WORD w,env,sp,cc,acc)             = immedWord' (w, acc)
+      | CG_ce(ClosExp.INTEGER i,env,sp,cc,acc)          = immedIntMaybeTag (i, acc)
+      | CG_ce(ClosExp.WORD w,env,sp,cc,acc)             = immedWordMaybeTag (w, acc)
       | CG_ce(ClosExp.STRING s,env,sp,cc,acc)           = ImmedString s :: acc
       | CG_ce(ClosExp.REAL s,env,sp,cc,acc)             = ImmedReal s :: acc
       | CG_ce(ClosExp.PASS_PTR_TO_MEM(sma,i),env,sp,cc,acc) = alloc(sma,i,env,sp,cc,acc)
@@ -476,7 +477,7 @@ struct
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos},env,sp,cc,acc) =
       let 
 	val allargs = reg_args @ args
-	fun push_clos NONE C = ImmedIntPush "0" :: C
+	fun push_clos NONE C = ImmedIntPush 0 :: C
 	  | push_clos (SOME clos_ce) C = CG_ce(clos_ce,env,sp,cc, push C)
       in push_clos clos (comp_ces(allargs, env, sp+1, cc,
 				  ApplyFunJmp(opr, List.length allargs, sp) :: 
@@ -487,7 +488,7 @@ struct
       let
 	val allargs = reg_args @ args
 	val return_lbl = Labels.new_named "return_from_app"
-	fun push_clos NONE C = ImmedIntPush "0" :: C
+	fun push_clos NONE C = ImmedIntPush 0 :: C
 	  | push_clos (SOME clos_ce) C = CG_ce(clos_ce,env,sp+1,cc, push C)
       in
 	PushLbl(return_lbl) ::
@@ -638,15 +639,15 @@ struct
 		  2*i+1 
 		else i
 	    in
-	      immedInt (Int.toString tag, acc)
+	      immedInt (Int32.fromInt tag, acc)
 	    end
 	| ClosExp.UNBOXED i => 
 	    let val tag = 4*i+3 
-	    in reset_regions(immedInt (Int.toString tag, acc))
+	    in reset_regions(immedInt (Int32.fromInt tag, acc))
 	    end
 	| ClosExp.BOXED i => 
 	    let val tag = Word32.toInt(BI.tag_con0(false,i))
-	    in reset_regions(ImmedIntPush (Int.toString tag) :: alloc_block(alloc,1,env,sp+1,cc,acc))
+	    in reset_regions(ImmedIntPush (Int32.fromInt tag) :: alloc_block(alloc,1,env,sp+1,cc,acc))
 	    end
       end
       | CG_ce(ClosExp.CON1{con,con_kind,alloc,arg},env,sp,cc,acc) =
@@ -661,7 +662,7 @@ struct
 		 let
 		   val tag = Word32.toInt(BI.tag_con1(false,i))
 		 in
-		   ImmedIntPush (Int.toString tag) :: 
+		   ImmedIntPush (Int32.fromInt tag) :: 
 		   CG_ce(arg,env,sp+1,cc,             (*mael fix: sp -> sp+1 *)
 			 push (alloc_block(alloc,2,env,sp+2,cc,acc)))
 		 end
@@ -694,123 +695,122 @@ struct
 		 of "__equal_int32ub"     => PrimEquali
 		  | "__equal_int32b"      => not_impl name
 		  | "__equal_int31"       => PrimEquali
-		  | "__equal_word8"       => PrimEquali
 		  | "__equal_word31"      => PrimEquali
 		  | "__equal_word32ub"    => PrimEquali
 		  | "__equal_word32b"     => not_impl name
+
 		  | "__plus_int32ub"      => PrimAddi
 		  | "__plus_int32b"       => not_impl name
-		  | "__plus_int31"        => not_impl name
-		  | "__plus_word8"        => PrimAddw8
-		  | "__plus_word31"       => not_impl name
+		  | "__plus_int31"        => PrimAddi31
+		  | "__plus_word31"       => PrimAddw31
 		  | "__plus_word32ub"     => PrimAddw
 		  | "__plus_word32b"      => not_impl name
 		  | "__plus_real"         => PrimAddf
+
 		  | "__minus_int32ub"     => PrimSubi
 		  | "__minus_int32b"      => not_impl name
-		  | "__minus_int31"       => not_impl name
-		  | "__minus_word8"       => PrimSubw8
-		  | "__minus_word31"      => not_impl name
+		  | "__minus_int31"       => PrimSubi31
+		  | "__minus_word31"      => PrimSubw31
 		  | "__minus_word32ub"    => PrimSubw
 		  | "__minus_word32b"     => not_impl name
 		  | "__minus_real"        => PrimSubf
+
 		  | "__mul_int32ub"       => PrimMuli
 		  | "__mul_int32b"        => not_impl name
-		  | "__mul_int31"         => not_impl name
-		  | "__mul_word8"         => PrimMulw8
-		  | "__mul_word31"        => not_impl name
+		  | "__mul_int31"         => PrimMuli31
+		  | "__mul_word31"        => PrimMulw31
 		  | "__mul_word32ub"      => PrimMulw
 		  | "__mul_word32b"       => not_impl name
 		  | "__mul_real"          => PrimMulf
+
 		  | "__div_real"          => PrimDivf
+
 		  | "__neg_int32ub"       => PrimNegi
 		  | "__neg_int32b"        => not_impl name
-		  | "__neg_int31"         => not_impl name
+		  | "__neg_int31"         => PrimNegi31
 		  | "__neg_real"          => PrimNegf
+
 		  | "__abs_int32ub"       => PrimAbsi
 		  | "__abs_int32b"        => not_impl name
-		  | "__abs_int31"         => not_impl name
+		  | "__abs_int31"         => PrimAbsi31
 		  | "__abs_real"          => PrimAbsf
+
 		  | "__less_int32ub"      => PrimLessThan
 		  | "__less_int32b"       => not_impl name
-		  | "__less_int31"        => not_impl name
-		  | "__less_word8"        => PrimLessThanUnsigned
-		  | "__less_word31"       => not_impl name
+		  | "__less_int31"        => PrimLessThan
+		  | "__less_word31"       => PrimLessThanUnsigned
 		  | "__less_word32ub"     => PrimLessThanUnsigned
 		  | "__less_word32b"      => not_impl name
 		  | "__less_real"         => PrimLessThanFloat
+
 		  | "__lesseq_int32ub"    => PrimLessEqual
 		  | "__lesseq_int32b"     => not_impl name
-		  | "__lesseq_int31"      => not_impl name
-		  | "__lesseq_word8"      => PrimLessEqualUnsigned
-		  | "__lesseq_word31"     => not_impl name
+		  | "__lesseq_int31"      => PrimLessEqual
+		  | "__lesseq_word31"     => PrimLessEqualUnsigned
 		  | "__lesseq_word32ub"   => PrimLessEqualUnsigned
 		  | "__lesseq_word32b"    => not_impl name
 		  | "__lesseq_real"       => PrimLessEqualFloat
+
 		  | "__greater_int32ub"   => PrimGreaterThan
 		  | "__greater_int32b"    => not_impl name
-		  | "__greater_int31"     => not_impl name
-		  | "__greater_word8"     => PrimGreaterThanUnsigned
-		  | "__greater_word31"    => not_impl name
+		  | "__greater_int31"     => PrimGreaterThan
+		  | "__greater_word31"    => PrimGreaterThanUnsigned
 		  | "__greater_word32ub"  => PrimGreaterThanUnsigned
 		  | "__greater_word32b"   => not_impl name
 		  | "__greater_real"      => PrimGreaterThanFloat
+
 		  | "__greatereq_int32ub" => PrimGreaterEqual
 		  | "__greatereq_int32b"  => not_impl name
-		  | "__greatereq_int31"   => not_impl name
-		  | "__greatereq_word8"   => PrimGreaterEqualUnsigned
-		  | "__greatereq_word31"  => not_impl name
+		  | "__greatereq_int31"   => PrimGreaterEqual
+		  | "__greatereq_word31"  => PrimGreaterEqualUnsigned
 		  | "__greatereq_word32ub" => PrimGreaterEqualUnsigned
 		  | "__greatereq_word32b" => not_impl name
 		  | "__greatereq_real"    => PrimGreaterEqualFloat
-		  | "__andb_word8"        => PrimAndi
-		  | "__andb_word31"       => not_impl name
-		  | "__andb_word32ub"     => PrimAndi
+
+		  | "__andb_word31"       => PrimAndw
+		  | "__andb_word32ub"     => PrimAndw
 		  | "__andb_word32b"      => not_impl name
-		  | "__orb_word8"         => PrimOri
-		  | "__orb_word31"        => not_impl name
-		  | "__orb_word32ub"      => PrimOri
+
+		  | "__orb_word31"        => PrimOrw
+		  | "__orb_word32ub"      => PrimOrw
 		  | "__orb_word32b"       => not_impl name
-		  | "__xorb_word8"        => PrimXori
-		  | "__xorb_word31"       => not_impl name
-		  | "__xorb_word32ub"     => PrimXori
+
+		  | "__xorb_word31"       => PrimXorw31
+		  | "__xorb_word32ub"     => PrimXorw
 		  | "__xorb_word32b"      => not_impl name
-		  | "__shift_left_word8"              => PrimShiftLefti
-		  | "__shift_left_word31"             => not_impl name
-		  | "__shift_left_word32ub"           => PrimShiftLefti
+
+		  | "__shift_left_word31"             => PrimShiftLeftw31
+		  | "__shift_left_word32ub"           => PrimShiftLeftw
 		  | "__shift_left_word32b"            => not_impl name
-		  | "__shift_right_signed_word8"      => not_impl name
-		  | "__shift_right_signed_word31"     => not_impl name
-		  | "__shift_right_signed_word32ub"   => PrimShiftRightSignedi
+
+		  | "__shift_right_signed_word31"     => PrimShiftRightSignedw31
+		  | "__shift_right_signed_word32ub"   => PrimShiftRightSignedw
 		  | "__shift_right_signed_word32b"    => not_impl name
-		  | "__shift_right_unsigned_word8"    => not_impl name
-		  | "__shift_right_unsigned_word31"   => not_impl name
-		  | "__shift_right_unsigned_word32ub" => PrimShiftRightUnsignedi
+
+		  | "__shift_right_unsigned_word31"   => PrimShiftRightUnsignedw31
+		  | "__shift_right_unsigned_word32ub" => PrimShiftRightUnsignedw
 		  | "__shift_right_unsigned_word32b"  => not_impl name
 		   
-		  | "__int31_to_int32ub"   => not_impl name
 		  | "__int31_to_int32b"    => not_impl name
-		  | "__word31_to_word32ub" => not_impl name
-		  | "__word31_to_word32ub_X" => not_impl name
+		  | "__int31_to_int32ub"   => Primi31Toi
+		  | "__int32b_to_int31"   => not_impl name
+		  | "__int32ub_to_int31"   => PrimiToi31
+
 		  | "__word31_to_word32b"  => not_impl name
+		  | "__word31_to_word32ub" => Primw31Tow
 		  | "__word32b_to_word31"  => not_impl name
-		  | "__word32ub_to_word31" => not_impl name
+		  | "__word32ub_to_word31" => PrimwTow31
 
-		  | "__word8_to_word32ub"  => not_impl name
-		  | "__word8_to_word32ub_X" => not_impl name
-		  | "__word8_to_word31"    => not_impl name
-		  | "__word8_to_word31_X"  => not_impl name
-		  | "__word31_to_word8"    => not_impl name
-		  | "__word32ub_to_word8"  => not_impl name
-		  | "__word32b_to_word8"   => not_impl name
-
-		  | "__int32b_to_int31"    => not_impl name
-		  | "__int32ub_to_int31"   => not_impl name
+		  | "__word31_to_word32ub_X" => Primw31TowX
+		  | "__word31_to_word32b_X"  => not_impl name
 
 		  | "__word32b_to_int32b"  => not_impl name
-		  | "__word32ub_to_int32ub" => not_impl name
-		  | "__word31_to_int31"    => not_impl name
-		  | "__word32b_to_int31"   => not_impl name
+		  | "__word32b_to_int32b_X"  => not_impl name
+		  | "__int32b_to_word32b"    => not_impl name
+		  | "__word32ub_to_int32ub"    => PrimwToi
+		  | "__word32b_to_int31"    => not_impl name
+		  | "__int32b_to_word31"    => not_impl name
+		  | "__word32b_to_int31_X"    => not_impl name
 		   
 		  | "__fresh_exname"      => PrimFreshExname
 
