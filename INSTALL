@@ -17,10 +17,12 @@ Content
 
 0. Introduction
 ---------------
+
 This file describes how to install the ML Kit (from here on just the
 Kit), a compiler for the programming language Standard ML. If you
 intend to install the Kit on a RedHat Linux Box, consider using one of
-the RPM's available from the Kit web site.
+the RPM's available from the Kit web site. See the README file for
+information about installing the ML Kit on a FreeBSD/x86 platform.
 
 1. Installation Requirements
 ----------------------------

@@ -15,7 +15,7 @@
 int commandline_argc;     // Kam-backend (Interp.c) need access to update these variables
 char **commandline_argv;  // when discharging object file arguments.
 static int app_arg_index = 1; /* index for first argument to application. Set by parseArgs */
-static char exeName[100];
+// static char exeName[100];
 
 /*----------------------------------------*
  * Flags recognized by the runtime system *
@@ -28,7 +28,7 @@ double heap_to_live_ratio = HEAP_TO_LIVE_RATIO;
 #endif
 
 void printUsage(void) {
-  fprintf(stderr,"Usage: %s\n", exeName);
+  fprintf(stderr,"Usage: %s\n", commandline_argv[0]);
   fprintf(stderr,"      [-help, -h] \n");
 #ifdef ENABLE_GC
   fprintf(stderr,"      [-disable_gc | -verbose_gc | -report_gc] [-heap_to_live_ratio d] \n");
@@ -79,7 +79,7 @@ void parseCmdLineArgs(int argc, char *argv[]) {
   commandline_argv = argv;
 
 #if ( PROFILING || ENABLE_GC )
-  strcpy(exeName, (char *)argv[0]);
+  //  strcpy(exeName, (char *)argv[0]);
   match = 1;
   while ((--argc > 0) && match) {
     ++argv;    /* next parameter. */

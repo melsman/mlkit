@@ -1,5 +1,8 @@
 all: test_kam test_mlkit
 
+dangle:
+	echo '(unlimit stacksize; ../bin/kitbench -mlkit:-no_dangle -scratch -dangling_pointers_statistics: -mlkit -mlkit:-gc: -o dangle.html dangle.tst)' | tcsh -s
+
 smallbench:
 	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkit:-gc: -smlnj -mlton -o small.html small.tst)' | tcsh -s
 #	echo '(unlimit stacksize; ../bin/kitbench -mlkit -o small2.html small.tst)' | tcsh -s

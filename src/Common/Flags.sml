@@ -1142,6 +1142,13 @@ val interact = Menu.interact
 
 val SMLserver = ref false
 
+structure Statistics = 
+  struct
+    val no_dangling_pointers_changes = ref 0
+    val no_dangling_pointers_changes_total = ref 0
+    fun reset() = (no_dangling_pointers_changes := 0;
+		   no_dangling_pointers_changes_total := 0)
+  end
 end (* functor Flags *)  
    
   
