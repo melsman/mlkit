@@ -50,7 +50,7 @@ structure ScsData :> SCS_DATA =
     local
       fun mk_selectBoxFromDb_template sql g_fn add_opts fv v_opt =
 	let
-	  val opts = ( ScsError.wrapPanic (Db.list g_fn) sql ) @ add_opts
+	  val opts = add_opts @ ( ScsError.wrapPanic (Db.list g_fn) sql ) 
 	in
 	  case v_opt of
 	      NONE   => ScsWidget.select opts fv

@@ -157,6 +157,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val wrapQQ  : string formvar_fn -> (string * string) formvar_fn
     val wrapOpt : 'a formvar_fn -> (string -> 'a option)
     val wrapMaybe : 'a formvar_fn -> 'a formvar_fn
+    val wrapMaybeOpt : 'a formvar_fn -> 'a option formvar_fn 
     val wrapMaybe_nh : 'a -> 'a formvar_fn -> 'a formvar_fn 
     val wrapExn : 'a formvar_fn -> (string -> 'a)
     val wrapFail : 'a formvar_fn -> (string * string -> 'a)
@@ -244,6 +245,20 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	 (i,[]) => (Int.toString i,errs)
 	|(_,[e]) => ("",addErr(e,errs))
 	| _ => ScsError.panic `ScsFormVar.wrapIntAsString failed on ^fv`)
+
+    fun wrapMaybeOpt (f : 'a formvar_fn) = (
+      fn (fv,emsg,errs) => (
+        case Ns.Conn.formvarAll fv of
+	    [] => (NONE, errs) (* No formvar => don't report error *)
+	  | [v] => 
+	     (if trim v = "" then
+		(NONE, errs) (* Don't report error *)
+	      else let val (v,errs) = f(fv,emsg,errs) in (SOME v,errs) end
+	     )
+	  | _ => let val (v,errs) = f(fv,emsg,errs) in (SOME v,errs) end 
+		 (* Multiple formvars => report error *)
+      )
+    )
 
     fun wrapMaybe (f : 'a formvar_fn) =
       (fn (fv,emsg,errs) => 
@@ -896,27 +911,48 @@ structure ScsFormVar :> SCS_FORM_VAR =
 								Option.valOf (Int.fromString m),
 								Option.valOf (Int.fromString s))
 
+      val isoDatePat1 = "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" 
+      val isoDatePat2 = "([0-9][0-9][0-9][0-9])([0-9][0-9]?)([0-9][0-9]?)"
+
       fun chkDateIso v =
-	(case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
+	(case regExpExtract isoDatePat1 v of
 	   SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)
-	 | _ => (case regExpExtract "([0-9][0-9][0-9][0-9])([0-9][0-9]?)([0-9][0-9]?)" v of
+	 | _ => (case regExpExtract isoDatePat2 v of
 		   SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)
 		 | _ => false))
 	   handle _ => false      
+
+      val datePat1 = "([0-9][0-9]?)/([0-9][0-9]?)-([0-9][0-9][0-9][0-9])"
+      val datePat2 = "([0-9][0-9]?)-([0-9][0-9]?)-([0-9][0-9][0-9][0-9])"
+
       fun chkDate v =
-	(case regExpExtract "([0-9][0-9]?)/([0-9][0-9]?)-([0-9][0-9][0-9][0-9])" v of
+	(case regExpExtract datePat1 v of
 	   SOME [dd,mm,yyyy] => dateOk(dd,mm,yyyy)
-	 | _ => (case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
+	 | _ => ( case regExpExtract datePat2 v of
+	   	      SOME [dd,mm,yyyy] => dateOk(dd,mm,yyyy)
+		    | NONE 		=> chkDateIso v 
+		)
+(* 2004-01-09, knp: inserted chkDateIso v instead
+case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 		   SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)
-		 | _ => false))
-	   handle _ => false   
-      fun convDate v =
-	(case regExpExtract "([0-9][0-9]?)/([0-9][0-9]?)-([0-9][0-9][0-9][0-9])" v of
-	   SOME [dd,mm,yyyy] => genDate(dd,mm,yyyy)
-	 | _ => (case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
-		   SOME [yyyy,mm,dd] => genDate(dd,mm,yyyy)
-		 | _ => ScsError.panic `ScsFormVar.convDate failed on ^v`))
-	   handle _ => ScsError.panic `ScsFormVar.convDate failed on ^v`
+		 | _ => false)
+*)
+	)
+	handle _ => false   
+
+      fun convDate v = (case regExpExtract datePat1 v of
+	  SOME [dd,mm,yyyy] => genDate(dd,mm,yyyy)
+	| _		    => (case regExpExtract datePat2 v of
+	    SOME [dd,mm,yyyy] => genDate(dd,mm,yyyy)
+	  | _		      => (case regExpExtract isoDatePat1 v of
+	      SOME [yyyy,mm,dd] => genDate(dd,mm,yyyy)
+	    | _		        => ( 
+	      ScsError.panic `ScsFormVar.convDate failed on ^v`
+	    )
+	  )
+        )
+      )
+      handle _ => ScsError.panic `ScsFormVar.convDate failed on ^v`
 
       fun chkDbTimestamp v =
 	(case regExpExtract 
