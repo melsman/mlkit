@@ -1,4 +1,3 @@
-
 (*build.sml*)
 
 (* This file builds an ML Kit from a consult file and exports an image into
