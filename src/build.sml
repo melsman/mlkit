@@ -65,7 +65,7 @@ let
     case arch_os()
       of ("X86", "Linux") => true
        | ("HPPA", "HPUX") => true
-       | ("SUN", "OS4") => false
+       | ("SPARC", "Solaris") => true
        | _ => false
 
   fun resolve_backend () =

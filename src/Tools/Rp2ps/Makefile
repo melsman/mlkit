@@ -16,28 +16,21 @@ clean:
 	rm -f *.o core a.out *~ 
 
 depend:
-	makedepend -o.o $(CFILES)
+	mv Makefile Makefile.bak
+	(sed -n -e '1,/^### DO NOT DELETE THIS LINE/p' Makefile.bak;	 \
+         gcc -MM $(CFILES) | sed -e 's/\.o/-p.o/') > Makefile
+	rm Makefile.bak
 
-# DO NOT DELETE
-
-Rp2Ps.o: /usr/include/stdio.h /usr/include/sys/stdsyms.h /usr/include/time.h
-Rp2Ps.o: /usr/include/sys/time.h /usr/include/stdlib.h Flags.h Rp2Ps.h
-Rp2Ps.o: Types.h ProfileData.h Sample.h
-ProfileData.o: /usr/include/stdio.h /usr/include/sys/stdsyms.h
-ProfileData.o: /usr/include/time.h /usr/include/sys/time.h Flags.h Error.h
-ProfileData.o: Alloc.h Types.h ProfileData.h Graph.h Output.h Sample.h
-ProfileData.o: Rp2Ps.h
-Sample.o: Flags.h Error.h Sample.h Alloc.h Types.h Rp2Ps.h
-Sample.o: /usr/include/stdio.h /usr/include/sys/stdsyms.h
-Graph.o: /usr/include/stdio.h /usr/include/sys/stdsyms.h
-Graph.o: /usr/include/stdlib.h Rp2Ps.h Flags.h Types.h Error.h Output.h
-Graph.o: Alloc.h PostScript.h Curves.h
-Curves.o: Flags.h Curves.h Output.h /usr/include/stdio.h
-Curves.o: /usr/include/sys/stdsyms.h Rp2Ps.h Types.h
-Output.o: Output.h /usr/include/stdio.h /usr/include/sys/stdsyms.h Flags.h
-Output.o: Rp2Ps.h Types.h
-PostScript.o: PostScript.h Output.h /usr/include/stdio.h
-PostScript.o: /usr/include/sys/stdsyms.h Flags.h Error.h Rp2Ps.h Types.h
-Error.o: /usr/include/stdio.h /usr/include/sys/stdsyms.h Rp2Ps.h Flags.h
-Error.o: Types.h
-Alloc.o: /usr/include/stdlib.h Error.h Types.h
+### DO NOT DELETE THIS LINE
+Rp2Ps-p.o: Rp2Ps.c Flags.h Rp2Ps.h Types.h ProfileData.h Sample.h
+ProfileData-p.o: ProfileData.c Flags.h Error.h Alloc.h Types.h \
+ ProfileData.h Graph.h Output.h Sample.h Rp2Ps.h
+Sample-p.o: Sample.c Flags.h Error.h Sample.h Alloc.h Types.h Rp2Ps.h
+Graph-p.o: Graph.c Rp2Ps.h Flags.h Types.h Error.h Output.h Alloc.h \
+ PostScript.h Curves.h
+Curves-p.o: Curves.c Flags.h Curves.h Output.h Rp2Ps.h Types.h
+Output-p.o: Output.c Output.h Flags.h Rp2Ps.h Types.h
+PostScript-p.o: PostScript.c PostScript.h Output.h Flags.h Error.h \
+ Rp2Ps.h Types.h
+Error-p.o: Error.c Rp2Ps.h Flags.h Types.h
+Alloc-p.o: Alloc.c Error.h Types.h

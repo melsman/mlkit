@@ -10,7 +10,7 @@
 #if defined(hpux)
 typedef void (*SignalHandler)(__harg);  
 #elif defined(sun)
-typedef void (*SignalHandler)(void);
+typedef void (*SignalHandler)(int);  /* was void */
 #elif defined(linux) || defined(_WIN32)
 typedef void (*SignalHandler)(int);
 #endif
