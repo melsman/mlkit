@@ -26,3 +26,5 @@ select *
  where deleted_p = 'f';
 
 create index scs_persons_idx on scs_persons( full_name_lower );
+
+create index scs_persons_security_id_idx on scs_persons( lower(security_id) );
