@@ -19,14 +19,6 @@ signature SCS_APPROVAL =
 	approval rows from DB if they exist.*)
     val getAllApprovals : on_what_table * on_which_id -> approval_record list
 
-    (* [getAllApprovalsFromDbErr ((on_what_table,on_which_id), errs)] fetches 
-       all approval rows from DB given a (on_what_table,on_which_id) pair. 
-       Fails if the DB call and an error
-       message is appended to errs *)
-(*    val getAllApprovalsFromDbErr : 
-      (on_what_table * on_which_id) * ScsFormVar.errs ->
-        (approval_record list) * ScsFormVar.errs 2003-04-07, nh *)
-
     (* [is_approved_p (on_what_table,on_which_id,user_id) approvals] 
        returns true if user_id has approved on_what_table,on_which_id
        else false *)
@@ -83,23 +75,6 @@ structure ScsApproval :> SCS_APPROVAL =
         (Db.list f) approvals_sql
       end
 
-(*
-    fun getAllApprovalsFromDbErr ((on_what_table,on_which_id), errs) =
-      let 
-	val err_msg = ScsDict.s' [
-        (ScsLang.da, `Godkendelserne findes 
-	              desv&aelig;rre ikke i databasen. Dette er 
-		      en fejl, s&aring; henvend dig venligst hos 
-	     	      ^(help_link()).`),
-        (ScsLang.en, `The approvals does not exist in the 
-	    	      database. This is an error, please 
-		      contact ^(help_link()).`)]
-      in
-	case getAllApprovals(on_what_table,on_which_id) of
-	    SOME approvals => (approvals,errs)
-	  | NONE           => ([], ScsFormVar.addErr( err_msg, errs) )
-      end
-2003-04-07, nh *)
     fun is_approved_p ((on_what_table:string),(on_which_id:int),(user_id:int)) 
       (approvals:(approval_record list)) =
       let
