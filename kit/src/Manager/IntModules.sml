@@ -103,7 +103,13 @@ functor IntModules(structure Name : NAME
     fun print_basis B =
       PP.outputTree(print,ModuleEnvironments.B.layout B, 100)
 
-
+    (* For statistics *)
+    val functor_application_file = "/tmp/functor_apps.txt"
+    fun out_functor_application s =
+      let val os = TextIO.openAppend functor_application_file
+      in TextIO.output(os, s ^ "\n");
+	TextIO.closeOut os
+      end
 
     type IntBasis = ManagerObjects.IntBasis
      and topdec = TopdecGrammar.topdec
@@ -347,6 +353,7 @@ functor IntModules(structure Name : NAME
 		| NONE => 
 		 let val _ = print("[compiling body of functor " ^ FunId.pr_FunId funid ^ 
 				   " (from project " ^ ModuleEnvironments.absprjid_to_string absprjid ^ ") begin]\n")
+(*		     val _ = out_functor_application (FunId.pr_FunId funid)  (* for statistics *) *)
 		     val _ = chat "[recreating functor body begin...]"
 		     val strexp0 = body_blaster()
 		     val _ = chat "[recreating functor body end...]"
