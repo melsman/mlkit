@@ -1,5 +1,5 @@
 (* This file is auto-generated with Tools/GenOpcodes on *)
-(* Sun Oct 29 23:54:38 2000 *)
+(* Mon Oct 30 17:09:55 2000 *)
 signature OPCODES_KAM = 
   sig
     val ALLOC_N : int 
@@ -59,8 +59,6 @@ signature OPCODES_KAM =
     val RESET_REGION : int 
     val MAYBE_RESET_REGION : int 
     val RESET_REGION_IF_INF : int 
-    val FETCH_GLOBAL : int 
-    val STORE_GLOBAL : int 
     val FETCH_DATA : int 
     val STORE_DATA : int 
     val HALT : int 

@@ -137,9 +137,6 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | MaybeResetRegion
       | ResetRegionIfInf
 
-      | FetchGlobal of label
-      | StoreGlobal of label
-
       | FetchData of label
       | StoreData of label
 
@@ -311,9 +308,6 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | ResetRegion => "ResetRegion" :: acc
       | MaybeResetRegion => "MaybeResetRegion" :: acc
       | ResetRegionIfInf => "ResetRegionIfInf" :: acc
-
-      | FetchGlobal(lab) => "FetchGlobal(" :: (pp_lab lab) :: ")" :: acc
-      | StoreGlobal(lab) => "StoreGlobal(" :: (pp_lab lab) :: ")" :: acc
 
       | FetchData(lab) => "FetchData(" :: (pp_lab lab) :: ")" :: acc
       | StoreData(lab) => "StoreData(" :: (pp_lab lab) :: ")" :: acc
