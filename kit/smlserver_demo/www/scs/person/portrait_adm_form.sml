@@ -10,7 +10,13 @@ val search_box = SOME (UcsWidget.innerBox search_title (search_form))
 
 val (portrait_adm_boxes,name_opt) =
   case mode of
-    ScsPerson.PORTRAIT_ADM_HELP => ([],NONE)
+    ScsPerson.PORTRAIT_ADM_HELP => 
+      let
+	val help_box = SOME (UcsWidget.innerBox (ScsDict.s UcsDict.portrait_adm_help_dict) 
+			     ScsPerson.portrait_adm_help)
+      in
+	([help_box],NONE)
+      end
   | ScsPerson.PORTRAIT_ADM => 
       case person_id_opt of
 	NONE => ([],NONE)
@@ -112,10 +118,18 @@ val (portrait_adm_boxes,name_opt) =
 	     SOME (#name per))
           end
 
-val faneside = ScsPerson.portraitFaneside mode (search_box::portrait_adm_boxes)
+val (adm_faneside,help_faneside) = 
+  case mode of
+    ScsPerson.PORTRAIT_ADM_HELP => 
+      (ScsPerson.portraitFaneside ScsPerson.PORTRAIT_ADM person_id_opt [],
+       ScsPerson.portraitFaneside mode person_id_opt (portrait_adm_boxes))
+  | ScsPerson.PORTRAIT_ADM => 
+      (ScsPerson.portraitFaneside mode person_id_opt (search_box::portrait_adm_boxes),
+       ScsPerson.portraitFaneside ScsPerson.PORTRAIT_ADM_HELP person_id_opt [])
 
 val (body,nb) = 
-  (ScsPerson.portraitFaneblad mode [faneside],[UcsPage.ucs_nb(),
-					       ScsPerson.portrait_adm_nb name_opt])
+  (ScsPerson.portraitFaneblad mode [adm_faneside,help_faneside],
+   [UcsPage.ucs_nb(),
+    ScsPerson.portrait_adm_nb name_opt])
 
 val _ = UcsPvt.returnPgCache false (UcsPvt.service_name user_id) (UcsPvt.leftList()) UcsPvt.rightList nb body
