@@ -1,10 +1,12 @@
 Possible things to do
 ---------------------
-nh 2002-11-13 : problems with explicit typ-vars. 
 
-   type t = 'a option
-
-raises exception but it should return an error message instead.
+mael 2003-03-05: better pretty-printing of type variables. In
+particular, types with more than 20 (or so) type variables in them are
+not nicely pretty-printed in error messages and signatures (e.g., '}
+should instead be 'aa). Also, it would be great if we could reuse the
+name of the type variable as it occurs in the source program (e.g.,
+write 'kind instead of 'aa).
 
 mael 2003-02-04: nicer pretty-printing of signatures (mlkit
 -sig). Particularly, parameterized type constructors have an extra
@@ -12,6 +14,10 @@ space.
 
 mael 2003-02-04: Report inexhaustive matches - this feature is
 apparently disabled! hmm... Redundant matches are reported.
+
+nh 2002-11-13 : problems with explicit typ-vars. The declaration
+``type t = 'a option'' raises exception but it should return an error
+message instead.
 
 mael 2001-11-27: curry-compression: turn
 

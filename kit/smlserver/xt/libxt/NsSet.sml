@@ -49,7 +49,7 @@ structure NsSet : NS_SET =
       in loop (size s - 1, b)
       end
     fun getAll (s:set, key:string): string list = 
-      foldl (fn ((k,v),a) => if k = key then v :: a else a) nil s
+      foldr (fn ((k,v),a) => if k = key then v :: a else a) nil s
     fun list s = foldl (op ::) nil s
     fun filter p s = foldl (fn (pair,a) => if p pair then pair :: a else a) nil s
   end

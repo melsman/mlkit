@@ -30,11 +30,20 @@ signature XHTML =
 	type formclosed
 
 	(* The XHTML DTD distinguishes between block, inline, and flow
-	  elements (block or inline).  This distinction is modelled
-	  using a phantom type parameter 'bi in the type for
-	  elements. *)
-	type inline 
-	type block   
+	 elements (block or inline).  This distinction is modelled
+	 using a phantom type parameter 'kind in the type for
+	 elements. The 'kind variable is used to model the following
+	 partial order:
+	 
+	     li dl td tr inline flow    block flow
+	       \ \ \  |    |               /
+	        \ | | |  'a flow ---------'
+	         \| | / ___/
+	         'kind 
+	 *)
+
+	type 'a flow and block and inline    (* 'a flow, inline flow, and block flow *)
+	type li and dl and td and tr
 
 	type nil
 	type ('n,'t) fname
@@ -42,16 +51,16 @@ signature XHTML =
 	type 'a obj = 'a Obj.obj
 
 	(* Standard elements *)
-	type ('x,'y,'a,'f,'p,'ib) elt
+	type ('x,'y,'a,'f,'p,'k) elt
 
 	type ('x,'y,'a,'f,'p) inl2inl = 
-	    ('x,'y,'a,'f,'p,inline) elt -> ('x,'y,'a,'f,'p,inline) elt
+	    ('x,'y,'a,'f,'p,inline flow) elt -> ('x,'y,'a,'f,'p,inline flow) elt
 
 	type ('x,'y,'a,'f,'p) inl2inlpre = 
-	    ('x,'y,'a,'f,'p,inline) elt -> ('x,'y,'a,'f,preclosed,inline) elt
+	    ('x,'y,'a,'f,'p,inline flow) elt -> ('x,'y,'a,'f,preclosed,inline flow) elt
 
 	type ('x,'y,'a,'f,'p) inl2blk = 
-	    ('x,'y,'a,'f,'p,inline) elt -> ('x,'y,'a,'f,'p,block) elt
+	    ('x,'y,'a,'f,'p,inline flow) elt -> ('x,'y,'a,'f,'p,block flow) elt
 
 	val em      : ('x,'y,'a,'f,'p) inl2inl            (* emphasis *)
 	val strong  : ('x,'y,'a,'f,'p) inl2inl            (* strong emphasis *)
@@ -71,8 +80,8 @@ signature XHTML =
 	val big     : ('x,'y,'a,'f,'p) inl2inlpre         (* bigger *)
 	val small   : ('x,'y,'a,'f,'p) inl2inlpre         (* smaller *)
 
-	val $       : string -> ('x,'x,'a,'f,'p,inline) elt
-	val br      : unit   -> ('x,'x,'a,'f,'p,inline) elt
+	val $       : string -> ('x,'x,'a,'f,'p,inline flow) elt
+	val br      : unit   -> ('x,'x,'a,'f,'p,inline flow) elt
 
 	val p       : ('x,'y,'a,'f,'p) inl2blk
 	val h1      : ('x,'y,'a,'f,'p) inl2blk            (* most important *)
@@ -82,86 +91,94 @@ signature XHTML =
 	val h5      : ('x,'y,'a,'f,'p) inl2blk
 	val h6      : ('x,'y,'a,'f,'p) inl2blk            (* least important *)
 
-	val div     : ('x,'y,'a,'f,'p,'bi) elt -> ('x,'y,'a,'f,'p,block) elt
+	val div     : ('x,'y,'a,'f,'p,'bi flow) elt -> ('x,'y,'a,'f,'p,block flow) elt
 
 	val address : ('x,'y,'a,'f,'p) inl2blk
-	val blockquote : ('x,'y,'a,'f,'p,block) elt -> ('x,'y,'a,'f,'p,block) elt
-	val pre     : ('x,'y,'a,'f,inpre,inline) elt       (* disallow big, small, *)
-	              -> ('x,'y,'a,'f,preclosed,block) elt (*   sub, sup, and img. *)
+	val blockquote : ('x,'y,'a,'f,'p,block flow) elt -> ('x,'y,'a,'f,'p,block flow) elt
+	val pre     : ('x,'y,'a,'f,inpre,inline flow) elt       (* disallow big, small, *)
+	              -> ('x,'y,'a,'f,preclosed,block flow) elt (*   sub, sup, and img. *)
 											    
-	val hr      : unit -> ('x,'x,'a,'f,'p,block) elt
-	val &&      : ('x,'y,'a,'f,'p,'bi) elt * ('y,'z,'a,'f,'p,'bi) elt 
-                      -> ('x,'z,'a,'f,'p,'bi) elt
+	val hr      : unit -> ('x,'x,'a,'f,'p,block flow) elt
+	val &&      : ('x,'y,'a,'f,'p,'k) elt * ('y,'z,'a,'f,'p,'k) elt 
+                      -> ('x,'z,'a,'f,'p,'k) elt
+
+(*unsafe with 'k=li, e.g., because ul requires at least one li element
+	val flatten : ('x,'x,'a,'f,'p,'k) elt list -> ('x,'x,'a,'f,'p,'k) elt
+*)
+	val flatten : ('x,'y,'a,'f,'p,'k) elt * ('y,'y,'a,'f,'p,'k) elt list 
+                      -> ('x,'y,'a,'f,'p,'k) elt
 
 	(* Lists *)
-	type li and dl       (* list kinds *)
-	type ('x,'y,'a,'f,'p,'k) lis  (*'k ranges over list kinds *)
-	val li      : ('x,'y,'a,'f,'p,'bi) elt -> ('x,'y,'a,'f,'p,li) lis
-	val dt      : ('x,'y,'a,'f,'p,inline) elt -> ('x,'y,'a,'f,'p,dl) lis
-	val dd      : ('x,'y,'a,'f,'p,'bi) elt -> ('x,'y,'a,'f,'p,dl) lis
-	val ++      : ('x,'y,'a,'f,'p,'k) lis * ('y,'z,'a,'f,'p,'k) lis 
-                      -> ('x,'z,'a,'f,'p,'k) lis
-	val ol      : ('x,'y,'a,'f,'p,li) lis -> ('x,'y,'a,'f,'p,block) elt
-	val ul      : ('x,'y,'a,'f,'p,li) lis -> ('x,'y,'a,'f,'p,block) elt
-	val dl      : ('x,'y,'a,'f,'p,dl) lis -> ('x,'y,'a,'f,'p,block) elt
+	val li      : ('x,'y,'a,'f,'p,'bi flow) elt -> ('x,'y,'a,'f,'p,li) elt
+	val dt      : ('x,'y,'a,'f,'p,inline flow) elt -> ('x,'y,'a,'f,'p,dl) elt
+	val dd      : ('x,'y,'a,'f,'p,'bi flow) elt -> ('x,'y,'a,'f,'p,dl) elt
+	val ol      : ('x,'y,'a,'f,'p,li) elt -> ('x,'y,'a,'f,'p,block flow) elt
+	val ul      : ('x,'y,'a,'f,'p,li) elt -> ('x,'y,'a,'f,'p,block flow) elt
+	val dl      : ('x,'y,'a,'f,'p,dl) elt -> ('x,'y,'a,'f,'p,block flow) elt
 
 	(* Images *)
-	val img     : {src:string,alt:string} -> ('x,'x,'a,'f,preclosed,inline) elt
+	val img     : {src:string,alt:string} -> ('x,'x,'a,'f,preclosed,inline flow) elt
 	val imga    : ('aa, 'b, A.width,'c, A.height,'d, na,na, 
 		       na,na, na,na, na,na) A.attr
-	              -> {src:string, alt:string} -> ('x,'x,'a,'f,preclosed,inline) elt
+	              -> {src:string, alt:string} -> ('x,'x,'a,'f,preclosed,inline flow) elt
 
 	(* Tables *)
-	type td and tr  (* additional list kinds *)
-	val td      : ('x,'y,'a,'f,'p,'bi) elt -> ('x,'y,'a,'f,'p,td) lis
+	val td      : ('x,'y,'a,'f,'p,'bi flow) elt -> ('x,'y,'a,'f,'p,td) elt
 	val tda     : ('aa, 'b, A.align,'c, A.valign,'d, A.rowspan,'e, 
 		       A.colspan,'ff, na,na, na,na) A.attr
-	              -> ('x,'y,'a,'f,'p,'bi) elt -> ('x,'y,'a,'f,'p,td) lis
+	              -> ('x,'y,'a,'f,'p,'bi flow) elt -> ('x,'y,'a,'f,'p,td) elt
 
-	val th      : ('x,'y,'a,'f,'p,'bi) elt -> ('x,'y,'a,'f,'p,td) lis
+	val th      : ('x,'y,'a,'f,'p,'bi flow) elt -> ('x,'y,'a,'f,'p,td) elt
 	val tha     : ('aa, 'b, A.align,'c, A.valign,'d, A.rowspan,'e, 
 		       A.colspan,'ff, na,na, na,na) A.attr
-	              -> ('x,'y,'a,'f,'p,'bi) elt -> ('x,'y,'a,'f,'p,td) lis
-	val tr      : ('x,'y,'a,'f,'p,td) lis -> ('x,'y,'a,'f,'p,tr) lis
+	              -> ('x,'y,'a,'f,'p,'bi flow) elt -> ('x,'y,'a,'f,'p,td) elt
+	val tr      : ('x,'y,'a,'f,'p,td) elt -> ('x,'y,'a,'f,'p,tr) elt
 
 	val tra     : ('aa, 'b, A.align,'c, A.valign,'d, na,na, na,na, 
-		       na,na, na,na) A.attr  -> ('x,'y,'a,'f,'p,td) lis 
-                       -> ('x,'y,'a,'f,'p,tr) lis
-	val table   : ('x,'y,'a,'f,'p,tr) lis -> ('x,'y,'a,'f,'p,block) elt
+		       na,na, na,na) A.attr  -> ('x,'y,'a,'f,'p,td) elt
+                       -> ('x,'y,'a,'f,'p,tr) elt
+	val table   : ('x,'y,'a,'f,'p,tr) elt -> ('x,'y,'a,'f,'p,block flow) elt
 
 	val tablea  : ('aa, 'b, A.width,'c, A.border,'d, A.cellspacing,'e, 
 		       A.cellpadding,'ff, A.frame,'g, A.rules,'h) A.attr
-	              -> ('x,'y,'a,'f,'p,tr) lis -> ('x,'y,'a,'f,'p,block) elt
+	              -> ('x,'y,'a,'f,'p,tr) elt -> ('x,'y,'a,'f,'p,block flow) elt
 
 	(* Forms *)
-	type ('x,'y,'a,'p,'bi) felt = ('x,'y,'a,inform,'p,'bi) elt
-	type ('x,'a,'p,'bi) form = ('x,nil,'a,'p,'bi) felt
+	type ('x,'y,'a,'p,'k) felt = ('x,'y,'a,inform,'p,'k) elt
+	type ('x,'a,'p,'k) form = ('x,nil,'a,'p,'k) felt
 
-	val swap    : ('n1->'n2->'x,'y,'a,'p,'bi) felt 
-                      -> ('n2->'n1->'x,'y,'a,'p,'bi) felt
+	val swap    : ('n1->'n2->'x,'y,'a,'p,'k) felt 
+                      -> ('n2->'n1->'x,'y,'a,'p,'k) felt
 
 	(* Input elements *)
-	val inputText      : ('n,'t)fname -> 't obj option -> ('n->'x,'x,'a,'p,inline) felt
-	val inputPassword  : ('n,'t)fname -> 't obj option -> ('n->'x,'x,'a,'p,inline) felt
-	val inputRadio     : ('n,'t)fname -> 't obj -> ('n rad->'x,'x,'a,'p,inline) felt
-	val inputRadio'    : ('n,'t)fname -> 't obj -> ('n rad->'x,'n rad->'x,'a,'p,inline) felt
-	val radDrop        : ('n rad->'x,'y,'a,'p,inline) felt -> ('n->'x,'y,'a,'p,inline) felt
- 	val inputHidden    : ('n,'t)fname -> 't obj -> ('n->'x,'y,'a,'p,inline) felt
- 	val inputSubmit    : string -> ('x,'x,'a,'p,inline) felt
- 	val inputReset     : string -> ('x,'x,'a,'p,inline) felt
+	val inputText      : ('n,'t)fname -> 't obj option -> ('n->'x,'x,'a,'p,inline flow) felt
+	val inputPassword  : ('n,'t)fname -> 't obj option -> ('n->'x,'x,'a,'p,inline flow) felt
+
+	val inputRadio     : ('n,'t)fname -> 't obj -> ('n rad->'x,'x,'a,'p,inline flow) felt
+	val inputRadio'    : ('n,'t)fname -> 't obj -> ('n rad->'x,'n rad->'x,'a,'p,inline flow) felt
+	val radioDrop      : ('n rad->'x,'y,'a,'p,'k) felt -> ('n->'x,'y,'a,'p,'k) felt
+
+	type 'a checkbox
+	val inputCheckbox  : ('n,'t list)fname -> 't obj -> ('n checkbox->'x,'x,'a,'p,inline flow) felt
+	val inputCheckbox' : ('n,'t list)fname -> 't obj -> ('n checkbox->'x,'n checkbox->'x,'a,'p,inline flow) felt
+	val checkboxDrop   : ('n checkbox->'x,'y,'a,'p,'k) felt -> ('n->'x,'y,'a,'p,'k) felt
+
+ 	val inputHidden    : ('n,'t)fname -> 't obj -> ('n->'x,'x,'a,'p,inline flow) felt
+ 	val inputSubmit    : string -> ('x,'x,'a,'p,inline flow) felt
+ 	val inputReset     : string -> ('x,'x,'a,'p,inline flow) felt
 
 	val textarea       : ('n,'t)fname -> {rows:int,cols:int} -> 't obj option 
-                             -> ('n->'x,'x,'a,'p,inline) felt
+                             -> ('n->'x,'x,'a,'p,inline flow) felt
 
 	type 't select_option = {text: string, value: 't obj, 
 				 selected: bool, disabled: bool}
 
 	val option         : string * 't obj -> 't select_option
 	val select         : ('n,'t)fname -> 't select_option list 
-                             -> ('n->'x,'x,'a,'p,inline) felt
+                             -> ('n->'x,'x,'a,'p,inline flow) felt
 
 	(* Validate link *)
-	val validLink : unit -> ('x,'x,'a,'f,'p,inline) elt
+	val validLink : unit -> ('x,'x,'a,'f,'p,inline flow) elt
 
 	(* Head elements *)
 	type helt
@@ -175,7 +192,7 @@ signature XHTML =
 
 	(* HTML documents *)	
 	type body
-	val body    : (nil,nil,aclosed,formclosed,preclosed,block) elt -> body
+	val body    : (nil,nil,aclosed,formclosed,preclosed,block flow) elt -> body
 	type html
 	val html    : head * body -> html
 
@@ -193,12 +210,12 @@ signature XHTML_EXTRA =
 	structure Unsafe :
 	    sig
 		val form  : {action:string, method:string} 
-                    -> ('x,'a,'p,block)form 
-                    -> (nil,nil,'a,formclosed,'p,block) elt
+                    -> ('x,'a,'p,block flow)form 
+                    -> (nil,nil,'a,formclosed,'p,block flow) elt
 
 		val ahref : {src:string}
-                    -> ('x,'y,ina,'f,'p,inline)elt 
-                    -> ('x,'y,aclosed,'f,'p,inline)elt 
+                    -> ('x,'y,ina,'f,'p,inline flow)elt 
+                    -> ('x,'y,aclosed,'f,'p,inline flow)elt 
 
 		val toString   : html -> string
 		val urlencode  : string -> string

@@ -1,6 +1,6 @@
 functor temp () : SCRIPTLET =
     struct
-	open Scripts infix && ++
+	open Scripts infix &&
 
 	val response = 
 	    Page.page "Temperature Conversion" 

@@ -1,6 +1,6 @@
 functor temp2 (F : sig val tempC : int Obj.obj end) : SCRIPTLET =
     struct
-	open Scripts infix && ++
+	open Scripts infix &&
 
         fun calculate c =
 	    $(Int.toString c ^ " degrees Celcius equals " 

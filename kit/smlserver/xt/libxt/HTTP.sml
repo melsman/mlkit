@@ -11,7 +11,7 @@ signature HTTP_EXTRA =
         structure Unsafe :
 	    sig		
 		val toString : response -> string
-		val redirect : string -> string option -> response
+		val redirect : string -> SMLserver.Cookie.cookiedata list -> response
 	    end
     end
 

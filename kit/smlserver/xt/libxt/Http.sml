@@ -12,20 +12,11 @@ structure Http : HTTP_EXTRA =
 	    struct
 		fun toString x = x
 
-		fun redirect link cookieOpt =
-		    case cookieOpt of
-			SOME c =>
-			    ("HTTP/1.0 302 Found\n\
-			     \Location: " ^ link ^ "\n\
-			     \MIME-Version: 1.0\n" ^ c ^ "\n\
-			     \\n\
-			     \You should not be seeing this!")
-		      | NONE => 
-			     ("HTTP/1.0 302 Found\n\
-			      \Location: " ^ link ^ "\n\
-			      \MIME-Version: 1.0\n\
-			      \\n\
-			      \\n\
-			      \You should not be seeing this!")
+		fun redirect link cookies =
+		    ("HTTP/1.0 302 Found\n\
+		     \Location: " ^ link ^ "\n\
+		     \MIME-Version: 1.0\n" ^ SMLserver.Cookie.setCookies cookies ^ "\n\
+		     \\n\
+		     \You should not be seeing this!")
 	    end
     end
