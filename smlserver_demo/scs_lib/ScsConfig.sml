@@ -17,6 +17,9 @@ signature SCS_CONFIG =
     val scs_debug_p           : unit -> string
     val scs_email_when_debug  : unit -> string
     val scs_pdflatex          : unit -> string
+    val scs_identify          : unit -> string
+    val scs_convert           : unit -> string
+    val scs_cp                : unit -> string
 
     (* [commaListContains s key] returns true if key is in the comma
         separated string s. Match is case insensitive. *)
@@ -43,6 +46,9 @@ structure ScsConfig :> SCS_CONFIG =
       fun scs_debug_p() = getInfo "scs_debug_p"
       fun scs_email_when_debug() = getInfo "scs_email_when_debug"
       fun scs_pdflatex() = getInfo "scs_pdflatex"
+      fun scs_identify() = getInfo "scs_identify"
+      fun scs_convert() = getInfo "scs_convert"
+      fun scs_cp() = getInfo "scs_cp"
     end
 
     fun commaListContains s key =

@@ -27,6 +27,14 @@ signature SCS_FILE =
        depending on its size. *) 
     val ppFilesize : int -> string
 
+    (* [systemCmd cmd] executes cmd and pipes the result into an
+        temporary file. The content of that file is then read and
+        returned. Raises Fail on error. *)
+    val systemCmd : string -> string
+
+    (* [cp source_file target_file] copies source_file into
+        target_file. Raises Fail on error. *)
+    val cp : string -> string -> unit
   end
 
 structure ScsFile :> SCS_FILE =
@@ -103,5 +111,35 @@ structure ScsFile :> SCS_FILE =
 		  end
 	      end
 	  end
+      end
+
+    fun systemCmd cmd =
+      let
+	val dir = ScsConfig.scs_tmp()
+	val res_tmp_file = dir ^ "/" ^ (uniqueFile dir)
+	val cmd = cmd ^ " > " ^ res_tmp_file
+      in
+	if Process.system cmd = Process.success then
+	  let
+	    val is = TextIO.openIn res_tmp_file
+	    val res = TextIO.inputAll is
+	    val _ = TextIO.closeIn is
+	    val _ = FileSys.remove res_tmp_file
+	  in
+	    res
+	  end
+	else
+	  raise Fail (Quot.toString `ScsFile.systemCmd: Can't execute system command: ^cmd`)
+      end
+    handle _ => raise Fail (Quot.toString `ScsFile.systemCmd: Can't execute system command: ^cmd`)
+
+    fun cp source_file target_file =
+      let
+	val cmd = Quot.toString `^(ScsConfig.scs_cp()) ^(source_file) ^(target_file)`
+      in
+	if Process.system cmd = Process.success then
+	  ()
+	else
+	  raise Fail (Quot.toString `ScsFile.cp: can't copy file ^(source_file) into ^(target_file)`)
       end
   end

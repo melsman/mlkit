@@ -7,6 +7,7 @@ signature SCS_PERSON =
       first_names 	  : string,
       last_name		  : string,
       name 		  : string,
+      norm_name           : string,
       email		  : string,
       url		  : string,
       cpr                 : string,
@@ -31,19 +32,26 @@ signature SCS_PERSON =
 
     datatype portrait_type = original | thumb_fixed_height | thumb_fixed_width
     type portrait_record =
-      { file_id           : int,
-        party_id          : int,
-	portrait_type_vid : int,
-        portrait_type_val : portrait_type,
-	filename          : string,
-	url               : string,
-	width             : int,
-	height            : int,
-	bytes             : int,
-	official_p        : bool }
-
+      { file_id             : int,
+        party_id            : int,
+	portrait_type_vid   : int,
+        portrait_type_val   : portrait_type,
+	filename            : string,
+	url                 : string,
+	width               : int,
+	height              : int,
+	bytes               : int,
+	official_p          : bool,
+	person_name         : string,
+	may_show_portrait_p : bool}
+      
+    val portrait_types_enum_name : string
     val portrait_type_from_DB : string -> portrait_type option
     val portrait_type_to_DB   : portrait_type -> string
+
+    (* Default portraits *)
+    val empty_portrait_thumbnail : portrait_record
+    val empty_portrait_large : portrait_record
 
     (* [getPortrait file_id] returns the portrait represented by file_id. *)
     val getPortrait : int -> portrait_record option
@@ -51,6 +59,31 @@ signature SCS_PERSON =
     (* [getPortraits user_id] returns a list of portraits uploaded
         for this user. *)
     val getPortraits : int -> portrait_record list
+
+    (* [getPicture pic_type official_p portraits] returns a picture of
+       type pic_type that is official or non official depending on
+       official_p if exists in the list portraits. *)
+    val getPicture : portrait_type -> bool -> portrait_record list -> portrait_record option
+
+    (* [delPortrait db pic] deletes picture pic from
+        scs_portraits. *)
+    val delPortrait : Db.Handle.db -> portrait_record -> unit
+
+    (* [insPortrait db pic] inserts pic in scs_portraits. *)
+    val insPortrait : Db.Handle.db -> portrait_record -> unit
+
+    (* [mayReturnPortrait_p user_id file_id adm_p] returns true if portrait
+       represented by file_id may be returned:
+
+         * may_show_portrait_p is true
+         * logged in user_id = person_id
+         * adm_p is true. *)
+    val mayReturnPortrait_p : int -> int -> bool -> bool
+
+      (* [genPortraitHtml thumb large] returns HTML for showing a
+          portrait as a thumbnail and when clicked opens a larger
+          portrait. *)
+    val genPortraitHtml : portrait_record -> portrait_record -> string
 
     (* [portraitAsHtml (user_id,per:person_record,official_p,adm_p)]
        returns HTML for a portrait. user_id is the logged in user. per
@@ -67,6 +100,27 @@ signature SCS_PERSON =
           2 non official picture (if official_p = false)
           3 official picture *)
     val portraitAsHtml : int * person_record * bool * bool -> string
+
+    (* [upload_portrait_label] is the root folder in the Scs File Storage
+        system where portraits are uploaded. *)
+    val upload_root_label : string
+  
+    (* [max_height] is the maximum height of original picture. If the
+        uploaded picture is larger, then it is scaled down. *)
+    val max_height   : int
+
+    (* [thumb_height] is the height of a thumbnail. *)
+    val thumb_height : int
+
+    (* [uploadPortraitPriv (user_id, per)] returns the priviledge that
+        user_id has on uploading pictures to person per. *)
+    val uploadPortraitPriv : int * person_record -> ScsFileStorage.priv
+
+    (* [getOrCreateUploadFolderId db prj] returns an id on the folder
+        in the file storage area where uploaded portraits to this person
+        are stored. This function access and updates the database in
+        case no previous folder path and name have been calculated. *)
+    val getOrCreateUploadFolderId : Db.Handle.db * person_record -> int
 
     (* [getPerson user_id] fetches a person from the database *)
     val getPerson : int -> person_record option
@@ -170,6 +224,7 @@ structure ScsPerson :> SCS_PERSON =
       first_names 	  : string,
       last_name		  : string,
       name 		  : string,
+      norm_name           : string,
       email		  : string,
       url		  : string,
       cpr                 : string,
@@ -194,17 +249,20 @@ structure ScsPerson :> SCS_PERSON =
 
     datatype portrait_type = original | thumb_fixed_height | thumb_fixed_width
     type portrait_record =
-      { file_id           : int,
-        party_id          : int,
-	portrait_type_vid : int,
-        portrait_type_val : portrait_type,
-	filename          : string,
-        url               : string,
-	width             : int,
-	height            : int,
-	bytes             : int,
-	official_p        : bool }
+      { file_id             : int,
+        party_id            : int,
+	portrait_type_vid   : int,
+        portrait_type_val   : portrait_type,
+	filename            : string,
+        url                 : string,
+	width               : int,
+	height              : int,
+	bytes               : int,
+	official_p          : bool,
+	person_name         : string,
+        may_show_portrait_p : bool}
 
+    val portrait_types_enum_name = "scs_portrait_types"
     fun portrait_type_from_DB "orig" = SOME original
       | portrait_type_from_DB "thumb_fixed_height" = SOME thumb_fixed_height
       | portrait_type_from_DB "thumb_fixed_width" = SOME thumb_fixed_width
@@ -233,66 +291,125 @@ structure ScsPerson :> SCS_PERSON =
 	   width = (ScsError.valOf o Int.fromString) (g "width"),
 	   height = (ScsError.valOf o Int.fromString) (g "height"),
 	   bytes = (ScsError.valOf o Int.fromString) (g "bytes"),
-	   official_p = (ScsError.valOf o Db.toBool) (g "official_p")}
+	   official_p = (ScsError.valOf o Db.toBool) (g "official_p"),
+	   person_name = g "person_name",
+	   may_show_portrait_p = (ScsError.valOf o Db.toBool) (g "may_show_portrait_p")}
 	end
       fun portraitSQL from_wh = 
 	` select p.file_id,
                  p.party_id,
+		 scs_person.name(p.party_id) as person_name,
                  p.portrait_type_vid,
                  scs_enumeration.getVal(p.portrait_type_vid) as portrait_type_val,
-		 fs.name,
+		 fs.name as filename,
                  p.width,
                  p.height,
                  p.bytes,
-                 p.official_p
+                 p.official_p,
+                 party.may_show_portrait_p
 	   ` ^^ from_wh
     in
       fun getPortrait file_id =
-	SOME (Db.oneRow' f (portraitSQL ` from scs_portraits p, scs_fs_files fs
+	SOME (Db.oneRow' f (portraitSQL ` from scs_portraits p, scs_fs_files fs, scs_parties party
 		                         where p.file_id = '^(Int.toString file_id)'
-                                           and p.file_id = fs.file_id `))
+                                           and p.file_id = fs.file_id 
+                                           and p.party_id = party.party_id`))
 	handle _ => NONE
       fun getPortraits user_id =
-	ScsError.wrapPanic (Db.list f) (portraitSQL ` from scs_portraits p, scs_fs_files fs
+	ScsError.wrapPanic (Db.list f) (portraitSQL ` from scs_portraits p, scs_fs_files fs, 
+					                   scs_parties party
                                                      where p.party_id = '^(Int.toString user_id)'
-                                                       and p.file_id = fs.file_id`)
+                                                       and p.file_id = fs.file_id
+                                                       and p.party_id = party.party_id`)
     end
 
-    val empty_portrait_thumbnail = 
-      { width = 78,
+    val empty_portrait_thumbnail : portrait_record = 
+      { file_id = 0,
+        party_id = 0,
+	portrait_type_vid = 0,
+	portrait_type_val = thumb_fixed_height,
+	filename = "empty_portrait_thumbnail.jpg",
+	url = download_dir ^ "/empty_portrait_thumbnail.jpg",
+	width = 78,
         height = 100,
 	bytes = 2841,
-	file = download_dir ^ "/empty_portrait_thumbnail.jpg"}
-    val empty_portrait_large =
-      { width = 78,
+	official_p = false,
+	person_name = "-",
+	may_show_portrait_p = true}
+    val empty_portrait_large : portrait_record =
+      { file_id = 0,
+        party_id = 0,
+	portrait_type_vid = 0,
+	portrait_type_val = original,
+	filename = "empty_portrait_large.jpg",
+	url = download_dir ^ "/empty_portrait_large.jpg",
+	width = 78,
         height = 100,
 	bytes = 2841,
-	file = download_dir ^ "/empty_portrait_large.jpg"}
+	official_p = false,
+	person_name = "-",
+	may_show_portrait_p = true}
+
+    fun getPicture pic_type official_p (portraits : portrait_record list) = 
+      List.find (fn pic => #portrait_type_val pic = pic_type andalso 
+		 #official_p pic = official_p) portraits
+
+    fun delPortrait db (pic : portrait_record) =
+      let
+	val del_sql = `delete from scs_portraits
+                        where file_id = '^(Int.toString (#file_id pic))'`
+      in
+	ScsError.wrapPanic
+	(Db.Handle.dmlDb db) del_sql
+      end	
+
+    fun insPortrait db (pic : portrait_record) =
+      let
+	val ins_sql = `insert into scs_portraits
+	                 (file_id,party_id,portrait_type_vid,width,height,bytes,official_p)
+                       values
+		         ('^(Int.toString (#file_id pic))','^(Int.toString (#party_id pic))',
+			  scs_enumeration.getVID(^(Db.qqq portrait_types_enum_name),
+						 '^(portrait_type_to_DB (#portrait_type_val pic))'),
+                          '^(Int.toString (#width pic))', '^(Int.toString (#height pic))',
+			  '^(Int.toString (#bytes pic))', '^(Db.fromBool (#official_p pic))')`
+      in
+	ScsError.wrapPanic
+	(Db.Handle.dmlDb db) ins_sql
+      end
+
+
+    (* TODO: add cache that must be reset when may_show_portrait_p is updated!!! *)
+    fun mayReturnPortrait_p user_id file_id adm_p = 
+      case getPortrait file_id of
+	SOME pic => 
+	  #may_show_portrait_p pic orelse
+	  user_id = #party_id pic orelse
+	  adm_p
+      | NONE => false (* No picture so do not return it. *)
+
+    fun genPortraitHtml (thumb:portrait_record) (large:portrait_record) = Quot.toString
+	  `<a href="^(#url large)">
+	  <img src="^(#url thumb)" width="^(Int.toString (#width thumb))" 
+           height="^(Int.toString (#height thumb))" 
+	  align="right" alt="^(#person_name thumb)"></a>`
     fun portraitAsHtml (user_id,per:person_record,official_p,adm_p) =
       let
-	fun html (url_thumb,w,h) url_large = Quot.toString
-	  `<a href="^(url_large)">
-	  <img src="^(url_thumb)" width="^(Int.toString w)" height="^(Int.toString h)" 
-	  align="right" alt="^(#name per)"></a>`
-	val default_html = 
-	  html (#file empty_portrait_thumbnail,#width empty_portrait_thumbnail,#height empty_portrait_thumbnail)
-	  (#file empty_portrait_large)
+	val default_html = genPortraitHtml empty_portrait_thumbnail empty_portrait_large
 	val use_default_p =
 	  #may_show_portrait_p per = false andalso
 	  user_id <> #person_id per andalso not adm_p
 	val portraits = getPortraits (#person_id per)
-	fun getPicture pic_type official_p = 
-	  List.find (fn pic => #portrait_type_val pic = pic_type andalso #official_p pic = official_p) portraits
 	val official_html =
-	  case (getPicture thumb_fixed_height true,getPicture original true) of
-	     (SOME thumb,SOME large) => html(#url thumb,#width thumb,#height thumb) (#url large)
+	  case (getPicture thumb_fixed_height true portraits,getPicture original true portraits) of
+	     (SOME thumb,SOME large) => genPortraitHtml thumb large
 	   | _ => default_html
 	val non_official_html = 
 	  if official_p then
 	    official_html
 	  else
-	    case (getPicture thumb_fixed_height false,getPicture original false) of
-	      (SOME thumb,SOME large) => html(#url thumb,#width thumb,#height thumb) (#url large)
+	    case (getPicture thumb_fixed_height false portraits,getPicture original false portraits) of
+	      (SOME thumb,SOME large) => genPortraitHtml thumb large
 	    | _ => official_html
       in
 	if use_default_p then
@@ -301,11 +418,52 @@ structure ScsPerson :> SCS_PERSON =
 	  non_official_html
       end	
 
+    fun uploadPortraitPriv (user_id, per:person_record) =
+      if ScsRole.has_p user_id ScsRole.PortraitAdm then ScsFileStorage.admin 
+      else if #person_id per = user_id then ScsFileStorage.read_add_delete
+	   else if #may_show_portrait_p per then ScsFileStorage.read
+		else ScsFileStorage.no_priv
+
+    (* getOrCreateUploadFolderId: check folder_id in scs_parties and
+       create a folder if none exists. The folder path is calculated
+       as 
+          t000/h00/party_id 
+       where 
+          party_id = thxx (t is for thousand and h for hundred)
+    *)
+    val upload_root_label = "ScsPersonPortrait"
+    val max_height = 600
+    val thumb_height = 110
+
+    fun getOrCreateUploadFolderId (db:Db.Handle.db,per:person_record) =
+      case #upload_folder_id per of
+	SOME id => id
+      | NONE =>
+	  let
+	    val div1000 = Int.div (#person_id per,1000)
+	    val div100 = Int.div (#person_id per,100)
+	    val folder_path = Int.toString div1000 ^ "/" ^ (Int.toString div100) ^ "/"
+	    val folder_name = Int.toString (#person_id per) ^ "-" ^ (ScsFile.encodeFileNameUnix (#norm_name per))
+	    val folder_id = 
+	      ScsFileStorage.getOrCreateFolderId(db, upload_root_label, folder_path ^ folder_name)
+	    val _ = 
+	      ScsError.wrapPanic
+	      (Db.Handle.dmlDb db)
+	      `update scs_parties
+                  set ^(Db.setList [("upload_folder_id", Int.toString folder_id),
+				    ("upload_folder_path", folder_path),
+				    ("upload_folder_name", folder_name)])
+                where party_id = '^(Int.toString (#person_id per))'`
+	  in
+	    folder_id
+	  end
+
     local
       fun f g = {person_id = (ScsError.valOf o Int.fromString) (g "person_id"),
 		 first_names = g "first_names",
 		 last_name = g "last_name",
 		 name = g "name",
+		 norm_name = g "norm_name",
 		 email = g "email",
 		 url = g "url",
 		 cpr = g "cpr",
@@ -324,6 +482,7 @@ structure ScsPerson :> SCS_PERSON =
       fun personSQL from_wh =
 	` select p.person_id, p.first_names, p.last_name, 
 		 scs_person.name(p.person_id) as name, 
+                 p.norm_name,
 		 party.email as email,
 		 party.url as url,
 		 p.security_id as cpr,

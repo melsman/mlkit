@@ -45,6 +45,7 @@ val new_user_form =
       first_names 	= "",
       last_name		= "",
       name 		= "",
+      norm_name         = "",
       email		= "",
       url		= "",
       cpr		= "",
