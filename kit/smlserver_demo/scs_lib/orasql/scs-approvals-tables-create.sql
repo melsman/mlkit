@@ -16,7 +16,10 @@ create table scs_approvals (
     constraint ucs_approvals_decision_ck check ( decision in ('t','f') ),
   note_text varchar(4000),
   created_on date default sysdate
-    constraint ucs_approvals_created_on_nn not null
+    constraint ucs_approvals_created_on_nn not null,
+  last_modified date default sysdate 
+    constraint scs_approvals_last_modified_nn not null,
+  modifying_user integer
 );
 
 

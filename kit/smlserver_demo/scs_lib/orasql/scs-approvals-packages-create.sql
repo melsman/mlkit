@@ -6,6 +6,8 @@
    $Id$
 
    History:
+   040403 Kennie Nybo Pontoppidan <kennie@it-c.dk> 
+   changed approve_row to take modified_by argument
    160303 Kennie Nybo Pontoppidan <kennie@it-c.dk> created package
    210303 Niels Hallenberg <nh@it-c.dk> modified package to reflect
           changes in scs_approvals table
@@ -20,12 +22,15 @@ is
        ON_WHICH_ID = id
        USER_ID = approved_by
        DESICION = 't'
-       CREATED_ON = sysdate
+       CREATED_ON = sysdate,
+       LAST_MODIFIED = sysdate,
+       MODIFYING_USER = modified_by
   */
   procedure approve_row(
     table_name  in varchar2,
     id          in integer,
-    approved_by in integer
+    approved_by in integer,
+    modified_by in integer
   );
 
   /* ---------------------
@@ -68,23 +73,28 @@ is
   procedure approve_row(
     table_name  in varchar2,
     id          in integer,
-    approved_by in integer
+    approved_by in integer,
+    modified_by in integer
   ) is
   begin
     insert into SCS_APPROVALS(
-      APPROVAL_ID,    
-      ON_WHAT_TABLE,  
-      ON_WHICH_ID,     
-      USER_ID,      
-      DECISION,       
-      CREATED_ON    
+      APPROVAL_ID,   
+      ON_WHAT_TABLE, 
+      ON_WHICH_ID,   
+      USER_ID,       
+      DECISION,      
+      CREATED_ON,    
+      LAST_MODIFIED, 
+      MODIFYING_USER
     ) values(
       scs.new_obj_id,
       table_name,
       id,
       approved_by,
       't',
-      sysdate
+      sysdate,
+      sysdate,
+      modified_by
     );
   end approve_row;
 
