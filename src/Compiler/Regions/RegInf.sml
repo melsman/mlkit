@@ -230,7 +230,7 @@ struct
            let 
                val (B,d1) = R(B,rse,bind)
                val sigma' = RType.type_to_scheme tau1'
-(*               val _ = log_sigma(RType.insert_alphas(alphas, sigma'), lvar)*)
+              (* val _ = log_sigma(RType.insert_alphas(alphas, sigma'), lvar)*)
                val rse' = RSE.declareLvar(lvar,(false,false,insert_alphas(alphas, sigma'), 
                                                 rho1', None, None),
                                           rse)
@@ -290,7 +290,7 @@ struct
                                                "\nsigma5_hat       = \n" ^ show_sigma sigma_5hat)
                          then 
                                 ((*sayLn("fix:  leaving " ^ Lvar.pr_lvar f);*)
-(*                                 log_sigma(RType.insert_alphas(alphavec,sigma_5hat), f);*)
+                                 (*log_sigma(RType.insert_alphas(alphavec,sigma_5hat), f);*)
                                  (* update bindings in syntax tree *)
                                  rhosr:= newrhos;  
                                  epssr:= newepss;

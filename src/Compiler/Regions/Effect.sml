@@ -27,6 +27,11 @@ struct
   fun x footnote y = x
   fun die s = Crash.impossible("Effect." ^ s)
   fun log_tree(tr: StringTree) = PP.outputTree(fn s => output(!Flags.log, s), tr, !Flags.colwidth)
+  fun say_etas(trl: StringTree list) = 
+         PP.outputTree(fn s => output(std_out, s), 
+                       PP.NODE{start = "[", finish= "]", indent=1, 
+                               childsep = PP.RIGHT",", children = trl},
+                       !Flags.colwidth)
   fun log_string  s = output(!Flags.log, s ^ "\n")
 
   fun noSome(None, s) = die s
@@ -122,6 +127,10 @@ struct
      case G.find_info  effect of
        EPS _ => true
     | _ => false
+
+
+  fun is_union(UNION _) = true
+    | is_union _ = false
 
   fun is_rho effect =
      case G.find_info effect of (* effect node not necessarily canonical *)
@@ -976,8 +985,11 @@ tracing *)
     case (einfo1, einfo2) 
       of (RHO{level = l1, put = p1, get = g1,key=k1,instance=instance1, pix = pix1,ty = t1}, 
 	  RHO{level=l2,put=p2,get=g2,key=k2, instance = instance2, pix = pix2, ty = t2}) =>
-       if !k1<> !k2 andalso (!k1 < 6 andalso !k2 < 6) then 
-         die ("attempt of unifying global regions " ^ Int.string (!k1) ^ " / " ^ Int.string (!k2))
+       if !k1<> !k2 andalso (!k1 < 6 andalso !k2 < 6) 
+          orelse !k1 = 3 andalso t2<>BOT_RT
+          orelse !k2 = 3 andalso t1<>BOT_RT
+         then 
+         die ("illegal unification involving global region(s) " ^ Int.string (!k1) ^ " / " ^ Int.string (!k2))
        else
 	RHO{level = l1, put = aux_combine(p1,p2), 
 	    get = aux_combine(g1,g2), key =min_key(k1,k2), instance = instance1, pix = pix1, ty = lub_runType(t1,t2)}
@@ -1040,70 +1052,11 @@ tracing *)
   *)
 
   fun unifyEps(eps_node1, eps_node2) cone : cone = 
-    unifyNodes(G.union_without_edge_duplication (einfo_combine_eps(eps_node1,eps_node2)))
+    unifyNodes(G.union_without_edge_duplication 
+               (einfo_combine_eps(eps_node1,eps_node2)) 
+               is_union)
               (eps_node1, eps_node2) cone;
 
-
-  (* -------------------------------------------------------
-   * unify_with_toplevel_rhos_eps(rhos_epss) : unit
-   * ----------
-   * Unify (eps_nodes@toplevel_nodes) with toplevel eps node and rho nodes
-   * with toplevel rhos of corresponding runtypes. Assume
-   * all nodes are of top level. The inclusion of toplevel_nodes
-   * has the following effect:
-     unifies all region variables at level 1 in cone that have runtime type top with r1;
-     unifies all region variables at level 1 in cone that have runtime type word with r2;
-     ...
-     unifies all region variables at level 1 in cone that have runtime type string with r5;
-     This is necessary after region inference, since it is possible to introduce level 1
-     region variables that are not one of the pre-defined regions r1-r5. 
-     Example:
-     unit1:
-          val id: string -> string = 
-               (fn x => (output(std_out, "a");x)) o(fn x => (output(std_out, "a");x))
-     unit2:
-          val g= fn s:string => (let val x = "a"^"b"  
-                                 in fn y => (output(std_out, x); y)
-                                 end)
-
-          val result = if true then id else g "c";
-
-     Here "a"^"b" is put in a region which is secondary in the type of g "c". Since
-     the types of g "c" and id are unified in the last line, and since id has arrow
-     effect e6.{put(r1), get(r1), ..., put(r6), get(r6)}, where all the variables have
-     level 1, the region of "a"^"b" is lowered to level 1 without being unified with any
-     of the pre-declared global regions. So it is necessary to unify the region of
-     "a"^"b" with r4, the global region of type string.
-
-   * ------------------------------------------------------- *)
-
-  fun unify_with_toplevel_rhos_eps(cone as (n,c),rhos_epss) : cone =
-   (List.apply 
-    (fn rho_eps =>
-       let fun union_with(toplevel_rho) : unit =
-	     if G.eq_nodes(G.find toplevel_rho,G.find rho_eps) then ()
-	     else (G.union einfo_combine_rho (G.find toplevel_rho,G.find rho_eps);())
-       in if is_arrow_effect rho_eps then
-	    if G.eq_nodes(G.find toplevel_arreff,G.find rho_eps) then ()
-	    else (G.union_without_edge_duplication 
-		  (einfo_combine_eps(toplevel_arreff,rho_eps))
-		     (G.find toplevel_arreff,G.find rho_eps);())
-	  else if is_rho rho_eps then
-	    case get_place_ty rho_eps
-	      of Some WORD_RT =>   union_with(toplevel_region_withtype_word)
-	       | Some TOP_RT =>    union_with(toplevel_region_withtype_top)
-	       | Some BOT_RT =>    union_with(toplevel_region_withtype_bot)
-	       | Some STRING_RT => union_with(toplevel_region_withtype_string)
-	       | Some REAL_RT =>   union_with(toplevel_region_withtype_real)    
-	       | None => die "unify_with_toplevel_rhos.no runtype info"
-
-	  else die "unify_with_toplevel_rhos_eps.not rho or eps"
-       end) (rhos_epss@
-             ConeLayer.range(noSome(Cone.lookup c 1, (* 1 is the number of the top level *)
-                                    "mk_top_level_unique: not top-level in cone")));
-    (* the above side-effects cone; now return it: *)
-    cone
-   )
 
   (*****************************************************)
   (* generic instance of region- and effect variables  *)
@@ -1424,6 +1377,75 @@ tracing *)
                  globalIncs:= Increments.empty)
 
   fun commit() = commit_count()
+
+  (* -------------------------------------------------------
+   * unify_with_toplevel_rhos_eps(rhos_epss) : unit
+   * ----------
+   * Unify (eps_nodes@toplevel_nodes) with toplevel eps node and rho nodes
+   * with toplevel rhos of corresponding runtypes. Assume
+   * all nodes are of top level. The inclusion of toplevel_nodes
+   * has the following effect:
+     unifies all region variables at level 1 in cone that have runtime type top with r1;
+     unifies all region variables at level 1 in cone that have runtime type word with r2;
+     ...
+     unifies all region variables at level 1 in cone that have runtime type string with r5;
+     This is necessary after region inference, since it is possible to introduce level 1
+     region variables that are not one of the pre-defined regions r1-r5. 
+     Example:
+     unit1:
+          val id: string -> string = 
+               (fn x => (output(std_out, "a");x)) o(fn x => (output(std_out, "a");x))
+     unit2:
+          val g= fn s:string => (let val x = "a"^"b"  
+                                 in fn y => (output(std_out, x); y)
+                                 end)
+
+          val result = if true then id else g "c";
+
+     Here "a"^"b" is put in a region which is secondary in the type of g "c". Since
+     the types of g "c" and id are unified in the last line, and since id has arrow
+     effect e6.{put(r1), get(r1), ..., put(r6), get(r6)}, where all the variables have
+     level 1, the region of "a"^"b" is lowered to level 1 without being unified with any
+     of the pre-declared global regions. So it is necessary to unify the region of
+     "a"^"b" with r4, the global region of type string.
+
+   * ------------------------------------------------------- *)
+
+  fun unify_with_toplevel_rhos_eps(cone as (n,c),rhos_epss) : cone =
+  let val nodes_for_unification = 
+              rhos_epss@
+                ConeLayer.range(noSome(Cone.lookup c 1, (* 1 is the number of the top level *)
+                                    "mk_top_level_unique: not top-level in cone"))
+  in
+(*   print"unify_with_toplevel_rhos_eps: list of nodes for unification:\n";
+   say_etas(layoutEtas nodes_for_unification);
+   print"now unifying...:\n";*)
+   (List.apply 
+    (fn rho_eps =>
+       let fun union_with(toplevel_rho) : unit =
+	     if G.eq_nodes(G.find toplevel_rho,G.find rho_eps) then ()
+	     else (G.union einfo_combine_rho (G.find toplevel_rho,G.find rho_eps);())
+       in (*say_etas[layout_effect rho_eps] (*test*);*)
+         if is_arrow_effect(G.find rho_eps) then
+	    if G.eq_nodes(G.find toplevel_arreff,G.find rho_eps) then ()
+	    else (G.union_without_edge_duplication 
+		  (einfo_combine_eps(toplevel_arreff,rho_eps))
+                  is_union
+                  (G.find toplevel_arreff,G.find rho_eps);())
+	  else if is_rho (G.find rho_eps) then
+	    case get_place_ty rho_eps
+	      of Some WORD_RT =>   union_with(toplevel_region_withtype_word)
+	       | Some TOP_RT =>    union_with(toplevel_region_withtype_top)
+	       | Some BOT_RT =>    union_with(toplevel_region_withtype_bot)
+	       | Some STRING_RT => union_with(toplevel_region_withtype_string)
+	       | Some REAL_RT =>   union_with(toplevel_region_withtype_real)    
+	       | None => die "unify_with_toplevel_rhos.no runtype info"
+	  else die "unify_with_toplevel_rhos_eps.not rho or eps"
+       end) nodes_for_unification);
+    (* the above side-effects cone; now return it: *)
+    cone
+  end 
+
 
   (**************************************)
   (*  for multiplicity inference:       *)

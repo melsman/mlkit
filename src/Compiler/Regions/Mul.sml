@@ -297,6 +297,7 @@ struct
       type 'a map = (int * 'a) list array
       val size = 999
       val empty: shared list map = NewJersey.Array.array(size, [])
+
       fun lookup _ eps = 
         let val key = Effect.key_of_eps_or_rho eps
             val hash = key mod size
@@ -305,14 +306,32 @@ struct
             handle _ => None
         end
       fun layoutMap _ _ _ _ = PP.LEAF "(not implemented)" 
+      fun hash(key) = key mod size
+      val key_of_toplevel_arreff = Effect.key_of_eps_or_rho Effect.toplevel_arreff
       fun add(eps, range, _) =
         let val key = Effect.key_of_eps_or_rho eps
-            val hash = key mod size
+            val hash = hash key
             val old_list = NewJersey.Array.sub(empty, hash)
         in 
-            NewJersey.Array.update(empty,hash, (key,range)::old_list);
+            if key <> key_of_toplevel_arreff
+              then
+              NewJersey.Array.update(empty,hash, (key,range)::old_list)
+            else ();
             empty
         end
+      fun reset() = (* reset all entries of the depency map array to [] and then
+                       insert toplevel_arreff (e6) in the map with an empty list of
+                       dependants. *)
+          let fun loop n = if n>=size then () 
+                           else 
+                           (NewJersey.Array.update(empty,n,[]);
+                            loop(n+1))
+          in loop 0;
+             NewJersey.Array.update(empty,
+                                    hash(key_of_toplevel_arreff),
+                                    [(key_of_toplevel_arreff,[])])
+          end
+
       fun plus(old_hash, new_hash) =  new_hash
      end
 
@@ -320,6 +339,7 @@ struct
 
   type efsubst = (effectvar*mularef)list
 
+  fun reset_dep() = DepEnv.reset()
 
   (*pretty printing*)
 

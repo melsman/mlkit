@@ -623,7 +623,7 @@ struct
             else (output(std_out, "\n ********   knorm test failed **********\n"))
           else ();
 
-          (pgm', EE',  Psi_export)
+          (pgm', EE',  Psi_export) footnote Mul.reset_dep()
 	end
   
 end;

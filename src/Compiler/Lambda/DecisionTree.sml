@@ -544,11 +544,6 @@ old *)
 	     )
 
 	 | (here, (dec as DECISION{path, select, defaults})) :: decs =>
-(*
-           (case finalDecision liveRules dec of
-              EqSetList.ONE rule => bindIdentifiers compileTypeScheme (root, pats, rule)
-            | _ => 
-*)            
            (case DecisionList.deterministic (fn rules => rules /\ liveRules) (map #2 sortedList) of
               Some rule => bindIdentifiers compileTypeScheme (root, pats, rule)
             | None =>

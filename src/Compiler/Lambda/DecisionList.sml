@@ -1,4 +1,4 @@
-(*$DecisionList: LAB IDENT SCON AND_OR_TREE FINMAP PRETTYPRINT CRASH
+(*$DecisionList: LAB IDENT SCON AND_OR_TREE FINMAP PRETTYPRINT CRASH TYPE_INFO
 	DECISION_LIST *)
 
 (* DecisionList: takes an And/Or tree, builds the equivalence classes for
@@ -13,6 +13,8 @@ functor DecisionList(structure Lab: LAB
 			   and type AndOrTree.scon = SCon.scon
 			   and type AndOrTree.longid = Ident.longid
 
+		     structure TypeInfo: TYPE_INFO
+		       sharing type AndOrTree.TypeInfo = TypeInfo.TypeInfo
 		     structure FinMap: FINMAP
 		       sharing type FinMap.map = AndOrTree.map
 
@@ -192,31 +194,59 @@ functor DecisionList(structure Lab: LAB
 			 path
 	  ^ " : "
 
+    exception NON_DETERMINISTIC
 
-    fun rulesDecision(DECISION{select, defaults,...}) acc= 
-             rulesSelect select (defaults :: acc)
-    and rulesSelect(CON_SELECT m) acc =
-             FinMap.Fold (fn ((id,(_,subdec)), acc) => rulesSubDecision subdec acc) acc m
-      | rulesSelect(SCON_SELECT(m)) acc = 
-             FinMap.Fold (fn ((scon,subdec), acc) => rulesSubDecision subdec acc) acc m
-      | rulesSelect(EXCON_SELECT(l)) acc = 
-             List.foldL (fn (longid,(_,subdec)) => rulesSubDecision subdec) acc l
-    and rulesSubDecision(SUB_DECISION{rules, decisions}) acc =
-             List.foldL rulesDecision (rules :: acc) decisions
+    fun rulesDecision inter (DECISION{select, defaults,...}) acc= 
+             rulesSelect inter (select,defaults) acc
+
+    and rulesSelect inter (CON_SELECT m,defaults) acc =
+         let val defaults' = inter defaults
+         in if null defaults' then
+             (case FinMap.range m of
+                rng as ((TypeInfo.CON_INFO{numCons,...}, _)::_ ) => 
+                  if numCons = List.size rng then 
+                    FinMap.Fold (fn ((id,(_,subdec)), acc) => rulesSubDecision inter true subdec acc) acc m
+                  else (* not eshaustive*) raise NON_DETERMINISTIC
+              | _ => raise NON_DETERMINISTIC
+             )
+            else
+              FinMap.Fold (fn ((id,(_,subdec)), acc) => rulesSubDecision inter false subdec acc) 
+                          (hd defaults' ::acc) m
+         end
+      | rulesSelect inter (SCON_SELECT(m),defaults) acc = 
+         let val defaults' = inter defaults
+         in
+             if null defaults' then raise NON_DETERMINISTIC
+             else FinMap.Fold (fn ((scon,subdec), acc) => rulesSubDecision inter false subdec acc) (hd defaults' ::acc) m
+         end
+      | rulesSelect inter (EXCON_SELECT(l),defaults) acc = raise NON_DETERMINISTIC
+(*
+         let val defaults' = inter defaults
+         in
+               if null defaults' then raise NON_DETERMINISTIC
+               else List.foldL (fn (longid,(_,subdec)) => rulesSubDecision inter false subdec) (hd defaults' :: acc) l
+         end
+*)
+
+    and rulesSubDecision inter strict (SUB_DECISION{rules, decisions}) acc =
+         let val rules' = inter rules
+         in
+            if null rules' then
+                if strict then raise NON_DETERMINISTIC
+                else acc
+            else
+             List.foldL (rulesDecision inter)(hd rules' :: acc) decisions
+         end
              
     type rule = int
 
     fun deterministic (inter: rule list -> rule list) (l: Decision list): int Option = 
        let
-           exception FALSE
-           val minima =   
-               List.foldL (fn rules => fn acc => 
-                  case inter rules of [] => acc (*raise FALSE*) | r::_ => r::acc) [] 
-               (List.foldL rulesDecision [] l)
+           val minima =  List.foldL (rulesDecision inter) [] l
            fun all_equal(x:: l) = if List.forAll (fn y:int => x=y) l then Some x else None
              | all_equal [] = None
        in
           all_equal(minima) 
-       end handle FALSE => None
+       end handle NON_DETERMINISTIC  => None
 
   end;
