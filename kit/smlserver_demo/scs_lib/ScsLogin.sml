@@ -85,7 +85,9 @@ structure ScsLogin :> SCS_LOGIN =
 	case (auth_user_id,session_id) of
 	  (SOME user_id, SOME psw) =>
 	    (case Int.fromString user_id of
-	       NONE => (COOKIE,default)
+	       (* matching on "deleted" is a IE hack. It seems that IE always sends the 
+		  deleted cookie back to us! *)
+	       NONE => if user_id = "deleted" then (NO_COOKIE,default) else (COOKIE,default)
 	     | SOME _ => 
 		 (case getUserInfoFromDb user_id of
 		    NONE => (COOKIE,default)
