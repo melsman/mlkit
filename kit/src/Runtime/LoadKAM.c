@@ -785,6 +785,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
 #if ( THREADS && CODE_CACHE )
 extern void codeCacheMutexLock(void);
 extern void codeCacheMutexUnlock(void);
+extern void logLoading(char *file);
 #endif
 
 int 
@@ -805,6 +806,7 @@ interpLoadRun(Interp* interp, char* file, char** errorStr)
       fclose(fd);
 #if ( THREADS && CODE_CACHE )
       interp->codeCache = stringMapInsert(interp->codeCache,file,start_code);
+      logLoading(file);
     }
   codeCacheMutexUnlock();
 #endif

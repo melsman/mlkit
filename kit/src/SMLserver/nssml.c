@@ -112,6 +112,12 @@ codeCacheMutexUnlock()
   Ns_UnlockMutex(&codeCacheMutex);
 }
 
+void
+logLoading(char *file)
+{
+  Ns_Log(Notice, "nssml: loaded bytecode for file %s", file);
+}
+
 int
 Ns_ModuleInit(char *hServer, char *hModule)
 {
