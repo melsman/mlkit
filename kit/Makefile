@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 
-KITVERSION=4.1.3
+KITVERSION=4.1.4
 ARCH-OS=x86-linux
 #ARCH-OS=x86-bsd
 INSTDIR=/usr/share/mlkit
