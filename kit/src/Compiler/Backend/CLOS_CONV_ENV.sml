@@ -61,6 +61,9 @@ signature CLOS_CONV_ENV =
 			  cons:con list,
 			  excons:excon list} -> env
 
+    val labelsEnv : (label list * label list -> access_type -> label list * label list) 
+      -> env -> label list * label list
+
     type StringTree
     val layoutEnv : env -> StringTree
     val pr_access_type : access_type -> string

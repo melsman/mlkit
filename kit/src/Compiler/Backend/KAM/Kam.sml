@@ -117,9 +117,14 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | Label of label
       | JmpRel of label
+(*
       | IfNotEqJmpRel of label
       | IfLessThanJmpRel of label
       | IfGreaterThanJmpRel of label
+*)
+      | IfNotEqJmpRelImmed of label * int
+      | IfLessThanJmpRelImmed of label * int
+      | IfGreaterThanJmpRelImmed of label * int
       | DotLabel of label
       | JmpVector of label * int
 
@@ -139,6 +144,21 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | Comment of string
       | Nop
+
+      (* The following instructions are purely for optimization *)
+
+      | StackOffset of int
+      | PopPush of int
+      | ImmedIntPush of int
+      | SelectPush of int
+      | SelectEnvPush of int
+      | SelectEnvClearAtbotBitPush of int
+      | StackAddrPush of int * string (* string is for debugging *) 
+      | StackAddrInfBitAtbotBitPush of int
+      | SelectStackPush of int 
+      | EnvPush
+
+      (* primitives *)
 
       | PrimEquali
       | PrimSubi
@@ -296,9 +316,14 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | Label(lab) => "Label(" :: (pp_lab lab) :: ")" :: acc
       | JmpRel(lab) => "JmpRel(" :: (pp_lab lab) :: ")" :: acc
+(*
       | IfNotEqJmpRel(lab) => "IfNotEqJmpRel(" :: (pp_lab lab) :: ")" :: acc
       | IfLessThanJmpRel(lab) => "IfLessThanJmpRel(" :: (pp_lab lab) :: ")" :: acc
       | IfGreaterThanJmpRel(lab) => "IfGreaterThanJmpRel(" :: (pp_lab lab) :: ")" :: acc
+*)
+      | IfNotEqJmpRelImmed(lab,i) => "IfNotEqJmpRelImmed(" :: (pp_lab lab) :: "," :: Int.toString i :: ")" :: acc
+      | IfLessThanJmpRelImmed(lab,i) => "IfLessThanJmpRelImmed(" :: (pp_lab lab) :: "," :: Int.toString i ::")" :: acc
+      | IfGreaterThanJmpRelImmed(lab,i) => "IfGreaterThanJmpRelImmed(" :: (pp_lab lab) :: "," :: Int.toString i :: ")" :: acc
       | DotLabel(lab) => "DotLabel(" :: (pp_lab lab) :: ")" :: acc
       | JmpVector(lab,first_sel) => "JmpVector(" :: (pp_lab lab) :: "," :: (pp_i first_sel) :: ")" :: acc
 
@@ -318,6 +343,21 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | Comment(s) => "Comment[" :: s :: "]" :: acc
       | Nop => "Nop" :: acc
+
+      (* The following instructions are purely for optimization *)
+
+      | StackOffset i => "StackOffset(" :: Int.toString i :: ")" :: acc
+      | PopPush i => "PopPush(" :: Int.toString i :: ")" :: acc
+      | ImmedIntPush i => "ImmedIntPush(" :: Int.toString i :: ")" :: acc
+      | SelectPush i => "SelectPush(" :: Int.toString i :: ")" :: acc
+      | SelectEnvPush i => "SelectEnvPush(" :: Int.toString i :: ")" :: acc
+      | SelectEnvClearAtbotBitPush i => "SelectEnvClearAtbotBitPush(" :: Int.toString i :: ")" :: acc
+      | StackAddrPush (i,s) => "StackAddrPush(" :: Int.toString i :: "," :: s :: ")" :: acc (* string is for debugging *) 
+      | StackAddrInfBitAtbotBitPush i => "StackAddrInfBitAtbotBitPush(" :: Int.toString i :: ")" :: acc
+      | SelectStackPush i => "SelectStackPush(" :: Int.toString i :: ")" :: acc
+      | EnvPush => "EnvPush" :: acc
+
+      (* primitives *)
 
       | PrimEquali => "PrimEquali" :: acc
       | PrimSubi => "PrimSubi" :: acc

@@ -97,9 +97,14 @@ signature KAM =
 
       | Label of label
       | JmpRel of label
+(*
       | IfNotEqJmpRel of label
       | IfLessThanJmpRel of label
       | IfGreaterThanJmpRel of label
+*)
+      | IfNotEqJmpRelImmed of label * int
+      | IfLessThanJmpRelImmed of label * int
+      | IfGreaterThanJmpRelImmed of label * int
       | DotLabel of label
       | JmpVector of label * int
 
@@ -119,6 +124,19 @@ signature KAM =
 
       | Comment of string
       | Nop
+
+      (* The following instructions are purely for optimization *)
+
+      | StackOffset of int
+      | PopPush of int
+      | ImmedIntPush of int
+      | SelectPush of int
+      | SelectEnvPush of int
+      | SelectEnvClearAtbotBitPush of int
+      | StackAddrPush of int * string (* string is for debugging *) 
+      | StackAddrInfBitAtbotBitPush of int
+      | SelectStackPush of int 
+      | EnvPush
 
       | PrimEquali
       | PrimSubi
