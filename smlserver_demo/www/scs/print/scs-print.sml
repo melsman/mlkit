@@ -1,7 +1,7 @@
 val (submit,errs) = ScsFormVar.getEnumErr ["Print","Dublex Print","Update Source"] 
   ("submit","Print or Update button not pressed",ScsFormVar.emptyErr)
 val (source,errs) = ScsFormVar.getStringErr ("source","no source provided",errs)
-val (printer,errs) = ScsFormVar.getEnumErr ScsPrint.allPrinters ("printer","printer",errs)
+val (printer,errs) = ScsFormVar.getEnumErr (List.map #2 ScsPrint.allPrinters) ("printer","printer",errs)
 val (doc_type,errs) = ScsFormVar.getEnumErr (ScsPrint.ppAllDocTypes()) 
   ("doc_type","document type (e.g., LaTeX)",errs)
 val (category,errs) = ScsFormVar.wrapMaybe ScsFormVar.getStringErr ("category","no category provided",errs)
