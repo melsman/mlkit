@@ -81,7 +81,6 @@ functor CompileDec(structure Con: CON
                   ): COMPILE_DEC =
   struct
 
-    structure ListPair = Edlib.ListPair
     structure DecGrammar = TopdecGrammar.DecGrammar
       
     val tag_values = Flags.is_on0 "tag_values"
@@ -2440,8 +2439,8 @@ the 12 lines above are very similar to the code below
 	val pats = map (fn MATCH(_, MRULE(_, pat, _), _) => pat) matches
 	val exps = map (fn MATCH(_, MRULE(_, _, exp), _) => exp) matches
 	val tab = List.tabulate (List.length pats, fn i => i)
-	val pat_rhs_s = ListPair.zip (pats, tab)
-                 handle ListPair.Zip => die "compile_match: zip"
+	val pat_rhs_s = BasisCompat.ListPair.zipEq (pats, tab)
+                 handle BasisCompat.ListPair.UnequalLengths => die "compile_match: zip"
 	val rules = map (fn (pat, rhs) => (pat, mk_success_node (pat, rhs)))
 	               pat_rhs_s
 	val decdag = mk_decdag rules
@@ -2845,8 +2844,8 @@ the 12 lines above are very similar to the code below
 	val binds = map (compileExp (env plus recEnv)) exps
 	val functions = 
 	  (map (fn ((_,lvar,(tyvars,Type)),bind) => {lvar=lvar, tyvars=tyvars, Type=Type, bind=bind})
-	   (ListPair.zip (ids_lvars_sigmas,binds)))
-	  handle ListPair.Zip => die "compileREC.functions.Zip"
+	   (BasisCompat.ListPair.zipEq (ids_lvars_sigmas,binds)))
+	  handle BasisCompat.ListPair.UnequalLengths => die "compileREC.functions.Zip"
 *)
 	val f' = fn scope => FIX {functions=functions, scope=scope}
       in (scopeEnv : CE.CEnv, f' : LambdaExp -> LambdaExp)

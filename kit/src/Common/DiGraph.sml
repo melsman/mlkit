@@ -13,7 +13,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
                ): DIGRAPH  =
   struct
 
-    structure List = Edlib.List
+    structure EdList = Edlib.List
 
     fun say s = TextIO.output(TextIO.stdOut, s ^ "\n")
 
@@ -124,7 +124,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
 
     fun union_graph (info_combine: 'info * 'info -> 'info) (* returns canonical node *)
                     (g : 'info graph) : 'info node =
-      find(List.foldL' 
+      find(EdList.foldL' 
            (fn n => fn n' => union info_combine (find n, find n'))
            g)
 
@@ -182,16 +182,16 @@ functor DiGraph(structure UF : UNION_FIND_POLY
         GRAPHNODE{df_num, ...} => df_num:=i
 
 
-    fun visit g = List.apply (fn node=> set_visited (find node) true) g
+    fun visit g = List.app (fn node=> set_visited (find node) true) g
 
-    fun visit_canonical g = List.apply (fn node=> set_visited node true) g
+    fun visit_canonical g = List.app (fn node=> set_visited node true) g
    
-    fun unvisit g = List.apply (fn node=> set_visited (find node) false) g
+    fun unvisit g = List.app (fn node=> set_visited (find node) false) g
    
-    fun unvisit_canonical g = List.apply (fn node=> set_visited node false) g
+    fun unvisit_canonical g = List.app (fn node=> set_visited node false) g
 
     (* reset_df_num g: set the depth-first number of every node in the list g to 0 *)
-    fun reset_df_num g = List.apply (fn node=> set_dfnumber (find node) 0) g
+    fun reset_df_num g = List.app (fn node=> set_dfnumber (find node) 0) g
 
     fun union_without_edge_duplication 
               (info_combine : '_info * '_info -> '_info) 
@@ -479,7 +479,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
       in
         reset_df_num g; (* sets the depth-first number of every node in the list g to 0 *)
            (* no nodes on the stack initially*)
-        List.apply (fn n =>
+        List.app (fn n =>
                     let val n = find n 
                     in
                       if !(get_visited n) then
@@ -518,7 +518,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
               end
           end
       in
-        List.apply search g;(* Each node may potentially begin a new tree, so 
+        List.app search g;(* Each node may potentially begin a new tree, so 
                              * we have to evaluate for each node. Note however,
                              * that the graph in total is only traversed once, 
                              * (ensured by the use of the mark visited)
@@ -550,12 +550,12 @@ functor DiGraph(structure UF : UNION_FIND_POLY
           let 
               val children = out_of_node x
           in  
-              List.apply (fn n => get_visited (find n):= false) children;
+              List.app (fn n => get_visited (find n):= false) children;
               get_visited x := true;
               set_out_of_node x (do_children children)
           end
       in
-            List.apply do_node g;
+            List.app do_node g;
             unvisit_canonical g
       end;
 
@@ -662,7 +662,7 @@ functor DiGraph(structure UF : UNION_FIND_POLY
           [one] => layout one
          | _ => PP.NODE{start = "[", finish = "]", indent = 1, childsep = PP.RIGHT ",",
                  children = map layout g})
-         footnote List.apply unvisit_all g
+         footnote List.app unvisit_all g
       end
 
     fun layout_nodes l = layout_graph l;
@@ -713,7 +713,7 @@ fun etest(label,found,expected) =
     val v3 = mk_node_int (ref 3)
     val v2 = mk_node_int (ref 2)
     val v1 = mk_node_int (ref 1)
-    val _  = List.apply mk_edge [(v1,v5),
+    val _  = List.app mk_edge [(v1,v5),
                                  (v1,v4),
                                  (v1,v2),
                                  (v2,v4),
@@ -749,7 +749,7 @@ fun etest(label,found,expected) =
          val sccs:int ref graph list  = scc layout_info graph 
        in
          log "strongly connected components, each in depth first search order:";
-         List.apply (fn g => log ("\t" ^ pp(layout_graph layout_info g))) 
+         List.app (fn g => log ("\t" ^ pp(layout_graph layout_info g))) 
          sccs;
          let 
            val compressed_sccs: int ref node list  = (map (union_graph (fn (i1,i2) => i2)) sccs)
@@ -766,7 +766,7 @@ fun etest(label,found,expected) =
            log ("\t" ^ pp(layout_graph layout_info compressed_sccs_as_graph));
 
            log "representative for each compressed scc";
-           List.apply (fn n => log ("\t" ^ pp(layout_node layout_info n))) 
+           List.app (fn n => log ("\t" ^ pp(layout_node layout_info n))) 
            compressed_sccs;
 
            (* The resulting graph should have
@@ -795,7 +795,7 @@ fun etest(label,found,expected) =
                         n
                      end
                    val [a,b,c,d,e,f,g,h] = map (mk_node_string o ref)(explode "abcdefgh")
-                   val _ = List.apply mk_edge [(a,b),(a,c), (c,e),(c,g), (e,g), (d,e),(d,f),(e,h)]
+                   val _ = List.app mk_edge [(a,b),(a,c), (c,e),(c,g), (e,g), (d,e),(d,f),(e,h)]
                in  (! graph, a,b,c,d,e,f,g,h)
                end
            fun layout_info (ref s) = PP.LEAF s
@@ -855,7 +855,7 @@ fun etest(label,found,expected) =
                         n
                      end
                    val [a,b,c,d] = map (mk_node_string o ref)(explode "abcd")
-                   val _ = List.apply mk_edge [(a,b),(a,c)]
+                   val _ = List.app mk_edge [(a,b),(a,c)]
                    val graph = ! graph
                    fun bound_to_free x =
                        if eq_nodes(x, a) then d else x
@@ -871,7 +871,7 @@ fun etest(label,found,expected) =
                         n
                      end
                    val [a,b,c,d,e,f] = map (mk_node_string o ref)(explode "abcdef")
-                   val _ = List.apply mk_edge [(a,f),(a,b),(c,d),(d,e)]
+                   val _ = List.app mk_edge [(a,f),(a,b),(c,d),(d,e)]
                    val graph = ! graph
                    fun bound_to_free x =
                        if eq_nodes(x, a) then d else 
@@ -888,7 +888,7 @@ fun etest(label,found,expected) =
                         n
                      end
                    val [a,B,c,d,e,f] = map (mk_node_string o ref)(explode "aBcdef")
-                   val _ = List.apply mk_edge [(a,B),(B,f),(B,c),(d,e)]
+                   val _ = List.app mk_edge [(a,B),(B,f),(B,c),(d,e)]
                    val graph = ! graph
                    fun bound_to_free x =
                        if eq_nodes(x, a) then d else 
@@ -905,7 +905,7 @@ fun etest(label,found,expected) =
                         n
                      end
                    val [a,B,c,d,e,f,h] = map (mk_node_string o ref)(explode "aBcdefh")
-                   val _ = List.apply mk_edge [(a,B),(B,f),(B,c),(d,e),(e,h),(h,d)]
+                   val _ = List.app mk_edge [(a,B),(B,f),(B,c),(d,e),(e,h),(h,d)]
                    val graph = ! graph
                    fun bound_to_free x =
                        if eq_nodes(x,a) then d else 

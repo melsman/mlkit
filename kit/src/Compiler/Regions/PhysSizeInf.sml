@@ -31,8 +31,7 @@ functor PhysSizeInf(structure Name : NAME
                       ) : PHYS_SIZE_INF =
   struct
 
-    structure List = Edlib.List
-    structure ListPair = Edlib.ListPair
+    structure EdList = Edlib.List
 
     structure LvarMap = Lvars.Map
 
@@ -133,8 +132,8 @@ functor PhysSizeInf(structure Name : NAME
 	  in excon_bucket := kill (!excon_bucket)
 	  end
 	
-	fun reset_fvs () = (List.apply unmark_lvar (!lvar_bucket);
-			    List.apply unmark_place (!place_bucket);
+	fun reset_fvs () = (List.app unmark_lvar (!lvar_bucket);
+			    List.app unmark_place (!place_bucket);
 			    lvar_bucket := [];
 			    excon_bucket := [];
 			    place_bucket := [])
@@ -151,43 +150,43 @@ functor PhysSizeInf(structure Name : NAME
        * ------------------------------------------------------ *)
      
       fun fv (TR(e,_,_,_): (place at,place*mul,unit)trip) : unit =
-	let fun fv_sw (SWITCH(tr,choices,opt)) = (fv tr; List.apply (fv o #2) choices;
+	let fun fv_sw (SWITCH(tr,choices,opt)) = (fv tr; List.app (fv o #2) choices;
 						  case opt of SOME tr => fv tr | NONE => ())
 	in case e
 	     of VAR{lvar,rhos_actuals=ref actuals,...} =>
-	       (add_lvar lvar; List.apply add_atp actuals)
+	       (add_lvar lvar; List.app add_atp actuals)
 	      | INTEGER(n,t,alloc) => add_atp alloc
 	      | WORD(n,t,alloc) => add_atp alloc
 	      | STRING(s,alloc) => add_atp alloc
 	      | REAL(s,alloc) => add_atp alloc
-	      | UB_RECORD trips => List.apply fv trips
+	      | UB_RECORD trips => List.app fv trips
 	      | FN{pat,body,free,alloc} =>
 	       (case free
 		  of ref (SOME (lvars,excons,places)) =>
-		    (List.apply add_lvar lvars;
-		     List.apply add_excon excons;
-		     List.apply add_place places;
+		    (List.app add_lvar lvars;
+		     List.app add_excon excons;
+		     List.app add_place places;
 		     add_atp alloc)
 		   | _ => die "fv.FN.free vars not available.") 
 	      | LETREGION{B,rhos=ref rhos,body} =>
-		  (List.apply (fn (place,mul) => mark_place place) rhos;
+		  (List.app (fn (place,mul) => mark_place place) rhos;
 		   fv body;
-		   List.apply (fn (place,mul) => unmark_place place) rhos)
+		   List.app (fn (place,mul) => unmark_place place) rhos)
 	      | LET{k_let,pat,bind,scope} =>
 		  (fv bind;
-		   List.apply (mark_lvar o #1) pat;
+		   List.app (mark_lvar o #1) pat;
 		   fv scope;
-		   List.apply (unmark_lvar o #1) pat)
+		   List.app (unmark_lvar o #1) pat)
 	      | FIX{free,shared_clos,functions,scope} =>
 		  (case free
 		     of ref (SOME (lvars,excons,places)) =>
-		       (List.apply add_lvar lvars;
-			List.apply add_excon excons;
-			List.apply add_place places;
+		       (List.app add_lvar lvars;
+			List.app add_excon excons;
+			List.app add_place places;
 			add_atp shared_clos;
-			List.apply (mark_lvar o #lvar) functions;
+			List.app (mark_lvar o #lvar) functions;
 			fv scope;
-			List.apply (unmark_lvar o #lvar) functions)
+			List.app (unmark_lvar o #lvar) functions)
 		      | _ => die "fv.FIX.free vars not available.") 
 	      | APP(_,_,tr1,tr2) => (fv tr1; fv tr2)
 	      | EXCEPTION(excon,b,tp,alloc,scope) =>
@@ -200,10 +199,10 @@ functor PhysSizeInf(structure Name : NAME
 	      | SWITCH_S sw => fv_sw sw
 	      | SWITCH_C sw => fv_sw sw
 	      | SWITCH_E sw => let val SWITCH(_,choices,_) = sw
-			       in List.apply (add_excon o #1) choices;
+			       in List.app (add_excon o #1) choices;
 				 fv_sw sw
 			       end
-	      | CON0 {con, il, aux_regions, alloc} => (List.apply add_atp aux_regions;
+	      | CON0 {con, il, aux_regions, alloc} => (List.app add_atp aux_regions;
 						       add_atp alloc)
 	      | CON1 ({con, il, alloc}, tr) => (add_atp alloc; fv tr)
 	      | DECON ({con, il}, tr) => fv tr
@@ -211,22 +210,22 @@ functor PhysSizeInf(structure Name : NAME
 					 of SOME (alloc,tr) => (add_excon excon; add_atp alloc; fv tr)
 					  | NONE => add_excon excon)
 	      | DEEXCON (excon,tr) => (add_excon excon; fv tr)
-	      | RECORD (alloc, trs) => (add_atp alloc; List.apply fv trs)
+	      | RECORD (alloc, trs) => (add_atp alloc; List.app fv trs)
 	      | SELECT (i, tr) => fv tr
 	      | DEREF tr => fv tr
 	      | REF (alloc,tr) => (add_atp alloc; fv tr)
 	      | ASSIGN (alloc,tr1,tr2) => (add_atp alloc; fv tr1; fv tr2)
 	      | DROP tr => fv tr
 	      | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => (add_atp alloc; fv tr1; fv tr2)
-	      | CCALL ({rhos_for_result, ...}, trs) => (List.apply (add_atp o #1) rhos_for_result;
-							List.apply fv trs)
+	      | CCALL ({rhos_for_result, ...}, trs) => (List.app (add_atp o #1) rhos_for_result;
+							List.app fv trs)
 	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => 
                       (add_atp alloc; 
-                       List.apply add_atp regions_for_resetting;
+                       List.app add_atp regions_for_resetting;
                        fv tr)
 	      | FRAME{declared_lvars, declared_excons} =>
-			       (List.apply (add_lvar o #lvar) declared_lvars;
-				List.apply (add_excon o #1) declared_excons)
+			       (List.app (add_lvar o #lvar) declared_lvars;
+				List.app (add_excon o #1) declared_excons)
 	end
       
 
@@ -239,7 +238,7 @@ functor PhysSizeInf(structure Name : NAME
         | getOpt NONE =[]
 
       fun ifv (TR(e,_,_,_): (place at,place*mul,unit)trip) : unit =
-	let fun ifv_sw (SWITCH(tr,choices,opt)) = (ifv tr; List.apply (ifv o #2) choices;
+	let fun ifv_sw (SWITCH(tr,choices,opt)) = (ifv tr; List.app (ifv o #2) choices;
 						   case opt of SOME tr => ifv tr | NONE => ())
 	in case e
 	     of VAR _ => ()
@@ -247,12 +246,12 @@ functor PhysSizeInf(structure Name : NAME
 	      | WORD _ => ()
 	      | STRING _ => ()
 	      | REAL _ => ()
-	      | UB_RECORD trips => List.apply ifv trips
+	      | UB_RECORD trips => List.app ifv trips
 	      | FN{pat,body,free,alloc} => (ifv body;
-					    List.apply (mark_lvar o #1) pat;
+					    List.app (mark_lvar o #1) pat;
 					    fv body;
 					    free := (SOME (get_fvs()));
-					    List.apply (unmark_lvar o #1) pat)
+					    List.app (unmark_lvar o #1) pat)
 	      | LETREGION{B,rhos,body} => ifv body
 	      | LET{k_let,pat,bind,scope} => (ifv bind; ifv scope)
 	      | FIX{free,shared_clos,functions,scope} =>
@@ -260,32 +259,32 @@ functor PhysSizeInf(structure Name : NAME
 		     | ifv_under_bind _ = die "FIX.bind not fn."
 
 		   fun ifv_bind (TR(FN{free,pat,body,alloc(*same as shared_clos*)}, _, _, _)) =
-		        (List.apply (mark_lvar o #1) pat;
+		        (List.app (mark_lvar o #1) pat;
 			 fv body;
 			 free := (SOME (get_fvs()));
-			 List.apply (unmark_lvar o #1) pat)
+			 List.app (unmark_lvar o #1) pat)
 		     | ifv_bind _ = die "FIX.bind not fn(2)."
 		   fun fv_bind (TR(FN{free,pat,body,alloc(*same as shared_clos*)}, _, _, _)) =
 		     (case free
 			of ref (SOME (lvars,excons,places)) =>
-			  (List.apply add_lvar lvars;
-			   List.apply add_excon excons;
-			   List.apply add_place places)  (* Region containing shared closure, alloc, is not free in letrec bound FN *)
+			  (List.app add_lvar lvars;
+			   List.app add_excon excons;
+			   List.app add_place places)  (* Region containing shared closure, alloc, is not free in letrec bound FN *)
 		      | _ => die "FIX.fv_bind free vars not available.")
 		     | fv_bind tr = die "FIX.fv_bind not fn."
 	       in ifv scope;
-  	 	  List.apply (ifv_under_bind o #bind) functions;
-		  List.apply (mark_lvar o #lvar) functions;
-		  List.apply ((List.apply (mark_place o #1)) o ! o #rhos_formals) functions;
-		  List.apply ((List.apply (mark_place o #1)) o getOpt o #bound_but_never_written_into) functions;
+  	 	  List.app (ifv_under_bind o #bind) functions;
+		  List.app (mark_lvar o #lvar) functions;
+		  List.app ((List.app (mark_place o #1)) o ! o #rhos_formals) functions;
+		  List.app ((List.app (mark_place o #1)) o getOpt o #bound_but_never_written_into) functions;
 		  (*mark_atp shared_clos;    commented out, 23/4/97, mads *)
-		  List.apply (ifv_bind o #bind) functions;
-		  List.apply (fv_bind o #bind) functions;  (* use fv_bind instead of fv 14/06-2000, Niels *)
+		  List.app (ifv_bind o #bind) functions;
+		  List.app (fv_bind o #bind) functions;  (* use fv_bind instead of fv 14/06-2000, Niels *)
 		  free := (SOME (get_fvs()));
 		  (*unmark_atp shared_clos;     commented out, 23/4/97, mads *)
-		  List.apply ((List.apply (unmark_place o #1)) o getOpt o #bound_but_never_written_into) functions;
-		  List.apply ((List.apply (unmark_place o #1)) o ! o #rhos_formals) functions;
-		  List.apply (unmark_lvar o #lvar) functions
+		  List.app ((List.app (unmark_place o #1)) o getOpt o #bound_but_never_written_into) functions;
+		  List.app ((List.app (unmark_place o #1)) o ! o #rhos_formals) functions;
+		  List.app (unmark_lvar o #lvar) functions
 (*
 		;case functions
 		  of [{lvar,...}] => pr_fvs (lvar, free)
@@ -308,14 +307,14 @@ functor PhysSizeInf(structure Name : NAME
 					 of SOME (alloc,tr) => ifv tr
 					  | NONE => ())
 	      | DEEXCON (excon,tr) => ifv tr
-	      | RECORD (alloc, trs) => List.apply ifv trs
+	      | RECORD (alloc, trs) => List.app ifv trs
 	      | SELECT (i, tr) => ifv tr
 	      | DEREF tr => ifv tr
 	      | REF (alloc,tr) => ifv tr
 	      | ASSIGN (alloc,tr1,tr2) => (ifv tr1; ifv tr2)
 	      | DROP (tr) => ifv tr
 	      | EQUAL ({mu_of_arg1, mu_of_arg2, alloc}, tr1,tr2) => (ifv tr1; ifv tr2)
-	      | CCALL (_, trs) => List.apply ifv trs
+	      | CCALL (_, trs) => List.app ifv trs
 	      | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => ifv tr
 	      | FRAME{declared_lvars, declared_excons} => ()
 	end
@@ -326,9 +325,9 @@ functor PhysSizeInf(structure Name : NAME
 	(ifv tr;
 	 import_vars := 
 	 SOME let val (_, _, export_rhos) = export_vars
-		  val _ = List.apply mark_place export_rhos
+		  val _ = List.app mark_place export_rhos
 		  val imp_vars = (fv(tr); get_fvs())
-		  val _ = List.apply unmark_place export_rhos
+		  val _ = List.app unmark_place export_rhos
 	      in imp_vars
 	      end)
     end (*local*)
@@ -428,7 +427,7 @@ functor PhysSizeInf(structure Name : NAME
     fun eval_psi_graph () : unit =
       let
 	(* val _ = log "eval_psi_graph" *)
-	val max_list = List.foldL' phsize_max 
+	val max_list = EdList.foldL' phsize_max 
 	val layout_info = layout_phsize o !
 	  
 	val sccs  = DiGraph.scc layout_info (!psi_graph)
@@ -503,7 +502,7 @@ functor PhysSizeInf(structure Name : NAME
 
     fun psi_sw psi_tr_env (SWITCH(tr,sel,opt)) =
       (psi_tr_env tr;
-       List.apply (fn (_,tr) => psi_tr_env tr) sel;
+       List.app (fn (_,tr) => psi_tr_env tr) sel;
        case opt of NONE => () | SOME tr => psi_tr_env tr)
       
     fun psi_tr env (TR(e,_,_,_) : (place at, place*mul,unit)trip) =
@@ -514,7 +513,7 @@ functor PhysSizeInf(structure Name : NAME
 	 | WORD _ => ()
 	 | STRING _ => ()  (* immediate strings are allocated statically.. *)
 	 | REAL _ => ()    (* immediate reals are allocated statically.. *)
-	 | UB_RECORD trips => List.apply (psi_tr env) trips
+	 | UB_RECORD trips => List.app (psi_tr env) trips
 	 | FN{pat,body,free=ref (SOME fvs),alloc} =>
 	   (case place_atplace alloc
 	      of SOME place => (psi_add_place_size (place,closure_size fvs);
@@ -522,17 +521,17 @@ functor PhysSizeInf(structure Name : NAME
 	       | NONE => die "psi_tr.FN") 
 	 | FN _ => die "psi_tr.FN.free vars not available."
  	 | LETREGION{B,rhos=ref rhos,body} => 
-	  (List.apply (fn (place,Mul.INF) => ()
+	  (List.app (fn (place,Mul.INF) => ()
 	                | (place,Mul.NUM n) => if n = 1 orelse n = 0 then psi_declare place
 					       else die "psi_tr.LETREGION.mul not in {0,1}")
 	   rhos; psi_tr env body)
 	 | LET{k_let,pat,bind,scope} => 
-	  let val env' = List.foldL(fn pat => fn acc => 
+	  let val env' = EdList.foldL(fn pat => fn acc => 
 				    add_env(#1 pat,NOTFIXBOUND,acc)) env pat
 	  in psi_tr env bind; psi_tr env' scope
 	  end
          | FIX{free=ref (SOME fvs),shared_clos,functions,scope} =>
-	  let val env' = List.foldL 
+	  let val env' = EdList.foldL 
 	                 (fn {lvar,rhos_formals,...} => fn env =>
 			  let val formals = map (fn (place,mul) => 
 						 (case mul
@@ -579,12 +578,12 @@ debug*)
 		* between formals and actuals, otherwise we add
 		* necessary sizes to the actuals.  *)
 	       of SOME (FORMAL_REGVARS formals) =>
-		 (List.apply psi_add_edge (ListPair.zip(actuals,formals))
-		  handle ListPair.Zip => 
+		 (List.app psi_add_edge (BasisCompat.ListPair.zipEq(actuals,formals))
+		  handle BasisCompat.ListPair.UnequalLengths => 
 		    die "psi_tr.APP.region_polymorphic_application: actuals differs from formals.")
 		| SOME (FORMAL_SIZES sizes) => 
-		 (List.apply psi_add_place_size (ListPair.zip (actuals, sizes))
-		  handle ListPair.Zip => 
+		 (List.app psi_add_place_size (BasisCompat.ListPair.zipEq (actuals, sizes))
+		  handle BasisCompat.ListPair.UnequalLengths => 
 		    die "psi_tr.APP.region_polymorphic_application.actuals differs from sizes.")
 		| _ => ();
 	     psi_tr env tr2
@@ -626,7 +625,7 @@ debug*)
             (case (place_atplace alloc, trs)
 	       of (NONE, []) => ()  (* unit *)
 		| (SOME place, _) => psi_add_place_size(place, size_of_record trs)
-		| _ => die "psi_tr.RECORD"; List.apply (psi_tr env) trs) 
+		| _ => die "psi_tr.RECORD"; List.app (psi_tr env) trs) 
 	 | SELECT (i, tr) => psi_tr env tr
 	 | DEREF tr => psi_tr env tr
 	 | REF (alloc,tr) => (case place_atplace alloc
@@ -641,7 +640,7 @@ debug*)
 		  of SOME _ => die "psi_tr.EQUAL"
 		   | NONE => (psi_tr env tr1; psi_tr env tr2))
 	 | CCALL ({name, rhos_for_result, ...}, trs) =>
-	     (List.apply (fn (atp, i_opt) =>
+	     (List.app (fn (atp, i_opt) =>
 	       (case noSome (place_atplace atp) "psi_tr (CCALL ...): IGNORE" of rho =>
 		 (case i_opt of
 		    NONE => ()
@@ -651,10 +650,10 @@ debug*)
 		      (*the region contains an unboxed type*)
 		  | SOME i => psi_add_place_size (rho, WORDS i))))
 	     rhos_for_result ; 
-	     List.apply (psi_tr env) trs)
+	     List.app (psi_tr env) trs)
 	 | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => psi_tr env tr
 	 | FRAME{declared_lvars, ...} =>
-	  let val env' = List.foldR (fn {lvar,...} => fn frame_env =>
+	  let val env' = EdList.foldR (fn {lvar,...} => fn frame_env =>
 				     case lookup_env env lvar
 				       of SOME res => add_env (lvar, res, frame_env)
 					| NONE => die "psi_tr.FRAME.lv not in env")

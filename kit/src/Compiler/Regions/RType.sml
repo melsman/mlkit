@@ -15,8 +15,7 @@ functor RType(structure Flags : FLAGS
              ) : RTYPE = 
 struct
 
-  structure List = Edlib.List
-  structure ListPair = Edlib.ListPair
+  structure EdList = Edlib.List
 
   fun curry f a b = f(a,b)
 
@@ -24,7 +23,7 @@ struct
   fun logsay s= TextIO.output(!Flags.log, s );
   fun log_tree t= PP.outputTree(logsay, t, !Flags.colwidth)
   fun show_rho rho = PP.flatten1(E.layout_effect rho)
-  fun show_rhos rhos = List.string show_rho rhos
+  fun show_rhos rhos = EdList.stringSep "[" "]" ", " show_rho rhos
 
   fun die (s:string) = Crash.impossible ("RType." ^ s)
   fun pp (stringtree) = PP.flatten1(stringtree)
@@ -32,7 +31,7 @@ struct
   fun noSome (SOME v) s = v
     | noSome NONE s = die s
 
-  fun concat_lists l = List.foldR (curry (op @)) [] l
+  fun concat_lists l = EdList.foldR (curry (op @)) [] l
 
   infix footnote
   fun x footnote y = x
@@ -82,16 +81,16 @@ struct
 
   fun isTopWordRegion rho = E.eq_effect(rho,E.toplevel_region_withtype_word)
 
-  fun discard_top_wordrho places = List.all (not o isTopWordRegion) places 
-  fun discard_word_rhos places = List.all (not o isWordRegion) places 
+  fun discard_top_wordrho places = List.filter (not o isTopWordRegion) places 
+  fun discard_word_rhos places = List.filter (not o isWordRegion) places 
 
   fun ann_ty ty (acc : effect list) = 
        case ty of 
          TYVAR _ => acc
        | CONSTYPE(_,mus,rhos,epss) => 
-          List.foldR ann_mu (discard_top_wordrho rhos @ (epss @ acc)) mus
+          EdList.foldR ann_mu (discard_top_wordrho rhos @ (epss @ acc)) mus
        | RECORD mus =>
-          List.foldR ann_mu acc mus
+          EdList.foldR ann_mu acc mus
        | FUN(mus1,eps,mus2) =>
           ann_mus mus1 (eps:: ann_mus mus2 acc)
   and ann_mu (tau,rho) acc = ann_ty tau (if isTopWordRegion rho then acc else rho::acc)
@@ -104,15 +103,15 @@ struct
       let val annotations = ann_mu mu []
           val all_nodes = E.subgraph annotations
       in
-          List.all (fn e => E.is_rho e andalso not(isTopWordRegion e)) all_nodes
+          List.filter (fn e => E.is_rho e andalso not(isTopWordRegion e)) all_nodes
       end
 
   local  (* free primary region and effect variables ("pfrv tau" etc.) *)
     fun pfrv0 ty acc =
          case ty of 
            TYVAR _ => acc
-         | CONSTYPE(_,mus,places,_) => List.foldR pfrvMu0 (discard_top_wordrho places @ acc)  mus
-         | RECORD mus => List.foldR pfrvMu0 acc mus
+         | CONSTYPE(_,mus,places,_) => EdList.foldR pfrvMu0 (discard_top_wordrho places @ acc)  mus
+         | RECORD mus => EdList.foldR pfrvMu0 acc mus
          | FUN(mus1,_,mus2) => pfrvMus0 mus1 (pfrvMus0 mus2 acc)
     and pfrvMu0 (tau,rho) acc = pfrv0 tau (if isTopWordRegion rho then acc else rho::acc)
     and pfrvMus0 [] acc = acc
@@ -121,8 +120,8 @@ struct
     fun pfev0 ty acc =
          case ty of 
            TYVAR _ => acc
-         | CONSTYPE(_,mus,_,arreffs) => List.foldR pfevMu0 (arreffs@acc) mus
-         | RECORD mus => List.foldR pfevMu0 acc mus
+         | CONSTYPE(_,mus,_,arreffs) => EdList.foldR pfevMu0 (arreffs@acc) mus
+         | RECORD mus => EdList.foldR pfevMu0 acc mus
          | FUN(mus1,arreff,mus2) => pfevMus0 mus1 (arreff::(pfevMus0 mus2 acc))
     and pfevMu0 (tau,rho) acc = pfev0 tau acc
     and pfevMus0 [] acc = acc
@@ -147,15 +146,15 @@ struct
               L.TYVARtype alpha  => (TYVAR alpha, cone)
             | L.ARROWtype(tys1,tys2)=>
                 let val (eps,cone') = E.freshEps(cone)
-                    val (cone1,mus1) = List.foldR mkMus (cone',[]) tys1
-                    val (cone2,mus2) = List.foldR mkMus (cone1,[]) tys2
+                    val (cone1,mus1) = EdList.foldR mkMus (cone',[]) tys1
+                    val (cone2,mus2) = EdList.foldR mkMus (cone1,[]) tys2
                 in (FUN(mus1,eps,mus2), cone2) end
             | L.CONStype(tys,tyname)=>
               let val arity as (alpha_count, rhos_runtypes, eps_count) = 
 	  	    case lookup tyname
 		      of SOME arity => arity
 		       | NONE => die ("mkTy: type name " ^ TyName.pr_TyName tyname ^ " not declared")
-                  val (cone, mus) = List.foldR mkMus (cone,[]) tys
+                  val (cone, mus) = EdList.foldR mkMus (cone,[]) tys
 		  fun repeat2 ([],cone,rhos) = (cone, rev rhos)
 		    | repeat2 (rt::rts,cone,rhos) =
 		    let val (rho,cone') = E.freshRhoWithTy(rt,cone)
@@ -176,7 +175,7 @@ struct
                  (CONSTYPE(tyname,mus,rhos,epss), cone)
               end 
             | L.RECORDtype(tys) => 
-                 let val (cone,mus) = List.foldR mkMus (cone,[]) tys
+                 let val (cone,mus) = EdList.foldR mkMus (cone,[]) tys
                  in     
                    (RECORD(mus),cone)
                  end
@@ -308,7 +307,7 @@ struct
     let val effs1 = ann_ty ty1 []
         val effs2 = ann_ty ty2 []
     in
-      List.foldL u cone (ListPair.zip(effs1,effs2))
+      EdList.foldL u cone (BasisCompat.ListPair.zipEq(effs1,effs2))
       handle X =>  let val (lay_ty,_) = mk_layout false;
 		       fun dump(ty) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), lay_ty ty, !Flags.colwidth)
 		   in
@@ -321,7 +320,7 @@ struct
     end
 
   fun unify_mu(mu1, mu2:mu) cone: E.cone =
-    List.foldL u cone (ListPair.zip(ann_mu mu1 [],ann_mu mu2 []))
+    EdList.foldL u cone (BasisCompat.ListPair.zipEq(ann_mu mu1 [],ann_mu mu2 []))
     handle _ => let val (_,lay_mu) = mk_layout false;
                      fun dump(mu) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), lay_mu mu, !Flags.colwidth)
                  in
@@ -331,8 +330,8 @@ struct
                  end
         
   fun unify_mus (mus1, mus2) cone: E.cone = 
-     List.foldL unify_mu cone 
-       (ListPair.zip(mus1,mus2)) handle ListPair.Zip => 
+     EdList.foldL unify_mu cone 
+       (BasisCompat.ListPair.zipEq(mus1,mus2)) handle BasisCompat.ListPair.UnequalLengths => 
          die "unify_mus: lists have different lengths"
 
   (* type schemes: bound variable must be listed in bottom-up 
@@ -356,12 +355,12 @@ struct
   fun frv_sigma(FORALL(alphas,rhos,epss,tau)) =
       let val annotations = ann_ty tau []
           val all_nodes = E.subgraph annotations
-          val frv_tau = List.all E.is_rho all_nodes
+          val frv_tau = List.filter E.is_rho all_nodes
       in
           (* subtract the bound rhos *)
-          List.apply (fn bound_rho => E.get_visited bound_rho := true) rhos;
-          List.all   (fn free_rho => not(!(E.get_visited free_rho))) frv_tau
-            footnote List.apply (fn bound_rho => E.get_visited bound_rho := false) rhos
+          List.app (fn bound_rho => E.get_visited bound_rho := true) rhos;
+          List.filter   (fn free_rho => not(!(E.get_visited free_rho))) frv_tau
+            footnote List.app (fn bound_rho => E.get_visited bound_rho := false) rhos
       end
 
   (* ferv_sigma(sigma) computes a list of all region and effect
@@ -370,25 +369,25 @@ struct
   fun ferv_sigma(FORALL(alphas,rhos,epss,tau)): E.effect list =
       let val annotations = ann_ty tau []
           val all_nodes = E.subgraph annotations
-          val free = List.all (fn node => E.is_rho node orelse E.is_arrow_effect node) all_nodes
+          val free = List.filter (fn node => E.is_rho node orelse E.is_arrow_effect node) all_nodes
           val bound  = epss @rhos
       in
           (* subtract the bound region and effect variables *)
-          List.apply (fn b => E.get_visited b := true) bound;
-          List.all   (fn f => not(!(E.get_visited f))) free
-            footnote List.apply (fn b => E.get_visited b := false) bound
+          List.app (fn b => E.get_visited b := true) bound;
+          List.filter   (fn f => not(!(E.get_visited f))) free
+            footnote List.app (fn b => E.get_visited b := false) bound
       end
 
   fun free_puts(FORALL(alphas,rhos,epss,tau)) =
       let val annotations = ann_ty tau []
           val all_nodes = E.subgraph annotations
-          val put_nodes = List.all E.is_put all_nodes
+          val put_nodes = List.filter E.is_put all_nodes
           val rhos_in_put_nodes = map E.rho_of put_nodes
       in
           (* subtract the bound rhos *)
-          List.apply (fn bound_rho => E.get_visited bound_rho := true) rhos;
-          List.all   (fn free_rho => not(!(E.get_visited free_rho)) andalso not(isTopWordRegion free_rho)) rhos_in_put_nodes
-            footnote List.apply (fn bound_rho => E.get_visited bound_rho := false) rhos
+          List.app (fn bound_rho => E.get_visited bound_rho := true) rhos;
+          List.filter   (fn free_rho => not(!(E.get_visited free_rho)) andalso not(isTopWordRegion free_rho)) rhos_in_put_nodes
+            footnote List.app (fn bound_rho => E.get_visited bound_rho := false) rhos
       end
 
 
@@ -453,7 +452,7 @@ struct
   fun mk_lay_sigma'' (lay_bind: 'b -> StringTree option) omit_region_info  =
       let val f = mk_lay_sigma_aux omit_region_info 
       in fn (alphas,rhos,epss,tau) => 
-             let val ts = List.foldR (fn rho => fn acc => case lay_bind rho of 
+             let val ts = EdList.foldR (fn rho => fn acc => case lay_bind rho of 
                                           SOME t => t::acc | _ => acc) [] rhos
              in f(alphas, ts, epss, tau)
              end
@@ -505,8 +504,8 @@ struct
           *)
           val find = E.find
 
-          val _ = List.apply E.setInstance Sr
-          val _ = List.apply E.setInstance Se
+          val _ = List.app E.setInstance Sr
+          val _ = List.app E.setInstance Se
 
           fun fst(x,y) = x
 
@@ -590,8 +589,8 @@ struct
                                   (* this is where arrow effects are instantiated*)
             val (cone, updates) = E.instNodesClever (#2 S @ #3 S) cone
 
-            val _ = List.apply E.clearInstance Sr
-            val _ = List.apply E.clearInstance Se
+            val _ = List.app E.clearInstance Sr
+            val _ = List.app E.clearInstance Se
 
             (*val _ = footnote Profile.profileOff()*)
         in
@@ -620,7 +619,7 @@ struct
     | update_runtypes _ = die "update_runtypes"
 
   fun unify_with_toplevel_wordregion (cone, rhos) =
-    let val rhos = List.all isWordRegion rhos
+    let val rhos = List.filter isWordRegion rhos
     in foldl (fn (rho, cone) => 
 	      E.unifyRho(E.toplevel_region_withtype_word, rho) cone) 
       cone rhos
@@ -642,9 +641,9 @@ struct
 				   of SOME E.WORD_RT => die "instClever.quantified word region!!"
 				    | _ => ()) rhos 
 *)
-          val S = (ListPair.zip(alphas,types),
-                   ListPair.zip(rhos,places),
-                   ListPair.zip(epsilons,arreffs))
+          val S = (BasisCompat.ListPair.zipEq(alphas,types),
+                   BasisCompat.ListPair.zipEq(rhos,places),
+                   BasisCompat.ListPair.zipEq(epsilons,arreffs))
                   handle _ => die "inst: type scheme and \
                                  \instantiation list have different arity"
 	  val (Ty,cone,updates) = instAux(S, tau) cone
@@ -664,7 +663,7 @@ struct
   fun warn effects =  case effects of
         [] => NONE
       |  _ => SOME("regEffClos: escaping from generalisation: " 
-                   ^ List.string (pp o E.layout_effect) effects ^ "\n")
+                   ^ EdList.stringSep "[" "]" ", " (pp o E.layout_effect) effects ^ "\n")
                   
    fun combine_messages(NONE, msg2) = msg2
      | combine_messages(msg1, NONE) = msg1
@@ -688,8 +687,8 @@ struct
   fun unvisit node = E.get_visited node := false
 
   fun unify_generic_secondary_epss(cone,n,reachable_nodes, principal_nodes): E.cone = 
-      (List.apply visit principal_nodes;
-       let val secondary_epss = List.foldL (fn reachable_node => fn acc =>
+      (List.app visit principal_nodes;
+       let val secondary_epss = EdList.foldL (fn reachable_node => fn acc =>
                 if E.is_arrow_effect reachable_node then
                    if !(E.get_visited reachable_node) then (* primary *) acc
                    else if potentially_generalisable n reachable_node
@@ -697,11 +696,11 @@ struct
                         else acc
                 else acc) [] reachable_nodes
        in
-          List.apply unvisit principal_nodes;
+          List.app unvisit principal_nodes;
 
           case secondary_epss of 
             [] => cone
-          | (x::xs) => List.foldL (fn eps => fn cone => E.unifyEps(eps,x) cone) cone xs
+          | (x::xs) => EdList.foldL (fn eps => fn cone => E.unifyEps(eps,x) cone) cone xs
        end)
 
   (* partition_rhos rhos partitions rhos into region variables that have the
@@ -713,7 +712,7 @@ struct
       let val sorted_rhos = ListSort.sort (fn rho1 => fn rho2=> skey rho1 <= skey rho2) rhos
           fun runs [] = []
             | runs (x::xs) = 
-                let val (run1, rest)= List.splitFirst (fn rho => skey rho <> skey x) xs
+                let val (run1, rest)= EdList.splitFirst (fn rho => skey rho <> skey x) xs
                                       handle _ => (xs, [])
                 in (x::run1) :: runs rest
                 end
@@ -723,11 +722,11 @@ struct
   fun unifyRhos(rhos as [], cone): place * cone = 
                die ".unifyRhos applied to empty list of region variables"
     | unifyRhos(rho::rhos, cone) = 
-               (rho, List.foldL (fn rho' => fn cone => 
+               (rho, EdList.foldL (fn rho' => fn cone => 
                                  E.unifyRho(rho',rho) cone) cone rhos)
 
   fun unify_rho_partition(cone0, partition: place list list): place list * E.cone = 
-      List.foldR (fn (l : place list) => fn (representatives,cone) =>
+      EdList.foldR (fn (l : place list) => fn (representatives,cone) =>
                   let val (rho', cone) = unifyRhos(l, cone)
                   in (rho' :: representatives, cone) end
                  )([], cone0) partition
@@ -735,11 +734,11 @@ struct
   fun unifyEpss(epss as [], cone): place * cone = 
                die ".unifyEpss applied to empty list of effect variables"
     | unifyEpss(eps::epss, cone) = 
-               (eps, List.foldL (fn eps' => fn cone => 
+               (eps, EdList.foldL (fn eps' => fn cone => 
                                  E.unifyEps(eps',eps) cone) cone epss)
 
   fun unify_eps_partition(cone0, partition: place list list): effect list * E.cone = 
-      List.foldR (fn (l : place list) => fn (representatives,cone) =>
+      EdList.foldR (fn (l : place list) => fn (representatives,cone) =>
                   let val (eps', cone) = unifyEpss(l, cone)
                   in (eps' :: representatives, cone) end
                  )([], cone0) partition
@@ -762,7 +761,7 @@ struct
                         else loop(rest, n+1)
                     end
       in
-         List.apply visit bound_primary;
+         List.app visit bound_primary;
          loop(tau_nodes_in_fixed_order, 0)
       end
 
@@ -773,7 +772,7 @@ struct
              \to be one secondary generalisable effect variable left"
 
   fun set_pix_of_secondary_rhos rhos : unit= 
-       List.apply (fn rho => (E.pix rho := skey rho * ~10)) rhos
+       List.app (fn rho => (E.pix rho := skey rho * ~10)) rhos
 
 
   fun regEffClos(B: E.cone, B_0: int, phi: E.effect, tau: Type): 
@@ -807,27 +806,27 @@ struct
                     (* nodes in "subgraph" are listed in bottom-up order, without
                        duplicates *)
 
-     val frv_tau = List.all E.is_rho subgraph  (* no duplicates in frv_tau *)
+     val frv_tau = List.filter E.is_rho subgraph  (* no duplicates in frv_tau *)
      val pfrv_tau = pfrv tau  (* syntactic order *)
      val problematic_secondary_frv_tau =  (* no duplicates *)
-               List.all (potentially_generalisable n)
+               List.filter (potentially_generalisable n)
                         (E.setminus(frv_tau, pfrv_tau))
 
      val (bound_secondary_rhos, B_3) = unify_rho_partition(B_2, 
                                            partition_rhos problematic_secondary_frv_tau)
      val _ = set_pix_of_secondary_rhos bound_secondary_rhos
 
-     val primary_bound_rhos = E.remove_duplicates(List.all (potentially_generalisable n) pfrv_tau)
+     val primary_bound_rhos = E.remove_duplicates(List.filter (potentially_generalisable n) pfrv_tau)
      val _ = set_pix_primary(primary_bound_rhos, pfrv_tau)
      val bound_rhos = bound_secondary_rhos @ primary_bound_rhos
 
-     val fev_tau = List.all E.is_arrow_effect subgraph (* bottom-up order, no duplicates *)
+     val fev_tau = List.filter E.is_arrow_effect subgraph (* bottom-up order, no duplicates *)
      val pfev_tau = pfev tau      (* syntactic order *)
-     val problematic_secondary_fev_tau =  List.all (potentially_generalisable n)
+     val problematic_secondary_fev_tau =  List.filter (potentially_generalisable n)
                                                 (E.setminus(fev_tau,pfev_tau))
      val _ = set_pix_of_secondary_epss problematic_secondary_fev_tau
 
-     val bound_epss = List.all (potentially_generalisable n) fev_tau (* bottom-up order *)
+     val bound_epss = List.filter (potentially_generalisable n) fev_tau (* bottom-up order *)
      val _ = set_pix_primary(E.setminus(bound_epss,problematic_secondary_fev_tau), pfev_tau)
      val sigma = FORALL([], bound_rhos, bound_epss, tau)
 
@@ -926,49 +925,51 @@ struct
             (*val _ = logsay "same positions of bound effect vars\n"*)
             val (fresh_rhos, cone) = E.freshRhos(rhos1, cone)
             val (fresh_epss', cone) = E.freshEpss(epsilons1,cone)
-            val fresh_epss'_with_ints = ListPair.zip(fresh_epss', eps_indices)
+            val fresh_epss'_with_ints = BasisCompat.ListPair.zipEq(fresh_epss', eps_indices)
             val (fresh_epss'', cone) = E.freshEpss(epsilons1,cone)
-            val fresh_epss''_with_ints = ListPair.zip(fresh_epss'', eps_indices)
+            val fresh_epss''_with_ints = BasisCompat.ListPair.zipEq(fresh_epss'', eps_indices)
             val (fresh_rhos_of_epss, cone) = E.freshRhos(epsilons1, cone)
-            val _ = List.apply (fn (eps, rho) => E.edge(eps, E.mkPut rho))
-                               (ListPair.zip(fresh_epss',fresh_rhos_of_epss))
-            val _ = List.apply (fn (eps, rho) => E.edge(eps, E.mkPut rho))
-                               (ListPair.zip(fresh_epss'',fresh_rhos_of_epss))
+            val _ = List.app (fn (eps, rho) => E.edge(eps, E.mkPut rho))
+                               (BasisCompat.ListPair.zipEq(fresh_epss',fresh_rhos_of_epss))
+            val _ = List.app (fn (eps, rho) => E.edge(eps, E.mkPut rho))
+                               (BasisCompat.ListPair.zipEq(fresh_epss'',fresh_rhos_of_epss))
             val Se' = map (fn (bound_eps,ix) => 
-                            (bound_eps, #1(List.first (fn (new_eps,ix') => ix=ix') fresh_epss'_with_ints))
+                            (bound_eps, #1(EdList.first (fn (new_eps,ix') => ix=ix') fresh_epss'_with_ints))
                           ) 
                           epsilons_and_ints1
                           
             val (tau', cone, updates) = 
-                 instAux(([],ListPair.zip(rhos1,fresh_rhos),Se'),tau1) cone
+                 instAux(([],BasisCompat.ListPair.zipEq(rhos1,fresh_rhos),Se'),tau1) cone
                    handle x => (say "first call\n"; 
-                      List.apply (fn node => say(PP.flatten1(E.layout_effect node))) 
+                      List.app (fn node => say(PP.flatten1(E.layout_effect node))) 
                                  (rhos1 @ epsilons1); raise x)
 
             val Se'' = map (fn (bound_eps,ix) => 
-                            (bound_eps, #1(List.first (fn (new_eps,ix') => ix=ix') fresh_epss''_with_ints))
+                            (bound_eps, #1(EdList.first (fn (new_eps,ix') => ix=ix') fresh_epss''_with_ints))
                           ) 
                           epsilons_and_ints2
                           
             val (tau'', cone, updates) = 
-                 instAux(([],ListPair.zip(rhos2,fresh_rhos), Se''),tau2) cone
+                 instAux(([],BasisCompat.ListPair.zipEq(rhos2,fresh_rhos), Se''),tau2) cone
                    handle x => (say "second call\n";
-                      List.apply (fn node => say(PP.flatten1(E.layout_effect node))) 
+                      List.app (fn node => say(PP.flatten1(E.layout_effect node))) 
                                  (rhos2 @ epsilons2); raise x) 
           in
-            (List.forAll E.eq_effect
-                        (ListPair.zip(E.remove_duplicates(pfrv tau'),
-                                      E.remove_duplicates(pfrv tau'')))
+            (EdList.forAll E.eq_effect
+                        (BasisCompat.ListPair.zipEq
+			     (E.remove_duplicates(pfrv tau'),
+                              E.remove_duplicates(pfrv tau'')))
              )
             andalso
             ((*logsay "regions correspond\n";*)
-             List.forAll E.sameEffect
-                        (ListPair.zip(E.remove_duplicates(pfev tau'),
-                                      E.remove_duplicates(pfev tau'')))
+             EdList.forAll E.sameEffect
+                        (BasisCompat.ListPair.zipEq
+			     (E.remove_duplicates(pfev tau'),
+                              E.remove_duplicates(pfev tau'')))
              )
           end
          ) footnote' (fn b => ((*logsay ("leave alpha_equal: " ^ Bool.string b ^ "\n");*) E.pop cone))
-      end handle ListPair.Zip => ((*logsay "leave alpha_equal: false\n";*) false (*footnote say "zip raised"*) )
+      end handle BasisCompat.ListPair.UnequalLengths => ((*logsay "leave alpha_equal: false\n";*) false (*footnote say "zip raised"*) )
 
   (**************************)
   (* Matching type schemes  *)
@@ -1084,7 +1085,7 @@ struct
              case add_rhos of
                [] => (* common special case: *) rhos'_origins
              | _ =>  merge(enumerate add_rhos,  
-                           map (map(add(List.size add_rhos))) rhos'_origins)
+                           map (map(add(List.length add_rhos))) rhos'_origins)
 
       val epss'_origins = map (find_origin epss) epss'
       val add_epss = select_empty(epss'_origins, epss')
@@ -1092,7 +1093,7 @@ struct
              case add_epss of 
                [] => (* common special case: *) epss'_origins
              | _  => merge(enumerate add_epss, 
-                           map (map(add(List.size add_epss))) epss'_origins)
+                           map (map(add(List.length add_epss))) epss'_origins)
 
       val thin = mk_transformer(rhos'_origins_extended, epss'_origins_extended)
     in
@@ -1164,7 +1165,7 @@ struct
   	     unify_rhos_on_same_tyvars00 mus1
   	     (unify_rhos_on_same_tyvars00 mus2 (ttr, B)))
   and unify_rhos_on_same_tyvars00 mus (ttr, B) =
-        List.foldL unify_rhos_on_same_tyvars0 (ttr, B) mus
+        EdList.foldL unify_rhos_on_same_tyvars0 (ttr, B) mus
   
   (*c_function_effects mus = the `rhos_for_result' to be annotated on
    a ccall; see comment in MUL_EXP.*)
@@ -1202,7 +1203,7 @@ struct
            | (RECORD nil, RECORD nil) => [(rho, SOME 0)] (*unit is not allocated*)
 	   | (RECORD mus_schema, RECORD mus) =>
   	     (rho, in_list (SOME (RegConst.size_of_record mus)))
-  	     :: concat_lists (map (c_function_effects1 in_list) (ListPair.zip(mus_schema,mus)
+  	     :: concat_lists (map (c_function_effects1 in_list) (BasisCompat.ListPair.zipEq(mus_schema,mus)
 								 handle _ => die "c_function_effects1.zip"))
   	     (*it is assumed that concat_lists does not concat the lists in
   	      opposite order, i.e., that concat_list [[1,2], [3], [4]] is

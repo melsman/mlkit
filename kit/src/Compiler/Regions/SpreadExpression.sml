@@ -61,8 +61,7 @@ functor SpreadExpression(
 ): SPREAD_EXPRESSION =
 struct
 
-  structure NewList = List
-  structure List = Edlib.List
+  structure EdList = Edlib.List
 
   structure E = E
   structure E' = E'
@@ -209,9 +208,9 @@ struct
 	  orelse Eff.eq_effect(r, Eff.toplevel_region_withtype_string)
 	  orelse Eff.eq_effect(r, Eff.toplevel_region_withtype_real)
 	  
-	val rhos = (NewList.filter (not o Eff.is_wordsize o valOf o Eff.get_place_ty) rhos)
+	val rhos = (List.filter (not o Eff.is_wordsize o valOf o Eff.get_place_ty) rhos)
 	  handle _ => die "gc_no_dangling_pointers.rhos"
-	val rhos = NewList.filter (not o drop_rho_p) rhos
+	val rhos = List.filter (not o drop_rho_p) rhos
 (*
 	val B = foldl (fn (r,B) => Eff.lower (Eff.level B) r B) B rhos
 *)	  
@@ -292,7 +291,7 @@ struct
 
   fun Below(B, mus) =
     let val free_rhos_and_epss = ann_mus mus []
-        val B' = List.foldL  ((*Eff.*)lower(Eff.level B - 1)) B free_rhos_and_epss
+        val B' = EdList.foldL  ((*Eff.*)lower(Eff.level B - 1)) B free_rhos_and_epss
     in 
         (*Eff.*)popAndClean(B')
     end
@@ -302,7 +301,7 @@ struct
   fun retract (B, t as E'.TR(e, E'.Mus mus, phi), cont) =
     if false (*preserve_tail_calls()*) andalso cont = TAIL then   (* (Eff.restrain B, t, TAIL) *)
       let val free_rhos_and_epss = ann_mus mus []
-          val B = List.foldL (lower(Eff.level B - 1)) B free_rhos_and_epss
+          val B = EdList.foldL (lower(Eff.level B - 1)) B free_rhos_and_epss
 (*	  val _ = app (fn effect =>
 		       let val effect = if Eff.is_get effect orelse Eff.is_put effect then Eff.rho_of effect
 					else effect
@@ -431,10 +430,10 @@ struct
       val (B,t0 as E'.TR(e', E'.Mus mus_0, phi_0),_) = spread(B,e0,false,NOTAIL)
       val mu_0 as (_,object_rho) = 
           case mus_0 of [mu_0] => mu_0 | _ => die "S. ill-typed object of switch"
-      val B = List.foldL (fn mu => unify_mu(get_exn_mu mu,mu_0)) B excon_mus
+      val B = EdList.foldL (fn mu => unify_mu(get_exn_mu mu,mu_0)) B excon_mus
 
       val (B, new_choices, contAcc) = 
-	List.foldR (fn (c, e) => fn (B, ts, contAcc) => 
+	EdList.foldR (fn (c, e) => fn (B, ts, contAcc) => 
 		    let val (B, t, cont) = spread(B,e,toplevel,cont)
 		    in (B, t:: ts, meetSwitch cont contAcc)
 		    end) (B,[],NOTAIL) choices
@@ -449,17 +448,17 @@ struct
       (* unify types of branches - when they are not frames or raised Bind types *)
 
       val (B,metatype) = 
-          (case List.first (fn E'.TR(_,E'.Mus mus,_) => true | _ => false) new_choices of
+          (case EdList.first (fn E'.TR(_,E'.Mus mus,_) => true | _ => false) new_choices of
             E'.TR(_,E'.Mus mus1,_) => 
-                (List.foldL (fn E'.TR(_,E'.Mus mus,_) => unify_mus(mus,mus1)
+                (EdList.foldL (fn E'.TR(_,E'.Mus mus,_) => unify_mus(mus,mus1)
                              | E'.TR(_, _, _) => (fn B=>B)) B
                            (case new_last of NONE => new_choices | SOME t' => t'::new_choices),
                  E'.Mus mus1)
 	  | _ => die "spreadSwitch" 
-          )handle List.First _ => 
-          (case List.first (fn E'.TR(_,E'.Frame _, _) => true | _ => false) new_choices of
+          )handle EdList.First _ => 
+          (case EdList.first (fn E'.TR(_,E'.Frame _, _) => true | _ => false) new_choices of
             E'.TR(_,metatype,_) => (B,metatype)
-          )handle List.First _ => (B, E'.RaisedExnBind)
+          )handle EdList.First _ => (B, E'.RaisedExnBind)
           
       (* val accumulate effects*)
       val phi = (*Eff.*)mkUnion(phi_0:: (*Eff.*)mkGet object_rho::
@@ -564,7 +563,7 @@ struct
            UB_RECORD[2, 3, 4,5]
         *)
            
-        let val (B, triples, mus, phis) = List.foldL(fn exp => fn (B, triples', mus, phis) =>
+        let val (B, triples, mus, phis) = EdList.foldL(fn exp => fn (B, triples', mus, phis) =>
               let val (B,trip as E'.TR(e',E'.Mus mus1,phi), _) = S(B, exp, false, NOTAIL)
               in case mus1 of
                    [mu] => (B, trip::triples', mu :: mus, phi::phis)
@@ -580,7 +579,7 @@ struct
     | E.FN{pat: (E.lvar * E.Type) list, body: E.LambdaExp} =>
         let 
           val (mus, B) = freshTypesWithPlaces (B, map #2 pat)
-          val rse' = List.foldL (fn (lvar, mu as (tau,rho))=> fn rse =>
+          val rse' = EdList.foldL (fn (lvar, mu as (tau,rho))=> fn rse =>
                          (*RSE.*)declareLvar(lvar, (false,false,R.type_to_scheme tau, rho,NONE,NONE), rse)) rse
                          (ListPair.zip(map #1 pat, mus))
           val (B,t1 as E'.TR(e1',E'.Mus mu_list1, phi1), _) = spreadExp(B,rse',body,false,TAIL)
@@ -716,7 +715,7 @@ good *)
                so that they cannot be generalised ever. Level 2, because it is generated 
 	       in this program unit, unless unified with another lower-level rho. *)
           (*
-            val B = List.foldL ((*Eff.*)lower 2) B (ann_mus [mu] [])
+            val B = EdList.foldL ((*Eff.*)lower 2) B (ann_mus [mu] [])
           *)
           (*NO! Lower only rho! (Otherwise region variables that are associated
            with type variables and have runtime type BOT become global.) *)
@@ -766,7 +765,7 @@ good *)
                  (* lower all the region and effect variables of mus21 to have level 2 (not 0),
                     so that they cannot be generalised ever. Level 2, because it is generated 
     	            in this program unit, unless unified with another lower-level rho. *)
-                 val B = List.foldL ((*Eff.*)lower 2) B (ann_mus mus21 [])
+                 val B = EdList.foldL ((*Eff.*)lower 2) B (ann_mus mus21 [])
              in
                retract(B, E'.TR( E'.HANDLE(t1,t2), E'.Mus mus22, phi), 
 		       NOTAIL) 
@@ -955,7 +954,7 @@ good *)
 		  NOTAIL)
         end 
     | E.PRIM(E.RECORDprim,args) =>
-        let val (B, trips) = List.foldR (fn arg => fn (B, trips) =>
+        let val (B, trips) = EdList.foldR (fn arg => fn (B, trips) =>
                     let val (B, trip, _) = S(B,arg, false, NOTAIL)
                     in (B, trip::trips)
                     end) (B,[]) args
@@ -970,7 +969,7 @@ good *)
         let 
           val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,arg, false, NOTAIL)
           val (mus,rho) = case mus1 of [(R.RECORD mus,rho)] => (mus,rho) | _ => die "S (select) : not record type"
-          val mu = List.nth i mus handle List.Subscript _ => die "S (select) : select index out of range"
+          val mu = List.nth(mus,i) handle Subscript => die "S (select) : select index out of range"
           val phi = (*Eff.*)mkUnion([(*Eff.*)mkGet rho, phi1])
         in
           (B, E'.TR(E'.SELECT(i, t1), E'.Mus [mu], phi),
@@ -981,7 +980,7 @@ good *)
           val B = pushIfNotTopLevel(toplevel,B) (* for retract *)
           val (B, t1 as E'.TR(e1', E'.Mus mus1, phi1), _) = S(B,arg, false, NOTAIL)
           val (mus,rho) = case mus1 of [(R.RECORD mus,rho)] => (mus,rho) | _ => die "S (select) : not record type"
-          val mu = List.nth i mus handle List.Subscript _ => die "S (select) : select index out of range"
+          val mu = List.nth(mus,i) handle Subscript => die "S (select) : select index out of range"
           val phi = (*Eff.*)mkUnion([(*Eff.*)mkGet rho, phi1])
         in
           retract(B, E'.TR(E'.SELECT(i, t1), E'.Mus [mu], phi),
@@ -1004,7 +1003,7 @@ good *)
           val (rho,B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
           val mus = [(R.boolType,rho)]
           val phi = (*Eff.*)mkUnion(phi1::phi2::(*Eff.*)mkPut rho :: 
-                                 map (*Eff.*)mkGet(List.all (*Eff.*)is_rho (ann_mus (mus1 @ mus2) [])))
+                                 map (*Eff.*)mkGet(List.filter (*Eff.*)is_rho (ann_mus (mus1 @ mus2) [])))
           val (mu1,mu2) = case (mus1,mus2) of ([mu1],[mu2]) => (mu1,mu2)
                                             | _ => die "S: ill-typed equality"
         in
@@ -1053,7 +1052,7 @@ good *)
 	     R.FUN (mus_a, eps_phi0, [mu_r]) =>
 	       let
 		 val (B, trs', mus_es, phis) =
-		       List.foldR (fn e => fn (B, trs', mus_es, phis) =>
+		       EdList.foldR (fn e => fn (B, trs', mus_es, phis) =>
                        let val (B, tr' as E'.TR (_, E'.Mus mus', phi), _) = S (B, e, false, NOTAIL)
 		       in (case mus' of
 			     [mu'] => (B, tr' :: trs', mu' :: mus_es, phi :: phis)
@@ -1087,7 +1086,7 @@ good *)
             val (B, t as E'.TR(e',E'.Mus mus0,_), _) = S(B,e0,false,NOTAIL)
 	    val (fresh_rho,B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
 	    val mu = (R.unitType, fresh_rho)
-            val phi = (*Eff.*)mkUnion(map (*Eff.*)mkPut(fresh_rho::List.all (*Eff.*)is_rho (ann_mus mus0 [])))
+            val phi = (*Eff.*)mkUnion(map (*Eff.*)mkPut(fresh_rho::List.filter (*Eff.*)is_rho (ann_mus mus0 [])))
           in
             case e' of
               E'.VAR{il_r as ref il, ...} =>
@@ -1104,7 +1103,7 @@ good *)
             val (B, t as E'.TR(e',E'.Mus mus0,_), _) = S(B,e0,false,NOTAIL)
 	    val (fresh_rho,B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
 	    val mu = (R.unitType, fresh_rho)
-            val phi = (*Eff.*)mkUnion(map (*Eff.*)mkPut(fresh_rho::List.all (*Eff.*)is_rho (ann_mus mus0 [])))
+            val phi = (*Eff.*)mkUnion(map (*Eff.*)mkPut(fresh_rho::List.filter (*Eff.*)is_rho (ann_mus mus0 [])))
           in
             case e' of
               E'.VAR{il_r as ref il, ...} =>
@@ -1118,7 +1117,7 @@ good *)
 
     | E.FRAME{declared_lvars, declared_excons} =>
         let 
-          val new_declared_lvars' = List.foldR( fn lvar => fn acc => 
+          val new_declared_lvars' = EdList.foldR( fn lvar => fn acc => 
                  let val (compound,create_region_record,sigma,p,_,_) = 
 		       noSome ((*RSE.*)lookupLvar rse lvar) "declared lvar of frame not in scope"
                  in {lvar=lvar, compound=compound, create_region_record=create_region_record,
@@ -1126,7 +1125,7 @@ good *)
                  end) [](map #lvar declared_lvars)
 	  val new_declared_lvars = 
 	    map (fn {lvar,sigma,place,...} => {lvar=lvar,sigma=sigma,place=place}) new_declared_lvars'
-          val new_declared_excons = List.foldR( fn excon => fn acc => 
+          val new_declared_excons = EdList.foldR( fn excon => fn acc => 
                  (excon,(*RSE.*)lookupExcon rse excon)::acc) [](map #1 declared_excons)              
         in
           (B,E'.TR(E'.FRAME{declared_lvars = new_declared_lvars, declared_excons = new_declared_excons},

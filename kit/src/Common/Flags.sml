@@ -7,10 +7,6 @@ functor Flags (structure Crash : CRASH
 	       val colwidth : int ref) : FLAGS =
   struct
 
-    structure NewList = List
-    structure ListPair = Edlib.ListPair
-    structure List = Edlib.List
-
     fun outLine (s) = print(s ^ "\n")
     fun quote s = "\"" ^ String.toString s ^ "\""
     fun die s = Crash.impossible ("Flags." ^ s)
@@ -130,7 +126,7 @@ functor Flags (structure Crash : CRASH
 	       [] =>  ()
 	     | reports =>
 		 (if !log_to_file then
-		    print ("\n*** " ^ Int.toString (NewList.length reports)
+		    print ("\n*** " ^ Int.toString (List.length reports)
 			   ^ " warning"
 			   ^ (case reports of [_] => "" | _ => "s")
 			   ^ " printed on log file\n")
@@ -485,9 +481,9 @@ struct
     fun update_bool (key, v) = lookup_flag_entry key := v
 
     fun interpret (l:(string*ParseScript.const) list) : unit = 
-      NewList.app (fn (s, ParseScript.STRING newval) => update_string(s,newval)
-                    | (s, ParseScript.INT newval) => update_int(s,newval)
-                    | (s, ParseScript.BOOL newval) => update_bool(s,newval)) l;
+      List.app (fn (s, ParseScript.STRING newval) => update_string(s,newval)
+                 | (s, ParseScript.INT newval) => update_int(s,newval)
+                 | (s, ParseScript.BOOL newval) => update_bool(s,newval)) l;
   in
     fun readScript script_file : unit = 
       if OS.FileSys.access (script_file, []) then
@@ -532,8 +528,8 @@ struct
        outLine (make_row ["Name to use in script file", "Value of variable now"] "");
        outLine (horizontal_line 2 "");
        map (fn  (name, value) => outLine (make_row [name, value] ""))
-       (ListPair.zip (dirEntriesName, dirEntriesValue))
-           handle ListPair.Zip => die "zip" ;
+       (BasisCompat.ListPair.zipEq (dirEntriesName, dirEntriesValue))
+           handle BasisCompat.ListPair.UnequalLengths => die "zip" ;
        outLine (horizontal_line 2 ""))
     end
 

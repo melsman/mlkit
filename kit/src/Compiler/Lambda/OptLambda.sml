@@ -34,8 +34,7 @@ functor OptLambda(structure Lvars: LVARS
     val Listfoldl = List.foldl
     val Listfoldr = List.foldr
     val Listnull = List.null
-    structure List = Edlib.List
-    structure ListPair = Edlib.ListPair
+    structure EdList = Edlib.List
 
     structure LvarMap = Lvars.Map
 
@@ -123,12 +122,12 @@ functor OptLambda(structure Lvars: LVARS
       fun pad m =
         let val l = FinMap.list m
             val ss = map #1 l
-            val max = List.foldL (fn s => fn max => if String.size s > max then String.size s else max) 0 ss
+            val max = EdList.foldL (fn s => fn max => if String.size s > max then String.size s else max) 0 ss
             fun space 0 = ""
               | space n = " " ^ space (n-1)
             fun add_space s = s ^ space (max - String.size s)
             val ss' = map add_space ss
-            val l' = ListPair.zip (ss', map #2 l) handle _ => die "pad"
+            val l' = BasisCompat.ListPair.zipEq (ss', map #2 l) handle _ => die "pad"
 	    fun fromList [] = FinMap.empty
 	      | fromList ((a,b)::rest) = FinMap.add(a,b,fromList rest)
         in fromList l'
@@ -474,13 +473,13 @@ functor OptLambda(structure Lvars: LVARS
 
       (* least upper bound *)
       fun lub (cv as CVAR lamb,CVAR lamb') = if eq_lamb(lamb,lamb') then cv else CUNKNOWN
-	| lub (CRECORD cvals,CRECORD cvals') = (CRECORD (map lub (ListPair.zip(cvals,cvals')))
-						handle ListPair.Zip => die "lub")
+	| lub (CRECORD cvals,CRECORD cvals') = (CRECORD (map lub (BasisCompat.ListPair.zipEq(cvals,cvals')))
+						handle BasisCompat.ListPair.UnequalLengths => die "lub")
 	| lub (cv as CCONST lamb,CCONST lamb') = if eq_lamb(lamb,lamb') then cv else CUNKNOWN
 	| lub _ = CUNKNOWN
 
       fun lubList [] = CUNKNOWN
-	| lubList l = List.foldL' (fn cval => fn cval' => lub(cval, cval')) l
+	| lubList l = EdList.foldL' (fn cval => fn cval' => lub(cval, cval')) l
 
 
       (* -----------------------------------------------------------------
@@ -718,8 +717,8 @@ functor OptLambda(structure Lvars: LVARS
 	       let fun do_select () =
 		      case cv 
 			of CRECORD cvs => 
-			  let val nth_cv = List.nth n cvs
-			    handle List.Subscript _ => die "reduce4"
+			  let val nth_cv = List.nth(cvs,n)
+			    handle Subscript => die "reduce4"
 			  in case nth_cv 
 			       of CVAR var => (tick "reduce - sel-var"; decr_uses lamb; 
 					       incr_uses var; reduce (env, (var,nth_cv)))
@@ -732,7 +731,7 @@ functor OptLambda(structure Lvars: LVARS
 			 | _ => fail
 	       in case lamb
 		    of PRIM(RECORDprim,lambs) =>
-		      let val (lamb', lambs') = List.removeNth n lambs
+		      let val (lamb', lambs') = EdList.removeNth n lambs
 		      in if safeLambdaExps lambs' then
 			   (tick "reduce - sel-record"; app decr_uses lambs'; 
 			    reduce(env, (lamb', CUNKNOWN)))
@@ -916,7 +915,7 @@ functor OptLambda(structure Lvars: LVARS
 	       let val lvars = map #lvar declared_lvars
 		   val excons = map #1 declared_excons
 		   val env' = 
-		     List.foldL (fn lv => fn acc => 
+		     EdList.foldL (fn lv => fn acc => 
 				 case LvarMap.lookup env lv
 				   of SOME res => 
 				     if cross_module_inline (lvars,excons) lv res 
@@ -964,7 +963,7 @@ functor OptLambda(structure Lvars: LVARS
       fun free_contract_env_res(res,cons,tns) = (cons,tns)
 
       fun restrict_contract_env(ce,lvars,cons,tns) = 
-	List.foldL (fn lv => fn (e,cons,tns) => 
+	EdList.foldL (fn lv => fn (e,cons,tns) => 
 		    case LvarMap.lookup ce lv
 		      of SOME res => 
 			let val (cons,tns) = free_contract_env_res(res,cons,tns)
@@ -1014,8 +1013,8 @@ functor OptLambda(structure Lvars: LVARS
 	  of PRIM(SELECTprim i, [VAR{lvar,instances=[]}]) =>
 	    (case LvarMap.lookup env lvar
 	       of SOME lvars =>
-		 let val lvar' = List.nth i lvars
-                                 handle List.Subscript _ => die "eliminate_explicit_records"
+		 let val lvar' = List.nth(lvars, i)
+                                 handle Subscript => die "eliminate_explicit_records"
 		 in tick "eliminate explicit records - select"; 
                     VAR{lvar=lvar',instances=[]}
 		 end
@@ -1148,7 +1147,7 @@ functor OptLambda(structure Lvars: LVARS
         let fun get_tyvars [] tyvars = tyvars
 	      | get_tyvars (({tyvars,...}:fs)::c) tyvars' = 
 	        let fun add [] tyvars = tyvars
-		      | add (tv::tvs) tyvars = if List.member tv tyvars then add tvs tyvars
+		      | add (tv::tvs) tyvars = if EdList.member tv tyvars then add tvs tyvars
 					       else add tvs (tv::tyvars)
 		in add tyvars (get_tyvars c tyvars')
 		end
@@ -1244,7 +1243,7 @@ functor OptLambda(structure Lvars: LVARS
 			  | NONE => false) true let_env2
 
      fun restrict_let_env(let_env,lvars) = 
-       List.foldL (fn lv => fn acc => 
+       EdList.foldL (fn lv => fn acc => 
 		   case LvarMap.lookup let_env lv
 		     of SOME res => LvarMap.add(lv,res,acc)
 		      | NONE => die "restrict_let_env.lv not in env") LvarMap.empty lvars 
@@ -1290,11 +1289,11 @@ functor OptLambda(structure Lvars: LVARS
 		 let val functions' = map (fn {lvar,tyvars,Type,bind} => 
 					   {lvar=lvar,tyvars=tyvars,Type=Type,bind=f env bind}) functions
 		     val lvars = map #lvar functions
-		     val env' = List.foldL (fn lv => fn acc => add_lv(lv,IGNORE,acc)) env lvars
+		     val env' = EdList.foldL (fn lv => fn acc => add_lv(lv,IGNORE,acc)) env lvars
 		 in FIX{functions=functions', scope=f env' scope}
 		 end 
 	  | FRAME {declared_lvars,...} => 
-	      let val env' = List.foldR (fn {lvar,...} => fn env' =>
+	      let val env' = EdList.foldR (fn {lvar,...} => fn env' =>
 				       case lookup env lvar
 					 of SOME p => add_lv (lvar,p,env')
 					  | NONE => die ("functionalise_let.FRAME.lvar " ^ 
@@ -1363,7 +1362,7 @@ functor OptLambda(structure Lvars: LVARS
 			  | NONE => false) true unbox_fix_env2
 
      fun restrict_unbox_fix_env(unbox_fix_env,lvars) = 
-       List.foldL (fn lv => fn acc => 
+       EdList.foldL (fn lv => fn acc => 
 		   case LvarMap.lookup unbox_fix_env lv
 		     of SOME res => LvarMap.add(lv,res,acc)
 		      | NONE => die "restrict_unbox_fix_env.lv not in env") LvarMap.empty lvars 
@@ -1555,7 +1554,7 @@ functor OptLambda(structure Lvars: LVARS
     type inveta_env = inveta_res LvarMap.map
 
     fun restrict_inv_eta_env(inveta_env,lvars) =
-      List.foldL(fn lv => fn acc => 
+      EdList.foldL(fn lv => fn acc => 
 		 case LvarMap.lookup inveta_env lv
 		   of SOME res => LvarMap.add(lv,res,acc)
 		    | NONE => die "restrict_inv_eta_env.lv not in env") LvarMap.empty lvars
@@ -1571,7 +1570,7 @@ functor OptLambda(structure Lvars: LVARS
 
     fun eq_sigma (([],tau1),([],tau2)) = eq_Type(tau1,tau2)
       | eq_sigma (sigma1 as (tyvars1,_),sigma2 as (tyvars2,_)) =
-      List.size tyvars1 = List.size tyvars2 andalso
+      List.length tyvars1 = List.length tyvars2 andalso
       let val (tyvars1,tau1) = new_sigma sigma1
 	  val (tyvars2,tau2) = new_sigma sigma2
 	  val S = mk_subst (fn () => "eq_sigma") (tyvars1,map TYVARtype tyvars2)
@@ -1634,11 +1633,11 @@ functor OptLambda(structure Lvars: LVARS
 	     | LET{pat,bind,scope} => 
 		 let val bind' = inverse_eta env bind
 		     val lvars = map #1 pat
-		     val env' = List.foldL(fn lv => fn acc => LvarMap.add(lv,NOTFIXBOUND,acc)) env lvars
+		     val env' = EdList.foldL(fn lv => fn acc => LvarMap.add(lv,NOTFIXBOUND,acc)) env lvars
 		 in LET{pat=pat,bind=bind',scope=inverse_eta env' scope}
 		 end
 	     | FIX{functions,scope} =>
-	      let val env' = List.foldR (fn {lvar, tyvars, Type, ...} => fn env =>
+	      let val env' = EdList.foldR (fn {lvar, tyvars, Type, ...} => fn env =>
 				         LvarMap.add(lvar, FIXBOUND(tyvars, Type), env)) env functions
 	      in FIX{functions=map (fn {lvar,tyvars,Type,bind} =>
 				   {lvar=lvar,tyvars=tyvars,Type=Type,
@@ -1647,7 +1646,7 @@ functor OptLambda(structure Lvars: LVARS
 	      end
 	     | APP(x as VAR _,lamb) => APP(x,inverse_eta env lamb)
 	     | FRAME {declared_lvars,...} => 
-	      let val env' = List.foldR (fn {lvar,...} => fn env' =>
+	      let val env' = EdList.foldR (fn {lvar,...} => fn env' =>
 					 case LvarMap.lookup env lvar
 					   of SOME res => LvarMap.add(lvar,res,env')
 					    | NONE => die "inverse_eta.FRAME.lv not in env")
@@ -1706,10 +1705,10 @@ functor OptLambda(structure Lvars: LVARS
    type uc_env = (int * TypeScheme) option LvarMap.map
 
    fun restrict_uc_env(uc_env:uc_env,lvars) = 
-       List.foldL (fn lv => fn acc => 
-		   case LvarMap.lookup uc_env lv
-		     of SOME res => LvarMap.add(lv,res,acc)
-		      | NONE => LvarMap.add(lv,NONE,acc)) LvarMap.empty lvars 
+       EdList.foldL (fn lv => fn acc => 
+		     case LvarMap.lookup uc_env lv of 
+			 SOME res => LvarMap.add(lv,res,acc)
+		       | NONE => LvarMap.add(lv,NONE,acc)) LvarMap.empty lvars 
 
    fun uc_eq (NONE, NONE) = true
      | uc_eq (SOME (n1,s1),SOME(n2,s2)) = n1=n2 andalso eq_sigma(s1,s2)

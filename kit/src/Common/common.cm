@@ -1,6 +1,9 @@
 Group is
 
 ../Edlib/edlib.cm
+
+BasisCompat.sml
+
 BASIC_IO.sml
 commonBasicIO.sml
 CRASH.sml

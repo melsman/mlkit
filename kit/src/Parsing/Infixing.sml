@@ -20,7 +20,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 		   ) : INFIXING =
   struct
 
-    structure List = Edlib.List
+    structure EdList = Edlib.List
 
     fun impossible s = Crash.impossible ("Infixing." ^ s)
     open GrammarUtils.TopdecGrammar
@@ -281,7 +281,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
         of FCLAUSE(info, atpats, ty_opt, exp, fclause_opt) =>
              let
                val (id, args) = resolveFClauseArgs(iBas, atpats)
-               val _ = List.apply (checkNoInfixes iBas) args
+               val _ = List.app (checkNoInfixes iBas) args
                val args' = map (fn a => resolveAtpat(iBas, a)) args
                val exp' = resolveExp(iBas, exp)
              in
@@ -356,7 +356,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
           in
             case rhsList of
               [(atpats,exp,ty_opt)] => 
-                if List.forAll certainMatch_atpat atpats
+                if EdList.forAll certainMatch_atpat atpats
                   then
                     let
                         val exp' =
@@ -375,7 +375,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                                   MATCH(info_fn,
                                         MRULE(info_fn,ATPATpat(info_atpat,atpat),exp),NONE))
                           end
-                        val rhs = List.foldR curry exp' atpats
+                        val rhs = EdList.foldR curry exp' atpats
                     in
                       PLAINvalbind
                       (info_fvalbind, GrammarUtils.patOfIdent info_fvalbind 
@@ -398,7 +398,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 (*                val _ = output(std_out, Ident.pr_id id ^ " is not simple\n")*)
                 val numArgs = (* changed back, 31/3/97, mads*)
                   case rhsList
-                    of (atpats, _, _) :: _ => List.size atpats
+                    of (atpats, _, _) :: _ => List.length atpats
                      | _ => impossible "Infixing.fvalbindToValbind"
 
                 val _ = 
@@ -406,9 +406,9 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                    * (c.f. Def. p. 72)
                    *)
                   let 
-                    val rhsListNums = map (List.size o #1) rhsList
+                    val rhsListNums = map (List.length o #1) rhsList
                   in
-                    List.apply (fn n => 
+                    List.app (fn n => 
                                 if n = numArgs then () 
                                 else
 				  error_string info "the clauses must have the same\
@@ -495,7 +495,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                   end
 
                 val curriedFn =
-                  List.foldL curry innerApp (rev vars)
+                  EdList.foldL curry innerApp (rev vars)
               in
                 PLAINvalbind
 		  (info, GrammarUtils.patOfIdent info 

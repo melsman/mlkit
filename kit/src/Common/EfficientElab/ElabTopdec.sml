@@ -119,7 +119,7 @@ functor ElabTopdec
      ) : ELABTOPDEC  =
   struct
 
-    structure List = Edlib.List
+    structure EdList = Edlib.List
 
     fun impossible s = Crash.impossible ("ElabTopdec." ^ s)
     fun noSome NONE s = impossible s
@@ -242,7 +242,7 @@ functor ElabTopdec
 	      | occurences x (y::ys) = 
 	          (if eq (x,y) then 1 else 0) + occurences x ys
 	  in
-	    List.all (fn x => (occurences x ys) > 1) ys
+	    List.filter (fn x => (occurences x ys) > 1) ys
 	  end
 
     fun member x xs = List.exists (fn y => x=y) xs
@@ -312,7 +312,7 @@ functor ElabTopdec
     (* We first collect a list of tyname lists which must be identified. *)
 
     fun collect_TE (flexible : TyName -> bool, path : strid list, TEs, acc) : TyName list list =
-      let val tcmap = List.foldL (fn TE => fn acc => TE.Fold(fn (tycon, tystr) => fn acc =>
+      let val tcmap = EdList.foldL (fn TE => fn acc => TE.Fold(fn (tycon, tystr) => fn acc =>
 							     update(tycon,tystr,acc)) acc TE) FinMap.empty TEs
 
 	  (* Eliminate entries with less than two component, check
@@ -334,17 +334,17 @@ functor ElabTopdec
 			    val arity = case tynames
 					  of t :: _ => TyName.arity t
 					   | _ => impossible "SHAREspec.collect"
-			    val _ = List.apply (fn t => if TyName.arity t = arity then
-						           if flexible t then ()
-							   else raise Share (ErrorInfo.SHARING_TYPE_RIGID
-									     (TyCon.implode_LongTyCon (rev path, tycon), t))
-							else raise Share (ErrorInfo.SHARING_TYPE_ARITY tynames)) tynames
+			    val _ = List.app (fn t => if TyName.arity t = arity then
+						          if flexible t then ()
+							  else raise Share (ErrorInfo.SHARING_TYPE_RIGID
+										(TyCon.implode_LongTyCon (rev path, tycon), t))
+						      else raise Share (ErrorInfo.SHARING_TYPE_ARITY tynames)) tynames
 			in tynames::acc
 			end) acc tcmap
       end
 
     fun collect_E (flexible, path, Es, acc) : TyName list list =
-      let val (SEs, TEs) = List.foldL(fn E => fn (SEs, TEs) =>
+      let val (SEs, TEs) = EdList.foldL(fn E => fn (SEs, TEs) =>
 				      let val (SE,TE,VE) = E.un E
 				      in (SE::SEs,TE::TEs)
 				      end) ([],[]) Es
@@ -353,7 +353,7 @@ functor ElabTopdec
       end
 
     and collect_SE (flexible, path, SEs, acc) : TyName list list =
-      let val smap = List.foldL (fn SE => fn acc => SE.Fold(fn (strid, E) => fn acc =>
+      let val smap = EdList.foldL (fn SE => fn acc => SE.Fold(fn (strid, E) => fn acc =>
 							    update(strid,E,acc)) acc SE) FinMap.empty SEs
       in
 	    FinMap.Fold(fn ((strid, []), acc) => acc  	  (* Eliminate entries with *)
@@ -374,7 +374,7 @@ functor ElabTopdec
       in case split(Ts,[],[])
 	   of (no, []) => collapse(no, T::Ts')
 	    | (no, yes) => 
-	     let val Tnew = List.foldL(fn T => fn T' => TyName.Set.union T T') T yes
+	     let val Tnew = EdList.foldL(fn T => fn T' => TyName.Set.union T T') T yes
 	     in collapse(Tnew::no, Ts')
 	     end
       end
@@ -420,10 +420,10 @@ functor ElabTopdec
       in case ElabRep.lookup_elab absprjid_and_funid
 	   of SOME (index,(_,_,_,_,N,_,B,_)) =>  (* Names in N already marked generative, 
 						  * because the object is returned by lookup. *)
-	     (List.apply Name.mark_gen N';
+	     (List.app Name.mark_gen N';
 	      B.match(B',B);
-	      List.apply Name.unmark_gen N';
-	      List.apply Name.mk_rigid N';
+	      List.app Name.unmark_gen N';
+	      List.app Name.mk_rigid N';
 	      ElabRep.owr_elab(absprjid_and_funid,index,obj))
 
 	    | NONE => ElabRep.add_elab(absprjid_and_funid,obj)
@@ -692,7 +692,7 @@ functor ElabTopdec
 			       | SOME t =>
 				if not(TyName.Set.member t (TyName.Set.fromList T)) then
 				  fail (ErrorInfo.WHERE_TYPE_RIGID (longtycon, t), out_ty)
-				else if TyName.arity t <> List.size alphas then
+				else if TyName.arity t <> List.length alphas then
 				  fail (ErrorInfo.WHERE_TYPE_ARITY (alphas, (longtycon, t)), out_ty) 
 				else
 				  let val theta' = TypeFcn.from_TyVars_and_Type (alphas, tau)
@@ -703,7 +703,7 @@ functor ElabTopdec
 				      fail (ErrorInfo.WHERE_TYPE_EQTYPE (longtycon, t, tau), out_ty)
 				    else if not (wellformed_E phi_E) then
 				      fail (ErrorInfo.WHERE_TYPE_NOT_WELLFORMED (longtycon, t, tau), out_ty)
-				    else return (List.dropAll (fn t' => TyName.eq(t,t')) T, 
+				    else return (EdList.dropAll (fn t' => TyName.eq(t,t')) T, 
 						 phi_E, okConv i, out_ty) 
 				  end 
 			 end
@@ -867,12 +867,12 @@ functor ElabTopdec
 	  let val (T, E, out_sigexp) = elab_sigexp' (B, sigexp)
 	      val (SE,TE,_) = E.un E
 	      val strids = EqSet.list (SE.dom SE)
-	      val (errors, ids) = List.foldL (fn strid => fn (errors,ids) =>
+	      val (errors, ids) = EdList.foldL (fn strid => fn (errors,ids) =>
 					      (case add_ids_strid(ids,strid)
 						 of (true, ids) => (ErrorInfo.STRID_RID strid :: errors, ids)
 						  | (false, ids) => (errors, ids))) ([], ids) strids 
 	      val tycons = EqSet.list (TE.dom TE)
-	      val (errors, ids) = List.foldL (fn tycon => fn (errors,ids) =>
+	      val (errors, ids) = EdList.foldL (fn tycon => fn (errors,ids) =>
 					      (case add_ids_tycon(ids,tycon)
 						 of (true, ids) => (ErrorInfo.TYCON_RID tycon :: errors, ids)
 						  | (false, ids) => (errors, ids))) (errors, ids) tycons
@@ -901,7 +901,7 @@ functor ElabTopdec
 	  let
 	    val (T0, E, out_spec, ids) = elab_spec (B, spec, ids)
 	    val (T, out_longtycon_withinfo_s, error) =
-	           List.foldR
+	           EdList.foldR
 		   (fn IG.WITH_INFO (i, longtycon_i) =>
 		    fn (T', out_longtycon_withinfo_s, error) =>
 		     let val (T'', out_i, error) =
@@ -938,9 +938,9 @@ functor ElabTopdec
 					   else find (ts,t::acc)
 		   val (t0, T') = find(T, []) 
 		   val arity = TyName.arity t0
-		   val T0' = List.dropAll (fn t => List.exists (fn t' => TyName.eq(t,t')) T') T0  
+		   val T0' = EdList.dropAll (fn t => List.exists (fn t' => TyName.eq(t,t')) T') T0  
 		 in 
-		   if List.forAll (fn t => TyName.arity t = arity) T' then
+		   if EdList.forAll (fn t => TyName.arity t = arity) T' then
 		     let val phi = Realisation.from_T_and_tyname (TyName.Set.fromList T', t0)
 		     in (T0', Realisation.on_Env phi E,
 			 OG.SHARING_TYPEspec (okConv i, out_spec, out_longtycon_withinfo_s), ids)
@@ -954,7 +954,7 @@ functor ElabTopdec
       | IG.SHARINGspec (i, spec, longstrid_withinfo_s) =>
 	  let val (T0, E, out_spec, ids) = elab_spec (B, spec, ids)
 	      val (Es, out_longstrid_withinfo_s) =
-		     List.foldR
+		     EdList.foldR
 		     (fn IG.WITH_INFO (i, longstrid) =>
 		      (fn (Es, out_longstrid_withinfo_s) =>
 
@@ -969,7 +969,7 @@ functor ElabTopdec
 	      val T0_set = TyName.Set.fromList T0
 	      fun member t = TyName.Set.member t T0_set
 	  in let val (T', phi) = share (member, Es)
-	         val T0' = List.dropAll (fn t => List.exists (fn t' => TyName.eq(t,t')) T') T0 
+	         val T0' = EdList.dropAll (fn t => List.exists (fn t' => TyName.eq(t,t')) T') T0 
 	     in
 	       (T0', Realisation.on_Env phi E,
 		OG.SHARINGspec (okConv i, out_spec, out_longstrid_withinfo_s), ids)
@@ -1019,7 +1019,7 @@ functor ElabTopdec
 	   let
 	     val tyvars = map TyVar.from_ExplicitTyVar explicittyvars
 	     val tyvars_repeated = repeaters (op =) explicittyvars
-	     val arity = List.size explicittyvars
+	     val arity = List.length explicittyvars
 	     val t = TyName.freshTyName {tycon=tycon, arity=arity, equality=equality}
 	     val theta = TypeFcn.from_TyName t
 	     val tystr = TyStr.from_theta_and_VE (theta, VE.empty)
@@ -1067,7 +1067,7 @@ functor ElabTopdec
 
 	      val tyvars_repeated = repeaters (op =) explicittyvars
 	      val tyvars_not_bound =
-		List.all (fn tyvar => not (member tyvar explicittyvars)) 
+		List.filter (fn tyvar => not (member tyvar explicittyvars)) 
 		(IG.getExplicitTyVarsCondesc condesc)
 
 	      val _ = Level.pop()
