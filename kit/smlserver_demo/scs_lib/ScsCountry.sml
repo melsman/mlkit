@@ -14,26 +14,19 @@ signature SCS_COUNTRY =
 structure ScsCountry :> SCS_COUNTRY =
   struct
 
-    local
-      fun genSql lang =
-	  `select country_id, scs_text.getText(
-	     country_name_tid, ^(Db.qqq (ScsLang.toString lang))
-	   ) as name 
-	   from scs_country_codes
-	  order by name`
-    in
-      fun selectCountry fv v_opt =
-	let
-	  val opts =
-	    ScsError.wrapPanic
-	    ( Db.list (fn g => (g "name", g "country_id")) )
-	    ( genSql (ScsLogin.user_lang()) )
-	in
-	  case v_opt of
-	      NONE   => ScsWidget.select opts fv
-	    | SOME v => ScsWidget.selectWithDefault opts (Int.toString v) fv
-	end
-    end
+    fun selectCountry fv v_opt =
+      let
+        val sql = `
+	  select country_id, scs_text.getText(
+	           country_name_tid, ^(
+	           Db.qqq ( ScsLang.toString (ScsLogin.user_lang()) ) ) 
+	         ) as name 
+	    from scs_country_codes
+	   order by name`
+	val g_fn = (fn g => (g "name", g "country_id"))
+      in
+        ScsData.mk_selectBoxFromDb sql g_fn fv v_opt
+      end
 
     fun countryName country_id lang = Db.oneField `
       select scs_text.getText(cc.country_name_tid,

@@ -27,6 +27,9 @@ signature SCS_STRING =
        the empty string *)
     val valOf     : string option -> string
 
+    (* [toOpt str] if str is empty then returns NONE otherwise SOME str *)
+    val toOpt     : string -> string option
+
     (* [ml_search_pattern pat] returns a pattern with % added at each
         space *)
     val mk_search_pattern : string -> string
@@ -73,4 +76,6 @@ structure ScsString =
 	  "%"^(String.concatWith "%" (String.tokens Char.isSpace pat))^"%"
 
     fun quoteString str = Quot.toString `"^str"`
+
+    fun toOpt str = if str = "" then NONE else SOME str
   end
