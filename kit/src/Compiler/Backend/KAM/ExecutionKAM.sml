@@ -173,9 +173,11 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 
     val generate_link_code = NONE
 
-    fun emit (arg as {target, filename:string}) : unit = EmitCode.emit arg
-
-    fun assemble _ = ()
+    fun emit (arg as {target, filename:string}) : string = 
+      let val filename = filename ^ ".uo"
+      in EmitCode.emit {target=target, filename=filename};
+	filename
+      end
 
     fun mk_uolistfile uofiles =
       case !kam_uolistfile
@@ -187,10 +189,7 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
 		end
 	      
     fun link_files_with_runtime_system _ files run = 
-      let fun modify s = case rev (explode s)
-			   of #"o" :: rest => implode (rev(#"o" :: #"u" :: rest))
-			    | _ => s
-	  val files = map modify files
+      let
 	  val os = TextIO.openOut run	    
       in
 (*	print ("[Creating file " ^ run ^ " begin ...]\n"); *)

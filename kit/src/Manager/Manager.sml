@@ -542,9 +542,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		SOME(_,(funstamp, elabE, tintB, _, names_int, modc, tintB'))) =>
 	      if FunStamp.eq(funstamp,funstamp_now) then
 		if ModCode.exist modc then
-		(if clean then (if !Flags.chat then print ("[reusing code for: \t" ^ punit ^ "]\n") else ();
-				(Basis.mk(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
-		 else if
+		  (if clean then (if !Flags.chat then print ("[reusing code for: \t" ^ punit ^ "]\n") else ();
+				    (Basis.mk(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
+		   else if
 		        let
 			  val B_im = Basis.mk(infB,elabB,opaq_env,tintB)
 			  fun unmark_names () = (List.app Name.unmark_gen names_elab;    (* Unmark names - they where *)
@@ -557,14 +557,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			    Basis_agree(longstrids,B,(B_im, dom_opaq_env))
 			in (if res then () else remark_names() ; res)
 			end then 
-	  		          (if !Flags.chat then print ("[reusing code for: \t" ^ punit ^ " *]\n") else ();
-				   (Basis.mk(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
-
-		 else raise CAN'T_REUSE "enrichment failed")
+			(if !Flags.chat then print ("[reusing code for: \t" ^ punit ^ " *]\n") else ();
+			   (Basis.mk(infB',elabB',opaq_env',tintB'), modc, clean, modtime))
+			   
+			else raise CAN'T_REUSE "enrichment failed")
 		else raise CAN'T_REUSE "object file does not exist"
 	      else raise CAN'T_REUSE "program unit is modified"
-	      
-	     | _ => raise CAN'T_REUSE "no rep info")
+		
+	      | _ => raise CAN'T_REUSE "no rep info")
 
 	handle CAN'T_REUSE s =>
 	  let val _ = case s of "no rep info" => ()
