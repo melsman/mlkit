@@ -15,7 +15,7 @@ val cache =
 fun fib_m 0 = 1 
   | fib_m 1 = 1
   | fib_m n = n + fib' (n-1)
-and fib' n = (NsCacheV2.cache cache fib_m) n
+and fib' n = (NsCacheV2.memoize cache fib_m) n
 
 val _ = Page.return "Caching Demonstration - Memorisation - V2 " `
 
