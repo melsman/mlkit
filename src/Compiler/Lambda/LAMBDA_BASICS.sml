@@ -24,7 +24,7 @@ signature LAMBDA_BASICS =
     exception TypeVariableCapture
 
     type subst and tyvar and Type
-    val mk_subst : string -> tyvar list * Type list -> subst
+    val mk_subst : (unit -> string) -> tyvar list * Type list -> subst
     val on_Type : subst -> Type -> Type
     val on_LambdaExp : subst -> LambdaExp -> LambdaExp
 

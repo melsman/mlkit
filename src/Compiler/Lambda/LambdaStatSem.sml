@@ -51,7 +51,19 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
     fun die s = Crash.impossible ("LambdaStatSem." ^ s)
     fun log_st stringtree = (PP.outputTree ((fn s => output(!Flags.log, s)) , stringtree, !Flags.colwidth);
 			     output(!Flags.log, "\n\n"))
-
+    fun StringTree_to_string st = PP.flatten (PP.format (!Flags.colwidth, st))
+    val pr_Type = StringTree_to_string o layoutType
+local
+  fun f0 separator pp_x [] = ""
+    | f0 separator pp_x [x] = pp_x x
+    | f0 separator pp_x (x::xs) = pp_x x ^ separator ^ f0 separator pp_x xs
+in
+  fun pp_list0 start finish separator pp_x xs = start ^ f0 separator pp_x xs ^ finish
+  val pp_list = pp_list0 "[" "]" ", " 
+  val pp_set  = pp_list0 "{" "}" ", " 
+  val pp_tuple = pp_list0 "(" ")" ","
+  val pp_enumeration = pp_list0 "" "" ", "
+end
     fun log s = output(!Flags.log, s)
 
     (* =================================
@@ -360,7 +372,7 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
      * --------------------------------------------------------- *)
 
     fun mk_instance ((tyvars,Type):TypeScheme, instances : Type list) =
-      let val S = LambdaBasics.mk_subst "mk_instance" (tyvars, instances)
+      let val S = LambdaBasics.mk_subst (fn () => "mk_instance") (tyvars, instances)
       in LambdaBasics.on_Type S Type
       end
 
@@ -452,9 +464,12 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 	  | check_list s (tn::tns, e::es) = let val t = CONStype([],tn)
 						val ts = unTypeList s (type_e e)
 					    in if eq_Types([t],ts) then check_list s (tns, es)
-					       else die s
+					       else die (s ^ ": "
+							 ^ pp_list pr_Type [t]
+							 ^ "<>"
+							 ^ pp_list pr_Type ts)
 					    end
-	  | check_list s _ = die s
+	  | check_list s _ = die ("zip " ^ s)
 
 	fun type_prim' argtynames restyname s = (check_list s (argtynames, lexps);
 						 [CONStype([],restyname)])

@@ -760,7 +760,7 @@ functor CompileDec(structure Con: CON
 			| _ => die ("compileAtexp(LVAR..): no type info for "
 				    ^ Ident.pr_longid longid)
 		   val instances' = map compileType instances
-		   val S = CE.mk_subst(tyvars, instances')
+		   val S = CE.mk_subst (fn () => "CompileDec.IDENTatexp") (tyvars, instances')
 		   val il' = CE.on_il(S,il)
 	       in VAR {lvar=lv,instances=il'}
 	       end handle X => (print (" Exception raised in CompileDec.IDENTatexp.LVAR.longid = " ^ Ident.pr_longid longid ^ "\n");
@@ -789,7 +789,7 @@ functor CompileDec(structure Con: CON
 		    let val lv = Lvars.newLvar()
 		        val tau' = compileType (domType Type)
 			val instances' = map compileType instances
-			val S = CE.mk_subst(tyvars, instances')
+			val S = CE.mk_subst (fn () => "CompileDec.CON(arg)") (tyvars, instances')
 			val il' = CE.on_il(S,il)
 			val il'' = CE.apply_it(it,il')
 		    in FN{pat=[(lv,tau')],
@@ -798,7 +798,7 @@ functor CompileDec(structure Con: CON
 		    end
 		  else
 		    let val instances' = map compileType instances
-		        val S = CE.mk_subst(tyvars, instances')
+		        val S = CE.mk_subst (fn () => "CompileDec.CON(noarg)") (tyvars, instances')
 			val il' = CE.on_il(S,il)
 			val il'' = CE.apply_it(it,il')
 		    in PRIM(CONprim {con=con, instances=il''},[])
@@ -905,7 +905,7 @@ functor CompileDec(structure Con: CON
 				       of Some(TypeInfo.VAR_INFO{instances}) =>
 					 map compileType instances
 					| _ => die "compileExp(APPexp..): wrong type info"
-		    val S = CE.mk_subst(tyvars,instances')
+		    val S = CE.mk_subst (fn () => ("CompileDec.APPexp.LVAR(" ^ Lvars.pr_lvar lv ^ ")")) (tyvars,instances')
 		    val il' = CE.on_il(S, il)
 		in APP(VAR{lvar=lv,instances=il'},arg')
 		end
@@ -1536,7 +1536,7 @@ functor CompileDec(structure Con: CON
 		     val tau = compileType tau
 		     val env' = CE.declareLvar(bind,map TYVARtype tyvars,env)
 		     val exp' =  compileDecTree env' (child,compiler,failure,poly)
-		     val S = CE.mk_subst(tvs,instances')
+		     val S = CE.mk_subst (fn () => "CompileDec.CON_DECOMPOSE.CON") (tvs,instances')
 		     val il' = CE.on_il(S, il)
 		     val il'' = CE.apply_it(it,il')
 		 in (if poly then (polyLet tyvars) else monoLet)

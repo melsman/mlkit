@@ -46,7 +46,7 @@ functor CompilerEnv(structure Ident: IDENT
     type instance_transformer = int list
 
     type subst = LambdaBasics.subst
-    val mk_subst = LambdaBasics.mk_subst "CompilerEnv.mk_subst"
+    val mk_subst = LambdaBasics.mk_subst
     fun on_il(S, il) = map (LambdaBasics.on_Type S) il
 
     (* layout functions *)

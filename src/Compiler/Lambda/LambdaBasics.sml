@@ -366,10 +366,14 @@ functor LambdaBasics (structure Lvars : LVARS
 
       type subst = (tyvar * Type) list         (* `Oldest' substitutions are at the head of the list *)
 
-      fun mk_subst s ([],[]) : subst = [] 
-	| mk_subst s (tyvars,types) : subst =
-	ListPair.zip (tyvars,types) 
-	handle ListPair.Zip => die ("mk_subst; " ^ s)
+      fun mk_subst f p =
+	let fun mk ([],[]) = []
+	      | mk (tv::tvs,t::ts) = (tv,t) :: mk(tvs,ts)
+	      | mk (l1,l2) = die ("mk_subst: " 
+				  ^ Int.string (List.size l1) ^ " tyvars, " 
+				  ^ Int.string (List.size l2) ^ " types; " ^ f())
+	in mk p
+	end
 
       fun on_Type [] tau : Type = tau
 	| on_Type S tau : Type = 
@@ -538,8 +542,8 @@ functor LambdaBasics (structure Lvars : LVARS
 	| eq_sigma_with_il((tvs1,tau1,il1),(tvs2,tau2,il2)) = 
 	if length tvs1 <> length tvs2 then false
 	else let val tv_taus = map (fn _ => TYVARtype(fresh_tyvar())) tvs1
-	         val S1 = mk_subst "eq_sigma_with_il1" (tvs1,tv_taus)
-		 val S2 = mk_subst "eq_sigma_with_il2" (tvs2,tv_taus)
+	         val S1 = mk_subst (fn () => "eq_sigma_with_il1") (tvs1,tv_taus)
+		 val S2 = mk_subst (fn () => "eq_sigma_with_il2") (tvs2,tv_taus)
 		 val tau1' = on_Type S1 tau1
 		 val tau2' = on_Type S2 tau2
 		 val il1' = map (on_Type S1) il1
