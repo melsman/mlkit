@@ -50,7 +50,20 @@ signature SCS_PERSON =
     datatype portrait_mode =
       PORTRAIT_ADM_HELP
     | PORTRAIT_ADM
-      
+    val getPortraitModeErr   : string * ScsFormVar.errs -> portrait_mode * ScsFormVar.errs
+    val portraitModeToString : portrait_mode -> string
+    val portraitFaneside     : portrait_mode -> quot option list -> portrait_mode UcsWidget.faneside option
+    val portraitFaneblad     : portrait_mode -> portrait_mode UcsWidget.faneside option list -> quot
+
+    datatype upload_mode =
+      UPLOAD
+    | ROTATE
+    | DELETE 
+    | MAY_SHOW_PORTRAIT
+    | MAKE_NON_OFFICIAL_OFFICIAL
+    val getUploadModeErr   : string * ScsFormVar.errs -> upload_mode * ScsFormVar.errs
+    val uploadModeToString : upload_mode -> string
+
     val portrait_types_enum_name : string
     val portrait_type_from_DB : string -> portrait_type option
     val portrait_type_to_DB   : portrait_type -> string
@@ -344,7 +357,69 @@ structure ScsPerson :> SCS_PERSON =
     datatype portrait_mode =
       PORTRAIT_ADM_HELP
     | PORTRAIT_ADM
-      
+
+    fun getPortraitModeErr (mode_fv,errs) = 
+      case ScsFormVar.wrapOpt ScsFormVar.getStringErr mode_fv of
+	SOME s =>
+	  (case s of
+	     "portrait_adm_help" => (PORTRAIT_ADM_HELP,errs)
+	   | "portrait_adm" => (PORTRAIT_ADM,errs)
+	   | _ => (PORTRAIT_ADM,errs)) (* Default we use PORTRAIT_ADM *)
+      | NONE => (PORTRAIT_ADM,errs) (* Default we use PORTRAIT_ADM *)
+
+    fun portraitModeToString m =
+      case m of
+	PORTRAIT_ADM_HELP => "portrait_adm_help"
+      | PORTRAIT_ADM => "portrait_adm"
+
+    fun portraitFaneside mode body =
+      case mode of
+        PORTRAIT_ADM =>
+	SOME (UcsDict.portrait_adm_dict, Html.genUrl "/scs/person/portrait_adm_form.sml" 
+	      [("mode", portraitModeToString PORTRAIT_ADM)], PORTRAIT_ADM, body)
+      | PORTRAIT_ADM_HELP => 
+	SOME (UcsDict.portrait_adm_help_dict, Html.genUrl "/scs/person/portrait_adm_form.sml" 
+	      [("mode", portraitModeToString PORTRAIT_ADM)], PORTRAIT_ADM, body)
+
+    local
+      fun outerBox top qs =
+	let
+	  val (url,mine_dict) = ("/", UcsDict.my_page_dict)
+	in
+	  UcsWidget.outerBox_template (url, mine_dict) top qs 
+	end
+    in
+      fun portraitFaneblad mode fanesider = 
+	UcsWidget.faneblad_template mode fanesider outerBox
+    end
+
+    datatype upload_mode =
+      UPLOAD
+    | ROTATE
+    | DELETE 
+    | MAY_SHOW_PORTRAIT
+    | MAKE_NON_OFFICIAL_OFFICIAL
+
+    fun getUploadModeErr (mode_fv,errs) = 
+      case ScsFormVar.wrapOpt ScsFormVar.getStringErr mode_fv of
+	SOME s =>
+	  (case s of
+	     "upload" => (UPLOAD,errs)
+	   | "rotate" => (ROTATE,errs)
+	   | "delete" => (DELETE,errs)
+	   | "may_show_portrait" => (MAY_SHOW_PORTRAIT,errs)
+	   | "make_non_official_official" => (MAKE_NON_OFFICIAL_OFFICIAL,errs)
+	   | _ => (UPLOAD,errs)) (* Default we use UPLOAD *)
+      | NONE => (UPLOAD,errs) (* Default we use PORTRAIT_ADM *)
+
+    fun uploadModeToString mode = 
+      case mode of
+	UPLOAD => "upload"
+      | ROTATE => "rotate"
+      | DELETE => "delete"
+      | MAY_SHOW_PORTRAIT => "may_show_portrait"
+      | MAKE_NON_OFFICIAL_OFFICIAL => "make_non_official_official"
+
     local
 
       (* Names only change in external sources once a day. Hence, it
@@ -697,7 +772,8 @@ structure ScsPerson :> SCS_PERSON =
 
 
 	val confirm_rotate =
-	  SOME (UcsPage.confirmOnClick (ScsDict.s [(ScsLang.da,`Bekræft, at du ønsker at rotere det nuværende billede.`),
+	  SOME (UcsPage.confirmOnClick (ScsDict.s [(ScsLang.da,`Bekræft, at du ønsker at rotere det nuværende 
+						    billede.`),
 						   (ScsLang.en,`Please confirm, that you want to rotate the 
 						    current picture.`)]))
 	val rotate_form =
@@ -730,7 +806,8 @@ structure ScsPerson :> SCS_PERSON =
 	    ``
 
 	val confirm_delete =
-	  SOME (UcsPage.confirmOnClick (ScsDict.s [(ScsLang.da,`Bekræft, at du ønsker at slette det nuværende billede.`),
+	  SOME (UcsPage.confirmOnClick (ScsDict.s [(ScsLang.da,`Bekræft, at du ønsker at slette det nuværende 
+						    billede.`),
 						   (ScsLang.en,`Please confirm, that you want to delete the 
 						    current picture.`)]))
         val delete_form = 

@@ -1,14 +1,11 @@
 val user_id = ScsLogin.auth()
 
-val (mode,errs) = (* Default mode is upload *)
-  ScsFormVar.wrapMaybe_nh "upload" 
-  (ScsFormVar.getEnumErr ["upload","rotate","delete","may_show_portrait",
-			  "make_non_official_official"]) ("mode","mode",ScsFormVar.emptyErr)
+val (mode,errs) = ScsPerson.getUploadModeErr("mode",ScsFormVar.emptyErr)
 val (target,errs) = (* Default target is user *)
   ScsFormVar.wrapMaybe_nh "user" 
   (ScsFormVar.getEnumErr ["user","adm"]) ("target","target",ScsFormVar.emptyErr)
 val (official_p,errs) = (* Only used for the modes upload, rotate and delete *)
-  if ScsList.contains mode ["upload","rotate","delete"] then
+  if ScsList.contains mode [ScsPerson.UPLOAD,ScsPerson.ROTATE,ScsPerson.DELETE] then
     ScsPerson.getOfficialpErr("official_p",errs)
   else
     (false,errs)
@@ -57,9 +54,9 @@ fun addFileToDeleteOnError f = files_to_delete_on_error := f :: (!files_to_delet
 val _ =
   (* Access control *)
   if ScsList.contains priv [ScsFileStorage.no_priv,ScsFileStorage.read] orelse
-    (mode = "delete" andalso priv = ScsFileStorage.read_add) orelse
-    (mode = "may_show_portrait" andalso not (ScsPerson.mayToggleShowPortrait user_id)) orelse
-    (mode = "make_non_official_official" andalso not (ScsPerson.mayMakeNonOfficialOfficial user_id)) then
+    (mode = ScsPerson.DELETE andalso priv = ScsFileStorage.read_add) orelse
+    (mode = ScsPerson.MAY_SHOW_PORTRAIT andalso not (ScsPerson.mayToggleShowPortrait user_id)) orelse
+    (mode = ScsPerson.MAKE_NON_OFFICIAL_OFFICIAL andalso not (ScsPerson.mayMakeNonOfficialOfficial user_id)) then
     ScsFormVar.anyErrors
     (ScsFormVar.addErr(ScsDict.s' [(ScsLang.da,`Du har ikke rettigheder til at rette billede for
 				    ^(#name per).`),
@@ -67,7 +64,7 @@ val _ =
 		       ScsFormVar.emptyErr)) (* Return if no priviledges to upload pictures. *)
   else
     case mode of
-      "make_non_official_official" =>
+      ScsPerson.MAKE_NON_OFFICIAL_OFFICIAL =>
 	let
 	  (* Look for non official picture *)
 	  val portraits = ScsPerson.getPortraits person_id
@@ -168,7 +165,7 @@ val _ =
 	  delTmpFiles (Db.Handle.dmlTrans make_non_official_official)
 	  handle X => (delTmpFiles (!files_to_delete_on_error); raise X)
 	end
-    | "may_show_portrait" =>
+    | ScsPerson.MAY_SHOW_PORTRAIT =>
 	let
 	  fun log_show_p db show_p = 
 	    Db.Handle.execSpDb db 
@@ -203,7 +200,7 @@ val _ =
 	in
 	  ScsError.wrapPanic Db.Handle.dmlTrans upd_show_p
 	end
-    | "delete" => 
+    | ScsPerson.DELETE => 
 	let
 	  (* Look for pictures to delete. *)
 	  val portraits = ScsPerson.getPortraits person_id
@@ -224,7 +221,7 @@ val _ =
 	in
 	  ScsError.wrapPanic Db.Handle.dmlTrans delete
 	end
-    | "rotate" => 
+    | ScsPerson.ROTATE => 
 	let
 	  val (direction_opt,errs) = ScsPicture.getDirectionErr("direction",ScsFormVar.emptyErr)
 	  val _ = ScsFormVar.anyErrors errs
@@ -291,7 +288,7 @@ val _ =
 	  delTmpFiles (Db.Handle.dmlTrans rotate)
 	  handle X => (delTmpFiles (!files_to_delete_on_error); raise X)
 	end
-    | "upload" => 
+    | ScsPerson.UPLOAD => 
 	let
 	  val (upload_filename,errs) = ScsFileStorage.getFilenameErr("upload_filename",ScsFormVar.emptyErr)
 	  val _ = ScsFormVar.anyErrors errs
@@ -348,10 +345,11 @@ val _ =
 	      (* check original format. *)
 	      val orig_format = getFormat orig_filename_tmp
 	    
-	      (* mk original picture in max size (800x600) in tmp-directory *)
+	      (* mk original picture in max size in tmp-directory *)
 	      val (orig_tmp,orig_tmp_format) =
 		if #height orig_format > ScsPerson.max_height andalso 
-		  not (ScsPerson.mayKeepOrigSize user_id) then
+		  not ((ScsPerson.mayKeepOrigSize user_id) andalso
+		       official_p = true) then
 		  let
 		    val (h,w) = ScsPicture.fixedHeight orig_format ScsPerson.max_height
 		    val orig_tmp = ScsConfig.scs_tmp() ^ "/" ^ "orig_tmp-" ^ filename
@@ -454,16 +452,8 @@ val _ =
 val _ = 
   if target = "adm" then
     ScsConn.returnRedirect "/scs/person/portrait_adm_form.sml" 
-    [("mode",UcsSs.Widget.modeToString UcsSs.Widget.PORTRAIT_ADM),
+    [("mode",ScsPerson.portraitModeToString ScsPerson.PORTRAIT_ADM),
      ("person_id", Int.toString person_id)]
   else
     ScsConn.returnRedirect "/index.sml" 
     [("mode",UcsSs.Widget.modeToString UcsSs.Widget.MY_PROFILE_VIEW)]
-
-
-(*--------------
-
-
-
-
-*)
