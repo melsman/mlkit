@@ -347,6 +347,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 	      val uofiles_local = uofiles(modc,nil)
 	      val uofiles_local_and_scripts = uofiles(modc',nil)
 	      val uofiles_scripts = list_minus(uofiles_local_and_scripts,uofiles_local)
+	      val uofiles_scripts = map OS.Path.file uofiles_scripts
 	      val ulfile = ulfile absprjid
 	      val _ = 
 		  let val os = TextIO.openOut ulfile

@@ -12,7 +12,7 @@ MOD      =  nssml.so
 #
 # Objects to build
 #
-OBJS     =  nssml.o nssmllib.o
+OBJS     =  nssml.o nssmllib.o HashTable.o
 
 #
 # Header files in THIS directory
