@@ -131,15 +131,35 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	fun delete_file f = OS.FileSys.remove f handle _ => ()
 
+        (* -----------------------
+         * Postponing assembly (to avoid failing system calls)
+         *)
+
+        val r : TextIO.outstream option ref  = ref NONE
+        fun init_commandfile() = 
+            r:= SOME(TextIO.openOut "compile");
+        fun add_to_commandfile(s:string) = 
+            case !r of NONE => (init_commandfile(); add_to_commandfile s)
+            | SOME(os) => TextIO.output(os, s ^"\n")
+        fun close_commandfile() = 
+            case !r of NONE => ()
+            | SOME(os) => TextIO.closeOut os
+
+
+
 	(* -------------------------------
 	 * Assemble a file into a .o-file
 	 *-------------------------------- *)
 
 	fun assemble (file_s, file_o) =
-          (Shell.execute_command (!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s);
-	   if !(Flags.lookup_flag_entry "delete_target_files")
-             then  delete_file file_s 
-           else ())
+          (if !(Flags.lookup_flag_entry "delay_assembly")
+           then add_to_commandfile(!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s)
+           else (Shell.execute_command (!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s);
+         	 if !(Flags.lookup_flag_entry "delete_target_files")
+                 then  delete_file file_s 
+                 else ()
+                )
+           )
 
 	  (*e.g., "cc -Aa -c -o link.o link.s"
 
@@ -250,6 +270,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	     (!c_compiler ^ " -o " ^ run ^ " " ^ concat files
 	      ^ path_to_runtime () ^ " " ^ !c_libs)
               (*see comment at `assemble' above*);
+             close_commandfile(); (*mads*)
 	     TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n"))
 	  end handle Shell.Execute s => die ("link_files_with_runtime_system:\n" ^ s)
 
@@ -277,7 +298,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	      val _ = Compile.emit {target=target_link, filename=linkfile_s}
 	      val _ = assemble (linkfile_s, linkfile_o)
 	  in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
-	    if !(Flags.lookup_flag_entry "delete_target_files") then delete_file linkfile_o
+	    if !(Flags.lookup_flag_entry "delete_target_files") 
+               andalso  
+               not (!(Flags.lookup_flag_entry "delay_assembly"))
+            then delete_file linkfile_o
 	    else ()
 	  end
 	
