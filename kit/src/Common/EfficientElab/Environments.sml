@@ -1400,10 +1400,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	       returns VE unmodified.*)
       in
 
-	(* The returned tyvar list is a list of those tyvars that
-	 * occur bound in the returned variable environment. *)
-
-      fun close (C : Context, valbind : valbind, VE : VarEnv) : TyVar list * VarEnv =
+      fun close (C : Context, valbind : valbind, VE : VarEnv) : VarEnv =
 	let
 	  val CONTEXT {E=ENV{SE=SE, VE=VARENV ve_map, ...}, 
 		       U=EXPLICITTYVARENV U} = C
@@ -1448,35 +1445,31 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  val isExpansiveId_map = isExpansiveId valbind
 
 	  (* isVar is true iff id is a variable in dom VE *)		     
-	  fun remake isVar id (sigma : TypeScheme) : TyVar list * TypeScheme =
+	  fun remake isVar id (sigma : TypeScheme) : TypeScheme =
 	    let val isExp = 
 	          case FinMap.lookup isExpansiveId_map id 
 		    of NONE => false
 		     | SOME b => b
-		val sigma = TypeScheme.close (not (isExp andalso isVar)) sigma
-		val (tvs,_) = TypeScheme.to_TyVars_and_Type sigma
-  	    in (tvs, sigma)
-	    end 
+	    in TypeScheme.close (not (isExp andalso isVar)) sigma
+	    end
 
 	  val VARENV m = VE
-	  val (bound_tyvars, m) = FinMap.Fold
-	     (fn ((id, range), (bound_tyvars, m)) =>
+	  val m = FinMap.Fold
+	     (fn ((id, range), m) =>
 	      case range 
 		of LONGVARpriv sigma =>
-		  let val (tvs,sigma) = remake true id sigma
-		      val bound_tyvars = StatObject.TyVar.unionTyVarSet(tvs,bound_tyvars)
-		  in (bound_tyvars, FinMap.add (id, LONGVARpriv sigma, m))
+		  let val sigma = remake true id sigma
+		  in FinMap.add (id, LONGVARpriv sigma, m)
 		  end
 		 | LONGCONpriv (sigma, cons) =>
-		  let val (tvs,sigma) = remake false id sigma 
-		      val bound_tyvars = StatObject.TyVar.unionTyVarSet(tvs,bound_tyvars)
-		  in (bound_tyvars, FinMap.add (id, LONGCONpriv (sigma, cons), m))
+		  let val sigma = remake false id sigma 
+		  in FinMap.add (id, LONGCONpriv (sigma, cons), m)
 		  end
-		 | LONGEXCONpriv tau => ([], FinMap.add (id, LONGEXCONpriv tau, m)))
-	     ([], FinMap.empty) m
+		 | LONGEXCONpriv tau => FinMap.add (id, LONGEXCONpriv tau, m))
+	     FinMap.empty m
 	in
-	  (bound_tyvars, VARENV m)
-	end (*let*) handle BoundTwice VE => ([], VE)
+	  VARENV m
+	end (*let*) handle BoundTwice VE => VE
       end (*local exception BoundTwice*)
     end (*C*)
   
