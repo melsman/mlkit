@@ -1,6 +1,5 @@
 (* General lexing utilities. *)
 
-(*$LexUtils: LEX_BASICS ParseSML_ BASIC_IO FLAGS CRASH LEX_UTILS*)
 functor LexUtils(structure LexBasics: LEX_BASICS
 		 structure Token: Topdec_TOKENS
 		 structure BasicIO: BASIC_IO
@@ -111,22 +110,8 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 	    handle Overflow => impossible "chars_to_posint_in_base"
       (*31/10/1995-Martin: new; the old couldn't handle 2147483647.0:
        (because it used accumInt instead of accumReal)*)
-      fun asReal text =
-	let
-          val ln10 = Math.ln(10.0)
-	  val (sign, intPart_as_real, rest) = accumReal(1, 0.0, explode text)
-	  val (decPart, rest') = (case rest of
-				    "." :: xs => accumDec (0.1, 0.0, xs)
-				  | _ => (0.0, rest))
-
-	  (* the exponent part, if present, orelse 0 *)
-	  val expPart : int = (case rest' of 
-				 "E" :: xs => chars_to_int xs
-			       | _ => 0)
-	  fun E(x, y) = x * Math.exp(y*ln10)
-	in
-          SOME (real sign*E(intPart_as_real + decPart, real expPart))
-	end handle _ => NONE
+      fun asReal text = SOME text (* we should test here if the text represents
+				   * a real that is out of range. *)
     end (*local*)
 
     fun initArg sourceReader = LEX_ARGUMENT{sourceReader=sourceReader,
@@ -145,7 +130,7 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 		   stringChars=text :: stringChars, commentDepth=0}
 
     fun addControlChar text arg =
-      addChars (chr(ord(String.nth 1 text) - ord "@")) arg
+      addChars (chr(ord(String.nth 2 text) - ord "@")) arg
 
     fun asDigit text = ord text - ord "0"
 
