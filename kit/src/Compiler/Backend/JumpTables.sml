@@ -15,9 +15,20 @@ functor JumpTables(structure BI : BACKEND_INFO
 			  compile_insts: 'sinst * 'inst list -> 'inst list,
 			  label: 'label * 'inst list -> 'inst list,
 			  jmp: 'label * 'inst list -> 'inst list,
+			  inline_cont: 'inst list -> ('inst list -> 'inst list) option,
 			  C: 'inst list) =
       let
-	val lab_exit = new_label "exitSwitchLab"
+	    (* To avoid jump-to-jumps, jump-to-returns, etc., we look at the continuation to 
+	     * see if parts of the continuation can be inlined instead of jumped to.
+	     *)
+	    val (endsel, endswitch) =
+	      case inline_cont C
+		of NONE =>
+		  let val lab_exit = new_label "exitSwitchLab"
+		  in (fn C => jmp(lab_exit, C),
+		      fn C => label(lab_exit, C))
+		  end
+		 | SOME f => (f, fn C => C)
       in
 	comment("begin linear switch",
 		foldr (fn ((sel,insts),C) =>
@@ -26,11 +37,10 @@ functor JumpTables(structure BI : BACKEND_INFO
 		       in
 			 if_no_match_go_lab_sel(new_lab, sel,
 						compile_insts(insts,
-							      jmp(lab_exit,
-								  label(new_lab,C))))
+							      endsel(label(new_lab,C))))
 		       end) (compile_insts(default,
-					   label(lab_exit,
-						 comment("end linear switch",C)))) sels)
+					   endswitch(
+					   comment("end linear switch",C)))) sels)
       end
 
     fun binary_search_new(sels:(Int32.int*'sinst) list,
@@ -44,13 +54,12 @@ functor JumpTables(structure BI : BACKEND_INFO
 			  label: 'label * 'inst list -> 'inst list,
 			  jmp: 'label * 'inst list -> 'inst list,
 			  sel_dist: Int32.int * Int32.int -> Int32.int,
-			  jump_table_header: 'label * Int32.int * 'inst list -> 'inst list,
+			  jump_table_header: 'label * Int32.int * Int32.int * 'inst list -> 'inst list,
 			  add_label_to_jump_tab: 'label * 'inst list -> 'inst list,
 			  eq_lab : 'label * 'label -> bool,
+			  inline_cont: 'inst list -> ('inst list -> 'inst list) option,
 			  C: 'inst list) =
       let
-	val lab_exit = new_label "exitSwitchLab"
-
 	fun bin_search() =
 	  let
 	    (*-----------------------------------------------------------------*)
@@ -109,9 +118,21 @@ functor JumpTables(structure BI : BACKEND_INFO
 	      in
 		split_list' (lenxs div 2) [] xs
 	      end
+	    
+	    (* To avoid jump-to-jumps, jump-to-returns, etc., we look at the continuation to 
+	     * see if parts of the continuation can be inlined instead of jumped to.
+	     *)
+	    val (endsel, endswitch) =
+	      case inline_cont C
+		of NONE =>
+		  let val lab_exit = new_label "exitSwitchLab"
+		  in (fn C => jmp(lab_exit, C),
+		      fn C => label(lab_exit, C))
+		  end
+		 | SOME f => (f, fn C => C)
 	      
 	    fun switch_with_jump_table([],defaultLab,C) = die "JumpTables: switch_with_jump_table has no selections."
-	      | switch_with_jump_table([(sel, selCode)],defaultLab,C) = compile_insts(selCode,jmp(lab_exit,C))
+	      | switch_with_jump_table([(sel, selCode)],defaultLab,C) = compile_insts(selCode, endsel C)
 	      | switch_with_jump_table(sels as (sel,selCode)::rest, defaultLab,C) =
 	      let
 		val jumpTableLab = new_label "jumpTabLab"
@@ -122,7 +143,7 @@ functor JumpTables(structure BI : BACKEND_INFO
 		      val (jumpTable,C') = make_sel_code(next+1,rest,C)
 		      val selLabel = new_label "selLab"
 		      val C'' = label(selLabel,
-				      compile_insts(selCode,jmp(lab_exit,C')))
+				      compile_insts(selCode, endsel C'))
 		    in
 		      (add_label_to_jump_tab(selLabel,jumpTable),C'')  (* DOT_WORD pp_lab selLabel :: jumpTable *)
 		    end
@@ -137,11 +158,16 @@ functor JumpTables(structure BI : BACKEND_INFO
 		  
 		val (jumpTableCode, switchCode) = make_sel_code(sel,sels,C)
 		val jumpTableCode' = label(jumpTableLab,merge(jumpTableCode,switchCode)) 
+
+		val len = (* there may be holes in the jumptable; count these in the length, also *)
+		  case rev sels  
+		    of ((last_sel,_)::_) => last_sel - sel + 1
+		     | _ => die ("switch_with_jump_table.len")
 	      in
 		if length sels < BI.minJumpTabSize then
 		  die "JumpTables:switch_with_jump_table has too few table entries"
 		else
-		  jump_table_header(jumpTableLab,sel,jumpTableCode')
+		  jump_table_header(jumpTableLab,sel,len,jumpTableCode')
 	      end
 		  
 	    fun bin_search_code (leftLab,start,finish,rightLab,C) =
@@ -202,7 +228,7 @@ functor JumpTables(structure BI : BACKEND_INFO
 		    gen_binary_switch(split_list group_sels,default_lab,
 				      label(default_lab,
 					    compile_insts(default,
-							  label(lab_exit,
+							  endswitch (
 							  comment("End binary switch with jump tables",C))))))
 	  end
       in
@@ -215,6 +241,7 @@ functor JumpTables(structure BI : BACKEND_INFO
 			    compile_insts,
 			    label,
 			    jmp,
+			    inline_cont,
 			    C)
 	else
 	  bin_search()

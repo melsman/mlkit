@@ -771,6 +771,10 @@ struct
 	fun new_label str = new_local_lab str
 	fun label(lab,C) = I.lab lab :: C
 	fun jmp(lab,C) = I.jmp(L lab) :: rem_dead_code C
+	fun inline_cont C =
+	  case C
+	    of (i as I.jmp _) :: _ => SOME (fn C => i :: rem_dead_code C)
+	     | _ => NONE
       in
 	fun binary_search(sels,
 			  default,
@@ -797,12 +801,13 @@ struct
 	       label,
 	       jmp,
 	       fn (sel1,sel2) => Int32.abs(sel1-sel2), (* sel_dist *)
-	       fn (lab,sel,C) => (I.movl(opr, R tmp_reg0) ::
-				  I.sall(I "2", R tmp_reg0) ::
-				  I.jmp(D(intToStr(~4*sel) ^ "+" ^ I.pr_lab lab, tmp_reg0)) :: 
-                                  rem_dead_code C),
+	       fn (lab,sel,_,C) => (I.movl(opr, R tmp_reg0) ::
+				    I.sall(I "2", R tmp_reg0) ::
+				    I.jmp(D(intToStr(~4*sel) ^ "+" ^ I.pr_lab lab, tmp_reg0)) :: 
+				    rem_dead_code C),
 	       fn (lab,C) => I.dot_long (I.pr_lab lab) :: C, (*add_label_to_jump_tab*)
 	       I.eq_lab,
+	       inline_cont,
 	       C)
 	    else
 	      JumpTables.linear_search_new(sels,
@@ -811,7 +816,10 @@ struct
 					   new_label,
 					   if_not_equal_go_lab,
 					   compile_insts,
-					   label,jmp,C)
+					   label,
+					   jmp,
+					   inline_cont,
+					   C)
 	  end
       end
 

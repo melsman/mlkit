@@ -1,4 +1,5 @@
-(* This file is auto-generated with Tools/GenOpcodes on *)
+(* This file is auto-generated with Tools/GenOpcodes; it is *)
+(* based on the file /home/mael/mlkit/kit/src/Compiler/Backend/KAM/KamInsts.spec *)
 signature OPCODES_KAM = 
   sig
     val ALLOC_N : int 
@@ -6,6 +7,7 @@ signature OPCODES_KAM =
     val ALLOC_SAT_INF_N : int 
     val ALLOC_SAT_IF_INF_N : int 
     val ALLOC_ATBOT_N : int 
+    val BLOCK_ALLOC_2 : int 
     val BLOCK_ALLOC_N : int 
     val BLOCK_ALLOC_IF_INF_N : int 
     val BLOCK_ALLOC_SAT_INF_N : int 
@@ -18,23 +20,46 @@ signature OPCODES_KAM =
     val SET_BIT_31 : int 
     val CLEAR_BIT_30_AND_31 : int 
     val UB_TAG_CON : int 
+    val SELECT_STACK_M1 : int 
+    val SELECT_STACK_M2 : int 
+    val SELECT_STACK_M3 : int 
+    val SELECT_STACK_M4 : int 
     val SELECT_STACK_N : int 
     val SELECT_ENV_N : int 
+    val SELECT_0 : int 
+    val SELECT_1 : int 
+    val SELECT_2 : int 
+    val SELECT_3 : int 
     val SELECT_N : int 
+    val STORE_0 : int 
+    val STORE_1 : int 
+    val STORE_2 : int 
+    val STORE_3 : int 
     val STORE_N : int 
     val STACK_ADDR_INF_BIT : int 
     val STACK_ADDR : int 
     val ENV_TO_ACC : int 
+    val IMMED_INT0 : int 
+    val IMMED_INT1 : int 
+    val IMMED_INT2 : int 
+    val IMMED_INT3 : int 
     val IMMED_INT : int 
     val IMMED_STRING : int 
     val IMMED_REAL : int 
     val PUSH : int 
     val PUSH_LBL : int 
+    val POP_1 : int 
+    val POP_2 : int 
     val POP_N : int 
     val APPLY_FN_CALL : int 
     val APPLY_FN_JMP : int 
+    val APPLY_FUN_CALL1 : int 
+    val APPLY_FUN_CALL2 : int 
+    val APPLY_FUN_CALL3 : int 
     val APPLY_FUN_CALL : int 
     val APPLY_FUN_JMP : int 
+    val RETURN_1_1 : int 
+    val RETURN_N_1 : int 
     val RETURN : int 
     val C_CALL0 : int 
     val C_CALL1 : int 
@@ -43,6 +68,7 @@ signature OPCODES_KAM =
     val C_CALL4 : int 
     val LABEL : int 
     val JMP_REL : int 
+    val IF_NOT_EQ_JMP_REL_IMMED3 : int 
     val IF_NOT_EQ_JMP_REL_IMMED : int 
     val IF_LESS_THAN_JMP_REL_IMMED : int 
     val IF_GREATER_THAN_JMP_REL_IMMED : int 
@@ -63,7 +89,15 @@ signature OPCODES_KAM =
     val HALT : int 
     val STACK_OFFSET : int 
     val POP_PUSH : int 
+    val IMMED_INT_PUSH0 : int 
+    val IMMED_INT_PUSH1 : int 
+    val IMMED_INT_PUSH2 : int 
+    val IMMED_INT_PUSH3 : int 
     val IMMED_INT_PUSH : int 
+    val SELECT_PUSH0 : int 
+    val SELECT_PUSH1 : int 
+    val SELECT_PUSH2 : int 
+    val SELECT_PUSH3 : int 
     val SELECT_PUSH : int 
     val SELECT_ENV_PUSH : int 
     val SELECT_ENV_CLEAR_ATBOT_BIT_PUSH : int 
@@ -72,7 +106,11 @@ signature OPCODES_KAM =
     val SELECT_STACK_PUSH : int 
     val ENV_PUSH : int 
     val PRIM_EQUAL_I : int 
+    val PRIM_SUB_I1 : int 
+    val PRIM_SUB_I2 : int 
     val PRIM_SUB_I : int 
+    val PRIM_ADD_I1 : int 
+    val PRIM_ADD_I2 : int 
     val PRIM_ADD_I : int 
     val PRIM_MUL_I : int 
     val PRIM_NEG_I : int 

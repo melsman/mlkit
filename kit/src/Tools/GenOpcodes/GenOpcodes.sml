@@ -5,6 +5,8 @@ signature GEN_OPCODES =
 
 structure GenOpcodes : GEN_OPCODES =
   struct
+    
+    fun die s = (print ("GENOPCODES ERROR : " ^ s ^ "\n"); raise Fail "GenOpcodes")
 
     fun copy_if_different source target =
       let fun all f = 
@@ -19,22 +21,51 @@ structure GenOpcodes : GEN_OPCODES =
 	     else print ("\n*** Error renaming " ^ source ^ " to " ^ target ^ "\n")
       end 
 
-    fun gen_spec_insts (spec_file: string) : string list =
+    fun gen_spec_insts_with_arities (spec_file: string) : (string * int) list =
+      let 
+	val is = TextIO.openIn(spec_file)
+	fun skip (all as c :: rest) = if Char.isSpace c then skip rest else all
+	  | skip nil = nil
+	fun skipWs (s : string ) : string = implode (skip (explode s))
+	fun read() =
+	  let val l = TextIO.inputLine(is)
+	  in if l = "" then nil
+	     else case String.tokens Char.isSpace (skipWs l)
+		    of [i,a] => (case Int.fromString a
+				   of SOME a => (i, a) :: read()
+				    | NONE => die ("gen_spec_insts: " ^ i ^ 
+						   " listed with invalid arity information in file " ^ 
+						   spec_file))
+		     | [i] => die ("gen_spec_insts: " ^ i ^ 
+				   " not listed with arity information in file " ^ 
+				   spec_file)
+		     | nil => read()
+		     | l => die ("gen_spec_insts: entry listed without \
+		      \arity information in file " ^ spec_file ^ "; " ^ Int.toString (List.length l) ^
+				 " tokens")
+	  end
+        val res = read()
+      in TextIO.closeIn is; res
+      end
+
+    fun gen_spec_insts (spec_file : string ) : string list =
       String.tokens (fn #" " => true | #"\n" => true | _ => false) (TextIO.inputAll(TextIO.openIn(spec_file)))
+
 
     fun cur_date () = Date.toString(Date.fromTimeLocal(Time.now()))
 
     fun write_functor spec_file functor_file =
       let
 	val tmp_file = OS.FileSys.tmpName ()
-	val spec_insts = gen_spec_insts spec_file
+	val spec_insts = gen_spec_insts_with_arities spec_file
 	val out_stream = TextIO.openOut(tmp_file)
-	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes *)\n")
-(*	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")*)
+	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes; it is based *)\n")
+	val _ = TextIO.output(out_stream, "(* on the file " ^ spec_file ^ " *)\n\n")
 	val _ = TextIO.output(out_stream, "functor OpcodesKAM () : OPCODES_KAM = \n")
 	val _ = TextIO.output(out_stream, "  struct\n");
-	fun write_opcode(opcode,n) = (TextIO.output(out_stream, "    val " ^ opcode ^ " = " ^ (Int.toString n) ^ "\n");
-				  n+1)
+	fun write_opcode((opcode,arity),n) = 
+	 (TextIO.output(out_stream, "    val " ^ opcode ^ " = " ^ (Int.toString n) ^ "\n");
+	  n+1)
 	val _ = List.foldl write_opcode 0 spec_insts
 	val _ = TextIO.output(out_stream, "  end\n");
       in
@@ -45,14 +76,15 @@ structure GenOpcodes : GEN_OPCODES =
     fun write_signature spec_file signature_file =
       let
 	val tmp_file = OS.FileSys.tmpName ()
-	val spec_insts = gen_spec_insts spec_file
+	val spec_insts = gen_spec_insts_with_arities spec_file
 	val out_stream = TextIO.openOut(tmp_file)
-	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes on *)\n")
-(*	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")*)
+	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes; it is *)\n")
+	val _ = TextIO.output(out_stream, "(* based on the file " ^ spec_file ^ " *)\n")
 	val _ = TextIO.output(out_stream, "signature OPCODES_KAM = \n")
 	val _ = TextIO.output(out_stream, "  sig\n");
-	fun write_opcode(opcode,n) = (TextIO.output(out_stream, "    val " ^ opcode ^ " : int \n");
-				      n+1)
+	fun write_opcode((opcode,arity),n) = 
+	  (TextIO.output(out_stream, "    val " ^ opcode ^ " : int \n");
+	   n+1)
 	val _ = List.foldl write_opcode 0 spec_insts
 	val _ = TextIO.output(out_stream, "  end\n");
       in
@@ -60,23 +92,73 @@ structure GenOpcodes : GEN_OPCODES =
 	copy_if_different tmp_file signature_file
       end
 
-    fun write_kam_insts_C spec_file kam_insts_C_file =
+    fun write_kam_insts_H spec_file kam_insts_H_file =
       let
 	val tmp_file = OS.FileSys.tmpName ()
-	val spec_insts = gen_spec_insts spec_file
-	val out_stream = TextIO.openOut(tmp_file)
-	val _ = TextIO.output(out_stream, "/* This file is auto-generated with Tools/GenOpcodes on */\n")
-(*	val _ = TextIO.output(out_stream, "/* " ^ (cur_date()) ^ " */\n")*)
-	val _ = TextIO.output(out_stream, "enum instructions {\n")
-	fun write_opcode([]) = TextIO.output(out_stream, "  };\n")
-	  | write_opcode([opcode]) = TextIO.output(out_stream, "  " ^ opcode ^ "\n};\n")
-	  | write_opcode(opcode::rest) = (TextIO.output(out_stream, "  " ^ opcode ^ ",\n");
-					  write_opcode rest)
+	val spec_insts = gen_spec_insts_with_arities spec_file
+	val os = TextIO.openOut(tmp_file)
+	fun out s = TextIO.output(os,s)
+	fun outln s = out (s ^ "\n")
+	val _ = outln "/* This file is auto-generated with Tools/GenOpcodes; it is based */"
+	val _ = outln ("/* on the file " ^ spec_file ^ " */")
+	val _ = outln "enum instructions {"
+	fun write_opcode([]) = outln "  };"
+	  | write_opcode([(opcode,arity)]) = outln ("  " ^ opcode ^ "\n};")
+	  | write_opcode((opcode,arity)::rest) = (outln("  " ^ opcode ^ ",");
+						  write_opcode rest)
 	val _ = write_opcode spec_insts
       in
-	TextIO.closeOut(out_stream);
+	outln "#ifdef LAB_THREADED";
+	outln "int getInstArity(unsigned long inst);";
+	outln "#endif";
+	TextIO.closeOut os;
+	copy_if_different tmp_file kam_insts_H_file
+      end
+
+    fun write_kam_insts_C spec_file kam_insts_H_file kam_insts_C_file =
+      let
+	val tmp_file = OS.FileSys.tmpName ()
+	val spec_insts = gen_spec_insts_with_arities spec_file
+	val os = TextIO.openOut(tmp_file)
+	fun out s = TextIO.output(os,s)
+	fun outln s = out (s ^ "\n")
+	val _ = outln "/* This file is auto-generated with Tools/GenOpcodes; it is based */"
+	val _ = outln ("/* on the file " ^ spec_file ^ " */")
+	val _ = outln "#ifdef LAB_THREADED"
+	val _ = outln ("#include \"" ^ kam_insts_H_file ^ "\"")
+	val _ = outln "int getInstArity(unsigned long inst) {"
+	val _ = outln "  switch(inst) {"
+	fun i_to_a i = if i < 0 then "-" ^ Int.toString (~i) else Int.toString i
+	fun out_entries([]) = (outln "  }"; outln "};")
+	  | out_entries((i,a)::rest) = (outln("  case " ^ i ^ ": return " ^ i_to_a a ^ ";"); 
+					out_entries rest)
+	val _ = out_entries spec_insts
+	val _ = outln "#endif";
+      in
+	TextIO.closeOut os;
 	copy_if_different tmp_file kam_insts_C_file
       end
+
+
+    fun write_kam_insts_jumptbl spec_file file =
+      let
+	val tmp_file = OS.FileSys.tmpName ()
+	val spec_insts = gen_spec_insts_with_arities spec_file
+	val os = TextIO.openOut(tmp_file)
+	fun out s = TextIO.output(os,s)
+	fun outln s = out (s ^ "\n")
+	val _ = outln "/* This file is auto-generated with Tools/GenOpcodes; it is based */"
+	val _ = outln ("/* on the file " ^ spec_file ^ "; to be #included in LoadKam.c */")
+
+	fun out_entries([]) = ()
+	  | out_entries((i,a)::rest) = (outln("&&lbl_" ^ i ^ ","); 
+					out_entries rest)
+	val _ = out_entries spec_insts
+      in
+	TextIO.closeOut os;
+	copy_if_different tmp_file file
+      end
+
 
     fun write_functor_cfuncs spec_file spec_file_nssml functor_file =
       let
@@ -104,7 +186,8 @@ structure GenOpcodes : GEN_OPCODES =
 	     out "      | _ => ~1\n"
 	  end
       in
-	out "(* Do *NOT* edit this file - it is auto-generated with Tools/GenOpcodes *)\n\n";
+	out "(* Do *NOT* edit this file - it is auto-generated with Tools/GenOpcodes *)\n";
+	out ("(* based on the file " ^ spec_file ^ " *)\n\n");
 	out "signature BUILT_IN_C_FUNCTIONS_KAM = \n";
 	out "  sig\n";
 	out "    val name_to_built_in_C_function_index : string -> int\n";
@@ -130,8 +213,12 @@ structure GenOpcodes : GEN_OPCODES =
 	  | write_opcode([opcode]) = out ("  " ^ opcode ^ "\n};\n")
 	  | write_opcode(opcode::rest) = (out ("  " ^ opcode ^ ",\n");
 					  write_opcode rest)
+	fun pr_list nil = ""
+	  | pr_list [s] = s
+	  | pr_list (s::ss) = s ^ ", " ^ pr_list ss
       in
-	out "/* Do *NOT* edit this file - it is auto-generated with Tools/GenOpcodes */\n\n";
+	out "/* Do *NOT* edit this file - it is auto-generated with Tools/GenOpcodes */\n";
+	out ("/* based on the files [" ^ pr_list spec_files ^ "] */\n\n");
 	out "#include \"Prims.h\"\n\n";
 	List.app (fn prim => out ("extern int " ^ prim ^ "();\n")) spec_insts;
 	out "\nc_primitive cprim[] = {\n";
@@ -154,11 +241,15 @@ structure GenOpcodes : GEN_OPCODES =
 	    val spec_file = mk_path "Compiler/Backend/KAM/KamInsts.spec"
 	    val functor_file = mk_path "Compiler/Backend/KAM/OpcodesKAM.sml"
 	    val signature_file = mk_path "Compiler/Backend/KAM/OPCODES_KAM.sml"
-	    val kam_insts_C_file = mk_path "RuntimeWithGC/KamInsts.h"
+	    val kam_insts_H_file = mk_path "RuntimeWithGC/KamInsts.h"
+	    val kam_insts_C_file = mk_path "RuntimeWithGC/KamInsts.c"
+	    val jumptbl_file = mk_path "RuntimeWithGC/jumptbl.h"
 
 	    val _ = (write_functor spec_file functor_file;
 		     write_signature spec_file signature_file;
-		     write_kam_insts_C spec_file kam_insts_C_file)
+		     write_kam_insts_H spec_file kam_insts_H_file;
+		     write_kam_insts_C spec_file kam_insts_H_file kam_insts_C_file;
+		     write_kam_insts_jumptbl spec_file jumptbl_file)
 
             (* Built In C-functions in the runtime system *)
 	    val spec_file_cfuncs = mk_path "Compiler/Backend/KAM/BuiltInCFunctions.spec"

@@ -38,6 +38,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | AllocSatIfInf(n) => (out_opcode ALLOC_SAT_IF_INF_N; out_int n)
       | AllocAtbot(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
+      | BlockAlloc 2 => (out_opcode BLOCK_ALLOC_2)
       | BlockAlloc(n) => (out_opcode BLOCK_ALLOC_N; out_int n)
       | BlockAllocIfInf(n) => (out_opcode BLOCK_ALLOC_IF_INF_N; out_int n)
       | BlockAllocSatInf(n) => (out_opcode BLOCK_ALLOC_SAT_INF_N; out_int n)
@@ -53,16 +54,34 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | ClearBit30And31 => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | UbTagCon => out_opcode UB_TAG_CON
 	
+      | SelectStack(~1,s) => (out_opcode SELECT_STACK_M1)
+      | SelectStack(~2,s) => (out_opcode SELECT_STACK_M2)
+      | SelectStack(~3,s) => (out_opcode SELECT_STACK_M3)
+      | SelectStack(~4,s) => (out_opcode SELECT_STACK_M4)
       | SelectStack(off,s) => (out_opcode SELECT_STACK_N; out_int off)
+
       | SelectEnv(off,s) => (out_opcode SELECT_ENV_N; out_int off)
+      | Select 0 => (out_opcode SELECT_0)
+      | Select 1 => (out_opcode SELECT_1)
+      | Select 2 => (out_opcode SELECT_2)
+      | Select 3 => (out_opcode SELECT_3)
       | Select(off) => (out_opcode SELECT_N; out_int off)
+      | Store 0 => (out_opcode STORE_0)
+      | Store 1 => (out_opcode STORE_1)
+      | Store 2 => (out_opcode STORE_2)
+      | Store 3 => (out_opcode STORE_3)
       | Store(off) => (out_opcode STORE_N; out_int off)
 
       | StackAddrInfBit(off,s) => (out_opcode STACK_ADDR_INF_BIT; out_int off)
       | StackAddr(off,s) => (out_opcode STACK_ADDR; out_int off)
       | EnvToAcc => out_opcode ENV_TO_ACC
 
+      |	ImmedInt(0) => (out_opcode IMMED_INT0)
+      |	ImmedInt(1) => (out_opcode IMMED_INT1)
+      |	ImmedInt(2) => (out_opcode IMMED_INT2)
+      |	ImmedInt(3) => (out_opcode IMMED_INT3)
       |	ImmedInt(i) => (out_opcode IMMED_INT; out_long_i32 i)
+
       | ImmedString(str) => 
 	  let
 	    val str_size = String.size str
@@ -85,13 +104,21 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 	  end
       | Push => (out_opcode PUSH)
       | PushLbl(lab) => (out_opcode PUSH_LBL; RLL.out_label lab)
+      | Pop 1 => (out_opcode POP_1)
+      | Pop 2 => (out_opcode POP_2)
       | Pop(n) => (out_opcode POP_N; out_int n)
 	
       | ApplyFnCall(n) => (out_opcode APPLY_FN_CALL; out_int n)
       | ApplyFnJmp(n1,n2) => (out_opcode APPLY_FN_JMP; out_int n1; out_int n2)
+      | ApplyFunCall(lab,1) => (out_opcode APPLY_FUN_CALL1; RLL.out_label lab)
+      | ApplyFunCall(lab,2) => (out_opcode APPLY_FUN_CALL2; RLL.out_label lab)
+      | ApplyFunCall(lab,3) => (out_opcode APPLY_FUN_CALL3; RLL.out_label lab)
+
       | ApplyFunCall(lab,n) => (out_opcode APPLY_FUN_CALL; RLL.out_label lab; out_int n)
       | ApplyFunJmp(lab,n1,n2) => (out_opcode APPLY_FUN_JMP; RLL.out_label lab; out_int n1; out_int n2)
 
+      | Return(1,1) => (out_opcode RETURN_1_1)
+      | Return(n1,1) => (out_opcode RETURN_N_1; out_int n1)
       | Return(n1,n2) => (out_opcode RETURN; out_int n1; out_int n2)
 
       | Ccall(idx,0) => (out_opcode C_CALL0; out_int idx)
@@ -104,11 +131,13 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | Label(lab) => RLL.define_label lab
       | JmpRel(lab) => (out_opcode JMP_REL; RLL.out_label lab)
 
+      | IfNotEqJmpRelImmed(lab,3) => (out_opcode IF_NOT_EQ_JMP_REL_IMMED3; RLL.out_label lab)
       | IfNotEqJmpRelImmed(lab,i) => (out_opcode IF_NOT_EQ_JMP_REL_IMMED; RLL.out_label lab; out_long_i32 i)
       | IfLessThanJmpRelImmed(lab,i) => (out_opcode IF_LESS_THAN_JMP_REL_IMMED; RLL.out_label lab; out_long_i32 i)
       | IfGreaterThanJmpRelImmed(lab,i) => (out_opcode IF_GREATER_THAN_JMP_REL_IMMED; RLL.out_label lab; out_long_i32 i)
       | DotLabel(lab) => RLL.out_label lab
-      | JmpVector(lab,first_sel) => (out_opcode JMP_VECTOR; RLL.out_label lab; out_long_i32 first_sel)
+      | JmpVector(lab,first_sel,len) => (out_opcode JMP_VECTOR; RLL.out_label lab; 
+					 out_long_i32 first_sel; out_long_i32 len)
 
       | Raise => out_opcode RAISE
       | PushExnPtr => out_opcode PUSH_EXN_PTR
@@ -131,8 +160,18 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 
       | StackOffset i => (out_opcode STACK_OFFSET; out_int i)
       | PopPush i => (out_opcode POP_PUSH; out_int i)
+      | ImmedIntPush 0 => (out_opcode IMMED_INT_PUSH0)
+      | ImmedIntPush 1 => (out_opcode IMMED_INT_PUSH1)
+      | ImmedIntPush 2 => (out_opcode IMMED_INT_PUSH2)
+      | ImmedIntPush 3 => (out_opcode IMMED_INT_PUSH3)
       | ImmedIntPush i => (out_opcode IMMED_INT_PUSH; out_long_i32 i)
+
+      | SelectPush 0 => (out_opcode SELECT_PUSH0)
+      | SelectPush 1 => (out_opcode SELECT_PUSH1)
+      | SelectPush 2 => (out_opcode SELECT_PUSH2)
+      | SelectPush 3 => (out_opcode SELECT_PUSH3)
       | SelectPush i => (out_opcode SELECT_PUSH; out_int i)
+
       | SelectEnvPush i => (out_opcode SELECT_ENV_PUSH; out_int i)
       | SelectEnvClearAtbotBitPush i => (out_opcode SELECT_ENV_CLEAR_ATBOT_BIT_PUSH; out_int i)
       | StackAddrPush (i,s) => (out_opcode STACK_ADDR_PUSH; out_int i)
@@ -143,7 +182,11 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       (* primitives *)
 
       | PrimEquali => out_opcode PRIM_EQUAL_I
+      | PrimSubi1 => out_opcode PRIM_SUB_I1
+      | PrimSubi2 => out_opcode PRIM_SUB_I2
       | PrimSubi => out_opcode PRIM_SUB_I
+      | PrimAddi1 => out_opcode PRIM_ADD_I1
+      | PrimAddi2 => out_opcode PRIM_ADD_I2
       | PrimAddi => out_opcode PRIM_ADD_I
       | PrimMuli => out_opcode PRIM_MUL_I
       | PrimNegi => out_opcode PRIM_NEG_I

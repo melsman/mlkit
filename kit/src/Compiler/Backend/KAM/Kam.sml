@@ -70,7 +70,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | IfLessThanJmpRelImmed of label * Int32.int
       | IfGreaterThanJmpRelImmed of label * Int32.int
       | DotLabel of label
-      | JmpVector of label * Int32.int
+      | JmpVector of label * Int32.int * Int32.int
 
       | Raise
       | PushExnPtr
@@ -105,7 +105,11 @@ functor Kam(structure Labels : ADDRESS_LABELS
       (* primitives *)
 
       | PrimEquali
+      | PrimSubi1
+      | PrimSubi2
       | PrimSubi
+      | PrimAddi1
+      | PrimAddi2
       | PrimAddi
       | PrimMuli
       | PrimNegi
@@ -240,7 +244,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 	
       | Push => "Push" :: acc
       | PushLbl(lab) => "PushLbl(" :: (pp_lab lab) :: ")" :: acc
-      | Pop(n) => if n = 1 then "Pop" :: acc else "Pop(" :: (pp_i n) :: ")" :: acc
+      | Pop(n) => "Pop(" :: (pp_i n) :: ")" :: acc
 	
       | ApplyFnCall(n) => "ApplyFnCall(" :: (pp_i n) :: ")" :: acc
       | ApplyFnJmp(n1,n2) => "ApplyFnJmp(" :: (pp_i n1) :: "," :: (pp_i n2) :: ")" :: acc
@@ -257,7 +261,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | IfLessThanJmpRelImmed(lab,i) => "IfLessThanJmpRelImmed(" :: (pp_lab lab) :: "," :: Int32.toString i ::")" :: acc
       | IfGreaterThanJmpRelImmed(lab,i) => "IfGreaterThanJmpRelImmed(" :: (pp_lab lab) :: "," :: Int32.toString i :: ")" :: acc
       | DotLabel(lab) => "DotLabel(" :: (pp_lab lab) :: ")" :: acc
-      | JmpVector(lab,first_sel) => "JmpVector(" :: (pp_lab lab) :: "," :: (Int32.toString first_sel) :: ")" :: acc
+      | JmpVector(lab,first_sel,length) => "JmpVector(" :: (pp_lab lab) :: "," :: (Int32.toString first_sel) :: "," :: (Int32.toString length) :: ")" :: acc
 
       | Raise => "Raise" :: acc
       | PushExnPtr => "PushExnPtr" :: acc
@@ -292,7 +296,11 @@ functor Kam(structure Labels : ADDRESS_LABELS
       (* primitives *)
 
       | PrimEquali => "PrimEquali" :: acc
+      | PrimSubi1 => "PrimSubi1" :: acc
+      | PrimSubi2 => "PrimSubi2" :: acc
       | PrimSubi => "PrimSubi" :: acc
+      | PrimAddi1 => "PrimAddi1" :: acc
+      | PrimAddi2 => "PrimAddi2" :: acc
       | PrimAddi => "PrimAddi" :: acc
       | PrimMuli => "PrimMuli" :: acc
       | PrimNegi => "PrimNegi" :: acc                    

@@ -1,4 +1,5 @@
 (* Do *NOT* edit this file - it is auto-generated with Tools/GenOpcodes *)
+(* based on the file /home/mael/mlkit/kit/src/Compiler/Backend/KAM/BuiltInCFunctions.spec *)
 
 signature BUILT_IN_C_FUNCTIONS_KAM = 
   sig
