@@ -394,8 +394,8 @@ struct
                   SOME (_,_,sigma,p,_,_) =>
                     (case bad_rhos(fn_level, p:: R.frv_sigma sigma) of
                        [] => acc
-                     | l  => (print ("Lvar " ^ Lvar.pr_lvar lvar ^ " has a type scheme with " ^ 
-				     "a region variable with higher level than the epsilon of the function."); 
+                     | l  => (print ("** Lvar " ^ Lvar.pr_lvar lvar ^ " has a type scheme with a region \n\
+		                     \   variable with higher level than the epsilon of the function.\n"); 
 			      (lvar,(sigma,p), l) :: acc))
                 | NONE => die "bad_lvars: lvar not in scope")
                [] lvars
@@ -418,7 +418,7 @@ struct
 
     let val source_identification = 
           case e of FN{pat, ...} => 
-            "potentially dangling references out of closure for     fn " ^ 
+            "** Potentially dangling references out of closure for     fn " ^ 
               concat(map (fn (lvar,_) => " " ^ Lvar.pr_lvar lvar) pat) ^ ":\n"
           | _ => die "report_dangling: expression is not a lambda abstraction"
         val bad_lvar_lines = 
@@ -1635,16 +1635,17 @@ val (body',dep) = mk_deptr(EE',body, dep)
           in 
             loop (trs,[])
           end)
-
+	
+(*
       fun kns (sw as (SWITCH(tr0, match, tr_opt))) constr  = 
-         one_sub tr0 (fn x_tr_0 => 
-            let val match' = map (fn (con,tr) => (con,kne tr (fn  x => x))) match
-                val tr_opt' = case tr_opt of
-                                SOME tr_alt => SOME(kne tr_alt (fn x => x))
-                              | NONE => NONE
-            in constr(SWITCH(x_tr_0,match',tr_opt'))
-            end)
-
+	one_sub tr0 (fn x_tr_0 => 
+		     let val match' = map (fn (con,tr) => (con,kne tr (fn  x => x))) match
+		       val tr_opt' = case tr_opt of
+			 SOME tr_alt => SOME(kne tr_alt (fn x => x))
+		       | NONE => NONE
+		     in constr(SWITCH(x_tr_0,match',tr_opt'))
+		     end)
+*)
     in
       case e of
         VAR _ => k tr
@@ -1709,10 +1710,45 @@ val (body',dep) = mk_deptr(EE',body, dep)
            one_sub tr1 (e_to_t o RAISE)
        | HANDLE(tr1,tr2) => (*two_sub(tr1,tr2) (e_to_t o HANDLE)*)
              k(e_to_t(HANDLE(kne tr1 (fn x => x) , kne  tr2 (fn x => x))))
+(*
        | SWITCH_I(sw) => kns sw (e_to_t o SWITCH_I )
        | SWITCH_S(sw) => kns sw (e_to_t o SWITCH_S )
        | SWITCH_C(sw) => kns sw (e_to_t o SWITCH_C )
        | SWITCH_E(sw) => kns sw (e_to_t o SWITCH_E )
+*)
+       | SWITCH_I(SWITCH(tr0, match, tr_opt)) =>
+	     one_sub tr0 (fn x_tr_0 => 
+			  let val match' = map (fn (con,tr) => (con,kne tr (fn  x => x))) match
+			    val tr_opt' = case tr_opt of
+			      SOME tr_alt => SOME(kne tr_alt (fn x => x))
+			    | NONE => NONE
+			  in e_to_t(SWITCH_I(SWITCH(x_tr_0,match',tr_opt')))
+			  end)
+       | SWITCH_S(SWITCH(tr0, match, tr_opt)) =>
+	     one_sub tr0 (fn x_tr_0 => 
+			  let val match' = map (fn (con,tr) => (con,kne tr (fn  x => x))) match
+			    val tr_opt' = case tr_opt of
+			      SOME tr_alt => SOME(kne tr_alt (fn x => x))
+			    | NONE => NONE
+			  in e_to_t(SWITCH_S(SWITCH(x_tr_0,match',tr_opt')))
+			  end)
+
+       | SWITCH_C(SWITCH(tr0, match, tr_opt)) =>
+	     one_sub tr0 (fn x_tr_0 => 
+			  let val match' = map (fn (con,tr) => (con,kne tr (fn  x => x))) match
+			    val tr_opt' = case tr_opt of
+			      SOME tr_alt => SOME(kne tr_alt (fn x => x))
+			    | NONE => NONE
+			  in e_to_t(SWITCH_C(SWITCH(x_tr_0,match',tr_opt')))
+			  end)
+       | SWITCH_E(SWITCH(tr0, match, tr_opt)) =>
+	     one_sub tr0 (fn x_tr_0 => 
+			  let val match' = map (fn (con,tr) => (con,kne tr (fn  x => x))) match
+			    val tr_opt' = case tr_opt of
+			      SOME tr_alt => SOME(kne tr_alt (fn x => x))
+			    | NONE => NONE
+			  in e_to_t(SWITCH_E(SWITCH(x_tr_0,match',tr_opt')))
+			  end)
        | CON0 _ => k tr
        | CON1(info,tr1 as TR(_,mu1,phi1,psi1)) =>
            one_sub tr1 (fn t' => e_to_t(CON1(info,t')))

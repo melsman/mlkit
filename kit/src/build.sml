@@ -16,5 +16,15 @@ in
 	   disable "garbage_collection";
 	   K.build_basislib();
 	   
-	   K.install())
+	   K.install()
+(*
+	   enable "print_type_name_stamps";
+	   enable "chat"; 
+	   disable "opt"; 
+	   enable "keep_functor_bodies_in_memory";
+	   enable "sig";
+	   disable "import_basislib";
+	   K.comp "../test_dev/functor2.sml"
+*)
+)
 end

@@ -233,7 +233,7 @@ functor Compile(structure Excon : EXCON
 
     fun fast_pr stringtree = 
            (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
-            TextIO.output(!Flags.log, "\n"))
+            TextIO.output(!Flags.log, "\n\n"))
 
     fun display(title, tree) =
         fast_pr(PP.NODE{start=title ^ ": ",
@@ -625,10 +625,10 @@ functor Compile(structure Excon : EXCON
          let val (pgm',env') = drop_regions(env, pgm)
 	 in Timing.timing_end("Drop");
 	    if Flags.is_on "print_drop_regions_expression" then 
-	      display("\nReport: AFTER DROP REGIONS:", AtInf.layout_pgm_brief pgm')
+	      display("Report: AFTER DROP REGIONS:", AtInf.layout_pgm_brief pgm')
 	    else ();
 	    if Flags.is_on "print_drop_regions_expression_with_storage_modes" orelse !Flags.DEBUG_COMPILER then 
-	      display("\nReport: AFTER DROP REGIONS (with storage modes):", AtInf.layout_pgm pgm')
+	      display("Report: AFTER DROP REGIONS (with storage modes):", AtInf.layout_pgm pgm')
 	    else ();
 	    (pgm',env')
 	 end)
@@ -648,7 +648,7 @@ functor Compile(structure Excon : EXCON
          let val (pgm',env') = psi(pp_counter, env, pgm)
 	 in Timing.timing_end("PSI");
 	    if !print_physical_size_inference_expression orelse !Flags.DEBUG_COMPILER then 
-	      display("\nReport: AFTER PHYSICAL SIZE INFERENCE:", layout_pgm pgm')
+	      display("Report: AFTER PHYSICAL SIZE INFERENCE:", layout_pgm pgm')
 	    else ();
 	    (pgm',env')
 	 end)
@@ -686,7 +686,7 @@ functor Compile(structure Excon : EXCON
          let val pgm' = PhysSizeInf.appConvert(pgm)
 	 in Timing.timing_end("AppConv");
 	    if !print_call_explicit_expression orelse !Flags.DEBUG_COMPILER then 
-	      display("\nReport: AFTER APPLICATION CONVERSION:", layout_pgm pgm')
+	      display("Report: AFTER APPLICATION CONVERSION:", layout_pgm pgm')
 	    else ();
 	    pgm'
 	 end)
@@ -800,8 +800,8 @@ functor Compile(structure Excon : EXCON
 	    val _ = Flags.print_regions := true
 	    val _ = 
 	      if Flags.is_on "generate_lambda_code_with_program_points" then
-		(display("\nReport: LAMBDA CODE WITH PROGRAM POINTS:", PhysSizeInf.layout_pgm psi_pgm);
-		 display("\nReport: REGION FLOW GRAPH FOR PROFILING:", RegionFlowGraphProfiling.layout_graph()))
+		(display("Report: LAMBDA CODE WITH PROGRAM POINTS:", PhysSizeInf.layout_pgm psi_pgm);
+		 display("Report: REGION FLOW GRAPH FOR PROFILING:", RegionFlowGraphProfiling.layout_graph()))
 	      else ()
 	    val _ = print_program_points := old_setting
 	    val _ = Flags.print_regions := old_setting2
@@ -810,7 +810,7 @@ functor Compile(structure Excon : EXCON
 (* move to Execution
 	    (* Show region flow graph and generate .vcg file *)
 	    val _ = if Flags.is_on "show_region_flow_graph" then
-		       (display("\nReport: REGION FLOW GRAPH FOR PROFILING:", 
+		       (display("Report: REGION FLOW GRAPH FOR PROFILING:", 
 				RegionFlowGraphProfiling.layout_graph());
 			let val outStreamVCG = TextIO.openOut vcg_file
 			in chat "Generating region flow graph for profiling (.vcg file) ...";

@@ -1693,11 +1693,31 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	Not_Id(TyName.Map.Fold (fn ((t,theta), acc) =>
 				TyName.Map.add(t,on_TypeFcn' phi theta,acc)) TyName.Map.empty m)
 
+      fun layout_TypeFcn' (TYNAME t) = TyName.layout t
+	| layout_TypeFcn' (EXPANDED theta) = TypeFcn.layout theta
+      fun layout Realisation_Id = PP.LEAF "Id"
+	| layout (Not_Id m) = TyName.Map.layoutMap {start="{",eq=" -> ", finish="}",sep=", "}
+	TyName.layout layout_TypeFcn' m
+
       fun (Realisation_Id : realisation) oo (phi : realisation) : realisation = phi
 	| phi oo Realisation_Id = phi
-	| (phi1 as Not_Id m1) oo phi2 = (case on_Realisation phi1 phi2
-					     of Realisation_Id => phi1
-					      | Not_Id m2 => Not_Id(TyName.Map.plus(m1, m2)))
+	| (phi1 as Not_Id m1) oo phi2 = 
+	case on_Realisation phi1 phi2
+	  of Realisation_Id => phi1
+	   | Not_Id m2 => 
+	    let fun member t nil = false
+		  | member t0 (t::ts) = TyName.eq (t0,t) orelse member t0 ts
+	        val d1 = TyName.Map.dom m1
+	        fun loop nil = ()
+		  | loop (t::ts) = 
+		  if member t d1 then 
+		    (PP.printTree(layout phi1);
+		     PP.printTree(layout phi2)
+		     ;die ("realisation map overlay: " ^ TyName.pr_TyName t))
+		  else loop ts
+	    in (*loop (TyName.Map.dom m2); *)
+	      Not_Id(TyName.Map.plus(m1, m2))   (*m2,m1 ?? *)
+ 	    end
 
       fun enrich (rea0, (rea,T)) =
 	TyName.Set.fold (fn t => fn acc => acc andalso 
@@ -1715,12 +1735,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      | convert (TYNAME t) = TypeFcn.from_TyName t
 	in TyName.Map.Fold(fn ((t, theta),_) => TypeFcn.match(convert theta,on_TyName rea0 t)) () m
 	end
-
-      fun layout_TypeFcn' (TYNAME t) = TyName.layout t
-	| layout_TypeFcn' (EXPANDED theta) = TypeFcn.layout theta
-      fun layout Realisation_Id = PP.LEAF "Id"
-	| layout (Not_Id m) = TyName.Map.layoutMap {start="{",eq=" -> ", finish="}",sep=", "}
-	TyName.layout layout_TypeFcn' m
 	
     end (*Realisation*)
 

@@ -15,17 +15,17 @@ signature BUILD_COMPILE =
       sharing type CompilerEnv.tycon = ExecutionArgs.Elaboration.Basics.TyCon.tycon
       sharing type CompilerEnv.longtycon = ExecutionArgs.Elaboration.Basics.TyCon.longtycon
     structure CompBasis: COMP_BASIS
-    structure Compile: COMPILE
+    structure Compile: COMPILE where type pp = int
       sharing type Compile.CompBasis = CompBasis.CompBasis
       sharing type Compile.CEnv = CompilerEnv.CEnv
       sharing type Compile.strdec = ExecutionArgs.Elaboration.PostElabTopdecGrammar.strdec
 	
     structure Effect : EFFECT
     structure AtInf : AT_INF
-    structure PhysSizeInf : PHYS_SIZE_INF
+    structure PhysSizeInf : PHYS_SIZE_INF 
       sharing type PhysSizeInf.phsize = Compile.phsize
       sharing type PhysSizeInf.at = AtInf.at = Compile.at
-      sharing type PhysSizeInf.pp = Compile.pp
+(*      sharing type PhysSizeInf.pp = Compile.pp *)
 (*      sharing type PhysSizeInf.env = CompBasis. *)
     structure MulExp : MUL_EXP
       sharing type MulExp.LambdaPgm = PhysSizeInf.LambdaPgm = Compile.LambdaPgm
@@ -47,7 +47,7 @@ signature BUILD_COMPILE =
       sharing type MulExp.lvar = ExecutionArgs.Lvars.lvar = Mul.lvar = CompBasis.lvar = CompilerEnv.lvar = PhysSizeInf.lvar
       sharing type MulExp.effect = Mul.effectvar = RType.place = PhysSizeInf.place 
 	= AtInf.place = Effect.place = EffVarEnv.dom = Mul.place = MulExp.place = Compile.place
-  end  
+  end
 
 functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
   struct

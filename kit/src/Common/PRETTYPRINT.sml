@@ -110,6 +110,8 @@ signature PRETTYPRINT =
 
     val outputTree : (string -> unit) * StringTree * int -> unit
 
+    val printTree : StringTree -> unit
+
     type Report
     val reportStringTree: StringTree -> Report
     val reportStringTree': int -> StringTree -> Report
