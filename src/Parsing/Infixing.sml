@@ -1,20 +1,21 @@
-(*$Infixing: INFIX_BASIS DEC_GRAMMAR GRAMMAR_UTILS REPORT
-        PRETTYPRINT CRASH InfixStack INFIXING *)
+(*$Infixing: INFIX_BASIS GRAMMAR_UTILS REPORT PARSE_INFO PRETTYPRINT
+        CRASH InfixStack INFIXING *)
 
 functor Infixing(structure InfixBasis: INFIX_BASIS
                  structure GrammarUtils: GRAMMAR_UTILS
-
-                 structure DecGrammar: DEC_GRAMMAR
-		   sharing DecGrammar = GrammarUtils.TopdecGrammar.DecGrammar
-                   sharing type InfixBasis.id = DecGrammar.id
+                   sharing type GrammarUtils.TopdecGrammar.DecGrammar.id = InfixBasis.id
 
 		 structure Report: REPORT
 		 sharing type InfixBasis.Report
 		   = GrammarUtils.Report 
 		   = Report.Report 
 
+		 structure ParseInfo : PARSE_INFO
+		   sharing type ParseInfo.ParseInfo = GrammarUtils.TopdecGrammar.info
+		       and type ParseInfo.DFInfo.InfixBasis = InfixBasis.Basis
+
                  structure PP: PRETTYPRINT
-                   sharing type DecGrammar.StringTree = PP.StringTree
+                   sharing type GrammarUtils.TopdecGrammar.DecGrammar.StringTree = PP.StringTree
 		       and type PP.Report = Report.Report
 
                  structure Crash: CRASH
@@ -521,11 +522,22 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 
     and resolveFunbind(iBas, FUNBIND(i, funid, strid, sigexp,
 				     strexp, funbind_opt)) =
-          FUNBIND(i, funid, strid, sigexp,
-		  resolveStrexp(iBas, strexp),
-		  (case funbind_opt of
-		     Some funbind => Some(resolveFunbind(iBas, funbind))
-		   | None => None))
+      let
+
+          (* We record the infix basis here, so that we can later
+	   * fetch it and put it into a functor closure. The idea is
+	   * that we can then parse, infix-resolve and elaborate the
+	   * body of a functor again - and achieve the same
+	   * result. This will then save space in the compiler. *)
+
+	  val i' = ParseInfo.plus_DFInfo i (ParseInfo.DFInfo.INFIX_BASIS iBas)
+
+      in FUNBIND(i', funid, strid, sigexp,
+		 resolveStrexp(iBas, strexp),
+		 (case funbind_opt of
+		    Some funbind => Some(resolveFunbind(iBas, funbind))
+		  | None => None))
+      end
 
     and resolveStrbind(iBas, STRBIND(i, strid, strexp, strbind_opt)) =
           STRBIND(i, strid, resolveStrexp(iBas, strexp),

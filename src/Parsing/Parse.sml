@@ -15,6 +15,7 @@ functor Parse (structure TopdecGrammar : TOPDEC_GRAMMAR
 	       sharing type TopdecGrammar.info = ParseInfo.ParseInfo
 	      structure InfixBasis : INFIX_BASIS
                 sharing type InfixBasis.id = TopdecGrammar.DecGrammar.Ident.id
+		    and type InfixBasis.Basis = ParseInfo.DFInfo.InfixBasis
               structure Report: REPORT
                 sharing type LexBasics.Report
 		           = ParseInfo.SourceInfo.Report
@@ -60,7 +61,7 @@ functor Parse (structure TopdecGrammar : TOPDEC_GRAMMAR
 
     structure Infixing = Infixing(structure InfixBasis = InfixBasis
                                   structure GrammarUtils = GrammarUtils
-                                  structure DecGrammar = TopdecGrammar.DecGrammar
+				  structure ParseInfo = ParseInfo
 				  structure Report = Report
                                   structure PP = PrettyPrint
                                   structure Crash = Crash
@@ -106,18 +107,24 @@ functor Parse (structure TopdecGrammar : TOPDEC_GRAMMAR
                       | PS_ERROR of Report
                       | PS_EOF
 
+    (* For profiling *)
+    fun sameToken a = LrParser.Token.sameToken a
+    fun Stream_get a = Stream.get a
+    fun Stream_cons a = Stream.cons a
+    fun TopdecParser_parse a = TopdecParser.parse a
+
     fun parseStream(STATE lazyStream) =
       let
-        val (firstToken, rest) = Stream.get lazyStream
-        val lazyStream = Stream.cons(firstToken, rest)
+        val (firstToken, rest) = Stream_get lazyStream
+        val lazyStream = Stream_cons(firstToken, rest)
                                       (* Streams side-effect (yuck). *)
       in
-        if LrParser.Token.sameToken(firstToken, eof)
+        if sameToken(firstToken, eof)
         then
           (if !Flags.DEBUG_PARSING then BasicIO.println "**EOF**" else ();
            PS_EOF
           )
-        else if LrParser.Token.sameToken(firstToken, sc)
+        else if sameToken(firstToken, sc)
         then
           (if !Flags.DEBUG_PARSING then BasicIO.println "**SC**" else ();
            parseStream(STATE rest)
@@ -125,7 +132,7 @@ functor Parse (structure TopdecGrammar : TOPDEC_GRAMMAR
         else
           (let
              val (topdec, lazyStream') =
-               TopdecParser.parse(0, lazyStream,
+               TopdecParser_parse(0, lazyStream,
                                   fn (x, l, r) => raise ESCAPE (x, (l, r)),
                                   ()
                                  )

@@ -384,6 +384,33 @@ functor LexBasics(structure BasicIO: BASIC_IO
 	  // PP.reportStringTree (layoutPos pos1)
 	  // PP.reportStringTree (layoutPos pos2)
 
+    fun output_source {os: outstream, left=POSITION posLfn, right=POSITION posRfn} : unit =
+      let val {file, line=line1:int,column=column1:int, getLine} = posLfn()
+	  val {line=line2:int, column=column2:int, ...} = posRfn()
+	    
+	    (* If the first character is not a colon then we emit `='. *)
+	  fun patch s = case explode s
+			     of [] => Crash.impossible "LexBasics.output_source"
+			      | ":" :: _ => s
+			      | _ => " = " ^ s
+
+      in if line1 = line2 then 
+	   let val line = getLine line1
+	   in output(os,patch(String.extract column1 column2 line))
+	   end
+	 else 
+	   let val first = getLine line1
+	       val first = patch(String.extract column1 (size first) first)
+	       val last = getLine line2
+	       val last = String.extract 0 column2 last
+	       fun get_lines (l, lines) = 
+		 if l = line1 then first :: lines
+		 else get_lines(l-1,getLine l :: lines)
+	   in List.apply (fn s => output(os,s)) (get_lines(line2-1,[last]))
+	   end
+      end
+      | output_source {os,...} = output(os,"*** POSITION UNKNOWN ***")
+
     val FIELD_WIDTH = 18
 
     fun pad str = if size str mod 18 <> 0 then pad(str ^ " ") else str
