@@ -36,6 +36,8 @@ signature SCS_DATE =
     val ppDk  : Date.date -> string
     val ppLongDk  : Date.date -> string
     val ppLongEng : Date.date -> string
+    val ppWeekdayDk : Date.weekday -> string
+    val ppWeekdayEng : Date.weekday -> string
     val ppDay : Date.date -> string
     val ppMth : Date.month -> string
     val ppMthFromDate : Date.date -> string
@@ -178,8 +180,8 @@ structure ScsDate :> SCS_DATE =
 
     fun ppMthFromDate d = ppMth (Date.month d)
 
-    fun ppDayDk d =
-      case Date.weekDay d of
+    fun ppWeekdayDk d =
+      case d of
 	Date.Mon => "Mandag"
       | Date.Tue => "Tirsdag"
       | Date.Wed => "Onsdag"
@@ -187,9 +189,11 @@ structure ScsDate :> SCS_DATE =
       | Date.Fri => "Fredag"
       | Date.Sat => "Lørdag"
       | Date.Sun => "Søndag"
+	
+    fun ppDayDk d = ppWeekdayDk (Date.weekDay d)
 
-    fun ppDayEng d =
-      case Date.weekDay d of
+    fun ppWeekdayEng d =
+      case d of
 	Date.Mon => "Monday"
       | Date.Tue => "Tuesday"
       | Date.Wed => "Wednesday"
@@ -197,6 +201,8 @@ structure ScsDate :> SCS_DATE =
       | Date.Fri => "Friday"
       | Date.Sat => "Saturday"
       | Date.Sun => "Sunday"
+
+    fun ppDayEng d = ppWeekdayEng (Date.weekDay d)
 
     fun ppDay d = 
       case ScsLogin.user_lang() of
