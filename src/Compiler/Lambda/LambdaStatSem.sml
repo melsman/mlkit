@@ -172,6 +172,7 @@ end
 			       (tyName_CHAR, []),
 			       (tyName_WORD, []),
 old*)
+			       (tyName_WORD_BOXED, []), (*2001-02-17, Niels*)
 			       (tyName_REAL, []),
 			       (tyName_STRING, []),
 			       (tyName_LIST, [Con.con_NIL, Con.con_CONS]),

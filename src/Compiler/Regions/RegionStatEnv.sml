@@ -84,10 +84,11 @@ functor RegionStatEnv(structure Name : NAME
 		     TyNameMap.add(TyName.tyName_INT, (0,[],0), 
 		     TyNameMap.add(TyName.tyName_CHAR, (0,[],0), 
 		     TyNameMap.add(TyName.tyName_WORD, (0,[],0), 
+		     TyNameMap.add(TyName.tyName_WORD_BOXED, (0,[],0), (*2001-02-17, Niels*)
 		     TyNameMap.add(TyName.tyName_LIST, (1,[E.TOP_RT],0),
 				   (* the auxiliary region is for a pair; hence TOP_RT *)
 		     TyNameMap.add(TyName.tyName_WORD_TABLE, (1,[],0),
-		     TyNameMap.empty))))))))))
+		     TyNameMap.empty)))))))))))
 
     local
 

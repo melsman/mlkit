@@ -1154,6 +1154,8 @@ struct
   and size_of_tyname tyname =
         if TyName.eq (tyname, TyName.tyName_REAL)
   	then SOME (RegConst.size_of_real ())
+	else if TyName.eq (tyname, TyName.tyName_WORD_BOXED)
+        then SOME (RegConst.size_of_record [1]) (* 2001-02-17, Niels - dummy list [1] with one element! *)
   	else if TyName.eq (tyname, TyName.tyName_STRING)
 	 orelse TyName.eq (tyname, TyName.tyName_WORD_TABLE) then NONE
         else if RegConst.unboxed_tyname tyname then SOME 0

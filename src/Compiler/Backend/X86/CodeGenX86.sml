@@ -1011,6 +1011,35 @@ struct
           I.sall(R cl, R d_reg) :: C'))))
        end
 
+     fun toIntw32boxed__ (x,d,size_ff,C) =
+       let 
+	 val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
+	 val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+       in 
+	 if !BI.tag_integers then
+	   (load_indexed(d_reg,x_reg,WORDS 1,
+	    I.sall (I "1", R d_reg) :: (* d_reg = 2*d_reg+1 *)
+   	    I.incl (R d_reg) :: C'))
+	 else
+	   load_indexed(d_reg,x_reg,WORDS 0,C')
+       end
+
+     fun fromIntw32boxed__ (r,x,d,size_ff,C) =   (* we tag a boxed word as a scalar record *)
+       let 
+	 val (d_reg,C') = resolve_aty_def(d,tmp_reg1,size_ff,C)
+       in
+	 move_aty_into_reg(r,d_reg,size_ff,
+	 if !BI.tag_integers then
+	   load_immed(IMMED(Word32.toInt (BI.tag_word_boxed false)),tmp_reg0,
+	   store_indexed(d_reg,WORDS 0,tmp_reg0,
+	   move_aty_into_reg(x,tmp_reg1,size_ff,
+	   I.shrl(I "1", R tmp_reg1) :: 
+	   store_indexed(d_reg,WORDS 1,tmp_reg1,C'))))
+	 else
+	   move_aty_into_reg(x,tmp_reg1,size_ff,
+	   store_indexed(d_reg,WORDS 0,tmp_reg1,C')))
+       end	 
+
      fun shift_right_signedi_kill_tmp01 (x,y,d,size_ff,C) =  (*tmp_reg0 = %ecx*)
        let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg1,size_ff)
 	   val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg0,size_ff)
@@ -1680,6 +1709,8 @@ val size_cc = size_rcf+size_ccf+1  (* 2001-01-08, Niels debug *)
 		      | ("plus_word__",[x,y],[d]) => addw_kill_tmp01(x,y,d,size_ff,C)
 		      | ("minus_word__",[x,y],[d]) => subw_kill_tmp01(x,y,d,size_ff,C)
 		       
+		      | ("toIntw32boxed__",[x],[d]) => toIntw32boxed__ (x,d,size_ff,C)
+
 		      | ("__fresh_exname",[],[aty]) =>
 		       I.movl(L exn_counter_lab, R tmp_reg0) ::
 		       move_reg_into_aty(tmp_reg0,aty,size_ff,
@@ -1694,6 +1725,8 @@ val size_cc = size_rcf+size_ccf+1  (* 2001-01-08, Niels debug *)
 			 | ("mul_word__", [x, y], [d]) => mulw_kill_tmp01(x,y,d,size_ff,C)
 			 | ("mul_word8__", [x, y], [d]) => mulw8_kill_tmp01(x,y,d,size_ff,C)
 			 | ("__div_float", [b,x,y],[d]) => divf_kill_tmp01(x,y,b,d,size_ff,C)
+			 | ("fromIntw32boxed__",[r,x],[d]) => fromIntw32boxed__ (r,x,d,size_ff,C)
+			  
 			 | (_,all_args,[]) => compile_c_call_prim(name, all_args, NONE, size_ff, tmp_reg1, C)
 			 | (_,all_args, [res_aty]) => compile_c_call_prim(name, all_args, SOME res_aty, size_ff, tmp_reg1, C)
 			 | _ => die "CCall with more than one result variable")))

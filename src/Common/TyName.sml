@@ -93,6 +93,7 @@ functor TyName(
     val tyName_INT  = freshTyName{tycon=TyCon.tycon_INT, arity=0, equality=true}
     val tyName_WORD = freshTyName{tycon=TyCon.tycon_WORD, arity=0, equality=true}
     val tyName_WORD8 = freshTyName{tycon=TyCon.tycon_WORD8, arity=0, equality=true}
+    val tyName_WORD_BOXED = freshTyName{tycon=TyCon.tycon_WORD_BOXED, arity=0, equality=true} (* 2001-02-17, Niels *)
     val tyName_REAL = freshTyName{tycon=TyCon.tycon_REAL, arity=0, equality=false}
     val tyName_STRING = freshTyName{tycon=TyCon.tycon_STRING, arity=0, equality=true}
     val tyName_CHAR = freshTyName{tycon=TyCon.tycon_CHAR, arity=0, equality=true}

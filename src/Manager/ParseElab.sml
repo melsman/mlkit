@@ -133,20 +133,20 @@ functor ParseElab(structure Parse: PARSE
 				elabB=ModuleEnvironments.B.empty, topdec=PostElabTopdecGrammar.empty_topdec}
 
     fun parse_elab {infB: InfixBasis, elabB: ElabBasis, absprjid: absprjid, file : string} : Result =
-      let val _ = chat "[parsing begin...]\n"
+      let val _ = chat "[parsing..."
 	  val _ = Timing.timing_begin()
 	  val parse_res = (parse (infB, file)  (*may raise Parse*) 
 			   handle E => (Timing.timing_end "Parse" ; raise E))
 	  val _ = Timing.timing_end "Parse" 
-	  val _ = chat "[parsing end...]\n"
-	  val _ = chat "[elaboration begin...]\n"
+	  val _ = chat "]\n"
+	  val _ = chat "[elaboration..."
 	  val _ = Timing.timing_begin()
 	  val elab_res = case parse_res 
 			   of (infB, SOME topdec) => (elab (absprjid, infB, elabB, topdec) 
 						      handle E => (Timing.timing_end "Elab" ; raise E))
 			    | (infB, NONE) => empty_success
 	  val _ = Timing.timing_end "Elab" 
-	  val _ = chat "[elaboration end...]\n"
+	  val _ = chat "]\n"
       in elab_res
       end handle Parse report => (chat "[parsing end...]\n"; FAILURE (report, [ErrorCode.error_code_parse]))
 
