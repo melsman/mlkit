@@ -51,6 +51,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     fun die s = Crash.impossible("ManagerObjects." ^ s)
     fun chat s = if !Flags.chat then print (s ^ "\n") else ()
 
+    val link_time_dead_code_elimination = ref true
+    val _ = Flags.add_flag_to_menu(["Control"], 
+				   "link_time_dead_code_elimination", "link time dead-code elimination", 
+				   link_time_dead_code_elimination)
     local
       val debug_linking = ref false
       val _ = Flags.add_flag_to_menu(["Debug Kit", "Manager"], 
@@ -331,7 +335,10 @@ not used anymore 2000-10-17, Niels *)
 	 * -------------------------------------------------------------- *)
 
 	fun link (tfiles_with_linkinfos, extobjs, run) : unit =
-	  let val tfiles_with_linkinfos = dead_code_elim tfiles_with_linkinfos
+	  let 
+	    val tfiles_with_linkinfos = 
+	      if false (*!link_time_dead_code_elimination*) then dead_code_elim tfiles_with_linkinfos
+	      else tfiles_with_linkinfos
 	    val linkinfos = map #2 tfiles_with_linkinfos
 	    val target_files = map #1 tfiles_with_linkinfos
 	    val labs = map Execution.code_label_of_linkinfo linkinfos
@@ -406,6 +413,14 @@ not used anymore 2000-10-17, Niels *)
 	fun delete_files (SEQ_MODC(mc1,mc2)) = (delete_files mc1; delete_files mc2)
 	  | delete_files (EMITTED_MODC(fp,_)) = SystemTools.delete_file fp
 	  | delete_files _ = ()
+
+	fun size mc =
+	  case mc
+	    of SEQ_MODC(mc1,mc2) => size mc1 +  size mc2
+	     | EMPTY_MODC => 0
+	     | EMITTED_MODC(tfile,_) => 1
+	     | NOTEMITTED_MODC _ => 0
+
       end
 
 

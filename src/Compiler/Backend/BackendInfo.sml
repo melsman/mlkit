@@ -5,7 +5,8 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 		    sharing type Report.Report = Flags.Report
 		    structure Crash : CRASH
 		    val down_growing_stack : bool
-		    val double_alignment_required : bool) : BACKEND_INFO =
+		    val double_alignment_required : bool
+		    val extra_prims : string list) : BACKEND_INFO =
   struct
     fun die s  = Crash.impossible ("BackendInfo." ^ s)
 
@@ -151,7 +152,7 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 		 "__greater_float", "__greatereq_float", "less_word__", "greater_word__",
 		 "lesseq_word__", "greatereq_word__", "plus_word8__", "minus_word8__",
 		 (*"mul_word8__",*) "and__", "or__", "xor__", "shift_left__", "shift_right_signed__",
-		 "shift_right_unsigned__", "plus_word__", "minus_word__" (*, "mul_word__"*)]
+		 "shift_right_unsigned__", "plus_word__", "minus_word__" (*, "mul_word__"*)] @ extra_prims
 
     fun member n [] = false
       | member n (n'::ns) = n=n' orelse member n ns

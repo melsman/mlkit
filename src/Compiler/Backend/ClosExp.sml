@@ -372,26 +372,27 @@ struct
 				       childsep=NOSEP,children=[layout_ce ce]}
       | pr_sma(IGNORE)          = NODE{start="ignore ",finish="",indent=0,childsep=NOSEP,children=[]}
 
-    fun layout_top_decl'(FUN(lab,cc,ce)) =
-          NODE{start = "FUN " ^ Labels.pr_label lab ^ "{" ^ CallConv.pr_cc cc ^ "}=", 
-	       finish = "", 
-	       indent = 2, 
-	       childsep = NOSEP, 
-	       children = [layout_ce ce]}
-      | layout_top_decl'(FN(lab,cc,ce)) =
-	  NODE{start = "FN " ^ Labels.pr_label lab ^ "{" ^ CallConv.pr_cc cc ^ "}=", 
-	       finish = "", 
-	       indent = 2, 
-	       childsep = NOSEP, 
-	       children = [layout_ce ce]}
+    fun layout_top_decl' f_string (lab,cc,ce) =
+      NODE{start = f_string ^ Labels.pr_label lab ^ "{" ^ CallConv.pr_cc cc ^ "}=", 
+	   finish = "", 
+	   indent = 2, 
+	   childsep = NOSEP, 
+	   children = [layout_ce ce]}
   in
-    fun layout_top_decl top_decl = layout_top_decl' top_decl
+    fun layout_top_decl (FUN triple) = layout_top_decl' "FUN" triple
+      | layout_top_decl (FN triple) = layout_top_decl' "FN" triple
+
     fun layout_clos_exp ce = layout_ce ce
-    fun layout_clos_prg top_decls = NODE{start="ClosExp program begin",
-					 finish="ClosExp program end",
-					 indent=2,
-					 childsep=NOSEP,
-					 children = map layout_top_decl top_decls}
+    fun layout_clos_prg top_decls = 
+      let val _ = print "\nlayout begin..."
+	  val r = NODE{start="ClosExp program begin",
+		       finish="ClosExp program end",
+		       indent=2,
+		       childsep=NOSEP,
+		       children = map layout_top_decl top_decls}
+	  val _ = print "\nlayout end"
+      in r 
+      end
   end
 
   local
@@ -2757,7 +2758,7 @@ struct
     (* For bytecode *)
     fun lift(clos_env, prog) = 
       let
-	val _ = chat "[Lifting for bytecode generation..."
+	val _ = chat "[Lifting for bytecode generation...]"
       (*	val n_prog = N prog 04/10-2000, Niels *)
 	val n_prog = prog
 
@@ -2814,6 +2815,7 @@ struct
 	     display("\nReport: AFTER LIFT: ", layout_clos_prg(#code(all))))
 	  else
 	    ()
+(*	val _ = print "\nReturning from display.." *)
       in
 	all
       end (* End lift *)

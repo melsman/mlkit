@@ -9,6 +9,7 @@ sml_getrutime
 sml_getrealtime
 sml_localoffset
 exnName
+printReal
 printString
 printNum
 implodeChars

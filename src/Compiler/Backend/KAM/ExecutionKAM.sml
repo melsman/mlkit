@@ -25,7 +25,8 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 		  structure Report = Report
 		  structure Crash = Crash
 		  val down_growing_stack : bool = false         (* false for KAM *)
-		  val double_alignment_required : bool = true)  (* true for KAM?? *)
+		  val double_alignment_required : bool = true   (* true for KAM?? *)
+		  val extra_prims = ["__mul_int", "mul_word8__", "mul_word__"])
 
     structure Kam = Kam (structure Labels = Labels
 			 structure PP = PP
@@ -143,6 +144,7 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 	   | Compile.CodeRes(ce,cb,target,safe) => 
 	    let 
 	      val {main_lab, code, imports, exports, env} = ClosExp.lift(closenv,target)
+(* 	      val _ = print "Returning from lift...\n" *)
 	      val asm_prg = 
 		Tools.Timing.timing "CG" CodeGen.CG 
 		{main_lab_opt= (* if safe then NONE else*) SOME main_lab, 
@@ -176,6 +178,7 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 	app (fn f => TextIO.output(os, modify f ^ " ")) files;
 	TextIO.closeOut os;
 	OS.Process.system "chmod a+x run";
-	print("[Created file " ^ run ^ "]\n")
+	print("[Created file " ^ run ^ "]\n");
+	app (print o (fn s => "   " ^ s ^ "\n")) files
       end
   end

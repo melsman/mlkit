@@ -36,9 +36,11 @@ signature OPCODES_KAM =
     val APPLY_FUN_CALL : int 
     val APPLY_FUN_JMP : int 
     val RETURN : int 
+    val C_CALL0 : int 
     val C_CALL1 : int 
     val C_CALL2 : int 
     val C_CALL3 : int 
+    val C_CALL4 : int 
     val LABEL : int 
     val JMP_REL : int 
     val IF_NOT_EQ_JMP_REL : int 
@@ -62,11 +64,13 @@ signature OPCODES_KAM =
     val PRIM_EQUAL_I : int 
     val PRIM_SUB_I : int 
     val PRIM_ADD_I : int 
+    val PRIM_MUL_I : int 
     val PRIM_NEG_I : int 
     val PRIM_ABS_I : int 
     val PRIM_ADD_F : int 
     val PRIM_SUB_F : int 
     val PRIM_MUL_F : int 
+    val PRIM_DIV_F : int 
     val PRIM_NEG_F : int 
     val PRIM_ABS_F : int 
     val PRIM_LESS_THAN : int 
@@ -79,6 +83,7 @@ signature OPCODES_KAM =
     val PRIM_GREATER_EQUAL_UNSIGNED : int 
     val PRIM_ADD_W8 : int 
     val PRIM_SUB_W8 : int 
+    val PRIM_MUL_W8 : int 
     val PRIM_AND_I : int 
     val PRIM_OR_I : int 
     val PRIM_XOR_I : int 
@@ -87,5 +92,6 @@ signature OPCODES_KAM =
     val PRIM_SHIFT_RIGHT_UNSIGNED_I : int 
     val PRIM_ADD_W : int 
     val PRIM_SUB_W : int 
+    val PRIM_MUL_W : int 
     val PRIM_FRESH_EXNAME : int 
   end

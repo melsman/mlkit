@@ -123,12 +123,14 @@ signature KAM =
       | PrimEquali
       | PrimSubi
       | PrimAddi
+      | PrimMuli
       | PrimNegi
       | PrimAbsi
 
       | PrimAddf
       | PrimSubf
       | PrimMulf
+      | PrimDivf
       | PrimNegf
       | PrimAbsf
 
@@ -144,6 +146,7 @@ signature KAM =
 	
       | PrimAddw8
       | PrimSubw8
+      | PrimMulw8
 	
       | PrimAndi
       | PrimOri
@@ -154,6 +157,7 @@ signature KAM =
 	
       | PrimAddw
       | PrimSubw
+      | PrimMulw
 	
       | PrimFreshExname
 

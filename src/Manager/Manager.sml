@@ -777,7 +777,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
 		  (* MEMO: If clean is true then I do not need to rebuild binary. *)
 
-		  in ModCode.mk_exe(absprjid, res_modc, extobjs, "run")
+		  in print("mk_exe: Size of res_modc is " ^ Int.toString (ModCode.size res_modc)^ "\n");
+		    ModCode.mk_exe(absprjid, res_modc, extobjs, "run")
 		  end
 	  val emitted_files' = EqSet.fromList (Repository.emitted_files())
     	  val files_to_delete = EqSet.list (EqSet.difference emitted_files emitted_files')

@@ -143,12 +143,14 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | PrimEquali
       | PrimSubi
       | PrimAddi
+      | PrimMuli
       | PrimNegi
       | PrimAbsi
 
       | PrimAddf
       | PrimSubf
       | PrimMulf
+      | PrimDivf
       | PrimNegf
       | PrimAbsf
       | PrimLessThan
@@ -163,6 +165,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 	
       | PrimAddw8
       | PrimSubw8
+      | PrimMulw8
 	
       | PrimAndi
       | PrimOri
@@ -173,6 +176,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 	
       | PrimAddw
       | PrimSubw
+      | PrimMulw
 	
       | PrimFreshExname
 
@@ -312,12 +316,14 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | PrimEquali => "PrimEquali" :: acc
       | PrimSubi => "PrimSubi" :: acc
       | PrimAddi => "PrimAddi" :: acc
+      | PrimMuli => "PrimMuli" :: acc
       | PrimNegi => "PrimNegi" :: acc                    
       | PrimAbsi => "PrimAbsi" :: acc
 
       | PrimAddf => "PrimAddf" :: acc
       | PrimSubf => "PrimSubf" :: acc                    
       | PrimMulf => "PrimMulf" :: acc
+      | PrimDivf => "PrimDivf" :: acc
       | PrimNegf => "PrimNegf" :: acc
       | PrimAbsf => "PrimAbsf" :: acc                    
 
@@ -333,6 +339,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 					                              
       | PrimAddw8 => "PrimAddw8" :: acc
       | PrimSubw8 => "PrimSubw8" :: acc
+      | PrimMulw8 => "PrimMulw8" :: acc
 					                              
       | PrimAndi => "PrimAndi" :: acc
       | PrimOri => "PrimOri" :: acc
@@ -343,6 +350,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 					                              
       | PrimAddw => "PrimAddw" :: acc
       | PrimSubw => "PrimSubw" :: acc
+      | PrimMulw => "PrimMulw" :: acc
 					                              
       | PrimFreshExname => "PrimFreshExname" :: acc
 

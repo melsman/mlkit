@@ -33,9 +33,9 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       fun emit_kam_inst inst =
 	case inst of
 	Alloc(n) => (out_opcode ALLOC_N; out_int n)
-      | AllocIfInf(n)  => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | AllocIfInf(n)  => (out_opcode ALLOC_IF_INF_N; out_int n)
       | AllocSatInf(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | AllocSatIfInf(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | AllocSatIfInf(n) => (out_opcode ALLOC_SAT_IF_INF_N; out_int n)
       | AllocAtbot(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
       | BlockAlloc(n) => (out_opcode BLOCK_ALLOC_N; out_int n)
@@ -77,8 +77,12 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 	     List.app (fn c => out_byte (Char.ord c)) (String.explode str); (* The actual string *)
 	     gen_alignment align) (* obtain word alignment! *)
 	  end
-      | ImmedReal(r) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-
+      | ImmedReal(s) => 
+	  let val r = case Real.fromString s
+			of SOME r => r
+			 | NONE => die "ImmedReal - string is not a real!"
+	  in (out_opcode IMMED_REAL; out_real r)
+	  end
       | Push => (out_opcode PUSH)
       | PushLbl(lab) => (out_opcode PUSH_LBL; RLL.out_label lab)
       | Pop(n) => (out_opcode POP_N; out_int n)
@@ -92,10 +96,12 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 	   out_int n1;
 	   out_int n2)
 
+      | Ccall(idx,0) => (out_opcode C_CALL0; out_int idx)
       | Ccall(idx,1) => (out_opcode C_CALL1; out_int idx)
       | Ccall(idx,2) => (out_opcode C_CALL2; out_int idx)
       | Ccall(idx,3) => (out_opcode C_CALL3; out_int idx)
-      | Ccall(idx,n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | Ccall(idx,4) => (out_opcode C_CALL4; out_int idx)
+      | Ccall(idx,n) => die ("inst " ^ (pr_inst inst) ^ " not emitted (n=" ^ Int.toString n ^ ")")
 
       | Label(lab) => RLL.define_label lab
       | JmpRel(lab) => (out_opcode JMP_REL; RLL.out_label lab)
@@ -125,37 +131,41 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | PrimEquali => out_opcode PRIM_EQUAL_I
       | PrimSubi => out_opcode PRIM_SUB_I
       | PrimAddi => out_opcode PRIM_ADD_I
+      | PrimMuli => out_opcode PRIM_MUL_I
       | PrimNegi => out_opcode PRIM_NEG_I
       | PrimAbsi => out_opcode PRIM_ABS_I
 
-      | PrimAddf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimSubf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimMulf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimNegf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimAbsf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | PrimAddf => out_opcode PRIM_ADD_F
+      | PrimSubf => out_opcode PRIM_SUB_F
+      | PrimMulf => out_opcode PRIM_MUL_F
+      | PrimDivf => out_opcode PRIM_DIV_F
+      | PrimNegf => out_opcode PRIM_NEG_F
+      | PrimAbsf => out_opcode PRIM_ABS_F
 
       | PrimLessThan => (out_opcode PRIM_LESS_THAN)
       | PrimLessEqual => (out_opcode PRIM_LESS_EQUAL)
       | PrimGreaterThan => (out_opcode PRIM_GREATER_THAN)
       | PrimGreaterEqual => (out_opcode PRIM_GREATER_EQUAL)
 					                              
-      | PrimLessThanUnsigned => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimGreaterThanUnsigned	=> die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimLessEqualUnsigned => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimGreaterEqualUnsigned => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | PrimLessThanUnsigned => (out_opcode PRIM_LESS_THAN_UNSIGNED)
+      | PrimGreaterThanUnsigned	=> (out_opcode PRIM_GREATER_THAN_UNSIGNED)
+      | PrimLessEqualUnsigned => (out_opcode PRIM_LESS_EQUAL_UNSIGNED)
+      | PrimGreaterEqualUnsigned => (out_opcode PRIM_GREATER_EQUAL_UNSIGNED)
 					                              
-      | PrimAddw8 => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimSubw8 => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | PrimAddw8 => out_opcode PRIM_ADD_W8
+      | PrimSubw8 => out_opcode PRIM_SUB_W8
+      | PrimMulw8 => out_opcode PRIM_MUL_W8
 					                              
-      | PrimAndi => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimOri => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimXori => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimShiftLefti => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimShiftRightSignedi => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimShiftRightUnsignedi	=> die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | PrimAndi => out_opcode PRIM_AND_I
+      | PrimOri => out_opcode PRIM_OR_I
+      | PrimXori => out_opcode PRIM_XOR_I
+      | PrimShiftLefti => out_opcode PRIM_SHIFT_LEFT_I
+      | PrimShiftRightSignedi => out_opcode PRIM_SHIFT_RIGHT_SIGNED_I
+      | PrimShiftRightUnsignedi	=> out_opcode PRIM_SHIFT_RIGHT_UNSIGNED_I
 					                              
-      | PrimAddw => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | PrimSubw => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | PrimAddw => out_opcode PRIM_ADD_W
+      | PrimSubw => out_opcode PRIM_SUB_W
+      | PrimMulw => out_opcode PRIM_MUL_W
 					                              
       | PrimFreshExname => out_opcode PRIM_FRESH_EXNAME
 

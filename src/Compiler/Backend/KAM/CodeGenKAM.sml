@@ -512,6 +512,7 @@ and code is actually generated when passing arguments in region polymorphic func
 		 of "__equal_int"         => PrimEquali
 	       | "__minus_int"            => PrimSubi
 	       | "__plus_int"             => PrimAddi
+	       | "__mul_int"              => PrimMuli
 	       | "__neg_int"              => PrimNegi
 	       | "__abs_int"              => PrimAbsi
 	       | "__less_int"             => PrimLessThan
@@ -521,6 +522,7 @@ and code is actually generated when passing arguments in region polymorphic func
 	       | "__plus_float"           => PrimAddf
 	       | "__minus_float"          => PrimSubf
 	       | "__mul_float"            => PrimMulf
+	       | "__div_float"            => PrimDivf
 	       | "__neg_float"            => PrimNegf
 	       | "__abs_float"            => PrimAbsf
 	       | "__less_float"           => PrimLessThan
@@ -535,6 +537,7 @@ and code is actually generated when passing arguments in region polymorphic func
 		       
 	       | "plus_word8__"           => PrimAddw8
 	       | "minus_word8__"          => PrimSubw8
+	       | "mul_word8__"            => PrimMulw8
 		       
 	       | "and__"                  => PrimAndi
 	       | "or__"                   => PrimOri
@@ -545,6 +548,7 @@ and code is actually generated when passing arguments in region polymorphic func
 		       
 	       | "plus_word__"            => PrimAddw
 	       | "minus_word__"           => PrimSubw
+	       | "mul_word__"             => PrimMulw
 		       
 	       | "__fresh_exname"         => PrimFreshExname
 	       | _ => die ("PRIM(" ^ name ^ ") not implemented"))
@@ -560,10 +564,12 @@ and code is actually generated when passing arguments in region polymorphic func
 	      (* rhos_for_result comes before args, because that is what the C *)
 	      (* functions expects. *)
 		val all_args = rhos_for_result @ args
+		val i = BuiltInCFunctions.name_to_built_in_C_function_index name
 	      in
-		comp_ces(all_args,env,sp,cc,
-			 Ccall(BuiltInCFunctions.name_to_built_in_C_function_index name,
-			       List.length all_args) :: acc)
+		if i >= 0 then
+		  comp_ces(all_args,env,sp,cc,
+			   Ccall(i, List.length all_args) :: acc)
+		else die ("Couldn't generate code for a C-call to " ^ name)
 	      end
 	  end
       | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = 

@@ -27,7 +27,8 @@ functor ExecutionHPPA(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 		  structure Report = Report
 		  structure Crash = Crash
 		  val down_growing_stack : bool = false        (* false for HPPA code generation *)
-		  val double_alignment_required : bool = true) (* true for HPPA code generation *)
+		  val double_alignment_required : bool = true  (* true for HPPA code generation *)
+		  val extra_prims = nil)
 
     structure BuildCompile = BuildCompile(ExecutionArgs)
 

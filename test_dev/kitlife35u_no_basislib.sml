@@ -240,14 +240,16 @@ in r end
                                       in map move coordlist end
     fun rotate x = map (fn (x:int,y:int) => (y,~x)) x  (* eta converted*)
 
+val _ = print "Before glider\n"
     val glider = [(0,0),(0,2),(1,1),(1,2),(2,1)]
+val _ = print "Before bail\n"
     val bail = [(0,0),(0,1),(1,0),(1,1)]
     fun barberpole n =
        let fun f i = if eq_integer(i,n) then (n+n-1,n+n)::(n+n,n+n)::nil
                        else (i+i,i+i+1)::(i+i+2,i+i+1)::f(i+1)
         in (0,0)::(1,0):: f 0
        end
-
+val _ = print "Before genB\n"
     val genB = mkgen(glider at (2,2) @ bail at (2,12)
 		     @ rotate (barberpole 4) at (5,20))
 
@@ -280,7 +282,7 @@ in r end
                             also made it return a different unit *)
       
     fun testit _ = show(iter 250)    (* inserted call of iter *)
-    
+val _ = print "Before testit\n"    
     val _ = (testit ();testit ());
 in
     val done = "done";
