@@ -70,6 +70,8 @@ functor OptLambda(structure Lvars: LVARS
     val max_inline_size = Flags.lookup_int_entry "maximum_inline_size"
        (* max size of non-recursive function defs. to be inlined. *)
 
+    val cross_module_opt = Flags.is_on0 "cross_module_opt"
+
    (* -----------------------------------------------------------------
     * Some helpful functions
     * ----------------------------------------------------------------- *)
@@ -105,6 +107,7 @@ functor OptLambda(structure Lvars: LVARS
       | fn_to_let_pat ((lv,tau)::rest) = (lv,[],tau) :: fn_to_let_pat rest
 
     fun is_in_lv lv lvs = List.exists (fn lv' => Lvars.eq(lv,lv')) lvs
+    fun is_in_ex ex exs = List.exists (fn ex' => Excon.eq(ex,ex')) exs
 
    (* -----------------------------------------------------------------
     * Statistical functions
@@ -200,7 +203,7 @@ functor OptLambda(structure Lvars: LVARS
    (* -----------------------------------------------------------------
     * Equality on types
     * ----------------------------------------------------------------- *)
-
+(*
     fun eq_tau (TYVARtype tv1, TYVARtype tv2) = tv1=tv2
       | eq_tau (ARROWtype (tl1, tl1'), ARROWtype (tl2,tl2')) = eq_taus(tl1,tl2) andalso eq_taus(tl1',tl2')
       | eq_tau (CONStype (tl1,tn1), CONStype (tl2,tn2)) = TyName.eq(tn1,tn2) andalso eq_taus(tl1,tl2)
@@ -209,17 +212,17 @@ functor OptLambda(structure Lvars: LVARS
     and eq_taus ([],[]) = true
       | eq_taus (tau1::taus1,tau2::taus2) = eq_tau(tau1,tau2) andalso eq_taus(taus1,taus2)
       | eq_taus _ = false
-
+*)
 
    (* -----------------------------------------------------------------
     * Equality on lambda expressions (conservative approximation)
     * ----------------------------------------------------------------- *)
 
-    fun eq_lamb (INTEGER (n,t), INTEGER (n',t')) = n=n' andalso eq_tau(t,t')
-      | eq_lamb (WORD(n,t), WORD(n',t')) = n=n' andalso eq_tau(t,t')
+    fun eq_lamb (INTEGER (n,t), INTEGER (n',t')) = n=n' andalso eq_Type(t,t')
+      | eq_lamb (WORD(n,t), WORD(n',t')) = n=n' andalso eq_Type(t,t')
       | eq_lamb (REAL r, REAL r') = (r = r')
       | eq_lamb (STRING s, STRING s') = (s = s')
-      | eq_lamb (VAR{lvar,instances=il},VAR{lvar=lvar',instances=il'}) = Lvars.eq(lvar,lvar') andalso eq_taus(il,il')
+      | eq_lamb (VAR{lvar,instances=il},VAR{lvar=lvar',instances=il'}) = Lvars.eq(lvar,lvar') andalso eq_Types(il,il')
       | eq_lamb (PRIM(RECORDprim, lambs),PRIM(RECORDprim, lambs')) = eq_lambs(lambs,lambs')
       | eq_lamb _ = false
     and eq_lambs ([],[]) = true
@@ -256,34 +259,57 @@ functor OptLambda(structure Lvars: LVARS
       end
     
 
-   (* -----------------------------------------------------------------
-    * Closedness of a lambda expression
-    * ----------------------------------------------------------------- *)
+   (* -----------------------------------------------------
+    * Closedness of a lambda expression ; used only for 
+    * cross-module optimisation...
+    * ----------------------------------------------------- *)
 
-   fun closed lamb =
-     let exception OPEN
-       fun c b e =
+   fun closed lamb : bool =
+     let 
+       exception OPEN
+       fun check_con con = 
+	 if (Con.eq(con,Con.con_NIL) orelse Con.eq(con,Con.con_CONS)
+	     orelse Con.eq(con,Con.con_TRUE) orelse Con.eq(con,Con.con_FALSE)) then ()
+	 else raise OPEN
+       fun check_excon ex x = 
+	 if is_in_ex ex x then () else raise OPEN
+       fun appOpt f NONE = ()
+	 | appOpt f (SOME x) = f x
+       fun c b x e =
 	 case e
 	   of VAR{lvar,...} => if is_in_lv lvar b then () else raise OPEN
+	    | PRIM(CONprim{con,...},es) => (check_con con ; app (c b x) es)
+	    | PRIM(DECONprim{con,...},es) => (check_con con ; app (c b x) es)
+	    | PRIM(EXCONprim ex,es) => (check_excon ex x ; app (c b x) es)
+	    | PRIM(DEEXCONprim ex,es) => (check_excon ex x ; app (c b x) es)
 	    | LET{pat,bind,scope} =>
 	     let fun add [] b = b
 		   | add ((lv,_,_)::pat) b = add pat (lv::b)
-	     in c b bind; c (add pat b) scope
+	     in c b x bind; c (add pat b) x scope
 	     end
 	    | FN{pat,body} =>
 	     let fun add [] b = b
 		   | add ((lv,_)::pat) b = add pat (lv::b)
-	     in c (add pat b) body
+	     in c (add pat b) x body
 	     end
 	    | FIX{functions,scope} =>
 	     let fun add [] b = b
 		   | add ({lvar,tyvars,Type,bind}::fcs) b = add fcs (lvar::b)
 	         val b' = add functions b
-	     in app ((c b') o #bind) functions; c b' scope
+	     in app ((c b' x) o #bind) functions; c b' x scope
 	     end
+	    | EXCEPTION(excon,_,lamb) => c b (excon::x) lamb
+	    | SWITCH_C(SWITCH(e,l,opt)) => 
+	     (  c b x e 
+	      ; app (fn (con,e) => (check_con con ; c b x e)) l
+	      ; appOpt (c b x) opt)
+	    | SWITCH_E(SWITCH(e,l,opt)) => 
+	     (  c b x e 
+	      ; app (fn (ex,e) => (check_excon ex x ; c b x e)) l
+	      ; appOpt (c b x) opt)
 	    | FRAME _ => die "closed" 
-	    | _ => app_lamb (c b) e
-     in (c [] lamb; true) handle OPEN => false
+	    | _ => app_lamb (c b x) e
+     in (c nil nil lamb; true) handle OPEN => false
      end
 
 
@@ -319,7 +345,7 @@ functor OptLambda(structure Lvars: LVARS
 	     else if Lvars.eq(lv_x',lv_f) then raise Fail else ()
 	   | app_f_x (VAR{lvar,...}) = if Lvars.eq(lvar,lv_f) then raise Fail else ()
 	   | app_f_x e = app_lamb app_f_x e
-     in	eq_tau(tau_1,tau_1') andalso eq_tau(tau_2,tau_2') andalso 
+     in	eq_Type(tau_1,tau_1') andalso eq_Type(tau_2,tau_2') andalso 
        ((app_f_x body; true) handle Fail => false)
      end 
      | specializable _ = false
@@ -380,6 +406,36 @@ functor OptLambda(structure Lvars: LVARS
                   | CFN of {lexp: LambdaExp, large:bool}  (* only to appear in env *)
 	          | CFIX of {Type: Type, bind: LambdaExp, large: bool} (* only to appear in env *)
 
+      fun eq_cv (cv1,cv2) =
+	case (cv1,cv2)
+	  of (CVAR e1,CVAR e2) => eq_lamb(e1,e2)
+	   | (CRECORD cvs1, CRECORD cvs2) => eq_cvs(cvs1,cvs2)
+	   | (CUNKNOWN, CUNKNOWN) => true
+	   | (CCONST e1, CCONST e2) => eq_lamb(e1,e2)
+	   | (CFN{lexp,large}, CFN{lexp=lexp2,large=large2}) => large = large2 andalso eq_lamb(lexp,lexp2)
+	   | (CFIX{bind,large,Type}, CFIX{bind=bind2,large=large2,Type=Type2}) => 
+	    large = large2 andalso eq_Type(Type,Type2) andalso eq_lamb(bind,bind2)
+	   | _ => false
+      and eq_cvs (cv1::cvs1,cv2::cvs2) = eq_cv(cv1,cv2) andalso eq_cvs(cvs1,cvs2)
+	| eq_cvs (nil,nil) = true
+	| eq_cvs _ = false
+
+      fun closed_small_cv (lvar,tyvars,cv) : bool =
+	case cv
+	  of CVAR e1 => closed (FN{pat=[(lvar,unitType)],body=e1})
+	   | CRECORD cvs => (Listfoldl (fn (cv,acc) => acc andalso closed_small_cv(lvar,tyvars,cv))
+			     true cvs)
+	   | CUNKNOWN => true
+	   | CCONST e1 => true
+	   | CFN{lexp,large} => (not large andalso 
+				 closed (FN{pat=[(lvar,unitType)],body=lexp}))
+	   | CFIX{bind,Type,large} => (not large andalso 
+				       closed (FIX{functions=[{lvar=lvar,
+							       tyvars=tyvars,
+							       Type=Type,
+							       bind=bind}],
+						   scope=STRING""}))
+
       (* remove lvar from compiletimevalue, if it is there;
        * used when compiletimevalues are exported out of scope.
        *)
@@ -407,8 +463,16 @@ functor OptLambda(structure Lvars: LVARS
 	let fun on (CVAR lamb) = CVAR (on_LambdaExp S lamb)
 	      | on (cv as CCONST _) = cv 
 	      | on (CRECORD cvs) = CRECORD (map on cvs)
+	      | on (CFN{lexp,large}) = CFN{lexp=on_LambdaExp S lexp,large=large}
+	      | on (CFIX{Type,bind,large}) = CFIX{Type=on_Type S Type,bind=on_LambdaExp S bind,large=large}
 	      | on _ = CUNKNOWN 
 	in on cv
+	end
+
+      fun eq_cv_scheme ((tvs1,cv1),(tvs2,cv2)) =
+	length tvs1 = length tvs2 andalso
+	let val S = mk_subst (fn () => die "eq_cv_scheme") (tvs1, map TYVARtype tvs2)
+	in eq_cv(on_cv S cv1,cv2)
 	end
 
       (* least upper bound *)
@@ -434,6 +498,12 @@ functor OptLambda(structure Lvars: LVARS
 
       fun lookup_lvar (env, lvar) = LvarMap.lookup env lvar
 
+      fun layout_cv_scheme (tyvars,cv) = PP.LEAF (show_cv cv)
+
+      fun cross_module_inline lvar (tyvars,cv) = 
+	cross_module_opt() andalso closed_small_cv (lvar,tyvars,cv)
+	
+      val frame_contract_env : env option ref = ref NONE
 
       (* -----------------------------------------------------------------
        * Usage counts
@@ -479,12 +549,12 @@ functor OptLambda(structure Lvars: LVARS
 	   | FRAME {declared_lvars,...} => app (fn {lvar,...} => (incr_use lvar; incr_use lvar)) declared_lvars
 	   | _ => app_lamb init e 
 
-
+(*
       fun is_small_closed_fn lamb =
 	case lamb 
 	  of FN _ => small_lamb (!max_inline_size) lamb andalso closed lamb 
 	   | _ => false
-
+*)
       fun is_small_fn lamb =
 	case lamb 
 	  of FN _ => small_lamb (!max_inline_size) lamb
@@ -530,9 +600,9 @@ functor OptLambda(structure Lvars: LVARS
 
       fun is_unboxed_value lamb =
 	case lamb
-	  of INTEGER (v,t) => if tag_integers() then not(eq_tau(t, int32Type))
+	  of INTEGER (v,t) => if tag_integers() then not(eq_Type(t, int32Type))
 			      else true
-	   | WORD (v,t) => if tag_integers() then not(eq_tau(t, word32Type))
+	   | WORD (v,t) => if tag_integers() then not(eq_Type(t, word32Type))
 			   else true
 	   | PRIM(CONprim {con,...},nil) => is_boolean con
 	   | _ => false
@@ -594,7 +664,7 @@ functor OptLambda(structure Lvars: LVARS
 		      (decr_uses bind; tick "reduce - dead-let"; reduce (env, (scope, cv)))
 		    else (*case scope
 			   of PRIM(RECORDprim,[]) => fail
-			    | _ => if eq_tau(tau,unit_Type) then fail
+			    | _ => if eq_Type(tau,unit_Type) then fail
 				   else let val pat'=[(Lvars.new_named_lvar "_not_used",[],unit_Type)]
 					    val bind' = LET{pat=pat,bind=bind,scope=PRIM(RECORDprim, [])}
 					    val e = LET{pat=pat',bind=bind',scope=scope}
@@ -822,21 +892,63 @@ functor OptLambda(structure Lvars: LVARS
 		     | mklive ((excon,_)::rest) = (mk_live_excon excon; mklive rest)
 	       in mklive sel; res
 	       end
-	      | FRAME{declared_excons,...} => (app (mk_live_excon o #1) declared_excons; (lamb, CUNKNOWN)) 
+	      | FRAME{declared_excons,declared_lvars} => 
+	       let val lvars = map #lvar declared_lvars
+		   val env' = 
+		     List.foldL (fn lv => fn acc => 
+				 case LvarMap.lookup env lv
+				   of SOME res => 
+				     if cross_module_inline lv res then LvarMap.add(lv,res,acc)
+				     else LvarMap.add(lv,(nil,CUNKNOWN),acc)
+				    | NONE => LvarMap.add(lv,(nil,CUNKNOWN),acc)) 
+		     LvarMap.empty lvars 
+	       in  frame_contract_env := SOME env'
+		 ; app (mk_live_excon o #1) declared_excons
+		 ; (lamb, CUNKNOWN)
+	       end
 	      | _ => (lamb, cv)
 	end
     in 
-      fun contract lamb =
+      type contract_env = env
+
+      fun contract_env_dummy lamb : contract_env =
+	let val lvars = #1(exports lamb)
+	in Listfoldl (fn (lv, acc) => LvarMap.add(lv,(nil,CUNKNOWN),acc)) 
+	   LvarMap.empty lvars 
+	end
+
+      fun contract (ce:contract_env) lamb =
 	if !contract_ref then
 	  let val _ = log "contracting\n"
 	      val _ = reset_excon_bucket()
 	      val _ = init lamb
-	      val lamb' = fst (contr (LvarMap.empty, lamb))
+	      val _ = frame_contract_env := NONE
+	      val lamb' = fst (contr (ce, lamb))
 	      val _ = reset_lvar_bucket ()
 	      val _ = reset_excon_bucket()
-	  in lamb'
+	  in case !frame_contract_env
+	       of SOME ce' => (lamb',ce')
+		| NONE => die "contract.no frame-env"
 	  end
-	else lamb
+	else 
+	  (lamb, contract_env_dummy lamb)
+
+      fun enrich_contract_env(ce1,ce2) =
+	LvarMap.Fold (fn ((lv2,res2),b) => b andalso
+		      case LvarMap.lookup ce1 lv2
+			of SOME res1 => eq_cv_scheme(res1,res2)
+			 | NONE => false) true ce2
+
+      fun restrict_contract_env(ce,lvars) = 
+	List.foldL (fn lv => fn acc => 
+		    case LvarMap.lookup ce lv
+		      of SOME res => LvarMap.add(lv,res,acc)
+		       | NONE => die "restrict_contract_env.lv not in env") LvarMap.empty lvars 
+
+      val layout_contract_env : contract_env -> StringTree = 
+	LvarMap.layoutMap {start="ContractEnv={",eq="->", sep=", ", finish="}"} 
+	(PP.LEAF o Lvars.pr_lvar) layout_cv_scheme
+
     end
   
 
@@ -1410,14 +1522,14 @@ functor OptLambda(structure Lvars: LVARS
       in (tyvars', on_Type S tau)
       end
 
-    fun eq_sigma (([],tau1),([],tau2)) = eq_tau(tau1,tau2)
+    fun eq_sigma (([],tau1),([],tau2)) = eq_Type(tau1,tau2)
       | eq_sigma (sigma1 as (tyvars1,_),sigma2 as (tyvars2,_)) =
       List.size tyvars1 = List.size tyvars2 andalso
       let val (tyvars1,tau1) = new_sigma sigma1
 	  val (tyvars2,tau2) = new_sigma sigma2
 	  val S = mk_subst (fn () => "eq_sigma") (tyvars1,map TYVARtype tyvars2)
 	  val tau1' = on_Type S tau1
-      in eq_tau(tau1',tau2)
+      in eq_Type(tau1',tau2)
       end
 	    
 
@@ -1495,24 +1607,31 @@ functor OptLambda(structure Lvars: LVARS
     * The Optimiser Engine
     * ----------------------------------------------------------------- *)
 
-    fun optimise lamb =
-      let val loop_opt = eliminate_explicit_records o contract
+    fun optimise (ce:contract_env) lamb =
+      let 
+	  fun loop_opt ce lamb =
+	    let val (lamb, ce) = contract ce lamb
+	    in (eliminate_explicit_records lamb, ce)
+	    end
 
-	  fun loop n lamb = if n > max_optimise then lamb 
-			    else let val _ = reset_tick()
-				     val _ = log ("Pass number " ^ Int.toString (n+1) ^ "\n")
-				     val lamb' = loop_opt lamb
-				     val _ = end_round() (*stat*)
-				 in if test_tick() then loop (n+1) lamb'
-				    else lamb'
-				 end
+	  fun loop n (lamb,ce') = 
+	    if n > max_optimise then (lamb,ce')
+	    else 
+	      let val _ = reset_tick()
+		  val _ = log ("Pass number " ^ Int.toString (n+1) ^ "\n")
+		  val (lamb',ce') = loop_opt ce lamb
+		  val _ = end_round() (*stat*)
+	      in if test_tick() then loop (n+1) (lamb',ce')
+		 else (lamb',ce')
+	      end
 
 	  val pre_opt = do_minimize_fixs
 
 	  val _ = reset_statistics()
-	  val lamb' = loop 0 (pre_opt lamb)
+	  val lamb' = pre_opt lamb
+	  val (lamb',ce') = loop 0 (lamb', contract_env_dummy lamb')
 	  val _ = print_stat lamb lamb'
-      in lamb'
+      in (lamb',ce')
       end
 
 
@@ -1520,27 +1639,32 @@ functor OptLambda(structure Lvars: LVARS
     * The lambda optimiser environment
     * ----------------------------------------------------------------- *)
 
-    type env = inveta_env * let_env * unbox_fix_env
+    type env = inveta_env * let_env * unbox_fix_env * contract_env
 
-    val empty =  (LvarMap.empty, LvarMap.empty, LvarMap.empty)
+    val empty =  (LvarMap.empty, LvarMap.empty, LvarMap.empty, LvarMap.empty)
     val initial = empty
-    fun plus ((e1, e2, e3), (e1', e2', e3')) = (LvarMap.plus (e1,e1'), LvarMap.plus (e2,e2'), LvarMap.plus (e3,e3'))
+    fun plus ((e1, e2, e3, e4), (e1', e2', e3', e4')) = 
+      (LvarMap.plus (e1,e1'), LvarMap.plus (e2,e2'), 
+       LvarMap.plus (e3,e3'), LvarMap.plus (e4,e4'))
 
-    fun restrict((inv_eta_env,let_env, unbox_fix_env), lvars) =
+    fun restrict((inv_eta_env,let_env, unbox_fix_env,contract_env), lvars) =
       (restrict_inv_eta_env(inv_eta_env,lvars),
        restrict_let_env(let_env,lvars),
-       restrict_unbox_fix_env(unbox_fix_env,lvars))
+       restrict_unbox_fix_env(unbox_fix_env,lvars),
+       restrict_contract_env(contract_env,lvars))
 
-    fun enrich((inv_eta_env1,let_env1,unbox_fix_env1): env,
-	       (inv_eta_env2,let_env2,unbox_fix_env2): env) : bool =
+    fun enrich((inv_eta_env1,let_env1,unbox_fix_env1,contract_env1): env,
+	       (inv_eta_env2,let_env2,unbox_fix_env2,contract_env2): env) : bool =
       enrich_inv_eta_env(inv_eta_env1,inv_eta_env2) andalso
       enrich_let_env(let_env1,let_env2) andalso
-      enrich_unbox_fix_env(unbox_fix_env1,unbox_fix_env2)
+      enrich_unbox_fix_env(unbox_fix_env1,unbox_fix_env2) andalso
+      enrich_contract_env(contract_env1,contract_env2)
 
-    fun layout_env (e1,e2,e3) = PP.NODE{start="",finish="",indent=0,childsep=PP.RIGHT ",",
-					children=[layout_inveta_env e1, layout_let_env e2,
-						  layout_unbox_fix_env e3]}
-
+    fun layout_env (e1,e2,e3,e4) = 
+      PP.NODE{start="",finish="",indent=0,childsep=PP.RIGHT ",",
+	      children=[layout_inveta_env e1, layout_let_env e2,
+			layout_unbox_fix_env e3, layout_contract_env e4]}
+      
 
    (* -----------------------------------------------------------------
     * Rewriting: This rewriting shall always be performed, no matter
@@ -1563,10 +1687,13 @@ functor OptLambda(structure Lvars: LVARS
 
     val optimise = fn (env, pgm as (PGM(DATBINDS db,lamb))) =>
           let
-	    val (lamb', env') = 
-	          rewrite env (if !Flags.optimiser then optimise lamb else lamb)
+	    val (env1,env2,env3,env4) = env
+	    val (lamb, env4) = if !Flags.optimiser then optimise env4 lamb 
+			       else (lamb, contract_env_dummy lamb)
+	    val (lamb, (env1,env2,env3)) = rewrite (env1,env2,env3) lamb
+	    val env = (env1,env2,env3,env4)
 	  in
-	    (PGM(DATBINDS db, lamb'), env')
+	    (PGM(DATBINDS db, lamb), env)
 	  end
 
   end;
