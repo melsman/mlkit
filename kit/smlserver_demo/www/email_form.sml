@@ -1,12 +1,14 @@
+val % = SmlsDict.d SmlsLang.English
+
 fun genForm () = `
 <form method=post action=email_sent.sml>
-^(SmlsDict.d "Type your email") <input type=text name=from><p>
-^(SmlsDict.d "Type subject") <input type=text name=subject><p>
-^(SmlsDict.d "Type body")
+^(%"Type your email") <input type=text name=from><p>
+^(%"Type subject") <input type=text name=subject><p>
+^(%"Type body")
   <textarea name=body cols=80 rows=5>
   </textarea>
 <center>
-<input type=submit value="^(SmlsDict.d "Send Message")">
+<input type=submit value="^(%"Send Message")">
 </center>
 </form>`
 

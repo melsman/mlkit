@@ -1,4 +1,5 @@
 fun datefmt date = Date.fmt "%a, %d-%b-%Y %H:%M:%S GMT" date
+val % = SmlsDict.d SmlsLang.English
 
 val _ = Ns.return 
   (`
@@ -34,13 +35,13 @@ val _ = Ns.return
       </blockquote>
 
       <form method=post action="../auth_logout.sml">
-      <input type=submit value="^(SmlsDict.d "Logout")">
+      <input type=submit value="^(% "Logout")">
       </form><p>
 
       <p>
-      Tilbage til <a href="auth_example.sml">^(SmlsDict.d "authentication example")</a> siden.<p>
+      Tilbage til <a href="auth_example.sml">^(% "authentication example")</a> siden.<p>
       <hr>
-      <a href="http://www.smlserver.org/">^(SmlsDict.d "SMLserver Home Page")</a> 
+      <a href="http://www.smlserver.org/">^(% "SMLserver Home Page")</a> 
       (<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-09-23
       
       </body>

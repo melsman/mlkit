@@ -61,6 +61,10 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       in (dmlDb (db,q) before putHandle db)
 	handle X => (putHandle db; raise X)
       end
+    fun maybeDml (q: quot) : unit = (dml q; () handle X => ())
+    fun panicDml (f_panic: string * string -> 'a) (q: quot) : unit =
+      (dml q; () handle X => (f_panic (Quot.toString q, General.exnMessage X); ()))
+
     fun select (db: db, q: quot) : Set.set =
       prim("nssml_DbSelect", "nssml_DbSelect", (#2 db, quotToString q))
     fun getRow (db : db, s : Set.set) : status =

@@ -7,7 +7,6 @@ let
                where users.id = user_group.user_id 
                and user_group.group_id = '^(g "id")'`)) ^^
     `</ul>`),``,`select id, name from groups order by name`))
-
 in
   Ns.return (`
   <html>

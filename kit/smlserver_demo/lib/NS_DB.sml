@@ -50,6 +50,9 @@ signature NS_DB =
     val zeroOrOneRowDb  : db * quot -> string list option
 
     val dml           : quot -> status
+    val maybeDml      : quot -> unit
+    val panicDml      : (string * string -> 'a) -> quot -> unit
+
     val fold          : ((string->string)*'a->'a) * 'a * quot -> 'a
     val oneField      : quot -> string
     val zeroOrOneField: quot -> string option

@@ -29,31 +29,30 @@ local
   ../sml/RegExp2.sml
 *)
 
-  ../sml/Quot.sml
+  ../lib/Quot.sml
 
   local
-    ../sml/NsBasics.sml
-    ../sml/NS_SET.sml
-    ../sml/NsSet.sml
-    ../sml/NsInfo.sml
-    ../sml/NS_DB.sml
-    ../sml/DbFunctor.sml
+    ../lib/NsBasics.sml
+    ../lib/NS_SET.sml
+    ../lib/NsSet.sml
+    ../lib/NsInfo.sml
+    ../lib/NS_DB.sml
+    ../lib/DbFunctor.sml
   in
-    ../sml/NS.sml
-    ../sml/Ns.sml  
-    ../sml/Db.sml
+    ../lib/NS.sml
+    ../lib/Ns.sml  
+    ../lib/Db.sml
   end
-  ../sml/SmlsLang.sml
-  ../sml/SmlsLogin.sml
-  ../sml/SmlsDate.sml
-  ../sml/SmlsList.sml
-  ../sml/SmlsDict.sml
-  ../sml/MSP.sml
-  ../sml/Msp.sml
-  ../sml/FormVar.sml
-  ../sml/RatingUtil.sml
+  ../scs_lib/ScsLang.sml
+  ../scs_lib/ScsLogin.sml
+  ../scs_lib/ScsDate.sml
+  ../scs_lib/ScsList.sml
+  ../scs_lib/ScsDict.sml
+  ../lib/MSP.sml
+  ../lib/Msp.sml
+  ../scs_lib/ScsFormVar.sml
 
-
+  rating/RatingUtil.sml
 in
  [
   rating/index.sml

@@ -407,8 +407,7 @@ structure FormVar :> FORMVAR =
       val getPhoneErr = getErr' "phone number" msgPhone (RegExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
       (* getHtml : not implemented yet *)
       val getHtmlErr = getErr' "HTML text" msgHTML (fn html => html <> "")
-      val getUrlErr =  getErr' "URL" msgURL (RegExpMatch "http:[0-9]*//[0-9a-zA-Z/\\-\\\\._]+")  (* what is the 
-												  * [0-9]* for? *)
+      val getUrlErr =  getErr' "URL" msgURL (RegExpMatch "http://[0-9a-zA-Z/\\-\\\\._]+(:[0-9]+)?")
       val getCprErr = getErr' "cpr number" msgCpr chkCpr
       val getEnumErr = fn enums => getErr' "enumeration" (msgEnum enums) (chkEnum enums)
       val getDateIso = getErr' "date" msgDateIso chkDateIso
