@@ -1,4 +1,4 @@
-drop table auth_user;
+--drop table auth_user;
 
 create table auth_user (
   user_id int primary key,
@@ -8,8 +8,8 @@ create table auth_user (
   lang varchar(10) not null check (lang in ('Danish','English'))
 );
 
-insert into auth_user (user_id, password, login, name, lang) values (1, 'Martin', 'mael', 'Martin Elsman','English');
-insert into auth_user (user_id, password, login, name, lang) values (2, 'Niels', 'nh', 'Niels Hallenberg','Danish');
+--insert into auth_user (user_id, password, login, name, lang) values (1, 'Martin', 'mael', 'Martin Elsman','English');
+--insert into auth_user (user_id, password, login, name, lang) values (2, 'Niels', 'nh', 'Niels Hallenberg','Danish');
 
 commit;
 

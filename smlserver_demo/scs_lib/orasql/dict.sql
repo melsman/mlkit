@@ -1,6 +1,6 @@
 -- All phrases gets its own number, phrase_id. One phase may 
 -- be translated into several languages.
-drop table scs_dict;
+--drop table scs_dict;
 create table scs_dict (
   dict_id integer primary key,
   phrase_id integer not null,
@@ -8,8 +8,8 @@ create table scs_dict (
   text varchar(3000) not null,
   unique (phrase_id,lang));
 
-drop sequence dict_seq;
-drop sequence phrase_seq;
+--drop sequence dict_seq;
+--drop sequence phrase_seq;
 
 -- For Oracle
 create sequence dict_seq start with 20;
