@@ -8,7 +8,7 @@
    package scs_user
 
    History:
-   261102 Kennie Nybo Pontoppidan <kennie@it-c.dk> rewrote gen_passwd
+   100603 Kennie Nybo Pontoppidan <kennie@it-c.dk> added procedure new_proc
    191102 Kennie Nybo Pontoppidan <kennie@it-c.dk> added comments
    281002 Niels Hallenberg <nh@it.edu> created package
 ====================================================================== */
@@ -45,6 +45,22 @@ as
     security_id       in scs_persons.security_id%TYPE default null,
     language_pref     in scs_user_preferences.language_pref%TYPE default 'da'
   ) return scs_users.user_id%TYPE;
+
+  /* ------------------
+     procedure new_proc
+     ------------------
+     same as the function 'new', just as a procedure
+  */
+  procedure new_proc(
+    user_id           in scs_users.user_id%TYPE default null,
+    password          in scs_users.password%TYPE,
+    salt              in scs_users.salt%TYPE,
+    modifying_user    in scs_users.modifying_user%TYPE,
+    email	      in scs_parties.email%TYPE default null,
+    first_names	      in scs_persons.first_names%TYPE,
+    last_name	      in scs_persons.last_name%TYPE,
+    security_id       in scs_persons.security_id%TYPE default null
+  ) ;
 
   /* -----------------
      procedure destroy
@@ -324,6 +340,40 @@ as
       raise_application_error( scs.ScsDbExn,
         'Cannot create user_id ' || user_id || ':' || SQLERRM );
   end new;
+
+  procedure new_proc(
+    user_id           in scs_users.user_id%TYPE default null,
+    password          in scs_users.password%TYPE,
+    salt              in scs_users.salt%TYPE,
+    modifying_user    in scs_users.modifying_user%TYPE,
+    email	      in scs_parties.email%TYPE default null,
+    first_names	      in scs_persons.first_names%TYPE,
+    last_name	      in scs_persons.last_name%TYPE,
+    security_id       in scs_persons.security_id%TYPE default null
+  )
+  is
+    uid integer;
+  begin
+    uid := new(
+      user_id,
+      password,
+      salt,
+      null,
+      0,
+      5,
+      't',
+      'f',
+      null,
+      null,
+      modifying_user,
+      email,
+      null,
+      first_names,
+      last_name,
+      security_id,
+      'da'
+    );
+  end new_proc;
 
   function receives_alerts_p (
     user_id in scs_users.user_id%TYPE
