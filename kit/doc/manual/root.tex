@@ -770,9 +770,9 @@ executing the command
 \index{-sampleMax@{\tt -sampleMax}}
 \index{-region@{\tt -region}}
 \begin{verbatim}
- rp2ps -region -name life -sampleMax 80 -eps 138 mm
+ rp2ps -region -name life -sampleMax 80 -eps 137 mm
 \end{verbatim}
-The option \boxml{-eps 138 mm} has the effect that \boxml{region.ps}
+The option \boxml{-eps 137 mm} has the effect that \boxml{region.ps}
 becomes an encapsulated PostScript file.\index{region.ps@{\tt region.ps}}
 The resulting \boxml{region.ps} was renamed \boxml{life80.ps}
 and included in this document as follows:
@@ -2950,16 +2950,14 @@ This chapter gives an informal explanation of the rules that
 govern resetting, rules, which play a key r\^ole in Kit programming
 irrespective of whether one leaves resetting of regions to the
 Kit or prefers to control resetting explicitly in the program.
-
-
 Resetting only makes sense for infinite regions. It is a 
 constant-time operation.
 
-The Kit contains an analysis, the {\em storage mode analysis}, which has
+The Kit contains an analysis, called the {\em storage mode analysis}, which has
 two purposes:
 \begin{enumerate}
 \item inserting automatic resetting of infinite regions, when possible;
-\item checking applications of $\resetr$ (and \index{forceResetting$\resetf$}$\resetf$) in order to 
+\item checking applications of $\resetr$ (and \index{forceResetting$\resetf$}$\resetf$) so as to 
 report on the safety of the resetting requested by the programmer.
 \end{enumerate}
 
@@ -3127,7 +3125,7 @@ val n =
                end 
        in  (case true 
               of true => letregion r22:1 
-                         in f[atbot r18] atbot r22 l1 
+(*1*)                    in f[atbot r18] atbot r22 l1 
                          end (*r22:1*)
               |  _ => l1
            ) (*case*) 
@@ -3147,35 +3145,34 @@ parameters to region-polymorphic functions are considered allocation
 points. Passing a region as an actual argument to a region-polymorphic
 function involves neither resetting the region nor storing any value
 in it, but a storage mode has to be determined at that point
-nonetheless, since it has to be passed into the function together with
+nonetheless, because it has to be passed into the function together with
 the region. The storage mode expresses whether, at the call site,
-there may be any live values in the region {\em after} the call. For
-example, in Figure~\ref{sma1.fig} the call to {\tt f}
-at {\tt (*1*)} passes both {\tt r19} and {\tt r20} with storage
-mode {\tt atbot} since the only value that exists before the call
+there may be any live values in the region after the call. For
+example, in Figure~\ref{sma1.fig}, the call to {\tt f}
+at {\tt (*1*)} passes {\tt r18} with storage
+mode {\tt atbot} because the only value that exists before the call
 of {\tt f} and is needed after the call of {\tt f} is {\tt length},
 which is declared in a different compilation unit and therefore
-obviously  resides neither in {\tt r19} nor in {\tt r20}.
+obviously does not reside in {\tt r18}.
 
 Within every lambda abstraction, the Kit performs a backwards flow
-analysis which determines, for every allocation point, a set of
-\index{variable!locally live}{\em locally live variables}, i.e., a set
+analysis that determines, for every allocation point, a set of
+\index{variable!locally live}{\em locally live variables}, that is, a set
 of variables used by the remainder of the computation in the function
 up to the syntactic end of the function. (This includes variables
-which appear in function application expressions.) Prior to the
+that appear in function application expressions.) Prior to the
 computation of locally live variables, a program transformation, called
 \index{K-normalisation}\label{K-normal-form}{\em K-normalisation},
-has made sure that every intermediate result which arises during
+has made sure that every intermediate result that arises during
 computation becomes bound to a variable. (This happens by introducing
 extra {\tt let} bindings, when necessary.)\footnote{K-normalisation is
   transparent to users: although the storage mode analysis and all
   subsequent phases up to code generation operate on K-normal forms,
-  programs are always simplified to eliminate the extra let-bindings
+  programs are always simplified to eliminate the extra {\tt let} bindings
   before they are presented to the user.}
 
-The Kit also computes a set of locally live variables
-for each allocation point which does not occur inside
-any function.
+The Kit also computes a set of locally live variables for those
+allocation points that do not occur inside functions.
 
 We now give an informal explanation of the rules that assign
 storage modes to allocation points.
@@ -3212,7 +3209,7 @@ overwritten.
 The region variable $\rho$ is not a global region and 
 the allocation point (\ref{allocpoint}) occurs inside a lambda
 abstraction, 
-i.e, inside an expression of the form \boxml{fn {\it pat} => $e$}.
+that is, inside an expression of the form \boxml{fn {\it pat} => $e$}.
 Here we regard every expression of the form
 $$\boxml{let fun f(x) = $e$ in $e'$ end}$$ as an abbreviation for
 $$\boxml{let val rec f  = fn(x) => $e$ in $e'$ end}$$
@@ -3224,19 +3221,20 @@ Now there are the following cases:
 \begin{description}
 \item[B1] {\it $\rho$ is bound outside the smallest enclosing lambda abstraction
       (and this lambda abstraction is not the right-hand side of a 
-      declaration of a region-polymorphic function which has $\rho$ as
+      declaration of a region-polymorphic function that has $\rho$ as
       formal parameter):}
       use {\tt attop} (see Figure~\ref{b1.fig})\index{attop@{\tt attop}};
-\item[B2]{\it $\rho$ is bound by a {\tt letregion}-expression inside the
+\item[B2]{\it $\rho$ is bound by a {\tt letregion} expression inside the
       smallest enclosing function:} use {\tt atbot} if no locally live
       variable at the allocation point has $\rho$ free in its region 
-      type scheme and place (Section~\ref{regtych.sec}), and use {\tt attop} otherwise 
+      type scheme (Section~\ref{regtych.sec}), and use {\tt attop} otherwise 
       (see Figure~\ref{b2.fig})\index{letregion@{\tt letregion}};
-\item[B3 (first attempt)]{\it $\rho$ is a formal parameter of a region-polymorphic function
-      whose right-hand side is the smallest enclosing lambda abstraction:}
-            use \index{sat@{\tt sat}}{\tt sat}, if no locally live
-      variable at the allocation point has $\rho$ free in its region type scheme and
-      place, and use {\tt attop} otherwise (see Figure~\ref{b3.fig}).
+    \item[B3 (first attempt)]{\it $\rho$ is a formal parameter of a
+        region-polymorphic function whose right-hand side is the
+        smallest enclosing lambda abstraction:} use \index{sat@{\tt
+          sat}}{\tt sat}, if no locally live variable at the
+      allocation point has $\rho$ free in its region type scheme, and
+      use {\tt attop} otherwise (see Figure~\ref{b3.fig}).
 \end{description}
 \begin{figure}
 \hrule
@@ -3247,8 +3245,8 @@ Now there are the following cases:
        \>\tt in $\ldots$ (fn {\it pat} => $\ldots\at\,\rho\ldots$)\\
        \>\tt end\\
 \\
-       \>\tt fun f at $\rho_1$[$\rho$] =\\
-       \>\tt\ \ \ (fn x => (fn y => $\ldots$ at $\rho$ $\ldots$)at $\rho_2$)at $\rho_1$\\
+       \>\tt fun f at$\,\rho_1$ [$\rho$] =\\
+       \>\tt\ \ \ (fn x => (fn y => $\ldots$ at$\,\rho$ $\ldots$)at$\,\rho_2$)at$\,\rho_1$\\
 \end{tabbing}
 \end{center}
 \caption{Two typical situations where $\at\,\rho$ is turned into $\attop\,\rho$
@@ -3270,10 +3268,9 @@ by rule~B1.\index{function!Curried}}
        \>\tt )
 \end{tabbing}
 \end{center}
-\caption{The situation which is considered in B2. If no locally live variable
-$l$ has $\rho$ occurring in its type scheme and place, 
-replace $\at\,\rho$ by $\atbot\,\rho$, otherwise
-by $\attop\,\rho$.}
+\caption{The situation considered in B2. If no locally live variable
+  $l$ has $\rho$ occurring in its region type scheme, replace
+  $\at\,\rho$ by $\atbot\,\rho$, otherwise by $\attop\,\rho$.}
 \medskip
 
 \hrule
@@ -3288,12 +3285,11 @@ by $\attop\,\rho$.}
          \>\tt \ \ \=\tt (fn ${\it pat}$ => $\ldots\at\rho\ldots l\ldots$)
 \end{tabbing}
 \end{center}
-\caption{The situation which is considered in B3. If no locally live variable
-$l$ has in its type scheme and place a region variable which may be
-aliased with $\rho$,  replace $\at\,\rho$ by $\sat\,\rho$, otherwise
-by $\attop\,\rho$.}
+\caption{The situation considered in B3. If no locally live variable
+  $l$ has in its region type scheme a region variable that may be
+  aliased with $\rho$, replace $\at\,\rho$ by $\sat\,\rho$, otherwise
+  by $\attop\,\rho$.}  
 \medskip
-
 \hrule
 \label{b3.fig}
 \end{figure}
@@ -3301,14 +3297,14 @@ The motivation for (B1) is that if $\rho$ is declared non-locally,
 then we do not attempt to find out whether $\rho$ contains live data (this would
 require a more sophisticated analysis.) 
 The intuition behind (B2) is as follows. Region inference
-makes sure that the region-annotated type and place of a variable always contains
-free in it region variables for all the regions which the value bound to that
+makes sure that the region-annotated type of a variable always contains
+free in it region variables for all the regions that the value bound to the
 variable needs when used. The lifetime of the region bound to 
-$\rho$ is given by the {\tt letregion} expression which is in the same function
+$\rho$ is given by the {\tt letregion} expression, which is in the same function
 as the allocation point. Thus,  
 if no locally live variable at the allocation point
-has $\rho$ free in its type scheme 
-or place, then $\rho$ really does not contain any
+has $\rho$ free in its region type scheme,
+then $\rho$ really does not contain any
 live value at that allocation point.
 
 The intuition behind (B3) is the same as behind (B2), but
@@ -3316,72 +3312,71 @@ in this case there is a complication:
 $\rho$ is only a formal parameter so it may
 be instantiated to different regions; 
 in particular it may be instantiated to 
-a region variable which {\em does} occur free in the type scheme and place of a
+a region variable that does occur free in the region type scheme of a
 locally live variable at the allocation point. If that happens, 
 rule (B3), as stated, is not sound!
 
 We refer to the phenomenon that two different region variables in the
-program may denote the same region at runtime as \index{region
-  aliasing} {\em region aliasing}. In order to determine whether to
-use {\tt sat} or {\tt attop} in case (B3), the Kit builds a
-\index{region flow graph}\label{region flow graph}{\em region flow
-  graph} for the entire compilation unit. (This happens in a phase
-prior to the storage mode analysis proper.)  The nodes of the region
-flow graph are region variables and arrow effects that appear in the
-region-annotated compilation unit.  Whenever $\rho_1$ is a formal
-region parameter of some function declared in the unit and $\rho_2$ is
-a corresponding actual region parameter in the same unit, a directed
-edge from $\rho_1$ to $\rho_2$ is created. Similarly for arrow
-effects: if $\epsilon_1.\rea_1$ is a bound arrow effect of a
-region-polymorphic function declared in the compilation unit and
-$\epsilon_2.\rea_2$ is a corresponding actual arrow effect then an
-edge from $\epsilon_1$ to $\epsilon_2$ is inserted into the graph.
-Also, edges from $\epsilon_2$ to every region and effect variable
-occurring in $\rea_2$ are inserted. Finally, for every
-region-polymorphic function $f$ declared in the program and every
-formal region parameter $\rho$ of $f$, if $f$ is exported from the
-compilation unit, then an edge from $\rho$ to the global region of the
-same runtime type as $\rho$ is inserted into the graph. (This is
-necessary, in order to cater for applications of $f$ in subsequent
-compilation modules.)  Let $G$ be the graph thus constructed. For
-every node $\rho$ in the graph, we write $\langle\rho\rangle$ to
-denote the set of region variables which can be reached from $\rho$,
-including $\rho$ itself. The rule that replaces (B3)
-is:\index{region parameter!formal}
+program may denote the same region at runtime as 
+\index{region aliasing}%
+{\em region aliasing}. To determine whether to use {\tt sat}
+or {\tt attop} in case (B3), the Kit builds a \index{region flow
+  graph}\label{region flow graph}{\em region flow graph\/} for the
+entire compilation unit. (This construction happens in a phase prior to the storage
+mode analysis proper.)  The nodes of the region flow graph are region
+variables and arrow effects that appear in the region-annotated
+compilation unit.  Whenever $\rho_1$ is a formal region parameter of
+some function declared in the unit and $\rho_2$ is a corresponding
+actual region parameter in the same unit, a directed edge from
+$\rho_1$ to $\rho_2$ is created. Similarly for arrow effects: if
+$\epsilon_1.\rea_1$ is a bound arrow effect of a region-polymorphic
+function declared in the compilation unit and $\epsilon_2.\rea_2$ is a
+corresponding actual arrow effect then an edge from $\epsilon_1$ to
+$\epsilon_2$ is inserted into the graph.  Also, edges from
+$\epsilon_2$ to every region and effect variable occurring in $\rea_2$
+are inserted. Finally, for every region-polymorphic function $f$
+declared in the program and for every formal region parameter $\rho$ of
+$f$, if $f$ is exported from the compilation unit, then an edge from
+$\rho$ to the global region of the same runtime type as $\rho$ is
+inserted into the graph. (This is necessary, so as to cater for
+applications of $f$ in subsequent compilation units.)  Let $G$ be
+the graph thus constructed. For every node $\rho$ in the graph, we
+write $\langle\rho\rangle$ to denote the set of region variables which
+can be reached from $\rho$, including $\rho$ itself. The rule that
+replaces (B3) is:\index{region parameter!formal}
 \begin{description}
 \item[B3]{\it $\rho$ is a formal parameter of a region-polymorphic function
       whose right-hand side is the smallest enclosing lambda abstraction:}
-      use {\tt sat}, if, for every variable $l$ which is locally live 
+      use {\tt sat}, if, for every variable $l$ that is locally live 
       at the allocation point and for every region variable $\rho'$
-      which occurs free in the region type scheme and place of $l$, it
+      that occurs free in the region type scheme of $l$, it
       is the case that $\langle\rho\rangle\cap\langle\rho'\rangle =\emptyset$;
       use {\tt attop} otherwise.
 \end{description}
 \medskip
 
-\noindent{\bf CASE C:} $\rho$ is bound by a {\tt letregion}-expression
+\noindent{\bf CASE C:} $\rho$ is bound by a {\tt letregion} expression
 and the allocation point (\ref{allocpoint})
 does not occur inside any function abstraction.
 As in (B2), use {\tt atbot} if no locally live
 variable at the allocation point has $\rho$ free in its region 
-type scheme and place, and use {\tt attop} otherwise.
+type scheme, and use {\tt attop} otherwise.
 
 
 \section{Example: Computing the Length of a List}
 \label{length.sec}
 We shall now illustrate the storage mode rules of 
 Section~\ref{sma.sec}
-with some small examples which also allow us to discuss
+with some small examples, which also allow us to discuss
 benefits and drawbacks associated with region resetting.
 
-Consider the functions declared in Figure~\ref{length.fig}\footnote{Project:
-\boxml{kitdemo/nlength10000.pm}, file: \boxml{kitdemo/length.sml}.}; they
+Consider the functions declared in Figure~\ref{length.fig};\footnote{Program \boxml{kitdemo/length.sml}.} they
 implement five different ways of finding the length of a list!
 The first, {\tt nlength}, is the most straightforward one.
 It is not tail recursive. Textbooks in functional programming often
 recommend that functions are written iteratively (i.e., using tail 
 calls) whenever possible. This we have done with {\tt tlength}.
-Next, {\tt klength} is a version which contains a local \index{region endomorphism}region 
+Next, {\tt klength} is a version that contains a local \index{region endomorphism}region 
 endomorphism {\tt loop} to perform the iteration; {\tt llength} 
 is similar to {\tt klength}, except that the region endomorphism
 is declared outside {\tt llength}, using \index{local@{\tt local}}{\tt local}.
@@ -3392,8 +3387,7 @@ is declared outside {\tt llength}, using \index{local@{\tt local}}{\tt local}.
 
 fun upto n = 
   let fun loop(p as (0,acc)) = p
-        | loop(n, acc) = 
-            loop(n-1, n::acc)
+        | loop(n, acc) = loop(n-1, n::acc)
   in
       #2(loop(n,[]))
   end
@@ -3435,90 +3429,64 @@ val run =   nlength(upto 10000) + tlength(upto 10000) +
 \label{length.fig}
 \hrule
 \end{figure}
-Region and stack profiles resulting from running the program
-are shown in Figure~\ref{length.region.fig}.
-% and \ref{length.stack.fig},
-%respectively. 
+A region profile resulting from running the program
+is shown in Figure~\ref{length.region.fig}.
 The diagram shows how much space is used in
-regions, both finite regions on the stack and infinite regions. 
+regions (both finite and infinite regions) and on the stack. 
 The \index{region descriptor}{\tt rDesc} band shows how much space is used on the stack for
 holding region descriptors. The 
-\index{stack@{\tt stack} profile}{\tt stack} band shows how much space is used on the stack, 
+\index{stack band@{\tt stack} band}%
+{\tt stack} band shows how much space is used on the stack, 
 including neither finite regions nor region descriptors; the {\tt stack}
 band mainly consists of registers and return addresses 
 that have been pushed onto the stack. 
-%Figure~\ref{length.stack.fig}
-%shows the two bands {\tt stack} and {\tt rDesc} again, but without
-%an region bands.
 \begin{figure}
 \begin{center}
-\vbox{
-{\includegraphics{length.region.ps}}
-}
+\includegraphics{length.region.ps}
 \end{center}
 \caption{Region profiling of five different
 ways of computing the length of a list, namely, from left to right:
-{\tt nlength}, {\tt tlength}, {\tt klength}, {\tt llength}
+{\tt nlength}, {\tt tlength}, {\tt klength}, {\tt llength},
 and {\tt glength}.}
 \label{length.region.fig}
 \end{figure}
-%
-%
-%
 
-%\begin{figure}
-%\begin{center}
-%\vbox{
-%{\includegraphics{length.stack.ps}}
-%}
-%\end{center}
-%\caption{Stack profiling of five different
-%ways of computing the length of a list, namely, from left to right:
-%{\tt nlength}, {\tt tlength}, {\tt klength}, {\tt llength}
-%and {\tt glength}. The first spike is for {\tt nlength}, the second
-%for {\tt tlength}.}
-%\label{length.stack.fig}
-%\end{figure}
-
-In Figure~\ref{length.region.fig} we clearly see the five phases.
-In each phase, first a list is built ---
-seen as an almost linear growth in
-two regions; 
-then follows a shorter computation of the length of the list.
-The space behaviour of the five ways of computing the length
+In Figure~\ref{length.region.fig}, we clearly see the five phases.  In
+each phase, first a list is built---seen as an almost linear growth in
+a region; then follows a shorter computation of the length of the
+list.  The space behaviour of the five ways of computing the length
 vary considerably. We shall have more to say about the time behaviour
-below.
+in what follows.
 
-As one would expect, 
-{\tt nlength} leads to a peak in stack size and it
-does not use regions. (The peak in stack size is caused by the
-stacking of a return address.)
+As one would expect, {\tt nlength} leads to a peak in stack size; it
+does not use regions. The peak in stack size is caused by the stacking
+of a return address.
 
-Next we see that {\tt tlength} is not an improvement over
-{\tt nlength}! Note that {\tt tlength'} is region-polymorphic and that the
+Next, we see that {\tt tlength} is not an improvement over
+{\tt nlength}! Notice that {\tt tlength'} is region-polymorphic and that the
 polymorphic recursion in regions allows the pair \boxml{(xs, acc+1)}
 to be stored in a region different from  the argument pair to {\tt tlength'}.
-Thus what appears to be a tail call is in fact not a tail call, for
-it is automatically enclosed in a {\tt letregion} construct which introduces
+Thus, what appears to be a tail call is in fact not a tail call, for
+it is automatically enclosed in a {\tt letregion} construct, which introduces
 a fresh region for each argument pair \boxml{(xs, acc+1)}. This region is finite, so it is
 allocated on the stack. That is why we see a sharp increase in
 stack size for {\tt tlength'}.
 
-The next function, {\tt klength}, deserves careful study, since
+The next function, {\tt klength}, deserves careful study, because
 it is a prototype of a particular schema
-which can be used again and again when programming with
+that can be used again and again when programming with
 regions. Iteration is done by a \index{region endomorphism}region endomorphism,
 {\tt loop}, which is
 declared as a local function to the main function. The use of
 the same variable {\tt p} on both the left-hand side and the right-hand
 side of the declaration of {\tt loop} forces {\tt loop} to be a region
-endomorphism. Since the result of 
+endomorphism. Because the result of 
 \boxml{loop(xs,acc+1)} is also the result of {\tt loop}, the
 result of \boxml{loop(xs,acc+1)} therefore has to be in the same region as {\tt p};
-but since {\tt loop} is an endomorphism, this forces 
-\boxml{(xs, acc+1)} to be in the same region as {\tt p}.
-Thus what appears to be a tail call ({\tt loop(xs,acc+1)})
-really will be a tail call; in particular there will be no fresh region
+but because {\tt loop} is an endomorphism, 
+\boxml{(xs, acc+1)} is forced to be in the same region as {\tt p}.
+Thus, what appears to be a tail call ({\tt loop(xs,acc+1)})
+really will be a tail call; in particular, there will be no fresh region
 for the argument and no growth
 of the stack. 
 
@@ -3526,75 +3494,72 @@ Better still, we have carefully arranged that
 memory consumption will be constant throughout the computation of
 the length of the list. First, the argument to the 
 initial call of {\tt loop} is a pair \boxml{(l, 0)} constructed
-at that point. Since {\tt loop} is a region endomorphism, the
+at that point. Because {\tt loop} is a region endomorphism, the
 result of \boxml{loop(l, 0)} will be in the same region as \boxml{(l, 0)}.
-Moreover, since we then immediately take the second projection of
+Moreover, because we then immediately take the second projection of
 that pair, that region is clearly local to the body of {\tt klength}.
-Call the region  $\rho$. Since there can be an unbounded number of stores into
+Call the region  $\rho$. Because there can be an unbounded number of stores into
 this region, $\rho$ is classified as infinite by multiplicity inference.
 
-The storage mode passed along with $\rho$
-in the initial call \boxml{loop(l,0)} is {\tt atbot}, by 
-rule (B2) of Section~\ref{sma.sec}. Inside {\tt loop}, the storage
-mode given to the allocation of \boxml{(xs, acc+1)} is {\tt sat},
-by rule (B3) in Section~\ref{sma.sec}: the only locally live
-variable at the point where the allocation takes place is {\tt loop}
---- which we must not destroy before calling! --- and the region which
-{\tt loop} lies in is clearly different from $\rho$.
+The storage mode passed along with $\rho$ in the initial call
+\boxml{loop(l,0)} is {\tt atbot}, by rule (B2) of
+Section~\ref{sma.sec}. Inside {\tt loop}, the storage mode given to
+the allocation of \boxml{(xs, acc+1)} is {\tt sat}, by rule (B3) of
+Section~\ref{sma.sec}: the only locally live variable at the point
+where the allocation takes place is {\tt loop}, which we must not
+destroy before calling! The region that {\tt loop} lies in is
+clearly different from $\rho$.
 
-Therefore, every iteration of {\tt loop} resets the ``infinite'' region
-$\rho$ so that it will in fact only contain at most one pair.
-This is seen very clearly in the third hump of 
-Figure~\ref{length.region.fig}.
+Therefore, every iteration of {\tt loop} resets the infinite region
+$\rho$ so that it will contain at most one pair.  This is seen very
+clearly in the third hump of Figure~\ref{length.region.fig}.
 
 Next consider {\tt llength}. The difference from {\tt klength} is
 that {\tt llength'} is now declared outside {\tt llength}.
-Note that although the use of {\tt local} makes it clear that {\tt llength'}
+Although the use of {\tt local} makes it clear that {\tt llength'}
 is not exported from the compilation unit, {\tt llength'} must in fact reside
-in a global region, since {\tt llength}, which is exported, calls
+in a global region, because {\tt llength}, which is exported, calls
 {\tt llength'}.  Nonetheless, the storage mode analysis still achieves
 constant memory usage. As before, we have arranged that iteration is
-done by a region endomorphism which is initially applied to a freshly
-constructed pair. This pair can reside in a region which is local to the
+done by a region endomorphism that is initially applied to a freshly
+constructed pair. This pair can reside in a region that is local to the
 body of {\tt llength} (once again, the projection \verb+#2(llength'(l, 0))+
 makes sure that the pair does not escape the body of {\tt llength}).
-The crucial bit is now which storage mode {\tt llength'} uses 
+The crucial bit is now what storage mode {\tt llength'} uses 
 when it stores \boxml{(xs, acc+1)}.
 The only locally live
-variable at that point is {\tt llength'} itself and, as we noted above,
-{\tt length'} lives in a global region which is clearly different
-from the region inside {\tt llength} which contains all the pairs.
-Thus storage mode {\tt sat} will be used, as desired.
+variable at that point is {\tt llength'} itself and, as we noted earlier,
+{\tt length'} lives in a global region, which is clearly different
+from the region inside {\tt llength} that contains all the pairs.
+Thus, storage mode {\tt sat} will be used, as desired.
 
-Finally, consider {\tt glength}, which is similar to {\tt llength}, but
-with the crucial difference that {\tt global} is exported from 
-the compilation unit. Since {\tt global} may be called from a different
-compilation unit, then, for all we know,
-{\tt global} may  be applied to a pair which resides in the same
-(global) region as {\tt global} itself. Using {\tt sat} when storing
-{\tt (xs, acc+1)} would then be a big mistake: it would destroy
-the very function we are trying to call! Therefore, the storage mode
-analysis assigns {\tt attop} to that storage operation.\footnote{To be
-precise, {\tt attop} comes about by using rule (B3) of
-Section~\ref{sma.sec}. This example illustrates
-why we put edges from formal region parameters to global regions for
-exported functions when constructing the region 
-flow graph.}
-Consequently
-we get a memory leak, as shown in the final hump of Figure~\ref{length.region.fig}. 
+Finally, consider {\tt glength}, which is similar to {\tt llength},
+but with the crucial difference that {\tt global} is exported from the
+compilation unit. Because {\tt global} may be called from a different
+compilation unit, then, for all we know, {\tt global} may be applied
+to a pair that resides in the same (global) region as {\tt global}
+itself. Using {\tt sat} when storing {\tt (xs, acc+1)} would then be a
+big mistake: it would destroy the very function that we are trying to
+call! Therefore, the storage mode analysis assigns {\tt attop} to that
+storage operation.\footnote{To be precise, {\tt attop} comes about by
+  using rule (B3) of Section~\ref{sma.sec}. This example illustrates
+  why we put edges from formal region parameters to global regions for
+  exported functions when constructing the region flow graph.}
+Consequently, we get a memory leak, as shown in the final hump of
+Figure~\ref{length.region.fig}.
 
 To sum up, here is how one writes a loop without using space proportional
 to the number of iterations:\index{length of list}
 \begin{enumerate}
-\item The iteration should be done by an auxiliary, uncurried function 
-      which is declared as local to the function that uses it; we
-      refer (informally) 
-      to this auxiliary function as the {\em iterator}.\index{iterator}
-\item The iterator should be a region endomorphism and it should 
-      be tail recursive;\index{region endomorphism}
+\item The iteration should be done by an auxiliary, uncurried function
+  that is declared as local to the function that uses it; we refer
+  (informally) to this auxiliary function as the \index{iterator}{\em
+    iterator}.
+\item The iterator should be a \index{region endomorphism}region
+  endomorphism and should be tail recursive;
 \item Iteration should start from a suitably fresh initial argument;
-      the result of the iteration should be kept clearly separate
-      from the region where the iterator function lies.
+  the result of the iteration should be kept clearly separate from the
+  region where the iterator function lies.
 \end{enumerate}
 Mutual recursion poses no additional complications. All functions
 in a block of mutually recursive functions are put in the same region.
@@ -3602,59 +3567,50 @@ in a block of mutually recursive functions are put in the same region.
 Finally, the reader may be concerned that the two recommended
 solutions, {\tt klength} and {\tt llength}, seem to be much slower
 than the other versions. This is mostly an artifact of the profiling
-software, however.\footnote{When profiling is turned on, 
-every resetting of a region involves a scan of an entire
-region page (typically 1 Kb) and this cost far dominates
-the cost of allocating a pair into the region.} To get
-a better picture of the actual cost of the different versions, we
-compiled the five programs separately (using lists of length 100,000
-instead of 10,000) using the HP backend and then 
-ran the programs on an HP-9000s700. The results are shown 
-in Figure~\ref{length.timing.fig}. Since {\tt upto} alone
-takes 0.10 seconds to build the list, the differences 
-in times are clear:
-the two
-programs that reset regions ({\tt klength} and {\tt llength}) are
-slower than those that leak space. Writing {\tt attop} into
-an infinite region {\tt glength} is only slightly slower than
-storing values on the stack ({\tt nlength}). Thus most of the extra
-cost of {\tt klength} and {\tt llength} stems from the operation
-which resets regions. This extra cost could probably be reduced
-significantly by an analysis which discovered that the regions
-that have been marked as infinite only ever contain one value
-at the time and could therefore be treated as finite regions.
+software, however.\footnote{When profiling is turned on, every
+  resetting of a region involves resetting of values in the first
+  region page of the region.} To get a better picture of the actual
+cost of the different versions, we compiled the five programs
+separately (using lists of length 1 million instead of 10,000) using
+the HP backend and then ran the programs on an HP-9000s700. The
+results are shown in Figure~\ref{length.timing.fig}. Because {\tt
+  upto} alone takes 0.38 seconds to build the list, the differences in
+times are clear: the versions of the length function that take pairs
+as arguments are slower than the version that stores values on the
+stack (i.e., {\tt nlength}); this difference would of course be
+reduced significantly if the Kit allowed functions to take argument
+values in more than one register.
 
 \begin{figure}
 \begin{center}
 \begin{tabular}{|c|c|c|c|c|c|c|}\hline
 program      & {\tt upto} & {\tt nlength} & {\tt tlength} & {\tt klength} & {\tt llength} & {\tt glength} \\ \hline
-sec. & 0.10 & 0.14 & 0.15 & 0.18 & 0.20 & 0.14\\ \hline
+sec. & 0.38 & 0.61 & 0.74 & 0.69 & 0.73 & 0.67 \\ \hline
 \end{tabular}
 \end{center}
-\caption{User time in seconds for building a list of 100,000 elements and
+\caption{User time in seconds for building a list of 1 million elements and
 computing its length, using five different length functions. {\tt upto} builds
 the list, but does not compute a length. Times are average
 over three runs.}
 \label{length.timing.fig}
 \end{figure}
 
-Programming with storage modes is useful if one wants to miniaturise 
-programs using the Kit. However, it is often the case that there are only
-a few places in the program where resetting is really essential, for example
-in some main loop which is supposed to run forever. Therefore, the Kit provides
-two operations which the programmer can use to encourage (or force) 
-the Kit to perform resetting at particular places in the program. 
-These are described in the next
+Programming with storage modes is useful if one wants to miniaturise
+programs using the Kit. However, it is often the case that there are
+only a few places in the program where resetting is really essential,
+for example in some main loop that is supposed to run forever.
+Therefore, the Kit provides two operations that the programmer can use
+to encourage (or force) the Kit to perform resetting at particular
+places in the program.  These operations are described in the next
 section.
 
 \section{$\resetr$ and $\resetf$}
 The programmer can reset regions using the two built-in primitives
-\index{resetRegions@{\tt resetRegions}}\index{forceResetting@{\tt forceResetting}}
-$$\resetr\; {\it id}$$
-and 
-$$\resetf\; {\it id}$$
-Note that, in both cases, the argument has to be an identifier (more specifically, 
-a value variable). To port programs that contain {\tt resetRegions}
+\index{resetRegions@{\tt resetRegions}}
+$$\resetr\; {\it vid}$$
+and \index{forceResetting@{\tt forceResetting}}
+$$\resetf\; {\it vid}$$
+For both primitives, the argument has to be a value identifier. To port programs that contain {\tt resetRegions}
 and {\tt forceResetting} to other ML systems, simply declare
 \begin{verbatim}
        fun resetRegions _ = ()
@@ -3662,13 +3618,12 @@ and {\tt forceResetting} to other ML systems, simply declare
 \end{verbatim}
 before compiling the program developed using the Kit.
 
-Let $\rho$ be a region variable which occurs free in the type and
-place of {\it id}.  Let $m$ be the storage mode determined for $\rho$
-at a program point according to the rules of the previous section.
-Whether resetting of {\it id} at that program point actually takes
-place at runtime, depends on $m$ and on whether resetting is forced,
-see Figure~\ref{smamodes.fig}.  
-\medskip
+Let $\rho$ be a region variable that occurs free in the
+region-annotated type of {\it vid}.  Let $m$ be the storage mode
+determined for $\rho$ at a program point according to the rules of the
+previous section.  Whether resetting of {\it vid} at that program point
+actually takes place at runtime, depends on $m$ and on whether
+resetting is forced, see Figure~\ref{smamodes.fig}.
 
 \begin{figure}
 \begin{center}
@@ -3684,7 +3639,7 @@ $m=\attop$ & no$\ast$  &  yes$\ast$ \\ \hline
 ($\ast$): A compile-time warning is printed in this case.
 \end{center}
 \caption{The storage modes that will be used when resetting a region
-depending on $m$, the storage mode inferred by the storage mode analysis
+depending on $m$, the storage mode inferred by the storage mode analysis,
 and depending on whether the resetting is safe ($\resetr$) or potentially
 unsafe ($\resetf$).}
 \label{smamodes.fig}
@@ -3692,113 +3647,129 @@ unsafe ($\resetf$).}
 
 \section{Example: Improved Mergesort}
 \label{improvedmerge.sec}
-We can now improve on the mergesort algorithm (Section~\ref{polyrec.sec}) by
-taking storage modes into account. \index{merge sort}\index{msort@{\tt msort}}Splitting a list can be done by
-an iterative region endomorphism which is made local to the sorting function.
-Also, when the input list has been split, it is no longer needed, so the region
-it resides in can be reset. Similarly, when the two smaller lists have been sorted
-(into new regions) the regions of the smaller lists can be reset. These three simple
-observations lead to the following variant of {\tt msort:}\footnote{Project: \boxml{kitdemo/msortreset1.pm}, file \boxml{kitdemo/msortreset1.sml}.}
-\medskip
-
+We can now improve on the 
+\index{merge sort}\index{msort@{\tt msort}}%
+mergesort algorithm (Section~\ref{polyrec.sec}) by taking storage
+modes into account. Splitting a list can be done by an iterative
+region endomorphism that is made local to the sorting function.  Also,
+when the input list has been split, it is no longer needed, so the
+region it resides in can be reset. Similarly, when the two smaller
+lists have been sorted (into new regions) the regions of the smaller
+lists can be reset. These three simple observations lead to the
+variant of {\tt msort} listed in
+Figure~\ref{msortreset1.fig}.\footnote{Project:
+  \boxml{kitdemo/msortreset1.pm}, file
+  \boxml{kitdemo/msortreset1.sml}.}
+\begin{figure}
 \hrule
+\medskip
 \begin{verbatim}
+ local
+   fun cp [] =[]
+     | cp (x::xs)= x :: cp xs
 
-       local
-         (* splitting a list *)
-         fun split(x::y::zs, l, r) = split(zs, x::l, y::r)
-           | split(x::xs, l, r) = (xs, x::l, r)
-           | split(p as ([], l, r)) = p
+   (* exormorphic merge *)
+   fun merge(xs, []):int list = cp xs
+     | merge([], ys) = cp ys
+     | merge(l1 as x::xs, l2 as y::ys) = 
+         if x<y then x :: merge(xs, l2) 
+         else y :: merge(l1, ys)
 
-  
-         infix footnote
-         fun x footnote y = x
+   (* splitting a list *)
+   fun split(x::y::zs, l, r) = split(zs, x::l, y::r)
+     | split(x::xs, l, r) = (xs, x::l, r)
+     | split(p as ([], l, r)) = p
 
-         (* exomorphic merge sort *)
-         fun msort []  = []
-           | msort [x] = [x]
-           | msort xs = let val (_, l, r) = split(xs, [], [])
-                        in resetRegions xs;
-                           merge(msort l footnote resetRegions l, 
-                                 msort r footnote resetRegions r)
-                        end
+   infix footnote
+   fun x footnote y = x
 
-       in
-         val runmsort = msort(upto(50000))
- 
-         val result = output(std_out, "Really done\n");
-       end
+   (* exomorphic merge sort *)
+   fun msort []  = []
+     | msort [x] = [x]
+     | msort xs = let val (_, l, r) = split(xs, [], [])
+                  in resetRegions xs;
+                     merge(msort l footnote resetRegions l, 
+                           msort r footnote resetRegions r)
+                  end
+ in
+   val runmsort = msort(upto(50000))
+
+   val result = print "Really done\n"
+ end
 \end{verbatim}
-\hrule
-\medskip
+\caption{Variant of {\tt msort} that uses {\tt resetRegions} to improve 
+  memory usage. The Kit fails to infer that the region holding the
+  argument list {\tt xs} can be reset after {\tt xs} is split.}
+\label{msortreset1.fig}
+\medskip \hrule
+\end{figure}
+
 
 Unfortunately, the storage mode analysis complains:
 \begin{verbatim}
-resetRegions(v7038): 
+ *** Warnings ***
+resetRegions(xs): 
    You have suggested resetting the regions that appear free 
-   in the type scheme and place of 'v7038', i.e., in
-   (([(int,r2)],[r63],) list,r62)
+   in the region type scheme of 'xs', i.e., in
+   (int, [r58]) list
    (1)                                                    
-        'r63': there is a conflict with the locally
+        'r58': there is a conflict with the locally
         live variable
-        l :(([(int,r2)],[r72],) list,r71)
+        l :(int, [r65]) list
         from which the following region variables can be reached 
         in the region flow graph:
-             {r71,r2,r72}
-        Amongst these, 'r72' can also be reached from 'r63'.
-        Thus I have given 'r63' storage mode "attop".
-   (2)                                                    
-        'r62': there is a conflict with the locally
-        live variable
-        l :(([(int,r2)],[r72],) list,r71)
-        from which the following region variables can be reached 
-        in the region flow graph:
-             {r71,r2,r72}
-        Amongst these, 'r71' can also be reached from 'r62'.
-        Thus I have given 'r62' storage mode "attop".
+             {r65}
+        Amongst these, 'r65' can also be reached from 'r58'.
+        Thus I have given 'r58' storage mode "attop".
 \end{verbatim}
-Here {\tt v7038} turns out to be {\tt xs} (by inspection of the
-region-annotated term), so there are two complaints
+There is one complaint
 concerning the first $\resetr$, but none concerning the two remaining
-ones.  Consider \boxml{(1)}. By inspecting the region-annotated term
-one sees that \boxml{r62} and \boxml{r63} are formal parameters of
-{\tt msort}.  Due to the recursive call {\tt msort r}, the region
-graph contains an edge from \boxml{r63} to \boxml{r72} and, as pointed
-out in \boxml{(2)}, an edge from \boxml{r62} to \boxml{r71}. Thus the
-analysis decides on {\tt attop}, using rule (B3) This shows a weakness
+ones.  By inspecting the region-annotated term
+one sees that \boxml{r58} is a formal parameter of
+{\tt msort}.  Due to the recursive call {\tt msort l}, the region
+graph contains an edge from \boxml{r58} to \boxml{r65}. Thus the
+analysis decides on {\tt attop}, using rule (B3). This choice shows a weakness
 in the analysis, for using {\tt sat} would really be sound. (The
 problem is that, unlike polymorphic recursion, the region flow graph
 does not distinguish between different calls of the same function.)
 Seeing that this is the problem, we decide to put $\resetf$ to work,
-see Figure~\ref{force.fig}.
+see Figure~\ref{force.fig}.\footnote{Project:   \boxml{kitdemo/msortreset2.pm}, file
+  \boxml{kitdemo/msortreset2.sml}.} 
 \begin{figure}
-\hrule
+\hrule\medskip
 \begin{verbatim}
+ local
+   fun cp [] =[]
+     | cp (x::xs)= x :: cp xs
 
-       local
-         (* splitting a list *)
-         fun split(x::y::zs, l, r) = split(zs, x::l, y::r)
-           | split(x::xs, l, r) = (xs, x::l, r)
-           | split(p as ([], l, r)) = p
+   (* exormorphic merge *)
+   fun merge(xs, []):int list = cp xs
+     | merge([], ys) = cp ys
+     | merge(l1 as x::xs, l2 as y::ys) = 
+         if x<y then x :: merge(xs, l2) 
+         else y :: merge(l1, ys)
 
-  
-         infix footnote
-         fun x footnote y = x
+   (* splitting a list *)
+   fun split(x::y::zs, l, r) = split(zs, x::l, y::r)
+     | split(x::xs, l, r) = (xs, x::l, r)
+     | split(p as ([], l, r)) = p
 
-         (* exomorphic merge sort *)
-         fun msort []  = []
-           | msort [x] = [x]
-           | msort xs = let val (_, l, r) = split(xs, [], [])
-                        in forceResetting xs;
-                           merge(msort l footnote resetRegions l, 
-                                 msort r footnote resetRegions r)
-                        end
+   infix footnote
+   fun x footnote y = x
 
-       in
-         val runmsort = msort(upto(50000))
- 
-         val result = output(std_out, "Really done\n");
-       end
+   (* exomorphic merge sort *)
+   fun msort []  = []
+     | msort [x] = [x]
+     | msort xs = let val (_, l, r) = split(xs, [], [])
+                  in forceResetting xs;
+                     merge(msort l footnote resetRegions l, 
+                           msort r footnote resetRegions r)
+                  end
+ in
+   val runmsort = msort(upto(50000))
+
+   val result = print "Really done\n"
+ end
 \end{verbatim}
 \caption{Using {\tt forceResetting} to reset regions.}
 \medskip
@@ -3806,45 +3777,44 @@ see Figure~\ref{force.fig}.
 \label{force.fig}
 \end{figure}
 The region profile of the improved merge sort appears in 
-Figure~\ref{msortreset.fig}. Note that, as expected, we have
+Figure~\ref{msortreset.fig}. As expected, we have
 now brought space consumption down from four times to two times the size of the
 input. 
 Figure~\ref{msortreset.fig}
-may be compared to Figure~\ref{msort.fig}, page~\pageref{msort.fig}.
+may be compared to Figure~\ref{msort.fig} on page~\pageref{msort.fig}.
 
 \begin{figure}
 \begin{center}
 \includegraphics{msortreset2.ps}
 \end{center}
 \caption{Region profiling of the improved mergesort. 
-The two upper trianges contain unsorted elements, while the
-two lower triangles contain sorted elements.
-Project: \boxml{kitdemo/msortreset2.pm},
-file \boxml{kitdemo/msortreset2.sml}; program compiled with
+The lower triangle contains unsorted elements, while the
+upper triangle contains sorted elements.
+The program was compiled with
 profiling enabled and then run with the command
 \boxml{run -microsec 100000}. The picture \index{region.ps@{\tt region.ps}}(\boxml{region.ps}) 
-was generated by the \index{sampleMax@{\tt sampleMax}}\index{eps file}\index{rp2ps@{\tt rp2ps}}command: \boxml{rp2ps -region -sampleMax 1000 -eps 120 mm}
-and then pre-viewed using the command \boxml{ghostview region.ps}~.}
+was generated by the \index{sampleMax@{\tt sampleMax}}\index{eps file}\index{rp2ps@{\tt rp2ps}}command \boxml{rp2ps -region -sampleMax 1000 -eps 137 mm}
+and then previewed using the command \boxml{ghostview region.ps}~.}
 \label{msortreset.fig}
 \end{figure}
 
 \section{Example: Scanning Text Files}
-In this section we present a program which can 
+In this section, we present a program that can 
 \index{scan@{\tt scan}}scan a sequence of Standard ML source
-files in order to compute what percentage of the source files is made
+files so as to compute what percentage of the source files is made
 up by comments. Recall that an ML comment begins with the two
-characters {\tt (*}, ends with {\tt *)} and that comments may be
+characters {\tt (*}, ends with {\tt *)}, and that comments may be
 nested but must be balanced (within each file, we require).
 
 The obvious solution to this problem is to implement an
 automaton with counters to keep track of the level
-of nesting of parentheses, number of characters read and
+of nesting of parentheses, number of characters read, and
 number of characters within comments. This provides an interesting test
 for region inference: although designed with the lambda calculus
 in mind, does the scheme cope with good old-fashioned state
 computations? 
 
-Let us be ambitious and write a program which only ever holds on to one character at a
+Let us be ambitious and write a program that only ever holds on to one character at a
 time when it scans a file. In other words, the aim is to use constant space (i.e., space
 consumption should be independent of the length of the input file).
 
@@ -3853,27 +3823,30 @@ hold the current input character and then reset that region before we proceed
 to the next character. The iteration is done by tail recursion, using region
 endomorphisms to ensure constant space usage.
 
-The bulk of the program appears below. The scanning of a single
-file is done by {\tt scan}, which contains three mutually recursive
-region endomorphisms ({\tt count}, {\tt after\_lparen} and
-{\tt after\_star}) written in accordance with the guidelines
-in Section~\ref{length.sec}. The built-in {\tt input} function understands
-storage modes: if called with storage mode {\tt atbot} it will reset the region
-where the string should be put before reading the string from the input.
-Consequently, at every call of {\tt next}, the ``input buffer region'' will be reset.
+The bulk of the program appears below.\footnote{Project:
+  \boxml{kitdemo/scan.pm}, file: \boxml{kitdemo/scan.sml}.} The
+scanning of a single file is done by {\tt scan}, which contains three
+mutually recursive region endomorphisms ({\tt count}, {\tt
+  after\_lparen}, and {\tt after\_star}) written in accordance with
+the guidelines in Section~\ref{length.sec}. The built-in {\tt
+  TextIO.inputN} function understands storage modes; if called with
+storage mode {\tt atbot}, it will reset the region where the string
+should be put before reading the string from the input.  Consequently,
+at every call of {\tt next}, the ``input buffer region'' will be
+reset.
 
-The other important loop in the program is {\tt driver}, a function which
+The other important loop in the program is {\tt driver}, a function that
 repeatedly reads a function name from a given input stream, opens the file
-with that name and calls {\tt scan} to process the file. Once again, we
+with that name, and calls {\tt scan} to process the file. Once again, we
 want to keep at most one file name in memory at a time, so we would like
 the region containing the file name to be reset upon each iteration.
 As it turns out, our {\tt readWord} will always store the string it
 creates at the top of the region in question. The reason is that
 it calls {\tt implode}, which is declared in and exported from 
-the prelude. It is {\tt implode} which always stores {\tt attop}, by
+the Standard Library. It is {\tt implode} that always stores {\tt attop}, by
 rule B3 and the fact that formal region parameters of exported functions
 are connected to global regions in the region flow graph. 
-Thus the two occurrences of resetRegions are necessary. In general,
+Thus, the two occurrences of resetRegions are necessary. In general,
 when splitting a program unit into two, one may have 
 to insert explicit $\resetr$ into the second unit, when operations from the
 first unit are called. 
@@ -3883,20 +3856,20 @@ first unit are called.
 \begin{verbatim}
 local
   exception NotBalanced
-  fun scan(is: instream) : int*int =
+  fun scan(is: TextIO.instream) : int*int =
     let
-      fun next() = input(is, 1)
+      fun next() = TextIO.inputN(is, 1)
       fun up(level,inside) = if level>0 then inside+1 
                              else inside
 
       (* n: characters read in 'is'
          inside: characters belonging to comments
          level : current number of unmatched (* 
-         s     : next input character or empty *)
-         count is endo *)
+         s     : next input character or empty *)*)
+
       fun count(p as (n,inside,level,s:string))=
         case s of
-          "" => (* end of stream: *) p  
+          "" => (* end of stream: *) p
         | "(" => after_lparen(n+1,inside,level,next())
         | "*" => after_star(n+1,up(level,inside),level,next())
         | ch  => count(n+1,up(level,inside), level,next())
@@ -3922,33 +3895,34 @@ local
     end
   
   fun report_file(filename, n, inside) = 
-      writeln(implode[filename , ": size = " , toString n , 
-               " comments: ", toString inside, " (",
-               toString(percent(inside, n)) handle Quot => "", 
-               "%)"]);
+      writeln (filename ^ ": size = " ^ Int.toString n
+               ^ " comments: " ^ Int.toString inside ^ " ("
+               ^ (Int.toString(percent(inside, n)) 
+                  handle _ => "") ^ "%)");
 
-  (* scan_file(filename) scans through the file named
-     filename returning either Some(size_in_bytes, size_of_comments)
-     or, in case of an error, None. In either case a line of
+  (* scan_file(filename) scans through the file named filename 
+     returning either SOME(size_in_bytes, size_of_comments)
+     or, in case of an error, NONE. In either case a line of
      information is printed. *)
 
-  fun scan_file (filename: string) : (int*int)Option=
-   let val is  = open_in filename 
-   in let val (n,inside)  = scan is
-      in close_in is; 
+  fun scan_file (filename: string) : (int*int)option=
+   let val is  = TextIO.openIn filename 
+   in let val (n,inside) = scan is
+      in TextIO.closeIn is; 
          report_file(filename, n, inside);
-         Some(n,inside)
+         SOME(n,inside)
       end handle NotBalanced => 
           (writeln(filename ^ ": not balanced");
-           close_in is;
-           None)
-   end handle Io msg  => (writeln msg; None)
+           TextIO.closeIn is;
+           NONE)
+   end handle IO.Io {name,...}  => 
+          (writeln(name ^ " failed."); NONE)
   
   fun report_totals(n,inside) = 
-       writeln(implode["\n\nTotal sizes: ", toString n, 
-            " comments: ", toString inside,
-            " (", toString(percent(inside,n)) handle Quot => "",
-            ")%"])
+       writeln ("\n\nTotal sizes: " ^ Int.toString n
+                ^ " comments: " ^ Int.toString inside
+                ^ " (" ^ (Int.toString (percent(inside,n)) 
+                          handle _ => "") ^ ")%")
 
   (* main(is) reads a sequence of filenames from is,
      one file name pr line (leading spaces are skipped;
@@ -3956,64 +3930,61 @@ local
      scanned using scan_file after which a summary
      report is printed *)
 
-  fun main(is: instream):unit =
+  fun main(is: TextIO.instream):unit =
   let 
-    fun driver(p as(None,n,inside)) = 
+    fun driver(p as(NONE,n,inside)) = 
            (report_totals(n, inside); p)
-      | driver(p as (Some filename,n:int,inside:int)) =
+      | driver(p as (SOME filename,n:int,inside:int)) =
           driver(case scan_file filename of
-                   Some(n',inside') =>
-                   (resetRegions p; 
+                   SOME(n',inside') =>
+                   (resetRegions p;
                     (readWord(is), n+n',inside+inside'))
-                | None => (resetRegions p;
+                | NONE => (resetRegions p;
                            (readWord(is),n,inside)))
   in
     driver(readWord(is),0,0);
     ()
   end
-
 in 
-  val result = main(std_in)
+  val result = main(TextIO.stdIn)
 end
 \end{verbatim}
 \hrule
 \bigskip
 
-The program was compiled\footnote{Project: \boxml{kitdemo/scan.pm}.} both
-with and without profiling turned on. The output from running the
-program on 10 files listed in the \boxml{ML\_CONSULT}
-file of the Kit is shown below
+The program was compiled both with and without profiling turned on.
+The output from running the program on 10 of the source files for the
+Kit is shown here:
 \begin{verbatim}
-     Parsing/INFIX_STACK.sml: size = 585 comments: 417 (71%)
-     Parsing/InfixStack34g.sml: size = 7641 comments: 3120 (40%)
-     Parsing/Infixing34g.sml: size = 28389 comments: 4645 (16%)
-     Parsing/LEX_BASICS.sml: size = 2102 comments: 1334 (63%)
-     Parsing/LEX_UTILS.sml: size = 1294 comments: 399 (30%)
-     Parsing/LexBasics36e.sml: size = 11674 comments: 2968 (25%)
-     Parsing/LexUtils33b.sml: size = 7566 comments: 1834 (24%)
-     Parsing/MyBase.sml: size = 33735 comments: 10896 (32%)
-     Parsing/PARSE.sml: size = 1151 comments: 644 (55%)
-     Parsing/Parse34g.sml: size = 6926 comments: 924 (13%)
+Parsing/INFIX_STACK.sml: size = 487 comments: 321 (65%)
+Parsing/InfixStack.sml: size = 7544 comments: 3025 (40%)
+Parsing/Infixing.sml: size = 32262 comments: 5295 (16%)
+Parsing/LEX_BASICS.sml: size = 2102 comments: 1257 (59%)
+Parsing/LEX_UTILS.sml: size = 1305 comments: 291 (22%)
+Parsing/LexBasics.sml: size = 12677 comments: 2967 (23%)
+Parsing/LexUtils.sml: size = 7643 comments: 717 (9%)
+Parsing/MyBase.sml: size = 33933 comments: 11140 (32%)
+Parsing/PARSE.sml: size = 1078 comments: 572 (53%)
+Parsing/Parse.sml: size = 7040 comments: 870 (12%)
 
 
-     Total sizes: 101063 comments: 27181 (26)%
+Total sizes: 106071 comments: 26455 (24)%
 \end{verbatim}
 A region profile for that run is shown in Figure~\ref{scan.fig}.  The
 almost-constant space usage is evident. The occasional disturbances
-are due to the non-iterative functions which read a file name from
+are due to the non-iterative functions that read a file name from
 input by first reading one line and then extracting the name.
 \begin{figure}
 \begin{center}
 \includegraphics{scan.ps}
 \end{center}
-\caption{Region profiling of the scanner. Note that the unit of measure on 
-the y-axis is bytes, not kilobytes. The occasional increase is due to the
-functions which read a file name from an instream. Project: \boxml{kitdemo/scan.pm}.
-The program was compiled with profiling enabled, then run by the
-unix command \boxml{run -microsec 100000 < ../../kitdemo/scanfiles}. A PostScript
-file \boxml{region.ps} can be generated by the unix command
-\boxml{rp2ps -region -sampleMax 1000 -eps 120 mm}.
-}
+\caption{Region profiling of the scanner. The unit of measure on 
+  the y-axis is bytes, not kilobytes. The occasional increase is due
+  to the functions that read a file name from an instream.  The
+  program was compiled with profiling enabled, then run with the
+  command \boxml{run -microsec 100000 < ../../kitdemo/scanfiles}. A
+  PostScript file \boxml{region.ps} can be generated with the command
+  \boxml{rp2ps -region -sampleMax 1000 -eps 137 mm}.  }
 \label{scan.fig}
 \end{figure}
 %

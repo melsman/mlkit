@@ -204,20 +204,35 @@ struct
            Node{start = "[", finish = "]", indent = 1, 
                 childsep = PP.RIGHT ", ",
                 children = map f l}
+
+  fun layout_list' f [ ] = NONE
+    | layout_list' f l = SOME (Node{start = "[", finish = "]", indent = 1, 
+				    childsep = PP.RIGHT ", ",
+				    children = map f l})
               
   fun layout_tuple f [ ] = leaf ""
     | layout_tuple f [x] = f x
-    | layout_tuple f l = 
-           Node{start = "(", finish = ")", indent = 1, 
-                childsep = PP.RIGHT ", ",
-                children = map f l}
+    | layout_tuple f l = Node{start = "(", finish = ")", indent = 1, 
+			      childsep = PP.RIGHT ", ",
+			      children = map f l}
               
+  fun layout_tuple' f [ ] = NONE
+    | layout_tuple' f [x] = SOME(f x)
+    | layout_tuple' f l = SOME(Node{start = "(", finish = ")", indent = 1, 
+				    childsep = PP.RIGHT ", ",
+				    children = map f l})
+
+  fun layout_tuple'' l = 
+    let fun mk_list([],acc) = rev acc
+	  | mk_list(SOME t::rest, acc) = mk_list(rest,t::acc) 
+	  | mk_list(NONE::rest, acc) = mk_list(rest,acc)
+    in layout_tuple' (fn x => x) (mk_list (l,[]))
+    end
 
   fun layout_tyvar alpha = PP.LEAF(L.pr_tyvar alpha)
 
   fun lay_node n = E.layout_effect_deep n
   fun lay_node_short n = E.layout_effect n
-  fun layout_nodes places = layout_list lay_node places
 
   fun mk_layout omit_region_info =
   let
@@ -241,25 +256,21 @@ struct
               leaf (TyName.pr_TyName tyname)
           | CONSTYPE(tyname,mu_list,place_list,arreff_list) =>
               if omit_region_info 
-              then 
-                let val mu_tree =  layout_tuple (lay_mu_rec true) mu_list
-                in Node{start = "", finish = "", indent = 0, 
-                          childsep = PP.RIGHT " ",
-                          children = [mu_tree,   
-                                      leaf (TyName.pr_TyName tyname)]}
-                end
+              then case layout_tuple' (lay_mu_rec true) mu_list
+		     of SOME mu_tree =>
+		       Node{start = "", finish = "", indent = 0, 
+			    childsep = PP.RIGHT " ",
+			    children = [mu_tree, leaf (TyName.pr_TyName tyname)]}
+		      | NONE => leaf (TyName.pr_TyName tyname)
               else
-                let val mu_tree =  layout_list (lay_mu_rec true) mu_list
-                    val rho_tree = layout_nodes place_list
-                    val effect_tree = layout_list lay_node arreff_list
-                    val arguments_tree =
-                        Node{start = "(", finish = ")", 
-                                  childsep = PP.RIGHT "," , indent=1,
-                                  children = [mu_tree, rho_tree, effect_tree]}
-                in Node{start = "", finish = "", indent = 0, 
-                          childsep = PP.RIGHT " ",
-                          children = [arguments_tree,   
-                                      leaf (TyName.pr_TyName tyname)]}
+                let val mu_tree =  layout_tuple' (lay_mu_rec true) mu_list
+                    val rho_tree = layout_list' lay_node place_list
+                    val effect_tree = layout_list' lay_node arreff_list
+                in case layout_tuple'' [mu_tree,rho_tree,effect_tree]
+		     of SOME t => Node{start = "", finish = "", indent = 0, 
+				       childsep = PP.RIGHT " ",
+				       children = [t, leaf (TyName.pr_TyName tyname)]}
+		      | NONE => leaf (TyName.pr_TyName tyname)
                 end
           | RECORD [] => leaf "unit"
           | RECORD mu_list =>
