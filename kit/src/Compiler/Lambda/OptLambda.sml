@@ -59,6 +59,7 @@ functor OptLambda(structure Lvars: LVARS
     val contract_ref = Flags.lookup_flag_entry "contract"
     val specialize_recursive_functions = Flags.lookup_flag_entry "specialize_recursive_functions"
     val eliminate_explicit_records_ref = Flags.lookup_flag_entry "eliminate_explicit_records"
+    val unbox_function_arguments = Flags.lookup_flag_entry "unbox_function_arguments"
 
     val max_specialise_size = Flags.lookup_int_entry "maximum_specialise_size"
        (* max size of recursive function defs. to be specialised. *) 
@@ -1256,7 +1257,7 @@ functor OptLambda(structure Lvars: LVARS
 		 case Type
 		   of ARROWtype([RECORDtype nil],res) => normal()
 		    | ARROWtype([rt as RECORDtype ts],res) =>
-		     if unboxable lv body then
+		     if unboxable lv body andalso !Flags.optimiser andalso !unbox_function_arguments then
 		       LvarMap.add(lvar,UNBOXED_ARGS (length ts, rt),LvarMap.empty)
 		     else 
 		       normal()
@@ -1342,12 +1343,10 @@ functor OptLambda(structure Lvars: LVARS
      val enrich_unbox_fix_env = enrich_unbox_fix_env
      type unbox_fix_env = unbox_fix_env
      fun unbox_fix_args (env:unbox_fix_env) lamb : LambdaExp * unbox_fix_env =
-       if !Flags.optimiser then
-	let val _ = frame_unbox_fix_env := LvarMap.empty
-	    val lamb = trans env lamb
-	in (lamb, !frame_unbox_fix_env)
-	end
-      else (lamb, LvarMap.empty)
+       let val _ = frame_unbox_fix_env := LvarMap.empty
+	   val lamb = trans env lamb
+       in (lamb, !frame_unbox_fix_env)
+       end
    end
 
 

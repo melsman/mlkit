@@ -288,17 +288,17 @@ struct
     (********************************)
     (* SS on Top Level Declarations *)
     (********************************)
-    fun SS_top_decl(LineStmt.FUN(lab,cc,lss)) = 
-      let
-	val lss_ss = SS_lss(lss,LvarFinMap.empty,RhoFinMap.empty)
-      in
-	LineStmt.FUN(lab,cc,lss_ss)
-      end
-      | SS_top_decl(LineStmt.FN(lab,cc,lss)) = 
-      let
-	val lss_ss = SS_lss(lss,LvarFinMap.empty,RhoFinMap.empty)
-      in
-	LineStmt.FN(lab,cc,lss_ss)
+    fun SS_top_decl f =
+      let 
+	fun process (lab,cc,lss) =
+	  let val lv_env = (foldl (fn ((lv,offset),e) => LvarFinMap.add(lv,STACK_ATY offset,e)) 
+			    LvarFinMap.empty (CallConv.get_spilled_args_with_offsets cc))
+	      val lss_ss = SS_lss(lss,lv_env,RhoFinMap.empty)		
+	  in (lab,cc,lss_ss)
+	  end
+      in case f
+	   of LineStmt.FUN f => LineStmt.FUN (process f)
+	    | LineStmt.FN f => LineStmt.FN (process f)
       end
   in
     fun SS {main_lab:label,
