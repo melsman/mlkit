@@ -1,5 +1,5 @@
 (* This file is auto-generated with Tools/GenOpcodes on *)
-(* Fri Oct 13 16:42:46 2000 *)
+(* Fri Oct 13 18:16:59 2000 *)
 functor OpcodesKAM () : OPCODES_KAM = 
   struct
     val ALLOC_N = 0

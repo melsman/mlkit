@@ -101,7 +101,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | IfNotEqJmpRel(lab) => (out_opcode IF_NOT_EQ_JMP_REL; RLL.out_label lab)
       | IfLessThanJmpRel(lab) => (out_opcode IF_LESS_THAN_JMP_REL; RLL.out_label lab)
       | IfGreaterThanJmpRel(lab) => (out_opcode IF_GREATER_THAN_JMP_REL; RLL.out_label lab)
-      | DotLabel(lab) => (out_opcode DOT_LABEL; RLL.out_label lab)
+      | DotLabel(lab) => RLL.out_label lab
       | JmpVector(lab,first_sel) => (out_opcode JMP_VECTOR; RLL.out_label lab; out_int first_sel)
 
       | Raise => die ("inst " ^ (pr_inst inst) ^ " not emitted")
