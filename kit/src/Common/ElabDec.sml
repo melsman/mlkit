@@ -2199,6 +2199,8 @@ let
 
   end (*local open TypeInfo ...*)
 
+  exception DDD_IS_EMPTY (* raised by handling of ... when ... stands for the empty set of labels *)
+
   (*resolve_X X: apply resolve_i to all info fields i in X and resolve_tyvar to
    all overloadinginfos on id's in X, and also do something about flex
    records.*)
@@ -2297,18 +2299,19 @@ let
     | RECORDatpat(i, Some patrow) =>
         let
           val i' = resolve_i i 
-          val patrow' = resolve_patrow patrow
-        in
-          case ElabInfo.to_TypeInfo i' of
-            Some typeinfo =>
-              (case typeinfo of
-                 TypeInfo.RECORD_ATPAT_INFO{Type} => 
-                   (* Type has been resolved, c.f. i' *)
-                   RECORDatpat(i',Some (addLabelIndexInfo(Type,patrow')))
-               | _ => impossible ("resolve_atpat(RECORDatpat): " ^ 
-                                        "wrong typeinfo"))
-          | None => impossible ("resolve_atpat(RECORDatpat): " ^ 
-                                      "no typeinfo")
+        in let  val patrow' = resolve_patrow patrow
+           in
+             case ElabInfo.to_TypeInfo i' of
+               Some typeinfo =>
+                 (case typeinfo of
+                    TypeInfo.RECORD_ATPAT_INFO{Type} => 
+                      (* Type has been resolved, c.f. i' *)
+                      RECORDatpat(i',Some (addLabelIndexInfo(Type,patrow')))
+                  | _ => impossible ("resolve_atpat(RECORDatpat): " ^ 
+                                     "wrong typeinfo"))
+             | None => impossible ("resolve_atpat(RECORDatpat): " ^ 
+                                   "no typeinfo")
+           end handle DDD_IS_EMPTY => RECORDatpat(i',None)
         end
     | PARatpat(i, pat) =>
         PARatpat(resolve_i i, resolve_pat pat)
@@ -2320,15 +2323,24 @@ let
            None => patrow
          | Some (OverloadingInfo.UNRESOLVED_DOTDOTDOT rho) =>
              (case flexrecres rho of
-                FLEX_RESOLVED => DOTDOTDOT (ElabInfo.remove_OverloadingInfo i)
+                FLEX_RESOLVED => (* old: DOTDOTDOT (ElabInfo.remove_OverloadingInfo i)*)
+                   (* expand "..." into a patrow with ordinary wildcards (_) *)
+                   let val i0 = ElabInfo.from_ParseInfo(ElabInfo.to_ParseInfo i)
+                       fun wild ty = ATPATpat(i0, WILDCARDatpat(ElabInfo.plus_TypeInfo i0 (TypeInfo.VAR_PAT_INFO{tyvars=[], Type= ty})))
+                       val labs_and_types = Type.RecType.to_list rho
+                       fun f (lab,ty) acc = Some(PATROW(ElabInfo.plus_TypeInfo i0 (TypeInfo.LAB_INFO{index=0, tyvars = [], Type = ty}),lab, wild ty, acc))
+                   in case List.foldR f None labs_and_types of
+                        Some patrow' => patrow'
+                      | None => raise DDD_IS_EMPTY (* caller of resolve_patrow should replace Some(...) by None *)
+                   end
               | FLEX_NOTRESOLVED =>
-                  DOTDOTDOT
-		    (ElabInfo.plus_ErrorInfo i ErrorInfo.FLEX_REC_NOT_RESOLVED))
+                  DOTDOTDOT(ElabInfo.plus_ErrorInfo i ErrorInfo.FLEX_REC_NOT_RESOLVED))
          | Some _ => impossible "resolve_patrow")
     | PATROW(i, lab, pat, None) => 
         PATROW(resolve_i i, lab, resolve_pat pat, None)
     | PATROW(i, lab, pat, Some patrow) =>
-        PATROW(resolve_i i, lab, resolve_pat pat, Some (resolve_patrow patrow))
+        PATROW(resolve_i i, lab, resolve_pat pat, Some (resolve_patrow patrow)
+                                                  handle DDD_IS_EMPTY => None)
 
   and resolve_pat (pat : pat) : pat =
     case pat of
