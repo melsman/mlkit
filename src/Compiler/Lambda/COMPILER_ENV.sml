@@ -87,7 +87,7 @@ signature COMPILER_ENV =
         (* Only `prim' should give you back `PRIM' (and even then it can be 
 	 * overwritten). *)
 
-    val lookup_longid : CEnv -> longid -> result
+    val lookup_longid : CEnv -> longid -> result Option
     val lookup_strid : CEnv -> strid -> CEnv
 
     type subst
@@ -101,6 +101,9 @@ signature COMPILER_ENV =
     val set_compileTypeScheme : (TypeScheme -> tyvar list * Type) -> unit   (* MEGA HACK *)
                                                                             (* We should clean this *) 
                                                                             (* up at some point!! - Martin *)
+    val set_normalize_sigma : ((tyvar list * Type) -> (tyvar list * Type))->unit   (* MEGA HACK *)
+                                                                            (* We should clean this *) 
+                                                                            (* up at some point!! - Mads *)
 
     val declareLvar : (lvar * Type list * CEnv) -> CEnv      (* these are local for each program unit *)
     val lookupLvar : CEnv -> lvar -> Type list               (* and should *not* be here...           *)

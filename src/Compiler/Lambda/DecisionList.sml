@@ -23,8 +23,8 @@ functor DecisionList(structure Lab: LAB
 		     structure Crash: CRASH
 		    ): DECISION_LIST =
   struct
+    structure EqSet = EqSetList
     open AndOrTree
-
    (* A decision node contains all the possible tests that can be
       carried out here (all the And/Or nodes immediately visible through
       tuple/record nodes). From each decision node is a set of constructors
@@ -38,7 +38,7 @@ functor DecisionList(structure Lab: LAB
 		   defaults: RuleNum EqSet.Set
 		  }
 
-    and Select = CON_SELECT of (id, TypeInfo * SubDecision) FinMap.map
+    and Select = CON_SELECT of (longid, TypeInfo * SubDecision) FinMap.map
                | SCON_SELECT of (scon, SubDecision) FinMap.map
                | EXCON_SELECT of (longid * (TypeInfo * SubDecision)) list
 
@@ -86,7 +86,7 @@ functor DecisionList(structure Lab: LAB
 		  path=rev path,
 		  select=CON_SELECT(
 		    FinMap.composemap subDecision
-		      (children: ((*eqtype*) id, (TypeInfo * AndOrTree))
+		      (children: ((*eqtype*) longid, (TypeInfo * AndOrTree))
 				   FinMap.map
 		      )
 		  ),
@@ -146,7 +146,7 @@ functor DecisionList(structure Lab: LAB
     fun layoutSelect(CON_SELECT select): StringTree =
           FinMap.layoutMap
 	    {start="CON_SELECT: ", eq=" -> ", sep="; ", finish=""}
-	    (PP.layoutAtom Ident.pr_id)
+	    (PP.layoutAtom Ident.pr_longid)
 	    (fn (_, d) => layoutSubDecision d)
 	    select
 
