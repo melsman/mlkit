@@ -7,6 +7,7 @@
     NS_CONN.sml
     NS_COOKIE.sml
     NS_MAIL.sml
+    NS_INFO.sml
     NsInfo.sml
     NS_DB.sml
     DbFunctor.sml

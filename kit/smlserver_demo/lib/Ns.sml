@@ -115,7 +115,7 @@ structure Ns :> NS =
 	     path   : string option, 
 	     secure : bool}
 
-	  val allCookies : (string * string) list =
+	  fun allCookies() : (string * string) list =
 	    case Set.filter (fn (k,_) => k = "Cookie") (Conn.headers()) of
 	      [] => []
 	    | ([(k,cv)]) =>
@@ -132,7 +132,7 @@ structure Ns :> NS =
 		end
 	    | _ => raise CookieError "More than one Cookie line in the header"
 
-	  fun getCookie cn = List.find (fn (name,value) => cn = name) allCookies
+	  fun getCookie cn = List.find (fn (name,value) => cn = name) (allCookies())
 
 	  fun getCookieValue cn = 
 	    case getCookie cn of
@@ -305,8 +305,6 @@ structure Ns :> NS =
      * they should be. *)
 
     val _ = OS.FileSys.chDir (Info.pageRoot())
-
-    val randomGenerator = Random.newgen ()
 
     (* Creating the two supported database interfaces *)
     structure DbOra = DbFunctor(structure DbBasic = NsDbBasicOra

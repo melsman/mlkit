@@ -4,51 +4,59 @@ signature NS_CONN =
     eqtype status
     type set
 
-    (* Return html string to browser, including 
-     * HTTP headers. *)
+    (* [returnHtml (sc,s)] sends HTML string s with 
+     * status code sc to client, including HTTP 
+     * headers. Returns Ns.OK on success and Ns.ERROR
+     * on failure. *)
     val returnHtml : int * string -> status
 
-    (* Return html string to browser with status code 200, 
-     * including HTTP headers. *)    
+    (* [return s] sends HTML string s with status
+     * code 200 to client, including HTTP headers. 
+     * Returns Ns.OK on success and Ns.ERROR on 
+     * failure. *)    
     val return : string -> status
 
-    (* Return string to browser. *)
+    (* [write s] sends string s to client, excluding
+     * HTTP headers. Returns Ns.OK on success and 
+     * Ns.ERROR on failure. *)
     val write : string -> status
 
-    (* Return redirection HTTP response to browser. *)
+    (* [returnRedirect loc] sends redirection HTTP 
+     * response to client, with information that
+     * the client should request location loc. 
+     * Returns Ns.OK on success and Ns.ERROR on 
+     * failure. *)
     val returnRedirect : string -> status
 
-    (* The 'getQuery' function constructs and returns 
-     * a set representing the query data associated 
-     * with the connection. It reads the POST content 
+    (* [getQuery()] constructs and returns a set 
+     * representing the query data associated with 
+     * the connection. It reads the POST content 
      * or the query string. The POST content takes 
-     * precedence over the query string. Note that 
-     * you must not call Set.free on the result of 
-     * this function. *)
+     * precedence over the query string. *)
     val getQuery : unit -> set option
 
-    (* The function 'formvar' returns the query data 
-     * associated with the connection and the argument 
-     * key; the function returns NONE if no query data 
-     * is present for the argument key. *)
+    (* [formvar k] returns the query data associated 
+     * with the connection and the key k; the 
+     * function returns NONE if no query data is 
+     * present for the argument key k. *)
     val formvar : string -> string option
 
-    (* As formvar, except that all values associated 
-     * with key is returned; the function returns the
-     * empty list if no query data is present for the
-     * argument key. *)
+    (* [formvarAll k] returns all values associated 
+     * with key k in the query data; the function 
+     * returns the empty list if no query data is 
+     * present for the argument key k. *)
     val formvarAll : string -> string list
 
-    (* The function 'headers' returns, as a set, 
-     * the headers associated with the connection. *)
+    (* [headers()] returns, as a set, the HTTP 
+     * headers associated with the connection. *)
     val headers : unit -> set 
 
-    (* Returns the server hostname associated with 
-     * the connection. *)
+    (* [host()] returns the server hostname 
+     * associated with the connection. *)
     val host : unit -> string 
 
-    (* The 'location' function returns the HTTP 
-     * location associated with the connection. For 
+    (* [location()] returns the HTTP location 
+     * associated with the connection. For 
      * example: http://www.avalon.com:81. Multiple 
      * communications drivers can be loaded into a 
      * single server. This means a server may have 
@@ -64,35 +72,36 @@ signature NS_CONN =
      * location at run time. *)
     val location : unit -> string 
 
-    (* The 'peer' function returns the name of the 
-     * peer associated with the connection. The peer 
+    (* [peer()] returns the name of the peer 
+     * associated with the connection. The peer 
      * address is determined by the communications 
      * driver in use by the connection. Typically,
      * it is a dotted IP address, for example, 
      * 199.221.53.205, but this is not guaranteed. *)
     val peer : unit -> string 
 
-    (* The function 'peerPort' returns the port from 
-     * which the peer is connected. *)
+    (* [peerPort()] returns the port from which the 
+     * peer is connected. *)
     val peerPort : unit -> int
 
-    (* The 'port' function returns the server port 
-     * number associated with the connection. *)
+    (* [port()] returns the server port number 
+     * associated with the connection. *)
     val port : unit -> int
 
-    (* The function 'redirect' performs an internal 
-     * redirect, i.e., make it appear that the user 
-     * requested a different URL and then run that 
-     * request. This doesn't require an additional 
+    (* [redirect f] performs an internal redirect, 
+     * to the file f; i.e., make it appear that the 
+     * user requested a different URL and then run 
+     * that request. This form of redirect doesn't 
+     * require the running of an additional 
      * thread. *)
     val redirect : string -> status
 
-    (* The `server' function returns the name of the 
-     * server associated with the connection. *)
+    (* [server()] returns the name of the server 
+     * associated with the connection. *)
     val server : unit -> string
 
-    (* Return the url (relative to server-root) 
-     * associated with the request. *)
+    (* [url()] return the url (relative to server-
+     * root) associated with the request. *)
     val url : unit -> string
   end
 
