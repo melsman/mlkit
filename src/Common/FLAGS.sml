@@ -77,6 +77,7 @@ signature FLAGS =
     val print_effects : bool ref
     val print_types : bool ref
     val print_regions : bool ref
+    val print_word_regions : bool ref
 
     (* Lambda->KAM compile debug options *)
 

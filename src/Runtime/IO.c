@@ -13,7 +13,7 @@
 #include "Tagging.h"
 #include "Region.h"
 #include "Exception.h"
-
+#include "List.h"
 
 /*------------------------------------------------------------------------*
  *                     Input/output operations.                           *
@@ -544,6 +544,22 @@ StringDesc *sml_commandline_nameProfiling(int rAddr, int pPoint)                
 } 
 #endif /*PROFILING*/
 
+#if UNBOX_LISTS
+int sml_commandline_args(int pairRho, int strRho) {
+  int *resList, *pairPtr;
+  StringDesc *mlStr;
+  int counter = commandline_argc;
+  makeNIL(resList);  
+  while (counter > 0) {
+    mlStr = convertStringToML(strRho, commandline_argv[counter--]);
+    allocRecordML(pairRho, 2, pairPtr);
+    first(pairPtr) = (int) mlStr;
+    second(pairPtr) = (int) resList;
+    makeCONS(pairPtr, resList);
+  }
+  return (int) resList;
+}
+#else /*BOX LISTS*/
 int sml_commandline_args(int consRho, int pairRho, int strRho) {
   int *resList, *pairPtr;
   StringDesc *mlStr;
@@ -558,8 +574,25 @@ int sml_commandline_args(int consRho, int pairRho, int strRho) {
   }
   return (int) resList;
 }
+#endif /*UNBOX_LISTS*/
 
 #ifdef PROFILING
+#if UNBOX_LISTS
+int sml_commandline_argsProfiling(int pairRho, int strRho, int pPoint) {
+  int *resList, *pairPtr;
+  StringDesc *mlStr;
+  int counter = commandline_argc;
+  makeNIL(resList);  
+  while (counter > 0) {
+    mlStr = convertStringToMLProfiling(strRho, commandline_argv[counter--], pPoint);
+    allocRecordMLProf(pairRho, 2, pairPtr, pPoint);
+    first(pairPtr) = (int) mlStr;
+    second(pairPtr) = (int) resList;
+    makeCONS(pairPtr, resList);
+  }
+  return (int) resList;
+}
+#else /*BOX LISTS*/
 int sml_commandline_argsProfiling(int consRho, int pairRho, int strRho, int pPoint) {
   int *resList, *pairPtr;
   StringDesc *mlStr;
@@ -574,7 +607,7 @@ int sml_commandline_argsProfiling(int consRho, int pairRho, int strRho, int pPoi
   }
   return (int) resList;
 }
-
+#endif /*UNBOX_LISTS*/
 #endif /*PROFILING*/
 
 int sml_system(StringDesc *cmd, int exn)      /* SML Basis */

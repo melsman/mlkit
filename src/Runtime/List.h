@@ -27,14 +27,13 @@
 #define isNIL(x)        ((x) == NIL)
 #define isCONS(x)       (((x) & 3) == CONS)
 #define conarg(x)       (x)                   /* the cons tag is zero! */
-#define makeNil(ptr)    {ptr = (int *)NIL;}
+#define makeNIL(ptr)    {ptr = (int *)NIL;}
 #define makeCONS(pair,ptr)  {ptr = pair;}
 
-#else /* don't unbox lists */
+#else /* BOX LISTS */
 
 #define contag(x)  (*(int *)x)            /* Constructor tag of a value.   */
 #define conarg(x)  (*((int *)(x)+1))      /* Constructor arg of a value.   */
-
 #define NIL        (8*0+valueTagCon0)     /* Tag for a NIL constructor.    */
 #define CONS       (8*0+valueTagCon1)     /* Tag for a CONS constructor.   */
 #define isNIL(x)   (contag(x) == NIL)     /* Is the con. tag NIL.          */
@@ -42,7 +41,7 @@
 
 /* Operations for constructing lists. */
 
-#define makeNil(rAddr, ptr) {ptr = alloc(rAddr, 1);\
+#define makeNIL(rAddr, ptr) {ptr = alloc(rAddr, 1);\
                              contag(ptr) = NIL;}
 
 #define makeCONS(rAddr, pair, ptr) {ptr = alloc(rAddr, 2);\
@@ -55,12 +54,12 @@
  *                                                                         *
  * Only defined when not unboxing lists...                                 *
  *                                                                         *
- * makeNilProfiling(rAddr, ptr, pPoint)                                    *
- * makeCONSProfiling(rAddr, pair, ptr, pPoint)                             *
+ * makeNILProf(rAddr, ptr, pPoint)                                         *
+ * makeCONSProf(rAddr, pair, ptr, pPoint)                                  *
  ***************************************************************************/
 #ifdef PROFILING
 
-#define makeNilProfiling(rAddr, ptr, pPoint) {\
+#define makeNILProf(rAddr, ptr, pPoint) {\
   ptr = alloc(rAddr, 1+sizeObjectDesc);\
   ((ObjectDesc *) ptr)->atId = pPoint; \
   ((ObjectDesc *) ptr)->size = 1; /* Size is one word. */ \
@@ -68,7 +67,7 @@
   contag(ptr) = NIL;\
 }
 
-#define makeCONSProfiling(rAddr, pair, ptr, pPoint) {\
+#define makeCONSProf(rAddr, pair, ptr, pPoint) {\
   ptr = alloc(rAddr, 2+sizeObjectDesc);\
   ((ObjectDesc *) ptr)->atId = pPoint; \
   ((ObjectDesc *) ptr)->size = 2; /* Size is two words. */ \

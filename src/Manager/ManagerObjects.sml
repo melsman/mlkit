@@ -50,6 +50,14 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     fun die s = Crash.impossible("ManagerObjects." ^ s)
     fun chat s = if !Flags.chat then print (s ^ "\n") else ()
 
+    local
+      val debug_linking = ref false
+      val _ = Flags.add_flag_to_menu(["Debug Kit", "Manager"], 
+				     "debug_linking", "debug_linking", debug_linking)
+    in
+      fun pr_debug_linking s = if !debug_linking then print s else ()
+    end
+
     structure FunId = TopdecGrammar.FunId
     structure TyName = ModuleEnvironments.TyName
     type StringTree = PP.StringTree
@@ -210,7 +218,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun imports(tf,li) = Compile.imports_of_linkinfo li
 	fun dead_code_elim tfiles_with_linkinfos = 
 	  let 
-	    val _ = print "[Link time dead code elimination begin...]\n"
+	    val _ = pr_debug_linking "[Link time dead code elimination begin...]\n"
 	    val table = EATable.mk()
 	    fun require eas : unit = List.app (fn ea => EATable.insert(table,ea)) eas
 	    fun required eas : bool = foldl (fn (ea,acc) => acc orelse EATable.look(table,ea)) false eas
@@ -220,11 +228,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		  fun pp_unsafe true = " (unsafe)"
 		    | pp_unsafe false = " (safe)"
 	      in if unsafe obj orelse required (exports obj) then 
-		      (print ("Using       " ^ #1 obj ^ pp_unsafe(unsafe obj) ^ "\n"); require (imports obj); obj::rest')
-		 else (print ("Discharging " ^ #1 obj ^ "\n"); rest')
+		      (pr_debug_linking ("Using       " ^ #1 obj ^ pp_unsafe(unsafe obj) ^ "\n"); require (imports obj); obj::rest')
+		 else (pr_debug_linking ("Discharging " ^ #1 obj ^ "\n"); rest')
 	      end
 	    val res = reduce tfiles_with_linkinfos
-	  in print "[Link time dead code elimination end...]\n"; res
+	  in pr_debug_linking "[Link time dead code elimination end...]\n"; res
 	  end
 
 	(* -------------------------------------------------------------
