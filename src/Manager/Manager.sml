@@ -58,6 +58,23 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     val region_profiling = Flags.lookup_flag_entry "region_profiling"
 
+    val formtyping = 
+	(Flags.add_bool_entry 
+	 {long="formtyping", short=SOME "ftyp", neg=false, 
+	  item=ref false,
+	  menu=["Control", "form typing (SMLserver)"],
+	  desc="When this flag is enabled, SMLserver requires\n\
+	   \scripts to be functor SCRIPTLET's, which are\n\
+	   \automatically instantiated by SMLserver in a\n\
+	   \type safe way. To construct and link to XHTML\n\
+	   \forms in a type safe way, SMLserver constructs an\n\
+	   \abstract interface to the forms from the functor\n\
+	   \arguments of the scriptlets. This interface is\n\
+	   \constructed and written to the file scripts.gen.sml\n\
+	   \prior to the actual type checking and compilation\n\
+	   \of the project."}
+	  ; Flags.is_on0 "formtyping")	      
+	  
     val run_file = ref "run"
     val _ = Flags.add_string_entry 
       {long="output", short=SOME "o", item=run_file,
@@ -74,10 +91,15 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 				   of SOME ext' => ext = ext'
 				    | NONE => false
 
+    (* SMLserver components *)
     structure MspComp = MspComp(val error = error
 				val pr = "Ns.Conn.write"
 				val pre = "val _ = Ns.returnHeaders()\n\
                                           \val print = Ns.Conn.write\n\n")
+
+    (* Support for parsing scriptlet form argument - i.e., functor
+     arguments *)
+    structure Scriptlet = Scriptlet(val error = error)
 
     fun member s l = let fun m [] = false
 			   | m (x::xs) = x = s orelse m xs
@@ -156,11 +178,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	type unitid = string
 	datatype body = EMPTYbody
 	              | LOCALbody of body * body * body
+	              | INLINEbody of body * body
 	              | UNITbody of unitid * body
 	              | PARbody of unitid list  (* parallel interpretation *)
 	type prj = {imports : absprjid list, extobjs: extobj list, body : body}
-	
-	val parse_project : absprjid -> prj      
+
+	val getParbody          : prj -> unitid list option (* for SMLserver *)
+	val prependUnit         : unitid * prj -> prj       (* for SMLserver *)
+	val parse_project       : absprjid -> prj      
 	val local_check_project : absprjid * prj -> unit
       end =
     struct
@@ -168,6 +193,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       type unitid = string
       datatype body = EMPTYbody
                     | LOCALbody of body * body * body
+	            | INLINEbody of body * body
                     | UNITbody of unitid * body
                     | PARbody of unitid list  (* parallel interpretation *)
       type prj = {imports : absprjid list, extobjs: extobj list, body : body}
@@ -182,6 +208,9 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	| LOCALbody(b1,b2,b3) => PP.NODE{start = "local ", finish = " end", 
 					 indent = 2, childsep = PP.LEFT " in ",
 					 children = map layout_body [b1,b2]}:: layout_body' b3
+	| INLINEbody(b1,b2) => PP.NODE{start = "inline funapps in ", finish = " end", 
+				       indent = 2, childsep = PP.NOSEP,
+				       children = [layout_body b1]} :: layout_body' b2
 	| UNITbody(uid,b') => PP.LEAF uid :: layout_body' b'
 	| PARbody uids => [PP.NODE{start="[", finish="]",indent=2, childsep=PP.RIGHT " ",
 				   children=map PP.LEAF uids}]
@@ -267,6 +296,16 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	fun parse_body_opt (ss : string list) : (body * string list) option =
 	  case ss
 	    of [] => NONE
+	     | "inline" :: "funapps" :: "in" :: ss => 
+	      let fun parse_rest(body,"end" :: ss) =
+		    (case parse_body_opt ss of 
+			 SOME(body',ss) => SOME(INLINEbody(body,body'), ss)
+		       | NONE => SOME(INLINEbody(body,EMPTYbody), ss))
+		    | parse_rest (body,ss) = parse_error1 ("I expect an `end'", ss)
+	      in case parse_body_opt ss of 
+		  SOME(body,ss) => parse_rest(body,ss)
+		| NONE => parse_rest(EMPTYbody,ss)
+	      end
 	     | "local" :: ss =>
 	      let fun parse_rest'(body1,body2,ss) =
 		    case ss
@@ -390,7 +429,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 					   * - now we do;  mael 2001-09-26 *)
 	    case body                   
 	      of EMPTYbody => U
-	       | LOCALbody(body1,body2,body3) => check_body(check_body(check_body(U,body1), body2), body3)
+	       | LOCALbody(b1,b2,b3) => check_body(check_body(check_body(U,b1), b2), b3)
+	       | INLINEbody(b1,b2) => check_body(check_body(U,b1),b2)
 	       | UNITbody (longuid, body') => check_longuid(U,longuid,body')
 	       | PARbody nil => U
 	       | PARbody (longuid::rest) => check_longuid(U,longuid,PARbody rest)
@@ -404,6 +444,25 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	    end
 	in check_body([], body); check_imports([], imports); List.app check_extobj extobjs
 	end
+
+      (* for SMLserver *)
+      fun getParbody ({body,...} : prj) : unitid list option = 
+	  let fun look EMPTYbody = NONE
+		| look (LOCALbody(_,b,EMPTYbody)) = look b
+		| look (LOCALbody(_,_,b)) = look b
+		| look (INLINEbody(_,b)) = look b
+		| look (UNITbody(_,b)) = look b
+		| look (PARbody unitids) = SOME unitids
+	  in look body
+	  end
+
+      (* for SMLserver *)	  
+      fun prependUnit (unitid:unitid,prj:prj) : prj =
+	  let val {imports, extobjs, body} = prj
+	  in {imports=imports, extobjs=extobjs,
+	      body=LOCALbody(UNITbody(unitid,EMPTYbody),body,EMPTYbody)}
+	  end
+
     end (*structure Project*)
 
     datatype body = datatype Project.body
@@ -444,7 +503,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun OpacityElim_restrict a = OpacityElim.OpacityEnv.restrict a
     fun opacity_elimination a = OpacityElim.opacity_elimination a
 
-    fun parse_elab_interp (absprjid:absprjid,B, funid, punit, funstamp_now) : Basis * modcode =
+    fun parse_elab_interp (fi:bool,absprjid:absprjid,B, funid, punit, funstamp_now) : Basis * modcode =
       let val _ = Timing.reset_timings()
 	 val _ = Timing.new_file punit
 	 val (infB, elabB, opaq_env, topIntB) = Basis.un B
@@ -497,7 +556,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		val _ = chat "[interpretation begin...]"
 		val names_elab = !Name.bucket
 		val _ = Name.bucket := []
-		val (intB', modc) = IntModules.interp(absprjid, intB_im, topdec', unitname)
+		val (intB', modc) = IntModules.interp(fi,absprjid, intB_im, topdec', unitname)
 		val names_int = !Name.bucket
 		val _ = Name.bucket := []
 		val _ = chat "[interpretation end...]"
@@ -539,8 +598,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun Basis_enrich a = Basis.enrich a
     fun Basis_agree a = Basis.agree a
 
-    fun build_punit(absprjid:absprjid,B: Basis, punit : string, clean : bool) : Basis * modcode * bool * Time.time =
-      (* The bool is a `clean' flag;  *)
+    fun build_punit(absprjid: absprjid, B: Basis, punit: string, fi: bool, clean: bool) 
+	: Basis * modcode * bool * Time.time =
+      (* The clean:bool flag denotes whether previous program units were recompiled -
+       * The fi:bool flag specifies whether functor applications should be inlined
+       * in this punit. *)
       let
           val funid = MO.funid_from_filename(MO.mk_filename punit)
           val (modtime, funstamp_now) = 
@@ -581,7 +643,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	handle CAN'T_REUSE s =>
 	  let val _ = case s of "no repository info" => ()
 	                      | _ => print ("[cannot reuse code for " ^ quot punit ^ " -- " ^ s ^ ".]\n")
-	      val (Bex, modc) = parse_elab_interp (absprjid,B, funid, punit, funstamp_now)
+	      val (Bex, modc) = parse_elab_interp (fi,absprjid,B, funid, punit, funstamp_now)
 	  in (Bex, modc, false, modtime) (*not clean*)
 	  end
       end 
@@ -623,55 +685,45 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun collect_units(body,acc) =
       case body
 	of UNITbody(uid,body) => collect_units(body,uid::acc)
-	 | LOCALbody _ => (rev acc, SOME body)
 	 | EMPTYbody => (rev acc, NONE)
-	 | PARbody _ => (rev acc, SOME body) (*collect_units(body,uids @ acc) *)
+	 | _ => (rev acc, SOME body)
+	           (*collect_units(body,uids @ acc) *)
 
     (* Build a single unit; the bool is a `clean' flag; it is true if
      * all entries of the project so far have been reused.  The
      * (string*Time.time)list provides modification times for each of
      * the source files mentioned in the project. *)
 
-(*
-    fun build_unitid(absprjid, B, unitid, clean, modtimes) 
-      : Basis * modcode * bool * (string * Time.time) list =  
-      let val {cd_old, file=unitid} = change_dir unitid
-      in let val _ = maybe_create_pmdir()
-	     val (B', modc, clean, modtime) = build_punit (absprjid, B, unitid, clean)
-	 in cd_old(); (B', modc, clean, (unitid,modtime)::modtimes)
-	 end handle E => (cd_old(); raise E)
-      end
-*)
-
-    fun build_unitid(absprjid, B, unitid, clean, modtimes) 
+    fun build_unitid(fi, absprjid, B, unitid, clean, modtimes) 
       : Basis * modcode * bool * (string * Time.time) list =  
       let val _ = maybe_create_pmdir()
-	  val (B', modc, clean, modtime) = build_punit (absprjid, B, unitid, clean)
+	  val (B', modc, clean, modtime) = build_punit (absprjid, B, unitid, fi, clean)
       in (B', modc, clean, (unitid,modtime)::modtimes)
       end
 
     (* Build a sequence of units *)
-    fun build_unitids(absprjid, B, Bacc, unitids, clean, modtimes)
+    fun build_unitids(fi:bool, absprjid, B, Bacc, unitids, clean, modtimes)
       : Basis * modcode * bool * (string * Time.time) list =  
       case unitids
 	of [] => (Bacc, ModCode.empty, clean, modtimes)
 	 | [unitid] => 
-	  let val (B', modc, clean, modtimes) = build_unitid(absprjid, B, unitid, clean, modtimes)
+	  let val (B', modc, clean, modtimes) = build_unitid(fi, absprjid, B, unitid, clean, modtimes)
 	  in (Basis_plus(Bacc, B'), modc, clean, modtimes)
 	  end
 	 | unitid::unitids => 
-	  let val (B1, modc1, clean, modtimes) = build_unitid(absprjid, B, unitid, clean, modtimes)
-	      val (B2, modc2, clean, modtimes) = build_unitids(absprjid, Basis_plus(B, B1), Basis_plus(Bacc,B1), 
+	  let val (B1, modc1, clean, modtimes) = build_unitid(fi, absprjid, B, unitid, clean, modtimes)
+	      val (B2, modc2, clean, modtimes) = build_unitids(fi, absprjid, Basis_plus(B, B1), 
+							       Basis_plus(Bacc,B1), 
 							       unitids, clean, modtimes)
 	  in (B2, ModCode.seq(modc1, modc2), clean, modtimes)
 	  end
 
     fun build_unitids_par(absprjid, B, unitids, clean, modtimes)
       : modcode * bool * (string * Time.time) list =  
-      case unitids
-	of [] => (ModCode.empty, clean, modtimes)
-	 | unitid::unitids => 
-	  let val (_, modc1, clean, modtimes) = build_unitid(absprjid, B, unitid, clean, modtimes)
+      case unitids of 
+	  nil => (ModCode.empty, clean, modtimes)
+	| unitid::unitids => 
+	  let val (_, modc1, clean, modtimes) = build_unitid(true,absprjid, B, unitid, clean, modtimes)
 	      val (modc2, clean, modtimes) = build_unitids_par(absprjid, B, unitids, clean, modtimes)
 	  in (ModCode.seq(modc1, modc2), clean, modtimes)
 	  end
@@ -694,18 +746,36 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       | Basis_plus_opt' (B,NONE) = NONE
 
     (* Optionally returns a basis; NONE is returned if the body is ended 
-     * with a parallel body - PARbody; otherwise SOME basis is returned *)
-    fun build_body (absprjid:absprjid, B: Basis, body, clean, modtimes, modc:modcode) 
+     * with a parallel body - PARbody; otherwise SOME basis is returned.
+     * The fi:bool flag specifies whether functor applications are inlined
+     * and is controlled by the INLINEbody construct. *)
+    fun build_body (fi:bool, absprjid:absprjid, B: Basis, body, clean, modtimes, modc:modcode) 
       : Basis option * modcode * bool * (string * Time.time) list =  
       case body
 	of EMPTYbody => (SOME Basis.empty, modc, clean, modtimes)
+         | INLINEbody (b1,b2) =>
+	  let val (B1_opt, modc, clean, modtimes) = 
+	          build_body(true,absprjid, B, b1, clean, modtimes, modc)
+	  in case b2 of
+	      EMPTYbody => (B1_opt, modc, clean, modtimes)
+	    | _ => 
+		  let 
+		      fun unOpt (SOME b) = b
+			| unOpt NONE = error "Parallelization of units is not allowed in inline-constructs"
+		      val B1 = unOpt B1_opt
+		      val (B2_opt, modc, clean, modtimes) = 
+			  build_body(fi,absprjid, Basis_plus(B,B1), b2, clean, modtimes, modc)
+		  in (Basis_plus_opt'(B1,B2_opt), modc, clean, modtimes)
+		  end
+	  end
 	 | LOCALbody (body1,body2,body3) => 
-	  let val (B1_opt, modc1, clean, modtimes) = build_body(absprjid, B, body1, clean, modtimes, modc)
+	  let val (B1_opt, modc1, clean, modtimes) = build_body(fi, absprjid, B, body1, clean, modtimes, modc)
 	      val B1 = case B1_opt 
 			 of SOME B1 => B1
-			  | NONE => error "I do not allow parallelization of units in the local part of a local-construct"
+			  | NONE => error "Parallelization of units is not allowed in the local\
+	                                  \part of a local-construct"
               val (B2_opt, modc, clean, modtimes) = 
-		build_body(absprjid, Basis_plus(B,B1), body2, clean, modtimes, modc1)
+		build_body(fi, absprjid, Basis_plus(B,B1), body2, clean, modtimes, modc1)
 	      val _ = case B2_opt
 			of SOME _ => ()
 			 | NONE => MO.ModCode.mk_uoFileList (absprjid,modc1)
@@ -715,7 +785,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		| _ => 
 		 let val B' = Basis_plus_opt (B1', B2_opt)
 		   val (B3_opt, modc, clean, modtimes) = 
-		     build_body(absprjid, Basis_plus(B,B'), body3, clean, modtimes, modc)
+		     build_body(fi, absprjid, Basis_plus(B,B'), body3, clean, modtimes, modc)
 		 in (Basis_plus_opt'(B',B3_opt), modc, clean, modtimes)
 		 end
 	  end 
@@ -723,14 +793,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  (case collect_units(body, [unitid])
 	     of (unitids, NONE) => 
 	       let val (B1, modc1, clean, modtimes) = 
-		     build_unitids(absprjid, B, Basis.empty, unitids, clean, modtimes)
+		     build_unitids(fi, absprjid, B, Basis.empty, unitids, clean, modtimes)
 	       in (SOME B1, ModCode.seq(modc,modc1), clean, modtimes)
 	       end
 	      | (unitids, SOME body) => 
 	       let val (B1, modc1, clean, modtimes) = 
-		     build_unitids(absprjid, B, Basis.empty, unitids, clean, modtimes)
+		     build_unitids(fi, absprjid, B, Basis.empty, unitids, clean, modtimes)
 		   val (B2_opt, modc, clean, modtimes) = 
-		     build_body(absprjid, Basis_plus(B,B1), body, clean, modtimes, ModCode.seq(modc,modc1))
+		     build_body(fi, absprjid, Basis_plus(B,B1), body, clean, modtimes, ModCode.seq(modc,modc1))
 	       in (Basis_plus_opt'(B1,B2_opt), modc, clean, modtimes)
 	       end)
 	 | PARbody uids => 
@@ -798,11 +868,30 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 else imports
       end 
 	
+    (* Called only for SMLserver *)
+    fun smlserver_preprocess prj = 
+	if not(formtyping()) then prj
+	else
+	    case Project.getParbody prj of
+		NONE => prj
+	      | SOME unitids => 
+		    let (* Parse scriptlets *)
+			fun valspecToField (n,t) = {name=n,typ=t}
+			val formIfaceFile = "scripts.gen.sml"
+			val _ = print "Parsing arguments of scriptlet functors.\n"
+			val formIfaces = map Scriptlet.parseArgsFile unitids
+			val formIfaces = 
+			    map (fn {funid,strid,valspecs} => 
+				 {name=funid,fields=map valspecToField valspecs})
+			    formIfaces
+		    in    print ("Writing type safe interface to forms, file: " ^ formIfaceFile ^ "\n")
+			; Scriptlet.genFile formIfaceFile formIfaces
+			; Project.prependUnit (formIfaceFile,prj)
+		    end
 
     (* Build a project *)
-
-    fun build_project {cycleset : absprjid list, pmap : projectmap, absprjid : absprjid, modc:modcode} 
-
+    fun build_project {cycleset : absprjid list, pmap : projectmap, 
+		       absprjid : absprjid, modc:modcode} 
       : {res_basis_opt : Basis option, modc : modcode, 
 	 pmap : projectmap, extobjs : Project.extobj list, clean : bool} =
 
@@ -810,9 +899,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  val {cd_old, file=prjid} = change_dir absprjid_s
 	  val _ = ModCode.deleteTimeStampFile absprjid (* for KAM/AOLserver binding/compilation *)
       in let val _ = if member absprjid cycleset then
-	               error ("There is a cycle in your project; problematic project identifier: " ^ quot absprjid_s)
+	               error ("There is a cycle in your project; problematic project identifier: " 
+			      ^ quot absprjid_s)
 		     else ()
-	     val prj as {imports, extobjs, body} = Project.parse_project absprjid
+	     val prj = Project.parse_project absprjid
+	     val prj = if !Flags.SMLserver then smlserver_preprocess prj
+		       else prj
+	     val {imports, extobjs, body} = prj
 (*             val _ = (testout("Parsed project:\n"); testouttree(layout_prj prj); testout "\n") *)
 	     val imports = maybe_add_basislib absprjid imports
 	     val prj = {imports=imports,extobjs=extobjs,body=body}
@@ -850,7 +943,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 				end) clean imports
 
 (*	     val _ = print (absprjid_s ^ ": clean2 " ^ Bool.toString clean ^ "\n") *)
-	     val (B'_opt, modc, clean, modtimes) = build_body (absprjid, B, body, clean, [], modc)
+	     val (B'_opt, modc, clean, modtimes) = build_body (false, absprjid, B, body, clean, [], modc)
 (*	       handle x => (testout "Basis at failing call to build_body:\n";
 			    testouttree(MO.Basis.layout B); testout"\n"; raise x) 
 *)
@@ -901,7 +994,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      in (modc, Basis_plus_opt(Basis.initial(),res_basis_opt), extobjs)
 	      end
 	    else (ModCode.empty, Basis.initial(), [])
-	  val (_, modc, _, _) = build_body(absprjid, basis_basislib, UNITbody(filepath,EMPTYbody), false, [], modc_basislib)
+	  val (_, modc, _, _) = build_body(false, absprjid, basis_basislib, UNITbody(filepath,EMPTYbody), false, [], modc_basislib)
       in  
 	ModCode.mk_exe(absprjid, modc, extobjs_basislib, !run_file)
       end

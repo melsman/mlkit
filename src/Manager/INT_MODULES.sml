@@ -5,8 +5,10 @@ signature INT_MODULES =
 
     type absprjid
 
-    val interp : absprjid * IntBasis * topdec * string -> IntBasis * modcode    
-    (* Can effect repository. The string is the string-rep of
-     * the funid for the unit. *)
+    val interp : bool * absprjid * IntBasis * topdec * string -> IntBasis * modcode    
+
+    (* Can effect repository. The string is the string-rep of the
+     funid for the unit. The boolean specifies whether functor
+     applications in this topdec should be inlined. *)
 
   end

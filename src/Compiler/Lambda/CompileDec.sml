@@ -60,6 +60,7 @@ functor CompileDec(structure Con: CON
                      sharing type ElabInfo.TypeInfo.longid = TopdecGrammar.DecGrammar.longid
                      sharing type ElabInfo.TypeInfo.TyEnv = Environments.TyEnv
                      sharing type ElabInfo.TypeInfo.TyVar = StatObject.TyVar
+                     sharing type ElabInfo.TypeInfo.realisation = Environments.realisation
 		     sharing type ElabInfo.TypeInfo.Type = StatObject.Type
 		     sharing type ElabInfo.TypeInfo.Env = Environments.Env
 		     sharing type ElabInfo.TypeInfo.strid = TopdecGrammar.strid
@@ -84,6 +85,9 @@ functor CompileDec(structure Con: CON
     structure DecGrammar = TopdecGrammar.DecGrammar
       
     val tag_values = Flags.is_on0 "tag_values"
+
+    fun chat s = if !Flags.chat then print (s ^ "\n")
+		 else ()
 
     open LambdaExp
     type function = {lvar : lvar, tyvars : tyvar list, Type : Type,
@@ -2858,15 +2862,20 @@ the 12 lines above are very similar to the code below
   infix footnote
   fun x footnote y = x
 
+  fun on_ElabInfo phi i = 
+      case to_TypeInfo i of 
+	  SOME i' => ElabInfo.plus_TypeInfo i (ElabInfo.TypeInfo.on_TypeInfo(phi,i'))
+	| NONE => i
+
   local 
     open TopdecGrammar         
 	   
-    fun comp_strexp(ce,strexp) =
+    fun comp_strexp(fe,ce,strexp) =
       case strexp
-	of STRUCTstrexp(info,strdec) => comp_strdec(ce,strdec)
+	of STRUCTstrexp(info,strdec) => comp_strdec(fe,ce,strdec)
 	 | LONGSTRIDstrexp(info,longstrid) => (lookup_longstrid ce longstrid, fn x => x)
 	 | TRANSPARENT_CONSTRAINTstrexp(info, strexp, _) =>
-	  let val (ce1,f) = comp_strexp(ce,strexp)
+	  let val (ce1,f) = comp_strexp(fe,ce,strexp)
 	      val E = case to_TypeInfo info
 			of SOME (ElabInfo.TypeInfo.TRANS_CONSTRAINT_INFO E) => E
 			 | _ => die "comp_strexp.TRANSPARENT_CONSTRAINTstrexp.no env info"
@@ -2874,37 +2883,63 @@ the 12 lines above are very similar to the code below
 	  in (ce2, f)
 	  end
 	 | OPAQUE_CONSTRAINTstrexp(info, strexp, _) => die "OPAQUE_CONSTRAINTstrexp.not impl"
-	 | APPstrexp _ => die "APPstrexp.not supported by compiler"
+	 | APPstrexp(i,funid,strexp) =>
+	  let 
+	      val _ = chat ("[compiling functor application begin...]")
+	      val (ce1, f1) = comp_strexp(fe,ce,strexp)
+
+	      val (phi,Eres) = 
+		  case to_TypeInfo i of 
+		      SOME (ElabInfo.TypeInfo.FUNCTOR_APP_INFO {rea_inst,rea_gen,Env}) => 
+			  (Environments.Realisation.oo(rea_inst,rea_gen), Env)
+		    | _ => die "int_strexp.APPstrexp.no (phi,E) info"
+
+	      val (fe',lookupInlineFunApp) = fe
+	      val (strid,E,strexp0,ce0,ife0) = lookupInlineFunApp fe' funid
+		  handle X => (print "**looking up funid failed**\n"; raise X)
+	      val E' = Environments.Realisation.on_Env phi E
+	      val ce2 = CE.constrain(ce1,E')
+
+	      val strexp0' = TopdecGrammar.map_strexp_info (on_ElabInfo phi) strexp0
+			
+	      val (ce3, f2) = comp_strexp((ife0,lookupInlineFunApp),
+					  CE.plus(ce0, CE.declare_strid(strid,ce2,CE.emptyCEnv)), 
+					  strexp0')
+	      val ce4 = CE.constrain(ce3,Eres)
+	      val _ = chat ("[compiling functor application end.]")
+	  in (ce4, f1 o f2)
+	  end
+(*	  die "APPstrexp.not supported by compiler" *)
 	 | LETstrexp(info, strdec, strexp) =>
-	  let val (ce1, f1) = comp_strdec(ce,strdec)
-	      val (ce2, f2) = comp_strexp(CE.plus(ce,ce1), strexp)
+	  let val (ce1, f1) = comp_strdec(fe,ce,strdec)
+	      val (ce2, f2) = comp_strexp(fe,CE.plus(ce,ce1), strexp)
 	  in (ce2, f1 o f2)
 	  end
 
-    and comp_strdec(ce: CE.CEnv, strdec: strdec) =
+    and comp_strdec(fe,ce: CE.CEnv, strdec: strdec) =
       case strdec
 	of DECstrdec(info, dec) => compileDec ce (false,dec)
 	     (*topLevel=false: we always want the warnings, since this is
 	      a compiler - not a top-level loop. - Martin *)
-	 | STRUCTUREstrdec(info, strbind) => comp_strbind(ce,strbind)
+	 | STRUCTUREstrdec(info, strbind) => comp_strbind(fe,ce,strbind)
 	 | LOCALstrdec(info, strdec1, strdec2) =>
-	  let val (ce1, f1) = comp_strdec(ce,strdec1)
-	      val (ce2, f2) = comp_strdec(CE.plus(ce,ce1), strdec2)
+	  let val (ce1, f1) = comp_strdec(fe,ce,strdec1)
+	      val (ce2, f2) = comp_strdec(fe,CE.plus(ce,ce1), strdec2)
 	  in (ce2, f1 o f2)
 	  end
 	 | EMPTYstrdec info => (CE.emptyCEnv, fn x => x)
 	 | SEQstrdec(info, strdec1, strdec2) =>
-	  let val (ce1, f1) = comp_strdec(ce,strdec1)
-	      val (ce2, f2) = comp_strdec(CE.plus(ce,ce1), strdec2)
+	  let val (ce1, f1) = comp_strdec(fe,ce,strdec1)
+	      val (ce2, f2) = comp_strdec(fe,CE.plus(ce,ce1), strdec2)
 	  in (CE.plus(ce1,ce2), f1 o f2)
 	  end
 
-    and comp_strbind(ce,STRBIND(info,strid,strexp,strbind_opt)) =
-      let val (ce1, f1) = comp_strexp(ce,strexp)
+    and comp_strbind(fe,ce,STRBIND(info,strid,strexp,strbind_opt)) =
+      let val (ce1, f1) = comp_strexp(fe,ce,strexp)
 	  val ce1 = CE.declare_strid(strid,ce1,CE.emptyCEnv) 
       in case strbind_opt
 	   of SOME strbind' => 
-	     let val (ce2, f2) = comp_strbind(ce,strbind')
+	     let val (ce2, f2) = comp_strbind(fe,ce,strbind')
 	     in (CE.plus(ce1,ce2), f1 o f2)
 	     end
 	    | NONE => (ce1, f1)
@@ -2912,10 +2947,10 @@ the 12 lines above are very similar to the code below
 
   in (*local*)
 
-    fun comp_strdecs(ce,[]) = (CE.emptyCEnv, fn x => x)
-      | comp_strdecs(ce, strdec::strdecs) =
-      let val (ce1,f1) = comp_strdec(ce,strdec)
-	  val (ce2,f2) = comp_strdecs(CE.plus(ce,ce1),strdecs)
+    fun comp_strdecs(fe,ce,[]) = (CE.emptyCEnv, fn x => x)
+      | comp_strdecs(fe,ce, strdec::strdecs) =
+      let val (ce1,f1) = comp_strdec(fe,ce,strdec)
+	  val (ce2,f2) = comp_strdecs(fe,CE.plus(ce,ce1),strdecs)
       in (CE.plus(ce1,ce2), f1 o f2)
       end
 
@@ -2928,9 +2963,6 @@ the 12 lines above are very similar to the code below
   (* -----------------------------------------------------
    * Main compilation function
    * ----------------------------------------------------- *)
-
-  fun chat s = if !Flags.chat then print (s ^ "\n")
-	       else ()
 
   (* Determine the scope of the declaration. Those lvars and
    * excons which are declared by the declarations are those
@@ -2960,14 +2992,18 @@ the 12 lines above are very similar to the code below
     end
 
   type strdec = TopdecGrammar.strdec
-  fun compileStrdecs env strdecs = 
+  type strexp = TopdecGrammar.strexp
+  type funid = TopdecGrammar.funid
+  type strid = TopdecGrammar.strid
+  type Env = CompilerEnv.ElabEnv
+  fun compileStrdecs fe env strdecs = 
     let val _ = DatBinds.reset()
         val _ = TV.reset()
 (*	val _ = Compiler.Profile.reset()
 	val _ = Compiler.Profile.setTimingMode true
 *)
 	(* val _ = chat "[comp_strdecs begin]" *)
-        val (env1, f1) = comp_strdecs(env, strdecs)
+        val (env1, f1) = comp_strdecs(fe,env,strdecs)
 	(* val _ = chat "[comp_strdecs end]" *)
 
        val scope = FRAME{declared_lvars=typed_declared_lvars env env1,

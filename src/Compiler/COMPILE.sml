@@ -9,7 +9,7 @@ signature COMPILE =
     type CompBasis
     type CEnv 
     type strdec
-
+    type funid and strid and Env and strexp
     type place 
     type pp
     type 'a at
@@ -19,6 +19,8 @@ signature COMPILE =
     datatype res = CodeRes of CEnv * CompBasis * ((place*pp)at,place*phsize,unit) LambdaPgm * bool
                  | CEnvOnlyRes of CEnv      (* the boolean is true (safe) if the code has no side-effects *)
 
-    val compile : CEnv * CompBasis * strdec list -> res
+    val compile : 
+	('a * ('a -> funid -> strid * Env * strexp * CEnv * 'a))
+	-> CEnv * CompBasis * strdec list -> res
   end 
 
