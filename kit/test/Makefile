@@ -5,11 +5,11 @@ smallbench:
 
 test_mlkit:
 	../bin/kittester ../bin/mlkit all.tst
-	mv test_report.dvi test_report-native-`date -I`.dvi
+	/bin/mv test_report.dvi test_report-native-`/bin/date -I`.dvi
 
 test_kam:
 	../bin/kittester ../bin/mlkit_kam kam.tst
-	mv test_report.dvi test_report-kam-`date -I`.dvi
+	/bin/mv test_report.dvi test_report-kam-`/bin/date -I`.dvi
 
 clean:
 	rm -f *.exe.x86-linux *.exe.out.txt *.exe.png *.exe run *~ */*~

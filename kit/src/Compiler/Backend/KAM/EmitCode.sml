@@ -36,7 +36,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | AllocIfInf(n)  => (out_opcode ALLOC_IF_INF_N; out_int n)
       | AllocSatInf(n) => (out_opcode ALLOC_SAT_INF_N; out_int n)
       | AllocSatIfInf(n) => (out_opcode ALLOC_SAT_IF_INF_N; out_int n)
-      | AllocAtbot(n) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
+      | AllocAtbot(n) => (out_opcode ALLOC_ATBOT_N; out_int n)
 
       | BlockAlloc 2 => (out_opcode BLOCK_ALLOC_2)
       | BlockAlloc(n) => (out_opcode BLOCK_ALLOC_N; out_int n)
