@@ -592,7 +592,7 @@ as
            (scs_person.norm_name_exists_p(imp_row.row.norm_name) = 'f' or
            always_p = 't') then
           /* No other row exsits with the same normalised name which is non empty */
-          tmp_id := scs_user.new(password => scs_user.gen_passwd(imp_row.row.email),
+          tmp_id := scs_user.new(password => scs_user.gen_passwd(8),
                                  salt => scs_random.rand_string(30),
                                  modifying_user => imp_row.row.modifying_user,
                                  email => imp_row.row.email,
