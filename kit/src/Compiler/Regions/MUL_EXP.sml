@@ -173,7 +173,7 @@ signature MUL_EXP =
                    ('_a, 'b, '_c)LambdaPgm -> ('_a, 'b, '_c)LambdaPgm
     val k_evalPgm: ('a, 'b, 'c)LambdaPgm -> ('a, 'b, 'c)LambdaPgm 
 
-    (* k_evalPtm o k_normPgm = I *)
+    (* k_evalPgm o k_normPgm = I *)
 
     val test_knorm: (string * ('_a,'b,'_c)trip -> unit) ->
                     (('_a,'b,'_c)LambdaExp * ('_a,'b,'_c)LambdaExp -> unit) ->

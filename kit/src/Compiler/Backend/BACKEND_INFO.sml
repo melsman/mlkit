@@ -135,6 +135,9 @@ signature BACKEND_INFO =
 
     val down_growing_stack : bool         (* true for x86 code generation *)
     val double_alignment_required : bool  (* false for x86 code generation *)
+
+    (* Special for the KAM machine *)
+    val env_lvar : lvar
   end
 
 

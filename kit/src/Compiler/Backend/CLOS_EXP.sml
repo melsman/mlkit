@@ -49,7 +49,7 @@ signature CLOS_EXP =
 
     type binder = place * phsize
 
-  datatype ClosExp = 
+    datatype ClosExp = 
       VAR             of lvar
     | RVAR            of place
     | DROPPED_RVAR    of place

@@ -717,7 +717,6 @@ functor Compile(structure Excon : EXCON
 	val all_clos_exp = Timing.timing_end_res("ClosConv",ClosExp.cc (clos_env, pgm))
 	val clos_env' = #env all_clos_exp
 
-
 	val _ = Timing.timing_begin()
 	val all_line_stmt = 
 	  Timing.timing_end_res("LineStmt",LineStmt.L {main_lab= #main_lab all_clos_exp,

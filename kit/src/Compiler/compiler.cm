@@ -25,6 +25,7 @@ Kam/AddressLabels.sml
 #else
 
   CompileBasis.sml
+
   COMPILE.sml
   Compile.sml
   BuildCompile.sml
@@ -107,7 +108,7 @@ Kam/AddressLabels.sml
   Backend/ClosExp.sml
   Backend/LINE_STMT.sml
   Backend/LineStmt.sml
-  Backend/BACKEND_INFO.sml
+  Backend/BACKEND_INFO.sml 
   Backend/REG_ALLOC.sml
   Backend/RegAlloc.sml
   Backend/FETCH_AND_FLUSH.sml

@@ -63,4 +63,5 @@ signature CLOS_CONV_ENV =
 
     type StringTree
     val layoutEnv : env -> StringTree
+    val pr_access_type : access_type -> string
   end;
