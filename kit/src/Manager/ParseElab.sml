@@ -70,7 +70,8 @@ functor ParseElab(structure Parse: PARSE
 	       ErrorTraverse.SUCCESS warnings =>
 		 let val debugElab =
 		           if !Flags.DEBUG_ELABTOPDEC then
-			     PP.reportStringTree(ElabTopdec.layoutStaticBasis elabB')
+			     ((PP.reportStringTree(ElabTopdec.layoutStaticBasis elabB'))
+			      // (PP.reportStringTree(PostElabTopdecGrammar.layoutTopdec topdec')))
 			   else Report.null
 		     val report = TopLevelReport.report {infB=infB, elabB=elabB', bindings=false}
 		 in
@@ -140,4 +141,5 @@ functor ParseElab(structure Parse: PARSE
 	      * (the "PP defaultPos"'es).
 	      *)
 	     handle Parse report => FAILURE report
+
   end;

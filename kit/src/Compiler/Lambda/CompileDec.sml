@@ -1619,22 +1619,35 @@ functor CompileDec(structure Con: CON
   fun compileStrdecs env strdecs = 
     let val _ = DatBinds.reset()
         val _ = TV.reset()
-        val (env1, f1) = comp_strdecs(env, strdecs) 
+        val (env1, f1) = comp_strdecs(env, strdecs)
 
-        (* Determine the scope of the declaration using returned
-	 * compiler env, env1. Declared_lvars and excons are those lvars
-	 * and excons that are in the _range_ of env1 *)
+        (* Determine the scope of the declaration. Those lvars and
+	 * excons which are declared by the declarations are those
+	 * that appear in env1 but not in env. *)
 
-       val typed_declared_lvars = 
+	val typed_declared_lvars = 
               (* we associated the declared_lvars with dummy type schemes;
 	       * the real type schemes are put in later; actually, now we 
 	       * could put them in... *)
-	 let val alpha = fresh_tyvar()
-	 in map (fn lv => {lvar=lv,tyvars = [alpha],Type=TYVARtype alpha})    (* forall alpha. alpha *)
-	   (CE.lvarsOfCEnv env1)
-	 end
+	  let val lvars_env = CE.lvarsOfCEnv env
+	      val lvars_decl = 
+		List.foldL (fn lv1 => fn lvs =>
+			    if List.exists (fn lv => Lvars.eq(lv,lv1)) lvars_env then lvs
+			    else lv1::lvs) [] (CE.lvarsOfCEnv env1)
+	      val alpha = fresh_tyvar()
+	  in map (fn lv => {lvar=lv,tyvars = [alpha],Type=TYVARtype alpha})    (* forall alpha. alpha *)
+	     lvars_decl
+	  end
+
        val declared_excons : (Excon.excon * Type Option) list =
-	 map (fn excon => (excon, None)) (CompilerEnv.exconsOfCEnv env1)  (*dummy-None*)
+	 let val excons_env = CompilerEnv.exconsOfCEnv env
+	     val excons_decl = 
+	       List.foldL (fn ex1 => fn exs =>
+			   if List.exists (fn ex => Excon.eq(ex,ex1)) excons_env then exs
+			   else ex1::exs) [] (CE.exconsOfCEnv env1)
+	 in map (fn excon => (excon, None)) excons_decl  (*dummy-None*)
+	 end
+
        val scope = FRAME{declared_lvars=typed_declared_lvars,
 			 declared_excons=declared_excons}
 

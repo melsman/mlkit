@@ -361,8 +361,15 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
           (use_longtycon(I, longtycon); add_tycon(tycon,empty_ids))
        | EXCEPTIONspec(_,exdesc) => (free_exdesc I exdesc; empty_ids)
        | STRUCTUREspec(_,strdesc) => free_strdesc I strdesc
-       | INCLUDEspec(_,sigexp) => die "free.INCLUDEspec - not implemented"
-	  (* (free_sigexp I sigexp; (*MEMO*) empty_ids) *)
+       | INCLUDEspec(info,sigexp) =>
+	  let val (strids, tycons) = case ElabInfo.to_TypeInfo info
+				       of Some (ElabInfo.TypeInfo.INCLUDE_INFO specs) => specs
+					| _ => die "INCLUDEspec - no specs info"
+	      val decl_strids = List.foldL (fn strid => fn ids => add_strid(strid,ids))
+	      val decl_tycons = List.foldL (fn tycon => fn ids => add_tycon(tycon,ids))
+	  in free_sigexp I sigexp;
+	     decl_strids (decl_tycons empty_ids tycons) strids
+	  end
        | SHARING_TYPEspec(_,spec,_) => free_spec I spec  (* these are local *)
        | SHARINGspec(_,spec,_) => free_spec I spec       (* these are local *)
        | EMPTYspec _ => empty_ids

@@ -81,8 +81,15 @@ signature TYPE_INFO =
       | OPEN_INFO of strid list * tycon list * id list
 	                (* Attached to OPENdec; the lists contains those
 			 * identifiers being declared by the dec. *)
+      | INCLUDE_INFO of strid list * tycon list
+	                (* Attached to INCLUDEspec; the lists contains those
+			 * strids and tycons being specified by the spec. *)
       | FUNCTOR_APP_INFO of realisation
                         (* Attached to functor applications *)
+      | FUNBIND_INFO of Env
+                        (* Attached to functor bindings; the env is the environment
+			 * resulting from elaborating the sigexp in a functor 
+			 * binding. *)
       | TRANS_CONSTRAINT_INFO of Env
 	                (* Attached to transparent signature constraints *)
 

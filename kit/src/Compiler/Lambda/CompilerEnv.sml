@@ -1,5 +1,5 @@
 (*$CompilerEnv: IDENT TYNAME STRID CON EXCON ENVIRONMENTS LAMBDA_EXP
-	LVARS FINMAP FINMAPEQ PRETTYPRINT CRASH COMPILER_ENV *)
+	LVARS FINMAP FINMAPEQ PRETTYPRINT CRASH FLAGS COMPILER_ENV *)
 
 functor CompilerEnv(structure Ident: IDENT
 		    structure TyName : TYNAME
@@ -22,6 +22,7 @@ functor CompilerEnv(structure Ident: IDENT
 		      sharing type FinMap.StringTree = PP.StringTree
 		          and type LambdaExp.StringTree = PP.StringTree 
 			           = FinMapEq.StringTree
+	            structure Flags : FLAGS
 		    structure Crash: CRASH
 		   ): COMPILER_ENV =
   struct
@@ -256,6 +257,11 @@ old*)
      in f it []
      end
 
+
+   (* -------------
+    * Restriction
+    * ------------- *)
+
    fun restrictFinMap(error_str, env : (''a,'b) FinMap.map, dom : ''a list) =
      List.foldL (fn id => fn acc =>
 		 let val res = case FinMap.lookup env id
@@ -278,62 +284,105 @@ old*)
 	    LvarEnv=LvarEnv}
      else die "restrictCEnv.lvarenv not empty"
 
-   fun eq_res (LVAR (lv1,tvs1,tau1,il1), LVAR (lv2,tvs2,tau2,il2)) = 
+
+   (* -------------
+    * Enrichment
+    * ------------- *)
+
+   local
+
+     val debug_man_enrich = ref false (*Flags.lookup_flag_entry "debug_man_enrich"*)
+     fun log s = output(std_out,s)
+     fun debug(s, b) = if !debug_man_enrich then
+                         (if b then log("\n" ^ s ^ ": enrich succeeded.")
+			  else log("\n" ^ s ^ ": enrich failed."); b)
+		       else b
+
+
+     fun eq_res (LVAR (lv1,tvs1,tau1,il1), LVAR (lv2,tvs2,tau2,il2)) = 
        Lvars.eq(lv1,lv2) andalso
        LambdaBasics.eq_sigma_with_il((tvs1,tau1,il1),(tvs2,tau2,il2))
-     | eq_res (CON(con1,tvs1,tau1,il1,it1), CON(con2,tvs2,tau2,il2,it2)) =
+       | eq_res (CON(con1,tvs1,tau1,il1,it1), CON(con2,tvs2,tau2,il2,it2)) =
        Con.eq(con1, con2) andalso it1 = it2 andalso
        LambdaBasics.eq_sigma_with_il((tvs1,tau1,il1),(tvs2,tau2,il2))
-     | eq_res (REF, REF) = true
-     | eq_res (EXCON (excon1,tau1), EXCON (excon2,tau2)) = 
+       | eq_res (REF, REF) = true
+       | eq_res (EXCON (excon1,tau1), EXCON (excon2,tau2)) = 
        Excon.eq(excon1,excon2) andalso LambdaBasics.eq_Type(tau1,tau2)
-     | eq_res (ABS,ABS) = true
-     | eq_res (NEG,NEG) = true
-     | eq_res (PLUS,PLUS) = true
-     | eq_res (MINUS,MINUS) = true
-     | eq_res (MUL,MUL) = true
-     | eq_res (LESS,LESS) = true
-     | eq_res (GREATER,GREATER) = true
-     | eq_res (LESSEQ,LESSEQ) = true
-     | eq_res (GREATEREQ,GREATEREQ) = true
-     | eq_res (RESET_REGIONS,RESET_REGIONS) = true
-     | eq_res (FORCE_RESET_REGIONS,FORCE_RESET_REGIONS) = true
-     | eq_res (PRIM,PRIM) = true
-     | eq_res _ = false
+       | eq_res (ABS,ABS) = true
+       | eq_res (NEG,NEG) = true
+       | eq_res (PLUS,PLUS) = true
+       | eq_res (MINUS,MINUS) = true
+       | eq_res (MUL,MUL) = true
+       | eq_res (LESS,LESS) = true
+       | eq_res (GREATER,GREATER) = true
+       | eq_res (LESSEQ,LESSEQ) = true
+       | eq_res (GREATEREQ,GREATEREQ) = true
+       | eq_res (RESET_REGIONS,RESET_REGIONS) = true
+       | eq_res (FORCE_RESET_REGIONS,FORCE_RESET_REGIONS) = true
+       | eq_res (PRIM,PRIM) = true
+       | eq_res _ = false
+       
+     fun enrichVarEnv(VARENV env1,VARENV env2) =
+       FinMap.Fold (fn ((id2,res2),b) => b andalso
+		    case FinMap.lookup env1 id2
+		      of Some res1 => eq_res(res1,res2)
+		       | None => false) true env2
+       
+     fun enrichCEnv(CENV{StrEnv,VarEnv,LvarEnv=LVARENV lenv1},
+		    CENV{StrEnv=StrEnv',VarEnv=VarEnv',LvarEnv=LVARENV lenv2}) =
+       let
+	 val _ = if FinMapEq.isEmpty lenv1 then () else die "enrichCEnv.lvarenv1 not empty"
+	 val _ = if FinMapEq.isEmpty lenv2 then () else die "enrichCEnv.lvarenv2 not empty"
+       in debug("StrEnv", enrichStrEnv(StrEnv,StrEnv')) andalso 
+	  debug("VarEnv", enrichVarEnv(VarEnv,VarEnv'))
+       end
 
-   fun enrichVarEnv(env1,env2) =
-     FinMap.Fold (fn ((id2,res2),b) => b andalso
-		  case FinMap.lookup env1 id2
-		    of Some res1 => eq_res(res1,res2)
-		     | None => false) true env2
-     
-   fun enrichCEnv(CENV{StrEnv,VarEnv=VARENV env1,LvarEnv=LVARENV lenv1},
-		  CENV{StrEnv=StrEnv',VarEnv=VARENV env2,LvarEnv=LVARENV lenv2}) =
-     let
-       val _ = if FinMapEq.isEmpty lenv1 then () else die "enrichCEnv.lvarenv1 not empty"
-       val _ = if FinMapEq.isEmpty lenv2 then () else die "enrichCEnv.lvarenv2 not empty"
-     in enrichVarEnv(env1,env2)
-     end
+     and enrichStrEnv(STRENV se1, STRENV se2) =
+       FinMap.Fold (fn ((strid,env2),b) => b andalso
+		    case FinMap.lookup se1 strid
+		      of Some env1 => enrichCEnv(env1,env2)
+		       | None => false) true se2
+   in
 
-   fun matchRes (LVAR (lv,_,_,_), LVAR (lv0,_,_,_)) = Lvars.match(lv,lv0)
-     | matchRes (CON(con,_,_,_,it), CON(con0,_,_,_,it0)) = if it = it0 then Con.match(con,con0) else ()
-     | matchRes (EXCON (excon,_), EXCON (excon0,_)) = Excon.match(excon,excon0)
-     | matchRes _ = ()
+     val enrichCEnv = enrichCEnv
 
-   fun matchVarEnv(env, env0) =
-     FinMap.Fold(fn ((id0,res0),_) =>
-		 case FinMap.lookup env id0
-		   of Some res => matchRes(res,res0)
-		    | None => ()) () env0 
+   end
+       
 
-   fun match(CENV{StrEnv,VarEnv=VARENV env,LvarEnv=LVARENV lenv},
-	     CENV{StrEnv=StrEnv',VarEnv=VARENV env0, LvarEnv=LVARENV lenv0}) =
-     let
-       val _ = if FinMapEq.isEmpty lenv then () else die "match.lvarenv not empty"
-       val _ = if FinMapEq.isEmpty lenv0 then () else die "match.lvarenv0 not empty"
-     in matchVarEnv(env,env0)
-     end
+   (* -------------
+    * Matching
+    * ------------- *)
 
+   local  
+     fun matchRes (LVAR (lv,_,_,_), LVAR (lv0,_,_,_)) = Lvars.match(lv,lv0)
+       | matchRes (CON(con,_,_,_,it), CON(con0,_,_,_,it0)) = if it = it0 then Con.match(con,con0) else ()
+       | matchRes (EXCON (excon,_), EXCON (excon0,_)) = Excon.match(excon,excon0)
+       | matchRes _ = ()
+
+     fun matchVarEnv(VARENV env, VARENV env0) =
+       FinMap.Fold(fn ((id,res),_) =>
+		   case FinMap.lookup env0 id
+		     of Some res0 => matchRes(res,res0)
+		      | None => ()) () env 
+
+     fun matchEnv(CENV{StrEnv,VarEnv,LvarEnv=LVARENV lenv},
+		  CENV{StrEnv=StrEnv0,VarEnv=VarEnv0, LvarEnv=LVARENV lenv0}) =
+       let val _ = if FinMapEq.isEmpty lenv then () else die "match.lvarenv not empty"
+	   val _ = if FinMapEq.isEmpty lenv0 then () else die "match.lvarenv0 not empty"
+       in matchStrEnv(StrEnv,StrEnv0);
+	  matchVarEnv(VarEnv,VarEnv0)
+       end
+
+     and matchStrEnv(STRENV se, STRENV se0) =
+       FinMap.Fold(fn ((strid,env),_) =>
+		   case FinMap.lookup se0 strid
+		     of Some env0 => matchEnv(env,env0)
+		      | None => ()) () se
+   in
+
+     val match = matchEnv
+
+   end
 
    type TypeScheme = Environments.TypeScheme
    type ElabEnv = Environments.Env
@@ -467,3 +516,5 @@ old*)
       end
 
   end;
+(*  LocalWords:  habor
+ *)

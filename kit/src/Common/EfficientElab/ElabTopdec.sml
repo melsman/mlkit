@@ -24,6 +24,7 @@ functor ElabTopdec
    sharing type ElabInfo.ErrorInfo.sigid = SigId.sigid
    sharing type ElabInfo.ErrorInfo.longstrid = StrId.longstrid
    sharing type ElabInfo.TypeInfo.realisation = StatObject.realisation
+   sharing type ElabInfo.TypeInfo.strid = StrId.strid
 
   structure IG : TOPDEC_GRAMMAR
      sharing type IG.strid = StrId.strid
@@ -44,7 +45,7 @@ functor ElabTopdec
      sharing type OG.longstrid = StrId.longstrid
      sharing type OG.longtycon = IG.longtycon
      sharing type OG.tyvar = IG.tyvar
-     sharing type OG.tycon = IG.tycon
+     sharing type OG.tycon = IG.tycon = ElabInfo.TypeInfo.tycon
      sharing type OG.id = IG.id
      sharing type OG.info = ElabInfo.ElabInfo
      sharing type OG.StringTree = PrettyPrint.StringTree
@@ -189,6 +190,8 @@ functor ElabTopdec
     type PostElabTopdec = OG.topdec
     type StaticBasis = ModuleEnvironments.Basis
 
+    (* debugging stuff *)
+    fun pr_Env E = PrettyPrint.outputTree (print, E.layout E, 120)
 
     (*Error handling stuff*)
     type ParseInfo  = ParseInfo.ParseInfo
@@ -223,25 +226,6 @@ functor ElabTopdec
           List.exists (fn y => TyVar.eq (x,y)) xs
     fun isEmptyTyVarList xs = case xs of nil => true | _ => false
 
-	 
-    (*Phi_match: We bind the argument names in error_result so
-    that the argument signature returned in the event of an
-    error is as general as possible:*)
-
-    fun Phi_match (i, funsig', E0) =
-      let val (res, rea) = Phi.match_via(funsig',E0)
-      in (typeConv(i,TypeInfo.FUNCTOR_APP_INFO rea), res)     
-	  (* was: (okConv i, Phi.match (funsig', E0)) *)
-      end handle No_match reason =>
-	    let
-	      val (T, E, T'E') = Phi.to_T_and_E_and_Sigma funsig'
-	      val (T', E') = Sigma.to_T_and_E T'E'
-	      val E_bogus = Sigma.from_T_and_E (TyName.Set.difference (E.tynames E')
-						  (TyName.Set.union T T'), 
-						E')
-	    in 
-	      (errorConv (i, reason), E_bogus)
-	    end
 
     (*Sigma_match: We rename flexible names in error_result so
      that the result structure returned in the event of an error
@@ -416,18 +400,32 @@ functor ElabTopdec
 	  let
 	    val (E, out_strexp) = elab_strexp (B, strexp)
 	  in
-	    (case B.lookup_funid B funid of
-	       Some Phi =>
-		 let
-		   val (out_i, T'E') = Phi_match (i, Phi, E)
-		   val E' = Sigma.instance T'E'
-		 in
-		   (E', OG.APPstrexp (out_i, funid, out_strexp))
-		 end
+	    case B.lookup_funid B funid of
+	       Some Phi =>                                     (* the realisation that we annotate *)
+		(let val (T'E', rea) = Phi.match_via(Phi,E)    (* need also account for generative *)
+		     val (_,E') = Sigma.to_T_and_E T'E'        (* names in the functor body.       *)
+		     val out_i = typeConv(i,TypeInfo.FUNCTOR_APP_INFO rea)
+(*
+		     val _ = print ("**Applying " ^ OG.FunId.pr_FunId funid ^ "\n")
+		     val _ = (print "**Functor argument E = \n"; pr_Env E; print "\n")
+		     val _ = (print "**Functor result E = \n"; pr_Env E'; print "\n")
+*)
+		 in (E', OG.APPstrexp (out_i, funid, out_strexp)) 
+		 end handle No_match reason =>                       (* We bind the argument names in error_result *)
+		   let	                                             (* so that the argument signature returned is *)
+		     val (T, E, T'E') = Phi.to_T_and_E_and_Sigma Phi (* as general as possible.                    *)
+		     val (T', E') = Sigma.to_T_and_E T'E'
+		     val T'E' = Sigma.from_T_and_E (TyName.Set.difference (E.tynames E')
+						       (TyName.Set.union T T'), E')
+		     val out_i = errorConv (i, reason)
+		     val E' = Sigma.instance T'E'
+		   in (E', OG.APPstrexp (out_i, funid, out_strexp)) 
+		   end
+		 )
 	     | None =>
 		 (E.bogus,
 		  OG.APPstrexp (errorConv (i, ErrorInfo.LOOKUP_FUNID funid),
-				funid, out_strexp)))
+				funid, out_strexp))
 	  end
 
 	(* Local declaration *)                             (*rule 55*)
@@ -710,8 +708,12 @@ functor ElabTopdec
 	(* Include specification *)                         (*rule 75*)
       | IG.INCLUDEspec (i, sigexp) =>
 	  let val (E, out_sigexp) = elab_sigexp' (B, sigexp)
+	      val (SE,TE,_) = E.un E
+	      val strids = EqSet.list (SE.dom SE)
+	      val tycons = EqSet.list (TE.dom TE)
+	      val out_i = ElabInfo.plus_TypeInfo (okConv i) (TypeInfo.INCLUDE_INFO (strids,tycons))
 	  in
-	    (E, OG.INCLUDEspec (okConv i, out_sigexp))
+	    (E, OG.INCLUDEspec (out_i, out_sigexp))
 	  end
 
 	(* Empty specification *)                           (*rule 76*)
@@ -1123,7 +1125,7 @@ functor ElabTopdec
 	          elab_X_opt (B, funbind_opt) elab_funbind F.empty
 	    val out_i = if EqSet.member funid (F.dom F)
 			then repeatedIdsError (i, [ErrorInfo.FUNID_RID funid])
-			else okConv i
+			else ElabInfo.plus_TypeInfo (okConv i) (TypeInfo.FUNBIND_INFO E)
 	  in
 	    (F.singleton (funid, Phi.from_T_and_E_and_Sigma (T, E, T'E')) F_plus_F F,
 	     OG.FUNBIND (out_i, funid, strid, out_sigexp, out_strexp,
