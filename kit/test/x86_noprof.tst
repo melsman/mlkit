@@ -54,6 +54,7 @@ kkb36c.sml              tx tc gc
 kitsimple.sml           tx tc gc
 fft.sml                 tx tc gc
 vliw.sml                tx tc gc
+mlyacc.pm               tx tc gc
 msort.pm                tx tc gc
 tststrcmp.sml                 gc
 FuhMishra.pm            tx tc gc
