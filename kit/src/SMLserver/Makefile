@@ -1,8 +1,8 @@
 #
 # The home of AOLserver
 #
-#NSHOME ?= /home/mael/aol32-src/root/aolserver
-NSHOME ?= /usr/local/aolserver
+NSHOME ?= /home/mael/aol32-src/root/aolserver
+#NSHOME ?= /usr/local/aolserver
 
 #
 # Module name
@@ -29,5 +29,8 @@ MODLIBS  =  ../RuntimeWithGC/runtimeSystemKamNsSml.o
 #
 CFLAGS   =  
 
+clean2:
+	rm -f nssml.so *.o *~
 
-include  $(NSHOME)/include/Makefile.module
+smlserver:
+	include $(NSHOME)/include/Makefile.module

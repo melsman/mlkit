@@ -44,7 +44,7 @@ mlkit_kam: basics
 
 smlserver: basics
 	cd RuntimeWithGC; $(MAKE) runtimeSystemKamNsSml.o
-	cd SMLserver; $(MAKE)
+	cd SMLserver; $(MAKE) smlserver
 	echo 'use "build_web.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_web.$(ARCH-OS)
 	rm -f $(BINDIR)/mlkit_web
@@ -81,7 +81,6 @@ clean:
 	cd heap2exec; $(MAKE) clean
 	cd Runtime; $(MAKE) clean
 	cd RuntimeWithGC; $(MAKE) clean
-	cd SMLserver; $(MAKE) clean
 	cd Tools/Tester; $(MAKE) clean
 	cd Tools/Rp2ps; $(MAKE) clean
 	cd Tools/GenOpcodes; $(MAKE) clean
@@ -96,6 +95,7 @@ clean:
 	cd Compiler/Kam; rm -rf PM CM *~
 	cd Compiler/Cfg; rm -rf PM CM *~
 	cd Compiler/Lambda; rm -rf PM CM *~
+	cd SMLserver; $(MAKE) clean2
 
 
 # ----------------------------------------------------------
