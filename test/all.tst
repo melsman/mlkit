@@ -116,3 +116,4 @@ word.sml                      gc prof
 word8.sml                     gc prof
 word31.sml                    gc prof
 word32.sml                    gc prof
+regexp.sml                    gc prof

@@ -1,0 +1,85 @@
+<html>
+<head>
+<title>Currency Service</title>
+</head>
+<body bgcolor = white>
+<h1>Currency Service</h1>
+
+<form method=post action=currency.sml>
+<center>
+Exchange <input name=a size=7 value="1"> 
+
+<select name=s>
+<option value=USD>American Dollar</option>
+<option value=AUD>Australian Dollar</option>
+<option value=BMD>Bermuda Dollar</option>
+<option value=DKK>Danish Kroner</option>
+<option value=EUR>EURO</option>
+<option value=NOK>Norwegian Kroner</option>
+<option value=SEK>Sweedish Kroner</option>
+</select>
+
+to 
+
+<select name=t>
+<option value=USD>American Dollar</option>
+<option value=AUD>Australian Dollar</option>
+<option value=BMD>Bermuda Dollar</option>
+<option value=DKK>Danish Kroner</option>
+<option value=EUR>EURO</option>
+<option value=NOK>Norwegian Kroner</option>
+<option value=SEK>Sweedish Kroner</option>
+</select><br>
+
+<input type=submit value=Calculate>
+
+</form>
+<p>
+<hr>
+
+<form method=post action=currency_cache.sml>
+<center>
+This version of the Currency Service caches the currency rates
+obtained from Yaahoo Finance in a limited amount of time. This makes
+the service much faster and limits the burden put on the Yaahoo
+Finance web server.<p>
+
+Exchange <input name=a size=7 value="1"> 
+
+<select name=s>
+<option value=USD>American Dollar</option>
+<option value=AUD>Australian Dollar</option>
+<option value=BMD>Bermuda Dollar</option>
+<option value=DKK>Danish Kroner</option>
+<option value=EUR>EURO</option>
+<option value=NOK>Norwegian Kroner</option>
+<option value=SEK>Sweedish Kroner</option>
+</select>
+
+to 
+
+<select name=t>
+<option value=USD>American Dollar</option>
+<option value=AUD>Australian Dollar</option>
+<option value=BMD>Bermuda Dollar</option>
+<option value=DKK>Danish Kroner</option>
+<option value=EUR>EURO</option>
+<option value=NOK>Norwegian Kroner</option>
+<option value=SEK>Sweedish Kroner</option>
+</select><br>
+
+<input type=submit value="Calculate - Cached Results">
+
+</form>
+
+This service obtains currency rates from <a
+href="http://se.finance.yahoo.com">Yaahoo Finance</a>.<p>
+
+A very cool example of obtaining data from foreign sites is the <a
+href="Bill Gates Personal Wealth
+Clock">http://www.webho.com/WealthClockIntl</a>.
+
+<hr>
+<a href="http://www.smlserver.org/">SMLserver Home Page</a> (<a href="mailto:mlkit@it.edu">mlkit@it.edu</a>) 2001-08-08
+</body>
+</html>

@@ -17,7 +17,13 @@ structure Ns :> NS =
 
     structure Set : NS_SET = NsSet 
     type set = Set.set
- 
+
+    fun encodeUrl(s: string) : string =
+      prim("nssml_EncodeUrl", "nssml_EncodeUrl", s)
+
+    fun decodeUrl(s: string) : string =
+      prim("nssml_DecodeUrl", "nssml_DecodeUrl", s)
+
     structure Conn =
       struct
 	fun returnHtml(status: int, s: string) : status =
@@ -69,18 +75,103 @@ structure Ns :> NS =
 	  prim("nssml_ConnUrl", "nssml_ConnUrl", getConn())
       end
 
+    structure Cookie =
+      struct
+	(* This is an modified implementation of Cookies found in MoscowML. 
+  	   This is from the MoscowML source:
+
+	     (c) Hans Molin, Computing Science Dept., Uppsala University, 1999.
+	     http://www.csd.uu.se/~d97ham/                     d97ham@csd.uu.se
+
+	     Documentation, cleanup and efficiency improvements by sestoft@dina.kvl.dk 
+
+	     Anyone is granted the right to copy and/or use this code, provided
+	     that this note is retained, also in modified versions.  The code is
+	     provided as is with no guarantee about any functionality.  I take no
+	     responsibility for its proper function. *)
+	local
+	  fun concatOpt s NONE     = ""
+	    | concatOpt s (SOME t) = s ^ t
+	in
+	  exception CookieError of string
+
+	  type cookiedata = 
+	    {name   : string, 
+	     value  : string, 
+	     expiry : Date.date option, 
+	     domain : string option, 
+	     path   : string option, 
+	     secure : bool}
+
+	  val allCookies : (string * string) list =
+	    case Set.filter (fn (k,_) => k = "Cookie") (Conn.headers()) of
+	      [] => []
+	    | ([(k,cv)]) =>
+		let
+		  fun splitNameAndValue sus = 
+		    let
+		      val (pref,suff) = Substring.position "=" sus
+		    in
+		      (decodeUrl (Substring.concat (Substring.fields (fn c => c = #" ") pref)),
+		       decodeUrl (Substring.concat (Substring.fields (fn c => c = #" ") (Substring.triml 1 suff))))
+		    end
+		in
+		  List.map splitNameAndValue (Substring.tokens (fn c => c = #";") (Substring.all cv))
+		end
+	    | _ => raise CookieError "More than one Cookie line in the header"
+
+	  fun getCookie cn = List.find (fn (name,value) => cn = name) allCookies
+
+	  fun getCookieValue cn = 
+	    case getCookie cn of
+	      NONE => NONE
+	    | SOME (n,v) => SOME v
+
+	  (* Date must be GMT time, that is, use Date.fromTimeUniv *)
+	  fun setCookie {name : string, value : string, expiry : Date.date option, 
+			 domain : string option, path : string option, secure : bool} =
+	    let 
+	      fun datefmt date = Date.fmt "%a, %d-%b-%Y %H:%M:%S GMT" date
+	    in
+	      if name = "" orelse value= ""
+		then raise CookieError "Name or value empty in call to setCookie"
+	      else String.concat
+		["Set-cookie: ", encodeUrl name, "=", encodeUrl value,
+		 concatOpt "; expires=" (Option.map datefmt expiry),
+		 concatOpt "; domain=" domain,
+		 concatOpt "; path=" path,
+		 "; secure", Bool.toString secure]
+	    end
+
+	  fun setCookies cookies = String.concat (List.map setCookie cookies)
+
+	  fun deleteCookie { name : string, path : string option } : string =
+	    String.concat["Set-cookie: ", encodeUrl name, "=deleted;",
+			  "expires=Friday, 11-Feb-77 12:00:00 GMT",
+			  concatOpt "; path=" path]
+	end
+      end
+
     structure Cache =
       struct
 	type cache = int
+	fun createTm(n : string, t: int) : cache =
+	  prim("nssml_CacheCreate", "nssml_CacheCreate", (n,t))
+	fun createSz(n : string, sz: int) : cache =  (* sz is in bytes *)
+	  prim("nssml_CacheCreateSz", "nssml_CacheCreateSz", (n,sz))
 	fun find (n : string) : cache option =
 	  let val res : int = prim("nssml_CacheFind", "nssml_CacheFind", n)
 	  in if res = 0 then NONE
 	     else SOME res
 	  end
-	fun create(n : string, t: int) : cache =
-	  prim("nssml_CacheCreate", "nssml_CacheCreate", (n,t))
-	fun createSz(n : string, sz: int) : cache =  (* sz is in bytes *)
-	  prim("nssml_CacheCreateSz", "nssml_CacheCreateSz", (n,sz))
+	fun findTm(cn: string, t: int) : cache =
+	  case find cn of
+	    NONE => createTm(cn,t)
+	  | SOME c => c
+	fun findSz(cn: string, s: int) : cache =
+	  case find cn of
+	    NONE => createSz(cn,s)
+	  | SOME c => c
 	fun flush(c:cache) : unit =
 	  prim("Ns_CacheFlush", "Ns_CacheFlush", c)
 	fun set(c:cache, k:string, v:string) : bool =
@@ -92,6 +183,36 @@ structure Ns :> NS =
 	  in if isNull res then NONE
 	     else SOME res
 	  end
+
+	local
+	  fun cache_fn (f:string->string, cn: string,t: int) set get =
+	    (fn k =>
+  	     case find cn of 
+	       NONE => let val v = f k in (set (createTm(cn,t),k,v);v) end
+	     | SOME c => (case get (c,k) of 
+			    NONE => let val v = f k in (set (c,k,v);v) end 
+			  | SOME v => v))
+	in
+	  fun cacheWhileUsed (arg as (f:string->string, cn: string, t: int)) = cache_fn arg set get
+	  fun cacheForAwhile (arg as (f:string->string, cn: string, t: int)) =
+	    let
+	      val ts_sz = 12
+	      fun set'(c,k,v) = set(c,k,StringCvt.padLeft #" " ts_sz (LargeInt.toString(Time.toSeconds(Time.now()))))
+	      fun get'(c,k) = 
+		case get(c,k) of
+		  NONE => NONE
+		| SOME vts => 
+		    let 
+		      val (ts,v) = (Option.valOf(LargeInt.fromString(String.substring(vts,0,ts_sz))),
+				    String.extract(vts,ts_sz,NONE))
+		      val now_sec = Time.toSeconds(Time.now())
+		    in
+		      if now_sec > ts+t then NONE else SOME v
+		    end
+	    in
+	      cache_fn arg set' get'
+	    end
+	end
       end
 
     structure Info : NS_INFO = NsInfo
@@ -115,12 +236,6 @@ structure Ns :> NS =
       in if isNull res then NONE
 	 else SOME res
       end
-
-    fun encodeUrl(s: string) : string =
-      prim("nssml_EncodeUrl", "nssml_EncodeUrl", s)
-
-    fun decodeUrl(s: string) : string =
-      prim("nssml_DecodeUrl", "nssml_DecodeUrl", s)
 
     structure Quot =
       struct

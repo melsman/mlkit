@@ -96,6 +96,19 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun oneField (sql : string) : string = 
       wrapDb (fn db => oneFieldDb(db,sql))
 
+    fun zeroOrOneFieldDb(db,sql) : string option =
+      let val s : Set.set = select(db, sql)
+      in 
+	if getRow(db,s) <> NsBasics.END_DATA then
+	  if Set.size s = 1 then 
+	    Set.value(s,0)
+	  else NONE
+	else NONE
+      end
+
+    fun zeroOrOneField (sql : string) : string option =
+      wrapDb (fn db => zeroOrOneFieldDb(db,sql))
+
     fun oneRowDb(db,sql) : string list =
       let val s : Set.set = select(db, sql)
       in 

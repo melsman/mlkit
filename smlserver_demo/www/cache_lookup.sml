@@ -1,8 +1,5 @@
 
-val cache = 
-  case Ns.Cache.find "people"
-    of SOME c => c
-     | NONE => Ns.Cache.create ("people", 20)
+val cache = Ns.Cache.findTm ("people", 20)
 
 fun returnPage s = Ns.Quot.return `
 <html>
