@@ -49,6 +49,9 @@ functor ParseElab(structure Parse: PARSE
 		  structure Crash: CRASH
 		    ): PARSE_ELAB =
   struct
+
+    structure ErrorCode = ErrorTraverse.ErrorCode
+
     type Report = Report.Report
     type topdec = PostElabTopdecGrammar.topdec
 
@@ -72,7 +75,7 @@ functor ParseElab(structure Parse: PARSE
     type ElabBasis = ElabTopdec.StaticBasis
     datatype Result =
         SUCCESS of {report: Report, infB: InfixBasis, elabB: ElabBasis, topdec: topdec}
-      | FAILURE of Report
+      | FAILURE of Report * ErrorCode.ErrorCode list
 
     fun elab (infB, elabB, topdec) : Result =
           let val debugParse =
@@ -96,7 +99,7 @@ functor ParseElab(structure Parse: PARSE
 		   SUCCESS {report = debugParse // debugElab // report,
 			    infB = infB, elabB = elabB', topdec = topdec'}
 		 end
-	     | ErrorTraverse.FAILURE errors => FAILURE (debugParse // errors))
+	     | ErrorTraverse.FAILURE (error_report, error_codes) => FAILURE (debugParse // error_report, error_codes))
 	  end
 
     exception Parse of Report.Report
@@ -152,6 +155,6 @@ functor ParseElab(structure Parse: PARSE
 			    | (infB, None) => empty_success
 	  val _ = chat "[elaboration end...]\n"
       in elab_res
-      end handle Parse report => (chat "[parsing end...]\n"; FAILURE report)
+      end handle Parse report => (chat "[parsing end...]\n"; FAILURE (report, [ErrorCode.error_code_parse]))
 
   end

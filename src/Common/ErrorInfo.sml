@@ -386,6 +386,72 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 
       | report (RIGIDTYFUNEQERROR args) =
 	  line ("Equality attribute differs: " ^ pr_UnifyArgs args)
+
+
+    structure ErrorCode =
+      struct
+	type ErrorCode = string and ErrorInfo = ErrorInfo
+
+	fun from_ErrorInfo (ei: ErrorInfo) : ErrorCode =
+	  case ei
+	    of UNIFICATION _ =>                         "UNIFICATION"
+	     | UNIFICATION_TEXT _ =>                    "UNIFICATION_TEXT"
+	     | UNIFICATION_RANK _ =>                    "UNIFICATION_RANK"
+	     | LOOKUP_LONGID _ =>                       "LOOKUP_LONGID"
+	     | LOOKUP_LONGTYCON _ =>                    "LOOKUP_LONGTYCON"
+	     | NOTCONSTYPE _ =>                         "NOTCONSTYPE"
+	     | QUALIFIED_ID _ =>                        "QUALIFIED_ID"
+	     | UNGUARDED_TYVARS _ =>                    "UNGUARDED_TYVARS"
+	     | UNGENERALISABLE_TYVARS _ =>              "UNGENERALISABLE_TYVARS"
+	     | WRONG_ARITY _ =>                         "WRONG_ARITY"
+	     | FLEX_REC_NOT_RESOLVED =>                 "FLEX_REC_NOT_RESOLVED"
+	     | REPEATED_IDS _ =>                        "REPEATED_IDS"
+	     | TYVARS_NOT_IN_TYVARSEQ _ =>              "TYVARS_NOT_IN_TYVARSEQ"
+	     | DATATYPES_ESCAPE_SCOPE _ =>              "DATATYPES_ESCAPE_SCOPE"
+	     | TYVARS_SCOPED_TWICE _ =>                 "TYVARS_SCOPED_TWICE"
+	     | REBINDING_TRUE_NIL_ETC _ =>              "REBINDING_TRUE_NIL_ETC"
+	     | REBINDING_IT =>                          "REBINDING_IT"
+	     | SPECIFYING_TRUE_NIL_ETC _ =>             "SPECIFYING_TRUE_NIL_ETC"
+	     | SPECIFYING_IT =>                         "SPECIFYING_IT"
+	     | LOOKUP_SIGID _ =>                        "LOOKUP_SIGID"
+	     | LOOKUP_LONGSTRID _ =>                    "LOOKUP_LONGSTRID"
+	     | LOOKUP_FUNID _ =>                        "LOOKUP_FUNID"
+	     | EXDESC_SIDECONDITION =>                  "EXDESC_SIDECONDITION"
+	     | SHARING_TYPE_NOT_TYNAME _ =>             "SHARING_TYPE_NOT_TYNAME"
+	     | SHARING_TYPE_RIGID _ =>                  "SHARING_TYPE_RIGID"
+	     | SHARING_TYPE_ARITY _ =>                  "SHARING_TYPE_ARITY"
+	     | WHERE_TYPE_NOT_WELLFORMED _ =>           "WHERE_TYPE_NOT_WELLFORMED"
+	     | WHERE_TYPE_EQTYPE _ =>                   "WHERE_TYPE_EQTYPE"
+	     | WHERE_TYPE_RIGID _ =>                    "WHERE_TYPE_RIGID"
+	     | WHERE_TYPE_NOT_TYNAME _ =>               "WHERE_TYPE_NOT_TYNAME"
+	     | WHERE_TYPE_ARITY _ =>                    "WHERE_TYPE_ARITY"
+	     | SIGMATCH_ERROR sigmatcherror =>
+	      let open ModuleStatObject
+	      in case sigmatcherror
+		   of MISSINGSTR _ =>                   "MISSINGSTR"
+		    | MISSINGTYPE _ =>                  "MISSINGTYPE"
+		    | S_CONFLICTINGARITY _ =>           "S_CONFLICTINGARITY"
+		    | CONFLICTINGEQUALITY _ =>          "CONFLICTINGEQUALITY"
+		    | MISSINGVAR _ =>                   "MISSINGVAR"
+		    | MISSINGEXC _ =>                   "MISSINGEXC"
+		    | S_RIGIDTYCLASH _ =>               "S_RIGIDTYCLASH"
+		    | S_CONFLICTING_DOMCE _ =>          "S_CONFLICTING_DOMCE"
+		    | NOTYENRICHMENT _ =>               "NOTYENRICHMENT"
+		    | EXCNOTEQUAL _ =>                  "EXCNOTEQUAL"
+	      end
+	     | CYCLE _ =>                               "CYCLE"
+	     | U_RIGIDTYCLASH _ =>                      "U_RIGIDTYCLASH"
+	     | TYPESTRILLFORMEDNESS _ =>                "TYPESTRILLFORMEDNESS"
+	     | U_CONFLICTING_DOMCE _ =>                 "U_CONFLICTING_DOMCE"
+	     | U_CONFLICTINGARITY _ =>                  "U_CONFLICTINGARITY"
+	     | RIGIDTYFUNEQERROR _ =>                   "RIGIDTYFUNEQERROR"
+
+	val error_code_parse = "PARSE"
+
+	fun eq(ec1 : ErrorCode, ec2: ErrorCode): bool = ec1=ec2
+	fun pr (ec: ErrorCode) :string = ("ERR#" ^ ec)
+      end
+
   end;
 
 

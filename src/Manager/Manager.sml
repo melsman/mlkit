@@ -43,6 +43,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     structure Repository = ManagerObjects.Repository
     structure IntBasis = ManagerObjects.IntBasis
     structure ElabBasis = ModuleEnvironments.B
+    structure ErrorCode = ParseElab.ErrorCode
 
     fun die s = Crash.impossible ("Manager." ^ s)
     fun error (s : string) = (print "\nError: "; print s; print "\n\n")
@@ -267,7 +268,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun OpacityElim_restrict a = OpacityElim.restrict a
     fun opacity_elimination a = OpacityElim.opacity_elimination a
 
-    exception PARSE_ELAB_ERROR
+    exception PARSE_ELAB_ERROR of ErrorCode.ErrorCode list
     fun parse_elab_interp (B, funid, source_filepath, funstamp_now) : Basis * modcode =
           let val _ = Timing.reset_timings()
 	      val _ = Timing.new_file(source_filepath)
@@ -280,7 +281,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      val res = ParseElab.parse_elab {infB=infB,elabB=elabB, file=source_filepath} 
 	      (* val _ = print " done]\n" *)
 	  in (case res
-		of ParseElab.FAILURE report => (print_error_report report; raise PARSE_ELAB_ERROR)
+		of ParseElab.FAILURE (report, error_codes) => (print_error_report report; raise PARSE_ELAB_ERROR error_codes)
 		 | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
 		  let val names_elab = !Name.bucket
 
@@ -411,12 +412,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * build()  builds a loaded project
      * ------------------------------------ *)
 			
-    fun build() =
+    fun build() =   (* May raise PARSE_ELAB_ERROR *)
       let val _ = Repository.recover()
 	  val emitted_files = EqSet.fromList (Repository.emitted_files())
 	  val _ = let val modc = build_proj(Basis.initial, !project)
 		  in ModCode.mk_exe (modc, "run")
-		  end handle PARSE_ELAB_ERROR => output(std_out, "\n ** Parse or elaboration error occurred. **\n")
+		  end
 	  val emitted_files' = EqSet.fromList (Repository.emitted_files())
     	  val files_to_delete = EqSet.list (EqSet.difference emitted_files emitted_files')
       in List.apply ManagerObjects.SystemTools.delete_file files_to_delete
@@ -442,7 +443,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	         print_result_report report;
 		 log_cleanup()
 	      end
-	     | ParseElab.FAILURE report => (print_error_report report; raise PARSE_ELAB_ERROR)
+	     | ParseElab.FAILURE (report, error_codes) => (print_error_report report; raise PARSE_ELAB_ERROR error_codes)
          ) handle XX => (log_cleanup(); raise XX)
       end 
 
@@ -458,7 +459,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       in (case ParseElab.parse_elab {infB=infB,elabB=elabB,
 				     file=unitname_to_sourcefile unitname} 
 	    of ParseElab.SUCCESS {report, ...} => (print_result_report report; log_cleanup())
-	     | ParseElab.FAILURE report => (print_error_report report; log_cleanup())
+	     | ParseElab.FAILURE (report, error_codes) => (print_error_report report; raise PARSE_ELAB_ERROR error_codes)
 	 ) handle E => (log_cleanup(); raise E)
       end 
 
@@ -466,14 +467,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     (* initialize Flags.build_ref to contain build (for interaction), etc.
      * See comment in FLAGS.*)
 
-    val _ = Flags.build_project_ref := build
+    fun wrap f a = (f a) handle PARSE_ELAB_ERROR _ => 
+      output(std_out, "\n ** Parse or elaboration error occurred. **\n")
+
+    val _ = Flags.build_project_ref := wrap build
     val _ = Flags.show_project_ref := show
     val _ = Flags.read_project_ref := read
-    val _ = 
-      let val comp = fn a => 
-	((comp a) handle PARSE_ELAB_ERROR => output(std_out, "\n ** Parse or elaboration error occurred. **\n"))
-      in Flags.comp_ref := comp
-      end
+    val _ = Flags.comp_ref := wrap comp
 
     val interact = Flags.interact
     val read_script = Flags.read_script

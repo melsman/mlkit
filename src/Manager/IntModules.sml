@@ -463,8 +463,8 @@ functor IntModules(structure Name : NAME
 	         val res = ParseElab.parse_elab {infB=infB,elabB=elabB, file=filename} 
 
 	      in case res
-		   of ParseElab.FAILURE report => (print_error_report report;
-						   die "generate_body_builder.ParseElab.FAILURE")
+		   of ParseElab.FAILURE (report,error_codes) => (print_error_report report;
+								 die "generate_body_builder.ParseElab.FAILURE")
 		    | ParseElab.SUCCESS {elabB=elabB',topdec,...} =>
 		     let val names_elab = !Name.bucket
 		         val _ = Name.bucket := names_old  (* re-install old names *)

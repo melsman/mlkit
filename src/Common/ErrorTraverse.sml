@@ -16,6 +16,10 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
     open TopdecGrammar TopdecGrammar.DecGrammar
     structure TypeInfo = ElabInfo.TypeInfo
 
+    (* Support for error testing. *)
+    structure ErrorCode = ElabInfo.ErrorInfo.ErrorCode
+    type ErrorCode = ErrorCode.ErrorCode
+
    (* Simple-minded first attempt: walk over a topdec, accumulating any
       error nodes we encounter. *)
 
@@ -27,11 +31,11 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
       error has been spotted. *)
 
     local
-      val b = ref false 
+      val errors = ref ([]:ErrorCode list) 
     in
-      fun spot () = b := true
-      fun spotted () = !b
-      fun reset () = b := false
+      fun spot (ec : ErrorCode) = errors := ec :: !errors
+      fun get_errors () = !errors
+      fun reset () = errors := []
     end
 
     val report_SourceInfo_in_ElabInfo =
@@ -42,7 +46,7 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
     fun check i =
           (case ElabInfo.to_ErrorInfo i of
 	     Some ei =>
-	       (spot ();
+	       (spot (ErrorCode.from_ErrorInfo ei);
 		Report.line ""
 		// report_SourceInfo_in_ElabInfo i
 		// ElabInfo.ErrorInfo.report ei)
@@ -393,13 +397,15 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
     type Report = Report.Report
 
     datatype result = SUCCESS
-		    | FAILURE of Report
+		    | FAILURE of Report * ErrorCode list
 
     fun traverse topdec =
       let
 	val _ = reset()
 	val report = walk_Topdec topdec
       in
-	if spotted () then FAILURE report else SUCCESS
+	case get_errors()
+	  of [] => SUCCESS
+	   | error_codes => FAILURE (report, error_codes)
       end
   end;
