@@ -1,4 +1,4 @@
-functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
+functor QuasiSet(structure IntStringFinMap : MONO_FINMAP where type dom = int * string
 		 structure QD : QUASI_DOM
 	         structure Name : NAME
 		   sharing type Name.name = QD.name
@@ -6,7 +6,7 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
 		 structure PP : PRETTYPRINT) : KIT_MONO_SET =
   struct
 
-    structure IFM = IntFinMap
+    structure M = IntStringFinMap
 
     fun die s = Crash.impossible ("QuasiSet." ^ s)
 
@@ -15,7 +15,7 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
       
     type elt = QD.dom
       
-    type 'a imap = 'a IFM.map
+    type 'a imap = 'a M.map
     datatype map0 = Rigid of elt imap | Flexible of {matchcount: Name.matchcount, imap: elt imap}
       
     datatype Set = M of map0 ref | Empty
@@ -24,8 +24,8 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
       
     fun singleton d = 
       let val nd = QD.name d
-      in if Name.rigid nd then M (ref (Rigid(IFM.singleton(Name.key nd,d))))
-	 else M (ref (Flexible {imap = IFM.singleton(Name.key nd,d), matchcount = Name.current_matchcount()}))
+      in if Name.rigid nd then M (ref (Rigid(M.singleton(Name.key nd,d))))
+	 else M (ref (Flexible {imap = M.singleton(Name.key nd,d), matchcount = Name.current_matchcount()}))
       end
 
     fun isEmpty Empty = true
@@ -42,9 +42,9 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
     fun ensure_consistent_imap (imap : elt imap) : {rigid: bool, imap : elt imap} =
       let 
 	val (consistent, rigid) = (* Property: rigid => consistent *)
-	  IFM.Fold(fn((i,d),(c,r)) => (c andalso key d = i, r andalso rigid d)) (true,true) imap
+	  M.Fold(fn((i,d),(c,r)) => (c andalso key d = i, r andalso rigid d)) (true,true) imap
 	val imap = if consistent then imap
-		   else IFM.fold(fn(d,im) => IFM.add(key d,d,im)) IFM.empty imap
+		   else M.fold(fn(d,im) => M.add(key d,d,im)) M.empty imap
       in {rigid=rigid,imap=imap}
       end
     
@@ -64,7 +64,7 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
 
     fun member d m = 
       case imap (ensure_consistent m)
-	of SOME im => (case IFM.lookup im (key d)
+	of SOME im => (case M.lookup im (key d)
 			 of SOME _ => true
 			  | NONE => false)
 	 | NONE => false
@@ -75,35 +75,35 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
 	 | M(ref(Rigid imap)) =>
 	  let val nd = QD.name d
 	      val i = Name.key nd
-	  in if Name.rigid nd then mk_rigid(IFM.add(i,d,imap))
-	     else mk_flex (IFM.add(i,d,imap))
+	  in if Name.rigid nd then mk_rigid(M.add(i,d,imap))
+	     else mk_flex (M.add(i,d,imap))
 	  end
-	 | M(ref(Flexible{imap,...})) => mk_flex (IFM.add(key d,d,imap))
+	 | M(ref(Flexible{imap,...})) => mk_flex (M.add(key d,d,imap))
 
     fun union m1 m2 =
       case (ensure_consistent m1, ensure_consistent m2)
 	of (Empty, m) => m
 	 | (m, Empty) => m
-	 | (M(ref(Rigid im1)), M(ref(Rigid im2))) => mk_rigid (IFM.plus(im1,im2))
-	 | (m1,m2) => mk_flex (IFM.plus(imap' m1, imap' m2))
+	 | (M(ref(Rigid im1)), M(ref(Rigid im2))) => mk_rigid (M.plus(im1,im2))
+	 | (m1,m2) => mk_flex (M.plus(imap' m1, imap' m2))
 
     fun remove d m =
       let val m = ensure_consistent m
       in case m
 	   of Empty => m
 	    | M(ref(Rigid im)) => 
-	     (case IFM.remove(key d, im)
-		of SOME im' => if IFM.isEmpty im' then Empty
+	     (case M.remove(key d, im)
+		of SOME im' => if M.isEmpty im' then Empty
 			       else mk_rigid im'
 		 | NONE => m)
 	    | M(ref(Flexible{imap,...})) => 
-		(case IFM.remove(key d, imap)
-		   of SOME im' => if IFM.isEmpty im' then Empty
+		(case M.remove(key d, imap)
+		   of SOME im' => if M.isEmpty im' then Empty
 				  else mk_flex im'
 		    | NONE => m)
       end
 
-    fun mk (im,r) = if IFM.isEmpty im then Empty
+    fun mk (im,r) = if M.isEmpty im then Empty
 		    else if r then mk_rigid im
 			 else mk_flex im
 
@@ -115,10 +115,10 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
 	  let val im1 = imap' m1
 	      val im2 = imap' m2
 	      val (im,rigid) =
-		IFM.Fold(fn((i1,d1),(im,r)) =>
-			 case IFM.lookup im2 i1
+		M.Fold(fn((i1,d1),(im,r)) =>
+			 case M.lookup im2 i1
 			   of SOME _ => (im,r)
-			    | NONE => (IFM.add(i1,d1,im),r andalso rigid d1)) (IFM.empty,true) im1
+			    | NONE => (M.add(i1,d1,im),r andalso rigid d1)) (M.empty,true) im1
 	  in mk(im,rigid)
 	  end
 
@@ -130,10 +130,10 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
 	  let val im1 = imap' m1
 	      val im2 = imap' m2
 	      val (im,rigid) =
-		IFM.Fold(fn((i1,d1),(im,r)) =>
-			 case IFM.lookup im2 i1
-			   of SOME _ => (IFM.add(i1,d1,im),r andalso rigid d1)
-			    | NONE => (im,r)) (IFM.empty,true) im1
+		M.Fold(fn((i1,d1),(im,r)) =>
+			 case M.lookup im2 i1
+			   of SOME _ => (M.add(i1,d1,im),r andalso rigid d1)
+			    | NONE => (im,r)) (M.empty,true) im1
 	  in mk(im,rigid)
 	  end
 
@@ -142,9 +142,9 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
 	of Empty => (Empty, Empty)
 	 | m => let val im = imap' m
 		    val (im1,r1,im2,r2) =
-			 IFM.Fold(fn((i,d),(im1,r1,im2,r2)) =>
-				  if f d then (IFM.add(i,d,im1),r1 andalso rigid d,im2,r2)
-				  else (im1,r1,IFM.add(i,d,im2),r2 andalso rigid d)) (IFM.empty,true,IFM.empty,true) im
+			 M.Fold(fn((i,d),(im1,r1,im2,r2)) =>
+				  if f d then (M.add(i,d,im1),r1 andalso rigid d,im2,r2)
+				  else (im1,r1,M.add(i,d,im2),r2 andalso rigid d)) (M.empty,true,M.empty,true) im
 		in (mk(im1,r1), mk(im2,r2))
 		end
 
@@ -153,9 +153,9 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
 	of Empty => Empty
 	 | m => let val im = imap' m
 		    val keya = key a
-		    val (im,r) = IFM.Fold(fn((i,d),(im,r)) =>
-					  if keya = i then (IFM.add(key b,b,im),r andalso rigid b)
-					  else (IFM.add(i,d,im), r andalso rigid d)) (IFM.empty,true) im
+		    val (im,r) = M.Fold(fn((i,d),(im,r)) =>
+					  if keya = i then (M.add(key b,b,im),r andalso rigid b)
+					  else (M.add(i,d,im), r andalso rigid d)) (M.empty,true) im
 		in mk(im,r)
 		end
 
@@ -163,28 +163,28 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
       case ensure_consistent m
 	of Empty => b
 	 | m => let val im = imap' m
-		in IFM.fold (fn (a1,a2) => f a1 a2) b im
+		in M.fold (fn (a1,a2) => f a1 a2) b im
 		end
 
     fun map f m =
       case ensure_consistent m
 	of Empty => m
 	 | m => let val im = imap' m
-		    val (im,r) = IFM.fold(fn(d,(im,r)) =>
+		    val (im,r) = M.fold(fn(d,(im,r)) =>
 					  let val d' = f d
-					  in (IFM.add(key d',d',im),r andalso rigid d')
-					  end) (IFM.empty,true) im
+					  in (M.add(key d',d',im),r andalso rigid d')
+					  end) (M.empty,true) im
 		in mk(im,r)
 		end
 
     fun apply f m = fold (fn d => fn () => f d) () m
 
     fun list Empty = []
-      | list m = IFM.range (imap' m)
+      | list m = M.range (imap' m)
 
     fun fromList nil = Empty
       | fromList l =
-      let val (im,r) = foldl (fn (d,(im,r)) => (IFM.add(key d,d,im), r andalso rigid d)) (IFM.empty, true) l
+      let val (im,r) = foldl (fn (d,(im,r)) => (M.add(key d,d,im), r andalso rigid d)) (M.empty, true) l
       in mk (im,r)
       end
 
@@ -196,7 +196,7 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
     fun size m =
       case imap(ensure_consistent m)
 	of NONE => 0
-	 | SOME im => IFM.fold(fn(_,n)=>n+1) 0 im 
+	 | SOME im => M.fold(fn(_,n)=>n+1) 0 im 
 
     fun eq (s1: Set) (s2: Set) : bool =
       let fun f s = fold(fn d => fn b => b andalso member d s2) true s
@@ -212,7 +212,7 @@ functor QuasiSet(structure IntFinMap : MONO_FINMAP where type dom = int
 
     fun pu_map0 pu_e : map0 Pickle.pu =
 	let open Pickle
-	    val pu_m = IFM.pu Pickle.int pu_e
+	    val pu_m = M.pu (Pickle.pairGen(Pickle.int,Pickle.string)) pu_e
 	    fun toInt (Rigid _) = 0
 	      | toInt (Flexible _) = 1
 	    fun fun_Rigid _ =

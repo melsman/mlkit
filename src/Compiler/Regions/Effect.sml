@@ -631,7 +631,6 @@ struct
     fun inc r = r:= !r + 1;
   in
     fun resetCount _ = count:= !init_count
-    fun commit_count () = init_count:= !count
     fun freshInt _ = (inc count; !count)
   end
 
@@ -1541,8 +1540,6 @@ tracing *)
   fun reset() = ((*reset_cone emptyCone;*)
 		 (* resetCount(); *)
                  globalIncs:= Increments.empty)
-
-  fun commit() = commit_count()
 
   (* -------------------------------------------------------
    * unify_with_toplevel_rhos_eps(rhos_epss) : unit

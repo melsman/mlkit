@@ -67,6 +67,7 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
     structure Name = Basics.Name
     structure Report = Tools.Report
     structure IntFinMap = Tools.IntFinMap
+    structure IntStringFinMap = Tools.IntStringFinMap
 
     structure TyName = Basics.TyName
     structure DecGrammar = TopdecGrammar.DecGrammar
@@ -378,7 +379,7 @@ functor BuildCompile (ExecutionArgs : EXECUTION_ARGS) : BUILD_COMPILE =
                             structure RType = RType
                             structure LLV = LLV
                             structure RegFlow = RegFlow
-                            structure BT = IntFinMap
+                            structure BT = IntStringFinMap
                             structure RegvarBT = EffVarEnv
 			    structure PP = PP
                             structure Flags = Flags

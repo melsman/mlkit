@@ -38,7 +38,6 @@ functor LambdaExp(structure Lvars: LVARS
       fun fresh_tyvar () = incr2 tyvar_no
       fun fresh_eqtyvar () = incr2 eqtyvar_no
       fun reset() = (tyvar_no := !init_tyvar_no; eqtyvar_no := !init_eqtyvar_no)
-      fun commit() = (init_tyvar_no := !tyvar_no; init_eqtyvar_no := !eqtyvar_no)
     end
 
 

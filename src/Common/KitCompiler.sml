@@ -12,7 +12,7 @@ functor ExecutionArgs() : EXECUTION_ARGS = (* The EXECUTION_ARGS signature is *)
     structure Name = Basics.Name
     structure Report = Tools.Report
     structure Crash = Tools.Crash
-    structure IntFinMap = Tools.IntFinMap
+    structure IntStringFinMap = Tools.IntStringFinMap
     structure Flags = Tools.Flags
     structure PP = Tools.PrettyPrint
       
@@ -32,7 +32,7 @@ functor ExecutionArgs() : EXECUTION_ARGS = (* The EXECUTION_ARGS signature is *)
 			    structure Report = Report
 			    structure PP = PP
 			    structure Crash = Crash
-			    structure IntFinMap = IntFinMap)
+			    structure IntStringFinMap = IntStringFinMap)
       
     structure Lvarset = Lvarset(structure Lvars = Lvars)
       
@@ -42,13 +42,13 @@ functor ExecutionArgs() : EXECUTION_ARGS = (* The EXECUTION_ARGS signature is *)
 			structure Report = Report
 			structure PP = PP
 			structure Crash = Crash
-			structure IntFinMap = IntFinMap)
+			structure IntStringFinMap = IntStringFinMap)
       
     structure Excon = Excon(structure Name = Name
 			    structure Report = Report
 			    structure PP = PP
 			    structure Crash = Crash
-			    structure IntFinMap = IntFinMap)
+			    structure IntStringFinMap = IntStringFinMap)
   end (*ExecutionArgs*)
 
 signature KIT_COMPILER = 

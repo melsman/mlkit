@@ -46,8 +46,9 @@ testbasic_mlkit:
 	/bin/mv test_report.dvi testbasic_report-native-`/bin/date -I`.dvi
 
 test_mlkit:
-	../bin/kittester ../bin/mlkit all.tst
-#	../bin/kittester ../bin/mlkit x86_noprof_nogc.tst
+#	../bin/kittester ../bin/mlkit all.tst
+#	../bin/kittester ../bin/mlkit all_nogengc.tst
+	../bin/kittester ../bin/mlkit x86_noprof_nogc.tst
 	/bin/mv test_report.dvi test_report-native-`/bin/date -I`.dvi
 
 test_kam:

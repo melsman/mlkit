@@ -10,7 +10,7 @@ functor AtInf(structure Lvars: LVARS
               structure LLV: LOCALLY_LIVE_VARIABLES
               structure RegFlow: REG_FLOW
               structure BT: MONO_FINMAP (* finite maps with domain = keys of lvars *)
-                            where type dom = int  
+                            where type dom = int * string 
               structure RegvarBT: MONO_FINMAP 
 	      structure PP: PRETTYPRINT
 		sharing type PP.StringTree = Mul.StringTree 

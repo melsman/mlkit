@@ -202,11 +202,6 @@ sig
 
   val reset_cone: cone -> unit
   val reset: unit -> unit  (* reset list of effect updates; done once pr module *)
-  val commit: unit -> unit (* sets the initial counter to the current counter. *)
-(*
-  val trace: int list ref
-  val traceOrderFinMap: unit -> unit
-*)
 
   type StringTree
   val layout_effect_deep: effect -> StringTree  (* sets and clears visited field*)

@@ -19,7 +19,7 @@ signature LVARS =
     val leq : lvar * lvar -> bool
     val lt : lvar * lvar -> bool
     val eq : lvar * lvar -> bool
-    val key : lvar -> int               (* for sorting etc *)
+    val key : lvar -> int * string      (* for sorting etc ; the string is the base name (i.e., program unit name) *)
     val is_free : lvar -> bool ref      (* mark for computing sets of free variables *)
     val is_inserted : lvar -> bool ref  (* mark for computing sets of free variables *)
 

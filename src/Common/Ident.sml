@@ -86,17 +86,15 @@ functor Ident(structure StrId: STRID
 	 | x :: xs => LONGID(map ID (rev xs), ID x)
 
     local
-      val initial = ref 0
-      val count = ref (!initial)
-(*      fun unique() = "var" ^ Timestamp.print(Timestamp.new()) *)
+      val initial = 0
+      val count = ref initial
       fun unique() = (count := !count + 1;
 		      "var" ^ Int.toString (!count))
       fun unique_named (s:string) = 
                      (count := !count + 1;
 		      s (*^ Int.toString (!count)*))
     in
-      fun reset() = count := !initial
-      fun commit() = initial := !count
+      fun reset() = count := initial
       val inventId = ID o unique
       fun invent_named_id (name:string) = ID(unique_named name)
       fun inventLongId() = LONGID(nil, inventId())

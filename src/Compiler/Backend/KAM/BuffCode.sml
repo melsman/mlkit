@@ -3,6 +3,7 @@
 
 functor BuffCode () : BUFF_CODE =
   struct
+    type key = int * string
     local
       fun make_buffer n = Word8Array.array(n, Word8.fromInt 0);
       fun incr r = r := !r + 1;
@@ -98,19 +99,23 @@ functor BuffCode () : BUFF_CODE =
 			  out_long_w32'(os, Word32.fromInt b))) ps
 
       fun dump_buffer {filename : string, 
-		       main_lab_opt : int option,
-		       map_import_code : (int * int) list,      (* (address,label)-pairs *)
-		       map_import_data : (int * int) list,      (* (address,label)-pairs *)
-		       map_export_code : (int * int) list,      (* (label,address)-pairs *)
-		       map_export_data : (int * int) list} =    (* (label,address)-pairs *)
+		       main_lab_opt : key option,
+		       map_import_code : (int * key) list,      (* (address,label)-pairs *)
+		       map_import_data : (int * key) list,      (* (address,label)-pairs *)
+		       map_export_code : (key * int) list,      (* (label,address)-pairs *)
+		       map_export_data : (key * int) list} =    (* (label,address)-pairs *)
 	let
 	  val os : BinIO.outstream = BinIO.openOut filename
 	  val main_lab = case main_lab_opt
-			   of SOME i => i
+			   of SOME i => #1 i
 			    | NONE => 0
 	  val magic = case Word32.fromString "0x4b303031" (*K001*)
 			of SOME magic => magic
 			 | NONE => raise Fail "NO WAY!"
+	  val map_import_code = map (fn (x,y) => (x, #1 y)) map_import_code   (* MEMO: this does not *)
+	  val map_import_data = map (fn (x,y) => (x, #1 y)) map_import_data   (* work with mlb-files! mael 2004-03-18 *)
+	  val map_export_code = map (fn (x,y) => (#1 x, y)) map_export_code
+	  val map_export_data = map (fn (x,y) => (#1 x, y)) map_export_data
 	in
 (*	  print ("Out position is " ^ Int.toString (!out_position) ^ "\n"); *)
 	  (out_long_w32'(os, Word32.fromInt (!out_position));

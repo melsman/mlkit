@@ -11,7 +11,7 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
     structure AllInfo = Basics.AllInfo
     structure PP = Tools.PrettyPrint
     structure Name = Basics.Name
-    structure IntFinMap = Tools.IntFinMap
+    structure IntStringFinMap = Tools.IntStringFinMap
     structure Flags = Tools.Flags
     structure Report = Tools.Report
     structure Crash = Tools.Crash
@@ -106,7 +106,7 @@ functor ExecutionKAM(BuildCompile : BUILD_COMPILE) : EXECUTION =
     structure Opcodes = OpcodesKAM()
     structure BuffCode = BuffCode()
     structure ResolveLocalLabels = ResolveLocalLabels(structure BC = BuffCode
-						      structure IntFinMap = IntFinMap
+						      structure IntStringFinMap = IntStringFinMap
 						      structure Labels = Labels
 						      structure Crash = Crash)
 

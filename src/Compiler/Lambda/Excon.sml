@@ -4,7 +4,7 @@ functor Excon(structure Name : NAME
 	      structure Report : REPORT
 	      structure Crash : CRASH
 	      structure PP : PRETTYPRINT
-	      structure IntFinMap : MONO_FINMAP where type dom = int
+	      structure IntStringFinMap : MONO_FINMAP where type dom = int * string
 		) : EXCON =
   struct
 
@@ -18,14 +18,14 @@ functor Excon(structure Name : NAME
 
     fun mk_excon (s: string) : excon = {str=s,name=Name.new()}
     fun pr_excon ({str,...}: excon) : string = str
-    fun pr_excon' ({str,name}: excon) : string = str ^ "_" ^ Int.toString (Name.key name)
+    fun pr_excon' ({str,name}: excon) : string = str ^ "_" ^ Int.toString (#1(Name.key name))
 
 (*    val pr_excon = pr_excon'  (* MEMO; mael 2004-03-03 *) *)
 
     fun name ({name,...}: excon) : name = name
 
-    val op < = fn (excon1,excon2) => (Name.key (name excon1) < Name.key (name excon2))
-    fun eq (excon1,excon2) = (Name.key (name excon1)) = (Name.key (name excon2))
+    val op < = fn (e1,e2) => Name.lt (name e1,name e2)
+    fun eq (e1,e2) = Name.eq (name e1, name e2)
     fun match (excon1,excon2) = Name.match(name excon1, name excon2) 
 
     (* Predefined exception constructors *)
@@ -42,7 +42,7 @@ functor Excon(structure Name : NAME
 	 let open Pickle
 	     fun to (s,n) : excon = {str=s,name=n}
 	     fun from ({str=s,name=n} : excon) = (s,n)
-	 in newHash (Name.key o #name)
+	 in newHash (#1 o Name.key o #name)
 	     (convert (to,from) (pairGen0(string,Name.pu)))
 	 end)
 	
@@ -54,7 +54,7 @@ functor Excon(structure Name : NAME
 	val pp = pr_excon
       end
 
-    structure Map = QuasiMap(structure IntFinMap = IntFinMap
+    structure Map = QuasiMap(structure IntStringFinMap = IntStringFinMap
 			     structure Name = Name
 			     structure Crash = Crash
 			     structure PP = PP

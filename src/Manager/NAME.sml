@@ -11,8 +11,10 @@ signature NAME =
      * key n0). 
      *)
 
-    val key : name -> int     (* allow equality only through use of key. *)
+    val key : name -> int * string     (* allow equality only through use of key. *)
     val new : unit -> name
+    val eq : name * name -> bool
+    val lt : name * name -> bool
 
     val mk_rigid : name -> unit  (* the key of a rigid name can never change *)
     val rigid : name -> bool
@@ -41,9 +43,6 @@ signature NAME =
     val current_matchcount : unit -> matchcount          
     val matchcount_lt : matchcount * matchcount -> bool
 
-    val reset : unit -> unit
-    val commit : unit -> unit
-
     (* Because the runtime system needs to know about the labels
      * of certain kinds of symbols, we predefine some names here *)
 
@@ -63,4 +62,6 @@ signature NAME =
 
     val pu : name Pickle.pu
     val pu_matchcount : matchcount Pickle.pu
+
+    val baseSet : string -> unit
   end
