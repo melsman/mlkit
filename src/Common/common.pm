@@ -104,7 +104,7 @@ in
 
   ../Parsing/MyBase.sml
 
-  ../Parsing/Topdec.grm-sig.sml 
+  ../Parsing/Topdec.grm.sig 
   ../Parsing/Topdec.grm.sml 
 (*../Parsing/Topdec.grm*)
 

@@ -97,6 +97,8 @@ clean:
 	cd Compiler/Lambda; rm -rf PM CM *~
 	cd SMLserver; $(MAKE) clean2
 
+grm:
+	cd Parsing; ml-lex Topdec.lex; ml-yacc Topdec.grm
 
 # ----------------------------------------------------------
 # Support for measuring the code blowup resulting from
