@@ -299,8 +299,3 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 
 structure ExecutionArgs = ExecutionArgs()
 structure BuildCompile = BuildCompile (ExecutionArgs)
-  
-functor KitX86() = KitCompiler(ExecutionX86(BuildCompile))
-
-functor KitKAM() = KitCompiler(ExecutionKAM(BuildCompile))
-functor KitDummy() = KitCompiler(ExecutionDummy(ExecutionArgs))

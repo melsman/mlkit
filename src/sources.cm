@@ -33,3 +33,6 @@ Compiler/Backend/KAM/ExecutionKAM.sml
 Compiler/BuildCompile.sml
 Compiler/Backend/NativeCompile.sml
 Common/KitCompiler.sml
+Common/KitX86.sml
+Common/KitDummy.sml
+Common/KitKam.sml

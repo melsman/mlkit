@@ -1,0 +1,1 @@
+functor KitX86() = KitCompiler(ExecutionX86(BuildCompile))
