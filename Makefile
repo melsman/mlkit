@@ -114,6 +114,8 @@ install:
 	$(INSTALL) bin/runtimeSystemProf.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemGC.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemGCProf.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGenGC.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGenGCProf.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemGCTP.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemGCTPProf.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemTag.a $(INSTDIR)/bin
