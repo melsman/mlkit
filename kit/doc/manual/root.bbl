@@ -82,6 +82,12 @@ Mads Tofte and Lars Birkedal.
 \newblock {\em Transactions on Programming Languages and Systems (TOPLAS)},
   20(4):734--767, July 1998.
 
+\bibitem[TT93]{total93}
+Mads Tofte and Jean-Pierre Talpin.
+\newblock A theory of stack allocation in polymorphically typed languages.
+\newblock Technical Report DIKU-report 93/15, Department of Computer Science,
+  University of Copenhagen, 1993.
+
 \bibitem[TT94]{total94}
 Mads Tofte and Jean-Pierre Talpin.
 \newblock Implementing the call-by-value lambda-calculus using a stack of
