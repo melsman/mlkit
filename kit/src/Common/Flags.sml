@@ -60,6 +60,7 @@ functor Flags (structure Crash : CRASH
     val region_inference = ref true
 
     (* Optimiser *)
+    val cross_module_opt = ref true
     val statistics_after_optimisation = ref false
     val minimize_fixs = ref true
     val contract = ref true
@@ -811,6 +812,16 @@ val _ = add_bool_entry {long="optimiser",short=SOME "opt", menu=["Control", "Opt
 			\include function in-lining, function specialisation,\n\
 			\fix-minimization, unboxing of function arguments, and\n\
 			\elimination of unnecessary record constructions."}
+
+val _ = add_bool_entry {long="cross_module_opt",short=SOME "cross_opt", 
+			menu=["Control", "Optimiser", "cross module optimisation"],
+			item=cross_module_opt,neg=true, 
+			desc=
+			"Enable cross-module optimisation including in-lining\n\
+			\of small functions and specialisation of small\n\
+                        \recursive functions. Which optimisations are performed\n\
+                        \across modules is controlled by individual optimisation\n\
+			\flags."}
 
 local
   fun add neg (l, s, r, desc) = add_bool_entry {long=l, short=NONE, menu=["Control", "Optimiser", s],
