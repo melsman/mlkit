@@ -1459,7 +1459,7 @@ struct
         | RegionExp.FN{pat,body,alloc,free} =>
             let val EE' = foldl (fn ((lvar,_), EE) => Mul.declare(EE,lvar,ref(Mul.empty_qmularefset)))
                           EE pat
-val (body',dep) = mk_deptr(EE',body, dep)
+		val (body',dep) = mk_deptr(EE',body, dep)
             in (FN{pat=pat,body=body',free=ref NONE,alloc=alloc}, dep)
             end
         | RegionExp.LETREGION_B{B,body,...} =>

@@ -117,6 +117,10 @@ struct
     (PP.NODE{start="(",finish=")",childsep=PP.RIGHT",",indent=1,
 	     children=[R.mk_lay_sigma' false ([],[],[],tau), Eff.layout_effect rho]})
 
+  fun print_effects effects = print_tree
+      (PP.NODE{start="{",finish="}",childsep=PP.RIGHT",",indent=1,
+	       children=map Eff.layout_effect effects})
+
   fun print_tau tau = print_tree (R.mk_lay_sigma' false ([],[],[],tau))
   fun print_sigma sigma = print_tree (R.mk_lay_sigma false sigma)
 
@@ -1093,18 +1097,31 @@ good *)
 	    val (B, tr' as E'.TR (_, E'.Mus mus, phi), _) = S (B, e0, false, NOTAIL)
 	in case mus of
 	    [(R.FUN([mu1],eps_phi0,[mu2]),rho)] =>
-		let val (mu1',B) = freshMu(instance_arg,B)
+		let (*val (mu1',B) = freshMu(instance_arg,B)
 		    val B = unify_mu(mu1,mu1')B
 		    val (mu2',B) = freshMu(instance_res,B)
-		    val B = unify_mu(mu2,mu2')B
+		    val B = unify_mu(mu2,mu2')B *)
 		    val e' = E'.EXPORT ({name=name, mu_arg=mu1, mu_res=mu2}, tr')
 		    val (mu,B) =
-			let val (fresh_rho,B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
+			let val (fresh_rho,B) = freshRhoWithTy(Eff.WORD_RT, B)
 			in ((R.unitType, fresh_rho),B)
 			end
-		    val B = Eff.unify_with_toplevel_rhos_eps (B, R.ann_mus mus nil)
+		    val effects = R.ann_mus mus []
+(*
+		    val _ = (  print "effects before unification with toplevel effects: "
+			     ; print_effects effects
+			     ; print "\n")
+*)
+		    (* First, lower effects to top-level(i.e., level 1) *)
+		    val B = foldl (fn (e,B) => Eff.lower 1 e B) B effects
+		    val B = Eff.unify_with_toplevel_rhos_eps (B, effects)
+(*
+		    val _ = (  print "effects after unification with toplevel effects: "
+			     ; print_effects effects
+			     ; print "\n")
+*)
 	       in
-		 retract (B, E'.TR (e', E'.Mus [mu], eps_phi0),
+		 retract (B, E'.TR (e', E'.Mus [mu], (*was: eps_phi0*) phi),
 			  NOTAIL)
 	       end
 	   | _ => die "EXPORT: function does not have function type"

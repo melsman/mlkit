@@ -160,7 +160,7 @@ sig
   val insertEps: effect -> cone -> cone
   val insertRho: effect -> cone -> cone
 
-  val unify_with_toplevel_rhos_eps : cone * effect list -> cone
+  val unify_with_toplevel_rhos_eps : cone * effect list -> cone  (* assumes effects has top level *)
   val unify_with_toplevel_effect : effect -> unit
     
   datatype delta_phi = Lf of effect list | Br of delta_phi * delta_phi
