@@ -108,7 +108,7 @@ functor Flags (structure Crash : CRASH
     val region_paths = (ref[]): (int*int) list ref
 
     val chat                    = ref false
-
+    val delay_assembly          = ref false   
     val log_to_file = ref false
     val target_file_extension = ref ".s" (*or ".c", with the C back end*)
 
@@ -577,6 +577,7 @@ struct
      ("show_region_flow_graph", show_region_flow_graph),
      ("warn_on_escaping_puts", warn_on_escaping_puts),
      ("chat", chat),
+     ("delay_assembly", delay_assembly),
      ("eliminate_polymorphic_equality", eliminate_polymorphic_equality),
      ("print_types", print_types),
      ("print_regions", print_regions),
@@ -1070,6 +1071,7 @@ struct
     val control_item : item = mk_header "Control"
           (DISPLAY
 	   ([mk_toggle ("chat", chat),
+             mk_toggle ("delay_assembly", delay_assembly),
 	    optimiser_item,
 	    {text = "print entire menu", attr = noop_attr,
 	     below = ACTION (!show_full_menu_r)},
