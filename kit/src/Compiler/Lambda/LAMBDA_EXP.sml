@@ -131,6 +131,10 @@ signature LAMBDA_EXP =
     val size: LambdaExp -> int
     val size_incl_types: LambdaExp -> int
 
+    val safeLambdaPgm: LambdaPgm -> bool (* This predicate approximates whether a 
+					  * lambda program performs side effects; it is used
+					  * to determine if a program unit can be discharged
+					  * at link time in case it is not used. *)
     type StringTree
     val layoutLambdaPgm: LambdaPgm -> StringTree
     val layoutLambdaExp: LambdaExp -> StringTree

@@ -145,9 +145,9 @@ structure K = struct
 
     fun set_paths() = 
       (Flags.lookup_string_entry "path_to_runtime" := 
-       OS.Path.concat(kitsrc_path, "Runtime/Version17/runtimeSystem.o");
+       OS.Path.concat(kitsrc_path, "Runtime/runtimeSystem.ar");
        Flags.lookup_string_entry "path_to_runtime_prof" := 
-       OS.Path.concat(kitsrc_path, "Runtime/Version17/runtimeSystemProf.o");
+       OS.Path.concat(kitsrc_path, "Runtime/runtimeSystemProf.ar");
        Flags.basislib_project := 
        (OS.Path.mkCanonical (OS.Path.concat(kitsrc_path, "../basislib/basislib.pm")));
        Flags.lookup_string_entry "test_env_directory" := 

@@ -1,33 +1,29 @@
-(* File "HashTable.sml"                    *)
-(* This module uses NJ-arrays.             *)
 (* 09/10/1996, Niels Hallenberg            *)
 (* Domain is int.                          *)
 
-(*$HASH_TABLE: *)
 signature HASH_TABLE =
   sig
-    type '_a hash_table
+    type 'a hash_table
 
-    val mk_empty : int -> '_a hash_table
-    val update : '_a hash_table * int * '_a -> unit
-    val remove : '_a hash_table * int -> unit
-    val lookup : '_a hash_table * int -> '_a option
-    val size : '_a hash_table -> int
-    val range : '_a hash_table -> '_a list
-    val list : '_a hash_table -> (int * '_a) list
-    val apply : ('_a -> unit) -> '_a hash_table -> unit
-    val Apply : ((int * '_a) -> unit) -> '_a hash_table -> unit
-    val fold : ('_a * 'b -> 'b) -> 'b -> '_a hash_table -> 'b
-    val Fold : ((int * '_a) * 'b -> 'b) -> 'b -> '_a hash_table -> 'b
+    val mk_empty : int -> 'a hash_table
+    val update : 'a hash_table * int * 'a -> unit
+    val remove : 'a hash_table * int -> unit
+    val lookup : 'a hash_table * int -> 'a option
+    val size : 'a hash_table -> int
+    val range : 'a hash_table -> 'a list
+    val list : 'a hash_table -> (int * 'a) list
+    val apply : ('a -> unit) -> 'a hash_table -> unit
+    val Apply : ((int * 'a) -> unit) -> 'a hash_table -> unit
+    val fold : ('a * 'b -> 'b) -> 'b -> 'a hash_table -> 'b
+    val Fold : ((int * 'a) * 'b -> 'b) -> 'b -> 'a hash_table -> 'b
 
     type StringTree
     val layout_map : {start: string, eq: string, sep: string, finish: string} ->
-                     (int -> StringTree) -> ('_a -> StringTree) -> '_a hash_table -> StringTree
+                     (int -> StringTree) -> ('a -> StringTree) -> 'a hash_table -> StringTree
 
-    val pp_table_usage : '_a hash_table -> string
+    val pp_table_usage : 'a hash_table -> string
   end
 
-(*$HashTable: HASH_TABLE PRETTYPRINT*)
 functor HashTable(structure PP : PRETTYPRINT) : HASH_TABLE =
   struct
 

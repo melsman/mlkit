@@ -5,10 +5,10 @@ The ML Kit with Regions version 2.2                July 27, 1998
 
                     The ML Kit with Regions 
 
-   http://www.diku.dk/research-groups/topps/activities/kit2/index.html
+   http://www.diku.dk/research-groups/topps/activities/mlkit.html
 
 
-This file describes how to install The ML Kit with Regions version 2.2.
+This file describes how to install The ML Kit with Regions version 3.
 
 Because you are reading this, you have already succeeded in unpacking
 the kit directory, "kit". This directory contains the sources of the
@@ -65,7 +65,7 @@ typing q; and the executable "run", which is now located in the
 "kitdemo" directory, can be run.
 
 As explained in "Programming with Regions in the ML Kit"
-(doc/diku97-12.a4.ps.gz), every user can have her own kit script with
+(doc/manual/manual.ps.gz), every user can have her own kit script with
 personal preferences (flags to control optimizations, how programs
 should be pretty-printed, etc.) The Kit does not force you to use
 script files; it will work fine with the default settings. A sample
@@ -76,11 +76,10 @@ kit script file "kit.script" is located in the "kitdemo" directory.
 -- ------------------
 
 On other platforms, you will probably have to modify the runtime
-system slightly.  Look in the make file src/Runtime/Version17/Makefile
-(it uses gmake facilities). The runtime system uses the system calls
-signal and setitimer in the files "Profiling.c", "Runtime.c", and
-"Exception.h".  The include files to use may depend on the
-architecture.
+system slightly.  Look in the make file src/Runtime/Makefile (it uses
+gmake facilities). The runtime system uses the system calls signal and
+setitimer in the files "Profiling.c", "Runtime.c", and "Exception.h".
+The include files to use may depend on the architecture.
 
 The Kit calls the gcc compiler to assemble (or compile) and link the
 HP PA-RISC (or C) code files it generates. After a few modifications
@@ -101,6 +100,6 @@ The VCG tool, which is used to show region flow graphs, can be found at
 
 Please see the www site:
 
-   http://www.diku.dk/research-groups/topps/activities/kit2/index.html
+   http://www.diku.dk/research-groups/topps/activities/mlkit.html
 
 

@@ -47,10 +47,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		       structure Crash : CRASH) : MANAGER_OBJECTS =
   struct
 
-    structure Int = Edlib.Int
-    structure List = Edlib.List
-
     fun die s = Crash.impossible("ManagerObjects." ^ s)
+    fun chat s = if !Flags.chat then print (s ^ "\n") else ()
 
     structure FunId = TopdecGrammar.FunId
     structure TyName = ModuleEnvironments.TyName
@@ -84,7 +82,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 				     ^ s ^ "\"\nwhen executing shell command:\n"
 			             ^ command)
 	  in if status <> OS.Process.success then
-	        raise Execute ("Error code " ^ Int.string status ^
+	        raise Execute ("Error code " ^ Int.toString status ^
 			       " when executing shell command:\n"
 			       ^ command)
 	     else ()
@@ -160,6 +158,74 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  in target_filename_o
 	  end
 
+	(* -------------------------------------------------------------
+	 * Link time dead code elimination; we eliminate all unnecessary
+	 * object files from the link sequence before we do the actual
+	 * linking. 
+	 * ------------------------------------------------------------- *)
+
+	structure EATable : sig type table
+				val mk : unit -> table
+				val look : table * Compile.EA -> bool
+				val insert : table * Compile.EA -> unit
+			    end =
+	  struct
+	    type table = (string list) Array.array
+	    val table_size = 1009
+	    val table_size_word = Word.fromInt table_size
+	    fun hash s =
+	      let fun loop (0, acc) = acc
+		    | loop (i, acc) = loop(i-1, Word.+(Word.*(0w19,acc), Word.fromInt(Char.ord(String.sub(s,i-1)))))
+	      in Word.toInt(Word.mod(loop (String.size s, 0w0), table_size_word))
+	      end
+	    fun mk () = Array.array (table_size, nil)
+	    fun member (a:string) l =
+	      let fun f [] = false
+		    | f (x::xs) = a=x orelse f xs 
+	      in f l
+	      end
+	    fun look (table,ea) =
+	      let val s = Compile.pp_EA ea
+		  val h = hash s
+		  val l = Array.sub(table,h)
+	      in member s l
+	      end
+	    fun insert (table,ea) = 
+	      let val s = Compile.pp_EA ea
+		  val h = hash s
+		  val l = Array.sub(table,h)
+	      in if member s l then ()
+		 else Array.update(table,h,s::l)
+	      end
+(*	    fun reset () =
+	      let fun loop 0 = ()
+		    | loop i = Array.update(table,i-1,nil)
+	      in loop table_size
+	      end 
+*)
+	  end
+
+	fun unsafe(tf,li) = Compile.unsafe_linkinfo li
+	fun exports(tf,li) = Compile.exports_of_linkinfo li
+	fun imports(tf,li) = Compile.imports_of_linkinfo li
+	fun dead_code_elim tfiles_with_linkinfos = 
+	  let 
+	    val _ = print "[Link time dead code elimination begin...]\n"
+	    val table = EATable.mk()
+	    fun require eas : unit = List.app (fn ea => EATable.insert(table,ea)) eas
+	    fun required eas : bool = foldl (fn (ea,acc) => acc orelse EATable.look(table,ea)) false eas
+	    fun reduce [] = []
+	      | reduce (obj::rest) = 
+	      let val rest' = reduce rest
+		  fun pp_unsafe true = " (unsafe)"
+		    | pp_unsafe false = " (safe)"
+	      in if unsafe obj orelse required (exports obj) then 
+		      (print ("Using       " ^ #1 obj ^ pp_unsafe(unsafe obj) ^ "\n"); require (imports obj); obj::rest')
+		 else (print ("Discharging " ^ #1 obj ^ "\n"); rest')
+	      end
+	    val res = reduce tfiles_with_linkinfos
+	  in print "[Link time dead code elimination end...]\n"; res
+	  end
 
 	(* -------------------------------------------------------------
 	 * link_files_with_runtime_system files run : Link a list `files' of
@@ -188,9 +254,13 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	 * Then link the entire project and produce an executable "run".
 	 * -------------------------------------------------------------- *)
 
-	fun link ((target_files,linkinfos), extobjs, run) : unit =
-	  let val extobjs = elim_dupl (extobjs,[])
-	      val target_link = Compile.generate_link_code linkinfos
+	fun link (tfiles_with_linkinfos, extobjs, run) : unit =
+	  let val tfiles_with_linkinfos = dead_code_elim tfiles_with_linkinfos
+	      val linkinfos = map #2 tfiles_with_linkinfos
+	      val target_files = map #1 tfiles_with_linkinfos
+	      val eas = map Compile.code_label_of_linkinfo linkinfos
+	      val extobjs = elim_dupl (extobjs,[])
+	      val target_link = Compile.generate_link_code eas
 	      val linkfile = pmdir() ^ "link_objects"
 	      val linkfile_s = append_ext linkfile
 	      val linkfile_o = append_o linkfile
@@ -231,10 +301,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun mk_exe (prjid, modc, extobjs, run) =
 	  let fun get (EMPTY_MODC, acc) = acc
 		| get (SEQ_MODC(modc1,modc2), acc) = get(modc1,get(modc2,acc))
-		| get (EMITTED_MODC(tfile,li),(tfiles,lis)) = (tfile::tfiles,li::lis)
-		| get (NOTEMITTED_MODC(target,li,filename),(tfiles,lis)) =
-	         (SystemTools.emit(target, OS.Path.base prjid ^ "-" ^ filename) :: tfiles, li::lis)
-	  in SystemTools.link(get(modc,([],[])), extobjs, run)
+		| get (EMITTED_MODC p, acc) = p::acc
+		| get (NOTEMITTED_MODC(target,li,filename), acc) =
+	             (SystemTools.emit(target, OS.Path.base prjid ^ "-" ^ filename),li)::acc
+	  in SystemTools.link(get(modc,[]), extobjs, run)
 	  end
 
 	fun all_emitted modc : bool =
@@ -279,7 +349,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun modTime (FUNSTAMP_MODTIME(_,t)) = SOME t
 	  | modTime _ = NONE
 	fun pr (FUNSTAMP_MODTIME (funid,time)) = FunId.pr_FunId funid ^ "##" ^ Time.toString time
-	  | pr (FUNSTAMP_GEN (funid,i)) = FunId.pr_FunId funid ^ "#" ^ Int.string i
+	  | pr (FUNSTAMP_GEN (funid,i)) = FunId.pr_FunId funid ^ "#" ^ Int.toString i
       end
 
     type ElabEnv = ModuleEnvironments.Env
@@ -309,10 +379,10 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	    of SOME res => res
 	     | NONE => die "IntFunEnv.lookup"
 	fun restrict (IFE ife, funids) = IFE
-	  (List.foldR (fn funid => fn acc =>
-		       case FinMap.lookup ife funid
-			 of SOME e => FinMap.add(funid,e,acc)
-			  | NONE => die "IntFunEnv.restrict") FinMap.empty funids)
+	  (foldl (fn (funid, acc) =>
+		  case FinMap.lookup ife funid
+		    of SOME e => FinMap.add(funid,e,acc)
+		     | NONE => die "IntFunEnv.restrict") FinMap.empty funids)
 	fun enrich(IFE ife0, IFE ife) : bool = (* using funstamps; enrichment for free variables is checked *)
 	  FinMap.Fold(fn ((funid, obj), b) => b andalso         (* when the functor is being declared!! *)
 		      case FinMap.lookup ife0 funid
@@ -474,7 +544,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	val intRep : intRep = ref FinMap.empty
 	fun clear() = (ElabRep.clear();
-		       List.apply (List.apply (ModCode.delete_files o #6)) (FinMap.range (!intRep));  
+		       List.app (List.app (ModCode.delete_files o #6)) (FinMap.range (!intRep));  
 		       intRep := FinMap.empty)
 	fun delete_rep rep prjid_and_funid = case FinMap.remove ((prjid_and_funid, !region_profiling), !rep)
 				     of Edlib.General.OK res => rep := res
@@ -482,8 +552,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun delete_entries prjid_and_funid = (ElabRep.delete_entries prjid_and_funid; 
 					      delete_rep intRep prjid_and_funid)
 	fun lookup_rep rep exportnames_from_entry prjid_and_funid =
-	  let val all_gen = List.foldR (fn n => fn b => b andalso
-					Name.is_gen n) true
+	  let val all_gen = foldl (fn (n, b) => b andalso Name.is_gen n) true
 	      fun find ([], n) = NONE
 		| find (entry::entries, n) = 
 		if (all_gen o exportnames_from_entry) entry then SOME(n,entry)
@@ -524,8 +593,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  else die "owr_int"
 
 	fun recover_intrep() =
-	  List.apply 
-	  (List.apply (fn entry => List.apply Name.mark_gen (#5 entry)))
+	  List.app 
+	  (List.app (fn entry => List.app Name.mark_gen (#5 entry)))
 	  (FinMap.range (!intRep))
 
 	fun emitted_files() =
