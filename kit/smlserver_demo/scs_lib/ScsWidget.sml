@@ -222,10 +222,9 @@ structure ScsWidget :> SCS_WIDGET =
       <textarea name="^n" rows=^(Int.toString rows) cols=^(Int.toString cols) 
 	 wrap="physical">` ^^ 
 
-        (Quot.fromString o ScsSecurity.xssFilterLeaveNoTags o Quot.toString) 
+        (Quot.fromString o ScsSecurity.xssFilterLeaveNoTags o Quot.toString)
 
-	  v ^^ `
-      </textarea>`
+	  v ^^ `</textarea>`
 
     val largeTa = ta 20 80
     val mediumTa = ta 10 40
