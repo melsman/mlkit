@@ -83,7 +83,7 @@ struct
     | RVAR          of place
     | DROPPED_RVAR  of place
     | PHREG         of lvar
-    | INTEGER       of int 
+    | INTEGER       of string
     | UNIT
 
   datatype StoreType =
@@ -176,7 +176,7 @@ struct
     | pr_atom(RVAR place) = PP.flatten1(Effect.layout_effect place)
     | pr_atom(DROPPED_RVAR place) = "D" ^ PP.flatten1(Effect.layout_effect place)
     | pr_atom(PHREG phreg) = pr_phreg phreg
-    | pr_atom(INTEGER i) = Int.toString i
+    | pr_atom(INTEGER i) = i
     | pr_atom(UNIT) = "()"
 
   fun pr_sty(V lv) = Lvars.pr_lvar lv

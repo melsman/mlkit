@@ -82,7 +82,7 @@ struct
     | DROPPED_RVAR    of place
     | FETCH           of label
     | STORE           of ClosExp * label
-    | INTEGER         of int 
+    | INTEGER         of string
     | STRING          of string
     | REAL            of string
     | PASS_PTR_TO_MEM of sma * int
@@ -183,7 +183,7 @@ struct
       | layout_ce(DROPPED_RVAR place) = LEAF("D" ^ flatten1(Effect.layout_effect place))
       | layout_ce(FETCH lab)          = LEAF("fetch(" ^ Labels.pr_label lab ^ ")")
       | layout_ce(STORE(ce,lab))      = LEAF("store(" ^ flatten1(layout_ce ce) ^ "," ^ Labels.pr_label lab ^ ")")
-      | layout_ce(INTEGER i)          = LEAF(Int.toString i)
+      | layout_ce(INTEGER i)          = LEAF(i)
       | layout_ce(STRING s)           = LEAF("\"" ^ String.toString s ^ "\"")
       | layout_ce(REAL s)             = LEAF(s)
       | layout_ce(PASS_PTR_TO_MEM(sma,i)) = LEAF("MEM(" ^ (flatten1(pr_sma sma)) ^ "," ^ Int.toString i ^ ")")
@@ -1421,15 +1421,26 @@ struct
       | gen_fresh_res_lvars(RegionExp.Frame _) = []
       | gen_fresh_res_lvars(RegionExp.RaisedExnBind) = []
 
+    (* Convert ~n to -n *)
+    fun int32_to_string i = if Int32.>=(i,0) then Int32.toString i
+			    else "-" ^ Int32.toString (Int32.~ i)
+
+    fun int_to_string i = if i >= 0 then Int.toString i else "-" ^ Int.toString (~i)
+
     (* ------------------------ *)
     (*    Closure Conversion    *)
     (* ------------------------ *)
     fun ccTrip (MulExp.TR(e,metaType,ateffects,mulef)) env lab cur_rv =
       let
+
 	fun ccExp e =
 	  (case e of
 	     MulExp.VAR{lvar,il, plain_arreffs,alloc,rhos_actuals,other} => lookup_ve env lvar 
-	   | MulExp.INTEGER(i,alloc) => if !BI.tag_integers then (INTEGER(2*i+1),NONE_SE) else (INTEGER i, NONE_SE)
+	   | MulExp.INTEGER(i,alloc) => 
+	       ((if !BI.tag_integers then 
+		   (INTEGER(int32_to_string(2*(Int32.fromInt i)+1)),NONE_SE) 
+		 else (INTEGER (int_to_string i), NONE_SE))
+		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
 	   | MulExp.STRING(s,alloc) => (STRING s,NONE_SE)
 	   | MulExp.REAL(r,alloc) => 
 	       let
@@ -1792,7 +1803,8 @@ struct
 						insert_se(ccTrip tr2 env lab cur_rv)),NONE_SE)
 	   | MulExp.SWITCH_I(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
-		 fun compile_match i = if !BI.tag_integers then 2*i+1 else i
+		 fun compile_match i = ((if !BI.tag_integers then 2*i+1 else i)
+					   handle Overflow => die "ClosExp.SWITCH_I Overflow raised")
 		 val (selections,opt) = 
 		   compile_sels_and_default selections opt compile_match (fn tr => ccTrip tr env lab cur_rv)
 		 val (ce,se) = ccTrip tr env lab cur_rv
@@ -2192,7 +2204,11 @@ struct
 	fun liftExp e =
 	  (case e of
 	     MulExp.VAR{lvar,il, plain_arreffs,alloc,rhos_actuals,other} => lookup_ve env lvar
-	   | MulExp.INTEGER(i,alloc) => if !BI.tag_integers then INTEGER(2*i+1) else INTEGER i
+	   | MulExp.INTEGER(i,alloc) => 
+	       ((if !BI.tag_integers then 
+		   INTEGER(int32_to_string(2*(Int32.fromInt i)+1)) 
+		 else INTEGER (int_to_string i))
+		   handle Overflow => die "ClosExp.INTEGER Overflow raised")
 	   | MulExp.STRING(s,alloc) => STRING s
 	   | MulExp.REAL(r,alloc) => 
 	       let
@@ -2485,7 +2501,9 @@ struct
 					      liftTrip tr2 env lab)
 	   | MulExp.SWITCH_I(MulExp.SWITCH(tr,selections,opt)) =>
 	       let
-		 fun compile_match i = if !BI.tag_integers then 2*i+1 else i
+		 fun compile_match i = 
+		   ((if !BI.tag_integers then 2*i+1 else i)
+		       handle Overflow => die "ClosExp.INTEGER Overflow raised")
 		 val (selections,opt) = 
 		   compile_sels_and_default selections opt compile_match (fn tr => liftTrip tr env lab)
 		 val ce = liftTrip tr env lab

@@ -62,7 +62,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | StackAddr(off,s) => (out_opcode STACK_ADDR; out_int off)
       | EnvToAcc => out_opcode ENV_TO_ACC
 
-      |	ImmedInt(i) => (out_opcode IMMED_INT; out_int i)
+      |	ImmedInt(i) => (out_opcode IMMED_INT; out_int (Option.valOf(Int.fromString i)))
       | ImmedString(str) => 
 	  let
 	    val str_size = String.size str
@@ -135,7 +135,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 
       | StackOffset i => (out_opcode STACK_OFFSET; out_int i)
       | PopPush i => (out_opcode POP_PUSH; out_int i)
-      | ImmedIntPush i => (out_opcode IMMED_INT_PUSH; out_int i)
+      | ImmedIntPush i => (out_opcode IMMED_INT_PUSH; out_int (Option.valOf(Int.fromString i)))
       | SelectPush i => (out_opcode SELECT_PUSH; out_int i)
       | SelectEnvPush i => (out_opcode SELECT_ENV_PUSH; out_int i)
       | SelectEnvClearAtbotBitPush i => (out_opcode SELECT_ENV_CLEAR_ATBOT_BIT_PUSH; out_int i)

@@ -82,7 +82,7 @@ struct
     | FLOW_VAR_ATY     of lvar * label * label
     | DROPPED_RVAR_ATY
     | PHREG_ATY        of reg
-    | INTEGER_ATY      of int 
+    | INTEGER_ATY      of string
     | UNIT_ATY
 
   fun pr_offset offset = CalcOffset.pr_offset offset
@@ -94,7 +94,7 @@ struct
     | pr_aty(FLOW_VAR_ATY(lv,l1,l2)) = "FV(" ^ Lvars.pr_lvar lv ^ ")"
     | pr_aty(DROPPED_RVAR_ATY) = "DROPPED_RVAR"
     | pr_aty(PHREG_ATY phreg) = pr_phreg phreg
-    | pr_aty(INTEGER_ATY i) = Int.toString i
+    | pr_aty(INTEGER_ATY i) = i
     | pr_aty(UNIT_ATY) = "()"
 
   fun eq_aty(REG_I_ATY offset1,REG_I_ATY offset2) = offset1 = offset2

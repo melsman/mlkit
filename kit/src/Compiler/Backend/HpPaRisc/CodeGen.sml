@@ -226,6 +226,17 @@ struct
 	LDO {d="R'" ^ int_to_string x,b=dst_reg,t=dst_reg} :: C
       | load_immed _ = die "load_immed: immed not in IMMED"
 
+    fun load_immed'(x,dst_reg:reg,C) =
+      let
+	val x_i = (Option.valOf(Int32.fromString x)) 
+      in
+	if x_i < 8192 andalso x_i >= ~8192 then (*is_im14 *)
+	  LDI {i= x, t=dst_reg} :: C
+	else 
+	  LDIL {i="L'" ^ x, t=dst_reg} ::
+	  LDO {d="R'" ^ x,b=dst_reg,t=dst_reg} :: C
+      end
+
     (* Find a register for aty and generate code to store into the aty *)
     fun resolve_aty_def_kill_gen1(SS.STACK_ATY offset,t:reg,size_ff,C) = (t,store_indexed_kill_gen1(sp,WORDS(~size_ff+offset),t,C))
       | resolve_aty_def_kill_gen1(SS.PHREG_ATY phreg,t:reg,size_ff,C)  = (phreg,C) 
@@ -237,7 +248,7 @@ struct
       | move_aty_into_reg_kill_gen1(SS.STACK_ATY offset,dst_reg,size_ff,C) = load_indexed_kill_gen1(dst_reg,sp,WORDS(~size_ff+offset),C)
       | move_aty_into_reg_kill_gen1(SS.DROPPED_RVAR_ATY,dst_reg,size_ff,C) = C
       | move_aty_into_reg_kill_gen1(SS.PHREG_ATY phreg,dst_reg,size_ff,C)  = copy(phreg,dst_reg,C)
-      | move_aty_into_reg_kill_gen1(SS.INTEGER_ATY i,dst_reg,size_ff,C)    = load_immed(IMMED i,dst_reg,C) (* Integers are tagged in ClosExp *)
+      | move_aty_into_reg_kill_gen1(SS.INTEGER_ATY i,dst_reg,size_ff,C)    = load_immed'(i,dst_reg,C) (* Integers are tagged in ClosExp *)
       | move_aty_into_reg_kill_gen1(SS.UNIT_ATY,dst_reg,size_ff,C)         = load_immed(IMMED BI.ml_unit,dst_reg,C)
       | move_aty_into_reg_kill_gen1 _ = die "move_aty_into_reg_kill_gen1: ATY cannot be moved"
 
@@ -2196,7 +2207,7 @@ struct
 	  in
 	    LABEL(lab_exit) ::
 	    COMMENT "**** Link Exit code ****" ::
-	    compile_c_call_prim("terminate", [SS.INTEGER_ATY res], NONE,0,tmp_reg0,
+	    compile_c_call_prim("terminate", [SS.INTEGER_ATY (Int.toString res)], NONE,0,tmp_reg0,
 				DOT_EXIT :: 
 				DOT_PROCEND :: C)
 	  end

@@ -310,6 +310,13 @@ struct
   (************************)
   (* Calculate BitVectors *)
   (************************)
+
+(* Memo:
+     GC must be changed for region arguments to live on the stack. It assumes that 
+     all arguments are live at entry to the function. However, region arguments
+     are not part of the live variables. 
+     2001-02-16, Niels *)
+
   local
     structure LS = LineStmt
     structure LvarFinMap = Lvars.Map
