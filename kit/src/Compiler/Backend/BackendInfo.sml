@@ -35,6 +35,7 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     (* For now, some tags are in integers but it should be eliminated; max size is then 2047 only 09/01/1999, Niels *)
     fun pr_tag_i tag = "0X" ^ (Int.fmt StringCvt.HEX tag)
 
+    (* off is the offset at which values are traversed *)
     fun gen_record_tag(s:int,off:int,i:bool,t:int) = 
       let
 	fun pw(s,w) = print (s ^ " is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
@@ -127,32 +128,6 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val minCodeInBinSearch = 5
     val maxDiff = 10
     val minJumpTabSize = 5
-(*
-    (* Names For Primitive Functions *)
-    val EQUAL_INT       = "__equal_int"
-    val MINUS_INT       = "__minus_int"
-    val PLUS_INT        = "__plus_int"
-    val MUL_INT         = "__mul_int"
-    val NEG_INT         = "__neg_int"
-    val ABS_INT         = "__abs_int"
-    val LESS_INT        = "__less_int"
-    val LESSEQ_INT      = "__lesseq_int"
-    val GREATER_INT     = "__greater_int"
-    val GREATEREQ_INT   = "__greatereq_int"
-    val FRESH_EXN_NAME  = "__fresh_exname"
-    val EXN_PTR         = "__exn_ptr"
-    val PLUS_FLOAT      = "__plus_float"
-    val MINUS_FLOAT     = "__minus_float"
-    val MUL_FLOAT       = "__mul_float"
-    val DIV_FLOAT       = "__div_float"
-    val NEG_FLOAT       = "__neg_float"
-    val ABS_FLOAT       = "__abs_float"
-    val LESS_FLOAT      = "__less_float"
-    val LESSEQ_FLOAT    = "__lesseq_float"
-    val GREATER_FLOAT   = "__greater_float"
-    val GREATEREQ_FLOAT = "__greatereq_float"
-*)
-
 
     (* Primitives that are inlined by the compiler; in contrast to
      * those primitives that are implemented as C calls *)
@@ -165,49 +140,46 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 			     structure PP = PP)
 
       val S_flow = S.fromList
-	["__equal_int31", "__equal_int32ub", "__equal_int32b", "__equal_word8", 
+	["__equal_int31", "__equal_int32ub", "__equal_int32b", 
 	 "__equal_word31", "__equal_word32ub", "__equal_word32b", 
-	 "__less_int31", "__less_int32ub", "__less_int32b", "__less_word8",
+	 "__less_int31", "__less_int32ub", "__less_int32b", 
 	 "__less_word31", "__less_word32ub", "__less_word32b", 
-	 "__lesseq_int31", "__lesseq_int32ub", "__lesseq_int32b", "__lesseq_word8",
+	 "__lesseq_int31", "__lesseq_int32ub", "__lesseq_int32b", 
 	 "__lesseq_word31", "__lesseq_word32ub", "__lesseq_word32b", 
-	 "__greater_int31", "__greater_int32ub", "__greater_int32b", "__greater_word8",    
+	 "__greater_int31", "__greater_int32ub", "__greater_int32b", 
 	 "__greater_word31", "__greater_word32ub", "__greater_word32b", 
-	 "__greatereq_int31", "__greatereq_int32ub", "__greatereq_int32b", "__greatereq_word8",
+	 "__greatereq_int31", "__greatereq_int32ub", "__greatereq_int32b", 
 	 "__greatereq_word31", "__greatereq_word32ub", "__greatereq_word32b"
 	 ]
 
       val S = S.fromList
 	["__less_real", "__lesseq_real", "__greater_real", "__greatereq_real",
-	 "__plus_int31", "__plus_int32ub", "__plus_int32b", "__plus_word8",
+	 "__plus_int31", "__plus_int32ub", "__plus_int32b", 
 	 "__plus_word31", "__plus_word32ub", "__plus_word32b", "__plus_real",
-	 "__minus_int31", "__minus_int32ub", "__minus_int32b", "__minus_word8", 
+	 "__minus_int31", "__minus_int32ub", "__minus_int32b", 
 	 "__minus_word31", "__minus_word32ub", "__minus_word32b", "__minus_real", 
-	 "__mul_int31", "__mul_int32ub", "__mul_int32b", "__mul_word8",
+	 "__mul_int31", "__mul_int32ub", "__mul_int32b", 
 	 "__mul_word31", "__mul_word32ub", "__mul_word32b", "__mul_real",
 	 "__div_real",
 	 "__neg_int31", "__neg_int32ub", "__neg_int32b", "__neg_real",  
 	 "__abs_int31", "__abs_int32ub", "__abs_int32b", "__abs_real",  
-	 "__andb_word8", "__andb_word31", "__andb_word32ub", "__andb_word32b",
-	 "__orb_word8", "__orb_word31", "__orb_word32ub", "__orb_word32b",
-	 "__xorb_word8", "__xorb_word31", "__xorb_word32ub", "__xorb_word32b",
-	 "__shift_left_word8", "__shift_left_word31", "__shift_left_word32ub", "__shift_left_word32b", 
-	 "__shift_right_signed_word8", "__shift_right_signed_word31", 
+	 "__andb_word31", "__andb_word32ub", "__andb_word32b",
+	 "__orb_word31", "__orb_word32ub", "__orb_word32b",
+	 "__xorb_word31", "__xorb_word32ub", "__xorb_word32b",
+	 "__shift_left_word31", "__shift_left_word32ub", "__shift_left_word32b", 
+	 "__shift_right_signed_word31", 
 	 "__shift_right_signed_word32ub", "__shift_right_signed_word32b", 
-	 "__shift_right_unsigned_word8", "__shift_right_unsigned_word31", 
+	 "__shift_right_unsigned_word31", 
 	 "__shift_right_unsigned_word32ub", "__shift_right_unsigned_word32b", 
 	 
-	 "__int31_to_int32b", "__int31_to_int32ub", "__int32b_to_int31", "__int32ub_to_int31",
+	 "__int31_to_int32b", "__int31_to_int32ub", "__int32b_to_int31", "__int32b_to_word32b", "__int32ub_to_int31",
 
 	 "__word31_to_word32b", "__word31_to_word32ub", "__word32b_to_word31", "__word32ub_to_word31",
-	 "__word31_to_word8", "__word32ub_to_word8", "__word32b_to_word8", "__word8_to_word31",
-	 "__word8_to_word32ub", "__word8_to_word32b",
 
-	 "__word8_to_word31_X", "__word8_to_word32ub_X", "__word8_to_word32b_X", 
 	 "__word31_to_word32ub_X", "__word31_to_word32b_X", 
 
-	 "__word32b_to_int32b", "__word32ub_to_int32ub", "__word31_to_int31", 
-	 "__word32b_to_int31", 
+	 "__word32b_to_int32b", "__word32b_to_int32b_X", "__word32ub_to_int32ub", "__word31_to_int31", 
+	 "__word32b_to_int31", "__int32b_to_word31", "__word32b_to_int31_X",
 
 	 "__exn_ptr", "__fresh_exname"]
     in

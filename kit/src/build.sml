@@ -15,14 +15,11 @@ local
 in
   val _ = (
 
-(*	   
 	   enable "garbage_collection";
 	   K.build_basislib();
-*)
 
 	   disable "garbage_collection";
 	   K.build_basislib();
-
 (*
 	   disable "garbage_collection";
 	   enable "region_profiling"; 

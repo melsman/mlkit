@@ -583,12 +583,28 @@ end
 	       (case mk_instance ((tyvars, Type), instances) of
 		  ARROWtype (ts_arg, ts_res) =>
 		    let val ts = map (unTypeListOne "CCALL" o type_e) lexps
-		    in
-		      if eq_Types (ts, ts_arg) then ts_res
-		      else (log ("c function " ^ name ^ " expected types:\n");
-			    log_st (layoutTypes ts_arg);
-			    log "but found types:\n"; log_st (layoutTypes ts);
-			    die "c function call")
+		        val ts_res = 
+			  if eq_Types (ts, ts_arg) then ts_res
+			  else (log ("c function " ^ name ^ " expected types:\n");
+				log_st (layoutTypes ts_arg);
+				log "but found types:\n"; log_st (layoutTypes ts);
+				die "c function call")
+			val _ = 
+			  if name = "id" then  (* check that casts are only performed on unboxed values;
+						* casting of boxed values is region unsafe! *)
+			    (case (ts_arg, ts_res)
+			       of ([ta], [tr]) => 
+				 let open LambdaExp
+				     val unboxed_types = [boolType, unitType, int31Type, word31Type, 
+							  intDefaultType(), wordDefaultType()]
+				     fun ok t = List.exists (fn t' => LambdaBasics.eq_Type(t,t')) unboxed_types
+				 in if ok ta andalso ok tr then ()
+				    else die "c function `id' is used to cast to or from a boxed type; \
+			                     \ it is region-unsafe to use `id' this way! Rewrite your program!!"
+				 end
+		                | _ => die "c function `id' does not have a valid type") 
+			  else ()
+		    in ts_res
 		    end
 		| _ => die ("c function " ^ name ^ " does not have arrow type"))
 

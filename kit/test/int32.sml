@@ -32,6 +32,30 @@ local
     fun quotrem s (i, d, q, r) = tst s (i quot d = q andalso i rem d = r);
 in	
 
+val test0a = tst "test0a" (toInt (34:int) = (34:Int.int))
+val test0b = tst "test0b" (toInt (12:int) = (12:Int.int))
+val test0c = tst "test0c" (toInt (~12:int) = (~12:Int.int))
+val test0d = tst "test0d" (fromInt (~12:Int.int) = (~12:int))
+val test0e = tst "test0e" (fromInt (~12:Int.int) <> (~3:int))
+val test0f = tst "test0f" ((~12:int) = (~ 12:int))
+val test0g = tst "test0g" ((~24:int) = (~ 12 * 2:int))
+val test0h = tst "test0h" (abs(~24:int) = (24:int))
+val test0i = tst "test0i" (abs(12:int) = (12:int))
+val test0j = tst "test0j" (~(12:int) = (~12:int))
+val test0k = tst "test0k" (~(~14:int) = (14:int))
+val test0l = tst "test0l" (abs(~12:int) <> (~12:int))
+val test0m0 = tst "test0m0" ((~12:int) < (12:int))
+val test0m1 = tst "test0m1" ((~12:int) <= (12:int))
+val test0m2 = tst "test0m2" ((13:int) > (4:int))
+val test0m3 = tst "test0m3" ((13:int) >= (12:int))
+val test0n0 = tst "test0n0" ((~12:int) + 25 = (13:int))
+val test0n1 = tst "test0n1" ((~12:int) - 13 = (~25:int))
+val test0n2 = tst "test0n2" ((1222:int) * 10 = (12220:int))
+
+val test0p0 = tst "test0p0" (case 34:int32 of 34 => true | _ => false)
+val test0p1 = tst "test0p1" (case 34:int32 of 32 => false | _ => true)
+val test0p2 = tst "test0p2" (case ~34:int32 of ~34 => true | _ => false)
+
 val test1a = divmod "test1a" (10, 3, 3, 1);
 val test1b = divmod "test1b" (~10, 3, ~4, 2);
 val test1c = divmod "test1c" (~10, ~3, 3, ~1);

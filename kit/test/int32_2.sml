@@ -1,11 +1,12 @@
 (* This test works only for 32-bit implementations! *)
 
-local open Int32
+
+local 
+  open Int32
 in
-val real = fn i => real (toInt i)
-val floor = fn r => fromInt(floor r)
 val maxint : int32 = 2147483647
 val minint = ~maxint -1
+
 infix seq
 fun e1 seq e2 = e2;
 fun test t s = print (t ^ ": " ^ s ^ "\n")
@@ -62,15 +63,4 @@ val test24 = test "test24" ((100 div 0     seq  "WRONG") handle Div => "OK")
 val test25 = test "test25" ((100 mod 0     seq  "WRONG") handle Div => "OK")
 val test26 = test "test26" ((minint div ~1 seq  "WRONG") handle Overflow => "OK")
 
-val maxri = real maxint
-val minri = real minint
-
-val test27 = test "test27" (if floor 3.0 = 3 then "OK" else "WRONG")
-val test28 = test "test28" (if floor 3.14 = 3 then "OK" else "WRONG")
-val test29 = test "test29" (if floor ~3.0 = ~3 then "OK" else "WRONG")
-val test30 = test "test30" (if floor ~3.14 = ~4 then "OK" else "WRONG")
-val test31 = test "test31" (if floor(Real.+(maxri, 0.9)) = maxint then "OK" else "WRONG")
-val test32 = test "test32" (if floor minri = minint then "OK" else "WRONG")
-val test33 = test "test33" ((floor (Real.-(minri, 0.1)) seq  "WRONG") handle Overflow => "OK")
-val test34 = test "test34" ((floor (Real.+(maxri, 1.0)) seq  "WRONG") handle Overflow => "OK")
 end
