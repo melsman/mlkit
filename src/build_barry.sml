@@ -11,8 +11,7 @@ local
 in
   val _ = (disable "garbage_collection";
 	   K.Flags.print_types := false;
-	   K.build_basislib() ;
-	   
+	   K.build_basislib() ;	
 	   K.install() 
 	   )
 end

@@ -302,6 +302,8 @@ functor LambdaBasics (structure Lvars : LVARS
       fun on_lv (lv_map, _) lv = case FinMapEq.lookup Lvars.eq lv_map lv
 				   of SOME lv => lv
 				    | NONE => lv
+      fun on_lv_opt s (SOME lv) = SOME (on_lv s lv)
+	| on_lv_opt _ NONE = NONE
       fun on_tau ren tau =
 	let fun on_t (TYVARtype tv) = TYVARtype (on_tv ren tv)
 	      | on_t (ARROWtype (tl, tl')) = ARROWtype(map on_t tl, map on_t tl')
@@ -368,7 +370,7 @@ functor LambdaBasics (structure Lvars : LVARS
       fun on_prim ren prim =
 	case prim
 	  of CONprim {con,instances} => CONprim {con=con, instances=map (on_tau ren) instances}
-	   | DECONprim {con,instances,lvar} => DECONprim {con=con, instances=map (on_tau ren) instances,lvar=on_lv ren lvar}
+	   | DECONprim {con,instances,lv_opt} => DECONprim {con=con, instances=map (on_tau ren) instances,lv_opt=on_lv_opt ren lv_opt}
 	   | DEREFprim {instance} => DEREFprim {instance=on_tau ren instance}
 	   | REFprim {instance} => REFprim {instance=on_tau ren instance}
 	   | ASSIGNprim {instance} => ASSIGNprim {instance=on_tau ren instance}
@@ -488,7 +490,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	| on_prim S (prim: Type prim) : Type prim =         (* renamings; mael *)
 	case prim 
 	  of CONprim {con, instances} => CONprim {con=con, instances=on_Types S instances}
-	   | DECONprim {con, instances,lvar} => DECONprim {con=con,instances=on_Types S instances,lvar=lvar}
+	   | DECONprim {con, instances,lv_opt} => DECONprim {con=con,instances=on_Types S instances,lv_opt=lv_opt}
 	   | DEREFprim {instance} => DEREFprim{instance=on_Type S instance}
 	   | REFprim {instance} => REFprim{instance=on_Type S instance}
 	   | ASSIGNprim {instance} => ASSIGNprim{instance=on_Type S instance}
