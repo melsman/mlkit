@@ -97,8 +97,9 @@ functor CompileDec(structure Con: CON
                      sharing type PrettyPrint.StringTree = CompilerEnv.StringTree
 		       = LambdaExp.StringTree = ElabInfo.StringTree
                    structure Report : REPORT
-                     sharing type Report.Report = PrettyPrint.Report
-
+		     sharing type Report.Report = Flags.Report
+		       = PrettyPrint.Report
+		       = ElabInfo.ParseInfo.SourceInfo.Report
                    structure Crash: CRASH
 
                   ): COMPILE_DEC =
@@ -140,6 +141,14 @@ functor CompileDec(structure Con: CON
     fun pr (s : string) : unit = output(std_out, s)
 
     val region_profiling = Flags.lookup_flag_entry "region_profiling"
+
+    val line = Report.line
+    val // = Report.//
+    infix //
+    val report_SourceInfo =
+            ElabInfo.ParseInfo.SourceInfo.report
+	  o ElabInfo.ParseInfo.to_SourceInfo
+	  o ElabInfo.to_ParseInfo
 
     (* ----------------------------------------
      * Environment functions
@@ -526,12 +535,12 @@ functor CompileDec(structure Con: CON
       end
 
 
+(*KILL 26/11/1997 16:30. tho.:
    (* two kinds of failure from a compiled match: RAISEMATCH means raise the
       Match exception, and RAISESELF means raise the original packet. *)
 
     datatype FailType = RAISEMATCH of TLE.Type | RAISESELF of TLE.Type
 
-(*KILL 26/11/1997 16:30. tho.:
    (* envOfDecTree - for `val <pat> = <exp>' bindings, we want the environment
       to pass out for use in the scope of the declaration. So, we guddle
       around the decision tree to look for it. This scheme will fail for
@@ -715,11 +724,13 @@ local
 
   type declaration_to_be_made = id * (lvar * LambdaExp.tyvar list * Type) * path
   type declarations_to_be_made = declaration_to_be_made list
-  type rhs = declarations_to_be_made * int
+  type rhs = int
+  type rhs' = declarations_to_be_made * rhs
   (*TODO 03/12/1997 19:36. tho.   kommenter rhs-typen.
    kommenter forskelle & ligheder med sestofts artikel.*)
 
-  fun string_from_rhs (_, i) = Int.string i
+  val string_from_rhs = Int.string
+  fun string_from_rhs' (_, rhs) = string_from_rhs rhs
 
   datatype termd = Pos of con * termd list | Neg of con list
   type context = (con * termd list) list
@@ -747,9 +758,9 @@ local
 			    else if span_eq_int (span con) (length nonset + 1) then Yes
 				 else Maybe)
 
-  datatype kind = Success of rhs | IfEq of ifeq
+  datatype kind = Success of rhs' | IfEq of ifeq
   withtype node = {lvar : lvar, kind : kind, refs : int ref, visited : bool ref}
-       and edge  = node Option
+       and edge = node Option
        and ifeq = path * con * edge * edge
 
   type decdag = edge
@@ -821,19 +832,6 @@ local
       | string_from_con (Scon (SCon.WORD w)) = Int.string w
       | string_from_con (Excon {longid, ...}) = Ident.pr_longid longid
       | string_from_con (Tuple {arity}) = "a_tuple"
-    val edge_bump = app_opt (fn {refs, ...} : node => refs := !refs + 1)
-    fun mk_ifeq_node (ifeq as (path, con, edge1, edge2)) : node =
-	  let val node = {lvar = Lvars.new_named_lvar ("n" ^ Int.string (next ())
-						       ^ "_" ^ string_from_con con ^ "?"),
-	                  kind = IfEq ifeq,
-			  refs = ref 0,
-			  visited = ref false}
-	  in 
-	    mapr := map.add (ifeq, node, !mapr) ;
-	    edge_bump edge1 ;
-	    edge_bump edge2 ;
-	    node
-	  end
 
 (*TODO 06/01/1998 10:55. tho.  kan man bruge indkanttallet ("refs") til
 noget?  F. eks. til at se, om koden er død (fordi der er redundante regler)?
@@ -842,41 +840,56 @@ Problemet er, hvis der kan forekomme en ifeq-knude med indgrad 0.  Så er den
 indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
 	
   in
+    val edge_bump = app_opt (fn {refs, ...} : node => refs := !refs + 1)
+
+    fun mk_node kind s = {kind = kind, refs = ref 0, visited = ref false,
+			  lvar = Lvars.new_named_lvar s}
+    fun mk_ifeq_node (ifeq as (path, con, edge1, edge2)) : node =
+	  let val node = mk_node (IfEq ifeq) ("n" ^ Int.string (next ())
+					      ^ "_" ^ string_from_con con ^ "?")
+	  in 
+	    mapr := map.add (ifeq, node, !mapr) ;
+	    edge_bump edge1 ;
+	    edge_bump edge2 ;
+	    node
+	  end
+
     fun reset () = (mapr := map.empty ; counter := 0)
     fun ifeq_node ifeq : node =
 	  (case find_ifeq_node_like_this ifeq of
 	     Some node => node
 	   | None => mk_ifeq_node ifeq)
 
-    fun mk_success_node (rhs : rhs) : node =
-	  {lvar = Lvars.new_named_lvar ("rhs" ^ string_from_rhs rhs),
-	   kind = Success rhs,
-	   refs = ref 0,
-	   visited = ref false}
-
+(*KILL 12/01/1998 19:15. tho.:
+    fun mk_success_node (rhs as (_, (_, used_ref as ref false)) : rhs) : node =
+	  (used_ref := true ; mk_node (Success rhs) ("rhs" ^ string_from_rhs rhs))
+      | mk_success_node _ = die "mk_success_node"
+*)
     val fail_edge = None
   end (*local*)
 
+(*KILL 12/01/1998 20:57. tho.:
   fun add_id_to_rhs (id : id) (info : ElabInfo.ElabInfo) (path : path)
-	(declarations_to_be_made : declarations_to_be_made, i : int) : rhs =
+	(declarations_to_be_made : declarations_to_be_made, data) : rhs =
 	(case to_TypeInfo info of
 	   Some (TypeInfo.VAR_PAT_INFO {tyvars, Type}) =>
 	     let val alphas = map compileTyVar tyvars
 		 val tau = compileType Type
 		 val lvar = new_lvar_from_id id
 	     in
-	       ((id, (lvar, alphas, tau), path) :: declarations_to_be_made, i)
+	       ((id, (lvar, alphas, tau), path) :: declarations_to_be_made, data)
 	     end
-	 | _ => die "add_id_to_rhs") 
+	 | _ => die "add_id_to_rhs")
+*)
 
   type work = pat list * path list * termd list
-  type rule = pat * rhs
+  type rule = pat * node
 
   fun fail (termd : termd, []) = fail_edge
     | fail (termd, (pat1, rhs1) :: rulerest) =
 	match_pat (pat1, Obj, termd, [], [], rhs1, rulerest)
-  and succeed (ctx : context, [] : work list, rhs : rhs, rules : rule list) =
-	Some (mk_success_node rhs)
+  and succeed (ctx : context, [] : work list, rhs : node, rules : rule list) =
+	Some rhs
     | succeed (ctx, work1::workr, rhs, rules) =
 	(case work1 of
 	   ([],[],[]) => succeed (norm ctx, workr, rhs, rules)
@@ -885,7 +898,7 @@ indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
 			(patr, pathr, termdr)::workr, rhs, rules)
 	 | _ => die "succeed")
   and match_pat (pat : pat, path : path, termd : termd, ctx : context,
-		 work : work list, rhs : rhs, rules : rule list) =
+		 work : work list, rhs : node, rules : rule list) =
 	(case pat of
 	   ATPATpat (info, atpat) => match_atpat (atpat, path, termd, ctx, work, rhs, rules)
 	 | CONSpat (info, longid_op_opt, atpat) =>
@@ -910,8 +923,7 @@ indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
 	 | TYPEDpat (info, pat, ty) =>
 	     match_pat (pat, path, termd, ctx, work, rhs, rules)
 	 | LAYEREDpat (info, OP_OPT (id, _), ty_opt, pat) =>
-	     match_pat (pat, path, termd, ctx, work,
-			add_id_to_rhs id info path rhs, rules)
+	     match_pat (pat, path, termd, ctx, work, rhs, rules)
 	 | UNRES_INFIXpat _ => die "match_pat (UNRES_INFIXpat ...)")
 	
   and match_atpat (atpat, path, termd, ctx, work, rhs, rules) =
@@ -924,9 +936,7 @@ indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
 	     (case to_TypeInfo info of
 		Some (TypeInfo.VAR_PAT_INFO {tyvars, Type}) =>
 		  (*it is a variable, not a nullary constructor*)
-		  succeed (augment (ctx, termd), work,
-			   add_id_to_rhs (Ident.decompose0 longid) info path rhs,
-			   rules)
+		  succeed (augment (ctx, termd), work, rhs, rules)
 	      | Some (TypeInfo.CON_INFO {numCons   : int,
 					 index     : int,
 					 instances : TypeInfo.Type list,
@@ -1009,7 +1019,7 @@ indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
 
 
   fun compile_path env obj Obj = obj
-    | compile_path env obj (Access (0, Con {longid, span, nullary, info}, path)) =
+    | compile_path env obj (Access (0, Con {info, ...}, path)) =
 	(case to_TypeInfo info of
 	   Some (TypeInfo.CON_INFO {tyvars, Type, longid, instances, ...}) =>
 	     (case lookupLongid env longid (NORMAL info) of
@@ -1060,11 +1070,11 @@ indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
    e1 in it.  Then we add the surrounding LET's, again using the
    aforementioned information.*)
 
-  fun compile_rhs compile_no obj env rhs =
+  fun compile_rhs' compile_no obj env rhs' =
 	let
-	  val (declarations_to_be_made : declarations_to_be_made, i) = rhs
+	  val (declarations_to_be_made : declarations_to_be_made, rhs) = rhs'
 	  val env_rhs = CE.plus (env, env_from declarations_to_be_made)
-	  val lexp = compile_no (i, env_rhs)
+	  val lexp = compile_no (rhs, env_rhs)
 	in mk_declarations_to_be_made declarations_to_be_made lexp obj env 
 	end
 
@@ -1105,7 +1115,7 @@ in
 			     #1 (lookupLongexcon env longid (OTHER "compile_node")))
 		 | Tuple _ => die "compile_node: Tuple")
 	     end
-	 | Success rhs => compile_rhs compile_no obj env rhs)
+	 | Success rhs' => compile_rhs' compile_no obj env rhs')
 
   fun compile_node_to_function compile_no obj raise_something tau_return env
 	(node : node) =
@@ -1122,10 +1132,15 @@ in
 	 function (see compile_binding)*)
 	end 
 
-  fun reachable edge = let val nodes = reachable0 edge
-		       in List.apply (fn node => #visited node := false) nodes ;
-			 nodes
-		       end
+
+  (*reachable edge = the nodes that are reachable from the edge `edge'; so
+   `reachable decdag' gives you the nodes of the decdag `decdag'*)
+ 
+  fun reachable (decdag : edge)   : node list =
+	let val nodes = reachable0 decdag
+	in List.apply (fn node => #visited node := false) nodes ;
+	  nodes
+	end
 
   (*invariant: visited fields of all nodes are always false except within
    calls to reachable*)
@@ -1137,9 +1152,33 @@ in
 	(#visited node := true ; 
 	 (case #kind node of
 	    IfEq (path, con, edge1, edge2) => reachable0 edge1 @ reachable0 edge2
-	  | Success rhs => []))
+	  | Success rhs' => []))
 		
+  fun exhaustive (nodes : node list)  : bool =
+	(*Presumably `nodes' is the complete list of nodes in some decdag.
+	 The decdag is exhaustive if there is no failures in it, i.e., if all
+	 edges go to some node, i.e., have the form `Some _'*)
+	not (List.exists (fn {kind=IfEq (path, pcon, None, _), ...} => true
+                           | {kind=IfEq (path, pcon, _, None), ...} => true
+			   | {kind=_, ...} => false)
+	        nodes)
 
+  (*redundant_rules nodes = a list of numbers of rhs's that will never be
+   evaluated.  Presumably `nodes' is the complete list of nodes in some
+   decdag.  In the case of
+
+       fn (Some _) => true | None => false | Some x => x | _ => true
+
+   you get the list [2,3] or [3,2], because the last two mrules are
+   redundant.  rev the list, if you don't like the order.*)
+
+  fun redundant_rules (nodes : node list)   : int list =
+	List.foldL (fn node => fn is =>
+		    (case node of
+		       {kind=Success (_, i), refs=ref 0, ...} => i :: is
+		     | _ => is))
+	  [] nodes
+		           
 
 (*TODO 06/01/1998 11:25. tho.:
 
@@ -1165,12 +1204,103 @@ in
 *)
 
 
-  fun mk_decdag (pats : pat list)   : edge =
-	let val tab = List.tabulate (List.size pats,
-				     fn i => ([] : declarations_to_be_made, i))
-	  val rules = ListPair.zip (pats, tab) handle ListPair.Zip => die "mk_decdag"
-	in (reset () ; fail (Neg [], rules))
-	end
+  local
+    fun declarations_to_be_made_for_id (id : id) (info : ElabInfo.ElabInfo) (path : path) =
+	  (case to_TypeInfo info of
+	     Some (TypeInfo.VAR_PAT_INFO {tyvars, Type}) =>
+	       let val alphas = map compileTyVar tyvars
+		   val tau = compileType Type
+		   val lvar = new_lvar_from_id id
+	       in
+		 (id, (lvar, alphas, tau), path)
+	       end
+	   | _ => die "declarations_to_be_made_for_id")
+
+    (*declared_by_pat (pat, Obj) = the list of declarations (i.e.,
+     declarations_to_be_made) that pat will make.  For instance, the pat in
+
+      `fun f (a, b as (1, c)) = e'
+
+     declares a, b & c.*)
+
+    fun declared_by_pat (pat : pat, path : path) =
+	  (case pat of
+	     ATPATpat (info, atpat) => declared_by_atpat (atpat, path)
+	   | CONSpat (info, longid_op_opt, atpat) =>
+	       (case to_TypeInfo info of
+		  Some (TypeInfo.CON_INFO {numCons, longid, ...}) => 
+		    declared_by_application (Con {longid=longid, span=span_from_int numCons,
+				    info=info,
+				    (*because it appears in a CONSpat:*)nullary=false})
+		      [(0, ATPATpat (DecGrammar.bogus_info, atpat))] (path)
+		| Some (TypeInfo.EXCON_INFO {Type, longid}) =>
+		    declared_by_application (Excon {longid=longid,
+				      (*because it appears in a CONSpat:*)nullary=false})
+		      [(0, ATPATpat (DecGrammar.bogus_info, atpat))] (path)
+		 | _ => die "declared_by_pat (CONSpat ...)")
+	   | TYPEDpat (info, pat, ty) => declared_by_pat (pat, path)
+	   | LAYEREDpat (info, OP_OPT (id, _), ty_opt, pat) =>
+	       declarations_to_be_made_for_id id info path :: declared_by_pat (pat, path)
+	   | UNRES_INFIXpat _ => die "declared_by_pat (UNRES_INFIXpat ...)")
+
+    and declared_by_atpat (atpat, path) =
+	  (case atpat of
+	     WILDCARDatpat info => []
+	   | SCONatpat (info, scon) => []
+	   | LONGIDatpat (info, OP_OPT (longid, _)) =>
+	       (case to_TypeInfo info of
+		  Some (TypeInfo.VAR_PAT_INFO {tyvars, Type}) =>
+		    (*it is a variable, not a nullary constructor*)
+		    [declarations_to_be_made_for_id (Ident.decompose0 longid) info path]
+		| Some (TypeInfo.CON_INFO _) =>
+		    (*because it appears in a LONGIDatpat, the constructor is nullary,
+		     & thus has no arguments:*) [] 
+		| Some (TypeInfo.EXCON_INFO {Type, longid}) => []
+		| _ => die "declared_by_atpat (LONGIDatpat ...)")
+	   | RECORDatpat (info, patrow_opt) =>
+	       let val patrows = (case patrow_opt of
+			 None => []
+		       | Some patrow => makeList
+			   (fn PATROW (_, _, _, patrow_opt) => patrow_opt
+			     | DOTDOTDOT _ => die "declared_by_atpat: DOTDOTDOT")
+			   patrow)
+		 val argpats =
+		       map (fn PATROW (info, _, pat, _) =>
+			    (case to_TypeInfo info of
+			       Some (TypeInfo.LAB_INFO {index, ...}) => (index, pat)
+			     | _ => die "declared_by_atpat: RECORDatpat info")
+			     | _ => die "declared_by_atpat: RECORDatpat patrow") patrows
+	       in
+		 declared_by_application (Tuple {arity=List.size argpats}) argpats (path)
+	       end
+	   | PARatpat (info, pat) => declared_by_pat (pat, path))
+
+    (*declared_by_application pcon argpats path = `pcon' is the compile-time
+     description of the constructor that we want to generate code to match.
+     `argpats' are the argument patterns to `pcon', each paired with its
+     "Access number", the argument to the constructor Access that will access
+     the component corresponding to that pattern.*)
+
+    and declared_by_application pcon (argpats : (int * pat) list) path =
+	  List.foldR (fn (i, pat) => fn declarations_to_be_made =>
+		      declared_by_pat (pat, Access (i, pcon, path))
+		      @ declarations_to_be_made) [] argpats
+  in
+    fun mk_success_node (pat : pat, rhs : rhs) : node =
+	  let val rhs' = (declared_by_pat (pat, Obj), rhs)
+	  in
+	    mk_node (Success rhs') ("rhs" ^ string_from_rhs' rhs')
+	  end
+  end(*local*)
+
+
+  fun mk_decdag (rules : rule list)   : edge =
+	(reset () ;
+	 let val edge = fail (Neg [], rules)
+	 in
+	   edge_bump edge ;
+	   edge
+	 end) 
 
   (*env_from_decdag is only used by compile_binding.  The decdag will always
    be from a pattern that only has one rhs, and env_from_decdag extracts from
@@ -1460,11 +1590,14 @@ end; (*match compiler local*)
 
 	   | TYPEDexp(_, exp, _) => compileExp env exp
 
-	   | HANDLEexp (_, exp', match) =>
+	   | HANDLEexp (info, exp', match) =>
 	       let val e1' = compileExp env exp'
 		   val tau_return = compileType (type_of_exp exp)
 		   val e2' = compile_match env
-		                (match, false, tau_return,
+		                (info,
+				 match,
+				 (*no inexhaustiveness warnings:*)false,
+				 tau_return,
 				(*when no mrule matches, the raised exception
 				 (obj, which is not known here)
 				 must be reraised:*)
@@ -1478,12 +1611,15 @@ end; (*match compiler local*)
 	       in RAISE(e',Types [tau'])
 	       end
 
-	   | FNexp(_, match) => 
+	   | FNexp (info, match) => 
 	       let val tau_return = 
 		         (case compileType (type_of_exp exp) of
 			    ARROWtype (_, [tau_return]) => tau_return
 			  | _ => die "compileExp: FNexp did not have (unary) arrow type")
-	       in compile_match env (match, true, tau_return,
+	       in compile_match env (info,
+				     match,
+				     (*inexhaustiveness warnings, please:*)true,
+				     tau_return,
 				    (*when no mrule matches, exception Match must
 				     be raised: (abstracted over obj because
 				     of HANDLEexp above)*)
@@ -1686,16 +1822,23 @@ the 12 lines above are very similar to the code below
     (*compile_match = compile a match into a FN expression; this is used for
      FNexp & HANDLEexp expressions.  `raise_something' indicates what to
      plant for non-matches; it can be either a lexp that raises exception
-     Match or reraises the raised exception.  `warn' is true if
-     inexhaustiveness warnings are required (true for case statement on
-     excons, for example, but false for the equivalent in a handler).*)
+     Match or reraises the raised exception.  `warn_on_inexhaustiveness' is
+     true, e.g., for case statement on excons, but false for the equivalent
+     in a handler.  The `info' is for pretty warnings.  Well, it does not
+     really make them prettier.*)
 
-    and compile_match env (match, warn, tau_return, raise_something) =
+    and compile_match env (info, match, warn_on_inexhaustiveness,
+			   tau_return, raise_something) =
       let
 	val matches = makeList (fn MATCH(_, _, m) => m) match
 	val pats = map (fn MATCH(_, MRULE(_, pat, _), _) => pat) matches
 	val exps = map (fn MATCH(_, MRULE(_, _, exp), _) => exp) matches
-	val decdag = mk_decdag pats
+	val tab = List.tabulate (List.size pats, fn i => i)
+	val pat_rhs_s = ListPair.zip (pats, tab)
+                 handle ListPair.Zip => die "compile_match: zip"
+	val rules = map (fn (pat, rhs) => (pat, mk_success_node (pat, rhs)))
+	               pat_rhs_s
+	val decdag = mk_decdag rules
 	val lvar_switch = new_lvar_from_pats pats
 	val obj = VAR {lvar=lvar_switch, instances=[]}
 	      (*instances=[] because the argument to a fn cannot be polymorphic*)
@@ -1703,13 +1846,23 @@ the 12 lines above are very similar to the code below
 	val compile_no = fn (i, env_rhs) =>
 	                 (compileExp env_rhs (List.nth i exps
 					      handle _ => die "compile_match: nth"))
+	val nodes = reachable decdag
       in
 	(*KILL 21/12/1997 18:44. tho.:
 	 pr "\n\ncompileMatch: decdag is:\n";
 	 pr_decdag decdag;
 	 *)
-	 FN {pat = [(lvar_switch, tau_argument)],
-	     body =
+	if not warn_on_inexhaustiveness orelse exhaustive nodes then () else
+	  Flags.warn
+	  (report_SourceInfo info // line "Match not exhaustive.") ;
+        List.apply (fn i (*number of rhs which is redundant*) =>
+		    (case (List.nth i matches handle _ => die "compile_match: 2nd nth") of
+		       MATCH (_, MRULE (info, _, _), _) => 
+			 Flags.warn (report_SourceInfo info
+				     // line "That rule is redundant.")))
+	  (redundant_rules (map #2 rules)) ;
+	FN {pat = [(lvar_switch, tau_argument)],
+	    body =
 	       FIX {functions =
 		      map (compile_node_to_function compile_no
 			   obj raise_something tau_return env) (reachable decdag),
@@ -1742,12 +1895,13 @@ the 12 lines above are very similar to the code below
 
 
 
-   (* compileDec - takes an enclosing environment and a declaration, and
-      returns the environment *for this declaration only*, together with a
-      function to apply to the declaration's scope to return the entire
-      lambda term. The `topLevel' parameter is only needed because the
-      match compiler is expected to report non-binding patterns for
-      non top-level val bindings only. *)
+   (*compileDec - takes an enclosing environment and a declaration, and
+    returns the environment *for this declaration only*, together with a
+    function to apply to the declaration's scope to return the entire lambda
+    term.  The `topLevel' parameter is only needed because the match compiler
+    is expected to report non-binding patterns for non top-level val bindings
+    only.  (I think it is always true, right now... and probably will be
+    forever.)*)
 
     and compileDec env (topLevel, dec): (CE.CEnv * (LambdaExp -> LambdaExp)) =
       case dec
@@ -1954,13 +2108,15 @@ the 12 lines above are very similar to the code below
    about this messy explanation.
 
    No, it is better to explain this by giving examples of the code generated
-   in the two situations.  TODO *)
+   in the two situations.  TODO
+
+   compile_binding maybe ought to, but does not, use the `topLevel'
+   argument.*)
 
 
     and compile_binding env (topLevel, pat, exp, (tyvars, Type))
         : CE.CEnv * (LambdaExp -> LambdaExp) =
-    let val decdag = mk_decdag [pat]
-
+    let val decdag = mk_decdag [(pat, mk_success_node (pat, 0))]
         val f = fn scope =>
 	  let val (tyvars', tau') = compileTypeScheme (tyvars, Type)
 	      val lvar_switch = new_lvar_from_pat pat
@@ -1981,7 +2137,12 @@ the 12 lines above are very similar to the code below
 		 scope = compile_edge decdag}
 	  end
 	val env_rhs = env_from_decdag decdag
-    in (env_rhs, f)
+    in
+      if exhaustive (reachable decdag) then () else
+	Flags.warn
+	  (report_SourceInfo (DecGrammar.get_info_pat pat)
+	   // line "Pattern not exhaustive.") ;
+      (env_rhs, f)
     end
 (*KILL 16/12/1997 17:26. tho.:
 	      val compile_no = (fn (0, env_rhs) => scope
@@ -2350,8 +2511,9 @@ the 12 lines above are very similar to the code below
 
     and comp_strdec(ce: CE.CEnv, strdec: strdec) =
       case strdec
-	of DECstrdec(info, dec) => compileDec ce (false,dec)  (* We  always want the warnings, since this is
-							       * a compiler - not a top-level loop.. - Martin *)
+	of DECstrdec(info, dec) => compileDec ce (false,dec)
+	     (*topLevel=false: we always want the warnings, since this is
+	      a compiler - not a top-level loop. - Martin *)
 	 | STRUCTUREstrdec(info, strbind) => comp_strbind(ce,strbind)
 	 | LOCALstrdec(info, strdec1, strdec2) =>
 	  let val (ce1, f1) = comp_strdec(ce,strdec1)
