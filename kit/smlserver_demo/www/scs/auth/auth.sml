@@ -10,10 +10,14 @@ fun reject msg  =
                                                              ("target",target)]); 
    Ns.exit())
 
-val login =
-  case FV.wrapOpt FV.getEmailErr "auth_login" 
-    of NONE => reject (`Du skal indtaste en email.<p> (eng. You must type in an email)`)
-     | SOME e => e
+val email =
+  case FV.wrapOpt FV.getEmailErr "auth_login" of
+    NONE => 
+      (case FV.wrapOpt FV.getLoginErr "auth_login" of
+	 NONE => reject (`Du skal indtaste en email.<p> (eng. You must type in an email)`)
+       | SOME l => l)
+  | SOME e => e
+val email = ScsPerson.fix_email email
 
 val passwd =
   case FV.wrapOpt FV.getStringErr "auth_password" 
@@ -23,7 +27,7 @@ val passwd =
 val pid =
   case Db.zeroOrOneField `select party_id
                           from scs_parties
-                          where email = ^(Db.qqq login)
+                          where email = ^(Db.qqq email)
                             and deleted_p = 'f'` 
     of NONE => reject( `Det indtastede email og kodeord findes ikke i databasen.<p>` ^^
                        `(eng. The provided password and email does not match a record in our database)`)
