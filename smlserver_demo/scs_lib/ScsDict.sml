@@ -147,6 +147,7 @@ structure ScsDict :> SCS_DICT =
 				'^(ScsLang.toString source_lang)', '^(canonical source_text)',
 				'^(Ns.Conn.url())',sysdate)`;
 			source_text)
+		 handle Ns.MissingConnection => (Ns.log (Ns.Notice,"ScsDict.insert: Missing Connection");source_text)
 
     fun cacheName (source_lang,target_lang) = "scs_dict"^ScsLang.toString source_lang ^ ScsLang.toString target_lang
     fun cacheFlush (source_lang,target_lang) = 
