@@ -17,8 +17,15 @@ by a list of tokens. The following tokens are supported:
 Test files may contain Standard ML like comments.
 *)
 
-life.sml            ccl tx tc prof
+(* Tests of static semantics *)
+
 typerr.sml          ccl       ecte
+opaque.sml          ccl
+functor.sml         ccl
+
+(* Tests of some benchmark programs *)
+
+life.sml                tx tc prof
 kitfib35.sml            tx            nobasislib
 kitdangle.sml           tx            nobasislib
 kitdangle3.sml          tx            nobasislib
@@ -38,10 +45,10 @@ fft.sml                 tx tc prof
 msort.pm                tx tc prof
 tststrcmp.sml                 prof
 FuhMishra.pm            tx tc prof
+
+(* Tests of dynamic semantics and the Basis Library *)
+
 testdyn1.sml               tc prof
-
-(* Test of Basis Library *)
-
 check_arrays.sml              prof
 array.sml                     prof
 general.sml                   prof
