@@ -17,15 +17,16 @@ fun fib_m 0 = 1
   | fib_m n = n + fib' (n-1)
 and fib' n = (Ns.Cache.memoize cache fib_m) n
 
-val _ = Page.return "Caching Demonstration - Memorisation" `
+val _ = Page.return "Caching Demonstration - Memorisation" (`
 
   Result of fib ^(Int.toString n) is ^(Int.toString (fib n)).<p>
 
   Result of memorized fib ^(Int.toString n) is ^(Int.toString (fib_m n)).<p>
 
+` ^^ (*`
   Pretty printing the cache: 
   <pre>
   ^(Ns.Cache.pp_cache cache)
-  </pre><p>
+  </pre><p> ` ^^*) `
 
-  Go back to <a href=cache.sml>Cache Demo Home Page</a>.`
+  Go back to <a href=cache.sml>Cache Demo Home Page</a>.`)

@@ -25,14 +25,14 @@ val head = if new_p then "New Value added"
 	   else "Key already in Cache"
 
 val _ = Page.return "Caching Demonstration"  
-  `^head <p>
+  (`^head <p>
 
-  Pretty printing the cache: 
+` ^^(* `  Pretty printing the cache: 
   <pre>
   ^(Ns.Cache.pp_cache cache)
-  </pre><p>
+  </pre><p> ` ^^*) `
 
-  Go back to <a href=cache.sml?kind=^kind>Cache Demo Home Page</a>.`
+  Go back to <a href=cache.sml?kind=^kind>Cache Demo Home Page</a>.`)
   
 
 

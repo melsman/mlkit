@@ -204,11 +204,8 @@ structure Ns :> NS =
 	fun flush(c:cache) : unit =
 	  prim("@Ns_CacheFlush", c)
 	fun set(c:cache, k:string, v:string) : bool =
-	  let val _ = log(Notice,"cache: " ^ Int.toString c)
-val _ = log(Notice,"k: " ^ k)
-val _ = log(Notice,"v: " ^ v)
- val res : int = prim("nssml_CacheSet", (c,k,v))
-val _ = log(Notice,"after res: " ^ Int.toString res)
+	  let 
+	    val res : int = prim("nssml_CacheSet", (c,k,v))
 	  in res = 1
 	  end
 	fun get(c:cache, k:string) : string option =
@@ -255,6 +252,10 @@ val _ = log(Notice,"after res: " ^ Int.toString res)
       struct
 	(* This module uses the basic cache functionalities
    	   implemented in NS_STRING_CACHE *)
+
+	val max_cache_name_size = 31 (* Max size of cache name supported by AOLserver pre version 4 is 
+                                        32 and we leave one slot for the terminating \0. *)
+
 	datatype kind =
 	  WhileUsed of int
 	| TimeOut of int
@@ -289,16 +290,20 @@ val _ = log(Notice,"after res: " ^ Int.toString res)
 	  let
 	    fun pp_kind kind =
 	      case kind of
-		WhileUsed t => "WhileUsed"
-	      | TimeOut t => "TimeOut"
-	      | Size n => "Size"
+		WhileUsed t => "W"
+	      | TimeOut t => "T"
+	      | Size n => "S"
 	    val c_name = name ^ (pp_kind kind) ^ #name(domType) ^ #name(rangeType)
+	    val _ = 
+	      if String.size c_name > max_cache_name_size then
+		raise Fail ("Ns.Cache.get: Can't create cache because cache name " ^ 
+			    c_name ^ " is larger than "  ^ (Int.toString max_cache_name_size))
+	      else ()
 	    val cache = 
 	      case kind of
 		Size n => StringCache.findSz(c_name,n)
 	      | WhileUsed t => StringCache.findTm(c_name,t)
 	      | TimeOut t => StringCache.findTm(c_name,t)
-val _ = log(Notice,"get.cache addr: " ^ (Int.toString cache))
 
 	  in
 	    {name=c_name,
@@ -362,6 +367,7 @@ val _ = log(Notice,"get.cache addr: " ^ (Int.toString cache))
 
 	fun Pair (t1 : 'a Type) (t2: 'b Type) =
 	  let
+	    (* Type pair is printed: (type1,type2) *)
 	    val name = "(" ^ (#name t1) ^ "," ^ (#name t2) ^ ")"
 	    fun to_string (a,b) = 
 	      let
@@ -391,7 +397,8 @@ val _ = log(Notice,"get.cache addr: " ^ (Int.toString cache))
 
 	fun Option (t : 'a Type) =
 	  let
-	    val name = "Opt(" ^ (#name t) ^ ")"
+	    (* Option type is printed: O(type) *)
+	    val name = "O(" ^ (#name t) ^ ")" 
 	    fun to_string a = 
 	      case a of
 		NONE => "0:N()"
@@ -424,7 +431,8 @@ val _ = log(Notice,"get.cache addr: " ^ (Int.toString cache))
 
 	fun List (t : 'a Type ) =
 	  let
-	    val name = "List(" ^ (#name t) ^ ")"
+	    (* List type is printed: L(type) *)
+	    val name = "L(" ^ (#name t) ^ ")"
 	    (* Format: [x1_sz:x1...xN_sz:xN] *)
 	    fun to_string xs = 
 	      let
@@ -464,6 +472,7 @@ val _ = log(Notice,"get.cache addr: " ^ (Int.toString cache))
 
 	fun Triple (t1 : 'a Type) (t2: 'b Type) (t3: 'c Type) =
 	  let
+	    (* Type triple is printed (type1,type2,type3) *)
 	    val name = "(" ^ (#name t1) ^ "," ^ (#name t2) ^ "," ^ (#name t3) ^ ")"
 	    fun to_string (a,b,c) = 
 	      let
@@ -499,11 +508,11 @@ val _ = log(Notice,"get.cache addr: " ^ (Int.toString cache))
 	  end
 
 	(* Pre defined cache types *)
-	val Int    = {name="Int",to_string=Int.toString,from_string=Option.valOf o Int.fromString}
-	val Real   = {name="Real",to_string=Real.toString,from_string=Option.valOf o Real.fromString}
-	val Bool   = {name="Bool",to_string=Bool.toString,from_string=Option.valOf o Bool.fromString}
-	val Char   = {name="Char",to_string=Char.toString,from_string=Option.valOf o Char.fromString}
-	val String = {name="String",to_string=(fn s => s),from_string=(fn s => s)}
+	val Int    = {name="I",to_string=Int.toString,from_string=Option.valOf o Int.fromString}
+	val Real   = {name="R",to_string=Real.toString,from_string=Option.valOf o Real.fromString}
+	val Bool   = {name="B",to_string=Bool.toString,from_string=Option.valOf o Bool.fromString}
+	val Char   = {name="C",to_string=Char.toString,from_string=Option.valOf o Char.fromString}
+	val String = {name="S",to_string=(fn s => s),from_string=(fn s => s)}
       end
 
     structure Info : NS_INFO = NsInfo(struct

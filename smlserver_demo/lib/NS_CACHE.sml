@@ -83,6 +83,13 @@ signature NS_CACHE =
      It is possible to create two caches with the same name, but only
      if they describe mappings of different type.
 
+     AOLserver does not support arbitrary long cache names. The cache
+     name you provide is only part of the constructed name that we use
+     in AOLserver (i.e., we append typing information to the name you
+     provide in order to maintain type safety). The function get
+     raises exception Fail in case the constructed cache name is too
+     large for AOLserver.
+
     [lookup c k] returns value associated with key k in cache c;
     returns NONE if key is not in cache.
 
