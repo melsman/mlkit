@@ -82,7 +82,7 @@ signature TYPE_INFO =
 	                (* Attached to all exp's *)
       | MATCH_INFO of {Type: Type}
 	                (* Attached to MATCH *)
-      | PLAINvalbind_INFO of {tyvars: TyVar list, escaping: TyVar list, Type: Type}
+      | PLAINvalbind_INFO of {tyvars: TyVar list, Type: Type}
 	                (* Attached to PLAINvalbind 
 			   for 'pat = exp' this is the type of the exp, and 
 			   a list of bound type variables. *)

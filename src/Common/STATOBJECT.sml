@@ -29,13 +29,6 @@ signature STATOBJECT =
     type scon
     type strid
 
-    exception Ungeneralised_but_generalisable of TyVar
-
-    (*`raise Ungeneralised_but_generalisable tyvar' means that tyvar could
-     have been generalised if the value polymorphism restriction did not
-     apply.  This should give a type error `Provide type annotation for id'
-     where id is the identifier containing tyvar in its type.  See
-     ElabDec.elab_dec (VALdec ...).*)
 
 
     (*Level: for an explanation of type inference using `let levels'
@@ -142,11 +135,9 @@ signature STATOBJECT =
 	val of_scon                 : scon -> Type
 
 	(*close imp tau = a list of those type variables of tau which are
-	 allowed to be quantified and a list of those type variables which
-	 escape as a consequence of the value restriction.  May raise
-	 Ungeneralised_but_generalisable tyvar when imp is false.*)
+	 allowed to be quantified.*)
 
-	val close                   : bool -> Type -> TyVar list * TyVar list
+	val close                   : bool -> Type -> TyVar list
 	val unify                   : Type * Type -> Substitution Option
 	val instantiate_arbitrarily : TyVar -> unit
              (*instantiate_arbitrarily tyvar = instantiate tyvar
@@ -181,10 +172,18 @@ signature STATOBJECT =
 	val generalises_Type        : TypeScheme * Type -> bool
 
 	(*close imp sigma = generalise generic type variables in sigma except
-	  overload tyvars; used by Environment.  May raise
-	  Ungeneralised_but_generalisable tyvar when imp is false.*)
+	  overload tyvars; used by Environment.
+	  close_and_return_escaping_tyvars is similar, except it also returns
+	  a list of tyvars that were not generalised but could have been
+	  generalised if there were no value polymorphism restriction.  If
+	  there are any such tyvars, we give a type error `Provide type
+	  annotation for <ids>' where <ids> are the identifiers containing
+	  one of the tyvars in their type.  See ElabDec.elab_dec (VALdec
+	  ...)*)
 
 	val close                   : bool -> TypeScheme -> TypeScheme
+	val close_and_return_escaping_tyvars
+	                            : bool -> TypeScheme -> TypeScheme * TyVar list
 
 	(*close_overload tau = generalise generic type variables also
 	 overloaded tyvars.*)

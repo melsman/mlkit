@@ -82,6 +82,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
       | noSome (Some x) s = x
     fun map_opt f (Some x) = Some (f x)
       | map_opt f None = None
+    val concat = List.foldL (General.curry (op @)) []
 
     (*import from StatObject:*)
     structure Level        = StatObject.Level
@@ -246,7 +247,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
       fun addTypeInfo_PLAINvalbind (ElabInfo, tau) =
             ElabInfo.plus_TypeInfo ElabInfo
-	      (PLAINvalbind_INFO {Type=tau, tyvars=[], escaping=[]})
+	      (PLAINvalbind_INFO {Type=tau, tyvars=[]})
     end
 
 
@@ -426,27 +427,22 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
 		 19/12/1996 14:17. tho.*)
 
         fun close isExpansive tau = Type.close (not isExpansive) (S on tau)
-	      handle StatObject.Ungeneralised_but_generalisable tyvar => ([],[])
-		(*A little hacky arbitrarily returning ([],[]), but the user
-		 will get an elaboration error anyway in elab_dec (VALdec
-		 ...), if Ungeneralised_but_generalisable is raised I think.*)
 
         fun do_valbind (vb : OG.valbind) : OG.valbind =
           case vb of
             OG.PLAINvalbind(i, pat, exp, vb_opt) =>
               OG.PLAINvalbind
               (case ElabInfo.to_TypeInfo i of
-                 Some (TypeInfo.PLAINvalbind_INFO{Type,tyvars=[], escaping = _ }) =>
-                   let val (generalisable_tyvars, escaping_tyvars) = 
+                 Some (TypeInfo.PLAINvalbind_INFO{Type,tyvars=[]}) =>
+                   let val generalisable_tyvars = 
                              close (OG.expansive (harmless_con C) exp) Type
                    in 
                      ElabInfo.plus_TypeInfo i 
                      (TypeInfo.PLAINvalbind_INFO{Type=Type,
-                                                 tyvars=generalisable_tyvars,
-                                                 escaping = escaping_tyvars})
+                                                 tyvars=generalisable_tyvars})
                    end
                | _ => i (* impossible "ElabDec.do_valbind: wrong type info"*),
-               do_pat (#1 o close (OG.expansive (harmless_con C) exp)) pat,
+               do_pat (close (OG.expansive (harmless_con C) exp)) pat,
                exp,
                case vb_opt of None => None | Some vb => Some (do_valbind vb))
 
@@ -870,17 +866,19 @@ old*)
                val (S, VE, out_valbind) =
                      elab_valbind (C.plus_U (C, U), valbind)
                val _ = Level.pop()
-               val (VE', out_i) =
-		     (C.close (S onC C, valbind, VE),
-		      (case ListHacks.intersect (ExplicitTyVars, C.to_U C) of
-			 [] => okConv i
-		       | explicittyvars => errorConv
-			   (i, ErrorInfo.TYVARS_SCOPED_TWICE
-			        (map TyVar.from_ExplicitTyVar explicittyvars))))
-		     handle C.Ungeneralised_but_generalisable tyvar =>
-		     (VE,
-		      errorConv (i, ErrorInfo.UNGENERALISABLE_TYVARS
-				      (VE.ids_with_tyvar_in_type_scheme tyvar VE)))
+	       val (VE', escaping_tyvars) = C.close (S onC C, valbind, VE)
+               val out_i =
+		     (case escaping_tyvars of
+			[] =>
+			  (case ListHacks.intersect (ExplicitTyVars, C.to_U C) of
+			     [] => okConv i
+			   | explicittyvars => errorConv
+			       (i, ErrorInfo.TYVARS_SCOPED_TWICE
+				    (map TyVar.from_ExplicitTyVar explicittyvars)))
+		      | escaping_tyvars => 
+			  errorConv (i, ErrorInfo.UNGENERALISABLE_TYVARS
+				          (concat (map (VE.ids_with_tyvar_in_type_scheme VE)
+					   escaping_tyvars))))
 				   
                val out_valbind = generalise_type_info_valbind
 		                   (S onC C, S, out_valbind)
@@ -2163,9 +2161,8 @@ let
 	    EXP_INFO {Type=S on_repeated Type}
       | S on_TypeInfo (MATCH_INFO {Type}) = 
 	    MATCH_INFO {Type=S on_repeated Type}
-      | S on_TypeInfo (PLAINvalbind_INFO {tyvars,escaping,Type}) =
-	    PLAINvalbind_INFO {tyvars=tyvars, escaping=escaping,
-			       Type=S on_repeated Type}
+      | S on_TypeInfo (PLAINvalbind_INFO {tyvars,Type}) =
+	    PLAINvalbind_INFO {tyvars=tyvars, Type=S on_repeated Type}
       | S on_TypeInfo (OPEN_INFO i) = OPEN_INFO i  (*only identifiers*)
       | S on_TypeInfo (INCLUDE_INFO i) = INCLUDE_INFO i  (*only identifiers*)
       | S on_TypeInfo (FUNCTOR_APP_INFO rea) = 

@@ -83,7 +83,7 @@ functor ParseElab(structure Parse: PARSE
 	      val (elabB', topdec') = ElabTopdec.elab_topdec (elabB, topdec)
 	  in
 	    (case ErrorTraverse.traverse topdec' of
-	       ErrorTraverse.SUCCESS warnings =>
+	       ErrorTraverse.SUCCESS =>
 		 let val debugElab =
 		           if !Flags.DEBUG_ELABTOPDEC then
 			     ((PP.reportStringTree(ElabTopdec.layoutStaticBasis elabB'))
@@ -93,7 +93,7 @@ functor ParseElab(structure Parse: PARSE
 			             TopLevelReport.report {infB=infB, elabB=elabB', bindings=false}
 				  else Report.null
 		 in
-		   SUCCESS {report = debugParse // debugElab // report // warnings,
+		   SUCCESS {report = debugParse // debugElab // report,
 			    infB = infB, elabB = elabB', topdec = topdec'}
 		 end
 	     | ErrorTraverse.FAILURE errors => FAILURE (debugParse // errors))
