@@ -5969,11 +5969,12 @@ operation~\boxml{<} provides a built-in comparison on integers.
 The ML Kit supports reference tracing garbage collection in
 combination with the region memory model \cite{hallenberg99}.
 Currently, only the native backend supports garbage collection.
+Garbage collection is also possible with region profiling enabled.
 
 The way to tell the compiler to generate code that supports garbage
-collection is simply to enable the option {\tt garbage collection},
-either from the command-line (use the short option {\tt -gc}) or from
-the interactive menu.
+collection is to enable the option {\tt garbage collection}, either
+from the command-line (use the short option {\tt -gc}) or from the
+interactive menu.
 
 \section{Dangling Pointers}
 The region type system supports deallocation of memory that is not
@@ -6036,21 +6037,20 @@ the following message:
 Executables produced by the Kit with garbage collection enabled can be
 instrumented by use of command-line options. For instance, if the Kit
 has produced a file {\tt run}, one can pass the option {\tt
-  -silent\_gc} to {\tt run} to disable the printing of garbage
+  -verbose\_gc} to {\tt run} to enable the printing of garbage
 collection information at runtime. An overview of available
-command-line options is shown when one pass the option {\tt -help} to
-the generated executable:
-{\small
+command-line options is shown by passing the option {\tt -help} to the
+generated executable: {\small
 \begin{verbatim}
-   Usage: ./run
-         [-help, -h] 
-         [-disable_gc | -silent_gc] [-heap_to_live_ratio d] 
-     where
-         -help, -h                Print this help screen and exit.
+Usage: ./run
+      [-help, -h] 
+      [-disable_gc | -verbose_gc] [-heap_to_live_ratio d] 
+  where
+      -help, -h                Print this help screen and exit.
 
-         -disable_gc              Disable garbage collector.
-         -silent_gc               Suppress messages.
-         -heap_to_live_ratio d    Use heap to live ratio d, ex. 3.0.
+      -disable_gc              Disable garbage collector.
+      -verbose_gc              Show info after each garbage collection.
+      -heap_to_live_ratio d    Use heap to live ratio d, ex. 3.0.
 \end{verbatim}
 }
 
@@ -8166,12 +8166,61 @@ directory for detailed comments.)
 \end{example}
 
 %---------------------------------------------------------
+\chapter{Bootstrapping}
+%---------------------------------------------------------
+In this chapter, we demonstrate the process of generating an
+executable ML Kit that uses regions itself for compiling Standard ML
+programs. An overview of the bootstrapping process is pictured in
+Figure~\ref{bootstrap.fig}
+
+\begin{figure}
+\begin{center}
+  \scalebox{0.5}{\includegraphics{bootstrap.eps}}
+\end{center}
+\caption{The bootstrapping process.}
+\label{bootstrap.fig}
+\end{figure}
+
+The lowest block in the picture denotes the SML/NJ compiler, which is
+used to compile the ML Kit sources to a version of the ML Kit that,
+when running, uses SML/NJ's runtime system. This version of the ML Kit
+is pictured to the right of the SML/NJ executable and is created using
+the standard built procedure:
+\begin{verbatim}
+  > make mlkit
+  ...
+  > make install INSTDIR=$(HOME)/mlkit-v1
+  ...
+\end{verbatim}
+
+To construct a version of the ML Kit that is based on the ML Kit runtime
+system, execute the command
+\begin{verbatim}
+  > $(HOME)/mlkit-v1/bin/mlkit -gc sources.pm
+  ...
+\end{verbatim}
+Assuming everything works out fine, an executable version of the ML
+Kit is now available as the file {\tt run} in the current working
+directory; this version of the ML Kit executable is based on the ML
+Kit runtime system.\footnote{Unfortunately, because of the engineering
+  of the recompilation scheme used in the ML Kit, it is not at present
+  possible to memorize the compilation of the Standard ML Basis
+  Library when using the bootstrapped version of the compiler.}
+
+It is left as an exercise to the reader to verify that after two more
+iterations of bootstrapping, the resulting ML Kit is identical to the
+version of the ML Kit used for compilation; the reason that two
+iterations are necessary has to do with the way that machine code
+labels are choosen when memorization of the Basic Library is supported
+(compared to when memorization is not supported.)
+
+%---------------------------------------------------------
 \chapter{Summary of Changes}
 %---------------------------------------------------------
 
 \section{Changes Since Version 3}
 \index{changes!since version 3}%
-This section provides an overview of the main changes to the ML Kit
+This chapter provides an overview of the main changes to the ML Kit
 since version 3.0.
 
 \subsubsection*{Garbage Collection}
@@ -8180,7 +8229,9 @@ The ML Kit now supports reference tracing garbage collection in
 combination with the region memory model. Garbage collection is
 supported only in the native backend version of the Kit. To enable
 garbage collection simply toggle the entry {\tt garbage collection} in
-the {\tt Control} menu.
+the {\tt Control} menu. Garbage collection is also possible with
+region profiling enabled. See Chapter~\ref{gc.chap} for more
+information about garbage collection with the Kit.
 
 \subsubsection*{X86 Backend}
 The 
@@ -8290,7 +8341,7 @@ x86 native backend. The options are slightly different for the version
 of the ML Kit compiler that uses the bytecode backend.
 
 \begin{verbatim}
-ML Kit version 4.0a, Feb 28, 2001 [X86 Backend]
+ML Kit version 3.4.0, May 14, 2001 [X86 Backend]
 
 Usage: mlkit [OPTION]... [file.sml | file.sig | file.pm]
 
@@ -8315,16 +8366,13 @@ Options:
      can be inferred that values are allocated in them at
      most once are allocated on the stack.
 
---chat                                                    (off)
+--chat, -verbose                                          (off)
      Print a message for each compilation step in the compiler.
 
---clibs S                                               ("-lm")
-     If you have added your own object files to a project, you
-     might also need to link with libraries other than
-     libm.so ("-lm").
-
---colwidth N, -Pwidth N                                   (200)
-     Column width used when pretty printing intermediate code.
+--clibs S                                           ("-lm -lc")
+     If you have added your own object files to a project,
+     you might also need to link with libraries other
+     than libm.a and libc.a ("-lm -lc").
 
 --comments_in_x86_asmcode                                 (off)
      Insert comments in x86 assembler code.
@@ -8340,7 +8388,7 @@ Options:
 --no_contract
      Opposite of --contract.
 
---debug_compiler                                          (off)
+--debug_compiler, -debug                                  (off)
      Print intermediate forms of a program during compilation.
 
 --debug_linking                                           (off)
@@ -8369,6 +8417,8 @@ Options:
 --disable_atbot_analysis                                  (off)
      Disable storage mode analysis. That is, turn all
      allocation directives into attop.
+
+--disable_flow_var                                        (off)
 
 --eliminate_explicit_records                               (on)
      Eliminate bindings of explicit records only used for
@@ -8400,6 +8450,13 @@ Options:
 
 --no_garbage_collection, -no_gc
      Opposite of --garbage_collection, -gc.
+
+--gdb_support, -g                                         (off)
+     When enabled, the compiler passes the option --gstabs
+     to `as' (The GNU Assembler) and preserves the generated
+     assembler files (.s files). Passing the --gstabs
+     option to `as' makes it possible to step through
+     the generated program using gdb (The GNU Debugger).
 
 --import_basislib, -basislib                               (on)
      Import Basis Library automatically in your projects. If 
@@ -8469,6 +8526,10 @@ Options:
 --no_optimiser, -no_opt
      Opposite of --optimiser, -opt.
 
+--output S, -o S                                        ("run")
+     The name of the executable file generated by
+     the Kit.
+
 --print_K_normal_forms                                    (off)
      Print Region Expressions in K-Normal Form. Applicable,
      only after storage mode analysis has been applied.
@@ -8479,8 +8540,7 @@ Options:
      ``print program points'' to print only some program
      points.
 
---print_storage_mode_expression, -Psme                    (off)
-     Print Region Expression after storage mode analysis
+--print_bit_vectors                                       (off)
 
 --print_calc_offset_program                               (off)
 
@@ -8550,6 +8610,9 @@ Options:
      Print simplified program after register
      allocation.
 
+--print_storage_mode_expression, -Psme                    (off)
+     Print Region Expression after storage mode analysis
+
 --print_type_name_stamps, -Ptypestamps                    (off)
      Print type name stamps and their attributes in types
      and expressions.
@@ -8607,6 +8670,9 @@ Options:
      Report optimisation statistics after optimisation of
      Lambda Expression.
 
+--strip                                                   (off)
+     If enabled, the Kit strips the generated executable.
+
 --type_check_lambda                                        (on)
      Type check lambda expression prior to performing region
      inference. Type checking is very fast and for normal use
@@ -8630,6 +8696,9 @@ Options:
      Enable the compiler to issue a warning whenever a 
      region type scheme contains a put effect on a region
      that is not quantified.
+
+--width N, -w N                                           (200)
+     Column width used when pretty printing intermediate code.
 \end{verbatim}
 
 \newpage
