@@ -45,6 +45,8 @@ in
   recipe.sml
   hej.sml
   yellow.sml
+  fib.sml
+  life.sml
   hello.sml
   show.sml
   h1.sml

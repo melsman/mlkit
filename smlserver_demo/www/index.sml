@@ -14,6 +14,8 @@ in
   Quot.concat (List.map mkrow 
 	       [("Hello world", "hello.msp"),
 		("Fibonacci", "hello.sml"),
+		("Fibonacci (long)", "fib.sml"),
+		("Game of Life", "life.sml"),
 		("Generating a calendar", "calendar.msp"),
 		("Server Information", "server.sml"),
 		("Cache Demonstration", "cache.sml"),

@@ -97,18 +97,25 @@ typedef struct {
  *	Module loads and initializes itself.
  *
  *---------------------------------------------------------------------- */
- 
+
+Ns_Mutex stackPoolMutex;
+Ns_Mutex freelistMutex;
+
 int
 Ns_ModuleInit(char *hServer, char *hModule)
 {
   InterpContext* ctx;
   char* configPath;
 
+  // initialize stackPool Mutex and freelist Mutex
+  Ns_InitializeMutex(&stackPoolMutex);
+  Ns_InitializeMutex(&freelistMutex);
+
   /*
    * Create and initalize the interpreter context.
    */
   ctx = (InterpContext*)Ns_Malloc(sizeof(InterpContext));
-  Ns_InitializeMutex(&ctx->lock);
+  //  Ns_InitializeMutex(&ctx->lock);
   ctx->interp = interpNew();
   ctx->hServer = hServer;
   configPath = Ns_ConfigGetPath(hServer, hModule, NULL);   // Fetch the name of the project (prjid)
@@ -189,6 +196,7 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
   char uo[NSSML_PATH_MAX];
   int res;
   time_t t;
+  char *errorStr = NULL;
 
   ctx = (InterpContext*)context;
   server = Ns_ConnServer(conn);
@@ -219,7 +227,7 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
   /*
    * Protect the running of this code from simultaneous requests
    */
-  Ns_LockMutex(&ctx->lock);
+  //  Ns_LockMutex(&ctx->lock);
 
   /*
    * (Re)load interpreter if timeStamps do not match
@@ -244,7 +252,7 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
 	  Ns_Log(Error, "nssml: Failed to open file %s for reading", &ctx->ulFileName);
 
 	  // Release the lock
-	  Ns_UnlockMutex(&ctx->lock);
+	  // Ns_UnlockMutex(&ctx->lock);
 	  return NS_OK;
 	}
     
@@ -271,15 +279,20 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
   }
 
   // Ns_Log(Notice, "Starting interpreter on file %s", uo);
-  res = interpLoadRun(ctx->interp, uo);
-  if ( res == -1 ) {    /* exception other than Interrupt raised */
-    Ns_Log(Warning, "%s raised %s", url, ctx->interp->error);
+  res = interpLoadRun(ctx->interp, uo, &errorStr);
+
+  if ( res < 0 ) {    // uncaught exception; errorStr allocated
+    if ( res == -1 )  // exception other than Interrupt raised
+      {
+	Ns_Log(Warning, "%s raised %s", url, errorStr);
+      }
+    free(errorStr);   // free the malloced string 
+    errorStr = NULL;  // - and nullify field    
   }
-  free(ctx->interp->error);      // free the malloced string 
-  ctx->interp->error = NULL;     // - and nullify field
   Ns_DStringFree(&ds);
 
-  // Release the lock
-  Ns_UnlockMutex(&ctx->lock);
+  //  Ns_UnlockMutex(&ctx->lock);     // Release the lock
+
+  // Ns_Log(Notice, "Finishing interpretation of file %s", uo);
   return NS_OK; 
 }

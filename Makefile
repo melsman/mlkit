@@ -77,7 +77,6 @@ install:
 	chown -R `whoami`.`whoami` $(INSTDIR)
 	chmod -R ug+rw $(INSTDIR)
 	chmod -R o+r $(INSTDIR)
-
 #
 # The following is also done in the %post section in the rpm file, 
 # because the --prefix option to rpm can change the installation 
@@ -86,6 +85,9 @@ install:
 	echo '#!/bin/sh' > $(INSTDIR)/bin/mlkit
 	echo -e '$(INSTDIR)/bin/mlkit.$(ARCH-OS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
 	chmod a+x $(INSTDIR)/bin/mlkit
+	cp -f -p $(INSTDIR)/bin/mlkit /usr/bin/mlkit
+	cp -f -p $(INSTDIR)/bin/rp2ps /usr/bin/rp2ps
+
 
 # The following is necessary if you want to either run kittester
 # or bootstrap the Kit.
@@ -131,4 +133,4 @@ install_smlserver:
 	echo '#!/bin/sh' > $(INSTDIR_SMLSERVER)/bin/smlserverc
 	echo -e '$(INSTDIR_SMLSERVER)/bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER) $$*' >> $(INSTDIR_SMLSERVER)/bin/smlserverc
 	chmod a+x $(INSTDIR_SMLSERVER)/bin/smlserverc
-
+	cp -f -p $(INSTDIR_SMLSERVER)/bin/smlserverc /usr/bin/smlserverc
