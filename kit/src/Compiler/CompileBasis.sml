@@ -136,18 +136,30 @@ functor CompileBasis(structure Con : CON
 			  else log("\n" ^ s ^ ": enrich failed."); b)
 		      else b
 
-    fun enrich ({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce},
-		{TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,rse=rse1,mulenv=mulenv1,
-		 mularefmap=mularefmap1,drop_env=drop_env1,psi_env=psi_env1,l2kam_ce=l2kam_ce1}) =
-      debug("EqEnv", EliminateEq.enrich(EqEnv,EqEnv1)) andalso 
-      debug("TCEnv", LambdaStatSem.enrich(TCEnv,TCEnv1)) andalso
-      debug("OEnv", OptLambda.enrich(OEnv,OEnv1)) andalso
-      debug("rse", RegionStatEnv.enrich(rse,rse1)) andalso
-      debug("mulenv", Mul.enrich_efenv((mulenv,rse),(mulenv1,rse1))) andalso
-      debug("mularefmap", Mul.enrich_mularefmap(mularefmap,mularefmap1)) andalso
-      debug("drop_env", DropRegions.enrich(drop_env,drop_env1)) andalso
-      debug("psi_env", PhysSizeInf.enrich(psi_env,psi_env1)) andalso
-      debug("l2kam_ce", CompLamb.enrich(l2kam_ce,l2kam_ce1))
+    local
+      fun EliminateEq_enrich a = EliminateEq.enrich a
+      fun LambdaStatSem_enrich a = LambdaStatSem.enrich a
+      fun OptLambda_enrich a = OptLambda.enrich a
+      fun RegionStatEnv_enrich a = RegionStatEnv.enrich a
+      fun Mul_enrich_efenv a = Mul.enrich_efenv a
+      fun Mul_enrich_mularefmap a = Mul.enrich_mularefmap a
+      fun DropRegions_enrich a = DropRegions.enrich a
+      fun PhysSizeInf_enrich a = PhysSizeInf.enrich a
+      fun CompLamb_enrich a = CompLamb.enrich a
+    in
+      fun enrich ({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce},
+		  {TCEnv=TCEnv1,EqEnv=EqEnv1,OEnv=OEnv1,rse=rse1,mulenv=mulenv1,
+		   mularefmap=mularefmap1,drop_env=drop_env1,psi_env=psi_env1,l2kam_ce=l2kam_ce1}) =
+	debug("EqEnv", EliminateEq_enrich(EqEnv,EqEnv1)) andalso 
+	debug("TCEnv", LambdaStatSem_enrich(TCEnv,TCEnv1)) andalso
+	debug("OEnv", OptLambda_enrich(OEnv,OEnv1)) andalso
+	debug("rse", RegionStatEnv_enrich(rse,rse1)) andalso
+	debug("mulenv", Mul_enrich_efenv((mulenv,rse),(mulenv1,rse1))) andalso
+	debug("mularefmap", Mul_enrich_mularefmap(mularefmap,mularefmap1)) andalso
+	debug("drop_env", DropRegions_enrich(drop_env,drop_env1)) andalso
+	debug("psi_env", PhysSizeInf_enrich(psi_env,psi_env1)) andalso
+	debug("l2kam_ce", CompLamb_enrich(l2kam_ce,l2kam_ce1))
+    end
 
     fun match ({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce},
 	       {TCEnv=TCEnv0,EqEnv=EqEnv0,OEnv=OEnv0,rse=rse0,mulenv=mulenv0,
@@ -161,8 +173,19 @@ functor CompileBasis(structure Con : CON
 
     fun restrict ({EqEnv,OEnv,TCEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce},
 		  (lvars,lvars_with_prims,tynames,cons,excons)) = 
-      let (*Martin Elsman wants to write a comment here
-	   09/09/1997 11:28. tho.*)
+      let
+	
+	(* Martin Elsman wants to write a comment here 09/09/1997
+	 * 11:28. tho. 
+	 *
+	 * Ok, here it comes: There are some exception constructors,
+	 * constructors and type names which cannot be derived from
+	 * the free identifiers of the source program but which need
+	 * to be declared in the environments. These are identifiers
+	 * stemming from derived forms, unexhaustive matches and
+	 * equality elimination. This is why we patch the derived
+	 * identifiers below. *)
+
 	  val excons = Excon.ex_DIV :: Excon.ex_MOD ::
 	        Excon.ex_MATCH :: Excon.ex_BIND :: excons
 	  val cons = Con.con_NIL :: Con.con_CONS ::

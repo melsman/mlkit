@@ -1590,7 +1590,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		              (* before an instance was created for tau' 30/10/97-Martin *)
        	      end
       end (*local*)
-      val match : TypeScheme * TypeScheme -> unit = fn ((_,tau1),(_,tau2)) => Type.match(tau1,tau2)
+
+      fun match((_,tau1),(_,tau2)) : unit = Type.match(tau1,tau2)
     
     end (*TypeScheme*)
 
@@ -1745,6 +1746,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    eq(tf,tf')
 	 end
 *)	 
+
+      fun match (TYPEFCN{tau,...}, TYPEFCN{tau=tau0,...}) : unit = Type.match(tau,tau0)
+
     end (*TypeFcn*)
 
     

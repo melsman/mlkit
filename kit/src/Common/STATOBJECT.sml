@@ -208,6 +208,7 @@ signature STATOBJECT =
 
 	(*for compilation manager:*)
 	val match : TypeScheme * TypeScheme -> unit
+
       end (*TypeScheme*)
 
 
@@ -249,6 +250,10 @@ signature STATOBJECT =
 	val pretty_string : TVNames -> TypeFcn -> {vars: string, body: string}
 	val pretty_string' : TVNames -> TypeFcn -> string
 	val layout : TypeFcn -> StringTree
+
+	(*for compilation manager:*)
+	val match : TypeFcn * TypeFcn -> unit
+
       end (*TypeFcn*)
 
 
