@@ -124,8 +124,10 @@ Ns_ModuleInit(char *hServer, char *hModule)
   
   ctx->timeStamp = (time_t)-1; 
 
-  Ns_RegisterRequest(hServer, "GET", "/*.sml", nssml_handleSmlFile, 
-		     NULL, ctx, 0);
+  Ns_RegisterRequest(hServer, "GET", "/*.sml", nssml_handleSmlFile, NULL, ctx, 0);
+  Ns_RegisterRequest(hServer, "GET", "/*.msp", nssml_handleSmlFile, NULL, ctx, 0);
+  Ns_RegisterRequest(hServer, "POST", "/*.sml", nssml_handleSmlFile, NULL, ctx, 0);
+  Ns_RegisterRequest(hServer, "POST", "/*.msp", nssml_handleSmlFile, NULL, ctx, 0);
     
   Ns_Log(Notice, "nssml: module is now loaded");
   Ns_Log(Notice, "nssml: ulFileName is %s", ctx->ulFileName);
@@ -136,7 +138,8 @@ Ns_ModuleInit(char *hServer, char *hModule)
 
 /* -------------------------------------------------
  * nssml_smlFileToUoFile - convert sml-absolute filename
- * into the uo-file for the sml-file. 
+ * into the uo-file for the sml-file. Also works for 
+ * msp-files.
  * ------------------------------------------------- */
 
 void 
@@ -198,7 +201,7 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
     }
 
   /*
-   * Project the running of this code from simultaneous requests
+   * Protect the running of this code from simultaneous requests
    */
   Ns_LockMutex(&ctx->lock);
 

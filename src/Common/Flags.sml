@@ -1366,6 +1366,8 @@ val interact = Menu.interact
 
   val _ = add_flag_to_menu (["Control"], "report_file_sig", "report program unit signatures", ref false)
 
+  val _ = add_flag_to_menu (["Control"], "smlserver", "compile for the SMLserver", ref false)
+
   val _ = add_flag_to_menu (["Printing of intermediate forms"],
 			    "print_linearised_program", 
 			    "print linearised program (LineStmt)", ref false)
