@@ -30,6 +30,12 @@ local
     []
     K.build_basislib
 
+  fun comp_RI_GC_TP() =
+    enable_disable 
+    ["garbage_collection"] 
+    ["tag_free_pairs_gc"]
+    K.build_basislib
+
   fun comp_RI() = K.build_basislib()
 
   fun comp_RI_PROF() = 
@@ -43,6 +49,12 @@ local
     enable_disable 
     ["region_profiling", "garbage_collection"]
     []
+    K.build_basislib
+
+  fun comp_RI_GC_TP_PROF() = 
+    enable_disable 
+    ["region_profiling", "garbage_collection"]
+    ["tag_free_pairs_gc"]
     K.build_basislib
 in
 (*
@@ -58,6 +70,10 @@ val _ = (enable "print_types"; enable "print_rho_types")
 
 (*  val _ = comp_nodangle() *)
   val _ = comp_RI_GC()
+
+(*  val _ = comp_RI_GC_TP() *)
+(*  val _ = comp_RI_GC_TP_PROF() *)
+
   val _ = comp_RI()
 
 (*  val _ = comp_GC() *)

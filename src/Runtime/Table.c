@@ -2,29 +2,6 @@
 #include "Table.h"
 #include "Tagging.h"
 
-// word_sub0(t,i): extract element i from table t
-/*Now in-lined
-int 
-word_sub0 (Table t, int i)
-{
-  i = convertIntToC(i);
-  return convertIntToML(*(&(t->data) + i));
-}
-*/
-
-// word_update0(tablep,i,x): update element i in table t 
-// with element x
-/*Now in-lined
-void 
-word_update0 (Table t, int i, int x)
-{
-  i = convertIntToC(i);
-  x = convertIntToC(x);
-  *(&(t->data) + i) = x;
-  return;
-}
-*/
-
 // word_table0(rAddr, n): return a pointer to a table 
 // with n elements allocated in the region indicated by rAddr
 Table 
@@ -84,14 +61,3 @@ word_table_init (Region rAddr, int n, int x)
     }      
   return res;
 }
-
-// table_size(t) : returns the number of elements in t. This 
-// function is needed by the polymorphic equality function 
-// on vectors (EliminateEq.sml). 
-/*Now in-lined
-int 
-table_size (Table t)
-{
-  return convertIntToML(get_table_size(t->size));
-}
-*/

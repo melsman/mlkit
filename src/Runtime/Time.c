@@ -31,9 +31,9 @@ sml_getrealtime (int vAddr)
 {
   struct timeval tp;
   gettimeofday(&tp, NULL);
-  mkTagRecordML(vAddr,2); /* inserted 2001-01-09, Niels */
-  first(vAddr) = convertIntToML((tp.tv_sec+TIMEBASE)/* + TIMEBASE 13/04/1999, Niels */);
+  first(vAddr) = convertIntToML((tp.tv_sec+TIMEBASE));
   second(vAddr) = convertIntToML(tp.tv_usec);
+  mkTagPairML(vAddr);
   return vAddr;
 }
 
@@ -43,7 +43,7 @@ sml_localtime (int vAddr, int v)
   struct tm *tmr;
   time_t clock = (long)(get_d(v));
   tmr = localtime(&clock);
-  mkTagRecordML(vAddr,9); /* inserted 2001-01-09, Niels */
+  mkTagRecordML(vAddr,9);
   elemRecordML(vAddr,0) = convertIntToML((*tmr).tm_hour);
   elemRecordML(vAddr,1) = convertIntToML((*tmr).tm_isdst);
   elemRecordML(vAddr,2) = convertIntToML((*tmr).tm_mday);
@@ -62,7 +62,7 @@ sml_gmtime (int vAddr, int r)
   struct tm *tmr;
   time_t clock = (long)(get_d(r));
   tmr = gmtime(&clock);
-  mkTagRecordML(vAddr,9); /* inserted 2001-01-09, Niels */
+  mkTagRecordML(vAddr,9);
   elemRecordML(vAddr,0) = convertIntToML((*tmr).tm_hour);
   elemRecordML(vAddr,1) = convertIntToML((*tmr).tm_isdst);
   elemRecordML(vAddr,2) = convertIntToML((*tmr).tm_mday);

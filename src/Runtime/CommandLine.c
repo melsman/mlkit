@@ -248,7 +248,7 @@ REG_POLY_FUN_HDR(sml_commandline_args, Region pairRho, Region strRho)
   while ( counter > app_arg_index ) 
     {
       mlStr = REG_POLY_CALL(convertStringToML, strRho, commandline_argv[--counter]);
-      REG_POLY_CALL(allocRecordML, pairRho, 2, pairPtr);
+      REG_POLY_CALL(allocPairML, pairRho, pairPtr);
       first(pairPtr) = (int) mlStr;
       second(pairPtr) = (int) resList;
       makeCONS(pairPtr, resList);

@@ -488,8 +488,7 @@ sml_devinode(int vAddr, String path, int exn)             /* SML Basis */
   // Return a pair of the device and the inode
   first(vAddr) = convertIntToML((int)buf.st_dev);
   second(vAddr) = convertIntToML((int)buf.st_ino);
-  // The record is not traversed by the GC
-  mkScalarTagRecordML(vAddr, 2);  
+  mkTagPairML(vAddr);
   return vAddr;
 }
 

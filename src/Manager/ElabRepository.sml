@@ -24,8 +24,6 @@ functor ElabRepository(structure Name : NAME
      and opaq_env = OpacityEnv.opaq_env
      and longstrid = longstrid
 
-    val region_profiling : bool ref = Flags.lookup_flag_entry "region_profiling"
-
     fun die s = Crash.impossible ("ElabRepository."^s)
 
     val empty_infix_basis : InfixBasis = InfixBasis.emptyB
@@ -35,7 +33,6 @@ functor ElabRepository(structure Name : NAME
     type elab_entry = (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * 
 		       name list * InfixBasis * ElabBasis * opaq_env)
     type elabRep = elab_entry list RM.map ref
-      (* the bool is true if profiling is enabled *)
 
     val elabRep : elabRep = ref RM.empty
 

@@ -477,7 +477,7 @@ struct
       | CG_ce(ClosExp.SCLOS_RECORD{elems=(lvs,excons,rhos),alloc},env,sp,cc,acc) = 
       comp_ces_to_block(rhos @ excons @ lvs,0,env,sp,cc,alloc,acc)
       | CG_ce(ClosExp.REGVEC_RECORD{elems,alloc},env,sp,cc,acc) = die "REGVEC_RECORD not used in this back end"
-      | CG_ce(ClosExp.RECORD{elems,alloc,tag},env,sp,cc,acc) = comp_ces_to_block(elems,0,env,sp,cc,alloc,acc)
+      | CG_ce(ClosExp.RECORD{elems,alloc,tag,maybeuntag},env,sp,cc,acc) = comp_ces_to_block(elems,0,env,sp,cc,alloc,acc)
       | CG_ce(ClosExp.SELECT(i,ce as ClosExp.VAR lv),env,sp,cc,acc) = 
       (* This may be a SelectEnv? *)
       if Lvars.eq(lv,Lvars.env_lvar) then

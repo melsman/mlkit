@@ -80,7 +80,7 @@ signature LINE_STMT =
     | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
     | REGVEC_RECORD   of {elems: 'aty sma list, alloc: 'aty sma}
     | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
-    | RECORD          of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word}
+    | RECORD          of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word, maybeuntag: bool}
     | SELECT          of int * 'aty
     | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}

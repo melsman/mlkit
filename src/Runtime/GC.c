@@ -144,8 +144,8 @@ inline static void
 copy_words(unsigned int *from,unsigned int *to,int num) 
 {
   int i;
-  for (i=0;i<num;i++) 
-    *(to+i) = *(from+i);
+  for ( i = 0 ; i < num ; i++ ) 
+    *(to + i) = *(from + i);
   return;
 }
 
@@ -231,15 +231,6 @@ init_scan_container()
 
 #define is_scan_container_empty() (container_scan == container_alloc)
 
-/*
-inline static void check_scan_container(unsigned int *ptr) {
-  int i;
-  for (i=0; i<container_alloc; i++)
-    if (scan_container[i] == ptr)
-      die("Error, scan_container not unique\n");
-}
-*/
-
 inline static void 
 push_scan_container(unsigned int *ptr) 
 {
@@ -272,7 +263,7 @@ inline static void
 clear_scan_container() 
 {
   int i;
-  for ( i = 0; i < container_alloc ; i ++ )
+  for ( i = 0 ; i < container_alloc ; i ++ )
     {
       *scan_container[i] = clear_tag_const(*scan_container[i]);
     }
@@ -281,8 +272,8 @@ clear_scan_container()
 /* We mark all region pages such that we can distinguish them from to-space */
 /* region pages by setting a bit in the next n pointer.                   */
 static void mk_from_space() {
-  Ro *rp;
-  Klump *rp_tmp;
+  Ro *r;
+  Klump *rp;
 
   #ifdef PROFILING
     int j;
@@ -291,31 +282,37 @@ static void mk_from_space() {
   from_space_begin = NULL;
   from_space_end = (((Klump *)TOP_REGION->b)-1); /* Points at last region page */
 
-  for(rp=TOP_REGION;rp!=NULL;rp=rp->p) {
+  for( r = TOP_REGION ; r ; r = r->p ) {
     #ifdef PROFILING
       // Similar to resetRegion in Region.c
-      j = NoOfPagesInRegion(rp);
+      j = NoOfPagesInRegion(r);
       noOfPages -= j;
-      profTabDecrNoOfPages(rp->regionId, j);
-      allocNowInf -= rp->allocNow;
-      profTabDecrAllocNow(rp->regionId, rp->allocNow);
-      allocProfNowInf -= rp->allocProfNow;
-      rp->allocNow = 0;
-      rp->allocProfNow = 0;
+      profTabDecrNoOfPages(r->regionId, j);
+      allocNowInf -= r->allocNow;
+      profTabDecrAllocNow(r->regionId, r->allocNow);
+      allocProfNowInf -= r->allocProfNow;
+      r->allocNow = 0;
+      r->allocProfNow = 0;
     #endif
 
     /* Move region pages to from-space */
-    (((Klump *)rp->b)-1)->n = from_space_begin;
-    from_space_begin = rp->fp;
+    (((Klump *)r->b)-1)->n = from_space_begin;
+    from_space_begin = clear_pairregion(r->fp);
 
     /* Allocate new region page */
-    rp->fp = NULL;
-    alloc_new_block(rp);
+    if ( is_pairregion(r) )
+      {
+	r->fp = NULL;
+	set_pairregion(r);
+      }
+    else
+      r->fp = NULL;
+    alloc_new_block(r);
   }
 
   /* Calculate size of from space */
   rp_from_space = 0;
-  for (rp_tmp=from_space_begin;rp_tmp;rp_tmp=rp_tmp->n)
+  for ( rp = from_space_begin ; rp ; rp = rp->n )
     rp_from_space ++;
   return;
 }
@@ -336,35 +333,9 @@ points_into_dataspace (unsigned int *p) {
 #define get_rp_header(x)            ((Klump *)(((unsigned int)(x)) & 0xFFFFFC00))  
 
 // Previous-pointer holds status bit
-#define set_status_SOME(rd)         (rd->p = (Ro *)(((unsigned int)((rd)->p)) | 0x01))   
-#define set_status_NONE(rd)         (rd->p = (Ro *)(((unsigned int)((rd)->p)) & 0xFFFFFFFE))
-#define is_status_NONE(rd)          ((((unsigned int)((rd)->p)) & 0x01) == 0)
-
-/*************/
-/* DEBUGGING */
-/*************/
-/*
-static void check_rp_in_from_space(Klump *rp) {
-  int ok = 0;
-  Klump *rp_tmp;
-
-  for (rp_tmp=from_space_begin;rp_tmp;rp_tmp=((Klump *)(((unsigned int)rp_tmp->n) & 0xFFFFFFFE)))
-    if (rp_tmp == rp) ok = 1;
-  
-  if (!ok)
-    die("check_rp_in_from_space: rp not in from_space");
-
-  return;
-}
-
-
-static void check_ptr_to_forward(unsigned int *obj_ptr) {
-  if (!(is_forward_ptr(*obj_ptr))) 
-    die("check_ptr_to_forward: ptr is not a forward pointer");
-
-  return;
-}
-*/
+#define set_status_SOME(r)          (r->p = (Ro *)(((unsigned int)((r)->p)) | 0x01))   
+#define set_status_NONE(r)          (r->p = (Ro *)(((unsigned int)((r)->p)) & 0xFFFFFFFE))
+#define is_status_NONE(r)           ((((unsigned int)((r)->p)) & 0x01) == 0)
 
 unsigned int 
 size_lobj (unsigned int tag)
@@ -388,92 +359,107 @@ size_lobj (unsigned int tag)
  * Find allocated bytes in from space; for measurements
  * ----------------------------------------------------- */
 
+// Assumes that region does not contain untagged pairs
 static int 
-allocated_bytes_in_region(Ro *rd) 
+allocated_bytes_in_region(Region r) 
 {
-  unsigned int * scan_ptr;
-  Klump*rp;
+  unsigned int *s;  // scan pointer
+  Klump *rp;
   int allocated_bytes = 0;
 
-  rp = rd->fp;
-  scan_ptr = rp->i;
+  rp = r->fp;
+  s = rp->i;
   
-  while (((int *)scan_ptr) != rd->a) {
-    rp = get_rp_header(scan_ptr);
+  while (((int *)s) != r->a) {
+    rp = get_rp_header(s);
 #if PROFILING
-    scan_ptr += sizeObjectDesc;
+    s += sizeObjectDesc;
 #endif
-    switch (val_tag_kind_const(scan_ptr)) {
+    switch (val_tag_kind_const(s)) {
     case TAG_STRING: {
       // adjust scan_ptr to after the string
       int sz;
-      StringDesc* str = (StringDesc *)scan_ptr;
-      sz = get_string_size(str->size) + 5;       // 1 for zero-termination and 4 for size field
+      String str = (String)s;
+      sz = get_string_size(str->size) + 1 /*for zero*/ + 4 /*for tag*/;
       sz = (sz%4) ? (1+sz/4) : (sz/4);
-      scan_ptr += sz;
+      s += sz;
       allocated_bytes += (4*sz);
       break;
     }
     case TAG_TABLE: {
       int sz;
-      Table table = (Table)scan_ptr;
+      Table table = (Table)s;
       sz = get_table_size(table->size) + 1;
-      scan_ptr += sz;
+      s += sz;
       allocated_bytes += (4*sz);
       break;
     }
     case TAG_RECORD: {
-      int sz = get_record_size(*scan_ptr); /* Size excludes descriptor */
-      scan_ptr += (1 + sz);
+      int sz = get_record_size(*s); /* Size excludes descriptor */
+      s += (1 + sz);
       allocated_bytes += (4 + 4*sz);
       break;
     }
     case TAG_CON0: {
-      scan_ptr++;
+      s++;
       allocated_bytes += 4;
       break;
     }
-    case TAG_CON1: {
-      scan_ptr+=2;
-      allocated_bytes += 8;
-      break;
-    }
+    case TAG_CON1: 
     case TAG_REF: {
-      scan_ptr+=2;
+      s += 2;
       allocated_bytes += 8;
       break;
     }
     default: {
-      pw("*scan_ptr: ",*scan_ptr);
-      printf("scan_ptr: %x, rd->a: %x, diff(scan_ptr,rd->a): %d, rp: %x, diff(scan_ptr,rp): %x\n",
-	     scan_ptr,
-	     rd->a,
-	     ((int *)rd->a-(int *)scan_ptr),
+      pw("*s: ",*s);
+      printf("s: %x, r->a: %x, diff(s,r->a): %d, rp: %x, diff(s,rp): %x\n",
+	     s,
+	     r->a,
+	     ((int *)r->a-(int *)s),
 	     rp,
-	     (int *)scan_ptr-(int *)rp);
-      die("do_scan_stack: unrecognised object descriptor by scan_ptr");
+	     (int *)s-(int *)rp);
+      die("allocated_bytes_in_region: unrecognised tag at *s");
       break;
     }
     }
     /* Are we at end of region page or is the region page full, then go to next region page. */
     /* notPP is distinct from all other value tags */
-    if ((((int *)scan_ptr) != rd->a) &&
-	((((int *)scan_ptr) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) ||
-	 (*((int *)scan_ptr) == notPP))) {
-      scan_ptr = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
+    if ((((int *)s) != r->a) &&
+	((((int *)s) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) ||
+	 (*((int *)s) == notPP))) {
+      s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
     }
   }
   return allocated_bytes;
+}
+
+static int
+allocated_bytes_in_pairregion(Ro* r)
+{
+  Klump* rp;
+  int n = 0;
+  for ( rp = clear_pairregion(r->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
+    {
+      if ( clear_tospace_bit(rp->n) )
+	n += 4 * ALLOCATABLE_WORDS_IN_REGION_PAGE;  // not last page
+      else
+	n += 4 * ((r->a) - (rp->i));  // last page
+    }
+  return n;
 }
 
 static int 
 allocated_bytes_in_regions(void) 
 {
   int n = 0;
-  Ro* rp;
-  for ( rp = TOP_REGION; rp != NULL; rp = rp->p )
+  Ro* r;
+  for ( r = TOP_REGION ; r ; r = r->p )
     {
-      n += allocated_bytes_in_region(rp);
+      if ( is_pairregion(r) )
+	n += allocated_bytes_in_pairregion(r);
+      else 
+	n += allocated_bytes_in_region(r);
     }
   return n;
 }
@@ -482,11 +468,11 @@ static int
 allocated_bytes_in_lobjs(void) 
 {
   int n = 0;
-  Ro* rp;
+  Ro* r;
   Lobjs *lobjs;
 
-  for ( rp = TOP_REGION; rp != NULL; rp = rp->p )
-    for ( lobjs = rp->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) ) 
+  for ( r = TOP_REGION ; r ; r = r->p )
+    for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) ) 
       {
 	unsigned int tag;
 #ifdef PROFILING
@@ -503,7 +489,9 @@ allocated_bytes_in_lobjs(void)
 /* OBJECT FUNCTIONS */
 /********************/
 // Returns the size including the descriptor; the 
-// object must contain a descriptor at offset 0
+// object must contain a descriptor at offset 0.
+// This function is never used to determine the 
+// size of an untagged pair.
 inline static int 
 get_size_obj(unsigned int *obj_ptr) 
 {
@@ -528,7 +516,7 @@ get_size_obj(unsigned int *obj_ptr)
 }
 
 inline unsigned int *
-copy_val(Ro *rd, unsigned int *obj_ptr) 
+acopy(Ro *r, unsigned int *obj_ptr) 
 {
   int size;
   unsigned int *new_obj_ptr;
@@ -540,16 +528,16 @@ copy_val(Ro *rd, unsigned int *obj_ptr)
 
   size = get_size_obj(obj_ptr);     // size includes tag
 #ifdef PROFILING
-  new_obj_ptr = allocProfiling(rd,size,pPoint);
+  new_obj_ptr = allocProfiling(r,size,pPoint);
 #else
-  new_obj_ptr = alloc(rd,size);
+  new_obj_ptr = alloc(r,size);
 #endif
   copy_words(obj_ptr,new_obj_ptr,size);
   return new_obj_ptr;
 }
 
 inline unsigned int *
-copy_pair(Ro *rd, unsigned int *obj_ptr) 
+acopy_pair(Ro *r, unsigned int *obj_ptr) 
 {
   unsigned int *new_obj_ptr;
 
@@ -559,9 +547,9 @@ copy_pair(Ro *rd, unsigned int *obj_ptr)
 #endif /*PROFILING*/
 
 #ifdef PROFILING
-  new_obj_ptr = allocProfiling(rd,2,pPoint) - 1;
+  new_obj_ptr = allocProfiling(r,2,pPoint) - 1;
 #else
-  new_obj_ptr = alloc(rd,2) - 1;
+  new_obj_ptr = alloc(r,2) - 1;
 #endif
   *(new_obj_ptr+1) = *(obj_ptr+1);
   *(new_obj_ptr+2) = *(obj_ptr+2);
@@ -573,7 +561,6 @@ points_into_tospace (unsigned int x)
 {
   int ret;
   unsigned int *p;
-  //  printf("[Entering points_into_tospace (x = %d)..\n", x);
   if ( is_integer(x) )
     return 0;
   p = (unsigned int*)x;
@@ -584,7 +571,6 @@ points_into_tospace (unsigned int x)
   // now either large object or in region
   // get the tospace bit
   ret = is_tospace_bit(get_rp_header(p)->n);
-  //  printf(".]\n");
   return ret;
 }
 
@@ -595,11 +581,8 @@ evacuate(unsigned int obj)
   Ro* r;
   unsigned int *obj_ptr, *new_obj_ptr;
 
-  //  printf("evacuate begin\n");
-
   if (is_integer(obj)) 
     {
-      //      printf("evacuate exit1\n");
       return obj;                         // not subject to GC
     }
 
@@ -607,7 +590,6 @@ evacuate(unsigned int obj)
 
   if ( points_into_dataspace(obj_ptr) )
     {
-      //      printf("evacuate exit2\n");
       return obj;                         // not subject to GC
     }
 
@@ -615,12 +597,10 @@ evacuate(unsigned int obj)
     {                                     // object immovable
       if ( is_constant(*obj_ptr) ) 
 	{
-	  //	  printf("evacuate exit3\n");
 	  return obj;      
 	}
       *obj_ptr = set_tag_const(*obj_ptr); // set immovable-bit
       push_scan_container(obj_ptr);
-      //      printf("evacuate exit4\n");
       return obj;
     }
 
@@ -635,12 +615,10 @@ evacuate(unsigned int obj)
     {                                     // object immovable
       if ( is_constant(*obj_ptr) )
 	{
-	  //	  printf("evacuate exit5\n");
 	  return obj;
 	}
       *obj_ptr = set_tag_const(*obj_ptr); // set immovable-bit
       push_scan_container(obj_ptr);
-      //      printf("evacuate exit6\n");
       return obj;
     }
 
@@ -651,25 +629,23 @@ evacuate(unsigned int obj)
     {
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
 	{
-	  //	  printf("evacuate exit7\n");
 	  return *(obj_ptr+1);
 	}
-      new_obj_ptr = copy_pair(r, obj_ptr);
+      new_obj_ptr = acopy_pair(r, obj_ptr);
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
     }
   else 
     {
-      // Object is tagged
+      // Object is tagged 
       if ( is_forward_ptr(*obj_ptr) ) 
 	{                                      // object already copied
 	  if ( points_into_tospace(*obj_ptr) )
 	    {
-	      //	      printf("evacuate exit8\n");
 	      return clear_forward_ptr(*obj_ptr);             
 	    }
 	  die ("forward ptr check failed\n");
 	}
-      new_obj_ptr = copy_val(r, obj_ptr);
+      new_obj_ptr = acopy(r, obj_ptr);
       *obj_ptr = tag_forward_ptr(new_obj_ptr); // install forward pointer
     }
   if ( is_status_NONE(r) ) 
@@ -681,30 +657,20 @@ evacuate(unsigned int obj)
 #endif
       set_status_SOME(r);
     }
-  //  printf("evacuate exit9\n");
   return (unsigned int)new_obj_ptr;
 }
 
 static unsigned int*
-cheney(Ro *r, unsigned int *s)      // s is the scan pointer
+scan_tagged_value(unsigned int *s)      // s is the scan pointer
 {
-
-  if ( r != NULL )
-    if ( is_pairregion(r) )
-      {
-	*(s+1) = evacuate(*(s+1));
-	*(s+2) = evacuate(*(s+2));
-	return s + 2;
-      }
-
   // All finite and large objects are temporarily annotated as immovable.
   // We therefore use val_tag_kind and not val_tag_kind_const
 
   switch ( val_tag_kind(s) ) { 
-  case TAG_STRING: {                        // Do not GC the content of a string but adjust 
-    int sz;
-    String str = (String)s;                 //    s to point after the string
-    sz = get_string_size(str->size) + 5;    // 1 for zero-termination, 4 for size field
+  case TAG_STRING: {                        // Do not GC the content of a string but
+    int sz;                                 //    adjust s to point after the string
+    String str = (String)s;
+    sz = get_string_size(str->size) + 5;    // 1 for zero, 4 for tag
     sz = (sz%4) ? (1+sz/4) : (sz/4);
     return s + sz;
   }
@@ -736,19 +702,16 @@ cheney(Ro *r, unsigned int *s)      // s is the scan pointer
     return s;
   }
   case TAG_CON0: {     // constant
-    s++;
-    return s;
+    return s+1;
   }
   case TAG_CON1:
   case TAG_REF: {
-    s++;
-    *s = evacuate(*s);
-    s++;
-    return s;
+    *(s+1) = evacuate(*(s+1));
+    return s+2;
   }
   default: {
     pw("*s: ", *s);
-    die("cheney: unrecognised object descriptor pointed to by scan pointer");
+    die("scan_tagged_value: unrecognised object descriptor pointed to by scan pointer");
     return 0;
   }
   }
@@ -759,7 +722,7 @@ do_scan_stack()
 {
   unsigned int *s;   // scan pointer
   Klump *rp;
-  Ro *rd;
+  Ro *r;
 
   // Run through scan stack and container
   while (!((is_scan_stack_empty()) && (is_scan_container_empty()))) {
@@ -767,36 +730,64 @@ do_scan_stack()
     // Run through container - FINITE REGIONS and LARGE OBJECTS
     while (!(is_scan_container_empty())) 
       {
-	s = cheney(NULL,pop_scan_container());
+	s = scan_tagged_value(pop_scan_container());
       }
 
     while (!(is_scan_stack_empty())) {
       s = pop_scan_stack();
       /* Get Region Page and Region Descriptor */
       rp = get_rp_header(s);
-      rd = rp->r;
-      while (((int *)s) != rd->a) {
-	rp = get_rp_header(s);
-#if PROFILING
-	s += sizeObjectDesc;
-#endif
-	s = cheney(rd,s);
+      r = rp->r;
 
-	/* If at end of region page or the region page is full, go 
-	 * to next region page. */
-	if ((((int *)s) != rd->a) &&
-	    ((((int *)s) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) ||
-	     (*((int *)s) == notPP))) {
-	  s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
+      if ( is_pairregion(r) )
+	{
+	  while ( ((int *)s+1) != r->a ) 
+	    {
+	      rp = get_rp_header(s);
+#if PROFILING
+	      s += sizeObjectDesc;
+#endif
+	      *(s+1) = evacuate(*(s+1));
+	      *(s+2) = evacuate(*(s+2));
+	      s += 2;
+	      
+	      /* If at end of region page or the region page is full, go 
+	       * to next region page. */
+	      if ((((int *)s+1) != r->a) && 
+		  ((((int *)s+1) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+		   || (*((int *)s+1) == notPP)))
+		{
+		  s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE - 1;
+		}
+	    }
 	}
-      }
-      set_status_NONE(rd);
+      else
+	{
+	  while ( ((int *)s) != r->a ) 
+	    {
+	      rp = get_rp_header(s);
+#if PROFILING
+	      s += sizeObjectDesc;
+#endif
+	      s = scan_tagged_value(s);
+	      
+	      /* If at end of region page or the region page is full, go 
+	       * to next region page. */
+	      if ((((int *)s) != r->a) && 
+		  ((((int *)s) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+		   || (*((int *)s) == notPP)))
+		{
+		  s = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
+		}
+	    }
+	}
+      set_status_NONE(r);
     }
   }
   return;
 }
 
-#define predSPDef(sp,n) ((sp)=(sp)+(n))
+#define predSPDef(sp,n) ((sp)+=(n))
 #define succSPDef(sp) (sp--)
  
 void 
@@ -824,7 +815,7 @@ gc(unsigned int **sp, unsigned int reg_map)
   struct rusage rusage_end;
   unsigned int size_from_space = 0;
   unsigned int alloc_period_save;
-  Ro *rp;
+  Ro *r;
 
   doing_gc = 1; // Mutex on the garbage collector
 
@@ -860,8 +851,8 @@ gc(unsigned int **sp, unsigned int reg_map)
   /* Search for live registers */
   sp_ptr = sp;
   w = reg_map;
-  for (offset=0;offset<NUM_REGS;offset++) {
-    if (w & 01) {
+  for ( offset = 0 ; offset < NUM_REGS ; offset++ ) {
+    if ( w & 1 ) {
       value_ptr = ((unsigned int*)sp_ptr) + NUM_REGS - 1 - offset;  /* Address of live cell */
       *value_ptr = evacuate(*value_ptr);
     }
@@ -880,11 +871,13 @@ gc(unsigned int **sp, unsigned int reg_map)
   predSPDef(sp_ptr,1);          // sp_ptr points at last arg. to current function
 
   /* All arguments to current function are live - except for region arguments. */
-  for (offset=0;offset<size_ccf;offset++) {
+  for ( offset = 0 ; offset < size_ccf ; offset++ ) {
     value_ptr = ((unsigned int*)sp_ptr);
     predSPDef(sp_ptr,1);
-    if (offset >= size_spilled_region_args)
-      *value_ptr = evacuate(*value_ptr);    
+    if ( offset >= size_spilled_region_args ) 
+      {
+	*value_ptr = evacuate(*value_ptr);    
+      }
   }
 
   /* sp_ptr points at first return address.                           */  
@@ -903,17 +896,22 @@ gc(unsigned int **sp, unsigned int reg_map)
   fd_size = *(fd_ptr-3);
   predSPDef(sp_ptr,size_rcf);
   /* sp_ptr points at first address before FD */
-  while (fd_size != 0xFFFFFFFF) {
+  while ( fd_size != 0xFFFFFFFF ) {
+
+    // printf("analysing frame\n");
+
     w_ptr = fd_ptr-4;
 
     /* Find RootSet in FD */
-    if (fd_size)  /* It may happen fd_size = 0 in which case w_ptr points at arbitrary address. */
+    if ( fd_size )  /* It may happen fd_size = 0 in which case w_ptr points at arbitrary address. */
       w = *w_ptr;
     w_idx = 0;
-    for(offset=0;offset<fd_size;offset++) {
-      if (w & 01) {
+    for( offset = 0 ; offset < fd_size ; offset++ ) {
+      if (w & 1) {
+	// printf("evacuating value in frame begin\n");
 	value_ptr = ((unsigned int*)sp_ptr) + fd_size - offset;
 	*value_ptr = evacuate(*value_ptr); 
+	// printf("evacuating value in frame end\n");
       }
       w = w >> 1;
       w_idx++;
@@ -934,9 +932,11 @@ gc(unsigned int **sp, unsigned int reg_map)
 
   /* Search for data labels; they are part of the root-set. */
   num_d_labs = *data_lab_ptr; /* Number of data labels */
-  for (offset=1;offset<=num_d_labs;offset++) {
+  for ( offset = 1 ; offset <= num_d_labs ; offset++ ) {
+    // printf("evacuating value in data labels begin\n");
     value_ptr = *(((unsigned int**)data_lab_ptr) + offset);
     *value_ptr = evacuate(*value_ptr);
+    // printf("evacuating value in data labels end\n");
   }
 
   do_scan_stack();
@@ -947,12 +947,12 @@ gc(unsigned int **sp, unsigned int reg_map)
 
   /* Run through all infinite regions and free all 
    * large objects that are not marked. */
-  for( rp = TOP_REGION ; rp ; rp = rp->p ) 
+  for( r = TOP_REGION ; r ; r = r->p ) 
     {
       Lobjs *lobjs;
       int first = 1;
-      Lobjs **lobjs_ptr = &(rp->lobjs); // last live next-slot
-      lobjs = rp->lobjs;
+      Lobjs **lobjs_ptr = &(r->lobjs); // last live next-slot
+      lobjs = r->lobjs;
       while ( lobjs )
 	{
 	  unsigned int tag;
@@ -988,30 +988,29 @@ gc(unsigned int **sp, unsigned int reg_map)
       else
 	*lobjs_ptr = set_lobj_bit(NULL);
 
-      if (0) 
+      // check consistency
+      /*
+      printf("check begin\n");
+      lobjs = r->lobjs;
+      if ( is_lobj_bit(lobjs) )
+	die ("check: lobj bit set");
+      while ( lobjs )
 	{
-	  // check consistency
-	  printf("check begin\n");
-	  lobjs = rp->lobjs;
+	  unsigned int sz = size_lobj(lobjs->value);
+	  printf("size_lobj: %d\n", sz);
+	  lobjs = lobjs->next;
 	  if ( is_lobj_bit(lobjs) )
-	    die ("check: lobj bit set");
-	  while ( lobjs )
-	    {
-	      unsigned int sz = size_lobj(lobjs->value);
-	      printf("size_lobj: %d\n", sz);
-	      lobjs = lobjs->next;
-	      if ( is_lobj_bit(lobjs) )
-		lobjs = clear_lobj_bit(lobjs);
-	      else
-		die ("check: lobj bit set");	  
-	    }
-	  printf("check end\n");
+	    lobjs = clear_lobj_bit(lobjs);
+	  else
+	    die ("check: lobj bit set");	  
 	}
+      printf("check end\n");
+      */
     }
 
   // Unmark all tospace bits in region pages in regions on the stack
-  for( rp = TOP_REGION ; rp ; rp = rp->p ) 
-    for ( p = rp->fp ; p ; p = p->n ) 
+  for( r = TOP_REGION ; r ; r = r->p ) 
+    for ( p = clear_pairregion(r->fp) ; p ; p = p->n ) 
       {
 	if ( is_tospace_bit(p->n) ) { 
 	  // check that all region pages have their tospace bit set

@@ -25,9 +25,11 @@ GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
 
 mlkit: basics
 	cd Runtime; $(MAKE) runtimeSystem.a
-	cd Runtime; $(MAKE) runtimeSystemGC.a
 	cd Runtime; $(MAKE) runtimeSystemProf.a
+	cd Runtime; $(MAKE) runtimeSystemGC.a
 	cd Runtime; $(MAKE) runtimeSystemGCProf.a
+	cd Runtime; $(MAKE) runtimeSystemGCTP.a
+	cd Runtime; $(MAKE) runtimeSystemGCTPProf.a
 	cd Runtime; $(MAKE) runtimeSystemTag.a
 	echo 'use "build.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit.$(ARCH-OS)

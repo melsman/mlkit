@@ -70,31 +70,6 @@ REG_POLY_FUN_HDR(convertStringToML, Region rAddr, unsigned char *cStr)
   return res;
 }
 
-// printStringList: Print the strings in a list of ML-strings
-/*
-void 
-printStringList(int xs) 
-{
-  for ( ; isCONS(xs); xs = tl(xs) )
-    {
-      printStringML((String) hd(xs));
-    }
-}
-*/
-
-// makeChar: convert a char to a string
-/*
-String
-REG_POLY_FUN_HDR(makeChar, Region rAddr, unsigned char ch) 
-{
-  String res;
-  res = REG_POLY_CALL(allocString, rAddr, 1);
-  res->data = ch;                  // ch untagged
-  *(&(res->data)+1) = '\0';
-  return res;
-}
-*/
-
 /******************************************************************
  * EXTERNAL DECLARATIONS (ML functions, basislib)                 *
  ******************************************************************/
@@ -123,14 +98,6 @@ chrCharML(int charNrML, int exn)
   raise_exn(exn);
   return;
 }
-
-/*
-int 
-__bytetable_size(String s) 
-{
-  return convertIntToML(sizeStringDefine(s));
-}
-*/
 
 String
 REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2) 
@@ -219,32 +186,6 @@ REG_POLY_FUN_HDR(implodeStringML, Region rAddr, int xs)
   *p = '\0';
   return res;
 }
-
-// __bytetable_sub: returns the i'th character of the string.
-/*
-int 
-__bytetable_sub(String str,int iML) 
-{
-  int iC;
-  unsigned char ch;
-  iC = convertIntToC(iML);
-  ch = *(&(str->data) + iC);  
-  return convertIntToML(ch);
-}
-*/
-
-// __bytetable_update: updates the i'th character of the string.
-/*
-void 
-__bytetable_update(String str, int iML, int cML) 
-{
-  int iC;
-  unsigned char ch;
-  iC = convertIntToC(iML);
-  *(&(str->data) + iC) = (char)(convertIntToC(cML));
-  return;
-}
-*/
 
 void 
 printStringML(String str) 
@@ -369,9 +310,9 @@ REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
   p = &(str->data);
   
 #ifdef PROFILING
-  allocRecordMLProf(rAddr, 2, pair, pPoint);
+  allocPairMLProf(rAddr, pair, pPoint);
 #else
-  allocRecordML(rAddr, 2, pair);
+  allocPairML(rAddr, pair);
 #endif
 
   first(pair) = convertIntToML (*p);
@@ -380,9 +321,9 @@ REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str)
   for ( i = 1 ; i < sz; i++ )
     {
       #ifdef PROFILING
-      allocRecordMLProf(rAddr, 2, tpair, pPoint); 
+      allocPairMLProf(rAddr, tpair, pPoint); 
       #else
-      allocRecordML(rAddr, 2, tpair); 
+      allocPairML(rAddr, tpair); 
       #endif
 
       first(tpair) = convertIntToML (*p++);
