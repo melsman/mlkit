@@ -118,14 +118,14 @@ structure ScsList :> SCS_LIST =
     fun partition fn_get_id xs =
       let
 	fun eq (x1,x2) = (fn_get_id x1) = (fn_get_id x2)
-	fun p ([],[],acc) = acc
-	  | p ([],gs,acc) = gs::acc
+	fun p ([],[],acc) = rev acc
+	  | p ([],gs,acc) = rev (rev gs::acc)
 	  | p (x::xs,[],acc) = p(xs,[x],acc)
 	  | p (x::xs, g::gs,acc) =
 	    if eq(x,g) then
 	      p (xs,x::g::gs,acc)
 	    else
-	      p (xs,[x],(g::gs)::acc)
+	      p (xs,[x],rev((g::gs))::acc)
       in
 	p (xs,[],[])
       end

@@ -114,7 +114,7 @@ structure ScsString =
 		    (rest, first :: acc)
 		  else  (
 		    Substring.triml (size from) rest,
-		    first :: substr_to :: acc)
+		    substr_to :: first :: acc)
 	      in
 		repl(new_rest, new_acc)
 	      end
