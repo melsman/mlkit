@@ -136,7 +136,7 @@ functor CompileDec(structure Con: CON
     fun lookupLongcon CE longid =
       case CE.lookup_longid CE longid
 	of CE.CON (con,_,_,_,_) => con
-	 | _ => die "lookupLongcon.not in env as CON"
+	 | _ => die ("lookupLongcon: " ^ Ident.pr_longid longid ^ " not in env as CON")
 
     fun lookupLongid CE longid = CE.lookup_longid CE longid
 
