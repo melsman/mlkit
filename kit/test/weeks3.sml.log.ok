@@ -1,0 +1,31 @@
+
+
+********** weeks3.sml *************
+
+
+ ** Equality not supported for datatype u
+ ** Rewrite the program to use an explicit equality function
+ ** for this particular datatype.
+
+> functor F(
+           ): sig
+                datatype 'a t
+                  con T : 'a u->'a t
+                datatype 'a u
+                  con U : 'a u
+              end
+  structure K :
+    sig
+      datatype 'a t
+        con T : 'a u->'a t
+      datatype 'a u
+        con U : 'a u
+    end
+  structure S :
+    sig
+      datatype 'a t
+        con T : 'a u->'a t
+      datatype 'a u
+        con U : 'a u
+    end
+  val a : bool
