@@ -105,25 +105,35 @@ structure ScsApproval :> SCS_APPROVAL =
                   note_text,
                   ^(Db.toTimestampExp "created_on") as created_on_t,
                   scs_person.name(user_id) as name,
-                  scs_party.email(user_id) as email
+                  scs_party.email(user_id) as email,
+		  scs_person.name(modifying_user) as mod_name
              from scs_approvals
             where on_what_table = ^(Db.qqq on_what_table)
               and on_which_id = ^(Int.toString on_which_id)
             order by created_on_t desc`
 
-(* KNP 230403
-	val approve_dict = []
-[(ScsLang.da,`Godkendt af %0`),(ScsLang.en,`Approved by %0`)]
-*)
-	val decline_dict = [(ScsLang.da,`Afvist af %0`),(ScsLang.en,`Declined by %0`)]
-	fun decision_text decision_p name =
-	  if decision_p = "t" then (*ScsDict.sl approve_dict*) ""
-          else ScsDict.sl decline_dict [name]
+	fun approve_dict name mod_name = 
+    	  if name = mod_name then 
+	    [(ScsLang.da,`Godkendt af ^name`),(ScsLang.en,`Approved by ^name`)]
+	  else
+	    [(ScsLang.da,`Godkendt af ^mod_name for ^name`),
+	     (ScsLang.en,`Approved by ^mod_name for ^name`)]
+
+	fun decline_dict name mod_name = 
+    	  if name = mod_name then 
+	    [(ScsLang.da,`Afvist af ^name`),(ScsLang.en,`Declined by ^name`)]
+	  else
+	    [(ScsLang.da,`Afvist af ^mod_name for ^name`),
+	     (ScsLang.en,`Declined by ^mod_name for ^name`)]
+
+	fun decision_text decision_p name mod_name=
+	  (if decision_p = "t" then ScsDict.s (approve_dict name mod_name)
+           else ScsDict.s (decline_dict name mod_name)) 
 	val xs = 
 	  ScsError.wrapPanic
 	  (Db.list (fn g =>
 		    `<li><b>^(ScsDate.ppTimestamp((ScsError.valOf o Db.toTimestamp) (g "created_on_t")))</b>: 
-		    ^(decision_text (g "decision") (g "name"))<br>
+		    ^(decision_text (g "decision") (g "name") (g "mod_name"))<br>
 		    ^(g "note_text")`)) sql
       in
 	case xs of
