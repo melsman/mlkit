@@ -1,111 +1,165 @@
-The ML Kit Version 4.0                               March 5, 2001
+The ML Kit README file                                  March 5, 2001
 http://www.it.edu/research/mlkit/
 
 0. Introduction
 ---------------
 
-This file describes how to install The ML Kit (from here on just the
-Kit). If you intend to install the Kit on a RedHat Linux Box, consider
-using one of the RPM's available from the Kit web site. The Kit
-follows the convention that releases with odd minor release numbers
-(e.g., 3.1.12) are experimental releases whereas releases with even
-minor release numbers (e.g., 3.0.1) are stable releases. The
-convention only applies to the minor number (i.e., the number
-following the first dot in a release number).
+This file describes how to install the ML Kit (from here on just the
+Kit), a compiler for the programming language Standard ML. If you
+intend to install the Kit on a RedHat Linux Box, consider using one of
+the RPM's available from the Kit web site.
 
-When you unpack the kit directory, "kit", you'll find that this
-directory contains the sources of the kit (src), the documentation
-(doc), the standard basis library (basislib), and accompanying
-examples (kitdemo). As you install and use the kit, more
-sub-directories and files will be created in the directory "kit". If
-you want to rename the directory from "kit" to something else or move
-it somewhere else, now is the time to do so.
+Features:
 
-1. Installation
----------------
-
-To install the ML Kit, you need Standard ML of New Jersey version
-110.0.6 (later versions won't work). The ML Kit Web site at the top of
-this file has links to SML/NJ.  The executable Kit will take up around
-8Mb of disc space. Building it typically takes half an hour or so and
-is best done on a machine with at least 64Mb of RAM. You also need to
-have the UNIX utilities gmake and gcc installed on your system.
-
-
-
-
-Assuming that you have "sml-cm" (SML/NJ with the compilation manager
-loaded) available on your system and that you are in the "kit"
-directory, type
-
-  cd src/
-  sml-cm
-
-Now, write
+  * Region based memory management in combination with reference
+    tracing garbage collection.
  
-  use "build.sml";
+  * All of Standard ML. The Kit compiles all of Standard ML, including
+    Modules, as specified by the Definition of Standard ML. The Kit
+    also supports large parts of the Standard ML Basis Library.
 
-from within the SML/NJ system. You will now be asked whether you want
-the ML Kit to generate native machine code (currently available on
-only the HPUX-HPPA and Linux-X86 systems) or if you want the Kit to
-generate C code to be compiled by gcc. The C backend has been tested
-on the HPUX-HPPA system and on the Linux-X86 system.
+  * Native backend for the x86 architecture and a bytecode backend 
+    for creating portable code.
 
-If you want to build both the C version and the native code version,
-you need to do so in distinct copies of the distribution.
+  * Compilation of large programs. The largest program the Kit
+    has compiled is the Kit itself, which is approximately 80,000
+    lines of code.
 
-The build script compiles the runtime system, a profiling tool
-called rp2ps, a tool for testing the Kit called kittester, the ML Kit
-with Regions compiler, and the Standard ML Basis Library. When the ML
-Kit is installed, an executable version of the Kit is available as
-"kit" in the "kit/bin" directory.
+  * Documentation. A comprehensive guide on programming with regions
+    in the ML Kit is available in the doc/ directory.
 
 
-2. Check whether the Kit is properly configured
------------------------------------------------
+1. Installation Requirements
+----------------------------
+To install and use the ML Kit, you need a Linux box running Redhat
+Linux 7.0 or similar. 
 
-You can check whether the Kit is configured properly by compiling a
-small example. Start the executable kit from within the "kit/kitdemo"
-directory:
-
-   cd ../kitdemo
-   ../bin/kit
-
-When the menu appears, type 7 followed by carriage return; then type
-"helloworld.sml" (including the quotes and carriage return). When the Kit
-has compiled the file "helloworld.sml", exit by typing
-
-   quit
-
-This command sends you back to the UNIX shell, where you can run the 
-executable "run", which the Kit has placed in the "kitdemo" 
-directory.
-
-As explained in "Programming with Regions in the ML Kit"
-(doc/manual/manual.ps.gz), users can have their own kit
-script with personal preferences (flags to control optimizations,
-pretty-printing of intermediate forms, etc.) The Kit does not force
-you to use script files; it works fine with the default
-settings. A sample kit script file "kit.script" is located in the
-"kitdemo" directory.
+Unless you are installing one of the binary RPM distributions
+available from the ML Kit web-site, you need Standard ML of New Jersey
+version 110.0.6 (or later) to compile the ML Kit sources. A link to
+the home page for the Standard ML of New Jersey compiler is available
+from the ML Kit home page. Once installed, the ML Kit will take up
+around 25Mb of disk space, which includes documentation, example
+files, and a pre-compiled Standard ML Basis Library.
 
 
-3. On other platforms
----------------------
-
-On other platforms, you will probably have to modify the runtime
-system slightly.  Look in the make file src/Runtime/Makefile (it uses
-gmake facilities). The runtime system uses the system calls signal and
-setitimer in the files "Profiling.c", "Runtime.c", and "Exception.h".
-The include files to use may depend on the architecture.
-
-The Kit calls the gcc compiler to assemble (or compile) and link the
-HP PA-RISC/X86 (or C) code files it generates. After a few
-modifications to the source code, you may well be able to run the Kit
-on other systems that has gcc and gmake installed.
+2. Release Numbers
+------------------
+The Kit follows the convention that releases with odd minor release
+numbers (e.g., 3.1.12) are experimental releases whereas releases with
+even minor release numbers (e.g., 3.0.1) are stable releases. The
+convention only applies to the minor number. If x.y.z is a release
+number, y is called the minor release number.
 
 
-4. VCG
+3. Preparing for Building and Installation
+------------------------------------------
+
+In the following, except in the section on "Binary Distributions",
+we assume that version 110.0.6 (or later) of Standard ML of New Jersey
+is installed on your Linux box, such that the command "sml" is
+available from the command line. We shall also assume that you have
+downloaded the compressed tar-file named mlkit-x.y.z.tgz and placed it
+somewhere on your system. You now have the option of installing the
+version of the ML Kit with the native backend or the version with the
+bytecode backend.
+
+
+4. Building and Installing the ML Kit (Native Backend)
+------------------------------------------------------
+
+Assuming you have downloaded the tar-file mlkit-x.y.z.tgz as described
+in the previous section, proceed as follows:
+
+  * Unpack the sources. Execute the command
+
+      % tar tzf mlkit-x.y.z.tgz
+
+    This command creates the directory mlkit-x.y.z.
+
+  * Build the ML Kit. Execute the commands:
+
+      % cd mlkit-x.y.z
+      % make mlkit
+
+  * Install the ML Kit. If you have root access to your machine,
+    execute
+
+      # make install
+
+    which installs the ML Kit in the /usr/local/mlkit-x.y.z 
+    directory. Alternatively, if you want to install the ML Kit in
+    your home directory, execute
+   
+      % make install -DINSTDIR_NATIVE=$(HOME)/mlkit-x.y.z
+    
+Once installed, make a personal copy of the kitdemo/ directory and try
+compile the kitdemo/helloworld.sml program. The command
+
+   % cd kitdemo
+   % /usr/local/mlkit-x.y.z/bin/mlkit helloworld.sml
+
+should create a file called run (placed in the working directory)
+that, when executed, should print a greeting from the Kit.
+
+
+5. Building and Installing the ML Kit (Bytecode Backend)
+--------------------------------------------------------
+
+To build and install a version of the ML Kit that uses the bytecode
+backend, exchange the make commands in the previous section with
+
+   % make mlkit_kam
+
+and 
+
+   # make install_kam
+
+which installs the ML Kit in the /usr/local/mlkit-kam-x.y.z directory;
+it is thus possible to have both a version of the ML Kit that uses the
+native backend and a version of the ML Kit that uses the bytecode
+backend installed at the same time. If you do not have root-access to
+the machine, you can install the ML Kit in your home directory, by
+executing
+   
+   % make install_kam -DINSTDIR_KAM=$(HOME)/mlkit-kam-x.y.z
+    
+Once installed, make a personal copy of the kitdemo/ directory and try
+compile the kitdemo/helloworld.sml program. The command
+
+   % cd kitdemo
+   % /usr/local/mlkit-kam-x.y.z/bin/mlkit_kam helloworld.sml
+
+should create a file called run (placed in the working directory)
+that, when executed, should print a greeting from the Kit.
+
+
+6. Binary Distributions
+-----------------------
+
+RPM's are not yet available.
+
+
+7. Support for Other Platforms and How You Can Help
+---------------------------------------------------
+
+Currently, only the Linux/x86 platform is supported. We hope to port
+the bytecode interpreter to run on other platforms as well. If you
+want to help port the runtime system to other platforms, please let us
+know; the runtime system and bytecode interpreter is written in C (see
+the src/RuntimeWithGC/ directory.)
+
+For the native x86 backend, the Kit calls the gcc compiler to assemble
+and link the x86 code files it generates. A native backend for the HP
+PA-RISC architecture is available, but not supported. We do not plan
+to support other native backends than the x86 backend currently
+available. Suggestions for improving (e.g., by peep-hole optimization)
+the code generated by the x86 native backend are very much welcomed;
+the flag --delete_target_files can be used to disable the deletion of
+the .s-files generated by the backend.
+
+
+8. VCG
 ------
 
 The VCG tool, which is used to show region flow graphs, can be found at
@@ -113,7 +167,7 @@ The VCG tool, which is used to show region flow graphs, can be found at
     http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html
 
 
-5. Comments and bug reports
+9. Comments and Bug Reports
 ---------------------------
 
 Please see the www site:
@@ -121,8 +175,8 @@ Please see the www site:
    http://www.it.edu/research/mlkit/
 
 
-6. Known bugs/limitations
--------------------------
+10. Known Bugs and Limitations
+------------------------------
 
 Arithmetic and Trigonomitric functions in Math module:
   The implementation uses the C functions specified in math.h.
@@ -130,12 +184,9 @@ Arithmetic and Trigonomitric functions in Math module:
   do not always return NaN precisely when the Basis
   Library stipulates that they should.
 
-KAM-backend (Kit Abstract Machine):
-  Arithmetic operations do not raise Overflow. 
-
 Polymorphic equality:
 
-  Polymorphic equality is implemented only for ``regular'' data
+  Polymorphic equality is implemented only for "regular" data
   types. A datatype binding
  
      tyvarseq_1 tycon_1 = conbind_1 AND ... AND tvseq_n tycon_n = conbind_n
