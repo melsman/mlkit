@@ -18,7 +18,8 @@ GENOPCODES_TARGETS=RuntimeWithGC/Prims.c RuntimeWithGC/PrimsNsSml.c \
  Compiler/Backend/KAM/OPCODES_KAM.sml Compiler/Backend/KAM/OpcodesKAM.sml
 
 GENOPCODES_SOURCES=Compiler/Backend/KAM/BuiltInCFunctions.spec \
- Compiler/Backend/KAM/BuiltInCFunctionsNsSml.spec
+ Compiler/Backend/KAM/BuiltInCFunctionsNsSml.spec \
+ Compiler/Backend/KAM/KamInsts.spec
 
 mlkit: basics
 	cd RuntimeWithGC; $(MAKE) runtimeSystem.o

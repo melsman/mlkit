@@ -24,13 +24,24 @@ Test files may contain Standard ML like comments.
 rank.sml            ccl       ecte    nobasislib
 pat.sml             ccl     
 llv.sml
+weeks.sml
+weeks2.sml          ccl       ecte
+weeks3.sml          ccl       ecte
 typerr.sml          ccl       ecte
+testcon.sml         ccl       ecte
+freedatatype.sml    ccl       ecte
+freedatatype2.sml   ccl       ecte
+sharing.sml         ccl       ecte
 opaque.sml          ccl
 opaque2.sml                           nobasislib
 functor.sml         ccl
+functor2.sml        ccl
 constraint.sml
 lex.sml                               nobasislib
 layout.sml
+anoq_Exception.sml
+danwang.pm                    tc
+testmatc.sml        ccl
 
 (* Tests of some benchmark programs *)
 
@@ -50,6 +61,15 @@ kkb_eq.sml              tx tc
 kkb36c.sml              tx tc prof
 kitsimple.sml           tx tc prof
 fft.sml                 tx tc prof
+vliw.sml                tx tc prof
+lexgen.sml              tx tc prof
+mlyacc.pm               tx tc prof
+logic.pm                tx tc prof
+barnes-hut.pm           tx tc prof
+nucleic.pm              tx tc prof
+ray.pm                  tx tc prof
+ratio-regions.sml       tx tc prof
+kitmolgard.sml          tx tc prof
 msort.pm                tx tc prof
 tststrcmp.sml                 prof
 FuhMishra.pm            tx tc prof
@@ -61,6 +81,10 @@ check_arrays.sml              prof
 array.sml                     prof
 general.sml                   prof
 int.sml                       prof
+int31.sml                     prof
+int31_2.sml                   prof 
+int32.sml                     prof
+int32_2.sml                   prof
 list.sml                      prof
 listpair.sml                  prof
 string.sml                    prof
@@ -82,7 +106,6 @@ cmdline.sml                   prof
 filesys.sml                   prof    (* See test/README *)
 real.sml                      prof
 word.sml                      prof
-word8.sml                     prof    (* the C backend does not
-	                                 implement overflow on
-	                                 arithmetic operations. *) 
-
+word8.sml                     prof
+word31.sml                    prof
+word32.sml                    prof

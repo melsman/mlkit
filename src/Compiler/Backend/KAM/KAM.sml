@@ -65,8 +65,8 @@ signature KAM =
       | ClearAtbotBit
       | SetAtbotBit
 
-      | SetBit30
-      | SetBit31
+      | SetBit30              (* for unboxed data constructors *)
+      | SetBit31              (* .. *)
       | ClearBit30And31
       | UbTagCon
 	
@@ -102,8 +102,8 @@ signature KAM =
       | IfLessThanJmpRelImmed of label * Int32.int
       | IfGreaterThanJmpRelImmed of label * Int32.int
       | DotLabel of label
-      | JmpVector of label * Int32.int
-
+      | JmpVector of label * Int32.int * Int32.int
+                             (*start*)   (*length*)
       | Raise
       | PushExnPtr
       | PopExnPtr
@@ -135,7 +135,11 @@ signature KAM =
       | EnvPush
 
       | PrimEquali
+      | PrimSubi1
+      | PrimSubi2
       | PrimSubi
+      | PrimAddi1
+      | PrimAddi2
       | PrimAddi
       | PrimMuli
       | PrimNegi

@@ -9,6 +9,7 @@ sig
 			 (*compile_insts*) ('sinst * 'inst list -> 'inst list) *
 			 (*label*) ('label * 'inst list -> 'inst list) *
 			 (*jmp*) ('label * 'inst list -> 'inst list) *
+                         (*inline_cont*) ('inst list -> ('inst list -> 'inst list) option) *
 			 (*C*) 'inst list -> 'inst list
 
  val binary_search_new : (*sels *) (Int32.int*'sinst) list *
@@ -22,9 +23,12 @@ sig
 			 (*label*) ('label * 'inst list -> 'inst list) *
 			 (*jmp*) ('label * 'inst list -> 'inst list) *
 			 (*sel_dist*) (Int32.int * Int32.int -> Int32.int) *
-			 (*jump_table_header*) ('label * Int32.int * 'inst list -> 'inst list) *
+
+                                                         (*start*)   (*length*)
+			 (*jump_table_header*) ('label * Int32.int * Int32.int * 'inst list -> 'inst list) *
 			 (*add_label_to_jump_tab*) ('label * 'inst list -> 'inst list) *
 			 (*eq_lab*) ('label * 'label -> bool) *
+                         (*inline_cont*) ('inst list -> ('inst list -> 'inst list) option) *
 			 (*C*) 'inst list -> 'inst list
 
 end

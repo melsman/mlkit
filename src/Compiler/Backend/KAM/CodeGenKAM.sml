@@ -240,15 +240,19 @@ struct
   (* ----------------------------------------------------------------------------
    * Dead code elimination; during code generation we eliminate code that is non-
    * reachable by eliminating code from the continuation---down to a label---when 
-   * a jump or a return is generated.
+   * a jump, a return, or a raise is generated.
    * ---------------------------------------------------------------------------- *)
 
-  fun dead_code_elim continuation =
-    case continuation
-      of Label _ :: _ => continuation
-       | DotLabel _ :: _ => continuation
+  fun dead_code_elim C =
+    case C
+      of Label _ :: _ => C
+       | DotLabel _ :: _ => C
+       | (i as StoreData _) :: C => i :: dead_code_elim C (* necessary for linking; problem is 
+							   * Raise instruct *)
+       | (i as FetchData _) :: C => i :: dead_code_elim C (* necessary for linking; problem is 
+							   * Raise instruct *)
        | _ :: rest => dead_code_elim rest
-       | nil => continuation
+       | nil => C
 
   (* -----------------------------------------------------------------
    * Peep hole optimization: we define functions here that takes the
@@ -273,6 +277,10 @@ struct
 	if i > 0 then pop(i-1, acc)
 	else if i < 0 then die "push"
 	     else Push :: acc
+       | ImmedInt 1 :: PrimSubi :: acc => PrimSubi1 :: acc
+       | ImmedInt 2 :: PrimSubi :: acc => PrimSubi2 :: acc
+       | ImmedInt 1 :: PrimAddi :: acc => PrimAddi1 :: acc
+       | ImmedInt 2 :: PrimAddi :: acc => PrimAddi2 :: acc
        | _ => Push :: acc
 
   fun selectEnv(i, s, acc) =
@@ -352,11 +360,21 @@ struct
       if !comments_in_kam_code then Comment str :: C
       else C
 
+    fun comment_fn (f, C) =
+      if !comments_in_kam_code then Comment (f()) :: C
+      else C
+
     (* Compile Switch Statements *)
     local
       fun new_label str = Labels.new_named str
       fun label(lab,C) = Label lab :: C
       fun jmp(lab,C) = JmpRel lab :: dead_code_elim C
+      fun inline_cont C =
+	case C 
+	  of (i as JmpRel lab) :: _ => SOME (fn C => i :: C)
+	   | (i as Return _) :: _ => SOME (fn C => i :: C)
+	   | (i1 as Pop _) :: (i2 as Return _) :: _ => SOME (fn C => i1 :: i2 :: C)
+	   | _ => NONE
     in
       fun linear_search(sels,
 			default,
@@ -371,6 +389,7 @@ struct
 				       compile_insts,
 				       label,
 				       jmp,
+				       inline_cont,
 				       C)
 	  
       fun binary_search(sels,
@@ -400,9 +419,11 @@ struct
 					 label,
 					 jmp,
 					 fn (sel1,sel2) => Int32.abs(sel1-sel2),
-					 fn (lab,sel,C) => JmpVector(lab,sel)::C,
+					 fn (lab,sel,length,C) => JmpVector(lab,sel,length)::C,
 					 fn (lab,C) => DotLabel(lab) :: C, (* add_label_to_jump_tab  *)
-					 eq_lab,C)
+					 eq_lab,
+					 inline_cont,
+					 C)
 	  else
 	    linear_search(sels,
 			  default,
@@ -527,7 +548,7 @@ struct
 	  | comp_dealloc_rho((place,PhysSizeInf.WORDS 0), acc) = acc
 	  | comp_dealloc_rho((place,PhysSizeInf.WORDS i), acc) = pop(i, acc)
       in
-	comment ("Letregion <" ^ (ClosExp.pr_rhos (List.map #1 rhos)) ^ ">",
+	comment_fn (fn () => "Letregion <" ^ (ClosExp.pr_rhos (List.map #1 rhos)) ^ ">",
 	comp_alloc_rhos(rhos,env,sp,cc,
 			fn (env,sp) => CG_ce(body,env,sp,cc,
 					     (List.foldl (fn (rho,acc) => 
@@ -544,11 +565,13 @@ struct
 	fun declareLvars([],sp,env) = env
 	  | declareLvars(lv::lvs,sp,env) = declareLvars(lvs,sp+1,declareLvar(lv,STACK(sp),env))
       in
-	comment ("Let <" ^ (ClosExp.pr_lvars pat) ^ ">",
+	comment_fn (fn () => "Let <" ^ (ClosExp.pr_lvars pat) ^ ">",
 	CG_ce(bind,env,sp,cc, 
 	      push (CG_ce(scope,declareLvars(pat,sp,env),sp+n,cc, pop(n, acc)))))
       end
-      | CG_ce(ClosExp.RAISE ce,env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Raise::acc)
+
+      | CG_ce(ClosExp.RAISE ce,env,sp,cc,acc) = CG_ce(ce,env,sp,cc,Raise :: dead_code_elim acc)  
+
       | CG_ce(ClosExp.HANDLE(ce1,ce2),env,sp,cc,acc) =
       (* An exception handler on the stack contains the following fields: *)
       (* sp[offset+2] = pointer to previous exception handler used when updating exnPtr. *)
