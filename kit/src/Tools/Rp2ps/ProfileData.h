@@ -12,9 +12,11 @@
 		        }}\
 
 
-#define MAX_REGIONS_TO_PROFILE 2000000    /* maximal number of region variables in
+/* remember to change these in Runtime/Region.h as well !!!!!!!!!!!!!! */
+
+#define MAX_REGIONS_TO_PROFILE 200000    /* maximal number of region variables in
                                             region-annotated lambda term (the source) */
-#define MAX_ALLOCATION_POINTS 200000     /* maximal number of allocation points in the
+#define MAX_ALLOCATION_POINTS 20000     /* maximal number of allocation points in the
 					    region annotated lambda term. */
 
 typedef struct objectList {
