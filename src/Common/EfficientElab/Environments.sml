@@ -536,10 +536,11 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun restrict (VARENV m,ids) =
 	    VARENV (List.foldL
 		      (fn id => fn m_new =>
-		       let val r = noSome (FinMap.lookup m id) "VE.restrict"
+		       let val r = case FinMap.lookup m id
+				     of SOME r => r
+				      | NONE => impossible ("VE.restrict: cannot find id " ^ Ident.pr_id id)
 		       in FinMap.add(id,r,m_new)
-		       end)
-		         FinMap.empty ids)
+		       end) FinMap.empty ids)
 
       (* Matching *)
       local

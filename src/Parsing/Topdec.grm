@@ -213,6 +213,8 @@ type arg = unit
         | NonEmptySpec'                 of spec
         | OneStrDec_or_SEMICOLON        of strdec option
         | NonEmptyStrDec                of strdec
+        | WhereDesc                     of pos * sigexp -> sigexp
+        | AndWhereDesc_opt              of (pos * sigexp -> sigexp) option
 
 (* Nonterminals for the core language (Defn. V4 sec. 2.8 fig. 2): *)
         | TyRow                         of tyrow
@@ -533,15 +535,24 @@ TopDec_opt:
           TopDec_       ( SOME TopDec_ )
 	|		( NONE )
 
-FunBind:  Ident LPAREN Ident COLON SigExp RPAREN SigExp_constraint_maybe
-          EQUALS StrExp AndFunBind_opt
-                        ( FUNBIND (PP Ident1left
+(* For functor bindings, positions are set such that the body of a functor can
+   be extracted from the source file; this feature is used in the Kit when
+   code is to be generated for an application of a functor. ME 1998-10-12 *)
+
+FunBind:  Ident LPAREN Ident COLON SigExp RPAREN SigExp_constraint_maybe EQUALS StrExp AndFunBind_opt
+                        ( let val i_body = PP SigExp_constraint_maybeleft StrExpright
+                              val empty_strdec = EMPTYstrdec (PP defaultPos defaultPos)
+                          in 
+                             FUNBIND (PP Ident1left
 				     (rightmost info_on_strexp StrExp
 				                info_on_funbind AndFunBind_opt),
                                    mk_FunId Ident1, mk_StrId Ident2, SigExp,
-                                   SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp, AndFunBind_opt) )
-(*DF:*) | Ident LPAREN Spec RPAREN SigExp_constraint_maybe EQUALS StrExp
-          AndFunBind_opt
+                                   LETstrexp(i_body, empty_strdec,
+                                             SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp), 
+                                   AndFunBind_opt)
+                          end )
+
+(*DF:*) | Ident LPAREN Spec RPAREN SigExp_constraint_maybe EQUALS StrExp AndFunBind_opt
                         ( let val strid_nu = inventStrId ()
 			      val i_body = PP SigExp_constraint_maybeleft StrExpright
 			      val i_spec = info_on_spec Spec
@@ -800,10 +811,29 @@ AndStrBind_opt:
 SigExp:
           SIG Spec END  ( SIGsigexp (PP SIGleft ENDright, Spec) )
         | Ident         ( SIGIDsigexp (PP Identleft Identright, mk_SigId Ident) )
+	| SigExp WHERE WhereDesc ( WhereDesc(SigExpleft,SigExp) )
+
+WhereDesc:
+          TYPE TyVarSeq LongTypeIdent EQUALS Ty AndWhereDesc_opt
+	                ( fn (sigexpleft,sigexp) =>
+                             case AndWhereDesc_opt
+                               of SOME f => f (sigexpleft, WHERE_TYPEsigexp (PP sigexpleft Tyright,
+					                                     sigexp, TyVarSeq,
+					                                     mk_LongTyCon LongTypeIdent, Ty))
+                                | NONE => WHERE_TYPEsigexp (PP sigexpleft Tyright,
+					                    sigexp, TyVarSeq,
+					                    mk_LongTyCon LongTypeIdent, Ty) )
+
+AndWhereDesc_opt:
+          AND WhereDesc  ( SOME WhereDesc )
+        | (* -none- *)   ( NONE )
+
+(*
 	| SigExp WHERE TYPE TyVarSeq LongTypeIdent EQUALS Ty
 	                ( WHERE_TYPEsigexp (PP SigExpleft Tyright,
 					    SigExp, TyVarSeq,
 					    mk_LongTyCon LongTypeIdent, Ty) )
+*)
 
 SigDec:
           SIGNATURE SigBind

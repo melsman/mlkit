@@ -48,12 +48,12 @@ functor EqFinMap(structure Report: REPORT
 	    fun revappend([],rest) = rest
 	      | revappend(hd::tl,rest) = revappend(tl,hd::rest)
 	    fun rmv ([],found,a) = 
-		if found then (General.OK(FM{elts=rev a,unique=ref false})) else
-		    General.Fail "not in the domain"
+		if found then (SOME(FM{elts=rev a,unique=ref false})) else
+		    NONE
 	      | rmv ((p as (x',y))::rest,found,a) = 
 		if eq(x,x') then 
 		    if is_unique then 
-			General.OK(FM{elts=revappend(a,rest),unique=ref true})
+			SOME(FM{elts=revappend(a,rest),unique=ref true})
 		    else rmv(rest,true,a)
 		else rmv(rest,found,p::a)
 	in

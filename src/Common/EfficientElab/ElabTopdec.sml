@@ -1252,6 +1252,9 @@ functor ElabTopdec
 	    val (T_E, out_sigexp) = elab_sigexp (B, sigexp)
 	    val (T, E) = Sigma.to_T_and_E T_E
 	    val B' = B B_plus_E (E.from_SE (SE.singleton (strid,E)))
+	    fun print_basis B =
+	      PrettyPrint.outputTree(print,ModuleEnvironments.B.layout B, 100)
+	    (*val _ = print_basis B'*)
 	    val (T'', E', out_strexp) = elab_strexp(B', strexp)
 	    val T' = TyName.Set.intersect (tynames_E E') (TyName.Set.fromList T'')
 	    val T'E' = Sigma.from_T_and_E (T',E')
@@ -1328,6 +1331,7 @@ functor ElabTopdec
       end
  
     val elab_topdec = fn a => (TyName.Rank.reset();
+			       (*print ("\nElabTopdec: LEVEL = " ^ StatObject.Level.pr(StatObject.Level.current())^"\n");*)
 			       let val res = elab_topdec' a
 			       in TyName.Rank.reset();
 				 res

@@ -65,8 +65,9 @@ signature MANAGER_OBJECTS =
 	val layout : IntBasis -> StringTree
 
 	(* operations that are only used in Manager *)	
-	val initial : unit -> TopIntBasis
-	val plus' : TopIntBasis * IntBasis -> TopIntBasis
+	val initial : TopIntBasis
+	val topify : IntBasis -> TopIntBasis
+	val plus' : TopIntBasis * TopIntBasis -> TopIntBasis
 	val enrich' : TopIntBasis * IntBasis -> bool
 	val restrict' : TopIntBasis * {funids:funid list, longstrids: longstrid list,
 				       longvids: longid list, longtycons: longtycon list} -> IntBasis
@@ -83,8 +84,9 @@ signature MANAGER_OBJECTS =
 
 	val agree : longstrid list * TopBasis * (Basis * TyName.Set.Set) -> bool
 	val enrich : TopBasis * (Basis * TyName.Set.Set) -> bool
-	val initial : unit -> TopBasis
-	val plus' : TopBasis * Basis -> TopBasis
+	val initial : TopBasis
+	val topify : Basis -> TopBasis
+	val plus' : TopBasis * TopBasis -> TopBasis
 	val un' : TopBasis -> InfixBasis * ElabBasis * opaq_env * TopIntBasis
       end
 

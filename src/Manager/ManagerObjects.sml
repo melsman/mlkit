@@ -411,20 +411,30 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	val empty = IB (IntFunEnv.empty, CompilerEnv.emptyCEnv, CompileBasis.empty)
 	fun plus (IB(ife1,ce1,cb1), IB(ife2,ce2,cb2)) =
 	  IB(IntFunEnv.plus(ife1,ife2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus(cb1,cb2))
-	fun plus' (TIB(ife1,ce1,tcb1), IB(ife2,ce2,cb2)) =
-	  TIB(IntFunEnv.plus(ife1,ife2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus'(tcb1,cb2))
+	fun plus' (TIB(ife1,ce1,tcb1), TIB(ife2,ce2,tcb2)) =
+	  TIB(IntFunEnv.plus(ife1,ife2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus'(tcb1,tcb2))
 	local
 	  fun restr (cb_restr, (ife,ce,cb), {funids, longstrids, longvids, longtycons}) =
 	    let val ife' = IntFunEnv.restrict(ife,funids)
 	        val ce' = CompilerEnv.restrictCEnv(ce,{longstrids=longstrids,longvids=longvids,longtycons=longtycons})
+		(*val _ = if !Flags.chat then (print("\n RESTRICTED CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
+			else ()*)
 		val lvars = CompilerEnv.lvarsOfCEnv ce'
 		val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce')
+		fun tynames_ife(IFE ife, tns) = 
+		  let fun tynames_obj ((_,_,_,_,_,obj),tns) = 
+		        let val IB(_,ce,_) = obj
+			in CompilerEnv.tynamesOfCEnv ce @ tns
+			end
+		  in FinMap.fold tynames_obj tns ife
+		  end
 		val tynames = [TyName.tyName_EXN,     (* exn is used explicitly in CompileDec *)
 			       TyName.tyName_INT,     (* int needed because of overloading *)
 			       TyName.tyName_STRING,  (* string is needed for string constants *)
 			       TyName.tyName_REF,
 			       TyName.tyName_REAL]    (* real needed because of overloading *)
 		  @ (CompilerEnv.tynamesOfCEnv ce')
+		val tynames = tynames_ife(ife',tynames)
 		val cons = CompilerEnv.consOfCEnv ce'
 		val excons = CompilerEnv.exconsOfCEnv ce'
 		val cb' = cb_restr(cb,(lvars,lvars_with_prims,tynames,cons,excons))
@@ -488,7 +498,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			    CompileBasis.layout_CompileBasis cb]}
 	  
 	  (* operations used in Manager, only. *)
-	fun initial () = TIB (IntFunEnv.initial, CompilerEnv.initialCEnv, CompileBasis.initial())
+	val initial = TIB (IntFunEnv.initial, CompilerEnv.initialCEnv, CompileBasis.initial)
+	fun topify (IB(ife,ce,cb)) = TIB(ife,ce,CompileBasis.topify cb)
       end
 
     type ElabBasis = ModuleEnvironments.Basis 
@@ -534,10 +545,12 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 		  children=[InfixBasis.layoutBasis infB, ModuleEnvironments.B.layout elabB,
 			    OpacityElim.OpacityEnv.layout rea, IntBasis.layout intB]}
 
-	fun initial () = TOPBASIS (InfixBasis.emptyB, ModuleEnvironments.B.initial, OpacityElim.OpacityEnv.initial, IntBasis.initial())
-	fun plus' (TOPBASIS (infb,elabb,rea,tintb), BASIS (infb',elabb',rea',intb')) =
+	val initial = TOPBASIS (InfixBasis.emptyB, ModuleEnvironments.B.initial, OpacityElim.OpacityEnv.initial, IntBasis.initial)
+	fun plus' (TOPBASIS (infb,elabb,rea,tintb), TOPBASIS (infb',elabb',rea',tintb')) =
 	  TOPBASIS (InfixBasis.compose(infb,infb'), ModuleEnvironments.B.plus (elabb, elabb'),
-		    OpacityElim.OpacityEnv.plus(rea,rea'), IntBasis.plus'(tintb, intb'))
+		    OpacityElim.OpacityEnv.plus(rea,rea'), IntBasis.plus'(tintb, tintb'))
+
+	fun topify (BASIS(infB,elabB,rea,intB)) = TOPBASIS(infB,elabB,rea,IntBasis.topify intB)
 
 	fun un' (TOPBASIS a) = a
       end

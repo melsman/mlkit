@@ -286,7 +286,7 @@ functor Compile(structure Excon : EXCON
 				       * generation of the strdecs is done after an entire top-level 
 				       * declaration is elaborated. ME 1998-09-04 *)
 	   val (ce1, lamb) =  Timing.timing_end_res 
-	        ("To lamb", CompileDec.compileStrdecs ce strdecs)
+	        ("ToLam", CompileDec.compileStrdecs ce strdecs)
 	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
 	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
        in  
@@ -318,7 +318,7 @@ functor Compile(structure Excon : EXCON
 	(chat "\nType checking lambda term begin ...\n";
 	 Timing.timing_begin();
 	 let 
-	   val env' = Timing.timing_end_res ("Check lam.",(LambdaStatSem.type_check {env = a,  letrec_polymorphism_only = false,
+	   val env' = Timing.timing_end_res ("CheckLam",(LambdaStatSem.type_check {env = a,  letrec_polymorphism_only = false,
                   pgm =  b}))
 	 in
 	   chat "\nType checking lambda term end ...\n";
@@ -336,7 +336,7 @@ functor Compile(structure Excon : EXCON
 	(chat "\nEliminating polymorphic equality begin ...\n";
 	 Timing.timing_begin();
 	 let val (lamb', env') = 
-	   Timing.timing_end_res ("Elim. eq.", EliminateEq.elim_eq (env, lamb))
+	   Timing.timing_end_res ("ElimEq", EliminateEq.elim_eq (env, lamb))
 	 in
 	   chat "\nEliminating polymorphic equality end ...\n";
 	   if !Flags.DEBUG_COMPILER then 
@@ -362,7 +362,7 @@ functor Compile(structure Excon : EXCON
 	   Timing.timing_begin();
 	   let 
 	     val (lamb_opt, env') = 
-	           Timing.timing_end_res ("Opt. lam.", OptLambda.optimise(env,lamb))
+	           Timing.timing_end_res ("OptLam", OptLambda.optimise(env,lamb))
 	   in
 	     if !Flags.DEBUG_COMPILER orelse !print_opt_lambda_expression
 	     then display("Report: Opt", layoutLambdaPgm lamb_opt) else () ;
@@ -379,7 +379,7 @@ functor Compile(structure Excon : EXCON
          (*Profile.reset();
          Profile.profileOn();*)
          let val (cone,rse_con,spread_lamb) = SpreadExp.spreadPgm(cone,rse, lamb_opt)
-         in Timing.timing_end("Spread exp.");
+         in Timing.timing_end("SpreadExp");
             (*Profile.profileOff();
             TextIO.output(!Flags.log, "\n PROFILING OF S\n\n");
             Profile.report(!Flags.log);*)
@@ -429,7 +429,7 @@ functor Compile(structure Excon : EXCON
 (*	val _ = print "\n*** Unified toplevel regions and effects ***\n" *)
 	val new_layer = []
 
-        val _ = Timing.timing_end("Reg. Inf.")
+        val _ = Timing.timing_end("RegInf")
      (*   val _ = (Profile.profileOff();
                 TextIO.output(!Flags.log, "\n PROFILING OF R\n\n");
                 Profile.report(!Flags.log));
@@ -485,7 +485,7 @@ functor Compile(structure Excon : EXCON
                 ;Profile.profileOn()*) )
         val (pgm', mulenv',Psi') = MulInf.mulInf(program_after_R,Psi,cone,mulenv)
 
-        val _ = Timing.timing_end("Multiplicity Inference")
+        val _ = Timing.timing_end("MulInf")
 
 (*        val _ = ( Profile.profileOff()(*;
                 TextIO.output(!Flags.log, "\n PROFILING OF MulInf\n\n");
@@ -529,7 +529,7 @@ functor Compile(structure Excon : EXCON
 	(chat "\nK-normalisation ...\n";
          Timing.timing_begin();
          let val pgm' = MulInf.k_normPgm pgm
-	 in Timing.timing_end("K-norm");
+	 in Timing.timing_end("Knorm");
 (*KILL 29/03/1997 19:29. tho.:
 	    if Flags.is_on "print_K_normal_forms" 
                orelse !Flags.DEBUG_COMPILER then 
@@ -631,7 +631,7 @@ functor Compile(structure Excon : EXCON
 	(chat "\nApplication Conversion ...\n";
          Timing.timing_begin();
          let val pgm' = PhysSizeInf.appConvert(pgm)
-	 in Timing.timing_end("App Conv");
+	 in Timing.timing_end("AppConv");
 	    if !print_call_explicit_expression orelse !Flags.DEBUG_COMPILER then 
 	      display("\nReport: AFTER APPLICATION CONVERSION:", layout_pgm pgm')
 	    else ();
@@ -646,7 +646,7 @@ functor Compile(structure Excon : EXCON
       let val _ = chat "\nCompiling region annotated lambda language ..."
 	  val _ = Timing.timing_begin()
 	  val {code_label, code, env=l2kam_ce1,imports,exports} = CompLamb.comp_lamb(l2kam_ce, pgm)
-	  val _ = Timing.timing_end("Com. Lam.")
+	  val _ = Timing.timing_end("CompLam")
       in {code_label=code_label, code=code, l2kam_ce1=l2kam_ce1, imports=imports,exports=exports}
       end
 

@@ -38,8 +38,7 @@ EqFinMap.sml
 SORTED_FINMAP.sml
 SortedFinMap.sml
 MONO_FINMAP.sml
-IntFinMap.sml
-ORDER_FINMAP.sml
+IntFinMapPT.sml
 OrderFinMap.sml
 
 IntSet.sml

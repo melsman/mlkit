@@ -9,9 +9,9 @@ functor AtInf(structure Lvars: LVARS
               structure RType: RTYPE
               structure LLV: LOCALLY_LIVE_VARIABLES
               structure RegFlow: REG_FLOW
-              structure BT: ORDER_FINMAP (* finite maps with domain = keys of lvars *)
+              structure BT: MONO_FINMAP (* finite maps with domain = keys of lvars *)
                             where type dom = int  
-              structure RegvarBT: ORDER_FINMAP 
+              structure RegvarBT: MONO_FINMAP 
 	      structure PP: PRETTYPRINT
 		sharing type PP.StringTree = Mul.StringTree 
 		           = MulExp.StringTree = Eff.StringTree = LLV.StringTree
@@ -701,7 +701,7 @@ functor AtInf(structure Lvars: LVARS
          let val pgm' = LLV.llv pgm 
                         handle _ => die "call of LLV.llv failed"
          in 
-           Timing.timing_end("LocLiveVar");
+           Timing.timing_end("LocLive");
            chat "\nStorage mode analysis ...\n";
            Timing.timing_begin();
            (sma0(pgm')handle AbortExpression => die "call of sma0 failed")

@@ -12,17 +12,17 @@ unsigned int max(unsigned int a, unsigned int b) {
 }
 
 
-/*----------------------------------------------------------------------*
- *                       ML Integer Functions                           *
- *                                                                      *
- *divInt: Calculate x div y, where x and y are represented as 2i+1.     *
- *modInt: Calculate x mod y, where x and y are represented as 2i+1.     *
- *----------------------------------------------------------------------*/
+/*------------------------------------------------------------------------*
+ *                         ML Integer Functions                           *
+ *                                                                        *
+ * div_int_: Calculate x div y, where x and y are represented as 2i+1.    *
+ * mod_int_: Calculate x mod y, where x and y are represented as 2i+1.    *
+ *------------------------------------------------------------------------*/
 
 
 #if TAG_INTEGERS
 
-int divInt(int x, int y, int exn)
+int div_int_(int x, int y, int exn)
 {
   if (y == 1) { 
     raise_exn(exn);
@@ -38,7 +38,7 @@ int divInt(int x, int y, int exn)
   }
 }
 
-int modInt(int xML, int yML, int exn)
+int mod_int_(int xML, int yML, int exn)
 {
   if (yML == 1) {
     raise_exn(exn);
@@ -53,7 +53,7 @@ int modInt(int xML, int yML, int exn)
 
 #else /* Don't tag integers */
 
-int divInt(int x, int y, int exn)
+int div_int_(int x, int y, int exn)
 {
   if (y == 0) {
     raise_exn(exn);
@@ -68,7 +68,7 @@ int divInt(int x, int y, int exn)
   }
 }
 
-int modInt(int x, int y, int exn)
+int mod_int_(int x, int y, int exn)
 {
   if (y == 0) {
     raise_exn(exn);
@@ -78,6 +78,24 @@ int modInt(int x, int y, int exn)
     if ( (x > 0 && y > 0) || (x < 0 && y < 0) || (x % y == 0) ) return x % y;
     return (x % y) + y;
   }
+}
+
+unsigned int div_word_(unsigned int x, unsigned int y, int exn)
+{
+  if (y == 0) {
+    raise_exn(exn);
+    return;
+  }
+  return x / y;
+}
+
+unsigned int mod_word_(unsigned int x, unsigned int y, int exn)
+{
+  if (y == 0) {
+    raise_exn(exn);
+    return;
+  }
+  return x % y;
 }
 
 int quotInt(int x, int y)

@@ -1,11 +1,9 @@
-(*$QuasiEnv: QUASI_ENV CRASH ORDER_FINMAP PRETTYPRINT HASH_TABLE*)
-
 (* Environment with a persistent part to be used accross program units
  * ('a map) and a combined persistent/non-persistent (hashing) map to
  * be used locally for each program unit ('a qmap).  
  *)
 
-functor QuasiEnv(structure OFinMap : ORDER_FINMAP
+functor QuasiEnv(structure OFinMap : MONO_FINMAP
 		 structure HashTable : HASH_TABLE
 		 val key : OFinMap.dom -> int
 		 structure PP : PRETTYPRINT

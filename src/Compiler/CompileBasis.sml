@@ -78,6 +78,8 @@ functor CompileBasis(structure Con : CON
     fun mk_CompileBasis a = a
     fun de_CompileBasis a = a
 
+    fun topify a = a
+
     val empty = {TCEnv=LambdaStatSem.empty,
 		 EqEnv=EliminateEq.empty,
 		 OEnv=OptLambda.empty_env,
@@ -88,15 +90,15 @@ functor CompileBasis(structure Con : CON
 		 psi_env=PhysSizeInf.empty,
 		 l2kam_ce=CompLamb.empty}
 
-    fun initial() = {TCEnv=LambdaStatSem.initial,
-		     EqEnv=EliminateEq.initial,
-		     OEnv=OptLambda.initial_env,
-		     rse=RegionStatEnv.initial,
-		     mulenv=Mul.initial,
-		     mularefmap=Mul.initial_mularefmap,
-		     drop_env=DropRegions.init,
-		     psi_env=PhysSizeInf.init,
-		     l2kam_ce=CompLamb.init}
+    val initial = {TCEnv=LambdaStatSem.initial,
+		   EqEnv=EliminateEq.initial,
+		   OEnv=OptLambda.initial_env,
+		   rse=RegionStatEnv.initial,
+		   mulenv=Mul.initial,
+		   mularefmap=Mul.initial_mularefmap,
+		   drop_env=DropRegions.init,
+		   psi_env=PhysSizeInf.init,
+		   l2kam_ce=CompLamb.init}
 
     fun plus({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce},
 	     {TCEnv=TCEnv',EqEnv=EqEnv',OEnv=OEnv',rse=rse',mulenv=mulenv',

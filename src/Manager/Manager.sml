@@ -491,7 +491,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * ---------------- *)
 
     fun Basis_plus (B,B') = Basis.plus(B,B')		    
-    fun Basis_plus' (B,B') = Basis.plus'(B,B')		    
+    fun Basis_plus' (B,B') = Basis.plus'(B,Basis.topify B')		    
 
     fun maybe_create_dir d : unit =
       if OS.FileSys.access (d, []) handle _ => error ("I cannot access directory " ^ quot d) then
@@ -693,7 +693,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			      in (Basis_plus' (B, res_basis), ModCode.seq (modc, res_modc), 
 				  pmap, extobjs' @ extobjs, clean0 andalso clean)
 			      end
-		     end) (Basis.initial(), ModCode.empty, pmap, extobjs, clean) imports
+		     end) (Basis.initial, ModCode.empty, pmap, extobjs, clean) imports
 
 	       (* Now, check that date files associated with imported projects are older than
 		* the date file for the current project. *)
@@ -739,15 +739,15 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       let val _ = Repository.recover()
 	  val emitted_files = EqSet.fromList (Repository.emitted_files())
 	  val prjid = OS.Path.base (OS.Path.file filepath)
-	    (* make sure that the source file is indeed recompiled *)
+	    (* make sure that the source file is indeed compiled *)
 	  val _ = Repository.delete_entries (prjid, ManagerObjects.funid_from_filename filepath)
 	  val _ = maybe_create_PM_dir()
 	  val (modc_basislib, basis_basislib, extobjs_basislib) = 
 	    if !Flags.auto_import_basislib then 
 	      let val {res_modc, res_basis, extobjs, ...} = build_project{cycleset=[], pmap=[], longprjid= !Flags.basislib_project}
-	      in (res_modc, Basis.plus'(Basis.initial(),res_basis), extobjs)
+	      in (res_modc, Basis_plus'(Basis.initial,res_basis), extobjs)
 	      end
-	    else (ModCode.empty, Basis.initial(), [])
+	    else (ModCode.empty, Basis.initial, [])
 	  val (_, modc_file, _, _) = build_body(prjid, basis_basislib, UNITbody(filepath,EMPTYbody), false, [])
 	  val modc = ModCode.seq(modc_basislib, modc_file)
       in  
@@ -761,7 +761,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     fun elab (unitname : string) : unit =
       let val prjid = unitname
-	  val (infB,elabB,_,_) = Basis.un' (Basis.initial())
+	  val (infB,elabB,_,_) = Basis.un' Basis.initial
 	  val _ = reset()
 	  val log_cleanup = log_init unitname
       in (case ParseElab.parse_elab {prjid=prjid,infB=infB,elabB=elabB,
@@ -780,7 +780,5 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 
     val _ = Flags.build_project_ref := wrap build
     val _ = Flags.comp_ref := wrap comp
-
-    val interact = Flags.interact
 
   end

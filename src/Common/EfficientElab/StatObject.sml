@@ -1454,11 +1454,14 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       fun pretty_string tvn (_, tau) = Type.pretty_string tvn tau
       val layout = fn (_, tau) => Type.layout tau
       fun debug_print s (_,tau) = Type.debug_print s tau
+      fun layout_scheme(alphas, tau) = " all[" ^ concat (map TyVar.string alphas) ^ "]." ^ Type.string tau
+
 
       exception InstanceError of string
       fun instance' (tyvars,ty) =
 	  let fun fresh (tv as ref(NO_TYPE_INSTANCE tvdesc)) = (tvdesc, Type.from_TyVar(TyVar.refresh tv))
-		| fresh _ = die "instance'.fresh"
+		| fresh _ = die ("instance'.fresh: tysch= " ^ layout_scheme (tyvars,ty))
+				 
 
 	      val M : (TyVarDesc * Type) list = map fresh tyvars
 
@@ -2040,8 +2043,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		 TypeFcn_apply' (theta, map (on_Type phi) tylist)
 	       end)
 
+
       fun on_TypeScheme Realisation_Id scheme = scheme
-	| on_TypeScheme phi (tyvars,tau) =
+	| on_TypeScheme phi (sigma as (tyvars,tau)) =
+        if List.exists TyVar.is_overloaded tyvars then   sigma  (* type schemes for overloaded identifiers are rigid *)
+        else       
 	let val _ = Level.push()
 	    val (tau, taus) = TypeScheme.instance'' (tyvars,tau)
 	    val tau = on_Type phi tau

@@ -6,26 +6,26 @@ signature MONO_FINMAP =
     type 'b map
 
     val empty      : 'b map
-    val singleton  : dom * 'b ->  'b map
+    val singleton  : dom * 'b -> 'b map
     val isEmpty    : 'b map -> bool
     val lookup     : 'b map -> dom -> 'b option
     val add        : dom * 'b * 'b map -> 'b map
-    val plus       : 'b map * 'b map ->  'b map
-    val remove     : dom * 'b map -> ('b map, string) Edlib.General.Result
+    val plus       : 'b map * 'b map -> 'b map
+    val remove     : dom * 'b map -> 'b map option      
     val dom        : 'b map -> dom list
     val range      : 'b map -> 'b list
     val list       : 'b map -> (dom * 'b) list
     val fromList   : (dom * 'b) list -> 'b map
-    val composemap : ('b -> 'c) -> 'b map ->  'c map
-    val ComposeMap : (dom * 'b -> 'c) ->  'b map -> 'c map
+    val composemap : ('b -> 'c) -> 'b map -> 'c map
+    val ComposeMap : (dom * 'b -> 'c) -> 'b map -> 'c map
     val fold       : (('a * 'b) -> 'b) -> 'b -> 'a map -> 'b
-    val Fold       : (((dom * 'b) * 'c) -> 'c)-> 'c ->  'b map -> 'c
-    val filter     : (dom * 'b -> bool) ->  'b map -> 'b map
+    val Fold       : (((dom * 'b) * 'c) -> 'c)-> 'c -> 'b map -> 'c
+    val filter     : (dom * 'b -> bool) -> 'b map -> 'b map
 
     val addList : (dom * 'b) list -> 'b map -> 'b map
       (* addList l m; adds a list of associations to a map. *)
 
-    val mergeMap : (('b * 'b) -> 'b) ->  'b map -> 'b map ->  'b map
+    val mergeMap : (('b * 'b) -> 'b) -> 'b map -> 'b map -> 'b map
       (* mergeMap f m1 m2; merges two finite maps, with a composition 
          function to apply to the codomains of domains which clash. *)
 
@@ -41,7 +41,7 @@ signature MONO_FINMAP =
 
     type StringTree
     val layoutMap : {start: string, eq: string, sep: string, finish: string} ->
-      (dom -> StringTree) -> ('b -> StringTree) ->  'b map -> StringTree
+      (dom -> StringTree) -> ('b -> StringTree) -> 'b map -> StringTree
 
     type Report
     val reportMap: (dom * 'b -> Report) -> 'b map -> Report

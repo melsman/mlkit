@@ -1,4 +1,4 @@
-(*$TIMING*)
+
 signature TIMING =
   sig 
     val timing_begin   : unit -> unit 
@@ -26,32 +26,10 @@ signature TIMING =
 
   end
 
-(*$Timing: TIMING FLAGS*)
 functor Timing(structure Flags: FLAGS
 	       structure Crash: CRASH) : TIMING =
 
-    (* Two versions provided, one of which uses Non Standard ML stuff *)
-(*
-       struct  (* Pure Standard ML *)
-        fun timing_begin () = ()
-	fun timing_end s = ()
-        fun timing_end_res (s, x) = x
-	fun new_file s = ()
-	fun get_timings () = []
-	fun reset_timings () = ()
-
-	type local_time = unit
-	fun empty_local_time () = ()
-	fun local_timing_begin () = ()
-	fun local_timing_end () = ()
-	fun reset_local_time () = ()
-	fun pp_local_timing () = ""
-
-      end
-*)
-
-  struct (* SML/NJ *)
-
+  struct
 
     structure String = Edlib.String
     
@@ -111,6 +89,14 @@ functor Timing(structure Flags: FLAGS
 	  (add_time_elems timings time_elem)::rest
 	else
 	  timings::(insert_time_elem rest time_elem)
+
+    fun maybe_export_timings {name, non_gc=usr, system=sys, gc, wallclock=real} =
+      case !Flags.timings_stream
+	of SOME os =>
+	  (let fun out t = TextIO.output(os, name ^ " " ^ Time.toString t ^ "\n")
+	   in out usr ; TextIO.flushOut os
+	   end handle _ => die "maybe_export_timings.I could not write timings to timings stream")
+	 | NONE => ()
       
     fun timing_end (name) = 
       (chat("\n");
@@ -127,6 +113,8 @@ functor Timing(structure Flags: FLAGS
 			  system = system,
 			  gc = gc,
 			  wallclock = wallclock}
+
+	 val _ = maybe_export_timings time_elem
 
 	 val _ = timings :=
 	   (case (!timings) 

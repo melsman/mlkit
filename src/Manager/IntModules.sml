@@ -66,7 +66,7 @@ functor IntModules(structure Name : NAME
 		   structure Report : REPORT
 		     sharing type Report.Report = ParseElab.Report
 	           structure PP : PRETTYPRINT
-		     sharing type PP.StringTree = Environments.StringTree
+		     sharing type PP.StringTree = Environments.StringTree = ModuleEnvironments.StringTree
 		   structure Flags: FLAGS
 		   ) : INT_MODULES =
   struct
@@ -99,6 +99,11 @@ functor IntModules(structure Name : NAME
     fun pr_tynames [] = ""
       | pr_tynames [t] = TyName.pr_TyName t
       | pr_tynames (t::ts) = TyName.pr_TyName t ^ ", " ^ pr_tynames ts
+
+    fun print_basis B =
+      PP.outputTree(print,ModuleEnvironments.B.layout B, 100)
+
+
 
     type IntBasis = ManagerObjects.IntBasis
      and topdec = TopdecGrammar.topdec
@@ -494,7 +499,8 @@ functor IntModules(structure Name : NAME
 	       (* To do the matching to the old result, we temporarily store the contents of
 		* the Name-bucket. We then use the Name-bucket to find generated names during
 		* re-elaboration. *)
-	     
+	
+		(* val _ = print_basis elabB *)
 	         val names_old = !Name.bucket  (* remember to re-install these names *)
 	         val _ = Name.bucket := []
 		   
@@ -567,7 +573,8 @@ functor IntModules(structure Name : NAME
 	  val (E, body_builder_info) =
 	    case to_TypeInfo i
 	      of SOME (ElabInfo.TypeInfo.FUNBIND_INFO {argE,elabB,T,resE,opaq_env_opt=SOME opaq_env}) => 
-		let val infB = case (ElabInfo.ParseInfo.to_DFInfo o ElabInfo.to_ParseInfo) i
+		let (*val _ = print_basis elabB*)
+		    val infB = case (ElabInfo.ParseInfo.to_DFInfo o ElabInfo.to_ParseInfo) i
 				 of SOME (ElabInfo.ParseInfo.DFInfo.INFIX_BASIS infB) => infB
 				  | _ => die "int_funbind.no infix basis info" 
 		in (argE, {infB=infB,elabB=elabB,T=TyName.Set.list T,resE=resE,opaq_env=opaq_env})

@@ -5,12 +5,11 @@ ERROR:
 SYMPTOM:
 TESTFILE:
 PRIORITY: (HIGH|MEDIUM|LOW)
-REPORTED BY: (MT|MAEL|FAXE) + date
-TO BE FIXED BY: (MT|MAEL|FAXE)
+REPORTED BY: (MT|ME|FAXE) + date
+TO BE FIXED BY: (MT|ME|FAXE)
 
+=============================== BUGS ===============================
 
-BUGS:
-~~~~~
 
 ERROR: bug in rp2ps?
 SYMPTOM: naar jeg proever 
@@ -26,9 +25,16 @@ REPORTED BY: MT, Aug 26, 1998
 TO BE FIXED BY: FAXE?
 
 
+=============================== WAIT ===============================
 
-WAIT:
-~~~~~
+Large elaboration bases are annotated on the ast (functor bindings)
+during elaboration. Such annotated bases cause opacity elimination to
+be slow when compiling large programs; opacity elimination applies
+realisations to ast annotated objects. To improve speed of
+compilation, we should restrict the annotated bases to those
+identifiers that occur free in the functor binding. Is it possible to
+do this restriction during the pass for finding free identifiers
+(FreeIds)?
 
 In Fig 8.1 the regions r17 and r19 appear never to be used (because we
 do not print the at r17 and at r19 that hold the empty region
@@ -59,8 +65,7 @@ Currently, we do not treat multiple declarations of the same functor
 identifier in the same project. We can allow this; but we cannot allow
 a functor identifier to be declared more than once in a source file.
 
-Allow ``local'' source files in projects.  Allow ``inlining'' of
-functors. Syntax:
+Allow ``inlining'' of functors. Syntax:
      bdy ::= inline funidseq                     functor inlining
           |  local bdy in bdy end                local
 	  |  bdy bdy |  _                        sequential
@@ -93,29 +98,31 @@ system not tested for resetting automatically (in CompLamb);
 currently, the user must do the resetting in the C function. Is there
 a reason? What about Mogensens idea about resetting?
 
-
-DONE:
-~~~~~
-
+============================= DONE ================================
 
 ERROR:
 SYMPTOM:
 TESTFILE: (file in TestEnv, added to acceptance test)
 PRIORITY: (HIGH|MEDIUM|LOW)
-REPORTED BY: (MT|MAEL|FAXE) + date
-TO BE FIXED BY: (MT|MAEL|FAXE)
-FIXED BY: (MT|MAEL|FAXE) + date
+REPORTED BY: (MT|ME|FAXE) + date
+TO BE FIXED BY: (MT|ME|FAXE)
+FIXED BY: (MT|ME|FAXE) + date
 
+-------------------------------------------------------------------
 
 [(ME 1998-08-21): Eliminate generated object code that is never used
 by applying a backward use-analysis. We cannot eliminate object code
 for units with side-effects, however.]
+
+-------------------------------------------------------------------
 
 [(ME 1998-08-21): Delete the TestEnv/Output_X_on_Y directories and
 replace them by one directory expected_output. The output from running
 the tests should be the same on different machines. Moreover, the
 output should be the same even if profiling is enabled (profiling
 messages should be directed to stdErr).]
+
+-------------------------------------------------------------------
 
 [(ME 1998-09-26): Remove the problematic value space (valspace). It
 seems that kam variables are local to each target unit; currently,
@@ -124,10 +131,81 @@ variables and this store grows, infinitely, when the project is
 recompiled. Instead, we can associate spilled registers to local slots
 in each compilation unit.]
 
+-------------------------------------------------------------------
 
+ERROR: reelaboration of functor fails for overloading
+SYMPTOM: 
+	  Impossible: StatObject.instance'.fresh
+	  Error while reconstructing functor body for Util
+	  *** CRASH raised *
 
+TESTFILE: ~mael/kit_projects/modules/util.sml
+PRIORITY: HIGH
+REPORTED BY: ME 1998-10-08
+TO BE FIXED BY: ME
+FIXED BY: ME and MT
+COMMENT: realisations were not meant to be applied to type schemes for
+overloaded functions. However, Elsmans implementation of opacity
+elimination applies realisations to a bases annotated in the ast
+during elaboration.
 
+-------------------------------------------------------------------
 
+ERROR: basis restriction crashes compilation
+SYMPTOM: 
+  [compiling body of functor F (from project interp.pm) begin]
+  problems with tyname environment
+  tyname: t
+  is not in the domain of the environment:
+  ...
+TESTFILE: ~mael/kit_projects/modules/interp.pm
+PRIORITY: HIGH
+REPORTED BY: ME 1998-10-12
+TO BE FIXED BY: ME
+FIXED BY: ME 1998-10-12
+COMMENT: When restricting an interpretation basis, then associations
+for tynames that occur free in the restricted interpretation functor
+environment must be kept (ManagerObjects.IntBasis.restr).
 
+-------------------------------------------------------------------
 
+ERROR: bdy truncation
+SYMPTOM: compilation crashes because .bdy file for 
+functor is truncated:
 
+                   structure F : sig end
+
+TESTFILE: ~mael/kit_projects/modules/bdy_truncate.sml
+PRIORITY: HIGH
+REPORTED BY: ME 1998-10-12
+TO BE FIXED BY: ME
+FIXED BY: ME 1998-10-12
+COMMENT: The position info annotated on the body of functor
+bindings were wrong! I inserted a LETstrexp around the
+body, so that the info on sigexp constraints did not have
+to be altered (which would make error-reporting disastrous).
+
+-------------------------------------------------------------------
+
+ERROR: pattern match incorrect redundancy
+SYMPTOM: The Kit reports that the second rule of the program
+
+  fun f {a=1, b} = 1
+    | f {b=1, a} = 2
+    | f _ = 3
+
+is redundant and generates incorrect code for the function.
+
+TESTFILE: ~mael/kit_projects/modules/patterns.sml
+PRIORITY: HIGH
+REPORTED BY: ME 1998-10-13
+TO BE FIXED BY: ME
+FIXED BY: ME 1998-10-21
+COMMENT: There was a problem with the ordering of record elements in 
+patterns (file CompileDec.sml).
+
+--------------------------------------------------------------------
+
+[(ME 1998-10-21): Allow ``local'' source files in projects.  DONE]
+
+--------------------------------------------------------------------

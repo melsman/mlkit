@@ -113,6 +113,13 @@ let
      cdsrc();
      if OS.Process.system "cp Tools/Rp2ps/rp2ps ../bin/rp2ps" = OS.Process.success then ()
      else die "build_rp2ps: failed to install rp2ps")
+
+  fun build_kittester() =
+    (print "\n ** Building kittester, a program for testing the Kit **\n\n";
+     cd "Tools/Tester";
+     if OS.Process.system ("echo 'CM.make();' | sml-cm") = OS.Process.success then () 
+     else die "build_kittester: ``echo 'CM.make();' | sml-cm'' failed";
+     cdsrc())
       
   fun build_kit() = 
     (print "\n ** Building the ML Kit compiler **\n\n";
@@ -123,6 +130,7 @@ in
   resolve_backend();
   build_runtime();
   build_rp2ps();
+  build_kittester();
   save_config_file();
   build_kit()
 end ;

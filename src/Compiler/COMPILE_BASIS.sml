@@ -20,9 +20,10 @@ signature COMPILE_BASIS =
     type l2kam_ce       (* lambda to kam environment *)
 
     val empty : CompileBasis
-    val initial : unit -> TopCompileBasis
+    val initial : TopCompileBasis
+    val topify : CompileBasis -> TopCompileBasis
     val plus : CompileBasis * CompileBasis -> CompileBasis
-    val plus' : TopCompileBasis * CompileBasis -> TopCompileBasis
+    val plus' : TopCompileBasis * TopCompileBasis -> TopCompileBasis
 
     val eq : CompileBasis * CompileBasis -> bool
     val enrich : CompileBasis * CompileBasis -> bool

@@ -71,7 +71,7 @@ signature TYNAME =
     type StringTree
     val layout : TyName -> StringTree
 
-    structure Map : MONO_FINMAP (* ORDER_FINMAP *) 
+    structure Map : MONO_FINMAP
     structure Set : KIT_MONO_SET
     sharing type TyName = Set.elt = Map.dom
     sharing type StringTree = Set.StringTree = Map.StringTree

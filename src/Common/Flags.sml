@@ -121,9 +121,7 @@ functor Flags (structure Crash : CRASH
     val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
     val c_libs = ref "-lm" (*include math lib when compiling target code from the kit*)
 
-    (* The following three are only used by TestEnv: *)
     val kit_backend = ref "C" (*either "C" or "native"*)
-    val test_env_directory = ref "You_did_not_set_kit_env_directory"
 
     val colwidth               = ref 80
 
@@ -138,10 +136,11 @@ functor Flags (structure Crash : CRASH
     val project_file_name = ref "sources.pm"
     val build_project_ref: (string -> unit)ref = ref dummy
     val comp_ref: (string -> unit)ref  = ref dummy
-    val test_ref: (unit -> unit)ref  = ref dummy
     val current_source_file = ref "dummy"
     val auto_import_basislib = ref true
     val basislib_project = ref "You_did_not_set_basislib_project"
+
+    val timings_stream : TextIO.outstream option ref = ref NONE
 
     (* Garbage Collection *)
            
@@ -462,11 +461,7 @@ struct
 	 ("c_libs", c_libs),  (*e.g. "-lm"*)
 	 ("target_file_extension", target_file_extension),  (*e.g. ".c" or ".s"*)
 	 ("path_to_kit_script", ref "you-did-not-set-path-to-kit-script"), 
-
-	 (*the following are only used by TestEnv:*)
-	 ("kit_backend", kit_backend), (*either "C" or "native"*)
-	 ("test_env_directory", test_env_directory)]  (*e.g. "MLKitv2.0/TestEnv/"*)
-
+	 ("kit_backend", kit_backend)] (*either "C" or "native"*)
 
   val _ = List.apply add_int_entry
         [("colwidth", colwidth),
@@ -1015,7 +1010,7 @@ struct
   end (*local*)
 
 
-  (*3,5. File menu*)
+  (*4. File menu*)
 
   val file_item : item = mk_header "File"
     let val script = ref "kit.script"
@@ -1031,7 +1026,7 @@ struct
 		 below = ACTION (fn _ => (Directory.readScript (!script)))}]
     end
 
-  (*4. Profiling menu*)
+  (*5. Profiling menu*)
 
   local 
     val program_points_item =
@@ -1056,13 +1051,6 @@ struct
 *)
 	    ])
   end
-
-
-  (*5. Test environment*)
-
-  val test_environment_item : item = mk_header "Test environment" (DISPLAY
-        [{text = "run test", attr = noop_attr,
-	  below = ACTION (fn () => (print "\n\n\n\n\n" ; (!test_ref) ()))}])
 
 
   (*6. Debug Kit*)
@@ -1135,9 +1123,8 @@ struct
 			     (*1.*) printing_of_intermediate_forms_item,
 			     (*2.*) layout_item,
 			     (*3.*) control_item,
-			     (*3,5.*) file_item,
-			     (*4.*) profiling_item,
-			     (*5.*) test_environment_item,
+			     (*4.*) file_item,
+			     (*5.*) profiling_item,
 			     (*6.*) debug_kit_item,
                              (*7.*) compile_an_sml_file_item,
 			     (*8.*) compile_it_again_item

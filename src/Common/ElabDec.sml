@@ -72,6 +72,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                ) : ELABDEC =
   struct
 
+    fun concat97 x = concat x 
     open Edlib
     open General
 
@@ -889,7 +890,18 @@ old*)
 
     and elab_dec(C : Context, dec : IG.dec) :
         (Substitution * TyName list * Env * OG.dec) =
-
+      let 
+         fun show_scheme(alphas, tau) = " all[" ^ concat97 (map StatObject.TyVar.string alphas) ^ "]." ^ StatObject.Type.string tau
+         fun dump(dec, sigma)= (PP.outputTree(print,IG.layoutDec dec, 100);
+                               (TextIO.output(TextIO.stdOut, show_scheme(StatObject.TypeScheme.to_TyVars_and_Type sigma) ^ "\nn")))
+                                 
+         (*val _ = if !Flags.chat then
+	             case Environments.C.lookup_longid C (Ident.idToLongId Ident.id_PLUS) of
+		       SOME (Environments.VE.LONGVAR sigma) => dump(dec,sigma)
+		     | _ => print "plus has no type scheme\n\n"
+		 else ()*)
+      in 
+        
         (case dec of
 
            (* Value declaration *)                              (*rule 15*)
@@ -1089,6 +1101,8 @@ old*)
                 E.plus (E1',E2),
                 OG.SEQdec(okConv i,out_dec1,out_dec2)) 
              end)
+
+      end
 
     (****** value bindings - Definition, p. ? ******)
 
@@ -1336,6 +1350,7 @@ old*)
 	    else () ;
 	    (S' oo S, VE'', OG.RECvalbind (out_i, valbind''))
           end
+
 
     (******* type bindings *******)
 
