@@ -259,9 +259,10 @@ let
   val kit_name = "kit"
   val export_file = export_dir ^ kit_name
   val consult_file = "ML_CONSULT_" ^ consult_file_version
-        ^ (case user_opt of
-	     Some "hojfeld" => "-hojfeld"
-	   | _ => "") ;
+(*KILL 13/10/1997 18:46. tho.:
+        ^ (case user_opt of Some "hojfeld" => "-hojfeld" | _ => "")
+*)
+    ;
   val path_to_consult_file = kit_source_directory ^ consult_file
   val temp_file = gen_tmp_file ("/tmp/%Make"^kit_version);
 
