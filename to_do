@@ -15,6 +15,11 @@ WAIT
 Eliminate generated object code that is never used. We cannot
 eliminate object code for units with side-effects, however.
 
+Variables that occur free in a program unit are associated with
+labelled slots in the data segment of the final executable; thus,
+these variables need not be stored in closures. It suffices to fetch
+them from the data segment.
+
 Make recompilation dependent on a notion of `compiler configuration'
 (list of entry-flag pairs); in this way, we can ensure that linking
 will always succeed even if the compiler configuration changes. A

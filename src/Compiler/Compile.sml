@@ -681,7 +681,7 @@ functor Compile(structure Excon : EXCON
 		else
 		  ()
 
-	val target = KAMBackend.generate_target_code(linkinfo, code)
+	val target = KAMBackend.generate_target_code code
       in
 	(rse1, Psi1, mulenv1, drop_env1, psi_env1, l2kam_ce1, target, linkinfo)
       end
@@ -694,16 +694,13 @@ functor Compile(structure Excon : EXCON
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv
 
-    fun compile(CEnv, Basis, strdecs, vcg_file) =
+    fun compile(CEnv, Basis, strdecs, vcg_file) : res =
       let
-	(* It is necessary to reset the timer because only 
-	 * one timer may be activated at the time. *)
 
 	(* There is only space in the basis for one lambdastat-env.
 	 * If we want more checks, we should insert more components
 	 * in bases. For now, we do type checking after optlambda, only. *)
 
-(*	val _ = Timing.reset_timings() 28/04/1997, Niels*)
         val _ = RegionExp.printcount:=1;
 	val {TCEnv,EqEnv,OEnv,rse,mulenv, mularefmap,drop_env,psi_env,l2kam_ce} =
 	  CompileBasis.de_CompileBasis Basis
