@@ -73,7 +73,8 @@ structure MemTime : MEM_TIME =
 	      val _ = msg ("executing target program: " ^ program)
 (*	      val cpu_timer = Timer.startCPUTimer() *)
 	      val real_timer = Timer.startRealTimer()
-	      val {count,rss,size} = MemUsage.memUsage {cmd=program, args=args, delay=MemUsage.quarterSecond, 
+	      val {count,rss,size} = MemUsage.memUsage {cmd=program, args=args, 
+							delay=(*MemUsage.quarterSecond*) MemUsage.second, 
 							out_file=outputfile}
 	      val max_mem_size = report size
 	      val max_res_size = report rss
@@ -83,7 +84,7 @@ structure MemTime : MEM_TIME =
 	  in {max_mem_size = max_mem_size, max_res_size = max_res_size, 
 	      real = Time.toString real, user = "--", sys = "--"}
 	    (* cpu_timer does not measure time spent in child processes, hence it
-	     does not work for system calls, which are forked. *)
+	     does not work for system calls, which SML/NJ forks. *)
 	  end
 
       in case arch_os()

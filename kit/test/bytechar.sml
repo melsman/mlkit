@@ -130,8 +130,18 @@ fun mycontains s c =
 (* Check that p(c) = (mycontains s c) for all characters: *)
 fun equivalent p s = 
     let fun h n =
-	n > 255 orelse 
-	(p (chr n) = mycontains s (chr n)) andalso h(n+1)
+          if n > 255 then true
+	  else let val chr_n = chr n
+	           val b1 = p (chr_n)
+		   val b2 = mycontains s (chr_n)
+		   val b = b1 = b2
+		   val _ = if not(b) then print ("** Error with n=" ^ Int.toString n ^ ", size(s)=" ^ 
+						 Int.toString(String.size s) ^ ", chr(n)='" ^ 
+						 Char.toString chr_n ^ "', b1=" ^ Bool.toString b1 ^ 
+						 ", b2=" ^ Bool.toString b2 ^ "\n") else ()
+		   val b_rest = h(n+1)
+	       in b andalso b_rest
+	       end
     in h 0 end
 
 fun checkset p s = tst' "checkset" (fn _ => equivalent p s);
