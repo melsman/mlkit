@@ -37,6 +37,23 @@ struct
   
     structure RegionExp = RegionExp
 
+    val print_regions = Flags.is_on0 "print_regions"
+    val print_effects = Flags.is_on0 "print_effects"
+    val print_word_regions = Flags.is_on0 "print_word_regions"
+
+    val print_K_normal_forms = Flags.add_bool_entry 
+	{long="print_K_normal_forms", short=NONE, menu=["Layout","print K-Normal Forms"],
+	 item=ref false, neg=false, desc=
+	 "Print Region Expressions in K-Normal Form. Applicable,\n\
+	  \only after storage mode analysis has been applied."}
+
+    val warn_on_escaping_puts = Flags.add_bool_entry 
+	{long="warn_on_escaping_puts", short=NONE, menu=["Control","warn on escaping put effects"],
+	 item=ref false, neg=false, desc=
+	 "Enable the compiler to issue a warning whenever a \n\
+	  \region type scheme contains a put effect on a region\n\
+	  \that is not quantified."}
+
     fun uncurry f (a, b) = f a b
 
     fun quote s = "\"" ^ String.toString s ^ "\""
@@ -45,8 +62,6 @@ struct
     fun say' s = (TextIO.output(TextIO.stdOut, s ); TextIO.output(!Flags.log, s))
     fun outtree t = PP.outputTree(say', t, !Flags.colwidth)
 
-    val print_K_normal_forms = Flags.lookup_flag_entry "print_K_normal_forms"
-    val show_K = print_K_normal_forms
     fun die s  = Crash.impossible ("MulExp." ^ s)
 
     type lvar = Lvar.lvar
@@ -250,7 +265,7 @@ struct
 
     fun warn_puts (TE:regionStatEnv, 
                    (PGM{expression = TR(e,_,_,_), ...}):(place,'a,'b) LambdaPgm ):unit = 
-    if not(Flags.is_on "warn_on_escaping_puts")
+    if not(warn_on_escaping_puts())
       then ()
     else      
       let
@@ -655,8 +670,8 @@ struct
          let val sigma_t = R.mk_lay_sigma' omit_region_info (alphas, rhos, epss, tau)
              val start:string = Lvar.pr_lvar lvar ^
                                  (if !Flags.print_types then ":" else "")
-             val sigma_rho_t = if !Flags.print_regions andalso !Flags.print_types andalso
-				 (!Flags.print_word_regions orelse not(isWordRegion rho)) then 
+             val sigma_rho_t = if print_regions() andalso !Flags.print_types andalso
+				 (print_word_regions() orelse not(isWordRegion rho)) then 
                                   NODE{start = "(", finish = ")", childsep = RIGHT",", 
                                        indent = 1, 
                                        children = [sigma_t, Eff.layout_effect rho]} 
@@ -705,17 +720,17 @@ struct
 
       fun lay_il (lvar_string:string, terminator: string, il, rhos_actuals) : StringTree =
           let val (taus,rhos,epss)= R.un_il(il)
-              val rho_actuals_t_opt= if !Flags.print_regions  then 
+              val rho_actuals_t_opt= if print_regions() then 
                                         SOME(layHlistopt layout_alloc_short rhos_actuals)
                                      else NONE
 	      val taus_opt = if !(Flags.print_types) 
                                   then SOME(layList layTau taus) 
                                   else NONE
-	      val rhos_opt = if !Flags.print_types andalso !Flags.print_regions 
-                                orelse !(Flags.print_effects)
+	      val rhos_opt = if !Flags.print_types andalso print_regions()
+                                orelse print_effects()
                              then SOME(layHlist Eff.layout_effect rhos) 
                              else NONE
-	      val epss_opt = if !(Flags.print_effects) 
+	      val epss_opt = if print_effects()
                                   then SOME(layList Eff.layout_effect_deep epss) 
                                   else NONE  (*mads*)
           in
@@ -940,7 +955,7 @@ struct
 		    children = [layTrip(t,4)]}
 *)
         | EQUAL({mu_of_arg1,mu_of_arg2, alloc}, arg1, arg2) =>
-            let val eq = if !Flags.print_regions then  " =" ^ alloc_string alloc ^ " " else " = "
+            let val eq = if print_regions() then  " =" ^ alloc_string alloc ^ " " else " = "
                 val ty = if !(Flags.print_types) 
                            then concat["(* domain of = is: ", 
                                         PP.flatten1(layMu mu_of_arg1), "*",
@@ -954,7 +969,7 @@ struct
             end
         | CCALL ({name, rhos_for_result, mu_result}, args) =>
 	    let val rhos_for_result_sts =
-	      if !Flags.print_regions
+	      if print_regions()
 	      then map (PP.LEAF o alloc_string o #1) rhos_for_result
 	      else []
 	    in PP.NODE {start = "ccall(", finish = ")"
@@ -967,12 +982,12 @@ struct
            let val fcn = if force then "forceResetting " else "resetRegions "
                val aux_regions_t = HNODE{start="[",finish="]", childsep=NOSEP,
                             children=[layHlistopt layout_alloc_short regions_for_resetting]}
-           in PP.NODE{start = "(" ^ fcn , finish = ")" ^ (if !Flags.print_regions then alloc_string alloc else ""),
+           in PP.NODE{start = "(" ^ fcn , finish = ")" ^ (if print_regions() then alloc_string alloc else ""),
                       indent = size fcn + 2, childsep = PP.NOSEP,
                       children = [aux_regions_t,layTrip(t,0)]}
            end
         | LETREGION{B, rhos = ref l, body} =>
-           if !Flags.print_regions 
+           if print_regions()
            then
             (case  l  of
                [] => layTrip(body,n)
@@ -1010,7 +1025,7 @@ struct
         | _ => LEAF "pretty-printing of this multiplicity expression not yet implemented"
 
       and layout_declared_lvar {lvar, sigma, place, other} =
-	if not(!Flags.print_word_regions) andalso isWordRegion place then
+	if not(print_word_regions()) andalso isWordRegion place then
 	  NODE{start = Lvar.pr_lvar lvar ^ ": ", finish = "",
 	       indent = 5, childsep = NOSEP, 
 	       children = [if !Flags.print_types then 
@@ -1028,7 +1043,7 @@ struct
         let val t1 = 
                 case (e, mus) of
                   (FN{pat,body,free,alloc}, [(R.FUN(_,eps,_),_)])=> 
-		    let val eps_s = if !Flags.print_effects then PP.flatten1(Eff.layout_effect(*_deep*) eps) ^ " "    (*mads*)
+		    let val eps_s = if print_effects() then PP.flatten1(Eff.layout_effect(*_deep*) eps) ^ " "    (*mads*)
 				    else ""
 		    in layLam((pat,body,alloc), n, eps_s)
 		    end
@@ -1133,7 +1148,7 @@ struct
 
               *)
               (no-1,let
-	     	     val print_rhos_formals = !Flags.print_regions 
+	     	     val print_rhos_formals = print_regions()
                      val keyword = if no = 1 then "fun " else "and "
                      val sigma_t_opt = if !Flags.print_types then
                                           SOME(PP.NODE{start = ":", finish = "", indent = 1, childsep= PP.NOSEP,
@@ -1183,7 +1198,7 @@ struct
                      (layout_binder: ('b -> StringTree option))
                      (layout_other : 'c -> StringTree option)
                      (e: ('a, 'b, 'c)LambdaExp) :StringTree = 
-            #1(mkLay(not(!Flags.print_regions))
+            #1(mkLay(not(print_regions()))
                   layout_alloc layout_alloc_short layout_binder layout_other) e
 
   exception Lookup
@@ -1275,10 +1290,10 @@ struct
                       (layout_binder: ('b -> StringTree option))
                       (layout_other : 'c -> StringTree option)
                       (t: ('a, 'b, 'c)trip) :StringTree = 
-            #2(mkLay(not(!Flags.print_regions))
+            #2(mkLay(not(print_regions()))
                       layout_alloc layout_alloc_short layout_binder 
                       layout_other) 
-              (if !show_K then t else eval [] t)
+              (if print_K_normal_forms() then t else eval [] t)
 
 
 
@@ -1293,8 +1308,8 @@ struct
                                export_basis,
                                export_Psi}):StringTree = 
       let
-        val layout_sigma = R.mk_lay_sigma  (not(!Flags.print_regions))
-        val (layExp,layTrip,layMus,layMeta) = mkLay(not(!Flags.print_regions))
+        val layout_sigma = R.mk_lay_sigma  (not(print_regions()))
+        val (layExp,layTrip,layMus,layMeta) = mkLay(not(print_regions()))
                                      layout_alloc layout_alloc_short layout_binder layout_other
         val layoutcb =
           map (fn (con,_,sigma) =>PP.NODE{start="",finish="",indent=0,
@@ -1317,7 +1332,7 @@ struct
                   children=map layoutdb db,childsep=PP.LEFT" and "}
         val dbTs = map layoutMutualRec_db dblist
         val lambT = layoutLambdaExp  layout_alloc layout_alloc_short  layout_binder layout_other 
-                      (if !show_K then lamb 
+                      (if print_K_normal_forms() then lamb 
                        else 
                           let val trip = trip_in
                               val TR(e',_,_,_) = eval [] trip

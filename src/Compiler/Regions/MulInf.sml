@@ -50,6 +50,8 @@ struct
   type qmularefset = Mul.qmularefset
   type mularefmap = Mul.mularefmap
 
+  val print_regions = Flags.is_on0 "print_regions"
+
   fun say s = ((*TextIO.output(TextIO.stdOut, s ^ "\n");*) TextIO.output(!Flags.log, s ^ "\n"))
   fun say' s = ((*TextIO.output(TextIO.stdOut, s);*) TextIO.output(!Flags.log, s ))
   fun outtree t = PP.outputTree(say', t, !Flags.colwidth)
@@ -77,39 +79,39 @@ struct
   fun layoutp(t1,t2) = PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT":", children = [t1,t2]}
 
   fun layoutExp e = MulExp.layoutLambdaExp
-                       (if !Flags.print_regions 
+                       (if print_regions() 
                         then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
                         else fn _ => NONE)
-                       (if !Flags.print_regions 
+                       (if print_regions() 
                         then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
                         else fn _ => NONE)
-                       (if !Flags.print_regions
+                       (if print_regions()
                         then (fn (rho,mul) => SOME(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
                         else (fn _ => NONE))
                        (fn _ => NONE)  (* do not print qmularefset's *)
                        e
 
   fun layouttrip tr = MulExp.layoutLambdaTrip
-                       (if !Flags.print_regions 
+                       (if print_regions() 
                         then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
                         else fn _ => NONE)
-                       (if !Flags.print_regions 
+                       (if print_regions() 
                         then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
                         else fn _ => NONE)
-                       (if !Flags.print_regions
+                       (if print_regions()
                         then (fn (rho,mul) => SOME(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
                         else (fn _ => NONE))
                        (fn _ => NONE)  (* do not print qmularefset's *)
                        tr
 
   fun layoutLambdaPgm p = MulExp.layoutLambdaPgm
-                       (if !Flags.print_regions 
+                       (if print_regions() 
                         then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
                         else fn _ => NONE)
-                       (if !Flags.print_regions 
+                       (if print_regions()
                         then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
                         else fn _ => NONE)
-                       (if !Flags.print_regions
+                       (if print_regions()
                         then (fn (rho,mul) => SOME(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
                         else (fn _ => NONE))
                        (fn _ => NONE)  (* do not print qmularefset's *)

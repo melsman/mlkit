@@ -13,27 +13,36 @@ struct
 
   (* Add some dynamic flags for pretty-printing region variables. *) 
   
-  fun add_entry (k, s, r, d) : unit = 
-      (Flags.add_bool_entry {long=k,short=NONE,item=r,neg=false,menu=["Layout",s],desc=d}; ())
+  val print_rho_levels = Flags.add_bool_entry
+      {long="print_rho_levels", short=NONE, item=ref false, neg=false,
+       menu=["Layout", "print levels of region variables"], desc=
+       "Print levels of region and effect variables in types and\n\
+	\intermediate forms. Levels control quantification of\n\
+	\region and effect variables."}
 
-  val print_rho_levels = ref false
-  val print_rho_types = ref false
-  val _ = app add_entry
-    [("print_rho_levels", "print levels of region variables", print_rho_levels,
-      "Print levels of region and effect variables in types and\n\
-       \intermediate forms. Levels control quantification of\n\
-       \region and effect variables."),
-      ("print_rho_types", "print runtime types of region variables", print_rho_types,
-       "Print region types of region variables in types and\n\
-	\intermediate forms. Possible region types are:\n\
-	\    w  Type of regions containing only word values; these\n\
-	\       regions are dropped from the program because word\n\
-	\       values are represented unboxed.\n\
-	\    p  Type of regions containing pairs.\n\
-	\    s  Type of regions containing only strings.\n\
-	\    t  Type of regions containing other than the above\n\
-        \       kinds of values.")]
+  val print_rho_types = Flags.add_bool_entry
+       {long="print_rho_types", short=NONE, item=ref false, neg=false,
+	menu=["Layout","print runtime types of region variables"], desc=
+	"Print region types of region variables in types and\n\
+	 \intermediate forms. Possible region types are:\n\
+	 \    w  Type of regions containing only word values; these\n\
+	 \       regions are dropped from the program because word\n\
+	 \       values are represented unboxed.\n\
+	 \    p  Type of regions containing pairs.\n\
+	 \    s  Type of regions containing only strings.\n\
+	 \    t  Type of regions containing other than the above\n\
+	 \       kinds of values."}
 
+  val print_regions = Flags.add_bool_entry
+      {long="print_regions", short=SOME "Pregions", item=ref true, neg=true,
+       menu=["Layout", "print regions"], desc=
+       "Print region variables in types and expressions."}
+
+  val print_effects = Flags.add_bool_entry
+      {long="print_effects", short=SOME "Peffects", item=ref false, neg=false,
+       menu=["Layout", "print effects"], desc=
+       "Print effects in region types."}
+     
   type StringTree = PP.StringTree
   infix footnote
   fun x footnote y = x
@@ -113,7 +122,7 @@ struct
   fun layout_einfo(einfo) = 
    case einfo of
         EPS{key,level,...} => PP.LEAF("e"^ show_key key 
-                             ^ (if !print_rho_levels then 
+                             ^ (if print_rho_levels() then 
                                   "(" ^ show_level level ^ ")" 
                                 else ""))
       | PUT   => PP.LEAF "put"
@@ -122,11 +131,11 @@ struct
       | WORDEFFECT => PP.LEAF ""  (*"U"*)
       | RHO{key, level,ty,put,...} => 
 	  PP.LEAF ("r" ^ show_key key ^ 
-		   (if !print_rho_types then show_runType ty
+		   (if print_rho_types() then show_runType ty
 		    else "") ^ 
-		   (if !print_rho_levels then "(" ^ show_level level ^ ")" 
+		   (if print_rho_levels() then "(" ^ show_level level ^ ")" 
 		    else "")(*^
-                   (if !print_rho_types then 
+                   (if print_rho_types() then 
 		      case put of SOME _ => "$" | NONE => ""
 		    else "")*)
                   )
@@ -1449,10 +1458,10 @@ tracing *)
 
   fun layoutEtas(etas: effect list): StringTree list = 
        get_opt(map (fn eff => if is_rho eff then 
-                                     if !Flags.print_regions 
+                                     if print_regions() 
                                      then SOME(layout_effect_deep eff)
                                      else NONE
-                              else if !Flags.print_effects
+                              else if print_effects()
                                    then SOME(layout_effect_deep eff)
                                    else NONE) (etas))
 

@@ -17,6 +17,10 @@ functor RegionExp(
 ) : REGION_EXP = 
 struct
 
+    val print_regions = Flags.is_on0 "print_regions"
+    val print_word_regions = Flags.is_on0 "print_word_regions"
+    val print_effects = Flags.is_on0 "print_effects"
+
     fun uncurry f (a,b) = f a b
 
     fun die s  = Crash.impossible ("RegionExp." ^ s)
@@ -217,7 +221,7 @@ struct
                             children = map layMu mus}
   in
     fun layout_declared_lvar{lvar, sigma = ref sigma, place} =
-      if not(!Flags.print_word_regions) andalso isWordRegion place then
+      if not(print_word_regions()) andalso isWordRegion place then
          PP.NODE{start = Lvar.pr_lvar lvar ^ ": ", finish = "",
                 indent = 5, childsep = PP.NOSEP, children = [R.mk_lay_sigma false sigma]}
       else
@@ -293,8 +297,8 @@ old*)
          let val sigma_t = R.mk_lay_sigma' omit_region_info (alphas, rhos, epss, tau)
              val start:string = Lvar.pr_lvar lvar ^ " " ^
                                  (if !Flags.print_types then ":" else "")
-             val sigma_rho_t = if !Flags.print_regions andalso !Flags.print_types andalso
-				 (!Flags.print_word_regions orelse not(isWordRegion p)) then 
+             val sigma_rho_t = if print_regions() andalso !Flags.print_types andalso
+				 (print_word_regions() orelse not(isWordRegion p)) then 
                                   NODE{start = "(", finish = ")", childsep = RIGHT",", 
                                        indent = 1, 
                                        children = [sigma_t, Eff.layout_effect p]} 
@@ -341,8 +345,8 @@ old*)
       fun lay_il (lvar_string:string, terminator: string, il) : StringTree =
           let val (taus,rhos,epss)= R.un_il(il)
               val taus_opt = if !(Flags.print_types) then SOME(layList layTau taus) else NONE
-              val rhos_opt = if !(Flags.print_regions) then SOME(layHlist Eff.layout_effect rhos) else NONE
-              val epss_opt = if !(Flags.print_effects) then SOME(layList Eff.layout_effect epss) else NONE
+              val rhos_opt = if print_regions() then SOME(layHlist Eff.layout_effect rhos) else NONE
+              val epss_opt = if print_effects() then SOME(layList Eff.layout_effect epss) else NONE
           in
               case get_opt [taus_opt,rhos_opt,epss_opt] of
                 [] => LEAF(lvar_string ^ terminator)
@@ -494,7 +498,7 @@ old*)
 		    children = [layTrip(t,4)]}
 *)
         | EQUAL({mu_of_arg1,mu_of_arg2, alloc},arg1,arg2) =>
-            let val eq = if !Flags.print_regions then  "=" ^ alloc_string alloc else "="
+            let val eq = if print_regions() then  "=" ^ alloc_string alloc else "="
                 val ty = if !(Flags.print_types) 
                            then concat["(* domain of = is: ", 
                                         PP.flatten1(layMu mu_of_arg1), "*",
@@ -509,7 +513,7 @@ old*)
         | CCALL ({name, mu_result, rhos_for_result}, args) =>
             PP.NODE {start = "ccall(", finish = "):"
 		     ^ (if !Flags.print_types then PP.flatten1(layMu mu_result) else "")
-		     ^ (if !Flags.print_regions then 
+		     ^ (if print_regions() then 
 			  PP.flatten1(layHlist (PP.LEAF o alloc_string o #1) rhos_for_result)
 			else ""),
 	             indent = 6, childsep = PP.RIGHT ", ", 
@@ -518,7 +522,7 @@ old*)
            let val fcn = if force then "forceResetting " else "resetRegions "
                val aux_regions_t = HNODE{start="[",finish="]", childsep=NOSEP,
                             children=[layHlist  (fn a => PP.LEAF(alloc_string a)) regions_for_resetting]}
-           in PP.NODE{start = "(" ^ fcn , finish = ")" ^ (if !Flags.print_regions then alloc_string alloc else ""),
+           in PP.NODE{start = "(" ^ fcn , finish = ")" ^ (if print_regions() then alloc_string alloc else ""),
                       indent = size fcn + 2, childsep = PP.NOSEP,
                       children = [aux_regions_t,layTrip(t,0)]}
            end
@@ -750,12 +754,12 @@ for more info*)
   fun layoutLambdaExp(layout_alloc: ('a -> StringTree option))
                        (layout_binder: ('b -> StringTree option))
                        (e: ('a, 'b)LambdaExp) :StringTree = 
-            #1(mkLay(not(!Flags.print_regions))
+            #1(mkLay(not(print_regions()))
                   layout_alloc layout_binder) e
 
   fun layoutLambdaExp' e  =
       layoutLambdaExp
-       (if !Flags.print_regions 
+       (if print_regions()
           then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
         else (fn _ => NONE))
        (fn _ => NONE) 
@@ -765,7 +769,7 @@ for more info*)
   fun layoutLambdaTrip(layout_alloc: ('a -> StringTree option))
                        (layout_binder: ('b -> StringTree option))
                        (t: ('a, 'b)trip) :StringTree = 
-            #2(mkLay(not(!Flags.print_regions))
+            #2(mkLay(not(print_regions()))
                        layout_alloc layout_binder) t
 
   fun layoutLambdaPgm(layout_alloc: ('a -> StringTree option))
@@ -775,8 +779,8 @@ for more info*)
                                  export_datbinds = DATBINDS dblist,
                                  export_basis}):StringTree = 
       let
-        val layout_sigma = R.mk_lay_sigma  (not(!Flags.print_regions))
-        val (layExp,layTrip,layMus,layMeta) = mkLay(not(!Flags.print_regions))
+        val layout_sigma = R.mk_lay_sigma  (not(print_regions()))
+        val (layExp,layTrip,layMus,layMeta) = mkLay(not(print_regions()))
                                      layout_alloc layout_binder
         val layoutcb =
           map (fn (con,_,sigma) =>PP.NODE{start="",finish="",indent=0,

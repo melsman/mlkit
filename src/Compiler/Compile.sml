@@ -132,6 +132,7 @@ functor Compile(structure Excon : EXCON
     val eliminate_polymorphic_equality_p = Flags.is_on0 "eliminate_polymorphic_equality"
     val type_check_lambda_p = Flags.is_on0 "type_check_lambda"
     val print_opt_lambda_expression = Flags.is_on0 "print_opt_lambda_expression" 
+    val print_regions = Flags.is_on0 "print_regions"
 
     val region_profiling_p = Flags.is_on0 "region_profiling"
 
@@ -219,11 +220,11 @@ functor Compile(structure Excon : EXCON
       
     val layoutLambdaPgm = LambdaExp.layoutLambdaPgm 
     fun layoutRegionPgm  x = (RegionExp.layoutLambdaPgm 
-                            (if !Flags.print_regions then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
+                            (if print_regions() then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
                              else fn _ => NONE)
                             (fn _ => NONE)) x
     fun layoutRegionExp x = (RegionExp.layoutLambdaExp 
-                            (if !Flags.print_regions then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
+                            (if print_regions() then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
                              else fn _ => NONE)
                              (fn _ => NONE)) x
 
@@ -541,14 +542,8 @@ functor Compile(structure Excon : EXCON
          let (* val _ = display("\nReport: just before K-normalisation:", layoutLambdaPgm pgm) *)
 	     val pgm' = MulInf.k_normPgm pgm
 	 in Timing.timing_end("Knorm");
-	   chat "]\n";
-(*KILL 29/03/1997 19:29. tho.:
-	    if Flags.is_on "print_K_normal_forms" 
-               orelse !Flags.DEBUG_COMPILER then 
-	      display("\nReport: K-normalised program:", layoutLambdaPgm pgm')
-	    else ();
-*)
-	    pgm'
+	     chat "]\n";
+	     pgm'
 	 end)
     end	
 
