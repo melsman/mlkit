@@ -608,8 +608,14 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 
     fun int_sigdec (SIGNATUREsigdec (_,sigbind)) = int_sigbind sigbind
 
+    datatype IntBasisTree = LEAF of IntBasis
+                          | PLUS of IntBasisTree  * IntBasisTree
+
+    fun flatten(LEAF e,acc) = e:: acc
+      | flatten(PLUS(e1,e2), acc) = flatten(e1, flatten(e2,acc))
+
     fun int_topdec (fi:bool,unitnameOpt:string option, absprjid: absprjid, intB: IntBasis, topdec: topdec) 
-	: IntBasis * modcode =   (* may modify repository *)
+	: IntBasisTree * modcode =   (* may modify repository *)
       case topdec
 	of STRtopdec(i,strdec,topdec_opt) =>
 	  let val (ce,cb,modc1) = comp_int_strdec(fi,intB,strdec,unitnameOpt)
@@ -617,9 +623,9 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	  in case topdec_opt
 	       of SOME topdec2 =>
 		 let val (intB2,modc2) = int_topdec(fi,NONE,absprjid,IntBasis.plus(intB,intB1),topdec2)
-		 in (IntBasis.plus(intB1,intB2), ModCode.seq(modc1,modc2))
+		 in (PLUS(LEAF intB1,intB2), ModCode.seq(modc1,modc2))
 		 end
-		| NONE => (intB1,modc1)
+		| NONE => (LEAF intB1,modc1)
 	  end
 	 | SIGtopdec(i, sigdec, topdec_opt) =>
 	  let val ise = int_sigdec(sigdec)      (* collect tynames *)
@@ -627,9 +633,9 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	  in case topdec_opt
 	       of SOME topdec2 =>
 		 let val (intB2,modc2) = int_topdec(fi,unitnameOpt,absprjid,IntBasis.plus(intB,intB1),topdec2)
-		 in (IntBasis.plus(intB1,intB2), modc2)
+		 in (PLUS(LEAF intB1,intB2), modc2)
 		 end
-		| NONE => (intB1,ModCode.empty)
+		| NONE => (LEAF intB1,ModCode.empty)
 	  end
 	 | FUNtopdec(i,FUNCTORfundec (i', funbind),topdec_opt) => 
 	  let val fe = int_funbind(absprjid, intB, funbind)
@@ -637,9 +643,9 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
 	  in case topdec_opt
 	       of SOME topdec2 =>
 		 let val (intB2,modc2) = int_topdec(fi,unitnameOpt,absprjid,IntBasis.plus(intB,intB1),topdec2)
-		 in (IntBasis.plus(intB1,intB2), modc2)
+		 in (PLUS(LEAF intB1,intB2), modc2)
 		 end
-		| NONE => (intB1,ModCode.empty)
+		| NONE => (LEAF intB1,ModCode.empty)
 	  end
 
     (* ----------------------------------------------------
@@ -659,20 +665,31 @@ functor IntModules(structure ManagerObjects : MANAGER_OBJECTS
   (* fi:bool specifies whether functor applications in the topdec should be
    * inlined. *)
 
-    fun interp(fi:bool,absprjid,intB,topdec, unitname) =
+
+    fun interp_aux(fi:bool,absprjid,intB,topdec, unitname) =
       case push_topdec topdec
 	of (SOME strdec, topdec_opt) => 
-	  let val (ce1,cb1,mc1) = comp_int_strdec(fi,intB,strdec, SOME unitname)
-	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
-	  in case topdec_opt
-	       of SOME topdec => 
-		 let val (intB2, mc2) = int_topdec(fi,NONE,absprjid,IntBasis.plus(intB,intB1), topdec)
-		 in (IntBasis.plus(intB1,intB2), ModCode.seq(mc1,mc2))
-		 end
-		| NONE => (intB1, mc1)
-	  end 
-	 | (NONE, NONE) => (IntBasis.empty, ModCode.empty)
+        	  let val (ce1,cb1,mc1) = comp_int_strdec(fi,intB,strdec, SOME unitname)
+	              val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,ce1,cb1)
+          	  in case topdec_opt
+	             of SOME topdec => 
+        		 let val (intB2, mc2) = int_topdec(fi,NONE,absprjid,IntBasis.plus(intB,intB1), topdec)
+           		 in (PLUS(LEAF intB1,intB2)(*IntBasis.plus(intB1,intB2)*), ModCode.seq(mc1,mc2))
+		         end
+         		| NONE => (LEAF intB1, mc1)
+	           end 
+	 | (NONE, NONE) => (LEAF IntBasis.empty, ModCode.empty)
 	 | (NONE, SOME topdec) => int_topdec(fi,SOME unitname,absprjid,intB,topdec)
+
+    fun interp(fi:bool,absprjid,intB,topdec, unitname) =
+      let 
+        val (t, mc) = interp_aux(fi,absprjid,intB,topdec, unitname)
+        val intBs = flatten(t,[])
+      in
+        (List.foldl (fn(x, acc)=> IntBasis.plus(acc,x)) IntBasis.empty intBs, mc)
+      end
+
   end
+
 
 

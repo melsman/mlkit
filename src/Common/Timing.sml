@@ -1,6 +1,10 @@
 
 signature TIMING =
   sig 
+    (* Every call of timing_begin should be matched by a call of timing_end,
+       but such calls may be nested. When they are nested, all time is attributed
+       to the outermost call of timing_begin ... timing_end. *)
+       
     val timing_begin   : unit -> unit 
     val timing_end     : string -> unit
     val timing_end_res : string * 'a -> 'a
@@ -42,6 +46,7 @@ structure Timing: TIMING =
 	 raise e)
 
     val compiler_timings = ref false;
+
     val _ = Flags.add_bool_entry {long="compiler_timings", short=SOME "timings", item=compiler_timings,
 				  neg=false, menu=["Debug", "compiler timings"],
 				  desc="Show compiler timings for each compilation phase."}
@@ -50,6 +55,7 @@ structure Timing: TIMING =
     val rt = ref (Timer.startRealTimer())
 
     val timingNow = ref false
+    val timer_nesting = ref 0
 
     val timings : (string *
                    ({name: string,
@@ -61,11 +67,12 @@ structure Timing: TIMING =
     fun timing_begin0 s () =
       if !compiler_timings then 
 	(if !timingNow then
-	   die ("Only one timer available (" ^ s ^ ")")
+	   timer_nesting:= !timer_nesting+1 (*die ("Only one timer available (" ^ s ^ ")")*)
 	 else
 	   (t := Timer.startCPUTimer(); 
 	    timingNow := true;
-	    rt := Timer.startRealTimer()))
+	    rt := Timer.startRealTimer())
+        )
       else ()
 
     fun timing_begin () = timing_begin0 "no info" ()
@@ -106,41 +113,47 @@ structure Timing: TIMING =
 	   end handle _ => die "maybe_export_timings.I could not write timings to timings stream")
 	 | NONE => ())
 	  handle E => raise_again "maybe_export_timings" E
+
       
     fun timing_end (name) = 
       if !compiler_timings orelse !timingNow then 
-	(let 
-           val _ = if !timingNow then ()
-		   else die "timing_end called with no timer started"
-	   val _ = timingNow := false
-	   val {sys=system, usr=non_gc} = Timer.checkCPUTimer (!t)
-	   val wallclock = Timer.checkRealTimer (!rt)
-	       handle E => Time.zeroTime
-		   (* raise_again "timing_end.checkRealTimer" E *)
+	(if not(!timingNow) then die "timing_end called with no timer started"
+         else
+           if !timer_nesting > 0 
+           then timer_nesting:= !timer_nesting -1
+           else
+             let
+               val _ = timingNow := false
+    	       val {(*gc,*) sys=system, usr=non_gc} = Timer.checkCPUTimer (!t)
+               val wallclock = Timer.checkRealTimer (!rt)
+	           handle E => Time.zeroTime
+		       (* raise_again "timing_end.checkRealTimer" E *)
 
-	   val padL = StringCvt.padLeft #" " 15 
+
+               val padL = StringCvt.padLeft #" " 15 
 	   
-	   val time_elem = {name = name,
+	       val time_elem = {name = name,
 			    non_gc = non_gc,
 			    system = system,
 			    gc = Time.zeroTime,
 			    wallclock = wallclock}
 
-	   val _ = maybe_export_timings time_elem
+	       val _ = maybe_export_timings time_elem
 
-	   val _ = timings :=
-	     (case (!timings) 
-		of [] => [("Unknown", [time_elem])]
-		 | ((file,timings)::rest) =>
+	       val _ = timings :=
+     	         (case (!timings) 
+   		   of [] => [("Unknown", [time_elem])]
+         		 | ((file,timings)::rest) =>
 		  (file,insert_time_elem timings time_elem)::rest)
-	 in
+    	     in
 (*	   chat
 	   (concat[name,"\n","\t",padL "non-gc", padL "system", padL "gc", padL"wallclock",
 		   "\n\t",
 		   padL (Time.toString non_gc),padL (Time.toString system),
 		   padL (Time.toString gc),padL (Time.toString wallclock)]) *) ()
-	 end  (*;
-	   chat("\n") *)) handle E => raise_again "timing_end" E
+	     end  (*;
+	   chat("\n") *)
+        ) handle E => raise_again "timing_end" E
       else ()
       
     fun timing_end_res (name, x) = (timing_end name; x)

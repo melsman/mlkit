@@ -1016,21 +1016,21 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
   // All finite and large objects are temporarily annotated as immovable.
   // We therefore use val_tag_kind and not val_tag_kind_const
 
-  // fprintf(stderr,"[scan...");
+  debug_gc(fprintf(stderr,"[scan...")); // mads 2005-02-26
   switch ( val_tag_kind(s) ) { 
   case TAG_STRING: {                        // Do not GC the content of a string but
     int sz;                                 //    adjust s to point after the string
     String str = (String)s;
-    // fprintf(stderr,"string\n");
+    debug_gc(fprintf(stderr,"string\n"));     // mads 2005-02-26 
     sz = get_string_size(str->size) + 5;    // 1 for zero, 4 for tag
     sz = (sz%4) ? (1+sz/4) : (sz/4);
-    // fprintf(stderr,"]\n");
+    debug_gc(fprintf(stderr,"]\n"));          // mads 2005-02-26
     return s + sz;
   }
   case TAG_TABLE: {
     int sz;
     Table table = (Table)s;
-    // fprintf(stderr,"table\n");
+    debug_gc(fprintf(stderr,"table\n"));      // mads 2005-02-26 
     sz = get_table_size(table->size);
     s++;
     while ( sz )
@@ -1039,12 +1039,12 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
 	s++;
 	sz--;
       }
-    // fprintf(stderr,"]\n");
+    debug_gc(fprintf(stderr,"]\n"));        // mads 2005-02-26 
     return s;
   }
   case TAG_RECORD: {
     int remaining, num_to_skip, sz;
-    // fprintf(stderr,"record\n");
+    debug_gc(fprintf(stderr,"record\n"));   // mads 2005-02-26 
     sz = get_record_size(*s);          // Size excludes descriptor
     num_to_skip = get_record_skip(*s);
     s = s + 1 + num_to_skip;
@@ -1055,18 +1055,18 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
 	s++;
 	remaining--;
       }
-    // fprintf(stderr,"]\n");
+    debug_gc(fprintf(stderr,"]\n"));        // mads 2005-02-26 
     return s;
   }
   case TAG_CON0: {     // constant
-    // fprintf(stderr,"con0]\n");
+    debug_gc(fprintf(stderr,"con0]\n"));   // mads 2005-02-26 
     return s+1;
   }
   case TAG_CON1:
   case TAG_REF: {
-    // fprintf(stderr,"con1 or ref");
+    debug_gc(fprintf(stderr,"con1 or ref")); // mads 2005-02-26 
     *(s+1) = evacuate(*(s+1));
-    // fprintf(stderr,"]\n");
+    debug_gc(fprintf(stderr,"]\n")); // mads 2005-02-26 
     return s+2;
   }
   default: {
@@ -1091,9 +1091,9 @@ do_scan_stack()
     // Run through container - FINITE REGIONS and LARGE OBJECTS
     while (!(is_scan_container_empty())) 
       {
-	debug_gc(fprintf(stderr,"[scanning finite region...")); // ToDo: GenGC remove
-	s = scan_tagged_value(pop_scan_container());
-	debug_gc(fprintf(stderr,"]"));	 // ToDo: GenGC remove
+ 	debug_gc(fprintf(stderr,"[scanning finite region...")); // ToDo: GenGC remove
+        s = scan_tagged_value(pop_scan_container());
+ 	debug_gc(fprintf(stderr,"]"));	 // ToDo: GenGC remove
       }
 
     while (!(is_scan_stack_empty())) {

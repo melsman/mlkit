@@ -856,7 +856,15 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS where type absprjid =
 		val _ = chat "[interpretation begin...]"
 		val names_elab = !Name.bucket
 		val _ = Name.bucket := []
+(*         	val _ = Compiler.Profile.reset()  mads *)
 		val (intB', modc) = IntModules.interp(fi,absprjid, intB_im, topdec', unitname)
+(*              val _ = if Flags.is_on0 "compiler_timings" ()
+                  then let val os = TextIO.openOut "compileprofile"
+                       in Compiler.Profile.report os;
+                          TextIO.closeOut os
+                       end
+                   else ()
+*)
 		val names_int = !Name.bucket
 		val _ = Name.bucket := []
 		val _ = chat "[interpretation end...]"

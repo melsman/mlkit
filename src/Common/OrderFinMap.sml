@@ -29,6 +29,7 @@ functor OrderFinMap(Order : ORDERING): MONO_FINMAP =
     fun isEmpty E = true
       | isEmpty _ = false
 
+
     fun lookup t key =
       let 
 	fun search E = NONE
