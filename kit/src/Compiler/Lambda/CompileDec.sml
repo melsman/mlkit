@@ -708,16 +708,20 @@ old*)
 	| unoverload i CE.MUL = int_or_real i (MUL_INTprim, MUL_REALprim)
 	| unoverload i CE.LESS =
 	    string_or_int_or_real i
-	      (LESS_INTprim, LESS_REALprim, LESS_STRINGprim)
+	      (LESS_INTprim, LESS_REALprim,
+	       CCALLprim ("lessString", {instance=compileType Type.Bool}))
 	| unoverload i CE.GREATER=
 	    string_or_int_or_real i
-	      (GREATER_INTprim, GREATER_REALprim, GREATER_STRINGprim)
+	      (GREATER_INTprim, GREATER_REALprim,
+	       CCALLprim ("greaterString", {instance=compileType Type.Bool}))
 	| unoverload i CE.LESSEQ =
 	    string_or_int_or_real i
-	      (LESSEQ_INTprim, LESSEQ_REALprim, LESSEQ_STRINGprim)
+	      (LESSEQ_INTprim, LESSEQ_REALprim,
+	       CCALLprim ("lesseqString", {instance=compileType Type.Bool}))
 	| unoverload i CE.GREATEREQ =
 	    string_or_int_or_real i
-	      (GREATEREQ_INTprim, GREATEREQ_REALprim, GREATEREQ_STRINGprim)
+	      (GREATEREQ_INTprim, GREATEREQ_REALprim,
+	       CCALLprim ("greatereqString", {instance=compileType Type.Bool}))
 	| unoverload i _ = die "unoverload"
     in
       fun overloaded_prim info result (*e.g., CE.ABS*)
@@ -936,167 +940,150 @@ old*)
          | PARatexp(_, exp) => compileExp env exp
 
     and compileExp env exp =
-      case exp
-        of ATEXPexp(_, atexp) => compileAtexp env atexp
+      (case exp of
+	 ATEXPexp(_, atexp) => compileAtexp env atexp
 
-         | APPexp(_,
-                  f as ATEXPexp(_, IDENTatexp(info, OP_OPT(longid, _))),
-                  arg
-                 ) =>
+       | APPexp(_,
+		f as ATEXPexp(_, IDENTatexp(info, OP_OPT(longid, _))),
+		arg) =>
                         (* We have to spot direct application of "prim" - apart
                            from that, we don't have to bother with constructors
                            and the like. They'll compile to functions, but the
                            optimiser will spot them later. *)
 	  
-	  (case lookupLongvar env longid
-	     of CE.LVAR lv =>        (* Not a primitive... *)
-	       (compileAtexp env arg) bindS (fn arg' =>
-		  (case ElabInfo.to_TypeInfo info 
-		     of Some(TypeInfo.VAR_INFO{instances}) =>
+	   (case lookupLongvar env longid of
+	      CE.LVAR lv =>        (* Not a primitive... *)
+		(compileAtexp env arg) bindS (fn arg' =>
+		  (case ElabInfo.to_TypeInfo info of
+		     Some(TypeInfo.VAR_INFO{instances}) =>
 		       (mapList compileType instances) bindS 
 		       (fn instances' =>
 			unitS(APP(VAR{lvar=lv,instances=instances'},arg')))
-		      | _ => die "compileExp(APPexp..): wrong type info"))
-	      | CE.RESET_REGIONS =>
+		   | _ => die "compileExp(APPexp..): wrong type info"))
+	    | CE.RESET_REGIONS =>
 	       (compileAtexp env arg) bindS (fn arg' =>
-		  (case ElabInfo.to_TypeInfo info 
-		     of Some(TypeInfo.VAR_INFO{instances = [tau]}) =>
+		  (case ElabInfo.to_TypeInfo info of
+		     Some(TypeInfo.VAR_INFO{instances = [tau]}) =>
 		       (compileType tau) bindS 
 		       (fn tau' =>
 			unitS(PRIM(RESET_REGIONSprim{instance = tau'}, [arg'])))
-		      | _ => die "compileExp(APPexp..): wrong type info"))
-	      | CE.FORCE_RESET_REGIONS =>
+		   | _ => die "compileExp(APPexp..): wrong type info"))
+	    | CE.FORCE_RESET_REGIONS =>
 	       (compileAtexp env arg) bindS (fn arg' =>
-		  (case ElabInfo.to_TypeInfo info 
-		     of Some(TypeInfo.VAR_INFO{instances = [tau]}) =>
+		  (case ElabInfo.to_TypeInfo info of
+		     Some(TypeInfo.VAR_INFO{instances = [tau]}) =>
 		       (compileType tau) bindS 
 		       (fn tau' =>
 			unitS(PRIM(FORCE_RESET_REGIONSprim{instance = tau'}, [arg'])))
-		      | _ => die "compileExp(APPexp..): wrong type info"))
-	      | CE.ABS =>       overloaded_prim info CE.ABS       (compileAtexp env) (compileExp env) arg true 
-	      | CE.NEG =>       overloaded_prim info CE.NEG       (compileAtexp env) (compileExp env) arg true 
-	      | CE.PLUS =>      overloaded_prim info CE.PLUS      (compileAtexp env) (compileExp env) arg false
-	      | CE.MINUS =>     overloaded_prim info CE.MINUS     (compileAtexp env) (compileExp env) arg false
-	      | CE.MUL =>       overloaded_prim info CE.MUL       (compileAtexp env) (compileExp env) arg false
-	      | CE.LESS =>      overloaded_prim info CE.LESS      (compileAtexp env) (compileExp env) arg false
-	      | CE.GREATER =>   overloaded_prim info CE.GREATER   (compileAtexp env) (compileExp env) arg false
-	      | CE.LESSEQ =>    overloaded_prim info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false
-	      | CE.GREATEREQ => overloaded_prim info CE.GREATEREQ (compileAtexp env) (compileExp env) arg false
-	      | CE.PRIM =>   
-                             (* Application of `prim'. We must now disassemble the 
-                              * argument to get the prim number and the arguments 
-                              * to the primitive operation *)
-                             let
-                               val (n, args) = decomposePrimArg arg
-                               val prim = lookupPrim n
-                               fun f prim =
-                                 (mapList (compileExp env) args) bindS (fn args' =>
-                                 (case ElabInfo.to_TypeInfo info of
-                                    Some(TypeInfo.VAR_INFO{instances=[instanceRes,instance]}) => 
-                                        (* XXX
-                                         * This code depends on the order of the
-                                         * instances recorded during elaboration.
-                                         * We need the instance corresponding to 
-                                         * the argument of prim, which in 
-                                         * EfficientCoreElab version is the second
-                                         *)
-                                      (compileType instance) bindS (fn instance' =>
-                                      unitS(TLE.PRIM(prim {instance=instance'},
-                                                     args')))
-                                  | _ => die 
-                                      "compileExp(APPexp(PRIM..): wrong \
-                                      \type info"))
-                             in
-                               case prim of
-                                 DEREFprim _ => f DEREFprim
-                                   (* ref (REFprim) is a constructor, so it does 
-                                    * not show up here 
-                                    *)
-                               | ASSIGNprim _ => f ASSIGNprim
-                               | EQUALprim _ => f EQUALprim
-                                   (* <> (NOTEQUALprim) is declared in the prelude as an
-                                    * ordinary variable (not a primitive), so it does
-                                    * not show up here 
-                                    *)
-			       | CCALLprim _ => 
-				   let
-				     fun extractString exp =
-				       let
-					 val atexp = 
-					   case exp 
-					     of ATEXPexp(_,atexp) => atexp
-					      | _ => die "CCALL.exp not atexp" 
-					 val scon =
-					   case atexp
-					     of SCONatexp(_,scon) => scon
-					      | IDENTatexp(_,_) => die "CCALL atexp is an identifier"
-					      | RECORDatexp(_,_) => die "CCALL atexp is a record"
-					      | LETatexp(_,_,_) => die "CCALL atexp is a let"
-					      | PARatexp(_,_) => die "CCALL atexp is a par"
-				       in 
-					 case scon
-					   of SCon.STRING s => s
-					    | _ => die "CCALL.scon not string"
-				       end 
+		   | _ => die "compileExp(APPexp..): wrong type info"))
+	    | CE.ABS =>       overloaded_prim info CE.ABS       (compileAtexp env) (compileExp env) arg true 
+	    | CE.NEG =>       overloaded_prim info CE.NEG       (compileAtexp env) (compileExp env) arg true 
+	    | CE.PLUS =>      overloaded_prim info CE.PLUS      (compileAtexp env) (compileExp env) arg false
+	    | CE.MINUS =>     overloaded_prim info CE.MINUS     (compileAtexp env) (compileExp env) arg false
+	    | CE.MUL =>       overloaded_prim info CE.MUL       (compileAtexp env) (compileExp env) arg false
+	    | CE.LESS =>      overloaded_prim info CE.LESS      (compileAtexp env) (compileExp env) arg false
+	    | CE.GREATER =>   overloaded_prim info CE.GREATER   (compileAtexp env) (compileExp env) arg false
+	    | CE.LESSEQ =>    overloaded_prim info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false
+	    | CE.GREATEREQ => overloaded_prim info CE.GREATEREQ (compileAtexp env) (compileExp env) arg false
+	    | CE.PRIM =>   
+	       (* Application of `prim'. We must now disassemble the 
+		* argument to get the prim number and the arguments 
+	        * to the primitive operation *)
+	       let
+		 val (n, args) = decomposePrimArg arg
+		 val prim = lookupPrim n
+		 fun f prim =
+		   (mapList (compileExp env) args) bindS (fn args' =>
+		   (case ElabInfo.to_TypeInfo info of
+		      Some(TypeInfo.VAR_INFO{instances=[instanceRes,instance]}) => 
+			(* XXX
+			 * This code depends on the order of the
+			 * instances recorded during elaboration.
+			 * We need the instance corresponding to 
+			 * the argument of prim, which in 
+			 * EfficientCoreElab version is the second *)
+			(compileType instance) bindS (fn instance' =>
+			unitS(TLE.PRIM(prim {instance=instance'}, args')))
+		    | _ => die "compileExp(APPexp(PRIM..): wrong type info"))
+	       in
+		 (case prim of
+		    DEREFprim _ => f DEREFprim (*ref (REFprim) is a constructor, so it does not show up here*)
+		  | ASSIGNprim _ => f ASSIGNprim
+		  | EQUALprim _ => f EQUALprim
+		      (* <> (NOTEQUALprim) is declared in the prelude as an
+		       * ordinary variable (not a primitive), so it does
+		       * not show up here *)
+		  | CCALLprim _ => 
+		      let
+			fun extractString exp =
+			  let
+			    val atexp = (case exp of
+					   ATEXPexp(_,atexp) => atexp
+					 | _ => die "CCALL.exp not atexp")
+			    val scon = (case atexp of
+					  SCONatexp(_,scon) => scon
+					| IDENTatexp(_,_) => die "CCALL atexp is an identifier"
+					| RECORDatexp(_,_) => die "CCALL atexp is a record"
+					| LETatexp(_,_,_) => die "CCALL atexp is a let"
+					| PARatexp(_,_) => die "CCALL atexp is a par")
+			  in 
+			    (case scon of
+			       SCon.STRING s => s
+			     | _ => die "CCALL.scon not string")
+			  end 
+			
+			val (s, args) = 
+			  (case args of
+			     [] => die "No function name in CCALLprim"
+			   | [s] => die "Only one function name in CCALLprim. \
+                                         \Remember also function name for profiling."
+			   | s::s_prof::xs =>
+			       (extractString
+				  (if !region_profiling then s_prof else s), xs))
+		      in
+			(mapList (compileExp env) args) bindS (fn args' =>
+			(case ElabInfo.to_TypeInfo info of
+			   Some(TypeInfo.VAR_INFO{instances=[instanceRes,instanceArg]}) => 
+			     (* We use the result type of prim *)
+			     (* SpreadExp generates reg. vars. from the result type. *)
+			     (compileType instanceRes) bindS (fn instance' =>
+			     unitS(TLE.PRIM(CCALLprim (s, {instance=instance'}), args')))
+			 | _ => die "compileExp(APPexp(PRIM..): wrong type info"))
+		      end
+		  | _ => 
+		      (mapList (compileExp env) args) bindS (fn args' =>
+		      unitS(TLE.PRIM(prim, args'))))
+	       end
+	     
+	    | _ (*CON/EXCON*) => (compileExp env f) bindS (fn f' =>
+	                         (compileAtexp env arg) bindS (fn arg' =>
+				 unitS(APP(f',arg')))))
 
-				     val (s, args) = 
-				       case args
-					 of [] => die "No function name in CCALLprim"
-					  | [s] => die "Only one function name in CCALLprim. Remember also function name for profiling."
-					  | s::s_prof::xs =>
-					     if !region_profiling then
-					       (extractString s_prof, xs)
-					     else
-					       ((  (* Report.print(PP.reportStringTree (GrammarInfo.layoutPostElabGrammarInfo info)); *)
-						 extractString s), xs)
-				   in
-				     (mapList (compileExp env) args) bindS (fn args' =>
-				      (case ElabInfo.to_TypeInfo info of
-					 Some(TypeInfo.VAR_INFO{instances=[instanceRes,instanceArg]}) => 
-					   (* We use the result type of prim *)
-					   (* SpreadExp generates reg. vars. from the result type. *)
-					   (compileType instanceRes) bindS (fn instance' =>
-					    unitS(TLE.PRIM(CCALLprim (s, {instance=instance'}), args')))
-				       | _ => die 
-					   "compileExp(APPexp(PRIM..): wrong \
-					    \type info"))
-				   end
-                               | _ => 
-                                   (mapList (compileExp env) args) bindS (fn args' =>
-                                   unitS(TLE.PRIM(prim, args')))
-                             end
+       | APPexp(_, f, arg) =>         (* non-trivial function expression... *)
+	   (compileExp env f) bindS (fn f' =>
+	   (compileAtexp env arg) bindS (fn arg' =>
+	   unitS(APP(f',arg'))))
 
-	      | _ (*CON/EXCON*) => (compileExp env f) bindS (fn f' =>
-		                    (compileAtexp env arg) bindS (fn arg' =>
-		                     unitS(APP(f',arg'))))
-	      )
+       | TYPEDexp(_, exp, _) => compileExp env exp
 
-         | APPexp(_, f, arg) =>         (* non-trivial function expression... *)
-             (compileExp env f) bindS (fn f' =>
-             (compileAtexp env arg) bindS (fn arg' =>
-             unitS(APP(f',arg'))))
+       | HANDLEexp(_, exp', match) =>
+	   (compileExp env exp') bindS (fn e1' =>
+	   (compileType (type_of_exp exp)) bindS (fn tau' =>
+           (compileMatch env (match, false,RAISESELF tau')) bindS (fn e2' =>
+           unitS(HANDLE(e1',e2')))))
 
-         | TYPEDexp(_, exp, _) => compileExp env exp
+       | RAISEexp(i, exp') => 
+           (compileExp env exp') bindS (fn e' =>
+           (compileType (type_of_exp exp)) bindS (fn tau' =>
+           unitS(RAISE(e',Types [tau']))))
 
-         | HANDLEexp(_, exp', match) =>
-             (compileExp env exp') bindS (fn e1' =>
-             (compileType (type_of_exp exp)) bindS (fn tau' =>
-             (compileMatch env (match, false,RAISESELF tau')) bindS (fn e2' =>
-             unitS(HANDLE(e1',e2')))))
+       | FNexp(_, match) => 
+           (compileType (type_of_exp exp)) bindS 
+	   (fn TLE.ARROWtype(_,[tau']) => (* now extracts result type (was just tau'); mads, 30/12/94 *)
+	    compileMatch env (match, true, RAISEMATCH tau')
+	     | _ => die "compileExp: FNexp did not have (unary) arrow type")
 
-         | RAISEexp(i, exp') => 
-             (compileExp env exp') bindS (fn e' =>
-             (compileType (type_of_exp exp)) bindS (fn tau' =>
-             unitS(RAISE(e',Types [tau']))))
-
-         | FNexp(_, match) => 
-             (compileType (type_of_exp exp)) bindS 
-              (fn TLE.ARROWtype(_,[tau']) => (* now extracts result type (was just tau'); mads, 30/12/94 *)
-                   compileMatch env (match, true, RAISEMATCH tau')
-                  | _ => die "compileExp: FNexp did not have (unary) arrow type"
-              )
-
-         | UNRES_INFIXexp _ =>  die "compileExp(UNRES_INFIX)"
+       | UNRES_INFIXexp _ =>  die "compileExp(UNRES_INFIX)")
 
    (* compileMatch - compiles a match into a FN expression; this is used
       for FNexp expressions and also for handlers. The failure argument

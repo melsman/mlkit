@@ -106,16 +106,12 @@ functor LambdaExp(structure Lvars: LVARS
       | NOTEQUALprim of {instance: 'Type}
       | LESS_REALprim
       | LESS_INTprim
-      | LESS_STRINGprim
       | GREATER_REALprim
       | GREATER_INTprim
-      | GREATER_STRINGprim
       | LESSEQ_REALprim
       | LESSEQ_INTprim
-      | LESSEQ_STRINGprim
       | GREATEREQ_REALprim
       | GREATEREQ_INTprim
-      | GREATEREQ_STRINGprim
       | OPEN_INprim                                   (* I/O *)
       | OPEN_OUTprim
       | INPUTprim
@@ -314,16 +310,12 @@ functor LambdaExp(structure Lvars: LVARS
           else PP.LEAF " <> "
       | LESS_REALprim =>PP.LEAF("<")
       | LESS_INTprim =>PP.LEAF("<")
-      | LESS_STRINGprim =>PP.LEAF("<")
       | GREATER_REALprim => PP.LEAF(">")
       | GREATER_INTprim => PP.LEAF(">")
-      | GREATER_STRINGprim => PP.LEAF(">")
       | LESSEQ_REALprim => PP.LEAF("<=")
       | LESSEQ_INTprim => PP.LEAF("<=")
-      | LESSEQ_STRINGprim => PP.LEAF("<=")
       | GREATEREQ_REALprim => PP.LEAF(">=")
       | GREATEREQ_INTprim => PP.LEAF(">=")
-      | GREATEREQ_STRINGprim => PP.LEAF(">=")
       | OPEN_INprim => PP.LEAF("open_in" )
       | OPEN_OUTprim => PP.LEAF("open_out")
       | INPUTprim => PP.LEAF("intput")
