@@ -68,10 +68,10 @@ functor BackendInfoX86(structure Labels : ADDRESS_LABELS
     val res_phreg = I.reg_res_as_lvs
     val args_phreg_ccall = I.reg_args_ccall_as_lvs
     val res_phreg_ccall = I.reg_res_ccall_as_lvs
-    val callee_save_phregs = I.callee_save_regs_as_lvs
+    val callee_save_phregs   = I.callee_save_regs_mlkit_as_lvs
     val callee_save_phregset = Lvarset.lvarsetof callee_save_phregs
     fun is_callee_save phreg = Lvarset.member(phreg,callee_save_phregset)
-    val caller_save_phregs = I.caller_save_regs_as_lvs
+    val caller_save_phregs = I.caller_save_regs_mlkit_as_lvs
     val caller_save_phregset = Lvarset.lvarsetof caller_save_phregs
     fun is_caller_save phreg = Lvarset.member(phreg,caller_save_phregset)
     fun pr_reg phreg = I.pr_reg phreg

@@ -155,11 +155,17 @@ functor InstsX86(structure Labels : ADDRESS_LABELS
       val reg_res_ccall = [1] 
       val reg_res_ccall_as_lvs = map reg_to_lv reg_res_ccall
 
-      val callee_save_regs = [5,6,7]
-      val callee_save_regs_as_lvs = map reg_to_lv callee_save_regs
+      val callee_save_regs_mlkit = [5,6,7]
+      val callee_save_regs_as_lvs = map reg_to_lv callee_save_regs_mlkit
 
-      val caller_save_regs = [1,2,3,4]
-      val caller_save_regs_as_lvs = map reg_to_lv caller_save_regs
+      val caller_save_regs_mlkit = [1,2,3,4]
+      val caller_save_regs_as_lvs = map reg_to_lv caller_save_regs_mlkit
+
+      val callee_save_regs_ccall = [5,6,7]
+      val callee_save_regs_as_lvs = map reg_to_lv callee_save_regs_ccall
+
+      val caller_save_regs_ccall = [1,2,3,4]
+      val caller_save_regs_as_lvs = map reg_to_lv caller_save_regs_ccall
     end
 
     fun emit (os : TextIO.outstream,

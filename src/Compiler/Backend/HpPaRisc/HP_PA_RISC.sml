@@ -17,10 +17,11 @@ signature HP_PA_RISC =
     val rp       : reg  (* Return link.   *)
     val mrp      : reg  (* Milicode return link. *)
 
+    val tmp_gr1  : reg
     val tmp_reg0 : reg
     val tmp_reg1 : reg
-    val tmp_reg2 : reg
-    val tmp_reg3 : reg
+(*    val tmp_reg2 : reg*)
+(*    val tmp_reg3 : reg*)
 
     val arg0     : reg  (* Argument and return registers *)
     val arg1     : reg  (* for C function calls. *)
@@ -50,8 +51,14 @@ signature HP_PA_RISC =
     val reg_res_as_lvs          : lvar list
     val reg_args_ccall_as_lvs   : lvar list
     val reg_res_ccall_as_lvs    : lvar list
-    val callee_save_regs_as_lvs : lvar list
-    val caller_save_regs_as_lvs : lvar list
+    val callee_save_regs_mlkit        : reg list
+    val callee_save_regs_mlkit_as_lvs : lvar list
+    val caller_save_regs_mlkit        : reg list
+    val caller_save_regs_mlkit_as_lvs : lvar list
+    val callee_save_regs_ccall        : reg list
+    val callee_save_regs_ccall_as_lvs : lvar list
+    val caller_save_regs_ccall        : reg list
+    val caller_save_regs_ccall_as_lvs : lvar list
       
     (*----------------------------------------------------------*)
     (*                     HPPA RISC Syntax                     *)

@@ -75,8 +75,10 @@ signature INSTS_X86 =
     val reg_res_as_lvs          : lvar list
     val reg_args_ccall_as_lvs   : lvar list
     val reg_res_ccall_as_lvs    : lvar list
-    val callee_save_regs_as_lvs : lvar list
-    val caller_save_regs_as_lvs : lvar list
+    val callee_save_regs_mlkit_as_lvs : lvar list
+    val caller_save_regs_mlkit_as_lvs : lvar list
+    val callee_save_regs_ccall_as_lvs : lvar list
+    val caller_save_regs_ccall_as_lvs : lvar list
 
     type StringTree
     val layout : AsmPrg -> StringTree
