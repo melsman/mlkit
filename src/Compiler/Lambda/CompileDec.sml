@@ -631,7 +631,7 @@ local
 
   fun con_eq (Con {longid=longid1, span=span1, nullary=nullary1, ...},
 	      Con {longid=longid2, span=span2, nullary=nullary2, ...}) =
-	longid1 = longid2 andalso span_eq span1 span2 andalso nullary1 = nullary2
+	longid1 = longid2 (*I think it must suffice to check longid1 = longid2*)
     | con_eq (Scon scon1, Scon scon2) = scon1 = scon2
     | con_eq (Tuple {arity=arity1}, Tuple {arity=arity2}) = arity1 = arity2
     | con_eq (Excon {longid=longid1, ...}, Excon {longid=longid2, ...}) =
@@ -640,8 +640,7 @@ local
 
   fun con_staticmatch (Con {longid=longid1, span=span1, nullary=nullary1, ...},
 		       Con {longid=longid2, span=span2, nullary=nullary2, ...}) =
-	longid1 = longid2 andalso span_eq span1 span2 andalso nullary1 = nullary2
-	(*TODO 21/12/1997 14:09. tho.:  doesn't it suffice to check longid1 = longid2?*)
+	longid1 = longid2 (*I think it must suffice to check longid1 = longid2*)
     | con_staticmatch (Scon scon1, Scon scon2) = scon1 = scon2
     | con_staticmatch (Tuple {arity=arity1}, Tuple {arity=arity2}) = arity1 = arity2
     | con_staticmatch (Excon {longid=longid1, ...}, Excon {longid=longid2, ...}) =
@@ -745,9 +744,9 @@ local
      The opposite of Success (i.e., failure) is indicated by None : 'rhs
      decision and will be compiled into `raise something'.*)
 
-  type decdag = rhs decision * rhs decision0 list
   type t0 = rhs decision0
   type t = rhs decision
+  type decdag = t * t0 list
 
   fun t_eq (None, None) = true
     | t_eq (Some (lvar1, _), Some (lvar2, _)) = Lvars.eq (lvar1, lvar2)
@@ -801,11 +800,6 @@ local
 	  | (t0 :: rest) => t0 into insertIfEq (path, con, t1, t2) rest)
 
     fun insertFailure l = (None, l)
-(*KILL 17/12/1997 16:08. tho.:
-    fun insertFailure [] = (Failure, [Failure])
-      | insertFailure (l as (Failure :: rest)) = (Failure, l)
-      | insertFailure (t :: rest) = t into insertFailure rest
-*)
 
     fun insertSuccess (rhs : rhs) [] : rhs decision * rhs decision0 list =
 	  let val lvar = Lvars.new_named_lvar ("rhs" ^ string_from_rhs rhs)
@@ -950,13 +944,14 @@ local
 		      end)
 	end
 
-	  
+
   fun env_from (declarations_to_be_made : declarations_to_be_made) =
-	List.foldL (*TODO 03/12/1997 18:04. tho.:
-		    or foldR? probably of no importance*)
+	List.foldL
+	(*foldR could also have been used, as no id appears twice in
+	 declarations_to_be_made because of syntactic restrictions enforced
+	 by ElabDec*)
 	  (fn (id, (lvar, tyvars, tau), path) => fn env_sofar =>
 	   CE.declareVar (id, (lvar, tyvars, tau), env_sofar))
-	  (*TODO 03/12/1997 18:09. tho. that above correct?*)
 	  CE.emptyCEnv declarations_to_be_made
 
 
@@ -994,7 +989,7 @@ local
     | compile_path env obj (Access (_, Scon _, path)) = die "compile_path: scon"
 
 
-  (*compile_rhs = 42
+  (*compile_rhs = TODO
 
    How? In
 
@@ -1021,7 +1016,7 @@ local
 	end
 
   and mk_declarations_to_be_made declarations_to_be_made lexp obj env poly =
-	List.foldL  (*TODO 10/12/1997 11:56. tho. or -R? probably of no importanc*)
+	List.foldL  (*again, foldR could also have been used*)
 	  (fn (id, (lvar, tyvars, tau), path) => fn lexp_sofar =>
 	   (LET {pat = [(lvar, if poly then tyvars else [], tau)],
 		       bind = compile_path env obj path,
@@ -1877,40 +1872,20 @@ the 12 lines above are very similar to the code below
     compile_binding.  sigma is the type scheme of the exp, recorded during
     elaboration.*)
 
-  (*TODO: compile_decdag_for_valbind: basically serves the same purpose as
-   compile_decdag.  It is used when the pattern is from a valbind, i.e.,
-   something like
+  (*When the pattern is from a valbind, i.e., something like
 
-     `val <pat> = <exp>'
+     `val <pat> = <exp>',
 
-   The reason for using compile_decdag_for_valbind is that we cannot with
-   this type of pattern generate a FIX with functions as we do when the
-   pattern is from a `fn <pat> => ...' or a `... handle <pat>'.  In the
-   latter cases we generate a FIX with functions to implement the finite
-   automaton that matches a value against the pattern.  This means that the
-   scope of the pattern ends up as a FIX-bound function body, and this will
-   not do when the scope may be a FRAME, which the scope of a valbind may be.
-   Sorry about this messy explanation.
+   we cannot generate a FIX with functions as we do when the pattern is from
+   a `fn <pat> => ...' or a `... handle <pat>'.  In the latter cases we
+   generate a FIX with functions to implement the finite automaton that
+   matches a value against the pattern.  This means that the scope of the
+   pattern ends up as a FIX-bound function body, and this will not do when
+   the scope may be a FRAME, which the scope of a valbind may be.  Sorry
+   about this messy explanation.
 
    No, it is better to explain this by giving examples of the code generated
-   by the two compile_decdag-functions.  TODO
-
-   Since compile_decdag_for_valbind is only used for decdags that stem from
-   valbinds, it expects the decdag to have a very particular form:  Either
-   the valbind is something like `val V = exp', where no test is necessary,
-   and thus the decdag is a single Success node.  Or the valbind is something
-   like `val (V :: VS) = exp', where it is necessary to test whether the
-   value has the form `V :: VS', and thus the decdag contains exactly three
-   nodes: an IfEq, a Success, and a Failure VRØVL (that raises Bind).  In the
-   latter case, we generate the following LambdaExp
-
-     SWITCH <code according to the IfEq node>
-       x => <code as described by the Success node
-	      or maybe the Failure node>
-       _ => <code as described by the final node
-	       (Failure or Success accordingly)>
-
-   *)
+   in the two situations.  TODO *)
 
 
     and compile_binding env (topLevel, pat, exp, (tyvars, Type))
