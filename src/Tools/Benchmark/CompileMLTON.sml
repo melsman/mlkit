@@ -4,7 +4,7 @@ structure CompileMLTON : COMPILE =
       let val {base,ext} = OS.Path.splitBaseExt src
 	  val target = base ^ "_mlton.exe"
 	  fun comp src =
-	    let val cmd = "/usr/local/bin/mlton -o " ^ target ^ " " ^ compflags ^ " " ^ src
+	    let val cmd = "/usr/bin/mlton -o " ^ target ^ " " ^ compflags ^ " " ^ src
 	    in  print ("Executing: " ^ cmd ^ "\n")
 	      ; if OS.Process.system cmd = OS.Process.success then SOME (src,target)
 		else NONE
