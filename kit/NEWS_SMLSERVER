@@ -1,5 +1,8 @@
 File NEWS_SMLSERVER
 
+ * mael 2002-01-29: Cleaned up documentation and demonstration
+   examples.
+
  * nh 2001-12-29: Added support for MySQL
 
  * mael 2001-10-09: Added support for threaded simultaneous responses
