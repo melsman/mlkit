@@ -25,6 +25,7 @@ local
     ../sml/RegExp/RegExp.sml
   end
 
+  ../sml/RegExp2.sml
   ../sml/Quot.sml
 
   local
