@@ -1052,11 +1052,13 @@ functor Manager(structure StrId : STRID
 		(ModuleEnvironments.F.lookup(ElabBasis.to_F B) funid)
 	    fun look_strid B strid = Option.isSome 
 		(Environments.SE.lookup(Environments.E.to_SE(ElabBasis.to_E B)) strid)
-	in    app (lookup look_vid elabBasesInfo eb0) vids
-	    ; app (lookup look_tycon elabBasesInfo eb0) tycons
-	    ; app (lookup look_strid elabBasesInfo eb0) strids
-	    ; app (lookup look_sigid elabBasesInfo eb0) sigids
-	    ; app (lookup look_funid elabBasesInfo eb0) funids
+	    (* look into newest basis first *)
+	    val rev_elabBasesInfo = rev elabBasesInfo
+	in    app (lookup look_vid rev_elabBasesInfo eb0) vids
+	    ; app (lookup look_tycon rev_elabBasesInfo eb0) tycons
+	    ; app (lookup look_strid rev_elabBasesInfo eb0) strids
+	    ; app (lookup look_sigid rev_elabBasesInfo eb0) sigids
+	    ; app (lookup look_funid rev_elabBasesInfo eb0) funids
 	    ; map #ebfile (List.filter (! o #used) elabBasesInfo)
 	end
 
