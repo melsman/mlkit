@@ -4,7 +4,7 @@ val %% = ScsDict.d' ScsLang.en "scs_lib" "passwd_upd.sml"
 val (cur_passwd,errs) = ScsFormVar.getStringErr ("cur_passwd",%"Current password",ScsFormVar.emptyErr)
 val (new_passwd,errs) = ScsFormVar.getStringErr ("new_passwd",%"New password",errs)
 val (confirm_new_passwd,errs) = ScsFormVar.getStringErr ("confirm_new_passwd",%"Confirmed new password",errs)
-val (new_passwd,confirm_new_passwd) = (ScsFormVar.trim new_passwd,ScsFormVar.trim confirm_new_passwd)
+val (new_passwd,confirm_new_passwd) = (ScsString.trim new_passwd,ScsString.trim confirm_new_passwd)
 val errs = 
   if new_passwd <> confirm_new_passwd then
     ScsFormVar.addErr (%%`Your new password and confirmed password are different`,errs)
