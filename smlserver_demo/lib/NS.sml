@@ -34,65 +34,13 @@ signature NS =
     val ERROR : status
     val END_DATA : status
 
-    structure Set : NS_SET
-
-    structure Conn : NS_CONN where type status = status and type set = Set.set
-
+    structure Set    : NS_SET
+    structure Conn   : NS_CONN where type status = status 
+	                         and type set = Set.set
     structure Cookie : NS_COOKIE
-
-    structure Cache : NS_CACHE
-
-    structure Info : NS_INFO
-(*      sig 
-	(* Return full path name of the configuration 
-	 * file in use. *)
-	val configFile : unit -> string           
-
-	(* Return the value for the given key in the 
-	 * section named sectionName. If either the 
-	 * section does not exist or the key does not 
-	 * exist in the section, the function returns 
-	 * NONE. If multiple keys of the same name are 
-	 * in the named section (for example, the 
-	 * multiple Load lines of the Modules section), 
-	 * this function returns only the first 
-	 * matching entry. The section names must match 
-	 * exactly, but the key will be matched case-
-	 * insensitively. *)
-	val configGetValue :
-	  {sectionName: string, key: string} -> string option
-
-	(* The case-sensitive counterpart of 
-	 * configGetValue. *)
-	val configGetValueExact : 
-	  {sectionName: string, key: string} -> string option
-
-	(* Return the name of the error log. *)
-	val errorLog : unit -> string
-
-	(* Return directory where AOLserver is 
-	 * installed. *)
-	val homePath : unit -> string
-
-	(* Return the hostname that AOLserver thinks 
-	 * it's running on, as specified in the 
-	 * configuration file. *)
-	val hostname : unit -> string
-
-	(* Return pid (process id) of AOLserver. *)
-	val pid : unit -> int
-
-	(* Return AOLserver version string. *)
-	val serverVersion : unit -> string
-
-	(* Return how long, in seconds, AOLserver has 
-	 * been running. *)
-	val uptime : unit -> int
-
-	(* Return path name of the AOLserver pages 
-	 * directory for a server. *)
-	val pageRoot : unit -> string
-      end   *)
+    structure Cache  : NS_CACHE
+    structure Info   : NS_INFO
+    structure Mail   : NS_MAIL
 
     (* Quotation support. *)
     type quot = Quot.quot
@@ -137,8 +85,6 @@ signature NS =
 
     val buildUrl : string -> (string * string) list -> string
 
-    structure Mail : NS_MAIL
-
     (* Fetch a remote URL; connects AOLserver to 
      * another HTTP Web server and requests the 
      * specified URL. The URL must be fully 
@@ -149,9 +95,6 @@ signature NS =
     val fetchUrl : string -> string option
 
     val exit : unit -> 'a
-
-    (* A global random generator *)
-    val randomGenerator : Random.generator
 
     (* Creating the two supported database interfaces *)
     structure DbOra   : NS_DB where type status = status and type set = Set.set
