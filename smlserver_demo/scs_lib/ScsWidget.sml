@@ -282,7 +282,7 @@ structure ScsWidget :> SCS_WIDGET =
 
     fun ta attr rows cols n v = `
       <textarea name="^n" rows=^(Int.toString rows) cols=^(Int.toString cols) ^attr 
-	 wrap="physical">` ^^ 
+	 wrap="virtual">` ^^ 
 
         (Quot.fromString o ScsSecurity.xssFilterLeaveNoTags o Quot.toString)
 
