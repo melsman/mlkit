@@ -81,7 +81,7 @@ signature ENVIRONMENTS =
 	val close                : VarEnv -> VarEnv
 	val layout               : VarEnv -> StringTree
 	val report               : (id * range -> Report) * VarEnv -> Report
-	val ids_with_tyvar_in_type_scheme : TyVar -> VarEnv -> id list
+	val ids_with_tyvar_in_type_scheme : VarEnv -> TyVar -> id list
       end (*VE*)
     
 
@@ -212,16 +212,15 @@ signature ENVIRONMENTS =
 
 	val lookup_fellow_constructors : Context -> longid -> id list
 
-	(*C.clos is the function Clos defined p. 20, used in rule 15, i.e.,
-	 in ElabDec.elab_dec (C, VALdec ...).  C.close will raise
-	 Ungeneralised_but_generalisable tyvar when tyvar could have been
-	 generalised if there were no value polymorphism restriction.  This
-	 should give a type error `Provide type annotation for id' where id
-	 is the identifier containing tyvar in its type.  See
-	 ElabDec.elab_dec (VALdec ...).*)
+	(*C.clos is the function Clos defined p. 20, only used in rule 15,
+	 i.e., in ElabDec.elab_dec (C, VALdec ...).  Aside from returning a
+	 closed VE, C.close will return a list of tyvars that were not
+	 generalised but could have been generalised if there were no value
+	 polymorphism restriction.  If there are any such tyvars, we give a
+	 type error `Provide type annotation for <ids>' where <ids> are the
+	 identifiers containing one of the tyvars in their type.*)
 
-	exception Ungeneralised_but_generalisable of TyVar
-	val close                : Context * valbind * VarEnv -> VarEnv
+	val close                : Context * valbind * VarEnv -> VarEnv * TyVar list
 
 	val dom_pat              : Context * pat -> id list
               (*dom_pat (C, pat) = the list of id's bound by pat---i.e.,

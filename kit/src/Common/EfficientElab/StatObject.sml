@@ -31,7 +31,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       | is_Some (Some x) = true
     fun map_opt f (Some x) = Some (f x)
       | map_opt f None = None
-    fun debug_print msg = if !Flags.DEBUG_TYPES then output(std_out,msg ^ "\n") else ()
+    fun pr s = output (std_out, s)
+    fun debug_print msg = if !Flags.DEBUG_TYPES then pr (msg ^ "\n") else ()
     val print_node = Report.print o PP.reportStringTree o PP.NODE
 
     type tycon = TyCon.tycon
@@ -162,16 +163,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     datatype TVNames = NAMES of {tv: int, letter: int} list ref
 		     | NONE		(* NONE -> don't bother. *)
     fun newTVNames () = NAMES (ref [])
-
-
-
-    exception Ungeneralised_but_generalisable of TyVar
-
-    (*`raise Ungeneralised_but_generalisable tyvar' means that tyvar could
-      have been generalised if the value polymorphism restriction did not
-      apply.  This should give a type error `Please provide type annotation
-      for the identifier id' where id is the identifier containing tyvar in
-      its type.  See ElabDec.elab_dec (VALdec ...).*)
 
 
 
@@ -850,7 +841,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			fake_generic_tyvars := [];
 			escaping_tyvars := [])
 	fun next_bound_id () = (bound_id := !bound_id - 1; !bound_id)
-	fun mk_bound_tyvar (tv as (ref (NO_TYPE_INSTANCE(EXPLICIT ExplicitTyVar)))) =
+	fun mk_bound_tyvar0 (tv as (ref (NO_TYPE_INSTANCE(EXPLICIT ExplicitTyVar)))) =
 	      (case FinMap.lookup (!explicitMap) ExplicitTyVar of
 		 None =>  let val tvdesc' = ORDINARY{id = next_bound_id(),
 						     equality=TyVar.equality tv,
@@ -861,7 +852,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 			  end
 	       | Some tvdesc' => tv := NO_TYPE_INSTANCE tvdesc')
 
-	  | mk_bound_tyvar (tv as (ref (NO_TYPE_INSTANCE(ORDINARY _)))) =
+	  | mk_bound_tyvar0 (tv as (ref (NO_TYPE_INSTANCE(ORDINARY _)))) =
 	      if List.member tv (!ordinaryMap) then ()
 	      else
 		(ordinaryMap := tv::(!ordinaryMap);
@@ -869,26 +860,27 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 						 equality = TyVar.equality tv,
 						 overloaded = TyVar.get_overloaded tv}))
 
-	  | mk_bound_tyvar _ = impossible "mk_bound_tyvar"
+	  | mk_bound_tyvar0 _ = impossible "mk_bound_tyvar0"
 
-	val mk_bound_tyvar = fn tv => fn level =>
-	  if !fake then fake_insert fake_generic_tyvars tv
-	  else (level:= Level.GENERIC ; mk_bound_tyvar tv)
+	fun mk_bound_tyvar tv level =
+	      if !fake then fake_insert fake_generic_tyvars tv
+	      else (level := Level.GENERIC ; mk_bound_tyvar0 tv)
 
-	fun mk_escaping_tyvar (tv,level,curlevel) =
-	    if !fake then (fake_insert escaping_tyvars tv ;
-			   level:= curlevel)
-	    else ()
+	fun mk_escaping_tyvar tv level =
+	      if !fake then (fake_insert escaping_tyvars tv ;
+			     level := Level.current ())
+	      else ()
 
+	local
 	fun generalise0 ov imp ty = 
 	  (*generalise overloaded type variables  iff  ov and level > current_level.
 	   generalise imperative type variables  iff imp and level > current_level.
-	   may raise Ungeneralised_but_generalisable tyvar when imp is false.*)
+	   Do not call generalise0 directly; use generalise1 instead, as it
+	   initialises things correctly.*)
 
-	  let 
-	    val ty = findType ty 
-	    val _ = debug_print "generalise0 IN " ty
-	  in 
+	  let val ty = findType ty 
+	  in
+	    debug_print "generalise0 IN " ty ;
 	    if !(#level ty) = Level.GENERIC then ()
 	    else
 	      (case ty of
@@ -896,7 +888,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		   if !level > Level.current ()
 		   then if ov orelse not (TyVar.is_overloaded tv)
 			then if imp then mk_bound_tyvar tv level
-			     else raise Ungeneralised_but_generalisable tv
+			     else mk_escaping_tyvar tv level
 			else level := Level.current ()
 		   else ()
 	       | {TypeDesc = ARROW(ty1,ty2), level} => 
@@ -922,24 +914,25 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	  | ROWrec(l,ty,r') => 
 	      Int.min (generalise0 ov imp ty) (generaliseRecType ov imp r')
 	  end
-
-      in
-	fun generalise ov imp tau = (reset () ; generalise0 ov imp tau)
-	(*may raise Ungeneralised_but_generalisable tyvar when imp is false.*)
-	fun fake_generalise imp tau =
-	  (*may raise Ungeneralised_but_generalisable tyvar when imp is false.*)
-	      (reset(); fake := true ; generalise false imp tau ; fake := false ;
+	in
+	fun generalise1 fake_flag ov imp tau =
+	      (reset () ; fake := fake_flag ; generalise0 ov imp tau ;
 	       (!fake_generic_tyvars, !escaping_tyvars))
+	end (*local*)
+      in
+	fun generalise_and_return_escaping_tyvars ov imp tau =
+	      #2 (generalise1 (*fake=*)false ov imp tau)
+	fun generalise ov imp tau =
+	      (generalise_and_return_escaping_tyvars ov imp tau; ())
+	fun fake_generalise imp tau =
+	      #1 (generalise1 (*fake=*)true (*ov=*)false imp tau)
       end (*local*)
 
-      (* close imp tau = a list of those type variables of tau which
-       * are allowed to be quantified, and a list of those that are not.
-       *   For the compiler to work it is important that fake_generalise returns       
-       * type variables as generalise followed by generic_tyvars (to follow)
-       *   If imp then the expression tau is the type of is
-       * non-expansive and type variables should be generalised.
-       * close may raise Ungeneralised_but_generalisable tyvar
-       * when imp is false.*)
+      (* close imp tau = a list of those type variables of tau which are
+       * allowed to be quantified.  For the compiler to work it is important
+       * that fake_generalise returns type variables as generalise followed
+       * by generic_tyvars (to follow).  If imp, then the expression with
+       * type tau is non-expansive and type variables should be generalised.*)
 
       val close = fake_generalise
       
@@ -1479,26 +1472,26 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       fun close_overload tau =
 	    (*with generalisation of overloaded tyvars (because of the
-	     first `true' argument to `Type.generalise' below).
-	     Since TypeScheme.close is called with imp=true below, it cannot
-	     raise the exception Ungeneralised_but_generalisable*)
+	     first `true' argument to `Type.generalise' below).*)
 	    let val tau = Type.copy true false tau
 	        val _ = Type.generalise true true tau
 		val tvs = Type.generic_tyvars tau 
 	    in (tvs, tau)
 	    end
 
-      fun close imp (_, tau) =
-	    (* tyvars are discarded; we could check whether the list is empty. *)
+      fun close_and_return_escaping_tyvars imp (_, tau) =
+	    (*tyvars are discarded; we could check whether the list is empty. *)
 	    (*if imp = true iff the expression tau is the type of is
-	     non-expansive, and then type variables must be generalised.
-	     close may raise Ungeneralised_but_generalisable tyvar when imp is false.*)
+	     non-expansive, and then type variables must be generalised.*)
 	    let val tau = Type.copy false imp tau
 	              (*(the `false' means no generalisation of overloaded tyvars.)*)
-	        val _ = Type.generalise false imp tau
+	        val escaping_tyvars =
+		      Type.generalise_and_return_escaping_tyvars false imp tau
 		val tvs = Type.generic_tyvars tau 
-	    in (tvs, tau)
+	    in ((tvs, tau), escaping_tyvars)
 	    end
+
+      fun close imp sigma = #1 (close_and_return_escaping_tyvars imp sigma)
 
       (*violates_equality T sigma = false, iff, assuming the tynames in T
        admit equality, sigma admits equality, i.e., violates_equality T sigma

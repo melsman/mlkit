@@ -426,8 +426,6 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		| _ => impossible "CEFold: VE contains non-constructors"))
 	    
       fun close (VE : VarEnv) : VarEnv =
-	    (*since TypeScheme.close is called with imp=true here, it cannot
-	     raise the exception Ungeneralised_but_generalisable*)
 	    FoldPRIVATE
 	      (fn (id, range_private) => fn VE =>
 	             add VE id
@@ -471,10 +469,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       val tynames =
 	    fold (TyName.Set.union o tynames_in_range) TyName.Set.empty
 
-      fun ids_with_tyvar_in_type_scheme tyvar =
+      fun ids_with_tyvar_in_type_scheme VE tyvar =
 	    Fold (fn (id, range) => fn ids =>
 		  if memberTyVarSet tyvar (tyvars_in_range range) then id :: ids
-		  else ids) []
+		  else ids) [] VE
 
     end (*VE*)
 
@@ -1209,12 +1207,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    end
       end (*local*)
 
-      (*C.close will raise Ungeneralised_but_generalisable tyvar when tyvar
-       could have been generalised if there were no value polymorphism
-       restriction.*)
 
-      exception Ungeneralised_but_generalisable =
-                  StatObject.Ungeneralised_but_generalisable
 
       local exception BoundTwice of VarEnv
               (*raised if an identifier is bound twice in the valbind ---
@@ -1223,7 +1216,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	       returns VE unmodified.*)
       in
 
-      fun close (C : Context, valbind : valbind, VE : VarEnv) : VarEnv =
+      fun close (C : Context, valbind : valbind, VE : VarEnv)
+	    : VarEnv * TyVar list =
 	let
 	  val CONTEXT {E=ENV{SE=SE, VE=VARENV ve_map, ...}, 
 		       U=EXPLICITTYVARENV U} = C
@@ -1273,9 +1267,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 	  (* isVar is true iff id is a variable in dom VE *)		     
 	  fun remake isVar id sigma =
-	    let
-	      val (_, ty) = TypeScheme.to_TyVars_and_Type sigma
-	      val isExp = 
+	    let val isExp = 
 		(case FinMap.lookup isExpansiveId_map id of 
 		   None => false
 		 | Some b => 
@@ -1285,20 +1277,31 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		      else () ;
 		      b))
   	    in
-	      TypeScheme.close (not (isExp andalso isVar)) sigma
-	      (*It is TypeScheme.close that may raise
-	       Ungeneralised_but_generalisable*)
+	      TypeScheme.close_and_return_escaping_tyvars
+	          (not (isExp andalso isVar)) sigma
 	    end 
 
 	  val VARENV m = VE
+	  val (m, escaping_tyvars) =
+	  FinMap.Fold
+	     (fn ((id, range), (m', escaping_tyvars)) =>
+	      (case range of
+		 LONGVARpriv sigma =>
+		   (case remake true id sigma of (sigma', escaping_tyvars') =>
+		      (FinMap.add (id, LONGVARpriv sigma', m'),
+		       escaping_tyvars' @ escaping_tyvars))
+	       | LONGCONpriv (sigma, cons) =>
+		   (case remake false id sigma of (sigma', escaping_tyvars') =>
+		      (FinMap.add (id, LONGCONpriv (sigma', cons), m'),
+		       escaping_tyvars' @ escaping_tyvars))
+	       | LONGEXCONpriv tau => 
+		      (FinMap.add (id, LONGEXCONpriv tau, m'),
+		       escaping_tyvars)))
+	         (FinMap.empty, []) m
 	in
-	  VARENV (FinMap.ComposeMap
-		  (fn (id, LONGVARpriv sigma) => LONGVARpriv (remake true id sigma)
-		    | (id, LONGCONpriv(sigma, cons)) => LONGCONpriv (remake false id sigma, cons)
-		    | (id, LONGEXCONpriv tau) => LONGEXCONpriv tau)
-		  m)
-	end handle BoundTwice VE => VE
-      end
+	  (VARENV m, escaping_tyvars)
+	end (*let*) handle BoundTwice VE => (VE, [])
+      end (*local exception BoundTwice*)
     end (*C*)
   
 

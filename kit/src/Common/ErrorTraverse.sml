@@ -241,14 +241,9 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
     and walk_Valbind valbind =
       case valbind
 	of PLAINvalbind(i, pat, exp, valbind_opt) =>
-                (case ElabInfo.to_TypeInfo i of
-                   Some (tyinfo as TypeInfo.PLAINvalbind_INFO {escaping=(_::_), ...}) =>
-                     report_escaping (i, PrettyPrint.flatten1 (TypeInfo.layout tyinfo))
-                 | _ => Report.null)
-             // check i
-	     // walk_Pat pat
-	     // walk_Exp exp
-	     // walk_opt walk_Valbind valbind_opt
+	     check i // walk_Pat pat
+	            // walk_Exp exp
+	           // walk_opt walk_Valbind valbind_opt
             
 
 	 | RECvalbind(i, valbind) =>
@@ -397,16 +392,14 @@ functor ErrorTraverse (structure TopdecGrammar : TOPDEC_GRAMMAR
 
     type Report = Report.Report
 
-    datatype result = SUCCESS of Report 
+    datatype result = SUCCESS
 		    | FAILURE of Report
-    (*If `report' in `SUCCESS report' is not Report.null,
-     it is a warning about escaping tyvars.*)
 
     fun traverse topdec =
       let
 	val _ = reset()
 	val report = walk_Topdec topdec
       in
-	(if spotted () then FAILURE else SUCCESS) report
+	if spotted () then FAILURE report else SUCCESS
       end
   end;

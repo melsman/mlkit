@@ -49,7 +49,7 @@ functor TypeInfo (structure Ident: IDENT
     | ABSTYPE_INFO of TyEnv * realisation
     | EXP_INFO of {Type:Type}
     | MATCH_INFO of {Type:Type}
-    | PLAINvalbind_INFO of {tyvars: TyVar list, escaping: TyVar list, Type: Type}
+    | PLAINvalbind_INFO of {tyvars: TyVar list, Type: Type}
     | OPEN_INFO of strid list * tycon list * id list
     | INCLUDE_INFO of strid list * tycon list
     | FUNCTOR_APP_INFO of realisation * Env
@@ -80,8 +80,8 @@ functor TypeInfo (structure Ident: IDENT
 	    | ABSTYPE_INFO (TE,phi') => ABSTYPE_INFO (phi_on_TE TE, phi_on_phi' phi')
 	    | EXP_INFO {Type} => EXP_INFO{Type=phi_on_Type Type}
 	    | MATCH_INFO {Type} => MATCH_INFO{Type=phi_on_Type Type}
-	    | PLAINvalbind_INFO {tyvars, escaping, Type} =>
-	     PLAINvalbind_INFO {tyvars=tyvars, escaping = escaping,Type=phi_on_Type Type}
+	    | PLAINvalbind_INFO {tyvars, Type} =>
+	     PLAINvalbind_INFO {tyvars=tyvars, Type=phi_on_Type Type}
 	    | OPEN_INFO i => OPEN_INFO i
 	    | INCLUDE_INFO i => INCLUDE_INFO i
 	    | FUNCTOR_APP_INFO (phi',E) => FUNCTOR_APP_INFO (phi_on_phi' phi', phi_on_E E)
@@ -182,20 +182,11 @@ functor TypeInfo (structure Ident: IDENT
 	     PP.NODE{start="MATCH_INFO(",finish=")",indent=2,
 		     children=[layoutType Type],
 		     childsep = PP.NONE}
-	 | PLAINvalbind_INFO{tyvars,escaping = [],Type} => 
+	 | PLAINvalbind_INFO{tyvars, Type} => 
 	     PP.NODE{start="PLAINvalbind_INFO(",finish=")",indent=2,
 		     children=[layout_tyvars tyvars,
 			       layoutType Type],
 		     childsep = PP.NONE}
-	 | PLAINvalbind_INFO{tyvars,escaping,Type} => 
-             let val t1 = PP.NODE{start  = "escaping tyvars: ", finish = "  ", indent = 2, childsep = PP.NONE,
-                                  children =  [layout_tyvars escaping]}
-                 val t2 = PP.NODE{start  = "type of expression: ", finish = "", indent = 2, childsep = PP.NONE,
-                                  children = [layoutType Type]}
-             in 
-               PP.NODE{start="",finish="",indent=0,
-		     children=[t1,t2],  childsep = PP.NONE}
-             end
 	 | OPEN_INFO (strids,tycons,ids) => PP.NODE{start="OPEN_INFO(",finish=")",indent=2,childsep=PP.RIGHT ", ",
 						    children=[layout_strids strids,
 							      layout_tycons tycons,
