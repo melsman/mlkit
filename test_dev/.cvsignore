@@ -1,0 +1,8 @@
+*.log *.out *.outp profile.rp
+testbadl hardlinkA hardlinkB testcycl testlink 
+run runexe auto PM timex.temp 
+test_report.aux test_report.dvi test_report.log test_report.tex
+empty.dat medium.dat small1.dat small2.dat text.dat textio.tmp 
+outFuhMishra0 outFuhMishra1 outFuhMishra2 outFuhMishra3 outFuhMishra4 outFuhMishra5 
+KITtimings KITversion TESTmessages compile *.ui *.uo
+

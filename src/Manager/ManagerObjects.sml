@@ -178,7 +178,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
          * Postponing assembly (to avoid failing system calls)
          *)
 
-        val r : TextIO.outstream option ref  = ref NONE
+(*        val r : TextIO.outstream option ref  = ref NONE
         fun init_commandfile() = 
             r:= SOME(TextIO.openOut "compile");
         fun add_to_commandfile(s:string) = 
@@ -188,7 +188,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
             case !r of NONE => ()
             | SOME(os) => TextIO.closeOut os
 
-
+not used anymore 2000-10-17, Niels *)
 
 	(* -------------------------------
 	 * Assemble a file into a .o-file
@@ -197,7 +197,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun assemble (file_s, file_o) =
           (if !(Flags.lookup_flag_entry "delay_assembly")
            then 
-	     add_to_commandfile(!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s)
+	     () (*add_to_commandfile(!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s)2000-10-17, Niels*)
            else 
 	     (Shell.execute_command (!c_compiler ^ " -c -o " ^ file_o ^ " " ^ file_s);
 	      if !(Flags.lookup_flag_entry "delete_target_files")
@@ -306,12 +306,12 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	    val shell_cmd = (!c_compiler ^ " -o " ^ run ^ " " ^ concat files ^ path_to_runtime () ^ " " ^ !c_libs)
 	  in
 	    (if !(Flags.lookup_flag_entry "delay_assembly") then
-	       (add_to_commandfile shell_cmd;
+	       ((*add_to_commandfile shell_cmd;2000-10-17, Niels*)
 		TextIO.output (TextIO.stdOut, "[wrote compile file:\tcompile\n"))
 	     else
 	       (Shell.execute_command shell_cmd;
-	       TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n")));
-	    close_commandfile()
+	       TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n")))(*;
+	    close_commandfile()2000-10-17, Niels*)
 	  end 
 	handle Shell.Execute s => die ("link_files_with_runtime_system:\n" ^ s)
 

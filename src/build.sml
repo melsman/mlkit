@@ -96,6 +96,9 @@ fun build_kam () =
     val opts = ["statistics_after_optimisation","minimize_fixs","fix_conversion",
 		(*"contract",*) "specialize_recursive_functions", "eliminate_explicit_records",
 		"unbox_function_arguments"]
+    val test_files = ["f1.sml", "f2.sml", "fib.sml", "foldl.sml", 
+		      "hanoi.sml", "hello.sml", "if.sml", "immedString.sml", 
+		      "l1.sml", "list_nh.sml"(*, "listpair.sml"*), "ref.sml", "string1.sml"]
   in 
       disable "garbage_collection";
       disable "delete_target_files";
@@ -109,7 +112,8 @@ fun build_kam () =
       KitKAM.Flags.target_file_extension := ".uo"
 
 (*   ;  KitKAM.build_basislib() *)
-     ; KitKAM.comp "../testprogs/exception1.sml"
+   ;   List.app (fn tf => KitKAM.comp ("../test_dev/"^tf)) test_files
+    (* ; KitKAM.comp "../testprogs/f1.sml"*)
 (*      ; KitKAM.install() *)
   end;
 
