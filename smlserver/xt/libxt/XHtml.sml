@@ -38,6 +38,12 @@ structure XHtml : XHTML_EXTRA =
 	  in String.translate enc s 
 	  end
 
+	fun quotencode s : string =
+          let fun enc #"\"" = "&quot;"
+		| enc c = String.str c
+	  in String.translate enc s 
+	  end
+
 	fun attr t s = [t ^ "=\"" ^ s ^ "\""]
 
 	datatype elem =
@@ -61,7 +67,7 @@ structure XHtml : XHTML_EXTRA =
 	fun sup e        = elem1 ("sup",nil,e)
 	fun sub e        = elem1 ("sub",nil,e)
 	fun acronym e    = elem1 ("acronym",nil,e)
-	fun abbr s e     = elem1 ("abbr",["title=\""^s^"\""],e)
+	fun abbr s e     = elem1 ("abbr",["title=\"" ^ quotencode s ^ "\""],e)
 	fun cite e       = elem1 ("cite",nil,e)
 	fun var e        = elem1 ("var",nil,e)
 	fun kbd e        = elem1 ("kbd",nil,e)
@@ -106,7 +112,7 @@ structure XHtml : XHTML_EXTRA =
 	fun flatten (x, nil) = x
 	  | flatten (x, op :: p) = seq(x,flatten p)
 
-	fun imga a {src,alt} = elem0("img", attr "src" src @ attr "alt" alt @ a)
+	fun imga a {src,alt} = elem0("img", attr "src" src @ attr "alt" (quotencode alt) @ a)
 	fun img r = imga nil r
 
 	fun bodya a e = elem1("body",a,e)
