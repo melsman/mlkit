@@ -1,0 +1,14 @@
+\begin{thebibliography}{MTHM97}
+
+\bibitem[MTHM97]{mthm97}
+Robin Milner, Mads Tofte, Robert Harper, and David MacQueen.
+\newblock {\em The {Definition} of {Standard ML} (Revised)}.
+\newblock MIT Press, 1997.
+
+\bibitem[TB98]{tofte:birkedal:98}
+Mads Tofte and Lars Birkedal.
+\newblock A region inference algorithm.
+\newblock Transactions on Programming Languages and Systems (TOPLAS)
+  (Accepted), November 1998.
+
+\end{thebibliography}
