@@ -73,6 +73,7 @@ struct
       REG_I_ATY        of offset
     | REG_F_ATY        of offset
     | STACK_ATY        of offset
+    | FLOW_VAR_ATY     of lvar * label * label
     | DROPPED_RVAR_ATY
     | PHREG_ATY        of reg
     | INTEGER_ATY      of int 
@@ -84,6 +85,7 @@ struct
   fun pr_aty(REG_I_ATY offset) = "reg_i(" ^ Int.toString offset ^ ")"
     | pr_aty(REG_F_ATY offset) = "reg_f(" ^ Int.toString offset ^ ")"
     | pr_aty(STACK_ATY offset) = "stack(" ^ Int.toString offset ^ ")"
+    | pr_aty(FLOW_VAR_ATY(lv,l1,l2)) = "FV(" ^ Lvars.pr_lvar lv ^ ")"
     | pr_aty(DROPPED_RVAR_ATY) = "DROPPED_RVAR"
     | pr_aty(PHREG_ATY phreg) = pr_phreg phreg
     | pr_aty(INTEGER_ATY i) = Int.toString i
@@ -119,6 +121,7 @@ struct
       | add_sty_lv(CO.PHREG_STY(lv,phreg),ATYmap) = LvarFinMap.add(lv,PHREG_ATY (BI.lv_to_reg phreg),ATYmap)
       | add_sty_lv(CO.FLUSHED_CALLEE_STY(phreg,offset),ATYmap) = ATYmap
       | add_sty_lv(CO.FLUSHED_CALLER_STY(lv,phreg,offset),ATYmap) = LvarFinMap.add(lv,PHREG_ATY (BI.lv_to_reg phreg),ATYmap)
+      | add_sty_lv(CO.FV_STY lv,ATYmap) = ATYmap
 
     fun binder_to_aty((place,PhysSizeInf.INF),offset) = REG_I_ATY offset
       | binder_to_aty((place,PhysSizeInf.WORDS i),offset) = REG_F_ATY offset
@@ -143,6 +146,7 @@ struct
       | atom_to_aty(LS.PHREG phreg,ATYmap,RHOmap) = PHREG_ATY (BI.lv_to_reg phreg)
       | atom_to_aty(LS.INTEGER i,ATYmap,RHOmap) = INTEGER_ATY i
       | atom_to_aty(LS.UNIT,ATYmap,RHOmap) = UNIT_ATY 
+      | atom_to_aty(LS.FLOW_VAR lv,ATYmap,RHOmap) = FLOW_VAR_ATY lv
 
     fun atom_to_aty_opt(NONE,ATYmap,RHOmap) = NONE
       | atom_to_aty_opt(SOME atom,ATYmap,RHOmap) = SOME(atom_to_aty(atom,ATYmap,RHOmap))
@@ -248,7 +252,7 @@ struct
 	  | SS_lss'(LS.HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_lv,bv),offset}::lss) =
 	  (* MEGA HACK: *)
 	  (* The lvar handl_lv is the lvar that the handle closure is bound to in handl. We need *)
-	  (* use the handl_lv in CodeGen to make code that store the handle closure in the       *)
+	  (* handl_lv in CodeGen to make code that stores the handle closure in the              *)
 	  (* exception handler in the activation frame. handl_lv is bound to the outer most      *)
 	  (* scope declaration in handl and we match it out explicitly to get access to the sty  *)
 	  (* that is necessary to produce the aty for handl_lv.                                  *)

@@ -517,6 +517,7 @@ functor BuildCompile (structure Name : NAME
 				  structure CallConv = CallConv
 				  structure ClosExp = ClosExp
 				  structure BI = BackendInfo
+				  structure Lvarset = Lvarset
 				  structure PP = PP
 				  structure Flags = Flags
 				  structure Report = Report

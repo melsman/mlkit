@@ -18,6 +18,7 @@ functor CalcOffset(structure PhysSizeInf : PHYS_SIZE_INF
 		      structure FetchAndFlush: FETCH_AND_FLUSH
                         sharing type FetchAndFlush.lvar = LineStmt.lvar
                         sharing type FetchAndFlush.Atom = LineStmt.Atom
+			sharing type FetchAndFlush.label = LineStmt.label
 		      structure BI : BACKEND_INFO
 		      structure IntSet: KIT_MONO_SET where type elt = int
 		      structure PP : PRETTYPRINT
@@ -48,11 +49,13 @@ struct
   | PHREG_STY of lvar * lvar 
   | FLUSHED_CALLEE_STY of lvar * offset
   | FLUSHED_CALLER_STY of lvar * lvar * offset
+  | FV_STY of lvar * label * label
 
   fun pr_sty(STACK_STY(lv,offset)) = Lvars.pr_lvar lv ^ ":stack(" ^ Int.toString offset ^ ")"
     | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ LineStmt.pr_phreg phreg
     | pr_sty(FLUSHED_CALLEE_STY(phreg,offset)) = LineStmt.pr_phreg phreg ^ ":flushed_callee(" ^ Int.toString offset ^ ")"
     | pr_sty(FLUSHED_CALLER_STY(lv,phreg,offset)) = Lvars.pr_lvar lv ^ ":flushed " ^ LineStmt.pr_phreg phreg ^ ":stack(" ^ Int.toString offset ^ ")"
+    | pr_sty(FV_STY(lv,l1,l2)) = Lvars.pr_lvar lv ^ ":FV(" ^ Labels.pr_label l1 ^ "," ^ Labels.pr_label l2 ^ ")"
 
   fun pr_offset offset = "stack(" ^ Int.toString offset ^ ")"
   fun pr_atom atom = LineStmt.pr_atom atom
@@ -168,6 +171,7 @@ struct
 	  | assign_sty(IFF.PHREG_STY(lv,phreg),LVmap,PHmap,offset) = (PHREG_STY(lv,phreg),LVmap,PHmap,offset)
 	  | assign_sty(IFF.FLUSHED_CALLEE_STY(phreg),LVmap,PHmap,offset) = (FLUSHED_CALLEE_STY(phreg,offset),LVmap,add_lv(PHmap,offset,phreg),offset++1)
 	  | assign_sty(IFF.FLUSHED_CALLER_STY(lv,phreg),LVmap,PHmap,offset) = (FLUSHED_CALLER_STY(lv,phreg,offset),add_lv(LVmap,offset,lv),PHmap,offset++1)
+	  | assign_sty(IFF.FV_STY lv,LVamp,PHmap,offset) = (FV_STY lv,LVmap,PHmap,offset)
       in
 	foldl (fn (sty,(stys_acc,LVmap,PHmap,offset)) =>
 	       let
@@ -289,6 +293,7 @@ struct
       | add_sty(PHREG_STY(lv,phreg),LVmap) = LVmap 
       | add_sty(FLUSHED_CALLEE_STY(phreg,offset),LVmap) = LVmap
       | add_sty(FLUSHED_CALLER_STY(lv,phreg,offset),LVmap) = LvarFinMap.add(lv,offset,LVmap)
+      | add_sty(FV_STY lv,LVmap) = LVmap
 
     fun add_stys([],LVmap) = LVmap
       | add_stys(sty::rest,LVmap) = add_stys(rest,add_sty(sty,LVmap))

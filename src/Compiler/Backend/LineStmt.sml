@@ -15,6 +15,8 @@ functor LineStmt(structure PhysSizeInf : PHYS_SIZE_INF
 		   sharing type ClosExp.phsize = PhysSizeInf.phsize
 	         structure BI : BACKEND_INFO
                    sharing type BI.lvar = Lvars.lvar
+		 structure Lvarset: LVARSET
+		   sharing type Lvarset.lvar = Lvars.lvar
 		 structure PP : PRETTYPRINT
 		   sharing type PP.StringTree = 
                                 Effect.StringTree = 
@@ -34,6 +36,8 @@ struct
   type cc = CallConv.cc
   type label = Labels.label
   type ClosPrg = ClosExp.ClosPrg
+
+  structure LvarFinMap = Lvars.Map
 
   (***********)
   (* Logging *)
@@ -69,11 +73,16 @@ struct
 
   datatype Atom =
       VAR           of lvar
+    | FLOW_VAR      of lvar * label * label
     | RVAR          of place
     | DROPPED_RVAR  of place
     | PHREG         of lvar
     | INTEGER       of int 
     | UNIT
+
+  datatype StoreType =
+      V of lvar
+    | FV of lvar * label * label
 
   datatype 'aty SimpleExp =
       ATOM            of 'aty
@@ -152,12 +161,20 @@ struct
 
   fun pr_phreg phreg = Lvars.pr_lvar phreg
 
+  fun remove_finite_rhos([]) = []
+    | remove_finite_rhos(((place,PhysSizeInf.WORDS i),offset)::rest) = remove_finite_rhos rest
+    | remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
+
   fun pr_atom(VAR lv) = Lvars.pr_lvar lv
+    | pr_atom(FLOW_VAR(lv,l1,l2)) = Lvars.pr_lvar lv
     | pr_atom(RVAR place) = PP.flatten1(Effect.layout_effect place)
     | pr_atom(DROPPED_RVAR place) = "D" ^ PP.flatten1(Effect.layout_effect place)
     | pr_atom(PHREG phreg) = pr_phreg phreg
     | pr_atom(INTEGER i) = Int.toString i
     | pr_atom(UNIT) = "()"
+
+  fun pr_sty(V lv) = Lvars.pr_lvar lv
+    | pr_sty(FV(lv,l1,l2)) = Lvars.pr_lvar lv ^ ":FV(" ^ Labels.pr_label l1 ^ "," ^ Labels.pr_label l2 ^ ")"
 
   (* simplify is a bool used to not print non operative constructs *)
   (* like scope and letregion on finite regions.                   *)
@@ -342,9 +359,6 @@ struct
 	       end
 	   | LETREGION{rhos,body} =>
 	       let
-		 fun remove_finite_rhos([]) = []
-		   | remove_finite_rhos(((place,PhysSizeInf.WORDS i),offset)::rest) = remove_finite_rhos rest
-		   | remove_finite_rhos(rho::rest) = rho :: remove_finite_rhos rest
 		 val rhos = if simplify then remove_finite_rhos rhos else rhos
 		 val binders = HNODE{start = "", 
 				     finish = "", 
@@ -489,6 +503,11 @@ struct
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
     [("print_linearised_program", "print linearised program (LineStmt)", ref false)]
 
+  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
+    [("use_flow_variables", "Use Flow Variables", ref true)]
+
+  val flow_var_flag = Flags.lookup_flag_entry "use_flow_variables"
+
   (*************)
   (* Utilities *)
   (*************)
@@ -543,7 +562,7 @@ struct
       | con_kind_to_con_kind(ClosExp.UNBOXED i) = UNBOXED i
       | con_kind_to_con_kind(ClosExp.BOXED i) = BOXED i
 
-    fun mk_sty lv = lv
+    fun mk_sty lv = V lv (* Flow variables are annotated later *)
 
     fun L_ce_sw(ClosExp.SWITCH(ce,sels,default),f_L,f_sel) =
       SWITCH(ce_to_atom ce,
@@ -752,7 +771,7 @@ struct
     | get_phreg_ls(RESET_REGIONS{force,regions_for_resetting}) = get_phreg_smas(regions_for_resetting,[])
     | get_phreg_ls(PRIM{name,args,res}) = get_phreg_atoms(args,[])
     | get_phreg_ls(CCALL{name,args,rhos_for_result,res}) = get_phreg_atoms(args,get_phreg_atoms(rhos_for_result,[]))
-    | get_phreg_ls _ = die "use_ls: statement contains statements itself."
+    | get_phreg_ls _ = die "get_phreg_ls: statement contains statements itself."
 
   (**************************************************************)
   (* Def and Use sets for LineStmt RETURN BOTH lvars and phregs *)
@@ -863,6 +882,301 @@ struct
   fun def_lvar_ls ls = filter_out_phregs(def_var_ls ls)
   fun def_use_lvar_ls ls = (filter_out_phregs(def_var_ls ls),filter_out_phregs(use_var_ls ls))
 
+  (*****************************************************)
+  (* Map f_aty, f_offset and f_sty on LineStmt program *)
+  (*****************************************************)
+  local
+    fun map_lss f_aty f_offset f_sty lss =
+      let
+	fun map_sma sma =
+	  (case sma of
+	     ATTOP_LI(aty,pp) => ATTOP_LI(f_aty aty,pp)
+	   | ATTOP_LF(aty,pp) => ATTOP_LF(f_aty aty,pp)
+	   | ATTOP_FI(aty,pp) => ATTOP_FI(f_aty aty,pp)
+	   | ATTOP_FF(aty,pp) => ATTOP_FF(f_aty aty,pp)
+	   | ATBOT_LI(aty,pp) => ATBOT_LI(f_aty aty,pp)
+	   | ATBOT_LF(aty,pp) => ATBOT_LF(f_aty aty,pp)
+	   | SAT_FI(aty,pp) => SAT_FI(f_aty aty,pp)
+	   | SAT_FF(aty,pp) => SAT_FF(f_aty aty,pp)
+	   | IGNORE => IGNORE)
+	fun map_smas smas = map map_sma smas
+	fun map_sty sty = f_sty sty
+	fun map_stys stys = map f_sty stys
+	fun map_aty aty = f_aty aty
+	fun map_aty_opt(NONE) = NONE
+	  | map_aty_opt(SOME aty) = SOME(f_aty aty)
+	fun map_atys atys = map f_aty atys
+	fun map_rho(binder,offset) = (binder,f_offset offset)
+	fun map_rhos rhos = map map_rho rhos
+
+	fun map_sw(map_lss,switch_con,SWITCH(atom,sels,default)) =
+	  let
+	    val sels' =
+	      foldr (fn ((sel,lss),sels_acum) => (sel,map_lss lss)::sels_acum) [] sels
+	    val default' = map_lss default
+	  in
+	    switch_con(SWITCH(map_aty atom,sels',default'))
+	  end 
+
+	fun map_fn_app{opr,args,clos,free,res,bv} =
+	  {opr=map_aty opr,
+	   args=map_atys args,
+	   clos=map_aty_opt clos,
+	   free=map_atys free,
+	   res=map_atys res,
+	   bv=bv}
+
+	fun map_fun_app{opr,args,clos,free,res,reg_vec,reg_args,bv} =
+	  {opr=opr,
+	   args=map_atys args,
+	   clos=map_aty_opt clos,
+	   free=map_atys free,
+	   res=map_atys res,
+	   reg_vec=map_aty_opt reg_vec,
+	   reg_args=map_atys reg_args,
+	   bv=bv}
+
+	fun map_se(ATOM aty) = ATOM (map_aty aty)
+	  | map_se(LOAD label) = LOAD label
+	  | map_se(STORE(aty,label)) = STORE(map_aty aty,label)
+	  | map_se(STRING str) = STRING str
+	  | map_se(REAL str) = REAL str
+	  | map_se(CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc}) = 
+	  CLOS_RECORD{label=label,
+		      elems=(map_atys lvs,map_atys excons,map_atys rhos),
+		      alloc= map_sma alloc}
+	  | map_se(REGVEC_RECORD{elems,alloc}) = REGVEC_RECORD{elems=map_smas elems,alloc=map_sma alloc}
+	  | map_se(SCLOS_RECORD{elems=(lvs,excons,rhos),alloc}) = 
+	  SCLOS_RECORD{elems=(map_atys lvs,map_atys excons,map_atys rhos),
+		       alloc = map_sma alloc}
+	  | map_se(RECORD{elems,alloc,tag}) = RECORD{elems=map_atys elems,alloc=map_sma alloc,tag=tag}
+	  | map_se(SELECT(i,aty)) = SELECT(i,map_aty aty)
+	  | map_se(CON0{con,con_kind,aux_regions,alloc}) = CON0{con=con,con_kind=con_kind,aux_regions=map_smas aux_regions,alloc=map_sma alloc}
+	  | map_se(CON1{con,con_kind,alloc,arg}) = CON1{con=con,con_kind=con_kind,alloc=map_sma alloc,arg=map_aty arg}
+	  | map_se(DECON{con,con_kind,con_aty}) = DECON{con=con,con_kind=con_kind,con_aty=map_aty con_aty}
+	  | map_se(DEREF aty) = DEREF(map_aty aty)
+	  | map_se(REF(sma,aty)) = REF(map_sma sma,map_aty aty)
+	  | map_se(ASSIGNREF(sma,aty1,aty2)) = ASSIGNREF(map_sma sma,map_aty aty1,map_aty aty2)
+	  | map_se(PASS_PTR_TO_MEM(sma,i)) = PASS_PTR_TO_MEM(map_sma sma,i)
+	  | map_se(PASS_PTR_TO_RHO(sma)) = PASS_PTR_TO_RHO(map_sma sma)
+
+	fun map_lss'([]) = []
+	  | map_lss'(ASSIGN{pat,bind}::lss) = ASSIGN{pat=map_aty pat,bind=map_se bind} :: map_lss' lss
+	  | map_lss'(FLUSH(aty,offset)::lss) = FLUSH(map_aty aty,f_offset offset) :: map_lss' lss
+	  | map_lss'(FETCH(aty,offset)::lss) = FETCH(map_aty aty,f_offset offset) :: map_lss' lss
+	  | map_lss'(FNJMP a::lss) = FNJMP(map_fn_app a) :: map_lss' lss
+	  | map_lss'(FNCALL a::lss) = FNCALL(map_fn_app a) :: map_lss' lss
+	  | map_lss'(JMP a::lss) = JMP(map_fun_app a) :: map_lss' lss
+	  | map_lss'(FUNCALL a::lss) = FUNCALL(map_fun_app a) :: map_lss' lss
+	  | map_lss'(LETREGION{rhos,body}::lss) = LETREGION{rhos=map_rhos rhos,body=map_lss' body} :: map_lss' lss
+	  | map_lss'(SCOPE{pat,scope}::lss) = SCOPE{pat=map_stys pat,scope=map_lss' scope} :: map_lss' lss
+	  | map_lss'(HANDLE{default,handl=(handl,handl_lv),handl_return=(handl_return,handl_return_lv,bv),offset}::lss) =
+	  HANDLE{default=map_lss' default,
+		 handl=(map_lss' handl,map_aty handl_lv),
+		 handl_return=(map_lss' handl_return,map_aty handl_return_lv,bv),
+		 offset=f_offset offset} :: map_lss' lss
+	  | map_lss'(RAISE{arg,defined_atys}::lss) = RAISE{arg=map_aty arg,defined_atys=map_atys defined_atys} :: map_lss' lss
+	  | map_lss'(SWITCH_I sw::lss) = map_sw(map_lss',SWITCH_I,sw) :: map_lss' lss
+	  | map_lss'(SWITCH_S sw::lss) = map_sw(map_lss',SWITCH_S,sw) :: map_lss' lss
+	  | map_lss'(SWITCH_C sw::lss) = map_sw(map_lss',SWITCH_C,sw) :: map_lss' lss
+	  | map_lss'(SWITCH_E sw::lss) = map_sw(map_lss',SWITCH_E,sw) :: map_lss' lss
+	  | map_lss'(RESET_REGIONS{force,regions_for_resetting}::lss) =
+	  RESET_REGIONS{force=force,regions_for_resetting=map_smas regions_for_resetting} :: map_lss' lss
+	  | map_lss'(PRIM{name,args,res}::lss) = 
+	  PRIM{name=name,args=map_atys args,res=map_atys res} :: map_lss' lss
+	  | map_lss'(CCALL{name,args,rhos_for_result,res}::lss) = 
+	  CCALL{name=name,args=map_atys args,rhos_for_result=map_atys rhos_for_result,res=map_atys res} :: map_lss' lss
+      in
+	map_lss' lss
+      end
+  in
+    val map_lss = map_lss
+    fun map_prg f_aty f_offset f_sty {main_lab:label,
+				      code=top_decls:('sty1,'offset1,'aty1) LinePrg,
+				      imports:label list * label list,
+				      exports:label list * label list} =
+    let 
+      fun map_top_decl func = 
+	case func 
+	  of FUN(lab,cc,lss) => FUN(lab,cc,map_lss f_aty f_offset f_sty lss)
+	   | FN(lab,cc,lss) => FN(lab,cc,map_lss f_aty f_offset f_sty lss)
+    in 
+      {main_lab = main_lab,
+       code = foldr (fn (func,acc) => map_top_decl func :: acc) [] top_decls,
+       imports = imports,
+       exports = exports}
+    end
+  end
+
+  (**************************************************)
+  (* Calculate Flow Variables in Linearised Program *)
+  (**************************************************)
+  local
+    val no_of_flow_var = ref 0
+  in
+    fun reset_flow_var_stat() = no_of_flow_var := 0;
+    fun inc_flow_var n = no_of_flow_var := !no_of_flow_var + n
+    fun get_no_of_flow_var() = !no_of_flow_var
+  end
+
+  local
+    fun add_ok_use(lv,(OKset,notOKset,_)) = 
+      if Lvarset.member(lv,OKset) then
+	 (Lvarset.delete(OKset,lv),Lvarset.add(notOKset,lv),NONE)
+      else
+	if Lvarset.member(lv,notOKset) then
+	  (OKset,notOKset,NONE)
+	else
+	  (Lvarset.add(OKset,lv),notOKset,SOME lv)
+    fun add_not_ok_use(lvs,(OKset,notOKset,_)) =
+      foldl (fn (lv,(OKset,notOKset,next_prev_use_lv)) => 
+	     (Lvarset.delete(OKset,lv),Lvarset.add(notOKset,lv),next_prev_use_lv)) (OKset,notOKset,NONE) lvs
+    fun add_not_ok_def(lvs,(OKset,notOKset,_)) =
+      foldl (fn (lv,(OKset,notOKset,next_prev_use_lv)) => 
+	     (Lvarset.delete(OKset,lv),Lvarset.add(notOKset,lv),next_prev_use_lv)) (OKset,notOKset,NONE) lvs
+    fun add_ok_def(lv,NONE,(OKset,notOKset,_)) = add_not_ok_def([lv],(OKset,notOKset,NONE))
+      | add_ok_def(lv,SOME lv_to_match,(OKset,notOKset,_)) = 
+      if Lvars.eq(lv,lv_to_match) then
+	(OKset,notOKset,NONE)
+      else
+	(Lvarset.delete(OKset,lv),Lvarset.add(notOKset,lv),NONE)
+
+
+    (********************************)
+    (* Calculate OKset and notOKset *)
+    (********************************)
+    fun FV_CalcSets_sw(FV_CalcSets_lss,SWITCH(atom,sels,default),OKset,notOKset,prev_use_lv) =
+      (* Note, that we pass the newest sets to FV_CalcSets_lss for each branch! *)
+      (* It is wrong to apply union on notOKset and intersection on OKset       *)
+      (* because we may only have ONE use of each flow variable.                *)
+      let
+	val (OKset_sels,notOKset_sels,_) =
+	  foldr (fn ((sel,lss),(OKset,notOKset,_)) => 
+		 FV_CalcSets_lss(lss,(OKset,notOKset,prev_use_lv))) (OKset,notOKset,NONE) sels
+      in
+	add_not_ok_use(get_lvar_atom(atom,[]),FV_CalcSets_lss(default,(OKset_sels,notOKset_sels,prev_use_lv)))
+      end
+
+    fun pr_prev(NONE) = "none"
+      | pr_prev(SOME lv) = Lvars.pr_lvar lv 
+
+    fun FV_CalcSets_ls(ls,OKset,notOKset,prev_use_lv) =
+      (case ls of
+	 (* Pattern: lv := TRUE *)
+         (* Pattern: lv := FALSE *)
+	 ASSIGN{pat=VAR lv,bind=CON0{con,con_kind,aux_regions=[],alloc=IGNORE}} =>
+	   if Con.eq(con,Con.con_TRUE) orelse
+	     Con.eq(con,Con.con_FALSE) then
+	     add_ok_def(lv,prev_use_lv,(OKset,notOKset,NONE))
+	   else
+	     add_not_ok_use(use_var_ls ls,add_not_ok_def(def_var_ls ls,(OKset,notOKset,NONE)))
+         (* Pattern: lv := prim(cond) *)
+       | PRIM{name,args=[aty1,aty2],res=[VAR lv_res]} =>
+	   if name = BI.EQUAL_INT orelse
+	     name = BI.LESS_INT orelse
+	     name = BI.LESSEQ_INT orelse
+	     name = BI.GREATER_INT orelse
+	     name = BI.GREATEREQ_INT then
+	     add_ok_def(lv_res,prev_use_lv,add_not_ok_use(use_var_ls ls,(OKset,notOKset,NONE)))
+	   else
+	     add_not_ok_def([lv_res],add_not_ok_use(use_var_ls ls,(OKset,notOKset,NONE)))
+         (* Pattern: case lv of true => lss | _ => lss *)
+         (* Pattern: case lv of false => lss | _ => lss *)
+       | SWITCH_C(sw as SWITCH(VAR lv,[((con,con_kind),lss)],default)) => 
+	   if Con.eq(con,Con.con_TRUE) orelse
+	     Con.eq(con,Con.con_FALSE) then
+	     let
+	       val (OKset',notOKset',_) = FV_CalcSets_lss(default,(OKset,notOKset,prev_use_lv))
+	     in
+	       add_ok_use(lv,FV_CalcSets_lss(lss,(OKset',notOKset',prev_use_lv)))
+	     end
+	   else
+	     FV_CalcSets_sw(FV_CalcSets_lss,sw,OKset,notOKset,prev_use_lv)
+         (* Pattern: case lv of 3 => lss | _ => lss *)
+         (* Pattern: case lv of 1 => lss | _ => lss *)
+       | SWITCH_I(sw as SWITCH(VAR lv,[(sel_val,lss)],default)) => 
+	   if sel_val = BI.ml_true orelse
+	     sel_val = BI.ml_false then
+	     let
+	       val (OKset',notOKset',_) = FV_CalcSets_lss(default,(OKset,notOKset,prev_use_lv))
+	     in
+	       add_ok_use(lv,FV_CalcSets_lss(lss,(OKset',notOKset',prev_use_lv)))
+	     end
+	   else
+	     FV_CalcSets_sw(FV_CalcSets_lss,sw,OKset,notOKset,prev_use_lv)
+       | LETREGION{rhos,body} => (* only infinite regions execute code *)
+	     (case remove_finite_rhos rhos of
+		[] => FV_CalcSets_lss(body,(OKset,notOKset,prev_use_lv))
+	      | _ => 
+		  let
+		    val (OKset',notOKset',_) = FV_CalcSets_lss(body,(OKset,notOKset,NONE))
+		  in
+		    (OKset',notOKset',NONE)
+		  end)
+       | SCOPE{pat,scope} => FV_CalcSets_lss(scope,(OKset,notOKset,prev_use_lv))
+
+       | HANDLE{default,handl=(handl,VAR handl_lv),handl_return=([],VAR handl_return_lv,bv),offset} =>
+	     let
+	       val (OKset_d,notOKset_d,_) = FV_CalcSets_lss(default,(OKset,notOKset,NONE))
+	       val (OKset_h,notOKset_h,_) = FV_CalcSets_lss(handl,(OKset_d,notOKset_d,NONE))
+	     in
+	       add_not_ok_def([handl_return_lv,handl_lv],(OKset_h,notOKset_h,NONE))
+	     end
+       | HANDLE{default,handl,handl_return,offset} => die "FV_CalcSets_ls: Handle"
+
+       | SWITCH_I sw => FV_CalcSets_sw(FV_CalcSets_lss,sw,OKset,notOKset,prev_use_lv)
+       | SWITCH_S sw => die "FV_CalcSets_ls: SWITCH_S"
+       | SWITCH_C sw => FV_CalcSets_sw(FV_CalcSets_lss,sw,OKset,notOKset,prev_use_lv)
+       | SWITCH_E sw => die "FV_CalcSets_ls: SWITCH_E"
+       | _ => add_not_ok_use(use_var_ls ls,add_not_ok_def(def_var_ls ls,(OKset,notOKset,NONE))))
+    and FV_CalcSets_lss(lss,(OKset,notOKset,prev_use_lv)) =
+      foldr (fn (ls,(OKset,notOKset,prev_use_lv)) => FV_CalcSets_ls(ls,OKset,notOKset,prev_use_lv)) (OKset,notOKset,prev_use_lv) lss
+
+    (********************************)
+    (* Annotate Flow Variables      *)
+    (********************************)
+    fun ann_aty (VAR lv,OKmap) =
+      (case LvarFinMap.lookup OKmap lv of
+	 NONE => VAR lv
+       | SOME(lab1,lab2) => FLOW_VAR(lv,lab1,lab2))
+      | ann_aty (FLOW_VAR(lv,lab1,lab2),OKmap) = die "ann_aty: aty is FLOW_VAR"
+      | ann_aty (atom,OKmap) = atom
+
+    fun ann_sty (V lv,OKmap) =
+      (case LvarFinMap.lookup OKmap lv of
+	 NONE => V lv
+       | SOME(lab1,lab2) => FV(lv,lab1,lab2))
+      | ann_sty (FV _,_) = die "ann_sty: sty is FV"
+
+    fun FV_top_decl' gen_top_decl (cc,lss) =
+      let
+	(* Add cc to nonOKset *)
+	val notOKset = Lvarset.lvarsetof (CallConv.get_res_lvars cc @ CallConv.get_arg_lvars cc)
+	val (OKset,_,_) = FV_CalcSets_lss(lss,(Lvarset.empty,notOKset,NONE)) 
+	val _ = inc_flow_var (List.length(Lvarset.members OKset))
+	val OKmap = 
+	  Lvarset.foldset 
+	  (fn (OKmap,lv) => 
+	   LvarFinMap.add (lv,
+			   (Labels.new_named (Lvars.pr_lvar lv ^ "T"), 
+			    Labels.new_named (Lvars.pr_lvar lv ^ "F")),
+			   OKmap)) (LvarFinMap.empty,OKset)
+	val lss' = map_lss (fn aty => ann_aty(aty,OKmap)) (fn i => i) (fn sty => ann_sty(sty,OKmap)) lss
+      in
+	gen_top_decl lss'
+      end
+  in
+    fun FV_prg top_decls =
+      let 
+	fun FV_top_decl func = 
+	  case func 
+	    of FUN(lab,cc,lss) => FV_top_decl' (fn lss => FUN(lab,cc,lss)) (cc,lss)
+	     | FN(lab,cc,lss) => FV_top_decl' (fn lss => FN(lab,cc,lss)) (cc,lss)
+      in 
+	foldr (fn (func,acc) => FV_top_decl func :: acc) [] top_decls
+      end
+  end
+
   (******************************)
   (* Linearise ClosExp          *)
   (******************************)
@@ -872,16 +1186,23 @@ struct
 	 exports:label list * label list} =
     let
       val _ = chat "[Linearisation..."
-      val line_prg = L_clos_prg clos_prg
+      val _ = reset_flow_var_stat()
+      val line_prg = L_clos_prg clos_prg	
+      val line_prg_flow_var = 
+	if !flow_var_flag then
+	  FV_prg line_prg
+	else
+	  line_prg
       val _ = 
 	if Flags.is_on "print_linearised_program" then
-	  (print ("Number of functions:    " ^ (Int.toString(length(line_prg))) ^ "\n");
-	   print ("Number of applications: " ^ (Int.toString(NA_prg line_prg)) ^ "\n");
-	  display("\nReport: AFTER LINEARISATION:", layout_line_prg Lvars.pr_lvar (fn _ => "()") pr_atom false line_prg))
+	  (print ("Number of functions:      " ^ (Int.toString(length(line_prg))) ^ "\n");
+	   print ("Number of applications:   " ^ (Int.toString(NA_prg line_prg)) ^ "\n");
+	   print ("Number of flow variables: " ^ (Int.toString(get_no_of_flow_var())) ^ "\n");
+	  display("\nReport: AFTER LINEARISATION:", layout_line_prg pr_sty (fn _ => "()") pr_atom false line_prg_flow_var))
 	else
 	  ()
       val _ = chat "]\n"
     in
-      {main_lab=main_lab,code=line_prg,imports=imports,exports=exports}
+      {main_lab=main_lab,code=line_prg_flow_var,imports=imports,exports=exports}
     end
 end;

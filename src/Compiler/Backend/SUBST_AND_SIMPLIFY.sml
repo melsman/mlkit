@@ -24,6 +24,7 @@ signature SUBST_AND_SIMPLIFY =
         REG_I_ATY        of offset
       | REG_F_ATY        of offset
       | STACK_ATY        of offset
+      | FLOW_VAR_ATY     of lvar * label * label
       | DROPPED_RVAR_ATY
       | PHREG_ATY        of reg
       | INTEGER_ATY      of int 

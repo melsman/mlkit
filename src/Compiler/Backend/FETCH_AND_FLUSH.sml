@@ -24,6 +24,7 @@ signature FETCH_AND_FLUSH =
       | PHREG_STY of lvar * lvar
       | FLUSHED_CALLEE_STY of lvar
       | FLUSHED_CALLER_STY of lvar * lvar
+      | FV_STY             of lvar * label * label
 
     val IFF : {main_lab:label,code:(StoreTypeRA,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
               {main_lab:label,code:(StoreType,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list}

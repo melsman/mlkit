@@ -27,6 +27,7 @@ signature CALC_OFFSET =
       | PHREG_STY of lvar * lvar
       | FLUSHED_CALLEE_STY of lvar * offset
       | FLUSHED_CALLER_STY of lvar * lvar * offset
+      | FV_STY of lvar * label * label
 
     val CO : {main_lab:label,code:(StoreTypeIFF,unit,Atom) LinePrg,imports:label list * label list,exports:label list * label list} ->
              {main_lab:label,code:(StoreType,offset,Atom) LinePrg,imports:label list * label list,exports:label list * label list}

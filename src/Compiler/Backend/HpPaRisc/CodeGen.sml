@@ -14,6 +14,7 @@ functor CodeGen(structure Con : CON
                   sharing type SubstAndSimplify.lvar = LineStmt.lvar
                   sharing type SubstAndSimplify.place = LineStmt.place
                   sharing type SubstAndSimplify.LinePrg = LineStmt.LinePrg
+                  sharing type SubstAndSimplify.label = LineStmt.label
 	        structure HpPaRisc : HP_PA_RISC
                   sharing type HpPaRisc.label = Labels.label
                   sharing type HpPaRisc.lvar = Lvars.lvar
@@ -221,7 +222,7 @@ struct
 
     (* Find a register for aty and generate code to store into the aty *)
     fun resolve_aty_def_kill_gen1(SS.STACK_ATY offset,t:reg,size_ff,C) = (t,store_indexed_kill_gen1(sp,WORDS(~size_ff+offset),t,C))
-      | resolve_aty_def_kill_gen1(SS.PHREG_ATY phreg,t:reg,size_ff,C)  = (phreg,C) (*(t,copy(t,phreg,C))*)  (* This is f.c.i.g bad; solution: remove all record constructs and unfold them in LineStmt. 18/02/1999, Niels *)
+      | resolve_aty_def_kill_gen1(SS.PHREG_ATY phreg,t:reg,size_ff,C)  = (phreg,C) 
       | resolve_aty_def_kill_gen1 _ = die "resolve_aty_def_kill_gen1: ATY cannot be defined"
 
     (* Make sure that the aty ends up in register dst_reg *)
@@ -232,6 +233,7 @@ struct
       | move_aty_into_reg_kill_gen1(SS.PHREG_ATY phreg,dst_reg,size_ff,C)  = copy(phreg,dst_reg,C)
       | move_aty_into_reg_kill_gen1(SS.INTEGER_ATY i,dst_reg,size_ff,C)    = load_immed(IMMED i,dst_reg,C) (* Integers are tagged in ClosExp *)
       | move_aty_into_reg_kill_gen1(SS.UNIT_ATY,dst_reg,size_ff,C)         = load_immed(IMMED BI.ml_unit,dst_reg,C)
+      | move_aty_into_reg_kill_gen1 _ = die "move_aty_into_reg_kill_gen1: ATY cannot be moved"
 
     fun resolve_arg_kill_gen1(arg: SS.Aty, tmp:reg, size_ff:int) : reg * (RiscInst list -> RiscInst list) =
       case arg
@@ -818,6 +820,15 @@ struct
 	    LDI {i=int_to_string BI.ml_false,t=d_reg} :: C'))
 	end
 
+      fun cmpi_and_jmp(cond,x,y,lab_t,lab_f,size_ff,C) = 
+	let
+	  val (x_reg,x_C) = resolve_arg_aty_kill_gen1(x,tmp_reg0,size_ff)
+	  val (y_reg,y_C) = resolve_arg_aty_kill_gen1(y,tmp_reg1,size_ff)
+	in
+	  x_C(y_C(META_IF{cond=cond,r1=x_reg,r2=y_reg,target=lab_f} ::
+		  META_B{n=false,target=lab_t} :: C))
+	end
+
       fun maybe_tag_integers(inst,C) =		  
 	if !BI.tag_integers then
 	  inst :: C
@@ -1097,27 +1108,21 @@ struct
     (* Code Generation *)
     (*******************)
 
-    (* printing an assignment *)
-    fun debug_assign(str,C) = C
-(*      if Flags.is_on "debug_codeGen" then
-      let
-	val string_lab = gen_string_lab (str ^ "\n")
-      in
-	COMMENT "Start of Debug Assignment" ::
-	load_label_addr_kill_gen1(string_lab,SS.PHREG_ATY arg0,0,
-			compile_c_call_prim("printString",[SS.PHREG_ATY arg0],NONE,0,tmp_reg0 (*not used*),
-					    COMMENT "End of Debug Assignment" :: C))
-      end
-      else C*)
-
     fun CG_lss(lss,size_ff,size_ccf,C) =
       let
 	fun pr_ls ls = LS.pr_line_stmt SS.pr_sty SS.pr_offset SS.pr_aty true ls
 	fun not_impl(s,C) = COMMENT s :: C
 	fun CG_ls(ls,C) = 
 	  (case ls of
-	     LS.ASSIGN{pat,bind} =>
-	       debug_assign(pr_ls ls,
+	     LS.ASSIGN{pat=SS.FLOW_VAR_ATY(lv,lab_t,lab_f),bind=LS.CON0{con,con_kind,aux_regions=[],alloc=LS.IGNORE}} =>
+	       if Con.eq(con,Con.con_TRUE) then
+		 META_B{n=false,target=LocalLab lab_t} :: C		 
+	       else
+		 if Con.eq(con,Con.con_FALSE) then
+		   META_B{n=false,target=LocalLab lab_f} :: C
+		 else
+		   die "CG_lss: unmatched assign on flow variable"
+	   | LS.ASSIGN{pat,bind} =>
 	       COMMENT (pr_ls ls) :: 
 	       (case bind of
 		  LS.ATOM src_aty => move_aty_to_aty_kill_gen1(src_aty,pat,size_ff,C)
@@ -1355,7 +1360,7 @@ struct
 			       val (reg_for_result,C') = resolve_aty_def_kill_gen1(pat,tmp_reg1,size_ff,C)
 			     in 
 			       prefix_sm_kill_gen1(alloc,reg_for_result,size_ff,C')
-			     end))
+			     end)
 	   | LS.FLUSH(aty,offset) => COMMENT (pr_ls ls) :: store_aty_in_reg_record_kill_gen1(aty,tmp_reg1,sp,WORDS(~size_ff+offset),size_ff,C)
 	   | LS.FETCH(aty,offset) => COMMENT (pr_ls ls) :: load_aty_from_reg_record_kill_gen1(aty,tmp_reg1,sp,WORDS(~size_ff+offset),size_ff,C)
 	   | LS.FNJMP(cc as {opr,args,clos,free,res,bv}) =>
@@ -1551,6 +1556,18 @@ struct
 	     COMMENT ("START OF RAISE: " ^ pr_ls ls) ::
 	     deallocate_regions_until(restore_exn_ptr(push_return_lab(jmp(COMMENT "END OF RAISE" :: C))))
 	   end
+	   | LS.SWITCH_I(LS.SWITCH(SS.FLOW_VAR_ATY(lv,lab_t,lab_f),[(sel_val,lss)],default)) => 
+	   let
+	     val (t_lab,f_lab) = if sel_val = BI.ml_true then (lab_t,lab_f) else (lab_f,lab_t)
+	     val lab_exit = new_local_lab "lab_exit"
+	   in
+	     LABEL(LocalLab t_lab) ::
+	     CG_lss(lss,size_ff,size_ccf,
+	     META_B{n=false,target=lab_exit} ::
+	     LABEL(LocalLab f_lab) ::
+	     CG_lss(default,size_ff,size_ccf,
+             LABEL lab_exit :: C))
+	   end
 	   | LS.SWITCH_I(LS.SWITCH(SS.PHREG_ATY opr_reg,sels,default)) => 
 	   binary_search(sels,
 			 default,
@@ -1565,6 +1582,19 @@ struct
 			 fn (lss,C) => CG_lss(lss,size_ff,size_ccf,C), (* compile_insts *)
 			 C))
 	   | LS.SWITCH_S sw => die "SWITCH_S is unfolded in ClosExp"
+	   (* Match LS.SWITCH on flow variable 31/03/1999, Niels*)
+	   | LS.SWITCH_C(LS.SWITCH(SS.FLOW_VAR_ATY(lv,lab_t,lab_f),[((con,con_kind),lss)],default)) => 
+	   let
+	     val (t_lab,f_lab) = if Con.eq(con,Con.con_TRUE) then (lab_t,lab_f) else (lab_f,lab_t)
+	     val lab_exit = new_local_lab "lab_exit"
+	   in
+	     LABEL(LocalLab t_lab) ::
+	     CG_lss(lss,size_ff,size_ccf,
+	     META_B{n=false,target=lab_exit} ::
+	     LABEL(LocalLab f_lab) ::
+	     CG_lss(default,size_ff,size_ccf,
+             LABEL lab_exit :: C))
+	   end
 	   | LS.SWITCH_C(LS.SWITCH(opr_aty,sels,default)) => 
 		  let (* NOTE: selectors in sels are tagged in ClosExp but the operand is tagged here! *)
 		    val con_kind = 
@@ -1597,6 +1627,19 @@ struct
 	   | LS.RESET_REGIONS{force=true,regions_for_resetting} =>
 		  COMMENT (pr_ls ls) :: 
 		  foldr (fn (alloc,C) => force_reset_aux_region_kill_gen1_tmp0(alloc,tmp_reg1,size_ff,C)) C regions_for_resetting
+	   | LS.PRIM{name,args,res=[SS.FLOW_VAR_ATY(lv,lab_t,lab_f)]} => 
+		  COMMENT (pr_ls ls) ::
+		  let
+		    val (lab_t,lab_f) = (LocalLab lab_t,LocalLab lab_f)
+		  in
+		    (case (name,args) of
+		       ("__equal_int",[x,y]) => cmpi_and_jmp(EQUAL,x,y,lab_t,lab_f,size_ff,C)
+		     | ("__less_int",[x,y]) => cmpi_and_jmp(LESSTHAN,x,y,lab_t,lab_f,size_ff,C)
+		     | ("__lesseq_int",[x,y]) => cmpi_and_jmp(LESSEQUAL,x,y,lab_t,lab_f,size_ff,C)
+		     | ("__greater_int",[x,y]) => cmpi_and_jmp(GREATERTHAN,x,y,lab_t,lab_f,size_ff,C)
+		     | ("__greatereq_int",[x,y]) => cmpi_and_jmp(GREATEREQUAL,x,y,lab_t,lab_f,size_ff,C)
+		     | _ => die "CG_ls: Unknown PRIM used on Flow Variable")
+		  end
 	   | LS.PRIM{name,args,res} => 
 		  COMMENT (pr_ls ls) :: 
 		  (* Note that the prim names are defined in BackendInfo! *)
