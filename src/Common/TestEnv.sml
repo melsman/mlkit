@@ -58,6 +58,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (* System functions.             *)
     (*********************************)
 
+    fun pr s = output (std_out, s)
+
     fun shorten_string s n =
       if String.size s > n then
 	"..." ^ (String.truncL (n-3) s)
@@ -154,11 +156,26 @@ functor TestEnv(structure TestInfo: TEST_INFO
 
     (* Check for directory d, and if exists, then stop with error. *)
     (* If the directory does not exists, then create it.           *)
+    fun read_string () = read_string0 ""
+    and read_string0 s =
+      let val ch = input (std_in, 1)
+      in
+	if ch = "\n" then s else read_string0 (s ^ ch)
+      end
+
     fun check_and_create_directory (d, error_msg) =
-      if exists_file d then 
-	raise Crash_test ("File or directory " ^ ((*shorten_filename*) d) ^ " exists." ^ new_line ^ error_msg)
+      if exists_file d then
+	(pr ("\n\n\n   Files in directory\n\n        "
+	     ^ d ^ "\n\n   may be overwritten.  Shall I proceed anyway (y/n)?  ");
+	 while (let val s = String.upper (read_string ())
+		in
+		  s <> "Y" andalso
+		  (s <> "N" orelse
+		   raise Crash_test ("File or directory " ^ d ^ " exists."
+				     ^ new_line ^ error_msg))
+		end) do ())
       else
-	(ok_log_report ("Directory " ^ (shorten_filename d) ^ " will be created.");
+	(ok_log_report ("Directory " ^ shorten_filename d ^ " will be created.");
 	 create_dir d;
 	 ())
 
