@@ -40,7 +40,8 @@ mlkit_kam: basics
 	cd ..; echo `pwd`/bin/mlkit_kam.$(ARCH-OS) `pwd` \$$* >> bin/mlkit_kam
 	chmod a+x $(BINDIR)/mlkit_kam
 
-mlkit_web: basics smlserver
+smlserver: basics
+	cd SMLserver; $(MAKE)
 	cd RuntimeWithGC; $(MAKE) runtimeSystemKamNsSml.o
 	echo 'use "build_web.sml";' | sml
 	$(HEAP2EXEC) $(BINDIR)/kit.$(ARCH-OS) $(BINDIR)/mlkit_web.$(ARCH-OS)
@@ -57,9 +58,6 @@ $(GENOPCODES_TARGETS): $(GENOPCODES_SOURCES)
 	mkdir -p $(BINDIR)
 	cd Tools/GenOpcodes; $(MAKE)
 	$(BINDIR)/kitgen_opcodes `pwd`
-
-smlserver:
-	cd SMLserver; $(MAKE)
 
 rp2ps:
 	cd Tools/Rp2ps; $(MAKE)
@@ -81,6 +79,7 @@ clean:
 	cd heap2exec; $(MAKE) clean
 	cd Runtime; $(MAKE) clean
 	cd RuntimeWithGC; $(MAKE) clean
+	cd SMLserver; $(MAKE) clean
 	cd Tools/Tester; $(MAKE) clean
 	cd Tools/Rp2ps; $(MAKE) clean
 	cd Tools/GenOpcodes; $(MAKE) clean

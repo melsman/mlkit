@@ -1,12 +1,19 @@
 local
-  ../sml/Ns.sml
-  ../sml/MOSML_CGI.sml
+
+  (* Library files; loaded and cached by AOLserver *)
+
+  ../sml/Ns.sml              
+  ../sml/MOSML_CGI.sml       
   ../sml/Mosmlcgi.sml
   ../sml/MSP.sml
   ../sml/Msp.sml
 in
  [
-  yellow.sml
+
+  (* Leaf-files; may make use of declarations in library files,
+   * but cannot refer to other leaf-files. *)
+
+  yellow.sml                 
   hello.sml
   show.sml
 
@@ -17,10 +24,5 @@ in
   logtofile.msp
   fileindex.msp
   dir.msp
-(*
-  friends.msp
-  friends_add_form.msp
-  friends_add.msp
-*)
  ]
 end
