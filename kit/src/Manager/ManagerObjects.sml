@@ -305,41 +305,62 @@ functor ManagerObjects(structure Execution : EXECUTION
 	     | EMPTY_MODC => 0
 	     | EMITTED_MODC(tfile,_) => 1
 	     | NOTEMITTED_MODC _ => 0
-
+(*
 	fun timeStampFileName absprjid =
 	  let val base_absprjid = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
 	  in "PM/" ^ base_absprjid ^ ".timestamp"
 	  end
+*)
+	fun ulfile (absprjid: absprjid) : string =
+	    let val base_absprjid = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
+	    in "PM/" ^ base_absprjid ^ ".ul"
+	    end
 
-	fun deleteTimeStampFile absprjid : unit =
+	fun deleteUlfile absprjid : unit =
 	  if not(!Flags.SMLserver) then ()
-	  else let val f = timeStampFileName absprjid
+	  else let val f = ulfile absprjid
 	       in OS.FileSys.remove f handle _ => ()
 	       end
 
-	fun mk_uoFileList (absprjid: absprjid, modc) : unit =
+	fun list_minus (xs,nil) = xs
+	  | list_minus (x::xs,y::ys) = 
+	    if x = y then list_minus(xs,ys)
+	    else die "list_minus.prefix error1"
+	  | list_minus _ = die "list_minus.prefix error2"
+
+	fun makeUlfile (absprjid: absprjid, modc, modc') : unit =
 	  if not(!Flags.SMLserver) then ()
 	  else
-	    let val modc = emit (absprjid, modc)
-	      val base_absprjid = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
-	      fun files_to_be_emitted (mc,acc) =
+	      (* modc is a prefix of modc' *)
+	    let 
+		val _ = 
+		    if not (all_emitted modc) orelse not(all_emitted modc') then
+			die "makeUlfile: not all emitted"
+		    else ()
+(*		val modc = emit (absprjid, modc') *)
+	      fun uofiles (mc,acc) =
 		case mc
 		  of SEQ_MODC(mc1,mc2) => emitted_files(mc1,emitted_files(mc2,acc))
 		   | EMITTED_MODC(tfile,_) => tfile::acc
-		   | NOTEMITTED_MODC(target,li,filename) =>
-		    let val tfile = base_absprjid ^ "-" ^ filename ^ ".uo"
-		    in tfile::acc
-		    end
+		   | NOTEMITTED_MODC(target,li,filename) => die "makeUlfile.uofiles.uo-file not emitted"
 		   | _ => acc  
-	      val uofiles = files_to_be_emitted(modc,nil)
-	      val ulfile = "PM/" ^ base_absprjid ^ ".ul"
-	      val timeStampFile = timeStampFileName(absprjid)
-	      val os = TextIO.openOut ulfile
-	      val _ = app (fn f => TextIO.output(os, f ^ "\n")) uofiles;
-	      val _ = TextIO.closeOut os;
+	      val uofiles_local = uofiles(modc,nil)
+	      val uofiles_local_and_scripts = uofiles(modc',nil)
+	      val uofiles_scripts = list_minus(uofiles_local_and_scripts,uofiles_local)
+	      val ulfile = ulfile absprjid
+	      val _ = 
+		  let val os = TextIO.openOut ulfile
+		  in    app (fn f => TextIO.output(os, f ^ "\n")) uofiles_local
+		      ; TextIO.output(os, "scripts:\n")
+		      ; app (fn f => TextIO.output(os, f ^ "\n")) uofiles_scripts
+		      ; TextIO.closeOut os
+		  end
+(*
+	      val timeStampFile = timeStampFileName absprjid
 	      val os = TextIO.openOut timeStampFile
 	      val _ = TextIO.output(os, "")
 	      val _ = TextIO.closeOut os;
+*)
 	    in	      
 	      print("[wrote file " ^ ulfile ^ "]\n")
 	    end

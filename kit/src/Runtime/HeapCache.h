@@ -71,4 +71,8 @@ void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt);
 // pages in the regions in the heap.
 void deleteHeap(Heap *h);
 
+// [clearHeapCache()] deletes all heaps in the pool of heaps. Assumes 
+// that no client has a handle to a heap.
+void clearHeapCache();
+
 #endif

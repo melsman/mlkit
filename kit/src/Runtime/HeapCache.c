@@ -263,3 +263,17 @@ void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt)
   h->status = HSTAT_CLEAN;
 }
 
+void 
+clearHeapCache()
+{
+  Heap *h;
+
+  HEAP_POOL_MUTEX_LOCK;
+  while ( heapPoolIndex )
+    {
+      h = heapPool[--heapPoolIndex];
+      deleteHeap(h);      
+    }
+  HEAP_POOL_MUTEX_UNLOCK;
+  return;
+}
