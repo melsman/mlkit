@@ -11,6 +11,7 @@ signature NS_DB_HANDLE =
 
     (* Data manipulation language *)
     val dmlDb           : db -> quot -> unit
+    val execDb          : db -> quot -> unit
     val panicDmlDb      : db -> (quot->'a) -> quot -> unit
 
     (* Transactions *)
@@ -18,6 +19,9 @@ signature NS_DB_HANDLE =
     val dmlTrans        : (db -> 'a) -> 'a
     val panicDmlTransDb : db -> (quot->'a) -> (db->'a) -> 'a
     val panicDmlTrans   : (quot->'a) -> (db->'a) -> 'a
+
+    (* Stored Procedure *)
+    val execSpDb        : db -> quot list -> unit
 
     (* Queries *)
     val foldDb          : db -> ((string->string)*'a->'a)  

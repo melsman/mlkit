@@ -94,6 +94,15 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC) : NS_DB =
 	    else ()
 	  end
 
+	fun execDb (db : db) (q: quot) : unit =
+	  let
+	    val status = prim("@Ns_DbExec", (#2 db, quotToString q))
+	  in
+	    if status = NsBasics.ERROR then 
+	      raise Fail ("exec: " ^ Quot.toString q ^ " failed") 
+	    else ()
+	  end
+
 	fun panicDmlDb (db:db) (f_panic: quot -> 'a) (q: quot) : unit =
 	  (dmlDb db q handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
 
@@ -294,14 +303,26 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC) : NS_DB =
 	  | NONE => raise Fail "Db.seqCurrval.nextval not an integer"	
 	  end
 
-      end (* structure Handle *)
+       (* Stored Procedures *)
+       fun execSpDb (db: db) ([]: quot list) : unit = ()
+         | execSpDb (db: db) (qs: quot list) : unit =
+	 let
+	   val body = Quot.concatWith ";\n"  qs
+	 in
+	   dmlDb db (`declare begin ` ^^ body ^^ `; end;`)
+         end
+    end (* structure Handle *)
 
     fun dml (q: quot) : unit = Handle.wrapDb (fn db => Handle.dmlDb db q)
-
+    fun exec (q: quot) : unit = Handle.wrapDb (fn db => Handle.execDb db q)    
+    
     fun maybeDml (q: quot) : unit = dml q handle X => ()
 
     fun panicDml (f_panic: quot -> 'a) (q: quot) : unit =
       dml q handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ())
+
+    (* Stored Procedures *)
+    fun execSp qs : unit = Handle.wrapDb (fn db => Handle.execSpDb db qs)
 
     fun fold (f:(string->string)*'a->'a) (acc:'a) (sql:quot) : 'a =
       Handle.wrapDb (fn db => Handle.foldDb db f acc sql)

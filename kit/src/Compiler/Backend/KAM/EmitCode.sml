@@ -129,6 +129,7 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | Ccall(idx,2) => (out_opcode C_CALL2; out_int idx)
       | Ccall(idx,3) => (out_opcode C_CALL3; out_int idx)
       | Ccall(idx,4) => (out_opcode C_CALL4; out_int idx)
+      | Ccall(idx,5) => (out_opcode C_CALL5; out_int idx)
       | Ccall(idx,n) => die ("inst " ^ (pr_inst inst) ^ " not emitted (n=" ^ Int.toString n ^ ")")
 
       | Label(lab) => RLL.define_label lab

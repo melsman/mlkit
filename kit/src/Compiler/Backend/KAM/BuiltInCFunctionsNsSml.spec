@@ -19,6 +19,7 @@ Ns_ConnReturnRedirect
 Ns_DbPoolGetHandle
 Ns_DbPoolPutHandle
 Ns_DbDML
+Ns_DbExec
 Ns_DbSelect
 Ns_DbGetRow
 

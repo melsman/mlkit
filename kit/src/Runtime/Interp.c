@@ -847,6 +847,18 @@ interp(Interp* interpreter,             // Interp; NULL if mode=RESOLVEINSTS
 	Next;
       }
 
+      Instruct(C_CALL5): { 
+	Setup_for_c_call;
+	debug(printf("C_CALL5 - %d - (%d,%d,%d,%d,%d)\n", u32pc, selectStackDef(-4), 
+		     selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc));
+	acc = (cprim[u32pc])(selectStackDef(-4), selectStackDef(-3), selectStackDef(-2), selectStackDef(-1), acc);
+	popNDef(4);
+	inc32pc; /* index in c_prim */
+	Restore_after_c_call;
+	debug(printf("C_CALL5 end\n"));
+	Next;
+      }
+
       Instruct(UB_TAG_CON): {
 	// If temp = (11xxxxxxxxxxxxx), then we are dealing with a nullary 
 	// constructor and all bits are used.
