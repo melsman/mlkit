@@ -2,4 +2,4 @@
 	echo 'CM.make();' | sml
 
 clean:
-	rm -rf CM PM *~
+	rm -rf CM PM MLB *~
