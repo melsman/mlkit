@@ -24,6 +24,9 @@ structure Ns :> NS =
     fun decodeUrl(s: string) : string =
       prim("nssml_DecodeUrl", "nssml_DecodeUrl", s)
 
+   fun buildUrl action hvs =
+     action ^ "?" ^ (String.concatWith "&" (List.map (fn (n,v) => n ^ "=" ^ encodeUrl v) hvs))
+
     structure Conn =
       struct
 	fun returnHtml(status: int, s: string) : status =
@@ -297,6 +300,8 @@ structure Ns :> NS =
      * they should be. *)
 
     val _ = OS.FileSys.chDir (Info.pageRoot())
+
+    val randomGenerator = Random.newgen ()
 
     (* Creating the two supported database interfaces *)
     structure DbOra = DbFunctor(structure DbBasic = NsDbBasicOra

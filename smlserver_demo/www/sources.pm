@@ -14,14 +14,19 @@ local
     ../lib/Ns.sml  
     ../lib/Db.sml
   end
+  ../scs_lib/SCS_SECURITY.sml
+  ../scs_lib/ScsSecurity.sml
   ../scs_lib/ScsLang.sml
   ../scs_lib/ScsDate.sml
   ../scs_lib/SCS_PAGE.sml
   ../scs_lib/ScsLogin.sml
-  ../scs_lib/ScsWidget.sml
-  ../scs_lib/ScsPage.sml
-  ../scs_lib/ScsList.sml
   ../scs_lib/ScsDict.sml
+  ../scs_lib/ScsPage.sml
+  ../scs_lib/ScsError.sml
+  ../scs_lib/ScsWidget.sml
+  ../scs_lib/ScsPrint.sml
+  ../scs_lib/ScsReal.sml
+  ../scs_lib/ScsList.sml
   ../lib/MSP.sml
   ../lib/Msp.sml
   ../scs_lib/ScsFormVar.sml
@@ -92,5 +97,6 @@ in
   email_sent.sml
 
   scs/admin/dict/dict_form.sml
+  scs/scs-print.sml
  ]
 end

@@ -1,7 +1,5 @@
 structure ScsPage :> SCS_PAGE =
   struct
-    fun navbar nb = Quot.concatWith "" (List.map Html.ahref nb)
-
     fun returnPg title body = Ns.return 
       (case ScsLogin.user_lang of
 	 ScsLang.English => `

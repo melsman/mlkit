@@ -92,7 +92,7 @@ signature HTML =
     val inradio    : {name : string, value : string} -> string -> quot
     val inreset    : string -> string -> quot
     val insubmit   : string -> string -> quot
-    val inhidden   : {name : string, value : string} -> quot
+    val inhidden   : string -> string -> quot
     val textarea   : string -> quot -> quot
     val textareaa  : string -> string -> quot -> quot
     val select     : string -> string -> quot -> quot
@@ -280,7 +280,7 @@ end
 
    [insubmit value attr] generates <INPUT TYPE=SUBMIT VALUE="value" attr>.
 
-   [inhidden {name, value}] generates
+   [inhidden name value] generates
    <INPUT TYPE=HIDDEN NAME="name" VALUE="value">.
 
    [textarea name ws] generates <TEXTAREA NAME="name">ws</TEXTAREA>.
