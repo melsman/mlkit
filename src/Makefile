@@ -11,6 +11,7 @@ INSTALL=cp -p
 BINDIR=../bin
 
 ARCH-OS=x86-linux
+#ARCH-OS=x86-bsd
 HEAP2EXEC=heap2exec/heap2exec heap2exec/run.$(ARCH-OS)
 
 GENOPCODES_TARGETS=Runtime/Prims.c Runtime/PrimsNsSml.c \

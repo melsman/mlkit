@@ -127,7 +127,7 @@ main(int argc, char *argv[])
 	fprintf(stderr,"\n");
     }
     fprintf(stderr,"setting heap offset to %ld.",(long)runtime_szb);
-    write(out_fd,&runtime_szb,sizeof(off_t));
+    write(out_fd,&runtime_szb,sizeof(runtime_szb));
     close(out_fd);
     fprintf(stderr,"\n");
     fprintf(stderr,"done.\n");

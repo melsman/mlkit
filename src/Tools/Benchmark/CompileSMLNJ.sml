@@ -1,34 +1,17 @@
 structure CompileSMLNJ : COMPILE =
   struct
-(*
-    fun compile src =
-      let val {base,ext} = OS.Path.splitBaseExt src
-      in case ext
-	   of SOME "sml" =>
-	     let
-	       val src_smlnj = base ^ "_smlnj.sml"
-	       val target = base ^ "_smlnj.exe"
-	       val cmd = 
-		 ("echo 'use \"" ^ src_smlnj
-		  ^ "\"; SMLofNJ.exportFn(\"" ^ target ^ "\", fn _ => (doit();OS.Process.success));' | sml")
-	     in if OS.Process.system cmd = OS.Process.success then 
-		  let val os = TextIO.openOut target
-		      val _ = TextIO.output(os, "#!/bin/sh\nsml @SMLload=" ^ target ^ ".x86-linux $*")
-		      val _ = TextIO.closeOut os
-		      val _ = OS.Process.system("chmod a+x " ^ target)
-		  in SOME target
-		  end 
-		else NONE 
-	     end
-	   | SOME _ => NONE
-	   | NONE => NONE
-      end handle _ => NONE
-*)
+
+    fun arch_os() = 
+      case SMLofNJ.SysInfo.getHostArch() ^ "-" ^ SMLofNJ.SysInfo.getOSName()
+	of "X86-Linux" => "x86-linux"
+	 | "HPPA-HPUX" => "hppa-hpux"
+	 | "X86-BSD" => "x86-bsd"
+	 | s => s
 
     fun compile kitdir compileflags src opts =
       let 
 	  val heap2execDir = kitdir ^ "/src/heap2exec/"
-	  val heap2exec = heap2execDir ^ "heap2exec " ^ heap2execDir ^ "run.x86-linux"
+	  val heap2exec = heap2execDir ^ "heap2exec " ^ heap2execDir ^ "run." ^ arch_os()
 	  val {base,ext} = OS.Path.splitBaseExt src
       in case ext
 	   of SOME "sml" =>
@@ -39,7 +22,7 @@ structure CompileSMLNJ : COMPILE =
 		 ("echo 'use \"" ^ src_smlnj
 		  ^ "\"; SMLofNJ.exportFn(\"" ^ target ^ "\", fn _ => (doit();OS.Process.success));' | sml")
 	       val heap2execCmd = 
-		  (heap2exec ^ " " ^ target ^ ".x86-linux " ^ target) 
+		  (heap2exec ^ " " ^ target ^ "." ^ arch_os() ^ " " ^ target) 
 	     in if (OS.Process.system exportCmd = OS.Process.success andalso
 		    OS.Process.system heap2execCmd = OS.Process.success andalso
 		    OS.Process.system("chmod a+x " ^ target) = OS.Process.success)
@@ -53,7 +36,7 @@ structure CompileSMLNJ : COMPILE =
 		   ("echo 'CM.make'\"'\"' \"" ^ src_smlnj
 		    ^ "\"; SMLofNJ.exportFn(\"" ^ target ^ "\", fn _ => (Main.doit();OS.Process.success));' | sml")
 		 val heap2execCmd = 
-		    (heap2exec ^ " " ^ target ^ ".x86-linux " ^ target) 
+		    (heap2exec ^ " " ^ target ^ "." ^ arch_os() ^ " " ^ target) 
 	     in if (OS.Process.system exportCmd = OS.Process.success andalso
 		    OS.Process.system heap2execCmd = OS.Process.success andalso
 		    OS.Process.system("chmod a+x " ^ target) = OS.Process.success)

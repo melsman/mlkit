@@ -273,8 +273,9 @@ structure GenOpcodes : GEN_OPCODES =
 	fun kitgen_opcodes_image() =
 	  case arch_os()
 	    of ("X86", "Linux") => "kitgen_opcodes.x86-linux"
-	  | ("HPPA", "HPUX") => "kitgen_opcodes.hppa-hpux"
-	  | _ => "unknown"
+	     | ("HPPA", "HPUX") => "kitgen_opcodes.hppa-hpux"
+	     | ("X86", "BSD") => "kitgen_opcodes.x86-bsd"
+	     | _ => "unknown"
 	val kit_bin_kitgen_opcodes_image_path = OS.Path.joinDirFile{dir=kit_bin_path, file=kitgen_opcodes_image()}
 	val os = TextIO.openOut kit_bin_kitgen_opcodes_path
 	val _ = (TextIO.output(os, "sml @SMLload=" ^ kit_bin_kitgen_opcodes_image_path ^ " $*"); TextIO.closeOut os)

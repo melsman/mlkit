@@ -2,7 +2,6 @@
 # the makefile for the MP support library
 #
 
-MAKE =		make
 AR =		ar
 ARFLAGS =	rcv
 RANLIB =	ranlib

@@ -269,6 +269,7 @@ structure Tester : TESTER =
 	  fun kittester_image() =
 	    case arch_os()
 	      of ("X86", "Linux") => "kittester.x86-linux"
+	       | ("X86", "BSD") => "kittester.x86-bsd"
 	       | ("HPPA", "HPUX") => "kittester.hppa-hpux"
 	       | ("SPARC", "Solaris") => "kittester.sparc-solaris"
 	       | ("SUN", "OS4") => "unknown"
