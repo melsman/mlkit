@@ -55,19 +55,12 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC) : NS_DB =
 	fun poolGetHandle (pool : pool) : db =
 	  let
 	    val h : ns_db = prim("@Ns_DbPoolGetHandle", pool)
-
-val _ = NsDebug.addMsg `*******get handle ^(ppDb (pool,h))`
-
 	  in
 	    if h = 0 then raise Fail "poolGetHandle:Can't allocate handle" else (pool,h)
 	  end
 
 	fun poolPutHandle (db : db) : unit = 
-let
-
-val _ = NsDebug.addMsg `*******put handle ^(ppDb db)`
-in
-	  prim("@Ns_DbPoolPutHandle", #2 db) end
+	  prim("@Ns_DbPoolPutHandle", #2 db)
       end
 
     type pool = Pool.pool
@@ -89,7 +82,6 @@ in
 
 	fun wrapDb f =
 	  let val db = getHandle()
-val _ = NsDebug.addMsg `*******db=(^(#1 db),^(Int.toString (#2 db)))`
 	  in (f db before putHandle db)
 	    handle X => (putHandle db; raise X)
 	  end
@@ -144,8 +136,6 @@ val _ = NsDebug.addMsg `*******db=(^(#1 db),^(Int.toString (#2 db)))`
 
 	fun selectDb (db: db, q: quot) : set =
 	  let 
-val _ = NsDebug.addMsg `selectDb,db=(^(#1 db),^(Int.toString (#2 db)))`
-val _ = NsDebug.addMsg (`selectDb, SQL:` ^^ q)
 	    fun isNull(s : set) : bool = prim("__is_null",s)
 	    val res = prim("@Ns_DbSelect", (#2 db, quotToString q))
 	  in 

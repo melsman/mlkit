@@ -601,16 +601,11 @@ structure ScsPerson :> SCS_PERSON =
 	| _ => 
 	    (Ns.returnFile (Ns.Info.pageRoot() ^ (#url (empty_portrait_large())));())
       fun returnFile pic_type user_id file_id =
-let
-  val _ = Ns.NsDebug.addMsg `******returnFile begin*****`
-    in
 	if mayReturnPortrait_p user_id file_id (may_see_portrait_adm_p user_id) then
-	  (Ns.NsDebug.addMsg `Returning Portrait file id: ^(Int.toString file_id)`;
-	   ScsFileStorage.returnFile upload_root_label file_id)
+	   ScsFileStorage.returnFile upload_root_label file_id
 	else
-	  (Ns.NsDebug.addMsg `Not allowed to return portrait file id: ^(Int.toString file_id)`;
-	   returnEmpty pic_type)
-end
+	   returnEmpty pic_type
+
       fun returnPic pic_type =
 	let
 	  val user_id = ScsLogin.user_id() (* User is not necessarily logged in! *)
@@ -635,7 +630,6 @@ end
       fun returnThumbnail () = returnPic thumb_fixed_height
       fun returnPortraitFile () =
 	let
-val _ = Ns.NsDebug.addMsg `******returnPortraitFile begin*****`
 	  val user_id = ScsLogin.user_id() (* User is not necessarily logged in! *)
 	  val (file_id,errs) = ScsFileStorage.getFileIdErr("file_id",ScsFormVar.emptyErr)
 	in
