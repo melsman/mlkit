@@ -24,7 +24,7 @@ functor AddressLabels(structure Name : NAME) : ADDRESS_LABELS =
 
     fun pr_label(l,s) = 
 	let val (i,b) = Name.key l
-	in s ^ "." ^ Int.toString i ^ "." ^ b
+	in s ^ "$" ^ Int.toString i ^ "$" ^ b
 	end
 
     type name = Name.name
