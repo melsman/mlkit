@@ -266,8 +266,7 @@ let
   val path_to_consult_file = kit_source_directory ^ consult_file
   val temp_file = gen_tmp_file
         ("/tmp/mk"
-	 ^ (case user_opt of Some "hojfeld" => "-hojfeld" | _ => "")
-	 ^ kit_version);
+	 ^ (case user_opt of Some "hojfeld" => "-hojfeld" | _ => kit_version));
 
   fun gen_script () =
     let
@@ -360,7 +359,7 @@ let
        FLAGS (instead of being dynamic flags).  I wont change that;
        they will probably never be used (as the code works)*)
 
-      insert_bool_flag out_stream "warn_on_escaping_puts" true;
+      insert_bool_flag out_stream "warn_on_escaping_puts" false;
       insert_bool_flag out_stream "debug_which_at" false; 
       insert_bool_flag out_stream "DEBUG_COMPILER" false;
       insert_bool_flag out_stream "debug_cfg_register_allocation" false;
@@ -605,6 +604,7 @@ fun cp s = c ("Parsing/" ^ s);
 fun cc s = c ("Common/" ^ s);
 fun ck s = c ("Compiler/" ^ s);
 fun a s = if s="" then Make.again() else (t s; Make.again());
+fun m s = (t s; Make.make s);
 fun ajour s = (use (changes_file_name ()); a "");
 val p = "ParseSML_" ;
 val pp = "ParseSIG_" ;
@@ -639,6 +639,21 @@ val bc = "BuildCompile";
 val BC = "BUILD_COMPILE";
 val KAM = "KIT_ABSTRACT_MACHINE";
 val lss = "LambdaStatSem";
-
+val se = "SpreadExpression";
+val mi = "MulInf";
+val MI = "MUL_INF";
+val psi = "PhysSizeInf";
+val cl = "CompLamb";
+val dr = "DropRegions";
+val sma = "AtInf";
+val ME = "MUL_EXP";
+val me = "MulExp";
+val llv = "LocallyLiveVariables";
+val re = "RegionExp";
+val RE = "REGION_EXP";
+val le = "LambdaExp";
+val LE = "LAMBDA_EXP";
+  
+  
 reset_changes_file ();
 exportWithSML_NJ();

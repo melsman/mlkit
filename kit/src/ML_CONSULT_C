@@ -12,6 +12,7 @@ Common/ELABDEC.sml
 Common/ELABTOPDEC.sml
 Common/ELAB_INFO.sml
 Common/ENVIRONMENTS.sml
+Common/ERROR_CODE.sml
 Common/ERROR_INFO.sml
 Common/ERROR_TRAVERSE.sml
 Common/EfficientElab/ElabTopdec.sml
@@ -102,6 +103,8 @@ Common/TyName.sml
 Common/TyVar.sml
 Common/TypeInfo.sml
 Compiler/BuildCompile.sml
+Compiler/C_CONST.sml
+Compiler/CConst.sml
 Compiler/COMPILE.sml
 Compiler/COMPILE_BASIS.sml
 Compiler/Cfg/CFG_INFO.sml
@@ -121,10 +124,8 @@ Compiler/C/KBP_TO_C.sml
 Compiler/C/KbpToC.sml
 Compiler/Kam/ADDRESS_LABELS.sml
 Compiler/Kam/AddressLabels.sml
-Compiler/Kam/CConst.sml
 Compiler/Kam/COMP_LAMB.sml
 Compiler/Kam/COMP_LAMB_ENV.sml
-Compiler/Kam/C_CONST.sml
 Compiler/Kam/CompLamb.sml
 Compiler/Kam/CompLambEnv.sml
 Compiler/Kam/KAM_BACKEND.sml
