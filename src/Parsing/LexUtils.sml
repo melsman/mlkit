@@ -14,8 +14,9 @@ functor LexUtils(structure LexBasics: LEX_BASICS
       | noSome (SOME x) s = x
 
     datatype LexArgument = LEX_ARGUMENT of {sourceReader: SourceReader,
-					    stringChars: string list,
-					    commentDepth: int
+					    stringChars: string list ref,
+					    commentDepth: int ref,
+					    parStack: int ref list ref
 					   }
 
     fun sourceReaderOf(LEX_ARGUMENT{sourceReader, ...}) = sourceReader
@@ -98,17 +99,16 @@ functor LexUtils(structure LexBasics: LEX_BASICS
     end (*local*)
 
     fun initArg sourceReader = LEX_ARGUMENT{sourceReader=sourceReader,
-					    stringChars=nil,
-					    commentDepth=0}
+					    stringChars=ref nil,
+					    commentDepth=ref 0,
+					    parStack=ref nil}
 
-    fun clearString arg = initArg(sourceReaderOf arg)
+    fun clearString (LEX_ARGUMENT{stringChars,...}) = stringChars := nil
 
-    fun newComment arg = LEX_ARGUMENT{sourceReader=sourceReaderOf arg,
-				      stringChars=nil, commentDepth=1}
+    fun newComment (LEX_ARGUMENT{commentDepth,...}) = commentDepth := 1
 
-    fun addChars text (LEX_ARGUMENT{sourceReader, stringChars, ...}) =
-      LEX_ARGUMENT{sourceReader=sourceReader,
-		   stringChars=text :: stringChars, commentDepth=0}
+    fun addChars text (LEX_ARGUMENT{stringChars,...}) =
+      stringChars := text :: (!stringChars)
 
     fun addControlChar text arg =
       addChars (str(chr(ord(String.sub(text,2)) - ord #"@"))) arg
@@ -144,13 +144,13 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 
     end (*local*)
 
-    fun asString(LEX_ARGUMENT{stringChars, ...}) = concat(rev stringChars)
+    fun asString(LEX_ARGUMENT{stringChars, ...}) = concat(rev (!stringChars))
 
    (* Keyword detection (better done here than by the lexer). *)
 
     fun identifier(text, p1, p2) =
       let
-	fun keyword tok = (shifting("KEY(" ^ text ^ ")"); tok(p1, p2))
+	fun keyword tok = tok(p1, p2)
       in
         case text
 	  of "abstype"	 => keyword ABSTYPE
@@ -205,18 +205,30 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 	   | "*"	 => keyword STAR
 					(* Not actually reserved, but ... *)
 
-	   | _		 => (shifting("ID(" ^ text ^ ")"); ID(text, p1, p2))
+	   | _		 => ID(text, p1, p2)
       end
 
-    fun incComment(LEX_ARGUMENT{sourceReader, commentDepth, ...}) =
-      LEX_ARGUMENT{sourceReader=sourceReader,
-		   stringChars=nil, commentDepth=commentDepth+1
-		  }
+    fun incComment(LEX_ARGUMENT{commentDepth,...}) =
+      commentDepth := !commentDepth + 1
 
-    fun decComment(LEX_ARGUMENT{sourceReader, commentDepth, ...}) =
-      (commentDepth-1,
-       LEX_ARGUMENT{sourceReader=sourceReader,
-		    stringChars=nil, commentDepth=commentDepth-1
-		   }
-      )
+    fun decComment(LEX_ARGUMENT{commentDepth,...}) =
+      (commentDepth := !commentDepth - 1;
+       !commentDepth)
+
+    (* support for quotations (frags) *)
+    fun parStackTop (LEX_ARGUMENT {parStack,...}) =
+      case !parStack
+	of (r::_) => r
+	 | _ => raise Fail "LexUtils.parStackTop"
+    fun parStackPush (r : int ref) (LEX_ARGUMENT {parStack,...}) : unit =
+      parStack := r :: !parStack
+    fun parStackPop (LEX_ARGUMENT {parStack,...}) : unit =
+      case !parStack
+	of (r::t) => parStack := t
+	 | _ => raise Fail "LexUtils.parStackPop"      
+    fun parStackIsEmpty (LEX_ARGUMENT {parStack,...}) : bool =
+      case !parStack
+	of nil => true
+	 | _ => false
+
   end;

@@ -917,7 +917,17 @@ in
      \region type scheme contains a put effect on a region\n\
      \that is not quantified."),
     ("report_file_sig", SOME "sig", "report signatures", ref false,
-     "Report signatures for each file read.")
+     "Report signatures for each file read."),
+    ("quotation", SOME "quot", "quotation support", ref false,
+     "Enable support for quotations and anti-quotations.\n\
+      \When enabled, the datatype\n\
+      \   datatype 'a frag = QUOTE of string\n\
+      \                    | ANTIQUOTE 'a\n\
+      \is available in the initial environment. Moreover,\n\
+      \values of this datatype may be constructed using\n\
+      \the quotation/antiquotation syntax:\n\
+      \   val s = \"world\" \n\
+      \   val a : string frag list = `hello ^s - goodbye`")
     ]
   val _ = add true
     ("import_basislib", SOME "basislib", "import Basis Library", import_basislib,

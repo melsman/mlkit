@@ -116,10 +116,14 @@ structure Tester : TESTER =
 		end handle MemTime.Crash s => (msgErr (exe_file ^ " failure: " ^ s); 
 					       TestReport.add_runtime_bare_line(filepath,false))
 	      else
-		if OS.Process.system (exe_file ^ " > " ^ file ^ ".out") = OS.Process.success then
-		  TestReport.add_runtime_bare_line(filepath,test_output())
-		else (msgErr (exe_file ^ " failure");
-		      TestReport.add_runtime_bare_line(filepath,false))
+		let val res = OS.Process.system (exe_file ^ " > " ^ file ^ ".out")
+		in 
+		  if (not(opt TestFile.UncaughtException) andalso res = OS.Process.success) 
+		    orelse (opt TestFile.UncaughtException andalso res <> OS.Process.success) then
+		      TestReport.add_runtime_bare_line(filepath,test_output())
+		  else (msgErr (exe_file ^ " failure");
+			TestReport.add_runtime_bare_line(filepath,false))
+		end
 	    end
 	  else (msgErr "rename (mv) failure";
 		TestReport.add_runtime_bare_line(filepath,false))
@@ -135,10 +139,14 @@ structure Tester : TESTER =
 	      (msg' (" executing command `" ^ compile_command ^ "'");
 	       if OS.Process.system compile_command = OS.Process.success then
 		 if OS.Process.system ("mv run " ^ exe_file) = OS.Process.success then
-		   if OS.Process.system (exe_file ^ " " ^ exe_cmd_args ^ " > " ^ file^out_file) = OS.Process.success then
-		     add_line_testreport (filepath,test_output())
-		   else (msgErr "run failure";
-			 add_line_testreport (filepath,false))
+		   let val res = OS.Process.system (exe_file ^ " " ^ exe_cmd_args ^ " > " ^ file^out_file)
+		   in
+		     if (not(opt TestFile.UncaughtException) andalso res = OS.Process.success)
+		       orelse (opt TestFile.UncaughtException andalso res <> OS.Process.success) then
+		       add_line_testreport (filepath,test_output())
+		     else (msgErr "run failure";
+			   add_line_testreport (filepath,false))
+		   end
 		 else (msgErr "rename (mv) failure";
 		       add_line_testreport (filepath,false))
 	       else (msgErr "compile failure";

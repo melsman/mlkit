@@ -15,6 +15,7 @@ by a list of tokens. The following tokens are supported:
  prof           ; also compile and compare runtime output with 
                   profiling enabled
  gc             ; also activate garbage collection
+ ue             ; expect uncaught exception
 
 Test files may contain Standard ML like comments.
 
@@ -35,7 +36,7 @@ freedatatype.sml    ccl       ecte
 freedatatype2.sml   ccl       ecte
 sharing.sml         ccl       ecte
 opaque.sml          ccl
-opaque2.sml                           nobasislib
+opaque2.sml                        ue nobasislib
 functor.sml         ccl
 functor2.sml        ccl
 constraint.sml
@@ -44,6 +45,7 @@ layout.sml
 anoq_Exception.sml
 danwang.pm                    tc
 testmatc.sml        ccl
+excon.sml
 dangle4.sml
 
 (* Tests of some benchmark programs *)

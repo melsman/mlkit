@@ -5,6 +5,10 @@ type svalue
 val EOF:  'a * 'a -> (svalue,'a) token
 val TYVAR: (string) *  'a * 'a -> (svalue,'a) token
 val ID: (string) *  'a * 'a -> (svalue,'a) token
+val AQID: (string) *  'a * 'a -> (svalue,'a) token
+val OBJL: (string) *  'a * 'a -> (svalue,'a) token
+val ENDQ: (string) *  'a * 'a -> (svalue,'a) token
+val BEGINQ:  'a * 'a -> (svalue,'a) token
 val STRING: (string) *  'a * 'a -> (svalue,'a) token
 val REAL: (string option) *  'a * 'a -> (svalue,'a) token
 val WORD: (Word32.word option) *  'a * 'a -> (svalue,'a) token

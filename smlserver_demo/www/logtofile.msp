@@ -16,7 +16,7 @@ open TextIO
 val os = openAppend logfile
 val now = Date.fromTimeLocal(Time.now()) 
 val msg = "Invoked " ^ Date.toString now ^ " from " 
-          ^ getOpt(Mosmlcgi.cgi_remote_addr, "<unknown address>") ^ "\n"
+          ^ "<unknown address>" ^ "\n"
 val _ = output(os, msg)
 val _ = closeOut os
 ?>

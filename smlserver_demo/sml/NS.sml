@@ -72,9 +72,13 @@ signature NS =
 	
     val return : string -> status               (* Return html string to browser,
 						 * including HTTP headers. *)
-    val write : string -> status                (* Write string to browser *)
-    val returnHeaders : unit -> unit            (* Write HTTP headers to browser *)
-    val returnRedirect : string -> status       (* Write a redirection HTTP response *)
+    val write : string -> status                (* Write string to browser. *)
+    val returnHeaders : unit -> unit            (* Write HTTP headers to browser. *)
+    val returnRedirect : string -> status       (* Write a redirection HTTP response. *)
 
+    val returnQuot : string frag list -> status (* Return HTML frag list to browser,
+						 * including HTTP headers. *)
+    val writeQuot : string frag list -> status  (* Write frag list to browser. *) 
+      
     val pageRoot : unit -> string
   end

@@ -44,6 +44,9 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
   struct
 
     structure ListPair = Edlib.ListPair
+
+    val quotation = Flags.is_on0 "quotation"
+
     fun uncurry f (a,b) = f a b 
 
     fun impossible s = Crash.impossible ("Environments." ^ s)
@@ -1017,6 +1020,36 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  val listVE = listVE
 	end
 
+
+		 (* environments for frag (quotation) type constructor *)
+	local
+	  val _ = Level.push()
+
+	  fun fragTy ty = 
+	    Type.from_ConsType (Type.mk_ConsType ([ty],TyName.tyName_FRAG))
+
+	  fun conVE id ty1 ty2 =
+	    VE.singleton_con (id,
+			      TypeScheme.from_Type (Type.mk_Arrow (ty1, fragTy ty2)),
+			      [Ident.id_QUOTE, Ident.id_ANTIQUOTE])
+	  fun ve() =
+	    let val aTy1 = Type.from_TyVar (TyVar.fresh_normal ())
+	        val aTy2 = Type.from_TyVar (TyVar.fresh_normal ())
+	    in VE.plus(conVE Ident.id_ANTIQUOTE aTy1 aTy1,
+		       conVE Ident.id_QUOTE Type.String aTy2)
+	    end
+
+	  val fragVE = ve()
+	  val fragVE_for_TE = ve()   (* fresh variants of type schemes for 
+				      * quote and antiquote, for TE *)
+	  val _ = Level.pop()
+	in
+	  val TE_frag = TE.singleton (TyCon.tycon_FRAG,
+				      mk_tystr (TyName.tyName_FRAG,
+						VE.close fragVE_for_TE))
+	  val fragVE = fragVE
+	end
+
 	       (* overloaded functions *)
 	local
 	  val _ = Level.push()
@@ -1142,8 +1175,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	      else (TyName.tyName_INT32, TyName.tyName_WORD32)
 	    val TE_int = te (TyCon.tycon_INT, defaultTyNameInt)
 	    val TE_word = te (TyCon.tycon_WORD, defaultTyNameWord)
+	    val TEs = [TE_initial0, TE_word, TE_int]
+	    val TEs = if quotation() then TE_frag :: TEs else TEs
 	  in
-	    joinTE [TE_initial0, TE_word, TE_int]
+	    joinTE TEs
 	  end
 		 
 
@@ -1166,15 +1201,17 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 	(*notice VE.close must be applied outside the Level.push and Level.pop
 	 calls:*)
-	val VE_initial =
-	      joinVE [VE.close refVE, VE.close boolVE, VE.close listVE,
-		      VE.close primVE,
-		      absVE, negVE, divVE, modVE, plusVE, minusVE, mulVE,
-		      lessVE, greaterVE, lesseqVE, greatereqVE,
-		      resetRegionsVE, forceResettingVE, DivVE, 
-		      BindVE, MatchVE, OverflowVE]
+	val VEs =
+	  [VE.close refVE, VE.close boolVE, VE.close listVE,
+	   VE.close primVE,
+	   absVE, negVE, divVE, modVE, plusVE, minusVE, mulVE,
+	   lessVE, greaterVE, lesseqVE, greatereqVE,
+	   resetRegionsVE, forceResettingVE, DivVE, 
+	   BindVE, MatchVE, OverflowVE]
+	val fragVE = VE.close fragVE
+	fun VE_initial() = joinVE(if quotation() then fragVE :: VEs else VEs)
       in
-	fun initial() = ENV {SE=SE.empty, TE=TE_initial(), VE=VE_initial}
+	fun initial() = ENV {SE=SE.empty, TE=TE_initial(), VE=VE_initial()}
       end
 
 
@@ -1306,7 +1343,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       val lookup_tycon               = E.lookup_tycon               o to_E
 
       local open DecGrammar in
-      fun dom_pat (C, pat : pat) : id list =
+      fun dom_pat (C, pat : pat, valrec : bool) : id list =
 	    let
 	      fun dom_patrow(patrow: patrow): id list =
 		case patrow of
@@ -1328,12 +1365,16 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		| PARatpat(_, pat) => dom_pat' pat
 
 		| LONGIDatpat(i, OP_OPT(longid, _)) =>
-		    (case lookup_longid C longid of
-		       SOME (VE.LONGCON _) => []
-		     | SOME (VE.LONGEXCON _) => []
-		     | _ => (case Ident.decompose longid of
-			       ([], id) => [id]
-			     | _ => impossible "dom_atpat"))
+		    let 
+		      fun default() = case Ident.decompose longid 
+					of ([], id) => [id]
+					 | _ => impossible "dom_atpat"
+		    in
+		      case lookup_longid C longid 
+			of SOME (VE.LONGCON _) => if valrec then default() else []
+			 | SOME (VE.LONGEXCON _) => if valrec then default() else []
+			 | _ => default()
+		    end
 
 	      and dom_pat'(pat: pat): id list =
 		case pat of
@@ -1390,7 +1431,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		  foldr
 		    (fn (id, m) => FinMap.add (id, b, m))
 		       FinMap.empty
-		         (dom_pat (C,pat))
+		         (dom_pat (C,pat,false))
 		end  
 	    in
 	      case valbind 

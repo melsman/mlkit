@@ -39,10 +39,6 @@ signature LEX_BASICS =
     val lexFromString: string -> SourceReader
     val lexFromStdIn: unit -> SourceReader
 
-    val thinking: string -> unit
-    val shifting: string -> unit
-    val reducing: string -> unit
-
     exception LEXICAL_ERROR of pos * string
 				(* The (generated) lexer raises this on a
 				   lex error. We must catch it in Parse(). *)

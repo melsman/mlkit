@@ -220,6 +220,16 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 
     fun exp_false info = expOfIdent info Ident.id_FALSE
 
+    fun exp_quote (info:info) (s:string) : exp =
+      let val quoteExp = expOfIdent info Ident.id_QUOTE
+      in APPexp(info, quoteExp, SCONatexp(info, SCon.STRING s))
+      end
+
+    fun exp_antiquote (info:info) (atexp: atexp) : exp =
+      let val antiquoteExp = expOfIdent info Ident.id_ANTIQUOTE
+      in APPexp(info, antiquoteExp, atexp)
+      end
+
     fun if_then_else_exp info (ifExp, thenExp, elseExp) =
           let
 	    val mruleT = MRULE (info, patOfIdent info (Ident.id_TRUE, false), thenExp)

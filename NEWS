@@ -1,4 +1,26 @@
-ML Kit NEWS file                                         June 12, 2001
+ML Kit NEWS file                                         July 5, 2001
+
+ * mael 2001-07-05: Bug fix: valrec may now overwrite identifier
+   status. Bug reported by Johnny Andersen.
+
+ * mael 2001-07-05: Quotation support. When the option -quotation is
+   given to the compiler at startup, the datatype 
+      datatype 'a frag = QUOTE of string | ANTIQUOTE of 'a
+   is available in the top-level environment. Moreover, the character
+   ` cease to be allowed in symbolic identifiers. Values of the 'a
+   frag datatype may be constructed using the quotation/antiquotation
+   syntax:
+        val s = "world" 
+        val a : string frag list = `hello ^s - goodbye`
+
+
+ * mael 2001-07-05: An uncaught exception now causes the program to
+   return -1 to the shell (instead of 0). Suggestion by Stephen Weeks.
+
+ * mael 2001-07-05: Bug fix: The function OS.FileSys.tmpName now
+   returns a file name for a file in /tmp/ (instead of in /etc/). Bug
+   reported by Stephen Weeks.
+
 
            **** ML Kit version 3.9.0 is released ****
 

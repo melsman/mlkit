@@ -12,6 +12,7 @@ signature TESTFILE =
     | Profiling
     | GC
     | Tags
+    | UncaughtException
       
     datatype entry = PM of string * opt list
     | SML of string * opt list
@@ -35,6 +36,7 @@ structure TestFile : TESTFILE =
     | Profiling
     | GC
     | Tags
+    | UncaughtException
       
     datatype entry = PM of string * opt list
     | SML of string * opt list
@@ -80,6 +82,7 @@ structure TestFile : TESTFILE =
 	     | "prof" => (SOME Profiling, rest)
 	     | "gc" => (SOME GC, rest)
 	     | "tags" => (SOME Tags, rest)
+	     | "ue" => (SOME UncaughtException, rest)
 	     | _ => (NONE, all)
 	fun read_opts (l, acc) =
 	  case read_opt l

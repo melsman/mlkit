@@ -37,6 +37,8 @@ signature GRAMMAR_UTILS =
     val hash : info -> C.lab -> C.atexp
     val exp_true : info -> C.exp
     val exp_false : info -> C.exp
+    val exp_quote : info -> string -> C.exp
+    val exp_antiquote : info -> C.atexp -> C.exp
     val if_then_else_exp : info -> C.exp * C.exp * C.exp -> C.exp
     val while_exp : info -> C.exp * C.exp -> C.exp
     val rewriteDatBind: C.datbind * C.typbind -> C.datbind

@@ -1,7 +1,6 @@
 local
-  ../sml/Ns.sml
-  ../sml/MOSML_CGI.sml
-  ../sml/Mosmlcgi.sml
+  ../sml/NS.sml
+  ../sml/Ns.sml  
   ../sml/MSP.sml
   ../sml/Msp.sml
 in
