@@ -4,19 +4,6 @@
 -- found in openACS version 4.5b1 (www.openacs.org): file
 -- community-core-create.sql.
 
---------------
--- Triggers --
---------------
-
-create or replace trigger scs_persons_in_up_tr
-before insert or update on scs_persons
-for each row
-begin
-  :new.norm_name := scs_person.norm_name(:new.first_names,:new.last_name);
-end;
-/
-show errors
-
 
 /* ======================================================================
    package scs_person
@@ -487,5 +474,19 @@ as
   end norm_name_exists_p;
 
 end scs_person;
+/
+show errors
+
+
+--------------
+-- Triggers --
+--------------
+
+create or replace trigger scs_persons_in_up_tr
+before insert or update on scs_persons
+for each row
+begin
+  :new.norm_name := scs_person.norm_name(:new.first_names,:new.last_name);
+end;
 /
 show errors
