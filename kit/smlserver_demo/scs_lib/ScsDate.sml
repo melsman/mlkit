@@ -19,6 +19,7 @@ signature SCS_DATE =
     val now_univ  : unit -> Date.date
 
     (* Misc Operations *)
+    val normHourMin : hour * min -> hour * min
     val leap : year -> bool
     val preceedingLeaps : year -> int
     val daysInMonth : year -> mth -> int
@@ -108,6 +109,8 @@ structure ScsDate :> SCS_DATE =
 	raise ScsDate ("Wrong timestamp: " ^ (Int.toString year) ^ "-" ^ (Int.toString mth) ^ "-" ^ (Int.toString day)
 		       ^ (Int.toString hour) ^ ":" ^ (Int.toString minute) ^ "." ^ (Int.toString sec))
 	  
+    fun normHourMin (hours,min) = (hours + Int.div(min,60), Int.mod(min,60))
+
     fun leap y = (Int.mod(y,4) = 0 andalso Int.mod(y,100) <> 0) orelse Int.mod(y,400) = 0
 
     (* Return the number of leap years since year 0 and before year y *)
