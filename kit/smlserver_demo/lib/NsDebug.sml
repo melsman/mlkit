@@ -1,7 +1,7 @@
 signature NS_DEBUG = 
   sig
-(*    val addMsg  : quot -> unit
-    val logMsgs : unit -> unit Only included when debugging *)
+    val addMsg  : quot -> unit
+    val logMsgs : unit -> unit
   end
 
 structure NsDebug :> NS_DEBUG =
