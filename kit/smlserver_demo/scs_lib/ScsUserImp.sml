@@ -22,6 +22,7 @@ signature SCS_USER_IMP =
       SysAdmLogin of external_source
     | HSASPer of external_source
     | PersonnelRoster of external_source
+    | UCS_OB of external_source
 
     (* The supported external sources *)
     val sysadm_login     : external_sources
@@ -117,6 +118,7 @@ structure ScsUserImp :> SCS_USER_IMP =
       SysAdmLogin of external_source
     | HSASPer of external_source
     | PersonnelRoster of external_source
+    | UCS_OB of external_source
 
     val sysadm_login =
       SysAdmLogin {name= [(ScsLang.en,`Login from IT-department`),
@@ -307,19 +309,101 @@ structure ScsUserImp :> SCS_USER_IMP =
                                                      and scs_person_rels.on_what_table = 'person'
                                                      and scs_person_rels.on_which_id = person.person_id`}
 
-    val all_sources = [personnel_roster,hsas_per,sysadm_login]
+    val ucs_ob =
+      UCS_OB {name = [(ScsLang.en,`Admittance Database`),
+			       (ScsLang.da,`Optag Database`)],
+	      db_name = "ucs_ob",
+	      security_id_chk_sql = SOME
+	      `select p.person_id,pr.on_what_table, pr.on_which_id,
+                      e.first_names || ' ' || e.last_name as e_name, 
+                      e.email as e_email, 
+                      e.security_id as e_security_id,
+                      scs_person.name(p.person_id) as p_name,
+                      party.email as p_email,
+                      p.security_id as p_security_id
+                 from ucs_ob_applications e,scs_persons p,scs_person_rels pr, scs_parties party
+                where e.application_id = pr.on_which_id 
+                  and pr.on_what_table='ucs_ob'
+                  and p.person_id = pr.person_id
+                  and p.person_id = party.party_id
+                  and e.security_id is not null
+                  and ucs_hsas_dw.neqT_null(lower(p.security_id),
+					    lower(e.security_id)) = 't'`,
+              name_chk_sql = SOME
+	        `select p.person_id,pr.on_what_table, pr.on_which_id,
+                        e.first_names || ' ' || e.last_name as e_name, 
+                        e.email as e_email, 
+                        e.security_id as e_security_id,
+                        scs_person.name(p.person_id) as p_name,
+                        party.email as p_email,
+                        p.security_id as p_security_id
+                   from ucs_ob_applications e,scs_persons p,scs_person_rels pr, scs_parties party
+                  where e.application_id = pr.on_which_id 
+                    and pr.on_what_table='ucs_ob'
+                    and p.person_id = pr.person_id
+                    and p.person_id = party.party_id
+                    and e.first_names is not null
+                    and e.last_name is not null
+                    and ucs_hsas_dw.neqT_null(lower(scs_person.name(p.person_id)),
+                                              lower(e.first_names || ' ' || e.last_name)) = 't'`,
+	      email_chk_sql = SOME
+                `select p.person_id,pr.on_what_table, pr.on_which_id,
+                        e.first_names || ' ' || e.last_name as e_name, 
+                        e.email as e_email, 
+                        e.security_id as e_security_id,
+                        scs_person.name(p.person_id) as p_name,
+                        party.email as p_email,
+                        p.security_id as p_security_id
+                   from ucs_ob_applications e,scs_persons p,scs_person_rels pr, scs_parties party
+                  where e.application_id = pr.on_which_id 
+                    and pr.on_what_table='ucs_ob'
+                    and p.person_id = pr.person_id
+                    and p.person_id = party.party_id
+                    and e.email is not null
+                    and ucs_hsas_dw.neqT_null(lower(party.email),
+                                              lower(e.email)) = 't'`,
+	      rel_to_del_row_chk_sql = SOME
+	         `select p.person_id,pr.on_what_table, pr.on_which_id,
+                         e.first_names || ' ' || e.last_name as e_name, 
+                         e.email as e_email, 
+                         e.security_id as e_security_id,
+                         scs_person.name(p.person_id) as p_name,
+                         party.email as p_email,
+                         p.security_id as p_security_id
+                    from ucs_ob_applications e,scs_persons p,scs_person_rels pr, scs_parties party
+                   where e.application_id = pr.on_which_id 
+                     and pr.on_what_table='ucs_ob'
+                     and p.person_id = pr.person_id
+                     and p.person_id = party.party_id
+                     and (e.deleted_p = 't' or
+			  e.accepted_status_vid is null or
+                          scs_enumeration.getVal(e.accepted_status_vid) <> 'accepted')`,
+              basic_info_sql = fn id => `select e.firstnames || ' ' || e.last_name as name, 
+                                                e.email,
+                                                e.security_id,
+                                                on_what_table,
+                                                on_which_id,
+                                                e.deleted_p as e_deleted_p
+                                           from ucs_ob_applications e, scs_person_rels
+                                          where scs_person_rels.person_id = ^(Db.qqq id)
+                                            and scs_person_rels.on_what_table = 'ucs_ob'
+                                            and scs_person_rels.on_which_id = e.application_id`}
+
+    val all_sources = [personnel_roster,hsas_per,sysadm_login,ucs_ob]
 
     fun getSource ext_source =
       case ext_source of
 	SysAdmLogin s => s
       | HSASPer s => s
       | PersonnelRoster s => s
+      | UCS_OB s => s
 
     fun fromDb name =
       case name of
 	"sysadm_login" => sysadm_login
       | "hsas_per" => hsas_per
       | "person" => personnel_roster
+      | "ucs_ob" => ucs_ob
       | _ => raise ScsUserImp ("ScsUserImp.fromDb. Does not recognize " ^ name)
 
    (* Field names and widgets *)
@@ -564,7 +648,7 @@ structure ScsUserImp :> SCS_USER_IMP =
     val service_name = [(ScsLang.en, `Central Personnel Register`),
 			(ScsLang.da, `Centralt Person Register`)]
 
-    val service_adm_email = "ucs@itu.dk"
+    val service_adm_email = "mit@itu.dk"
 
     (* ====================================================================== *)
     (* page generation                                                        *)
