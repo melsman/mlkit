@@ -1,0 +1,1414 @@
+(* Grammar for top-level declarations.                  NICK, August 1990. *)
+
+(* We have some divergences from the grammar described in the definition
+   document. This is because the correct parsing of SML sometimes requires
+   left context to be carried a rather horrific distance into the parse.
+   In these cases, we parse a slightly more general syntactic form which
+   conforms to LR(1), and then knock out the illegal forms in the reduction
+   semantic rules.
+
+        (i)     The parser doesn't know about infix status at all. I had a
+                bash at doing a preprocessor which attached the correct infix
+                status to identifiers, but it was a bit of a nightmare, and
+                dealing with "*" and "=" as well became a *lot* of a nightmare.
+                So, all application expressions, patterns and so on are
+                parsed just as chains of atomic exp's/pat's. Any infixed
+                identifiers are resolved later. This means we have to hang
+                onto the "op" attached to identifiers, to be aware of the
+                difference between
+
+                        f + g
+
+                and
+
+                        f op+ g
+
+        (ii)    This grammar parses `<Pat> as <Pat>', and eliminates illegal
+                forms (`<Pat> as ...' where <Pat> is not an <OpId> or
+                <OpId> : <Ty>) in the reduction rules. This is because a
+                correct parse of
+
+                        fun F(X : ty as ...)
+
+                requires infinite lookahead to determine whether the `X' can
+                be reduced to an <AtPat>, or whether there's an `as'-clause
+                following the type expression. This could conceivably be
+                fixed in the grammar (much like the disambiguating of LOCAL)
+                but would add considerable complexity.
+
+        (iii)   <FValBind> function bindings are a nightmare. The expression
+
+                        fun (A infix1 B) infix2 C = ...
+
+                is ambiguous because `A <infix1> B' should be read as two
+                infix-separated <AtPat>'s *unless* there's an infix following
+                the closing bracket, in which case `A <infix1> B' is part of
+                a bracketted <Pat>.
+
+                Because we're resolving infix in a post-pass anyway, this gets
+                deferred. The functor Infixing() does all the work - look to
+                that for more details.
+
+        (iv)    The grammar actually accepts `op =' in a pattern. This is
+                because we want to define equality in terms of the bool type
+                declared in the prelude, which precludes us from building `='
+                into the initial environment. We reject subsequent declarations
+                of `=' during semantic analysis.
+
+                I hate this language.
+
+        (v)     Hey, guess what, I've found another one. Which of the
+                following is legal?
+
+                        val rec f = fn x => x: int
+                        val rec f = (fn x => x)
+                        val rec f = (fn x => x): int -> int
+
+                The Definition is rather political about this (i.e. it
+                contradicts itself and doesn't make a commitment one way
+                or the other). I've decided to allow the first and third
+                alternatives (i.e. `fn match' or `(fn match) : ty') which
+                seem to be sort-of in the spirit of the definition. I'm
+                making the second form illegal to stop programmers getting
+                cocky.
+
+                [MEMO: a couple of remaining bugs. Firstly, nested LOCAL
+                 declarations are not handled correctly (see the bug list).
+                 Secondly, we aren't lexing the correct tokens for numeric
+                 record labels.
+                ]
+
+        (vi)    Whoops, just found something else. Semicolon dec/strdec/spec
+                separators are difficult to do as per the Definition, since
+                they are optional everywhere and they separate optional (i.e.
+                possibly empty) phrases. We deal with this by giving ";"
+                the same status as the phrase class it serves to separate.
+                The `compose' functions from GrammarUtils are to swallow
+                empty absyn phrases which can result from this treatment.
+                Needless to say, this all means that we can't reconstitute
+                semicolons in the source (that would require an abstract
+                syntax class for them at least). Tough. Real SML programmers
+                don't use semicolons.
+ *)
+
+open GrammarUtils 
+open TopdecGrammar (*from inside GrammarUtils*)
+open DecGrammar (*from inside TopdecGrammar*)
+open LexBasics
+type arg = unit
+
+%%
+
+%name   Topdec
+%header (functor TopdecLrVals(
+           structure Token: TOKEN
+           structure LexBasics: LEX_BASICS
+           structure GrammarUtils: GRAMMAR_UTILS
+             sharing type GrammarUtils.pos = LexBasics.pos
+         )
+        )
+
+%term
+(* Reserved words for the modules language (Defn. V4 sec. 3.1), plus
+   qualified ids (attempting to recognise these in the grammar can cause
+   horrendous shift/reduce errors for things like `fun f(X ::.a) = ...',
+   and also allows gaps before/after the `.', which is illegal): *)
+          EQTYPE | FUNCTOR | INCLUDE | SHARING | SIG | SIGNATURE | STRUCT
+        | STRUCTURE | QUAL_ID of string list | QUAL_STAR of string list
+	| WHERE | COLONGREATER
+
+(* Reserved words for the core language (Defn. V4 sec. 2.1): *)
+        | ABSTYPE | AND | ANDALSO | AS | CASE | DO | DATATYPE | ELSE
+        | END | EXCEPTION | FN | FUN | HANDLE | IF | IN | INFIX
+        | INFIXR | LET | LOCAL | NONFIX | OF | OP | OPEN | ORELSE
+        | RAISE | REC | THEN | TYPE | VAL | WITH | WITHTYPE | WHILE
+
+(* Symbolic reserved words: *)
+        | LPAREN | RPAREN | LBRACKET | RBRACKET | LBRACE | RBRACE
+        | COMMA | COLON | SEMICOLON | DOTDOTDOT | UNDERBAR | BAR
+        | DARROW | ARROW | HASH
+
+(* Half-hearted reserved words, dealt with correctly in context: *)
+        | EQUALS | STAR
+
+(* Other core terminals. POSINT2 is the set of unsigned integer constants
+   which *aren't* single digits - they come in as DIGIT. So, we have a rule
+   for detecting numbers as either POSINT2, NEGINT or DIGIT. *)
+        | POSINT2 of int | NEGINT of int | REAL of real | STRING of string
+        | ID of string | TYVAR of string | DIGIT of int
+
+(* Junk: *)
+        | EOF
+
+%value  QUAL_ID         (["bogus"])
+%value  QUAL_STAR       (["bogus"])
+%value  POSINT2         (0)
+%value  NEGINT          (0)
+%value  REAL            (0.0)
+%value  STRING          ("")
+%value  ID              ("bogus")
+%value  TYVAR           ("'bogus")
+%value  DIGIT           (0)
+
+%nonterm
+(* Nonterminals for the modules language (Defn. V4 sec. 3.4 fig. 5): *)
+          TopDec                        of topdec
+        | TopDec_                       of topdec
+        | TopDec_opt                    of topdec Option
+        | SigDec                        of sigdec
+        | StrDec_sans_SEMICOLON         of strdec
+        | FunDec                        of fundec
+        | OneStrDec                     of strdec
+        | FunBind                       of funbind
+        | StrDesc                       of strdesc
+        | ExDesc                        of exdesc
+        | ConDesc                       of condesc
+        | DatDesc                       of datdesc
+        | DatDesc_zero_arity            of datdesc
+        | DatDesc_nonzero_arity         of datdesc
+        | TypDesc                       of typdesc
+	| TypAbbreviation               of tyvar list * tycon * ty * info * info
+        | ValDesc                       of valdesc
+        | Spec                          of spec
+        | OneSpec                       of spec
+        | SigBind                       of sigbind
+        | SigExp                        of sigexp
+        | StrBind                       of strbind
+        | StrDec                        of strdec
+        | StrExp                        of strexp
+
+(* Optional phrases and so on: *)
+
+(*KILL 03/12/1996 16:15. tho.:
+	| OneTopDec                     of topdec
+	| OneOrMoreTopDecs              of topdec
+*)
+	| SigExp_constraint             of strexp -> strexp
+	| SigExp_constraint_maybe       of strexp -> strexp
+        | AndFunBind_opt                of funbind Option
+        | AndStrBind_opt                of strbind Option
+        | AndSigBind_opt                of sigbind Option
+        | AndStrDesc_opt                of strdesc Option
+        | AndExDesc_opt                 of exdesc Option
+        | BarConDesc_opt                of condesc Option
+        | AndDatDesc_opt                of datdesc Option
+        | AndTypDesc_opt                of typdesc Option
+	| TypAbbreviationAND_seq1       of (tyvar list * tycon * ty * info * info) list
+        | AndValDesc_opt                of valdesc Option
+	| SEMICOLON_opt                 of unit
+        | OneSpec_or_SEMICOLON          of spec Option
+        | NonEmptySpec                  of spec
+        | Spec_sans_SHARING             of spec
+        | NonEmptySpec'                 of spec
+        | OneStrDec_or_SEMICOLON        of strdec Option
+        | NonEmptyStrDec                of strdec
+
+(* Nonterminals for the core language (Defn. V4 sec. 2.8 fig. 2): *)
+        | TyRow                         of tyrow
+        | Ty                            of ty
+        | TupleTy                       of ty list
+        | Ty_sans_STAR                  of ty
+        | AtomicTy                      of ty
+        | TyVarSeq                      of tyvar list
+        | SCon                          of scon
+        | Pat                           of pat
+        | PatRow                        of patrow
+        | AtPat                         of atpat
+        | ExBind                        of exbind
+        | ConBind                       of conbind
+        | DatBind                       of datbind
+        | DatBind_zero_arity            of datbind
+        | DatBind_nonzero_arity         of datbind
+        | TypBind                       of typbind
+        | ValBind                       of valbind
+        | FnValBind                     of valbind
+                                                (* RHS of `val rec' binding. *)
+        | FValBind                      of FValBind
+                                                (* `fun' binding. *)
+        | Dec                           of dec
+        | MRule                         of mrule
+        | Exp_                          of exp
+        | Match_                        of match
+                                                (* Exp_, Match_ rather than *)
+                                                (* Exp, Match which are the *)
+                                                (* pervasive exceptions... *)
+        | ExpRow                        of exprow
+        | AtExp                         of atexp
+        | FClause                       of FClause
+
+(* Optional phrases and so on: *)
+        | CommaExpRow_opt               of exprow Option
+        | AndValBind_opt                of valbind Option
+        | AndFnValBind_opt              of valbind Option
+        | AndFValBind_opt               of FValBind Option
+        | BarFClause_opt                of FClause Option
+        | AndTypBind_opt                of typbind Option
+        | AndDatBind_opt                of datbind Option
+        | BarConBind_opt                of conbind Option
+        | BarMatch_opt                  of match Option
+        | AndExBind_opt                 of exbind Option
+        | ExpRow_opt                    of exprow Option
+        | PatRow_opt                    of patrow Option
+        | AsPat_opt                     of pat Option
+        | CommaPatRow_opt               of patrow Option
+        | ColonTy_opt                   of ty Option
+        | ColonTy_seq1                  of (ty * pos) list
+        | TyRow_opt                     of tyrow Option
+        | CommaTyRow_opt                of tyrow Option
+        | OfTy_opt                      of ty Option
+        | ExpComma_seq0                 of exp list
+        | ExpComma_seq1                 of exp list
+        | ExpComma_seq2                 of exp list
+        | PatComma_seq0                 of pat list
+        | PatComma_seq1                 of pat list
+        | PatComma_seq2                 of pat list
+        | AtExp_seq1                    of atexp list
+        | AtPat_seq2                    of atpat list
+        | AtPat_seq1                    of atpat list
+        | ExpSemicolon_seq2             of exp list
+        | TyVarSeq1                     of tyvar list
+        | TyVarComma_seq1               of tyvar list
+        | TyComma_seq2                  of ty list
+        | OneDec_or_SEMICOLON           of dec Option
+        | NonEmptyDec                   of dec
+(*KILL 07/08/1996 09:51. tho.:
+        | Ident_seq1                    of string WithInfo list
+                                                (* used in "include." c/w
+                                                   info. *)
+*)
+        | Ident_seq2                    of string WithInfo list
+                                                (* used in "include." c/w
+                                                   info. *)
+        | EqIdent_seq1                  of string list
+                                                (* used in "infix" etc.
+                                                   info not needed (failure
+                                                   not possible). *)
+        | LongIdent_seq1                of string list WithInfo list
+                                                (* used in "open." c/w info. *)
+        | LongIdentEq_seq2              of string list WithInfo list
+                                                (* used in "sharing". c/w
+                                                   info. *)
+        | LongTypeIdentEq_seq2          of string list WithInfo list
+                                                (* used in "sharing/type."
+                                                   c/w info. *)
+        | DIGIT_opt                     of int Option
+        | OneDec                        of dec  (* One DEC phrase. *)
+        | OneDec_sans_LOCAL             of dec  (* One DEC phrase, no LOCAL. *)
+
+(* The various kinds of identifiers. We don't make any distinction between
+   Vars, Cons, ExCons, FunIds, StrIds, SigIds and all the rest, but we must
+   have distinct classes for the contexts where we're allowed "*" and "=".
+
+        Ident:                  ("xxx", "::::", "+", "*", ...)
+
+        OpIdent:                (Ident, "op" Ident)
+
+        EqIdent:                (Ident or "=")
+
+        TypeIdent:              (as Ident, but "*" absent)
+
+        LongIdent:              (Ident, plus "S.T", "::.::", "*.X", and we
+                                 allow "S.*", except in types. We don't
+                                 explicitly disallow "X.Y.=", although writing
+                                 it isn't much use)
+
+        LongTypeIdent:          (LongIdent without "*" or "X.Y.*")
+
+        LongOpIdent:            (LongIdent, "op" LongIdent)
+
+        LongOpEqIdent:          (as LongOpIdent, but "=", "op =" allowed)
+
+        Label:                  (record labels, either an identifier (including
+                                 "*", excluding "=") or a positive integer, of
+                                 any size, with no leading zeros)
+ *)
+
+        | Ident                         of string
+        | OpIdent                       of string op_opt
+        | EqIdent                       of string
+        | TypeIdent                     of string
+        | LongTypeIdent                 of string list
+        | LongIdent                     of string list
+        | LongOpIdent                   of string list op_opt
+        | LongOpEqIdent                 of string list op_opt
+        | Label                         of lab
+                (* Most of those are generic (string etc.) because these
+                   nonterminals are used in generic contexts (unlike funid,
+                   strid and all the rest). *)
+
+(* Integers. *)
+        | PosInt                        of int
+        | Integer                       of int
+
+%left   SHARING         (* L/R is arbitrary. *)
+%left   SEMICOLON       (* L/R is arbitrary. *)
+%right  INCLUDE         (* L/R is arbitrary. *)
+%right  STRUCTURE       (* L/R is arbitrary. *)
+%right  EXCEPTION       (* L/R is arbitrary. *)
+%right  DATATYPE        (* L/R is arbitrary. *)
+%right  EQTYPE          (* L/R is arbitrary. *)
+%right  TYPE            (* L/R is arbitrary. *)
+%right  VAL             (* L/R is arbitrary. *)
+
+%right  AND
+%left   DARROW          (* L/R is arbitrary. *)
+%left   BAR             (* L/R is arbitrary. *)
+%left   ELSE            (* L/R is arbitrary. *)
+%left   DO              (* L/R is arbitrary. *)
+%left   RAISE           (* L/R is arbitrary. *)
+%right  HANDLE
+%right  ORELSE
+%right  ANDALSO
+%right  AS
+
+%left   COLON           (* L/R is arbitrary. ":" is looser than infix. *)
+%right  ARROW
+%left   ID EQUALS       (* L/R fairly arbitrary: we resolve infixes later. *)
+
+%right  STAR
+
+%pos            LexBasics.pos
+%eop            SEMICOLON EOF
+%noshift        EOF
+%verbose
+
+(* Note: do *not* turn on "%pure". Our grammar is not pure in that some of our
+         actions perform sanity checks, and the ML-Yacc parser tends to go
+         through some bizarre death-throws, reducing irrelevant rules, when a
+         parse fails. *)
+
+%keyword        EQTYPE FUNCTOR INCLUDE SHARING SIG SIGNATURE STRUCT
+                STRUCTURE ABSTYPE AND ANDALSO AS CASE DO DATATYPE ELSE
+                END EXCEPTION FN FUN HANDLE IF IN INFIX
+                INFIXR LET LOCAL NONFIX OF OP OPEN ORELSE
+                RAISE REC THEN TYPE VAL WHERE WITH WITHTYPE WHILE
+
+%start          TopDec
+%%
+
+Ident:    ID            ( ID )
+        | STAR          ( "*" )
+
+OpIdent:  Ident         ( OP_OPT(Ident, false) )
+        | OP Ident      ( OP_OPT(Ident, true) )
+
+EqIdent:  Ident         ( Ident )
+        | EQUALS        ( "=" )
+
+TypeIdent:
+          ID            ( ID )
+
+LongTypeIdent:
+          TypeIdent     ( [TypeIdent] )
+        | QUAL_ID       ( QUAL_ID )
+
+LongIdent:
+          Ident         ( [Ident] )
+        | QUAL_ID       ( QUAL_ID )
+        | QUAL_STAR     ( QUAL_STAR )
+
+LongOpIdent:
+          LongIdent     ( OP_OPT(LongIdent, false) )
+        | OP LongIdent  ( OP_OPT(LongIdent, true) )
+
+LongOpEqIdent:
+          LongOpIdent   ( LongOpIdent )
+        | EQUALS        ( OP_OPT(["="], false) )
+        | OP EQUALS     ( OP_OPT(["="], true) )
+
+DIGIT_opt:
+          DIGIT         ( Some DIGIT )
+        | (* -none- *)  ( None )
+
+Integer:  POSINT2       ( POSINT2 )
+        | NEGINT        ( NEGINT )
+        | DIGIT         ( DIGIT )
+
+PosInt:   POSINT2       ( POSINT2 )
+        | DIGIT         ( DIGIT )
+
+Label:    Ident         ( mk_IdentLab Ident )
+        | PosInt        ( mk_IntegerLab PosInt )
+
+(*KILL 07/08/1996 09:51. tho.:
+Ident_seq1:
+          Ident Ident_seq1
+                        ( WITH_INFO(PP Identleft Identright, Ident)
+                          :: Ident_seq1
+                        )
+        | Ident         ( [WITH_INFO(PP Identleft Identright, Ident)] )
+*)
+
+Ident_seq2:
+          Ident Ident_seq2
+                        ( WITH_INFO(PP Identleft Identright, Ident)
+                          :: Ident_seq2
+                        )
+        | Ident Ident   ( [WITH_INFO(PP Ident1left Ident1right, Ident1),
+			   WITH_INFO(PP Ident2left Ident2right, Ident2)] )
+
+EqIdent_seq1:
+          EqIdent EqIdent_seq1
+                        ( EqIdent :: EqIdent_seq1 )
+        | EqIdent       ( [EqIdent] )
+
+LongIdent_seq1:
+          LongIdent LongIdent_seq1
+                        ( WITH_INFO(PP LongIdentleft LongIdentright,
+                                    LongIdent
+                                   ) :: LongIdent_seq1
+                        )
+        | LongIdent     ( [WITH_INFO(PP LongIdentleft LongIdentright,
+                                     LongIdent
+                                    )
+                          ]
+                        )
+
+LongIdentEq_seq2:
+          LongIdent EQUALS LongIdentEq_seq2
+                        ( WITH_INFO(PP LongIdentleft LongIdentright, LongIdent)
+                          :: LongIdentEq_seq2
+                        )
+        | LongIdent EQUALS LongIdent
+                        ( [WITH_INFO(PP LongIdent1left LongIdent1right,
+                                     LongIdent1
+                                    ),
+                           WITH_INFO(PP LongIdent2left LongIdent2right,
+                                     LongIdent2
+                                    )
+                          ]
+                        )
+
+LongTypeIdentEq_seq2:
+          LongTypeIdent EQUALS LongTypeIdentEq_seq2
+                        ( WITH_INFO(PP LongTypeIdentleft LongTypeIdentright,
+                                    LongTypeIdent
+                                   )
+                          :: LongTypeIdentEq_seq2
+                        )
+        | LongTypeIdent EQUALS LongTypeIdent
+                        ( [WITH_INFO(PP LongTypeIdent1left LongTypeIdent1right,
+                                     LongTypeIdent1
+                                    ),
+                           WITH_INFO(PP LongTypeIdent2left LongTypeIdent2right,
+                                     LongTypeIdent2
+                                    )
+                          ]
+                        )
+
+(* Functors and Top-Level Declarations (Defn. V4 sec. 3.5 fig. 8): *)
+
+TopDec:   TopDec_       ( TopDec_ )
+	| Exp_          ( topdecOfExp Exp_ )
+	| (*epsilon*)   ( STRtopdec(PP defaultPos defaultPos,
+				    EMPTYstrdec(PP defaultPos defaultPos), None) )
+
+TopDec_:  OneStrDec TopDec_opt
+		        ( STRtopdec (PP OneStrDecleft
+				       (rightmost info_on_strdec OneStrDec
+				                  info_on_topdec TopDec_opt),
+				     OneStrDec, TopDec_opt) )
+        | SigDec    TopDec_opt
+			( SIGtopdec (PP SigDecleft
+				       (rightmost info_on_sigdec SigDec
+				                  info_on_topdec TopDec_opt),
+				     SigDec, TopDec_opt) )
+        | FunDec    TopDec_opt
+			( FUNtopdec (PP FunDecleft
+				       (rightmost info_on_fundec FunDec
+				                  info_on_topdec TopDec_opt),
+				     FunDec, TopDec_opt) )
+
+TopDec_opt:
+          TopDec_       ( Some TopDec_ )
+	|		( None )
+
+FunBind:  Ident LPAREN Ident COLON SigExp RPAREN SigExp_constraint_maybe
+          EQUALS StrExp AndFunBind_opt
+                        ( FUNBIND (PP Ident1left
+				     (rightmost info_on_strexp StrExp
+				                info_on_funbind AndFunBind_opt),
+                                   mk_FunId Ident1, mk_StrId Ident2, SigExp,
+                                   SigExp_constraint_maybe StrExp, AndFunBind_opt) )
+(*DF:*) | Ident LPAREN Spec RPAREN SigExp_constraint_maybe EQUALS StrExp
+          AndFunBind_opt
+                        ( let val strid_nu = inventStrId ()
+			      val i_body = PP SigExp_constraint_maybeleft StrExpright
+			      val i_spec = info_on_spec Spec
+                          in FUNBIND
+			       (PP Ident1left
+				  (rightmost info_on_strexp StrExp
+				             info_on_funbind AndFunBind_opt),
+				mk_FunId Ident, strid_nu,
+				SIGsigexp (i_spec, Spec),
+				LETstrexp
+				  (i_body,
+				   DECstrdec
+				     (i_spec,
+				      OPENdec (i_spec,
+					       [WITH_INFO (i_spec, longStrIdOfStrId strid_nu)])),
+				   SigExp_constraint_maybe StrExp),
+				AndFunBind_opt)
+                          end )
+
+SigExp_constraint_maybe:
+          SigExp_constraint
+	                ( SigExp_constraint )
+	| (*epsilon*)   ( (fn strexp => strexp) )
+
+
+SigExp_constraint:
+          COLON SigExp  ( (fn strexp => 
+			   TRANSPARENT_CONSTRAINTstrexp
+			     (PP COLONleft SigExpright, strexp, SigExp)) )
+	| COLONGREATER SigExp
+	                ( (fn strexp => 
+			   OPAQUE_CONSTRAINTstrexp
+			     (PP COLONGREATERleft SigExpright, strexp, SigExp)) )
+
+AndFunBind_opt:
+          AND FunBind   ( Some FunBind )
+        | (* -none- *)  ( None )
+
+FunDec:   FUNCTOR FunBind
+	                ( FUNCTORfundec (PP FUNCTORleft (right (info_on_funbind FunBind)),
+					 FunBind) )
+
+(* Specifications (Defn. V4 sec. 3.5 fig. 7): *)
+
+StrDesc:  Ident COLON SigExp AndStrDesc_opt
+                        ( STRDESC (PP Identleft
+				     (rightmost info_on_sigexp SigExp
+				                info_on_strdesc AndStrDesc_opt),
+				   mk_StrId Ident, SigExp, AndStrDesc_opt) )
+
+AndStrDesc_opt:
+          AND StrDesc   ( Some StrDesc )
+        | (* -none- *)  ( None )
+
+ExDesc:   Ident OfTy_opt AndExDesc_opt
+                        ( EXDESC (PP Identleft
+				    (rightmost_of_three  Identright
+				                get_info_ty OfTy_opt
+						info_on_exdesc AndExDesc_opt),
+				  mk_Id Ident, OfTy_opt, AndExDesc_opt) )
+
+AndExDesc_opt:
+          AND ExDesc    ( Some ExDesc )
+        | (* -none- *)  ( None )
+
+ConDesc:
+          OpIdent OfTy_opt BarConDesc_opt
+                        ( let val OP_OPT (id, _) = OpIdent
+                          in CONDESC
+			       (PP OpIdentleft
+				  (rightmost_of_three OpIdentright
+				              get_info_ty OfTy_opt
+					      info_on_condesc BarConDesc_opt), 
+				mk_Id id, OfTy_opt, BarConDesc_opt)
+                          end )
+
+BarConDesc_opt:
+          BAR ConDesc   ( Some ConDesc )
+        | (* -none- *)  ( None )
+
+DatDesc:  TyVarSeq TypeIdent EQUALS ConDesc AndDatDesc_opt
+                        ( DATDESC (PP TyVarSeqleft
+				     (rightmost info_on_condesc ConDesc
+				                info_on_datdesc AndDatDesc_opt),
+				   TyVarSeq, mk_TyCon TypeIdent,
+				   ConDesc, AndDatDesc_opt) )
+DatDesc_zero_arity:  
+          TypeIdent EQUALS ConDesc AndDatDesc_opt
+                        ( DATDESC (PP TypeIdentleft
+				     (rightmost info_on_condesc ConDesc
+				                info_on_datdesc AndDatDesc_opt),
+				   [], mk_TyCon TypeIdent,
+				   ConDesc, AndDatDesc_opt) )
+DatDesc_nonzero_arity:  
+          TyVarSeq1 TypeIdent EQUALS ConDesc AndDatDesc_opt
+                        ( DATDESC (PP TyVarSeq1left
+				     (rightmost info_on_condesc ConDesc
+				                info_on_datdesc AndDatDesc_opt),
+				   TyVarSeq1, mk_TyCon TypeIdent,
+				   ConDesc, AndDatDesc_opt) )
+
+AndDatDesc_opt:
+          AND DatDesc   ( Some DatDesc )
+        | (* -none- *)  ( None )
+
+TypDesc:  TyVarSeq TypeIdent AndTypDesc_opt
+                        ( TYPDESC (PP TyVarSeqleft
+				     (rightmost' TypeIdentright info_on_typdesc AndTypDesc_opt),
+				   TyVarSeq, mk_TyCon TypeIdent, AndTypDesc_opt) )
+
+AndTypDesc_opt:
+          AND TypDesc   ( Some TypDesc )
+        | (* -none- *)  ( None )
+
+TypAbbreviationAND_seq1:
+	  TypAbbreviation AND TypAbbreviationAND_seq1
+			( TypAbbreviation :: TypAbbreviationAND_seq1 )
+	| TypAbbreviation
+			( [TypAbbreviation] )
+	  
+TypAbbreviation:
+          TyVarSeq TypeIdent EQUALS Ty
+ 			( (TyVarSeq, mk_TyCon TypeIdent, Ty,
+			   PP TyVarSeqleft Tyright, PP TyVarSeqleft TypeIdentright) )        
+
+ValDesc:  EqIdent COLON Ty AndValDesc_opt
+                        ( VALDESC (PP EqIdentleft
+				     (rightmost' Tyright info_on_valdesc AndValDesc_opt),
+				   mk_Id EqIdent, Ty, AndValDesc_opt) )
+
+AndValDesc_opt:
+          AND ValDesc   ( Some ValDesc )
+        | (* -none- *)  ( None )
+
+
+OneSpec:  VAL ValDesc   ( VALspec (PP VALleft (right (info_on_valdesc ValDesc)),
+				   ValDesc) )
+        | TYPE TypDesc  ( TYPEspec (PP TYPEleft (right (info_on_typdesc TypDesc)),
+				    TypDesc) )
+        | EQTYPE TypDesc
+                        ( EQTYPEspec (PP EQTYPEleft (right (info_on_typdesc TypDesc)),
+				      TypDesc) )
+        | DATATYPE DatDesc_zero_arity
+                        ( DATATYPEspec (PP DATATYPEleft
+					  (right (info_on_datdesc DatDesc_zero_arity)),
+				        DatDesc_zero_arity) )
+        | DATATYPE DatDesc_nonzero_arity
+                        ( DATATYPEspec (PP DATATYPEleft
+					  (right (info_on_datdesc DatDesc_nonzero_arity)),
+					DatDesc_nonzero_arity) )
+	| DATATYPE TypeIdent EQUALS DATATYPE LongTypeIdent
+			( DATATYPE_REPLICATIONspec
+			    (PP DATATYPE1left LongTypeIdentright,
+			     mk_TyCon TypeIdent, mk_LongTyCon LongTypeIdent) )
+        | EXCEPTION ExDesc
+                        ( EXCEPTIONspec (PP EXCEPTIONleft (right (info_on_exdesc ExDesc)),
+					 ExDesc) )
+        | STRUCTURE StrDesc
+                        ( STRUCTUREspec (PP STRUCTUREleft (right (info_on_strdesc StrDesc)),
+					 StrDesc) )
+        | INCLUDE SigExp
+                        ( INCLUDEspec (PP INCLUDEleft SigExpright, SigExp) )
+	(*derived forms (fig. 19, p. 59):*)
+	| TYPE TypAbbreviationAND_seq1
+			( fold_specs_to_spec
+			    (map rewrite_type_abbreviation_spec TypAbbreviationAND_seq1) )
+        | INCLUDE Ident_seq2
+                        ( fold_specs_to_spec
+			    (map (fn WITH_INFO (i, Ident) =>
+				      (i, INCLUDEspec (i, SIGIDsigexp (i, mk_SigId Ident))))
+			       Ident_seq2) )
+        (*spec sharing longstrid_1 = ... = longstrid_k is also a derived form,
+	 but I treat it as a basic construct, see `Spec:' below.
+	 07/08/1996 10:20. tho.*)
+
+Spec:     Spec OneSpec  ( composeSpec (PP Specleft (right (info_on_spec OneSpec)),
+				       Spec, OneSpec) )
+        | Spec SHARING TYPE LongTypeIdentEq_seq2
+			( SHARING_TYPEspec (PP Specleft LongTypeIdentEq_seq2right,
+					    Spec,
+					    wi_Convert mk_LongTyCon LongTypeIdentEq_seq2) )
+        | Spec SHARING LongIdentEq_seq2
+			( SHARINGspec (PP Specleft LongIdentEq_seq2right,
+				       Spec, wi_Convert mk_LongStrId LongIdentEq_seq2) )
+        | Spec SEMICOLON
+                        ( Spec )
+        | (*epsilon*)   ( EMPTYspec (PP defaultPos defaultPos) )
+
+(* Structure and Signature Expressions (Defn. V4 sec. 3.4 fig. 6): *)
+
+StrExp:   STRUCT StrDec END
+                        ( STRUCTstrexp (PP STRUCTleft ENDright, StrDec) )
+        | LongIdent     ( LONGSTRIDstrexp (PP LongIdentleft LongIdentright,
+					   mk_LongStrId LongIdent) )
+        | StrExp SigExp_constraint
+			( SigExp_constraint StrExp )
+        | Ident LPAREN StrExp RPAREN
+                        ( APPstrexp (PP Identleft RPARENright,
+				     mk_FunId Ident, StrExp) )
+        | LET StrDec IN StrExp END
+                        ( LETstrexp (PP LETleft ENDright, StrDec, StrExp) )
+(*DF:*) | Ident LPAREN StrDec RPAREN
+                        ( APPstrexp (PP Identleft RPARENright, mk_FunId Ident,
+				     STRUCTstrexp
+				       (PP StrDecleft (right (info_on_strdec StrDec)),
+					StrDec)) )
+
+NonEmptyStrDec:
+          NonEmptyStrDec OneStrDec_or_SEMICOLON
+                        ( (case OneStrDec_or_SEMICOLON of
+			     Some strdec =>
+			       composeStrDec (PP NonEmptyStrDecleft
+					        (right (info_on_strdec strdec)),
+					      NonEmptyStrDec, strdec)
+			   | None =>
+			       NonEmptyStrDec) )
+
+        | OneStrDec_or_SEMICOLON
+                        ( (case OneStrDec_or_SEMICOLON of
+			     Some strdec => strdec
+			   | None => EMPTYstrdec (PP defaultPos defaultPos)) )
+
+StrDec:   NonEmptyStrDec
+                        ( NonEmptyStrDec )
+        | (* -none- *)  ( EMPTYstrdec (PP defaultPos defaultPos) )
+
+OneStrDec_or_SEMICOLON:
+          OneStrDec     ( Some OneStrDec )
+        | SEMICOLON     ( None )
+
+OneStrDec:
+          OneDec_sans_LOCAL
+                        ( DECstrdec (PP OneDec_sans_LOCALleft
+                                        (right (get_info_dec OneDec_sans_LOCAL)),
+                                     OneDec_sans_LOCAL) )
+
+        | STRUCTURE StrBind
+                        ( STRUCTUREstrdec (PP STRUCTUREleft
+					     (right (info_on_strbind StrBind)),
+					   StrBind) )
+
+        | LOCAL StrDec IN StrDec END
+                        ( LOCALstrdec (PP LOCALleft ENDright, StrDec1, StrDec2) )
+
+StrBind:  Ident SigExp_constraint_maybe EQUALS StrExp AndStrBind_opt
+                        ( STRBIND (PP Identleft
+				     (rightmost info_on_strexp StrExp
+				                info_on_strbind AndStrBind_opt), 
+				   mk_StrId Ident, SigExp_constraint_maybe StrExp, 
+				   AndStrBind_opt) )
+
+AndStrBind_opt:
+          AND StrBind   ( Some StrBind )
+        | (* -none- *)  ( None )
+
+SigExp:
+          SIG Spec END  ( SIGsigexp (PP SIGleft ENDright, Spec) )
+        | Ident         ( SIGIDsigexp (PP Identleft Identright, mk_SigId Ident) )
+	| SigExp WHERE TYPE TyVarSeq LongTypeIdent EQUALS Ty
+	                ( WHERE_TYPEsigexp (PP SigExpleft Tyright,
+					    SigExp, TyVarSeq,
+					    mk_LongTyCon LongTypeIdent, Ty) )
+
+SigDec:
+          SIGNATURE SigBind
+	                ( SIGNATUREsigdec
+			    (PP SIGNATUREleft (right (info_on_sigbind SigBind)),
+			     SigBind) )
+
+SigBind:
+          Ident EQUALS SigExp AndSigBind_opt
+                        ( SIGBIND (PP Identleft
+				     (rightmost info_on_sigexp SigExp
+				                info_on_sigbind AndSigBind_opt),
+                                   mk_SigId Ident, SigExp, AndSigBind_opt) )
+
+AndSigBind_opt:
+          AND SigBind   ( Some SigBind )
+        | (* -none- *)  ( None )
+
+
+(* Expressions, Matches, Declarations and Bindings (V4 sec. 2.8 fig. 3): *)
+
+AtExp:
+          SCon          ( SCONatexp (PP SConleft SConright, SCon) )
+        | LongOpEqIdent ( let val OP_OPT (id, withOp) = LongOpEqIdent
+                          in
+			    IDENTatexp (PP LongOpEqIdentleft LongOpEqIdentright,
+					OP_OPT (mk_LongId id, withOp))
+                          end )
+        | LBRACE ExpRow_opt RBRACE
+                        ( RECORDatexp (PP LBRACEleft RBRACEright, ExpRow_opt) )
+        | LET Dec IN Exp_ END
+                        ( LETatexp (PP LETleft ENDright, Dec, Exp_) )
+        | LPAREN Exp_ RPAREN
+                        ( PARatexp (PP LPARENleft RPARENright, Exp_) )
+
+(* Atomic Expression Derived Forms (Defn. V4 apdx. A fig. 15). Actually,
+   this figure only catalogues these things as expression derived forms,
+   which suggests that `f()' isn't legal ML, since only an AtExp is allowed
+   as a function argument. More interestingly, `let in (a; b) end' is legal,
+   but `let in a; b end' is not. So, we'll include derived forms here at
+   the atomic expression level, *iff* the equivalent forms are valid
+   atomic expressions as well. Some oddities: we choose to regard
+   `(exp1; ...; expn; exp)', `[exp1, ..., expn]' and #lab as atomic forms, even
+   though the equivalent forms aren't.
+ *)
+
+        | LPAREN RPAREN ( RECORDatexp (PP LPARENleft RPARENright, None) )
+        | LPAREN ExpComma_seq2 RPAREN
+                        ( tuple_atexp_with_info (PP LPARENleft RPARENright) ExpComma_seq2 )
+        | HASH Label    ( hash (PP HASHleft Labelright) Label )
+        | LPAREN ExpSemicolon_seq2 RPAREN
+                        ( PARatexp (PP LPARENleft RPARENright,
+                                   sequenceExp ExpSemicolon_seq2) )
+        | LET Dec IN ExpSemicolon_seq2 END
+                        ( LETatexp (PP LETleft ENDright,
+				    Dec, sequenceExp ExpSemicolon_seq2) )
+        | LBRACKET ExpComma_seq0 RBRACKET
+                        ( list_atexp (PP LBRACKETleft RBRACKETright) ExpComma_seq0 )
+
+AtExp_seq1:
+          AtExp AtExp_seq1
+                        ( AtExp :: AtExp_seq1 )
+        | AtExp         ( [AtExp] )
+
+ExpRow:
+          Label EQUALS Exp_ CommaExpRow_opt
+                        ( EXPROW (PP Labelleft
+				    (rightmost get_info_exp Exp_
+				               get_info_exprow CommaExpRow_opt),
+				  Label, Exp_, CommaExpRow_opt) )
+
+ExpRow_opt:
+          ExpRow        ( Some ExpRow )
+        | (* -none- *)  ( None )
+
+CommaExpRow_opt:
+          COMMA ExpRow  ( Some ExpRow )
+        | (* -none- *)  ( None )
+
+ExpComma_seq0:
+          ExpComma_seq1 ( ExpComma_seq1 )
+        | (* -none- *)  ( nil )
+
+ExpComma_seq1:
+          Exp_ COMMA ExpComma_seq1
+                        ( Exp_ :: ExpComma_seq1 )
+        | Exp_          ( [Exp_] )
+
+ExpComma_seq2:
+          Exp_ COMMA ExpComma_seq1
+                        ( Exp_ :: ExpComma_seq1 )
+
+ExpSemicolon_seq2:
+          Exp_ SEMICOLON ExpSemicolon_seq2
+                        ( Exp_ :: ExpSemicolon_seq2)
+        | Exp_ SEMICOLON Exp_
+                        ( [Exp_1, Exp_2] )
+
+Exp_:     AtExp_seq1    ( UNRES_INFIXexp (PP AtExp_seq1left AtExp_seq1right, AtExp_seq1) )
+        | Exp_ COLON Ty ( TYPEDexp (PP Exp_left Tyright, Exp_, Ty) )
+        | Exp_ HANDLE Match_
+                        ( HANDLEexp (PP Exp_left (right (get_info_match Match_)),
+				     Exp_, Match_) )
+        | RAISE Exp_    ( RAISEexp (PP RAISEleft (right (get_info_exp Exp_)), Exp_) )
+        | FN Match_     ( FNexp (PP FNleft (right (get_info_match Match_)), Match_) )
+
+(* Expression derived forms (Defn. V4 apdx. A fig. 15): *)
+
+        | CASE Exp_ OF Match_
+                        ( case_exp (PP CASEleft (right (get_info_match Match_)))
+			    (Exp_, Match_) )
+        | IF Exp_ THEN Exp_ ELSE Exp_
+                        ( if_then_else_exp (PP IFleft (right (get_info_exp Exp_3)))
+			    (Exp_1, Exp_2, Exp_3) )
+        | Exp_ ORELSE Exp_
+                        ( let val info = PP Exp_1left (right (get_info_exp Exp_2))
+			  in
+			    if_then_else_exp info (Exp_1, exp_true info, Exp_2)
+			  end )
+        | Exp_ ANDALSO Exp_
+                        ( let val info = PP Exp_1left (right (get_info_exp Exp_2))
+			  in
+			    if_then_else_exp info (Exp_1, Exp_2, exp_false info)
+			  end )
+        | WHILE Exp_ DO Exp_
+                        ( while_exp (PP WHILEleft (right (get_info_exp Exp_2)))
+			    (Exp_1, Exp_2) )
+
+Match_:   MRule BarMatch_opt
+                        ( MATCH (PP MRuleleft
+				   (rightmost get_info_mrule MRule
+				              get_info_match BarMatch_opt), 
+				 MRule, BarMatch_opt) )
+
+BarMatch_opt:
+          BAR Match_    ( Some Match_ )
+        | (* -none- *) %prec DARROW
+                        ( None )
+
+MRule:    Pat DARROW Exp_
+                        ( MRULE (PP Patleft (right (get_info_exp Exp_)), Pat, Exp_) )
+
+(* Declarations: the top-level phrase `local <dec> in <dec> end' is
+   ambiguous: are the Dec's to be reduced to StrDec's, or is the entire
+   phrase a StrDec consisting of a single Dec? We parse this as the
+   former, by having the StrDec LOCAL rule only allow OneDec_sans_LOCAL
+   combinations. Things happen "normally" when we're at the core (Dec) level.
+ *)
+
+OneDec_sans_LOCAL:
+          VAL ValBind
+	                ( VALdec (PP VALleft (right (get_info_valbind ValBind)),
+				  [], ValBind) )
+        | VAL TyVarSeq1 ValBind
+	                ( VALdec (PP VALleft (right (get_info_valbind ValBind)),
+				  TyVarSeq1, ValBind) )
+        | TYPE TypBind  ( TYPEdec (PP TYPEleft (right (get_info_typbind TypBind)),
+				   TypBind) )
+        | DATATYPE DatBind_zero_arity
+                        ( DATATYPEdec (PP DATATYPEleft
+				         (right (get_info_datbind DatBind_zero_arity)),
+				       DatBind_zero_arity) )
+        | DATATYPE DatBind_nonzero_arity
+                        ( DATATYPEdec(PP DATATYPEleft
+				        (right (get_info_datbind DatBind_nonzero_arity)),
+				      DatBind_nonzero_arity) )
+	| DATATYPE TypeIdent EQUALS DATATYPE LongTypeIdent
+			( DATATYPE_REPLICATIONdec
+			    (PP DATATYPE1left LongTypeIdentright,
+			     mk_TyCon TypeIdent, mk_LongTyCon LongTypeIdent) )
+        | ABSTYPE DatBind WITH Dec END
+                        ( ABSTYPEdec (PP ABSTYPEleft ENDright, DatBind, Dec) )
+        | EXCEPTION ExBind
+                        ( EXCEPTIONdec (PP EXCEPTIONleft
+					  (right (get_info_exbind ExBind)),
+					ExBind) )
+        | OPEN LongIdent_seq1
+                        ( OPENdec (PP OPENleft LongIdent_seq1right,
+				   wi_Convert mk_LongStrId LongIdent_seq1) )
+        | INFIX DIGIT_opt EqIdent_seq1
+                        ( INFIXdec (PP INFIXleft EqIdent_seq1right,
+				    DIGIT_opt, map mk_Id EqIdent_seq1) )
+        | INFIXR DIGIT_opt EqIdent_seq1
+                        ( INFIXRdec (PP INFIXRleft EqIdent_seq1right,
+				     DIGIT_opt, map mk_Id EqIdent_seq1) )
+        | NONFIX EqIdent_seq1
+                        ( NONFIXdec (PP NONFIXleft EqIdent_seq1right,
+				     map mk_Id EqIdent_seq1) )
+
+(* Derived forms (Defn. V4 apdx. A fig. 17): *)
+
+        | DATATYPE DatBind_zero_arity WITHTYPE TypBind
+                        ( let val db = rewriteDatBind (DatBind_zero_arity, TypBind)
+                          in
+                            SEQdec (PP DATATYPEleft (right (get_info_typbind TypBind)),
+				    DATATYPEdec
+				      (get_info_datbind DatBind_zero_arity, db),
+				    TYPEdec (get_info_typbind TypBind, TypBind))
+                          end )
+        | DATATYPE DatBind_nonzero_arity WITHTYPE TypBind
+                        ( let val db = rewriteDatBind (DatBind_nonzero_arity, TypBind)
+                          in
+                            SEQdec (PP DATATYPEleft (right (get_info_typbind TypBind)),
+				    DATATYPEdec
+				      (get_info_datbind DatBind_nonzero_arity, db),
+				    TYPEdec (get_info_typbind TypBind, TypBind))
+                          end )
+        | ABSTYPE DatBind WITHTYPE TypBind WITH Dec END
+                        ( let val db = rewriteDatBind (DatBind, TypBind)
+                          in
+                            ABSTYPEdec
+			      (PP ABSTYPEleft ENDright, db,
+			       SEQdec (PP TypBindleft (right (get_info_dec Dec)),
+				       TYPEdec (get_info_typbind TypBind, TypBind),
+				       Dec))
+                          end )
+        | FUN FValBind  ( UNRES_FUNdec (PP FUNleft (right (get_info_FValBind FValBind)),
+					[], FValBind) )
+        | FUN TyVarSeq1 FValBind
+			( UNRES_FUNdec (PP FUNleft (right (get_info_FValBind FValBind)),
+					TyVarSeq1, FValBind) )
+
+(* a `OneDec' is a single declaration phrase, including LOCAL. No semicolons. *)
+
+OneDec:   LOCAL Dec IN Dec END
+                        ( LOCALdec (PP LOCALleft ENDright, Dec1, Dec2) )
+        | OneDec_sans_LOCAL
+                        ( OneDec_sans_LOCAL )
+
+OneDec_or_SEMICOLON:
+          OneDec        ( Some OneDec )
+        | SEMICOLON     ( None )
+
+(* a `Dec' is a declaration as in the Definition, including the empty
+   declaration and any combinations of semicolons. *)
+
+NonEmptyDec:
+          NonEmptyDec OneDec_or_SEMICOLON
+                        ( (case OneDec_or_SEMICOLON of
+			     Some dec =>
+			       composeDec (PP NonEmptyDecleft
+					     (right (get_info_dec dec)),
+					   NonEmptyDec, dec)
+			   | None => NonEmptyDec) )
+        | OneDec_or_SEMICOLON
+                        ( (case OneDec_or_SEMICOLON of
+			     Some dec => dec
+			   | None => EMPTYdec (PP defaultPos defaultPos)) )
+
+Dec:      NonEmptyDec   ( NonEmptyDec )
+        | (* -none- *)  ( EMPTYdec (PP defaultPos defaultPos) )
+
+ValBind:
+          Pat EQUALS Exp_ AndValBind_opt
+	                ( PLAINvalbind (PP Patleft
+					  (rightmost get_info_exp Exp_
+					             get_info_valbind AndValBind_opt), 
+					Pat, Exp_, AndValBind_opt) )
+(*KILL 25/02/1997 17:03. tho.:
+                        ( case AndValBind_opt of
+			    Some vb  => 
+                                let val i = GrammarUtils.C.get_info_valbind vb
+		                    val (from,to) = GrammarUtils.un_PP i
+                                in
+                                    PLAINvalbind (PP Patleft to,
+						  Pat, Exp_, AndValBind_opt)
+                                end
+                            | None => 
+                                    PLAINvalbind (PP Patleft Exp_right,
+						  Pat, Exp_, AndValBind_opt) )
+*)
+        | REC FnValBind ( RECvalbind (PP RECleft
+				        (right (get_info_valbind FnValBind)),
+				      FnValBind) )
+
+AndValBind_opt:
+          AND ValBind   ( Some ValBind )
+        | (* -none- *)  ( None )
+
+FnValBind:
+          Pat EQUALS FN Match_ AndFnValBind_opt
+                        ( PLAINvalbind
+			    (PP Patleft
+			       (rightmost get_info_match Match_
+				          get_info_valbind AndFnValBind_opt),
+			       Pat,
+			       FNexp (PP FNleft (right (get_info_match Match_)), Match_),
+			       AndFnValBind_opt) )
+        | Pat EQUALS LPAREN FN Match_ RPAREN ColonTy_seq1 AndFnValBind_opt
+                        ( let
+                            val fnExp =
+			          FNexp (PP FNleft (right (get_info_match Match_)), Match_)
+                            val parAtexp =
+                                  PARatexp (PP LPARENleft RPARENright, fnExp)
+                            val atexpExp =
+                                  ATEXPexp (PP LPARENleft RPARENright, parAtexp)
+
+                            fun attachTypes (e, nil) = e
+                              | attachTypes (e, (ty, p) :: rest) =
+                                  attachTypes (TYPEDexp (PP FNleft p, e, ty), rest)
+                          in
+                            PLAINvalbind (PP Patleft
+					    (rightmost' ColonTy_seq1right
+					                get_info_valbind AndFnValBind_opt),
+					  Pat,
+					  attachTypes (atexpExp, ColonTy_seq1),
+					  AndFnValBind_opt)
+                          end )
+        | REC FnValBind ( RECvalbind (PP RECleft
+				        (right (get_info_valbind FnValBind)),
+				      FnValBind) )
+
+(* ColonTy_seq1 is rather complicated because we want to return the right-hand
+   position information as well as the Ty phrases. The left-hand point is
+   always the start of the constrained expression. *)
+
+ColonTy_seq1:
+          COLON Ty ColonTy_seq1
+                        ( (Ty, Tyright) :: ColonTy_seq1 )
+        | COLON Ty      ( [(Ty, Tyright)] )
+
+AndFnValBind_opt:
+          AND FnValBind ( Some FnValBind )
+        | (* -none- *)  ( None )
+
+TypBind:
+          TyVarSeq TypeIdent EQUALS Ty AndTypBind_opt
+                        ( TYPBIND (PP TyVarSeqleft
+				     (rightmost get_info_ty Ty
+				                get_info_typbind AndTypBind_opt),
+				   TyVarSeq, mk_TyCon TypeIdent, Ty, AndTypBind_opt) )
+AndTypBind_opt:
+          AND TypBind   ( Some TypBind )
+        | (* -none- *)  ( None )
+
+DatBind:
+          TyVarSeq TypeIdent EQUALS ConBind AndDatBind_opt
+                        ( DATBIND (PP TyVarSeqleft
+				     (rightmost get_info_conbind ConBind
+				                get_info_datbind AndDatBind_opt),
+				   TyVarSeq, mk_TyCon TypeIdent,
+				   ConBind, AndDatBind_opt) )
+
+(*I split DatBind into the following two, to avoid shift/reduce
+ conflicts between a DatBind with empty TyVarSeq and a datatype
+ replication.  05/12/1996 18:38. tho.*)
+
+DatBind_zero_arity:
+          TypeIdent EQUALS ConBind AndDatBind_opt
+                        ( DATBIND (PP TypeIdentleft
+				     (rightmost get_info_conbind ConBind
+				                get_info_datbind AndDatBind_opt),
+				   [], mk_TyCon TypeIdent,
+				   ConBind, AndDatBind_opt) )
+DatBind_nonzero_arity:
+          TyVarSeq1 TypeIdent EQUALS ConBind AndDatBind_opt
+                        ( DATBIND (PP TyVarSeq1left
+				     (rightmost get_info_conbind ConBind
+				                get_info_datbind AndDatBind_opt),
+				   TyVarSeq1, mk_TyCon TypeIdent,
+				   ConBind, AndDatBind_opt) )
+AndDatBind_opt:
+          AND DatBind   ( Some DatBind )
+        | (* -none- *)  ( None )
+
+ConBind:
+          OpIdent OfTy_opt BarConBind_opt
+                        ( let val OP_OPT (id, withOp) = OpIdent
+                          in
+                            CONBIND (PP OpIdentleft
+				       (rightmost_of_three OpIdentright
+					  get_info_ty OfTy_opt
+					  get_info_conbind BarConBind_opt),
+				     OP_OPT (mk_Id id, withOp),
+				     OfTy_opt, BarConBind_opt)
+                          end )
+
+BarConBind_opt:
+          BAR ConBind   ( Some ConBind )
+        | (* -none- *)  ( None )
+
+ExBind:
+          OpIdent OfTy_opt AndExBind_opt
+                        ( let val OP_OPT (id, withOp) = OpIdent
+                          in
+                            EXBIND (PP OpIdentleft
+				      (rightmost_of_three OpIdentright
+					  get_info_ty OfTy_opt
+					  get_info_exbind AndExBind_opt),
+				    OP_OPT (mk_Id id, withOp),
+				    OfTy_opt, AndExBind_opt)
+                          end )
+        | OpIdent EQUALS LongOpEqIdent AndExBind_opt
+                        ( let val OP_OPT (id1, withOp1) = OpIdent
+			      val OP_OPT (id2, withOp2) = LongOpEqIdent
+                          in
+                            EXEQUAL (PP OpIdentleft
+				       (rightmost' LongOpEqIdentright
+					  get_info_exbind AndExBind_opt), 
+				     OP_OPT (mk_Id id1, withOp1),
+				     OP_OPT (mk_LongId id2, withOp2),
+				     AndExBind_opt)
+                          end )
+AndExBind_opt:
+          AND ExBind    ( Some ExBind )
+        | (* -none- *)  ( None )
+
+FValBind: FClause AndFValBind_opt
+                        ( FVALBIND (PP FClauseleft
+				      (rightmost get_info_FClause FClause
+				                 get_info_FValBind AndFValBind_opt),
+				    FClause, AndFValBind_opt) )
+AndFValBind_opt:
+          AND FValBind  ( Some FValBind )
+        | (* -none- *)  ( None )
+
+FClause:
+          AtPat_seq1 ColonTy_opt EQUALS Exp_ BarFClause_opt
+                        ( FCLAUSE (PP AtPat_seq1left
+				     (rightmost get_info_exp Exp_
+				                get_info_FClause BarFClause_opt),
+				   AtPat_seq1, ColonTy_opt,
+				   Exp_, BarFClause_opt) )
+
+BarFClause_opt:
+          BAR FClause   ( Some FClause )
+        | (* -none- *)  ( None )
+
+AtPat_seq2:
+          AtPat AtPat_seq1
+                        ( AtPat :: AtPat_seq1 )
+
+AtPat_seq1:
+          AtPat AtPat_seq1
+                        ( AtPat :: AtPat_seq1 )
+        | AtPat         ( [AtPat] )
+
+ColonTy_opt:
+          COLON Ty      ( Some Ty )
+        | (* -none- *)  ( None )
+
+OfTy_opt:
+          OF Ty         ( Some Ty )
+        | (* -none- *)  ( None )
+
+
+(* Patterns and Type Expressions (Defn. V4 sec. 2.8 fig. 4): *)
+
+AtPat:
+          UNDERBAR      ( WILDCARDatpat (PP UNDERBARleft UNDERBARright) )
+        | SCon          ( SCONatpat (PP SConleft SConright, SCon) )
+        | LongOpIdent   ( let val OP_OPT (id, withOp) = LongOpIdent
+                          in
+                            LONGIDatpat (PP LongOpIdentleft LongOpIdentright,
+					 OP_OPT (mk_LongId id, withOp))
+                          end )
+        | OP EQUALS     ( LONGIDatpat (PP OPleft EQUALSright,
+				       OP_OPT (mk_LongId ["="], true)) )
+                                (* "op =" is a special case pattern we allow
+                                   in the prelude only *)
+        | LBRACE PatRow_opt RBRACE
+                        ( RECORDatpat (PP LBRACEleft RBRACEright, PatRow_opt) )
+
+        | LPAREN Pat RPAREN
+                        ( PARatpat (PP LPARENleft RPARENright, Pat) )
+
+(* Derived forms (Defn. V4, apdx. A, fig. 16); again, we want them all as
+   atomic pattern forms, despite the definition claiming them to be
+   over the `pat' phrase class. *)
+
+        | LPAREN RPAREN ( RECORDatpat (PP LPARENleft RPARENright, None) )
+        | LPAREN PatComma_seq2 RPAREN
+                        ( tuple_atpat_with_info (PP LPARENleft RPARENright) PatComma_seq2 )
+        | LBRACKET PatComma_seq0 RBRACKET
+                        ( list_atpat (PP LBRACKETleft RBRACKETright) PatComma_seq0 )
+
+PatRow_opt:
+          PatRow        ( Some PatRow )
+        | (* -none- *)  ( None )
+
+PatRow:
+          DOTDOTDOT     ( DecGrammar.DOTDOTDOT (PP DOTDOTDOTleft DOTDOTDOTright) )
+        | Label EQUALS Pat CommaPatRow_opt
+                        ( PATROW (PP Labelleft
+				    (rightmost get_info_pat Pat
+				               get_info_patrow CommaPatRow_opt),
+				  Label, Pat, CommaPatRow_opt) )
+(*DF:*) | Ident ColonTy_opt AsPat_opt CommaPatRow_opt
+                        ( PATROW
+			    (PP Identleft
+			       (rightmost_of_four Identright
+				  get_info_ty ColonTy_opt
+				  get_info_pat AsPat_opt
+				  get_info_patrow CommaPatRow_opt),
+			     mk_IdentLab Ident,
+			     let
+			       val info_ident = PP Identleft Identright
+			       val idPat =
+				     ATPATpat
+				       (info_ident,
+					LONGIDatpat
+					  (info_ident, OP_OPT (mk_LongId [Ident], false)))
+			     in
+			       case (ColonTy_opt, AsPat_opt) of
+				 (_, Some pat) =>
+				   LAYEREDpat (PP Identleft (right (get_info_pat pat)),
+					       OP_OPT (mk_Id Ident, false),
+					       ColonTy_opt, pat)
+			       | (Some ty, None) =>
+				   TYPEDpat (PP Identleft (right (get_info_ty ty)),
+					     idPat, ty)
+			       | (None, None) => idPat
+			     end,
+			     CommaPatRow_opt) )
+
+AsPat_opt:
+          AS Pat        ( Some Pat )
+        | (* -none- *)  ( None )
+
+CommaPatRow_opt:
+          COMMA PatRow  ( Some PatRow )
+        | (* -none- *)  ( None )
+
+PatComma_seq0:
+          PatComma_seq1 ( PatComma_seq1 )
+        | (* -none- *)  ( nil )
+
+PatComma_seq1:
+          Pat COMMA PatComma_seq1
+                        ( Pat :: PatComma_seq1 )
+        | Pat           ( [Pat] )
+
+PatComma_seq2:
+          Pat COMMA PatComma_seq1
+                        ( Pat :: PatComma_seq1 )
+
+(* For `Pat' we distinguish a single AtPat from a sequence of them. This is
+   to make things easier when resolving the left hand side of layered
+   patterns (Pat AS Pat). *)
+
+Pat:
+          AtPat         ( ATPATpat (get_info_atpat AtPat, AtPat) )
+        | AtPat_seq2    ( UNRES_INFIXpat (PP AtPat_seq2left AtPat_seq2right,
+					  AtPat_seq2) )
+        | Pat COLON Ty  ( TYPEDpat (PP Patleft Tyright, Pat, Ty) )
+        | Pat AS Pat    ( layeredPat (PP Pat1left Pat2right, Pat1, Pat2) )
+
+Ty:
+          TupleTy ARROW Ty
+                        ( FNty (PP TupleTyleft Tyright,
+				(case TupleTy of
+				   [t] => t
+				 | ts => tuple_type (PP TupleTyleft Tyright) ts),
+				Ty) )
+        | TupleTy       ( (case TupleTy of
+			     [t] => t
+			   | ts => tuple_type (PP TupleTyleft TupleTyright) ts) )
+
+TupleTy:  Ty_sans_STAR  ( [Ty_sans_STAR] )
+(*DF:*) | Ty_sans_STAR STAR TupleTy
+                        ( Ty_sans_STAR :: TupleTy )
+
+Ty_sans_STAR:
+          LPAREN TyComma_seq2 RPAREN LongTypeIdent
+                        ( CONty (PP LPARENleft LongTypeIdentright,
+				 TyComma_seq2, mk_LongTyCon LongTypeIdent) )
+        | Ty_sans_STAR LongTypeIdent
+                        ( CONty (PP Ty_sans_STARleft LongTypeIdentright,
+				 [Ty_sans_STAR], mk_LongTyCon LongTypeIdent) )
+        | AtomicTy      ( AtomicTy )
+
+TyComma_seq2:
+          Ty COMMA TyComma_seq2
+                        ( Ty :: TyComma_seq2 )
+        | Ty COMMA Ty   ( [Ty1, Ty2] )
+
+AtomicTy:
+          LongTypeIdent ( CONty (PP LongTypeIdentleft LongTypeIdentright,
+				 [], mk_LongTyCon LongTypeIdent) )
+        | TYVAR         ( TYVARty(PP TYVARleft TYVARright, mk_TyVar TYVAR) )
+        | LBRACE TyRow_opt RBRACE
+                        ( RECORDty (PP LBRACEleft RBRACEright, TyRow_opt) )
+        | LPAREN Ty RPAREN
+                        ( PARty (PP LPARENleft RPARENright, Ty) )
+
+TyRow_opt:
+          TyRow         ( Some TyRow )
+        | (* -none- *)  ( None )
+
+TyRow:
+          Label COLON Ty CommaTyRow_opt
+                        ( TYROW (PP Labelleft
+				   (rightmost get_info_ty Ty
+				              get_info_tyrow CommaTyRow_opt),
+				 Label, Ty, CommaTyRow_opt) )
+
+CommaTyRow_opt:
+          COMMA TyRow   ( Some TyRow )
+        | (* -none- *)  ( None )
+
+SCon:
+          Integer       ( mk_IntSCon Integer )
+        | STRING        ( mk_StringSCon STRING )
+        | REAL          ( mk_RealSCon REAL )
+
+TyVarSeq:
+          TyVarSeq1     ( TyVarSeq1 )
+        | (* -none- *)  ( [] )
+
+TyVarSeq1:
+          TYVAR         ( [mk_TyVar TYVAR] )
+        | LPAREN TyVarComma_seq1 RPAREN
+                        ( TyVarComma_seq1 )
+
+TyVarComma_seq1:
+          TYVAR COMMA TyVarComma_seq1
+                        ( mk_TyVar TYVAR :: TyVarComma_seq1 )
+        | TYVAR         ( [mk_TyVar TYVAR] )
