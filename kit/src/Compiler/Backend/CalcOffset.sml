@@ -567,9 +567,3 @@ struct
 
 end;
 
-
-(*    fun lvset_add(lv_set,lv_list) = (app (fn lv => Array.update(lv_set,lv,true)) lv_list;lv_set)
-    fun lvset_delete(lv_set,lv_list) = (app (fn lv => Array.update(lv_set,lv,false)) lv_list;lv_set)
-    fun lvset_difference(lv_set,lv_list) = (app (fn lv => Array.update(lv_set,lv,false)) lv_list;lv_set)
-*)
-
