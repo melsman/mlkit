@@ -233,7 +233,8 @@ is
   )
   is
   begin
-    insert into scs_role_rels( party_id, role_id ) values ( add.party_id, add.role_id );
+    insert into scs_role_rels( rel_id, party_id, role_id ) 
+    values ( scs.new_obj_id, add.party_id, add.role_id );
   exception
     when dup_val_on_index then 
       return; -- if party_id has the role already
