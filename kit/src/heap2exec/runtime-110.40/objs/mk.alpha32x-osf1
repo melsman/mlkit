@@ -1,0 +1,21 @@
+# mk.alpha32-osf1
+#
+
+SHELL	= /bin/sh
+
+CC =		cc -std
+CFLAGS =	-O
+LDFLAGS =	-non_shared -T 20000000 -D 40000000
+AS =		as -nocpp
+AR =		/usr/ucb/ar
+XOBJS =	
+XLIBS =	
+LD_LIBS =
+BASE_DEFS =	
+DEFS =		$(BASE_DEFS) -DHOST_ALPHA32 -DTARGET_ALPHA32 -DOPSYS_UNIX -DOPSYS_OSF1 -DSIZES_C64_ML32
+TARGET =	ALPHA32
+VERSION =	v-alpha32x-osf1
+RUNTIME =	run.alpha32x-osf1
+
+all:
+	(make RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" AS="$(AS)" AR="$(AR)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))

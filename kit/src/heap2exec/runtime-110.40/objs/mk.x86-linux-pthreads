@@ -1,0 +1,24 @@
+# mk.x86-linux
+#
+
+SHELL =		/bin/sh
+
+MAKE =		make
+CC =		gcc -ansi
+CFLAGS =	-O2 -D_REENTRANT
+CPP =		gcc -x c -E -P -ansi
+#XOBJS =	xmonitor.o
+#LD_LIBS =	-lX11
+#BASE_DEFS =	-DHEAP_MONITOR
+XOBJS =
+XLIBS =		../c-libs/dl/libunix-dynload.a
+LD_LIBS =	-ldl -lpthread
+XDEFS =
+BASE_DEFS =
+DEFS		= $(XDEFS) $(BASE_DEFS) -DHOST_X86 -DTARGET_X86 -DOPSYS_UNIX -DOPSYS_LINUX -D_POSIX_SOURCE -D_BSD_SOURCE -DGNU_ASSEMBLER -DDLOPEN
+TARGET =	X86
+VERSION =	v-x86-linux
+RUNTIME =	run.x86-linux
+
+all:
+	($(MAKE) RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CFLAGS="$(CFLAGS)" CPP="$(CPP)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))

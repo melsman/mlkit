@@ -1,0 +1,23 @@
+Ideas for a new format for heap images.
+
+Number the exported arenas from 0..n (<= 255).
+Whe writing a pointer p out, adjust it as follows:
+
+    ((ArenaId << 24) | (p - arenaBase))
+
+Adjusting the pointers on input is then simply a
+matter of looking up the new base address in
+a table and adding it to the low 24 bits.
+
+If an arena is bigger than 2^24 (16Mb), then use
+multiple ArenaIds.  Since the current number of
+arenas is limited to be at most 70, this scheme
+can support a minimum of 2976Mb.  Since this
+exceeds the capacity of most disks, we should be
+okay.
+
+The tricky part of this is that when exporting, the
+bigobject references must be mapped into a coalesced
+big-object region.  We can handle this by allocating
+an offset word per big-object descriptor.
+

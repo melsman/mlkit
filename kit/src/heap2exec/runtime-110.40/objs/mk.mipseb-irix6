@@ -1,0 +1,26 @@
+# mk.mipseb-irix6
+#
+
+SHELL	= /bin/sh
+
+CC =		cc -xansi -D__STDC__
+# _MIPS_SIM=1 selects O32 ABI; required for regdef.h
+CPP =		/usr/lib/acpp -D_MIPS_SIM=1
+CFLAGS =	-O -o32
+AS =		/bin/as -nocpp
+RANLIB =	ar ts
+
+#XOBJS =	xmonitor.o
+#LD_LIBS =	-lX11_s -lmalloc
+#BASE_DEFS =	-DHEAP_MONITOR
+XOBJS =
+XLIBS =
+LD_LIBS =
+BASE_DEFS =
+DEFS =		$(BASE_DEFS) -DHOST_MIPS -DTARGET_MIPS -DOPSYS_UNIX -DOPSYS_IRIX5 
+TARGET =	MIPS
+VERSION	=	v-mipseb-irix6
+RUNTIME =	run.mipseb-irix6
+
+all:
+	(make RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" CC="$(CC)" CPP="$(CPP)" CFLAGS="$(CFLAGS)" AS="$(AS)" RANLIB="$(RANLIB)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))

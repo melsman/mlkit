@@ -1,0 +1,16 @@
+These are template files for the glue needed to put an ML callable
+library together.  See the "HOWTO-ADD-C-CODE" file in the "notes"
+directory for complete details.  The files are used as follows:
+
+  makefile		a makefile template; define the make variables LIBRARY
+			and OBJS.
+
+  cfun-proto-list.h	copy this file unchanged
+
+  cfun-list.h		copy this file, and replace the fields in <<>>.  Add
+			a CFUNC entry for each C function that is callable from
+			ML.
+
+  library-template.c	copy and rename this file; change the <<LibraryName>>
+			to the name of your library table.
+

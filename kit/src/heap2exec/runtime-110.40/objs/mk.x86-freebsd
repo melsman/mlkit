@@ -1,0 +1,26 @@
+# mk.x86-freebsd
+#
+# makefile for "Free BSD", which is a BSD 4.4 clone.
+#
+
+SHELL =		/bin/sh
+
+MAKE =		gmake
+
+ARFLAGS =	Trcv
+CC =		gcc -ansi
+CFLAGS =	-O2
+CPP =		gcc -x c -E -P -ansi
+#CPP =		/usr/bin/cpp -P
+
+XOBJS =
+XLIBS =	
+LD_LIBS =
+BASE_DEFS =	
+DEFS		= $(BASE_DEFS) -DHOST_X86 -DTARGET_X86 -DOPSYS_UNIX -DOPSYS_FREEBSD
+TARGET =	X86
+VERSION =	v-x86-freebsd
+RUNTIME =	run.x86-freebsd
+
+all:
+	($(MAKE) RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" MAKE="$(MAKE)" CC="$(CC)" CFLAGS="$(CFLAGS)" CPP="$(CPP)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))
