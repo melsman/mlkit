@@ -13,6 +13,10 @@ signature SCS_EMAIL =
     (* [genEmailLink e_link] returns a string representing an email
         link. *)
     val genEmailLink : email_link -> string
+
+    (* [fixEmail email] removes non-valid characters from an email,
+        e.g., # . / *)
+    val fixEmail : string -> string
   end
 
 structure ScsEmail :> SCS_EMAIL =
@@ -64,4 +68,8 @@ structure ScsEmail :> SCS_EMAIL =
 		     (ScsLang.en,`Too many emails to be included in a email link.`)]
       end
     
+    fun fixEmail email =
+      List.foldl (fn (c,acc) => ScsString.replace c "" acc) email 
+      ["§","!","\"","#","¤","%","&","/","(",")","=","?","'",",",".","|","æ","ø","å","Å","ø","Æ","^","*"]
+
   end
