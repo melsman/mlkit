@@ -550,6 +550,8 @@ struct
             val _ = if test then say "  computing transitive closure ..." else ()
             val _ = eval_phis effects  (* computes transitive closure  of effect graph, 
                                           including only PUT and EPS nodes *)
+                    handle exn =>
+                        (say "  eval_phis called from MulInf (transitive closure of all effects) "; raise exn)
             val _ = if test then say "  making the arrow effect set Phi..." else ()
             val Phi = map (fn eps => (eps, Eff.represents eps)) 
                           (Eff.toplevel_arreff :: (List.filter Eff.is_arrow_effect effects))
