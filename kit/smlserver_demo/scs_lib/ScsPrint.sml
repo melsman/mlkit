@@ -13,7 +13,7 @@ signature SCS_PRINT =
     val printForm     : string -> string -> string -> string -> doc_type -> quot -> quot
 
     (* Actual Printing *)
-    val printDoc      : string -> string -> string -> string -> doc_type -> string -> string -> Ns.status
+    val printDoc      : string -> string -> string -> string -> doc_type -> quot -> string -> Ns.status
   end
 
 structure ScsPrint :> SCS_PRINT =
@@ -28,39 +28,37 @@ structure ScsPrint :> SCS_PRINT =
     fun ppAllDocTypes() = List.map docTypeToString allDocTypes 
 
     val allPrinters = ["p152","p177","p177d","p177t","p233","p233d","p233t"]
+
     (* Generate file which can be printed and previewed. *)
     (* Files are stored in the scs_print_dir directory.  *)
     local
-      fun tmpnam (c: int) : string =
+      val % = ScsDict.d ScsLang.English
+      fun getInfo key =
+	ScsError.valOf (Ns.Info.configGetValueExact 
+			{sectionName="ns/server/"^Ns.Conn.server()^"/SCS",key=key})
+(*      fun tmpnam (c: int) : string =
 	if c > 10 then ScsError.panic `ScsPrint.tmpnam: Can't create temporary file`
 	else
 	  let val is = Random.rangelist (97,122) (8, Random.newgen())
 	    val f = implode (map Char.chr is)
 	  in if FileSys.access(f,[]) then tmpnam(c+1)
 	     else f
-	  end
-      val basedir = Ns.Info.pageRoot()^"/"
-      val scs_print_dir = "scs_print/"
-      fun texfile f = basedir ^ scs_print_dir ^ f ^ ".tex"
-      fun psfile f = basedir ^ scs_print_dir ^ f ^ ".ps"
-      fun pdffile f = basedir ^ scs_print_dir ^ f ^ ".pdf"
-      fun dvifile f = basedir ^ scs_print_dir ^ f ^ ".dvi"
-      fun pdfurl f = "/" ^ scs_print_dir ^ f ^ ".pdf"
-      fun save_source source filename =
-	let
-	  val texstream = TextIO.openOut filename
-	in
-	  TextIO.output (texstream,source);
-	  TextIO.closeOut texstream
-	end
+	  end*)
+(*      val scs_print_dir = "scs_print/"*)
+      fun path_preview () = Ns.Info.pageRoot() ^ "/" ^ (getInfo "scs_print_preview")
+      fun texfile f = path_preview() ^ "/" ^ f ^ ".tex"
+      fun psfile f = path_preview() ^ "/" ^ f ^ ".ps"
+      fun pdffile f = path_preview() ^ "/" ^ f ^ ".pdf"
+      fun dvifile f = path_preview() ^ "/" ^ f ^ ".dvi"
+      fun pdfurl f = "/" ^ (getInfo "scs_print_preview") ^ "/" ^ f ^ ".pdf"
     in
       fun genTarget doc_type source =
 	case doc_type of
 	  LaTeX =>
 	    let
-	      val tmpfile = tmpnam 10
-	      val _ = save_source (Quot.toString source) (texfile tmpfile)
-	      val cmd = Quot.toString `cd ^scs_print_dir; latex ^(texfile tmpfile); dvips -o ^(psfile tmpfile) ^(dvifile tmpfile); ps2pdf ^(psfile tmpfile) ^(pdffile tmpfile)`
+	      val tmpfile = ScsFile.uniqueFile (path_preview())
+	      val _ = ScsFile.save source (texfile tmpfile)
+	      val cmd = Quot.toString `cd ^(path_preview()); latex ^(texfile tmpfile); dvips -o ^(psfile tmpfile) ^(dvifile tmpfile); ps2pdf ^(psfile tmpfile) ^(pdffile tmpfile)`
 	    in
 	      if Process.system cmd = Process.success
 		then pdfurl tmpfile
@@ -72,21 +70,22 @@ structure ScsPrint :> SCS_PRINT =
 	  LaTeX =>
 	    let
 	      val print_id = Int.toString (Db.seqNextval "scs_print_id_seq")
-	      val tmpfile = tmpnam 10 ^ "-" ^ print_id
-	      val _ = save_source source (texfile tmpfile)
-	      val target_f = (ScsError.valOf (Ns.Info.configGetValueExact 
-					      {sectionName="ns/server/"^Ns.Conn.server()^"/SCS",key="scs_print"}))
-		                     ^ "/" ^ tmpfile ^ ".pdf"
-	      val cmd = Quot.toString `cd ^scs_print_dir; latex ^(texfile tmpfile); dvips -o ^(psfile tmpfile) ^(dvifile tmpfile); lpr -P^printer ^(psfile tmpfile); ps2pdf ^(psfile tmpfile) ^(pdffile tmpfile); mv ^(pdffile tmpfile) ^(target_f)`
+	      val tmpfile = ScsFile.uniqueFile (path_preview()) ^ "-" ^ print_id
+	      val _ = ScsFile.save source (texfile tmpfile)
+	      val journal_base = (getInfo "scs_print_journal") ^ "/"
+	      val journal_dir = (Date.fmt "%Y"  (ScsDate.now_local())) ^ "/" ^ (Date.fmt "%m"  (ScsDate.now_local()))
+	      val _ = ScsFile.mkDir (journal_base ^ journal_dir)
+	      val target_f = journal_dir ^ "/" ^ tmpfile ^ ".pdf"
+	      val cmd = Quot.toString `cd ^(path_preview()); latex ^(texfile tmpfile); dvips -o ^(psfile tmpfile) ^(dvifile tmpfile); lpr -P^printer ^(psfile tmpfile); ps2pdf ^(psfile tmpfile) ^(pdffile tmpfile); mv ^(pdffile tmpfile) ^(journal_base ^ target_f)`
 	      fun ins_log db =
 		let
-		  val clob_id = DbClob.insert_fn (Quot.fromString source) db
+		  val clob_id = DbClob.insert_fn source db
 		in
 		  Db.dmlDb (db, `insert into scs_print_log (print_id,user_id,category,clob_id,print_cmd,
 							    target_file,doc_type,note,deleted_p,
 							    on_what_table, on_what_id, time_stamp)
 			    values (^(Db.valueList [print_id,Int.toString ScsLogin.user_id,
-						    category,clob_id,cmd,tmpfile ^ ".pdf",
+						    category,clob_id,cmd,target_f,
 						    docTypeToString doc_type,note,"f",
 						    on_what_table,on_what_id]),
 				    ^(Db.sysdateExp))`)
@@ -94,17 +93,26 @@ structure ScsPrint :> SCS_PRINT =
 	    in
 	      if Process.system cmd = Process.success
 		then (ScsDb.panicDmlTrans ins_log;
-		      ScsPage.returnPg "Document Printed" `The document is now sent to printer ^printer.<p>
+		      ScsPage.returnPg (%"Document Printed")
+		      (case ScsLogin.user_lang of
+			 ScsLang.English => `The document is now sent to printer ^printer.<p>
 
-The document has been filed, however, if there were any problems
-printing the document then please <a
-href="toggle_deleted.sml?print_id=^(Ns.encodeUrl
-print_id)&target_url=^(Ns.encodeUrl ("show_doc.sml?print_id="^print_id))">de-file</a> the
-document. You will be returned to the print-screen again.`)
+                           The document has been filed. If there were any problems
+                           printing the document then please 
+                           <a href="toggle_deleted.sml?print_id=^(Ns.encodeUrl print_id)&target_url=^(
+                           Ns.encodeUrl ("show_doc.sml?print_id="^print_id))">de-file</a> the
+                           document. You will be returned to the print-screen again.`
+                       | ScsLang.Danish => `Dokumentet er nu sendt til printer ^printer.<p>
+                           
+                           Dokumentet er journaliseret. Hvis der er problemer med udskriften, så skal
+                           du <a href="toggle_deleted.sml?print_id=^(Ns.encodeUrl print_id)&target_url=^(
+                           Ns.encodeUrl ("show_doc.sml?print_id="^print_id))">fjerne</a> dokumentet fra journalen igen.
+                           Du vender da tilbage til udskriftssiden igen.`))
+
 	      else ScsError.panic `ScsPrint.genTarget: Can't execute system command: ^cmd`
 	    end
 
-      (* Sould find printers for the user logged in *)
+      (* Should find printers for the user logged in *)
       fun choosePrinter n = (`Choose printer`, ScsWidget.select (List.map (fn p => (p,p)) allPrinters) n)
 
       fun printForm category note on_what_table on_what_id doc_type source =

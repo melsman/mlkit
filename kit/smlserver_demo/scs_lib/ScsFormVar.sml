@@ -87,6 +87,8 @@ signature SCS_FORM_VAR =
     val wrapPanic : (quot -> 'a) -> 'a formvar_fn -> (string -> 'a)
     val wrapIntAsString : int formvar_fn -> string formvar_fn
 
+    val getStrings : string -> string list
+
     (* For extensions *)
     val trim : string -> string
     val getErr : 'a -> (string->'a) -> string -> (string->quot) -> (string->bool) -> 'a formvar_fn
@@ -567,5 +569,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
       val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate (%"date") msgDate chkDate
       val getTableName = getErr' (%"table name") msgTableName (regExpMatch "[a-zA-Z_]+")
     end
+
+    fun getStrings fv = List.map trim (Ns.Conn.formvarAll fv)
   end
 

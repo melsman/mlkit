@@ -4,6 +4,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 		   structure Info : NS_INFO) : NS_DB =
   struct
     type ns_db = int
+    structure Set = Set
     type set = Set.set
     type status = NsBasics.status
     type quot = string frag list
@@ -93,26 +94,46 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun panicDmlTrans (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
       dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
 
-    fun select (db: db, q: quot) : Set.set =
+    fun selectDb (db: db, q: quot) : Set.set =
       prim("nssml_DbSelect", "nssml_DbSelect", (#2 db, quotToString q))
-    fun getRow (db : db, s : Set.set) : status =
+    fun getRowDb (db : db, s : Set.set) : status =
       prim("nssml_DbGetRow", "nssml_DbGetRow", (#2 db, s))
 
+    fun getCol (s,n) = Set.getOpt(s,n,"##")
+    val getColOpt = Set.get
+
+    fun appDb (db:db, f:(string->string)->'a, sql:quot) : unit =
+      let val s : Set.set = selectDb(db, sql)
+	fun g n = Set.getOpt(s, n, "##")
+	fun loop () : unit =
+	  if (getRowDb(db,s) <> NsBasics.END_DATA) then (f g; loop ())
+	  else ()
+      in loop ()
+      end
+
     fun foldDb (db:db, f:(string->string)*'a->'a, acc:'a, sql:quot) : 'a =
-      let val s : Set.set = select(db, sql)
+      let val s : Set.set = selectDb(db, sql)
 	fun g n = Set.getOpt(s, n, "##")
 	fun loop (acc:'a) : 'a =
-	  if (getRow(db,s) <> NsBasics.END_DATA) then loop (f(g,acc))
+	  if (getRowDb(db,s) <> NsBasics.END_DATA) then loop (f(g,acc))
+	  else acc
+      in loop acc
+      end
+
+    fun foldSetDb (db:db, f:Set.set*'a->'a, acc:'a, sql:quot) : 'a =
+      let val s : Set.set = selectDb(db, sql)
+	fun loop (acc:'a) : 'a =
+	  if (getRowDb(db,s) <> NsBasics.END_DATA) then loop (f(s,acc))
 	  else acc
       in loop acc
       end
 
     fun listDb (db:db, f:(string->string)->'a, sql: quot) : 'a list = 
       let 
-	val s : Set.set = select(db, sql)
+	val s : Set.set = selectDb(db, sql)
 	fun g n = Set.getOpt(s, n, "##")
 	fun loop () : 'a list =
-	  if (getRow(db,s) <> NsBasics.END_DATA) then f g :: loop()
+	  if (getRowDb(db,s) <> NsBasics.END_DATA) then f g :: loop()
 	  else []
       in 
 	loop ()
@@ -126,6 +147,12 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       
     fun fold (f:(string->string)*'a->'a, acc:'a, sql:quot) : 'a =
       wrapDb (fn db => foldDb (db,f,acc,sql))
+
+    fun foldSet (f:Set.set*'a -> 'a, acc:'a, sql:quot) : 'a =
+      wrapDb (fn db => foldSetDb (db,f,acc,sql))
+
+    fun app (f:(string->string)->'a,sql:quot) : unit =
+      wrapDb (fn db => appDb (db,f,sql))
 
     fun list (f:(string->string)->'a, sql:quot) : 'a list = wrapDb (fn db => listDb(db,f,sql))
 
@@ -142,9 +169,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       | _ => raise Fail "More than one row"
 
     fun oneFieldDb(db,sql) : string =
-      let val s : Set.set = select(db, sql)
+      let val s : Set.set = selectDb(db, sql)
       in 
-	if getRow(db,s) <> NsBasics.END_DATA then
+	if getRowDb(db,s) <> NsBasics.END_DATA then
 	  if Set.size s = 1 then 
 	    case Set.value(s,0) of
 	      SOME s => s
@@ -157,9 +184,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       wrapDb (fn db => oneFieldDb(db,sql))
 
     fun zeroOrOneFieldDb(db,sql) : string option =
-      let val s : Set.set = select(db, sql)
+      let val s : Set.set = selectDb(db, sql)
       in 
-	if getRow(db,s) <> NsBasics.END_DATA then
+	if getRowDb(db,s) <> NsBasics.END_DATA then
 	  if Set.size s = 1 then 
 	    Set.value(s,0)
 	  else NONE
@@ -170,9 +197,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       wrapDb (fn db => zeroOrOneFieldDb(db,sql))
 
     fun oneRowDb(db,sql) : string list =
-      let val s : Set.set = select(db, sql)
+      let val s : Set.set = selectDb(db, sql)
       in 
-	if getRow(db,s) <> NsBasics.END_DATA then
+	if getRowDb(db,s) <> NsBasics.END_DATA then
 	  Set.foldr (fn ((k,v), a) => v :: a) nil s
 	else raise Fail "Db.oneRowDb.no rows"
       end
@@ -181,9 +208,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       wrapDb (fn db => oneRowDb(db,sql))
 
     fun zeroOrOneRowDb(db,sql) : string list option =
-      let val s : Set.set = select(db, sql)
+      let val s : Set.set = selectDb(db, sql)
       in 
-	if getRow(db,s) <> NsBasics.END_DATA then
+	if getRowDb(db,s) <> NsBasics.END_DATA then
 	  SOME(Set.foldr (fn ((k,v), a) => v :: a) nil s)
 	else NONE
       end
@@ -192,9 +219,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       wrapDb (fn db => zeroOrOneRowDb(db,sql))
 
     fun existsOneRowDb(db,sql) : bool =
-      let val s : Set.set = select(db, sql)
+      let val s : Set.set = selectDb(db, sql)
       in 
-	if getRow(db,s) <> NsBasics.END_DATA then true else false
+	if getRowDb(db,s) <> NsBasics.END_DATA then true else false
       end
 
     fun existsOneRow sql : bool =
@@ -256,6 +283,7 @@ structure NsDbBasicOra : NS_DB_BASIC =
     val beginTrans = `begin transaction`
     val endTrans = `commit`
     val roolback = `end transaction`
+    fun fromDate d = "to_date('" ^ (Date.fmt "%Y-%m-%d %H:%M:%S" d) ^ "','YYYY-MM-DD HH24:MI:SS')"
   end
 
 structure NsDbBasicPG : NS_DB_BASIC =
@@ -266,5 +294,6 @@ structure NsDbBasicPG : NS_DB_BASIC =
     val beginTrans = `begin`
     val endTrans = `commit`
     val roolback = `roolback`
+    fun fromDate d = Date.fmt "%Y-%m-%d %H:%M:%S" d  (* This functions has to been tested on PostgreSQL, 2001-12-02, nh*)
   end
 
