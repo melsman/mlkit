@@ -4,6 +4,11 @@ smallbench:
 	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkit:-gc: -smlnj -mlton -o small.html small.tst)' | tcsh -s
 #	echo '(unlimit stacksize; ../bin/kitbench -mlkit -o small2.html small.tst)' | tcsh -s
 
+smallbench-110.40:
+	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkit:-gc: -smlnj -smlnj-110.40 -mlton -o small.html small.tst)' | tcsh -s
+#	echo '(unlimit stacksize; ../bin/kitbench -mlkit -o small2.html small.tst)' | tcsh -s
+
+
 mltoncompare:
 	echo '(unlimit stacksize; ../bin/kitbench -mlton -mlkit:-maximum_inline_size 50: -o small3.html small.tst)' | tcsh -s	
 

@@ -1,4 +1,4 @@
-(* File "Hepa.sml"                                        *)
+(* File "Heap.sml"                                        *)
 (* These algorithms are based on the paper:               *)
 (*    Functional Data Structures                          *)
 (*          Chris Okasaki                                 *)

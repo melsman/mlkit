@@ -10,7 +10,7 @@ local
 
 in
   val _ = (disable "garbage_collection";
-	   enable "cross_module_opt";   (* better module reuse *)
+	   disable "cross_module_opt";   (* better module reuse *)
 	   K.Flags.SMLserver := true;
 	   enable "quotation";    (* support for quotation-antiquotation *)
 	   K.build_basislib() ;
