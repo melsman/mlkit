@@ -535,7 +535,7 @@ structure ScsUserImp :> SCS_USER_IMP =
 			 ScsDict.s [(ScsLang.en,`Manual`),(ScsLang.da,`Vejledning`)])]
       fun rightList() = []
       fun genPg title body = 
-	UcsPage.genPg title (ScsDict.s html_description) html_keywords service_adm_email
+	UcsPage.genPg false title (ScsDict.s html_description) html_keywords service_adm_email
 	              url_home leftSpaces rightSpaces (leftList()) (rightList()) UcsPage.emptyNavbar body
     in
       fun returnPg  title body = 
