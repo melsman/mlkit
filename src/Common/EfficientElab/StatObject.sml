@@ -1996,11 +1996,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		 TypeFcn_apply' (theta, map (on_Type phi) tylist)
 	       end)
 
-(*old
-      fun on_TypeScheme Realisation_Id sigma = sigma 
-	| on_TypeScheme phi (tyvars, tau) = (tvs, on_Type phi tau)
-old*)
-
       fun on_TypeScheme Realisation_Id scheme = scheme
 	| on_TypeScheme phi (tyvars,tau) =
 	let val _ = Level.push()
@@ -2014,33 +2009,6 @@ old*)
 	    val TYPEFCN{tyvars,tau} = TypeFcn.from_TyVars_and_Type(tyvars',tau)
 	in (tyvars, tau)
 	end
-	
-
-(*old
-      fun on_TypeFcn Realisation_Id typefcn = typefcn
-	| on_TypeFcn phi (TYPEFCN {tyvars, tau}) =
-	let val tau = on_Type phi tau
-	    val _ = Level.push()
-	    val (tau', taus) = TypeScheme.instance'' (tyvars,tau)
-	    val _ = Level.pop()
-	    val tyvars' = map (fn tau =>
-			       case Type.to_TyVar tau
-				 of SOME tv => tv
-				  | NONE => die "on_TypeFcn.1") taus
-
-(*30/10/97-Martin
-	    fun f (tv as ref (NO_TYPE_INSTANCE tvdesc)) = 
-	      (case FinMapEq.lookup TyVarDesc_eq fresh_taus_map tvdesc 
-		 of NONE => TypeFcn.dummy_tv
-		  | SOME tau => (case Type.to_TyVar tau
-				   of SOME tv => tv
-				    | NONE => die "on_TypeFcn.1"))
-	      | f _ = die "on_TypeFcn.2"
-	    val tyvars' = map f tyvars
-*)
-	in TypeFcn.from_TyVars_and_Type(tyvars',tau')
-	end
-old*)
 
       fun on_TypeFcn Realisation_Id typefcn = typefcn
 	| on_TypeFcn phi (TYPEFCN {tyvars, tau}) =
@@ -2067,6 +2035,13 @@ old*)
       fun enrich (rea0, (rea,T)) =
 	TyName.Set.fold (fn t => fn acc => acc andalso 
 			 TypeFcn.eq(on_TyName rea0 t, on_TyName rea t)) true T
+
+      fun match (Realisation_Id, rea0) = ()
+	| match (Not_Id m, rea0) =
+	let fun convert (EXPANDED theta) = theta
+	      | convert (TYNAME t) = TypeFcn.from_TyName t
+	in TyName.Map.Fold(fn ((t, theta),_) => TypeFcn.match(convert theta,on_TyName rea0 t)) () m
+	end
 			 
       fun layout phi = PP.LEAF "phi(not implemented)"
 
