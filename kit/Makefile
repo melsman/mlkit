@@ -28,7 +28,7 @@ clean:
 	cd kitlib; rm -rf PM run *~
 	cd ml-yacc-lib; rm -rf PM *~
 	cd kitdemo; rm -rf PM run *~ */PM */*~
-	cd test; rm -rf PM run *~ *.out *.log */PM */*~
+	cd test; $(MAKE) clean
 	cd test_dev; rm -rf PM run *~ *.out *.log
 	cd smlserver_demo; rm -rf *~
 	cd smlserver_demo/sml; rm -rf *~ PM 
