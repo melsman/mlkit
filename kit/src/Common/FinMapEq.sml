@@ -5,11 +5,6 @@ functor FinMapEq(structure Report: REPORT
 	      ): FINMAPEQ =
   struct
 
-    structure List = Edlib.List
-    structure Set = Edlib.Set
-    structure General = Edlib.General
-    structure ListSort = Edlib.ListSort
-
     type ('a, 'b) map = ('a *  'b) list
 
     val empty = []
@@ -37,11 +32,11 @@ functor FinMapEq(structure Report: REPORT
     fun plus eq (l, []) = l
       | plus eq (l, (x, y) :: tl) = plus eq (add eq (x, y, l), tl)
 
-    fun remove eq (x,[]) = General.Fail "not in the domain"
-      | remove eq (x,((x',y)::xs)) = if eq(x, x') then General.OK xs
-			    else case (remove eq (x,xs)) of
-			      General.Fail s => General.Fail s
-			    | General.OK xs' => General.OK ((x',y)::xs')
+    fun remove eq (x,[]) = NONE
+      | remove eq (x,((x',y)::xs)) = if eq(x, x') then SOME xs
+				     else case remove eq (x,xs)
+					    of NONE => NONE
+					     | SOME xs' => SOME ((x',y)::xs')
 
     fun mergeMap eq folder [] map2 = map2
       | mergeMap eq folder map1 [] = map1
@@ -55,7 +50,7 @@ functor FinMapEq(structure Report: REPORT
 	foldl (fn ((x, y), m) => insert(x, y, m)) map1 map2
       end
 
-    fun dom eq (m: ('a, 'b) map) = Set.fromList (General.curry eq) (map #1 m)
+    fun dom eq (m: ('a, 'b) map) = Set.fromList (fn a => fn b => eq(a,b)) (map #1 m)
     val range : ('a, 'b) map -> 'b list  = fn x => map #2 x
     val list : ('a, 'b) map -> ('a * 'b) list  = fn x => x
 
@@ -71,7 +66,7 @@ functor FinMapEq(structure Report: REPORT
     fun Fold (f : (('a * 'b) * 'c) -> 'c) (x : 'c) (m : ('a,'b) map) : 'c =
 	foldl (fn ((a, b), c) => f((a, b), c)) x m
 
-    val filter = List.all
+    val filter = List.filter
 
     type Report = Report.Report
 

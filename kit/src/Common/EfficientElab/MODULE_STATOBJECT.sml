@@ -72,6 +72,8 @@ signature MODULE_STATOBJECT =
 	  (* for opaque signature matching *)
 
 	val eq : Sig * Sig -> bool
+
+	val on : realisation * Sig -> Sig
       end
 
 
@@ -95,5 +97,7 @@ signature MODULE_STATOBJECT =
 	val match_via              : FunSig * Env -> Sig * realisation * realisation
 
 	val eq : FunSig * FunSig -> bool
+
+	val on : realisation * FunSig -> FunSig
       end
   end;

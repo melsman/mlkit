@@ -226,11 +226,11 @@ structure K = struct
 			  set_paths();
 			  Flags.read_script scriptfile;
 			  Flags.interact())
+
+    val kitexe = fn a => kitexe a
   end
 
   val cd = OS.FileSys.chDir
   val pwd = OS.FileSys.getDir
 
 end (*structure K*)
-
-

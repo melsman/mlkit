@@ -12,21 +12,18 @@ functor EliminateEq (structure Name : NAME
 		     structure Crash : CRASH
 		     structure Flags : FLAGS
 		     structure PP : PRETTYPRINT
-		     structure TyNameMap : MONO_FINMAP
-		       sharing type TyNameMap.dom = TyName.TyName
-		       sharing type TyNameMap.StringTree = PP.StringTree
+		       sharing type PP.StringTree = TyName.Map.StringTree
+			                          = Lvars.Map.StringTree
 		     structure TyVarMap : MONO_FINMAP
 		       sharing type TyVarMap.dom = LambdaExp.tyvar
-	   	       sharing type TyVarMap.StringTree = PP.StringTree
-		     structure LvarMap : MONO_FINMAP
-		       sharing type LvarMap.dom = Lvars.lvar
-		       sharing type LvarMap.StringTree = PP.StringTree
-		     structure IntFinMap : MONO_FINMAP where type dom = int
-		       sharing type IntFinMap.StringTree = PP.StringTree) 
+	   	       sharing type TyVarMap.StringTree = PP.StringTree) 
   : ELIMINATE_EQ =
   struct
 
     structure List = Edlib.List
+
+    structure TyNameMap = TyName.Map
+    structure LvarMap = Lvars.Map
 
     open LambdaExp
 
@@ -37,40 +34,20 @@ functor EliminateEq (structure Name : NAME
      * ------------------------------------------------------------ *)
 
     datatype result = MONOLVAR of lvar * tyvar list | POLYLVAR of lvar | FAIL of string
-    fun keyOfTyName a = Name.key(TyName.name a)
-    fun keyOfLvar a = Name.key(Lvars.name a)
 
     local 
       type tynamemap = result TyNameMap.map
       type tyvarmap = lvar TyVarMap.map
       type lvarmap = (tyvar list) LvarMap.map
       type env = tynamemap * tyvarmap * lvarmap
-      type top_tynamemap = result IntFinMap.map
-      type top_lvarmap = (tyvar list) IntFinMap.map
-      type top_env = top_tynamemap * top_lvarmap
-
-      local
-	fun topify_tynamemap tynamemap =
-	  TyNameMap.Fold(fn ((d,r),a) => IntFinMap.add(keyOfTyName d,r,a)) IntFinMap.empty tynamemap
-	fun topify_lvarmap lvarmap =
-	  LvarMap.Fold(fn ((d,r),a) => IntFinMap.add(keyOfLvar d,r,a)) IntFinMap.empty lvarmap
-      in
-	fun topify ((tynamemap,tyvarmap,lvarmap):env):top_env=
-	  if TyVarMap.isEmpty tyvarmap then (topify_tynamemap tynamemap, topify_lvarmap lvarmap)
-	  else die "topify.tyvarmap is not empty"
-      end
 
       val empty : env = (TyNameMap.empty, TyVarMap.empty, LvarMap.empty)
-      val initial : top_env = topify empty
+      val initial : env = empty
 	
       fun plus ((tynamemap1, tyvarmap1, lvarmap1),(tynamemap2, tyvarmap2, lvarmap2)) =
 	(TyNameMap.plus (tynamemap1,tynamemap2), 
 	 TyVarMap.plus (tyvarmap1, tyvarmap2),
 	 LvarMap.plus (lvarmap1, lvarmap2))
-	
-      fun plus' ((top_tynamemap1, top_lvarmap1),(top_tynamemap2, top_lvarmap2)) =
-	(IntFinMap.plus (top_tynamemap1,top_tynamemap2), 
-	 IntFinMap.plus (top_lvarmap1, top_lvarmap2))
 
       fun add_tyname (tyname, result, (tynamemap, tyvarmap, lvarmap)) =
 	(TyNameMap.add (tyname, result, tynamemap), tyvarmap, lvarmap)
@@ -92,15 +69,15 @@ functor EliminateEq (structure Name : NAME
       fun env_map (f:result->result) (tynamemap,tyvarmap,lvarmap) =
 	(TyNameMap.composemap f tynamemap, tyvarmap,lvarmap)
 
-      fun restrict((ttnmap,tlvmap),{lvars,tynames}) =
+      fun restrict((tnmap,_,lvmap),{lvars,tynames}) =
 	let val tnmap' = List.foldL (fn tn => fn acc =>
-				     case IntFinMap.lookup ttnmap (keyOfTyName tn)  (* do not scream if it *)
+				     case TyNameMap.lookup tnmap tn  (* do not scream if it *)
 				       of SOME res => TyNameMap.add(tn,res,acc)     (* is not here... *)
 					| NONE => acc) TyNameMap.empty tynames
 	    val lvars' = TyNameMap.Fold (fn ((_,POLYLVAR lv), lvars) => lv :: lvars
 	                                 | _ => die "restrict.not POLYLVAR") [] tnmap'
 	    val lvmap' = List.foldL (fn lv => fn acc =>
-				     case IntFinMap.lookup tlvmap (keyOfLvar lv)
+				     case LvarMap.lookup lvmap lv
 				       of SOME res => LvarMap.add(lv,res,acc)
 					| NONE => die ("restrict.lv: " ^ Lvars.pr_lvar lv ^ " not in map"))
 	                 LvarMap.empty lvars
@@ -114,33 +91,33 @@ functor EliminateEq (structure Name : NAME
 
       fun eq_lvres(tvs1,tvs2) = (map equality_tyvar tvs1 = map equality_tyvar tvs2)
 
-      fun enrich_ttnmap(ttnmap1,ttnmap2) =
-	IntFinMap.Fold (fn ((tn2, res2), b) => b andalso
-			   case IntFinMap.lookup ttnmap1 tn2
+      fun enrich_tnmap(tnmap1,tnmap2) =
+	TyNameMap.Fold (fn ((tn2, res2), b) => b andalso
+			   case TyNameMap.lookup tnmap1 tn2
 			     of SOME res1 => eq_tnres(res1,res2)
-			      | NONE => false) true ttnmap2
+			      | NONE => false) true tnmap2
 
-      fun enrich_tlvmap(tlvmap1,tlvmap2) =
-	IntFinMap.Fold (fn ((lv2, res2), b) => b andalso
-			 case IntFinMap.lookup tlvmap1 lv2
+      fun enrich_lvmap(lvmap1,lvmap2) =
+	LvarMap.Fold (fn ((lv2, res2), b) => b andalso
+			 case LvarMap.lookup lvmap1 lv2
 			   of SOME res1 => eq_lvres(res1,res2)
-			    | NONE => false) true tlvmap2
+			    | NONE => false) true lvmap2
 
-      fun enrich((ttnmap1,tlvmap1),(ttnmap2,tlvmap2)) =
-	enrich_ttnmap(ttnmap1,ttnmap2) andalso enrich_tlvmap(tlvmap1,tlvmap2)
+      fun enrich((tnmap1,_,lvmap1),(tnmap2,_,lvmap2)) =
+	enrich_tnmap(tnmap1,tnmap2) andalso enrich_lvmap(lvmap1,lvmap2)
 
       fun match_tnmap(tnmap,tnmap0) = 
 	let val tnmap = TyNameMap.fromList (TyNameMap.list tnmap)
 	in TyNameMap.Fold (fn ((tn, POLYLVAR lv),()) =>
-			   (case IntFinMap.lookup tnmap0 (keyOfTyName tn)
+			   (case TyNameMap.lookup tnmap0 tn
 			      of SOME(POLYLVAR lv0) => Lvars.match(lv,lv0)
 			       | _ => ())
                            | _ => die "match_tnmap") () tnmap;
 	  tnmap
 	end
 
-      fun match((tnmap,tvmap,lvmap),(ttnmap0,tlvmap0)) =
-	(match_tnmap(tnmap,ttnmap0),
+      fun match((tnmap,tvmap,lvmap),(tnmap0,_,tlvmap0)) =
+	(match_tnmap(tnmap,tnmap0),
 	 tvmap,
 	 lvmap)
 
@@ -163,30 +140,17 @@ functor EliminateEq (structure Name : NAME
 	val layout_lvarmap =
 	  LvarMap.layoutMap {start="LvarEnv = {", eq=" -> ", sep=", ", finish="}"}
 	  layout_lvar layout_tyvars
-	val layout_top_tynamemap = 
-	  IntFinMap.layoutMap {start="TyNameEnv = {", eq=" -> ", sep=", ", finish="}"}
-	  layout_int layout_result
-	val layout_top_lvarmap =
-	  IntFinMap.layoutMap {start="LvarEnv = {", eq=" -> ", sep=", ", finish="}"}
-	  layout_int layout_tyvars
       in
 	fun layout_env (tynamemap, tyvarmap, lvarmap) =
 	  PP.NODE {start="EqElimEnv = [", finish="]", indent=2, childsep=PP.RIGHT ", ", 
 		   children=[layout_tynamemap tynamemap, layout_tyvarmap tyvarmap,
 			     layout_lvarmap lvarmap]}
-	fun layout_top_env (tynamemap, lvarmap) =
-	  PP.NODE {start="TopEqElimEnv = [", finish="]", indent=2, childsep=PP.RIGHT ", ", 
-		   children=[layout_top_tynamemap tynamemap, 
-			     layout_top_lvarmap lvarmap]}
       end
     in
       type env = env
-      type top_env = top_env
-      val topify : env -> top_env = topify
       val empty : env = empty
-      val initial : top_env = initial
+      val initial : env = initial
       val plus : env * env -> env = plus
-      val plus' : top_env * top_env -> top_env = plus'
       val add_tyname : TyName * result * env -> env = add_tyname
       val lookup_tyname : env -> TyName -> result option = lookup_tyname
       val add_tyvar : tyvar * lvar * env -> env = add_tyvar
@@ -195,12 +159,11 @@ functor EliminateEq (structure Name : NAME
       val lookup_lvar : env -> lvar -> tyvar list option = lookup_lvar
       val env_range : env -> result list = env_range (* only used at top-level *)
       val env_map : (result->result) -> env -> env = env_map (* only used at top-level *)
-      val enrich : top_env * top_env -> bool = enrich
-      val match : env * top_env -> env = match
-      val restrict : top_env * {lvars:lvar list,tynames:TyName list} -> lvar list * env = restrict
+      val enrich : env * env -> bool = enrich
+      val match : env * env -> env = match
+      val restrict : env * {lvars:lvar list,tynames:TyName list} -> lvar list * env = restrict
       type StringTree = PP.StringTree
       val layout_env : env -> StringTree = layout_env
-      val layout_top_env : top_env -> StringTree = layout_top_env
     end
 
 

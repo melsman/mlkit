@@ -19,7 +19,7 @@ functor CompileBasis(structure Con : CON
 		     structure Mul: MUL
 		       sharing type Mul.lvar = LambdaStatSem.lvar
 		       sharing type Mul.effectvar = RegionStatEnv.effectvar
-		       sharing type Mul.top_regionStatEnv = RegionStatEnv.top_regionStatEnv
+		       sharing type Mul.regionStatEnv = RegionStatEnv.regionStatEnv
 		     structure Effect: EFFECT
 		       sharing type Effect.effect = RegionStatEnv.place = RegionStatEnv.effectvar
 		     structure DropRegions: DROP_REGIONS
@@ -55,22 +55,14 @@ functor CompileBasis(structure Con : CON
     type excon = Excon.excon
     type TyName = EliminateEq.TyName
     type TCEnv = LambdaStatSem.env
-    type TopTCEnv = LambdaStatSem.top_env
     type EqEnv = EliminateEq.env
-    type TopEqEnv = EliminateEq.top_env
     type OEnv = OptLambda.env
-    type TopOEnv = OptLambda.top_env
     type rse = RegionStatEnv.regionStatEnv
-    type top_rse = RegionStatEnv.top_regionStatEnv
     type mulenv  = Mul.efenv
-    type top_mulenv  = Mul.top_efenv
     type mularefmap = Mul.mularefmap
     type drop_env = DropRegions.env
-    type top_drop_env = DropRegions.top_env
     type psi_env = PhysSizeInf.env
-    type top_psi_env = PhysSizeInf.top_env
     type l2kam_ce = CompLamb.env
-    type top_l2kam_ce = CompLamb.top_env
     type CompileBasis = {TCEnv : TCEnv, (* lambda type check environment *)
 			 EqEnv : EqEnv, (* elimination of polymorphic equality environment *)
 			 OEnv: OEnv, 
@@ -81,30 +73,12 @@ functor CompileBasis(structure Con : CON
 			 psi_env: psi_env, 
 			 l2kam_ce: l2kam_ce}
 
-    type TopCompileBasis = {TCEnv : TopTCEnv, (* lambda type check environment *)
-			    EqEnv : TopEqEnv, (* elimination of polymorphic equality environment *)
-			    OEnv: TopOEnv, 
-			    rse: top_rse, 
-			    mulenv: top_mulenv,
-			    mularefmap: mularefmap,
-			    drop_env: top_drop_env,
-			    psi_env: top_psi_env, 
-			    l2kam_ce: top_l2kam_ce}
+    type TopCompileBasis = CompileBasis
 
     fun mk_CompileBasis a = a
     fun de_CompileBasis a = a
 
-    fun topify {TCEnv, EqEnv, OEnv, rse, mulenv, mularefmap, drop_env,
-		psi_env, l2kam_ce} = 
-      {TCEnv=LambdaStatSem.topify TCEnv, 
-       EqEnv=EliminateEq.topify EqEnv, 
-       OEnv=OptLambda.topify OEnv,
-       rse=RegionStatEnv.topify rse, 
-       mulenv=Mul.topify_efenv mulenv, 
-       mularefmap=mularefmap, 
-       drop_env=DropRegions.topify drop_env,
-       psi_env=PhysSizeInf.topify psi_env, 
-       l2kam_ce=CompLamb.topify l2kam_ce}
+    fun topify a = a
 
     val empty = {TCEnv=LambdaStatSem.empty,
 		 EqEnv=EliminateEq.empty,
@@ -119,8 +93,8 @@ functor CompileBasis(structure Con : CON
     val initial = {TCEnv=LambdaStatSem.initial,
 		   EqEnv=EliminateEq.initial,
 		   OEnv=OptLambda.initial,
-		   rse=RegionStatEnv.topify RegionStatEnv.initial,
-		   mulenv=Mul.topify_efenv Mul.initial,
+		   rse=RegionStatEnv.initial,
+		   mulenv=Mul.initial,
 		   mularefmap=Mul.initial_mularefmap,
 		   drop_env=DropRegions.init,
 		   psi_env=PhysSizeInf.init,
@@ -139,19 +113,7 @@ functor CompileBasis(structure Con : CON
        psi_env=PhysSizeInf.plus(psi_env,psi_env'),
        l2kam_ce=CompLamb.plus(l2kam_ce, l2kam_ce')}
 
-    fun plus'({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce},
-	      {TCEnv=TCEnv',EqEnv=EqEnv',OEnv=OEnv',rse=rse',mulenv=mulenv',
-	      mularefmap=mularefmap',drop_env=drop_env',psi_env=psi_env',l2kam_ce=l2kam_ce'}) =
-      {TCEnv=LambdaStatSem.plus'(TCEnv,TCEnv'),
-       EqEnv=EliminateEq.plus'(EqEnv,EqEnv'),
-       OEnv=OptLambda.plus'(OEnv,OEnv'),
-       rse=RegionStatEnv.plus'(rse,rse'),
-       mulenv=Mul.plus'(mulenv,mulenv'),
-       mularefmap=Mul.plus_mularefmap(mularefmap, mularefmap'),
-       drop_env=DropRegions.plus'(drop_env, drop_env'),
-       psi_env=PhysSizeInf.plus'(psi_env,psi_env'),
-       l2kam_ce=CompLamb.plus'(l2kam_ce, l2kam_ce')}
-
+    val plus' = plus
 
     type StringTree = PP.StringTree
     fun layout_CompileBasis {TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce} =

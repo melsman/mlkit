@@ -1,0 +1,1 @@
+val _ = K.kitexe(CommandLine.name(),CommandLine.arguments())

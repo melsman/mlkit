@@ -130,6 +130,11 @@ functor ModuleEnvironments(
 	    end
       fun report (report_sigid_Sigma : sigid * Sig -> Report, SIGENV m) =
 	    FinMap.reportMapSORTED (SigId.<) report_sigid_Sigma m
+
+      fun on rea (G as SIGENV m) =
+	if Realisation.is_Id rea then G
+	else SIGENV (FinMap.composemap (fn Sigma => Sigma.on (rea,Sigma)) m)
+
     end (*G*)
 
 
@@ -177,6 +182,11 @@ functor ModuleEnvironments(
 	let fun report_funid_Phi' (funid,(_,FunSig)) = report_funid_Phi(funid,FunSig)
 	in FinMap.reportMapSORTED (FunId.<) report_funid_Phi' m
 	end
+
+      fun on rea (F as FUNENV m) = 
+	if Realisation.is_Id rea then F
+	else FUNENV (FinMap.composemap (fn (prjid, Phi) => (prjid, Phi.on (rea, Phi))) m)
+
     end (*F*)
 
 
@@ -192,12 +202,10 @@ functor ModuleEnvironments(
       fun plus (BASIS {F, G, E}, BASIS {F=F', G=G', E=E'}) =
 	BASIS {F=F.plus (F, F'), G=G.plus (G, G'), E=E.plus (E, E')}
 
-      (*It is assumed that phi does not affect F and G. This holds as an
-       invariant throughout elaboration.*)
       fun on phi (B as (BASIS {F, G, E})) : Basis =
 	    if Realisation.is_Id phi then B
-	    else
-	      BASIS {F = F, G = G, E = Realisation.on_Env phi E}
+	    else BASIS {F = F.on phi F, G = G.on phi G, E = Realisation.on_Env phi E}
+
       fun tyvars (BASIS{F, G, E}) : TyVar list =
 	    TyVar.unionTyVarSet (F.tyvars F, E.tyvars E)    (* no tyvars in G *)
       fun tyvars' (BASIS{F,G,E}) : (id * TyVar list) list = F.tyvars' F @ E.tyvars' E

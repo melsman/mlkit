@@ -5,10 +5,6 @@ functor FinMap(structure Report: REPORT
 	      ): FINMAP =
   struct
 
-    structure General = Edlib.General
-    structure List = Edlib.List
-    structure ListSort = Edlib.ListSort
-
     datatype (''a, 'b) map = FM of {elts: (''a * 'b) list, unique : bool ref}
 
     local val true_ref = ref true
@@ -65,7 +61,7 @@ functor FinMap(structure Report: REPORT
 	      if x = x' then (x, folder(y, y')) :: rest
 	      else (x, y) :: insert(x', y', rest)
       in
-	FM{elts=List.foldL (fn (x, y) => fn m => insert(x, y, m)) map1 map2,
+	FM{elts=foldl (fn ((x, y), m) => insert(x, y, m)) map1 map2,
 	   unique=ref ((!u1) andalso (!u2))}
       end
 
@@ -111,15 +107,15 @@ functor FinMap(structure Report: REPORT
         FM{elts=map (fn (a, b) => (a, f(a, b))) (list m),unique=ref true}
 
     fun fold (f : ('a * 'b) -> 'b) (x : 'b) (m : (''d,'a) map) : 'b = 
-	List.foldL (fn (a, b) => fn  c => f(b, c)) x (list m)
+	foldl (fn ((a, b), c) => f(b, c)) x (list m)
 
     fun Fold (f : ((''a * 'b) * 'c) -> 'c) (x : 'c) (m : (''a,'b) map) : 'c =
-	List.foldL (fn (a, b) => fn c => f((a, b), c)) x (list m)
+	foldl (fn ((a, b), c) => f((a, b), c)) x (list m)
 
     fun filter pred (m:(''a,'b) map) = 
 	let val elts = list m
 	in
-	    FM{elts=List.all pred elts,unique=ref true}
+	    FM{elts=List.filter pred elts,unique=ref true}
 	end
 
     fun addList [] t = t : (''a,'b) map

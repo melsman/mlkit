@@ -13,6 +13,9 @@ Maintenance:    Author
 RCS LOG
 
 $Log$
+Revision 1.2  1998/11/11 18:59:15  mael
+tuning
+
 Revision 1.1  1998/01/22 17:01:16  mael
 I have ported the ML Kit to SML/NJ 110.0.2. Use CM.make() to build the system.
 Parts of the Edinburgh Library are still used; they are located in the Edlib
@@ -41,7 +44,11 @@ struct
   |   zip (x::xs, y::ys) = (x,y) :: zip (xs, ys)
   |   zip (_, _) = raise Zip
 
-  val unzip = CoreUtils.unzip
+  fun unzip []           = ([] ,[])
+  |   unzip ((x,y)::xys) =
+        let val (xs, ys) = unzip xys
+	in (x :: xs, y :: ys)
+	end
 
   local
      fun from1  ([], l2)    = l2

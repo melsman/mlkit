@@ -23,18 +23,17 @@ functor SpreadExpression(
     sharing type E'.tyvar = R.tyvar = E.tyvar
     sharing type R.cone = Eff.cone
     sharing type R.LambdaType  = E.Type 
-    sharing type R.place = Eff.place = Eff.effect = E'.place = E'.effect 
+    sharing type R.place = Eff.place = E'.place = E'.effect 
     sharing type R.il = E'.il 
     sharing type R.Type = E'.Type
     sharing type R.runType = Eff.runType
   structure RSE: REGION_STAT_ENV
     sharing type RSE.TypeAndPlaceScheme = R.sigma = E'.sigma
-    sharing type RSE.place = R.place
-    sharing type RSE.Type = R.Type = E'.Type
-    sharing type RSE.place = R.place
+    sharing type RSE.place = Eff.place
+    sharing type RSE.Type = R.Type
     sharing type RSE.runType = R.runType
-    sharing type RSE.con = E.con = Con.con 
-    sharing type RSE.excon = E.excon  = E'.excon
+    sharing type RSE.con = Con.con 
+    sharing type RSE.excon = ExCon.excon
     sharing type RSE.il = R.il
     sharing type RSE.cone = R.cone = E'.cone
   structure SpreadDatatype: SPREAD_DATATYPE
@@ -49,7 +48,7 @@ functor SpreadExpression(
   structure Lvars: LVARS
     sharing type Lvars.lvar = E.lvar = E'.lvar = RSE.lvar
   structure TyName: TYNAME
-    sharing type TyName.TyName = E.TyName = E'.TyName = RSE.TyName =  R.tyname
+    sharing type TyName.TyName = E'.TyName = RSE.TyName =  R.tyname
   structure Crash: CRASH
   structure PP: PRETTYPRINT
     sharing type PP.StringTree =  E.StringTree = RSE.StringTree  = R.StringTree = Eff.StringTree

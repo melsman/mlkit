@@ -8,23 +8,23 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		  sharing type Environments.Env = ManagerObjects.ElabEnv = ModuleEnvironments.Env
 		structure ParseElab : PARSE_ELAB
 		  sharing type ParseElab.InfixBasis = ManagerObjects.InfixBasis
-		      and type ParseElab.ElabBasis = ManagerObjects.ElabBasis
+		  sharing type ParseElab.ElabBasis = ManagerObjects.ElabBasis
 	        structure IntModules : INT_MODULES
 		  sharing type IntModules.IntBasis = ManagerObjects.IntBasis
-		      and type IntModules.topdec = ParseElab.topdec
-		      and type IntModules.modcode = ManagerObjects.modcode
+		  sharing type IntModules.topdec = ParseElab.topdec
+		  sharing type IntModules.modcode = ManagerObjects.modcode
 		structure FreeIds : FREE_IDS
 		  sharing type FreeIds.topdec = ParseElab.topdec
-		      and type FreeIds.longid = ManagerObjects.longid = ModuleEnvironments.longid = Environments.longid
-		      and type FreeIds.longtycon = ManagerObjects.longtycon = ModuleEnvironments.longtycon = Environments.longtycon
-		      and type FreeIds.longstrid = ManagerObjects.longstrid = ModuleEnvironments.longstrid = Environments.longstrid
-		      and type FreeIds.funid = ManagerObjects.funid = ModuleEnvironments.funid
-		      and type FreeIds.sigid = ManagerObjects.sigid = ModuleEnvironments.sigid
+		  sharing type FreeIds.longid = ManagerObjects.longid = ModuleEnvironments.longid = Environments.longid
+		  sharing type FreeIds.longtycon = ManagerObjects.longtycon = ModuleEnvironments.longtycon = Environments.longtycon
+		  sharing type FreeIds.longstrid = ManagerObjects.longstrid = ModuleEnvironments.longstrid = Environments.longstrid
+		  sharing type FreeIds.funid = ManagerObjects.funid = ModuleEnvironments.funid
+		  sharing type FreeIds.sigid = ManagerObjects.sigid = ModuleEnvironments.sigid
 		structure OpacityElim : OPACITY_ELIM
 		  sharing OpacityElim.TyName = Environments.TyName = ManagerObjects.TyName = ModuleEnvironments.TyName
-		      and type OpacityElim.topdec = ParseElab.topdec
-		      and type OpacityElim.opaq_env = ManagerObjects.opaq_env
-		      and type OpacityElim.OpacityEnv.funid = FreeIds.funid
+		  sharing type OpacityElim.topdec = ParseElab.topdec
+		  sharing type OpacityElim.opaq_env = ManagerObjects.opaq_env
+		  sharing type OpacityElim.OpacityEnv.funid = FreeIds.funid
 	        structure Timing : TIMING
 		structure Crash : CRASH
 		structure Report : REPORT
@@ -33,8 +33,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		  sharing type PP.StringTree = FreeIds.StringTree = ManagerObjects.StringTree = OpacityElim.OpacityEnv.StringTree
                 structure Flags : FLAGS) : MANAGER =
   struct
-
-    structure StringParse = Edlib.StringParse
 
     structure Basis = ManagerObjects.Basis
     structure FunStamp = ManagerObjects.FunStamp
@@ -158,7 +156,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                   | UNITbody of unitid * body
     type prj = {imports : prjid list, extobjs: extobj list, body : body}
 
-
+    fun fromFile filename =
+      let val is = TextIO.openIn filename 
+	  val s = TextIO.inputAll is handle E => (TextIO.closeIn is; raise E)
+      in TextIO.closeIn is; s
+      end
+    
     fun parse_project (prjid : prjid) : prj =
       let
  
@@ -292,7 +295,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      else NONE
 	     | _  => NONE
 
-	val prj = (parse_prj o lex o (drop_comments prjid) o explode o StringParse.fromFile) prjid
+	val prj = (parse_prj o lex o (drop_comments prjid) o explode o fromFile) prjid
 	  handle IO.Io {name=io_s,...} => error ("The project " ^ quot prjid ^ " cannot be opened")
 
       in prj
@@ -340,16 +343,18 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  (List.app Name.mark_gen names_elab;                   (* returned the entry. The invariant is that every *)
 	   ElabBasis.match(elabB, elabB');                      (* name in the bucket is generative. *)
 	   OpacityElim.OpacityEnv.match(opaq_env,opaq_env');
-	   List.app Name.unmark_gen names_elab)
-	 | NONE => () (*bad luck*)
+	   List.app Name.unmark_gen names_elab;
+	   List.app Name.mk_rigid names_elab)
+	 | NONE => (List.app Name.mk_rigid names_elab) (*bad luck*)
 
     fun match_int(names_int, intB, prjid, funid) =
       case Repository.lookup_int' (prjid,funid)
-	of SOME(_,(_,_,_,_,names_int',_,tintB')) =>    (* names_int' are already marked generative - lookup *)
-	  (List.app Name.mark_gen names_int;           (* returned the entry. The invariant is that every *)
+	of SOME(_,(_,_,_,_,names_int',_,tintB')) =>   (* names_int' are already marked generative - lookup *)
+	  (List.app Name.mark_gen names_int;          (* returned the entry. The invariant is that every *)
 	   IntBasis.match(intB, tintB');              (* name in the bucket is generative. *)
-	   List.app Name.unmark_gen names_int)
-	 | NONE => () (*bad luck*)
+	   List.app Name.unmark_gen names_int;
+	   List.app Name.mk_rigid names_int)
+	 | NONE => (List.app Name.mk_rigid names_int) (*bad luck*)
 
     (* --------------------------------
      * Parse, elaborate and interpret
@@ -375,8 +380,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  in (case res
 		of ParseElab.FAILURE (report, error_codes) => (print_error_report report; raise PARSE_ELAB_ERROR error_codes)
 		 | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
-		  let val names_elab = !Name.bucket
-
+		  let 
 		      val _ = chat "[finding free identifiers begin...]"
 		      val freelongids as {longvids,longtycons,longstrids,funids,sigids} = fid_topdec topdec
 		      val _ = chat "[finding free identifiers end...]"
@@ -392,14 +396,20 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 								longvids=longvids})
 		      val _ = chat "[restricting interpretation basis end...]"
 
+		      val _ = chat "[finding tynames in elaboration basis begin...]"
  		      val tynames_elabB_im = ElabBasis.tynames elabB_im
+		      val _ = chat "[finding tynames in elaboration basis end...]"
+
+		      val _ = chat "[restricting opacity env begin...]"
 		      val opaq_env_im = OpacityElim_restrict(opaq_env,(funids,tynames_elabB_im))
+		      val _ = chat "[restricting opacity env end...]"
 
 		      val _ = chat "[opacity elimination begin...]"
 		      val (topdec', opaq_env') = opacity_elimination(opaq_env_im, topdec)
 		      val _ = chat "[opacity elimination end...]"
 
 		      val _ = chat "[interpretation begin...]"
+		      val names_elab = !Name.bucket
 		      val _ = Name.bucket := []
 		      val (intB', modc) = IntModules.interp(prjid, intB_im, topdec', unitname)
 		      val names_int = !Name.bucket

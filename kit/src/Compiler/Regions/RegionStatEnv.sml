@@ -15,28 +15,24 @@ functor RegionStatEnv(structure Name : NAME
 		      structure Lvar: LVARS
 			sharing type Lvar.name = Name.name
 		      structure Crash: CRASH
-		      structure TyNameMap: MONO_FINMAP
-		       sharing type TyNameMap.dom = TyName.TyName
-		      structure ConMap: MONO_FINMAP
-		       sharing type ConMap.dom = Con.con
-		      structure ExconMap: MONO_FINMAP
-		       sharing type ExconMap.dom = Excon.excon
-		      structure LvarMap: MONO_FINMAP
-		       sharing type LvarMap.dom = Lvar.lvar
-		      structure IntFinMap : MONO_FINMAP where type dom = int 
 		      structure L: LAMBDA_EXP
 			sharing type L.tyvar = R.tyvar
 			sharing type L.Type = R.LambdaType
                       structure Flags: FLAGS
 		      structure PP: PRETTYPRINT
 			sharing type PP.StringTree = R.StringTree = 
-			  E.StringTree = ConMap.StringTree = ExconMap.StringTree =
-			  TyNameMap.StringTree = LvarMap.StringTree = IntFinMap.StringTree
+			  E.StringTree = Con.Map.StringTree = Excon.Map.StringTree =
+			  TyName.Map.StringTree = Lvar.Map.StringTree
 		        sharing type L.TyName = TyName.TyName)
 
   : REGION_STAT_ENV =
 
   struct
+
+    structure ConMap = Con.Map
+    structure TyNameMap = TyName.Map
+    structure ExconMap = Excon.Map
+    structure LvarMap = Lvar.Map
 
     fun die s = Crash.impossible ("RegionStatEnv." ^ s)
     fun log s = TextIO.output(TextIO.stdOut,s ^ "\n")
@@ -67,11 +63,6 @@ functor RegionStatEnv(structure Name : NAME
 			  excon_env: (R.Type * R.place) ExconMap.map,
 			  lvar_env: lvar_env_range LvarMap.map
 			 }
-    type top_regionStatEnv = {tyname_env:  arity IntFinMap.map,
-			      con_env: R.sigma IntFinMap.map,
-			      excon_env: (R.Type * R.place) IntFinMap.map,
-			      lvar_env: lvar_env_range IntFinMap.map
-			      }
     type con = Con.con                           (* Unqualified value constructors. *)
     type excon = Excon.excon			(* Unqualified exception constructors.*)
     type TyName = TyName.TyName
@@ -80,20 +71,6 @@ functor RegionStatEnv(structure Name : NAME
      and TypeAndPlace = (R.Type * R.place)
      and Type = R.Type
      and place = R.place
-
-    fun keyOfTyName tn = Name.key(TyName.name tn)
-    fun keyOfCon c = Name.key(Con.name c)
-    fun keyOfExcon ec = Name.key(Excon.name ec)
-    fun keyOfLvar lv = Name.key(Lvar.name lv)
-
-    fun topify_env folder topper e =
-      folder (fn ((d,r),a) => IntFinMap.add(topper d,r,a)) IntFinMap.empty e
-
-    fun topify {tyname_env, con_env, excon_env,	lvar_env} =
-      {tyname_env = topify_env TyNameMap.Fold keyOfTyName tyname_env,
-       con_env = topify_env ConMap.Fold keyOfCon con_env,
-       excon_env = topify_env ExconMap.Fold keyOfExcon excon_env,
-       lvar_env = topify_env LvarMap.Fold keyOfLvar lvar_env}
 
     val empty: regionStatEnv = {tyname_env = TyNameMap.empty,
 				con_env = ConMap.empty,
@@ -286,6 +263,7 @@ functor RegionStatEnv(structure Name : NAME
 	 con_env= con_env,
 	 excon_env = ExconMap.add (excon,mu,excon_env),
 	 lvar_env =lvar_env}
+
     fun declareLvar(lvar,range,rse as {tyname_env, con_env, excon_env,lvar_env})=
 	{tyname_env = tyname_env,
 	 con_env= con_env,
@@ -298,13 +276,6 @@ functor RegionStatEnv(structure Name : NAME
 	 con_env = ConMap.plus(con_env, con_env'),
 	 excon_env = ExconMap.plus(excon_env, excon_env'),
 	 lvar_env = LvarMap.plus(lvar_env, lvar_env')}
-
-    fun plus'(rse as {tyname_env, con_env, excon_env,lvar_env},
-	     rse' as {tyname_env = tyname_env', con_env=con_env', excon_env=excon_env',lvar_env=lvar_env'})=
-	{tyname_env = IntFinMap.plus(tyname_env, tyname_env'),
-	 con_env = IntFinMap.plus(con_env, con_env'),
-	 excon_env = IntFinMap.plus(excon_env, excon_env'),
-	 lvar_env = IntFinMap.plus(lvar_env, lvar_env')}
 
     fun lookupTyName(rse : regionStatEnv as {tyname_env,...}) = TyNameMap.lookup tyname_env
 
@@ -323,10 +294,6 @@ functor RegionStatEnv(structure Name : NAME
 
     fun lookupExcon(rse : regionStatEnv as {excon_env,...}) = ExconMap.lookup excon_env
     fun lookupLvar(rse  : regionStatEnv as {lvar_env,...}) = LvarMap.lookup lvar_env
-    fun top_lookupLvar(rse  : top_regionStatEnv as {lvar_env,...}) d = case IntFinMap.lookup lvar_env d
-									 of SOME r => SOME(#3 r)
-									  | NONE => NONE
-
     fun FoldLvar  f b (rse: regionStatEnv as {lvar_env, ...}) = LvarMap.Fold f b lvar_env
     fun FoldExcon f b (rse: regionStatEnv as {excon_env, ...}) = ExconMap.Fold f b excon_env
 
@@ -394,40 +361,16 @@ functor RegionStatEnv(structure Name : NAME
 
     fun enrich ({tyname_env, con_env, excon_env,lvar_env},
 		{tyname_env=tyname_env1, con_env=con_env1, excon_env=excon_env1,lvar_env=lvar_env1}) =
-      IntFinMap.enrich (op =) (tyname_env,tyname_env1) andalso
-      IntFinMap.enrich equal_con_res (con_env,con_env1) andalso
-      IntFinMap.enrich equal_excon_res (excon_env,excon_env1) andalso
-      IntFinMap.enrich equal_lvar_res (lvar_env,lvar_env1)
+      TyNameMap.enrich (op =) (tyname_env,tyname_env1) andalso
+      ConMap.enrich equal_con_res (con_env,con_env1) andalso
+      ExconMap.enrich equal_excon_res (excon_env,excon_env1) andalso
+      LvarMap.enrich equal_lvar_res (lvar_env,lvar_env1)
 
-    local
-      fun restrict_env keyOf add pr empty s (m,dom) =
-	foldl(fn (d,a) => case IntFinMap.lookup m (keyOf d)
-			    of SOME r => add(d,r,a)
-			     | NONE => die (s ^ pr d ^ " is not in env"))
-	empty dom
-	
-      fun restrict_tyname_env(m,dom) = 
-	restrict_env keyOfTyName TyNameMap.add TyName.pr_TyName 
-	TyNameMap.empty "restrict_tyname_env. " (m,dom)
-	
-      fun restrict_lvar_env(m,dom) = 
-	restrict_env keyOfLvar LvarMap.add Lvar.pr_lvar
-	LvarMap.empty "restrict_lvar_env. " (m,dom)
-
-      fun restrict_con_env(m,dom) = 
-	restrict_env keyOfCon ConMap.add Con.pr_con
-	ConMap.empty "restrict_con_env. " (m,dom)
-
-      fun restrict_excon_env(m,dom) = 
-	restrict_env keyOfExcon ExconMap.add Excon.pr_excon
-	ExconMap.empty "restrict_excon_env. " (m,dom)
-    in
-      fun restrict({tyname_env, con_env, excon_env,lvar_env}, {tynames,cons,excons,lvars}) =
-	{tyname_env=restrict_tyname_env(tyname_env,tynames),
-	 con_env=restrict_con_env(con_env,cons),
-	 excon_env=restrict_excon_env(excon_env,excons),
-	 lvar_env=restrict_lvar_env(lvar_env,lvars)}
-    end
+    fun restrict({tyname_env, con_env, excon_env,lvar_env}, {tynames,cons,excons,lvars}) =
+      {tyname_env=TyNameMap.restrict(tyname_env,tynames),
+       con_env=ConMap.restrict(con_env,cons),
+       excon_env=ExconMap.restrict(excon_env,excons),
+       lvar_env=LvarMap.restrict(lvar_env,lvars)}
 
     type effectvar = E.effect
     fun places_effectvarsRSE rse = 
@@ -468,27 +411,6 @@ functor RegionStatEnv(structure Name : NAME
 			    layout_con_env con_env,
 			    layout_excon_env excon_env,
 			    layout_lvar_env lvar_env]}
-
-    fun layout_top_tyname_env e = IntFinMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
-      (PP.LEAF o Int.toString) layout_arity e
-
-    fun layout_top_con_env e = IntFinMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
-      (PP.LEAF o Int.toString) layout_scheme e
-
-    fun layout_top_excon_env e = IntFinMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
-      (PP.LEAF o Int.toString) layout_mu e
-
-    fun layout_top_lvar_env e = IntFinMap.layoutMap {start = "{", eq = " -> ", finish = "}", sep = ","}
-      (PP.LEAF o Int.toString) layout_pair e
-
-    fun layout_top(rse as {tyname_env, con_env, excon_env,lvar_env}) =
-	PP.NODE{start = "TopRegionStaticEnvironment:", finish = "(end of TopRegionStatEnvironment)",
-		indent = 1, childsep = PP.RIGHT",",
-		children = [layout_top_tyname_env tyname_env,
-			    layout_top_con_env con_env,
-			    layout_top_excon_env excon_env,
-			    layout_top_lvar_env lvar_env]}
-
   end;
 
 

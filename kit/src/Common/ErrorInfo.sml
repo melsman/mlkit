@@ -342,9 +342,8 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 		| S_CONFLICTING_DOMCE longtycon =>
 		 line ("Error in signature matching involving datatype `"
 		       ^ TyCon.pr_LongTyCon longtycon ^ "'")
-		 // line ("(The domain of the constructor environment specified in")
-		 // line (" the signature clashes with the domain of the constructor")
-		 // line (" environment in the structure.)")
+		 // line ("(The value environment specified in the signature")
+		 // line (" clashes with the value environment in the structure.)")
 
 	       | NOTYENRICHMENT{qualid=(strids, id),str_sigma,str_vce,sig_sigma,sig_vce} =>
 		 line ("Error in signature matching:") 

@@ -10,8 +10,6 @@ functor LambdaBasics (structure Lvars : LVARS
 		      structure Flags : FLAGS) : LAMBDA_BASICS =
   struct
 
-    structure Set = Edlib.Set
-
     open TLE
 
     fun die s = Crash.impossible ("LambdaBasics." ^ s)

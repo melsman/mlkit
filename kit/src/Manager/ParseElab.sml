@@ -23,7 +23,7 @@ functor ParseElab(structure Parse: PARSE
 
 		  structure TopLevelReport: TOP_LEVEL_REPORT
 		    sharing type TopLevelReport.ElabBasis = ElabTopdec.StaticBasis
-		        and type TopLevelReport.InfixBasis = InfixBasis.Basis
+		    sharing type TopLevelReport.InfixBasis = InfixBasis.Basis
 
 		  structure BasicIO: BASIC_IO
 
@@ -36,7 +36,7 @@ functor ParseElab(structure Parse: PARSE
 
 		  structure PP: PRETTYPRINT
 		    sharing type PP.Report = Report.Report
-		        and type InfixBasis.StringTree
+		    sharing type InfixBasis.StringTree
 					= PreElabTopdecGrammar.StringTree
 					= PostElabTopdecGrammar.StringTree
 					= ElabTopdec.StringTree

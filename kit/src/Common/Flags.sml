@@ -4,17 +4,9 @@ functor Flags (structure Crash : CRASH
 	       structure Report : REPORT) : FLAGS =
   struct
 
-    structure NewGeneral = General
-    structure StringParse = Edlib.StringParse
-    structure IntParse = Edlib.IntParse
-    structure BoolParse = Edlib.BoolParse
-    structure PairParse = Edlib.PairParse
-    structure ListParse = Edlib.ListParse
+    structure NewList = List
     structure ListPair = Edlib.ListPair
-    structure General = Edlib.General
     structure List = Edlib.List
-
-    val explode' = OldString.explode
 
     fun outLine (s) = print(s ^ "\n")
 	
@@ -36,8 +28,6 @@ functor Flags (structure Crash : CRASH
      *)
 
      
-      
-
     (* Pretty Printing *)
 
     val raggedRight = ref true
@@ -181,7 +171,7 @@ functor Flags (structure Crash : CRASH
 	       [] =>  ()
 	     | reports =>
 		 (if !log_to_file then
-		    print ("\n*** " ^ Int.toString (List.size reports)
+		    print ("\n*** " ^ Int.toString (NewList.length reports)
 			   ^ " warning"
 			   ^ (case reports of [_] => "" | _ => "s")
 			   ^ " printed on log file\n")
@@ -193,6 +183,71 @@ functor Flags (structure Crash : CRASH
     end (*local*)
 
 
+    (* -----------------------------------
+     *         Parse functions 
+     * ----------------------------------- *)
+
+   type ('a, 'b) reader = ('a, 'b) StringCvt.reader
+
+    fun scan_comma (getc : (char,'cs) reader) (cs:'cs) : 'cs option =
+      case getc (StringCvt.skipWS getc cs)
+	of SOME(#",",cs) => SOME cs
+	 | _ => NONE
+
+    fun scan_endlist (getc : (char,'cs)reader) (cs:'cs) (acc : 'a list) : ('a list * 'cs)option =
+      let val cs = StringCvt.skipWS getc cs
+      in case getc cs
+	   of SOME(#"]",cs) => SOME (rev acc,cs)
+	    | _ => NONE
+      end
+
+    fun scan_list scan_elem getc cs =
+      let val cs = StringCvt.skipWS getc cs
+	  fun loop(cs,acc) =
+	    case scan_comma getc cs
+	      of SOME cs => 
+		(case scan_elem getc cs
+		   of SOME(e,cs) => loop(cs,e::acc)
+		    | NONE => NONE)
+	       | NONE => scan_endlist getc cs acc
+      in case getc cs
+	   of SOME(#"[",cs) => 
+	     (case scan_elem getc cs
+		of SOME(e,cs) => loop(cs, [e])
+		 | NONE => scan_endlist getc cs [])
+	    | _ => NONE
+      end
+
+    fun scan_pair scan1 scan2 getc cs =
+      case getc (StringCvt.skipWS getc cs)
+	of SOME(#"(",cs) => 
+	  (case scan1 getc cs
+	     of SOME(e1,cs) =>
+	       (case getc (StringCvt.skipWS getc cs)
+		  of SOME(#",",cs) => 
+		    (case scan2 getc (StringCvt.skipWS getc cs)
+		       of SOME(e2,cs) => 
+			 (case getc (StringCvt.skipWS getc cs)
+			    of SOME(#")",cs) => SOME((e1,e2),cs)
+			     | _ => NONE)
+			| NONE => NONE)
+		   | _ => NONE)
+	      | NONE => NONE)
+	 | _ => NONE
+
+    fun scan_string getc cs =
+      let fun loop (cs, acc) =
+	    case getc cs
+	      of SOME(#"\"", cs) => SOME(implode(rev acc),cs)
+	       | SOME(c,cs) => loop(cs,c::acc)
+	       | NONE => NONE
+      in case getc (StringCvt.skipWS getc cs)
+	   of SOME(#"\"", cs) => loop(cs, [])
+	    | _ => NONE
+      end
+
+    fun getc [] = NONE
+      | getc (c::cs) = SOME(c,cs)
 
 
 
@@ -229,78 +284,90 @@ struct
   type state  = string list * parse_result 
   type parser = state -> state
   exception ParseScript of string
-  
-  fun is_letter_or_digit (ch: string) = 
-    case explode ch
-      of ch::_ => 
-	ord ch >= ord #"a" andalso ord ch <= ord #"z" orelse
-	ord ch >= ord #"A" andalso ord ch <= ord #"Z" orelse
-	ch = #"'" orelse ch = #"_"
-       | _ => die "is_letter_or_digit"
-  
-  fun is_space (ch: string) =
-      ch = " " orelse ch = "\t" orelse ch = "\n"
-  
-  fun lex_id (input: string list) : string * string list =
-    let val (id_l , rest) = List.removePrefix is_letter_or_digit input
-    in (concat id_l, rest)
+
+  fun scan_token getc cs = 
+    let val cs = StringCvt.skipWS getc cs
+        fun loop (cs, acc) =
+          case getc cs
+	    of SOME (c,cs') => if Char.isAlphaNum c orelse c= #"_" orelse c= #"'" then loop(cs',c::acc)
+			       else SOME(implode (rev acc), cs)  
+	     | NONE => if acc=nil then NONE else SOME(implode(rev acc),cs)
+    in loop (cs, [])
     end
+
+  fun scan_id getc cs = 
+    case scan_token getc cs
+      of SOME res => res
+       | NONE => raise ParseScript "I expect an identifier"
+
+  fun scan_ty getc cs =
+    let val cs = StringCvt.skipWS getc cs
+    in case scan_token getc cs
+	 of SOME("int",cs) => (Int,cs)
+	  | SOME("string",cs) => (String,cs)
+	  | SOME("bool",cs) => (Bool,cs)
+	  | _ => raise ParseScript "I expect one of `int', `string', or `bool'"
+    end
+
+  fun scan_colon getc cs =
+    let val cs = StringCvt.skipWS getc cs
+    in case getc cs
+	 of SOME(#":", cs) => cs
+	  | _ => raise ParseScript "I expect `:'"
+    end
+
+  fun scan_eq getc cs =
+    let val cs = StringCvt.skipWS getc cs
+    in case getc cs
+	 of SOME(#"=", cs) => cs
+	  | _ => raise ParseScript "I expect `='"
+    end
+
+  fun scan_val getc cs =
+    case scan_token getc cs
+      of SOME("val",cs) => SOME cs
+       | _ => NONE
+
+  fun scan_dec getc cs =
+    case scan_val getc cs
+      of SOME cs =>
+	let val (id, cs) = scan_id getc cs
+	    val cs = scan_colon getc cs
+	    val (ty, cs) = scan_ty getc cs
+	    val cs = scan_eq getc cs
+	    val (const, cs) =
+	      case ty
+		of Int => (case Int.scan StringCvt.DEC getc cs
+			     of SOME(i,cs) => (INT i,cs)
+			      | NONE => raise ParseScript "I expect an integer constant")
+		 | String => (case scan_string getc cs
+				of SOME(s,cs) => (STRING s,cs)
+				 | NONE => raise ParseScript "I expect a string constant")
+		 | Bool => (case Bool.scan getc cs
+			      of SOME(b,cs) => (BOOL b,cs)
+			       | NONE => raise ParseScript "I expect a bool constant")
+	in SOME((id,const),cs)
+	end
+       | NONE => NONE
+
+  fun scan_decs getc cs =
+    case scan_dec getc cs
+      of SOME(dec,cs) =>
+	let val decs = scan_decs getc cs
+	in dec::decs
+	end
+       | NONE => 
+	let val cs = StringCvt.skipWS getc cs
+	in case getc cs
+	     of SOME (#";", cs) => scan_decs getc cs
+	      | SOME _ => raise ParseScript "I expect `;' or `val' or `end of file'"
+	      | NONE => []
+	end
   
-  fun skip_colon (":" :: rest) = rest
-    | skip_colon _ = raise ParseScript "expected ':' "
-  
-  fun skip_val ("v" :: "a" :: "l" :: rest) = rest
-    | skip_val _ = raise ParseScript "expected 'val' "
-  
-  fun skip_eq ("=" ::rest ) = rest
-    | skip_eq _ = raise ParseScript "expteced '=' "
-  
-  fun drop_spaces (l: string list) = List.dropPrefix is_space l 
-  
-  fun lex_const ty input =
-    case ty of 
-      Int => (case IntParse.parse (concat input) of
-                General.OK (i, rest) => (INT i , explode' rest)
-              | _ => raise ParseScript "expected integer constant"
-             )
-    | String => (case StringParse.parse (concat input) of
-		   General.OK (s, rest) => (STRING s  , explode' rest)
-		 | _ => raise ParseScript "expected string constant"
-		)
-    | Bool => (case BoolParse.parse (concat input) of
-		 General.OK (b, rest) => (BOOL b , explode' rest)
-	       | _ => raise ParseScript "expected bool constant"
-	      )
-  
-  fun lex_type ("i" :: "n" :: "t" ::rest) = (Int, rest)
-    | lex_type ("s" :: "t" :: "r" :: "i" :: "n" :: "g" :: rest) = (String, rest)
-    | lex_type ("b" :: "o" :: "o" :: "l" :: rest) = (Bool, rest)
-    | lex_type _ = raise ParseScript "expected 'int', 'string' or 'bool'";
-  
-  fun parseDec (input: string list, acc_bind: parse_result) : state  =
-      parseRest
-        let val input1 =  (drop_spaces o skip_val o  drop_spaces) input
-            val (id,input2) = lex_id input1
-            val input3 = (drop_spaces o skip_colon o drop_spaces) input2
-            val (ty, input4) = lex_type input3
-            val input5 = (drop_spaces o skip_eq o drop_spaces) input4
-            val (c, input6) = lex_const ty input5
-        in            
-            (input6, (id, c)::acc_bind)
-        end 
-  and parseRest (input: string list, acc_bind: parse_result) : state =
-        let val input1 = drop_spaces input
-        in  case input1 
-	      of [] => ([], rev acc_bind) 
-	       | ";" :: input2 => parseRest(input2, acc_bind)
-	       | "v" :: _ => parseDec(input1, acc_bind)
-	       | _ => raise ParseScript "expected 'val', ';', or 'end of file'"
-        end;
-  
-  fun drop_comments (l: string list) : string list =
-    let fun loop(n, "(" :: "*" :: rest ) = loop(n+1, rest)
-          | loop(n, "*" :: ")" :: rest ) = loop(n-1, if n=1 then " "::rest else rest)
-          | loop(0, ch ::rest) = ch :: loop (0,rest) (* martin; was `ch :: rest'... *)
+  fun drop_comments (l: char list) : char list =
+    let fun loop(n, #"(" :: #"*" :: rest ) = loop(n+1, rest)
+          | loop(n, #"*" :: #")" :: rest ) = loop(n-1, if n=1 then #" "::rest else rest)
+          | loop(0, ch ::rest) = ch :: loop (0,rest)	  
           | loop(0, []) = []
           | loop(n, ch ::rest) = loop(n,rest)
           | loop(n, []) = raise ParseScript "unclosed comment"
@@ -308,13 +375,17 @@ struct
         loop(0,l)
     end;
   
+  fun fromFile filename =
+    let val is = TextIO.openIn filename 
+        val s = TextIO.inputAll is handle E => (TextIO.closeIn is; raise E)
+    in TextIO.closeIn is; s
+    end
+
   fun parseScript(filename: string) = 
-    (let val state as (_, bindings) = 
-         parseDec(drop_comments(explode'(StringParse.fromFile filename)),[])
-     in bindings
-     end handle IO.Io {name,function,...} => raise ParseScript (name ^":"^function))
-       handle ParseScript s => (TextIO.output(!log, "\n *parse error*: " ^ s ^ "\n");
-				raise ParseScript s)
+    ((scan_decs getc (drop_comments(explode(fromFile filename))))
+     handle IO.Io {name,function,...} => raise ParseScript (name ^":"^function))
+    handle ParseScript s => (TextIO.output(!log, "\n *parse error*: " ^ s ^ "\n");
+			     raise ParseScript s)
 
 end (* ParseScript *)
 
@@ -367,15 +438,16 @@ struct
     let
       fun update (x, x_ref) = x_ref := x
     in
-      (List.apply update strings;
-       List.apply update integers;
-       List.apply update booleans)
+      (NewList.app update strings;
+       NewList.app update integers;
+       NewList.app update booleans)
     end
 
   (* Toggles and check for boolean flags. *)
   fun lookup_entry subdir key =
-        (#2 o List.first (fn (key':string,_) => key=key') o !) subdir
-	handle List.First _ => die ("lookup_entry " ^ key)
+    case NewList.find (fn (key':string,_) => key=key') (!subdir)
+      of SOME res => #2 res
+       | NONE => die ("lookup_entry " ^ key)
 
   fun lookup_flag_entry key = lookup_entry (#booleans dir) key
   fun lookup_string_entry key = lookup_entry (#strings dir) key
@@ -410,9 +482,9 @@ struct
     fun update_bool(key, value) = update_assoc(!(#booleans dir), key, value);
 
     fun interpret (l:(string*ParseScript.const) list) : unit = 
-      List.apply (fn (s, ParseScript.STRING newval) => update_string(s,newval)
-                   | (s, ParseScript.INT newval) => update_int(s,newval)
-                   | (s, ParseScript.BOOL newval) => update_bool(s,newval)) l;
+      NewList.app (fn (s, ParseScript.STRING newval) => update_string(s,newval)
+                    | (s, ParseScript.INT newval) => update_int(s,newval)
+                    | (s, ParseScript.BOOL newval) => update_bool(s,newval)) l;
   in
     fun readScript script_file : unit = 
       if OS.FileSys.access (script_file, []) then
@@ -463,7 +535,7 @@ struct
     end
 
   (* Adding initial entries. *)
-  val _ = List.apply add_string_entry
+  val _ = NewList.app add_string_entry
         [("path_to_runtime", path_to_runtime), 
 	 ("path_to_runtime_prof", path_to_runtime_prof),
 	 ("c_compiler", c_compiler),  (*e.g. "cc -Aa" or "gcc -ansi"*)
@@ -472,12 +544,12 @@ struct
 	 ("path_to_kit_script", ref "you-did-not-set-path-to-kit-script"), 
 	 ("kit_backend", kit_backend)] (*either "C" or "native"*)
 
-  val _ = List.apply add_int_entry
+  val _ = NewList.app add_int_entry
         [("colwidth", colwidth),
 	 ("maximum_inline_size", maximum_inline_size),
 	 ("maximum_specialise_size", maximum_specialise_size)]
 
-  val _ = List.apply add_bool_entry (* MEMO: Not all flags added...  (martin) *)
+  val _ = NewList.app add_bool_entry (* MEMO: Not all flags added...  (martin) *)
     [("type_check_lambda",type_check_lambda),
      ("delete_target_files",delete_target_files),
      ("unbox_datatypes", unbox_datatypes),
@@ -586,22 +658,24 @@ struct
 	 | #"q" :: #"u" :: #"i" :: #"t" :: _  => u_or_q_from_read_string := true
 	 | #"u" :: _  => u_or_q_from_read_string := true
 	 | #"\"" (*"*) :: _  => 
-           (case StringParse.parse (implode l) of 
-	      General.OK (s,_) => r := s | _ => (help () ; read_string r ()))
+           (case scan_string getc l
+	      of SOME(s,_) => r := s 
+	       | NONE => (help () ; read_string r ()))
 	 | _ => (help () ; read_string r ())
        end)
 
   fun read_int r () =
     (outLine "<number> or up (u): >";
      let val s = TextIO.inputLine TextIO.stdIn
-       val (_, l) = List.splitFirst(fn ch => ch <> #" ")(explode s)
-	 handle List.First _ => ([],[])
+         val (_, l) = List.splitFirst(fn ch => ch <> #" ")(explode s)
+	   handle List.First _ => ([],[])
      in case l 
 	  of [] => (help(); read_int r ())
 	   | #"q" :: #"u" :: #"i" :: #"t" :: _  => ()
 	   | #"u" :: _  => ()
-	   | _ => case IntParse.parse (implode l) of
-	    General.OK(i,_) => r:= i | _ => (help(); read_int r ())
+	   | _ => (case Int.scan StringCvt.DEC getc l 
+		     of SOME(i,_) => r:= i 
+		      | _ => (help(); read_int r ()))
      end)
 
   fun mk_string_action(r: string ref, text) =
@@ -693,8 +767,8 @@ struct
                              attr: attribute,
                              below: menu}list) : unit = 
     let 
-           val width = List.foldL
-                       (fn {text, ...} => fn acc:int => max(size text, acc))
+           val width = foldl
+                       (fn ({text, ...}, acc:int) => max(size text, acc))
                        0
                        (lines)
   
@@ -799,7 +873,7 @@ struct
       print(blanks indent ^ s)
      )
   fun show_full_menu  indent menu = case menu of
-    DISPLAY l => List.apply (show_full_item indent) l  
+    DISPLAY l => NewList.app (show_full_item indent) l  
   | BUTTON{r, text1, below1, text2, below2}=>
       (outLineInd (indent) ("BUTTON ON: " ^ text1);
       show_full_menu (indent+delta) below1;
@@ -841,15 +915,15 @@ struct
           [] => HELP
         | #"q" :: #"u" :: #"i" :: #"t" :: _ => QUIT
         | #"u" :: _ => UP
-        | #"a" :: l' => (case IntParse.parse (implode l') of
-                         General.OK(i, _) => ACTIVATE i
-                       | _ => HELP)
-        | #"t" :: l' => (case IntParse.parse (implode l') of
-                         General.OK(i, _) => TOGGLE i
-                       | _ => HELP)
-        | ch :: l' =>  (case IntParse.parse (implode l) of
-                         General.OK(n,_) => ACTIVATE_OR_TOGGLE n
-                        | _ => HELP)
+        | #"a" :: l' => (case Int.scan StringCvt.DEC getc l' 
+			   of SOME(i, _) => ACTIVATE i
+			    | _ => HELP)
+        | #"t" :: l' => (case Int.scan StringCvt.DEC getc l' 
+			   of SOME(i, _) => TOGGLE i
+			    | _ => HELP)
+        | ch :: l' =>  (case Int.scan StringCvt.DEC getc l
+			  of SOME(n,_) => ACTIVATE_OR_TOGGLE n
+			   | _ => HELP)
      end);
   
   fun read_button_cmd () : cmd =
@@ -887,17 +961,15 @@ struct
     (outLine "<type an int list, e.g. [4,3]> or up (u): >";
      let
        val s = TextIO.inputLine TextIO.stdIn
-       val parseInt = IntParse.parse
-       val parseIntList = ListParse.parseSep "[" "]" "," parseInt
+       val cs = explode s
      in
-       case explode s
+       case cs
 	 of [] => (help(); read_int_list r ())
 	  | #"u" :: _  => ()
 	  | #"q" :: #"u" :: #"i" :: #"t" :: _  => ()
-	  | #"["::_ => (case parseIntList s
-			      handle ListParse.Sep _ => die "parseIntList" of
-			 General.OK(l',_) => (r := l')
-		       | _ => (help(); read_int_list r ()))
+	  | #"["::_ => (case scan_list (Int.scan StringCvt.DEC) getc cs
+			  of SOME(l',_) => (r := l')
+			   | _ => (help(); read_int_list r ()))
 	  | _ => (help(); read_int_list r ())
      end)
 
@@ -906,18 +978,15 @@ struct
 	  \e.g. [(formal reg. var. at pp.,letregion bound reg. var.)]> or up (u): >" ;
      let
        val s = TextIO.inputLine TextIO.stdIn
-       val parseInt = IntParse.parse
-       val parseIntPair = PairParse.parse parseInt parseInt
-       val parseIntPairList = ListParse.parseSep "[" "]" "," parseIntPair
+       val cs = explode s
      in
-       case (explode s)
+       case cs
 	 of [] => (help(); read_int_pair_list r ())
 	  | #"u" :: _  => ()
 	  | #"q" :: #"u" :: #"i" :: #"t" :: _  => ()
-	  | #"["::_ => (case parseIntPairList s
-			      handle ListParse.Sep _ => die "parseIntList" of
-			 General.OK(l',_) => (r := l')
-		       | _ => (help(); read_int_pair_list r ()))
+	  | #"["::_ => (case scan_list (scan_pair (Int.scan StringCvt.DEC) (Int.scan StringCvt.DEC)) getc cs
+			  of SOME(l',_) => (r := l')
+			   | NONE => (help(); read_int_pair_list r ()))
 	  | _ => (help(); read_int_pair_list r ())
      end)
 
@@ -1147,8 +1216,8 @@ struct
 	     | Crash.CRASH => (outLine "*** CRASH raised *" ; interact ()) 
 	     | IO.Io _ => (outLine ("*** IO.Io raised *"); interact ())
 	     | Overflow => (outLine "*** Overflow raised *"; interact ())
-	     | e => (outLine ("*** Uncaught exception " ^ NewGeneral.exnName e ^ " ***");
-		     outLine ("Exn message: " ^ NewGeneral.exnMessage e);
+	     | e => (outLine ("*** Uncaught exception " ^ General.exnName e ^ " ***");
+		     outLine ("Exn message: " ^ General.exnMessage e);
 		     outLine "I shall reraise it...";
 		     raise e)
 
@@ -1170,7 +1239,7 @@ struct
          show_menu menu; 
          case read_display_cmd () : cmd of
            ACTIVATE n =>
-	     ((case List.nth n l of
+	     ((case NewList.nth (l,n) of
 		{below = NOMENU, ...} => 
 		  (outLine("***Nothing to activate ");
 		   inter(path,menu))
@@ -1179,19 +1248,19 @@ struct
 			    ^ "' to toggle menu, if that is what you want");
 		  inter(path, menu) )
 	      | {text, below, ...} => (inter(text::path, below); inter(path, menu))
-		  ) handle List.Subscript _ => (outLine"***Number out of range" ; inter(path, menu)))
+		  ) handle (* Subscript *) _ => (outLine"***Number out of range" ; inter(path, menu)))
           | TOGGLE n =>
-	      ((case List.nth n l of
+	      ((case NewList.nth (l,n) of
 		  {attr = SWITCH r, ...} => 
 		    (r:= not(!r); inter(path, menu))
 		| {attr = VALUE _ , ...} => 
 		    (outLine("***Nothing to toggle ");
 		     inter(path, menu) )
-                    ) handle List.Subscript _ =>
+                    ) handle (* Subscript *) _ =>
 		               (outLine "***Number out of range" ;
 				help(); inter(path, menu)))
           | ACTIVATE_OR_TOGGLE n =>
-	      ((case List.nth n l of 
+	      ((case NewList.nth (l,n) of 
 		  {attr = SWITCH(r as ref false), ...} =>
 		    (* assume toggle *) 
 		    (r := not (!r) ; inter (path, menu))
@@ -1202,7 +1271,7 @@ struct
 		    (* assume activate *)
 		    (inter (text::path, below) ; inter(path, menu))
 		| _ => (help () ; inter (path, menu))
-		    ) handle List.Subscript _ =>
+		    ) handle (* Subscript *) _ =>
 		               (outLine "***Number out of range" ;
 				help() ; inter (path, menu)))
           | UP => (case path of (*ignore u when at top-level menu*)
@@ -1257,6 +1326,6 @@ val add_string_to_menu = Menu.add_string_to_menu
 val add_int_to_menu = Menu.add_int_to_menu
 val interact = Menu.interact
 
-end; (* functor Flags *)  
+end (* functor Flags *)  
    
   

@@ -26,36 +26,6 @@ SEE ALSO
 
    EqSet, MonoSet.
 
-
-RCS LOG
-
-$Log$
-Revision 1.1  1998/01/22 17:01:34  mael
-I have ported the ML Kit to SML/NJ 110.0.2. Use CM.make() to build the system.
-Parts of the Edinburgh Library are still used; they are located in the Edlib
-directory.
-
-Revision 1.6  1991/10/22  18:33:26  db
-Added map, apply, fold and fold' functions.
-
-Revision 1.5  91/02/12  17:19:38  17:19:38  db (Dave Berry)
-This is really embarrassing!  I had implemented set equality as
-list equality, but although the lists have no repeated elements
-they can be in arbitrary order.  I've fixed this.
-
-Revision 1.4  91/02/12  12:56:13  12:56:13  db (Dave Berry)
-Changed datatype to abstype.  Also improved the presentation.
-
-Revision 1.3  91/01/25  15:45:55  db
-Removed reference to CoreUtils.member, which has been redefined.
-
-Revision 1.2  91/01/24  17:29:47  17:29:47  db (Dave Berry)
-Removed version value.
-
-Revision 1.1  91/01/24  15:40:22  15:40:22  db (Dave Berry)
-Initial revision
-
-
 *)
 
 struct
@@ -65,7 +35,6 @@ struct
 
   abstype 'a Set = Set of 'a list
   with
-  
 
 (* TYPES *)
 
@@ -110,7 +79,7 @@ struct
     |   member eq elem (Set (h::t)) =
     	  eq elem h orelse member eq elem (Set t)
     
-    fun size (Set l) = CoreUtils.length l
+    fun size (Set l) = length l
     
     local
          fun allContained elemEq [] _ = true
@@ -191,6 +160,5 @@ struct
     |   fold' f (Set l)  = List.foldL' f l
 
   end (* abstype *)
-
 end;
 

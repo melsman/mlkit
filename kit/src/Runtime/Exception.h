@@ -11,7 +11,7 @@
 typedef void (*SignalHandler)(__harg);  
 #elif defined(sun)
 typedef void (*SignalHandler)(void);
-#elif defined(linux)
+#elif defined(linux) || defined(_WIN32)
 typedef void (*SignalHandler)(int);
 #endif
 

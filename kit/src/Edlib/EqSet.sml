@@ -19,40 +19,6 @@ SEE ALSO
 
    MonoSet, Set.
 
-
-RCS LOG
-
-$Log$
-Revision 1.2  1998/07/30 10:18:41  mael
-lots of changes
-
-Revision 1.1  1998/01/22 17:01:06  mael
-I have ported the ML Kit to SML/NJ 110.0.2. Use CM.make() to build the system.
-Parts of the Edinburgh Library are still used; they are located in the Edlib
-directory.
-
-Revision 1.6  1991/10/22  18:33:26  db
-Added map, apply, fold and fold' functions.
-
-Revision 1.5  91/02/12  17:18:27  17:18:27  db (Dave Berry)
-This is really embarrassing!  I had implemented set equality as
-list equality, but although the lists have no repeated elements
-they can be in arbitrary order.  I've fixed this.
-
-Revision 1.4  91/02/12  12:55:07  12:55:07  db (Dave Berry)
-Changed datatype to abstype.  Also improved the presentation.
-
-Revision 1.3  91/01/25  15:44:22  db
-Changed CoreUtils.eqMember to CoreUtils.member, reflecting the corresponding
-change in the CoreUtils structure.
-
-Revision 1.2  91/01/24  17:21:08  17:21:08  db (Dave Berry)
-Removed version value.
-
-Revision 1.1  91/01/24  15:39:44  15:39:44  db (Dave Berry)
-Initial revision
-
-
 *)
 
 struct
@@ -61,7 +27,6 @@ struct
 
   abstype 'a Set = Set of 'a list
   with
-  
 
 (* TYPE *)
 
@@ -70,10 +35,16 @@ struct
 
 (* LOCAL *)
 
+
+  fun member _ [] = false
+  |   member x (h::t) =
+	x = h orelse member x t
+
+
     fun dropRepeats []  = []
     |   dropRepeats [x] = [x]
     |   dropRepeats (x::xs) =
-          if CoreUtils.member x xs then dropRepeats xs
+          if member x xs then dropRepeats xs
           else x :: (dropRepeats xs)
 
 
@@ -103,7 +74,7 @@ struct
     |   member elem (Set (h::t)) =
     	elem = h orelse member elem (Set t)
     
-    fun size (Set l) = CoreUtils.length l
+    fun size (Set l) = length l
     
     local
       fun allContained [] _ = true
@@ -184,5 +155,5 @@ struct
     |   fold' f (Set l)  = List.foldL' f l
 
   end (* abstype *)
-end;
+end
 

@@ -37,11 +37,14 @@ in
   FINMAPEQ.sml
   FinMapEq.sml
   MONO_FINMAP.sml
-  EqFinMap.sml
+(*  EqFinMap.sml *)
   SORTED_FINMAP.sml
   SortedFinMap.sml
-  IntFinMap.sml
+  IntFinMapPT.sml
+(*  IntFinMap.sml *)
   OrderFinMap.sml
+  ../Manager/NAME.sml
+  QuasiMap.sml
 
   KIT_MONO_SET.sml
   IntSet.sml
@@ -50,7 +53,6 @@ in
   EqSetList.sml
   OrderSet.sml
 
-  ../Manager/NAME.sml
   ../Manager/Name.sml
   TYNAME.sml
   TyName.sml

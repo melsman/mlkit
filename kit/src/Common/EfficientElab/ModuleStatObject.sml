@@ -104,8 +104,10 @@ functor ModuleStatObject(structure StrId  : STRID
 	  fun matchEnv (E, E', path) : realisation =
 	    let val (SE, TE, _) = E.un E
 		val (SE', TE', _) = E.un E'
+		val phi = matchSE (SE, SE', path)
+		val TEnew = Realisation.on_TyEnv phi TE
 	    in
-	      Realisation.oo (matchSE (SE, SE', path), matchTE (TE, TE', path))
+	      Realisation.oo (matchTE (TEnew, TE', path), phi)
 	    end
 
 	  and matchSE(SE, SE', path): realisation =
@@ -164,8 +166,21 @@ functor ModuleStatObject(structure StrId  : STRID
 	     in
 	       TE.Fold f Realisation.Id TE
 	     end
-	in 
-	  matchEnv (E, E', [])
+
+	  fun elim_VEs_in_TE TE = 
+	    TE.Fold (fn (tycon, tystr) => fn te =>
+		     let val tystr' = TyStr.from_theta_and_VE(TyStr.to_theta tystr,VE.empty)
+		     in TE.plus(TE.singleton(tycon,tystr'),te)
+		     end) TE.empty TE 
+	  fun elim_VEs_in_E E =
+	    let val (SE, TE, _) = E.un E
+	    in E.mk(SE.map elim_VEs_in_E SE, elim_VEs_in_TE TE, VE.empty)
+	    end
+
+	in (* the VE's are not needed for matching *)
+
+	  matchEnv (elim_VEs_in_E E, elim_VEs_in_E E', [])
+
 	end (* sigMatchRea *)
 
 
@@ -352,17 +367,13 @@ functor ModuleStatObject(structure StrId  : STRID
 	  end
 		  
       fun layout (SIGMA {T, E}) =
-	    if !Flags.DEBUG_STATOBJECTS then
-	      let val Ttree = PP.NODE {start="(", finish=")", indent=1,
-				       children=[TyName.Set.layoutSet
-						 {start="{", sep=",", finish="}"}
-						 TyName.layout T],
-				       childsep=PP.NOSEP}
+(*	    if !Flags.DEBUG_STATOBJECTS then *)
+	      let val Ttree = TyName.Set.layoutSet {start="(", sep=",", finish=")"} TyName.layout T
 	      in PP.NODE {start="", finish="", indent=0,
-			  children=[Ttree, E.layout E], childsep=PP.RIGHT " "}
+			  children=[Ttree, E.layout E], childsep=PP.NOSEP}
 	      end
-	    else
-	      E.layout E
+(*	    else
+	      E.layout E *)
     end (*Sigma*)
 
 
@@ -455,20 +466,16 @@ functor ModuleStatObject(structure StrId  : STRID
 	  end
       end
 
-
-
       fun layout (FUNSIG{T, E, T'E'}) =
 	    let
-	      val argsig = PP.NODE {start="(", finish="", indent=1,
-				    children=[Sigma.layout (SIGMA{T=T, E=E})], 
-				    childsep=PP.NOSEP}
-	      val ressig = PP.NODE {start=") : ", finish="", indent=3,
-				    children=[Sigma.layout T'E'],
-				    childsep=PP.NOSEP}
-	    in
-	      PP.NODE {start="", finish="", indent=0, 
-		       children=[argsig, ressig],
-		       childsep=PP.RIGHT " "}
+	      val Ttree = TyName.Set.layoutSet {start="(", sep=",", finish=")"} TyName.layout T
+	      val body = PP.NODE {start="(", finish=")", indent=1,
+				  children=[E.layout E, Sigma.layout T'E'], 
+				  childsep=PP.RIGHT ", "}
+	    in 
+	      PP.NODE {start="", finish="", indent=1,
+		       children=[Ttree,body],
+		       childsep=PP.NOSEP}
 	    end
     end (*Phi*)
 

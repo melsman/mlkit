@@ -11,7 +11,7 @@
 #if defined(hpux)
 #include <signal.h>      /* Used by the Profiler */
 #include <time.h>        /* Used by the Profiler */
-#elif (defined(sun) || defined(linux))
+#elif (defined(sun) || defined(linux) || defined(_WIN32))
 #include <signal.h>      /* Used by signal. */
 #include <sys/time.h>    /* Used by setitimer. */
 #endif

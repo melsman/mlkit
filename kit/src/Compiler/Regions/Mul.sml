@@ -3,9 +3,6 @@ functor Mul(
   structure Name : NAME
   structure Lam: LAMBDA_EXP
   structure Eff: EFFECT
-  structure LvarMap: MONO_FINMAP
-    sharing type LvarMap.dom = Lam.lvar
-  structure IntFinMap : MONO_FINMAP where type dom = int
   structure Crash: CRASH
   structure Flags: FLAGS
   structure Lvar: LVARS
@@ -25,7 +22,7 @@ functor Mul(
     sharing type RSE.runType = RType.runType
   structure PP: PRETTYPRINT
     sharing type PP.StringTree = Eff.StringTree  = RType.StringTree =
-            LvarMap.StringTree = IntFinMap.StringTree
+            Lvar.Map.StringTree
   structure QM_EffVarEnv: QUASI_ENV
     sharing type QM_EffVarEnv.StringTree = PP.StringTree
     sharing type QM_EffVarEnv.dom = Eff.effect
@@ -34,7 +31,8 @@ struct
 
   structure List = Edlib.List
   structure ListPair = Edlib.ListPair
-  structure ListSort = Edlib.ListSort
+
+  structure LvarMap = Lvar.Map
 
   structure GlobalEffVarEnv = QM_EffVarEnv.Env
 
@@ -181,15 +179,10 @@ struct
   val empty_qmularefset :qmularefset = (([], [],[]), Eff.toplevel_region_withtype_top )
 
   type efenv = qmularefset ref LvarMap.map  
-  type top_efenv = qmularefset ref IntFinMap.map  
 
-  fun keyOfLvar lv = Name.key(Lvar.name lv)
-  fun topify_efenv efenv =
-    LvarMap.Fold(fn((d,r),a) => IntFinMap.add(keyOfLvar d,r,a)) IntFinMap.empty efenv
-
-  fun restrict_efenv(tefenv,lvars) =
+  fun restrict_efenv(efenv,lvars) =
     foldl(fn (lv,acc) =>
-	  case IntFinMap.lookup tefenv (keyOfLvar lv)
+	  case LvarMap.lookup efenv lv
 	    of SOME res => LvarMap.add(lv,res,acc)
 	     | NONE => die "restrict_efenv") LvarMap.empty lvars
  
@@ -274,16 +267,16 @@ struct
     in equal_mularefset(mularefset1,mularefset2)
     end
 
-  type top_regionStatEnv = RSE.top_regionStatEnv
+  type regionStatEnv = RSE.regionStatEnv
   fun enrich_efenv((efenv1,rse1),(efenv2,rse2)) =
-    IntFinMap.Fold(fn ((lv2,ref res2),b) => b andalso
-	    case IntFinMap.lookup efenv1 lv2
+    LvarMap.Fold(fn ((lv2,ref res2),b) => b andalso
+	    case LvarMap.lookup efenv1 lv2
 	      of SOME (ref res1) => 
-		let val sigma1 = case RSE.top_lookupLvar rse1 lv2
-				   of SOME a => a
+		let val sigma1 = case RSE.lookupLvar rse1 lv2
+				   of SOME a => #3 a
 				    | NONE => die "enrich_efenv.lv not in rse1"
-		    val sigma2 = case RSE.top_lookupLvar rse2 lv2
-				   of SOME a => a
+		    val sigma2 = case RSE.lookupLvar rse2 lv2
+				   of SOME a => #3 a
 				    | NONE => die "enrich_efenv.lv not in rse2"			
 		in equal_qmularefset((res1,sigma1),(res2,sigma2))
 		end
@@ -429,12 +422,6 @@ struct
   fun layout_efenv mulenv = 
         LvarMap.layoutMap{start="Efenv: [", finish = "]", eq = " -> ", sep = ", "}
           (PP.LEAF o Lvar.pr_lvar)
-          (layout_qmularefset o !) 
-          mulenv
-
-  fun layout_top_efenv mulenv = 
-        IntFinMap.layoutMap{start="TopEfenv: [", finish = "]", eq = " -> ", sep = ", "}
-          (PP.LEAF o Int.toString)
           (layout_qmularefset o !) 
           mulenv
 
@@ -741,7 +728,6 @@ struct
 
   fun declare(EE,x,Xi) = LvarMap.add(x,Xi,EE)
   fun plus(EE,EE') = LvarMap.plus(EE,EE')
-  fun plus'(EE,EE') = IntFinMap.plus(EE,EE')
 
   fun getimage([], x)= NONE
     | getimage((x, fx)::f, x')= if Eff.eq_effect(x,x') then SOME fx else getimage(f, x')

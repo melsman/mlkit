@@ -396,7 +396,7 @@ functor ElabTopdec
 
     fun build [] : TyName list * realisation = ([], Realisation.Id)
       | build (T::Ts) = let val (t, T') = find(T,[])
-			    val phi = Realisation.from_T_and_theta (TyName.Set.fromList T', TypeFcn.from_TyName t) 
+			    val phi = Realisation.from_T_and_tyname (TyName.Set.fromList T', t) 
 			    val (T'', phi') = build Ts
 			in (T' @ T'', phi' oo phi)
 			end
@@ -424,11 +424,12 @@ functor ElabTopdec
       in case ElabRep.lookup_elab prjid_and_funid
 	   of SOME (index,(_,_,_,_,N,_,B,_)) =>  (* Names in N already marked generative, 
 						  * because the object is returned by lookup. *)
-	     let val _:{} = List.apply Name.mark_gen N'
-	         val _:{} = B.match(B',B)
-		 val _:{} = List.apply Name.unmark_gen N'
-	     in ElabRep.owr_elab(prjid_and_funid,index,obj)
-	     end
+	     (List.apply Name.mark_gen N';
+	      B.match(B',B);
+	      List.apply Name.unmark_gen N';
+	      List.apply Name.mk_rigid N';
+	      ElabRep.owr_elab(prjid_and_funid,index,obj))
+
 	    | NONE => ElabRep.add_elab(prjid_and_funid,obj)
       end
 
@@ -928,6 +929,9 @@ functor ElabTopdec
 	    if error then ([], E.bogus, OG.SHARING_TYPEspec(okConv i, out_spec, out_longtycon_withinfo_s), ids)
 	    else let 
 	       
+       	           (* Eliminate dublicates; necessary for computing the correct T' and T0' below. *)
+	           val T = TyName.Set.list(TyName.Set.fromList T)
+
 		   (* Now, find a representative; if everything is allright, T 
 		    * will have at least one member. *)
 
@@ -937,10 +941,10 @@ functor ElabTopdec
 					   else find (ts,t::acc)
 		   val (t0, T') = find(T, []) 
 		   val arity = TyName.arity t0
-		   val T0' = List.dropAll (fn t => List.exists (fn t' => TyName.eq(t,t')) T') T0
+		   val T0' = List.dropAll (fn t => List.exists (fn t' => TyName.eq(t,t')) T') T0  
 		 in 
 		   if List.forAll (fn t => TyName.arity t = arity) T' then
-		     let val phi = Realisation.from_T_and_theta (TyName.Set.fromList T', TypeFcn.from_TyName t0)
+		     let val phi = Realisation.from_T_and_tyname (TyName.Set.fromList T', t0)
 		     in (T0', Realisation.on_Env phi E,
 			 OG.SHARING_TYPEspec (okConv i, out_spec, out_longtycon_withinfo_s), ids)
 		     end

@@ -9,7 +9,6 @@ signature REGION_STAT_ENV =
   sig
     type cone
     type regionStatEnv 
-    type top_regionStatEnv
     type con                            (* Unqualified value constructors. *)
     type excon				(* Unqualified exception constructors.*)
     type TyName
@@ -24,7 +23,6 @@ signature REGION_STAT_ENV =
 
     val empty: regionStatEnv
     val initial: regionStatEnv
-    val topify : regionStatEnv -> top_regionStatEnv
 
     val declareTyName: (TyName * arity * regionStatEnv) -> regionStatEnv
     val declareCon: (con * TypeAndPlaceScheme * regionStatEnv) -> regionStatEnv
@@ -39,7 +37,6 @@ signature REGION_STAT_ENV =
                        * regionStatEnv) -> regionStatEnv
 
     val plus: regionStatEnv * regionStatEnv -> regionStatEnv
-    val plus': top_regionStatEnv * top_regionStatEnv -> top_regionStatEnv
       
     val lookupTyName : regionStatEnv -> TyName -> arity option
     val lookupCon : regionStatEnv -> con -> TypeAndPlaceScheme option
@@ -52,7 +49,6 @@ signature REGION_STAT_ENV =
                       * (il * (il * cone -> il * cone)) ref list ref option  (* il node at applied instances of the lvars *)
                       * (il -> unit)option  (* il transformer which can be used for pruning in later topdecs*)
                      ) option
-    val top_lookupLvar : top_regionStatEnv -> int -> TypeAndPlaceScheme option
 
     val FoldExcon: (((excon * (Type * place)) * 'a) -> 'a) -> 'a -> regionStatEnv -> 'a
     val FoldLvar : (((lvar * (bool * bool * TypeAndPlaceScheme
@@ -66,12 +62,12 @@ signature REGION_STAT_ENV =
                    (bool*bool*TypeAndPlaceScheme*place*(il * (il * cone -> il * cone))ref list ref option * (il->unit)option)) 
         	-> regionStatEnv -> regionStatEnv
 
-    val restrict : top_regionStatEnv * {lvars:lvar list, 
-					tynames:TyName list,
-					cons:con list,
-					excons:excon list} -> regionStatEnv
+    val restrict : regionStatEnv * {lvars:lvar list, 
+				    tynames:TyName list,
+				    cons:con list,
+				    excons:excon list} -> regionStatEnv
 
-    val enrich : top_regionStatEnv * top_regionStatEnv -> bool
+    val enrich : regionStatEnv * regionStatEnv -> bool
     val places_effectvarsRSE : regionStatEnv -> place list * effectvar list
 
 
@@ -79,5 +75,4 @@ signature REGION_STAT_ENV =
 
     type StringTree
     val layout: regionStatEnv -> StringTree
-    val layout_top : top_regionStatEnv -> StringTree
   end;

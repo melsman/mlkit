@@ -80,7 +80,6 @@ functor CompileDec(structure Con: CON
                   ): COMPILE_DEC =
   struct
 
-    structure ListSort = Edlib.ListSort
     structure ListPair = Edlib.ListPair
 
     open LambdaExp

@@ -1902,15 +1902,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     datatype realisation = 
         Not_Id of TypeFcn' TyName.Map.map
       | Realisation_Id
-      | Efficient of (TyName * TypeFcn') IntFinMap.map (* For efficient realisation of
-							* functor bodies; the TyName is
-							* necessary to implement operations
-							* like dom, etc. Efficient realisations
-							* are not allowed to exist across
-							* matching of names, because mathing changes
-							* the tyname keys, which are used as
-							* the domain in efficient realisations. 
-							* ME 1998-11-02 *)
 
     structure Realisation = struct
       (*correct_levels_Type: correct levels of non-tyvar nodes in
@@ -1918,7 +1909,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       fun dom Realisation_Id = TyName.Set.empty
 	| dom (Not_Id m) = TyName.Set.fromList(TyName.Map.dom m)
-	| dom (Efficient m) = TyName.Set.fromList(map #1 (IntFinMap.range m))
 
       fun correct_levels_Type ty = 
 	    let val ty = findType ty 
@@ -1955,9 +1945,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       fun singleton (t,theta) = Not_Id (TyName.Map.singleton(t,EXPANDED theta))
 
-      fun from_T_and_theta (T, theta) =
+      fun from_T_and_tyname (T, t0) =
 	if TyName.Set.isEmpty T then Realisation_Id
-	else Not_Id(TyName.Set.fold (fn t => fn acc => TyName.Map.add(t,EXPANDED theta,acc)) TyName.Map.empty T)
+	else Not_Id(TyName.Set.fold (fn t => fn acc => TyName.Map.add(t,TYNAME t0,acc)) TyName.Map.empty T)
 
       fun renaming' (T: TyName.Set.Set) : TyName.Set.Set * realisation =
 	if TyName.Set.isEmpty T then (TyName.Set.empty, Id)
@@ -1981,7 +1971,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	in if TyName.Map.isEmpty m' then Realisation_Id
 	   else Not_Id m'
 	end
-	| restrict _ _ = die "Realisation.restrict: not implemented for efficient realisations"
 
       fun restrict_from T Realisation_Id = Realisation_Id
 	| restrict_from T (Not_Id m) =
@@ -1991,7 +1980,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	in if TyName.Map.isEmpty m' then Realisation_Id
 	   else Not_Id m'
 	end
-	| restrict_from _ _ = die "Realisation.restrict_from: not implemented for efficient realisations"
 
       local exception Inverse
       in fun inverse Realisation_Id = SOME Realisation_Id
@@ -2003,20 +1991,13 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 					       else TyName.Map.add(t', TYNAME t, acc)
 					      | EXPANDED theta' => raise Inverse) TyName.Map.empty m))
 	       handle Inverse => NONE)
-	   | inverse _ = die "Realisation.inverse: not implemented for efficient realisations"
       end
-
-      fun keyOfTyName tn = Name.key(TyName.name tn)
 
       fun on_TyName Realisation_Id t : TypeFcn = TypeFcn.from_TyName t
 	| on_TyName (Not_Id m) t = (case TyName.Map.lookup m t
 				      of SOME(TYNAME t) => TypeFcn.from_TyName t
 				       | SOME(EXPANDED theta) => theta
 				       | NONE => TypeFcn.from_TyName t)
-	| on_TyName (Efficient m) t : TypeFcn = (case IntFinMap.lookup m (keyOfTyName t)
-						   of SOME(_,TYNAME t) => TypeFcn.from_TyName t
-						    | SOME(_,EXPANDED theta) => theta
-						    | NONE => TypeFcn.from_TyName t)
 
       fun on_TyName_set (rea : realisation) (T : TyName.Set.Set) =
 	    if is_Id rea then T else
@@ -2029,9 +2010,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	| on_TyName' (Not_Id m) t = (case TyName.Map.lookup m t
 				       of SOME theta => theta
 					| NONE => TYNAME t)
-	| on_TyName' (Efficient m) t = (case IntFinMap.lookup m (keyOfTyName t)
-					  of SOME (_,theta) => theta
-					   | NONE => TYNAME t)
  
       fun on_Type Realisation_Id ty = ty
 	| on_Type phi ty = 
@@ -2100,33 +2078,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	| on_Realisation phi (Not_Id m) =
 	Not_Id(TyName.Map.Fold (fn ((t,theta), acc) =>
 				TyName.Map.add(t,on_TypeFcn' phi theta,acc)) TyName.Map.empty m)
-	| on_Realisation phi (Efficient m) =
-	Efficient(IntFinMap.Fold (fn ((d,(t,theta)), acc) =>
-				  IntFinMap.add(d,(t,on_TypeFcn' phi theta),acc)) IntFinMap.empty m)
 
-      fun mk_efficient_map m = 
-	TyName.Map.Fold (fn((t,theta),acc) => IntFinMap.add(keyOfTyName t, (t,theta), acc)) IntFinMap.empty m
-
-      fun mk_Efficient Realisation_Id = Realisation_Id
-	| mk_Efficient (Not_Id m) = Efficient(mk_efficient_map m)
-	| mk_Efficient _ = die "Realisation.mk_efficient: realisation is already efficient"
-
-      fun mk_ordinary_map m = IntFinMap.fold(fn((t,theta),acc) => TyName.Map.add(t,theta,acc)) TyName.Map.empty m
-
-      fun mk_ordinary (Efficient m) = Not_Id(mk_ordinary_map m)
-	| mk_ordinary phi = phi
-
-      fun (Realisation_Id : realisation) oo (phi : realisation) : realisation = mk_ordinary phi
-	| phi oo Realisation_Id = mk_ordinary phi
+      fun (Realisation_Id : realisation) oo (phi : realisation) : realisation = phi
+	| phi oo Realisation_Id = phi
 	| (phi1 as Not_Id m1) oo phi2 = (case on_Realisation phi1 phi2
 					     of Realisation_Id => phi1
-					      | Not_Id m2 => Not_Id(TyName.Map.plus(m1, m2))
-					      | Efficient m2 => Not_Id(TyName.Map.plus(m1, mk_ordinary_map m2)))
-	| (phi1 as Efficient m1) oo phi2 = (case on_Realisation phi1 phi2
-					     of Realisation_Id => mk_ordinary phi1
-					      | Not_Id m2 => Not_Id(TyName.Map.plus(mk_ordinary_map m1, m2))
-					      | Efficient m2 => Not_Id(mk_ordinary_map(IntFinMap.plus(m1,m2))))
-
+					      | Not_Id m2 => Not_Id(TyName.Map.plus(m1, m2)))
 
       fun enrich (rea0, (rea,T)) =
 	TyName.Set.fold (fn t => fn acc => acc andalso 
@@ -2144,19 +2101,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      | convert (TYNAME t) = TypeFcn.from_TyName t
 	in TyName.Map.Fold(fn ((t, theta),_) => TypeFcn.match(convert theta,on_TyName rea0 t)) () m
 	end
-	| match _ = die "Realisation.match: not supported for efficient realisations"
 
       fun layout_TypeFcn' (TYNAME t) = TyName.layout t
 	| layout_TypeFcn' (EXPANDED theta) = TypeFcn.layout theta
       fun layout Realisation_Id = PP.LEAF "Id"
 	| layout (Not_Id m) = TyName.Map.layoutMap {start="{",eq=" -> ", finish="}",sep=", "}
 	TyName.layout layout_TypeFcn' m
-	| layout (Efficient m) =
-	let fun mk_normal m = IntFinMap.fold(fn ((t,theta), acc) => TyName.Map.add(t,theta,acc)) TyName.Map.empty m
-	in layout (Not_Id (mk_normal m))
-	end
-      fun is_Efficient (Efficient _) = true
-	| is_Efficient _ = false
 
     end (*Realisation*)
 

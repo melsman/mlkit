@@ -26,11 +26,10 @@ functor SpreadDatatype(
     sharing type E'.TyName = TyName.TyName
   structure RSE: REGION_STAT_ENV
     sharing type RSE.TypeAndPlaceScheme = R.sigma
-    sharing type RSE.place = R.effect = Effect.effect = R.place
+    sharing type RSE.place = R.effect = Effect.effect
     sharing type RSE.Type = R.Type
-(*    sharing type RSE.place = R.place *)
     sharing type RSE.runType = Effect.runType = R.runType
-    sharing type RSE.con = E.con = Con.con 
+    sharing type RSE.con = Con.con 
     sharing type RSE.excon = E.excon 
   sharing type TyName.TyName = E.TyName = E'.TyName = 
            RSE.TyName = R.tyname

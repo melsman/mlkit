@@ -72,18 +72,20 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                ) : ELABDEC =
   struct
 
-    structure List = Edlib.List
-
     structure ListHacks =
       struct
+
+	fun member x [] = false
+	  | member x (y::ys) = x=y orelse member x ys
+
 	fun union(set1, set2) =
-	  set1 @ List.all (fn x => not(List.member x set1)) set2
+	  set1 @ List.filter (fn x => not(member x set1)) set2
 
 	fun intersect(set1, set2) =
-	  List.all (fn x => List.member x set1) set2
+	  List.filter (fn x => member x set1) set2
 
 	fun minus(set1, set2) =
-	  List.all (fn x => not(List.member x set2)) set1
+	  List.filter (fn x => not(member x set2)) set1
 
 	fun eqSet(set1, set2) =
 	  case (minus(set1, set2), minus(set2, set1))
@@ -201,15 +203,23 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 	          if equal (x, y) then 1 + NoOfOccurences x ys
 		  else NoOfOccurences x ys
 	  in
-	    List.all (fn e => (NoOfOccurences e ls) > 1) ls
+	    List.filter (fn e => (NoOfOccurences e ls) > 1) ls
 	  end
     fun isEmptyTyVarList x = case x of nil => true | _ => false
     fun memberTyVarList x xs = List.exists (fn y => TyVar.eq (x,y)) xs
 
+    local
+      fun count _ [] _ = NONE
+	| count p (x::xs) n = if p x then SOME n
+			      else count p xs (n + 1)
+    in
+      fun index p l = count p l 0
+    end
+
     fun where' list elem =
-          (case List.index (Edlib.General.curry (op =) elem) list of
-	     Edlib.General.OK n => n
-	   | Edlib.General.Fail _ => impossible "where'")
+      case index (fn a => a=elem) list 
+	of SOME n => n
+	 | NONE => impossible "where'"
 
     (* Hooks needed by the compiler:
 
@@ -226,7 +236,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 	      val cons = C.lookup_fellow_constructors C longid
 	    in
 	      ElabInfo.plus_TypeInfo ElabInfo
-	        (CON_INFO {numCons=List.size cons,
+	        (CON_INFO {numCons=length cons,
 			   index=where' cons con,instances=instances,
 			   tyvars=[],Type=tau,longid=longid})
 	    end
@@ -359,9 +369,9 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 			     it is because there was a type error, and simply refrain
 			     from annotating LAB_INFO:*)
 			    NONE =>
-			      ((case List.first (fn (lab', tau) => lab = lab') lab_tau_s of
-				  (lab', tau) => addTypeInfo_LAB (i, 666, tau))
-				  handle List.First _ => i)
+			      (case List.find (fn (lab', tau) => lab = lab') lab_tau_s 
+				 of SOME (lab', tau) => addTypeInfo_LAB (i, 666, tau)
+				  | NONE => i)
 			  | SOME _ => i),
 	                 lab, pat, map_opt f patrow_opt)
           | f (OG.DOTDOTDOT i) = OG.DOTDOTDOT i
@@ -604,7 +614,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
 	            fun ~+ ((x,y),(v,w)) = (x+v,y+w))*)
 		   val out_i =
 		         addTypeInfo_VAR
-			   ((case List.all TyVar.is_overloaded (Type.tyvars instance) of
+			   ((case List.filter TyVar.is_overloaded (Type.tyvars instance) of
 			       [tyvar] => preOverloadingConv
 				            (i, OverloadingInfo.UNRESOLVED_IDENT tyvar)
 			     | _ => okConv i),
@@ -712,7 +722,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
               val (S1, tau, out_exp   ) = elab_exp(C, exp)
               val (S2, rho, out_exprow) = elab_exprow(S1 onC C,exprow)
             in
-              if (List.member lab (Type.RecType.sorted_labs rho)) then
+              if (ListHacks.member lab (Type.RecType.sorted_labs rho)) then
                 (S2, rho, 
                  OG.EXPROW(repeatedIdsError(i, [ErrorInfo.LAB_RID lab]),
                            lab, out_exp, SOME out_exprow))
@@ -1137,7 +1147,7 @@ old*)
             val intdom = EqSet.intersect (VE.dom VE) (VE.dom VE')
           in 
             if EqSet.isEmpty intdom then
-	      (case List.all IG.is_'true'_'nil'_etc
+	      (case List.filter IG.is_'true'_'nil'_etc
 		      (EqSet.list (VE.dom VE)) of
 		 [] =>
 		   (S3 oo S2 oo S1 oo S0, 
@@ -1309,10 +1319,10 @@ old*)
 
             fun TypeScheme_fresh () = TypeScheme.from_Type (Type.fresh_normal ())
 
-            fun setup id VE =
+            fun setup (id, VE) =
 	          VE.plus (VE, VE.singleton_var (id, TypeScheme_fresh ()))
 
-            val VE = List.foldL setup VE.empty domain_list
+            val VE = foldl setup VE.empty domain_list
                                 (* VE now maps each rec identifier to 'a. *)
 
                                 (* Proceed with type checking. The ErrorInfo
@@ -1362,7 +1372,7 @@ old*)
             val TyVars = map TyVar.from_ExplicitTyVar ExplicitTyVars
             val tyvarsRepeated = getRepeatedElements TyVar.eq  TyVars
             val tyvarsNotInTyVarList =
-              List.all (fn tv => not (List.member tv ExplicitTyVars)) 
+              List.filter (fn tv => not (ListHacks.member tv ExplicitTyVars)) 
 	      (IG.getExplicitTyVarsTy ty)
 
 	  in case elab_ty(C, ty)
@@ -1425,8 +1435,8 @@ old*)
             val TyVars = map TyVar.from_ExplicitTyVar ExplicitTyVars
             val tyvarsRepeated = getRepeatedElements TyVar.eq  TyVars
             val tyvarsNotInTyVarList =
-              List.all 
-                (fn tv => not (List.member tv ExplicitTyVars))
+              List.filter 
+                (fn tv => not (ListHacks.member tv ExplicitTyVars))
                 (IG.getExplicitTyVarsConbind conbind)
             val (typeFcn, _) = 
 	      case C.lookup_tycon C tycon of
@@ -1774,7 +1784,7 @@ old*)
                val intdom = EqSet.intersect (VE.dom VE) (VE.dom VE')
              in
                case (EqSet.isEmpty intdom, 
-                     List.member lab (Type.RecType.sorted_labs rho)) of
+                     ListHacks.member lab (Type.RecType.sorted_labs rho)) of
                  (true, false) =>
                    (S' oo S,
                     (VE.plus (VE, VE'), Type.RecType.add_field (lab, tau) rho
@@ -2022,7 +2032,7 @@ old*)
 		       let
 			 val (typeFcn, _) = TyStr.to_theta_and_VE tystr
 			 val expectedArity = TypeFcn.arity typeFcn
-			 val actualArity = List.size tau_list
+			 val actualArity = length tau_list
 			 val _ = debug_pr_msg "elab_ty(CONty)"
 		       in
 			 if expectedArity = actualArity then
@@ -2066,7 +2076,7 @@ old*)
 	of ((SOME tau, out_ty), (SOME rho', out_tyrow_opt)) => 
 	  let
 	    val (rho, i') = 
-	      if (List.member lab (Type.RecType.sorted_labs rho')) then
+	      if (ListHacks.member lab (Type.RecType.sorted_labs rho')) then
 		(rho', repeatedIdsError(i, [ErrorInfo.LAB_RID lab]))
 	      else (Type.RecType.add_field (lab,tau) rho', okConv i)
 	  in (SOME rho, OG.TYROW(i', lab, out_ty, out_tyrow_opt))
@@ -2107,10 +2117,10 @@ let
 	 (Type.Word8,  OverloadingInfo.RESOLVED_WORD8),
 	 (Type.Word,   OverloadingInfo.RESOLVED_WORD)]
 	
-  (*tau_to_overloadinginfo raises List.First _*)
   fun tau_to_overloadinginfo tau  =
-        #2 (List.first (fn (tau', oi) => Type.eq (tau, tau'))
-	      tau_to_overloadinginfo_alist)
+    case List.find (fn (tau', oi) => Type.eq (tau, tau')) tau_to_overloadinginfo_alist
+      of SOME res => SOME(#2 res)
+       | NONE => NONE
 
   fun resolve_tau (default_type, default : OverloadingInfo.OverloadingInfo) tau 
     : OverloadingInfo.OverloadingInfo =
@@ -2121,18 +2131,19 @@ let
 	     pr("res:  S on tv yields type: ", Type.layout tau'))
 	  else ();
 	  (case Type.to_TyVar tau' of
-	     NONE => (tau_to_overloadinginfo tau'
-		      handle List.First _ => default)
+	     NONE => (case tau_to_overloadinginfo tau'
+			of SOME res => res
+			 | NONE => default) 
 		 (*TODO 25/06/1997 10:11. tho.
-		  can raise List.First _ occur?  I'd rather do an impossible
-		  here:  If tau' is not a tyvar, it must be one of int, real,
-		  string, char, & word; everything else would be a type
-		  error.  Well, perhaps it can occur then, namely when there
-		  is a type error (they do occur), and since type errors
-		  should not make the compiler crash, it is probably best to
-		  not do an impossible.  The only thing to do is then to
-		  return `default', as unresolved overloading should not
-		  result in an error message.*)
+		  I'd rather do an impossible here: If tau' is not a
+		  tyvar, it must be one of int, real, string, char, &
+		  word; everything else would be a type error.  Well,
+		  perhaps it can occur then, namely when there is a
+		  type error (they do occur), and since type errors
+		  should not make the compiler crash, it is probably
+		  best to not do an impossible.  The only thing to do
+		  is then to return `default', as unresolved
+		  overloading should not result in an error message. *)
 	   | SOME tv' =>
 	       if Type.eq (tau', tau)
 	       then (*tau' is a tyvar, so the overloading is as yet
@@ -2383,8 +2394,8 @@ let
                    let val i0 = ElabInfo.from_ParseInfo(ElabInfo.to_ParseInfo i)
                        fun wild ty = ATPATpat(i0, WILDCARDatpat(ElabInfo.plus_TypeInfo i0 (TypeInfo.VAR_PAT_INFO{tyvars=[], Type= ty})))
                        val labs_and_types = Type.RecType.to_list rho
-                       fun f (lab,ty) acc = SOME(PATROW(ElabInfo.plus_TypeInfo i0 (TypeInfo.LAB_INFO{index=0, tyvars = [], Type = ty}),lab, wild ty, acc))
-                   in case List.foldR f NONE labs_and_types of
+                       fun f ((lab,ty), acc) = SOME(PATROW(ElabInfo.plus_TypeInfo i0 (TypeInfo.LAB_INFO{index=0, tyvars = [], Type = ty}),lab, wild ty, acc))
+                   in case foldr f NONE labs_and_types of
                         SOME patrow' => patrow'
                       | NONE => raise DDD_IS_EMPTY (* caller of resolve_patrow should replace SOME(...) by NONE *)
                    end

@@ -1,8 +1,11 @@
 (* Constructors for the lambda language *)
 
-(*$Con: NAME CON *)
-
-functor Con(structure Name : NAME) : CON =
+functor Con(structure Name : NAME
+	    structure Report : REPORT
+	    structure Crash : CRASH
+	    structure PP : PRETTYPRINT
+	    structure IntFinMap : MONO_FINMAP where type dom = int
+	      ) : CON =
   struct
 
     (* Constructors are based on names which may be `matched'. In
@@ -35,5 +38,25 @@ functor Con(structure Name : NAME) : CON =
     val con_FALSE : con  = mk_con "false"
     val con_NIL   : con  = mk_con "nil"
     val con_CONS  : con  = mk_con "::"
+
+    structure QD : QUASI_DOM =
+      struct
+	type dom = con
+	type name = Name.name
+	val name = name
+	val pp = pr_con
+      end
+(*
+    structure Map = EqFinMap(structure Report = Report
+			     structure PP = PP
+			     type dom = con
+			     val eq = eq)
+*)
+    structure Map = QuasiMap(structure IntFinMap = IntFinMap
+			     structure Name = Name
+			     structure Crash = Crash
+			     structure PP = PP
+			     structure Report = Report
+			     structure QD = QD)
 
   end

@@ -1,6 +1,5 @@
 (* Finite maps *)
 
-(*$FINMAPEQ*)
 signature FINMAPEQ =
   sig
     type ('a, 'b) map
@@ -14,9 +13,8 @@ signature FINMAPEQ =
 
     val add        : ('a * 'a -> bool) -> ('a * 'b * ('a, 'b) map) -> ('a, 'b) map
     val plus       : ('a * 'a -> bool) -> ('a, 'b) map * ('a, 'b) map -> ('a, 'b) map
-    val remove     : ('a * 'a -> bool) -> 'a * ('a, 'b) map -> 
-		      ((('a,'b) map,string) Edlib.General.Result)
-    val dom        : ('a * 'a -> bool) -> ('a, 'b) map -> 'a Edlib.Set.Set
+    val remove     : ('a * 'a -> bool) -> 'a * ('a, 'b) map -> ('a, 'b) map option
+    val dom        : ('a * 'a -> bool) -> ('a, 'b) map -> 'a Set.Set
     val range      : ('a, 'b) map -> 'b list
     val list       : ('a, 'b) map -> ('a * 'b) list
     val composemap : ('b -> 'c) -> ('a, 'b) map -> ('a, 'c) map

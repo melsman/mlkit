@@ -7,7 +7,6 @@ functor PrettyPrint(structure Report: REPORT
   struct
 
     structure List = Edlib.List
-    fun explode' s = OldString.explode s
 
     val WIDTH = 75
     val DEBUG = false
@@ -168,16 +167,13 @@ functor PrettyPrint(structure Report: REPORT
 
     fun smash(prefix, line: string, rest:minipage): minipage =
       let
-        val prefix' = explode' prefix
-        val line' = explode' line
-
         exception No
-        fun try(p :: pRest, " " :: lRest) = p :: try(pRest, lRest)
+        fun try(p :: pRest, #" " :: lRest) = p :: try(pRest, lRest)
           | try(nil, lRest) = lRest
           | try(pRest, nil) = pRest
           | try(_, _) = raise No
       in
-        PILE(LINES[concat(try(explode' prefix, explode' line))], rest)
+        PILE(LINES[implode(try(explode prefix, explode line))], rest)
         handle No => PILE(LINES[prefix, line], rest)
       end
 
@@ -202,10 +198,10 @@ functor PrettyPrint(structure Report: REPORT
 
     fun strip s =
       let
-        fun strip'(" " :: rest) = strip' rest
+        fun strip'(#" " :: rest) = strip' rest
           | strip' s = s
       in
-        (concat o strip' o explode') s
+        (implode o strip' o explode) s
       end;
 
     fun print (width: int) (LEAF s): minipage = (* width >= 3 *)
@@ -346,7 +342,7 @@ functor PrettyPrint(structure Report: REPORT
     case m of
       INDENT(n,m') => interpret(indent+n, m',acc)
     | LINES( lines ) =>
-        List.foldR (fn (text) => fn acc => (indent_line indent text) :: acc) acc lines
+        foldr (fn (text, acc) => (indent_line indent text) :: acc) acc lines
     | PILE(m1,m2) =>
         interpret(indent,m1,interpret(indent,m2,acc))
 

@@ -8,12 +8,6 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 		): LEX_UTILS =
   struct
     
-    fun explode' a = OldString.explode a
-    fun ord' a = OldString.ord a
-
-    structure List = Edlib.List
-    structure StringType = Edlib.StringType
-
     open LexBasics Token
     fun impossible s = Crash.impossible ("LexUtils." ^ s)
     fun noSome NONE s = impossible s
@@ -30,27 +24,14 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 
     fun asQualId text =
       let
-	fun glue(".", y :: ys) = (* "." :: *) glue(y, ys)
-	  | glue(x, "." :: ys) = x :: glue(".", ys)
-	  | glue(x, y :: ys) = glue(x ^ y, ys)
+	fun glue(".", y :: ys) = (* "." :: *) glue(str y, ys)
+	  | glue(x, #"." :: ys) = x :: glue(".", ys)
+	  | glue(x, y :: ys) = glue(x ^ str y, ys)
 	  | glue(".", nil) = impossible "asQualId.glue"
 	  | glue(x, nil) = [x]
       in
-	glue("", explode' text)
+	glue("", explode text)
       end
-
-    val asQualId =
-      if !Flags.DEBUG_LEXING then
-	fn text =>
-	  let
-	    val result = asQualId text
-	  in
-	    BasicIO.println("asQualId(" ^ text ^ ") = "
-			    ^ List.stringSep "[" "]" ", " (fn x => x) result
-			   );
-	    result
-	  end
-      else asQualId
 
     fun isQualStar id =
       case List.rev(asQualId id)
@@ -58,63 +39,45 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 	 | _ => false			(* We can't get nil (or [_]). *)
 
     local
-      fun chars_to_int ("~" :: chars) = ~1 * chars_to_posint chars
+      fun chars_to_int (#"~" :: chars) = ~1 * chars_to_posint chars
 	| chars_to_int chars = chars_to_posint chars
-      and chars_to_posint ("0" :: "x" :: chars) =
+      and chars_to_posint (#"0" :: #"x" :: chars) =
 	    chars_to_posint_in_base 16 chars
 	| chars_to_posint chars = chars_to_posint_in_base 10 chars
-      and chars_to_posint_in_base base chars =
-	    chars_to_posint_in_base0 base 0 chars
+      and chars_to_posint_in_base base chars = chars_to_posint_in_base0 base 0 chars
       and chars_to_posint_in_base0 base n [] = n
 	| chars_to_posint_in_base0 base n (char :: chars) =
 	    (case char_to_int_opt base char of
 	       SOME i => chars_to_posint_in_base0 base (n * base + i) chars
 	     | NONE => n)
       and char_to_int_opt base char =
-	    let val i = if StringType.isUpper char then ord' char - ord #"A" + 10
-			else if StringType.isLower char then ord' char - ord #"a" + 10
-			     else if StringType.isDigit char then ord' char - ord #"0"
-				  else ~1 (*hack*)
-	    in 
-	      if i>=0 andalso i<base then SOME i else NONE
-	    end handle _ => NONE
-      fun char_to_int base char =
-	    noSome (char_to_int_opt base char) "char_to_int"
+            let val i = if Char.isUpper char then ord char - ord #"A" + 10
+                        else if Char.isLower char then ord char - ord #"a" + 10
+                             else if Char.isDigit char then ord char - ord #"0"
+                                  else ~1 (*hack*)
+            in 
+              if i>=0 andalso i<base then SOME i else NONE
+            end handle _ => NONE
 
-      fun accumDec (mul, n, xs) =
-	    (case xs of
-	       "E" :: _ => (n, xs)
-	     | x :: xs' => accumDec (mul/10.0, n + mul * real (char_to_int 10 x), xs')
-	     | nil => (n, nil))
-
-      (*accumReal looks very much like accumInt (now chars_to_int) looked,
-       but you must use accumReal, as int's haven't got the sufficient
-       precision to convert the int part of a real.*)
-
-      fun accumReal (sign, r, xs) =
-	    (case xs of
-	       "~" :: xs' => accumReal(~1, r, xs')
-	     | "." :: _ => (sign , r, xs)
-	     | "E" :: _ => (sign , r, xs)
-	     | x :: xs' => accumReal (sign, r * 10.0 + real (char_to_int 10 x), xs')
-	     | nil => (sign, r, nil))
-
-      fun asWord0 ("0" :: "w" :: "x" :: chars) =
+      fun asWord0 (#"0" :: #"w" :: #"x" :: chars) =
 	    chars_to_posint_in_base 16 chars 
-	| asWord0 ("0" :: "w" :: chars) = chars_to_posint_in_base 10 chars
+	| asWord0 (#"0" :: #"w" :: chars) = chars_to_posint_in_base 10 chars
 	| asWord0 _ = impossible "asWord0"
 
       fun exception_to_opt p x = SOME (p x) handle Overflow => NONE
     in
-      val asInteger = exception_to_opt (chars_to_int o explode')
-      val asWord = exception_to_opt (asWord0 o explode')
+      val asInteger = exception_to_opt (chars_to_int o explode)
+      val asWord = exception_to_opt (asWord0 o explode)
       val chars_to_posint_in_base = fn base => fn chars =>
 	    chars_to_posint_in_base base chars
 	    handle Overflow => impossible "chars_to_posint_in_base"
-      (*31/10/1995-Martin: new; the old couldn't handle 2147483647.0:
-       (because it used accumInt instead of accumReal)*)
-      fun asReal text = SOME text (* we should test here if the text represents
+
+      fun asReal text =  (* the old code dealt incorrectly with 2147483647.0 *)
+	case Real.fromString text
+	  of SOME _ => SOME text  (* we test here if the text represents
 				   * a real that is out of range. *)
+	   | NONE => NONE
+
     end (*local*)
 
     fun initArg sourceReader = LEX_ARGUMENT{sourceReader=sourceReader,
@@ -135,7 +98,8 @@ functor LexUtils(structure LexBasics: LEX_BASICS
     fun addControlChar text arg =
       addChars (str(chr(ord(String.sub(text,2)) - ord #"@"))) arg
 
-    fun asDigit text = ord' text - ord #"0"
+    fun asDigit text = (ord(String.sub(text,0)) - ord #"0")
+      handle _ => impossible "asDigit"
 
     local
       fun add_numbered_char (pos, text) arg limit n =
@@ -147,8 +111,8 @@ functor LexUtils(structure LexBasics: LEX_BASICS
     in
       fun addAsciiChar (pos, text) arg =
 	    add_numbered_char (pos, text) arg 255
-	      (case explode' text of
-		 ["\\", c1, c2, c3] => chars_to_posint_in_base 10 [c1, c2, c3]
+	      (case explode text of
+		 [#"\\", c1, c2, c3] => chars_to_posint_in_base 10 [c1, c2, c3]
 	       | _ => impossible "addAsciiChar")
 
 
@@ -158,8 +122,8 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 
       fun addUnicodeChar (pos, text) arg =
 	    add_numbered_char (pos, text) arg 255
-	      (case explode' text of
-		 ["\\", "u", c1, c2, c3, c4] =>
+	      (case explode text of
+		 [#"\\", #"u", c1, c2, c3, c4] =>
 		   chars_to_posint_in_base 16 [c1, c2, c3, c4]
 	       | _ => impossible "addUnicodeChar")
     end (*local*)

@@ -272,8 +272,8 @@ signature ENVIRONMENTS =
 	val oo                   : realisation * realisation -> realisation
 	val singleton            : TyName * TypeFcn -> realisation
 
-	(*from_T_and_theta (T, theta) = the realisation {t |-> theta | t in T}:*)
-	val from_T_and_theta     : TyName.Set.Set * TypeFcn -> realisation
+	(*from_T_and_tyname (T, t0) = the realisation {t |-> t0 | t in T} *)
+	val from_T_and_tyname    : TyName.Set.Set * TyName -> realisation
 
 	val restrict             : TyName.Set.Set -> realisation -> realisation
 	val restrict_from        : TyName.Set.Set -> realisation -> realisation
@@ -295,9 +295,6 @@ signature ENVIRONMENTS =
 	val renaming             : TyName.Set.Set -> realisation
 	val renaming'            : TyName.Set.Set -> TyName.Set.Set * realisation  
 	val layout : realisation -> StringTree
-
-	val mk_Efficient         : realisation -> realisation     (* see STATOBJECT *)
-	val is_Efficient         : realisation -> bool
 
       end (*Realisation*)
 
