@@ -54,7 +54,13 @@ kkb36c.sml              tx tc gc
 kitsimple.sml           tx tc gc
 fft.sml                 tx tc gc
 vliw.sml                tx tc gc
+lexgen.sml              tx tc gc
 mlyacc.pm               tx tc gc
+logic.pm                tx tc gc
+barnes-hut.pm           tx tc gc
+nucleic.pm              tx tc gc
+ray.pm                  tx tc gc
+ratio-regions.sml       tx tc gc
 msort.pm                tx tc gc
 tststrcmp.sml                 gc
 FuhMishra.pm            tx tc gc

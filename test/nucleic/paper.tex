@@ -1,0 +1,2092 @@
+\documentstyle[palatino]{./article}
+
+%UEA \documentstyle[11pt,twoside,implreport]{./article}
+%UEA \implreportno{13}
+%UEA \impltitle{Pseudoknot: a Float-Intensive Benchmark}
+
+\newlength{\zerowidth}
+\settowidth{\zerowidth}{0}
+\newcommand{\z}[0]{\hspace*{\zerowidth}}
+
+\newlength{\dotzerowidth}
+\settowidth{\dotzerowidth}{.0}
+\newcommand{\dz}[0]{\hspace*{\dotzerowidth}}
+
+\newlength{\dotzerozerowidth}
+\settowidth{\dotzerozerowidth}{.00}
+\newcommand{\dzz}[0]{\hspace*{\dotzerozerowidth}}
+
+\newcommand{\mm}[1]{\multicolumn{2}{c|}{#1}}
+\newcommand{\mmm}[1]{\multicolumn{3}{c|}{#1}}
+
+\newcommand{\sysbigloo}[0]{1}
+\newcommand{\syscaml}[0]{2}
+\newcommand{\syschalmers}[0]{3}
+\newcommand{\sysclean}[0]{4}
+\newcommand{\syscmucl}[0]{5}
+\newcommand{\syserlang}[0]{6}
+\newcommand{\sysfacile}[0]{20}
+\newcommand{\sysfast}[0]{7}
+\newcommand{\sysgambit}[0]{8}
+\newcommand{\sysglasgow}[0]{9}
+\newcommand{\sysid}[0]{10}
+\newcommand{\sysmlworks}[0]{11}
+\newcommand{\sysopal}[0]{12}
+\newcommand{\syspolyml}[0]{13}
+\newcommand{\syssisals}[0]{14}
+\newcommand{\syssisalc}[0]{15}
+\newcommand{\syssml}[0]{16}
+\newcommand{\sysstoffel}[0]{17}
+\newcommand{\systrafola}[0]{18}
+\newcommand{\sysfloat}[0]{19}
+
+\textheight 240mm
+\addtolength{\topmargin}{-25mm}
+\addtolength{\oddsidemargin}{-18mm}
+\addtolength{\evensidemargin}{-18mm}
+\addtolength{\footheight}{10mm}
+\textwidth 160mm
+
+\begin{document}
+
+\thispagestyle{empty}
+
+\title{Pseudoknot: a Float-Intensive Benchmark \\ for Functional Compilers (DRAFT)}
+
+\author{
+Pieter H. Hartel \thanks{Dept.\ of Computer Systems, Univ.\ of
+Amsterdam, Kruislaan 403, 1098 SJ Amsterdam, The Netherlands, e-mail:
+pieter@fwi.uva.nl} \and
+Marc Feeley \thanks{D\'epart.\ d'informatique et r.o., univ.\ de
+Montr\'eal, succursale centre-ville, Montr\'eal H3C 3J7, Canada,
+e-mail: feeley@iro.umontreal.ca} \and
+Martin Alt \thanks{Informatik, Universit\"at des Saarlandes,
+66041 Saarbr\"cken 11, Germany, e-mail: alt@cs.uni-sb.de} \and
+Lennart Augustsson \thanks{Dept.\ of Computer Systems, Chalmers Univ.\ of
+Technology, 412 96 G\"oteborg, Sweden, e-mail: augustss@cs.chalmers.se} \and
+Peter Baumann \thanks{Dept.\ of Computer Science, Univ.\ of Zurich,
+Winterthurerstr.\ 190, 8057 Zurich, Switzerland, e-mail:
+baumann@ifi.unizh.ch} \and
+Marcel Beemster \thanks{Dept.\ of Computer Systems, Univ.\ of
+Amsterdam, Kruislaan 403, 1098 SJ Amsterdam, The Netherlands, e-mail:
+beemster@fwi.uva.nl} \and
+Emmanuel Chailloux \thanks{LIENS, URA 1327 du CNRS, \'Ecole Normale
+Sup\'erieure, 45 rue d'Ulm, 75230 PARIS C\'edex 05, France, e-mail:
+Emmanuel.Chailloux@ens.fr} \and
+Christine H. Flood \thanks{Laboratory for Computer Science, MIT, 545
+Technology Square, Cambridge Massachusetts 02139, USA, e-mail:
+chf@lcs.mit.edu} \and
+Wolfgang Grieskamp \thanks{Berlin University of Technology,
+Franklinstr. 28-29, 10587 Berlin, Germany, e-mail: wg@cs.tu-berlin.de} \and
+John H. G.\ van Groningen \thanks{Faculty of Mathematics and Computer
+Science, Univ.\ of Nijmegen, Toernooiveld 1, 6525 ED Nijmegen, The
+Netherlands, e-mail: johnvg@cs.kun.nl} \and
+Kevin Hammond \thanks{Dept.\ of Computing Science, Glasgow University,
+17 Lilybank Gardens, Glasgow, G12 8QQ, UK, e-mail: kh@dcs.glasgow.ac.uk} \and
+Bogumi\l~Hausman \thanks{Computer Science Lab, Ellemtel Telecom Systems
+Labs, Box 1505, S-125 25 \"Alvsj\"o, Sweden, e-mail:
+bogdan@erix.ericsson.se} \and
+Melody Y. Ivory \thanks{Computer Research Group, Institute for
+Scientific Computer Research, Lawrence Livermore National Laboratory,
+P. O. Box 808 L-419, Livermore, CA 94550, e-mail: ivory1@llnl.gov} \and
+Peter Lee\thanks{Dept.\ of Computer Science, Carnegie Mellon University,
+5000 Forbes Avenue Pittsburgh, Pennsylvania 15213, USA, e-mail:
+petel@cs.cmu.edu} \and
+Xavier Leroy \thanks{INRIA Rocquencourt, projet Cristal,
+B.P. 105, 78153 Le Chesnay, France. e-mail: Xavier.Leroy@inria.fr} \and
+Sandra Loosemore \thanks{Dept.\ of Computer Science, Yale Univ., New haven,
+Connecticut, e-mail: loosemore-sandra@cs.yale.edu} \and
+Niklas R\"ojemo \thanks{Dept.\ of Computer Systems, Chalmers Univ.\ of
+Technology, 412 96 G\"oteborg, Sweden, e-mail: rojemo@cs.chalmers.se} \and
+Manuel Serrano \thanks{INRIA Rocquencourt, projet Icsla,
+B.P. 105, 78153 Le Chesnay, France. e-mail: Manuel.Serrano@inria.fr} \and
+Jean-Pierre Talpin \thanks{European Computer-Industry Research Centre, 
+Arabella Strasse 17, D-81925 Munich, Germany. e-mail: jp@ecrc.de} \and
+Jon Thackray \thanks{Harlequin Ltd, Barrington Hall, Barrington,
+Cambridge CB2 5RG, England, e-mail: jont@harlequin.co.uk} \and
+Pierre Weis \thanks{INRIA Rocquencourt, projet Cristal,
+B.P. 105, 78153 Le Chesnay, France. e-mail: Pierre.Weis@inria.fr} \and
+Peter Wentworth \thanks{Dept.\ of Computer Science, Rhodes Univ.,
+Grahamstown 6140, South Africa, e-mail: cspw@cs.ru.ac.za}
+}
+
+\maketitle
+\sloppy
+
+\begin{abstract}
+Over 20 implementations of different functional languages are
+benchmarked using the same program, a floating-point intensive
+application taken from molecular biology.  The principal aspects
+studied are compile time and execution time for the varying
+implementations.  An important consideration is how the program can be
+modified and tuned to obtain maximal performance on each language
+implementation.
+
+With few exceptions, the compilers take a significant amount of time
+to compile this program, though almost all compilers were faster than
+the current GNU C compiler.  Compilers that generate C or Lisp are
+often slower than those that generate native code directly; the cost
+of compiling the intermediate form is normally a large fraction of the
+total compilation time.
+
+There is no clear distinction between the runtime performance of eager
+and lazy implementations when appropriate annotations are used: lazy
+implementations have clearly come of age when it comes to implementing
+largely strict applications, such as the pseudoknot program. The speed
+of C can be approached by some implementations, and is even exceeded
+by Sisal on the Cray, but in order to achieve this performance,
+special measures such as strictness annotations are required by
+non-strict implementations.
+\end{abstract}
+
+
+\section{Introduction}
+At the Dagstuhl Workshop on Applications of Functional Programming in
+the Real World in May 1994~\cite{Gie94}, several interesting applications of
+functional languages were presented. One of these applications, the
+pseudoknot problem~\cite{Fee94} had been written in several languages,
+including C, Scheme~\cite{Ree91}, Multilisp~\cite{Hal85} and
+Miranda\footnote{Miranda is a trademark of Research Software Ltd.}~\cite{Tur85}.
+A number
+of workshop participants decided to test their compiler technology
+using this particular program. One point of comparison is the speed of
+compilation and the speed of the compiled program. Another important
+point is how the program can be modified and tuned to obtain maximal
+performance on each language implementation available. It is also
+interesting to compare the performance of typed and untyped languages.
+Finally, an interesting question is whether laziness is or is not
+beneficial for this application.
+
+The initial benchmarking efforts revealed important differences between
+the various compilers. The first impression was that compilation speed
+should generally be improved. After the workshop we have continued to
+work on improving both the compilation and execution speed of the
+pseudoknot program. Some researchers not present at Dagstuhl joined the
+team and we present the results as a record of a small scale, but
+exciting collaboration with contributions from many parts of the world.
+
+As is the case with any benchmarking work, our results should be taken
+with a grain of salt. We are using a realistic program that performs a
+useful computation, however it stresses particular language features
+that are probably not representative of the applications for which the
+language implementations were intended. Implementations invariably
+trade-off the performance of some programming feature for others in the
+quest for the right blend of usability, flexibility, and performance on
+``typical'' applications. It is clear that a single benchmark is not a
+good way to measure the overall quality of an implementation.
+Moreover, the performance of an implementation usually (but not always)
+improves with new releases as the implementors repair bugs, add new
+features, and modify the compiler. We feel that our choice of
+benchmark can be justified by the fact that it is a real world
+application, that it had already been translated into C and several
+functional languages, and that we wanted to compare a wide range of
+languages and implementations. The main results agree with those found
+in earlier studies~\cite{Can92,Har92b}.
+
+Section~\ref{sec:languages} briefly characterises the functional
+languages that have been used. The pseudoknot application is introduced
+in Section~\ref{sec:application}. The compilers and interpreters for
+the functional languages are presented in Section~\ref{sec:compilers}.
+Section~\ref{sec:translation} describes the translations of the program
+from one language into the other. The results and conclusions are given
+in the last two sections.
+
+\begin{table}
+\begin{minipage}{\hsize}
+\begin{center}
+\begin{tabular}{|l|l|l|l|l|l|l|}
+\hline
+language     & source    & ref.        &    typing     &evaluation & order&match \\
+\hline
+Caml         & INRIA     &\cite{Wei93} & strong, poly  &  eager    &higher&pattern \\
+Clean        & Nijmegen  &\cite{Pla94} & strong, poly  &   lazy    &higher&pattern \\
+Common Lisp  & Committee &\cite{Ste90} & dynamic       &  eager    &higher& access \\
+Erlang       & Ericsson  &\cite{Arm93} & dynamic       &  eager    & first&pattern \\
+Facile       & ECRC      &\cite{Tho93a}& strong, poly  &  eager    &higher&pattern \\
+Gofer        & Yale      &\cite{Jon94c}& strong, poly  &   lazy    &higher&pattern \\
+Haskell      & Committee &\cite{Hud92a}& strong, poly  &   lazy    &higher&pattern \\
+ID           & MIT       &\cite{Nik90a}& strong, poly  &   eager \footnote{eager, non-strict}
+                                                                   &higher&pattern \\
+Miranda      & Kent      &\cite{Tur85} & strong, poly  &   lazy    &higher&pattern \\
+Opal         & TU Berlin &\cite{Did94} & strong, param &  eager    &higher&pattern \\
+RUFL         & Rhodes    &\cite{Wen92} & strong, poly  &   lazy    &higher&pattern \\
+Scheme       & Committee &\cite{Ree91} & dynamic       &  eager    &higher& access \\
+Sisal        & LLNL      &\cite{McG85} & strong, mono  &  eager    &first &   none \\
+Standard ML  & Committee &\cite{Mil90} & strong, poly  &  eager    &higher&pattern \\
+Stoffel      & Amsterdam &\cite{Bee92a}& strong, poly  &   lazy    &higher&   case \\
+Trafola & Saarbr\"ucken  &\cite{Alt93} & strong, poly  &  eager    &higher&pattern \\
+\hline
+ANSI C       & Committee &\cite{Ker88} &   weak        &  eager    & first&   none \\
+\hline
+\end{tabular}
+\end{center}
+\end{minipage}
+\caption{Language characteristics. For each language its source is given, as
+well as a key reference to the language definition. The rest of the
+table presents important language characteristics.}
+\label{tbl:language}
+\end{table}
+
+
+\section{Languages}
+\label{sec:languages}
+Details of the languages which were benchmarked may be found in
+Table~\ref{tbl:language}. C has been used as a reference language in
+order to allow comparison with imperative languages.  The first column
+of the table gives the name of the language. The second column gives
+the source (i.e.\ a University or a Company) if a language has been
+developed in one particular place. Some languages were designed by a
+committee, which is also shown. The third column of the table gives a
+key reference to the language definition.
+
+The last four columns describe some important properties of the
+languages. The typing discipline may be {\it strong} (and static),
+{\it dynamic}, or {\it weak}; a strong typing discipline may be
+monomorphic ({\it mono}), polymorphic ({\it poly}), or parametrically
+polymorphic ({\it param}).  The evaluation strategy may be {\it
+eager}, {\it lazy} or {\it eager} with {\it non-strict}
+evaluation~\cite{Nik90a}. The language may be {\it first order} or
+{\it higher order}.  Accessing components of data structures may be
+supported by either pattern-matching on function arguments, local
+definitions and/or as part of case expressions ({\em pattern},
+{\em case}), by compiler generated access functions to destructure data
+({\em access}), or not at all ({\em none}). The reader should consult
+the references provided for further details of individual languages.
+
+
+\section{Application}
+\label{sec:application}
+The pseudoknot program is derived from a ``real-world'' molecular
+biology application that computes the three-dimensional structure of
+part of a nucleic acid molecule. The program exhaustively searches a
+discrete space of shapes and returns the set of shapes that respect
+some structural constraint.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|r|l|r|}
+\hline
+\multicolumn{2}{|c}{floating point operations} &
+\multicolumn{2}{|c|}{square root and trigonometric functions} \\
+\hline
+$\times$         & 3,567,672 &                &         \\
+$+$              & 2,798,571 & $\sqrt{\;\;}$  &  69,600 \\
+$>$, $\leq$, $<$ &   129,656 & $\arctan$      &  40,184 \\
+$-$              &   330,058 & $\cos$         &  40,184 \\
+$/$              &    40,184 & $\sin$         &  40,184 \\
+\hline
+total            & 6,866,141 & total          & 190,152 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Breakdown of the ``real'' work involved in the pseudoknot
+problem as counted by the FAST system. The floating point operations
+occurring in the trigonometric functions and the square root are {\em
+not} counted separately.}
+\label{tbl:float}
+\end{table}
+
+The program is heavily floating point oriented. For example the C
+version of the program spends 25\% of its time in the C library
+trigonometric and square root routines.
+
+Statistics from the lazy FAST~\cite{Har91} compiler show that with lazy
+evaluation the fastest version of the program does about 7~M floating
+point operations, which excludes those performed by the 190~K
+trigonometric and square root functions. A detailed breakdown of these
+statistics is shown in Table~\ref{tbl:float}. The program makes about
+1.5~M function calls and claims about 15~Mbytes of space (The maximum
+heap size required is about 30~Kbytes).
+Statistics from the eager MLWorks system show that with eager
+evaluation the program spends about 50\% of its time performing
+floating point operations.
+All this suggests that the application can be characterised as
+somewhere in between ``numeric'' and ``symbolic''.
+
+The pseudoknot program does not explicitly depend on laziness for its
+correct behaviour. The program is thus ideal for comparing lazy and
+non-lazy implementations of functional languages. It is relatively easy
+to translate the program from a lazy to a strict functional
+language. Inserting strictness annotations in a lazy version of the
+program is also relatively easy.
+
+The program uses mostly algebraic data types as data structures. Some
+of these are rather large. Having to use pattern-matching style
+destructuring on data structures with as many components as 12 or even
+30 leads to distinctly unreadable code.
+
+With the obvious exception of the C version, all other versions of the
+program are purely functional.
+
+The original program is described in detail by Feeley, et.\ al~\cite{Fee94}. The
+program used in the present benchmarking effort differs in two ways
+from the original.
+
+Firstly, the original program only computed the number of solutions
+found during the search. However, it is the location of each atom in
+the solutions that are of interest to a biologist because these
+solutions typically need to be screened manually by visualizing them
+one after another. The program was thus modified to compute the
+location of each atom in the structures that are found. In order to
+minimize I/O overhead, a single value is printed: the distance from
+the origin to the farthest atom in any solution (this requires that the
+position of each atom be computed).
+
+Secondly, the original program did not attempt to exploit laziness in
+any way. However, there is an opportunity for laziness in the
+computation of the absolute position of atoms. To compute the absolute
+position of an atom, it is necessary to transform a 3D vector from one
+coordinate system to another by multiplying a 3D vector by a $3 \times
+4$ transformation matrix. The reason for this is that the position of
+an atom is expressed relatively to the nucleotide it is in. Thus the
+position of an atom is specified by two values: the 3D position of the
+atom in the nucleotide, and the absolute position and orientation of
+the nucleotide in space. However, the position of atoms in structures
+that are pruned by the search process are not needed (unless they are
+needed to test a constraint). There are thus two formulations of the
+pseudoknot program which differ in the way the position computation of
+atoms is expressed:
+\begin{description}
+\item[Late formulation]
+The absolute position of an atom is computed each time it is needed;
+either for testing a constraint or for computing the distance to
+origin if it is in a solution. This formulation may duplicate
+work. Because the placement of a nucleotide is shared by all the
+structures generated in the subtree that stems from that point in the
+search, there can be as many recomputations of a position as there are
+nodes in the search tree (which can number in the thousands to
+millions).
+\item[Early formulation]
+The absolute position of an atom is computed as soon as the nucleotide
+it is in is placed. If this computation is done lazily, this
+formulation avoids the duplication of work because the coordinate
+transformation for an atom is at most done once.
+\end{description}
+The original program used the late formulation. To explore the
+benefits of laziness, the program was modified so that it is easy to
+obtain the alternative early formulation (only a few lines need to be
+commented and uncommented to switch from one formulation to the
+other).
+
+The C, Scheme, and Miranda versions of the program support the early
+formulation. The Miranda version implicitly uses lazy evaluation. The
+Scheme version uses the explicitly lazy {\em delay} and {\em force}
+constructs.  The C version requires lazy computation to be explicitly
+programmed.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+language     &version&source                & ref.        & FTP / Email \\
+\hline
+Bigloo       & 1.7   &INRIA Rocquencourt    &\cite{Ser94a}& Ftp: {\small ftp.inria.fr:} \\
+             &       &                      &             & {\small /INRIA/Projects/icsla/Implementations/} \\
+Caml Light   & 0.61  &INRIA Rocquencourt    &\cite{Ler93} & Ftp: {\small ftp.inria.fr:} \\
+             &       &                      &             & {\small /lang/caml-light/} \\
+Caml Gallium &       &INRIA Rocquencourt    &\cite{Ler92} & Email: {\small Xavier.Leroy@inria.fr} \\
+Camloo       & 0.2   &INRIA Rocquencourt    &\cite{Ser94b}& Ftp: {\small ftp.inria.fr:} \\
+             &       &                      &             & {\small /lang/caml-light/} \\
+CeML         & 0.22  & LIENS                &\cite{Cha92a}& Email: {\small Emmanuel.Chailloux@ens.fr} \\
+Clean        & 1.0b  &Nijmegen              &\cite{Sme91} & Ftp: {\small ftp.cs.kun.nl:} \\
+             &       &                      &             & {\small /pub/Clean/} \\
+CMU CL       & 17e   &Carnegie Mellon       &\cite{Mac92} & Ftp: {\small lisp-sun1.slisp.cs.cmu.edu:} \\
+             &       &                      &             & {\small /pub/} \\
+Erlang       & 6.0.4 &Ellemtel AB           &\cite{Hau94} & commercial \\
+             &       &                      &             & Email: {\small erlang@erix.ericsson.se} \\
+Facile       & Antigua & ECRC               &\cite{Tho93a}& Email: {\small facile@ecrc.de} \\
+FAST         & 33    &Southampton/          &\cite{Har91} & Email: {\small pieter@fwi.uva.nl} \\
+             &       &Amsterdam             &             & \\
+Gofer        & 2.30a &Yale                  &\cite{Jon94c}& Ftp: {\small nebula.cs.yale.edu:} \\
+             &       &                      &             & {\small /pub/haskell/gofer/} \\
+Haskell      & 999.6 &Chalmers              &\cite{Aug93c}& Ftp: {\small ftp.cs.chalmers.se:} \\
+             &       &                      &             & {\small /pub/haskell/chalmers/} \\
+Haskell      & 0.22  &Glasgow               &\cite{Pey93c}& Ftp: {\small ftp.dcs.glasgow.ac.uk:} \\
+             &       &                      &             & {\small /pub/haskell/glasgow/} \\
+Haskell      & 2.1   &Yale                  &\cite{Yal94} & Ftp: {\small nebula.cs.yale.edu:} \\
+             &       &                      &             & {\small /pub/haskell/yale/} \\
+ID           &TL0 2.1&MIT/Berkeley          &\cite{Nik90a}& Email: {\small chf@lcs.mit.edu} \\
+MLWorks      & n.a.  &Harlequin Ltd.        &\cite{Har94x}& commercial \\
+Miranda      & 2.018 &Research Software Ltd.&\cite{Tur90a}& commercial \\
+             &       &                      &             & Email: {\small mira-request@ukc.ac.uk} \\
+Nearly Haskell & Pre rel. &Chalmers         &\cite{Roj94} & Ftp: {\small ftp.cs.chalmers.se:} \\
+             &       &                      &             & {\small /pub/haskell/nhc/} \\
+Opal         & 2.1c  &Berlin                &\cite{Sch91} & Ftp: {\small ftp.cs.tu-berlin.de:} \\
+             &       &                      &             & {\small /pub/local/uebb/ocs} \\
+RUFL         & 1.8.4 &Rhodes                &\cite{Wen91} & Ftp: {\small cs.ru.ac.za:} \\
+             &       &                      &             & {\small /pub/rufl/} \\
+Gambit Scheme&  2.2  &Montr\'eal            &\cite{Fee90} & Ftp: {\small ftp.iro.umontreal.ca:} \\
+             &       &                      &             & {\small /pub/parallele/gambit/} \\
+Sisal        &12.9.2 &LLNL                  &\cite{Can92c}& Ftp: {\small sisal.llnl.gov} \\
+             &       &                      &             & {\small /pub/sisal} \\
+SML/NJ       & 1.03z &AT\&T Bell Labs.      &\cite{App92} & Ftp: {\small research.att.com:} \\
+             &       &                      &             & {\small /dist/ml/} \\
+Poly/ML      & 2.05M &Abstract Hardware Ltd.&\cite{Fin92a}& commercial \\
+Stoffel      &       & Amsterdam            &\cite{Bee93} & Email: {\small beemster@fwi.uva.nl} \\
+Trafola      & 1.2   & Saarbr\"ucken        &\cite{Alt93} & Email: {\small alt@cs.uni-sb.de} \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Compiler details consisting of the name of the compiler and/or language, the
+University or Company that built the compiler, one key reference to the
+description of the implementation and the address from which the
+compiler can be obtained.}
+\label{tbl:compiler}
+\end{table}
+
+
+\section{Compilers}
+\label{sec:compilers}
+An overview of the compilers which were studied may be found in
+Table~\ref{tbl:compiler}.  The first column gives the name of the
+language and/or compiler, the second shows the source of the compiler. A key reference
+that describes the compiler is given in the third column. The last
+column gives instructions for obtaining the compiler by FTP or email.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|l*{3}{|r@{\,}r@{\,}r}|}
+\hline
+C compiler    & version     & \mmm{compilation}  & \mmm{execution}  & \mmm{compilation} \\
+              &             & \mmm{complete}     & \mmm{complete}   & \mmm{stripped} \\
+\hline
+cc --O        & SunOS 4.1.2 & 325\dzz &+& 26\dzz & 3.35 &+& 0.23    & 12.9 &+& 2.4 \\
+gcc --O       & 2.5.8       & 910\dzz &+& 96\dzz & 2.70 &+& 0.19    & 13.4 &+& 2.3 \\
+\hline
+ratio         &             &   0.35  &+&  0.26  & 1.23 &+& 1.15    & \mmm{$\approx 1+1$} \\
+\hline
+\end{tabular}
+\end{center}
+\caption{The compilation and execution times (user+system seconds) of
+the C version of the pseudoknot program with the two most commonly
+used C compilers.}
+\label{tbl:c_gcc}
+\end{table}
+
+Most of the experiments were performed on Sun SPARC workstations. The
+basis of the experiments is formed by the performance of the C
+compiler. We have used either Sun's bundled C compiler cc or the GNU C
+compiler gcc.  The gcc compiler generates slightly faster code for the
+pseudoknot program, but it takes about three times as long to compile.
+Table~\ref{tbl:c_gcc} gives the detailed results as measured on
+machine~\sysfast~(c.f. Table~\ref{tbl:machine}) using gcc version
+2.5.8. These results indicate that the C version of the pseudoknot
+program is difficult to compile, even for a C compiler. This is due to
+the presence of four large routines (consisting of 574, 552, 585 and
+541 lines of code, respectively) which together build the conformation
+data base of the nucleotides. Stripping the body of these four
+functions to be empty (which still leaves a program of 1073 lines of C
+code) reduces the compilation time to about 13 seconds, for cc as well
+as gcc. All the functional versions of the program have the same
+structure as the C version, so the functional compilers are faced with
+the same difficulty of compiling the code that builds the conformation
+data base.
+
+An interesting difference between cc and gcc is that over 75\% of the
+compilation time for cc is spent in the assembler, whereas gcc spends
+99\% of its time in the main compiler pass (\verb=cc1=).
+
+Table~\ref{tbl:option} shows some properties of the compilers and
+experiments that have an effect on the runtime performance of the
+implementations. In addition to the compile and runtime options
+(columns~2 and~3), the fourth column shows the type of garbage
+collector used, and the fifth column shows what floating point
+precision is used.
+The floating point precision is important to take into account when
+comparing results for two reasons. Firstly, using single precision
+floating point numbers makes it easier to generate fast code. Secondly,
+some architectures implement single precision floating point arithmetic
+significantly faster than double precision (DEC Alpha). However, on the
+SPARC that has been used for the majority of the experiments reported
+here there is only a small difference between the speed of single and
+double precision arithmetic.
+
+\begin{table}
+\begin{minipage}{\hsize}
+\begin{center}
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+compiler     & compiler options& execution options           & collector& float\\
+\hline
+Bigloo       & --unsafe --O4   &                             & mark-scan& double \\
+Caml Light   &                 &                             & gen.     & double \\
+Caml Gallium &                 &                             & gen.     & double \\
+Camloo       & --unsafe --O4   &                             & mark-scan& double \\
+CeML         & --O             &                             & 1-space  & single \\
+Chalmers     & --c --Y--S --H50Mg --Y--A500k --cpp &         & 2-space  & single \\
+Clean        &                 & --nt --s 10k --h ...        & 2-sp/ms  & double \\
+CMU          & see text        & see text                    & 2-space  & single \\
+Erlang BEAM  & --fast          & --h 600000                  & 2-space  & double \\
+Facile       &                 &                             & gen.     & double \\
+FAST         & --fcg           & --v 1 --h ... --s 400K 1    & 2-space  & single \\
+Gambit       & --h14336        & --h14336                    & 2-space  & double \\
+Glasgow      & --O --fvia--C --O2--for--C & +RTS --H1M&gen.~\cite{San93}& single \\
+Gofer        & --DTIMER        &                             & 2-space  & single \\
+ID           & strict, merge--partitions (tlc: opt) &        & none     & double \\
+MLWorks      &
+no details available\footnote{MLWorks is not yet available. Compilation
+was for maximum optimisation, no debugging or statistics collection
+was taking place at runtime.}  &                             & 2-space  & double \\
+Miranda      &                 & /heap ...; /count           & mark-scan& double \\
+NHC(HBC)     & --H30M          &                             & 2-space  & single \\
+NHC(NHC)     & --h2M           &                             & 1-space  & single \\
+Opal         & opt=full debug=no  &                          & refcount & single \\
+Poly/ML      & --h 48000       & --h 48000                   & gen.     & single \\
+RUFL         & --w             & --m300                      & mark-scan& double \\
+RUFLI        & --iw            & --m300 --r32000             & mark-scan& double \\
+Sisal        & --cpp --seq --O --c atan2 --cc=--O &          & refcount & double \\
+SML/NJ       &                 &                             & gen.     & double \\
+Stoffel      & --O2 (for C)    &                             & 2-space  & double \\
+Trafola      & --TC --INLINE 1 & --HE 8000000                & 1-space  & sgl/dbl\\
+Yale         & see text        & see text                    & 2-space  & single \\
+\hline
+\end{tabular}
+\end{center}
+\end{minipage}
+\caption{Compiler and execution options. The type of garbage collector
+is one of 2-space (non-generational 2-space copying collector); mark-scan; gen.
+(generational with two or more spaces); 1-space (mark-scan, one space
+compactor); or reference counting. Floating point arithmetic used is
+either single or double precision.}
+\label{tbl:option}
+\end{table}
+
+\section{Translation, annotations and optimisations}
+\label{sec:translation}
+The pseudoknot program was translated by hand from the Scheme version
+to the various other languages. All versions were hand tuned to
+exhibit the best performance available with the compiler being used.
+The following set of guide lines has been used to make the comparison
+as fair as possible:
+\begin{enumerate}
+\item
+Algorithmic changes are forbidden but slight modifications to the code
+to better use a particular feature of the language or programming
+system are allowed. A modification that would be valid for all
+languages involved is not permitted.
+\item
+Only small changes to the data structures are permitted (e.g.\ a tuple
+may be turned into an array or a list).
+\item
+Annotations are permitted, for example strictness annotations, or
+annotations for inlining and specialisation of code.
+\item
+All changes and annotations should be documented.
+\item
+Anyone should be able to repeat the experiments. So all sources and
+measurement procedures should be made public (by \verb=ftp= somewhere).
+\item
+All programs must produce the same output (the number 33.7976 to 6
+significant figures).
+\end{enumerate}
+
+The optimisations and annotations made to obtain best performance with
+each of the compilers are discussed in the subsections to follow. Often
+we will make reference to particular parts of the program text. As the
+program is relatively large it would be difficult to reproduce it in
+full here, and in many versions. The reader is invited to consult the
+archive that contains most of the versions of the program at
+\verb=ftp.fwi.uva.nl=, file \verb=/pub/functional/pseudoknot.tar.Z=.
+
+\subsection{Bigloo}
+The Scheme version of the pseudoknot benchmark was changed only
+slightly to serve as input to the Bigloo optimising Scheme compiler.
+This compiler translates to C, as do many other compilers. In the C
+code it produces, the many vectors of floating point constants present
+in the conformation data base are not represented as ordinary C
+constants but as a large string. This enables the C compiler to compile
+the generated C much more quickly. During initialisation at runtime the
+string representation is transformed into the required numeric data.
+
+\subsection{Caml}
+Three compilers for the Caml dialect of ML have been benchmarked: Caml
+Light, a simple bytecode compiler; Camloo, a Caml to C compiler derived
+from the Bigloo optimizing Scheme compiler; and Gallium, an
+experimental native-code compiler.
+
+The source code is a straightforward translation to Caml of the SML
+version of the benchmark. The only changes made to increase performance
+was the use of an array instead of a list in the functions
+\verb|list_of_atoms| and \verb|most_distant_atoms|. For the Gallium
+compiler only, some tuples have been converted into records to guide
+the data representation heuristics; this transformation makes no
+difference for the other two compilers.
+
+The Caml Gallium compiler uses unboxed double precision float in
+monomorphic parts of the source code. Since the pseudoknot benchmark does
+not use polymorphism, all floats are unboxed at all times. This is the
+main reason why the Gallium compiler generates faster code than most
+of the other compilers.
+
+\subsection{CeML}
+CeML is another dialect of Caml. The purpose of the development of CeML
+and its compiler is to prove that ML can be compiled into efficient C.
+CeML does not tag immediate values and uses a garbage collector with
+ambiguous roots which manages its own stack. This is important for the
+pseudoknot program because the floats are represented as a full word
+(32 bits).
+
+The CeML source of the pseudoknot program differs only in one aspect
+from the Camloo source. To avoid rebuilding the tuple \verb=(i,t,n)=
+the definition of \verb=get_var= was changed from:
+\begin{verbatim}
+> fun get_var id ((i,t,n)::lst) = if id = i then (i,t,n)
+>                                 else get_var id lst
+\end{verbatim}
+to:
+\begin{verbatim}
+> fun get_var id (((i,_,_) as v)::lst) = if id = i then v
+>                                        else get_var id lst
+\end{verbatim}
+
+The total compilation time consist mainly of the gcc optimized
+compilation (--O2) time, particularly to build the data base. If the
+program is sliced into different modules and the module corresponding
+to the data base is not compiled with the --O2 option, the total
+compilation time is about ten minutes and the execution time does not
+change.
+
+\subsection{CLEAN}
+The syntax of the Clean 1.0 programming language is similar to the
+syntax of Haskell and Miranda. Porting the Miranda program to Clean 1.0
+was easy. The guards were changed to Haskell syntax, the first
+character of each type name was changed to upper case, and the names of
+a few functions were changed. Some patterns on the right hand side of
+function definitions were moved to the left hand side or replaced by
+case expressions. This was necessary, because the current compiler
+cannot yet handle all patterns on the right hand side, only tuple and
+record patterns are currently allowed there. For example:
+\begin{verbatim}
+> anticodon_constraint v partial_inst
+>  | i==33 = ...
+>  where Var i t n = v
+\end{verbatim}
+was replaced by:
+\begin{verbatim}
+> anticodon_constraint v=:(Var i t n) partial_inst
+>  | i==33 = ...
+>  where
+\end{verbatim}
+
+To achieve good performance the following five changes have been
+made. The basic floating point operations and some constants were
+inlined. The components of the main algebraic data types \verb=Pt= and
+\verb=Tfo= and the integer component of \verb=Var= were annotated as
+strict. The function \verb=absolute_pos= was inlined in the function
+\verb=atom_pos=. If a node on the right hand side of a definition
+occurred in the pattern, the code was changed to prevent rebuilding the
+node, for example:
+\begin{verbatim}
+> atom_pos atom (Var i t n) = absolute_pos (Var i t n) (atom n)
+\end{verbatim}
+was changed to:
+\begin{verbatim}
+> atom_pos atom v=:(Var i t n) = absolute_pos v (atom n)
+\end{verbatim}
+Finally, in the function \verb=pseudoknot_domains= the values of
+\verb=rA=, \verb=rC=, \verb=rG=, \verb=rU= and \verb=rCs= were assigned
+to local functions as: \verb|ra=rA| etc. The local functions were used
+throughout the body of \verb=pseudoknot_domains=. This is necessary
+because the current compiler does not yet support constant applicative
+forms (CAFs)~\cite{Pey87}.
+
+\subsection{Chalmers Haskell}
+\label{sec:hbc}
+The Haskell version of the pseudoknot program is a straightforward
+translation of the Miranda version. The latter often destructs and
+reconstructs a data item. In the Haskell version care has been taken to
+introduce ``as'' patterns thus:
+\begin{verbatim}
+> atom_pos atom v@(Var i t n) = absolute_pos v (atom n)
+\end{verbatim}
+
+It proved necessary to split the program into a number of modules, as
+the program as a whole could not be compiled (see
+Section~\ref{sec:NHC}).  Splitting the program into modules was
+straightforward since each of the four functions that initialise the
+conformation data base can be separated into its own large module of
+about 600 lines.  The global data structure definitions are placed in
+their own module which is imported by each worker module, and the main
+program imports all of these modules.
+
+The Chalmers Haskell compiler (HBC) provides a compiler option (--DSTR)
+to annotate all data structures as strict. The late formulation of the
+pseudoknot program runs about twice as fast with this option
+selected.
+
+\subsection{Erlang}
+Erlang is a concurrent functional programming language designed for
+prototyping and implementing reliable real-time systems~\cite{Arm93}.
+The Erlang BEAM compiler~\cite{Hau94} is an efficient and portable
+implementation of Erlang where Erlang programs are compiled into C.
+However, Erlang is a concurrent language and has explicit
+syntax for referring to time (time-outs). The implementation therefore
+has to provide a scheduling mechanism and a notion of time which
+introduces constant overhead to the Erlang BEAM execution.
+
+Porting the benchmark from Miranda to Erlang required some minor changes.
+Since Erlang is not a higher order language some function calls were
+done by applying \verb=p_apply/N=, for example \verb=reference/3= is
+called as:
+\begin{verbatim}
+> p_apply(reference,Arg1,Arg2,Arg3) -> reference(Arg1,Arg2,Arg3).
+\end{verbatim}
+when all arguments are known.
+Another problem is typing. Some limited typing can be done in Erlang
+using guard tests. For example, the following Erlang function types its
+arguments as floats:
+\begin{verbatim}
+> pt_sub({X1,Y1,Z1},{X2,Y2,Z2})
+>       when float(X1),float(Y1),float(Z1),
+>            float(X2),float(Y2),float(Z2) ->
+>       {X1-X2,Y1-Y2,Z1-Z2}.
+\end{verbatim}
+The type information obtained from guards and extended by compile-time
+type analysis is used by the Erlang BEAM compiler to optimize
+different arithmetic operations.
+
+Since Erlang BEAM compiles Erlang programs into C, the Erlang BEAM
+compilation time presented in Table~\ref{tbl:compilation} includes the
+costs both of compiling Erlang to C and of calling gcc (version 2.5.8)
+to compile the generated C program. The total compilation time consists
+mainly of the gcc compilation time (4751 + 20 seconds). The gcc
+compiler was run with the -O2 option which increases compilation time
+but a better performance of the generated code was considered more
+important than the compilation time.
+
+The best execution time was achieved by extending the available heap
+space to minimize the garbage collection time, and by inlining floating
+point operations after compile-time type analysis.
+
+Erlang BEAM provides double precision floating point arithmetic. All
+floating point numbers are stored as boxed objects in the heap.
+Integers are 32 bits objects, which may be stored directly on stack.
+The relatively poor performance of the Erlang BEAM compiler (reported
+in Table~\ref{tbl:execution}) is due to the fact that the pseudoknot
+benchmark is float-intensive and thus tests mainly the implementation
+of floating point arithmetic. As shown later in Section~\ref{sec:OPAL},
+having single precision floating point arithmetic and using an unboxed
+representation of floating point data may improve the execution time by
+a factor of 4. In the Erlang BEAM compiler giving up the double
+precision floating point arithmetic would similarly improve both access
+and garbage collection time by storing single-float objects directly on
+stack instead of heap.
+
+To support the above claim we did the following simple experiment. We
+ran the two functions \verb=tfo_apply/2= and \verb=tfo_combine/2=,
+which are very floating-point intensive, using first integers and then
+(double precision) floats as input data. The experiment was carried out
+on machine~\sysfloat from Table~\ref{tbl:machine}. The results showed
+that using integers instead of floats improved the Erlang BEAM
+execution time of those two functions by a factor of 6. To be sure that
+the improvement comes from better data representation and not from
+better integer arithmetic provided by the hardware, a simple C program
+was written to compare the speed of floating-point and integer
+arithmetic. The results showed that the floating-point arithmetic was
+as efficient as the integer arithmetic.
+
+Since single precision floats can be represented in Erlang BEAM in the
+same way as integers we can expect that giving up the double precision
+floating point arithmetic would improve the pseudoknot execution time
+to a large extent.
+
+\subsection{Facile}
+Facile is a high-level, higher-order programming language for systems
+that require a combination of complex data manipulation and concurrent
+and distributed computing. It combines Standard ML (SML), with a model
+of higher-order concurrent processes based on CCS. Facile is
+well-suited for running on loosely connected, physically distributed
+systems with distributed memory. It is possible to execute Facile
+programs on both local area networks (LANs) and wide area networks
+(WANs).
+
+The basic computational model of Facile consists of one or more nodes
+or virtual processors, on each of which there are zero or more
+processes (light weight threads). Processes execute by evaluating
+expressions, and they can communicate values between each other by
+synchronising over typed channels. All types of values, including user
+defined types, channels, functions and process scripts, are
+transmissible.
+
+% Facile enriches Standard ML with primitives for distribution,
+% concurrency and communication over typed channels. The additional data
+% types provided in the language include node identifiers, process
+% scripts and communication channels. All of these are first-class values
+% that can be manipulated in an applicative style and, in particular, be
+% communicated. New nodes and channels can be created dynamically and
+% processes executing a given script can be spawned dynamically on a
+% given node. Special care has been given to developing the formal
+% foundations of the Facile model. The basic philosophy of the Facile
+% project has been to develop a language comprising a basic set of
+% primitive constructs that are intuitive for programming, have a clear
+% semantic formalisation and have a quite efficient implementation. These
+% primitives are powerful enough for defining a variety of abstractions
+% commonly employed in concurrent and distributed computing.
+
+The pseudoknot benchmark does not use the distributed capabilities of
+the Facile system. Yet it is interesting to see that the cost of
+starting up a sequential program in the Facile system is small (26
+milli seconds on machine~\sysfacile (c.f. Table~\ref{tbl:machine}).
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|r@{\,}r@{\,}r|r@{\,}r@{\,}r|}
+\hline
+version   & \mmm{unoptimised} &\mmm{optimised} \\
+\hline
+curried   & 8.48  &+& 0.51    & 8.38 &+& 0.51 \\
+uncurried & 8.03  &+& 0.50    & 7.66 &+& 0.49 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Four versions of the pseudoknot program executed with the
+Facile Antigua system, showing execution times (user+system seconds).}
+\label{tbl:facile}
+\end{table}
+
+We did several experiments with the Pseudoknot benchmark program. The
+results are shown in Table~\ref{tbl:facile}. Firstly, the Standard ML
+version of the pseudoknot program was run unoptimised and unmodified
+(i.e.\ with curried function definitions). Secondly, the execution time
+was found to be unaffected by the following compiler optimisations:
+loop unrolling, scope localisation of free variables, hoisting,
+contraction, common subexpression elimination, range analysis, and
+inlining. Thirdly, uncurrying function definitions made the program
+slightly faster, and fourthly, provided more scope for the compiler
+optimisations. The Facile compiler is essentially based on the SML/NJ,
+version 0.93. In Section~\ref{sec:SML} we describe experiments with a
+more recent release of the SML/NJ compiler, which is about twice as
+fast for the pseudoknot benchmark.
+
+\subsection{FAST}
+\label{sec:FAST}
+The FAST compiler input language is a subset of Miranda; the port from
+Miranda to this subset is trivial. Three changes have been made to
+achieve best performance. Firstly, all components of the main algebraic data types
+(\verb=pt=, \verb=tfo= and \verb=var=) in the program were annotated as
+strict. Secondly, the basic definitions of floating point operations
+such as \verb|fadd = (+)| and \verb|fsin = sin| were inlined. Finally,
+one construct that the FAST compiler should be able to deal with, but
+which it cannot at present handle has been changed.
+Functions such as:
+\begin{verbatim}
+> atom_pos atom (Var i t n) = absolute_pos (Var i t n) (atom n)
+\end{verbatim}
+were replaced by:
+\begin{verbatim}
+> atom_pos atom v = absolute_pos v (atom (var2nuc v))
+> var2nuc (Var i t n) = n
+\end{verbatim}
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|r@{\,}r@{\,}r|l|r@{\,}r@{\,}r|l|}
+\hline
+strictness & \multicolumn{4}{c|}{late}  & \multicolumn{4}{c|}{early} \\
+annotations& \mmm{seconds} & Mbytes     & \mmm{seconds}   & Mbytes \\
+\hline
+without    & 31.8 &+& 0.7  & 89.5       & 30.1 &+& 4.9    & 94.1 \\
+with       & 11.0 &+& 0.5  & 15.5       & 12.1 &+& 1.2    & 35.3 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Four versions of the pseudoknot program executed with the (lazy)
+FAST system, showing execution times (user+system seconds) and heap
+allocation (Mbytes).}
+\label{tbl:fast}
+\end{table}
+
+To explore the possible advantage of laziness, a number of different
+versions of the pseudoknot program have been compiled, executed and
+analysed using the FAST system. Table~\ref{tbl:fast} shows the total
+execution time (user+system seconds) and the total amount of heap
+space (Mbytes) consumed by four different versions of the
+program. Both the late and early formulations of the program were
+tested with and without strictness annotations.  The strictness
+annotations declare the three primary data types (\verb=pt=,
+\verb=tfo= and \verb=var=) of the program strict.
+
+Strictness annotations have a profound effect on the performance of the
+pseudoknot program. The user time of the late formulation is reduced by a
+factor of 2.9 and the user time of the early formulation is reduced by a
+factor of 2.5. These improvements are due to the reduction in heap
+allocation.
+A less profound effect is caused by the laziness of the program.
+There are two differences between the early and late formulations of the
+pseudoknot program: the early formulation does fewer computations but it
+allocates more heap space.
+Regardless of whether strictness annotations are used or not, the
+number of floating point multiplications made by the early formulation is
+19\% less and the number of floating point additions is 14\% less.
+
+Without strictness annotations the early formulation allocates 5\% more heap
+space than the late formulation. The combined effect of allocating a
+little more space, but doing less work makes the early formulation 9\%
+faster than the late formulation.
+With strictness annotations the early formulation allocates 44\% more space
+than the late formulation. This time the reduction in heap space more than
+cancels the savings in floating point operations. Now the late formulation
+is 10\% faster than the early formulation.
+
+\subsection{Gambit}
+Gambit is an R4RS Scheme conformant optimizing compiler which supports
+the whole numeric tower (complex, real, rational, and integer).
+Measurements could not be done on the SPARC because currently the only
+fully complete code generator is for M680x0 processors.  Since the
+original program had been developed with Gambit the source code was
+not modified in any way from the distributed source code (\cite{Fee94}
+gives the details of the development process and an analysis of the
+program when compiled with Gambit).
+
+Both the late and early formulations were tested.
+Table~\ref{tbl:gambit} shows the total execution time for the program
+when compiled by Gambit 2.2 and gcc 2.0 on
+machine~\sysgambit~(c.f. Table~\ref{tbl:machine}).  On this benchmark,
+the code generated by Gambit executes at about 37\% the speed of C.
+This slowdown is due in a large part to the fact that Gambit boxes all
+floating point numbers.  To better evaluate this cost, the two most
+numerically intensive functions (\verb=tfo_combine= and
+\verb=tfo_apply=) were hand coded in assembler to avoid the boxing of
+intermediate floating point values; the input and result of the
+functions were still boxed.  The execution time of the late formulation
+went down by a substantial 34\% to 11.4 seconds, that is 55.6\% the
+speed of C.  Since the two functions are relatively small and have a
+trivial data flow and control flow, a simple ``local'' type analysis
+would probably be sufficient for the compiler to generate much better
+code for this benchmark.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+Compiler   & late       & early       \\
+\hline
+Gambit 2.2 & 17.30+0.22 & 25.90+0.35  \\
+gcc 2.0    &  6.34+0.12 &  9.75+0.15  \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Execution times (user+system seconds) for both formulations
+of the pseudoknot program when compiled with Gambit and gcc 2.0.}
+\label{tbl:gambit}
+\end{table}
+
+For both Gambit and gcc, the early formulation is roughly 50\% slower than
+the late formulation.  Thus, for the pseudoknot data set, the cost of
+lazy computation in the early formulation is larger than the saving
+in computation it provides.  It is conceivable however that the early
+formulation can surpass the late formulation if the program is run with a
+data set which generates few solutions compared to the number of
+shapes searched.  In such a case, a small proportion of the atom
+positions will have to be computed.
+
+\subsection{Glasgow Haskell}
+\label{sec:ghc}
+The Glasgow compiler is a highly-optimising Haskell compiler, with
+elaborate performance monitoring tools.  The pseudoknot program was
+subjected to much optimisation on the basis of results from these
+tools.
+
+The late formulation of the program (identical to the Chalmers Haskell
+program described in Section~\ref{sec:hbc}) ran in 10.2 seconds on
+machine~\sysglasgow~(c.f.  Table~\ref{tbl:machine}). Based on the raw
+time profiling information from this program
+(Table~\ref{tbl:glasgow-profile}-a), it is obvious that a few
+functions account for a significant percentage of the time used, and
+over 80\% of the total space usage. Three of the top four functions by
+time (\verb=tfo_combine=, \verb=tfo_apply= and
+\verb=tfo_align=) manipulate \verb=TFO=s and \verb=Pt=s, and the
+remainder are heavy users of the \verb=Var= structure. Since these
+functions can be safely made strict, they are prime candidates for the
+use of unboxed types \cite{Pey91b}; types whose values can be
+represented literally rather than by pointers to nodes in the heap.
+Unboxing is desirable when possible both because execution is faster
+and because a program's space requirements can generally be reduced.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{lr}
+\begin{tabular}{|l|l|l|}
+\hline
+{\bf Cost Centre} &  \%time      & \%alloc \\
+\hline
+tfo\_combine      &       18.0   & 4.7 \\
+tfo\_apply        &       15.9   & 0.0 \\
+p\_o3'            &       8.3    & 25.5 \\
+tfo\_align        &       6.2    & 1.9 \\
+dgf\_base         &       5.9    & 21.6 \\
+get\_var          &       5.9    & 0.0 \\
+absolute\_pos     &       4.7    & 24.1 \\
+...               &       ...    & ... \\
+\hline
+\multicolumn{3}{l}{(a) Original profile (by time)}
+\end{tabular}
+&
+\begin{tabular}{|l|l|l|}
+\hline
+{\bf Cost Centre} &  \%time     & \%alloc \\
+\hline
+get\_var          &   11.1      &    0.0 \\
+tfo\_combine      &   10.5      &   26.5 \\
+p\_o3'            &    8.5      &   13.0 \\
+pseudoknot\_constraint &    7.8 &    9.9 \\
+search            &    7.8      &    2.6 \\
+tfo\_align        &    5.2      &    5.6 \\
+pt\_phi           &    5.2      &    0.0 \\
+tfo\_apply        &    5.2      &    0.0 \\
+...               &      ...    & ... \\
+\hline
+\multicolumn{3}{l}{(c) Maximum map (by time)}
+\end{tabular}
+\\
+\begin{tabular}{|l|l|l|}
+\hline
+{\bf Cost Centre} &  \%time     & \%alloc \\
+\hline
+tfo\_apply        &   11.1      &    0.0 \\
+tfo\_combine      &   10.5      &   23.2 \\
+search            &    9.9      &    2.3 \\
+pseudoknot\_constraint &    8.2 &    8.7 \\
+get\_var          &    7.0      &    0.0 \\
+var\_most\_distant&    6.4      &    8.7 \\
+tfo\_align        &    5.8      &    4.9 \\
+...               &      ...    & ... \\
+\hline
+\multicolumn{3}{l}{(b) Strict types (by time)}
+\end{tabular}
+&
+\begin{tabular}{|l|l|l|}
+\hline
+{\bf Cost Centre} &  \%time     & \%alloc \\
+\hline
+tfo\_combine      &    9.7      &   26.5 \\
+p\_o3'            &    7.7      &   13.0 \\
+pseudoknot\_constraint &    4.6 &    9.9 \\
+mk\_var           &    2.0      &    6.6 \\
+tfo\_align        &   10.2      &    5.6 \\
+tfo\_inv\_ortho   &    2.6      &    5.6 \\
+...               &      ...    & ... \\
+\hline
+\multicolumn{3}{l}{(d) Maximum map (by allocation)}
+\end{tabular}
+\end{tabular}
+\end{center}
+\caption{Time and allocation profile by function, as a percentage of
+total time/heap allocations.}
+\label{tbl:glasgow-profile}
+\end{table}
+
+Unboxing these data structures semi-automatically, and strictifying the
+lazy pattern match in the definition of \verb=var_most_distant_atom=
+gives a significant performance improvement, of roughly a factor of 3.
+This is similar to the improvements which are possible by simply
+annotating the relevant data structures to make them strict. However,
+further unboxing optimisations are possible if the three uses of the function composition
+\verb=maximum . map= are replaced by a new function \verb=maximum_map=
+as shown below. This function maps a function whose result is a
+floating-point number over a list of arguments, and selects the maximum
+result. It is not possible to map a function directly over a list of
+unboxed values using the normal Prelude \verb=map= function, because
+unboxed values cannot be passed to polymorphic functions.
+\begin{verbatim}
+> maximum_map :: (a->Float#) -> [a]->Float#
+> maximum_map f (h:t) =
+>    max f t (f h)
+>    where max f (x:xs) m = max f xs (let fx = f x in
+>                                     if fx `gtFloat#` m then fx else m)
+>          max f [] m = m
+>          max :: (a->Float#) -> [a] -> Float# -> Float#
+\end{verbatim}
+
+This optimisation is suggested indirectly by the time profile
+(Table~\ref{tbl:glasgow-profile}-b) which shows that the top function
+by time is \verb=tfo_apply=. This is called through \verb=absolute_pos=
+within \verb=most_distant_atom=. It seems likely that the three nested
+calls to produce the maximum value of a function over a list of values
+can be merged to hold the current maximum in a register (an extreme
+form of deforestation \cite{Wad90b}). This optimisation reduces the
+total execution time to 1.8 seconds user time.
+
+The final time profile (Table~\ref{tbl:glasgow-profile}-c) shows
+\verb=get_var= and \verb=p_o3'= jointly using 20\% of the Haskell
+execution time with \verb=tfo_combine=, \verb=tfo_align= and
+\verb=tfo_apply= accounting for a further 20\%. (The minor differences
+in percentage time for \verb=tfo_combine= in
+Tables~\ref{tbl:glasgow-profile}-c and \ref{tbl:glasgow-profile}-d are
+probably explained by sampling error over such a short run.) While the
+first two functions could be optimised to use a non-list data
+structure, it is not easy to optimise the latter functions any further.
+Since the total execution time is now close to that for C, with a large
+fraction of the total remaining time being spent in the Unix
+mathematical library, and since the allocation profile
+(Table~\ref{tbl:glasgow-profile}-d) also suggests that there are no
+space gains which can be obtained easily, it was decided not to attempt
+further optimisations. The Glasgow Haskell overall time and space results are
+summarised in Table~\ref{tbl:glasgow-haskell-times}. The heap usage is
+the total number of bytes allocated in each case, with the maximum live
+data residency after a major garbage collection shown in parentheses.
+
+As with Erlang and other C-based compilers, much of the compilation
+time is spent in the C compiler.  A native code generator is
+available, and is faster, but this does not allow all the
+optimisations which were attempted.
+
+It is planned to incorporate an automatic generalised version of the
+deforesting optimisation, the foldr/build transformation~\cite{Gil94},
+into the Glasgow Haskell compiler in due course.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|r@{\,}r@{\,}r|r|l|r@{\,}r@{\,}r|r|l|}
+\hline
+Version      & \multicolumn{5}{c|}{late}    & \multicolumn{5}{c|}{early} \\
+             & \mmm{seconds} & Mbytes& (Residency) & \mmm{seconds} & Mbytes & (Residency) \\
+\hline
+Original     &  10.0 &+& 0.2 &  36.8 & (55K)       &  11.0 &+& 0.3 & 57.6   & (419K) \\
+Strict Types &   3.5 &+& 0.3 &  10.1 & (53K)       &   3.4 &+& 0.2 & 30.6   & (215K) \\
+Maximum Map  &   1.8 &+& 0.1 &   7.6 & (46K)       &   2.9 &+& 0.1 & 29.3   & (215K) \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Time and Heap Usage of three pseudoknot variants compiled for
+machine~\sysglasgow~by the Glasgow Haskell compiler.}
+\label{tbl:glasgow-haskell-times}
+\end{table}
+
+\subsection{Gofer}
+The Gofer version of the program was derived very quickly from the
+Miranda version supplied. The only significant changes were needed to
+accommodate the different notations for infix operators and comments.
+The Gofer primitive \verb=atan2= function was used in place of the
+\verb=math_atan2= function in the Miranda code. Using \verb=math_atan2=
+instead of the primitive \verb=atan2= adds only 4\% to the total
+execution time.
+
+Gofer does not use any significant optimizations, nor does it provide
+a mechanism for annotating data type or function definitions to
+indicate, for example, strictness properties. No attempts were made to
+try to optimize the program to run faster or more efficiently in
+Gofer.
+
+\subsection{ID}
+ID is an eager, non-strict, mostly functional, implicitly parallel
+language. Only the purely functional subset of ID was used in this
+benchmark. The compiler used in this study was developed jointly
+between MIT and Berkeley. This first part of the compiler generates
+dataflow graphs from ID source code. The Berkeley back end compiles
+these dataflow graphs into Tl0 which is an abstract multi-threaded
+machine~\cite{Gol94}. Then Tl0 is compiled into C. All of the other ID
+compilers are targeted to dataflow machines. The Berkeley back end
+creates separate files for each ID function, which contributes to
+the long compile time for ID.
+
+The port of the pseudoknot benchmark from Haskell to ID was trivial.
+To improve the performance four changes were made. A number of the
+lists were changed to arrays; the recursive functions \verb=get_var=
+and \verb=search= were changed to be iterative using ID while loops;
+the local function \verb=generate= within \verb=p_03'= was replaced by
+an ID array comprehension; deforestation was applied (by hand) to the
+function composition \verb=maximum . map=, as with the Glasgow
+compiler (Section~\ref{sec:ghc}). These changes cut the execution
+time roughly in half. They also reduced the space required for
+execution. There is associated overhead with compiling for parallel
+machines that we pay even on sequential machines. We compiled with
+--O2 and linked all of the executables using --static to improve
+performance.
+
+
+\subsection{MLWorks}
+The initial SML version of the pseudoknot program is not quite
+Standard ML. It contains use of a pervasive list length function, and
+an overloaded print function, neither of which are part of the
+pervasive environment provided by the language. These problems were
+corrected.
+
+A list length function was provided in the obvious manner (i.e.\ tail
+recursive accumulating). The uses of the overloaded print function
+(two of) were replaced by calls to the relevant functions (output for
+the string and an MLWorks real printing function for the real).
+
+An initial profile of the run of this program suggests that slightly
+over 50\% of the run time is taken up in three functions,
+\verb=tfo_combine=, \verb=tfo_align= and \verb=tfo_apply=. These do
+little more than floating point arithmetic and trigonometric functions,
+which means that half the time, little more than the floating point
+capability of the implementations is being tested. Some of that is
+functionality provided by a runtime library implemented through
+\verb=libc=.
+
+ML is a strict language. Thus if a function is defined but only used in
+one half of a conditional, a closure must still be built for that
+function before evaluating the conditional. Building a closure, for
+MLWorks, involves allocating heap and copying in values. Moving the
+function definition within the conditional avoids unnecessary closure
+building (which would be avoided anyway by a lazy implementation).
+Small savings were achieved by modifying the function
+\verb=pseudoknot_constraint= to build \verb=dist= only when required.
+The function \verb=try_assignments= has been modified to be tail
+recursive.
+
+\subsection{NHC}
+\label{sec:NHC}
+The name ``NHC'' comes from the description ``Nearly a Haskell
+Compiler''. Speed is not the main goal of NHC, instead NHC is written
+so that it can recompile itself in less than 3 Mbytes of memory.
+Floating point performance is completely ignored, and all arithmetic
+operations are treated as user defined functions.
+
+Two versions of the NHC compiler have been used. The first is NHC
+compiled by HBC, denoted as NHC(HBC). This is a relatively fast, but
+space hungry version of the compiler. The second version is NHC
+compiled by itself, denoted as NHC(NHC). This version is slower, but
+more economic in space.
+
+The version of the pseudoknot program as it has been used with the HBC
+compiler has been changed for NHC in two ways.
+
+Firstly, all six separate modules were combined into one module. This
+was done to show that NHC indeed compiles large programs using less
+memory than the other Haskell compilers. NHC(NHC) needs an 8 Mbytes heap
+to compile the single module version of the pseudoknot program, HBC
+could not compile the single module version of the pseudoknot program
+with 80 Mbytes of heap space, not even when using a single space garbage
+collector. NHC(HBC) needs 30 Mbytes of heap to compile the single module
+version of the pseudoknot program.
+
+Secondly, all floating point types have been changed from \verb=Float=
+to \verb=Double=. This does not increase the precision as \verb=Double=
+is implemented as single precision floating point in NHC, but it is
+necessary for the type checker.
+
+The early formulation of the pseudoknot program is slightly faster
+than the late formulation, 170 seconds compared to 175 seconds (both
+on machine~\syschalmers~c.f. Table~\ref{tbl:machine}). A possible
+explanation is that the early formulation does fewer arithmetic
+computations than the late formulation, and that NHC is bad at
+arithmetic.
+
+\subsection{OPAL}
+\label{sec:OPAL}
+OPAL is based on language constructs similar to those found in most
+other functional languages. The port of the pseudoknot program was a
+matter of applying regular expressions to the SML and Haskell versions
+of the program. Some specialities of OPAL
+had to be tackled: (1) OPAL provides only strings and booleans as
+builtin data types, such that constant data has to be denoted by
+applying conversion functions to strings, and (2) OPAL requires an
+explicit type signature for each global function. Furthermore, a static
+limit on the number of components of a constructor made it necessary to
+split the common atoms of the data type \verb=nuc= into two subrecords.
+
+Only the late formulation of the pseudoknot program has been ported. No
+optimizing annotations have been added to the source. OPAL is strict by
+default, and the compiler performs inlining of function definitions
+across module boundaries automatically. Hence, in the target code, all
+floating point operations are inlined on the instruction level.
+
+To measure the costs incurred in allocating floating point numbers in
+the heap, a new single precision floating point data type has been
+added to the system. These single precision numbers are represented as
+``unboxed'' values, which thus do not incur garbage collection costs.
+The first two rows of Table~\ref{tbl:opal} show the difference, as
+measured on machine~\sysopal~(c.f. Table~\ref{tbl:machine}).
+Arithmetic is still performed
+with double precision, but the results of the operations are stored
+with single precision. The timings suggest, that dynamically allocating
+floating point numbers slows down the pseudoknot program by about a
+factor of $2$. The amount of heap space allocated does not differ much
+in both versions; this is a result of the reference counting based
+garbage collection scheme of the OPAL system, which minimizes the total
+amount of allocated memory at the expense of some execution speed.
+
+The single precision floating point data type has been further refined
+by encapsulating values which do not require dynamic type information.
+These special values are not visible on the user level. However, after
+automatic unfolding and simplifications performed by the compiler,
+intermediate results of floating point operations are now passed
+literally to subsequent operations in the resulting code. This is
+similar to the way unboxed values are handled by the Glasgow Haskell
+compiler~\cite{Pey91b}. Unboxing intermediate results improves the
+execution time again by a factor of $2$. The results are shown in the
+last row of Table~\ref{tbl:opal}.
+
+The current distributed version 2.1b of the OPAL compilation system
+failed to properly compile the benchmark. The reason was that this
+compiler version packs all initialization code of a module into a
+single C function (C is the target language), which is -- with several
+thousand lines of code for the nucleotide conformation data base -- too
+large for the C compiler. The compilation scheme has been slightly
+modified to fix this design bug. The new scheme will be available in
+the next release 2.1c.  As with other C-based compilers, more than
+50\% of the compilation time for the pseudoknot program is used by the
+GNU C compiler. The compilation is particularly slowed down by the
+need to check and compile several thousand applications of overloaded
+conversion functions from strings to numbers. This overhead is a
+result of the fact that numbers cannot be denoted literally in the
+OPAL language.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|r@{\,}r@{\,}r|r|}
+\hline
+version                    & \mmm{time(s)} & space(M) \\
+\hline
+double precision (boxed)   & 19.9 &+& 0.26 & 1.10     \\
+single precision (unboxed) &  9.7 &+& 0.23 & 0.85     \\
+no intermediate type tags  &  5.1 &+& 0.14 & 0.85     \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Three versions of the pseudoknot program executed with the
+OPAL system on machine~\sysopal.}
+\label{tbl:opal}
+\end{table}
+
+\subsection{RUFL}
+RUFL is (almost) a subset of Haskell. It excludes type classes, and
+type signatures are mandatory for all top-level functions. It has an
+abridged module mechanism.
+
+The source was ported from the modularized Chalmers Haskell version.
+The bulk of the effort went into providing the type signatures and
+module interface files. The main algebraic data types were renamed to
+avoid ambiguity between similarly named types and constructors. One
+function (\verb=make_relative_nuc=) was too complex for the compiler
+and had to be split into two parts, one of the library primitives was
+named differently, and a top-level \verb=main= function which does the
+output replaced the Haskell construct. No annotations were made. (The
+RUFL system does not support annotating components of data structures
+as strict.)
+
+The compiler generates SPARC assembly code or SECD-like intermediate
+code which is interpreted. Timings for the interpreted version are
+denoted here as RUFLI. In both cases run-time memory organization is
+rather simplistically based around fixed-size cells, and algebraic data
+types are instantiated as chains of these cells. The heavy use of
+high-arity constructors in this example generates long chains and
+incurs considerable run-time penalties.
+
+\subsection{Sisal}
+Collaborators at Lawrence Livermore National Laboratory and Colorado
+State University developed the Sisal parallel functional language with
+the objective of obtaining high performance on commercial scalar and
+vector multiprocessors. Currently, mature Sisal compilers exist for a
+variety of shared memory scalar and vector multiprocessors. The two
+most important optimizations of the Sisal compiler are memory
+preallocation~\cite{Ran87} and copy elimination~\cite{Gop89}. These
+optimizations enable most Sisal programs to execute in place without
+copying; thus Sisal programs typically run as fast as equivalent
+imperative programs.
+
+We ported the C version of the pseudoknot program to Sisal and made
+the following minor changes to increase performance. First, we
+converted the nucleotide database to an array-based structure instead
+of the record-based structure as in the C code. Sisal supports
+records, but the compiler is heavily optimized for arrays and array
+operations.  Then, we rewrote the distance and transformation
+functions as scalar functions to eliminate array allocations and
+deallocations in the inner loops. Although array allocations and
+deallocations in Sisal are efficient (cost is constant for arrays of
+known size), it is difficult to recuperate the cost for small arrays.
+
+Finally, we developed a recursive program that single threads the
+\verb=partial_inst= stack and list of solutions. To accomplish this, we
+changed the code of the function \verb=try= as follows:
+
+\noindent
+\begin{tabular}{l@{\hspace{10mm}}l}
+C                              & Sisal revised \\
+\hline
+                               & \verb|> let| \\
+add new element to stack       & \verb|>   stack1 := array_addh(stack)| \\
+increment stack counter        & \verb|>   stack2 := pseudoknot_domains(stack1)| \\
+pseudoknot\_domains            & \verb|> in | \\
+decrement stack counter        & \verb|>   array_remh(stack2)| \\
+                               & \verb|> end let|
+\end{tabular}
+
+In principle, this code is identical to the C code. The Sisal compiler
+realizes that there is only a single consumer of each stack. It tags
+the data structure as mutable and generates code to perform all updates
+in place. Consequently, the Sisal code maintains a single stack
+structure similar to the C code, eliminating excessive memory usage and
+copy operations. The Sisal code runs in approximately 85KB of memory
+and achieves execution speeds comparable to the C code.
+
+\subsection{SML/NJ and Poly/ML}
+\label{sec:SML}
+Both Standard ML of New Jersey and Poly/ML are implementations of
+Standard ML as described in the Definition of Standard
+ML~\cite{Mil90}. The SML version of the pseudoknot application was
+initially derived from the Scheme version of the program (by Marc
+Feeley) and then subsequently modified to make better use of SML's
+typing facilities. These modifications had no effect on the execution
+time of the program, but improved its readability and robustness, and
+this was helpful for later experimentation with the code.
+
+For SML/NJ, a signature was used to constrain the program (which was
+written as one large SML module) to export only the top-level
+\verb|run| function. This had the effect of improving the compilation
+time as well as providing the compiler with more opportunities for
+automatic inlining and other optimizations. Other than that, no other
+changes were made to the program (though various things were tried, as
+explained below).
+
+Initially, the program was compiled with versions 0.75 and 0.93 of the
+SML/NJ system. It was expected that the latest version (1.03z) would
+show a great improvement, since it employs a representation
+analysis~\cite{Ler92}, implemented by Zhong Shao (described in his
+Ph.D. thesis~\cite{Sha94}), which would ``unbox'' many of the
+floating-point numbers stored in the rather large tuple data
+structures. Surprisingly, the first attempt with this version of the
+compiler resulted in a slowdown. This was due to the fact that the
+implementation of the representation analysis was not finished. In
+particular, unboxing of records of floating-point numbers was not yet
+supported, nor were floats being passed to functions in floating-point
+registers. When these features were completed (by Shao), the
+speed improved by more than a factor of two. Analysis of the compiler
+output for the pseudoknot program also showed that excessive
+register-spilling was occurring. A small improvement to the spilling
+heuristic (again by Shao) led to a further speedup of the code. The
+SML/NJ 1.03z compiler does not use FPU load and store instructions for
+loading and storing floating-point numbers. It is strongly suspected
+that changing this would lead to yet more large improvements to the
+running time.
+
+Like the other functional versions of the pseudoknot program (including
+the Haskell and CLEAN versions), the SML version is ``pure'' in the
+sense that all of the data structures are immutable. (The SML program
+is also evaluated strictly; note, however, that the Haskell and CLEAN
+versions also use mostly strict evaluation.) Significant improvements
+might be possible if mutable arrays were used, in a manner similar to
+the C version of the program. However, one suspects that such a
+program would be less reliable and understandable than the current
+version.
+
+A large number of variations on the SML program were tried, in an
+attempt to find better performance. The execution time was
+surprisingly stable under these changes, and in fact no change made
+any significant difference (good or bad) to the execution
+speed. Almost all of the functions in the program are presently
+curried; uncurrying made a barely measurable improvement. All of the
+various ``deforestation'' transformations used by the other
+implementations were also tried, and again none made any measurable
+improvement (though several led to minor slowdowns). It was recognized
+early on that the representation of the ``tfo'' matrix as a large
+tuple of values leads to a considerable amount of register spilling in
+the code generated by SML/NJ\@. However, changing the representation
+to an array of floating-point numbers made no improvement. The current
+version of the program also uses the late formulation for position
+computation of atoms; changing this to the early formulation greatly
+increased both the time and space required. In the end, the original
+transcription of the Scheme program, with the signature constraint,
+was used for all of the measurements.
+
+The SML/NJ implementation of the pseudoknot program performs better on the DECstation 5000 than
+on the SPARC. On the DECstation 5000 it runs at 55\% of the speed of C,
+on the SPARC it runs at only 36\% of the speed of C. We suspect that
+this is mainly due to memory effects. Previous studies~\cite{Diw94}
+have shown that the intensive heap allocation which is characteristic
+of the SML/NJ interacts badly with memory subsystems that use a
+write-no-allocate cache policy, as is the case of the SPARC; in
+contrast, the use of a write-allocate policy coupled with what amounts
+to sub-block placement on the DECstation (the cache block size is four
+bytes) supports such intensive heap allocation extremely well.
+
+\subsection{Stoffel}
+The Stoffel language is an intermediate language designed for studying
+code generation of high level languages to fine-grain parallel
+processors (see, for example, Fisher~\cite{Fis84}). Because of this, the
+implementation is robust but lacks the sophistication of some of the
+other compilers discussed here. The source code that has been used is
+the same as that used for the FAST compiler (see Section~\ref{sec:FAST}),
+but without the strictness annotations. The intermediate format
+used by the FAST compiler has been translated automatically into
+Stoffel by the FAST compiler front-end.
+
+The Stoffel compiler is based on a spineless abstract machine and
+implements many of the optimization commonly found, such as strictness
+and boxing analysis. The implementation uses double precision floating
+point numbers, which can also be passed around in unboxed form.
+
+Most discouraging were the compilation times. The actual Stoffel
+compiler takes about 216 seconds to run, the gcc-compiler backend with
+--O2 takes more than two hours on machine~\sysstoffel~(c.f.
+Table~\ref{tbl:machine}). Most of this time is spent in compiling the
+function that initialises the floating point number representations.
+
+Both the late and early formulations of the program were run {\it out
+of the box}, there was no tweaking. The late formulation runs 30\%
+faster than the early formulation, the difference being relatively small
+because no strictness annotations have been used.
+
+\subsection{Trafola}
+The Trafola language and system has been designed as a (pure
+functional) transformation language in a compiler construction
+project. In addition to the usual functional constructs Trafola offers
+nondeterministic pattern matching. This allows for an expressive coding
+of algorithms, in particular tree transformations. The first version of
+the system and the language were untyped. User defined data types and
+Milner/Cardelli type inference were added later. At the moment there
+is still only one Trafola compiler and runtime system. This compiler
+is able to generate better code from typed programs than from untyped
+programs. The runtime system has to support both, at the cost of some
+efficiency.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|r|r@{\,}r@{\,}r|r|}
+\hline
+floats & compilation (user time) & \mmm{execution} & garbage collection \\
+\hline
+Single &  6.16                   & 162.6 &+& 2.4   &   4\% \\
+Double &  6.35                   & 186.5 &+& 5.7   &  11\% \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Trafola results comparing single and double precision arithmetic.}
+\label{tbl:trafola}
+\end{table}
+
+The pseudoknot program was transformed from Miranda to typed Trafola
+basically by changing syntax.  No special Trafola features were
+introduced. Basic definitions such as
+\verb|fadd = (+)| were inlined and taken from the C~library. The fact
+that Trafola was first designed as an untyped language, together with
+the provision of powerful pattern matching facilities, results in an
+unusual implementation of algebraic data types. Each $n$-ary
+constructor is represented as an $n+1$-tuple. The first component of
+the tuple is an element of an enumeration type e.g. \verb=Foo a b c= is
+implemented as \verb=(Foo,a,b,c)=.
+
+The Trafola version of the pseudoknot program was compiled and
+executed using both single and double precision arithmetic. The
+results are shown in Table~\ref{tbl:trafola}. Using double precision
+arithmetic increases compilation time because the internal
+representation of double precision floats is less compact, and because
+constant-folding also takes longer for doubles.
+At runtime, double precision floats are stored in the heap, whereas
+single precision values are stored in the stack. The double
+precision version therefore allocates more space and increases both
+execution and garbage collection times.
+
+\subsection{Yale Haskell}
+The Yale Haskell compiler uses Common Lisp as an intermediate language
+and relies on the Common Lisp compiler for translation to machine
+code. The version of Yale Haskell tested here uses CMU Common Lisp as
+its back end, although it also runs under most other Common Lisp
+implementations.
+
+To prepare the pseudoknot program for running in Yale Haskell, all of
+the data structures were annotated as strict. (Internally, Yale
+Haskell represents the data structures as Common Lisp simple vectors
+containing tagged objects.)
+
+The first argument of \verb=get_var= and the arguments of
+\verb=make_relative_nuc= have been forced to be strict because the case
+where these arguments are not used is an error. The functions
+\verb=is_A=, \verb=is_C=, and \verb=is_G= have been inlined because
+they are small; this probably has no effect on timings. The functions
+\verb=atom_pos= and \verb=search= have been inlined to avoid a
+higher-order function call. These were the only changes made to the
+Chalmers Haskell version of the program; the actual code was unchanged.
+
+The code was compiled with all optimizations enabled at the Haskell
+level. At the Lisp level, the same optimizations were used as for
+obtaining the CMU Common Lisp results. The program was run with a heap
+size of about 14 megabytes.
+The late formulation of the pseudoknot program runs more than
+twice as fast as the early formulation.
+
+\subsection{CMU Common Lisp}
+CMU Common Lisp is a public-domain implementation featuring a
+high-quality optimizing compiler. This compiler does a higher
+level of static type checking and type inference than most other Common
+Lisp compilers.
+
+In the Common Lisp version of the program, the \verb=pt= and \verb=tfo=
+data types were implemented as vectors specialized to hold untagged
+\verb=single-float= objects, rather than as general vectors of tagged
+objects. Other data types were implemented using the \verb=defstruct=
+facility. Type declarations were added to all of the floating-point
+arithmetic operations and local variables that hold floating-point
+numbers. Otherwise, the code was a straight translation of the program
+from Scheme syntax. The resulting code is written in completely
+standard Common Lisp and uses no annotations or extensions specific to
+the CMU implementation.
+
+The program was compiled with optimizations \verb=(speed 3)=
+\verb=(safety 0)= \verb=(debug 0)= \verb=(compilation-speed 0)=. CMU
+Lisp's block compilation feature was not used. The program was run with
+a heap size of about 14 megabytes.
+
+The difference between the Yale Haskell and Common Lisp results as shown in
+Table~\ref{tbl:execution} is due partly to use of tagged versus
+untagged arrays, and partly to the overhead of lazy lists in Haskell.
+These were the only significant differences between the hand-written
+Common Lisp code and the Lisp code produced by the Yale Haskell compiler. The
+Haskell code generator could be extended to use untagged arrays for
+homogeneous floating-point tuple types as well, but this has not yet
+been implemented.
+
+\section{Results}
+\label{sec:results}
+The pseudoknot program has always been compiled with option settings
+that should give fast execution, we have consistently tried to
+optimise for execution speed. The compile time and run time options
+used are shown in Table~\ref{tbl:option}. To achieve best performance,
+no debugging, run time checks or profiling code has been
+generated. Where a ``--O'' option or higher optimisation setting could
+be used to generate faster code, we have done so.
+
+\begin{table}
+\small
+\begin{center}
+\begin{tabular}{|r|l|l|l|l|l|l|}
+\hline
+no.           &machine       & mem. & cache   & op. system  & processor   & C compiler \\
+\hline
+\sysbigloo    &SUN 4/670      & 64 M& 64 K    &SunOS 4.1.3. &standard     &gcc 2.5.7 \\
+\syscaml      &DECstat., 5000/200 &32 M&64 K  &Ultrix 4.1.  &standard     &cc --O2  \\
+\syschalmers  &SUN SPARC 10/30& 32 M&1 M      &SunOS 4.1.3. &TMS390Z55    &gcc 2.5.8 \\
+\sysclean     &SUN 4/670      & 64 M&64 K     &SunOS 4.1.2. &Cypress CY605&gcc 2.4.5 \\
+\syscmucl     &SUN 4/690MP    & 64 M&64 K     &SunOS 4.1.3  &ROSS 40MHz Super&cc \\
+\syserlang    &SUN 4/50       & 32 M&64 K     &SunOS 4.1.3. &standard     &gcc 2.5.8 \\
+\sysfast      &SUN 4/690      & 64 M&64 K     &SunOS 4.1.2. &standard     &gcc 2.5.8 \\
+\sysgambit    &HP9000/385     & 32 M&4K/4K    &HP-UX B.09.00&68040        &gcc 2.0 \\
+\sysglasgow   &SUN SPARC 10/41& 96 M&20K/32K+1M&SunOS 4.1.3.&TMS390Z50    &gcc 2.5.7 \\
+\sysid        &SUN SPARC 10/41& 96 M& 1 M     &SunOS 4.1.3. &standard     &gcc 2.5.8 \\
+\sysmlworks   &SUN 4/330      & 96 M&         &SunOS 4.1.1. &standard     &gcc 2.5.4 \\
+\sysopal      &SUN 4/75       & 64 M&64 K     &SunOS 4.1.3. &standard     &gcc 2.5.8 \\
+\syspolyml    &SUN 4/690      & 64 M&1 M      &SunOS 4.1.3. &standard     &gcc 2.5.8 \\
+\syssisals    &SUN 4/670MP    & 64 M&1 M      &SunOS 4.1.3. &SUNW, system 600&gcc 2.5.8 \\
+\syssisalc    &CRAY C90       & 1024 M & none &UNICOS 7.C   &custom vector&scc 4.0 \\
+\syssml       &DECstat. 5000/200& 128 M&64 K  &Mach 2.6     &standard     &gcc 2.4 \\
+\sysstoffel   &SUN SPARC 10/41&128 M&20K/32K+1M&Solaris 2.3 &standard     &gcc 2.5.8 \\
+\systrafola   &SUN 4/670      & 64 M&64 K     &SunOS 4.1.3. &Cypress CY605&gcc 2.4.5 \\
+\sysfloat     &SUN SPARC 5    & 32 M&24 K     &SunOS 4.1.3. &standard (85 MHZ)&gcc 2.5.8 \\
+\sysfacile    &SUN Sparc 10/41& 64 M&1M       &SunOS 4.1.3. &standard     &gcc 2.5.7 \\
+\hline
+\end{tabular}
+\end{center}
+\normalsize
+\caption{Details of the machines and C compilers used to compile and/or
+execute the pseudoknot program. The make and type of the machine is
+followed by the size of the memory (in MB) the size of the cache
+(as a total or as instruction/data + secondary cache size),
+the operating system name and version, and the type of processor
+used. The last column gives the C compiler that has been used on the
+machine.}
+\label{tbl:machine}
+\end{table}
+
+We have tried to use one and the same machine where possible, but not
+all programs could be compiled and/or executed on the same machine,
+either because of commercial considerations, or because of the lack of
+a SPARC code generator. An overview of the machines used may be found
+in Table~\ref{tbl:machine}.
+
+To factor out architectural differences, the C version of the
+pseudoknot program has been timed on all the machines involved. The
+execution time of the C version serves as the basic unit of time. The
+unit ``pseudoknot'' gives the relative speed with respect to C
+execution. It is computed as:
+\[
+\mbox{relative speed} ~ = ~
+\frac{100 \times \mbox{C execution time}}{\mbox{absolute time}}
+\]
+To ``run at 100 knots'' thus means to run at exactly the same speed as
+C, and a speed of 1 knot is 1\% of the speed of C.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|r|l|r|}
+\hline
+machine     & cache size & pseudoknots \\
+\hline
+\sysfast    & 64KB       & 73\% \\
+\sysstoffel & 20K/32K+1M & 92\% \\
+\syssisalc  & 36K+1M     & 100\% \\
+\hline
+\end{tabular}
+\end{center}
+\caption{The relative performance of the Sisal version as a function of
+the cache size.}
+\label{tbl:cache}
+\end{table}
+
+The functional language compilers generate code that requires more
+memory than the code generated by the C compilers. Therefore, the
+functional implementations require larger caches to accommodate the
+same fraction of the code and data as the C implementation. This has a
+measurable effect on the pseudoknots. For example, we found the
+pseudoknots for the Sisal version of the benchmark program to increase
+with the cache size. Table~\ref{tbl:cache} shows the speed of the Sisal
+version of the pseudoknot program relative to that of C on three
+machines with different cache sizes. We could have used a machine with
+a cache larger than 64K for all experiments to make the results look better. We
+have chosen not to do so because it is important to remember that using
+large amounts of memory is an important cost factor.
+
+The ``pseudoknot'' as defined above is a relative measure. In the
+long run an absolute measure is also useful both as a measure of overall
+system performance, and to demonstrate absolute improvements in functional
+compiler technology independently of improvements in the C compilers
+(c.f. Drhystone, Whetstone). This requires choosing
+a particular architecture and C compiler as a reference to represent
+the absolute 100\% mark. Most execution times have been obtained on
+machine~\sysfast~(c.f.  Table~\ref{tbl:machine}), using GCC version
+2.5.8. This combination is therefore rather a convenient choice to
+deliver the absolute 100\% pseudoknot. The C execution times for this
+machine are 2.71 seconds user time and 0.20 seconds system time.
+
+To measure the times required by the faster programs with a reasonable
+degree of accuracy, the programs have been timed in a Unix C-shell loop
+as follows \verb=time repeat 10 a.out=, or even \verb=time repeat 100
+a.out=. The resulting system and user times divided by 10 (100) are
+reported in the Tables~\ref{tbl:compilation} and~\ref{tbl:execution},
+sorted by relative pseudoknot ratings on the user times.
+
+\begin{table}
+\begin{minipage}{\hsize}
+\begin{center}
+\begin{tabular}{|l|c|c|r@{\,}r@{\,}r|rr|r@{\,}r@{\,}r|r@{\,}r@{\,}r|r@{\,}r@{\,}r|}
+\hline
+compiler  &route& mach.        & \mmm{time(s)}      & \mm{space} &\mmm{C-time(s)}&\multicolumn{6}{c|}{pseudoknots (\%)}\\
+            &   &              & user    &+&  sys   & Mb     &\footnote{A = Mbytes allocated space; H = Mbytes heap size; R = Mbytes maximum resident set size}
+                                                                 & user &+& sys  & \mmm{rel}     & \mmm{abs} \\
+\hline
+Gofer       & I &\sysfast      &    6.7  &+&   0.7  &   3\dz & A & 2.71 &+& 0.20 & 40.4 &+& 28.6 & 40.4 &+& 28.6 \\
+RUFLI       & I &\sysfast      &    9.1  &+&   1.7  &   1\dz & A & 2.71 &+& 0.20 & 29.8 &+& 11.8 & 29.8 &+& 11.8 \\
+Miranda     & I &\sysfast      &   12.5  &+&   0.8  &  13\dz & A & 2.71 &+& 0.20 & 21.7 &+& 25.0 & 21.7 &+& 25.0 \\
+&&&&&&&&&&&&&&&&\\
+Caml Light  & I &\syscaml      &   29.7  &+&   1.1  &   2.3  & A & 2.66 &+& 0.05 &  9.0 &+&  4.5 &  9.1 &+& 18.2 \\
+Clean       & N &\sysclean     &   30\dz &+&  10\dz &   9\dz & A & 2.69 &+& 0.55 &  9.0 &+&  5.5 &  9.0 &+&  2.0 \\
+Trafola     & I &\sysfast      &   31.4  &+&  11.5  &   6\dz & A & 2.71 &+& 0.10 &  8.6 &+&  1.7 &  8.6 &+&  1.7 \\
+RUFL        & N &\sysfast      &   41.6  &+&   8\dz &   3\dz & A & 2.71 &+& 0.20 &  6.5 &+&  2.5 &  6.5 &+&  2.5 \\
+Poly/ML     & I &\syspolyml    &   22.4  &+&   3.1  &   3.3  & A & 1.28 &+& 0.05 &  5.7 &+&  1.6 & 12.1 &+&  6.5 \\
+Bigloo      & C &\sysbigloo    &   56.5  &+&   6.4  &   7.5  & A & 3.00 &+& 0.10 &  5.3 &+&  1.6 &  4.8 &+&  3.1 \\
+Gambit      & N &\sysgambit    &  147\dz &+&  77\dz &  14\dz & H & 6.34 &+& 0.12 &  4.3 &+&  0.2 &  1.8 &+&  0.3 \\
+CMU CL      & N &\syscmucl     &  118\dz &+&  25\dz &  14\dz & H & 4.73 &+& 0.43 &  4.0 &+&  1.7 &  2.3 &+&  0.8 \\
+Camloo    & S+C &\sysbigloo    &   98\dz &+&  17.6  &   4.6  & A & 3.00 &+& 0.10 &  3.1 &+&  0.6 &  2.8 &+&  1.1 \\
+Caml Gallium& N &\syscaml      &  129\dz &+&   4.4  &   3.7  & A & 2.66 &+& 0.05 &  2.1 &+&  1.1 &  2.1 &+&  4.5 \\
+&&&&&&&&&&&&&&&&\\
+SML/NJ      & N &\syssml       &  131\dz &+&   4.4  &  50\dz & A & 1.90 &+& 0.10 &  1.5 &+&  2.3 &  2.1 &+&  4.5 \\
+Facile      & N &\sysfacile    &  123\dz &+&   2.5  &  11.3  & A & 1.71 &+& 0.08 &  1.4 &+&  3.2 &  2.2 &+&  8.0 \\
+NHC(HBC)    & I &\syschalmers  &  122\dz &+&   7.3  &  30\dz & A & 1.56 &+& 0.06 &  1.3 &+&  0.8 &  2.2 &+&  2.7 \\
+Sisal (SUN) & N &\syssisals    &  112\dz &+&  13.3  &   2.4  & A & 1.40 &+& 0.05 &  1.3 &+&  0.4 &  2.4 &+&  1.5 \\
+MLWorks     & N &\sysmlworks   &  394\dz &+&  19\dz &  14.4  & R & 4.90 &+& 0.00 &  1.2 &+&  0.0 &  0.7 &+&  1.1 \\
+&&&&&&&&&&&&&&&&\\
+Sisal (CRAY)& N &\syssisalc    &   82.5  &+&  15.5  &  24\dz & A & 0.76 &+& 0.02 &  0.9 &+&  0.2 &  3.3 &+&  1.3 \\
+Yale        & L &\syscmucl     &  610\dz &+& 186\dz &  14\dz & H & 4.73 &+& 0.43 &  0.8 &+&  0.2 &  0.4 &+&  0.1 \\
+Chalmers    & N &\syschalmers  &  181\dz &+&  45\dz &  50\dz & A & 1.33 &+& 0.06 &  0.7 &+&  0.1 &  1.5 &+&  0.4 \\
+FAST        & C &\sysfast      &  450\dz &+&  40\dz & 100\dz & A & 2.71 &+& 0.20 &  0.6 &+&  0.5 &  0.6 &+&  0.5 \\
+&&&&&&&&&&&&&&&&\\
+NHC(NHC)    & I &\syschalmers  &  560\dz &+&   5.0  &   8.7  & A & 1.56 &+& 0.06 &  0.3 &+&  1.2 &  0.5 &+&  4.0 \\
+Glasgow     & C &\sysglasgow   &  564\dz &+&  30\dz &  47\dz & A & 1.28 &+& 0.05 &  0.2 &+&  0.2 &  0.5 &+&  0.7 \\
+Opal        & C &\sysopal      & 1301\dz &+&  19\dz &  15\dz & A & 3.00 &+& 0.08 &  0.2 &+&  0.4 &  0.2 &+&  1.1 \\
+&&&&&&&&&&&&&&&&\\
+Erlang BEAM & C &\syserlang    & \mmm{$>$ 1 Hour}   &   8\dz & A & 3.27 &+& 0.10 &  \mmm{---}    &  \mmm{---} \\
+CeML        & C &\sysbigloo    & \mmm{$>$ 1 Hour}   &  35\dz & A & 3.00 &+& 0.10 &  \mmm{---}    &  \mmm{---} \\
+ID          & C &\sysid        & \mmm{$>$ 1 Hour}   &  64\dz & A & 2.75 &+& 0.05 &  \mmm{---}    &  \mmm{---} \\
+Stoffel     & C &\sysstoffel   & \mmm{$>$ 2 Hours}  &  25\dz & A & 1.28 &+& 0.05 &  \mmm{---}    &  \mmm{---} \\
+\hline
+cc --O      & N &\sysfast      &  325\dz &+&  26\dz &   8\dz & A & 2.71 &+& 0.20 &  0.8 &+&  0.8 &  0.8 &+&  0.8 \\
+gcc --O     & N &\sysfast      &  910\dz &+&  97\dz &  21\dz & A & 2.71 &+& 0.20 &  0.3 &+&  0.2 &  0.3 &+&  0.2 \\
+\hline
+\end{tabular}
+\end{center}
+\end{minipage}
+\caption{Results giving the amount of time (user+system time in
+seconds) and space (in Mbytes) required for compilation of the
+pseudoknot program. The ``pseudoknots'' give the relative speed with
+respect to the execution (not compilation) of the C version as a
+percentage.}
+\label{tbl:compilation}
+\end{table}
+
+\subsection{Compilation}
+Table~\ref{tbl:compilation} shows the results of compiling the
+programs. The first column of the table shows the name of the compiler
+(c.f. Table~\ref{tbl:compiler}). The second column ``route'' indicates
+whether the compiler produces native code (``N''), code for a special
+interpreter (``I''), or compiles to native code through a portable C
+back-end (``C''), Lisp (``L''), or Scheme (``S''), or through a
+combination of these back-ends.  The third column gives a reference to
+the particular machine used for compilation (c.f.
+Table~\ref{tbl:machine}). The next two columns give the time and space
+required to compile the pseudoknot program. Unless noted otherwise,
+the space is the largest amount of space required by the compiler, as
+obtained from \verb=ps -v= under the heading SIZE. The column marked
+``C-time'' gives the time required to execute the C version of the
+pseudoknot program on the same machine as the one used for
+compilation. The last two columns ``pseudoknots'' show the relative
+and absolute performance with respect to C.
+
+It is possible to distinguish broad groups within the compilers.  The
+fastest compilers are, unsurprisingly, those that compile to an
+intermediate code for an interpreter, and which therefore perform few,
+if any, optimisations.  NHC is an outlier, perhaps because unlike the
+other interpreters, it is a bootstrapping compiler.  With the
+exception of Bigloo, which is faster than many native compilers,
+compilers that generate C are the slowest compilers.  Not only does it
+take extra time to produce and parse the C, but C compilers have
+particular difficulty compiling code that contains large numbers of
+constants. As noted in Section~\ref{sec:compilers}, C compilers also have
+difficulty compiling the hand written C version of the pseudoknot
+program due to this phenomenon.  The faster compilers also generally
+allocate less space.  This may be because the slower compilers
+generally apply more sophisticated (and therefore space-intensive)
+optimisations.
+
+\begin{table}
+\begin{minipage}{\hsize}
+\begin{center}
+\begin{tabular}{|l|c|c|c|r@{\,}r@{\,}r|rr|r@{\,}r@{\,}r|r@{\,}r@{\,}r|}
+\hline
+compiler  &route& mach.     &\footnote{L = late formulation; E = early formulation}
+                                & \mmm{time(s)}      &\mm{space} &\multicolumn{6}{c|}{pseudoknots (\%)}\\
+            &   &           &   & user    &+&  sys   & Mb    & \footnote{A = Mbytes allocated space; H = Mbytes heap size}
+                                                                 & \mmm{rel}       & \mmm{abs} \\
+\hline
+Sisal (CRAY)& C &\syssisalc & L &   0.68  &+&  0.03  &  0.1  & A & 111\dz&+&  96.0 & 398\dz&+& 800\dz\\
+&&&&&&&&&&&&&&\\
+Sisal (SUN) & C &\sysfast   & L &   3.7\z &+&  0.2\z &  0.7  & A &  73.2 &+& 100\dz&  73.2 &+& 100\dz\\
+Caml Gallium& N &\syscaml   & L &   3.8\z &+&  0.1\z &  0.3  & A &  70.7 &+&  62.5 &  72.1 &+& 250\dz\\
+Glasgow     & C &\sysfast   & L &   3.9\z &+&  0.2\z &  1\dz & A &  69.5 &+& 100\dz&  69.5 &+& 100\dz\\
+Opal        & C &\sysfast   & L &   4.7\z &+&  0.5\z &  0.8  & A &  57.4 &+&  40.0 &  57.4 &+&  40.0 \\
+Clean       & N &\sysfast   & L &   5.1\z &+&  0.8\z &  2.5  & A &  52.7 &+&  25.6 &  52.7 &+&  25.6 \\
+&&&&&&&&&&&&&&\\
+CMU CL      & N &\sysfast   & L &   5.8\z &+&  3.3\z & 14\dz & H &  46.7 &+&   6.1 &  46.7 &+&   6.1 \\
+Gambit      & N &\sysgambit & L &  17.3\z &+&  0.2\z & 14\dz & H &  36.6 &+&  60.0 &  15.7 &+& 100\dz\\
+SML/NJ      & N &\sysfast   & L &   7.6\z &+&  2.8\z &  2.6  & A &  35.9 &+&   7.0 &  35.9 &+&   7.0 \\
+MLWorks     & N &\sysmlworks& L &  13.7\z &+&  0.9\z &  2.6  & A &  35.8 &+&   0.0 &  19.8 &+&  22.2 \\
+CeML        & C &\sysfast   & L &   8.7\z &+&  0.6\z &  2\dz & A &  31.1 &+&  33.3 &  31.1 &+&  33.3 \\
+&&&&&&&&&&&&&&\\
+FAST        & C &\sysfast   & L &  11.0\z &+&  0.5\z &  1\dz & A &  24.6 &+&  40.0 &  24.6 &+&  40.0 \\
+Camloo    & S+C &\sysfast   & L &  11.5\z &+&  1.3\z &  4.9  & A &  23.6 &+&  15.4 &  23.6 &+&  15.4 \\
+ID          & C &\sysfast   & L &  11.6\z &+&  2.9\z & 14\dz & A &  23.4 &+&   6.9 &  23.4 &+&   6.9 \\
+Bigloo      & C &\sysfast   & L &  11.7\z &+&  1.1\z &  4.9  & A &  23.2 &+&  18.2 &  23.2 &+&  18.2 \\
+Yale        & L &\sysfast   & L &  11.9\z &+&  7.2\z & 14\dz & H &  22.8 &+&   2.8 &  22.8 &+&   2.8 \\
+Chalmers    & N &\sysfast   & L &  12.1\z &+&  1.0\z &  3\dz & A &  22.4 &+&  20.0 &  22.4 &+&  20.0 \\
+Facile      & N &\sysfast   & L &  15.5\z &+&  4.3\z &  7.9  & A &  17.5 &+&   4.7 &  17.5 &+&   4.7 \\
+Stoffel     & C &\sysfast   & L &  26.6\z &+&  2.1\z &  5.6  & A &  10.2 &+&   9.5 &  10.2 &+&   9.5 \\
+&&&&&&&&&&&&&&\\
+Erlang BEAM & C &\sysfast   & L &  31.8\z &+&  4.5\z & 11\dz & A &   8.5 &+&   4.4 &   8.5 &+&   4.4 \\
+Caml Light  & I &\sysfast   & L &  53.9\z &+&  7.5\z &  0.3  & A &   5.0 &+&   2.7 &   5.0 &+&   2.7 \\
+RUFL        & N &\sysfast   & L &  87\dzz &+&  2.8\z &  3\dz & A &   3.1 &+&   7.1 &   3.1 &+&   7.1 \\
+Poly/ML     & I &\syspolyml & E &  54.7\z &+&  8.4\z &  3.3  & A &   2.3 &+&   0.6 &   5.0 &+&   2.4 \\
+Trafola     & I &\sysfast   & L & 124\dzz &+&  6.3\z & 10.7  & A &   2.2 &+&   3.2 &   2.2 &+&   3.2 \\
+NHC         & I &\sysfast   & E & 170\dzz &+&  2.2\z &  2.6  & A &   1.6 &+&   9.1 &   1.6 &+&   9.1 \\
+&&&&&&&&&&&&&&\\
+Gofer       & I &\sysfast   & L & 370\dzz &+& 12.0\z &  3\dz & A &   0.7 &+&   1.7 &   0.7 &+&   1.7 \\
+RUFLI       & I &\sysfast   & L & 529\dzz &+& 13.0\z &  4\dz & A &   0.5 &+&   1.5 &   0.5 &+&   1.5 \\
+Miranda     & I &\sysfast   & L &1156\dzz &+& 34.0\z & 13\dz & A &   0.2 &+&   0.6 &   0.2 &+&   0.6 \\
+\hline
+\end{tabular}
+\end{center}
+\end{minipage}
+\caption{Results giving the amount of time (user+system time in
+seconds) and space (in Mbytes) required for execution of the pseudoknot
+program. The ``pseudoknots'' give the relative speed with respect to
+the execution of the C version as a percentage.}
+\label{tbl:execution}
+\end{table}
+
+\subsection{Execution}
+All programs have been executed a number of times, with different heap
+sizes to optimise for speed. The results reported in
+Table~\ref{tbl:execution} correspond to the fastest execution. This
+includes garbage collection time.
+The first column of the table shows the name of the
+compiler/interpreter (c.f. Table~\ref{tbl:compiler}). The second column
+``route'' duplicates the ``route'' column from Table~\ref{tbl:compiler}.
+The third column gives a reference to the
+particular machine used (c.f. Table~\ref{tbl:machine}). The fourth
+column specifies whether the late (``L'') or early (``E'') formulation of
+the program gives the fastest execution. Columns 5 and 6 give the time
+and space required to execute the pseudoknot program. Unless noted
+otherwise, the space is the largest amount of space required by the
+program, as obtained from \verb=ps -v= under the heading SIZE.
+The execution time of the C version of the pseudoknot program for the
+machine used may be found in Table~\ref{tbl:compilation}.
+Please note that in most cases execution times and compilation times
+were measured on different machines. The last two columns ``pseudoknots''
+show the relative and absolute performance with respect to C.
+
+Again, broad performance groupings can be distinguished.
+The highest (relative) pseudoknots are measured for the Sisal compiler,
+which is actually faster than the corresponding C for the Cray version.
+The next best implementations are the Caml Gallium
+compiler (eager) and the Glasgow Haskell compiler (lazy). It is
+probably fair to say that the Glasgow Haskell version of the program
+has been more heavily optimised than the CAML Gallium version.
+
+As the Clean and
+Glasgow Haskell compilers show, if the compiler can exploit strictness
+at the right points, the presence of lazy evaluation need not be a
+hindrance to high performance.  It is also interesting that several
+of these compilers compile through C rather than being native compilers.
+Clearly, it is possible to compile efficient code without generating
+assembler directly.  Space usage for these compilers is also generally low:
+the compilers have clearly optimised both for time and space.
+
+The Lisp, Scheme and SML compilers generally yield very similar
+performance (35-50 pseudoknots).  An obvious outlier is the Bigloo
+optimising Scheme compiler, whose performance is comparable to most of
+the non-strict implementations.  The two SML compilers (SML/NJ and
+MLWorks) are particularly close in both time and heap usage.
+
+Most of the non-strict compilers (Chalmers, FAST, Id, Stoffel, Yale
+and Glasgow Haskell on less optimised code) are grouped in the 10--25
+pseudoknot range.  These compilers typically offer around 75\% of the
+performance of eager implementations such as SML/NJ or Gambit, or 50\%
+of the performance of CMU Common Lisp.  Even so, this level of performance
+has required the exploitation of strictness through unboxing and
+similar optimisations.  Without these features, on the basis of the
+Glasgow results (Section~\ref{sec:ghc}), performance can be estimated
+as approximately 8 pseudoknots or just under a quarter of the typical
+performance of a compiler for an eager language.  For these compilers
+and this application, laziness therefore costs directly a factor of 3,
+with a further 50\% probably attributable to the use of different
+implementation techniques for predefined functions etc., which are
+required due to the possibility of laziness.
+
+The lowest pseudoknot values are found with the interpretive systems,
+which are all less than 10 pseudoknots.  This is not particularly
+surprising.  The interpreters (Caml Light, Poly/ML, NHC,
+Trafola) which lie in the 1--10 pseudoknot range are, however,
+significantly faster than their conventional brethren, which are
+generally less than one pseudoknot.  Interpreters for strict languages
+(CAML Light, Poly/ML, Trafola) do seem on the whole to be faster
+than interpreters for non-strict languages (NHC, Gofer, RUFLI,
+Miranda).
+
+There are two remaining curiosities: the Erlang and RUFL compilers.
+These do not fit clearly in the same groups as other similar
+compilers. The low performance of the RUFL compiler may reflect its
+relative immaturity, as well as the fact that no special priority has
+been placed on floating-point performance.
+
+The low performance recorded by the Erlang BEAM compiler reflects the
+fact that Erlang is a programming language primarily intended for
+designing robust, concurrent real time systems and a low priority has
+been placed on floating-point performance.
+
+The set of CAML compilers offers an interesting spectrum: Caml Gallium
+is a slow compiler which produces fast code; Caml Light compiles
+quickly, but is relatively slow; and Camloo is intermediate between
+the two.
+
+As might be expected, there is, broadly speaking, a strong
+relationship between compilation time and execution speed.  Only the
+Clean implementation offers both fast compilation and fast execution.
+For the compiled systems there is also a very rough relationship
+between execution speed and heap usage: faster implementations
+use less heap.  There does not, however, seem to be any
+correlation between non-strictness and heap usage.
+
+The fact that Sisal is first-order may be significant, though this is
+hard to judge since the only other first-order implementation (Erlang)
+yields relatively poor performance.  Sisal is also the only
+monomorphic language studied, so results here must also be
+inconclusive.  Of the languages studied, Sisal is the only
+one that was specifically designed for ``numeric'' rather than
+``symbolic'' computations, and clearly the design works well
+for this application.  Floating-point performance has traditionally
+taken second-place in functional language implementations, so
+we may hope that these results spur other compiler writers to
+attempt to duplicate the Sisal results.
+
+The provision of pattern-matching facilities does not appear to have
+any effect on code performance: there are fast and slow
+pattern-matching compilers.  The fastest compilers all use strong type
+systems, which are known to assist compilation.  The dynamically typed
+implementations are, however, intermediate in speed, and comparable
+with the statically typed SML systems.
+
+\section{Conclusions}
+\label{sec:conclusions}
+Over 20 compilers for lazy and strict functional languages have been
+benchmarked using a single floating point intensive program. The C
+version of the program spends 25\% of its time in the C library
+trigonometric and square root routines. The problem at hand may thus be
+typical only for geometric problems. The program should not be
+construed as a typical numerical scientific application. However, the
+program is useful as a benchmark, because the ``real'' work it does
+(the trigonometric and floating point calculations) is so clearly
+identifiable. Everything else the program does should be kept to a
+minimum. Not all implementations of functional languages that have been
+benchmarked are capable of realising this, but some are!
+
+The compilation speed of most implementations (including the two C
+compilers) could be improved significantly. Generating C as
+intermediate code does not necessarily make the compiler slow, as
+demonstrated by the performance of the Bigloo and Camloo compilers,
+but generating fast C does often lead to high compilation times.
+
+To achieve good performance from lazy implementations, it proved
+necessary to annotate certain data structures that are often used as
+strict. The performance of the pseudoknot program is not sensitive to
+incorrectly placed strictness annotations. In general, lazy functional
+programs are not so well behaved in this respect. Inserting annotations
+is a fine art, as demonstrated by the efforts of the Glasgow team. To
+make functional languages more useful than they are now, clearly more
+effort should go into providing users with simple to use and effective
+means of analysing and improving the performance of their programs.
+
+Benchmarking a single program can lead to results which cannot easily
+be generalised. Special care has been taken to make the comparison as
+fair as possible: the pseudoknot program is not an essentially lazy
+program or an essentially non-lazy program; the different
+implementations use the same algorithm; most of the binaries were timed
+on one and the same machine.
+
+Storing floating point numbers as unboxed values has a significant
+positive effect on the execution speed of the pseudoknot program. Most
+compilers can deal adequately with unboxed single precision floating
+point numbers. Few compilers can also implement unboxed double
+precision numbers properly. There is thus a need for better methods of
+dealing with double precision unboxed floats, although this problem
+might become obsolete with the next generation of 64 bit machine
+architectures.
+
+There is no clear distinction between the runtime performance of eager
+and lazy implementations when appropriate annotations are used: lazy
+implementations have clearly come of age when it comes to implementing
+largely strict applications, such as the pseudoknot program. The speed
+of C can be approached by some implementations, but not without special
+measures such as strictness annotations. On the Cray, the Sisal
+version is faster than the C version.
+
+
+\section*{Acknowledgements}
+Mark Jones produced the Gofer version of the pseudoknot program.
+
+Will Partain and Jim Mattson performed many of the experiments reported
+here for the Glasgow Haskell compiler. The work at Glasgow is
+supported by a SOED Research Fellowship from the Royal Society of
+Edinburgh, and by the EPSRC AQUA grant.
+
+The work at Nijmegen is supported by STW (Stichting voor de
+Technische Wetenschappen, The Netherlands).
+
+Jon-Dean Mountjoy performed some of the experiments for the RUFL
+implementation.
+
+The ID version of the pseudoknot program was the result of a group
+effort. Credit goes to Jamey Hicks, R. Paul Johnson, Shail Aditya,
+Yonald Chery and Andy Shaw.
+
+Zhong Shao made several important changes to the SML/NJ
+implementation, and Andrew Appel and David MacQueen provided general
+support in the use of this system. David Tarditi performed several of
+the SML/NJ experiments.
+
+John T. Feo and Scott Denton of Lawrence Livermore National Laboratory
+collaborated on the Sisal version of the pseudoknot program.
+
+\bibliography{refs}
+\bibliographystyle{plain}
+
+\end{document}
