@@ -1,5 +1,8 @@
 ML Kit NEWS file                                         July 5, 2001
 
+ * mael 2001-08-16: Fixed bug in separate compilation framework; match
+   function in ClosConvEnv functor was non-exhaustive.
+
  * mael 2001-07-19: Added Interrupt exception to front end; it is
    now possible to handle an Interrupt exception raised by pressing
    Control-C.
