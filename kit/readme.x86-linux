@@ -3,11 +3,11 @@
 
 	     Welcome to the world of ML Kit programming!
 
-Since you are reading this, you have already succeeded in installing
-the ML Kit RPM-file. This directory contains binaries and documentation
-for compiling and running Standard ML programs with the ML Kit. Copy
-the `kitdemo' directory to your home directory and try compile the
-`helloworld.sml' program:
+Since you are reading this file, you have already succeeded in
+installing the ML Kit RPM-file. This directory contains binaries and
+documentation for compiling and running Standard ML programs with the
+ML Kit. Copy the `kitdemo' directory to your home directory and try
+compile the `helloworld.sml' program:
 
   %> cp -R /usr/local/mlkit/kitdemo ~/kitdemo
   %> cd ~/kitdemo
@@ -23,7 +23,7 @@ Kit is distributed under the GNU Public Licence (see file
 copyright). The full source code for the ML Kit is available from the
 home page:
 
-    http://www.diku.dk/research-groups/topps/activities/mlkit.html
+    http://www.itu.dk/research/mlkit/
 
 Have fun!
 
