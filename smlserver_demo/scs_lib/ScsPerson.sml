@@ -70,8 +70,12 @@ signature SCS_PERSON =
     val portrait_type_to_DB   : portrait_type -> string
 
     (* Default portraits *)
-    val empty_portrait_thumbnail : unit -> portrait_record
-    val empty_portrait_large     : unit -> portrait_record
+    val empty_portrait_thumbnail_da_filename : string
+    val empty_portrait_thumbnail_en_filename : string
+    val empty_portrait_large_da_filename     : string
+    val empty_portrait_large_en_filename     : string
+    val empty_portrait_thumbnail             : unit -> portrait_record
+    val empty_portrait_large                 : unit -> portrait_record
 
     (* [getPortrait file_id] returns the portrait represented by file_id. *)
     val getPortrait : int -> portrait_record option
@@ -491,12 +495,16 @@ structure ScsPerson :> SCS_PERSON =
                                                        and p.party_id = party.party_id`)
     end
 
+    val empty_portrait_thumbnail_da_filename = "empty_portrait_thumbnail_da.jpg"
+    val empty_portrait_thumbnail_en_filename = "empty_portrait_thumbnail_en.jpg"
+    val empty_portrait_large_da_filename = "empty_portrait_large_da.jpg"
+    val empty_portrait_large_en_filename = "empty_portrait_large_en.jpg"
     fun empty_portrait_thumbnail () : portrait_record = 
       let
 	val (filename,url,bytes) =
 	  case ScsLogin.user_lang() of
-	    ScsLang.da => ("empty_portrait_thumbnail_da.jpg","/empty_portrait_thumbnail_da.jpg",2954)
-	  | ScsLang.en => ("empty_portrait_thumbnail_en.jpg","/empty_portrait_thumbnail_en.jpg",2676)
+	    ScsLang.da => (empty_portrait_thumbnail_da_filename,"/"^empty_portrait_thumbnail_da_filename,2954)
+	  | ScsLang.en => (empty_portrait_thumbnail_en_filename,"/"^empty_portrait_thumbnail_en_filename,2676)
       in
 	{file_id = 0,
 	 party_id = 0,
@@ -517,8 +525,8 @@ structure ScsPerson :> SCS_PERSON =
       let
 	val (filename,url,bytes) =
 	  case ScsLogin.user_lang() of
-	    ScsLang.da => ("empty_portrait_large_da.jpg","/empty_portrait_large_da.jpg",7255)
-	  | ScsLang.en => ("empty_portrait_large_en.jpg","/empty_portrait_large_en.jpg",6793)
+	    ScsLang.da => (empty_portrait_large_da_filename,"/"^empty_portrait_large_da_filename,7255)
+	  | ScsLang.en => (empty_portrait_large_en_filename,"/"^empty_portrait_large_en_filename,6793)
       in
 	{file_id = 0,
 	 party_id = 0,
