@@ -31,6 +31,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		     structure FinMap: FINMAP
 		       sharing type FinMap.StringTree = PP.StringTree
 
+                     structure OrderFinMap: MONO_FINMAP
+                       sharing type OrderFinMap.dom = Ident.id
+                           and type OrderFinMap.StringTree = PP.StringTree
+
 		     structure Timestamp: TIMESTAMP
 
 		     structure Report: REPORT
@@ -258,7 +262,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
     (*the types Context, Env, StrEnv, TyEnv, TyStr, and VarEnv, and
      some layout and report functions for them.*)
 
-    datatype VarEnv = VARENV of (id, range_private) FinMap.map
+    datatype VarEnv = VARENV of range_private OrderFinMap.map
     
     datatype TyStr = TYSTR of {theta : TypeFcn, VE : VarEnv}
     
@@ -296,7 +300,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
     val pu_VarEnv : VarEnv Pickle.pu =
 	Pickle.convert (VARENV, fn VARENV s => s) 
-	(FinMap.pu (Ident.pu,pu_range_private))
+	(OrderFinMap.pu Ident.pu pu_range_private)
 
     val pu_TyStr : TyStr Pickle.pu =
 	let fun to (tf,ve) = TYSTR{theta=tf,VE=ve}
@@ -374,7 +378,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
           let 
 	    fun layout_id id = 
 	      (fn s => PP.LEAF (s ^ Ident.pr_id id))
-	      (case FinMap.lookup m id 
+	      (case OrderFinMap.lookup m id 
 		 of SOME(LONGVARpriv _) => "val " 
 		  | SOME(LONGCONpriv _) => "con "
 		  | SOME(LONGEXCONpriv _) => "excon "
@@ -384,7 +388,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	      | layoutRng(LONGCONpriv(sigma, _)) = TypeScheme.layout sigma
 	      | layoutRng(LONGEXCONpriv tau) = Type.layout tau
 	  in
-	    FinMap.layoutMap {start="", finish="",sep=", ", eq=" : "} layout_id layoutRng m
+	    OrderFinMap.layoutMap {start="", finish="",sep=", ", eq=" : "} layout_id layoutRng m
 	  end
 (*
 	  fun layoutPair(id, rng) = 
@@ -501,7 +505,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
     (*Now a structure for each kind of environment:*)
 
-
+(*old
     structure VE = struct
       (*The type of items associated with identifiers in a VarEnv:*)
       datatype range = LONGVAR   of TypeScheme
@@ -528,6 +532,21 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	| range_private_to_range (LONGEXCONpriv tau) = LONGEXCON tau
       fun lookup (VARENV v) id : range option =
             map_opt range_private_to_range (FinMap.lookup v id)
+                  handle Crash.CRASH  => 
+                            (TextIO.output(TextIO.stdOut, "Environments.lookup\n");
+                             let
+                               val st = FinMap.layoutMap{start="{",finish="}",
+                                         eq="", sep= ", "} (fn id => PP.LEAF(Ident.pr_id id))
+                                                         (fn _ => PP.LEAF "")
+                                                         v
+                               val os = TextIO.openOut "madsdebug"
+                             in
+                               TextIO.output(os, PP.flatten1(st));
+                               TextIO.closeOut os
+                             end;
+                             raise Crash.CRASH
+                            )
+
       fun dom (VARENV m) = FinMap.dom m
       fun is_empty (VARENV v) = FinMap.isEmpty v
       fun map (f : range_private -> range_private) (VARENV m) : VarEnv =
@@ -607,6 +626,11 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    (case FinMap.lookup v id of
 	       SOME (LONGCONpriv(sigma, ids)) => SOME ids
 	     | _ => NONE)
+                  handle Crash.CRASH  => 
+                            (TextIO.output(TextIO.stdOut, "Environments.lookup_fellow_constructors\n");
+                             raise Crash.CRASH
+                            )
+
 
       fun on (S : Substitution, VE as VARENV m) : VarEnv = VE
 
@@ -616,6 +640,11 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		       let val r = case FinMap.lookup m id
 				     of SOME r => r
 				      | NONE => impossible ("VE.restrict: cannot find id " ^ Ident.pr_id id)
+                                   handle Crash.CRASH  => 
+                            (TextIO.output(TextIO.stdOut, "Environments.restrict\n");
+                             raise Crash.CRASH
+                            )
+
 		       in FinMap.add(id,r,m_new)
 		       end) FinMap.empty ids)
 
@@ -639,6 +668,213 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    FinMap.reportMapSORTED (Ident.<)
 	      (fn (id, range_private) =>
 	            f (id, range_private_to_range range_private)) m
+      val layout = layoutVE
+      fun tyvars_in_range (LONGVAR sigma) = TypeScheme.tyvars sigma
+	| tyvars_in_range (LONGCON sigma) = TypeScheme.tyvars sigma
+	| tyvars_in_range (LONGEXCON tau) = Type.tyvars tau
+      val tyvars =
+	      fold
+		(fn range => fn T =>
+		       unionTyVarSet (T, tyvars_in_range range))
+		   []
+      val tyvars' =
+	      Fold
+		(fn (id, range) => fn criminals =>
+		       (case tyvars_in_range range of
+			  [] => criminals
+			| tyvars => (id, tyvars) :: criminals))
+		    []
+      fun tynames_in_range (LONGVAR sigma) = TypeScheme.tynames sigma
+	| tynames_in_range (LONGCON sigma) = TypeScheme.tynames sigma
+	| tynames_in_range (LONGEXCON tau) = Type.tynames tau
+
+      val tynames = fold (TyName.Set.union o tynames_in_range) TyName.Set.empty
+
+      fun ids_with_tyvar_in_type_scheme VE tyvar =
+	    Fold (fn (id, range) => fn ids =>
+		  if memberTyVarSet tyvar (tyvars_in_range range) then id :: ids
+		  else ids) [] VE
+
+      val pu = pu_VarEnv
+    end (*VE*)
+
+
+old *)
+
+    structure VE = struct
+      (*The type of items associated with identifiers in a VarEnv:*)
+      datatype range = LONGVAR   of TypeScheme
+	             | LONGCON   of TypeScheme
+                     | LONGEXCON of Type            (* MEMO: why LONGxxx? *)
+
+      val empty : VarEnv = VARENV OrderFinMap.empty
+      val bogus = empty
+      fun singleton (p: id * range_private): VarEnv =
+	    VARENV(OrderFinMap.singleton p)
+      fun singleton_var (id : Ident.id, sigma : TypeScheme) : VarEnv =
+            singleton (id, LONGVARpriv sigma)
+      fun singleton_con (id : Ident.id, sigma : TypeScheme, ids : id list)
+            : VarEnv = singleton (id, LONGCONpriv (sigma, ids))
+      fun singleton_excon (id : Ident.id, tau : Type) : VarEnv =
+            singleton (id, LONGEXCONpriv tau)
+      fun add (ve: VarEnv as VARENV v)(id: id)(range_private: range_private): VarEnv =
+	         VARENV (OrderFinMap.add (id,range_private,v))
+      fun plus (VARENV v, VARENV v') : VarEnv = 
+          ((*if Compiler.Profile.getTimingMode() then
+             let fun size m = List.length(OrderFinMap.list m)
+             in
+                 TextIO.output(TextIO.stdOut, concat["plus(",Int.toString(size v), ", ", 
+                                                             Int.toString(size v'),")\n"])
+             end
+           else ();*)
+           VARENV (OrderFinMap.plus (v, v'))
+         )
+      fun range_private_to_range (LONGVARpriv sigma) = LONGVAR sigma
+	| range_private_to_range (LONGCONpriv(sigma, _)) = LONGCON sigma
+	| range_private_to_range (LONGEXCONpriv tau) = LONGEXCON tau
+      fun lookup (VARENV v) id : range option =
+            map_opt range_private_to_range (OrderFinMap.lookup v id)
+                  handle Crash.CRASH  => 
+                            (TextIO.output(TextIO.stdOut, "Environments.lookup\n");
+                             let
+                               val st = OrderFinMap.layoutMap{start="{",finish="}",
+                                         eq="", sep= ", "} (fn id => PP.LEAF(Ident.pr_id id))
+                                                         (fn _ => PP.LEAF "")
+                                                         v
+                               val os = TextIO.openOut "madsdebug"
+                             in
+                               TextIO.output(os, PP.flatten1(st));
+                               TextIO.closeOut os
+                             end;
+                             raise Crash.CRASH
+                            )
+
+      fun dom (VARENV m) = EqSet.fromList(OrderFinMap.dom m)
+      fun is_empty (VARENV v) = OrderFinMap.isEmpty v
+      fun map (f : range_private -> range_private) (VARENV m) : VarEnv =
+	    VARENV(OrderFinMap.composemap f m)
+      fun eq (VARENV v1, VARENV v2) : bool =
+	    let val finmap_to_sorted_alist =
+		      ListSort.sort
+		        (fn (id1, _) => fn (id2, _) => Ident.< (id1,id2))
+		      o OrderFinMap.list
+		val alist1 = finmap_to_sorted_alist v1
+		val alist2 = finmap_to_sorted_alist v2
+	    in
+	      foldl
+	        (fn (((id1, LONGCONpriv (sigma1, ids1)),
+		     (id2, LONGCONpriv (sigma2, ids2))),
+		     bool) =>
+		      bool andalso
+		      id1 = id2 andalso
+		      TypeScheme.eq (sigma1,sigma2)
+		   | _ => impossible "VE.eq: VE contains non-constructors")
+		  true (BasisCompat.ListPair.zipEq (alist1, alist2))
+		  handle BasisCompat.ListPair.UnequalLengths => false
+	    end
+      fun fold (f : range -> 'a -> 'a)
+      	       (start : 'a)
+	       (VARENV map) : 'a = 
+	    OrderFinMap.fold
+	      (fn (range, a) => f (range_private_to_range range) a)
+	        start map
+
+      fun size (VARENV v1) : int = OrderFinMap.fold (fn (_, a) => a + 1) 0 v1
+
+      fun FoldPRIVATE (f : id * range_private -> 'a -> 'a)
+      		      (start : 'a) (VARENV map) : 'a =
+		        OrderFinMap.Fold (uncurry f) start map
+      fun Fold (f :   id * range -> 'a  -> 'a)
+      	       (start : 'a)
+	       (VARENV map) : 'a = 
+	    OrderFinMap.Fold (fn ((id, range), a) =>
+			      f (id, range_private_to_range range) a)
+	      start map
+
+      fun apply (f : (id * range -> unit)) (VARENV map) : unit = 
+	    List.app
+	       (fn (id, range_private) =>
+		      f (id, range_private_to_range range_private))
+	          (OrderFinMap.list map)
+
+      (*CEfold f a VE = will crash if there is anything else than
+       constructors in VE; fold f over the constructors in VE.  CEFold
+       is similar*)
+
+      fun CEfold (f : TypeScheme -> 'a -> 'a) : 'a -> VarEnv -> 'a =
+	    fold
+	      (fn range => fn a' =>
+	       (case range of
+		  LONGCON sigma => f sigma a'
+		| _ => impossible "CEfold: VE contains non-constructors"))
+      fun CEFold (f : id * TypeScheme -> 'a -> 'a) : 'a -> VarEnv -> 'a =
+            Fold
+	      (fn (id,range) => fn a =>
+	       (case range of
+		  LONGCON sigma => f (id,sigma) a
+		| _ => impossible "CEFold: VE contains non-constructors"))
+	    
+      fun close (VE : VarEnv) : VarEnv =
+	    FoldPRIVATE
+	      (fn (id, range_private) => fn VE =>
+	             add VE id
+		       (case range_private of
+			  LONGVARpriv sigma => LONGVARpriv (TypeScheme.close true sigma)
+			| LONGCONpriv (sigma, ids) => LONGCONpriv (TypeScheme.close true sigma, ids)
+			| LONGEXCONpriv tau => LONGEXCONpriv tau))
+	         empty VE
+
+      fun lookup_fellow_constructors (VARENV v) id : id list option =
+	    (case OrderFinMap.lookup v id of
+	       SOME (LONGCONpriv(sigma, ids)) => SOME ids
+	     | _ => NONE)
+                  handle Crash.CRASH  => 
+                            (TextIO.output(TextIO.stdOut, "Environments.lookup_fellow_constructors\n");
+                             raise Crash.CRASH
+                            )
+
+
+      fun on (S : Substitution, VE as VARENV m) : VarEnv = VE
+
+      fun restrict (VARENV m,ids) =
+	    VARENV (foldl
+		      (fn (id, m_new) =>
+		       let val r = case OrderFinMap.lookup m id
+				     of SOME r => r
+				      | NONE => impossible ("VE.restrict: cannot find id " ^ Ident.pr_id id)
+                                   handle Crash.CRASH  => 
+                            (TextIO.output(TextIO.stdOut, "Environments.restrict\n");
+                             raise Crash.CRASH
+                            )
+
+		       in OrderFinMap.add(id,r,m_new)
+		       end) OrderFinMap.empty ids)
+
+      (* Matching *)
+      local
+	fun match_scheme a = StatObject.TypeScheme.match a
+	fun match_type a = StatObject.Type.match a
+
+	fun match_range (LONGVAR sigma1, LONGVAR sigma2) = match_scheme (sigma1, sigma2)
+	  | match_range (LONGCON sigma1, LONGCON sigma2) = match_scheme (sigma1, sigma2)
+	  | match_range (LONGEXCON tau1, LONGEXCON tau2) = match_type (tau1, tau2)
+	  | match_range _ = ()
+      in
+	fun match (VE,VE0) = Fold (fn (id,r) => fn () =>
+				   (case lookup VE0 id 
+				      of SOME r0 => match_range (r,r0)
+				       | NONE => ())) () VE
+      end
+
+      fun report (f, VARENV m) =
+          let 
+            val l = OrderFinMap.list(m)
+            val m = FinMap.fromList l
+          in
+	    FinMap.reportMapSORTED (Ident.<)
+	      (fn (id, range_private) =>
+	            f (id, range_private_to_range range_private)) m
+          end
       val layout = layoutVE
       fun tyvars_in_range (LONGVAR sigma) = TypeScheme.tyvars sigma
 	| tyvars_in_range (LONGCON sigma) = TypeScheme.tyvars sigma
@@ -824,6 +1060,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
       local
 	fun reportCE (VARENV v) =
+          let
+            val l = OrderFinMap.list v
+            val v = FinMap.fromList l
+          in
 	      FinMap.reportMapSORTED
 		Ident.<
 		  (fn (id, range_private) =>
@@ -834,6 +1074,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 					      (StatObject.newTVNames ()) sigma)
 			 | _ => impossible "reportCE"))
 		    v
+
+          end
       in
 	fun report {tyEnv=TYENV map, bindings} =
 	      FinMap.reportMapSORTED
@@ -846,7 +1088,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		     val vars' = (case vars of "" => "" | _ => vars ^ " ")
 		   in
 		     Report.line
-		       (if FinMap.isEmpty v then
+		       (if OrderFinMap.isEmpty v then
 			  "type " ^ vars' ^ TyCon.pr_TyCon tycon
 			  ^ (if bindings then " = " ^ body else "")
 			else
@@ -1417,6 +1659,11 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    EqSet.list(FinMap.dom m)
       fun ExplicitTyVar_lookup (CONTEXT{U=EXPLICITTYVARENV m,E}) ExplicitTyVar =
 	  FinMap.lookup m ExplicitTyVar
+            handle Crash.CRASH  => 
+                            (TextIO.output(TextIO.stdOut, "Environments.ExplicitTyVar_lookup\n");
+                             raise Crash.CRASH
+                            )
+
 (*
 	    (case FinMap.lookup m ExplicitTyVar of
 	       NONE => impossible "ExplicitTyVar_lookup" (*Level.GENERIC*)
@@ -1543,26 +1790,32 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  (* isVar is true iff id is a variable in dom VE *)		     
 	  fun remake isVar id (sigma : TypeScheme) : TypeScheme =
 	    let val isExp = 
-	          case FinMap.lookup isExpansiveId_map id 
+	         (case FinMap.lookup isExpansiveId_map id 
 		    of NONE => false
 		     | SOME b => b
+                 )
+                  handle Crash.CRASH  => 
+                            (TextIO.output(TextIO.stdOut, "Environments.remake\n");
+                             raise Crash.CRASH
+                            )
+
 	    in TypeScheme.close (not (isExp andalso isVar)) sigma
 	    end
 
 	  val VARENV m = VE
-	  val m = FinMap.Fold
+	  val m = OrderFinMap.Fold
 	     (fn ((id, range), m) =>
 	      case range 
 		of LONGVARpriv sigma =>
 		  let val sigma = remake true id sigma
-		  in FinMap.add (id, LONGVARpriv sigma, m)
+		  in OrderFinMap.add (id, LONGVARpriv sigma, m)
 		  end
 		 | LONGCONpriv (sigma, cons) =>
 		  let val sigma = remake false id sigma 
-		  in FinMap.add (id, LONGCONpriv (sigma, cons), m)
+		  in OrderFinMap.add (id, LONGCONpriv (sigma, cons), m)
 		  end
-		 | LONGEXCONpriv tau => FinMap.add (id, LONGEXCONpriv tau, m))
-	     FinMap.empty m
+		 | LONGEXCONpriv tau => OrderFinMap.add (id, LONGEXCONpriv tau, m))
+	     OrderFinMap.empty m
 	in
 	  VARENV m
 	end (*let*) handle BoundTwice VE => VE
