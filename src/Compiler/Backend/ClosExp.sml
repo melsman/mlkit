@@ -1908,11 +1908,11 @@ struct
 		 val lv_exn_arg1 = fresh_lvar("exn_arg1")
 		 val lv_exn_arg2 = fresh_lvar("exn_arg2")
 		 val ce_res =
-		   LET{pat=[lv_exn_arg1],
-			 bind=SELECT(0,ce),
-			 scope=LET{pat=[lv_exn_arg2],
-				   bind=SELECT(0,VAR lv_exn_arg1),
-				   scope=insert_se(compile_seq_switch(VAR lv_exn_arg2,selections,opt),se)}}
+                   insert_se(LET{pat=[lv_exn_arg1],
+				 bind=SELECT(0,ce),
+				 scope=LET{pat=[lv_exn_arg2],
+					   bind=SELECT(0,VAR lv_exn_arg1),
+					   scope=compile_seq_switch(VAR lv_exn_arg2,selections,opt)}},se)
 	       in
 		 (ce_res,NONE_SE)
 	       end
