@@ -91,6 +91,10 @@ Backend/BACKEND_INFO.sml
 Backend/BackendInfo.sml
 Backend/REG_ALLOC.sml
 Backend/RegAlloc.sml
+Backend/FETCH_AND_FLUSH.sml
+Backend/FetchAndFlush.sml
+Backend/CALC_OFFSET.sml
+Backend/CalcOffset.sml
 
 #if defined(KIT_TARGET_C)
 

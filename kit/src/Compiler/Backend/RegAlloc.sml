@@ -32,7 +32,15 @@ struct
   type pp = PhysSizeInf.pp
   type cc = CallConv.cc
   type label = Labels.label
-  type LinePrg = LineStmt.LinePrg
+  type ('sty,'offset) LinePrg = ('sty,'offset) LineStmt.LinePrg
+  type phreg = LineStmt.phreg
+
+  datatype StoreType =
+    STACK_STY of lvar
+  | PHREG_STY of lvar * phreg
+    
+  fun pr_sty(STACK_STY lv) = Lvars.pr_lvar lv ^ ":stack"
+    | pr_sty(PHREG_STY(lv,i)) = Lvars.pr_lvar lv ^ ":phreg" ^ Word.toString i
 
   (***********)
   (* Logging *)
@@ -117,7 +125,7 @@ struct
 	end
 	| CC_ls(LineStmt.LETREGION{rhos,body},rest) = LineStmt.LETREGION{rhos=rhos,body=CC_lss body}::rest
 	| CC_ls(LineStmt.SCOPE{pat,scope},rest) = LineStmt.SCOPE{pat=pat,scope=CC_lss scope}::rest
-	| CC_ls(LineStmt.HANDLE(lss1,lss2),rest) = LineStmt.HANDLE(CC_lss lss1,CC_lss lss2)::rest
+	| CC_ls(LineStmt.HANDLE(lss1,lss2,offset),rest) = LineStmt.HANDLE(CC_lss lss1,CC_lss lss2,offset)::rest
 	| CC_ls(LineStmt.SWITCH_I sw,rest) = LineStmt.SWITCH_I(CC_sw CC_lss sw)::rest
 	| CC_ls(LineStmt.SWITCH_S sw,rest) = LineStmt.SWITCH_S(CC_sw CC_lss sw)::rest
 	| CC_ls(LineStmt.SWITCH_C sw,rest) = LineStmt.SWITCH_C(CC_sw CC_lss sw)::rest
@@ -142,9 +150,9 @@ struct
 	  val res' = map (fn (lv,i) => (LineStmt.VAR lv,i)) res
 	  val body_lss = CC_lss(lss)
 	  val body_args = 
-	     LineStmt.SCOPE{pat=map LineStmt.NO_STY (map #1 args),scope=resolve_args(args',body_lss)}
+	     LineStmt.SCOPE{pat=map #1 args,scope=resolve_args(args',body_lss)}
 	  val body_res =
-	    LineStmt.SCOPE{pat=map LineStmt.NO_STY (map #1 res),scope=body_args::resolve_res(res',[])}
+	    LineStmt.SCOPE{pat=map #1 res,scope=body_args::resolve_res(res',[])}
 	in
 	  LineStmt.FUN(lab,cc',[body_res])
 	end
@@ -155,9 +163,9 @@ struct
 	  val res' = map (fn (lv,i) => (LineStmt.VAR lv,i)) res
 	  val body_lss = CC_lss(lss)
 	  val body_args = 
-	    LineStmt.SCOPE{pat=map LineStmt.NO_STY (map #1 args),scope=resolve_args(args',body_lss)}
+	    LineStmt.SCOPE{pat=map #1 args,scope=resolve_args(args',body_lss)}
 	  val body_res =
-	     LineStmt.SCOPE{pat=map LineStmt.NO_STY (map #1 res),scope=body_args::resolve_res(res',[])}
+	     LineStmt.SCOPE{pat=map #1 res,scope=body_args::resolve_res(res',[])}
 	in
 	  LineStmt.FN(lab,cc',[body_res])
 	end
@@ -167,28 +175,36 @@ struct
     (* DUMMY REGISTER ALLOCATION *)
     (*****************************)
     local
-      fun assign_stack(LineStmt.NO_STY lv) = LineStmt.STACK_STY lv
-	| assign_stack _ = die "assign_stack: StoreType is not NO_STY in dummy_ra."
+      fun assign_stack(lv) = STACK_STY lv
 
       fun ra_dummy_sw ra_dummy_lss (LineStmt.SWITCH(atom_arg,sels,default)) =
 	LineStmt.SWITCH(atom_arg,map (fn (s,lss) => (s,ra_dummy_lss lss)) sels, ra_dummy_lss default)
 
-      fun ra_dummy_ls(LineStmt.SCOPE{pat,scope},rest) = 
+      fun ra_dummy_ls(LineStmt.ASSIGN a,rest) = LineStmt.ASSIGN a::rest
+	| ra_dummy_ls(LineStmt.FLUSH a,rest) = die "ra_dummy_ls: FLUSH not inserted yet."
+	| ra_dummy_ls(LineStmt.FETCH a,rest) = die "ra_dummy_ls: FETCH not inserted yet."
+	| ra_dummy_ls(LineStmt.FNJMP a,rest) = LineStmt.FNJMP a::rest
+	| ra_dummy_ls(LineStmt.FNCALL a,rest) = LineStmt.FNCALL a::rest
+	| ra_dummy_ls(LineStmt.JMP a,rest) = LineStmt.JMP a::rest
+	| ra_dummy_ls(LineStmt.FUNCALL a,rest) = LineStmt.FUNCALL a::rest
+	| ra_dummy_ls(LineStmt.LETREGION{rhos,body},rest) = LineStmt.LETREGION{rhos=rhos,body=ra_dummy_lss body}::rest
+	| ra_dummy_ls(LineStmt.SCOPE{pat,scope},rest) = 
 	LineStmt.SCOPE{pat=map assign_stack pat,scope=ra_dummy_lss scope}::rest
-      | ra_dummy_ls(LineStmt.LETREGION{rhos,body},rest) = LineStmt.LETREGION{rhos=rhos,body=ra_dummy_lss body}::rest
-      | ra_dummy_ls(LineStmt.HANDLE(lss1,lss2),rest) = LineStmt.HANDLE(ra_dummy_lss lss1,ra_dummy_lss lss2)::rest
-      | ra_dummy_ls(LineStmt.SWITCH_I sw,rest) = LineStmt.SWITCH_I(ra_dummy_sw ra_dummy_lss sw)::rest
-      | ra_dummy_ls(LineStmt.SWITCH_S sw,rest) = LineStmt.SWITCH_S(ra_dummy_sw ra_dummy_lss sw)::rest
-      | ra_dummy_ls(LineStmt.SWITCH_C sw,rest) = LineStmt.SWITCH_C(ra_dummy_sw ra_dummy_lss sw)::rest
-      | ra_dummy_ls(LineStmt.SWITCH_E sw,rest) = LineStmt.SWITCH_E(ra_dummy_sw ra_dummy_lss sw)::rest
-      | ra_dummy_ls(ls,rest) = ls::rest
+	| ra_dummy_ls(LineStmt.HANDLE(lss1,lss2,offset),rest) = LineStmt.HANDLE(ra_dummy_lss lss1,ra_dummy_lss lss2,offset)::rest
+	| ra_dummy_ls(LineStmt.RAISE{arg,defined_atoms},rest) = LineStmt.RAISE{arg=arg,defined_atoms=defined_atoms}::rest
+	| ra_dummy_ls(LineStmt.SWITCH_I sw,rest) = LineStmt.SWITCH_I(ra_dummy_sw ra_dummy_lss sw)::rest
+	| ra_dummy_ls(LineStmt.SWITCH_S sw,rest) = LineStmt.SWITCH_S(ra_dummy_sw ra_dummy_lss sw)::rest
+	| ra_dummy_ls(LineStmt.SWITCH_C sw,rest) = LineStmt.SWITCH_C(ra_dummy_sw ra_dummy_lss sw)::rest
+	| ra_dummy_ls(LineStmt.SWITCH_E sw,rest) = LineStmt.SWITCH_E(ra_dummy_sw ra_dummy_lss sw)::rest
+	| ra_dummy_ls(LineStmt.RESET_REGIONS a,rest) = LineStmt.RESET_REGIONS a::rest
+	| ra_dummy_ls(LineStmt.CCALL a,rest) = LineStmt.CCALL a::rest
 
-    and ra_dummy_lss(lss) = List.foldr (fn (ls,acc) => ra_dummy_ls(ls,acc)) [] lss
+      and ra_dummy_lss(lss) = List.foldr (fn (ls,acc) => ra_dummy_ls(ls,acc)) [] lss
 
-    fun ra_dummy_top_decl(f) =
-      (case CC_top_decl f of
-	 LineStmt.FUN(lab,cc,lss) => LineStmt.FUN(lab,cc,ra_dummy_lss lss)
-       | LineStmt.FN(lab,cc,lss) => LineStmt.FN(lab,cc,ra_dummy_lss lss))
+      fun ra_dummy_top_decl(f) =
+	(case CC_top_decl f of
+	   LineStmt.FUN(lab,cc,lss) => LineStmt.FUN(lab,cc,ra_dummy_lss lss)
+	 | LineStmt.FN(lab,cc,lss) => LineStmt.FN(lab,cc,ra_dummy_lss lss))
     in
       fun ra_dummy_prg funcs =
 	List.foldr (fn (func,acc) => ra_dummy_top_decl func :: acc) [] funcs
@@ -206,7 +222,7 @@ struct
     (* Funtion to invoke the register allocator of choice *)
     (******************************************************)
     fun ra_main {main_lab:label,
-		 code=line_prg:LinePrg,
+		 code=line_prg: (lvar,unit) LinePrg,
 		 imports:label list,
 		 exports:label list} ra_prg =
       let
@@ -214,12 +230,12 @@ struct
 	val line_prg_ra = ra_prg line_prg
 	val _ = 
 	  if Flags.is_on "print_register_allocated_program" then
-	    display("\nReport: AFTER REGISTER ALLOCATION (dummy):", LineStmt.layout_line_prg line_prg_ra)
+	    display("\nReport: AFTER REGISTER ALLOCATION (dummy):", LineStmt.layout_line_prg pr_sty (fn _ => "()") line_prg_ra)
 	  else
 	    ()
 	val _ = chat "]\n"
       in
-	{main_lab=main_lab,code=line_prg_ra,imports=imports,exports=exports}
+	{main_lab=main_lab,code=line_prg_ra: (StoreType,unit) LinePrg,imports=imports,exports=exports}
       end
   in
     fun ra_dummy code = ra_main code ra_dummy_prg

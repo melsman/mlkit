@@ -7,6 +7,8 @@ functor CallConv(structure Lvars : LVARS
 		 structure Crash : CRASH) : CALL_CONV = 
   struct
     type lvar = Lvars.lvar
+    type phreg = BI.phreg
+    type offset = int
 
     (***********)
     (* Logging *)
@@ -17,15 +19,16 @@ functor CallConv(structure Lvars : LVARS
 
     datatype CC_STY =
         CC_NO_STY of lvar
-      | CC_STACK of lvar
-      | CC_PHREG of lvar * int
+      | CC_STACK of lvar * offset
+      | CC_PHREG of lvar * phreg
 
-    type cc = {clos:     CC_STY option,
-	       free:     CC_STY list,
-	       args:     CC_STY list,
-	       reg_vec:  CC_STY option,
-	       reg_args: CC_STY list,
-	       res:      CC_STY list}
+    type cc = {clos:       CC_STY option,
+	       free:       CC_STY list,
+	       args:       CC_STY list,
+	       reg_vec:    CC_STY option,
+	       reg_args:   CC_STY list,
+	       res:        CC_STY list,
+	       frame_size: int option}
 
     (*************************)
     (* Build Call Convention *)
@@ -39,7 +42,8 @@ functor CallConv(structure Lvars : LVARS
        args = map CC_NO_STY args,
        reg_vec = NONE,
        reg_args = [],
-       res=map CC_NO_STY ress}
+       res=map CC_NO_STY ress,
+       frame_size = NONE}
 
     fun mk_cc_fun(args,clos,free,reg_vec,reg_args,ress) =
       {clos = mk_sty_opt clos,
@@ -47,23 +51,52 @@ functor CallConv(structure Lvars : LVARS
        args = map CC_NO_STY args,
        reg_vec = mk_sty_opt reg_vec,
        reg_args = map CC_NO_STY reg_args,
-       res= map CC_NO_STY ress}
+       res= map CC_NO_STY ress,
+       frame_size = NONE}
 
     fun get_lvar_sty(CC_NO_STY lv) = lv
-      | get_lvar_sty(CC_STACK lv) = lv
+      | get_lvar_sty(CC_STACK(lv,_)) = lv
       | get_lvar_sty(CC_PHREG(lv,i)) = lv
 
     fun get_res_lvars({res,...}:cc) = map get_lvar_sty res
+
+    fun get_frame_size({frame_size = NONE,...}:cc) = die "get_frame_size: frame_size does not exists"
+      | get_frame_size({frame_size = SOME f_size,...}:cc) = f_size
+
+    fun add_frame_size({clos,free,args,reg_vec,reg_args,res,frame_size},f_size) =
+      {clos = clos,
+       free = free,
+       args = args,
+       reg_vec = reg_vec,
+       reg_args = reg_args,
+       res = res,
+       frame_size = SOME f_size}
 
     (***************************)
     (* Resolve Call Convention *)
     (***************************)
     local
+      local
+	val next_offset = ref 0
+      in
+	fun reset_offset() = next_offset := 0
+	fun get_next_offset() = (next_offset := !next_offset - 1; !next_offset)
+      end
+
+      fun get_spilled_sty(CC_NO_STY lv,acc) = die "get_spilled_sty: STY not resolved yet."
+	| get_spilled_sty(CC_STACK(lv,offset),acc) = (lv,offset)::acc
+	| get_spilled_sty(CC_PHREG(lv,phreg),acc) = acc
+
+      fun get_spilled_sty_opt(NONE,acc) = acc
+	| get_spilled_sty_opt(SOME sty,acc) = get_spilled_sty(sty,acc)
+
+      fun get_spilled_stys(stys,acc) = foldr (fn (sty,acc) => get_spilled_sty(sty,acc)) acc stys
+
       fun assign_phreg(CC_NO_STY lv, i) = (CC_PHREG(lv,i),(lv,i))
 	| assign_phreg(CC_STACK _,_) = die "assign_phreg: sty is CC_STACK and not CC_NO_STY."
 	| assign_phreg(CC_PHREG _,_) = die "assign_phreg: sty is CC_PHREG and not CC_NO_STY."
 
-      fun assign_stack(CC_NO_STY lv) = CC_STACK lv
+      fun assign_stack(CC_NO_STY lv) = CC_STACK(lv,get_next_offset())
 	| assign_stack(CC_STACK _) = die "assign_stack: sty is CC_STACK and not CC_NO_STY."
 	| assign_stack(CC_PHREG _) = die "assign_stack: sty is CC_PHREG and not CC_NO_STY."
 
@@ -105,7 +138,7 @@ functor CallConv(structure Lvars : LVARS
 	end
 	| resolve_opt phreg_to_alpha (NONE,assign_list,phregs) = (NONE,assign_list,phregs)
     in
-      fun resolve_ccall(phreg_to_alpha: int  -> 'a)
+      fun resolve_ccall(phreg_to_alpha: phreg  -> 'a)
 	{args: 'a list, rhos_for_result: 'a list, res: 'a list} =
 	let
 	  val (args',assign_list_args,phregs) = resolve_list phreg_to_alpha (args,[],BI.args_phreg_ccall)
@@ -115,7 +148,7 @@ functor CallConv(structure Lvars : LVARS
 	in
 	  ({args=args',rhos_for_result=rhos_for_result',res=res'},assign_list_args,assign_list_res)
 	end
-      fun resolve_app (phreg_to_alpha: int -> 'a)
+      fun resolve_app (phreg_to_alpha: phreg -> 'a)
 	{clos: 'a option, free: 'a list, args: 'a list, reg_vec: 'a option, reg_args: 'a list, res: 'a list} =
 	let
 	  val (clos',assign_list_args,phregs) = resolve_opt phreg_to_alpha (clos,[],BI.args_phreg)
@@ -134,14 +167,16 @@ functor CallConv(structure Lvars : LVARS
 	    res = res'},assign_list_args,assign_list_res)
 	end
 
-      fun resolve_cc {clos,free,args,reg_vec,reg_args,res} =
+      fun resolve_cc {clos,free,args,reg_vec,reg_args,res,frame_size} =
 	let
+	  val _ = reset_offset()
 	  val (clos_sty_opt,lv_phreg_args,phregs) = resolve_sty_opt(clos,[],BI.args_phreg)
 	  val (reg_vec_sty_opt,lv_phreg_args,phregs) = resolve_sty_opt(reg_vec,lv_phreg_args,phregs)
 	  val (args_stys,lv_phreg_args,phregs) = resolve_stys(args,lv_phreg_args,phregs)
 	  val (free_stys,lv_phreg_args,phregs) = resolve_stys(free,lv_phreg_args,phregs)
 	  val (reg_args_stys,lv_phreg_args,_) = resolve_stys(reg_args,lv_phreg_args,phregs)
 
+	  val _ = get_next_offset() (* The next offset is for the return address *)
 	  val (res_stys,lv_phreg_res,_) = resolve_stys(res,[],BI.res_phreg)
 	in
 	  ({clos=clos_sty_opt,
@@ -149,13 +184,25 @@ functor CallConv(structure Lvars : LVARS
 	    args=args_stys,
 	    reg_vec=reg_vec_sty_opt,
 	    reg_args=reg_args_stys,
-	    res = res_stys},
+	    res = res_stys,
+	    frame_size=frame_size},
 	   lv_phreg_args,
 	   lv_phreg_res)
 	end
+
+      fun get_spilled_args {clos,free,args,reg_vec,reg_args,res,frame_size} =
+	map #1 (get_spilled_sty_opt(clos,get_spilled_stys(free,get_spilled_stys(args,get_spilled_sty_opt(reg_vec,get_spilled_stys(reg_args,[]))))))
+
+      fun get_spilled_args_with_offsets{clos,free,args,reg_vec,reg_args,res,frame_size} =
+	get_spilled_sty_opt(clos,get_spilled_stys(free,get_spilled_stys(args,get_spilled_sty_opt(reg_vec,get_spilled_stys(reg_args,[])))))
+
+      fun get_spilled_res {clos,free,args,reg_vec,reg_args,res,frame_size} =
+	map #1 (get_spilled_stys(res,[]))
+
+      fun get_spilled_res_with_offsets {clos,free,args,reg_vec,reg_args,res,frame_size} =
+	get_spilled_stys(res,[])
     end
 	
-
     (******************)
     (* PrettyPrinting *)
     (******************)
@@ -164,17 +211,24 @@ functor CallConv(structure Lvars : LVARS
       | pr_seq (e::rest) pp = pp e ^ ", " ^ (pr_seq rest pp)
 
     fun pr_sty(CC_NO_STY lv) = Lvars.pr_lvar lv
-      | pr_sty(CC_STACK lv) = Lvars.pr_lvar lv ^ ":stack"
-      | pr_sty(CC_PHREG(lv,i)) = Lvars.pr_lvar lv ^ ":phreg" ^ Int.toString i
+      | pr_sty(CC_STACK(lv,offset)) = Lvars.pr_lvar lv ^ ":stack(" ^ Int.toString offset ^ ")"
+      | pr_sty(CC_PHREG(lv,i)) = Lvars.pr_lvar lv ^ ":phreg" ^ Word.toString i
 
     fun pr_sty_opt(SOME sty) = pr_sty sty
       | pr_sty_opt(NONE) = ""
 
+    fun pr_frame_size(NONE) = ""
+      | pr_frame_size(SOME f_size) = "f_size: " ^ Int.toString f_size
+
     fun pr_stys stys = pr_seq stys pr_sty
 
-    fun pr_cc{clos,free,args,reg_vec,reg_args,res} =
-      "clos=<" ^ pr_sty_opt clos ^ ">,args=<" ^ pr_stys args ^ 
-      ">,free=<" ^ pr_stys free ^ ">,reg_vec=<" ^ pr_sty_opt reg_vec ^ 
-      ">,reg_args=<" ^ pr_stys reg_args ^ ">,res=<" ^ pr_stys res ^ ">"
+    fun pr_cc{clos,free,args,reg_vec,reg_args,res,frame_size} =
+      "args=<" ^ pr_stys args ^
+      ">,reg_vec=<" ^ pr_sty_opt reg_vec ^ 
+      ">,reg_args=<" ^ pr_stys reg_args ^
+      ">,clos=<" ^ pr_sty_opt clos ^ 
+      ">,free=<" ^ pr_stys free ^ 
+      ">,res=<" ^ pr_stys res ^ "> " ^
+      pr_frame_size frame_size
 
   end

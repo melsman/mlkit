@@ -1,4 +1,4 @@
-(* fjern FRAME 04/12/1998, Niels *)
+
 signature CLOS_EXP =
   sig
 
