@@ -1,6 +1,6 @@
-This is file README_SMLSERVER                        July 13, 2001
+This is file README_SMLSERVER
 
-     SMLserver home page: http://www.it.edu/research/smlserver
+     SMLserver home page: http://www.smlserver.org
 
 INTRODUCTION
 ------------
@@ -41,6 +41,10 @@ To use SMLserver you need the following:
     can find versions of AOLserver patched with internationalization
     features, etc.
 
+  * SMLserver. Binary RPMs, source RPMs, and tgz-packages are
+    available from the SMLserver home page; see the top of this 
+    file. 
+
   * An RDBMS. To get access to a database from within your sml/msp
     scripts, you need to have an RDBMS system installed that is
     supported by AOLserver - see below. One such RDBMS is PostgreSQL,
@@ -48,10 +52,6 @@ To use SMLserver you need the following:
     Redhat Linux, you can even find some rpm's there). Detailed
     information about setting up a database with PostgreSQL for the
     purpose of using it with SMLserver is given below.
-
-  * SMLserver. Binary RPMs, source RPMs, and tgz-packages are
-    available from the SMLserver home page; see the top of this 
-    file. 
 
 
 BUILDING SMLSERVER FROM THE TGZ-PACKAGE
@@ -72,7 +72,7 @@ about where AOLserver is installed.
 
 Now, go to the mlkit/kit directory and type
 
-  mael@daffy> make smlserver
+  # make smlserver
 
 which builds 
 
@@ -80,47 +80,20 @@ which builds
     src/SMLserver/ directory
 
   * a compiler for compiling sml-files and msp-scripts into
-    bytecode; its available as bin/mlkit_web
+    bytecode; its available as bin/smlserverc
 
 INSTALLING SMLserver: To install SMLserver in /usr/share/smlserver
-type make install_smlserver:
+type 
 
-  [nh@nh kit]# whoami
-  root
-  [nh@nh kit]# make install_smlserver
-  rm -rf /usr/share/smlserver
-  mkdir -p /usr/share/smlserver
-  mkdir -p /usr/share/smlserver/bin
-  mkdir -p /usr/share/smlserver/doc
-  cp -p bin/mlkit_web.x86-linux /usr/share/smlserver/bin
-  cp -p src/SMLserver/nssml.so /usr/share/smlserver/bin
-  cp -p copyright /usr/share/smlserver
-  cp -p README /usr/share/smlserver
-  cp -p README_SMLSERVER /usr/share/smlserver
-  cp -p NEWS_SMLSERVER /usr/share/smlserver
-  cp -p -R smlserver_demo /usr/share/smlserver/smlserver_demo 
-  cp -p -R basislib /usr/share/smlserver/basislib
-  cp -p doc/manual/mlkit.pdf /usr/share/smlserver/doc
-  chown -R `whoami`.`whoami` /usr/share/smlserver
-  chmod -R ug+rw /usr/share/smlserver
-  chmod -R o+r /usr/share/smlserver
-  echo '#!/bin/sh' > /usr/share/smlserver/bin/mlkit_web
-  echo -e '/usr/share/smlserver/bin/mlkit_web.x86-linux /usr/share/smlserver $*' >> /usr/share/smlserver/bin/mlkit_web
-  chmod a+x /usr/share/smlserver/bin/mlkit_web
-  [nh@nh kit]#
+  $ make install_smlserver:
 
-as user root. This requires, that you have not the smlserver
-rpm-package installed. If you do have it installed type rpm -e
-smlserver as user root, which will remove the package:
+as user root. The installation requires, that the smlserver
+rpm-package is not installed. To remove the package, if it is already
+installed, type 
+ 
+  $ rpm -e smlserver
 
-  [nh@nh nh]# whoami
-  root
-  [nh@nh nh]# rpm -qa | grep smlserver
-  smlserver-3.9.2-1
-  [nh@nh nh]# rpm -e smlserver
-  [nh@nh nh]# 
-
-Now, you may write make install_smlserver as shown above.
+again as user root. 
 
 CONFIGURING AOLSERVER
 ---------------------
@@ -140,58 +113,53 @@ to the section
 Then add the section
 
    ns_section "ns/server/${server}/module/nssml"
-   ns_param prjid web
+   ns_param prjid sources
 
 A sample nsd.tcl init file is available as
-smlserver_demo/nsd.mael.tcl.  After restarting AOLserver, you should
+smlserver_demo/nsd.scs.tcl.  After restarting AOLserver, you should
 inspect the AOLserver server.log file and see that AOLserver is
 running and that the nssml.so module is loaded. You should now be able
-to try the example project hello.pm.
+to try the example project demo.pm.
 
 
-COMPILING THE EXAMPLE PROJECT hello.pm
+COMPILING THE EXAMPLE PROJECT demo.pm
 -----------------------------------------------------
 
-Start by copying the smlserver_demo/sml directory to your personal
+Start by copying the smlserver_demo/ directory to your personal
 server root directory. Also copy the content files of the
 smlserver_demo/www directory to your personal www directory. Your
 directory structure should now look as follows:
 
    /web/user/
       www/
-        hello.pm
-        hello.sml ...
-      sml/
+        demo.pm
+        index.sml ...
+      lib/
         Ns.sml ...
       log/
         server.log ...
-      tcl/
+      demo_lib/
         ...
+      ...
 
-To make the msp-pages and sml-pages that appear in the hello.pm file
-in the www directory available to browsers, make hello.pm the *current
+To make the msp-pages and sml-pages that appear in the demo.pm file
+in the www directory available to browsers, make demo.pm the *current
 web project* by executing:
   
-  mael@daffy> cd www
-  mael@daffy> ln -s hello.pm web.pm
+  # cd www
+  # ln -s demo.pm sources.pm
 
-Thereafter, compile the current web project by running:
+Thereafter, compile the current SMLserver project by running:
 
-  mael@daffy> mlkit_web web.pm
+  # smlserverc sources.pm
 
 Assuming that you have AOLserver running with the SMLserver module
-loaded, you should now be able to fetch the page first.html from your
-browser using the url
+loaded, you should now be able to fetch the page demo/index.sml from
+your browser using the url
 
-  http://127.0.0.1:8080/first.html
+  http://127.0.0.1:8080/demo/index.sml
 
-You should see a greeting from the server. You should also be able to
-fetch the pages
-
-  http://127.0.0.1:8080/hello.msp
-  http://127.0.0.1:8080/calendar.msp
-  http://127.0.0.1:8080/index.msp
-
+which lists a series of examples.
 
 POSTGRESQL DETAILS
 ------------------
@@ -202,19 +170,19 @@ system with rpm's installed:
   1. Start up the postmaster deamon process. Execute (as root) the
      following command:
 
-         /etc/rc.d/init.d/postgresql start
+         $ /etc/rc.d/init.d/postgresql start
 
   2. Create a database user `dbuser' (or whatever login name you
      have):
 
-         [root@daffy aol32]# su - postgres
-         bash$ createuser -P dbuser
+         # su - postgres
+         $ createuser -P dbuser
 
      Answer yes to both questions asked by createuser. 
 
   3. As user `dbuser', create a database `yourdb' as follows:
 
-         mael@daffy> createdb yourdb
+         # createdb yourdb
          ...
 
      You can now use the command `psql' to control your database and
@@ -239,7 +207,7 @@ system with rpm's installed:
 	 ns_param LogSQLErrors On 
 	 ns_param ExtendedTableInfo On 
 
-	 ns_section "ns/server/mael/db" 
+	 ns_section "ns/server/${user}/db" 
 	 ns_param Pools "*" 
 	 ns_param DefaultPool "main"
 
@@ -248,40 +216,22 @@ system with rpm's installed:
 
   5. Restart AOLserver.
 
-  6. Run the friends example:
+  6. Install data models
 
-     6.a. Install data model
-
-        mael@daffy> cd www
-        mael@daffy> psql
+        # cd demo_lib/pgsql
+        # psql
            ...
-        mael=# \i friends.sql
+        user=# \i all.sql
            ...
-        mael=# \q
+        user=# \q
 
-     6.b. Make friends.pm the current web project
+  7. Go visit the database examples from
 
-	SMLserver allows you to have only one web-project running at a
-        time. Make friends.pm the current web project by executing:
-
-        mael@daffy> cd www
-        mael@daffy> ln -s friends.pm web.pm
-
-     6.c. Compile the current project
-
-        You can now compile the current project by executing:        
-
-        mael@daffy> mlkit_web web.pm
-
-  7. Go start your browser
-
-     visit http://127.0.0.1:8080/friends.msp
+        http://127.0.0.1:8080/demo/index.sml
 
 
 TO DO
 -----
-
-  * Currently SMLserver supports only one thread.
 
   * Functor applications and functor declarations are not allowed in
     leaf-files in projects. That is, for a project file (.pm-file):

@@ -1,4 +1,4 @@
-File NEWS_SMLSERVER                                  October 9, 2001
+File NEWS_SMLSERVER
 
  * nh 2001-12-29: Added support for MySQL
 
@@ -6,17 +6,17 @@ File NEWS_SMLSERVER                                  October 9, 2001
    of requests. Serving a request is no longer blocked by the serving
    of other requests.
 
- * nh 2001-10-05: Added multilingual support in FormVar module. 
+ * nh 2001-10-05: Added multilingual support in ScsFormVar module. 
 
  * mael 2001-09-30: Changed the name of the SMLserver compiler from
    mlkit_web to smlserverc.
 
  * nh 2001-09-23: Added dictionary support for multilingual language
-   support. Additional modules SmlsDict, SmlsLogin, and SmlsLang.
+   support. Additional modules ScsDict, ScsLogin, and ScsLang.
 
  * nh 2001-09-21: Added support for checking form variables
-   (module /sml/FormVar.sml). Added two utility packages: 
-   /sml/SmlsDate and /sml/SmlsList. Fixed authentication example. It 
+   (module /scs/ScsFormVar.sml). Added two utility packages: 
+   /scs/ScsDate and /scs/ScsList. Fixed authentication example. It 
    now works on both PostgreSQL and Oracle.
 
  * nh 2001-09-17: Added support for cookies, caching. Added
