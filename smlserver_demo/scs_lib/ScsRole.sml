@@ -27,6 +27,7 @@ signature SCS_ROLE =
     | UcsCbITUAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
     | UcsCbTITAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
     | UcsCbEBUSSAdm  	  (* Created in ucs-cb-initialdata-create.sql *)
+    | UcsCbRoomAdm	  (* Created in ucs-cb-initialdata-create.sql *)
     | UcsPrRucAdm	  (* Created in ucs-pr-patch005.sql.sql *)
     | UcsPrEbussAdm	  (* Created in ucs-pr-patch005.sql.sql *)
     | Other of string
@@ -87,6 +88,7 @@ structure ScsRole :> SCS_ROLE =
     | UcsCbITUAdm  	
     | UcsCbTITAdm  	
     | UcsCbEBUSSAdm  	
+    | UcsCbRoomAdm
     | UcsPrRucAdm	  
     | UcsPrEbussAdm	  
     | Other of string
@@ -116,6 +118,7 @@ structure ScsRole :> SCS_ROLE =
       | "UcsCbITUAdm"  	     => UcsCbITUAdm     
       | "UcsCbTITAdm"  	     =>	UcsCbTITAdm     
       | "UcsCbEBUSSAdm"	     =>	UcsCbEBUSSAdm   
+      | "UcsCbRoomAdm"	     => UcsCbRoomAdm
       | s => Other s
  
     (* [toString role] returns the string representation of the role
@@ -143,6 +146,7 @@ structure ScsRole :> SCS_ROLE =
       | UcsCbITUAdm  	   => "UcsCbITUAdm"     
       | UcsCbTITAdm  	   => "UcsCbTITAdm"     
       | UcsCbEBUSSAdm      => "UcsCbEBUSSAdm"   
+      | UcsCbRoomAdm	   => "UcsCbRoomAdm"
       | UcsPrRucAdm	   => "UcsPrRucAdm"  
       | UcsPrEbussAdm	   => "UcsPrEbussAdm"
       | Other s => s

@@ -28,7 +28,7 @@ signature SCS_ENUM =
     val selectName : enum_name -> ScsLang.lang -> string -> val_id option -> quot
 
     (* [selectName' enum_name lang add_opts fv v_opt] is similar to selectName
-       except that the it is possible to include additional
+       except that the it is possible to prepend additional
 	(value, name) pairs in the list add_opts *)
     val selectName' : enum_name -> ScsLang.lang -> (string*string) list -> 
       string -> val_id option -> quot
@@ -82,6 +82,10 @@ signature SCS_ENUM =
        (value, text) for all enumeration values in the enumeration with 
        name enum_name *)
     val allValues' : enum_name -> (string -> 'a) -> ('a*string) list
+
+   (* [allValuesAsText enum_name lang] returns the string representation of 
+      the enumeration in language lang *)
+    val allValuesAsText : enum_name -> ScsLang.lang -> string list
 
    (* [selectEnumeration fv v_opt] returns a selection list for
        chosing an enumeration, that is, enum_id. *)
@@ -348,6 +352,19 @@ structure ScsEnum :> SCS_ENUM =
 	fun f g = ((enum_from_DB_fn o g) "value", g "text")
       in
         Db.list f (status_enumeration_sql())
+      end
+
+    fun allValuesAsText enum_name lang =
+      let
+	fun status_enumeration_sql () = `
+	  select scs_text.getText(
+	    ev.text_id, ^(Db.qqq (ScsLang.toString lang))
+	  ) as text
+	    from scs_enum_values ev, scs_enumerations e
+	    where ev.enum_id = e.enum_id
+	      and e.name = ^(Db.qqq enum_name )`
+      in
+        Db.list (fn g => g "text") (status_enumeration_sql())
       end
 
   end
