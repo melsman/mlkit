@@ -27,6 +27,7 @@ signature TOOLS =
 
     structure Timestamp: TIMESTAMP
     structure Flags: FLAGS
+    sharing type Flags.Report = Report.Report
     structure ListHacks: LIST_HACKS
     structure ListSort: LIST_SORT
     structure Crash: CRASH
@@ -40,8 +41,9 @@ functor Tools(): TOOLS =
   struct
     structure BasicIO = BasicIO()
     structure Crash = Crash(structure BasicIO = BasicIO)
-    structure Flags = Flags(structure Crash = Crash)
     structure Report = Report(structure BasicIO = BasicIO)
+    structure Flags = Flags(structure Crash = Crash
+			    structure Report = Report)
     structure Timestamp = Timestamp()
 
     structure PrettyPrint = PrettyPrint(structure Report = Report

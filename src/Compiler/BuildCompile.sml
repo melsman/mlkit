@@ -3,17 +3,16 @@
    and a compile structure. This version believes in the core language
    only. *)
 
-(*$BuildCompile : TYNAME TOPDEC_GRAMMAR ELAB_INFO STATOBJECT
-     ENVIRONMENTS FINMAP FINMAPEQ BASIC_IO REPORT FLAGS PRETTYPRINT
-     CRASH TIMING COMPILER_ENV COMPILE_BASIS COMPILE EFFECT RTYPE NAME
-     FREE_IDS Lvars Lvarset Con Excon CompilerEnv LambdaExp OptLambda
-     LambdaBasics HashTable QuasiEnv CompileBasis LambdaStatSem
-     EliminateEq Compile CompileDec MatchCompiler IOStreams RType
-     Effect SpreadDatatype SpreadExpression RegionStatEnv DiGraphScc
-     DiGraph UnionFindPoly Stack CompLamb CompLambEnv KAMBackend
-     RegionExp CConst OrderFinMap OrderSet NatSet RegInf Mul MulExp
-     MulInf AtInf DropRegions PhysSizeInf ListSort IntSet IntFinMap
-     EqFinMap LocallyLiveVariables RegFlow RegionFlowGraphProfiling*)
+(*$BuildCompile : TYNAME TOPDEC_GRAMMAR ELAB_INFO STATOBJECT ENVIRONMENTS
+     FINMAP FINMAPEQ BASIC_IO REPORT FLAGS PRETTYPRINT CRASH TIMING
+     COMPILER_ENV COMPILE_BASIS COMPILE EFFECT RTYPE NAME FREE_IDS Lvars
+     Lvarset Con Excon CompilerEnv LambdaExp OptLambda LambdaBasics HashTable
+     QuasiEnv CompileBasis LambdaStatSem EliminateEq Compile CompileDec
+     IOStreams RType Effect SpreadDatatype SpreadExpression RegionStatEnv
+     DiGraphScc DiGraph UnionFindPoly Stack CompLamb CompLambEnv KAMBackend
+     RegionExp CConst OrderFinMap OrderSet NatSet RegInf Mul MulExp MulInf
+     AtInf DropRegions PhysSizeInf ListSort IntSet IntFinMap EqFinMap
+     LocallyLiveVariables RegFlow RegionFlowGraphProfiling*)
 
 functor BuildCompile (structure TyName : TYNAME
 		      structure Name : NAME
@@ -49,6 +48,7 @@ functor BuildCompile (structure TyName : TYNAME
 		      structure BasicIO: BASIC_IO
 		      structure Report: REPORT
 		      structure Flags: FLAGS
+		      sharing type Report.Report = Flags.Report
 		      structure PP: PRETTYPRINT
 			sharing type FinMap.StringTree
 				     = FinMapEq.StringTree
@@ -235,6 +235,7 @@ functor BuildCompile (structure TyName : TYNAME
        structure Crash = Crash
        structure PP = PP
        structure Flags=Flags
+       structure Report = Report
        structure CConst = CConst
 	 )
 
@@ -243,6 +244,7 @@ functor BuildCompile (structure TyName : TYNAME
       structure ExCon = Excon
       structure TyName = TyName
       structure Exp = RegionExp
+      structure Report = Report
       structure RType = RType
       structure Effect = Effect
       structure RSE = RegionStatEnv
@@ -290,6 +292,7 @@ functor BuildCompile (structure TyName : TYNAME
 
    structure MulExp = MulExp(
       structure Flags = Flags
+      structure Report = Report
       structure Con = Con
       structure Excon= Excon
       structure RegionExp = RegionExp
@@ -313,6 +316,7 @@ functor BuildCompile (structure TyName : TYNAME
       structure Mul = Mul
       structure Eff = Effect
       structure Flags = Flags
+      structure Report = Report
       structure PP = PP
       structure Crash = Crash)
       
@@ -491,6 +495,7 @@ functor BuildCompile (structure TyName : TYNAME
 				  structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
 				  structure PP = PP
 				  structure Flags = Flags
+				  structure Report = Report
 				  structure Crash = Crash
 				  structure CConst = CConst)
 
@@ -515,6 +520,7 @@ functor BuildCompile (structure TyName : TYNAME
 		   structure Mul = Mul
 		     )
 
+(*KILL 06/01/1998 18:16. tho.:
     structure MatchCompiler = MatchCompiler(
                             structure SCon = SCon
 			    structure Ident = Ident
@@ -530,6 +536,7 @@ functor BuildCompile (structure TyName : TYNAME
                             structure PrettyPrint = PP
                             structure Crash = Crash
                           )
+*)
 
      structure CompileDec = CompileDec(
 			structure Ident = Ident
@@ -548,8 +555,10 @@ functor BuildCompile (structure TyName : TYNAME
                         structure LambdaExp = LambdaExp
                         structure LambdaBasics = LambdaBasics
                         structure CompilerEnv = CompilerEnv
+(*KILL 06/01/1998 18:16. tho.:
 
                         structure MatchCompiler = MatchCompiler
+*)
 			structure ElabInfo = ElabInfo
                         structure FinMap = FinMap
                         structure FinMapEq = FinMapEq

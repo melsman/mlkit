@@ -1,8 +1,10 @@
 (* Global flags *)
 
-(*$Flags: FLAGS CRASH*)
+(*$Flags: FLAGS CRASH REPORT*)
 
-functor Flags(structure Crash: CRASH): FLAGS =
+functor Flags
+  (structure Crash : CRASH
+   structure Report : REPORT): FLAGS =
   struct
     fun die s = Crash.impossible ("Flags." ^ s)
 
@@ -21,10 +23,8 @@ functor Flags(structure Crash: CRASH): FLAGS =
 
      *)
 
-    val warnings: string list ref = ref [];
-    (* Warnings are collected during compilation and printed all at once
-       at the end of the compilation of a program. The printing is done
-       in Interpreter, which also resets the reference *)
+     
+      
 
     (* Pretty Printing *)
 
@@ -142,6 +142,47 @@ functor Flags(structure Crash: CRASH): FLAGS =
     (* Garbage Collection *)
            
     val garbage_collection = ref true
+
+
+
+
+          (*************************************************)
+          (*                                               *)
+          (*                   warnings                    *)
+          (*                                               *)
+          (*************************************************)
+
+
+    type Report = Report.Report
+
+    local val warnings : Report list ref = ref [];
+    in
+      fun reset_warnings () = warnings := []
+
+      fun warn report = warnings := report :: !warnings
+      val warn_string = warn o Report.line
+
+      fun report_warnings () = 
+	    (case !warnings of
+	       [] =>  ()
+	     | reports =>
+		 (if !log_to_file then
+		    output (std_out, "\n*** " ^ Int.string (length reports)
+			    ^ " warning"
+			    ^ (case reports of [_] => "" | _ => "s")
+		            ^ " printed on log file\n")
+		  else ();
+		  let val report =
+		        (Report.flatten
+			 o map (fn report => Report.decorate ("*** warning: ", report))
+			 o rev) reports
+		  in Report.print' report (!log)
+		  end))
+    end (*local*)
+
+
+
+
 
           (*************************************************)
           (*           structure ParseScript               *)

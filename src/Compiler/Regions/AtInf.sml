@@ -20,6 +20,7 @@ functor AtInf(structure Lvars: LVARS
 	      structure Flags: FLAGS
 	      structure Crash: CRASH
 	      structure Report: REPORT
+	      sharing type Report.Report = Flags.Report
               structure Timing: TIMING
       	        sharing type Eff.place = MulExp.place = MulExp.effect 
                         = LLV.place = RegFlow.place = RegFlow.effect  
@@ -74,7 +75,7 @@ functor AtInf(structure Lvars: LVARS
   fun log s = output (!Flags.log , s ^ "\n")
   fun device(s)         = output(!Flags.log, s)            
   fun dump(t)           = PP.outputTree(device, t, !Flags.colwidth)
-  fun warn (s : string) = Flags.warnings :=  s :: !Flags.warnings
+  fun warn report       = Flags.warn report
   fun chat (s : string) = if !Flags.chat then log s else ()
 
   fun show_place p = PP.flatten1(Eff.layout_effect p)
@@ -610,9 +611,9 @@ functor AtInf(structure Lvars: LVARS
                                       case conflicts' of 
                                         [] => ()
                                       | _ => (dump(lay_report(force,lvar,mu,conflicts'));
-                                              warn "Warnings concerning resetting of regions printed \
-                                                     \earlier in this file!\n\
-                                                    \(Search on \"You have\")");
+                                              warn (Report.// (Report.line "Warnings concerning resetting of regions \
+							            \printed earlier in this file!",
+							       Report.line "(Search on \"You have\")")));
                                       RESET_REGIONS({force=force,alloc=ATTOP p,regions_for_resetting = place_at_list}, 
                                                        (* the place_at_list may contain word regions *)
                                                     sma_trip sme tr)
