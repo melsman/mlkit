@@ -98,6 +98,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	    "PM/NoProf/"
     end
 
+(*
    (* -----------------------------------------------------------------
     * Execute shell command and return the result code.
     * ----------------------------------------------------------------- *)
@@ -131,13 +132,15 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
              else ()
           end
       end
+*)
 
     type linkinfo = Execution.linkinfo
     structure SystemTools =
       struct
+(*
 	val c_compiler = Flags.lookup_string_entry "c_compiler"
 	val c_libs = Flags.lookup_string_entry "c_libs"
-
+*)
 	(*logging*)
 	val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
@@ -174,11 +177,12 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
 	fun delete_file f = OS.FileSys.remove f handle _ => ()
 
+(*
         (* -----------------------
          * Postponing assembly (to avoid failing system calls)
          *)
 
-(*        val r : TextIO.outstream option ref  = ref NONE
+        val r : TextIO.outstream option ref  = ref NONE
         fun init_commandfile() = 
             r:= SOME(TextIO.openOut "compile");
         fun add_to_commandfile(s:string) = 
@@ -187,13 +191,12 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
         fun close_commandfile() = 
             case !r of NONE => ()
             | SOME(os) => TextIO.closeOut os
-
 not used anymore 2000-10-17, Niels *)
 
 	(* -------------------------------
 	 * Assemble a file into a .o-file
 	 *-------------------------------- *)
-
+(*
 	fun assemble (file_s, file_o) =
           (if !(Flags.lookup_flag_entry "delay_assembly")
            then 
@@ -216,6 +219,9 @@ not used anymore 2000-10-17, Niels *)
 	   -ooutfile   Name the output file from the linker outfile.  The
 		       default name is a.out.*)
 	  handle Shell.Execute s => die ("assemble: " ^ s)
+*)
+
+	val assemble = Execution.assemble
 
 	(* -----------------------------------------------
 	 * Emit assembler code and assemble it. 
@@ -248,7 +254,8 @@ not used anymore 2000-10-17, Niels *)
 	    val table_size_word = Word.fromInt table_size
 	    fun hash s =
 	      let fun loop (0, acc) = acc
-		    | loop (i, acc) = loop(i-1, Word.+(Word.*(0w19,acc), Word.fromInt(Char.ord(String.sub(s,i-1)))))
+		    | loop (i, acc) = loop(i-1, Word.+(Word.*(0w19,acc), 
+						       Word.fromInt(Char.ord(String.sub(s,i-1)))))
 	      in Word.toInt(Word.mod(loop (String.size s, 0w0), table_size_word))
 	      end
 	    fun mk () = Array.array (table_size, nil)
@@ -294,12 +301,8 @@ not used anymore 2000-10-17, Niels *)
 	  in pr_debug_linking "[Link time dead code elimination end...]\n"; res
 	  end
 
-	(* -------------------------------------------------------------
-	 * link_files_with_runtime_system files run : Link a list `files' of
-	 * partially linked files (.o files) to the runtime system
-	 * (also partially linked) and produce an executable called `run'.
-	 * ------------------------------------------------------------- *)
-
+	val link_files_with_runtime_system = Execution.link_files_with_runtime_system path_to_runtime
+(*
 	fun link_files_with_runtime_system files run =
           let 
 	    val files = map (fn s => s ^ " ") files
@@ -314,6 +317,7 @@ not used anymore 2000-10-17, Niels *)
 	    close_commandfile()2000-10-17, Niels*)
 	  end 
 	handle Shell.Execute s => die ("link_files_with_runtime_system:\n" ^ s)
+*)
 
 	fun member f [] = false
 	  | member f ( s :: ss ) = f = s orelse member f ss
@@ -328,24 +332,28 @@ not used anymore 2000-10-17, Niels *)
 
 	fun link (tfiles_with_linkinfos, extobjs, run) : unit =
 	  let val tfiles_with_linkinfos = dead_code_elim tfiles_with_linkinfos
-	      val linkinfos = map #2 tfiles_with_linkinfos
-	      val target_files = map #1 tfiles_with_linkinfos
-	      val labs = map Execution.code_label_of_linkinfo linkinfos
-	      val extobjs = elim_dupl (extobjs,[])
-	      val target_link = Execution.generate_link_code labs
-	      val linkfile = pmdir() ^ "link_objects"
-	      val linkfile_s = append_ext linkfile
-	      val linkfile_o = append_o linkfile
-	      val _ = Execution.emit {target=target_link, filename=linkfile_s}
-	      val _ = assemble (linkfile_s, linkfile_o)
-	  in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
-	    if !(Flags.lookup_flag_entry "delete_target_files") 
-               andalso  
-               not (!(Flags.lookup_flag_entry "delay_assembly"))
-            then delete_file linkfile_o
-	    else ()
+	    val linkinfos = map #2 tfiles_with_linkinfos
+	    val target_files = map #1 tfiles_with_linkinfos
+	    val labs = map Execution.code_label_of_linkinfo linkinfos
+	    val extobjs = elim_dupl (extobjs,[])
+	  in case Execution.generate_link_code
+	       of SOME generate_link_code =>
+		 let val target_link = generate_link_code labs
+		   val linkfile = pmdir() ^ "link_objects"
+		   val linkfile_s = append_ext linkfile
+		   val linkfile_o = append_o linkfile
+		   val _ = Execution.emit {target=target_link, filename=linkfile_s}
+		   val _ = assemble (linkfile_s, linkfile_o)
+		 in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
+		   if !(Flags.lookup_flag_entry "delete_target_files") 
+		     andalso  
+		     not (!(Flags.lookup_flag_entry "delay_assembly"))
+		     then delete_file linkfile_o
+		   else ()
+		 end
+		| NONE => 
+		 link_files_with_runtime_system target_files run
 	  end
-	
       end (*structure SystemTools*)
 
     datatype modcode = EMPTY_MODC 
