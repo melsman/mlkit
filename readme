@@ -117,6 +117,24 @@ Please see the www site:
    http://www.diku.dk/research-groups/topps/activities/mlkit.html
 
 
+6. Known bugs/limitations
+-------------------------
+
+Arithmetic and Trigonomitric functions in Math module:
+  The implementation uses the C functions specified in math.h.
+  Unfortunately, these C functions are platform dependent and 
+  do not always return NaN precisely when the Basis
+  Library stipulates that they should.
+
+C-backend: 
+  Arithmetic operations do not raise Overflow. 
+
+Polymorphic equality:
+  Polymorphic equality is only implemented for ``regular'' data types.
+  (A datatype binding   tyvarseq tycon = conbind     is said to be regular if
+   all occurrences of tycon in conbind are in the context 
+   tyvarseq tycon.)
+
 -------
 
 Have fun!
