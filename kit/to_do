@@ -1,9 +1,21 @@
+Possible things to do
+---------------------
+
+mael 2001-08-07: improvment of pattern-matching; matching against a
+                 pair ((a,b),c) can be optimized by reusing the path 
+		 to a for b.
+mael 2001-08-07: catch stack-overflow
+mael 2001-08-07: implement strings and vectors efficiently using
+                 malloc if they don't fit in a region page.
+mael 2001-08-03: man pages for mlkit and smlserver, rp2ps
+mael 2001-08-03: colors in rp2ps output
+
 Unsolved bugs
+-------------
+nh 2001-06-01: ahref in Msp.sml is buggy
 
-
- + ahref in Msp.sml is buggy, 2001-06-01, Niels
-
- + Fra url: http://www.it-c.dk/people/tofte/eksperiment1/index.html
+nh 2001-06-01: Fra url:
+  http://www.it-c.dk/people/tofte/eksperiment1/index.html
 
     The results were (sorted by decreasing speed):
 
