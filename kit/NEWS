@@ -1,12 +1,18 @@
 ML Kit NEWS file
 
+ * mael 2004-08-04: Finished initial work on supporting export of ML
+   functions to C. Only functions of type int->int may be exported at
+   present and the support works only with pure region based memory
+   management (i.e., without reference tracing garbage
+   collection). See the example export.pm in the test directory.
+
  * mael 2004-08-02: Initiated work on supporting export of ML
    functions to C. The special identifier "_export" is now declared in
    the initial environment with type \/'a,'b . string * ('a -> 'b) ->
-   unit. In a call _export("myFun",fn a:int => a+1), the string "myFun" 
-   is the name of the assembled function (following C calling 
-   conventions), and the function (fn a:int => a+1) is the ML function 
-   called when the C function "myFun" is called from C code. 
+   unit. In a call _export("myFun",fn a:int => a+1), the string
+   "myFun" is the name of the assembled function (following C calling
+   conventions), and the function (fn a:int => a+1) is the ML function
+   called when the C function "myFun" is called from C code.
 
            **** ML Kit version 4.1.4 is released ****
 
