@@ -294,7 +294,10 @@ end scs_text;
 show errors
 
 
-
+create or replace view scs_texts_w as
+  select tl.text_id, tl.text, lang.language
+    from scs_text_lang tl, scs_lang lang
+   where tl.lang_id = lang.lang_id;
 
 
 
