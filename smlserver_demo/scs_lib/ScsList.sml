@@ -22,6 +22,10 @@ signature SCS_LIST =
        empty. *)
     val allOrNone    : ('a -> bool) -> 'a list -> bool
 
+      (* [valOf xs] returns the list xs' of elements e where e
+         corresponds to an element e_opt = SOME e in xs. *)
+    val valOf : 'a option list -> 'a list
+
    (* [contains x xs] retruns true if atleast one x exists in xs;
        otherwise returns false. *)
     val contains : ''a -> ''a list -> bool
@@ -63,6 +67,9 @@ structure ScsList :> SCS_LIST =
       in
         zip' (xs,ys) 
       end
+
+    fun valOf xs = 
+      List.foldr (fn (x,acc) => case x of NONE => acc | SOME e => e::acc) [] xs
 
     fun contains x xs = List.exists (fn y => x = y) xs
   end

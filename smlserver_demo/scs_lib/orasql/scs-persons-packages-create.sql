@@ -11,6 +11,7 @@
    History:
    151102 Kennie Nybo Pontoppidan <kennie@it-c.dk> added comments
    281002 Niels Hallenberg <nh@it.edu> created package
+   2003-11-02, nh: added trigger for scs_profiles, see scs-persons-patch001.sql
 ====================================================================== */
 create or replace package scs_person
 as
@@ -494,3 +495,28 @@ begin
 end;
 /
 show errors
+
+create or replace trigger scs_profiles_upd_tr 
+before update on scs_profiles
+for each row
+begin
+  if :new.edit_no = :old.edit_no then
+    :new.edit_no := :new.edit_no + 1;
+  else
+    raise_application_error (scs.ScsDbExn,
+                             'Record in scs_profiles modified by someone else: :new.edit_no:' || 
+			     :new.edit_no || ' :old.edit_no: ' || :old.edit_no);
+  end if;
+end;
+/
+show errors
+
+-----------
+-- Views --
+-----------
+
+create or replace view scs_profiles_w
+as
+select * 
+  from scs_profiles
+ where deleted_p = 'f';

@@ -44,6 +44,7 @@ signature SCS_WIDGET =
 
     (* [mediumWideTa] presized textarea. *)
     val mediumWideTa : string -> quot -> quot
+    val smallWideTa  : string -> quot -> quot
 
     (* [smallTa] presized textarea. *)
     val smallTa  : string -> quot -> quot
@@ -263,6 +264,7 @@ structure ScsWidget :> SCS_WIDGET =
     val largeTa = ta 20 80
     val mediumTa = ta 10 40
     val mediumWideTa = ta 10 80
+    val smallWideTa = ta 2 80
     val smallTa = ta 5 20
 
     fun select opts fv =

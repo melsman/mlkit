@@ -475,12 +475,16 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	   ScsLang.en => `^s
 	     <blockquote>
 	     <a href="/url_desc.sml">URL (Uniform Resource Locator)</a> - 
-	     we only support the <code>http://</code> type (e.g., <code>http://www.it.edu</code>).
+	     we only support the <code>http://</code> and <code>https://</code> 
+             types (e.g., <code>http://www.itu.dk</code> and <code>https://www.itu.dk</code>).<p>
+	     The maximum length is 200 characters.
 	     </blockquote>`
 	 | ScsLang.da => `^s
 	     <blockquote>
 	     <a href="/url_desc.sml">URL (Uniform Resource Locator)</a> - 
-	     vi supporterer kun <code>http://</code> type (f.eks. <code>http://www.it-c.dk</code>).
+	     vi supporterer kun typerne <code>http://</code> og <code>https://</code>
+	     (f.eks. <code>http://www.itu.dk</code> og <code>https://www.itu.dk</code>).<p>
+             Den maksimale længde er 200 karakterer.
 	     </blockquote>`)
       fun msgCpr s = 
 	(case ScsLogin.user_lang() of
@@ -799,7 +803,9 @@ structure ScsFormVar :> SCS_FORM_VAR =
       val getHtmlErr = getErr' [(ScsLang.en, `HTML text`),(ScsLang.da,`HTML tekst`)] 
                           msgHTML (fn html => html <> "")
       val getUrlErr =  getErr' [(ScsLang.en,`URL`),(ScsLang.da,`URL`)] 
-                          msgURL (regExpMatch "http://[0-9a-zA-Z/\\-\\\\._~]+(:[0-9]+)?")
+                          msgURL (fn url => 
+				  regExpMatch "http(s?)://[0-9a-zA-Z/\\-\\\\._~]+(:[0-9]+)?" url andalso 
+				  String.size url <= 200)
 
       val getCprErr = getErr "" convCpr [(ScsLang.en,`cpr number`),(ScsLang.da,`cpr nummer`)] msgCpr chkCpr
       val getEnumErr = fn enums => getErr' [(ScsLang.en,`enumeration`),(ScsLang.da,`enumerering`)] 
