@@ -196,7 +196,7 @@ structure ScsFileStorage :> SCS_FILE_STORAGE =
       case
 	ScsError.wrapPanic
 	(Db.Handle.zeroOrOneFieldDb db)
-	  `select scs_file_storage.getRootLabelByFolderId('^(Int.toString folder_id)')
+	  `select scs_file_storage.getRootLabelByFolderId('^(Int.toString folder_id)') as root_label
              from dual` of r => r
 
     fun getNumFilesInFolderId db folder_id =
