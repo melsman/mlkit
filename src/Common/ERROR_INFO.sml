@@ -39,7 +39,6 @@ signature ERROR_INFO =
       | QUALIFIED_ID of longid
       | UNGUARDED_TYVARS of TyVar list
       | WRONG_ARITY of {expected: int, actual: int}
-      | NOTRESOLVED
       | FLEX_REC_NOT_RESOLVED 
       | REPEATED_IDS of RepeatedId list
       | TYVARS_NOT_IN_TYVARSEQ of TyVar list
