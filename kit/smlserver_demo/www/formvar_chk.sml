@@ -1,70 +1,70 @@
 (* Collect All Errors in one final Error Page *)
 
-val (i,errs)     = FormVar.getIntErr("int","integer",FormVar.emptyErr)
-val (n,errs)     = FormVar.getNatErr("nat","positive integer",errs)
-val (r,errs)     = FormVar.getRealErr("real","floating point",errs)
-val (str,errs)   = FormVar.getStringErr("str","string",errs)
-val (range,errs) = FormVar.getIntRangeErr 2 10 ("range","range",errs)
-val (email,errs) = FormVar.getEmailErr ("email","an IT-C email",errs)
-val (name,errs)  = FormVar.getNameErr ("name","first name",errs)
-val (login,errs) = FormVar.getLoginErr ("login","personal IT-C login",errs)
-val (phone,errs) = FormVar.getPhoneErr ("phone","Work Phone",errs)
-val (url,errs)   = FormVar.getUrlErr ("url", "URL of your private homepage",errs)
-val (cpr,errs)   = FormVar.getCprErr ("cpr", "your cpr number", errs)
-val (sex,errs)   = FormVar.getEnumErr ["Female","Male","Unknown"] ("sex", "your sex", errs)
-val (date,errs)  = FormVar.getDateIso ("date","birthdate",errs)
-val _ = FormVar.anyErrors errs
+val (i,errs)     = ScsFormVar.getIntErr("int","integer",ScsFormVar.emptyErr)
+val (n,errs)     = ScsFormVar.getNatErr("nat","positive integer",errs)
+val (r,errs)     = ScsFormVar.getRealErr("real","floating point",errs)
+val (str,errs)   = ScsFormVar.getStringErr("str","string",errs)
+val (range,errs) = ScsFormVar.getIntRangeErr 2 10 ("range","range",errs)
+val (email,errs) = ScsFormVar.getEmailErr ("email","an IT-C email",errs)
+val (name,errs)  = ScsFormVar.getNameErr ("name","first name",errs)
+val (login,errs) = ScsFormVar.getLoginErr ("login","personal IT-C login",errs)
+val (phone,errs) = ScsFormVar.getPhoneErr ("phone","Work Phone",errs)
+val (url,errs)   = ScsFormVar.getUrlErr ("url", "URL of your private homepage",errs)
+val (cpr,errs)   = ScsFormVar.getCprErr ("cpr", "your cpr number", errs)
+val (sex,errs)   = ScsFormVar.getEnumErr ["Female","Male","Unknown"] ("sex", "your sex", errs)
+val (date,errs)  = ScsFormVar.getDateIso ("date","birthdate",errs)
+val _ = ScsFormVar.anyErrors errs
 
 
 (* Show only one error at the time *)
 (*
-val i     = (FormVar.wrapFail FormVar.getIntErr) ("int","integer")
-val n     = (FormVar.wrapFail FormVar.getNatErr) ("nat","positive integer")
-val r     = (FormVar.wrapFail FormVar.getRealErr) ("real","floating point")
-val str   = (FormVar.wrapFail FormVar.getStringErr) ("str","string")
-val range = (FormVar.wrapFail (FormVar.getIntRangeErr 2 10)) ("range","range")
-val email = (FormVar.wrapFail FormVar.getEmailErr) ("email","an IT-C email")
-val name  = (FormVar.wrapFail FormVar.getNameErr) ("name","first name")
-val login = (FormVar.wrapFail FormVar.getLoginErr) ("login","personal IT-C login")
-val phone = (FormVar.wrapFail FormVar.getPhoneErr) ("phone","Work Phone")
-val url   = (FormVar.wrapFail FormVar.getUrlErr) ("url", "URL of your private homepage")
-val cpr   = (FormVar.wrapFail FormVar.getCprErr) ("cpr", "your cpr number")
-val sex   = (FormVar.wrapFail (FormVar.getEnumErr ["Female","Male","Unknown"])) ("sex", "your sex")
-val date  = (FormVar.wrapFail FormVar.getDateIso) ("date","birthdate")
+val i     = (ScsFormVar.wrapFail ScsFormVar.getIntErr) ("int","integer")
+val n     = (ScsFormVar.wrapFail ScsFormVar.getNatErr) ("nat","positive integer")
+val r     = (ScsFormVar.wrapFail ScsFormVar.getRealErr) ("real","floating point")
+val str   = (ScsFormVar.wrapFail ScsFormVar.getStringErr) ("str","string")
+val range = (ScsFormVar.wrapFail (ScsFormVar.getIntRangeErr 2 10)) ("range","range")
+val email = (ScsFormVar.wrapFail ScsFormVar.getEmailErr) ("email","an IT-C email")
+val name  = (ScsFormVar.wrapFail ScsFormVar.getNameErr) ("name","first name")
+val login = (ScsFormVar.wrapFail ScsFormVar.getLoginErr) ("login","personal IT-C login")
+val phone = (ScsFormVar.wrapFail ScsFormVar.getPhoneErr) ("phone","Work Phone")
+val url   = (ScsFormVar.wrapFail ScsFormVar.getUrlErr) ("url", "URL of your private homepage")
+val cpr   = (ScsFormVar.wrapFail ScsFormVar.getCprErr) ("cpr", "your cpr number")
+val sex   = (ScsFormVar.wrapFail (ScsFormVar.getEnumErr ["Female","Male","Unknown"])) ("sex", "your sex")
+val date  = (ScsFormVar.wrapFail ScsFormVar.getDateIso) ("date","birthdate")
 *)
 
 (* Raise Exceptions *)
 (*
-val i     = FormVar.wrapExn FormVar.getIntErr "int"
-val n     = FormVar.wrapExn FormVar.getNatErr "nat"
-val r     = FormVar.wrapExn FormVar.getRealErr "real"
-val str   = FormVar.wrapExn FormVar.getStringErr "str"
-val range = FormVar.wrapExn (FormVar.getIntRangeErr 2 10) "range"
-val email = FormVar.wrapExn FormVar.getEmailErr "email"
-val name  = FormVar.wrapExn FormVar.getNameErr "name"
-val login = FormVar.wrapExn FormVar.getLoginErr "login"
-val phone = FormVar.wrapExn FormVar.getPhoneErr "phone"
-val url   = FormVar.wrapExn FormVar.getUrlErr "url"
-val cpr   = FormVar.wrapExn FormVar.getCprErr "cpr"
-val sex   = FormVar.wrapExn (FormVar.getEnumErr ["Female","Male","Unknown"]) "sex"
-val date  = FormVar.wrapExn FormVar.getDateIso "date"
+val i     = ScsFormVar.wrapExn ScsFormVar.getIntErr "int"
+val n     = ScsFormVar.wrapExn ScsFormVar.getNatErr "nat"
+val r     = ScsFormVar.wrapExn ScsFormVar.getRealErr "real"
+val str   = ScsFormVar.wrapExn ScsFormVar.getStringErr "str"
+val range = ScsFormVar.wrapExn (ScsFormVar.getIntRangeErr 2 10) "range"
+val email = ScsFormVar.wrapExn ScsFormVar.getEmailErr "email"
+val name  = ScsFormVar.wrapExn ScsFormVar.getNameErr "name"
+val login = ScsFormVar.wrapExn ScsFormVar.getLoginErr "login"
+val phone = ScsFormVar.wrapExn ScsFormVar.getPhoneErr "phone"
+val url   = ScsFormVar.wrapExn ScsFormVar.getUrlErr "url"
+val cpr   = ScsFormVar.wrapExn ScsFormVar.getCprErr "cpr"
+val sex   = ScsFormVar.wrapExn (ScsFormVar.getEnumErr ["Female","Male","Unknown"]) "sex"
+val date  = ScsFormVar.wrapExn ScsFormVar.getDateIso "date"
 *)
 
 (* Return SOME v on success; otherwise NONE *)
 (*
-val i     = Option.valOf(FormVar.wrapOpt FormVar.getIntErr "int")
-val n     = Option.valOf(FormVar.wrapOpt FormVar.getNatErr "nat")
-val r     = Option.valOf(FormVar.wrapOpt FormVar.getRealErr "real")
-val str   = Option.valOf(FormVar.wrapOpt FormVar.getStringErr "str")
-val range = Option.valOf(FormVar.wrapOpt (FormVar.getIntRangeErr 2 10) "range")
-val email = Option.valOf(FormVar.wrapOpt FormVar.getEmailErr "email")
-val name  = Option.valOf(FormVar.wrapOpt FormVar.getNameErr "name")
-val login = Option.valOf(FormVar.wrapOpt FormVar.getLoginErr "login")
-val phone = Option.valOf(FormVar.wrapOpt FormVar.getPhoneErr "phone")
-val url   = Option.valOf(FormVar.wrapOpt FormVar.getUrlErr "url")
-val cpr   = Option.valOf(FormVar.wrapOpt FormVar.getCprErr "cpr")
-val sex   = Option.valOf(FormVar.wrapOpt (FormVar.getEnumErr ["Female","Male","Unknown"]) "sex")
-val date  = Option.valOf(FormVar.wrapOpt FormVar.getDateIso "date")
+val i     = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getIntErr "int")
+val n     = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getNatErr "nat")
+val r     = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getRealErr "real")
+val str   = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getStringErr "str")
+val range = Option.valOf(ScsFormVar.wrapOpt (ScsFormVar.getIntRangeErr 2 10) "range")
+val email = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getEmailErr "email")
+val name  = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getNameErr "name")
+val login = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getLoginErr "login")
+val phone = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getPhoneErr "phone")
+val url   = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getUrlErr "url")
+val cpr   = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getCprErr "cpr")
+val sex   = Option.valOf(ScsFormVar.wrapOpt (ScsFormVar.getEnumErr ["Female","Male","Unknown"]) "sex")
+val date  = Option.valOf(ScsFormVar.wrapOpt ScsFormVar.getDateIso "date")
 *)
 
 (* The Panic wrapper *)
@@ -91,19 +91,19 @@ fun genPanicPg (fv:string,emsg:string) =
    </body>
    </html>`;
    Ns.exit())
-val i     = FormVar.wrapPanic genPanicPg FormVar.getIntErr "int"
-val n     = FormVar.wrapPanic genPanicPg FormVar.getNatErr "nat"
-val r     = FormVar.wrapPanic genPanicPg FormVar.getRealErr "real"
-val str   = FormVar.wrapPanic genPanicPg FormVar.getStringErr "str"
-val range = FormVar.wrapPanic genPanicPg (FormVar.getIntRangeErr 2 10) "range"
-val email = FormVar.wrapPanic genPanicPg FormVar.getEmailErr "email"
-val name  = FormVar.wrapPanic genPanicPg FormVar.getNameErr "name"
-val login = FormVar.wrapPanic genPanicPg FormVar.getLoginErr "login"
-val phone = FormVar.wrapPanic genPanicPg FormVar.getPhoneErr "phone"
-val url   = FormVar.wrapPanic genPanicPg FormVar.getUrlErr "url"
-val cpr   = FormVar.wrapPanic genPanicPg FormVar.getCprErr "cpr"
-val sex   = FormVar.wrapPanic genPanicPg (FormVar.getEnumErr ["Female","Male","Unknown"]) "sex"
-val date  = FormVar.wrapPanic genPanicPg FormVar.getDateIso "date"
+val i     = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getIntErr "int"
+val n     = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getNatErr "nat"
+val r     = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getRealErr "real"
+val str   = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getStringErr "str"
+val range = ScsFormVar.wrapPanic genPanicPg (ScsFormVar.getIntRangeErr 2 10) "range"
+val email = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getEmailErr "email"
+val name  = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getNameErr "name"
+val login = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getLoginErr "login"
+val phone = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getPhoneErr "phone"
+val url   = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getUrlErr "url"
+val cpr   = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getCprErr "cpr"
+val sex   = ScsFormVar.wrapPanic genPanicPg (ScsFormVar.getEnumErr ["Female","Male","Unknown"]) "sex"
+val date  = ScsFormVar.wrapPanic genPanicPg ScsFormVar.getDateIso "date"
 *)
 
 val _ =

@@ -7,7 +7,7 @@
       </body>
       </html>`)
 
-  val email = FormVar.wrapFail FormVar.getStringErr ("email","email")
+  val email = ScsFormVar.wrapFail ScsFormVar.getStringErr ("email","email")
 
   val sql = `select name, note 
 	     from employee 

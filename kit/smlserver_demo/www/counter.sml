@@ -1,5 +1,5 @@
   val counter = Int.toString
-    (case FormVar.wrapOpt FormVar.getIntErr "counter"
+    (case ScsFormVar.wrapOpt ScsFormVar.getIntErr "counter"
        of SOME c => (case Ns.Conn.formvar "button"
                        of SOME "Up" => c + 1
                         | SOME "Down" => c - 1

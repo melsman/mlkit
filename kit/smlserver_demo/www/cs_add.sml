@@ -1,4 +1,4 @@
-val s = Option.valOf (FormVar.wrapOpt FormVar.getStringErr "text")
+val s = Option.valOf (ScsFormVar.wrapOpt ScsFormVar.getStringErr "text")
 
 val _ = Db.dml `insert into cs (text, id) 
                 values (^(Db.qq' s), 

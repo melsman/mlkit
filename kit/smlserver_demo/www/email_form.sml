@@ -1,4 +1,4 @@
-val % = SmlsDict.d SmlsLang.English
+val % = ScsDict.d ScsLang.English
 
 fun genForm () = `
 <form method=post action=email_sent.sml>
@@ -12,8 +12,8 @@ fun genForm () = `
 </center>
 </form>`
 
-val _ = case SmlsLogin.user_lang of
-  SmlsLang.English => Ns.return 
+val _ = case ScsLogin.user_lang of
+  ScsLang.English => Ns.return 
     (`<html>
      <head>
      <title>Mail Me</title>
@@ -51,7 +51,7 @@ val _ = case SmlsLogin.user_lang of
        
        </body>
        </html>`)
-  |  SmlsLang.Danish => Ns.return 
+  |  ScsLang.Danish => Ns.return 
        (`
 	<html>
 	<head>

@@ -5,17 +5,17 @@ fun redirect() =
    Ns.returnRedirect (Ns.Conn.location() ^ "/auth_form.sml"); Ns.exit())
 
 val target =
-  case FormVar.wrapOpt FormVar.getStringErr "target" of
+  case ScsFormVar.wrapOpt ScsFormVar.getStringErr "target" of
     NONE => redirect()
   | SOME t => t
 
 val al =
-  case FormVar.wrapOpt FormVar.getStringErr "auth_login" of
+  case ScsFormVar.wrapOpt ScsFormVar.getStringErr "auth_login" of
     NONE => redirect()
   | SOME al => al
 
 val ap =
-  case FormVar.wrapOpt FormVar.getStringErr "auth_password" of
+  case ScsFormVar.wrapOpt ScsFormVar.getStringErr "auth_password" of
     NONE => redirect()
   | SOME ap => ap
 

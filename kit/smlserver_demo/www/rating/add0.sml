@@ -1,8 +1,8 @@
-  val comment  = FormVar.wrapFail FormVar.getStringErr ("comment", "comment")
-  val fullname = FormVar.wrapFail FormVar.getStringErr ("fullname", "fullname")
-  val email    = FormVar.wrapFail FormVar.getStringErr ("email", "email")
-  val wid      = Int.toString(FormVar.wrapFail FormVar.getNatErr ("wid","internal number"))
-  val rating   = Int.toString(FormVar.wrapFail (FormVar.getIntRangeErr 0 6) ("rating","rating"))
+  val comment  = ScsFormVar.wrapFail ScsFormVar.getStringErr ("comment", "comment")
+  val fullname = ScsFormVar.wrapFail ScsFormVar.getStringErr ("fullname", "fullname")
+  val email    = ScsFormVar.wrapFail ScsFormVar.getStringErr ("email", "email")
+  val wid      = Int.toString(ScsFormVar.wrapFail ScsFormVar.getNatErr ("wid","internal number"))
+  val rating   = Int.toString(ScsFormVar.wrapFail (ScsFormVar.getIntRangeErr 0 6) ("rating","rating"))
 
   val _ = Db.dml
     `insert into rating (wid, comment, fullname, 

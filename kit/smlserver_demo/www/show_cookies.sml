@@ -1,25 +1,25 @@
 fun datefmt date = Date.fmt "%a, %d-%b-%Y %H:%M:%S GMT" date
-val % = SmlsDict.d SmlsLang.English
+val % = ScsDict.d ScsLang.English
 
 val _ = Ns.return 
   (`
    <html>
    <body bgcolor=white>` ^^
-   (case SmlsLogin.user_lang of
-      SmlsLang.Danish => `
+   (case ScsLogin.user_lang of
+      ScsLang.Danish => `
 	Dette er en kodeordsbeskyttet side.<p>
 
-	Du er logget på med bruger id: ^(Int.toString SmlsLogin.user_id)<p>
+	Du er logget på med bruger id: ^(Int.toString ScsLogin.user_id)<p>
 
 	<h1>Vis Cookies</h1>
 
 	Det nuværende tidsstempel er (GMT): <b>^(datefmt(Date.fromTimeUniv(Time.fromSeconds(Time.toSeconds(Time.now())+60))))</b><p>
 
 	Nedenfor kan du se de to cookier som anvendes ved validering.<p>` 
-    | SmlsLang.English => `
+    | ScsLang.English => `
 	This is a password protected page.<p>
 
-	You are logged in with user_id: ^(Int.toString SmlsLogin.user_id)<p>
+	You are logged in with user_id: ^(Int.toString ScsLogin.user_id)<p>
 
 	<h1>Show Cookies</h1>
 

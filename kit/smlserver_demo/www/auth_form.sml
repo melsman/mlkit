@@ -1,5 +1,5 @@
 val target = 
-  case FormVar.wrapOpt FormVar.getStringErr "target" of
+  case ScsFormVar.wrapOpt ScsFormVar.getStringErr "target" of
     SOME t => t
   | NONE => Ns.Conn.location() ^ "/auth_example.sml" (* Default target url *)
 
