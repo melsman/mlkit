@@ -93,6 +93,11 @@ as
     language in scs_lang.language%TYPE
   ) return scs_text_lang.text%TYPE;
 
+  function exists_p(
+    text_id in scs_texts.text_id%TYPE,
+    language in scs_lang.language%TYPE default null
+  ) return char;
+
 end scs_text;
 /
 show errors
@@ -195,6 +200,29 @@ as
     when no_data_found then
       raise_application_error( scs.ScsDbExn, 'no text in '||language||' for text_id '||to_char(text_id) );
   end getText;  
+
+  function exists_p(
+    text_id in  scs_texts.text_id%TYPE,
+    language in scs_lang.language%TYPE default null
+  ) return char
+  is
+    n integer;
+  begin
+    select count(*) 
+      into n
+      from scs_texts, scs_text_lang, scs_lang
+     where scs_texts.text_id = exists_p.text_id
+       and scs_texts.text_id = scs_text_lang.text_id(+)
+       and scs_text_lang.lang_id = scs_lang.lang_id(+)
+       and (exists_p.language is null 
+            or scs_lang.language = exists_p.language);
+
+    if n = 0 then
+      return 'f';
+    else
+      return 't';
+    end if;
+  end exists_p;
 
 end scs_text;
 / 

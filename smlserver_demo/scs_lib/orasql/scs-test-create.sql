@@ -25,6 +25,13 @@ as
     exp varchar2,
     all_exns varchar2
   );
+
+  procedure testUnit (
+    testname varchar2,
+    testcase integer,
+    exp varchar2
+  );
+
 end scs_test;
 /
 show errors
@@ -86,11 +93,25 @@ as
       printl( 'ok: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLCODE || ']');
     when others then
       if all_exns = 'f' then
-        printl( 'error: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLCODE || SQLERRM || ']');
+        printl( 'error: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLCODE || ']');
       else
         printl( 'ok: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLCODE || ']');
       end if;
   end testExn;
+
+  procedure testUnit(
+    testname varchar2,
+    testcase integer,
+    exp varchar2
+  ) 
+  is
+  begin
+    execute immediate testUnit.exp;
+    printl( 'ok: ' || testname || ' testcase ' || to_char(testcase) );
+  exception
+    when others then
+      printl( 'error: ' || testname || ' testcase ' || to_char(testcase) || '[' || SQLCODE || ']');
+  end testUnit;
 
 end scs_test;
 / 
