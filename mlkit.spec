@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------
-# RPM Spec File for the ML Kit Version 4.1.3
+# RPM Spec File for the ML Kit Version 4.1.4
 # ---------------------------------------------------------------------
 #
 # Here is a short description of how to build an RPM File for the ML
@@ -37,14 +37,14 @@
 
 Summary: A Standard ML compiler
 Name: mlkit
-Version: 4.1.3
+Version: 4.1.4
 Release: 1
 Copyright: GPL
 Group: Development/Languages
-Source: http://www.it.edu/research/mlkit/download/mlkit-4.1.3.tgz
-URL: http://www.it.edu/research/mlkit
+Source: http://www.itu.dk/research/mlkit/download/mlkit-4.1.4.tgz
+URL: http://www.itu.dk/research/mlkit
 Vendor: IT University of Copenhagen
-Packager: Martin Elsman (mael@dina.kvl.dk)
+Packager: Martin Elsman (mael@itu.dk)
 Prefix: /usr/share/mlkit
 ExclusiveOS: Linux
 ExcludeArch: sparc alpha

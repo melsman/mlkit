@@ -1,6 +1,6 @@
 The ML Kit README file
 
-        ML Kit home page: http://www.it.edu/research/mlkit/
+        ML Kit home page: http://www.itu.dk/research/mlkit/
 
 0. Introduction
 ---------------
@@ -47,8 +47,11 @@ number, y is called the minor release number.
 
 2. License and Copyright
 ------------------------
+
 The ML Kit compiler is distributed under the GNU Public License. See
-the file copyright for details.
+the file copyright for details. The runtime system (kit/src/Runtime/)
+and libraries (kit/basislib/) can also be obtained from the authors
+under the more liberal MIT License.
 
 3. Installation
 ---------------
