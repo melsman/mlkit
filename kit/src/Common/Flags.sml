@@ -530,7 +530,7 @@ struct
 	   [] => (help () ; read_string r ())
 	 | "q" :: _  => u_or_q_from_read_string := true
 	 | "u" :: _  => u_or_q_from_read_string := true
-	 | "\"" :: _  =>
+	 | "\"" (*"*) :: _  => 
            (case StringParse.parse (implode l) of 
 	      OK (s,_) => r := s | _ => (help () ; read_string r ()))
 	 | _ => (help () ; read_string r ())
@@ -1159,7 +1159,9 @@ old*)
 		    ) handle List.Subscript _ =>
 		               (outLine "***Number out of range" ;
 				help() ; inter (path, menu)))
-          | UP => ()
+          | UP => (case path of (*ignore u when at top-level menu*)
+		     [] => inter (path,menu)
+		   | _ => ())
           | QUIT => raise Quit
           | _ => (help () ; inter (path,menu)))
      | BUTTON (bot as {r: bool ref, text1: string, below1: menu,
