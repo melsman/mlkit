@@ -42,8 +42,10 @@ signature HP_PA_RISC =
     (* As Used In The Phases Preceeding Code Generation          *)
     (*-----------------------------------------------------------*)
     type lvar
+    val all_regs                : reg list
     val is_reg                  : lvar -> bool
     val lv_to_reg               : lvar -> reg
+    val lv_to_reg_no            : lvar -> int
     val reg_args_as_lvs         : lvar list
     val reg_res_as_lvs          : lvar list
     val reg_args_ccall_as_lvs   : lvar list

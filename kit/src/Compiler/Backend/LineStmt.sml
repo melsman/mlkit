@@ -81,10 +81,10 @@ struct
     | STORE           of 'aty * label
     | STRING          of string
     | REAL            of string
-    | CLOS_RECORD     of {label: label, elems: 'aty list, alloc: 'aty sma}
+    | CLOS_RECORD     of {label: label, elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
     | REGVEC_RECORD   of {elems: 'aty sma list, alloc: 'aty sma}
-    | SCLOS_RECORD    of {elems: 'aty list, alloc: 'aty sma}
-    | RECORD          of {elems: 'aty list, alloc: 'aty sma}
+    | SCLOS_RECORD    of {elems: 'aty list*'aty list*'aty list, alloc: 'aty sma}
+    | RECORD          of {elems: 'aty list, alloc: 'aty sma, tag: Word32.word}
     | SELECT          of int * 'aty
     | CON0            of {con: con, con_kind: con_kind, aux_regions: 'aty sma list, alloc: 'aty sma}
     | CON1            of {con: con, con_kind: con_kind, alloc: 'aty sma, arg: 'aty}
@@ -143,6 +143,8 @@ struct
   
   type ('sty,'offset,'aty) LinePrg = ('sty,'offset,'aty) TopDecl list
 
+  fun smash_free (lvs,excons,rhos) = rhos@excons@lvs
+
   (************************)
   (* PrettyPrint LineStmt *)
   (************************)
@@ -179,6 +181,13 @@ struct
     fun layout_aty_opt pr_aty (SOME aty) = layout_aty pr_aty aty
       | layout_aty_opt pr_aty (NONE) = LEAF ""
 
+    fun pr_bv([]) = ""
+      | pr_bv([mark]) = die "pr_bv:Bit Vector with only one element"
+      | pr_bv([mark,size]) = die "pr_bv:Bit Vector with only two elements"
+      | pr_bv(mark::size::bvs) = 
+      (foldl (fn (w,C) => (Word32.fmt StringCvt.BIN w) ^ ":" ^  C) "" bvs) ^ 
+      (Word32.fmt StringCvt.DEC size) ^ ":" ^ (Word32.fmt StringCvt.DEC mark)
+
     fun layout_switch pr_aty layout_lss pr_const (SWITCH(aty_arg,sels,default)) =
       let
 	fun layout_sels(const,ls_sel) =
@@ -204,23 +213,23 @@ struct
 	 | STORE(aty,lab) => LEAF("store(" ^ pr_aty aty ^ "," ^ Labels.pr_label lab ^ ")")
 	 | STRING s  => LEAF("\"" ^ String.toString s ^ "\"")
 	 | REAL s    => LEAF(s)
-	 | CLOS_RECORD{label,elems,alloc} => HNODE{start="[",
-						   finish="]clos " ^ pr_sma pr_aty alloc,
-						   childsep=RIGHT ",",
-						   children=LEAF(Labels.pr_label label)::
-						   map (layout_aty pr_aty) elems}
+	 | CLOS_RECORD{label,elems=elems as (lvs,excons,rhos),alloc} => HNODE{start="[",
+									      finish="]clos " ^ pr_sma pr_aty alloc,
+									      childsep=RIGHT ",",
+									      children=LEAF(Labels.pr_label label)::
+									      map (layout_aty pr_aty) (smash_free elems)}
 	 | REGVEC_RECORD{elems,alloc} => HNODE{start="[",
 					       finish="]regvec " ^ pr_sma pr_aty alloc,
 					       childsep=RIGHT ",",
 					       children=map (layout_sma pr_aty) elems}
-	 | SCLOS_RECORD{elems,alloc} => HNODE{start="[",
-					      finish="]sclos " ^ pr_sma pr_aty alloc,
-					      childsep=RIGHT ",",
-					      children= map (layout_aty pr_aty) elems}
-	 | RECORD{elems,alloc} => HNODE{start="[",
-					finish="] " ^ pr_sma pr_aty alloc,
-					childsep=RIGHT ",",
-					children= map (layout_aty pr_aty) elems}
+	 | SCLOS_RECORD{elems=elems as (lvs,excons,rhos),alloc} => HNODE{start="[",
+									 finish="]sclos " ^ pr_sma pr_aty alloc,
+									 childsep=RIGHT ",",
+									 children= map (layout_aty pr_aty) (smash_free elems)}
+	 | RECORD{elems,alloc,tag} => HNODE{start="[",
+					    finish="] " ^ pr_sma pr_aty alloc,
+					    childsep=RIGHT ",",
+					    children= map (layout_aty pr_aty) elems}
 	 | SELECT(i,aty) => HNODE{start="#" ^ Int.toString i ^ "(",
 				  finish=")",
 				  childsep=NOSEP,
@@ -268,7 +277,7 @@ struct
 		       finish="", childsep=RIGHT " ",
 		       children=[t1,t2,t3]}
 	       end
-	   | FNCALL{opr,args,clos,free,res,bv} =>
+	   | FNCALL{opr,args,clos,free,res,bv=[]} =>
 	       let
 		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
 		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
@@ -279,19 +288,18 @@ struct
 		       finish="", childsep=RIGHT " ",
 		       children=[t1,t2,t3]}
 	       end
-(*	   | FNCALL{opr,args,clos,free,res,bv} =>
+	   | FNCALL{opr,args,clos,free,res,bv} =>
 	       let
 		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
 		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
 		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
 		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
-		 val bv_node = NODE{start="",finish="",indent=0,childsep=RIGHT ",",children = map (fn w => PP.LEAF(Word32.fmt StringCvt.BIN w)) bv}
+		 val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[PP.LEAF(pr_bv bv)]}
 	       in
-		 NODE{start= "",finish= "", childsep=RIGHT ";",indent=0,children= [bv_node,
 		 HNODE{start=flatten1(t0) ^ " = " ^ pr_aty opr ^ "_fncall ",
 		       finish="", childsep=RIGHT " ",
-		       children=[t1,t2,t3]}]}
-	       end*)
+		       children=[t1,t2,t3,t4]}
+	       end
 	   | JMP{opr,args,reg_vec,reg_args,clos,free,res,bv} =>
 	       let
 		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
@@ -305,7 +313,7 @@ struct
 		       finish="", childsep=RIGHT " ",
 		       children=[t1,t5,t4,t2,t3]}
 	       end
-	   | FUNCALL{opr,args,reg_vec,reg_args,clos,free,res,bv} =>
+	   | FUNCALL{opr,args,reg_vec,reg_args,clos,free,res,bv=[]} =>
 	       let
 		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
 		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
@@ -317,6 +325,20 @@ struct
 		 HNODE{start=flatten1(t0) ^ " = " ^ Labels.pr_label opr ^ "_funcall ",
 		       finish="", childsep=RIGHT " ",
 		       children=[t1,t5,t4,t2,t3]}
+	       end
+	   | FUNCALL{opr,args,reg_vec,reg_args,clos,free,res,bv} =>
+	       let
+		 val t0 = HNODE{start="<",finish=">",childsep=RIGHT ",",children= map (layout_aty pr_aty) res}
+		 val t1 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) args}
+		 val t2 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty clos]}
+		 val t3 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) free}
+		 val t4 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (layout_aty pr_aty) reg_args}
+		 val t5 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[layout_aty_opt pr_aty reg_vec]}
+		 val t6 = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[PP.LEAF(pr_bv bv)]}
+	       in
+		 HNODE{start=flatten1(t0) ^ " = " ^ Labels.pr_label opr ^ "_funcall ",
+		       finish="", childsep=RIGHT " ",
+		       children=[t1,t5,t4,t2,t3,t6]}
 	       end
 	   | LETREGION{rhos,body} =>
 	       let
@@ -351,7 +373,7 @@ struct
 			   childsep=NOSEP,
 			   children=[layout_lss_local scope]}
 		 end
-	   | HANDLE{default,handl=(handl,handl_aty),handl_return=(handl_return,handl_return_aty,bv),offset} =>
+	   | HANDLE{default,handl=(handl,handl_aty),handl_return=(handl_return,handl_return_aty,[]),offset} =>
 		 let
 		   val node_exn = NODE{start="[",finish="]",childsep=RIGHT("](" ^ pr_aty handl_aty ^ 
 				       ") handlereturn(" ^ pr_aty handl_return_aty ^ ") ["), 
@@ -359,6 +381,16 @@ struct
 		 in
 		   NODE{start="[",finish="",childsep=RIGHT("] handle " ^ pr_offset offset ^ " "),indent=2,children=[layout_lss_local default,node_exn]}
 		 end
+	   | HANDLE{default,handl=(handl,handl_aty),handl_return=(handl_return,handl_return_aty,bv),offset} =>
+		 let
+		   val hnode_bv = HNODE{start="<",finish=">",childsep=RIGHT ",",children=[PP.LEAF(pr_bv bv)]}
+		   val node_exn = NODE{start="[",finish="](bv: " ^ flatten1(hnode_bv) ^ ")",childsep=RIGHT("](" ^ pr_aty handl_aty ^ 
+				       ") handlereturn(" ^ pr_aty handl_return_aty ^ ") ["), 
+				       indent=2,children=[layout_lss_local handl,layout_lss_local handl_return]}
+		 in
+		   NODE{start="[",finish="",childsep=RIGHT("] handle " ^ pr_offset offset ^ " "),indent=2,children=[layout_lss_local default,node_exn]}
+		 end
+
 	   | RAISE{arg,defined_atys} => 
 		 let
 		   val lay_stys = flatten1(HNODE{start="<",finish=">",childsep=RIGHT ",",children=map (fn aty => LEAF(pr_aty aty)) defined_atys})
@@ -485,7 +517,7 @@ struct
       | ce_to_atom(ClosExp.RVAR place) = RVAR place
       | ce_to_atom(ClosExp.DROPPED_RVAR place) = DROPPED_RVAR place
       | ce_to_atom(ClosExp.INTEGER i) = INTEGER i
-      | ce_to_atom(ClosExp.RECORD{elems=[],alloc=ClosExp.IGNORE}) = UNIT
+      | ce_to_atom(ClosExp.RECORD{elems=[],alloc=ClosExp.IGNORE,tag}) = UNIT
       | ce_to_atom ce = die ("ce_to_atom: expression not an atom:" ^ PP.flatten1(ClosExp.layout_clos_exp ce))
 
     fun ce_to_atom_opt(NONE) = NONE
@@ -530,14 +562,16 @@ struct
       | L_ce(ClosExp.PASS_PTR_TO_RHO sma,lvars_res,acc) = ASSIGN{pat=VAR(one_lvar lvars_res),bind=PASS_PTR_TO_RHO(sma_to_sma sma)}::acc
       | L_ce(ClosExp.UB_RECORD ces,lvars_res,acc)      = 
           List.foldr (fn ((ce,lv_res),acc) => L_ce(ce,[lv_res],acc)) acc (zip(ces,lvars_res))
-      | L_ce(ClosExp.CLOS_RECORD{label,elems,alloc},lvars_res,acc) = 
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=CLOS_RECORD{label=label,elems=ces_to_atoms elems,alloc=sma_to_sma alloc}}::acc
+      | L_ce(ClosExp.CLOS_RECORD{label,elems=(lvs,excons,rhos),alloc},lvars_res,acc) = 
+	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=CLOS_RECORD{label=label,
+							      elems=(ces_to_atoms lvs,ces_to_atoms excons,ces_to_atoms rhos),
+							      alloc=sma_to_sma alloc}}::acc
       | L_ce(ClosExp.REGVEC_RECORD{elems,alloc},lvars_res,acc) = 
 	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=REGVEC_RECORD{elems=smas_to_smas elems,alloc=sma_to_sma alloc}}::acc
-      | L_ce(ClosExp.SCLOS_RECORD{elems,alloc},lvars_res,acc) = 
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=SCLOS_RECORD{elems=ces_to_atoms elems,alloc=sma_to_sma alloc}}::acc
-      | L_ce(ClosExp.RECORD{elems,alloc},lvars_res,acc) = 
-	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=RECORD{elems=ces_to_atoms elems,alloc=sma_to_sma alloc}}::acc
+      | L_ce(ClosExp.SCLOS_RECORD{elems=(lvs,excons,rhos),alloc},lvars_res,acc) = 
+	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=SCLOS_RECORD{elems=(ces_to_atoms lvs,ces_to_atoms excons,ces_to_atoms rhos),alloc=sma_to_sma alloc}}::acc
+      | L_ce(ClosExp.RECORD{elems,alloc,tag},lvars_res,acc) = 
+	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=RECORD{elems=ces_to_atoms elems,alloc=sma_to_sma alloc,tag=tag}}::acc
       | L_ce(ClosExp.SELECT(i,ce),lvars_res,acc) = 
 	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=SELECT(i,ce_to_atom ce)}::acc
       | L_ce(ClosExp.FNJMP{opr,args,clos,free},lvars_res,acc) = 
@@ -613,6 +647,47 @@ struct
       List.foldr (fn (func,acc) => L_top_decl func :: acc) [] funcs
   end
 
+  (***********************************************)
+  (* Calculate Number of Applications in Program *)
+  (***********************************************)
+  local
+    val count_tail_calls = false
+
+    fun NA_sw (SWITCH(atom_arg,sels,default)) NA_lss =
+      (foldl (fn ((s,lss),n) => n + NA_lss lss) 0 sels) + NA_lss default
+
+    fun NA_lss lss =
+      let
+	fun NA_ls ls =
+	  case ls
+	    of FNJMP a => if count_tail_calls then 1 else 0
+	     | FNCALL a => 1
+	     | JMP a => if count_tail_calls then 1 else 0
+	     | FUNCALL a => 1 
+	     | LETREGION{rhos,body} => NA_lss body
+	     | SCOPE{pat,scope} => NA_lss scope
+	     | HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv,bv),offset} => NA_lss default + NA_lss handl
+	     | HANDLE{default,handl,handl_return,offset} => die "NA_lss: handl_return in HANDLE not empty"
+	     | SWITCH_I sw => NA_sw sw NA_lss
+	     | SWITCH_S sw => NA_sw sw NA_lss
+	     | SWITCH_C sw => NA_sw sw NA_lss
+	     | SWITCH_E sw => NA_sw sw NA_lss
+	     | _ => 0
+    in 
+      foldr (fn (ls,n) => n + NA_ls ls) 0 lss
+    end
+  in
+    fun NA_prg top_decls =
+    let 
+      fun NA_top_decl func = 
+	case func 
+	  of FUN(lab,cc,lss) => NA_lss lss
+	   | FN(lab,cc,lss) => NA_lss lss
+    in 
+      foldr (fn (func,n) => n + NA_top_decl func) 0 top_decls
+    end
+  end
+
   (*****************************************)
   (* Get Machine Registers from a LineStmt *)
   (*****************************************)
@@ -641,10 +716,10 @@ struct
     | get_phreg_se(STORE(atom,lab),acc) = get_phreg_atom(atom,acc)
     | get_phreg_se(STRING str,acc) = acc
     | get_phreg_se(REAL str,acc) = acc
-    | get_phreg_se(CLOS_RECORD{label,elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(elems,acc))
+    | get_phreg_se(CLOS_RECORD{label,elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(smash_free elems,acc))
     | get_phreg_se(REGVEC_RECORD{elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_smas(elems,acc))
-    | get_phreg_se(SCLOS_RECORD{elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(elems,acc))
-    | get_phreg_se(RECORD{elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(elems,acc))
+    | get_phreg_se(SCLOS_RECORD{elems,alloc},acc) = get_phreg_sma(alloc, get_phreg_atoms(smash_free elems,acc))
+    | get_phreg_se(RECORD{elems,alloc,tag},acc) = get_phreg_sma(alloc, get_phreg_atoms(elems,acc))
     | get_phreg_se(SELECT(i,atom),acc) = get_phreg_atom(atom,acc)
     | get_phreg_se(CON0{con,con_kind,aux_regions,alloc},acc) = get_phreg_sma(alloc, get_phreg_smas(aux_regions,acc))
     | get_phreg_se(CON1{con,con_kind,alloc,arg},acc) = get_phreg_sma(alloc,get_phreg_atom(arg,acc))
@@ -708,10 +783,10 @@ struct
     | use_var_se(STORE(atom,lab),acc) = get_var_atom(atom,acc)
     | use_var_se(STRING str,acc) = acc
     | use_var_se(REAL str,acc) = acc
-    | use_var_se(CLOS_RECORD{label,elems,alloc},acc) = get_var_sma(alloc, get_var_atoms(elems,acc))
+    | use_var_se(CLOS_RECORD{label,elems,alloc},acc) = get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
     | use_var_se(REGVEC_RECORD{elems,alloc},acc) = get_var_sma(alloc, get_var_smas(elems,acc))
-    | use_var_se(SCLOS_RECORD{elems,alloc},acc) = get_var_sma(alloc, get_var_atoms(elems,acc))
-    | use_var_se(RECORD{elems,alloc},acc) = get_var_sma(alloc, get_var_atoms(elems,acc))
+    | use_var_se(SCLOS_RECORD{elems,alloc},acc) = get_var_sma(alloc, get_var_atoms(smash_free elems,acc))
+    | use_var_se(RECORD{elems,alloc,tag},acc) = get_var_sma(alloc, get_var_atoms(elems,acc))
     | use_var_se(SELECT(i,atom),acc) = get_var_atom(atom,acc)
     | use_var_se(CON0{con,con_kind,aux_regions,alloc},acc) = get_var_sma(alloc, get_var_smas(aux_regions,acc))
     | use_var_se(CON1{con,con_kind,alloc,arg},acc) = get_var_sma(alloc,get_var_atom(arg,acc))
@@ -798,7 +873,9 @@ struct
       val line_prg = L_clos_prg clos_prg
       val _ = 
 	if Flags.is_on "print_linearised_program" then
-	  display("\nReport: AFTER LINEARISATION:", layout_line_prg Lvars.pr_lvar (fn _ => "()") pr_atom false line_prg)
+	  (print ("Number of functions:    " ^ (Int.toString(length(line_prg))) ^ "\n");
+	   print ("Number of applications: " ^ (Int.toString(NA_prg line_prg)) ^ "\n");
+	  display("\nReport: AFTER LINEARISATION:", layout_line_prg Lvars.pr_lvar (fn _ => "()") pr_atom false line_prg))
 	else
 	  ()
       val _ = chat "]\n"

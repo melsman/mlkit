@@ -101,25 +101,20 @@ Backend/JUMP_TABLES.sml
 Backend/JumpTables.sml
 
 #if defined(KIT_TARGET_X86)
-
    Backend/X86/BackendInfoX86.sml
    Backend/X86/CodeGenX86.sml
    Backend/X86/INSTS_X86.sml
    Backend/X86/InstsX86.sml
-
-#else (* HP-PARISC *)
-
+#else
    Backend/HpPaRisc/BackendInfo.sml
    Backend/HpPaRisc/HPPA_RESOLVE_JUMPS.sml
    Backend/HpPaRisc/HppaResolveJumps.sml
    Backend/HpPaRisc/CodeGen.sml
    Backend/HpPaRisc/HP_PA_RISC.sml
    Backend/HpPaRisc/HpPaRisc.sml
-
 #endif
 
 #if defined(KIT_TARGET_C)
-
    C/C_INFO.sml
    C/CInfo.sml
    C/KBP_TO_C.sml
@@ -127,14 +122,11 @@ Backend/JumpTables.sml
    C/C_CODE.sml
    C/CCode.sml
    C/CKAMBackend.sml
-
-#else  
-   
+#else
    (* the default is to use the HP backend; to compile the C backend
     * write   CM.SymVal.define("KIT_TARGET_C", 1);
     * before executing   CM.make(); 
     *)
-
    Hppa/DELAY_SLOT_OPTIMIZATION.sml
    Hppa/DelaySlotOptimization.sml
    Hppa/HPPA_INFO.sml
@@ -148,7 +140,6 @@ Backend/JumpTables.sml
    Hppa/KbpToHpPa.sml
    Hppa/RESOLVE_JUMPS.sml
    Hppa/ResolveJumps.sml
-
 #endif
 
 

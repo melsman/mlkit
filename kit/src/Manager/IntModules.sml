@@ -141,7 +141,19 @@ functor IntModules(structure Name : NAME
 
     local
       val region_profiling = Flags.lookup_flag_entry "region_profiling"
-    in fun pmdir() = if !region_profiling then "PM/Prof/" else "PM/NoProf/"
+      val gc_flag          = Flags.lookup_flag_entry "garbage_collection"
+    in 
+      fun pmdir() = 
+	if !region_profiling then 
+	  if !gc_flag then
+	    "PM/GCProf/" 
+	  else 
+	    "PM/Prof/"
+	else
+	  if !gc_flag then
+	    "PM/GC/" 
+	  else 
+	    "PM/NoProf/"
     end
 
     (* ----------------------------------------------------

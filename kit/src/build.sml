@@ -79,16 +79,16 @@ let
 	  | #"N" :: #"A" :: #"T" :: #"I" :: #"V" :: #"E" :: _ =>  (* check that the architecture is HP PA-RISC and that
 								   * the operating system is HPUX. *)
 	     (case arch_os()
-		of ("HPPA", "HPUX") => ()
+		of ("HPPA", "HPUX") => (CM.SymVal.define("KIT_TARGET_HPPA", 1))
 		 | _ => (error "the native backend is only available for the HPPA-HPUX system"; 
 			 resolve_backend()))
  	  | _ => (error "you must type C or native"; 
 		  resolve_backend())
     end
 
-  fun build_runtime() =
+  fun build_runtime(runtime_path) =
       (print "\n ** Building runtime system **\n\n";
-       cd "Runtime";
+       cd runtime_path;
        if (load_config_file("../.config") <> arch_os()) then
 	 (if OS.Process.system ("gmake clean") = OS.Process.success then ()
 	  else die "build_runtime: gmake clean failed";
@@ -117,27 +117,59 @@ let
   fun build_kittester() =
     (print "\n ** Building kittester, a program for testing the Kit **\n\n";
      cd "Tools/Tester";
-     if OS.Process.system ("echo 'CM.make();' | sml-cm") = OS.Process.success then () 
-     else die "build_kittester: ``echo 'CM.make();' | sml-cm'' failed";
+     if OS.Process.system ("echo 'CM.make();' | sml") = OS.Process.success then () 
+     else die "build_kittester: ``echo 'CM.make();' | sml'' failed";
      cdsrc())
       
   fun build_kit() = 
     (print "\n ** Building the ML Kit compiler **\n\n";
      CM.make())
-
 in
   print "\n\n ** ML Kit with Regions installation ** \n\n";  
   resolve_backend();
-  build_runtime();
+  build_runtime("Runtime");
+  build_runtime("RuntimeWithGC");
   build_rp2ps();
   build_kittester();
   save_config_file();
   build_kit()
 end ;
 
-(*
-val _ = K.Flags.lookup_flag_entry "delete_target_files" := false;
-*)
+(* This is only temporary; 09/02/1999, Niels *)
+val _ = 
+  let
+    fun error s = (print "\n ** Error : "; print s; print " **\n")
+    val upper = implode o map Char.toUpper o explode
+    (* Read characters until a newline is found. *)
+    fun read_string s =
+      let
+	val ch = TextIO.inputN(TextIO.stdIn, 1)
+      in
+	if ch = "\n" then
+	  s
+	else
+	  read_string (s^ch)
+      end
+    fun maybe_enable_lambda_backend() =
+      let 
+	val _ = print "\nDo you want to use the new backend?\n\
+	              \If you say yes then your previous selection is overruled.\n\
+                      \Target system is HP PA-RISC (type yes or no): "
+      in 
+	case explode (upper (read_string ""))
+	  of #"Y" :: #"E" :: #"S" :: _ => 
+	    (K.Flags.lookup_flag_entry "enable_lambda_backend" := true;
+	     K.Flags.lookup_flag_entry "garbage_collection" := false;
+ 	     K.Flags.lookup_flag_entry "delete_target_files" := false)
+	   | #"N" :: #"O" :: _ => 
+	    (K.Flags.lookup_flag_entry "enable_lambda_backend" := false;
+	     K.Flags.lookup_flag_entry "garbage_collection" := false)
+	   | _ => (error "you must type yes or no"; 
+		   maybe_enable_lambda_backend())
+      end
+  in
+    maybe_enable_lambda_backend()
+  end;
 
 val _ = 
   let fun enable s = K.Flags.lookup_flag_entry s := true
@@ -146,9 +178,20 @@ val _ =
 		       "print_call_explicit_expression", "log_to_file"]
   in
     K.build_basislib();
-    app enable profflags;
-    K.build_basislib();
-    app disable profflags
+(*
+    if !(K.Flags.lookup_flag_entry "enable_lambda_backend") then  (* This is only temporary; 09/02/1999, Niels *)
+      (enable "garbage_collection";
+       K.build_basislib();
+       disable "garbage_collection")
+    else
+      ();
+*)
+    if not (!(K.Flags.lookup_flag_entry "enable_lambda_backend")) then  (* This is only temporary; 09/02/1999, Niels *)
+      (app enable profflags;
+       K.build_basislib();
+       app disable profflags)
+    else
+      ()
   end
 
 val _ = K.install();

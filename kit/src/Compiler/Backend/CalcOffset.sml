@@ -149,10 +149,10 @@ struct
 	    let
 	      val offset' = double_align_offset offset
 	    in
-	      (((place,phsize),offset'),offset'++i) (* Double Align finite regions with runtime type REAL *)
+	      (((place,phsize),offset'),offset'++(i)) (* Double Align finite regions with runtime type REAL *) (*+2 necessary for tagging hack 11/01/1999, Niels hmm we must correct PSI such that this isn't necessary, function psi_tr *)
 	    end
 	  else
-	    (((place,phsize),offset),offset++i)
+	    (((place,phsize),offset),offset++(i+1)) (* +1 necessary for tagging hack 11/01/1999, Niels we should correct this in PSI. function psi_tr *)
       in
 	foldr (fn (binder,(acc,offset)) => 
 	       let
@@ -273,6 +273,13 @@ struct
     structure LS = LineStmt
     structure LvarFinMap = Lvars.Map
 
+    local 
+      val local_fun_nr = ref 0
+    in
+      fun reset_fun_nr() = local_fun_nr := 0
+      fun new_fun_nr() = (local_fun_nr := !local_fun_nr+1; Word32.fromInt (!local_fun_nr-1))
+    end
+
     (* We have an environment LVenv mapping variables to their offsets in the activation record          *)
     (* -- A spilled variable may be live at an application                                               *)
     (* -- A variable mapped into a caller save register and never flused is never live at an application *)
@@ -327,7 +334,7 @@ struct
 	val _ = pws ws
 	val _ = print ("size_ff is " ^ Int.toString size_ff ^ " and num_words is " ^ Int.toString num_words ^ "\n")*)
       in
-        Word32.fromInt size_ff :: ws
+        new_fun_nr() :: (Word32.fromInt size_ff) :: ws
       end
 
     fun CBV_sw(CBV_lss,gen_sw,LS.SWITCH(atom,sels,default),L_set,LVenv,lss) =
@@ -368,6 +375,9 @@ struct
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
 		 val (def,use) = LineStmt.def_use_lvar_ls ls
 		 val lvset_kill_def = lvset_difference(L_set',def,LVenv)
+
+(*		 val _ = print (LS.pr_line_stmt pr_sty pr_offset pr_atom false ls)
+		 val _ = print "\n"*)
 		 val bit_vector = gen_bitvector(lvset_kill_def,size_ff)
 	       in
 		(lvset_add(lvset_kill_def,use,LVenv),
@@ -404,7 +414,7 @@ struct
 	   | LS.SCOPE{pat,scope} =>
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
-		 val (L_set_scope,scope') = CBV_lss'(scope,add_stys(pat,LVenv),L_set)
+		 val (L_set_scope,scope') = CBV_lss'(scope,add_stys(pat,LVenv),L_set')
 	       in
 		 (L_set_scope,
 		  LS.SCOPE{pat=pat,scope=scope'}::lss')
@@ -413,12 +423,13 @@ struct
 	       (* Pointer to handle closure is at offset+1, see CodeGen.sml *)
 	       let
 		 val (L_set',lss') = CBV_lss'(lss,LVenv,L_set)
-		 val (L_set_handl_return,handl_return') = CBV_lss'(handl_return,LVenv,L_set')
+		 val (L_set_handl_return,handl_return') = CBV_lss'(handl_return,LVenv,
+								   lvset_difference(L_set',LS.get_lvar_atom(handl_return_lv,[]),LVenv))            (* Handler is dead in handlreturn code *)
 		 val bv_handl_return = gen_bitvector(L_set_handl_return,size_ff)
-		 val (L_set_default,default') = CBV_lss'(default,LVenv,L_set')
-		 val (L_set_handl,handl') = CBV_lss'(handl,LVenv,L_set_default)
+		 val (L_set_default,default') = CBV_lss'(default,LVenv,IntSet.insert (offset+1) L_set')  (* Handler is live in default code *)
+		 val (L_set_handl,handl') = CBV_lss'(handl,LVenv,IntSet.remove (offset+1) L_set_default) (* Handler is dead in handl code *)
 	       in
-		 (IntSet.insert (offset+1) L_set_handl ,
+		 ((*IntSet.insert (offset+1)*) L_set_handl ,
 		  LS.HANDLE{default=default',
 			    handl=(handl',
 				   handl_lv),
@@ -466,6 +477,7 @@ struct
 	     exports:label list * label list} =
       let
 	val _ = chat "[Calculate BitVectors..."
+	val _ = reset_fun_nr()
 	val line_prg_cbv = foldr (fn (func,acc) => CBV_top_decl func :: acc) [] co_prg
 	val _ = chat "]\n"
       in

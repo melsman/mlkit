@@ -45,6 +45,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun die s = Crash.impossible ("Manager." ^ s)
 
     val region_profiling = Flags.lookup_flag_entry "region_profiling"
+    val gc_flag          = Flags.lookup_flag_entry "garbage_collection"
 
     exception PARSE_ELAB_ERROR of ErrorCode.ErrorCode list
     fun error (s : string) = (print ("\nError: " ^ s ^ ".\n\n"); raise PARSE_ELAB_ERROR[])
@@ -506,9 +507,11 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       else (OS.FileSys.mkDir d handle _ => error ("I cannot create directory " ^ quot d))
 
     fun maybe_create_PM_dir() : unit =
-      (maybe_create_dir "PM"; maybe_create_dir "PM/Prof"; maybe_create_dir "PM/NoProf")
-      
-	 
+      (maybe_create_dir "PM"; 
+       maybe_create_dir "PM/Prof"; 
+       maybe_create_dir "PM/NoProf";
+       maybe_create_dir "PM/GC";
+       maybe_create_dir "PM/GCProf")
 
     fun change_dir p : {cd_old : unit -> unit, file : string} =
       let val {dir,file} = OS.Path.splitDirFile p
@@ -637,7 +640,17 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * PM/NoProf/ directory.
      * ---------------------------------------------------- *)
 
-    fun pmdir() = if !region_profiling then "PM/Prof/" else "PM/NoProf/"
+    fun pmdir() = 
+      if !region_profiling then 
+	if !gc_flag then
+	  "PM/GCProf/" 
+	else 
+	  "PM/Prof/"
+      else
+	if !gc_flag then
+	  "PM/GC/" 
+	else 
+	  "PM/NoProf/"
 
     type absprjid = string
 

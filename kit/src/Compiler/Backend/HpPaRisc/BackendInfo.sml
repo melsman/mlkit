@@ -29,26 +29,80 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val init_sclos_offset = 0	 (* First offset in shared closure is 0 *)                             
     val init_regvec_offset = 0	 (* First offset in region vector is 0 *)                              
 
+    (***********)
+    (* Tagging *)
+    (***********)
+
+    fun pr_tag_w tag = "0X" ^ (Word32.fmt StringCvt.HEX tag)
+    (* For now, some tags are in integers but it should be eliminated; max size is then 2047 only 09/01/1999, Niels *)
+    fun pr_tag_i tag = "0X" ^ (Int.fmt StringCvt.HEX tag)
+
+    fun gen_record_tag(s:int,off:int,i:bool,t:int) = 
+      let
+	fun pw(s,w) = print (s ^ " is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
+	val w0 = Word32.fromInt 0
+	val size = Word32.fromInt s
+	val offset = Word32.fromInt off
+	val immovable = if i = true then Word32.fromInt 1 else Word32.fromInt 0
+	val tag = Word32.fromInt t
+	fun or_bits(w1,w2) = Word32.orb(w1,w2)
+	fun shift_left(num_bits,w) = Word32.<<(w,Word.fromInt num_bits)
+	val w_size = shift_left(19,size)
+	val w_offset = or_bits(w_size,shift_left(6,offset))
+	val w_immovable = or_bits(w_offset,shift_left(5,immovable))
+	val w_tag = or_bits(w_immovable,tag)
+      in
+	w_tag
+      end
+
+    fun gen_string_tag(s:int,i:bool,t:int) = 
+      let
+	fun pw(s,w) = print (s ^ " is " ^ (Word32.fmt StringCvt.BIN w) ^ "\n")
+	val w0 = Word32.fromInt 0
+	val size = Word32.fromInt s
+	val immovable = if i = true then Word32.fromInt 1 else Word32.fromInt 0
+	val tag = Word32.fromInt t
+	fun or_bits(w1,w2) = Word32.orb(w1,w2)
+	fun shift_left(num_bits,w) = Word32.<<(w,Word.fromInt num_bits)
+	val w_size = shift_left(6,size)
+	val w_immovable = or_bits(w_size,shift_left(5,immovable))
+	val w_tag = or_bits(w_immovable,tag)
+	(*val _ = if t=3 then pw("t=3",w_tag) else ()*)
+      in
+	w_tag
+      end
+
     val ml_true          = 3     (* The representation of true *)
     val ml_false         = 1     (* The representation of false *)
     val ml_unit          = 1     (* The representation of unit *)
-    val value_tag_real   = 0     (* Used for constant reals. *)
-    val value_tag_string = 1     (* Used for constant strings. *)
-    val value_tag_con0   = 2
-    val value_tag_con1   = 3
-    val value_tag_record = 4
-    val value_tag_ref    = 5
+
+    fun tag_real(i:bool)              = gen_record_tag(3,3,i,6)
+    fun tag_string(i:bool,size)       = gen_string_tag(size,i,1)
+    fun tag_record(i:bool,size)       = gen_record_tag(size,0,i,6)
+    fun tag_con0(i:bool,c_tag)        = gen_string_tag(c_tag,i,2)
+    fun tag_con1(i:bool,c_tag)        = gen_string_tag(c_tag,i,3)
+    fun tag_ref(i:bool)               = gen_string_tag(0,i,5)
+    fun tag_clos(i:bool,size,n_skip)  = gen_record_tag(size,n_skip,i,6)
+    fun tag_sclos(i:bool,size,n_skip) = gen_record_tag(size,n_skip,i,6)
+    fun tag_regvec(i:bool,size)       = gen_record_tag(size,size,i,6)
+    fun tag_table(i:bool,size)        = gen_string_tag(size,i,7)
+    fun tag_exname(i:bool)            = gen_record_tag(2,2,i,6)
+    fun tag_excon0(i:bool)            = gen_record_tag(1,0,i,6)
+    fun tag_excon1(i:bool)            = gen_record_tag(2,0,i,6)
+    val tag_ignore                    = Word32.fromInt 0
 
     val inf_bit = 1   (* We add 1 to an address to set the infinite bit. *)
     val atbot_bit = 2 (* We add 2 to an address to set the atbot bit. *)
 
-    val tag_values   = Flags.lookup_flag_entry "tag_values"
-    val tag_integers = Flags.lookup_flag_entry "tag_integers"
-    fun size_of_real ()  = if !tag_values then 4 else 2
-    fun size_of_ref ()   = if !tag_values then 2 else 1
-    fun size_of_record l = if !tag_values then List.length l + 1 else List.length l
+    val tag_values      = Flags.lookup_flag_entry "tag_values"
+    val tag_integers    = Flags.lookup_flag_entry "tag_integers"
+    val unbox_datatypes = Flags.lookup_flag_entry "unbox_datatypes"
+
+    fun size_of_real ()    = if !tag_values then 4 else 2
+    fun size_of_ref ()     = if !tag_values then 2 else 1
+    fun size_of_record l   = if !tag_values then List.length l + 1 else List.length l
     fun size_of_reg_desc() = 4
-    fun size_of_handle() = 4
+    fun size_of_handle()   = 4
 
     val exn_DIV_lab       = Labels.new_named("exnDIV_lab")       (* Global exceptions are globally allocated. *)
     val exn_MATCH_lab     = Labels.new_named("exnMATCH_lab")

@@ -12,21 +12,34 @@ signature BACKEND_INFO =
     val init_sclos_offset  : offset     (* First offset in shared closure is 0 *)
     val init_regvec_offset : offset     (* First offset in region vector is 0 *)                              
 
-    val ml_true          : int (* The representation of true *)
-    val ml_false         : int (* The representation of false *)
-    val ml_unit          : int (* The representation of unit *)
-    val value_tag_real   : int (* Used for constant reals. *)
-    val value_tag_string : int (* Used for constant strings. *)
-    val value_tag_con0   : int
-    val value_tag_con1   : int
-    val value_tag_record : int
-    val value_tag_ref    : int
+    val ml_true  : int (* The representation of true *)
+    val ml_false : int (* The representation of false *)
+    val ml_unit  : int (* The representation of unit *)
+
+    val pr_tag_w : Word32.word -> string
+    val pr_tag_i : int -> string
+
+    val tag_real   : bool -> Word32.word
+    val tag_string : bool * int -> Word32.word
+    val tag_record : bool * int -> Word32.word
+    val tag_con0   : bool * int -> Word32.word
+    val tag_con1   : bool * int -> Word32.word
+    val tag_ref    : bool -> Word32.word
+    val tag_clos   : bool * int * int -> Word32.word
+    val tag_sclos  : bool * int * int -> Word32.word
+    val tag_regvec : bool * int -> Word32.word
+    val tag_table  : bool * int -> Word32.word
+    val tag_exname : bool -> Word32.word
+    val tag_excon0 : bool -> Word32.word
+    val tag_excon1 : bool -> Word32.word
+    val tag_ignore : Word32.word
 
     val inf_bit          : int (* We must add 1 to an address to set the infinite bit. *)
     val atbot_bit        : int (* We must add 2 to an address to set the atbot bit. *)
 
     val tag_values       : bool ref
     val tag_integers     : bool ref
+    val unbox_datatypes  : bool ref
     val size_of_real     : unit -> int
     val size_of_ref      : unit -> int
     val size_of_record   : 'a list -> int

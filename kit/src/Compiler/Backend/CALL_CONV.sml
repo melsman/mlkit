@@ -24,6 +24,8 @@ signature CALL_CONV =
     val get_spilled_res               : cc -> lvar list
     val get_spilled_res_with_offsets  : cc -> (lvar * offset) list
 
+    val get_register_args             : cc -> lvar list (* Machine registers as lvars. *)
+
     val get_frame_size                : cc -> int
     val add_frame_size                : cc * int -> cc
     val get_cc_size                   : cc -> int

@@ -71,6 +71,14 @@ functor CallConv(structure Lvars : LVARS
     fun filter_out_phreg_opt(NONE) = []
       | filter_out_phreg_opt(SOME a) = filter_out_phreg([a])
 
+    fun filter_out_stack([],C) = C
+      | filter_out_stack(CC_NO_STY lv::rest,C) = die "filter_out_stack: stack and machine registers not annotated yet"
+      | filter_out_stack(CC_STACK a::rest,C) = filter_out_stack(rest,C)
+      | filter_out_stack(CC_PHREG (lv,phreg)::rest,C) = filter_out_stack(rest,phreg::C)
+
+    fun filter_out_stack_opt(NONE,C) = C
+      | filter_out_stack_opt(SOME a,C) = filter_out_stack([a],C)
+
     fun get_rcf_size{clos,free,args,reg_vec,reg_args,res,frame_size} = List.length(filter_out_phreg res)
     fun get_ccf_size{clos,free,args,reg_vec,reg_args,res,frame_size} =
       List.length(filter_out_phreg_opt clos) +
@@ -238,6 +246,9 @@ functor CallConv(structure Lvars : LVARS
 	  (aty_args,aty_res,return_lab_offset)
 	end
     end
+
+    fun get_register_args {clos,free,args,reg_vec,reg_args,res,frame_size} =
+      filter_out_stack_opt(clos,filter_out_stack(free,filter_out_stack(args,filter_out_stack_opt(reg_vec,filter_out_stack(reg_args,[])))))
 
     (* The Call Convention supports one return register for handle functions *)
     fun handl_return_phreg() = 
