@@ -55,10 +55,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC) : NS_DB =
 	  let
 	    val h : ns_db = prim("@Ns_DbPoolGetHandle", pool)
 
-    fun log (s: string):unit =
-      prim("@Ns_Log", (0, s))
-
-val _ = log ("*******get handle db=("^(pool)^","^(Int.toString (h))^")*************")
+val _ = NsDebug.addMsg `*******get handle db=(^(pool),^(Int.toString h))`
 
 	  in
 	    if h = 0 then raise Fail "poolGetHandle:Can't allocate handle" else (pool,h)
@@ -66,10 +63,8 @@ val _ = log ("*******get handle db=("^(pool)^","^(Int.toString (h))^")**********
 
 	fun poolPutHandle (db : db) : unit = 
 let
-    fun log (s: string):unit =
-      prim("@Ns_Log", (0, s))
 
-val _ = log ("*******put handle db=("^(#1 db)^","^(Int.toString (#2 db))^")*************")
+val _ = NsDebug.addMsg `*******put handle db=(^(#1 db),^(Int.toString (#2 db)))`
 in
 	  prim("@Ns_DbPoolPutHandle", #2 db) end
       end
@@ -93,10 +88,7 @@ in
 
 	fun wrapDb f =
 	  let val db = getHandle()
-    fun log (s: string):unit =
-      prim("@Ns_Log", (0, s))
-
-val _ = log ("*******db=("^(#1 db)^","^(Int.toString (#2 db))^")*************")
+val _ = NsDebug.addMsg `*******db=(^(#1 db),^(Int.toString (#2 db)))`
 	  in (f db before putHandle db)
 	    handle X => (putHandle db; raise X)
 	  end

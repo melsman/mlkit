@@ -44,6 +44,7 @@ signature NS = sig
                        -> unit
 
   (* sub-structures *)
+  structure NsDebug  : NS_DEBUG
   structure Set      : NS_SET
   structure Conn     : NS_CONN where type status = status 
 				 and type set = Set.set
