@@ -83,6 +83,7 @@ signature BACKEND_INFO =
     val GREATER_INT    : string
     val GREATEREQ_INT  : string
     val FRESH_EXN_NAME : string
+    val EXN_PTR        : string
 
     val PLUS_FLOAT      : string
     val MINUS_FLOAT     : string

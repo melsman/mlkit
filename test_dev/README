@@ -5,11 +5,12 @@ Programs that work with the KAM backend:
  exn1.sml                             ok
  exn2.sml                             ok
  exn3.sml                             ok
- exception1.sml                          BlockAllocIfInf not implemented!!
- exception2.sml                       -
- exception3.sml                       -
- exception4.sml                       -  
- exception5.sml                       -
+ exn4.sml                             ok
+ exception1.sml                       ok
+ exception2.sml                       ok
+ exception3.sml                       ok
+ exception4.sml                       ok  
+ exception5.sml                       ok
  f1.sml                               ok
  f2.sml                               ok
  fft_no_basislib.sml
@@ -21,8 +22,8 @@ Programs that work with the KAM backend:
  hello.sml                            ok
  if.sml                               ok
  immedString.sml                      ok
- kitkbjul9_no_basislib.sml
- kitlife35u_no_basislib.sml
+ kitkbjul9_no_basislib.sml            oversætter men udskriver intet når det køres!
+ kitlife35u_no_basislib.sml           oversætter men udskriver intet når det køres!
  kitqsort_no_basislib.sml
  kitreynolds2_no_basislib.sml
  kitreynolds3_no_basislib.sml
@@ -31,7 +32,7 @@ Programs that work with the KAM backend:
  l1.sml                               ok
  list_nh.sml                          ok
  listpair.sml
- professor_game.sml
+ professor_game.sml                   oversætter men udskriver intet når det køres!
  real1.sml
  ref-int.sml
  ref-real.sml

@@ -2777,9 +2777,22 @@ struct
 	val _ = reset_lvars()
 	val _ = reset_labs()
 	val _ = reset_top_decls()
-	val import_labs = 
-	  find_globals_in_env (valOf(!import_vars)) clos_env
-	  handle _ => die "clos_conv: import_vars not specified."
+
+	(* Filter out global exception constructors *)
+	val import_vars = 
+	  let fun member e nil = false
+		| member e (x::xs) = Excon.eq(e,x) orelse member e xs
+	      fun filter (e, acc) =
+	        if member e [Excon.ex_DIV,Excon.ex_MATCH,Excon.ex_BIND,Excon.ex_OVERFLOW] then acc
+		else e::acc
+	      val (lvars,excons,rhos) = 
+		valOf(!import_vars) 
+		handle _ => die "clos_conv: import_vars not specified."
+	  in (lvars, foldl filter nil excons, rhos)
+	  end
+
+	val import_labs = find_globals_in_env import_vars clos_env
+	  
 	val env_datbind = add_datbinds_to_env export_datbinds CE.empty
 	val global_env = CE.plus (clos_env, env_datbind)
 	val _ = set_global_env global_env
