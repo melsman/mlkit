@@ -18,4 +18,13 @@ Test files may contain Standard ML like comments.
 
 *)
 
-mlyacc.pm              tx tc
+int32.sml            gc
+int32_2.sml          gc
+word.sml             gc
+word32.sml           gc 
+word31.sml           gc 
+int31.sml            gc
+int31_2.sml          gc
+int.sml              gc
+int_2.sml            gc
+filesys.sml          gc

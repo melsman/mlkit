@@ -356,16 +356,12 @@ in
   val test23a = tst "test23a" ((Word32.toInt 0wxFFFFFFFF seq false)
 			       handle Overflow => true)
 
-  val test23b = tst "test23b" 
-    (if tagging() then
-       ((Word32.toIntX 0wxFFFFFFFF seq false)
-	handle Overflow => true)
-     else Word32.toIntX 0wxFFFFFFFF = ~1)
-
+  val test23b = tst "test23b" (Word32.toIntX 0wxFFFFFFFF = ~1)
 
   val test23c = tst "test23c" 
     (if tagging() then
-       (Word32.toIntX 0wx7FFFFFFF = ~1)
+       ((Word32.toIntX 0wx7FFFFFFF seq false)
+	handle Overflow => true)
      else 
        (SOME(Word32.toIntX 0wx7FFFFFFF) = Int.maxInt))
 
@@ -378,10 +374,14 @@ in
 
   val test23e = tst "test23e" (Word32.toIntX 0wx3FFFFFFF = 1073741823)
 
-  val test23f = tst "test23f" 
+  val test23f = tst "test23f" (Word32.toIntX 0wxc0000000 = ~1073741824)
+
+  val test23g = tst "test23g" 
     (if tagging() then
-       Word32.toIntX 0wx40000000 = ~1073741824
+       ((Word32.toIntX 0wxbfffffff seq false)
+	handle Overflow => true)
      else 
-       Word32.toIntX 0wx40000000 = (Int.+(1073741823, 1)))
+       (Word32.toIntX 0wxbfffffff = (Int.-(~1073741824, 1))))
+
 end
 end;
