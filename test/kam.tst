@@ -7,12 +7,14 @@ consists of a file name path (with extension sml, sig, or pm) followed
 by a list of tokens. The following tokens are supported:
 
  nobasislib     ; do not import basis library
+ nooptimiser    ; disable lambda optimiser
  ccl            ; compare compiler logs
  tx             ; time executable
  tc             ; time compiler
  ecte           ; expect compile time error
  prof           ; also compile and compare runtime output with 
                   profiling enabled
+ gc             ; also activate garbage collection
 
 Test files may contain Standard ML like comments.
 
@@ -28,6 +30,7 @@ typerr.sml          ccl       ecte
 opaque.sml          ccl
 opaque2.sml                           nobasislib
 functor.sml         ccl
+functor2.sml        ccl
 constraint.sml
 lex.sml                               nobasislib
 layout.sml
@@ -50,6 +53,14 @@ kkb_eq.sml              tx tc
 kkb36c.sml              tx tc 
 kitsimple.sml           tx tc 
 fft.sml                 tx tc 
+vliw.sml                tx tc
+lexgen.sml              tx tc
+mlyacc.pm               tx tc
+logic.pm                tx tc
+barnes-hut.pm           tx tc
+nucleic.pm              tx tc
+ray.pm                  tx tc
+ratio-regions.sml       tx tc
 msort.pm                tx tc 
 tststrcmp.sml                 
 FuhMishra.pm            tx tc 

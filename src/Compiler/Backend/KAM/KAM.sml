@@ -79,7 +79,7 @@ signature KAM =
       | StackAddr of int * string        (* string for debug only *)
       | EnvToAcc
 
-      |	ImmedInt of int
+      |	ImmedInt of string
       | ImmedString of string
       | ImmedReal of string
 	
@@ -129,7 +129,7 @@ signature KAM =
 
       | StackOffset of int
       | PopPush of int
-      | ImmedIntPush of int
+      | ImmedIntPush of string
       | SelectPush of int
       | SelectEnvPush of int
       | SelectEnvClearAtbotBitPush of int

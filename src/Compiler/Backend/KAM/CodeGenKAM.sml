@@ -414,7 +414,7 @@ struct
       | CG_ce(ClosExp.FNCALL{opr,args,clos,free},env,sp,cc,acc) = 
       die "FNCALL: either clos or free are non empty."      
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=NONE,free=[]},env,sp,cc,acc) =
-      ImmedIntPush 0 ::        (* is it always all the region arguments that are reused? *)
+      ImmedIntPush "0" ::        (* is it always all the region arguments that are reused? *)
       comp_ces(args,env,sp+1,cc,
 	       ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: 
 	       dead_code_elim acc)
@@ -429,7 +429,7 @@ struct
 	val return_lbl = Labels.new_named "return_from_app"
       in
 	PushLbl(return_lbl) ::
-	ImmedIntPush 0 ::
+	ImmedIntPush "0" ::
 	comp_ces(reg_args @ args,env,sp+2,cc,
 		 ApplyFunCall(opr,List.length args + List.length reg_args) :: 
 		 Label(return_lbl) :: acc)
@@ -554,15 +554,15 @@ struct
 		  2*i+1 
 		else i
 	    in
-	      immedInt (tag, acc)
+	      immedInt (Int.toString tag, acc)
 	    end
 	| ClosExp.UNBOXED i => 
 	    let val tag = 4*i+3 
-	    in reset_regions(immedInt (tag, acc))
+	    in reset_regions(immedInt (Int.toString tag, acc))
 	    end
 	| ClosExp.BOXED i => 
 	    let val tag = Word32.toInt(BI.tag_con0(false,i))
-	    in reset_regions(ImmedIntPush tag :: alloc_block(alloc,1,env,sp+1,cc,acc))
+	    in reset_regions(ImmedIntPush (Int.toString tag) :: alloc_block(alloc,1,env,sp+1,cc,acc))
 	    end
       end
       | CG_ce(ClosExp.CON1{con,con_kind,alloc,arg},env,sp,cc,acc) =
@@ -577,7 +577,7 @@ struct
 		 let
 		   val tag = Word32.toInt(BI.tag_con1(false,i))
 		 in
-		   ImmedIntPush tag :: 
+		   ImmedIntPush (Int.toString tag) :: 
 		   CG_ce(arg,env,sp+1,cc,             (*mael fix: sp -> sp+1 *)
 			 push (alloc_block(alloc,2,env,sp+2,cc,acc)))
 		 end

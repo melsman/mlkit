@@ -55,7 +55,7 @@ signature CLOS_EXP =
     | DROPPED_RVAR    of place
     | FETCH           of label
     | STORE           of ClosExp * label
-    | INTEGER         of int 
+    | INTEGER         of string
     | STRING          of string
     | REAL            of string
     | PASS_PTR_TO_MEM of sma * int

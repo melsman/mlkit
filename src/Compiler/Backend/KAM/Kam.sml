@@ -99,7 +99,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | StackAddr of int * string         (* string for debug only *)
       | EnvToAcc
 
-      |	ImmedInt of int
+      |	ImmedInt of string
       | ImmedString of string
       | ImmedReal of string
 	
@@ -149,7 +149,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | StackOffset of int
       | PopPush of int
-      | ImmedIntPush of int
+      | ImmedIntPush of string
       | SelectPush of int
       | SelectEnvPush of int
       | SelectEnvClearAtbotBitPush of int
@@ -298,7 +298,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | StackAddr(off,s) => "StackAddr(" :: (pp_i off) :: "," :: s :: ")" :: acc
       | EnvToAcc => "EnvToAcc" :: acc
 
-      |	ImmedInt(i) => "ImmedInt(" :: (pp_i i) :: ")" :: acc
+      |	ImmedInt(i) => "ImmedInt(" :: i :: ")" :: acc
       | ImmedString(s) => "ImmedString(\"" :: String.toString s :: "\")" :: acc
       | ImmedReal(r) => "ImmedReal(" :: r :: ")" :: acc
 	
@@ -348,7 +348,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | StackOffset i => "StackOffset(" :: Int.toString i :: ")" :: acc
       | PopPush i => "PopPush(" :: Int.toString i :: ")" :: acc
-      | ImmedIntPush i => "ImmedIntPush(" :: Int.toString i :: ")" :: acc
+      | ImmedIntPush i => "ImmedIntPush(" :: i :: ")" :: acc
       | SelectPush i => "SelectPush(" :: Int.toString i :: ")" :: acc
       | SelectEnvPush i => "SelectEnvPush(" :: Int.toString i :: ")" :: acc
       | SelectEnvClearAtbotBitPush i => "SelectEnvClearAtbotBitPush(" :: Int.toString i :: ")" :: acc

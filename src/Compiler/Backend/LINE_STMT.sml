@@ -42,7 +42,7 @@ signature LINE_STMT =
     | RVAR          of place
     | DROPPED_RVAR  of place
     | PHREG         of lvar
-    | INTEGER       of int 
+    | INTEGER       of string
     | UNIT
 
     datatype StoreType =

@@ -204,6 +204,10 @@ struct
       else I.movl(I (int_to_string x), R dst_reg) :: C
       | load_immed _ = die "load_immed: immed not an IMMED"
 
+    fun load_immed'(x,dst_reg:reg,C) = 
+      if x = "0" then I.xorl(R dst_reg, R dst_reg) :: C
+      else I.movl(I x, R dst_reg) :: C
+
     (* Find a register for aty and generate code to store into the aty *)
     fun resolve_aty_def(SS.STACK_ATY offset,t:reg,size_ff,C) = 
 	 (t,store_indexed(esp,WORDS(size_ff-offset-1),t,C))       (*was ~size_ff+offset*)
@@ -220,7 +224,7 @@ struct
       | move_aty_into_reg(SS.DROPPED_RVAR_ATY,dst_reg,size_ff,C) = C
       | move_aty_into_reg(SS.PHREG_ATY phreg,dst_reg,size_ff,C) = copy(phreg,dst_reg,C)
       | move_aty_into_reg(SS.INTEGER_ATY i,dst_reg,size_ff,C) = 
-	      load_immed(IMMED i,dst_reg,C) (* Integers are tagged in ClosExp *)
+	      load_immed'(i,dst_reg,C) (* Integers are tagged in ClosExp *)
       | move_aty_into_reg(SS.UNIT_ATY,dst_reg,size_ff,C) = 
 	      if !BI.tag_integers then load_immed(IMMED BI.ml_unit,dst_reg,C)
 	      else C
@@ -330,7 +334,7 @@ struct
     fun push_aty(aty,t:reg,size_ff,C) = 
       case aty
 	of SS.PHREG_ATY aty_reg => I.pushl(R aty_reg) :: C
-	 | SS.INTEGER_ATY i => I.pushl(I (int_to_string i)) :: C
+	 | SS.INTEGER_ATY i => I.pushl(I i) :: C
          | _ => move_aty_into_reg(aty,t,size_ff,
 		I.pushl(R t) :: C)
 (*
@@ -2056,7 +2060,8 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    generate_jump_code_progunits(progunit_labs,
 
             (* Exit instructions *)
-	    compile_c_call_prim("terminateML", [SS.INTEGER_ATY res], NONE,0,eax, (* instead of res we might use the result from the last function call, 2001-01-08, Niels *)
+	    compile_c_call_prim("terminateML", [SS.INTEGER_ATY (int_to_string res)], 
+				NONE,0,eax, (* instead of res we might use the result from the last function call, 2001-01-08, Niels *)
 	    (*I.leave :: *)
 	    I.ret :: C)))))))))
 	  end
