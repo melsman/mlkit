@@ -194,8 +194,8 @@ type arg = unit
 	| OneTopDec                     of topdec
 	| OneOrMoreTopDecs              of topdec
 *)
-	| SigExp_constraint             of strexp -> strexp
-	| SigExp_constraint_maybe       of strexp -> strexp
+	| SigExp_constraint             of pos -> strexp -> strexp
+	| SigExp_constraint_maybe       of pos -> strexp -> strexp
         | AndFunBind_opt                of funbind option
         | AndStrBind_opt                of strbind option
         | AndSigBind_opt                of sigbind option
@@ -539,7 +539,7 @@ FunBind:  Ident LPAREN Ident COLON SigExp RPAREN SigExp_constraint_maybe
 				     (rightmost info_on_strexp StrExp
 				                info_on_funbind AndFunBind_opt),
                                    mk_FunId Ident1, mk_StrId Ident2, SigExp,
-                                   SigExp_constraint_maybe StrExp, AndFunBind_opt) )
+                                   SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp, AndFunBind_opt) )
 (*DF:*) | Ident LPAREN Spec RPAREN SigExp_constraint_maybe EQUALS StrExp
           AndFunBind_opt
                         ( let val strid_nu = inventStrId ()
@@ -557,24 +557,24 @@ FunBind:  Ident LPAREN Ident COLON SigExp RPAREN SigExp_constraint_maybe
 				     (i_spec,
 				      OPENdec (i_spec,
 					       [WITH_INFO (i_spec, longStrIdOfStrId strid_nu)])),
-				   SigExp_constraint_maybe StrExp),
+				   SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp),
 				AndFunBind_opt)
                           end )
 
 SigExp_constraint_maybe:
           SigExp_constraint
 	                ( SigExp_constraint )
-	| (*epsilon*)   ( (fn strexp => strexp) )
+	| (*epsilon*)   ( (fn _ => fn strexp => strexp) )
 
 
 SigExp_constraint:
-          COLON SigExp  ( (fn strexp => 
+          COLON SigExp  ( (fn leftpos => fn strexp => 
 			   TRANSPARENT_CONSTRAINTstrexp
-			     (PP COLONleft SigExpright, strexp, SigExp)) )
+			     (PP leftpos SigExpright, strexp, SigExp)) )
 	| COLONGREATER SigExp
-	                ( (fn strexp => 
+	                ( (fn leftpos => fn strexp => 
 			   OPAQUE_CONSTRAINTstrexp
-			     (PP COLONGREATERleft SigExpright, strexp, SigExp)) )
+			     (PP leftpos SigExpright, strexp, SigExp)) )
 
 AndFunBind_opt:
           AND FunBind   ( SOME FunBind )
@@ -737,7 +737,7 @@ StrExp:   STRUCT StrDec END
         | LongIdent     ( LONGSTRIDstrexp (PP LongIdentleft LongIdentright,
 					   mk_LongStrId LongIdent) )
         | StrExp SigExp_constraint
-			( SigExp_constraint StrExp )
+			( SigExp_constraint StrExpleft StrExp )
         | Ident LPAREN StrExp RPAREN
                         ( APPstrexp (PP Identleft RPARENright,
 				     mk_FunId Ident, StrExp) )
@@ -790,7 +790,7 @@ StrBind:  Ident SigExp_constraint_maybe EQUALS StrExp AndStrBind_opt
                         ( STRBIND (PP Identleft
 				     (rightmost info_on_strexp StrExp
 				                info_on_strbind AndStrBind_opt), 
-				   mk_StrId Ident, SigExp_constraint_maybe StrExp, 
+				   mk_StrId Ident, SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp, 
 				   AndStrBind_opt) )
 
 AndStrBind_opt:

@@ -18,11 +18,11 @@
 /* will be executed in the C functions.                             */
 
 /* In this version of power we have inserted explicit conversion of */
-/* integers eventhough it is not necessary, because the converter   */
+/* integers even though it is not necessary, because the converter  */
 /* functions are the identity map.                                  */
 /* For portability, it is a good idea to use the converter          */
 /* functions.                                                       */
-/* The function also works also when profiling is enabled.          */
+/* The function also works when profiling is enabled.               */
 int power(int base, int n) {
   int p;
 
@@ -143,8 +143,8 @@ int print_string_list(int strs) {
 
 /* The function real_list returns a list of reals.          */
 /* The list is constructed forwards.                        */
-/* The function allocates memory in infinite regions so     */
-/* we have made a version for profiling.                    */
+/* The function allocates memory in infinite regions, thus, */
+/* we have also made a version for profiling.               */
 /* The algorithm for constructing a list forwards are as    */
 /* follows:                                                 */
 /* The first element is special because we have to return   */

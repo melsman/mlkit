@@ -1,4 +1,3 @@
-(*$Crash : BASIC_IO CRASH*)
 
 functor Crash(structure BasicIO: BASIC_IO): CRASH =
   struct

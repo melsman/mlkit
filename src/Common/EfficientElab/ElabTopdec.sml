@@ -3,11 +3,6 @@
 (*   Section 5 of the Definition, v3                         *)
 (*************************************************************)
 
-(*$ElabTopdec: TOPDEC_GRAMMAR ELABDEC ENVIRONMENTS STATOBJECT
-	MODULE_STATOBJECT MODULE_ENVIRONMENTS STRID SIGID NAME
-	ELAB_REPOSITORY PARSE_INFO ELAB_INFO PRETTYPRINT CRASH FLAGS
-	FINMAP ELABTOPDEC OrderSet*)
-
 functor ElabTopdec
   (structure PrettyPrint : PRETTYPRINT
    structure StrId : STRID
@@ -25,7 +20,7 @@ functor ElabTopdec
    sharing type ElabInfo.ErrorInfo.longstrid = StrId.longstrid
    sharing type ElabInfo.TypeInfo.realisation = StatObject.realisation
    sharing type ElabInfo.TypeInfo.strid = StrId.strid
-       and type ElabInfo.TypeInfo.TyName = StatObject.TyName
+       and ElabInfo.TypeInfo.TyName = StatObject.TyName
 
   structure IG : TOPDEC_GRAMMAR
      sharing type IG.strid = StrId.strid
@@ -104,7 +99,7 @@ functor ElabTopdec
          and type ElabRep.name = Name.name
          and type ElabRep.ElabBasis = ModuleEnvironments.Basis
 	 and type ElabRep.funid = IG.funid
-	 and type ElabRep.realisation = Environments.realisation
+
    structure ElabDec : ELABDEC
      sharing type ElabDec.PreElabDec = IG.dec
      sharing type ElabDec.PostElabDec = OG.dec
@@ -261,12 +256,12 @@ functor ElabTopdec
       handle No_match reason =>
 	(errorConv (i, ErrorInfo.SIGMATCH_ERROR reason), Sigma.instance Sigma)
 
-    fun Sigma_match' (i, Sigma, E) =                                            (* The realisation maps abstract type names *)
-      let val (E_trans_result, E_opaque_result, phi) = Sigma.match' (Sigma, E)  (* E_opaque_result into what they stand for *)
-      in (okConv i, E_trans_result, E_opaque_result, phi)                       (* in E_trans_result. *)
+    fun Sigma_match' (i, Sigma, E) =                                               (* The realisation maps abstract type names *)
+      let val (E_trans_result, T, E_opaque_result, phi) = Sigma.match' (Sigma, E)  (* E_opaque_result into what they stand for *)
+      in (okConv i, E_trans_result, T, E_opaque_result, phi)                       (* in E_trans_result. *)
       end handle No_match reason =>
-	let val E = Sigma.instance Sigma
-	in (errorConv (i, ErrorInfo.SIGMATCH_ERROR reason), E, E, Realisation.Id)
+	let val (T,E) = Sigma.instance' Sigma
+	in (errorConv (i, ErrorInfo.SIGMATCH_ERROR reason), E, T, E, Realisation.Id)
 	end
 
     (*initial_TE datdesc = the TE to be used initially in
@@ -419,8 +414,8 @@ functor ElabTopdec
     fun match_and_update_repository (prjid_and_funid,T',E') : unit =
       let val N' = map TyName.name (TyName.Set.list T')
 	  val B' = B.from_E E'
-	  val obj = (ElabRep.empty_infix_basis,B.empty,[],(Realisation.Id, TyName.Set.empty), 
-		     N',ElabRep.empty_infix_basis,B', Realisation.Id)
+	  val obj = (ElabRep.empty_infix_basis,B.empty,[],(ElabRep.empty_opaq_env, TyName.Set.empty), 
+		     N',ElabRep.empty_infix_basis,B', ElabRep.empty_opaq_env)
       in case ElabRep.lookup_elab prjid_and_funid
 	   of SOME (index,(_,_,_,_,N,_,B,_)) =>  (* Names in N already marked generative, 
 						  * because the object is returned by lookup. *)
@@ -531,10 +526,10 @@ functor ElabTopdec
       | IG.OPAQUE_CONSTRAINTstrexp (i, strexp, sigexp) =>
 	  let val (T, E, out_strexp) = elab_strexp (B, strexp)
 	      val (Sigma, out_sigexp) = elab_sigexp (B, sigexp)
-	      val (out_i, E_trans_result, E_opaque_result, phi) = Sigma_match' (i, Sigma, E)
+	      val (out_i, E_trans_result, T', E_opaque_result, phi) = Sigma_match' (i, Sigma, E)
 	      val out_i = ElabInfo.plus_TypeInfo out_i (TypeInfo.OPAQUE_CONSTRAINT_INFO (E_trans_result,phi))
 	  in
-	    (T, E_opaque_result, OG.OPAQUE_CONSTRAINTstrexp (out_i, out_strexp, out_sigexp))
+	    (TyName.Set.list T', E_opaque_result, OG.OPAQUE_CONSTRAINTstrexp (out_i, out_strexp, out_sigexp))
 	  end
 
 	(* Functor application *)                           (*rule 54*)
@@ -543,10 +538,10 @@ functor ElabTopdec
 	    val (T, E, out_strexp) = elab_strexp (B, strexp)
 	  in
 	    case lookup_funid B funid of
-	       SOME (prjid, Phi) =>                                     (* the realisation that we annotate *)
-		(let val (T'E', rea) = Phi_match_via(Phi,E)    (* need also account for generative *)
-		     val (T',E') = Sigma_to_T_and_E T'E'        (* names in the functor body.       *)
-		     val out_i = typeConv(i,TypeInfo.FUNCTOR_APP_INFO (rea,E'))
+	       SOME (prjid, Phi) =>                                          (* rea_inst is for argument instanti-  *)
+		(let val (T'E', rea_inst, rea_gen) = Phi_match_via(Phi,E)    (* ation; rea_gen accounts for genera- *)
+		     val (T',E') = Sigma_to_T_and_E T'E'                     (* tive names in the functor body.     *)
+		     val out_i = typeConv(i,TypeInfo.FUNCTOR_APP_INFO {rea_inst=rea_inst,rea_gen=rea_gen,Env=E'})
 (*
 		     val _ = print ("**Applying " ^ OG.FunId.pr_FunId funid ^ "\n")
 		     val _ = (print "**Functor argument E = \n"; pr_Env E; print "\n")
@@ -1264,7 +1259,7 @@ functor ElabTopdec
 	    val out_i = if EqSet.member funid (F.dom F)
 			then repeatedIdsError (i, [ErrorInfo.FUNID_RID funid])
 			else ElabInfo.plus_TypeInfo (okConv i) 
-			  (TypeInfo.FUNBIND_INFO {argE=E,elabB=B',T=T'',resE=E',rea_opt=NONE})
+			  (TypeInfo.FUNBIND_INFO {argE=E,elabB=B',T=TyName.Set.fromList T'',resE=E',opaq_env_opt=NONE})
 	  in
 	    (F.singleton (funid, (prjid,Phi.from_T_and_E_and_Sigma (T, E, T'E'))) F_plus_F F,
 	     OG.FUNBIND (out_i, funid, strid, out_sigexp, out_strexp,

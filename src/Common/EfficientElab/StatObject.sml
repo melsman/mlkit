@@ -1613,7 +1613,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       fun layout (TYPEFCN {tyvars, tau}) = 
 	    let val tau = findType tau
 	    in
-	      PP.NODE {start=List.stringSep "LAMBDA (" "). " ", " TyVar.string tyvars,
+	      PP.NODE {start=List.stringSep "/\\(" "). " ", " TyVar.string tyvars,
 		       finish="", indent=0, childsep=PP.NOSEP,
 		       children=[Type.layout_with_level tau]}
 	    end
@@ -1901,6 +1901,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       (*correct_levels_Type: correct levels of non-tyvar nodes in
        a type.  Used by on_Type*)
 
+      fun dom Realisation_Id = TyName.Set.empty
+	| dom (Not_Id m) = TyName.Set.fromList(TyName.Map.dom m)
+
       fun correct_levels_Type ty = 
 	    let val ty = findType ty 
 	    in 
@@ -1936,15 +1939,53 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       fun singleton (t,theta) = Not_Id (TyName.Map.singleton(t,EXPANDED theta))
 
-      fun from_T_and_theta (T, theta) = 
-	Not_Id(TyName.Set.fold (fn t => fn acc => TyName.Map.add(t,EXPANDED theta,acc)) TyName.Map.empty T)
+      fun from_T_and_theta (T, theta) =
+	if TyName.Set.isEmpty T then Realisation_Id
+	else Not_Id(TyName.Set.fold (fn t => fn acc => TyName.Map.add(t,EXPANDED theta,acc)) TyName.Map.empty T)
+
+      fun renaming' (T: TyName.Set.Set) : TyName.Set.Set * realisation =
+	if TyName.Set.isEmpty T then (TyName.Set.empty, Id)
+	else let val (T', m) : TyName.Set.Set * TypeFcn' TyName.Map.map =
+		    TyName.Set.fold (fn t : TyName => fn (T', m) =>
+				     let val t' = TyName.freshTyName {tycon = TyName.tycon t, arity= TyName.arity t,
+								      equality= TyName.equality t}
+				     in (TyName.Set.insert t' T', TyName.Map.add (t, TYNAME t', m))
+				     end) (TyName.Set.empty, TyName.Map.empty) T
+	in (T',  Not_Id m)
+	end
+
+      fun renaming (T: TyName.Set.Set) : realisation = #2 (renaming' T)
 
       fun restrict T Realisation_Id = Realisation_Id
 	| restrict T (Not_Id m) =
-	Not_Id(TyName.Set.fold(fn t => fn acc =>
-			       case TyName.Map.lookup m t
-				 of SOME theta => TyName.Map.add(t,theta,acc)
-				  | NONE => acc) TyName.Map.empty T) 
+	let val m' = TyName.Set.fold(fn t => fn acc =>
+				     case TyName.Map.lookup m t
+				       of SOME theta => TyName.Map.add(t,theta,acc)
+					| NONE => acc) TyName.Map.empty T
+	in if TyName.Map.isEmpty m' then Realisation_Id
+	   else Not_Id m'
+	end
+
+      fun restrict_from T Realisation_Id = Realisation_Id
+	| restrict_from T (Not_Id m) =
+	let val m' = TyName.Map.Fold(fn ((t, theta), acc) =>
+				     if TyName.Set.member t T then acc
+				     else TyName.Map.add(t,theta,acc)) TyName.Map.empty m
+	in if TyName.Map.isEmpty m' then Realisation_Id
+	   else Not_Id m'
+	end
+
+      local exception Inverse
+      in fun inverse Realisation_Id = SOME Realisation_Id
+	   | inverse (Not_Id m) = 
+   	     SOME(Not_Id(TyName.Map.Fold(fn ((t, theta), acc) => 
+					 case theta
+					   of TYNAME t' => 
+					     if TyName.Set.member t' (TyName.Set.fromList(TyName.Map.dom acc)) then raise Inverse
+					     else TyName.Map.add(t', TYNAME t, acc)
+					    | EXPANDED theta' => raise Inverse) TyName.Map.empty m))
+	     handle Inverse => NONE 
+      end
 
       fun on_TyName Realisation_Id t : TypeFcn = TypeFcn.from_TyName t
 	| on_TyName (Not_Id m) t = (case TyName.Map.lookup m t
@@ -2039,14 +2080,24 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	TyName.Set.fold (fn t => fn acc => acc andalso 
 			 TypeFcn.eq(on_TyName rea0 t, on_TyName rea t)) true T
 
+      fun eq (Realisation_Id, Realisation_Id) = true
+	| eq (rea1,rea2) = 
+	let val T = dom rea1
+	in TyName.Set.eq T (dom rea2) andalso enrich (rea1,(rea2,T))
+	end
+
       fun match (Realisation_Id, rea0) = ()
 	| match (Not_Id m, rea0) =
 	let fun convert (EXPANDED theta) = theta
 	      | convert (TYNAME t) = TypeFcn.from_TyName t
 	in TyName.Map.Fold(fn ((t, theta),_) => TypeFcn.match(convert theta,on_TyName rea0 t)) () m
 	end
-			 
-      fun layout phi = PP.LEAF "phi(not implemented)"
+
+      fun layout_TypeFcn' (TYNAME t) = TyName.layout t
+	| layout_TypeFcn' (EXPANDED theta) = TypeFcn.layout theta
+      fun layout Realisation_Id = PP.LEAF "Id"
+	| layout (Not_Id m) = TyName.Map.layoutMap {start="{",eq=" -> ", finish="}",sep=", "}
+	TyName.layout layout_TypeFcn' m
 
     end (*Realisation*)
 

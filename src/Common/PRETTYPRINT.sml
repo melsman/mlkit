@@ -1,4 +1,4 @@
-(*$PRETTYPRINT*)
+(*PRETTYPRINT*)
 (*
                                                      7 Sept. 89 Mads Tofte
                                                      (revised 21 Dec 95)

@@ -1,6 +1,4 @@
 
-(*$NAME *)
-
 signature NAME =
   sig
 

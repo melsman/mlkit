@@ -1,4 +1,3 @@
-(*$EqSet: EQ_SET List *)
 
 structure EqSet: EQ_SET =
 
@@ -24,6 +23,9 @@ SEE ALSO
 RCS LOG
 
 $Log$
+Revision 1.2  1998/07/30 10:18:41  mael
+lots of changes
+
 Revision 1.1  1998/01/22 17:01:06  mael
 I have ported the ML Kit to SML/NJ 110.0.2. Use CM.make() to build the system.
 Parts of the Edinburgh Library are still used; they are located in the Edlib

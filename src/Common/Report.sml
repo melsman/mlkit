@@ -3,7 +3,6 @@
 
    Now, - a litle faster -- Martin *)
 
-(*$Report: BASIC_IO REPORT*)
 functor Report(structure BasicIO: BASIC_IO): REPORT =
   struct
 

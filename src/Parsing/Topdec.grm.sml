@@ -1526,8 +1526,8 @@ datatype svalue = VOID | ntVOID of unit ->  unit
  | AndSigBind_opt of unit ->  (sigbind option)
  | AndStrBind_opt of unit ->  (strbind option)
  | AndFunBind_opt of unit ->  (funbind option)
- | SigExp_constraint_maybe of unit ->  (strexp -> strexp)
- | SigExp_constraint of unit ->  (strexp -> strexp)
+ | SigExp_constraint_maybe of unit ->  (pos -> strexp -> strexp)
+ | SigExp_constraint of unit ->  (pos -> strexp -> strexp)
  | StrExp of unit ->  (strexp) | StrDec of unit ->  (strdec)
  | StrBind of unit ->  (strbind) | SigExp of unit ->  (sigexp)
  | SigBind of unit ->  (sigbind) | OneSpec of unit ->  (spec)
@@ -2004,10 +2004,11 @@ rest671) => let val result=MlyValue.TopDec_opt(fn _ => let val TopDec_
  in (LrTable.NT 2,(result,defaultPos,defaultPos),rest671) end
 | (41,(_,(MlyValue.AndFunBind_opt AndFunBind_opt1,_,
 AndFunBind_opt1right))::(_,(MlyValue.StrExp StrExp1,_,_))::_::(_,(
-MlyValue.SigExp_constraint_maybe SigExp_constraint_maybe1,_,_))::_::(_
-,(MlyValue.SigExp SigExp1,_,_))::_::(_,(MlyValue.Ident Ident2,_,_))::_
-::(_,(MlyValue.Ident Ident1,Ident1left,_))::rest671) => let val result
-=MlyValue.FunBind(fn _ => let val Ident1=Ident1 ()
+MlyValue.SigExp_constraint_maybe SigExp_constraint_maybe1,
+SigExp_constraint_maybeleft,_))::_::(_,(MlyValue.SigExp SigExp1,_,_))
+::_::(_,(MlyValue.Ident Ident2,_,_))::_::(_,(MlyValue.Ident Ident1,
+Ident1left,_))::rest671) => let val result=MlyValue.FunBind(fn _ => 
+let val Ident1=Ident1 ()
 val Ident2=Ident2 ()
 val SigExp as SigExp1=SigExp1 ()
 val SigExp_constraint_maybe as SigExp_constraint_maybe1=
@@ -2019,7 +2020,7 @@ val AndFunBind_opt as AndFunBind_opt1=AndFunBind_opt1 ()
 				     (rightmost info_on_strexp StrExp
 				                info_on_funbind AndFunBind_opt),
                                    mk_FunId Ident1, mk_StrId Ident2, SigExp,
-                                   SigExp_constraint_maybe StrExp, AndFunBind_opt) 
+                                   SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp, AndFunBind_opt) 
 ) end
 )
  in (LrTable.NT 7,(result,Ident1left,AndFunBind_opt1right),rest671)
@@ -2051,7 +2052,7 @@ val AndFunBind_opt as AndFunBind_opt1=AndFunBind_opt1 ()
 				     (i_spec,
 				      OPENdec (i_spec,
 					       [WITH_INFO (i_spec, longStrIdOfStrId strid_nu)])),
-				   SigExp_constraint_maybe StrExp),
+				   SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp),
 				AndFunBind_opt)
                           end 
 ) end
@@ -2067,27 +2068,27 @@ SigExp_constraint as SigExp_constraint1=SigExp_constraint1 ()
  in (LrTable.NT 25,(result,SigExp_constraint1left,
 SigExp_constraint1right),rest671) end
 | (44,rest671) => let val result=MlyValue.SigExp_constraint_maybe(fn _
- => ( (fn strexp => strexp) ))
+ => ( (fn _ => fn strexp => strexp) ))
  in (LrTable.NT 25,(result,defaultPos,defaultPos),rest671) end
 | (45,(_,(MlyValue.SigExp SigExp1,_,SigExpright as SigExp1right))::(_,
-(_,COLONleft as COLON1left,_))::rest671) => let val result=
+(_,COLON1left,_))::rest671) => let val result=
 MlyValue.SigExp_constraint(fn _ => let val SigExp as SigExp1=SigExp1 
 ()
  in (
- (fn strexp => 
+ (fn leftpos => fn strexp => 
 			   TRANSPARENT_CONSTRAINTstrexp
-			     (PP COLONleft SigExpright, strexp, SigExp)) 
+			     (PP leftpos SigExpright, strexp, SigExp)) 
 ) end
 )
  in (LrTable.NT 24,(result,COLON1left,SigExp1right),rest671) end
 | (46,(_,(MlyValue.SigExp SigExp1,_,SigExpright as SigExp1right))::(_,
-(_,COLONGREATERleft as COLONGREATER1left,_))::rest671) => let val 
-result=MlyValue.SigExp_constraint(fn _ => let val SigExp as SigExp1=
-SigExp1 ()
+(_,COLONGREATER1left,_))::rest671) => let val result=
+MlyValue.SigExp_constraint(fn _ => let val SigExp as SigExp1=SigExp1 
+()
  in (
- (fn strexp => 
+ (fn leftpos => fn strexp => 
 			   OPAQUE_CONSTRAINTstrexp
-			     (PP COLONGREATERleft SigExpright, strexp, SigExp)) 
+			     (PP leftpos SigExpright, strexp, SigExp)) 
 ) end
 )
  in (LrTable.NT 24,(result,COLONGREATER1left,SigExp1right),rest671)
@@ -2504,11 +2505,11 @@ LongIdent1 ()
  in (LrTable.NT 23,(result,LongIdent1left,LongIdent1right),rest671)
  end
 | (91,(_,(MlyValue.SigExp_constraint SigExp_constraint1,_,
-SigExp_constraint1right))::(_,(MlyValue.StrExp StrExp1,StrExp1left,_))
-::rest671) => let val result=MlyValue.StrExp(fn _ => let val StrExp
- as StrExp1=StrExp1 ()
+SigExp_constraint1right))::(_,(MlyValue.StrExp StrExp1,StrExpleft as 
+StrExp1left,_))::rest671) => let val result=MlyValue.StrExp(fn _ => 
+let val StrExp as StrExp1=StrExp1 ()
 val SigExp_constraint as SigExp_constraint1=SigExp_constraint1 ()
- in ( SigExp_constraint StrExp ) end
+ in ( SigExp_constraint StrExpleft StrExp ) end
 )
  in (LrTable.NT 23,(result,StrExp1left,SigExp_constraint1right),
 rest671) end
@@ -2630,9 +2631,10 @@ val StrDec2=StrDec2 ()
  in (LrTable.NT 6,(result,LOCAL1left,END1right),rest671) end
 | (104,(_,(MlyValue.AndStrBind_opt AndStrBind_opt1,_,
 AndStrBind_opt1right))::(_,(MlyValue.StrExp StrExp1,_,_))::_::(_,(
-MlyValue.SigExp_constraint_maybe SigExp_constraint_maybe1,_,_))::(_,(
-MlyValue.Ident Ident1,Identleft as Ident1left,_))::rest671) => let 
-val result=MlyValue.StrBind(fn _ => let val Ident as Ident1=Ident1 ()
+MlyValue.SigExp_constraint_maybe SigExp_constraint_maybe1,
+SigExp_constraint_maybeleft,_))::(_,(MlyValue.Ident Ident1,Identleft
+ as Ident1left,_))::rest671) => let val result=MlyValue.StrBind(fn _
+ => let val Ident as Ident1=Ident1 ()
 val SigExp_constraint_maybe as SigExp_constraint_maybe1=
 SigExp_constraint_maybe1 ()
 val StrExp as StrExp1=StrExp1 ()
@@ -2641,7 +2643,7 @@ val AndStrBind_opt as AndStrBind_opt1=AndStrBind_opt1 ()
  STRBIND (PP Identleft
 				     (rightmost info_on_strexp StrExp
 				                info_on_strbind AndStrBind_opt), 
-				   mk_StrId Ident, SigExp_constraint_maybe StrExp, 
+				   mk_StrId Ident, SigExp_constraint_maybe SigExp_constraint_maybeleft StrExp, 
 				   AndStrBind_opt) 
 ) end
 )

@@ -4,7 +4,6 @@
  * only_. 
  *)
 
-(*$COMPILE_DEC*)
 signature COMPILE_DEC =
   sig
     type strdec

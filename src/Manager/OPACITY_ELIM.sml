@@ -1,30 +1,22 @@
-(*$OPACITY_ELIM: TYNAME *)
 
 signature OPACITY_ELIM =
   sig
     structure TyName : TYNAME
+    structure OpacityEnv : OPACITY_ENV
+      sharing OpacityEnv.TyName = TyName
 
     type realisation    
     type topdec
-
-    val plus : realisation * realisation -> realisation
-    val enrich : realisation * (realisation * TyName.Set.Set) -> bool
-    val restrict : realisation * TyName.Set.Set -> realisation
-    val match : realisation * realisation -> unit
-    val empty : realisation
-    val initial : realisation
+    type opaq_env = OpacityEnv.opaq_env
 
     (* Eliminate opaque signature constraints by translating them into
-     * transparent signature constraints; this is fine since we have
+     * transparent signature constraints; this is fine, because, we have
      * already done elaboration at this stage. One can prove that
      * opaque signature constraints only limit what programs
      * elaborate. The translation here also alter type information
      * recorded during elaboration. Martin Elsman 13/10/97 *)
 
-    val opacity_elimination : realisation * topdec -> topdec * realisation
+    val opacity_elimination : opaq_env * topdec -> topdec * opaq_env
     (* post elab topdec *)
-
-    type StringTree
-    val layout : realisation -> StringTree
 
   end

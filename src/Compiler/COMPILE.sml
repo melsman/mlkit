@@ -1,4 +1,3 @@
-(*$COMPILE*)
 
 signature COMPILE =
   sig

@@ -1,7 +1,6 @@
 (*Sigma in Sig and Phi in FunSig, Definition 1997, fig. 11,
  p. 29*)
 
-(*$MODULE_STATOBJECT : TYNAME*)
 signature MODULE_STATOBJECT =
   sig
     (*types provided by this module:*)
@@ -69,7 +68,7 @@ signature MODULE_STATOBJECT =
 	 match will raise No_match if there is no match*)
 
 	val match                  : Sig * Env -> Env
-	val match'                 : Sig * Env -> Env * Env * realisation
+	val match'                 : Sig * Env -> Env * TyName.Set.Set * Env * realisation
 	  (* for opaque signature matching *)
 
 	val eq : Sig * Sig -> bool
@@ -93,7 +92,7 @@ signature MODULE_STATOBJECT =
 	 match will raise No_match if there is no match:*)
 
 	val match                  : FunSig * Env -> Sig
-	val match_via              : FunSig * Env -> Sig * realisation
+	val match_via              : FunSig * Env -> Sig * realisation * realisation
 
 	val eq : FunSig * FunSig -> bool
       end

@@ -12,7 +12,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			     and type TopdecGrammar.longstrid = ModuleEnvironments.longstrid
 		       structure OpacityElim : OPACITY_ELIM
 			 sharing OpacityElim.TyName = ModuleEnvironments.TyName
-			     and type OpacityElim.realisation = ModuleEnvironments.realisation
+			     and type OpacityElim.OpacityEnv.realisation = ModuleEnvironments.realisation
 			     and type OpacityElim.topdec = TopdecGrammar.topdec
 		       structure CompilerEnv : COMPILER_ENV
 			 sharing type CompilerEnv.id = ModuleEnvironments.id
@@ -33,14 +33,14 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 			 sharing type ElabRep.funid = TopdecGrammar.funid 
 			     and type ElabRep.InfixBasis = InfixBasis.Basis
 			     and type ElabRep.ElabBasis = ModuleEnvironments.Basis
-			     and type ElabRep.realisation = OpacityElim.realisation
+			     and type ElabRep.opaq_env = OpacityElim.opaq_env
 			     and type ElabRep.longstrid = ModuleEnvironments.longstrid
 			     and ElabRep.TyName = ModuleEnvironments.TyName
 		       structure FinMap : FINMAP
 		       structure PP : PRETTYPRINT
 			 sharing type PP.StringTree = CompilerEnv.StringTree 
 			   = CompileBasis.StringTree = ModuleEnvironments.StringTree
-			   = FinMap.StringTree = InfixBasis.StringTree = OpacityElim.StringTree
+			   = FinMap.StringTree = InfixBasis.StringTree = OpacityElim.OpacityEnv.StringTree
 		       structure Name : NAME
 			 sharing type Name.name = ModuleEnvironments.TyName.name = ElabRep.name
 		       structure Flags : FLAGS
@@ -397,17 +397,17 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
     type ElabBasis = ModuleEnvironments.Basis 
     type InfixBasis = InfixBasis.Basis
     type sigid = ModuleEnvironments.sigid
-    type realisation = OpacityElim.realisation
-    datatype Basis = BASIS of InfixBasis * ElabBasis * realisation * IntBasis
-    datatype TopBasis = TOPBASIS of InfixBasis * ElabBasis * realisation * TopIntBasis
+    type opaq_env = OpacityElim.opaq_env     
+    datatype Basis = BASIS of InfixBasis * ElabBasis * opaq_env * IntBasis
+    datatype TopBasis = TOPBASIS of InfixBasis * ElabBasis * opaq_env * TopIntBasis
     structure Basis =
       struct
-	val empty = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.empty, OpacityElim.empty, IntBasis.empty)
+	val empty = BASIS (InfixBasis.emptyB, ModuleEnvironments.B.empty, OpacityElim.OpacityEnv.empty, IntBasis.empty)
 	fun mk b = BASIS b
 	fun un (BASIS b) = b
 	fun plus (BASIS (infb,elabb,rea,intb), BASIS (infb',elabb',rea',intb')) =
 	  BASIS (InfixBasis.compose(infb,infb'), ModuleEnvironments.B.plus (elabb, elabb'),
-		 OpacityElim.plus(rea,rea'), IntBasis.plus(intb, intb'))
+		 OpacityElim.OpacityEnv.plus(rea,rea'), IntBasis.plus(intb, intb'))
 
 	val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
 	fun log s = TextIO.output(TextIO.stdOut,s)			
@@ -419,13 +419,13 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	local
 	  fun InfixBasis_eq a = InfixBasis.eq a
 	  fun ModuleEnvironments_B_enrich a = ModuleEnvironments.B.enrich a
-	  fun OpacityElim_enrich a = OpacityElim.enrich a
+	  fun OpacityElim_enrich a = OpacityElim.OpacityEnv.enrich a
 	  fun IntBasis_enrich' a = IntBasis.enrich' a
 	in
 	  fun enrich (TOPBASIS (infB1,elabB1,rea1,tintB1), (BASIS (infB2,elabB2,rea2,intB2), dom_rea)) = 
 	    debug("InfixBasis", InfixBasis_eq(infB1,infB2)) andalso 
 	    debug("ElabBasis", ModuleEnvironments_B_enrich (elabB1,elabB2)) andalso
-	    debug("OpacityRealisation", OpacityElim_enrich (rea1,(rea2,dom_rea))) andalso
+	    debug("OpacityEnv", OpacityElim_enrich (rea1,(rea2,dom_rea))) andalso
 	    debug("IntBasis", IntBasis_enrich'(tintB1,intB2))
 	end
 
@@ -435,12 +435,12 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
 	  PP.NODE{start="BASIS(", finish = ")",indent=1,childsep=PP.RIGHT ", ",
 		  children=[InfixBasis.layoutBasis infB, ModuleEnvironments.B.layout elabB,
-			    OpacityElim.layout rea, IntBasis.layout intB]}
+			    OpacityElim.OpacityEnv.layout rea, IntBasis.layout intB]}
 
-	fun initial () = TOPBASIS (InfixBasis.emptyB, ModuleEnvironments.B.initial, OpacityElim.initial, IntBasis.initial())
+	fun initial () = TOPBASIS (InfixBasis.emptyB, ModuleEnvironments.B.initial, OpacityElim.OpacityEnv.initial, IntBasis.initial())
 	fun plus' (TOPBASIS (infb,elabb,rea,tintb), BASIS (infb',elabb',rea',intb')) =
 	  TOPBASIS (InfixBasis.compose(infb,infb'), ModuleEnvironments.B.plus (elabb, elabb'),
-		    OpacityElim.plus(rea,rea'), IntBasis.plus'(tintb, intb'))
+		    OpacityElim.OpacityEnv.plus(rea,rea'), IntBasis.plus'(tintb, intb'))
 
 	fun un' (TOPBASIS a) = a
       end

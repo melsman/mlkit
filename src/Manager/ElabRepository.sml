@@ -3,9 +3,9 @@ functor ElabRepository(structure Name : NAME
 		       structure FinMap : FINMAP
 		       structure TyName : TYNAME
 		       structure InfixBasis : INFIX_BASIS
+		       structure OpacityEnv : OPACITY_ENV
 		       eqtype funid
 		       type ElabBasis
-		       type realisation
 		       type longstrid
 		       structure Crash : CRASH) : ELAB_REPOSITORY =
   struct
@@ -17,7 +17,7 @@ functor ElabRepository(structure Name : NAME
      and InfixBasis = InfixBasis.Basis
      and funid = funid
      and ElabBasis = ElabBasis
-     and realisation = realisation
+     and opaq_env = OpacityEnv.opaq_env
      and longstrid = longstrid
 
     structure TyName = TyName
@@ -25,10 +25,11 @@ functor ElabRepository(structure Name : NAME
     fun die s = Crash.impossible ("ElabRepository."^s)
 
     val empty_infix_basis : InfixBasis = InfixBasis.emptyB
+    val empty_opaq_env : opaq_env = OpacityEnv.empty
 
     type prjid = string
-    type elabRep = (prjid * funid, (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
-				    InfixBasis * ElabBasis * realisation) list) FinMap.map ref
+    type elabRep = (prjid * funid, (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
+				    InfixBasis * ElabBasis * opaq_env) list) FinMap.map ref
     val elabRep : elabRep = ref FinMap.empty
 
     fun clear() = elabRep := FinMap.empty

@@ -1,6 +1,4 @@
 
-(*$Name: NAME *)
-
 functor Name() : NAME =
   struct
 

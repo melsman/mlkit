@@ -72,12 +72,12 @@ signature MANAGER_OBJECTS =
 				       longvids: longid list, longtycons: longtycon list} -> IntBasis
       end
 
-    type Basis and TopBasis and InfixBasis and ElabBasis and realisation and sigid
+    type Basis and TopBasis and InfixBasis and ElabBasis and opaq_env and sigid
     structure Basis :
       sig
 	val empty : Basis
-	val mk : InfixBasis * ElabBasis * realisation * IntBasis -> Basis
-	val un : Basis -> InfixBasis * ElabBasis * realisation * IntBasis
+	val mk : InfixBasis * ElabBasis * opaq_env * IntBasis -> Basis
+	val un : Basis -> InfixBasis * ElabBasis * opaq_env * IntBasis
 	val plus : Basis * Basis -> Basis
 	val layout : Basis -> StringTree
 
@@ -85,7 +85,7 @@ signature MANAGER_OBJECTS =
 	val enrich : TopBasis * (Basis * TyName.Set.Set) -> bool
 	val initial : unit -> TopBasis
 	val plus' : TopBasis * Basis -> TopBasis
-	val un' : TopBasis -> InfixBasis * ElabBasis * realisation * TopIntBasis
+	val un' : TopBasis -> InfixBasis * ElabBasis * opaq_env * TopIntBasis
       end
 
     type name
@@ -117,20 +117,20 @@ signature MANAGER_OBJECTS =
 	   * if reuse is allowed. *)
 
 	val lookup_elab : (prjid * funid) -> 
-	  (int * (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
-		  InfixBasis * ElabBasis * realisation)) option
+	  (int * (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
+		  InfixBasis * ElabBasis * opaq_env)) option
 	val lookup_int : (prjid * funid) -> 
 	  (int * (funstamp * ElabEnv * IntBasis * longstrid list * name list * modcode * IntBasis)) option
 	  
 	val add_elab : (prjid * funid) * 
-	  (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
-	   InfixBasis * ElabBasis * realisation) -> unit
+	  (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
+	   InfixBasis * ElabBasis * opaq_env) -> unit
 	val add_int : (prjid * funid) * 
 	  (funstamp * ElabEnv * IntBasis * longstrid list * name list * modcode * IntBasis) -> unit
 
 	val owr_elab : (prjid * funid) * int * 
-	  (InfixBasis * ElabBasis * longstrid list * (realisation * TyName.Set.Set) * name list * 
-	   InfixBasis * ElabBasis * realisation) -> unit
+	  (InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * name list * 
+	   InfixBasis * ElabBasis * opaq_env) -> unit
 	val owr_int : (prjid * funid) * int * 
 	  (funstamp * ElabEnv * IntBasis * longstrid list * name list * modcode * IntBasis) -> unit
 

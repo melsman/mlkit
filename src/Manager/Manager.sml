@@ -21,16 +21,16 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      and type FreeIds.funid = ManagerObjects.funid = ModuleEnvironments.funid
 		      and type FreeIds.sigid = ManagerObjects.sigid = ModuleEnvironments.sigid
 		structure OpacityElim : OPACITY_ELIM
-		  sharing OpacityElim.TyName = Environments.TyName = ManagerObjects.TyName
-		    = ModuleEnvironments.TyName
+		  sharing OpacityElim.TyName = Environments.TyName = ManagerObjects.TyName = ModuleEnvironments.TyName
 		      and type OpacityElim.topdec = ParseElab.topdec
-		      and type OpacityElim.realisation = ManagerObjects.realisation
+		      and type OpacityElim.opaq_env = ManagerObjects.opaq_env
+		      and type OpacityElim.OpacityEnv.funid = FreeIds.funid
 	        structure Timing : TIMING
 		structure Crash : CRASH
 		structure Report : REPORT
 		  sharing type Report.Report = ParseElab.Report
 		structure PP : PRETTYPRINT
-		  sharing type PP.StringTree = FreeIds.StringTree = ManagerObjects.StringTree
+		  sharing type PP.StringTree = FreeIds.StringTree = ManagerObjects.StringTree = OpacityElim.OpacityEnv.StringTree
                 structure Flags : FLAGS) : MANAGER =
   struct
 
@@ -302,12 +302,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     (* Matching of export elaboration and interpretation bases to
      * those in repository for a given funid *)
 
-    fun match_elab(names_elab, elabB, rea, prjid, funid) =
+    fun match_elab(names_elab, elabB, opaq_env, prjid, funid) =
       case Repository.lookup_elab (prjid,funid)
-	of SOME (_,(_,_,_,_,names_elab',_,elabB',rea')) => (* names_elab' are already marked generative - lookup *)
-	  (List.apply Name.mark_gen names_elab;            (* returned the entry. The invariant is that every *)
-	   ElabBasis.match(elabB, elabB');                 (* name in the bucket is generative. *)
-	   OpacityElim.match(rea,rea');
+	of SOME (_,(_,_,_,_,names_elab',_,elabB',opaq_env')) => (* names_elab' are already marked generative - lookup *)
+	  (List.apply Name.mark_gen names_elab;                 (* returned the entry. The invariant is that every *)
+	   ElabBasis.match(elabB, elabB');                      (* name in the bucket is generative. *)
+	   OpacityElim.OpacityEnv.match(opaq_env,opaq_env');
 	   List.apply Name.unmark_gen names_elab)
 	 | NONE => () (*bad luck*)
 
@@ -328,13 +328,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun ElabBasis_restrict a = ElabBasis.restrict a
     fun IntBasis_restrict a = IntBasis.restrict a
     fun IntBasis_restrict' a = IntBasis.restrict' a
-    fun OpacityElim_restrict a = OpacityElim.restrict a
+    fun OpacityElim_restrict a = OpacityElim.OpacityEnv.restrict a
     fun opacity_elimination a = OpacityElim.opacity_elimination a
 
     fun parse_elab_interp (prjid,B, funid, punit, funstamp_now) : Basis * modcode =
           let val _ = Timing.reset_timings()
 	      val _ = Timing.new_file punit
-	      val (infB, elabB, rea, topIntB) = Basis.un' B
+	      val (infB, elabB, opaq_env, topIntB) = Basis.un' B
 	      val unitname = (filename_to_unitname o ManagerObjects.funid_to_filename) funid
 	      val log_cleanup = log_init unitname
 	      val _ = Name.bucket := []
@@ -364,10 +364,10 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      val _ = chat "[restricting interpretation basis end...]\n"
 
  		      val tynames_elabB_im = ElabBasis.tynames elabB_im
-		      val rea_im = OpacityElim_restrict(rea,tynames_elabB_im)
+		      val opaq_env_im = OpacityElim_restrict(opaq_env,(funids,tynames_elabB_im))
 
 		      val _ = chat "[opacity elimination begin...]\n"
-		      val (topdec', rea') = opacity_elimination(rea_im, topdec)
+		      val (topdec', opaq_env') = opacity_elimination(opaq_env_im, topdec)
 		      val _ = chat "[opacity elimination end...]\n"
 
 		      val _ = chat "[interpretation begin...]\n"
@@ -381,19 +381,19 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		       * bases to those found in repository. *)
 
 		      val _ = chat "[matching begin...]\n"
-		      val _ = match_elab(names_elab, elabB', rea', prjid, funid)
+		      val _ = match_elab(names_elab, elabB', opaq_env', prjid, funid)
 		      val _ = match_int(names_int, intB', prjid, funid)
 		      val _ = chat "[matching end...]\n"
 
 		      val _ = Repository.delete_entries (prjid,funid)
 
-		      val _ = Repository.add_elab ((prjid,funid), (infB, elabB_im, longstrids, (rea_im,tynames_elabB_im), 
-								   names_elab, infB', elabB', rea'))
+		      val _ = Repository.add_elab ((prjid,funid), (infB, elabB_im, longstrids, (opaq_env_im,tynames_elabB_im), 
+								   names_elab, infB', elabB', opaq_env'))
 		      val modc = ModCode.emit (prjid,modc)  (* When module code is inserted in repository,
 							     * names become rigid, so we emit the module code. *)
 		      val elabE' = ElabBasis.to_E elabB'
 		      val _ = Repository.add_int ((prjid,funid), (funstamp_now, elabE', intB_im, longstrids, names_int, modc, intB'))
-		      val B' = Basis.mk(infB',elabB',rea',intB')
+		      val B' = Basis.mk(infB',elabB',opaq_env',intB')
 		  in print_result_report report;
 		    log_cleanup();
 		    (B',modc)
@@ -419,26 +419,26 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	       | NONE => error ("The program unit " ^ quot punit ^ " does not exist")
 	  exception CAN'T_REUSE
       in (case (Repository_lookup_elab (prjid,funid), Repository_lookup_int (prjid,funid))
-	    of (SOME(_,(infB, elabB, longstrids, (rea,dom_rea), names_elab, infB', elabB', rea')), 
+	    of (SOME(_,(infB, elabB, longstrids, (opaq_env,dom_opaq_env), names_elab, infB', elabB', opaq_env')), 
 		SOME(_,(funstamp, elabE, intB, _, names_int, modc, intB'))) =>
 	      if FunStamp.eq(funstamp,funstamp_now) andalso ModCode.exist modc then
 		(if clean then (print ("[reusing code for: \t" ^ punit ^ "]\n");
-				(Basis.mk(infB',elabB',rea',intB'), modc, clean))
+				(Basis.mk(infB',elabB',opaq_env',intB'), modc, clean))
 		 else if
 		        let
-			  val B_im = Basis.mk(infB,elabB,rea,intB)
+			  val B_im = Basis.mk(infB,elabB,opaq_env,intB)
 			  fun unmark_names () = (List.apply Name.unmark_gen names_elab;  (* Unmark names - they where *)
 						 List.apply Name.unmark_gen names_int)   (* marked in the repository. *)
 			  fun remark_names () = (List.apply Name.mark_gen names_elab;    (*  If enrichment fails we remark *)
 						 List.apply Name.mark_gen names_int)     (* names; notice that enrichment of *)
 		                                                                         (* elaboration bases requires all *)
 			  val _ = unmark_names()                                         (* names be unmarked. Names in the *)
-			  val res = Basis_enrich(B, (B_im, dom_rea)) andalso             (* global basis are always unmarked. *)
-			    Basis_agree(longstrids,B,(B_im, dom_rea))
+			  val res = Basis_enrich(B, (B_im, dom_opaq_env)) andalso        (* global basis are always unmarked. *)
+			    Basis_agree(longstrids,B,(B_im, dom_opaq_env))
 			in (if res then () else remark_names() ; res)
 			end then 
 	  		          (print ("[reusing code for: \t" ^ punit ^ " *]\n");
-				   (Basis.mk(infB',elabB',rea',intB'), modc, clean))
+				   (Basis.mk(infB',elabB',opaq_env',intB'), modc, clean))
 
 		 else raise CAN'T_REUSE)
 

@@ -1,7 +1,5 @@
 (* Finite maps based on equality *)
 
-(*$EqFinMap: REPORT PRETTYPRINT MONO_FINMAP*)
-
 functor EqFinMap(structure Report: REPORT
 		 structure PP: PRETTYPRINT
 		 type dom

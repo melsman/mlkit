@@ -29,6 +29,7 @@ LAB.sml
 Lab.sml
 PRETTYPRINT.sml
 PrettyPrint.sml
+
 FINMAP.sml
 FinMap.sml
 FINMAPEQ.sml
@@ -38,15 +39,19 @@ SORTED_FINMAP.sml
 SortedFinMap.sml
 MONO_FINMAP.sml
 IntFinMap.sml
+ORDER_FINMAP.sml
+OrderFinMap.sml
+
 IntSet.sml
 NatSet.sml
+EqSetList.sml
+KIT_MONO_SET.sml
+OrderSet.sml
+
+../Manager/OpacityEnv.sml
 
 ../Manager/NAME.sml
 ../Manager/Name.sml
-ORDER_FINMAP.sml
-OrderFinMap.sml
-KIT_MONO_SET.sml
-OrderSet.sml
 TYNAME.sml
 TyName.sml
 
@@ -112,7 +117,6 @@ ELABTOPDEC.sml
 EfficientElab/ElabTopdec.sml
 
 IntDiGraph.sml
-(*EqSetList.sml*)
 ../Compiler/Kam/UNION_FIND_POLY.sml
 ../Compiler/Kam/UnionFindPoly.sml
 ../Compiler/Kam/STACK.sml
