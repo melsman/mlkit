@@ -252,11 +252,13 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  end
 
 	fun emit(absprjid: absprjid, modc) =
-	  let fun em EMPTY_MODC = EMPTY_MODC
-		| em (SEQ_MODC(modc1,modc2)) = SEQ_MODC(em modc1, em modc2)
-		| em (EMITTED_MODC(fp,li)) = EMITTED_MODC(fp,li)
-		| em (NOTEMITTED_MODC(target,linkinfo,filename)) = 
-	              EMITTED_MODC(SystemTools.emit(target, OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid)) ^ "-" ^ filename),linkinfo)
+	  let 
+	    fun f file = String.translate (fn #"/" => "+" | #"." => "%" | c => str c) file
+	    fun em EMPTY_MODC = EMPTY_MODC
+	      | em (SEQ_MODC(modc1,modc2)) = SEQ_MODC(em modc1, em modc2)
+	      | em (EMITTED_MODC(fp,li)) = EMITTED_MODC(fp,li)
+	      | em (NOTEMITTED_MODC(target,linkinfo,filename)) = 
+	      EMITTED_MODC(SystemTools.emit(target, OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid)) ^ "-" ^ f filename),linkinfo)
                            (*puts ".o" on filename*)
 	  in em modc
 	  end
