@@ -1,11 +1,11 @@
 
 fun get s =
-  case Ns.Conn.getQuery(Ns.getConn())
+  case Ns.Conn.getQuery()
     of SOME formvars => Ns.Set.get(formvars, s)
      | NONE => NONE
 
 fun unique s = 
-  case Ns.Conn.getQuery(Ns.getConn())
+  case Ns.Conn.getQuery()
     of SOME formvars => Ns.Set.unique (formvars, s)
      | NONE => false
 

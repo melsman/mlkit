@@ -20,5 +20,9 @@ in
   friends.msp
   friends_add_form.msp
   friends_add.msp
+  server.sml
+  mail_form.sml
+  mail.sml
+  mul.msp
  ]
 end
