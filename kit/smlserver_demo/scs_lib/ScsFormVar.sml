@@ -138,6 +138,8 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val getHtmlErr             : string formvar_fn
     val getUrlErr              : string formvar_fn
     val getCprErr              : string formvar_fn
+    val getISSNErr             : string formvar_fn
+    val getISBNErr             : string formvar_fn
     val getEnumErr             : string list -> string formvar_fn
     val getYesNoErr            : string formvar_fn
     val getDateErr             : Date.date formvar_fn
@@ -549,6 +551,44 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     ved navn Claes Anders Fredrik Moren, født den
 	     31. august 1975, skal skrive: <b>310875-CLM1</b>.
 	     </blockquote>`)
+      fun msgISSN s = 
+	(case ScsLogin.user_lang() of
+	   ScsLang.en => `^s
+	     <blockquote>
+	     The format of a ISSN-number is
+	     <code>DDDD-DDDT</code>, where <code>D</code> is a number and <code>T</code> 
+	     is either a number or the capital letter X. This is a valid ISSN number: <code>1602-3536</code>. <p>
+	  
+	     We also perform a modulus 11 check of the number you type in.<p>
+	     </blockquote>`
+	 | ScsLang.da => `^s
+	     <blockquote>
+	     Formatet af et ISSN-nummer er
+	     <code>DDDD-DDDT</code>, hvor <code>D</code> is a tal og <code>T</code> 
+	     er et tal eller det store bogstav X. Et lovligt ISSN-nummer er eksempelvis: <code>1602-3536</code>. <p>
+
+	     Vi udfører også et modulus 11 check på det ISSN nummer som du indtaster.<p>
+	     </blockquote>`)
+
+      fun msgISBN s = 
+	(case ScsLogin.user_lang() of
+	   ScsLang.en => `^s
+	     <blockquote>
+	     The format of a ISBN-number is
+	     <code>D-DD-DDDDDD-T</code>, where <code>D</code> is a number and <code>T</code> 
+	     is either a number or the capital letter X. This is a valid ISBN number: <code>87-7949-044-1</code>. <p>
+	  
+	     We also perform a modulus 11 check of the number you type in.<p>
+	     </blockquote>`
+	 | ScsLang.da => `^s
+	     <blockquote>
+	     Formatet af et ISSN-nummer er
+	     <code>D-DD-DDDDDD-T</code>, hvor <code>D</code> is a tal og <code>T</code> 
+	     er et tal eller det store bogstav X. Et lovligt ISBN-nummer er eksempelvis: <code>87-7949-044-1</code>. <p>
+
+	     Vi udfører også et modulus 11 check på det ISBN nummer, som du indtaster.<p>
+	     </blockquote>`)
+
       fun msgEnum enums s =
 	(case ScsLogin.user_lang() of
 	   ScsLang.en => `^s
@@ -683,7 +723,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	| d1 :: d2 :: m1 :: m2 :: y1 :: y2 :: t1 :: t2 :: t3 :: t4 :: [] =>
 	    String.implode[d1,d2,m1,m2,y1,y2,t1,t2,t3,t4]
 	| _ => ScsError.panic `ScsFormVar.convCpr failned on ^cpr`
-	  
+
       fun chkCpr cpr =
 	let
 	  fun mk_yyyymmdd (d1,d2,m1,m2,y1,y2) =
@@ -739,6 +779,105 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	  | _ => false
 	end
       handle _ => false
+
+	(* Calculating the check digit
+	 Excerpted from the ISSN Manual, a publication of the ISSN International Network 
+
+	 The purpose of a check digit is to guard against errors
+	 caused by the incorrect transcription of an ISSN. The modulus
+	 11 basis using the weighting factors 8 to 2 for calculating
+	 the check digit is one of the most efficient systems for
+	 detecting transcription errors.
+
+         The procedure for calculating the check digit, which may be carried out 
+	 automatically in a computer, is as follows: 
+  
+         -  Take the first seven digits of the ISSN (the check digit is the 
+	    eighth and last digit): 0 3 1 7 8 4 7 
+         -  Take the weighting factors associated with each digit : 8 7 6 5 4 3 2 
+         -  Multiply each digit in turn by its weighting factor: 0 21 6 35 32 12 14 
+         -  Add these numbers together: 0+21+6+35+32+12+14 = 120 
+         - Divide this sum by the modulus 11: 120:11 =10 remainder 10 
+         - Substract the remainder from 11: 11-10 = 1 
+         - Add the remainder, which is the check digit, to the extreme right 
+	  (low order) position of the base number of the ISSN: 0317-8471 
+
+	  If the remainder is 10, substitute an upper case X in the
+	  check digit position. If there is no remainder, put a zero
+	  in the check digit position.
+
+	  It should be noted that the check digit is an essential and
+	  inseparable part of the ISSN.*)
+      fun chkISSN issn =
+	let
+	  fun chk_modulus11 (d1,d2,d3,d4,d5,d6,d7,c1) =
+	    let
+	      val sum1 = d1*8 + d2*7 + d3*6 + d4*5 + d5*4 + d6*3 + d7*2
+	      val check_number = Int.mod(sum1,11)
+	      val remainder = 11 - check_number 
+	    in
+	      (remainder = 10 andalso c1 = "X") orelse
+	      (Int.toString remainder = c1)
+	    end
+	  fun issn_ok (d1,d2,d3,d4,d5,d6,d7,c1) =
+	    let
+	      fun c2d ch = Option.valOf(Int.fromString(String.implode [ch]))
+	    in
+	      chk_modulus11(c2d d1,c2d d2,c2d d3,c2d d4,c2d d5,c2d d6,c2d d7,c1)
+	    end
+	in
+	  case String.explode (trim issn) of
+	    d1 :: d2 :: d3 :: d4 :: (#"-") :: d5 :: d6 :: d7 :: c1 :: [] =>
+	      issn_ok(d1,d2,d3,d4,d5,d6,d7,Char.toString c1)
+	  | 	    d1 :: d2 :: d3 :: d4  :: d5 :: d6 :: d7 :: c1 :: [] =>
+	      issn_ok(d1,d2,d3,d4,d5,d6,d7,Char.toString c1)
+	  | _ => false
+	end
+      handle _ => false
+
+      fun chkISBN isbn =
+	let
+	  fun chk_modulus11 (d1,d2,d3,d4,d5,d6,d7,d8,d9,c1) =
+	    let
+	      val sum1 = d1*10 + d2*9 + d3*8 + d4*7 + d5*6 + d6*5 + d7*4 + d8*3 + d9*2
+	      val check_number = Int.mod(sum1,11)
+	      val remainder = 11 - check_number 
+	    in
+	      (remainder = 10 andalso c1 = "X") orelse
+	      (Int.toString remainder = c1)
+	    end
+	  fun isbn_ok (d1,d2,d3,d4,d5,d6,d7,d8,d9,c1) =
+	    let
+	      fun c2d ch = Option.valOf(Int.fromString(String.implode [ch]))
+	    in
+	      chk_modulus11(c2d d1,c2d d2,c2d d3,c2d d4,c2d d5,c2d d6,c2d d7,c2d d8,c2d d9,c1)
+	    end
+	in
+	  case String.explode (trim isbn) of
+	    d1 :: (#"-") :: d2 :: d3 :: (#"-") :: d4 :: d5 :: d6 :: d7 :: d8 :: d9 :: (#"-") :: c1 :: [] =>
+	      isbn_ok(d1,d2,d3,d4,d5,d6,d7,d8,d9,Char.toString c1)
+	  | d1 :: d2 :: d3 :: d4 :: d5 :: d6 :: d7 :: d8 :: d9 :: c1 :: [] =>
+	      isbn_ok(d1,d2,d3,d4,d5,d6,d7,d8,d9,Char.toString c1)
+	  | _ => false
+	end
+      handle _ => false
+
+      fun convISSN issn =
+	case String.explode (trim issn) of
+	  d1 :: d2 :: d3 :: d4 :: (#"-") :: d5 :: d6 :: d7 :: c1 :: [] =>
+	    String.implode[d1,d2,d3,d4,(#"-"),d5,d6,d7,c1]
+	| d1 :: d2 :: d3 :: d4 :: d5 :: d6 :: d7 :: c1 :: [] =>
+	    String.implode[d1,d2,d3,d4,(#"-"),d5,d6,d7,c1]
+	| _ => ScsError.panic `ScsFormVar.convISSN failned on ^issn`
+	  
+      fun convISBN isbn =
+	case String.explode (trim isbn) of
+	  d1 :: (#"-") :: d2 :: d3 :: (#"-") :: d4 :: d5 :: d6 :: d7 :: d8 :: d9 :: (#"-") :: c1 :: [] =>
+	    String.implode[d1,(#"-"),d2,d3,(#"-"),d4,d5,d6,d7,d8,d9,(#"-"),c1]
+	| 	  d1 :: d2 :: d3 :: d4 :: d5 :: d6 :: d7 :: d8 :: d9 :: c1 :: [] =>
+	    String.implode[d1,(#"-"),d2,d3,(#"-"),d4,d5,d6,d7,d8,d9,(#"-"),c1]
+	| _ => ScsError.panic `ScsFormVar.convISBN failned on ^isbn`
+
       fun chkEnum enums v =
 	case List.find (fn enum => v = enum) enums
 	  of NONE => false
@@ -828,6 +967,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
 				  String.size url <= 200)
 
       val getCprErr = getErr "" convCpr [(ScsLang.en,`cpr number`),(ScsLang.da,`cpr nummer`)] msgCpr chkCpr
+      val getISSNErr = getErr "" convISSN [(ScsLang.en,`ISSN number`),(ScsLang.da,`ISSN nummer`)] msgISSN chkISSN
+      val getISBNErr = getErr "" convISBN [(ScsLang.en,`ISBN number`),(ScsLang.da,`ISBN nummer`)] msgISBN chkISBN
       val getEnumErr = fn enums => getErr' [(ScsLang.en,`enumeration`),(ScsLang.da,`enumerering`)] 
                                      (msgEnum enums) (chkEnum enums)
       fun getYesNoErr args =

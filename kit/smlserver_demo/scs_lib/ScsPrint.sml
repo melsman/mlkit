@@ -11,8 +11,10 @@ signature SCS_PRINT =
 
     val allPrinters   : (string * string) list
 
-    (* [returnAsPDF documents] returns the documents as a single pdf 
-       file *)
+    (* [returnAsPDF documents] returns the documents as a single pdf
+       file. Returns exeception Fail if an error happens. You may use
+       the function ScsError.wrapPanic if you want the script to panic
+       in case of error. *)
     val returnAsPDF : document list -> Ns.Conn.status
 
     (* Widgets *)
@@ -58,22 +60,9 @@ structure ScsPrint :> SCS_PRINT =
     (* Generate file which can be printed and previewed. *)
     (* Files are stored in the scs_print_dir directory.  *)
     local
-      val % = ScsDict.d ScsLang.en "scs_lib" "ScsPrint.sml"
       fun getInfo key =
 	ScsError.valOf (Ns.Info.configGetValueExact 
 			{sectionName="ns/server/"^Ns.Conn.server()^"/SCS",key=key})
-(*      fun tmpnam (c: int) : string =
-	if c > 10 then ScsError.panic `ScsPrint.tmpnam: Can't create temporary file`
-	else
-	  let val is = Random.rangelist (97,122) (8, Random.newgen())
-	    val f = implode (map Char.chr is)
-	  in if FileSys.access(f,[]) then tmpnam(c+1)
-	     else f
-	  end*)
-(*      val scs_print_dir = "scs_print/"*)
-(* KNP 30-10-2003
-      fun path_preview () = Ns.Info.pageRoot() ^ "/" ^ (getInfo "scs_print_preview")
-*)
       fun path_preview () = ScsConfig.scs_tmp()
       fun texfile f = path_preview() ^ "/" ^ f ^ ".tex"
       fun psfile f = path_preview() ^ "/" ^ f ^ ".ps"
@@ -85,7 +74,6 @@ structure ScsPrint :> SCS_PRINT =
 	case doc_type of
 	  LaTeX =>
 	    let
-val _ = ScsError.log "bruger LaTeX"
 	      val tmpfile = ScsFile.uniqueFile (path_preview())
 	      val _ = ScsFile.save source (texfile tmpfile)
 	      val cmd = Quot.toString `cd ^(path_preview()); ^(ScsConfig.scs_pdflatex()) ^(texfile tmpfile)`
@@ -93,12 +81,10 @@ val _ = ScsError.log "bruger LaTeX"
 	      if Process.system cmd = Process.success then
 		tmpfile
 	      else
-		ScsError.panic 
-		  `ScsPrint.genTmpPDF: Can't execute system command: ^cmd`
+		raise Fail (Quot.toString `ScsPrint.genTmpPDF: Can't execute system command: ^cmd`)
 	    end
 	  | LaTeX' =>
 	    let
-val _ = ScsError.log "bruger LaTeX'"
 	      val tmpfile = ScsFile.uniqueFile (path_preview())
 	      val _ = ScsFile.save source (texfile tmpfile)
 	      val cmd = Quot.toString `
@@ -110,18 +96,17 @@ val _ = ScsError.log "bruger LaTeX'"
 	      if Process.system cmd = Process.success then
 		tmpfile
 	      else
-		ScsError.panic 
-		  `ScsPrint.genTmpPDF: Can't execute system command: ^cmd`
+		raise Fail (Quot.toString `ScsPrint.genTmpPDF: Can't execute system command: ^cmd`)
 	    end
-          | _ => ScsError.panic 
-		  `ScsPrint.genTmpPDF: Unknown document type `
-
 
       (* KNP 2003-07-01: tested ok for length documents = 500.
          Be aware that Linux has a limitation on the number of open files 
 	 allowed. The genPDF function could be modified to generate PDFs of 
 	 the 500 documents each, and then glue the superdocs together. *)
       fun genPDF (documents:document list) = 
+	case documents of
+	  [doc] => pdfurl (genTmpPDF doc) (* There is only one document, so no glue *)
+	| _ =>
 	    let
 	      val pdf_files = map genTmpPDF documents
 	      val gluetex = `
@@ -136,15 +121,13 @@ val _ = ScsError.log "bruger LaTeX'"
 	      val tmpfile = ScsFile.uniqueFile (path_preview())
 	      val _ = ScsFile.save gluetex (texfile tmpfile)
 	      val cmd = Quot.toString( `cd ^(path_preview()); ^(ScsConfig.scs_pdflatex()) ^(texfile tmpfile); ` ^^ 
-	        foldl (fn (tmp_file,acc) => acc^^`rm -f ^tmp_file`) `` pdf_files )
+				      foldl (fn (tmp_file,acc) => acc^^`rm -f ^tmp_file`) `` pdf_files )
 	    in
 	      if Process.system cmd = Process.success
 		then pdfurl tmpfile
 	      else
-		ScsError.panic 
-		  `ScsPrint.genPDF: Can't execute system command: ^cmd`
-	    end
-
+		raise Fail (Quot.toString `ScsPrint.genPDF: Can't execute system command: ^cmd`)
+            end
 
       fun printDoc category note on_what_table on_what_id doc_type source printer =
 	case doc_type of
@@ -173,10 +156,12 @@ val _ = ScsError.log "bruger LaTeX'"
 						       on_what_table,on_what_id]),
 				       ^(Db.sysdateExp))`
 		end
+	      val print_ok_dict = [(ScsLang.da,`Dokumenter er udskrevet`),
+				   (ScsLang.en,`Document Printed`)]
 	    in
 	      if Process.system cmd = Process.success
 		then (ScsDb.panicDmlTrans ins_log;
-		      ScsPage.returnPg (%"Document Printed")
+		      ScsPage.returnPg (ScsDict.s print_ok_dict)
 		      (case ScsLogin.user_lang() of
 			 ScsLang.en => `The document is now sent to printer ^printer.<p>
 
@@ -192,8 +177,9 @@ val _ = ScsError.log "bruger LaTeX'"
                            Ns.encodeUrl ("show_doc.sml?print_id="^print_id))">fjerne</a> dokumentet fra journalen igen.
                            Du vender da tilbage til udskriftssiden igen.`))
 
-	      else ScsError.panic `ScsPrint.genPDF: Can't execute system command: ^cmd`
+	      else raise Fail (Quot.toString `ScsPrint.genPDF: Can't execute system command: ^cmd`)
 	    end
+	| LaTeX' => raise Fail "ScsPrint.printDoc LaTeX' type not implemented"
 
       fun printDoc' batch_id category note on_what_table on_what_id doc_type source printer =
 	case doc_type of
@@ -226,13 +212,17 @@ val _ = Ns.log(Ns.Notice,"Print command: " ^ cmd)
 	      if Process.system cmd = Process.success
 		then (ScsDb.panicDmlTrans ins_log;
 		      target_f)
-	      else (ScsError.panic `ScsPrint.genPDF: Can't execute system command: ^cmd`;target_f)
+	      else raise Fail (Quot.toString `ScsPrint.genPDF: Can't execute system command: ^cmd`)
 	    end
+	| LaTeX => raise Fail "ScsPrint.printDoc LaTeX type not implemented"
 
       fun printDocs docs printer =
 	let
 	  val batch_id = Int.toString (Db.seqNextval "scs_print_batch_id_seq")
-	  fun printDocs' ([],acc) = ScsPage.returnPg (%"Document Printed") `Dokumenter udskrevet`
+	  val print_ok_dict = [(ScsLang.da,`Dokumenter er udskrevet`),
+			       (ScsLang.en,`Document Printed`)]
+	  fun printDocs' ([],acc) = ScsPage.returnPg (ScsDict.s print_ok_dict)
+	    (ScsDict.s' print_ok_dict)
 	    | printDocs' ((category,note,on_what_table,on_what_id,doc_type,source)::xs,acc) = 
 	    printDocs' (xs,printDoc' batch_id category note on_what_table on_what_id doc_type source printer :: acc)
 	in
