@@ -91,12 +91,15 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     and TyVarDesc =
         ORDINARY of {id : int,
 		     equality : bool,
-		     overloaded : TyName.Set.Set}
+		     overloaded : overloaded}
 	(*the overloaded field contains a list of types that the overloaded
 	 tyvar may be instantiated to, e.g., [Type.Real, Type.Int,
 	 Type.Word], if the overloaded tyvar stands for a socalled  num,
 	 e.g., in the type scheme for +*)
       | EXPLICIT of ExplicitTyVar
+
+    and overloaded = Overloaded of TyName.Set.Set
+                   | Nonoverloaded
 
     and RecType = 
         NILrec
@@ -116,7 +119,6 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     type FunType     = Type
     type ConsType    = Type
 
-    val not_overloaded = TyName.Set.empty
     fun TyVarDesc_eq (ORDINARY {id=id1, ...}, ORDINARY {id=id2, ...}) = id1 = id2
       | TyVarDesc_eq (EXPLICIT ExplicitTyVar1, EXPLICIT ExplicitTyVar2)
 	      = ExplicitTyVar1 = ExplicitTyVar2
@@ -199,10 +201,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       fun get_overloaded (ref (NO_TYPE_INSTANCE (ORDINARY {overloaded, ...})))
 	    = overloaded
-	| get_overloaded (ref (NO_TYPE_INSTANCE _)) = not_overloaded
+	| get_overloaded (ref (NO_TYPE_INSTANCE _)) = Nonoverloaded
 	| get_overloaded _ = impossible "TyVar.get_overloaded"
 
-      val is_overloaded0 = not o TyName.Set.isEmpty
+      fun is_overloaded0 (Overloaded _) = true
+	| is_overloaded0 Nonoverloaded = false
       val is_overloaded  = is_overloaded0 o get_overloaded
 
       local val r = ref 0 in
@@ -210,16 +213,17 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    ref (NO_TYPE_INSTANCE (ORDINARY {id = (r := !r + 1 ; !r),
 					     equality = equality,
 					     overloaded = overloaded}))
-      fun fresh_normal () = fresh0 {equality=false, overloaded=not_overloaded}
+      fun fresh_normal () = fresh0 {equality=false, overloaded=Nonoverloaded}
       fun fresh_overloaded tynames =
-	    fresh0 {equality=false, overloaded=TyName.Set.fromList tynames}
+	    fresh0 {equality=false,
+		    overloaded=Overloaded (TyName.Set.fromList tynames)}
       end
 
       fun refresh (ref (NO_TYPE_INSTANCE (ORDINARY {id, equality, overloaded}))) =
 	    fresh0 {equality = equality, overloaded = overloaded}
 	| refresh (ref (NO_TYPE_INSTANCE (EXPLICIT ExplicitTyVar))) =
 	    fresh0 {equality = ExplicitTyVar.isEquality ExplicitTyVar,
-		   overloaded = not_overloaded}
+		   overloaded = Nonoverloaded}
 	| refresh _ = impossible "TyVar.refresh"
 
       val from_ExplicitTyVar = ref o NO_TYPE_INSTANCE o EXPLICIT
@@ -843,21 +847,22 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	fun next_bound_id () = (bound_id := !bound_id - 1; !bound_id)
 	fun mk_bound_tyvar0 (tv as (ref (NO_TYPE_INSTANCE(EXPLICIT ExplicitTyVar)))) =
 	      (case FinMap.lookup (!explicitMap) ExplicitTyVar of
-		 None =>  let val tvdesc' = ORDINARY{id = next_bound_id(),
-						     equality=TyVar.equality tv,
-						     overloaded=TyVar.get_overloaded tv}
+		 None =>  let val tvdesc' = ORDINARY
+		             {id = next_bound_id(),
+			      equality = ExplicitTyVar.isEquality ExplicitTyVar,
+			      overloaded = TyVar.get_overloaded tv}
 			  in 
 			    tv := NO_TYPE_INSTANCE tvdesc';
 			    explicitMap := FinMap.add(ExplicitTyVar,tvdesc',!explicitMap)
 			  end
 	       | Some tvdesc' => tv := NO_TYPE_INSTANCE tvdesc')
 
-	  | mk_bound_tyvar0 (tv as (ref (NO_TYPE_INSTANCE(ORDINARY _)))) =
+	  | mk_bound_tyvar0 (tv as (ref (NO_TYPE_INSTANCE(ORDINARY {equality, ...})))) =
 	      if List.member tv (!ordinaryMap) then ()
 	      else
 		(ordinaryMap := tv::(!ordinaryMap);
 		 tv := NO_TYPE_INSTANCE(ORDINARY{id = next_bound_id(),
-						 equality = TyVar.equality tv,
+						 equality = equality,
 						 overloaded = TyVar.get_overloaded tv}))
 
 	  | mk_bound_tyvar0 _ = impossible "mk_bound_tyvar0"
@@ -1083,30 +1088,37 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      (fn ty => fn result => occurs_rv_in_Type(rv, ty) orelse result)
 	      false tys
 
-	(*unify_with_overloaded_tyvar overloaded tau = unify an overloaded
-	 tyvar with tau.  `overloaded' is the set of allowed tynames, i.e.,
-	 the set of tynames that the tyvar may be unified with.  For instance,
-	 + may get the type `alpha * alpha -> alpha', where alpha is an
-	 overloaded tyvar, and then the `overloaded' set for alpha will be
-	 {TyName.tyName_INT, TyName.tyName_WORD, TyName.tyName_REAL}.
-	 Raise Unify if `tau' is neither a tyname in `overloaded', nor another
-	 tyvar.  If `tau' is itself an overloaded tyvar, the `overloaded'
-	 field of the resulting tyvar should be the intersection of the
-	 `overloaded' fields on the two unified tyvars.  29/08/1997 15:02.
-	 tho.*)
+	(*unify_with_overloaded_tyvar tynames1 tau = unify an overloaded
+	 tyvar with tau.  `tynames1' is the set of allowed tynames,
+	 i.e., the set of tynames that the tyvar may be unified with.  For
+	 instance, + may get the type `alpha * alpha -> alpha', where alpha
+	 is an overloaded tyvar, and then `tynames1' for alpha will
+	 be {TyName.tyName_INT, TyName.tyName_WORD, TyName.tyName_REAL}.
+	 Raise Unify if `tau' is neither a tyname in `tynames1',
+	 nor another tyvar.  If `tau' is itself an overloaded tyvar, the
+	 `overloaded' field of the resulting tyvar should be the intersection
+	 of the `overloaded' fields on the two unified tyvars.  29/08/1997
+	 15:02.  tho.  But if tau is not overloaded, we must not change the
+	 set `tynames1'.  11/11/1997 16:52. tho.*)
 
-	fun unify_with_overloaded_tyvar overloaded tau = 
+	fun unify_with_overloaded_tyvar tynames1 tau = 
 	      (case #TypeDesc (findType tau) of
 		 TYVAR (tv as (ref (NO_TYPE_INSTANCE (ORDINARY
-			  {equality, id, overloaded=overloaded', ...})))) =>
+			  {equality, id, overloaded=Nonoverloaded, ...})))) =>
 		   tv := NO_TYPE_INSTANCE (ORDINARY
 			   {equality = equality, id = id,
-			    overloaded=TyName.Set.intersect overloaded overloaded'})
+			    overloaded=Overloaded tynames1})
+	       | TYVAR (tv as (ref (NO_TYPE_INSTANCE (ORDINARY
+			  {equality, id, overloaded=Overloaded tynames2, ...})))) =>
+		   tv := NO_TYPE_INSTANCE (ORDINARY
+			   {equality = equality, id = id,
+			    overloaded=Overloaded (TyName.Set.intersect
+						     tynames1 tynames2)})
 	       | TYVAR (ref (NO_TYPE_INSTANCE (EXPLICIT _))) =>
 		   raise Unify "unify_with_overloaded_tyvar: explicit tyvar"
 	       | CONSTYPE (taus, tyname) =>
-		   if List.exists (General.curry TyName.eq tyname) (TyName.Set.list overloaded)
-		   then ()
+		   if List.exists (General.curry TyName.eq tyname)
+		        (TyName.Set.list tynames1) then ()
 		   else raise Unify "unify_with_overloaded_tyvar: not overloaded to this tyname"
 	       | _ => raise Unify "unify_with_overloaded_tyvar: only overloaded to tynames")
 
@@ -1131,10 +1143,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 				     | None => raise Unify "unify_with_tyvar.1")
 		   else Substitution.Id
 
-		   val S' = if TyVar.is_overloaded0 overloaded then
-		              unify_with_overloaded_tyvar overloaded
-			      (Substitution.on (S, tau))
-			    else Substitution.Id
+		   val S' = (case overloaded of
+			       Overloaded tynames =>
+				 unify_with_overloaded_tyvar tynames
+				   (Substitution.on (S, tau))
+			     | Nonoverloaded => Substitution.Id)
 	       in
 		 if List.member tv restricted_tyvars
 		 then raise Unify "unify_with_tyvar.2"
@@ -1554,7 +1567,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	 List.forAll (TyVar.eq_bound EQ_NOT_SIGNIFICANT) (ListPair.zip (tyvars, tyvars')))
 	handle ListPair.Zip => false
 	
-      val dummy_tv = TyVar.fresh_bound {id=0, equality=false, overloaded=not_overloaded}
+      val dummy_tv = TyVar.fresh_bound {id=0, equality=false, overloaded=Nonoverloaded}
 
       local fun eq_tyvar(tv,tv') = TyVar.eq_bound EQ_NOT_SIGNIFICANT (tv,tv') orelse
 	                           TyVar.eq_free (tv,tv')
@@ -1647,7 +1660,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       val is_TyName = is_Some o to_TyName
       local val tyvar = TyVar.fresh_bound {id= ~1, equality=false,
-					   overloaded=not_overloaded}
+					   overloaded=Nonoverloaded}
       in
 	val bogus = TYPEFCN {tyvars = [tyvar],
 			     tau = {TypeDesc=TYVAR tyvar, level = ref Level.GENERIC}}
@@ -1703,7 +1716,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val tau2 = 
 	let
 	  val tv = ref (NO_TYPE_INSTANCE(ORDINARY{id= ~1, equality = false,
-						  overloaded = not_overloaded}))
+						  overloaded = Nonoverloaded}))
 	  val ty  = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val ty' = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val r =   {TypeDesc = 
@@ -1763,7 +1776,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val tau2 = 
 	let
 	  val tv = ref (NO_TYPE_INSTANCE(ORDINARY{id= ~1, equality = false,
-						  overloaded = not_overloaded}))
+						  overloaded = Nonoverloaded}))
 	  val ty  = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val ty' = {TypeDesc = TYVAR tv, level = ref Level.GENERIC}
 	  val r =   {TypeDesc = 
