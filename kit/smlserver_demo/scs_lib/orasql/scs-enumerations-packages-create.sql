@@ -191,6 +191,19 @@ as
     val_id in scs_enum_values.val_id%TYPE
   ) return scs_enum_values.value%TYPE;
 
+  /* --------
+     valToVid
+     --------
+
+     given enumeration name and value returns the corresponding
+     vid. It returns null if the name,value combination does not
+     exists. It never fails.
+  */
+  function valToVid(
+    name   in scs_enumerations.name%TYPE,
+    value  in scs_enum_values.value%TYPE    
+  ) return scs_enum_values.val_id%TYPE;
+
   /* ----------------------
      procedure swapOrdering
      ----------------------
@@ -383,6 +396,26 @@ as
     when NO_DATA_FOUND then
       return null;
   end getVal;
+
+  function valToVid(
+    name   in scs_enumerations.name%TYPE,
+    value  in scs_enum_values.value%TYPE    
+  ) return scs_enum_values.val_id%TYPE
+  is
+    vid scs_enum_values.val_id%TYPE;
+  begin
+    select scs_enum_values.val_id
+      into vid
+      from scs_enum_values,scs_enumerations
+     where scs_enumerations.name = valToVid.name
+       and scs_enumerations.enum_id = scs_enum_values.enum_id
+       and scs_enum_values.value = valToVid.value;
+
+    return vid;
+  exception
+    when others then
+      return null;
+  end valToVid;
 
   function getEnumId (
     name in scs_enumerations.name%TYPE

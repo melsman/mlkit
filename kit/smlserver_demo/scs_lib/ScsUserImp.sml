@@ -507,14 +507,14 @@ structure ScsUserImp :> SCS_USER_IMP =
       | user_imp_id => 
 	  Quot.toString
 	  `<a href="^(UcsPage.confirmDelUrl 
-	    (Html.genUrl "del_imp_row.sml" [("user_imp_id",user_imp_id)]))">^(UcsPage.icon_remove)</a>`
+	    (Html.genUrl "del_imp_row.sml" [("user_imp_id",user_imp_id)]))">^(UcsPage.icon_remove())</a>`
 
     fun moreInfoLink user_imp_id =
       case user_imp_id of
 	"" => "&nbsp;"
       | user_imp_id => Quot.toString
 	  `<a href="^(Html.genUrl "more_info.sml" 
-	  [("user_imp_id",user_imp_id)])">^(UcsPage.icon_info)</a>`
+	  [("user_imp_id",user_imp_id)])">^(UcsPage.icon_info())</a>`
 
     val service_name = [(ScsLang.en, `Central Personnel Register`),
 			(ScsLang.da, `Centralt Person Register`)]
