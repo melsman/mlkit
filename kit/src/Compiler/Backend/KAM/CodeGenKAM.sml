@@ -328,8 +328,10 @@ struct
       end
       | CG_ce(ClosExp.FNCALL{opr,args,clos,free},env,sp,cc,acc) = die "FNCALL: either clos or free are non empty."      
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=NONE,free=[]},env,sp,cc,acc) =
-      comp_ces(args,env,sp,cc,
-	       ApplyFunJmpNoClos(opr,List.length args,sp - (List.length reg_args)) :: 
+      ImmedInt 0 ::
+      Push ::
+      comp_ces(args,env,sp+1,cc,
+	       ApplyFunJmp(opr,List.length args,sp - (List.length reg_args)) :: 
 	       dead_code_elim acc)
       | CG_ce(ClosExp.JMP{opr,args,reg_vec=NONE,reg_args,clos=SOME clos_ce,free=[]},env,sp,cc,acc) =
       CG_ce(clos_ce,env,sp,cc,
@@ -343,8 +345,10 @@ struct
 	val return_lbl = Labels.new_named "return_from_app"
       in
 	PushLbl(return_lbl) ::
-	comp_ces(reg_args @ args,env,sp+1,cc,
-		 ApplyFunCallNoClos(opr,List.length args + List.length reg_args) :: 
+	ImmedInt 0 ::
+	Push ::
+	comp_ces(reg_args @ args,env,sp+2,cc,
+		 ApplyFunCall(opr,List.length args + List.length reg_args) :: 
 		 Label(return_lbl) :: acc)
       end
       | CG_ce(ClosExp.FUNCALL{opr,args,reg_vec=NONE,reg_args,clos=SOME clos_ce,free=[]},env,sp,cc,acc) = 
@@ -650,7 +654,7 @@ and code is actually generated when passing arguments in region polymorphic func
 	let
 	  val decomp_cc = CallConv.decompose_cc cc
 	  fun add_lvar (lv,(offset,env)) = (offset+1,declareLvar(lv,STACK(offset),env))
-	  fun add_clos_opt (NONE,env) = (env, ReturnNoClos)
+	  fun add_clos_opt (NONE,env) = (env, Return)
 	    | add_clos_opt (SOME clos_lv, env) = (declareLvar(clos_lv,ENV_REG,env), Return)
 	  val (offset,env) = List.foldl add_lvar (List.foldl add_lvar 
 						  (0,initialEnv) (#reg_args(decomp_cc))) (#args(decomp_cc))

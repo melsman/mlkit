@@ -1,5 +1,4 @@
 (* This file is auto-generated with Tools/GenOpcodes on *)
-(* Mon Nov  6 00:34:15 2000 *)
 signature OPCODES_KAM = 
   sig
     val ALLOC_N : int 
@@ -35,11 +34,8 @@ signature OPCODES_KAM =
     val APPLY_FN_CALL : int 
     val APPLY_FN_JMP : int 
     val APPLY_FUN_CALL : int 
-    val APPLY_FUN_CALL_NO_CLOS : int 
     val APPLY_FUN_JMP : int 
-    val APPLY_FUN_JMP_NO_CLOS : int 
     val RETURN : int 
-    val RETURN_NO_CLOS : int 
     val C_CALL1 : int 
     val C_CALL2 : int 
     val C_CALL3 : int 

@@ -16,7 +16,7 @@ structure GenOpcodes : GEN_OPCODES =
 	val spec_insts = gen_spec_insts spec_file
 	val out_stream = TextIO.openOut(functor_file)
 	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes on *)\n")
-	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")
+(*	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")*)
 	val _ = TextIO.output(out_stream, "functor OpcodesKAM () : OPCODES_KAM = \n")
 	val _ = TextIO.output(out_stream, "  struct\n");
 	fun write_opcode(opcode,n) = (TextIO.output(out_stream, "    val " ^ opcode ^ " = " ^ (Int.toString n) ^ "\n");
@@ -32,7 +32,7 @@ structure GenOpcodes : GEN_OPCODES =
 	val spec_insts = gen_spec_insts spec_file
 	val out_stream = TextIO.openOut(signature_file)
 	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes on *)\n")
-	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")
+(*	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")*)
 	val _ = TextIO.output(out_stream, "signature OPCODES_KAM = \n")
 	val _ = TextIO.output(out_stream, "  sig\n");
 	fun write_opcode(opcode,n) = (TextIO.output(out_stream, "    val " ^ opcode ^ " : int \n");
@@ -48,7 +48,7 @@ structure GenOpcodes : GEN_OPCODES =
 	val spec_insts = gen_spec_insts spec_file
 	val out_stream = TextIO.openOut(kam_insts_C_file)
 	val _ = TextIO.output(out_stream, "/* This file is auto-generated with Tools/GenOpcodes on */\n")
-	val _ = TextIO.output(out_stream, "/* " ^ (cur_date()) ^ " */\n")
+(*	val _ = TextIO.output(out_stream, "/* " ^ (cur_date()) ^ " */\n")*)
 	val _ = TextIO.output(out_stream, "enum instructions {\n")
 	fun write_opcode([]) = TextIO.output(out_stream, "  };\n")
 	  | write_opcode([opcode]) = TextIO.output(out_stream, "  " ^ opcode ^ "\n};\n")
@@ -64,7 +64,7 @@ structure GenOpcodes : GEN_OPCODES =
 	val spec_insts = gen_spec_insts spec_file
 	val out_stream = TextIO.openOut(functor_file)
 	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes on *)\n")
-	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")
+(*	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")*)
 
 	val _ = TextIO.output(out_stream, "signature BUILT_IN_C_FUNCTIONS_KAM = \n")
 	val _ = TextIO.output(out_stream, "  sig\n");
@@ -94,7 +94,7 @@ structure GenOpcodes : GEN_OPCODES =
 	val spec_insts = gen_spec_insts spec_file
 	val out_stream = TextIO.openOut(outfile)
 	val _ = TextIO.output(out_stream, "/* This file is auto-generated with Tools/GenOpcodes on */\n")
-	val _ = TextIO.output(out_stream, "/* " ^ (cur_date()) ^ " */\n")
+(*	val _ = TextIO.output(out_stream, "/* " ^ (cur_date()) ^ " */\n")*)
 	val _ = TextIO.output(out_stream, "#include \"Prims.h\"\n\n")
 
 	val _ = List.app (fn prim => TextIO.output(out_stream, "extern int " ^ prim ^ "();\n")) spec_insts
