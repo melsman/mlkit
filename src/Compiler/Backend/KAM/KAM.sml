@@ -22,6 +22,7 @@ signature KAM =
     val is_im19 : int -> bool 18/09-2000, Niels *)
 
     type label
+    val eq_lab : label * label -> bool
 (*    datatype lab = 
         DatLab of label      (* For data to propagate across program units *)
       | LocalLab of label    (* Local label inside a block *)
@@ -29,7 +30,7 @@ signature KAM =
 			        code label, finish label, etc. *)
       | MLFunLab of label    (* Labels on ML Functions *)
 
-    val eq_lab : lab * lab -> bool
+
 18/09-2000, Niels*)
 (*    datatype cond = NEVER
                   | ALWAYS
@@ -67,6 +68,7 @@ signature KAM =
       | SetBit30
       | SetBit31
       | ClearBit30And31
+      | UbTagCon
 	
       | SelectStack of int
       | SelectEnv of int
@@ -93,8 +95,15 @@ signature KAM =
       | ApplyFunJmpNoClos of label * int * int
       | Return of int * int
 
+      | Ccall of int * int
+
       | Label of label
-      | Jmp of label
+      | JmpRel of label
+      | IfNotEqJmpRel of label
+      | IfLessThanJmpRel of label
+      | IfGreaterThanJmpRel of label
+      | DotLabel of label
+      | JmpVector of label * int
 
       | Raise
       | PushExnPtr
@@ -112,6 +121,43 @@ signature KAM =
 
       | Comment of string
       | Nop
+
+      | PrimEqual
+      | PrimSubi
+      | PrimAddi
+      | PrimNegi
+      | PrimAbsi
+
+      | PrimAddf
+      | PrimSubf
+      | PrimMulf
+      | PrimNegf
+      | PrimAbsf
+
+      | PrimLessThan
+      | PrimLessEqual
+      | PrimGreaterThan
+      | PrimGreaterEqual
+
+      | PrimLessThanUnsigned
+      | PrimGreaterThanUnsigned
+      | PrimLessEqualUnsigned
+      | PrimGreaterEqualUnsigned
+	
+      | PrimAddw8
+      | PrimSubw8
+	
+      | PrimAndi
+      | PrimOri
+      | PrimXori
+      | PrimShiftLefti
+      | PrimShiftRightSignedi
+      | PrimShiftRightUnsignedi
+	
+      | PrimAddw
+      | PrimSubw
+	
+      | PrimFreshExname
 
     datatype TopDecl =
         FUN of label * KamInst list

@@ -20,6 +20,7 @@ functor CodeGenKAM(structure PhysSizeInf : PHYS_SIZE_INF
 		     sharing type ClosExp.phsize = PhysSizeInf.phsize
 		   structure BI : BACKEND_INFO
                      sharing type BI.lvar = Lvars.lvar
+                   structure JumpTables : JUMP_TABLES
 		   structure Lvarset: LVARSET
 		     sharing type Lvarset.lvar = Lvars.lvar
 		   structure Kam: KAM
@@ -51,8 +52,6 @@ struct
   type label = Labels.label
   type ClosPrg = ClosExp.ClosPrg
 
-
-
   (***********)
   (* Logging *)
   (***********)
@@ -79,8 +78,11 @@ struct
 
   val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Printing of intermediate forms"],x,y,r))
     [("print_KAM_program", "print KAM program", ref false)]
-
   val print_KAM_flag = Flags.lookup_flag_entry "print_KAM_program"
+
+  val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
+    [("jump_tables", "Use jump tables", ref true)]
+  val jump_tables = Flags.lookup_flag_entry "jump_tables"
 
   (*************)
   (* Utilities *)
@@ -144,7 +146,7 @@ struct
   fun lookupRhoOpt ({RhoEnv,...} : env) place = RegvarFinMap.lookup RhoEnv place
 
   (* --------------------------------------------------------------------- *)
-  (*                          Pretty printing                              *)
+  (*                          Pretty Printing                              *)
   (* --------------------------------------------------------------------- *)
 
   type StringTree = PP.StringTree
@@ -205,7 +207,62 @@ struct
 	List.length (#args(decomp_cc))
       end
 
-    fun CG_ce_sw(ClosExp.SWITCH(ce,sels,default),f_L,f_sel) = Comment "Switch not implemented"
+    (* Compile Switch Statements *)
+    local
+      fun comment(str,C) = Comment str :: C
+      fun new_label str = Labels.new_named str
+      fun label(lab,C) = Label lab :: C
+      fun jmp(lab,C) = JmpRel lab :: C
+    in
+      fun linear_search(sels,
+			default,
+			compile_sel:'sel * KamInst list -> KamInst list,
+			if_no_match_go_lab: label * KamInst list -> KamInst list,
+			compile_insts: ClosExp.ClosExp * KamInst list -> KamInst list,
+			C) =
+	  JumpTables.linear_search(sels,
+				   default,
+				   comment,
+				   new_label,
+				   compile_sel,
+				   if_no_match_go_lab,
+				   compile_insts,
+				   label,
+				   jmp,
+				   C)
+
+      fun binary_search(sels,
+			default,
+			compile_sel: int * KamInst list -> KamInst list,
+			if_not_equal_go_lab: label * KamInst list -> KamInst list,
+			if_less_than_go_lab: label * KamInst list -> KamInst list,
+			if_greater_than_go_lab: label * KamInst list -> KamInst list,
+			compile_insts: ClosExp.ClosExp * KamInst list -> KamInst list,
+			C) =
+	if !jump_tables then
+	  JumpTables.binary_search(sels,
+				   default,
+				   comment,
+				   new_label,
+				   compile_sel,
+				   if_not_equal_go_lab,
+				   if_less_than_go_lab,
+				   if_greater_than_go_lab,
+				   compile_insts,
+				   label,
+				   jmp,
+				   fn (sel1,sel2) => Int.abs(sel1-sel2),
+				   fn (lab,sel,C) => JmpVector(lab,sel)::C,
+				   fn (lab,C) => DotLabel(lab) :: C, (* add_label_to_jump_tab  *)
+				   eq_lab,C)
+	else
+	  linear_search(sels,
+			default,
+			compile_sel,
+			if_not_equal_go_lab,
+			compile_insts,
+			C)
+    end
 
     fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp) :: acc
       | CG_ce(ClosExp.RVAR place,env,sp,cc,acc)         = access_rho(place,env,sp) :: acc
@@ -313,10 +370,44 @@ struct
 	CG_ce(ce2,env,sp,cc, Push :: PushLbl return_lbl :: PushExnPtr ::	 
 	      CG_ce(ce1,env,sp+3,cc, PopExnPtr :: Pop(2) :: Label return_lbl :: acc))
       end
-      | CG_ce(ClosExp.SWITCH_I sw,env,sp,cc,acc) = die "SWITCH_I not implemented"
-      | CG_ce(ClosExp.SWITCH_S sw,env,sp,cc,acc) = die "SWITCH_S not implemented"
-      | CG_ce(ClosExp.SWITCH_C sw,env,sp,cc,acc) = die "SWITCH_C not implemented"
-      | CG_ce(ClosExp.SWITCH_E sw,env,sp,cc,acc) = die "SWITCH_E not implemented"
+      | CG_ce(ClosExp.SWITCH_I (ClosExp.SWITCH(ce,sels,default)),env,sp,cc,acc) = 
+      CG_ce(ce,env,sp,cc, Push ::
+	    binary_search(sels,
+			  default,
+			  fn (i,C) => ImmedInt i :: C,
+			  fn (lab,C) => IfNotEqJmpRel lab :: C,
+			  fn (lab,C) => IfLessThanJmpRel lab :: C,
+			  fn (lab,C) => IfGreaterThanJmpRel lab :: C,
+			  fn (ce,C) => Pop(1) :: CG_ce(ce,env,sp,cc,C),
+			  acc))
+      | CG_ce(ClosExp.SWITCH_S sw,env,sp,cc,acc) = die "SWITCH_S is unfolded in ClosExp"
+      | CG_ce(ClosExp.SWITCH_C (ClosExp.SWITCH(ce,sels,default)),env,sp,cc,acc) =
+      let (* NOTE: selectors in sels are tagged in ClosExp but the operand is tagged here! *)
+	val con_kind = 
+	  (case sels of
+	     [] => die "CG_ce: SWITCH_C sels is empty"
+	   | ((con,con_kind),_)::rest => con_kind)
+	val sels' = map (fn ((con,con_kind),sel_ce) => 
+			 case con_kind of
+			   ClosExp.ENUM i => (i,sel_ce)
+			 | ClosExp.UNBOXED i => (i,sel_ce)
+			 | ClosExp.BOXED i => (i,sel_ce)) sels
+      in
+	CG_ce(ce,env,sp,cc,
+	      (case con_kind of
+		 ClosExp.ENUM _ => Nop
+	       | ClosExp.UNBOXED _ => UbTagCon
+	       | ClosExp.BOXED _ => Select(0)) :: Push ::
+		 binary_search(sels',
+			       default,
+			       fn (i,C) => ImmedInt i :: C,
+			       fn (lab,C) => IfNotEqJmpRel lab :: C,
+			       fn (lab,C) => IfLessThanJmpRel lab :: C,
+			       fn (lab,C) => IfGreaterThanJmpRel lab :: C,
+			       fn (ce,C) => Pop(1) :: CG_ce(ce,env,sp,cc,C),
+			       acc))
+      end
+      | CG_ce(ClosExp.SWITCH_E sw,env,sp,cc,acc) = die "SWITCH_E is unfolded in ClosExp"
       | CG_ce(ClosExp.CON0{con,con_kind,aux_regions,alloc},env,sp,cc,acc) =
       (case con_kind of
 	 ClosExp.ENUM i => 
@@ -375,85 +466,74 @@ struct
       | CG_ce(ClosExp.RESET_REGIONS{force=true,regions_for_resetting},env,sp,cc,acc) =
 	  foldr (fn (alloc,C) => force_reset_aux_region(alloc,env,sp,cc,C)) acc regions_for_resetting
       | CG_ce(ClosExp.CCALL{name,rhos_for_result,args},env,sp,cc,acc) = die "CCALL not implemented"
-(* from LineStmt	  if BI.is_prim name then PRIM{name=name,args=ces_to_atoms rhos_for_result @ ces_to_atoms args,
-				       res=map VAR lvars_res}::acc
-	  else CCALL{name=name,args=ces_to_atoms args,
-		     rhos_for_result=ces_to_atoms rhos_for_result,
-		     res=map VAR lvars_res}::acc*)
-(* from CodeGen.sml
-	   | LS.PRIM{name,args,res=[SS.FLOW_VAR_ATY(lv,lab_t,lab_f)]} => 
-		  COMMENT (pr_ls ls) ::
-		  let
-		    val (lab_t,lab_f) = (LocalLab lab_t,LocalLab lab_f)
-		  in
-		    (case (name,args) of
-		       ("__equal_int",[x,y]) => cmpi_and_jmp(EQUAL,x,y,lab_t,lab_f,size_ff,C)
-		     | ("__less_int",[x,y]) => cmpi_and_jmp(LESSTHAN,x,y,lab_t,lab_f,size_ff,C)
-		     | ("__lesseq_int",[x,y]) => cmpi_and_jmp(LESSEQUAL,x,y,lab_t,lab_f,size_ff,C)
-		     | ("__greater_int",[x,y]) => cmpi_and_jmp(GREATERTHAN,x,y,lab_t,lab_f,size_ff,C)
-		     | ("__greatereq_int",[x,y]) => cmpi_and_jmp(GREATEREQUAL,x,y,lab_t,lab_f,size_ff,C)
-		     | _ => die "CG_ls: Unknown PRIM used on Flow Variable")
-		  end
-	   | LS.PRIM{name,args,res} => 
-		  COMMENT (pr_ls ls) :: 
-		  (* Note that the prim names are defined in BackendInfo! *)
-		  (case (name,args,res) 
-		     of ("__equal_int",[x,y],[d])            => cmpi(EQUAL,x,y,d,size_ff,C)
-		      | ("__minus_int",[x,y],[d])            => subi(x,y,d,size_ff,C)
-		      | ("__plus_int",[x,y],[d])             => addi(x,y,d,size_ff,C)
-		      | ("__neg_int",[x],[d])                => negi(x,d,size_ff,C)
-		      | ("__abs_int",[x],[d])                => absi(x,d,size_ff,C)
-		      | ("__less_int",[x,y],[d])             => cmpi(LESSTHAN,x,y,d,size_ff,C)
-		      | ("__lesseq_int",[x,y],[d])           => cmpi(LESSEQUAL,x,y,d,size_ff,C)
-		      | ("__greater_int",[x,y],[d])          => cmpi(GREATERTHAN,x,y,d,size_ff,C)
-		      | ("__greatereq_int",[x,y],[d])        => cmpi(GREATEREQUAL,x,y,d,size_ff,C)
-		      | ("__plus_float",[b,x,y],[d])         => addf(x,y,b,d,size_ff,C)
-		      | ("__minus_float",[b,x,y],[d])        => subf(x,y,b,d,size_ff,C)
-		      | ("__mul_float",[b,x,y],[d])          => mulf(x,y,b,d,size_ff,C)
-		      | ("__neg_float",[b,x],[d])            => negf(b,x,d,size_ff,C)
-		      | ("__abs_float",[b,x],[d])            => absf(b,x,d,size_ff,C)
-		      | ("__less_float",[x,y],[d])           => cmpf(LESSTHAN,x,y,d,size_ff,C)
-		      | ("__lesseq_float",[x,y],[d])         => cmpf(LESSEQUAL,x,y,d,size_ff,C)
-		      | ("__greater_float",[x,y],[d])        => cmpf(GREATERTHAN,x,y,d,size_ff,C)
-		      | ("__greatereq_float",[x,y],[d])      => cmpf(GREATEREQUAL,x,y,d,size_ff,C)
+	  let
+	    (* Note that the prim names are defined in BackendInfo! *)
+	    fun prim_name_to_KAM name =
+	      (case name
+		 of "__equal_int"         => PrimEqual
+	       | "__minus_int"            => PrimSubi
+	       | "__plus_int"             => PrimAddi
+	       | "__neg_int"              => PrimNegi
+	       | "__abs_int"              => PrimAbsi
+	       | "__less_int"             => PrimLessThan
+	       | "__lesseq_int"           => PrimLessEqual
+	       | "__greater_int"          => PrimGreaterThan
+	       | "__greatereq_int"        => PrimGreaterEqual
+	       | "__plus_float"           => PrimAddf
+	       | "__minus_float"          => PrimSubf
+	       | "__mul_float"            => PrimMulf
+	       | "__neg_float"            => PrimNegf
+	       | "__abs_float"            => PrimAbsf
+	       | "__less_float"           => PrimLessThan
+	       | "__lesseq_float"         => PrimLessEqual
+	       | "__greater_float"        => PrimGreaterThan
+	       | "__greatereq_float"      => PrimGreaterEqual
 		       
-		      | ("less_word__",[x,y],[d])            => cmpi(LESSTHAN_UNSIGNED,x,y,d,size_ff,C)
-		      | ("greater_word__",[x,y],[d])         => cmpi(GREATERTHAN_UNSIGNED,x,y,d,size_ff,C)
-		      | ("lesseq_word__",[x,y],[d])          => cmpi(LESSEQUAL_UNSIGNED,x,y,d,size_ff,C)
-		      | ("greatereq_word__",[x,y],[d])       => cmpi(GREATEREQUAL_UNSIGNED,x,y,d,size_ff,C)
+	       | "less_word__"            => PrimLessThanUnsigned
+	       | "greater_word__"         => PrimGreaterThanUnsigned
+	       | "lesseq_word__"          => PrimLessEqualUnsigned
+	       | "greatereq_word__"       => PrimGreaterEqualUnsigned
 		       
-		      | ("plus_word8__",[x,y],[d])           => addw8(x,y,d,size_ff,C)
-		      | ("minus_word8__",[x,y],[d])          => subw8(x,y,d,size_ff,C)
+	       | "plus_word8__"           => PrimAddw8
+	       | "minus_word8__"          => PrimSubw8
 		       
-		      | ("and__",[x,y],[d])                  => andi(x,y,d,size_ff,C)
-		      | ("or__",[x,y],[d])                   => ori(x,y,d,size_ff,C)
-		      | ("xor__",[x,y],[d])                  => xori(x,y,d,size_ff,C)
-		      | ("shift_left__",[x,y],[d])           => shift_lefti(x,y,d,size_ff,C)
-		      | ("shift_right_signed__",[x,y],[d])   => shift_right_signedi(x,y,d,size_ff,C)
-		      | ("shift_right_unsigned__",[x,y],[d]) => shift_right_unsignedi(x,y,d,size_ff,C)
+	       | "and__"                  => PrimAndi
+	       | "or__"                   => PrimOri
+	       | "xor__"                  => PrimXori
+	       | "shift_left__"           => PrimShiftLefti
+	       | "shift_right_signed__"   => PrimShiftRightSignedi
+	       | "shift_right_unsigned__" => PrimShiftRightUnsignedi
 		       
-		      | ("plus_word__",[x,y],[d])            => addw(x,y,d,size_ff,C)
-		      | ("minus_word__",[x,y],[d])           => subw(x,y,d,size_ff,C)
+	       | "plus_word__"            => PrimAddw
+	       | "minus_word__"           => PrimSubw
 		       
-		      | ("__fresh_exname",[],[aty]) =>
-		       load_label_addr_kill_gen1(exn_counter_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,size_ff,
-		       LDW{d="0",s=Space 0,b=tmp_reg1,t=mrp} ::
-		       move_reg_into_aty_kill_gen1(mrp,aty,size_ff,
-		       ADDI {cond=NEVER, i="1", r=mrp, t=mrp} ::
-		       STW {r=mrp, d="0", s=Space 0, b=tmp_reg1} :: C))
-		      | _ => die ("PRIM(" ^ name ^ ") not implemented"))
+	       | "__fresh_exname"         => PrimFreshExname
+	       | _ => die ("PRIM(" ^ name ^ ") not implemented"))
 
-	   | LS.CCALL{name,args,rhos_for_result,res} => 
-		  COMMENT (pr_ls ls) :: 
-		  (case (name, rhos_for_result@args, res)
-		     of ("__mul_int", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => muli(x,y,d,C) 
-		      | ("mul_word__", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => mulw(x,y,d,C)
-		      | ("mul_word8__", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => mulw8(x,y,d,C)
-		      | ("__div_float",[b,x,y],[d]) => divf(x,y,b,d,size_ff,C)
-	              | (_,all_args,[]) => compile_c_call_prim(name,all_args,NONE,size_ff,tmp_reg1,C)
-		      | (_,all_args,[res_aty]) => compile_c_call_prim(name,all_args,SOME res_aty,size_ff,tmp_reg1,C)
-		      | _ => die "CCall with more than one result variable"))
-*)
+	    fun name_to_built_in_C_function_index name =
+	      case name
+		of "__mul_int" => 0
+	      | "mul_word__" => 1
+	      | "mul_word8__" => 2
+	      | "__div_float" => 3
+	      | _ => die ("CG_ce.name_to_built_in_C_function_index: " ^ name ^ " not implemented.")
+	  in
+	    if BI.is_prim name then 
+	      (* rhos_for_result comes after args so that the accumulator holds the *)
+	      (* pointer to allocated memory. *)
+	      comp_ces(args @ rhos_for_result,env,sp,cc,
+		       prim_name_to_KAM name :: acc)
+	    else
+	      let
+	      (* rhos_for_result comes before args, because that is what the C *)
+	      (* functions expects. *)
+		val all_args = rhos_for_result @ args
+	      in
+		comp_ces(all_args,env,sp,cc,
+			 Ccall(name_to_built_in_C_function_index name,
+			       List.length all_args) :: acc)
+	      end
+	  end
       | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = die "FRAME not implemented"
 
     and force_reset_aux_region(sma,env,sp,cc,acc) = 

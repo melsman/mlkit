@@ -23,6 +23,8 @@ functor Kam(structure Labels : ADDRESS_LABELS
     (*----------------------------------------------------------*)
 
     type label = Labels.label
+    fun eq_lab(l1,l2) = Labels.eq(l1,l2)
+
 (*    datatype lab = 
         DatLab of label      (* For data to propagate across program units *)
       | LocalLab of label    (* Local label inside a block *)
@@ -86,6 +88,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | SetBit30
       | SetBit31
       | ClearBit30And31
+      | UbTagCon
 	
       | SelectStack of int
       | SelectEnv of int
@@ -112,8 +115,15 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | ApplyFunJmpNoClos of label * int * int
       | Return of int * int
 
+      | Ccall of int * int
+
       | Label of label
-      | Jmp of label
+      | JmpRel of label
+      | IfNotEqJmpRel of label
+      | IfLessThanJmpRel of label
+      | IfGreaterThanJmpRel of label
+      | DotLabel of label
+      | JmpVector of label * int
 
       | Raise
       | PushExnPtr
@@ -131,6 +141,42 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | Comment of string
       | Nop
+
+      | PrimEqual
+      | PrimSubi
+      | PrimAddi
+      | PrimNegi
+      | PrimAbsi
+
+      | PrimAddf
+      | PrimSubf
+      | PrimMulf
+      | PrimNegf
+      | PrimAbsf
+      | PrimLessThan
+      | PrimLessEqual
+      | PrimGreaterThan
+      | PrimGreaterEqual
+	
+      | PrimLessThanUnsigned
+      | PrimGreaterThanUnsigned
+      | PrimLessEqualUnsigned
+      | PrimGreaterEqualUnsigned
+	
+      | PrimAddw8
+      | PrimSubw8
+	
+      | PrimAndi
+      | PrimOri
+      | PrimXori
+      | PrimShiftLefti
+      | PrimShiftRightSignedi
+      | PrimShiftRightUnsignedi
+	
+      | PrimAddw
+      | PrimSubw
+	
+      | PrimFreshExname
 
     datatype TopDecl =
         FUN of label * KamInst list
@@ -211,6 +257,7 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | SetBit30 => "SetBit30" :: acc
       | SetBit31 => "SetBit31" :: acc
       | ClearBit30And31 => "ClearBit30And31" :: acc
+      | UbTagCon => "UbTagCon" :: acc
 	
       | SelectStack(off) => "SelectStack(" :: (pp_i off) :: ")" :: acc
       | SelectEnv(off) => "SelectEnv(" :: (pp_i off) :: ")" :: acc
@@ -237,8 +284,15 @@ functor Kam(structure Labels : ADDRESS_LABELS
       | ApplyFunJmpNoClos(lab,n1,n2) => "ApplyFunJmpNoClos(" :: (pp_lab lab) :: "," :: (pp_i n1) :: "," :: (pp_i n2) :: ")" :: acc
       | Return(n1,n2) => "Return(" :: (pp_i n1) :: "," :: (pp_i n2) :: ")" :: acc
 
+      | Ccall(idx,arity) => "Ccall(" :: (pp_i idx) :: "," :: (pp_i arity) :: ")" :: acc
+
       | Label(lab) => "Label(" :: (pp_lab lab) :: ")" :: acc
-      | Jmp(lab) => "Jmp(" :: (pp_lab lab) :: ")" :: acc
+      | JmpRel(lab) => "JmpRel(" :: (pp_lab lab) :: ")" :: acc
+      | IfNotEqJmpRel(lab) => "IfNotEqJmpRel(" :: (pp_lab lab) :: ")" :: acc
+      | IfLessThanJmpRel(lab) => "IfLessThanJmpRel(" :: (pp_lab lab) :: ")" :: acc
+      | IfGreaterThanJmpRel(lab) => "IfGreaterThanJmpRel(" :: (pp_lab lab) :: ")" :: acc
+      | DotLabel(lab) => "DotLabel(" :: (pp_lab lab) :: ")" :: acc
+      | JmpVector(lab,first_sel) => "JmpVector(" :: (pp_lab lab) :: "," :: (pp_i first_sel) :: ")" :: acc
 
       | Raise => "Raise" :: acc
       | PushExnPtr => "PushExnPtr" :: acc
@@ -256,6 +310,43 @@ functor Kam(structure Labels : ADDRESS_LABELS
 
       | Comment(s) => "Comment[" :: s :: "]" :: acc
       | Nop => "Nop" :: acc
+
+      | PrimEqual => "PrimEqual" :: acc
+      | PrimSubi => "PrimSubi" :: acc
+      | PrimAddi => "PrimAddi" :: acc
+      | PrimNegi => "PrimNegi" :: acc                    
+      | PrimAbsi => "PrimAbsi" :: acc
+
+      | PrimAddf => "PrimAddf" :: acc
+      | PrimSubf => "PrimSubf" :: acc                    
+      | PrimMulf => "PrimMulf" :: acc
+      | PrimNegf => "PrimNegf" :: acc
+      | PrimAbsf => "PrimAbsf" :: acc                    
+
+      | PrimLessThan => "PrimLessThan" :: acc
+      | PrimLessEqual => "PrimLessEqual" :: acc
+      | PrimGreaterThan => "PrimGreaterThan" :: acc
+      | PrimGreaterEqual => "PrimGreaterEqual" :: acc
+					                              
+      | PrimLessThanUnsigned => "PrimLessThanUnsigned" :: acc
+      | PrimGreaterThanUnsigned	=> "PrimGreaterThanUnsigned" :: acc
+      | PrimLessEqualUnsigned => "PrimLessEqualUnsigned" :: acc
+      | PrimGreaterEqualUnsigned => "PrimGreaterEqualUnsigned" :: acc
+					                              
+      | PrimAddw8 => "PrimAddw8" :: acc
+      | PrimSubw8 => "PrimSubw8" :: acc
+					                              
+      | PrimAndi => "PrimAndi" :: acc
+      | PrimOri => "PrimOri" :: acc
+      | PrimXori => "PrimXori" :: acc
+      | PrimShiftLefti => "PrimShiftLefti" :: acc
+      | PrimShiftRightSignedi => "PrimShiftRightSignedi" :: acc
+      | PrimShiftRightUnsignedi	=> "PrimShiftRightUnsignedi" :: acc
+					                              
+      | PrimAddw => "PrimAddw" :: acc
+      | PrimSubw => "PrimSubw" :: acc
+					                              
+      | PrimFreshExname => "PrimFreshExname" :: acc
 
     fun pr_inst i = concat(pp_inst(i,[]))
 
