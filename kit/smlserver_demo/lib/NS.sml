@@ -22,6 +22,8 @@ signature NS = sig
   val write          : quot -> status
   val returnHeaders  : unit -> unit
   val returnRedirect : string -> status
+  val returnFileMime : string -> string -> status
+  val returnFile     : string -> status
   val getMimeType    : string -> string
   val getHostByAddr  : string -> string option 
   val encodeUrl      : string -> string
@@ -32,7 +34,8 @@ signature NS = sig
   val exit           : unit -> 'a
   val registerTrap   : string -> unit
   val scheduleScript : string -> int -> unit
-  val scheduleDaily  : string -> {hour:int, minute:int} -> unit
+  val scheduleDaily  : string -> {hour:int, minute:int} 
+                       -> unit
 
   (* sub-structures *)
   structure Set      : NS_SET
@@ -92,6 +95,18 @@ end
 
  [returnRedirect loc] sends a redirection HTTP response to 
  location loc. Returns OK on success and ERROR on failure.
+
+ [returnFileMime mimetype file] returns the entire contents 
+ of the given file to the client. In addition to setting the 
+ HTTP status response line to 200 and the Content-Type header 
+ from the given parameter, the function also uses the stat 
+ system call to generate the appropriate Last-Modified and
+ Content-Length headers. The function returns a status of OK
+ or ERROR.
+
+ [returnFile file] as returnFileMime, but gets the 
+ Content-Type (mimetype) argument from calling the function
+ getMimeType with the given file as parameter.
 
  [getMimeType f] guesses the Mime type based on the 
  extension of the filename f. Case is ignored. The return 
