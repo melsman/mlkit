@@ -122,9 +122,17 @@ functor TyName(
 			     type dom = TyName
 			     val eq = eq)
 *)
+(*
     structure Set : KIT_MONO_SET = EqSetList(structure PP = PrettyPrint
 					     type elt = TyName
 					     val eq = eq)
+*)
+
+    structure Set = QuasiSet(structure IntFinMap = IntFinMap
+			     structure QD = QD
+			     structure Name = Name
+			     structure Crash = Crash
+			     structure PP = PrettyPrint)
 
     type StringTree = PrettyPrint.StringTree
     val layout = PrettyPrint.LEAF o pr_TyName

@@ -152,13 +152,13 @@ struct
 
   fun fromList l = addList l empty
     
-  exception Restrict
-  fun restrict (m, l) =
+  exception Restrict of string
+  fun restrict (pp, m, l) =
     let fun res ([], a) = a
 	  | res (d::rest, a) =
       case lookup m d
 	       of SOME r => res(rest,add(d,r,a))
-		| NONE => raise Restrict
+		| NONE => raise Restrict(pp d)
     in res (l, empty)
     end
 

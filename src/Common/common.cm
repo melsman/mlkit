@@ -42,10 +42,11 @@ IntFinMapPT.sml
 (*IntFinMap.sml*)
 OrderFinMap.sml
 QuasiMap.sml
+QuasiSet.sml
 
 IntSet.sml
 NatSet.sml
-EqSetList.sml
+(*EqSetList.sml*)
 KIT_MONO_SET.sml
 OrderSet.sml
 

@@ -366,11 +366,26 @@ functor RegionStatEnv(structure Name : NAME
       ExconMap.enrich equal_excon_res (excon_env,excon_env1) andalso
       LvarMap.enrich equal_lvar_res (lvar_env,lvar_env1)
 
-    fun restrict({tyname_env, con_env, excon_env,lvar_env}, {tynames,cons,excons,lvars}) =
-      {tyname_env=TyNameMap.restrict(tyname_env,tynames),
-       con_env=ConMap.restrict(con_env,cons),
-       excon_env=ExconMap.restrict(excon_env,excons),
-       lvar_env=LvarMap.restrict(lvar_env,lvars)}
+    local
+      fun tyname_env_restrict(tyname_env,tynames) =
+	TyNameMap.restrict(TyName.pr_TyName,tyname_env,tynames)
+	handle TyNameMap.Restrict s => die ("restrict; I cannot find tyname " ^ s ^ " in the environment")
+      fun con_env_restrict(con_env,cons) =
+	ConMap.restrict(Con.pr_con,con_env,cons)
+	handle ConMap.Restrict s => die ("restrict; I cannot find con " ^ s ^ " in the environment")
+      fun excon_env_restrict(excon_env,excons) =
+	ExconMap.restrict(Excon.pr_excon,excon_env,excons)
+	handle ExconMap.Restrict s => die ("restrict; I cannot find excon " ^ s ^ " in the environment")
+      fun lvar_env_restrict(lvar_env,lvars) =
+	LvarMap.restrict(Lvar.pr_lvar,lvar_env,lvars)
+	handle LvarMap.Restrict s => die ("restrict; I cannot find lvar " ^ s ^ " in the environment")
+    in
+      fun restrict({tyname_env, con_env, excon_env,lvar_env}, {tynames,cons,excons,lvars}) =
+	{tyname_env=tyname_env_restrict(tyname_env,tynames),
+	 con_env=con_env_restrict(con_env,cons),
+	 excon_env=excon_env_restrict(excon_env,excons),
+	 lvar_env=lvar_env_restrict(lvar_env,lvars)}
+    end
 
     type effectvar = E.effect
     fun places_effectvarsRSE rse = 

@@ -50,29 +50,38 @@ signature MANAGER_OBJECTS =
 	val layout : IntFunEnv -> StringTree
       end
 
-    type CEnv and CompileBasis and TopCompileBasis and longtycon and longid and longstrid and TopIntBasis
-    structure IntBasis :
+    type IntSigEnv and sigid
+    structure IntSigEnv :
       sig
-	val mk : IntFunEnv * CEnv * CompileBasis -> IntBasis
-	val un : IntBasis -> IntFunEnv * CEnv * CompileBasis
-	val mk' : IntFunEnv * CEnv * TopCompileBasis -> TopIntBasis
-	val un' : TopIntBasis -> IntFunEnv * CEnv * TopCompileBasis
-	val empty : IntBasis
-	val plus : IntBasis * IntBasis -> IntBasis
-	val match : IntBasis * TopIntBasis -> IntBasis
-	val agree : longstrid list * TopIntBasis * TopIntBasis -> bool   (* structure agreement *)
-	val layout : IntBasis -> StringTree
-
-	val enrich : TopIntBasis * TopIntBasis -> bool
-	val topify : IntBasis -> TopIntBasis
-
-	val initial : TopIntBasis
-	val plus' : TopIntBasis * TopIntBasis -> TopIntBasis
-	val restrict : TopIntBasis * {funids:funid list, longstrids: longstrid list,
-				      longvids: longid list, longtycons: longtycon list} -> IntBasis
+	val empty : IntSigEnv
+	val initial : IntSigEnv
+	val plus : IntSigEnv * IntSigEnv -> IntSigEnv
+	val add : sigid * TyName.Set.Set * IntSigEnv -> IntSigEnv      (* tynames that occurs free in a signature *)
+	val lookup : IntSigEnv -> sigid -> TyName.Set.Set              (* dies on failure *)
+	val restrict : IntSigEnv * sigid list -> IntSigEnv
+	val enrich : IntSigEnv * IntSigEnv -> bool
+	val layout : IntSigEnv -> StringTree
       end
 
-    type Basis and TopBasis and InfixBasis and ElabBasis and opaq_env and sigid
+    type CEnv and CompileBasis and longtycon and longid and longstrid
+    structure IntBasis :
+      sig
+	val mk : IntFunEnv * IntSigEnv * CEnv * CompileBasis -> IntBasis
+	val un : IntBasis -> IntFunEnv * IntSigEnv * CEnv * CompileBasis
+	val empty : IntBasis
+	val plus : IntBasis * IntBasis -> IntBasis
+	val match : IntBasis * IntBasis -> IntBasis
+	val agree : longstrid list * IntBasis * IntBasis -> bool   (* structure agreement *)
+	val layout : IntBasis -> StringTree
+
+	val enrich : IntBasis * IntBasis -> bool
+
+	val initial : IntBasis
+	val restrict : IntBasis * {funids:funid list, sigids:sigid list, longstrids: longstrid list,
+				   longvids: longid list, longtycons: longtycon list} -> IntBasis
+      end
+
+    type Basis and InfixBasis and ElabBasis and opaq_env
     structure Basis :
       sig
 	val empty : Basis
@@ -81,14 +90,10 @@ signature MANAGER_OBJECTS =
 	val plus : Basis * Basis -> Basis
 	val layout : Basis -> StringTree
 
-	val agree : longstrid list * TopBasis * (TopBasis * TyName.Set.Set) -> bool
-	val enrich : TopBasis * (TopBasis * TyName.Set.Set) -> bool
+	val agree : longstrid list * Basis * (Basis * TyName.Set.Set) -> bool
+	val enrich : Basis * (Basis * TyName.Set.Set) -> bool
 
-	val initial : TopBasis
-	val topify : Basis -> TopBasis
-	val plus' : TopBasis * TopBasis -> TopBasis
-	val mk' : InfixBasis * ElabBasis * opaq_env * TopIntBasis -> TopBasis 
-	val un' : TopBasis -> InfixBasis * ElabBasis * opaq_env * TopIntBasis
+	val initial : Basis
       end
 
     type name
@@ -121,11 +126,11 @@ signature MANAGER_OBJECTS =
 	type elab_entry = InfixBasis * ElabBasis * longstrid list * (opaq_env * TyName.Set.Set) * 
 	  name list * InfixBasis * ElabBasis * opaq_env
 
-	type int_entry = funstamp * ElabEnv * TopIntBasis * longstrid list * name list * 
+	type int_entry = funstamp * ElabEnv * IntBasis * longstrid list * name list * 
 	  modcode * IntBasis
 
-	type int_entry' = funstamp * ElabEnv * TopIntBasis * longstrid list * name list * 
-	  modcode * TopIntBasis
+	type int_entry' = funstamp * ElabEnv * IntBasis * longstrid list * name list * 
+	  modcode * IntBasis
 	  
 	val lookup_elab : (prjid * funid) -> (int * elab_entry) option
 	val lookup_int : (prjid * funid) -> (int * int_entry) option    (* IntModules *) 

@@ -10,7 +10,7 @@ CFILES = $(OFILES:%.o=%.c)
 	gcc -c -O3 -o $*.o $<
 
 rp2ps: $(OFILES)
-	gcc -o rp2ps $(OFILES) -lM
+	gcc -o rp2ps $(OFILES) -lm
 
 clean:
 	rm -f *.o core a.out *~ 

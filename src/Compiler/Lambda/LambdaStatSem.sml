@@ -305,35 +305,31 @@ old*)
 	fun restrict(env as {ftv,con_env,tyname_env,lvar_env,excon_env}: env,{cons,tynames,lvars,excons}) =
 	  let val _ = if NatSet.isEmpty ftv then () else die "restrict.ftvset not empty"
               fun say s = print(s^"\n");
-              fun sayenv() = PP.outputTree(say,layout_env env, !Flags.colwidth)
-	      val con_env1 = ConMap.restrict(con_env,cons)
-                             handle ConMap.Restrict => 
-                               (say "problems with constructor environment"; 
-                                say ("constructor ");
+              fun sayenv() = PP.outputTree(print,layout_env env, !Flags.colwidth)
+	      val con_env1 = ConMap.restrict(Con.pr_con,con_env,cons)
+                             handle ConMap.Restrict s => 
+                               (say ("Problem with constructor environment; constructor " ^ s); 
                                 say ("is not in the domain of the environment:");
                                 sayenv();
-                                die "LambdaStatSem.restrict")
-	      val tyname_env1 = TyNameMap.restrict(tyname_env,tynames)
-                             handle TyNameMap.Restrict => 
-                               (say "problems with tyname environment"; 
-                                say ("tyname ");
+                                die "restrict")
+	      val tyname_env1 = TyNameMap.restrict(TyName.pr_TyName,tyname_env,tynames)
+                             handle TyNameMap.Restrict s => 
+                               (say ("Problem with tyname environment; tyname " ^ s); 
                                 say ("is not in the domain of the environment:");
                                 sayenv();
-                                die "LambdaStatSem.restrict")
-	      val lvar_env1 = LvarMap.restrict(lvar_env,lvars)
-                             handle LvarMap.Restrict => 
-                               (say "problems with lvar environment"; 
-                                say ("lvar ");
+                                die "restrict")
+	      val lvar_env1 = LvarMap.restrict(Lvars.pr_lvar,lvar_env,lvars)
+                             handle LvarMap.Restrict s => 
+                               (say ("Problem with lvar environment; lvar " ^ s); 
                                 say ("is not in the domain of the environment:");
                                 sayenv();
-                                die "LambdaStatSem.restrict")
-	      val excon_env1 = ExconMap.restrict(excon_env,excons)
-                             handle ExconMap.Restrict => 
-                               (say "problems with excon environment"; 
-                                say ("excon ");
+                                die "restrict")
+	      val excon_env1 = ExconMap.restrict(Excon.pr_excon,excon_env,excons)
+                             handle ExconMap.Restrict s => 
+                               (say ("Problem with excon environment; excon " ^ s); 
                                 say ("is not in the domain of the environment:");
                                 sayenv();
-                                die "LambdaStatSem.restrict")
+                                die "restrict")
 	  in {ftv=ftv,con_env=con_env1, tyname_env=tyname_env1,
 	      lvar_env=lvar_env1, excon_env=excon_env1}
 	  end

@@ -29,8 +29,8 @@ signature MONO_FINMAP =
       (* mergeMap f m1 m2; merges two finite maps, with a composition 
          function to apply to the codomains of domains which clash. *)
 
-    exception Restrict
-    val restrict : 'b map * dom list -> 'b map
+    exception Restrict of string
+    val restrict : (dom -> string) * 'b map * dom list -> 'b map
       (* raises exception Restrict if an element
          of the list is not in the domain of the map. *)
 
