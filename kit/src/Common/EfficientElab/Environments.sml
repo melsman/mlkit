@@ -902,6 +902,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	val TE_char = te (TyCon.tycon_CHAR, TyName.tyName_CHAR)
 	val TE_word = te (TyCon.tycon_WORD, TyName.tyName_WORD)
 	val TE_word8 = te (TyCon.tycon_WORD8, TyName.tyName_WORD8)
+	val TE_word_boxed = te (TyCon.tycon_WORD_BOXED, TyName.tyName_WORD_BOXED)
 	val TE_real = te (TyCon.tycon_REAL, TyName.tyName_REAL)
 	val TE_string = te (TyCon.tycon_STRING, TyName.tyName_STRING)
 	val TE_exn = te (TyCon.tycon_EXN, TyName.tyName_EXN)
@@ -1054,7 +1055,9 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 			       Type.Bool)
 
 	  val tyvar_wordint = TyVar.fresh_overloaded [TyName.tyName_INT,
-						      TyName.tyName_WORD, TyName.tyName_WORD8]
+						      TyName.tyName_WORD, 
+						      TyName.tyName_WORD8,
+						      TyName.tyName_WORD_BOXED]
 	  val tau_wordint = Type.from_TyVar tyvar_wordint
 	  val tau_wordint_X_wordint_to_wordint =
 	        Type.mk_Arrow (Type.from_pair (tau_wordint, tau_wordint),
@@ -1119,7 +1122,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	val TE_word_table = te (TyCon.tycon_WORD_TABLE, TyName.tyName_WORD_TABLE)
 
 	val TE_initial = joinTE [TE_unit, TE_int, TE_real,
-				 TE_word, TE_word8, TE_char, 
+				 TE_word, TE_word8, 
+				 TE_word_boxed (*2001-02-17, Niels*), TE_char, 
 				 TE_string, TE_exn, TE_ref, TE_bool, TE_list,
 				 TE_word_table]
 	local 

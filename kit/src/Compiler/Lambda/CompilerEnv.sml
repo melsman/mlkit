@@ -135,6 +135,7 @@ functor CompilerEnv(structure Ident: IDENT
     in val initialTyEnv = TYENV(initMap [(tycon_INT, ([tyName_INT], emptyCEnv)),
 					 (tycon_WORD, ([tyName_INT], emptyCEnv)),
 					 (tycon_WORD8, ([tyName_INT], emptyCEnv)),
+					 (tycon_WORD_BOXED, ([tyName_WORD_BOXED], emptyCEnv)), (* 2001-02-17, Niels *)
 					 (tycon_REAL, ([tyName_REAL], emptyCEnv)),
 					 (tycon_STRING, ([tyName_STRING], emptyCEnv)),
 					 (tycon_CHAR, ([tyName_INT], emptyCEnv)),

@@ -61,6 +61,7 @@ barnes-hut.pm           tx tc
 nucleic.pm              tx tc
 ray.pm                  tx tc
 ratio-regions.sml       tx tc
+kitmolgard.sml          tx tc
 msort.pm                tx tc 
 tststrcmp.sml                 
 FuhMishra.pm            tx tc 

@@ -27,6 +27,7 @@ signature BACKEND_INFO =
     val pr_tag_i : int -> string
 
     val tag_real   : bool -> Word32.word
+    val tag_word_boxed : bool -> Word32.word
     val tag_string : bool * int -> Word32.word
     val tag_record : bool * int -> Word32.word
     val tag_con0   : bool * int -> Word32.word

@@ -60,6 +60,7 @@ signature TYNAME =
     val tyName_INT     : TyName
     val tyName_WORD    : TyName
     val tyName_WORD8   : TyName
+    val tyName_WORD_BOXED : TyName (* 2001-02-17, Niels *)
     val tyName_REAL    : TyName
     val tyName_STRING  : TyName
     val tyName_CHAR    : TyName

@@ -75,6 +75,7 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
     val ml_unit          = 1     (* The representation of unit *)
 
     fun tag_real(i:bool)              = gen_record_tag(3,3,i,6)
+    fun tag_word_boxed(i:bool)        = gen_record_tag(1,1,i,6)
     fun tag_string(i:bool,size)       = gen_string_tag(size,i,1)
     fun tag_record(i:bool,size)       = gen_record_tag(size,0,i,6)
     fun tag_con0(i:bool,c_tag)        = gen_string_tag(c_tag,i,2)
@@ -151,7 +152,8 @@ functor BackendInfo(structure Labels : ADDRESS_LABELS
 		 "__greater_float", "__greatereq_float", "less_word__", "greater_word__",
 		 "lesseq_word__", "greatereq_word__", "plus_word8__", "minus_word8__",
 		 (*"mul_word8__",*) "and__", "or__", "xor__", "shift_left__", "shift_right_signed__",
-		 "shift_right_unsigned__", "plus_word__", "minus_word__" (*, "mul_word__"*)] @ extra_prims
+		 "shift_right_unsigned__", "plus_word__", "minus_word__" (*, "mul_word__"*),
+		 "toIntw32boxed__"] @ extra_prims
 
     fun member n [] = false
       | member n (n'::ns) = n=n' orelse member n ns

@@ -323,7 +323,7 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     fun ast2lambda(ce, strdecs) =
-      (chat "Compiling abstract syntax tree into lambda language begin ...";
+      (chat "[Compiling abstract syntax tree into lambda language...";
        Timing.timing_begin();
        let val _ = LambdaExp.reset()  (* Reset type variable counter to improve pretty printing; The generated
 				       * Lambda programs are closed w.r.t. type variables, because code 
@@ -334,7 +334,7 @@ functor Compile(structure Excon : EXCON
 	   val declared_lvars = CompilerEnv.lvarsOfCEnv ce1
 	   val declared_excons = CompilerEnv.exconsOfCEnv ce1
        in  
-	 chat "Compiling abstract syntax tree into lambda language end.";
+	 chat "]\n";
 	 ifthen (!Flags.DEBUG_COMPILER) (fn _ => display("Report: UnOpt", layoutLambdaPgm lamb));
 	 (lamb,ce1, declared_lvars, declared_excons) 
      end)
@@ -360,13 +360,13 @@ functor Compile(structure Excon : EXCON
 
     fun type_check_lambda (a,b) =
       if Flags.is_on "type_check_lambda" then
-	(chat "Type checking lambda term begin ...";
+	(chat "[Type checking lambda term...";
 	 Timing.timing_begin();
 	 let 
 	   val env' = Timing.timing_end_res ("CheckLam",(LambdaStatSem.type_check {env = a,  letrec_polymorphism_only = false,
                   pgm =  b}))
 	 in
-	   chat "Type checking lambda term end.";
+	   chat "]\n";
 	   env'
 	 end)
       else LambdaStatSem.empty
@@ -378,12 +378,12 @@ functor Compile(structure Excon : EXCON
 
     fun elim_eq_lambda (env,lamb) =
       if Flags.is_on "eliminate_polymorphic_equality" then
-	(chat "Eliminating polymorphic equality begin ...";
+	(chat "[Eliminating polymorphic equality...";
 	 Timing.timing_begin();
 	 let val (lamb', env') = 
 	   Timing.timing_end_res ("ElimEq", EliminateEq.elim_eq (env, lamb))
 	 in
-	   chat "Eliminating polymorphic equality end.";
+	   chat "]\n";
 	   if !Flags.DEBUG_COMPILER then 
 	     (display("Lambda Program After Elimination of Pol. Eq.", 
 		      layoutLambdaPgm lamb');
@@ -399,13 +399,14 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     fun optlambda (env, lamb) =
-          ((if !Flags.optimiser then chat "Optimising lambda term ..."
-	    else chat "Rewriting lambda term ...");
+          ((if !Flags.optimiser then chat "[Optimising lambda term..."
+	    else chat "[Rewriting lambda term...");
 	   Timing.timing_begin();
 	   let 
 	     val (lamb_opt, env') = 
 	           Timing.timing_end_res ("OptLam", OptLambda.optimise(env,lamb))
 	   in
+	     chat "]\n";
 	     if !Flags.DEBUG_COMPILER orelse !print_opt_lambda_expression
 	     then display("Report: Opt", layoutLambdaPgm lamb_opt) else () ;
 	     (lamb_opt, env')
@@ -416,21 +417,23 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     fun spread(cone,rse, lamb_opt)=
-        (chat "Spreading regions and effects ...";
+        (chat "[Spreading regions and effects...";
          Timing.timing_begin();
          (*Profile.reset();
          Profile.profileOn();*)
-         let val (cone,rse_con,spread_lamb) = SpreadExp.spreadPgm(cone,rse, lamb_opt)
-         in Timing.timing_end("SpreadExp");
-            (*Profile.profileOff();
+         let 
+	   val (cone,rse_con,spread_lamb) = SpreadExp.spreadPgm(cone,rse, lamb_opt)
+         in 
+	   Timing.timing_end("SpreadExp");
+	   chat "]\n";
+	   (*Profile.profileOff();
             TextIO.output(!Flags.log, "\n PROFILING OF S\n\n");
             Profile.report(!Flags.log);*)
-            if !Flags.DEBUG_COMPILER 
-            then (display("\nReport: Spread; program", layoutRegionPgm spread_lamb) ;
-                  display("\nReport: Spread; entire cone after Spreading", Effect.layoutCone cone) )
-            else ();
-            
-            (cone,rse_con, spread_lamb)
+	   if !Flags.DEBUG_COMPILER 
+	     then (display("\nReport: Spread; program", layoutRegionPgm spread_lamb) ;
+		   display("\nReport: Spread; entire cone after Spreading", Effect.layoutCone cone) )
+	   else ();
+	   (cone,rse_con, spread_lamb)
          end) 
 
 
@@ -444,7 +447,7 @@ functor Compile(structure Excon : EXCON
                          export_basis=export_basis  (* list of region variables and arrow effects *)
                         }) = 
     let
-        val _ = (chat "Inferring regions and effects ...";
+        val _ = (chat "[Inferring regions and effects...";
 		 Timing.timing_begin())
 (*
 	val _ = if !profRegInf.b then (Compiler.Profile.reset(); Compiler.Profile.setTimingMode true) else ()
@@ -474,6 +477,7 @@ functor Compile(structure Excon : EXCON
 	val new_layer = []
 
         val _ = Timing.timing_end("RegInf")
+	val _ = chat "]\n"
 
         val pgm' = RegionExp.PGM{expression = spread_lamb_exp, (*side-effected*)
                       export_datbinds = datbinds, (*unchanged*)
@@ -531,13 +535,14 @@ functor Compile(structure Excon : EXCON
     fun mulInf(program_after_R:(Effect.place,unit)RegionExp.LambdaPgm, Psi, cone, mulenv) =
     let
 
-        val _ = (chat "Inferring multiplicities ...";
+        val _ = (chat "[Inferring multiplicities...";
                 Timing.timing_begin()
                 (*;Profile.reset()
                 ;Profile.profileOn()*) )
         val (pgm', mulenv',Psi') = MulInf.mulInf(program_after_R,Psi,cone,mulenv)
 
         val _ = Timing.timing_end("MulInf")
+	val _ = chat "]\n"
 
 (*        val _ = ( Profile.profileOff()(*;
                 TextIO.output(!Flags.log, "\n PROFILING OF MulInf\n\n");
@@ -578,11 +583,12 @@ functor Compile(structure Excon : EXCON
     local open MulInf
     in fun k_norm(pgm: (place,place*mul,qmularefset ref)LambdaPgm_psi) 
 	: (place,place*mul,qmularefset ref)LambdaPgm_psi =
-	(chat "K-normalisation ...";
+	(chat "[K-normalisation...";
          Timing.timing_begin();
          let (* val _ = display("\nReport: just before K-normalisation:", layoutLambdaPgm pgm) *)
 	     val pgm' = MulInf.k_normPgm pgm
 	 in Timing.timing_end("Knorm");
+	   chat "]\n";
 (*KILL 29/03/1997 19:29. tho.:
 	    if Flags.is_on "print_K_normal_forms" 
                orelse !Flags.DEBUG_COMPILER then 
@@ -620,10 +626,11 @@ functor Compile(structure Excon : EXCON
     in
       val drop_regions : env*(place at,place*mul,unit)LambdaPgm -> (place at,place*mul,unit)LambdaPgm * env =
 	fn (env, pgm) =>
-	(chat "Drop Regions ...";
+	(chat "[Drop Regions...";
          Timing.timing_begin();
          let val (pgm',env') = drop_regions(env, pgm)
 	 in Timing.timing_end("Drop");
+	   chat "]\n";
 	    if Flags.is_on "print_drop_regions_expression" then 
 	      display("Report: AFTER DROP REGIONS:", AtInf.layout_pgm_brief pgm')
 	    else ();
@@ -643,10 +650,11 @@ functor Compile(structure Excon : EXCON
    in
       fun phys_size_inf (env: env, pgm:(place at,place*mul,unit)LambdaPgm) 
 	: ((place*pp)at,place*phsize,unit)LambdaPgm * env =
-	(chat "Physical Size Inference ...";
+	(chat "[Physical Size Inference...";
          Timing.timing_begin();
          let val (pgm',env') = psi(pp_counter, env, pgm)
 	 in Timing.timing_end("PSI");
+	   chat "]\n";
 	    if !print_physical_size_inference_expression orelse !Flags.DEBUG_COMPILER then 
 	      display("Report: AFTER PHYSICAL SIZE INFERENCE:", layout_pgm pgm')
 	    else ();
@@ -666,10 +674,11 @@ functor Compile(structure Excon : EXCON
               | get_place_at(AtInf.SAT(rho,pp)) = rho
               | get_place_at(AtInf.IGNORE) = Effect.toplevel_region_withtype_top
         in
-            chat "Checking whether there are dangling pointers ...";
+            chat "[Checking for dangling pointers...";
             Timing.timing_begin();
             MulExp.warn_dangling_pointers(rse, psi_pgm, get_place_at);
-            Timing.timing_end("Dangle")
+            Timing.timing_end("Dangle");
+	    chat "]\n"
         end
 
 
@@ -681,10 +690,11 @@ functor Compile(structure Excon : EXCON
     in
       fun appConvert (pgm:((place*pp)at,place*phsize,unit)LambdaPgm): 
                           ((place*pp)at,place*phsize,unit)LambdaPgm =
-	(chat "Application Conversion ...";
+	(chat "[Application Conversion...";
          Timing.timing_begin();
          let val pgm' = PhysSizeInf.appConvert(pgm)
 	 in Timing.timing_end("AppConv");
+	   chat "]\n";
 	    if !print_call_explicit_expression orelse !Flags.DEBUG_COMPILER then 
 	      display("Report: AFTER APPLICATION CONVERSION:", layout_pgm pgm')
 	    else ();
