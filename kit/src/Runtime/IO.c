@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <utime.h>
+#include <string.h>
 
 #include "IO.h"
 #include "String.h"
@@ -421,14 +422,9 @@ String
 REG_POLY_FUN_HDR(sml_errormsg, Region rAddr, int errnum)    /* SML Basis */
 {
   char *res;
-  if (errnum < 0 || errnum >= sys_nerr) 
-    {
-      res = "(Unknown error)";
-    }
-  else
-    {
-      res = (char *)strerror(errnum);
-    }
+  res = strerror(errnum);
+  if ( (int)res == EINVAL )
+    res = "(Unknown error)";
   return REG_POLY_CALL(convertStringToML, rAddr, res);
 }
 
