@@ -54,6 +54,8 @@ signature STATOBJECT =
 	val equality                : TyVar -> bool
 	val fresh_normal            : unit -> TyVar
 	val fresh_overloaded        : TyName list -> TyVar
+	  (*fresh_overloaded bla = get a socalled overloaded tyvar that is overloaded
+	   to the types indicated by `bla'.*)
 	val from_ExplicitTyVar      : ExplicitTyVar -> TyVar
 	val to_ExplicitTyVar        : TyVar -> ExplicitTyVar option
 	val is_overloaded           : TyVar -> bool

@@ -510,6 +510,134 @@ functor CompileDec(structure Con: CON
 
 local
 
+(*The algorithm used in this pattern match compiler is described in
+ PETER SESTOFT: ML pattern match compilation and partial evaluation.  In DANVY,
+ GLÜCK & THIEMANN (eds): Dagstuhl Seminar on Partial Evaluation (= Lecture
+ Notes in Computer Science (no.?)) 1996.
+
+ Consider this example input sml program to the kit
+
+	    datatype t = A | B
+	    fun f (A, A, _, _) = "0"
+	      | f (_, _, A, A) = "1"
+	      | f (A, B, A, B) = "last"
+
+ Here is the unoptimised output from the pattern match compiler.  Every right
+ hand side only appears once.  "1" has become a function, because two cases
+ lead to "1".  The other nodes in the decdag ("rhs" nodes and "ifeq" nodes)
+ have been inlined by the pattern match compiler, because it knew that they
+ would only be jumped to from one place (i.e., the degree of those nodes in
+ the decdag was 1).  "Fail" nodes are always inlined.
+
+Report: UnOpt: 
+
+   [...]
+
+   (fn <x>=> 
+    fix rhs1 = (fn <obj>=> "1")
+    in  (case #0 x  of 
+           A => 
+           (case #1 x  of 
+              A => "0"
+            | _ => 
+              (case #2 x  of 
+                 A => (case #3 x  of A => rhs1 () | _ => "last")
+               | _ => raisePRIM(Match, []),Types(<string>)))
+         | _ => 
+           (case #2 x  of 
+              A => 
+              (case #3 x  of A => rhs1 () | _ => raisePRIM(Match, []),Types(<string>))
+            | _ => raisePRIM(Match, []),Types(<string>)))
+    end)
+
+ Naturally, the optimiser inlines the very small function body "1":
+
+Report: Opt: 
+
+  [...]
+
+   (fn <x'>=> 
+    (case #0 x'  of 
+       A => 
+       (case #1 x'  of 
+          A => "0"
+        | _ => 
+          (case #2 x'  of 
+             A => (case #3 x'  of A => "1" | _ => "last")
+           | _ => raisePRIM(Match, []),Types(<string>)))
+     | _ => 
+       (case #2 x'  of 
+          A => (case #3 x'  of A => "1" | _ => raisePRIM(Match, []),Types(<string>))
+          | _ => raisePRIM(Match, []),Types(<string>)))) 
+
+ If we make the pattern bigger, there will be more nodes in the decdag that
+ have more than one in-edge, & thus there will be more functions in the fix
+ created by the pattern matcher:
+
+	  fun f (A, A, _, _, _, _) = "0"
+	    | f (_, _, A, A, _, _) = "1"
+	    | f (_, _, _, _, A, A) = "2"
+	    | f (A, B, A, B, A, B) = "last"
+
+Report: UnOpt: 
+
+ (fn <y>=> 
+  fix n5_A? =
+        (fn <obj>=> 
+          (case #4 y of 
+             A => (case #5 y of A => rhs2 () | _ => raisePRIM(Match, []),Types(<string>))
+           | _ => raisePRIM(Match, []),Types(<string>))), 
+      rhs2 = (fn <obj>=> "2"), 
+      rhs1 = (fn <obj>=> "1")
+  in  (case #0 y of 
+         A => 
+         (case #1 y of 
+            A => "0"
+          | _ => 
+            (case #2 y of 
+               A => 
+               (case #3 y of 
+                  A => rhs1 ()
+                | _ => 
+                  (case #4 y of 
+                     A => (case #5 y of A => rhs2 () | _ => "last")
+                   | _ => raisePRIM(Match, []),Types(<string>)))
+             | _ => n5_A? ()))
+       | _ => 
+         (case #2 y of 
+            A => (case #3 y of A => rhs1 () | _ => n5_A? ())
+          | _ => n5_A? ()))
+  end)
+
+Report: Opt: 
+
+ (fn <y'>=> 
+  fix n5_A? = 
+         (fn <obj>=> 
+          (case #4 y'  of 
+             A => (case #5 y' of A => "2" | _ => raisePRIM(Match, []),Types(<string>))
+           | _ => raisePRIM(Match, []),Types(<string>)))
+  in  (case #0 y' of 
+         A => 
+         (case #1 y' of 
+            A => "0"
+          | _ => 
+            (case #2 y' of 
+               A => 
+               (case #3 y' of 
+                  A => "1"
+                | _ => 
+                  (case #4 y' of 
+                     A => (case #5 y' of A => "2" | _ => "last")
+                   | _ => raisePRIM(Match, []),Types(<string>)))
+             | _ => n5_A? ()))
+       | _ => 
+         (case 
+            #2 y' of 
+            A => (case #3 y' of A => "1" | _ => n5_A? ()) | _ => n5_A? ()))
+  end)
+ *)
+
   abstype span = Infinite | Finite of int
   with
     val span_from_int = Finite
@@ -757,7 +885,8 @@ local
 noget?  F. eks. til at se, om koden er død (fordi der er redundante regler)?
 Problemet er, hvis der kan forekomme en ifeq-knude med indgrad 0.  Så er den
 "død", & det er dens børn måske også, men det kan man ikke se af deres
-indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
+indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...
+Det finder du nok aldrig ud af.*)
 	
   in
     val edge_bump = app_opt (fn {refs, ...} : node => refs := !refs + 1)
@@ -917,13 +1046,7 @@ indkanttal, for det taltes op, da den "døde" ifeq-knude blev skabt ...*)
 	   | Maybe => let val left = succeed' ()
 			  val right = fail' (addneg (termd, pcon))
 		      in if edge_eq (left, right) then left
-			 else SOME (ifeq_node (path, pcon, left, right))
-
-		      (*TODO 05/01/1998 18:40. tho. maybe everything
-		      (match_con etc.) should return a node instead of an
-		      edge?  NO*)
-
-
+			 else SOME (ifeq_node (path, pcon, left, right)) 
 		      end)
 	end
 
