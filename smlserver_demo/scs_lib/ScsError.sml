@@ -56,6 +56,9 @@ structure ScsError :> SCS_ERROR =
     fun panic' msg emsg = 
       let
 	val emsg = `script: ^(Ns.Conn.location())^(Ns.Conn.url()).
+user: ^(ScsPersonData.name(ScsLogin.user_id()))
+email: ^(ScsPersonData.email(ScsLogin.user_id()))
+
 	  ` ^^ emsg
 	val title = case ScsLogin.user_lang() of
 	    ScsLang.en => "System Error"
