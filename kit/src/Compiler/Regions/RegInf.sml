@@ -472,6 +472,7 @@ struct
        | Exp.CCALL (_, ts) => foldr(fn (t,(B, d))  => 
 					 let val (B', d') = R(B,rse,t) in (B',Effect.Br(d,d')) end) 
                               (B,Effect.Lf[]) ts
+       | Exp.EXPORT (_, t) => R(B,rse,t)
        | Exp.RESET_REGIONS (_, t) => R(B,rse,t)
        | Exp.FRAME{declared_lvars,declared_excons} =>
            (List.app(fn {lvar, sigma, ...} =>

@@ -1142,16 +1142,29 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	       (* overloaded functions *)
 	local
 	  val _ = Level.push()
-	  val alpha = TyVar.fresh_normal ()
-	  val alphaTy = Type.from_TyVar alpha
 
-	  val beta = TyVar.fresh_normal ()
-	  val betaTy = Type.from_TyVar beta
+	  val sigma_prim = 
+	      let val alpha = TyVar.fresh_normal ()
+		  val alphaTy = Type.from_TyVar alpha
+		  val beta = TyVar.fresh_normal ()
+		  val betaTy = Type.from_TyVar beta
+		  val tau_prim = Type.mk_Arrow
+		      (Type.from_pair (Type.String, alphaTy), betaTy)
+	      in TypeScheme.from_Type tau_prim
+	      end
+	      
 
-	  val tau_prim = Type.mk_Arrow
-			 (Type.from_pair (Type.String, alphaTy), betaTy)
-
-	  val sigma_prim = TypeScheme.from_Type tau_prim
+	  (* \/'a,'b. string * ('a -> 'b) -> unit *)
+	  val sigma_export = 
+	      let val exportArrowTy = Type.mk_Arrow
+		      (Type.from_TyVar(TyVar.fresh_normal()),
+		       Type.from_TyVar(TyVar.fresh_normal()))
+		  val tau_export = Type.mk_Arrow
+		      (Type.from_pair (Type.String, exportArrowTy), 
+		       Type.Unit)
+	      in
+		  TypeScheme.from_Type tau_export
+	      end
 
 	  val tyvar_num = TyVar.fresh_overloaded [TyName.tyName_INT31,
 						  TyName.tyName_INT32,
@@ -1204,6 +1217,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	in
 	  val primVE      = VE.singleton (Ident.id_PRIM,
 					  LONGVARpriv sigma_prim)
+	  val exportVE    = VE.singleton (Ident.id_EXPORT,
+					  LONGVARpriv sigma_export)
 	  val absVE       = VE.singleton (Ident.id_ABS, 
 					  LONGVARpriv sigma_realint_to_realint)
 	  val negVE       = VE.singleton (Ident.id_NEG,
@@ -1293,7 +1308,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	 calls:*)
 	val VEs =
 	  [VE.close refVE, VE.close boolVE, VE.close listVE,
-	   VE.close primVE,
+	   VE.close primVE, VE.close exportVE,
 	   absVE, negVE, divVE, modVE, plusVE, minusVE, mulVE,
 	   lessVE, greaterVE, lesseqVE, greatereqVE,
 	   resetRegionsVE, forceResettingVE, DivVE, 

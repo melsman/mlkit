@@ -548,6 +548,10 @@ functor DropRegions(structure Name : NAME
 					   (S(drop_atplace atp), i_opt)) rhos_for_result)},
 			   trs'), acc)
 		 end
+	     | EXPORT(i,tr) => 
+                 let val (tr', acc) = drop env tr acc 
+		 in (EXPORT (i,tr'), acc) 
+		 end
 	     | RESET_REGIONS ({force, alloc,regions_for_resetting}, tr) => 
                  let 
                    val acc = maybe_add regvar_env (alloc, acc)

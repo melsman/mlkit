@@ -80,6 +80,16 @@ functor CompilerEnv(structure Ident: IDENT
 				   into a PRIM_APP(n, ...) in the lambda
 				   language. *)
 
+		    | EXPORT    (* Support for exporting ML functions to be used in
+				 * C programs. The function _export has type 
+				 * \/'a,'b. string * ('a -> 'b) -> unit. In a call 
+				 * _export("myFun",fn a:int => a+1)
+				 * the string "myFun" is the name of the assembled 
+				 * function (following C calling conventions), and the
+				 * function (fn a:int => a+1) is the ML function 
+				 * called when the C function "myFun" is called from C 
+				 * code. *)
+
     type spath = int list
 
     fun spath_lt (_ : spath, nil : spath) = false
@@ -139,6 +149,7 @@ functor CompilerEnv(structure Ident: IDENT
 
     val initialVarEnv : VarEnv = 
       initMap [(Ident.id_PRIM, PRIM),
+	       (Ident.id_EXPORT, EXPORT),
 	       (Ident.id_ABS, ABS),
 	       (Ident.id_NEG, NEG),
 	       (Ident.id_PLUS, PLUS),
@@ -627,6 +638,7 @@ functor CompilerEnv(structure Ident: IDENT
                                           | RESET_REGIONS => Ident.pr_id Ident.resetRegions
                                           | FORCE_RESET_REGIONS => Ident.pr_id Ident.forceResetting
 					  | PRIM => "PRIM"
+					  | EXPORT => "EXPORT"
 					  | ABS => "ABS"
 					  | NEG => "NEG"
 					  | PLUS => "PLUS"
@@ -672,6 +684,7 @@ functor CompilerEnv(structure Ident: IDENT
 	      | toInt RESET_REGIONS = 15
 	      | toInt FORCE_RESET_REGIONS = 16
 	      | toInt PRIM = 17          
+	      | toInt EXPORT = 18
 
 	    fun fun_LVAR _ = 
 		con1 LVAR (fn LVAR lv => lv | _ => die "pu.LVAR")
@@ -702,7 +715,8 @@ functor CompilerEnv(structure Ident: IDENT
 		    con0 GREATEREQ,
 		    con0 RESET_REGIONS,
 		    con0 FORCE_RESET_REGIONS,
-		    con0 PRIM])
+		    con0 PRIM,
+		    con0 EXPORT])
 	end
 
     val pu_PathEnv = 

@@ -527,6 +527,10 @@ struct
 	           map #1 children),
             freeInChildren)
          end
+      | EXPORT(i,tr1) =>
+         let val (tr1', free_in_tr1) = llv(tr1,liveset)
+         in (EXPORT(i,tr1'), free_in_tr1)
+         end
       | RESET_REGIONS({force, alloc = rho,regions_for_resetting}, tr1) => (* tr1 is trivial *)
          let 
             val liveset = norm_liveset liveset

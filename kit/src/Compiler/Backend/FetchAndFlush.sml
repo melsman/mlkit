@@ -332,6 +332,8 @@ struct
 		    of (a,ft) => if atom_in_F(a,F) then [a] else nil
 	    in LS.CCALL_AUTO{name=name,args=args,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss)
 	    end
+	  | IFF_lss'(LS.EXPORT{name,arg}::lss) = 
+	    LS.EXPORT{name=name,arg=arg} :: IFF_lss' lss
       in
 	IFF_lss' lss
       end

@@ -1081,6 +1081,35 @@ good *)
 	   | _ => die "CCALL: tau not function type")
 	end handle X => (print ("CCALL FAILED\n"); raise X))
 
+    | E.PRIM (E.EXPORTprim {name, instance_arg, instance_res}, [e0]) => 
+          (*              
+                     e  => [mu], phi    mu=(mu1 -phi0-> mu2,rho)
+                   \/v \in frev(mu). v is toplevel     
+                  ------------------------------------------------
+                   _export(name,mu1,mu2,e) : [unit], phi
+	   *)
+
+       (let val B = pushIfNotTopLevel (toplevel, B) (* for retract *)
+	    val (B, tr' as E'.TR (_, E'.Mus mus, phi), _) = S (B, e0, false, NOTAIL)
+	in case mus of
+	    [(R.FUN([mu1],eps_phi0,[mu2]),rho)] =>
+		let val (mu1',B) = freshMu(instance_arg,B)
+		    val B = unify_mu(mu1,mu1')B
+		    val (mu2',B) = freshMu(instance_res,B)
+		    val B = unify_mu(mu2,mu2')B
+		    val e' = E'.EXPORT ({name=name, mu_arg=mu1, mu_res=mu2}, tr')
+		    val (mu,B) =
+			let val (fresh_rho,B) = (*Eff.*)freshRhoWithTy(Eff.WORD_RT, B)
+			in ((R.unitType, fresh_rho),B)
+			end
+		    val B = Eff.unify_with_toplevel_rhos_eps (B, R.ann_mus mus nil)
+	       in
+		 retract (B, E'.TR (e', E'.Mus [mu], eps_phi0),
+			  NOTAIL)
+	       end
+	   | _ => die "EXPORT: function does not have function type"
+	end handle X => (print "EXPORT-1\n"; raise X))
+
     | E.PRIM(E.RESET_REGIONSprim{instance = _}, [e0 as (E.VAR _)] ) =>
           (*              
                      x  => [mu], empty  rho fresh

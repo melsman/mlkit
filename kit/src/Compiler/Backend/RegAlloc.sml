@@ -248,6 +248,7 @@ struct
 	   | LS.PRIM a => LS.PRIM a
 	   | LS.CCALL a => LS.CCALL a
 	   | LS.CCALL_AUTO a => LS.CCALL_AUTO a
+	   | LS.EXPORT a => LS.EXPORT a
 	    
       and ra_assign_lss lss = List.foldr (fn (ls,acc) => ra_assign_ls ls :: acc) [] lss
 	

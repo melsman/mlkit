@@ -46,6 +46,7 @@ functor Ident(structure StrId: STRID
     and id_FALSE = ID "false"
     and id_REF = ID "ref"
     and id_PRIM = ID "prim"
+    and id_EXPORT = ID "_export"
     and id_IT = ID "it"
 
     and id_QUOTE = ID "QUOTE"

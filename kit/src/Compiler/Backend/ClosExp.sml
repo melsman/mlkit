@@ -154,6 +154,8 @@ struct
     | CCALL_AUTO      of {name: string,  
 			  args: (ClosExp * foreign_type) list,
 			  res: foreign_type}
+    | EXPORT          of {name: string,
+			  arg: ClosExp * foreign_type * foreign_type}
     | FRAME           of {declared_lvars: {lvar: lvar, label: label} list,
 			  declared_excons: {excon: excon, label: label} list}
 
@@ -403,6 +405,11 @@ struct
 		finish=">)",
 		childsep=RIGHT ",",
 		children=(map (layout_ce_f layout_ce) args) @ [layout_f res]}
+      | layout_ce(EXPORT{name,arg=(ce,ft1,ft2)}) =
+	  HNODE{start="_export(\"" ^ name ^ "\", <",
+		finish=">)",
+		childsep=RIGHT ",",
+		children=[layout_ce ce, layout_f ft1, layout_f ft2]}
       | layout_ce(FRAME{declared_lvars,declared_excons}) =
 		  NODE{start="{|",
 		       finish="|}",
@@ -643,6 +650,7 @@ struct
 	       | MulExp.CCALL({name, mu_result, rhos_for_result}, trs) =>
 		   MulExp.CCALL({name=name,mu_result=mu_result,rhos_for_result=rhos_for_result},
 				map (fn tr => NTrip tr true) trs)
+	       | MulExp.EXPORT(i, tr) => MulExp.EXPORT(i, NTrip tr true)
 	       | MulExp.RESET_REGIONS({force, alloc, regions_for_resetting},tr) =>
 		   MulExp.RESET_REGIONS({force=force,alloc=alloc,regions_for_resetting=regions_for_resetting},
 					NTrip tr true)
@@ -994,6 +1002,7 @@ struct
 		   in
 		     (Fenv_res, [OTHER])
 		   end
+		 | MulExp.EXPORT(i,tr) => FTrip tr Fenv Env
 		 | MulExp.RESET_REGIONS({force, alloc, regions_for_resetting},tr) => FTrip tr Fenv Env
 		 | MulExp.FRAME{declared_lvars, declared_excons} => 
 		   (List.foldl (fn ({lvar,...},base) => if is_in_dom_Fenv base lvar then
@@ -2281,6 +2290,28 @@ struct
 			  NONE_SE)
 		      end)
 	       end
+	   | MulExp.EXPORT({name,mu_arg,mu_res},tr) => 
+	       let val (ce,se) = ccTrip tr env lab cur_rv
+		   fun toForeignType (ty,_) : foreign_type =
+		       case ty of 
+			   RType.CONSTYPE(tn,_,_,_) => tn_to_foreign_type tn
+			 | RType.RECORD [] => Unit
+			 | _ => die "EXPORT.toForeignType"
+		   val maybe_return_unit =
+		       if BI.tag_values() andalso toForeignType mu_res = Unit then
+			   (fn ce => LET{pat=[fresh_lvar("export")],bind=ce,
+					 scope=RECORD{elems=[],
+						      alloc=IGNORE,
+						      tag=BI.tag_ignore,
+						      maybeuntag=false}})
+		       else (fn ce => ce)
+	       in
+		   (maybe_return_unit
+		    (insert_se (EXPORT{name=name,
+				       arg=(ce,toForeignType mu_arg, toForeignType mu_res)},
+				se))
+		    , NONE_SE)
+	       end
 	   | MulExp.RESET_REGIONS({force,alloc,regions_for_resetting},tr) => 
 	       let
 		 val regions_for_resetting = List.filter (fn alloc => 
@@ -2952,6 +2983,17 @@ struct
 		  | _ =>
 		      (*maybe_return_unit*)
 		      (CCALL{name=name,args=ces,rhos_for_result=smas}))
+	       end
+	   | MulExp.EXPORT({name,mu_arg,mu_res},tr) => 
+	       let val ce = liftTrip tr env lab
+		   fun toForeignType (ty,_) : foreign_type =
+		       case ty of 
+			   RType.CONSTYPE(tn,_,_,_) => tn_to_foreign_type tn
+			 | RType.RECORD [] => Unit
+			 | _ => die "EXPORT.toForeignType"
+	       in
+		   EXPORT{name=name,
+			  arg=(ce,toForeignType mu_arg,toForeignType mu_res)}
 	       end
 	   | MulExp.RESET_REGIONS({force,alloc,regions_for_resetting},tr) => 
 	       let

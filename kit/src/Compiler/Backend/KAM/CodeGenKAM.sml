@@ -906,6 +906,8 @@ struct
 		      "; you probably need to insert the function name in the " ^
 		      "file BuiltInCFunctions.spec or BuiltInCFunctionsNsSml.spec")
 	  end
+      | CG_ce(ClosExp.EXPORT _,_,_,_,_) =
+	  die "_export unsupported in the KAM backend"
       | CG_ce(ClosExp.FRAME{declared_lvars,declared_excons},env,sp,cc,acc) = 
 	  comment ("FRAME - this is a nop", acc)
 

@@ -2637,6 +2637,38 @@ struct
 		    comment_fn (fn () => "CCALL_AUTO: " ^ pr_ls ls,
 				compile_c_call_auto(name,args,res,size_ff,tmp_reg1,C))
 		  end
+	       | LS.EXPORT{name,arg=(aty,ft1,ft2)} =>
+		  let val clos_lab = DatLab(Labels.new_named ("ExportClosLab_" ^ name))
+		      val return_lab = new_local_lab ("return_" ^ name)
+		      val lab = NameLab name
+		      val _ = 
+			  if ft1 <> LS.Int orelse ft2 <> LS.Int then 
+			      die "Export of ML function with type other than (int->int) not supported"
+			  else ()
+		      val _ = add_static_data 
+			  ([I.dot_data,
+			    I.dot_align 4,
+			    I.lab clos_lab,
+			    I.dot_long "0",
+			    I.dot_text,
+			    I.dot_globl lab,
+			    I.lab lab,
+			    I.pushl (R ebp),           (* save %ebp *)
+			    I.movl(R esp, R ebp),      (* load argument into %ebx *)
+			    I.movl(D("8",ebp),R ebx),
+			    I.movl(L clos_lab, R eax), (* load closure into %eax*)
+					     
+			    I.movl(D("0",eax), R ebp), (* extract code pointer into %ebp *)
+			    I.pushl (LA return_lab),   (* push return address *)
+			    I.jmp (R ebp),             (* call ML function *)
+			    I.lab return_lab,
+			    I.movl(R edi, R eax),      (* result is in %edi *)
+			    I.popl(R ebp),             (* restore %ebp *)
+			    I.ret])
+
+		  in comment_fn (fn () => "EXPORT: " ^ pr_ls ls,
+				 store_in_label(aty,clos_lab,tmp_reg1,size_ff,C))
+		  end
 		)
        in
 	 foldr (fn (ls,C) => CG_ls(ls,C)) C lss

@@ -99,6 +99,8 @@ signature CLOS_EXP =
     | CCALL_AUTO      of {name: string,  
 			  args: (ClosExp * foreign_type) list,
 			  res: foreign_type}
+    | EXPORT          of {name: string,
+			  arg: ClosExp * foreign_type * foreign_type}
     | FRAME           of {declared_lvars: {lvar: lvar, label: label} list,
 			  declared_excons: {excon: excon, label: label} list}
 
