@@ -32,6 +32,8 @@ functor MlbProject () : MLB_PROJECT =
 	              | SMLFILEbdec of string  (* path.{sml,sig} *)
 		      | MLBFILEbdec of string  (* path.mlb *)
 
+	val depDir : string ref = ref "PM"
+
 	fun error (s : string) = 
 	    (print ("\nError: " ^ s ^ ".\n\n"); raise Fail "MlbProject.error")
 
@@ -298,7 +300,7 @@ functor MlbProject () : MLB_PROJECT =
 	    older (modTimeMlbFile, OS.FileSys.modTime file) handle _ => false
 
 	fun maybeWriteDep smlfile modTimeMlbFile D : unit =
-	    let val file = "PM/" ^ smlfile ^ ".d"
+	    let val file = !depDir ^ "/" ^ smlfile ^ ".d"
 	    in if mlbFileIsOlder modTimeMlbFile file then ()         (* Don't write .d-file if the current .d-file *)
 	       else                                                  (*  is newer than the mlb-file! *) 
 		   let val L = DepEnv.getL D

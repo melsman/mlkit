@@ -208,7 +208,9 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	val options = [("-script file", ["Read compiler options from `file'."]),
 		       ("-version", ["Print ML Kit version information and exit."]),
 		       ("-help s", ["Print help information about an option and exit."]),
-		       ("-help", ["Print help information and exit."])
+		       ("-help", ["Print help information and exit."]),
+		       ("-load f1.eb ... fn.eb", ["Load export bases."]),
+		       ("-link f1.lnk ... fn.lnk", ["Construct executable."])
 		       ]
 
 	fun print_indent nil = ()
@@ -216,37 +218,38 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 
       	fun print_options() = app (fn (t, l) => (print(t ^ "\n"); print_indent l; print "\n")) options
  
-	val unary_options =
-	  [("script", Flags.read_script),
-	   ("help", fn s => (print "\n"; 
-			     print (Flags.help s); 
-			     print "\n";
-			     raise Fail ""))]
-
-	val nullary_options =
-	  [("version", fn () => raise Fail ""),
-	   ("help", fn () => (print_usage();
-			      print_options();
-			      print (Flags.help_all()); 
-			      raise Fail ""))]
-
 	local 
-	  fun go_files [file] = ((Manager.comp file; OS.Process.success) 
-				 handle Manager.PARSE_ELAB_ERROR _ => OS.Process.failure)
-	    | go_files nil = (Flags.interact(); OS.Process.success)
-	    | go_files _ = (raise Fail "I expect at most one file name"; OS.Process.failure)
-
-	  fun go_options options =
-	    let val rest = Flags.read_options{options=options, nullary=nullary_options,
-					      unary=unary_options}
-	    in go_files rest
-	    end
+	    val unary_options =
+		[("script", Flags.read_script),
+		 ("help", fn s => (print "\n"; 
+				   print (Flags.help s); 
+				   print "\n";
+				   raise Fail ""))]
+		
+	    val nullary_options =
+		[("version", fn () => raise Fail ""),
+		 ("help", fn () => (print_usage();
+				    print_options();
+				    print (Flags.help_all()); 
+				    raise Fail ""))]
+		
+	    fun go_files files = ((Manager.comp files; OS.Process.success) 
+				   handle Manager.PARSE_ELAB_ERROR _ => OS.Process.failure)
+(*
+	      | go_files nil = (Flags.interact(); OS.Process.success)
+	      | go_files _ = (raise Fail "I expect at most one file name"; OS.Process.failure)
+*)		
+	    fun go_options options =
+		let val rest = Flags.read_options{options=options, nullary=nullary_options,
+						  unary=unary_options}
+		in go_files rest
+		end
 	in
-	  fun kitexe(root_dir, args) = 
-	    (print_greetings(); set_paths root_dir; go_options args)
-	    handle Fail "" => OS.Process.success
-		 | Fail s => (print ("Error: " ^ s ^ "\n"); 
-			      OS.Process.failure)
+	    fun kitexe(root_dir, args) = 
+		(print_greetings(); set_paths root_dir; go_options args)
+		handle Fail "" => OS.Process.success
+		     | Fail s => (print ("Error: " ^ s ^ "\n"); 
+				  OS.Process.failure)
 	end
 
 	(* As default root directory we use the absolute path that corresponds to the kit-directory 
@@ -271,7 +274,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	      print "\n ** Building basis library **\n\n";
 	      OS.FileSys.chDir "../basislib";
 	      set_paths (OS.Path.mkCanonical(OS.Path.concat(OS.FileSys.getDir(),"..")));
-	      Manager.comp basislib_file;
+	      Manager.comp [basislib_file];
 	      postjob()) handle exn => (postjob(); raise exn)
 	  end
 

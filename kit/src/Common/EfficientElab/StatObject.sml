@@ -111,7 +111,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	 and TyVar       = TyLink ref
 	 and RowVar      = RecLink ref
          and TyVarDesc =
-	   {id : int,         (* Two type variables are equal if their ids are equal *)
+	   {base: string,     (* compilation unit base; (base,id) should be unique *)
+	    id : int,         (* Two type variables are equal if their ids are equal and their bases are equal*)
 	    equality : bool,  (* Does the tyvar admit equality *)
 	    rank: rank ref,   (* The rank field contains an updatable rank for the 
 			       * type variable. See TYNAME for further comments. *)
@@ -130,7 +131,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     type FunType     = Type
     type ConsType    = Type
 
-    fun TyVarDesc_eq (tvd1:TyVarDesc, tvd2:TyVarDesc) = #id(tvd1) = #id(tvd2)
+    fun TyVarDesc_eq ({id,base,...}:TyVarDesc, {id=id2,base=base2,...}:TyVarDesc) = id=id2 andalso base=base2
 
     fun findType ty =
       case #TypeDesc ty 
@@ -208,12 +209,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     (* Pickling *)
     val pu_TyVarDesc =
 	let open Pickle
-	    fun to ((id,e,r),ov,ex) : TyVarDesc = 
-		{id=id, equality=e,rank=r,overloaded=ov,explicit=ex,inst=ref NONE}
-	    fun from {id=id, equality=e,rank=r,overloaded=ov,explicit=ex,inst} =
-		((id,e,r),ov,ex)
+	    fun to (((id,b),e,r),ov,ex) : TyVarDesc = 
+		{id=id, base=b, equality=e,rank=r,overloaded=ov,explicit=ex,inst=ref NONE}
+	    fun from {id, base,equality=e,rank=r,overloaded=ov,explicit=ex,inst} =
+		(((id,base),e,r),ov,ex)
 	in convert (to,from) 
-	    (tup3Gen0(tup3Gen0(int,
+	    (tup3Gen0(tup3Gen0(pairGen0(int,string),
 			       bool,
 			       TyName.Rank.pu_rankrefOne),
 		      optionGen (TyName.Set.pu TyName.pu),
@@ -339,11 +340,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	in 
 	  fun fresh0 {equality, overloaded, explicit} =
 	    ref (NO_TY_LINK {id = (r := !r + 1 ; !r),
-				   equality = equality,
-				   rank=ref (Rank.current()),
-				   overloaded = overloaded,
-				   explicit = explicit,
-				   inst = ref NONE})
+			     base = Name.baseGet(),
+			     equality = equality,
+			     rank=ref (Rank.current()),
+			     overloaded = overloaded,
+			     explicit = explicit,
+			     inst = ref NONE})
 	  fun fresh_normal () = fresh0 {equality=false, overloaded=NONE, explicit=NONE}
 	  fun fresh_overloaded tynames =
 	    fresh0 {equality=false,
@@ -1007,10 +1009,10 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	  case #TypeDesc (findType ty) 
 	    of TYVAR (tv as (ref (NO_TY_LINK ({explicit=SOME ExplicitTyVar,...})))) =>
 	      if ExplicitTyVar.isEquality ExplicitTyVar then () else raise NotEquality
-	     | TYVAR (tv as (ref (NO_TY_LINK ({equality, overloaded, id, rank, explicit=NONE, inst, ...})))) =>
+	     | TYVAR (tv as (ref (NO_TY_LINK ({equality, overloaded, id, base, rank, explicit=NONE, inst, ...})))) =>
 	      if equality then ()
 	      else tv := NO_TY_LINK {equality = true,  overloaded = overloaded,
-				     rank = rank, id = id, explicit = NONE, inst = inst}
+				     rank = rank, id = id, base = base, explicit = NONE, inst = inst}
 	     | TYVAR _ => die "make_equality"
 	     | RECTYPE r => RecType.apply make_equality0 r
 	     | CONSTYPE (ty_list, tyname) =>
@@ -1140,16 +1142,16 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	  case #TypeDesc (findType tau) 
 	    of TYVAR (ref (NO_TY_LINK {explicit=SOME _,...})) => 
 	      raise Unify "unify_with_overloaded_tyvar: explicit tyvar"
-	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, overloaded=NONE, 
+	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, base, overloaded=NONE, 
 					      rank, inst, ...}))) =>
-	      let val tvd = {equality = equality, id = id, rank = rank, 
+	      let val tvd = {equality = equality, id = id, base = base, rank = rank, 
 			     overloaded=SOME tynames1, explicit = NONE, inst = inst}
 	      in tv := NO_TY_LINK tvd
 	      end
-	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, overloaded=SOME tynames2, 
+	     | TYVAR (tv as (ref (NO_TY_LINK {equality, id, base, overloaded=SOME tynames2, 
 					      rank, inst, ...}))) =>
 	      let val overloaded = SOME (TyName.Set.intersect tynames1 tynames2)
-		  val tvd = {equality = equality, id = id, rank = rank, 
+		  val tvd = {equality = equality, id = id, base = base, rank = rank, 
 			     overloaded = overloaded, explicit = NONE, inst = inst}
 	      in tv := NO_TY_LINK tvd
 	      end

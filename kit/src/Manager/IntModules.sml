@@ -127,15 +127,19 @@ functor IntModules(structure Name : NAME
 
     type absprjid = ModuleEnvironments.absprjid
 
-    val repository = Flags.is_on0 "repository"
-
-    fun Repository_lookup_int a =
-	if repository() then Repository.lookup_int a
-	else NONE
-
-    fun Repository_add_int a : unit =
-	if repository() then Repository.add_int a
-	else ()
+    local 
+	val repository = Flags.is_on0 "repository"
+	val compile_only = Flags.is_on0 "compile_only"
+	fun use_repository() = repository() andalso not(compile_only())
+    in
+	fun Repository_lookup_int a =
+	    if use_repository() then Repository.lookup_int a
+	    else NONE
+		
+	fun Repository_add_int a : unit =
+	    if use_repository() then Repository.add_int a
+	    else ()
+    end
 
     open TopdecGrammar (*declares StrId*)
 

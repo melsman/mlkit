@@ -24,6 +24,9 @@ signature MLB_PROJECT =
 	(* [parse mlbfile] parses a basis file mlbfile. Prints an 
 	 * error message and raises Fail on error. *)
 
+	val depDir : string ref  
+	(* The directory in which dependency files are stored; the 
+	 * default is "PM" *)
 	val dep : string -> unit   
 	(* [dep mlbfile] parses mlbfile (and the mlb-files it mentions, 
 	 * recursively) and writes dependency information to disk in 

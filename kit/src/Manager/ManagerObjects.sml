@@ -45,6 +45,8 @@ functor ManagerObjects(structure Execution : EXECUTION
     structure InfixBasis = Execution.Elaboration.Basics.InfixBasis
     structure Labels = Execution.Labels
 
+    val compile_only = Flags.is_on0 "compile_only"
+
     fun die s = Crash.impossible("ManagerObjects." ^ s)
     fun chat s = if !Flags.chat then print (s ^ "\n") else ()
 
@@ -84,6 +86,8 @@ functor ManagerObjects(structure Execution : EXECUTION
 	(* Remember also to update RepositoryFinMap in Common/Elaboration.sml *)
       fun pmdir() = 
 	if !Flags.SMLserver then "PM/"
+	else
+	if Flags.is_on "compile_only" orelse Flags.get_stringlist_entry "link" <> nil then "MLB/MLKit/"
 	else
 	if recompile_basislib() then "PM/SCRATCH/"   (* avoid overwriting other files *)
 	else case (gengc_p(),gc_p(), region_profiling(), tag_pairs_p())
@@ -137,12 +141,18 @@ functor ManagerObjects(structure Execution : EXECUTION
 	 * Emit assembler code and assemble it. 
 	 * ----------------------------------------------- *)
 
-	fun emit (target, target_filename) =
-	  let val target_filename = pmdir() ^ target_filename
-	      val target_filename = OS.Path.mkAbsolute(target_filename, OS.FileSys.getDir())
-	      val target_filename_ext = Execution.emit {target=target,filename=target_filename}
-	  in target_filename_ext
-	  end
+	fun emit (target,absprjid,filename) =
+	    let val target_filename =
+		   if Flags.is_on "compile_only" then
+		       OS.Path.base(Flags.get_string_entry "output")
+		   else
+		       let fun f file = String.translate (fn #"/" => "+" | #"." => "%" | c => str c) file		   
+			   val target_filename = OS.Path.base(OS.Path.file absprjid) ^ "-" ^ f filename
+			   val target_filename = pmdir() ^ target_filename
+		       in OS.Path.mkAbsolute(target_filename, OS.FileSys.getDir())
+		       end
+	    in Execution.emit {target=target,filename=target_filename}
+	    end
 
 	(* -------------------------------------------------------------
 	 * Link time dead code elimination; we eliminate all unnecessary
@@ -239,7 +249,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 	  in case Execution.generate_link_code
 	       of SOME generate_link_code =>
 		 let val target_link = generate_link_code (labs, exports)
-		   val linkfile_o = emit(target_link, "link_objects")
+		   val linkfile_o = emit(target_link, "base", "link_objects")
 		 in link_files_with_runtime_system (linkfile_o :: (target_files @ extobjs)) run;
 		     delete_file linkfile_o
 		 end
@@ -270,25 +280,36 @@ functor ManagerObjects(structure Execution : EXECUTION
 
 	fun emit(absprjid: absprjid, modc) =
 	  let 
-	    fun f file = String.translate (fn #"/" => "+" | #"." => "%" | c => str c) file
 	    fun em EMPTY_MODC = EMPTY_MODC
 	      | em (SEQ_MODC(modc1,modc2)) = SEQ_MODC(em modc1, em modc2)
 	      | em (EMITTED_MODC(fp,li)) = EMITTED_MODC(fp,li)
 	      | em (NOTEMITTED_MODC(target,linkinfo,filename)) = 
-	      EMITTED_MODC(SystemTools.emit(target, OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid)) ^ "-" ^ f filename),linkinfo)
+	      EMITTED_MODC(SystemTools.emit(target,ModuleEnvironments.absprjid_to_string absprjid,filename),linkinfo)
                            (*puts ".o" on filename*)
 	  in em modc
 	  end
 
 	fun mk_exe (absprjid: absprjid, modc, extobjs, run) =
-	  let fun get (EMPTY_MODC, acc) = acc
-		| get (SEQ_MODC(modc1,modc2), acc) = get(modc1,get(modc2,acc))
-		| get (EMITTED_MODC p, acc) = p::acc
-		| get (NOTEMITTED_MODC(target,li,filename), acc) =
-	             (SystemTools.emit(target, OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid)) ^ "-" ^ filename),li)::acc
-	  in SystemTools.link(get(modc,[]), extobjs, run)
-	  end
+	    if compile_only() then ()
+	    else
+		let fun get (EMPTY_MODC, acc) = acc
+		      | get (SEQ_MODC(modc1,modc2), acc) = get(modc1,get(modc2,acc))
+		      | get (EMITTED_MODC p, acc) = p::acc
+		      | get (NOTEMITTED_MODC(target,li,filename), acc) =
+		    (SystemTools.emit(target,ModuleEnvironments.absprjid_to_string absprjid,filename),li)::acc
+		in SystemTools.link(get(modc,[]), extobjs, run)
+		end
 
+	fun mk_exe_all_emitted (modc, extobjs, run) =
+	    if compile_only() then ()
+	    else
+		let fun get (EMPTY_MODC, acc) = acc
+		      | get (SEQ_MODC(modc1,modc2), acc) = get(modc1,get(modc2,acc))
+		      | get (EMITTED_MODC p, acc) = p::acc
+		      | get (NOTEMITTED_MODC(target,li,filename), acc) = die "mk_exe_all_emitted"
+		in SystemTools.link(get(modc,[]), extobjs, run)
+		end
+	    
 	fun all_emitted modc : bool =
 	  case modc
 	    of NOTEMITTED_MODC _ => false
