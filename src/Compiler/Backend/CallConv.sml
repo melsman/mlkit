@@ -161,8 +161,8 @@ functor CallConv(structure Lvars : LVARS
       fun resolve_ccall(phreg_to_alpha: lvar  -> 'a)
 	{args: 'a list, rhos_for_result: 'a list, res: 'a list} =
 	let
-	  val (args',assign_list_args,phregs) = resolve_list phreg_to_alpha (args,[],BI.args_phreg_ccall)
-	  val (rhos_for_result',assign_list_args,_) = resolve_list phreg_to_alpha (rhos_for_result,assign_list_args,phregs)
+	  val (rhos_for_result',assign_list_args,phregs) = resolve_list phreg_to_alpha (rhos_for_result,[],BI.args_phreg_ccall)
+	  val (args',assign_list_args,_) = resolve_list phreg_to_alpha (args,assign_list_args,phregs)
 
 	  val (res',assign_list_res,_) = resolve_list phreg_to_alpha (res,[],BI.res_phreg_ccall)
 	in

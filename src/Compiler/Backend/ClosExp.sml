@@ -1957,6 +1957,10 @@ struct
 	       in
 		 (insert_ses(ce,ses),NONE_SE)
 	       end
+	   | MulExp.CCALL({name = "id", mu_result, rhos_for_result}, trs) =>
+	       (case trs of
+		  [tr] => (insert_se(ccTrip tr env lab cur_rv),NONE_SE)
+		| _ => die "CCALL: ``id'' with more than one tr")
 	   | MulExp.CCALL({name, mu_result, rhos_for_result}, trs) =>
 	       (* Regions in mu_result must be passed to the C-function for storing  *)
   	       (* the result of the call.  Regions are passed in two ways, dependent *)
