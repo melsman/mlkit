@@ -25,9 +25,9 @@ fun layout_user (user_imp_id,first_names,last_name,
    <td>^security_id</td>
    <td>^email</td>
    <td>^(ScsDate.wrapOpt ScsDate.pp last_auto_import_try)</td>
-   <td>^(ScsUserImp.exactMatchLink user_imp_id exact_match_id)</td>
-   <td>^(ScsUserImp.delLink user_imp_id)</td>
-   <td>^(ScsUserImp.moreInfoLink user_imp_id)</td>`
+   <td align="center">^(ScsUserImp.exactMatchLink user_imp_id exact_match_id)</td>
+   <td align="center">^(ScsUserImp.delLink user_imp_id)</td>
+   <td align="center">^(ScsUserImp.moreInfoLink user_imp_id)</td>`
 
 fun gen_table (source:ScsUserImp.external_source) [] = 
   ScsDict.s' [(ScsLang.en,`There are no persons to import in this group.`),
@@ -41,8 +41,8 @@ fun gen_table (source:ScsUserImp.external_source) [] =
   in
     `^del_all_link
     ` ^^ 
-    (ScsWidget.lineTable
-     {hdcolor="silver",row_col1="silver",row_col2="lightgrey",
+    (UcsPage.lineTable
+     {hdcolor="silver",row_col1="silver",row_col2="lightgrey",width="",
       header=`<th>^(ScsUserImp.nameField())</th>
               <th>^(ScsUserImp.securityIdField())</th>
               <th>^(ScsUserImp.emailField())</th>

@@ -1,8 +1,8 @@
-
 (* For The Oracle User *)
 
 structure Db : NS_DB = Ns.DbOra
 val _ = Db.Handle.initPools ["ora_main","ora_sub","ora_dict"]
+
 
 (* For The PgSQL User *)
 (*

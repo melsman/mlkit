@@ -141,7 +141,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC) : NS_DB =
 	    if isNull res 
 	      then  
 		let 
-		  val msg = "selectDb: SQL Error"
+		  val msg = Quot.toString (`selectDb: SQL Error on '` ^^ q ^^ `'`)
 		in 
 		  raise Fail msg
 		end

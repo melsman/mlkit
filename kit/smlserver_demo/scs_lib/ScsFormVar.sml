@@ -55,6 +55,65 @@ signature SCS_FORM_VAR =
     type quot = string frag list
     type errs = quot list
     type 'a formvar_fn = string * string * errs -> 'a * errs
+      
+(* to consider so that wrapXXX can be used on both these functions and
+specialised ones. 
+
+    type 'a formvar_fn = string * errs -> 'a * errs
+
+    type field_name = ScsDict.dict
+
+    val getIntErr      : msg -> int formvar_fn
+
+val getUserIdErr = getIntErr "User id" 
+
+val getUserIdErr : int formvar_fn 
+
+    val wrapOpt : 'a formvar_fn -> (string -> 'a option)
+
+    val wrapMaybe : 'a -> 'a formvar_msg_fn -> 'a formvar_msg_fn 
+
+      type fv = string
+      type 'a formvar
+
+      val getInt : fv -> int formvar
+
+      fejl
+      val wrapOpt : 'a formvar -> 'a option
+      val wrapExn : 'a formvar -> 'a
+      val wrapErr : field_name -> 'a formvar -> errs -> 'a * errs
+
+      hvornår er der fejl
+      val wrapMaybe : 'a -> ('a formvar -> 'b) -> 'b
+
+      ekstra information
+      val wrapDate : 'a formvar -> date * 'a
+
+
+datetype 'a formvar =
+   OK of fv * 'a
+ | ERROR of fv * string
+ | MISSING of fv
+
+val getUserIdMaybeErr = ((wrapMaybe 0 (wrapErr "User id")) o getInt) "user_id"
+
+wrapMaybe wrapErr
+wrapMaybe wrapOpt
+wrapMaybe wrapExn
+
+
+
+
+errs
+
+val getUserIdErr : fv -> errs -> int * errs = wrapErr "User id" o getInt
+
+val getUserIdErr = (wrapErr "User id" o getInt) "user_id"
+
+val (user_id,errs) = getUserIdErr "user_id" errs
+
+2003-02-23, nh, se eks i imp_row.sml
+*)
 
     val emptyErr : errs
     val addErr : quot * errs -> errs
