@@ -37,7 +37,7 @@ signature LAMBDA_EXP =
       | CONStype    of Type list * TyName
       | RECORDtype  of Type list
 
-    val tyvars : Type -> tyvar EqSet.Set
+    val tyvars : Type -> tyvar Edlib.EqSet.Set
     val boolType: Type
     val unitType: Type
     val exnType : Type
@@ -48,7 +48,7 @@ signature LAMBDA_EXP =
     datatype TypeList =                               (* To allow the result of a declaration *)  
         Types of Type list                            (* to be a raised Bind exception. *)
       | Frame of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
-		  declared_excons: (excon * Type Option) list}
+		  declared_excons: (excon * Type option) list}
       | RaisedExnBind
 
 
@@ -94,7 +94,7 @@ signature LAMBDA_EXP =
 
     datatype LambdaPgm = PGM of datbinds * LambdaExp
 
-    and datbinds = DATBINDS of (tyvar list * TyName * (con * Type Option) list) list list
+    and datbinds = DATBINDS of (tyvar list * TyName * (con * Type option) list) list list
       (* list of mutual recursive datatype declarations *)
 
     and LambdaExp =
@@ -112,7 +112,7 @@ signature LAMBDA_EXP =
 				  bind : LambdaExp} list,
 		     scope : LambdaExp}
       | APP      of LambdaExp * LambdaExp
-      | EXCEPTION of excon * Type Option * LambdaExp
+      | EXCEPTION of excon * Type option * LambdaExp
       | RAISE    of LambdaExp * TypeList
       | HANDLE   of LambdaExp * LambdaExp
       | SWITCH_I of int Switch
@@ -121,12 +121,12 @@ signature LAMBDA_EXP =
       | SWITCH_E of excon Switch
       | PRIM     of Type prim * LambdaExp list
       | FRAME    of {declared_lvars: {lvar : lvar, tyvars: tyvar list, Type: Type} list,
-                     declared_excons: (excon * Type Option) list}
+                     declared_excons: (excon * Type option) list}
                        (* a frame is the result of a structure-level
                         * declaration. 
 			*)
 
-    and 'a Switch = SWITCH of LambdaExp * ('a * LambdaExp) list * LambdaExp Option
+    and 'a Switch = SWITCH of LambdaExp * ('a * LambdaExp) list * LambdaExp option
 
     val size: LambdaExp -> int
     val size_incl_types: LambdaExp -> int

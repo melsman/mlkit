@@ -6,6 +6,9 @@
 (*$Report: BASIC_IO REPORT*)
 functor Report(structure BasicIO: BASIC_IO): REPORT =
   struct
+
+    open Edlib
+
     datatype Report = 
       REPORT2 of Report * Report
     | REPORT of string list

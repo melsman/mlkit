@@ -21,6 +21,11 @@ functor RegFlow(
     ): REG_FLOW = 
 
 struct
+
+  structure List = Edlib.List
+  structure ListPair = Edlib.ListPair
+  structure Int = Edlib.Int
+
   structure PP = PrettyPrint
   type lvar = Lvars.lvar
   type place = Eff.place
@@ -40,8 +45,8 @@ struct
   (*    General Abbreviations                                               *)
   (* ---------------------------------------------------------------------- *)
 
-  fun log s             = output(!Flags.log,s ^ "\n")
-  fun device(s)         = output(!Flags.log, s)            
+  fun log s             = TextIO.output(!Flags.log,s ^ "\n")
+  fun device(s)         = TextIO.output(!Flags.log, s)            
   fun dump(t)           = PrettyPrint.outputTree(device, t, !Flags.colwidth)
   fun die errmsg        = Crash.impossible ("RegFlow." ^ errmsg)
   fun unimplemented x   = Crash.unimplemented ("RegFlow." ^ x)
@@ -64,8 +69,8 @@ struct
 
   fun noSome x errmsg =
     case x of 
-      None => die errmsg
-    | Some y => y
+      NONE => die errmsg
+    | SOME y => y
 
 
   fun equal_places' p q = Eff.eq_effect(p,q)
@@ -115,7 +120,6 @@ struct
 
   type level = int
 
-  structure Array = NewJersey.Array
   val regmap_size = 1000
 
   abstype regmap = REGMAP of (nodeVal * graph)list Array.array
@@ -126,12 +130,12 @@ struct
     fun array_of(ref(REGMAP a)) = a
     val R = ref(REGMAP(Array.array(regmap_size, [])))
 
-    fun lookup_assoc p [] = None
+    fun lookup_assoc p [] = NONE
       | lookup_assoc p ((p', graph)::rest) =
-           if eq_nodeVal(p,p') then Some graph 
+           if eq_nodeVal(p,p') then SOME graph 
            else lookup_assoc p rest
 
-    fun lookup_R p : graph Option=
+    fun lookup_R p : graph option=
       (* lookup p first in the binary tree and then in the association list *)
       lookup_assoc p (Array.sub(array_of R, key_of_node p mod regmap_size)) 
       
@@ -142,8 +146,8 @@ struct
           val l = Array.sub(array_of R, i)
       in
          (case lookup_assoc p l of
-                     Some g => g
-                   | None => (*insert (p, new_graph p) in association list *)
+                     SOME g => g
+                   | NONE => (*insert (p, new_graph p) in association list *)
                              let val g = new_graph(p)
                              in Array.update(array_of R, i, (p,g)::l);
                                 g
@@ -154,13 +158,13 @@ struct
 
     fun add_edge_graph_iter(p: nodeVal, (g as NODE(p',_,_)): graph) =
       case lookup_R p of
-        Some (NODE(_,_, r' as (ref subG))) => 
+        SOME (NODE(_,_, r' as (ref subG))) => 
            r':= (if (List.exists (eq_graph g) subG) then subG
                 else 
                    ((*log ("adding edge from " ^ (pp_nodeVal p) ^ " to " 
                          ^ (pp_nodeVal p') ^ "\n");*)
                     g::subG))
-       | None =>
+       | NONE =>
          Crash.impossible ("add_edge_graph_iter: can't find node " ^ pp_nodeVal p)
 
     (* add edge from node labelled by p, which must exist, to node labelled q (which
@@ -174,16 +178,16 @@ struct
  
     fun connect_to_global rho : unit= 
        case Eff.get_place_ty rho of
-         Some Eff.WORD_RT => add_edge_iter(rho,Eff.toplevel_region_withtype_word)
-       | Some Eff.STRING_RT =>       add_edge_iter(rho,Eff.toplevel_region_withtype_string)
-       | Some Eff.REAL_RT =>       add_edge_iter(rho,Eff.toplevel_region_withtype_real)
-       | Some Eff.TOP_RT =>       add_edge_iter(rho,Eff.toplevel_region_withtype_top)
-       | Some Eff.BOT_RT => (add_edge_iter(rho,Eff.toplevel_region_withtype_bot);
+         SOME Eff.WORD_RT => add_edge_iter(rho,Eff.toplevel_region_withtype_word)
+       | SOME Eff.STRING_RT =>       add_edge_iter(rho,Eff.toplevel_region_withtype_string)
+       | SOME Eff.REAL_RT =>       add_edge_iter(rho,Eff.toplevel_region_withtype_real)
+       | SOME Eff.TOP_RT =>       add_edge_iter(rho,Eff.toplevel_region_withtype_top)
+       | SOME Eff.BOT_RT => (add_edge_iter(rho,Eff.toplevel_region_withtype_bot);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_word);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_string);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_real);
                              add_edge_iter(rho,Eff.toplevel_region_withtype_top))
-       | None => die "connect_to_global"
+       | NONE => die "connect_to_global"
 
 
     fun init_regmap() = R:= REGMAP(Array.array(regmap_size, []))
@@ -252,8 +256,8 @@ struct
          let 
            fun find_sw(SWITCH(_,branches,otherwise)) =
            let
-               val sub_phrases = case otherwise of None => map #2 branches
-                                 | Some phr => phr :: map #2 branches
+               val sub_phrases = case otherwise of NONE => map #2 branches
+                                 | SOME phr => phr :: map #2 branches
                fun loop [] = raise FRAME_NOT_FOUND
                  | loop (tr::trs) =
                         find tr handle FRAME_NOT_FOUND => loop trs
@@ -343,7 +347,7 @@ struct
           | SWITCH_E(switch) => mk_graph_e switch
           | CON1(_,tr) => mk_graph tr
           | DECON(_,tr) => mk_graph tr
-          | EXCON(_,Some(_,tr)) => mk_graph tr
+          | EXCON(_,SOME(_,tr)) => mk_graph tr
           | DEEXCON(_,tr) => mk_graph tr
           | RECORD(_, trs) => List.apply mk_graph trs
           | UB_RECORD(trs) => List.apply mk_graph trs
@@ -382,8 +386,8 @@ struct
              List.apply (mk_graph o #2) list;
              mk_graph_opt e'
             )
-        and mk_graph_opt None = ()
-          | mk_graph_opt (Some e) = mk_graph e
+        and mk_graph_opt NONE = ()
+          | mk_graph_opt (SOME e) = mk_graph e
      
         and mk_graph(TR(e, _, _, _)) = mk_graph_exp e
 

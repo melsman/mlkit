@@ -24,8 +24,8 @@ sig
       Similarly for findExcon.
    *)
 
-   val findLvar: (lvar -> '_a Option) -> liveset -> (lvar*'_a) Option
-   val findExcon: (excon -> 'a Option) -> liveset -> (excon*'a) Option
+   val findLvar: (lvar -> '_a option) -> liveset -> (lvar*'_a) option
+   val findExcon: (excon -> 'a option) -> liveset -> (excon*'a) option
 
 
    type StringTree

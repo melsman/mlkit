@@ -1,9 +1,11 @@
 (* special constants - Definition v3 page 3 *)
 
-(*$SCon : SCON*)
-
 functor SCon(): SCON =
 struct
+
+  structure Int = Edlib.Int
+  structure String = Edlib.String
+
   datatype scon = INTEGER of int | STRING of string | REAL of real
     | WORD of int | CHAR of int
 
@@ -23,6 +25,14 @@ struct
   fun pr_scon(INTEGER i) = Int.string i
    |  pr_scon(WORD i) = Int.string i
    |  pr_scon(STRING s) = String.string s
-   |  pr_scon(CHAR i) = "#\"" ^ chr i ^ "\""
-   |  pr_scon(REAL r) = Real.string r
+   |  pr_scon(CHAR i) = "#\"" ^ String.chr i ^ "\""
+   |  pr_scon(REAL r) = Real.toString r
+
+  fun eq (INTEGER i1, INTEGER i2) = i1 = i2
+    | eq (WORD w1, WORD w2) = w1 = w2
+    | eq (STRING s1, STRING s2) = s1 = s2
+    | eq (CHAR c1, CHAR c2) = c1 = c2 
+    | eq (REAL r1, REAL r2) = Real.==(r1,r2)
+    | eq _ = false
+
 end;

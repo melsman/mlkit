@@ -6,6 +6,9 @@ functor TyCon(structure StrId: STRID
 	      structure Crash: CRASH
 	     ): TYCON =
   struct
+
+    open Edlib
+
     type strid = StrId.strid
 
     datatype tycon = TYCON of string
@@ -58,7 +61,7 @@ functor TyCon(structure StrId: STRID
 
 	 | nil => Crash.impossible "TyCon.mk_LongTyCon"
 
-    fun (TYCON str1) < (TYCON str2) = AsciiOrdString.lt str1 str2
+    val op < = fn (TYCON str1, TYCON str2) => str1 < str2
 
     val strings_'true'_'nil'_etc = ["true", "false", "nil", "::", "ref"]
     fun is_'true'_'nil'_etc tycon =

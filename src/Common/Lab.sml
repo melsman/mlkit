@@ -3,6 +3,10 @@
 (*$Lab: LAB*)
 functor Lab(): LAB =
   struct
+
+    open Edlib
+    open General
+      
     datatype lab = LAB of string
 
    (* Ordering of labels requires a rethink, because we have to be careful
@@ -11,10 +15,10 @@ functor Lab(): LAB =
       for others (a2 > a10). We'd also better be convinced that the
       ordering is transitive, or things could start going horribly wrong. *)
 
-    fun (LAB str1) < (LAB str2) =
+    val op < = fn (LAB str1, LAB str2) =>
       case (IntParse.parse str1, IntParse.parse str2)
 	of (OK(i1, ""), OK(i2, "")) => Int.lt i1 i2
-	 | _ => AsciiOrdString.lt str1 str2
+	 | _ => str1 < str2
 
     fun is_LabN(LAB str, i) =
       case IntParse.parse str

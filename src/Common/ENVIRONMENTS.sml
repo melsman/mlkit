@@ -18,7 +18,7 @@ signature ENVIRONMENTS =
 
     (*types from other modules:*)
     structure TyName : TYNAME
-    type TyName sharing type TyName = TyName.TyName
+    type TyName = TyName.TyName
     type TyVar
     type Type
     type TypeScheme
@@ -28,7 +28,7 @@ signature ENVIRONMENTS =
     type realisation
     eqtype id
     type strid
-    type tycon sharing type tycon = TyName.tycon 
+    type tycon = TyName.tycon 
     type ExplicitTyVar
     type longid
     type longtycon
@@ -36,11 +36,11 @@ signature ENVIRONMENTS =
     type ty (*syntactic class of explicit type annotations*)
     type pat (*syntactic class of patterns*)
     type valbind (*syntactic class of valbinds*)
-    type StringTree sharing type StringTree = TyName.Set.StringTree
+    type StringTree = TyName.Set.StringTree
     type Report
       
 
-    val ExplicitTyVarsTy : ty -> ExplicitTyVar EqSet.Set
+    val ExplicitTyVarsTy : ty -> ExplicitTyVar Edlib.EqSet.Set
     val unguarded_valbind : valbind -> ExplicitTyVar list
       (*TODO 26/01/1997 15:37. tho.: both functions above ought
        to return the same type, list or set.
@@ -61,8 +61,8 @@ signature ENVIRONMENTS =
 	val singleton_con        : id * TypeScheme * id list -> VarEnv
 	val singleton_excon      : id  * Type -> VarEnv
 	val plus                 : VarEnv  * VarEnv -> VarEnv
-	val lookup               : VarEnv -> id -> range Option
-	val dom                  : VarEnv -> id EqSet.Set
+	val lookup               : VarEnv -> id -> range option
+	val dom                  : VarEnv -> id Edlib.EqSet.Set
 	val is_empty             : VarEnv -> bool
 	val eq                   : VarEnv * VarEnv -> bool (*up to bound vars*)
 	val fold                 : (range -> 'a -> 'a) -> 'a -> VarEnv -> 'a
@@ -109,8 +109,8 @@ signature ENVIRONMENTS =
 	val bogus                : TyEnv
 	val singleton            : tycon * TyStr -> TyEnv
 	val plus                 : TyEnv * TyEnv -> TyEnv
-	val lookup               : TyEnv -> tycon -> TyStr Option
-	val dom                  : TyEnv -> tycon EqSet.Set
+	val lookup               : TyEnv -> tycon -> TyStr option
+	val dom                  : TyEnv -> tycon Edlib.EqSet.Set
 	val fold                 : (TyStr -> 'b -> 'b) -> 'b -> TyEnv -> 'b
 	val Fold                 : (tycon * TyStr -> 'c -> 'c) -> 'c -> TyEnv -> 'c
 	val apply                : (tycon * TyStr -> unit) -> TyEnv -> unit
@@ -133,8 +133,8 @@ signature ENVIRONMENTS =
 	val empty                : StrEnv
 	val singleton            : strid * Env -> StrEnv
 	val plus                 : StrEnv * StrEnv -> StrEnv
-	val lookup               : StrEnv -> strid -> Env Option
-	val dom                  : StrEnv -> strid EqSet.Set
+	val lookup               : StrEnv -> strid -> Env option
+	val dom                  : StrEnv -> strid Edlib.EqSet.Set
 	val fold                 : (Env -> 'b  -> 'b) -> 'b -> StrEnv -> 'b
 	val Fold                 : (strid * Env -> 'c -> 'c) -> 'c -> StrEnv -> 'c
 	val apply                : (strid * Env -> unit) -> StrEnv -> unit
@@ -158,12 +158,12 @@ signature ENVIRONMENTS =
 	val from_SE              : StrEnv -> Env
 	val to_SE                : Env -> StrEnv
 	val plus                 : Env   * Env -> Env
-	val lookup_strid         : Env -> strid -> Env Option
-	val lookup_strids        : Env -> strid list -> Env Option
-	val lookup_tycon         : Env -> tycon -> TyStr Option
-	val lookup_longid        : Env -> longid -> VE.range Option
-	val lookup_longtycon     : Env -> longtycon -> TyStr Option
-	val lookup_longstrid     : Env -> longstrid -> Env Option
+	val lookup_strid         : Env -> strid -> Env option
+	val lookup_strids        : Env -> strid list -> Env option
+	val lookup_tycon         : Env -> tycon -> TyStr option
+	val lookup_longid        : Env -> longid -> VE.range option
+	val lookup_longtycon     : Env -> longtycon -> TyStr option
+	val lookup_longstrid     : Env -> longstrid -> Env option
 	val on                   : Substitution * Env -> Env
 	val empty                : Env
 	val initial              : Env
@@ -197,10 +197,10 @@ signature ENVIRONMENTS =
 	val from_E               : Env -> Context
 	val on                   : Substitution * Context  -> Context
 
-	val lookup_longid        : Context -> longid -> VE.range Option
-	val lookup_longtycon     : Context -> longtycon -> TyStr Option
-	val lookup_longstrid     : Context -> longstrid -> Env Option
-	val lookup_tycon         : Context -> tycon -> TyStr Option
+	val lookup_longid        : Context -> longid -> VE.range option
+	val lookup_longtycon     : Context -> longtycon -> TyStr option
+	val lookup_longstrid     : Context -> longstrid -> Env option
+	val lookup_tycon         : Context -> tycon -> TyStr option
 
 	(*Additional function for taking a longid (which must represent a
 	 constructor) to a complete list of its fellow constructors. Needed

@@ -15,14 +15,14 @@ sig
   structure StrId : STRID (* structure identifiers *)
                  sharing type StrId.strid = Ident.strid = TyCon.strid
 
-  type lab       sharing type lab = Lab.lab
-  type scon      sharing type scon = SCon.scon
-  type id        sharing type id = Ident.id
-  type longid    sharing type longid = Ident.longid
-  eqtype tyvar   sharing type tyvar = TyVar.SyntaxTyVar (*inkonsekvent & meget forvirrende*)
-  type   tycon   sharing type tycon = TyCon.tycon
-  type longtycon sharing type longtycon = TyCon.longtycon
-  type longstrid sharing type longstrid = StrId.longstrid
+  type lab = Lab.lab
+  type scon = SCon.scon
+  type id = Ident.id
+  type longid = Ident.longid
+  type tyvar = TyVar.SyntaxTyVar (*very confusing*)
+  eqtype tycon sharing type tycon = TyCon.tycon
+  type longtycon = TyCon.longtycon
+  type longstrid = StrId.longstrid
 
   type info       (* info about the position in the source text, errors etc *)
   val bogus_info : info
@@ -34,12 +34,12 @@ sig
   datatype atexp =
 	SCONatexp of info * scon |         
 	IDENTatexp of info * longid op_opt |
-	RECORDatexp of info * exprow Option |
+	RECORDatexp of info * exprow option |
 	LETatexp of info * dec * exp |
 	PARatexp of info * exp
 
   and exprow =
-	EXPROW of info * lab * exp * exprow Option
+	EXPROW of info * lab * exp * exprow option
 
   and exp =
 	ATEXPexp of info * atexp |
@@ -51,7 +51,7 @@ sig
 	UNRES_INFIXexp of info * atexp list
       
   and match =
-        MATCH of info * mrule * match Option
+        MATCH of info * mrule * match option
 
   and mrule =
         MRULE of info * pat * exp
@@ -68,58 +68,58 @@ sig
 	LOCALdec of info * dec * dec |
 	OPENdec of info * longstrid WithInfo list |
 	SEQdec of info * dec * dec |
-	INFIXdec of info * int Option * id list |
-	INFIXRdec of info * int Option * id list |
+	INFIXdec of info * int option * id list |
+	INFIXRdec of info * int option * id list |
 	NONFIXdec of info * id list |
 	EMPTYdec of info
 
   and valbind =
-	PLAINvalbind of info * pat * exp * valbind Option |
+	PLAINvalbind of info * pat * exp * valbind option |
 	RECvalbind of info * valbind
 
-  and FValBind = FVALBIND of info * FClause * FValBind Option
-  and FClause = FCLAUSE of info * atpat list * ty Option * exp * FClause Option
+  and FValBind = FVALBIND of info * FClause * FValBind option
+  and FClause = FCLAUSE of info * atpat list * ty option * exp * FClause option
 
   and typbind =
-        TYPBIND of info * tyvar list * tycon * ty * typbind Option
+        TYPBIND of info * tyvar list * tycon * ty * typbind option
 
   and datbind =
-        DATBIND of info * tyvar list * tycon * conbind * datbind Option
+        DATBIND of info * tyvar list * tycon * conbind * datbind option
 
   and conbind =
-        CONBIND of info * id op_opt * ty Option * conbind Option
+        CONBIND of info * id op_opt * ty option * conbind option
 
   and exbind =
-        EXBIND of info * id op_opt * ty Option * exbind Option |
-        EXEQUAL of info * id op_opt * longid op_opt * exbind Option
+        EXBIND of info * id op_opt * ty option * exbind option |
+        EXEQUAL of info * id op_opt * longid op_opt * exbind option
 
   and atpat =
         WILDCARDatpat of info |
 	SCONatpat of info * scon |
 	LONGIDatpat of info * longid op_opt |
-	RECORDatpat of info * patrow Option |
+	RECORDatpat of info * patrow option |
 	PARatpat of info * pat
 
   and patrow =
         DOTDOTDOT of info |
-        PATROW of info * lab * pat * patrow Option
+        PATROW of info * lab * pat * patrow option
 
   and pat =
         ATPATpat of info * atpat |
         CONSpat of info * longid op_opt * atpat |
         TYPEDpat of info * pat * ty |
-        LAYEREDpat of info * id op_opt * ty Option * pat |
+        LAYEREDpat of info * id op_opt * ty option * pat |
 	UNRES_INFIXpat of info * atpat list
 
   and ty =
         TYVARty of info * tyvar |
-        RECORDty of info * tyrow Option |
+        RECORDty of info * tyrow option |
         CONty of info * ty list * longtycon |
         FNty of info * ty * ty |
         PARty of info * ty
 
   and tyrow =
-        TYROW of info * lab * ty * tyrow Option
+        TYROW of info * lab * ty * tyrow option
 
   val get_info_atexp : atexp -> info
   val get_info_exprow : exprow -> info
@@ -165,8 +165,8 @@ sig
 
   val expansive : (longid -> bool) -> exp -> bool
 
-  val find_topmost_id_in_pat : pat -> string Option
-  val find_topmost_id_in_atpat: atpat -> string Option
+  val find_topmost_id_in_pat : pat -> string option
+  val find_topmost_id_in_atpat: atpat -> string option
 
   (*is_'true'_'nil'_etc & is_'it' are used to enforce some syntactic
    restrictions (Definition, §2.9 & §3.5).*)
@@ -176,7 +176,7 @@ sig
 
   type StringTree
 
-  val layoutTyvarseq : tyvar list -> StringTree Option
+  val layoutTyvarseq : tyvar list -> StringTree option
   val layoutTy :       ty	  -> StringTree
   val layoutAtpat :    atpat	  -> StringTree
   val layoutPat :      pat	  -> StringTree

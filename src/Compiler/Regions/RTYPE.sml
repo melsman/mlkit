@@ -22,7 +22,7 @@ sig
   val ann_mus: (Type * place)list -> effect list -> effect list
   val runtype: Type -> runType
 
-  val freshType: (tyname -> (int*runType list*int)Option) (* lookup function *)
+  val freshType: (tyname -> (int*runType list*int)option) (* lookup function *)
                              ->(LambdaType * cone -> Type * cone) 
                              * (LambdaType * cone -> (Type*place) * cone) 
   val unify_ty: Type * Type -> cone -> cone
@@ -49,11 +49,11 @@ sig
   type delta_phi
   val instClever : sigma * il -> cone -> Type * cone * (effect * delta_phi)list
 
-  val regEffClos: cone * int * effect * Type -> cone * sigma * string Option
-  val effClos   : cone * int * effect * Type -> cone * sigma * string Option
-  val generalize_all: cone * int * tyvar list * Type -> cone * sigma * string Option
+  val regEffClos: cone * int * effect * Type -> cone * sigma * string option
+  val effClos   : cone * int * effect * Type -> cone * sigma * string option
+  val generalize_all: cone * int * tyvar list * Type -> cone * sigma * string option
 (*
-  val generalize_all_and_provide_secondary: cone * int * tyvar list * Type -> cone * sigma * string Option
+  val generalize_all_and_provide_secondary: cone * int * tyvar list * Type -> cone * sigma * string option
 *)
   val alpha_rename: sigma * cone -> sigma
   val alpha_rename': (place list * effect list * Type) * cone -> sigma
@@ -78,7 +78,7 @@ sig
    with return type-and-place mu; see comment in MUL_EXP.*)
 
   val sigma_for_c_function : tyvar list -> (Type * place) -> cone -> sigma * cone
-  val c_function_effects : (Type * place) -> (place * int Option) list
+  val c_function_effects : (Type * place) -> (place * int option) list
 
   type StringTree
   (* the boolean in the following functions should be true iff on want to 
@@ -86,7 +86,7 @@ sig
   val mk_layout: bool -> (Type -> StringTree) * (Type*place -> StringTree)
   val mk_lay_sigma: bool -> sigma -> StringTree
   val mk_lay_sigma': bool -> (tyvar list * place list * effect list * Type) -> StringTree
-  val mk_lay_sigma'': ('b -> StringTree Option) -> bool -> 
+  val mk_lay_sigma'': ('b -> StringTree option) -> bool -> 
                       (tyvar list * 'b list * effect list * Type) -> StringTree
 end;
 

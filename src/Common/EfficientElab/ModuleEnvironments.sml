@@ -13,6 +13,7 @@ functor ModuleEnvironments(
 	  structure StatObject : STATOBJECT
 
 	  structure Environments : ENVIRONMENTS 
+	    sharing Environments.TyName = StatObject.TyName
 	    sharing type Environments.longstrid = StrId.longstrid
 	    sharing type Environments.strid      = StrId.strid = TyCon.strid
 		and type Environments.tycon      = TyCon.tycon
@@ -22,24 +23,22 @@ functor ModuleEnvironments(
 	        and type Environments.Type = StatObject.Type
 	        and type Environments.realisation = StatObject.realisation
 		and type Environments.id = Ident.id
-	    sharing Environments.TyName = StatObject.TyName
 
 	  structure ModuleStatObject : MODULE_STATOBJECT
+	    sharing Environments.TyName = ModuleStatObject.TyName
 	    sharing type Environments.TypeFcn = StatObject.TypeFcn
 	    sharing type ModuleStatObject.id = Environments.id
 		and type ModuleStatObject.Env = Environments.Env
 		and type ModuleStatObject.realisation = StatObject.realisation
 		and type ModuleStatObject.TyVar = StatObject.TyVar
-	    sharing Environments.TyName = ModuleStatObject.TyName
 
 
 	  structure PP : PRETTYPRINT
 	    sharing type ModuleStatObject.StringTree = PP.StringTree
-	        and type Environments.StringTree = PP.StringTree
+(*	        and type Environments.StringTree = PP.StringTree *)
 
 	  structure Report: REPORT
 	  structure Flags : FLAGS
-	  structure ListHacks: LIST_HACKS
 
 	  structure FinMap : FINMAP
 	    sharing type FinMap.StringTree = PP.StringTree
@@ -52,6 +51,9 @@ functor ModuleEnvironments(
 	  structure Crash : CRASH
           ) : MODULE_ENVIRONMENTS =
   struct
+
+    open Edlib
+
     fun die s = Crash.impossible ("ModuleEnvironments."^s)
 
     (*import from StatObject:*)
@@ -119,12 +121,12 @@ functor ModuleEnvironments(
 	    let val l = FinMap.Fold (op ::) nil m
 
 	    fun format_id sigid =
-	          implode ["signature ", SigId.pr_SigId sigid, " : "]
+	          concat ["signature ", SigId.pr_SigId sigid, " : "]
 
 	    fun layoutPair (sigid, Sig) = 
 	          PP.NODE {start=format_id sigid, finish="", indent=3,
 			   children=[Sigma.layout Sig],
-			   childsep=PP.NONE}
+			   childsep=PP.NOSEP}
 	    in 
 	      (case l of
 		[] => PP.LEAF ""		(* No signatures => no printout *)
@@ -162,11 +164,11 @@ functor ModuleEnvironments(
       fun dom (FUNENV F) = FinMap.dom F
       fun layout (FUNENV m) =
 	    let val l = FinMap.Fold op :: nil m
-	    fun format_id funid = implode ["functor ", FunId.pr_FunId funid, " : "]
+	    fun format_id funid = concat ["functor ", FunId.pr_FunId funid, " : "]
 	    fun layoutPair (funid, FunSig) = 
 	          PP.NODE {start=format_id funid, finish="", indent=3,
 			   children=[Phi.layout FunSig],
-			   childsep=PP.NONE}
+			   childsep=PP.NOSEP}
 	    in
 	      case l of
 		[] => PP.LEAF ""		(* No functors => no printout *)
@@ -238,14 +240,14 @@ functor ModuleEnvironments(
       fun enrich_SigEnv(SIGENV G1,SIGENV G2) = 
 	FinMap.Fold (fn ((sigid2,Sig2), b) => b andalso
 		     case FinMap.lookup G1 sigid2 
-		       of Some Sig1 => Sigma.eq(Sig1,Sig2)
-			| None => false) true G2
+		       of SOME Sig1 => Sigma.eq(Sig1,Sig2)
+			| NONE => false) true G2
 
       fun enrich_FunEnv(FUNENV F1,FUNENV F2) =
 	FinMap.Fold (fn ((funid2,FunSig2),b) => b andalso
 		     case FinMap.lookup F1 funid2 
-		       of Some FunSig1 => Phi.eq(FunSig1,FunSig2)
-			| None => false) true F2
+		       of SOME FunSig1 => Phi.eq(FunSig1,FunSig2)
+			| NONE => false) true F2
 
 
       fun enrichB(BASIS{F=F1,G=G1,E=E1}, BASIS{F=F2,G=G2,E=E2}) = 
@@ -265,15 +267,15 @@ functor ModuleEnvironments(
 	let val F' = List.foldL
 	               (fn funid => fn Fnew =>
 			let val FunSig = (case FinMap.lookup F funid of
-					    Some FunSig => FunSig
-					  | None => die "restrictB.funid not in basis.")
+					    SOME FunSig => FunSig
+					  | NONE => die "restrictB.funid not in basis.")
 			in FinMap.add(funid,FunSig,Fnew)
 			end) FinMap.empty funids 
 	    val G' = List.foldL
 	               (fn sigid => fn Gnew =>
 			let val Sig = (case FinMap.lookup G sigid of
-					 Some Sig => Sig
-				       | None => die "restrictB.sigid not in basis.")
+					 SOME Sig => Sig
+				       | NONE => die "restrictB.sigid not in basis.")
 			in FinMap.add(sigid,Sig,Gnew)
 			end) FinMap.empty sigids
 	    val E' = E.restrict (E, (ids, tycons, strids))

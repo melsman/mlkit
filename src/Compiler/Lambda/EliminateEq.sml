@@ -22,6 +22,9 @@ functor EliminateEq (structure Lvars : LVARS
 			   and type LvarMap.StringTree = PP.StringTree) 
   : ELIMINATE_EQ =
   struct
+
+    structure List = Edlib.List
+
     open LambdaExp
 
     fun die s = Crash.impossible ("EliminateEq." ^ s)
@@ -70,14 +73,14 @@ functor EliminateEq (structure Lvars : LVARS
 		    else die "restrict.tvmap not empty"
 	    val tnmap' = List.foldL (fn tn => fn acc =>
 				     case TyNameMap.lookup tnmap tn                (* don't scream if it *)
-				       of Some res => TyNameMap.add(tn,res,acc)    (* is not here... *)
-					| None => acc) TyNameMap.empty tynames
+				       of SOME res => TyNameMap.add(tn,res,acc)    (* is not here... *)
+					| NONE => acc) TyNameMap.empty tynames
 	    val lvars' = TyNameMap.Fold (fn ((_,POLYLVAR lv), lvars) => lv :: lvars
 	                                 | _ => die "restrict.not POLYLVAR") [] tnmap'
 	    val lvmap' = List.foldL (fn lv => fn acc =>
 				     case LvarMap.lookup lvmap lv
-				       of Some res => LvarMap.add(lv,res,acc)
-					| None => die ("restrict.lv: " ^ Lvars.pr_lvar lv ^ " not in map"))
+				       of SOME res => LvarMap.add(lv,res,acc)
+					| NONE => die ("restrict.lv: " ^ Lvars.pr_lvar lv ^ " not in map"))
 	                 LvarMap.empty lvars
 	in (lvars', (tnmap',tvmap,lvmap'))
 	end
@@ -92,14 +95,14 @@ functor EliminateEq (structure Lvars : LVARS
       fun enrich_tnmap(tnmap1,tnmap2) =
 	TyNameMap.Fold (fn ((tn2, res2), b) => b andalso
 			   case TyNameMap.lookup tnmap1 tn2
-			     of Some res1 => eq_tnres(res1,res2)
-			      | None => false) true tnmap2
+			     of SOME res1 => eq_tnres(res1,res2)
+			      | NONE => false) true tnmap2
 
       fun enrich_lvmap(lvmap1,lvmap2) =
 	LvarMap.Fold (fn ((lv2, res2), b) => b andalso
 			 case LvarMap.lookup lvmap1 lv2
-			   of Some res1 => eq_lvres(res1,res2)
-			    | None => false) true lvmap2
+			   of SOME res1 => eq_lvres(res1,res2)
+			    | NONE => false) true lvmap2
 
       fun enrich((tnmap1,tvmap1,lvmap1),(tnmap2,tvmap2,lvmap2)) =
 	let val _ = if TyVarMap.isEmpty tvmap1 andalso TyVarMap.isEmpty tvmap2 then () 
@@ -111,7 +114,7 @@ functor EliminateEq (structure Lvars : LVARS
 	let val tnmap = TyNameMap.fromList (TyNameMap.list tnmap)
 	in TyNameMap.Fold (fn ((tn0, POLYLVAR lv0),()) =>
 			   (case TyNameMap.lookup tnmap tn0
-			      of Some(POLYLVAR lv) => Lvars.match(lv,lv0)
+			      of SOME(POLYLVAR lv) => Lvars.match(lv,lv0)
 			       | _ => ())
                            | _ => die "match_tnmap") () tnmap0;
 	  tnmap
@@ -152,11 +155,11 @@ functor EliminateEq (structure Lvars : LVARS
       val initial : env = initial
       val plus : env * env -> env = plus
       val add_tyname : TyName * result * env -> env = add_tyname
-      val lookup_tyname : env -> TyName -> result Option = lookup_tyname
+      val lookup_tyname : env -> TyName -> result option = lookup_tyname
       val add_tyvar : tyvar * lvar * env -> env = add_tyvar
-      val lookup_tyvar : env -> tyvar -> lvar Option = lookup_tyvar
+      val lookup_tyvar : env -> tyvar -> lvar option = lookup_tyvar
       val add_lvar : lvar * tyvar list * env -> env = add_lvar
-      val lookup_lvar : env -> lvar -> tyvar list Option = lookup_lvar
+      val lookup_lvar : env -> lvar -> tyvar list option = lookup_lvar
       val env_range : env -> result list = env_range (* only used at top-level *)
       val env_map : (result->result) -> env -> env = env_map (* only used at top-level *)
       val enrich : env * env -> bool = enrich
@@ -218,8 +221,8 @@ functor EliminateEq (structure Lvars : LVARS
 	fun gen tau =
 	 (case tau
 	    of (TYVARtype tv) => (case lookup_tyvar env tv
-				    of Some lv => VAR {lvar = lv, instances =[]}
-				     | None => FN {pat=[(Lvars.newLvar(),RECORDtype [TYVARtype tv, TYVARtype tv])],
+				    of SOME lv => VAR {lvar = lv, instances =[]}
+				     | NONE => FN {pat=[(Lvars.newLvar(),RECORDtype [TYVARtype tv, TYVARtype tv])],
 						   body=lamb_false}) (* the function will never be applied. *)
 				    (* --------------  
 				     * old; check out testprogs/eq_1.sml
@@ -234,16 +237,16 @@ functor EliminateEq (structure Lvars : LVARS
 	      in
 		if is_eq_prim_tn tn then mk_prim_eq tau
 		else case lookup_tyname env tn
-		       of Some (POLYLVAR lv) =>
+		       of SOME (POLYLVAR lv) =>
 			 apply (VAR {lvar = lv, instances = taus}) taus
-			| Some (MONOLVAR (lv, tyvars)) =>
+			| SOME (MONOLVAR (lv, tyvars)) =>
 			    if map (fn TYVARtype tv => tv
 		                     | _ => raise DONT_SUPPORT_EQ) taus = tyvars then
 			      apply (lamb_var lv) taus
 			    else raise DONT_SUPPORT_EQ
-			| Some (FAIL str) => die ("gen_type_eq -- Equality not supported for " ^ 
+			| SOME (FAIL str) => die ("gen_type_eq -- Equality not supported for " ^ 
 						  TyName.pr_TyName tn ^ ".")
-			| None => die ("gen_type_eq. type name " ^ TyName.pr_TyName tn ^ 
+			| NONE => die ("gen_type_eq. type name " ^ TyName.pr_TyName tn ^ 
 				       " not in env.")
 	      end
 	   | (tau as RECORDtype taus) =>
@@ -262,7 +265,7 @@ functor EliminateEq (structure Lvars : LVARS
 				  fun sel k = PRIM(SELECTprim n, [PRIM(SELECTprim k, [v])])
 				  val e = APP (gen tau, PRIM(RECORDprim, [sel 0, sel 1]))
 			      in SWITCH_C (SWITCH (e, [(Con.con_TRUE, gen_switch (n+1) p taus)], 
-						   Some lamb_false))
+						   SOME lamb_false))
 			      end)
       in gen tau
       end
@@ -315,7 +318,7 @@ functor EliminateEq (structure Lvars : LVARS
 		   bind=PRIM(SELECTprim n, [lamb_var p]),
 		   scope=e} 
 
-	fun mk_sw c e = SWITCH_C(SWITCH(lamb_var p1,[(c, e)], Some lamb_false))
+	fun mk_sw c e = SWITCH_C(SWITCH(lamb_var p1,[(c, e)], SOME lamb_false))
 	fun mk_nullary_sw c = mk_sw c lamb_true 
 	fun mk_unary_sw c tau =
 	  let 
@@ -337,16 +340,16 @@ functor EliminateEq (structure Lvars : LVARS
 	fun mk_cases [] = []
 	  | mk_cases ((c, typeopt)::rest) =
 	  let val p = case typeopt
-			of None => (c, mk_nullary_sw c)
-			 | Some tau => (c, mk_unary_sw c tau) 
+			of NONE => (c, mk_nullary_sw c)
+			 | SOME tau => (c, mk_unary_sw c tau) 
 	  in p :: mk_cases rest
 	  end
-	val big_sw = SWITCH_C(SWITCH(lamb_var p0, mk_cases cbs, None))
+	val big_sw = SWITCH_C(SWITCH(lamb_var p0, mk_cases cbs, NONE))
 	val bind  = mk_abs_eq_fns tyvars lvs
 	             (mk_pn p0 0
 		      (mk_pn p1 1 big_sw))
 	val lvar = case lookup_tyname env' tn
-		     of Some(MONOLVAR (lv,_)) => lv
+		     of SOME(MONOLVAR (lv,_)) => lv
 		      | _ => die "gen_db.lvar" 
       in			
 	{lvar=lvar, tyvars=tyvars, Type=gen_tau tyvars, bind=bind}
@@ -423,8 +426,8 @@ functor EliminateEq (structure Lvars : LVARS
 	val tn_list = TyName.tyName_LIST
 	val tv = fresh_tyvar()
 	val tau_tv = TYVARtype tv
-	val cbs = [(Con.con_CONS, Some (RECORDtype [tau_tv, CONStype([tau_tv], tn_list)])),
-		   (Con.con_NIL, None)]
+	val cbs = [(Con.con_CONS, SOME (RECORDtype [tau_tv, CONStype([tau_tv], tn_list)])),
+		   (Con.con_NIL, NONE)]
 	val dbss = [[([tv], tn_list,cbs)]]
       in 
 	gen_datatype_eq empty dbss
@@ -448,7 +451,7 @@ functor EliminateEq (structure Lvars : LVARS
 	fun f e =
 	  let fun f_sw (SWITCH(e,sel,opt)) = 
 	    SWITCH(f e,map (fn (a,e) => (a, f e)) sel,
-		   case opt of Some e => Some (f e) | None => None)
+		   case opt of SOME e => SOME (f e) | NONE => NONE)
 	  in case e
 	       of VAR _ => e
 		| INTEGER _ => e
@@ -515,18 +518,18 @@ functor EliminateEq (structure Lvars : LVARS
     fun t_switch t env (SWITCH(lexp, sels, opt)) =
       SWITCH(t env lexp, map (fn (a, lexp) => (a, t env lexp)) sels,
 	     case opt 
-	       of Some lexp => Some (t env lexp) 
-		| None => None)
+	       of SOME lexp => SOME (t env lexp) 
+		| NONE => NONE)
 
     fun t env lexp =
       case lexp
 	of VAR {lvar, instances=[]} =>  (* maybe a recursive call *)
 	  (case lookup_lvar env lvar
-	     of Some tyvars => apply_eq_fns env (map TYVARtype (eq_tyvars tyvars)) lexp
-	      | None => lexp)
+	     of SOME tyvars => apply_eq_fns env (map TYVARtype (eq_tyvars tyvars)) lexp
+	      | NONE => lexp)
 	 | VAR {lvar, instances} => (* not a recursive call *)  
 	    (case lookup_lvar env lvar
-	       of Some tyvars => (* those of the tyvars that admit equality
+	       of SOME tyvars => (* those of the tyvars that admit equality
 				  * determines what instances to use. *)
 		 let fun sel [] [] = []
 		       | sel (tv::tvs) (tau::taus) = 
@@ -538,7 +541,7 @@ functor EliminateEq (structure Lvars : LVARS
 		 in
 		   apply_eq_fns env instances' lexp
 		 end
-		| None => die "f.VAR.lvar not in env")
+		| NONE => die "f.VAR.lvar not in env")
 	 | PRIM(EQUALprim {instance}, [lexp1, lexp2]) =>
 	       (case instance
 		  of RECORDtype [tau,_] => 
@@ -589,8 +592,8 @@ functor EliminateEq (structure Lvars : LVARS
 	    let val lvars = map #lvar declared_lvars
 	        val _ = env_frame := (List.foldL (fn lv => fn acc => 
 						  case lookup_lvar env lv
-						    of Some tvs => add_lvar(lv,tvs,acc)
-						     | None => acc) empty lvars)
+						    of SOME tvs => add_lvar(lv,tvs,acc)
+						     | NONE => acc) empty lvars)
 	    in lexp
 	    end
 	 (* the rest is just trivial traversal *) 

@@ -23,10 +23,10 @@ functor QuasiEnv(structure OFinMap : ORDER_FINMAP
 
     fun mk (n : int) (m : '_a map) : '_a qmap = (m, H.mk_empty n)
 
-    fun lookup ((m,h) : '_a qmap) (a : dom) : '_a Option =           (************************)
+    fun lookup ((m,h) : '_a qmap) (a : dom) : '_a option =           (************************)
       case H.lookup(h,key a)                                         (* First, lookup in the *)
-	of (r as Some _) => r                                        (* hash table.          *)
-	 | None => Env.lookup m a                                    (************************)
+	of (r as SOME _) => r                                        (* hash table.          *)
+	 | NONE => Env.lookup m a                                    (************************)
 
     fun update (a:dom, r:'_a, (_,h): '_a qmap) = H.update(h,key a,r)        (************************)
                                                                             (* Always do the update *)
@@ -35,7 +35,7 @@ functor QuasiEnv(structure OFinMap : ORDER_FINMAP
 
     fun Fold (f : ((int * '_b) * 'a) -> 'a) (acc : 'a) ((m,h):'_b qmap) =
       let fun not_in_hash_table (a,r) = 					(*******************************)
-	    case H.lookup(h,key a) of Some _ => false | None => true		(* First, filter out things in *)
+	    case H.lookup(h,key a) of SOME _ => false | NONE => true		(* First, filter out things in *)
 	  val m' = Env.filter not_in_hash_table m				(* map that are in hash table  *)
 	  fun f' ((dom,b),a) = f ((key dom,b),a)				(*******************************)	    
 	  val acc' = Env.Fold f' acc m' 	

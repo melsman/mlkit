@@ -1,4 +1,4 @@
-(*$RegInf: CON EXCON TYNAME REGION_EXP EFFECT REGION_STAT_ENV LVARS CRASH PRETTYPRINT FLAGS RTYPE REGINF *)
+
 functor RegInf(
                                                (***************)
   structure TyName: TYNAME                     (* Algorithm R *)
@@ -27,6 +27,10 @@ functor RegInf(
         and type RType.delta_phi = Effect.delta_phi
 ):REGINF =
 struct
+
+  structure List = Edlib.List
+  structure Int = Edlib.Int
+
   type cone = RType.cone
   type place = RType.place
   type effect = RType.effect
@@ -48,9 +52,9 @@ struct
 
   fun die msg = Crash.impossible ("R." ^ msg)
 
-  fun say s = output(std_out, s)
-  fun checkMsgOpt (Some msg) = Flags.warn_string msg
-    | checkMsgOpt None = ()
+  fun say s = TextIO.output(TextIO.stdOut, s)
+  fun checkMsgOpt (SOME msg) = Flags.warn_string msg
+    | checkMsgOpt NONE = ()
 
   fun show_sigma sigma = PrettyPrint.flatten1(RType.mk_lay_sigma false (sigma))
 
@@ -114,12 +118,12 @@ struct
   fun inferEffects(device: string-> unit) =
   let
     val layoutExp = Exp.layoutLambdaExp(if !Flags.print_regions 
-                                        then (fn rho => Some(PrettyPrint.LEAF("at " 
+                                        then (fn rho => SOME(PrettyPrint.LEAF("at " 
                                               ^ PrettyPrint.flatten1(Effect.layout_effect rho))))
-                                        else (fn rho => None))
-                                       (fn () => None)
+                                        else (fn rho => NONE))
+                                       (fn () => NONE)
     fun sayCone B = PrettyPrint.outputTree(device,Effect.layoutCone B,!Flags.colwidth);
-    fun sayLn s = (output(std_out, s ^ "\n");
+    fun sayLn s = (TextIO.output(TextIO.stdOut, s ^ "\n");
                    device(s ^ "\n"))
     fun logtree(t:PrettyPrint.StringTree) = PrettyPrint.outputTree(device, t, !Flags.colwidth)
     fun log_sigma(sigma_5hat, f) = 
@@ -155,8 +159,8 @@ struct
                                       in (B', Effect.Br(d,d'))
                                       end) (B,d1) rules
            in
-               case t_opt of None => (B,d2)
-               | Some t => let val (B,d3) = R(B,rse,t)
+               case t_opt of NONE => (B,d2)
+               | SOME t => let val (B,d3) = R(B,rse,t)
                            in (B, Effect.Br(d2,d3))
                            end
            end
@@ -166,7 +170,7 @@ struct
          let val (il, B) = f(il, B)
          in il_r:= (il, fn p => p);
            (case RSE.lookupLvar rse lvar of
-     	  Some(_,_,sigma,place0,_, _) =>
+     	  SOME(_,_,sigma,place0,_, _) =>
                  let 
                    val (tau_1,B,updates: (effect * Effect.delta_phi)list) = instClever(sigma,il)(B)
                      handle Crash.CRASH =>
@@ -185,7 +189,7 @@ struct
                        )
                    | _ => die ("R.VAR{...}: bad metatype")
                  end
-              | None => die ("R.VAR{...}: free lvar" ^ Lvar.pr_lvar lvar)
+              | NONE => die ("R.VAR{...}: free lvar" ^ Lvar.pr_lvar lvar)
             )
          end
        | Exp.INTEGER _ => (B, Effect.Lf [])
@@ -199,11 +203,11 @@ struct
               Exp.Mus [(RType.FUN(mus2,eps_phi0,mus1),_)] =>
                 let val rse' = List.foldL (fn (lvar, mu as (tau,rho))=>fn rse =>
                           RSE.declareLvar(lvar, (false,false,
-                                 RType.type_to_scheme tau, rho,None,None), 
+                                 RType.type_to_scheme tau, rho,NONE,NONE), 
                                           rse)) rse
                               (ListPair.zip(map #1 pat, mus2))
                     val (B, delta_body) = R(B,rse', body)
-                    val lev_eps = case Effect.level_of eps_phi0 of Some n => n | None => die "bad arrow effect (FN)"
+                    val lev_eps = case Effect.level_of eps_phi0 of SOME n => n | NONE => die "bad arrow effect (FN)"
                     val B = lower_delta lev_eps delta_body B  
                 in 
                     update_increment(eps_phi0, delta_body);
@@ -232,7 +236,7 @@ struct
                val sigma' = RType.type_to_scheme tau1'
               (* val _ = log_sigma(RType.insert_alphas(alphas, sigma'), lvar)*)
                val rse' = RSE.declareLvar(lvar,(false,false,insert_alphas(alphas, sigma'), 
-                                                rho1', None, None),
+                                                rho1', NONE, NONE),
                                           rse)
                val (B, d2) = R(B,rse', scope)
             in
@@ -252,7 +256,7 @@ struct
                                Type = tau0, formal_regions,bind} rse =
                   let 
                      val sigma = RType.FORALL([] ,rhovec,epsvec,tau0)
-                  in RSE.declareLvar(f,(true,true,sigma, rho0, Some occ, None),rse)
+                  in RSE.declareLvar(f,(true,true,sigma, rho0, SOME occ, NONE),rse)
                   end
 
 
@@ -272,7 +276,7 @@ struct
                                                 show_sigma sigma_3hat)
 
                        (* val _ = sayLn("after  rename , sigma is " ^ show_sigma sigma3_hat_save)*)
-                        val rse' = RSE.declareLvar(f,(true,true,sigma3_hat_save, rho0, Some occ, None),rse) (*mads 5/2/97*)
+                        val rse' = RSE.declareLvar(f,(true,true,sigma3_hat_save, rho0, SOME occ, NONE),rse) (*mads 5/2/97*)
                         val bv_sigma3_hat as (_,rhos,epsilons) = RType.bv sigma_3hat
                         val B3' = pushLayer(sort(epsilons@rhos), B3)
                                     handle _ => die "pushLayer failed\n"
@@ -331,7 +335,7 @@ struct
                                Type = tau0, formal_regions,bind} rse =
                   let 
                      val sigma1hat' = RType.FORALL(alphavec ,rhovec,epsvec,tau0)
-                  in RSE.declareLvar(f,(true,true,sigma1hat', rho0, Some occ, None),rse)
+                  in RSE.declareLvar(f,(true,true,sigma1hat', rho0, SOME occ, NONE),rse)
                   end
 
               val B1 = loop(B,functions,true,List.foldL addBindingForRhs rse functions)
@@ -366,8 +370,8 @@ struct
        | Exp.CON0 _ => (B, Effect.Lf[])
        | Exp.CON1 (_, t) => R(B,rse,t)
        | Exp.DECON (_, t) => R(B,rse,t)
-       | Exp.EXCON (_, None) => (B, Effect.Lf[])
-       | Exp.EXCON (_, Some (_,t)) => R(B,rse,t)
+       | Exp.EXCON (_, NONE) => (B, Effect.Lf[])
+       | Exp.EXCON (_, SOME (_,t)) => R(B,rse,t)
        | Exp.DEEXCON (_, t) => R(B,rse,t)
        | Exp.RECORD (_, ts) => List.foldR(fn t => fn (B, d)  => 
 					  let val (B', d') = R(B,rse,t) in (B',Effect.Br(d,d')) end) 
@@ -392,7 +396,7 @@ struct
        | Exp.FRAME{declared_lvars,declared_excons} =>
            (List.apply(fn {lvar, sigma, ...} =>
                         case RSE.lookupLvar rse lvar of
-                          Some(_,_,sigma',_,_,_) => sigma:=sigma'
+                          SOME(_,_,sigma',_,_,_) => sigma:=sigma'
                         | _ => die ("R: cannot build frame; lvar \"" ^ Lvar.pr_lvar lvar 
                                      ^ "\" is not in scope at frame")
                      ) declared_lvars;

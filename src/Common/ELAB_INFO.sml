@@ -29,10 +29,10 @@ signature ELAB_INFO =
     structure ErrorInfo : ERROR_INFO
     structure TypeInfo : TYPE_INFO
     structure OverloadingInfo : OVERLOADING_INFO
-    type ParseInfo        sharing type ParseInfo = ParseInfo.ParseInfo
-    type ErrorInfo        sharing type ErrorInfo = ErrorInfo.ErrorInfo
-    type TypeInfo         sharing type TypeInfo = TypeInfo.TypeInfo
-    type OverloadingInfo  sharing type OverloadingInfo = OverloadingInfo.OverloadingInfo
+    type ParseInfo = ParseInfo.ParseInfo
+    type ErrorInfo = ErrorInfo.ErrorInfo
+    type TypeInfo = TypeInfo.TypeInfo
+    type OverloadingInfo = OverloadingInfo.OverloadingInfo
 
     (*other types imported from other modules:*)
     type StringTree       sharing type StringTree
@@ -47,9 +47,9 @@ signature ELAB_INFO =
           (*Add overloading info regadless of whether
 	   there already is overloading info attached*)
     val to_ParseInfo :           ElabInfo -> ParseInfo
-    val to_ErrorInfo :           ElabInfo -> ErrorInfo Option
-    val to_TypeInfo :            ElabInfo -> TypeInfo Option
-    val to_OverloadingInfo :     ElabInfo -> OverloadingInfo Option
+    val to_ErrorInfo :           ElabInfo -> ErrorInfo option
+    val to_TypeInfo :            ElabInfo -> TypeInfo option
+    val to_OverloadingInfo :     ElabInfo -> OverloadingInfo option
     val remove_OverloadingInfo : ElabInfo -> ElabInfo
     val from_ParseInfo :         ParseInfo -> ElabInfo
 

@@ -1,3 +1,8 @@
+
+(*
+functor TestSpreadDatatype() =
+struct
+
 (*$TestSpreadDatatype: Crash PrettyPrint Flags DiGraph Effect Lvars LambdaExp TyName 
               Ident Con Excon Report TyCon Timestamp 
               BasicIO  Stack UnionFindPoly StrId RType SpreadDatatype FinMap 
@@ -167,3 +172,6 @@ val _ = etest("test of spreadDatatype (1)",
 "DATATYPE list : {nil : all a2 r7 r8.([(a2,r8)],[r7],) list, :: : all a2 r6 r7 r8 e9.((((a2,r8)*(([(a2,r8)],[r7],) list,r6)),r7)->(([(a2,r8)],[r7],) list,r6))}; DATATYPE instream : {mycon : all r10 r17 r16 r15 r14 r13 r12 r11 e18.((((([(int,r11)],[r12],) list,r13)*(([(int,r14)],[r15],) list,r16)),r17)->((,[r11, r12, r13, r14, r15, r16, r17],) instream,r10))}; RegionExp.layoutExp is not implemented",
 PP.flatten1(st))
 
+end (*TestSpreadDatatype *)
+
+*)

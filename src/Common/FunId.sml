@@ -8,5 +8,5 @@ functor FunId(): FUNID =
     val mk_FunId = FUNID
     fun pr_FunId(FUNID str) = str
 
-    fun (FUNID str1) < (FUNID str2) = AsciiOrdString.lt str1 str2
+    val op < = fn (FUNID str1, FUNID str2) => str1 < str2
   end;

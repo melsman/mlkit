@@ -38,6 +38,7 @@ functor ElabTopdec
      sharing type ElabInfo.ErrorInfo.funid = IG.funid
      sharing type ElabInfo.ErrorInfo.longtycon = IG.longtycon
      sharing type IG.StringTree = PrettyPrint.StringTree
+         and type IG.tycon = IG.DecGrammar.tycon = IG.DecGrammar.TyCon.tycon
 
   structure OG : TOPDEC_GRAMMAR
      sharing type OG.funid = IG.funid
@@ -50,6 +51,7 @@ functor ElabTopdec
      sharing type OG.id = IG.id
      sharing type OG.info = ElabInfo.ElabInfo
      sharing type OG.StringTree = PrettyPrint.StringTree
+         and type OG.tycon = OG.DecGrammar.tycon = OG.DecGrammar.TyCon.tycon
 
    structure Environments : ENVIRONMENTS
      sharing Environments.TyName = StatObject.TyName
@@ -118,12 +120,15 @@ functor ElabTopdec
    structure Crash : CRASH
      ) : ELABTOPDEC  =
   struct
+
+    open Edlib
+
     fun impossible s = Crash.impossible ("ElabTopdec." ^ s)
-    fun noSome None s = impossible s
-      | noSome (Some x) s = x
+    fun noSome NONE s = impossible s
+      | noSome (SOME x) s = x
     fun quote s = "`" ^ s ^ "'"
-    fun is_Some None = false
-      | is_Some (Some x) = true
+    fun is_Some NONE = false
+      | is_Some (SOME x) = true
     val StringTree_to_string = PrettyPrint.flatten1
     fun pp_list pp_x [] = ""
       | pp_list pp_x [x] = pp_x x
@@ -270,8 +275,8 @@ functor ElabTopdec
     fun initial_TE (IG.DATDESC (_, explicittyvars, tycon, _, opt)) =
       let val TE = TE.init explicittyvars tycon
       in case opt
-	   of None => TE
-	    | Some datdesc => let val TE' = initial_TE datdesc
+	   of NONE => TE
+	    | SOME datdesc => let val TE' = initial_TE datdesc
 			      in TE.plus(TE,TE')
 			      end
       end
@@ -304,8 +309,8 @@ functor ElabTopdec
     exception Share of ErrorInfo.ErrorInfo
 
     fun update(a,b,m) = case FinMap.lookup m a
-				  of Some bs => FinMap.add(a,b::bs,m)
-				   | None => FinMap.add(a,[b],m)
+				  of SOME bs => FinMap.add(a,b::bs,m)
+				   | NONE => FinMap.add(a,[b],m)
 
     (* We first collect a list of tyname lists which must be identified. *)
 
@@ -324,9 +329,9 @@ functor ElabTopdec
 			let fun tystr_to_tyname tystr =
 			      let val theta = TyStr.to_theta tystr
 			      in case TypeFcn.to_TyName theta
-				   of None => raise Share (ErrorInfo.SHARING_TYPE_NOT_TYNAME
+				   of NONE => raise Share (ErrorInfo.SHARING_TYPE_NOT_TYNAME
 							   (TyCon.implode_LongTyCon (rev path, tycon), theta))
-				    | Some t => t
+				    | SOME t => t
 			      end 
 			    val tynames = map tystr_to_tyname tystrs   (* we know that there are more than zero *)
 			    val arity = case tynames
@@ -418,8 +423,8 @@ functor ElabTopdec
       fun insert_xy update_xmap ycombine ynil (x,y) = 
 	update_xmap
 	(fn xmap =>
-	 FinMap.add (x, ycombine y (case FinMap.lookup xmap x of Some y' => y'
-       | None => ynil),
+	 FinMap.add (x, ycombine y (case FinMap.lookup xmap x of SOME y' => y'
+       | NONE => ynil),
 		     xmap))
       fun insert_E E trie =
 	TE.Fold    ((insert_xy update_tycon_map (General.curry (op ::)) [] )
@@ -434,12 +439,12 @@ functor ElabTopdec
 	let val (theta, VE) = TyStr.to_theta_and_VE tystr
 	in
 	  (case TypeFcn.to_TyName theta of
-	     Some t =>
+	     SOME t =>
 	       if tyname_rigid t then
 		     raise Share (ErrorInfo.SHARING_TYPE_RIGID
 				  (TyCon.implode_LongTyCon (rev strids, tycon), t))
 		   else t
-	       | None => raise Share (ErrorInfo.SHARING_TYPE_NOT_TYNAME
+	       | NONE => raise Share (ErrorInfo.SHARING_TYPE_NOT_TYNAME
 				      (TyCon.implode_LongTyCon (rev strids, tycon), theta)))
 	    end
 
@@ -501,13 +506,13 @@ functor ElabTopdec
 	  val obj = (ElabRep.empty_infix_basis,B.empty,(Realisation.Id, TyName.Set.empty), 
 		     N',ElabRep.empty_infix_basis,B', Realisation.Id)
       in case ElabRep.lookup_elab funid
-	   of Some (index,(_,_,_,N,_,B,_)) =>  (*names in N already marked gen. since the object is returned by lookup. *)
+	   of SOME (index,(_,_,_,N,_,B,_)) =>  (*names in N already marked gen. since the object is returned by lookup. *)
 	     let val _:{} = List.apply Name.mark_gen N'
 	         val _:{} = B.match(B',B)
 		 val _:{} = List.apply Name.unmark_gen N'
 	     in ElabRep.owr_elab(funid,index,obj)
 	     end
-	    | None => ElabRep.add_elab(funid,obj)
+	    | NONE => ElabRep.add_elab(funid,obj)
       end
 
     (* --------------------------------------------
@@ -548,18 +553,18 @@ functor ElabTopdec
      * Some utilities
      * ------------------------- *)
 
-    fun map_Some_on_2nd (x,y) = (x,Some y)
-    fun map_Some_on_2nd' (x,y,z) = (x,Some y,z)
-    fun map_Some_on_3nd (x,z,y) = (x,z,Some y)
+    fun map_Some_on_2nd (x,y) = (x,SOME y)
+    fun map_Some_on_2nd' (x,y,z) = (x,SOME y,z)
+    fun map_Some_on_3nd (x,z,y) = (x,z,SOME y)
       
-    fun elab_X_opt (Y, Some X) elab_X empty_Z = map_Some_on_2nd (elab_X (Y, X))
-      | elab_X_opt (Y, None) elab_X empty_Z = (empty_Z, None)
+    fun elab_X_opt (Y, SOME X) elab_X empty_Z = map_Some_on_2nd (elab_X (Y, X))
+      | elab_X_opt (Y, NONE) elab_X empty_Z = (empty_Z, NONE)
 
-    fun elab_X_opt' (Y, Some X) elab_X empty_Z empty_W = map_Some_on_3nd (elab_X (Y, X))
-      | elab_X_opt' (Y, None) elab_X empty_Z empty_W = (empty_Z, empty_W, None)
+    fun elab_X_opt' (Y, SOME X) elab_X empty_Z empty_W = map_Some_on_3nd (elab_X (Y, X))
+      | elab_X_opt' (Y, NONE) elab_X empty_Z empty_W = (empty_Z, empty_W, NONE)
 
-    fun elab_X_opt'' (Y, Some X, ids) elab_X empty_Z = map_Some_on_2nd' (elab_X (Y, X, ids))
-      | elab_X_opt'' (Y, None, ids) elab_X empty_Z = (empty_Z, None, ids)
+    fun elab_X_opt'' (Y, SOME X, ids) elab_X empty_Z = map_Some_on_2nd' (elab_X (Y, X, ids))
+      | elab_X_opt'' (Y, NONE, ids) elab_X empty_Z = (empty_Z, NONE, ids)
 
     fun Phi_match_via a =  Phi.match_via a
     fun Sigma_to_T_and_E a = Sigma.to_T_and_E a
@@ -590,8 +595,8 @@ functor ElabTopdec
 	(* Structure identifier *)                          (*rule 51*)
       | IG.LONGSTRIDstrexp (i, longstrid) => 
 	  (case lookup_longstrid B longstrid of
-	     Some E => ([], E, OG.LONGSTRIDstrexp (okConv i, longstrid))
-	   | None =>
+	     SOME E => ([], E, OG.LONGSTRIDstrexp (okConv i, longstrid))
+	   | NONE =>
 	       ([], E.bogus,
 		OG.LONGSTRIDstrexp
 		  (errorConv (i, ErrorInfo.LOOKUP_LONGSTRID longstrid), longstrid)))
@@ -621,7 +626,7 @@ functor ElabTopdec
 	    val (T, E, out_strexp) = elab_strexp (B, strexp)
 	  in
 	    case lookup_funid B funid of
-	       Some Phi =>                                     (* the realisation that we annotate *)
+	       SOME Phi =>                                     (* the realisation that we annotate *)
 		(let val (T'E', rea) = Phi_match_via(Phi,E)    (* need also account for generative *)
 		     val (T',E') = Sigma_to_T_and_E T'E'        (* names in the functor body.       *)
 		     val out_i = typeConv(i,TypeInfo.FUNCTOR_APP_INFO (rea,E'))
@@ -643,7 +648,7 @@ functor ElabTopdec
 		   in (T @ (TyName.Set.list T'), E', OG.APPstrexp (out_i, funid, out_strexp)) 
 		   end
 		 )
-	     | None =>
+	     | NONE =>
 		 (T, E.bogus,
 		  OG.APPstrexp (errorConv (i, ErrorInfo.LOOKUP_FUNID funid),
 				funid, out_strexp))
@@ -742,12 +747,12 @@ functor ElabTopdec
 	 (* Signature identifier *)                         (*rule 63*)
        | IG.SIGIDsigexp (i, sigid) =>
 	   (case lookup_sigid B sigid of
-	      Some sigma =>
+	      SOME sigma =>
 		let val (T,E) = Sigma_instance' sigma
 		in
 		  (TyName.Set.list T, E, OG.SIGIDsigexp (okConv i, sigid))
 		end
-	    | None =>
+	    | NONE =>
 		([], E.bogus,
 		 OG.SIGIDsigexp (errorConv (i, ErrorInfo.LOOKUP_SIGID sigid), sigid)))
 
@@ -762,15 +767,15 @@ functor ElabTopdec
 		(out_i, out_sigexp, explicittyvars, longtycon, out_ty))
 	     fun fail (error_info, out_ty) = return (T, E, errorConv (i, error_info), out_ty)
 	   in case ElabDec.elab_ty (B.to_C B, ty)
-		of (Some tau, out_ty) =>
+		of (SOME tau, out_ty) =>
 		  let val _ = Level.pop()
 		  in case lookup_longtycon E longtycon 
-		       of None => fail (ErrorInfo.LOOKUP_LONGTYCON longtycon, out_ty)
-			| Some tystr =>
+		       of NONE => fail (ErrorInfo.LOOKUP_LONGTYCON longtycon, out_ty)
+			| SOME tystr =>
 			 let val (theta, VE) = TyStr.to_theta_and_VE tystr 
 			 in case TypeFcn.to_TyName theta 
-			      of None => fail (ErrorInfo.WHERE_TYPE_NOT_TYNAME (longtycon, theta, tau), out_ty)
-			       | Some t =>
+			      of NONE => fail (ErrorInfo.WHERE_TYPE_NOT_TYNAME (longtycon, theta, tau), out_ty)
+			       | SOME t =>
 				if not(TyName.Set.member t (TyName.Set.fromList T)) then
 				  fail (ErrorInfo.WHERE_TYPE_RIGID (longtycon, t), out_ty)
 				else if TyName.arity t <> List.size alphas then
@@ -789,7 +794,7 @@ functor ElabTopdec
 				  end 
 			 end
 		  end
-		 | (None, out_ty) => return(T, E, okConv i, out_ty)   (* error already reported in out_ty *)
+		 | (NONE, out_ty) => return(T, E, okConv i, out_ty)   (* error already reported in out_ty *)
 	   end
 
 
@@ -833,16 +838,16 @@ functor ElabTopdec
       (case sigbind of
 
 	(* Signature bindings *)                            (*rule 67*)
-	IG.SIGBIND (i, sigid, sigexp, None) =>
+	IG.SIGBIND (i, sigid, sigexp, NONE) =>
 	  let
 	    val (sigma, out_sigexp) = elab_sigexp (B, sigexp)
 	    val G = G.singleton (sigid, sigma)
 	  in
-	    (G, OG.SIGBIND (okConv i, sigid, out_sigexp, None))
+	    (G, OG.SIGBIND (okConv i, sigid, out_sigexp, NONE))
 	  end
 
 	(* Signature bindings *)                            (*rule 67*)
-      | IG.SIGBIND (i, sigid, sigexp, Some sigbind) =>
+      | IG.SIGBIND (i, sigid, sigexp, SOME sigbind) =>
 	  let
 	    val (sigma, out_sigexp) = elab_sigexp (B, sigexp)
 	    val G1 = G.singleton (sigid, sigma)
@@ -852,7 +857,7 @@ functor ElabTopdec
 			else okConv i
 	  in
 	    (G1 G_plus_G G2,
-	     OG.SIGBIND (out_i, sigid, out_sigexp, Some out_sigbind))
+	     OG.SIGBIND (out_i, sigid, out_sigexp, SOME out_sigbind))
 	  end)
 
     (**********************************************)
@@ -895,8 +900,8 @@ functor ElabTopdec
 	    val (VE, TE) = Environments.maximise_equality_in_VE_and_TE (VE, TE)
 	    val T = TE.fold(fn tystr => fn T => 
 			    case TypeFcn.to_TyName(TyStr.to_theta tystr)
-			      of Some t => t::T
-			       | None => impossible "IG.DATATYPEspec.theta not tyname") [] TE
+			      of SOME t => t::T
+			       | NONE => impossible "IG.DATATYPEspec.theta not tyname") [] TE
 	  in
 	    (T, E.from_VE_and_TE (VE,TE),
 	     OG.DATATYPEspec (okConv i, out_datdesc), ids)
@@ -905,7 +910,7 @@ functor ElabTopdec
 	(*Datatype replication specification*)              (*rule 72*)
       | IG.DATATYPE_REPLICATIONspec (i, tycon, longtycon) => 
 	  (case lookup_longtycon' B longtycon of
-	     Some tystr =>
+	     SOME tystr =>
 	       let val (theta, VE) = TyStr.to_theta_and_VE tystr
 		   val TE = TE.singleton (tycon, tystr)
 		   val (errors,ids) = case add_ids_tycon(ids,tycon)
@@ -922,7 +927,7 @@ functor ElabTopdec
 		 ([], E.from_VE_and_TE (VE,TE),
 		  OG.DATATYPE_REPLICATIONspec (out_i, tycon, longtycon), ids)
 	       end
-	   | None =>
+	   | NONE =>
 	       ([], E.bogus,
 		OG.DATATYPE_REPLICATIONspec
 		  (errorConv (i, ErrorInfo.LOOKUP_LONGTYCON longtycon),
@@ -986,18 +991,18 @@ functor ElabTopdec
 		    fn (T', out_longtycon_withinfo_s, error) =>
 		     let val (T'', out_i, error) =
 		           case lookup_longtycon E longtycon_i
-			     of Some tystr_i =>
+			     of SOME tystr_i =>
 			       let val theta_i = TyStr.to_theta tystr_i
 			       in case TypeFcn.to_TyName theta_i 
-				    of Some t_i =>
+				    of SOME t_i =>
 				      if TyName.Set.member t_i (TyName.Set.fromList T0) then
 					(t_i::T', okConv i, error)
 				      else
 					(T', errorConv (i, ErrorInfo.SHARING_TYPE_RIGID(longtycon_i, t_i)), true)
-				     | None => (T', errorConv (i, ErrorInfo.SHARING_TYPE_NOT_TYNAME
+				     | NONE => (T', errorConv (i, ErrorInfo.SHARING_TYPE_NOT_TYNAME
 							       (longtycon_i, theta_i)), true)
 			       end
-			      | None => (T', errorConv (i, ErrorInfo.LOOKUP_LONGTYCON longtycon_i), true)
+			      | NONE => (T', errorConv (i, ErrorInfo.LOOKUP_LONGTYCON longtycon_i), true)
 		     in
 		       (T'', OG.WITH_INFO (out_i, longtycon_i) :: out_longtycon_withinfo_s, error)
 		     end)
@@ -1036,10 +1041,10 @@ functor ElabTopdec
 		      (fn (Es, out_longstrid_withinfo_s) =>
 
 		       (case lookup_longstrid' E longstrid of
-			  Some E_i => (E_i::Es,
+			  SOME E_i => (E_i::Es,
 				       OG.WITH_INFO (okConv i, longstrid)
 				       ::out_longstrid_withinfo_s)
-			| None => (Es, OG.WITH_INFO
+			| NONE => (Es, OG.WITH_INFO
 				         (errorConv (i, ErrorInfo.LOOKUP_LONGSTRID longstrid),
 					  longstrid)::out_longstrid_withinfo_s))))
 		        ([],[]) longstrid_withinfo_s
@@ -1074,10 +1079,10 @@ functor ElabTopdec
 	        else okConv i
 	  in
 	    case (ElabDec.elab_ty (C, ty), elab_X_opt'' (C, valdesc_opt, ids) elab_valdesc VE.empty)
-	      of ((Some tau, out_ty), (VE, out_valdesc_opt, ids)) =>
+	      of ((SOME tau, out_ty), (VE, out_valdesc_opt, ids)) =>
 		(VE.plus (VE.singleton_var (id, TypeScheme.from_Type tau), VE),
 		 OG.VALDESC (out_i, id, out_ty, out_valdesc_opt), ids)
-	       | ((None, out_ty), (VE, out_valdesc_opt, ids)) =>
+	       | ((NONE, out_ty), (VE, out_valdesc_opt, ids)) =>
 		(VE, OG.VALDESC (out_i, id, out_ty, out_valdesc_opt), ids) 
 	  end
 
@@ -1100,9 +1105,9 @@ functor ElabTopdec
 	     val (error, ids) = add_ids_tycon(ids,tycon)
 	     val (T, TE, out_typdesc_opt, ids) = 
 	       case typdesc_opt
-		 of None => ([], TE.empty, None, ids)
-		  | Some typdesc' => let val (T,TE,out_typdesc,ids) = elab_typdesc equality (C, typdesc', ids)
-				     in (T,TE, Some out_typdesc, ids)
+		 of NONE => ([], TE.empty, NONE, ids)
+		  | SOME typdesc' => let val (T,TE,out_typdesc,ids) = elab_typdesc equality (C, typdesc', ids)
+				     in (T,TE, SOME out_typdesc, ids)
 				     end
 	     val out_i = if error then
 			    repeatedIdsError (i, [ErrorInfo.TYCON_RID tycon])
@@ -1191,7 +1196,7 @@ functor ElabTopdec
 
        case condesc of
 	                                                    (*rule 82*)
-	 IG.CONDESC (i, con, None, condesc_opt) =>
+	 IG.CONDESC (i, con, NONE, condesc_opt) =>
 	   let
 	     val sigma = TypeScheme.from_Type tau
 	     val (error, ids) = add_ids_vid(ids,con)
@@ -1199,22 +1204,22 @@ functor ElabTopdec
 	   in
 	     (constructor_map.add con sigma constructor_map,
 	      OG.CONDESC (out_i_for_condesc con constructor_map i error, con,
-			  None, out_condesc_opt), ids)
+			  NONE, out_condesc_opt), ids)
 	   end
 
-       | IG.CONDESC (i, con, Some ty, condesc_opt) =>
+       | IG.CONDESC (i, con, SOME ty, condesc_opt) =>
 	   let val (error, ids) = add_ids_vid(ids,con)
 	       val (constructor_map, out_condesc_opt, ids) = elab_condesc_opt (C, tau, condesc_opt, ids)
 	       fun result out_ty cmap = (cmap, OG.CONDESC (out_i_for_condesc con constructor_map i error, con,
-							   Some out_ty, out_condesc_opt), ids)
+							   SOME out_ty, out_condesc_opt), ids)
 	   in case ElabDec.elab_ty (C, ty)
-		of (Some tau', out_ty) =>
+		of (SOME tau', out_ty) =>
 		  let val arrow = Type.mk_Arrow (tau', tau)
 		      val sigma = TypeScheme.from_Type arrow
 		      val cmap' = constructor_map.add con sigma constructor_map
 		  in result out_ty cmap'
 		  end
-		 | (None, out_ty) => result out_ty constructor_map
+		 | (NONE, out_ty) => result out_ty constructor_map
 	   end
 
     and out_i_for_condesc con constructor_map i error = 
@@ -1226,8 +1231,8 @@ functor ElabTopdec
 	  else okConv i
 
     and elab_condesc_opt
-      (C : Context, tau : Type, condesc_opt : IG.condesc Option, ids : ids)
-      : (constructor_map * OG.condesc Option * ids) =
+      (C : Context, tau : Type, condesc_opt : IG.condesc option, ids : ids)
+      : (constructor_map * OG.condesc option * ids) =
           elab_X_opt'' (C, condesc_opt, ids) 
             (fn (C, condesc, ids) => elab_condesc (C, tau, condesc, ids))
 	      constructor_map.empty
@@ -1240,20 +1245,20 @@ functor ElabTopdec
       : (VarEnv * OG.exdesc * ids) =
 	                                                    (*rule 83*)
        case exdesc of
-	 IG.EXDESC (i, excon, None, exdesc_opt) =>
+	 IG.EXDESC (i, excon, NONE, exdesc_opt) =>
 	   let val (error, ids) = add_ids_vid(ids,excon)
 	       val (VE, out_exdesc_opt, ids) = elab_X_opt'' (C, exdesc_opt, ids) elab_exdesc VE.empty
 	   in
 	     (VE.plus (VE.singleton_excon (excon, Type.Exn), VE),
-	      OG.EXDESC (out_i_for_exdesc excon VE i error, excon, None,
+	      OG.EXDESC (out_i_for_exdesc excon VE i error, excon, NONE,
 			 out_exdesc_opt), ids)
 	   end
-	| IG.EXDESC (i, excon, Some ty, exdesc_opt) =>
+	| IG.EXDESC (i, excon, SOME ty, exdesc_opt) =>
 	   let val (error, ids) = add_ids_vid(ids,excon)
 	       val (VE, out_exdesc_opt, ids) = elab_X_opt'' (C, exdesc_opt, ids) elab_exdesc VE.empty
-	       fun result VE out_i out_ty = (VE, OG.EXDESC (out_i, excon, Some out_ty, out_exdesc_opt), ids)
+	       fun result VE out_i out_ty = (VE, OG.EXDESC (out_i, excon, SOME out_ty, out_exdesc_opt), ids)
 	   in case ElabDec.elab_ty (C, ty)
-		of (Some tau, out_ty) =>
+		of (SOME tau, out_ty) =>
 		  let val tyvars = tyvars_Type tau
 	  	      val arrow = Type.mk_Arrow (tau, Type.Exn)
 		      val out_i = case tyvars 
@@ -1263,7 +1268,7 @@ functor ElabTopdec
 		  in
 		    result VE' out_i out_ty
 		  end
-		 | (None, out_ty) => 
+		 | (NONE, out_ty) => 
 		  let val out_i = out_i_for_exdesc excon VE i error
 		  in result VE out_i out_ty
 		  end
@@ -1285,16 +1290,16 @@ functor ElabTopdec
       : (TyName list * StrEnv * OG.strdesc * ids) =
 	                                                    (*rule 84*)
       (case strdesc of
-	 IG.STRDESC (i, strid, sigexp, None) =>
+	 IG.STRDESC (i, strid, sigexp, NONE) =>
 	   let val (T, E, out_sigexp) = elab_sigexp' (B, sigexp)
 	       val (error,ids) = add_ids_strid(ids,strid)
 	       val out_i = if error then repeatedIdsError(i, [ErrorInfo.STRID_RID strid])
 			   else okConv i
 	   in
 	     (T, SE.singleton (strid, E),
-	      OG.STRDESC (out_i, strid, out_sigexp, None), ids)
+	      OG.STRDESC (out_i, strid, out_sigexp, NONE), ids)
 	   end
-       | IG.STRDESC (i, strid, sigexp, Some strdesc) =>
+       | IG.STRDESC (i, strid, sigexp, SOME strdesc) =>
 	   let
 	     val (T, E, out_sigexp) = elab_sigexp' (B, sigexp)
 	     val (error, ids) = add_ids_strid(ids,strid)
@@ -1303,7 +1308,7 @@ functor ElabTopdec
 			 else okConv i
 	   in
 	     (T @ T', SE.singleton (strid, E) SE_plus_SE SE,
-	      OG.STRDESC (out_i, strid, out_sigexp, Some out_strdesc), ids)
+	      OG.STRDESC (out_i, strid, out_sigexp, SOME out_strdesc), ids)
 	   end)
 
 
@@ -1342,7 +1347,7 @@ functor ElabTopdec
 	    val out_i = if EqSet.member funid (F.dom F)
 			then repeatedIdsError (i, [ErrorInfo.FUNID_RID funid])
 			else ElabInfo.plus_TypeInfo (okConv i) 
-			  (TypeInfo.FUNBIND_INFO {argE=E,elabB=B',T=T'',resE=E',rea_opt=None})
+			  (TypeInfo.FUNBIND_INFO {argE=E,elabB=B',T=T'',resE=E',rea_opt=NONE})
 	  in
 	    (F.singleton (funid, Phi.from_T_and_E_and_Sigma (T, E, T'E')) F_plus_F F,
 	     OG.FUNBIND (out_i, funid, strid, out_sigexp, out_strexp,
@@ -1376,12 +1381,12 @@ functor ElabTopdec
 	  in (B'', OG.FUNtopdec(okConv i, out_fundec, out_topdec_opt))
 	  end
 
-    and elab_topdec_opt (B : Basis, topdec_opt : IG.topdec Option) : (Basis * OG.topdec Option) =
+    and elab_topdec_opt (B : Basis, topdec_opt : IG.topdec option) : (Basis * OG.topdec option) =
       case topdec_opt
-	of Some topdec => let val (B', out_topdec) = elab_topdec(B, topdec)
-			  in (B', Some out_topdec)
+	of SOME topdec => let val (B', out_topdec) = elab_topdec(B, topdec)
+			  in (B', SOME out_topdec)
 			  end
-	 | None => (B.empty, None)
+	 | NONE => (B.empty, NONE)
 
     (* Check for free type variables: Free type variables are not
      * allowed in the basis resulting from elaborating a top-level

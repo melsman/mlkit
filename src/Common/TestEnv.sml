@@ -12,6 +12,13 @@ functor TestEnv(structure TestInfo: TEST_INFO
 		structure Timing: TIMING) : TEST_ENV =
   struct
 
+    structure String = Edlib.String
+    structure StringParse = Edlib.StringParse
+    structure List = Edlib.List
+    structure ListSort = Edlib.ListSort
+    structure Int = Edlib.Int
+    structure Bool = Edlib.Bool
+
     exception Crash_test of string
     open TestInfo
 
@@ -32,11 +39,11 @@ functor TestEnv(structure TestInfo: TEST_INFO
 
     fun test_report_filename () = new_version_dir () ^ "test_report" ^ !kit_version       (* Should _not_ be changed. *)
     fun test_report_dvi () = new_version_dir () ^ "test_report" ^ !kit_version ^ ".dvi"   (* Should _not_ be changed. *)
-    val test_report_stream   = ref std_out                                                (* Should _not_ be changed. *)
+    val test_report_stream   = ref TextIO.stdOut                                                (* Should _not_ be changed. *)
     val test_report : string list ref = ref []                                            (* Should _not_ be changed. *)
     val test_log_report : string list ref = ref []                                        (* Should _not_ be changed. *)
 
-    val test_log_stream = ref std_out                                                     (* Should _not_ be changed. *)
+    val test_log_stream = ref TextIO.stdOut                                                     (* Should _not_ be changed. *)
 
     (* ---------------------------------------------------------------------- *)
     (*    Adding dynamic flags.                                               *)
@@ -58,7 +65,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
     (* System functions.             *)
     (*********************************)
 
-    fun pr s = output (std_out, s)
+    fun pr s = TextIO.output (TextIO.stdOut, s)
 
     fun shorten_string s n =
       if String.size s > n then
@@ -124,8 +131,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
     local
       fun add_to_log s = test_log_report := (!test_log_report @ [s])
     in
-      fun ok_log s = output(!test_log_stream, "OK    : " ^ s ^ "\n")
-      fun error_log s = output(!test_log_stream, "ERROR : " ^ s ^ "\n")
+      fun ok_log s = TextIO.output(!test_log_stream, "OK    : " ^ s ^ "\n")
+      fun error_log s = TextIO.output(!test_log_stream, "ERROR : " ^ s ^ "\n")
       fun ok_log_report s = (ok_log s;
 			     add_to_log ("OK    : " ^ s))
       fun error_log_report s = (error_log s;
@@ -133,25 +140,25 @@ functor TestEnv(structure TestInfo: TEST_INFO
     end
 
     (* Return true if file or directory d exists. *)
-    fun exists_file d = SML_NJ.Unsafe.SysIO.access (d,[])
+    fun exists_file d = OS.FileSys.access (d,[])
       handle _ => raise Crash_test ("Error in trying to see if file " ^ d ^ " exists.")
 
     (* Return true if directory exists *)
-    fun exists_directory d = SML_NJ.Directory.isDir d 
+    fun exists_directory d = OS.FileSys.isDir d 
       handle _ => raise Crash_test ("Error in trying to see if directory " ^ d ^ " exists.")
 
     (* Return working directory as a string *)
-    fun get_working_directory () = SML_NJ.Directory.getWD ()
+    fun get_working_directory () = OS.FileSys.getDir ()
       handle _ => raise Crash_test ("Cannot get working directory.")
 
     (* Return size of file in bytes. *)
     fun size_of_file filename =
-      SML_NJ.Unsafe.SysIO.fsize (SML_NJ.Unsafe.SysIO.PATH filename)
+      OS.FileSys.fileSize filename
       handle _ => raise Crash_test ("Error in size_of_file " ^ ((*shorten_filename*) filename))
 
-    (* Create directory d, with specified acces rights. *)
+    (* Create directory d, with specified access rights. *)
     val access_rights = 505
-    fun create_dir d = SML_NJ.Unsafe.SysIO.mkdir (d,access_rights)
+    fun create_dir d = OS.FileSys.mkDir (d (*,access_rights*))
       handle _ => raise Crash_test("Cannot create directory: " ^ d ^ ".")
 
     (* Check for directory d, and if exists, then continue. *)
@@ -167,17 +174,16 @@ functor TestEnv(structure TestInfo: TEST_INFO
 
     (* Execute shell command and return the result code. *)
     fun execute_shell_command command =
-          (case SML_NJ.system command of
-	     0 => ()
-	   | error_code => 
-	       raise Crash_test ("Error no. " ^ Int.string error_code
-				 ^ " when executing shell command " ^ command ^ "."))
-	  handle SML_NJ.Unsafe.CInterface.SystemCall s =>
-	    raise Crash_test ("Error in executing shell command " ^ command ^ "."
-			      ^ new_line ^ "Reported error: " ^ s)
-	       | _ =>
-	    raise Crash_test ("Unknown exception when executing shell command "
-			      ^ command ^ ".")
+      let val status = OS.Process.system command
+      in if status = OS.Process.success then ()
+	 else raise Crash_test ("Error no. " ^ Int.string status
+				^ " when executing shell command " ^ command ^ ".")
+      end handle OS.SysErr(s,_) =>
+	          raise Crash_test ("Error in executing shell command " ^ command ^ "."
+				    ^ new_line ^ "Reported error: " ^ s)
+               | _ =>
+		    raise Crash_test ("Unknown exception when executing shell command "
+				      ^ command ^ ".")
 
     (* time_command times the command.     *)
     (* The time information is read from a *)
@@ -220,10 +226,10 @@ functor TestEnv(structure TestInfo: TEST_INFO
 
 	val _ = execute_shell_command shell_command
 
-	val input_stream = open_in (tempfile)
+	val input_stream = TextIO.openIn (tempfile)
 	fun input_value name_of_value =
 	  let
-	    val input_line = String.skipSpaces (String.dropR "\n" (Instream.inputLine (input_stream)))
+	    val input_line = String.skipSpaces (String.dropR "\n" (TextIO.inputLine (input_stream)))
 	    val start = String.size name_of_value
 	    val finish = String.size input_line
 	    val _ = 
@@ -242,21 +248,25 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	val real = input_value "Real time:"
 	val user = input_value "User time:"
 	val sys  = input_value "System time:"
-	val _ = close_in input_stream
+	val _ = TextIO.closeIn input_stream
       in
 	{max_mem_size = max_mem_size, max_res_size = max_res_size, 
 	 real = real, user = user, sys = sys}
       end
-    handle Io s => raise Crash_test ("Error in memtime: " ^ s)
+    handle IO.Io {name=s,...} => raise Crash_test ("Error in memtime: " ^ s)
 
     (* Get the Unix environment add return the value of one env. variable. *)
-    fun get_env_var env_name =
+    fun get_env_var env_name = 
+      case OS.Process.getEnv env_name
+	of SOME s => s 
+	 | NONE => "Environment name " ^ env_name ^ " does not exist."
+(*old
       let
 	val env = SML_NJ.Unsafe.CInterface.environ ()
 
 	fun split_string s =
 	  let
-	    val string_list = explode s
+	    val string_list = ((map str) o explode) s
 	  
 	    (* side = 0 means add to left side and vice versa. *)
 	    fun split_list [] side (ls, rs) = (ls, rs)
@@ -285,6 +295,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	find_env env_name env_list
       end
     handle _ => raise Crash_test "Error in get unix environment."
+old*)
     
     (* Delete file filename if it exists. *)
     (* Otherwise do nothing.              *)
@@ -313,7 +324,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 
       fun remove_trailing_slashes s =
 	    (case rev (explode s) of
-	       "/" :: ss => implode (rev ss)
+	       #"/" :: ss => implode (rev ss)
 	     | _ => s)
     in
       fun create_dir_and_maybe_rename_old d =
@@ -336,17 +347,17 @@ functor TestEnv(structure TestInfo: TEST_INFO
 
     fun diff file1 file2 =
       let
-	val file1_stream = open_in(file1) 
-	val file2_stream = open_in(file2)
+	val file1_stream = TextIO.openIn(file1) 
+	val file2_stream = TextIO.openIn(file2)
 
 	fun close_files () =
-	  (close_in file1_stream;
-	   close_in file2_stream)
+	  (TextIO.closeIn file1_stream;
+	   TextIO.closeIn file2_stream)
 
 	fun match line = 
 	  let
-	    val c1 = input(file1_stream, 1)
-	    val c2 = input(file2_stream, 1)
+	    val c1 = TextIO.inputN(file1_stream, 1)
+	    val c2 = TextIO.inputN(file2_stream, 1)
 	    val line' = 
 	      if c1 = "\n" then
 		line+1
@@ -354,8 +365,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 		line
 	  in
 	    if c1 = c2 then
-	      if end_of_stream(file1_stream) andalso
-		end_of_stream(file2_stream) then
+	      if TextIO.endOfStream(file1_stream) andalso
+		TextIO.endOfStream(file2_stream) then
 		(close_files ();
 		 MATCH)
 	      else
@@ -366,11 +377,11 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	  end
       in
 	match 1
-      end handle Io s => ERROR "IO error in diff, maybe cannot open file."
+      end handle IO.Io {name=s,...} => ERROR "IO error in diff, maybe cannot open file."
 
     (* Change working directory. *)
     fun change_directory d = 
-      SML_NJ.Directory.cd d 
+      OS.FileSys.chDir d 
       handle _ => raise Crash_test ("Error in change to directory: " ^ d)
 
     fun read_script script_name = 
@@ -381,14 +392,14 @@ functor TestEnv(structure TestInfo: TEST_INFO
     fun read_file filename =
       let
 	val _ = ok_log ("Reading file : " ^ filename)
-	val in_stream = open_in (filename)
+	val in_stream = TextIO.openIn (filename)
 	fun counter (n, lines) = 
-	  if end_of_stream(in_stream) then
+	  if TextIO.endOfStream(in_stream) then
 	    (n, List.rev lines)
 	  else
-	    counter (n+1, (String.dropR "\n" (Instream.inputLine in_stream))::lines)
+	    counter (n+1, (String.dropR "\n" (TextIO.inputLine in_stream))::lines)
 	val result = counter (0, [])
-	val _ = close_in in_stream
+	val _ = TextIO.closeIn in_stream
       in
 	result
       end
@@ -418,8 +429,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	val str_list = List.rev (explode str)
 
 	fun remove_dec [] = []
-	  | remove_dec (d1 :: "." :: rest) = List.rev (d1 :: "." :: rest)
-	  | remove_dec (d1 :: d2 :: "." :: rest) = List.rev (d1 :: d2 :: "." :: rest)
+	  | remove_dec (d1 :: #"." :: rest) = List.rev (d1 :: #"." :: rest)
+	  | remove_dec (d1 :: d2 :: #"." :: rest) = List.rev (d1 :: d2 :: #"." :: rest)
 	  | remove_dec (d1 :: rest) = remove_dec rest
       in
 	implode (remove_dec str_list)
@@ -456,20 +467,20 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	 "\\end{quote}"]
 
     fun open_test_report () =
-      open_out (test_report_filename () ^ ".tex")
-      handle Io s => (error_log ("Can not open test report: " ^ test_report_filename () ^ ".tex");
+      TextIO.openOut (test_report_filename () ^ ".tex")
+      handle IO.Io {name=s,...} => (error_log ("Can not open test report: " ^ test_report_filename () ^ ".tex");
 		      raise Crash_test s)
 
     fun close_test_report () =
-      close_out (!test_report_stream)
+      TextIO.closeOut (!test_report_stream)
 
     local
       fun convert_line_to_latex line =
-        implode (List.map (fn str => if str = "_" then "\\_" else str) (explode line))
+        concat (List.map (fn ch => if ch = #"_" then "\\_" else str ch) (explode line))
 
-      fun output_line line = output((!test_report_stream), ((convert_line_to_latex line) ^ "\n"))
+      fun output_line line = TextIO.output((!test_report_stream), ((convert_line_to_latex line) ^ "\n"))
 
-      fun output_line_verbatim line = output((!test_report_stream), (line ^ "\n"))
+      fun output_line_verbatim line = TextIO.output((!test_report_stream), (line ^ "\n"))
 
       fun init_test_report () = 
 	List.map (fn str => output_line str) 
@@ -731,11 +742,11 @@ functor TestEnv(structure TestInfo: TEST_INFO
       (Manager.read project_name;
        Manager.build())
       
-    fun gen_input_str None = ""
-      | gen_input_str (Some input_str) = " < " ^ input_str ^ " "
+    fun gen_input_str NONE = ""
+      | gen_input_str (SOME input_str) = " < " ^ input_str ^ " "
 
-    fun gen_input_str_memtime None = ""
-      | gen_input_str_memtime (Some input_str) = " " ^ input_str ^ " "
+    fun gen_input_str_memtime NONE = ""
+      | gen_input_str_memtime (SOME input_str) = " " ^ input_str ^ " "
 
     (****************************************************)
     (* Functions used by the Size Of ML-Kit test.       *)
@@ -784,8 +795,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	   "Comment: & \\parbox{12cm}{" ^ comment ^ "}\\\\",
 	   "Exec options: & \\parbox{12cm}{" ^ exec_opt ^ "}\\\\",
 	   "Older version: & " ^ (case old_dir of
-				    None   => "No older version defined."
-				  | Some v => (*(shorten_string v 50)*) v) ^ "\\\\",
+				    NONE   => "No older version defined."
+				  | SOME v => (*(shorten_string v 50)*) v) ^ "\\\\",
 	   "\\end{tabular}",
 	   "\\end{quote}"]
 	| add_acceptance_strategy_test_report _ =
@@ -797,8 +808,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 								      old_dir, exec_opt, ...})) =
 	(let
 	   val old_version_dir = case old_dir of
-	     None   => ""
-	   | Some v => v
+	     NONE   => ""
+	   | SOME v => v
 
 	   val acceptance_table_files = mk_table 2 [(["Source"],LEFT), (["Result from diff"],LEFT)]
 	   val acceptance_table_projects = mk_table 2 [(["Source"],LEFT), (["Result from diff"],LEFT)]
@@ -816,7 +827,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       val input_filename = source_directory () ^ filename ^ ".sml"
 	       val _ = ok_log_report ("Compiling ML source file: " ^ new_line ^ (shorten_filename input_filename) ^ ".")
 	       val _ = Manager.comp filename
-		       handle X => (output(std_out, "something happened.");raise Crash_test "Error: Compile Error")
+		       handle X => (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
 	       val _ = ok_log_report ("Compiled " ^ filename ^ new_line)
 
 	       val exe_file = filename ^ ".exe"		
@@ -832,8 +843,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       val table_entry_name = filename
 	       val _ = 
 		 case old_dir of
-		   None => insert_row acceptance_table_files [table_entry_name, "No difference computed."]
-		 | Some v => 
+		   NONE => insert_row acceptance_table_files [table_entry_name, "No difference computed."]
+		 | SOME v => 
 		     case diff new_out_datafile old_out_datafile of
 		       ERROR s => insert_row acceptance_table_files [table_entry_name, s]
 		     | MATCH   => insert_row acceptance_table_files [table_entry_name, "Match ok."]
@@ -854,7 +865,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       val _ = Flags.log_directory    := new_compile_strategy_dir
 	       val _ = ok_log_report ("Compiling ML project: " ^ new_line ^ (input_project_name) ^ ".")
 	       val _ = evalProjects project_name handle X => 
-		 (output(std_out, "something happened.");raise Crash_test "Error: Compile Error")
+		 (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
 		
 	       val new_out_datafile = new_compile_strategy_dir ^ project_name ^ ".out"
 	       val shell_command = ("run " ^ exec_opt ^ 
@@ -868,8 +879,8 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       val table_entry_name = project_name
 	       val _ = 
 		 case old_dir of
-		   None => insert_row acceptance_table_projects [table_entry_name, "No difference computed."]
-		 | Some v => 
+		   NONE => insert_row acceptance_table_projects [table_entry_name, "No difference computed."]
+		 | SOME v => 
 		     case diff new_out_datafile old_out_datafile of
 		       ERROR s => insert_row acceptance_table_projects [table_entry_name, s]
 		     | MATCH   => insert_row acceptance_table_projects [table_entry_name, "Match ok."]
@@ -995,7 +1006,7 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       val _ = (Manager.comp filename;
 			timings := (!timings) @ (Timing.get_timings())) 
 		                  (* We only get timings, if the compilation has completed. *)
-                       handle Io msg => (raise Crash_test("Error: Compile Error:" ^ msg))
+                       handle IO.Io {name=msg,...} => (raise Crash_test("Error: Compile Error:" ^ msg))
                        | X => 
 		         (raise Crash_test "Error: Compile Error")
 		     
@@ -1036,11 +1047,11 @@ functor TestEnv(structure TestInfo: TEST_INFO
 	       val _ = 
 		 let
 		   val _ = evalProjects project_name
-		   val new_timings = List.map (fn (s,list) => (project_name^":"^(get_filename(s)),list)) (Timing.get_timings())
+		   val new_timings = List.map (fn (s,list) => (project_name (* ^":"^(get_filename(s)) *),list)) (Timing.get_timings())
 		 in
 		   timings := (!timings) @ new_timings
 		 end
-	       handle X => (output(std_out, "something happened.");raise Crash_test "Error: Compile Error")
+	       handle X => (TextIO.output(TextIO.stdOut, "something happened.");raise Crash_test "Error: Compile Error")
 		
 	       val exe_file =  "run"
 (*	       val _ = mv "run" out_file *)
@@ -1071,8 +1082,10 @@ functor TestEnv(structure TestInfo: TEST_INFO
 		   add_line_test_report("No files compiled.")
 		 else
 		   let
-		     fun procent_time (SML_NJ.Timer.TIME{sec=sec1, usec=usec1}, SML_NJ.Timer.TIME{sec=sec2, usec=usec2}) =
+(*old		     fun procent_time (SML_NJ.Timer.TIME{sec=sec1, usec=usec1}, SML_NJ.Timer.TIME{sec=sec2, usec=usec2}) =
 		       ((real sec1) + (real usec1)/1000000.0) / ((real sec2) + (real usec2)/1000000.0) * 100.0
+old*)
+		     fun procent_time (t1, t2) = (Time.toReal t1 / Time.toReal t2) * 100.0
 		     (* Layout of timings: [(filename, [{name,non_gc,system,gc,wallclock}])] *)
 		     val _ = timings := (List.rev (!timings))
 		     val headers = List.map (fn timing => #name(timing)) (#2(List.nth 0 (!timings)))
@@ -1082,12 +1095,12 @@ functor TestEnv(structure TestInfo: TEST_INFO
 						     (fn acc => 
 						      let
 							val t = List.map #non_gc timing_list
-							val totalTime = List.foldL (fn t => (fn total => SML_NJ.Timer.add_time (t,total))) 
-							                  (SML_NJ.Timer.TIME {sec=0, usec=0}) t
-							val total = fix2 (SML_NJ.Timer.makestring totalTime)
+							val totalTime = List.foldL (fn t => (fn total => Time.+(t,total))) 
+							                  Time.zeroTime t
+							val total = fix2 (Time.toString totalTime)
 						      in
-							(get_filename(source_name) :: total :: (List.map (*(fix2 o SML_NJ.Timer.makestring)*)
-										  (fn time => ((fix2 o SML_NJ.Timer.makestring) time)^"/"^((fix2 o makestring) (procent_time(time,totalTime))))
+							(get_filename(source_name) :: total :: (List.map (*(fix2 o Time.toString)*)
+										  (fn time => ((fix2 o Time.toString) time)^"/"^((fix2 o Real.toString) (procent_time(time,totalTime))))
 										  t)) :: acc 
 						      end)) [] (!timings)
 		     val _ = List.apply (fn table_entry => insert_row timing_table table_entry) table_entries
@@ -1211,16 +1224,16 @@ functor TestEnv(structure TestInfo: TEST_INFO
       fun test () = 
 	let
 	  val _ = test_log_stream := (if (!test_log_string) = "std_out" then
-				        std_out
+				        TextIO.stdOut
 				      else 
-					open_out(!test_log_string))
+					TextIO.openOut(!test_log_string))
 
 	  val _ = ok_log ("Using logfile: " ^ (!test_log_string))
 	  val orig_dir = get_working_directory()
 
 	  fun close_logfile () =
 	    if (!test_log_string) <> "std_out" then
-	      close_out (!test_log_stream)
+	      TextIO.closeOut (!test_log_stream)
 	    else
 	      ()
 	in

@@ -30,6 +30,8 @@ functor CompilerEnv(structure Ident: IDENT
 		   ): COMPILER_ENV =
   struct
 
+    open Edlib
+
     fun die s = Crash.impossible ("CompilerEnv."^s)
 
     type con = Con.con
@@ -51,7 +53,7 @@ functor CompilerEnv(structure Ident: IDENT
 
     (* layout functions *)
     fun layout_scheme(tvs,tau) =
-      PP.NODE{start="",finish="",indent=0,childsep=PP.NONE,
+      PP.NODE{start="",finish="",indent=0,childsep=PP.NOSEP,
 	      children=[layout_abs tvs,LambdaExp.layoutType tau]}
     and layout_abs tvs = PP.NODE{start="all(",finish=").",indent=0, childsep=PP.RIGHT ",", 
 				 children=map (PP.LEAF o LambdaExp.pr_tyvar)tvs}
@@ -90,7 +92,7 @@ functor CompilerEnv(structure Ident: IDENT
     and emptyLvarEnv   = LVARENV FinMapEq.empty
     val emptyCEnv      = CENV {StrEnv=emptyStrEnv, VarEnv=emptyVarEnv, TyEnv=emptyTyEnv, LvarEnv=emptyLvarEnv}
 
-    val initMap = List.foldL (fn (v,r) => fn m => FinMap.add(v,r,m)) FinMap.empty
+    fun initMap a = List.foldL (fn (v,r) => fn m => FinMap.add(v,r,m)) FinMap.empty a
     val initialStrEnv = emptyStrEnv
 
     val boolType = LambdaExp.boolType
@@ -182,26 +184,26 @@ functor CompilerEnv(structure Ident: IDENT
 
     fun lookupLvar (CENV{LvarEnv=LVARENV le,...}) lvar =
       case FinMapEq.lookup Lvars.eq le lvar of
-	Some taus => taus
-      | None => die("CompilerEnv.lookupLvar(" ^ Lvars.pr_lvar lvar ^ ")")
+	SOME taus => taus
+      | NONE => die("CompilerEnv.lookupLvar(" ^ Lvars.pr_lvar lvar ^ ")")
 
     exception LOOKUP_ID
     fun lookupId (CENV{VarEnv=VARENV m,...}) id =
       case FinMap.lookup m id
-	of Some res => res
-	 | None => raise LOOKUP_ID
+	of SOME res => res
+	 | NONE => raise LOOKUP_ID
 
     fun lookup_strid (CENV{StrEnv=STRENV m,...}) strid =
       case FinMap.lookup m strid
-	of Some res => res
-	 | None => die ("lookup_strid(" ^ StrId.pr_StrId strid ^ ")")
+	of SOME res => res
+	 | NONE => die ("lookup_strid(" ^ StrId.pr_StrId strid ^ ")")
 
     fun lookup_longid CEnv longid =
       let fun lookup CEnv ([],id) = lookupId CEnv id
 	    | lookup CEnv (strid::strids,id) =
 	          lookup (lookup_strid CEnv strid) (strids,id) 
-      in Some(lookup CEnv (Ident.decompose longid))
-         handle _ => None
+      in SOME(lookup CEnv (Ident.decompose longid))
+         handle _ => NONE
       end
  
     fun lvars_result (LVAR (lv,_,_,_), lvs) = lv :: lvs
@@ -287,8 +289,8 @@ functor CompilerEnv(structure Ident: IDENT
    fun restrictFinMap(error_str, env : (''a,'b) FinMap.map, dom : ''a list) =
      List.foldL (fn id => fn acc =>
 		 let val res = case FinMap.lookup env id
-				 of Some res => res
-				  | None => die error_str
+				 of SOME res => res
+				  | NONE => die error_str
 		 in FinMap.add(id,res,acc)
 		 end) FinMap.empty dom
 
@@ -318,7 +320,7 @@ functor CompilerEnv(structure Ident: IDENT
    local
 
      val debug_man_enrich = ref false (*Flags.lookup_flag_entry "debug_man_enrich"*)
-     fun log s = output(std_out,s)
+     fun log s = TextIO.output(TextIO.stdOut,s)
      fun debug(s, b) = if !debug_man_enrich then
                          (if b then log("\n" ^ s ^ ": enrich succeeded.")
 			  else log("\n" ^ s ^ ": enrich failed."); b)
@@ -353,16 +355,16 @@ functor CompilerEnv(structure Ident: IDENT
      fun enrichVarEnv(VARENV env1,VARENV env2) =
        FinMap.Fold (fn ((id2,res2),b) => b andalso
 		    case FinMap.lookup env1 id2
-		      of Some res1 => eq_res(res1,res2)
-		       | None => false) true env2
+		      of SOME res1 => eq_res(res1,res2)
+		       | NONE => false) true env2
 
      fun eq_tyenv_res(res1,res2) = TyName.Set.eq (TyName.Set.fromList res1) (TyName.Set.fromList res2)
        
      fun enrichTyEnv(TYENV m1,TYENV m2) =
        FinMap.Fold (fn ((id2,res2),b) => b andalso
 		    case FinMap.lookup m1 id2
-		      of Some res1 => eq_tyenv_res(res1,res2)
-		       | None => false) true m2
+		      of SOME res1 => eq_tyenv_res(res1,res2)
+		       | NONE => false) true m2
        
      fun enrichCEnv(CENV{StrEnv,VarEnv,TyEnv,LvarEnv=LVARENV lenv1},
 		    CENV{StrEnv=StrEnv',VarEnv=VarEnv',TyEnv=TyEnv',LvarEnv=LVARENV lenv2}) =
@@ -377,8 +379,8 @@ functor CompilerEnv(structure Ident: IDENT
      and enrichStrEnv(STRENV se1, STRENV se2) =
        FinMap.Fold (fn ((strid,env2),b) => b andalso
 		    case FinMap.lookup se1 strid
-		      of Some env1 => enrichCEnv(env1,env2)
-		       | None => false) true se2
+		      of SOME env1 => enrichCEnv(env1,env2)
+		       | NONE => false) true se2
    in
 
      val enrichCEnv = enrichCEnv
@@ -399,8 +401,8 @@ functor CompilerEnv(structure Ident: IDENT
      fun matchVarEnv(VARENV env, VARENV env0) =
        FinMap.Fold(fn ((id,res),_) =>
 		   case FinMap.lookup env0 id
-		     of Some res0 => matchRes(res,res0)
-		      | None => ()) () env 
+		     of SOME res0 => matchRes(res,res0)
+		      | NONE => ()) () env 
 
      fun matchEnv(CENV{StrEnv,VarEnv,LvarEnv=LVARENV lenv, ...},
 		  CENV{StrEnv=StrEnv0,VarEnv=VarEnv0, LvarEnv=LVARENV lenv0, ...}) =
@@ -413,8 +415,8 @@ functor CompilerEnv(structure Ident: IDENT
      and matchStrEnv(STRENV se, STRENV se0) =
        FinMap.Fold(fn ((strid,env),_) =>
 		   case FinMap.lookup se0 strid
-		     of Some env0 => matchEnv(env,env0)
-		      | None => ()) () se
+		     of SOME env0 => matchEnv(env,env0)
+		      | NONE => ()) () se
    in
 
      val match = matchEnv
@@ -424,20 +426,20 @@ functor CompilerEnv(structure Ident: IDENT
    type TypeScheme = Environments.TypeScheme
    type ElabEnv = Environments.Env
 
-   val compileTypeScheme_knot: (TypeScheme -> tyvar list * Type) Option ref = ref None   (* MEGA HACK *)
-   fun set_compileTypeScheme c = compileTypeScheme_knot := (Some c)
+   val compileTypeScheme_knot: (TypeScheme -> tyvar list * Type) option ref = ref NONE   (* MEGA HACK *)
+   fun set_compileTypeScheme c = compileTypeScheme_knot := (SOME c)
 
-   val normalize_sigma_knot: (tyvar list * Type -> tyvar list * Type) Option ref = ref None   (* MEGA HACK *)
-   fun set_normalize_sigma c = normalize_sigma_knot := (Some c)
+   val normalize_sigma_knot: (tyvar list * Type -> tyvar list * Type) option ref = ref NONE   (* MEGA HACK *)
+   fun set_normalize_sigma c = normalize_sigma_knot := (SOME c)
 
    fun constrain (ce: CEnv, elabE : ElabEnv) =
      let open Environments
          val compileTypeScheme = case compileTypeScheme_knot 
-				   of ref (Some compileTypeScheme) => compileTypeScheme
-				    | ref None => die "compileTypeScheme_knot not set" 
+				   of ref (SOME compileTypeScheme) => compileTypeScheme
+				    | ref NONE => die "compileTypeScheme_knot not set" 
          val normalize_sigma = case normalize_sigma_knot
-				   of ref (Some f) =>f
-				    | ref None => die "normalize_sigma_knot not set" 
+				   of ref (SOME f) =>f
+				    | ref NONE => die "normalize_sigma_knot not set" 
          fun constr_ran (tr, er) =
 	   case tr
 	     of LVAR(lv,tvs,tau,il) =>
@@ -508,24 +510,24 @@ functor CompilerEnv(structure Ident: IDENT
 	 and constr_se(STRENV se, elabSE) =
 	   STRENV(SE.Fold (fn (strid, elabE) => fn se' =>
 			   case FinMap.lookup se strid
-			     of Some ce => let val ce' = constr_ce(ce,elabE)
+			     of SOME ce => let val ce' = constr_ce(ce,elabE)
 					   in FinMap.add(strid,ce',se')
 					   end
-			      | None => die "constr_se") FinMap.empty elabSE)
+			      | NONE => die "constr_se") FinMap.empty elabSE)
 		  
 	 and constr_ve(VARENV ve, elabVE) =
 	   VARENV(VE.Fold (fn (id, elabRan) => fn ve' =>
 			   case FinMap.lookup ve id
-			     of Some transRan => let val transRan' = constr_ran(transRan, elabRan)
+			     of SOME transRan => let val transRan' = constr_ran(transRan, elabRan)
 						 in FinMap.add(id,transRan', ve')
 						 end
-			      | None => die "constr_ve") FinMap.empty elabVE)
+			      | NONE => die "constr_ve") FinMap.empty elabVE)
 
 	 and constr_te(TYENV te, elabTE) =
 	   TYENV(TE.Fold(fn (tycon, _) => fn te' =>
 			 case FinMap.lookup te tycon
-			   of Some tynames => FinMap.add(tycon,tynames,te')
-			    | None => die "constr_te") FinMap.empty elabTE) 
+			   of SOME tynames => FinMap.add(tycon,tynames,te')
+			    | NONE => die "constr_te") FinMap.empty elabTE) 
 (*	 val _ = print "\n[Constraining ...\n" *)
 	 val res = constr_ce(ce, elabE)
 (*	 val _ = print " Done]\n" *)
@@ -574,7 +576,7 @@ functor CompilerEnv(structure Ident: IDENT
 					  | CON(con,_,_,_,it) => "CON(" ^ Con.pr_con con ^ ")"
 					  | EXCON (excon,_) => "EXCON(" ^ Excon.pr_excon excon ^ ")"))
 				       m],
-	      childsep=PP.NONE}
+	      childsep=PP.NOSEP}
 
     and layoutTyEnv (TYENV m) = 
       let fun layout_tynames tynames = 
@@ -596,7 +598,7 @@ functor CompilerEnv(structure Ident: IDENT
 			   (PP.layoutAtom Lvars.pr_lvar)
 			   f
 			   m],
-		childsep=PP.NONE}
+		childsep=PP.NOSEP}
       end
 
   end;

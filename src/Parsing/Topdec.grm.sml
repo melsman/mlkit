@@ -1379,8 +1379,7 @@ val numrules = 278
 val s = ref "" and index = ref 0
 val string_to_int = fn () => 
 let val i = !index
-in index := i+2;
-String.ord(String.nth i (!s)) + String.ord(String.nth (i+1) (!s)) * 256
+in index := i+2; Char.ord(String.sub(!s,i)) + Char.ord(String.sub(!s,i+1)) * 256
 end
 val string_to_list = fn s' =>
     let val len = String.size s'
@@ -1406,19 +1405,19 @@ val string_to_pairlist_default = fn (conv_key,conv_entry) =>
    end
 val string_to_table = fn (convert_row,s') =>
     let val len = String.size s'
- 	 fun f ()=
-	    if !index < len then convert_row() :: f()
-	    else nil
+        fun f ()=
+           if !index < len then convert_row() :: f()
+           else nil
      in (s := s'; index := 0; f ())
      end
 local
-  val memo = Array.create (numstates+numrules) ERROR
+  val memo = Array.array(numstates+numrules,ERROR)
   val _ =let fun g i=(Array.update(memo,i,REDUCE(i-numstates)); g(i+1))
-	fun f i =
-	     if i=numstates then g i
-	     else (Array.update(memo,i,SHIFT (STATE i)); f (i+1))
-	   in f 0 handle Array.Update _ => ()
-	   end
+       fun f i =
+            if i=numstates then g i
+            else (Array.update(memo,i,SHIFT (STATE i)); f (i+1))
+          in f 0 handle Subscript => ()
+          end
 in
 val entry_to_action = fn 0 => ACCEPT | 1 => ERROR | j => Array.sub(memo,(j-2))
 end
@@ -1440,11 +1439,11 @@ structure MlyValue =
 struct
 datatype svalue = VOID | ntVOID of unit ->  unit
  | TYVAR of unit ->  (string) | ID of unit ->  (string)
- | STRING of unit ->  (string) | REAL of unit ->  (real Option)
- | WORD of unit ->  (int Option) | DIGIT of unit ->  (int)
- | HEXINTEGER of unit ->  (int Option)
- | DECNEGINTEGER of unit ->  (int Option)
- | DECPOSINTEGER of unit ->  (int Option)
+ | STRING of unit ->  (string) | REAL of unit ->  (real option)
+ | WORD of unit ->  (int option) | DIGIT of unit ->  (int)
+ | HEXINTEGER of unit ->  (int option)
+ | DECNEGINTEGER of unit ->  (int option)
+ | DECPOSINTEGER of unit ->  (int option)
  | QUAL_STAR of unit ->  (string list)
  | QUAL_ID of unit ->  (string list) | Char of unit ->  (int)
  | Integer of unit ->  (int) | DecPosInteger of unit ->  (int)
@@ -1456,14 +1455,14 @@ datatype svalue = VOID | ntVOID of unit ->  unit
  | TypeIdent of unit ->  (string) | EqIdent of unit ->  (string)
  | OpIdent of unit ->  (string op_opt) | Ident of unit ->  (string)
  | OneDec_sans_LOCAL of unit ->  (dec) | OneDec of unit ->  (dec)
- | DIGIT_opt of unit ->  (int Option)
+ | DIGIT_opt of unit ->  (int option)
  | LongTypeIdentEq_seq2 of unit ->  (string list WithInfo list)
  | LongIdentEq_seq2 of unit ->  (string list WithInfo list)
  | LongIdent_seq1 of unit ->  (string list WithInfo list)
  | EqIdent_seq1 of unit ->  (string list)
  | Ident_seq2 of unit ->  (string WithInfo list)
  | NonEmptyDec of unit ->  (dec)
- | OneDec_or_SEMICOLON of unit ->  (dec Option)
+ | OneDec_or_SEMICOLON of unit ->  (dec option)
  | TyComma_seq2 of unit ->  (ty list)
  | TyVarComma_seq1 of unit ->  (tyvar list)
  | TyVarSeq1 of unit ->  (tyvar list)
@@ -1477,25 +1476,25 @@ datatype svalue = VOID | ntVOID of unit ->  unit
  | ExpComma_seq2 of unit ->  (exp list)
  | ExpComma_seq1 of unit ->  (exp list)
  | ExpComma_seq0 of unit ->  (exp list)
- | OfTy_opt of unit ->  (ty Option)
- | CommaTyRow_opt of unit ->  (tyrow Option)
- | TyRow_opt of unit ->  (tyrow Option)
+ | OfTy_opt of unit ->  (ty option)
+ | CommaTyRow_opt of unit ->  (tyrow option)
+ | TyRow_opt of unit ->  (tyrow option)
  | ColonTy_seq1 of unit ->  ( ( ty * pos )  list)
- | ColonTy_opt of unit ->  (ty Option)
- | CommaPatRow_opt of unit ->  (patrow Option)
- | AsPat_opt of unit ->  (pat Option)
- | PatRow_opt of unit ->  (patrow Option)
- | ExpRow_opt of unit ->  (exprow Option)
- | AndExBind_opt of unit ->  (exbind Option)
- | BarMatch_opt of unit ->  (match Option)
- | BarConBind_opt of unit ->  (conbind Option)
- | AndDatBind_opt of unit ->  (datbind Option)
- | AndTypBind_opt of unit ->  (typbind Option)
- | BarFClause_opt of unit ->  (FClause Option)
- | AndFValBind_opt of unit ->  (FValBind Option)
- | AndFnValBind_opt of unit ->  (valbind Option)
- | AndValBind_opt of unit ->  (valbind Option)
- | CommaExpRow_opt of unit ->  (exprow Option)
+ | ColonTy_opt of unit ->  (ty option)
+ | CommaPatRow_opt of unit ->  (patrow option)
+ | AsPat_opt of unit ->  (pat option)
+ | PatRow_opt of unit ->  (patrow option)
+ | ExpRow_opt of unit ->  (exprow option)
+ | AndExBind_opt of unit ->  (exbind option)
+ | BarMatch_opt of unit ->  (match option)
+ | BarConBind_opt of unit ->  (conbind option)
+ | AndDatBind_opt of unit ->  (datbind option)
+ | AndTypBind_opt of unit ->  (typbind option)
+ | BarFClause_opt of unit ->  (FClause option)
+ | AndFValBind_opt of unit ->  (FValBind option)
+ | AndFnValBind_opt of unit ->  (valbind option)
+ | AndValBind_opt of unit ->  (valbind option)
+ | CommaExpRow_opt of unit ->  (exprow option)
  | FClause of unit ->  (FClause) | AtExp of unit ->  (atexp)
  | ExpRow of unit ->  (exprow) | Match_ of unit ->  (match)
  | Exp_ of unit ->  (exp) | MRule of unit ->  (mrule)
@@ -1511,22 +1510,22 @@ datatype svalue = VOID | ntVOID of unit ->  unit
  | AtomicTy of unit ->  (ty) | Ty_sans_STAR of unit ->  (ty)
  | TupleTy of unit ->  (ty list) | Ty of unit ->  (ty)
  | TyRow of unit ->  (tyrow) | NonEmptyStrDec of unit ->  (strdec)
- | OneStrDec_or_SEMICOLON of unit ->  (strdec Option)
+ | OneStrDec_or_SEMICOLON of unit ->  (strdec option)
  | NonEmptySpec' of unit ->  (spec)
  | Spec_sans_SHARING of unit ->  (spec)
  | NonEmptySpec of unit ->  (spec)
- | OneSpec_or_SEMICOLON of unit ->  (spec Option)
+ | OneSpec_or_SEMICOLON of unit ->  (spec option)
  | SEMICOLON_opt of unit ->  (unit)
- | AndValDesc_opt of unit ->  (valdesc Option)
+ | AndValDesc_opt of unit ->  (valdesc option)
  | TypAbbreviationAND_seq1 of unit ->  ( ( tyvar list * tycon * ty * info * info )  list)
- | AndTypDesc_opt of unit ->  (typdesc Option)
- | AndDatDesc_opt of unit ->  (datdesc Option)
- | BarConDesc_opt of unit ->  (condesc Option)
- | AndExDesc_opt of unit ->  (exdesc Option)
- | AndStrDesc_opt of unit ->  (strdesc Option)
- | AndSigBind_opt of unit ->  (sigbind Option)
- | AndStrBind_opt of unit ->  (strbind Option)
- | AndFunBind_opt of unit ->  (funbind Option)
+ | AndTypDesc_opt of unit ->  (typdesc option)
+ | AndDatDesc_opt of unit ->  (datdesc option)
+ | BarConDesc_opt of unit ->  (condesc option)
+ | AndExDesc_opt of unit ->  (exdesc option)
+ | AndStrDesc_opt of unit ->  (strdesc option)
+ | AndSigBind_opt of unit ->  (sigbind option)
+ | AndStrBind_opt of unit ->  (strbind option)
+ | AndFunBind_opt of unit ->  (funbind option)
  | SigExp_constraint_maybe of unit ->  (strexp -> strexp)
  | SigExp_constraint of unit ->  (strexp -> strexp)
  | StrExp of unit ->  (strexp) | StrDec of unit ->  (strdec)
@@ -1543,7 +1542,7 @@ datatype svalue = VOID | ntVOID of unit ->  unit
  | FunDec of unit ->  (fundec)
  | StrDec_sans_SEMICOLON of unit ->  (strdec)
  | SigDec of unit ->  (sigdec)
- | TopDec_opt of unit ->  (topdec Option)
+ | TopDec_opt of unit ->  (topdec option)
  | TopDec_ of unit ->  (topdec) | TopDec of unit ->  (topdec)
 end
 type svalue = MlyValue.svalue
@@ -1553,21 +1552,19 @@ structure EC=
 struct
 open LrTable
 val is_keyword =
-fn (T 43) => true | (T 42) => true | (T 41) => true | (T 10) => true
- | (T 40) => true | (T 39) => true | (T 38) => true | (T 37) => true
- | (T 36) => true | (T 35) => true | (T 34) => true | (T 33) => true
- | (T 32) => true | (T 31) => true | (T 30) => true | (T 29) => true
- | (T 28) => true | (T 27) => true | (T 26) => true | (T 25) => true
- | (T 24) => true | (T 23) => true | (T 22) => true | (T 21) => true
- | (T 20) => true | (T 19) => true | (T 18) => true | (T 17) => true
- | (T 16) => true | (T 15) => true | (T 14) => true | (T 13) => true
- | (T 12) => true | (T 7) => true | (T 6) => true | (T 5) => true | 
-(T 4) => true | (T 3) => true | (T 2) => true | (T 1) => true | (T 0)
+fn (T 0) => true | (T 1) => true | (T 2) => true | (T 3) => true | (T 
+4) => true | (T 5) => true | (T 6) => true | (T 7) => true | (T 12)
+ => true | (T 13) => true | (T 14) => true | (T 15) => true | (T 16)
+ => true | (T 17) => true | (T 18) => true | (T 19) => true | (T 20)
+ => true | (T 21) => true | (T 22) => true | (T 23) => true | (T 24)
+ => true | (T 25) => true | (T 26) => true | (T 27) => true | (T 28)
+ => true | (T 29) => true | (T 30) => true | (T 31) => true | (T 32)
+ => true | (T 33) => true | (T 34) => true | (T 35) => true | (T 36)
+ => true | (T 37) => true | (T 38) => true | (T 39) => true | (T 40)
+ => true | (T 10) => true | (T 41) => true | (T 42) => true | (T 43)
  => true | _ => false
-val preferred_insert =
-fn _ => false
-val preferred_subst =
-fn  _ => nil
+val preferred_change = 
+nil
 val noShift = 
 fn (T 70) => true | _ => false
 val showTerminal =
@@ -1643,15 +1640,15 @@ fn (T 0) => "EQTYPE"
   | (T 69) => "TYVAR"
   | (T 70) => "EOF"
   | _ => "bogus-term"
+local open Header in
 val errtermvalue=
-let open Header in
 fn (T 8) => MlyValue.QUAL_ID(fn () => (["bogus"])) | 
 (T 9) => MlyValue.QUAL_STAR(fn () => (["bogus"])) | 
-(T 61) => MlyValue.DECPOSINTEGER(fn () => (Some 0)) | 
-(T 62) => MlyValue.DECNEGINTEGER(fn () => (Some 0)) | 
-(T 63) => MlyValue.HEXINTEGER(fn () => (Some 0)) | 
-(T 65) => MlyValue.WORD(fn () => (Some 0)) | 
-(T 66) => MlyValue.REAL(fn () => (Some 0.0)) | 
+(T 61) => MlyValue.DECPOSINTEGER(fn () => (SOME 0)) | 
+(T 62) => MlyValue.DECNEGINTEGER(fn () => (SOME 0)) | 
+(T 63) => MlyValue.HEXINTEGER(fn () => (SOME 0)) | 
+(T 65) => MlyValue.WORD(fn () => (SOME 0)) | 
+(T 66) => MlyValue.REAL(fn () => (SOME 0.0)) | 
 (T 67) => MlyValue.STRING(fn () => ("")) | 
 (T 68) => MlyValue.ID(fn () => ("bogus")) | 
 (T 69) => MlyValue.TYVAR(fn () => ("'bogus")) | 
@@ -1671,9 +1668,8 @@ end
 structure Actions =
 struct 
 exception mlyAction of int
+local open Header in
 val actions = 
-let open Header
-in
 fn (i392,defaultPos,stack,
     (()):arg) =>
 case (i392,stack)
@@ -1772,10 +1768,10 @@ result=MlyValue.LongOpEqIdent(fn _ => ( OP_OPT(["="], true) ))
 | (17,(_,(MlyValue.DIGIT DIGIT1,DIGIT1left,DIGIT1right))::rest671) => 
 let val result=MlyValue.DIGIT_opt(fn _ => let val DIGIT as DIGIT1=
 DIGIT1 ()
- in ( Some DIGIT ) end
+ in ( SOME DIGIT ) end
 )
  in (LrTable.NT 108,(result,DIGIT1left,DIGIT1right),rest671) end
-| (18,rest671) => let val result=MlyValue.DIGIT_opt(fn _ => ( None ))
+| (18,rest671) => let val result=MlyValue.DIGIT_opt(fn _ => ( NONE ))
  in (LrTable.NT 108,(result,defaultPos,defaultPos),rest671) end
 | (19,(_,(MlyValue.DECPOSINTEGER DECPOSINTEGER1,DECPOSINTEGERleft as 
 DECPOSINTEGER1left,DECPOSINTEGER1right))::rest671) => let val result=
@@ -1955,7 +1951,7 @@ val result=MlyValue.TopDec(fn _ => let val Exp_ as Exp_1=Exp_1 ()
  in (LrTable.NT 0,(result,Exp_1left,Exp_1right),rest671) end
 | (35,rest671) => let val result=MlyValue.TopDec(fn _ => (
  STRtopdec(PP defaultPos defaultPos,
-				    EMPTYstrdec(PP defaultPos defaultPos), None) 
+				    EMPTYstrdec(PP defaultPos defaultPos), NONE) 
 ))
  in (LrTable.NT 0,(result,defaultPos,defaultPos),rest671) end
 | (36,(_,(MlyValue.TopDec_opt TopDec_opt1,_,TopDec_opt1right))::(_,(
@@ -2001,10 +1997,10 @@ val TopDec_opt as TopDec_opt1=TopDec_opt1 ()
 | (39,(_,(MlyValue.TopDec_ TopDec_1,TopDec_1left,TopDec_1right))::
 rest671) => let val result=MlyValue.TopDec_opt(fn _ => let val TopDec_
  as TopDec_1=TopDec_1 ()
- in ( Some TopDec_ ) end
+ in ( SOME TopDec_ ) end
 )
  in (LrTable.NT 2,(result,TopDec_1left,TopDec_1right),rest671) end
-| (40,rest671) => let val result=MlyValue.TopDec_opt(fn _ => ( None ))
+| (40,rest671) => let val result=MlyValue.TopDec_opt(fn _ => ( NONE ))
  in (LrTable.NT 2,(result,defaultPos,defaultPos),rest671) end
 | (41,(_,(MlyValue.AndFunBind_opt AndFunBind_opt1,_,
 AndFunBind_opt1right))::(_,(MlyValue.StrExp StrExp1,_,_))::_::(_,(
@@ -2099,11 +2095,11 @@ SigExp1 ()
 | (47,(_,(MlyValue.FunBind FunBind1,_,FunBind1right))::(_,(_,AND1left,
 _))::rest671) => let val result=MlyValue.AndFunBind_opt(fn _ => let 
 val FunBind as FunBind1=FunBind1 ()
- in ( Some FunBind ) end
+ in ( SOME FunBind ) end
 )
  in (LrTable.NT 26,(result,AND1left,FunBind1right),rest671) end
 | (48,rest671) => let val result=MlyValue.AndFunBind_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 26,(result,defaultPos,defaultPos),rest671) end
 | (49,(_,(MlyValue.FunBind FunBind1,_,FunBind1right))::(_,(_,
 FUNCTORleft as FUNCTOR1left,_))::rest671) => let val result=
@@ -2132,11 +2128,11 @@ val AndStrDesc_opt as AndStrDesc_opt1=AndStrDesc_opt1 ()
 | (51,(_,(MlyValue.StrDesc StrDesc1,_,StrDesc1right))::(_,(_,AND1left,
 _))::rest671) => let val result=MlyValue.AndStrDesc_opt(fn _ => let 
 val StrDesc as StrDesc1=StrDesc1 ()
- in ( Some StrDesc ) end
+ in ( SOME StrDesc ) end
 )
  in (LrTable.NT 29,(result,AND1left,StrDesc1right),rest671) end
 | (52,rest671) => let val result=MlyValue.AndStrDesc_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 29,(result,defaultPos,defaultPos),rest671) end
 | (53,(_,(MlyValue.AndExDesc_opt AndExDesc_opt1,_,AndExDesc_opt1right)
 )::(_,(MlyValue.OfTy_opt OfTy_opt1,_,_))::(_,(MlyValue.Ident Ident1,
@@ -2156,11 +2152,11 @@ val AndExDesc_opt as AndExDesc_opt1=AndExDesc_opt1 ()
 | (54,(_,(MlyValue.ExDesc ExDesc1,_,ExDesc1right))::(_,(_,AND1left,_))
 ::rest671) => let val result=MlyValue.AndExDesc_opt(fn _ => let val 
 ExDesc as ExDesc1=ExDesc1 ()
- in ( Some ExDesc ) end
+ in ( SOME ExDesc ) end
 )
  in (LrTable.NT 30,(result,AND1left,ExDesc1right),rest671) end
 | (55,rest671) => let val result=MlyValue.AndExDesc_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 30,(result,defaultPos,defaultPos),rest671) end
 | (56,(_,(MlyValue.BarConDesc_opt BarConDesc_opt1,_,
 BarConDesc_opt1right))::(_,(MlyValue.OfTy_opt OfTy_opt1,_,_))::(_,(
@@ -2185,11 +2181,11 @@ val BarConDesc_opt as BarConDesc_opt1=BarConDesc_opt1 ()
 | (57,(_,(MlyValue.ConDesc ConDesc1,_,ConDesc1right))::(_,(_,BAR1left,
 _))::rest671) => let val result=MlyValue.BarConDesc_opt(fn _ => let 
 val ConDesc as ConDesc1=ConDesc1 ()
- in ( Some ConDesc ) end
+ in ( SOME ConDesc ) end
 )
  in (LrTable.NT 31,(result,BAR1left,ConDesc1right),rest671) end
 | (58,rest671) => let val result=MlyValue.BarConDesc_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 31,(result,defaultPos,defaultPos),rest671) end
 | (59,(_,(MlyValue.AndDatDesc_opt AndDatDesc_opt1,_,
 AndDatDesc_opt1right))::(_,(MlyValue.ConDesc ConDesc1,_,_))::_::(_,(
@@ -2248,11 +2244,11 @@ rest671) end
 | (62,(_,(MlyValue.DatDesc DatDesc1,_,DatDesc1right))::(_,(_,AND1left,
 _))::rest671) => let val result=MlyValue.AndDatDesc_opt(fn _ => let 
 val DatDesc as DatDesc1=DatDesc1 ()
- in ( Some DatDesc ) end
+ in ( SOME DatDesc ) end
 )
  in (LrTable.NT 32,(result,AND1left,DatDesc1right),rest671) end
 | (63,rest671) => let val result=MlyValue.AndDatDesc_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 32,(result,defaultPos,defaultPos),rest671) end
 | (64,(_,(MlyValue.AndTypDesc_opt AndTypDesc_opt1,_,
 AndTypDesc_opt1right))::(_,(MlyValue.TypeIdent TypeIdent1,_,
@@ -2272,11 +2268,11 @@ val AndTypDesc_opt as AndTypDesc_opt1=AndTypDesc_opt1 ()
 | (65,(_,(MlyValue.TypDesc TypDesc1,_,TypDesc1right))::(_,(_,AND1left,
 _))::rest671) => let val result=MlyValue.AndTypDesc_opt(fn _ => let 
 val TypDesc as TypDesc1=TypDesc1 ()
- in ( Some TypDesc ) end
+ in ( SOME TypDesc ) end
 )
  in (LrTable.NT 33,(result,AND1left,TypDesc1right),rest671) end
 | (66,rest671) => let val result=MlyValue.AndTypDesc_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 33,(result,defaultPos,defaultPos),rest671) end
 | (67,(_,(MlyValue.TypAbbreviationAND_seq1 TypAbbreviationAND_seq11,_,
 TypAbbreviationAND_seq11right))::_::(_,(MlyValue.TypAbbreviation 
@@ -2328,11 +2324,11 @@ val AndValDesc_opt as AndValDesc_opt1=AndValDesc_opt1 ()
 | (71,(_,(MlyValue.ValDesc ValDesc1,_,ValDesc1right))::(_,(_,AND1left,
 _))::rest671) => let val result=MlyValue.AndValDesc_opt(fn _ => let 
 val ValDesc as ValDesc1=ValDesc1 ()
- in ( Some ValDesc ) end
+ in ( SOME ValDesc ) end
 )
  in (LrTable.NT 35,(result,AND1left,ValDesc1right),rest671) end
 | (72,rest671) => let val result=MlyValue.AndValDesc_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 35,(result,defaultPos,defaultPos),rest671) end
 | (73,(_,(MlyValue.ValDesc ValDesc1,_,ValDesc1right))::(_,(_,VALleft
  as VAL1left,_))::rest671) => let val result=MlyValue.OneSpec(fn _ => 
@@ -2557,11 +2553,11 @@ val OneStrDec_or_SEMICOLON as OneStrDec_or_SEMICOLON1=
 OneStrDec_or_SEMICOLON1 ()
  in (
  (case OneStrDec_or_SEMICOLON of
-			     Some strdec =>
+			     SOME strdec =>
 			       composeStrDec (PP NonEmptyStrDecleft
 					        (right (info_on_strdec strdec)),
 					      NonEmptyStrDec, strdec)
-			   | None =>
+			   | NONE =>
 			       NonEmptyStrDec) 
 ) end
 )
@@ -2574,8 +2570,8 @@ OneStrDec_or_SEMICOLON as OneStrDec_or_SEMICOLON1=
 OneStrDec_or_SEMICOLON1 ()
  in (
  (case OneStrDec_or_SEMICOLON of
-			     Some strdec => strdec
-			   | None => EMPTYstrdec (PP defaultPos defaultPos)) 
+			     SOME strdec => strdec
+			   | NONE => EMPTYstrdec (PP defaultPos defaultPos)) 
 ) end
 )
  in (LrTable.NT 42,(result,OneStrDec_or_SEMICOLON1left,
@@ -2593,12 +2589,12 @@ rest671) end
 | (99,(_,(MlyValue.OneStrDec OneStrDec1,OneStrDec1left,OneStrDec1right
 ))::rest671) => let val result=MlyValue.OneStrDec_or_SEMICOLON(fn _
  => let val OneStrDec as OneStrDec1=OneStrDec1 ()
- in ( Some OneStrDec ) end
+ in ( SOME OneStrDec ) end
 )
  in (LrTable.NT 41,(result,OneStrDec1left,OneStrDec1right),rest671)
  end
 | (100,(_,(_,SEMICOLON1left,SEMICOLON1right))::rest671) => let val 
-result=MlyValue.OneStrDec_or_SEMICOLON(fn _ => ( None ))
+result=MlyValue.OneStrDec_or_SEMICOLON(fn _ => ( NONE ))
  in (LrTable.NT 41,(result,SEMICOLON1left,SEMICOLON1right),rest671)
  end
 | (101,(_,(MlyValue.OneDec_sans_LOCAL OneDec_sans_LOCAL1,
@@ -2654,11 +2650,11 @@ val AndStrBind_opt as AndStrBind_opt1=AndStrBind_opt1 ()
 | (105,(_,(MlyValue.StrBind StrBind1,_,StrBind1right))::(_,(_,AND1left
 ,_))::rest671) => let val result=MlyValue.AndStrBind_opt(fn _ => let 
 val StrBind as StrBind1=StrBind1 ()
- in ( Some StrBind ) end
+ in ( SOME StrBind ) end
 )
  in (LrTable.NT 27,(result,AND1left,StrBind1right),rest671) end
 | (106,rest671) => let val result=MlyValue.AndStrBind_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 27,(result,defaultPos,defaultPos),rest671) end
 | (107,(_,(_,_,ENDright as END1right))::(_,(MlyValue.Spec Spec1,_,_))
 ::(_,(_,SIGleft as SIG1left,_))::rest671) => let val result=
@@ -2715,11 +2711,11 @@ val AndSigBind_opt as AndSigBind_opt1=AndSigBind_opt1 ()
 | (112,(_,(MlyValue.SigBind SigBind1,_,SigBind1right))::(_,(_,AND1left
 ,_))::rest671) => let val result=MlyValue.AndSigBind_opt(fn _ => let 
 val SigBind as SigBind1=SigBind1 ()
- in ( Some SigBind ) end
+ in ( SOME SigBind ) end
 )
  in (LrTable.NT 28,(result,AND1left,SigBind1right),rest671) end
 | (113,rest671) => let val result=MlyValue.AndSigBind_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 28,(result,defaultPos,defaultPos),rest671) end
 | (114,(_,(MlyValue.SCon SCon1,SConleft as SCon1left,SConright as 
 SCon1right))::rest671) => let val result=MlyValue.AtExp(fn _ => let 
@@ -2764,7 +2760,7 @@ _,_))::(_,(_,LPARENleft as LPAREN1left,_))::rest671) => let val result
  in (LrTable.NT 67,(result,LPAREN1left,RPAREN1right),rest671) end
 | (119,(_,(_,_,RPARENright as RPAREN1right))::(_,(_,LPARENleft as 
 LPAREN1left,_))::rest671) => let val result=MlyValue.AtExp(fn _ => (
- RECORDatexp (PP LPARENleft RPARENright, None) ))
+ RECORDatexp (PP LPARENleft RPARENright, NONE) ))
  in (LrTable.NT 67,(result,LPAREN1left,RPAREN1right),rest671) end
 | (120,(_,(_,_,RPARENright as RPAREN1right))::(_,(
 MlyValue.ExpComma_seq2 ExpComma_seq21,_,_))::(_,(_,LPARENleft as 
@@ -2840,20 +2836,20 @@ val CommaExpRow_opt as CommaExpRow_opt1=CommaExpRow_opt1 ()
 | (128,(_,(MlyValue.ExpRow ExpRow1,ExpRow1left,ExpRow1right))::rest671
 ) => let val result=MlyValue.ExpRow_opt(fn _ => let val ExpRow as 
 ExpRow1=ExpRow1 ()
- in ( Some ExpRow ) end
+ in ( SOME ExpRow ) end
 )
  in (LrTable.NT 79,(result,ExpRow1left,ExpRow1right),rest671) end
-| (129,rest671) => let val result=MlyValue.ExpRow_opt(fn _ => ( None )
+| (129,rest671) => let val result=MlyValue.ExpRow_opt(fn _ => ( NONE )
 )
  in (LrTable.NT 79,(result,defaultPos,defaultPos),rest671) end
 | (130,(_,(MlyValue.ExpRow ExpRow1,_,ExpRow1right))::(_,(_,COMMA1left,
 _))::rest671) => let val result=MlyValue.CommaExpRow_opt(fn _ => let 
 val ExpRow as ExpRow1=ExpRow1 ()
- in ( Some ExpRow ) end
+ in ( SOME ExpRow ) end
 )
  in (LrTable.NT 69,(result,COMMA1left,ExpRow1right),rest671) end
 | (131,rest671) => let val result=MlyValue.CommaExpRow_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 69,(result,defaultPos,defaultPos),rest671) end
 | (132,(_,(MlyValue.ExpComma_seq1 ExpComma_seq11,ExpComma_seq11left,
 ExpComma_seq11right))::rest671) => let val result=
@@ -3013,11 +3009,11 @@ val BarMatch_opt as BarMatch_opt1=BarMatch_opt1 ()
 | (150,(_,(MlyValue.Match_ Match_1,_,Match_1right))::(_,(_,BAR1left,_)
 )::rest671) => let val result=MlyValue.BarMatch_opt(fn _ => let val 
 Match_ as Match_1=Match_1 ()
- in ( Some Match_ ) end
+ in ( SOME Match_ ) end
 )
  in (LrTable.NT 77,(result,BAR1left,Match_1right),rest671) end
 | (151,rest671) => let val result=MlyValue.BarMatch_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 77,(result,defaultPos,defaultPos),rest671) end
 | (152,(_,(MlyValue.Exp_ Exp_1,_,Exp_1right))::_::(_,(MlyValue.Pat 
 Pat1,Patleft as Pat1left,_))::rest671) => let val result=
@@ -3257,11 +3253,11 @@ OneDec_sans_LOCAL1right),rest671) end
 | (172,(_,(MlyValue.OneDec OneDec1,OneDec1left,OneDec1right))::rest671
 ) => let val result=MlyValue.OneDec_or_SEMICOLON(fn _ => let val 
 OneDec as OneDec1=OneDec1 ()
- in ( Some OneDec ) end
+ in ( SOME OneDec ) end
 )
  in (LrTable.NT 101,(result,OneDec1left,OneDec1right),rest671) end
 | (173,(_,(_,SEMICOLON1left,SEMICOLON1right))::rest671) => let val 
-result=MlyValue.OneDec_or_SEMICOLON(fn _ => ( None ))
+result=MlyValue.OneDec_or_SEMICOLON(fn _ => ( NONE ))
  in (LrTable.NT 101,(result,SEMICOLON1left,SEMICOLON1right),rest671)
  end
 | (174,(_,(MlyValue.OneDec_or_SEMICOLON OneDec_or_SEMICOLON1,_,
@@ -3273,11 +3269,11 @@ val OneDec_or_SEMICOLON as OneDec_or_SEMICOLON1=OneDec_or_SEMICOLON1
 ()
  in (
  (case OneDec_or_SEMICOLON of
-			     Some dec =>
+			     SOME dec =>
 			       composeDec (PP NonEmptyDecleft
 					     (right (get_info_dec dec)),
 					   NonEmptyDec, dec)
-			   | None => NonEmptyDec) 
+			   | NONE => NonEmptyDec) 
 ) end
 )
  in (LrTable.NT 102,(result,NonEmptyDec1left,OneDec_or_SEMICOLON1right
@@ -3288,8 +3284,8 @@ val result=MlyValue.NonEmptyDec(fn _ => let val OneDec_or_SEMICOLON
  as OneDec_or_SEMICOLON1=OneDec_or_SEMICOLON1 ()
  in (
  (case OneDec_or_SEMICOLON of
-			     Some dec => dec
-			   | None => EMPTYdec (PP defaultPos defaultPos)) 
+			     SOME dec => dec
+			   | NONE => EMPTYdec (PP defaultPos defaultPos)) 
 ) end
 )
  in (LrTable.NT 102,(result,OneDec_or_SEMICOLON1left,
@@ -3331,11 +3327,11 @@ fn _ => let val FnValBind as FnValBind1=FnValBind1 ()
 | (180,(_,(MlyValue.ValBind ValBind1,_,ValBind1right))::(_,(_,AND1left
 ,_))::rest671) => let val result=MlyValue.AndValBind_opt(fn _ => let 
 val ValBind as ValBind1=ValBind1 ()
- in ( Some ValBind ) end
+ in ( SOME ValBind ) end
 )
  in (LrTable.NT 70,(result,AND1left,ValBind1right),rest671) end
 | (181,rest671) => let val result=MlyValue.AndValBind_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 70,(result,defaultPos,defaultPos),rest671) end
 | (182,(_,(MlyValue.AndFnValBind_opt AndFnValBind_opt1,_,
 AndFnValBind_opt1right))::(_,(MlyValue.Match_ Match_1,_,_))::(_,(_,
@@ -3415,11 +3411,11 @@ Ty as Ty1=Ty1 ()
 | (187,(_,(MlyValue.FnValBind FnValBind1,_,FnValBind1right))::(_,(_,
 AND1left,_))::rest671) => let val result=MlyValue.AndFnValBind_opt(fn 
 _ => let val FnValBind as FnValBind1=FnValBind1 ()
- in ( Some FnValBind ) end
+ in ( SOME FnValBind ) end
 )
  in (LrTable.NT 71,(result,AND1left,FnValBind1right),rest671) end
 | (188,rest671) => let val result=MlyValue.AndFnValBind_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 71,(result,defaultPos,defaultPos),rest671) end
 | (189,(_,(MlyValue.AndTypBind_opt AndTypBind_opt1,_,
 AndTypBind_opt1right))::(_,(MlyValue.Ty Ty1,_,_))::_::(_,(
@@ -3441,11 +3437,11 @@ val AndTypBind_opt as AndTypBind_opt1=AndTypBind_opt1 ()
 | (190,(_,(MlyValue.TypBind TypBind1,_,TypBind1right))::(_,(_,AND1left
 ,_))::rest671) => let val result=MlyValue.AndTypBind_opt(fn _ => let 
 val TypBind as TypBind1=TypBind1 ()
- in ( Some TypBind ) end
+ in ( SOME TypBind ) end
 )
  in (LrTable.NT 74,(result,AND1left,TypBind1right),rest671) end
 | (191,rest671) => let val result=MlyValue.AndTypBind_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 74,(result,defaultPos,defaultPos),rest671) end
 | (192,(_,(MlyValue.AndDatBind_opt AndDatBind_opt1,_,
 AndDatBind_opt1right))::(_,(MlyValue.ConBind ConBind1,_,_))::_::(_,(
@@ -3504,11 +3500,11 @@ rest671) end
 | (195,(_,(MlyValue.DatBind DatBind1,_,DatBind1right))::(_,(_,AND1left
 ,_))::rest671) => let val result=MlyValue.AndDatBind_opt(fn _ => let 
 val DatBind as DatBind1=DatBind1 ()
- in ( Some DatBind ) end
+ in ( SOME DatBind ) end
 )
  in (LrTable.NT 75,(result,AND1left,DatBind1right),rest671) end
 | (196,rest671) => let val result=MlyValue.AndDatBind_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 75,(result,defaultPos,defaultPos),rest671) end
 | (197,(_,(MlyValue.BarConBind_opt BarConBind_opt1,_,
 BarConBind_opt1right))::(_,(MlyValue.OfTy_opt OfTy_opt1,_,_))::(_,(
@@ -3534,11 +3530,11 @@ val BarConBind_opt as BarConBind_opt1=BarConBind_opt1 ()
 | (198,(_,(MlyValue.ConBind ConBind1,_,ConBind1right))::(_,(_,BAR1left
 ,_))::rest671) => let val result=MlyValue.BarConBind_opt(fn _ => let 
 val ConBind as ConBind1=ConBind1 ()
- in ( Some ConBind ) end
+ in ( SOME ConBind ) end
 )
  in (LrTable.NT 76,(result,BAR1left,ConBind1right),rest671) end
 | (199,rest671) => let val result=MlyValue.BarConBind_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 76,(result,defaultPos,defaultPos),rest671) end
 | (200,(_,(MlyValue.AndExBind_opt AndExBind_opt1,_,AndExBind_opt1right
 ))::(_,(MlyValue.OfTy_opt OfTy_opt1,_,_))::(_,(MlyValue.OpIdent 
@@ -3586,11 +3582,11 @@ val AndExBind_opt as AndExBind_opt1=AndExBind_opt1 ()
 | (202,(_,(MlyValue.ExBind ExBind1,_,ExBind1right))::(_,(_,AND1left,_)
 )::rest671) => let val result=MlyValue.AndExBind_opt(fn _ => let val 
 ExBind as ExBind1=ExBind1 ()
- in ( Some ExBind ) end
+ in ( SOME ExBind ) end
 )
  in (LrTable.NT 78,(result,AND1left,ExBind1right),rest671) end
 | (203,rest671) => let val result=MlyValue.AndExBind_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 78,(result,defaultPos,defaultPos),rest671) end
 | (204,(_,(MlyValue.AndFValBind_opt AndFValBind_opt1,_,
 AndFValBind_opt1right))::(_,(MlyValue.FClause FClause1,FClauseleft as 
@@ -3609,11 +3605,11 @@ val AndFValBind_opt as AndFValBind_opt1=AndFValBind_opt1 ()
 | (205,(_,(MlyValue.FValBind FValBind1,_,FValBind1right))::(_,(_,
 AND1left,_))::rest671) => let val result=MlyValue.AndFValBind_opt(fn _
  => let val FValBind as FValBind1=FValBind1 ()
- in ( Some FValBind ) end
+ in ( SOME FValBind ) end
 )
  in (LrTable.NT 72,(result,AND1left,FValBind1right),rest671) end
 | (206,rest671) => let val result=MlyValue.AndFValBind_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 72,(result,defaultPos,defaultPos),rest671) end
 | (207,(_,(MlyValue.BarFClause_opt BarFClause_opt1,_,
 BarFClause_opt1right))::(_,(MlyValue.Exp_ Exp_1,_,_))::_::(_,(
@@ -3637,11 +3633,11 @@ rest671) end
 | (208,(_,(MlyValue.FClause FClause1,_,FClause1right))::(_,(_,BAR1left
 ,_))::rest671) => let val result=MlyValue.BarFClause_opt(fn _ => let 
 val FClause as FClause1=FClause1 ()
- in ( Some FClause ) end
+ in ( SOME FClause ) end
 )
  in (LrTable.NT 73,(result,BAR1left,FClause1right),rest671) end
 | (209,rest671) => let val result=MlyValue.BarFClause_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 73,(result,defaultPos,defaultPos),rest671) end
 | (210,(_,(MlyValue.AtPat_seq1 AtPat_seq11,_,AtPat_seq11right))::(_,(
 MlyValue.AtPat AtPat1,AtPat1left,_))::rest671) => let val result=
@@ -3666,18 +3662,18 @@ val AtPat_seq1 as AtPat_seq11=AtPat_seq11 ()
 | (213,(_,(MlyValue.Ty Ty1,_,Ty1right))::(_,(_,COLON1left,_))::rest671
 ) => let val result=MlyValue.ColonTy_opt(fn _ => let val Ty as Ty1=Ty1
  ()
- in ( Some Ty ) end
+ in ( SOME Ty ) end
 )
  in (LrTable.NT 83,(result,COLON1left,Ty1right),rest671) end
-| (214,rest671) => let val result=MlyValue.ColonTy_opt(fn _ => ( None 
+| (214,rest671) => let val result=MlyValue.ColonTy_opt(fn _ => ( NONE 
 ))
  in (LrTable.NT 83,(result,defaultPos,defaultPos),rest671) end
 | (215,(_,(MlyValue.Ty Ty1,_,Ty1right))::(_,(_,OF1left,_))::rest671)
  => let val result=MlyValue.OfTy_opt(fn _ => let val Ty as Ty1=Ty1 ()
- in ( Some Ty ) end
+ in ( SOME Ty ) end
 )
  in (LrTable.NT 87,(result,OF1left,Ty1right),rest671) end
-| (216,rest671) => let val result=MlyValue.OfTy_opt(fn _ => ( None ))
+| (216,rest671) => let val result=MlyValue.OfTy_opt(fn _ => ( NONE ))
  in (LrTable.NT 87,(result,defaultPos,defaultPos),rest671) end
 | (217,(_,(_,UNDERBARleft as UNDERBAR1left,UNDERBARright as 
 UNDERBAR1right))::rest671) => let val result=MlyValue.AtPat(fn _ => (
@@ -3724,7 +3720,7 @@ MlyValue.AtPat(fn _ => let val Pat as Pat1=Pat1 ()
  in (LrTable.NT 52,(result,LPAREN1left,RPAREN1right),rest671) end
 | (223,(_,(_,_,RPARENright as RPAREN1right))::(_,(_,LPARENleft as 
 LPAREN1left,_))::rest671) => let val result=MlyValue.AtPat(fn _ => (
- RECORDatpat (PP LPARENleft RPARENright, None) ))
+ RECORDatpat (PP LPARENleft RPARENright, NONE) ))
  in (LrTable.NT 52,(result,LPAREN1left,RPAREN1right),rest671) end
 | (224,(_,(_,_,RPARENright as RPAREN1right))::(_,(
 MlyValue.PatComma_seq2 PatComma_seq21,_,_))::(_,(_,LPARENleft as 
@@ -3744,10 +3740,10 @@ let val PatComma_seq0 as PatComma_seq01=PatComma_seq01 ()
 | (226,(_,(MlyValue.PatRow PatRow1,PatRow1left,PatRow1right))::rest671
 ) => let val result=MlyValue.PatRow_opt(fn _ => let val PatRow as 
 PatRow1=PatRow1 ()
- in ( Some PatRow ) end
+ in ( SOME PatRow ) end
 )
  in (LrTable.NT 80,(result,PatRow1left,PatRow1right),rest671) end
-| (227,rest671) => let val result=MlyValue.PatRow_opt(fn _ => ( None )
+| (227,rest671) => let val result=MlyValue.PatRow_opt(fn _ => ( NONE )
 )
  in (LrTable.NT 80,(result,defaultPos,defaultPos),rest671) end
 | (228,(_,(_,DOTDOTDOTleft as DOTDOTDOT1left,DOTDOTDOTright as 
@@ -3795,14 +3791,14 @@ val CommaPatRow_opt as CommaPatRow_opt1=CommaPatRow_opt1 ()
 					  (info_ident, OP_OPT (mk_LongId [Ident], false)))
 			     in
 			       case (ColonTy_opt, AsPat_opt) of
-				 (_, Some pat) =>
+				 (_, SOME pat) =>
 				   LAYEREDpat (PP Identleft (right (get_info_pat pat)),
 					       OP_OPT (mk_Id Ident, false),
 					       ColonTy_opt, pat)
-			       | (Some ty, None) =>
+			       | (SOME ty, NONE) =>
 				   TYPEDpat (PP Identleft (right (get_info_ty ty)),
 					     idPat, ty)
-			       | (None, None) => idPat
+			       | (NONE, NONE) => idPat
 			     end,
 			     CommaPatRow_opt) 
 ) end
@@ -3812,19 +3808,19 @@ val CommaPatRow_opt as CommaPatRow_opt1=CommaPatRow_opt1 ()
 | (231,(_,(MlyValue.Pat Pat1,_,Pat1right))::(_,(_,AS1left,_))::rest671
 ) => let val result=MlyValue.AsPat_opt(fn _ => let val Pat as Pat1=
 Pat1 ()
- in ( Some Pat ) end
+ in ( SOME Pat ) end
 )
  in (LrTable.NT 81,(result,AS1left,Pat1right),rest671) end
-| (232,rest671) => let val result=MlyValue.AsPat_opt(fn _ => ( None ))
+| (232,rest671) => let val result=MlyValue.AsPat_opt(fn _ => ( NONE ))
  in (LrTable.NT 81,(result,defaultPos,defaultPos),rest671) end
 | (233,(_,(MlyValue.PatRow PatRow1,_,PatRow1right))::(_,(_,COMMA1left,
 _))::rest671) => let val result=MlyValue.CommaPatRow_opt(fn _ => let 
 val PatRow as PatRow1=PatRow1 ()
- in ( Some PatRow ) end
+ in ( SOME PatRow ) end
 )
  in (LrTable.NT 82,(result,COMMA1left,PatRow1right),rest671) end
 | (234,rest671) => let val result=MlyValue.CommaPatRow_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 82,(result,defaultPos,defaultPos),rest671) end
 | (235,(_,(MlyValue.PatComma_seq1 PatComma_seq11,PatComma_seq11left,
 PatComma_seq11right))::rest671) => let val result=
@@ -4006,10 +4002,10 @@ MlyValue.AtomicTy(fn _ => let val Ty as Ty1=Ty1 ()
 | (257,(_,(MlyValue.TyRow TyRow1,TyRow1left,TyRow1right))::rest671)
  => let val result=MlyValue.TyRow_opt(fn _ => let val TyRow as TyRow1=
 TyRow1 ()
- in ( Some TyRow ) end
+ in ( SOME TyRow ) end
 )
  in (LrTable.NT 85,(result,TyRow1left,TyRow1right),rest671) end
-| (258,rest671) => let val result=MlyValue.TyRow_opt(fn _ => ( None ))
+| (258,rest671) => let val result=MlyValue.TyRow_opt(fn _ => ( NONE ))
  in (LrTable.NT 85,(result,defaultPos,defaultPos),rest671) end
 | (259,(_,(MlyValue.CommaTyRow_opt CommaTyRow_opt1,_,
 CommaTyRow_opt1right))::(_,(MlyValue.Ty Ty1,_,_))::_::(_,(
@@ -4029,11 +4025,11 @@ val CommaTyRow_opt as CommaTyRow_opt1=CommaTyRow_opt1 ()
 | (260,(_,(MlyValue.TyRow TyRow1,_,TyRow1right))::(_,(_,COMMA1left,_))
 ::rest671) => let val result=MlyValue.CommaTyRow_opt(fn _ => let val 
 TyRow as TyRow1=TyRow1 ()
- in ( Some TyRow ) end
+ in ( SOME TyRow ) end
 )
  in (LrTable.NT 86,(result,COMMA1left,TyRow1right),rest671) end
 | (261,rest671) => let val result=MlyValue.CommaTyRow_opt(fn _ => (
- None ))
+ NONE ))
  in (LrTable.NT 86,(result,defaultPos,defaultPos),rest671) end
 | (262,(_,(MlyValue.DECPOSINTEGER DECPOSINTEGER1,DECPOSINTEGERleft as 
 DECPOSINTEGER1left,DECPOSINTEGER1right))::rest671) => let val result=
@@ -4077,9 +4073,9 @@ DIGIT1 ()
 HASH1left,_))::rest671) => let val result=MlyValue.Char(fn _ => let 
 val STRING as STRING1=STRING1 ()
  in (
- if String.size STRING = 1 then ord STRING
-			  else raise LEXICAL_ERROR (STRINGleft,
-			  			    "string must have length 1") 
+ case explode STRING
+                            of [c] => ord c
+                             | _ => raise LEXICAL_ERROR (STRINGleft, "string must have length 1") 
 ) end
 )
  in (LrTable.NT 122,(result,HASH1left,STRING1right),rest671) end

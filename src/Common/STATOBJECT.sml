@@ -20,11 +20,10 @@ signature STATOBJECT =
     type realisation(*tyrea*)
 
     (*types from other modules:*)
-    type StringTree
     type ExplicitTyVar (*the type of type variables explicit in the source*)
     structure TyName : TYNAME
-    type TyName sharing type TyName = TyName.TyName
-	        sharing type StringTree = TyName.Set.StringTree
+    type TyName = TyName.TyName
+    type StringTree = TyName.Set.StringTree
     type lab 
     type scon
     type strid
@@ -56,7 +55,7 @@ signature STATOBJECT =
 	val fresh_normal            : unit -> TyVar
 	val fresh_overloaded        : TyName list -> TyVar
 	val from_ExplicitTyVar      : ExplicitTyVar -> TyVar
-	val to_ExplicitTyVar        : TyVar -> ExplicitTyVar Option
+	val to_ExplicitTyVar        : TyVar -> ExplicitTyVar option
 	val is_overloaded           : TyVar -> bool
 	val string                  : TyVar -> string
 	val pretty_string           : TVNames -> TyVar -> string
@@ -84,11 +83,11 @@ signature STATOBJECT =
 	val from_TyVar              : TyVar -> Type
 	val from_TyVar'             : level -> TyVar -> Type
 	      (*used to elaborate explicit tyvar's*)
-	val to_TyVar                : Type -> TyVar Option
+	val to_TyVar                : Type -> TyVar option
 
 	(*record types*)
 	val from_RecType            : RecType -> Type
-	val to_RecType              : Type -> RecType Option
+	val to_RecType              : Type -> RecType option
 	val contains_row_variable   : Type -> bool
 	    (*contains_row_variable rho = true iff there exists a 
 	     row variable in the type rho*)
@@ -109,20 +108,20 @@ signature STATOBJECT =
 
 	(*function types*)
 	val from_FunType            : FunType -> Type
-	val to_FunType              : Type -> FunType Option
+	val to_FunType              : Type -> FunType option
 	val mk_FunType              : Type * Type -> FunType
-	val un_FunType              : FunType -> (Type * Type) Option
+	val un_FunType              : FunType -> (Type * Type) option
 
 	(*constructed types*)
 	val from_ConsType           : ConsType -> Type
-	val to_ConsType             : Type -> ConsType Option
+	val to_ConsType             : Type -> ConsType option
 	val mk_ConsType             : Type list * TyName -> ConsType
-	val un_ConsType             : ConsType -> (Type list * TyName) Option
+	val un_ConsType             : ConsType -> (Type list * TyName) option
 
 	val Exn                     : Type
 	val is_Exn                  : Type -> bool
 	val mk_Arrow                : Type * Type -> Type
-	val un_Arrow                : Type -> (Type * Type) Option
+	val un_Arrow                : Type -> (Type * Type) option
 	val is_Arrow                : Type -> bool
 	val mk_Ref                  : Type -> Type
 
@@ -231,7 +230,7 @@ signature STATOBJECT =
 	val admits_equality         : TypeFcn -> bool
 	val grounded                : TypeFcn * TyName.Set.Set -> bool
 	val from_TyName             : TyName  -> TypeFcn
-	val to_TyName               : TypeFcn -> TyName Option
+	val to_TyName               : TypeFcn -> TyName option
 	val is_TyName               : TypeFcn -> bool
 	val bogus                   : TypeFcn
 	val tynames                 : TypeFcn -> TyName.Set.Set

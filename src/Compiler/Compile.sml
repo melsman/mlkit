@@ -143,6 +143,8 @@ functor Compile(structure Excon : EXCON
 
   struct
 
+    structure List = Edlib.List
+
     structure CE = CompilerEnv
 
     type CompileBasis = CompileBasis.CompileBasis
@@ -169,31 +171,31 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
 
     fun out_layer (stl:PP.StringTree list) =
-      PP.outputTree((fn s => output(std_out, s)), 
+      PP.outputTree((fn s => TextIO.output(TextIO.stdOut, s)), 
          PP.NODE{start = "[", finish = "]", childsep = PP.RIGHT ",", indent = 1, 
                  children = stl}, !Flags.colwidth)
 
     fun pr0 st log = (Report.print' (PP.reportStringTree st) log; 
-                      NonStandard.flush_out log)
+                      TextIO.flushOut log)
     fun pr st = pr0 st (!Flags.log)
 
     fun length l = List.foldR (fn _ => fn n => n+1) 0 l
 
-    fun msg(s: string) = (output(!Flags.log, s); NonStandard.flush_out (!Flags.log)
-			  (*; output(std_out, s)*))
+    fun msg(s: string) = (TextIO.output(!Flags.log, s); TextIO.flushOut (!Flags.log)
+			  (*; TextIO.output(TextIO.stdOut, s)*))
 
     fun chat(s: string) = if !Flags.chat then msg s else ()
 
     fun fast_pr stringtree = 
-           (PP.outputTree ((fn s => output(!Flags.log, s)) , stringtree, !Flags.colwidth);
-            output(!Flags.log, "\n"))
+           (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
+            TextIO.output(!Flags.log, "\n"))
 
     fun display(title, tree) =
         fast_pr(PP.NODE{start=title ^ ": ",
                    finish="",
                    indent=3,
                    children=[tree],
-                   childsep=PP.NONE
+                   childsep=PP.NOSEP
                   }
           )
 
@@ -212,15 +214,15 @@ functor Compile(structure Excon : EXCON
       
     val layoutLambdaPgm = LambdaExp.layoutLambdaPgm 
     fun layoutRegionPgm  x = (RegionExp.layoutLambdaPgm 
-                            (if !Flags.print_regions then (fn rho => Some(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
-                             else fn _ => None)
-                            (fn _ => None)) x
+                            (if !Flags.print_regions then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
+                             else fn _ => NONE)
+                            (fn _ => NONE)) x
     fun layoutRegionExp x = (RegionExp.layoutLambdaExp 
-                            (if !Flags.print_regions then (fn rho => Some(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
-                             else fn _ => None)
-                             (fn _ => None)) x
+                            (if !Flags.print_regions then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Effect.layout_effect rho))))
+                             else fn _ => NONE)
+                             (fn _ => NONE)) x
 
-    fun say x = output(!Flags.log, x)
+    fun say x = TextIO.output(!Flags.log, x)
     fun sayenv rse = PP.outputTree(say, SpreadExp.RegionStatEnv.layout rse, !Flags.colwidth)
 
     type arity = int
@@ -374,7 +376,7 @@ functor Compile(structure Excon : EXCON
          let val (cone,rse_con,spread_lamb) = SpreadExp.spreadPgm(cone,rse, lamb_opt)
          in Timing.timing_end("Spread exp. (NEW)");
             (*Profile.profileOff();
-            output(!Flags.log, "\n PROFILING OF S\n\n");
+            TextIO.output(!Flags.log, "\n PROFILING OF S\n\n");
             Profile.report(!Flags.log);*)
             if !Flags.DEBUG_COMPILER 
             then (display("\nReport: Spread; program", layoutRegionPgm spread_lamb) ;
@@ -401,7 +403,7 @@ functor Compile(structure Excon : EXCON
                  ;Profile.profileOn()*))
         val rse_with_con = SpreadExp.RegionStatEnv.plus(rse,rse_con)
         val cone = RegInf.inferEffects
-                   (fn s => (output(!Flags.log, s); flush_out(!Flags.log)))
+                   (fn s => (TextIO.output(!Flags.log, s); TextIO.flushOut(!Flags.log)))
                    (cone,rse_with_con, spread_lamb_exp)
         val new_layer = Effect.topLayer cone (* to get back to level of "cone" *)
 (*
@@ -422,7 +424,7 @@ functor Compile(structure Excon : EXCON
 
         val _ = Timing.timing_end("Reg. Inf. (NEW)")
      (*   val _ = (Profile.profileOff();
-                output(!Flags.log, "\n PROFILING OF R\n\n");
+                TextIO.output(!Flags.log, "\n PROFILING OF R\n\n");
                 Profile.report(!Flags.log));
      *)
 
@@ -445,10 +447,10 @@ functor Compile(structure Excon : EXCON
 		 List.foldL (fn {lvar,compound,create_region_record,sigma, place} => fn rse =>
 			     SpreadExp.RegionStatEnv.declareLvar(lvar,(compound, 
 							   create_region_record, !sigma, place, 
-							   Some(ref[]) (* reset occurrences *), None
+							   SOME(ref[]) (* reset occurrences *), NONE
 							 ), rse)) rse_con declared_lvars
 	       in
-		 List.foldL (fn (excon, Some(Type, place)) => (fn rse =>
+		 List.foldL (fn (excon, SOME(Type, place)) => (fn rse =>
 							       SpreadExp.RegionStatEnv.declareExcon(excon,(Type,place),rse))
 			      | _ => die "rse.excon") rse_temp declared_excons
 
@@ -479,7 +481,7 @@ functor Compile(structure Excon : EXCON
         val _ = Timing.timing_end("Multiplicity Inference (NEW)")
 
 (*        val _ = ( Profile.profileOff()(*;
-                output(!Flags.log, "\n PROFILING OF MulInf\n\n");
+                TextIO.output(!Flags.log, "\n PROFILING OF MulInf\n\n");
                 Profile.report(!Flags.log)*));
 *)
     in 
@@ -673,11 +675,11 @@ functor Compile(structure Excon : EXCON
 	(* Generate VCG graph *)
 	val _ = if (Flags.is_on "generate_vcg_graph") then
                   let
-	            val outStreamVCG = open_out vcg_file
+	            val outStreamVCG = TextIO.openOut vcg_file
 		  in
 		    (chat "\nGenerate VCG region flow graph for profiling...";
 		     RegionFlowGraphProfiling.export_graph outStreamVCG;
-		     close_out(outStreamVCG))
+		     TextIO.closeOut(outStreamVCG))
 		  end
 		else
 		  ()

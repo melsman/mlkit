@@ -6,9 +6,17 @@ functor FinMap(structure Report: REPORT
 	       structure PP: PRETTYPRINT
 	      ): FINMAP =
   struct
+
+    structure General = Edlib.General
+    structure List = Edlib.List
+    structure EqSet = Edlib.EqSet
+    structure ListSort = Edlib.ListSort
+
     datatype (''a, 'b) map = FM of {elts: (''a * 'b) list, unique : bool ref}
 
-    val empty = FM {elts = [], unique = ref true}
+    local val true_ref = ref true
+    in val empty = FM {elts = [], unique = true_ref}
+    end
 
     fun singleton p = FM {elts = [p], unique = ref true}
 
@@ -16,8 +24,8 @@ functor FinMap(structure Report: REPORT
       | isEmpty _ = false
 
     fun lookup (FM{elts=l,...}) x = 
-	let fun look [] = None
-	      | look ((x',y)::rest) = if x=x' then Some(y) else look rest
+	let fun look [] = NONE
+	      | look ((x',y)::rest) = if x=x' then SOME(y) else look rest
 	in
 	    look l
 	end

@@ -16,31 +16,26 @@ functor ModuleStatObject(structure StrId  : STRID
 			   sharing StatObject.TyName = TyName
 
 			 structure Environments : ENVIRONMENTS
+			   sharing Environments.TyName = StatObject.TyName
 			   sharing type Environments.TypeFcn    = StatObject.TypeFcn
 			       and type Environments.Type       = StatObject.Type
 			       and type Environments.TyVar      = StatObject.TyVar
 			       and type Environments.TypeScheme = StatObject.TypeScheme
-			       and type Environments.tycon      = TyCon.tycon
+(*			       and type Environments.tycon      = TyName.tycon *)
 			       and type Environments.strid      = StrId.strid
 			       and type Environments.realisation = StatObject.realisation
-			       and type Environments.ExplicitTyVar
-				 = StatObject.ExplicitTyVar
-			        sharing Environments.TyName     = TyName
-
-			 structure FinMap : FINMAP
+			       and type Environments.ExplicitTyVar = StatObject.ExplicitTyVar
 
 			 structure PP : PRETTYPRINT
-			   sharing type PP.StringTree = FinMap.StringTree
-			       and type PP.StringTree = Environments.StringTree
-				 = TyName.Set.StringTree
-
-			 structure Report: REPORT
-			   sharing type Report.Report= PP.Report
+			   sharing type PP.StringTree (*= Environments.StringTree*)
+				 = TyName.Set.StringTree (*= StatObject.StringTree*)
 
 			 structure Flags : FLAGS
-			 structure Crash : CRASH
 			) : MODULE_STATOBJECT =
   struct
+
+    open Edlib
+
     (*import from StatObject:*)
     type realisation       = StatObject.realisation
     type TyName            = StatObject.TyName.TyName
@@ -123,10 +118,10 @@ functor ModuleStatObject(structure StrId  : STRID
 	    let
 	      fun f (strid, E) phi : realisation =
 		(case SE.lookup SE' strid of
-		   Some E' =>
+		   SOME E' =>
 		     let val Enew = Realisation.on_Env phi E
 		     in Realisation.oo (matchEnv (Enew, E', strid::path), phi) end
-		 | None =>
+		 | NONE =>
 		       fail (MISSINGSTR (StrId.implode_longstrid(rev path, strid))))
 	    in
 	      SE.Fold f Realisation.Id SE 
@@ -137,7 +132,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	       fun f (tycon, tystr) phi : realisation=
 	      (case TE.lookup TE' tycon of
 
-	       Some tystr' =>
+	       SOME tystr' =>
 	      (*** As Sigma is type explicit, Definition sec. 5.8
 	       *** we know that for all flexible type names t (type names bound
 	       *** by T of Sigma) there exist a tycon, such that 
@@ -150,7 +145,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	       let val theta = TyStr.to_theta tystr
 	       in
 		 (case TypeFcn.to_TyName theta of
-		    Some t =>
+		    SOME t =>
 		      let val theta' = TyStr.to_theta tystr'
 			fun err f = fail (f (TyCon.implode_LongTyCon (rev path, tycon),
 						   (t,theta')))
@@ -166,10 +161,10 @@ functor ModuleStatObject(structure StrId  : STRID
 			else (* t is rigid *)
 			  phi 
 		      end
-		  | None => phi)
+		  | NONE => phi)
 	       end
 
-		 | None => 
+		 | NONE => 
 		     fail (MISSINGTYPE
 			   (TyCon.implode_LongTyCon(rev path, tycon))))
 	     in
@@ -178,6 +173,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	in 
 	  matchEnv (E, E', [])
 	end (* sigMatchRea *)
+
 
     (**** Enrichment : definition page 34 sec. 5.11 *)
     (*check_enrichment is used by both Sigma.match and Phi.match below.*)
@@ -206,8 +202,8 @@ functor ModuleStatObject(structure StrId  : STRID
 	        SE.apply
 		  (fn (strid, S') =>
 		         (case SE.lookup SE strid of
-			    Some S => enrichesE (S, S', strid::path)
-			  | None => fail (MISSINGSTR
+			    SOME S => enrichesE (S, S', strid::path)
+			  | NONE => fail (MISSINGSTR
 					  (StrId.implode_longstrid(rev path, strid)))))
 		    SE'
 
@@ -215,8 +211,8 @@ functor ModuleStatObject(structure StrId  : STRID
 	        TE.apply
 		  (fn (tycon, tystr') =>
 		         (case TE.lookup TE tycon of
-			    Some tystr => enrichesTyStr (tystr, tystr', path, tycon)
-			  | None => fail (MISSINGTYPE
+			    SOME tystr => enrichesTyStr (tystr, tystr', path, tycon)
+			  | NONE => fail (MISSINGTYPE
 					  (TyCon.implode_LongTyCon (rev path, tycon)))))
 		     TE'
 
@@ -238,7 +234,7 @@ functor ModuleStatObject(structure StrId  : STRID
 	        VE.apply
 		  (fn (id, varenvrng') =>
 		        (case VE.lookup VE id of
-			   Some varenvrng  =>
+			   SOME varenvrng  =>
 			     if enriches_sigma_is (varenvrng, varenvrng') then ()
 			     else fail (NOTYENRICHMENT
                                         {qualid = (rev path, id),
@@ -246,7 +242,7 @@ functor ModuleStatObject(structure StrId  : STRID
                                          str_vce  = kind  varenvrng,
                                          sig_sigma = sigma varenvrng',
                                          sig_vce  = kind  varenvrng'})
-			 | None => fail (MISSINGVAR (rev path, id))))
+			 | NONE => fail (MISSINGVAR (rev path, id))))
 		      VE'
 
           (*enriches_sigma_is: (sigma1,is1) enriches (sigma2,is2),
@@ -269,7 +265,6 @@ functor ModuleStatObject(structure StrId  : STRID
       in
 	fun check_enrichment (S,S') : unit = enrichesE (S, S', [])
       end (*local*)
-
 
 
 			    (*signature*)
@@ -346,20 +341,6 @@ functor ModuleStatObject(structure StrId  : STRID
 	  (E'',E,phi)
 	end
 
-(*old
-      fun eq_Env(E1,E2) = (check_enrichment(E1,E2);
-			   check_enrichment(E2,E1);
-			   true) handle _ => false
-      fun eq (Sig1,Sig2) =
-        let val Sig1 as SIGMA{T=T1,E=E1} = rename_Sig Sig1
-	    val Sig2 as SIGMA{T=T2,E=E2} = rename_Sig Sig2
-	    val phi1 = sigMatchRea (Sig2,E1)
-	    val phi2 = sigMatchRea (Sig1,E2)
-	in E_eq(Realisation.on_Env phi1 E2, E1) andalso
-	   E_eq(Realisation.on_Env phi2 E1, E2)
-	end handle _ => false
-old*)
-
       (* assumption: NO tynames in Sig1 and Sig2 may be marked generative. *)
       fun eq (SIGMA{T=T1,E=E1}, Sig2 as SIGMA{T,...}) =
 	if TyName.Set.size T1 <> TyName.Set.size T then false
@@ -382,7 +363,7 @@ old*)
 				       children=[TyName.Set.layoutSet
 						 {start="{", sep=",", finish="}"}
 						 TyName.layout T],
-				       childsep=PP.NONE}
+				       childsep=PP.NOSEP}
 	      in PP.NODE {start="", finish="", indent=0,
 			  children=[Ttree, E.layout E], childsep=PP.RIGHT " "}
 	      end
@@ -456,26 +437,6 @@ old*)
 		(Sigma_on (phi', Sig'), phi')      (* The elaborator must maintain the invariant that *)
 	      end                                  (* (Supp(phi') U Yield(phi')) \cap (T of Sig') = 0 *)
 	    end                                    (* -- I believe it does -- Martin *)
-(*old
-      local
-	fun rename_FunSig (FUNSIG{T,E,T'E'}) =
-	  let val phi = Realisation.renaming T
-	  in FUNSIG{T=Realisation.on_TyName_set phi T,
-		    E=Realisation.on_Env phi E,
-		    T'E'=Sigma.rename_Sig (Sigma.on(phi,T'E'))}
-	  end
-      in
-	fun eq(funsig1, funsig2) =
-	  let val FUNSIG{T=T1,E=E1,T'E'=Sig1'} = rename_FunSig funsig1
-	      val FUNSIG{T=T2,E=E2,T'E'=Sig2'} = rename_FunSig funsig2
-	      val Sig1 = SIGMA{T=T1,E=E1}
-	      val Sig2 = SIGMA{T=T2,E=E2}
-	      val phi = sigMatchRea(Sig1, E2)
-	  in Sigma.eq(Sig1,Sig2) andalso
-	    Sigma.eq(Sigma.on(phi,Sig1'),Sig2')
-	  end handle _ => false 
-      end
-old*)
 
       local
 	fun rename_FunSig (FUNSIG{T,E,T'E'}) =
@@ -506,15 +467,17 @@ old*)
 	    let
 	      val argsig = PP.NODE {start="(", finish="", indent=1,
 				    children=[Sigma.layout (SIGMA{T=T, E=E})], 
-				    childsep=PP.NONE}
+				    childsep=PP.NOSEP}
 	      val ressig = PP.NODE {start=") : ", finish="", indent=3,
 				    children=[Sigma.layout T'E'],
-				    childsep=PP.NONE}
+				    childsep=PP.NOSEP}
 	    in
 	      PP.NODE {start="", finish="", indent=0, 
 		       children=[argsig, ressig],
 		       childsep=PP.RIGHT " "}
 	    end
     end (*Phi*)
-  end; (*ModuleStatObject*)
+
+  end (*ModuleStatObject*)
+
 

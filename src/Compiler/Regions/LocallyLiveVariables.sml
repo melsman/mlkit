@@ -26,6 +26,9 @@ functor LocallyLiveVariables(
     ): LOCALLY_LIVE_VARIABLES = 
 
 struct
+
+  structure List = Edlib.List
+
   structure PP = PrettyPrint
   type lvar = Lvars.lvar
   type lvarset = Lvarset.lvarset
@@ -46,8 +49,8 @@ struct
   (*    General Abbreviations                                               *)
   (* ---------------------------------------------------------------------- *)
 
-  fun log s             = output(!Flags.log,s ^ "\n")
-  fun device(s)         = output(!Flags.log, s)            
+  fun log s             = TextIO.output(!Flags.log,s ^ "\n")
+  fun device(s)         = TextIO.output(!Flags.log, s)            
   fun dump(t)           = PrettyPrint.outputTree(device, t, !Flags.colwidth)
   fun die errmsg        = Crash.impossible ("LocallyLiveVariables." ^ errmsg)
   fun unimplemented x   = Crash.unimplemented ("RegFlow." ^ x)
@@ -66,8 +69,8 @@ struct
 
   fun noSome x errmsg =
     case x of 
-      None => die errmsg
-    | Some y => y
+      NONE => die errmsg
+    | SOME y => y
 
 
 
@@ -154,11 +157,11 @@ struct
       (lvars, List.all(fn excon' => not(Excon.eq(excon',excon))) excons)
 
   fun findExcon pred (_,excons) = 
-           let fun loop[] = None
+           let fun loop[] = NONE
                  | loop (excon::rest) = 
                      case pred excon of
-                       None => loop rest
-                     | Some result => Some(excon,result)
+                       NONE => loop rest
+                     | SOME result => SOME(excon,result)
            in loop excons
            end
 
@@ -178,9 +181,9 @@ struct
   local open MulExp
   in
 
-    fun cp_triv_exp (VAR{lvar,il,plain_arreffs,alloc = None,rhos_actuals = ref [] ,other}) =
+    fun cp_triv_exp (VAR{lvar,il,plain_arreffs,alloc = NONE,rhos_actuals = ref [] ,other}) =
              VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
-                 alloc = None,
+                 alloc = NONE,
                  rhos_actuals= ref [],
                  other = other}
       | cp_triv_exp (VAR{lvar, ...}) = die
@@ -229,10 +232,10 @@ struct
   	  let val children = map (fn (c,e) => llv (e,liveset)) branches
               val freeInRhs = union_llvs  (map #2 children)
   	      val (e_opt_llv, freeInOpt) = case e_opt of 
-  		                 None   => (None, empty_liveset)
-  			       | Some e => 
+  		                 NONE   => (NONE, empty_liveset)
+  			       | SOME e => 
                                       let val (e_llv, llv') = llv (e, liveset)
-                                      in (Some e_llv, llv')
+                                      in (SOME e_llv, llv')
                                       end
               val newBranches = ListPair.zip(map #1 branches,
                                              map #1 children)
@@ -303,7 +306,7 @@ struct
 	    localFree)
   	end
 
-      | APP(ck,sr,tr1 as TR(VAR{lvar = f,il,plain_arreffs,alloc = Some rho, 
+      | APP(ck,sr,tr1 as TR(VAR{lvar = f,il,plain_arreffs,alloc = SOME rho, 
                                 rhos_actuals, other},meta,phi,psi),
                   tr2) =>  (* equation 23 and 24 in popl 96 paper *)
         let 
@@ -312,7 +315,7 @@ struct
             val liveset_fx = norm_liveset(union_llv(live_tr2,add_lvar(liveset, f)))  (* see equation 24 *)
         in
           (APP(ck,sr,TR(VAR{lvar=f,il=il,plain_arreffs=plain_arreffs,
-                                      alloc = Some(rho,liveset_fx), (* see (24) *)
+                                      alloc = SOME(rho,liveset_fx), (* see (24) *)
                                       rhos_actuals = ref (map (fn rho_act => 
                                              (* see (23) *) (rho_act,liveset)) (!rhos_actuals)),
                                       other = other}, meta,phi,psi),
@@ -320,7 +323,7 @@ struct
            add_lvar(freeInTriv tr2, f))
         end
 
-      | APP(ck,sr,tr1 as TR(VAR{lvar = f,il,plain_arreffs,alloc = None,
+      | APP(ck,sr,tr1 as TR(VAR{lvar = f,il,plain_arreffs,alloc = NONE,
                                 rhos_actuals = ref [], other},meta,phi,psi),
                   tr2) =>  (* equation missing in popl paper! *)
         let
@@ -333,15 +336,15 @@ struct
             union_llv(free_tr1,free_tr2))
         end
 
-      | APP(ck,sr,tr1 as TR(VAR{lvar, il, plain_arreffs,alloc= None, rhos_actuals,other}, meta,phi,psi),tr2) =>
+      | APP(ck,sr,tr1 as TR(VAR{lvar, il, plain_arreffs,alloc= NONE, rhos_actuals,other}, meta,phi,psi),tr2) =>
            (* non-empty list of actual regions: has to be primitive lvar *)
           (case Lvars.primitive lvar of
-             Some _ => let 
+             SOME _ => let 
                          val liveset = norm_liveset liveset
                          val (tr2',live_tr2) = llv(tr2, liveset)
                        in
                            (APP(ck,sr,TR(VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
-                                      alloc = None,
+                                      alloc = NONE,
                                       rhos_actuals = ref (map (fn rho_act => 
                                              (* see (23) *) (rho_act,liveset)) (!rhos_actuals)),
                                       other = other}, meta,phi,psi),
@@ -349,7 +352,7 @@ struct
                             live_tr2) (* do not include free_tr1: the lvar will be inlined! *)
                        end
 
-           | None => die  "ill-formed application (expeced K-normal form)"
+           | NONE => die  "ill-formed application (expeced K-normal form)"
           )
       | APP(ck,sr, _ , _) =>
            die  "ill-formed application; operator not variable (expeced K-normal form)"
@@ -398,10 +401,10 @@ struct
               val children = map doBranch branches
               val freeInRules = union_llvs (map #2 children)
   	      val (opt',freeInOpt) = case e_opt of 
-  		                 None   => (None,empty_liveset)
-  			       | Some e => 
+  		                 NONE   => (NONE,empty_liveset)
+  			       | SOME e => 
                                    let val (e',livee') = llv (e, liveset)
-                                   in (Some e', livee')
+                                   in (SOME e', livee')
                                    end
               val (e', freee')= llv(e,liveset)
   	  in  
@@ -432,12 +435,12 @@ struct
               free_tr1)
          end
 
-      | EXCON(excon,None) => (EXCON(excon,None), empty_liveset)
-      | EXCON(excon,Some(rho,tr1)) => (* tr1 trivial *)
+      | EXCON(excon,NONE) => (EXCON(excon,NONE), empty_liveset)
+      | EXCON(excon,SOME(rho,tr1)) => (* tr1 trivial *)
          let        
              val (tr1', free_tr1) = llv(tr1, liveset)
          in 
-             (EXCON(excon,Some((rho, norm_liveset(union_llv(liveset,free_tr1))),tr1')),
+             (EXCON(excon,SOME((rho, norm_liveset(union_llv(liveset,free_tr1))),tr1')),
               add_excon(free_tr1,excon))
          end
       | DEEXCON(excon,tr1) => (* tr1 trivial *)

@@ -9,10 +9,10 @@ signature MONO_FINMAP =
     val empty      : 'b map
     val singleton  : dom * 'b ->  'b map
     val isEmpty    : 'b map -> bool
-    val lookup     : 'b map -> dom -> 'b Option
+    val lookup     : 'b map -> dom -> 'b option
     val add        : dom * 'b * 'b map -> 'b map
     val plus       : 'b map * 'b map ->  'b map
-    val remove     : dom * 'b map -> ('b map, string) General.Result
+    val remove     : dom * 'b map -> ('b map, string) Edlib.General.Result
     val dom        : 'b map -> dom list
     val range      : 'b map -> 'b list
     val list       : 'b map -> (dom * 'b) list

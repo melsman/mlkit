@@ -8,9 +8,9 @@ functor OptLambda(structure Lvars: LVARS
 		  structure LambdaExp: LAMBDA_EXP
 		    sharing type LambdaExp.lvar = Lvars.lvar
 		  structure LvarDiGraphScc : DIGRAPH_SCC
-		    sharing type LvarDiGraphScc.nodeId = Lvars.lvar
-		        and type LvarDiGraphScc.info = Lvars.lvar
-		        and type LvarDiGraphScc.edgeInfo = unit
+		    where type edgeInfo = unit
+		      and type nodeId = Lvars.lvar
+		      and type info = Lvars.lvar
  	          structure LambdaBasics : LAMBDA_BASICS
 		    sharing type LambdaBasics.LambdaExp = LambdaExp.LambdaExp
 		        and type LambdaBasics.lvar = Lvars.lvar 
@@ -34,6 +34,10 @@ functor OptLambda(structure Lvars: LVARS
 		                 FinMap.StringTree = LvarMap.StringTree
 		 ): OPT_LAMBDA =
   struct
+
+    structure List = Edlib.List
+    structure Int = Edlib.Int
+    structure ListPair = Edlib.ListPair
 
     open LambdaExp LambdaBasics
     type bound_lvar = {lvar:lvar, tyvars:tyvar list, Type: Type}
@@ -78,13 +82,13 @@ functor OptLambda(structure Lvars: LVARS
 
     val unit_Type = RECORDtype []
 
-    fun log x = if !statistics_after_optimisation then output(!Flags.log,x)
+    fun log x = if !statistics_after_optimisation then TextIO.output(!Flags.log,x)
 		else ()
 
     fun die s = Crash.impossible ("OptLambda." ^ s)
 
     fun reportBadLambda(msg,lamb) = 
-      (PP.outputTree((fn s => output(!Flags.log, s)),
+      (PP.outputTree((fn s => TextIO.output(!Flags.log, s)),
 		     LambdaExp.layoutLambdaExp lamb,
 		     !Flags.colwidth);
        die ("optimisation failed (" ^ msg ^ ")"))
@@ -140,7 +144,7 @@ functor OptLambda(structure Lvars: LVARS
 	      "   Size before: " ^ (Int.string size_before) ^ ".\n" ^
 	      "   Size after:  " ^ (Int.string size_after) ^ ".\n" ^ 
 	      (if size_before > 0 then 
-		 "   Reduced:     " ^ (Real.string rounded) ^ "%.\n"
+		 "   Reduced:     " ^ (Real.toString rounded) ^ "%.\n"
 	       else "\n") ^ 
 	      "-------------------------------------------------\n")
 	end
@@ -162,8 +166,8 @@ functor OptLambda(structure Lvars: LVARS
       fun add_statistics (s:string) =
 	let val map = !stat_map
 	    val i = case FinMap.lookup map s
-		      of Some i => i
-		       | None => 0
+		      of SOME i => i
+		       | NONE => 0
 	    val new_stat_map = FinMap.add(s, i+1, map)
 	    val _ = incr_tick_counter()
 	in (* log ("  " ^ s ^ "\n"); *) stat_map := new_stat_map
@@ -218,7 +222,7 @@ functor OptLambda(structure Lvars: LVARS
     * ----------------------------------------------------------------- *)
 
     fun eq_lamb (INTEGER n, INTEGER n') = (n = n')
-      | eq_lamb (REAL r, REAL r') = (r = r')
+      | eq_lamb (REAL r, REAL r') = Real.==(r,r')
       | eq_lamb (STRING s, STRING s') = (s = s')
       | eq_lamb (VAR{lvar,instances=il},VAR{lvar=lvar',instances=il'}) = Lvars.eq(lvar,lvar') andalso eq_taus(il,il')
       | eq_lamb (PRIM(RECORDprim, lambs),PRIM(RECORDprim, lambs')) = eq_lambs(lambs,lambs')
@@ -306,8 +310,8 @@ functor OptLambda(structure Lvars: LVARS
      fun safe_sw safe (SWITCH(e,sel,opt_e)) =
        let fun safe_sel [] = ()
 	     | safe_sel ((a,e)::rest) = (safe e; safe_sel rest)
-	   fun safe_opt (Some e) = safe e
-	     | safe_opt None = ()
+	   fun safe_opt (SOME e) = safe e
+	     | safe_opt NONE = ()
        in (safe e; safe_sel sel; safe_opt opt_e)
        end
 
@@ -477,7 +481,7 @@ functor OptLambda(structure Lvars: LVARS
       (* pretty printing *)
       fun show_cv (CVAR (VAR x)) = " cvar " ^ Lvars.pr_lvar (#lvar x)
 	| show_cv (CVAR _) = "<not possible>"
-	| show_cv (CRECORD l) = implode ("[" :: (map show_cv l @ ["]"]))
+	| show_cv (CRECORD l) = concat ("[" :: (map show_cv l @ ["]"]))
 	| show_cv (CCONST l) = "const"
 	| show_cv (CFN {large=true,...}) = "(large fn)"
 	| show_cv (CFN {large=false,...}) = "(small fn)"
@@ -498,7 +502,7 @@ functor OptLambda(structure Lvars: LVARS
       fun lub (cv as CVAR lamb,CVAR lamb') = if eq_lamb(lamb,lamb') then cv else CUNKNOWN
 	| lub (CRECORD cvals,CRECORD cvals') = (CRECORD (map lub (ListPair.zip(cvals,cvals')))
 						handle ListPair.Zip => die "lub")
-	| lub (cv as CCONST lamb,CCONST lamb') = if lamb=lamb' then cv else CUNKNOWN
+	| lub (cv as CCONST lamb,CCONST lamb') = if eq_lamb(lamb,lamb') then cv else CUNKNOWN
 	| lub _ = CUNKNOWN
 
       fun lubList [] = CUNKNOWN
@@ -581,11 +585,11 @@ functor OptLambda(structure Lvars: LVARS
 	      | allEqual [x] = true
 	      | allEqual (x::(ys as y::_)) = eq_lamb(x,y) andalso allEqual ys
 	in case opt
-	     of Some lamb =>
+	     of SOME lamb =>
 	       if safe_lamb arg andalso allEqual (lamb::(map snd sel)) then
 		 (tick "reduce - switch"; decr_uses arg; app (decr_uses o snd) sel; reduce (env, (lamb, cv)))
 	       else fail
-	      | None =>
+	      | NONE =>
 		 if safe_lamb arg andalso allEqual (map snd sel) then
 		   case sel
 		     of (_,lamb)::sel' => (tick "reduce - switch"; decr_uses arg; 
@@ -604,7 +608,7 @@ functor OptLambda(structure Lvars: LVARS
 	  of VAR{lvar,instances} =>
 	    ((*output(!Flags.log, Lvars.pr_lvar lvar ^ ":" );*)
              case lookup_lvar(env,lvar)
-	       of Some (tyvars,cv) =>
+	       of SOME (tyvars,cv) =>
 		 ((*output(!Flags.log, show_cv cv ^ "\n");*)
                   case cv
 		    of CFN {lexp=lamb',large} =>
@@ -632,7 +636,7 @@ functor OptLambda(structure Lvars: LVARS
 		     | _ => let val S = mk_subst (fn () => "reduce3") (tyvars,instances)
 			    in (lamb, on_cv S cv)
 			    end)
-		| None => ((*output(!Flags.log, "none\n");*) (lamb, CVAR lamb)))
+		| NONE => ((*output(!Flags.log, "none\n");*) (lamb, CVAR lamb)))
 	   | INTEGER _ => (lamb, CCONST lamb)
 	   | STRING _ => (lamb, CCONST lamb)
 	   | REAL _ => (lamb, CCONST lamb) 
@@ -650,7 +654,7 @@ functor OptLambda(structure Lvars: LVARS
 		      (decr_uses bind; tick "reduce - dead-let"; reduce (env, (scope, cv)))
 		    else case scope
 			   of PRIM(RECORDprim,[]) => fail
-			    | _ => if tau = unit_Type then fail
+			    | _ => if eq_tau(tau,unit_Type) then fail
 				   else let val pat'=[(Lvars.new_named_lvar "_not_used",[],unit_Type)]
 					    val bind' = LET{pat=pat,bind=bind,scope=PRIM(RECORDprim, [])}
 					    val e = LET{pat=pat',bind=bind',scope=scope}
@@ -706,7 +710,7 @@ functor OptLambda(structure Lvars: LVARS
 	       end
 	  | APP(VAR{lvar,instances}, lamb2) => 
 	       (case lookup_lvar(env, lvar)
-		  of Some (tyvars, CFIX{Type,bind,large}) =>
+		  of SOME (tyvars, CFIX{Type,bind,large}) =>
 		    if not(large) orelse Lvars.one_use lvar then
 		      let val e = specialize_bind {lvar=lvar,tyvars=tyvars,Type=Type,bind=bind} instances lamb2
 		      in decr_use lvar; decr_uses lamb2; incr_uses e; tick ("reduce - fix-spec." ^ Lvars.pr_lvar lvar); 
@@ -735,14 +739,14 @@ functor OptLambda(structure Lvars: LVARS
 	    val sel' = map (fn (a,(e,_)) => (a, e)) mix
 	    val cvs = map (fn (_, (_,cv)) => cv) mix
 	in case opt
-	     of Some lamb =>
+	     of SOME lamb =>
 	       let val (lamb',cv') = contr (env,lamb)
 		   val cv = lubList (cv'::cvs) 
-	       in reduce (env, (SW(SWITCH(arg',sel',Some lamb')), cv))
+	       in reduce (env, (SW(SWITCH(arg',sel',SOME lamb')), cv))
 	       end
-	      | None =>
+	      | NONE =>
 	       let val cv = lubList cvs
-	       in reduce (env, (SW(SWITCH(arg',sel',None)), cv))
+	       in reduce (env, (SW(SWITCH(arg',sel',NONE)), cv))
 	       end
 	end
 
@@ -879,13 +883,13 @@ functor OptLambda(structure Lvars: LVARS
 	case lamb
 	  of PRIM(SELECTprim i, [VAR{lvar,instances=[]}]) =>
 	    (case LvarMap.lookup env lvar
-	       of Some lvars =>
+	       of SOME lvars =>
 		 let val lvar' = List.nth i lvars
                                  handle List.Subscript _ => die "eliminate_explicit_records"
 		 in tick "eliminate explicit records - select"; 
                     VAR{lvar=lvar',instances=[]}
 		 end
-		| None => lamb)
+		| NONE => lamb)
 	   | LET{pat=[(lvar,[],Type)],bind=PRIM(RECORDprim, lambs),scope} =>
               if is_marked_lvar lvar then
                 let val lvars = map (fn _ => Lvars.newLvar()) lambs
@@ -985,28 +989,28 @@ functor OptLambda(structure Lvars: LVARS
 
      (* Update instances of lambda variables *)
      fun update_instances scc = 
-       let fun on_f (IS : lvar -> Type list Option) ({lvar,tyvars,Type,bind}:fs) : fs =
+       let fun on_f (IS : lvar -> Type list option) ({lvar,tyvars,Type,bind}:fs) : fs =
 	     let fun on_bind (lamb as VAR{lvar,instances=[]}) =
 	           (case IS(lvar)
-		      of Some instances => VAR{lvar=lvar,instances=instances}
-		       | None => lamb)
+		      of SOME instances => VAR{lvar=lvar,instances=instances}
+		       | NONE => lamb)
 		   | on_bind lamb = map_lamb on_bind lamb
 	     in {lvar=lvar,tyvars=tyvars,Type=Type,bind=on_bind bind}
 	     end
 	   fun extend_IS IS c =
 	     let fun ext [] lv = IS(lv)
-		   | ext (({lvar,tyvars,...}:fs)::c) lv = if Lvars.eq(lvar,lv) then Some (map TYVARtype tyvars) 
+		   | ext (({lvar,tyvars,...}:fs)::c) lv = if Lvars.eq(lvar,lv) then SOME (map TYVARtype tyvars) 
 							  else ext c lv
 	     in ext c
 	     end
-	   fun on_scc (IS : lvar -> Type list Option) [] = []
+	   fun on_scc (IS : lvar -> Type list option) [] = []
 	     | on_scc IS (c::cs) =
 	     let val c' = map (on_f IS) c
 	       val IS' = extend_IS IS c'
 	       val cs' = on_scc IS' cs
 	     in c'::cs'
 	     end
-       in on_scc (fn _ => None) scc
+       in on_scc (fn _ => NONE) scc
        end
 
      (* Rename bound type variables of strongly connected component *) 
@@ -1104,14 +1108,14 @@ functor OptLambda(structure Lvars: LVARS
      fun enrich_let_env(let_env1,let_env2) =
        LvarMap.Fold (fn ((lv2,res2),b) => b andalso
 		     case LvarMap.lookup let_env1 lv2
-		       of Some res1 => res1=res2
-			| None => false) true let_env2
+		       of SOME res1 => res1=res2
+			| NONE => false) true let_env2
 
      fun restrict_let_env(let_env,lvars) = 
        List.foldL (fn lv => fn acc => 
 		   case LvarMap.lookup let_env lv
-		     of Some res => LvarMap.add(lv,res,acc)
-		      | None => die "restrict_let_env.lv not in env") LvarMap.empty lvars 
+		     of SOME res => LvarMap.add(lv,res,acc)
+		      | NONE => die "restrict_let_env.lv not in env") LvarMap.empty lvars 
 
      val layout_let_env = LvarMap.layoutMap {start="LetEnv={",eq="->", sep=", ", finish="}"} 
       (PP.LEAF o Lvars.pr_lvar) layout_let_env_res
@@ -1129,7 +1133,7 @@ functor OptLambda(structure Lvars: LVARS
        case lamb
 	 of v as VAR{lvar,instances} =>
 	   (case LvarMap.lookup env lvar
-	      of Some DELAY_SIMPLE => APP(v, PRIM(RECORDprim, []))
+	      of SOME DELAY_SIMPLE => APP(v, PRIM(RECORDprim, []))
 	       | _ => v)
 	  | LET{pat,bind,scope} => 
 	      (case pat
@@ -1159,8 +1163,8 @@ functor OptLambda(structure Lvars: LVARS
 	  | FRAME {declared_lvars,...} => 
 	      let val env' = List.foldR (fn {lvar,...} => fn env' =>
 				       case lookup env lvar
-					 of Some p => add_lv (lvar,p,env')
-					  | None => die ("functionalise_let.FRAME.lvar " ^ 
+					 of SOME p => add_lv (lvar,p,env')
+					  | NONE => die ("functionalise_let.FRAME.lvar " ^ 
 							 Lvars.pr_lvar lvar ^ " not in env")) 
 		             LvarMap.empty declared_lvars 
 	      in frame_let_env := env'; lamb 
@@ -1196,8 +1200,8 @@ functor OptLambda(structure Lvars: LVARS
     fun restrict_inv_eta_env(inveta_env,lvars) =
       List.foldL(fn lv => fn acc => 
 		 case LvarMap.lookup inveta_env lv
-		   of Some res => LvarMap.add(lv,res,acc)
-		    | None => die "restrict_inv_eta_env.lv not in env") LvarMap.empty lvars
+		   of SOME res => LvarMap.add(lv,res,acc)
+		    | NONE => die "restrict_inv_eta_env.lv not in env") LvarMap.empty lvars
 
     fun new_sigma ([],tau) = ([],tau)
       | new_sigma (tyvars,tau) =
@@ -1225,8 +1229,8 @@ functor OptLambda(structure Lvars: LVARS
     fun enrich_inv_eta_env(inveta_env1,inveta_env2) =
       LvarMap.Fold(fn ((lv2,res2),b) => b andalso
 		   case LvarMap.lookup inveta_env1 lv2
-		      of Some res1 => eq_inveta_res(res1,res2)
-		       | None => false) true inveta_env2
+		      of SOME res1 => eq_inveta_res(res1,res2)
+		       | NONE => false) true inveta_env2
  
     type StringTree = PP.StringTree
     fun layout_tyvarsXtau (tyvars,tau) =
@@ -1245,7 +1249,7 @@ functor OptLambda(structure Lvars: LVARS
 	  case lamb 
             of VAR {lvar=lvar',instances=instances'} =>
 	      (case LvarMap.lookup env lvar' 
-	         of Some (FIXBOUND(tyvars,Type)) => 
+	         of SOME (FIXBOUND(tyvars,Type)) => 
 		   let val lv = Lvars.newLvar()
 		       val _ = if !Flags.DEBUG_OPTIMISER then
 			         log ("inverse_eta: " ^ (Lvars.pr_lvar lvar'))
@@ -1279,8 +1283,8 @@ functor OptLambda(structure Lvars: LVARS
 	     | FRAME {declared_lvars,...} => 
 	      let val env' = List.foldR (fn {lvar,...} => fn env' =>
 					 case LvarMap.lookup env lvar
-					   of Some res => LvarMap.add(lvar,res,env')
-					    | None => die "inverse_eta.FRAME.lv not in env")
+					   of SOME res => LvarMap.add(lvar,res,env')
+					    | NONE => die "inverse_eta.FRAME.lv not in env")
 		             LvarMap.empty declared_lvars 
 	      in frame_inveta_env := env'; lamb 
 	      end

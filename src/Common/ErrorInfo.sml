@@ -25,6 +25,9 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 		    sharing type StatObject.StringTree = PrettyPrint.StringTree
 		    ) : ERROR_INFO =
   struct
+
+    open Edlib
+
     (*import from StatObject:*)
     structure TyVar        = StatObject.TyVar
     structure TyName       = StatObject.TyName
@@ -178,8 +181,8 @@ functor ErrorInfo(structure StatObject : STATOBJECT
 	    val n = max(size text1, size text2)
 	  in
 	    line "Type clash,"
-	    // line("   " ^ text1 ^ ": " ^  implode(pad(n-size text1)) ^ pr1 ty1)
-	    // line("   " ^ text2 ^ ": " ^  implode(pad(n-size text2))  ^ pr2 (ty2,ty1))
+	    // line("   " ^ text1 ^ ": " ^  concat(pad(n-size text1)) ^ pr1 ty1)
+	    // line("   " ^ text2 ^ ": " ^  concat(pad(n-size text2))  ^ pr2 (ty2,ty1))
 	  end
 
       | report (UNIFICATION_RANK(ty1,ty2,tv,tn)) =

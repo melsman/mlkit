@@ -11,6 +11,8 @@ functor TyName(
 	      ) : TYNAME =
   struct
 
+    open Edlib
+
     (* Type names are based on names which may be `matched'. In
      * particular, if two type names, n1 and n2, are successfully
      * matched, eq(n1,n2) = true. This may affect the canonical

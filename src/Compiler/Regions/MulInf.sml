@@ -42,6 +42,9 @@ functor MulInf(
     sharing type Mul.StringTree = PP.StringTree = MulExp.StringTree = Eff.StringTree
   ): MUL_INF =
 struct
+
+  open Edlib
+
   type ('a,'b)LambdaPgm_phi = ('a,'b) RegionExp.LambdaPgm
   type ('a,'b,'c)LambdaPgm_psi = ('a,'b,'c) MulExp.LambdaPgm
   type ('a,'b,'c)LambdaExp = ('a,'b,'c) MulExp.LambdaExp
@@ -54,10 +57,10 @@ struct
   type qmularefset = Mul.qmularefset
   type mularefmap = Mul.mularefmap
 
-  fun say s = ((*output(std_out, s ^ "\n");*) output(!Flags.log, s ^ "\n"))
-  fun say' s = ((*output(std_out, s);*) output(!Flags.log, s ))
+  fun say s = ((*TextIO.output(TextIO.stdOut, s ^ "\n");*) TextIO.output(!Flags.log, s ^ "\n"))
+  fun say' s = ((*TextIO.output(TextIO.stdOut, s);*) TextIO.output(!Flags.log, s ))
   fun outtree t = PP.outputTree(say', t, !Flags.colwidth)
-  fun die s = (output(!Flags.log, "Crashing: MulInf."^s^"\n");
+  fun die s = (TextIO.output(!Flags.log, "Crashing: MulInf."^s^"\n");
                Crash.impossible ("MulInf."^s^"\n"))
   infix footnote
   fun x footnote y = x;
@@ -72,8 +75,8 @@ struct
   fun frv(mu): RType.place list = 
         Eff.remove_duplicates(List.all Eff.is_rho (RType.ann_mus [mu] []))
 
-  fun cons_if_there (None) l = l
-    | cons_if_there (Some x) l = x::l
+  fun cons_if_there (NONE) l = l
+    | cons_if_there (SOME x) l = x::l
 
   val return_EE = ref Mul.empty_efenv  (* the efenv to be returned by multiplicity inference*)
 
@@ -82,41 +85,41 @@ struct
 
   fun layoutExp e = MulExp.layoutLambdaExp
                        (if !Flags.print_regions 
-                        then (fn rho => Some(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => None)
+                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
+                        else fn _ => NONE)
                        (if !Flags.print_regions 
-                        then (fn rho => Some(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => None)
+                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
+                        else fn _ => NONE)
                        (if !Flags.print_regions
-                        then (fn (rho,mul) => Some(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
-                        else (fn _ => None))
-                       (fn _ => None)  (* do not print qmularefset's *)
+                        then (fn (rho,mul) => SOME(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
+                        else (fn _ => NONE))
+                       (fn _ => NONE)  (* do not print qmularefset's *)
                        e
 
   fun layouttrip tr = MulExp.layoutLambdaTrip
                        (if !Flags.print_regions 
-                        then (fn rho => Some(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => None)
+                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
+                        else fn _ => NONE)
                        (if !Flags.print_regions 
-                        then (fn rho => Some(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => None)
+                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
+                        else fn _ => NONE)
                        (if !Flags.print_regions
-                        then (fn (rho,mul) => Some(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
-                        else (fn _ => None))
-                       (fn _ => None)  (* do not print qmularefset's *)
+                        then (fn (rho,mul) => SOME(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
+                        else (fn _ => NONE))
+                       (fn _ => NONE)  (* do not print qmularefset's *)
                        tr
 
   fun layoutLambdaPgm p = MulExp.layoutLambdaPgm
                        (if !Flags.print_regions 
-                        then (fn rho => Some(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => None)
+                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
+                        else fn _ => NONE)
                        (if !Flags.print_regions 
-                        then (fn rho => Some(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
-                        else fn _ => None)
+                        then (fn rho => SOME(PP.LEAF("at " ^ PP.flatten1(Eff.layout_effect rho))))
+                        else fn _ => NONE)
                        (if !Flags.print_regions
-                        then (fn (rho,mul) => Some(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
-                        else (fn _ => None))
-                       (fn _ => None)  (* do not print qmularefset's *)
+                        then (fn (rho,mul) => SOME(layoutp(Eff.layout_effect rho, Mul.layout_mul mul)))
+                        else (fn _ => NONE))
+                       (fn _ => NONE)  (* do not print qmularefset's *)
                        p
 
 (*
@@ -161,8 +164,8 @@ struct
                                                qmul, Psi, dep) (* updates 
                                                                  shared semantic objects *)
                 val psi = case alloc 
-			    of Some p => Mul.put p 
-			     | None => Mul.empty_psi
+			    of SOME p => Mul.put p 
+			     | NONE => Mul.empty_psi
               in
   	      psi_r:= psi
   	    end		    
@@ -296,8 +299,8 @@ struct
           | DECON({con, il}, tr) =>
                 (infer_trip(tr);
                  psi_r:= get_psi tr(*Mul.sumef(Mul.get(get_place(tr)), get_psi tr)*) )
-          | EXCON(excon, None) => psi_r:= Mul.empty_psi
-          | EXCON(excon, Some (p,tr)) =>
+          | EXCON(excon, NONE) => psi_r:= Mul.empty_psi
+          | EXCON(excon, SOME (p,tr)) =>
                 (infer_trip(tr);
                  psi_r:= Mul.sumef(Mul.put p, get_psi tr))
           | DEEXCON(excon, tr) =>
@@ -355,8 +358,8 @@ struct
 		       List.foldL (fn (rho, i_opt) =>
 				   fn (rhos_inf, rhos_fin) =>
 				   (case i_opt of
-				      Some i => (rhos_inf, rho :: rhos_fin)
-				    | None =>   (rho :: rhos_inf, rhos_fin)))
+				      SOME i => (rhos_inf, rho :: rhos_fin)
+				    | NONE =>   (rho :: rhos_inf, rhos_fin)))
 		           ([], []) rhos_for_result
 		     val psi = sum_psis ( map Mul.putInf (Eff.remove_duplicates rhos_inf)
 					 @ map Mul.put (Eff.remove_duplicates rhos_fin)
@@ -471,8 +474,8 @@ struct
           | CON0 _ => ()
           | CON1 (_,tr) => set_trip tr
 	  | DECON (_,tr) => set_trip tr 
-	  | EXCON(_,Some(_,tr)) => set_trip tr
-	  | EXCON(_,None) => ()  
+	  | EXCON(_,SOME(_,tr)) => set_trip tr
+	  | EXCON(_,NONE) => ()  
           | DEEXCON(_, tr) => set_trip tr
           | RECORD (_, triples) => List.apply set_trip triples
           | SELECT(_, tr) => set_trip tr
@@ -611,7 +614,7 @@ struct
 		
             val pgm' = MulExp.PGM{expression = tr',
 			export_datbinds = export_datbinds, (* unchanged *)
-			import_vars=ref None,
+			import_vars=ref NONE,
 			export_vars=(export_lvars,export_excons,export_rhos),
 			export_basis = export_basis,       (* unchanged *)
 			export_Psi = export_Psi_list}
@@ -620,7 +623,7 @@ struct
           if test
           then
             if test_knorm(pgm') then ()
-            else (output(std_out, "\n ********   knorm test failed **********\n"))
+            else (TextIO.output(TextIO.stdOut, "\n ********   knorm test failed **********\n"))
           else ();
 
           (pgm', EE',  Psi_export) footnote Mul.reset_dep()

@@ -1,0 +1,70 @@
+Group 
+ 
+  structure Edlib 
+  structure OldIO
+  structure OldString
+(*  structure Bits *)
+
+  signature ORDERING
+
+is
+
+Edlib.sml
+OldString.sml
+OldIO.sml
+(* Bits.sml *)
+INT.sml
+Int.sml
+BOOL.sml
+Bool.sml
+EDLIB_GENERAL.sml
+EdlibGeneral.sml
+LIST.sml
+List.sml
+STRING_TYPE.sml
+StringType.sml
+CORE_VECTOR.sml
+CoreVector.sml
+NON_STANDARD.sml
+NonStandard.sml
+CORE_UTILS.sml
+CoreUtils.sml
+STRING.sml
+String.sml
+EQ_SET.sml
+EqSet.sml
+(*
+CORE_ARRAY.sml
+CoreArray.sml
+VECTOR.sml
+Vector.sml
+ARRAY.sml
+Array.sml
+*)
+PAIR.sml
+Pair.sml
+
+INSTREAM.sml
+Instream.sml
+
+PARSE.sml                (* Parsers *)
+BoolParse.sml
+IntParse.sml
+STRING_PARSE.sml
+StringParse.sml
+SEQ_PARSE.sml
+ListParse.sml
+PAIR_PARSE.sml
+PairParse.sml
+
+LIST_PAIR.sml
+ListPair.sml
+LIST_SORT.sml
+ListSort.sml
+(*
+REAL.sml
+Real.sml
+*)
+SET.sml
+Set.sml
+ORDERING.sml

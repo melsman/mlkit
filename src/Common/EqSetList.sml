@@ -4,6 +4,10 @@
 
 structure EqSetList (* more or less EQ_SET where type 'a Set = int list *)=  
   struct
+       
+       structure List = Edlib.List
+       structure Int = Edlib.Int
+
        type 'a Set = int list
        fun insert (x:int) l =
              let fun loop [] = [x]
@@ -59,7 +63,7 @@ structure EqSetList (* more or less EQ_SET where type 'a Set = int list *)=
              else if x<y then int'(xs, l2, s)
                   else (* x>y *)int'(l1, ys, s)
 
-       fun showl msg l = (output(std_out, msg ^ List.stringSep "[" "]" ", " Int.string l ^ "\n"))
+       fun showl msg l = (TextIO.output(TextIO.stdOut, msg ^ List.stringSep "[" "]" ", " Int.string l ^ "\n"))
 
        fun showsize (NONE) = "NO_INTER"
          | showsize (ONE r) = "SINGLETON: " ^ Int.string r

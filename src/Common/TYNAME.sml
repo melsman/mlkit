@@ -28,7 +28,7 @@ signature TYNAME =
      *)
 
     type TyName
-    type tycon
+    eqtype tycon
 
     val freshTyName  : {tycon : tycon, arity : int, equality : bool} -> TyName
     val pr_TyName : TyName -> string

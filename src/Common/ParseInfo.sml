@@ -18,13 +18,13 @@ functor ParseInfo
     type StringTree      = PrettyPrint.StringTree
 
     datatype ParseInfo =
-      PARSE_INFO of {SourceInfo : SourceInfo, DFInfo : DFInfo Option}
+      PARSE_INFO of {SourceInfo : SourceInfo, DFInfo : DFInfo option}
 
     fun from_SourceInfo SourceInfo =
-	  PARSE_INFO {SourceInfo=SourceInfo, DFInfo=None}
+	  PARSE_INFO {SourceInfo=SourceInfo, DFInfo=NONE}
 
-    fun plus_DFInfo (PARSE_INFO {SourceInfo, DFInfo=None}) DFInfo =
-	  PARSE_INFO {SourceInfo=SourceInfo, DFInfo=Some DFInfo}
+    fun plus_DFInfo (PARSE_INFO {SourceInfo, DFInfo=NONE}) DFInfo =
+	  PARSE_INFO {SourceInfo=SourceInfo, DFInfo=SOME DFInfo}
       | plus_DFInfo _ _ = impossible "plus_DFInfo"
 
     fun to_SourceInfo (PARSE_INFO {SourceInfo, ...}) = SourceInfo

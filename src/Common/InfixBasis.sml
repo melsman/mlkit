@@ -9,6 +9,9 @@ functor InfixBasis(structure Ident: IDENT
 		     sharing type FinMap.StringTree = PP.StringTree
 		  ): INFIX_BASIS =
   struct
+
+    open Edlib
+
     type id = Ident.id
 
     datatype InfixEntry = NONFIX | INFIX of int | INFIXR of int
@@ -36,8 +39,8 @@ functor InfixBasis(structure Ident: IDENT
 
     fun lookup iBas id =
       case FinMap.lookup iBas id
-	of Some fix => fix
-	 | None => NONFIX
+	of SOME fix => fix
+	 | NONE => NONFIX
 
     fun compose a = FinMap.plus a
 

@@ -9,10 +9,15 @@ functor EqFinMap(structure Report: REPORT
 	        ): MONO_FINMAP =
   struct
 
+    structure General = Edlib.General
+    structure List = Edlib.List
+
     type dom = dom
     datatype 'b map = FM of {elts: (dom * 'b) list, unique : bool ref}
-
-    val empty = FM {elts = [], unique = ref true}
+      
+    local val true_ref = ref true
+    in val empty = FM {elts = [], unique = true_ref}
+    end
 
     fun singleton p = FM {elts = [p], unique = ref true}
 
@@ -20,8 +25,8 @@ functor EqFinMap(structure Report: REPORT
       | isEmpty _ = false
 
     fun lookup (FM{elts=l,...}) x = 
-	let fun look [] = None
-	      | look ((x',y)::rest) = if eq(x,x') then Some(y) else look rest
+	let fun look [] = NONE
+	      | look ((x',y)::rest) = if eq(x,x') then SOME(y) else look rest
 	in look l
 	end
 
@@ -124,14 +129,14 @@ functor EqFinMap(structure Report: REPORT
     fun restrict(m: 'b map, dom : dom list) : 'b map =
       List.foldL(fn d => fn acc => 
 		 case lookup m d
-		   of Some res => add(d,res,acc)
-		    | None => raise Restrict) empty dom 
+		   of SOME res => add(d,res,acc)
+		    | NONE => raise Restrict) empty dom 
 
     fun enrich en (m0, m) =
       Fold(fn ((d,r),b) => b andalso
 	   case lookup m0 d
-	     of Some r0 => en(r0,r)
-	      | None => false) true m
+	     of SOME r0 => en(r0,r)
+	      | NONE => false) true m
 
     type Report = Report.Report
 

@@ -34,15 +34,18 @@ functor DropRegions(structure ExCon: EXCON
                     sharing type ExCon.excon = MulExp.excon
 		      ) : DROP_REGIONS =
   struct
+
+    structure List = Edlib.List
+
     open MulExp AtInf
     structure RE = RegionExp
 
 
     fun die s = Crash.impossible ("DropRegions."^s)
 
-    fun log s = output(!Flags.log,s ^ "\n")
-    fun device(s)         = output(!Flags.log, s)            
-    fun dump(t)           = PP.outputTree(device, t, !Flags.colwidth)
+    fun log s = TextIO.output(!Flags.log,s ^ "\n")
+    fun device s = TextIO.output(!Flags.log, s)            
+    fun dump t = PP.outputTree(device, t, !Flags.colwidth)
 
 
    (* -----------------------------------------------------------------
@@ -50,8 +53,8 @@ functor DropRegions(structure ExCon: EXCON
     * ----------------------------------------------------------------- *)
 
     fun rt_place place = case Eff.get_place_ty (Eff.find place)
-			   of Some rt => rt
-			    | None => die "rt_place"
+			   of SOME rt => rt
+			    | NONE => die "rt_place"
 
 
     fun pr_rho place = PP.flatten1 (Eff.layout_effect place)
@@ -64,8 +67,8 @@ functor DropRegions(structure ExCon: EXCON
 
     fun bot_region place = case rt_place place of Eff.BOT_RT => true | _ => false
     fun word_region place = case Eff.get_place_ty (Eff.find place)
-			      of Some rt => Eff.is_wordsize rt
-			       | None => die "word_region"
+			      of SOME rt => Eff.is_wordsize rt
+			       | NONE => die "word_region"
     fun word_or_bot_region place = case rt_place place
 				     of Eff.WORD_RT => true
 				      | Eff.BOT_RT => true
@@ -140,24 +143,24 @@ functor DropRegions(structure ExCon: EXCON
       in RSE.FoldLvar foldfn empty RSE.initial
       end
 
-    val plus = FinMapEq.plus Lvars.eq
+    fun plus a = FinMapEq.plus Lvars.eq a
 
     fun restrict(env,lvars) = 
       List.foldL(fn lv => fn acc =>
 		 case lookup env lv
-		   of Some res => add(lv,res,acc)
-		    | None => die "restrict.lv not in env") empty lvars
+		   of SOME res => add(lv,res,acc)
+		    | NONE => die "restrict.lv not in env") empty lvars
 
     fun enrich(env1,env2) =
       FinMapEq.Fold(fn ((lv2,res2),b) => b andalso
 		    case lookup env1 lv2
-		      of Some res1 => res1=res2
-		       | None => false) true env2 
+		      of SOME res1 => res1=res2
+		       | NONE => false) true env2 
 
     type StringTree = PP.StringTree
     fun layout_bool true = PP.LEAF "1"
       | layout_bool false = PP.LEAF "0"
-    fun layout_env_res (FIXBOUND bl) = PP.NODE{start="FIXBOUND[",finish="]",indent=1,childsep=PP.NONE,
+    fun layout_env_res (FIXBOUND bl) = PP.NODE{start="FIXBOUND[",finish="]",indent=1,childsep=PP.NOSEP,
 					       children=map layout_bool bl}
       | layout_env_res NOTFIXBOUND = PP.LEAF "NOTFIXBOUND"
     fun layout_lvar lv = PP.LEAF (Lvars.pr_lvar lv)
@@ -213,7 +216,7 @@ functor DropRegions(structure ExCon: EXCON
 
    fun maybe_add_rho regvar_env rho acc = 
       case FinMapEq.lookup Eff.eq_effect regvar_env rho
-        of Some DROP => rho :: acc
+        of SOME DROP => rho :: acc
       | _ =>  acc
 
    fun maybe_add regvar_env atp acc =
@@ -241,16 +244,16 @@ functor DropRegions(structure ExCon: EXCON
                                             end) ([] , acc) sel
 	    val (opt',acc) = 
               case opt of 
-                Some tr => let val (tr', acc) = drop env tr acc
-                           in (Some tr', acc) end
-              | None => (None, acc)
+                SOME tr => let val (tr', acc) = drop env tr acc
+                           in (SOME tr', acc) end
+              | NONE => (NONE, acc)
             val (tr', acc) = drop env tr acc
 	  in (SWITCH(tr',sel',opt'), acc)
 	  end
 
 	val (e', acc) =
 	 (case e
-	    of VAR {alloc=None,rhos_actuals=ref[],...} => (e, acc)       (* fix-bound and prim lvars are dealt with below *)
+	    of VAR {alloc=NONE,rhos_actuals=ref[],...} => (e, acc)       (* fix-bound and prim lvars are dealt with below *)
 	     | VAR _ => die "drop.should be fix-bound"
 	     | INTEGER (n, atp) => (check_atp_w atp "INTEGER"; (INTEGER (n, IGNORE), acc))
 	     | STRING (s, atp) => (check_atp_s  atp "STRING";
@@ -335,7 +338,7 @@ functor DropRegions(structure ExCon: EXCON
                                                   than to drop regions in them *)
                              tyvars=tyvars,
                              rhos=rhos,epss=epss,Type=Type,rhos_formals=ref formals,
-                             bound_but_never_written_into = Some(bound_but_never_written_into),
+                             bound_but_never_written_into = SOME(bound_but_never_written_into),
                              other=other,
                              bind=bind'}  (* function body traversed here *) 
                          :: rest, acc)
@@ -350,12 +353,12 @@ functor DropRegions(structure ExCon: EXCON
                                        rhos_actuals=ref actuals, other},metaType,
                                    ateffs,mulef), tr2) =>
 	      (case lookup lvar_env lvar
-		 of Some (FIXBOUND bool_list) =>
+		 of SOME (FIXBOUND bool_list) =>
 		   let val acc = case alloc of 
-                                 Some atp => (check_atp_t atp ("RHO_VECTOR." ^ Lvars.pr_lvar lvar) ;
+                                 SOME atp => (check_atp_t atp ("RHO_VECTOR." ^ Lvars.pr_lvar lvar) ;
                                               maybe_add regvar_env atp acc)
                                              
-                               | None => acc
+                               | NONE => acc
 		       val actuals' = filter_bl(bool_list,actuals)
                        val acc = List.foldL (maybe_add regvar_env) acc actuals'
                        val (tr2', acc) = drop env tr2 acc
@@ -364,7 +367,7 @@ functor DropRegions(structure ExCon: EXCON
                           tr2'), acc)
 		   end
 	          | _ => (case (alloc, actuals)
-			       of (None, []) => 
+			       of (NONE, []) => 
                                  let val (tr2', acc) = drop env tr2 acc
                                  in (APP(ck,sr,tr1,tr2'), acc)
                                  end
@@ -427,11 +430,11 @@ functor DropRegions(structure ExCon: EXCON
 	     | EXCON (excon, opt) => 
                  let val (tr_opt', acc) = 
                    case opt of
-                     Some (alloc,tr) => let val acc = maybe_add regvar_env alloc acc
+                     SOME (alloc,tr) => let val acc = maybe_add regvar_env alloc acc
                                             val (tr', acc) = drop env tr acc
-                                        in (Some(drop_atplace alloc, tr'), acc)
+                                        in (SOME(drop_atplace alloc, tr'), acc)
                                         end
-                   | None => (None, acc)
+                   | NONE => (NONE, acc)
                  in
                    (EXCON(excon, tr_opt'), 
                     acc)
@@ -491,7 +494,7 @@ functor DropRegions(structure ExCon: EXCON
 		    the order of the list, so filter is used:*)
 		   fun filter [] = []
 		     | filter ((IGNORE, _) :: xs) = filter xs
-		     | filter ((_, Some 0) :: xs) = die "filter: undropped region with size=0?"
+		     | filter ((_, SOME 0) :: xs) = die "filter: undropped region with size=0?"
 		     | filter (x :: xs) = x :: filter xs
 		 in(CCALL ({name = name,
 			    mu_result = mu_result,
@@ -515,8 +518,8 @@ functor DropRegions(structure ExCon: EXCON
 		 let val lvars = map #lvar declared_lvars
 		   val lvar_env' = List.foldL (fn lv => fn env' =>
 					  (case lookup lvar_env lv
-					     of Some bool_list => add(lv,bool_list,env')
-					      | None => die "drop.FRAME.lv not in env")) empty lvars
+					     of SOME bool_list => add(lv,bool_list,env')
+					      | NONE => die "drop.FRAME.lv not in env")) empty lvars
 		   val _ = export_env := lvar_env'
 		 in (e, acc)
 		 end

@@ -18,16 +18,16 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 		      structure Crash : CRASH
 			) : GRAMMAR_UTILS =
   struct
+
+    open Edlib
+    open General
+
     fun impossible s = Crash.impossible ("GrammarUtils." ^ s)
 
     structure TopdecGrammar = TopdecGrammar
     structure SourceInfo = ParseInfo.SourceInfo
     type pos = LexBasics.pos
     type Report = Report.Report
-
-    
-
-
 
     structure M = TopdecGrammar
     structure C = TopdecGrammar.DecGrammar
@@ -36,8 +36,8 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 
     fun inventId_from_atpat atpat = 
          case C.find_topmost_id_in_atpat atpat of
-           Some string => Ident.invent_named_id string
-         | None =>        Ident.inventId()
+           SOME string => Ident.invent_named_id string
+         | NONE =>        Ident.inventId()
 
    (* The simple constructing functions first. *)
 
@@ -85,23 +85,23 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 
     local
       (*val rightmost0 :  ('a -> 'info) -> 'a ->
-                          ('b -> 'info) -> 'b Option -> 'info
+                          ('b -> 'info) -> 'b option -> 'info
         val rightmost0' : ('a -> 'info) -> 'a ->
-                          ('b -> 'info) -> 'b Option ->
-                          ('c -> 'info) -> 'c Option -> 'info*)
-      fun rightmost0 r1 n1 r2 (Some n2) = r2 n2
-	| rightmost0 r1 n1 r2 None = r1 n1
+                          ('b -> 'info) -> 'b option ->
+                          ('c -> 'info) -> 'c option -> 'info*)
+      fun rightmost0 r1 n1 r2 (SOME n2) = r2 n2
+	| rightmost0 r1 n1 r2 NONE = r1 n1
     in
-      fun rightmost r1 n1 r2 (Some n2) = right (r2 n2)
-	| rightmost r1 n1 r2 None = right (r1 n1)
-      fun rightmost' pos1 r2 (Some n2) = right (r2 n2)
-	| rightmost' pos1 r2 None = pos1
-      fun rightmost_of_three pos1 r2     _     r3 (Some n3) = right (r3 n3)
-	| rightmost_of_three pos1 r2 (Some n2) r3     _     = right (r2 n2)
+      fun rightmost r1 n1 r2 (SOME n2) = right (r2 n2)
+	| rightmost r1 n1 r2 NONE = right (r1 n1)
+      fun rightmost' pos1 r2 (SOME n2) = right (r2 n2)
+	| rightmost' pos1 r2 NONE = pos1
+      fun rightmost_of_three pos1 r2     _     r3 (SOME n3) = right (r3 n3)
+	| rightmost_of_three pos1 r2 (SOME n2) r3     _     = right (r2 n2)
 	| rightmost_of_three pos1 r2     _     r3     _     = pos1
-      fun rightmost_of_four pos1 r2     _     r3     _     r4 (Some n4) = right (r4 n4)
-        | rightmost_of_four pos1 r2     _     r3 (Some n3) r4     _     = right (r3 n3)
-	| rightmost_of_four pos1 r2 (Some n2) r3     _     r4     _     = right (r2 n2)
+      fun rightmost_of_four pos1 r2     _     r3     _     r4 (SOME n4) = right (r4 n4)
+        | rightmost_of_four pos1 r2     _     r3 (SOME n3) r4     _     = right (r3 n3)
+	| rightmost_of_four pos1 r2 (SOME n2) r3     _     r4     _     = right (r2 n2)
 	| rightmost_of_four pos1 r2     _     r3     _     r4     _     = pos1
     end (*local*)
 
@@ -128,11 +128,11 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
           let
 	    val info = get_info_exp exp
 	    val pat = patOfIdent info (Ident.id_IT, false)
-	    val valbind = PLAINvalbind (info, pat, exp, None)
+	    val valbind = PLAINvalbind (info, pat, exp, NONE)
 	    val valdec = VALdec (info, [], valbind)
 	    val strdec = DECstrdec (info, valdec)
 	  in
-	    STRtopdec (info, strdec, None)
+	    STRtopdec (info, strdec, NONE)
 	  end
 
     fun composeStrDec(i, strdec1, strdec2) =
@@ -159,8 +159,8 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
     fun tuple_atexp_with_info info exps = (* `(A, B, C)' -> `{1=A, 2=B, 3=C}'. *)
           let
 	    fun f (n, e :: exps) =
-	          Some (EXPROW (info, mk_IntegerLab n, e, f (n+1, exps)))
-	      | f (_, []) = None
+	          SOME (EXPROW (info, mk_IntegerLab n, e, f (n+1, exps)))
+	      | f (_, []) = NONE
 	  in
 	    RECORDatexp (info, f (1, exps))
 	  end
@@ -185,7 +185,7 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 		    MATCH (info_exp,
 			   MRULE
 			     (info_exp, ATPATpat (info_exp, WILDCARDatpat info_exp), exp),
-			   None)
+			   NONE)
 		  end
 		
 	    fun f (exp :: exps, context) =
@@ -213,10 +213,10 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
           let
 	    val id = Ident.inventId ()
 	    val row = PATROW (info, lab, patOfIdent info (id, false),
-			      Some (DOTDOTDOT info))
-	    val pat = ATPATpat (info, RECORDatpat (info, Some row))
+			      SOME (DOTDOTDOT info))
+	    val pat = ATPATpat (info, RECORDatpat (info, SOME row))
 	    val mrule = MRULE (info, pat, expOfIdent info id)
-	    val match = MATCH (info, mrule, None)
+	    val match = MATCH (info, mrule, NONE)
 	  in
 	    PARatexp (info, FNexp (info, match))
 	  end
@@ -231,26 +231,26 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 	    val mruleF = MRULE (info, patOfIdent info (Ident.id_FALSE, false), elseExp)
 	  in
 	    case_exp info
-	      (ifExp, MATCH (info, mruleT, Some (MATCH (info, mruleF, None))))
+	      (ifExp, MATCH (info, mruleT, SOME (MATCH (info, mruleF, NONE))))
 	  end
 
     fun while_exp info (whileExp, doExp) =
           let
 	    val var = Ident.inventLongId ()
 	    val varExp = ATEXPexp (info, IDENTatexp (info, OP_OPT (var, false)))
-	    val unitAtExp = RECORDatexp (info, None)
+	    val unitAtExp = RECORDatexp (info, NONE)
 	    val unitExp = ATEXPexp (info, unitAtExp)
 	    val varPat = ATPATpat (info, LONGIDatpat (info, OP_OPT (var, false)))
-	    val unitPat = ATPATpat (info, RECORDatpat (info, None))
+	    val unitPat = ATPATpat (info, RECORDatpat (info, NONE))
 	    val callVar = APPexp (info, varExp, unitAtExp)
 
 	    val fnBody = if_then_else_exp info
 	                   (whileExp, sequenceExp [doExp, callVar], unitExp)
 
 	    val mrule = MRULE (info, unitPat, fnBody)
-	    val match = MATCH (info, mrule, None)
+	    val match = MATCH (info, mrule, NONE)
 	    val fnExp = FNexp (info, match)
-	    val bind = RECvalbind (info, PLAINvalbind (info, varPat, fnExp, None))
+	    val bind = RECvalbind (info, PLAINvalbind (info, varPat, fnExp, NONE))
 	    val dec = VALdec (info, [], bind)
 	  in
 	    ATEXPexp (info, LETatexp (info, dec, callVar))
@@ -279,10 +279,10 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
                 handle List.Subscript _ => 
                          impossible "rewriteDatBind---replaceTy"
               end
-          | RECORDty(i, None) =>
+          | RECORDty(i, NONE) =>
               ty
-          | RECORDty(i, Some tyrow) => 
-              RECORDty(i, Some (replaceTyrow tyvarseq tyseq tyrow))
+          | RECORDty(i, SOME tyrow) => 
+              RECORDty(i, SOME (replaceTyrow tyvarseq tyseq tyrow))
           | CONty(i, tylist, tycon) => 
               CONty(i, map (replaceTy tyvarseq tyseq) tylist, tycon)
           | FNty(i, ty1, ty2) => 
@@ -293,19 +293,19 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 
         and replaceTyrow tyvarseq tyseq tyrow =
           case tyrow of
-            TYROW(i, lab, ty, None) =>
-              TYROW(i, lab, replaceTy tyvarseq tyseq ty, None)
-          | TYROW(i, lab, ty, Some tyrow) =>
+            TYROW(i, lab, ty, NONE) =>
+              TYROW(i, lab, replaceTy tyvarseq tyseq ty, NONE)
+          | TYROW(i, lab, ty, SOME tyrow) =>
               TYROW(i, lab, replaceTy tyvarseq tyseq ty, 
-                   Some (replaceTyrow tyvarseq tyseq tyrow))
+                   SOME (replaceTyrow tyvarseq tyseq tyrow))
           
         exception Lookup_tycon
         fun lookup_tycon tycon typbind =
           case typbind of 
-            TYPBIND(_, tyvarseq, tycon', ty, None) =>
+            TYPBIND(_, tyvarseq, tycon', ty, NONE) =>
               if tycon' = tycon then (tyvarseq, ty)
               else raise Lookup_tycon
-          | TYPBIND(_, tyvarseq, tycon', ty, Some typbind) =>
+          | TYPBIND(_, tyvarseq, tycon', ty, SOME typbind) =>
               if tycon' = tycon then (tyvarseq, ty)
               else lookup_tycon tycon typbind
 
@@ -313,10 +313,10 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
           case ty of 
             TYVARty _ => 
               ty
-          | RECORDty(i, None) => 
+          | RECORDty(i, NONE) => 
               ty
-          | RECORDty(i, Some tyrow) => 
-              RECORDty(i, Some (rewriteTyrow tyrow))
+          | RECORDty(i, SOME tyrow) => 
+              RECORDty(i, SOME (rewriteTyrow tyrow))
           | CONty(i, tyseq', longtycon') =>
               let 
                 val (strid_list, tycon') = TyCon.explode_LongTyCon longtycon'
@@ -346,30 +346,30 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 
         and rewriteTyrow tyrow =
           case tyrow of
-            TYROW(i, lab, ty, None) =>
-              TYROW(i, lab, rewriteTy ty, None)
-          | TYROW(i, lab, ty, Some tyrow) =>
-              TYROW(i, lab, rewriteTy ty, Some (rewriteTyrow tyrow))
+            TYROW(i, lab, ty, NONE) =>
+              TYROW(i, lab, rewriteTy ty, NONE)
+          | TYROW(i, lab, ty, SOME tyrow) =>
+              TYROW(i, lab, rewriteTy ty, SOME (rewriteTyrow tyrow))
 
-        fun rewriteConBind (CONBIND(i, con, None, None)) =
-              CONBIND(i, con, None, None)
-          | rewriteConBind (CONBIND(i, con, Some ty, None)) =
-              CONBIND(i, con, Some (rewriteTy ty), None)
-          | rewriteConBind (CONBIND(i, con, None, Some conbind)) =
-              CONBIND(i, con, None, Some (rewriteConBind conbind))
-          | rewriteConBind (CONBIND(i, con, Some ty, Some conbind)) =
-              CONBIND(i, con, Some (rewriteTy ty), Some (rewriteConBind conbind))
+        fun rewriteConBind (CONBIND(i, con, NONE, NONE)) =
+              CONBIND(i, con, NONE, NONE)
+          | rewriteConBind (CONBIND(i, con, SOME ty, NONE)) =
+              CONBIND(i, con, SOME (rewriteTy ty), NONE)
+          | rewriteConBind (CONBIND(i, con, NONE, SOME conbind)) =
+              CONBIND(i, con, NONE, SOME (rewriteConBind conbind))
+          | rewriteConBind (CONBIND(i, con, SOME ty, SOME conbind)) =
+              CONBIND(i, con, SOME (rewriteTy ty), SOME (rewriteConBind conbind))
 
       in
         case datbind of 
-          DATBIND(i, tyvarlist, tycon, conbind, None) =>
-            DATBIND(i, tyvarlist, tycon, rewriteConBind conbind, None)
-        | DATBIND(i, tyvarlist, tycon, conbind, Some datbind) =>
+          DATBIND(i, tyvarlist, tycon, conbind, NONE) =>
+            DATBIND(i, tyvarlist, tycon, rewriteConBind conbind, NONE)
+        | DATBIND(i, tyvarlist, tycon, conbind, SOME datbind) =>
             let 
               val datbind' = rewriteDatBind(datbind, typbind) 
             in
               DATBIND(i, tyvarlist, tycon, 
-                      rewriteConBind conbind, Some datbind')
+                      rewriteConBind conbind, SOME datbind')
             end
       end
 
@@ -377,8 +377,8 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
     fun tuple_atpat_with_info info pats =       (* `(A, B, C)' -> `{1=A, 2=B, 3=C}'. *)
           let
 	    fun f (n, pat::pats) =
-                  Some (PATROW (info, mk_IntegerLab n, pat, f (n+1, pats)))
-	      | f (_, []) = None
+                  SOME (PATROW (info, mk_IntegerLab n, pat, f (n+1, pats)))
+	      | f (_, []) = NONE
 	  in
 	    RECORDatpat (info, f (1, pats))
 	  end
@@ -418,17 +418,17 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 	  in
 	    case idPat of
 	      TYPEDpat (_, ATPATpat (_, LONGIDatpat (_, OP_OPT (id, withOp))), ty) =>
-		LAYEREDpat (i, OP_OPT (longIdToId id, withOp), Some ty, asPat)
+		LAYEREDpat (i, OP_OPT (longIdToId id, withOp), SOME ty, asPat)
 	    | ATPATpat (_, LONGIDatpat (_, OP_OPT (id, withOp))) =>
-		LAYEREDpat (i, OP_OPT (longIdToId id, withOp), None, asPat)
+		LAYEREDpat (i, OP_OPT (longIdToId id, withOp), NONE, asPat)
 	    | _ => raise LAYERPAT_ERROR (un_PP i)
 	  end
 
     fun tuple_type info tys =
           let
 	    fun f (n, ty :: tys) =
-                  Some (TYROW (info, mk_IntegerLab n, ty, f (n+1, tys)))
-	      | f (_, []) = None
+                  SOME (TYROW (info, mk_IntegerLab n, ty, f (n+1, tys)))
+	      | f (_, []) = NONE
 	  in
 	    RECORDty (info, f (1, tys))
 	  end
@@ -444,7 +444,7 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 	       SIGsigexp (i_tyvars_tycon,
 		 TYPEspec (i_tyvars_tycon,
 		   TYPDESC (i_tyvars_tycon,
-		     tyvars, tycon, None))),
+		     tyvars, tycon, NONE))),
 	       tyvars, TyCon.implode_LongTyCon ([],tycon), ty)))
 
   (*fold_specs_to_spec [(i1,spec1),(i2,spec2),(i3,spec3)] =
@@ -459,9 +459,9 @@ functor GrammarUtils (structure TopdecGrammar : TOPDEC_GRAMMAR
 	          i_spec_s)
              handle List.Empty s => impossible s
 
-    fun raise_lexical_error_if_none pos None =
+    fun raise_lexical_error_if_none pos NONE =
           raise LexBasics.LEXICAL_ERROR (pos, "constant too big")
-      | raise_lexical_error_if_none pos (Some a) = a
+      | raise_lexical_error_if_none pos (SOME a) = a
 
     val reportPosition_from_info = SourceInfo.report o ParseInfo.to_SourceInfo
   end;

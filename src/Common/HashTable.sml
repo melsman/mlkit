@@ -11,7 +11,7 @@ signature HASH_TABLE =
     val mk_empty : int -> '_a hash_table
     val update : '_a hash_table * int * '_a -> unit
     val remove : '_a hash_table * int -> unit
-    val lookup : '_a hash_table * int -> '_a Option
+    val lookup : '_a hash_table * int -> '_a option
     val size : '_a hash_table -> int
     val range : '_a hash_table -> '_a list
     val list : '_a hash_table -> (int * '_a) list
@@ -31,13 +31,15 @@ signature HASH_TABLE =
 functor HashTable(structure PP : PRETTYPRINT) : HASH_TABLE =
   struct
 
-    structure Array = NewJersey.Array
+    structure List = Edlib.List
+    structure Int = Edlib.Int
+
     type dom = int
     type 'a hash_table = int * ((dom*'a)list Array.array)
     type StringTree = PP.StringTree
     (*	  val table_size = 127*) (* bin: 11111111 *)
     (*	  val table_size = 63*)  (* bin: 111111 *)
-    fun hash (key,size) = Bits.andb (key, size)
+    fun hash (key,size) = Word.toInt (Word.andb (Word.fromInt key,Word.fromInt size))
     fun mk_empty size = (size, Array.array(size+1, []))
     fun update ((size,table), key, value) = 
       let
@@ -75,10 +77,10 @@ functor HashTable(structure PP : PRETTYPRINT) : HASH_TABLE =
       end
     fun lookup ((size,table), key) =
       let 
-	fun find_first_key [] = None
+	fun find_first_key [] = NONE
 	  | find_first_key ((key',value)::rest) = 
 	  if key = key' then 
-	    Some value 
+	    SOME value 
 	  else 
 	    find_first_key rest
       in 
@@ -197,7 +199,7 @@ functor HashTable(structure PP : PRETTYPRINT) : HASH_TABLE =
 	 "No. of unused table entries.....: " ^ (Int.string (table_size+1-no_of_used_table_entries)) ^ "\n" ^
 	 "Longest bucket..................: " ^ (Int.string (longest_bucket)) ^ "\n" ^
 	 "Mean bucket length..............: " ^ (if no_of_used_table_entries <> 0 then
-						   Real.string (real(total_bucket_length)/real(no_of_used_table_entries))
+						   Real.toString (real(total_bucket_length)/real(no_of_used_table_entries))
 						 else
 						   "------") ^ "\n")
       end

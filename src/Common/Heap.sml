@@ -34,7 +34,7 @@ signature HEAP =
     val to_list_sorted : heap -> HeapInfo.elem list
     val sort : HeapInfo.elem list -> HeapInfo.elem list
     val layout : heap -> string
-    val export_heap_vcg : string -> heap -> outstream -> unit
+    val export_heap_vcg : string -> heap -> TextIO.outstream -> unit
     val fix_heap : heap -> heap
     val find_max : heap -> HeapInfo.elem
     val delete_max : heap -> heap * HeapInfo.elem
@@ -43,6 +43,9 @@ signature HEAP =
 (*$Heap: HEAP*)
 functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
   struct
+
+    open Edlib
+
     structure HeapInfo = HeapInfo
     exception Heap of string
 
@@ -52,7 +55,7 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
     val empty = Empty
     fun unit x = Node(1,x,Empty,Empty)
 
-    fun div2 n = Bits.rshift(n,1)
+    fun div2 n = n div 2
 
     fun is_empty Empty = true
       | is_empty _ = false
@@ -130,7 +133,7 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
 
     fun export_heap_vcg (title: string)
                         (heap : heap)
-			(out  : outstream) =
+			(out  : TextIO.outstream) =
       let
 	val node_counter = ref 0
 	fun fresh_node () = (node_counter := !node_counter + 1;
@@ -144,11 +147,11 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
             val title_node = "title: \"" ^ (Int.string node_id) ^ "\" "
             val label_node = 
 	      (case v of
-		 None => ("label: \" Empty \" ")
-	       | Some (h,v) => ("label: \"" ^ "W:" ^ (Int.string h) ^ ",Val:" ^ (HeapInfo.layout v) ^ "\" "))
+		 NONE => ("label: \" Empty \" ")
+	       | SOME (h,v) => ("label: \"" ^ "W:" ^ (Int.string h) ^ ",Val:" ^ (HeapInfo.layout v) ^ "\" "))
             val end_node = "}" ^ new_line
           in
-            (output(out, begin_node ^ title_node ^ label_node ^ end_node);
+            (TextIO.output(out, begin_node ^ title_node ^ label_node ^ end_node);
 	     node_id)
           end
 
@@ -161,13 +164,13 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
 	    val class = "class: 1"
             val end_edge = "}" ^ new_line
 	  in
-	    output(out, begin_edge ^ sourcename ^ targetname ^ label ^ class ^ end_edge)
+	    TextIO.output(out, begin_edge ^ sourcename ^ targetname ^ label ^ class ^ end_edge)
           end
 
-	fun export_heap' Empty = export_node None
+	fun export_heap' Empty = export_node NONE
 	  | export_heap' (Node(h,v,l,r)) =
 	     let
-	       val node_v = export_node (Some (h,v))
+	       val node_v = export_node (SOME (h,v))
 	       val node_l = export_heap' l
 	       val node_r = export_heap' r
 	     in
@@ -184,10 +187,10 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
 			 "ignore_singles: yes" ^ new_line
         val end_graph = "}" ^ new_line
       in
-        (output(out, begin_graph);
-         output(out, attr_graph);
+        (TextIO.output(out, begin_graph);
+         TextIO.output(out, attr_graph);
 	 export_heap' heap;
-         output(out, end_graph))
+         TextIO.output(out, end_graph))
       end
 
     fun fix_heap h = from_list (to_list h)
@@ -211,28 +214,28 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
     fun delete_max h =
       let
 	val max_val = find_max h
-	fun delete_max' Empty = (Empty, None, 0)
+	fun delete_max' Empty = (Empty, NONE, 0)
 	  | delete_max' (n as Node(1,x,Empty,Empty)) =
 	  (if HeapInfo.leq (x,max_val) andalso
 	     HeapInfo.leq (max_val,x) then
-	     (Empty, Some x, 0)
+	     (Empty, SOME x, 0)
 	   else
-	     (n,None,1))
+	     (n,NONE,1))
 	  | delete_max' (n as Node(w,x,l,r)) =
 	     case delete_max' l
-	       of (n', None, w') => 
+	       of (n', NONE, w') => 
 		 (case delete_max' r
-		    of (n'',None,w'') => (n,None,w)
-		     | (n'',Some v'',w'') => (Node(w''+1,x,n',n''),Some v'', w''+1))
-		| (n',Some v',w') => 
+		    of (n'',NONE,w'') => (n,NONE,w)
+		     | (n'',SOME v'',w'') => (Node(w''+1,x,n',n''),SOME v'', w''+1))
+		| (n',SOME v',w') => 
 		    (if w > w'+1 then
-		       (Node(w'+1,x,r,n'),Some v', w'+1)
+		       (Node(w'+1,x,r,n'),SOME v', w'+1)
 		     else
-		       (Node(w,x,n',r),Some v',w))
+		       (Node(w,x,n',r),SOME v',w))
       in	
 	case (delete_max' h)
-	  of (h', None, _) => raise Heap "Empty"
-	   | (h', Some v, _) => (h',v)
+	  of (h', NONE, _) => raise Heap "Empty"
+	   | (h', SOME v, _) => (h',v)
       end
   end
 
@@ -240,6 +243,8 @@ functor Heap(structure HeapInfo: HEAP_INFO) : HEAP =
 
 functor TestHeap ()  =
 struct
+
+  open Edlib
 
   structure HeapInfo =
     struct
@@ -256,8 +261,8 @@ struct
 
   structure Heap : HEAP = Heap(structure HeapInfo = HeapInfo)
 
-  fun print s = output(std_out, s)
-  fun error s = output(std_out, "ERROR: " ^ s)
+  fun print s = TextIO.output(TextIO.stdOut, s)
+  fun error s = TextIO.output(TextIO.stdOut, "ERROR: " ^ s)
 
   fun gen_list 0 xs = xs
     | gen_list n xs = gen_list (n-1) ((ref (HeapInfo.C{count = ref n, id = n, vars = ref xs}))::(List.rev xs))
@@ -269,9 +274,9 @@ struct
       val temp_list = gen_list 10 []
       val h = List.foldL (fn n => (fn acc => Heap.insert n acc)) Heap.empty temp_list
       val res = Heap.layout h
-      val out_stream = open_out ("test1.vcg")
+      val out_stream = TextIO.openOut ("test1.vcg")
       val _ = Heap.export_heap_vcg "Heap" h out_stream
-      val _ = close_out out_stream
+      val _ = TextIO.closeOut out_stream
       val _ = print ("Max element: " ^ (Heap.HeapInfo.layout (Heap.find_max h)) ^ "\n")
       val _ = print ("Min element: " ^ (Heap.HeapInfo.layout (Heap.find_min h)) ^ "\n")
       val _ = case (Heap.find_min h) of
@@ -281,9 +286,9 @@ struct
       val (_,h) = Heap.delete_min h
       val _ = case (Heap.find_max h) of
 	ref (HeapInfo.C({count, ...})) => count := !count+1
-      val out_stream = open_out ("test2.vcg")
+      val out_stream = TextIO.openOut ("test2.vcg")
       val _ = Heap.export_heap_vcg "Heap; min element incremented." h out_stream
-      val _ = close_out out_stream
+      val _ = TextIO.closeOut out_stream
 
     in
       print res

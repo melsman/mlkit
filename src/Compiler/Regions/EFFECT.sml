@@ -24,7 +24,7 @@ sig
   val removeatomiceffects: (effect * 'a)list * effect list-> (effect * 'a)list
   val get_visited: effect -> bool ref
 
-  val get_instance: effect -> effect Option ref
+  val get_instance: effect -> effect option ref
 
   (* setInstance(rho,rho') sets the instance field of  rho 
      (a generic variable) to rho', its instance; 
@@ -64,7 +64,7 @@ sig
 
   val sameEffect : effect * effect -> bool
 
-  val level_of: effect ->  int Option
+  val level_of: effect ->  int option
 
   type cone and coneLayer
   val emptyCone: cone 
@@ -121,7 +121,7 @@ sig
                                                          preserve runtime types, pix = ~1 *)
   val freshRhoWithTy: runType * cone -> effect * cone
   val setRunType: effect -> runType -> unit
-  val get_place_ty: effect -> runType Option
+  val get_place_ty: effect -> runType option
 
   val freshEps: cone -> effect * cone
   val freshEpss: effect list * cone -> effect list * cone

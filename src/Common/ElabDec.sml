@@ -1,9 +1,5 @@
 (* Elaborator for Core Language Declarations*)
 
-(*$ElabDec : DEC_GRAMMAR ENVIRONMENTS STATOBJECT ELABDEC
-         PARSE_INFO ELAB_INFO FINMAP REPORT PRETTYPRINT FLAGS
-         CRASH LIST_HACKS LIST_SORT*)
-
 functor ElabDec(structure ParseInfo : PARSE_INFO
 		structure ElabInfo : ELAB_INFO
 		  sharing ElabInfo.ParseInfo = ParseInfo
@@ -72,17 +68,36 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
                   sharing type PP.Report = Report.Report
 
                 structure Flags: FLAGS
-		structure ListHacks: LIST_HACKS
-		structure ListSort: LIST_SORT
                 structure Crash: CRASH
                ) : ELABDEC =
   struct
+
+    open Edlib
+    open General
+
+    structure ListHacks =
+      struct
+	fun union(set1, set2) =
+	  set1 @ List.all (fn x => not(List.member x set1)) set2
+
+	fun intersect(set1, set2) =
+	  List.all (fn x => List.member x set1) set2
+
+	fun minus(set1, set2) =
+	  List.all (fn x => not(List.member x set2)) set1
+
+	fun eqSet(set1, set2) =
+	  case (minus(set1, set2), minus(set2, set1))
+	    of (nil, nil) => true
+	     | _ => false
+      end
+
     fun impossible s = Crash.impossible ("ElabDec." ^ s)
-    fun noSome None s = impossible s
-      | noSome (Some x) s = x
-    fun map_opt f (Some x) = Some (f x)
-      | map_opt f None = None
-    val concat = List.foldL (General.curry (op @)) []
+    fun noSome NONE s = impossible s
+      | noSome (SOME x) s = x
+    fun map_opt f (SOME x) = SOME (f x)
+      | map_opt f NONE = NONE
+    fun concat l = List.foldL (General.curry (op @)) [] l
     (*uniq [1,2,1,3] = [2,1,3]*)
     fun uniq [] = []
       | uniq (x::xs) = if List.exists (fn x' => x=x') xs then uniq xs
@@ -179,7 +194,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     fun pr_st st = PP.outputTree(print,st,100)
 
     fun debug_pr_msg (msg: string): unit =
-          if !Flags.DEBUG_ELABDEC then output(std_out,msg) else ()
+          if !Flags.DEBUG_ELABDEC then TextIO.output(TextIO.stdOut,msg) else ()
 
     fun getRepeatedElements equal ls =
           let
@@ -193,10 +208,10 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     fun isEmptyTyVarList x = case x of nil => true | _ => false
     fun memberTyVarList x xs = List.exists (fn y => TyVar.eq (x,y)) xs
 
-    fun where list elem =
+    fun where' list elem =
           (case List.index (General.curry (op =) elem) list of
 	     OK n => n
-	   | Fail _ => impossible "where")
+	   | Fail _ => impossible "where'")
 
     (* Hooks needed by the compiler:
 
@@ -214,7 +229,7 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 	    in
 	      ElabInfo.plus_TypeInfo ElabInfo
 	        (CON_INFO {numCons=List.size cons,
-			   index=where cons con,instances=instances,
+			   index=where' cons con,instances=instances,
 			   tyvars=[],Type=tau,longid=longid})
 	    end
 
@@ -305,8 +320,8 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
         of IG.PLAINvalbind(_, pat, _, vb_opt) =>
              C.dom_pat (C, pat)
 	     @ (case vb_opt of
-		  Some vb => dom_vb (C, vb)
-		| None => nil)
+		  SOME vb => dom_vb (C, vb)
+		| NONE => nil)
 
          | IG.RECvalbind(_, vb) =>
              dom_vb(C, vb)
@@ -315,9 +330,9 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
      elaborating a datbind. We determine the correct equality
      attributes when we maximise equality:*)
 
-    fun initial_TE (IG.DATBIND(_, explicittyvars, tycon, _, None)) =
+    fun initial_TE (IG.DATBIND(_, explicittyvars, tycon, _, NONE)) =
           TE.init explicittyvars tycon
-      | initial_TE (IG.DATBIND(_, explicittyvars, tycon, _, Some datbind)) =
+      | initial_TE (IG.DATBIND(_, explicittyvars, tycon, _, SOME datbind)) =
           TE.plus (TE.init explicittyvars tycon, initial_TE datbind)
 
    (*addLabelInfo: given a RecType and a PATROW, populate the info fields
@@ -334,7 +349,6 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
     we have found out what ... stands for (e.g., if it stands for { 1 = _ }
     the index of 2 should be 1 but if it stands for { 3 = _ } the index of 2
     should be 0).
-
     Thus addLabelIndexInfo below is used during resolvation to record correct
     indices.*)
 
@@ -346,11 +360,11 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 			    (*in the clauses below, if something is wrong, I assume
 			     it is because there was a type error, and simply refrain
 			     from annotating LAB_INFO:*)
-			    None =>
+			    NONE =>
 			      ((case List.first (fn (lab', tau) => lab = lab') lab_tau_s of
 				  (lab', tau) => addTypeInfo_LAB (i, 666, tau))
 				  handle List.First _ => i)
-			  | Some _ => i),
+			  | SOME _ => i),
 	                 lab, pat, map_opt f patrow_opt)
           | f (OG.DOTDOTDOT i) = OG.DOTDOTDOT i
       in
@@ -365,13 +379,13 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
         val sortedLabs = map (#1) labtys
         fun f(OG.PATROW(i, lab, pat, patrow_opt)) =
           (case ElabInfo.to_ErrorInfo i of
-            None => 
+            NONE => 
               (case ElabInfo.to_TypeInfo i of
-                 Some typeinfo =>
+                 SOME typeinfo =>
                    (case typeinfo of
                       TypeInfo.LAB_INFO{index,tyvars,Type} => 
                         let
-                          val index = where sortedLabs lab
+                          val index = where' sortedLabs lab
 (*
 val _ = output(std_out,"ElabDec.addLabelIndexInfo: index = " ^ Int.string index ^ "\n")
 val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
@@ -385,9 +399,9 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
                         end
                     | _ => 
                         impossible "addLabelIndexInfo: unexpected typeinfo")
-               | None => 
+               | NONE => 
                    impossible "addLabelIndexInfo: no typeinfo")
-          | Some _ => OG.PATROW(i, lab, pat, patrow_opt))
+          | SOME _ => OG.PATROW(i, lab, pat, patrow_opt))
              
           | f(OG.DOTDOTDOT i) = OG.DOTDOTDOT i
       in
@@ -425,10 +439,10 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
       let 
 	fun harmless_con (C : Context) (longid : Ident.longid) =
 	      (case C.lookup_longid C longid of
-		 Some (VE.LONGVAR _) => false
-	       | Some (VE.LONGCON _) => #2 (Ident.decompose longid) <> Ident.id_REF
-	       | Some (VE.LONGEXCON _) => true  
-	       | None => true)
+		 SOME (VE.LONGVAR _) => false
+	       | SOME (VE.LONGCON _) => #2 (Ident.decompose longid) <> Ident.id_REF
+	       | SOME (VE.LONGEXCON _) => true  
+	       | NONE => true)
 		(*why `true' and not `false' or `impossible ...'?  see my diary
 		 19/12/1996 14:17. tho.*)
 
@@ -439,7 +453,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
             OG.PLAINvalbind(i, pat, exp, vb_opt) =>
               OG.PLAINvalbind
               (case ElabInfo.to_TypeInfo i of
-                 Some (TypeInfo.PLAINvalbind_INFO{Type,tyvars=[]}) =>
+                 SOME (TypeInfo.PLAINvalbind_INFO{Type,tyvars=[]}) =>
                    let val generalisable_tyvars = 
                              close (OG.expansive (harmless_con C) exp) Type
                    in 
@@ -450,7 +464,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
                | _ => i (* impossible "ElabDec.do_valbind: wrong type info"*),
                do_pat (close (OG.expansive (harmless_con C) exp)) pat,
                exp,
-               case vb_opt of None => None | Some vb => Some (do_valbind vb))
+               case vb_opt of NONE => NONE | SOME vb => SOME (do_valbind vb))
 
           | OG.RECvalbind(i, vb) => OG.RECvalbind(i,do_valbind vb)
 
@@ -460,7 +474,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
 
           | OG.CONSpat(i, longid_op as OG.OP_OPT(longid,withOp), atpat) =>
 	      (case ElabInfo.to_TypeInfo i 
-		 of Some(TypeInfo.CON_INFO{numCons,index,Type,longid,instances,...}) =>
+		 of SOME(TypeInfo.CON_INFO{numCons,index,Type,longid,instances,...}) =>
 		   (* generalise type of constructor and recurse *)
 		   OG.CONSpat(ElabInfo.plus_TypeInfo i
 			      (TypeInfo.CON_INFO{numCons=numCons,
@@ -478,7 +492,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
           | OG.LAYEREDpat(i, id as OG.OP_OPT(id', withOp),ty_opt, pat) =>
               OG.LAYEREDpat
               (case ElabInfo.to_TypeInfo i of
-                 Some(TypeInfo.VAR_PAT_INFO{tyvars,Type}) =>
+                 SOME(TypeInfo.VAR_PAT_INFO{tyvars,Type}) =>
                    ElabInfo.plus_TypeInfo i 
                    (TypeInfo.VAR_PAT_INFO{tyvars=close_tau Type,Type=Type})
                | _ => impossible "do_pat (LAYERED): wrong type info",
@@ -496,7 +510,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
 
           | OG.LONGIDatpat(i, longid_op as OG.OP_OPT(longid,withOp)) =>
               (case ElabInfo.to_TypeInfo i 
-		 of Some(TypeInfo.CON_INFO{numCons,index,Type,longid,instances,...}) =>
+		 of SOME(TypeInfo.CON_INFO{numCons,index,Type,longid,instances,...}) =>
                    let val i' = ElabInfo.plus_TypeInfo i
 		                (TypeInfo.CON_INFO{numCons=numCons,
 						   index=index,
@@ -506,7 +520,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
 						   longid=longid})
 		   in OG.LONGIDatpat(i', longid_op)
 		   end
-		  | Some(TypeInfo.VAR_PAT_INFO{tyvars,Type}) => 
+		  | SOME(TypeInfo.VAR_PAT_INFO{tyvars,Type}) => 
                    let val i' = ElabInfo.plus_TypeInfo i 
 		                (TypeInfo.VAR_PAT_INFO{tyvars=close_tau Type,Type=Type})
 		   in OG.LONGIDatpat(i', longid_op)
@@ -524,7 +538,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
           | OG.PATROW(i, l, pat, patrowOpt) =>
               OG.PATROW
               ((case ElabInfo.to_TypeInfo i of
-		  Some(TypeInfo.LAB_INFO{index, Type,...}) =>
+		  SOME(TypeInfo.LAB_INFO{index, Type,...}) =>
 		    ElabInfo.plus_TypeInfo i 
 		    (TypeInfo.LAB_INFO{index=index,Type=Type,
 				       tyvars=close_tau Type})
@@ -534,7 +548,6 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
 		     I return the info unchanged:*) i),
 		  l,
 		  do_pat close_tau pat, map_opt (do_patrow close_tau) patrowOpt)
-
       in
         do_valbind valbind
       end
@@ -561,7 +574,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
             (case C.lookup_longid C longid of
 
                (* Variable *)                                   
-              Some(VE.LONGVAR sigma) =>
+              SOME(VE.LONGVAR sigma) =>
                  let val (instance, instances) = (TypeScheme.instance'' sigma)
 		   handle TypeScheme.InstanceError s =>
 		     (print ("InstanceError." ^ s ^ "\n");
@@ -593,7 +606,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
                  end
 
               (* Constructor *)
-            | Some(VE.LONGCON sigma) =>
+            | SOME(VE.LONGCON sigma) =>
                 let
                   val (tau,instances) = (TypeScheme.instance'' sigma)
 		   handle TypeScheme.InstanceError s =>
@@ -619,7 +632,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
                 end
 
              (* Exception constructor *)
-           | Some(VE.LONGEXCON tau) =>
+           | SOME(VE.LONGEXCON tau) =>
                 (Substitution.Id,
                  tau,
 		 OG.IDENTatexp(addTypeInfo_EXCON(okConv i, tau, longid),
@@ -628,7 +641,7 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
 		 )
 
              (* Not found in current context *)
-           | None =>
+           | NONE =>
                (Substitution.bogus, Type_bogus (),
 		OG.IDENTatexp(lookupIdError (i, longid),
 			      OG.OP_OPT(Ident.bogus, withOp)
@@ -637,16 +650,16 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
           )
 
           (* record expression *)                               (*rule 3*)
-        | IG.RECORDatexp(i, None) =>
-            (Substitution.Id, Type.Unit, OG.RECORDatexp(okConv i,None)) 
+        | IG.RECORDatexp(i, NONE) =>
+            (Substitution.Id, Type.Unit, OG.RECORDatexp(okConv i,NONE)) 
 
           (* record expression *)
-        | IG.RECORDatexp(i, Some exprow) =>
+        | IG.RECORDatexp(i, SOME exprow) =>
             let
               val (S, rho, out_exprow) = elab_exprow(C,exprow)
             in
               (S, Type.from_RecType rho,
-               OG.RECORDatexp (okConv i, Some out_exprow)) 
+               OG.RECORDatexp (okConv i, SOME out_exprow)) 
             end 
 
           (* let expression *)                                  (*rule 4*)
@@ -676,16 +689,16 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
         case exprow of 
 
           (* Expression row *)                                  (*rule 6*)
-          IG.EXPROW(i, lab, exp, None) =>
+          IG.EXPROW(i, lab, exp, NONE) =>
             let
               val (S, tau, out_exp) = elab_exp(C, exp)
               val rho = Type.RecType.add_field (lab,tau) Type.RecType.empty
             in
-              (S, rho, OG.EXPROW(okConv i,lab,out_exp,None))
+              (S, rho, OG.EXPROW(okConv i,lab,out_exp,NONE))
             end
 
           (* Expression row *)
-        | IG.EXPROW(i, lab, exp, Some exprow) =>
+        | IG.EXPROW(i, lab, exp, SOME exprow) =>
             let
               val (S1, tau, out_exp   ) = elab_exp(C, exp)
               val (S2, rho, out_exprow) = elab_exprow(S1 onC C,exprow)
@@ -693,10 +706,10 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
               if (List.member lab (Type.RecType.sorted_labs rho)) then
                 (S2, rho, 
                  OG.EXPROW(repeatedIdsError(i, [ErrorInfo.LAB_RID lab]),
-                           lab, out_exp, Some out_exprow))
+                           lab, out_exp, SOME out_exprow))
               else
                 (S2 oo S1, Type.RecType.add_field (lab,S2 on tau) rho,
-                 OG.EXPROW(okConv i,lab,out_exp,Some out_exprow))
+                 OG.EXPROW(okConv i,lab,out_exp,SOME out_exprow))
             end
 
     (******** expressions ********)
@@ -749,12 +762,12 @@ val _ = pr("ElabDec.addLabelIndexInfo: recType = ",
          | IG.TYPEDexp(i, exp, ty) =>
              let val (S1, tau, out_exp) = elab_exp(C, exp)
 	     in case elab_ty(S1 onC C, ty)
-		  of (Some tau', out_ty) =>
+		  of (SOME tau', out_ty) =>
 		    let val (S2, i') = UnifyWithTexts("type of expression",tau,"disagrees with your type constraint", tau', i)
 		        val tau'' = S2 on tau'
 		    in (S2 oo S1, tau'', OG.TYPEDexp(addTypeInfo_EXP(i',tau''), out_exp, out_ty))
 		    end
-		   | (None, out_ty) => (S1, tau, OG.TYPEDexp(okConv i, out_exp, out_ty))
+		   | (NONE, out_ty) => (S1, tau, OG.TYPEDexp(okConv i, out_exp, out_ty))
 	     end
 
            (* Handle exception *)                               (*rule 10*)
@@ -815,12 +828,12 @@ old*)
         case match of
 
           (* Match *)                                           (*rule 13*)
-          IG.MATCH(i, mrule, None) =>
+          IG.MATCH(i, mrule, NONE) =>
             let val (S, tau, out_mrule) = elab_mrule(C,mrule)
-            in (S, tau, OG.MATCH(addTypeInfo_MATCH(okConv i,tau),out_mrule,None)) end
+            in (S, tau, OG.MATCH(addTypeInfo_MATCH(okConv i,tau),out_mrule,NONE)) end
 
           (* Match *)
-        | IG.MATCH(i, mrule, Some match') =>
+        | IG.MATCH(i, mrule, SOME match') =>
             let
               val (S ,tau ,out_mrule) = elab_mrule(C,mrule)
               val (S',tau',out_match) = elab_match(S onC C,match')
@@ -829,7 +842,7 @@ old*)
               val tau'' = S'' on tau'
             in
               (S'' oo S' oo S, tau'',
-               OG.MATCH(addTypeInfo_MATCH(i',tau''), out_mrule, Some out_match))
+               OG.MATCH(addTypeInfo_MATCH(i',tau''), out_mrule, SOME out_match))
             end
 
     (******** match rules ********)
@@ -931,8 +944,8 @@ old*)
                val ((VE1, TE1), out_datbind) = elab_datbind(C C_plus_TE TE, datbind)
                val (VE2, TE2) = Environments.maximise_equality_in_VE_and_TE (VE1, TE1) 
 	       val T = (TE.fold (fn tystr => fn T => case TypeFcn.to_TyName(TyStr.to_theta tystr)
-						       of Some t => t::T
-							| None => impossible "elab_dec(DATATYPEdec)")
+						       of SOME t => t::T
+							| NONE => impossible "elab_dec(DATATYPEdec)")
 			[] TE2)
                val _ = debug_pr_msg "elab_dec(DATATYPEdec)"
              in
@@ -944,7 +957,7 @@ old*)
 	   (*datatype replication*)                             (*rule 18*)
 	 | IG.DATATYPE_REPLICATIONdec(i, tycon, longtycon) => 
 	     (case C.lookup_longtycon C longtycon of
-		Some tystr =>
+		SOME tystr =>
 		  let
 		    val TE = TE.singleton (tycon, tystr)
 		    val (theta, VE) = TyStr.to_theta_and_VE tystr 
@@ -954,7 +967,7 @@ old*)
 		     OG.DATATYPE_REPLICATIONdec
 		       (addTypeInfo_TYENV (okConv i, TE), tycon, longtycon))
 		  end
-	      | None =>
+	      | NONE =>
 		  (Substitution.bogus,[],
 		   E.bogus,
 		   OG.DATATYPE_REPLICATIONdec
@@ -1004,14 +1017,14 @@ old*)
                  case list
                    of IG.WITH_INFO(i, longstrid) :: rest =>
                         (case C.lookup_longstrid C longstrid of
-			   Some E =>
+			   SOME E =>
                                 let val (E', rest') = process(E0, rest)
                                 in
                                   (E.plus (E, E'),
                                    OG.WITH_INFO (okConv i, longstrid) :: rest')
                                 end
 
-                            | None =>   (* Lookup failure: process rest of
+                            | NONE =>   (* Lookup failure: process rest of
                                            list and build env regardless. *)
                                 let
                                   val (E', rest') = process(E0, rest)
@@ -1084,21 +1097,21 @@ old*)
             (* if there was a unification error in the line above, change the right source
                info field of i' to become the right end of exp : *)
             val i' = case ElabInfo.to_ErrorInfo i' of
-                    None => i'
-                    | Some _ => ElabInfo.retractRight (i', OG.get_info_exp out_exp)
+                    NONE => i'
+                    | SOME _ => ElabInfo.retractRight (i', OG.get_info_exp out_exp)
 
             val (S3, VE', valbind_opt') =
               case valbind_opt
-                of Some valbind =>
+                of SOME valbind =>
                      let
                        val (S, VE, vb) =
                          elab_valbind((S2 oo S1 oo S0) onC C, valbind)
                      in
-                       (S, VE, Some vb)
+                       (S, VE, SOME vb)
                      end
 
-                 | None =>
-                     (Substitution.Id, VE.empty, None)
+                 | NONE =>
+                     (Substitution.Id, VE.empty, NONE)
             val intdom = EqSet.intersect (VE.dom VE) (VE.dom VE')
           in 
             if EqSet.isEmpty intdom then
@@ -1119,11 +1132,11 @@ old*)
             else
               (S3, VE',
                OG.PLAINvalbind((case ElabInfo.to_ErrorInfo i' of
-                                  None => 
+                                  NONE => 
                                    ElabInfo.plus_ErrorInfo i' 
                                     (ErrorInfo.REPEATED_IDS 
                                      (map ErrorInfo.ID_RID (EqSet.list intdom)))
-                                | Some _ => i'),
+                                | SOME _ => i'),
                                out_pat, out_exp, valbind_opt'))
           end
                                                                 (*rule 26*)
@@ -1138,7 +1151,7 @@ old*)
 
             fun processID(i, VE, VE', id): Substitution * ElabInfo =
                   (case (VE.lookup VE id, VE.lookup VE' id) of
-		     (Some (VE.LONGVAR sigma1), Some (VE.LONGVAR sigma2)) =>
+		     (SOME (VE.LONGVAR sigma1), SOME (VE.LONGVAR sigma2)) =>
 		       let val (_, tau1) = TypeScheme.to_TyVars_and_Type sigma1
 			   val (_, tau2) = TypeScheme.to_TyVars_and_Type sigma2
 		       in (case Type.unify(tau1, tau2) of
@@ -1164,11 +1177,11 @@ old*)
                      let val (S, pat') = traverseRecPat(VE, VE', pat)
                          val (S', vb_opt') =
 			   case vb_opt
-			     of Some vb =>
+			     of SOME vb =>
                                 let val (S', vb') = traverseRecValbind (S onVE VE, S onVE VE', vb)
-                                in (S' oo S, Some vb')
+                                in (S' oo S, SOME vb')
                                 end
-			      | None => (S, None)
+			      | NONE => (S, NONE)
                      in (S', OG.PLAINvalbind(i, pat', exp, vb_opt'))
                      end
 
@@ -1221,8 +1234,8 @@ old*)
 
                  | OG.LONGIDatpat(i, longid_op as OG.OP_OPT(longid, withOp)) =>
 		     (case C.lookup_longid C longid of
-			Some (VE.LONGCON _) => (Substitution.Id, atpat)
-		      | Some (VE.LONGEXCON _) => (Substitution.Id, atpat)
+			SOME (VE.LONGCON _) => (Substitution.Id, atpat)
+		      | SOME (VE.LONGEXCON _) => (Substitution.Id, atpat)
 		      | _ => (case Ident.decompose longid of
 				([], id) =>
 				  let val (S, i') = processID(i, VE, VE', id)
@@ -1232,13 +1245,13 @@ old*)
 
                  | OG.RECORDatpat(i, patrowOpt) =>
                      (case patrowOpt of 
-                        None => (Substitution.Id,atpat)
-                      | Some patrow => 
+                        NONE => (Substitution.Id,atpat)
+                      | SOME patrow => 
                           let 
                             val (S, patrow') =
                               traverseRecPatrow (VE, VE', patrow)
                           in
-                            (S, OG.RECORDatpat(i, Some patrow'))
+                            (S, OG.RECORDatpat(i, SOME patrow'))
                           end)
 
                  | OG.PARatpat(i, pat) =>
@@ -1256,12 +1269,12 @@ old*)
                     val (S, pat') = traverseRecPat(VE, VE', pat)
                     val (S', patrowOpt') =
                       (case patrowOpt of 
-                        None => (Substitution.Id, None)
-                      | Some patrow => 
+                        NONE => (Substitution.Id, NONE)
+                      | SOME patrow => 
                           let 
                             val (S'', patrow') = traverseRecPatrow(VE, VE', patrow)
                           in
-                            (S'', Some patrow')
+                            (S'', SOME patrow')
                           end)
                   in
                     (S' oo S, OG.PATROW(i, l, pat', patrowOpt'))
@@ -1308,7 +1321,7 @@ old*)
 	    if !Flags.DEBUG_ELABDEC then
 	      pr ("RECvalbind: ", PP.NODE {start="{", finish="}", indent=0,
 					   children=[VE.layout VE''],
-					   childsep=PP.NONE})
+					   childsep=PP.NOSEP})
 	    else () ;
 	    (S' oo S, VE'', OG.RECvalbind (out_i, valbind''))
           end
@@ -1330,7 +1343,7 @@ old*)
 	      (IG.getExplicitTyVarsTy ty)
 
 	  in case elab_ty(C, ty)
-	       of (Some tau, out_ty) =>
+	       of (SOME tau, out_ty) =>
 		 let val _ = Level.pop()
 		     val typeFcn = TypeFcn.from_TyVars_and_Type (TyVars, tau)
 		     val tystr = TyStr.from_theta_and_VE(typeFcn, VE.empty)
@@ -1353,27 +1366,27 @@ old*)
 			 (TE.plus (TE.singleton(tycon, tystr), TE),
 			  OG.TYPBIND(okConv i, ExplicitTyVars, tycon, out_ty, out_typbind_opt))
 		 end
-		| (None, out_ty) =>
+		| (NONE, out_ty) =>
 		 let val _ = Level.pop()
 		     val (TE, out_typbind_opt) = elab_typbind_opt(C, typbind_opt)
 		 in (TE, OG.TYPBIND(okConv i, ExplicitTyVars, tycon, out_ty, out_typbind_opt))
 		 end
 	  end
 
-    and elab_typbind_opt (C : Context, typbind_opt : IG.typbind Option)
-      : (TyEnv * OG.typbind Option) =
+    and elab_typbind_opt (C : Context, typbind_opt : IG.typbind option)
+      : (TyEnv * OG.typbind option) =
 
       case typbind_opt of
 
-        Some(typbind) =>
+        SOME(typbind) =>
           let
             val (TE, out_typbind) = elab_typbind(C, typbind)
           in
-            (TE, Some out_typbind)
+            (TE, SOME out_typbind)
           end
 
-      | None =>
-          (TE.empty, None)
+      | NONE =>
+          (TE.empty, NONE)
 
     (******* datatype bindings *******)
 
@@ -1394,13 +1407,13 @@ old*)
                 (IG.getExplicitTyVarsConbind conbind)
             val (typeFcn, _) = 
 	      case C.lookup_tycon C tycon of
-                Some(tystr) => TyStr.to_theta_and_VE(tystr)
-              | None => impossible "datbind(1)"
+                SOME(tystr) => TyStr.to_theta_and_VE(tystr)
+              | NONE => impossible "datbind(1)"
 
             val tyname =
               case TypeFcn.to_TyName typeFcn of
-                Some(tyname) => tyname
-              | None => impossible "datbind(2)"
+                SOME(tyname) => tyname
+              | NONE => impossible "datbind(2)"
 
             val tau_list =
               map Type.from_TyVar TyVars
@@ -1435,8 +1448,9 @@ old*)
 		      @ (if EqSet.member tycon (TE.dom TE')
 			 then [ErrorInfo.TYCON_RID tycon] else [])
 		    in
-		      if repeated_ids_errorinfos = [] then okConv i
-		      else repeatedIdsError (i, repeated_ids_errorinfos)
+		      case repeated_ids_errorinfos
+			of [] => okConv i
+		         | _ => repeatedIdsError (i, repeated_ids_errorinfos)
 		    end 
           in
 	    ( (VE.plus  (VE_closed, VE'),
@@ -1445,20 +1459,20 @@ old*)
 			 out_conbind, out_datbind_opt) )
           end
 
-    and elab_datbind_opt (C : Context, datbind_opt : IG.datbind Option)
-      : ((VarEnv * TyEnv) * OG.datbind Option) =
+    and elab_datbind_opt (C : Context, datbind_opt : IG.datbind option)
+      : ((VarEnv * TyEnv) * OG.datbind option) =
 
       case datbind_opt of
 
-        Some(datbind) =>
+        SOME(datbind) =>
           let
             val ((VE, TE), out_datbind) = elab_datbind(C, datbind)
           in
-            ((VE, TE), Some out_datbind)
+            ((VE, TE), SOME out_datbind)
           end
 
-       | None =>
-          ((VE.empty, TE.empty), None)
+       | NONE =>
+          ((VE.empty, TE.empty), NONE)
 
     (****** constructor bindings *****)
 
@@ -1476,25 +1490,25 @@ old*)
       case conbind of
 
         (* Constructor binding *)                               (*rule 29*)
-        IG.CONBIND(i, IG.OP_OPT(con, withOp), Some ty, conbind_opt) =>
+        IG.CONBIND(i, IG.OP_OPT(con, withOp), SOME ty, conbind_opt) =>
 	  let val (constructor_map, out_conbind_opt) = elab_conbind_opt (C, tau, conbind_opt)
 	      fun result out_ty = OG.CONBIND (out_i_for_conbind con constructor_map i,
 					      OG.OP_OPT (con, withOp),
-					      Some out_ty, out_conbind_opt)
+					      SOME out_ty, out_conbind_opt)
 	  in case elab_ty (C, ty)
-	       of (Some tau', out_ty) =>
+	       of (SOME tau', out_ty) =>
 		 let val arrow = TypeScheme.from_Type (Type.mk_Arrow (tau', tau))
 		 in (constructor_map.add con arrow constructor_map, result out_ty)
 		 end
-		| (None, out_ty) => (constructor_map, result out_ty)
+		| (NONE, out_ty) => (constructor_map, result out_ty)
 	  end
 
-      | IG.CONBIND(i, IG.OP_OPT(con, withOp), None, conbind_opt) =>
+      | IG.CONBIND(i, IG.OP_OPT(con, withOp), NONE, conbind_opt) =>
           let val (constructor_map, out_conbind_opt) = elab_conbind_opt (C, tau, conbind_opt)
           in
 	    (constructor_map.add con (TypeScheme.from_Type tau) constructor_map,
 	     OG.CONBIND (out_i_for_conbind con constructor_map i, 
-			 OG.OP_OPT(con, withOp), None, out_conbind_opt))
+			 OG.OP_OPT(con, withOp), NONE, out_conbind_opt))
           end
 
     and out_i_for_conbind con constructor_map i = 
@@ -1505,17 +1519,17 @@ old*)
 	  else if IG.is_'it' con then errorConv (i, ErrorInfo.REBINDING_IT)
 	  else okConv i
 
-    and elab_conbind_opt (C : Context, tau : Type, conbind_opt : IG.conbind Option)
-      : (constructor_map * OG.conbind Option) =
+    and elab_conbind_opt (C : Context, tau : Type, conbind_opt : IG.conbind option)
+      : (constructor_map * OG.conbind option) =
 
       case conbind_opt 
 
-	of Some conbind =>
+	of SOME conbind =>
           let val (constructor_map, out_conbind) = elab_conbind (C, tau, conbind)
-          in (constructor_map, Some out_conbind)
+          in (constructor_map, SOME out_conbind)
           end
 
-	 | None => (constructor_map.empty, None)
+	 | NONE => (constructor_map.empty, NONE)
 
     (****** exception bindings *****)
 
@@ -1525,42 +1539,42 @@ old*)
       case exbind of
 
         (* Exception binding *)                                 (*rule 30*)
-        IG.EXBIND(i, IG.OP_OPT(excon, withOp), Some ty, rest) =>
+        IG.EXBIND(i, IG.OP_OPT(excon, withOp), SOME ty, rest) =>
 	  let val (VE_rest, out_rest) = elab_exbind_opt (C, rest)
 	  in case elab_ty (C, ty)
-	       of (Some tau, out_ty) =>
+	       of (SOME tau, out_ty) =>
 		 let val exnTy = Type.mk_Arrow (tau, Type.Exn)
 	  	     val VE_this = VE.singleton_excon (excon, exnTy)
 		 in 
 		   (VE.plus  (VE_this, VE_rest),
-		    OG.EXBIND (out_i_for_exbind excon VE_rest i (Some tau), 
-			       OG.OP_OPT(excon, withOp), Some out_ty, out_rest))
+		    OG.EXBIND (out_i_for_exbind excon VE_rest i (SOME tau), 
+			       OG.OP_OPT(excon, withOp), SOME out_ty, out_rest))
 		 end
-		| (None, out_ty) => 
-		 (VE_rest, OG.EXBIND(okConv i, OG.OP_OPT(excon, withOp), Some out_ty, out_rest))
+		| (NONE, out_ty) => 
+		 (VE_rest, OG.EXBIND(okConv i, OG.OP_OPT(excon, withOp), SOME out_ty, out_rest))
 	  end
 
-      | IG.EXBIND(i, IG.OP_OPT(excon, withOp), None, rest) =>
+      | IG.EXBIND(i, IG.OP_OPT(excon, withOp), NONE, rest) =>
           let
             val VE_this = VE.singleton_excon (excon, Type.Exn)
             val (VE_rest, out_rest) = elab_exbind_opt (C, rest)
           in
 	    (VE.plus  (VE_this, VE_rest),
-	     OG.EXBIND (out_i_for_exbind excon VE_rest i None, 
-		        OG.OP_OPT(excon, withOp), None, out_rest))
+	     OG.EXBIND (out_i_for_exbind excon VE_rest i NONE, 
+		        OG.OP_OPT(excon, withOp), NONE, out_rest))
           end
 
         (* Exception binding *)                                 (*rule 31*)
       | IG.EXEQUAL(i, IG.OP_OPT(excon, exconOp),
                       IG.OP_OPT(longid, longidOp), rest) =>
           (case C.lookup_longid C longid of
-             Some (VE.LONGEXCON tau) =>
+             SOME (VE.LONGEXCON tau) =>
                let
                  val VE_this = VE.singleton_excon (excon, tau)
                  val (VE_rest, out_rest) = elab_exbind_opt (C, rest)
                in 
 		 (VE.plus  (VE_this, VE_rest),
-		  OG.EXEQUAL (out_i_for_exbind excon VE_rest i None,
+		  OG.EXEQUAL (out_i_for_exbind excon VE_rest i NONE,
 			      OG.OP_OPT(excon, exconOp),
 			      OG.OP_OPT(longid, longidOp), out_rest))
                end
@@ -1582,13 +1596,13 @@ old*)
 		    then errorConv (i, ErrorInfo.REBINDING_IT)
 		    else addTypeInfo_EXBIND (okConv i, tau_opt)
 
-    and elab_exbind_opt (C, Some exbind) =
+    and elab_exbind_opt (C, SOME exbind) =
           let val (VE, out_exbind) = elab_exbind (C, exbind)
           in
-            (VE, Some out_exbind)
+            (VE, SOME out_exbind)
           end
 
-      | elab_exbind_opt(C, None) = (VE.empty, None)
+      | elab_exbind_opt(C, NONE) = (VE.empty, NONE)
 
     (****** atomic patterns ******)
 
@@ -1612,12 +1626,12 @@ old*)
           (* Long identifier *)                                 (*rule 34*)
         | IG.LONGIDatpat(i, IG.OP_OPT(longid, withOp)) =>
             (case C.lookup_longid C longid of
-	       Some(VE.LONGCON sigma) =>          (* rule 36 *)
+	       SOME(VE.LONGCON sigma) =>          (* rule 36 *)
                     let
                       fun isConsType tau =
                             (case Type.to_ConsType tau of
-			       Some _ => true
-			     | None => false)
+			       SOME _ => true
+			     | NONE => false)
 
                       val (tau,instances) = (TypeScheme.instance'' sigma)
 			handle TypeScheme.InstanceError s =>
@@ -1644,7 +1658,7 @@ old*)
 				      OG.OP_OPT(longid, withOp)))
                     end
 
-                | Some(VE.LONGEXCON tau) =>
+                | SOME(VE.LONGEXCON tau) =>
                     let
                       val exnType = Type.Exn
                       val (_, i') = UnifyWithTexts
@@ -1685,12 +1699,12 @@ old*)
             )
 
           (* Record pattern *)                                  (*rule 36*)
-        | IG.RECORDatpat(i, row_opt as None) =>
+        | IG.RECORDatpat(i, row_opt as NONE) =>
             (Substitution.Id,
              (VE.empty, Type.Unit),
-              OG.RECORDatpat(okConv i, None))
+              OG.RECORDatpat(okConv i, NONE))
 
-        | IG.RECORDatpat(i, row_opt as Some patrow) =>
+        | IG.RECORDatpat(i, row_opt as SOME patrow) =>
             let
               val (S, (VE, rho), out_patrow) = elab_patrow(C, patrow)
             in
@@ -1698,7 +1712,7 @@ old*)
                (VE,Type.from_RecType rho),
                 OG.RECORDatpat(addTypeInfo_RECORD_ATPAT(okConv i, 
                                                         Type.from_RecType rho),
-		               Some(addLabelInfo(rho, out_patrow)))) 
+		               SOME(addLabelInfo(rho, out_patrow)))) 
             end
 
           (* Parenthesised pattern *)                           (*rule 37*)
@@ -1713,16 +1727,16 @@ old*)
       case patrow of
 
            (* Pattern row *)                                    (*rule 39*)
-           IG.PATROW(i, lab, pat, None) =>
+           IG.PATROW(i, lab, pat, NONE) =>
              let
                val (S, (VE, tau), out_pat) = elab_pat(C, pat)
              in
                (S, (VE, Type.RecType.add_field (lab, tau) Type.RecType.empty),
-                OG.PATROW(okConv i, lab, out_pat, None)
+                OG.PATROW(okConv i, lab, out_pat, NONE)
                )
              end
 
-         | IG.PATROW(i, lab, pat, Some patrow) =>
+         | IG.PATROW(i, lab, pat, SOME patrow) =>
              let
                val (S, (VE, tau), out_pat) = elab_pat(C, pat)
                val (S', (VE', rho), out_patrow) = elab_patrow(C, patrow)
@@ -1733,25 +1747,25 @@ old*)
                  (true, false) =>
                    (S' oo S,
                     (VE.plus (VE, VE'), Type.RecType.add_field (lab, tau) rho
-                     ), OG.PATROW(okConv i, lab, out_pat, Some out_patrow))
+                     ), OG.PATROW(okConv i, lab, out_pat, SOME out_patrow))
                | (true, true) => 
                    (Substitution.bogus,
                     (VE', rho),
                     OG.PATROW(repeatedIdsError(i,[ErrorInfo.LAB_RID lab]),
-                              lab, out_pat, Some out_patrow))
+                              lab, out_pat, SOME out_patrow))
                | (false, false) =>
                    (Substitution.bogus,
                     (VE', Type.RecType.add_field (lab, tau) rho),
                     OG.PATROW(repeatedIdsError(i, 
                                   map ErrorInfo.ID_RID (EqSet.list intdom)),
-                              lab, out_pat, Some out_patrow))
+                              lab, out_pat, SOME out_patrow))
                | (false, true) => 
                    (Substitution.bogus,
                     (VE', rho),
                     OG.PATROW(repeatedIdsError(i, 
                                (map ErrorInfo.ID_RID (EqSet.list intdom)) @
                                [ErrorInfo.LAB_RID lab]),
-                              lab, out_pat, Some out_patrow))
+                              lab, out_pat, SOME out_patrow))
              end
 
         | IG.DOTDOTDOT i => (* Flexible record treatment... *)  (*rule 38*)
@@ -1808,7 +1822,7 @@ old*)
             in
               case C.lookup_longid C longid of
 
-                Some(VE.LONGCON sigma) =>
+                SOME(VE.LONGCON sigma) =>
                   let
                     val new = Type.fresh_normal ()
                     val arrow = Type.mk_Arrow(tau', new) 
@@ -1838,7 +1852,7 @@ old*)
                     )
                   end
 
-              | Some(VE.LONGEXCON tau) =>
+              | SOME(VE.LONGEXCON tau) =>
                   let
                     val arrow = Type.mk_Arrow(tau',Type.Exn)
                     val (S1, i') = UnifyWithTexts("argument to long \
@@ -1869,17 +1883,17 @@ old*)
         | IG.TYPEDpat(i, pat, ty) =>
             let val (S, (VE,tau), out_pat) = elab_pat(C, pat)
 	    in case elab_ty(C, ty)
-		 of (Some tau', out_ty) =>
+		 of (SOME tau', out_ty) =>
 		   let val (S', i') = UnifyWithTexts("pattern has type", tau, "which conflicts \
 		                                     \with your type constraint", tau', i)
 		       val S'' = S' oo S
 		   in (S'', (S'' onVE VE, S'' on tau), OG.TYPEDpat(i', out_pat, out_ty))
 		   end
-                  | (None, out_ty) => (S, (VE, tau), OG.TYPEDpat(okConv i, out_pat, out_ty))
+                  | (NONE, out_ty) => (S, (VE, tau), OG.TYPEDpat(okConv i, out_pat, out_ty))
 	    end
 
           (* Layered pattern *)                                 (*rule 43*)
-        | IG.LAYEREDpat(i, IG.OP_OPT(id, withOp), None, pat) =>
+        | IG.LAYEREDpat(i, IG.OP_OPT(id, withOp), NONE, pat) =>
             let
               val (S, (VE1, tau), out_pat) = elab_pat(C, pat)
               val VE2 = VE.singleton_var(id, TypeScheme.from_Type tau)
@@ -1890,19 +1904,19 @@ old*)
                 (S, (VE3, tau), 
                  OG.LAYEREDpat(addTypeInfo_VAR_PAT(okConv i,tau), 
                                OG.OP_OPT(id, withOp),
-                               None, out_pat))
+                               NONE, out_pat))
               else
                 (S, (VE3, tau),
                  OG.LAYEREDpat(repeatedIdsError(i, map ErrorInfo.ID_RID 
                                                    (EqSet.list intdom)),
                                OG.OP_OPT(id, withOp),
-                               None, out_pat))
+                               NONE, out_pat))
             end
 
-        | IG.LAYEREDpat(i, IG.OP_OPT(id, withOp), Some ty, pat) =>
+        | IG.LAYEREDpat(i, IG.OP_OPT(id, withOp), SOME ty, pat) =>
             let val (S, (VE1, tau), out_pat) = elab_pat(C, pat)
 	    in case elab_ty(C, ty)
-		 of (Some tau', out_ty) =>
+		 of (SOME tau', out_ty) =>
 		   let val (S', i') = UnifyWithTexts("pattern has type", tau, 
 						     "which conflicts with your constraint", tau', i)
 		       val i' = addTypeInfo_VAR_PAT(i', tau') (*added, mads*)
@@ -1914,17 +1928,17 @@ old*)
 		     if EqSet.isEmpty intdom then
 		       (S'',
 			(S'' onVE VE3, S'' on tau),
-			OG.LAYEREDpat(i', OG.OP_OPT(id, withOp), Some out_ty, out_pat)
+			OG.LAYEREDpat(i', OG.OP_OPT(id, withOp), SOME out_ty, out_pat)
 			)
 		     else
 		       (S'', 
 			(S'' onVE VE3, S'' on tau),
 			OG.LAYEREDpat(repeatedIdsError(i, map ErrorInfo.ID_RID (EqSet.list intdom)),
-				      OG.OP_OPT(id, withOp), Some out_ty, out_pat)
+				      OG.OP_OPT(id, withOp), SOME out_ty, out_pat)
 			)
 		   end
-		  | (None, out_ty) => 
-		   (S, (VE1, tau), OG.LAYEREDpat(okConv i, OG.OP_OPT(id, withOp), Some out_ty, out_pat))
+		  | (NONE, out_ty) => 
+		   (S, (VE1, tau), OG.LAYEREDpat(okConv i, OG.OP_OPT(id, withOp), SOME out_ty, out_pat))
 	    end
 
         | IG.UNRES_INFIXpat _ =>
@@ -1932,32 +1946,32 @@ old*)
 
     (****** types  ******)
 
-		(* elab_ty returns `None' if an error occurred when elborating the
+		(* elab_ty returns `NONE' if an error occurred when elborating the
 		 * type expression. The reason we do things this way is that
 		 * errors are dealt with in two different ways depending on the
 		 * construct the type expression is part of. *)
 
 
-    and elab_ty (C : Context, ty : IG.ty) : (Type Option * OG.ty) =
+    and elab_ty (C : Context, ty : IG.ty) : (Type option * OG.ty) =
 
         case ty of
 
           (* Explicit type variable *)                          (*rule 44*)
           IG.TYVARty(i, ExplicitTyVar) =>
-	    let val ty_opt = Some (Type.from_TyVar' 
+	    let val ty_opt = SOME (Type.from_TyVar' 
 				   (C.ExplicitTyVarEnv_lookup (C.to_U' C) ExplicitTyVar)
 				   (TyVar.from_ExplicitTyVar ExplicitTyVar))
 	    in (ty_opt, OG.TYVARty(okConv i, ExplicitTyVar))
 	    end
 
           (* Record type *)                                     (*rule 45*)
-        | IG.RECORDty(i, None) =>  (Some Type.Unit, OG.RECORDty (okConv i, None))
+        | IG.RECORDty(i, NONE) =>  (SOME Type.Unit, OG.RECORDty (okConv i, NONE))
 
           (* Record type *)
-        | IG.RECORDty(i, Some tyrow) =>  (* The error has already been reported. *)
+        | IG.RECORDty(i, SOME tyrow) =>  (* The error has already been reported. *)
 	   (case elab_tyrow(C, tyrow)
-	      of (Some rho, out_tyrow) => (Some (Type.from_RecType rho), OG.RECORDty(okConv i, Some out_tyrow))
-	       | (None, out_tyrow) => (None, OG.RECORDty(okConv i, Some out_tyrow)))
+	      of (SOME rho, out_tyrow) => (SOME (Type.from_RecType rho), OG.RECORDty(okConv i, SOME out_tyrow))
+	       | (NONE, out_tyrow) => (NONE, OG.RECORDty(okConv i, SOME out_tyrow)))
 
 
         (* Constructed type *)                                  (*rule 46*)
@@ -1966,14 +1980,14 @@ old*)
               val res_list = map (fn ty => elab_ty (C, ty)) ty_list
               val tau_opt_list = map #1 res_list
               val out_ty_list = map #2 res_list
-	      fun unopt_list ([],a) = Some (rev a)
-		| unopt_list (None::rest,a) = None
-		| unopt_list (Some tau::rest, a) = unopt_list (rest, tau::a)
+	      fun unopt_list ([],a) = SOME (rev a)
+		| unopt_list (NONE::rest,a) = NONE
+		| unopt_list (SOME tau::rest, a) = unopt_list (rest, tau::a)
             in
 	      case unopt_list (tau_opt_list, [])
-		of Some tau_list =>
+		of SOME tau_list =>
 		  (case C.lookup_longtycon C longtycon of
-		     Some tystr =>
+		     SOME tystr =>
 		       let
 			 val (typeFcn, _) = TyStr.to_theta_and_VE tystr
 			 val expectedArity = TypeFcn.arity typeFcn
@@ -1981,7 +1995,7 @@ old*)
 			 val _ = debug_pr_msg "elab_ty(CONty)"
 		       in
 			 if expectedArity = actualArity then
-			   (Some(TypeFcn.apply (typeFcn, tau_list)),
+			   (SOME(TypeFcn.apply (typeFcn, tau_list)),
 			    OG.CONty (okConv i, out_ty_list, longtycon))
 			   handle TypeScheme.InstanceError s => 
 			     (print ("InstanceError." ^ s ^"\n");
@@ -1990,22 +2004,22 @@ old*)
 			      raise TypeScheme.InstanceError (s ^ "[elab_ty]"))
 			     
 			 else
-			   (None,
+			   (NONE,
 			    OG.CONty (errorConv (i, ErrorInfo.WRONG_ARITY
 					         {expected=expectedArity,
 						  actual=actualArity}),
 				      out_ty_list, longtycon))
 		       end
-		   | None => (None, OG.CONty(lookupTyConError(i, longtycon), out_ty_list, longtycon)))
-		 | None => (None, OG.CONty(okConv i, out_ty_list, longtycon))  
+		   | NONE => (NONE, OG.CONty(lookupTyConError(i, longtycon), out_ty_list, longtycon)))
+		 | NONE => (NONE, OG.CONty(okConv i, out_ty_list, longtycon))  
             end
 
           (* Function type *)                                   (*rule 47*)
         | IG.FNty(i, ty, ty') =>
             (case (elab_ty(C, ty ), elab_ty(C, ty'))
-	       of ((Some tau, out_ty), (Some tau', out_ty')) =>
-		 (Some (Type.mk_Arrow (tau, tau')), OG.FNty(okConv i, out_ty, out_ty'))
-		| ((_, out_ty), (_, out_ty')) => (None, OG.FNty(okConv i, out_ty, out_ty')))
+	       of ((SOME tau, out_ty), (SOME tau', out_ty')) =>
+		 (SOME (Type.mk_Arrow (tau, tau')), OG.FNty(okConv i, out_ty, out_ty'))
+		| ((_, out_ty), (_, out_ty')) => (NONE, OG.FNty(okConv i, out_ty, out_ty')))
 
           (* Parenthesised type *)                              (*rule 48*)
         | IG.PARty(i, ty) =>
@@ -2016,28 +2030,28 @@ old*)
 
     (****** type rows ******)
 
-    and elab_tyrow (C : Context, IG.TYROW(i, lab, ty, tyrow_opt)) : (RecType Option * OG.tyrow) =
+    and elab_tyrow (C : Context, IG.TYROW(i, lab, ty, tyrow_opt)) : (RecType option * OG.tyrow) =
       case (elab_ty(C, ty), elab_tyrow_opt(C, tyrow_opt))
-	of ((Some tau, out_ty), (Some rho', out_tyrow_opt)) => 
+	of ((SOME tau, out_ty), (SOME rho', out_tyrow_opt)) => 
 	  let
 	    val (rho, i') = 
 	      if (List.member lab (Type.RecType.sorted_labs rho')) then
 		(rho', repeatedIdsError(i, [ErrorInfo.LAB_RID lab]))
 	      else (Type.RecType.add_field (lab,tau) rho', okConv i)
-	  in (Some rho, OG.TYROW(i', lab, out_ty, out_tyrow_opt))
+	  in (SOME rho, OG.TYROW(i', lab, out_ty, out_tyrow_opt))
 	  end
 
-	 | ((None, out_ty), (Some rho', out_tyrow_opt)) =>
-	  (Some rho', OG.TYROW(okConv i, lab, out_ty, out_tyrow_opt))
+	 | ((NONE, out_ty), (SOME rho', out_tyrow_opt)) =>
+	  (SOME rho', OG.TYROW(okConv i, lab, out_ty, out_tyrow_opt))
 
 	 | ((_, out_ty), (_, out_tyrow_opt)) => 
-	  (None, OG.TYROW(okConv i, lab, out_ty, out_tyrow_opt))
+	  (NONE, OG.TYROW(okConv i, lab, out_ty, out_tyrow_opt))
           
-      and elab_tyrow_opt(C, None) = (Some Type.RecType.empty, None)
-	| elab_tyrow_opt(C, Some tyrow) =
+      and elab_tyrow_opt(C, NONE) = (SOME Type.RecType.empty, NONE)
+	| elab_tyrow_opt(C, SOME tyrow) =
 	case elab_tyrow(C, tyrow)
-	  of (Some rho, out_tyrow) => (Some rho, Some out_tyrow)
-	   | (None, out_tyrow) => (None, Some out_tyrow)
+	  of (SOME rho, out_tyrow) => (SOME rho, SOME out_tyrow)
+	   | (NONE, out_tyrow) => (NONE, SOME out_tyrow)
 
 (**** Overloading resolution ****)  
 
@@ -2074,7 +2088,7 @@ let
 	     pr("res:  S on tv yields type: ", Type.layout tau'))
 	  else ();
 	  (case Type.to_TyVar tau' of
-	     None => (tau_to_overloadinginfo tau'
+	     NONE => (tau_to_overloadinginfo tau'
 		      handle List.First _ => OverloadingInfo.RESOLVED_INT)
 		 (*TODO 25/06/1997 10:11. tho.
 		  can raise List.First _ occur?  I'd rather do an impossible
@@ -2086,7 +2100,7 @@ let
 		  not do an impossible.  The only thing to do is then to
 		  return RESOLVED_INT, as unresolved overloading should not
 		  result in an error message.*)
-	   | Some tv' =>
+	   | SOME tv' =>
 	       if Type.eq (tau', tau)
 	       then (*tau' is a tyvar, so the overloading is as yet
 		     unresolved, & according to the Definition of SML '97, it
@@ -2094,7 +2108,7 @@ let
 		     to put this resolve into work by unifying the tyvar with
 		     int:*)
 		    (if !Flags.DEBUG_ELABDEC
-		     then output (std_out, "res: Some tv\n") else () ;
+		     then TextIO.output (TextIO.stdOut, "res: SOME tv\n") else () ;
 		     (case Type.unify (Type.Int, tau') of
 			Type.UnifyOk => ()
 		      | _ => impossible "resolve_tau: unify") ;
@@ -2162,9 +2176,9 @@ let
 		      instances= map (fn tau => S on_repeated tau) instances}
       | S on_TypeInfo (EXCON_INFO {Type,longid}) = 
 	    EXCON_INFO {Type=S on_repeated Type,longid=longid}
-      | S on_TypeInfo (EXBIND_INFO {TypeOpt=None}) = EXBIND_INFO {TypeOpt=None}
-      | S on_TypeInfo (EXBIND_INFO {TypeOpt=Some Type}) = 
-	    EXBIND_INFO {TypeOpt=Some (S on_repeated Type)}   
+      | S on_TypeInfo (EXBIND_INFO {TypeOpt=NONE}) = EXBIND_INFO {TypeOpt=NONE}
+      | S on_TypeInfo (EXBIND_INFO {TypeOpt=SOME Type}) = 
+	    EXBIND_INFO {TypeOpt=SOME (S on_repeated Type)}   
       | S on_TypeInfo (TYENV_INFO TE) = TYENV_INFO TE                  (*no free tyvars here*)
       | S on_TypeInfo (ABSTYPE_INFO (TE,rea)) = ABSTYPE_INFO (TE,rea)  (*no free tyvars here*)
       | S on_TypeInfo (EXP_INFO {Type}) = 
@@ -2186,9 +2200,9 @@ let
   in
     fun resolve_i ElabInfo =
           (case ElabInfo.to_TypeInfo ElabInfo of
-	     Some typeinfo =>
+	     SOME typeinfo =>
 	       ElabInfo.plus_TypeInfo ElabInfo (S on_TypeInfo typeinfo)
-	   | None => ElabInfo)
+	   | NONE => ElabInfo)
 
   end (*local open TypeInfo ...*)
 
@@ -2203,15 +2217,15 @@ let
           SCONatexp _ => atexp
         | IDENTatexp(i, op_opt) =>
               (case ElabInfo.to_OverloadingInfo i of 
-                   None => IDENTatexp (resolve_i i, op_opt)
-                 | Some (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
+                   NONE => IDENTatexp (resolve_i i, op_opt)
+                 | SOME (OverloadingInfo.UNRESOLVED_IDENT tyvar) =>
 		     IDENTatexp
 		       (ElabInfo.plus_OverloadingInfo i (resolve_tyvar tyvar), 
 			op_opt)
-                 | Some _ => impossible "resolve_atexp")
-        | RECORDatexp(i, None) => RECORDatexp(resolve_i i,None)
-        | RECORDatexp(i, Some exprow) =>
-              RECORDatexp(resolve_i i, Some (resolve_exprow exprow))
+                 | SOME _ => impossible "resolve_atexp")
+        | RECORDatexp(i, NONE) => RECORDatexp(resolve_i i,NONE)
+        | RECORDatexp(i, SOME exprow) =>
+              RECORDatexp(resolve_i i, SOME (resolve_exprow exprow))
         | LETatexp(i, dec, exp) =>
               LETatexp(resolve_i i, resolve_dec dec, resolve_exp exp)
         | PARatexp(i, exp) =>
@@ -2219,10 +2233,10 @@ let
               
   and resolve_exprow (exprow: exprow) : exprow =
       case exprow of 
-          EXPROW(i, l, exp, None) =>
-              EXPROW(resolve_i i, l, resolve_exp exp, None)
-        | EXPROW(i, l, exp, Some exprow) =>
-              EXPROW(resolve_i i, l, resolve_exp exp, Some (resolve_exprow exprow))
+          EXPROW(i, l, exp, NONE) =>
+              EXPROW(resolve_i i, l, resolve_exp exp, NONE)
+        | EXPROW(i, l, exp, SOME exprow) =>
+              EXPROW(resolve_i i, l, resolve_exp exp, SOME (resolve_exprow exprow))
               
   and resolve_exp (exp: exp) : exp =
       case exp of
@@ -2243,10 +2257,10 @@ let
 
   and resolve_match (match: match) : match =
       case match of 
-          MATCH(i, mrule, None) => 
-              MATCH(resolve_i i, resolve_mrule mrule, None)
-        | MATCH(i, mrule, Some match) =>
-              MATCH(resolve_i i, resolve_mrule mrule, Some (resolve_match match))
+          MATCH(i, mrule, NONE) => 
+              MATCH(resolve_i i, resolve_mrule mrule, NONE)
+        | MATCH(i, mrule, SOME match) =>
+              MATCH(resolve_i i, resolve_mrule mrule, SOME (resolve_match match))
 
   and resolve_mrule (MRULE(i, pat, exp) : mrule) : mrule =
       MRULE(resolve_i i, resolve_pat pat, resolve_exp exp)
@@ -2275,11 +2289,11 @@ let
 
   and resolve_valbind (valbind : valbind) : valbind =
       case valbind of
-          PLAINvalbind(i, pat, exp, None) =>
-              PLAINvalbind(i, resolve_pat pat, resolve_exp exp, None)
-        | PLAINvalbind(i, pat, exp, Some valbind) =>
+          PLAINvalbind(i, pat, exp, NONE) =>
+              PLAINvalbind(i, resolve_pat pat, resolve_exp exp, NONE)
+        | PLAINvalbind(i, pat, exp, SOME valbind) =>
               PLAINvalbind(i, resolve_pat pat, 
-                           resolve_exp exp, Some (resolve_valbind valbind))
+                           resolve_exp exp, SOME (resolve_valbind valbind))
         | RECvalbind(i, valbind) =>
               RECvalbind(i, resolve_valbind valbind)
       
@@ -2288,23 +2302,23 @@ let
       WILDCARDatpat _ => atpat
     | SCONatpat _ => atpat
     | LONGIDatpat(i,x) => LONGIDatpat(resolve_i i,x)
-    | RECORDatpat(i, None) => RECORDatpat(resolve_i i,None)
-    | RECORDatpat(i, Some patrow) =>
+    | RECORDatpat(i, NONE) => RECORDatpat(resolve_i i,NONE)
+    | RECORDatpat(i, SOME patrow) =>
         let
           val i' = resolve_i i 
         in let  val patrow' = resolve_patrow patrow
            in
              case ElabInfo.to_TypeInfo i' of
-               Some typeinfo =>
+               SOME typeinfo =>
                  (case typeinfo of
                     TypeInfo.RECORD_ATPAT_INFO{Type} => 
                       (* Type has been resolved, c.f. i' *)
-                      RECORDatpat(i',Some (addLabelIndexInfo(Type,patrow')))
+                      RECORDatpat(i',SOME (addLabelIndexInfo(Type,patrow')))
                   | _ => impossible ("resolve_atpat(RECORDatpat): " ^ 
                                      "wrong typeinfo"))
-             | None => impossible ("resolve_atpat(RECORDatpat): " ^ 
+             | NONE => impossible ("resolve_atpat(RECORDatpat): " ^ 
                                    "no typeinfo")
-           end handle DDD_IS_EMPTY => RECORDatpat(i',None)
+           end handle DDD_IS_EMPTY => RECORDatpat(i',NONE)
         end
     | PARatpat(i, pat) =>
         PARatpat(resolve_i i, resolve_pat pat)
@@ -2313,27 +2327,27 @@ let
     case patrow of
       DOTDOTDOT(i) => 
         (case (ElabInfo.to_OverloadingInfo i) of 
-           None => patrow
-         | Some (OverloadingInfo.UNRESOLVED_DOTDOTDOT rho) =>
+           NONE => patrow
+         | SOME (OverloadingInfo.UNRESOLVED_DOTDOTDOT rho) =>
              (case flexrecres rho of
                 FLEX_RESOLVED => (* old: DOTDOTDOT (ElabInfo.remove_OverloadingInfo i)*)
                    (* expand "..." into a patrow with ordinary wildcards (_) *)
                    let val i0 = ElabInfo.from_ParseInfo(ElabInfo.to_ParseInfo i)
                        fun wild ty = ATPATpat(i0, WILDCARDatpat(ElabInfo.plus_TypeInfo i0 (TypeInfo.VAR_PAT_INFO{tyvars=[], Type= ty})))
                        val labs_and_types = Type.RecType.to_list rho
-                       fun f (lab,ty) acc = Some(PATROW(ElabInfo.plus_TypeInfo i0 (TypeInfo.LAB_INFO{index=0, tyvars = [], Type = ty}),lab, wild ty, acc))
-                   in case List.foldR f None labs_and_types of
-                        Some patrow' => patrow'
-                      | None => raise DDD_IS_EMPTY (* caller of resolve_patrow should replace Some(...) by None *)
+                       fun f (lab,ty) acc = SOME(PATROW(ElabInfo.plus_TypeInfo i0 (TypeInfo.LAB_INFO{index=0, tyvars = [], Type = ty}),lab, wild ty, acc))
+                   in case List.foldR f NONE labs_and_types of
+                        SOME patrow' => patrow'
+                      | NONE => raise DDD_IS_EMPTY (* caller of resolve_patrow should replace SOME(...) by NONE *)
                    end
               | FLEX_NOTRESOLVED =>
                   DOTDOTDOT(ElabInfo.plus_ErrorInfo i ErrorInfo.FLEX_REC_NOT_RESOLVED))
-         | Some _ => impossible "resolve_patrow")
-    | PATROW(i, lab, pat, None) => 
-        PATROW(resolve_i i, lab, resolve_pat pat, None)
-    | PATROW(i, lab, pat, Some patrow) =>
-        PATROW(resolve_i i, lab, resolve_pat pat, Some (resolve_patrow patrow)
-                                                  handle DDD_IS_EMPTY => None)
+         | SOME _ => impossible "resolve_patrow")
+    | PATROW(i, lab, pat, NONE) => 
+        PATROW(resolve_i i, lab, resolve_pat pat, NONE)
+    | PATROW(i, lab, pat, SOME patrow) =>
+        PATROW(resolve_i i, lab, resolve_pat pat, SOME (resolve_patrow patrow)
+                                                  handle DDD_IS_EMPTY => NONE)
 
   and resolve_pat (pat : pat) : pat =
     case pat of

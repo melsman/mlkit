@@ -45,20 +45,20 @@ functor OpacityElim(structure Crash : CRASH
      
     fun on_info(rea, elab_info) =
       case ElabInfo.to_TypeInfo elab_info
-	of Some type_info => ElabInfo.plus_TypeInfo elab_info (ElabInfo.TypeInfo.on_TypeInfo(rea,type_info))
-	 | None => elab_info          (* plus_TypeInfo is destructive as we want it to be.. *)
+	of SOME type_info => ElabInfo.plus_TypeInfo elab_info (ElabInfo.TypeInfo.on_TypeInfo(rea,type_info))
+	 | NONE => elab_info          (* plus_TypeInfo is destructive as we want it to be.. *)
 
-    fun normalise_opt_type_info None = None
-      | normalise_opt_type_info (Some ti) = Some (TypeInfo.normalise ti)
+    fun normalise_opt_type_info NONE = NONE
+      | normalise_opt_type_info (SOME ti) = SOME (TypeInfo.normalise ti)
 
-    fun elim_opt elim (rea, Some phrase) =
+    fun elim_opt elim (rea, SOME phrase) =
       let val (phrase', rea') = elim(rea,phrase)
-      in (Some phrase', rea')
+      in (SOME phrase', rea')
       end
-      | elim_opt elim (rea, None) = (None, empty) 
+      | elim_opt elim (rea, NONE) = (NONE, empty) 
 
-    fun elim_opt' elim (rea, Some phrase) = Some(elim(rea,phrase))
-      | elim_opt' elim (rea, None) = None
+    fun elim_opt' elim (rea, SOME phrase) = SOME(elim(rea,phrase))
+      | elim_opt' elim (rea, NONE) = NONE
 
 		     (* ------- *)
 		     (*  Core   *)
@@ -170,7 +170,7 @@ functor OpacityElim(structure Crash : CRASH
 	       val i' = on_info(rea,i)
 	       val dummyinfo = i
 	       val (TE,rea'') = case normalise_opt_type_info(ElabInfo.to_TypeInfo i')
-				  of Some(TypeInfo.ABSTYPE_INFO (TE,rea)) => (TE,rea)
+				  of SOME(TypeInfo.ABSTYPE_INFO (TE,rea)) => (TE,rea)
 				   | _ => die "elim_dec.ABSTYPE.no tyenv info"
 	       val datatypedecinfo = ElabInfo.plus_TypeInfo dummyinfo (TypeInfo.TYENV_INFO TE) 
 	       val (TE',typbindopt) = TE.Fold (fn (tycon,tystr) => fn (TE,typbindopt) =>
@@ -181,11 +181,11 @@ functor OpacityElim(structure Crash : CRASH
 						   val longtycon = TyCon.implode_LongTyCon([],tycon)
 						   val ty = CONty(dummyinfo,[],longtycon)
 						   val typbind = TYPBIND(dummyinfo,tyvars,tycon,ty,typbindopt)
-					       in (TE.plus(TE.singleton(tycon,tystr'), TE), Some(typbind))
-					       end) (TE.empty,None) TE
+					       in (TE.plus(TE.singleton(tycon,tystr'), TE), SOME(typbind))
+					       end) (TE.empty,NONE) TE
 	       val typbind = case typbindopt
-			       of Some typbind => typbind
-				| None => die "elim_dec.ABSTYPE.typbindopt is None" 
+			       of SOME typbind => typbind
+				| NONE => die "elim_dec.ABSTYPE.typbindopt is NONE" 
 	       val typedecinfo = ElabInfo.plus_TypeInfo dummyinfo (TypeInfo.TYENV_INFO TE')
 	   in (LOCALdec(dummyinfo, 
 			DATATYPEdec(datatypedecinfo,datbind),
@@ -304,7 +304,7 @@ functor OpacityElim(structure Crash : CRASH
 	 | OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) =>
 	  let val (strexp', rea') = elim_strexp(rea, strexp)
 	      val (E,rea'') = case normalise_opt_type_info(ElabInfo.to_TypeInfo (on_info(rea,i)))
-				of Some(TypeInfo.OPAQUE_CONSTRAINT_INFO (E,rea'')) => (E,rea'')
+				of SOME(TypeInfo.OPAQUE_CONSTRAINT_INFO (E,rea'')) => (E,rea'')
 				 | _ => die "elim_strexp.OPAQUE_CONSTRAINT.no info"
 	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.TRANS_CONSTRAINT_INFO E)  
 	  in (TRANSPARENT_CONSTRAINTstrexp(i',strexp',sigexp), plus(rea',rea''))

@@ -11,10 +11,10 @@ signature ORDER_FINMAP =
     val empty : 'b map
     val singleton : dom * 'b ->  'b map
     val isEmpty:  'b map -> bool
-    val lookup  : 'b map -> dom -> 'b Option
+    val lookup  : 'b map -> dom -> 'b option
     val add        : dom * 'b * 'b map -> 'b map
     val plus       : 'b map * 'b map ->  'b map
-    val remove     : dom * 'b map -> ('b map, string) General.Result
+    val remove     : dom * 'b map -> ('b map, string) Edlib.General.Result
     val dom        : 'b map -> dom list
     val range      : 'b map -> 'b list
     val list       : 'b map -> (dom * 'b) list
@@ -30,7 +30,7 @@ signature ORDER_FINMAP =
       (* delete (k, m); deletes an association k |--> r from m, 
          returning m if not present. *) 
 
-    val oneForWhich : ((dom * 'b) -> bool) -> 'b map -> (dom * 'b) Option 
+    val oneForWhich : ((dom * 'b) -> bool) -> 'b map -> (dom * 'b) option 
       (* oneForWhich f m; returns (if present) an association pair 
          for which the predicate f is true. *)
 

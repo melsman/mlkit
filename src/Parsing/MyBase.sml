@@ -48,8 +48,8 @@ signature LR_TABLE =
 	  the type `array' seems global. This is nonportable.
 	  The SML Library uses type `Array'. *)
 
-	val mkLrTable: {actions : ((term,action) pairlist * action) Array.Array,
-			gotos : (nonterm,state) pairlist Array.Array,
+	val mkLrTable: {actions : ((term,action) pairlist * action) array,
+			gotos : (nonterm,state) pairlist array,
 			numStates : int, numRules : int,
 			initialState : state} -> table
     end
@@ -220,10 +220,11 @@ signature PARSER_DATA =
 
 	structure EC :
 	   sig
-     val is_keyword : LrTable.term -> bool
+	     val is_keyword : LrTable.term -> bool
 	     val noShift : LrTable.term -> bool
-	     val preferred_subst : LrTable.term -> LrTable.term list
+(*	     val preferred_subst : LrTable.term -> LrTable.term list
 	     val preferred_insert : LrTable.term -> bool
+*)
 	     val errtermvalue : LrTable.term -> svalue
 	     val showTerminal : LrTable.term -> string
 	     val terms: LrTable.term list
@@ -322,6 +323,12 @@ end;
 
 functor LrTable(): LR_TABLE = 
     struct
+
+        local structure NewArray = Array
+	in open Edlib
+	   structure Array = NewArray
+	end
+
         open Array (*List*) (*NICK*)
 	infix 9 sub
 	datatype ('a,'b) pairlist = EMPTY
@@ -335,8 +342,8 @@ functor LrTable(): LR_TABLE =
 			| ERROR
 	exception Goto of state * nonterm
 	type table = {states: int, rules : int,initialState: state,
-		      action: ((term,action) pairlist * action) Array.Array,
-		      goto :  (nonterm,state) pairlist Array.Array}
+		      action: ((term,action) pairlist * action) array,
+		      goto :  (nonterm,state) pairlist array}
 	val numStates = fn ({states,...} : table) => states
 	val numRules = fn ({rules,...} : table) => rules
 	val describeActions =
@@ -356,9 +363,9 @@ functor LrTable(): LR_TABLE =
 	fun findNonterm (NT nt,row) =
 	    let fun find (PAIR (NT key,data,r)) =
 		       if key < nt then find r
-		       else if key=nt then Some data
-		       else None
-		   | find EMPTY = None
+		       else if key=nt then SOME data
+		       else NONE
+		   | find EMPTY = NONE
 	    in find row
 	    end
 	val action = fn ({action,...} : table) =>
@@ -369,8 +376,8 @@ functor LrTable(): LR_TABLE =
 	val goto = fn ({goto,...} : table) =>
 			fn (a as (STATE state,nonterm)) =>
 			  case findNonterm(nonterm,goto sub state)
-			  of Some state => state
-			   | None => raise (Goto a)
+			  of SOME state => state
+			   | NONE => raise (Goto a)
 	val initialState = fn ({initialState,...} : table) => initialState
 	val mkLrTable = fn {actions,gotos,initialState,numStates,numRules} =>
 	     ({action=actions,goto=gotos,
@@ -416,8 +423,8 @@ struct
 		void= ParserData.Actions.void,
 	        ec = {is_keyword = ParserData.EC.is_keyword,
 		      noShift = ParserData.EC.noShift,
-		      preferred_subst = ParserData.EC.preferred_subst,
-		      preferred_insert= ParserData.EC.preferred_insert,
+		      preferred_subst = (*ParserData.EC.preferred_subst*) fn _ => nil,      (* These are the values that *)
+		      preferred_insert= (*ParserData.EC.preferred_insert*) fn _ => false,   (* was previously produced.. *)
 		      errtermvalue = ParserData.EC.errtermvalue,
 		      error=error,
 		      showTerminal = ParserData.EC.showTerminal,
@@ -464,8 +471,8 @@ struct
 		void= ParserData.Actions.void,
 	        ec = {is_keyword = ParserData.EC.is_keyword,
 		      noShift = ParserData.EC.noShift,
-		      preferred_subst = ParserData.EC.preferred_subst,
-		      preferred_insert= ParserData.EC.preferred_insert,
+		      preferred_subst = (*ParserData.EC.preferred_subst*) fn _ => nil,    (* see comment above *)  
+		      preferred_insert= (*ParserData.EC.preferred_insert*) fn _ => false,
 		      errtermvalue = ParserData.EC.errtermvalue,
 		      error=error,
 		      showTerminal = ParserData.EC.showTerminal,
@@ -564,6 +571,9 @@ signature FIFO =
 functor ParserGen(structure LrTable : LR_TABLE
 		  structure Stream : STREAM) : LR_PARSER =
    struct
+
+      open Edlib
+
       structure LrTable = LrTable
       structure Stream = Stream
 
@@ -582,7 +592,7 @@ functor ParserGen(structure LrTable : LR_TABLE
       exception ParseError
       exception ParseImpossible of int
 
-      val println = fn s => Outstream.write std_out (s ^ "\n")
+      val println = fn s => TextIO.output(TextIO.stdOut, s ^ "\n")
 
       structure (*abstraction*) Fifo : FIFO =
         struct
@@ -608,7 +618,7 @@ functor ParserGen(structure LrTable : LR_TABLE
 		   ('a,'b) stack * 
 		   (('a,'b) stack * ('a,'b) lexpair) Fifo.queue *
 		   int *
-		   action Option
+		   action option
 
       type ('a,'b) ecRecord =
 	 {is_keyword : term -> bool,
@@ -626,7 +636,7 @@ functor ParserGen(structure LrTable : LR_TABLE
         fun printStack(stack: ('a,'b) stack, n: int) =
          case stack
            of (state,_) :: rest =>
-                 (Outstream.write std_out ("\t" ^ Int.string n ^ ": ");
+                 (TextIO.output(TextIO.stdOut, "\t" ^ Int.string n ^ ": ");
                   println(showState state);
                   printStack(rest, n+1))
             | nil => ()
@@ -635,7 +645,7 @@ functor ParserGen(structure LrTable : LR_TABLE
 		 (stack as (state,_) :: _, next as (TOKEN (term,_),_), action) =
              (println "Parse: state stack:";
               printStack(stack, 0);
-              Outstream.write std_out ("       state="
+              TextIO.output(TextIO.stdOut, "       state="
                          ^ showState state	
                          ^ " next="
                          ^ showTerminal term
@@ -711,7 +721,7 @@ functor ParserGen(structure LrTable : LR_TABLE
 	let val prAction = prAction showTerminal
 	    val action = LrTable.action table
 	    val goto = LrTable.goto table
-	    fun parseStep(lexPair,stack,queue,0) = (lexPair,stack,queue,0,None)
+	    fun parseStep(lexPair,stack,queue,0) = (lexPair,stack,queue,0,NONE)
 	      | parseStep(lexPair as (TOKEN (terminal, value as (_,leftPos,_)),
 				      lexer
 				     ),
@@ -733,8 +743,8 @@ functor ParserGen(structure LrTable : LR_TABLE
 		         parseStep(lexPair,(goto(state,nonterm),value)::stack,
 				 queue,distance)
 		      | _ => raise (ParseImpossible 240))
-		 | ERROR => (lexPair,stack,queue,distance,Some nextAction)
-		 | ACCEPT => (lexPair,stack,queue,distance,Some nextAction)
+		 | ERROR => (lexPair,stack,queue,distance,SOME nextAction)
+		 | ACCEPT => (lexPair,stack,queue,distance,SOME nextAction)
 	      end
 	   | parseStep _ = raise (ParseImpossible 242)
 	in parseStep : ('_a,'_b) distanceParse 
@@ -799,11 +809,11 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 	 val printChange = fn c =>
 	  let val CHANGE {oper,distance,new=TOKEN (t,_),
 			  orig=TOKEN (t',_),pos,...} = c
-	  in (Outstream.write std_out  ("{distance= " ^ (Int.string distance));
-	      Outstream.write std_out  (",orig = " ^ (showTerminal t'));
-	      Outstream.write std_out  (",new = " ^ (showTerminal t));
-	      Outstream.write std_out  (",oper= " ^ (operToString oper));
-	      Outstream.write std_out  (",pos= " ^ (Int.string pos));
+	  in (TextIO.output(TextIO.stdOut, "{distance= " ^ (Int.string distance));
+	      TextIO.output(TextIO.stdOut, ",orig = " ^ (showTerminal t'));
+	      TextIO.output(TextIO.stdOut, ",new = " ^ (showTerminal t));
+	      TextIO.output(TextIO.stdOut, ",oper= " ^ (operToString oper));
+	      TextIO.output(TextIO.stdOut, ",pos= " ^ (Int.string pos));
 	      println "}")
 	  end
 
@@ -1015,10 +1025,10 @@ val mkFixError = fn ({is_keyword,preferred_subst,terms,errtermvalue,
 	    val distanceParse = distanceParse(table,showTerminal,saction,arg)
 	    val fixError = mkFixError(ec,distanceParse,minAdvance,maxAdvance)
 	    val ssParse = ssParse(table,showTerminal,saction,fixError,arg)
-	    fun loop (lexPair,stack,queue,_,Some ACCEPT) =
+	    fun loop (lexPair,stack,queue,_,SOME ACCEPT) =
 		   ssParse(lexPair,stack,queue)
 	      | loop (lexPair,stack,queue,0,_) = ssParse(lexPair,stack,queue)
-	      | loop (lexPair,stack,queue,distance,Some ERROR) =
+	      | loop (lexPair,stack,queue,distance,SOME ERROR) =
 		 let val (lexPair,stack,queue) = fixError(lexPair,stack,queue)
 		 in loop (distanceParse(lexPair,stack,queue,distance))
 		 end

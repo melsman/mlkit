@@ -1,3 +1,8 @@
+
+(*
+functor TestSpreadExp() =
+struct
+
 (*$TestSpreadExp: Crash PrettyPrint Flags DiGraph Effect Lvars 
    LambdaExp TyName 
               Ident Con Excon Report TyCon Timestamp 
@@ -191,10 +196,10 @@ fun show_spread(p) =
        output(std_out, "\n"); 
        implode(rev(!r))
     end;
-Flags.print_effects:= true;
-Flags.print_types:= true;
-Flags.print_regions:= true;
-Flags.colwidth:= 80;
+val _ = Flags.print_effects:= true;
+val _ = Flags.print_types:= true;
+val _ = Flags.print_regions:= true;
+val _ = Flags.colwidth:= 80;
 val source_db = LambdaExp.DATBINDS([]);
 
 
@@ -1271,5 +1276,8 @@ val _ = etest("TestSpreadExp, case 29", "\n\
 , show_spread p');
 
 
-say ("failed at:" ^ implode(!dump) ^ "\n");
+val _ = say ("failed at:" ^ implode(!dump) ^ "\n");
 
+end (*TestSpreadExp*)
+
+*)

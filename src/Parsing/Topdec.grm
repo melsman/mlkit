@@ -140,10 +140,10 @@ type arg = unit
  infix declarations, and positive, decimal integers (from
  integers in general) for labels.*)
 
-        | DECPOSINTEGER of int Option | DECNEGINTEGER of int Option
-	| HEXINTEGER of int Option | DIGIT of int 
-	| WORD of int Option
-	| REAL of real Option | STRING of string
+        | DECPOSINTEGER of int option | DECNEGINTEGER of int option
+	| HEXINTEGER of int option | DIGIT of int 
+	| WORD of int option
+	| REAL of real option | STRING of string
         | ID of string | TYVAR of string 
 
 (* Junk: *)
@@ -151,11 +151,11 @@ type arg = unit
 
 %value  QUAL_ID         (["bogus"])
 %value  QUAL_STAR       (["bogus"])
-%value  DECPOSINTEGER   (Some 0)
-%value  DECNEGINTEGER   (Some 0)
-%value  HEXINTEGER      (Some 0)
-%value  WORD		(Some 0)
-%value  REAL            (Some 0.0)
+%value  DECPOSINTEGER   (SOME 0)
+%value  DECNEGINTEGER   (SOME 0)
+%value  HEXINTEGER      (SOME 0)
+%value  WORD		(SOME 0)
+%value  REAL            (SOME 0.0)
 %value  STRING          ("")
 %value  ID              ("bogus")
 %value  TYVAR           ("'bogus")
@@ -165,7 +165,7 @@ type arg = unit
 (* Nonterminals for the modules language (Defn. V4 sec. 3.4 fig. 5): *)
           TopDec                        of topdec
         | TopDec_                       of topdec
-        | TopDec_opt                    of topdec Option
+        | TopDec_opt                    of topdec option
         | SigDec                        of sigdec
         | StrDec_sans_SEMICOLON         of strdec
         | FunDec                        of fundec
@@ -196,22 +196,22 @@ type arg = unit
 *)
 	| SigExp_constraint             of strexp -> strexp
 	| SigExp_constraint_maybe       of strexp -> strexp
-        | AndFunBind_opt                of funbind Option
-        | AndStrBind_opt                of strbind Option
-        | AndSigBind_opt                of sigbind Option
-        | AndStrDesc_opt                of strdesc Option
-        | AndExDesc_opt                 of exdesc Option
-        | BarConDesc_opt                of condesc Option
-        | AndDatDesc_opt                of datdesc Option
-        | AndTypDesc_opt                of typdesc Option
+        | AndFunBind_opt                of funbind option
+        | AndStrBind_opt                of strbind option
+        | AndSigBind_opt                of sigbind option
+        | AndStrDesc_opt                of strdesc option
+        | AndExDesc_opt                 of exdesc option
+        | BarConDesc_opt                of condesc option
+        | AndDatDesc_opt                of datdesc option
+        | AndTypDesc_opt                of typdesc option
 	| TypAbbreviationAND_seq1       of (tyvar list * tycon * ty * info * info) list
-        | AndValDesc_opt                of valdesc Option
+        | AndValDesc_opt                of valdesc option
 	| SEMICOLON_opt                 of unit
-        | OneSpec_or_SEMICOLON          of spec Option
+        | OneSpec_or_SEMICOLON          of spec option
         | NonEmptySpec                  of spec
         | Spec_sans_SHARING             of spec
         | NonEmptySpec'                 of spec
-        | OneStrDec_or_SEMICOLON        of strdec Option
+        | OneStrDec_or_SEMICOLON        of strdec option
         | NonEmptyStrDec                of strdec
 
 (* Nonterminals for the core language (Defn. V4 sec. 2.8 fig. 2): *)
@@ -248,25 +248,25 @@ type arg = unit
         | FClause                       of FClause
 
 (* Optional phrases and so on: *)
-        | CommaExpRow_opt               of exprow Option
-        | AndValBind_opt                of valbind Option
-        | AndFnValBind_opt              of valbind Option
-        | AndFValBind_opt               of FValBind Option
-        | BarFClause_opt                of FClause Option
-        | AndTypBind_opt                of typbind Option
-        | AndDatBind_opt                of datbind Option
-        | BarConBind_opt                of conbind Option
-        | BarMatch_opt                  of match Option
-        | AndExBind_opt                 of exbind Option
-        | ExpRow_opt                    of exprow Option
-        | PatRow_opt                    of patrow Option
-        | AsPat_opt                     of pat Option
-        | CommaPatRow_opt               of patrow Option
-        | ColonTy_opt                   of ty Option
+        | CommaExpRow_opt               of exprow option
+        | AndValBind_opt                of valbind option
+        | AndFnValBind_opt              of valbind option
+        | AndFValBind_opt               of FValBind option
+        | BarFClause_opt                of FClause option
+        | AndTypBind_opt                of typbind option
+        | AndDatBind_opt                of datbind option
+        | BarConBind_opt                of conbind option
+        | BarMatch_opt                  of match option
+        | AndExBind_opt                 of exbind option
+        | ExpRow_opt                    of exprow option
+        | PatRow_opt                    of patrow option
+        | AsPat_opt                     of pat option
+        | CommaPatRow_opt               of patrow option
+        | ColonTy_opt                   of ty option
         | ColonTy_seq1                  of (ty * pos) list
-        | TyRow_opt                     of tyrow Option
-        | CommaTyRow_opt                of tyrow Option
-        | OfTy_opt                      of ty Option
+        | TyRow_opt                     of tyrow option
+        | CommaTyRow_opt                of tyrow option
+        | OfTy_opt                      of ty option
         | ExpComma_seq0                 of exp list
         | ExpComma_seq1                 of exp list
         | ExpComma_seq2                 of exp list
@@ -280,7 +280,7 @@ type arg = unit
         | TyVarSeq1                     of tyvar list
         | TyVarComma_seq1               of tyvar list
         | TyComma_seq2                  of ty list
-        | OneDec_or_SEMICOLON           of dec Option
+        | OneDec_or_SEMICOLON           of dec option
         | NonEmptyDec                   of dec
 (*KILL 07/08/1996 09:51. tho.:
         | Ident_seq1                    of string WithInfo list
@@ -302,7 +302,7 @@ type arg = unit
         | LongTypeIdentEq_seq2          of string list WithInfo list
                                                 (* used in "sharing/type."
                                                    c/w info. *)
-        | DIGIT_opt                     of int Option
+        | DIGIT_opt                     of int option
         | OneDec                        of dec  (* One DEC phrase. *)
         | OneDec_sans_LOCAL             of dec  (* One DEC phrase, no LOCAL. *)
 
@@ -429,8 +429,8 @@ LongOpEqIdent:
         | OP EQUALS     ( OP_OPT(["="], true) )
 
 DIGIT_opt:
-          DIGIT         ( Some DIGIT )
-        | (* -none- *)  ( None )
+          DIGIT         ( SOME DIGIT )
+        | (* -none- *)  ( NONE )
 
 DecPosInteger: 
 	  DECPOSINTEGER ( raise_lexical_error_if_none
@@ -511,7 +511,7 @@ LongTypeIdentEq_seq2:
 TopDec:   TopDec_       ( TopDec_ )
 	| Exp_          ( topdecOfExp Exp_ )
 	| (*epsilon*)   ( STRtopdec(PP defaultPos defaultPos,
-				    EMPTYstrdec(PP defaultPos defaultPos), None) )
+				    EMPTYstrdec(PP defaultPos defaultPos), NONE) )
 
 TopDec_:  OneStrDec TopDec_opt
 		        ( STRtopdec (PP OneStrDecleft
@@ -530,8 +530,8 @@ TopDec_:  OneStrDec TopDec_opt
 				     FunDec, TopDec_opt) )
 
 TopDec_opt:
-          TopDec_       ( Some TopDec_ )
-	|		( None )
+          TopDec_       ( SOME TopDec_ )
+	|		( NONE )
 
 FunBind:  Ident LPAREN Ident COLON SigExp RPAREN SigExp_constraint_maybe
           EQUALS StrExp AndFunBind_opt
@@ -577,8 +577,8 @@ SigExp_constraint:
 			     (PP COLONGREATERleft SigExpright, strexp, SigExp)) )
 
 AndFunBind_opt:
-          AND FunBind   ( Some FunBind )
-        | (* -none- *)  ( None )
+          AND FunBind   ( SOME FunBind )
+        | (* -none- *)  ( NONE )
 
 FunDec:   FUNCTOR FunBind
 	                ( FUNCTORfundec (PP FUNCTORleft (right (info_on_funbind FunBind)),
@@ -593,8 +593,8 @@ StrDesc:  Ident COLON SigExp AndStrDesc_opt
 				   mk_StrId Ident, SigExp, AndStrDesc_opt) )
 
 AndStrDesc_opt:
-          AND StrDesc   ( Some StrDesc )
-        | (* -none- *)  ( None )
+          AND StrDesc   ( SOME StrDesc )
+        | (* -none- *)  ( NONE )
 
 ExDesc:   Ident OfTy_opt AndExDesc_opt
                         ( EXDESC (PP Identleft
@@ -604,8 +604,8 @@ ExDesc:   Ident OfTy_opt AndExDesc_opt
 				  mk_Id Ident, OfTy_opt, AndExDesc_opt) )
 
 AndExDesc_opt:
-          AND ExDesc    ( Some ExDesc )
-        | (* -none- *)  ( None )
+          AND ExDesc    ( SOME ExDesc )
+        | (* -none- *)  ( NONE )
 
 ConDesc:
           OpIdent OfTy_opt BarConDesc_opt
@@ -619,8 +619,8 @@ ConDesc:
                           end )
 
 BarConDesc_opt:
-          BAR ConDesc   ( Some ConDesc )
-        | (* -none- *)  ( None )
+          BAR ConDesc   ( SOME ConDesc )
+        | (* -none- *)  ( NONE )
 
 DatDesc:  TyVarSeq TypeIdent EQUALS ConDesc AndDatDesc_opt
                         ( DATDESC (PP TyVarSeqleft
@@ -644,8 +644,8 @@ DatDesc_nonzero_arity:
 				   ConDesc, AndDatDesc_opt) )
 
 AndDatDesc_opt:
-          AND DatDesc   ( Some DatDesc )
-        | (* -none- *)  ( None )
+          AND DatDesc   ( SOME DatDesc )
+        | (* -none- *)  ( NONE )
 
 TypDesc:  TyVarSeq TypeIdent AndTypDesc_opt
                         ( TYPDESC (PP TyVarSeqleft
@@ -653,8 +653,8 @@ TypDesc:  TyVarSeq TypeIdent AndTypDesc_opt
 				   TyVarSeq, mk_TyCon TypeIdent, AndTypDesc_opt) )
 
 AndTypDesc_opt:
-          AND TypDesc   ( Some TypDesc )
-        | (* -none- *)  ( None )
+          AND TypDesc   ( SOME TypDesc )
+        | (* -none- *)  ( NONE )
 
 TypAbbreviationAND_seq1:
 	  TypAbbreviation AND TypAbbreviationAND_seq1
@@ -673,8 +673,8 @@ ValDesc:  EqIdent COLON Ty AndValDesc_opt
 				   mk_Id EqIdent, Ty, AndValDesc_opt) )
 
 AndValDesc_opt:
-          AND ValDesc   ( Some ValDesc )
-        | (* -none- *)  ( None )
+          AND ValDesc   ( SOME ValDesc )
+        | (* -none- *)  ( NONE )
 
 
 OneSpec:  VAL ValDesc   ( VALspec (PP VALleft (right (info_on_valdesc ValDesc)),
@@ -752,25 +752,25 @@ StrExp:   STRUCT StrDec END
 NonEmptyStrDec:
           NonEmptyStrDec OneStrDec_or_SEMICOLON
                         ( (case OneStrDec_or_SEMICOLON of
-			     Some strdec =>
+			     SOME strdec =>
 			       composeStrDec (PP NonEmptyStrDecleft
 					        (right (info_on_strdec strdec)),
 					      NonEmptyStrDec, strdec)
-			   | None =>
+			   | NONE =>
 			       NonEmptyStrDec) )
 
         | OneStrDec_or_SEMICOLON
                         ( (case OneStrDec_or_SEMICOLON of
-			     Some strdec => strdec
-			   | None => EMPTYstrdec (PP defaultPos defaultPos)) )
+			     SOME strdec => strdec
+			   | NONE => EMPTYstrdec (PP defaultPos defaultPos)) )
 
 StrDec:   NonEmptyStrDec
                         ( NonEmptyStrDec )
         | (* -none- *)  ( EMPTYstrdec (PP defaultPos defaultPos) )
 
 OneStrDec_or_SEMICOLON:
-          OneStrDec     ( Some OneStrDec )
-        | SEMICOLON     ( None )
+          OneStrDec     ( SOME OneStrDec )
+        | SEMICOLON     ( NONE )
 
 OneStrDec:
           OneDec_sans_LOCAL
@@ -794,8 +794,8 @@ StrBind:  Ident SigExp_constraint_maybe EQUALS StrExp AndStrBind_opt
 				   AndStrBind_opt) )
 
 AndStrBind_opt:
-          AND StrBind   ( Some StrBind )
-        | (* -none- *)  ( None )
+          AND StrBind   ( SOME StrBind )
+        | (* -none- *)  ( NONE )
 
 SigExp:
           SIG Spec END  ( SIGsigexp (PP SIGleft ENDright, Spec) )
@@ -819,8 +819,8 @@ SigBind:
                                    mk_SigId Ident, SigExp, AndSigBind_opt) )
 
 AndSigBind_opt:
-          AND SigBind   ( Some SigBind )
-        | (* -none- *)  ( None )
+          AND SigBind   ( SOME SigBind )
+        | (* -none- *)  ( NONE )
 
 
 (* Expressions, Matches, Declarations and Bindings (V4 sec. 2.8 fig. 3): *)
@@ -850,7 +850,7 @@ AtExp:
    though the equivalent forms aren't.
  *)
 
-        | LPAREN RPAREN ( RECORDatexp (PP LPARENleft RPARENright, None) )
+        | LPAREN RPAREN ( RECORDatexp (PP LPARENleft RPARENright, NONE) )
         | LPAREN ExpComma_seq2 RPAREN
                         ( tuple_atexp_with_info (PP LPARENleft RPARENright) ExpComma_seq2 )
         | HASH Label    ( hash (PP HASHleft Labelright) Label )
@@ -876,12 +876,12 @@ ExpRow:
 				  Label, Exp_, CommaExpRow_opt) )
 
 ExpRow_opt:
-          ExpRow        ( Some ExpRow )
-        | (* -none- *)  ( None )
+          ExpRow        ( SOME ExpRow )
+        | (* -none- *)  ( NONE )
 
 CommaExpRow_opt:
-          COMMA ExpRow  ( Some ExpRow )
-        | (* -none- *)  ( None )
+          COMMA ExpRow  ( SOME ExpRow )
+        | (* -none- *)  ( NONE )
 
 ExpComma_seq0:
           ExpComma_seq1 ( ExpComma_seq1 )
@@ -939,9 +939,9 @@ Match_:   MRule BarMatch_opt
 				 MRule, BarMatch_opt) )
 
 BarMatch_opt:
-          BAR Match_    ( Some Match_ )
+          BAR Match_    ( SOME Match_ )
         | (* -none- *) %prec DARROW
-                        ( None )
+                        ( NONE )
 
 MRule:    Pat DARROW Exp_
                         ( MRULE (PP Patleft (right (get_info_exp Exp_)), Pat, Exp_) )
@@ -1034,8 +1034,8 @@ OneDec:   LOCAL Dec IN Dec END
                         ( OneDec_sans_LOCAL )
 
 OneDec_or_SEMICOLON:
-          OneDec        ( Some OneDec )
-        | SEMICOLON     ( None )
+          OneDec        ( SOME OneDec )
+        | SEMICOLON     ( NONE )
 
 (* a `Dec' is a declaration as in the Definition, including the empty
    declaration and any combinations of semicolons. *)
@@ -1043,15 +1043,15 @@ OneDec_or_SEMICOLON:
 NonEmptyDec:
           NonEmptyDec OneDec_or_SEMICOLON
                         ( (case OneDec_or_SEMICOLON of
-			     Some dec =>
+			     SOME dec =>
 			       composeDec (PP NonEmptyDecleft
 					     (right (get_info_dec dec)),
 					   NonEmptyDec, dec)
-			   | None => NonEmptyDec) )
+			   | NONE => NonEmptyDec) )
         | OneDec_or_SEMICOLON
                         ( (case OneDec_or_SEMICOLON of
-			     Some dec => dec
-			   | None => EMPTYdec (PP defaultPos defaultPos)) )
+			     SOME dec => dec
+			   | NONE => EMPTYdec (PP defaultPos defaultPos)) )
 
 Dec:      NonEmptyDec   ( NonEmptyDec )
         | (* -none- *)  ( EMPTYdec (PP defaultPos defaultPos) )
@@ -1064,14 +1064,14 @@ ValBind:
 					Pat, Exp_, AndValBind_opt) )
 (*KILL 25/02/1997 17:03. tho.:
                         ( case AndValBind_opt of
-			    Some vb  => 
+			    SOME vb  => 
                                 let val i = GrammarUtils.C.get_info_valbind vb
 		                    val (from,to) = GrammarUtils.un_PP i
                                 in
                                     PLAINvalbind (PP Patleft to,
 						  Pat, Exp_, AndValBind_opt)
                                 end
-                            | None => 
+                            | NONE => 
                                     PLAINvalbind (PP Patleft Exp_right,
 						  Pat, Exp_, AndValBind_opt) )
 *)
@@ -1080,8 +1080,8 @@ ValBind:
 				      FnValBind) )
 
 AndValBind_opt:
-          AND ValBind   ( Some ValBind )
-        | (* -none- *)  ( None )
+          AND ValBind   ( SOME ValBind )
+        | (* -none- *)  ( NONE )
 
 FnValBind:
           Pat EQUALS FN Match_ AndFnValBind_opt
@@ -1126,8 +1126,8 @@ ColonTy_seq1:
         | COLON Ty      ( [(Ty, Tyright)] )
 
 AndFnValBind_opt:
-          AND FnValBind ( Some FnValBind )
-        | (* -none- *)  ( None )
+          AND FnValBind ( SOME FnValBind )
+        | (* -none- *)  ( NONE )
 
 TypBind:
           TyVarSeq TypeIdent EQUALS Ty AndTypBind_opt
@@ -1136,8 +1136,8 @@ TypBind:
 				                get_info_typbind AndTypBind_opt),
 				   TyVarSeq, mk_TyCon TypeIdent, Ty, AndTypBind_opt) )
 AndTypBind_opt:
-          AND TypBind   ( Some TypBind )
-        | (* -none- *)  ( None )
+          AND TypBind   ( SOME TypBind )
+        | (* -none- *)  ( NONE )
 
 DatBind:
           TyVarSeq TypeIdent EQUALS ConBind AndDatBind_opt
@@ -1166,8 +1166,8 @@ DatBind_nonzero_arity:
 				   TyVarSeq1, mk_TyCon TypeIdent,
 				   ConBind, AndDatBind_opt) )
 AndDatBind_opt:
-          AND DatBind   ( Some DatBind )
-        | (* -none- *)  ( None )
+          AND DatBind   ( SOME DatBind )
+        | (* -none- *)  ( NONE )
 
 ConBind:
           OpIdent OfTy_opt BarConBind_opt
@@ -1182,8 +1182,8 @@ ConBind:
                           end )
 
 BarConBind_opt:
-          BAR ConBind   ( Some ConBind )
-        | (* -none- *)  ( None )
+          BAR ConBind   ( SOME ConBind )
+        | (* -none- *)  ( NONE )
 
 ExBind:
           OpIdent OfTy_opt AndExBind_opt
@@ -1208,8 +1208,8 @@ ExBind:
 				     AndExBind_opt)
                           end )
 AndExBind_opt:
-          AND ExBind    ( Some ExBind )
-        | (* -none- *)  ( None )
+          AND ExBind    ( SOME ExBind )
+        | (* -none- *)  ( NONE )
 
 FValBind: FClause AndFValBind_opt
                         ( FVALBIND (PP FClauseleft
@@ -1217,8 +1217,8 @@ FValBind: FClause AndFValBind_opt
 				                 get_info_FValBind AndFValBind_opt),
 				    FClause, AndFValBind_opt) )
 AndFValBind_opt:
-          AND FValBind  ( Some FValBind )
-        | (* -none- *)  ( None )
+          AND FValBind  ( SOME FValBind )
+        | (* -none- *)  ( NONE )
 
 FClause:
           AtPat_seq1 ColonTy_opt EQUALS Exp_ BarFClause_opt
@@ -1229,8 +1229,8 @@ FClause:
 				   Exp_, BarFClause_opt) )
 
 BarFClause_opt:
-          BAR FClause   ( Some FClause )
-        | (* -none- *)  ( None )
+          BAR FClause   ( SOME FClause )
+        | (* -none- *)  ( NONE )
 
 AtPat_seq2:
           AtPat AtPat_seq1
@@ -1242,12 +1242,12 @@ AtPat_seq1:
         | AtPat         ( [AtPat] )
 
 ColonTy_opt:
-          COLON Ty      ( Some Ty )
-        | (* -none- *)  ( None )
+          COLON Ty      ( SOME Ty )
+        | (* -none- *)  ( NONE )
 
 OfTy_opt:
-          OF Ty         ( Some Ty )
-        | (* -none- *)  ( None )
+          OF Ty         ( SOME Ty )
+        | (* -none- *)  ( NONE )
 
 
 (* Patterns and Type Expressions (Defn. V4 sec. 2.8 fig. 4): *)
@@ -1274,15 +1274,15 @@ AtPat:
    atomic pattern forms, despite the definition claiming them to be
    over the `pat' phrase class. *)
 
-        | LPAREN RPAREN ( RECORDatpat (PP LPARENleft RPARENright, None) )
+        | LPAREN RPAREN ( RECORDatpat (PP LPARENleft RPARENright, NONE) )
         | LPAREN PatComma_seq2 RPAREN
                         ( tuple_atpat_with_info (PP LPARENleft RPARENright) PatComma_seq2 )
         | LBRACKET PatComma_seq0 RBRACKET
                         ( list_atpat (PP LBRACKETleft RBRACKETright) PatComma_seq0 )
 
 PatRow_opt:
-          PatRow        ( Some PatRow )
-        | (* -none- *)  ( None )
+          PatRow        ( SOME PatRow )
+        | (* -none- *)  ( NONE )
 
 PatRow:
           DOTDOTDOT     ( DecGrammar.DOTDOTDOT (PP DOTDOTDOTleft DOTDOTDOTright) )
@@ -1308,24 +1308,24 @@ PatRow:
 					  (info_ident, OP_OPT (mk_LongId [Ident], false)))
 			     in
 			       case (ColonTy_opt, AsPat_opt) of
-				 (_, Some pat) =>
+				 (_, SOME pat) =>
 				   LAYEREDpat (PP Identleft (right (get_info_pat pat)),
 					       OP_OPT (mk_Id Ident, false),
 					       ColonTy_opt, pat)
-			       | (Some ty, None) =>
+			       | (SOME ty, NONE) =>
 				   TYPEDpat (PP Identleft (right (get_info_ty ty)),
 					     idPat, ty)
-			       | (None, None) => idPat
+			       | (NONE, NONE) => idPat
 			     end,
 			     CommaPatRow_opt) )
 
 AsPat_opt:
-          AS Pat        ( Some Pat )
-        | (* -none- *)  ( None )
+          AS Pat        ( SOME Pat )
+        | (* -none- *)  ( NONE )
 
 CommaPatRow_opt:
-          COMMA PatRow  ( Some PatRow )
-        | (* -none- *)  ( None )
+          COMMA PatRow  ( SOME PatRow )
+        | (* -none- *)  ( NONE )
 
 PatComma_seq0:
           PatComma_seq1 ( PatComma_seq1 )
@@ -1390,8 +1390,8 @@ AtomicTy:
                         ( PARty (PP LPARENleft RPARENright, Ty) )
 
 TyRow_opt:
-          TyRow         ( Some TyRow )
-        | (* -none- *)  ( None )
+          TyRow         ( SOME TyRow )
+        | (* -none- *)  ( NONE )
 
 TyRow:
           Label COLON Ty CommaTyRow_opt
@@ -1401,8 +1401,8 @@ TyRow:
 				 Label, Ty, CommaTyRow_opt) )
 
 CommaTyRow_opt:
-          COMMA TyRow   ( Some TyRow )
-        | (* -none- *)  ( None )
+          COMMA TyRow   ( SOME TyRow )
+        | (* -none- *)  ( NONE )
 
 Integer:  DECPOSINTEGER ( raise_lexical_error_if_none
 			    DECPOSINTEGERleft DECPOSINTEGER )
@@ -1412,9 +1412,9 @@ Integer:  DECPOSINTEGER ( raise_lexical_error_if_none
 			    HEXINTEGERleft HEXINTEGER )
         | DIGIT         ( DIGIT )
 
-Char:     HASH STRING   ( if String.size STRING = 1 then ord STRING
-			  else raise LEXICAL_ERROR (STRINGleft,
-			  			    "string must have length 1") )
+Char:     HASH STRING   ( case explode STRING
+                            of [c] => ord c
+                             | _ => raise LEXICAL_ERROR (STRINGleft, "string must have length 1") )
 
 SCon:     Integer       ( mk_IntSCon Integer )
         | WORD          ( mk_WordSCon (raise_lexical_error_if_none WORDleft WORD) )

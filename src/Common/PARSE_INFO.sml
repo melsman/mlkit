@@ -38,6 +38,6 @@ signature PARSE_INFO =
     val from_SourceInfo : SourceInfo -> ParseInfo
     val to_SourceInfo   : ParseInfo -> SourceInfo
     val plus_DFInfo     : ParseInfo -> DFInfo -> ParseInfo
-    val to_DFInfo       : ParseInfo -> DFInfo Option
+    val to_DFInfo       : ParseInfo -> DFInfo option
     val layout          : ParseInfo -> StringTree
   end;

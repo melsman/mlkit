@@ -23,6 +23,6 @@ signature AT_INF =
         val layout_pgm : (place at, place*mul, unit)LambdaPgm -> StringTree
         val layout_exp_brief : (place at, place*mul, unit)LambdaExp -> StringTree
         val layout_pgm_brief : (place at, place*mul, unit)LambdaPgm -> StringTree
-	val layout_at : ('a -> StringTree) -> 'a at -> StringTree Option
+	val layout_at : ('a -> StringTree) -> 'a at -> StringTree option
   end
 

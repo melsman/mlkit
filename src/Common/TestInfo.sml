@@ -26,7 +26,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 						strategy_name  : string, (* single word *)
 						comment        : string,
 						exec_opt       : string,
-						old_dir        : string Option}
+						old_dir        : string option}
                       | PERFORMANCE_STRATEGY of {kit_script            : string,
 						 runtime_system        : unit -> string,
 						 strategy_name         : string,
@@ -55,7 +55,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 strategy_name = "NoProf", (* single word *)
 				 comment = "Region profiling not enabled.",
 				 exec_opt = "",
-				 old_dir = Some (!test_env_directory ^
+				 old_dir = SOME (!test_env_directory ^
 						 "Output_HPPA_on_HPUX/Acceptance/NoProf/")}
       
       fun acceptance_strategy_HPUX_HPPA_prof () = 
@@ -65,7 +65,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 comment = "Region profiling enabled. A profile datafile is not exported. \
 				  \ Profiling every 500000 microsec.",
 				 exec_opt = "-microsec 500000 -noDatafile -noStat",
-				 old_dir = Some (!test_env_directory ^
+				 old_dir = SOME (!test_env_directory ^
 						 "Output_HPPA_on_HPUX/Acceptance/Prof/")}
 
       fun acceptance_strategy_HPUX_C () = 
@@ -74,7 +74,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 strategy_name = "NoProf", (* single word *)
 				 comment = "Region profiling not enabled.",
 				 exec_opt = "",
-				 old_dir = Some (!test_env_directory ^
+				 old_dir = SOME (!test_env_directory ^
 						 "Output_C_on_HPUX/Acceptance/NoProf/")}
       
       fun acceptance_strategy_HPUX_C_prof () = 
@@ -84,7 +84,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 comment = "Region profiling enabled. A profile datafile is not exported. \
 				  \ Profiling every 4 second.",
 				 exec_opt = "-sec 4 -noDatafile -noStat",
-				 old_dir = Some (!test_env_directory ^
+				 old_dir = SOME (!test_env_directory ^
 						 "Output_C_on_HPUX/Acceptance/Prof/")}
 
       fun acceptance_strategy_SUN_OS4_C () = 
@@ -93,7 +93,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 strategy_name = "NoProf", (* single word *)
 				 comment = "Region profiling not enabled.",
 				 exec_opt = "",
-				 old_dir = Some (!test_env_directory ^
+				 old_dir = SOME (!test_env_directory ^
 						 "Output_C_on_SUN_OS4/Acceptance/NoProf/")}
       
       fun acceptance_strategy_SUN_OS4_C_prof () = 
@@ -103,7 +103,7 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 				 comment = "Region profiling enabled. A profile datafile is not exported. \
 				  \ Profiling every 30 second.",
 				 exec_opt = "-sec 30 -noDatafile -noStat",
-				 old_dir = Some (!test_env_directory ^
+				 old_dir = SOME (!test_env_directory ^
 						 "Output_C_on_SUN_OS4/Acceptance/Prof/")}
     in
       fun acceptance_strategies () = (*USER*)
@@ -118,49 +118,49 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
     fun acceptance_suite_files () =
-          [("kitfib12",None),
-	   ("kitdangle",None)] (*--USER--*)
+          [("kitfib12",NONE),
+	   ("kitdangle",NONE)] (*--USER--*)
 
     fun acceptance_suite_projects () =
-          [("kitreynolds2_fast",None),
-	   ("kitreynolds3_fast",None),
-	   ("kitloop2",None), 
-	   ("kittmergesort",None), 
-	   ("kitqsort36c",None),
-	   ("kitmandelbrot_fast",None)]
+          [("kitreynolds2_fast",NONE),
+	   ("kitreynolds3_fast",NONE),
+	   ("kitloop2",NONE), 
+	   ("kittmergesort",NONE), 
+	   ("kitqsort36c",NONE),
+	   ("kitmandelbrot_fast",NONE)]
 	@ leave_out_if_quicker
-	  [("kitlife35u",None)]
-	@ [("klife_eq_fast",None),
-	   ("kitkbjul9_fast",None)]
+	  [("kitlife35u",NONE)]
+	@ [("klife_eq_fast",NONE),
+	   ("kitkbjul9_fast",NONE)]
         @ leave_out_if_quicker
-	  [("kkb_eq",None),
-	   ("kitknuth_bendix36c",None)]
-	@ [("kitsimple",None),
-	   ("tststrcmp",None),
-	   ("FuhMishra",None),
-	   ("life",None)]
+	  [("kkb_eq",NONE),
+	   ("kitknuth_bendix36c",NONE)]
+	@ [("kitsimple",NONE),
+	   ("tststrcmp",NONE),
+	   ("FuhMishra",NONE),
+	   ("life",NONE)]
 	@ leave_out_if_quicker
-	  [("compose",None),
-	   ("minilist",None),
-	   ("sma",None),
-	   ("fromto",None)]
-	@ [("nlength10000",None),
-	   ("scan",Some "../Sources/scanfiles"),
-	   ("effect", None)]
+	  [("compose",NONE),
+	   ("minilist",NONE),
+	   ("sma",NONE),
+	   ("fromto",NONE)]
+	@ [("nlength10000",NONE),
+	   ("scan",SOME "../Sources/scanfiles"),
+	   ("effect", NONE)]
 	@ leave_out_if_quicker
-	  [("exceptions",None),
-	   ("hello",None),
-	   ("proj",None),
-	   ("tail",None),
-	   ("refs",None),
-	   ("trees",None),
-	   ("fold",None)]
-	@ [("testdyn1",None),
-	   ("testdyn2",Some "../Sources/input_to_testdyn2")]
+	  [("exceptions",NONE),
+	   ("hello",NONE),
+	   ("proj",NONE),
+	   ("tail",NONE),
+	   ("refs",NONE),
+	   ("trees",NONE),
+	   ("fold",NONE)]
+	@ [("testdyn1",NONE),
+	   ("testdyn2",SOME "../Sources/input_to_testdyn2")]
 	@ leave_out_if_quicker
-	  [("scan_rev1", None),
-	   ("scan_rev2", None),
-	   ("fft", None)]
+	  [("scan_rev1", NONE),
+	   ("scan_rev2", NONE),
+	   ("fft", NONE)]
 
     (*--------------------------------------------*)
     (* Variables controlling the PERFORMANCE test *)
@@ -193,26 +193,26 @@ functor TestInfo (structure Flags : FLAGS) : TEST_INFO =
 
     (* Test programs, located in directory Sources, can be added to this list. *) 
     val performance_suite_files =
-          [("kitfib35",None),
-	   ("kitdangle",None),
-	   ("kitdangle3",None)] (*--USER--*)
+          [("kitfib35",NONE),
+	   ("kitdangle",NONE),
+	   ("kitdangle3",NONE)] (*--USER--*)
 
     val performance_suite_projects =
-          [("kitreynolds2",None),
-	   ("kitreynolds3",None),
-	   ("kitloop2",None),
-	   ("kittmergesort",None),
-	   ("kitqsort36c",None),
-	   ("kitmandelbrot",None),
-	   ("kitlife35u",None),
-	   ("klife_eq",None), 
-	   ("kitkbjul9",None),
-	   ("kkb_eq",None),
-	   ("kitknuth_bendix36c",None),
-	   ("kitsimple",None),
-	   ("fft",None),
+          [("kitreynolds2",NONE),
+	   ("kitreynolds3",NONE),
+	   ("kitloop2",NONE),
+	   ("kittmergesort",NONE),
+	   ("kitqsort36c",NONE),
+	   ("kitmandelbrot",NONE),
+	   ("kitlife35u",NONE),
+	   ("klife_eq",NONE), 
+	   ("kitkbjul9",NONE),
+	   ("kkb_eq",NONE),
+	   ("kitknuth_bendix36c",NONE),
+	   ("kitsimple",NONE),
+	   ("fft",NONE),
 	   
-	   ("msort", None)]
+	   ("msort", NONE)]
 
   end (*functor TestInfo*)
 

@@ -1,5 +1,3 @@
-(*$Infixing: INFIX_BASIS GRAMMAR_UTILS REPORT PARSE_INFO PRETTYPRINT
-        CRASH InfixStack INFIXING *)
 
 functor Infixing(structure InfixBasis: INFIX_BASIS
                  structure GrammarUtils: GRAMMAR_UTILS
@@ -21,6 +19,9 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                  structure Crash: CRASH
 		   ) : INFIXING =
   struct
+
+    open Edlib
+
     fun impossible s = Crash.impossible ("Infixing." ^ s)
     open GrammarUtils.TopdecGrammar
     open GrammarUtils.TopdecGrammar.DecGrammar
@@ -58,11 +59,11 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                    case atexp
                      of IDENTatexp(_, OP_OPT(longid, withOp)) =>
                           if Ident.unqualified longid andalso not withOp then
-                            Some(Ident.decompose0 longid)
+                            SOME(Ident.decompose0 longid)
                           else
-                            None
+                            NONE
 
-                      | _ => None
+                      | _ => NONE
 
                  fun applyId(id, atexp) =
                    let
@@ -106,11 +107,11 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                    case atpat
                      of LONGIDatpat(_, OP_OPT(longid, withOp)) =>
                           if Ident.unqualified longid andalso not withOp then
-                            Some(Ident.decompose0 longid)
+                            SOME(Ident.decompose0 longid)
                           else
-                            None
+                            NONE
 
-                      | _ => None
+                      | _ => NONE
 
                  fun applyId(id, atpat) =
                    (* still not quite right; we should get the position info
@@ -275,7 +276,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                        RHS exp. *)
 
     and resolveFClause (iBas, fclause)
-        : id * (atpat list * exp * ty Option) list =
+        : id * (atpat list * exp * ty option) list =
       case fclause
         of FCLAUSE(info, atpats, ty_opt, exp, fclause_opt) =>
              let
@@ -285,7 +286,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                val exp' = resolveExp(iBas, exp)
              in
                case fclause_opt
-                 of Some fclause' =>
+                 of SOME fclause' =>
                       let
                         val (id', rest) = resolveFClause (iBas, fclause')
                       in
@@ -295,7 +296,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 			  error_string info (Ident.pr_id id ^ " and "
 					     ^ Ident.pr_id id' ^ " should be the same.")
                       end
-                  | None =>
+                  | NONE =>
                       (id, [(args', exp', ty_opt)])
              end
 
@@ -332,18 +333,18 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 
         *)
 
-        fun try_simple_fvalbindToValbind(info_fvalbind,id,rhsList: (atpat list * exp * ty Option) list) = 
+        fun try_simple_fvalbindToValbind(info_fvalbind,id,rhsList: (atpat list * exp * ty option) list) = 
           let
             fun certainMatch_atpat (LONGIDatpat _) = true
               | certainMatch_atpat (PARatpat(_,pat)) = certainMatch_pat pat
               | certainMatch_atpat (WILDCARDatpat _) = true
               | certainMatch_atpat (SCONatpat  _) = false
-              | certainMatch_atpat (RECORDatpat(_,None)) = true
-              | certainMatch_atpat (RECORDatpat(_,Some patrow)) = certainMatch_patrow patrow
+              | certainMatch_atpat (RECORDatpat(_,NONE)) = true
+              | certainMatch_atpat (RECORDatpat(_,SOME patrow)) = certainMatch_patrow patrow
 
             and certainMatch_patrow (DOTDOTDOT _) = true
-              | certainMatch_patrow (PATROW(_,_,pat,None)) =certainMatch_pat pat
-              | certainMatch_patrow (PATROW(_,_,pat,Some patrow)) =
+              | certainMatch_patrow (PATROW(_,_,pat,NONE)) =certainMatch_pat pat
+              | certainMatch_patrow (PATROW(_,_,pat,SOME patrow)) =
               certainMatch_pat pat andalso certainMatch_patrow patrow
          
             and certainMatch_pat(ATPATpat(_,atpat)) = certainMatch_atpat atpat
@@ -360,10 +361,10 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                     let
                         val exp' =
                           case ty_opt
-                            of Some ty => TYPEDexp (GrammarUtils.span_info
+                            of SOME ty => TYPEDexp (GrammarUtils.span_info
 						      (get_info_ty ty,get_info_exp exp),
                                                     exp, ty)
-                             | None => exp
+                             | NONE => exp
 
                         fun curry atpat exp =
                           let val info_exp = get_info_exp exp
@@ -372,7 +373,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                           in
                             FNexp(info_fn,
                                   MATCH(info_fn,
-                                        MRULE(info_fn,ATPATpat(info_atpat,atpat),exp),None))
+                                        MRULE(info_fn,ATPATpat(info_atpat,atpat),exp),NONE))
                           end
                         val rhs = List.foldR curry exp' atpats
                     in
@@ -380,7 +381,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                       (info_fvalbind, GrammarUtils.patOfIdent info_fvalbind 
                        (id, isInfix (iBas, id)),
                        rhs,
-                       None)
+                       NONE)
                     end
                 else raise NOT_SIMPLE
             | _ => raise NOT_SIMPLE
@@ -388,7 +389,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 
         fun fvalbindToValbind (fvalbind as FVALBIND(info, fclause, _)) =
             let 
-              val (id, rhsList: (atpat list * exp * ty Option) list) = 
+              val (id, rhsList: (atpat list * exp * ty option) list) = 
                   resolveFClause (iBas, fclause)
             in
               try_simple_fvalbindToValbind(info,id,rhsList) 
@@ -445,10 +446,10 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                       let
                         val exp' =
                           case ty_opt
-                            of Some ty => TYPEDexp (GrammarUtils.span_info
+                            of SOME ty => TYPEDexp (GrammarUtils.span_info
 						      (get_info_exp exp, get_info_ty ty),
                                                     exp, ty)
-                             | None => exp
+                             | NONE => exp
 
                         val pat' = probableTuplePat atpats
                         val i_mrule = GrammarUtils.span_info (get_info_pat pat',
@@ -456,27 +457,27 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
                         val rest' = mkMatch rest
                         val i_m = 
                                case rest' of
-                                  None => i_mrule
-                               | Some m => GrammarUtils.span_info (i_mrule, get_info_match m)
+                                  NONE => i_mrule
+                               | SOME m => GrammarUtils.span_info (i_mrule, get_info_match m)
                       in
-                        Some(MATCH(i_m,
+                        SOME(MATCH(i_m,
                                    MRULE(i_mrule, pat', exp'),
                                    rest'
                                   )
                             )
                       end
-                  | mkMatch [] = None
+                  | mkMatch [] = NONE
 
                 val innerApp =
                   case mkMatch rhsList
-                    of Some m => 
+                    of SOME m => 
                           let val i_match = get_info_match m
                               val i_app = GrammarUtils.span_info
 				            (i_match, get_info_atexp varTuple)
                           in
                               APPexp(i_app, FNexp(i_match, m), varTuple)
                           end
-                     | None => impossible "fvalbindToValbind(innerApp)"
+                     | NONE => impossible "fvalbindToValbind(innerApp)"
 
                 fun curry (id, i_id) exp =
                   (*The handling of the sourcinfo is not ideal, here.
@@ -490,7 +491,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 						       get_info_exp exp),
 			       GrammarUtils.patOfIdent i_id (id, false),
 			       exp),
-			None))
+			NONE))
                   end
 
                 val curriedFn =
@@ -500,18 +501,18 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 		  (info, GrammarUtils.patOfIdent info 
 		   (id, isInfix (iBas, id)),
 		   curriedFn,
-		   None)
+		   NONE)
               end 
             end (*fvalbindToValbind*)
 
         fun resolveAll (fvalbind as FVALBIND (_, _, rest)) =
 	      (case fvalbindToValbind fvalbind of
-		 PLAINvalbind (i, id, exp, None) =>
+		 PLAINvalbind (i, id, exp, NONE) =>
 		   PLAINvalbind (i, id, exp,
 				 (case rest of
-				    Some fvalbind' =>
-				      Some (resolveAll fvalbind')
-				  | None => None))
+				    SOME fvalbind' =>
+				      SOME (resolveAll fvalbind')
+				  | NONE => NONE))
 	       | _ => impossible "resolveFValBind.resolveAll")
 
 	val valbind = resolveAll fvalbind
@@ -554,13 +555,13 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
 	    (iBas', FUNtopdec(i, fundec', topdec_opt'))
 	  end)
 
-    and resolveTopdec_opt (iBas, Some topdec) : Basis * topdec Option =
+    and resolveTopdec_opt (iBas, SOME topdec) : Basis * topdec option =
           let
 	    val (iBas', topdec') = resolveTopdec (iBas, topdec)
 	  in
-	    (iBas', Some topdec')
+	    (iBas', SOME topdec')
 	  end
-      | resolveTopdec_opt (iBas, None) = (emptyB, None)
+      | resolveTopdec_opt (iBas, NONE) = (emptyB, NONE)
 
 
     and resolveStrdec(iBas, strdec) =
@@ -612,15 +613,15 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
       in FUNBIND(i', funid, strid, sigexp,
 		 resolveStrexp(iBas, strexp),
 		 (case funbind_opt of
-		    Some funbind => Some(resolveFunbind(iBas, funbind))
-		  | None => None))
+		    SOME funbind => SOME(resolveFunbind(iBas, funbind))
+		  | NONE => NONE))
       end
 
     and resolveStrbind(iBas, STRBIND(i, strid, strexp, strbind_opt)) =
           STRBIND(i, strid, resolveStrexp(iBas, strexp),
 		  (case strbind_opt of
-		     Some strbind => Some(resolveStrbind(iBas, strbind))
-		   | None => None))
+		     SOME strbind => SOME(resolveStrbind(iBas, strbind))
+		   | NONE => NONE))
 
     and resolveStrexp(iBas, strexp) =
       (case strexp
@@ -706,7 +707,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
          | INFIXdec(i, int_opt, ids) =>
              let
                val newBas =
-                 new(ids, INFIX(case int_opt of Some n => n | None => 0))
+                 new(ids, INFIX(case int_opt of SOME n => n | NONE => 0))
              in
                (newBas, INFIXdec(i, int_opt, ids))
              end
@@ -714,7 +715,7 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
          | INFIXRdec(i, int_opt, ids) =>
              let
                val newBas =
-                 new(ids, INFIXR(case int_opt of Some n => n | None => 0))
+                 new(ids, INFIXR(case int_opt of SOME n => n | NONE => 0))
              in
                (newBas, INFIXRdec(i, int_opt, ids))
              end
@@ -735,9 +736,9 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
              PLAINvalbind(i, resolvePat(iBas, pat),
                              resolveExp(iBas, exp),
                              case valbind_opt
-                               of Some valbind =>
-                                    Some(resolveValbind(iBas, valbind))
-                                | None => None
+                               of SOME valbind =>
+                                    SOME(resolveValbind(iBas, valbind))
+                                | NONE => NONE
                          )
 
          | RECvalbind(i, valbind) =>
@@ -787,8 +788,8 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
         of MATCH(i, mrule, match_opt) =>
              MATCH(i, resolveMrule(iBas, mrule),
                       case match_opt
-                        of Some match => Some(resolveMatch(iBas, match))
-                         | None => None
+                        of SOME match => SOME(resolveMatch(iBas, match))
+                         | NONE => NONE
                   )
 
     and resolveMrule(iBas, mrule) =
@@ -825,8 +826,8 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
          | RECORDatexp(i, exprow_opt) =>
              RECORDatexp(i,
                          case exprow_opt
-                           of Some exprow => Some(resolveExprow(iBas, exprow))
-                            | None => None
+                           of SOME exprow => SOME(resolveExprow(iBas, exprow))
+                            | NONE => NONE
                         )
 
          | LETatexp(i, dec, exp) =>
@@ -844,8 +845,8 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
         of EXPROW(i, lab, exp, exprow_opt) =>
              EXPROW(i, lab, resolveExp(iBas, exp),
                     case exprow_opt
-                      of Some exprow => Some(resolveExprow(iBas, exprow))
-                       | None => None
+                      of SOME exprow => SOME(resolveExprow(iBas, exprow))
+                       | NONE => NONE
                    )
 
     and resolveAtpat(iBas, atpat) =
@@ -857,8 +858,8 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
          | RECORDatpat(i, patrow_opt) =>
              RECORDatpat(i,
                          case patrow_opt
-                           of Some patrow => Some(resolvePatrow(iBas, patrow))
-                            | None => None
+                           of SOME patrow => SOME(resolvePatrow(iBas, patrow))
+                            | NONE => NONE
                         )
 
          | PARatpat(i, pat) =>
@@ -872,8 +873,8 @@ functor Infixing(structure InfixBasis: INFIX_BASIS
          | PATROW(i, lab, pat, patrow_opt) =>
              PATROW(i, lab, resolvePat(iBas, pat),
                     case patrow_opt
-                      of Some patrow => Some(resolvePatrow(iBas, patrow))
-                       | None => None
+                      of SOME patrow => SOME(resolvePatrow(iBas, patrow))
+                       | NONE => NONE
                    )
 
     datatype 'a result = SUCCESS of 'a | FAILURE of Report

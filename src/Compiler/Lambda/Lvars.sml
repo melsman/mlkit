@@ -5,6 +5,8 @@
 functor Lvars(structure Name : NAME) : LVARS =
   struct
 
+    open Edlib
+
     (* Lambda variables are based on names which may be `matched'. In
      * particular, if two lambda variables, lv1 and lv2, are
      * successfully matched, eq(lv1,lv2) = true. This may affect the
@@ -12,7 +14,7 @@ functor Lvars(structure Name : NAME) : LVARS =
 
     (* For pattern-mathing, we declare a datatype for
      * compiler-supported primitives and a function 
-     * primitive: lvar -> primitive Option *)
+     * primitive: lvar -> primitive option *)
 
     datatype primitive = PLUS_INT | MINUS_INT | MUL_INT | DIV_INT | NEG_INT | ABS_INT
                        | LESS_INT | LESSEQ_INT | GREATER_INT | GREATEREQ_INT
@@ -26,14 +28,14 @@ functor Lvars(structure Name : NAME) : LVARS =
 		 free : bool ref,
 		 inserted : bool ref,
 		 use : int ref,
-		 prim : primitive Option}
+		 prim : primitive option}
 
     fun new_named_lvar(str : string) : lvar = {name=Name.new(),
 					       str=str,
 					       free=ref false,
 					       inserted=ref false,
 					       use=ref 0,
-					       prim=None}
+					       prim=NONE}
 
     fun newLvar() : lvar = new_named_lvar ""
 
@@ -42,7 +44,7 @@ functor Lvars(structure Name : NAME) : LVARS =
 				     free=ref false,
 				     inserted=ref false,
 				     use=ref 0,
-				     prim=Some prim}
+				     prim=SOME prim}
 
 
     fun pr_lvar ({str="",name,...} : lvar) : string = "v" ^ Int.string (Name.key name)
@@ -94,7 +96,7 @@ functor Lvars(structure Name : NAME) : LVARS =
     val greater_float_lvar: lvar = new_prim("greater_float", GREATER_FLOAT)
     val greatereq_float_lvar: lvar = new_prim("greatereq_float", GREATEREQ_FLOAT)
 
-    fun primitive ({prim,...}: lvar) : primitive Option = prim
+    fun primitive ({prim,...}: lvar) : primitive option = prim
 
 
     (* ------------------------------------ 
@@ -147,32 +149,40 @@ functor Lvars(structure Name : NAME) : LVARS =
 
 functor Lvarset(structure Lvars : LVARS) : LVARSET = 
 struct 
+
+  val xorb = Word.xorb
+  val lshift = Word.<<
+  val andb = Word.andb
+  val notb = Word.notb
+  val rshift = Word.>>
+  val orb = Word.orb
+
     type lvar = Lvars.lvar
 
     datatype lvarset = 
 	LF 
-      | BR of lvar Option * lvarset * lvarset
+      | BR of lvar option * lvarset * lvarset
 
-    fun sing (0,lvar) = BR(Some lvar, LF, LF)
-      | sing (n,lvar) = if Bits.andb(n,1) <> 0 then
-	                BR(None, sing(Bits.rshift(n,1),lvar), LF)
+    fun sing (0w0,lvar) = BR(SOME lvar, LF, LF)
+      | sing (n,lvar) = if andb(n,0w1) <> 0w0 then
+	                BR(NONE, sing(rshift(n,0w1),lvar), LF)
 		 else
-		     BR(None, LF, sing(Bits.rshift(n,1) - 1, lvar))
+		     BR(NONE, LF, sing(rshift(n,0w1) - 0w1, lvar))
 
-    fun singleton lvar = sing (Lvars.key lvar,lvar)
+    fun singleton lvar = sing (Word.fromInt(Lvars.key lvar),lvar)
 	
     fun cardinality LF             = 0
       | cardinality (BR(b, t1, t2)) = 
-          case b of Some _ => 1 + cardinality t1 + cardinality t2
-          | None => cardinality t1 + cardinality t2
+          case b of SOME _ => 1 + cardinality t1 + cardinality t2
+          | NONE => cardinality t1 + cardinality t2
 
-    fun mkBR (None, LF, LF) = LF
+    fun mkBR (NONE, LF, LF) = LF
       | mkBR (b, t1, t2) = BR(b, t1, t2)
 	
     infix orElse
-    fun _ orElse (b2 as Some _) = b2
-      | (b1 as Some _) orElse _ = b1
-      | _ orElse _ = None
+    fun _ orElse (b2 as SOME _) = b2
+      | (b1 as SOME _) orElse _ = b1
+      | _ orElse _ = NONE
 
     fun union (LF, ns2) = ns2
       | union (ns1, LF) = ns1
@@ -182,8 +192,8 @@ struct
     fun add (set,lvar) = union(set, singleton lvar)
 
     infix andAlso
-    fun (Some _) andAlso (b2 as Some _) = b2
-      | _ andAlso _ = None
+    fun (SOME _) andAlso (b2 as SOME _) = b2
+      | _ andAlso _ = NONE
 
     fun intersection (LF, ns2) = LF
       | intersection (ns1, LF) = LF
@@ -193,15 +203,15 @@ struct
 
     fun difference (LF, ns2) = LF
       | difference (ns1, LF) = ns1
-      | difference (BR(b1, t11, t12), BR(Some _, t21, t22)) =
-        	mkBR(None, difference(t11, t21), difference(t12, t22))
-      | difference (BR(b1, t11, t12), BR(None, t21, t22)) =
+      | difference (BR(b1, t11, t12), BR(SOME _, t21, t22)) =
+        	mkBR(NONE, difference(t11, t21), difference(t12, t22))
+      | difference (BR(b1, t11, t12), BR(NONE, t21, t22)) =
           	mkBR(b1, difference(t11, t21), difference(t12, t22))
 		  
     fun delete (is, i) = difference(is, singleton i)
 
-    fun present(Some _) = true
-      | present None = false
+    fun present(SOME _) = true
+      | present NONE = false
 
     fun disjoint (LF, ns2) = true
       | disjoint (ns1, LF) = true
@@ -214,13 +224,13 @@ struct
 
     fun member (lvar, is) = 
 	let fun mem (_, LF)             = false
-	      | mem (0, BR(b, _, _))     = (case b of Some _ => true | _ => false)
+	      | mem (0w0, BR(b, _, _))     = (case b of SOME _ => true | _ => false)
 	      | mem (n, BR(_, ns1, ns2)) =
-	        if Bits.andb(n,1) <> 0 then
-	             mem(Bits.rshift(n,1), ns1)
+	        if andb(n,0w1) <> 0w0 then
+	             mem(rshift(n,0w1), ns1)
 		 else
-		     mem(Bits.rshift(n,1) - 1, ns2)
-	in mem(Lvars.key lvar, is) end
+		     mem(rshift(n,0w1) - 0w1, ns2)
+	in mem(Word.fromInt(Lvars.key lvar), is) end
 
     fun lvarsetof []      = LF
       | lvarsetof (x::xs) = add(lvarsetof xs, x)
@@ -228,29 +238,29 @@ struct
     fun foldset f (e, t) =
 	let fun sl (n, d, LF, a)                 = a
 	      | sl (n, d, BR(b, LF, LF), a) = 
-                (case b of Some lvar => f(a,lvar) | _ => a)
+                (case b of SOME lvar => f(a,lvar) | _ => a)
 	      | sl (n, d, BR(b, t1,    LF), a) = 
-		sl(n+d, 2*d, t1,(case b of Some lvar => f(a,lvar) | _ => a) )
+		sl(n+d, 2*d, t1,(case b of SOME lvar => f(a,lvar) | _ => a) )
 	      | sl (n, d, BR(b, t1,    t2), a)    = 
 		sl(n+d, 2*d, t1, 
-		   sl(n+2*d, 2*d, t2, (case b of Some lvar => f(a,lvar) | _ => a)))
+		   sl(n+2*d, 2*d, t2, (case b of SOME lvar => f(a,lvar) | _ => a)))
 	in sl(0, 1, t, e) end
 
     fun mapset f t = foldset (fn (a,i) => f i :: a) ([], t)
 
     fun members t = foldset (fn (a,i) => i :: a) ([], t)
 
-    fun findLvar (pred: lvar -> '_a Option) lvarset = 
-      let exception Found of (lvar * '_a)Option
+    fun findLvar (pred: lvar -> '_a option) lvarset = 
+      let exception Found of (lvar * '_a)option
           fun search LF = ()
-            | search (BR(Some lvar, set1, set2)) =
+            | search (BR(SOME lvar, set1, set2)) =
                (case pred lvar of
-                  Some x => raise Found(Some(lvar,x))
-                | None => (search set1; search set2)
+                  SOME x => raise Found(SOME(lvar,x))
+                | NONE => (search set1; search set2)
                )
-            | search (BR(None, set1, set2)) = (search set1; search set2)
+            | search (BR(NONE, set1, set2)) = (search set1; search set2)
       in
-        (search lvarset; None) handle Found result => result
+        (search lvarset; NONE) handle Found result => result
       end
                     
   val empty = LF                

@@ -10,12 +10,12 @@ signature FINMAP =
 
     val isEmpty: (''a, 'b) map -> bool
 
-    val lookup  : (''a, 'b) map -> ''a -> 'b Option
+    val lookup  : (''a, 'b) map -> ''a -> 'b option
 
     val add        : (''a * 'b * (''a, 'b) map) -> (''a, 'b) map
     val plus       : (''a, 'b) map * (''a, 'b) map -> (''a, 'b) map
-    val remove     : ''a * (''a, 'b) map -> (((''a,'b) map,string) General.Result)
-    val dom        : (''a, 'b) map -> ''a EqSet.Set
+    val remove     : ''a * (''a, 'b) map -> (((''a,'b) map,string) Edlib.General.Result)
+    val dom        : (''a, 'b) map -> ''a Edlib.EqSet.Set
     val range      : (''a, 'b) map -> 'b list
     val list       : (''a, 'b) map -> (''a * 'b) list
     val fromList   : (''a * 'b) list -> (''a, 'b) map

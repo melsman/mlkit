@@ -1,4 +1,3 @@
-(*$AtInf: AT_INF LVARS EXCON MUL_EXP PRETTYPRINT FLAGS CRASH REPORT EFFECT MUL LOCALLY_LIVE_VARIABLES REG_FLOW ORDER_FINMAP RTYPE TIMING*)
 
 (* Storage Mode Analysis *)
 
@@ -11,7 +10,7 @@ functor AtInf(structure Lvars: LVARS
               structure LLV: LOCALLY_LIVE_VARIABLES
               structure RegFlow: REG_FLOW
               structure BT: ORDER_FINMAP (* finite maps with domain = keys of lvars *)
-                sharing type BT.dom = int  
+                            where type dom = int  
               structure RegvarBT: ORDER_FINMAP 
 	      structure PP: PRETTYPRINT
 		sharing type PP.StringTree = Mul.StringTree 
@@ -38,6 +37,9 @@ functor AtInf(structure Lvars: LVARS
                 sharing type RType.sigma = MulExp.sigma
 ) : AT_INF =
   struct
+
+    structure List = Edlib.List
+    structure Int = Edlib.Int
     
     (* In the old storage mode analysis an environment was propagated to later
      * program units. Since we must assign storage mode attop to regions passed
@@ -72,14 +74,15 @@ functor AtInf(structure Lvars: LVARS
   infix footnote
 
   fun die s = Crash.impossible ("AtInf." ^ s)
-  fun log s = output (!Flags.log , s ^ "\n")
-  fun device(s)         = output(!Flags.log, s)            
-  fun dump(t)           = PP.outputTree(device, t, !Flags.colwidth)
+
+  fun log s = TextIO.output (!Flags.log , s ^ "\n")
+  fun device s = TextIO.output(!Flags.log, s)            
+  fun dump t = PP.outputTree(device, t, !Flags.colwidth)
   fun warn report       = Flags.warn report
   fun chat (s : string) = if !Flags.chat then log s else ()
 
   fun show_place p = PP.flatten1(Eff.layout_effect p)
-  fun show_arreffs epss = implode(map (fn eps => " " ^ show_place eps) epss)
+  fun show_arreffs epss = concat(map (fn eps => " " ^ show_place eps) epss)
   fun show_places  rhos = show_arreffs rhos
 
   fun forceATBOT (ATTOP p) = (ATBOT p)
@@ -110,7 +113,7 @@ functor AtInf(structure Lvars: LVARS
 			  | ATTOP _      => "ATTOP"
 			  | IGNORE      => "IGNORE")
 	       else ();
-	       (None, atbot_or_sat))
+	       (NONE, atbot_or_sat))
 
 
   (* error reporting for resetRegions: *)
@@ -136,7 +139,7 @@ functor AtInf(structure Lvars: LVARS
   fun lay_header(force,lvar,(tau,p)) = 
   if force
      then
-        PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NONE,
+        PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
           children = [PP.LEAF "You have requested resetting the regions that appear free ",
                       PP.LEAF ("in the type scheme and place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
                       lay_sigma_p(RType.type_to_scheme tau,p),
@@ -144,7 +147,7 @@ functor AtInf(structure Lvars: LVARS
                       PP.LEAF "Here are my objections (one for each region variable concerned):"]}                 
 
   else 
-        PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NONE,
+        PP.NODE{start= "", finish = "", indent = 0, childsep = PP.NOSEP,
           children = [PP.LEAF "You have suggested resetting the regions that appear free ",
                       PP.LEAF ("in the type scheme and place of '" ^ Lvars.pr_lvar lvar ^ "', i.e., in"),
                       lay_sigma_p(RType.type_to_scheme tau,p)]}                 
@@ -155,7 +158,7 @@ functor AtInf(structure Lvars: LVARS
              children = map Eff.layout_effect rhos}
 
   fun indent (t:StringTree) = 
-    PP.NODE{start ="     ",finish = "", indent = 5, childsep = PP.NONE, children = [t]}
+    PP.NODE{start ="     ",finish = "", indent = 5, childsep = PP.NOSEP, children = [t]}
 
 
 
@@ -174,8 +177,8 @@ functor AtInf(structure Lvars: LVARS
       val empty_regvar_env = REGVAR_ENV(RegvarBT.empty)
       fun declare_regvar_env(x, y, REGVAR_ENV m) = REGVAR_ENV(RegvarBT.add(x,y,m))
       fun retrieve_regvar_env(x, REGVAR_ENV m) = case (RegvarBT.lookup m x) 
-           of Some v => v
-            | None => raise RegvarEnv
+           of SOME v => v
+            | NONE => raise RegvarEnv
     end
   
     type lvar_env_range = (sigma*place) * place list
@@ -187,8 +190,8 @@ functor AtInf(structure Lvars: LVARS
       fun declare_lvar_env(x,y,LVAR_ENV m) = LVAR_ENV(BT.add(Lvars.key x,y,m))
       fun retrieve_lvar_env(x,LVAR_ENV m) =
         case BT.lookup m x of
-  	Some x => x 
-        | None => raise LvarEnv
+  	SOME x => x 
+        | NONE => raise LvarEnv
     end
   
     type excon_env_range = (sigma*place) * place list
@@ -236,25 +239,25 @@ functor AtInf(structure Lvars: LVARS
                         Eff.toplevel_arreff]
 
 
-  fun lines (l: string list) = PP.NODE{start="",finish="", indent=0,childsep=PP.NONE, children = map PP.LEAF l}
+  fun lines (l: string list) = PP.NODE{start="",finish="", indent=0,childsep=PP.NOSEP, children = map PP.LEAF l}
 
   fun item (item_number:int) (t:StringTree) = 
     let val s = "(" ^ Int.string item_number ^ ")"
     in
        PP.NODE{start = s, finish = "", 
                indent = Int.max (size s+1) 5,
-               childsep = PP.NONE, children = [t]}
+               childsep = PP.NOSEP, children = [t]}
     end
 
   fun layout_message(rho,kind:string,var:string,sigma_p,reachable,witness,item_number:int,force:bool) = 
     item item_number
-     (PP.NODE{start="",finish ="", indent=0,childsep= PP.NONE,children=[
+     (PP.NODE{start="",finish ="", indent=0,childsep= PP.NOSEP,children=[
             PP.LEAF "                                                  ",  (* to provoke linebreak *)
             if force then 
                  PP.LEAF ("I cannot reset '" ^ show_place rho ^ "', because of conflict with the locally")
             else PP.LEAF ("'" ^ show_place rho ^ "': there is a conflict with the locally"),
             PP.LEAF ("live " ^ kind),
-            PP.NODE{start = var ^ " :", finish = "", indent = 5, childsep= PP.NONE, children = [
+            PP.NODE{start = var ^ " :", finish = "", indent = 5, childsep= PP.NOSEP, children = [
                     lay_sigma_p sigma_p]},
             PP.LEAF ("from which the following region variables can be reached "),
             PP.LEAF ("in the region flow graph:" ),
@@ -266,7 +269,7 @@ functor AtInf(structure Lvars: LVARS
 
   fun layout_global_message(rho,kind:string,var:string,reachable,witness,item_number:int,force) = 
     item item_number
-      (PP.NODE{start="",finish ="", indent=0,childsep= PP.NONE,children=[
+      (PP.NODE{start="",finish ="", indent=0,childsep= PP.NOSEP,children=[
             PP.LEAF "                                                  ",  (* to provoke linebreak *)
             if force then
                PP.LEAF ("'" ^ show_place rho ^ "': there is a  conflict with the locally")
@@ -325,57 +328,57 @@ functor AtInf(structure Lvars: LVARS
   fun lay_report(force:bool, lvar, mu, conflicts) : StringTree =
       PP.NODE{start = if force then ("forceResetting(" ^ Lvars.pr_lvar lvar ^ "): ")
                                else ("resetRegions(" ^ Lvars.pr_lvar lvar ^ "): "),
-              finish = "", indent = 3, childsep = PP.NONE,children = 
+              finish = "", indent = 3, childsep = PP.NOSEP,children = 
                   lay_header(force,lvar,mu) :: lay_conflicts(force,conflicts)}
 
   fun any_live (rho,sme as (_,LE,EE), liveset, 
-                rho_points_into, atbot_or_sat): conflict Option * place at=
+                rho_points_into, atbot_or_sat): conflict option * place at=
       let 
         (* val _ = Profile.profileOn();*)
-        fun conflicting_local_lvar(lvar): conflict Option =  
+        fun conflicting_local_lvar(lvar): conflict option =  
              let val lvar_res as (_,lrv) = SME.retrieve_lvar_env(Lvars.key lvar, LE)
              in
                case rho_points_into(lrv)  of
-                 Some (witness: place) => Some(LVAR_PROBLEM(rho,lvar,lvar_res,witness))
-               | None => None
+                 SOME (witness: place) => SOME(LVAR_PROBLEM(rho,lvar,lvar_res,witness))
+               | NONE => NONE
              end handle SME.LvarEnv => 
                      (* lvar from previous program module. The follwing code assumes that
                         the only region variables that can occur free in the type of an
                         lvar from a previous module are global regions declared in Effect!!! *)
                (case rho_points_into(global_regions)  of
-                 Some (witness: place) => Some(GLOBAL_LVAR_PROBLEM(rho,lvar,global_regions,witness))
-               | None => None)
+                 SOME (witness: place) => SOME(GLOBAL_LVAR_PROBLEM(rho,lvar,global_regions,witness))
+               | NONE => NONE)
 
-        fun conflicting_local_excon(excon: Excon.excon): conflict Option =
+        fun conflicting_local_excon(excon: Excon.excon): conflict option =
              let val excon_res as (_,lrv)  = SME.retrieve_excon_env(excon, EE)
              in
                case rho_points_into(lrv) of
-                 Some (witness: place) => Some(EXCON_PROBLEM(rho,excon,excon_res,witness))
-               | _ => None
+                 SOME (witness: place) => SOME(EXCON_PROBLEM(rho,excon,excon_res,witness))
+               | _ => NONE
              end handle SME.ExconEnv => 
                      (* excon from previous program module. The following code assumes that
                         the only region variables that can occur free in the type of an
                         lvar or excon from a previous module are global regions declared 
                         in Effect!!! *)
                (case rho_points_into(global_regions)  of
-                 Some (witness: place) => Some(GLOBAL_EXCON_PROBLEM(rho,excon,global_regions,witness))
-               | None => None)
+                 SOME (witness: place) => SOME(GLOBAL_EXCON_PROBLEM(rho,excon,global_regions,witness))
+               | NONE => NONE)
       in
           case LLV.findLvar conflicting_local_lvar liveset of
-            Some(lvar,conflict)  => (Some conflict, ATTOP rho)
+            SOME(lvar,conflict)  => (SOME conflict, ATTOP rho)
           | _ =>  (case LLV.findExcon conflicting_local_excon liveset  of
-                       Some(excon, conflict) => (Some conflict,ATTOP rho)
-                     | _ => (None, atbot_or_sat)
+                       SOME(excon, conflict) => (SOME conflict,ATTOP rho)
+                     | _ => (NONE, atbot_or_sat)
                   )
           (*footnote Profile.profileOff()*)
       end handle _ => die "any_live failed"
 
   fun equal_places rho1 rho2 = Eff.eq_effect(rho1,rho2)
 
-  fun letregion_bound (rho,sme,liveset): conflict Option * place at=
+  fun letregion_bound (rho,sme,liveset): conflict option * place at=
       let 
-	  fun rho_points_into rhos= Some(List.first (equal_places rho) rhos) 
-                                    handle List.First _ => None
+	  fun rho_points_into rhos= SOME(List.first (equal_places rho) rhos) 
+                                    handle List.First _ => NONE
       in
 	  debug1([],liveset);
 	  any_live(rho,sme,liveset, rho_points_into, ATBOT rho)
@@ -385,13 +388,13 @@ functor AtInf(structure Lvars: LVARS
   fun visit rho = Eff.get_visited rho := true;
   fun unvisit rho = Eff.get_visited rho := false;
 
-  fun letrec_bound (rho, sme, liveset): conflict Option * place at= 
+  fun letrec_bound (rho, sme, liveset): conflict option * place at= 
       let 
          (*val _ = Profile.profileOn();*)
       	  val rho_related = RegFlow.reachable_in_graph_with_insertion (rho)
          (*val _ = Profile.profileOff();*)
 	  fun rho_points_into lrv = 
-                 Some(List.first is_visited lrv) handle List.First _  => None
+                 SOME(List.first is_visited lrv) handle List.First _  => NONE
       in
 	  debug1(rho_related,liveset);
 	  List.apply visit rho_related;
@@ -405,13 +408,13 @@ functor AtInf(structure Lvars: LVARS
     | show_place_at IGNORE  = "(ignore)"
 
   fun which_at0 explain (sme as (RE,LE,EE),rho,liveset) 
-      : conflict Option * place at = 
+      : conflict option * place at = 
       (* Invariant: all rhos have their visited field false *)
      case Eff.get_place_ty rho of
-       Some Eff.WORD_RT => (None, ATTOP rho)
+       SOME Eff.WORD_RT => (NONE, ATTOP rho)
      | _ => 
       (if !all_attop then 
-  	      (Some(ALL_ATTOP rho), ATTOP rho)
+  	      (SOME(ALL_ATTOP rho), ATTOP rho)
        else 
         (case SME.retrieve_regvar_env(rho,RE) of
   	 SME.LETREGION_BOUND =>   (* SMA rules 25 and 26 *)
@@ -420,22 +423,22 @@ functor AtInf(structure Lvars: LVARS
   	   (debug0(rho, "(letrec-bound)"); letrec_bound(rho,sme,liveset))
         )
         handle SME.RegvarEnv =>		     (* SMA rule 29 *)
-         (debug0(rho, "(non-locally bound)");(Some (NON_LOCAL rho), ATTOP rho))
+         (debug0(rho, "(non-locally bound)");(SOME (NON_LOCAL rho), ATTOP rho))
       )
 
   fun which_at env (rho,liveset) :  place at =
           #2(which_at0 false (env,rho,liveset))
 
   fun which_at_with_explanation(env,rho,liveset) 
-      : conflict Option * place at = which_at0 true (env,rho,liveset)
+      : conflict option * place at = which_at0 true (env,rho,liveset)
 
   fun analyse_rhos_for_resetting (sme, liveset, rhos) : place at list * conflict list= 
     let 
        fun loop([]:place list, acc1: place at list, acc2: conflict list) = (acc1,acc2)
          | loop(rho::rest, acc1,acc2)=
              case which_at_with_explanation(sme,rho,liveset) of
-               (None, place_at) => loop(rest,place_at::acc1, acc2)
-             | (Some problem, place_at)          => loop(rest,place_at::acc1, problem::acc2)
+               (NONE, place_at) => loop(rest,place_at::acc1, acc2)
+             | (SOME problem, place_at)          => loop(rest,place_at::acc1, problem::acc2)
     in
       loop(rhos,[],[])
     end
@@ -478,19 +481,19 @@ functor AtInf(structure Lvars: LVARS
 	    let fun sma_sw sme (SWITCH(tr,choices,opt)) =
 	          let val tr' = sma_trip sme tr
 		      val choices' = map (fn (a,tr) => (a,sma_trip sme tr)) choices
-		      val opt' = case opt of Some tr => Some (sma_trip sme tr) | None => None
+		      val opt' = case opt of SOME tr => SOME (sma_trip sme tr) | NONE => NONE
 		  in SWITCH(tr',choices',opt')
 		  end
 		val e' = 
 		 (case e
 		    of VAR{lvar,il,plain_arreffs,alloc,rhos_actuals=ref actuals,other} =>
 		      let val alloc' = case alloc of 
-                                         Some alloc => 
+                                         SOME alloc => 
                                            (if !debug_which_at then
                                                log("application of lvar: " ^ Lvars.pr_lvar lvar)
                                             else ();
-                                            Some(which_at sme alloc))
-                                       | None => None
+                                            SOME(which_at sme alloc))
+                                       | NONE => NONE
 			  val actuals' = map (which_at sme) actuals  (* also liveset here*)
 		      in VAR{lvar=lvar,il=il,plain_arreffs=plain_arreffs,
 			     alloc=alloc',rhos_actuals=ref actuals',other=()}
@@ -574,9 +577,9 @@ functor AtInf(structure Lvars: LVARS
                                  sma_trip sme tr)
 		     | DECON ({con, il}, tr) => DECON({con=con,il=il},sma_trip sme tr)
 		     | EXCON (excon, opt) => EXCON(excon, case opt
-							    of Some (alloc as (p, liveset),tr) => 
-                                                                 Some (ATTOP p, sma_trip sme tr)
-							     | None => None)
+							    of SOME (alloc as (p, liveset),tr) => 
+                                                                 SOME (ATTOP p, sma_trip sme tr)
+							     | NONE => NONE)
 		     | DEEXCON (excon,tr) => DEEXCON(excon, sma_trip sme tr)
 		     | RECORD (alloc, trs) => RECORD(which_at sme alloc,map (sma_trip sme) trs)
 		     | SELECT (i, tr) => SELECT(i,sma_trip sme tr)
@@ -627,7 +630,7 @@ functor AtInf(structure Lvars: LVARS
 		      end
                    ) handle Crash.CRASH => 
                            (log "\nStorage Mode Analysis failed at expression:";
-                            dump(MulExp.layoutLambdaExp(fn _ => None)(fn _ => None)(fn _ => None)(fn _ => None)
+                            dump(MulExp.layoutLambdaExp(fn _ => NONE)(fn _ => NONE)(fn _ => NONE)(fn _ => NONE)
                              e);
                             raise AbortExpression)
 
@@ -694,22 +697,22 @@ functor AtInf(structure Lvars: LVARS
     (***********************************)
 
     type StringTree = PP.StringTree
-    fun lay (s : string) (p: 'a -> StringTree) (a : 'a) : StringTree Option = 
-      Some(PP.HNODE{start=s^" ",finish="",children=[p a],childsep=PP.NONE})
+    fun lay (s : string) (p: 'a -> StringTree) (a : 'a) : StringTree option = 
+      SOME(PP.HNODE{start=s^" ",finish="",children=[p a],childsep=PP.NOSEP})
 
     fun layout_at (p: 'a -> StringTree) (at : 'a at) =
       case at
 	of ATTOP a => lay "attop" p a
 	 | ATBOT a => lay "atbot" p a
 	 | SAT a => lay "sat" p a
-	 | IGNORE => None
+	 | IGNORE => NONE
 
     fun layout_placeXmul (place,mul) =
 	PP.HNODE{start="",finish="",childsep=PP.RIGHT ":",
 		 children=[Eff.layout_effect place, Mul.layout_mul mul]}
-    fun layout_unit () = None
+    fun layout_unit () = NONE
     val layout_trip : (place at, place*mul, unit)trip -> StringTree =
-      MulExp.layoutLambdaTrip (layout_at Eff.layout_effect)(layout_at Eff.layout_effect) (Some o layout_placeXmul) layout_unit
+      MulExp.layoutLambdaTrip (layout_at Eff.layout_effect)(layout_at Eff.layout_effect) (SOME o layout_placeXmul) layout_unit
 
     (* brief printing of expressions: *)
     fun layout_at' (p: 'a -> StringTree) (at : 'a at) =
@@ -717,27 +720,27 @@ functor AtInf(structure Lvars: LVARS
 	of ATTOP a => lay "at" p a
 	 | ATBOT a => lay "at" p a
 	 | SAT a => lay "at" p a
-	 | IGNORE => None
+	 | IGNORE => NONE
 
     fun layout_at'' (p: 'a -> StringTree) (at : 'a at) =
       case at
-	of ATTOP a => Some(p a)
-	 | ATBOT a => Some(p a)
-	 | SAT a => Some(p a)
-	 | IGNORE => None
+	of ATTOP a => SOME(p a)
+	 | ATBOT a => SOME(p a)
+	 | SAT a => SOME(p a)
+	 | IGNORE => NONE
 
-    fun ignore _ = None
+    fun ignore _ = NONE
 
     fun layout_trip_brief(tr : (place at, place*mul, unit)trip): StringTree =
       if !Flags.print_regions then
          MulExp.layoutLambdaTrip 
-             (layout_at' Eff.layout_effect)(layout_at'' Eff.layout_effect) (Some o layout_placeXmul) layout_unit tr
+             (layout_at' Eff.layout_effect)(layout_at'' Eff.layout_effect) (SOME o layout_placeXmul) layout_unit tr
       else
          MulExp.layoutLambdaTrip ignore ignore ignore layout_unit tr
 
     fun layout_exp_brief(e : (place at, place*mul, unit)LambdaExp): StringTree =
       if !Flags.print_regions then
-          MulExp.layoutLambdaExp (layout_at' Eff.layout_effect)(layout_at'' Eff.layout_effect) (Some o layout_placeXmul) layout_unit e
+          MulExp.layoutLambdaExp (layout_at' Eff.layout_effect)(layout_at'' Eff.layout_effect) (SOME o layout_placeXmul) layout_unit e
       else
           MulExp.layoutLambdaExp ignore ignore ignore layout_unit e
 

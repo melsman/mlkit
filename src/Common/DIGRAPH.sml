@@ -177,7 +177,7 @@ signature DIGRAPH =
          nodes n'' for which and edge from n' to n'' was added.
       *)
 
-    val multi_graft: ('info node  -> 'info node Option) ->
+    val multi_graft: ('info node  -> 'info node option) ->
                      ('info node * 'info node)list -> 
                      ('info node * 'info node list)list
      (*

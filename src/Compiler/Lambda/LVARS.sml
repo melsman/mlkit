@@ -63,14 +63,14 @@ signature LVARS =
 
     (* For pattern-mathing, we declare a datatype for
      * compiler-supported primitives and a function 
-     * primitive: lvar -> primitive Option *)
+     * primitive: lvar -> primitive option *)
 
     datatype primitive = PLUS_INT | MINUS_INT | MUL_INT | DIV_INT | NEG_INT | ABS_INT
                        | LESS_INT | LESSEQ_INT | GREATER_INT | GREATEREQ_INT
                        | PLUS_FLOAT | MINUS_FLOAT | MUL_FLOAT | DIV_FLOAT | NEG_FLOAT | ABS_FLOAT
                        | LESS_FLOAT | LESSEQ_FLOAT | GREATER_FLOAT | GREATEREQ_FLOAT
 
-    val primitive : lvar -> primitive Option
+    val primitive : lvar -> primitive option
 
     (* ------------------------------------ 
      * Non-compiler-supported primitives;
@@ -136,5 +136,5 @@ signature LVARSET =
 	val members      : lvarset -> lvar list		
 	val foldset      : ('a * lvar -> 'a) -> 'a * lvarset -> 'a
 	val mapset       : (lvar -> 'a) -> lvarset -> 'a list
-        val findLvar     : (lvar -> '_a Option) -> lvarset -> (lvar * '_a)Option
+        val findLvar     : (lvar -> '_a option) -> lvarset -> (lvar * '_a)option
     end

@@ -12,11 +12,15 @@ functor LambdaBasics (structure Lvars : LVARS
 		      structure Flags : FLAGS) : LAMBDA_BASICS =
   struct
 
+    structure Int = Edlib.Int
+    structure List = Edlib.List
+    structure Set = Edlib.Set
+
     open TLE
 
     fun die s = Crash.impossible ("LambdaBasics." ^ s)
 
-    fun log x = output(!Flags.log,x)
+    fun log x = TextIO.output(!Flags.log,x)
 
     fun foldl f a []      = a
       | foldl f a (x::xs) = foldl f (f a x) xs
@@ -33,8 +37,8 @@ functor LambdaBasics (structure Lvars : LVARS
 	  SWITCH(f arg,
 		 map (fn (const,x) => (const, f x)) selections,
 		 case wildcard
-		       of Some lamb => Some(f lamb)
-			| None => None)
+		       of SOME lamb => SOME(f lamb)
+			| NONE => NONE)
       in
 	case f lamb 
 	  of VAR _ => lamb
@@ -71,8 +75,8 @@ functor LambdaBasics (structure Lvars : LVARS
 	  SWITCH(f arg,
 		 map (fn (const,x) => (const, f x)) selections,
 		 case wildcard
-		       of Some lamb => Some(f lamb)
-			| None => None)
+		       of SOME lamb => SOME(f lamb)
+			| NONE => NONE)
       in
 	f (case lamb 
 	     of VAR _ => lamb
@@ -106,8 +110,8 @@ functor LambdaBasics (structure Lvars : LVARS
 	fun foldSwitch (SWITCH(arg, selections, wildcard)) =
 	  let val acc' = foldl (foldTD f) (foldTD f new_acc arg) (map #2 selections)
           in case wildcard
-	       of Some lamb => foldTD f acc' lamb
-		| None => acc'
+	       of SOME lamb => foldTD f acc' lamb
+		| NONE => acc'
           end          
       in
 	case lamb 
@@ -139,8 +143,8 @@ functor LambdaBasics (structure Lvars : LVARS
     fun map_lamb_sw f (SWITCH(e,sel,opt_e)) =
        let fun map_sel [] = []
 	     | map_sel ((a,e)::rest) = (a,f e) :: map_sel rest
-	   fun map_opt (Some e) = Some (f e)
-	     | map_opt None = None
+	   fun map_opt (SOME e) = SOME (f e)
+	     | map_opt NONE = NONE
        in SWITCH(f e, map_sel sel, map_opt opt_e)
        end
  
@@ -177,8 +181,8 @@ functor LambdaBasics (structure Lvars : LVARS
     fun app_lamb_sw f (SWITCH(e,sel,opt_e)) =
        let fun app_sel [] = ()
 	     | app_sel ((a,e)::rest) = (f e; app_sel rest)
-	   fun app_opt (Some e) = f e
-	     | app_opt None = ()
+	   fun app_opt (SOME e) = f e
+	     | app_opt NONE = ()
        in f e; app_sel sel; app_opt opt_e
        end
  
@@ -221,11 +225,11 @@ functor LambdaBasics (structure Lvars : LVARS
       fun add_tvs [] ren = ren
 	| add_tvs ((tv,tv')::pairs) ren = add_tvs pairs (add_tv (tv,tv',ren)) 
       fun on_tv (_, tv_map) tv = case FinMap.lookup tv_map tv
-				   of Some tv => tv
-				    | None => tv
+				   of SOME tv => tv
+				    | NONE => tv
       fun on_lv (lv_map, _) lv = case FinMapEq.lookup Lvars.eq lv_map lv
-				   of Some lv => lv
-				    | None => lv
+				   of SOME lv => lv
+				    | NONE => lv
       fun on_tau ren tau =
 	let fun on_t (TYVARtype tv) = TYVARtype (on_tv ren tv)
 	      | on_t (ARROWtype (tl, tl')) = ARROWtype(map on_t tl, map on_t tl')
@@ -273,7 +277,7 @@ functor LambdaBasics (structure Lvars : LVARS
       
       fun on_sw on_e (SWITCH(e,sel,opt_e)) =
 	SWITCH(on_e e, map (fn (a, e) => (a, on_e e)) sel,
-	       case opt_e of Some e => Some (on_e e) | None => None)
+	       case opt_e of SOME e => SOME (on_e e) | NONE => NONE)
 	
       fun on_functions ren on_e fns =
 	let val lvs = map #lvar fns
@@ -323,7 +327,7 @@ functor LambdaBasics (structure Lvars : LVARS
 				     in FIX{functions=functions', scope=on_e ren' scope}
 				     end
 	   | APP(e1,e2) => APP(on_e ren e1, on_e ren e2)
-	   | EXCEPTION(excon, ty_opt, e) => EXCEPTION(excon, case ty_opt of Some tau => Some (on_tau ren tau) | None => None,
+	   | EXCEPTION(excon, ty_opt, e) => EXCEPTION(excon, case ty_opt of SOME tau => SOME (on_tau ren tau) | NONE => NONE,
 						      on_e ren e)
 	   | RAISE(e,tl) => RAISE(on_e ren e, on_tl ren tl)
 	   | HANDLE(e1,e2) => HANDLE(on_e ren e1, on_e ren e2)
@@ -449,7 +453,7 @@ functor LambdaBasics (structure Lvars : LVARS
 	    in
 	      if Set.isEmpty intersection then S'
 	      else (if !Flags.DEBUG_OPTIMISER then 
-		      output(std_out,"TypeVariableCapture raised\n")
+		      TextIO.output(TextIO.stdOut,"TypeVariableCapture raised\n")
 		    else ();
 		      raise TypeVariableCapture)
 	    end
@@ -472,8 +476,8 @@ functor LambdaBasics (structure Lvars : LVARS
 		SWITCH(f S arg,
 		       map (fn (const,x) => (const, f S x)) selections,
 		       case wildcard
-			 of Some lamb => Some(f S lamb)
-			  | None => None)
+			 of SOME lamb => SOME(f S lamb)
+			  | NONE => NONE)
 	    in
 	      case lamb 
 		of VAR{lvar,instances} => VAR{lvar=lvar,instances=on_Types S instances}
@@ -499,8 +503,8 @@ functor LambdaBasics (structure Lvars : LVARS
 		 | EXCEPTION(excon,tau_opt,lamb) =>
 		  EXCEPTION(excon,
 			    case tau_opt 
-			      of None => None
-			       | Some tau => Some (on_Type S tau),
+			      of NONE => NONE
+			       | SOME tau => SOME (on_Type S tau),
 			    f S lamb)
 		 | RAISE(lamb,tl) => RAISE(f S lamb,on_TypeList S tl)
 		 | HANDLE(lamb1,lamb2) => HANDLE(f S lamb1,f S lamb2)
@@ -559,9 +563,9 @@ functor LambdaBasics (structure Lvars : LVARS
       fun match_sigma((tvs,tau), tau') =
 	let fun add(tv,tau,S) =
 	      case FinMap.lookup S tv
-		of Some tau' => if eq_Type(tau,tau') then S
+		of SOME tau' => if eq_Type(tau,tau') then S
 				else die "match_sigma.add"
-		 | None => FinMap.add(tv,tau,S)
+		 | NONE => FinMap.add(tv,tau,S)
  
 	    fun match_tau(S, tau, tau') =
 	      case (tau, tau')
@@ -585,8 +589,8 @@ functor LambdaBasics (structure Lvars : LVARS
 	      
 	    val S = match_tau(FinMap.empty,tau,tau')
 	    val subst = map (fn tv => case FinMap.lookup S tv
-					of Some tau => (tv,tau)
-					 | None => (tv,TYVARtype tv)) tvs
+					of SOME tau => (tv,tau)
+					 | NONE => (tv,TYVARtype tv)) tvs
 	in subst
 	end
 

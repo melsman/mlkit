@@ -1,11 +1,12 @@
 (* Global flags *)
 
-(*$Flags: FLAGS CRASH REPORT*)
-
-functor Flags
-  (structure Crash : CRASH
-   structure Report : REPORT): FLAGS =
+functor Flags (structure Crash : CRASH
+	       structure Report : REPORT) : FLAGS =
   struct
+
+    open Edlib OldIO OldString
+    open General
+
     fun die s = Crash.impossible ("Flags." ^ s)
 
      (* To introduce a new dynamic flag, do the following:
@@ -167,7 +168,7 @@ functor Flags
 	       [] =>  ()
 	     | reports =>
 		 (if !log_to_file then
-		    output (std_out, "\n*** " ^ Int.string (length reports)
+		    output (std_out, "\n*** " ^ Int.string (List.size reports)
 			    ^ " warning"
 			    ^ (case reports of [_] => "" | _ => "s")
 		            ^ " printed on log file\n")
@@ -565,7 +566,7 @@ struct
   fun read_string r () =
       (u_or_q_from_read_string := false ;
        outLine "<string in double quotes> or up (u): >" ;
-       let val s = Instream.inputLine std_in
+       let val s = TextIO.inputLine std_in
 	   val (_, l) = List.splitFirst (fn ch => ch <> " ") (explode s)
 	         handle List.First _ => ([],[])
        in
@@ -814,7 +815,7 @@ struct
   
   fun read_display_cmd(): cmd =
     (output(std_out, "\n>");
-     let val s = Instream.inputLine std_in
+     let val s = TextIO.inputLine std_in
          val (_, l) = List.splitFirst (fn ch => ch <> " ") (explode s)
 	       handle List.First _ => ([],[])
      in case l of
@@ -834,7 +835,7 @@ struct
   
   fun read_button_cmd () : cmd =
         (output (std_out, "\n>");
-	 let val s = Instream.inputLine std_in
+	 let val s = TextIO.inputLine std_in
 	     val (_, l) = List.splitFirst (fn ch => ch <> " ") (explode s)
 	           handle List.First _ => ([],[])
 	 in case l of
@@ -866,7 +867,7 @@ struct
   fun mk_int_action(r: int ref, text) =
               let fun read_int() =
                    (outLine "<number> or up (u): >";
-                    let val s = Instream.inputLine std_in
+                    let val s = TextIO.inputLine std_in
                         val (_, l) = List.splitFirst(fn ch => ch <> " ")(explode s)
 			      handle List.First _ => ([],[])
                     in case l of 
@@ -884,7 +885,7 @@ struct
   fun read_int_list r () =
     (outLine "<type an int list, e.g. [4,3]> or up (u): >";
      let
-       val s = Instream.inputLine std_in
+       val s = TextIO.inputLine std_in
        (*val _ = output(std_out, s)*)
        val parseInt = IntParse.parse
        val parseIntList = ListParse.parseSep "[" "]" "," parseInt
@@ -904,7 +905,7 @@ struct
     (outLine "<type an int pair list of region variables,\n\
 	  \e.g. [(formal reg. var. at pp.,letregion bound reg. var.)]> or up (u): >" ;
      let
-       val s = Instream.inputLine std_in
+       val s = TextIO.inputLine std_in
        (*val _ = output(std_out, s)*)
        val parseInt = IntParse.parse
        val parseIntPair = PairParse.parse parseInt parseInt
@@ -1142,8 +1143,9 @@ struct
         handle Quit => ()
 	     | Crash.CRASH => (outLine "*** CRASH raised *" ; interact ()) 
 	     | Io s => (outLine ("*** Io \"" ^ s ^ "\" raised *"); interact ())
-	     | SML_NJ.Unsafe.CInterface.SystemCall s =>
+(*	     | SML_NJ.Unsafe.CInterface.SystemCall s =>
 	         (outLine ("*** SystemCall \"" ^ s ^ "\" raised *"); interact ())
+*)
 	     | Overflow => (outLine "*** Overflow raised *"; interact ())
 	     | e => (outLine "*** Uncaught exception\nI shall reraise it...\n" ;
 		     raise e ;

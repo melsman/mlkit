@@ -11,7 +11,7 @@ signature SORTED_FINMAP =
 
     val isEmpty: (''a, 'b) map -> bool
 
-    val lookup: (''a, 'b) map -> ''a -> 'b Option
+    val lookup: (''a, 'b) map -> ''a -> 'b option
 
     val add:
       (''a * ''a -> bool) -> (''a * 'b * (''a, 'b) map) -> (''a, 'b) map

@@ -49,7 +49,7 @@ functor CompileBasis(structure Con : CON
 			     ): COMPILE_BASIS =
   struct
 
-    fun log s = output(std_out,s)
+    fun log s = TextIO.output(TextIO.stdOut,s)
 
     val debug_man_enrich = ref false
     val _ = Flags.add_flag_to_menu (["Debug Kit", "Manager"], 
