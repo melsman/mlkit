@@ -218,7 +218,7 @@ struct
 
     (* Find a register for aty and generate code to store into the aty *)
     fun resolve_aty_def_kill_gen1(SS.STACK_ATY offset,t:reg,size_ff,C) = (t,store_indexed_kill_gen1(sp,WORDS(~size_ff+offset),t,C))
-      | resolve_aty_def_kill_gen1(SS.PHREG_ATY phreg,t:reg,size_ff,C)  = (phreg,C)
+      | resolve_aty_def_kill_gen1(SS.PHREG_ATY phreg,t:reg,size_ff,C)  = (phreg,C) (*(t,copy(t,phreg,C))*)  (* This is f.c.i.g bad; solution: remove all record constructs and unfold them in LineStmt. 18/02/1999, Niels *)
       | resolve_aty_def_kill_gen1 _ = die "resolve_aty_def_kill_gen1: ATY cannot be defined"
 
     (* Make sure that the aty ends up in register dst_reg *)
@@ -507,7 +507,18 @@ struct
     (* We preserve the value in register t, *)
     (* t may be used in a call to alloc     *)
     fun reset_region(t:reg,tmp:reg,size_ff,C) = 
-      compile_c_call_prim("resetRegion",[SS.PHREG_ATY t],SOME(SS.PHREG_ATY t),size_ff,tmp,C)
+(*      compile_c_call_prim("resetRegion",[SS.PHREG_ATY t],SOME(SS.PHREG_ATY t),size_ff,tmp,C)*)
+	let 
+	  val _ = add_lib_function "__reset_region"
+	  val l = new_local_lab "return_from_alloc"
+	in
+	  copy(t,tmp_reg1,
+	  load_label_addr_kill_gen1(l,SS.PHREG_ATY mrp,mrp,size_ff,
+          STWM {r=mrp, d="4", s=Space 0, b=sp} :: 
+          META_B{n=false,target=NameLab "__reset_region"} ::  (* META_B destroys tmp_reg0 *)
+          LABEL l :: 
+	  copy(tmp_reg1,t,C)))
+	end
 
     fun alloc_kill_gen1_tmp0_1(t:reg,n:int,size_ff,C) =
       if !inline_alloc then
@@ -753,9 +764,15 @@ struct
 	  val (y_reg,y_C) = resolve_arg_aty_kill_gen1(y,tmp_reg1,size_ff)
 	  val (d_reg,C') = resolve_aty_def_kill_gen1(d,mrp,size_ff,C)
 	in
-	  x_C(y_C(LDI {i=int_to_string BI.ml_true, t=d_reg} ::
-	  COMCLR {cond=cond,r1=x_reg,r2=y_reg,t=Gen 1} ::
-	  LDI {i=int_to_string BI.ml_false,t=d_reg} :: C'))
+	  if x_reg=d_reg orelse y_reg=d_reg then (* In this case, we must preserve x_reg and y_reg. *)
+	    x_C(y_C(LDI {i=int_to_string BI.ml_true, t=rp} ::
+	    COMCLR {cond=cond,r1=x_reg,r2=y_reg,t=Gen 1} ::
+	    LDI {i=int_to_string BI.ml_false,t=rp} :: 
+	    copy(rp,d_reg,C')))
+	  else
+	    x_C(y_C(LDI {i=int_to_string BI.ml_true, t=d_reg} ::
+	    COMCLR {cond=cond,r1=x_reg,r2=y_reg,t=Gen 1} ::
+	    LDI {i=int_to_string BI.ml_false,t=d_reg} :: C'))
 	end
 
       fun maybe_tag_integers(inst,C) =		  
@@ -822,8 +839,12 @@ struct
 	   else 
 	     "0"
        in
-	 x_C(ADD{cond=GREATERTHAN,r1=x_reg,r2=Gen 0,t=d_reg} ::
-	     SUBI{cond=NEVER,i=base,r=x_reg,t=d_reg} :: C')
+	 if x_reg = d_reg then (* We must preserve d_reg *)
+	   x_C(ADD{cond=GREATERTHAN,r1=x_reg,r2=Gen 0,t=rp} ::
+	       SUBI{cond=NEVER,i=base,r=x_reg,t=rp} :: copy(rp,d_reg,C'))
+	 else
+	   x_C(ADD{cond=GREATERTHAN,r1=x_reg,r2=Gen 0,t=d_reg} ::
+	       SUBI{cond=NEVER,i=base,r=x_reg,t=d_reg} :: C')
        end
 
     fun addf(x,y,b,d,size_ff,C) =
@@ -1222,10 +1243,17 @@ struct
 			      val (reg_for_result,C') = resolve_aty_def_kill_gen1(pat,tmp_reg1,size_ff,C)
 			      val tag = Word32.toInt(BI.tag_con1(false,i))
 			    in
-			      alloc_ap_kill_gen1_tmp0_1_2(alloc,reg_for_result,2,size_ff,
-			      load_immed(IMMED tag,mrp,
-			      store_indexed_kill_gen1(reg_for_result,WORDS 0,mrp,
-			      store_aty_in_reg_record_kill_gen1(arg,mrp,reg_for_result,WORDS 1,size_ff,C'))))
+			      if SS.eq_aty(pat,arg) then (* We must preserve arg. *)
+				alloc_ap_kill_gen1_tmp0_1_2(alloc,tmp_reg1,2,size_ff,
+			        load_immed(IMMED tag,mrp,
+			        store_indexed_kill_gen1(tmp_reg1,WORDS 0,mrp,
+			        store_aty_in_reg_record_kill_gen1(arg,mrp,tmp_reg1,WORDS 1,size_ff,
+				copy(tmp_reg1,reg_for_result,C')))))
+			      else
+				alloc_ap_kill_gen1_tmp0_1_2(alloc,reg_for_result,2,size_ff,
+			        load_immed(IMMED tag,mrp,
+			        store_indexed_kill_gen1(reg_for_result,WORDS 0,mrp,
+			        store_aty_in_reg_record_kill_gen1(arg,mrp,reg_for_result,WORDS 1,size_ff,C'))))
 			    end
 			| _ => die "CON1.con not unary in env.")
 		| LS.DECON{con,con_kind,con_aty} =>
@@ -1256,9 +1284,14 @@ struct
 					      store_indexed_kill_gen1(reg_for_result,WORDS 0,mrp,C))
 				 else C
 			     in
-			       alloc_ap_kill_gen1_tmp0_1_2(alloc,reg_for_result,BI.size_of_ref(),size_ff,
-			       store_aty_in_reg_record_kill_gen1(aty,mrp,reg_for_result,WORDS offset,size_ff,
-			       maybe_tag_value C'))
+			       if SS.eq_aty(pat,aty) then (* We must preserve aty *)
+				 alloc_ap_kill_gen1_tmp0_1_2(alloc,tmp_reg1,BI.size_of_ref(),size_ff,
+				 store_aty_in_reg_record_kill_gen1(aty,mrp,tmp_reg1,WORDS offset,size_ff,
+				 copy(tmp_reg1,reg_for_result,maybe_tag_value C')))
+			       else
+			         alloc_ap_kill_gen1_tmp0_1_2(alloc,reg_for_result,BI.size_of_ref(),size_ff,
+			         store_aty_in_reg_record_kill_gen1(aty,mrp,reg_for_result,WORDS offset,size_ff,
+			         maybe_tag_value C'))
 			     end
 		| LS.ASSIGNREF(alloc,aty1,aty2) =>
 			     let 
@@ -1280,8 +1313,8 @@ struct
 			     in 
 			       prefix_sm_kill_gen1(alloc,reg_for_result,size_ff,C')
 			     end))
-	   | LS.FLUSH(aty,offset) => COMMENT (pr_ls ls) :: store_aty_in_reg_record_kill_gen1(aty,tmp_reg1,sp,WORDS offset,size_ff,C)
-	   | LS.FETCH(aty,offset) => COMMENT (pr_ls ls) :: load_aty_from_reg_record_kill_gen1(aty,tmp_reg1,sp,WORDS offset,size_ff,C)
+	   | LS.FLUSH(aty,offset) => COMMENT (pr_ls ls) :: store_aty_in_reg_record_kill_gen1(aty,tmp_reg1,sp,WORDS(~size_ff+offset),size_ff,C)
+	   | LS.FETCH(aty,offset) => COMMENT (pr_ls ls) :: load_aty_from_reg_record_kill_gen1(aty,tmp_reg1,sp,WORDS(~size_ff+offset),size_ff,C)
 	   | LS.FNJMP(cc as {opr,args,clos,free,res,bv}) =>
 	       COMMENT (pr_ls ls) :: 
 	       let
@@ -1370,7 +1403,7 @@ struct
 		  let
 		    fun alloc_region_prim((_,offset),C) = 
 		      base_plus_offset_kill_gen1(sp,WORDS(~size_ff+offset),tmp_reg1,
-		      compile_c_call_prim("allocateRegion",[SS.PHREG_ATY tmp_reg1],NONE,size_ff,tmp_reg0(*not used*),C))
+		      compile_c_call_prim("allocateRegion",[SS.PHREG_ATY tmp_reg1],NONE,size_ff,tmp_reg0,C))
 		    fun dealloc_region_prim C = 
 		      compile_c_call_prim("deallocateRegionNew",[],NONE,size_ff,tmp_reg0(*not used*),C)
 		    fun remove_finite_rhos([]) = []
@@ -1539,7 +1572,6 @@ struct
 		      | ("__plus_float",[b,x,y],[d])         => addf(x,y,b,d,size_ff,C)
 		      | ("__minus_float",[b,x,y],[d])        => subf(x,y,b,d,size_ff,C)
 		      | ("__mul_float",[b,x,y],[d])          => mulf(x,y,b,d,size_ff,C)
-		      | ("__div_float",[b,x,y],[d])          => divf(x,y,b,d,size_ff,C)
 		      | ("__neg_float",[b,x],[d])            => negf(b,x,d,size_ff,C)
 		      | ("__abs_float",[b,x],[d])            => absf(b,x,d,size_ff,C)
 		      | ("__less_float",[x,y],[d])           => cmpf(LESSTHAN,x,y,d,size_ff,C)
@@ -1579,6 +1611,7 @@ struct
 		     of ("__mul_int", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => muli(x,y,d,C) 
 		      | ("mul_word__", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => mulw(x,y,d,C)
 		      | ("mul_word8__", [SS.PHREG_ATY x, SS.PHREG_ATY y], [SS.PHREG_ATY d]) => mulw8(x,y,d,C)
+		      | ("__div_float",[b,x,y],[d]) => divf(x,y,b,d,size_ff,C)
 	              | (_,all_args,[]) => compile_c_call_prim(name,all_args,NONE,size_ff,tmp_reg1,C)
 		      | (_,all_args,[res_aty]) => compile_c_call_prim(name,all_args,SOME res_aty,size_ff,tmp_reg1,C)
 		      | _ => die "CCall with more than one result variable"))
@@ -1833,6 +1866,8 @@ struct
 
 	fun allocate C = ccall_stub("__allocate", "alloc", [tmp_reg1, mrp], SOME tmp_reg1, C)
 
+	fun reset_region C = ccall_stub("__reset_region","resetRegion", [tmp_reg1], SOME tmp_reg1, C)
+
 	(* args: tmp_reg1=region pointer and mrp=n bytes to allocate. Result in tmp_reg1 *)
 	(* return address is pushed on the stack *)
 	fun inline_alloc_gc C = 
@@ -2064,7 +2099,7 @@ struct
 				DOT_PROCEND :: C)
 	  end
 
-	val init_link_code = init_insts(lab_exit_insts(raise_insts(toplevel_handler(allocate(gc_stub(inline_alloc(inline_alloc_gc [])))))))
+	val init_link_code = init_insts(lab_exit_insts(raise_insts(toplevel_handler(allocate(gc_stub(inline_alloc(inline_alloc_gc(reset_region []))))))))
       in
 	HppaResolveJumps.RJ{top_decls = [],
 			    init_code = init_link_code,

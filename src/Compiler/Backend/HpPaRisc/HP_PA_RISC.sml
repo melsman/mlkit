@@ -44,6 +44,7 @@ signature HP_PA_RISC =
     (*-----------------------------------------------------------*)
     type lvar
     val all_regs                : reg list
+    val all_regs_as_lvs         : lvar list
     val is_reg                  : lvar -> bool
     val lv_to_reg               : lvar -> reg
     val lv_to_reg_no            : lvar -> int

@@ -403,13 +403,13 @@ struct
 		 layout_switch pr_aty layout_lss_local (fn (con,con_kind) => Con.pr_con con ^ "(" ^ pr_con_kind con_kind ^ ")") sw
            | SWITCH_E sw => layout_switch pr_aty layout_lss_local Excon.pr_excon sw
 	   | RESET_REGIONS{force=true,regions_for_resetting} =>
-		 HNODE{start="force reset regions",
-		       finish="",
+		 HNODE{start="force reset regions(",
+		       finish=")",
 		       childsep=RIGHT ",",
 		       children=map (layout_sma pr_aty) regions_for_resetting}
 	   | RESET_REGIONS{force=false,regions_for_resetting} =>
-		 HNODE{start="reset regions",
-		       finish="",
+		 HNODE{start="reset regions(",
+		       finish=")",
 		       childsep=RIGHT ",",
 		       children=map (layout_sma pr_aty) regions_for_resetting}
 	   | PRIM{name,args,res} =>
@@ -620,7 +620,9 @@ struct
       | L_ce(ClosExp.ASSIGN(sma,ce1,ce2),lvars_res,acc) =
 	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=ASSIGNREF(sma_to_sma sma,ce_to_atom ce1,ce_to_atom ce2)}::acc
       | L_ce(ClosExp.RESET_REGIONS{force,regions_for_resetting},lvars_res,acc) = 
-	  RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting}::acc
+	  (* We must have RESET_REGIONS return unit. *)
+	  RESET_REGIONS{force=force,regions_for_resetting=smas_to_smas regions_for_resetting}::
+	  ASSIGN{pat=VAR(one_lvar lvars_res),bind=ATOM UNIT}::acc
       | L_ce(ClosExp.CCALL{name,rhos_for_result,args},lvars_res,acc) = 
 	  if BI.is_prim name then PRIM{name=name,args=ces_to_atoms rhos_for_result @ ces_to_atoms args,
 				       res=map VAR lvars_res}::acc

@@ -203,7 +203,8 @@ structure K = struct
     val version = "3"
     val greetings = "ML Kit with Regions, Version " ^ version ^ ", " ^ date ^ "\n" ^
                     "Using the " ^ Flags.get_string_entry "kit_backend" ^ " backend\n"
-
+    val usage = "kit [-script | -timings | -nobasislib | -reportfilesig | -logtofiles " ^
+                "| -prof | -gc | -delay_assembly | -chat | -nodso | -version | -help] file"
     local 
       datatype source = SML of string | PM of string
       fun determine_source (s:string) : source option = 
@@ -243,6 +244,7 @@ structure K = struct
 	      | loop ("-chat"::rest, script) = (Flags.chat := true; loop (rest, script))
 	      | loop ("-nodso" ::rest, script) = (Flags.lookup_flag_entry "delay_slot_optimization" := false; loop(rest, script))
 	      | loop ("-version"::rest, script) = loop (rest, script) (*skip*)
+	      | loop ("-help"::rest,script) = (print usage; loop(rest, script))
 	      | loop (rest,script) = (Flags.read_script script; go rest)
 	in print greetings;
 	   set_paths(); 

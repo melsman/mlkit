@@ -108,7 +108,7 @@ functor Flags (structure Crash : CRASH
     val region_paths = (ref[]): (int*int) list ref
 
     (* Flags for Lambda Backend *)
-    val perform_register_allocation = ref false
+    val perform_register_allocation = ref true
     val enable_lambda_backend = ref false
 
     val chat                    = ref false

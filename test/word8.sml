@@ -50,7 +50,6 @@ local
     and w2i = toInt
     fun pr_ln s s' = print (s ^ ": " ^ s' ^ "\n")
 in
-
 val test1 = checkrange (0, 255) 
     (fn i => i = w2i (i2w i));
 val _ = pr_ln "test1" test1
