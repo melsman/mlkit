@@ -345,18 +345,28 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * build a unit
      * ---------------- *)
 
+    fun Repository_lookup_elab a = Repository.lookup_elab a
+    fun Repository_lookup_int a = Repository.lookup_int a
+    fun Basis_enrich a = Basis.enrich a
+
     fun build_unit(B, (funid, filepath): punit) : Basis * modcode =
       let val funstamp_now = FunStamp.from_filemodtime filepath  (*always get funstamp before reading content*)
 	  exception CAN'T_REUSE
-      in (case (Repository.lookup_elab funid, Repository.lookup_int funid)
+      in (case (Repository_lookup_elab funid, Repository_lookup_int funid)
 	    of (Some(_,(infB, elabB, (rea,dom_rea), names_elab,infB',elabB', rea')), 
 		Some(_,(funstamp,elabE,intB,names_int,modc,intB'))) =>
 	      let val B_im = Basis.mk(infB,elabB,rea,intB)
 	      in if FunStamp.eq(funstamp,funstamp_now) andalso
 		     let (* val _ = print "\n[checking enrichment ...\n" *)
-		         val res = Basis.enrich(B, (B_im, dom_rea))
+		         fun unmark_names () = (List.apply Name.unmark_gen names_elab;  (* Unmark names - they where *)
+						List.apply Name.unmark_gen names_int)   (* marked in the repository. *)
+			 fun remark_names () = (List.apply Name.mark_gen names_elab;    (*  If enrichment fails we remark *)
+						List.apply Name.mark_gen names_int)     (* names; notice that enrichment of *)
+			                                                                (* elaboration bases requires all *)
+			 val _ = unmark_names()                                         (* names be unmarked. Names in the *)
+		         val res = Basis_enrich(B, (B_im, dom_rea))                     (* global basis are always unmarked. *)
 			 (* val _ = print " done]\n" *)
-		     in res
+		     in (if res then () else remark_names() ; res)
 		     end 
 
 (* andalso
@@ -369,8 +379,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
                    then 
 		    let val _ = print ("[reusing code for: \t" ^ filepath ^ "]\n")
 		        val B_ex = Basis.mk(infB',elabB',rea',intB')
-		    in List.apply Name.unmark_gen names_elab;    (* unmark names - they where *)
-		       List.apply Name.unmark_gen names_int;     (* marked in the repository. *)
+		    in 
 		       (B_ex, modc)
 		    end
 		 else raise CAN'T_REUSE
@@ -383,14 +392,16 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     (* ----------------
      * build a project
      * ---------------- *)
-		    
+
+    fun Basis_plus (B,B') = Basis.plus(B,B')		    
+
     fun build_proj(B: Basis, project: project) : modcode =
       case project
 	of [] => ModCode.empty
 	 | (punit::project') => 
 	  let val (B', modc) = build_unit(B, punit)
 	      (* val _ = print "\n[adding result to basis ...\n" *)
-	      val B'' = Basis.plus(B,B')
+	      val B'' = Basis_plus(B,B')
 	      (* val _ = print " done]\n" *)
 	      val modc' = build_proj(B'', project')
 	  in ModCode.seq(modc,modc')

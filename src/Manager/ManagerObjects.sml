@@ -322,8 +322,17 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	      val cb1' = CompileBasis.match(cb1,cb2)
 	  in IB(ife1,ce1,cb1')
 	  end
-	fun enrich(IB(ife0,ce0,cb0),IB(ife,ce,cb)) =
-	  IntFunEnv.enrich(ife0,ife) andalso CompilerEnv.enrichCEnv(ce0,ce) andalso CompileBasis.enrich(cb0,cb)
+
+	local 
+	  fun IntFunEnv_enrich a = IntFunEnv.enrich a
+	  fun CompilerEnv_enrichCEnv a = CompilerEnv.enrichCEnv a
+	  fun CompileBasis_enrich a = CompileBasis.enrich a
+	in
+	  fun enrich(IB(ife0,ce0,cb0),IB(ife,ce,cb)) =
+	    IntFunEnv_enrich(ife0,ife) andalso CompilerEnv_enrichCEnv(ce0,ce) 
+	    andalso CompileBasis_enrich(cb0,cb)
+	end
+
 	fun layout(IB(ife,ce,cb)) =
 	  PP.NODE{start="IntBasis = [", finish="]", indent=1, childsep=PP.RIGHT ", ",
 		  children=[IntFunEnv.layout ife,
@@ -354,11 +363,18 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	    (if b then log("\n" ^ s ^ ": enrich succeeded.")
 	     else log("\n" ^ s ^ ": enrich failed."); b)
 	  else b
-	fun enrich (BASIS (infB1,elabB1,rea1,intB1), (BASIS (infB2,elabB2,rea2,intB2), dom_rea)) = 
-	  debug("InfixBasis", InfixBasis.eq(infB1,infB2)) andalso 
-	  debug("ElabBasis", ModuleEnvironments.B.enrich (elabB1,elabB2)) andalso
-	  debug("OpacityRealisation", OpacityElim.enrich (rea1,(rea2,dom_rea))) andalso
-	  debug("IntBasis", IntBasis.enrich(intB1,intB2))
+	local
+	  fun InfixBasis_eq a = InfixBasis.eq a
+	  fun ModuleEnvironments_B_enrich a = ModuleEnvironments.B.enrich a
+	  fun OpacityElim_enrich a = OpacityElim.enrich a
+	  fun IntBasis_enrich a = IntBasis.enrich a
+	in
+	  fun enrich (BASIS (infB1,elabB1,rea1,intB1), (BASIS (infB2,elabB2,rea2,intB2), dom_rea)) = 
+	    debug("InfixBasis", InfixBasis_eq(infB1,infB2)) andalso 
+	    debug("ElabBasis", ModuleEnvironments_B_enrich (elabB1,elabB2)) andalso
+	    debug("OpacityRealisation", OpacityElim_enrich (rea1,(rea2,dom_rea))) andalso
+	    debug("IntBasis", IntBasis_enrich(intB1,intB2))
+	end
 (*
 	fun eq(B,B') = enrich(B,B') andalso enrich(B',B)
 *)
