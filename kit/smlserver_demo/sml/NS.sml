@@ -21,7 +21,6 @@ signature NS =
     val ERROR : status
     val END_DATA : status
 
-    type set = int
     structure Set : NS_SET
 
     structure Conn :
@@ -35,7 +34,7 @@ signature NS =
 	 * It reads the POST content or the query string. The POST 
 	 * content takes precedence over the query string. Note that 
 	 * you must not call Set.free on the result of this function. *)
-	val getQuery : unit -> set option
+	val getQuery : unit -> Set.set option
 
 	(* The function 'formvar' returns the query data associated with
 	 * the connection and the argument key; the function returns NONE
@@ -44,7 +43,7 @@ signature NS =
 
 	(* The function 'headers' returns, as a set, the headers 
 	 * associated with the connection. *)
-	val headers : unit -> set 
+	val headers : unit -> Set.set 
 
 	(* Returns the server hostname associated with the connection. *)
 	val host : unit -> string 
@@ -236,6 +235,6 @@ signature NS =
     val exit : unit -> 'a
 
     (* Creating the two supported database interfaces *)
-    structure DbOra : DB
-    structure DbPg  : DB
+    structure DbOra : NS_DB where type status = status
+    structure DbPg  : NS_DB where type status = status
   end

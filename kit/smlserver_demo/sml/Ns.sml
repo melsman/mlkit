@@ -1,5 +1,7 @@
 structure Ns :> NS =
   struct
+    open NsBasics
+
     type LogSeverity = int
     val Notice=0 and Warning=1 and Error=2 and Fatal=3
     and Bug=4 and Debug=5
@@ -10,9 +12,6 @@ structure Ns :> NS =
     type conn = int
     fun getConn () : conn = 
       prim("nssml_GetConn", "nssml_GetConn", ())
-
-    type status = int        (* see nsthread.h *)
-    val OK = 0 and ERROR = ~1 and END_DATA = 4
 
     fun isNull(s : string) : bool = prim("nssml_isNullString", "nssml_isNullString", s)
 
@@ -188,12 +187,12 @@ structure Ns :> NS =
     val _ = OS.FileSys.chDir (Info.pageRoot())
 
     (* Creating the two supported database interfaces *)
-    structure DbOra : DB = DbFunctor(structure DbBasic = DbBasicOra
-				     structure Set = Set
-				     structure Info = Info)
-    structure DbPg  : DB = DbFunctor(structure DbBasic = DbBasicPG
-				     structure Set = Set
-				     structure Info = Info)
+    structure DbOra = DbFunctor(structure DbBasic = NsDbBasicOra
+				structure Set = Set
+				structure Info = Info)
+    structure DbPg = DbFunctor(structure DbBasic = NsDbBasicPG
+			       structure Set = Set
+			       structure Info = Info)
   end
 
 infixr 5 ^^

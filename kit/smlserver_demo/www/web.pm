@@ -1,7 +1,9 @@
 local
   local
+    ../sml/NsBasics.sml
     ../sml/NsSet.sml
     ../sml/NsInfo.sml
+    ../sml/NS_DB.sml
     ../sml/DbFunctor.sml
   in
     ../sml/NS.sml
@@ -13,6 +15,8 @@ local
   ../sml/FormVar.sml
 in
  [
+  employee/update.sml
+  employee/search.sml
   time_of_day.sml
   cache.sml
   cache_lookup.sml

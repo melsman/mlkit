@@ -47,63 +47,40 @@ ns_param prjid web
 
 # 
 # Database drivers 
-# The database driver is specified here. PostgreSQL driver being loaded.
-# Make sure you have the driver compiled and put it in {aolserverdir}/bin
 #
-#ns_section "ns/db/drivers" 
-#ns_param   nspostgres     ${bindir}/nspostgres.so  ;# Load PostgreSQL driver
 
-# 
-# Database Pools: This is how AOLserver ``talks'' to the RDBMS. You need three for
-# OpenACS: main, log, subquery. Make sure to replace ``yourdb'' and ``yourpassword''
-# with the actual values for your db name and the password for it.
-# AOLserver can have different pools connecting to different databases and even
-# different database servers.
-# 
-#ns_section "ns/db/pools" 
-#ns_param   main       "Main Pool" 
-#ns_param   log        "Log Pool" 
-#ns_param   subquery   "Subquery Pool"
+ns_section "ns/db/drivers" 
+ns_param postgres /usr/share/pgdriver/bin/postgres.so
 
-#ns_section "ns/db/pool/main" 
-#ns_param Driver nspostgres 
-#ns_param Connections 5                  ;# 5 is a good number. Increase according to your needs
-#ns_param DataSource localhost::${user}  ;# Replace 'user' with the name of your database in PG
-#ns_param User ${user}                   ;# User and password AOLserver will use to connect
-#ns_param Password "hej" 
-#ns_param Verbose Off                    ;# Set it to On to see all queries. Good for debugging SQL.
-#ns_param LogSQLErrors On 
-#ns_param ExtendedTableInfo On 
+ns_section "ns/db/pools" 
+ns_param pg_main "pg_main" 
+ns_param pg_sub "pg_sub" 
+
+ns_section "ns/db/pool/pg_main" 
+ns_param Driver postgres 
+ns_param Connections 5                 ;# 5 is a good number. Increase according to your needs
+ns_param DataSource localhost::${user} ;# '${user}' is the name of your database in PG
+ns_param User ${user}                  ;# User and password AOLserver will use to connect
+ns_param Password yourpassword 
+ns_param Verbose Off                   ;# Set it to On to see all queries. Good for debugging SQL.
+ns_param LogSQLErrors On 
+ns_param ExtendedTableInfo On 
+
+ns_section "ns/db/pool/pg_sub" 
+ns_param Driver postgres 
+ns_param Connections 5 
+ns_param DataSource localhost::${user} 
+ns_param User ${user} 
+ns_param Password yourpassword
+ns_param Verbose On
+ns_param LogSQLErrors On 
+ns_param ExtendedTableInfo On 
 # ns_param MaxOpen 1000000000            ;# Uncommenting these two cause AOLserver to keep the
 # ns_param MaxIdle=1000000000            ;# db connection open. Can be a good thing, up tp your needs.
 
-#ns_section "ns/db/pool/log" 
-#    ns_param Driver nspostgres 
-#    ns_param Connections 5 
-#    ns_param DataSource localhost::${user}
-#   ns_param User ${user}
-#    ns_param Password "hej" 
-#    ns_param Verbose On 
-#    ns_param LogSQLErrors On 
-#    ns_param ExtendedTableInfo On 
-#   # ns_param MaxOpen 1000000000 
-#   # ns_param MaxIdle=1000000000 
-
-#ns_section "ns/db/pool/subquery" 
-#ns_param Driver nspostgres 
-#ns_param Connections 2 
-#ns_param DataSource localhost::${user} 
-#ns_param User ${user}
-#ns_param Password "hej" 
-#ns_param Verbose On 
-#ns_param LogSQLErrors On 
-#ns_param ExtendedTableInfo On
-# ns_param MaxOpen 1000000000 
-# ns_param MaxIdle=1000000000 
-
-#ns_section "ns/server/${user}/db" 
-#ns_param Pools          "*" 
-#ns_param DefaultPool    "main"
+ns_section "ns/server/${user}/db" 
+ns_param Pools pg_main,pg_sub
+ns_param DefaultPool "pg_main"
 
 ns_section "ns/server/${user}/modules"
 ns_param nssock nssock.so
