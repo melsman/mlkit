@@ -1,9 +1,9 @@
-signature NS_CACHE_V2 = 
+signature CACHE = 
   sig
     (* Cache kinds *)
     datatype kind =
       WhileUsed of int
-    | ForAWhile of int
+    | TimeOut of int
     | Size of int
 
     (* Cache Type *)
@@ -19,12 +19,14 @@ signature NS_CACHE_V2 =
     val insert : ('a,'b) cache * 'a * 'b -> bool
     val flush  : ('a,'b) cache -> unit
 
-    (* Memorization *)
-    val cache  : ('a,'b) cache -> ('a -> 'b) -> 'a -> 'b
+    (* Memoization *)
+    val memoize  : ('a,'b) cache -> ('a -> 'b) -> 'a -> 'b
 
     (* Build cache types out of pre defined cache types *)
-    val pair   : 'a Type -> 'b Type -> ('a*'b) Type
-    val triple : 'a Type -> 'b Type -> 'c Type -> (('a*'b)*'c) Type
+    val Pair   : 'a Type -> 'b Type -> ('a*'b) Type
+    val Option : 'a Type -> 'a option Type
+    val List   : 'a Type -> 'a list Type
+    val Triple : 'a Type -> 'b Type -> 'c Type -> (('a*'b)*'c) Type
 
     (* Cache info *)
     val pp_type  : 'a Type -> string
@@ -46,7 +48,7 @@ signature NS_CACHE_V2 =
      * WhileUsed t : elements are emitted from the cache after
        approximately t seconds after the last use.
 
-     * ForAWhile t : elements are emitted from the cache after
+     * TimeOut t : elements are emitted from the cache after
        approximately t seconds after they were inserted.
 
      * Size n : the cache has a maximum size of n bytes. Elements are
@@ -91,15 +93,21 @@ signature NS_CACHE_V2 =
 
     [flush c] deletes all entries in cache c.
 
-    [cache c f] implements memorisation on the function f. The
+    [memoize c f] implements memoization on the function f. The
     function f must be a mapping of keys and elements that can be
     stored in a cache, that is, of type 'a Type.
 
-    [pair aType bType] returns the pair type representing the pairs
+    [Pair aType bType] returns the pair type representing the pairs
     (a,b) where a is of type aType and b is of type bType.
 
-    [triple aType bType cType] similar to pair except that the triple
-    is represented with as one pair embedded in another pair:
+    [Option aType] returns the type aType option, representing a
+    option where a is of type aType.
+
+    [List aType] returns the list type representing the list of
+    elements of type aType.
+
+    [Triple aType bType cType] similar to Pair except that the triple
+    is represented with as one Pair embedded in another Pair:
     ((a,b),c) where a is of type aType, b is of type bType and c is of
     type cType.
 
@@ -116,11 +124,11 @@ signature NS_CACHE_V2 =
 
 *)
 
-structure NsCacheV2 :> NS_CACHE_V2 =
+structure NsCacheV2 :> CACHE =
   struct
     datatype kind =
       WhileUsed of int
-    | ForAWhile of int
+    | TimeOut of int
     | Size of int
     type name = string
     type 'a Type = {name: string,
@@ -137,7 +145,7 @@ structure NsCacheV2 :> NS_CACHE_V2 =
     fun pp_kind kind =
       case kind of
 	WhileUsed t => "WhileUsed(" ^ (Int.toString t) ^ ")"
-      | ForAWhile t => "ForAWhile(" ^ (Int.toString t) ^ ")"
+      | TimeOut t => "TimeOut(" ^ (Int.toString t) ^ ")"
       | Size n => "Size(" ^ (Int.toString n) ^ ")"
 
     fun pp_type (t: 'a Type) = #name t
@@ -151,14 +159,14 @@ structure NsCacheV2 :> NS_CACHE_V2 =
 	fun pp_kind kind =
 	  case kind of
 	    WhileUsed t => "WhileUsed"
-	  | ForAWhile t => "ForAWhile"
+	  | TimeOut t => "TimeOut"
 	  | Size n => "Size"
 	val c_name = name ^ (pp_kind kind) ^ #name(domType) ^ #name(rangeType)
 	val cache = 
 	  case kind of
 	    Size n => Ns.Cache.findSz(c_name,n)
 	  | WhileUsed t => Ns.Cache.findTm(c_name,t)
-	  | ForAWhile t => Ns.Cache.findTm(c_name,t)
+	  | TimeOut t => Ns.Cache.findTm(c_name,t)
       in
 	{name=c_name,
 	 kind=kind,
@@ -171,7 +179,7 @@ structure NsCacheV2 :> NS_CACHE_V2 =
       open Time
       fun getWhileUsed (c: ('a,'b) cache) k =
 	Ns.Cache.get(#cache c,#to_string(#domType c) k)
-      fun getForAWhile (c: ('a,'b) cache) k t =
+      fun getTimeOut (c: ('a,'b) cache) k t =
 	case Ns.Cache.get(#cache c,#to_string(#domType c) k) of
 	  NONE => NONE
 	| SOME t0_v => 
@@ -191,7 +199,7 @@ structure NsCacheV2 :> NS_CACHE_V2 =
 	    case #kind c of
 	      Size n => Ns.Cache.get(#cache c,#to_string(#domType c) k)
 	    | WhileUsed t => getWhileUsed c k 
-	    | ForAWhile t => getForAWhile c k t
+	    | TimeOut t => getTimeOut c k t
 	in
 	  case v of
 	    NONE => NONE
@@ -207,19 +215,19 @@ structure NsCacheV2 :> NS_CACHE_V2 =
       | WhileUsed t => Ns.Cache.set(#cache c,
 				    #to_string (#domType c) k,
 				    #to_string (#rangeType c) v)
-      | ForAWhile t => Ns.Cache.set(#cache c,
-				    #to_string(#domType c) k,
-				    Time.toString (Time.now()) ^ ":" ^ ((#to_string (#rangeType c)) v))
+      | TimeOut t => Ns.Cache.set(#cache c,
+				  #to_string(#domType c) k,
+				  Time.toString (Time.now()) ^ ":" ^ ((#to_string (#rangeType c)) v))
 
     fun flush (c: ('a,'b) cache) = Ns.Cache.flush (#cache c)
 
-    fun cache (c: ('a,'b) cache) (f:('a -> 'b)) =
+    fun memoize (c: ('a,'b) cache) (f:('a -> 'b)) =
       (fn k =>
        (case lookup c k of 
 	  NONE => let val v = f k in (insert (c,k,v);v) end 
 	| SOME v => v))
 
-    fun pair (t1 : 'a Type) (t2: 'b Type) =
+    fun Pair (t1 : 'a Type) (t2: 'b Type) =
       let
 	val name = "(" ^ (#name t1) ^ "," ^ (#name t2) ^ ")"
 	fun to_string (a,b) = 
@@ -248,7 +256,80 @@ structure NsCacheV2 :> NS_CACHE_V2 =
 	 from_string=from_string}
       end
 
-    fun triple (t1 : 'a Type) (t2: 'b Type) (t3: 'c Type) = pair (pair t1 t2) t3
+    fun Option (t : 'a Type) =
+      let
+	val name = "Opt(" ^ (#name t) ^ ")"
+	fun to_string a = 
+	  case a of
+	    NONE => "0:N()"
+	  | SOME v => 
+	      let
+		val v_s = (#to_string t) v
+		val v_sz = Int.toString (String.size v_s)
+	      in
+		v_sz ^ ":S(" ^ v_s ^ ")"
+	      end
+	fun from_string s =
+	  let
+	    val s' = Substring.all s
+	    val (v_sz,rest) = 
+	      Option.valOf (Int.scan StringCvt.DEC Substring.getc s')
+	    val rest = #2(Option.valOf (Substring.getc rest)) (* skip ":" *)
+	    val (N_S,rest) = Option.valOf (Substring.getc rest) (* read N og S *)
+	    val rest = #2(Option.valOf (Substring.getc rest)) (* skip "(" *)
+	  in
+	    if N_S = #"S" then
+	      SOME ((#from_string t) (Substring.string (Substring.slice(rest,0,SOME v_sz))))
+	    else
+	      NONE
+	  end
+      in
+	{name=name,
+	 to_string=to_string,
+	 from_string=from_string}
+      end
+
+    fun List (t : 'a Type ) =
+      let
+	val name = "List(" ^ (#name t) ^ ")"
+        (* Format: [x1_sz:x1...xN_sz:xN] *)
+	fun to_string xs = 
+	  let
+	    fun to_string_x x =
+	      let
+		val v_x = (#to_string t) x
+	      in
+		Int.toString (String.size v_x) ^ ":" ^ v_x
+	      end
+	    val xs' = List.map to_string_x xs
+	  in
+	    "[" ^ (String.concat xs') ^ "]"
+	  end
+	fun from_string s =
+	  let
+	    fun read_x (rest,acc) = 
+	      if Substring.size rest = 1 (* "]" *) then
+		List.rev acc
+	      else
+		let
+		  val (x_sz,rest) = Option.valOf (Int.scan StringCvt.DEC Substring.getc rest)
+		  val rest = #2(Option.valOf (Substring.getc rest)) (* skip ":" *)
+		  val (x_s,rest) = (Substring.slice(rest,0,SOME x_sz),Substring.slice(rest,x_sz,NONE))
+		in
+		  read_x (rest,((#from_string t) (Substring.string x_s)) :: acc)
+		end
+	    val s' = Substring.all s
+	    val rest = #2(Option.valOf (Substring.getc s')) (* skip "[" *)
+	  in
+	    read_x (rest,[])
+	  end
+      in
+	{name=name,
+	 to_string=to_string,
+	 from_string=from_string}
+      end
+
+    fun Triple (t1 : 'a Type) (t2: 'b Type) (t3: 'c Type) = Pair (Pair t1 t2) t3
 
     (* Pre defined cache types *)
     val Int    = {name="Int",to_string=Int.toString,from_string=Option.valOf o Int.fromString}
@@ -257,3 +338,5 @@ structure NsCacheV2 :> NS_CACHE_V2 =
     val Char   = {name="Char",to_string=Char.toString,from_string=Option.valOf o Char.fromString}
     val String = {name="String",to_string=(fn s => s),from_string=(fn s => s)}
   end
+
+structure Cache = NsCacheV2

@@ -9,10 +9,10 @@ val cache =
        | "TimeOut" => NsCacheV2.TimeOut 20
        | "Size" => NsCacheV2.Size 100
   in
-    NsCacheV2.get ("users",
+    NsCacheV2.get ("userlist",
 		   k,
 		   NsCacheV2.String, 
-		   NsCacheV2.Pair NsCacheV2.Int NsCacheV2.String)
+		   NsCacheV2.List NsCacheV2.String)
   end
 
 fun pp_kind kind =
@@ -34,7 +34,9 @@ val _ = (* new_p is true if new value added *)
        | SOME email => 
 	returnPage
 	(case NsCacheV2.lookup cache email
-	   of SOME(uid,name) => "Name and userid for " ^ email ^ " is: (" ^ name ^ "," ^ (Int.toString uid) ^ ")"
+	   of SOME [lastname,firstnames] => "Name for " ^ email ^ 
+	     " is: (" ^ firstnames ^ "," ^ lastname ^ ")"
+	 | SOME _ => "Mega error in the internal cache representation!!!"
 	 | NONE => "No name in cache for " ^ email)
 	   
 

@@ -9,16 +9,16 @@ val cache =
        | "TimeOut" => NsCacheV2.TimeOut 20
        | "Size" => NsCacheV2.Size 100
   in
-    NsCacheV2.get ("users",
+    NsCacheV2.get ("userlist",
 		   k,
 		   NsCacheV2.String, 
-		   NsCacheV2.Pair NsCacheV2.Int NsCacheV2.String)
+		   NsCacheV2.List NsCacheV2.String)
   end
 
 val new_p = (* new_p true if new value added *)
-  case (Ns.Conn.formvar "email", Ns.Conn.formvar "name", Ns.Conn.formvar "uid") of
-    (SOME email, SOME name, SOME uid) => 
-      NsCacheV2.insert(cache,email,(Option.valOf(Int.fromString uid),name))
+  case (Ns.Conn.formvar "email", Ns.Conn.formvar "firstnames", Ns.Conn.formvar "lastname") of
+    (SOME email, SOME firstnames, SOME lastname) => 
+      NsCacheV2.insert(cache,email,[lastname,firstnames])
   | _ => false
 
 val head = if new_p then "New Value added" 
