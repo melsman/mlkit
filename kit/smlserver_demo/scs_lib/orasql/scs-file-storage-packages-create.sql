@@ -57,6 +57,10 @@ as
     folder_id in scs_fs_folders.folder_id%TYPE
   ) return scs_fs_instances.instance_id%TYPE;
 
+  function getRootLabelByFolderId (
+    folder_id in scs_fs_folders.folder_id%TYPE
+  ) return scs_fs_instances.label%TYPE;
+
   /* [getRootFolderId root_label folder_name] returns the root folder
       id of root folder folder_name. Returns null if no root folder
       named folder_name in instance root_label exists. */
@@ -64,6 +68,32 @@ as
     root_label in scs_fs_instances.label%TYPE,
     folder_name in scs_fs_folders.foldername%TYPE
   ) return scs_fs_folders.folder_id%TYPE;
+
+  /* [getFileIdByFolderIdAndFilename folder_id filename] returns the
+      file_id for the file name filename in folder folder_id */
+  function getFileIdByFolderIdAndFilename (
+    folder_id in scs_fs_folders.folder_id%TYPE,
+    filename in scs_fs_files.name%TYPE
+  ) return scs_fs_files.file_id%TYPE;
+
+  /* [getNumFilesInFolderId folder_id] returns number of files in
+      folder id or null if folder_id does not exists. */
+  function getNumFilesInFolderId (
+    folder_id in scs_fs_folders.folder_id%TYPE
+  ) return integer;
+
+  /* [getNumRevisions file_id] returns the number of revisions of file
+      file_id. Returns null if file_id does not exists. */
+  function getNumRevisions (
+    file_id in scs_fs_files.file_id%TYPE
+  ) return integer;
+
+  /* [getMaxRevisionId file_id] returns the maximum revision_id of
+      file file_id (i.e., the most resent stored version). Returns
+      null if file_id does not exists. */
+  function getMaxRevisionId (
+    file_id in scs_fs_files.file_id%TYPE
+  ) return scs_fs_revisions.revision_id%TYPE;
 
   /* [getSubFolderId parent_folder_id folder_name] returns the folder
       id of folder_name in folder with folder_id =
@@ -159,7 +189,7 @@ as
     select id
       into getMimeTypeIdByFileExt.res
       from scs_fs_mime_types
-     where file_extension = getMimeTypeIdByFileExt.file_ext;
+     where file_extension = lower(getMimeTypeIdByFileExt.file_ext);
 
     return res;
 
@@ -228,6 +258,25 @@ as
         return null;
   end getInstanceIdByFolderId;
 
+  function getRootLabelByFolderId (
+    folder_id in scs_fs_folders.folder_id%TYPE
+  ) return scs_fs_instances.label%TYPE
+  is  
+    rl scs_fs_instances.label%TYPE;
+  begin
+    select scs_fs_instances.label
+      into rl
+      from scs_fs_folders, scs_fs_instances
+     where scs_fs_folders.instance_id = scs_fs_instances.instance_id
+       and scs_fs_folders.folder_id = getRootLabelByFolderId.folder_id;
+
+    return rl;
+
+    exception
+      when others then
+        return null;
+  end getRootLabelByFolderId;
+
   function getRootFolderId (
     root_label in scs_fs_instances.label%TYPE,
     folder_name in scs_fs_folders.foldername%TYPE
@@ -249,6 +298,82 @@ as
     when others then
       return null;
   end getRootFolderId;
+
+  function getFileIdByFolderIdAndFilename (
+    folder_id in scs_fs_folders.folder_id%TYPE,
+    filename in scs_fs_files.name%TYPE
+  ) return scs_fs_files.file_id%TYPE
+  is
+    file_id scs_fs_files.file_id%TYPE;
+  begin
+    select scs_fs_files.file_id
+      into file_id
+      from scs_fs_files
+     where scs_fs_files.folder_id = getFileIdByFolderIdAndFilename.folder_id
+       and scs_fs_files.name = getFileIdByFolderIdAndFilename.filename;
+ 
+   return file_id;
+
+  exception
+    when others then
+      return null;
+  end getFileIdByFolderIdAndFilename;
+
+  function getNumFilesInFolderId (
+    folder_id in scs_fs_folders.folder_id%TYPE
+  ) return integer
+  is
+    n integer;
+  begin
+    select count(scs_fs_files.file_id)
+      into n
+      from scs_fs_files
+     where scs_fs_files.folder_id = getNumFilesInFolderId.folder_id;
+ 
+   return n;
+
+  exception
+    when others then
+      return null;
+  end getNumFilesInFolderId;
+
+  function getNumRevisions (
+    file_id in scs_fs_files.file_id%TYPE
+  ) return integer
+  is
+    n integer;
+  begin
+    select count(scs_fs_revisions.revision_id)
+      into n
+      from scs_fs_files, scs_fs_revisions
+     where scs_fs_files.file_id = scs_fs_revisions.file_id
+       and scs_fs_files.file_id = getNumRevisions.file_id;
+
+    return n;
+
+  exception
+    when others then
+      return null;
+  end getNumRevisions;
+
+  function getMaxRevisionId (
+    file_id in scs_fs_files.file_id%TYPE
+  ) return scs_fs_revisions.revision_id%TYPE
+  is
+    rev_id scs_fs_revisions.revision_id%TYPE;
+  begin
+    select max(scs_fs_revisions.revision_id)
+      into rev_id
+      from scs_fs_revisions
+     where scs_fs_revisions.file_id = getMaxRevisionId.file_id
+       and scs_fs_revisions.deleted_p = 'f';
+
+    return rev_id;
+
+  exception
+    when others then
+      return null;
+  end getMaxRevisionId;
 
   function getSubFolderId (
     parent_folder_id in scs_fs_folders.folder_id%TYPE,
