@@ -45,67 +45,67 @@ testmatc.sml        ccl
 
 (* Tests of some benchmark programs *)
 
-kitfib35.sml            tx            nobasislib
-kitdangle.sml           tx            nobasislib
-kitdangle3.sml          tx            nobasislib
-kitreynolds2.sml        tx
-kitreynolds3.sml        tx
-kitloop2.sml            tx   
-kittmergesort.sml       tx tc prof
-kitqsort.sml            tx tc
-kitmandelbrot.sml       tx tc prof
-kitlife35u.sml          tx tc
-klife_eq.sml            tx tc prof
-kitkbjul9.sml           tx tc
-kkb_eq.sml              tx tc
-kkb36c.sml              tx tc prof
-kitsimple.sml           tx tc prof
-fft.sml                 tx tc prof
-vliw.sml                tx tc prof
-lexgen.sml              tx tc prof
-mlyacc.pm               tx tc prof
-logic.pm                tx tc prof
-barnes-hut.pm           tx tc prof
-nucleic.pm              tx tc prof
-ray.pm                  tx tc prof
-ratio-regions.sml       tx tc prof
-kitmolgard.sml          tx tc prof
-msort.pm                tx tc prof
-tststrcmp.sml                 prof
-FuhMishra.pm            tx tc prof
+kitfib35.sml            tx    gc prof   nobasislib
+kitdangle.sml           tx       prof   nobasislib
+kitdangle3.sml          tx       prof   nobasislib
+kitreynolds2.sml        tx    gc prof
+kitreynolds3.sml        tx    gc prof
+kitloop2.sml            tx    gc prof
+kittmergesort.sml       tx tc gc prof
+kitqsort.sml            tx tc gc prof
+kitmandelbrot.sml       tx tc gc prof
+kitlife35u.sml          tx tc gc prof
+klife_eq.sml            tx tc gc prof
+kitkbjul9.sml           tx tc gc prof
+kkb_eq.sml              tx tc gc prof
+kkb36c.sml              tx tc gc prof
+kitsimple.sml           tx tc gc prof
+fft.sml                 tx tc gc prof
+vliw.sml                tx tc gc prof
+lexgen.sml              tx tc gc prof
+mlyacc.pm               tx tc gc prof
+logic.pm                tx tc gc prof
+barnes-hut.pm           tx tc gc prof
+nucleic.pm              tx tc gc prof
+ray.pm                  tx tc gc prof
+ratio-regions.sml       tx tc gc prof
+kitmolgard.sml          tx tc gc prof
+msort.pm                tx tc gc prof
+tststrcmp.sml                 gc prof
+FuhMishra.pm            tx tc gc prof
 
 (* Tests of dynamic semantics and the Basis Library *)
 
-testdyn1.sml               tc prof
-check_arrays.sml              prof
-array.sml                     prof
-general.sml                   prof
-int.sml                       prof
-int31.sml                     prof
-int31_2.sml                   prof 
-int32.sml                     prof
-int32_2.sml                   prof
-list.sml                      prof
-listpair.sml                  prof
-string.sml                    prof
-stringcvt.sml                 prof
-textio.sml                    prof
-vector.sml                    prof
-word8vector.sml               prof
-word8array.sml                prof
-bytechar.sml                  prof
-time.sml                      prof
-math.sml                      prof    (* ok, but not quite the 
-                                         semantics of the basis 
-                                         library specification *)
-listsort.sml                  prof
-date.sml                      prof
-timer.sml                     prof
-unixpath.sml                  prof
-cmdline.sml                   prof
-filesys.sml                   prof    (* See test/README *)
-real.sml                      prof
-word.sml                      prof
-word8.sml                     prof
-word31.sml                    prof
-word32.sml                    prof
+testdyn1.sml               tc gc prof
+check_arrays.sml              gc prof
+array.sml                     gc prof
+general.sml                   gc prof
+int.sml                       gc prof
+int31.sml                     gc prof
+int31_2.sml                   gc prof 
+int32.sml                     gc prof
+int32_2.sml                   gc prof
+list.sml                      gc prof
+listpair.sml                  gc prof
+string.sml                    gc prof
+stringcvt.sml                 gc prof
+textio.sml                    gc prof
+vector.sml                    gc prof
+word8vector.sml               gc prof
+word8array.sml                gc prof
+bytechar.sml                  gc prof
+time.sml                      gc prof
+math.sml                      gc prof    (* ok, but not quite the 
+                                            semantics of the basis 
+                                            library specification *)
+listsort.sml                  gc prof
+date.sml                      gc prof
+timer.sml                     gc prof
+unixpath.sml                  gc prof
+cmdline.sml                   gc prof
+filesys.sml                   gc prof    (* See test/README *)
+real.sml                      gc prof
+word.sml                      gc prof
+word8.sml                     gc prof
+word31.sml                    gc prof
+word32.sml                    gc prof
