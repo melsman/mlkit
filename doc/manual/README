@@ -11,6 +11,4 @@ We use the series comma.
 Pdf-version
 -----------
 
-To generate the mlkit.pdf file, execute
-
-  % dvipdf root.dvi mlkit.pdf
+See Makefile
