@@ -257,7 +257,10 @@ let
   val export_dir = ml_kit_dir^"bin/"^kit_version^"/"
   val kit_name = "kit"
   val export_file = export_dir ^ kit_name
-  val consult_file = ("ML_CONSULT_" ^ consult_file_version);
+  val consult_file = "ML_CONSULT_" ^ consult_file_version
+        ^ (case user_opt of
+	     Some "hojfeld" => "-hojfeld"
+	   | _ => "") ;
   val path_to_consult_file = kit_source_directory ^ consult_file
   val temp_file = gen_tmp_file ("/tmp/%Make"^kit_version);
 
@@ -505,14 +508,10 @@ if exportML export_file then
     \Reading script file.\n") ;
    read_script () ;
    print ("\n\nVersion " ^ Flags.get_string_entry "kit_version" ^ ".\n\n") ;
-   let 
-
-   in
-     (case SML_NJ.argv () of
-	_ :: args => process_args args
-      | _ => print (how_to "\nalso allowed: ")) ;
-     interact ()
-   end)
+   (case SML_NJ.argv () of
+      _ :: args => process_args args
+    | _ => print (how_to "\nalso allowed: ")) ;
+   interact ())
 else 
   print ("\n\n\nFinished exporting.  Type ctrl-D to exit sml/nj.\n\
    \Start the new kit by typing \"../bin/" ^ kit_version ^ "/kit\".\n");
@@ -529,5 +528,99 @@ exportFn (export_file, fn_to_export) : unit;
 exportWithSML_NJ();
 ******************************************************************)
 
-  (*hojfeld does:*)
+  (*things between here and the `exportWithSML_NJ ();' below
+   are only interesting for hojfeld:*)
+SML_NJ.Control.Print.printLength := 100000 ;
+SML_NJ.Control.Print.printDepth := 100000 ;
+SML_NJ.Control.Print.stringDepth := 100000 ;
+SML_NJ.Control.Runtime.softmax := 50000000 ;
+val cd = System.cd ;
+val pwd = System.pwd ;
+use "/home/embla1/hojfeld/arb/sml/unix.sml" ;
+local
+  open unix
+
+  fun changes_file_name () : file_name = "/home/embla1/hojfeld/arb/changes.sml"
+(*KILL 20/06/1997 19:36. tho.:
+!version ^ "/changes" 
+*)
+    
+  fun init_changes_file (file_name : string) : unit =
+    file.write file_name ("(*" ^ file_name ^ "*)\n")
+    
+  fun backup (file_name : string) : string =
+    if file.exists file_name then
+      let
+	val old_changes_file =
+	  file.uniqueify_file_name
+	  (file_name ^ "--" ^ dd_mmm_yy ())
+      in
+	mv file_name old_changes_file;
+	old_changes_file
+      end
+    else
+      "*there is none!*"
+
+  fun append_to_changes_file (s : string) =
+    let val file_name = changes_file_name () in
+      (if file.exists file_name then () else
+	 (pr ("\n     apparently, \"" ^ file_name ^ "\" does \
+	  \not exist. I will create it.\n\
+	  \     (This message came from code in \"u\".)\
+	  \\n\n");
+	 init_changes_file file_name));
+      file.append file_name s
+    end
+in
+  fun t s =  (Make.touch s;       append_to_changes_file ("Make.touch\""       ^ s ^ "\";\n"))
+  fun cf s = (Make.consultFile s; append_to_changes_file ("Make.consultFile\"" ^ s ^ "\";\n"))
+
+  val changes_file_name = changes_file_name
+    
+  fun reset_changes_file () : string =
+    let
+      val file_name = changes_file_name () 
+      val old_changes_file = backup file_name
+    in
+      init_changes_file file_name;
+      old_changes_file
+    end
+end (*local*)
+fun c s = cf (s ^ ".sml");
+fun cp s = c ("Parsing/" ^ s);
+fun cc s = c ("Common/" ^ s);
+fun ck s = c ("Compiler/" ^ s);
+fun a s = if s="" then Make.again() else (t s; Make.again());
+val p = "ParseSML_" ;
+val pp = "ParseSIG_" ;
+val ppp = "LexSML_" ;
+val TDG = "TOPDEC_GRAMMAR" ;
+val tdg = "TopdecGrammar";
+val DG = "DEC_GRAMMAR";
+val dg = "DecGrammar";
+val gu = "GrammarUtils";
+val GU = "GRAMMAR_UTILS";
+val lu = "LexUtils";
+val LU = "LEX_UTILS";
+val so = "StatObject";
+val SO = "STATOBJECT";
+val mso = "ModuleStatObject";
+val MSO = "MODULE_STATOBJECT";
+val ev = "Environments";
+val EV = "ENVIRONMENTS";
+val mev = "ModuleEnvironments";
+val MEV = "MODULE_ENVIRONMENTS";
+val ed = "ElabDec";
+val ED = "ELABDEC";
+val et = "ElabTopdec";
+val ET = "ELABTOPDEC";
+val ei = "ErrorInfo";
+val EI = "ERROR_INFO";
+val inf = "Infixing";
+val INF = "INFIXING";
+val cd = "CompileDec";
+val CD = "COMPILE_DEC";
+val bc = "BuildCompile";
+val BC = "BUILD_COMPILE";
+
 exportWithSML_NJ();

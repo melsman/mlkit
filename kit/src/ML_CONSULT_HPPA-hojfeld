@@ -91,7 +91,7 @@ Common/TYNAME.sml
 Common/TYPE_INFO.sml
 Common/TYVAR.sml
 Common/TestEnv.sml
-Common/TestInfo.sml
+Common/TestInfo-hojfeld.sml
 Common/Timestamp.sml
 Common/Timing.sml
 Common/TopLevelReport.sml
