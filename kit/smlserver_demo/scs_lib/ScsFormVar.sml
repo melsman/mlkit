@@ -120,6 +120,7 @@ val (user_id,errs) = getUserIdErr "user_id" errs
     val buildErrMsg : errs -> quot
     val anyErrors : errs -> unit
     val isErrors  : errs -> bool
+    val mergeErrs : errs * errs -> errs
 
     val getIntErr              : int formvar_fn
     val getIntTrimErr          : int formvar_fn
@@ -236,6 +237,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
 
     fun isErrors ([]:errs) = false
       | isErrors (errs) = true
+
+    fun mergeErrs (e1,e2) = e1 @ e2
 
     fun wrapQQ (f : string formvar_fn) : string * string * errs -> (string * string) * errs =
       fn arg =>

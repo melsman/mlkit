@@ -34,6 +34,8 @@ signature SCS_ROLE =
     | UcsPrRucAdm	  (* Created in ucs-pr-patch005.sql.sql *)
     | UcsPrEbussAdm	  (* Created in ucs-pr-patch005.sql.sql *)
     | UcsStudieVejleder	  (* Created in ucs-edus-patch018.sql.sql *)
+    | UcsRbQueryEditor    (* Created in ucs-rb-initialdata-create.sql *)
+    | UcsRbQueryAccess    (* Created in ucs-rb-initialdata-create.sql *)
     | Other of string
 
     (* [fromString str] returns the corresponding role which is either
@@ -99,6 +101,8 @@ structure ScsRole :> SCS_ROLE =
     | UcsPrRucAdm	  
     | UcsPrEbussAdm	  
     | UcsStudieVejleder
+    | UcsRbQueryEditor 
+    | UcsRbQueryAccess 
     | Other of string
 
     fun fromString str = 
@@ -131,6 +135,8 @@ structure ScsRole :> SCS_ROLE =
       | "UcsCbItSupportAdm"  => UcsCbItSupportAdm
       | "UcsCbLinjeAdm"      => UcsCbLinjeAdm
       | "UcsCbHsasAdm"       => UcsCbHsasAdm
+      | "UcsRbQueryEditor"   => UcsRbQueryEditor
+      | "UcsRbQueryAccess"   => UcsRbQueryAccess
       | s => Other s
  
     (* [toString role] returns the string representation of the role
@@ -165,6 +171,8 @@ structure ScsRole :> SCS_ROLE =
       | UcsPrRucAdm	   => "UcsPrRucAdm"  
       | UcsPrEbussAdm	   => "UcsPrEbussAdm"
       | UcsStudieVejleder  => "UcsStudieVejleder"
+      | UcsRbQueryEditor   => "UcsRbQueryEditor"
+      | UcsRbQueryAccess   => "UcsRbQueryAccess"
       | Other s => s
 	  
     (* We cache the result for 5 minutes.
