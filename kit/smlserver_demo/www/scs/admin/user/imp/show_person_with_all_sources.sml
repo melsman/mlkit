@@ -72,7 +72,7 @@ val rowss =
 (* Add central personnel register info *)
 val rowss = (ScsUserImp.service_name, [(name,email,security_id,"","")]) :: rowss
 
-val _ = UcsPage.returnPg title
+val _ = ScsUserImp.returnPg title
   (`<h1>^title</h1> 
    ^intro_text <p>
    ` ^^ (gen_tables rowss))

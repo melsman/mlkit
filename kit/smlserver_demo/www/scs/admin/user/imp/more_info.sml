@@ -113,7 +113,7 @@ fun gen_table [] = ScsDict.s' [(ScsLang.en,`There are no persons to import in th
      persons)
 						     end
 
-val _ = UcsPage.returnPg page_title
+val _ = ScsUserImp.returnPg page_title
   (`<h1>^page_title</h1> 
    <p>
    ` ^^ (ScsBox.toQuot(ScsBox.V[ScsBox.C(UcsWidget.layoutComponent user_imp_info)])) ^^ `<p>

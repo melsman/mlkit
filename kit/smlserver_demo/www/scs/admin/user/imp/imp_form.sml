@@ -95,8 +95,14 @@ fun gen_section ((source:ScsUserImp.external_source,persons),acc) =
 
 val user_imp_sections = List.foldl gen_section `` imp_users
 
-val _ = UcsPage.returnPg title
+val _ = ScsUserImp.returnPg title
   (`<h1>^title</h1> 
    ` ^^ page_intro ^^ `
    <p>
+   <h1>^(ScsDict.s [(ScsLang.en,`Look up one person`),
+		    (ScsLang.da,`Søg efter en person`)])</h1>
+  ` ^^ (ScsPerson.search_form "/scs/admin/user/imp/show_person_with_all_sources.sml" []) ^^ `
+   <p>
+   <h1>^(ScsDict.s [(ScsLang.en,`Rows to Import`),
+		    (ScsLang.da,`Rækker der skal importeres`)])</h1>
    ` ^^ user_imp_sections)

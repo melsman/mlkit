@@ -211,7 +211,7 @@ in
 
 end
 
-val _ = UcsPage.returnPg title
+val _ = ScsUserImp.returnPg title
   (`<h1>^title</h1> 
    ^intro_text <p>
 

@@ -89,6 +89,12 @@ signature SCS_USER_IMP =
     (* [service_name] is the name of this service (i.e., Central
        Personnel Register) *)
     val service_name : ScsDict.dict
+
+    (* [service_adm_email] is the email of the person who
+       administrates this service. *)
+    val service_adm_email : string
+
+    val returnPg : string -> quot -> Ns.status
   end
 
 structure ScsUserImp :> SCS_USER_IMP =
@@ -357,7 +363,7 @@ structure ScsUserImp :> SCS_USER_IMP =
     fun importLink user_imp_id person_id =
       let
 	val msg = ScsDict.sl [(ScsLang.en,`Please confirm, that you want to import %0`),
-			      (ScsLang.da,`Bekraft venligst, at du vil importere %0`)]
+			      (ScsLang.da,`Bekræft venligst, at du vil importere %0`)]
 	                     [ScsPerson.name person_id]
       in
 	Quot.toString
@@ -512,4 +518,28 @@ structure ScsUserImp :> SCS_USER_IMP =
 
     val service_name = [(ScsLang.en, `Central Personnel Register`),
 			(ScsLang.da, `Centralt Person Register`)]
+
+    val service_adm_email = "nh@it-c.dk"
+
+    (* ====================================================================== *)
+    (* page generation                                                        *)
+    (* ====================================================================== *)
+    local
+      val html_description = service_name
+      val html_keywords = ""
+      val leftSpaces = 2
+      val rightSpaces = 2
+      val url_home = "/index.sml"
+      fun leftList() = [("/scs/admin/user/imp/imp_form.sml",
+			 ScsDict.s [(ScsLang.en,`Central Personnel Register`),(ScsLang.da,`Matrikel`)]),
+			("/scs/admin/user/imp/working_procedure.sml",
+			 ScsDict.s [(ScsLang.en,`Manual`),(ScsLang.da,`Vejledning`)])]
+      fun rightList() = []
+      fun genPg title body = 
+	UcsPage.genPg title (ScsDict.s html_description) html_keywords service_adm_email
+	              url_home leftSpaces rightSpaces (leftList()) (rightList()) body
+    in
+      fun returnPg  title body = 
+	Ns.return ( genPg title body )
+    end
   end
