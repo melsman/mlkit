@@ -895,7 +895,7 @@ struct
       fun jump_overflow C = I.jo (NameLab "__raise_overflow") :: C
 
       fun sub_num_kill_tmp01 {ovf : bool, tag: bool} (x,y,d,size_ff,C) =
-	let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
+	let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)         
 	    val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
 	    val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
 	    fun check_ovf C = if ovf then jump_overflow C else C
@@ -909,21 +909,38 @@ struct
 	  check_ovf (do_tag C')))))
 	end
   
-      fun add_num_kill_tmp01 {ovf,tag} (x,y,d,size_ff,C) =
+      fun add_num_kill_tmp01 {ovf,tag} (x,y,d,size_ff,C) =  (* Be careful - when tag and ovf, add may 
+							     * raise overflow when it is not supposed 
+							     * to, if one is not careful! sub_num above 
+							     * is ok, I think! mael 2001-05-19 *)
 	let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	    val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
 	    val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
 	    fun check_ovf C = if ovf then jump_overflow C else C
 	    fun do_tag C = if tag then I.addl(I "-1", R d_reg) :: check_ovf C
 			   else C
-	in x_C(y_C(
-           copy(y_reg, tmp_reg1,
-           copy(x_reg, d_reg,
-           I.addl(R tmp_reg1, R d_reg) ::
-	   check_ovf (do_tag C')))))
+	in if tag andalso ovf then
+	     (x_C(y_C(
+              copy(y_reg, tmp_reg1, I.sarl(I "1", R tmp_reg1) ::    (* t1 = untag y *)
+              copy(x_reg, tmp_reg0, I.sarl(I "1", R tmp_reg0) ::    (* t0 = untag x *)
+              I.addl(R tmp_reg0, R tmp_reg1) ::                     (* t1 = t1 + t0 *)
+              copy(tmp_reg1, d_reg,
+              I.sall(I "1", R d_reg) ::                             (* d = tag d *)
+	      I.addl(I "1", R d_reg) :: 
+              I.sarl(I "1", R d_reg) ::                             (* d = untag d *)
+              I.cmpl(R d_reg, R tmp_reg1) ::
+	      I.jne (NameLab "__raise_overflow") ::
+              I.sall(I "1", R d_reg) ::                             (* d = tag d *)
+	      I.addl(I "1", R d_reg) :: C'))))))
+	   else 
+	     (x_C(y_C(
+	      copy(y_reg, tmp_reg1,
+              copy(x_reg, d_reg,
+              I.addl(R tmp_reg1, R d_reg) ::
+	      check_ovf (do_tag C'))))))
 	end
 
-      fun mul_num_kill_tmp01 {ovf,tag} (x,y,d,size_ff,C) = 
+      fun mul_num_kill_tmp01 {ovf,tag} (x,y,d,size_ff,C) = (* does (1 * valOf Int31.minInt) raise Overflow ? *)
 	let val (x_reg,x_C) = resolve_arg_aty(x,tmp_reg0,size_ff)
 	    val (y_reg,y_C) = resolve_arg_aty(y,tmp_reg1,size_ff)
 	    val (d_reg,C') = resolve_aty_def(d,tmp_reg0,size_ff,C)
