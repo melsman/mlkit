@@ -674,7 +674,7 @@ computation as shown in Figure~\ref{xavier.fig}.
      mkgen (survivors @ newborn) 
   end
 \end{verbatim}
-\caption{An excerpt of a (modified version of) 
+\caption{An excerpt of (a modified version of) 
 Chris Reade's Game of Life program.}
 \medskip
 
@@ -710,17 +710,17 @@ been created, reset the region of the old region and copy the contents
 of the new region into the old region. This effect is achieved by
 organizing the main loop of the program as follows:
 \begin{verbatim}
-   local 
-(*1*) fun nthgen'(p as(0,g)) = p 
-(*2*)   | nthgen'(p as(i,g)) = 
-(*3*)       nthgen' (i-1, let val g' = nextgen  g
-(*4*)                     in  show g;
-(*5*)                         resetRegions g;
-(*6*)                         copy g'
-(*7*)                     end)
-   in 
-(*8*) fun iter n = #2(nthgen'(n,gun()))
-   end
+      local 
+   (*1*) fun nthgen'(p as(0,g)) = p 
+   (*2*)   | nthgen'(p as(i,g)) = 
+   (*3*)       nthgen' (i-1, let val g' = nextgen  g
+   (*4*)                     in  show g;
+   (*5*)                         resetRegions g;
+   (*6*)                         copy g'
+   (*7*)                     end)
+      in 
+   (*8*) fun iter n = #2(nthgen'(n,gun()))
+      end
 \end{verbatim}
 Here \boxml{nthgen'} 
 \index{nthgen@\texttt{nthgen}}%
@@ -810,6 +810,7 @@ writing control software for the ABS brakes of a car, having control
 over all costs, including memory management, would be crucial!
 
 \begin{figure}
+%\hrule \medskip
 \begin{center}
 \includegraphics{life80.ps}
 \end{center}
@@ -817,14 +818,15 @@ over all costs, including memory management, would be crucial!
   generations of the ``Game of Life'', showing region sizes as a
   function of time (80 snapshots).}
 \label{lifeprof80.fig}
+%\medskip\hrule
 \end{figure}
 
 Region profiles for two hundred generations of {\tt life} starting
 from the configuration shown earlier appear in
 Figures~\ref{lifeprof80.fig} and \ref{lifeprof200.fig}.  The highest
-amount of memory used for regions during the computation is 26,060
+amount of memory used for regions during the computation is 23,884
 bytes. Figure~\ref{lifeprof200.fig}, which has data collected from 200
-snapshots of the computation, clearly shows that most of the 26,060
+snapshots of the computation, clearly shows that most of the 23,884
 bytes are reclaimed between every two generations of the game. It
 turns out that the game essentially stabilizes with a small number of
 live positions on the board after roughly 150 generations.  This
@@ -838,13 +840,14 @@ stabilisation is clearly reflected in the region profile.
   generations of the ``Game of Life'', showing region sizes as a
   function of time (200 snapshots).}
 \label{lifeprof200.fig}
+%\medskip\hrule
 \end{figure}
 
 Figure~\ref{lifeprof80.fig} is from the same computation, but it only
 includes data from 80 snapshots. This figure makes it easier to see
-that the largest regions are \boxml{r94613} and \boxml{r94231}. To
-find out what these regions contain, however, one needs to know about
-the methods described in Part~\ref{understanding.sec}.
+that the largest region is \boxml{r212422}. To find out what this
+region contain, however, one needs to know about the methods described
+in Part~\ref{understanding.sec}.
 
 \section{Try it!}
 This section tells you how to repeat the profiling experiment shown
@@ -988,11 +991,15 @@ infinite otherwise.
 Every region has a 
 \index{runtime type}%
 runtime type. The following runtime types exist: {\tt real}, {\tt
-  string}, and {\tt top}. Not surprisingly, regions of runtime type
-{\tt real} and {\tt string} contain values of ML type {\tt real} and
-{\tt string}, respectively.  Regions with runtime type {\tt top} can
-contain all other forms of allocated values, that is, constructed
-values, tuples, records, and function closures.
+  string}, {\tt top}, {\tt word}, and {\tt bot}. Not surprisingly,
+regions of runtime type {\tt real} and {\tt string} contain values of
+ML type {\tt real} and {\tt string}, respectively.  Regions with
+runtime type {\tt top} can contain all other forms of allocated
+values, that is, constructed values, tuples, records, and function
+closures. Regions of runtime type {\tt word} are dropped after region
+inference; they are associated with unboxed values and are unnecessary
+because unboxed values are not allocated in regions. Regions of
+runtime type {\tt bot} are always associated with ML type variables.
 
 It is often, but not always, the case that all values that reside in
 the same region have the same type (considered as representations of
@@ -1105,8 +1112,12 @@ The intermediate languages that we shall refer to in the following are
 \item[\Lam:] 
   \index{Lambda@$\Lam$}%
   A lambda-calculus like intermediate language. The main difference
-  between the Standard ML Core Language and $\Lam$ is that the latter
-  only has trivial patterns.
+  between the Standard ML Core Language and $\Lam$ is that $\Lam$ only
+  has trivial patterns and allows functions to take 
+\index{arguments!multiple}%
+\index{multiple function arguments}%
+\index{function arguments!multiple}%
+  multiple arguments.
 \item[\RegExp:] 
   \index{RegExp@$\RegExp$}%
   Same as \Lam, but with explicit region annotations (such as the {\tt
@@ -1465,9 +1476,8 @@ The Kit compiles the declaration into the $\MulExp$ program shown in
 Figure~\ref{elimpair.fig}.  The compiler compiles the program as it
 is, without reducing the conditional to its {\tt then} branch.
 \begin{figure}
-\hrule
+\hrule\medskip
 \begin{verbatim}
-
    let val n = 
            letregion r7:1 
            in let val pair = 
@@ -1483,9 +1493,8 @@ is, without reducing the conditional to its {\tt then} branch.
 \end{verbatim}
 \caption{Region inference decides that the pair is to be allocated 
   in a local, finite region; the region will be de-allocated as soon
-  as the pair becomes garbage.}  \medskip
-
-\hrule
+  as the pair becomes garbage.}  
+\medskip\hrule
 \label{elimpair.fig}
 \end{figure}
 During evaluation, a region (denoted by {\tt r7}) is introduced before
@@ -1571,7 +1580,9 @@ objects at runtime \cite{ElsmanTIC98}.
 $\Lam$, $\RegExp$, and $\MulExp$ allow one to express unboxed tuples,
 also in the case of function calls and returns. For functions that
 take a tuple as parameter, the Kit passes the argument tuple unboxed
+\index{arguments!multiple}%
 \index{multiple function arguments}%
+\index{function arguments!multiple}%
 \index{record!unboxed}%
 if it can see that the boxed representation of the tuple is not needed
 by the function. The Kit does not at present unbox records returned
@@ -2098,7 +2109,7 @@ example, consider the following program:
 \end{verbatim}
 The corresponding $\MulExp$ program is shown in
 Figure~\ref{fromto.fig}.
-\begin{figure}
+\begin{figure}[htb]
 \hrule
 \medskip
 \begin{verbatim}
@@ -2131,8 +2142,9 @@ Figure~\ref{fromto.fig}.
 There are several things to notice about the region annotated program.
 First, notice that the function {\tt fromto} represents its argument
 \boxml{(a,b)} 
-\index{arguments!unboxed}%
-\index{function arguments!unboxed}%
+\index{arguments!multiple}%
+\index{multiple function arguments}%
+\index{function arguments!multiple}%
 unboxed; the Kit figures out that the function does not
 use the boxed representation of the argument and transforms all calls
 to the function to pass the argument unboxed (on the runtime stack and
@@ -2270,7 +2282,7 @@ regions can of course make these regions too large and long-lived,
 because the entire region will be alive for as long as one of the
 values in the region may be needed in the future. 
 
-\begin{figure}
+\begin{figure}[htb]
 \hrule
 \medskip
 \begin{verbatim}
@@ -2428,7 +2440,7 @@ Figure~\ref{msort.fig}.\footnote{Project
   places an executable file \boxml{run} in the \boxml{kitdemo}
   directory. For an in-depth description of how to compile and run
   projects, see Chapter~\ref{modules_and_projects.chap}.}
-\begin{figure}[t]
+\begin{figure}[hbt]
 \hrule
 \medskip
 \begin{verbatim}
@@ -3279,7 +3291,7 @@ arity of every type name that the data type declaration introduces and
 introduced by the data type declaration.
 
 In the Definition of Standard ML every type name has an attribute,
-called its arity \cite{mthm97}. The arity of a type name is the number
+called its arity \cite[page 15]{mthm97}. The arity of a type name is the number
 of type arguments it requires. For example, {\tt int} has arity 0
 while the type name introduced by the following declaration of binary
 trees has arity 1:
@@ -3447,7 +3459,6 @@ memory longer than needed.
 \label{exceptions.sec}\index{exception}
 %---------------------------------------------------------
 
-\section{Exception Names and Constructors}
 Standard ML
 \index{exception}%
 \index{exception constructor}%
@@ -3465,8 +3476,10 @@ and unary exception constructors, respectively.
 %reason (represented by a value of type {\it ty}).
 
 Exception declarations need not occur at top level. For example, a
-function body may contain exception declarations.  Each evaluation of
-an exception declaration creates a fresh
+function body may contain exception declarations. 
+
+\section{Exception Names}
+Each evaluation of an exception declaration creates a fresh
 \index{exception!generative}%
 \index{exception name}%
 {\em exception name\/} and binds it to the exception constructor. This
@@ -3916,7 +3929,7 @@ Now there are the following cases:
     $\rho$ free in its region-annotated type scheme with place, and
     use {\tt attop} otherwise (see Figure~\ref{b3.fig}).
 \end{description}
-\begin{figure}
+\begin{figure}[htb]
 \hrule
 \begin{center}
 \begin{tabbing}
@@ -3936,7 +3949,7 @@ Now there are the following cases:
 \label{b1.fig}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[htb]
 \hrule
 \begin{center}
 \begin{tabbing}
@@ -3955,7 +3968,7 @@ Now there are the following cases:
 \label{b2.fig}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[htb]
 \hrule
 \begin{center}
 \begin{tabbing}
@@ -4680,13 +4693,14 @@ input by first reading one line and then extracting the name.
 \begin{center}
 \includegraphics{scan.ps}
 \end{center}
-\caption{Region profile of the scanner. The unit of measure on 
-  the y-axis is bytes, not kilobytes. The occasional increase is due
-  to the functions that read a file name from an input stream.  The
-  program was compiled with profiling enabled, then run with the
-  command \boxml{run -microsec 100000 < ../../kitdemo/scanfiles}. A
-  PostScript file \boxml{region.ps} can be generated with the command
-  \boxml{rp2ps -region -sampleMax 1000 -eps 137 mm}.  }
+\caption{Region profile of the comment scanner. The unit of measure on 
+  the y-axis is bytes, not kilobytes. The occasional increases in
+  memory use is due to the functions that read a file name from an
+  input stream.  The program was compiled with profiling enabled, then
+  run with the command \boxml{run -microsec 100000 <
+    ../kitdemo/scanfiles}. A PostScript file \boxml{region.ps} can be
+  generated with the command \boxml{rp2ps -region -sampleMax 1000 -eps
+    137 mm}.  }
 \label{scan.fig}
 \end{figure}
 
@@ -4893,12 +4907,10 @@ region inference algorithm discovers that (\ref{suc.lab}) can be
 derived from the argument type
 $$((\alpha_0,\rho_{10})\ar{\epsilon_{11}.\emptyset}(\alpha_2,\rho_9),\rho_8)$$
 of the type scheme for {\tt apply} by the instantiating substitution
-\begin{tabbing}
-$S =($\=$\{\alpha_0\mapsto\boxml{real},\alpha_2\mapsto\boxml{real}\},\{
-       \rho_{10}\mapsto\rho_{18},\rho_9\mapsto\rho_5,\rho_8\mapsto\rho_{17}\},$\\
-\>$\{
-       \epsilon_{11}\mapsto\epsilon_{14}.\{\Get(\rho_{18}),\Put(\rho_5)\})$
-\end{tabbing}
+$$S =(\!\!\begin{array}[t]{l}\{\alpha_0\mapsto\boxml{real},\alpha_2\mapsto\boxml{real}\},\{
+       \rho_{10}\mapsto\rho_{18},\rho_9\mapsto\rho_5,\rho_8\mapsto\rho_{17}\},\\
+     \{\epsilon_{11}\mapsto\epsilon_{14}.\{\Get(\rho_{18}),\Put(\rho_5)\})
+   \end{array}$$
 Formally, a 
 \index{substitution}%
 {\em substitution\/} is a triple $(\St,\Sr,\Se)$, where $\St$ is a
@@ -5258,17 +5270,18 @@ into four different kinds of calls:
 In the sections to follow, we describe each of these kinds of calls in
 detail.
 
-\section{Tail-Call of Known Function ({\tt jmp})}
+\section{Tail Call of Known Function ({\tt jmp})}
 \label{simplejump.sec}
 A call to a
 \index{region polymorphism}%
 region-polymorphic function (i.e., a known function) takes the form
-$$\boxml{$f$ [$\rho_1$, $\ldots$, $\rho_n$] $\exp$}$$
-where $\rho_1$,
-$\ldots$, $\rho_n$ are actual region parameters to the function and $f$
-is the name of a region-polymorphic function. The Kit turns such a
-function call into the form
-$$\boxml{jmp $f$ [$\rho_1$, $\ldots$, $\rho_n$] $\exp$}$$
+$$\boxml{$f$ [$\rho_1$, $\ldots$, $\rho_n$] <$e_1,\ldots,e_m$>}$$
+where $\rho_1$, $\ldots$, $\rho_n$ are actual region parameters to the
+function, $f$ is the name of a region-polymorphic function, and
+$e_1 \cdots e_m$, $m \geq 1$ are value arguments to the function (we
+often omit the brackets $\verb+<+ \cdots \verb+>+$ when $m = 1$.) The Kit
+turns such a function call into the form
+$$\boxml{jmp $f$ [$\rho_1$, $\ldots$, $\rho_n$] <$e_1,\ldots,e_m$>}$$
 if the call
 appears in a tail-call position, that is, if the call is the last
 thing the current function needs to do.  Because the start address of
@@ -5311,11 +5324,11 @@ Figure~\ref{tail.fig}.
 \label{tail.fig}
 \end{figure}
 
-Although there is a more efficient version of the function {\tt f}
-that exploits the Kit's unboxing of function arguments, one can only
-rely on unboxing to ensure tail-calls when the elements of the
-argument tuple themselves are unboxed; otherwise there is a risk that,
-for each invocation, fresh regions will be introduced to hold the
+There is a more efficient version of the function {\tt f} that
+exploits the Kit's unboxing of function arguments, but in general, one
+can rely on unboxing to ensure tail-calls only when the elements of
+the argument tuple themselves are unboxed; otherwise there is a risk
+that, for each invocation, fresh regions are introduced to hold the
 arguments to the call, and the call would need to return to
 de-allocate these regions.
 
@@ -5991,61 +6004,92 @@ from the command-line (use the short option {\tt -gc}) or from the
 interactive menu.
 
 \section{Dangling Pointers}
-The region type system supports deallocation of memory that is not
+The region type system supports de-allocation of memory that is not
 accessed in the remainder of the execution of the program. Because of
 this principle, the execution model may lead to {\em dangling
   pointers}, that is, pointers that point into memory that has been
-discharged. The canonical example is the following:
+discharged. When garbage collection is enabled, the region type system
+is modified slightly so as to guarantee that no dangling pointers
+occur during execution. The following example illustrates how the
+enabling of garbage collection changes the way programs are compiled:
 \begin{verbatim}
   val f = let val x = ref (2, [1])
           in fn y => (#1 (!x), y)
           end 
   val r = f 5
 \end{verbatim}
-In MulExp, the program looks as follows:\footnote{Compiled with {\tt
-    mlkit -maximum\_inline\_size 0 -gc -Ppse -w 40 dangling.sml} from
-  within the {\tt kitdemo} directory.}
+When garbage collection is disabled, the program is compiled into the
+following MulExp program:\footnote{Compiled with {\tt mlkit
+    -maximum\_inline\_size 0 -Ppse -w 40 dangling.sml} from within the
+  {\tt kitdemo} directory.}
 \begin{verbatim}
-   let val f = 
-           letregion r7:3 
-           in let val x = 
-                      let val v139380 = 
-                              (2, :: (1, nil) attop r7) attop r1
-                      in  ref attop r1 v139380
-                      end 
-              in   fn attop r1 y => 
-                   (let val v139387 = ![] x
-                    in  #0 v139387
-                    end , 
-                    y
-                   ) attop r1
-              end  
-           end (*r7:3*); 
-       val r = f 5
-   in  {|r: (_,r1), f: (_,r1)|}
-   end 
+   val f = 
+     letregion r7:2 
+     in let val x = 
+              let val v291610 = 
+                    (2, :: (1, nil) attop r7) attop r1
+              in  ref attop r1 v291610
+              end 
+        in fn attop r1 y => 
+             (let val v291617 = ![] x
+              in  #0 v291617
+              end , 
+              y
+             ) attop r1
+        end  
+     end (*r7:2*); 
+   val r = f 5
 \end{verbatim}
 Notice here that region {\tt r7}, which contains the list {\tt [1]},
-is deallocated before the function {\tt f} is applied to the value
-{\tt 5}. The problem for the reference tracing garbage collector is
-that the memory containing the list {\tt [1]} may be overwritten when
-the garbage collector is trying to collect the value. The Kit writes
-the following message:
-{\small 
+is de-allocated before the function {\tt f} is applied to the value
+{\tt 5}. If we chose to run this program together with a reference
+tracing garbage collector, a fatal error could occur: The memory that
+contains the list {\tt [1]} could be reused for other purposes at the
+time the garbage collector tries to trace the dangling pointer.
+
+Figure~\ref{dangling_gc.fig} shows the MulExp program produced when
+garbage collection is enabled.\footnote{Compiled with {\tt mlkit -gc
+    -maximum\_inline\_size 0 -Ppse -w 40 dangling.sml} from within the
+  {\tt kitdemo} directory.}
+\begin{figure}[ht]
+\hrule \medskip
 \begin{verbatim}
-   ** Lvar x has a type scheme with a region 
-      variable with higher level than the epsilon of the function.
-   ** Potentially dangling references out of closure for  fn  y:
-
-      x:  r7
-
-   Unimplemented: Potential dangling pointer! Garbage collection 
-    is unsound in this case. Please disable garbage collection
-    or alter your program so that no non-live values escape in
-    closures. This is also a warning that if you run your
-    program through a compiler based on conventional garbage
-    collection, your program may contain a space leak.
-\end{verbatim}}
+   val f = 
+     let val x = 
+           let val v291610 = 
+                 (2, :: (1, nil) attop r1) attop r1
+           in  ref attop r1 v291610
+           end 
+     in fn attop r1 y => 
+           (let val v291617 = ![] x
+            in  #0 v291617
+            end , 
+            y
+           ) attop r1
+     end ; 
+   val r = f 5
+\end{verbatim}
+\caption{The $\MulExp$ program produced when compiling the program 
+  {\tt kitdemo/dangling.sml} with garbage collection enabled. To avoid
+  dangling pointers when garbage collection is enabled, all values in
+  the closure for {\tt f} are kept alive as long as the closure
+  itself.}  \medskip \hrule
+\label{dangling_gc.fig}
+\end{figure}
+When garbage collection is enabled, the Kit makes sure that whenever a
+closure is live all values stored in the closure are kept live as long
+as the closure is live.  Assume that the type with place $\mu$
+of the function associated with the closure is on the form $(\mu_1
+\ar{\epsilon.\varphi} \mu_2, \rho_0)$.  The Kit enforces the
+restriction by requiring that for each region variable $\rho$ that
+occur free in the type of free variables of the function (those
+variables for which values are stored in the closure at runtime),
+$\rho$ occur free in $\mu$. In the implementation, the requirement may
+lead to extra $\Get$ effects being added to $\epsilon.\varphi$ when
+garbage collection is enabled. In the example, an imposed $\Get$
+effect on the arrow effect in the type for {\tt f} makes it impossible
+to wrap a {\tt letregion} around the binding for {\tt f}. (See
+\cite[page 50]{total93} for more information about this requirement.)
 
 \section{Instrumenting the Executable}
 Executables produced by the Kit with garbage collection enabled can be
@@ -6056,15 +6100,15 @@ collection information at runtime. An overview of available
 command-line options is shown by passing the option {\tt -help} to the
 generated executable: {\small
 \begin{verbatim}
-Usage: ./run
-      [-help, -h] 
-      [-disable_gc | -verbose_gc] [-heap_to_live_ratio d] 
-  where
-      -help, -h                Print this help screen and exit.
+   Usage: ./run
+         [-help, -h] 
+         [-disable_gc | -verbose_gc] [-heap_to_live_ratio d] 
+     where
+         -help, -h                Print this help screen and exit.
 
-      -disable_gc              Disable garbage collector.
-      -verbose_gc              Show info after each garbage collection.
-      -heap_to_live_ratio d    Use heap to live ratio d, ex. 3.0.
+         -disable_gc              Disable garbage collector.
+         -verbose_gc              Show info after each collection.
+         -heap_to_live_ratio d    Use heap to live ratio d, ex. 3.0.
 \end{verbatim}
 }
 
@@ -6273,6 +6317,7 @@ Figure~\ref{scan_rev1_1.fig}.
   enabled. Then by executing \texttt{echo life.sml | run -realtime -microsec 1000} and finally by
   typing \texttt{rp2ps -region -name scan\_rev1}.}
 \label{scan_rev1_1.fig}
+\medskip\hrule
 \end{figure}
 
 The graph shows that region \texttt{r211397} accumulates more memory
@@ -6288,6 +6333,7 @@ that region, see Figure \ref{scan_rev1_2.fig}.
   \texttt{pp14788}. The graph was generated by typing \texttt{rp2ps
     -object 211397}.}
 \label{scan_rev1_2.fig}
+\medskip\hrule
 \end{figure}
 The object profile shows that program point \texttt{pp14788}
 continually allocates memory that is first freed when the program
@@ -6296,12 +6342,12 @@ library, that is, we execute the UNIX command
 \begin{verbatim}
    fgrep pp14788 *.log
 \end{verbatim}
-from the directory {\tt basislib}, and find that {\tt pp14788}
+in the directory {\tt basislib}, and find that the program point {\tt pp14788}
 appears in the file {\tt General.sml.log}, which contains the following
 fragment:
 \begin{verbatim}
    fun implode attop r1 pp14787 [r105882:inf] (chars)= 
-       ccall(implodeCharsProfilingML,  sat r105882 pp14788, chars); 
+     ccall(implodeCharsProfilingML, sat r105882 pp14788, chars); 
 \end{verbatim}
 So the space leak is caused by function {\tt implode} being called
 with region {\tt r211397} instantiated for the formal region variable
@@ -6413,6 +6459,7 @@ Figure~\ref{scan_rev2_1.fig} shows a region profile of the
   generated by executing \texttt{echo life.sml | run -realtime -microsec 10000} and \texttt{rp2ps
     name scan\_rev2 -region}.}
 \label{scan_rev2_1.fig}
+\medskip\hrule
 \end{figure}
 
 %----------------------------------------
@@ -6661,7 +6708,8 @@ started by typing \texttt{xvcg} at the command prompt.  We use the file
 \texttt{life.sml.vcg} as a running example. Typing \mbox{\texttt{xvcg
     life.sml.vcg}} at the command prompt gives the window shown in
 Figure~\ref{vcg1.fig}.
-\begin{figure}
+\begin{figure}[htb]
+%\hrule\medskip
 \begin{center}
 \scalebox{0.6}{\includegraphics{vcg1.ps}}
 \end{center}
@@ -6670,6 +6718,7 @@ Figure~\ref{vcg1.fig}.
   the node ``SCC graph'' represents the folded strongly connected
   componemt graph.}
 \label{vcg1.fig}
+\medskip\hrule
 \end{figure}
 
 The two graphs are exported \emph{folded}, meaning that they are
@@ -6680,12 +6729,14 @@ buttons. After activating {\tt Unfold Subgraph}, choose with the left mouse butt
 representing the graph that you want to unfold. Then press the right
 mouse button to unfold the chosen graph. Figure~\ref{vcg2.fig}
 shows a small fraction of the unfolded region flow graph.
-\begin{figure}
+\begin{figure}[htb]
+%\hrule\medskip
 \begin{center}
 \scalebox{0.6}{\includegraphics{vcg2.ps}}
 \end{center}
 \caption{A small fragment of the region flow graph.}
 \label{vcg2.fig}
+\medskip\hrule
 \end{figure}
 
 The graph is read in the same way as the text-based version in the log
@@ -6733,7 +6784,7 @@ executable file, \texttt{run}. Typing \texttt{run} at the command prompt will
 execute the program with a predefined 
 \index{profile strategy!runtime}%
 runtime profiling strategy, which is displayed when the program is
-run with the {\tt verbose} option:
+run with the {\tt -verbose} option:
 \begin{verbatim}
    ---------------------Profiling-Enabled---------------------
     The profile timer (unix virtual timer) is turned on.
@@ -6970,6 +7021,7 @@ Figure~\ref{prof_eks2.fig}.
 \end{center}
 \caption{The object profile shows all allocation points allocating into region {\tt r212422}.}
 \label{prof_eks2.fig}
+\medskip\hrule
 \end{figure}
 
 We see that allocation point \texttt{pp29479} is responsible for the
@@ -6995,6 +7047,7 @@ at the command prompt.
 \end{center}
 \caption{Memory usage on the stack excluding space for finite regions.}
 \label{prof_eks3.fig}
+\medskip\hrule
 \end{figure}
 
 %-------------------------------------------------------
@@ -7045,6 +7098,7 @@ command line:
 \end{center}
 \caption{It is possible to insert comments in profile graphs.}
 \label{prof_eks4.fig}
+\medskip\hrule
 \end{figure}
 
 The graph generator recognises several options that are not mentioned
@@ -8183,11 +8237,13 @@ programs. An overview of the bootstrapping process is pictured in
 Figure~\ref{bootstrap.fig}
 
 \begin{figure}
+\hrule\medskip
 \begin{center}
   \scalebox{0.5}{\includegraphics{bootstrap.eps}}
 \end{center}
 \caption{The bootstrapping process.}
 \label{bootstrap.fig}
+\medskip\hrule
 \end{figure}
 
 The lowest block in the picture denotes the SML/NJ compiler, which is
@@ -8237,16 +8293,16 @@ directory, say \texttt{mlkit-v1}:
 \end{small}
 
 This creates the directory \texttt{mlkit-v1}, containing all the files
-necessary to bootstrap and test \emph{kit\_v1}. The \texttt{unlimit
+necessary to bootstrap and test \emph{kit\_v1}. The command \texttt{unlimit
   stacksize} is necessary because the ML Kit stores lots of data on
 the stack (i.e., in finite regions).
 
 Compiling the ML Kit source with \emph{kit\_v1} generates
-\emph{kit\_v2}. \emph{kit\_v2} runs on the runtime system of the ML
-Kit using region inference. However, \emph{kit\_v2} is still affected
-by SML/NJ, for instance, many constants including bit-vectors are
-calculated using the Basis Library of SML/NJ.  \emph{kit\_v2} may work
-even though our own Basis Library is buggy.
+\emph{kit\_v2}. The \emph{kit\_v2} executable runs on the runtime
+system of the ML Kit using region inference. However, \emph{kit\_v2}
+is still affected by SML/NJ, for instance, many constants including
+bit-vectors are calculated using the Basis Library of SML/NJ.
+\emph{kit\_v2} may work even though our own Basis Library is buggy.
 
 Unfortunately, because of the engineering of the recompilation scheme
 used in the ML Kit, it is not at present possible to memorize the
@@ -8261,12 +8317,12 @@ memorization of the Basis Library is supported (compared to when
 memorization is not supported.)
 
 To generate \emph{kit\_v2} you enter the directory \texttt{mlkit-v1},
-where you find a Makefile with an bootstrap entry. Using the bootstrap
+where you find a Makefile with a bootstrap entry. Using the bootstrap
 entry specifying the directory where \emph{kit\_v2} should be
-installed will generate and install \texttt{kit\_v2}. This may take
+installed generates and installs \texttt{kit\_v2}. This may take
 several hours depending on your machine.\footnote{Your machine should
-  have 1 Gb of RAM to avoid swapping during the entire bootstrapping
-  process.}
+  have at least 1 Gb of RAM to avoid swapping during the entire
+  bootstrapping process.}
 
 \begin{small}
 \begin{quote}
@@ -8280,7 +8336,7 @@ several hours depending on your machine.\footnote{Your machine should
 \end{small}
 
 To generate \emph{kit\_v3} you enter the \texttt{mlkit-v2} directory
-and bootstraps once more using the Makefile located in
+and bootstraps once more using the {\tt Makefile} located in
 \texttt{mlkit-v2}.
 
 \begin{small}
@@ -8295,7 +8351,7 @@ and bootstraps once more using the Makefile located in
 \end{small}
 
 To generate \emph{kit\_v4} you enter the \texttt{mlkit-v3} directory
-and bootstraps once more using the Makefile located in
+and bootstraps once more using the {\tt Makefile} located in
 \texttt{mlkit-v3}.
 
 \begin{small}
@@ -8309,8 +8365,9 @@ and bootstraps once more using the Makefile located in
 \end{quote}
 \end{small}
 
-To see that \emph{kit\_v3} and \emph{kit\_v4} are equal, you can apply
-the \texttt{diff} command on the two binaries:
+To see that the two executables \emph{kit\_v3} and \emph{kit\_v4} are
+identical, you can apply the \texttt{diff} command on the two
+binaries:
 
 \begin{small}
 \begin{quote}
@@ -8326,7 +8383,7 @@ the \texttt{diff} command on the two binaries:
 \end{quote}
 \end{small}
 
-\subsection{How it works}
+\section{How it works}
 
 You can look in the Makefiles to see how to compile the ML Kit with
 the ML Kit manually. You basically enter a \texttt{src} directory
@@ -8355,7 +8412,7 @@ ML Kit version 3.4.0, May 23, 2001 [X86 Backend]
 The install directory is necessary for the ML Kit to find the runtime
 system when building the executable file \texttt{run}.
 
-\subsection{Testing while bootstrapping}
+\section{Testing while bootstrapping}
 
 It is possible to apply all the ML Kit tests in the test directory.
 The regression test performs a test on the following four
@@ -8370,6 +8427,7 @@ configurations of the ML Kit:
 
 Choose the kit to test (e.g., \emph{kit\_v3}).
 
+\begin{quote}
 \begin{verbatim}
 # pwd
 /home/nh/ITU/MLKit/mlkit/kit
@@ -8386,8 +8444,9 @@ Choose the kit to test (e.g., \emph{kit\_v3}).
 # make all_test
 ...
 \end{verbatim}
+\end{quote}
 
-If you look in the \texttt{all\_test} entry in the Makefile, you will
+If you look in the \texttt{all\_test} entry in the {\tt Makefile}, you will
 find a program called \texttt{kittester} and a file
 \texttt{all\_test}. The file \texttt{all\_test} contains the programs
 that are tested and under what configurations. The program
@@ -8396,7 +8455,7 @@ compiled, executed and output is compared to the expected output.
 Finally a \LaTeX{} report with the result of the test is generated in
 the file \texttt{test\_report.dvi}.
 
-\subsection{Profiling the ML Kit}
+\section{Profiling the ML Kit}
 
 The Kit can only compile itself when garbage collection is enabled,
 that is, the ML Kit compiler is not optimized for regions. The memory
@@ -8422,13 +8481,14 @@ since version 3.0.
 
 \subsubsection*{Garbage Collection}
 \index{garbage collection}%
-The ML Kit now supports reference tracing garbage collection in
+The ML Kit supports reference tracing garbage collection in
 combination with the region memory model. Garbage collection is
 supported only in the native backend version of the Kit. To enable
-garbage collection simply toggle the entry {\tt garbage collection} in
-the {\tt Control} menu. Garbage collection is also possible with
-region profiling enabled. See Chapter~\ref{gc.chap} for more
-information about garbage collection with the Kit.
+garbage collection, toggle the entry {\tt garbage collection} in the
+{\tt Control} menu or start the Kit with the option {\tt -gc}. Garbage
+collection is also possible with region profiling enabled. See
+Chapter~\ref{gc.chap} for more information about garbage collection
+with the Kit.
 
 \subsubsection*{X86 Backend}
 The 
@@ -8448,7 +8508,9 @@ both a native version and a bytecode version of the ML Kit compiler
 installed on the same system.
 
 \subsubsection*{Unboxing of Function Arguments}
-\index{function argument!unboxed}%
+\index{arguments!multiple}%
+\index{multiple function arguments}%
+\index{function arguments!multiple}%
 By default, the Kit performs a simple local unboxing analysis to
 figure out if a function taking a tuple as argument can be transformed
 into a function taking multiple arguments. Only functions that use
@@ -8456,7 +8518,7 @@ only the individual elements of the argument tuple undergo
 transformation. The optimisation can be disabled by toggling the entry
 {\tt unbox function arguments} in the {\tt Control/Optimiser} menu.
 
-\subsubsection*{Removing of Region Vectors}
+\subsubsection*{Removal of Region Vectors}
 \index{region vector!removed}%
 In the ML Kit version 3.0 and earlier, actual region parameters were
 passed to a region polymorphic function in a {\em region vector},
@@ -8467,7 +8529,6 @@ region polymorphic functions are passed in registers and on the stack.
 This simplification improves pretty printing of region annotated terms
 and on what function calls turn into tail calls (see
 Section~\ref{simplejump.sec}).
-
 
 \section{Changes Since Version 2}
 \index{changes!since version 2}%
@@ -8918,9 +8979,15 @@ Options:
 
 \hrule
 \halign{\parbox[t]{15mm}{#}\hfil\ &\ \parbox[t]{13cm}{\strut#\strut}\cr
-\boxml{r1}&Holds values of type {\tt top}, i.e., records, exceptions and closures;\cr
+\boxml{r1}&Holds values of type {\tt top}, that is, records, exceptions, and closures.\cr
 \boxml{r2}&This region does not actually exist; it is used with unboxed values,
-           such as integers, booleans, and the 0-tuple.\cr}
+           such as integers, booleans, and the 0-tuple.\cr
+\boxml{r3}&Holds values of type {\tt bot}. Because no values has type 
+{\tt bot}, this region contains no values. Region variables with region type {\tt bot} are used with
+type variables.\cr
+\boxml{r4}&Holds values of type {\tt string}.\cr
+\boxml{r5}&Holds values of type {\tt real}.\cr
+}
 \hrule
 \bigskip
 \end{document}
