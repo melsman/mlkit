@@ -37,6 +37,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	    end
 	end
       end
+
     type pool = Pool.pool
     type db = pool * ns_db
 
@@ -50,8 +51,20 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       in
 	if h = 0 then raise Fail "poolGetHandle:Can't allocate handle" else (pool,h)
       end
+
     fun poolPutHandle (db : db) : unit =
       prim("@Ns_DbPoolPutHandle", #2 db)
+
+    fun getHandle () : db = poolGetHandle(Pool.getPool())
+
+    fun putHandle db : unit = (poolPutHandle db; Pool.putPool (#1 db))
+
+    fun wrapDb f =
+      let val db = getHandle()
+      in (f db before putHandle db)
+	handle X => (putHandle db; raise X)
+      end
+      
     fun dmlDb (db : db, q: quot) : unit =
       let
 	val status = prim("@Ns_DbDML", (#2 db, quotToString q))
@@ -60,23 +73,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	  raise Fail ("dml: " ^ Quot.toString q ^ " failed") 
 	else ()
       end
-    fun panicDmlDb (db:db) (f_panic: quot -> 'a) (q: quot) : unit =
-      (dmlDb (db,q); () handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
 
-    fun dmlTransDb (db : db, f : db -> 'a) : 'a =
-      let
-	val _ = dmlDb (db,DbBasic.beginTrans)
-	val res = f db;
-      in
-	dmlDb (db,DbBasic.endTrans);
-	res
-      end handle X => (dmlDb (db,DbBasic.rollback); raise X)
-    fun panicDmlTransDb (db:db) (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
-      dmlTransDb (db,f) handle X => (f_panic(`^(General.exnMessage X)`))
-
-    fun getHandle () : db = poolGetHandle(Pool.getPool())
-    fun putHandle db : unit = (poolPutHandle db; Pool.putPool (#1 db))
-      
     fun dml (q: quot) : unit =
       let 
 	val db = getHandle()
@@ -87,8 +84,20 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 
     fun maybeDml (q: quot) : unit = ((dml q; ()) handle X => ())
 
+    fun panicDmlDb (db:db) (f_panic: quot -> 'a) (q: quot) : unit =
+      (dmlDb (db,q); () handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
+
     fun panicDml (f_panic: quot -> 'a) (q: quot) : unit =
       ((dml q; ()) handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
+
+    fun dmlTransDb (db : db, f : db -> 'a) : 'a =
+      let
+	val _ = dmlDb (db,DbBasic.beginTrans)
+	val res = f db;
+      in
+	dmlDb (db,DbBasic.endTrans);
+	res
+      end handle X => (dmlDb (db,DbBasic.rollback); raise X)
 
     fun dmlTrans (f: db -> 'a) : 'a =
       let 
@@ -101,8 +110,16 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	  res
 	end handle X => (putHandle db; raise X)
       end
+
+    fun panicDmlTransDb (db:db) (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
+      dmlTransDb (db,f) handle X => (f_panic(`^(General.exnMessage X)`))
+
     fun panicDmlTrans (f_panic: quot -> 'a) (f: db -> 'a) : 'a =
       dmlTrans f handle X => (f_panic(`^(General.exnMessage X)`))
+
+    fun getCol (s,n) = Set.getOpt(s,n,"##")
+
+    val getColOpt = Set.get
 
     fun selectDb (db: db, q: quot) : Set.set =
       let 
@@ -122,8 +139,28 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
     fun getRowDb (db : db, s : Set.set) : status =
       prim("@Ns_DbGetRow", (#2 db, s))
 
-    fun getCol (s,n) = Set.getOpt(s,n,"##")
-    val getColOpt = Set.get
+    fun foldDb (db:db, f:(string->string)*'a->'a, acc:'a, sql:quot) : 'a =
+      let val s : Set.set = selectDb(db, sql)
+	fun g n = Set.getOpt(s, n, "##")
+	fun loop (acc:'a) : 'a =
+	  if (getRowDb(db,s) <> NsBasics.END_DATA) then loop (f(g,acc))
+	  else acc
+      in loop acc
+      end
+
+    fun fold (f:(string->string)*'a->'a, acc:'a, sql:quot) : 'a =
+      wrapDb (fn db => foldDb (db,f,acc,sql))
+
+    fun foldSetDb (db:db, f:Set.set*'a->'a, acc:'a, sql:quot) : 'a =
+      let val s : Set.set = selectDb(db, sql)
+	fun loop (acc:'a) : 'a =
+	  if (getRowDb(db,s) <> NsBasics.END_DATA) then loop (f(s,acc))
+	  else acc
+      in loop acc
+      end
+
+    fun foldSet (f:Set.set*'a -> 'a, acc:'a, sql:quot) : 'a =
+      wrapDb (fn db => foldSetDb (db,f,acc,sql))
 
     fun appDb (db:db, f:(string->string)->'a, sql:quot) : unit =
       let val s : Set.set = selectDb(db, sql)
@@ -134,22 +171,8 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       in loop ()
       end
 
-    fun foldDb (db:db, f:(string->string)*'a->'a, acc:'a, sql:quot) : 'a =
-      let val s : Set.set = selectDb(db, sql)
-	fun g n = Set.getOpt(s, n, "##")
-	fun loop (acc:'a) : 'a =
-	  if (getRowDb(db,s) <> NsBasics.END_DATA) then loop (f(g,acc))
-	  else acc
-      in loop acc
-      end
-
-    fun foldSetDb (db:db, f:Set.set*'a->'a, acc:'a, sql:quot) : 'a =
-      let val s : Set.set = selectDb(db, sql)
-	fun loop (acc:'a) : 'a =
-	  if (getRowDb(db,s) <> NsBasics.END_DATA) then loop (f(s,acc))
-	  else acc
-      in loop acc
-      end
+    fun app (f:(string->string)->'a,sql:quot) : unit =
+      wrapDb (fn db => appDb (db,f,sql))
 
     fun listDb (db:db, f:(string->string)->'a, sql: quot) : 'a list = 
       let 
@@ -162,41 +185,7 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	loop ()
       end
 
-    fun wrapDb f =
-      let val db = getHandle()
-      in (f db before putHandle db)
-	handle X => (putHandle db; raise X)
-      end
-      
-    fun fold (f:(string->string)*'a->'a, acc:'a, sql:quot) : 'a =
-      wrapDb (fn db => foldDb (db,f,acc,sql))
-
-    fun foldSet (f:Set.set*'a -> 'a, acc:'a, sql:quot) : 'a =
-      wrapDb (fn db => foldSetDb (db,f,acc,sql))
-
-    fun app (f:(string->string)->'a,sql:quot) : unit =
-      wrapDb (fn db => appDb (db,f,sql))
-
     fun list (f:(string->string)->'a, sql:quot) : 'a list = wrapDb (fn db => listDb(db,f,sql))
-
-    fun zeroOrOneRowDb'(db,f,sql) : 'a option =
-      let 
-	val s : Set.set = selectDb(db, sql)
-	fun g n = Set.getOpt(s, n, "##")
-      in
-	if getRowDb(db,s) <> NsBasics.END_DATA then
-	  let 
-	    val res = SOME (f g)
-	  in
-	    if getRowDb(db,s) = NsBasics.END_DATA then
-	      res
-	    else raise Fail "zeroOrOneRowDb'.more than one row"
-	  end
-	else NONE (* Ok, no rows *)
-      end
-
-    fun zeroOrOneRow' (f:(string->string)->'a, sql:quot) : 'a option = 
-      wrapDb (fn db => zeroOrOneRowDb'(db,f,sql))
 
     fun oneFieldDb(db,sql) : string =
       let 
@@ -252,6 +241,9 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	else raise Fail "oneRowDb.more that one row"
       end
 
+    fun oneRow sql : string list =
+      wrapDb (fn db => oneRowDb(db,sql))
+
     fun oneRowDb'(db,f:(string->string)->'a,sql:quot) : 'a =
       let 
 	val s : Set.set = selectDb(db, sql)
@@ -265,9 +257,6 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	  res
 	else raise Fail "oneRowDb'.more that one row"
       end
-
-    fun oneRow sql : string list =
-      wrapDb (fn db => oneRowDb(db,sql))
 
     fun oneRow' (f:(string->string)->'a, sql:quot) : 'a = 
       wrapDb (fn db => oneRowDb'(db,f,sql))
@@ -289,6 +278,25 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 
     fun zeroOrOneRow sql : string list option =
       wrapDb (fn db => zeroOrOneRowDb(db,sql))
+
+    fun zeroOrOneRowDb'(db,f,sql) : 'a option =
+      let 
+	val s : Set.set = selectDb(db, sql)
+	fun g n = Set.getOpt(s, n, "##")
+      in
+	if getRowDb(db,s) <> NsBasics.END_DATA then
+	  let 
+	    val res = SOME (f g)
+	  in
+	    if getRowDb(db,s) = NsBasics.END_DATA then
+	      res
+	    else raise Fail "zeroOrOneRowDb'.more than one row"
+	  end
+	else NONE (* Ok, no rows *)
+      end
+
+    fun zeroOrOneRow' (f:(string->string)->'a, sql:quot) : 'a option = 
+      wrapDb (fn db => zeroOrOneRowDb'(db,f,sql))
 
     fun existsOneRowDb(db,sql) : bool =
       let val s : Set.set = selectDb(db, sql)

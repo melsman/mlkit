@@ -52,26 +52,63 @@ signature NS_DB =
 
     type set
     type pool = Pool.pool
-    type db
 
-    val init           : string * string -> unit
-    val poolGetHandle  : pool -> db
-    val poolPutHandle  : db -> unit
-    val getHandle      : unit -> db
-    val putHandle      : db -> unit
+    (* Database handle, abbreviated db *)
+    type db
 
     (* Quotation support *)
     type quot = string frag list 
+
+    (* [init (sectionName,key)] similar to Pool.initPools *)
+    val init           : string * string -> unit
+
+    (* [poolGetHandle p] returns a database handle from pool p. Raises
+    Fail on error, (e.g., no handles available) *)
+    val poolGetHandle  : pool -> db
+
+    (* [poolPutHandle db] returns the database handle db to its pool
+    for reuse (by a subsequent call to poolGetHandle). A database
+    handle is member of one and only one pool. The pool is encoded in
+    the database handle type db. *)
+    val poolPutHandle  : db -> unit
+
+    (* [getHandle] returns a database handle from the next available
+    pool. Raises Fail on error (e.g., no pools available). *)
+    val getHandle      : unit -> db
+
+    (* [putHanlde db] returns db to its pool (see poolPutHandle) and
+    makes the pool available to a subsequent call to getHandle. *)
+    val putHandle      : db -> unit
+
+    (***** SQL functions - Data Modification Language *****)
 
     (* [dmlDb (db,dml)] execute dml using database handle db. Raises
     Fail msg if dml is unsuccessful (msg contains the error message
     returned from the database). *)
     val dmlDb           : db * quot -> unit
 
+    (* [dml sql] similar to dmlDb *)
+    val dml             : quot -> unit
+
+    (* [maybeDml sql] executes sql and returns the value unit. Does
+    not raise Fail - errors are suppressed. This function is handy, if
+    you insert a row, say r1, into a table where another row r2 exists
+    with the same unique keys, and that is OK (i.e., you don't want to
+    insert r1). *)
+    val maybeDml      : quot -> unit
+
     (* [panicDmlDb db f_panic sql] same as dmlDb, except that on error
     function f_panic is executed. panicDmlDb returns unit and it only
     raises an exception if f_panic does. *)
     val panicDmlDb      : db -> (quot -> 'a) -> quot -> unit
+
+    (* [panicDml f_panic sql] executes sql and returns the value
+    unit. On error the function f_panic is applied to an error
+    string. The function always returns unit. This function is handy
+    if you want some panic action to be carried out on error. If you
+    want the script to end on error, then f_panic must call Ns.exit()
+    as it's last expression.*)
+    val panicDml      : (quot -> 'a) -> quot -> unit
 
     (* [dmlTransDb (db,f_db)] executes function f_db using handle db,
     which probably sends a series of SQL statements to the
@@ -80,10 +117,18 @@ signature NS_DB =
     transaction is rolled back and the exception is raised. *)
     val dmlTransDb      : db * (db -> 'a) -> 'a
 
+    (* [dmlTrans f_db] similar to dmlTransDb *)
+    val dmlTrans      : (db -> 'a) -> 'a
+
     (* [panicDmlTransDb db f_panic f_db] same as dmlTransDb except that
     on error function f_panic is executed. panicDmlTransDb returns the
     value returned by f_panic unless f_panic raises an exception. *)
     val panicDmlTransDb : db -> (quot -> 'a) -> (db -> 'a) -> 'a
+
+    (* [panicDmlTrans f_panic f_db] similar to panicDmlTransDb *)
+    val panicDmlTrans : (quot -> 'a) -> (db -> 'a) -> 'a
+
+    (***** SQL functions - Select *****)
 
     (* [getCol (s,key)] returns the value affiliated with key in set
      s. Returns "##" if key is not in the set s. *)
@@ -100,23 +145,38 @@ signature NS_DB =
     values. Raises Fail msg on error. *) 
     val foldDb : db * ((string->string)*'a->'a) * 'a * quot -> 'a
 
+    (* [fold (f,b,sql)] similar to foldDb *)
+    val fold          : ((string->string)*'a->'a) * 'a * quot -> 'a
+
     (* [foldSetdb (db,f,b,sql)] similar to foldDb except that f
     takes the result set as argument. Raises Fail msg on fail *)
     val foldSetDb       : db * (set*'a->'a) * 'a * quot -> 'a
 
+    (* [fold (f,b,sql)] similar to foldSetDb *)
+    val foldSet       : (set*'a->'a) * 'a * quot -> 'a
+
     (* [appDb (db,f,sql)] executes SQL statement sql and applies f on
     each row in the result set. Raises Fail on error. *)
     val appDb           : db * ((string->string)->'a) * quot -> unit
+
+    (* [app (f,sql)] similar to appDb *)
+    val app           : ((string->string)->'a) * quot -> unit
 
     (* [listDb (db,f,sql)] executes SQL statement sql and applies f on
     each row in the result set. The result elements are returned as a
     list. Raises Fail on error. *)
     val listDb          : db * ((string->string)->'a) * quot -> 'a list
 
+    (* [list (f,sql)] similar to listDb *)
+    val list          : ((string->string)->'a) * quot -> 'a list
+
     (* [oneFieldDb (db,sql)] executes SQL statement sql which must
-    return only exactly one row with one column - that string is
+    return exactly one row with one column - that string is
     returned. Raises Fail on error *)
     val oneFieldDb      : db * quot -> string
+
+    (* [oneField sql] similar to oneFieldDb *)
+    val oneField      : quot -> string
 
     (* [zeroOrOneFieldDb (db,sql) executes SQL statement sql which
     must either return zero or one row. If one row is returned then
@@ -124,76 +184,37 @@ signature NS_DB =
     error. *)
     val zeroOrOneFieldDb: db * quot -> string option
 
+    (* [zeroOrOneField sql] similar to zeroOrOneFieldDb *)
+    val zeroOrOneField: quot -> string option
+
     (* [oneRowDb (db,sql) executes SQL statement which must return
     exactly one row. Returns all columns as a list of strings. Raises
     Fail on error. *)
     val oneRowDb        : db * quot -> string list
+
+    (* [oneRow sql] similar to oneRowDb *)
+    val oneRow        : quot -> string list
 
     (* [oneRowDb' (db,f,sql) executes SQL statement which must return
     exactly one row. Returns f applied on the row. Raises Fail on
     error. *)
     val oneRowDb'       : db * ((string->string)->'a) * quot -> 'a
 
+    (* [oneRow' (f,sql)] similar to oneRowDb' *)
+    val oneRow'       : ((string->string)->'a) * quot -> 'a
+
     (* [zeroOrOneRowDb (db,sql) executes SQL statement that must
     return either zero or one row. Returns all columns as a list of
     strings. Raises Fail on error. *)
     val zeroOrOneRowDb  : db * quot -> string list option
 
+    (* [zeroOrOneRow sql] similar to zeroOrOneRowDb *)
+    val zeroOrOneRow  : quot -> string list option
+
     (* [zeroOrOneRowDb' (db,f,sql) executes SQL statement that must
     return either zero or one row. Returns f applied on the row if
     exists Raises Fail on error. *)
     val zeroOrOneRowDb'  : db * ((string->string)->'a) * quot -> 'a option
-
-    (* [dml sql] similar to dmlDb *)
-    val dml           : quot -> unit
-
-    (* [dmlTrans f_db] similar to dmlTransDb *)
-    val dmlTrans      : (db -> 'a) -> 'a
-
-    (* [maybeDml sql] executes sql and returns the value unit. Does
-    not raise Fail - errors are suppressed. This function is handy, if
-    you insert a row, say r1, into a table where another row r2 exists
-    with the same unique keys, and that is OK (i.e., you don't want to
-    insert r1). *)
-    val maybeDml      : quot -> unit
-
-    (* [panicDml f_panic sql] executes sql and returns the value
-    unit. On error the function f_panic is applied to an error
-    string. The function always returns unit. This function is handy
-    if you want some panic action to be carried out on error. If you
-    want the script to end on error, then f_panic must call Ns.exit()
-    as it's last expression.*)
-    val panicDml      : (quot -> 'a) -> quot -> unit
-
-    (* [panicDmlTrans f_panic f_db] similar to panicDmlTransDb *)
-    val panicDmlTrans : (quot -> 'a) -> (db -> 'a) -> 'a
-
-    (* [fold (f,b,sql)] similar to foldDb *)
-    val fold          : ((string->string)*'a->'a) * 'a * quot -> 'a
-
-    (* [fold (f,b,sql)] similar to foldSetDb *)
-    val foldSet       : (set*'a->'a) * 'a * quot -> 'a
-
-    (* [app (f,sql)] similar to appDb *)
-    val app           : ((string->string)->'a) * quot -> unit
-
-    (* [list (f,sql)] similar to listDb *)
-    val list          : ((string->string)->'a) * quot -> 'a list
-
-    (* [oneField sql] similar to oneFieldDb *)
-    val oneField      : quot -> string
-
-    (* [zeroOrOneField sql] similar to zeroOrOneFieldDb *)
-    val zeroOrOneField: quot -> string option
-
-    (* [oneRow sql] similar to oneRowDb *)
-    val oneRow        : quot -> string list
-
-    (* [oneRow' (f,sql)] similar to oneRowDb' *)
-    val oneRow'       : ((string->string)->'a) * quot -> 'a
-
-    (* [zeroOrOneRow sql] similar to zeroOrOneRowDb *)
-    val zeroOrOneRow  : quot -> string list option
 
     (* [zeroOrOneRow'] (f,sql) similar to zeroOrOneRowDb' *)
     val zeroOrOneRow' : ((string->string)->'a) * quot -> 'a option
@@ -205,6 +226,8 @@ signature NS_DB =
 
     (* [existsOneRow sql] similar to existsOneRowDb *)
     val existsOneRow  : quot -> bool
+
+    (***** SQL functions - Sequences *****)
 
     (* [seqNextvalExp seq_name] returns a string to fit in an SQL
     statement generating a new number from sequence seq_name.*)
@@ -230,6 +253,8 @@ signature NS_DB =
 
     (* [seqCurrval seqName] similar to seqCurrvalDb *)
     val seqCurrval    : string -> int
+
+    (***** SQL functions - Miscellaneous *****)
 
     (* [sysdateExp] returns a string to fit in an SQL statement
     returning the current date *)
@@ -258,7 +283,8 @@ signature NS_DB =
 
        `select ^(Db.toTimestampExp "d") from t`
 
-    where d is a column of type date (in oracle) *)
+    where d is a column of type date (in oracle) or datatime (in
+    PostgreSQL and MySQL) *)
     val toTimestampExp: string -> string
 
     (* [toTimestamp t] returns the Date.date representation of t,
