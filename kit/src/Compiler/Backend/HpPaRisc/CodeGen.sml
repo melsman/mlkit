@@ -669,9 +669,9 @@ struct
       fun muli(x:reg,y:reg,d:reg,C) = (* A[i*j] = 1 + (A[i] >> 1) * (A[j]-1) *)
 	if !BI.tag_integers then
 	  (add_lib_function("$$mulI");
-	   COPY{r=x,t=arg1} ::
+(*	   COPY{r=x,t=arg1} :: 28/12/1998, Niels*)
 	   SHD{cond=NEVER,r1=Gen 0,r2=arg1,p="1",t=arg1} ::
-	   COPY{r=y,t=arg0} ::
+(*	   COPY{r=y,t=arg0} :: 28/12/1998, Niels*)
 	   LDO {d="-1",b=arg0,t=arg0} ::
 	   META_BL {n=false,target=NameLab "$$mulI",rpLink=mrp, 
 		    callStr=";in=25,26;out=29;(MILLICALL)"} ::
@@ -679,8 +679,8 @@ struct
 	   COPY{r=ret1,t=d} :: C)
 	else
 	  (add_lib_function("$$muloI");
-	   COPY{r=x,t=arg1} ::
-	   COPY{r=y,t=arg0} ::
+(*	   COPY{r=x,t=arg1} ::
+	   COPY{r=y,t=arg0} :: 28/12/1998, Niels*)
 	   META_BL {n=false,target=NameLab "$$muloI",rpLink=mrp, 
 		    callStr=";in=25,26;out=29; (MILLICALL)"} ::
 	   COPY{r=ret1,t=d} :: C)
@@ -1072,17 +1072,16 @@ struct
 	       load_indexed(tmp_reg2,tmp_reg1,WORDS(~2),
 			    store_in_label(SS.PHREG_ATY tmp_reg2,exn_ptr_lab,tmp_reg2,size_ff,C)))
 	     fun push_return_lab C =
-	       COMMENT "LOAD ARGUMENT AND RESTORE SP AND PUSH RETURN LAB" ::
-	       move_aty_into_reg(arg_aty,arg_reg,size_ff, (* Note that we are still in the activation record where arg is raised *)
+	       COMMENT "LOAD ARGUMENT, RESTORE SP AND PUSH RETURN LAB" ::
+	       move_aty_into_reg(arg_aty,arg_reg,size_ff, (* Note that we are still in the activation record where arg_aty is raised *)
 	       load_indexed(sp,tmp_reg1,WORDS(~1),        (* Restore sp *)
 	       load_indexed(tmp_reg2,tmp_reg1,WORDS(~4),  (* Push Return Lab *)
 			    STWM{r=tmp_reg2,d="4",s=Space 0,b=sp} :: C)))
 	     fun jmp C =
 		 COMMENT "JUMP TO HANDLE FUNCTION" ::
-(*		 move_aty_into_reg(arg_aty,arg_reg,size_ff+1, (* Note that the return lab has been pushed on the stack (i.e., size_ff+1) *)*)
-				   load_indexed(clos_reg,tmp_reg1,WORDS(~3), (* Fetch Closure into Clossure Argument Register *)
-						LDW{d="0",s=Space 0,b=clos_reg,t=tmp_reg2} ::
-						META_BV{n=false,x=Gen 0,b=tmp_reg2}::C)
+		 load_indexed(clos_reg,tmp_reg1,WORDS(~3), (* Fetch Closure into Closure Argument Register *)
+			      LDW{d="0",s=Space 0,b=clos_reg,t=tmp_reg2} ::
+			      META_BV{n=false,x=Gen 0,b=tmp_reg2}::C)
 	   in
 	     COMMENT ("START OF RAISE: " ^ pr_ls ls) ::
 	     deallocate_regions_until(restore_exn_ptr(push_return_lab(jmp(COMMENT "END OF RAISE" :: C))))
@@ -1138,7 +1137,7 @@ struct
 	   | LS.CCALL{name,args,rhos_for_result,res} => 
 		  COMMENT (pr_ls ls) :: 
 		  (* Note that the prim names are defined in BackendInfo! *)
-		  (case (name,args@rhos_for_result,res) of
+		  (case (name,rhos_for_result@args,res) of
 		     ("__equal_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])      => cmpi(EQUAL,x,y,d,C)
 		   | ("__minus_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])      => SUBO{cond=NEVER,r1=x,r2=y,t=d} :: maybe_tag_integers(LDO{d="1",b=d,t=d},C)
 		   | ("__plus_int",[SS.PHREG_ATY x,SS.PHREG_ATY y],[SS.PHREG_ATY d])       => ADDO{cond=NEVER,r1=x,r2=y,t=d} :: maybe_tag_integers(LDO {d="-1",b=d,t=d},C)
@@ -1157,8 +1156,8 @@ struct
 							 STW {r=tmp_reg2, d="0", s=Space 0, b=tmp_reg1} :: C))
 		   | _ => 
 		       (case res of
-			  [] => compile_c_call_prim(name,args@rhos_for_result,NONE,size_ff,tmp_reg1,C)
-			| [res_aty] => compile_c_call_prim(name,args@rhos_for_result,SOME res_aty,size_ff,tmp_reg1,C)
+			  [] => compile_c_call_prim(name,rhos_for_result@args,NONE,size_ff,tmp_reg1,C)
+			| [res_aty] => compile_c_call_prim(name,rhos_for_result@args,SOME res_aty,size_ff,tmp_reg1,C)
 			| _ => die "CCall with more than one result variable")))
       in
 	foldr (fn (ls,C) => CG_ls(ls,C)) C lss
@@ -1264,6 +1263,82 @@ struct
 	  DOT_WORD "0" :: C
 	fun slots_for_datlabs(l,C) = foldr slot_for_datlab C l
 	fun add_progunits(l,C) = foldr (fn (lab,C) => DOT_IMPORT(MLFunLab lab,"CODE") :: C) C l
+
+	fun toplevel_handler C =
+	  let
+	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg()
+	    val (clos_reg,arg_reg) = (lv_to_reg clos_lv,lv_to_reg arg_lv)
+	  in
+	    LABEL (NameLab "TopLevelHandlerLab") ::
+	    load_indexed(arg_reg,arg_reg,WORDS 0, 
+	    load_indexed(arg_reg,arg_reg,WORDS 1, (* Fetch pointer to exception string *)
+	    compile_c_call_prim("uncaught_exception",[SS.PHREG_ATY arg_reg],NONE,0,tmp_reg1,C)))
+	  end
+
+	fun raise_insts C = (* expects exception value in arg0 *)
+	  let
+	    val (clos_lv,arg_lv) = CallConv.handl_arg_phreg()
+	    val (clos_reg,arg_reg) = (lv_to_reg clos_lv,lv_to_reg arg_lv)
+	  in
+	    LABEL (NameLab "raise_exn") ::
+	    COPY{r=arg0,t=arg_reg} :: (* We assume that arg_reg is preserved across C calls *)
+	    
+	    COMMENT "DEALLOCATE REGIONS UNTIL" ::
+	    load_from_label(exn_ptr_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,0,
+	    compile_c_call_prim("deallocateRegionsUntil",[SS.PHREG_ATY tmp_reg1],NONE,0,tmp_reg1,
+
+	    COMMENT "RESTORE EXN PTR" ::
+	    load_from_label(exn_ptr_lab,SS.PHREG_ATY tmp_reg1,tmp_reg1,0,
+            load_indexed(tmp_reg2,tmp_reg1,WORDS(~2),
+	    store_in_label(SS.PHREG_ATY tmp_reg2,exn_ptr_lab,tmp_reg2,0,
+
+	    COMMENT "RESTORE SP AND PUSH RETURN LAB" ::
+            load_indexed(sp,tmp_reg1,WORDS(~1),        (* Restore sp *)
+	    load_indexed(tmp_reg2,tmp_reg1,WORDS(~4),  (* Push Return Lab *)
+	    STWM{r=tmp_reg2,d="4",s=Space 0,b=sp} ::
+
+	    COMMENT "JUMP TO HANDLE FUNCTION" ::
+	    load_indexed(clos_reg,tmp_reg1,WORDS(~3), (* Fetch Closure into Closure Argument Register *)
+	    LDW{d="0",s=Space 0,b=clos_reg,t=tmp_reg2} ::
+	    META_BV{n=false,x=Gen 0,b=tmp_reg2}::C))))))))
+	  end
+
+	(* primitive exceptions *)
+	fun setup_primitive_exception((n,exn_string,exn_lab,exn_flush_lab),C) =
+	  let
+	    val string_lab = gen_string_lab exn_string
+	    val _ = add_static_data [DOT_DATA,
+				     DOT_ALIGN 4,
+				     DOT_EXPORT (exn_lab, "DATA"),
+				     LABEL exn_lab,
+				     DOT_WORD "0", (*dummy for pointer to next word*)
+				     DOT_WORD (int_to_string n),
+				     DOT_WORD "0"  (*dummy for pointer to string*),
+				     DOT_DATA,
+				     DOT_ALIGN 4,
+				     DOT_EXPORT (exn_flush_lab, "DATA"),
+				     LABEL exn_flush_lab, (* The Primitive Exception is Flushed at this Address *)
+				     DOT_WORD "0"]
+	  in
+	    COMMENT ("SETUP PRIM EXN: " ^ exn_string) :: 
+	    load_label_addr(exn_lab,SS.PHREG_ATY tmp_reg0,0,
+			    ADDI{cond=NEVER,i="4",r=tmp_reg0,t=tmp_reg1} ::
+			    STW{r=tmp_reg1,d="0",s=Space 0,b=tmp_reg0} ::
+			    load_label_addr(string_lab,SS.PHREG_ATY tmp_reg1,0,
+					    STW{r=tmp_reg1,d="8",s=Space 0,b=tmp_reg0} ::
+					    load_label_addr(exn_flush_lab,SS.PHREG_ATY tmp_reg1,0, (* Now flush the exception *)
+							    STW{r=tmp_reg0,d="0",s=Space 0,b=tmp_reg1} :: C)))
+	  end
+	val primitive_exceptions = [(0, "Match", NameLab "exn_MATCH", DatLab BI.exn_MATCH_lab),
+				    (1, "Bind", NameLab "exn_BIND", DatLab BI.exn_BIND_lab),
+				    (2, "Overflow", NameLab "exn_OVERFLOW", DatLab BI.exn_OVERFLOW_lab),
+				    (3, "Interrupt", NameLab "exn_INTERRUPT", DatLab BI.exn_INTERRUPT_lab),
+				    (4, "Div", NameLab "exn_DIV", DatLab BI.exn_DIV_lab)]
+	val initial_exnname_counter = 5
+
+	fun init_primitive_exception_constructors_code C = 
+	  foldl (fn (t,C) => setup_primitive_exception(t,C)) C primitive_exceptions
+
 	val static_data = 
 	  slots_for_datlabs(global_region_labs,
 			    add_progunits(linkinfos,
@@ -1272,21 +1347,12 @@ struct
 					  DOT_IMPORT (NameLab "$global$", "DATA") ::
 
 					  LABEL exn_counter_lab :: (* The Global Exception Counter *)
-					  DOT_WORD "0" ::
-					  DOT_EXPORT(exn_counter_lab, "DATA") ::
+					  DOT_WORD (int_to_string initial_exnname_counter) ::
+					  DOT_EXPORT (exn_counter_lab, "DATA") ::
 
 					  LABEL exn_ptr_lab :: (* The Global Exception Pointer *)
 					  DOT_WORD "0" ::
 					  DOT_EXPORT(exn_ptr_lab, "DATA") ::
-
-
-					  LABEL(NameLab "exn_INTERRUPT") :: (* only temporary *)
-					  DOT_WORD "0" :: (* only temporary *)
-					  DOT_EXPORT(NameLab "exn_INTERRUPT","DATA") :: (* only temporary *)
-
-					  LABEL(NameLab "exn_OVERFLOW") :: (* only temporary *)
-					  DOT_WORD "0" :: (* only temporary *)
-					  DOT_EXPORT(NameLab "exn_OVERFLOW","DATA") :: (* only temporary *)
 
 					  DOT_END :: []))
 	val _  = add_static_data static_data
@@ -1314,6 +1380,21 @@ struct
 	  COMMENT "Allocate global regions and push them on the stack" ::
 	  allocate_global_regions(global_region_labs,
 
+	  (* Initialize primitive exceptions *)
+          init_primitive_exception_constructors_code(
+
+	  (* Push top-level handler on stack *)
+	  COPY{r=sp, t=tmp_reg1} ::
+	  load_label_addr(NameLab "TopLevelHandlerLab", SS.PHREG_ATY tmp_reg3,0,
+	  STWM{r=tmp_reg3,d="4",s=Space 0,b=sp} ::
+	  STWM{r=tmp_reg1,d="4",s=Space 0,b=sp} :: (* Push TopLevelHandlerClosure *)
+	  load_label_addr(exn_ptr_lab,SS.PHREG_ATY tmp_reg1,0,
+	  LDW{d="0",s=Space 0,b=tmp_reg1,t=tmp_reg2} ::
+	  STWM{r=tmp_reg2,d="4",s=Space 0,b=sp} ::
+	  LDO{d="4",b=sp,t=sp} ::
+	  STW{r=sp,d="-4",s=Space 0,b=sp} ::  
+	  STW{r=sp,d="0",s=Space 0,b=tmp_reg1} :: (* Update exnPtr *)
+
 	  (* Push addresses of program units on stack, starting with the exit label and
 	   * ending with label for the second program unit. *)
 	  push_addresses_progunits(progunit_labs,
@@ -1323,7 +1404,7 @@ struct
 			 STW{r=tmp_reg1,d="0",s=Space 0,b=sp} ::
 
 			 (* Jump to first program unit. *)
-			 META_B {n=false, target=first_progunit_lab} :: C)))
+			 META_B {n=false, target=first_progunit_lab} :: C))))))
 	  
 	fun nextlab_insts C =
 	  let val res = if !BI.tag_values then 1 (* 2 * 0 + 1 *)
@@ -1335,7 +1416,6 @@ struct
 	    STW{r=tmp_reg1,d="0",s=Space 0,b=sp} ::           (* now make sp point at next_prog_unit label again *)
 	    META_BV{n=false,x=Gen 0,b=tmp_reg0} ::            (* now jump to next program unit *)
 	    
-	    LABEL(NameLab "raise_exn") ::(* only temporary *)
 	    LABEL(lab_exit) ::
 	    COMMENT "**** Link Exit code ****" ::
 	    compile_c_call_prim("terminate", [SS.INTEGER_ATY res], NONE,0,tmp_reg0(*not used*),
@@ -1343,7 +1423,7 @@ struct
 				DOT_PROCEND :: C)
 	  end
 
-	val init_link_code = init_insts(nextlab_insts [])
+	val init_link_code = init_insts(nextlab_insts(raise_insts(toplevel_handler [])))
 	val _ = add_static_data [DOT_EXPORT(NameLab "raise_exn","CODE")] (* only temporary *)
       in
 	HppaResolveJumps.RJ{top_decls = [],

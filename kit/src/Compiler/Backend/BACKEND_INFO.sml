@@ -35,10 +35,11 @@ signature BACKEND_INFO =
 
     val init_frame_offset : offset
 
-    val exn_DIV_lab      : label       (* Global exceptions are globally allocated. *)
-    val exn_MATCH_lab    : label
-    val exn_BIND_lab     : label
-    val exn_OVERFLOW_lab : label
+    val exn_DIV_lab       : label       (* Global exceptions are globally allocated. *)
+    val exn_MATCH_lab     : label
+    val exn_BIND_lab      : label
+    val exn_OVERFLOW_lab  : label
+    val exn_INTERRUPT_lab : label
 
     val toplevel_region_withtype_top_lab    : label
     val toplevel_region_withtype_bot_lab    : label
