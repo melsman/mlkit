@@ -16,37 +16,26 @@ fun do_regExp p s =
 
 val emailp = "([a-zA-Z][0-9a-zA-Z._]*)@([0-9a-zA-Z._]+)"
 val _ =
-  Ns.return `<html>
-   <head>
-   <title>RegExp examples</title>
-   </head>
-   <body bgcolor=white>
-  <h2>Function <code>RegExp.match</code></h2><p>
+  Page.return "RegExp examples"
+  `<h4>Function <code>RegExp.match</code></h4><p>
   ^(do_regExpBool "[0-9]+" "99")
   ^(do_regExpBool "[0-9]+" "aa99AA")
   ^(do_regExpBool "[0-9]+.*" "99AA")
   ^(do_regExpBool "[0-9]+" "99AA")
   ^(do_regExpBool "[0-9]+" "aa99")
 
-  <h2>Function <code>RegExp.extract</code></h2><p>
+  <h4>Function <code>RegExp.extract</code></h4><p>
   ^(do_regExp "Name: ([a-zA-Z ]+);Tlf: ([0-9 ]+)" "Name: Hans Hansen;Tlf: 66 66 66 66")
   ^(do_regExp emailp "name@company.com")
   ^(do_regExp emailp "name@company@com")
 
-  <h2>A group that takes part in a match repeatedly</h2>
+  <h4>A group that takes part in a match repeatedly</h4>
   ^(do_regExpBool "(a(b+))+" "abbabbb")
   ^(do_regExp "(a(b+))+" "abbabbb")
 
   ^(do_regExpBool "(([a-zA-Z][0-9a-zA-Z._]*)@[0-9a-zA-Z._]+,?)*" "joe@it.edu,sue@id.edu,pat@it.edu")
   ^(do_regExp "(([a-zA-Z][0-9a-zA-Z._]*)@[0-9a-zA-Z._]+,?)*" "joe@it.edu,sue@id.edu,pat@it.edu")
 
-
-  <h2>A group that does not take part in a match</h2>
+  <h4>A group that does not take part in a match</h4>
   ^(do_regExp "(ab)|(cd)" "cd")
-  ^(do_regExp "(ab)|(cd)" "ab")
-
-  <hr>
-  <a href="http://www.smlserver.org/">SMLserver Home Page</a> 
-  (<a href="mailto:smlserver@it.edu">smlserver@it.edu</a>) 2001-08-08
-   </body>
-   </html>`
+  ^(do_regExp "(ab)|(cd)" "ab")`

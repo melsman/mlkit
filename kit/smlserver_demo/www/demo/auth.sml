@@ -2,7 +2,7 @@ structure FV = FormVar
 
 fun redirect() = 
   (Ns.log (Ns.Notice,"Redirecting from auth");
-   Ns.returnRedirect "/demo/auth_form.sml"; 
+   Ns.returnRedirect Auth.loginPage; 
    Ns.exit())
 
 val target = case FV.wrapOpt FV.getStringErr "target" 

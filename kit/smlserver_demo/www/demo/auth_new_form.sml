@@ -1,4 +1,4 @@
-val _ = Page.return "Register at SMLserver.org" `
+val _ = Page.return ("Register at " ^ Auth.siteName) `
 Enter your <b>email address</b>, <b>name</b>, 
 and <b>home page address</b>.
 <form action="/demo/auth_new.sml" method=post>

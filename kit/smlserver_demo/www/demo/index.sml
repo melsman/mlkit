@@ -15,12 +15,13 @@ val examples =
 						"rating/add.sml", "rating/wine.sml"]),
    ("Link database (DB)", "link/index.sml", ["link/add_form.sml", "link/add.sml", 
 						  "link/delete.sml"]),
+   ("Cookie example", "cookie.sml", ["cookie_set.sml", "cookie_delete.sml"]),
 (*   ("Game of life", "life.sml"),  *)
    ("Hello world (MSP)", "hello.msp", []),
    ("Multiplication (MSP)", "mul.msp", []),
    ("Calendars (MSP)", "calendar.msp", []),
    ("Tables (MSP)", "test.msp", []),
-   ("Testing Your Database (requires a database)", "db_test.sml", []),
+   ("Database testing (DB)", "db_test.sml", []),
    ("SMLserver images", "images/index.html", []),
    ("This index page", "index.sml", [])]
 

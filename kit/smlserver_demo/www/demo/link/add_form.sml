@@ -1,10 +1,10 @@
 
 val _ = 
-  if Login.person_id = Login.default_id then 
+  if Auth.isLoggedIn() then ()
+  else
     (Ns.returnRedirect 
        "/demo/auth_form.sml?target=/demo/link/add_form.sml"
      ; Ns.exit())
-  else ()
 
 val _ = Page.return "Submit Web-site that uses SMLserver"
   `You may delete your submission later

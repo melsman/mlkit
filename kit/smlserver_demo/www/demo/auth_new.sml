@@ -1,10 +1,9 @@
 structure FV = FormVar
-
 val email = FV.wrapFail FV.getEmailErr ("email", "Email")
 val name = FV.wrapFail FV.getStringErr ("name", "Name")
 val url = FV.wrapFail FV.getUrlErr ("url", "Home page URL")
 
-val passwd = Login.new_passwd 6
+val passwd = Auth.newPassword 6
 
 val ins =
   `insert into person (person_id, email, 

@@ -346,16 +346,17 @@ val dmlTransE1 = tstOk "dmlTransE1" (fn () => Db.dml `drop table db_test`)
 
 val _ = Page.return "Testing the Database Interface (signature NS_DB)" `
 
-The script has sent a series of SQL statements to the database, and
+The script sends a series of SQL statements to the database;
 the result is shown below.<p>
 
-<b>Notice:</b> If you are using MySQL, then there must be errors in
-the sections testing <i>sequences</i>, <i>panicDmlTrans</i> and
-<i>dmlTrans</i> due to the limitations in MySQL.<p>
+<b>Notice:</b> If you are using MySQL, errors in
+the sections testing <i>sequences</i>, <i>panicDmlTrans</i>, and
+<i>dmlTrans</i> are expected due to the lack of sequences 
+and transactions in MySQL.<p>
 
 <h1>Testing the <code>NS_POOL</code> interface</h1>
 
-We have the following pools available: <b>^(Db.Pool.pp())</b>. <p>
+The following pools are available: <b>^(Db.Pool.pp())</b>. <p>
 ^(ppTestRes poolTest)
 
 <h1>Testing the <code>NS_DB</code> interface</h1>
@@ -414,7 +415,3 @@ We have the following pools available: <b>^(Db.Pool.pp())</b>. <p>
 <h2>Dropping test table</h2>
 ^dmlTransE1<br>
 `
-
-
-
-
