@@ -90,6 +90,7 @@ signature SCS_DATE =
     val ppLongWithWeekday    : Date.date -> string 
     val pp    : Date.date -> string
     val ppDb  : Date.date option -> string
+    val ppDbExamples : Date.date option -> string
     val ppTimestamp : Date.date -> string
     val ppTimestampDb : Date.date option -> string
 
@@ -246,6 +247,9 @@ structure ScsDate :> SCS_DATE =
     val ppIso = Date.fmt "%Y-%m-%d"
     val ppDk  = Date.fmt "%d/%m-%Y"
 
+    val exampleDk  = "DD/MM-YYYY"
+    val exampleIso = "YYYY-MM-DD"
+
     fun ppMthDk mth =
       case mth of
 	Date.Jan => "januar"
@@ -357,6 +361,14 @@ structure ScsDate :> SCS_DATE =
       case s
 	of SOME d => pp d
       | _ => ""
+
+    fun ppDbExamples s =
+      case s
+	of SOME d => pp d
+      | _ => ( case ScsLogin.user_lang() of
+	   	  ScsLang.da => exampleDk
+		| ScsLang.en => exampleIso
+      )
 
     fun ppTimestampDb s =
       case s

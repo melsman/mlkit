@@ -55,9 +55,9 @@ structure ScsPersonData :> SCS_PERSON_DATA =
     end
 
     (* do the following conversions:
-         - if email is of form login@itu.dk => login@it-c.dk
-         - if email is of form login@it.edu => login@it-c.dk
-         - if email is of form login => login@it-c.dk
+         - if email is of form login@it-c.dk => login@itu.dk
+         - if email is of form login@it.edu => login@itu.dk
+         - if email is of form login => login@itu.dk
      *)
     fun fix_email email =
       let
