@@ -17,19 +17,15 @@ by a list of tokens. The following tokens are supported:
 Test files may contain Standard ML like comments.
 
 *)
-
 kittmergesort.sml       tx 
 kkb36c.sml              tx 
 kitlife35u.sml          tx 
-(*
-kitqsort.sml            tx 
-kitmandelbrot.sml       tx 
-kitsimple.sml           tx 
-fft.sml                 tx 
-vliw.sml                tx 
 lexgen.sml              tx 
+vliw.sml                tx 
+professor2.sml          tx 
+logic.pm
+(*
 mlyacc.pm               tx 
-logic.pm                tx 
 barnes-hut.pm           tx 
 nucleic.pm              tx 
 ray.pm                  tx 
