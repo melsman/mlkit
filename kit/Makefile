@@ -57,6 +57,20 @@ tgz_smlserver:
 	cd ..; tar czf smlserver-$(KITVERSION).tgz smlserver-$(KITVERSION)
 	cd ..; rm -rf smlserver-$(KITVERSION)
 
+rpm_smlserver:
+	# assume that ``make tgz_smlserver'' has been run 
+	# as a user other than root!
+	cp -f ../smlserver-$(KITVERSION).tgz /usr/src/redhat/SOURCES/
+	cp -f smlserver.spec /usr/src/redhat/SPECS/smlserver-$(KITVERSION).spec
+	(cd /usr/src/redhat/SPECS; rpm -ba smlserver-$(KITVERSION).spec)
+
+rpm:
+	# assume that ``make tgz'' has been run 
+	# as a user other than root!
+	cp -f ../mlkit-$(KITVERSION).tgz /usr/src/redhat/SOURCES/
+	cp -f mlkit.spec /usr/src/redhat/SPECS/mlkit-$(KITVERSION).spec
+	(cd /usr/src/redhat/SPECS; rpm -ba mlkit-$(KITVERSION).spec)
+
 install:
 	rm -rf $(INSTDIR)
 	$(MKDIR) $(INSTDIR)
@@ -64,8 +78,9 @@ install:
 	$(MKDIR) $(INSTDIR)/doc
 	$(INSTALL) bin/runtimeSystem.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemGC.a $(INSTDIR)/bin
-	$(INSTALL) bin/runtimeSystemGCProf.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemProf.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGCProf.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemTag.a $(INSTDIR)/bin
 	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
 	$(INSTALL) bin/mlkit.$(ARCH-OS) $(INSTDIR)/bin
 	$(INSTALL) copyright $(INSTDIR)
@@ -85,6 +100,7 @@ install:
 	echo '#!/bin/sh' > $(INSTDIR)/bin/mlkit
 	echo -e '$(INSTDIR)/bin/mlkit.$(ARCH-OS) $(INSTDIR) $$*' >> $(INSTDIR)/bin/mlkit
 	chmod a+x $(INSTDIR)/bin/mlkit
+	rm -f /usr/bin/mlkit /usr/bin/rp2ps
 	cp -f -p $(INSTDIR)/bin/mlkit /usr/bin/mlkit
 	cp -f -p $(INSTDIR)/bin/rp2ps /usr/bin/rp2ps
 
@@ -134,4 +150,5 @@ install_smlserver:
 	echo '#!/bin/sh' > $(INSTDIR_SMLSERVER)/bin/smlserverc
 	echo -e '$(INSTDIR_SMLSERVER)/bin/smlserverc.$(ARCH-OS) $(INSTDIR_SMLSERVER) $$*' >> $(INSTDIR_SMLSERVER)/bin/smlserverc
 	chmod a+x $(INSTDIR_SMLSERVER)/bin/smlserverc
+	rm -f /usr/bin/smlserverc
 	cp -f -p $(INSTDIR_SMLSERVER)/bin/smlserverc /usr/bin/smlserverc

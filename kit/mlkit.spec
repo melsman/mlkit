@@ -94,10 +94,11 @@ rm -rf $RPM_BUILD_ROOT
 /usr/bin/rp2ps
 
 # Runtime Systems
-/usr/share/mlkit/bin/runtimeSystem.o 
-/usr/share/mlkit/bin/runtimeSystemGC.o
-/usr/share/mlkit/bin/runtimeSystemGCProf.o 
-/usr/share/mlkit/bin/runtimeSystemProf.o
+/usr/share/mlkit/bin/runtimeSystem.a
+/usr/share/mlkit/bin/runtimeSystemGC.a
+/usr/share/mlkit/bin/runtimeSystemProf.a
+/usr/share/mlkit/bin/runtimeSystemGCProf.a 
+/usr/share/mlkit/bin/runtimeSystemTag.a 
 
 # The Demonstration Directory
 /usr/share/mlkit/kitdemo
