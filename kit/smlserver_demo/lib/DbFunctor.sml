@@ -312,9 +312,9 @@ structure NsDbBasicMySQL : NS_DB_BASIC =
     fun seqCurrvalExp seq_name = raise Fail "seqCurrvalExp not supported on MySQL"
     val fromDual = ""
     val sysdateExp = "now()"
-    val beginTrans = `transactions not supported on MySQL`
-    val endTrans = `transactions not supported on MySQL`
-    val roolback = `transactions not supported on MySQL`
+    val beginTrans = `begin`
+    val endTrans = `commit`
+    val roolback = `roolback`
     fun fromDate d = Date.fmt "%Y-%m-%d %H:%M:%S" d  (* type DATETIME in MySQL *)
   end
 

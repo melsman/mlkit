@@ -12,7 +12,7 @@
 		 ("rating","rating"))
 
   val _ = Db.dml
-    `insert into rating (wid, comment, fullname, 
+    `insert into rating (wid, comments, fullname, 
                          email, rating)
      values (^wid, ^(Db.qq' comment), ^(Db.qq' fullname), 
 	     ^(Db.qq' email), ^rating)`

@@ -1,4 +1,3 @@
-drop table link;
 drop sequence link_seq;
 
 create table link (
@@ -11,4 +10,4 @@ create table link (
 insert into link (link_id, person_id, url, text)
 values (1, 1, 'http://www.smlserver.org', 'The SMLserver web-site');
 
-create sequence link_seq start 2;
+create sequence link_seq start with 2;

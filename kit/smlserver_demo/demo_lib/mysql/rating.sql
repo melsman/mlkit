@@ -18,7 +18,7 @@ create table wine (
 
 create table rating (
        wid       integer not null,
-       comment   text,
+       comments  text,
        fullname  varchar(100),
        email     varchar(100),
        rating    integer

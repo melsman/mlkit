@@ -3,7 +3,7 @@
     ("wid","internal number")
 
   val query = 
-    `select comment, fullname, email, rating
+    `select comments, fullname, email, rating
      from rating 
      where wid = ^(Int.toString wid)`
 
@@ -15,7 +15,7 @@
 	   | NONE => raise Fail "Rating not integer"
      in 
        `<tr><th> ^(RatingUtil.bottleImgs rating)
-        <td> ^(g"comment")
+        <td> ^(g"comments")
         <td> ^(RatingUtil.mailto (g"email") (g"fullname"))`
      end ^^ r, nil, query)
 

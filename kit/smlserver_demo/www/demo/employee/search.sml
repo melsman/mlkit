@@ -1,12 +1,3 @@
-  fun returnPage title body = Ns.return 
-    (`<html> 
-      <head><title>^title</title></head>
-      <body bgcolor=white>
-        <center><h2>^title</h2><p>` ^^ body ^^
-        `</center>
-      </body>
-      </html>`)
-
   val email = FormVar.wrapFail 
     FormVar.getStringErr ("email","email")
 
@@ -17,7 +8,7 @@
   val _ =
     case Db.zeroOrOneRow sql of
       SOME [name, note] => 
-	returnPage "Employee Search Success" 
+	Page.return "Employee Search Success" 
 	`<form action=update.sml method=post>
 	   <input type=hidden name=email value="^email">
            <table align=center border=2> 
@@ -36,6 +27,6 @@
          </form><p>
          Try a <a href=index.html>new search?</a>`
     | _ => 
-	 returnPage "Employee Search Failure"
+	 Page.return "Employee Search Failure"
 	 `Use the back-button in your web-browser 
 	 to go back and enter another email address`
