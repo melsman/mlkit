@@ -16,11 +16,7 @@
 //     content of the string is not initialized. 
 
 static inline String
-#ifdef PROFILING
-allocStringProfiling(Region rAddr, int size, int pPoint)
-#else 
-allocString(Region rAddr, int size) 
-#endif
+allocString(Region rAddr, int size  COMMA_INT_PPOINT) 
 {
   String sd;
   int szAlloc;                // size of string in words + tag
@@ -58,21 +54,13 @@ convertStringToC(String mlStr, unsigned char *buf, int buflen, int exn)
 // convertStringToML: The ML string is allocated in the region 
 // pointen at by rAddr.
 String
-#ifdef PROFILING
-convertStringToMLProfiling(Region rAddr, unsigned char *cStr, int pPoint) 
-#else
-convertStringToML(Region rAddr, unsigned char *cStr) 
-#endif
+REG_POLY_FUN_HDR(convertStringToML, Region rAddr, unsigned char *cStr) 
 {
   String res;
   unsigned char *p;
   int i;
 
-  #ifdef PROFILING
-  res = allocStringProfiling(rAddr, strlen(cStr), pPoint);   // sets size also
-  #else
-  res = allocString(rAddr, strlen(cStr));                    // sets size also
-  #endif
+  res = allocString(rAddr, strlen(cStr)  COMMA_PPOINT);   // sets size also
 
   for ( p = &(res->data); *cStr != '\0'; )
     {
@@ -97,18 +85,10 @@ printStringList(int xs)
 // makeChar: convert a char to a string
 /*
 String
-#ifdef PROFILING
-makeCharProfiling(Region rAddr, unsigned char ch, int pPoint) 
-#else
-makeChar(Region rAddr, unsigned char ch) 
-#endif
+REG_POLY_FUN_HDR(makeChar, Region rAddr, unsigned char ch) 
 {
   String res;
-#ifdef PROFILING
-  res = allocStringProfiling(rAddr, 1, pPoint);
-#else
-  res = allocString(rAddr, 1);
-#endif
+  res = allocString(rAddr, 1  COMMA_PPOINT);
   res->data = ch;                  // ch untagged
   *(&(res->data)+1) = '\0';
   return res;
@@ -124,19 +104,11 @@ makeChar(Region rAddr, unsigned char ch)
 //     string/W8vector/W8array is a scalar value so GC does not require
 //     that the string is initialized.
 String
-#ifdef PROFILING
-allocStringProfilingML(Region rAddr, int sizeML, int pPoint) 
-#else
-allocStringML(Region rAddr, int sizeML) 
-#endif
+REG_POLY_FUN_HDR(allocStringML, Region rAddr, int sizeML)
 {
   int sizeC = convertIntToC(sizeML);
   String strPtr;
-#ifdef PROFILING
-  strPtr = allocStringProfiling(rAddr,sizeC,pPoint);
-#else
-  strPtr = allocString(rAddr,sizeC);
-#endif
+  strPtr = allocString(rAddr, sizeC  COMMA_PPOINT);
   return strPtr;
 }
 
@@ -161,21 +133,13 @@ __bytetable_size(String s)
 */
 
 String
-#ifdef PROFILING
-concatStringProfilingML(Region rAddr, String str1, String str2, int pPoint) 
-#else
-concatStringML(Region rAddr, String str1, String str2) 
-#endif
+REG_POLY_FUN_HDR(concatStringML, Region rAddr, String str1, String str2) 
 {
   String res;
   unsigned char *s, *p;
   int i, sz;
   sz = sizeStringDefine(str1) + sizeStringDefine(str2);
-#ifdef PROFILING
-  res = allocStringProfiling(rAddr, sz, pPoint);
-#else
-  res = allocString(rAddr, sz);
-#endif
+  res = allocString(rAddr, sz  COMMA_PPOINT);
   p = &(res->data);
   s = &(str1->data);
   for ( i = 0; i < sizeStringDefine(str1); i++)
@@ -192,11 +156,7 @@ concatStringML(Region rAddr, String str1, String str2)
 }
 
 String
-#ifdef PROFILING
-implodeCharsProfilingML(Region rAddr, int xs, int pPoint) 
-#else
-implodeCharsML(Region rAddr, int xs) 
-#endif
+REG_POLY_FUN_HDR(implodeCharsML, Region rAddr, int xs) 
 {
   String res;
   int length = 0;
@@ -215,11 +175,7 @@ implodeCharsML(Region rAddr, int xs)
       length++;
     }
 
-#ifdef PROFILING
-  res = allocStringProfiling (rAddr, length, pPoint);
-#else
-  res = allocString (rAddr, length);
-#endif
+  res = allocString (rAddr, length  COMMA_PPOINT);
   p = &(res->data);
   for ( ys = xs; isCONS(ys); ys = tl(ys) ) 
     {
@@ -233,11 +189,7 @@ implodeCharsML(Region rAddr, int xs)
 // Example: ["ABC","DEF","GHI","JKL"]                            
 //   = CONS("ABC",CONS("DEF",CONS("GHI",CONS("JKL",NIL))))
 String
-#ifdef PROFILING
-implodeStringProfilingML(Region rAddr, int xs, int pPoint) 
-#else
-implodeStringML(Region rAddr, int xs) 
-#endif
+REG_POLY_FUN_HDR(implodeStringML, Region rAddr, int xs) 
 {
   String res;
   int sz=0;
@@ -249,12 +201,7 @@ implodeStringML(Region rAddr, int xs)
     {
       sz += sizeStringDefine(hd(ys));
     }
-
-  #ifdef PROFILING
-  res = allocStringProfiling(rAddr, sz, pPoint);
-  #else
-  res = allocString(rAddr, sz);
-  #endif
+  res = allocString(rAddr, sz  COMMA_PPOINT);
 
   p = &(res->data);
   for ( ys = xs; isCONS(ys); ys = tl(ys) )
@@ -389,11 +336,7 @@ equalStringML(String s1, String s2)
 // exnNameML: return name of exception; the function 
 // is exomorphic by copying
 String
-#ifdef PROFILING
-exnNameProfilingML(Region rAddr, int e, int pPoint) 
-#else
-exnNameML(Region rAddr, int e) 
-#endif
+REG_POLY_FUN_HDR(exnNameML, Region rAddr, int e) 
 {
   String ml_s;
 
@@ -403,22 +346,14 @@ exnNameML(Region rAddr, int e)
   ml_s = (String)(* ( (*(int **)e) + 1));
 #endif
 
-#ifdef PROFILING
-  return convertStringToMLProfiling(rAddr, &(ml_s->data), pPoint);
-#else
-  return convertStringToML(rAddr, &(ml_s->data));
-#endif
+  return REG_POLY_CALL(convertStringToML, rAddr, &(ml_s->data));
 }
 
 /* explodeStringML(rAddr, str): convert a string to a char list. 
  * A list is kept in one region, pointed to by rAddr.  */
 
 int *
-#ifdef PROFILING
-explodeStringProfiling(Region rAddr, String str, int pPoint) 
-#else
-explodeStringML(Region rAddr, String str) 
-#endif
+REG_POLY_FUN_HDR(explodeStringML, Region rAddr, String str) 
 {
   int *res, *consPtr, *pair, *tpair, i, sz;
   unsigned char *p;

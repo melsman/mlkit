@@ -1063,10 +1063,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  val beta = TyVar.fresh_normal ()
 	  val betaTy = Type.from_TyVar beta
 
-	  val tau_alpha_to_beta = Type.mk_Arrow
-			 (Type.from_triple (Type.String, Type.String, alphaTy), betaTy)
+	  val tau_prim = Type.mk_Arrow
+			 (Type.from_pair (Type.String, alphaTy), betaTy)
 
-	  val sigma_alpha_to_beta = TypeScheme.from_Type tau_alpha_to_beta
+	  val sigma_prim = TypeScheme.from_Type tau_prim
 
 	  val tyvar_num = TyVar.fresh_overloaded [TyName.tyName_INT31,
 						  TyName.tyName_INT32,
@@ -1118,7 +1118,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 	in
 	  val primVE      = VE.singleton (Ident.id_PRIM,
-					  LONGVARpriv sigma_alpha_to_beta)
+					  LONGVARpriv sigma_prim)
 	  val absVE       = VE.singleton (Ident.id_ABS, 
 					  LONGVARpriv sigma_realint_to_realint)
 	  val negVE       = VE.singleton (Ident.id_NEG,

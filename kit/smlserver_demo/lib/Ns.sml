@@ -7,22 +7,22 @@ structure Ns :> NS =
     and Bug=4 and Debug=5
 
     fun log (ls: LogSeverity, s: string) : unit =
-      prim("nssml_log", "nssml_log", (ls, s))
+      prim("nssml_log", (ls, s))
 
     type conn = int
     fun getConn () : conn = 
-      prim("nssml_GetConn", "nssml_GetConn", ())
+      prim("nssml_GetConn", ())
 
-    fun isNull(s : string) : bool = prim("nssml_isNullString", "nssml_isNullString", s)
+    fun isNull(s : string) : bool = prim("nssml_isNullString", s)
 
     structure Set : NS_SET = NsSet 
     type set = Set.set
 
     fun encodeUrl(s: string) : string =
-      prim("nssml_EncodeUrl", "nssml_EncodeUrl", s)
+      prim("nssml_EncodeUrl", s)
 
     fun decodeUrl(s: string) : string =
-      prim("nssml_DecodeUrl", "nssml_DecodeUrl", s)
+      prim("nssml_DecodeUrl", s)
 
    fun buildUrl action hvs =
      action ^ "?" ^ (String.concatWith "&" (List.map (fn (n,v) => n ^ "=" ^ encodeUrl v) hvs))
@@ -30,12 +30,12 @@ structure Ns :> NS =
     structure Conn =
       struct
 	fun returnHtml(status: int, s: string) : status =
-	  prim("nssml_ConnReturnHtml", "nssml_ConnReturnHtml", (getConn(),status,s))
+	  prim("nssml_ConnReturnHtml", (getConn(),status,s))
 	fun return s = returnHtml(200,s)
 	fun returnRedirect(s: string) : status =
-	  prim("nssml_ConnReturnRedirect", "nssml_ConnReturnRedirect", (getConn(),s))
+	  prim("nssml_ConnReturnRedirect", (getConn(),s))
 	fun getQuery() : set option =
-	  let val s : set = prim("Ns_ConnGetQuery", "Ns_ConnGetQuery", getConn())
+	  let val s : set = prim("Ns_ConnGetQuery", getConn())
 	  in if s = 0 then NONE
 	     else SOME s
 	  end
@@ -47,40 +47,40 @@ structure Ns :> NS =
 	    of SOME set => Set.getAll(set,s)
 	  | NONE => []
 	fun headers() : set =
-	  prim("Ns_ConnHeaders", "Ns_ConnHeaders", getConn())
+	  prim("Ns_ConnHeaders", getConn())
 
 	fun host() : string =
-	  prim("nssml_ConnHost", "nssml_ConnHost", getConn())
+	  prim("nssml_ConnHost", getConn())
 
 	fun location() : string =
-	  let val res : string = prim("nssml_ConnLocation", "nssml_ConnLocation", getConn())
+	  let val res : string = prim("nssml_ConnLocation", getConn())
 	  in if isNull res then "<unknown>"
 	     else res
 	  end
 
 	fun peer() : string =
-	  prim("nssml_ConnPeer", "nssml_ConnPeer", getConn())
+	  prim("nssml_ConnPeer", getConn())
 
 	fun peerPort() : int =
-	  prim("Ns_ConnPeerPort", "Ns_ConnPeerPort", getConn())
+	  prim("Ns_ConnPeerPort", getConn())
 
 	fun port() : int =
-	  prim("Ns_ConnPort", "Ns_ConnPort", getConn())
+	  prim("Ns_ConnPort", getConn())
 
 	fun redirect(url: string) : status =
-	  prim("nssml_ConnRedirect", "nssml_ConnRedirect", (getConn(),url))
+	  prim("nssml_ConnRedirect", (getConn(),url))
 
 	fun server() : string =
-	  prim("nssml_ConnServer", "nssml_ConnServer", getConn())
+	  prim("nssml_ConnServer", getConn())
 
 	fun puts(s: string) : status =
-	  prim("nssml_ConnPuts", "nssml_ConnPuts", (getConn(), s))
+	  prim("nssml_ConnPuts", (getConn(), s))
 
 	fun setRequiredHeaders(contentType: string, contentLength: int) : unit =
-	  prim("nssml_ConnSetRequiredHeaders", "nssml_ConnSetRequiredHeaders", (getConn(), contentType, contentLength))
+	  prim("nssml_ConnSetRequiredHeaders", (getConn(), contentType, contentLength))
 
 	fun url () : string =
-	  prim("nssml_ConnUrl", "nssml_ConnUrl", getConn())
+	  prim("nssml_ConnUrl", getConn())
 
 	fun write s = puts s
       end
@@ -166,11 +166,11 @@ structure Ns :> NS =
       struct
 	type cache = int
 	fun createTm(n : string, t: int) : cache =
-	  prim("nssml_CacheCreate", "nssml_CacheCreate", (n,t))
+	  prim("nssml_CacheCreate", (n,t))
 	fun createSz(n : string, sz: int) : cache =  (* sz is in bytes *)
-	  prim("nssml_CacheCreateSz", "nssml_CacheCreateSz", (n,sz))
+	  prim("nssml_CacheCreateSz", (n,sz))
 	fun find (n : string) : cache option =
-	  let val res : int = prim("nssml_CacheFind", "nssml_CacheFind", n)
+	  let val res : int = prim("nssml_CacheFind", n)
 	  in if res = 0 then NONE
 	     else SOME res
 	  end
@@ -183,13 +183,13 @@ structure Ns :> NS =
 	    NONE => createSz(cn,s)
 	  | SOME c => c
 	fun flush(c:cache) : unit =
-	  prim("Ns_CacheFlush", "Ns_CacheFlush", c)
+	  prim("Ns_CacheFlush", c)
 	fun set(c:cache, k:string, v:string) : bool =
-	  let val res : int = prim("nssml_CacheSet", "nssml_CacheSet", (c,k,v))
+	  let val res : int = prim("nssml_CacheSet", (c,k,v))
 	  in res = 1
 	  end
 	fun get(c:cache, k:string) : string option =
-	  let val res : string = prim("nssml_CacheGet", "nssml_CacheGet", (c,k))
+	  let val res : string = prim("nssml_CacheGet", (c,k))
 	  in if isNull res then NONE
 	     else SOME res
 	  end
@@ -241,10 +241,10 @@ structure Ns :> NS =
       Conn.setRequiredHeaders("text/html", 0)
 
     fun getMimeType(s: string) : string =
-      prim("nssml_GetMimeType", "nssml_GetMimeType", s)
+      prim("nssml_GetMimeType", s)
 
     fun getHostByAddr(s: string) : string option =
-      let val res : string = prim("nssml_GetHostByAddr", "nssml_GetHostByAddr", s)
+      let val res : string = prim("nssml_GetHostByAddr", s)
       in if isNull res then NONE
 	 else SOME res
       end
@@ -288,7 +288,7 @@ structure Ns :> NS =
       end
 
     fun fetchUrl (url : string) : string option =
-      let val res:string = prim("nssml_FetchUrl", "nssml_FetchUrl", url)
+      let val res:string = prim("nssml_FetchUrl", url)
       in if isNull res then NONE else SOME res
       end
 

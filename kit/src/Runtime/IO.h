@@ -26,7 +26,7 @@ int input1Stream(FILE *is);
 int lookaheadStream(FILE *is);
 
 #ifdef PROFILING
-String inputStreamProfiling(Region rd, FILE *is, int n, int pPoint);
+String inputStreamProf(Region rd, FILE *is, int n, int pPoint);
 #else
 String inputStream(Region rd, FILE *is, int n);
 #endif /*PROFILING*/

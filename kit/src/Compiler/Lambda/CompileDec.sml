@@ -2120,7 +2120,6 @@ end; (*match compiler local*)
 	       fun f isequal prim =
 		     let val args' = map (compileExp env) args
 		         val instance' = (case to_TypeInfo info of
-(*			       SOME (TypeInfo.VAR_INFO {instances = [instanceRes, instance]}) => *)
 			       SOME (TypeInfo.VAR_INFO {instances = [instance, instanceRes]}) =>
 				 compileType instance 
 			     | _ => die "compileExp(APPexp(PRIM..): wrong type info")
@@ -2217,7 +2216,7 @@ the 12 lines above are very similar to the code below
 	  TLE.ARROWtype (taus1, taus2)
       | flatten_c_function_type _ = die "flatten_c_function_type: not arrow"
 
-
+(*
     (*decompose_prim_call atexp = the name (string) of the called prim & the
      argument exps.  atexp is the atexp after `prim'.  A prim call has the
      form `prim ("f", "fprof", (e1, e2))' assuming the name of the function in
@@ -2229,10 +2228,20 @@ the 12 lines above are very similar to the code below
            ATEXPexp (_, SCONatexp (_, SCon.STRING s1)), SOME (EXPROW (_, _,
            ATEXPexp (_, SCONatexp (_, SCon.STRING s2)), SOME (EXPROW (_, _,
            exp3, NONE)))))))) =
-	  (if !region_profiling then s2 else s1, decompose_prim_args exp3)
+	  ((*if !region_profiling then s2 else*) s1, decompose_prim_args exp3)
       | decompose_prim_call _ =
 	  die ("\n\nRemember to give two function names in quotes in the declaration of \
 	       \a prim.\nMaybe you forgot the profiling function name.")
+*)
+    and decompose_prim_call 
+      (RECORDatexp (_, SOME (EXPROW (_, _,
+        ATEXPexp (_, SCONatexp (_, SCon.STRING name)), SOME (EXPROW (_, _,
+         exp2, NONE)))))) = (name, decompose_prim_args exp2)
+      | decompose_prim_call _ =
+      die ("\n\nThe first argument to prim must be a string denoting a C function\n\
+       \or built-in primitive; in case profiling is enabled, the string \"Prof\" is\n\
+       \appended to the name by the compiler.")
+
     and decompose_prim_args (ATEXPexp (_, RECORDatexp (_, exprow_opt))) =
           decompose_prim_args0 exprow_opt
       | decompose_prim_args exp = [exp]

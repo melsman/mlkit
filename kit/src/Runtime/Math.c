@@ -488,11 +488,7 @@ static void mkSMLMinus(char * s) {
 }
 
 String
-#ifdef PROFILING
-stringOfFloatProf(Region rAddr, int arg, int pPoint) 
-#else
-stringOfFloat(Region rAddr, int arg) 
-#endif
+REG_POLY_FUN_HDR(stringOfFloat, Region rAddr, int arg) 
 {
   char buf[64];
   sprintf(buf, "%.12g", get_d(arg));
@@ -501,19 +497,11 @@ stringOfFloat(Region rAddr, int arg)
     {
       strcat(buf, ".0");
     }
-#ifdef PROFILING
-  return convertStringToMLProfiling(rAddr,buf,pPoint);
-#else
-  return convertStringToML(rAddr,buf);
-#endif
+  return REG_POLY_CALL(convertStringToML, rAddr,buf);
 }
 
 String
-#ifdef PROFILING
-generalStringOfFloatProf(Region rAddr, String format, int f, int pPoint) 
-#else
-generalStringOfFloat(Region rAddr, String format, int f) 
-#endif
+REG_POLY_FUN_HDR(generalStringOfFloat, Region rAddr, String format, int f) 
 {
   char result_buf[512];
 
@@ -523,11 +511,7 @@ generalStringOfFloat(Region rAddr, String format, int f)
    */
   sprintf(result_buf, &(format->data), get_d(f));
   mkSMLMinus(result_buf);
-#ifdef PROFILING
-  return convertStringToMLProfiling(rAddr, result_buf, pPoint);
-#else
-  return convertStringToML(rAddr, result_buf);
-#endif
+  return REG_POLY_CALL(convertStringToML, rAddr, result_buf);
 }
 
 /* DEBUG */

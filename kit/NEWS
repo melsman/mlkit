@@ -1,5 +1,11 @@
 ML Kit NEWS file
 
+ * mael 2001-12-16: Posix bug-fixes. Runtime system clean-up. 
+   Change of prim-function for interfacing with C. It is easier 
+   now to interface with C functions that take regions as 
+   arguments; a few macros help generate different code when 
+   profiling is enabled.
+
  * mael 2001-12-13: Ported Posix structure from MLton. Calls to C
    are in many cases simpler now because auto-conversion is 
    extended to work with a larger set of types, including 

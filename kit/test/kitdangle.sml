@@ -1,7 +1,7 @@
 (*kitdangle.sml*)
 
 infix - + :: =
-fun op = (x: ''a, y: ''a): bool =           prim ("=", "=", (x, y))
+fun op = (x: ''a, y: ''a): bool =           prim ("=", (x, y))
 
 exception Hd
 fun hd (x::l) = x

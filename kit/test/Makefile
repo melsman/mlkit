@@ -1,4 +1,4 @@
-all: test_kam test_mlkit smallbench 
+all: test_kam test_mlkit
 
 smallbench:
 	echo '(unlimit stacksize; ../bin/kitbench -mlkit -mlkit:-gc: -smlnj -mlton -o small.html small.tst)' | tcsh -s

@@ -2155,16 +2155,16 @@ struct
 	       (* case that the C function calls resetRegion.  See also the chapter  *)
 	       (* `Calling C Functions' in the documentation.                        *)
 	       let
-		 fun add_pp_for_profiling ([], args) = args
+		 fun add_pp_for_profiling ([], args) = (name, args)
 		   | add_pp_for_profiling ((sma,i_opt)::rest,args) = 
 		   if region_profiling() then
 		       (case i_opt of
 			  SOME 0 => die "get_pp_for_profiling (CCALL ...): argument region with size 0"
 			| SOME i => add_pp_for_profiling(rest,args)
-			| NONE   => args @ [INTEGER {value=Int32.fromInt(get_pp sma),
-						     precision=BI.defaultIntPrecision()}]) 
+			| NONE   => (name ^ "Prof", args @ [INTEGER {value=Int32.fromInt(get_pp sma),
+								     precision=BI.defaultIntPrecision()}]))
 		                            (*get any arbitrary pp (they are the same):*)
-		   else args
+		   else (name, args)
 
 		 fun comp_region_args_sma [] = []
 		   | comp_region_args_sma ((sma, i_opt)::rest) = 
@@ -2215,10 +2215,15 @@ struct
 			  NONE_SE)
 		      end
 		  | _ =>
-		 (maybe_return_unit(
-		    insert_ses(maybe_insert_smas(fresh_lvs,smas,CCALL{name=name,
-								      args=add_pp_for_profiling(rhos_for_result',ces),
-								      rhos_for_result=map VAR fresh_lvs}),ses)),NONE_SE))
+		      let val (name, args) = add_pp_for_profiling(rhos_for_result',ces)
+		      in (maybe_return_unit
+			  (insert_ses(maybe_insert_smas(fresh_lvs,smas,
+							CCALL{name=name,
+							      args=args,
+							      rhos_for_result=map VAR fresh_lvs}),
+				      ses)),
+			  NONE_SE)
+		      end)
 	       end
 	   | MulExp.RESET_REGIONS({force,alloc,regions_for_resetting},tr) => 
 	       let

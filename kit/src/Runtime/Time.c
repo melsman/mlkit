@@ -94,11 +94,7 @@ sml_mktime (int vAddr, int v)
 }
 
 String
-#ifdef PROFILING
-sml_asctimeProfiling (Region rAddr, int v, int exn, int pPoint) 
-#else
-sml_asctime (Region rAddr, int v, int exn) 
-#endif
+REG_POLY_FUN_HDR(sml_asctime, Region rAddr, int v, int exn) 
 {
   struct tm tmr;
   char *res;
@@ -116,19 +112,11 @@ sml_asctime (Region rAddr, int v, int exn)
     {
       raise_exn(exn);
     }
-#ifdef PROFILING
-  return convertStringToMLProfiling(rAddr, res, pPoint);
-#else
-  return convertStringToML(rAddr, res);
-#endif
+  return REG_POLY_CALL(convertStringToML, rAddr, res);
 }
 
 String
-#ifdef PROFILING
-sml_strftimeProfiling (Region rAddr, String fmt, int v, int exn, int pPoint) 
-#else
-sml_strftime (Region rAddr, String fmt, int v, int exn) 
-#endif
+REG_POLY_FUN_HDR(sml_strftime, Region rAddr, String fmt, int v, int exn) 
 {
   struct tm tmr;
   int ressize;
@@ -148,11 +136,7 @@ sml_strftime (Region rAddr, String fmt, int v, int exn)
     {
       raise_exn(exn);
     }
-#ifdef PROFILING
-  return convertStringToMLProfiling(rAddr, buf, pPoint);
-#else
-  return convertStringToML(rAddr, buf);
-#endif
+  return REG_POLY_CALL(convertStringToML, rAddr, buf);
 #undef BUFSIZE
 }
 
