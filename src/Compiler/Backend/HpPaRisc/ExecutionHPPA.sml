@@ -90,6 +90,11 @@ functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
    		       structure Crash = Crash
 		       structure IntFinMap = IntFinMap)
 
+    structure HpPaDelaySlotOptimization =
+      HpPaDelaySlotOptimization(structure HpPaRisc = HpPaRisc
+				structure Flags = Tools.Flags
+				structure Crash = Tools.Crash)
+
     structure CodeGen = CodeGen(structure BI = BackendInfo
 				structure HpPaRisc = HpPaRisc
 				structure JumpTables = JumpTables
@@ -127,6 +132,12 @@ functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
     datatype res = CodeRes of CEnv * CompileBasis * target * linkinfo
                  | CEnvOnlyRes of CEnv
 
+    (****************************************************************)
+    (* Add Dynamic Flags                                            *)
+    (****************************************************************)
+    val _ = List.app (fn (x,y,r) => Flags.add_flag_to_menu (["Control","Lambda Backend"],x,y,r))
+      [("delay_slot_optimization", "Delay Slot Optimization", ref true)]
+    val dso_flag = Flags.lookup_flag_entry "delay_slot_optimization"
     val enable_lambda_backend = Flags.lookup_flag_entry "enable_lambda_backend"
 
     fun compile a =
@@ -138,19 +149,28 @@ functor Execution(structure TopdecGrammar : TOPDEC_GRAMMAR
 	      val {main_lab, code, imports, exports, safe} = target_new
 	      val _ = Tools.Timing.timing_begin()
 	      val asm_prg = Tools.Timing.timing_end_res("CG",CodeGen.CG target_new)
+	      val asm_prg_dso =
+		if !dso_flag then
+		  (Tools.Timing.timing_begin();
+		   Tools.Timing.timing_end_res("DSO",HpPaDelaySlotOptimization.DSO asm_prg))
+		else
+		  asm_prg
 	      val linkinfo = Compile.mk_linkinfo {code_label=main_lab,
 						  imports=(#1 imports) @ (#2 imports), (* Merge MLFunLab and DatLab *)
 						  exports=(#1 exports) @ (#2 exports), (* Merge MLFunLab and DatLab *)
 						  unsafe=not(safe)}
 	    in 
-	      CodeRes(ce,cb,NEWtarget asm_prg,linkinfo)
+	      CodeRes(ce,cb,NEWtarget asm_prg_dso,linkinfo)
 	    end
 	  else 
 	    CodeRes(ce,cb,OLDtarget target,linkinfo)
 
     fun generate_link_code (labs : label list) : target =
       if !enable_lambda_backend then 
-	NEWtarget(CodeGen.generate_link_code labs)
+	if !dso_flag then
+	  NEWtarget(HpPaDelaySlotOptimization.DSO (CodeGen.generate_link_code labs))
+	else
+	  NEWtarget(CodeGen.generate_link_code labs)
       else 
 	OLDtarget(Compile.generate_link_code labs)
 

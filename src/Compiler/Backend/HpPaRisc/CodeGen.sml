@@ -2059,7 +2059,7 @@ struct
 	  in
 	    LABEL(lab_exit) ::
 	    COMMENT "**** Link Exit code ****" ::
-	    compile_c_call_prim("terminate", [SS.INTEGER_ATY res], NONE,0,tmp_reg0(*not used*),
+	    compile_c_call_prim("terminate", [SS.INTEGER_ATY res], NONE,0,tmp_reg0,
 				DOT_EXIT :: 
 				DOT_PROCEND :: C)
 	  end
