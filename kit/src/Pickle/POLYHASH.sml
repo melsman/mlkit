@@ -24,6 +24,9 @@ signature POLYHASH =
     val copy        : ('key, 'data) hash_table -> ('key, 'data) hash_table
     val bucketSizes : ('key, 'data) hash_table -> int list
 
+    (* Look for an item and return the number of values with the same hash *)
+    val peekSameHash: ('key, 'data) hash_table -> 'key -> int * int
+
     (* Polymorphic hash primitives from Caml Light *)
 
 (*not supported by the ML Kit Runtime System 

@@ -294,7 +294,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		con1 LONGEXCONpriv (fn LONGEXCONpriv a => a | _ => die "pu_range_private.LONGEXCONpriv")
 		Type.pu
 
-	in dataGen (toInt,[fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
+	in dataGen ("Environments.range_private",toInt,[fun_LONGVARpriv, fun_LONGCONpriv, fun_LONGEXCONpriv])
 	end
 
     val pu_VarEnv : VarEnv Pickle.pu =
@@ -329,12 +329,12 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    fun StrEnvToInt (STRENV _) = 0
 	    fun fun_ENV (pu_Env, pu_StrEnv) =
 		con1 (fn (se,te,ve) => ENV{SE=se,TE=te,VE=ve}) (fn ENV{SE=se,TE=te,VE=ve} => (se,te,ve))
-		(tup3Gen(pu_StrEnv,pu_TyEnv,pu_VarEnv))
+		(tup3Gen0(pu_StrEnv,pu_TyEnv,pu_VarEnv))
 	    fun fun_STRENV (pu_Env, pu_StrEnv) =
 		con1 STRENV (fn STRENV a => a)
 		(FinMap.pu(StrId.pu,pu_Env))		 
-	in data2Gen (EnvToInt,[fun_ENV],
-		     StrEnvToInt,[fun_STRENV])
+	in data2Gen ("Environments.Env",EnvToInt,[fun_ENV],
+		     "Environments.StrEnv",StrEnvToInt,[fun_STRENV])
 	end
 
     val pu_Context =
@@ -342,7 +342,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	    fun to (U,E) = CONTEXT{U=U,E=E}
 	    fun from (CONTEXT{U,E}) = (U,E)
 	in convert (to,from)
-	    (pairGen(pu_ExplicitTyVarEnv, pu_Env))
+	    (pairGen0(pu_ExplicitTyVarEnv, pu_Env))
 	end
 
     fun layoutSE (STRENV m) = 

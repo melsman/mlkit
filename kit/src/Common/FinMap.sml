@@ -7,11 +7,10 @@ functor FinMap(structure Report: REPORT
 
     datatype (''a, 'b) map = FM of {elts: (''a * 'b) list, unique : bool ref}
 
-    local val true_ref = ref true
-    in val empty = FM {elts = [], unique = true_ref}
-    end
+    val reftrue = ref true
+    val empty = FM {elts = [], unique = reftrue}    
 
-    fun singleton p = FM {elts = [p], unique = ref true}
+    fun singleton p = FM {elts = [p], unique = reftrue}
 
     fun isEmpty (FM{elts=[],...}) = true
       | isEmpty _ = false
@@ -45,7 +44,7 @@ functor FinMap(structure Report: REPORT
 	      | rmv ((p as (x',y))::rest,found,a) = 
 		if x=x' then 
 		    if is_unique then 
-			SOME(FM{elts=revappend(a,rest),unique=ref true})
+			SOME(FM{elts=revappend(a,rest),unique=reftrue})
 		    else rmv(rest,true,a)
 		else rmv(rest,found,p::a)
 	in
@@ -62,7 +61,8 @@ functor FinMap(structure Report: REPORT
 	      else (x, y) :: insert(x', y', rest)
       in
 	FM{elts=foldl (fn ((x, y), m) => insert(x, y, m)) map1 map2,
-	   unique=ref ((!u1) andalso (!u2))}
+	   unique= (if !u1 andalso !u2 then reftrue
+		    else ref false)}
       end
 
     fun elimDuplicates l = 
@@ -101,10 +101,10 @@ functor FinMap(structure Report: REPORT
     fun list m = elimDups m
 
     fun composemap (f: 'b -> 'c) (m: (''a, 'b) map): (''a, 'c) map = 
-	FM{elts=map (fn (a, b) => (a, f b)) (list m),unique=ref true}
+	FM{elts=map (fn (a, b) => (a, f b)) (list m),unique=reftrue}
 
     fun ComposeMap (f: ''a * 'b -> 'c) (m: (''a, 'b) map): (''a, 'c) map =
-        FM{elts=map (fn (a, b) => (a, f(a, b))) (list m),unique=ref true}
+        FM{elts=map (fn (a, b) => (a, f(a, b))) (list m),unique=reftrue}
 
     fun fold (f : ('a * 'b) -> 'b) (x : 'b) (m : (''d,'a) map) : 'b = 
 	foldl (fn ((a, b), c) => f(b, c)) x (list m)
@@ -115,7 +115,7 @@ functor FinMap(structure Report: REPORT
     fun filter pred (m:(''a,'b) map) = 
 	let val elts = list m
 	in
-	    FM{elts=List.filter pred elts,unique=ref true}
+	    FM{elts=List.filter pred elts,unique=reftrue}
 	end
 
     fun addList [] t = t : (''a,'b) map
@@ -146,20 +146,23 @@ functor FinMap(structure Report: REPORT
 	       }
       end
 
+    fun uniquify fm = FM {elts=elimDups fm,unique=reftrue}
+
     fun pu (pu_d, pu_r) =
 	let open Pickle
 	    fun to (es,br) = FM {elts=es,unique=br}
 	    fun from (FM {elts,unique}) = (elts, unique)
-	in convert (to,from)
-	    (pairGen(listGen(pairGen(pu_d,pu_r)),ref0Gen bool))
+	in convert (to,from o uniquify)
+	    (pairGen(listGen(pairGen(pu_d,pu_r)),refOneGen bool))
 	end
-
+(*
     fun eq eq_e (m1,m2) =
 	let fun eqs (nil,nil) = true
 	      | eqs ((a1,e1)::es1,(a2,e2)::es2) = a1=a2 andalso eqs (es1,es2) andalso eq_e(e1,e2)
 	      | eqs _ = false
 	in eqs (list m1,list m2)
 	end
+*)
   end;
 
 

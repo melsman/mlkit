@@ -58,6 +58,7 @@ functor TyName(
 	  fun from_TyName({rank=ref rank,...}:TyName) = rank
 	      
 	  val pu = Pickle.int
+	  val pu_rankrefOne = Pickle.refOneGen pu
 	end
       end
 			  
@@ -152,14 +153,15 @@ functor TyName(
 	 tyName_WORD32,tyName_REAL,tyName_STRING,tyName_CHAR,tyName_LIST,tyName_FRAG,
 	 tyName_REF,tyName_ARRAY,tyName_VECTOR,tyName_CHARARRAY,tyName_FOREIGNPTR,tyName_EXN]
 	let open Pickle
-	    fun to ((t,n,a),(r,e,u)) : TyName = 
+	    fun to ((t,n,a),r,e,u) : TyName = 
 		{tycon=t, name=n, arity=a, rank=r,
 		 equality=e, unboxed=u}
 	    fun from ({tycon=t, name=n, arity=a, rank=r,
-		       equality=e, unboxed=u} : TyName) = ((t,n,a),(r,e,u))	    
-	in convert (to,from)
-	    (pairGen(tup3Gen(TyCon.pu,Name.pu,int),
-		     tup3Gen(ref0Gen int,bool,ref0Gen bool)))
+		       equality=e, unboxed=u} : TyName) = ((t,n,a),r,e,u)	    
+	in newHash (Name.key o #name)
+	    (convert (to,from)
+	     (tup4Gen0(tup3Gen0(TyCon.pu,Name.pu,int),
+		       refOneGen int,bool,refOneGen bool)))
 	end
 
     structure QD : QUASI_DOM =

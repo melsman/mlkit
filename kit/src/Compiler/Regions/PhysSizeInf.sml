@@ -849,7 +849,7 @@ functor PhysSizeInf(structure Name : NAME
 	      | toInt (WORDS _) = 1
 	    val fun_INF = con0 INF
 	    fun fun_WORDS _ = con1 WORDS (fn WORDS a => a | _ => die "pu_phsize") int
-	in dataGen(toInt,[fun_INF, fun_WORDS])
+	in dataGen("PhysSizeInf.phsize",toInt,[fun_INF, fun_WORDS])
 	end
 
     val pu_range_env = 
@@ -864,7 +864,7 @@ functor PhysSizeInf(structure Name : NAME
 		con1 FORMAL_SIZES (fn FORMAL_SIZES a => a | _ => die "pu_range_env.FORMAL_SIZES") 
 		(listGen pu_phsize)		
 	    val fun_NOTFIXBOUND = con0 NOTFIXBOUND
-	in dataGen(toInt,[fun_FORMAL_REGVARS, fun_FORMAL_SIZES, fun_NOTFIXBOUND])
+	in dataGen("PhysSizeInf.range_env",toInt,[fun_FORMAL_REGVARS, fun_FORMAL_SIZES, fun_NOTFIXBOUND])
 	end
 
     val pu_env = LvarMap.pu Lvars.pu pu_range_env

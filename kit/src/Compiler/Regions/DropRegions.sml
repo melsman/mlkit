@@ -615,7 +615,7 @@ functor DropRegions(structure Name : NAME
 		con1 FIXBOUND (fn FIXBOUND a => a | _ => die "pu_env_res.FIXBOUND")
 		(listGen bool)
 	    val fun_NOTFIXBOUND = con0 NOTFIXBOUND
-	in dataGen(toInt,[fun_FIXBOUND,fun_NOTFIXBOUND])
+	in dataGen("DropRegions.env_res",toInt,[fun_FIXBOUND,fun_NOTFIXBOUND])
 	end
 
     val pu_env : env Pickle.pu = 

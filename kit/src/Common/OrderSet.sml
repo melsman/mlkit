@@ -357,7 +357,7 @@ functor OrderSet(structure Order : ORDERING
 
     val pu_bal =
 	let open Pickle
-	in enumGen [L,B,R]
+	in enumGen ("OrderSet.bal",[L,B,R])
 	end
 
     fun pu pu_elt = 
@@ -367,8 +367,8 @@ functor OrderSet(structure Order : ORDERING
 	    val funE = con0 E
 	    fun funN (pu : Set pu) : Set pu =
 		con1 N (fn N a => a | _ => impossible "pu.N")
-		(tup4Gen(pu_elt,pu,pu,pu_bal))
-	in dataGen (toInt,[funE,funN])
+		(tup4Gen0(pu_elt,pu,pu,pu_bal))
+	in dataGen ("OrderSet.Set",toInt,[funE,funN])
 	end
   end
 

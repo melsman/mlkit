@@ -79,7 +79,7 @@ functor InfixBasis(structure Ident: IDENT
 	    fun fun_INFIXR _ =
 		con1 INFIXR (fn INFIXR a => a | _ => die "pu_InfixEntry.INFIXR")
 		int
-	in dataGen(toInt,[fun_NONFIX,fun_INFIX,fun_INFIXR])
+	in dataGen("InfixEntry",toInt,[fun_NONFIX,fun_INFIX,fun_INFIXR])
 	end
 
     val pu : Basis Pickle.pu = FinMap.pu(Ident.pu,pu_InfixEntry)

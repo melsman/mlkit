@@ -202,13 +202,13 @@ struct
 
 	   fun pu_Lf _ =
 	       con1 Lf (fn Lf a => a | _ => raise Fail "IntFinMapPT.pu_Lf")
-	       (pairGen(word,pu_a))
+	       (pairGen0(word,pu_a))
 
 	   fun pu_Br pu =
 	       con1 Br (fn Br a => a | _ => raise Fail "IntFinMapPT.pu_Br")
-	       (tup4Gen(word,word,pu,pu))
+	       (tup4Gen0(word,word,pu,pu))
        in
-	   dataGen (toInt,[pu_Empty, pu_Lf, pu_Br])
+	   dataGen ("IntFinMapPT.map",toInt,[pu_Empty, pu_Lf, pu_Br])
        end
 end
 

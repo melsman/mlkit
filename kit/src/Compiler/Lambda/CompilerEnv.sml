@@ -684,7 +684,7 @@ functor CompilerEnv(structure Ident: IDENT
 	    fun fun_EXCON _ = 
 		con1 EXCON (fn EXCON lv => lv | _ => die "pu.CON")
 		(pairGen(Excon.pu,LambdaExp.pu_Type))
-	in dataGen(toInt,
+	in dataGen("CompilerEnv.result",toInt,
 		   [fun_LVAR,
 		    fun_CON,
 		    con0 REF,
@@ -722,16 +722,16 @@ functor CompilerEnv(structure Ident: IDENT
 	    fun fun_CENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
 		con1 (fn ((se,ve),(te,pe)) => CENV{StrEnv=se,VarEnv=ve,TyEnv=te,PathEnv=pe})
 		(fn CENV{StrEnv=se,VarEnv=ve,TyEnv=te,PathEnv=pe} => ((se,ve),(te,pe)))
-		(pairGen(pairGen(pu_StrEnv,pu_VarEnv),pairGen(pu_TyEnv,pu_PathEnv)))
+		(pairGen0(pairGen0(pu_StrEnv,pu_VarEnv),pairGen0(pu_TyEnv,pu_PathEnv)))
 	    fun fun_STRENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
 		con1 STRENV (fn STRENV v => v)
 		(FinMap.pu(StrId.pu,pu_CEnv))
 	    fun fun_TYENV (pu_CEnv,pu_StrEnv,pu_TyEnv) =
 		con1 TYENV (fn TYENV v => v)
 		(FinMap.pu(TyCon.pu,pairGen(pu_TyNames,pu_CEnv)))
-	in data3Gen(CEnvToInt,[fun_CENV],
-		    StrEnvToInt,[fun_STRENV],
-		    TyEnvToInt,[fun_TYENV])
+	in data3Gen("CompilerEnv.CEnv",CEnvToInt,[fun_CENV],
+		    "CompilerEnv.StrEnv",StrEnvToInt,[fun_STRENV],
+		    "CompilerEnv.TyEnv",TyEnvToInt,[fun_TYENV])
 	end
 
   end

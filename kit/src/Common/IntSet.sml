@@ -355,7 +355,7 @@ functor IntSet(structure PP : PRETTYPRINT): KIT_MONO_SET =
 
     val pu_bal =
 	let open Pickle
-	in enumGen [L,B,R]
+	in enumGen ("IntSet.bal",[L,B,R])
 	end
 
     fun die s = let val s = "Impossible: OrderSet." ^ s
@@ -368,9 +368,10 @@ functor IntSet(structure PP : PRETTYPRINT): KIT_MONO_SET =
 	      | toInt (N _) = 1
 	    val funE = con0 E
 	    fun funN pu =
-		con1 N (fn N a => a | _ => die "pu.funN")
-		(tup4Gen(int,pu,pu,pu_bal))
-	in dataGen (toInt,[funE,funN])
+		con1 (fn (a,b,c,d) => N(a,d,c,b)) (fn N(a,b,c,d) => (a,d,c,b) 
+                                                    | _ => die "pu.funN")
+		(tup4Gen0(int,pu_bal,pu,pu))
+	in dataGen ("IntSet.Set",toInt,[funE,funN])
 	end
 
   end

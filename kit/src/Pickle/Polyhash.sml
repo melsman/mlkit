@@ -284,6 +284,20 @@ structure Polyhash : POLYHASH =           (* Requires Word, Array *)
 	      in
 		f ((Array.length arr)-1, [])
 	      end
+
+	(* Look for an item and return the number of values with the same hash *)
+	fun peekSameHash (HT{hashVal, sameKey, table, ...}) key = let
+	      val arr = !table
+	      val sz = Array.length arr
+	      val hash = hashVal key
+	      val indx = index (hash, sz)
+	      fun count (NIL,acc) = acc
+		| count (B(h,_,_,r),acc) = if hash = h then count(r,acc+1)
+					   else count(r,acc)
+	      in
+		  (count (Array.sub (arr, indx), 0), hash)
+	      end
+
 (*
     prim_val hash_param : int -> int -> 'a -> int = 3 "hash_univ_param";
 

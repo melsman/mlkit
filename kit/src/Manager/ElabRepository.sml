@@ -94,9 +94,9 @@ functor ElabRepository(structure Name : NAME
 	let open Pickle
 	in convert (fn ((a1,a2,a3,a4),(a5,a6,a7,a8)) => (a1,a2,a3,a4,a5,a6,a7,a8),
 		    fn (a1,a2,a3,a4,a5,a6,a7,a8) => ((a1,a2,a3,a4),(a5,a6,a7,a8)))
-	    (pairGen(tup4Gen(InfixBasis.pu,ModuleEnvironments.B.pu,
-			     listGen StrId.pu_longstrid,pairGen(OpacityEnv.pu,TyName.Set.pu TyName.pu)),
-		     tup4Gen(listGen Name.pu,InfixBasis.pu,ModuleEnvironments.B.pu,OpacityEnv.pu)))
+	    (pairGen0(tup4Gen0(InfixBasis.pu,ModuleEnvironments.B.pu,
+			       listGen StrId.pu_longstrid,pairGen0(OpacityEnv.pu,TyName.Set.pu TyName.pu)),
+		      tup4Gen0(listGen Name.pu,InfixBasis.pu,ModuleEnvironments.B.pu,OpacityEnv.pu)))
 	end
 
     val pu_dom = Pickle.pairGen(ModuleEnvironments.pu_absprjid,FunId.pu)

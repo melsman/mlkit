@@ -378,7 +378,7 @@ end
 		val pu_le = Lvars.Map.pu Lvars.pu LambdaExp.pu_TypeScheme
 		val pu_ee = Excon.Map.pu Excon.pu (optionGen LambdaExp.pu_Type)
 	    in convert (to,from)
-		(pairGen(tup4Gen(pu_f,pu_ce,pu_te,pu_le),pu_ee))
+		(pairGen0(tup4Gen0(pu_f,pu_ce,pu_te,pu_le),pu_ee))
 	    end
 
       end

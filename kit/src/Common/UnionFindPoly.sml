@@ -95,22 +95,26 @@ struct
       in print s; raise Fail s
       end
 
-  val pu_intref = Pickle.ref0Gen Pickle.int
+  val pu_intref = Pickle.refOneGen Pickle.int  (* Perhaps not really safe as ranks are used 
+						* as first-class values *)
 
   fun pu (dummy : 'a) (pu_a : 'a Pickle.pu) : 'a Element Pickle.pu =
       let open Pickle
+	  fun eq (e1,e2) = eq_Elements(find e1,find e2)
 	  val dummy : 'a ElementNode = EQR(dummy,ref 0) 
 	  val pu_Element : 'a ElementNode Pickle.pu -> 'a Element Pickle.pu 
-	      = cache (fn pu => refGen pu dummy)
+	      = cache (fn pu => let val pu = refEqGen eq dummy pu
+				in convert (fn a => a, fn a => find a) pu
+				end)
 	  fun toInt (EQR _) = 0
 	    | toInt (LINK _) = 1
 	  fun fun_EQR pu =
 	      con1 EQR (fn EQR a => a | _ => die "pu.fun_EQR")
-	      (pairGen(pu_a,pu_intref))
+	      (pairGen0(pu_a,pu_intref))
 	  fun fun_LINK pu = 
-	      con1 LINK (fn LINK a => a | _ => die "pu.fun_LINK")
+	      con1 LINK (fn (* LINK a => a | *) _ => die "pu.fun_LINK")
 	      (pu_Element pu)
-	  val pu = dataGen(toInt,[fun_EQR,fun_LINK])
+	  val pu = dataGen("UnionFindPoly.ElementNode",toInt,[fun_EQR,fun_LINK])
       in pu_Element pu
       end
 

@@ -217,9 +217,13 @@ functor CompBasis(structure Con : CON
 		= ((tce,eqe,oe,rse),(me,mm,de,pe))
 	    open Pickle
 	in convert (to,from)
-	    (pairGen(tup4Gen(LambdaStatSem.pu,EliminateEq.pu,
-			     OptLambda.pu,RegionStatEnv.pu),
-		     tup4Gen(Mul.pu_efenv,Mul.pu_mularefmap,
-			     DropRegions.pu_env,PhysSizeInf.pu_env)))
+	    (pairGen0(tup4Gen0(LambdaStatSem.pu,
+			       EliminateEq.pu,
+			       OptLambda.pu,
+			       comment "RegionStatEnv" RegionStatEnv.pu),
+		      tup4Gen0(comment "Mul.efenv" Mul.pu_efenv, 
+			       comment "Mul.mularefmap" Mul.pu_mularefmap,
+			       comment "DropRegions.env" DropRegions.pu_env,
+			       comment "PhysSizeInf.env" PhysSizeInf.pu_env)))
 	end
   end

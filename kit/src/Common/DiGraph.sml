@@ -263,29 +263,32 @@ functor DiGraph(structure UF : UNION_FIND_POLY
 
 
     (* Pickler *)
-    val pu_boolref = Pickle.ref0Gen Pickle.bool
-    val pu_intref = Pickle.ref0Gen Pickle.int
+    val pu_boolref = Pickle.refOneGen Pickle.bool
+    val pu_intref = Pickle.refOneGen Pickle.int
 
-    fun pu_node (dummy: 'info) (pu_info : 'info Pickle.pu) 
+    fun pu_node (maybeNewHashInfo: 'info -> int option) (dummy: 'info) (pu_info : 'info Pickle.pu) 
 	: 'info node Pickle.pu =
 	let open Pickle
 	    val dummy : 'info graphnode = GRAPHNODE{info=dummy, visited=ref false, 
 						    df_num=ref 0, out=nil}
 	    fun toInt (GRAPHNODE _) = 0
 	    val pu_node : 'info graphnode Pickle.pu -> 'info node Pickle.pu 
-		= cache (UF.pu dummy)
+		= cache (nameGen "DiGraph.node" o UF.pu dummy)
 
 	    val pu_graph : 'info graphnode Pickle.pu -> 'info graph Pickle.pu 
-		= cache (listGen o pu_node)
+		= cache (nameGen "DiGraph.graph" o listGen o pu_node)
 
 	    val pu_graphnode =
 		let
+		    fun maybeHash (GRAPHNODE {info,...}) = maybeNewHashInfo info
+			
 		    fun fun_GRAPHNODE (pu : 'info graphnode Pickle.pu) : 'info graphnode Pickle.pu =
-			con1 (fn (i,v,d,t) => GRAPHNODE{info=i,visited=v,df_num=d,out=t})
-			(fn GRAPHNODE{info=i,visited=v,df_num=d,out=t} => (i,v,d,t))
-			(tup4Gen(pu_info,pu_boolref,pu_intref,pu_graph pu))
+			maybeNewHash maybeHash
+			(con1 (fn (i,v,d,t) => GRAPHNODE{info=i,visited=v,df_num=d,out=t})
+			 (fn GRAPHNODE{info=i,visited=v,df_num=d,out=t} => (i,v,d,t))
+			 (tup4Gen0(pu_info,pu_boolref,pu_intref,pu_graph pu)))
 		in
-		    dataGen(toInt,[fun_GRAPHNODE])
+		    dataGen("DiGraph.graphnode",toInt,[fun_GRAPHNODE])
 		end
 	in pu_node pu_graphnode
 	end

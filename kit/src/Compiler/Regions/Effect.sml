@@ -818,33 +818,45 @@ struct
 
 
   (* Picklers *)
-  val pu_intref = Pickle.ref0Gen Pickle.int
+  val pu_intref = Pickle.refOneGen Pickle.int
 
   val pu_runType =
-      Pickle.enumGen [WORD_RT, STRING_RT, PAIR_RT, TOP_RT, BOT_RT,
-		      ARRAY_RT, REF_RT, TRIPLE_RT]
+      Pickle.enumGen ("Effect.runType",
+		      [WORD_RT, STRING_RT, PAIR_RT, TOP_RT, BOT_RT,
+		       ARRAY_RT, REF_RT, TRIPLE_RT])
 
   val pu_runTypes = Pickle.listGen pu_runType
 
+  fun maybeNewHashInfo i =
+      case i of 
+	  PUT => NONE
+	| GET => NONE
+	| WORDEFFECT => NONE
+	| UNION _ => NONE
+	| RHO {key=ref k,...} => SOME k
+	| EPS {key=ref k,...} => SOME k
+
   val pu_node : einfo Pickle.pu -> einfo G.node Pickle.pu
-      = Pickle.cache (Pickle.registerEq eq_effect 
-		      (fn e => 
-		       case get_level_and_key e of 
-			   SOME (_,ref i) => if i <> 0 then i else die "pu_node"
-			 | NONE => 0) toplevel_effects o G.pu_node PUT)
+      = Pickle.cache (Pickle.nameGen "effect" o
+		      (Pickle.registerEq eq_effect 
+		       (fn e => 
+			case get_level_and_key e of 
+			    SOME (_,ref i) => if i <> 0 then i else die "pu_node"
+			  | NONE => 0) toplevel_effects o G.pu_node maybeNewHashInfo PUT))
 
   val pu_nodes : einfo Pickle.pu -> einfo G.node list Pickle.pu
-      = Pickle.cache (Pickle.listGen o pu_node)
+      = Pickle.cache (Pickle.nameGen "Effect.nodes" o Pickle.listGen o pu_node)
 
   val pu_represents : einfo Pickle.pu -> einfo G.node list option Pickle.pu
-      = Pickle.cache (Pickle.optionGen o pu_nodes)
+      = Pickle.cache (Pickle.nameGen "Effect.represents" o Pickle.optionGen o pu_nodes)
 
   val pu_nodeopt : einfo Pickle.pu -> einfo G.node option Pickle.pu
       = Pickle.cache (Pickle.optionGen o pu_node)
 
+(*
   val pu_instance : einfo Pickle.pu -> einfo G.node option ref Pickle.pu 
-      = Pickle.cache (fn a => Pickle.refGen (pu_nodeopt a) NONE)
-
+      = Pickle.cache (Pickle.nameGen "Effect.instance" o Pickle.refGen NONE o pu_nodeopt)
+*)
   val pu_einfo =
       let open Pickle
 	  fun toInt (EPS _) = 0
@@ -854,12 +866,12 @@ struct
 	    | toInt WORDEFFECT = 4
 	    | toInt (RHO _) = 5
 	  fun fun_EPS pu_einfo =
-	      con1 (fn ((k,l,r,i),p) => EPS{key=k,level=l,represents=r,instance=i,pix=p})
-	      (fn EPS{key=k,level=l,represents=r,instance=i,pix=p} => ((k,l,r,i),p)
-	        | _ => die "pu_einfo.fun_EPS")
-	      (pairGen(tup4Gen(pu_intref,pu_intref,pu_represents pu_einfo,
-			       pu_instance pu_einfo),
-		       pu_intref))
+	      newHash (fn EPS {key=ref k,...} => k | _ => die "pu_einfo.newHash.EPS")
+	      (con1 (fn ((k,l,r),p) => EPS{key=k,level=l,represents=r,instance=ref NONE,pix=p})
+	       (fn EPS{key=k,level=l,represents=r,instance=ref NONE,pix=p} => ((k,l,r),p)
+	         | _ => die "pu_einfo.fun_EPS")
+	       (pairGen0(tup3Gen0(pu_intref,pu_intref,pu_represents pu_einfo),
+			 pu_intref)))
 	  fun fun_UNION pu_einfo =
 	      con1 (fn r => UNION{represents=r})
 	      (fn UNION {represents=r} => r
@@ -869,20 +881,22 @@ struct
 	  val fun_GET = con0 GET
 	  val fun_WORDEFFECT = con0 WORDEFFECT
 	  fun fun_RHO pu_einfo =
-	      con1 (fn ((p,g,k,l),i,px,t) => RHO {put=p,get=g,key=k,level=l,
-						  instance=i,pix=px,ty=t})
-	      (fn RHO {put=p,get=g,key=k,level=l,instance=i,pix=px,ty=t} =>
-	       ((p,g,k,l),i,px,t)
-	        | _ => die "pu_einfo.fun_RHO")
-	      (tup4Gen(tup4Gen(pu_nodeopt pu_einfo,pu_nodeopt pu_einfo,
-			       pu_intref, pu_intref),
-		       pu_instance pu_einfo,pu_intref,pu_runType))
-      in dataGen(toInt,[fun_EPS, fun_UNION, fun_PUT, fun_GET,
-			fun_WORDEFFECT, fun_RHO])
+	      newHash (fn RHO {key=ref k,...} => k | _ => die "pu_einfo.newHash.RHO")
+	      (con1 (fn ((k,p,g,l),px,t) => RHO {key=k,put=p,get=g,level=l,
+						 instance=ref NONE,pix=px,ty=t})
+	       (fn RHO {key=k,put=p,get=g,level=l,instance=ref NONE,pix=px,ty=t} =>
+		((k,p,g,l),px,t)
+	         | _ => die "pu_einfo.fun_RHO")
+	       (tup3Gen0(tup4Gen0(pu_intref, nameGen "put" (pu_nodeopt pu_einfo),
+				  nameGen "get" (pu_nodeopt pu_einfo),
+				  pu_intref),
+			 pu_intref,pu_runType)))
+      in dataGen("Effect.einfo",toInt,[fun_EPS, fun_UNION, fun_PUT, fun_GET,
+				       fun_WORDEFFECT, fun_RHO])
       end
 
   val pu_effect  : effect Pickle.pu = pu_node pu_einfo
-  val pu_effects : effect list Pickle.pu = pu_nodes pu_einfo
+  val pu_effects : effect list Pickle.pu = Pickle.nameGen "Effect.effects" (pu_nodes pu_einfo)
 
 
 (* Tracing Cone Layers (for profiling)

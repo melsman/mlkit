@@ -490,7 +490,7 @@ old *)
     val reportMapSORTED  = reportMap
 
     (* Pickler *)
-    val pu_bal : bal Pickle.pu = Pickle.enumGen[L,B,R]
+    val pu_bal : bal Pickle.pu = Pickle.enumGen("OrderFinMap.bal",[L,B,R])
 
     fun pu (pu_dom : dom Pickle.pu) (pu_r : 'a Pickle.pu) : 'a map Pickle.pu = 
 	let open Pickle
@@ -501,8 +501,8 @@ old *)
 		con1 (fn ((a,b,c,d),e) => N(a,b,c,d,e))
 		(fn N(a,b,c,d,e) => ((a,b,c,d),e)
 	          | _ => die "pu.fun_N")
-		(pairGen(tup4Gen(pu_dom,pu_r,pu,pu),pu_bal))
-	in dataGen(toInt,[fun_E,fun_N])
+		(pairGen0(tup4Gen0(pu_dom,pu_r,pu,pu),pu_bal))
+	in dataGen("OrderFinMap.map",toInt,[fun_E,fun_N])
 	end
 
   end

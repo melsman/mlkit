@@ -216,7 +216,8 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
 
     fun pu_map0 (pu_d : dom Pickle.pu) (pu_a : 'a Pickle.pu) : 'a map0 Pickle.pu =
 	let open Pickle
-	    val pu_m = IFM.pu Pickle.int (pairGen(pu_d,pu_a))
+	    fun szMap m = IFM.fold (fn (_,a) => a+1) 0 m
+	    val pu_m = combHash szMap (IFM.pu Pickle.int (pairGen(pu_d,pu_a)))
 	    fun toInt (Rigid _) = 0
 	      | toInt (Flexible _) = 1
 	    fun fun_Rigid _ =
@@ -226,16 +227,16 @@ functor QuasiMap(structure IntFinMap : MONO_FINMAP where type dom = int
 		con1 (fn (c,m) => Flexible{matchcount=c,imap=m}) 
 		(fn Flexible{matchcount=c,imap=m} => (c,m)
 	          | _ => die "pu_map0.Flexible")
-		(pairGen(Name.pu_matchcount,pu_m))
-	in dataGen (toInt,[fun_Rigid,fun_Flexible])
+		(pairGen0(Name.pu_matchcount,pu_m))
+	in dataGen ("QuasiMap.map0",toInt,[fun_Rigid,fun_Flexible])
 	end
 
     fun pu pu_d pu_a =
 	let open Pickle
 	    fun to (SOME v) = M v
 	      | to NONE = Empty
-	    fun from (M v) = SOME v
+	    fun from (m as M v) = if IFM.isEmpty (imap' m) then die "pu.hmmm" else SOME v
 	      | from Empty = NONE
-	in convert (to,from) (optionGen (ref0Gen (pu_map0 pu_d pu_a)))
+	in convert (to,from) (optionGen (ref0ShGen (pu_map0 pu_d pu_a)))
 	end
   end

@@ -49,7 +49,8 @@ functor Con(structure Name : NAME
 	let open Pickle
 	    fun to (s,n) : con = {str=s,name=n}
 	    fun from ({str=s,name=n} : con) = (s,n)
-	in convert (to,from) (pairGen(string,Name.pu))
+	in newHash (Name.key o #name)
+	    (convert (to,from) (pairGen0(string,Name.pu)))
 	end
 
     structure QD : QUASI_DOM =
