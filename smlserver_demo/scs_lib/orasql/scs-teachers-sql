@@ -1,0 +1,38 @@
+create table scs_supervisors(
+  supervisor_id integer
+    constraint scs_superv_supervisor_id_nn not null
+    constraint scs_superv_supervisor_id_pk primary key,
+  constraint scs_superv_supervisor_id_fk foreign key(supervisor_id) references scs_persons(person_id),
+  research_experience char(1)
+    constraint scs_superv_research_exp_nn not null
+    constraint scs_superv_research_exp_ck check ( research_experience in ('t','f') )
+);
+
+create table scs_topics(
+  topic_id integer
+    constraint scs_topics_topic_id_nn not null
+    constraint scs_topics_topic_id_pk primary key,
+  topic_text_id integer
+);
+
+create table scs_levels(
+  level_id integer
+    constraint scs_levels_level_id_nn not null
+    constraint scs_levels_level_id_pk primary key,
+  level_text_id integer
+);
+
+
+create table scs_supervisor_topic_rel(
+  supervisor_id integer
+    constraint scs_superv_top_r_superv_id_nn not null,
+  constraint scs_superv_top_r_superv_id_fk foreign key(supervisor_id) references scs_supervisors(supervisor_id),
+  topic_id integer
+    constraint scs_superv_top_r_topic_id_nn not null,
+  constraint scs_superv_top_r_topic_id_fk foreign key(topic_id) references scs_topics(topic_id),
+  level_id integer
+    constraint scs_superv_top_r_level_id_nn not null,
+  constraint scs_superv_top_r_level_id_fk foreign key(level_id) references scs_levels(level_id)
+);
+
+

@@ -34,15 +34,25 @@ show errors
 -- LOAD THE ENTIRE SCS DATA MODEL --
 ------------------------------------
 
-@scs-logs-create.sql
-@scs-locales-create.sql
-@scs-parties-create.sql
-@scs-persons-create.sql
-@scs-users-create.sql
-@scs-groups-create.sql
+@scs-logs-create.sql;
+@scs-texts-create.sql;
+@scs-enumerations-create.sql;
+@scs-locales-create.sql;
+@scs-parties-create.sql;
+@scs-roles-create.sql;
+@scs-persons-create.sql;
+@scs-users-create.sql;
+@scs-teachers-create.sql;
+@scs-groups-create.sql;
 
+@scs-boards-of-studies-create.sql;
+@scs-curriculums-create.sql;
+@scs-study-programmes-create.sql;
 
+@scs-approvals-create.sql;
+@scs-evaluations-create.sql;
+@scs-periods-create.sql;
 
-
+select table_name from user_tables;
 
 

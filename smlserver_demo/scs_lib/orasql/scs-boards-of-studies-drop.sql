@@ -1,0 +1,1 @@
+drop table scs_boards_of_studies;
