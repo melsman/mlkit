@@ -12,5 +12,6 @@ sig
   		| CHAR of int
 		| REAL of real
 
+  val lt : scon * scon -> bool
   val pr_scon: scon -> string
 end;
