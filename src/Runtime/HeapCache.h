@@ -24,6 +24,12 @@ typedef struct regionCopy {
 
 #define STACK_SIZE_INIT      (20 * 1024 * 1024)
 
+// In the case that the global exception handler is triggered, the
+// bottom of the stack is destroyed by the raise instruction; therefore
+// we copy this part of the stack in a separate block in the heap, which 
+// allows the stack to be reestablished.
+#define LOWSTACK_COPY_SZ     6
+
 // Maximum number of allocated heaps (stacks and initial region pages)
 // in the heap pool - important only for the multi-threaded SMLserver.
 // The effect of using a heap from the heap pool is that execution of
@@ -43,6 +49,7 @@ typedef struct heap {
   int *sp;                  // stack pointer
   int *exnPtr;
   unsigned long exnCnt;
+  int lowStack[LOWSTACK_COPY_SZ]; // copy of global exception handler, etc.
   int ds[STACK_SIZE_INIT];  // start of data-space
                             //   followed by stack
 } Heap;

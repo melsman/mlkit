@@ -13,5 +13,6 @@ functor data () : SCRIPTLET =
 			)
 		  )
 	     )
-	val _ = Data0.r := Data0.Int 200000
+	    
+	val a = ( (* Data0.f(); *) Data0.r := Data0.Int 200000)
     end

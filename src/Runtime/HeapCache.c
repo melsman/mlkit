@@ -226,6 +226,7 @@ void releaseHeap(Heap *h)
 
 static void restoreHeap(Heap *h)
 {
+  int i;
   if ( h->status != HSTAT_DIRTY )
     dienow ("restoreHeap: status <> HSTAT_DIRTY");
  
@@ -247,11 +248,17 @@ static void restoreHeap(Heap *h)
   if ( restoreRegion(h->r6copy) == -1 )
     dienow ("restoreHeap: failed to restore r6");
 
+  for ( i = 0 ; i < LOWSTACK_COPY_SZ ; i++ )
+    {
+      *(h->sp - i - 1) = h->lowStack[i];
+    }
+
   h->status = HSTAT_CLEAN;
 }
 
 void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt)
 {
+  int i;
   Ro *r0, *r2, *r3, *r4, *r5, *r6; 
 
   if ( h->status != HSTAT_UNINITIALIZED )
@@ -276,6 +283,12 @@ void initializeHeap(Heap *h, int *sp, int *exnPtr, unsigned long exnCnt)
   h->r4copy = copyRegion(r4);
   h->r5copy = copyRegion(r5);
   h->r6copy = copyRegion(r6);
+
+  for ( i = 0 ; i < LOWSTACK_COPY_SZ ; i++ )
+    {
+      h->lowStack[i] = *(sp - i - 1);
+    }
+
   h->status = HSTAT_CLEAN;
 }
 
