@@ -690,7 +690,6 @@ show errors
 -----------------------------------------
 -- PACKAGE SCS GROUPS MEMBER RELATIONS --
 -----------------------------------------
-
 create or replace package scs_grp_member_rel
 as
   function new (
@@ -728,6 +727,12 @@ as
 
   procedure delete (
     rel_id         in scs_grp_member_rels.rel_id%TYPE,
+    modifying_user in scs_grp_member_rels.modifying_user%TYPE    
+  );
+
+  procedure delete (
+    grp_id         in scs_grp_member_rels.grp_id%TYPE,
+    party_id       in scs_grp_member_rels.party_id%TYPE,
     modifying_user in scs_grp_member_rels.modifying_user%TYPE    
   );
 
@@ -834,7 +839,19 @@ as
   is
   begin
     delete from scs_grp_member_rels
-    where rel_id = scs_grp_member_rel.delete.rel_id;
+     where rel_id = scs_grp_member_rel.delete.rel_id;
+  end delete;
+
+  procedure delete (
+    grp_id         in scs_grp_member_rels.grp_id%TYPE,
+    party_id       in scs_grp_member_rels.party_id%TYPE,
+    modifying_user in scs_grp_member_rels.modifying_user%TYPE    
+  )
+  is
+  begin
+    delete from scs_grp_member_rels
+     where grp_id = scs_grp_member_rel.delete.grp_id
+       and party_id = scs_grp_member_rel.delete.party_id;
   end delete;
 
   function check_index (
