@@ -3,7 +3,7 @@
        <head><title>^title</title></head>
        <body bgcolor=white>
          <center> <h2>^title</h2> <img src=^pic> <p>
-                  ^(Ns.quotToString body) <p>
+                  ^(Quot.toString body) <p>
                   <i>Served by SMLserver</i>
          </center>
        </body>
@@ -17,14 +17,14 @@
      </form>`
 
   val _ =
-    case FormVar.getNat "n"
+    case FormVar.wrapOpt FormVar.getNatErr "n"
       of NONE => 
          returnPage "Guess a number between 0 and 100"
            "bill_guess.jpg"
            (mk_form (Random.range(0,100) (Random.newgen())))
            
        | SOME n =>
-         case FormVar.getNat "guess"
+         case FormVar.wrapOpt FormVar.getNatErr "guess"
            of NONE => 
              returnPage "You must type a number - try again"
                "bill_guess.jpg" (mk_form n) 

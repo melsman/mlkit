@@ -68,6 +68,12 @@ signature NS =
 	 * is present for the argument key. *)
 	val formvar : string -> string option
 
+	(* As formvar, except that all values associated 
+         * with key is returned; the function returns the
+         * empty list if no query data is present for the
+         * argument key. *)
+	val formvarAll : string -> string list
+
 	(* The function 'headers' returns, as a set, 
 	 * the headers associated with the connection. *)
 	val headers : unit -> Set.set 
@@ -289,9 +295,7 @@ signature NS =
       end
 
     (* Quotation support. *)
-    type quot = string frag list
-    val ^^ : quot * quot -> quot
-    val quotToString : quot -> string
+    type quot = Quot.quot
 
     (* Return html string to browser with status code 200, 
      * including HTTP headers. *)    

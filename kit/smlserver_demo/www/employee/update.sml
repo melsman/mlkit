@@ -1,6 +1,6 @@
-  val email  = FormVar.getStringOrFail "email"
-  val passwd = FormVar.getStringOrFail "passwd"
-  val note   = FormVar.getStringOrFail "note"
+  val email  = FormVar.wrapFail FormVar.getStringErr ("email","email")
+  val passwd = FormVar.wrapFail FormVar.getStringErr ("passwd","passwd")
+  val note   = FormVar.wrapFail FormVar.getStringErr ("note", "note")
 
   val update = `update employee
                 set note = ^(Db.qq' note)

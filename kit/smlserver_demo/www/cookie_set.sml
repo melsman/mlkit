@@ -1,20 +1,20 @@
 val cv =
-  case FormVar.getString "cookie_value" of
+  case FormVar.wrapOpt FormVar.getStringErr "cookie_value" of
     NONE => "No Cookie Value Specified"
   | SOME cv => cv
 
 val cn =
-  case FormVar.getString "cookie_name" of
+  case FormVar.wrapOpt FormVar.getStringErr "cookie_name" of
     NONE => "CookieName"
   | SOME cn => cn
 
 val clt =
-  case FormVar.getInt "cookie_lt" of
+  case FormVar.wrapOpt FormVar.getIntErr "cookie_lt" of
     NONE => 60
   | SOME clt => clt
 
 val cs =
-  case FormVar.getString "cookie_secure" of
+  case FormVar.wrapOpt FormVar.getStringErr "cookie_secure" of
     SOME "Yes" => true
   | _  => false
 

@@ -8,6 +8,6 @@ fun calculate c = concat
    "<hr> <i>Served by SMLserver</i> </body></html>"]
 
 val _ = Ns.Conn.return 
-  (case FormVar.getInt "temp_c"
+  (case FormVar.wrapOpt FormVar.getIntErr "temp_c"
      of NONE => "Go back and enter an interger!"
       | SOME i => calculate i)
