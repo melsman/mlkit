@@ -35,7 +35,7 @@ struct
   type prog = (place,unit)Exp.LambdaPgm
   type rse  = RSE.regionStatEnv
 
-  val tag_integers = Flags.is_on0 "tag_integers"
+  val dangling_pointers = Flags.is_on0 "dangling_pointers"
 
   fun footnote(x,y) = x
   infix footnote
@@ -169,7 +169,7 @@ struct
 
 
     fun gc_compute_delta(rse,free,(ty0,rho0)) = 
-      if not(tag_integers()) then Effect.Lf[]
+      if dangling_pointers() then Effect.Lf[]
       else 
 	let 
 	  fun effects_lv (lv, acc: effect list) : effect list = 

@@ -76,6 +76,8 @@ signature TYNAME =
     val unboxed : TyName -> bool   (* Returns true for type names that are 
 				    * implemented unboxed; depends on whether
 				    * tagging of integers is enabled. *)
+    val setUnboxed : TyName -> unit (* After calling setUnboxed(t), unboxed(t) 
+				     * returns true. *)
 
     type StringTree
     val layout : TyName -> StringTree

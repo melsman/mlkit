@@ -14,14 +14,13 @@ local
 *)
 in
   val _ = (
-
-	   enable "garbage_collection";
-
-(* for testing gc only
-	   disable "region_inference";
-	   K.build_basislib();
-	   enable "region_inference";
+(*	   
+	   enable "print_types";
+	   enable "print_rho_levels";
+	   enable "print_rho_types";
+	   enable "debug_compiler";
 *)
+	   enable "garbage_collection";
 
 	   K.build_basislib();
 

@@ -81,18 +81,15 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 
     local
       val region_profiling = Flags.is_on0 "region_profiling"
-      val region_inference = Flags.is_on0 "region_inference"
+      val recompile_basislib = Flags.is_on0 "recompile_basislib"
     in 
       fun pmdir() = 
-	case (region_inference(), gc_p(), region_profiling())
-	  of (true,               true,   true)  => "PM/RI_GC_PROF/"
-	   | (true,               true,   false) => "PM/RI_GC/"
-	   | (true,               false,  true)  => "PM/RI_PROF/"
-	   | (true,               false,  false) => "PM/RI/"
-	   | (false,              true,   true)  => "PM/GC_PROF/"
-	   | (false,              true,   false) => "PM/GC/"
-	   | (false,              false,  true)  => "PM/PROF/"
-	   | (false,              false,  false) => "PM/NOTHING/"
+	if recompile_basislib() then "PM/SCRATCH/"   (* avoid overwriting other files *)
+	else case (gc_p(), region_profiling())
+	       of (true,   true)  => "PM/RI_GC_PROF/"
+		| (true,   false) => "PM/RI_GC/"
+		| (false,  true)  => "PM/RI_PROF/"
+		| (false,  false) => "PM/RI/"
     end
 
     type linkinfo = Execution.linkinfo

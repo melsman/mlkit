@@ -307,14 +307,20 @@ struct
     else E.unifyRho(node1, node2) cone
 
   fun unify_ty(ty1, ty2:Type) cone: E.cone =
-    List.foldL u cone (ListPair.zip(ann_ty ty1 [],ann_ty ty2 []))
-    handle _ =>  let val (lay_ty,_) = mk_layout false;
-                     fun dump(ty) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), lay_ty ty, !Flags.colwidth)
-                 in
+    let val effs1 = ann_ty ty1 []
+        val effs2 = ann_ty ty2 []
+    in
+      List.foldL u cone (ListPair.zip(effs1,effs2))
+      handle X =>  let val (lay_ty,_) = mk_layout false;
+		       fun dump(ty) = PP.outputTree(fn s => TextIO.output(!Flags.log, s), lay_ty ty, !Flags.colwidth)
+		   in
                      TextIO.output(!Flags.log, "ty1 = \n"); dump ty1;
                      TextIO.output(!Flags.log, "ty2 = \n"); dump ty2;
-                     die "unify: types do not unify"
-                 end
+                     die ("unify: types do not unify. Exception " ^ exnName X ^ 
+			  " raised; length(effs1) = " ^ Int.toString(length effs1) ^ 
+			  " and length(effs2) = " ^ Int.toString (length effs2) ^ ". ")
+		   end
+    end
 
   fun unify_mu(mu1, mu2:mu) cone: E.cone =
     List.foldL u cone (ListPair.zip(ann_mu mu1 [],ann_mu mu2 []))
@@ -460,11 +466,17 @@ struct
      This must be done during instantiation of type schemes when (tau,rho)
      is the result of instantiating (alpha',rho') where rho' has runtype BOT_RT *)
 
-  fun maybe_increase_runtype(mu as (tau,rho)) =
+  fun maybe_increase_runtype(mu as (tau,rho))cone =
     let val old = case E.get_place_ty rho of SOME old => old | _ => die "maybe_increase_runtype"
-      val new = runtype tau
-    in if old<>new then E.setRunType rho (E.lub_runType(old,new)) else ();
-      mu
+        val new = runtype tau
+	val _ = 
+	  if old<>new then 
+	    (case E.lub_runType(old,new)
+	       of E.WORD_RT => 
+		 (E.unifyRho(E.toplevel_region_withtype_word, rho) cone; ())
+		| rt => E.setRunType rho rt)
+	  else ()
+    in mu
     end
 
 
@@ -569,7 +581,7 @@ struct
                 in
                     if chng1 orelse chng2 
                       then case tau of
-                             TYVAR _ => (true, maybe_increase_runtype(tau1,rho2))
+                             TYVAR _ => (true, maybe_increase_runtype(tau1,rho2)cone)
                            | _ =>(true,(tau1, rho2)) 
                     else (false,mu)
                 end
@@ -627,7 +639,11 @@ struct
 
 	  (* set types of places according to rhos *)
 	  val _ = update_runtypes(places, rhos)
-
+(*
+	  val _ = app (fn rho => case E.get_place_ty rho
+				   of SOME E.WORD_RT => die "instClever.quantified word region!!"
+				    | _ => ()) rhos 
+*)
           val S = (ListPair.zip(alphas,types),
                    ListPair.zip(rhos,places),
                    ListPair.zip(epsilons,arreffs))

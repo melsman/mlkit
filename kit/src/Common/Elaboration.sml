@@ -591,9 +591,9 @@ functor Elaboration(structure TopdecParsing : TOPDEC_PARSING): ELABORATION =
 
 	  val prof_p : unit->bool = Basics.Tools.Flags.is_on0 "region_profiling"
 	  val gc_p : unit->bool = Basics.Tools.Flags.is_on0 "garbage_collection"
-	  val region_inference : unit->bool = Basics.Tools.Flags.is_on0 "region_inference"
+	  val scratch : unit->bool = Basics.Tools.Flags.is_on0 "recompile_basislib"
 	    
-	  fun Tr (a,f) = (a,f,[region_inference(),prof_p(),gc_p()])
+	  fun Tr (a,f) = (a,f,[scratch(),prof_p(),gc_p()])
 	  fun die s = Basics.Tools.Crash.impossible ("Elaboration.RepositoryFinMap." ^ s)
 
 	  open M

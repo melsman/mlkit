@@ -225,6 +225,67 @@ functor CompileDec(structure Con: CON
 	fun reset() = datbindss := []
       end
 
+    (* --------------------- *)
+    (* Unboxing of datatypes *)
+    (* --------------------- *)
+
+    local
+
+      (* Return true if the type is potentially unboxed *)
+      fun unboxed_ty tns ty =
+	case ty
+	  of CONStype(_,tn) => TyName.unboxed tn orelse List.exists (fn t => TyName.eq(t,tn)) tns
+	   | TYVARtype _ => true
+	   | RECORDtype [] => true (*unit*)
+	   | RECORDtype _ => false
+	   | ARROWtype _ => false
+    in
+
+      (* Either all datatypes are unboxed or no datatypes in datbinds are unboxed; restriction caused by
+       * Spreading of Datatype bindings in file Regions/SpreadDataType.sml *)
+
+      fun unbox_datbinds (datbinds : datbind_list) : unit =
+	let 	  
+	  val bucket : TyName list ref = ref nil
+	  fun unbox_tyname tn = if List.exists (fn t => TyName.eq(t,tn)) (!bucket) then ()
+				else bucket := (tn :: (!bucket))
+	  fun unbox_tn_enumeration (_,tn,cns) =
+	    let fun nullary (_, NONE) = true
+		  | nullary _ = false
+	    in if List.all nullary cns then unbox_tyname tn
+	       else ()
+	    end
+	  fun unbox_tn_single (_,tn,[(_,SOME _)]) = unbox_tyname tn
+	    | unbox_tn_single _ = ()
+
+	  val max_unary_unboxed = 1
+	  fun unbox_tn_combi (_,tn,cns) = 
+	    let
+	      (* under the assumption that tns are unboxed, which 
+	       * of the tns can we represent unboxed? *) 
+	      fun one_datbind tns n tn cns =
+		case cns
+		  of nil => unbox_tyname tn
+		   | (_,NONE)::cns => one_datbind tns n tn cns   (*any number of nullary constructors*)
+		   | (_,SOME ty)::cns =>
+		    if not(unboxed_ty tns ty) 
+		      andalso n < max_unary_unboxed then one_datbind tns (n+1) tn cns
+		    else ()
+	    in one_datbind (map #2 datbinds) 0 tn cns
+	    end
+	in 
+	   (* Start by unboxing all datatypes consisting 
+	    * of one unary constructor and all datatypes 
+	    * consisting of only nullary constructors 
+	    * (enumerations) *)
+(*	    app unbox_tn_single datbinds ; unsafe because of decon, which nullyfies the first two bits... *)
+	    app unbox_tn_enumeration datbinds
+	  ; app unbox_tn_combi datbinds
+	  ; (if length (!bucket) = length datbinds then app TyName.setUnboxed (!bucket)
+	     else ())
+	end
+    end
+
     (* ----------------------------------------------
      * Compiling type variables
      * ---------------------------------------------- *)
@@ -2745,6 +2806,7 @@ the 12 lines above are very similar to the code below
 
        (* Then we can extract the datbinds *)
        val datbindss = DatBinds.extract()
+       val _ = app unbox_datbinds datbindss
        val pgm = PGM(DATBINDS datbindss, lamb)
     in (env1, pgm)
     end
