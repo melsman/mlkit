@@ -848,22 +848,30 @@ Report: Opt:
 
   datatype matchresult = Yes | No | Maybe
 
-  fun maybefy (Con {longid,...}) m = 
-      if Ident.id_REF = #2(Ident.decompose longid) then m 
-      else Maybe
-    | maybefy _ m = m
+  (* See Peter Sestoft's paper "ML pattern match compilation and
+     partial evaluation", pages 6-7 for a description of the cases (a)
+     to (e) below. *)
 
   fun staticmatch (con : con, termd : termd) : matchresult =
-	(case termd of
-	   Pos (pcon, _) => (case con_cmp (con, pcon) 
-			       of Eq => Yes 
-				| _ => (case pcon
-					  of Excon _ => Maybe (* Different excons may have same name *)
-					   | _ => No))
-	 | Neg negset  => if negset.member con negset then No
-			  else if span_eq_int (span con) (negset.size negset + 1)
-			       then maybefy con Yes
-			       else Maybe)
+      let fun maybefy (Con {longid,...}) m = 
+	      if Ident.id_REF = #2(Ident.decompose longid) then m 
+	      else Maybe
+	    | maybefy _ m = m
+      in case termd of
+	  Pos (pcon, _) => 
+	      (case con_cmp (con, pcon) of 
+		   Eq => Yes   (* case(a) *)
+		 | _ => (case pcon of 
+			     Excon _ => Maybe (* Different excons may have same name *)
+			   | _ => No)) (* case(b) *)
+	| Neg negset  => 
+		   if negset.member con negset then 
+		       No          (* case(c) *)
+		   else 
+		       if span_eq_int (span con) (negset.size negset + 1) then 
+			   Yes     (* case(d) *)
+		       else Maybe  (* case(e) *)
+      end
 
   datatype kind = Success of rhs' | IfEq of path * con * node option * node option
   withtype node = {lvar : lvar, kind : kind, refs : int ref, visited : bool ref}
@@ -888,7 +896,7 @@ Report: Opt:
    The "refs" field in a node is the number of edges to the node. When a node
    is created, it is set to 0, because we do not know at that point, whether
    anyone will ever jump to the node.  It is only when we make an edge to the
-   node that we must bump this counter.
+   node that we bump this counter.
 
    Invariant: "visited" fields of all nodes are always false except within
    calls to reachable and compile_decdag.*)
@@ -2462,12 +2470,28 @@ the 12 lines above are very similar to the code below
 	val compile_no = fn (i, env_rhs) =>
 	                 (compileExp (CE.clearPathEnv env_rhs) (List.nth (exps,i)
 					      handle _ => die "compile_match: nth"))
-	val (functions, lexp) =
-	      compile_decdag  compile_no (obj,tau_argument) raise_something tau_return_opt env decdag
+
+	(* This function has the effect of warning many times, 
+	 * so we check the decdag instead; mael 2003-12-10 ... 
+	fun perhapsInsertRaiseMatch a = 
+	    let val _ = 
+		if warn_on_inexhaustiveness then
+		    Flags.warn (report_SourceInfo info // line "Match not exhaustive.")
+		else ()
+	    in raise_something a
+	    end *)
 
 	val _ = 
-	    if not warn_on_inexhaustiveness orelse exhaustive (reachable decdag) then () 
-	    else Flags.warn (report_SourceInfo info // line "Match not exhaustive.")
+	    if warn_on_inexhaustiveness andalso 
+		let val r = reachable decdag
+		    val e = exhaustive r
+		in not e
+		end then
+		Flags.warn (report_SourceInfo info // line "Match not exhaustive.")
+	    else ()
+
+	val (functions, lexp) =
+	    compile_decdag compile_no (obj,tau_argument) raise_something tau_return_opt env decdag
 
 	val _ =
 	    List.app (fn i (*number of rhs which is redundant*) =>
