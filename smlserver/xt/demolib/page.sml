@@ -3,19 +3,19 @@ local open Scripts
 in
 structure Page : 
     sig
-	type 'attrs blockElt = (nil,nil,aclosed,formclosed,
-				preclosed,block flow,'attrs) elt
+	type blockElt = (nil,nil,aclosed,formclosed,
+			 preclosed,block flow) elt
 
 	val pageWithCookies : SMLserver.Cookie.cookiedata list ->
-	    string -> 'attrs blockElt -> Http.response
-	val page : string -> 'attrs blockElt -> Http.response
+	    string -> blockElt -> Http.response
+	val page : string -> blockElt -> Http.response
 
 	val get : string -> 't SMLserver.Form.var -> 't
     end
 =
     struct
-	type 'attrs blockElt = (nil,nil,aclosed,formclosed,
-				preclosed,block flow,'attrs) elt
+	type blockElt = (nil,nil,aclosed,formclosed,
+			 preclosed,block flow) elt
 	local 
 	    open Scripts infix &
 	    val smlserver_link = Unsafe.ahref {src="http://www.smlserver.org"} ($"SMLserver")
