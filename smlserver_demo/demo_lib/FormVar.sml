@@ -1,49 +1,56 @@
 signature FORM_VAR =
   sig
-    (* Checking form variables are very important but also 
-       tedious, because the same kind of code is written 
-       in almost every file. This module overcomes the 
-       tedious part by defining several functions that can 
-       be used to test form variables throughout a large
-       system.
 
-       The idea is that you define a list of form types, 
-       corresponding to the values used in forms. For instance, 
-       you may have an email type representing all possible
-       email-values. For every form type, you define a
-       function getFormtype, that takes three arguments, 
-         (1) the name of the form-variable holding the value, 
-         (2) the name of the field in the form; the user may 
-	     be presented an errorpage with more than one 
+    (* Checking form variables is an important part of implementing a
+       secure and stable web-site, but it is often a tedious job,
+       because the same kind of code is written in all files that
+       verify form variables. This module overcomes the tedious part
+       by defining several functions that may be used to test form
+       variables consistently throughout a large system.
+
+       The idea is to define a set of functions, corresponding to each
+       type of value used in forms. Each function is defined to access
+       values contained in form variables of the particular type. For
+       instance, a function is defined for accessing all possible
+       email addresses in a form variable. In case the given form
+       variable does not contain a valid email address, errors are
+       accumulated and presented to the user when all form variables
+       have been checked. So as to deal with error accumulation
+       properly, each function takes three arguments:
+
+         (1) The name of the form-variable holding the value, 
+         (2) The name of the field in the form; the user may 
+	     be presented with an errorpage with more than one 
 	     error and it is important that the error message 
 	     refer to a given field in the form
-         (3) an error container of type errs used to hold 
-	     the error messages sent back to the user.
-       The type formvar_fn represents the type of 
-       functions used to check form variables. The functions
-       are named getFormtypeErr.
+         (3) An error container of type errs used to hold 
+	     the error messages sent back to the user
 
-       When you have checked all the form values, you can 
-       call the function any_errors, which returns an 
-       error-page if any errors occurred and otherwise 
-       proceeds with the remainder of the script. If an 
-       error-page is returned, then the script is terminated.
+       The functions are named getFormtypeErr, where Formtype range
+       over possible form types. In each script, when all form
+       variables have been checked using calls to particular
+       getFormtypeErr functions, a call to the function any_errors
+       returns an error-page if any errors occurred and otherwise
+       proceeds with the remainder of the script. If an error-page is
+       returned, then the script is terminated.
 
-       If you do not want an error page returned to the user
-       then use one of the wrapper functions:
+       The type formvar_fn represents the type of functions used to
+       check form variables. If it is not desirable to return an error
+       page, the programmer may use one of the wrapper functions to
+       obtain appropriate behavior:
 
-         wrapOpt : on success returns SOME v where v is the 
+         wrapOpt : On success returns SOME v where v is the 
                    form value; otherwise NONE
-         wrapExn : raises exception FormVar if it fails to
+         wrapExn : Raises exception FormVar if it fails to
                    parse the form variable
-         wrapPanic: executes a function on fail; this may
+         wrapPanic: Executes a function on fail; this may
                     be used to control system failures. Say,
                     you have a hidden form variable seq_id
                     (a sequence id in the database) and it
                     can't be parsed then the function may
                     log the error, send mail to the system
                     maintainer etc. 
-         wrapFail: on failure, a page is returned. The 
+         wrapFail: On failure, a page is returned. The 
                    difference from the getFormtypeErr 
                    functions is that with wrapFail only
                    one error is shown on the error page
@@ -106,21 +113,22 @@ structure FormVar :> FORM_VAR =
     val emptyErr : errs = []
 
     fun addErr (emsg:quot,errs:errs) = emsg :: errs
-    fun genErrMsg (f_msg:string,msg:quot) : quot = `Error in field ^f_msg. ` ^^ msg
-    fun errNoFormVar(f_msg:string,ty:string) : quot = `Error in field ^f_msg. You must provide a <b>^ty</b>.`
+    fun B a = "<b>" ^ a ^ "</b>"
+    fun genErrMsg (f_msg:string,msg:quot) : quot = `Error in field ^(B f_msg). ` ^^ msg
+    fun errNoFormVar(f_msg:string,ty:string) : quot = `Error in field ^(B f_msg). You must provide a valid ^ty.`
     fun errTypeMismatch(f_msg:string,ty:string,v:string) : quot = 
-      `Error in field ^f_msg. You must provide a <b>^ty</b> - <i>^v</i> is not a ^ty.`
+      `Error in field ^(B f_msg). You must provide a valid ^ty - <i>^v</i> is not a valid ^ty.`
     fun errTooLarge(f_msg:string,ty:string,v:string) : quot =
-      `Error in field ^f_msg. The provided ^ty (<i>^v</i>) is too large.`
+      `Error in field ^(B f_msg). The provided ^ty (<i>^v</i>) is too large.`
     fun errTooMany(f_msg:string) : quot =
-      `Error in field ^f_msg. More than one dataitem is provided.`
+      `Error in field ^(B f_msg). More than one data item is provided.`
 
     fun buildErrMsg (errs: errs) : quot =
           `We had a problem processing your entry:
 	   <ul>` ^^ 
 	   Quot.concatFn (fn q => `<li>` ^^ q) (List.rev errs) ^^ `
 	   </ul>
-	   Please back up using your browser, correct it, and resubmit your entry<p>	   
+	   Please back up using your browser, correct the form, and resubmit your entry.<p>	   
 	   Thank you.`
 
     fun returnErrors (errs: errs) = 
@@ -251,13 +259,13 @@ structure FormVar :> FORM_VAR =
     fun getErr (empty_val:'a) (conv_val:string->'a) (ty:string) (add_fn:string->quot) (chk_fn:string->bool) =
       fn (fv:string,emsg:string,errs:errs) =>
       case Ns.Conn.formvarAll fv of
-	[]  => (empty_val,addErr(genErrMsg(emsg,add_fn ("You must provide a <b>"^ty^"</b>.")),errs))
-      | [""]  => (empty_val,addErr(genErrMsg(emsg,add_fn ("You must provide a <b>"^ty^"</b>.")),errs))
+	[]  => (empty_val,addErr(genErrMsg(emsg,add_fn ("You must provide a valid "^ty^".")),errs))
+      | [""]  => (empty_val,addErr(genErrMsg(emsg,add_fn ("You must provide a valid "^ty^".")),errs))
       | [v] => 
 	  if chk_fn v then
 	    (conv_val v,errs)
 	  else
-	    (empty_val, addErr(genErrMsg(emsg,add_fn ("You must provide an valid <b>"^ty^"</b> - <i>" ^ 
+	    (empty_val, addErr(genErrMsg(emsg,add_fn ("You must provide a valid "^ty^" - <i>" ^ 
 						      v ^ "</i> is not one")),
 			       errs))
       | _ => (empty_val, addErr(errTooMany emsg,errs))
@@ -270,7 +278,7 @@ structure FormVar :> FORM_VAR =
 	     <ul>
 	     <li>login@it-c.dk
 	     <li>user@supernet.com
-	     <li>FirstLastname@very.big.company.com\n
+	     <li>FirstLastname@very.big.company.com
 	     </ul></blockquote>`
 
       fun msgName s = 
@@ -348,21 +356,21 @@ structure FormVar :> FORM_VAR =
 	  of NONE => false
 	   | SOME _ => true
     in
-      val getEmailErr = getErr' ("email") msgEmail
+      val getEmailErr = getErr' "email" msgEmail
 	(fn email => regExpMatch "[^@\t ]+@[^@.\t ]+(\\.[^@.\n ]+)+" (trim email)) 
-      val getNameErr = getErr' ("name") msgName (regExpMatch "[a-zA-ZAÆØÅaæøå '\\-]+")
-      val getAddrErr = getErr' ("address") msgAddr (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
-      val getLoginErr = getErr' ("login") msgLogin 
+      val getNameErr = getErr' "name" msgName (regExpMatch "[a-zA-ZAÆØÅaæøå '\\-]+")
+      val getAddrErr = getErr' "address" msgAddr (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
+      val getLoginErr = getErr' "login" msgLogin 
 	(fn login =>
 	 regExpMatch "[a-z][a-z0-9\\-]+" login andalso 
 	 String.size login >= 3 andalso String.size login <= 10)
-      val getPhoneErr = getErr' ("phone number") msgPhone (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
+      val getPhoneErr = getErr' "phone number" msgPhone (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
       (* getHtml : not implemented yet *)
-      val getHtmlErr = getErr' ("HTML text") msgHTML (fn html => html <> "")
-      val getUrlErr =  getErr' ("URL") msgURL (regExpMatch "http://[0-9a-zA-Z/\\-\\\\._~]+(:[0-9]+)?")
-      val getEnumErr = fn enums => getErr' ("enumeration") (msgEnum enums) (chkEnum enums)
-      val getYesNoErr = let val enums = ["Yes","No"] in getErr' ("Yes/No") (msgEnum enums) (chkEnum ["t","f"]) end
-      val getTableName = getErr' ("table name") msgTableName (regExpMatch "[a-zA-Z_]+")
+      val getHtmlErr = getErr' "HTML text" msgHTML (fn html => html <> "")
+      val getUrlErr =  getErr' "URL" msgURL (regExpMatch "http://[0-9a-zA-Z/\\-\\\\._~]+(:[0-9]+)?")
+      val getEnumErr = fn enums => getErr' "enumeration" (msgEnum enums) (chkEnum enums)
+      val getYesNoErr = let val enums = ["Yes","No"] in getErr' "Yes/No" (msgEnum enums) (chkEnum ["t","f"]) end
+      val getTableName = getErr' "table name" msgTableName (regExpMatch "[a-zA-Z_]+")
     end
 
     fun getStrings fv = List.map trim (Ns.Conn.formvarAll fv)
