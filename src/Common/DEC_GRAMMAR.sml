@@ -167,6 +167,12 @@ sig
   val find_topmost_id_in_pat : pat -> string Option
   val find_topmost_id_in_atpat: atpat -> string Option
 
+  (*is_'true'_'nil'_etc & is_'it' are used to enforce some syntactic
+   restrictions (Definition, §2.9 & §3.5).*)
+
+  val is_'true'_'nil'_etc : id -> bool
+  val is_'it' : id -> bool
+
   type StringTree
 
   val layoutTyvarseq : tyvar list -> StringTree Option
