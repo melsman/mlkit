@@ -84,7 +84,7 @@ structure ScsWidget :> SCS_WIDGET =
     fun ul qs = `<ul>` ^^ (List.foldr (fn (q,acc) => `
 				       <li>` ^^ q ^^ acc) `</ul>` qs)
 
-    fun TA rows cols n v = `<textarea name="^n" rows=^rows cols=^cols wrap=physical>` ^^ v ^^ `</textarea>`
+    fun TA rows cols n v = `<textarea name="^n" rows=^rows cols=^cols >` ^^ v ^^ `</textarea>`
 
     val largeTA = TA "20" "80"
     val mediumTA = TA "10" "40"
