@@ -79,6 +79,19 @@ Cfg/CfgKitAM.sml
 Cfg/TRANSFORM_KBP.sml
 Cfg/TransformKbp.sml
 
+Backend/CLOS_CONV_ENV.sml
+Backend/ClosConvEnv.sml
+Backend/CALL_CONV.sml
+Backend/CallConv.sml
+Backend/CLOS_EXP.sml
+Backend/ClosExp.sml
+Backend/LINE_STMT.sml
+Backend/LineStmt.sml
+Backend/BACKEND_INFO.sml
+Backend/BackendInfo.sml
+Backend/REG_ALLOC.sml
+Backend/RegAlloc.sml
+
 #if defined(KIT_TARGET_C)
 
    C/C_INFO.sml

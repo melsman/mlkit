@@ -15,6 +15,7 @@ by a list of tokens. The following tokens are supported:
                   profiling enabled
 
 Test files may contain Standard ML like comments.
+
 *)
 
 (* Tests of static semantics; it would be great with some more
@@ -78,7 +79,7 @@ date.sml                      prof
 timer.sml                     prof
 unixpath.sml                  prof
 cmdline.sml                   prof
-filesys.sml                   prof
+filesys.sml                   prof    (* See test/README *)
 real.sml                      prof
 word.sml                      prof
 word8.sml                     prof    (* the C backend does not

@@ -487,6 +487,79 @@ functor BuildCompile (structure Name : NAME
 			       structure Crash = Crash
 			       structure Report = Report)
 
+    structure Labels = AddressLabels(structure Name = Name)
+
+    structure BackendInfo = BackendInfo(structure Labels = Labels
+					structure PP = PP
+					structure Flags = Flags
+					structure Report = Report
+					structure Crash = Crash) : BACKEND_INFO
+
+    structure ClosConvEnv = ClosConvEnv(structure Lvars = Lvars
+					structure Con = Con
+					structure Excon = Excon
+					structure Effect = Effect
+					structure MulExp = MulExp
+					structure RegvarFinMap = EffVarEnv
+					structure PhysSizeInf = PhysSizeInf
+					structure Labels = Labels
+					structure BI = BackendInfo
+					structure PP = PP
+					structure Crash = Crash)
+
+    structure CallConv = CallConv(structure Lvars = Lvars
+				  structure BI = BackendInfo
+				  structure PP = PP
+				  structure Flags = Flags
+				  structure Report = Report
+				  structure Crash = Crash)
+
+    structure ClosExp = ClosExp(structure Con = Con
+				structure Excon = Excon
+				structure Lvars = Lvars
+				structure TyName = TyName
+				structure Effect = Effect
+				structure RType = RType
+				structure MulExp = MulExp
+				structure Mul = Mul
+				structure RegionExp = RegionExp
+				structure AtInf = AtInf
+				structure PhysSizeInf = PhysSizeInf
+				structure Labels = Labels
+				structure ClosConvEnv = ClosConvEnv
+				structure BI = BackendInfo
+				structure CallConv = CallConv
+				structure PP = PP
+				structure Flags = Flags
+				structure Report = Report
+				structure Crash = Crash)
+
+    structure LineStmt = LineStmt(structure PhysSizeInf = PhysSizeInf
+				  structure Con = Con
+				  structure Excon = Excon
+				  structure Lvars = Lvars
+				  structure Effect = Effect
+				  structure Labels = Labels
+				  structure CallConv = CallConv
+				  structure ClosExp = ClosExp
+				  structure PP = PP
+				  structure Flags = Flags
+				  structure Report = Report
+				  structure Crash = Crash)
+
+    structure RegAlloc = RegAlloc(structure PhysSizeInf = PhysSizeInf
+				  structure Con = Con
+				  structure Excon = Excon
+				  structure Lvars = Lvars
+				  structure Effect = Effect
+				  structure Labels = Labels
+				  structure CallConv = CallConv
+				  structure LineStmt = LineStmt
+				  structure BI = BackendInfo
+				  structure PP = PP
+				  structure Flags = Flags
+				  structure Report = Report
+				  structure Crash = Crash)
 
     structure CompLamb = CompLamb(structure Con = Con
 				  structure Excon = Excon
@@ -523,11 +596,11 @@ functor BuildCompile (structure Name : NAME
 		   structure DropRegions = DropRegions
 		   structure PhysSizeInf = PhysSizeInf
 		   structure CompLamb = CompLamb
+		   structure ClosExp = ClosExp
 		   structure Report = Report
 		   structure PP = PP
 		   structure Flags = Flags
-		   structure Mul = Mul
-		     )
+		   structure Mul = Mul)
 
 
     structure CompileDec = CompileDec(
@@ -571,6 +644,9 @@ functor BuildCompile (structure Name : NAME
 	      structure AtInf = AtInf
 	      structure DropRegions = DropRegions
 	      structure PhysSizeInf = PhysSizeInf
+	      structure ClosExp = ClosExp
+	      structure LineStmt = LineStmt
+	      structure RegAlloc = RegAlloc
 	      structure RegionFlowGraphProfiling = RegionFlowGraphProfiling
 	      structure CompLamb = CompLamb
 	      structure KAMBackend = KAMBackend
