@@ -70,8 +70,8 @@ signature SCS_PERSON =
     val portrait_type_to_DB   : portrait_type -> string
 
     (* Default portraits *)
-    val empty_portrait_thumbnail : portrait_record
-    val empty_portrait_large : portrait_record
+    val empty_portrait_thumbnail : unit -> portrait_record
+    val empty_portrait_large     : unit -> portrait_record
 
     (* [getPortrait file_id] returns the portrait represented by file_id. *)
     val getPortrait : int -> portrait_record option
@@ -435,7 +435,7 @@ structure ScsPerson :> SCS_PERSON =
 
     val upload_root_label = "ScsPersonPortrait"        (* Upload root label used in FS *)
     val max_height = 400                               (* Height of large pictures *)
-    val thumb_height = 180                             (* Height of thumbnails *)
+    val thumb_height = 200                             (* Height of thumbnails *)
     val download_dir = "/scs/person/portrait_download" (* Virtually download directory *)
     val scs_approvals_show_portrait_name ="scs_parties:may_show_portrait"
     local
@@ -491,36 +491,50 @@ structure ScsPerson :> SCS_PERSON =
                                                        and p.party_id = party.party_id`)
     end
 
-    val empty_portrait_thumbnail : portrait_record = 
-      { file_id = 0,
-        party_id = 0,
-	portrait_type_vid = 0,
-	portrait_type_val = thumb_fixed_height,
-	filename = "empty_portrait_thumbnail.jpg",
-	url = download_dir ^ "/empty_portrait_thumbnail.jpg",
-	width = 78,
-        height = 100,
-	bytes = 2841,
-	official_p = false,
-	person_name = "-",
-	may_show_portrait_p = true,
-	modifying_user = 0 (* Arbitrary value *),
-	last_modified = ScsDate.now_local() (* Arbitrary value *)}
-    val empty_portrait_large : portrait_record =
-      { file_id = 0,
-        party_id = 0,
-	portrait_type_vid = 0,
-	portrait_type_val = original,
-	filename = "empty_portrait_large.jpg",
-	url = download_dir ^ "/empty_portrait_large.jpg",
-	width = 78,
-        height = 100,
-	bytes = 2841,
-	official_p = false,
-	person_name = "-",
-	may_show_portrait_p = true,
-	modifying_user = 0 (* Arbitrary value *),
-	last_modified = ScsDate.now_local() (* Arbitrary value *)}
+    fun empty_portrait_thumbnail () : portrait_record = 
+      let
+	val (filename,url,bytes) =
+	  case ScsLogin.user_lang() of
+	    ScsLang.da => ("empty_portrait_thumbnail_da.jpg","/empty_portrait_thumbnail_da.jpg",2954)
+	  | ScsLang.en => ("empty_portrait_thumbnail_en.jpg","/empty_portrait_thumbnail_en.jpg",2676)
+      in
+	{file_id = 0,
+	 party_id = 0,
+	 portrait_type_vid = 0,
+	 portrait_type_val = thumb_fixed_height,
+	 filename = filename,
+	 url = download_dir ^ url,
+	 width = 170,
+	 height = 200,
+	 bytes = bytes,
+	 official_p = false,
+	 person_name = "-",
+	 may_show_portrait_p = true,
+	 modifying_user = 0 (* Arbitrary value *),
+	 last_modified = ScsDate.now_local() (* Arbitrary value *)}
+      end
+    fun empty_portrait_large () : portrait_record =
+      let
+	val (filename,url,bytes) =
+	  case ScsLogin.user_lang() of
+	    ScsLang.da => ("empty_portrait_large_da.jpg","/empty_portrait_large_da.jpg",7255)
+	  | ScsLang.en => ("empty_portrait_large_en.jpg","/empty_portrait_large_en.jpg",6793)
+      in
+	{file_id = 0,
+	 party_id = 0,
+	 portrait_type_vid = 0,
+	 portrait_type_val = original,
+	 filename = filename,
+	 url = download_dir ^ url,
+	 width = 340,
+	 height = 400,
+	 bytes = bytes,
+	 official_p = false,
+	 person_name = "-",
+	 may_show_portrait_p = true,
+	 modifying_user = 0 (* Arbitrary value *),
+	 last_modified = ScsDate.now_local() (* Arbitrary value *)}
+      end
 
     fun getPicture pic_type official_p (portraits : portrait_record list) = 
       List.find (fn pic => #portrait_type_val pic = pic_type andalso 
@@ -583,9 +597,9 @@ structure ScsPerson :> SCS_PERSON =
       fun returnEmpty pic_type = 
 	case pic_type of 
 	  thumb_fixed_height => 
-	    (Ns.returnFile (Ns.Info.pageRoot() ^ (#url empty_portrait_thumbnail));())
+	    (Ns.returnFile (Ns.Info.pageRoot() ^ (#url (empty_portrait_thumbnail())));())
 	| _ => 
-	    (Ns.returnFile (Ns.Info.pageRoot() ^ (#url empty_portrait_large));())
+	    (Ns.returnFile (Ns.Info.pageRoot() ^ (#url (empty_portrait_large())));())
       fun returnFile pic_type user_id file_id =
 let
   val _ = Ns.NsDebug.addMsg `******returnFile begin*****`
@@ -673,7 +687,9 @@ val _ = Ns.NsDebug.addMsg `******returnPortraitFile begin*****`
 
     fun portraitAsHtml (user_id,per:person_record,official_p,adm_p) =
       let
-	val default_html = genPortraitHtml (SOME empty_portrait_thumbnail) (SOME empty_portrait_large) ""
+	val default_html = genPortraitHtml 
+	  (SOME (empty_portrait_thumbnail())) 
+	  (SOME (empty_portrait_large())) ""
 	val use_default_p =
 	  #may_show_portrait_p per = false andalso
 	  user_id <> #person_id per andalso not adm_p
