@@ -104,19 +104,19 @@ functor Name(structure Crash : CRASH) : NAME =
     val exn_INTERRUPT = new_rigid()       (* name 11 *)
 
     local
-	open Pickle
 	fun toRec (k,r,g) = {key=k, rigid=r, gen_mark=g}
 	fun fromRec {key, rigid, gen_mark} = (key,rigid,gen_mark)
-	val pu0 = convert (toRec,fromRec) 
-	    (tup3Gen0(pairGen(int,string), bool, refOneGen bool))
+	val pu0 = Pickle.convert (toRec,fromRec) 
+	    (Pickle.tup3Gen0(Pickle.pairGen(Pickle.int,Pickle.string), Pickle.bool, 
+			     Pickle.refOneGen Pickle.bool))
     in
 	val pu = 
-	    hashConsEq eq
-	    (register "Name" [reg_top, reg_bot, reg_string, reg_pair,
-			      reg_array, reg_ref, reg_triple,	     
-			      exn_DIV, exn_MATCH, exn_BIND,
-			      exn_OVERFLOW, exn_INTERRUPT]
-	     (ref0EqGen eq pu0))
-	val pu_matchcount = int
+	    Pickle.hashConsEq eq
+	    (Pickle.register "Name" [reg_top, reg_bot, reg_string, reg_pair,
+				     reg_array, reg_ref, reg_triple,	     
+				     exn_DIV, exn_MATCH, exn_BIND,
+				     exn_OVERFLOW, exn_INTERRUPT]
+	     (Pickle.ref0EqGen eq pu0))
+	val pu_matchcount = Pickle.int
     end
   end

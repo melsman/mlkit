@@ -404,25 +404,24 @@ functor ManagerObjects(structure Execution : EXECUTION
 	    end
 
 	val pu =
-	    let open Pickle
-		fun toInt EMPTY_MODC = 0
+	    let fun toInt EMPTY_MODC = 0
 		  | toInt (SEQ_MODC _) = 1
 		  | toInt (EMITTED_MODC _) = 2
 		  | toInt (NOTEMITTED_MODC _) = 3
-		val fun_EMPTY_MODC = con0 EMPTY_MODC
+		val fun_EMPTY_MODC = Pickle.con0 EMPTY_MODC
 		fun fun_SEQ_MODC pu = 
-		    con1 SEQ_MODC (fn SEQ_MODC a => a | _ => die "ModCode.pu.SEQ_MODC")
-		    (pairGen(pu,pu))
+		    Pickle.con1 SEQ_MODC (fn SEQ_MODC a => a | _ => die "ModCode.pu.SEQ_MODC")
+		    (Pickle.pairGen(pu,pu))
 		fun fun_EMITTED_MODC _ = 
-		    con1 EMITTED_MODC (fn EMITTED_MODC a => a | _ => die "ModCode.pu.EMITTED_MODC")
-		    (pairGen(string,Execution.pu_linkinfo))
+		    Pickle.con1 EMITTED_MODC (fn EMITTED_MODC a => a | _ => die "ModCode.pu.EMITTED_MODC")
+		    (Pickle.pairGen(Pickle.string,Execution.pu_linkinfo))
 		fun error _ = die "ModCode.pu.NOTEMITTED_MODC"
 		fun fun_NOTEMITTED_MODC _ = 
-		    con1 error error (convert (error,error) unit)
-	    in dataGen("ModCode",toInt,[fun_EMPTY_MODC,
-					fun_SEQ_MODC,
-					fun_EMITTED_MODC,
-					fun_NOTEMITTED_MODC])
+		    Pickle.con1 error error (Pickle.convert (error,error) Pickle.unit)
+	    in Pickle.dataGen("ModCode",toInt,[fun_EMPTY_MODC,
+					       fun_SEQ_MODC,
+					       fun_EMITTED_MODC,
+					       fun_NOTEMITTED_MODC])
 	    end
 
 	fun dirMod d EMPTY_MODC = EMPTY_MODC
@@ -462,18 +461,17 @@ functor ManagerObjects(structure Execution : EXECUTION
 	fun pr (FUNSTAMP_MODTIME (funid,time)) = FunId.pr_FunId funid ^ "##" ^ Time.toString time
 	  | pr (FUNSTAMP_GEN (funid,i)) = FunId.pr_FunId funid ^ "#" ^ Int.toString i
 	val pu = 
-	    let open Pickle
-		val pu_funid_time = pairGen(FunId.pu,time)
-		val pu_funid_int = pairGen(FunId.pu,int)
+	    let val pu_funid_time = Pickle.pairGen(FunId.pu,Pickle.time)
+		val pu_funid_int = Pickle.pairGen(FunId.pu,Pickle.int)
 		fun toInt (FUNSTAMP_MODTIME _) = 0
 		  | toInt (FUNSTAMP_GEN _) = 1
 		fun fun_FUNSTAMP_MODTIME _ =
-		    con1 FUNSTAMP_MODTIME (fn FUNSTAMP_MODTIME v => v | _ => die "pu.FUNSTAMP_MODTIME")
+		    Pickle.con1 FUNSTAMP_MODTIME (fn FUNSTAMP_MODTIME v => v | _ => die "pu.FUNSTAMP_MODTIME")
 		    pu_funid_time
 		fun fun_FUNSTAMP_GEN _ =
-		    con1 FUNSTAMP_GEN (fn FUNSTAMP_GEN v => v | _ => die "pu.FUNSTAMP_GEN")
+		    Pickle.con1 FUNSTAMP_GEN (fn FUNSTAMP_GEN v => v | _ => die "pu.FUNSTAMP_GEN")
 		    pu_funid_int
-	    in dataGen("FunStamp",toInt,[fun_FUNSTAMP_MODTIME, fun_FUNSTAMP_GEN])
+	    in Pickle.dataGen("FunStamp",toInt,[fun_FUNSTAMP_MODTIME, fun_FUNSTAMP_GEN])
 	    end
       end
 
@@ -505,44 +503,67 @@ functor ManagerObjects(structure Execution : EXECUTION
     (* Instead of storing structure expressions in functor environments, information necessary for recreating 
      * structure expressions is stored (BodyBuilderClos). *)
 
+    local
+	fun layoutBBC bbc =
+	    PP.NODE{start="BBC=<todo",finish=">", indent=2,
+		    childsep=PP.RIGHT", ", children=[]}
+    in
+	fun layoutIntSigEnv (ISE ise) = FinMap.layoutMap{start="IntSigEnv = [", eq="->",sep=", ", finish="]"}
+	    (PP.LEAF o SigId.pr_SigId) 
+	  (TyName.Set.layoutSet {start="{",finish="}",sep=", "} (PP.LEAF o TyName.pr_TyName)) ise
+
+	fun layoutIntBasis(IB(ife,ise,ce,cb)) =
+	    PP.NODE{start="IntBasis = [", finish="]", indent=1, childsep=PP.RIGHT ", ",
+		    children=[layoutIntFunEnv ife,
+			      layoutIntSigEnv ise,
+			      CompilerEnv.layoutCEnv ce,
+			      CompileBasis.layout_CompileBasis cb]}
+	and layoutClos a = 
+	    let val (absprjid, funstamp, strid, E, BBC, ib) = a
+	    in PP.NODE{start="<", finish=">",
+		       childsep=PP.RIGHT", ", indent=2,
+		       children=[PP.LEAF ("funstamp=" ^ FunStamp.pr funstamp),
+				 layoutBBC BBC,
+				 layoutIntBasis ib]}				 
+	    end
+	and layoutIntFunEnv (IFE ife) = FinMap.layoutMap{start="IntFunEnv = [", eq="->",sep=", ", finish="]"}
+	    (PP.LEAF o FunId.pr_FunId) layoutClos ife
+
+    end
 
     (* Picklers *)
 
     val pu_BodyBuilderClos =
-	let open Pickle
-	    fun to ((infB,elabB,absprjid),(filename,opaq_env,T),resE) = 
+	let fun to ((infB,elabB,absprjid),(filename,opaq_env,T),resE) = 
 		{infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,
 		 opaq_env=opaq_env,T=T,resE=resE}
 	    fun from {infB=infB,elabB=elabB,absprjid=absprjid,filename=filename,
 		      opaq_env=opaq_env,T=T,resE=resE} = ((infB,elabB,absprjid),(filename,opaq_env,T),resE)
-	in convert (to,from)
-	    (tup3Gen0(tup3Gen0(InfixBasis.pu,ModuleEnvironments.B.pu,ModuleEnvironments.pu_absprjid),
-		      tup3Gen0(string,OpacityElim.OpacityEnv.pu,listGen TyName.pu), 
-		      Execution.Elaboration.Basics.Environments.E.pu))
+	in Pickle.convert (to,from)
+	    (Pickle.tup3Gen0(Pickle.tup3Gen0(InfixBasis.pu,ModuleEnvironments.B.pu,ModuleEnvironments.pu_absprjid),
+			     Pickle.tup3Gen0(Pickle.string,OpacityElim.OpacityEnv.pu,Pickle.listGen TyName.pu), 
+			     Execution.Elaboration.Basics.Environments.E.pu))
 	end
 
     val pu_IntSigEnv =
-	let open Pickle
-	in convert (ISE, fn ISE v => v) 
-	    (FinMap.pu(SigId.pu,TyName.Set.pu TyName.pu))
-	end
+	Pickle.convert (ISE, fn ISE v => v) 
+	(FinMap.pu(SigId.pu,TyName.Set.pu TyName.pu))
 
     val (pu_IntFunEnv,pu_IntBasis) =
-	let open Pickle
-	    fun IntFunEnvToInt _ = 0
+	let fun IntFunEnvToInt _ = 0
 	    fun IntBasisToInt _ = 0
 	    fun fun_IFE (pu_IntFunEnv, pu_IntBasis) =
-		con1 IFE (fn IFE a => a)		
+		Pickle.con1 IFE (fn IFE a => a)		
 		(FinMap.pu (FunId.pu,
-			    convert (fn ((a,b,c),(d,e,f)) => (a,b,c,d,e,f), fn (a,b,c,d,e,f) => ((a,b,c),(d,e,f)))
-			    (pairGen0(tup3Gen0(ModuleEnvironments.pu_absprjid,FunStamp.pu,StrId.pu),
-				      tup3Gen0(Execution.Elaboration.Basics.Environments.E.pu,
-					       pu_BodyBuilderClos,pu_IntBasis)))))
+			    Pickle.convert (fn ((a,b,c),(d,e,f)) => (a,b,c,d,e,f), fn (a,b,c,d,e,f) => ((a,b,c),(d,e,f)))
+			    (Pickle.pairGen0(Pickle.tup3Gen0(ModuleEnvironments.pu_absprjid,FunStamp.pu,StrId.pu),
+					     Pickle.tup3Gen0(Execution.Elaboration.Basics.Environments.E.pu,
+							     pu_BodyBuilderClos,pu_IntBasis)))))
 	    fun fun_IB (pu_IntFunEnv, pu_IntBasis) =
-		con1 IB (fn IB a => a)
-		(tup4Gen0(pu_IntFunEnv,pu_IntSigEnv,CompilerEnv.pu,CompileBasis.pu))
-	in data2Gen("IntFunEnv",IntFunEnvToInt,[fun_IFE],
-		    "IntBasis",IntBasisToInt,[fun_IB])
+		Pickle.con1 IB (fn IB a => a)
+		(Pickle.tup4Gen0(pu_IntFunEnv,pu_IntSigEnv,CompilerEnv.pu,CompileBasis.pu))
+	in Pickle.data2Gen("IntFunEnv",IntFunEnvToInt,[fun_IFE],
+			   "IntBasis",IntBasisToInt,[fun_IB])
 	end
 
     structure IntFunEnv =
@@ -566,8 +587,8 @@ functor ManagerObjects(structure Execution : EXECUTION
 		      case FinMap.lookup ife0 funid
 			of SOME obj0 => FunStamp.eq(#2 obj,#2 obj0) andalso #1 obj = #1 obj0
 			 | NONE => false) true ife
-	fun layout (IFE ife) = FinMap.layoutMap{start="IntFunEnv = [", eq="->",sep=", ", finish="]"}
-	  (PP.LEAF o FunId.pr_FunId) (PP.LEAF o FunStamp.pr o #2) ife
+
+	val layout = layoutIntFunEnv
 	fun fold f i (IFE ife) = FinMap.Fold f i ife
 	val pu = pu_IntFunEnv
       end
@@ -594,9 +615,7 @@ functor ManagerObjects(structure Execution : EXECUTION
 		      case FinMap.lookup ise0 sigid
 			of SOME T0 => TyName.Set.eq T T0
 			 | NONE => false) true ise
-	fun layout (ISE ise) = FinMap.layoutMap{start="IntSigEnv = [", eq="->",sep=", ", finish="]"}
-	  (PP.LEAF o SigId.pr_SigId) 
-	  (TyName.Set.layoutSet {start="{",finish="}",sep=", "} (PP.LEAF o TyName.pr_TyName)) ise
+	val layout = layoutIntSigEnv
 	fun tynames (ISE ise) = FinMap.fold (fn (a,b) => TyName.Set.union a b) TyName.Set.empty ise
 
 	val pu = pu_IntSigEnv
@@ -614,22 +633,52 @@ functor ManagerObjects(structure Execution : EXECUTION
 	fun plus (IB(ife1,ise1,ce1,cb1), IB(ife2,ise2,ce2,cb2)) =
 	  IB(IntFunEnv.plus(ife1,ife2), IntSigEnv.plus(ise1,ise2), CompilerEnv.plus(ce1,ce2), CompileBasis.plus(cb1,cb2))
 
-	fun restrict (IB(ife,ise,ce,cb), {funids, sigids, longstrids, longvids, longtycons}, tynames_opacity_env) =
+	fun restrict0 (IB(ife,ise,ce,cb), {funids, sigids, longstrids, longvids, longtycons}, tynames) =
 	    let val ife' = IntFunEnv.restrict(ife,funids)
 	        val ise' = IntSigEnv.restrict(ise,sigids)
 	        val ce' = CompilerEnv.restrictCEnv(ce,{longstrids=longstrids,longvids=longvids,longtycons=longtycons})
 		(*val _ = if !Flags.chat then (print("\n RESTRICTED CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
 			else ()*)
 		val lvars = CompilerEnv.lvarsOfCEnv ce'
-(*		val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce') *)
-		fun tynames_ife(IFE ife, tns) = 
+		fun tynames_ife(IFE ife) = 
 		  let fun tynames_obj ((_,_,_,_,_,obj),tns) = 
 		        let val IB(_,ise,ce,_) = obj
 			in TyName.Set.list(IntSigEnv.tynames ise) @ (CompilerEnv.tynamesOfCEnv ce @ tns)
 			end
-		  in FinMap.fold tynames_obj tns ife
+		  in FinMap.fold tynames_obj nil ife
 		  end
-		val tynames = [TyName.tyName_EXN,     (* exn is used explicitly in CompileDec *)
+		val tynames =
+		    TyName.Set.union
+		    (IntSigEnv.tynames ise')
+		    (TyName.Set.fromList		     
+		     (CompilerEnv.tynamesOfCEnv ce'
+		      @ tynames_ife ife'
+		      @ tynames))
+		val tynames = TyName.Set.list
+		    (TyName.Set.difference tynames
+		     (TyName.Set.fromList TyName.tynamesPredefined))
+		val cons = CompilerEnv.consOfCEnv ce'
+		val excons = CompilerEnv.exconsOfCEnv ce'
+		val cb' = CompileBasis.restrict0(cb,(lvars,tynames,cons,excons))
+		  
+	    (* because of the delayed interpretation of functors, we
+	     * need also add the compiler bases for each of the functor 
+	     * identifiers to the resulting interpretation basis; see 
+	     * the example test/fxp_err.sml for an example where not 
+	     * adding compiler bases causes the compiler to crash. *)
+
+(*I don't udnerstand this; mael 2004-11-24
+		val cb'' = IntFunEnv.fold (fn ((_,functorClos),cb) => 
+					   let val IB ib = #6 functorClos
+					   in CompileBasis.plus(cb,#4 ib)
+					   end) cb' ife'
+*)
+		val cb'' = cb'
+	    in IB (ife',ise',ce',cb'')
+	    end
+
+	fun restrict (ib, ids, tynames) = 
+	    let val tynames = [TyName.tyName_EXN,     (* exn is used explicitly in CompileDec *)
 			       TyName.tyName_INT31,   (* int31, int32, word8, word31, word32 needed *)
 			       TyName.tyName_INT32,   (*     because of overloading *)
 			       TyName.tyName_WORD8,
@@ -639,10 +688,30 @@ functor ManagerObjects(structure Execution : EXECUTION
 			       TyName.tyName_CHAR,    (* char is needed for char constants *)
 			       TyName.tyName_REF,
 			       TyName.tyName_REAL]    (* real needed because of overloading *)
-		  @ (CompilerEnv.tynamesOfCEnv ce') @ (TyName.Set.list tynames_opacity_env)
-		val tynames = tynames_ife(ife',tynames)
-		val tynames = TyName.Set.list (TyName.Set.union (TyName.Set.fromList tynames) 
-					       (IntSigEnv.tynames ise'))
+		  @ TyName.Set.list tynames
+		val IB(ife,ise,ce,cb) = ib
+		val {funids, sigids, longstrids, longvids, longtycons} = ids
+		val ife' = IntFunEnv.restrict(ife,funids)
+	        val ise' = IntSigEnv.restrict(ise,sigids)
+	        val ce' = CompilerEnv.restrictCEnv(ce,{longstrids=longstrids,longvids=longvids,longtycons=longtycons})
+		(*val _ = if !Flags.chat then (print("\n RESTRICTED CE:\n");PP.outputTree(print,CompilerEnv.layoutCEnv ce',100))
+			else ()*)
+		val lvars = CompilerEnv.lvarsOfCEnv ce'
+		fun tynames_ife(IFE ife) = 
+		  let fun tynames_obj ((_,_,_,_,_,obj),tns) = 
+		        let val IB(_,ise,ce,_) = obj
+			in TyName.Set.list(IntSigEnv.tynames ise) @ (CompilerEnv.tynamesOfCEnv ce @ tns)
+			end
+		  in FinMap.fold tynames_obj nil ife
+		  end
+		val tynames =
+		    TyName.Set.union
+		    (IntSigEnv.tynames ise')
+		    (TyName.Set.fromList
+		     (CompilerEnv.tynamesOfCEnv ce'
+		      @ tynames_ife ife'
+		      @ tynames))
+		val tynames = TyName.Set.list tynames
 		val cons = CompilerEnv.consOfCEnv ce'
 		val excons = CompilerEnv.exconsOfCEnv ce'
 		val cb' = CompileBasis.restrict(cb,(lvars,tynames,cons,excons))
@@ -689,7 +758,6 @@ functor ManagerObjects(structure Execution : EXECUTION
 	      let 
 		fun restr ce cb =
 		  let val lvars = CompilerEnv.lvarsOfCEnv ce
-(*		      val lvars_with_prims = lvars @ (CompilerEnv.primlvarsOfCEnv ce) *)
 		      val tynames = CompilerEnv.tynamesOfCEnv ce
 		      val cons = CompilerEnv.consOfCEnv ce
 		      val excons = CompilerEnv.exconsOfCEnv ce
@@ -707,17 +775,16 @@ functor ManagerObjects(structure Execution : EXECUTION
 	  fun agree (l, IB B1, IB B2) = agree2 (l, B1, B2) 
 	end
 
-	fun layout(IB(ife,ise,ce,cb)) =
-	  PP.NODE{start="IntBasis = [", finish="]", indent=1, childsep=PP.RIGHT ", ",
-		  children=[IntFunEnv.layout ife,
-			    IntSigEnv.layout ise,
-			    CompilerEnv.layoutCEnv ce,
-			    CompileBasis.layout_CompileBasis cb]}
-	  
+	val layout = layoutIntBasis
+
 	  (* operations used in Manager, only. *)
 	fun initial() = IB (IntFunEnv.initial, IntSigEnv.initial, 
 			    CompilerEnv.initialCEnv(), CompileBasis.initial)
 	val pu = pu_IntBasis
+
+	fun closure tynames dom (ib',ib) =
+	    (* closure_IB'(IB) : the closure of IB w.r.t. IB' *)
+	    restrict0(plus(ib',ib),dom,tynames)
       end
 
     datatype Basis = BASIS of InfixBasis * ElabBasis * opaq_env * IntBasis
@@ -798,8 +865,26 @@ functor ManagerObjects(structure Execution : EXECUTION
 
 	fun closure (B': Basis, B: Basis) : Basis = 
 	    (* closure_B'(B) : the closure of B w.r.t. B' *)
+(*was:
 	    let val dom = domain B
 	    in #1 (restrict(plus(B',B),dom))
+	    end
+*)
+	    let val BASIS(infB',eB',oe',iB') = B'
+		val BASIS(infB,eB,oe,iB) = B
+		val dom = domain B
+		fun subtractPredefinedTynames tns = 
+		    TyName.Set.difference tns (TyName.Set.fromList TyName.tynamesPredefined)
+		val tynames_eB = subtractPredefinedTynames(ModuleEnvironments.B.tynames eB)
+		val oe1 = OpacityElim.OpacityEnv.plus(oe',oe)
+		val oe2 = OpacityElim.OpacityEnv.restrict(oe1,(#funids dom,tynames_eB))
+
+		val tynames_oe2 = Execution.Elaboration.Basics.StatObject.Realisation.tynamesRng(OpacityElim.OpacityEnv.rea_of oe2)
+		val tynames = TyName.Set.union tynames_oe2 tynames_eB
+
+		val iBclosed = IntBasis.closure (TyName.Set.list tynames_oe2) dom (iB',iB)
+	    in
+		BASIS(infB,eB,oe2,iBclosed)
 	    end
 	  
 	fun layout (BASIS(infB,elabB,rea,intB)) : StringTree =
@@ -814,20 +899,22 @@ functor ManagerObjects(structure Execution : EXECUTION
 	val _ = app Name.mk_rigid (!Name.bucket)
 
 	val pu =
-	    let open Pickle
-	    in comment "MO.Basis"
-		(convert (BASIS, fn BASIS a => a)
-		 (tup4Gen0(InfixBasis.pu, 
-			   comment "ModuleEnvironments.B.pu" ModuleEnvironments.B.pu, 
-			   comment "OpacityEnv.pu" OpacityElim.OpacityEnv.pu, 
-			   IntBasis.pu)))
-	    end
+	    Pickle.comment "MO.Basis"
+	    (Pickle.convert (BASIS, fn BASIS a => a)
+	     (Pickle.tup4Gen0(InfixBasis.pu, 
+			      Pickle.comment "ModuleEnvironments.B.pu" ModuleEnvironments.B.pu, 
+			      Pickle.comment "OpacityEnv.pu" OpacityElim.OpacityEnv.pu, 
+			      IntBasis.pu)))
 
 	type Basis0 = InfixBasis * ElabBasis
-	val pu_Basis0 =
-	    let open Pickle
-	    in pairGen(InfixBasis.pu, ModuleEnvironments.B.pu)
+	fun showBasis0 pr p : unit =
+	    let fun pp (ib,eb) =
+		PP.NODE{start="Basis0(", finish=")", childsep=PP.RIGHT",",
+			indent=1,children=[InfixBasis.layoutBasis ib, ModuleEnvironments.B.layout eb]}
+	    in PP.outputTree(pr,pp p,100) 
 	    end
+	val pu_Basis0 =
+	    Pickle.pairGen(InfixBasis.pu, ModuleEnvironments.B.pu)
 	fun plusBasis0 ((ib,eb),(ib',eb')) = 
 	    (InfixBasis.compose(ib,ib'), ModuleEnvironments.B.plus(eb,eb'))
 	fun initialBasis0() = 
@@ -841,10 +928,14 @@ functor ManagerObjects(structure Execution : EXECUTION
 	    db_f "B_l" (ModuleEnvironments.B.enrich(eB1,eB2)) andalso db_f "B_r" (ModuleEnvironments.B.enrich(eB2,eB1))
 
 	type Basis1 = opaq_env * IntBasis
-	val pu_Basis1 =
-	    let open Pickle
-	    in pairGen(OpacityElim.OpacityEnv.pu, IntBasis.pu)
+	fun showBasis1 pr p : unit =
+	    let fun pp (rea,intB) =
+		PP.NODE{start="Basis1(", finish=")", childsep=PP.RIGHT",",
+			indent=1,children=[OpacityElim.OpacityEnv.layout rea, IntBasis.layout intB]}
+	    in PP.outputTree(pr,pp p,100) 
 	    end
+	val pu_Basis1 =
+	    Pickle.pairGen(OpacityElim.OpacityEnv.pu, IntBasis.pu)
 	fun plusBasis1((oe,ib),(oe',ib')) = 
 	    (OpacityElim.OpacityEnv.plus(oe,oe'),
 	     IntBasis.plus(ib,ib'))
@@ -1017,12 +1108,10 @@ functor ManagerObjects(structure Execution : EXECUTION
 	fun recover() = (rchat "recover"; ElabRep.recover(); recover_intrep (!intRep); recover_intrep (!intRep'))
 
 	val pu_int_entry =
-	    let open Pickle
-	    in convert (fn ((a1,a2,a3,a4),(a5,a6,a7)) => (a1,a2,a3,a4,a5,a6,a7),
-			fn (a1,a2,a3,a4,a5,a6,a7) => ((a1,a2,a3,a4),(a5,a6,a7)))
-		(pairGen0(tup4Gen0(FunStamp.pu,Environments.E.pu,IntBasis.pu,listGen StrId.pu_longstrid),
-			  tup3Gen0(listGen Name.pu,ModCode.pu,IntBasis.pu)))
-	    end
+	    Pickle.convert (fn ((a1,a2,a3,a4),(a5,a6,a7)) => (a1,a2,a3,a4,a5,a6,a7),
+			    fn (a1,a2,a3,a4,a5,a6,a7) => ((a1,a2,a3,a4),(a5,a6,a7)))
+	    (Pickle.pairGen0(Pickle.tup4Gen0(FunStamp.pu,Environments.E.pu,IntBasis.pu,Pickle.listGen StrId.pu_longstrid),
+			     Pickle.tup3Gen0(Pickle.listGen Name.pu,ModCode.pu,IntBasis.pu)))
 	val pu_intRep : intRep Pickle.pu = 
 	    RM.pu ElabRep.pu_dom (Pickle.listGen pu_int_entry)
 	type repository = ElabRep.elabRep * intRep * intRep'

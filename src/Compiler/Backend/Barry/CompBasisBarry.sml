@@ -134,8 +134,7 @@ functor CompBasisBarry
     val pu =
 	let fun to (tce,eqe,oe) = {TCEnv=tce, EqEnv=eqe, OEnv=oe}
 	    fun from {TCEnv=tce, EqEnv=eqe, OEnv=oe} = (tce,eqe,oe)
-	    open Pickle
-	in convert (to,from)
-	    (tup3Gen0(LambdaStatSem.pu,EliminateEq.pu,OptLambda.pu))
+	in Pickle.convert (to,from)
+	    (Pickle.tup3Gen0(LambdaStatSem.pu,EliminateEq.pu,OptLambda.pu))
 	end    
   end

@@ -390,24 +390,19 @@ functor RegionStatEnv(structure Name : NAME
     val pu_arity = Pickle.tup3Gen(Pickle.int,E.pu_runTypes,Pickle.int)
 
     val pu_lvar_env_range : lvar_env_range Pickle.pu =
-	let open Pickle
-	in convert (fn (b1,b2,s,p) => (b1,b2,s,p,NONE,NONE),
-		    fn (b1,b2,s,p,NONE,NONE) => (b1,b2,s,p)
-		     | _ => die "pu_lvar_env_range")
-	    (tup4Gen0(bool,bool,debugUnpickle "sigma" R.pu_sigma,debugUnpickle "effect" E.pu_effect))
-	end
+	Pickle.convert (fn (b1,b2,s,p) => (b1,b2,s,p,NONE,NONE),
+			fn (b1,b2,s,p,NONE,NONE) => (b1,b2,s,p)
+			 | _ => die "pu_lvar_env_range")
+	(Pickle.tup4Gen0(Pickle.bool,Pickle.bool,Pickle.debugUnpickle "sigma" R.pu_sigma,Pickle.debugUnpickle "effect" E.pu_effect))
 
     val pu : regionStatEnv Pickle.pu =
-	let open Pickle
-	in debugUnpickle "regionStatEnv"
-	    (convert (fn (te:arity TyNameMap.map,ce: R.sigma ConMap.map,
-			ee:(R.Type*R.place) ExconMap.map,le) => {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le},
-		    fn {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le} => (te,ce,ee,le))
-	    (tup4Gen0(TyNameMap.pu TyName.pu pu_arity,
-		      ConMap.pu Con.pu (debugUnpickle "con_env_range" R.pu_sigma),
-		      ExconMap.pu Excon.pu (debugUnpickle "excon_env_range" R.pu_mu),
-		      LvarMap.pu Lvar.pu (debugUnpickle "lvar_env_range" pu_lvar_env_range)))
-	     )
-	end
-
+	Pickle.debugUnpickle "regionStatEnv"
+	(Pickle.convert (fn (te:arity TyNameMap.map,ce: R.sigma ConMap.map,
+			     ee:(R.Type*R.place) ExconMap.map,le) => {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le},
+			 fn {tyname_env=te,con_env=ce,excon_env=ee,lvar_env=le} => (te,ce,ee,le))
+	 (Pickle.tup4Gen0(TyNameMap.pu TyName.pu pu_arity,
+			  ConMap.pu Con.pu (Pickle.debugUnpickle "con_env_range" R.pu_sigma),
+			  ExconMap.pu Excon.pu (Pickle.debugUnpickle "excon_env_range" R.pu_mu),
+			  LvarMap.pu Lvar.pu (Pickle.debugUnpickle "lvar_env_range" pu_lvar_env_range)))
+	 )	
   end

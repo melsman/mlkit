@@ -29,21 +29,29 @@ functor Excon(structure Name : NAME
     fun match (excon1,excon2) = Name.match(name excon1, name excon2) 
 
     (* Predefined exception constructors *)
-    val ex_DIV   : excon  = mk_excon "Div"
-    val ex_MATCH : excon  = mk_excon "Match"
-    val ex_BIND  : excon  = mk_excon "Bind"
-    val ex_OVERFLOW  : excon  = mk_excon "Overflow"
-    val ex_INTERRUPT : excon  = mk_excon "Interrupt"
+    local 
+	val bucket = ref nil
+	fun predef s = 
+	    let val c = mk_excon s
+	    in bucket := c :: !bucket 
+		; c
+	    end	       
+    in
+	val ex_DIV   : excon      = predef "Div"
+	val ex_MATCH : excon      = predef "Match"
+	val ex_BIND  : excon      = predef "Bind"
+	val ex_OVERFLOW  : excon  = predef "Overflow"
+	val ex_INTERRUPT : excon  = predef "Interrupt"
+	val exconsPredefined = !bucket
+    end
 
     val pu = 
 	Pickle.hashConsEq eq
-	(Pickle.register "Excon" [ex_DIV, ex_MATCH, ex_BIND, 
-			  ex_OVERFLOW, ex_INTERRUPT]
-	 let open Pickle
-	     fun to (s,n) : excon = {str=s,name=n}
+	(Pickle.register "Excon" exconsPredefined
+	 let fun to (s,n) : excon = {str=s,name=n}
 	     fun from ({str=s,name=n} : excon) = (s,n)
-	 in newHash (#1 o Name.key o #name)
-	     (convert (to,from) (pairGen0(string,Name.pu)))
+	 in Pickle.newHash (#1 o Name.key o #name)
+	     (Pickle.convert (to,from) (Pickle.pairGen0(Pickle.string,Name.pu)))
 	 end)
 	
     structure QD : QUASI_DOM =

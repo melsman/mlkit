@@ -848,27 +848,25 @@ functor PhysSizeInf(structure Name : NAME
     fun layout_pgm(PGM{expression,...}) = layout_trip expression
 
     val pu_phsize = 
-	let open Pickle
-	    fun toInt INF = 0
+	let fun toInt INF = 0
 	      | toInt (WORDS _) = 1
-	    val fun_INF = con0 INF
-	    fun fun_WORDS _ = con1 WORDS (fn WORDS a => a | _ => die "pu_phsize") int
-	in dataGen("PhysSizeInf.phsize",toInt,[fun_INF, fun_WORDS])
+	    val fun_INF = Pickle.con0 INF
+	    fun fun_WORDS _ = Pickle.con1 WORDS (fn WORDS a => a | _ => die "pu_phsize") Pickle.int
+	in Pickle.dataGen("PhysSizeInf.phsize",toInt,[fun_INF, fun_WORDS])
 	end
 
     val pu_range_env = 
-	let open Pickle
-	    fun toInt (FORMAL_REGVARS _) = 0
+	let fun toInt (FORMAL_REGVARS _) = 0
 	      | toInt (FORMAL_SIZES _) = 1
 	      | toInt NOTFIXBOUND = 2
 	    fun fun_FORMAL_REGVARS _ =
-		con1 FORMAL_REGVARS (fn FORMAL_REGVARS a => a | _ => die "pu_range_env.FORMAL_REGVARS") 
+		Pickle.con1 FORMAL_REGVARS (fn FORMAL_REGVARS a => a | _ => die "pu_range_env.FORMAL_REGVARS") 
 		Effect.pu_effects
 	    fun fun_FORMAL_SIZES _ =
-		con1 FORMAL_SIZES (fn FORMAL_SIZES a => a | _ => die "pu_range_env.FORMAL_SIZES") 
-		(listGen pu_phsize)		
-	    val fun_NOTFIXBOUND = con0 NOTFIXBOUND
-	in dataGen("PhysSizeInf.range_env",toInt,[fun_FORMAL_REGVARS, fun_FORMAL_SIZES, fun_NOTFIXBOUND])
+		Pickle.con1 FORMAL_SIZES (fn FORMAL_SIZES a => a | _ => die "pu_range_env.FORMAL_SIZES") 
+		(Pickle.listGen pu_phsize)		
+	    val fun_NOTFIXBOUND = Pickle.con0 NOTFIXBOUND
+	in Pickle.dataGen("PhysSizeInf.range_env",toInt,[fun_FORMAL_REGVARS, fun_FORMAL_SIZES, fun_NOTFIXBOUND])
 	end
 
     val pu_env = LvarMap.pu Lvars.pu pu_range_env

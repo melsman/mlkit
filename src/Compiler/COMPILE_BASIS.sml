@@ -19,6 +19,9 @@ signature COMPILE_BASIS =
     val match : CompileBasis * CompileBasis -> CompileBasis
     val restrict : CompileBasis * (lvar list * TyName list * con list * excon list) -> CompileBasis
 
+    (* restrict0: Don't include identifiers that are declared by the initial basis *)
+    val restrict0 : CompileBasis * (lvar list * TyName list * con list * excon list) -> CompileBasis
+
     val mk_CompileBasis: CompBasis * BackendEnv -> CompileBasis
 
     val de_CompileBasis: CompileBasis -> CompBasis * BackendEnv

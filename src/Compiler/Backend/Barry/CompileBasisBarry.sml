@@ -55,6 +55,12 @@ functor CompileBasisBarry
       in (cb1, ())
       end
 
+    fun restrict0 ((cb,()),vars) = 
+      let
+	val (cb1, lvars, cons, excons) = CompBasis.restrict(cb,vars)
+      in (cb1, ())
+      end
+
     fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)
 
     val pu =

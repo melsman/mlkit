@@ -211,28 +211,26 @@ functor QuasiSet(structure IntStringFinMap : MONO_FINMAP where type dom = int * 
 	      children = List.map pp_elt (list m)}
 
     fun pu_map0 pu_e : map0 Pickle.pu =
-	let open Pickle
-	    val pu_m = M.pu (Pickle.pairGen(Pickle.int,Pickle.string)) pu_e
+	let val pu_m = M.pu (Pickle.pairGen(Pickle.int,Pickle.string)) pu_e
 	    fun toInt (Rigid _) = 0
 	      | toInt (Flexible _) = 1
 	    fun fun_Rigid _ =
-		con1 Rigid (fn Rigid a => a | _ => die "pu_map0.Rigid")
+		Pickle.con1 Rigid (fn Rigid a => a | _ => die "pu_map0.Rigid")
 		pu_m
 	    fun fun_Flexible _ =
-		con1 (fn (c,m) => Flexible{matchcount=Name.matchcount_invalid,imap=m})  (* invalidate earlier matchcount; i.e., force 
+		Pickle.con1 (fn (c,m) => Flexible{matchcount=Name.matchcount_invalid,imap=m})  (* invalidate earlier matchcount; i.e., force 
 											 * ensurance of consistency *)
 		(fn Flexible{matchcount=c,imap=m} => (c,m) | _ => die "pu_map0.Flexible")
-		(pairGen(Name.pu_matchcount,pu_m))
-	in dataGen ("QuasiSet.map0",toInt,[fun_Rigid,fun_Flexible])
+		(Pickle.pairGen(Name.pu_matchcount,pu_m))
+	in Pickle.dataGen ("QuasiSet.map0",toInt,[fun_Rigid,fun_Flexible])
 	end
 
     fun pu pu_e =
-	let open Pickle
-	    fun to (SOME v) = M v
+	let fun to (SOME v) = M v
 	      | to NONE = Empty
 	    fun from (M v) = SOME v
 	      | from Empty = NONE
-	in convert (to,from) (optionGen (ref0Gen (pu_map0 pu_e)))
+	in Pickle.convert (to,from) (Pickle.optionGen (Pickle.ref0Gen (pu_map0 pu_e)))
 	end
 
   end

@@ -132,6 +132,11 @@ signature CLOS_EXP =
     val restrict : env * {lvars:lvar list,
 			  cons:con list,
 			  excons:excon list} -> env
+
+    (* restrict0 : Don't include predeclared regions *)
+    val restrict0 : env * {lvars:lvar list,
+			   cons:con list,
+			   excons:excon list} -> env
     val pu : env Pickle.pu
 
     val cc : env * ((place*pp) at, place*phsize, unit)LambdaPgm -> {main_lab:label,

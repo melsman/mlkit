@@ -68,18 +68,17 @@ functor InfixBasis(structure Ident: IDENT
 		       (PP.layoutAtom pr_InfixEntry)
 
     val pu_InfixEntry =
-	let open Pickle
-	    fun toInt NONFIX = 0
+	let fun toInt NONFIX = 0
 	      | toInt (INFIX _) = 1
 	      | toInt (INFIXR _) = 2
-	    val fun_NONFIX = con0 NONFIX
+	    val fun_NONFIX = Pickle.con0 NONFIX
 	    fun fun_INFIX _ =
-		con1 INFIX (fn INFIX a => a | _ => die "pu_InfixEntry.INFIX")
-		int
+		Pickle.con1 INFIX (fn INFIX a => a | _ => die "pu_InfixEntry.INFIX")
+		Pickle.int
 	    fun fun_INFIXR _ =
-		con1 INFIXR (fn INFIXR a => a | _ => die "pu_InfixEntry.INFIXR")
-		int
-	in dataGen("InfixEntry",toInt,[fun_NONFIX,fun_INFIX,fun_INFIXR])
+		Pickle.con1 INFIXR (fn INFIXR a => a | _ => die "pu_InfixEntry.INFIXR")
+		Pickle.int
+	in Pickle.dataGen("InfixEntry",toInt,[fun_NONFIX,fun_INFIX,fun_INFIXR])
 	end
 
     val pu : Basis Pickle.pu = FinMap.pu(Ident.pu,pu_InfixEntry)

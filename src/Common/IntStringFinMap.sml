@@ -155,7 +155,5 @@ functor IntStringFinMap(structure IntFinMap : MONO_FINMAP
        * the pu_dom pickler cannot be used! Instead, we hardwire the int and string 
        * picklers, which wouldn't work in general! *)
       fun pu (pu_dom : dom Pickle.pu) (pu_r : 'a Pickle.pu) : 'a map Pickle.pu = 
-	  let open Pickle
-	  in IM.pu int (SM.pu string pu_r)
-	  end
+	  IM.pu Pickle.int (SM.pu Pickle.string pu_r)
   end

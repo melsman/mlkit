@@ -193,22 +193,21 @@ struct
    (* Pickler *)
 
    fun pu _ (pu_a: 'a Pickle.pu) : 'a map Pickle.pu =
-       let open Pickle
-	   fun toInt Empty = 0
+       let fun toInt Empty = 0
 	     | toInt (Lf _) = 1
 	     | toInt (Br _) = 2
 
-	   val pu_Empty = con0 Empty
+	   val pu_Empty = Pickle.con0 Empty
 
 	   fun pu_Lf _ =
-	       con1 Lf (fn Lf a => a | _ => raise Fail "IntFinMapPT.pu_Lf")
-	       (pairGen0(word,pu_a))
+	       Pickle.con1 Lf (fn Lf a => a | _ => raise Fail "IntFinMapPT.pu_Lf")
+	       (Pickle.pairGen0(Pickle.word,pu_a))
 
 	   fun pu_Br pu =
-	       con1 Br (fn Br a => a | _ => raise Fail "IntFinMapPT.pu_Br")
-	       (tup4Gen0(word,word,pu,pu))
+	       Pickle.con1 Br (fn Br a => a | _ => raise Fail "IntFinMapPT.pu_Br")
+	       (Pickle.tup4Gen0(Pickle.word,Pickle.word,pu,pu))
        in
-	   dataGen ("IntFinMapPT.map",toInt,[pu_Empty, pu_Lf, pu_Br])
+	   Pickle.dataGen ("IntFinMapPT.map",toInt,[pu_Empty, pu_Lf, pu_Br])
        end
 end
 

@@ -21,6 +21,7 @@ functor CompileBasisDummy(structure TyName : TYNAME
     fun enrich _ = true
     fun match _ = empty
     fun restrict _ = empty
+    fun restrict0 _ = empty
     fun eq _ = true
 	
     val pu = Pickle.unit

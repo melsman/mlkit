@@ -94,25 +94,34 @@ functor TyName(
 
     val op eq = fn (tn1,tn2) => Name.eq(name tn1, name tn2)  
 
-    val tyName_BOOL = fresh true {tycon=TyCon.tycon_BOOL, arity=0, equality=true}
-      
-    val tyName_INT31  = fresh true {tycon=TyCon.tycon_INT31, arity=0, equality=true}
-    val tyName_INT32  = freshTyName{tycon=TyCon.tycon_INT32, arity=0, equality=true}
-    val tyName_WORD8 = fresh true {tycon=TyCon.tycon_WORD8, arity=0, equality=true}
-    val tyName_WORD31 = fresh true {tycon=TyCon.tycon_WORD31, arity=0, equality=true}
-    val tyName_WORD32 = freshTyName{tycon=TyCon.tycon_WORD32, arity=0, equality=true}
-    val tyName_REAL = freshTyName{tycon=TyCon.tycon_REAL, arity=0, equality=false}
-    val tyName_STRING = freshTyName{tycon=TyCon.tycon_STRING, arity=0, equality=true}
-    val tyName_CHAR = fresh true {tycon=TyCon.tycon_CHAR, arity=0, equality=true}
-    val tyName_LIST = fresh true {tycon=TyCon.tycon_LIST,  arity=1, equality=true}
-    val tyName_FRAG = freshTyName{tycon=TyCon.tycon_FRAG,  arity=1, equality=true}
-    val tyName_REF = freshTyName{tycon=TyCon.tycon_REF, arity=1, equality=true}
-    val tyName_ARRAY = freshTyName{tycon=TyCon.tycon_ARRAY, arity=1, equality=true}
-    val tyName_VECTOR = freshTyName{tycon=TyCon.tycon_VECTOR, arity=1, equality=true}
-    val tyName_CHARARRAY = freshTyName{tycon=TyCon.tycon_CHARARRAY, arity=0, equality=true}
-    val tyName_FOREIGNPTR = fresh true {tycon=TyCon.tycon_FOREIGNPTR, arity=0, equality=false}
-    val tyName_EXN = freshTyName{tycon=TyCon.tycon_EXN, arity=0, equality=false}
-    val _ = Rank.reset()
+    local
+	val bucket = ref nil
+	fun predef b r =
+	    let val tn = fresh b r
+	    in bucket := tn :: !bucket
+		; tn
+	    end
+    in
+	val tyName_BOOL       = predef true {tycon=TyCon.tycon_BOOL,       arity=0, equality=true}      
+	val tyName_INT31      = predef true {tycon=TyCon.tycon_INT31,      arity=0, equality=true}
+	val tyName_INT32      = predef false{tycon=TyCon.tycon_INT32,      arity=0, equality=true}
+	val tyName_WORD8      = predef true {tycon=TyCon.tycon_WORD8,      arity=0, equality=true}
+	val tyName_WORD31     = predef true {tycon=TyCon.tycon_WORD31,     arity=0, equality=true}
+	val tyName_WORD32     = predef false{tycon=TyCon.tycon_WORD32,     arity=0, equality=true}
+	val tyName_REAL       = predef false{tycon=TyCon.tycon_REAL,       arity=0, equality=false}
+	val tyName_STRING     = predef false{tycon=TyCon.tycon_STRING,     arity=0, equality=true}
+	val tyName_CHAR       = predef true {tycon=TyCon.tycon_CHAR,       arity=0, equality=true}
+	val tyName_LIST       = predef true {tycon=TyCon.tycon_LIST,       arity=1, equality=true}
+	val tyName_FRAG       = predef false{tycon=TyCon.tycon_FRAG,       arity=1, equality=true}
+	val tyName_REF        = predef false{tycon=TyCon.tycon_REF,        arity=1, equality=true}
+	val tyName_ARRAY      = predef false{tycon=TyCon.tycon_ARRAY,      arity=1, equality=true}
+	val tyName_VECTOR     = predef false{tycon=TyCon.tycon_VECTOR,     arity=1, equality=true}
+	val tyName_CHARARRAY  = predef false{tycon=TyCon.tycon_CHARARRAY,  arity=0, equality=true}
+	val tyName_FOREIGNPTR = predef true {tycon=TyCon.tycon_FOREIGNPTR, arity=0, equality=false}
+	val tyName_EXN        = predef false{tycon=TyCon.tycon_EXN,        arity=0, equality=false}
+	val _ = Rank.reset()
+	val tynamesPredefined = !bucket
+    end
 
     fun tyName_IntDefault() = if tag_values() then tyName_INT31 else tyName_INT32
     fun tyName_WordDefault() = if tag_values() then tyName_WORD31 else tyName_WORD32
@@ -150,20 +159,16 @@ functor TyName(
 
     val pu = 
 	Pickle.hashConsEq eq
-	(Pickle.register "TyName"
-	 [tyName_BOOL,tyName_INT31,tyName_INT32,tyName_WORD8,tyName_WORD31,
-	  tyName_WORD32,tyName_REAL,tyName_STRING,tyName_CHAR,tyName_LIST,tyName_FRAG,
-	  tyName_REF,tyName_ARRAY,tyName_VECTOR,tyName_CHARARRAY,tyName_FOREIGNPTR,tyName_EXN]
-	 let open Pickle
-	     fun to ((t,n,a),r,e,u) : TyName = 
+	(Pickle.register "TyName" tynamesPredefined
+	 let fun to ((t,n,a),r,e,u) : TyName = 
 		 {tycon=t, name=n, arity=a, rank=r,
 		  equality=e, unboxed=u}
 	     fun from ({tycon=t, name=n, arity=a, rank=r,
 			equality=e, unboxed=u} : TyName) = ((t,n,a),r,e,u)	    
-	 in newHash (#1 o Name.key o name)
-	     (convert (to,from)
-	      (tup4Gen0(tup3Gen0(TyCon.pu,Name.pu,int),
-			refOneGen int,bool,refOneGen bool)))
+	 in Pickle.newHash (#1 o Name.key o name)
+	     (Pickle.convert (to,from)
+	      (Pickle.tup4Gen0(Pickle.tup3Gen0(TyCon.pu,Name.pu,Pickle.int),
+			       Pickle.refOneGen Pickle.int,Pickle.bool,Pickle.refOneGen Pickle.bool)))
 	 end)
 
     structure QD : QUASI_DOM =

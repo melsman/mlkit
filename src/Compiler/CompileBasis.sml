@@ -66,6 +66,13 @@ functor CompileBasis(structure CompBasis : COMP_BASIS
       in (cb1, ce1)
       end
 
+    fun restrict0 ((cb,ce),vars) = 
+      let (* Don't include identifiers that are declared by the initial basis *)
+	val (cb1, lvars, cons, excons) = CompBasis.restrict0(cb,vars)
+	val ce1 = ClosExp.restrict0(ce,{lvars=lvars,excons=excons,cons=cons})
+      in (cb1, ce1)
+      end
+
     fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)
 
     val pu =

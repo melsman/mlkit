@@ -8,6 +8,7 @@ SHELL=/bin/sh
 MKDIR=mkdir -p
 INSTALL=cp -p
 CLEAN=rm -rf PM CM *~ .\#*
+CLEAN_MLB=rm -rf MLB
 
 BINDIR=../bin
 
@@ -128,6 +129,25 @@ clean:
 	cd Compiler/Cfg; $(CLEAN)
 	cd Compiler/Lambda; $(CLEAN)
 	cd SMLserver; $(CLEAN) nssml.so *.o
+
+clean_mlb:
+	cd ../basislib; $(CLEAN_MLB)
+	$(CLEAN_MLB)
+	cd Pickle; $(CLEAN_MLB)
+	cd Common; $(CLEAN_MLB)
+	cd Common/EfficientElab; $(CLEAN_MLB)
+	cd Compiler; $(CLEAN_MLB)
+	cd Compiler/Lambda; $(CLEAN_MLB)
+	cd Compiler/Regions; $(CLEAN_MLB)
+	cd Compiler/Backend; $(CLEAN_MLB)
+	cd Compiler/Backend/Dummy; $(CLEAN_MLB)
+	cd Compiler/Backend/X86; $(CLEAN_MLB)
+	cd Compiler/Backend/KAM; $(CLEAN_MLB)
+	cd Compiler/Backend/Barry; $(CLEAN_MLB)
+	cd Parsing; $(CLEAN_MLB)
+	cd Manager; $(CLEAN_MLB)
+	cd Edlib; $(CLEAN_MLB)
+	cd Tools/MlbMake; $(CLEAN_MLB)
 
 grm:
 	cd Parsing; ml-lex Topdec.lex; ml-yacc Topdec.grm

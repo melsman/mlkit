@@ -208,32 +208,29 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
     (* Pickling *)
     val pu_TyVarDesc =
-	let open Pickle
-	    fun to (((id,b),e,r),ov,ex) : TyVarDesc = 
+	let fun to (((id,b),e,r),ov,ex) : TyVarDesc = 
 		{id=id, base=b, equality=e,rank=r,overloaded=ov,explicit=ex,inst=ref NONE}
 	    fun from {id, base,equality=e,rank=r,overloaded=ov,explicit=ex,inst} =
 		(((id,base),e,r),ov,ex)
-	in convert (to,from) 
-	    (tup3Gen0(tup3Gen0(pairGen0(int,string),
-			       bool,
-			       TyName.Rank.pu_rankrefOne),
-		      optionGen (TyName.Set.pu TyName.pu),
-		      optionGen ExplicitTyVar.pu))
+	in Pickle.convert (to,from) 
+	    (Pickle.tup3Gen0(Pickle.tup3Gen0(Pickle.pairGen0(Pickle.int,Pickle.string),
+					     Pickle.bool,
+					     TyName.Rank.pu_rankrefOne),
+			     Pickle.optionGen (TyName.Set.pu TyName.pu),
+			     Pickle.optionGen ExplicitTyVar.pu))
 	end
 
     val pu_TyLink = 
-	let open Pickle
-	in convert (NO_TY_LINK, fn NO_TY_LINK a => a | _ => die "pu_TyLink.NO_TY_LINK")
-	    pu_TyVarDesc
-	end
+	Pickle.convert (NO_TY_LINK, fn NO_TY_LINK a => a | _ => die "pu_TyLink.NO_TY_LINK")
+	pu_TyVarDesc
 
     val pu_TyVar : TyVar Pickle.pu = Pickle.ref0Gen pu_TyLink
 
     val pu_Type : TypeDesc Pickle.pu -> Type Pickle.pu =
-	let open Pickle
-	    fun to (td,l) = {TypeDesc=td,level=l}
+	let fun to (td,l) = {TypeDesc=td,level=l}
 	    fun from {TypeDesc=td,level=l} = (td,l)
-	in cache "Type" (fn pu_td => convert (to,from) (pairGen0(pu_td,ref0EqGen (fn (r1,r2) => !r1 = !r2) int)))
+	in Pickle.cache "Type" (fn pu_td => Pickle.convert (to,from) 
+				(Pickle.pairGen0(pu_td,Pickle.ref0EqGen (fn (r1,r2) => !r1 = !r2) Pickle.int)))
 	end
     
     val pu_Types : TypeDesc Pickle.pu -> Type list Pickle.pu =
@@ -242,8 +239,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     fun swap (x,y) = (y,x)
 	
     val (pu_TypeDesc, pu_RecType) =
-	let open Pickle
-	    fun TypeDescToInt (TYVAR _) = 0
+	let fun TypeDescToInt (TYVAR _) = 0
 	      | TypeDescToInt (ARROW _) = 1
 	      | TypeDescToInt (RECTYPE _) = 2
 	      | TypeDescToInt (CONSTYPE _) = 3
@@ -251,30 +247,30 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      | RecTypeToInt (ROWrec _) = 1
 	      | RecTypeToInt (VARrec _) = die "RecTypeToInt"
 	    fun TypeDescTYVAR (pu_TypeDesc,pu_RecType) =
-		con1 TYVAR (fn TYVAR a => a | _ => die "pu_TypeDesc.TYVAR")
+		Pickle.con1 TYVAR (fn TYVAR a => a | _ => die "pu_TypeDesc.TYVAR")
 		pu_TyVar
 	    fun TypeDescARROW (pu_TypeDesc,pu_RecType) =
-		con1 ARROW (fn ARROW a => a | _ => die "pu_TypeDesc.ARROW")
-		(pairGen0(pu_Type pu_TypeDesc, pu_Type pu_TypeDesc))
+		Pickle.con1 ARROW (fn ARROW a => a | _ => die "pu_TypeDesc.ARROW")
+		(Pickle.pairGen0(pu_Type pu_TypeDesc, pu_Type pu_TypeDesc))
 	    fun TypeDescRECTYPE  (pu_TypeDesc,pu_RecType) =
-		con1 RECTYPE (fn RECTYPE a => a | _ => die "pu_TypeDesc.RECTYPE")
+		Pickle.con1 RECTYPE (fn RECTYPE a => a | _ => die "pu_TypeDesc.RECTYPE")
 		pu_RecType
 	    fun TypeDescCONSTYPE (pu_TypeDesc,pu_RecType) =
-		con1 (CONSTYPE o swap) (fn CONSTYPE a => swap a | _ => die "pu_TypeDesc.CONSTYPE")
-		(pairGen0(TyName.pu,pu_Types pu_TypeDesc))
+		Pickle.con1 (CONSTYPE o swap) (fn CONSTYPE a => swap a | _ => die "pu_TypeDesc.CONSTYPE")
+		(Pickle.pairGen0(TyName.pu,pu_Types pu_TypeDesc))
 
-	    fun RecTypeNILrec (a,b) = con0 NILrec b
+	    fun RecTypeNILrec (a,b) = Pickle.con0 NILrec b
 
 	    fun RecTypeROWrec (pu_TypeDesc,pu_RecType) =
-		con1 ROWrec (fn ROWrec a => a | _ => die "pu_RecType.ROWrec")
-		(tup3Gen0(Lab.pu,pu_Type pu_TypeDesc,pu_RecType))
+		Pickle.con1 ROWrec (fn ROWrec a => a | _ => die "pu_RecType.ROWrec")
+		(Pickle.tup3Gen0(Lab.pu,pu_Type pu_TypeDesc,pu_RecType))
 
 	    val TypeDescFuns = 
 		[TypeDescTYVAR, TypeDescARROW, TypeDescRECTYPE, TypeDescCONSTYPE]
 	    val RecTypeFuns = [RecTypeNILrec, RecTypeROWrec]
 
-	in data2Gen("StatObject.TypeDesc",TypeDescToInt,TypeDescFuns,
-		    "StatObject.RecType",RecTypeToInt,RecTypeFuns)
+	in Pickle.data2Gen("StatObject.TypeDesc",TypeDescToInt,TypeDescFuns,
+			   "StatObject.RecType",RecTypeToInt,RecTypeFuns)
 	end
 
     val pu_Type = pu_Type pu_TypeDesc
@@ -1389,10 +1385,8 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       end (*local*)
 
       val pu : Type Pickle.pu =
-	  let open Pickle
-	  in convert (fn a => a, norm_Type)
-	      pu_Type
-	  end
+	  Pickle.convert (fn a => a, norm_Type)
+	  pu_Type
 
     end (*Type*)
 
@@ -1588,9 +1582,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       fun match((_,tau1),(_,tau2)) : unit = Type.match(tau1,tau2)
 
       val pu =
-	  let open Pickle
-	  in pairGen(listGen TyVar.pu,Type.pu)
-	  end
+	  Pickle.pairGen(Pickle.listGen TyVar.pu,Type.pu)
     
     end (*TypeScheme*)
 
@@ -1675,10 +1667,9 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	fun match (TYPEFCN{tau,...}, TYPEFCN{tau=tau0,...}) : unit = Type.match(tau,tau0)
 
 	val pu =
-	    let open Pickle
-		fun to (tvs,t) = TYPEFCN {tyvars=tvs,tau=t}
+	    let fun to (tvs,t) = TYPEFCN {tyvars=tvs,tau=t}
 		fun from (TYPEFCN {tyvars=tvs,tau=t}) = (tvs,t)
-	    in convert (to,from) TypeScheme.pu
+	    in Pickle.convert (to,from) TypeScheme.pu
 	    end
 
     end (*TypeFcn*)
@@ -1919,25 +1910,23 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	end
 
       val pu_TypeFcn' =
-	  let open Pickle
-	      fun toInt (TYNAME _) = 0
+	  let fun toInt (TYNAME _) = 0
 		| toInt (EXPANDED _) = 1
 	      fun fun_TYNAME _ =
-		  con1 TYNAME (fn TYNAME a => a | _ => die "pu_TypeFcn'.TYNAME")
+		  Pickle.con1 TYNAME (fn TYNAME a => a | _ => die "pu_TypeFcn'.TYNAME")
 		  TyName.pu
 	      fun fun_EXPANDED _ =
-		  con1 EXPANDED (fn EXPANDED a => a | _ => die "pu_TypeFcn'.EXPANDED")
+		  Pickle.con1 EXPANDED (fn EXPANDED a => a | _ => die "pu_TypeFcn'.EXPANDED")
 		  TypeFcn.pu
-	  in dataGen("StatObject.TypeFcn'",toInt,[fun_TYNAME,fun_EXPANDED])
+	  in Pickle.dataGen("StatObject.TypeFcn'",toInt,[fun_TYNAME,fun_EXPANDED])
 	  end
       val pu = 
-	  let open Pickle 
-	      fun to (SOME e) = Not_Id e
+	  let fun to (SOME e) = Not_Id e
 		| to NONE = Realisation_Id
 	      fun from (Not_Id e) = SOME e
 		| from Realisation_Id = NONE
-	  in convert (to,from)
-	      (optionGen(TyName.Map.pu TyName.pu pu_TypeFcn'))
+	  in Pickle.convert (to,from)
+	      (Pickle.optionGen(TyName.Map.pu TyName.pu pu_TypeFcn'))
 	  end
 	
     end (*Realisation*)

@@ -40,11 +40,10 @@ functor StrId(structure Timestamp: TIMESTAMP
 
     val op < = fn (STRID str1, STRID str2) => str1 < str2
 
-    val pu = Pickle.convert (STRID, fn STRID s => s) Pickle.string    
+    val pu = 
+	Pickle.convert (STRID, fn STRID s => s) Pickle.string    
 
     val pu_longstrid = 
-	let open Pickle
-	in Pickle.convert (LONGSTRID, fn LONGSTRID a => a)
-	    (pairGen0(listGen pu, pu))
-	end
+	Pickle.convert (LONGSTRID, fn LONGSTRID a => a)
+	(Pickle.pairGen0(Pickle.listGen pu, pu))
   end

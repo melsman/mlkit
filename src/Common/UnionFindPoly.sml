@@ -90,21 +90,20 @@ struct
 						* as first-class values *)
 
   fun pu (dummy : 'a) (pu_a : 'a Pickle.pu) : 'a Element Pickle.pu =
-      let open Pickle
-	  val dummy : 'a ElementNode = EQR(dummy,ref 0) 
+      let val dummy : 'a ElementNode = EQR(dummy,ref 0) 
 	  val pu_Element : 'a ElementNode Pickle.pu -> 'a Element Pickle.pu 
-	      = cache "Element" (fn pu => let val pu = refEqGen eq_Elements dummy pu
-					  in convert (fn a => a, fn a => find a) pu
-					  end)
+	      = Pickle.cache "Element" (fn pu => let val pu = Pickle.refEqGen eq_Elements dummy pu
+						 in Pickle.convert (fn a => a, fn a => find a) pu
+						 end)
 	  fun toInt (EQR _) = 0
 	    | toInt (LINK _) = 1
 	  fun fun_EQR pu =
-	      con1 EQR (fn EQR a => a | _ => die "pu.fun_EQR")
-	      (pairGen0(pu_a,pu_intref))
+	      Pickle.con1 EQR (fn EQR a => a | _ => die "pu.fun_EQR")
+	      (Pickle.pairGen0(pu_a,pu_intref))
 	  fun fun_LINK pu = 
-	      con1 LINK (fn (* LINK a => a | *) _ => die "pu.fun_LINK")
+	      Pickle.con1 LINK (fn (* LINK a => a | *) _ => die "pu.fun_LINK")
 	      (pu_Element pu)
-	  val pu = dataGen("UnionFindPoly.ElementNode",toInt,[fun_EQR,fun_LINK])
+	  val pu = Pickle.dataGen("UnionFindPoly.ElementNode",toInt,[fun_EQR,fun_LINK])
       in pu_Element pu
       end
 end

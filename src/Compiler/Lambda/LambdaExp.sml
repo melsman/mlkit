@@ -1175,27 +1175,26 @@ functor LambdaExp(structure Lvars: LVARS
     val pu_tyvar = Pickle.word
 
     val (pu_Type,pu_Types) =
-	let open Pickle
-	    fun toInt (TYVARtype _) = 0
+	let fun toInt (TYVARtype _) = 0
 	      | toInt (ARROWtype _) = 1
 	      | toInt (CONStype _) = 2
 	      | toInt (RECORDtype _) = 3
 	    val pu_TypeList : Type Pickle.pu -> Type list Pickle.pu = 
-		Pickle.cache "list" listGen
+		Pickle.cache "list" Pickle.listGen
 
 	    fun fun_TYVARtype _ = 
-		con1 TYVARtype (fn TYVARtype tv => tv | _ => die "pu_Type.TYVARtype")
+		Pickle.con1 TYVARtype (fn TYVARtype tv => tv | _ => die "pu_Type.TYVARtype")
 		pu_tyvar
 	    fun fun_ARROWtype pu =
-		con1 ARROWtype (fn ARROWtype p => p | _ => die "pu_Type.ARROWtype")
-		(pairGen0(pu_TypeList pu,pu_TypeList pu))
+		Pickle.con1 ARROWtype (fn ARROWtype p => p | _ => die "pu_Type.ARROWtype")
+		(Pickle.pairGen0(pu_TypeList pu,pu_TypeList pu))
 	    fun fun_CONStype pu =
-		con1 CONStype (fn CONStype p => p | _ => die "pu_Type.CONStype")
-		(pairGen0(pu_TypeList pu,TyName.pu))
+		Pickle.con1 CONStype (fn CONStype p => p | _ => die "pu_Type.CONStype")
+		(Pickle.pairGen0(pu_TypeList pu,TyName.pu))
 	    fun fun_RECORDtype pu =
-		con1 RECORDtype (fn RECORDtype a => a | _ => die "pu_Type.RECORDtype")
+		Pickle.con1 RECORDtype (fn RECORDtype a => a | _ => die "pu_Type.RECORDtype")
 		(pu_TypeList pu)
-	    val pu = dataGen("LambdaExp.Type",toInt,[fun_TYVARtype,fun_ARROWtype, fun_CONStype, fun_RECORDtype])
+	    val pu = Pickle.dataGen("LambdaExp.Type",toInt,[fun_TYVARtype,fun_ARROWtype, fun_CONStype, fun_RECORDtype])
 	in (pu, pu_TypeList pu)
 	end
     val pu_tyvars = Pickle.listGen pu_tyvar
@@ -1207,34 +1206,31 @@ functor LambdaExp(structure Lvars: LVARS
     val pu_TypeOpt = Pickle.optionGen pu_Type
 
     val pu_frame =
-	let open Pickle
-	    val pu_dlv = 
-		convert (fn (lv,tvs,t) => {lvar=lv,tyvars=tvs,Type=t},
-			 fn {lvar=lv,tyvars=tvs,Type=t} => (lv,tvs,t))
-		(tup3Gen(Lvars.pu,pu_tyvars,pu_Type))
-	in convert (fn (dlvs,dexns) => {declared_lvars=dlvs,declared_excons=dexns},
-		    fn {declared_lvars=dlvs,declared_excons=dexns} => (dlvs,dexns))
-	    (pairGen(listGen pu_dlv,listGen(pairGen(Excon.pu,pu_TypeOpt))))
+	let val pu_dlv = 
+	    Pickle.convert (fn (lv,tvs,t) => {lvar=lv,tyvars=tvs,Type=t},
+			    fn {lvar=lv,tyvars=tvs,Type=t} => (lv,tvs,t))
+	    (Pickle.tup3Gen(Lvars.pu,pu_tyvars,pu_Type))
+	in Pickle.convert (fn (dlvs,dexns) => {declared_lvars=dlvs,declared_excons=dexns},
+			   fn {declared_lvars=dlvs,declared_excons=dexns} => (dlvs,dexns))
+	    (Pickle.pairGen(Pickle.listGen pu_dlv,Pickle.listGen(Pickle.pairGen(Excon.pu,pu_TypeOpt))))
 	end
 
     val pu_TypeList =
-	let open Pickle
-	    fun toInt (Types _) = 0
+	let fun toInt (Types _) = 0
 	      | toInt (Frame _) = 1
 	      | toInt RaisedExnBind = 2
 	    fun fun_Types _ =
-		con1 Types (fn Types a => a | _ => die "pu_TypeList.Types")
+		Pickle.con1 Types (fn Types a => a | _ => die "pu_TypeList.Types")
 		pu_Types
 	    fun fun_Frame _ =
-		con1 Frame (fn Frame a => a | _ => die "pu_TypeList.Frame")
+		Pickle.con1 Frame (fn Frame a => a | _ => die "pu_TypeList.Frame")
 		pu_frame
-	    val fun_RaisedExnBind = con0 RaisedExnBind
-	in dataGen("LambdaExp.TypeList",toInt,[fun_Types,fun_Frame,fun_RaisedExnBind])
+	    val fun_RaisedExnBind = Pickle.con0 RaisedExnBind
+	in Pickle.dataGen("LambdaExp.TypeList",toInt,[fun_Types,fun_Frame,fun_RaisedExnBind])
 	end
 
     val pu_prim =
-	let open Pickle
-	    fun toInt (CONprim _) = 0
+	let fun toInt (CONprim _) = 0
 	      | toInt (DECONprim _) = 1
 	      | toInt (EXCONprim _) = 2
 	      | toInt (DEEXCONprim _) = 3
@@ -1252,84 +1248,82 @@ functor LambdaExp(structure Lvars: LVARS
 	      | toInt (FORCE_RESET_REGIONSprim _) = 15
 
 	    fun fun_CONprim _ = 
-		con1 CONprim (fn CONprim a => a | _ => die "pu_prim.CONprim")
-		(convert (fn (c,il) => {con=c,instances=il}, fn {con=c,instances=il} => (c,il))
-		 (pairGen0 (Con.pu,pu_Types)))
+		Pickle.con1 CONprim (fn CONprim a => a | _ => die "pu_prim.CONprim")
+		(Pickle.convert (fn (c,il) => {con=c,instances=il}, fn {con=c,instances=il} => (c,il))
+		 (Pickle.pairGen0 (Con.pu,pu_Types)))
 	    fun fun_DECONprim _ =
-		con1 DECONprim (fn DECONprim a => a | _ => die "pu_prim.DECONprim")
-		(convert (fn (c,il,lvo) => {con=c,instances=il,lv_opt=lvo}, fn {con=c,instances=il,lv_opt=lvo} => (c,il,lvo))
-		 (tup3Gen0 (Con.pu,pu_Types,pu_lv_opt)))		
+		Pickle.con1 DECONprim (fn DECONprim a => a | _ => die "pu_prim.DECONprim")
+		(Pickle.convert (fn (c,il,lvo) => {con=c,instances=il,lv_opt=lvo}, fn {con=c,instances=il,lv_opt=lvo} => (c,il,lvo))
+		 (Pickle.tup3Gen0 (Con.pu,pu_Types,pu_lv_opt)))		
 	    fun fun_EXCONprim _ = 
-		con1 EXCONprim (fn EXCONprim a => a | _ => die "pu_prim.EXCONprim")
+		Pickle.con1 EXCONprim (fn EXCONprim a => a | _ => die "pu_prim.EXCONprim")
 		Excon.pu
 	    fun fun_DEEXCONprim _ =
-		con1 DEEXCONprim (fn DEEXCONprim a => a | _ => die "pu_prim.DEEXCONprim")
+		Pickle.con1 DEEXCONprim (fn DEEXCONprim a => a | _ => die "pu_prim.DEEXCONprim")
 		Excon.pu
-	    val fun_RECORDprim = con0 RECORDprim
+	    val fun_RECORDprim = Pickle.con0 RECORDprim
 	    fun fun_SELECTprim _ =
-		con1 SELECTprim (fn SELECTprim a => a | _ => die "pu_prim.SELECTprim")
-		int
-	    val fun_UB_RECORDprim = con0 UB_RECORDprim
-	    val fun_DROPprim = con0 DROPprim
+		Pickle.con1 SELECTprim (fn SELECTprim a => a | _ => die "pu_prim.SELECTprim")
+		Pickle.int
+	    val fun_UB_RECORDprim = Pickle.con0 UB_RECORDprim
+	    val fun_DROPprim = Pickle.con0 DROPprim
 	    fun fun_DEREFprim _ =
-		con1 DEREFprim (fn DEREFprim a => a | _ => die "pu_prim.DEREFprim")
-		(convert(fn t => {instance=t},#instance) pu_Type)
+		Pickle.con1 DEREFprim (fn DEREFprim a => a | _ => die "pu_prim.DEREFprim")
+		(Pickle.convert(fn t => {instance=t},#instance) pu_Type)
 	    fun fun_REFprim _ =
-		con1 REFprim (fn REFprim a => a | _ => die "pu_prim.REFprim")
-		(convert(fn t => {instance=t},#instance) pu_Type)
+		Pickle.con1 REFprim (fn REFprim a => a | _ => die "pu_prim.REFprim")
+		(Pickle.convert(fn t => {instance=t},#instance) pu_Type)
 	    fun fun_ASSIGNprim _ =
-		con1 ASSIGNprim (fn ASSIGNprim a => a | _ => die "pu_prim.ASSIGNprim")
-		(convert(fn t => {instance=t},#instance) pu_Type)
+		Pickle.con1 ASSIGNprim (fn ASSIGNprim a => a | _ => die "pu_prim.ASSIGNprim")
+		(Pickle.convert(fn t => {instance=t},#instance) pu_Type)
 	    fun fun_EQUALprim _ =
-		con1 EQUALprim (fn EQUALprim a => a | _ => die "pu_prim.EQUALprim")
-		(convert(fn t => {instance=t},#instance) pu_Type)
+		Pickle.con1 EQUALprim (fn EQUALprim a => a | _ => die "pu_prim.EQUALprim")
+		(Pickle.convert(fn t => {instance=t},#instance) pu_Type)
 	    fun fun_CCALLprim _ =
-		con1 CCALLprim (fn CCALLprim a => a | _ => die "pu_prim.CCALLprim")
-		(convert (fn (n,il,(tvs,t)) => {name=n,instances=il,tyvars=tvs,Type=t}, 
-			  fn {name=n,instances=il,tyvars=tvs,Type=t} => (n,il,(tvs,t)))
-		 (tup3Gen0 (string,pu_Types,pu_TypeScheme)))
+		Pickle.con1 CCALLprim (fn CCALLprim a => a | _ => die "pu_prim.CCALLprim")
+		(Pickle.convert (fn (n,il,(tvs,t)) => {name=n,instances=il,tyvars=tvs,Type=t}, 
+				 fn {name=n,instances=il,tyvars=tvs,Type=t} => (n,il,(tvs,t)))
+		 (Pickle.tup3Gen0 (Pickle.string,pu_Types,pu_TypeScheme)))
 	    fun fun_EXPORTprim _ =
-		con1 EXPORTprim (fn EXPORTprim a => a | _ => die "pu_prim.EXPORTprim")
-		(convert (fn (n,i1,i2) => {name=n,instance_arg=i1,instance_res=i2}, 
+		Pickle.con1 EXPORTprim (fn EXPORTprim a => a | _ => die "pu_prim.EXPORTprim")
+		(Pickle.convert (fn (n,i1,i2) => {name=n,instance_arg=i1,instance_res=i2}, 
 			  fn {name=n,instance_arg=i1,instance_res=i2} => (n,i1,i2))
-		 (tup3Gen0 (string,pu_Type,pu_Type)))
+		 (Pickle.tup3Gen0 (Pickle.string,pu_Type,pu_Type)))
 	    fun fun_RESET_REGIONSprim _ =
-		con1 RESET_REGIONSprim (fn RESET_REGIONSprim a => a | _ => die "pu_prim.RESET_REGIONSprim")
-		(convert(fn t => {instance=t},#instance) pu_Type)
+		Pickle.con1 RESET_REGIONSprim (fn RESET_REGIONSprim a => a | _ => die "pu_prim.RESET_REGIONSprim")
+		(Pickle.convert(fn t => {instance=t},#instance) pu_Type)
 	    fun fun_FORCE_RESET_REGIONSprim _ =
-		con1 FORCE_RESET_REGIONSprim (fn FORCE_RESET_REGIONSprim a => a | _ => die "pu_prim.FORCE_RESET_REGIONSprim")
-		(convert(fn t => {instance=t},#instance) pu_Type)
-	in dataGen("LambdaExp.prim",toInt,[fun_CONprim,
-					   fun_DECONprim,
-					   fun_EXCONprim,
-					   fun_DEEXCONprim,
-					   fun_RECORDprim,
-					   fun_SELECTprim,
-					   fun_UB_RECORDprim,
-					   fun_DROPprim,
-					   fun_DEREFprim,
-					   fun_REFprim,
-					   fun_ASSIGNprim,
-					   fun_EQUALprim,
-					   fun_CCALLprim,
-					   fun_EXPORTprim,
-					   fun_RESET_REGIONSprim,
-					   fun_FORCE_RESET_REGIONSprim])
+		Pickle.con1 FORCE_RESET_REGIONSprim (fn FORCE_RESET_REGIONSprim a => a | _ => die "pu_prim.FORCE_RESET_REGIONSprim")
+		(Pickle.convert(fn t => {instance=t},#instance) pu_Type)
+	in Pickle.dataGen("LambdaExp.prim",toInt,[fun_CONprim,
+						  fun_DECONprim,
+						  fun_EXCONprim,
+						  fun_DEEXCONprim,
+						  fun_RECORDprim,
+						  fun_SELECTprim,
+						  fun_UB_RECORDprim,
+						  fun_DROPprim,
+						  fun_DEREFprim,
+						  fun_REFprim,
+						  fun_ASSIGNprim,
+						  fun_EQUALprim,
+						  fun_CCALLprim,
+						  fun_EXPORTprim,
+						  fun_RESET_REGIONSprim,
+						  fun_FORCE_RESET_REGIONSprim])
 	end
 
     fun pu_Switch pu_a pu_LambdaExp =
-	let open Pickle
-	in convert (SWITCH,fn SWITCH a => a)
-	    (tup3Gen0(pu_LambdaExp,listGen(pairGen0(pu_a,pu_LambdaExp)),optionGen pu_LambdaExp))
-	end
+	Pickle.convert (SWITCH,fn SWITCH a => a)
+	(Pickle.tup3Gen0(pu_LambdaExp,Pickle.listGen(Pickle.pairGen0(pu_a,pu_LambdaExp)),
+			 Pickle.optionGen pu_LambdaExp))
 
     val pu_con_lvopt = Pickle.pairGen(Con.pu,pu_lv_opt)
 
     val pu_excon_lvopt = Pickle.pairGen(Excon.pu,pu_lv_opt)
 
     val pu_LambdaExp =
-	let open Pickle
-	    fun toInt (VAR _) = 0
+	let fun toInt (VAR _) = 0
 	      | toInt (INTEGER _) = 1
 	      | toInt (WORD _) = 2
 	      | toInt (STRING _) = 3
@@ -1350,95 +1344,95 @@ functor LambdaExp(structure Lvars: LVARS
 	      | toInt (FRAME _) = 18
 
 	    fun fun_VAR pu_LambdaExp =
-		con1 VAR (fn VAR a => a | _ => die "pu_LambdaExp.VAR")
-		(convert (fn (lv,il) => {lvar=lv,instances=il}, fn {lvar=lv,instances=il} => (lv,il))
-		 (pairGen0(Lvars.pu,pu_Types)))
+		Pickle.con1 VAR (fn VAR a => a | _ => die "pu_LambdaExp.VAR")
+		(Pickle.convert (fn (lv,il) => {lvar=lv,instances=il}, fn {lvar=lv,instances=il} => (lv,il))
+		 (Pickle.pairGen0(Lvars.pu,pu_Types)))
 	    fun fun_INTEGER pu_LambdaExp =
-		con1 INTEGER (fn INTEGER a => a | _ => die "pu_LambdaExp.INTEGER")
-		(pairGen0(int32,pu_Type))
+		Pickle.con1 INTEGER (fn INTEGER a => a | _ => die "pu_LambdaExp.INTEGER")
+		(Pickle.pairGen0(Pickle.int32,pu_Type))
 	    fun fun_WORD pu_LambdaExp =
-		con1 WORD (fn WORD a => a | _ => die "pu_LambdaExp.WORD")
-		(pairGen0(word32,pu_Type))
+		Pickle.con1 WORD (fn WORD a => a | _ => die "pu_LambdaExp.WORD")
+		(Pickle.pairGen0(Pickle.word32,pu_Type))
 	    fun fun_STRING pu_LambdaExp =
-		con1 STRING (fn STRING a => a | _ => die "pu_LambdaExp.STRING")
-		string
+		Pickle.con1 STRING (fn STRING a => a | _ => die "pu_LambdaExp.STRING")
+		Pickle.string
 	    fun fun_REAL pu_LambdaExp =
-		con1 REAL (fn REAL a => a | _ => die "pu_LambdaExp.REAL")
-		string
+		Pickle.con1 REAL (fn REAL a => a | _ => die "pu_LambdaExp.REAL")
+		Pickle.string
 	    fun fun_FN pu_LambdaExp =
-		con1 FN (fn FN a => a | _ => die "pu_LambdaExp.FN")
-		(convert (fn (p,e) => {pat=p,body=e}, fn {pat=p,body=e} => (p,e))
-		 (pairGen0(listGen(pairGen0(Lvars.pu,pu_Type)),pu_LambdaExp)))
+		Pickle.con1 FN (fn FN a => a | _ => die "pu_LambdaExp.FN")
+		(Pickle.convert (fn (p,e) => {pat=p,body=e}, fn {pat=p,body=e} => (p,e))
+		 (Pickle.pairGen0(Pickle.listGen(Pickle.pairGen0(Lvars.pu,pu_Type)),pu_LambdaExp)))
 	    fun fun_LET pu_LambdaExp =
-		con1 LET (fn LET a => a | _ => die "pu_LambdaExp.LET")
-		(convert (fn (p,b,s) => {pat=p,bind=b,scope=s}, fn {pat=p,bind=b,scope=s} => (p,b,s))
-		 (tup3Gen0(listGen(tup3Gen0(Lvars.pu,pu_tyvars,pu_Type)),
-			   pu_LambdaExp, pu_LambdaExp)))
+		Pickle.con1 LET (fn LET a => a | _ => die "pu_LambdaExp.LET")
+		(Pickle.convert (fn (p,b,s) => {pat=p,bind=b,scope=s}, fn {pat=p,bind=b,scope=s} => (p,b,s))
+		 (Pickle.tup3Gen0(Pickle.listGen(Pickle.tup3Gen0(Lvars.pu,pu_tyvars,pu_Type)),
+				  pu_LambdaExp, pu_LambdaExp)))
 	    fun fun_FIX pu_LambdaExp =
 		let val pu_function = 
-		    convert (fn (lv,tvs,t,e) => {lvar=lv,tyvars=tvs,Type=t,bind=e},
-			     fn {lvar=lv,tyvars=tvs,Type=t,bind=e} => (lv,tvs,t,e))
-		    (tup4Gen0(Lvars.pu,pu_tyvars,pu_Type,pu_LambdaExp))
-		in con1 FIX (fn FIX a => a | _ => die "pu_LambdaExp.FIX")
-		    (convert (fn (fs,s) => {functions=fs,scope=s}, fn {functions=fs,scope=s} => (fs,s))
-		     (pairGen0(listGen pu_function,
-			      pu_LambdaExp)))
+		    Pickle.convert (fn (lv,tvs,t,e) => {lvar=lv,tyvars=tvs,Type=t,bind=e},
+				    fn {lvar=lv,tyvars=tvs,Type=t,bind=e} => (lv,tvs,t,e))
+		    (Pickle.tup4Gen0(Lvars.pu,pu_tyvars,pu_Type,pu_LambdaExp))
+		in Pickle.con1 FIX (fn FIX a => a | _ => die "pu_LambdaExp.FIX")
+		    (Pickle.convert (fn (fs,s) => {functions=fs,scope=s}, fn {functions=fs,scope=s} => (fs,s))
+		     (Pickle.pairGen0(Pickle.listGen pu_function,
+				      pu_LambdaExp)))
 		end
 	    fun fun_APP pu_LambdaExp =
-		con1 APP (fn APP a => a | _ => die "pu_LambdaExp.APP")
-		(pairGen0(pu_LambdaExp,pu_LambdaExp))
+		Pickle.con1 APP (fn APP a => a | _ => die "pu_LambdaExp.APP")
+		(Pickle.pairGen0(pu_LambdaExp,pu_LambdaExp))
 	    fun fun_EXCEPTION pu_LambdaExp =
-		con1 EXCEPTION (fn EXCEPTION a => a | _ => die "pu_LambdaExp.EXCEPTION")
-		(tup3Gen0(Excon.pu,pu_TypeOpt,pu_LambdaExp))
+		Pickle.con1 EXCEPTION (fn EXCEPTION a => a | _ => die "pu_LambdaExp.EXCEPTION")
+		(Pickle.tup3Gen0(Excon.pu,pu_TypeOpt,pu_LambdaExp))
 	    fun fun_RAISE pu_LambdaExp =
-		con1 RAISE (fn RAISE a => a | _ => die "pu_LambdaExp.RAISE")
-		(pairGen0(pu_LambdaExp,pu_TypeList))
+		Pickle.con1 RAISE (fn RAISE a => a | _ => die "pu_LambdaExp.RAISE")
+		(Pickle.pairGen0(pu_LambdaExp,pu_TypeList))
 	    fun fun_HANDLE pu_LambdaExp =
-		con1 HANDLE (fn HANDLE a => a | _ => die "pu_LambdaExp.HANDLE")
-		(pairGen0(pu_LambdaExp,pu_LambdaExp))
+		Pickle.con1 HANDLE (fn HANDLE a => a | _ => die "pu_LambdaExp.HANDLE")
+		(Pickle.pairGen0(pu_LambdaExp,pu_LambdaExp))
 	    fun fun_SWITCH_I pu_LambdaExp =
-		con1 SWITCH_I (fn SWITCH_I a => a | _ => die "pu_LambdaExp.SWITCH_I")
-		(convert (fn (sw,p) => {switch=sw,precision=p}, fn {switch=sw,precision=p} => (sw,p))
-		 (pairGen0(pu_Switch int32 pu_LambdaExp,int)))
+		Pickle.con1 SWITCH_I (fn SWITCH_I a => a | _ => die "pu_LambdaExp.SWITCH_I")
+		(Pickle.convert (fn (sw,p) => {switch=sw,precision=p}, fn {switch=sw,precision=p} => (sw,p))
+		 (Pickle.pairGen0(pu_Switch Pickle.int32 pu_LambdaExp,Pickle.int)))
 	    fun fun_SWITCH_W pu_LambdaExp =
-		con1 SWITCH_W (fn SWITCH_W a => a | _ => die "pu_LambdaExp.SWITCH_W")
-		(convert (fn (sw,p) => {switch=sw,precision=p}, fn {switch=sw,precision=p} => (sw,p))
-		 (pairGen0(pu_Switch word32 pu_LambdaExp,int)))
+		Pickle.con1 SWITCH_W (fn SWITCH_W a => a | _ => die "pu_LambdaExp.SWITCH_W")
+		(Pickle.convert (fn (sw,p) => {switch=sw,precision=p}, fn {switch=sw,precision=p} => (sw,p))
+		 (Pickle.pairGen0(pu_Switch Pickle.word32 pu_LambdaExp,Pickle.int)))
 	    fun fun_SWITCH_S pu_LambdaExp =
-		con1 SWITCH_S (fn SWITCH_S a => a | _ => die "pu_LambdaExp.SWITCH_S")
-		(pu_Switch string pu_LambdaExp)
+		Pickle.con1 SWITCH_S (fn SWITCH_S a => a | _ => die "pu_LambdaExp.SWITCH_S")
+		(pu_Switch Pickle.string pu_LambdaExp)
 	    fun fun_SWITCH_C pu_LambdaExp =
-		con1 SWITCH_C (fn SWITCH_C a => a | _ => die "pu_LambdaExp.SWITCH_C")
+		Pickle.con1 SWITCH_C (fn SWITCH_C a => a | _ => die "pu_LambdaExp.SWITCH_C")
 		(pu_Switch pu_con_lvopt pu_LambdaExp)
 	    fun fun_SWITCH_E pu_LambdaExp =
-		con1 SWITCH_E (fn SWITCH_E a => a | _ => die "pu_LambdaExp.SWITCH_E")
+		Pickle.con1 SWITCH_E (fn SWITCH_E a => a | _ => die "pu_LambdaExp.SWITCH_E")
 		(pu_Switch pu_excon_lvopt pu_LambdaExp)
 	    fun fun_PRIM pu_LambdaExp =
-		con1 PRIM (fn PRIM a => a | _ => die "pu_LambdaExp.PRIM")
-		(pairGen0(pu_prim,listGen pu_LambdaExp))
+		Pickle.con1 PRIM (fn PRIM a => a | _ => die "pu_LambdaExp.PRIM")
+		(Pickle.pairGen0(pu_prim,Pickle.listGen pu_LambdaExp))
 	    fun fun_FRAME pu_LambdaExp =
-		con1 FRAME (fn FRAME a => a | _ => die "pu_LambdaExp.FRAME")
+		Pickle.con1 FRAME (fn FRAME a => a | _ => die "pu_LambdaExp.FRAME")
 		pu_frame
 	    
-	in dataGen("LambdaExp.LambdaExp",toInt,[fun_VAR,
-			  fun_INTEGER,
-			  fun_WORD,
-			  fun_STRING,
-			  fun_REAL,
-			  fun_FN,
-			  fun_LET,
-			  fun_FIX,
-			  fun_APP,
-			  fun_EXCEPTION,
-			  fun_RAISE,
-			  fun_HANDLE,
-			  fun_SWITCH_I,
-			  fun_SWITCH_W,
-			  fun_SWITCH_S,
-			  fun_SWITCH_C,
-			  fun_SWITCH_E,
-			  fun_PRIM,
-			  fun_FRAME])
+	in Pickle.dataGen("LambdaExp.LambdaExp",toInt,[fun_VAR,
+						       fun_INTEGER,
+						       fun_WORD,
+						       fun_STRING,
+						       fun_REAL,
+						       fun_FN,
+						       fun_LET,
+						       fun_FIX,
+						       fun_APP,
+						       fun_EXCEPTION,
+						       fun_RAISE,
+						       fun_HANDLE,
+						       fun_SWITCH_I,
+						       fun_SWITCH_W,
+						       fun_SWITCH_S,
+						       fun_SWITCH_C,
+						       fun_SWITCH_E,
+						       fun_PRIM,
+						       fun_FRAME])
 	end
 
   end

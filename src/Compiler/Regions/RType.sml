@@ -476,16 +476,18 @@ struct
   fun maybe_increase_runtype(mu as (tau,rho))cone =
     let val old = case E.get_place_ty rho of SOME old => old | _ => die "maybe_increase_runtype"
         val new = runtype tau
-	val _ = 
-	  if old<>new then 
-	    (case E.lub_runType(old,new)
-	       of E.WORD_RT => 
-		 (E.unifyRho(E.toplevel_region_withtype_word, rho) cone; ())
-		| rt => E.setRunType rho rt)
-	  else ()
-    in mu
+    in
+	if old<>new then 
+	    if E.eq_effect(rho, E.toplevel_region_withtype_bot) then   (* This should not happen too often ; ughhh *)
+		(tau, E.toplevelRhoFromTy new)
+	    else
+		((case E.lub_runType(old,new) of 
+		      E.WORD_RT => 
+			  (E.unifyRho(E.toplevel_region_withtype_word, rho) cone; mu)
+		    | rt => (E.setRunType rho rt; mu))
+		      handle _ => die "maybe_increase_runtime")
+	else mu
     end
-
 
   (* instantiation of type schemes *)
 
@@ -513,9 +515,6 @@ struct
           val _ = logsay ("\nSr = " ^ concat (map (fn (rho, rho') => show_rho rho ^ "->" ^show_rho rho' ^ ",") Sr))
           *)
           val find = E.find
-
-          val _ = List.app E.setInstance Sr
-          val _ = List.app E.setInstance Se
 
           fun fst(x,y) = x
 
@@ -593,14 +592,15 @@ struct
                     else (false,mu)
                 end
 
+          val _ = List.app E.setInstance Sr
+          val _ = List.app E.setInstance Se
 
-
-            val Ty = #2(cp_ty tau)
+	  val Ty = #2(cp_ty tau)
                                   (* this is where arrow effects are instantiated*)
-            val (cone, updates) = E.instNodesClever (#2 S @ #3 S) cone
+	  val (cone, updates) = E.instNodesClever (Sr @ Se) cone
 
-            val _ = List.app E.clearInstance Sr
-            val _ = List.app E.clearInstance Se
+	  val _ = List.app E.clearInstance Sr
+	  val _ = List.app E.clearInstance Se
 
             (*val _ = footnote Profile.profileOff()*)
         in
@@ -1317,32 +1317,30 @@ struct
       = Pickle.cache "mus" (Pickle.nameGen "RType.mus" o Pickle.listGen o pu_mu)
 
   val pu_Type =
-      let open Pickle
-	  fun toInt (TYVAR _) = 0
+      let fun toInt (TYVAR _) = 0
 	    | toInt (CONSTYPE _) = 1
 	    | toInt (RECORD _) = 2
 	    | toInt (FUN _) = 3
 	  fun fun_TYVAR _ =
-	      con1 TYVAR (fn TYVAR a => a | _ => die "pu_Type.TYVAR")
+	      Pickle.con1 TYVAR (fn TYVAR a => a | _ => die "pu_Type.TYVAR")
 	      L.pu_tyvar
 	  fun fun_CONSTYPE pu_Type =
-	      con1 CONSTYPE (fn CONSTYPE a => a | _ => die "pu_Type.CONSTYPE")
-	      (tup4Gen0(TyName.pu,pu_mus pu_Type,E.pu_effects,E.pu_effects))
+	      Pickle.con1 CONSTYPE (fn CONSTYPE a => a | _ => die "pu_Type.CONSTYPE")
+	      (Pickle.tup4Gen0(TyName.pu,pu_mus pu_Type,E.pu_effects,E.pu_effects))
 	  fun fun_RECORD pu_Type =
-	      con1 RECORD (fn RECORD a => a | _ => die "pu_Type.RECORD")
+	      Pickle.con1 RECORD (fn RECORD a => a | _ => die "pu_Type.RECORD")
 	      (pu_mus pu_Type)
 	  fun fun_FUN pu_Type =
-	      debugUnpickle "FUN" (con1 FUN (fn FUN a => a | _ => die "pu_Type.FUN")
-	      (tup3Gen0(pu_mus pu_Type,E.pu_effect,pu_mus pu_Type)))
-      in dataGen("RType.Type",toInt,[fun_TYVAR,fun_CONSTYPE,fun_RECORD,fun_FUN])
+	      Pickle.debugUnpickle "FUN" 
+	      (Pickle.con1 FUN (fn FUN a => a | _ => die "pu_Type.FUN")
+	       (Pickle.tup3Gen0(pu_mus pu_Type,E.pu_effect,pu_mus pu_Type)))
+      in Pickle.dataGen("RType.Type",toInt,[fun_TYVAR,fun_CONSTYPE,fun_RECORD,fun_FUN])
       end
   val pu_mu = pu_mu pu_Type
 
   val pu_sigma =
-      let open Pickle
-      in convert (FORALL, fn FORALL a => a)
-	  (tup4Gen0(L.pu_tyvars,E.pu_effects,E.pu_effects,debugUnpickle "Type" pu_Type))
-      end
+      Pickle.convert (FORALL, fn FORALL a => a)
+      (Pickle.tup4Gen0(L.pu_tyvars,E.pu_effects,E.pu_effects,Pickle.debugUnpickle "Type" pu_Type))
 
 end; (* RType ends here *)
 

@@ -493,16 +493,15 @@ old *)
     val pu_bal : bal Pickle.pu = Pickle.enumGen("OrderFinMap.bal",[L,B,R])
 
     fun pu (pu_dom : dom Pickle.pu) (pu_r : 'a Pickle.pu) : 'a map Pickle.pu = 
-	let open Pickle
-	    fun toInt E = 0
+	let fun toInt E = 0
 	      | toInt (N _) = 1
-	    val fun_E = con0 E
+	    val fun_E = Pickle.con0 E
 	    fun fun_N pu =
-		con1 (fn ((a,b,c,d),e) => N(a,b,c,d,e))
+		Pickle.con1 (fn ((a,b,c,d),e) => N(a,b,c,d,e))
 		(fn N(a,b,c,d,e) => ((a,b,c,d),e)
 	          | _ => die "pu.fun_N")
-		(pairGen0(tup4Gen0(pu_dom,pu_r,pu,pu),pu_bal))
-	in dataGen("OrderFinMap.map",toInt,[fun_E,fun_N])
+		(Pickle.pairGen0(Pickle.tup4Gen0(pu_dom,pu_r,pu,pu),pu_bal))
+	in Pickle.dataGen("OrderFinMap.map",toInt,[fun_E,fun_N])
 	end
 
   end

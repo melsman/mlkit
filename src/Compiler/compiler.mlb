@@ -76,7 +76,7 @@ in
      Lambda/CompilerEnv__dummy.sml
      CompileBasis__dummy.sml
      CompileBasis.sml
-     CompBasis.sml
+     local open Edlib in CompBasis.sml end
   end
   local open Common
   in Compile.sml

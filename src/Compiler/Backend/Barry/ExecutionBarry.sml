@@ -71,10 +71,8 @@ functor ExecutionBarry(BuildCompileBarry : BUILD_COMPILE_BARRY) : EXECUTION =
 	end
 
     val pu_linkinfo =
-	let open Pickle
-	in convert (fn b => {unsafe=b},
-		    fn {unsafe=b} => b)
-	    bool
-	end
+	Pickle.convert (fn b => {unsafe=b},
+			fn {unsafe=b} => b)
+	Pickle.bool
   end
 

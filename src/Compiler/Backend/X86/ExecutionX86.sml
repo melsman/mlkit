@@ -215,11 +215,10 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
       end 
 
     val pu_linkinfo =
-	let open Pickle
-	    val pu_labels = listGen Labels.pu
-	    val pu_pair = pairGen(pu_labels,pu_labels)
-	in convert (fn (c,i,e,u) => {code_label=c,imports=i,exports=e,unsafe=u},
-		    fn {code_label=c,imports=i,exports=e,unsafe=u} => (c,i,e,u))
-	    (tup4Gen(Labels.pu,pu_pair,pu_pair,bool))
+	let val pu_labels = Pickle.listGen Labels.pu
+	    val pu_pair = Pickle.pairGen(pu_labels,pu_labels)
+	in Pickle.convert (fn (c,i,e,u) => {code_label=c,imports=i,exports=e,unsafe=u},
+			   fn {code_label=c,imports=i,exports=e,unsafe=u} => (c,i,e,u))
+	    (Pickle.tup4Gen(Labels.pu,pu_pair,pu_pair,Pickle.bool))
 	end
   end

@@ -91,19 +91,14 @@ functor ElabRepository(structure Name : NAME
     fun setElabRep e = elabRep := e
 
     val pu_elab_entry : elab_entry Pickle.pu =
-	let open Pickle
-	in convert (fn ((a1,a2,a3,a4),(a5,a6,a7,a8)) => (a1,a2,a3,a4,a5,a6,a7,a8),
-		    fn (a1,a2,a3,a4,a5,a6,a7,a8) => ((a1,a2,a3,a4),(a5,a6,a7,a8)))
-	    (pairGen0(tup4Gen0(InfixBasis.pu,ModuleEnvironments.B.pu,
-			       listGen StrId.pu_longstrid,pairGen0(OpacityEnv.pu,TyName.Set.pu TyName.pu)),
-		      tup4Gen0(listGen Name.pu,InfixBasis.pu,ModuleEnvironments.B.pu,OpacityEnv.pu)))
-	end
+	Pickle.convert (fn ((a1,a2,a3,a4),(a5,a6,a7,a8)) => (a1,a2,a3,a4,a5,a6,a7,a8),
+			fn (a1,a2,a3,a4,a5,a6,a7,a8) => ((a1,a2,a3,a4),(a5,a6,a7,a8)))
+	(Pickle.pairGen0(Pickle.tup4Gen0(InfixBasis.pu,ModuleEnvironments.B.pu,
+					 Pickle.listGen StrId.pu_longstrid,Pickle.pairGen0(OpacityEnv.pu,TyName.Set.pu TyName.pu)),
+			 Pickle.tup4Gen0(Pickle.listGen Name.pu,InfixBasis.pu,ModuleEnvironments.B.pu,OpacityEnv.pu)))
 
     val pu_dom = Pickle.pairGen(ModuleEnvironments.pu_absprjid,FunId.pu)
 
     val pu : elabRep Pickle.pu =
-	let open Pickle
-	in RM.pu pu_dom (listGen pu_elab_entry)
-	end
-
+	RM.pu pu_dom (Pickle.listGen pu_elab_entry)
   end

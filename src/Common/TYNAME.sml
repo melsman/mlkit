@@ -84,6 +84,8 @@ signature TYNAME =
     val setUnboxed : TyName -> unit (* After calling setUnboxed(t), unboxed(t) 
 				     * returns true. *)
 
+    val tynamesPredefined : TyName list
+
     type StringTree
     val layout : TyName -> StringTree
 
@@ -93,4 +95,5 @@ signature TYNAME =
     structure Set : KIT_MONO_SET
     sharing type TyName = Set.elt = Map.dom
     sharing type StringTree = Set.StringTree = Map.StringTree
+
   end

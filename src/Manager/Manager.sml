@@ -85,6 +85,22 @@ functor Manager(structure StrId : STRID
 	   \prior to the actual type checking and compilation\n\
 	   \of the project."}
 	  ; Flags.is_on0 "extended_typing")	      
+
+    val print_export_bases = 
+	(Flags.add_bool_entry 
+	 {long="print_export_bases", short=SOME "Peb", neg=false, 
+	  item=ref false,
+	  menu=["Debug", "print export bases"],
+	  desc="Controls printing of export bases."}
+	  ; Flags.is_on0 "print_export_bases")	      
+
+    val print_closed_export_bases = 
+	(Flags.add_bool_entry 
+	 {long="print_closed_export_bases", short=SOME "Pceb", neg=false, 
+	  item=ref false,
+	  menu=["Debug", "print closed export bases"],
+	  desc="Controls printing of closed export bases."}
+	  ; Flags.is_on0 "print_closed_export_bases")	      
 	  
     val run_file = ref "run"
     val _ = Flags.add_string_entry 
@@ -630,11 +646,10 @@ functor Manager(structure StrId : STRID
 	    end
 
 	fun 'a doPickleGen (punit:string) (pu_obj: 'a Pickle.pu) (ext: string) (obj:'a) =
-	    let open Pickle
-		val os : outstream = empty()
+	    let val os : Pickle.outstream = Pickle.empty()
 		val _ = pchat (" [Begin pickling " ^ ext ^ "-result for " ^ punit ^ "...]")
 		(*  val timer = timerStart "Pickler" *)
-		val os : outstream = pickler pu_obj obj os
+		val os : Pickle.outstream = Pickle.pickler pu_obj obj os
 		(* val _ = timerReport timer *)
 	    in
 		  pchat (" [Writing " ^ ext ^ "-result to file...]")
@@ -672,13 +687,14 @@ functor Manager(structure StrId : STRID
 	    end
 
 	fun 'a doPickleNGen 
+	    (show : (string -> unit) -> 'a -> unit)
 	    (smlfile : string) 
 	    (pu : (name list *'a) Pickle.pu) 
 	    (ext : string)
 	    (match : 'a * 'a -> 'a)
 	    (eq : 'a*'a->bool)
 	    (NB : Name.name list * 'a) : unit = 
-	    let fun doPickle() = 
+	    let fun doPickle NB = 
 		  (  List.app Name.mk_rigid (#1 NB) 
 		   ; doPickleGen smlfile pu ext NB)		
 	    in case unpickleGen smlfile pu ext of
@@ -692,34 +708,44 @@ functor Manager(structure StrId : STRID
 			 * pick a new key k not in hashSet and reset key(n) 
 			 * to k. This implements a capture free renaming of 
 			 * (N)(B,m) because basenames((N)(B,m)) \cap basenames(N) 
-			 * = \emptyset. *)
+			 * = \emptyset. This last assumption holds only because
+			 * different basenames are used for eb and eb1 export 
+			 * bases. *)
 			val H : (int,unit) H.hash_table = 
 			    H.mkTable (fn x => x, op =) (31, Hexn)
 			val _ = app (fn n => H.insert H (#1(Name.key n),())) (#1 N0B0)
 			val _ = renameN 1 H (#1 NB)
-			val NB0 = matchGen match (NB,N0B0)
-		    in if eq (#2 NB, #2 N0B0) then 
-			(List.app Name.mk_rigid (#1 NB)
-			 ; pchat "identical NB in eb-file")
-		       else doPickle()
+			val NB = matchGen match (NB,N0B0)
+(*
+			val _ = pchat ("Basis from file " ^ smlfile ^ ":")
+			val _ = show print (#2 N0B0)
+			val _ = pchat ("New computed Basis:")
+			val _ = show print (#2 NB)
+*)
+		    in if length (#1 NB) = length (#1 N0B0) andalso eq (#2 NB, #2 N0B0) then 
+			(  List.app Name.mk_rigid (#1 NB)
+			 ; pchat "identical NB in eb-file"
+			 )
+		       else doPickle NB
 		    end
-	      | NONE => doPickle()
+	      | NONE => doPickle NB
 	    end
 
 	val pu_names = Pickle.listGen Name.pu
 	val pu_NB0 = Pickle.pairGen(pu_names,Basis.pu_Basis0)
 	val pu_NB1 = Pickle.pairGen(pu_names,Basis.pu_Basis1)
+(*
 	val pu_NB = Pickle.pairGen(pu_names,Basis.pu)
-
+*)
 	fun doPickleNB0 smlfile (NB0:Name.name list * Basis.Basis0) : unit = 
-	    doPickleNGen smlfile pu_NB0 "eb" Basis.matchBasis0 Basis.eqBasis0 NB0
+	    doPickleNGen Basis.showBasis0 smlfile pu_NB0 "eb" Basis.matchBasis0 Basis.eqBasis0 NB0
 
 	fun doPickleNB1 smlfile (NB1:Name.name list * Basis.Basis1) : unit = 
-	    doPickleNGen smlfile pu_NB1 "eb1" Basis.matchBasis1 Basis.eqBasis1 NB1
-
+	    doPickleNGen Basis.showBasis1 smlfile pu_NB1 "eb1" Basis.matchBasis1 Basis.eqBasis1 NB1
+(*
 	fun doPickleNB smlfile (NB:Name.name list * Basis) : unit = 
 	    doPickleNGen smlfile pu_NB "eb" Basis.match Basis.eq NB
-
+*)
 	fun doPickleLnkFile punit (modc: modcode) : unit =
 	    doPickleGen punit ModCode.pu "lnk" modc 
 
@@ -755,7 +781,7 @@ functor Manager(structure StrId : STRID
 		    in process(lfs,is,modc) 
 		    end 
 	    end
-
+(*
 	fun doUnpickleBases ebfiles : Basis = 
 	    let val _ = pchat "\n [Begin unpickling...]\n"
 		fun process (nil,is,B) = B
@@ -776,7 +802,7 @@ functor Manager(structure StrId : STRID
 			    end handle _ => die ("doUnpickleBases. error \n")
 	    in B
 	    end 
-
+*)
 	fun doUnpickleBases0 ebfiles 
 	    : Pickle.instream option * {ebfile:string,infixElabBasis:InfixBasis*ElabBasis,used:bool ref}list =
 	    let val _ = pchat "\n [Begin unpickling elaboration bases...]\n"
@@ -1076,18 +1102,19 @@ functor Manager(structure StrId : STRID
 			    Basis.plusBasis0(acc,infixElabBasis)) 
 		initialBasis0
 		elabBasesInfo
-	    val _ = print("]\n")
+	    val _ = print("]")
 	    val log_cleanup = log_init smlfile
 	    val _ = Flags.reset_warnings ()
-	    val _ = Name.baseSet (mlbfile ^ "." ^ smlfile)
 	    val abs_mlbfile = ModuleEnvironments.mk_absprjid mlbfile
 	    val _ = Name.bucket := []
+	    val _ = Name.baseSet (mlbfile ^ "." ^ smlfile)
 	    val res = ParseElab.parse_elab {absprjid = abs_mlbfile,
 					    file = smlfile,
 					    infB = infB, elabB = elabB} 
 	in (case res of 
 		ParseElab.FAILURE (report, error_codes) => 
-		    (  print_error_report report
+		    (  print "\n"
+		     ; print_error_report report
 		     ; raise PARSE_ELAB_ERROR error_codes)
 	      | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
 	      let 
@@ -1107,15 +1134,19 @@ functor Manager(structure StrId : STRID
 			val B = Basis.mk(infB,elabB,opaq_env,intB)
 		    in Basis.restrict(B,freelongids)
 		    end
+		val _ = print "\n"
 		val (_,_,opaq_env_im,intB_im) = Basis.un B_im
+
+		(* Setting up for generation of second export basis (eb1) *)
+		val names_elab = !Name.bucket
+		val _ = Name.bucket := []
+		val _ = Name.baseSet (mlbfile ^ "." ^ smlfile ^ "1")
 
 		val _ = chat "[opacity elimination begin...]"
 		val (topdec', opaq_env') = opacity_elimination(opaq_env_im, topdec)
 		val _ = chat "[opacity elimination end...]"
 		  
 		val _ = chat "[interpretation begin...]"
-		val names_elab = !Name.bucket
-		val _ = Name.bucket := []
 		val functor_inline = false
 		val (intB', modc) = 
 		    IntModules.interp(functor_inline, abs_mlbfile, 
@@ -1127,14 +1158,26 @@ functor Manager(structure StrId : STRID
 		(* compute result basis *)
 		val B' = Basis.mk(infB',elabB',opaq_env',intB')
 
-(*
-		val _ = print ("\n [Basis for " ^ punit ^ " before closure...]\n")
-                val _ = pr_st (MO.Basis.layout B')
-*)
-
 		(* Construct export bases *)
 		val (NB0',NB1') =
-		    let val (b1,b2,b3,b4) = Basis.un (Basis.closure (B_im,B'))
+		    let 
+			val _ = 
+			    if print_export_bases() then
+				(  print ("[Export basis for " ^ smlfile ^ " before closure:]\n")
+				 ; pr_st (MO.Basis.layout B')
+				 ; print "\n")
+			    else ()
+				
+			val B'Closed = Basis.closure (B_im,B')
+
+			val _ = 
+			    if print_closed_export_bases() then
+				(  print ("[Closed export basis for " ^ smlfile ^ ":]\n")
+				 ; pr_st (MO.Basis.layout B'Closed)
+				 ; print "\n")
+			    else ()
+
+			val (b1,b2,b3,b4) = Basis.un B'Closed
 		    in ((names_elab,(b1,b2)),
 			(names_int, (b3,b4)))
 		    end
@@ -1153,6 +1196,7 @@ functor Manager(structure StrId : STRID
 		) handle XX => (log_cleanup(); raise XX)
       end  
 
+(*
     fun build_mlb_one mlbfile ebfiles smlfile : unit =
 	let (* load the bases that smlfile depends on *)
 	    val _ = print("[reading source file:\t" ^ smlfile)
@@ -1219,6 +1263,7 @@ functor Manager(structure StrId : STRID
 	      end handle ? => (print_result_report report; raise ?)
 		) handle XX => (log_cleanup(); raise XX)
       end  
+*)
 
     (* ----------------
      * build a project

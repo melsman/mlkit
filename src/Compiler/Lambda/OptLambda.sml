@@ -1188,8 +1188,7 @@ functor OptLambda(structure Lvars: LVARS
 	(PP.LEAF o Lvars.pr_lvar') layout_cv_scheme
 
       val pu_contract_env =
-	  let open Pickle
-	      fun toInt (CVAR _) = 0
+	  let fun toInt (CVAR _) = 0
 		| toInt (CRECORD _) = 1
 		| toInt CUNKNOWN = 2
 		| toInt (CCONST _) = 3
@@ -1197,32 +1196,32 @@ functor OptLambda(structure Lvars: LVARS
 		| toInt (CFIX _) = 5
 
 	      fun fun_CVAR _ = 
-		  con1 CVAR (fn CVAR a => a | _ => die "pu_contract_env.CVAR")
+		  Pickle.con1 CVAR (fn CVAR a => a | _ => die "pu_contract_env.CVAR")
 		  LambdaExp.pu_LambdaExp
 	      fun fun_CRECORD pu =
-		  con1 CRECORD (fn CRECORD a => a | _ => die "pu_contract_env.CRECORD")
-		  (listGen pu)
-	      val fun_CUNKNOWN = con0 CUNKNOWN
+		  Pickle.con1 CRECORD (fn CRECORD a => a | _ => die "pu_contract_env.CRECORD")
+		  (Pickle.listGen pu)
+	      val fun_CUNKNOWN = Pickle.con0 CUNKNOWN
 	      fun fun_CCONST _ =
-		  con1 CCONST (fn CCONST a => a | _ => die "pu_contract_env.CCONST")
+		  Pickle.con1 CCONST (fn CCONST a => a | _ => die "pu_contract_env.CCONST")
 		  LambdaExp.pu_LambdaExp
 	      fun fun_CFN _ =
-		  con1 CFN (fn CFN a => a | _ => die "pu_contract_env.CFN")
-		  (convert (fn (e,l) => {lexp=e,large=l}, fn {lexp=e,large=l} => (e,l))
-		   (pairGen0(LambdaExp.pu_LambdaExp,bool)))
+		  Pickle.con1 CFN (fn CFN a => a | _ => die "pu_contract_env.CFN")
+		  (Pickle.convert (fn (e,l) => {lexp=e,large=l}, fn {lexp=e,large=l} => (e,l))
+		   (Pickle.pairGen0(LambdaExp.pu_LambdaExp,Pickle.bool)))
 	      fun fun_CFIX _ =
-		  con1 CFIX (fn CFIX a => a | _ => die "pu_contract_env.CFIX")
-		  (convert (fn (t,e,l) => {Type=t,bind=e,large=l}, 
-			    fn {Type=t,bind=e,large=l} => (t,e,l))
-		   (tup3Gen0(LambdaExp.pu_Type,LambdaExp.pu_LambdaExp,bool)))		  
+		  Pickle.con1 CFIX (fn CFIX a => a | _ => die "pu_contract_env.CFIX")
+		  (Pickle.convert (fn (t,e,l) => {Type=t,bind=e,large=l}, 
+				   fn {Type=t,bind=e,large=l} => (t,e,l))
+		   (Pickle.tup3Gen0(LambdaExp.pu_Type,LambdaExp.pu_LambdaExp,Pickle.bool)))		  
 	      val pu_cv = 
-		  dataGen("OptLambda.cv",toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
-						fun_CCONST,fun_CFN,fun_CFIX])
+		  Pickle.dataGen("OptLambda.cv",toInt,[fun_CVAR,fun_CRECORD,fun_CUNKNOWN,
+						       fun_CCONST,fun_CFN,fun_CFIX])
 	  in LvarMap.pu Lvars.pu
-	      (pairGen(LambdaExp.pu_tyvars,pu_cv))
+	      (Pickle.pairGen(LambdaExp.pu_tyvars,pu_cv))
 	  end
     end
-  
+
 
    (* -----------------------------------------------------------------
     * eliminate_explicit_records lamb - eliminate bindings of explicit 
@@ -1783,20 +1782,19 @@ functor OptLambda(structure Lvars: LVARS
        end
 
      val pu_unbox_fix_env = 
-	 let open Pickle
-	     val pu_lvarVector = vectorGen Lvars.pu
+	 let val pu_lvarVector = Pickle.vectorGen Lvars.pu
 	     fun toInt (NORMAL_ARGS) = 0
 	       | toInt (UNBOXED_ARGS _) = 1
 	       | toInt (ARG_VARS _) = 2
-	     val fun_NORMAL_ARGS = con0 NORMAL_ARGS
+	     val fun_NORMAL_ARGS = Pickle.con0 NORMAL_ARGS
 	     fun fun_UNBOXED_ARGS _ =
-		 con1 UNBOXED_ARGS (fn UNBOXED_ARGS a => a | _ => die "pu.UNBOXED_ARGS")
+		 Pickle.con1 UNBOXED_ARGS (fn UNBOXED_ARGS a => a | _ => die "pu.UNBOXED_ARGS")
 		 LambdaExp.pu_TypeScheme
 	     fun fun_ARG_VARS _ =
-		 con1 ARG_VARS (fn ARG_VARS a => a | _ => die "pu.ARG_VARS")
+		 Pickle.con1 ARG_VARS (fn ARG_VARS a => a | _ => die "pu.ARG_VARS")
 		 pu_lvarVector
 	     val pu_fix_boxity =
-		 dataGen("OptLambda.fix_boxity",toInt,[fun_NORMAL_ARGS,fun_UNBOXED_ARGS,fun_ARG_VARS])
+		 Pickle.dataGen("OptLambda.fix_boxity",toInt,[fun_NORMAL_ARGS,fun_UNBOXED_ARGS,fun_ARG_VARS])
 	 in LvarMap.pu Lvars.pu pu_fix_boxity
 	 end
    end
@@ -2256,25 +2254,23 @@ functor OptLambda(structure Lvars: LVARS
 
     (* Pickler *)
     val pu =
-	let open Pickle
-	    val pu_iee_res =
+	let val pu_iee_res =
 		let fun to (Option.SOME s) = FIXBOUND s
 		      | to NONE = NOTFIXBOUND
 		    fun from (FIXBOUND s) = SOME s
 		      | from NOTFIXBOUND = NONE
-		in convert (to,from) (optionGen LambdaExp.pu_TypeScheme)
+		in Pickle.convert (to,from) (Pickle.optionGen LambdaExp.pu_TypeScheme)
 		end	    
 	    val pu_iee = LvarMap.pu Lvars.pu pu_iee_res
 	    val pu_uce = 
-		LvarMap.pu Lvars.pu (optionGen(pairGen(int,LambdaExp.pu_TypeScheme)))
+		LvarMap.pu Lvars.pu (Pickle.optionGen(Pickle.pairGen(Pickle.int,LambdaExp.pu_TypeScheme)))
 	in 
-	    convert (fn ((a,b,c),(d,e,f)) => (a,b,c,d,e,f), fn (a,b,c,d,e,f) => ((a,b,c),(d,e,f)))
-	    (pairGen0(tup3Gen0(comment "OptLambda.iee.pu" pu_iee,
-			       comment "OptLambda.let_env.pu" pu_let_env,
-			       comment "OptLambda.unbox_fix_env.pu" pu_unbox_fix_env),
-		      tup3Gen0(comment "OptLambda.uce.pu" pu_uce,
-			       comment "OptLambda.contract_env.pu" pu_contract_env,
-			       comment "OptLambda.contract_env2..pu" pu_contract_env)))
+	    Pickle.convert (fn ((a,b,c),(d,e,f)) => (a,b,c,d,e,f), fn (a,b,c,d,e,f) => ((a,b,c),(d,e,f)))
+	    (Pickle.pairGen0(Pickle.tup3Gen0(Pickle.comment "OptLambda.iee.pu" pu_iee,
+					     Pickle.comment "OptLambda.let_env.pu" pu_let_env,
+					     Pickle.comment "OptLambda.unbox_fix_env.pu" pu_unbox_fix_env),
+			     Pickle.tup3Gen0(Pickle.comment "OptLambda.uce.pu" pu_uce,
+					     Pickle.comment "OptLambda.contract_env.pu" pu_contract_env,
+					     Pickle.comment "OptLambda.contract_env2..pu" pu_contract_env)))
 	end
-
   end
