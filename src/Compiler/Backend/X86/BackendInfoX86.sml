@@ -199,4 +199,6 @@ functor BackendInfoX86(structure Labels : ADDRESS_LABELS
     val down_growing_stack : bool = true         (* true for x86 code generation *)
     val double_alignment_required : bool = false (* false for x86 code generation *)
 
+    (* For the KAM machine *)
+    val env_lvar = Lvars.new_named_lvar("env")
   end
