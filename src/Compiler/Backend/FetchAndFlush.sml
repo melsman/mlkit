@@ -235,11 +235,13 @@ struct
 	  | IFF_lss'(LS.SWITCH_C sw::lss) = LS.SWITCH_C(IFF_sw (fn lss => IFF_lss(lss,F,[])) sw) :: IFF_lss' lss
 	  | IFF_lss'(LS.SWITCH_E sw::lss) = LS.SWITCH_E(IFF_sw (fn lss => IFF_lss(lss,F,[])) sw) :: IFF_lss' lss
 	  | IFF_lss'(LS.RESET_REGIONS a::lss) = LS.RESET_REGIONS a :: IFF_lss' lss
+	  | IFF_lss'(LS.PRIM{name,args,res}::lss) = 
+	    let val flushed_lvars = List.filter (fn atom => atom_in_F(atom,F)) res
+	    in LS.PRIM{name=name,args=args,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss)
+	    end
 	  | IFF_lss'(LS.CCALL{name,args,rhos_for_result,res}::lss) = 
-	    let
-	      val flushed_lvars = List.filter (fn atom => atom_in_F(atom,F)) res
-	    in
-	      LS.CCALL{name=name,args=args,rhos_for_result=rhos_for_result,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss)
+	    let val flushed_lvars = List.filter (fn atom => atom_in_F(atom,F)) res
+	    in LS.CCALL{name=name,args=args,rhos_for_result=rhos_for_result,res=res} :: insert_flush(flushed_lvars,IFF_lss' lss)
 	    end
       in
 	IFF_lss' lss

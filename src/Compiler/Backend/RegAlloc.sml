@@ -15,6 +15,7 @@ functor RegAlloc(structure Con : CON
                    sharing type CallConv.cc = LineStmt.cc
 		 structure BI : BACKEND_INFO
 		   sharing type BI.lvar = Lvars.lvar
+		   sharing type BI.lvarset = Lvarset.lvarset
 		 structure PP : PRETTYPRINT
 		   sharing type PP.StringTree = 
                                 Effect.StringTree = 
@@ -44,7 +45,7 @@ struct
   | PHREG_STY of lvar * lvar
     
   fun pr_sty(STACK_STY lv) = Lvars.pr_lvar lv ^ ":stack"
-    | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ LS.pr_phreg phreg
+    | pr_sty(PHREG_STY(lv,phreg)) = Lvars.pr_lvar lv ^ ":" ^ LS.pr_phreg phreg
 
   fun pr_atom atom = LS.pr_atom atom
 
@@ -52,8 +53,7 @@ struct
   (* Logging *)
   (***********)
   fun log s = TextIO.output(!Flags.log,s ^ "\n")
-  fun msg s = TextIO.output(TextIO.stdOut, s)
-  fun chat(s: string) = if !Flags.chat then msg (s) else ()
+  fun chat(s: string) = if !Flags.chat then print (s ^ "\n") else ()
   fun die s  = Crash.impossible ("RegAlloc." ^ s)
   fun fast_pr stringtree = 
     (PP.outputTree ((fn s => TextIO.output(!Flags.log, s)) , stringtree, !Flags.colwidth);
@@ -202,7 +202,8 @@ struct
 	   | LS.LETREGION{rhos,body} => LS.LETREGION{rhos=rhos,body=ra_assign_lss body}
 	   | LS.SCOPE{pat,scope} => LS.SCOPE{pat=map assign pat,scope=ra_assign_lss scope}
 	   | LS.HANDLE{default,handl=(handl,handl_lv),handl_return=([],handl_return_lv),offset} => 
-	    LS.HANDLE{default=ra_assign_lss default,handl=(ra_assign_lss handl,handl_lv),handl_return=([],handl_return_lv),offset=offset}
+	    LS.HANDLE{default=ra_assign_lss default,handl=(ra_assign_lss handl,handl_lv),
+		      handl_return=([],handl_return_lv),offset=offset}
 	   | LS.HANDLE{default,handl,handl_return,offset} => die "ra_dummy_ls: handl_return in HANDLE not empty"
 	   | LS.RAISE{arg,defined_atys} => LS.RAISE{arg=arg,defined_atys=defined_atys}
 	   | LS.SWITCH_I sw => LS.SWITCH_I(ra_assign_sw ra_assign_lss sw)
@@ -210,6 +211,7 @@ struct
 	   | LS.SWITCH_C sw => LS.SWITCH_C(ra_assign_sw ra_assign_lss sw)
 	   | LS.SWITCH_E sw => LS.SWITCH_E(ra_assign_sw ra_assign_lss sw)
 	   | LS.RESET_REGIONS a => LS.RESET_REGIONS a
+	   | LS.PRIM a => LS.PRIM a
 	   | LS.CCALL a => LS.CCALL a
 	    
       and ra_assign_lss lss = List.foldr (fn (ls,acc) => ra_assign_ls ls :: acc) [] lss
@@ -471,8 +473,8 @@ struct
 			  ((#adjList v_node) := u :: !(#adjList v_node);
 			   (#degree v_node) := !(#degree v_node) + 1)
 			else ())
-		    | NONE => die "AddEdge.nTableLookup v_key")
-	       | NONE => die "AddEdge.nTableLookup u_key"
+		    | NONE => die ("AddEdge.nTableLookup v_key: " ^ Lvars.pr_lvar v))
+	       | NONE => die ("AddEdge.nTableLookup u_key: " ^ Lvars.pr_lvar u)
     end	    
 
   fun MakeWorklist() =
@@ -596,11 +598,47 @@ struct
     in pop_loop (!selectStack)
     end
 
+  fun MakeInitial lss =
+    let 
+      fun add lv = 
+	let val i = key lv
+	in case nTableLookup i
+	     of SOME n => ()
+	      | NONE => let val n : node = {lv=lv,degree=ref 0, mv_related=ref NONE,
+					    worklist=ref initial_enum, adjList=ref nil,
+					    alias = ref NONE, color=ref NONE}
+			in nTableAdd(i,n); initial := n :: !initial
+			end
+	end
+      fun mk_sw mk (LS.SWITCH(a,sels,default)) =
+	(app add (LS.get_var_atom(a,nil)); 
+	 app (fn (_,lss) => app mk lss) sels; 
+	 app mk default)
+      fun mk ls =
+	case ls
+	  of LS.FLUSH _ => die "MakeInitial: FLUSH not inserted yet."
+	   | LS.FETCH _ => die "MakeInitial: FETCH not inserted yet."
+	   | LS.LETREGION{rhos,body} => app mk body
+	   | LS.SCOPE{pat,scope} => app mk scope
+	   | LS.HANDLE{default,handl=(handl_lss,handl_lv),handl_return=(handl_return_lss,handl_return_lv),offset} => 
+	    (app mk default; app mk handl_lss; app mk handl_return_lss; 
+	     app add (LS.get_var_atom (handl_lv,nil)); 
+	     app add (LS.get_var_atom (handl_return_lv,nil)))
+	   | LS.SWITCH_I sw => mk_sw mk sw
+	   | LS.SWITCH_S sw => mk_sw mk sw
+	   | LS.SWITCH_C sw => mk_sw mk sw
+	   | LS.SWITCH_E sw => mk_sw mk sw
+	   | _ => let val (def,use) = LS.def_use_lvar_ls ls
+		  in app add def; app add use
+		  end
+    in app mk lss
+    end
+
   fun Build lss =
     let 
       fun lvarset_app f lvs = (Lvarset.mapset f lvs; ())
-      fun def_use_lvar_ls ls =
-	let val (def,use) = LS.def_use_lvar_ls ls
+      fun def_use_var_ls ls =
+	let val (def,use) = LS.def_use_var_ls ls
 	in (Lvarset.lvarsetof def, Lvarset.lvarsetof use)
 	end
       fun ig_sw (ig_lss, LS.SWITCH (a, sel, def), L) =
@@ -608,25 +646,30 @@ struct
 	    val L = foldl Lvarset.union (ig_lss(def,L)) Ls
 	in Lvarset.union (L, lvarset_atom a)
 	end
+      fun do_non_tail_call (L, ls) =
+	let val (def, use) = def_use_var_ls ls  (* def=flv(res) *)
+	    val def = Lvarset.union(def,BI.caller_save_phregset)
+	    val _ = lvarset_app (fn d => lvarset_app (fn u => AddEdge(d,u)) L) def
+	    val L = Lvarset.union(use, Lvarset.difference(L,def))
+	in L
+	end
       fun ig_ls (ls, L) =
 	case ls
 	  of LS.FLUSH _ => die "ig_ls: FLUSH not inserted yet."
 	   | LS.FETCH _ => die "ig_ls: FETCH not inserted yet."
-	   | LS.FNJMP {opr, args, clos, free, res} => die "ig_ls.FNJMP"
-	   | LS.FNCALL {opr, args, clos, free, res} => die "ig_ls.FNCALL"
-	   | LS.JMP {opr, args, reg_vec, reg_args, clos, free, res} => die "ig_ls.JMP"
-	   | LS.FUNCALL {opr, args, reg_vec, reg_args, clos, free, res} => die "ig_ls.FUNCALL"
+	   | LS.FNJMP _ => Lvarset.lvarsetof(LS.use_var_ls ls)
+	   | LS.FNCALL _ => do_non_tail_call(L,ls)
+	   | LS.JMP _ => Lvarset.lvarsetof(LS.use_var_ls ls)
+	   | LS.FUNCALL _ => do_non_tail_call(L,ls)
 	   | LS.LETREGION{rhos,body} => ig_lss(body, L)
 	   | LS.SCOPE{pat,scope} => ig_lss(scope, L)
 	   | LS.HANDLE{default,handl,handl_return,offset} => die "ig_ls.HANDLE"
 	   (* a handle defines all caller save registers *) 
-	   | LS.RAISE{arg,defined_atys} => die "ig_ls.RAISE"
 	   | LS.SWITCH_I sw => ig_sw (ig_lss, sw, L)
 	   | LS.SWITCH_S sw => ig_sw (ig_lss, sw, L)
 	   | LS.SWITCH_C sw => ig_sw (ig_lss, sw, L)
 	   | LS.SWITCH_E sw => ig_sw (ig_lss, sw, L)
-	   | LS.RESET_REGIONS {force, regions_for_resetting} => die "ig_ls.RESET_REGIONS" 
-	   | LS.CCALL {name,args,rhos_for_result,res} => die "ig_ls.CCALL"
+	   | LS.CCALL _ => do_non_tail_call(L,ls)
 	   | LS.ASSIGN {pat=LS.VAR lv1, bind=LS.ATOM(LS.VAR lv2)} =>   (* move instruction *)
 	    let val move : move = {lv1=lv1, lv2=lv2, movelist=ref worklistMoves_enum}
 	        val _ = (moveListAdd(key lv1, move); moveListAdd(key lv2, move))
@@ -635,7 +678,7 @@ struct
 	    in L
 	    end
 	   | _ => (* general *)
-	    let val (def, use) = def_use_lvar_ls ls
+	    let val (def, use) = def_use_var_ls ls
 	        val L = Lvarset.union(L, def)         (* to introduce edges between defs *)
 		val _ = lvarset_app (fn d => lvarset_app (fn l => AddEdge(l,d)) L) def
 		val L = Lvarset.union(use, Lvarset.difference(L,def))
@@ -651,10 +694,10 @@ struct
     
   fun ra_body lss =
     let fun repeat() =
-      (if not(isEmpty_simplifyWorklist()) then Simplify()
-	      else if not(isEmpty_worklistMoves()) then Coalesce()
-		   else if not(isEmpty_freezeWorklist()) then Freeze()
-			else if not(isEmpty_spillWorklist()) then SelectSpill()
+      (if not(isEmpty_simplifyWorklist()) then (chat "Simplify.."; Simplify())
+	      else if not(isEmpty_worklistMoves()) then (chat "Coalesce.."; Coalesce())
+		   else if not(isEmpty_freezeWorklist()) then (chat "Freeze.."; Freeze())
+			else if not(isEmpty_spillWorklist()) then (chat "SelectSpill.."; SelectSpill())
 			     else ();
 			       if isEmpty_simplifyWorklist() andalso isEmpty_worklistMoves()
 				 andalso isEmpty_freezeWorklist() andalso isEmpty_spillWorklist() then ()
@@ -669,7 +712,18 @@ struct
 		| NONE => STACK_STY lv
 	  end
 	
-	val _ = (raReset; Build lss; MakeWorklist(); repeat(); AssignColors())
+	val _ = (raReset(); 
+		 chat "MakeInitial..";
+		 MakeInitial lss;
+		 chat "Build..";
+		 Build lss; 
+		 chat "MakeWorklist..";		 
+		 MakeWorklist(); 
+		 repeat(); 
+		 chat "AssignColors..";
+		 AssignColors();
+		 chat "ra_assign..")
+	  
 	val res = ra_assign assign lss
     in raReset(); res
     end
@@ -695,7 +749,7 @@ struct
       val line_prg_ra = ra_prg line_prg
       val _ = 
 	if Flags.is_on "print_register_allocated_program" then
-	  display("\nReport: AFTER REGISTER ALLOCATION (dummy):", 
+	  display("\nReport: AFTER REGISTER ALLOCATION", 
 		  LS.layout_line_prg pr_sty (fn _ => "()") pr_atom false line_prg_ra)
 	else
 	  ()

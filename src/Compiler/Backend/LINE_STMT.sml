@@ -91,12 +91,10 @@ signature LINE_STMT =
     | SWITCH_S      of (string,'sty,'offset,'aty) Switch
     | SWITCH_C      of ((con*con_kind),'sty,'offset,'aty) Switch
     | SWITCH_E      of (excon,'sty,'offset,'aty) Switch
-    | RESET_REGIONS of {force: bool, 
-			regions_for_resetting: 'aty sma list}
-    | CCALL         of {name: string,  
-			args: 'aty list,
-			rhos_for_result : 'aty list,
-			res: 'aty list}
+    | RESET_REGIONS of {force: bool, regions_for_resetting: 'aty sma list}
+    | PRIM          of {name: string, args: 'aty list,	res: 'aty list}
+    | CCALL         of {name: string, args: 'aty list,
+			rhos_for_result : 'aty list, res: 'aty list}
 
     and ('a,'sty,'offset,'aty) Switch = SWITCH of 'aty * ('a * (('sty,'offset,'aty) LineStmt list)) list * (('sty,'offset,'aty) LineStmt list)
 

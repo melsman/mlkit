@@ -71,17 +71,18 @@ signature BACKEND_INFO =
     val minJumpTabSize     : int
 
     (* Names For Primitive Functions *)
-    val EQUAL_INT       : string
-    val MINUS_INT       : string
-    val PLUS_INT        : string
-    val MUL_INT         : string
-    val NEG_INT         : string
-    val ABS_INT         : string
-    val LESS_INT        : string
-    val LESSEQ_INT      : string
-    val GREATER_INT     : string
-    val GREATEREQ_INT   : string
-    val FRESH_EXN_NAME  : string
+    val EQUAL_INT      : string
+    val MINUS_INT      : string
+    val PLUS_INT       : string
+    val MUL_INT        : string
+    val NEG_INT        : string
+    val ABS_INT        : string
+    val LESS_INT       : string
+    val LESSEQ_INT     : string
+    val GREATER_INT    : string
+    val GREATEREQ_INT  : string
+    val FRESH_EXN_NAME : string
+
     val PLUS_FLOAT      : string
     val MINUS_FLOAT     : string
     val MUL_FLOAT       : string
@@ -92,6 +93,13 @@ signature BACKEND_INFO =
     val LESSEQ_FLOAT    : string
     val GREATER_FLOAT   : string
     val GREATEREQ_FLOAT : string
+
+    (* is_prim(n) returns true if name is not implemented by a C call,
+     * but rather in machine code; primmitives do not destroy all
+     * caller save registers, as C calls do. *)
+      
+    val is_prim : string -> bool   
+
   end
 
 
