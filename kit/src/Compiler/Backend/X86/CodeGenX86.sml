@@ -1428,7 +1428,9 @@ struct
 		    fun jmp C = I.jmp(L(MLFunLab opr)) :: rem_dead_code C
 		  in 
 		    if List.length spilled_args > 0 then
-		      CG_ls(LS.FUNCALL cc,C)
+			      (print ("** Ooops - turning tail call of " ^ Labels.pr_label opr 
+				      ^ "\n**         into ordinary call (CodeGenX86)\n");
+			       CG_ls(LS.FUNCALL cc,C))
 		    else
 		      base_plus_offset(esp,WORDS(size_ff+size_ccf),esp,
 				       jmp C)
