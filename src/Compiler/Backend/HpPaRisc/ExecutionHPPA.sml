@@ -122,10 +122,45 @@ functor ExecutionHPPA(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 	     end
       end
 
-    fun generate_link_code (labs : label list) : target =
-      if !dso_flag then	HpPaDelaySlotOptimization.DSO (CodeGen.generate_link_code labs)
-      else CodeGen.generate_link_code labs
-
+    val generate_link_code = 
+      SOME (fn labs =>
+	    if !dso_flag then HpPaDelaySlotOptimization.DSO (CodeGen.generate_link_code labs)
+	    else CodeGen.generate_link_code labs)
+      
     fun emit {target:target, filename:string} : unit =
       CodeGen.emit (target, filename)
+
+
+    fun delete_file f = OS.FileSys.remove f handle _ => ()
+    fun execute_command command : unit =
+      (OS.Process.system command; ())
+(*      handle OS.SysErr(s,_) => die ("\nCommand " ^ command ^ "\nfailed (" ^ s ^ ");") *)
+  
+    val c_libs = Flags.lookup_string_entry "c_libs"
+    fun assemble (file_s, file_o) =
+      (execute_command (!(Flags.lookup_string_entry "c_compiler") ^ " -c -o " ^ file_o ^ " " ^ file_s);
+       if !(Flags.lookup_flag_entry "delete_target_files")
+	 then  delete_file file_s 
+       else ())
+
+	  (*e.g., "cc -Aa -c -o link.o link.s"
+
+	   man cc:
+	   -c          Suppress the link edit phase of the compilation, and
+		       force an object (.o) file to be produced for each .c
+		       file even if only one program is compiled.  Object
+		       files produced from C programs must be linked before
+		       being executed.
+
+	   -ooutfile   Name the output file from the linker outfile.  The
+		       default name is a.out.*)
+
+    fun link_files_with_runtime_system path_to_runtime files run =
+      let val files = map (fn s => s ^ " ") files
+	  val shell_cmd = !(Flags.lookup_string_entry "c_compiler") ^ " -o " ^ run ^ " " ^ 
+	    concat files ^ path_to_runtime() ^ " " ^ !(Flags.lookup_string_entry "c_libs")
+      in execute_command shell_cmd;
+	TextIO.output (TextIO.stdOut, "[wrote executable file:\t" ^ run ^ "]\n")
+      end 
+
   end;

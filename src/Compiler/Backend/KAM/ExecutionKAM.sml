@@ -143,8 +143,13 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 	   | Compile.CodeRes(ce,cb,target,safe) => 
 	    let 
 	      val {main_lab, code, imports, exports, env} = ClosExp.lift(closenv,target)
-	      val target_new = {main_lab=main_lab, code=code, imports=imports, exports=exports}
-	      val asm_prg = Tools.Timing.timing "CG" CodeGen.CG target_new
+	      val asm_prg = 
+		Tools.Timing.timing "CG" CodeGen.CG 
+		{main_lab_opt=if safe then NONE else SOME main_lab, 
+		 code=code, 
+		 imports=imports, 
+		 exports=exports}
+
 	      val linkinfo = mk_linkinfo {code_label=main_lab,
 					  imports=(#1 imports) @ (#2 imports), (* Merge MLFunLab and DatLab *)
 					  exports=(#1 exports) @ (#2 exports), (* Merge MLFunLab and DatLab *)
@@ -155,8 +160,22 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 	    end
       end
 
-    fun generate_link_code (labs : label list) : target = CodeGen.generate_link_code labs
+    val generate_link_code = NONE
 
     fun emit (arg as {target, filename:string}) : unit = EmitCode.emit arg
 
+    fun assemble _ = ()
+    fun link_files_with_runtime_system _ files run = 
+      let fun modify s = case rev (explode s)
+			   of #"o" :: rest => implode (rev(#"o" :: #"u" :: rest))
+			    | _ => s
+	  val os = TextIO.openOut run
+      in
+(*	print ("[Creating file " ^ run ^ " begin ...]\n"); *)
+	TextIO.output(os, "#!/bin/sh\n" ^ !Flags.install_dir ^ "/src/RuntimeWithGC/kam ");
+	app (fn f => TextIO.output(os, modify f ^ " ")) files;
+	TextIO.closeOut os;
+	OS.Process.system "chmod a+x run";
+	print("[Created file " ^ run ^ "]\n")
+      end
   end
