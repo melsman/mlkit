@@ -570,6 +570,7 @@ functor CompileDec(structure Con: CON
         handle Gotcha e => e
       end
 
+(*KILL 12/11/1997 18:30. tho.:
 
     (* ---------------------------------------------------------------------- *)
     (*                        Primitives                                      *)
@@ -581,6 +582,7 @@ functor CompileDec(structure Con: CON
     fun lookupPrim i =
           (case i of
 	     0 => EQUALprim dummyType
+(*TODO 12/11/1997 15:10. tho.:
 	   | 1 => FLOORprim
 	   | 2 => REALprim
 	   | 3 => SQRTprim
@@ -596,8 +598,10 @@ functor CompileDec(structure Con: CON
 	   | 14 => DIV_REALprim
 	   | 15 => DIV_INTprim
 	   | 16 => MODprim
+*)
 	   | 17 => ASSIGNprim dummyType
 	   | 18 => DEREFprim dummyType
+(*TODO 12/11/1997 15:10. tho.:
 	   | 19 => OPEN_INprim
 	   | 20 => OPEN_OUTprim
 	   | 21 => INPUTprim
@@ -610,8 +614,10 @@ functor CompileDec(structure Con: CON
 	   | 28 => FLUSH_OUTprim
 	   | 29 => STD_INprim
 	   | 30 => STD_OUTprim
+*)
 	   | 31 => CCALLprim ("dummyString", dummyType)
 	   | _ => die ("lookupPrim " ^ Int.string i))
+*)
 
 
     (* ---------------------------------------------------------------------- *)
@@ -712,6 +718,7 @@ functor CompileDec(structure Con: CON
 	    end
     end (*local*)
 
+(*KILL 12/11/1997 19:27. tho.:
    (* ---------------------------------------------------------------------- *)
    (*           Decomposition of applications of prim                        *)
    (* ---------------------------------------------------------------------- *)
@@ -741,47 +748,41 @@ functor CompileDec(structure Con: CON
 				 ^ Int.string primno)
          else decomposeExp arg)
       end
+*)
 
     (* ----------------------------------------------------------------------- *)
     (*               Syntax directed compilation                               *)
     (* ----------------------------------------------------------------------- *)
 
-    fun compileAtexp env atexp : TLE.LambdaExp =
-      case atexp
-        of SCONatexp(_, SCon.INTEGER x) => INTEGER x
-         | SCONatexp(_, SCon.STRING x) => STRING x
-         | SCONatexp(_, SCon.REAL x) => REAL x
-         | SCONatexp(_, SCon.CHAR x) => INTEGER x
-         | SCONatexp(_, SCon.WORD x) => INTEGER x
-
-         | IDENTatexp(info, OP_OPT(longid, _)) =>
-	  (case lookupLongid env longid (NORMAL info)
-	     of CE.LVAR (lv,tyvars,_,il) =>   (*see COMPILER_ENV*) 
-	      (let val instances =
-		     case to_TypeInfo info 
-		       of Some(TypeInfo.VAR_INFO{instances}) => instances
-			| _ => die ("compileAtexp(LVAR..): no type info for "
-				    ^ Ident.pr_longid longid)
-		   val instances' = map compileType instances
-		   val S = CE.mk_subst (fn () => "CompileDec.IDENTatexp") (tyvars, instances')
-		   val il' = CE.on_il(S,il)
-	       in VAR {lvar=lv,instances=il'}
-	       end handle X => (print (" Exception raised in CompileDec.IDENTatexp.LVAR.longid = " ^ Ident.pr_longid longid ^ "\n");
-				print " Reraising...\n"; raise X))
-	      | CE.ABS =>       overloaded_prim_fn info CE.ABS       true  []
-	      | CE.NEG =>       overloaded_prim_fn info CE.NEG       true  []
-	      | CE.PLUS =>      overloaded_prim_fn info CE.PLUS      false []
-	      | CE.MINUS =>     overloaded_prim_fn info CE.MINUS     false []
-	      | CE.MUL =>       overloaded_prim_fn info CE.MUL       false []
-	      | CE.DIV =>       overloaded_prim_fn info CE.DIV       false
-	           [PRIM (EXCONprim Excon.ex_DIV, [])]
-	      | CE.MOD =>       overloaded_prim_fn info CE.MOD       false
-		   [PRIM (EXCONprim Excon.ex_MOD, [])]
-	      | CE.LESS =>      overloaded_prim_fn' info CE.LESS
-	      | CE.GREATER =>   overloaded_prim_fn' info CE.GREATER
-	      | CE.LESSEQ =>    overloaded_prim_fn' info CE.LESSEQ
-	      | CE.GREATEREQ => overloaded_prim_fn' info CE.GREATEREQ
-	      | CE.CON(con,tyvars,_,il,it) => (*See COMPILER_ENV*)
+    fun compile_ident info longid result =
+          (case result of
+	     CE.LVAR (lv,tyvars,_,il) =>   (*see COMPILER_ENV*) 
+	       (let val instances =
+		      (case to_TypeInfo info of
+			 Some(TypeInfo.VAR_INFO{instances}) => instances
+		       | _ => die ("compileAtexp(LVAR..): no type info for "
+				   ^ Ident.pr_longid longid))
+		    val instances' = map compileType instances
+		    val S = CE.mk_subst (fn () => "CompileDec.IDENTatexp") (tyvars, instances')
+		    val il' = CE.on_il(S,il)
+		in VAR {lvar=lv,instances=il'}
+		end handle X => (print (" Exception raised in CompileDec.IDENTatexp.LVAR.longid = "
+					^ Ident.pr_longid longid ^ "\n");
+		                 print " Reraising...\n"; raise X))
+	   | CE.ABS =>       overloaded_prim_fn info CE.ABS       true  []
+	   | CE.NEG =>       overloaded_prim_fn info CE.NEG       true  []
+	   | CE.PLUS =>      overloaded_prim_fn info CE.PLUS      false []
+	   | CE.MINUS =>     overloaded_prim_fn info CE.MINUS     false []
+	   | CE.MUL =>       overloaded_prim_fn info CE.MUL       false []
+	   | CE.DIV =>       overloaded_prim_fn info CE.DIV       false
+		  [PRIM (EXCONprim Excon.ex_DIV, [])]
+	   | CE.MOD =>       overloaded_prim_fn info CE.MOD       false
+		  [PRIM (EXCONprim Excon.ex_MOD, [])]
+	   | CE.LESS =>      overloaded_prim_fn' info CE.LESS
+	   | CE.GREATER =>   overloaded_prim_fn' info CE.GREATER
+	   | CE.LESSEQ =>    overloaded_prim_fn' info CE.LESSEQ
+	   | CE.GREATEREQ => overloaded_prim_fn' info CE.GREATEREQ
+	   | CE.CON(con,tyvars,_,il,it) => (*See COMPILER_ENV*)
 	       let
 		 val (functional,Type,instances) =
 		   case to_TypeInfo info 
@@ -807,7 +808,7 @@ functor CompileDec(structure Con: CON
 		    in PRIM(CONprim {con=con, instances=il''},[])
 		    end
 	       end
-	      | CE.REF =>
+	   | CE.REF =>
 	       let val (Type,instances) =
 		     case to_TypeInfo info 
 		       of Some (TypeInfo.CON_INFO{Type,instances,...}) => (Type,instances)
@@ -822,7 +823,7 @@ functor CompileDec(structure Con: CON
 		     body=PRIM(REFprim {instance=instance'},
 			       [VAR{lvar=lv,instances=[]}])}
 	       end
-	      | CE.EXCON (excon,_) =>
+	   | CE.EXCON (excon,_) =>
 	       let
 		 val (functional,Type) =
 		   case to_TypeInfo info of 
@@ -839,20 +840,31 @@ functor CompileDec(structure Con: CON
 		   end
 		 else PRIM(EXCONprim excon,[])
 	       end
-	      | _ => die "IDENTatexp.not implemented"
-             )
+	   | CE.RESET_REGIONS => die "compile_ident: CE.RESET_REGIONS"
+	   | CE.FORCE_RESET_REGIONS => die "compile_ident: CE.FORCE_RESET_REGIONS"
+	   | CE.PRIM => die "compile_ident: CE.PRIM")
 
-        (* records: the fields must be evaluated in their textual order,
-           but the resulting record object must have the fields in a
-           canonical order (we adopt alphabetic ordering). Hmm. Tricky.
-           Easiest way is to bind the record field expressions to lvars
-           and then build a record of the (appropriately ordered) lvars. *)
+    fun compileAtexp env atexp : TLE.LambdaExp =
+          (case atexp of
+	     SCONatexp(_, SCon.INTEGER x) => INTEGER x
+	   | SCONatexp(_, SCon.STRING x) => STRING x
+	   | SCONatexp(_, SCon.REAL x) => REAL x
+	   | SCONatexp(_, SCon.CHAR x) => INTEGER x
+	   | SCONatexp(_, SCon.WORD x) => INTEGER x
+	   | IDENTatexp(info, OP_OPT(longid, _)) =>
+	       compile_ident info longid (lookupLongid env longid (NORMAL info))
 
-	 (* Well, - if the labs are already sorted then we can in-line
+	   (* records: the fields must be evaluated in their textual order,
+	    but the resulting record object must have the fields in a
+	    canonical order (we adopt alphabetic ordering). Hmm. Tricky.
+	    Easiest way is to bind the record field expressions to lvars and
+	    then build a record of the (appropriately ordered) lvars. *)
+
+	   (* Well, - if the labs are already sorted then we can in-line
 	    the expressions in the record... 04/10/1996-Martin. *)
 
-         | RECORDatexp(_, Some exprow) =>
-             let
+	   | RECORDatexp(_, Some exprow) =>
+	     let
                val rows = makeList (fn EXPROW(_, _, _, e) => e) exprow
                val labs = map (fn EXPROW(_, l, _, _) => l) rows
 	       val exps = map (fn EXPROW(_, _, e, _) => compileExp env e) rows
@@ -864,11 +876,10 @@ functor CompileDec(structure Con: CON
 				      o (fn EXPROW(_,_,e,_) => e)) rows
 		      val lvars = map (fn _ => Lvars.newLvar()) rows
 		      val scope =              (* The final record expression *)
-			let
-			  val sortedLvarsXlabs =
-			    ListSort.sort
-			    (fn (_, l1) => fn (_, l2) => Lab.<(l1, l2))
-			    (ListPair.zip(lvars, labs))
+			let val sortedLvarsXlabs =
+			          ListSort.sort
+				  (fn (_, l1) => fn (_, l2) => Lab.<(l1, l2))
+				  (ListPair.zip(lvars, labs))
 			in
 			  PRIM(RECORDprim,map (fn (lv, _) => VAR{lvar=lv,instances=[]})
 			       sortedLvarsXlabs)
@@ -879,36 +890,70 @@ functor CompileDec(structure Con: CON
 		  end
 	     end
 
-         | RECORDatexp(_, None) => PRIM(RECORDprim,[])
+	   | RECORDatexp(_, None) => PRIM(RECORDprim,[])
 
-         | LETatexp(_, dec, exp) =>
-	     let val (env1, f) = compileDec env (false,dec)
-	         val exp' = compileExp (env plus env1) exp
-	     in f exp'
-	     end
+	   | LETatexp(_, dec, exp) =>
+	       let val (env1, f) = compileDec env (false,dec)
+	           val exp' = compileExp (env plus env1) exp
+	       in f exp'
+	       end
 
-         | PARatexp(_, exp) => compileExp env exp
+	   | PARatexp(_, exp) => compileExp env exp)
 
     and compileExp env exp =
-      (case exp of
-	 ATEXPexp(_, atexp) => compileAtexp env atexp
+          (case exp of
+	     ATEXPexp(_, atexp) => compileAtexp env atexp
 
-       | APPexp(_,
-		f as ATEXPexp(_, IDENTatexp(info, OP_OPT(longid, _))),
-		arg) =>
-                        (* We have to spot direct application of "prim" - apart
-                           from that, we don't have to bother with constructors
-                           and the like. They'll compile to functions, but the
-                           optimiser will spot them later. *)
+	   | APPexp(_, f as ATEXPexp(_, IDENTatexp(info, OP_OPT(longid, _))), arg) =>
+	       compile_application_of_ident env f info longid arg
+
+	   | APPexp(_, f, arg) => (*application of non-identifier*)
+	       let val f' = compileExp env f
+		 val arg' = compileAtexp env arg
+	       in APP(f',arg')
+	       end
+
+	   | TYPEDexp(_, exp, _) => compileExp env exp
+
+	   | HANDLEexp(_, exp', match) =>
+	       let val e1' = compileExp env exp'
+		   val tau' = compileType (type_of_exp exp)
+		   val e2' = compileMatch env (match, false,RAISESELF tau')
+	       in HANDLE(e1',e2')
+	       end
+
+	   | RAISEexp(i, exp') => 
+	       let val e' = compileExp env exp'
+		   val tau' = compileType (type_of_exp exp)
+	       in RAISE(e',Types [tau'])
+	       end
+
+	   | FNexp(_, match) => 
+	       let val tau' = 
+		         (case compileType (type_of_exp exp) of
+			    TLE.ARROWtype(_,[tau']) => tau'
+			  | _ => die "compileExp: FNexp did not have (unary) arrow type")
+	       in compileMatch env (match, true, RAISEMATCH tau')
+	       end
+
+	   | UNRES_INFIXexp _ =>  die "compileExp(UNRES_INFIX)")
+
+   
+    and compile_application_of_ident env f info longid arg =
+
+          (* We have to spot direct application of "prim" - apart from that,
+	   we don't have to bother with constructors and the like. They'll
+	   compile to functions, but the optimiser will spot them later. *)
 	  
-	   (case lookupLongid env longid (NORMAL info) of
-	      CE.LVAR (lv,tyvars,_,il) =>        (* Not a primitive... *)
+          (case lookupLongid env longid (NORMAL info) of
+	     CE.LVAR (lv,tyvars,_,il) =>        (* Not a primitive... *)
 		let val arg' = compileAtexp env arg
 		    val instances' = case to_TypeInfo info 
 				       of Some(TypeInfo.VAR_INFO{instances}) =>
 					 map compileType instances
 					| _ => die "compileExp(APPexp..): wrong type info"
-		    val S = CE.mk_subst (fn () => ("CompileDec.APPexp.LVAR(" ^ Lvars.pr_lvar lv ^ ")")) (tyvars,instances')
+		    val S = CE.mk_subst (fn () => ("CompileDec.APPexp.LVAR(" ^ Lvars.pr_lvar lv ^ ")"))
+		              (tyvars,instances')
 		    val il' = CE.on_il(S, il)
 		in APP(VAR{lvar=lv,instances=il'},arg')
 		end
@@ -944,115 +989,87 @@ functor CompileDec(structure Con: CON
 	    | CE.GREATER =>   overloaded_prim info CE.GREATER   (compileAtexp env) (compileExp env) arg false []
 	    | CE.LESSEQ =>    overloaded_prim info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false []
 	    | CE.GREATEREQ => overloaded_prim info CE.GREATEREQ (compileAtexp env) (compileExp env) arg false []
-	    | CE.PRIM =>   
-	       (* Application of `prim'. We must now disassemble the 
-		* argument to get the prim number and the arguments 
-	        * to the primitive operation *)
-	       let
-		 val (n, args) = decomposePrimArg arg
-		 val prim = lookupPrim n
-		 fun f prim =
-		   let val args' = map (compileExp env) args
-		       val instance' =
-			 case to_TypeInfo info 
-			   of Some(TypeInfo.VAR_INFO{instances=[instanceRes,instance]}) => 
-			     (* This code depends on the order of the
-			      * instances recorded during elaboration.
-			      * We need the instance corresponding to 
-			      * the argument of prim, which in 
-			      * EfficientCoreElab version is the second *)
-			     compileType instance
-			    | _ => die "compileExp(APPexp(PRIM..): wrong type info"
-		   in TLE.PRIM(prim {instance=instance'}, args')
-		   end
-	       in
-		 case prim of
-		    DEREFprim _ => f DEREFprim (*ref (REFprim) is a constructor, so it does not show up here*)
-		  | ASSIGNprim _ => f ASSIGNprim
-		  | EQUALprim _ => f EQUALprim
-		      (* <> (NOTEQUALprim) is declared in the prelude as an
-		       * ordinary variable (not a primitive), so it does
-		       * not show up here *)
-		  | CCALLprim _ => 
-		      let val (s, args) = 
-			  (case args of
-			     [] => die "You forgot the function name in a prim declaration."
-			   | [e1] => die ("Remember to give two function names in the \
-			                  \ declaration of a prim.\n\
-					  \Maybe you forgot the profiling function name.")
-			   | e1 :: e2 :: es =>
-			       ((case (if !region_profiling then e2 else e1) of
-				   ATEXPexp (_, SCONatexp (_, SCon.STRING s)) => s
-				 | _ => die "Function name in a prim declaration has wrong form"), es))
-		      in
-			(case s of
-			   "id" => (*type conversions that result in no code to run at
-				    run-time are declared as prim "id"'s; for instance,
-				    ord is defined:
-
-				      fun ord (c:char) : int = prim (31, ("id", "id", c))*)
-			     (case args of
-				[exp] => compileExp env exp
-			      | _ => die "compileExp(APPexp(PRIM... (CCALLprim \"id\"...)))")
-			 | _ => (*unrecognised ccall-prim: this must really be a c call;
-				 it is hoped the run-time system defines a function
-				 called s:*)
-			     let val args' = map (compileExp env) args
-				 val instance' =
-				       (case to_TypeInfo info of
-					  Some (TypeInfo.VAR_INFO{instances=[instanceRes,instanceArg]}) => 
-					    (* We use the result type of prim
-					     * SpreadExp generates reg. vars.
-					     * from the result type. *)
-					    compileType instanceRes
-					| _ => die "compileExp(APPexp(PRIM..): wrong type info")
-			     in					     
-			       TLE.PRIM (CCALLprim (s, {instance=instance'}), args')
-			     end)
-		      end
-		  | _ => let val args' = map (compileExp env) args
-			 in TLE.PRIM(prim, args')
-			 end
-	       end
-	     
+	    | CE.PRIM => compile_application_of_prim env info arg
+     
 	    | _ (*CON/EXCON*) => let val f' = compileExp env f
 	                             val arg' = compileAtexp env arg
 				 in APP(f',arg')
 				 end
-	  ) (*end lookup_longid*)
+            ) (*fun compile_application_of_ident*)
 
-       | APPexp(_, f, arg) =>         (* non-trivial function expression... *)
-	      let val f' = compileExp env f
-		  val arg' = compileAtexp env arg
-	      in APP(f',arg')
-	      end
 
-       | TYPEDexp(_, exp, _) => compileExp env exp
+    and compile_application_of_prim env info atexp =
 
-       | HANDLEexp(_, exp', match) =>
-	      let val e1' = compileExp env exp'
-		  val tau' = compileType (type_of_exp exp)
-		  val e2' = compileMatch env (match, false,RAISESELF tau')
-	      in HANDLE(e1',e2')
-	      end
+          (*Application of `prim' to atexp.  We disassemble atexp to get the
+	   name s of the primitive operation and its arguments.*)
 
-       | RAISEexp(i, exp') => 
-	      let val e' = compileExp env exp'
-		  val tau' = compileType (type_of_exp exp)
-	      in RAISE(e',Types [tau'])
-	      end
+          (let val (s, args) = decompose_prim_call atexp
+	       fun f prim =
+		     let val args' = map (compileExp env) args
+		         val instance' = (case to_TypeInfo info of
+			       Some (TypeInfo.VAR_INFO {instances = [instanceRes, instance]}) =>
+				 compileType instance 
+			     | _ => die "compileExp(APPexp(PRIM..): wrong type info")
+		        (*The code right above depends on the order of the
+			 instances recorded during elaboration.  We need the
+			 instance corresponding to the argument of prim,
+			 which in EfficientCoreElab version is the second*)
+		     in TLE.PRIM (prim {instance=instance'}, args')
+		     end
+(*TODO 12/11/1997 18:37. tho.:
+the 12 lines above are very similar to the code below
+*)
+	   in
+	     (case s of
+		"!" => f DEREFprim (*ref (REFprim) is a constructor, so it does not show up here*)
+	      | ":=" => f ASSIGNprim
+	      | "=" => f EQUALprim
+	      | "id" => 
+		  (*type conversions that result in no code to run at
+		   run-time are declared as prim "id"'s; for instance, ord is
+		   defined: `fun ord (c : char) : int = prim ("id", "id", c)'.*)
+		  (case args of
+		     [exp] => compileExp env exp
+		   | _ => die "compile_application_of_prim: prim id")
+	      | _ =>
+		  (*unrecognised prim name: this must be a c call; let us
+		   hope the run-time system defines a function called s:*)
+		  let val args' = map (compileExp env) args
+		      val instance' =
+			    (case to_TypeInfo info of
+			       Some (TypeInfo.VAR_INFO {instances = [instanceRes, instanceArg]}) =>
+				 compileType instanceRes
+			     | _ => die "compile_application_of_prim: wrong type info in ccall")
+		  in					     
+		    TLE.PRIM (CCALLprim (s, {instance=instance'}), args')
+		  end)
 
-       | FNexp(_, match) => 
-	      let val tau' = 
-		    case compileType (type_of_exp exp)
-		      of TLE.ARROWtype(_,[tau']) => tau'
-		       | _ => die "compileExp: FNexp did not have (unary) arrow type"
-	      in compileMatch env (match, true, RAISEMATCH tau')
-	      end
+	   end) (*fun compile_application_of_prim*)
 
-       | UNRES_INFIXexp _ =>  die "compileExp(UNRES_INFIX)")
+    (*decompose_prim_call atexp = the name (string) of the called prim & the
+     argument exps.  atexp is the atexp after `prim'.  A prim call has the
+     form `prim ("f", "fprof", (e1, e2))' assuming the name of the function in
+     the runtime system to call is f (and fprof, when profiling is turned
+     on), & that f (and fprof) takes two arguments.*)
 
-   (* compileMatch - compiles a match into a FN expression; this is used
+    and decompose_prim_call
+          (RECORDatexp (_, Some (EXPROW (_, _,
+           ATEXPexp (_, SCONatexp (_, SCon.STRING s1)), Some (EXPROW (_, _,
+           ATEXPexp (_, SCONatexp (_, SCon.STRING s2)), Some (EXPROW (_, _,
+           exp3, None)))))))) =
+	  (if !region_profiling then s2 else s1, decompose_prim_args exp3)
+      | decompose_prim_call _ =
+	  die ("\n\nRemember to give two function names in quotes in the declaration of \
+	       \a prim.\nMaybe you forgot the profiling function name.")
+    and decompose_prim_args (ATEXPexp (_, RECORDatexp (_, exprow_opt))) =
+          decompose_prim_args0 exprow_opt
+      | decompose_prim_args exp = [exp]
+    and decompose_prim_args0 None = []
+      | decompose_prim_args0 (Some (EXPROW (_, _, e1, exprow_opt))) =
+          e1 :: decompose_prim_args0 exprow_opt
+
+
+    (* compileMatch - compiles a match into a FN expression; this is used
       for FNexp expressions and also for handlers. The failure argument
       indicates what to plant for non-matches; RAISEMATCH means plant a lambda
       which raises the Match exception, whereas RAISESELF means raise the

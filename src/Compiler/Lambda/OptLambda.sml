@@ -273,6 +273,7 @@ functor OptLambda(structure Lvars: LVARS
 	  | DEEXCONprim _      => ()
 	  | RECORDprim         => ()
 	  | SELECTprim _       => ()
+(*KILL 12/11/1997 15:45. tho.:
 	  | REALprim           => ()
 	  | SINprim            => ()
 	  | COSprim            => ()
@@ -280,8 +281,11 @@ functor OptLambda(structure Lvars: LVARS
 	  | SIZEprim           => ()
 	  | EXPLODEprim        => ()
 	  | IMPLODEprim        => ()
+*)
 	  | EQUALprim _        => ()
+(*KILL 12/11/1997 15:46. tho.:
 	  | NOTEQUALprim _     => ()
+*)
 	  | LESS_INTprim       => ()
 	  | LESS_REALprim      => ()
 	  | GREATER_INTprim    => ()
@@ -290,8 +294,10 @@ functor OptLambda(structure Lvars: LVARS
 	  | LESSEQ_REALprim    => ()
 	  | GREATEREQ_INTprim  => ()
 	  | GREATEREQ_REALprim => ()
+(*KILL 12/11/1997 15:46. tho.:
 	  | STD_INprim         => ()
 	  | STD_OUTprim        => ()
+*)
 	       (* likewise for other primitives that do not perform side effects
 		* and cannot raise exceptions *)
 	  | _ => raise NotSafe 

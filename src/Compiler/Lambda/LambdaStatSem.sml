@@ -536,11 +536,14 @@ end
 				 | _ => die "SELECTprim.Arg not of record type")
 			    | _ => die "SELECTprim.Wrong number of args.")  
 	   | UB_RECORDprim => map ((unTypeListOne "UB_RECORDprim") o type_e) lexps
+(*KILL 12/11/1997 15:28. tho.:
 	   | NOTprim => type_prim' [tyName_BOOL] tyName_BOOL "NOTprim"
+*)
 	   | NEG_INTprim => type_prim' [tyName_INT] tyName_INT "NEG_INTprim"
 	   | NEG_REALprim => type_prim' [tyName_REAL] tyName_REAL "NEG_REALprim"
 	   | ABS_INTprim => type_prim' [tyName_INT] tyName_INT "ABS_INTprim"
 	   | ABS_REALprim => type_prim' [tyName_REAL] tyName_REAL "ABS_REALprim"
+(*KILL 12/11/1997 15:27. tho.:
 	   | FLOORprim => type_prim' [tyName_REAL,tyName_EXN] tyName_INT "FLOORprim"
 	   | REALprim => type_prim' [tyName_INT] tyName_REAL "REALprim"
 	   | SQRTprim => type_prim' [tyName_REAL,tyName_EXN] tyName_REAL "SQRTprim"
@@ -569,6 +572,7 @@ end
 		       else die s
 		    end
 		   | _ => die "IMPLODEprim.Wrong number of args")
+*)
 	   | DEREFprim {instance} => (* instance: argument type of primitive *)
 	       (case lexps
 		  of [lexp] => (case instance 
@@ -609,16 +613,20 @@ end
 					    end 
 					   | _ => die "ASSIGNprim.Wrong instance kind") 
 	           | _ => die "ASSIGNprim.Wrong number of args")
+(*KILL 12/11/1997 15:37. tho.:
 	   | DIV_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "DIV_REALprim"
 	   | DIV_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "DIV_INTprim"
 	   | MODprim => type_prim' [tyName_INT,tyName_INT,tyName_EXN] tyName_INT "MODprim"
+*)
 	   | MUL_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "MUL_REALprim"
 	   | MUL_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "MUL_INTprim"
 	   | PLUS_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "PLUS_REALprim"
 	   | PLUS_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "PLUS_INTprim"
 	   | MINUS_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_REAL "MINUS_REALprim"
 	   | MINUS_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_INT "MINUS_INTprim"
+(*KILL 12/11/1997 15:28. tho.:
 	   | STRING_CONCATprim => die "STRING_CONCATprim.not implemented"
+*)
 	   | EQUALprim {instance} => (* instance: argument type of primitive *)
 	       (case lexps
 		  of [lexp1,lexp2] => (case instance
@@ -631,7 +639,9 @@ end
 					   end 
 					  | _ => die "EQUALprim.Wrong instance kind")
 		   | _ => die "EQUALprim.Wrong number of args") 
+(*KILL 12/11/1997 15:28. tho.:
 	   | NOTEQUALprim {instance} => die "NOTEQUALprim.not implemented"
+*)
 	   | LESS_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "LESS_REALprim"
 	   | LESS_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "LESS_INTprim"
 	   | GREATER_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "GREATER_REALprim"
@@ -640,6 +650,7 @@ end
 	   | LESSEQ_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "LESSEQ_INTprim"
 	   | GREATEREQ_REALprim => type_prim' [tyName_REAL,tyName_REAL] tyName_BOOL "GREATEREQ_REALprim"
 	   | GREATEREQ_INTprim => type_prim' [tyName_INT,tyName_INT] tyName_BOOL "GREATEREQ_INTprim"
+(*KILL 12/11/1997 15:28. tho.:
 	   | OPEN_INprim => die "prim not supported"
 	   | OPEN_OUTprim => die "prim not supported"
 	   | INPUTprim => die "prim not supported"
@@ -652,6 +663,7 @@ end
 	   | FLUSH_OUTprim => die "prim not supported"
 	   | STD_INprim => die "prim not supported"
 	   | STD_OUTprim => die "prim not supported"
+*)
 	   | CCALLprim (s,{instance}) => (* instance: result type of primitive *)
 	     (* we cannot currently check arg. types... *)
 	     (List.apply (fn lexp => (type_e lexp; ())) lexps; [instance])
