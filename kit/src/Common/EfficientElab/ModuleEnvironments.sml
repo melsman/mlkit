@@ -182,81 +182,51 @@ functor ModuleEnvironments(
 
     (*B, static basis*)
 
-    datatype Basis = BASIS of {T : TyName.Set.Set, F : FunEnv, G : SigEnv,
-			       E : Env}
+    datatype Basis = BASIS of {F : FunEnv, G : SigEnv, E : Env}
 	
     structure B = struct
-      val empty = BASIS {T = TyName.Set.empty , F = F.empty, G = G.empty,
-			 E = E.empty}
-      val initial = BASIS {T = E.tynames E.initial, F = F.empty, G = G.empty,
-			   E = E.initial}
+      val empty = BASIS {F = F.empty, G = G.empty, E = E.empty}
+      val initial = BASIS {F = F.empty, G = G.empty, E = E.initial}
       val bogus = empty
-      fun plus (BASIS {T, F, G, E}, 
-		BASIS {T=T', F=F', G=G', E=E'}) =
-	    BASIS {T=TyName.Set.union T T', F=F.plus (F, F'), G=G.plus (G, G'),
-		   E=E.plus (E, E')}
+      fun plus (BASIS {F, G, E}, BASIS {F=F', G=G', E=E'}) =
+	BASIS {F=F.plus (F, F'), G=G.plus (G, G'), E=E.plus (E, E')}
 
       (*It is assumed that phi does not affect F and G. This holds as an
        invariant throughout elaboration.*)
-      fun on phi (B as (BASIS {T, F, G, E})) : Basis =
+      fun on phi (B as (BASIS {F, G, E})) : Basis =
 	    if Realisation.is_Id phi then B
 	    else
-	      BASIS {T = T, F = F, G = G, E = Realisation.on_Env phi E}
-      fun tyvars (BASIS{T, F, G, E}) : TyVar list =
+	      BASIS {F = F, G = G, E = Realisation.on_Env phi E}
+      fun tyvars (BASIS{F, G, E}) : TyVar list =
 	    TyVar.unionTyVarSet (F.tyvars F, E.tyvars E)    (* no tyvars in G *)
-      fun tyvars' (BASIS{T, F, G, E}) = F.tyvars' F @ E.tyvars' E
-      fun tynames (BASIS{T, F, G, E}) =
+      fun tyvars' (BASIS{F, G, E}) = F.tyvars' F @ E.tyvars' E
+      fun tynames (BASIS{F, G, E}) =
             TyName.Set.union (F.tynames F)
 	    (TyName.Set.union (G.tynames G) (E.tynames E))
-      fun to_C (BASIS {T, F, G, E}) = C.from_T_and_E (T, E)
-      fun layout (BASIS {T, F, G, E}) =
+      fun to_C (BASIS {F, G, E}) = C.from_E E
+      fun layout (BASIS {F, G, E}) =
 	    PP.NODE {start="", finish="", indent = 0,
-		     children = (if !Flags.DEBUG_ENVIRONMENTS then
-				   [TyName.Set.layoutSet
-				      {start="{", sep=",", finish="}"}
-					TyName.layout T]
-				 else [])
-		                @ [F.layout F, G.layout G, E.layout E],
+		     children = [F.layout F, G.layout G, E.layout E],
 		     childsep = PP.RIGHT " "}
 
-                            (*E component*)
-      fun plus_E (BASIS {T, F, G, E}, E') =
-	    BASIS {T=T, F=F, G=G, E=E.plus (E, E')}
-      fun cplus_E (BASIS {T, F, G, E}, E') =
-	    BASIS {T = TyName.Set.union T (E.tynames E'), F = F, G = G,
-		   E = E.plus (E, E')}
-      fun from_T_and_E (T, E) =
-	    BASIS {T = T, F = F.empty, G = G.empty, E = E}
+  (*E component*)
+      fun plus_E (BASIS {F, G, E}, E') = BASIS {F=F, G=G, E=E.plus (E, E')}
+      fun from_E E = BASIS {F = F.empty, G = G.empty, E = E}
       fun to_E (BASIS {E, ...}) = E 
       val lookup_strid = E.lookup_strid o to_E
       val lookup_longstrid = E.lookup_longstrid o to_E
       val lookup_longtycon = E.lookup_longtycon o to_E
 
-                            (*T component*)
-      fun plus_T (BASIS {T, F, G, E}, T') = 
-	    BASIS {T = TyName.Set.union T T', F = F, G = G, E = E}
-      fun to_T (BASIS {T, ...}) = T
-
-      (*G component*)
-      fun from_T_and_G (T, G) =
-	    BASIS {T = T, F = F.empty, G = G, E = E.empty}
+  (*G component*)
+      fun from_G G = BASIS {F = F.empty, G = G, E = E.empty}
       fun to_G (BASIS {G, ...}) = G
-      fun plus_G (BASIS {T, F, G, E}, G') =
-	    BASIS {T = T, F = F, G = G.plus (G, G'), E = E}
-      fun cplus_G (BASIS {T, F, G, E}, G') =
-	    BASIS {T = TyName.Set.union T (G.tynames G'), F = F,
-		   G = G.plus (G, G'), E = E}
+      fun plus_G (BASIS {F, G, E}, G') = BASIS {F = F, G = G.plus (G, G'), E = E}
       val lookup_sigid = G.lookup o to_G
 
-                            (*F component*)
-      fun from_T_and_F (T, F) =
-	    BASIS {T = T, F = F, G = G.empty, E = E.empty}
+  (*F component*)
+      fun from_F F = BASIS {F = F, G = G.empty, E = E.empty}
       fun to_F (BASIS{F, ...}) = F
-      fun plus_F (BASIS {T, F, G, E}, F') =
-	    BASIS {T = T, F = F.plus (F, F'), G = G, E = E}
-      fun cplus_F (BASIS {T, F, G, E}, F') =
-	    BASIS {T = TyName.Set.union T (F.tynames F'),
-		   F = F.plus (F, F'), G = G, E = E}
+      fun plus_F (BASIS {F, G, E}, F') = BASIS {F = F.plus (F, F'), G = G, E = E}
       val lookup_funid = F.lookup o to_F
 
 
@@ -277,7 +247,7 @@ functor ModuleEnvironments(
 			| None => false) true F2
 
 
-      fun enrichB(BASIS{T=T1,F=F1,G=G1,E=E1}, BASIS{T=T2,F=F2,G=G2,E=E2}) = 
+      fun enrichB(BASIS{F=F1,G=G1,E=E1}, BASIS{F=F2,G=G2,E=E2}) = 
 	enrich_FunEnv(F1,F2) andalso enrich_SigEnv(G1,G2) andalso
 	enrich_Env(E1,E2)
       val enrich = enrichB
@@ -288,7 +258,7 @@ functor ModuleEnvironments(
 
       (*TODO 27/01/1997 22:53. tho.  brug operationerne på F og G
        i s. f. at pille direkte ved deres repræsentation:*)
-      fun restrictB (BASIS {T,F=FUNENV F,G=SIGENV G,E},
+      fun restrictB (BASIS {F=FUNENV F,G=SIGENV G,E},
 		     {ids : id list, tycons : tycon list, strids : strid list,
 		      funids : funid list, sigids : sigid list}) =
 	let val F' = List.foldL
@@ -306,14 +276,14 @@ functor ModuleEnvironments(
 			in FinMap.add(sigid,Sig,Gnew)
 			end) FinMap.empty sigids
 	    val E' = E.restrict (E, (ids, tycons, strids))
-	in BASIS {T=T, F=FUNENV F', G=SIGENV G', E=E'}
+	in BASIS {F=FUNENV F', G=SIGENV G', E=E'}
 	end
       val enrich = enrichB
       val restrict = restrictB
 
       (*Matching function for compilation manager*)
 
-      fun match (BASIS {T,F,G,E}, BASIS {T=T0,F=F0,G=G0,E=E0}) = E.match (E,E0)
+      fun match (BASIS {F,G,E}, BASIS {F=F0,G=G0,E=E0}) = E.match (E,E0)
     end (*B*)
 
   end; (*functor ModuleEnvironments*)
