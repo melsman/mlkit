@@ -38,8 +38,19 @@ signature NS =
 
     structure Conn :
       sig
+	
+	(* Return html string to browser, including 
+	 * HTTP headers. *)
 	val returnHtml : int * string -> status
 
+	(* Return html string to browser with status code 200, 
+	 * including HTTP headers. *)    
+	val return : string -> status
+
+	(* Return string to browser. *)
+	val write : string -> status
+
+	(* Return redirection HTTP response to browser. *)
 	val returnRedirect : string -> status
 
 	(* The 'getQuery' function constructs and returns 
@@ -276,13 +287,18 @@ signature NS =
 	 * directory for a server. *)
 	val pageRoot : unit -> string
       end
-	
-    (* Return html string to browser, including 
-     * HTTP headers. *)    
-    val return : string -> status    
+
+    (* Quotation support. *)
+    type quot = string frag list
+    val ^^ : quot * quot -> quot
+    val quotToString : quot -> string
+
+    (* Return html string to browser with status code 200, 
+     * including HTTP headers. *)    
+    val return : quot -> status    
            
     (* Write string to browser. *)
-    val write : string -> status
+    val write : quot -> status
 
     (* Write HTTP headers to browser. *)
     val returnHeaders : unit -> unit
@@ -314,22 +330,6 @@ signature NS =
     (* Decodes data that were encoded as URL query 
      * data. The decoded data is returned. *)
     val decodeUrl : string -> string
-
-    structure Quot :
-      sig
-	(* Return HTML frag list to browser, 
-	 * including HTTP headers; used with 
-	 * quotation support. *)
-	val return : string frag list -> status
-
-	(* Write frag list to browser; used with 
-	 * quotation support. *)
-	val write : string frag list -> status  
-      
-	val flatten : string frag list -> string
-
-        val ^^ : 'a frag list * 'a frag list -> 'a frag list
-      end
 
     structure Mail : 
       sig

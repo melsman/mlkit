@@ -1,6 +1,6 @@
 val user = getOpt(Ns.Info.configGetValue{sectionName="ns/parameters", key="user"}, "---")
 val _ =
-Ns.Quot.return `<HTML>
+Ns.return `<HTML>
 <BODY bgcolor=lightgreen>
 <h2>Server Information</h2>
 

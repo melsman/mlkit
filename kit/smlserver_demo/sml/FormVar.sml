@@ -20,7 +20,7 @@
 structure FormVar : FORMVAR =
   struct
     fun returnError (err:string) : 'a = 
-      (Ns.Quot.return
+      (Ns.return
        `<html>
          <head><title>Form Error</title></head>
          <body bgcolor=white>

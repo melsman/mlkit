@@ -3,7 +3,7 @@ val target =
     SOME t => t
   | NONE => Ns.Conn.location() ^ "/auth/admin/admin.sml" (* Default target url *)
 
-val _ = Ns.Quot.return `
+val _ = Ns.return `
 <html>
 <head>
 <title>SMLserver Authentication</title>

@@ -1,6 +1,6 @@
 fun datefmt date = Date.fmt "%a, %d-%b-%Y %H:%M:%S GMT" date
 
-val _ = Ns.Quot.return (`
+val _ = Ns.return (`
 <html>
 <body bgcolor=white>
 

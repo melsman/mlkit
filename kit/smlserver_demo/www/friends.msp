@@ -13,7 +13,7 @@
 open Msp
 infix &&
 
-val query = "select name, email, phone from friends"
+val query = `select name, email, phone from friends`
 
 fun format (g, wseq) =
   wseq && tr ( td ( $(g"name")) && 

@@ -35,9 +35,9 @@ fun flatten Empty acc      = acc
 val flatten = fn seq => String.concat(flatten seq []);
     
 fun printseq Empty      = ()
-  | printseq Nl         = (Ns.write "\n"; ())
-  | printseq ($ s)      = (Ns.write s; ())
-  | printseq ($$ ss)    = List.app (ignore o Ns.write) ss
+  | printseq Nl         = (Ns.Conn.write "\n"; ())
+  | printseq ($ s)      = (Ns.Conn.write s; ())
+  | printseq ($$ ss)    = List.app (ignore o Ns.Conn.write) ss
   | printseq (s1 && s2) = (printseq s1; printseq s2);
     
 fun vec2list vec = Vector.foldr op:: [] vec

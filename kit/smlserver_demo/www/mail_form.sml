@@ -1,4 +1,4 @@
-Ns.Quot.return `
+Ns.return `
 <html>
 <body bgcolor=lightgreen>
 <h2>Send an email</h2>

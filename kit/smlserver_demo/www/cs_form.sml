@@ -1,4 +1,4 @@
-val query = "select id, text from cs"
+val query = `select id, text from cs`
 
 fun gen_ch_nums s = String.concatWith "," (List.map (Int.toString o Char.ord) (explode s))
 
@@ -16,7 +16,7 @@ fun ch_row ch 1 = `<td> ^(Int.toString ch) (<b>^(String.str(Char.chr ch))</b>) <
 and ch_tab ch ~1 = ` ` 
   | ch_tab ch n = `<tr> ` ^^ (ch_row ch 8) ^^ ` </tr> ^("\n") ` ^^ (ch_tab (ch+8) (n-8))
 
-val _ = Ns.Quot.return (`
+val _ = Ns.return (`
   <html>
     <body bgcolor=white>
       <h2>Checking Character Support</h2> 

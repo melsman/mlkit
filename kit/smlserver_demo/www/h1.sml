@@ -7,4 +7,4 @@ val body = h1($"Your Main Page") &&
 
 val page = html (bodya "bgcolor=white" body)
 
-val _ = Ns.return (flatten page)
+val _ = Ns.Conn.return (flatten page)

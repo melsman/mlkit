@@ -3,7 +3,7 @@ val cn =
     NONE => "CookieName"
   | SOME cn => cn
 
-val _ = Ns.Quot.write
+val _ = Ns.write
 `HTTP/1.0 302 Found
 Location: http://localhost:8005/cookie.sml
 MIME-Version: 1.0

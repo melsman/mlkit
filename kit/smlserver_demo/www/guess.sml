@@ -1,9 +1,9 @@
-  fun returnPage title pic body = Ns.Quot.return 
+  fun returnPage title pic body = Ns.return 
     `<html> 
        <head><title>^title</title></head>
        <body bgcolor=white>
          <center> <h2>^title</h2> <img src=^pic> <p>
-                  ^(Ns.Quot.flatten body) <p>
+                  ^(Ns.quotToString body) <p>
                   <i>Served by SMLserver</i>
          </center>
        </body>

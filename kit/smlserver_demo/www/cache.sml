@@ -1,4 +1,4 @@
-val _ = Ns.Quot.return `
+val _ = Ns.return `
 <html>
   <body bgcolor=white>
   <h1>Caching Demonstration</h1>

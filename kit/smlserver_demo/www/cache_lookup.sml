@@ -1,7 +1,7 @@
 
 val cache = Ns.Cache.findTm ("people", 20)
 
-fun returnPage s = Ns.Quot.return `
+fun returnPage s = Ns.return `
 <html>
 <body bgcolor=white>
 <h2>^s</h2>

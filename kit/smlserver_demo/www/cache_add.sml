@@ -7,7 +7,7 @@ val b = (* b true if new value is added to *)
       Ns.Cache.set(cache,login,passwd)
      | _ => false
 
-fun returnPage s = Ns.Quot.return `
+fun returnPage s = Ns.return `
 <html>
 <body bgcolor=white>
 <h2>^s</h2>

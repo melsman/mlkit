@@ -3,13 +3,13 @@ let
     <li><b>^(g "name")</b>:
     <ul>` ^^ 
     (Db.fold ((fn (g, s) => s ^^ `<li>^(g "name")(^(g "email"))^("\n")`),``,
-              Ns.Quot.flatten (`select users.name, users.email from users, user_group 
-                                where users.id = user_group.user_id 
-                                and user_group.group_id = '^(g "id")'`))) ^^
-    `</ul>`),``,"select id, name from groups order by name"))
+              `select users.name, users.email from users, user_group 
+               where users.id = user_group.user_id 
+               and user_group.group_id = '^(g "id")'`)) ^^
+    `</ul>`),``,`select id, name from groups order by name`))
 
 in
-  Ns.Quot.return (`
+  Ns.return (`
   <html>
     <body bgcolor=white>
       <h2>User Group Example</h2> 
@@ -36,7 +36,7 @@ in
 </html>`)
 end
 handle _ (*Db.Pool.DbPoolError err*) => 
-  Ns.Quot.return `
+  Ns.return `
   <html>
     <body bgcolor=white>
       <h2>User Group Example</h2> 

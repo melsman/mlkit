@@ -7,7 +7,7 @@ val s = FormVar.getStringOrFail "s"
 val t = FormVar.getStringOrFail "t"
 
 fun return_page body =
-  Ns.Quot.return (`<html>
+  Ns.return (`<html>
    <head>
    <title>Currency Service</title>
    </head>

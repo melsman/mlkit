@@ -40,14 +40,14 @@ signature RATING_UTIL =
 structure RatingUtil : RATING_UTIL =
   struct
     fun returnPage title body =
-      Ns.Quot.return `
+      Ns.return (`
        <html> <title>^title</title>
          <body bgcolor=white>
-           <center>^(Ns.Quot.flatten body)
-             <hr> <i>Served by SMLserver</i>
+           <center>` ^^ body ^^ 
+             `<hr> <i>Served by SMLserver</i>
            </center>
          </body>
-       </html>`
+       </html>`)
       
     fun returnPageWithTitle title body =
       returnPage title (`<h1>^title</h1>` ^^ body)

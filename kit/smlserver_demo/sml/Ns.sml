@@ -28,6 +28,7 @@ structure Ns :> NS =
       struct
 	fun returnHtml(status: int, s: string) : status =
 	  prim("nssml_ConnReturnHtml", "nssml_ConnReturnHtml", (getConn(),status,s))
+	fun return s = returnHtml(200,s)
 	fun returnRedirect(s: string) : status =
 	  prim("nssml_ConnReturnRedirect", "nssml_ConnReturnRedirect", (getConn(),s))
 	fun getQuery() : set option =
@@ -73,6 +74,8 @@ structure Ns :> NS =
 
 	fun url () : string =
 	  prim("nssml_ConnUrl", "nssml_ConnUrl", getConn())
+
+	fun write s = puts s
       end
 
     structure Cookie =
@@ -217,13 +220,19 @@ structure Ns :> NS =
 
     structure Info : NS_INFO = NsInfo
 
-    fun return (s : string) : status =
-      Conn.returnHtml(200, s)
+    type quot = string frag list
+    fun quotToString (q : quot) : string =
+      concat(map (fn QUOTE s => s | ANTIQUOTE s => s) q)
+    val op ^^ : quot * quot -> quot = op @
+
+    fun return (q : quot) : status =
+      Conn.returnHtml(200, quotToString q)
 
     fun returnRedirect(s : string) : status =
       Conn.returnRedirect s      
 
-    fun write (s : string) : status = Conn.puts s
+    fun write (q : quot) : status = 
+      Conn.puts (quotToString q)
 
     fun returnHeaders () : unit =
       Conn.setRequiredHeaders("text/html", 0)
@@ -235,18 +244,6 @@ structure Ns :> NS =
       let val res : string = prim("nssml_GetHostByAddr", "nssml_GetHostByAddr", s)
       in if isNull res then NONE
 	 else SOME res
-      end
-
-    structure Quot =
-      struct
-	fun flatten (fl : string frag list) : string =
-	  concat(map (fn QUOTE s => s | ANTIQUOTE s => s) fl)
-	  
-	val return = fn fl => return (flatten fl)
-	  
-	val write = fn fl => write (flatten fl)
-
-        val op ^^ = op @
       end
 
     structure Mail =
@@ -311,4 +308,4 @@ structure Ns :> NS =
   end
 
 infixr 5 ^^
-val op ^^ = Ns.Quot.^^
+val op ^^ = Ns.^^
