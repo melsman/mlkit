@@ -1,5 +1,9 @@
 ML Kit NEWS file
 
+ * mael 2002-11-05: Improved pattern-match compilation. The generated
+   code now shares (in most cases) the extraction of values from the
+   root node in a match.
+
  * mael 2002-10-28: Started work on Barry - a Standard ML barifier
    (e.g., simplifier). Barry eliminates modules, pattern matching,
    complex derived forms, resolves infix resolution, and performs a
