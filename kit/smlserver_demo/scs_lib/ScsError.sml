@@ -18,15 +18,23 @@ structure ScsError :> SCS_ERROR =
 
     fun panic emsg = 
       let
-	val emsg = `script: ^(Ns.Conn.location())^(Ns.Conn.url()).` ^^ emsg
+	val emsg = `script: ^(Ns.Conn.location())^(Ns.Conn.url()).
+	  ` ^^ emsg
       in
 	(logError emsg;
 	 emailError emsg;
-	 ScsPage.returnPg "System Error" `
-	 It seems that the system can't complete your request.<p>
-	 This is probably our fault. The system administrator has been
-	 notified.<p>
-	 Please try again later`;
+	 case ScsLogin.user_lang of
+	   ScsLang.English =>
+	     ScsPage.returnPg "System Error" `
+	     It seems that the system can't complete your request.<p>
+	     This is probably our fault. The system administrator has been
+	     notified.<p>
+	     Please try again later`
+	 | ScsLang.Danish => ScsPage.returnPg "Systemfejl" `
+	     Vi kan desværre ikke fuldføre din forespørgsel.<p>
+	     Dette er sandsynligvis vores fejl. Vores systemadministrater 
+	     er blevet informeret om problemt.<p>
+	     Du må meget gerne prøve igen senere.`;
 	 Ns.exit())
       end
     fun valOf NONE = panic `valOf(NONE)`

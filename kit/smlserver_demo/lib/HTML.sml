@@ -38,8 +38,8 @@ signature HTML =
     val pre         : quot -> quot
 
     (* HTML anchors and hyperlinks *)
-    val ahref    : string * string -> quot
-    val ahrefa   : string -> string -> string -> quot
+    val ahref    : quot -> quot -> quot
+    val ahrefa   : quot -> quot -> quot -> quot
     val aname    : string -> quot -> quot
 
     (* HTML text formats and style *)
@@ -86,7 +86,7 @@ signature HTML =
     val forma      : string -> string -> quot -> quot
     val input      : string -> quot
     val inputa     : string -> string -> quot
-    val intext     : string -> string -> quot
+    val intext     : string -> quot -> quot
     val inpassword : string -> string -> quot
     val incheckbox : {name : string, value : string} -> string -> quot
     val inradio    : {name : string, value : string} -> string -> quot

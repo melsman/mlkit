@@ -360,7 +360,7 @@ signature NS =
 
     val exit : unit -> 'a
 
-    (* We need a random generator *)
+    (* A global random generator *)
     val randomGenerator : Random.generator
 
     (* Creating the two supported database interfaces *)

@@ -52,6 +52,8 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       prim("nssml_DbPoolPutHandle", "nssml_DbPoolPutHandle", #2 db)
     fun dmlDb (db : db, q: quot) : status =
       prim("nssml_DbDML", "nssml_DbDML", (#2 db, quotToString q))
+    fun panicDmlDb (db:db) (f_panic: quot -> 'a) (q: quot) : unit =
+      (dmlDb (db,q); () handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
 
     fun getHandle () : db = poolGetHandle(Pool.getPool())
     fun putHandle db : unit = (poolPutHandle db; Pool.putPool (#1 db))
@@ -62,8 +64,10 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
 	handle X => (putHandle db; raise X)
       end
     fun maybeDml (q: quot) : unit = (dml q; () handle X => ())
-    fun panicDml (f_panic: string * string -> 'a) (q: quot) : unit =
-      (dml q; () handle X => (f_panic (Quot.toString q, General.exnMessage X); ()))
+    fun panicDml (f_panic: quot -> 'a) (q: quot) : unit =
+      (dml q; () handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
+    fun errorDml (f_error: unit -> 'a) (q: quot) : unit =
+      (dml q; () handle X => (f_error(); ()))
 
     fun select (db: db, q: quot) : Set.set =
       prim("nssml_DbSelect", "nssml_DbSelect", (#2 db, quotToString q))
@@ -100,6 +104,18 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       wrapDb (fn db => foldDb (db,f,acc,sql))
 
     fun list (f:(string->string)->'a, sql:quot) : 'a list = wrapDb (fn db => listDb(db,f,sql))
+
+    fun oneRow' (f:(string->string)->'a, sql:quot) : 'a = 
+      case list (f,sql) of
+	[] => raise Fail "No rows"
+      | [r] => r
+      | _ => raise Fail "More than one row"
+
+    fun zeroOrOneRow' (f:(string->string)->'a, sql:quot) : 'a option = 
+      case list (f,sql) of
+	[] => NONE
+      | [r] => SOME r
+      | _ => raise Fail "More than one row"
 
     fun oneFieldDb(db,sql) : string =
       let val s : Set.set = select(db, sql)
@@ -169,6 +185,36 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       end
 
     fun qq' s = concat ["'", qq s, "'"]
+
+    fun toDate s = 
+      let
+	fun mthToName mth =
+	  case mth of
+	    1 => Date.Jan
+	  | 2 => Date.Feb
+	  | 3 => Date.Mar
+	  | 4 => Date.Apr
+	  | 5 => Date.May
+	  | 6 => Date.Jun
+	  | 7 => Date.Jul
+	  | 8 => Date.Aug
+	  | 9 => Date.Sep
+	  | 10 => Date.Oct
+	  | 11 => Date.Nov
+	  | 12 => Date.Dec
+	  | _ => raise Fail ("DbFunctor.toDate: " ^ (Int.toString mth))
+      in
+	(case (RegExp.extract o RegExp.fromString) "([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9])" s of
+	   SOME [yyyy,mm,dd] => SOME (Date.date{year=Option.valOf (Int.fromString yyyy),
+						month=mthToName (Option.valOf (Int.fromString mm)),
+						day=Option.valOf (Int.fromString dd),
+						hour=0,minute=0,second=0,offset=NONE})
+	 | _ => NONE)
+      end
+    handle _ => NONE
+
+    fun valueList vs = String.concatWith "," (List.map qq' vs)
+    fun setList vs = String.concatWith "," (List.map (fn (n,v) => n ^ "=" ^ qq' v) vs)
 
     fun seqNextval (seqName:string) : int = 
       let val s = oneField `select ^(seqNextvalExp seqName) ^fromDual`

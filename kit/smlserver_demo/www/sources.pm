@@ -17,9 +17,9 @@ local
   ../scs_lib/SCS_SECURITY.sml
   ../scs_lib/ScsSecurity.sml
   ../scs_lib/ScsLang.sml
-  ../scs_lib/ScsDate.sml
   ../scs_lib/SCS_PAGE.sml
   ../scs_lib/ScsLogin.sml
+  ../scs_lib/ScsDate.sml
   ../scs_lib/ScsDict.sml
   ../scs_lib/ScsPage.sml
   ../scs_lib/ScsError.sml
@@ -30,6 +30,8 @@ local
   ../lib/MSP.sml
   ../lib/Msp.sml
   ../scs_lib/ScsFormVar.sml
+
+  ../scs_lib/ScsGlobal.sml
 
   rating/RatingUtil.sml
 in

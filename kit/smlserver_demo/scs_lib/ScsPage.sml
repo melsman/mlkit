@@ -1,5 +1,8 @@
 structure ScsPage :> SCS_PAGE =
   struct
+    type navbar = (quot * quot) list
+    fun navbar nb = Quot.concatWith "/" (List.map (fn (l,n) => Html.ahref l n) nb)
+
     fun returnPg title body = Ns.return 
       (case ScsLogin.user_lang of
 	 ScsLang.English => `
