@@ -46,6 +46,11 @@ create table scs_person_rels (
   constraint scs_person_rels_pk primary key (on_what_table,on_which_id)
 );
 
+-- Also add unique constraint on (person_id,on_what_table), that is, a
+-- record may only relate to atmost one record in another source.
+alter table scs_person_rels add 
+  constraint scs_person_rels_un unique(person_id,on_what_table);
+
 -----------
 -- Views --
 -----------

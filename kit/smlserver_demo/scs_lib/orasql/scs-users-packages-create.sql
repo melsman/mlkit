@@ -498,6 +498,7 @@ as
       end;
     end;
     exception
+      /* Security id is not unique and may therefore return more than one row. */
       when TOO_MANY_ROWS then
         return null;
   end imp_exact_match;

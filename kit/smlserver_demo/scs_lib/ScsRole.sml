@@ -10,6 +10,7 @@ signature SCS_ROLE =
     | StudAdm
     | OaAdm
     | SupervisorAdm
+    | ScsPersonAdm (* Created in scs-users-initialdata-create.sql *)
     | Other of string
 
     (* [fromString str] returns the corresponding role which is either
@@ -43,6 +44,7 @@ structure ScsRole :> SCS_ROLE =
     | StudAdm
     | OaAdm
     | SupervisorAdm
+    | ScsPersonAdm
     | Other of string
 
     fun fromString str = 
@@ -51,6 +53,7 @@ structure ScsRole :> SCS_ROLE =
       | "StudAdm" => StudAdm
       | "VejlederAdm" => SupervisorAdm
       | "OaAdm" => OaAdm
+      | "ScsPersonAdm" => ScsPersonAdm
       | s => Other s
  
     (* [toString role] returns the string representation of the role
@@ -61,6 +64,7 @@ structure ScsRole :> SCS_ROLE =
       | StudAdm => "StudAdm"
       | OaAdm   => "OaAdm"
       | SupervisorAdm => "VejlederAdm"
+      | ScsPersonAdm => "ScsPersonAdm"
       | Other s => s
 
     fun has_p uid role =

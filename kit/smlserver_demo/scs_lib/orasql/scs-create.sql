@@ -19,6 +19,7 @@
 @scs-persons-packages-create.sql;
 @scs-users-tables-create.sql;
 @scs-users-packages-create.sql;
+@scs-users-initialdata-create.sql;
 @scs-groups-tables-create.sql;
 
 @scs-roles-tables-create.sql;

@@ -2,6 +2,7 @@
 @scs-random-drop.sql;
 @scs-dict-drop.sql;
 @scs-groups-drop.sql
+@scs-users-initialdata-drop.sql;
 @scs-users-drop.sql
 @scs-persons-drop.sql
 @scs-roles-drop.sql
