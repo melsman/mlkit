@@ -31,6 +31,7 @@ functor OptLambda(structure Lvars: LVARS
 		 ): OPT_LAMBDA =
   struct
 
+    val Listfoldl = List.foldl
     structure List = Edlib.List
     structure ListPair = Edlib.ListPair
 
@@ -1199,8 +1200,8 @@ functor OptLambda(structure Lvars: LVARS
        let exception NonSelect
 	 fun f lv exp =
 	   case exp
-	     of PRIM (SELECTprim i, VAR _) => ()
-	      | VAR {lvar,...} => if lv = lvar then raise NonSelect
+	     of PRIM (SELECTprim i, [VAR _]) => ()
+	      | VAR {lvar,...} => if Lvars.eq(lv,lvar) then raise NonSelect
 				  else ()
 	      | _ => app_lamb (f lv) exp
        in (f lv exp; true) handle NonSelect => false
@@ -1208,17 +1209,26 @@ functor OptLambda(structure Lvars: LVARS
 
      (* The environment *)
 
-     datatype fix_boxity = NORMAL_ARGS | UNBOXED_ARGS of int (* number of arguments *)
+     datatype fix_boxity = NORMAL_ARGS 
+       | UNBOXED_ARGS of int * Type (* number of arguments; Type is the argument type (a tuple-type) *)
+       | ARG_VARS of Lvars.lvar Vector.vector 
 
      fun layout_fix_boxity NORMAL_ARGS = PP.LEAF "NORMAL_ARGS"
-       | layout_fix_boxity (UNBOXED_ARGS i) = PP.LEAF ("UNBOXED_ARGS(" ^ Int.toString i ^ ")")
+       | layout_fix_boxity (UNBOXED_ARGS (i,Type)) = PP.LEAF ("UNBOXED_ARGS(" ^ Int.toString i ^ ")")
+       | layout_fix_boxity (ARG_VARS _) = PP.LEAF "ARG_VARS"
+
+     fun eq_fix_boxity (NORMAL_ARGS,NORMAL_ARGS) = true
+       | eq_fix_boxity (ARG_VARS _, _) = die "eq_fix_boxity; shouldn't get here"
+       | eq_fix_boxity (_, ARG_VARS _) = die "eq_fix_boxity; shouldn't get here"
+       | eq_fix_boxity (UNBOXED_ARGS (i1,Type1), UNBOXED_ARGS (i2,Type2)) = i1 = i2 andalso eq_Type(Type1,Type2)
+       | eq_fix_boxity _ = false 
 
      type unbox_fix_env = fix_boxity LvarMap.map
 
      fun enrich_unbox_fix_env(unbox_fix_env1, unbox_fix_env2) =
        LvarMap.Fold (fn ((lv2,res2),b) => b andalso
 		       case LvarMap.lookup unbox_fix_env1 lv2
-			 of SOME res1 => res1=res2
+			 of SOME res1 => eq_fix_boxity(res1,res2)
 			  | NONE => false) true unbox_fix_env2
 
      fun restrict_unbox_fix_env(unbox_fix_env,lvars) = 
@@ -1235,51 +1245,97 @@ functor OptLambda(structure Lvars: LVARS
 
      val frame_unbox_fix_env = ref (LvarMap.empty : unbox_fix_env)
 
-     fun trans env lamb =
+     fun trans (env:unbox_fix_env) lamb =
        case lamb 
 	 of FIX {functions, scope} => 
 	   let 
-	     fun mk_env {lvar,tyvars,Type,bind=FN{pat=[lv,pt],body}} =
+	     fun mk_env {lvar,tyvars,Type,bind=FN{pat=[(lv,pt)],body}} : unbox_fix_env =
 	       let fun normal () = LvarMap.add (lvar, NORMAL_ARGS, LvarMap.empty)
 	       in (* interesting only if the function takes a tuple of arguments *)
 		 case Type
 		   of ARROWtype([RECORDtype nil],res) => normal()
-		    | ARROWtype([RECORDtype ts],res) =>
+		    | ARROWtype([rt as RECORDtype ts],res) =>
 		     if unboxable lv body then
-		       LvarMap.add(lvar,UNBOXED_ARGS (length ts),LvarMap.empty)
+		       LvarMap.add(lvar,UNBOXED_ARGS (length ts, rt),LvarMap.empty)
 		     else 
 		       normal()
 		    | _ => normal()
 	       end
 	       | mk_env _ = die "unbox_fix_args.f.mk_env"	       
-	     fun trans_function env {lvar,tyvars,Type,bind=FN{pat=[lv,pt],body}} =
-	       let fun mk_fun body = {lvar=lvar,tyvars=tyvars,Type=Type, 
-				      bind=FN{pat=[lv,pt], body=body}}
+	     fun trans_function env {lvar,tyvars,Type,bind=FN{pat=[(lv,pt)],body}} =
+	       let fun mk_fun Type body = {lvar=lvar,tyvars=tyvars,Type=Type, 
+					   bind=FN{pat=[(lv,pt)], body=body}}
 	       in case lookup env lvar
-		    of SOME NORMAL_ARGS => mk_fun (trans env body)
-		     | SOME (UNBOXED_ARGS sz) =>
+		    of SOME NORMAL_ARGS => mk_fun Type (trans env body)
+		     | SOME (UNBOXED_ARGS (sz, _)) =>
 		      let (* create argument env *)
 			val vector = Vector.tabulate 
 			  (sz, fn i => Lvars.new_named_lvar (Lvars.pr_lvar lv ^ "-" ^ Int.toString i))
 			val env' = LvarMap.add(lv, ARG_VARS vector, env)
-		      in mk_fun (trans env' body)
+			val body' = trans env' body
+			val Type' = 
+			  case Type
+			    of ARROWtype([RECORDtype args], res) => ARROWtype (args, res) 
+			     | _ => die "unbox_fix_args.trans.trans_function(no arrow)"
+		      in mk_fun Type' body'
 		      end
-		     | _ => die "unbox_fix_args.f.trans_function"
+		     | _ => die "unbox_fix_args.trans.trans_function"
 	       end
 	       | trans_function _ _ = die "unbox_fix_args.f.do_fun"
-	     val env' = foldl (fn (e, f) => LvarMap.plus(e,mk_env f)) functions
+	     val env' = Listfoldl (fn (f,e) => LvarMap.plus(e,mk_env f)) LvarMap.empty functions
 	     val env'' = LvarMap.plus(env,env')
-	     val functions' = map (trans_function env'') functions
+	     val functions = map (trans_function env'') functions
 	     val scope = trans env'' scope
 	   in
-	     FIX{functions=functions',scope=scope'}
+	     FIX{functions=functions,scope=scope}
 	   end
+	  | PRIM(SELECTprim i, [VAR{lvar,instances=nil}]) => 
+	   (case lookup env lvar
+	      of SOME (ARG_VARS vector) =>
+		let val lv = Vector.sub (vector, i) handle _ => die "trans.select"
+		in VAR{lvar=lv,instances=nil} 
+		end
+	       | _ => lamb)
+	  | APP(lvexp as VAR{lvar,instances}, arg) =>
+	      let fun mk_app lv i = 
+		    APP(lvexp, 
+			PRIM(UB_RECORDprim, 
+			     List.tabulate (i, fn i => 
+					    PRIM(SELECTprim i, [VAR{lvar=lv,instances=nil}])
+					    )))
+	      in
+		case lookup env lvar
+		  of SOME(UNBOXED_ARGS (sz, Type)) =>
+		    (case arg
+		       of PRIM(RECORDprim, args) => 
+			 if length args <> sz then die "unbox_fix_args.trans.app(length)"
+			 else APP(lvexp, PRIM(UB_RECORDprim, map (trans env) args)) 
+		       | VAR{lvar,instances=nil} => mk_app lvar sz
+		       | _ => 
+			 let val lv_tmp = Lvars.newLvar()
+			 in LET{pat=[(lv_tmp, nil, Type)], bind=arg,
+				scope=mk_app lv_tmp sz}
+			 end)
+		   | _ => APP(lvexp, trans env arg)
+	      end
+	  | FRAME{declared_lvars,...} => 
+	      let val env' = restrict_unbox_fix_env (env, map #lvar declared_lvars)
+	      in (frame_unbox_fix_env := env' ; lamb)
+	      end
+	  | _ => map_lamb (trans env) lamb
    in
+     val restrict_unbox_fix_env = restrict_unbox_fix_env
+     val layout_unbox_fix_env = layout_unbox_fix_env
+     val enrich_unbox_fix_env = enrich_unbox_fix_env
+     type unbox_fix_env = unbox_fix_env
+     fun unbox_fix_args (env:unbox_fix_env) lamb : LambdaExp * unbox_fix_env =
+       if !Flags.optimiser then
+	let val _ = frame_unbox_fix_env := LvarMap.empty
+	    val lamb = trans env lamb
+	in (lamb, !frame_unbox_fix_env)
+	end
+      else (lamb, LvarMap.empty)
    end
-
-
-
-
 
 
 
@@ -1387,7 +1443,7 @@ functor OptLambda(structure Lvars: LVARS
 					 case LvarMap.lookup env lvar
 					   of SOME res => LvarMap.add(lvar,res,env')
 					    | NONE => die "inverse_eta.FRAME.lv not in env")
-		             LvarMap.empty declared_lvars 
+		             LvarMap.empty declared_lvars
 	      in frame_inveta_env := env'; lamb 
 	      end
              | _ => map_lamb (inverse_eta env) lamb
@@ -1426,21 +1482,26 @@ functor OptLambda(structure Lvars: LVARS
     * The lambda optimiser environment
     * ----------------------------------------------------------------- *)
 
-    type env = inveta_env * let_env
+    type env = inveta_env * let_env * unbox_fix_env
 
-    val empty =  (LvarMap.empty, LvarMap.empty)
+    val empty =  (LvarMap.empty, LvarMap.empty, LvarMap.empty)
     val initial = empty
-    fun plus ((e1, e2), (e1', e2')) = (LvarMap.plus (e1,e1'), LvarMap.plus (e2,e2'))
+    fun plus ((e1, e2, e3), (e1', e2', e3')) = (LvarMap.plus (e1,e1'), LvarMap.plus (e2,e2'), LvarMap.plus (e3,e3'))
 
-    fun restrict((inv_eta_env,let_env), lvars) =
+    fun restrict((inv_eta_env,let_env, unbox_fix_env), lvars) =
       (restrict_inv_eta_env(inv_eta_env,lvars),
-       restrict_let_env(let_env,lvars))
-    fun enrich((inv_eta_env1,let_env1),(inv_eta_env2,let_env2)) =
-      enrich_inv_eta_env(inv_eta_env1,inv_eta_env2) andalso
-      enrich_let_env(let_env1,let_env2)
+       restrict_let_env(let_env,lvars),
+       restrict_unbox_fix_env(unbox_fix_env,lvars))
 
-    fun layout_env (e1,e2) = PP.NODE{start="",finish="",indent=0,childsep=PP.RIGHT ",",
-				     children=[layout_inveta_env e1, layout_let_env e2]}
+    fun enrich((inv_eta_env1,let_env1,unbox_fix_env1): env,
+	       (inv_eta_env2,let_env2,unbox_fix_env2): env) : bool =
+      enrich_inv_eta_env(inv_eta_env1,inv_eta_env2) andalso
+      enrich_let_env(let_env1,let_env2) andalso
+      enrich_unbox_fix_env(unbox_fix_env1,unbox_fix_env2)
+
+    fun layout_env (e1,e2,e3) = PP.NODE{start="",finish="",indent=0,childsep=PP.RIGHT ",",
+					children=[layout_inveta_env e1, layout_let_env e2,
+						  layout_unbox_fix_env e3]}
 
 
    (* -----------------------------------------------------------------
@@ -1449,11 +1510,12 @@ functor OptLambda(structure Lvars: LVARS
     * performed after possibly optimisation
     * ----------------------------------------------------------------- *)
 
-    fun rewrite (inveta_env,let_env) lamb =
+    fun rewrite (inveta_env,let_env,unbox_fix_env) lamb =
       let val (lamb1,let_env') = functionalise_let let_env lamb
 	  val lamb2 = fix_conversion lamb1 
 	  val (lamb3,inveta_env') = inverse_eta_for_fix_bound_lvars inveta_env lamb2
-      in (lamb3, (inveta_env', let_env'))
+	  val (lamb4,unbox_fix_env') = unbox_fix_args unbox_fix_env lamb3
+      in (lamb3, (inveta_env', let_env',unbox_fix_env'))
       end
 
 
