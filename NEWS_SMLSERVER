@@ -1,5 +1,9 @@
 File NEWS_SMLSERVER                                September 22, 2001
 
+ * nh 2001-09-21: Added support for checking form variables
+     (module /sml/FormVar.sml)
+     Added two utility packages: /sml/SmlsDate and /sml/SmlsList
+
  * nh 2001-09-17: Added support for cookies, caching. Added
      authentication example with simple filtering.
 
