@@ -216,6 +216,7 @@ install_smlserver:
 	$(INSTALL) README $(INSTDIR_SMLSERVER)
 	$(INSTALL) README_SMLSERVER $(INSTDIR_SMLSERVER)
 	$(INSTALL) NEWS_SMLSERVER $(INSTDIR_SMLSERVER)
+	$(INSTALL) -R smlserver/xt $(INSTDIR_SMLSERVER)/xt
 	$(INSTALL) -R smlserver_demo $(INSTDIR_SMLSERVER)/smlserver_demo 
 	$(INSTALL) -R basislib $(INSTDIR_SMLSERVER)/basislib
 #	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR_SMLSERVER)/doc

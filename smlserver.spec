@@ -52,8 +52,8 @@ ExcludeArch: sparc alpha
 Requires: aolserver
 
 %description 
-SMLserver is a webserver plugin for AOLserver, an Open Source
-multi-threaded webserver provided by America Online and used for large
+SMLserver is a Web server plugin for AOLserver, an Open Source
+multi-threaded Web server provided by America Online and used for large
 scale, dynamic web sites. SMLserver allows efficient threaded
 execution of Standard ML programs and inherits many of the great
 features of AOLserver, including the possibility of accessing a
@@ -61,14 +61,14 @@ variety of different relational database management systems (RDBMSs),
 such as Oracle and Postgresql. The main features of SMLserver are:
 
 Standard ML '97: With SMLserver, you can write dynamic
-  web-applications using your favorite programming language, without
+  Web applications using your favorite programming language, without
   sacrificing efficiency and scalability of your
-  web-service. SMLserver is based on the ML Kit, which covers all of
+  Web service. SMLserver is based on the ML Kit, which covers all of
   Standard ML '97, as defined in the Definition of Standard ML. In
   particular, SMLserver supports the use of Standard ML Modules and
   most of the Standard ML Basis Library.
 
-Web-Server API: SMLserver provides an SML interface to the AOLserver
+Web Server API: SMLserver provides an SML interface to the AOLserver
   API, thereby giving the SML programmer access to the following
   AOLserver features:
 
@@ -92,7 +92,7 @@ Efficient Multi-threaded Execution: SMLserver compiles Standard ML
   model makes it possible for SMLserver to serve multiple requests
   simultaneously.  
 
-Documentation: A tutorial on writing dynamic web-applications using
+Documentation: A tutorial on writing dynamic Web applications using
   SMLserver is available from the SMLserver home page
 
                     http://www.smlserver.org
@@ -126,8 +126,9 @@ rm -rf $RPM_BUILD_ROOT
 # Module for AOLserver (includes runtime system)
 /usr/share/smlserver/bin/nssml.so
 
-# The Demonstration Directory
+# The Demonstration Directories
 /usr/share/smlserver/smlserver_demo
+/usr/share/smlserver/xt
 
 # Libraries
 /usr/share/smlserver/basislib

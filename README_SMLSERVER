@@ -5,22 +5,22 @@ This is file README_SMLSERVER
 INTRODUCTION
 ------------
 
-SMLserver is an SML module for AOLserver, an Open Source webserver
-provided by America Online. SMLserver supports webserver
+SMLserver is an SML module for AOLserver, an Open Source Web server
+provided by America Online. SMLserver supports Web server
 interpretation of bytecode files compiled with the ML Kit. Both ML
 Server Pages [1] (i.e., msp-files) and plain sml-files, using an SML
 interface to the AOLserver API, are supported.
 
 SMLserver uses a load-once-execute-many scheme for executing sml-files
 and msp-files. Together with database pooling, the scheme makes it
-possible to create database backed web sites in SML that are capable
+possible to create database backed Web sites in SML that are capable
 of answering a high number of requests compared to systems using a
 traditional CGI based approach. The database API supports many
 different RDBMS's, including Oracle and PostgreSQL.
 
-A project file (pm-file) maintained by the web-programmer is used to
+A project file (pm-file) maintained by the Web programmer is used to
 keep track of library modules, msp-files, and sml-files that are part
-of the web project. When a page is requested, SMLserver first checks
+of the Web project. When a page is requested, SMLserver first checks
 if the library modules are loaded.  If the library modules are not
 loaded, SMLserver loads the library modules. Then the page requested
 is loaded and executed, leaving the library modules loaded for reuse
@@ -64,7 +64,7 @@ SMLserver home page; see the top of this file.
 We shall assume that AOLserver is already installed. To build the
 SMLserver module nssml.so, which contains the bytecode interpreter for
 interpreting compiled sml-files and msp-scripts, download the ML Kit
-source distribution from the ML Kit web-site.
+source distribution from the ML Kit Web site.
 
 After untaring the source distribution, make sure that the file
 mlkit/kit/src/SMLserver/Makefile contains the correct information
@@ -144,7 +144,7 @@ directory structure should now look as follows:
 
 To make the msp-pages and sml-pages that appear in the demo.pm file
 in the www directory available to browsers, make demo.pm the *current
-web project* by executing:
+Web project* by executing:
   
   # cd www
   # ln -s demo.pm sources.pm
@@ -189,7 +189,7 @@ system with rpm's installed:
      submit sql-queries and commands to your database.
 
   4. Insert the following sections in your nsd.tcl-file - the file
-     given to the webserver executable `nsd' at startup:
+     given to the Web server executable `nsd' at startup:
 
          ns_section "ns/db/drivers" 
          ns_param nspostgres ${bindir}/nspostgres.so
@@ -249,7 +249,7 @@ TO DO
 REFERENCES  
 ----------
   
-[1] A system for running ML Server Pages using the Apache Web-server
+[1] A system for running ML Server Pages using the Apache Web server
 CGI support was first implemented by Peter Sestoft. For information
 about this work, consult http://www.dina.kvl.dk/~sestoft/msp
 
