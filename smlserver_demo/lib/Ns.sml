@@ -203,22 +203,25 @@ structure Ns :> NS =
 			    NONE => let val v = f k in (set (c,k,v);v) end 
 			  | SOME v => v))
 	in
-	  fun cacheWhileUsed (arg as (f:string->string, cn: string, t: int)) = cache_fn arg set get
+	  fun cacheWhileUsed (arg as (f:string->string, cn: string, t: int)) = 
+	    cache_fn arg set get
 	  fun cacheForAwhile (arg as (f:string->string, cn: string, t: int)) =
 	    let
-	      val ts_sz = 12
-	      fun set'(c,k,v) = set(c,k,StringCvt.padLeft #" " ts_sz (LargeInt.toString(Time.toSeconds(Time.now()))))
+	      open Time
+	      fun set'(c,k,v) = set(c,k, toString (now()) ^ ":" ^ v)
 	      fun get'(c,k) = 
 		case get(c,k) of
 		  NONE => NONE
-		| SOME vts => 
-		    let 
-		      val (ts,v) = (Option.valOf(LargeInt.fromString(String.substring(vts,0,ts_sz))),
-				    String.extract(vts,ts_sz,NONE))
-		      val now_sec = Time.toSeconds(Time.now())
-		    in
-		      if now_sec > ts+t then NONE else SOME v
-		    end
+		| SOME t0_v => 
+		    (case scan Substring.getc (Substring.all t0_v)
+		       of SOME (t0,s) => 
+			 (case Substring.getc s
+			    of SOME (#":",v) => 
+			      if now() > t0 + (fromSeconds t)
+				then NONE 
+			      else SOME (Substring.string v)
+			     | _ => NONE)
+			| NONE => NONE)
 	    in
 	      cache_fn arg set' get'
 	    end
