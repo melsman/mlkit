@@ -70,7 +70,7 @@ in the previous section, proceed as follows:
     directory. Alternatively, if you want to install the ML Kit in
     your home directory, execute
    
-      % make install INSTDIR_NATIVE=$(HOME)/mlkit-x.y.z
+      % make install INSTDIR=$(HOME)/mlkit-x.y.z
     
 Once installed, make a personal copy of the kitdemo/ directory and try
 compile the kitdemo/helloworld.sml program. The commands

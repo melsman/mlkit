@@ -69,7 +69,7 @@ install:
 	$(INSTALL) -R ml-yacc-lib $(INSTDIR)/ml-yacc-lib
 	$(INSTALL) -R basislib $(INSTDIR)/basislib
 	$(INSTALL) doc/manual/mlkit.pdf $(INSTDIR)/doc
-	chown -R root.root $(INSTDIR)
+	chown -R `whoami`.`whoami` $(INSTDIR)
 	chmod -R ug+rw $(INSTDIR)
 	chmod -R o+r $(INSTDIR)
 #
