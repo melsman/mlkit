@@ -7,7 +7,7 @@ signature SMLS_LOGIN =
     val user_id   : int
 
     val verifyUser : unit -> int * SmlsLang.lang
-    val loggedIn   : unit -> bool
+    val loggedIn   : bool
   end
 
 structure SmlsLogin :> SMLS_LOGIN =
@@ -41,7 +41,7 @@ structure SmlsLogin :> SMLS_LOGIN =
     (* We look for login-cookies on every request *)
     (* If you don't want that, then apply a filter similar to the one below. *)
     val (user_id,user_lang) = verifyUser()
-    fun loggedIn () = user_id <> 0
+    val loggedIn = user_id <> 0
 
     (* ============================================= *)
     (* Below, we check for password protected pages. *)
@@ -52,7 +52,7 @@ structure SmlsLogin :> SMLS_LOGIN =
       let
 	val target = Ns.Conn.location()^Ns.Conn.url()
 	fun verifyUserFilter () =
-	  if loggedIn() then ()
+	  if loggedIn then ()
 	  else (Ns.returnRedirect (Ns.Conn.location()^"/auth_form.sml?target=" ^ 
 				   Ns.encodeUrl target); Ns.exit())
       in

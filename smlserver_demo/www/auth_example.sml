@@ -42,7 +42,7 @@ href="email_form.sml">Send Me a Mail</a> or one of the non
 password protected pages (e.g., <a href="server.sml">server.sml</a> or
 <a href="guess.sml">Guess a Number</a>).<p>
 
-<b>^(if SmlsLogin.loggedIn() then "You are currently logged in with user_id " ^ 
+<b>^(if SmlsLogin.loggedIn then "You are currently logged in with user_id " ^ 
        (Int.toString SmlsLogin.user_id) ^ " (<a href=\"auth_logout.sml\">logout</a>) "
      else "You are not logged in").<p>
 
