@@ -431,10 +431,8 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	      (fn (id, range_private) => fn VE =>
 	             add VE id
 		       (case range_private of
-			  LONGVARpriv sigma =>
-			    LONGVARpriv (TypeScheme.close true sigma)
-			| LONGCONpriv (sigma, ids) =>
-			    LONGCONpriv (TypeScheme.close true sigma, ids)
+			  LONGVARpriv sigma => LONGVARpriv (TypeScheme.close true sigma)
+			| LONGCONpriv (sigma, ids) => LONGCONpriv (TypeScheme.close true sigma, ids)
 			| LONGEXCONpriv tau => LONGEXCONpriv tau))
 	         empty VE
 
@@ -922,21 +920,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  (*overloaded types manually closed, to ensure closing of overloaded 
 	   type variable:*)
 
-	  val sigma_num_X_num_to_num = 
-		TypeScheme.from_TyVars_and_Type
-		  ([tyvar_num], tau_num_X_num_to_num)
-
-	  val sigma_realint_to_realint = 
-		TypeScheme.from_TyVars_and_Type
-		  ([tyvar_num], tau_realint_to_realint)
-
-	  val sigma_numtxt_X_numtxt_to_bool =
-		TypeScheme.from_TyVars_and_Type
-		  ([tyvar_num], tau_numtxt_X_numtxt_to_bool)
-
-	  val sigma_wordint_X_wordint_to_wordint =
-	        TypeScheme.from_TyVars_and_Type
-		  ([tyvar_wordint], tau_wordint_X_wordint_to_wordint)
+	  val sigma_num_X_num_to_num = TypeScheme.close_overload tau_num_X_num_to_num
+	  val sigma_realint_to_realint = TypeScheme.close_overload tau_realint_to_realint
+	  val sigma_numtxt_X_numtxt_to_bool = TypeScheme.close_overload tau_numtxt_X_numtxt_to_bool
+	  val sigma_wordint_X_wordint_to_wordint = TypeScheme.close_overload tau_wordint_X_wordint_to_wordint
 
 	in
 	  val primVE      = VE.singleton (Ident.id_PRIM,
@@ -995,7 +982,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		val arrowType = Type.mk_Arrow (alphaTy, Type.Unit)
 		val _ = Level.pop()
 	    in 
-	      TypeScheme.from_TyVars_and_Type ([alpha], arrowType)
+	      TypeScheme.close_overload arrowType
 	    end
 	in 
 	  val resetRegionsVE =  (* resetRegions: forall 'a . 'a -> unit *)

@@ -180,7 +180,7 @@ functor ModuleStatObject(structure StrId  : STRID
 
           fun sigma(VE.LONGVAR sigm)   =  sigm
             | sigma(VE.LONGCON sigm)   =  sigm
-            | sigma(VE.LONGEXCON tau)  = StatObject.TypeScheme.from_TyVars_and_Type([],tau)
+            | sigma(VE.LONGEXCON tau)  = StatObject.TypeScheme.from_Type tau
 
 	  fun enrichesE (E, E', path) : unit =
 	      let val (SE,TE,VE) = E.un E

@@ -302,7 +302,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val bogus = Id 
       fun (S1 : Substitution) oo (S2 : Substitution) : Substitution = ()
       fun on (S : Substitution, tau : Type) : Type = findType tau
-      fun onScheme (S : Substitution, sigma) = findType sigma
+      fun onScheme (S : Substitution, (tvs,tau)) = (tvs, findType tau)
     end (*Substitution*)
 
 
@@ -688,42 +688,43 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
       (*Find free and bound type variables*)
       local 
-	datatype free_or_bound = FREE | BOUND | FREE_AND_BOUND
+	datatype free_or_bound = FREE | BOUND
 
-	fun tyvars0 f_b ty = 
-	  let 
-	    val ty = findType ty 
-	    val unionTyVarSet = 
-	          (case f_b of 
-		     FREE  => Set.union (General.curry TyVar.eq_free)
-		   | BOUND => Set.union (General.curry (TyVar.eq_bound EQ_SIGNIFICANT))
-		   | FREE_AND_BOUND =>
-		       Set.union (General.curry
-				  (fn tvpair => (TyVar.eq_bound EQ_SIGNIFICANT tvpair)
-					    orelse (TyVar.eq_free tvpair))))
-	  in
-	    (case #TypeDesc ty of
-	       TYVAR (tl as ref (NO_TYPE_INSTANCE _)) => 
-		 (case f_b of 
-		    FREE => if !(#level ty) = Level.GENERIC then Set.empty else Set.singleton tl
-		  | BOUND => if !(#level ty) = Level.GENERIC then Set.singleton tl else Set.empty
-		  | FREE_AND_BOUND  => Set.singleton tl)
-	     | TYVAR (ref (TYPE_INSTANCE _))  => impossible "tyvars0"
-	     | RECTYPE r =>
-		 RecType.fold (fn (ty, tyvars) => 
-			       unionTyVarSet (tyvars0 f_b ty) tyvars)
-		   Set.empty (findRecType r)
-	     | ARROW (ty,ty') =>
-		 unionTyVarSet (tyvars0 f_b ty) (tyvars0 f_b ty')
-	     | CONSTYPE (types,_) => 
-		 List.foldL (fn ty => fn tyvars =>
-			     unionTyVarSet (tyvars0 f_b ty) tyvars)
-		   Set.empty types)
+	val bucket = ref ([] : TyVar list)
+	fun insert_tv eq tv = if List.exists (fn tv' => eq(tv,tv')) (!bucket) then ()
+			      else bucket := (tv :: (!bucket))
+	fun insert FREE tv = insert_tv TyVar.eq_free tv
+	  | insert BOUND tv = insert_tv (TyVar.eq_bound EQ_SIGNIFICANT) tv
+
+	fun tyvars0 f_b ty : unit = 
+	  let val ty = findType ty 
+	  in case #TypeDesc ty 
+	       of TYVAR (tl as ref (NO_TYPE_INSTANCE _)) => 
+		 (case f_b 
+		    of FREE => if !(#level ty) = Level.GENERIC then () else insert f_b tl
+		     | BOUND => if !(#level ty) = Level.GENERIC then insert f_b tl else ())
+		| TYVAR (ref (TYPE_INSTANCE _))  => impossible "tyvars0"
+		| RECTYPE r => RecType.fold (fn (ty, ()) => tyvars0 f_b ty) () (findRecType r)
+		| ARROW (ty,ty') => (tyvars0 f_b ty; tyvars0 f_b ty')
+		| CONSTYPE (types,_) => List.foldL (fn ty => fn () => tyvars0 f_b ty) () types
 	  end
+
+        fun tyvars1 f_b ty = (bucket := []; tyvars0 f_b ty; !bucket)
+
       in
-	val tyvars = Set.list o tyvars0 FREE
-	val generic_tyvars = Set.list o tyvars0 BOUND 
-	val free_and_bound_tyvars = Set.list o tyvars0 FREE_AND_BOUND
+
+	(* Some code in the compiler (compilation of primitives, e.g.)
+	 * depend on the exact order the bound variables are
+	 * extracted from a type - so expect things to blow up if you
+	 * modify this very code.
+	 *   This code for finding bound variables *must* also
+	 * correspond to the fake_generalise code for finding bound
+	 * variables. The fake_generalise code finds variables which
+	 * will later be generalised. This certainly *is* ugly - and
+	 * its a miracle that (or if) it works. 31/10/97-Martin *)
+	
+	val tyvars = tyvars1 FREE
+	val generic_tyvars = tyvars1 BOUND 
       end
 
       fun tynames ty =
@@ -916,14 +917,16 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       in
 	fun generalise ov imp tau = (reset () ; generalise0 ov imp tau)
 	fun fake_generalise imp tau =
-	      (fake := true ; generalise false imp tau ; fake := false ;
+	      (reset(); fake := true ; generalise false imp tau ; fake := false ;
 	       (!fake_generic_tyvars, !escaping_tyvars))
       end (*local*)
 
-      (*close imp tau = a list of those type variables of tau which
-       are allowed to be quantified, and a list of those that are not.
-       If imp then the expression tau is the type of is
-       non-expansive and type variables should be generalised:*)
+      (* close imp tau = a list of those type variables of tau which
+       * are allowed to be quantified, and a list of those that are not.
+       *   For the compiler to work it is important that fake_generalise returns       
+       * type variables as generalise followed by generic_tyvars (to follow)
+       *   If imp then the expression tau is the type of is
+       * non-expansive and type variables should be generalised: *)
 
       val close = fake_generalise
 
@@ -1368,47 +1371,45 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 
 
 
-    type TypeScheme = Type
+    type TypeScheme = TyVar list * Type
 
     structure TypeScheme = struct
-      val eq = Type.eq
-      fun to_TyVars_and_Type sigma =
-	    (Type.generic_tyvars sigma, sigma)
-      val from_Type = fn tau => tau
-      val tyvars = Type.tyvars
-      val tynames = Type.tynames
-      val string = Type.string
-      val pretty_string = Type.pretty_string
-      val layout = Type.layout
+      fun eq((_,tau1),(_,tau2)) = Type.eq(tau1,tau2)
+      val to_TyVars_and_Type = fn x => x
+      val from_Type = fn tau => ([],tau)
+      val tyvars = fn (_,tau) => Type.tyvars tau
+      val tynames = fn (_,tau) => Type.tynames tau
+      val string = fn (_, tau) => Type.string tau
+      fun pretty_string tvn (_, tau) = Type.pretty_string tvn tau
+      val layout = fn (_, tau) => Type.layout tau
+      fun debug_print s (_,tau) = Type.debug_print s tau
 
-      fun instance' ty =
-	    let
-	      val seenB4 = ref (FinMapEq.empty : (TyVarDesc,Type) FinMapEq.map)
-	      fun add_to_seenB4 (x,y) = seenB4 := FinMapEq.add TyVarDesc_eq (x,y,!seenB4)
-	      fun lookup_seenB4 x = FinMapEq.lookup TyVarDesc_eq (!seenB4) x 
+      fun instance' (tyvars,ty) =
+	  let fun fresh (tv as ref(NO_TYPE_INSTANCE tvdesc)) = (tvdesc, Type.from_TyVar(TyVar.refresh tv))
+		| fresh _ = impossible "instance(~1)"
+
+	      val M : (TyVarDesc * Type) list = map fresh tyvars
+
+	      fun lookup_M x = 
+		let fun find [] = None
+		      | find ((y,tau)::ys) = if TyVarDesc_eq(x,y) then Some tau
+					     else find ys
+		in find M
+		end
 	      
 	      fun instanceType ty = 
 		    let val ty = findType ty in
 		    if !(#level ty) <> Level.GENERIC then ty else
-		    (case #TypeDesc ty of 
-		       TYVAR (tv as ref (NO_TYPE_INSTANCE(tvdesc as (ORDINARY _)))) =>
-			 (case lookup_seenB4 tvdesc of
-			    Some ty' => ty'
-			  | None => let val ty' = Type.from_TyVar (TyVar.refresh tv)
-				    in 
-				      add_to_seenB4 (tvdesc,ty');
-				      ty'
-				    end)
-		     | TYVAR (ref (NO_TYPE_INSTANCE(EXPLICIT _))) => 		   
-			 impossible "instance(1)"
-		     | TYVAR (ref (TYPE_INSTANCE _)) => 
-			 impossible "instance(2)"
-		     | ARROW (ty1,ty2) => 
-			 Type.mk_Arrow (instanceType ty1, instanceType ty2)
-		     | RECTYPE r => 
-			 Type.from_RecType (instanceRecType r)
-		     | CONSTYPE (tys,tyname) => 
-			 Type.mk_ConsType (map instanceType tys,tyname))
+		    (case #TypeDesc ty 
+		       of TYVAR (tv as ref (NO_TYPE_INSTANCE(tvdesc as (ORDINARY _)))) =>
+			 (case lookup_M tvdesc 
+			    of Some ty' => ty'
+			     | None => impossible "instance(0)")
+			| TYVAR (ref (NO_TYPE_INSTANCE(EXPLICIT _))) => impossible "instance(1)"
+			| TYVAR (ref (TYPE_INSTANCE _)) => impossible "instance(2)"
+			| ARROW (ty1,ty2) => Type.mk_Arrow (instanceType ty1, instanceType ty2)
+			| RECTYPE r => Type.from_RecType (instanceRecType r)
+			| CONSTYPE (tys,tyname) => Type.mk_ConsType (map instanceType tys,tyname))
 		    end
 	      and instanceRecType r =
 		    let val r = findRecType r in
@@ -1418,18 +1419,23 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		     | ROWrec (l,ty,r') => ROWrec (l,instanceType ty,instanceRecType r'))
 		    end
 	      val inst = instanceType ty
-	      val result = (inst,!seenB4)
+	      val result = (inst,map #2 M)
 	    in
 	      Type.debug_print "***instance IN " ty;
 	      Type.debug_print "***instance OUT" inst;
 	      result
 	    end
-      val instance = fn ty => #1 (instance' ty)
-      val instance'' = fn ty => let val (inst,map) = instance' ty
-				in (inst,FinMapEq.range map) 
-				end
+
+      fun instance sigma = #1 (instance' sigma)
+      val instance'' = instance'
+(*
+      fun instance'' sigma = let val (inst,M) = instance' sigma
+			     in (inst,map #2 M) 
+			     end
+*)
+
       fun generalises_Type (sigma, tau') : bool =
-            (Type.debug_print "TypeScheme.generalises_Type: sigma=" sigma ;
+            (debug_print "TypeScheme.generalises_Type: sigma=" sigma ;
 	     Type.debug_print "TypeScheme.generalises_Type: tau'=" tau' ;
 	     let
 	       val fv_sigma = tyvars sigma
@@ -1450,34 +1456,30 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 		   | None => false)
 	     end)
 
-      fun generalises_TypeScheme (sigma, sigma') : bool =
-	    (Type.debug_print "TySch_generalises_TySch -- sigma'" sigma' ;
-	     let
-	       val tau' = instance sigma'
-	       val betas = Type.generic_tyvars sigma'
-	       val fv_sigma = Type.tyvars sigma
-	     in
-	       (TyVar.intersectTyVarSet (betas,fv_sigma) = [])
-	       andalso generalises_Type (sigma,tau')
-	     end)
+      fun generalises_TypeScheme (sigma, (betas,tau)) : bool =
+	generalises_Type (sigma,tau) andalso
+	(TyVar.intersectTyVarSet (betas,tyvars sigma) = [])
 
-      (*The reason for copying in from_TyVars_and_Type and Close
-       is that generalization modifies the type:*)
+      (* The reason for copying in `close_overload' and `close'
+       * is that generalisation modifies the type. *)
 
-      fun from_TyVars_and_Type (_, tau) =
+      fun close_overload tau =
 	    (*with generalisation of overloaded tyvars (because of the
 	     first `true' argument to `Type.generalise' below):*)
 	    let val tau = Type.copy true false tau
-	    in (Type.generalise true true tau; tau) 
+	        val _ = Type.generalise true true tau
+		val tvs = Type.generic_tyvars tau 
+	    in (tvs, tau)
 	    end
-      fun close imp tau = 
+
+      fun close imp (_, tau) =   (* tyvars are discarded; we could check if the list is empty. *)
 	    (*if imp = true iff the expression tau is the type of is
 	     non-expansive, and then type variables must be generalised:
 	     (the `false' means no generalisation of overloaded tyvars)*)
 	    let val tau = Type.copy false imp tau
-	    in
-	      Type.generalise false imp tau ;
-	      tau
+	        val _ = Type.generalise false imp tau
+		val tvs = Type.generic_tyvars tau 
+	    in (tvs, tau)
 	    end
 
       (*violates_equality T sigma = false, iff, assuming the tynames in T
@@ -1513,13 +1515,12 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	      let val (_, tau) = to_TyVars_and_Type sigma
 	      in
 		(case Type.un_Arrow tau of
-		   None => (*nullary constructor*) false
-		 | Some (tau', _) => (*unary constructor*)
-		     violates_equality0 T (instance tau'))
-	      (*TODO 08/02/1997 17:25. tho.:  hvorfor laves der en instans?*)
-	      end
+		   None => false                                 (*nullary constructor*)
+		 | Some (tau', _) => violates_equality0 T tau')  (*unary constructor*)
+		              (* before an instance was created for tau' 30/10/97-Martin *)
+       	      end
       end (*local*)
-      val match : TypeScheme * TypeScheme -> unit = Type.match
+      val match : TypeScheme * TypeScheme -> unit = fn ((_,tau1),(_,tau2)) => Type.match(tau1,tau2)
     
     end (*TypeScheme*)
 
@@ -1576,14 +1577,17 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     
       fun apply (theta as (TYPEFCN {tyvars, tau}), taus : Type list) : Type =
 	    let
-	      val (tau', fresh_taus_map) = TypeScheme.instance' tau
+	      val (tau', fresh_taus) = TypeScheme.instance'' (tyvars,tau)
 	      val _ = debug_print "TypeFcn.apply"
+
+(*30/10/97-Martin
 	      fun f (tv as ref (NO_TYPE_INSTANCE tvdesc)) = 
 		       (case FinMapEq.lookup TyVarDesc_eq fresh_taus_map tvdesc of
 			  None => Type.from_TyVar (TyVar.refresh tv)
 			| Some tau => tau)
 		| f _ = impossible "TypeFcn.apply: f"
 	      val fresh_taus = map f tyvars
+*)
 	    in
 	      map Type.unify (ListPair.zip (fresh_taus, taus)) ;
 	      tau'
@@ -1595,7 +1599,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
        type function admits equality because the bound type
        variables have already been renamed to admit equality:*)
       fun admits_equality (TYPEFCN {tyvars, tau}) : bool = 
-	    (case Type.make_equality (TypeScheme.instance tau) of
+	    (case Type.make_equality (TypeScheme.instance (tyvars,tau)) of
 	       Some _ => true
 	     | None => false)
 
@@ -1704,13 +1708,13 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       (* val _ = Flags.DEBUG_TYPES := false *)
 
       val _ = if false then 
-	if TypeScheme.eq(tau1,tau2) then
+	if Type.eq(tau1,tau2) then
 	  output(std_out,"***GENERALISE test \t\tsucceeded***\n")
 	else
  	  output(std_out,"***GENERALISE test did \t\t***not*** succeed***\n")
 	      else ()
 
-      val tau3 = TypeScheme.instance tau1
+      val tau3 = TypeScheme.instance ([a],tau1)
       val ty = Type.Int 
       and ty' = Type.fresh_normal ()
       val tau4 = 
@@ -1763,7 +1767,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       val _ = Type.debug_print "EXPLICIT GENERALISE Test -- tau2" tau2 
     in
       val _ = if false then
-	if TypeScheme.eq (tau1,tau2) then
+	if Type.eq (tau1,tau2) then
 	  output(std_out,"***EXPLICIT GENERALISE test \tsucceeded***\n")
 	else
 	  output(std_out,"***EXPLICIT GENERALISE test did \t***not*** succeed***\n")
@@ -1908,8 +1912,14 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	| on_TypeFcn phi (TYPEFCN {tyvars, tau}) =
 	let val tau = on_Type phi tau
 	    val _ = Level.push()
-	    val (tau', fresh_taus_map) = TypeScheme.instance' tau
+	    val (tau', taus) = TypeScheme.instance'' (tyvars,tau)
 	    val _ = Level.pop()
+	    val tyvars' = map (fn tau =>
+			       case Type.to_TyVar tau
+				 of Some tv => tv
+				  | None => die "on_TypeFcn.1") taus
+
+(*30/10/97-Martin
 	    fun f (tv as ref (NO_TYPE_INSTANCE tvdesc)) = 
 	      (case FinMapEq.lookup TyVarDesc_eq fresh_taus_map tvdesc 
 		 of None => TypeFcn.dummy_tv
@@ -1918,6 +1928,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 				    | None => die "on_TypeFcn.1"))
 	      | f _ = impossible "on_TypeFcn.2"
 	    val tyvars' = map f tyvars
+*)
 	in TypeFcn.from_TyVars_and_Type(tyvars',tau')
 	end
 
@@ -1928,7 +1939,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
 	    EXPANDED (on_TypeFcn phi theta)
 
       fun on_TypeScheme Realisation_Id sigma = sigma 
-	| on_TypeScheme phi sigma = on_Type phi sigma
+	| on_TypeScheme phi (tvs, tau) = (tvs, on_Type phi tau)
 
       fun on_Realisation Realisation_Id phi = phi
 	| on_Realisation phi Realisation_Id = Realisation_Id
