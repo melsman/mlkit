@@ -15,6 +15,9 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
     fun chat(s: string) = if !Flags.chat then msg (s) else ()
     fun die s  = Crash.impossible ("EmitCode." ^ s)
 
+    fun mapi f i nil = nil
+      | mapi f i (x::xs) = f (x,i) :: mapi f (i+1) xs
+
     type target = CG.AsmPrg
     type label = Labels.label
 
@@ -119,9 +122,6 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
       | MaybeResetRegion => die ("inst " ^ (pr_inst inst) ^ " not emitted")
       | ResetRegionIfInf => die ("inst " ^ (pr_inst inst) ^ " not emitted")
 
-      | FetchGlobal(lab) => die ("inst " ^ (pr_inst inst) ^ " not emitted")
-      | StoreGlobal(lab) => () (*die ("inst " ^ (pr_inst inst) ^ " not emitted") not implemented yet *)
-
       | FetchData(lab) => (out_opcode FETCH_DATA; RLL.out_label lab)   (* fetch from data segment *)
       | StoreData(lab) => (out_opcode STORE_DATA; RLL.out_label lab)   (* store in data segment *)
 
@@ -197,7 +197,22 @@ functor EmitCode (structure Labels : ADDRESS_LABELS
 	  val map_import_code = map (fn (i,l) => (i, Labels.key l)) (RLL.imports imports_code)
 	  val map_import_data = map (fn (i,l) => (i, Labels.key l)) (RLL.imports imports_data)
 	  val map_export_code = map (fn (l,i) => (Labels.key l, i)) (RLL.exports exports_code)
-	  val map_export_data = nil (* MEMO : places in data segments *)
+	  val map_export_data = map (fn (i,l) => (Labels.key l, i)) (RLL.imports exports_data)
+
+      (* Here is the story about data-segment exports: each unit can allocate data in the
+       * data segment. In the non-loaded bytecode the instruction `StoreData lab' stores the
+       * accumulator in the data slot determined by the label lab. The map_export_data-part
+       * of the bytecode file, determines the bytecode-addresses of the label-arguments to 
+       * each of the StoreData instructions. 
+       *
+       * At load time, each of the labels are associated with
+       * new slots relative to the data-segment pointer, then the
+       * StoreData instructions are modified to take offsets
+       * from the data-segment pointer as arguments, and finally the
+       * labels are associated with these offsets in the hash table that
+       * maps labels to offsets. 
+       *)
+
       in
 	(BC.dump_buffer {filename=filename, 
 			 main_lab_opt=Option.map Labels.key main_lab_opt, 

@@ -145,7 +145,7 @@ functor ExecutionKAM(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
 	      val {main_lab, code, imports, exports, env} = ClosExp.lift(closenv,target)
 	      val asm_prg = 
 		Tools.Timing.timing "CG" CodeGen.CG 
-		{main_lab_opt=if safe then NONE else SOME main_lab, 
+		{main_lab_opt= (* if safe then NONE else*) SOME main_lab, 
 		 code=code, 
 		 imports=imports, 
 		 exports=exports}

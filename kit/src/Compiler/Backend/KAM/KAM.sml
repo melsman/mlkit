@@ -117,9 +117,6 @@ signature KAM =
       | MaybeResetRegion
       | ResetRegionIfInf
 
-      | FetchGlobal of label
-      | StoreGlobal of label
-
       | FetchData of label
       | StoreData of label
 

@@ -275,8 +275,8 @@ struct
     fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp) :: acc
       | CG_ce(ClosExp.RVAR place,env,sp,cc,acc)         = access_rho(place,env,sp) :: acc
       | CG_ce(ClosExp.DROPPED_RVAR place,env,sp,cc,acc) = die "DROPPED_RVAR not implemented"
-      | CG_ce(ClosExp.FETCH lab,env,sp,cc,acc)          = FetchGlobal lab :: acc
-      | CG_ce(ClosExp.STORE(ce,lab),env,sp,cc,acc)      = CG_ce(ce,env,sp,cc, StoreGlobal lab :: acc)
+      | CG_ce(ClosExp.FETCH lab,env,sp,cc,acc)          = FetchData lab :: acc
+      | CG_ce(ClosExp.STORE(ce,lab),env,sp,cc,acc)      = CG_ce(ce,env,sp,cc, StoreData lab :: acc)
       | CG_ce(ClosExp.INTEGER i,env,sp,cc,acc)          = ImmedInt i :: acc
       | CG_ce(ClosExp.STRING s,env,sp,cc,acc)           = ImmedString s :: acc
       | CG_ce(ClosExp.REAL s,env,sp,cc,acc)             = ImmedReal s :: acc
