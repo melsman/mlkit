@@ -3,9 +3,7 @@
 signature COMPILE =
   sig
 
-    type CompileBasis and topdec and target and linkinfo and name
-
-    val generative_names : name list ref
+    type CompileBasis and topdec and target and linkinfo
 
     val compile : CompileBasis * topdec * string -> (CompileBasis * target * linkinfo) Option
 
