@@ -15,9 +15,9 @@ val login_info = Quot.toString
 
 val passwd_info = Quot.toString
 `<b>Indtast dit password til UCS:</b> Er du ny bruger eller har du glemt password 
- så klik <b>Glemt password?</b>.<br><br>
+ så klik <b>Få password?</b>.<br><br>
  <b>Type your UCS password:</b> If you are a new user or you forgot password then 
- click <b>Forgot password?</b>.`
+ click <b>Get password?</b>.`
 
 (*
 Indtast dit password til UCS.<p>Som brugere af IT-Cs IT systemer har
@@ -27,7 +27,7 @@ Indtast dit password til UCS.<p>Som brugere af IT-Cs IT systemer har
  f.eks. <b>gjf@ruc.dk</b>. Hvis du er i tvivl om hvilken email du 
  anvender på IT-C, så kan du finde den med Find Person. Første gang du
  logger på UCS skal du anvende et maskingenereret password, som du kan
- få tilsendt med at klikke Glemt password?</a>. Når du først er logget
+ få tilsendt med at klikke Få password?</a>. Når du først er logget
  på kan du frit ændre dit password.<p>(Eng.: Type your password to
  UCS.<p>Each user at IT-C has several logins and passwords for
  different systems. To logon to UCS you must use the email that you use
@@ -35,7 +35,7 @@ Indtast dit password til UCS.<p>Som brugere af IT-Cs IT systemer har
  not know your IT-C email, then use the Search Person functionality. We
  have generated a password for you that you must use the first time you
  logon to UCS. You can have the password mailed to you by clicking
- Forgot password?. You can change your password freely when you are
+ Get password?. You can change your password freely when you are
  logged on.
 *)
 
@@ -68,7 +68,7 @@ val _ = ScsPage.returnPg ("IT-C.net Authentication")
     </tr>
    </table>
    </form>
-   ^(UcsPage.icon_forward) <a href="mail_passwd_form.sml">Glemt password?</a><br>
-   ^(UcsPage.icon_forward) (eng. <a href="mail_passwd_form.sml">Forgot password?</a>)<p>`) ^^ 
+   ^(UcsPage.icon_forward) <a href="mail_passwd_form.sml">Få password?</a><br>
+   ^(UcsPage.icon_forward) (eng. <a href="mail_passwd_form.sml">Get password?</a>)<p>`) ^^ 
    `</center><p></blockquote>`)))
 
