@@ -468,8 +468,13 @@ struct
 	  else C
 
 	fun convert_int_to_ml(reg,C) =
-	  if convert then (I.sall(I "1", R reg) ::
-			   I.addl(I "1", R reg) :: C)
+	  if convert then 
+	    (
+(*
+	     I.sall(I "1", R reg) ::
+	     I.addl(I "1", R reg) :: 
+*)           I.leal(DD("1", reg, reg, ""), R reg) ::
+             C)
 	  else C
 
 	fun push_arg(aty,size_ff,C) =
@@ -940,13 +945,18 @@ struct
               copy(x_reg, tmp_reg0, I.sarl(I "1", R tmp_reg0) ::    (* t0 = untag x *)
               I.addl(R tmp_reg0, R tmp_reg1) ::                     (* t1 = t1 + t0 *)
               copy(tmp_reg1, d_reg,
+(*
               I.sall(I "1", R d_reg) ::                             (* d = tag d *)
 	      I.addl(I "1", R d_reg) :: 
+*)            I.leal(DD("1", d_reg, d_reg, ""), R d_reg) ::
               I.sarl(I "1", R d_reg) ::                             (* d = untag d *)
               I.cmpl(R d_reg, R tmp_reg1) ::
 	      I.jne (NameLab "__raise_overflow") ::
+(*
               I.sall(I "1", R d_reg) ::                             (* d = tag d *)
-	      I.addl(I "1", R d_reg) :: C'))))))
+	      I.addl(I "1", R d_reg) :: 
+*)            I.leal(DD("1", d_reg, d_reg, ""), R d_reg) ::
+	      C'))))))
 	   else 
 	     (x_C(y_C(
 	      copy(y_reg, tmp_reg1,
@@ -1096,8 +1106,11 @@ struct
 			       else copy(x_reg,d_reg,C)
        in x_C(
           maybe_unbox(
+(*
 	  I.sall(I "1", R d_reg) ::
-          I.addl(I "1", R d_reg) :: C'))
+          I.addl(I "1", R d_reg) :: 
+*)        I.leal(DD("1", d_reg, d_reg, ""), R d_reg) ::
+	  C'))
        end
 
      fun bin_float_op_kill_tmp01 finst (x,y,b,d,size_ff,C) =
@@ -1374,8 +1387,10 @@ struct
             copy(i_reg, ecx,                 (* tmp_reg0 = %ecx *)
 	    I.sarl (I "1", R ecx) ::         (* i >> 1 *)
             I.movzbl(DD("4",t_reg,ecx,"1"), R d_reg) :: 
+(*
 	    I.sall(I "1", R d_reg) ::   (* d = tag d *)
 	    I.addl(I "1", R d_reg) ::
+*)          I.leal(DD("1", d_reg, d_reg, ""), R d_reg) ::
             C')))
 	  else
 	    t_C(i_C(
@@ -1437,8 +1452,10 @@ struct
 	    t_C(
             I.movl(D("0",t_reg), R d_reg) ::
 	    I.sarl (I "6", R d_reg) ::         (* d >> 6: remove tag (Tagging.h) *) 
+(*
 	    I.sall(I "1", R d_reg) ::          (* d = tag d *)
 	    I.addl(I "1", R d_reg) ::
+*)          I.leal(DD("1", d_reg, d_reg, ""), R d_reg) ::
             C')
 	  else
 	    t_C(
@@ -1483,7 +1500,7 @@ struct
 	       | NONE => 
 		(move_aty_into_reg(i,tmp_reg1,size_ff,            (* tmp_reg1 = i *)
 		 I.sarl (I "1", R tmp_reg1) ::                    (* untag i: tmp_reg1 >> 1 *)
-		 I.imull(I "4", R tmp_reg1) ::                    (* i << 2 *)
+		 I.sall(I "2", R tmp_reg1) ::                     (* i << 2 *)
 		 move_aty_into_reg(t,tmp_reg0,size_ff,            (* tmp_reg0 = t *)
 		 I.addl(R tmp_reg0, R tmp_reg1) ::                (* tmp_reg1 += tmp_reg0 *)
 		 move_aty_into_reg(x,tmp_reg0,size_ff,            (* tmp_reg0 = x *)

@@ -16,7 +16,7 @@ int openInStream(StringDesc *filenamePtr, int exn);
 int openOutStream(StringDesc *filenamePtr, int exn);
 int openAppendStream(StringDesc *filenamePtr, int exn);
 void closeStream(FILE *stream);
-int endOfStream(FILE *stream);
+// int endOfStream(FILE *stream);
 int outputStream(FILE *outStream, StringDesc *stringPtr, int exn);
 void flushStream(FILE *stream);
 int stdInStream(int dummy);

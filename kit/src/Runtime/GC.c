@@ -839,14 +839,20 @@ gc(unsigned int **sp, unsigned int reg_map)
       Lobjs **lobjs_ptr = &(rp->lobjs);
       while ( *lobjs_ptr )
 	{
-	  if ( is_constant((*lobjs_ptr)->value) )
+	  unsigned int tag;
+	  #ifdef PROFILING
+	  tag = *((&(*lobjs_ptr)->value) + sizeObjectDesc);
+	  #else
+	  tag = (*lobjs_ptr)->value;
+	  #endif
+	  if ( is_constant(tag) )
 	    { 
 	      lobjs_ptr = &((*lobjs_ptr)->next);               // preserve object
 	    }
 	  else
 	    {
 	      Lobjs *lobjs_ptr_tmp = (*lobjs_ptr)->next;
-	      lobj_current -= size_lobj((*lobjs_ptr)->value);
+	      lobj_current -= size_lobj(tag);
 	      free((*lobjs_ptr));                              // de-allocate object
 	      *lobjs_ptr = lobjs_ptr_tmp;
 	    }
