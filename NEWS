@@ -1,4 +1,12 @@
 ML Kit NEWS file                                       October, 2001
+
+ * mael 2001-10-26: Bug fix involving recursive value bindings; see
+   test programs test/valrecpat.sml, test/valrecpat1.sml,
+   test/valrecpat2.sml, test/valrecpat3.sml, and test/valrecpat4.sml.
+
+ * mael 2001-10-26: Bug fix involving polymorphism and parallel
+   value bindings. Bug reported by Stephen Weeks; see test program
+   test/weeks5.sml.
  
  * mael 2001-10-23: Bug fix in X86-backend; when tagging is enabled an
    Overflow exception was raised when the largest Word31-word appeared

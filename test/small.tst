@@ -37,7 +37,7 @@ zebra.sml
 (* zern.sml          Uses Real64Array, which is unimplemented in ML Kit *)
 wc-input1.sml
 wc-scanStream.sml
-(* tyan.sml          Internal error in ML Kit *)
+tyan.sml
 tsp.sml
 (* raytrace.sml      Uses Unsafe.Vector, Posix.Process, Unsafe.CharVector, Real.realMod *)
 (* psdes-random.sml  When gc is enabled the executable doesn't terminate *)

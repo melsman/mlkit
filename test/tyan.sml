@@ -1011,7 +1011,7 @@ structure Main =
 		  then ()
 	       else (gb u6; loop (n - 1))
 	 in
-	    loop 20
+	    loop 2
 	 end
    end
 

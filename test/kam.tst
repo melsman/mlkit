@@ -24,6 +24,11 @@ Test files may contain Standard ML like comments.
 (* Tests of static semantics; it would be great with some more
  * systematic testing here! *)
 
+valrecpat.sml
+valrecpat1.sml
+valrecpat2.sml
+valrecpat3.sml
+valrecpat4.sml
 rank.sml            ccl       ecte    nobasislib
 pat.sml             ccl     
 llv.sml
