@@ -5,8 +5,9 @@ in
  in
     [
      index.sml
+     bmiform.sml
+     bmiform2.sml
      bmi.sml
-     bmi2.sml
      time_of_day.sml
      mul.sml
      temp.sml

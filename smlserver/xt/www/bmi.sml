@@ -1,15 +1,34 @@
-functor bmi () : SCRIPTLET =
-    struct
-	open Scripts infix & % attr
+ functor bmi (F : sig val h : int Form.var
+                      val w : int Form.var
+                  end) : SCRIPTLET =
+   struct open Scripts infix &
+     val response = case (Form.get F.h, Form.get F.w) of
+        (Form.Ok h, Form.Ok w) => 
+          let val bmi = Int.div(w * 10000, h * h)
+              val txt = if bmi > 25 then "too high!"
+                        else if bmi < 20 then "too low!" 
+                        else "normal"
+          in Page.page "Body Mass Index" 
+              (p ($ ("Your BMI is " ^ txt)))
+          end
+        | _ => Page.page "Form Error" (p($"Go Back"))
+   end
 
-	val response = 
-	    Page.page "Body Mass Index Form" 
-	    (bmi2.form 
-	     (p($"Enter your height (in cm) " &
-		inputTexta (A.size 5) bmi2.h NONE &
-		br() &
-		$"Enter your weight (in kg) " &
-		inputTexta (A.size 5) bmi2.w NONE &
-		br() &
-		inputSubmit "Compute Index")))
+(*functor bmi2 (F : sig val h : int Form.var
+		      val w : int Form.var
+		  end) : SCRIPTLET =
+    struct
+	open Scripts infix &
+	
+        val h = Page.get "Height" F.h
+	val w = Page.get "Weight" F.w
+
+	val bmi = Int.div(w * 10000, h * h)
+	val txt = if bmi > 25 then "too high!"
+		  else if bmi < 20 then "too low!"
+		  else "normal"
+
+	val response = Page.page "Body Mass Index" 
+	    (h2 ($"Your BMI is " & $txt))
     end
+*)
