@@ -76,6 +76,7 @@ signature MODULE_ENVIRONMENTS =
 	val tynames          : Basis -> TyName.Set.Set
 	val to_C             : Basis -> Context
 	val layout           : Basis -> StringTree
+	val tyvars'          : Basis -> (id * TyVar list) list
 
                      	(*E component*)
 	val plus_E           : Basis * Env     -> Basis

@@ -202,8 +202,7 @@ functor ElabTopdec
     fun tynames_G G = G.tynames G
     fun tynames_F F = F.tynames F
     fun tyvars_Type tau = Type.tyvars tau
-    fun tyvars_E' E = E.tyvars' E
-    fun tyvars_F' F = F.tyvars' F
+    fun tyvars_B' B = B.tyvars' B
 
       (*the following three types are for the signature:*)
     type PreElabTopdec  = IG.topdec
@@ -1347,51 +1346,27 @@ functor ElabTopdec
     (* Top-level Declarations - Definition 1997, rules 87-89    *)
     (************************************************************)
 
-    and elab_topdec (B : Basis, topdec : IG.topdec)
+    and elab_topdec (B : Basis, topdec : IG.topdec)    (* we check for free tyvars later *)
           : (Basis * OG.topdec) =
-      let
-	fun deal_with_free_tyvars(i, []) = okConv i
-	  | deal_with_free_tyvars(i, criminals : (Ident.id * TyVar list) list) = 
-	  let val tyvars = List.foldL (General.curry op @ o #2) [] criminals
-	  in case List.all (is_Some o TyVar.to_ExplicitTyVar) tyvars 
-	       of [] => (List.apply Type.instantiate_arbitrarily tyvars ;
-			 Flags.warnings :=
-			 ("Free type variables are not allowed at top-level;\n\
-			  \see `The Definition of Standard ML (Revised)', section G.8.\n\
-			  \I substituted int for them in the types for "
-			  ^ pp_list (quote o Ident.pr_id o #1) criminals
-			  ^ ".\n")
-			 :: !Flags.warnings ;
-			 okConv i)
-		| unguarded_tyvars : TyVar list =>
-		 errorConv (i, ErrorInfo.UNGUARDED_TYVARS unguarded_tyvars)
-	               (* one could extend the error info to also contain
-			* the criminal id's *)
-
+      case topdec 
+	of IG.STRtopdec (i, strdec, topdec_opt) =>                                      (* 87 *)
+	  let val (_, E, out_strdec) = elab_strdec(B, strdec)
+	      val (B', out_topdec_opt) = elab_topdec_opt(B B_plus_E E, topdec_opt)
+	      val B'' = (B.from_E E) B_plus_B B'
+	  in (B'', OG.STRtopdec(okConv i, out_strdec, out_topdec_opt))
 	  end
-      in
-	case topdec 
-	  of IG.STRtopdec (i, strdec, topdec_opt) =>                                      (* 87 *)
-	    let val (_, E, out_strdec) = elab_strdec(B, strdec)
-	        val (B', out_topdec_opt) = elab_topdec_opt(B B_plus_E E, topdec_opt)
-		val B'' = (B.from_E E) B_plus_B B'
-		val out_i = deal_with_free_tyvars(i, tyvars_E' E)
-	    in (B'', OG.STRtopdec(out_i, out_strdec, out_topdec_opt))
-	    end
-	   | IG.SIGtopdec (i, sigdec, topdec_opt) =>                                      (* 88 *)
-	    let val (G, out_sigdec) = elab_sigdec(B, sigdec)
-	        val (B', out_topdec_opt) = elab_topdec_opt(B B_plus_G G, topdec_opt)
-		val B'' = (B.from_G G) B_plus_B B'
-	    in (B'', OG.SIGtopdec(okConv i, out_sigdec, out_topdec_opt))
-	    end
-	   | IG.FUNtopdec (i, fundec, topdec_opt) =>                                      (* 89 *)
-	    let val (F, out_fundec) = elab_fundec(B, fundec)
-	        val (B', out_topdec_opt) = elab_topdec_opt(B B_plus_F F, topdec_opt)
-		val B'' = (B.from_F F) B_plus_B B'                     (* Actually, it holds that *)
-		val out_i = deal_with_free_tyvars(i, tyvars_F' F)      (* tynames F \ (T of B) = {} *)
-	    in (B'', OG.FUNtopdec(out_i, out_fundec, out_topdec_opt))
-	    end
-      end (*let*)
+	 | IG.SIGtopdec (i, sigdec, topdec_opt) =>                                      (* 88 *)
+	  let val (G, out_sigdec) = elab_sigdec(B, sigdec)
+	      val (B', out_topdec_opt) = elab_topdec_opt(B B_plus_G G, topdec_opt)
+	      val B'' = (B.from_G G) B_plus_B B'
+	  in (B'', OG.SIGtopdec(okConv i, out_sigdec, out_topdec_opt))
+	  end
+	 | IG.FUNtopdec (i, fundec, topdec_opt) =>                                      (* 89 *)
+	  let val (F, out_fundec) = elab_fundec(B, fundec)
+	      val (B', out_topdec_opt) = elab_topdec_opt(B B_plus_F F, topdec_opt)
+	      val B'' = (B.from_F F) B_plus_B B'
+	  in (B'', OG.FUNtopdec(okConv i, out_fundec, out_topdec_opt))
+	  end
 
     and elab_topdec_opt (B : Basis, topdec_opt : IG.topdec Option) : (Basis * OG.topdec Option) =
       case topdec_opt
@@ -1399,9 +1374,36 @@ functor ElabTopdec
 			  in (B', Some out_topdec)
 			  end
 	 | None => (B.empty, None)
+
+    (* Check for free type variables: Free type variables are not
+     * allowed in the basis resulting from elaborating a top-level
+     * declaration. However, free type variables may occur in the
+     * resulting elaborated top-level declaration - namely if an
+     * identifier has been `shadowed' in the resulting basis. Since
+     * elaboration may succeed in this case, we could go ahead and
+     * unify such free type variables with `int', say, to have the
+     * property that no topdec's contains free type variables. This we
+     * do not do, so we should make sure that all compilation phases
+     * deals correctly with free type variables. *)
+
+    fun modify_info_topdec (topdec, i) = case topdec of 
+      OG.STRtopdec(_,strdec,topdecopt) => OG.STRtopdec(i,strdec,topdecopt)
+    | OG.SIGtopdec(_,sigdec,topdecopt) => OG.SIGtopdec(i,sigdec,topdecopt)
+    | OG.FUNtopdec(_,fundec,topdecopt) => OG.FUNtopdec(i,fundec,topdecopt)
+
+    fun elab_topdec' (B : Basis, topdec) =
+      let val res as (B',topdec') = elab_topdec(B,topdec)
+      in case tyvars_B' B'
+	   of [] => res
+	    | tyvars => let val i = IG.info_on_topdec topdec 
+			    val ids = map #1 tyvars
+			    val out_i = errorConv(i, ErrorInfo.UNGENERALISABLE_TYVARS ids)
+			in (B', modify_info_topdec(topdec',out_i))
+			end
+      end
  
     val elab_topdec = fn a => (TyName.Rank.reset();
-			       let val res = elab_topdec a
+			       let val res = elab_topdec' a
 			       in TyName.Rank.reset();
 				 res
 			       end)
