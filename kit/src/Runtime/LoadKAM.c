@@ -764,7 +764,7 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
   h = getHeap();
   if ( h->status == HSTAT_UNINITIALIZED )
     {
-      (int*)ds = h->ds;
+      ds = (unsigned long*)(h->ds);
       sp = ds;
 
       // make room for data space on the stack
@@ -838,9 +838,9 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
   if ( extra_code ) {
 
     // fetch heap data
-    (int*)sp = h->sp;
-    (int*)ds = h->ds;
-    (int*)exnPtr = h->exnPtr;
+    sp = (unsigned long*)(h->sp);
+    ds = (unsigned long*)(h->ds);
+    exnPtr = (unsigned long*)(h->exnPtr);
     exnCnt = h->exnCnt;
     topRegion = h->r6copy->r;
 

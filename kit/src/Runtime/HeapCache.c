@@ -111,11 +111,11 @@ static RegionCopy* copyRegion(Ro *r)
   for ( p = r->g0.fp ; p ; p = p->n )
     {
       int i = 0;
-      (Rp*)(*q++) = p;                             // set pointer to original page
+      *q++ = (int)p;                             // set pointer to original page
       while ( i < ALLOCATABLE_WORDS_IN_REGION_PAGE )
 	*q++ = p->i[i++];
     }
-  (Rp*)(*q) = 0;    // final null-pointer
+  *q = 0;    // final null-pointer
   return rc;
 }
 
