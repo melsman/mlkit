@@ -12,7 +12,7 @@ val _ = ScsFormVar.anyErrors errs
 
 fun new_user_trans db = 
   let
-    val new_user_id = (Int.toString o UcsData.getOracleIdTrans) db
+    val new_user_id = (Int.toString o ScsData.getOracleIdTrans) db
     val new_user_sp = `
       scs_user.new_proc(
 	^(new_user_id),
