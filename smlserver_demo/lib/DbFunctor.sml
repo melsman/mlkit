@@ -54,12 +54,24 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC) : NS_DB =
 	fun poolGetHandle (pool : pool) : db =
 	  let
 	    val h : ns_db = prim("@Ns_DbPoolGetHandle", pool)
+
+    fun log (s: string):unit =
+      prim("@Ns_Log", (0, s))
+
+val _ = log ("*******get handle db=("^(pool)^","^(Int.toString (h))^")*************")
+
 	  in
 	    if h = 0 then raise Fail "poolGetHandle:Can't allocate handle" else (pool,h)
 	  end
 
-	fun poolPutHandle (db : db) : unit =
-	  prim("@Ns_DbPoolPutHandle", #2 db)
+	fun poolPutHandle (db : db) : unit = 
+let
+    fun log (s: string):unit =
+      prim("@Ns_Log", (0, s))
+
+val _ = log ("*******put handle db=("^(#1 db)^","^(Int.toString (#2 db))^")*************")
+in
+	  prim("@Ns_DbPoolPutHandle", #2 db) end
       end
 
     type pool = Pool.pool
