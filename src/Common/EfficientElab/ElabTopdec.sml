@@ -1096,7 +1096,7 @@ functor ElabTopdec
 		       | _ => 
 			( (VE', TE') ,
 			 OG.DATDESC (errorConv(i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ
-					       (map TyVar.from_ExplicitTyVar tyvars_not_bound)),
+					       (map IG.DecGrammar.TyVar.pr_tyvar tyvars_not_bound)),
 				     explicittyvars, tycon, out_condesc,
 				     out_datdesc_opt), ids ))
 		  | repeated_ids_errorinfos => 

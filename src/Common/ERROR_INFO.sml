@@ -41,7 +41,7 @@ signature ERROR_INFO =         (* ErrorInfo is part of the ElabInfo.  See ELAB_I
       | WRONG_ARITY of {expected: int, actual: int}
       | FLEX_REC_NOT_RESOLVED 
       | REPEATED_IDS of RepeatedId list
-      | TYVARS_NOT_IN_TYVARSEQ of TyVar list
+      | TYVARS_NOT_IN_TYVARSEQ of string list
       | DATATYPES_ESCAPE_SCOPE of TyName list
       | TYVARS_SCOPED_TWICE of TyVar list
       | REBINDING_TRUE_NIL_ETC of id list

@@ -29,6 +29,8 @@ llv.sml
 weeks.sml
 weeks2.sml          ccl       ecte
 typerr.sml          ccl       ecte
+freedatatype.sml    ccl       ecte
+freedatatype2.sml   ccl       ecte
 opaque.sml          ccl
 opaque2.sml                           nobasislib
 functor.sml         ccl
