@@ -1,16 +1,18 @@
 signature FORMVAR =
   sig
-    val getNat    : string -> int option
-    val getInt    : string -> int option
-    val getReal   : string -> real option
-    val getNum    : string -> real option
-    val getString : string -> string option
+    val getNat      : string -> int option
+    val getInt      : string -> int option
+    val getReal     : string -> real option
+    val getNum      : string -> real option
+    val getString   : string -> string option
+    val getIntRange : int -> int -> string -> int option
 
     val getNatOrFail    : string -> int
     val getIntOrFail    : string -> int
     val getRealOrFail   : string -> real
     val getNumOrFail    : string -> real
     val getStringOrFail : string -> string
+    val getIntRangeOrFail : int -> int -> string -> int
   end
   
 structure FormVar : FORMVAR =
@@ -108,17 +110,25 @@ structure FormVar : FORMVAR =
 		  else s
       | NONE => noFormVar fv
 
+    fun getIntRange0 a b (fv: string) : int =
+      let val i = getInt0 fv
+      in if a <= i andalso i <= b then i
+	 else fail ("Integer form variable `" ^ fv ^ "' is out of range")
+      end
+
     val getNat    = wrapOption getNat0
     val getInt    = wrapOption getInt0
     val getReal   = wrapOption getReal0
     val getNum    = wrapOption getNum0
     val getString = wrapOption getString0
+    fun getIntRange a b = wrapOption (getIntRange0 a b)
 
     val getNatOrFail    = wrapFail getNat0
     val getIntOrFail    = wrapFail getInt0
     val getRealOrFail   = wrapFail getReal0
     val getNumOrFail    = wrapFail getNum0
     val getStringOrFail = wrapFail getString0
+    fun getIntRangeOrFail a b = wrapFail (getIntRange0 a b)
   end
 
 
