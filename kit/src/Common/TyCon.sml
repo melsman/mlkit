@@ -32,8 +32,10 @@ functor TyCon(structure StrId: STRID
       (strid_list, tycon)
 
     val tycon_INT    = TYCON "int"
+    val tycon_WORD   = TYCON "word"
     and tycon_REAL   = TYCON "real"
     and tycon_STRING = TYCON "string"
+    and tycon_CHAR   = TYCON "char"
     and tycon_EXN    = TYCON "exn"
     and tycon_REF    = TYCON "ref"
     and tycon_BOOL   = TYCON "bool"

@@ -145,7 +145,13 @@ functor ElabDec(structure ParseInfo : PARSE_INFO
 
     fun repeatedIdsError (i : ParseInfo, rids: ErrorInfo.RepeatedId list)
           : ElabInfo = errorConv (i, ErrorInfo.REPEATED_IDS rids)
-    
+
+    val idset_'true'_'nil'_etc =
+          EqSet.fromList [Ident.id_TRUE, Ident.id_FALSE, Ident.id_NIL,
+			  Ident.id_CONS, Ident.id_REF]
+    fun is_'true'_'nil'_etc id = EqSet.member id idset_'true'_'nil'_etc
+    fun is_'it' id = id = Ident.id_IT
+
     (*infixes*)
     val on = Substitution.on     infixr on
     val onC = C.on     infixr onC
@@ -1141,12 +1147,19 @@ old*)
             val intdom = EqSet.intersect (VE.dom VE) (VE.dom VE')
           in 
             if EqSet.isEmpty intdom then
-              (S3 oo S2 oo S1 oo S0, 
-               VE.plus ((S3 oo S2 oo S1 oo S0) onVE VE, VE'),
-               OG.PLAINvalbind
-                 (addTypeInfo_PLAINvalbind(i', tau1),
-                  out_pat, out_exp, valbind_opt')
-                 )
+	      (case List.all is_'true'_'nil'_etc (EqSet.list (VE.dom VE)) of
+		 [] =>
+		   (S3 oo S2 oo S1 oo S0, 
+		    VE.plus ((S3 oo S2 oo S1 oo S0) onVE VE, VE'),
+		    OG.PLAINvalbind
+		    (addTypeInfo_PLAINvalbind(i', tau1),
+		     out_pat, out_exp, valbind_opt'))
+	       | ids =>
+		   (S3, VE',
+		    OG.PLAINvalbind
+		      (ElabInfo.plus_ErrorInfo i'
+		         (ErrorInfo.REBINDING_TRUE_NIL_ETC ids),
+		       out_pat, out_exp, valbind_opt')))
             else
               (S3, VE',
                OG.PLAINvalbind((case ElabInfo.to_ErrorInfo i' of
@@ -1511,9 +1524,7 @@ old*)
 	          elab_conbind_opt (C, tau, conbind_opt)
           in
 	    (constructor_map.add con arrow constructor_map,
-	     OG.CONBIND (if constructor_map.in_dom con constructor_map
-			 then repeatedIdsError (i, [ErrorInfo.CON_RID con])
-			 else okConv i,
+	     OG.CONBIND (out_i_for_conbind con constructor_map i,
 			 OG.OP_OPT (con, withOp),
 			 Some out_ty,
 			 out_conbind_opt))
@@ -1525,11 +1536,18 @@ old*)
           in
 	    (constructor_map.add
 	       con (TypeScheme.from_Type tau) constructor_map,
-	     OG.CONBIND (if constructor_map.in_dom con constructor_map
-			 then repeatedIdsError (i, [ErrorInfo.CON_RID con])
-			 else okConv i, 
+	     OG.CONBIND (out_i_for_conbind con constructor_map i, 
 			 OG.OP_OPT(con, withOp), None, out_conbind_opt))
           end
+
+    and out_i_for_conbind con constructor_map i = 
+          if constructor_map.in_dom con constructor_map
+	  then repeatedIdsError (i, [ErrorInfo.CON_RID con])
+	  else if is_'true'_'nil'_etc con
+	       then errorConv (i, ErrorInfo.REBINDING_TRUE_NIL_ETC [con])
+	       else if is_'it' con
+		    then errorConv (i, ErrorInfo.REBINDING_IT)
+		    else okConv i
 
     and elab_conbind_opt (C : Context,
 			  tau : Type,
@@ -1561,13 +1579,9 @@ old*)
             val exnTy = Type.mk_Arrow (tau, Type.Exn)
             val VE_this = VE.singleton_excon (excon, exnTy)
             val (VE_rest, out_rest) = elab_exbind_opt (C, rest)
-            val intdom = EqSet.intersect (VE.dom VE_this) (VE.dom VE_rest)
           in 
 	    (VE.plus  (VE_this, VE_rest),
-	     OG.EXBIND (if EqSet.isEmpty intdom then
-			  addTypeInfo_EXBIND (okConv i, Some tau)
-			else
-			  repeatedIdsError (i, [ErrorInfo.EXCON_RID excon]), 
+	     OG.EXBIND (out_i_for_exbind excon VE_rest i (Some tau), 
 		        OG.OP_OPT(excon, withOp), Some out_ty, out_rest))
           end
 
@@ -1575,13 +1589,9 @@ old*)
           let
             val VE_this = VE.singleton_excon (excon, Type.Exn)
             val (VE_rest, out_rest) = elab_exbind_opt (C, rest)
-            val intdom = EqSet.intersect (VE.dom VE_this) (VE.dom VE_rest)
           in
 	    (VE.plus  (VE_this, VE_rest),
-	     OG.EXBIND (if EqSet.isEmpty intdom then
-			  addTypeInfo_EXBIND(okConv i, None)
-			else
-			  repeatedIdsError(i, [ErrorInfo.EXCON_RID excon]), 
+	     OG.EXBIND (out_i_for_exbind excon VE_rest i None, 
 		        OG.OP_OPT(excon, withOp), None, out_rest))
           end
 
@@ -1593,20 +1603,14 @@ old*)
                let
                  val VE_this = VE.singleton_excon (excon, tau)
                  val (VE_rest, out_rest) = elab_exbind_opt (C, rest)
-                 val intdom = EqSet.intersect (VE.dom VE_this) (VE.dom VE_rest)
                in 
 		 (VE.plus  (VE_this, VE_rest),
-		  OG.EXEQUAL (if EqSet.isEmpty intdom then
-				addTypeInfo_EXBIND(okConv i, None)
-			      else
-				repeatedIdsError(i, [ErrorInfo.EXCON_RID excon]), 
+		  OG.EXEQUAL (out_i_for_exbind excon VE_rest i None,
 			      OG.OP_OPT(excon, exconOp),
 			      OG.OP_OPT(longid, longidOp), out_rest))
                end
-           | _ =>
-               let
-                 (*Carry on, building an error node.*)
-                 val (VE_rest, out_rest) = elab_exbind_opt (C, rest)
+           | _ => (*Carry on, building an error node.*)
+               let val (VE_rest, out_rest) = elab_exbind_opt (C, rest)
                in
                  (VE_rest, OG.EXEQUAL(lookupIdError(i, longid),
 				      OG.OP_OPT(excon, exconOp),
@@ -1614,15 +1618,22 @@ old*)
 				      out_rest))
                end)
 
-    and elab_exbind_opt(C, Some exbind) =
-          let
-            val (VE, out_exbind) = elab_exbind (C, exbind)
+    and out_i_for_exbind excon VE_rest i tau_opt =
+          if EqSet.member excon (VE.dom VE_rest)
+	  then repeatedIdsError (i, [ErrorInfo.EXCON_RID excon])
+	  else if is_'true'_'nil'_etc excon
+	       then errorConv (i, ErrorInfo.REBINDING_TRUE_NIL_ETC [excon])
+	       else if is_'it' excon
+		    then errorConv (i, ErrorInfo.REBINDING_IT)
+		    else addTypeInfo_EXBIND (okConv i, tau_opt)
+
+    and elab_exbind_opt (C, Some exbind) =
+          let val (VE, out_exbind) = elab_exbind (C, exbind)
           in
             (VE, Some out_exbind)
           end
 
-      | elab_exbind_opt(C, None) =
-          (VE.empty, None)
+      | elab_exbind_opt(C, None) = (VE.empty, None)
 
     (****** atomic patterns ******)
 

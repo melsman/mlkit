@@ -45,8 +45,12 @@ signature ERROR_INFO =
       | TYVARS_NOT_IN_TYVARSEQ of TyVar list
       | DATATYPES_ESCAPE_SCOPE of TyName list
       | TYVARS_SCOPED_TWICE of TyVar list
+      | REBINDING_TRUE_NIL_ETC of id list
+      | REBINDING_IT
 
      (* General module errors: *)
+      | SPECIFYING_TRUE_NIL_ETC of id list
+      | SPECIFYING_IT
       | LOOKUP_SIGID of sigid
       | LOOKUP_LONGSTRID of longstrid
       | LOOKUP_FUNID of funid
