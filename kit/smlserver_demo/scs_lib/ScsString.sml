@@ -9,6 +9,7 @@ signature SCS_STRING =
     val upper      : string -> string
     val lowerFirst : string -> string
     val upperFirst : string -> string
+    val inverse	   : string -> string
 
     (* [upperFirstInEveryWord str] transforms 
        ""                                 -> ""
@@ -61,6 +62,7 @@ structure ScsString =
     fun translate f s  = concat (map f (explode s))
     fun lower s = CharVector.fromList (List.map Char.toLower (explode s))
     fun upper s = CharVector.fromList (List.map Char.toUpper (explode s))
+    val inverse = CharVector.fromList o rev o explode
 
     fun lowerFirst str = 
       let
