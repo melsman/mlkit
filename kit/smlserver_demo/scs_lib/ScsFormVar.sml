@@ -74,6 +74,7 @@ signature SCS_FORM_VAR =
     val getUrlErr      : string formvar_fn
     val getCprErr      : string formvar_fn
     val getEnumErr     : string list -> string formvar_fn
+    val getYesNoErr    : string formvar_fn
     val getDateErr     : Date.date formvar_fn
     val getDateIso     : string formvar_fn
 
@@ -83,6 +84,7 @@ signature SCS_FORM_VAR =
     val wrapExn : 'a formvar_fn -> (string -> 'a)
     val wrapFail : 'a formvar_fn -> (string * string -> 'a)
     val wrapPanic : (quot -> 'a) -> 'a formvar_fn -> (string -> 'a)
+    val wrapIntAsString : int formvar_fn -> string * string * errs -> string * errs
 
     (* For extensions *)
     val trim : string -> string
@@ -154,15 +156,23 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	(v,[]) => SOME v
       | _ => NONE
 
+    fun wrapIntAsString (f : int formvar_fn) =
+      (fn (fv,emsg,errs) => 
+       case f(fv,emsg,[]) of
+	 (i,[]) => (Int.toString i,errs)
+	|(_,[e]) => ("",addErr(e,errs))
+	| _ => ScsError.panic `ScsFormVar.wrapIntAsString failed on ^fv`)
+
     fun trim s = Substring.string (Substring.dropr Char.isSpace (Substring.dropl Char.isSpace (Substring.all s)))
     fun wrapMaybe (f : 'a formvar_fn) =
       (fn (fv,emsg,errs) => 
        (case Ns.Conn.formvarAll fv of
-	 [v] => 
+	  [] => (case f(fv,emsg,[]) of (v,_) => (v,errs)) (* No formvar => don't report error *)
+	| [v] => 
 	   (if trim v = "" then
-	      (case f(fv,emsg,[]) of (v,_) => (v,errs))
+	      (case f(fv,emsg,[]) of (v,_) => (v,errs)) (* Don't report error *)
 	    else f(fv,emsg,errs))
-       | _ => f(fv,emsg,errs)))
+	| _ => f(fv,emsg,errs))) (* Multiple formvars => report error *)
 
     fun wrapExn (f : 'a formvar_fn) : string -> 'a =
       fn fv =>
@@ -435,6 +445,14 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     Du skal indtaste en <b>dato</b> enten i formatet <code>DD/MM-YYYY</code> (f.eks. 25/01-2001) eller
 	     i formatet <code>YYYY-MM-DD</code> (f.eks. 2001-01-25).
 	     </blockquote>`)
+      fun convCpr cpr =
+	case String.explode (trim cpr) of
+	  d1 :: d2 :: m1 :: m2 :: y1 :: y2 :: (#"-") :: t1 :: t2 :: t3 :: t4 :: [] =>
+	    String.implode[d1,d2,m1,m2,y1,y2,t1,t2,t3,t4]
+	| d1 :: d2 :: m1 :: m2 :: y1 :: y2 :: t1 :: t2 :: t3 :: t4 :: [] =>
+	    String.implode[d1,d2,m1,m2,y1,y2,t1,t2,t3,t4]
+	| _ => ScsError.panic `ScsFormVar.convCpr failned on ^cpr`
+	  
       fun chkCpr cpr =
 	let
 	  fun mk_yyyymmdd (d1,d2,m1,m2,y1,y2) =
@@ -521,7 +539,7 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	   handle _ => ScsError.panic `ScsFormVar.convDate failed on ^v`
     in
       val getEmailErr = getErr' (%"email") msgEmail
-	(fn email => RegExpMatch "[^@\t ]+@[^@.\t ]+(\\.[^@.\n ]+)+$" (trim email)) (* bug ^ missing in start of regexp Niels *)
+	(fn email => RegExpMatch "[^@\t ]+@[^@.\t ]+(\\.[^@.\n ]+)+" (trim email)) 
       val getNameErr = getErr' (%"name") msgName (RegExpMatch "[a-zA-ZAÆØÅaæøå '\\-]+")
       val getAddrErr = getErr' (%"address") msgAddr (RegExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
       val getLoginErr = getErr' (%"login") msgLogin 
@@ -532,8 +550,9 @@ structure ScsFormVar :> SCS_FORM_VAR =
       (* getHtml : not implemented yet *)
       val getHtmlErr = getErr' (%"HTML text") msgHTML (fn html => html <> "")
       val getUrlErr =  getErr' (%"URL") msgURL (RegExpMatch "http://[0-9a-zA-Z/\\-\\\\._]+(:[0-9]+)?")
-      val getCprErr = getErr' (%"cpr number") msgCpr chkCpr
+      val getCprErr = getErr "" convCpr (%"cpr number") msgCpr chkCpr
       val getEnumErr = fn enums => getErr' (%"enumeration") (msgEnum enums) (chkEnum enums)
+      val getYesNoErr = let val enums = [%"Yes",%"No"] in getErr' (%"Yes/No") (msgEnum enums) (chkEnum ["t","f"]) end
       val getDateIso = getErr' (%"date") msgDateIso chkDateIso
       val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate (%"date") msgDate chkDate
     end

@@ -63,11 +63,11 @@ functor DbFunctor (structure DbBasic : NS_DB_BASIC
       in (dmlDb (db,q) before putHandle db)
 	handle X => (putHandle db; raise X)
       end
-    fun maybeDml (q: quot) : unit = (dml q; () handle X => ())
+    fun maybeDml (q: quot) : unit = ((dml q; ()) handle X => ())
     fun panicDml (f_panic: quot -> 'a) (q: quot) : unit =
-      (dml q; () handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
+      ((dml q; ()) handle X => (f_panic (q ^^ `^("\n") ^(General.exnMessage X)`); ()))
     fun errorDml (f_error: unit -> 'a) (q: quot) : unit =
-      (dml q; () handle X => (f_error(); ()))
+      ((dml q; ()) handle X => (f_error(); ()))
 
     fun select (db: db, q: quot) : Set.set =
       prim("nssml_DbSelect", "nssml_DbSelect", (#2 db, quotToString q))

@@ -19,7 +19,7 @@ structure ScsDb :> SCS_DB =
 	     handle X => ScsError.panic (`DbFunctor.dbClickDml choked. DB returned error on SQL ` ^^ insert_sql ^^ `^(General.exnMessage X)`)
 
     val panicDml = Db.panicDml ScsError.panic 
-    fun errorDml emsg sql = (Db.errorDml (fn () => ScsPage.returnPg "Databasefejl" emsg) sql;())
+    fun errorDml emsg sql = (Db.errorDml (fn () => (Ns.log (Ns.Notice, "hej");ScsPage.returnPg "Databasefejl" emsg)) sql;())
 
     fun oneRowErrPg' (f,sql,emsg) =
       Db.oneRow' (f,sql) handle _ => (ScsPage.returnPg "" emsg;Ns.exit())
