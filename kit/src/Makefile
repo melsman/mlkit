@@ -29,6 +29,8 @@ mlkit: basics rp2ps tester kitbench
 	cd Runtime; $(MAKE) runtimeSystemProf.a
 	cd Runtime; $(MAKE) runtimeSystemGC.a
 	cd Runtime; $(MAKE) runtimeSystemGCProf.a
+	cd Runtime; $(MAKE) runtimeSystemGenGC.a
+	cd Runtime; $(MAKE) runtimeSystemGenGCProf.a
 	cd Runtime; $(MAKE) runtimeSystemGCTP.a
 	cd Runtime; $(MAKE) runtimeSystemGCTPProf.a
 	cd Runtime; $(MAKE) runtimeSystemTag.a

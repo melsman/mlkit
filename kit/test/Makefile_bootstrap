@@ -12,6 +12,8 @@ bootstrap:
 	$(INSTALL) bin/runtimeSystem.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemGC.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemGCProf.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGenGC.a $(INSTDIR)/bin
+	$(INSTALL) bin/runtimeSystemGenGCProf.a $(INSTDIR)/bin
 	$(INSTALL) bin/runtimeSystemProf.a $(INSTDIR)/bin
 	$(INSTALL) bin/rp2ps $(INSTDIR)/bin
 	$(INSTALL) src/run $(INSTDIR)/bin/mlkit.img
