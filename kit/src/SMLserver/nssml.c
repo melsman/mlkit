@@ -63,8 +63,9 @@ typedef struct {
   time_t timeStamp;
 } InterpContext;
 
-static InterpContext *globalInterpContext = NULL;    // hack to implement filtering -  this variable
-                                                     // is set during module initialization..
+// hack to implement filtering -  this variable
+// is set during module initialization..
+static InterpContext *globalInterpContext = NULL;
 
 /*
  *----------------------------------------------------------------------
@@ -164,8 +165,10 @@ rpMap = regionPageMapNew();
   ctx->interp = interpNew();
   ctx->hServer = hServer;
   ctx->hModule = hModule;
-  configPath = Ns_ConfigGetPath(hServer, hModule, NULL);    // Fetch the name of the project
-  ctx->prjid = Ns_ConfigGetValue(configPath, "prjid");      // (prjid) from config file.
+
+  // Fetch the name of the project (prjid) from config file
+  configPath = Ns_ConfigGetPath(hServer, hModule, NULL);
+  ctx->prjid = Ns_ConfigGetValue(configPath, "prjid");
 
   if (ctx->prjid == NULL) {
     Ns_Log(Error, "nssml: You must set prjid in the config file");
@@ -178,28 +181,37 @@ rpMap = regionPageMapNew();
   }
 
 
-  sprintf(ctx->ulFileName, "%s/PM/%s.ul", Ns_PageRoot(hServer), ctx->prjid);
-  sprintf(ctx->timeStampFileName, "%s/PM/%s.timestamp", Ns_PageRoot(hServer), ctx->prjid);
+  sprintf(ctx->ulFileName, "%s/PM/%s.ul", 
+	  Ns_PageRoot(hServer), ctx->prjid);
+  sprintf(ctx->timeStampFileName, "%s/PM/%s.timestamp", 
+	  Ns_PageRoot(hServer), ctx->prjid);
   
   ctx->timeStamp = (time_t)-1; 
 
-  globalInterpContext = ctx;             // hack to implement filtering - see below
+  // hack to implement filtering - see below
+  globalInterpContext = ctx;
 
-  Ns_RegisterRequest(hServer, "GET", "/*.sml", nssml_handleSmlFile, NULL, ctx, 0);
-  Ns_RegisterRequest(hServer, "GET", "/*.msp", nssml_handleSmlFile, NULL, ctx, 0);
-  Ns_RegisterRequest(hServer, "POST", "/*.sml", nssml_handleSmlFile, NULL, ctx, 0);
-  Ns_RegisterRequest(hServer, "POST", "/*.msp", nssml_handleSmlFile, NULL, ctx, 0);
+  Ns_RegisterRequest(hServer, "GET", "/*.sml", 
+		     nssml_handleSmlFile, NULL, ctx, 0);
+  Ns_RegisterRequest(hServer, "GET", "/*.msp", 
+		     nssml_handleSmlFile, NULL, ctx, 0);
+  Ns_RegisterRequest(hServer, "POST", "/*.sml", 
+		     nssml_handleSmlFile, NULL, ctx, 0);
+  Ns_RegisterRequest(hServer, "POST", "/*.msp", 
+		     nssml_handleSmlFile, NULL, ctx, 0);
     
   Ns_Log(Notice, "nssml: module is now loaded");
   Ns_Log(Notice, "nssml: ulFileName is %s", ctx->ulFileName);
   Ns_Log(Notice, "nssml: timeStampFileName is %s", ctx->timeStampFileName);
 
   // Execute init script if it appears in configuration file
-  initScript = Ns_ConfigGetValueExact(configPath, "initscript");    // Fetch init script
+  // Fetch init script
+  initScript = Ns_ConfigGetValueExact(configPath, "initscript");    
   if ( initScript != NULL ) 
     {
       int res = nssml_processSmlFile(ctx,initScript);
-      Ns_Log(Notice, "nssml: init script executed with return code %d", res);
+      Ns_Log(Notice, "nssml: init script executed with return code %d", 
+	     res);
     }
   else
     {
@@ -232,7 +244,8 @@ nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid)
   char name[NSSML_PATH_MAX];
   pageRoot = Ns_PageRoot(hServer);
   if ( strstr(url,pageRoot) != url ) {
-    Ns_Log(Error, "nssml: pageRoot %s is not a substring of the requested url %s", 
+    Ns_Log(Error, 
+	   "nssml: pageRoot %s is not a substring of the requested url %s", 
 	   pageRoot, url);
     return -1;
   }
@@ -295,7 +308,8 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
   
   if ( t == (time_t)-1 )
     {
-      Ns_Log(Error, "nssml: time stamp file %s not existing - web service not working",
+      Ns_Log(Error, 
+	     "nssml: time stamp file %s not existing - web service not working",
 	     &ctx->timeStampFileName);
       return NSSML_NOTIMESTAMP;
     }
@@ -311,13 +325,15 @@ nssml_processSmlFile(InterpContext* ctx, char* url)
       char buff[NSSML_PATH_MAX];
       int count = 0;
 
-      interpClear(ctx->interp);      /* free all code elements present in the
-				      * interpreter, including code cache entries... */
+      // free all code elements present in the
+      // interpreter, including code cache entries...
+      interpClear(ctx->interp);
 
       is = fopen(ctx->ulFileName, "r");
       if ( is == NULL ) 
 	{
-	  Ns_Log(Error, "nssml: Failed to open file %s for reading", &ctx->ulFileName);
+	  Ns_Log(Error, "nssml: Failed to open file %s for reading", 
+		 &ctx->ulFileName);
 	  return NSSML_ULFILENOTFOUND;
 	}
     
@@ -391,7 +407,8 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
     case NSSML_ULFILENOTFOUND:
     case NSSML_NOTIMESTAMP:
       {
-	Ns_ConnReturnNotice(conn, 200, "The web service is temporarily out of service",
+	Ns_ConnReturnNotice(conn, 200, 
+			    "The web service is temporarily out of service",
 			    "Please come back later!");
 	// fall through
       }
@@ -410,8 +427,10 @@ nssml_trapProc(void *ctx, Ns_Conn *conn)
   char* trapScript;
 
   // Execute trap script if it appears in the configuration file
-  configPath = Ns_ConfigGetPath(((InterpContext*)ctx)->hServer, ((InterpContext*)ctx)->hModule, NULL);  
-  trapScript = Ns_ConfigGetValueExact(configPath, "trapscript");    // Fetch init script
+  configPath = Ns_ConfigGetPath(((InterpContext*)ctx)->hServer, 
+				((InterpContext*)ctx)->hModule, NULL);  
+  // Fetch init script
+  trapScript = Ns_ConfigGetValueExact(configPath, "trapscript");    
   if ( trapScript != NULL ) 
     {
       return nssml_processSmlFile((InterpContext*)ctx, trapScript);
@@ -427,8 +446,10 @@ void
 nssml_registerTrap(String url)
 {
   char* hServer = globalInterpContext->hServer;
-  Ns_RegisterRequest(hServer, "GET", &(url->data), nssml_trapProc, NULL, globalInterpContext, 0);
-  Ns_RegisterRequest(hServer, "POST", &(url->data), nssml_trapProc, NULL, globalInterpContext, 0);
+  Ns_RegisterRequest(hServer, "GET", &(url->data), nssml_trapProc, 
+		     NULL, globalInterpContext, 0);
+  Ns_RegisterRequest(hServer, "POST", &(url->data), nssml_trapProc, 
+		     NULL, globalInterpContext, 0);
 }
 
 /*
@@ -458,8 +479,9 @@ nssml_scheduleScript(String url, int interval)       // ML function
  * Scheduling a script to run daily
  */
 
+// ML function
 void
-nssml_scheduleDaily(String url, int hour, int minute)          // ML function
+nssml_scheduleDaily(String url, int hour, int minute)
 {
   int flags = 0;
   int n;
@@ -467,7 +489,8 @@ nssml_scheduleDaily(String url, int hour, int minute)          // ML function
   n = sizeStringDefine(url);
   s = (char*)Ns_Malloc(n+1);
   strncpy(s, &(url->data), n+1);
-  Ns_ScheduleDaily(nssml_scheduleScriptRun, s, flags, hour, minute, NULL);
+  Ns_ScheduleDaily(nssml_scheduleScriptRun, s, flags, 
+		   hour, minute, NULL);
 }
 
 
@@ -475,8 +498,9 @@ nssml_scheduleDaily(String url, int hour, int minute)          // ML function
  * Scheduling a script to run weekly
  */
 
+// ML function
 void
-nssml_scheduleWeekly(String url, int day, int hour, int minute) // ML function
+nssml_scheduleWeekly(String url, int day, int hour, int minute) 
 {
   int flags = 0;
   int n;
@@ -484,6 +508,7 @@ nssml_scheduleWeekly(String url, int day, int hour, int minute) // ML function
   n = sizeStringDefine(url);
   s = (char*)Ns_Malloc(n+1);
   strncpy(s, &(url->data), n+1);
-  Ns_ScheduleWeekly(nssml_scheduleScriptRun, s, flags, day, hour, minute, NULL);
+  Ns_ScheduleWeekly(nssml_scheduleScriptRun, s, flags, 
+		    day, hour, minute, NULL);
 }
 
