@@ -74,9 +74,6 @@ functor OptLambda(structure Lvars: LVARS
     * Some helpful functions
     * ----------------------------------------------------------------- *)
 
-    fun app f [] = ()
-      | app f (x::xs) = (f x; app f xs)
-
     val unit_Type = RECORDtype []
 
     fun log x = if !statistics_after_optimisation then TextIO.output(!Flags.log,x)
