@@ -58,6 +58,11 @@ int raised_exn_overflow = 0;          // set to 1 if signal occurred during GC
 
 int time_gc_all_ms = 0;               // total time of GC (in milliseconds)
 
+#ifdef ENABLE_GEN_GC
+int major_p = 0; /* ToDo: GenGC change the predicate */
+#define is_major_p (major_p == 1)
+#define is_minor_p (major_p == 0)
+#endif /* ENABLE_GEN_GC
 
 /* This implementation assumes a down growing stack (e.g., X86). */
 #define NUM_REGS 8
@@ -89,6 +94,13 @@ int time_gc_all_ms = 0;               // total time of GC (in milliseconds)
   ReturnLabel: */
 
 Rp *from_space_begin, *from_space_end;
+
+#ifdef ENABLE_GEN_GC
+//#define debug_gc(x) (x)
+#define debug_gc(x) ({})
+#else
+#define debug_gc(x) ({})
+#endif /* REMOVE */
 
 /*******************/
 /* PRETTY PRINTING */
@@ -141,13 +153,8 @@ print(unsigned int *value)
     }
     val = *value;
   }
-  pw("Tag: ", val);
+  pw(str, val);
   return;
-}
-
-void pp_gen(Gen *gen)  // ToDo: GenGC 
-{
-  fprintf(stderr,"\n[Addr: %x, fp:%x, a:%x, b:%x]",gen,gen->fp, gen->a,gen->b);
 }
 
 /*#define copy_words(from,to,w) (memcpy((to),(from),4*(w)))*/
@@ -280,6 +287,46 @@ clear_scan_container()
     }
 }
 
+/* ToDo: GenGC delete not used anyway 
+static inline void
+mark_tospace_gen (Gen *gen)
+{
+  Rp* rp;
+  for ( rp = clear_fp(gen->fp) ; rp ; rp = clear_tospace_bit(rp->n) )
+    {
+      rp->n = set_tospace_bit(rp->n);
+    }
+}*/
+
+void pp_from_space() 
+{
+  Rp *rp;
+
+  for (rp = from_space_begin ; rp ; rp = rp->n )
+#ifdef ENABLE_GEN_GC
+    fprintf(stderr,
+	    "[rp: %x, rp->i: %x, rp+1: %x, rp->colorPtr: %x, rp->n: %x]\n",
+	    rp, &(rp->i), rp+1, rp->colorPtr, rp->n);
+#else
+    fprintf(stderr,
+	    "[rp: %x, rp->i: %x, rp+1: %x, rp->n: %x]\n",
+	    rp, &(rp->i), rp+1, rp->n);
+#endif /* ENABLE_GEN_GC */
+  return;
+}
+
+int chk_obj_in_from_space(unsigned int* obj_ptr) 
+{
+  int found = 0;
+  Rp *rp;
+
+  for (rp = from_space_begin ; rp && !found ; rp = rp->n)
+    if (obj_ptr >= (unsigned int*) (&(rp->i)) && obj_ptr < (unsigned int*)(rp+1))
+      found = 1;
+
+  return found;
+}
+
 /* We mark all region pages such that we can distinguish them from to-space */
 /* region pages by setting a bit in the next n pointer.                   */
 static inline void
@@ -312,8 +359,6 @@ static void mk_from_space()
     int j;
   #endif
 
-  int major_p = 1; /* ToDo: GenGC should be read from somewhere else */
-
   from_space_begin = NULL;
   from_space_end = (((Rp *)TOP_REGION->g0.b)-1); /* Points at last region page */
 
@@ -321,7 +366,7 @@ static void mk_from_space()
     #ifdef PROFILING
       // Similar to resetRegion in Region.c
       #ifdef ENABLE_GEN_GC
-      if ( major_p ) {
+      if ( is_major_p ) {
       #endif /* ENABLE_GEN_GC */
 	j = NoOfPagesInRegion(r);
 	noOfPages -= j;
@@ -350,10 +395,12 @@ static void mk_from_space()
     #endif /* PROFILING */
 
     mk_from_space_gen(&(r->g0));
-    #ifdef ENABLE_GEN_GC
-    if ( major_p ) 
+#ifdef ENABLE_GEN_GC
+    if ( is_major_p ) 
       mk_from_space_gen(&(r->g1));
-    #endif /* ENABLE_GEN_GC */    
+    // ToDo: GenGC remove    else /* Mark g1 as to-space in minor gc */
+    // ToDo: GenGC remove  mark_tospace_gen(&(r->g1));
+#endif /* ENABLE_GEN_GC */    
   }
 
   /* Calculate size of from space */
@@ -641,6 +688,20 @@ get_size_obj(unsigned int *obj_ptr)
   }
 }
 
+// ToDo: GenGC remove print_tagged_rp_content
+void print_tagged_rp_content(Rp *rp)
+{ unsigned int *obj_ptr;
+
+ fprintf(stderr,"[tagged rp content...\n");
+ for (obj_ptr = (unsigned int*)(&(rp->i)); obj_ptr < (unsigned int*)(rp+1) && obj_ptr != notPP; obj_ptr = obj_ptr + get_size_obj(obj_ptr))
+   { fprintf(stderr,"Addr: %x - ",obj_ptr);
+   print(obj_ptr);}
+ fprintf(stderr,"]\n");
+ return;
+}
+
+
+
 /* ToDo: GenGC (1) allok skal tage højde for colorPtr
                (2) allok skal tage højde for om g1 indeholder en klump. 
    gælder for alle acopy-funktioner
@@ -663,6 +724,8 @@ acopy(Gen *gen, unsigned int *obj_ptr)
   new_obj_ptr = allocGen(gen,size);
 #endif
   copy_words(obj_ptr,new_obj_ptr,size);
+
+  chk_obj_in_gen(gen,new_obj_ptr,"acopy_pair"); // ToDo: GenGC remove
   return new_obj_ptr;
 }
 
@@ -683,6 +746,8 @@ acopy_pair(Gen *gen, unsigned int *obj_ptr)
 #endif
   *(new_obj_ptr+1) = *(obj_ptr+1);
   *(new_obj_ptr+2) = *(obj_ptr+2);
+
+  chk_obj_in_gen(gen,new_obj_ptr+1,"acopy_pair"); // ToDo: GenGC remove
   return new_obj_ptr;
 }
 
@@ -702,6 +767,8 @@ acopy_ref(Gen *gen, unsigned int *obj_ptr)
   new_obj_ptr = allocGen(gen,1) - 1;
 #endif
   *(new_obj_ptr+1) = *(obj_ptr+1);
+
+  chk_obj_in_gen(gen,new_obj_ptr+1,"acopy_ref"); // ToDo: GenGC remove
   return new_obj_ptr;
 }
 
@@ -723,6 +790,8 @@ acopy_triple(Gen *gen, unsigned int *obj_ptr)
   *(new_obj_ptr+1) = *(obj_ptr+1);
   *(new_obj_ptr+2) = *(obj_ptr+2);
   *(new_obj_ptr+3) = *(obj_ptr+3);
+
+  chk_obj_in_gen(gen,new_obj_ptr+1,"acopy_triple"); // ToDo: GenGC remove
   return new_obj_ptr;
 }
 
@@ -731,6 +800,8 @@ points_into_tospace (unsigned int x)
 {
   int ret;
   unsigned int *p;
+  Rp *rp;
+  debug_gc(fprintf(stderr,"[points_into_tospace x with value: %x...", x)); // ToDo: GenGC remove 
   if ( is_integer(x) )
     return 0;
   p = (unsigned int*)x;
@@ -740,22 +811,45 @@ points_into_tospace (unsigned int x)
     return 0;
   // now either large object or in region
   // get the tospace bit
-  ret = is_tospace_bit(get_rp_header(p)->n);
+  rp = get_rp_header(p);
+  debug_gc(fprintf(stderr," we got rp: %x, rp->n: %x, rp->colorPtr: %x, rp+1: %x", rp,rp->n,rp->colorPtr,rp+1)); // ToDo: GenGC remove 
+  if (is_lobj_bit(rp->n))  // ToDo: GenGC remove
+      die(" we got a large object code below does not work for large objects"); // ToDo: GenGC remove 
+  ret = is_tospace_bit(rp->n);
+#ifdef ENABLE_GEN_GC
+  /* In minor_gc it may be a forward pointer even though the
+     to_space_bit is not set (i.e., if the value is allocated in a
+     region page in g1 that holds values allocated before this
+     initiation of gc and values evacuated in this initiation of gc) */
+  if (!ret)
+    { 
+      Gen *gen;
+      gen = rp->gen;
+      debug_gc(fprintf(stderr," gen: %x g%d, a: %x ",gen,is_gen_1(*gen),gen->a)); // ToDo: GenGC remove  - not ok - does not work for large objects!
+      debug_gc(pp_gen(gen)); // ToDo: GenGC remove
+      if (is_gen_1(*gen) && p >= rp->colorPtr)
+	ret = 1;
+    }
+#endif /* ENABLE_GEN_GC */
+  debug_gc(fprintf(stderr,"]")); // ToDo: GenGC remove 
   return ret;
 }
 
 inline static 
 Gen * what_gen_to_copy_to(Gen *gen, unsigned int *obj_ptr)
 {
-  #ifdef ENABLE_GEN_GC
+#ifdef ENABLE_GEN_GC
     if (obj_ptr < get_rp_header(obj_ptr)->colorPtr) 
       return &(get_ro_from_gen(*gen)->g1);
     else
-      { if is_gen_1(*gen) die("not g0"); // ToDo: GenGC remove test
+      { if is_gen_1(*gen) {
+	fprintf(stderr,"what_gen_to_copy to: obj_ptr: %x\n",obj_ptr);
+	pp_gen(gen); // ToDo: GenGC remove test
+	die("not g0"); // ToDo: GenGC remove test
+	}
       return gen;} /* Will always be g0 */
-  #else
+#endif /* ENABLE_GEN_GC */
     return gen;
-  #endif /* ENABLE_GEN_GC */
 }
 
 static unsigned int 
@@ -766,9 +860,10 @@ evacuate(unsigned int obj)
   Gen* copy_to_gen;
 
   unsigned int *obj_ptr, *new_obj_ptr;
-
+    debug_gc(fprintf(stderr,"[evacuate...")); // ToDo: GenGC remove
   if (is_integer(obj)) 
     {
+        debug_gc(fprintf(stderr,"integer]")); // ToDo: GenGC remove
       return obj;                         // not subject to GC
     }
 
@@ -776,6 +871,7 @@ evacuate(unsigned int obj)
 
   if ( points_into_dataspace(obj_ptr) )
     {
+       debug_gc(fprintf(stderr,"points into dataspace]")); // ToDo: GenGC remove
       return obj;                         // not subject to GC
     }
 
@@ -783,10 +879,12 @@ evacuate(unsigned int obj)
     {                                     // object immovable
       if ( is_constant(*obj_ptr) ) 
 	{
+	   debug_gc(fprintf(stderr,"is stack allocated-constant]")); // ToDo: GenGC remove
 	  return obj;      
 	}
       *obj_ptr = set_tag_const(*obj_ptr); // set immovable-bit
       push_scan_container(obj_ptr);
+      debug_gc(fprintf(stderr,"is stack allocated]")); // ToDo: GenGC remove
       return obj;
     }
 
@@ -801,61 +899,101 @@ evacuate(unsigned int obj)
     {                                     // object immovable
       if ( is_constant(*obj_ptr) )
 	{
+	  debug_gc(fprintf(stderr,"LARGE OBJECT]")); // ToDo: GenGC remove
 	  return obj;
 	}
       *obj_ptr = set_tag_const(*obj_ptr); // set immovable-bit
       push_scan_container(obj_ptr);
+      debug_gc(fprintf(stderr,"LARGE OBJECT]")); // ToDo: GenGC remove
       return obj;
     }
 
   // Object is in an infinite region
   gen = rp->gen; 
+#ifdef ENABLE_GEN_GC
+  if (is_gen_1(*gen)) debug_gc(fprintf(stderr," g1 ")); else debug_gc(fprintf(stderr," g0 ")); // ToDo: GenGC remove
+  if (is_minor_p && is_gen_1(*gen)) { // obj_ptr points at old area in g1 and should be returned!
+    debug_gc(fprintf(stderr,"stop at g1]")); return obj;} // ToDo: GenGC stop at g1. 
+#endif /* ENABLE_GEN_GC */
   switch ( rtype(*gen) ) {
   case RTYPE_PAIR:
     {
+      debug_gc(fprintf(stderr,"got type pair, rp: %x", rp)); // ToDo: GenGC remove
+      if (!chk_obj_in_from_space(obj_ptr+1)) {fprintf(stderr,"obj_ptr: %x",obj_ptr);pp_gen(gen);pp_from_space(); die ("error in evacuate : obj_ptr not in fromspace and not in g1 (minor only)");} // ToDo: GenGC remove
+
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
 	{
+	  debug_gc(fprintf(stderr,"already copied]")); // ToDo: GenGC remove
 	  return *(obj_ptr+1);
 	}
-      copy_to_gen = what_gen_to_copy_to(gen, obj_ptr);
+      debug_gc(fprintf(stderr,"copy value|")); // ToDo: GenGC remove
+      // obj_ptr points at slot before the actual value
+      copy_to_gen = what_gen_to_copy_to(gen, obj_ptr+1); 
       new_obj_ptr = acopy_pair(copy_to_gen, obj_ptr);
+      if ( ! points_into_tospace((unsigned int)(new_obj_ptr+1)) ) die ("pair new obj is not in tospace??"); // ToDo: GenGC remove
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
     }
   case RTYPE_REF:
-    {
+    {  // ToDo: GenGC det ser ud til at points_into_tospace checker for mere end nødvendigt er - vi ved at det er i en inf-region
+      debug_gc(fprintf(stderr,"got type ref ")); // ToDo: GenGC remove
+      if (!chk_obj_in_from_space(obj_ptr+1)) {fprintf(stderr,"obj_ptr: %x",obj_ptr);pp_gen(gen);pp_from_space(); die ("error in evacuate : obj_ptr not in fromspace and not in g1 (minor only)");} // ToDo: GenGC remove
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
 	{
+	  debug_gc(fprintf(stderr,"already copied]")); // ToDo: GenGC remove
 	  return *(obj_ptr+1);
 	}
-      copy_to_gen = what_gen_to_copy_to(gen,obj_ptr);
+        debug_gc(fprintf(stderr,"copy value|")); // ToDo: GenGC remove
+      // obj_ptr points at slot before the actual value
+      copy_to_gen = what_gen_to_copy_to(gen,obj_ptr+1);
       new_obj_ptr = acopy_ref(copy_to_gen, obj_ptr);
+      if ( ! points_into_tospace((unsigned int)(new_obj_ptr+1)) ) {
+	pp_gen(copy_to_gen);
+	fprintf(stderr,"new_obj_ptr: %x\n",new_obj_ptr);
+	die ("ref new obj is not in tospace??"); // ToDo: GenGC remove entire if
+      }
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
     }
   case RTYPE_TRIPLE:
     {
+      debug_gc(fprintf(stderr,"got type triple")); // ToDo: GenGC remove
+      if (!chk_obj_in_from_space(obj_ptr+1)) {fprintf(stderr,"obj_ptr: %x",obj_ptr);pp_gen(gen);pp_from_space(); die ("error in evacuate : obj_ptr not in fromspace and not in g1 (minor only)");} // ToDo: GenGC remove
       if ( points_into_tospace(*(obj_ptr+1)) )  // check for forward pointer
 	{
+	   debug_gc(fprintf(stderr,"already copied]")); // ToDo: GenGC remove
 	  return *(obj_ptr+1);
 	}
-      copy_to_gen = what_gen_to_copy_to(gen,obj_ptr);
+      debug_gc(fprintf(stderr,"copy value|")); // ToDo: GenGC remove
+      // obj_ptr points at slot before the actual value
+      copy_to_gen = what_gen_to_copy_to(gen,obj_ptr+1);
       new_obj_ptr = acopy_triple(copy_to_gen, obj_ptr);
+      if ( ! points_into_tospace((unsigned int)(new_obj_ptr+1)) ) die ("triple new obj is not in tospace??"); // ToDo: GenGC remove
       *(obj_ptr+1) = (unsigned int)new_obj_ptr; // install forward pointer
       break;
     }
   default:   // Object is tagged 
     {
-      if ( is_forward_ptr(*obj_ptr) )           /* ToDo: GenGC can't we just skip this comparison? 2003-07-21, nh */
+      debug_gc(fprintf(stderr,"got type default")); // ToDo: GenGC remove
+      if (!chk_obj_in_from_space(obj_ptr)) {fprintf(stderr,"obj_ptr: %x",obj_ptr);pp_gen(gen);pp_from_space(); die ("error in evacuate : obj_ptr not in fromspace and not in g1 (minor only)");} // ToDo: GenGC remove
+      if ( is_forward_ptr(*obj_ptr) )           /* ToDo: GenGC can't we just skip this comparison? no because it may be any tagged value and points_into_tospace just thinks of it as a pointer. */
 	{                                       // object already copied
 	  if ( points_into_tospace(*obj_ptr) )
 	    {
+	       debug_gc(fprintf(stderr,"is forward ptr in tospace]")); // ToDo: GenGC remove
 	      return clear_forward_ptr(*obj_ptr);             
 	    }
+	  //pp_gen(gen); // ToDo: GenGC remove
+	  fprintf(stderr,"obj_ptr: %x", obj_ptr);
+	  pp_reg((int)get_ro_from_gen(*gen),"evacuate die - forward pointer failed");
+	  print_tagged_rp_content(rp);
+	  print(obj_ptr); // ToDo: GenGC remove
 	  die ("forward ptr check failed\n");
 	}
+         debug_gc(fprintf(stderr,"default|")); // ToDo: GenGC remove
       copy_to_gen = what_gen_to_copy_to(gen,obj_ptr);
       new_obj_ptr = acopy(copy_to_gen, obj_ptr);
+      if ( ! points_into_tospace((unsigned int)new_obj_ptr) ) die ("default new obj is not in tospace??"); // ToDo: GenGC remove
       *obj_ptr = tag_forward_ptr(new_obj_ptr);  // install forward pointer
     }
   }
@@ -868,6 +1006,7 @@ evacuate(unsigned int obj)
 #endif
       set_gen_status_SOME(*copy_to_gen);
     }
+   debug_gc(fprintf(stderr,"]")); // ToDo: GenGC remove
   return (unsigned int)new_obj_ptr;
 }
 
@@ -877,17 +1016,21 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
   // All finite and large objects are temporarily annotated as immovable.
   // We therefore use val_tag_kind and not val_tag_kind_const
 
+  fprintf(stderr,"[scan...");
   switch ( val_tag_kind(s) ) { 
   case TAG_STRING: {                        // Do not GC the content of a string but
     int sz;                                 //    adjust s to point after the string
     String str = (String)s;
+  fprintf(stderr,"string\n");
     sz = get_string_size(str->size) + 5;    // 1 for zero, 4 for tag
     sz = (sz%4) ? (1+sz/4) : (sz/4);
+  fprintf(stderr,"]\n");
     return s + sz;
   }
   case TAG_TABLE: {
     int sz;
     Table table = (Table)s;
+  fprintf(stderr,"table\n");
     sz = get_table_size(table->size);
     s++;
     while ( sz )
@@ -896,10 +1039,12 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
 	s++;
 	sz--;
       }
+  fprintf(stderr,"]\n");
     return s;
   }
   case TAG_RECORD: {
     int remaining, num_to_skip, sz;
+  fprintf(stderr,"record\n");
     sz = get_record_size(*s);          // Size excludes descriptor
     num_to_skip = get_record_skip(*s);
     s = s + 1 + num_to_skip;
@@ -910,14 +1055,18 @@ scan_tagged_value(unsigned int *s)      // s is the scan pointer
 	s++;
 	remaining--;
       }
+  fprintf(stderr,"]\n");
     return s;
   }
   case TAG_CON0: {     // constant
+  fprintf(stderr,"con0]\n");
     return s+1;
   }
   case TAG_CON1:
   case TAG_REF: {
+  fprintf(stderr,"con1 or ref");
     *(s+1) = evacuate(*(s+1));
+  fprintf(stderr,"]\n");
     return s+2;
   }
   default: {
@@ -935,13 +1084,16 @@ do_scan_stack()
   Rp *rp;
   Gen *gen;
 
+  debug_gc(fprintf(stderr,"[do scan stack...")); // ToDo: GenGC remove
   // Run through scan stack and container
   while (!((is_scan_stack_empty()) && (is_scan_container_empty()))) {
 
     // Run through container - FINITE REGIONS and LARGE OBJECTS
     while (!(is_scan_container_empty())) 
       {
+	debug_gc(fprintf(stderr,"[scanning finite region...")); // ToDo: GenGC remove
 	s = scan_tagged_value(pop_scan_container());
+	debug_gc(fprintf(stderr,"]"));	 // ToDo: GenGC remove
       }
 
     while (!(is_scan_stack_empty())) {
@@ -949,7 +1101,7 @@ do_scan_stack()
       /* Get Region Page and Generation */
       rp = get_rp_header(s);
       gen = rp->gen; 
-
+  debug_gc(fprintf(stderr,"[scanning g%d...",is_gen_1(*gen))); // ToDo: GenGC remove
       switch ( rtype(*gen) ) {
       case RTYPE_PAIR:
 	{
@@ -958,7 +1110,7 @@ do_scan_stack()
 	      rp = get_rp_header(s);
 #if PROFILING
 	      s += sizeObjectDesc;
-#endif
+#endif /* PROFILING */
 	      *(s+1) = evacuate(*(s+1));
 	      *(s+2) = evacuate(*(s+2));
 	      s += 2;
@@ -1047,9 +1199,12 @@ do_scan_stack()
 	    }
 	}
       }
+      debug_gc(fprintf(stderr,"]",is_gen_1(*gen))); // ToDo: GenGC remove
       set_gen_status_NONE(*gen);
     }
   }
+
+  debug_gc(fprintf(stderr,"]")); // ToDo: GenGC remove
   return;
 }
 
@@ -1059,20 +1214,22 @@ void clear_tospace_bit_and_set_colorPtr_in_gen(Gen *gen)
 
   for ( p = clear_fp(gen->fp) ; p ; p = p->n ) 
     {
-      /* Clear tospace-bit */
-      if ( is_tospace_bit(p->n) ) { 
-	// check that all region pages have their tospace bit set
-	p->n = clear_tospace_bit(p->n);
-      } else {
-	die ("gc: page in tospace not marked");
-      }
-      #ifdef ENABLE_GEN_GC
-        /* Update colorPtr */
-        if (p->n) /* tospace-bit has been cleared */
-	  p->colorPtr = (unsigned int*) (p+1); /* Not last page so entire page is black */
-	else
-	  p->colorPtr = gen->a; /* Last page so only allocated part of page is black */
-      #endif /* ENABLE_GEN_GC */
+      /* Clear tospace-bit - in minor gc some pages in g1 will not be marked! */ 
+      if ( ! is_tospace_bit(p->n) 
+#ifdef ENABLE_GEN_GC
+	   && is_major_p
+#endif /* ENABLE_GEN_GC */
+	   )
+      	die ("gc: page in tospace not marked in major gc");
+      p->n = clear_tospace_bit(p->n);
+
+#ifdef ENABLE_GEN_GC
+      /* Update colorPtr */
+      if (p->n) /* tospace-bit has been cleared */
+	p->colorPtr = (unsigned int*) (p+1); /* Not last page so entire page is black */
+      else
+	p->colorPtr = gen->a; /* Last page so only allocated part of page is black */
+#endif /* ENABLE_GEN_GC */
     }
 }
 
@@ -1109,6 +1266,10 @@ gc(unsigned int **sp, unsigned int reg_map)
 
   doing_gc = 1; // Mutex on the garbage collector
 
+#ifdef ENABLE_GEN_GC
+  major_p = (major_p==0)?(1):(0);
+#endif /* ENABLE_GEN_GC */  
+
   stack_top_gc = (unsigned int*)sp;
 
   if ((int)(stack_bot_gc - stack_top_gc) < 0)
@@ -1125,7 +1286,11 @@ gc(unsigned int **sp, unsigned int reg_map)
 
   if ( verbose_gc ) 
     {
-      fprintf(stderr,"[GC#%d", num_gc); fflush(stdout);
+      fprintf(stderr,"[GC#%d", num_gc); 
+#ifdef ENABLE_GEN_GC
+      fprintf(stderr,"%s",(is_major_p)?("Major"):("Minor"));
+#endif /* ENABLE_GEN_GC */
+      fflush(stdout);
       size_from_space = allocated_bytes_in_regions();
       lobjs_beforegc = allocated_bytes_in_lobjs();
       alloc_period_save = alloc_period;
@@ -1141,6 +1306,103 @@ gc(unsigned int **sp, unsigned int reg_map)
 
   mk_from_space();
 
+#ifdef ENABLE_GEN_GC
+  /* If minor gc, then refs and tables in g1 and lobjs are also 
+     part of the root-set */
+  if (is_minor_p) {
+    debug_gc(fprintf(stderr,"[begin refs and tables...")); // ToDo: GenGC remove
+    for ( r = TOP_REGION ; r ; r = r->p ) {
+      switch ( rtype(r->g1) ) {
+      case RTYPE_REF: {
+    debug_gc(fprintf(stderr," ref ")); // ToDo: GenGC remove
+	value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
+	// evacuate content of refs in g1
+	// refs occupies one word only!
+	while ( ((int *)value_ptr) != r->g1.a ) 
+	  {
+	    rp = get_rp_header(value_ptr);
+#if PROFILING
+	    value_ptr += sizeObjectDesc;
+#endif /* PROFILING */
+	    *value_ptr = evacuate(*value_ptr); 
+	    value_ptr += 1;
+	      
+	    /* If at end of region page or the region page is full, go 
+	     * to next region page. */
+	    if ((((int *)value_ptr) != r->g1.a) && 
+		((((int *)value_ptr) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+		 || (*((int *)value_ptr) == notPP)))
+	      {
+		value_ptr = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
+	      }
+	  }
+	/* ToDo: GenGC: slet check */
+	if (r->lobjs != NULL) 
+	  die("gc: r->lobjs is not null for RTYPE_REF region.");
+	break;
+      }
+      case RTYPE_ARRAY: { 
+	unsigned int tag;
+	int i;
+	Lobjs *lobjs;    
+	
+	value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
+    debug_gc(fprintf(stderr," **ARRAY** ")); // ToDo: GenGC remove
+	// evacuate content of arrays in g1
+	while ( ((int *)value_ptr) != r->g1.a ) 
+	  { 
+
+	    rp = get_rp_header(value_ptr);
+#if PROFILING
+	    value_ptr += sizeObjectDesc;
+#endif /* PROFILING */
+	    // ToDo: GenGC use scan_tagged_value instead
+	    // Run through array and evacuate objects
+	    tag = *value_ptr;
+	    value_ptr++;
+	    for (i=0; i<get_table_size(tag); i++) {
+	      *value_ptr = evacuate(*value_ptr);
+	      value_ptr++;
+	    }
+	    /* If at end of region page or the region page is full, go 
+	     * to next region page. */
+	    if ((((int *)value_ptr) != r->g1.a) && 
+		((((int *)value_ptr) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
+		 || (*((int *)value_ptr) == notPP)))
+	      {
+		value_ptr = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
+	      }
+	  }
+	// evacuate contents of arrays in lobjs
+	for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) ) 
+	  {
+#ifdef PROFILING
+	    value_ptr = &(lobjs->value) + sizeObjectDesc;
+#else
+	    value_ptr = &lobjs->value;
+#endif /* PROFILING */
+	    // ToDo: GenGC use scan_tagged_value instead
+	    tag = *value_ptr;
+	    value_ptr++; // Points at first element in array
+	    for (i=0; i<get_table_size(tag); i++) {
+    debug_gc(fprintf(stderr," LARGE ARRAY ")); // ToDo: GenGC remove
+	      *value_ptr = evacuate(*value_ptr);
+	      value_ptr++;
+	    }
+	  }
+	break;
+      }
+      default:
+	{
+	  /* Do nothing - region does not contain mutable update able values */
+	}
+      }
+    }
+    debug_gc(fprintf(stderr,"]\n")); // ToDo: GenGC remove
+  }
+#endif /* ENABLE_GEN_GC */
+
+    debug_gc(fprintf(stderr,"\n[scanning live registers...")); // ToDo: GenGC remove
   /* Search for live registers */
   sp_ptr = sp;
   w = reg_map;
@@ -1151,8 +1413,10 @@ gc(unsigned int **sp, unsigned int reg_map)
     }
     w = w >> 1;
   }
+    debug_gc(fprintf(stderr,"]\n")); // ToDo: GenGC remove
 
   /* Do spilled arguments and results to current function */
+    debug_gc(fprintf(stderr,"\n[scanning spilled arg and results to current function...")); // ToDo: GenGC remove
   sp_ptr = sp;
   sp_ptr = sp_ptr + NUM_REGS;   // points at size_spilled_region_args
 
@@ -1172,6 +1436,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 	*value_ptr = evacuate(*value_ptr);    
       }
   }
+    debug_gc(fprintf(stderr,"]\n")); // ToDo: GenGC remove
 
   /* sp_ptr points at first return address.                           */  
   /* Below the return address we may have slots for spilled results - */
@@ -1183,6 +1448,7 @@ gc(unsigned int **sp, unsigned int reg_map)
   /*   - return address                            */
   /*   - spilled results                           */
 
+    debug_gc(fprintf(stderr,"\n[scanning frames...")); // ToDo: GenGC remove
   fd_ptr = *sp_ptr;
   fd_mark = *(fd_ptr-1);
   fd_offset_to_return = *(fd_ptr-2);
@@ -1222,8 +1488,10 @@ gc(unsigned int **sp, unsigned int reg_map)
     fd_size = *(fd_ptr-3);
     predSPDef(sp_ptr,size_rcf);
   }
+    debug_gc(fprintf(stderr,"]\n")); // ToDo: GenGC remove
 
   /* Search for data labels; they are part of the root-set. */
+    debug_gc(fprintf(stderr,"\n[scanning data labels...")); // ToDo: GenGC remove
   num_d_labs = *data_lab_ptr; /* Number of data labels */
   for ( offset = 1 ; offset <= num_d_labs ; offset++ ) {
     // printf("evacuating value in data labels begin\n");
@@ -1231,91 +1499,7 @@ gc(unsigned int **sp, unsigned int reg_map)
     *value_ptr = evacuate(*value_ptr);
     // printf("evacuating value in data labels end\n");
   }
-
-#ifdef ENABLE_GEN_GC
-  /* If minor gc, then refs and tables in g1 and lobjs are also 
-     part of the root-set */
-  /* ToDo: GenGC insert so only done in minor gc */
-  for ( r = TOP_REGION ; r ; r = r->p ) {
-    switch ( rtype(r->g1) ) {
-    case RTYPE_REF: {
-      value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
-      // evacuate content of refs in g1
-      // refs occupies one word only!
-      while ( ((int *)value_ptr) != r->g1.a ) 
-	{
-	  rp = get_rp_header(value_ptr);
-#if PROFILING
-	  value_ptr += sizeObjectDesc;
-#endif /* PROFILING */
-	  //	  *value_ptr = evacuate(*value_ptr); ToDo: GenGC uncomment
-	  value_ptr += 1;
-	      
-	  /* If at end of region page or the region page is full, go 
-	   * to next region page. */
-	  if ((((int *)value_ptr) != r->g1.a) && 
-	      ((((int *)value_ptr) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
-	       || (*((int *)value_ptr) == notPP)))
-	    {
-	      value_ptr = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
-	    }
-	}
-      /* ToDo: GenGC: slet check */
-      if (r->lobjs != NULL) 
-	die("gc: r->lobjs is not null for RTYPE_REF region.");
-      break;
-    }
-    case RTYPE_ARRAY: { 
-      unsigned int tag;
-      int i;
-      Lobjs *lobjs;    
-
-      value_ptr = ((unsigned int *)clear_fp(r->g1.fp))+HEADER_WORDS_IN_REGION_PAGE;
-      // evacuate content of arrays in g1
-      while ( ((int *)value_ptr) != r->g1.a ) 
-    	{ 
-    	  rp = get_rp_header(value_ptr);
-#if PROFILING
-    	  value_ptr += sizeObjectDesc;
-#endif /* PROFILING */
-// ToDo: GenGC use scan_tagged_value instead
-	  // Run through array and evacuate objects
-    	  tag = *value_ptr;
-    	  value_ptr++;
-    	  for (i=0; i<get_table_size(tag); i++) {
-	    //	    *value_ptr = evacuate(*value_ptr); ToDo: GenGC uncomment
-    	    value_ptr++;
-    	  }
-    	  /* If at end of region page or the region page is full, go 
-	   * to next region page. */
-    	  if ((((int *)value_ptr) != r->g1.a) && 
-    	      ((((int *)value_ptr) == ((int *)rp)+ALLOCATABLE_WORDS_IN_REGION_PAGE+HEADER_WORDS_IN_REGION_PAGE) 
-    	       || (*((int *)value_ptr) == notPP)))
-    	    {
-    	      value_ptr = ((unsigned int*) (clear_tospace_bit(rp->n)))+HEADER_WORDS_IN_REGION_PAGE;
-    	    }
-    	}
-      // evacuate contents of arrays in lobjs
-      for ( lobjs = r->lobjs ; lobjs ; lobjs = clear_lobj_bit(lobjs->next) ) 
-	{
-#ifdef PROFILING
-	  value_ptr = &(lobjs->value) + sizeObjectDesc;
-#else
-	  value_ptr = &lobjs->value;
-#endif /* PROFILING */
-	  // ToDo: GenGC use scan_tagged_value instead
-	  tag = *value_ptr;
-	  value_ptr++; // Points at first element in array
-	  for (i=0; i<get_table_size(tag); i++) {
-	    //	    *value_ptr = evacuate(*value_ptr); ToDo: GenGC uncomment
-	    value_ptr++;
-	  }
-	}
-      break;
-    }
-    }
-  }
-#endif /* ENABLE_GEN_GC */
+    debug_gc(fprintf(stderr,"]\n")); // ToDo: GenGC remove
 
   do_scan_stack();
 
@@ -1323,78 +1507,87 @@ gc(unsigned int **sp, unsigned int reg_map)
   from_space_end->n = freelist;
   freelist = from_space_begin;
 
-  /* Run through all infinite regions and free all 
-   * large objects that are not marked. */
+  /* If major GC run through all infinite regions and free all large
+   * objects that are not marked. */
+  /* ToDo: GenGC spørg Martin, om jeg skal gøre andet ved minor GC - ja jeg skal vel unmarke */
+  debug_gc(fprintf(stderr,"\n[free large objects...")); // ToDo: GenGC remove
   for( r = TOP_REGION ; r ; r = r->p ) 
-    {
-      Lobjs *lobjs;
-      int first = 1;
-      Lobjs **lobjs_ptr = &(r->lobjs); // last live next-slot
-      lobjs = r->lobjs;
-      while ( lobjs )
-	{
-	  unsigned int tag;
+      {
+	Lobjs *lobjs;
+	int first = 1;
+	Lobjs **lobjs_ptr = &(r->lobjs); // last live next-slot
+	lobjs = r->lobjs;
+	while ( lobjs )
+	  {
+	    unsigned int tag;
 #ifdef PROFILING
-	  tag = *(&(lobjs->value) + sizeObjectDesc);
+	    tag = *(&(lobjs->value) + sizeObjectDesc);
 #else
-	  tag = lobjs->value;
+	    tag = lobjs->value;
 #endif
-	  if ( is_constant(tag) )
-	    {                               // preserve object
-	      if ( first )
-		{
-		  first = 0;
-		  *lobjs_ptr = lobjs;
-		}
-	      else 
-		*lobjs_ptr = set_lobj_bit(lobjs);
-	      lobjs_ptr = &(lobjs->next);   // update slot
-	      lobjs = clear_lobj_bit(lobjs->next);
-	    }
-	  else // do not preserve object
-	    {	     
-	      char* orig;
-	      lobjs_current -= size_lobj(tag);
-	      orig = lobjs->orig;
-	      lobjs = clear_lobj_bit(lobjs->next);
-	      free(orig);            // deallocate object
-	    }
-	}
-      
-      if ( first )
-	*lobjs_ptr = NULL;
-      else
-	*lobjs_ptr = set_lobj_bit(NULL);
-
-      // check consistency
-      /*
-      printf("check begin\n");
-      lobjs = r->lobjs;
-      if ( is_lobj_bit(lobjs) )
-	die ("check: lobj bit set");
-      while ( lobjs )
-	{
+	    if ( is_constant(tag) 
+#ifdef ENABLE_GEN_GC
+		 || is_minor_p  /* Preserve all objects in a minor gc */
+#endif /* ENABLE_GEN_GC */ 
+		 )
+	      {                               // preserve object
+		if ( first )
+		  {
+		    first = 0;
+		    *lobjs_ptr = lobjs;
+		  }
+		else 
+		  *lobjs_ptr = set_lobj_bit(lobjs);
+		lobjs_ptr = &(lobjs->next);   // update slot
+		lobjs = clear_lobj_bit(lobjs->next);
+	      }
+	    else // do not preserve object
+	      {	     
+		char* orig;
+		lobjs_current -= size_lobj(tag);
+		orig = lobjs->orig;
+		lobjs = clear_lobj_bit(lobjs->next);
+		free(orig);            // deallocate object
+	      }
+	  }
+	
+	if ( first )
+	  *lobjs_ptr = NULL;
+	else
+	  *lobjs_ptr = set_lobj_bit(NULL);
+	
+	// check consistency
+	/*
+	  printf("check begin\n");
+	  lobjs = r->lobjs;
+	  if ( is_lobj_bit(lobjs) )
+	  die ("check: lobj bit set");
+	  while ( lobjs )
+	  {
 	  unsigned int sz = size_lobj(lobjs->value);
 	  printf("size_lobj: %d\n", sz);
 	  lobjs = lobjs->next;
 	  if ( is_lobj_bit(lobjs) )
-	    lobjs = clear_lobj_bit(lobjs);
+	  lobjs = clear_lobj_bit(lobjs);
 	  else
-	    die ("check: lobj bit set");	  
-	}
-      printf("check end\n");
-      */
-    }
+	  die ("check: lobj bit set");	  
+	  }
+	  printf("check end\n");
+	*/
+      }
+    debug_gc(fprintf(stderr,"]\n")); // ToDo: GenGC remov
 
   // Unmark all tospace bits in region pages in regions on the stack
   // Update colorPtr in all region pages.
+  debug_gc(fprintf(stderr,"[unmarking tospace bits...")); // ToDo: GenGC remove
   for( r = TOP_REGION ; r ; r = r->p ) 
     {
       clear_tospace_bit_and_set_colorPtr_in_gen(&(r->g0));
-      #ifdef ENABLE_GEN_GC
-        clear_tospace_bit_and_set_colorPtr_in_gen(&(r->g1));
-      #endif /* ENABLE_GEN_GC */
+#ifdef ENABLE_GEN_GC
+      clear_tospace_bit_and_set_colorPtr_in_gen(&(r->g1));
+#endif /* ENABLE_GEN_GC */
     }
+  debug_gc(fprintf(stderr,"]\n")); // ToDo: GenGC remove
 
   lobjs_gc_treshold = (int)(heap_to_live_ratio * (double)lobjs_current);
 
@@ -1473,7 +1666,7 @@ gc(unsigned int **sp, unsigned int reg_map)
 	  FRAG_sum = FRAG_sum + FRAG;
 	}
 
-      fprintf(stderr," %dkb(%dkb) +L%dkb (%4.1f%) -> %dkb(%dkb) +L%dkb, free-list: %dkb, alloc: %dkb +L%dkb, RI: %4.1f%, GC: %4.1f%]\n",
+      fprintf(stderr,"%dkb(%dkb) +L%dkb (%4.1f%) -> %dkb(%dkb) +L%dkb, free-list: %dkb, alloc: %dkb +L%dkb, RI: %4.1f%, GC: %4.1f%]\n",
 	      size_from_space / 1024,
 	      rp_from_space,
 	      lobjs_beforegc / 1024,

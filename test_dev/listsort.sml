@@ -1,3 +1,6 @@
+(*val a_unsort = Random.randomlist (2500, Random.newgen ());
+val a_sort = Listsort.sort Real.compare a_unsort;*)
+
 (* Auxiliary functions for test cases *)
 
 infix 1 seq
@@ -24,7 +27,7 @@ fun tstrange s bounds = (tst s) o range bounds
 val _ = print "\nFile listsort.sml: Testing structure Listsort...\n"
 
 local 
-    val a_unsort = Random.randomlist (10000, Random.newgen ());
+    val a_unsort = Random.randomlist (3000, Random.newgen ());
     val a_sort = Listsort.sort Real.compare a_unsort;
 in
     val test1 = tst "test1"

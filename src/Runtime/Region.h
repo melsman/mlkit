@@ -301,6 +301,7 @@ typedef Ro* Region;
 #define set_gen_1(gen)           (set_fp((gen),GENERATION))
 #define is_gen_1(gen)            (generation(gen) == GENERATION)
 #else
+#define is_gen_1(gen)            (0) /* Only g0 exists if no GC enabled */
 #define clear_fp(fp)     (fp)
 #endif /*ENABLE_GC*/
 
@@ -493,6 +494,9 @@ int *allocGenProfiling(Gen *gen, int n, int pPoint);  // used by Table.c
 
 void printTopRegInfo();
 int size_free_list();
+void pp_reg(int rAddr,  char *str);
+void pp_gen(Gen *gen);
+void chk_obj_in_gen(Gen *gen, unsigned int *obj_ptr, char* s);
 
 void free_lobjs(Lobjs* lobjs);
 

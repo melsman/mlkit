@@ -474,11 +474,19 @@ struct
 	I.fstpl (D("0",base_reg)) :: C
 
 
-    (* When tag free collection of pairs is enabled, a bit is stored in the
-     * region descriptor if the region is an infinite region holding pairs. Here we
-     * arrange that special C functions for allocating regions are called for 
-     * regions containing pairs; these C functions then take care of setting the appropriate 
-     * bit - mael 2002-10-14 *)
+    (* When tag free collection of pairs is enabled, a bit is stored
+       in the region descriptor if the region is an infinite region
+       holding pairs, refs, triples and arrays. Here we arrange that
+       special C functions for allocating regions are called for
+       regions containing pairs, refs, triples and arrays; these C
+       functions then take care of setting the appropriate bit.
+
+       Notice the difference between the function
+       values_in_region_untagged being regions containing untagged
+       values and the function
+       regions_holding_values_of_the_same_type_only being regions
+       holding values of the same type and this type is set in the
+       region descriptor.*)
 
     fun values_in_region_untagged (place:Effect.place) : bool =
 	BI.tag_values() andalso not(tag_pairs_p())
@@ -486,6 +494,16 @@ struct
 		     SOME Effect.PAIR_RT => true 
 		   | SOME Effect.REF_RT => true
 		   | SOME Effect.TRIPLE_RT => true
+		   | _ => false)
+			   
+
+    fun regions_holding_values_of_the_same_type_only (place:Effect.place) : bool =
+	BI.tag_values() andalso not(tag_pairs_p())
+	andalso (case Effect.get_place_ty place of 
+		     SOME Effect.PAIR_RT => true 
+		   | SOME Effect.REF_RT => true
+		   | SOME Effect.TRIPLE_RT => true
+		   | SOME Effect.ARRAY_RT => true
 		   | _ => false)
 			   
 
@@ -2186,11 +2204,12 @@ struct
 			    end
 			   | LineStmt.INF =>
 			    let val name = 
-				if values_in_region_untagged place then 
+				if regions_holding_values_of_the_same_type_only place then 
 				    case Effect.get_place_ty place of
 					SOME Effect.PAIR_RT => "allocPairRegionInfiniteProfilingMaybeUnTag"
 				      | SOME Effect.REF_RT => "allocRefRegionInfiniteProfilingMaybeUnTag"
 				      | SOME Effect.TRIPLE_RT => "allocTripleRegionInfiniteProfilingMaybeUnTag"
+				      | SOME Effect.ARRAY_RT => "allocArrayRegionInfiniteProfilingMaybeUnTag"
 				      | _ => die "alloc_region_prim.name"
 				else "allocRegionInfiniteProfilingMaybeUnTag"
 			    in
@@ -2207,11 +2226,12 @@ struct
 			      maybe_store_tag (place,offset,C)  (* finite region; no code generated *)
 			   | LineStmt.INF => 
 			      let val name = 
-				  if values_in_region_untagged place then 
+				  if regions_holding_values_of_the_same_type_only place then 
 				      case Effect.get_place_ty place of
 					  SOME Effect.PAIR_RT => "allocatePairRegion"
 					| SOME Effect.REF_RT => "allocateRefRegion"
 					| SOME Effect.TRIPLE_RT => "allocateTripleRegion"
+					| SOME Effect.ARRAY_RT => "allocateArrayRegion"
 					| _ => die "alloc_region_prim.name2"
 				  else "allocateRegion"
 			      in
@@ -3017,7 +3037,7 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	    (* Notice, that regionId is not tagged because compile_c_call is not used *)
             (* Therefore, we do not use the MaybeUnTag-version. 2001-05-11, Niels     *)
 	    fun c_name rho = 
-		if values_in_region_untagged rho then
+		if regions_holding_values_of_the_same_type_only rho then
 		    case Effect.get_place_ty rho of
 			SOME Effect.PAIR_RT =>
 			    if region_profiling() then "allocPairRegionInfiniteProfiling"
@@ -3028,6 +3048,9 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 		      | SOME Effect.TRIPLE_RT =>
 			    if region_profiling() then "allocTripleRegionInfiniteProfiling"
 			    else "allocateTripleRegion"
+		      | SOME Effect.ARRAY_RT =>
+			    if region_profiling() then "allocArrayRegionInfiniteProfiling"
+			    else "allocateArrayRegion"
 		      | _ => die "allocate_global_regions.c_name"
 		else 
 		    if region_profiling() then "allocRegionInfiniteProfiling"

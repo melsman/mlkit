@@ -1,6 +1,6 @@
 let
-  fun print (s:string):unit = prim ("printStringML","printStringML",s)
-  fun print_num (n:int):unit = prim ("printNum","printNum",n)
+  fun print (s:string):unit = prim ("printStringML",s)
+  fun print_num (n:int):unit = prim ("printNum",n)
 
   infix ::
   infix +
