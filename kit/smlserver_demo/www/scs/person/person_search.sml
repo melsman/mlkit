@@ -23,7 +23,7 @@ val query = `
 			| _	        => ``
 		    ) ^^ `
        order by name`
-val items = Db.list (fn g => (`^(g "name")`,"person_id",  g "person_id")) query
+val items = ScsError.wrapPanic (Db.list (fn g => (`^(g "name")`,"person_id",  g "person_id"))) query
 
 (* We must keep other hidden query data that should be given to the target url. *)
 val query_data = 
