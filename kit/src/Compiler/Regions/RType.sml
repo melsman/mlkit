@@ -397,44 +397,49 @@ struct
 
 
 
-  fun mk_lay_sigma_aux (omit_region_info: bool):  tyvar list * StringTree list * arroweffect list * Type->  PP.StringTree =
+  fun mk_lay_sigma_aux (omit_region_info: bool):  
+    tyvar list * StringTree list * arroweffect list * Type->  PP.StringTree =
   let 
     val (lay_ty, _) = mk_layout omit_region_info
-    fun lay_sig([],[],[], tau) = if !Flags.print_types 
-                                     then lay_ty(tau)
-                                   else PP.LEAF ""
-      | lay_sig (alphas, rho_trees, epsilons,tau) = 
+    fun lay_sig (alphas, rho_trees, epsilons,tau) = 
+      (case(alphas,rho_trees, epsilons) of
+         ([],[],[]) => if !Flags.print_types then lay_ty(tau) else PP.LEAF ""
+       | _ => 
           let val children = 
-	          if !Flags.print_effects then (*print regions and effect and -perhaps- types: *)
+	          if !Flags.print_effects then 
+                    (*print regions and effect and -perhaps- types: *)
 		    (if !Flags.print_types then map layout_tyvar alphas
 		     else [])  @  rho_trees  @  map lay_node_short epsilons
 		  else (if !Flags.print_types then map layout_tyvar alphas
 			else [])  @  (if !Flags.print_regions then  rho_trees
 				      else [])
 	    
-  	      val binders = if !Flags.print_effects then
-                                 PP.NODE{start="",finish="",indent=1,childsep=PP.RIGHT ",",
-				    children=children}
-                            else PP.HNODE{start="",finish="",childsep=PP.RIGHT ",",
-				    children=children}
+  	      val binders = PP.HNODE{start="",finish="",childsep=PP.RIGHT ",",
+                                     children=children}
               
-          in if !Flags.print_types then 
-               Node{start = "all ", finish = "", indent = 3, childsep = PP.RIGHT ".", 
+          in if !Flags.print_types 
+             then 
+               Node{start = "all ", finish = "", indent = 3, 
+                    childsep = PP.RIGHT ".", 
                     children = [binders,lay_ty tau]}
              else (case children
 		     of [] => PP.LEAF ""
-		      | _ => if !Flags.print_regions orelse !Flags.print_effects
-			       then Node{start = "[", finish = "]", indent = 1, childsep = PP.NOSEP, 
+		      | _ => if !Flags.print_regions orelse 
+                                !Flags.print_effects
+                               then Node{start = "[", finish = "]", 
+                                         indent = 1, childsep = PP.NOSEP, 
 					 children = [binders]}
 			     else binders)
           end
+      )
   in
     lay_sig
   end
 
   fun mk_lay_sigma omit_region_info  =
       let val f = mk_lay_sigma_aux omit_region_info 
-      in fn (FORALL (raw as(alphas,rhos,epss,tau))) => f(alphas, map lay_node rhos, epss, tau)
+      in fn (FORALL (raw as(alphas,rhos,epss,tau))) => 
+              f(alphas, map lay_node rhos, epss, tau)
       end
 
   

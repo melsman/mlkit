@@ -366,39 +366,64 @@ struct
 
   fun layout_mul m = PP.LEAF (show_mul m)
       
+  (* layout_ateffect ae sets and clears visited fields*)
   fun layout_ateffect ae = 
        if Eff.is_arrow_effect(Eff.find ae) then Eff.layout_effect ae 
        else Eff.layout_effect_deep ae
+
+  (* layout_effectvar: no side effect *)
   fun layout_effectvar eps = Eff.layout_effect eps
+
+  (* show_effectvar: no side effect *)
   fun show_effectvar eps = PP.flatten1(layout_effectvar eps)
 
+  (* layout_effect: sets and clears visited fields *)
   fun layout_effect (ef:effect) = 
         layout_list (map layout_ateffect ef)
+
+  (* layout_aref sets and clears visited fields *)
   fun layout_aref(eps, phi) = 
         layout_pair(layout_ateffect eps, ".", layout_effect phi)
+
+ 
+  (*  layout_atompair sets and clears visited fields *)
   fun layout_atompair(ae, mul) = 
         layout_pair(layout_ateffect ae, ":", layout_mul mul)
+
+  (*  layout_mulef sets and clears visited fields *)
   fun layout_mulef psi = 
         layout_set_horizontal (map layout_atompair psi)
+
+  (*  layout_mularef sets and clears visited fields *)
   fun layout_mularef (eps, psi)= 
         layout_pair(layout_effectvar eps,".", layout_mulef psi)
+
+  (*  layout_mularefset sets and clears visited fields *)
   fun layout_mularefset Psi = 
         layout_set (map layout_mularef Psi)
+
+  (*  layout_effectvar_int: no side-effect *)
   fun layout_effectvar_int (i:int) = PP.LEAF(Int.toString i)
+
+  (*  layout_mularefmap sets and clears visited fields *)
   fun layout_mularefmap Psi = 
         GlobalEffVarEnv.layoutMap{start = "Mularefmap: [", finish = "]", eq = " -> ", sep = ", "}
           layout_effectvar (layout_mularef o !) Psi
 
+  (*  layout_imp_mularefmap: sets and clears visited fields *)
   fun layout_imp_mularefmap Psi = 
         EffVarEnv.layoutMap{start = "{", finish = "}", eq = "=", sep = ","}
           layout_effectvar_int (layout_mularef o !) Psi
 
+  (*  layout_effectvars: no side-effect *)
   fun layout_effectvars epss =
        PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT" ",
                children = map layout_effectvar epss}
       
+  (*  layout_place : no side-effect *)
   fun layout_place p = Eff.layout_effect p
 
+  (*  layout_places: no side-effects *)
   fun layout_places rhos =
        PP.NODE{start = "", finish = "", indent = 0, childsep = PP.RIGHT" ",
                children = map layout_place rhos}
@@ -406,6 +431,7 @@ struct
        PP.NODE{start = " at ", finish = "", indent = 4, childsep = PP.NOSEP,
                children = [t]}
       
+  (* layout_qmul: sets and clears visited fields *)
   fun layout_qmul (epses, rhos, Psi)= 
        PP.NODE{start = "forall ", finish = "", indent = 7, childsep = PP.NOSEP,
                children = [layout_effectvars epses,

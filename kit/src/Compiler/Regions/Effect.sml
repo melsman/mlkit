@@ -93,9 +93,12 @@ struct
                            pix : int ref,      (* pre-order index; for normalised type schemes *)
                            ty : runType}
   
-  fun layout_einfo(einfo) = case einfo of
+  fun layout_einfo(einfo) = 
+   case einfo of
         EPS{key,level,...} => PP.LEAF("e"^ show_key key 
-                             ^ (if !print_rho_levels then "(" ^ show_level level ^ ")" else ""))
+                             ^ (if !print_rho_levels then 
+                                  "(" ^ show_level level ^ ")" 
+                                else ""))
       | PUT   => PP.LEAF "put"
       | GET   => PP.LEAF "get"
       | UNION _=> PP.LEAF "U"
@@ -104,10 +107,11 @@ struct
 		   (if !print_rho_types then show_runType ty
 		    else "") ^ 
 		   (if !print_rho_levels then "(" ^ show_level level ^ ")" 
-		    else "")^
+		    else "")(*^
                    (if !print_rho_types then 
 		      case put of SOME _ => "$" | NONE => ""
-		    else ""))
+		    else "")*)
+                  )
 
   fun transparent(UNION _) = true
     | transparent _     = false
@@ -948,7 +952,7 @@ tracing *)
           footnote app (fn node => G.get_visited node:= false) l2
      end
   
-  fun say_eps eps = PP.outputTree(say, layout_effect_deep eps, !Flags.colwidth)
+  fun say_eps eps = PP.outputTree(say, layout_effect eps, !Flags.colwidth)
 
   (* update_areff(eps) assumes that the increments recorded for eps have
      level no greater than the level of eps *)
@@ -1642,10 +1646,13 @@ tracing *)
 
   fun bottom_up_eval (g : effect list) : unit =
       (* 
-       * bottom_up_eval f g : evaluates the graph g bottom up using function f.
-       * f is supposed to be applied to the info of a node n and the info of all 
-       * the nodes in its out-set after bottom_up_eval of these nodes.
-       * The graph is suppossed to acyclic.
+       * bottom_up_eval g : every EPS or UNION node has a
+       * 'represents' fields. bottom_up_eval g sets the represents
+       * field of every node n reachable from a node in g
+       * to a sorted list of all the PUT and EPS nodes that
+       * can be reached from n.
+
+       * The graph is supposed to be acyclic.
        *)
       let
         fun search (n: effect) : effect list  = 
@@ -1656,11 +1663,23 @@ tracing *)
             if !r then
               case G.get_info n of 
                 EPS{represents = SOME l, ...} => insert_into_list(n,l)
+              | EPS{represents = NONE, ...} =>
+                   (say "broken invariant: bottom_up_eval: cyclic effect: "  ;
+                    say_eps n; say "\n";
+                    []
+                   )
               | UNION{represents = SOME l} => l
+              | UNION{represents = NONE} =>
+                   (say "broken invariant: bottom_up_eval: cyclic union: "  ;
+                    G.layout_graph layout_einfo(G.add_node_to_graph(n,
+                                                                    G.mk_graph()));
+                    say "\n";
+                    []
+                   )
               | PUT => [n]
               | GET => []
               | _ => (say "bottom_up_eval: unexpected node(1): "  ;
-                      say_eps n;
+                      say_eps n; say "\n";
                       []
                      )
             else
@@ -1704,8 +1723,9 @@ tracing *)
       do a bottom-up evaluation of the graph *)
 
   fun eval_phis (phis: effect list) : unit =
-      let val     _ = G.remove_cycles(G.subgraph phis)
-          val nodes = G.nodes(G.subgraph phis)
+      let (*val     _ = G.remove_cycles(G.subgraph phis)
+            val nodes = G.nodes(G.subgraph phis) *)
+            val nodes = contract_effects(phis)
       in bottom_up_eval nodes handle exn =>
           (say "\neval_phis failed; nodes = ";
            say_etas (layoutEtas nodes);

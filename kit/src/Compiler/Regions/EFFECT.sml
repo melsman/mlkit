@@ -190,12 +190,12 @@ sig
 *)
 
   type StringTree
-  val layout_effect_deep: effect -> StringTree
-  val layout_effect: effect->StringTree
-  val layoutLayer: coneLayer -> StringTree
-  val layoutLayerRng: coneLayer -> StringTree
-  val layoutCone : cone -> StringTree
-  val layoutEtas: effect list -> StringTree list
+  val layout_effect_deep: effect -> StringTree  (* sets and clears visited field*)
+  val layout_effect: effect->StringTree         (* no side-effect *)
+  val layoutLayer: coneLayer -> StringTree      (* sets and clears visited field*)
+  val layoutLayerRng: coneLayer -> StringTree   (* sets and clears visited field*)
+  val layoutCone : cone -> StringTree           (* sets and clears visited field*)
+  val layoutEtas: effect list -> StringTree list(* sets and clears visited field*)
 end	
 
 
