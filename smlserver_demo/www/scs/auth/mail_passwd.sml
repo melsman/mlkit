@@ -1,4 +1,8 @@
-val email = ScsFormVar.wrapFail ScsFormVar.getEmailErr ("email","Email")
+val email = 
+  case ScsFormVar.wrapOpt ScsFormVar.getEmailErr "email" of
+    SOME email => email
+  | NONE => ScsFormVar.wrapFail ScsFormVar.getLoginErr ("email","Email")
+val email = ScsPerson.fix_email email
 
 val emsg = [(ScsLang.en,`You typed an email that is either not in our database or your account has not been activated - 
 			 please click your browsers back button and try again or contact the %0  if you believe
@@ -48,9 +52,9 @@ Best Regards,
 
 %4`)]
 
-val html_msg = `Du vil om kort tid modtage en email med dit password.<br>
+val html_msg = `Du (^email) vil om kort tid modtage en email med dit password.<br>
   <a href="/scs/auth/auth_form.sml">Tilbage til login siden</a><p>
-  (eng. In a short time, you'll receive an email with your password.<br>
+  (eng. In a short time, you'll (^email) receive an email with your password.<br>
    <a href="/scs/auth/auth_form.sml">Go to the login page</a>`
 
 val html_title = "Password er tilsendt pr. mail (eng. Password has been mailed)"

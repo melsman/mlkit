@@ -56,6 +56,13 @@ signature SCS_PERSON =
     (* [cprToSex cpr] if cpr is a valid cpr then the sex (either Male
        of Female) is returned. Otherwise an exception is returned. *)
     val cprToSex : string -> sex
+
+    (* [fix_email email] do the following conversions:
+         - if email is of form login@itu.dk => login@it-c.dk
+         - if email is of form login@it.edu => login@it-c.dk
+         - if email is of form login => login@it-c.dk
+     *)
+    val fix_email : string -> string
   end
 
 structure ScsPerson :> SCS_PERSON =
@@ -127,4 +134,32 @@ structure ScsPerson :> SCS_PERSON =
       | "7" => Male
       | "9" => Male
       | _ => Female
+
+    (* do the following conversions:
+         - if email is of form login@itu.dk => login@it-c.dk
+         - if email is of form login@it.edu => login@it-c.dk
+         - if email is of form login => login@it-c.dk
+     *)
+    fun fix_email email =
+      let
+	val regExpExtract = RegExp.extract o RegExp.fromString
+      in
+	case regExpExtract "([a-z][a-z0-9\\-]+)@(itu.dk|it.edu)" email of
+	  SOME [l,e] => l ^ "@it-c.dk"
+	| _ => 
+	    (case regExpExtract "([a-z][a-z0-9\\-]+)" email of
+	       SOME [l] => l ^ "@it-c.dk"
+	     | _ => email)
+      end
+    (* Test code for fix_email
+       fun try s =
+         print (s ^ " = " ^ (fix_email s) ^ "\n")
+       val _ =
+         (try "nh";
+          try "hanne@ruc.dk";
+          try "nh@it-c.dk";
+          try "nh@itu.dk";
+          try "nh@it.edu";
+          try "nh@diku.dk")
+       handle Fail s => print s*)
   end
