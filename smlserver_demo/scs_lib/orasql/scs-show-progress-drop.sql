@@ -1,0 +1,1 @@
+drop table scs_sp_content;
