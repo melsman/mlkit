@@ -1,5 +1,5 @@
-  val cookies = (foldl (fn ((n,v),a) => `<li> ^n : ^v ` ^^ a)
-		 `` Ns.Cookie.allCookies)
+  val cookies = foldl (fn ((n,v),a) => `<li> ^n : ^v ` ^^ a)
+		`` (Ns.Cookie.allCookies())
 
   val _ = Page.return "Cookie Example" 
   (`

@@ -31,4 +31,3 @@
 
   val _ = RatingUtil.returnPageWithTitle 
     ("Ratings - " ^ name) body
-
