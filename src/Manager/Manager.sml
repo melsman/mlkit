@@ -65,11 +65,13 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      and funstamp = ManagerObjects.funstamp       (* unit names and file names. *)
 
     fun unitname_to_logfile unitname = unitname ^ ".log"
-    fun unitname_to_sourcefile unitname = unitname ^ ".sml"
-    fun filename_to_unitname (f:string) : string =
+    fun unitname_to_sourcefile unitname = unitname (*mads ^ ".sml"*)
+    fun filename_to_unitname (f:string) : string = f
+(*mads
       case rev (explode f)
 	of #"l":: #"m":: #"s":: #"."::unitname => implode (rev unitname)
 	 | _ => die "filename_to_unitname.filename not ending with .sml"
+*)
 
     val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
@@ -161,6 +163,12 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       let
  
         fun parse_error s' = error ("while parsing project: " ^ quot prjid ^ " : " ^ s')
+        fun parse_error1(s', rest: string list) = 
+          case rest of 
+            [] => error ("while parsing project: " ^ quot prjid ^ " : " ^ s' ^ "(reached end of file)")
+          | s::_ => error ("while parsing project: " ^ quot prjid ^ " : " ^ s' ^ "(reached `" ^ s ^ "')")
+             
+
 	fun has_ext(s,ext) = case OS.Path.ext s
 			       of SOME ext' => ext = ext'
 				| NONE => false
@@ -199,20 +207,21 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			(case parse_body_opt ss
 			   of SOME(body',ss) => SOME(SEQbody[LOCALbody(body1,body2),body'], ss)
 			    | NONE => SOME(LOCALbody(body1,body2), ss))
-		       | _ => parse_error "I expect an `end'"
+		       | s::ss => parse_error1 ("I expect an `end'.) ", s::ss)
+
 		  fun parse_rest(body1,ss) =
 		    case ss
 		      of "in" :: ss => 
 			(case parse_body_opt ss
 			   of SOME(body2,ss) => parse_rest'(body1,body2,ss)
 			    | NONE => parse_rest'(body1,SEQbody[],ss))
-		       | _ => parse_error "I expect an `in'"
+		       | _ => parse_error1( "I expect an `in'", ss)
 	      in case parse_body_opt ss
 		   of SOME(body1,ss) => parse_rest(body1,ss)
 		    | NONE => parse_rest(SEQbody[],ss)
 	      end
 	     | s :: ss => 
-	      if has_ext(s,"sml") then 
+	      if has_ext(s,"sml") orelse has_ext(s,"sig") then 
 		case parse_body_opt ss
 		  of SOME (body', ss) => SOME(SEQbody[UNITbody s, body'], ss)
 		   | NONE => SOME(UNITbody s, ss)
@@ -222,28 +231,28 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  let fun parse_end(prjids, body, ss) =
 	        case ss
 		  of [] => {imports=prjids,body=body}
-		   | _ => parse_error "I expect end of file"
+		   | _ => parse_error1( "I expect end of file", ss)
 	  in case ss
 	       of [] => {imports=[],body=SEQbody[]}
 		| "import" :: ss =>
 		 let fun parse_rest'(prjids,body,ss) =
 		       case ss
 			 of "end" :: ss => parse_end(prjids,body,ss)
-			  | _ => parse_error "I expect an `end'"
+			  | _ => parse_error1( "I expect an `end'", ss)
 		     fun parse_rest(prjids, ss) =
 		       case ss
 			 of "in" :: ss =>
 			   (case parse_body_opt ss
 			      of SOME(body, ss) => parse_rest'(prjids,body,ss)
 			       | NONE => parse_rest'(prjids,SEQbody[],ss))
-			  | _ => parse_error "I expect an `in'"
+			  | _ => parse_error1( "I expect an `in'", ss)
 		 in case parse_prjids_opt ss
 		      of SOME(prjids,ss) => parse_rest(prjids,ss)
 		       | NONE => parse_rest([],ss)
 		 end
 		| _ => (case parse_body_opt ss
 			  of SOME(body,ss) => parse_end([],body,ss)
-			   | NONE => parse_error "I expect an `import' or a body")
+			   | NONE => parse_error( "I expect an `import' or a body"))
 	  end
 
 	and parse_prjids_opt ss =
