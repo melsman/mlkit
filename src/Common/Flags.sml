@@ -92,7 +92,6 @@ functor Flags (structure Crash : CRASH
     (* Flags for Lambda Backend *)
 
     val log_to_file = ref false
-    val target_file_extension = ref ".s" (*or ".c", with the C back end*)
     val c_compiler = ref "gcc" (*or maybe "gcc -ansi" or "cc -Aa" *)
 
     val colwidth = colwidth
@@ -1052,8 +1051,7 @@ end
   (*Entries not included in menu and exe-options, but in lookup functions*)
 
   val _ = app add_string_entry0
-    [("c_compiler", c_compiler),                       (*e.g. "cc -Aa" or "gcc -ansi"*)
-     ("target_file_extension", target_file_extension)  (*e.g. ".uo" or ".s"*)
+    [("c_compiler", c_compiler)                       (*e.g. "cc -Aa" or "gcc -ansi"*)
      ]
 
   val _ = app add_bool_entry0

@@ -48,9 +48,7 @@ functor ExecutionDummy(ExecutionArgs : EXECUTION_ARGS) : EXECUTION =
                  | CEnvOnlyRes of CEnv
     fun compile _ = CodeRes (CompilerEnv.emptyCEnv, CompileBasis.empty, (), ())
     val generate_link_code = NONE
-    fun emit _ = ()
-
-    fun assemble _ = ()
+    fun emit _ = ""
     fun link_files_with_runtime_system _ _ _ = ()
 
   end

@@ -12,7 +12,6 @@ in
   val _ = (disable "garbage_collection";
 	   K.Flags.SMLserver := true;
 
-	   K.Flags.target_file_extension := ".uo";
 	   K.Flags.lookup_string_entry "kam_uolistfile" := "basislib.ul";
 	   K.build_basislib() ;
 	   K.Flags.lookup_string_entry "kam_uolistfile" := "";

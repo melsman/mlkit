@@ -99,9 +99,6 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	(*logging*)
 	val log_to_file = Flags.lookup_flag_entry "log_to_file"
 
-	(*targets*)
-	val target_file_extension = Flags.lookup_string_entry "target_file_extension"
-
 	(*linking*)
 	val region_profiling = Flags.lookup_flag_entry "region_profiling"
 	fun path_to_runtime () = 
@@ -113,16 +110,7 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	  in OS.Path.concat(OS.Path.concat(!Flags.install_dir, "bin"), file())
 	  end
 
-
-	(* -----------------------------
-	 * Append functions
-	 * ----------------------------- *)
-	  
-	fun append_ext s = s ^ !target_file_extension (* changed from ".s" 2000-10-10, Niels *)
-
-	fun append_o s = s ^ ".o"
-
-	(* --------------------
+      	(* --------------------
 	 * Deleting a file
 	 * -------------------- *)
 
@@ -135,11 +123,8 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun emit (target, target_filename) =
 	  let val target_filename = pmdir() ^ target_filename
 	      val target_filename = OS.Path.mkAbsolute(target_filename, OS.FileSys.getDir())
-              val target_filename_s = append_ext target_filename
-	      val target_filename_o = append_o target_filename
-	      val _ = Execution.emit {target=target,filename=target_filename_s}
-	      val _ = Execution.assemble (target_filename_s, target_filename_o)
-	  in target_filename_o
+	      val target_filename_ext = Execution.emit {target=target,filename=target_filename}
+	  in target_filename_ext
 	  end
 
 	(* -------------------------------------------------------------
@@ -260,7 +245,11 @@ functor ManagerObjects(structure ModuleEnvironments : MODULE_ENVIRONMENTS
 	fun exist EMPTY_MODC = true
 	  | exist (SEQ_MODC(mc1,mc2)) = exist mc1 andalso exist mc2
 	  | exist (NOTEMITTED_MODC _) = true
-	  | exist (EMITTED_MODC(file,_)) = OS.FileSys.access (file,[]) handle _ => false
+	  | exist (EMITTED_MODC(file,_)) = 
+	  let val res = OS.FileSys.access (file,[]) handle _ => false
+	  in if res then res
+	     else (print ("File " ^ file ^ " not present\n"); res)
+	  end
 
 	fun emit(absprjid: absprjid, modc) =
 	  let fun em EMPTY_MODC = EMPTY_MODC

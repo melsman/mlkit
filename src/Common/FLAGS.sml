@@ -69,8 +69,6 @@ signature FLAGS =
 					     is enabled.
 					  *)
 
-    
-    val target_file_extension : string ref  (* State *)
     val log : TextIO.outstream ref
     val colwidth : int ref
 

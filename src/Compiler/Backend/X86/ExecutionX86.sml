@@ -116,10 +116,7 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 	    end
       end
     val generate_link_code = SOME (fn (labs,exports) => CodeGen.generate_link_code (labs,exports))
-
-    fun emit {target, filename:string} : unit =
-      CodeGen.emit (target, filename)
-
+	
 
     fun delete_file f = OS.FileSys.remove f handle _ => ()
     fun execute_command command : unit =
@@ -144,6 +141,16 @@ functor ExecutionX86 (BuildCompile : BUILD_COMPILE) : EXECUTION =
 
 	   -ooutfile   Name the output file from the linker outfile.  The
 		       default name is a.out.*)
+
+
+    fun emit {target, filename:string} : string =
+      let val filename_o = filename ^ ".o"
+	  val filename_s = filename ^ ".s"
+      in CodeGen.emit (target, filename_s);
+	assemble(filename_s, filename_o);
+	filename_o
+      end
+
 
     fun link_files_with_runtime_system path_to_runtime files run =
       let val files = map (fn s => s ^ " ") files
