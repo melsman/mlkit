@@ -55,10 +55,18 @@ signature SCS_WIDGET =
        server. Formvariable name is fv. *)
     val select   : (string * string) list -> string -> quot
 
+    (* [selectAttr opts fv attr] same as select except that it is possible to 
+       include attributes in the <select> tag *)
+    val selectAttr   : (string * string) list -> string -> string -> quot
+
     (* [selectWithDefault opts default fv] is similar to select except
        that if the default value default exists as a value in the
        options list opts, then it is pre-selected. *)
     val selectWithDefault : (string * string) list -> string -> string -> quot
+
+    (* [selectAttrWithDefault opts default fv attr] same as select except that
+ 	it is possible to include attributes in the <select> tag *)
+    val selectAttrWithDefault : (string * string) list -> string -> string -> string -> quot
 
     (* [selectYesNoWithDefault default fv] returns a selection box
        with yes and no options. Value returned is either t or f
@@ -162,9 +170,19 @@ signature SCS_WIDGET =
        all languages and the users default language preselected. *)
     val selectLang      : ScsLang.lang -> string -> quot
 
+    (* [selectLangAttr lang default attr] same as selectLang, 
+	except that it is possible to include attributes in the <select> 
+	tag *)
+    val selectLangAttr : ScsLang.lang -> string -> string -> quot
+
     (* [selectLang' in_language default fv] same as selectLang, except that 
        in_language controls the language the selectbox is presented in *)
     val selectLang'      : ScsLang.lang -> ScsLang.lang -> string -> quot
+
+    (* [selectLangAttr' in_language default fv attr] same as selectLang', 
+	except that it is possible to include attributes in the <select> 
+	tag *)
+    val selectLangAttr' : ScsLang.lang -> ScsLang.lang -> string -> string -> quot
 
     (* [period p fv]: returns HTML for two entry boxes: one for
        start date and one for end date. A period p is a pair
@@ -276,15 +294,19 @@ structure ScsWidget :> SCS_WIDGET =
     val smallWideTa = ta 2 80
     val smallTa = ta 5 20
 
-    fun select opts fv =
-      `<select name="^fv">
+    fun selectAttr opts fv attr =
+      `<select name="^fv" ^(attr)>
       ` ^^ (List.foldr (fn ((l,v),acc) => `
 			<option value="^v">^l</option>` ^^ acc) `</select>` opts)
+    fun select opts fv = selectAttr opts fv ""
 
-    fun selectWithDefault opts default fv =
-      `<select name="^fv">
+    fun selectAttrWithDefault opts default fv attr =
+      `<select name="^fv" ^(attr)>
       ` ^^ (List.foldr (fn ((l,v),acc) => `
 			<option value="^v" ^(if v=default then "selected" else "")>^l</option>` ^^ acc) `</select>` opts)
+
+    fun selectWithDefault opts default fv = 
+      selectAttrWithDefault opts default fv ""
 
     fun selectYesNoWithDefault default fv = 
       let
@@ -391,9 +413,17 @@ structure ScsWidget :> SCS_WIDGET =
       selectWithDefault (ScsLang.all_for_sel_box (ScsLogin.user_lang()))
       (ScsLang.toString default) fv
 
+    fun selectLangAttr default fv attr = 
+      selectAttrWithDefault (ScsLang.all_for_sel_box (ScsLogin.user_lang()))
+      (ScsLang.toString default) fv attr
+
     fun selectLang' in_language default fv = 
       selectWithDefault (ScsLang.all_for_sel_box in_language)
       (ScsLang.toString default) fv
+
+    fun selectLangAttr' in_language default fv attr = 
+      selectAttrWithDefault (ScsLang.all_for_sel_box in_language)
+      (ScsLang.toString default) fv attr
 
     fun period (start_date_opt,end_date_opt) fv = 
       (* we append fv with _FV_start__ and _FV_end__ because we actually
