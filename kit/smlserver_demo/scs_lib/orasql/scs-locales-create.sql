@@ -177,6 +177,9 @@ show errors
 insert into scs_lang (lang_id, language) values (scs_object_id_seq.nextval, 'en');
 insert into scs_lang (lang_id, language) values (scs_object_id_seq.nextval, 'da');
 
+-- NB! (knp): remember to put language_name_tid here for en, da
+
+
 /* these languages are not used at IT-c
 insert into scs_lang (lang_id, language) values (scs_object_id_seq.nextval, 'no');
 insert into scs_lang (lang_id, language) values (scs_object_id_seq.nextval, 'sv');
