@@ -10,7 +10,7 @@ infixr 5 ::
 infix  6 + - ^
 infix  7 div mod / * 
 
-exception Chr and Div and Mod and Quot and Floor and Sqrt and
+exception Chr and Quot and Floor and Sqrt and
       Exp and Ln and Io of string
 
 
@@ -33,8 +33,6 @@ fun size (s:string): int =                  prim(31, ("sizeString", "sizeString"
 fun explode (str: string): char list =      prim(31, ("explodeString", "explodeStringProfiling", str))
 fun implode (chars: char list): string =    prim(31, ("implodeChars", "implodeCharsProfiling", chars))
 fun op ^ (s1:string, s2:string): string =   prim(31, ("concatString", "concatStringProfiling", s1, s2)) 
-fun (x: int) div (y: int): int =            prim(31, ("divInt", "divInt", x, y, Div))
-fun (x: int) mod (y: int): int =            prim(31, ("modInt", "modInt", x, y, Mod)) 
 fun real(x: int): real =                    prim(31, ("realInt", "realInt", x))
 fun floor(x:real):int =                     prim(31, ("floorFloat", "floorFloat", x, Floor))
 fun (x: real) / (y: real): real =           prim(31, ("divFloat", "divFloat", x, y, Quot))

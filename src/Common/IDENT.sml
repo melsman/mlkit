@@ -39,6 +39,8 @@ signature IDENT =
     (* Identifiers needed for initial environment - because of overloading *)
     val id_ABS: id
     val id_NEG: id
+    val id_DIV: id
+    val id_MOD: id
     val id_PLUS: id
     val id_MINUS: id
     val id_MUL: id
@@ -47,16 +49,20 @@ signature IDENT =
     val id_LESSEQ: id
     val id_GREATEREQ: id
 
-    (* other identifiers in the initial basis *)
-
-    val id_STD_IN: id
-    val id_STD_OUT: id
-    val id_Match : id
-    val id_Bind : id
     val resetRegions: id
     val forceResetting: id
+    val id_STD_IN: id
+    val id_STD_OUT: id
 
-   (* Bogus identifier *)
+    (*exception constructors in the initial basis which are not declared in
+     the prelude:*)
+
+    val id_Div : id
+    val id_Mod : id
+    val id_Match : id
+    val id_Bind : id
+
+    (* Bogus identifier *)
     val bogus: longid
 
     val reset : unit -> unit   (* resets counter to initial counter. *)

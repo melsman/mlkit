@@ -602,7 +602,7 @@ functor CompileDec(structure Con: CON
 	     | OverloadingInfo.RESOLVED_WORD => int
 	     | OverloadingInfo.RESOLVED_CHAR => int
 	     | OverloadingInfo.RESOLVED_STRING => die "int_or_real: string"
-	     | OverloadingInfo.UNRESOLVED _ => die "int_or_real: unresolved")
+	     | _ => die "int_or_real: unresolved")
       fun string_or_int_or_real info (int, real, string) =
 	    (case NoSome "string_or_int_or_real" (ElabInfo.to_OverloadingInfo info) of
 	       OverloadingInfo.RESOLVED_INT => int
@@ -610,12 +610,14 @@ functor CompileDec(structure Con: CON
 	     | OverloadingInfo.RESOLVED_WORD => int
 	     | OverloadingInfo.RESOLVED_CHAR => int
 	     | OverloadingInfo.RESOLVED_STRING => string
-	     | OverloadingInfo.UNRESOLVED _ => die "string_or_int_or_real: unresolved")
+	     | _ => die "string_or_int_or_real: unresolved")
       fun unoverload i CE.ABS = int_or_real i (ABS_INTprim, ABS_REALprim)
 	| unoverload i CE.NEG = int_or_real i (NEG_INTprim, NEG_REALprim)
 	| unoverload i CE.PLUS = int_or_real i (PLUS_INTprim, PLUS_REALprim)
 	| unoverload i CE.MINUS = int_or_real i (MINUS_INTprim, MINUS_REALprim)
 	| unoverload i CE.MUL = int_or_real i (MUL_INTprim, MUL_REALprim)
+	| unoverload i CE.DIV = CCALLprim ("divInt", {instance=compileType Type.Int})
+	| unoverload i CE.MOD = CCALLprim ("modInt", {instance=compileType Type.Int})
 	| unoverload i CE.LESS =
 	    string_or_int_or_real i
 	      (LESS_INTprim, LESS_REALprim,
@@ -635,7 +637,8 @@ functor CompileDec(structure Con: CON
 	| unoverload i _ = die "unoverload"
     in
       fun overloaded_prim info result (*e.g., CE.ABS*)
-	    compilerAtexp compilerExp (arg: Grammar.atexp) takes_one_argument =
+	    compilerAtexp compilerExp (arg: Grammar.atexp)
+	    takes_one_argument exn_args =
 	    if takes_one_argument then
 	      let val arg' = compilerAtexp arg
 	      in PRIM (unoverload info result, [arg'])
@@ -647,11 +650,12 @@ functor CompileDec(structure Con: CON
 					 Some(EXPROW(_,_,exp2,None))))) =>
 		 let val exp1' = compilerExp exp1
 		     val exp2' = compilerExp exp2
-		 in PRIM (unoverload info result, [exp1',exp2'])
+		 in PRIM (unoverload info result, [exp1',exp2'] @ exn_args)
 		 end
 	       | _ => die "overloaded_prim")
 
-      fun overloaded_prim_fn info result (*e.g., CE.ABS*) takes_one_argument =
+      fun overloaded_prim_fn info result (*e.g., CE.ABS*)
+	    takes_one_argument exn_args =
 	    let val ty = int_or_real info (CONStype ([], TyName.tyName_INT),
 					   CONStype ([], TyName.tyName_REAL))
 	        val lvar1 = Lvars.newLvar ()
@@ -666,7 +670,8 @@ functor CompileDec(structure Con: CON
 			       [PRIM (SELECTprim 0,
 				      [VAR {lvar=lvar1, instances=[]}]),
 				PRIM (SELECTprim 1,
-				      [VAR {lvar=lvar1, instances=[]}])])}
+				      [VAR {lvar=lvar1, instances=[]}])]
+			       @ exn_args)}
 	    end
     end (*local*)
 
@@ -679,28 +684,25 @@ functor CompileDec(structure Con: CON
       syntax. *)
 
     fun decomposePrimArg atexp: int * exp list =
-      let 
-        val (primno,arg) =
-          case atexp of 
-            RECORDatexp(_,
-              Some(EXPROW(_, _, ATEXPexp(_, SCONatexp(_, SCon.INTEGER i)),
-                          Some(EXPROW(_, _, exp2, None))))) => (i, exp2)
-         | _ => die "decomposePrimArg(1)"
+      let val (primno,arg) =
+	    (case atexp of 
+	       RECORDatexp(_,
+			   Some(EXPROW(_, _, ATEXPexp(_, SCONatexp(_, SCon.INTEGER i)),
+				       Some(EXPROW(_, _, exp2, None))))) => (i, exp2)
+	     | _ => die "prim syntax error")
 
-	fun decomposeArgs arg =
-	  case arg 
-	    of None => []
-	     | Some(EXPROW(_,_,exp1, arg')) => exp1 :: (decomposeArgs arg')
+	fun decomposeArgs None = []
+	  | decomposeArgs (Some (EXPROW(_,_,exp1, arg'))) =
+	      exp1 :: decomposeArgs arg'
 
-	fun decomposeExp exp =
-	  case exp
-	    of ATEXPexp(_,RECORDatexp(_,expRow)) => decomposeArgs expRow
-	     | _ => [exp]
+	fun decomposeExp (ATEXPexp (_, RECORDatexp (_,expRow))) =
+	      decomposeArgs expRow
+	  | decomposeExp exp = [exp]
       in
         (primno,
-         if primno < 0 then die "decomposePrimArg(2)"
-         else 
-	   decomposeExp arg)
+         if primno < 0 then die ("prim number must be non-negative.  It is "
+				 ^ Int.string primno)
+         else decomposeExp arg)
       end
 
     (* ----------------------------------------------------------------------- *)
@@ -728,15 +730,19 @@ functor CompileDec(structure Con: CON
 		   val il' = CE.on_il(S,il)
 	       in VAR {lvar=lv,instances=il'}
 	       end
-	      | CE.ABS =>       overloaded_prim_fn info CE.ABS       true 
-	      | CE.NEG =>       overloaded_prim_fn info CE.NEG       true 
-	      | CE.PLUS =>      overloaded_prim_fn info CE.PLUS      false
-	      | CE.MINUS =>     overloaded_prim_fn info CE.MINUS     false
-	      | CE.MUL =>       overloaded_prim_fn info CE.MUL       false
-	      | CE.LESS =>      overloaded_prim_fn info CE.LESS      false
-	      | CE.GREATER =>   overloaded_prim_fn info CE.GREATER   false
-	      | CE.LESSEQ =>    overloaded_prim_fn info CE.LESSEQ    false
-	      | CE.GREATEREQ => overloaded_prim_fn info CE.GREATEREQ false
+	      | CE.ABS =>       overloaded_prim_fn info CE.ABS       true  []
+	      | CE.NEG =>       overloaded_prim_fn info CE.NEG       true  []
+	      | CE.PLUS =>      overloaded_prim_fn info CE.PLUS      false []
+	      | CE.MINUS =>     overloaded_prim_fn info CE.MINUS     false []
+	      | CE.MUL =>       overloaded_prim_fn info CE.MUL       false []
+	      | CE.DIV =>       overloaded_prim_fn info CE.DIV       false
+	           [PRIM (EXCONprim Excon.ex_DIV, [])]
+	      | CE.MOD =>       overloaded_prim_fn info CE.MOD       false
+		   [PRIM (EXCONprim Excon.ex_MOD, [])]
+	      | CE.LESS =>      overloaded_prim_fn info CE.LESS      false []
+	      | CE.GREATER =>   overloaded_prim_fn info CE.GREATER   false []
+	      | CE.LESSEQ =>    overloaded_prim_fn info CE.LESSEQ    false []
+	      | CE.GREATEREQ => overloaded_prim_fn info CE.GREATEREQ false []
 	      | CE.CON(con,tyvars,_,il,it) => (*See COMPILER_ENV*)
 	       let
 		 val (functional,Type,instances) =
@@ -887,15 +893,19 @@ functor CompileDec(structure Con: CON
 		in PRIM(FORCE_RESET_REGIONSprim{instance = tau'}, [arg'])
 		end
 
-	    | CE.ABS =>       overloaded_prim info CE.ABS       (compileAtexp env) (compileExp env) arg true 
-	    | CE.NEG =>       overloaded_prim info CE.NEG       (compileAtexp env) (compileExp env) arg true 
-	    | CE.PLUS =>      overloaded_prim info CE.PLUS      (compileAtexp env) (compileExp env) arg false
-	    | CE.MINUS =>     overloaded_prim info CE.MINUS     (compileAtexp env) (compileExp env) arg false
-	    | CE.MUL =>       overloaded_prim info CE.MUL       (compileAtexp env) (compileExp env) arg false
-	    | CE.LESS =>      overloaded_prim info CE.LESS      (compileAtexp env) (compileExp env) arg false
-	    | CE.GREATER =>   overloaded_prim info CE.GREATER   (compileAtexp env) (compileExp env) arg false
-	    | CE.LESSEQ =>    overloaded_prim info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false
-	    | CE.GREATEREQ => overloaded_prim info CE.GREATEREQ (compileAtexp env) (compileExp env) arg false
+	    | CE.ABS =>       overloaded_prim info CE.ABS       (compileAtexp env) (compileExp env) arg true  []
+	    | CE.NEG =>       overloaded_prim info CE.NEG       (compileAtexp env) (compileExp env) arg true  []
+	    | CE.PLUS =>      overloaded_prim info CE.PLUS      (compileAtexp env) (compileExp env) arg false []
+	    | CE.MINUS =>     overloaded_prim info CE.MINUS     (compileAtexp env) (compileExp env) arg false []
+	    | CE.MUL =>       overloaded_prim info CE.MUL       (compileAtexp env) (compileExp env) arg false []
+	    | CE.DIV =>       overloaded_prim info CE.DIV       (compileAtexp env) (compileExp env) arg false
+		[PRIM (EXCONprim Excon.ex_DIV, [])]
+	    | CE.MOD =>       overloaded_prim info CE.MOD       (compileAtexp env) (compileExp env) arg false 
+		[PRIM (EXCONprim Excon.ex_MOD, [])]
+	    | CE.LESS =>      overloaded_prim info CE.LESS      (compileAtexp env) (compileExp env) arg false []
+	    | CE.GREATER =>   overloaded_prim info CE.GREATER   (compileAtexp env) (compileExp env) arg false []
+	    | CE.LESSEQ =>    overloaded_prim info CE.LESSEQ    (compileAtexp env) (compileExp env) arg false []
+	    | CE.GREATEREQ => overloaded_prim info CE.GREATEREQ (compileAtexp env) (compileExp env) arg false []
 	    | CE.PRIM =>   
 	       (* Application of `prim'. We must now disassemble the 
 		* argument to get the prim number and the arguments 

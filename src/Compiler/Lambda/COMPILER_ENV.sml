@@ -71,7 +71,7 @@ signature COMPILER_ENV =
       | CON of con * tyvar list * Type * Type list * instance_transformer 
       | EXCON of excon * Type
       | REF
-      | ABS | NEG | PLUS | MINUS | MUL | LESS 
+      | ABS | NEG | PLUS | MINUS | MUL | DIV | MOD | LESS 
       | GREATER | LESSEQ | GREATEREQ
       | RESET_REGIONS | FORCE_RESET_REGIONS
       | PRIM		(* Looking up a value identifier will

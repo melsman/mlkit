@@ -161,6 +161,8 @@ functor LambdaStatSem(structure LambdaExp : LAMBDA_EXP
 			      (Excon.ex_SUM, None),
 			      (Excon.ex_DIFF, None),
 			      (Excon.ex_PROD, None),
+			      (Excon.ex_DIV, None),
+			      (Excon.ex_MOD, None),
 			      (Excon.ex_MATCH, None),
 			      (Excon.ex_BIND, None)]
 
