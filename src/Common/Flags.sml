@@ -634,7 +634,7 @@ struct
 	  | bitem false = "off"
 	fun indent s = 
 	  map (fn s => "     " ^ s ^ "\n") (String.tokens (fn c => c = #"\n") s)
-	val width = 70
+	val width = 60
 	fun default(s, d) = StringCvt.padRight #" " (width - (String.size d)) s ^ " (" ^ d ^ ")\n"
 	fun negation (e:bentry) =
 	  if not(#neg e) then nil
@@ -779,8 +779,7 @@ in
       ]
   val _ = add true
       ("print_regions", "print regions ", print_regions,
-       "Print regions in types and expressions? Is this what this\n\
-	\flag does?")
+       "Print region variables in types and expressions.")
   val _ = app (add false)
        [
        ("print_K_normal_forms", "print K-Normal Forms", print_K_normal_forms,
@@ -806,11 +805,13 @@ val _ = add_int_entry {long="colwidth",short=NONE, menu=["Layout", "text width i
 
 val _ = add_bool_entry {long="optimiser",short=SOME "opt", menu=["Control", "Optimiser", "optimiser"],
 			item=optimiser,neg=true, 
-			desc="Enable optimisation of intermediate language code (Lambda\n\
-			 \Expressions). Which optimisations are performed is controlled\n\
-			 \by individual flags. The optimisations include function in-\n\
-			 \lining, function specialisation, fix-minimization, unboxing\n\
-			 \of function arguments, and elimination of explicit records."}
+			desc=
+			"Enable optimisation of intermediate language code\n\
+			\(Lambda Expressions). Which optimisations are performed\n\
+			\is controlled by individual flags. The optimisations\n\
+			\include function in-lining, function specialisation,\n\
+			\fix-minimization, unboxing of function arguments, and\n\
+			\elimination of unnecessary record constructions."}
 
 local
   fun add neg (l, s, r, desc) = add_bool_entry {long=l, short=NONE, menu=["Control", "Optimiser", s],
@@ -828,19 +829,19 @@ in
      "Minimize fix constructs (Lambda Expression Optimiser)."), 	
     ("fix_conversion", "fix conversion", fix_conversion,
      "Convert   let x = e' in e   to   fix x = e' in e\n\
-      \when e' is a lambda abstraction, in order to avoid building\n\
-      \of closures in order to increase region polymorphism\n\
-      \(Lambda Expression Optimiser)."), 
+      \when e' is a lambda abstraction, in order to avoid\n\
+      \building of closures in order to increase region\n\
+      \polymorphism (Lambda Expression Optimiser)."), 
      ("contract", "contract", contract,
       "Contract is responsible for in-lining, specialization,\n\
-       \elimination of dead code, and much else (Lambda Expression\n\
-       \Optimiser)."),
+       \elimination of dead code, and much else (Lambda\n\
+       \Expression Optimiser)."),
       ("specialize_recursive_functions", "specialize recursive functions", specialize_recursive_functions,
        "Specialise recursive functions. Use the option\n\
 	\maximum_specialise_size to control which functions\n\
 	\are specialised. If this flag is on, functions that are\n\
-	\applied only once are specialised, no matter the setting of\n\
-	\maximum_specialise_size (Lambda Expression Optimiser)."), 
+	\applied only once are specialised, no matter the setting\n\
+	\of maximum_specialise_size (Lambda Expression Optimiser)."), 
        ("unbox_function_arguments", "unbox function arguments", unbox_function_arguments,
 	"Unbox arguments to fix-bound functions, for which the\n\
 	 \argument `a' is used only in contexts `#i a'. All call \n\
@@ -862,17 +863,17 @@ local
 in
   val _ = add("maximum_inline_size", "maximum inline size", maximum_inline_size,
 	      "Functions smaller than this size (counted in abstract\n\
-	       \syntax tree nodes) are in-lines, even if they are used more\n\
-	       \than once. Functions that are used only once are always\n\
-	       \in-lined.")
+	       \syntax tree nodes) are in-lines, even if they are used\n\
+	       \more than once. Functions that are used only once are\n\
+	       \always in-lined.")
 
   val _ = add("maximum_specialise_size", "maximum specialise size", maximum_specialise_size,
 	      "Curried functions smaller than this size (counted in\n\
 	      \abstract syntax tree nodes) are specialised if all\n\
 	      \applications of the function within its own body are\n\
-	      \applied to its formal argument, even if they are used more\n\
-	      \than once. Functions that are used only once are specialised\n\
-	      \no matter their size. See also the option\n\
+	      \applied to its formal argument, even if they are used\n\
+	      \more than once. Functions that are used only once are\n\
+	      \specialised no matter their size. See also the option\n\
 	      \--specialize_recursive_functions.")
 end
 
@@ -891,9 +892,9 @@ in
      desc="Enable garbage collection. When enabled, regions are\n\
       \garbage collected during execution of the program. When\n\
       \garbage collection is enabled, all values are tagged. Due\n\
-      \to region inference, for most programs, the garbage collector\n\
-      \is invoked less often than for systems based only on garbage\n\
-      \collection."}
+      \to region inference, for most programs, the garbage\n\
+      \collector is invoked less often than for systems based\n\
+      \only on garbage collection."}
 end
 
 local
@@ -905,13 +906,13 @@ in
    ("all_multiplicities_infinite", NONE, "all multiplicities infinite (for POPL 96)", 
     all_multiplicities_infinite,
     "Use only infinite regions. That is, store all values in\n\
-     \infinite regions, which do not reside on the stack, but in\n\
-     \the heap. With this flag disabled, all regions that can be\n\
-     \inferred that values are allocated in them at most once are\n\
-     \allocated on the stack."),
+     \infinite regions, which do not reside on the stack, but\n\
+     \in the heap. With this flag disabled, all regions that\n\
+     \can be inferred that values are allocated in them at\n\
+     \most once are allocated on the stack."),
    ("disable_atbot_analysis", NONE, "all storage modes attop (for POPL 96)", disable_atbot_analysis,
-    "Disable storage mode analysis. That is, turn all allocation\n\
-     \directives into attop."),
+    "Disable storage mode analysis. That is, turn all\n\
+     \allocation directives into attop."),
    ("warn_on_escaping_puts", NONE, "warn on escaping put effects", warn_on_escaping_puts,
     "Enable the compiler to issue a warning whenever a \n\
      \region type scheme contains a put effect on a region\n\
@@ -921,10 +922,11 @@ in
     ]
   val _ = add true
     ("import_basislib", SOME "basislib", "import Basis Library", import_basislib,
-     "Import Basis Library automatically in your projects. If you wish\n\
-      \to make use of the Standard ML Basis Library in your projects, this\n\
-      \option should be turned on, unless you wish to import the Basis\n\
-      \Library manually in your projects.")
+     "Import Basis Library automatically in your projects. If \n\
+      \you wish to make use of the Standard ML Basis Library\n\
+      \in your projects, this option should be turned on, unless\n\
+      \you wish to import the Basis Library manually in your\n\
+      \projects.")
 end
 
 val _ = app (fn (s, f) => Menu.add_action_to_menu ("", ["Control", s], f))
@@ -942,12 +944,13 @@ val _ = add_string_entry
      {long="install_dir", short=NONE, menu=["File", "installation directory"], 
       item=install_dir,
       desc="Installation directory for the ML Kit. For normal\n\
-       \execution you should not modify this value. However, if you\n\
-       \wish to use the ML Kit with an altered runtime system and you\n\
-       \do not wish to exchange the .o-files in the bin-subdirectory (for\n\
-       \example because you are running the ML Kit on a shared system),\n\
-       \you can update this setting and the system will try to link to\n\
-       \a runtime system in the bin-subdirectory found in the new install\n\
+       \execution you should not modify this value. However,\n\
+       \if you wish to use the ML Kit with an altered runtime\n\
+       \system and you do not wish to exchange the .o-files in\n\
+       \the bin-subdirectory (for example because you are running\n\
+       \the ML Kit on a shared system), you can update this\n\
+       \setting and the system will try to link to a runtime\n\
+       \system in the bin-subdirectory found in the new install\n\
        \directory."}
 
 local 
@@ -977,8 +980,8 @@ in
      \by the profiling tool rp2ps that comes with the ML Kit to\n\
      \produce profiling graphs of various forms."),
    ("show_region_flow_graph", NONE, "show region flow graph and generate .vcg file", show_region_flow_graph,
-    "Show a region flow graph for the program and generate a .vcg-\n\
-     \file, which can be viewed using the xvcg.")
+    "Show a region flow graph for the program and generate a\n\
+     \.vcg-file, which can be viewed using the xvcg.")
     ]
 val _ = add true
    ("print_all_program_points", NONE, "print all program points", print_all_program_points,
@@ -1010,14 +1013,15 @@ in
   val _ = app (add ["Debug", "Manager"] false) 
   [
    ("debug_linking", "debug_linking", ref false,
-    "Debug linking of target code by showing which object files\n\
-     \are linked together."),
+    "Debug linking of target code by showing which object\n\
+     \files are linked together."),
    ("debug_man_enrich", "debug compilation manager enrichment", ref false,
-    "During interactive use, show information about why a program\n\
-     \unit need be recompiled. In the ML Kit, a program unit (or a\n\
-     \functor body) is recompiled if either (a) the program unit is\n\
-     \modified, or (b) information about an identifier for which the\n\
-     \program unit depends upon has changed.")
+    "During interactive use, show information about why a\n\
+     \program unit need be recompiled. In the ML Kit, a\n\
+     \program unit (or a functor body) is recompiled if\n\
+     \either (a) the program unit is modified, or (b)\n\
+     \information about an identifier for which the program\n\
+     \unit depends upon has changed.")
    ]
 
   val _ = app (add ["Debug"] false) 

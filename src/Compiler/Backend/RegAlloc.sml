@@ -37,8 +37,8 @@ struct
     {long="register_allocation", short=NONE, item=ref true, neg=true,
      menu=["Control", "register allocation"],
      desc="Perform register allocation. Without register allocation\n\
-      \enabled, programs run somewhat slower--but they run and you\n\
-      \save about 15 percent on compile time."}
+      \enabled, programs run somewhat slower--but they run andn\n\
+      \you save about 15 percent on compile time."}
 				  
   type lvarset = Lvarset.lvarset
   type place = Effect.place

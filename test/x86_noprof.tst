@@ -30,6 +30,7 @@ typerr.sml          ccl       ecte
 opaque.sml          ccl
 opaque2.sml                           nobasislib
 functor.sml         ccl
+functor2.sml        ccl
 constraint.sml
 lex.sml                               nobasislib
 layout.sml
@@ -52,6 +53,7 @@ kkb_eq.sml              tx tc gc
 kkb36c.sml              tx tc gc
 kitsimple.sml           tx tc gc
 fft.sml                 tx tc gc
+vliw.sml                tx tc gc
 msort.pm                tx tc gc
 tststrcmp.sml                 gc
 FuhMishra.pm            tx tc gc

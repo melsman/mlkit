@@ -89,12 +89,26 @@ functor IntModules(structure Name : NAME
     type InfixBasis = ManagerObjects.InfixBasis
     type ElabEnv = ManagerObjects.ElabEnv
     type ElabBasis = ManagerObjects.ElabBasis
+    val keep_functor_bodies_in_memory = ref false
+    val _ = Flags.add_bool_entry 
+      {long="keep_functor_bodies_in_memory", short=NONE, neg=false,
+       menu=["Debug", "keep functor bodies in memory"], 
+       item=keep_functor_bodies_in_memory,
+       desc="With this flag enabled, functor bodies are kept in\n\
+	\memory, for the compilation of future applications of\n\
+	\the functors. Keeping functor bodies in memory causes\n\
+	\the memory consumptions of the compiler to grow\n\
+	\dramatically. With the flag disabled (which is the\n\
+	\default), the compiler writes the functor body to disk\n\
+	\and reparses and reelaborates the functor body for each\n\
+	\application. Reelaboration is necessary because the\n\
+	\compiler uses type information in many of its backend\n\
+	\phases."}
 
     fun die s = Crash.impossible ("IntModules." ^ s)
     fun print_error_report report = Report.print' report (!Flags.log)
 
     fun log (s:string) : unit = TextIO.output (!Flags.log, s)
-    fun pr_st (t:PP.StringTree) = PP.outputTree (print, t, !Flags.colwidth)
     fun chat s = if !Flags.chat then log (s ^ "\n") else ()
     fun pr_tynames [] = ""
       | pr_tynames [t] = TyName.pr_TyName t
@@ -292,16 +306,26 @@ functor IntModules(structure Name : NAME
 	| OPAQUE_CONSTRAINTstrexp(i, strexp, sigexp) => 
 	   die "OPAQUE_CONSTRAINTstrexp.should be eliminated at this stage"
 	| APPstrexp(i, funid, strexp) => 
-	  let val (phi,Eres) = case to_TypeInfo i
+	  let val _ = chat ("[interpreting functor argument to functor " ^ FunId.pr_FunId funid ^ " begin...]")
+
+	      val (phi,Eres) = case to_TypeInfo i
 				 of SOME (ElabInfo.TypeInfo.FUNCTOR_APP_INFO {rea_inst,rea_gen,Env}) => 
-				   (Environments.Realisation.oo(rea_inst,rea_gen), Env)
+				   let (*val _ = print "Inst realisation is: \n"
+				     val _ = PP.printTree (Environments.Realisation.layout rea_inst)
+				     val _ = print "\n"
+				     val _ = print "Gen realisation is: \n"
+				     val _ = PP.printTree (Environments.Realisation.layout rea_gen)
+				     val _ = print "\n" *)
+				   in
+				     (Environments.Realisation.oo(rea_inst,rea_gen), Env)
+				   end
 				  | _ => die "int_strexp.APPstrexp.no (phi,E) info"
-	      val _ = chat "[interpreting functor argument begin...]"
+
 	      val (ce, cb, mc) = int_strexp(intB, strexp)
 	      val _ = chat "[interpreting functor argument end...]"
 	      val (absprjid,funstamp,strid,E,body_blaster,intB0) = IntFunEnv.lookup ((#1 o IntBasis.un) intB) funid
 	      val E' = Environments.Realisation.on_Env phi E
-	      val _ = chat "[contraining argument begin...]" 
+	      val _ = chat "[constraining argument begin...]" 
 	      val ce = CE.constrain(ce,E')
 	      val _ = chat "[constraining argument end...]"
 	      val intB1 = IntBasis.mk(IntFunEnv.empty,IntSigEnv.empty,CE.declare_strid(strid,ce,CE.emptyCEnv),
@@ -476,13 +500,11 @@ functor IntModules(structure Name : NAME
 	       end
 	      | _ => die "derived_form_repair.topdec is not a single structure binding.")
 
-    val keep_functor_bodies_in_memory = false
-
     fun generate_body_builder(absprjid : absprjid, funid, strid_arg,
 			      {infB: InfixBasis, elabB: ElabBasis, T: TyName list, 
 			       resE: ElabEnv, opaq_env: OpacityElim.opaq_env}, strexp : strexp) : unit -> strexp =
 
-      if keep_functor_bodies_in_memory then fn () => strexp
+      if !keep_functor_bodies_in_memory then fn () => strexp
 
       else let (* If the structure identifier is invented then we are
 		* dealing with the derived form of a functor
@@ -571,8 +593,8 @@ functor IntModules(structure Name : NAME
 			 (* Check that match succeeded and result environment is correct. *)
 			 val _ = if ElabEnv.eq(resE,resE') then ()
 				 else (print "Check on environments failed\n";
-				       print "\nresE = \n"; pr_st (ElabEnv.layout resE);
-				       print "\nresE' = \n"; pr_st (ElabEnv.layout resE');
+				       print "\nresE = \n"; PP.printTree (ElabEnv.layout resE);
+				       print "\nresE' = \n"; PP.printTree (ElabEnv.layout resE');
 				       print ("\nT = {" ^ pr_tynames T ^ "}\n"); 
 				       die ("generate_body_builder.the builder has been applied - \
 					\but the result environments are not equal (after matching.)"))

@@ -1,0 +1,55 @@
+
+
+********** functor2.sml *************
+
+> signature R =
+    sig
+      type r
+      val R : r
+    end
+  functor A(type r
+            val R : r
+           ): sig
+                type r
+              end
+  functor B(type r
+            val R : r
+           ): sig
+                structure A :
+                  sig
+                    type r
+                  end
+                type r
+              end
+  functor C(
+           ): sig
+                structure A :
+                  sig
+                    type r
+                  end
+                structure R :
+                  sig
+                    datatype r
+                      con R : r
+                  end
+              end
+  structure B :
+    sig
+      structure A :
+        sig
+          type r
+        end
+      type r
+    end
+  structure C :
+    sig
+      structure A :
+        sig
+          type r
+        end
+      structure R :
+        sig
+          datatype r
+            con R : r
+        end
+    end

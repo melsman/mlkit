@@ -442,6 +442,8 @@ old*)
         output_minipage(0,minipage)
     end
 
+    fun printTree t = outputTree (TextIO.print, t, !colwidth)
+
     type Report = Report.Report
 
     fun reportStringTree' width tree = 

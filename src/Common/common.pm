@@ -57,8 +57,10 @@ in
 
   commonBasicIO.sml
   Crash.sml
-  Flags.sml
   Report.sml
+  OrderFinMap.sml
+  Menu.sml
+  Flags.sml
   Timestamp.sml
   StrId.sml
   Ident.sml
@@ -72,18 +74,14 @@ in
  
   FinMap.sml
   FinMapEq.sml
-(*  EqFinMap.sml *)
   SortedFinMap.sml
   IntFinMapPT.sml
   WordFinMapPT.sml
-(*  IntFinMap.sml *)
-  OrderFinMap.sml
   QuasiMap.sml
   QuasiSet.sml
 
   IntSet.sml
   NatSet.sml
-(*  EqSetList.sml*)
   OrderSet.sml
 
   ../Manager/OpacityEnv.sml

@@ -1,4 +1,8 @@
 
+(* Opacity elmination; see Chapter 5 of Martin Elsman's Ph.D. Thesis
+ * ``Program Modules, Separate Compilation, and Intermodule
+ * Optimisation''. *)
+
 functor OpacityElim(structure Crash : CRASH
 		    structure PP : PRETTYPRINT
 		    structure OpacityEnv : OPACITY_ENV
@@ -13,6 +17,7 @@ functor OpacityElim(structure Crash : CRASH
 		    structure StatObject : STATOBJECT
 		      sharing StatObject.TyName = Environments.TyName = OpacityEnv.TyName = ElabInfo.TypeInfo.TyName
 		      sharing type StatObject.TypeFcn = Environments.TypeFcn
+			sharing type OpacityEnv.StringTree = Environments.StringTree
 		    structure TopdecGrammar : TOPDEC_GRAMMAR
 		      sharing type TopdecGrammar.info = ElabInfo.ElabInfo
 		      sharing type TopdecGrammar.tycon = Environments.tycon
@@ -26,6 +31,7 @@ functor OpacityElim(structure Crash : CRASH
   struct
     structure TyName = Environments.TyName
     structure DecGrammar = TopdecGrammar.DecGrammar
+    structure FunId = TopdecGrammar.FunId
     structure TyCon = DecGrammar.TyCon
     structure TypeInfo = ElabInfo.TypeInfo
     structure VE = Environments.VE
@@ -373,11 +379,19 @@ functor OpacityElim(structure Crash : CRASH
 	 | APPstrexp(i, funid, strexp) => 
 	  let val (strexp', rea_strexp) = elim_strexp(oenv, strexp)
 	      val rea_0 = rea_of oenv
+
+
 	      val (T, rea_funid) =                         
 		case OpacityEnv.lookup_funid oenv funid
-		  of SOME(T,rea_funid) => (T, rea_funid)  (* functor body realisation; the T is the 
-							   * set of generative names in the functor 
-							   * body (after opacity elimination) *) 
+		  of SOME(T,rea_funid) => (T, rea_funid)  
+		    (*
+		     * functor body realisation; the T is the set of generative 
+		     * names in the functor body after opacity elimination; this set 
+		     * may be either larger or smaller (in size) compared to the original
+		     * set of generative names. The realisation rea_funid maps abstract 
+		     * names in the functor body for funid into what they stand for
+		     *)
+
 		   | NONE => die "elim_strexp.APPstrexp: lookup funid"
 	      val (rea_i, rea_g, E) =  
 		case ElabInfo.to_TypeInfo i
@@ -393,21 +407,17 @@ functor OpacityElim(structure Crash : CRASH
 					     * it could be that part of the generative names 
 					     * have been resolved by the functor body realisation! *) 
 		   | NONE => die "elim_strexp.APPstrexp: cannot find inverse"
-	      val rea_g1 = Realisation_restrict_from (Realisation_dom rea_funid) rea_g
+	      val rea_g1 = Realisation_restrict_from dom_rea_funid rea_g
 		                            (* the realisation for the generative names
 					     * that are not resolved by the functor body 
 					     * realisation. *)
 	      val rea_g2 = Realisation_renaming (TyName_Set_difference T (Realisation_dom rea_g1))
 		                            (* a realisation for those generative names 
 					     * that become visible. *)
-	      val rea_i' = rea_strexp oo rea_0 oo rea_i  (* new functor instance realisation *)
-	      val rea_g' = rea_g1 oo rea_g2
-	      val rea' = rea_g2 oo rea_i' oo rea_funid oo rea_g_ oo rea_0 oo rea_strexp
-	      val E' = on_Env rea' E
-	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNCTOR_APP_INFO{rea_inst=rea_i',rea_gen=rea_g',Env=E'})
-(*
-	      val _ = print "\nOpacity Elimination of functor application.\n"
+
 	      fun pr s rea = (print ("\n" ^ s ^ " = "); pr_st (Realisation.layout rea); print "\n")
+(*
+	      val _ = print ("\nOpacity Elimination of functor application of " ^ FunId.pr_FunId funid ^ "\n")
 	      val _ = pr "rea_0" rea_0
 	      val _ = pr "rea_funid" rea_funid
 	      val _ = pr "rea_strexp" rea_strexp
@@ -416,10 +426,23 @@ functor OpacityElim(structure Crash : CRASH
 	      val _ = pr "rea_g_" rea_g_
 	      val _ = pr "rea_g1" rea_g1
 	      val _ = pr "rea_g2" rea_g2
-	      val _ = pr "rea_i'" rea_i'
-	      val _ = pr "rea_g'" rea_g'
-	      val _ = pr "rea'" rea'
 *)
+	      (* new functor instance realisation *)
+(*	      val rea_i' = rea_strexp oo rea_0 oo rea_i  *)
+	      val rea_i' = Realisation_restrict (Realisation_dom rea_i) (rea_0 oo rea_strexp oo rea_i)
+
+(*	      val _ = pr "rea_i'" rea_i'  *)
+
+	      val rea_g' = rea_g1 oo rea_g2
+
+(*	      val _ = pr "rea_g'" rea_g' *)
+
+	      val rea' = rea_g2 oo rea_i' oo rea_funid oo rea_g_ oo rea_0 oo rea_strexp
+
+(*	      val _ = pr "rea'" rea' *)
+
+	      val E' = on_Env rea' E
+	      val i' = ElabInfo.plus_TypeInfo i (TypeInfo.FUNCTOR_APP_INFO{rea_inst=rea_i',rea_gen=rea_g',Env=E'})
 	  in (APPstrexp(i', funid, strexp'), rea')
 	  end
 	 | LETstrexp(i, strdec, strexp) =>
@@ -536,18 +559,26 @@ functor OpacityElim(structure Crash : CRASH
 
    end (* local *)
 
+   val opacity_elim = true
+
    fun opacity_elimination (oenv: opaq_env, topdec: topdec) : topdec * opaq_env =
-     ((* Compiler.Profile.reset();
-      Compiler.Profile.setTimingMode true; *)
-      let
-	  val res = elim_topdec (oenv, topdec)
+     if opacity_elim then
+       ((* Compiler.Profile.reset();
+	 Compiler.Profile.setTimingMode true; *)
+	let
+	  val (t,e) = elim_topdec (oenv, topdec)
 (*
+	  val _ = print "\nOpacity_elimination env:\n"
+	  val _ = PP.printTree (OpacityEnv.layout e)
+*)
+	(*
 	  val tempfile = OS.FileSys.tmpName()
 	  val os = TextIO.openOut tempfile
 	  val _ = Compiler.Profile.report os
 	  val _ = TextIO.closeOut os   
 	  val _ = print ("[exported profile to file " ^ tempfile ^ "]\n")
-*)
-      in res
-      end)
+	    *)
+	in (t,e)
+	end)
+     else (topdec, OpacityEnv.empty)
   end

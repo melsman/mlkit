@@ -56,6 +56,7 @@ signature KIT_COMPILER =
     val build_basislib : unit -> unit
     val install : unit -> unit 
     val kit : string -> unit
+    val kitexe : string * string list -> OS.Process.status
     structure Flags : FLAGS
     structure Crash : CRASH
   end 
@@ -229,37 +230,6 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 					      unary=unary_options}
 	    in go_files rest
 	    end
-(*
-	  fun go_options (nil) = go_files nil
-	    | go_options (allargs as arg::args) =
-	    let fun fail_option s = raise Fail ("Failed while processing option `" ^ arg ^ "': " ^ s)
-	    in case arg
-		 of "-script" =>
-		   (case args
-		      of s::args => (Flags.read_script s; go_options args)
-		       | _ => fail_option "script file missing")
-		  | "-timings" => 
-		      (Flags.turn_on "compiler_timings";
-		       go_options args)
-		  | "-nobasislib" => (import_basislib := false; go_options args)
-		  | "-reportfilesig" => (Flags.turn_on "report_file_sig"; go_options args)
-		  | "-logtofiles" => (Flags.turn_on "log_to_file"; go_options args)
-		  | "-prof" => (Flags.turn_on "region_profiling"; go_options args)
-		  | "-gc" => (Flags.turn_on "garbage_collection";
-			      Flags.turn_on "tag_integers";
-			      Flags.turn_on "tag_values";
-			      go_options args)
-		  | "-chat" => (Flags.chat := true; go_options args)
-		  | "-noopt"  => (Flags.turn_off "optimiser"; go_options args)
-		  | "-opt_box_funargs"  => (Flags.turn_off "unbox_function_arguments"; go_options args)
-		  | "-version" => (print ("Installation directory is " ^ 
-					  !Flags.install_dir ^ "\n");
-				   raise Fail "")
-		  | "-help" => (print usage;
-				print (Flags.help_all()); raise Fail "")
-		  | _ => go_files allargs 
-	    end
-*)
 	in
 	  fun kitexe(root_dir, args) = 
 	    (print greetings; set_paths root_dir; go_options args)
@@ -289,16 +259,21 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	      print "\n ** Building basis library **\n\n";
 	      OS.FileSys.chDir "../basislib";
 	      set_paths (OS.Path.mkCanonical(OS.Path.concat(OS.FileSys.getDir(),"..")));
-	      Manager.build "basislib.pm";
+	      Manager.comp "basislib.pm";
 	      postjob()) handle exn => (postjob(); raise exn)
+	  end
+
+	(* the first argument is the Kit installation directory *)
+	val kitexe = fn a => 
+	  let fun strip_install_dir (_, install_dir :: rest) = (install_dir, rest)
+		| strip_install_dir _ = die ("strip_install_dir: An install directory must be " ^
+					     "provided as an argument to the executable!")
+	  in (kitexe o strip_install_dir) a
 	  end
 
 	fun install() =
 	  let 
 	    val _ = print "\n ** Exporting compiler executable **\n\n"
-	    fun strip_install_dir (_, install_dir :: rest) = (install_dir, rest)
-	      | strip_install_dir _ = die ("strip_install_dir: An install directory must be " ^
-					   "provided as an argument to the executable!")
 	    val kitbinkitimage_path = OS.Path.concat(default_root_dir, "bin/kit." ^ arch_os())
 	    val os = TextIO.openOut kitbinkit_path
 	    val _ = (TextIO.output(os, "sml @SMLload=" ^ kitbinkitimage_path ^ " " ^ 
@@ -308,7 +283,7 @@ functor KitCompiler(Execution : EXECUTION) : KIT_COMPILER =
 	      handle _ => (print("\n***Installation not fully succeeded; `chmod a+x " ^ 
 				 kitbinkit_path ^ "' failed***\n");
 			   OS.Process.failure)
-	  in SMLofNJ.exportFn(kitbinkit_path, kitexe o strip_install_dir)
+	  in SMLofNJ.exportFn(kitbinkit_path, kitexe)
 	  end
 	
 	fun kit scriptfile = (print greetings;
@@ -327,6 +302,7 @@ structure ExecutionArgs = ExecutionArgs()
 structure BuildCompile = BuildCompile (ExecutionArgs)
   
 functor KitX86() = KitCompiler(ExecutionX86(BuildCompile))
+
 functor KitKAM() = KitCompiler(ExecutionKAM(BuildCompile))
 functor KitHPPA() = KitCompiler(ExecutionHPPA(BuildCompile))
 functor KitDummy() = KitCompiler(ExecutionDummy(ExecutionArgs))

@@ -420,7 +420,7 @@ struct
     (case menu of
        DISPLAY l => 
         (show_path path;
-         outLine "";
+	 outLine "";
          show_menu menu; 
          case read_display_cmd () : cmd 
 	   of SELECTION n =>
@@ -457,7 +457,8 @@ struct
      | ACTION0 f => f ()
      | NOMENU => ())
 
-  and show_path (l : string list) = 
+  and show_path nil = ()
+    | show_path (l : string list) = 
         outLine(Edlib.List.stringSep "\t" "" "/" (fn s => s) (rev l));
 
 end (*functor Menu*)

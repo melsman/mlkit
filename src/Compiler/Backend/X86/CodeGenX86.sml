@@ -1795,9 +1795,11 @@ val _ = List.app (fn lab => print ("\n" ^ (I.pr_lab lab))) (List.rev dat_labs)
 	  end
 
 	fun store_exported_data_for_gc (labs,C) =
-	  foldr (fn (l,acc) => I.pushl(LA l) :: acc) 
-	  (I.pushl (I (int_to_string (List.length labs))) ::
-	   I.movl(R esp, L data_lab_ptr_lab) :: C) labs
+	  if gc_p() then
+	    foldr (fn (l,acc) => I.pushl(LA l) :: acc) 
+	    (I.pushl (I (int_to_string (List.length labs))) ::
+	     I.movl(R esp, L data_lab_ptr_lab) :: C) labs
+	  else C
 
 
 	fun raise_insts C = (* expects exception value on stack!! *)

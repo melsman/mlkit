@@ -21,8 +21,8 @@ struct
   val _ = app add_entry
     [("print_rho_levels", "print levels of region variables", print_rho_levels,
       "Print levels of region and effect variables in types and\n\
-       \intermediate forms. Levels control quantification of region\n\
-       \and effect variables."),
+       \intermediate forms. Levels control quantification of\n\
+       \region and effect variables."),
       ("print_rho_types", "print runtime types of region variables", print_rho_types,
        "Print region types of region variables in types and\n\
 	\intermediate forms. Possible region types are:\n\
@@ -31,8 +31,8 @@ struct
 	\        values are represented unboxed.\n\
 	\    r   type of regions containing only reals.\n\
 	\    s   type of regions containing only strings.\n\
-	\    t   type of regions not containing word values, reals, or\n\
-	\        strings.")]
+	\    t   type of regions not containing word values, reals,\n\
+	\        or strings.")]
 
   type StringTree = PP.StringTree
   infix footnote
