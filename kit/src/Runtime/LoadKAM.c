@@ -19,12 +19,129 @@
 #define debug(Arg) {}
 #endif
 
+/* -----------------------------------------------------
+ * String Map
+ * ----------------------------------------------------- */
+
+#if ( THREADS && CODE_CACHE )
+
+static unsigned int 
+hashString(const char *str)
+{
+  unsigned int hashval;
+  int i;
+
+  hashval = 0;
+  i = strlen(str);
+  while ( i > 0 )
+    {
+      hashval = ((hashval << 1) + str[--i]) & STRING_MAP_HASH_TABLE_SIZE;
+    }
+  return hashval;
+}
+
+StringMap* 
+stringMapInsert(StringMap* stringMap, 
+		char * name, bytecode_t code)
+{
+  int index;
+  StringMapHashList* newElem;
+  char* name_copy;
+
+  newElem = (StringMapHashList*)malloc(sizeof(StringMapHashList));
+  if ( newElem <= (StringMapHashList*)0 ) {
+    die("stringMapInsert error");
+  }
+
+  name_copy = (char*)malloc(strlen(name)+1);
+  strcpy(name_copy,name);
+
+  newElem->name = name_copy;
+  newElem->code = code;
+
+  index = hashString(name);
+  newElem->next = stringMap[index];
+
+  stringMap[index] = newElem;
+  return stringMap;              /* We want to allow for hash-table 
+				  * resizing in the future */
+}  
+
+
+/* Create and allocate space for a new StringMapHashTable */
+
+void 
+stringMapZero(StringMap* stringMap)
+{
+  int i;
+  for ( i = 0 ; i < STRING_MAP_HASH_TABLE_SIZE ; i++ ) 
+    {
+      stringMap[i] = NULL;
+    }
+}
+
+StringMap* 
+stringMapNew(void) 
+{
+  StringMap* stringMap;
+
+  if ( (stringMap = (StringMap*) malloc(sizeof(unsigned long) * STRING_MAP_HASH_TABLE_SIZE) ) <= 0 ) {
+    die("Unable to allocate memory for StringMapHashTable");
+  }
+
+  stringMapZero(stringMap);
+  return stringMap;
+}
+
+/* lookup bytecode in a stringMapHashTable; returns 0 on failure */
+
+bytecode_t
+stringMapLookup(StringMap* stringMap, char* name)
+{
+  StringMapHashList* p;
+  for ( p = stringMap[hashString(name)]; p != NULL ; p = p->next ) 
+    {
+      if ( strcmp(p->name,name) == 0 ) 
+	{
+	  return p->code;
+	}
+    }
+  return NULL;
+}
+
+void
+stringMapClear(StringMap* stringMap)
+{
+  int i;
+  StringMapHashList *p, *n;
+
+  for ( i = 0 ; i < STRING_MAP_HASH_TABLE_SIZE ; i++ ) 
+    {
+      p = stringMap[i];
+      while ( p )
+	{
+	  free(p->code);
+	  free(p->name);
+	  n = p->next;
+	  free(p);
+	  p = n;
+	}
+      stringMap[i] = 0;
+    }
+}
+
+#endif
+
+/* -----------------------------------------------------
+ * Label Map
+ * ----------------------------------------------------- */
+
 LabelMap* 
 labelMapInsert(LabelMap* labelMap, 
 	       unsigned long label, 
 	       unsigned long absAddr) 
 {
-  int index = (int)(label % LABEL_MAP_HASH_TABLE_SIZE);
+  int index = (int)(label & LABEL_MAP_HASH_TABLE_SIZE);
   LabelMapHashList* newElem;
 
   newElem = (LabelMapHashList*)malloc(sizeof(LabelMapHashList));
@@ -68,15 +185,18 @@ labelMapNew(void)
 
 /* lookup a label in a labelMapHashTable; returns 0 on failure */
 
-unsigned long labelMapLookup(LabelMap* labelMap, 
-			     unsigned long label) {
-  int index = (int)(label % LABEL_MAP_HASH_TABLE_SIZE);
+unsigned long 
+labelMapLookup(LabelMap* labelMap, unsigned long label) 
+{
+  int index = (int)(label & LABEL_MAP_HASH_TABLE_SIZE);
   LabelMapHashList* p;
-  for (p = labelMap[index]; p != NULL; p = p->next) {
-    if ( p->label == label ) {
-      return p->address;
+  for ( p = labelMap[index] ; p != NULL; p = p->next ) 
+    {
+      if ( p->label == label ) 
+	{
+	  return p->address;
+	}
     }
-  }
   return (unsigned long)0;
 }
 
@@ -104,6 +224,9 @@ interpNew(void)
   interp->codeList = NULL;
   interp->exeList = NULL;
   interp->data_size = INTERP_INITIAL_DATASIZE;
+#if ( THREADS && CODE_CACHE )
+  interp->codeCache = stringMapNew();
+#endif
   /*  debug(printf("interpNew4\n")); */
   return interp;
 }
@@ -169,7 +292,7 @@ void labelMapClear(LabelMap* labelMap)
 
 /* read_long: read a long from a buffer */
 
-unsigned long 
+static unsigned long 
 read_unsigned_long(unsigned char *buffer) 
 {
   unsigned long l;
@@ -179,7 +302,8 @@ read_unsigned_long(unsigned char *buffer)
 }
 
 
-void 
+// For debugging
+static void 
 out_buffer(unsigned char* buffer, int s) 
 {
   int i;
@@ -189,7 +313,7 @@ out_buffer(unsigned char* buffer, int s)
   printf("\n");
 }
 
-int 
+static int 
 my_read(FILE* fd, unsigned char* buffer, int s) 
 {
   int i;
@@ -203,8 +327,8 @@ my_read(FILE* fd, unsigned char* buffer, int s)
   return i;
 }
       
-
-void  
+// For debugging
+static void  
 print_exec_header(struct exec_header* exec_header) 
 {
   printf("Header:\n\
@@ -228,7 +352,7 @@ print_exec_header(struct exec_header* exec_header)
 /* read_exec_header: Leaves fd at the beginning of the code 
    segment on success */
 
-int 
+static int 
 read_exec_header(FILE* fd, struct exec_header * exec_header) 
 {
   unsigned char buffer[HEADER_SIZE]; 
@@ -258,7 +382,7 @@ read_exec_header(FILE* fd, struct exec_header * exec_header)
  * read. 
  */
 
-FILE*
+static FILE*
 attempt_open(char* name, struct exec_header* exec_header) 
 {
   FILE *fd;
@@ -288,7 +412,7 @@ attempt_open(char* name, struct exec_header* exec_header)
 }
 
 /* memo: maybe merge with my_read above! */
-int 
+static int 
 loadCode(FILE *fd, unsigned long n, bytecode_t ch) 
 {
   int c;
@@ -308,7 +432,7 @@ loadCode(FILE *fd, unsigned long n, bytecode_t ch)
 
 #define PAIR_SIZE (2*sizeof(long))
 
-int 
+static int 
 resolveCodeImports(LabelMap* labelMap, 
 		   FILE* fd,
 		   unsigned long import_size,    /* size is in entries */
@@ -339,7 +463,7 @@ resolveCodeImports(LabelMap* labelMap,
   return 0;
 }
 
-int 
+static int 
 resolveDataImports(LabelMap* labelMap, 
 		   FILE* fd,
 		   unsigned long import_size,    /* size is in entries */
@@ -371,7 +495,7 @@ resolveDataImports(LabelMap* labelMap,
 /* for each entry (label, relAddr) in the file extend the
  * labelMap with the entry (label, start_code + relAddr)
  */
-LabelMap* 
+static LabelMap* 
 addCodeExports(LabelMap* labelMap, 
 	       FILE* fd, 
 	       unsigned long export_size,     /* size is in entries */
@@ -406,7 +530,7 @@ addCodeExports(LabelMap* labelMap,
  * the label is associated with the new offset in the hash table that maps labels to offsets.  
  */
 
-int 
+static int 
 addDataExports(Interp* interp, 
 	       FILE* fd, 
 	       unsigned long export_size,  /* size is in entries */
@@ -434,7 +558,7 @@ addDataExports(Interp* interp,
 }
 
 
-bytecode_t 
+static bytecode_t 
 interpLoad(Interp* interp, char* file, FILE* fd, 
 	   struct exec_header* exec_header_ptr) 
 {
@@ -629,19 +753,19 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
   /* push address for exit-bytecode on the stack */
   debug(printf("Pushing exit-address %x on stack at sp = %x\n", (unsigned long)exit_code, sp));
   pushDef((unsigned long)exit_code);
-  pushDef((unsigned long)0); // removed no_clos 2000-11-08, Niels
+  pushDef((unsigned long)0);
 
   /* perhaps push the extra bytecode onto the stack for execution */
   if ( extra_code != NULL ) {
     pushDef((unsigned long)extra_code);
-    pushDef((unsigned long)0); // removed no_clos 2000-11-08, Niels
+    pushDef((unsigned long)0);
   }    
 
   /* push all execution addresses on the stack */
   for (p = interpreter->exeList; p != NULL; p = p->next) {
     debug(printf("Pushing address %x on stack at sp = %x\n", (unsigned long)p->elem, sp));
     pushDef((unsigned long)p->elem);
-    pushDef((unsigned long)0); // removed no_clos 2000-11-08, Niels
+    pushDef((unsigned long)0);
   }
 
   /* start interpretation by interpreting the init_code. */
@@ -657,17 +781,33 @@ interpRun(Interp* interpreter, bytecode_t extra_code, char**errorStr)
  * interpLoadRun - load a bytecode file, run it, and release the
  * loaded code.  
  * ------------------------------------------------------ */
+
+#if ( THREADS && CODE_CACHE )
+extern void codeCacheMutexLock(void);
+extern void codeCacheMutexUnlock(void);
+#endif
+
 int 
 interpLoadRun(Interp* interp, char* file, char** errorStr) 
 {
-  FILE *fd;
-  struct exec_header exec_header;
   bytecode_t start_code;
   int res;
 
-  fd = attempt_open(file, &exec_header);
-  start_code = interpLoad(interp, file, fd, &exec_header);
-  fclose(fd);
+#if ( THREADS && CODE_CACHE )
+  codeCacheMutexLock();
+  start_code = stringMapLookup(interp->codeCache,file);  
+  if ( start_code == NULL )
+    {
+#endif
+      struct exec_header exec_header;
+      FILE *fd = attempt_open(file, &exec_header);
+      start_code = interpLoad(interp, file, fd, &exec_header);
+      fclose(fd);
+#if ( THREADS && CODE_CACHE )
+      interp->codeCache = stringMapInsert(interp->codeCache,file,start_code);
+    }
+  codeCacheMutexUnlock();
+#endif
 
   /*
    *  Run the code by passing to the interpRun function the newly
@@ -676,7 +816,9 @@ interpLoadRun(Interp* interp, char* file, char** errorStr)
 
   res = interpRun(interp, start_code, errorStr);
 
-  free(start_code);   // Free the byte code
+#if !( THREADS && CODE_CACHE )
+  free(start_code);
+#endif
 
   return res;    // return whatever the bytecode interpreter returns
 }
@@ -684,8 +826,11 @@ interpLoadRun(Interp* interp, char* file, char** errorStr)
 void
 interpClear(Interp* interp)
 {
-  labelMapClear(interp->codeMap);   // hash table - don't nullify 
-  labelMapClear(interp->dataMap);   // hash table - don't nullify 
+  labelMapClear(interp->codeMap);    // hash table - don't nullify 
+  labelMapClear(interp->dataMap);    // hash table - don't nullify 
+#if ( THREADS && CODE_CACHE )
+  stringMapClear(interp->codeCache); // hash table - don't nullify 
+#endif
   longListFreeElem(interp->codeList);
   interp->codeList = NULL;
   longListFree(interp->exeList);   // here we free only the list - not the 

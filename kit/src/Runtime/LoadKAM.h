@@ -12,6 +12,8 @@
 	   end of file --->
 */
 
+// Comment out the following line to disable caching of leaf-bytecode (for SMLserver)
+#define CODE_CACHE 1
 
 #define FILE_NOT_FOUND (-1)
 #define TRUNCATED_FILE (-2)
@@ -40,6 +42,28 @@ struct exec_header {
  */
 typedef unsigned char * bytecode_t;
 
+/* Support for HashTables mapping strings to loaded bytecode */
+
+/* --------------------------------------------------
+ * The following type definition is for 
+ * holding elements of the mapping from strings 
+ * (file names) to loaded byte code.
+ * -------------------------------------------------- */
+
+#ifdef CODE_CACHE
+typedef struct stringMapHashList {
+  char* name;                           /* string (file name) */
+  bytecode_t code;                      /* loaded byte code */
+  struct stringMapHashList * next;      /* next hashed element */
+} StringMapHashList;
+
+typedef StringMapHashList* StringMap;
+
+/* Size of string map hash table in entries -- (2^n-1) */
+#define STRING_MAP_HASH_TABLE_SIZE 511
+
+#endif
+
 /* Support for HashTables mapping labels to absolute addresses */
 
 /* --------------------------------------------------
@@ -56,8 +80,8 @@ typedef struct labelMapHashList {
 
 typedef LabelMapHashList* LabelMap;
 
-/* Size of label map hash table in entries */
-#define LABEL_MAP_HASH_TABLE_SIZE 3881
+/* Size of label map hash table in entries -- (2^n-1) */
+#define LABEL_MAP_HASH_TABLE_SIZE 4095
 
 typedef struct longList {
   unsigned long elem;        /* the element */
@@ -74,12 +98,29 @@ typedef struct {
 			      * occupied by interpreter. */
   LongList* exeList;         /* Labels for those program units that need be 
 			      * initialized by running some code. */
+#ifdef CODE_CACHE
+  StringMap* codeCache;      /* Caching support for loaded leafs. */
+#endif
   unsigned long data_size;   /* Accumulated size (in entries) of data segment */
 } Interp;
 
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/
+
+#ifdef CODE_CACHE
+
+StringMap* stringMapInsert(StringMap* stringMap, 
+			   char* s, 
+			   bytecode_t code);
+
+StringMap* stringMapNew(void);
+
+bytecode_t stringMapLookup(StringMap* stringMap, char* s);
+
+void stringMapClear(StringMap* stringMap);
+
+#endif /*CODE_CACHE*/
 
 LabelMap* labelMapInsert(LabelMap* labelMap, 
 			 unsigned long label, 
