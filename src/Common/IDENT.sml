@@ -1,6 +1,5 @@
 (* Identifiers - variables or constructors *)
 
-(*$IDENT*)
 signature IDENT =
   sig
     eqtype strid
@@ -24,7 +23,6 @@ signature IDENT =
     val implode_LongId : strid list * id -> longid
 
     val < : id * id -> bool
-
 
    (* Identifiers needed for derived form conversion. *)
 
@@ -51,8 +49,6 @@ signature IDENT =
 
     val resetRegions: id
     val forceResetting: id
-    val id_STD_IN: id
-    val id_STD_OUT: id
 
     (*exception constructors in the initial basis which are not declared in
      the prelude:*)
@@ -61,6 +57,7 @@ signature IDENT =
     val id_Mod : id
     val id_Match : id
     val id_Bind : id
+    val id_Overflow : id
 
     (* Bogus identifier *)
     val bogus: longid

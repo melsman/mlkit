@@ -332,6 +332,96 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 
 
+    (* Restriction functions; the code given here is also used to
+     * restrict compilation environments (CompilerEnv)
+     *)
+
+    local  
+      fun proj0 (expl: 'a -> strid list * 'b) 
+	(impl: strid list * 'b -> 'a) 
+	(longids:'a list) 
+	(strid:strid) : 'a list =
+	let fun loop ([],acc) = acc
+	      | loop (longid::longids,acc) = case expl longid
+					       of ([],_) => loop(longids,acc)
+						| (strid'::strids,id) => 
+						 if strid=strid' then loop(longids, impl(strids,id)::acc)
+						 else loop(longids,acc)
+	in loop (longids, [])
+	end
+
+      fun qual0 (expl: 'a -> strid list * 'b) 
+	(longids : 'a list)
+	(acc: strid list) : strid list =
+	let fun loop ([], acc) = acc
+	      | loop (longid::longids,acc) =
+               case expl longid
+		 of ([],_) => loop(longids,acc)
+		  | (strid::_,_) => 
+		   let fun ins [] = [strid]
+			 | ins (all as strid'::strids) = if strid = strid' then all
+							 else if StrId.<(strid,strid') then strid::all
+							      else strid'::ins(strids)
+		   in loop(longids,ins acc)
+		   end
+	in loop(longids,acc)
+	end
+
+      fun ids0 (expl: 'a -> (strid list * 'b)) (longids: 'a list) : 'b list =
+	foldl (fn (longid, acc) => case expl longid
+				     of ([], id) => id::acc
+				      | _ => acc) [] longids
+	
+      fun proj ({longstrids,longtycons,longvids}, strid) =
+	{longstrids = proj0 StrId.explode_longstrid StrId.implode_longstrid longstrids strid,
+	 longtycons = proj0 TyCon.explode_LongTyCon TyCon.implode_LongTyCon longtycons strid,
+	 longvids = proj0 Ident.decompose Ident.implode_LongId longvids strid}
+       
+      fun qual {longstrids,longtycons,longvids} =
+	qual0 StrId.explode_longstrid longstrids
+	(qual0 TyCon.explode_LongTyCon longtycons
+	 (qual0 Ident.decompose longvids []))
+
+      fun ids {longstrids,longtycons,longvids} : {vids: id list, tycons: tycon list, strids: strid list} =
+	{vids = ids0 Ident.decompose longvids,
+	 tycons = ids0 TyCon.explode_LongTyCon longtycons,
+	 strids = ids0 StrId.explode_longstrid longstrids}
+       
+      fun setminus (s, []) = s       (* setminus(A,B) = A \ B *)
+	| setminus (s, (x::xs)) = 
+	let fun rem [] = []
+	      | rem (y::ys) = if y=x then rem ys
+			      else y::rem ys
+	in setminus(rem s,xs)
+	end
+
+      type longids = {longstrids: longstrid list, longtycons: longtycon list, longvids: longid list}     
+	
+      fun split longids : {vids: id list, tycons: tycon list, strids: strid list,
+			   rest: (strid * longids) list} =
+	let val {vids, strids, tycons} = ids longids
+	    val qual = setminus(qual longids, strids) (* remove strids from qualifier strids; restriction 
+						       * preserves environments under strids. *)
+	in {vids=vids, tycons=tycons, strids=strids,
+	    rest=map (fn strid => (strid, proj(longids, strid))) qual}
+	end
+
+    in (*local*)
+
+      datatype restricter = Restr of {strids: (strid * restricter) list,
+				      vids: id list, tycons: tycon list}
+	                  | Whole
+	
+      fun create_restricter (longids:longids) : restricter =
+	let val {vids, tycons, strids, rest} = split longids
+	in Restr {strids=map (fn strid => (strid,Whole)) strids @
+		         map (fn (strid,rest) => (strid, create_restricter rest)) rest,
+		  vids=vids, tycons=tycons}
+	end      
+
+    end (*local*)
+
+
     (*Now a structure for each kind of environment:*)
 
 
@@ -625,6 +715,15 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       fun init explicittyvars tycon = #2 (init' explicittyvars tycon)
 
       val tynames = fold (TyName.Set.union o TyStr.tynames) TyName.Set.empty
+
+      (* Restriction *)
+      fun restrict (TE,tycons) = 
+	List.foldL (fn tycon => fn TEnew =>
+		    let val TyStr = (case lookup TE tycon 
+				       of SOME TyStr => TyStr
+					| NONE => impossible "TE.restrict: tycon not in env.")
+		    in plus (TEnew, singleton (tycon,TyStr))
+		    end) empty tycons
 
       (* Matching *)
       fun match (TE,TE0) = Fold (fn (tycon, TyStr) => fn () =>
@@ -995,6 +1094,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  val ModVE       = VE.singleton (Ident.id_Mod, LONGEXCONpriv Type.Exn)
 	  val BindVE      = VE.singleton (Ident.id_Bind, LONGEXCONpriv Type.Exn)
 	  val MatchVE     = VE.singleton (Ident.id_Match, LONGEXCONpriv Type.Exn)
+	  val OverflowVE  = VE.singleton (Ident.id_Overflow, LONGEXCONpriv Type.Exn)
 
 	  fun joinVE [] = VE.empty
 	    | joinVE (VE :: rest) = VE.plus (VE, joinVE rest)
@@ -1042,7 +1142,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		      absVE, negVE, divVE, modVE, plusVE, minusVE, mulVE,
 		      lessVE, greaterVE, lesseqVE, greatereqVE,
 		      resetRegionsVE, forceResettingVE, DivVE, ModVE,
-		      BindVE, MatchVE]
+		      BindVE, MatchVE, OverflowVE]
       in
 	val initial = ENV {SE=SE.empty, TE=TE_initial, VE=VE_initial}
       end
@@ -1064,63 +1164,60 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 		       SOME TyStr1 => TyStr.eq (TyStr1,TyStr2)
 		     | NONE => false) true TE2
 
-      fun equal_TyEnv(TE1,TE2) = TE.size TE1 = TE.size TE2 andalso enrich_TyEnv (TE1,TE2)
-
       fun enrich_VarEnv(VE1,VE2) =
-	    VE.Fold (fn (id2,r2) => fn b => b andalso
-			  (case VE.lookup VE1 id2 of
-			     SOME r1 => equal_VarEnvRan(r1,r2)
-			   | NONE => false)) true VE2
+	VE.Fold (fn (id2,r2) => fn b => b andalso
+		 case VE.lookup VE1 id2 
+		   of SOME r1 => equal_VarEnvRan(r1,r2)
+		    | NONE => false) true VE2
 
-      fun equal_VarEnv(VE1,VE2) = VE.size VE1 = VE.size VE2 andalso enrich_VarEnv(VE1,VE2)
-
-      fun equal_Env(E1,E2) =
-	let val (SE1,TE1,VE1) = un E1
-	    val (SE2,TE2,VE2) = un E2
-	in equal_StrEnv(SE1,SE2)
-	  andalso equal_TyEnv(TE1,TE2)
-	  andalso equal_VarEnv(VE1,VE2)
-	end
+      fun enrich_Env(E1,E2) =
+	case (un E1, un E2)
+	  of ((SE1, TE1, VE1), (SE2, TE2, VE2)) =>
+	   enrich_StrEnv(SE1,SE2) andalso enrich_TyEnv(TE1,TE2) andalso 
+	   enrich_VarEnv(VE1,VE2)
 
       and enrich_StrEnv(SE1,SE2) = SE.Fold (fn (strid2,S2) => fn b => b andalso
 					    case SE.lookup SE1 strid2 
-					      of SOME S1 => equal_Env(S1,S2)
+					      of SOME S1 => enrich_Env(S1,S2)
 					       | NONE => false) true SE2
 
-      and equal_StrEnv(SE1,SE2) = SE.size SE1 = SE.size SE2 andalso enrich_StrEnv (SE1,SE2)
+      fun equal_TyEnv(TE1,TE2) = TE.size TE1 = TE.size TE2 andalso enrich_TyEnv (TE1,TE2)
+      fun equal_VarEnv(VE1,VE2) = VE.size VE1 = VE.size VE2 andalso enrich_VarEnv(VE1,VE2)
 
-      fun enrich_Env(E1,E2) =
-	let val (SE1,TE1,VE1) = un E1
-	    val (SE2,TE2,VE2) = un E2
-	in enrich_StrEnv(SE1,SE2)
-	  andalso enrich_TyEnv(TE1,TE2)
-	  andalso enrich_VarEnv(VE1,VE2)
-	end
+      fun equal_Env(E1,E2) =
+	case (un E1, un E2)
+	  of ((SE1, TE1, VE1), (SE2, TE2, VE2)) =>
+	    equal_StrEnv(SE1,SE2) andalso equal_TyEnv(TE1,TE2) andalso 
+	    equal_VarEnv(VE1,VE2)
+
+      and equal_StrEnv(SE1,SE2) = SE.size SE1 = SE.size SE2 andalso  (* note: you cannot use enrich_StrEnv *)  
+	SE.Fold (fn (strid2,S2) => fn b => b andalso
+		 case SE.lookup SE1 strid2 
+		   of SOME S1 => equal_Env(S1,S2)
+		    | NONE => false) true SE2
 
       val enrich = enrich_Env
       val eq = equal_Env
 
 
       (* Restriction *)
-      fun restrict(E,(ids,tycons,strids)) =
-	let val (SE,TE,VE) = un E
-	    val SE' = List.foldL
-	                (fn strid => fn SEnew =>
-			 let val E = (case SE.lookup SE strid of
-					SOME E => E
-				      | NONE => impossible "restrictE: strid not in env.")
-			 in SE.plus (SEnew, SE.singleton (strid,E))
-			 end) SE.empty strids
-	    val TE' = List.foldL
-	                (fn tycon => fn TEnew =>
-			 let val TyStr = (case TE.lookup TE tycon of
-					    SOME TyStr => TyStr
-					  | NONE => impossible "restrictE: tycon not in env.")
-			 in TE.plus (TEnew, TE.singleton (tycon,TyStr))
-			 end) TE.empty tycons
-	    val VE' = VE.restrict (VE,ids)
-	in mk (SE',TE',VE')
-	end
+      local
+	fun restr_E(E,Whole) = E
+	  | restr_E(E,Restr{strids,vids,tycons}) =
+	  let val (SE,TE,VE) = un E
+  	      val SE' = List.foldL (fn (strid,restr) => fn SEnew =>
+				    let val E = (case SE.lookup SE strid 
+						   of SOME E => restr_E(E,restr)
+						    | NONE => impossible "restrictE: strid not in env.")
+				    in SE.plus (SEnew, SE.singleton (strid,E))
+				    end) SE.empty strids
+ 	      val TE' = TE.restrict (TE, tycons)
+	      val VE' = VE.restrict (VE, vids)
+	  in mk (SE',TE',VE')
+	  end
+      in
+	fun restrict(E,longids) = restr_E(E,create_restricter longids)
+      end
 
       (* Matching *)
 

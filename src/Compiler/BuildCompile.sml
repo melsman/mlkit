@@ -25,6 +25,9 @@ functor BuildCompile (structure TyName : TYNAME
 			    and type Environments.TypeScheme = StatObject.TypeScheme
 			    and type Environments.TyVar = StatObject.TyVar
 			    and type Environments.id = TopdecGrammar.id
+			    and type Environments.longid = TopdecGrammar.DecGrammar.longid
+			    and type Environments.longtycon = TopdecGrammar.longtycon
+			    and type Environments.longstrid = TopdecGrammar.longstrid
 			    and type Environments.strid = TopdecGrammar.strid
 			    and type Environments.Env = ElabInfo.TypeInfo.Env
 		      structure FinMap: FINMAP

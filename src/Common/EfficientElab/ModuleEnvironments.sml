@@ -1,7 +1,3 @@
-(*$ModuleEnvironments:
-	STRID SIGID FUNID TYCON STATOBJECT ENVIRONMENTS
-	MODULE_STATOBJECT PRETTYPRINT REPORT FLAGS LIST_HACKS FINMAP 
-        FINMAPEQ CRASH MODULE_ENVIRONMENTS IDENT*)
 
 functor ModuleEnvironments(
 	  structure StrId  : STRID
@@ -23,6 +19,7 @@ functor ModuleEnvironments(
 	        and type Environments.Type = StatObject.Type
 	        and type Environments.realisation = StatObject.realisation
 		and type Environments.id = Ident.id
+		and type Environments.longid = Ident.longid
 
 	  structure ModuleStatObject : MODULE_STATOBJECT
 	    sharing Environments.TyName = ModuleStatObject.TyName
@@ -94,6 +91,7 @@ functor ModuleEnvironments(
     type longtycon         = TyCon.longtycon
     type tycon             = TyCon.tycon
     type id                = Ident.id
+    type longid            = Ident.longid
     type strid             = StrId.strid
     type Report            = Report.Report
     type StringTree        = PP.StringTree
@@ -265,7 +263,7 @@ functor ModuleEnvironments(
       (*TODO 27/01/1997 22:53. tho.  brug operationerne på F og G
        i s. f. at pille direkte ved deres repræsentation:*)
       fun restrictB (BASIS {F=FUNENV F,G=SIGENV G,E},
-		     {ids : id list, tycons : tycon list, strids : strid list,
+		     {longvids : longid list, longtycons : longtycon list, longstrids : longstrid list,
 		      funids : funid list, sigids : sigid list}) =
 	let val F' = List.foldL
 	               (fn funid => fn Fnew =>
@@ -281,11 +279,19 @@ functor ModuleEnvironments(
 				       | NONE => die "restrictB.sigid not in basis.")
 			in FinMap.add(sigid,Sig,Gnew)
 			end) FinMap.empty sigids
-	    val E' = E.restrict (E, (ids, tycons, strids))
+	    val E' = E.restrict (E, {longvids=longvids, longtycons=longtycons, longstrids=longstrids})
 	in BASIS {F=FUNENV F', G=SIGENV G', E=E'}
 	end
       val enrich = enrichB
       val restrict = restrictB
+
+      (* Structure agreement *)
+      fun agree([],_,_) = true
+	| agree(longstrid::longstrids,B1,B2) = 
+	case (lookup_longstrid B1 longstrid, 
+	      lookup_longstrid B2 longstrid)
+	  of (SOME E1, SOME E2) => Environments.E.eq(E1,E2) andalso agree(longstrids,B1,B2)
+	   | _ => false
 
       (*Matching function for compilation manager*)
 

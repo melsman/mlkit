@@ -419,10 +419,11 @@ functor ElabTopdec
     fun match_and_update_repository (prjid_and_funid,T',E') : unit =
       let val N' = map TyName.name (TyName.Set.list T')
 	  val B' = B.from_E E'
-	  val obj = (ElabRep.empty_infix_basis,B.empty,(Realisation.Id, TyName.Set.empty), 
+	  val obj = (ElabRep.empty_infix_basis,B.empty,[],(Realisation.Id, TyName.Set.empty), 
 		     N',ElabRep.empty_infix_basis,B', Realisation.Id)
       in case ElabRep.lookup_elab prjid_and_funid
-	   of SOME (index,(_,_,_,N,_,B,_)) =>  (*names in N already marked gen. since the object is returned by lookup. *)
+	   of SOME (index,(_,_,_,_,N,_,B,_)) =>  (* Names in N already marked generative, 
+						  * because the object is returned by lookup. *)
 	     let val _:{} = List.apply Name.mark_gen N'
 	         val _:{} = B.match(B',B)
 		 val _:{} = List.apply Name.unmark_gen N'

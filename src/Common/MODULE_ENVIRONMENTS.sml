@@ -1,7 +1,6 @@
 (*B in Basis, F in FunEnv, and G in SigEnv, Definition 1997,
 fig. 11, p. 29*)
 
-(*$MODULE_ENVIRONMENTS : TYNAME*)
 signature MODULE_ENVIRONMENTS =
   sig
     (*types provided by this module:*)
@@ -20,6 +19,7 @@ signature MODULE_ENVIRONMENTS =
     type Context
     type realisation
     eqtype id
+    type longid
     type strid
     type tycon = TyName.tycon
     type longstrid
@@ -101,8 +101,9 @@ signature MODULE_ENVIRONMENTS =
 
 	           (*for compilation manager*)
 	val enrich           : Basis * Basis -> bool
-	val restrict         : Basis * {ids : id list, tycons : tycon list,
-					strids : strid list, funids : funid list,
+	val agree            : longstrid list * Basis * Basis -> bool
+	val restrict         : Basis * {longvids : longid list, longtycons : longtycon list,
+					longstrids : longstrid list, funids : funid list,
 					sigids : sigid list} -> Basis
 	val match            : Basis * Basis -> unit
       end

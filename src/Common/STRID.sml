@@ -1,10 +1,9 @@
 (* Structure identifiers *)
 
-(*$STRID*)
 signature STRID =
   sig
     eqtype strid
-    type longstrid
+    eqtype longstrid
 
     val mk_StrId: string -> strid		(* NEW PARSER *)
     val mk_LongStrId: string list -> longstrid	(* NEW PARSER *)

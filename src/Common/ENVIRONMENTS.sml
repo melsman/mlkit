@@ -174,7 +174,8 @@ signature ENVIRONMENTS =
 	val layout               : Env -> StringTree
 
 	(* Support for recompilation *)
-	val restrict             : Env * (id list * tycon list * strid list) -> Env
+	val restrict             : Env * {longvids:longid list, longtycons:longtycon list, 
+					  longstrids: longstrid list} -> Env
 	val match                : Env * Env -> unit
 	val enrich               : Env * Env -> bool   (* strong enrichment *)
 	val eq                   : Env * Env -> bool
@@ -308,4 +309,15 @@ signature ENVIRONMENTS =
 
     val maximise_equality_in_VE_and_TE : VarEnv * TyEnv -> VarEnv * TyEnv
 
+
+    (* Restricter to restrict environments; We better share the code
+     * used for elaboration environment restriction and compilation
+     * environment restriction -- Martin *)
+
+    datatype restricter = Restr of {strids: (strid * restricter) list,
+				    vids: id list, tycons: tycon list}
+                        | Whole
+ 
+    val create_restricter : {longstrids: longstrid list, longtycons: longtycon list, 
+			     longvids: longid list} -> restricter
   end;
