@@ -108,6 +108,10 @@ as
     val_id	in scs_enum_values.val_id%TYPE
   ) return scs_texts.text_id%TYPE;
 
+  function getVID(
+    enum_id	in scs_enumerations.enum_id%TYPE,
+    value	in scs_enum_values.value%TYPE    
+  ) return scs_enum_values.val_id%TYPE;
 
   function getEnumId (
     name	in scs_enumerations.name%TYPE
@@ -309,7 +313,25 @@ as
 				       || value || ' and enum_id=' || to_char(enum_id) ); 
   end getTID;
 
+  function getVID(
+    enum_id	in scs_enumerations.enum_id%TYPE,
+    value	in scs_enum_values.value%TYPE    
+  ) return scs_enum_values.val_id%TYPE
+  is
+    v_val_id scs_enum_values.val_id%TYPE;
+  begin
+    select distinct val_id
+      into v_val_id
+      from scs_enums
+     where enum_id = getVID.enum_id
+       and value = getVID.value;
 
+    return v_val_id;
+  exception
+    when NO_DATA_FOUND then
+      raise_application_error( scs.ScsDbExn, 'getVID: No val_id found for value='
+				       || value || ' and enum_id=' || to_char(enum_id) ); 
+  end getVID;
 
   function getTID(
     val_id	in scs_enum_values.val_id%TYPE
