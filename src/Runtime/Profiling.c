@@ -45,6 +45,8 @@ TickList * lastTick;  /* Pointer to data for the last tick. */
 RegionList * regionListTable[MAX_REGIONS_TO_PROFILE]; /* Used as hash table into a region list. */
 ObjectList * objectListTable[MAX_ALLOCATION_POINTS];  /* Used as hash table into an object list. */
 
+ProfTabList * profHashTab[profHashTabSize];  /* Hash table for profiling */
+
 unsigned int numberOfTics=0; /* Number of profilings so far. */
 
 unsigned int lastCpuTime=0; /* CPU time after last tick. */
@@ -69,6 +71,234 @@ char prgName[100];
 static unsigned int max(unsigned int a, unsigned int b) {
   return (a<b)?b:a;
 }
+
+/*--------------------------------------
+ * Hash table to hold profiling table
+ * mapping region ids to objects of the
+ * form
+ *--------------------------------------*/
+
+void initializeProfTab(void) {
+  int i;
+  /* printf("initializing proftab\n"); */
+  for (i=0;i<profHashTabSize;i++) 
+    profHashTab[i]=NULL;
+  /* printf("initializing proftab end\n"); */
+  return;
+}
+
+int profTabSize(void) {
+  int count, i;
+  ProfTabList* p;
+  for (count=0,i=0; i<profHashTabSize; i++)
+    for (p=profHashTab[i]; p != NULL; p=p->next, count++) {}
+  return count;
+}
+      
+ProfTabList* profTabListInsertAndInitialize(ProfTabList* p, int regionId) {
+  ProfTabList* pNew;
+  /* printf("[profTabListInsertAndInitialize begin...]\n"); */
+  pNew = (ProfTabList*)malloc(sizeof(ProfTabList));
+  /* printf("sizeof(ProfTabList) = %d\n",sizeof(ProfTabList)); */
+  if (pNew == (ProfTabList*) -1) {
+    perror("profTabListInsertAndInitialize error\n");
+    exit(-1);
+  }
+  pNew->regionId=regionId;
+  pNew->noOfPages=0;
+  pNew->maxNoOfPages=0;
+  pNew->noOfInstances=0;
+  pNew->maxNoOfInstances=0;
+  pNew->allocNow=0;
+  pNew->maxAlloc=0;
+  pNew->next=p;
+  /* printf("[profTabListInsertAndInitialize end]\n"); */
+  return pNew;
+}
+
+int profTabGetNoOfPages(int regionId) {
+  ProfTabList* p;
+  /* printf("[profTabGetNoOfPages begin...]\n"); */
+  for (p=profHashTab[regionId % profHashTabSize]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      /* printf("[profTabGetNoOfPages end]\n"); */
+      return p->noOfPages;
+    };
+  /* printf("[profTabGetNoOfPages end]\n"); */
+  return 0;
+}
+
+void profTabSetNoOfPages(int regionId, int no) {
+  ProfTabList* p;
+  int index;
+  /* printf("[profTabSetNoOfPages begin...]\n"); */
+  index = regionId % profHashTabSize;
+  for (p=profHashTab[index]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      p->noOfPages = no;
+      /* printf("[profTabSetNoOfPages end]\n"); */
+      return;
+    };
+  p = profTabListInsertAndInitialize(profHashTab[index], regionId);
+  profHashTab[index] = p;
+  p->noOfPages = no;
+  /* printf("[profTabSetNoOfPages end]\n"); */
+  return;
+}
+  
+int profTabGetMaxNoOfPages(int regionId) {
+  ProfTabList* p;
+  /* printf("[profTabGetMaxNoOfPages begin...]\n"); */
+  for (p=profHashTab[regionId % profHashTabSize]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      /* printf("[profTabGetMaxNoOfPages end]\n"); */
+      return p->maxNoOfPages;
+    };
+  /* printf("[profTabGetMaxNoOfPages end]\n"); */
+  return 0;
+}
+
+void profTabSetMaxNoOfPages(int regionId, int no) {
+  ProfTabList* p;
+  int index;
+  /* printf("[profTabSetMaxNoOfPages begin...]\n"); */
+  index = regionId % profHashTabSize;
+  for (p=profHashTab[index]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      p->maxNoOfPages = no;
+      /* printf("[profTabSetMaxNoOfPages end]\n"); */
+      return;
+    };
+  p = profTabListInsertAndInitialize(profHashTab[index], regionId);
+  profHashTab[index] = p;
+  p->maxNoOfPages = no;
+  /* printf("[profTabSetMaxNoOfPages end]\n"); */
+  return;
+}
+
+int profTabGetNoOfInstances(int regionId) {
+  ProfTabList* p;
+  /* printf("[profTabGetNoOfInstances begin...]\n"); */
+  for (p=profHashTab[regionId % profHashTabSize]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      /* printf("[profTabGetNoOfInstances end]\n"); */
+      return p->noOfInstances;
+    };
+  /* printf("[profTabGetNoOfInstances end]\n"); */
+  return 0;
+}
+
+void profTabSetNoOfInstances(int regionId, int no) {
+  ProfTabList* p;
+  int index;
+  /* printf("[profTabSetNoOfInstances begin...]\n"); */
+  index = regionId % profHashTabSize;
+  for (p=profHashTab[index]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      p->noOfInstances = no;
+      /* printf("[profTabSetNoOfInstances end]\n"); */
+      return;
+    };
+  p = profTabListInsertAndInitialize(profHashTab[index], regionId);
+  profHashTab[index] = p;
+  p->noOfInstances = no;
+  /* printf("[profTabSetNoOfInstances end]\n"); */
+  return;
+}
+
+int profTabGetMaxNoOfInstances(int regionId) {
+  ProfTabList* p;
+  /* printf("[profTabGetMaxNoOfInstances begin...]\n"); */
+  for (p=profHashTab[regionId % profHashTabSize]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      /* printf("[profTabGetMaxNoOfInstances end]\n"); */
+      return p->maxNoOfInstances;
+    };
+  /* printf("[profTabGetMaxNoOfInstances end]\n"); */
+  return 0;
+}
+
+void profTabSetMaxNoOfInstances(int regionId, int no) {
+  ProfTabList* p;
+  int index;
+  /* printf("[profTabSetMaxNoOfInstances begin...]\n"); */
+  index = regionId % profHashTabSize;
+  for (p=profHashTab[index]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      p->maxNoOfInstances = no;
+      /* printf("[profTabSetMaxNoOfInstances end]\n"); */
+      return;
+    };
+  p = profTabListInsertAndInitialize(profHashTab[index], regionId);
+  profHashTab[index] = p;
+  p->maxNoOfInstances = no;
+  /* printf("[profTabSetMaxNoOfInstances end]\n"); */
+  return;
+}
+
+int profTabGetAllocNow(int regionId) {
+  ProfTabList* p;
+  /* printf("[profTabGetAllocNow begin...]\n"); */
+  for (p=profHashTab[regionId % profHashTabSize]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      /* printf("[profTabGetAllocNow end]\n"); */
+      return p->allocNow;
+    };
+  /* printf("[profTabGetAllocNow end]\n"); */
+  return 0;
+}
+
+void profTabSetAllocNow(int regionId, int no) {
+  ProfTabList* p;
+  int index;
+  /* printf("[profTabSetAllocNow begin...]\n"); */
+  index = regionId % profHashTabSize;
+  for (p=profHashTab[index]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      p->allocNow = no;
+      /* printf("[profTabSetAllocNow end]\n"); */
+      return;
+    };
+  p = profTabListInsertAndInitialize(profHashTab[index], regionId);
+  profHashTab[index] = p;
+  p->allocNow = no;
+  /* printf("[profTabSetAllocNow end]\n"); */
+  return;
+}
+
+int profTabGetMaxAlloc(int regionId) {
+  ProfTabList* p;
+  /* printf("[profTabGetMaxAlloc begin...]\n"); */
+  for (p=profHashTab[regionId % profHashTabSize]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      /* printf("[profTabGetMaxAlloc end]\n"); */
+      return p->maxAlloc; 
+    };
+  /* printf("[profTabGetMaxAlloc end]\n"); */
+  return 0;
+}
+
+void profTabSetMaxAlloc(int regionId, int no) {
+  ProfTabList* p;
+  int index;
+  /* printf("[profTabSetMaxAlloc begin...]\n"); */
+  index = regionId % profHashTabSize;
+  for (p=profHashTab[index]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      p->maxAlloc = no;
+      /* printf("[profTabSetMaxAlloc end]\n"); */
+      return;
+    };
+  p = profTabListInsertAndInitialize(profHashTab[index], regionId);
+  profHashTab[index] = p;
+  p->maxAlloc = no;
+  /*  printf("[profTabSetMaxAlloc end]\n"); */
+  return;
+}
+
+
+
+
 
 /*----------------------------------------------------------------------*
  *                        Statistical operations.                       *
@@ -106,7 +336,7 @@ void AllocatedSpaceInARegion(Ro *rp)
     fprintf(stderr,"RegionId %d too large in AllocatedSpaceInRegion. Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file Region.h and recompile the runtime system.\n", rp->regionId, MAX_REGIONS_TO_PROFILE);
     exit(-1);
   }
-  allokeret = profTab[rp->regionId][NoOfPages]*ALLOCATABLE_WORDS_IN_REGION_PAGE;
+  allokeret = profTabGetNoOfPages(rp->regionId) * ALLOCATABLE_WORDS_IN_REGION_PAGE;
   fprintf(stderr,"    Allocated space in regions with name %5d:%5d\n",rp->regionId, allokeret);
   return;
 }
@@ -128,24 +358,9 @@ void PrintRegion(Ro* rp)
   }
 }
 
-void resetProfTab() {
-  int i;
-
-  for (i=0;i<MAX_REGIONS_TO_PROFILE;i++) {
-    profTab[i][NoOfPages] = 0;
-    profTab[i][MaxNoOfPages] = 0;
-    profTab[i][NoOfInstances] = 0;
-    profTab[i][MaxNoOfInstances] = 0;
-    profTab[i][AllocNow] = 0;
-    profTab[i][MaxAlloc] = 0;
-  }
-
-  return;
-}
-
 void resetProfiler() {
 
-  resetProfTab();
+  initializeProfTab();
   lastCpuTime = (unsigned int)clock();
   if (profType == noTimer)
     timeToProfile = 1;
@@ -193,6 +408,7 @@ void printProfTab() {
   int noOfPagesTot, maxNoOfPagesTot;
   int noOfInstancesTot, maxNoOfInstancesTot;
   int allocNowTot, maxAllocTot;
+  ProfTabList* p;
 
   noOfPagesTot = 0;
   maxNoOfPagesTot = 0;
@@ -202,23 +418,24 @@ void printProfTab() {
   maxAllocTot = 0;
 
   fprintf(stderr,"\n\nPRINTING PROFILING TABLE.\n");
-  for (i=0;i<MAX_REGIONS_TO_PROFILE;i++) {
-    noOfPagesTab = profTab[i][NoOfPages];
-    noOfPagesTot += noOfPagesTab;
-    maxNoOfPagesTab = profTab[i][MaxNoOfPages];
-    maxNoOfPagesTot += maxNoOfPagesTab;
-    noOfInstancesTab = profTab[i][NoOfInstances];
-    noOfInstancesTot += noOfInstancesTab;
-    maxNoOfInstancesTab = profTab[i][MaxNoOfInstances];
-    maxNoOfInstancesTot += maxNoOfInstancesTab;
-    allocNowTab = profTab[i][AllocNow];
-    allocNowTot += allocNowTab;
-    maxAllocTab = profTab[i][MaxAlloc];
-    maxAllocTot += maxAllocTab;
-    if (maxNoOfPagesTab) 
-      fprintf(stderr,"    profTab[rId%5d]: noOfPages = %8d, maxNoOfPages = %8d, noOfInstances = %8d, maxNoOfInstances = %8d, allocNow = %8d, maxAlloc = %8d\n",
-	     i, noOfPagesTab, maxNoOfPagesTab, noOfInstancesTab, maxNoOfInstancesTab, allocNowTab*4, maxAllocTab*4);
-  }
+  for (i=0;i<profHashTabSize;i++) 
+    for (p=profHashTab[i];p!=NULL;p=p->next) {
+      noOfPagesTab = p->noOfPages;
+      noOfPagesTot += noOfPagesTab;
+      maxNoOfPagesTab = p->maxNoOfPages;
+      maxNoOfPagesTot += maxNoOfPagesTab;
+      noOfInstancesTab = p->noOfInstances;
+      noOfInstancesTot += noOfInstancesTab;
+      maxNoOfInstancesTab = p->maxNoOfInstances;
+      maxNoOfInstancesTot += maxNoOfInstancesTab;
+      allocNowTab = p->allocNow;
+      allocNowTot += allocNowTab;
+      maxAllocTab = p->maxAlloc;
+      maxAllocTot += maxAllocTab;
+      if (maxNoOfPagesTab) 
+	fprintf(stderr,"    profTab[rId%5d]: noOfPages = %8d, maxNoOfPages = %8d, noOfInstances = %8d, maxNoOfInstances = %8d, allocNow = %8d, maxAlloc = %8d\n",
+		i, noOfPagesTab, maxNoOfPagesTab, noOfInstancesTab, maxNoOfInstancesTab, allocNowTab*4, maxAllocTab*4);
+    }
   fprintf(stderr,"    -----------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
   fprintf(stderr,"                                   %8d     SUM OF MAX: %8d                  %8d         SUM OF MAX: %8d      Bytes: %8d      Bytes: %8d\n",
 	 noOfPagesTot, maxNoOfPagesTot, noOfInstancesTot, maxNoOfInstancesTot, allocNowTot*4, maxAllocTot*4);
@@ -946,6 +1163,7 @@ void printProfile(void) {
 void outputProfile(void) {
   int noOfTicks, noOfRegions, noOfObjects;
   int i;
+  ProfTabList* p;
   TickList *newTick;
   ObjectList *newObj;
   RegionList *newRegion;
@@ -995,15 +1213,12 @@ void outputProfile(void) {
     }
 
     /* Output profTab to log file. */
-    putw(MAX_REGIONS_TO_PROFILE, logFile);
-    for (i=0;i<MAX_REGIONS_TO_PROFILE;i++) {
-      putw(profTab[i][NoOfPages], logFile);
-      putw(profTab[i][MaxNoOfPages], logFile);
-      putw(profTab[i][NoOfInstances], logFile);
-      putw(profTab[i][MaxNoOfInstances], logFile);
-      putw(profTab[i][AllocNow], logFile);
-      putw(profTab[i][MaxAlloc], logFile);
-    }
+    putw(profTabSize(), logFile);
+    for (i=0;i<profHashTabSize;i++) 
+      for (p=profHashTab[i]; p != NULL; p=p->next) {
+	putw(p->regionId, logFile);
+	putw(p->maxAlloc, logFile);
+      }
 
     fclose(logFile);
 

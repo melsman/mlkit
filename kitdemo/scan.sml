@@ -65,7 +65,7 @@ local
        writeln ("\n\nTotal sizes: " ^ Int.toString n
 		^ " comments: " ^ Int.toString inside
 		^ " (" ^ (Int.toString (percent(inside,n)) 
-			  handle _ => "") ^ ")%")
+			  handle _ => "") ^ "%)")
 
   (* main(is) reads a sequence of filenames from is,
      one file name pr line (leading spaces are skipped;

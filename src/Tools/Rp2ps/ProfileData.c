@@ -22,13 +22,54 @@
 
 TickList * firstTick; /* Pointer to data for the first tick. */
 TickList * lastTick;  /* Pointer to data for the last tick. */
-RegionList * regionHashTable[MAX_REGIONS_TO_PROFILE]; /* Used as hash table into a region list. */
-ObjectList * objectHashTable[MAX_ALLOCATION_POINTS];  /* Used as hash table into an object list. */
 
 int maxRegions = 0;         /* max. number of allocated words in regions. */
 int maxInstances = 0;       /* max. number of instances.       */
 
-int profTab[MAX_REGIONS_TO_PROFILE][6]; /* Table containing statistics about regions. */
+ProfTabList * profHashTab[profHashTabSize];  /* Hash table for profiling */
+
+void initializeProfTab(void) {
+  int i;
+  for (i=0;i<profHashTabSize;i++) 
+    profHashTab[i]=NULL;
+  return;
+}
+
+ProfTabList* profTabListInsertAndInitialize(ProfTabList* p, int regionId) {
+  ProfTabList* pNew;
+  pNew = (ProfTabList*)malloc(sizeof(ProfTabList));
+  if (pNew == (ProfTabList*) -1) {
+    printf("profTabListInsertAndInitialize error\n");
+    exit(-1);
+  }
+  pNew->regionId=regionId;
+  pNew->maxAlloc=0;
+  pNew->next=p;
+  return pNew;
+}
+
+int profTabGetMaxAlloc(int regionId) {
+  ProfTabList* p;
+  for (p=profHashTab[regionId % profHashTabSize]; p != NULL; p=p->next)
+    if (p->regionId == regionId) return p->maxAlloc;
+  return 0;
+}
+
+void profTabSetMaxAlloc(int regionId, int no) {
+  ProfTabList* p;
+  int index;
+  index = regionId % profHashTabSize;
+  for (p=profHashTab[index]; p != NULL; p=p->next)
+    if (p->regionId == regionId) {
+      p->maxAlloc = no;
+      return;
+    };
+  p = profTabListInsertAndInitialize(profHashTab[index], regionId);
+  profHashTab[index] = p;
+  p->maxAlloc = no;
+  return;
+}
+
 
 static unsigned int max(unsigned int a, unsigned int b) {
   return (a<b)?b:a;
@@ -67,13 +108,12 @@ static unsigned int min(unsigned int a, unsigned int b) {
  *  |                                                             *
  * Here we put the profiling table profTab:                       *
  *  sizeProfTab,                                                  *
- *    NoOfPages, MaxNoOfPages, NoOfInstances,                     *
- *    MaxNoOfInstances, AllocNow, MaxAlloc                        *
+ *    regionId, MaxAlloc                                          *
  *  |                                                             *
  *----------------------------------------------------------------*/
 void inputProfile(void) {
   int noOfTicks, noOfRegions, noOfObjects;
-  int maxNoOfRegionsToProfile, i;
+  int i, regionId, w;
   TickList *newTick;
   ObjectList *newObj;
   RegionList *newRegion;
@@ -135,18 +175,12 @@ void inputProfile(void) {
   }
 
   /* Input profTab from log file. */
-  readWord(maxNoOfRegionsToProfile, logFile);
-  if (maxNoOfRegionsToProfile > MAX_REGIONS_TO_PROFILE) {
-    printf("Number of regions too large (%d) in inputProfile. Change constant MAX_REGIONS_TO_PROFILE, currently with value %d, in file ProfileData.h\n", maxNoOfRegionsToProfile, MAX_REGIONS_TO_PROFILE);
-    exit(-1);
-  }
-  for (i=0;i<maxNoOfRegionsToProfile;i++) {
-    readWord(profTab[i][NoOfPages], logFile);
-    readWord(profTab[i][MaxNoOfPages], logFile);
-    readWord(profTab[i][NoOfInstances], logFile);
-    readWord(profTab[i][MaxNoOfInstances], logFile);
-    readWord(profTab[i][AllocNow], logFile);
-    readWord(profTab[i][MaxAlloc], logFile);   
+  initializeProfTab();
+  readWord(i, logFile);
+  for ( ; i > 0 ; i-- ) {
+    readWord(regionId,logFile);
+    readWord(w,logFile);
+    profTabSetMaxAlloc(regionId,w);
   }
 
   fclose(logFile);
@@ -638,7 +672,7 @@ void MakeObjectProfile(int region) {
     Disaster("noOfSamples >= SampleMax and SampleMax <> nsamples."); /* then we keep exactly SampleMax samples. */
 
   showMax = 1;
-  maxValue = profTab[region][MaxAlloc]*4;
+  maxValue = profTabGetMaxAlloc(region)*4;
   sprintf(maxValueStr, "Maximum allocated bytes in this region: %2.0f.", maxValue);
   yLab = MallocString("bytes");
   PutFile();

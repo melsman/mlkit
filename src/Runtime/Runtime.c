@@ -175,10 +175,10 @@ int main(int argc, char *argv[])
   signal(SIGINT, (SignalHandler)sig_handler_int);
   signal(SIGFPE, (SignalHandler)sig_handler_fpe);
 
-/*  printf("[Starting execution...\n"); */
+  /* printf("[Starting execution...\n"); */
   code();
 
-/*  printf("Finish execution...]\n"); */
+  /* printf("Finish execution...]\n"); */
 #ifdef PROFILING
   Statistics();
 #endif

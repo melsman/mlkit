@@ -49,6 +49,22 @@ typedef struct tickList {
 #define sizeTickList (sizeof(TickList)/4)
 
 
+/* Entries in hash table for region ids */
+typedef struct profTabList {
+  int regionId;
+  int noOfPages;
+  int maxNoOfPages;
+  int noOfInstances;
+  int maxNoOfInstances;
+  int allocNow;
+  int maxAlloc;
+  struct profTabList * next;
+} ProfTabList;
+
+#define profHashTabSize 3881
+/*extern ProfTabList * profHashTab[];*/
+
+
 /*----------------------------------------------------------------*
  *        Prototypes for external and internal functions.         *
  *----------------------------------------------------------------*/

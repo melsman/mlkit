@@ -232,7 +232,7 @@ struct
 
                  in
 		   (pp_regvar rho::
-		    ", which is also free in the type (schemes) of : "::
+		    ", which is also free in the type scheme and places of : "::
 		    map (fn s => " " ^ s) lvars_and_excons_rho) @ ["\n"]
 		 end
 	 in
