@@ -264,7 +264,10 @@ let
 *)
     ;
   val path_to_consult_file = kit_source_directory ^ consult_file
-  val temp_file = gen_tmp_file ("/tmp/%Make"^kit_version);
+  val temp_file = gen_tmp_file
+        ("/tmp/mk"
+	 ^ (case user_opt of Some "hojfeld" => "-hojfeld" | _ => "")
+	 ^ kit_version);
 
   fun gen_script () =
     let
