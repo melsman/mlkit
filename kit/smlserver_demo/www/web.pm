@@ -13,8 +13,13 @@ local
   ../sml/MSP.sml
   ../sml/Msp.sml
   ../sml/FormVar.sml
+  ../sml/RatingUtil.sml
 in
  [
+  rating/index.sml
+  rating/add.sml
+  rating/add0.sml
+  rating/wine.sml
   employee/update.sml
   employee/search.sml
   time_of_day.sml
