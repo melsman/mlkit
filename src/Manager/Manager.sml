@@ -48,6 +48,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     structure ElabBasis = ModuleEnvironments.B
     structure ErrorCode = ParseElab.ErrorCode
 
+    type TopBasis = ManagerObjects.TopBasis
+
 
     fun die s = Crash.impossible ("Manager." ^ s)
 
@@ -207,7 +209,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 			(case parse_body_opt ss
 			   of SOME(body',ss) => SOME(SEQbody[LOCALbody(body1,body2),body'], ss)
 			    | NONE => SOME(LOCALbody(body1,body2), ss))
-		       | s::ss => parse_error1 ("I expect an `end'.) ", s::ss)
+		       | _ => parse_error1 ("I expect an `end'.) ", ss)
 
 		  fun parse_rest(body1,ss) =
 		    case ss
@@ -325,13 +327,14 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun fid_topdec a = FreeIds.fid_topdec a
     fun ElabBasis_restrict a = ElabBasis.restrict a
     fun IntBasis_restrict a = IntBasis.restrict a
+    fun IntBasis_restrict' a = IntBasis.restrict' a
     fun OpacityElim_restrict a = OpacityElim.restrict a
     fun opacity_elimination a = OpacityElim.opacity_elimination a
 
     fun parse_elab_interp (prjid,B, funid, punit, funstamp_now) : Basis * modcode =
           let val _ = Timing.reset_timings()
 	      val _ = Timing.new_file punit
-	      val (infB, elabB, rea, intB) = Basis.un B
+	      val (infB, elabB, rea, topIntB) = Basis.un' B
 	      val unitname = (filename_to_unitname o ManagerObjects.funid_to_filename) funid
 	      val log_cleanup = log_init unitname
 	      val _ = Name.bucket := []
@@ -356,8 +359,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		      (* val _ = debug_basis "Import" Bimp *)
 
 		      val _ = chat "[restricting interpretation basis begin...]\n"
-		      val intB_im = IntBasis_restrict(intB, {funids=funids,longstrids=longstrids,longtycons=longtycons,
-							     longvids=longvids})
+		      val intB_im = IntBasis_restrict'(topIntB, {funids=funids,longstrids=longstrids,longtycons=longtycons,
+								 longvids=longvids})
 		      val _ = chat "[restricting interpretation basis end...]\n"
 
  		      val tynames_elabB_im = ElabBasis.tynames elabB_im
@@ -407,7 +410,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun Basis_enrich a = Basis.enrich a
     fun Basis_agree a = Basis.agree a
 
-    fun build_punit(prjid,B, punit : string, clean : bool) : Basis * modcode * bool =  (* the bool is a `clean' flag *)
+    fun build_punit(prjid,B: TopBasis, punit : string, clean : bool) : Basis * modcode * bool =  (* the bool is a `clean' flag *)
       let
           val funid = ManagerObjects.funid_from_filename punit
           val funstamp_now = 
@@ -454,6 +457,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
      * ---------------- *)
 
     fun Basis_plus (B,B') = Basis.plus(B,B')		    
+    fun Basis_plus' (B,B') = Basis.plus'(B,B')		    
 
     fun maybe_create_PM_dir() : unit =
       (if OS.FileSys.access ("PM", []) then
@@ -472,7 +476,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	      end handle OS.SysErr _ => error ("I could not access directory " ^ quot dir)
       end
 
-    fun build_body (prjid, B, Bacc, body, clean) : Basis * Basis * modcode * bool =  (* the bool is a `clean' flag *)
+    fun build_body (prjid, B:TopBasis, Bacc, body, clean) : TopBasis * Basis * modcode * bool =  (* the bool is a `clean' flag *)
       case body
 	of SEQbody [] => (B, Bacc, ModCode.empty, clean)
 	 | SEQbody (body :: bodys) => 
@@ -485,7 +489,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	  let val {cd_old, file=unitid} = change_dir unitid
 	  in let val _ = maybe_create_PM_dir()
 	         val (B', modc', clean) = build_punit (prjid, B, unitid, clean)
-	     in cd_old(); (Basis_plus(B,B'), Basis_plus(Bacc,B'), modc', clean)
+	     in cd_old(); (Basis_plus'(B,B'), Basis_plus(Bacc,B'), modc', clean)
 	     end handle E => (cd_old(); raise E)
 	  end
 	
@@ -563,17 +567,17 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 		         val prjid1 = OS.Path.file longprjid1
 		     in case projectmap_lookup pmap prjid1
 			  of SOME(absprjid1',B') =>
-			    if absprjid1 = absprjid1' then (Basis_plus(B,B'), modc, pmap, clean0)
+			    if absprjid1 = absprjid1' then (Basis_plus'(B,B'), modc, pmap, clean0)
 			    else error ("Your project is inconsistent! The project identifier " ^ quot prjid1 ^ 
 					" stands for different projects.\nEliminate the inconsistency")
 			   | NONE => 
 			      let val {res_basis, res_modc, pmap, clean} = 
 				      build_project {cycleset=prjid :: cycleset, pmap=pmap, longprjid=longprjid1}
 				  val pmap = projectmap_add(prjid1,absprjid1,res_basis,pmap)
-			      in (Basis_plus (B, res_basis), ModCode.seq (modc, res_modc), 
+			      in (Basis_plus' (B, res_basis), ModCode.seq (modc, res_modc), 
 				  pmap, clean0 andalso clean)
 			      end
-		     end) (Basis.initial, ModCode.empty, pmap, clean) imports
+		     end) (Basis.initial(), ModCode.empty, pmap, clean) imports
 
 	       (* Now, check that date files associated with imported projects are older than
 		* the date file for the current project. *)
@@ -618,7 +622,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun comp (filepath : string) : unit =
       let val prjid = OS.Path.base (OS.Path.file filepath)
 	  val _ = reset()
-	  val (_, _, modc, _) = build_body(prjid, Basis.initial, Basis.empty, UNITbody filepath, false)
+	  val (_, _, modc, _) = build_body(prjid, Basis.initial(), Basis.empty, UNITbody filepath, false)
       in maybe_create_PM_dir();
 	ModCode.mk_exe(prjid, modc, OS.Path.file prjid ^ ".exe")
       end
@@ -655,7 +659,7 @@ mael*)
 
     fun elab (unitname : string) : unit =
       let val prjid = unitname
-	  val (infB,elabB,_,_) = Basis.un Basis.initial
+	  val (infB,elabB,_,_) = Basis.un' (Basis.initial())
 	  val _ = reset()
 	  val log_cleanup = log_init unitname
       in (case ParseElab.parse_elab {prjid=prjid,infB=infB,elabB=elabB,

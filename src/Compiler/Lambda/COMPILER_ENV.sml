@@ -1,4 +1,3 @@
-(*$COMPILER_ENV*)
 (* COMPILER_ENV: used by CompileDec to look up identifiers, returning lvars
    (for things which have actually been declared) or prims (for built-in
    functions). *)
@@ -16,10 +15,10 @@ signature COMPILER_ENV =
     type lvar				(* unique lambda identifiers *)
     type TyName
 
-    (* Instance transformers are necessary, since bound type variables
-     * of datatype bindings are shared in the lambda language
-     * representation and *not* shared in type environments of
-     * elaboration. Instance transformers then make sure that
+    (* Instance transformers are necessary, because bound type
+     * variables of datatype bindings are shared in the lambda
+     * language representation and *not* shared in type environments
+     * of elaboration. Instance transformers then make sure that
      * instances annotated at uses of value constructors correspond to
      * how value constructors are declared in DATATYPES in
      * LambdaExp. -- Martin *)
@@ -63,9 +62,9 @@ signature COMPILER_ENV =
     val declareCon: (id * (con * tyvar list * Type * instance_transformer) * CEnv) -> CEnv
     val declareExcon: (id * (excon * Type) * CEnv) -> CEnv
     val declare_strid: strid * CEnv * CEnv -> CEnv
-    val declare_tycon: tycon * TyName list * CEnv -> CEnv      (* tycons can only be declared - never looked up!
-								* The entry is only used to get all tynames 
-								* occuring free in the environment. *)
+    val declare_tycon: tycon * (TyName list * CEnv) * CEnv -> CEnv  (* a tycon is mapped to an environment 
+								     * holding bindings for value 
+								     * constructors. *)
     val plus: CEnv * CEnv -> CEnv         
 
     datatype result = 
@@ -89,7 +88,9 @@ signature COMPILER_ENV =
     val lookup_longid : CEnv -> longid -> result option
     val lookup_strid : CEnv -> strid -> CEnv
     val lookup_longstrid : CEnv -> longstrid -> CEnv
-
+    val lookup_longtycon : CEnv -> longtycon -> TyName list * CEnv   (* The resulting cenv holds bindings 
+								      * for value constructors; the tyname
+								      * list contains the tynames of the								      			           * associated tystr. *)
     type subst
     val mk_subst : (unit -> string) -> tyvar list * Type list -> subst
     val on_il : subst * Type list -> Type list

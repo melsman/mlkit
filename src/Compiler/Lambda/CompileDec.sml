@@ -53,6 +53,7 @@ functor CompileDec(structure Con: CON
 			 and type CompilerEnv.ElabEnv = Environments.Env
 			 and type CompilerEnv.TyName = TyName.TyName
 			 and type CompilerEnv.tycon = Environments.tycon
+			 and type CompilerEnv.longtycon = TopdecGrammar.longtycon
 
 		   structure ElabInfo : ELAB_INFO
                      sharing type ElabInfo.ElabInfo = TopdecGrammar.info
@@ -62,7 +63,7 @@ functor CompileDec(structure Con: CON
 		         and type ElabInfo.TypeInfo.Type = StatObject.Type
 		         and type ElabInfo.TypeInfo.Env = Environments.Env
 			 and type ElabInfo.TypeInfo.strid = TopdecGrammar.strid
-			 and type ElabInfo.TypeInfo.tycon = TopdecGrammar.tycon
+			 and type ElabInfo.TypeInfo.tycon = TopdecGrammar.tycon = CompilerEnv.tycon
 			 and type ElabInfo.TypeInfo.id = TopdecGrammar.id
 
                    structure FinMap: FINMAP
@@ -2038,7 +2039,23 @@ the 12 lines above are very similar to the code below
 	     end
 
 	 | DATATYPE_REPLICATIONdec (i, tycon, longtycon) => 
-	     let val env1 = compileDatrepl i
+	     let val env1 = 
+	            case to_TypeInfo i 
+		      of SOME(TypeInfo.TYENV_INFO TyEnv) =>
+			(case TE.lookup TyEnv tycon    (* A datatype replication may or may not
+							* introduce an empty VE component. *)
+			   of SOME tystr => 
+			     if VE.is_empty (TyStr.to_VE tystr) then
+			       let val tns = (TyName.Set.list o TyName.Set.map compileTyName) (TyStr.tynames tystr)
+			       in CE.declare_tycon(tycon,(tns,CE.emptyCEnv),CE.emptyCEnv)
+			       end
+			     else  (* if the VE is non-empty then we can look it up in env *)
+			       let val (tynames, env_ve) = CE.lookup_longtycon env longtycon
+			  	   val env_te = CE.declare_tycon(tycon, (tynames, env_ve), CE.emptyCEnv)
+			       in env_ve plus env_te
+			       end 
+			    | NONE => die "DATATYPE_REPLICATIONdec: tycon not in env")
+		       | _ => die "DATATYPE_REPLICATIONdec: No TyEnv type info"
 	     in (env1, fn x => x)
 	     end
 
@@ -2140,30 +2157,21 @@ the 12 lines above are very similar to the code below
 				      TypeFcn.to_TyName o TyStr.to_theta) tystr
 			val VE = TyStr.to_VE tystr
 			val (env_ve', tyvars, cbs) = compile'TyStr' (tyname, VE) 
-			val env_te' = CE.declare_tycon(tycon, [tyname], env_te)
+			val env_te' = CE.declare_tycon(tycon, ([tyname], env_ve'), env_te)
 		    in (env_ve plus env_ve', env_te', (tyvars,tyname,cbs)::dats)
 		    end) (CE.emptyCEnv,CE.emptyCEnv,[]) TyEnv
 	 | _ => die "No TyEnv type info for compiling datbind"
 
-    and compileDatrepl i : CE.CEnv =
+    and compileTypbind i : CE.CEnv = 
       case to_TypeInfo i 
 	of SOME(TypeInfo.TYENV_INFO TyEnv) =>
-	  (* A datatype replication may or may not introduce an empty VE component. *)
 	  TE.Fold (fn (tycon, tystr) => fn env' => 
 		   if VE.is_empty (TyStr.to_VE tystr) then
 		     let val tns = (TyName.Set.list o TyName.Set.map compileTyName) (TyStr.tynames tystr)
-		     in CE.declare_tycon(tycon,tns,env')
+		     in CE.declare_tycon(tycon,(tns,CE.emptyCEnv),env')
 		     end
-		   else let val tyname = (NoSome "TypeFcn not simple" o 
-					  TypeFcn.to_TyName o TyStr.to_theta) tystr
-			    val tyname = compileTyName tyname
-			    val VE = TyStr.to_VE tystr
-			    val (env'', tyvars, cbs) = compile'TyStr' (tyname, VE) 
-			in CE.declare_tycon(tycon,[tyname],env' plus env'')
-			end) CE.emptyCEnv TyEnv
-	 | _ => die "No TyEnv type info for compiling datatype replication/type declaration"
-
-    and compileTypbind i : CE.CEnv = compileDatrepl i
+		   else die "compileTypbind: expecting VE to be empty") CE.emptyCEnv TyEnv
+	| _ => die "compileTypbind: No TyEnv type info"
 
     and compileExbind (env:CE.CEnv) exbind : (CE.CEnv * (LambdaExp -> LambdaExp)) =
       case exbind

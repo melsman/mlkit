@@ -48,10 +48,7 @@ functor CompileBasis(structure Con : CON
 
     fun log s = TextIO.output(TextIO.stdOut,s)
 
-    val debug_man_enrich = ref false
-    val _ = Flags.add_flag_to_menu (["Debug Kit", "Manager"], 
-				    "debug_man_enrich", "debug man enrich",
-				    debug_man_enrich)
+    val debug_man_enrich = Flags.lookup_flag_entry "debug_man_enrich"
 
     type lvar = LambdaStatSem.lvar
     type con = Con.con
@@ -76,6 +73,8 @@ functor CompileBasis(structure Con : CON
 			 psi_env: psi_env, 
 			 l2kam_ce: l2kam_ce}
 
+    type TopCompileBasis = CompileBasis
+
     fun mk_CompileBasis a = a
     fun de_CompileBasis a = a
 
@@ -89,15 +88,15 @@ functor CompileBasis(structure Con : CON
 		 psi_env=PhysSizeInf.empty,
 		 l2kam_ce=CompLamb.empty}
 
-    val initial = {TCEnv=LambdaStatSem.initial,
-		   EqEnv=EliminateEq.initial,
-		   OEnv=OptLambda.initial_env,
-		   rse=RegionStatEnv.initial,
-		   mulenv=Mul.initial,
-		   mularefmap=Mul.initial_mularefmap,
-		   drop_env=DropRegions.init,
-		   psi_env=PhysSizeInf.init,
-		   l2kam_ce=CompLamb.init}
+    fun initial() = {TCEnv=LambdaStatSem.initial,
+		     EqEnv=EliminateEq.initial,
+		     OEnv=OptLambda.initial_env,
+		     rse=RegionStatEnv.initial,
+		     mulenv=Mul.initial,
+		     mularefmap=Mul.initial_mularefmap,
+		     drop_env=DropRegions.init,
+		     psi_env=PhysSizeInf.init,
+		     l2kam_ce=CompLamb.init}
 
     fun plus({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce},
 	     {TCEnv=TCEnv',EqEnv=EqEnv',OEnv=OEnv',rse=rse',mulenv=mulenv',
@@ -112,6 +111,7 @@ functor CompileBasis(structure Con : CON
        psi_env=PhysSizeInf.plus(psi_env,psi_env'),
        l2kam_ce=CompLamb.plus(l2kam_ce, l2kam_ce')}
 
+    val plus' = plus
 
     type StringTree = PP.StringTree
     fun layout_CompileBasis {TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce} =
@@ -156,6 +156,7 @@ functor CompileBasis(structure Con : CON
 	debug("drop_env", DropRegions_enrich(drop_env,drop_env1)) andalso
 	debug("psi_env", PhysSizeInf_enrich(psi_env,psi_env1)) andalso
 	debug("l2kam_ce", CompLamb_enrich(l2kam_ce,l2kam_ce1))
+      val enrich' = enrich
     end
 
     fun match ({TCEnv,EqEnv,OEnv,rse,mulenv,mularefmap,drop_env,psi_env,l2kam_ce},
@@ -176,12 +177,12 @@ functor CompileBasis(structure Con : CON
 	 * 11:28. tho. 
 	 *
 	 * Ok, here it comes: There are some exception constructors,
-	 * constructors and type names which cannot be derived from
-	 * the free identifiers of the source program but which need
+	 * constructors and type names that cannot be derived from
+	 * the free identifiers of the source program but need
 	 * to be declared in the environments. These are identifiers
 	 * stemming from derived forms, unexhaustive matches and
 	 * equality elimination. This is why we patch the derived
-	 * identifiers below. *)
+	 * identifiers below.  Martin-18/03/1998 *)
 
 	  val excons = Excon.ex_DIV :: Excon.ex_MOD ::
 	        Excon.ex_MATCH :: Excon.ex_BIND :: excons
@@ -217,6 +218,7 @@ functor CompileBasis(structure Con : CON
 	  psi_env=psi_env1,
 	  l2kam_ce=l2kam_ce1}
       end
+    val restrict' = restrict
 
     fun eq (B1,B2) = enrich(B1,B2) andalso enrich(B2,B1)
 

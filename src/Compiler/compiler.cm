@@ -21,20 +21,6 @@ Lambda/LambdaStatSem.sml
 Lambda/COMPILER_ENV.sml
 Lambda/CompilerEnv.sml
 
-(*Lambda/AND_OR_TREE.sml
-Lambda/AndOrTree.sml
-Lambda/DECISION_LIST.sml
-Lambda/DecisionList.sml
-Lambda/DECISION_TREE.sml
-Lambda/DecisionTree.sml
-Lambda/MATCH_COMPILER.sml
-Lambda/MatchCompiler.sml
-Lambda/PAT_BINDINGS.sml
-Lambda/PatBindings.sml
-Lambda/MATCH_WARNINGS.sml
-Lambda/MatchWarnings.sml
-*)
-
 Lambda/ELIMINATE_EQ.sml
 Lambda/EliminateEq.sml
 Lambda/COMPILE_DEC.sml
@@ -93,30 +79,39 @@ Cfg/CfgKitAM.sml
 Cfg/TRANSFORM_KBP.sml
 Cfg/TransformKbp.sml
 
-(*
-Hppa/DELAY_SLOT_OPTIMIZATION.sml
-Hppa/DelaySlotOptimization.sml
-Hppa/HPPA_INFO.sml
-Hppa/HPPA_RISC.sml
-Hppa/HpPaInfo.sml
-Hppa/HpPaRisc.sml
-Hppa/HppaKAMBackend.sml
-Hppa/INST_COUNT_PROFILING.sml
-Hppa/InstCountProfiling.sml
-Hppa/KBP_TO_HPPA.sml
-Hppa/KbpToHpPa.sml
-Hppa/RESOLVE_JUMPS.sml
-Hppa/ResolveJumps.sml
-*)
+#if defined(KIT_TARGET_C)
 
+   C/C_INFO.sml
+   C/CInfo.sml
+   C/KBP_TO_C.sml
+   C/KbpToC.sml
+   C/C_CODE.sml
+   C/CCode.sml
+   C/CKAMBackend.sml
 
-C/C_INFO.sml
-C/CInfo.sml
-C/KBP_TO_C.sml
-C/KbpToC.sml
-C/C_CODE.sml
-C/CCode.sml
-C/CKAMBackend.sml
+#else  
+   
+   (* the default is to use the HP backend; to compile the C backend
+    * write   CM.SymVal.define("KIT_TARGET_C", 1);
+    * before executing   CM.make(); 
+    *)
+
+   Hppa/DELAY_SLOT_OPTIMIZATION.sml
+   Hppa/DelaySlotOptimization.sml
+   Hppa/HPPA_INFO.sml
+   Hppa/HPPA_RISC.sml
+   Hppa/HpPaInfo.sml
+   Hppa/HpPaRisc.sml
+   Hppa/HppaKAMBackend.sml
+   Hppa/INST_COUNT_PROFILING.sml
+   Hppa/InstCountProfiling.sml
+   Hppa/KBP_TO_HPPA.sml
+   Hppa/KbpToHpPa.sml
+   Hppa/RESOLVE_JUMPS.sml
+   Hppa/ResolveJumps.sml
+
+#endif
+
 
 COMPILE_BASIS.sml
 CompileBasis.sml

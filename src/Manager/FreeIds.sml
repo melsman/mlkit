@@ -436,18 +436,18 @@ functor FreeIds (structure TopdecGrammar : TOPDEC_GRAMMAR     (* Post elab *)
      * MAIN FUNCTIONS
      *)
 
-    fun free_ids_any (free_any:ids->'a->'b) (any:'a) : longids =
+    fun free_ids_any (ids:ids) (free_any:ids->'a->'b) (any:'a) : longids =
       let val _ = reset_buckets()
-	  val _ = free_any empty_ids any
+	  val _ = free_any ids any
 	  val free_longids = get_free_longids()
 	  val _ = reset_buckets()
       in free_longids
       end
 
-    val fid_topdec = free_ids_any free_topdec
-    val fid_dec = free_ids_any free_dec
-    val fid_strexp = free_ids_any free_strexp
-
+    val fid_topdec = free_ids_any empty_ids free_topdec
+    val fid_dec = free_ids_any empty_ids free_dec
+    val fid_strexp = free_ids_any empty_ids free_strexp
+    fun fid_strexp' strid = free_ids_any {vids=[], tycons=[], strids=[strid], funids=[], sigids=[]} free_strexp
 
     (* 
      * PRETTYPRINTING

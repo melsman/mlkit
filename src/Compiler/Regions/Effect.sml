@@ -65,7 +65,7 @@ struct
       else if rt2 = BOT_RT then rt1
       else if rt1 = WORD_RT orelse rt2 = WORD_RT 
            then die "cannot unify word runtype region with other region"
-      else TOP_RT
+      else TOP_RT (* mael: shouldn't this be "die"? *)
 
   type key = int ref (* for printing and sorting of nodes *)
   fun show_key(ref i) = Int.string i

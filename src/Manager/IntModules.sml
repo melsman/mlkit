@@ -54,7 +54,7 @@ functor IntModules(structure Name : NAME
 
 		   structure FreeIds : FREE_IDS
 		     sharing type FreeIds.longid = ManagerObjects.longid
-		         and type ManagerObjects.strid = TopdecGrammar.strid
+		         and type FreeIds.strid = ManagerObjects.strid = TopdecGrammar.strid
 		         and type FreeIds.longstrid = ManagerObjects.longstrid = TopdecGrammar.longstrid
 		         and type FreeIds.funid = ManagerObjects.funid = TopdecGrammar.funid
 			 and type FreeIds.longtycon = ManagerObjects.longtycon = TopdecGrammar.longtycon
@@ -521,11 +521,11 @@ functor IntModules(structure Name : NAME
 
 
     fun int_funbind (prjid: prjid, intB: IntBasis, FUNBIND(i, funid, strid, sigexp, strexp, funbind_opt)) : IntFunEnv =
-      let val {funids,longtycons,longstrids,longvids,...} = FreeIds.fid_strexp strexp
-	  val longstrids = List.dropAll (fn longstrid => 
+      let val {funids,longtycons,longstrids,longvids,...} = FreeIds.fid_strexp' strid strexp
+(*	  val longstrids = List.dropAll (fn longstrid => 
 					 case StrId.explode_longstrid longstrid
 					   of ([],strid') => strid = strid'
-					    | (strid'::_,_) => strid = strid') longstrids
+					    | (strid'::_,_) => strid = strid') longstrids *)
 	  val intB0 = IntBasis.restrict(intB, {funids=funids,longstrids=longstrids,longvids=longvids,longtycons=longtycons})
 	  val funstamp = FunStamp.new funid
 	  val (E, body_builder_info) =

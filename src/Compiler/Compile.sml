@@ -1,11 +1,4 @@
 
-(*$Compile: EXCON LVARS COMPILE_BASIS REPORT FLAGS PRETTYPRINT FINMAP
-        LAMBDA_EXP COMPILER_ENV COMPILE_DEC OPT_LAMBDA CRASH
-        SPREAD_EXPRESSION COMP_LAMB KAM_BACKEND LAMBDA_STAT_SEM
-        ELIMINATE_EQ COMPILE TIMING EFFECT RTYPE SPREAD_DATATYPE
-        REGION_EXP REGINF MUL_INF MUL_EXP MUL AT_INF DROP_REGIONS
-        PHYS_SIZE_INF NAME REGION_FLOW_GRAPH_PROFILING*)
-
 functor Compile(structure Excon : EXCON
 		structure FinMap: FINMAP
 
@@ -158,6 +151,10 @@ functor Compile(structure Excon : EXCON
     (* ---------------------------------------------------------------------- *)
     (*  Dynamic Flags.                                                        *)
     (* ---------------------------------------------------------------------- *)
+
+    val print_opt_lambda_expression = ref false
+    val _ = Flags.add_flag_to_menu (["Printing of intermediate forms"], "print_opt_lambda_expression",
+				    "print optimised lambda expression", print_opt_lambda_expression)
 
     val print_physical_size_inference_expression =
           Flags.lookup_flag_entry "print_physical_size_inference_expression"
@@ -359,7 +356,7 @@ functor Compile(structure Excon : EXCON
 	     val (lamb_opt, env') = 
 	           Timing.timing_end_res ("Opt. lam.", OptLambda.optimise(env,lamb))
 	   in
-	     if !Flags.DEBUG_COMPILER
+	     if !Flags.DEBUG_COMPILER orelse !print_opt_lambda_expression
 	     then display("Report: Opt", layoutLambdaPgm lamb_opt) else () ;
 	     (lamb_opt, env')
 	   end)
