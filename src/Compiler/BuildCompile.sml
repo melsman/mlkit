@@ -56,6 +56,7 @@ functor BuildCompile (structure TyName : TYNAME
 				     = ElabInfo.StringTree
 				     = PP.StringTree = TyName.StringTree
 			    and type PP.Report = Report.Report
+				  = ElabInfo.ParseInfo.SourceInfo.Report
 		      structure Crash: CRASH
 		      structure Timing: TIMING
                   ) : sig
@@ -211,6 +212,7 @@ functor BuildCompile (structure TyName : TYNAME
            structure RSE = RegionStatEnv
            structure TyName = TyName
            structure Crash = Crash
+	   structure Flags = Flags
            structure PP = PP
           )
 
