@@ -548,7 +548,7 @@ int sml_commandline_args(int consRho, int pairRho, int strRho) {
   StringDesc *mlStr;
   int counter = commandline_argc;
   makeNIL(consRho,resList);  
-  while (counter > 0) {
+  while (counter > 1) {
     mlStr = convertStringToML(strRho, commandline_argv[counter--]);
     allocRecordML(pairRho, 2, pairPtr);
     first(pairPtr) = (int) mlStr;
@@ -566,7 +566,7 @@ int sml_commandline_argsProfiling(int pairRho, int strRho, int pPoint) {
   StringDesc *mlStr;
   int counter = commandline_argc;
   makeNIL(resList);  
-  while (counter > 0) {
+  while (counter > 1) {
     mlStr = convertStringToMLProfiling(strRho, commandline_argv[counter--], pPoint);
     allocRecordMLProf(pairRho, 2, pairPtr, pPoint);
     first(pairPtr) = (int) mlStr;
@@ -581,7 +581,7 @@ int sml_commandline_argsProfiling(int consRho, int pairRho, int strRho, int pPoi
   StringDesc *mlStr;
   int counter = commandline_argc;
   makeNILProf(consRho,resList,pPoint);  
-  while (counter > 0) {
+  while (counter > 1) {
     mlStr = convertStringToMLProfiling(strRho, commandline_argv[counter--], pPoint);
     allocRecordMLProf(pairRho, 2, pairPtr, pPoint);
     first(pairPtr) = (int) mlStr;

@@ -42,6 +42,7 @@ structure Tester : TESTER =
     fun process_entry (filepath, opts) =
       let
 	val _ = msg ("Processing file `" ^ filepath ^ "'")
+	val _ = OS.Process.system "rm -f -r PM"     (* first delete PM directory *)
 	fun opt t = List.exists (fn a => a=t) opts
 	val recover : unit -> unit = 
 	  let val memdir = OS.FileSys.getDir()

@@ -185,8 +185,8 @@ void callSbrk() {
 
   sb = (char *)malloc(BYTES_ALLOC_BY_SBRK + 8);
 
-  if (sb == (char *)-1) {
-    perror("SBRK error\n");
+  if (sb == (char *)NULL) {
+    perror("I could not allocate more memory; either no more memory is\navailable or the memory subsystem is detectively corrupted\n");
     exit(-1);
   }
 

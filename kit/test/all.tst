@@ -20,6 +20,7 @@ Test files may contain Standard ML like comments.
 (* Tests of static semantics; it would be great with some more
  * systematic testing here! *)
 
+rank.sml            ccl       ecte    nobasislib
 pat.sml             ccl     
 llv.sml
 typerr.sml          ccl       ecte
@@ -78,7 +79,9 @@ timer.sml                     prof
 unixpath.sml                  prof
 cmdline.sml                   prof
 filesys.sml                   prof
-real.sml                      prof   (* Real.round is broken. *)
+real.sml                      prof
 word.sml                      prof
-word8.sml                     prof
+word8.sml                     prof    (* the C backend does not
+	                                 implement overflow on
+	                                 arithmetic operations. *) 
 

@@ -33,8 +33,8 @@ typerr.sml, line 7, column 4:
   fun f3b (x : 'a) = f3b [x];
       ^^^^^^^^^^^^^^^^^^^^^^
 Type mismatch,
-   expecting: 'a list->'a
-   found:     'a->'a
+   expecting: 'a list->'b
+   found:     'a->'b
 
 typerr.sml, line 9, column 4:
   fun f3c x = (x=x, f3c [x]);
@@ -75,15 +75,15 @@ typerr.sml, line 19, column 19:
   fun f8a (x : 'a) = x=x;
                      ^^^
 Type clash,
-   operand suggests operator type: 'a * 'a->'a
-   but I found operator type:      ''b * ''b->bool
+   operand suggests operator type: 'a * 'a->'b
+   but I found operator type:      ''c * ''c->bool
 
 typerr.sml, line 21, column 20:
   fun f8b (x : '_a) = x=x;
                       ^^^
 Type clash,
-   operand suggests operator type: '_a * '_a->'a
-   but I found operator type:      ''b * ''b->bool
+   operand suggests operator type: 'a * 'a->'b
+   but I found operator type:      ''c * ''c->bool
 
 typerr.sml, line 23, column 4:
   fun f9 {x, ...} = f9 x;
@@ -179,5 +179,5 @@ typerr.sml, line 39, column 48:
   val f15 = (let val Id : 'a -> 'a = fn z => z in Id Id end,
                                                   ^^^^^
 Type clash,
-   operand suggests operator type: ('a->'a)->'a
+   operand suggests operator type: ('a->'a)->'b
    but I found operator type:      'a->'a

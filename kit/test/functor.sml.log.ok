@@ -22,24 +22,24 @@
               end
   functor H(type s
             type t
-            val a : s
-            val pr : s->string
+            val a : t
+            val pr : t->string
            ): sig
                 structure A1 :
                   sig
                     type t
-                    val pr : s->string
+                    val pr : t->string
                   end
                 structure A2 :
                   sig
                     datatype k
-                      con A : s->k
+                      con A : t->k
                     val pr : k->string
                   end
                 structure A3 :
                   sig
                     type t
-                    val b : s
+                    val b : t
                   end
                 val a : k
               end

@@ -26,7 +26,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     structure List = Edlib.List
     structure ListPair = Edlib.ListPair
 
-    val print_type_levels = ref true     (* for debugging *)
+    val print_type_levels = ref false     (* for debugging *)
 
     fun die s = Crash.impossible ("StatObject." ^ s)
     fun noSome NONE s = die s

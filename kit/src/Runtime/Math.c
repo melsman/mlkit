@@ -154,36 +154,6 @@ raise_floor:
     return;
 }
 
-int roundFloat(int f)
-{ 
-  double r;
-  int i;
-
-  /* Apparently no rint() in djgpp's libm: */
-#if defined(hpux)
-  r = get_d(f);
-  if( r >= 0.0 )
-    { if( (r+0.5) >= (((double)Max_Int)+1.0) ) goto raise_round;
-      i = (int) (r+0.5);
-    }
-  else
-    { if( (r-0.5) < ((double)Min_Int) ) goto raise_round;
-      i = (int) (r-0.5);
-    }
-#else
-  r = rint(get_d(f));
-  if ((r > (double) (Max_Int)) || (r < (double)(Min_Int))) goto raise_round;
-  i = (int) r;
-#endif
-
-  return convertIntToML(i);
-
-raise_round:
-    raise_exn((int)&exn_OVERFLOW);
-    return;
-}
-
-
 int truncFloat(int f)
 { 
   double r;
