@@ -140,10 +140,10 @@ type arg = unit
  infix declarations, and positive, decimal integers (from
  integers in general) for labels.*)
 
-        | DECPOSINTEGER of int | DECNEGINTEGER of int 
-	| HEXINTEGER of int | DIGIT of int 
-	| WORD of int
-	| REAL of real | STRING of string
+        | DECPOSINTEGER of int Option | DECNEGINTEGER of int Option
+	| HEXINTEGER of int Option | DIGIT of int 
+	| WORD of int Option
+	| REAL of real Option | STRING of string
         | ID of string | TYVAR of string 
 
 (* Junk: *)
@@ -151,11 +151,11 @@ type arg = unit
 
 %value  QUAL_ID         (["bogus"])
 %value  QUAL_STAR       (["bogus"])
-%value  DECPOSINTEGER   (0)
-%value  DECNEGINTEGER   (0)
-%value  HEXINTEGER      (0)
-%value  WORD		(0)
-%value  REAL            (0.0)
+%value  DECPOSINTEGER   (Some 0)
+%value  DECNEGINTEGER   (Some 0)
+%value  HEXINTEGER      (Some 0)
+%value  WORD		(Some 0)
+%value  REAL            (Some 0.0)
 %value  STRING          ("")
 %value  ID              ("bogus")
 %value  TYVAR           ("'bogus")
@@ -433,7 +433,8 @@ DIGIT_opt:
         | (* -none- *)  ( None )
 
 DecPosInteger: 
-	  DECPOSINTEGER ( DECPOSINTEGER )
+	  DECPOSINTEGER ( raise_lexical_error_if_none
+			    DECPOSINTEGERleft DECPOSINTEGER )
         | DIGIT         ( DIGIT )
 
 Label:    Ident         ( mk_IdentLab Ident )
@@ -1403,9 +1404,12 @@ CommaTyRow_opt:
           COMMA TyRow   ( Some TyRow )
         | (* -none- *)  ( None )
 
-Integer:  DECPOSINTEGER ( DECPOSINTEGER )
-        | DECNEGINTEGER ( DECNEGINTEGER )
-	| HEXINTEGER    ( HEXINTEGER )
+Integer:  DECPOSINTEGER ( raise_lexical_error_if_none
+			    DECPOSINTEGERleft DECPOSINTEGER )
+        | DECNEGINTEGER ( raise_lexical_error_if_none
+			    DECNEGINTEGERleft DECNEGINTEGER )
+	| HEXINTEGER    ( raise_lexical_error_if_none
+			    HEXINTEGERleft HEXINTEGER )
         | DIGIT         ( DIGIT )
 
 Char:     HASH STRING   ( if String.size STRING = 1 then ord STRING
@@ -1413,10 +1417,10 @@ Char:     HASH STRING   ( if String.size STRING = 1 then ord STRING
 			  			    "string must have length 1") )
 
 SCon:     Integer       ( mk_IntSCon Integer )
-        | WORD          ( mk_WordSCon WORD )
+        | WORD          ( mk_WordSCon (raise_lexical_error_if_none WORDleft WORD) )
         | STRING        ( mk_StringSCon STRING )
         | Char          ( mk_CharSCon Char )
-        | REAL          ( mk_RealSCon REAL )
+        | REAL          ( mk_RealSCon (raise_lexical_error_if_none REALleft REAL) )
 
 TyVarSeq:
           TyVarSeq1     ( TyVarSeq1 )

@@ -97,10 +97,13 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 	    chars_to_posint_in_base 16 chars 
 	| asWord0 ("0" :: "w" :: chars) = chars_to_posint_in_base 10 chars
 	| asWord0 _ = impossible "asWord0"
+
+      fun exception_to_opt p x = Some (p x) handle Overflow => None
     in
-      val asInteger = chars_to_int o explode
-      val asWord = asWord0 o explode
-      val chars_to_posint_in_base = chars_to_posint_in_base
+      val asInteger = exception_to_opt (chars_to_int o explode)
+      val asWord = exception_to_opt (asWord0 o explode)
+      fun chars_to_posint_in_base chars = chars_to_posint_in_base chars
+	    handle Overflow => impossible "chars_to_posint_in_base"
       (*31/10/1995-Martin: new; the old couldn't handle 2147483647.0:
        (because it used accumInt instead of accumReal)*)
       fun asReal text =
@@ -117,8 +120,8 @@ functor LexUtils(structure LexBasics: LEX_BASICS
 			       | _ => 0)
 	  fun E(x, y) = x * exp(y*ln10)
 	in
-          real(sign)*E(intPart_as_real + decPart, real expPart)
-	end handle _ => impossible ("asReal: cannot make real constant out of: " ^ text)
+          Some (real sign*E(intPart_as_real + decPart, real expPart))
+	end handle _ => None
     end (*local*)
 
     fun initArg sourceReader = LEX_ARGUMENT{sourceReader=sourceReader,

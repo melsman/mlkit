@@ -19,9 +19,9 @@ signature LEX_UTILS =
     val isQualStar: string -> bool
     val asQualId: string -> string list
     val asDigit: string -> int
-    val asInteger: string -> int
-    val asWord: string -> int
-    val asReal: string -> real
+    val asInteger: string -> int Option
+    val asWord: string -> int Option
+    val asReal: string -> real Option
 
     val initArg: SourceReader -> LexArgument
     val clearString: LexArgument -> LexArgument

@@ -49,6 +49,9 @@ signature GRAMMAR_UTILS =
           M.info * M.info -> info * M.spec
     val fold_specs_to_spec : (info * M.spec) list -> M.spec
 
+    val raise_lexical_error_if_none : pos -> 'a Option -> 'a
+        (*raise LexBasics.LEXICAL_ERROR (pos, "grr") if the option is None.*)
+
    (* The following all come from the appropriate modules, but they're here
       for convenience and brevity. *)
 
