@@ -1,0 +1,14 @@
+<html>
+<body bgcolor=lightgreen>
+<center>
+<h2>Add a friend</h2> 
+<form action=friends_add.msp>
+Name: <br><input type=text name=name> <p>
+Email: <br><input type=text name=email> <p>
+Phone: <br><input type=text name=phone> <p>
+<input type=submit value="Add Person"> 
+
+</table>
+</center>
+</body>
+</html>

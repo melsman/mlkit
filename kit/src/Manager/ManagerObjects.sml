@@ -420,41 +420,45 @@ not used anymore 2000-10-17, Niels *)
 	  let val base_absprjid = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
 	  in "PM/" ^ base_absprjid ^ ".timestamp"
 	  end
-	
+
+	val smlserver : bool ref = Flags.lookup_flag_entry "smlserver"
+
 	fun deleteTimeStampFile absprjid : unit =
-	  let val f = timeStampFileName absprjid
-	  in OS.FileSys.remove f handle _ => ()
-	  end
+	  if not(!smlserver) then ()
+	  else let val f = timeStampFileName absprjid
+	       in OS.FileSys.remove f handle _ => ()
+	       end
 
 	fun mk_uoFileList (absprjid: absprjid, modc) : unit =
-	  let val modc = emit (absprjid, modc)
-	    val base_absprjid = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
-	    fun files_to_be_emitted (mc,acc) =
-	      case mc
-		of SEQ_MODC(mc1,mc2) => emitted_files(mc1,emitted_files(mc2,acc))
-		 | EMITTED_MODC(tfile,_) => tfile::acc
-		 | NOTEMITTED_MODC(target,li,filename) =>
-		  let val tfile = base_absprjid ^ "-" ^ filename ^ ".o"
-		  in tfile::acc
-		  end
-		 | _ => acc  
-	    val files = files_to_be_emitted(modc,nil)
-	    fun modify s = case rev (explode s)
-			     of #"o" :: rest => implode (rev(#"o" :: #"u" :: rest))
-			      | _ => s
-	    val uofiles = map modify files
-	    val ulfile = "PM/" ^ base_absprjid ^ ".ul"
-	    val timeStampFile = timeStampFileName(absprjid)
-	    val os = TextIO.openOut ulfile
-	    val _ = app (fn f => TextIO.output(os, f ^ "\n")) uofiles;
-	    val _ = TextIO.closeOut os;
-	    val os = TextIO.openOut timeStampFile
-	    val _ = TextIO.output(os, "")
-	    val _ = TextIO.closeOut os;
-	  in	      
-	    print("[Created file " ^ ulfile ^ "]\n")
-	  end
-
+	  if not(!smlserver) then ()
+	  else
+	    let val modc = emit (absprjid, modc)
+	      val base_absprjid = OS.Path.base(OS.Path.file(ModuleEnvironments.absprjid_to_string absprjid))
+	      fun files_to_be_emitted (mc,acc) =
+		case mc
+		  of SEQ_MODC(mc1,mc2) => emitted_files(mc1,emitted_files(mc2,acc))
+		   | EMITTED_MODC(tfile,_) => tfile::acc
+		   | NOTEMITTED_MODC(target,li,filename) =>
+		    let val tfile = base_absprjid ^ "-" ^ filename ^ ".o"
+		    in tfile::acc
+		    end
+		   | _ => acc  
+	      val files = files_to_be_emitted(modc,nil)
+	      fun modify s = case rev (explode s)
+			       of #"o" :: rest => implode (rev(#"o" :: #"u" :: rest))
+				| _ => s
+	      val uofiles = map modify files
+	      val ulfile = "PM/" ^ base_absprjid ^ ".ul"
+	      val timeStampFile = timeStampFileName(absprjid)
+	      val os = TextIO.openOut ulfile
+	      val _ = app (fn f => TextIO.output(os, f ^ "\n")) uofiles;
+	      val _ = TextIO.closeOut os;
+	      val os = TextIO.openOut timeStampFile
+	      val _ = TextIO.output(os, "")
+	      val _ = TextIO.closeOut os;
+	    in	      
+	      print("[Created file " ^ ulfile ^ "]\n")
+	    end
       end
 
 

@@ -1,0 +1,161 @@
+This is file README for SMLserver                 (ME 2001-01-12)
+
+INTRODUCTION
+
+SMLserver is a module for AOLserver, an Open Source webserver provided
+by America Online. SMLserver supports webserver interpretation of
+bytecode files compiled with the ML Kit. SMLserver supports both ML
+Server Pages [1] (i.e., msp-files) and plain sml-files using an SML
+interface to the AOLserver API.
+
+SMLserver uses a load-once-execute-many scheme for executing sml-files
+and msp-files, which, together with database pooling, provides a way
+to create database backed web sites in SML that are capable of
+answering a high number of requests compared to systems using a
+traditional CGI based approach.  
+
+A project file (pm-file) maintained by the web-programmer is used to
+keep track of library modules, msp-files, and sml-files that are part
+of the web project. When a page is requested, SMLserver first checks
+if the library modules are loaded.  If the library modules are not
+loaded, SMLserver loads the library modules. Then the page requested
+is loaded and executed, leaving the library modules loaded for reuse
+by other requests. Only when the project is recompiled or AOLserver is
+restarted, the library modules are reloaded.
+
+
+SYSTEM REQUIREMENTS
+
+To use SMLserver you need the following:
+
+  * Linux Box
+
+  * AOLserver/3.2 or later. AOLserver is Open Source. You can obtain a
+    version of AOLserver from http://www.aolserver.com or from
+    ArsDigita (http://www.arsdigita.com/acs-repository/), where you
+    can find versions of AOLserver patched with internationalization
+    features, etc.
+
+  * ML Kit distribution. The ML Kit distribution contains this SMLserver
+    implementation, thus, because you are reading this file, you
+    probably already has the ML Kit installed.
+
+  
+INSTALLATION
+
+Before you install the ML Kit, you must install AOLserver; see above.
+
+To install the ML Kit with SMLserver support...
+
+
+DATABASE CONNECTIVITY
+
+To get the database structure Ns.Db to work, you must first install an
+RDBMS supported by AOLserver on your system. One such RDBMS is
+Postgresql, which you can fetch from www.postgresql.org (if you're
+running Redhat Linux, you can even find some rpm's there). 
+
+Postgresql details on a RedHat 7.0 system with rpm's installed:
+
+  1. Start up the postmaster deamon process. Execute (as root) the
+     following command:
+
+         /etc/rc.d/init.d/postgresql start
+
+  2. Create a database user `dbuser' (or whatever login name you
+     have):
+
+         [root@daffy aol32]# su - postgres
+         bash$ createuser -P dbuser
+
+     Answer yes to both questions asked by createuser. 
+
+  3. As user `dbuser', create a database `yourdb' as follows:
+
+         mael@daffy> createdb yourdb
+         ...
+
+     You can now use the command `psql' to control your database and
+     submit sql-queries and commands to your database.
+
+  4. Insert the following sections in your nsd.tcl-file - the file
+     given to the webserver executable `nsd' at startup:
+
+         ns_section "ns/db/drivers" 
+         ns_param nspostgres ${bindir}/nspostgres.so
+
+         ns_section "ns/db/pools" 
+         ns_param main "Main Pool" 
+
+	 ns_section "ns/db/pool/main" 
+	 ns_param Driver nspostgres 
+	 ns_param Connections 5                 ;# 5 is a good number. Increase according to your needs
+	 ns_param DataSource localhost::yourdb  ;# Replace 'yourdb' with the name of your database in PG
+	 ns_param User dbuser                   ;# User and password AOLserver will use to connect
+	 ns_param Password yourpassword 
+	 ns_param Verbose Off                   ;# Set it to On to see all queries. Good for debugging SQL.
+	 ns_param LogSQLErrors On 
+	 ns_param ExtendedTableInfo On 
+
+	 ns_section "ns/server/mael/db" 
+	 ns_param Pools "*" 
+	 ns_param DefaultPool "main"
+
+     Make sure that the driver nspostgres.so is located in AOLserver's
+     bin-directory.
+
+  5. Restart AOLserver.
+
+  6. Run the friends example:
+
+        mael@daffy> cd kit/smlserver_demo/www/
+        mael@daffy> psql
+           ...
+        mael=# \i friends.sql
+           ...
+        mael=# \q
+        mael@daffy> ../../bin/kit web.pm
+
+     Go start your browser and visit
+  
+        http://127.0.0.1:8080/friends.msp
+
+
+COMPILING THE EXAMPLE PROJECT smlserver_demo/web.pm
+
+To make the msp-pages and sml-pages that appear in the web.pm file
+available to browsers, execute `../bin/kit web.pm' in the
+smlserver_demo directory. (Notice that before you can do so, the ML
+Kit version 3.2 or later must already be installed on your system.)
+
+Start AOLserver, if you have not already done so:
+  
+  $ cd kit/smlserver_demo
+  $ /usr/aol32/bin/nsd -t nsd.mael.tcl -u mael -g mael
+
+By looking in the file smlserver_demo/log/server.log, you should see
+that AOLserver has started as expected. Now try to fetch the page
+first.html from your browser using the url
+
+  http://127.0.0.1:8080/first.html
+
+You should see a greeting from the server. You can now try fetching
+one of the pages
+
+  http://127.0.0.1:8080/hello.msp
+  http://127.0.0.1:8080/calendar.msp
+  http://127.0.0.1:8080/index.msp
+
+
+TO DO
+
+Currently SMLserver supports only one thread, but this limitation is
+soon to change...
+
+
+REFERENCES  
+  
+[1] A system for running ML Server Pages using the Apache Web-server
+was first implemented by Peter Sestoft. For more information about
+this work, consult http://www.dina.kvl.dk/~sestoft/msp
+

@@ -64,6 +64,15 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
     fun warn (s : string) = print ("\nWarning: " ^ s ^ ".\n\n")
     fun quot s = "`" ^ s ^ "'"
 
+    fun has_ext(s: string,ext) = case OS.Path.ext s
+				   of SOME ext' => ext = ext'
+				    | NONE => false
+
+    structure MspComp = MspComp(val error = error
+				val pr = "Ns.write"
+				val pre = "val _ = Ns.returnHeaders()\n\
+                                          \val print = Ns.write\n\n")
+
     fun member s l = let fun m [] = false
 			   | m (x::xs) = x = s orelse m xs
 		     in m l
@@ -206,10 +215,6 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
             [] => error ("while parsing project: " ^ quot absprjid_s ^ " : " ^ s' ^ "(reached end of file)")
           | s::_ => error ("while parsing project: " ^ quot absprjid_s ^ " : " ^ s' ^ "(reached `" ^ s ^ "')")
              
-	fun has_ext(s: string,ext) = case OS.Path.ext s
-				       of SOME ext' => ext = ext'
-					| NONE => false
-
 	val _ = if has_ext(absprjid_s, "pm") then ()
 		else error ("Your project file " ^ quot absprjid_s ^ " does not have extension `pm'")
 
@@ -248,7 +253,7 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	val lex = fn chs => lex(chs,[])
 
 	fun smlFileExtOk s = 
-	  has_ext(s,"sml") orelse has_ext(s,"sig") orelse has_ext(s,"fun")
+	  has_ext(s,"sml") orelse has_ext(s,"sig") orelse has_ext(s,"fun") orelse has_ext(s,"msp")
 
 	fun parse_body_opt (ss : string list) : (body * string list) option =
 	  case ss
@@ -437,12 +442,20 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
 	 val _ = Name.bucket := []
 	 val _ = Flags.reset_warnings ()
 	 val _ = print("[reading source file:\t" ^ punit ^ "]\n")
+	 val (punit, maybedelete: unit->unit) = 
+	   if has_ext(punit, "msp") then 
+	     let val punit' = MspComp.msp_comp punit
+	     in (punit', fn () => (OS.FileSys.remove punit' handle _ => ()))
+	     end
+	   else (punit, fn () => ())
 	 val res = ParseElab.parse_elab {absprjid=absprjid,infB=infB,elabB=elabB, file=punit} 
       in (case res
 	    of ParseElab.FAILURE (report, error_codes) => (print_error_report report; 
+							   maybedelete();
 							   raise PARSE_ELAB_ERROR error_codes)
 	     | ParseElab.SUCCESS {report,infB=infB',elabB=elabB',topdec} =>
 	      let 
+		val _ = maybedelete()
 		val _ = chat "[finding free identifiers begin...]"
 		val freelongids as {longvids,longtycons,longstrids,funids,sigids} = fid_topdec topdec
 		val _ = chat "[finding free identifiers end...]"
@@ -520,8 +533,8 @@ functor Manager(structure ManagerObjects : MANAGER_OBJECTS
       let
           val funid = ManagerObjects.funid_from_filename(ManagerObjects.mk_filename punit)
           val (modtime, funstamp_now) = 
-	    case (SOME(OS.FileSys.modTime punit)
-		  handle _ => NONE, FunStamp.from_filemodtime(ManagerObjects.mk_filename punit))   (*always get funstamp before reading content*)
+	    case (SOME(OS.FileSys.modTime punit) handle _ => NONE, 
+		  FunStamp.from_filemodtime(ManagerObjects.mk_filename punit))   (*always get funstamp before reading content*)
 	      of (SOME modtime, SOME fs) => (modtime, fs)
 	       | _ => error ("The program unit " ^ quot punit ^ " does not exist")
 	  exception CAN'T_REUSE of string

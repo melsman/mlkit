@@ -367,7 +367,12 @@ struct
 	List.length (#reg_args(decomp_cc)) +
 	List.length (#args(decomp_cc))
       end not used anyway 2000-10-15, Niels *)
-
+    
+    local val smlserver : bool ref = Flags.lookup_flag_entry "smlserver"
+    in fun name_to_built_in_C_function_index name = 
+         if !smlserver then BuiltInCFunctions.name_to_built_in_C_function_index_nssml name
+	 else BuiltInCFunctions.name_to_built_in_C_function_index name
+    end
 
     fun CG_ce(ClosExp.VAR lv,env,sp,cc,acc)             = access_lv(lv,env,sp,acc)
       | CG_ce(ClosExp.RVAR place,env,sp,cc,acc)         = access_rho(place,env,sp,acc)
@@ -658,7 +663,7 @@ struct
 	      (* rhos_for_result comes before args, because that is what the C *)
 	      (* functions expects. *)
 		val all_args = rhos_for_result @ args
-		val i = BuiltInCFunctions.name_to_built_in_C_function_index name
+		val i = name_to_built_in_C_function_index name
 	      in
 		if i >= 0 then
 		  comp_ces(all_args,env,sp,cc,

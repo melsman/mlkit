@@ -1,0 +1,30 @@
+<html>
+<body bgcolor=lightgreen>
+<center>
+<h2>Friends</h2> 
+[<a href=friends.sql.txt>friends.sql.txt</a> | 
+ <a href=friends.msp.txt>friends.msp.txt</a> | 
+ <a href=friends_add.msp.txt>friends_add.msp.txt</a> | 
+ <a href=friends_add_form.msp>Add person</a>] <p>
+
+<table width=90% border><tr><th>Name</th><th>Email</th><th>Phone</th></tr>
+<?MSP
+
+open Msp
+infix &&
+
+val query = "select name, email, phone from friends"
+
+fun format (g, wseq) =
+  wseq && tr ( td ( $(g"name")) && 
+               td ( $(g"email")) && 
+               td ( $(g"phone")))
+
+?>
+
+<?MSP$ Ns.Db.fold (format, $"", query) ?>
+
+</table>
+</center>
+</body>
+</html>

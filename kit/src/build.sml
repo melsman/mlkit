@@ -10,6 +10,7 @@ end;
 
 local
 
+(*
   exception Die
   fun die s = (print " **  DIE: Installation procedure terminated.  ** \n";
 	       cdsrc(); raise Die)
@@ -53,6 +54,7 @@ local
      else 
        die "gen_opcodes failed";
      cdsrc())
+*)
       
   fun build_kit() = 
     (print "\n ** Building the ML Kit compiler **\n\n";
@@ -61,14 +63,13 @@ in
   val _ = print "\n\n ** ML Kit with Regions installation ** \n\n";  
   val _ = 
 	((* build_runtime("RuntimePaML");
-	 build_runtime("Runtime"); *)
+	 build_runtime("Runtime");
 	 build_kitgen_opcodes();
 	 gen_opcodes();
 	 build_runtime("RuntimeWithGC");
-
 	 build_rp2ps();
 	 build_kittester();
-
+*)
 	 build_kit())
 end ;
 
@@ -111,19 +112,15 @@ fun build_kam () =
     disable "delete_target_files";
     disable "unbox_function_arguments";
     disable "link_time_dead_code_elimination";
-(*      enable "disable_atbot_analysis"; *)
-(*      disable "unbox_datatypes"; *)
 (*      List.app disable opts;*)
     enable "delay_assembly";
+    enable "smlserver";
 (*      enable "chat"; *)
     KitKAM.Flags.target_file_extension := ".uo";
 
   (*   ; List.app (fn tf => KitKAM.comp ("../test_dev/"^tf)) test_files *)
 
 (*      ; disable "auto_import_basislib"*)
-
-
-
 
 (*      ; disable "jump_tables" *)
 

@@ -21,7 +21,7 @@ HDRS     =
 #
 # Extra libraries
 #
-MODLIBS  =  ../RuntimeWithGC/runtimeSystemKAM.o  
+MODLIBS  =  ../RuntimeWithGC/runtimeSystemKamNsSml.o  
 
 #
 # Compiler flags

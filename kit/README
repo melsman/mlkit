@@ -1,0 +1,146 @@
+The ML Kit with Regions, Version 4.0                    March 1, 2001
+http://www.itu.dk/research/mlkit/
+
+0. Introduction
+---------------
+
+This file describes how to install The ML Kit with Regions (from here
+on just the Kit). If you intend to install the Kit on a RedHat Linux
+Box, consider using one of the RPM's available from the Kit web site. 
+
+Since you are reading this text, you have already succeeded in
+unpacking the kit directory, "kit". This directory contains the
+sources of the kit (src), the documentation (doc), the standard basis
+library (basislib), and accompanying examples (kitdemo). As you
+install and use the kit, more sub-directories and files will be
+created in the directory "kit". If you want to rename the directory
+from "kit" to something else or move it somewhere else, now is the
+time to do so.
+
+1. Installation
+---------------
+
+To install the ML Kit, you need Standard ML of New Jersey version
+110.0.6 (later versions won't work). The ML Kit Web site at the top of
+this file has links to SML/NJ.  The executable Kit will take up around
+8Mb of disc space. Building it typically takes half an hour or so and
+is best done on a machine with at least 64Mb of RAM. You also need to
+have the UNIX utilities gmake and gcc installed on your system.
+
+
+
+
+Assuming that you have "sml-cm" (SML/NJ with the compilation manager
+loaded) available on your system and that you are in the "kit"
+directory, type
+
+  cd src/
+  sml-cm
+
+Now, write
+ 
+  use "build.sml";
+
+from within the SML/NJ system. You will now be asked whether you want
+the ML Kit to generate native machine code (currently available on
+only the HPUX-HPPA and Linux-X86 systems) or if you want the Kit to
+generate C code to be compiled by gcc. The C backend has been tested
+on the HPUX-HPPA system and on the Linux-X86 system.
+
+If you want to build both the C version and the native code version,
+you need to do so in distinct copies of the distribution.
+
+The build script compiles the runtime system, a profiling tool
+called rp2ps, a tool for testing the Kit called kittester, the ML Kit
+with Regions compiler, and the Standard ML Basis Library. When the ML
+Kit is installed, an executable version of the Kit is available as
+"kit" in the "kit/bin" directory.
+
+
+2. Check whether the Kit is properly configured
+-----------------------------------------------
+
+You can check whether the Kit is configured properly by compiling a
+small example. Start the executable kit from within the "kit/kitdemo"
+directory:
+
+   cd ../kitdemo
+   ../bin/kit
+
+When the menu appears, type 7 followed by carriage return; then type
+"helloworld.sml" (including the quotes and carriage return). When the Kit
+has compiled the file "helloworld.sml", exit by typing
+
+   quit
+
+This command sends you back to the UNIX shell, where you can run the 
+executable "run", which the Kit has placed in the "kitdemo" 
+directory.
+
+As explained in "Programming with Regions in the ML Kit"
+(doc/manual/manual.ps.gz), users can have their own kit
+script with personal preferences (flags to control optimizations,
+pretty-printing of intermediate forms, etc.) The Kit does not force
+you to use script files; it works fine with the default
+settings. A sample kit script file "kit.script" is located in the
+"kitdemo" directory.
+
+
+3. On other platforms
+---------------------
+
+On other platforms, you will probably have to modify the runtime
+system slightly.  Look in the make file src/Runtime/Makefile (it uses
+gmake facilities). The runtime system uses the system calls signal and
+setitimer in the files "Profiling.c", "Runtime.c", and "Exception.h".
+The include files to use may depend on the architecture.
+
+The Kit calls the gcc compiler to assemble (or compile) and link the
+HP PA-RISC/X86 (or C) code files it generates. After a few
+modifications to the source code, you may well be able to run the Kit
+on other systems that has gcc and gmake installed.
+
+
+4. VCG
+------
+
+The VCG tool, which is used to show region flow graphs, can be found at
+
+    http://www.cs.uni-sb.de/RW/users/sander/html/gsvcg1.html
+
+
+5. Comments and bug reports
+---------------------------
+
+Please see the www site:
+
+   http://www.it.edu/research/mlkit/
+
+
+6. Known bugs/limitations
+-------------------------
+
+Arithmetic and Trigonomitric functions in Math module:
+  The implementation uses the C functions specified in math.h.
+  Unfortunately, these C functions are platform dependent and 
+  do not always return NaN precisely when the Basis
+  Library stipulates that they should.
+
+KAM-backend (Kit Abstract Machine):
+  Arithmetic operations do not raise Overflow. 
+
+Polymorphic equality:
+
+  Polymorphic equality is implemented only for ``regular'' data
+  types. A datatype binding
+ 
+     tyvarseq_1 tycon_1 = conbind_1 AND ... AND tvseq_n tycon_n = conbind_n
+
+  is {\em regular\/} iff all occurrences of tycon_i, i \in {1,...,n}
+  in {conbind_1, ..., conbind_n} are in the context 
+
+     tyvarseq_i tycon_i
+
+-------
+
+Have fun!

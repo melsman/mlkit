@@ -19,7 +19,7 @@ structure GenOpcodes : GEN_OPCODES =
 	     else print ("\n*** Error renaming " ^ source ^ " to " ^ target ^ "\n")
       end 
 
-    fun gen_spec_insts spec_file =
+    fun gen_spec_insts (spec_file: string) : string list =
       String.tokens (fn #" " => true | #"\n" => true | _ => false) (TextIO.inputAll(TextIO.openIn(spec_file)))
 
     fun cur_date () = Date.toString(Date.fromTimeLocal(Time.now()))
@@ -78,55 +78,64 @@ structure GenOpcodes : GEN_OPCODES =
 	copy_if_different tmp_file kam_insts_C_file
       end
 
-    fun write_functor_cfuncs spec_file functor_file =
+    fun write_functor_cfuncs spec_file spec_file_nssml functor_file =
       let
 	val tmp_file = OS.FileSys.tmpName ()
 	val spec_insts = gen_spec_insts spec_file
+	val spec_insts_nssml = gen_spec_insts spec_file_nssml
 	val out_stream = TextIO.openOut(tmp_file)
-	val _ = TextIO.output(out_stream, "(* This file is auto-generated with Tools/GenOpcodes on *)\n")
-(*	val _ = TextIO.output(out_stream, "(* " ^ (cur_date()) ^ " *)\n")*)
+	fun out s = TextIO.output(out_stream, s)
 
-	val _ = TextIO.output(out_stream, "signature BUILT_IN_C_FUNCTIONS_KAM = \n")
-	val _ = TextIO.output(out_stream, "  sig\n");
-	val _ = TextIO.output(out_stream, "    val name_to_built_in_C_function_index : string -> int\n");
-	val _ = TextIO.output(out_stream, "  end\n\n");
-
-	val _ = TextIO.output(out_stream, "functor BuiltInCFunctionsKAM () : BUILT_IN_C_FUNCTIONS_KAM = \n")
-	val _ = TextIO.output(out_stream, "  struct\n");
-	val _ = TextIO.output(out_stream, "    fun name_to_built_in_C_function_index name =\n")
-	val _ = TextIO.output(out_stream, "      case name\n")
-	fun write_first_opcode opcode = TextIO.output(out_stream, "        of \"" ^ opcode ^ "\" => 0\n");
-	fun write_opcode(opcode,n) = (TextIO.output(out_stream, "      | \"" ^ opcode ^ "\" => " ^ (Int.toString n) ^ "\n");
-				      n+1)
-	val _ = 
-	  case spec_insts of
-	    [] => TextIO.output(out_stream, "      of \"\" => 0\n")
-	  | (x::xs) => (write_first_opcode x;
-			List.foldl write_opcode 1 xs;
-			())
-	val _ = TextIO.output(out_stream, "      | _ => ~1\n  end\n");
+	fun out_fun funname spec_insts =
+	  let 
+	    fun write_first_opcode opcode = 
+	      out ("        of \"" ^ opcode ^ "\" => 0\n")
+	    fun write_opcode(opcode,n) = 
+	      (out ("      | \"" ^ opcode ^ "\" => " ^ Int.toString n ^ "\n");
+		n+1)
+	  in
+	     out ("    fun " ^ funname ^ " name =\n");
+	     out "      case name\n";
+	    
+	     (case spec_insts 
+		of [] => out "      of \"\" => 0\n"
+		 | (x::xs) => (write_first_opcode x;
+			       List.foldl write_opcode 1 xs; ()));
+	     out "      | _ => ~1\n"
+	  end
       in
+	out "(* Do *NOT* edit this file - it is auto-generated with Tools/GenOpcodes *)\n\n";
+	out "signature BUILT_IN_C_FUNCTIONS_KAM = \n";
+	out "  sig\n";
+	out "    val name_to_built_in_C_function_index : string -> int\n";
+	out "    val name_to_built_in_C_function_index_nssml : string -> int\n";
+	out "  end\n\n";
+
+	out "functor BuiltInCFunctionsKAM () : BUILT_IN_C_FUNCTIONS_KAM = \n";
+	out "  struct\n";
+	out_fun "name_to_built_in_C_function_index" spec_insts;
+	out_fun "name_to_built_in_C_function_index_nssml" (spec_insts @ spec_insts_nssml);
+	out "  end\n";
 	TextIO.closeOut(out_stream);
 	copy_if_different tmp_file functor_file
       end
 
-    fun write_built_in_c_funcs_C spec_file outfile =
+    fun write_built_in_c_funcs_C (spec_files:string list) outfile =
       let
 	val tmp_file = OS.FileSys.tmpName ()
-	val spec_insts = gen_spec_insts spec_file
+	val spec_insts = List.concat (map gen_spec_insts spec_files)
 	val out_stream = TextIO.openOut(tmp_file)
-	val _ = TextIO.output(out_stream, "/* This file is auto-generated with Tools/GenOpcodes on */\n")
-(*	val _ = TextIO.output(out_stream, "/* " ^ (cur_date()) ^ " */\n")*)
-	val _ = TextIO.output(out_stream, "#include \"Prims.h\"\n\n")
-
-	val _ = List.app (fn prim => TextIO.output(out_stream, "extern int " ^ prim ^ "();\n")) spec_insts
-	val _ = TextIO.output(out_stream, "\nc_primitive cprim[] = {\n")
-	fun write_opcode([]) = TextIO.output(out_stream, "  };\n")
-	  | write_opcode([opcode]) = TextIO.output(out_stream, "  " ^ opcode ^ "\n};\n")
-	  | write_opcode(opcode::rest) = (TextIO.output(out_stream, "  " ^ opcode ^ ",\n");
+	fun out s = TextIO.output(out_stream, s)
+	fun write_opcode([]) = out "  };\n"
+	  | write_opcode([opcode]) = out ("  " ^ opcode ^ "\n};\n")
+	  | write_opcode(opcode::rest) = (out ("  " ^ opcode ^ ",\n");
 					  write_opcode rest)
-	val _ = write_opcode spec_insts
       in
+	out "/* Do *NOT* edit this file - it is auto-generated with Tools/GenOpcodes */\n\n";
+	out "#include \"Prims.h\"\n\n";
+	List.app (fn prim => out ("extern int " ^ prim ^ "();\n")) spec_insts;
+	out "\nc_primitive cprim[] = {\n";
+	write_opcode spec_insts;
 	TextIO.closeOut(out_stream);
 	copy_if_different tmp_file outfile
       end
@@ -139,27 +148,33 @@ structure GenOpcodes : GEN_OPCODES =
     fun main (progname, args) =
       case process_args args
 	of SOME src_dir =>
-	  let
+	 (let
 	    fun mk_path rel_path = OS.Path.mkCanonical(OS.Path.concat(src_dir, rel_path))
 	    (* Opcodes *)
 	    val spec_file = mk_path "Compiler/Backend/KAM/KamInsts.spec"
 	    val functor_file = mk_path "Compiler/Backend/KAM/OpcodesKAM.sml"
 	    val signature_file = mk_path "Compiler/Backend/KAM/OPCODES_KAM.sml"
 	    val kam_insts_C_file = mk_path "RuntimeWithGC/KamInsts.h"
+
+	    val _ = (write_functor spec_file functor_file;
+		     write_signature spec_file signature_file;
+		     write_kam_insts_C spec_file kam_insts_C_file)
+
             (* Built In C-functions in the runtime system *)
 	    val spec_file_cfuncs = mk_path "Compiler/Backend/KAM/BuiltInCFunctions.spec"
+	    val spec_file_cfuncs_nssml = mk_path "Compiler/Backend/KAM/BuiltInCFunctionsNsSml.spec"
 	    val functor_file_cfuncs = mk_path "Compiler/Backend/KAM/BuiltInCFunctionsKAM.sml"
 	    val C_file_cfuncs = mk_path "RuntimeWithGC/Prims.c"
+	    val C_file_cfuncs_nssml = mk_path "RuntimeWithGC/PrimsNsSml.c"
+	    val _ = (write_functor_cfuncs spec_file_cfuncs spec_file_cfuncs_nssml functor_file_cfuncs;
+		     write_built_in_c_funcs_C [spec_file_cfuncs] C_file_cfuncs;
+		     
+		     (* version of the C file that support nssml functionality used by
+		      * SMLserver *)
+		     write_built_in_c_funcs_C [spec_file_cfuncs, spec_file_cfuncs_nssml] C_file_cfuncs_nssml)
 	  in
-	    (write_functor spec_file functor_file;
-	     write_signature spec_file signature_file;
-	     write_kam_insts_C spec_file kam_insts_C_file;
-	     
-	     write_functor_cfuncs spec_file_cfuncs functor_file_cfuncs;
-	     write_built_in_c_funcs_C spec_file_cfuncs C_file_cfuncs;
-	     OS.Process.success)
-	    handle _ => OS.Process.failure
-	  end
+	     OS.Process.success
+	  end handle _ => OS.Process.failure)
       | NONE => (print_usage progname; OS.Process.failure)
 
     fun install() =

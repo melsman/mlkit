@@ -9,8 +9,14 @@ CFILES = $(OFILES:%.o=%.c)
 %.o: %.c
 	gcc -c -O3 -o $*.o $<
 
+all: ../../../bin/rp2ps
+
+../../../bin/rp2ps: rp2ps
+	cp -p rp2ps ../../../bin/
+
 rp2ps: $(OFILES)
 	gcc -o rp2ps $(OFILES) -lm
+
 
 clean:
 	rm -f *.o core a.out *~ 
