@@ -1452,31 +1452,31 @@ old*)
             val tystr = TyStr.from_theta_and_VE (TypeFcn.from_TyName tyname, VE_closed)
 
             val ((VE', TE'), out_datbind_opt) = elab_datbind_opt (C, datbind_opt)
-
-            val intdom = EqSet.intersect (VE.dom VE') (VE.dom VE)
+	    val out_i =
+	          if IG.TyCon.is_'true'_'nil'_etc tycon then
+		    errorConv (i, ErrorInfo.REBINDING_TRUE_NIL_ETC [])
+		  else if IG.TyCon.is_'it' tycon then
+		    errorConv (i, ErrorInfo.REBINDING_IT)
+		  else if not (isEmptyTyVarList tyvarsNotInTyVarList) then
+		    errorConv (i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ 
+			       (map TyVar.from_ExplicitTyVar
+				  tyvarsNotInTyVarList))
+		  else
+		    let val repeated_ids_errorinfos =
+		      map ErrorInfo.TYVAR_RID tyvarsRepeated
+		      @ map ErrorInfo.ID_RID
+		          (EqSet.list (EqSet.intersect (VE.dom VE') (VE.dom VE)))
+		      @ (if EqSet.member tycon (TE.dom TE')
+			 then [ErrorInfo.TYCON_RID tycon] else [])
+		    in
+		      if repeated_ids_errorinfos = [] then okConv i
+		      else repeatedIdsError (i, repeated_ids_errorinfos)
+		    end 
           in
 	    ( (VE.plus  (VE_closed, VE'),
 	       TE.plus (TE.singleton (tycon, tystr), TE')),
-
-	      OG.DATBIND(if not (isEmptyTyVarList tyvarsNotInTyVarList) then
-			   errorConv (i, ErrorInfo.TYVARS_NOT_IN_TYVARSEQ 
-				           (map TyVar.from_ExplicitTyVar
-					        tyvarsNotInTyVarList))
-			 else
-			   let val repeated_ids_errorinfos =
-			     map ErrorInfo.TYVAR_RID tyvarsRepeated
-			     @ map ErrorInfo.ID_RID    (EqSet.list intdom)
-			     @ (if EqSet.member tycon (TE.dom TE')
-				  then [ErrorInfo.TYCON_RID tycon] else [])
-			   in
-			     if repeated_ids_errorinfos = [] then okConv i
-			     else repeatedIdsError (i, repeated_ids_errorinfos)
-			   end ,
-			 ExplicitTyVars,
-			 tycon,
-			 out_conbind,
-			 out_datbind_opt)
-	    )
+  	      OG.DATBIND(out_i, ExplicitTyVars, tycon,
+			 out_conbind, out_datbind_opt) )
           end
 
     and elab_datbind_opt (C : Context, datbind_opt : IG.datbind Option)

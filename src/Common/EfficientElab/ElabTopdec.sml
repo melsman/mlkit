@@ -935,10 +935,14 @@ functor ElabTopdec
 		    @ map ErrorInfo.TYVAR_RID tyvars_repeated of
 		 [] =>
 	      (case tyvars_not_bound of
-		 [] =>
+		 [] => 
 		   ( (VE.plus (VE_closed, VE'),
 		      TE.plus (TE.singleton (tycon, tystr), TE')) ,
-		     OG.DATDESC (okConv i,
+		     OG.DATDESC (if TyCon.is_'true'_'nil'_etc tycon then
+				   errorConv (i, ErrorInfo.SPECIFYING_TRUE_NIL_ETC [])
+				 else if TyCon.is_'it' tycon then
+				   errorConv (i, ErrorInfo.SPECIFYING_IT)
+				 else okConv i,
 				 explicittyvars, tycon, out_condesc,
 				 out_datdesc_opt) )
 	       | _ => 

@@ -224,4 +224,72 @@ You may not specify `true', `false', `nil', `::', or `ref'.
                       ^^^^^^^
 You may not specify `true', `false', `nil', `::', or `ref'.
 *)
+(*
+datatype ref = R
+datatype :: = K of int
+datatype it = It of it
 
+gives
+
+ /usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 228, column 9:
+  datatype ref = R
+           ^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 229, column 9:
+  datatype :: = K of int
+           ^^^^^^^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 230, column 9:
+  datatype it = It of it
+           ^^^^^^^^^^^^^
+You may not rebind `it' as a constructor.
+
+(ok, the last error message is perhaps not the ideal one, but it i s a (type)
+constructor...)
+*)
+(*
+signature s = sig
+		datatype ref = R
+	      end
+
+	    gives
+
+                  datatype ref = R
+                           ^^^^^^^
+You may not rebind `true', `false', `nil', `::', or `ref'.
+
+that's wrong, om igen.
+*)
+(*
+ now,
+
+signature s = sig
+		datatype ref = R
+		datatype it = R
+	      end
+
+	    gives
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 268, column 16:
+                  datatype ref = R
+                  ^^^^^^^^^^^^^^^^
+                  datatype it = R
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Repeated identifier R.
+
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 268, column 25:
+                  datatype ref = R
+                           ^^^^^^^
+You may not specify `true', `false', `nil', `::', or `ref'.
+
+
+/usr/local/topps/MLKit/version2_onwards/hojfeld/kit/kitdemo/hojfeld/redef.sml, line 269, column 25:
+                  datatype it = R
+                           ^^^^^^
+You may not specify `it' as a constructor.
+*)
