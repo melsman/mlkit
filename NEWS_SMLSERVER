@@ -1,5 +1,13 @@
 File NEWS_SMLSERVER
 
+           **** SMLserver version 4.1.1 is released ****
+
+ * mael 2002-08-24: Added functions for trapping of URL requests 
+   (Ns.registerTrap) and for scheduling (Ns.scheduleScript,
+   Ns.scheduleDaily, Ns.scheduleWeekly). It is now also possible
+   to configure for a script to be run when the webserver starts (see
+   the default configuration file for details.)
+
  * mael 2002-03-19: Added possibility for caching loaded leaf-bytecode
    files (flag CODE_CACHE in LoadKAM.h). This feature improves on the
    number of requests that can be served per second. Default: enabled.

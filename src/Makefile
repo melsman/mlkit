@@ -54,7 +54,7 @@ smlserver: basics
 	cd ..; echo `pwd`/bin/smlserverc.$(ARCH-OS) `pwd` \$$* >> bin/smlserverc
 	chmod a+x $(BINDIR)/smlserverc
 
-basics: genopcodes rp2ps tester heap2exec kitbench posix_defs
+basics: genopcodes rp2ps tester heap2exec kitbench
 
 genopcodes: $(GENOPCODES_TARGETS)
 
@@ -72,9 +72,6 @@ tester:
 
 kitbench:
 	cd Tools/Benchmark; $(MAKE)
-
-posix_defs:
-	cd ../basislib; $(MAKE)
 
 heap2exec: heap2exec/heap2exec
 	cd heap2exec; $(MAKE)

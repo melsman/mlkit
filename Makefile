@@ -1,10 +1,12 @@
 SHELL=/bin/sh
 
-KITVERSION=4.1.0
+KITVERSION=4.1.1
 ARCH-OS=x86-linux
 INSTDIR=/usr/share/mlkit
 INSTDIR_KAM=/usr/share/mlkit_kam
 INSTDIR_SMLSERVER=/usr/share/smlserver
+RPMDIR=/usr/src/rpm
+#RPMDIR=/usr/src/redhat
 
 # Some commands
 MKDIR=mkdir -p
@@ -67,16 +69,16 @@ tgz_smlserver:
 rpm_smlserver:
 	# assume that ``make tgz_smlserver'' has been run 
 	# as a user other than root!
-	cp -f ../smlserver-$(KITVERSION).tgz /usr/src/redhat/SOURCES/
-	cp -f smlserver.spec /usr/src/redhat/SPECS/smlserver-$(KITVERSION).spec
-	(cd /usr/src/redhat/SPECS; rpm -ba smlserver-$(KITVERSION).spec)
+	cp -f ../smlserver-$(KITVERSION).tgz $(RPMDIR)/SOURCES/
+	cp -f smlserver.spec $(RPMDIR)/SPECS/smlserver-$(KITVERSION).spec
+	(cd $(RPMDIR)/SPECS; rpm -ba smlserver-$(KITVERSION).spec)
 
 rpm:
 	# assume that ``make tgz'' has been run 
 	# as a user other than root!
-	cp -f ../mlkit-$(KITVERSION).tgz /usr/src/redhat/SOURCES/
-	cp -f mlkit.spec /usr/src/redhat/SPECS/mlkit-$(KITVERSION).spec
-	(cd /usr/src/redhat/SPECS; rpm -ba mlkit-$(KITVERSION).spec)
+	cp -f ../mlkit-$(KITVERSION).tgz $(RPMDIR)/SOURCES/
+	cp -f mlkit.spec $(RPMDIR)/SPECS/mlkit-$(KITVERSION).spec
+	(cd $(RPMDIR)/SPECS; rpm -ba mlkit-$(KITVERSION).spec)
 
 install:
 	rm -rf $(INSTDIR)

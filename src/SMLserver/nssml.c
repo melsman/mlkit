@@ -19,9 +19,15 @@
 #include "ns.h"
 #include "../Runtime/LoadKAM.h"
 #include "../Runtime/Region.h"
+#include "../Runtime/String.h"
 
 #define NSSML_PATH_MAX 255
 #define NSSML_ERROR_BUFF 4096
+
+#define NSSML_OK 0
+#define NSSML_FILENOTFOUND (-1)
+#define NSSML_NOTIMESTAMP (-2)
+#define NSSML_ULFILENOTFOUND (-3)
 
 time_t
 nssml_fileModTime(char* file) 
@@ -53,6 +59,9 @@ typedef struct {
   char timeStampFileName[NSSML_PATH_MAX];
   time_t timeStamp;
 } InterpContext;
+
+static InterpContext *globalInterpContext = NULL;    // hack to implement filtering -  this variable
+                                                     // is set during module initialization..
 
 /*
  *----------------------------------------------------------------------
@@ -96,6 +105,9 @@ typedef struct {
  *
  *---------------------------------------------------------------------- */
 
+static int
+nssml_processSmlFile(InterpContext* ctx, char* url);
+
 Ns_Mutex stackPoolMutex;
 Ns_Mutex freelistMutex;
 Ns_Mutex codeCacheMutex;
@@ -123,6 +135,7 @@ Ns_ModuleInit(char *hServer, char *hModule)
 {
   InterpContext* ctx;
   char* configPath;
+  char* initScript;
 
 #ifdef REGION_PAGE_STAT
 rpMap = regionPageMapNew();
@@ -139,8 +152,8 @@ rpMap = regionPageMapNew();
   ctx = (InterpContext*)Ns_Malloc(sizeof(InterpContext));
   ctx->interp = interpNew();
   ctx->hServer = hServer;
-  configPath = Ns_ConfigGetPath(hServer, hModule, NULL);   // Fetch the name of the project (prjid)
-  ctx->prjid = Ns_ConfigGetValue(configPath, "prjid");     // from the config file.
+  configPath = Ns_ConfigGetPath(hServer, hModule, NULL);    // Fetch the name of the project
+  ctx->prjid = Ns_ConfigGetValue(configPath, "prjid");      // (prjid) from config file.
 
   if (ctx->prjid == NULL) {
     Ns_Log(Error, "nssml: You must set prjid in the config file");
@@ -152,6 +165,8 @@ rpMap = regionPageMapNew();
   
   ctx->timeStamp = (time_t)-1; 
 
+  globalInterpContext = ctx;             // hack to implement filtering - see below
+
   Ns_RegisterRequest(hServer, "GET", "/*.sml", nssml_handleSmlFile, NULL, ctx, 0);
   Ns_RegisterRequest(hServer, "GET", "/*.msp", nssml_handleSmlFile, NULL, ctx, 0);
   Ns_RegisterRequest(hServer, "POST", "/*.sml", nssml_handleSmlFile, NULL, ctx, 0);
@@ -160,7 +175,18 @@ rpMap = regionPageMapNew();
   Ns_Log(Notice, "nssml: module is now loaded");
   Ns_Log(Notice, "nssml: ulFileName is %s", ctx->ulFileName);
   Ns_Log(Notice, "nssml: timeStampFileName is %s", ctx->timeStampFileName);
-  
+
+  // Execute init script if it appears in configuration file
+  initScript = Ns_ConfigGetValueExact(configPath, "initscript");    // Fetch init script
+  if ( initScript != NULL ) 
+    {
+      int res = nssml_processSmlFile(ctx,initScript);
+      Ns_Log(Notice, "nssml: init script executed with return code %d", res);
+    }
+  else
+    {
+      Ns_Log(Notice, "nssml: No init script executed");
+    }
   return NS_OK;
 }
 
@@ -202,31 +228,27 @@ nssml_smlFileToUoFile(char* hServer, char* url, char* uo, char* prjid)
 }
 
 /* ---------------------------------------------------------
- * nssml_handleSmlFile - function for handling requests
- * for sml-files; returns an error page if the sml-file
- * does not exist.
+ * nssml_processSmlFile - function for processing sml-files; returns
+ * NSSML_OK, NSSML_NOTIMESTAMP, NSSML_FILENOTFOUND, or
+ * NSSML_ULFILENOTFOUND. In case NSSML_NOTIMESTAMP or
+ * NSSML_ULFILENOTFOUND is returned, the function writes a message to
+ * the error log.
  * --------------------------------------------------------- */
 
 static int
-nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
+nssml_processSmlFile(InterpContext* ctx, char* url)
 {
-  InterpContext* ctx;
-  char* url;             /* the requested url */
   Ns_DString ds;
-  char *server;          /* the server */
+  char* urlfile;                 /* the requested url as file */
   char uo[NSSML_PATH_MAX];
   int res;
   time_t t;
   char *errorStr = NULL;
 
-  ctx = (InterpContext*)context;
-  server = Ns_ConnServer(conn);
-
   /* Check that sml-file exists */
   
-  if ( Ns_UrlIsFile(server, conn->request->url) != 1 ) {
-    Ns_ConnReturnNotFound(conn);
-    return NS_ERROR;
+  if ( Ns_UrlIsFile(ctx->hServer, url) != 1 ) {
+    return NSSML_FILENOTFOUND;
   }
 
   /*
@@ -237,12 +259,9 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
   
   if ( t == (time_t)-1 )
     {
-      // Return error page
-      Ns_ConnReturnNotice(conn, 200, "The web service is temporarily out of service",
-			  "Please come back later!");
       Ns_Log(Error, "nssml: time stamp file %s not existing - web service not working",
 	     &ctx->timeStampFileName);
-      return NS_OK;
+      return NSSML_NOTIMESTAMP;
     }
 
   /*
@@ -262,11 +281,8 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
       is = fopen(ctx->ulFileName, "r");
       if ( is == NULL ) 
 	{
-	  // Return error page
-	  Ns_ConnReturnNotice(conn, 200, "The web service is temporarily out of service",
-			      "Please come back later!");
 	  Ns_Log(Error, "nssml: Failed to open file %s for reading", &ctx->ulFileName);
-	  return NS_OK;
+	  return NSSML_ULFILENOTFOUND;
 	}
     
       while ( fgets ( buff, NSSML_PATH_MAX, is ) != NULL ) 
@@ -286,13 +302,13 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
     }
 
   Ns_DStringInit(&ds);
-  Ns_UrlToFile(&ds, server, conn->request->url);
-  url = ds.string;
+  Ns_UrlToFile(&ds, ctx->hServer, url);
+  urlfile = ds.string;
 
-  if ( nssml_smlFileToUoFile(ctx->hServer,url,uo,ctx->prjid) == -1 ) {
-    Ns_ConnReturnNotFound(conn);
-    return NS_OK;
-  }
+  if ( nssml_smlFileToUoFile(ctx->hServer,urlfile,uo,ctx->prjid) == -1 ) 
+    {
+      return NSSML_FILENOTFOUND;
+    }
 
   // Ns_Log(Notice, "Starting interpreter on file %s", uo);
   res = interpLoadRun(ctx->interp, uo, &errorStr);
@@ -300,12 +316,124 @@ nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
   if ( res < 0 ) {    // uncaught exception; errorStr allocated
     if ( res == -1 )  // exception other than Interrupt raised
       {
-	Ns_Log(Warning, "%s raised %s", url, errorStr);
+	Ns_Log(Warning, "%s raised %s", urlfile, errorStr);
       }
     free(errorStr);   // free the malloced string 
     errorStr = NULL;  // - and nullify field    
   }
   Ns_DStringFree(&ds);
 
-  return NS_OK; 
+  return NSSML_OK; 
 }
+
+
+/* ---------------------------------------------------------
+ * nssml_handleSmlFile - function for handling requests
+ * for sml-files; returns an error page if the sml-file
+ * does not exist.
+ * --------------------------------------------------------- */
+
+static int
+nssml_handleSmlFile(Ns_OpContext context, Ns_Conn *conn)
+{
+  InterpContext* ctx;
+  char* url;             /* the requested url */
+  int res;
+
+  ctx = (InterpContext*)context;
+
+  res = nssml_processSmlFile(ctx, conn->request->url);
+
+  switch ( res ) 
+    {
+    case NSSML_FILENOTFOUND:
+      {
+	Ns_ConnReturnNotFound(conn);
+	return NS_ERROR;
+	break;
+      }
+    case NSSML_ULFILENOTFOUND:
+    case NSSML_NOTIMESTAMP:
+      {
+	Ns_ConnReturnNotice(conn, 200, "The web service is temporarily out of service",
+			    "Please come back later!");
+	// fall through
+      }
+    default:
+      {
+	return NS_OK;
+	break;
+      }	
+    }
+}
+
+static int
+nssml_trapProc(void *ctx, Ns_Conn *conn)
+{
+  return nssml_processSmlFile((InterpContext*)ctx, "../sys/trap.sml");
+}
+
+void
+nssml_registerTrap(String url)
+{
+  char* hServer = globalInterpContext->hServer;
+  Ns_RegisterRequest(hServer, "GET", &(url->data), nssml_trapProc, NULL, globalInterpContext, 0);
+  Ns_RegisterRequest(hServer, "POST", &(url->data), nssml_trapProc, NULL, globalInterpContext, 0);
+}
+
+/*
+ * Scheduling a script to run every N seconds
+ */
+
+static void 
+nssml_scheduleScriptRun(void *url, int id)
+{
+  int res;
+  res = nssml_processSmlFile(globalInterpContext, (char*)url);
+}
+
+void
+nssml_scheduleScript(String url, int interval)       // ML function
+{
+  int flags = 0;
+  int n;
+  char *s;
+  n = sizeStringDefine(url);
+  s = (char*)Ns_Malloc(n+1);
+  strncpy(s, &(url->data), n+1);
+  Ns_ScheduleProcEx(nssml_scheduleScriptRun, s, flags, interval, NULL);
+}
+
+/*
+ * Scheduling a script to run daily
+ */
+
+void
+nssml_scheduleDaily(String url, int hour, int minute)          // ML function
+{
+  int flags = 0;
+  int n;
+  char *s;
+  n = sizeStringDefine(url);
+  s = (char*)Ns_Malloc(n+1);
+  strncpy(s, &(url->data), n+1);
+  Ns_ScheduleDaily(nssml_scheduleScriptRun, s, flags, hour, minute, NULL);
+}
+
+
+/*
+ * Scheduling a script to run weekly
+ */
+
+void
+nssml_scheduleWeekly(String url, int day, int hour, int minute) // ML function
+{
+  int flags = 0;
+  int n;
+  char *s;
+  n = sizeStringDefine(url);
+  s = (char*)Ns_Malloc(n+1);
+  strncpy(s, &(url->data), n+1);
+  Ns_ScheduleWeekly(nssml_scheduleScriptRun, s, flags, day, hour, minute, NULL);
+}
+

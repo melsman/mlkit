@@ -312,8 +312,24 @@ structure Ns :> NS =
      * and database handles. Moreover, region pages are freed as 
      * they should be. *)
 
-    val _ = OS.FileSys.chDir (Info.pageRoot())
+    fun registerTrap (u:string) : unit = 
+      prim("nssml_registerTrap", u)
 
+    fun scheduleScript (f: string) (i:int) : unit =
+      prim("nssml_scheduleScript", (f,i))	
+
+    fun scheduleDaily (f:string) {hour:int,minute:int} : unit =
+      prim("nssml_scheduleDaily", (f,hour,minute))	
+
+    fun scheduleWeekly (f:string) {day:int,hour:int,minute:int} : unit =
+      prim("nssml_scheduleWeekly", (f,day,hour,minute))	
+
+(* Calling Info.pageRoot requires that the execution knows of a
+   connection, which it does not if the execution is for an
+   init-script, executed at server start.
+
+    val _ = OS.FileSys.chDir (Info.pageRoot())
+*)
     (* Creating the two supported database interfaces *)
     structure DbOra = DbFunctor(structure DbBasic = NsDbBasicOra)
     structure DbPg = DbFunctor(structure DbBasic = NsDbBasicPG)

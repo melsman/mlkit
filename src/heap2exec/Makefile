@@ -1,6 +1,6 @@
 CC = gcc
 
-all:	heap2exec run.x86-linux run-110.40.x86-linux
+all:	heap2exec run.x86-linux
 
 run.x86-linux:
 	cd runtime/objs; make -f mk.x86-linux "XDEFS=-DHACKED_STANDALONE"

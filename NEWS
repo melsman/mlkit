@@ -1,5 +1,16 @@
 ML Kit NEWS file
 
+           **** ML Kit version 4.1.1 is released ****
+
+ * mael 2002-08-25: Removed Posix support due to licensing problems 
+   with code from mlton.
+
+ * mael 2002-08-25: Removed region type real. Added region type 
+   pair for implementation of almost tag-free garbage collection -
+   not yet fully implemented.
+
+           **** ML Kit version 4.1.0 is released ****
+
  * mael 2002-04-06: Manual improved -- the pdf-version of the manual
    now uses Type 1 fonts, exclusively.
 
