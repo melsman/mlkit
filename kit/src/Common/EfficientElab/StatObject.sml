@@ -41,6 +41,7 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
     type lab  = Lab.lab (*record labels*)
     val ONE = Lab.mk_IntegerLab 1
     val TWO = Lab.mk_IntegerLab 2
+    val THREE = Lab.mk_IntegerLab 3
     type scon = SCon.scon
     type strid = Ident.strid
     type StringTree = PP.StringTree
@@ -749,6 +750,11 @@ functor StatObject (structure SortedFinMap : SORTED_FINMAP
       fun from_pair (ty,ty') =
 	    {TypeDesc = RECTYPE (RecType.add_field (ONE, ty)
 				 (RecType.add_field (TWO, ty') RecType.empty)),
+	     level = ref Level.NONGENERIC}
+      fun from_triple (tau1, tau2, tau3) =
+	    {TypeDesc = RECTYPE (RecType.add_field (ONE, tau1)
+				 (RecType.add_field (TWO, tau2)
+				  (RecType.add_field (THREE, tau3) RecType.empty))),
 	     level = ref Level.NONGENERIC}
       val Unit = {TypeDesc = RECTYPE RecType.empty, level = ref Level.NONGENERIC}
 

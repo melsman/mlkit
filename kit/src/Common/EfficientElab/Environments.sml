@@ -730,11 +730,11 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
       val tynames = SE.E_tynames
       val layout = layoutEnv
 
-      (*The following boring code builds the initial environment
-       built-in types (`->', `int', `real', `string', `exn', `ref'),
-       the constructor `ref', and the value `prim'. `prim' has type
-       (int * 'a) -> 'b.  Moreover the overloaded values, and therefore
-       the type `bool'.*)
+      (*The following boring code builds the initial environment built-in
+       types (`->', `int', `real', `string', `exn', `ref'), the constructor
+       `ref', and the value `prim'. `prim' has type 'a -> 'b.  Moreover the
+       overloaded values must be in the initial environment and therefore
+       also the type `bool'.*)
 
       local
 	fun mk_tystr (tyname, VE) =
@@ -873,11 +873,10 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 	  val beta = TyVar.fresh_normal ()
 	  val betaTy = Type.from_TyVar beta
 
-	  val tau_int_X_alpha_to_beta = Type.mk_Arrow
-			 (Type.from_pair (Type.Int, alphaTy),
-			  betaTy)
+	  val tau_alpha_to_beta = Type.mk_Arrow
+			 (Type.from_triple (Type.String, Type.String, alphaTy), betaTy)
 
-	  val sigma_int_X_alpha_to_beta = TypeScheme.from_Type tau_int_X_alpha_to_beta
+	  val sigma_alpha_to_beta = TypeScheme.from_Type tau_alpha_to_beta
 
 	  val tyvar_num = TyVar.fresh_overloaded [TyName.tyName_INT,
 						  TyName.tyName_WORD,
@@ -922,7 +921,7 @@ functor Environments(structure DecGrammar: DEC_GRAMMAR
 
 	in
 	  val primVE      = VE.singleton (Ident.id_PRIM,
-					  LONGVARpriv sigma_int_X_alpha_to_beta)
+					  LONGVARpriv sigma_alpha_to_beta)
 	  val absVE       = VE.singleton (Ident.id_ABS, 
 					  LONGVARpriv sigma_realint_to_realint)
 	  val negVE       = VE.singleton (Ident.id_NEG,
