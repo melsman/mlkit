@@ -11,6 +11,8 @@ functor index () : SCRIPTLET =
 	      && li (sum.link {n=5,sum=0} ($"HTTP Sum"))
 	      && li (questionnaire.link ($"Sample questionnaire"))
 	      && li (toppings.link ($"Pizza toppings"))
+	      && li (bmi.link ($"Body Mass Index"))
+	      && li (countreload.link ($"Count Reloads"))
 	      )
 	     )	    
     end

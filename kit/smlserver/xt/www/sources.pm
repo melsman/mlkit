@@ -4,6 +4,8 @@ in
  in
     [
      index.sml
+     bmi.sml
+     bmi2.sml
      time_of_day.sml
      mul.sml
      temp.sml
@@ -14,6 +16,7 @@ in
      questionnaire2.sml
      toppings.sml
      toppings2.sml
+     countreload.sml
      ]
  end
 end

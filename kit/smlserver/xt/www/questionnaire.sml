@@ -10,8 +10,10 @@ functor questionnaire () : SCRIPTLET =
         val response = 
 	    Page.page "Please answer the following form" 
 	    (questionnaire2.form
-	     (table (swap(tr (head "Name:" && td(inputText questionnaire2.name NONE)) &&
-			  swap(tr (head "Email:" && td(inputText questionnaire2.email NONE)) &&
-			       radioGroup)) &&
-		     tr (tda (A.colspan 2) (inputSubmit "Submit information")))))
+	     (swap (Succ(One()))
+	      (swap (One())
+	     (table (tr (head "Name:" && td(inputText questionnaire2.name NONE)) &&
+		     tr (head "Email:" && td(inputText questionnaire2.email NONE)) &&
+		     radioGroup &&
+		     tr (tda (A.colspan 2) (inputSubmit "Submit information")))))))
     end

@@ -2,7 +2,9 @@ signature HTTP =
     sig
 	type response
 	type html
-	val returnHtml : html -> response
+	val returnHtml  : html -> response
+	val returnHtml' : SMLserver.Cookie.cookiedata list 
+                          -> html -> response
     end
 
 signature HTTP_EXTRA =
