@@ -127,7 +127,7 @@ struct
     | cons_if_there(SOME x, l) = x::l 
 
   (* mkPhiTr(tr) traverses tr and collects the allow effects
-     that are bound locally in tr (in LET, FIX and LETREGION). 
+     that are bound locally in tr (in FIX and LETREGION). 
      It also collects all effect nodes that decorate subexpressions.
    *)
 
