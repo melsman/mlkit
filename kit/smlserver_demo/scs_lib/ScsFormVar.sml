@@ -77,14 +77,15 @@ signature SCS_FORM_VAR =
     val getYesNoErr    : string formvar_fn
     val getDateErr     : Date.date formvar_fn
     val getDateIso     : string formvar_fn
+    val getTableName   : string formvar_fn
 
-    val wrapQQ  : string formvar_fn -> string * string * errs -> string * string * errs
+    val wrapQQ  : string formvar_fn -> (string * string) formvar_fn
     val wrapOpt : 'a formvar_fn -> (string -> 'a option)
     val wrapMaybe : 'a formvar_fn -> 'a formvar_fn
     val wrapExn : 'a formvar_fn -> (string -> 'a)
     val wrapFail : 'a formvar_fn -> (string * string -> 'a)
     val wrapPanic : (quot -> 'a) -> 'a formvar_fn -> (string -> 'a)
-    val wrapIntAsString : int formvar_fn -> string * string * errs -> string * errs
+    val wrapIntAsString : int formvar_fn -> string formvar_fn
 
     (* For extensions *)
     val trim : string -> string
@@ -97,8 +98,8 @@ structure ScsFormVar :> SCS_FORM_VAR =
     type errs = quot list
     type 'a formvar_fn = string * string * errs -> 'a * errs
 
-    val RegExpMatch   = RegExp.match   o RegExp.fromString
-    val RegExpExtract = RegExp.extract o RegExp.fromString
+    val regExpMatch   = RegExp.match   o RegExp.fromString
+    val regExpExtract = RegExp.extract o RegExp.fromString
 
     val % = ScsDict.d ScsLang.English
       
@@ -145,10 +146,10 @@ structure ScsFormVar :> SCS_FORM_VAR =
     fun anyErrors ([]:errs) = ()
       | anyErrors (errs) = (returnErrorPg errs; Ns.exit())
 
-    fun wrapQQ (f : string formvar_fn) : string * string * errs -> string * string * errs =
+    fun wrapQQ (f : string formvar_fn) : string * string * errs -> (string * string) * errs =
       fn arg =>
       case f arg of
-	(v,e) => (v,Db.qq v,e)
+	(v,e) => ((v,Db.qq v),e)
 
     fun wrapOpt (f : 'a formvar_fn) : string -> 'a option =
       fn fv => 
@@ -445,6 +446,15 @@ structure ScsFormVar :> SCS_FORM_VAR =
 	     Du skal indtaste en <b>dato</b> enten i formatet <code>DD/MM-YYYY</code> (f.eks. 25/01-2001) eller
 	     i formatet <code>YYYY-MM-DD</code> (f.eks. 2001-01-25).
 	     </blockquote>`)
+      fun msgTableName s = 
+	(case ScsLogin.user_lang of
+	   ScsLang.English => `^s
+	     <blockquote>
+	     You have not specified a valid <b>table name</b>
+	     </blockquote>`
+	| ScsLang.Danish => `^s
+	     Du har ikke specificeret et korrekt <b>tabelnavn</b>.
+	     </blockquote>`)
       fun convCpr cpr =
 	case String.explode (trim cpr) of
 	  d1 :: d2 :: m1 :: m2 :: y1 :: y2 :: (#"-") :: t1 :: t2 :: t3 :: t4 :: [] =>
@@ -517,44 +527,45 @@ structure ScsFormVar :> SCS_FORM_VAR =
       fun genDate (d,m,y) = ScsDate.genDate(Option.valOf (Int.fromString d),
 					    Option.valOf (Int.fromString m),Option.valOf (Int.fromString y))
       fun chkDateIso v =
-	(case RegExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
+	(case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 	   SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)
-	 | _ => (case RegExpExtract "([0-9][0-9][0-9][0-9])([0-9][0-9]?)([0-9][0-9]?)" v of
+	 | _ => (case regExpExtract "([0-9][0-9][0-9][0-9])([0-9][0-9]?)([0-9][0-9]?)" v of
 		   SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)
 		 | _ => false))
 	   handle _ => false      
       fun chkDate v =
-	(case RegExpExtract "([0-9][0-9]?)/([0-9][0-9]?)-([0-9][0-9][0-9][0-9])" v of
+	(case regExpExtract "([0-9][0-9]?)/([0-9][0-9]?)-([0-9][0-9][0-9][0-9])" v of
 	   SOME [dd,mm,yyyy] => dateOk(dd,mm,yyyy)
-	 | _ => (case RegExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
+	 | _ => (case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 		   SOME [yyyy,mm,dd] => dateOk(dd,mm,yyyy)
 		 | _ => false))
 	   handle _ => false   
       fun convDate v =
-	(case RegExpExtract "([0-9][0-9]?)/([0-9][0-9]?)-([0-9][0-9][0-9][0-9])" v of
+	(case regExpExtract "([0-9][0-9]?)/([0-9][0-9]?)-([0-9][0-9][0-9][0-9])" v of
 	   SOME [dd,mm,yyyy] => genDate(dd,mm,yyyy)
-	 | _ => (case RegExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
+	 | _ => (case regExpExtract "([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)" v of
 		   SOME [yyyy,mm,dd] => genDate(dd,mm,yyyy)
 		 | _ => ScsError.panic `ScsFormVar.convDate failed on ^v`))
 	   handle _ => ScsError.panic `ScsFormVar.convDate failed on ^v`
     in
       val getEmailErr = getErr' (%"email") msgEmail
-	(fn email => RegExpMatch "[^@\t ]+@[^@.\t ]+(\\.[^@.\n ]+)+" (trim email)) 
-      val getNameErr = getErr' (%"name") msgName (RegExpMatch "[a-zA-ZAÆØÅaæøå '\\-]+")
-      val getAddrErr = getErr' (%"address") msgAddr (RegExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
+	(fn email => regExpMatch "[^@\t ]+@[^@.\t ]+(\\.[^@.\n ]+)+" (trim email)) 
+      val getNameErr = getErr' (%"name") msgName (regExpMatch "[a-zA-ZAÆØÅaæøå '\\-]+")
+      val getAddrErr = getErr' (%"address") msgAddr (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
       val getLoginErr = getErr' (%"login") msgLogin 
 	(fn login =>
-	 RegExpMatch "[a-z][a-z0-9\\-]+" login andalso 
+	 regExpMatch "[a-z][a-z0-9\\-]+" login andalso 
 	 String.size login >= 3 andalso String.size login <= 10)
-      val getPhoneErr = getErr' (%"phone number") msgPhone (RegExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
+      val getPhoneErr = getErr' (%"phone number") msgPhone (regExpMatch "[a-zA-Z0-9ÆØÅæøå '\\-.:;,]+")
       (* getHtml : not implemented yet *)
       val getHtmlErr = getErr' (%"HTML text") msgHTML (fn html => html <> "")
-      val getUrlErr =  getErr' (%"URL") msgURL (RegExpMatch "http://[0-9a-zA-Z/\\-\\\\._]+(:[0-9]+)?")
+      val getUrlErr =  getErr' (%"URL") msgURL (regExpMatch "http://[0-9a-zA-Z/\\-\\\\._]+(:[0-9]+)?")
       val getCprErr = getErr "" convCpr (%"cpr number") msgCpr chkCpr
       val getEnumErr = fn enums => getErr' (%"enumeration") (msgEnum enums) (chkEnum enums)
       val getYesNoErr = let val enums = [%"Yes",%"No"] in getErr' (%"Yes/No") (msgEnum enums) (chkEnum ["t","f"]) end
       val getDateIso = getErr' (%"date") msgDateIso chkDateIso
       val getDateErr = getErr (ScsDate.genDate(1,1,1)) convDate (%"date") msgDate chkDate
+      val getTableName = getErr' (%"table name") msgTableName (regExpMatch "[a-zA-Z_]+")
     end
   end
 

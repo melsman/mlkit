@@ -10,10 +10,10 @@ signature SCS_PRINT =
 
     (* Widgets *)
     val choosePrinter : string -> quot * quot
-    val printForm     : doc_type -> quot -> quot
+    val printForm     : string -> string -> string -> string -> doc_type -> quot -> quot
 
     (* Actual Printing *)
-    val printDoc      : doc_type -> string -> string -> Ns.status
+    val printDoc      : string -> string -> string -> string -> doc_type -> string -> string -> Ns.status
   end
 
 structure ScsPrint :> SCS_PRINT =
@@ -67,29 +67,57 @@ structure ScsPrint :> SCS_PRINT =
 	      else
 		ScsError.panic `ScsPrint.genTarget: Can't execute system command: ^cmd`
 	    end
-      fun printDoc doc_type source printer =
+      fun printDoc category note on_what_table on_what_id doc_type source printer =
 	case doc_type of
 	  LaTeX =>
 	    let
-	      val tmpfile = tmpnam 10
+	      val print_id = Int.toString (Db.seqNextval "scs_print_id_seq")
+	      val tmpfile = tmpnam 10 ^ "-" ^ print_id
 	      val _ = save_source source (texfile tmpfile)
-	      val cmd = Quot.toString `cd ^scs_print_dir; latex ^(texfile tmpfile); dvips -P^printer ^(dvifile tmpfile)`
+	      val target_f = (ScsError.valOf (Ns.Info.configGetValueExact 
+					      {sectionName="ns/server/"^Ns.Conn.server()^"/SCS",key="scs_print"}))
+		                     ^ "/" ^ tmpfile ^ ".pdf"
+	      val cmd = Quot.toString `cd ^scs_print_dir; latex ^(texfile tmpfile); dvips -o ^(psfile tmpfile) ^(dvifile tmpfile); lpr -P^printer ^(psfile tmpfile); ps2pdf ^(psfile tmpfile) ^(pdffile tmpfile); mv ^(pdffile tmpfile) ^(target_f)`
+	      fun ins_log db =
+		let
+		  val clob_id = DbClob.insert_fn (Quot.fromString source) db
+		in
+		  Db.dmlDb (db, `insert into scs_print_log (print_id,user_id,category,clob_id,print_cmd,
+							    target_file,doc_type,note,deleted_p,
+							    on_what_table, on_what_id, time_stamp)
+			    values (^(Db.valueList [print_id,Int.toString ScsLogin.user_id,
+						    category,clob_id,cmd,tmpfile ^ ".pdf",
+						    docTypeToString doc_type,note,"f",
+						    on_what_table,on_what_id]),
+				    ^(Db.sysdateExp))`)
+		end
 	    in
 	      if Process.system cmd = Process.success
-		then ScsPage.returnPg "Document Printed" `The document is now sent to printer ^printer.`
+		then (ScsDb.panicDmlTrans ins_log;
+		      ScsPage.returnPg "Document Printed" `The document is now sent to printer ^printer.<p>
+
+The document has been filed, however, if there were any problems
+printing the document then please <a
+href="toggle_deleted.sml?print_id=^(Ns.encodeUrl
+print_id)&target_url=^(Ns.encodeUrl ("show_doc.sml?print_id="^print_id))">de-file</a> the
+document. You will be returned to the print-screen again.`)
 	      else ScsError.panic `ScsPrint.genTarget: Can't execute system command: ^cmd`
 	    end
 
       (* Sould find printers for the user logged in *)
       fun choosePrinter n = (`Choose printer`, ScsWidget.select (List.map (fn p => (p,p)) allPrinters) n)
 
-      fun printForm doc_type source =
-	ScsWidget.formBox "/scs/scs-print.sml" 
+      fun printForm category note on_what_table on_what_id doc_type source =
+	ScsWidget.formBox "/scs/print/scs-print.sml" 
 	[("submit", "Print"),("submit","Update Source")] 
 	(`You may change the source below and then either print the 
 	 changed document or update the preview link.<p>` ^^ 
 	 `<a href="^(genTarget doc_type source)">preview</a><br>` ^^
 	 (Html.inhidden "doc_type" (docTypeToString doc_type)) ^^
+	 (Html.inhidden "category" category) ^^
+	 (Html.inhidden "on_what_table" on_what_table) ^^
+	 (Html.inhidden "on_what_id" on_what_id) ^^
+	 (Html.inhidden "note" note) ^^
 	 (ScsWidget.largeTA "source" source) ^^ `<p>` ^^
 	 (ScsWidget.oneLine (choosePrinter "printer")))
       end

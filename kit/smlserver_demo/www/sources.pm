@@ -13,6 +13,7 @@ local
     ../lib/NS.sml
     ../lib/Ns.sml  
     ../lib/Db.sml
+    ../lib/DbClob.sml
   end
   ../scs_lib/SCS_SECURITY.sml
   ../scs_lib/ScsSecurity.sml
@@ -23,6 +24,7 @@ local
   ../scs_lib/ScsDict.sml
   ../scs_lib/ScsPage.sml
   ../scs_lib/ScsError.sml
+  ../scs_lib/ScsDb.sml
   ../scs_lib/ScsWidget.sml
   ../scs_lib/ScsPrint.sml
   ../scs_lib/ScsReal.sml
@@ -98,7 +100,13 @@ in
   email_form.sml
   email_sent.sml
 
+  (* Scs Dictionary *)
   scs/admin/dict/dict_form.sml
-  scs/scs-print.sml
+
+  (* ScsPrint *)
+  scs/print/scs-print.sml
+  scs/print/log.sml
+  scs/print/show_doc.sml
+  scs/print/toggle_deleted.sml
  ]
 end
