@@ -1276,7 +1276,18 @@ structure ScsPerson :> SCS_PERSON =
 
       <b>TO-DO</b> Vi må finde ud af hvad der skal gælde!
 
-      <a name="regler_for_visning_af_billede.sec"></a>
+      <h3>Gøre ikke officielt billede officielt</h3>
+
+      Med knappen "Gør ikke officielt billede officielt" kan
+      <b>PortraitAdm</b> kopiere det ikke officielle billede således
+      at det også bliver det officielle:<p> 
+
+      <img src="/scs/person/images/non_off_to_off_picture.png"><p>
+
+      Dette er f.eks. nyttigt, hvis
+      en bruger selv uploader et billede som derefter skal benyttes på
+      adgangskort eller i en anden officielt forbindelse.<p>
+
       <h3>Visning af et billede</h3>
 
       Når et billede vises anvendes følgende prioriteter:
@@ -1294,7 +1305,8 @@ structure ScsPerson :> SCS_PERSON =
       det store billede) samt en unik identifikation på personen. Der
       er pt. implementeret en unik identifikation, nemlig et internt
       løbenummer <code>person_id</code>. Men det vil også være muligt
-      at implmentere andre unikke identifikatorer, f.eks. email.<p>
+      at implmentere andre unikke identifikatorer, f.eks. login eller
+      email.<p>
 
       Du kan aflæse linket i boksen med titlen "Ekstern link til
       billede":<p>
@@ -1304,8 +1316,7 @@ structure ScsPerson :> SCS_PERSON =
       Linket sikrer, at et billede kun vises, hvis det er tilladt,
       dvs. kombinationen af login som kigger på billedet og billedets
       ejers synlighed checkes. Derudover vælges et billede efter
-      reglerne <a
-      href="#regler_for_visning_af_billede.sec">ovenfor</a>.
+      reglerne ovenfor (Visning af et billede).
 
       <h3>Adgangskort</h3>
   
